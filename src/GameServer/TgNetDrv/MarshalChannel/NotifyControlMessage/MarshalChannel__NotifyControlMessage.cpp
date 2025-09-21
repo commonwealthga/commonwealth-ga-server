@@ -142,7 +142,7 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 		// LogToFile("C:\\mylog.txt", "[SpawnPlayActor] end");
 
 		if (newcontrollerptr) {
-			HandlePlayerConnected(Connection, newcontrollerptr);
+			MarshalChannel__NotifyControlMessage::HandlePlayerConnected(Connection, newcontrollerptr);
 		}
 	}
 }
