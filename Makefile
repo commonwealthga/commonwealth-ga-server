@@ -1,15 +1,17 @@
 
 SOURCE_FILES= \
+			  $(SRC_DIR)/Config/Config/ConfigTetraPier.cpp \
+			  \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
 			  $(SRC_DIR)/GameServer/Engine/LaunchEngineLoop/ConstructCommandletObject/ConstructCommandletObject.cpp \
 			  $(SRC_DIR)/GameServer/Engine/ServerCommandlet/Main/ServerCommandlet__Main.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/SpawnServerActors/GameEngine__SpawnServerActors.cpp \
 			  $(SRC_DIR)/GameServer/TgNetDrv/UdpNetDriver/InitListen/UdpNetDriver__InitListen.cpp \
 			  $(SRC_DIR)/GameServer/TgNetDrv/UdpNetDriver/TickDispatch/UdpNetDriver__TickDispatch.cpp \
-			  $(SRC_DIR)/GameServer/Engine/World/NotifyAcceptedConnection/World__NotifyAcceptedConnection.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/LowLevelGetRemoteAddress/NetConnection__LowLevelGetRemoteAddress.cpp \
 			  $(SRC_DIR)/GameServer/Storage/ClientConnectionsData.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.cpp \
+			  $(SRC_DIR)/GameServer/TgNetDrv/MarshalChannel/NotifyControlMessage/MarshalChannel__NotifyControlMessage.cpp \
 			  $(SRC_DIR)/dllmain.cpp
 
 CC=i686-w64-mingw32-g++

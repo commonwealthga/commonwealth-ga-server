@@ -7,6 +7,7 @@
 #include "src/GameServer/TgNetDrv/UdpNetDriver/InitListen/UdpNetDriver__InitListen.hpp"
 #include "src/GameServer/TgNetDrv/UdpNetDriver/TickDispatch/UdpNetDriver__TickDispatch.hpp"
 #include "src/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.hpp"
+#include "src/GameServer/TgNetDrv/MarshalChannel/NotifyControlMessage/MarshalChannel__NotifyControlMessage.hpp"
 
 unsigned long ModuleThread( void* ) {
 	::DetourTransactionBegin();
@@ -20,6 +21,7 @@ unsigned long ModuleThread( void* ) {
 	UdpNetDriver__InitListen::Install();
 	UdpNetDriver__TickDispatch::Install();
 	NetConnection__LowLevelSend::Install();
+	MarshalChannel__NotifyControlMessage::Install();
 
 
 
