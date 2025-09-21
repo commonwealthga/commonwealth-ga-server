@@ -33,3 +33,8 @@ We are not affiliated with Hi-Rez Studios in any way and we do not claim any rig
 - [ ] continue implementing less important gameplay features
 - [ ] modding
 
+## Useful links
+
+- [The Commonwealth Discord](https://discord.gg/CqACf4qArk)
+- [Dev streams](https://kick.com/zaxbactor)
+
