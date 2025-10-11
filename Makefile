@@ -2,6 +2,7 @@
 SOURCE_FILES= \
 			  $(SRC_DIR)/Config/Config/ConfigTetraPier.cpp \
 			  \
+			  $(SRC_DIR)/GameServer/Utils/ClassPreloader/ClassPreloader.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
 			  $(SRC_DIR)/GameServer/Engine/LaunchEngineLoop/ConstructCommandletObject/ConstructCommandletObject.cpp \
 			  $(SRC_DIR)/GameServer/Engine/ServerCommandlet/Main/ServerCommandlet__Main.cpp \
@@ -9,11 +10,15 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgNetDrv/UdpNetDriver/InitListen/UdpNetDriver__InitListen.cpp \
 			  $(SRC_DIR)/GameServer/TgNetDrv/UdpNetDriver/TickDispatch/UdpNetDriver__TickDispatch.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/LowLevelGetRemoteAddress/NetConnection__LowLevelGetRemoteAddress.cpp \
-			  $(SRC_DIR)/GameServer/Storage/ClientConnectionsData.cpp \
+			  $(SRC_DIR)/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.cpp \
+			  $(SRC_DIR)/GameServer/Storage/TeamsData/TeamsData.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.cpp \
 			  $(SRC_DIR)/GameServer/TgNetDrv/MarshalChannel/NotifyControlMessage/MarshalChannel__NotifyControlMessage.cpp \
 			  $(SRC_DIR)/GameServer/Engine/ActorChannel/ReceivedBunch/ActorChannel__ReceivedBunch__CanExecute.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/IsReadyForStart/TgPlayerController__IsReadyForStart.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.cpp \
 			  $(SRC_DIR)/dllmain.cpp
 
 CC=i686-w64-mingw32-g++

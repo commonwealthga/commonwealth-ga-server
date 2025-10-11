@@ -1,6 +1,6 @@
 #include "src/pch.hpp"
 #include "src/GameServer/IpDrv/NetConnection/LowLevelGetRemoteAddress/NetConnection__LowLevelGetRemoteAddress.hpp"
-#include "src/GameServer/Storage/ClientConnectionsData.hpp"
+#include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Core/FString/CreateFromWCharT/FString__CreateFromWCharT.hpp"
 
 void NetConnection__LowLevelGetRemoteAddress::Call(UNetConnection* NetConnection, void* edx, void* Out) {

@@ -10,6 +10,9 @@
 #include "src/GameServer/TgNetDrv/MarshalChannel/NotifyControlMessage/MarshalChannel__NotifyControlMessage.hpp"
 #include "src/GameServer/Engine/ActorChannel/ReceivedBunch/ActorChannel__ReceivedBunch__CanExecute.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/IsReadyForStart/TgPlayerController__IsReadyForStart.hpp"
+#include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
+#include "src/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.hpp"
+#include "src/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.hpp"
 
 unsigned long ModuleThread( void* ) {
 	::DetourTransactionBegin();
@@ -28,8 +31,12 @@ unsigned long ModuleThread( void* ) {
 
 	// game functions
 	TgPlayerController__IsReadyForStart::Install();
+	TgGame__SpawnPlayerCharacter::Install();
+	TgGame__LoadGameConfig::Install();
+	TgGame_Arena__LoadGameConfig::Install();
 
 	::DetourTransactionCommit();
+
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)

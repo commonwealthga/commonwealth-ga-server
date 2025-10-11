@@ -10,7 +10,7 @@
 #include "src/GameServer/IpDrv/NetConnection/ReceivedRawPacket/NetConnection__ReceivedRawPacket.hpp"
 #include "src/Utils/Macros.hpp"
 #include "src/GameServer/Globals.hpp"
-#include "src/GameServer/Storage/ClientConnectionsData.hpp"
+#include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 
 UClass* UdpNetDriver__TickDispatch::NetConnectionClass = nullptr;
 bool UdpNetDriver__TickDispatch::bNetConnectionVTableHooked = false;

@@ -1,4 +1,5 @@
 #include "src/GameServer/TgNetDrv/MarshalChannel/NotifyControlMessage/MarshalChannel__NotifyControlMessage.hpp"
+#include "src/GameServer/Engine/World/GetGameInfo/World__GetGameInfo.hpp"
 #include "src/GameServer/Misc/CMarshal/GetString/CMarshal__GetString.hpp"
 #include "src/GameServer/Engine/World/WelcomePlayer/World__WelcomePlayer.hpp"
 #include "src/GameServer/Engine/PackageMap/Compute/PackageMap__Compute.hpp"
@@ -6,6 +7,10 @@
 #include "src/GameServer/Engine/World/SpawnPlayActor/World__SpawnPlayActor.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Config/Config.hpp"
+#include "src/GameServer/Engine/World/GetGameInfo/World__GetGameInfo.hpp"
+#include "src/GameServer/Constants/GameTypes.h"
+#include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+
 
 void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel, void* edx, UNetConnection* Connection, void* InBunch) {
 	int param_1 = 0x4FF;
@@ -147,7 +152,138 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 	}
 }
 
+
 void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection* Connection, ATgPlayerController* Controller) {
-	// todo
+
+	ULocalPlayer* connplayer = (ULocalPlayer*)Connection;
+	UWorld* pWorld = (UWorld*)Globals::Get().GWorld;
+
+	void* gameinfoptr = World__GetGameInfo::CallOriginal((UWorld*)pWorld);
+	ATgGame* game = reinterpret_cast<ATgGame*>(gameinfoptr);
+	ATgRepInfo_Game* gamerep = reinterpret_cast<ATgRepInfo_Game*>(game->GameReplicationInfo);
+
+	ATgPlayerController* newcontroller = reinterpret_cast<ATgPlayerController*>(Controller);
+	// newcontroller->bOnlyRelevantToOwner = 1;
+	ATgPawn_Character* newpawn = NULL;
+
+	newcontroller->PlayerReplicationInfo->bOnlySpectator = 0;
+
+	// ATgPawn_Character* defaultpawn = (ATgPawn_Character*)pOriginalUClass_GetDefaultObject(game->DefaultPawnClass, nullptr, 1);
+
+	// newcontroller->Player = nullptr;
+	// game->RestartPlayer(newcontroller);
+	game->eventPostLogin(newcontroller);
+
+	ATgPawn_Character* newpawnchar = (ATgPawn_Character*)newcontroller->Pawn;
+
+	ATgRepInfo_Player* newrepplayer = reinterpret_cast<ATgRepInfo_Player*>(newcontroller->PlayerReplicationInfo);
+	// newrepplayer->Team = defenders;
+	newrepplayer->bAdmin = 1;
+	newrepplayer->r_CustomCharacterAssembly.SuitMeshId = 1225;
+	newrepplayer->r_CustomCharacterAssembly.HeadMeshId = GA_G::HEAD_ASM_ID_TROLL;
+	newrepplayer->r_CustomCharacterAssembly.HairMeshId = 1974;
+	newrepplayer->r_CustomCharacterAssembly.HelmetMeshId = -1;
+	newrepplayer->r_CustomCharacterAssembly.SkinToneParameterId = 0;
+	newrepplayer->r_CustomCharacterAssembly.SkinRaceParameterId = 0;
+	newrepplayer->r_CustomCharacterAssembly.EyeColorParameterId = 0;
+	newrepplayer->r_CustomCharacterAssembly.bBald = false;
+	newrepplayer->r_CustomCharacterAssembly.bHideHelmet = false;
+	newrepplayer->r_CustomCharacterAssembly.bValidCustomAssembly = true;
+	newrepplayer->r_CustomCharacterAssembly.bHalfHelmet = false;
+	newrepplayer->r_CustomCharacterAssembly.nGenderTypeId = GA_G::GENDER_TYPE_ID_MALE;
+	newrepplayer->r_CustomCharacterAssembly.HeadFlairId = -1;
+	newrepplayer->r_CustomCharacterAssembly.SuitFlairId = -1;
+	newrepplayer->r_CustomCharacterAssembly.JetpackTrailId = 7638;
+	newrepplayer->r_CustomCharacterAssembly.DyeList[0] = GA_G::DYE_ID_NONE_MORE_BLACK;
+	newrepplayer->r_CustomCharacterAssembly.DyeList[1] = GA_G::DYE_ID_NONE_MORE_BLACK;
+	newrepplayer->r_CustomCharacterAssembly.DyeList[2] = GA_G::DYE_ID_NONE_MORE_BLACK;
+	newrepplayer->r_CustomCharacterAssembly.DyeList[3] = GA_G::DYE_ID_NONE_MORE_BLACK;
+	newrepplayer->r_CustomCharacterAssembly.DyeList[4] = GA_G::DYE_ID_NONE_MORE_BLACK;
+	newrepplayer->r_nProfileId = 567; // medic
+	newrepplayer->r_nHealthCurrent = 1300;
+	newrepplayer->r_nHealthMaximum = 1300;
+	newrepplayer->r_nCharacterId = newpawnchar->s_nCharacterId;
+	newrepplayer->r_nLevel = 50;
+	// newrepplayer->r_sOrigPlayerName = FString(L"Zaxik");
+	newrepplayer->r_PawnOwner = newpawnchar;
+	newrepplayer->r_ApproxLocation = newpawnchar->Location;
+	// newrepplayer->PlayerName = FString(L"Zaxik");
+
+	newrepplayer->eventSetPlayerName(FString(L"Zaxik"));
+	newrepplayer->r_TaskForce = GTeamsData.Attackers;
+	newrepplayer->SetTeam(GTeamsData.Attackers);
+	newrepplayer->bNetDirty = 1;
+	newrepplayer->bForceNetUpdate = 1;
+	newrepplayer->bSkipActorPropertyReplication = 0;
+	newrepplayer->bOnlyDirtyReplication = 0;
+	newrepplayer->bNetInitial = 1;
+
+	if (GTeamsData.Attackers->r_BeaconManager->r_Beacon == nullptr) {
+		if (GTeamsData.BeaconAttackers) {
+			GTeamsData.Attackers->r_BeaconManager->r_Beacon = GTeamsData.BeaconAttackers;
+			GTeamsData.Attackers->r_BeaconManager->r_TaskForce = GTeamsData.Attackers;
+			GTeamsData.Attackers->r_BeaconManager->bNetDirty = 1;
+			GTeamsData.Attackers->r_BeaconManager->bForceNetUpdate = 1;
+			GTeamsData.Attackers->r_BeaconManager->bNetInitial = 1;
+			GTeamsData.BeaconAttackers->r_DRI->r_TaskforceInfo = GTeamsData.Attackers;
+			GTeamsData.Attackers->r_BeaconManager->RegisterBeacon(GTeamsData.BeaconAttackers, 1);
+			if (GTeamsData.BeaconEntranceAttackers) {
+				GTeamsData.BeaconEntranceAttackers->r_DRI->r_TaskforceInfo = GTeamsData.Attackers;
+				// LogToFile("C:\\mylog.txt", "Attackers beacon entrance taskforce set");
+			}
+			// LogToFile("C:\\mylog.txt", "Attackers beacon set");
+		} else {
+			// LogToFile("C:\\mylog.txt", "Attackers beacon global is null");
+		}
+	} else {
+		// LogToFile("C:\\mylog.txt", "Attackers beacon is not null");
+	}
+	if (GTeamsData.Defenders->r_BeaconManager->r_Beacon == nullptr) {
+		if (GTeamsData.BeaconDefenders) {
+			GTeamsData.Defenders->r_BeaconManager->r_TaskForce = GTeamsData.Defenders;
+			GTeamsData.Defenders->r_BeaconManager->r_Beacon = GTeamsData.BeaconDefenders;
+			GTeamsData.Defenders->r_BeaconManager->bNetDirty = 1;
+			GTeamsData.Defenders->r_BeaconManager->bForceNetUpdate = 1;
+			GTeamsData.Defenders->r_BeaconManager->bNetInitial = 1;
+			GTeamsData.BeaconDefenders->r_DRI->r_TaskforceInfo = GTeamsData.Defenders;
+			GTeamsData.Defenders->r_BeaconManager->RegisterBeacon(GTeamsData.BeaconDefenders, 1);
+			if (GTeamsData.BeaconEntranceDefenders) {
+				GTeamsData.BeaconEntranceDefenders->r_DRI->r_TaskforceInfo = GTeamsData.Defenders;
+				// LogToFile("C:\\mylog.txt", "Defenders beacon entrance taskforce set");
+			}
+			// LogToFile("C:\\mylog.txt", "Defenders beacon set");
+		} else {
+			// LogToFile("C:\\mylog.txt", "Defenders beacon global is null");
+		}
+	} else {
+		// LogToFile("C:\\mylog.txt", "Defenders beacon is not null");
+	}
+
+	// LogToFile("C:\\mylog.txt", "Attackers taskforce %d", GTeamsData.Attackers->r_nTaskForce);
+	if (GTeamsData.Attackers->r_BeaconManager != nullptr) {
+		// LogToFile("C:\\mylog.txt", "Attackers have beacon manager");
+		if (GTeamsData.Attackers->r_BeaconManager->r_TaskForce != nullptr) {
+			// LogToFile("C:\\mylog.txt", "Attackers beacon manager taskforce %d", GTeamsData.Attackers->r_BeaconManager->r_TaskForce->r_nTaskForce);
+		}
+		if (GTeamsData.Attackers->r_BeaconManager->r_Beacon != nullptr) {
+			// LogToFile("C:\\mylog.txt", "Attackers have beacon");
+			if (GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI != nullptr) {
+				// LogToFile("C:\\mylog.txt", "Attackers beacon has replication info");
+				if (GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo != nullptr) {
+					// LogToFile("C:\\mylog.txt", "Attackers beacon taskforce %d", GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo->r_nTaskForce);
+				} else {
+					// LogToFile("C:\\mylog.txt", "Attackers beacon taskforce is null");
+				}
+			} else {
+				// LogToFile("C:\\mylog.txt", "Attackers beacon replication info is null");
+			}
+		} else {
+			// LogToFile("C:\\mylog.txt", "Attackers beacon is null");
+		}
+	} else {
+		// LogToFile("C:\\mylog.txt", "Attackers do not have beacon manager");
+	}
+	// LogToFile("C:\\mylog.txt", "Attackers beacon manager taskforce %d", GTeamsData.Attackers->r_BeaconManager->r_TaskForce->r_nTaskForce);
+	// LogToFile("C:\\mylog.txt", "Attackers beacon taskforce %d", GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo->r_nTaskForce);
 }
 

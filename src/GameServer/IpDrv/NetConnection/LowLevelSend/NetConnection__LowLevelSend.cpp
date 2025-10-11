@@ -1,7 +1,7 @@
 #include "src/pch.hpp"
 
 #include "src/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.hpp"
-#include "src/GameServer/Storage/ClientConnectionsData.hpp"
+#include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 
 void NetConnection__LowLevelSend::Call(UNetConnection* Connection, void* edx, void* Buffer, int Size) {
 	int32_t ClientConnectionIndex = (int32_t)Connection;
