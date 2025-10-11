@@ -13,6 +13,13 @@
 #include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
 #include "src/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.hpp"
+#include "src/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.hpp"
+#include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
+#include "src/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.hpp"
+#include "src/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.hpp"
+#include "src/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.hpp"
+#include "src/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.hpp"
+
 
 unsigned long ModuleThread( void* ) {
 	::DetourTransactionBegin();
@@ -33,7 +40,13 @@ unsigned long ModuleThread( void* ) {
 	TgPlayerController__IsReadyForStart::Install();
 	TgGame__SpawnPlayerCharacter::Install();
 	TgGame__LoadGameConfig::Install();
+	TgGame__InitGameRepInfo::Install();
 	TgGame_Arena__LoadGameConfig::Install();
+	TgPawn__InitializeDefaultProps::Install();
+	TgPawn__GetProperty::Install();
+	TgTeamBeaconManager__SpawnNewBeaconForTeam::Install();
+	TgBeaconFactory__SpawnObject::Install();
+	TgInventoryManager__NonPersistAddDevice::Install();
 
 	::DetourTransactionCommit();
 
