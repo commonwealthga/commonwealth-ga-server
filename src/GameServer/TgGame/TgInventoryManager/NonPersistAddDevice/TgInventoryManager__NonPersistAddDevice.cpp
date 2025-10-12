@@ -1,7 +1,7 @@
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
-ATgDevice* TgInventoryManager__NonPersistAddDevice::Call(ATgInventoryManager* InventoryManager, void* edx, int nDeviceId, int nEquipPoint) {
+ATgDevice* __fastcall TgInventoryManager__NonPersistAddDevice::Call(ATgInventoryManager* InventoryManager, void* edx, int nDeviceId, int nEquipPoint) {
 	// LogToFile("C:\\mylog.txt", "MINE TgInventoryManager::NonPersistAddDevice START - device ID %d", nDeviceId);
 
 	Logger::Log("debug", "MINE TgInventoryManager::NonPersistAddDevice START\n");

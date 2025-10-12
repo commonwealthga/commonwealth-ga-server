@@ -16,12 +16,14 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	PlayerController->bNetInitial = 1;
 	PlayerController->bNetDirty = 1;
 	PlayerController->bForceNetUpdate = 1;
+	PlayerController->bReplicateMovement = 0;
 
 	newpawn->PlayerReplicationInfo = PlayerController->PlayerReplicationInfo;
 
 	newpawn->bNetInitial = 1;
 	newpawn->bNetDirty = 1;
 	newpawn->bForceNetUpdate = 1;
+	newpawn->bReplicateMovement = 0;
 
 	Logger::Log("debug", "MINE TgGame__SpawnPlayerCharacter END\n");
 	return newpawn;

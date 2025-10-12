@@ -1,6 +1,6 @@
 
 SOURCE_FILES= \
-			  $(SRC_DIR)/Config/Config/ConfigTetraPier.cpp \
+			  $(SRC_DIR)/Config/Config/ConfigAvaPushLab.cpp \
 			  \
 			  $(SRC_DIR)/Utils/Logger/Logger/FileLogger.cpp \
 			  \

@@ -165,15 +165,10 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	ATgRepInfo_Game* gamerep = reinterpret_cast<ATgRepInfo_Game*>(game->GameReplicationInfo);
 
 	ATgPlayerController* newcontroller = reinterpret_cast<ATgPlayerController*>(Controller);
-	// newcontroller->bOnlyRelevantToOwner = 1;
 	ATgPawn_Character* newpawn = NULL;
 
 	newcontroller->PlayerReplicationInfo->bOnlySpectator = 0;
 
-	// ATgPawn_Character* defaultpawn = (ATgPawn_Character*)pOriginalUClass_GetDefaultObject(game->DefaultPawnClass, nullptr, 1);
-
-	// newcontroller->Player = nullptr;
-	// game->RestartPlayer(newcontroller);
 	game->eventPostLogin(newcontroller);
 
 	ATgPawn_Character* newpawnchar = (ATgPawn_Character*)newcontroller->Pawn;
@@ -262,29 +257,31 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	}
 
 	// LogToFile("C:\\mylog.txt", "Attackers taskforce %d", GTeamsData.Attackers->r_nTaskForce);
+
 	if (GTeamsData.Attackers->r_BeaconManager != nullptr) {
-		// LogToFile("C:\\mylog.txt", "Attackers have beacon manager");
+		Logger::Log("debug", "Attackers have beacon manager\n");
 		if (GTeamsData.Attackers->r_BeaconManager->r_TaskForce != nullptr) {
-			// LogToFile("C:\\mylog.txt", "Attackers beacon manager taskforce %d", GTeamsData.Attackers->r_BeaconManager->r_TaskForce->r_nTaskForce);
+			Logger::Log("debug", "Attackers beacon manager taskforce %d\n", GTeamsData.Attackers->r_BeaconManager->r_TaskForce->r_nTaskForce);
 		}
 		if (GTeamsData.Attackers->r_BeaconManager->r_Beacon != nullptr) {
-			// LogToFile("C:\\mylog.txt", "Attackers have beacon");
+			Logger::Log("debug", "Attackers have beacon\n");
 			if (GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI != nullptr) {
-				// LogToFile("C:\\mylog.txt", "Attackers beacon has replication info");
+				Logger::Log("debug", "Attackers beacon has replication info\n");
 				if (GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo != nullptr) {
-					// LogToFile("C:\\mylog.txt", "Attackers beacon taskforce %d", GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo->r_nTaskForce);
+					Logger::Log("debug", "Attackers beacon taskforce %d\n", GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo->r_nTaskForce);
 				} else {
-					// LogToFile("C:\\mylog.txt", "Attackers beacon taskforce is null");
+					Logger::Log("debug", "Attackers beacon taskforce is null\n");
 				}
 			} else {
-				// LogToFile("C:\\mylog.txt", "Attackers beacon replication info is null");
+				Logger::Log("debug", "Attackers beacon replication info is null\n");
 			}
 		} else {
-			// LogToFile("C:\\mylog.txt", "Attackers beacon is null");
+			Logger::Log("debug", "Attackers beacon is null\n");
 		}
 	} else {
-		// LogToFile("C:\\mylog.txt", "Attackers do not have beacon manager");
+		Logger::Log("debug", "Attackers do not have beacon manager\n");
 	}
+
 	// LogToFile("C:\\mylog.txt", "Attackers beacon manager taskforce %d", GTeamsData.Attackers->r_BeaconManager->r_TaskForce->r_nTaskForce);
 	// LogToFile("C:\\mylog.txt", "Attackers beacon taskforce %d", GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo->r_nTaskForce);
 	Logger::Log("debug", "MINE MarshalChannel__NotifyControlMessage END\n");

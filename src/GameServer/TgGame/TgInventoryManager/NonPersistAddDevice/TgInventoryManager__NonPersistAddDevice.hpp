@@ -8,8 +8,8 @@ class TgInventoryManager__NonPersistAddDevice : public HookBase<
 	0x10A122F0,
 	TgInventoryManager__NonPersistAddDevice> {
 public:
-	static ATgDevice* Call(ATgInventoryManager* InventoryManager, void* edx, int nDeviceId, int nEquipPoint);
-	static inline ATgDevice* CallOriginal(ATgInventoryManager* InventoryManager, void* edx, int nDeviceId, int nEquipPoint) {
+	static ATgDevice* __fastcall Call(ATgInventoryManager* InventoryManager, void* edx, int nDeviceId, int nEquipPoint);
+	static inline ATgDevice* __fastcall CallOriginal(ATgInventoryManager* InventoryManager, void* edx, int nDeviceId, int nEquipPoint) {
 		return m_original(InventoryManager, edx, nDeviceId, nEquipPoint);
 	}
 };
