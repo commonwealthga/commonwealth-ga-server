@@ -1,33 +1,27 @@
 name: Release
 
 on:
-  release:
-    types:
-      - published
-
-env:
-  GH_TOKEN: ${{ github.token }}
+  workflow_run:
+    workflows: ["Build"]
+    types: [completed]
 
 permissions:
   contents: write
 
 jobs:
   release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'release' }}
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Install GitHub CLI
-        run: sudo apt-get install -y gh
-
-      - name: Download Artifact
-        uses: actions/download-artifact@v4
+      - name: Download build artifacts from previous workflow
+        uses: dawidd6/action-download-artifact@v3
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: build.yml
+          run_id: ${{ github.event.workflow_run.id }}
           name: version.dll
           path: out/
 
-      - name: Upload DLL to Release
-        run: gh release upload "${{ github.event.release.tag_name }}" out/version.dll
+      - run: sudo apt-get install -y gh
+      - run: gh release upload "${{ github.event.release.tag_name }}" out/version.dll
 
