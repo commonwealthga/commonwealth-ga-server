@@ -1,24 +1,23 @@
 name: Release
 
 on:
-  workflow_run:
-    workflows: ["Build"]
-    types: [completed]
+  release:
+    types: [published]
 
 permissions:
   contents: write
 
 jobs:
   release:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'release' }}
     runs-on: ubuntu-latest
+
     steps:
-      - name: Download build artifacts from previous workflow
+      - name: Download build artifacts from latest successful build
         uses: dawidd6/action-download-artifact@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           workflow: build.yml
-          run_id: ${{ github.event.workflow_run.id }}
+          branch: ${{ github.event.release.target_commitish }}
           name: version.dll
           path: out/
 
