@@ -19,6 +19,7 @@
 #include "src/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.hpp"
 #include "src/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.hpp"
+#include "src/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepList.hpp"
 
 
 unsigned long ModuleThread( void* ) {
@@ -36,6 +37,7 @@ unsigned long ModuleThread( void* ) {
 	NetConnection__LowLevelSend::Install();
 	MarshalChannel__NotifyControlMessage::Install();
 	ActorChannel__ReceivedBunch__CanExecute::Install();
+	Actor__GetOptimizedRepList::Install();
 
 	// game functions
 	TgPlayerController__IsReadyForStart::Install();
