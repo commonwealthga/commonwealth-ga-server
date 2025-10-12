@@ -1,0 +1,58 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - "**"
+  release:
+    types:
+      - published
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: sudo apt-get update && sudo apt-get install -y mingw-w64
+
+      - name: Build
+        run: make all
+        continue-on-error: false
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: version.dll
+          path: out/version.dll
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install GitHub CLI
+        run: sudo apt-get install -y gh
+
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: version.dll
+          path: out/
+
+      - name: Upload DLL to Release
+        run: gh release upload "${{ github.event.release.tag_name }}" out/version.dll
+
