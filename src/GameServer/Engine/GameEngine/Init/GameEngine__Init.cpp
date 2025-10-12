@@ -2,6 +2,9 @@
 #include "src/GameServer/Engine/GameEngine/Init/GameEngine__Init.hpp"
 #include "src/GameServer/Misc/AssemblyDatManager/LoadAssemblyDat/AssemblyDatManager__LoadAssemblyDat.hpp"
 #include "src/GameServer/Engine/LaunchEngineLoop/LoadStartupPackages/LoadStartupPackages.hpp"
+#include "src/TcpServer/TcpServerInit/TcpServerInit.hpp"
+
+bool GameEngine__Init::bInitTcpServer = false;
 
 void GameEngine__Init::FixGlobals() {
 	*Globals::Get().GIsClient = 0;
@@ -20,7 +23,9 @@ void GameEngine__Init::Call(void* GameEngine) {
 
 	LoadStartupPackages::CallOriginal();
 
-	// todo: start custom TCP server
+	if (bInitTcpServer) {
+		TcpServerInit::CreateTcpServerThread();
+	}
 
 	GameEngine__Init::CallOriginal(GameEngine);
 }

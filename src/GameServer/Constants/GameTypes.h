@@ -1,3 +1,5 @@
+#pragma once
+
 namespace GA_G {
 	enum GA_G {
 		PROFILE_ID_ASSAULT = 0x2A8, // 680

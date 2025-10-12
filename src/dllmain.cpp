@@ -26,6 +26,7 @@ unsigned long ModuleThread( void* ) {
 	::DetourUpdateThread(::GetCurrentThread());
 
 	// low-level engine functions
+	GameEngine__Init::bInitTcpServer = true;
 	GameEngine__Init::Install();
 	ConstructCommandletObject::Install();
 	ServerCommandlet__Main::Install();

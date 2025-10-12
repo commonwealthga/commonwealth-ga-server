@@ -2,6 +2,7 @@
 SOURCE_FILES= \
 			  $(SRC_DIR)/Config/Config/ConfigTetraPier.cpp \
 			  \
+			  $(SRC_DIR)/TcpServer/TcpServerInit/TcpServerInit.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ClassPreloader/ClassPreloader.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
 			  $(SRC_DIR)/GameServer/Engine/LaunchEngineLoop/ConstructCommandletObject/ConstructCommandletObject.cpp \

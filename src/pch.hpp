@@ -7,12 +7,14 @@
 // #include <string>
 // #include <fstream>
 // #include <sstream>
-// #include <iomanip>
+#include <iomanip>
 // #include <chrono>
 #include <stdarg.h>
 #include <cstdio>
+#include <shellapi.h>
 // #include <unordered_set>
 // #include <unordered_map>
+#include <vector>
 #include <mswsock.h>
 #include <ws2tcpip.h>
 #include <unistd.h>

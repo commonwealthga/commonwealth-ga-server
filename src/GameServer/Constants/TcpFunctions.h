@@ -1,3 +1,5 @@
+#pragma once
+
 namespace GA_U {
 	enum GA_U {
 		UNKNOWN = 0x0000,

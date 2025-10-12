@@ -1,3 +1,5 @@
+#pragma once
+
 namespace GA_T {
 	enum GA_T {
 		UNKNOWN = 0x0000, // Type: 0   Name:                                       flags: 0x0002 TYPE_TCP_WCHAR_STR
