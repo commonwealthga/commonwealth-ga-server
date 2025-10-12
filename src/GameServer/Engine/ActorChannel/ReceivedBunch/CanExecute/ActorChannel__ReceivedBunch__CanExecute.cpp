@@ -1,4 +1,4 @@
-#include "src/GameServer/Engine/ActorChannel/ReceivedBunch/ActorChannel__ReceivedBunch__CanExecute.hpp"
+#include "src/GameServer/Engine/ActorChannel/ReceivedBunch/CanExecute/ActorChannel__ReceivedBunch__CanExecute.hpp"
 
 bool __cdecl ActorChannel__ReceivedBunch__CanExecute::Call(void* param_1, void* param_2, int param_3) {
 	bool result = (*(int *)(param_3 + 0x90) & 0x00200040) == 0x00200040; // allow server functions

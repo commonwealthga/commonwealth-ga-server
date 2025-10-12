@@ -3,6 +3,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/Config/Config/ConfigTetraPier.cpp \
 			  \
 			  $(SRC_DIR)/TcpServer/TcpServerInit/TcpServerInit.cpp \
+			  \
 			  $(SRC_DIR)/GameServer/Utils/ClassPreloader/ClassPreloader.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
 			  $(SRC_DIR)/GameServer/Engine/LaunchEngineLoop/ConstructCommandletObject/ConstructCommandletObject.cpp \
@@ -15,7 +16,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Storage/TeamsData/TeamsData.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.cpp \
 			  $(SRC_DIR)/GameServer/TgNetDrv/MarshalChannel/NotifyControlMessage/MarshalChannel__NotifyControlMessage.cpp \
-			  $(SRC_DIR)/GameServer/Engine/ActorChannel/ReceivedBunch/ActorChannel__ReceivedBunch__CanExecute.cpp \
+			  $(SRC_DIR)/GameServer/Engine/ActorChannel/ReceivedBunch/CanExecute/ActorChannel__ReceivedBunch__CanExecute.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/IsReadyForStart/TgPlayerController__IsReadyForStart.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.cpp \
