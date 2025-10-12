@@ -15,6 +15,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download build artifacts from latest successful build
         uses: dawidd6/action-download-artifact@v3
         with:
@@ -24,6 +27,9 @@ jobs:
           name: version.dll
           path: out/
 
-      - run: sudo apt-get install -y gh
-      - run: gh release upload "${{ github.event.release.tag_name }}" out/version.dll
+      - name: Install GitHub CLI
+        run: sudo apt-get install -y gh
+
+      - name: Upload DLL to Release
+        run: gh release upload "${{ github.event.release.tag_name }}" out/version.dll --clobber
 
