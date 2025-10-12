@@ -2,8 +2,10 @@
 
 #include "src/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+// #include "src/Utils/Logger/Logger.hpp"
 
 void NetConnection__LowLevelSend::Call(UNetConnection* Connection, void* edx, void* Buffer, int Size) {
+	// Logger::Log("debug", "MINE NetConnection__LowLevelSend START\n");
 	int32_t ClientConnectionIndex = (int32_t)Connection;
 
 	if (GClientConnectionsData.find(ClientConnectionIndex) != GClientConnectionsData.end()) {
@@ -15,4 +17,5 @@ void NetConnection__LowLevelSend::Call(UNetConnection* Connection, void* edx, vo
 		int bytesSent = sendto(Socket, (const char*)Buffer, Size, 0, (sockaddr*)&ClientRemoteAddr, sizeof(ClientRemoteAddr));
 		// LogToFile("C:\\lowlevelsend.txt", "[UNetConnection::LowLevelSend] Bytes sent: %d", bytesSent);
 	}
+	// Logger::Log("debug", "MINE NetConnection__LowLevelSend END\n");
 }

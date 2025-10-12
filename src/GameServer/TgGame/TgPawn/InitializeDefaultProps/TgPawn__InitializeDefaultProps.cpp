@@ -2,9 +2,11 @@
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/TgGame/TgProperty/ConstructTgProperty/TgProperty__ConstructTgProperty.hpp"
+#include "src/Utils/Logger/Logger.hpp"
 
 void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	// LogToFile("C:\\mylog.txt", "MINE TgPawn::InitializeDefaultProps START");
+	Logger::Log("debug", "MINE TgPawn::InitializeDefaultProps START");
 
 	Pawn->r_nPhysicalType = 860;
 	Pawn->ReplicatedCollisionType = Pawn->CollisionType;
@@ -108,5 +110,6 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	*PropertiesCountPtr = *PropertiesCountPtr + 1;
 
 	Pawn->SetProperty(304, property_health_max->m_fMaximum);
+	Logger::Log("debug", "MINE TgPawn::InitializeDefaultProps END");
 }
 

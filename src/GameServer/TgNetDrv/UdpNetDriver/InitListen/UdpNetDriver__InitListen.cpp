@@ -1,7 +1,9 @@
 #include "src/GameServer/TgNetDrv/UdpNetDriver/InitListen/UdpNetDriver__InitListen.hpp"
 #include "src/GameServer/IpDrv/SocketWin/CreateDGramSocket/SocketWin__CreateDGramSocket.hpp"
+#include "src/Utils/Logger/Logger.hpp"
 
 int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* Notify, FURL* Url, FString* Error) {
+	Logger::Log("debug", "MINE UdpNetDriver__InitListen START\n");
 
 	// pServerUrl = Url;
 
@@ -69,6 +71,7 @@ int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* No
 	*(void**)((char*)NetDriver + 0x14C) = SocketInstance;
 	*(void**)((char*)NetDriver + 0x54) = Notify;
 
+	Logger::Log("debug", "MINE UdpNetDriver__InitListen END\n");
 	return 1;
 }
 

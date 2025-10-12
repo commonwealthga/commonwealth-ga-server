@@ -1,6 +1,8 @@
 #include "src/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.hpp"
+#include "src/Utils/Logger/Logger.hpp"
 
 void __fastcall* TgGame_Arena__LoadGameConfig::Call(ATgGame_Arena* Game, void* edx) {
+	Logger::Log("debug", "MINE TgGame_Arena__LoadGameConfig START\n");
 	Game->m_nSecsToAutoRelease = 15;
 	Game->m_nSecsToAutoReleaseAttackers = 15;
 	Game->m_nSecsToAutoReleaseDefenders = 15;
@@ -15,5 +17,6 @@ void __fastcall* TgGame_Arena__LoadGameConfig::Call(ATgGame_Arena* Game, void* e
 	Game->s_bResetPlayersBetweenRounds = 0;
 	Game->s_bResetPlayfieldBetweenRounds = 0;
 	Game->s_bDisplayEndRoundScreen = 0;
+	Logger::Log("debug", "MINE TgGame_Arena__LoadGameConfig END\n");
 }
 

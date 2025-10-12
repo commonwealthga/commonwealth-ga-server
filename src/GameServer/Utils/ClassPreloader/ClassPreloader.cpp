@@ -1,6 +1,6 @@
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 
-std::map <char*, UClass*> ClassPreloader::Classes;
+std::map <std::string, UClass*> ClassPreloader::Classes;
 bool ClassPreloader::bClassesPreloaded = false;
 
 void ClassPreloader::PreloadClasses() {
@@ -13,7 +13,7 @@ void ClassPreloader::PreloadClasses() {
 			UObject* obj = UObject::GObjObjects()->Data[i];
 			char* name = obj->GetFullName();
 			if (strncmp(name, "Class ", 6) == 0) {
-				Classes[name] = (UClass*)obj;
+				Classes[std::string(name)] = (UClass*)obj;
 			}
 		}
 	}

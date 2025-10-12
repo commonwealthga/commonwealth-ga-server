@@ -11,13 +11,15 @@
 #include "src/Utils/Macros.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+#include "src/Utils/Logger/Logger.hpp"
 
 UClass* UdpNetDriver__TickDispatch::NetConnectionClass = nullptr;
 bool UdpNetDriver__TickDispatch::bNetConnectionVTableHooked = false;
 
 
-void UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void* edx, float DeltaTime) {
+void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void* edx, float DeltaTime) {
 
+	// Logger::Log("debug", "MINE UdpNetDriver__TickDispatch START\n");
 	NetDriver__TickDispatch::CallOriginal(NetDriver, edx, DeltaTime);
 
 	TARRAY_INIT(NetDriver, ClientConnections, UNetConnection*, 0x44, 128); // todo: move this elsewhere for performance
@@ -116,6 +118,8 @@ void UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void* edx, float
 
 			sprintf_s(ConnectionData.RemoteAddrString, sizeof(ConnectionData.RemoteAddrString), "%s:%d", inet_ntoa(from.sin_addr), ntohs(from.sin_port));
 
+			Logger::Log("debug", "New client connection: %s\n", ConnectionData.RemoteAddrString);
+
 			/* /- UNetConnection::InitConnection START */
 
 			// *(FURL*)((char*)Connection + 0x6C) = url; // set Connection->URL
@@ -164,7 +168,25 @@ void UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void* edx, float
 				VirtualProtect(&vtable[0x120 / 4], sizeof(void*), oldProtect, &oldProtect);
 			}
 
-			World__NotifyAcceptedConnection::CallOriginal(Notify, Connection);
+			Logger::Log("debug", "about to call notify accepted connection\n");
+
+			// World__NotifyAcceptedConnection::CallOriginal(Notify, edx, Connection);
+
+			// typedef void (*tNotifyAcceptedConnectionRaw)();  // no args, we push manually
+			// tNotifyAcceptedConnectionRaw pOriginalWorldNotifyAcceptedConnection = (tNotifyAcceptedConnectionRaw)0x10BEBFD0;
+			//
+			// asm volatile(
+			// 	"push %[conn] \n\t"
+			// 	"mov  %[notify], %%ecx \n\t"   // FIXED: move notify into ecx
+			// 	"call *%[func] \n\t"
+			// 	:
+			// 	: [func] "r" (pOriginalWorldNotifyAcceptedConnection),
+			// 	[notify] "r" (Notify),
+			// 	[conn] "r" (Connection)
+			// 	: "ecx", "memory"
+			// );
+
+			Logger::Log("debug", "notify accepted connection called\n");
 
 			TARRAY_ADD(ClientConnections, Connection); 
 		}
@@ -181,5 +203,6 @@ void UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void* edx, float
 		}
 	}
 	// \-- reimplement UTcpNetDriver::TickDispatch END
+	// Logger::Log("debug", "MINE UdpNetDriver__TickDispatch END\n");
 
 }

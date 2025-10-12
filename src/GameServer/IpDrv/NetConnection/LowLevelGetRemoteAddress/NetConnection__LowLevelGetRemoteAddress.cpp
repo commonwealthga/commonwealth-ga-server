@@ -2,8 +2,11 @@
 #include "src/GameServer/IpDrv/NetConnection/LowLevelGetRemoteAddress/NetConnection__LowLevelGetRemoteAddress.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Core/FString/CreateFromWCharT/FString__CreateFromWCharT.hpp"
+#include "src/Utils/Logger/Logger.hpp"
 
-void NetConnection__LowLevelGetRemoteAddress::Call(UNetConnection* NetConnection, void* edx, void* Out) {
+void __fastcall NetConnection__LowLevelGetRemoteAddress::Call(UNetConnection* NetConnection, void* edx, void* Out) {
+
+	Logger::Log("debug", "MINE NetConnection__LowLevelGetRemoteAddress START\n");
     // param_1 is pointer to the caller-allocated FString memory (3 x 4 bytes)
     // operate with raw pointer arithmetic (no struct)
     uint32_t *pParam = (uint32_t*)Out;
@@ -20,6 +23,7 @@ void NetConnection__LowLevelGetRemoteAddress::Call(UNetConnection* NetConnection
     int32_t index = (int32_t)NetConnection;
     auto it = GClientConnectionsData.find(index);
     if (it == GClientConnectionsData.end()) {
+		Logger::Log("debug", "connection not found\n");
         // LogToFile("C:\\mylog.txt", "connection not found");
         return; // keep behavior simple — leave FString zeroed like original started
     }
@@ -33,6 +37,7 @@ void NetConnection__LowLevelGetRemoteAddress::Call(UNetConnection* NetConnection
     const char* src = it->second.RemoteAddrString;
     if (!src) {
         // nothing to copy
+		Logger::Log("debug", "no remote address\n");
 		FString__CreateFromWCharT::CallOriginal(Out, nullptr, local_50);
         return;
     }
@@ -51,5 +56,7 @@ void NetConnection__LowLevelGetRemoteAddress::Call(UNetConnection* NetConnection
 	FString__CreateFromWCharT::CallOriginal(Out, nullptr, local_50);
 
     // done; return to caller
+	Logger::Log("debug", "MINE NetConnection__LowLevelGetRemoteAddress END\n");
     return;
 }
+

@@ -8,8 +8,8 @@ class TgTeamBeaconManager__SpawnNewBeaconForTeam : public HookBase<
 	0x109EE6B0,
 	TgTeamBeaconManager__SpawnNewBeaconForTeam> {
 public:
-	static void Call(ATgTeamBeaconManager* BeaconManager, void* edx);
-	static inline void CallOriginal(ATgTeamBeaconManager* BeaconManager, void* edx) {
+	static void __fastcall* Call(ATgTeamBeaconManager* BeaconManager, void* edx);
+	static inline void __fastcall* CallOriginal(ATgTeamBeaconManager* BeaconManager, void* edx) {
 		m_original(BeaconManager, edx);
 	}
 };

@@ -1,7 +1,10 @@
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.hpp"
+#include "src/Utils/Logger/Logger.hpp"
 
 ATgDevice* TgInventoryManager__NonPersistAddDevice::Call(ATgInventoryManager* InventoryManager, void* edx, int nDeviceId, int nEquipPoint) {
 	// LogToFile("C:\\mylog.txt", "MINE TgInventoryManager::NonPersistAddDevice START - device ID %d", nDeviceId);
+
+	Logger::Log("debug", "MINE TgInventoryManager::NonPersistAddDevice START\n");
 
 	ATgPawn* ownerpawn = (ATgPawn*)InventoryManager->Owner;
 	ownerpawn->SetDevice(nDeviceId);
@@ -24,6 +27,7 @@ ATgDevice* TgInventoryManager__NonPersistAddDevice::Call(ATgInventoryManager* In
 
 	// LogToFile("C:\\mylog.txt", "MINE TgInventoryManager::NonPersistAddDevice END");
 
+	Logger::Log("debug", "MINE TgInventoryManager::NonPersistAddDevice END\n");
 	return beacondevice;
 }
 

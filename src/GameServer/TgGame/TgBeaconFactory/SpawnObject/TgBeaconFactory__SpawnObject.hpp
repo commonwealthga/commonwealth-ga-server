@@ -8,8 +8,8 @@ class TgBeaconFactory__SpawnObject : public HookBase<
 	0x10A8C260,
 	TgBeaconFactory__SpawnObject> {
 public:
-	static void Call(ATgBeaconFactory* BeaconFactory, void* edx);
-	static inline void CallOriginal(ATgBeaconFactory* BeaconFactory, void* edx) {
+	static void __fastcall* Call(ATgBeaconFactory* BeaconFactory, void* edx);
+	static inline void __fastcall* CallOriginal(ATgBeaconFactory* BeaconFactory, void* edx) {
 		m_original(BeaconFactory, edx);
 	}
 };

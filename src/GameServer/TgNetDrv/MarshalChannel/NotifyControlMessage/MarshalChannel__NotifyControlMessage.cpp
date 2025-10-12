@@ -10,9 +10,11 @@
 #include "src/GameServer/Engine/World/GetGameInfo/World__GetGameInfo.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/Utils/Logger/Logger.hpp"
 
 
 void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel, void* edx, UNetConnection* Connection, void* InBunch) {
+	Logger::Log("debug", "MINE MarshalChannel__NotifyControlMessage START\n");
 	int param_1 = 0x4FF;
 	wchar_t local_410[512];
 	int result;
@@ -285,5 +287,6 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	}
 	// LogToFile("C:\\mylog.txt", "Attackers beacon manager taskforce %d", GTeamsData.Attackers->r_BeaconManager->r_TaskForce->r_nTaskForce);
 	// LogToFile("C:\\mylog.txt", "Attackers beacon taskforce %d", GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo->r_nTaskForce);
+	Logger::Log("debug", "MINE MarshalChannel__NotifyControlMessage END\n");
 }
 

@@ -7,7 +7,7 @@ private:
 	static bool bClassesPreloaded;
 	static void PreloadClasses();
 
-	static std::map <char*, UClass*> Classes;
+	static std::map <std::string, UClass*> Classes;
 public:
 	static UClass* GetTgPawnCharacterClass();
 	static UClass* GetTgPropertyClass();

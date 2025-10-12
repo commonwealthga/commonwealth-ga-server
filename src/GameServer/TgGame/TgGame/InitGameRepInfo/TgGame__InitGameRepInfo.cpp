@@ -1,8 +1,10 @@
 #include "src/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/Utils/Logger/Logger.hpp"
 
 void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
+	Logger::Log("debug", "MINE TgGame::InitGameRepInfo START\n");
 	// LogToFile("C:\\mylog.txt", "MINE TgGame::InitGameRepInfo START");
 
 	ATgRepInfo_Game* gamerep = reinterpret_cast<ATgRepInfo_Game*>(Game->GameReplicationInfo);
@@ -52,5 +54,6 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 
 		gamerep->InitMissionTime();
 	}
+	Logger::Log("debug", "MINE TgGame::InitGameRepInfo END\n");
 }
 

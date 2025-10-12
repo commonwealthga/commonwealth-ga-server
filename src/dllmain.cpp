@@ -20,6 +20,7 @@
 #include "src/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.hpp"
 #include "src/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepList.hpp"
+#include "src/GameServer/Engine/Actor/Spawn/Actor__Spawn.hpp"
 
 
 unsigned long ModuleThread( void* ) {
@@ -38,6 +39,7 @@ unsigned long ModuleThread( void* ) {
 	MarshalChannel__NotifyControlMessage::Install();
 	ActorChannel__ReceivedBunch__CanExecute::Install();
 	Actor__GetOptimizedRepList::Install();
+	Actor__Spawn::Install();
 
 	// game functions
 	TgPlayerController__IsReadyForStart::Install();
