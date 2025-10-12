@@ -6,6 +6,10 @@ Global Agenda was a game developed by Hi-Rez Studios, the official server has be
 
 We are not affiliated with Hi-Rez Studios in any way and we do not claim any rights to the game.
 
+## Latest build
+
+A built DLL is available for download [in the releases](https://github.com/commonwealthga/commonwealth-ga-server/releases/latest). Currently there is no documentation on how to use it, as this is a very early experimental development version. Use it at your own risk.
+
 ## Roadmap
 
 **Phase 1 "start with a dream"** (february - august 2025)
