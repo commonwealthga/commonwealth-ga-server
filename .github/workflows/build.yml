@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - "**"
-  release:
-    types:
-      - published
 
 env:
   GH_TOKEN: ${{ github.token }}
