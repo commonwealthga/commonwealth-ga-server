@@ -2,1018 +2,1028 @@
 #include "src/Utils/Macros.hpp"
 
 bool Actor__GetOptimizedRepList::bRepListCached = false;
-UProperty* Actor__GetOptimizedRepList::ClassProperty_Actor_BasedActors_BaseClass = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ClassProperty_Actor_BasedActors_BaseClass_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Actor_PhysicsVolumeChange_NewVolume = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Actor_PhysicsVolumeChange_NewVolume_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_Engine_Actor_Velocity = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_Engine_Actor_Velocity_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_Engine_Actor_RemoteRole = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_Engine_Actor_RemoteRole_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_Engine_Actor_Role = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_Engine_Actor_Role_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Actor_bNetOwner = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Actor_bNetOwner_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Actor_bTearOff = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Actor_bTearOff_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_Actor_DrawScale = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_Actor_DrawScale_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_Engine_Actor_ReplicatedCollisionType = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_Engine_Actor_ReplicatedCollisionType_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Actor_bCollideActors = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Actor_bCollideActors_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Actor_bCollideWorld = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Actor_bCollideWorld_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Actor_bBlockActors = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Actor_bBlockActors_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Actor_bProjTarget = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Actor_bProjTarget_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_GameFramework_GameExplosionActor_InstigatorController = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_GameFramework_GameExplosionActor_InstigatorController_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_Actor_Owner = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_Actor_Owner_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_AmbientSoundSimpleToggleable_bCurrentlyPlaying = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_AmbientSoundSimpleToggleable_bCurrentlyPlaying_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_CameraActor_AspectRatio = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_CameraActor_AspectRatio_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_CameraActor_FOVAngle = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_CameraActor_FOVAngle_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgPlayerController_PawnPerformanceTest_bEnablePerfTest = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgPlayerController_PawnPerformanceTest_bEnablePerfTest_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_Controller_PlayerReplicationInfo = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_Controller_PlayerReplicationInfo_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_CrowdAttractor_bAttractorEnabled = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_CrowdAttractor_bAttractorEnabled_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_CrowdReplicationActor_DestroyAllCount = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_CrowdReplicationActor_DestroyAllCount_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_CrowdReplicationActor_Spawner = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_CrowdReplicationActor_Spawner_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_CrowdReplicationActor_bSpawningActive = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_CrowdReplicationActor_bSpawningActive_initial;
-UProperty* Actor__GetOptimizedRepList::ClassProperty_Engine_DroppedPickup_InventoryClass = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ClassProperty_Engine_DroppedPickup_InventoryClass_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_DroppedPickup_bFadeOut = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_DroppedPickup_bFadeOut_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_DynamicSMActor_ReplicatedMaterial = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_DynamicSMActor_ReplicatedMaterial_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_DynamicSMActor_ReplicatedMesh = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_DynamicSMActor_ReplicatedMesh_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_Engine_DynamicSMActor_ReplicatedMeshRotation = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_Engine_DynamicSMActor_ReplicatedMeshRotation_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_Engine_DynamicSMActor_ReplicatedMeshScale3D = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_Engine_DynamicSMActor_ReplicatedMeshScale3D_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_Engine_DynamicSMActor_ReplicatedMeshTranslation = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_Engine_DynamicSMActor_ReplicatedMeshTranslation_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_DynamicSMActor_bForceStaticDecals = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_DynamicSMActor_bForceStaticDecals_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Emitter_bCurrentlyActive = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Emitter_bCurrentlyActive_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_PhysXEmitterSpawnable_ParticleTemplate = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_PhysXEmitterSpawnable_ParticleTemplate_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_FluidInfluenceActor_bActive = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_FluidInfluenceActor_bActive_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_FluidInfluenceActor_bToggled = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_FluidInfluenceActor_bToggled_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_FogVolumeDensityInfo_bEnabled = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_FogVolumeDensityInfo_bEnabled_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_MatchID = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_MatchID_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_GameReplicationInfo_Winner = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_GameReplicationInfo_Winner_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_GameReplicationInfo_bMatchHasBegun = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_GameReplicationInfo_bMatchHasBegun_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_GameReplicationInfo_bMatchIsOver = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_GameReplicationInfo_bMatchIsOver_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_GameReplicationInfo_bStopCountDown = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_GameReplicationInfo_bStopCountDown_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_RemainingMinute = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_RemainingMinute_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_Engine_GameReplicationInfo_AdminEmail = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_Engine_GameReplicationInfo_AdminEmail_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_Engine_GameReplicationInfo_AdminName = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_Engine_GameReplicationInfo_AdminName_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_ElapsedTime = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_ElapsedTime_initial;
-UProperty* Actor__GetOptimizedRepList::ClassProperty_Engine_GameReplicationInfo_GameClass = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ClassProperty_Engine_GameReplicationInfo_GameClass_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_GoalScore = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_GoalScore_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_MaxLives = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_MaxLives_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_Engine_GameReplicationInfo_MessageOfTheDay = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_Engine_GameReplicationInfo_MessageOfTheDay_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_RemainingTime = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_RemainingTime_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_Engine_GameReplicationInfo_ServerName = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_Engine_GameReplicationInfo_ServerName_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_ServerRegion = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_ServerRegion_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_Engine_GameReplicationInfo_ShortName = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_Engine_GameReplicationInfo_ShortName_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_TimeLimit = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_GameReplicationInfo_TimeLimit_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_GameReplicationInfo_bIsArbitrated = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_GameReplicationInfo_bIsArbitrated_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_GameReplicationInfo_bTrackStats = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_GameReplicationInfo_bTrackStats_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_HeightFog_bEnabled = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_HeightFog_bEnabled_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_Inventory_InvManager = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_Inventory_InvManager_initial;
-UProperty* Actor__GetOptimizedRepList::ClassProperty_SeqAct_GiveInventory_InventoryList_InventoryList = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ClassProperty_SeqAct_GiveInventory_InventoryList_InventoryList_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_InventoryManager_InventoryChain = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_InventoryManager_InventoryChain_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_Engine_KActor_RBState = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_Engine_KActor_RBState_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_Engine_KActor_ReplicatedDrawScale3D = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_Engine_KActor_ReplicatedDrawScale3D_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_KActor_bWakeOnLevelStart = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_KActor_bWakeOnLevelStart_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_KAsset_ReplicatedMesh = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_KAsset_ReplicatedMesh_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_KAsset_ReplicatedPhysAsset = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_KAsset_ReplicatedPhysAsset_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_LensFlareSource_bCurrentlyActive = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_LensFlareSource_bCurrentlyActive_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Light_bEnabled = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Light_bEnabled_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_MatineeActor_InterpAction = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_MatineeActor_InterpAction_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_MatineeActor_PlayRate = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_MatineeActor_PlayRate_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_MatineeActor_Position = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_MatineeActor_Position_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_MatineeActor_bIsPlaying = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_MatineeActor_bIsPlaying_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_MatineeActor_bPaused = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_MatineeActor_bPaused_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_MatineeActor_bReversePlayback = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_MatineeActor_bReversePlayback_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_NxForceField_bForceActive = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_NxForceField_bForceActive_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_Pawn_DrivenVehicle = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_Pawn_DrivenVehicle_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Pawn_FlashLocationUpdated_bViaReplication = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Pawn_FlashLocationUpdated_bViaReplication_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_Pawn_HealthMax = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_Pawn_HealthMax_initial;
-UProperty* Actor__GetOptimizedRepList::ClassProperty_Engine_Pawn_HitDamageType = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ClassProperty_Engine_Pawn_HitDamageType_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_Pawn_PlayerReplicationInfo = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_Pawn_PlayerReplicationInfo_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_Engine_Pawn_TakeHitLocation = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_Engine_Pawn_TakeHitLocation_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Pawn_bIsWalking = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Pawn_bIsWalking_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Pawn_bSimulateGravity = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Pawn_bSimulateGravity_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_Pawn_AccelRate = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_Pawn_AccelRate_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_Pawn_AirControl = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_Pawn_AirControl_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_Pawn_AirSpeed = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_Pawn_AirSpeed_initial;
-UProperty* Actor__GetOptimizedRepList::ClassProperty_Engine_Pawn_ControllerClass = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ClassProperty_Engine_Pawn_ControllerClass_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_Pawn_GroundSpeed = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_Pawn_GroundSpeed_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_Pawn_InvManager = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_Pawn_InvManager_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_Pawn_JumpZ = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_Pawn_JumpZ_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_Pawn_WaterSpeed = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_Pawn_WaterSpeed_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Pawn_FiringModeUpdated_bViaReplication = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Pawn_FiringModeUpdated_bViaReplication_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Pawn_FlashCountUpdated_bViaReplication = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Pawn_FlashCountUpdated_bViaReplication_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Pawn_bIsCrouched = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Pawn_bIsCrouched_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_Engine_Pawn_TearOffMomentum = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_Engine_Pawn_TearOffMomentum_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_Engine_Pawn_RemoteViewPitch = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_Engine_Pawn_RemoteViewPitch_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_PickupFactory_bPickupHidden = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_PickupFactory_bPickupHidden_initial;
-UProperty* Actor__GetOptimizedRepList::ClassProperty_Engine_PickupFactory_InventoryType = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ClassProperty_Engine_PickupFactory_InventoryType_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_PlayerController_TargetEyeHeight = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_PlayerController_TargetEyeHeight_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_Engine_PlayerController_TargetViewRotation = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_Engine_PlayerController_TargetViewRotation_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_PlayerReplicationInfo_Deaths = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_PlayerReplicationInfo_Deaths_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_Engine_PlayerReplicationInfo_PlayerAlias = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_Engine_PlayerReplicationInfo_PlayerAlias_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_PlayerReplicationInfo_PlayerLocationHint = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_PlayerReplicationInfo_PlayerLocationHint_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_Engine_PlayerReplicationInfo_PlayerName = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_Engine_PlayerReplicationInfo_PlayerName_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_PlayerReplicationInfo_PlayerSkill = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_PlayerReplicationInfo_PlayerSkill_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_PlayerReplicationInfo_Score = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_PlayerReplicationInfo_Score_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_PlayerReplicationInfo_StartTime = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_PlayerReplicationInfo_StartTime_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_PlayerReplicationInfo_Team = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_PlayerReplicationInfo_Team_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_Engine_PlayerReplicationInfo_UniqueId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_Engine_PlayerReplicationInfo_UniqueId_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bAdmin = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bAdmin_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bHasFlag = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bHasFlag_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bIsFemale = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bIsFemale_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bIsSpectator = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bIsSpectator_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bOnlySpectator = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bOnlySpectator_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bOutOfLives = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bOutOfLives_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bReadyToPlay = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bReadyToPlay_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bWaitingPlayer = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bWaitingPlayer_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_Engine_PlayerReplicationInfo_PacketLoss = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_Engine_PlayerReplicationInfo_PacketLoss_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_Engine_PlayerReplicationInfo_Ping = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_Engine_PlayerReplicationInfo_Ping_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_PlayerReplicationInfo_SplitscreenIndex = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_PlayerReplicationInfo_SplitscreenIndex_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_PlayerReplicationInfo_PlayerID = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_PlayerReplicationInfo_PlayerID_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bBot = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bBot_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bIsInactive = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_PlayerReplicationInfo_bIsInactive_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_PostProcessVolume_bEnabled = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_PostProcessVolume_bEnabled_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_Projectile_MaxSpeed = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_Projectile_MaxSpeed_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_Projectile_Speed = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_Projectile_Speed_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_RB_CylindricalForceActor_bForceActive = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_RB_CylindricalForceActor_bForceActive_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_Engine_RB_LineImpulseActor_ImpulseCount = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_Engine_RB_LineImpulseActor_ImpulseCount_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_RB_RadialForceActor_bForceActive = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_RB_RadialForceActor_bForceActive_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_Engine_RB_RadialImpulseActor_ImpulseCount = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_Engine_RB_RadialImpulseActor_ImpulseCount_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_SVehicle_MaxSpeed = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_SVehicle_MaxSpeed_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_Engine_SVehicle_VState = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_Engine_SVehicle_VState_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMaterial = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMaterial_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMesh = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMesh_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_TeamInfo_Score = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_TeamInfo_Score_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_TeamInfo_TeamIndex = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_TeamInfo_TeamIndex_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_Engine_TeamInfo_TeamName = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_Engine_TeamInfo_TeamName_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_Engine_Teleporter_URL = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_Engine_Teleporter_URL_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Teleporter_bEnabled = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Teleporter_bEnabled_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_Engine_Teleporter_TargetVelocity = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_Engine_Teleporter_TargetVelocity_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Teleporter_bChangesVelocity = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Teleporter_bChangesVelocity_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Teleporter_bChangesYaw = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Teleporter_bChangesYaw_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Teleporter_bReversesX = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Teleporter_bReversesX_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Teleporter_bReversesY = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Teleporter_bReversesY_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Teleporter_bReversesZ = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Teleporter_bReversesZ_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_Vehicle_bDriving = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_Vehicle_bDriving_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_Engine_SVehicle_DriverViewPitch = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_Engine_SVehicle_DriverViewPitch_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_Engine_WorldInfo_Pauser = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_Engine_WorldInfo_Pauser_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_Engine_WorldInfo_ReplicatedMusicTrack = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_Engine_WorldInfo_ReplicatedMusicTrack_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_WorldInfo_TimeDilation = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_WorldInfo_TimeDilation_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_Engine_WorldInfo_WorldGravityZ = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_Engine_WorldInfo_WorldGravityZ_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_Engine_WorldInfo_bHighPriorityLoading = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_Engine_WorldInfo_bHighPriorityLoading_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgChestActor_r_eChestState = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgChestActor_r_eChestState_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDeploy_BeaconEntrance_r_bActive = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDeploy_BeaconEntrance_r_bActive_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDeploy_DestructibleCover_r_bHasFired = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDeploy_DestructibleCover_r_bHasFired_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgDeploy_Sensor_r_nSensorAudioWarning = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgDeploy_Sensor_r_nSensorAudioWarning_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgDeploy_Sensor_r_nTouchedPlayerCount = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgDeploy_Sensor_r_nTouchedPlayerCount_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDeployable_r_bDelayDeployed = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDeployable_r_bDelayDeployed_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgDeployable_r_DRI = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgDeployable_r_DRI_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDeployable_r_bInitialIsEnemy = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDeployable_r_bInitialIsEnemy_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDeployable_r_bTakeDamage = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDeployable_r_bTakeDamage_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgDeployable_r_fClientProximityRadius = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgDeployable_r_fClientProximityRadius_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgDeployable_r_fCurrentDeployTime = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgDeployable_r_fCurrentDeployTime_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgDeployable_r_nDeployableId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgDeployable_r_nDeployableId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgDeployable_r_nPhysicalType = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgDeployable_r_nPhysicalType_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgDeployable_r_nTickingTime = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgDeployable_r_nTickingTime_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgDeployable_r_Owner = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgDeployable_r_Owner_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgDeployable_r_nOwnerFireMode = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgDeployable_r_nOwnerFireMode_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgDevice_CurrentFireMode = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgDevice_CurrentFireMode_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDevice_r_bIsStealthDevice = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDevice_r_bIsStealthDevice_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgDevice_r_eEquippedAt = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgDevice_r_eEquippedAt_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgDevice_r_nInventoryId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgDevice_r_nInventoryId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgDevice_r_nMeleeComboSeed = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgDevice_r_nMeleeComboSeed_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDevice_r_bConsumedOnDeath = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDevice_r_bConsumedOnDeath_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDevice_r_bConsumedOnUse = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDevice_r_bConsumedOnUse_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgDevice_r_nDeviceId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgDevice_r_nDeviceId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgDevice_r_nDeviceInstanceId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgDevice_r_nDeviceInstanceId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgDevice_r_nQualityValueId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgDevice_r_nQualityValueId_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDevice_Morale_r_bIsActivelyFiring = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDevice_Morale_r_bIsActivelyFiring_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDoor_r_bOpen = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgDoor_r_bOpen_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgDoorMarker_r_eStatus = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgDoorMarker_r_eStatus_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgDroppedItem_r_nItemId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgDroppedItem_r_nItemId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgDynamicDestructible_r_nDestructibleId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgDynamicDestructible_r_nDestructibleId_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgDynamicDestructible_r_pFactory = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgDynamicDestructible_r_pFactory_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_TgGame_TgDynamicSMActor_m_sAssembly = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_TgGame_TgDynamicSMActor_m_sAssembly_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgDynamicSMActor_r_EffectManager = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgDynamicSMActor_r_EffectManager_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgDynamicSMActor_r_nHealth = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgDynamicSMActor_r_nHealth_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgEffectManager_r_EventQueue = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgEffectManager_r_EventQueue_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgEffectManager_r_ManagedEffectList = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgEffectManager_r_ManagedEffectList_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgEffectManager_r_Owner = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgEffectManager_r_Owner_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgEffectManager_r_bRelevancyNotify = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgEffectManager_r_bRelevancyNotify_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgEffectManager_r_nInvulnerableCount = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgEffectManager_r_nInvulnerableCount_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgEffectManager_r_nNextQueueIndex = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgEffectManager_r_nNextQueueIndex_initial;
-UProperty* Actor__GetOptimizedRepList::NameProperty_TgGame_TgEmitter_BoneName = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::NameProperty_TgGame_TgEmitter_BoneName_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgFlagCaptureVolume_r_eCoalition = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgFlagCaptureVolume_r_eCoalition_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgFlagCaptureVolume_r_nTaskForce = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgFlagCaptureVolume_r_nTaskForce_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgFracturedStaticMeshActor_r_EffectManager = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgFracturedStaticMeshActor_r_EffectManager_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgFracturedStaticMeshActor_r_TakeHitNotifier = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgFracturedStaticMeshActor_r_TakeHitNotifier_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgFracturedStaticMeshActor_r_DamageRadius = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgFracturedStaticMeshActor_r_DamageRadius_initial;
-UProperty* Actor__GetOptimizedRepList::ClassProperty_TgGame_TgFracturedStaticMeshActor_r_HitDamageType = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ClassProperty_TgGame_TgFracturedStaticMeshActor_r_HitDamageType_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgFracturedStaticMeshActor_r_HitInfo = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgFracturedStaticMeshActor_r_HitInfo_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitLocation = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitLocation_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitMomentum = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitMomentum_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgHexLandMarkActor_r_nMeshAsmId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgHexLandMarkActor_r_nMeshAsmId_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_TgGame_TgInterpActor_r_sCurrState = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_TgGame_TgInterpActor_r_sCurrState_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgInventoryManager_r_ItemCount = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgInventoryManager_r_ItemCount_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgKismetTestActor_r_nCurrentTest = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgKismetTestActor_r_nCurrentTest_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgKismetTestActor_r_nFailCount = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgKismetTestActor_r_nFailCount_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgKismetTestActor_r_nPassCount = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgKismetTestActor_r_nPassCount_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgLevelCamera_r_bEnabled = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgLevelCamera_r_bEnabled_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgMissionObjective_r_ObjectiveAssignment = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgMissionObjective_r_ObjectiveAssignment_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgMissionObjective_r_bHasBeenCapturedOnce = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgMissionObjective_r_bHasBeenCapturedOnce_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgMissionObjective_r_bIsActive = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgMissionObjective_r_bIsActive_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgMissionObjective_r_bIsLocked = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgMissionObjective_r_bIsLocked_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgMissionObjective_r_bIsPending = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgMissionObjective_r_bIsPending_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgMissionObjective_r_eOwningCoalition = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgMissionObjective_r_eOwningCoalition_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgMissionObjective_r_eStatus = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgMissionObjective_r_eStatus_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgMissionObjective_r_fCurrCaptureTime = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgMissionObjective_r_fCurrCaptureTime_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgMissionObjective_r_fLastCompletedTime = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgMissionObjective_r_fLastCompletedTime_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgMissionObjective_r_nOwnerTaskForce = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgMissionObjective_r_nOwnerTaskForce_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgMissionObjective_nObjectiveId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgMissionObjective_nObjectiveId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgMissionObjective_nPriority = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgMissionObjective_nPriority_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgMissionObjective_r_OpenWorldPlayerDefaultRole = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgMissionObjective_r_OpenWorldPlayerDefaultRole_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgMissionObjective_r_bUsePendingState = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgMissionObjective_r_bUsePendingState_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgMissionObjective_r_eDefaultCoalition = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgMissionObjective_r_eDefaultCoalition_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBot = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBot_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBotInfo = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBotInfo_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgMissionObjective_Escort_r_AttachedActor = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgMissionObjective_Escort_r_AttachedActor_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgMissionObjective_Proximity_r_fCaptureRate = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgMissionObjective_Proximity_r_fCaptureRate_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgObjectiveAssignment_r_AssignedObjective = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgObjectiveAssignment_r_AssignedObjective_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgObjectiveAssignment_r_Attackers = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgObjectiveAssignment_r_Attackers_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgObjectiveAssignment_r_Bots = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgObjectiveAssignment_r_Bots_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgObjectiveAssignment_r_Defenders = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgObjectiveAssignment_r_Defenders_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgObjectiveAssignment_r_eState = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgObjectiveAssignment_r_eState_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsBot = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsBot_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsHenchman = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsHenchman_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bNeedPlaySpawnFx = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bNeedPlaySpawnFx_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fMakeVisibleIncreased = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fMakeVisibleIncreased_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nAllianceId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nAllianceId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nBodyMeshAsmId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nBodyMeshAsmId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nBotRankValueId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nBotRankValueId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nFlashEvent = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nFlashEvent_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nFlashFireInfo = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nFlashFireInfo_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nFlashQueIndex = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nFlashQueIndex_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nPawnId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nPawnId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nPhysicalType = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nPhysicalType_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nPreyProfileType = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nPreyProfileType_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nProfileId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nProfileId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nProfileTypeValueId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nProfileTypeValueId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nSoundGroupId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nSoundGroupId_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_vFlashLocation = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_vFlashLocation_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_vFlashRayDir = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_vFlashRayDir_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_vFlashRefireTime = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_vFlashRefireTime_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_vFlashSituationalAttack = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_vFlashSituationalAttack_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_EquipDeviceInfo = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_EquipDeviceInfo_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bInitialIsEnemy = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bInitialIsEnemy_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_bMadeSound = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_bMadeSound_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_eDesiredInHand = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_eDesiredInHand_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_eEquippedInHandMode = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_eEquippedInHandMode_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nReplicateHit = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nReplicateHit_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_ControlPawn = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_ControlPawn_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_CurrentOmegaVolume = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_CurrentOmegaVolume_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneBilboardVol = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneBilboardVol_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneVol = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneVol_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_ScannerSettings = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_ScannerSettings_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_UIClockState = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_UIClockState_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_UIClockTime = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_UIClockTime_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_UITextBox1MessageID = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_UITextBox1MessageID_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_UITextBox1Packet = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_UITextBox1Packet_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_UITextBox1Time = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_UITextBox1Time_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_UITextBox2MessageID = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_UITextBox2MessageID_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_UITextBox2Packet = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_UITextBox2Packet_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_UITextBox2Time = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_UITextBox2Time_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bAllowAddMoralePoints = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bAllowAddMoralePoints_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bDisableAllDevices = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bDisableAllDevices_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bEnableCrafting = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bEnableCrafting_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bEnableEquip = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bEnableEquip_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bEnableSkills = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bEnableSkills_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bInCombatFlag = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bInCombatFlag_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bInGlobalOffhandCooldown = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bInGlobalOffhandCooldown_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fCurrentPowerPool = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fCurrentPowerPool_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fCurrentServerMoralePoints = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fCurrentServerMoralePoints_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fMaxControlRange = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fMaxControlRange_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fMaxPowerPool = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fMaxPowerPool_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fMoraleRechargeRate = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fMoraleRechargeRate_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fRequiredMoralePoints = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fRequiredMoralePoints_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fSkillRating = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fSkillRating_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nCurrency = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nCurrency_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nHZPoints = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nHZPoints_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nMoraleDeviceSlot = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nMoraleDeviceSlot_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nRestDeviceSlot = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nRestDeviceSlot_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nToken = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nToken_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nXp = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nXp_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_DistanceToPushback = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_DistanceToPushback_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_EffectManager = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_EffectManager_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_FlightAcceleration = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_FlightAcceleration_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_HangingRotation = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_HangingRotation_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_Owner = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_Owner_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_Pet = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_Pet_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_PlayAnimation = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_PlayAnimation_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_PushbackDirection = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_PushbackDirection_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_Target = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_Target_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_TargetActor = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_TargetActor_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_aDebugDestination = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_aDebugDestination_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_aDebugNextNav = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_aDebugNextNav_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_aDebugTarget = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_r_aDebugTarget_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_bAimType = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_bAimType_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bAimingMode = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bAimingMode_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bCallingForHelp = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bCallingForHelp_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsAFK = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsAFK_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsAnimInStrafeMode = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsAnimInStrafeMode_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsCrafting = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsCrafting_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsCrewing = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsCrewing_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsDecoy = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsDecoy_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsGrappleDismounting = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsGrappleDismounting_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsHacked = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsHacked_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsHacking = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsHacking_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsInSnipeScope = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsInSnipeScope_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsRappelling = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsRappelling_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsStealthed = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bIsStealthed_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bJumpedFromHanging = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bJumpedFromHanging_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bPostureIgnoreTransition = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bPostureIgnoreTransition_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bResistTagging = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bResistTagging_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bShouldKnockDownAnimFaceDown = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bShouldKnockDownAnimFaceDown_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bTagEnemy = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bTagEnemy_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bUsingBinoculars = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_r_bUsingBinoculars_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_eCurrentStunType = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_eCurrentStunType_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_eDeathReason = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_eDeathReason_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_eEmoteLength = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_eEmoteLength_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_eEmoteRepnotify = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_eEmoteRepnotify_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_eEmoteUpdate = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_eEmoteUpdate_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_ePosture = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_r_ePosture_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fDeployRate = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fDeployRate_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fFrictionMultiplier = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fFrictionMultiplier_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fGravityZModifier = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fGravityZModifier_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fKnockDownTimeRemaining = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fKnockDownTimeRemaining_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fMakeVisibleFadeRate = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fMakeVisibleFadeRate_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fPostureRateScale = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fPostureRateScale_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fRappelGravityModifier = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fRappelGravityModifier_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fStealthTransitionTime = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_r_fStealthTransitionTime_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_fWeightBonus = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_fWeightBonus_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_iKnockDownFlash = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_iKnockDownFlash_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nApplyStealth = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nApplyStealth_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nBotSoundCueId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nBotSoundCueId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nDebugAggroRange = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nDebugAggroRange_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nDebugFOV = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nDebugFOV_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nDebugHearingRange = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nDebugHearingRange_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nDebugSightRange = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nDebugSightRange_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nGenericAIEventIndex = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nGenericAIEventIndex_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nHealthMaximum = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nHealthMaximum_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nNumberTimesCrewed = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nNumberTimesCrewed_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nPhase = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nPhase_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nPitchOffset = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nPitchOffset_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nReplicateDying = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nReplicateDying_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nResetCharacter = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nResetCharacter_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nSensorAlertLevel = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nSensorAlertLevel_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nShieldHealthMax = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nShieldHealthMax_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nShieldHealthRemaining = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nShieldHealthRemaining_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nSilentMode = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nSilentMode_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nStealthAggroRange = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nStealthAggroRange_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nStealthDisabled = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nStealthDisabled_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nStealthSensorRange = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nStealthSensorRange_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nStealthTypeCode = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nStealthTypeCode_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nYawOffset = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_r_nYawOffset_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_TgGame_TgPawn_r_sDebugAction = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_TgGame_TgPawn_r_sDebugAction_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_TgGame_TgPawn_r_sDebugName = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_TgGame_TgPawn_r_sDebugName_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_TgGame_TgPawn_r_sFactory = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_TgGame_TgPawn_r_sFactory_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_vDown = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_r_vDown_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_Ambush_r_bIsDeployed = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_Ambush_r_bIsDeployed_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_AttackTransport_r_DeathType = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_AttackTransport_r_DeathType_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_CTR_r_CustomCharacterAssembly = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_CTR_r_CustomCharacterAssembly_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_CTR_r_PilotPawn = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_CTR_r_PilotPawn_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_CTR_r_nMaxMorphIndexSentFromServer = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_CTR_r_nMaxMorphIndexSentFromServer_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_CTR_r_nMorphSettings = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_CTR_r_nMorphSettings_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_Character_r_CustomCharacterAssembly = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgPawn_Character_r_CustomCharacterAssembly_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_Character_r_eAttachedMesh = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_Character_r_eAttachedMesh_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nBoostTimeRemaining = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nBoostTimeRemaining_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nHeadMeshAsmId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nHeadMeshAsmId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nItemProfileId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nItemProfileId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nItemProfileNbr = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nItemProfileNbr_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nMaxMorphIndexSentFromServer = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nMaxMorphIndexSentFromServer_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nMorphSettings = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nMorphSettings_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_Character_r_CurrentVanityPet = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgPawn_Character_r_CurrentVanityPet_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_Character_r_WallJumpUpperLineCheckOffset = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_Character_r_WallJumpUpperLineCheckOffset_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_Character_r_WallJumpZ = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_Character_r_WallJumpZ_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_Character_r_bElfGogglesEquipped = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_Character_r_bElfGogglesEquipped_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nDeviceSlotUnlockGrpId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nDeviceSlotUnlockGrpId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nSkillGroupSetId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_Character_r_nSkillGroupSetId_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_DuneCommander_r_bDoCrashLanding = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_DuneCommander_r_bDoCrashLanding_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_Iris_r_nStartNewScan = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_Iris_r_nStartNewScan_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_Reaper_r_fBatteryPct = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_Reaper_r_fBatteryPct_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_Siege_r_AccelDirection = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPawn_Siege_r_AccelDirection_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_Turret_r_bIsDeployed = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPawn_Turret_r_bIsDeployed_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_Turret_r_fInitDeployTime = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_Turret_r_fInitDeployTime_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_Turret_r_fTimeToDeploySecs = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_Turret_r_fTimeToDeploySecs_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_Turret_r_fCurrentDeployTime = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_Turret_r_fCurrentDeployTime_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_Turret_r_fDeployMaxHealthPCT = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgPawn_Turret_r_fDeployMaxHealthPCT_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_VanityPet_r_nSpawningItemId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgPawn_VanityPet_r_nSpawningItemId_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPlayerController_r_WatchOtherPlayer = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgPlayerController_r_WatchOtherPlayer_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPlayerController_r_bEDDebugEffects = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPlayerController_r_bEDDebugEffects_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPlayerController_r_bGMInvisible = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPlayerController_r_bGMInvisible_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPlayerController_r_bIsHackingABot = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPlayerController_r_bIsHackingABot_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPlayerController_r_bLockYawRotation = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPlayerController_r_bLockYawRotation_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPlayerController_r_bRove = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgPlayerController_r_bRove_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgProj_Grapple_r_vTargetLocation = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgProj_Grapple_r_vTargetLocation_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgProj_Missile_r_aSeeking = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgProj_Missile_r_aSeeking_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgProj_Missile_r_vTargetWorldLocation = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgProj_Missile_r_vTargetWorldLocation_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgProj_Missile_r_nNumBounces = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgProj_Missile_r_nNumBounces_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgProj_Rocket_FlockIndex = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgProj_Rocket_FlockIndex_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgProj_Rocket_bCurl = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgProj_Rocket_bCurl_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgProjectile_r_Owner = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgProjectile_r_Owner_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgProjectile_r_fAccelRate = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgProjectile_r_fAccelRate_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgProjectile_r_fDuration = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgProjectile_r_fDuration_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgProjectile_r_fRange = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgProjectile_r_fRange_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgProjectile_r_nOwnerFireModeId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgProjectile_r_nOwnerFireModeId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgProjectile_r_nProjectileId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgProjectile_r_nProjectileId_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgProjectile_r_vSpawnLocation = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgProjectile_r_vSpawnLocation_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Beacon_r_bDeployed = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Beacon_r_bDeployed_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgRepInfo_Beacon_r_vLoc = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgRepInfo_Beacon_r_vLoc_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_TgGame_TgRepInfo_Beacon_r_nName = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_TgGame_TgRepInfo_Beacon_r_nName_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_Deployable_r_InstigatorInfo = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_Deployable_r_InstigatorInfo_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_Deployable_r_TaskforceInfo = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_Deployable_r_TaskforceInfo_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Deployable_r_bOwnedByTaskforce = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Deployable_r_bOwnedByTaskforce_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthCurrent = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthCurrent_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_Deployable_r_DeployableOwner = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_Deployable_r_DeployableOwner_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgRepInfo_Deployable_r_fDeployMaxHealthPCT = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgRepInfo_Deployable_r_fDeployMaxHealthPCT_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Deployable_r_nDeployableId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Deployable_r_nDeployableId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthMaximum = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthMaximum_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Deployable_r_nUniqueDeployableId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Deployable_r_nUniqueDeployableId_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgRepInfo_Game_r_MiniMapInfo = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgRepInfo_Game_r_MiniMapInfo_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bActiveCombat = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bActiveCombat_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bAllowBuildMorale = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bAllowBuildMorale_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bAllowPlayerRelease = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bAllowPlayerRelease_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bDefenseAlarm = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bDefenseAlarm_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bInOverTime = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bInOverTime_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsTutorialMap = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsTutorialMap_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgRepInfo_Game_r_fGameSpeedModifier = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgRepInfo_Game_r_fGameSpeedModifier_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgRepInfo_Game_r_fMissionRemainingTime = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgRepInfo_Game_r_fMissionRemainingTime_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgRepInfo_Game_r_fServerTimeLastUpdate = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgRepInfo_Game_r_fServerTimeLastUpdate_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nMaxRoundNumber = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nMaxRoundNumber_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nMissionTimerStateChange = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nMissionTimerStateChange_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nRaidAttackerRespawnBonus = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nRaidAttackerRespawnBonus_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nRaidDefenderRespawnBonus = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nRaidDefenderRespawnBonus_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nReleaseDelay = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nReleaseDelay_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nRoundNumber = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nRoundNumber_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseAttackers = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseAttackers_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseDefenders = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseDefenders_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgRepInfo_Game_r_GameType = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgRepInfo_Game_r_GameType_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgRepInfo_Game_r_MapLogoResIds = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgRepInfo_Game_r_MapLogoResIds_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_Game_r_Objectives = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_Game_r_Objectives_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsArena = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsArena_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsMatch = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsMatch_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsMission = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsMission_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsPVP = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsPVP_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsRaid = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsRaid_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsTerritoryMap = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsTerritoryMap_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsTraining = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Game_r_bIsTraining_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nAutoKickTimeout = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nAutoKickTimeout_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nPointsToWin = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nPointsToWin_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nVictoryBonusLives = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Game_r_nVictoryBonusLives_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_GameOpenWorld_r_GameTickets = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_GameOpenWorld_r_GameTickets_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgRepInfo_Player_r_ApproxLocation = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgRepInfo_Player_r_ApproxLocation_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgRepInfo_Player_r_CustomCharacterAssembly = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgRepInfo_Player_r_CustomCharacterAssembly_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgRepInfo_Player_r_EquipDeviceInfo = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgRepInfo_Player_r_EquipDeviceInfo_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_Player_r_MasterPrep = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_Player_r_MasterPrep_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_Player_r_PawnOwner = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_Player_r_PawnOwner_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_Scores = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_Scores_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_Player_r_TaskForce = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_Player_r_TaskForce_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Player_r_bDropped = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_Player_r_bDropped_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_eBonusType = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_eBonusType_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_nCharacterId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_nCharacterId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_nHealthCurrent = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_nHealthCurrent_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_nHealthMaximum = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_nHealthMaximum_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_nLevel = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_nLevel_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_nProfileId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_nProfileId_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_nTitleMsgId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_Player_r_nTitleMsgId_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_TgGame_TgRepInfo_Player_r_sAgencyName = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_TgGame_TgRepInfo_Player_r_sAgencyName_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_TgGame_TgRepInfo_Player_r_sAllianceName = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_TgGame_TgRepInfo_Player_r_sAllianceName_initial;
-UProperty* Actor__GetOptimizedRepList::StrProperty_TgGame_TgRepInfo_Player_r_sOrigPlayerName = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StrProperty_TgGame_TgRepInfo_Player_r_sOrigPlayerName_initial;
-UProperty* Actor__GetOptimizedRepList::StructProperty_TgGame_TgRepInfo_Player_r_DeviceStats = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::StructProperty_TgGame_TgRepInfo_Player_r_DeviceStats_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_TaskForce_r_BeaconManager = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_TaskForce_r_BeaconManager_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_TaskForce_r_CurrActiveObjective = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_TaskForce_r_CurrActiveObjective_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_TaskForce_r_ObjectiveAssignment = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgRepInfo_TaskForce_r_ObjectiveAssignment_initial;
-UProperty* Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_TaskForce_r_bBotOwned = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::BoolProperty_TgGame_TgRepInfo_TaskForce_r_bBotOwned_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgRepInfo_TaskForce_r_eCoalition = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgRepInfo_TaskForce_r_eCoalition_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_TaskForce_r_nCurrentPointCount = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_TaskForce_r_nCurrentPointCount_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_TaskForce_r_nLeaderCharId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_TaskForce_r_nLeaderCharId_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgRepInfo_TaskForce_r_nLookingForMembers = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgRepInfo_TaskForce_r_nLookingForMembers_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_TaskForce_r_nNumDeaths = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_TaskForce_r_nNumDeaths_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgRepInfo_TaskForce_r_nTaskForce = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgRepInfo_TaskForce_r_nTaskForce_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_TaskForce_r_nTeamId = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgRepInfo_TaskForce_r_nTeamId_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgSkydiveTarget_m_LandRadius = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgSkydiveTarget_m_LandRadius_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgSkydivingVolume_r_PawnGravityModifier = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgSkydivingVolume_r_PawnGravityModifier_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgSkydivingVolume_r_PawnLaunchForce = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgSkydivingVolume_r_PawnLaunchForce_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgSkydivingVolume_r_PawnUpForce = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgSkydivingVolume_r_PawnUpForce_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgSkydivingVolume_r_SkydiveTarget = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgSkydivingVolume_r_SkydiveTarget_initial;
-UProperty* Actor__GetOptimizedRepList::IntProperty_TgGame_TgTeamBeaconManager_r_BeaconDestroyed = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::IntProperty_TgGame_TgTeamBeaconManager_r_BeaconDestroyed_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconHolder = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconHolder_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconInfo = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconInfo_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgTeamBeaconManager_r_BeaconStatus = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgTeamBeaconManager_r_BeaconStatus_initial;
-UProperty* Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgTeamBeaconManager_r_TaskForce = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ObjectProperty_TgGame_TgTeamBeaconManager_r_TaskForce_initial;
-UProperty* Actor__GetOptimizedRepList::ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgTimerManager_r_fRemaining = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgTimerManager_r_fRemaining_initial;
-UProperty* Actor__GetOptimizedRepList::FloatProperty_TgGame_TgTimerManager_r_fStartTime = nullptr;
-std::map<int, bool> Actor__GetOptimizedRepList::FloatProperty_TgGame_TgTimerManager_r_fStartTime_initial;
+UProperty* ObjectProperty_Engine_Actor_Base = nullptr;
+std::map<int, bool> ObjectProperty_Engine_Actor_Base_initial;
+UProperty* ByteProperty_Engine_Actor_Physics = nullptr;
+std::map<int, bool> ByteProperty_Engine_Actor_Physics_initial;
+UProperty* StructProperty_Engine_Actor_Velocity = nullptr;
+std::map<int, bool> StructProperty_Engine_Actor_Velocity_initial;
+UProperty* ByteProperty_Engine_Actor_RemoteRole = nullptr;
+std::map<int, bool> ByteProperty_Engine_Actor_RemoteRole_initial;
+UProperty* ByteProperty_Engine_Actor_Role = nullptr;
+std::map<int, bool> ByteProperty_Engine_Actor_Role_initial;
+UProperty* BoolProperty_Engine_Actor_bNetOwner = nullptr;
+std::map<int, bool> BoolProperty_Engine_Actor_bNetOwner_initial;
+UProperty* BoolProperty_Engine_Actor_bTearOff = nullptr;
+std::map<int, bool> BoolProperty_Engine_Actor_bTearOff_initial;
+UProperty* FloatProperty_Engine_Actor_DrawScale = nullptr;
+std::map<int, bool> FloatProperty_Engine_Actor_DrawScale_initial;
+UProperty* ByteProperty_Engine_Actor_ReplicatedCollisionType = nullptr;
+std::map<int, bool> ByteProperty_Engine_Actor_ReplicatedCollisionType_initial;
+UProperty* BoolProperty_Engine_Actor_bCollideActors = nullptr;
+std::map<int, bool> BoolProperty_Engine_Actor_bCollideActors_initial;
+UProperty* BoolProperty_Engine_Actor_bCollideWorld = nullptr;
+std::map<int, bool> BoolProperty_Engine_Actor_bCollideWorld_initial;
+UProperty* BoolProperty_Engine_Actor_bBlockActors = nullptr;
+std::map<int, bool> BoolProperty_Engine_Actor_bBlockActors_initial;
+UProperty* BoolProperty_Engine_Actor_bProjTarget = nullptr;
+std::map<int, bool> BoolProperty_Engine_Actor_bProjTarget_initial;
+UProperty* ObjectProperty_Engine_Actor_Instigator = nullptr;
+std::map<int, bool> ObjectProperty_Engine_Actor_Instigator_initial;
+UProperty* ObjectProperty_Engine_Actor_Owner = nullptr;
+std::map<int, bool> ObjectProperty_Engine_Actor_Owner_initial;
+UProperty* BoolProperty_Engine_AmbientSoundSimpleToggleable_bCurrentlyPlaying = nullptr;
+std::map<int, bool> BoolProperty_Engine_AmbientSoundSimpleToggleable_bCurrentlyPlaying_initial;
+UProperty* FloatProperty_Engine_CameraActor_AspectRatio = nullptr;
+std::map<int, bool> FloatProperty_Engine_CameraActor_AspectRatio_initial;
+UProperty* FloatProperty_Engine_CameraActor_FOVAngle = nullptr;
+std::map<int, bool> FloatProperty_Engine_CameraActor_FOVAngle_initial;
+UProperty* ObjectProperty_Engine_Controller_Pawn = nullptr;
+std::map<int, bool> ObjectProperty_Engine_Controller_Pawn_initial;
+UProperty* ObjectProperty_Engine_Controller_PlayerReplicationInfo = nullptr;
+std::map<int, bool> ObjectProperty_Engine_Controller_PlayerReplicationInfo_initial;
+UProperty* BoolProperty_Engine_CrowdAttractor_bAttractorEnabled = nullptr;
+std::map<int, bool> BoolProperty_Engine_CrowdAttractor_bAttractorEnabled_initial;
+UProperty* IntProperty_Engine_CrowdReplicationActor_DestroyAllCount = nullptr;
+std::map<int, bool> IntProperty_Engine_CrowdReplicationActor_DestroyAllCount_initial;
+UProperty* ObjectProperty_Engine_CrowdReplicationActor_Spawner = nullptr;
+std::map<int, bool> ObjectProperty_Engine_CrowdReplicationActor_Spawner_initial;
+UProperty* BoolProperty_Engine_CrowdReplicationActor_bSpawningActive = nullptr;
+std::map<int, bool> BoolProperty_Engine_CrowdReplicationActor_bSpawningActive_initial;
+UProperty* ClassProperty_Engine_DroppedPickup_InventoryClass = nullptr;
+std::map<int, bool> ClassProperty_Engine_DroppedPickup_InventoryClass_initial;
+UProperty* BoolProperty_Engine_DroppedPickup_bFadeOut = nullptr;
+std::map<int, bool> BoolProperty_Engine_DroppedPickup_bFadeOut_initial;
+UProperty* ObjectProperty_Engine_DynamicSMActor_ReplicatedMaterial = nullptr;
+std::map<int, bool> ObjectProperty_Engine_DynamicSMActor_ReplicatedMaterial_initial;
+UProperty* ObjectProperty_Engine_DynamicSMActor_ReplicatedMesh = nullptr;
+std::map<int, bool> ObjectProperty_Engine_DynamicSMActor_ReplicatedMesh_initial;
+UProperty* StructProperty_Engine_DynamicSMActor_ReplicatedMeshRotation = nullptr;
+std::map<int, bool> StructProperty_Engine_DynamicSMActor_ReplicatedMeshRotation_initial;
+UProperty* StructProperty_Engine_DynamicSMActor_ReplicatedMeshScale3D = nullptr;
+std::map<int, bool> StructProperty_Engine_DynamicSMActor_ReplicatedMeshScale3D_initial;
+UProperty* StructProperty_Engine_DynamicSMActor_ReplicatedMeshTranslation = nullptr;
+std::map<int, bool> StructProperty_Engine_DynamicSMActor_ReplicatedMeshTranslation_initial;
+UProperty* BoolProperty_Engine_DynamicSMActor_bForceStaticDecals = nullptr;
+std::map<int, bool> BoolProperty_Engine_DynamicSMActor_bForceStaticDecals_initial;
+UProperty* BoolProperty_Engine_Emitter_bCurrentlyActive = nullptr;
+std::map<int, bool> BoolProperty_Engine_Emitter_bCurrentlyActive_initial;
+UProperty* ObjectProperty_Engine_EmitterSpawnable_ParticleTemplate = nullptr;
+std::map<int, bool> ObjectProperty_Engine_EmitterSpawnable_ParticleTemplate_initial;
+UProperty* BoolProperty_Engine_FluidInfluenceActor_bActive = nullptr;
+std::map<int, bool> BoolProperty_Engine_FluidInfluenceActor_bActive_initial;
+UProperty* BoolProperty_Engine_FluidInfluenceActor_bToggled = nullptr;
+std::map<int, bool> BoolProperty_Engine_FluidInfluenceActor_bToggled_initial;
+UProperty* BoolProperty_Engine_FogVolumeDensityInfo_bEnabled = nullptr;
+std::map<int, bool> BoolProperty_Engine_FogVolumeDensityInfo_bEnabled_initial;
+UProperty* IntProperty_Engine_GameReplicationInfo_MatchID = nullptr;
+std::map<int, bool> IntProperty_Engine_GameReplicationInfo_MatchID_initial;
+UProperty* ObjectProperty_Engine_GameReplicationInfo_Winner = nullptr;
+std::map<int, bool> ObjectProperty_Engine_GameReplicationInfo_Winner_initial;
+UProperty* BoolProperty_Engine_GameReplicationInfo_bMatchHasBegun = nullptr;
+std::map<int, bool> BoolProperty_Engine_GameReplicationInfo_bMatchHasBegun_initial;
+UProperty* BoolProperty_Engine_GameReplicationInfo_bMatchIsOver = nullptr;
+std::map<int, bool> BoolProperty_Engine_GameReplicationInfo_bMatchIsOver_initial;
+UProperty* BoolProperty_Engine_GameReplicationInfo_bStopCountDown = nullptr;
+std::map<int, bool> BoolProperty_Engine_GameReplicationInfo_bStopCountDown_initial;
+UProperty* IntProperty_Engine_GameReplicationInfo_RemainingMinute = nullptr;
+std::map<int, bool> IntProperty_Engine_GameReplicationInfo_RemainingMinute_initial;
+UProperty* StrProperty_Engine_GameReplicationInfo_AdminEmail = nullptr;
+std::map<int, bool> StrProperty_Engine_GameReplicationInfo_AdminEmail_initial;
+UProperty* StrProperty_Engine_GameReplicationInfo_AdminName = nullptr;
+std::map<int, bool> StrProperty_Engine_GameReplicationInfo_AdminName_initial;
+UProperty* IntProperty_Engine_GameReplicationInfo_ElapsedTime = nullptr;
+std::map<int, bool> IntProperty_Engine_GameReplicationInfo_ElapsedTime_initial;
+UProperty* ClassProperty_Engine_GameReplicationInfo_GameClass = nullptr;
+std::map<int, bool> ClassProperty_Engine_GameReplicationInfo_GameClass_initial;
+UProperty* IntProperty_Engine_GameReplicationInfo_GoalScore = nullptr;
+std::map<int, bool> IntProperty_Engine_GameReplicationInfo_GoalScore_initial;
+UProperty* IntProperty_Engine_GameReplicationInfo_MaxLives = nullptr;
+std::map<int, bool> IntProperty_Engine_GameReplicationInfo_MaxLives_initial;
+UProperty* StrProperty_Engine_GameReplicationInfo_MessageOfTheDay = nullptr;
+std::map<int, bool> StrProperty_Engine_GameReplicationInfo_MessageOfTheDay_initial;
+UProperty* IntProperty_Engine_GameReplicationInfo_RemainingTime = nullptr;
+std::map<int, bool> IntProperty_Engine_GameReplicationInfo_RemainingTime_initial;
+UProperty* StrProperty_Engine_GameReplicationInfo_ServerName = nullptr;
+std::map<int, bool> StrProperty_Engine_GameReplicationInfo_ServerName_initial;
+UProperty* IntProperty_Engine_GameReplicationInfo_ServerRegion = nullptr;
+std::map<int, bool> IntProperty_Engine_GameReplicationInfo_ServerRegion_initial;
+UProperty* StrProperty_Engine_GameReplicationInfo_ShortName = nullptr;
+std::map<int, bool> StrProperty_Engine_GameReplicationInfo_ShortName_initial;
+UProperty* IntProperty_Engine_GameReplicationInfo_TimeLimit = nullptr;
+std::map<int, bool> IntProperty_Engine_GameReplicationInfo_TimeLimit_initial;
+UProperty* BoolProperty_Engine_GameReplicationInfo_bIsArbitrated = nullptr;
+std::map<int, bool> BoolProperty_Engine_GameReplicationInfo_bIsArbitrated_initial;
+UProperty* BoolProperty_Engine_GameReplicationInfo_bTrackStats = nullptr;
+std::map<int, bool> BoolProperty_Engine_GameReplicationInfo_bTrackStats_initial;
+UProperty* BoolProperty_Engine_HeightFog_bEnabled = nullptr;
+std::map<int, bool> BoolProperty_Engine_HeightFog_bEnabled_initial;
+UProperty* ObjectProperty_Engine_Inventory_InvManager = nullptr;
+std::map<int, bool> ObjectProperty_Engine_Inventory_InvManager_initial;
+UProperty* ObjectProperty_Engine_Inventory_Inventory = nullptr;
+std::map<int, bool> ObjectProperty_Engine_Inventory_Inventory_initial;
+UProperty* ObjectProperty_Engine_InventoryManager_InventoryChain = nullptr;
+std::map<int, bool> ObjectProperty_Engine_InventoryManager_InventoryChain_initial;
+UProperty* StructProperty_Engine_KActor_RBState = nullptr;
+std::map<int, bool> StructProperty_Engine_KActor_RBState_initial;
+UProperty* StructProperty_Engine_KActor_ReplicatedDrawScale3D = nullptr;
+std::map<int, bool> StructProperty_Engine_KActor_ReplicatedDrawScale3D_initial;
+UProperty* BoolProperty_Engine_KActor_bWakeOnLevelStart = nullptr;
+std::map<int, bool> BoolProperty_Engine_KActor_bWakeOnLevelStart_initial;
+UProperty* ObjectProperty_Engine_KAsset_ReplicatedMesh = nullptr;
+std::map<int, bool> ObjectProperty_Engine_KAsset_ReplicatedMesh_initial;
+UProperty* ObjectProperty_Engine_KAsset_ReplicatedPhysAsset = nullptr;
+std::map<int, bool> ObjectProperty_Engine_KAsset_ReplicatedPhysAsset_initial;
+UProperty* BoolProperty_Engine_LensFlareSource_bCurrentlyActive = nullptr;
+std::map<int, bool> BoolProperty_Engine_LensFlareSource_bCurrentlyActive_initial;
+UProperty* BoolProperty_Engine_Light_bEnabled = nullptr;
+std::map<int, bool> BoolProperty_Engine_Light_bEnabled_initial;
+UProperty* ObjectProperty_Engine_MatineeActor_InterpAction = nullptr;
+std::map<int, bool> ObjectProperty_Engine_MatineeActor_InterpAction_initial;
+UProperty* FloatProperty_Engine_MatineeActor_PlayRate = nullptr;
+std::map<int, bool> FloatProperty_Engine_MatineeActor_PlayRate_initial;
+UProperty* FloatProperty_Engine_MatineeActor_Position = nullptr;
+std::map<int, bool> FloatProperty_Engine_MatineeActor_Position_initial;
+UProperty* BoolProperty_Engine_MatineeActor_bIsPlaying = nullptr;
+std::map<int, bool> BoolProperty_Engine_MatineeActor_bIsPlaying_initial;
+UProperty* BoolProperty_Engine_MatineeActor_bPaused = nullptr;
+std::map<int, bool> BoolProperty_Engine_MatineeActor_bPaused_initial;
+UProperty* BoolProperty_Engine_MatineeActor_bReversePlayback = nullptr;
+std::map<int, bool> BoolProperty_Engine_MatineeActor_bReversePlayback_initial;
+UProperty* BoolProperty_Engine_NxForceField_bForceActive = nullptr;
+std::map<int, bool> BoolProperty_Engine_NxForceField_bForceActive_initial;
+UProperty* ObjectProperty_Engine_Pawn_DrivenVehicle = nullptr;
+std::map<int, bool> ObjectProperty_Engine_Pawn_DrivenVehicle_initial;
+UProperty* StructProperty_Engine_Pawn_FlashLocation = nullptr;
+std::map<int, bool> StructProperty_Engine_Pawn_FlashLocation_initial;
+UProperty* IntProperty_Engine_Pawn_Health = nullptr;
+std::map<int, bool> IntProperty_Engine_Pawn_Health_initial;
+UProperty* ClassProperty_Engine_Pawn_HitDamageType = nullptr;
+std::map<int, bool> ClassProperty_Engine_Pawn_HitDamageType_initial;
+UProperty* ObjectProperty_Engine_Pawn_PlayerReplicationInfo = nullptr;
+std::map<int, bool> ObjectProperty_Engine_Pawn_PlayerReplicationInfo_initial;
+UProperty* StructProperty_Engine_Pawn_TakeHitLocation = nullptr;
+std::map<int, bool> StructProperty_Engine_Pawn_TakeHitLocation_initial;
+UProperty* BoolProperty_Engine_Pawn_bIsWalking = nullptr;
+std::map<int, bool> BoolProperty_Engine_Pawn_bIsWalking_initial;
+UProperty* BoolProperty_Engine_Pawn_bSimulateGravity = nullptr;
+std::map<int, bool> BoolProperty_Engine_Pawn_bSimulateGravity_initial;
+UProperty* FloatProperty_Engine_Pawn_AccelRate = nullptr;
+std::map<int, bool> FloatProperty_Engine_Pawn_AccelRate_initial;
+UProperty* FloatProperty_Engine_Pawn_AirControl = nullptr;
+std::map<int, bool> FloatProperty_Engine_Pawn_AirControl_initial;
+UProperty* FloatProperty_Engine_Pawn_AirSpeed = nullptr;
+std::map<int, bool> FloatProperty_Engine_Pawn_AirSpeed_initial;
+UProperty* ObjectProperty_Engine_Pawn_Controller = nullptr;
+std::map<int, bool> ObjectProperty_Engine_Pawn_Controller_initial;
+UProperty* FloatProperty_Engine_Pawn_GroundSpeed = nullptr;
+std::map<int, bool> FloatProperty_Engine_Pawn_GroundSpeed_initial;
+UProperty* ObjectProperty_Engine_Pawn_InvManager = nullptr;
+std::map<int, bool> ObjectProperty_Engine_Pawn_InvManager_initial;
+UProperty* FloatProperty_Engine_Pawn_JumpZ = nullptr;
+std::map<int, bool> FloatProperty_Engine_Pawn_JumpZ_initial;
+UProperty* FloatProperty_Engine_Pawn_WaterSpeed = nullptr;
+std::map<int, bool> FloatProperty_Engine_Pawn_WaterSpeed_initial;
+UProperty* ByteProperty_Engine_Pawn_FiringMode = nullptr;
+std::map<int, bool> ByteProperty_Engine_Pawn_FiringMode_initial;
+UProperty* ByteProperty_Engine_Pawn_FlashCount = nullptr;
+std::map<int, bool> ByteProperty_Engine_Pawn_FlashCount_initial;
+UProperty* BoolProperty_Engine_Pawn_bIsCrouched = nullptr;
+std::map<int, bool> BoolProperty_Engine_Pawn_bIsCrouched_initial;
+UProperty* StructProperty_Engine_Pawn_TearOffMomentum = nullptr;
+std::map<int, bool> StructProperty_Engine_Pawn_TearOffMomentum_initial;
+UProperty* ByteProperty_Engine_Pawn_RemoteViewPitch = nullptr;
+std::map<int, bool> ByteProperty_Engine_Pawn_RemoteViewPitch_initial;
+UProperty* ObjectProperty_Engine_PhysXEmitterSpawnable_ParticleTemplate = nullptr;
+std::map<int, bool> ObjectProperty_Engine_PhysXEmitterSpawnable_ParticleTemplate_initial;
+UProperty* BoolProperty_Engine_PickupFactory_bPickupHidden = nullptr;
+std::map<int, bool> BoolProperty_Engine_PickupFactory_bPickupHidden_initial;
+UProperty* ClassProperty_Engine_PickupFactory_InventoryType = nullptr;
+std::map<int, bool> ClassProperty_Engine_PickupFactory_InventoryType_initial;
+UProperty* FloatProperty_Engine_PlayerController_TargetEyeHeight = nullptr;
+std::map<int, bool> FloatProperty_Engine_PlayerController_TargetEyeHeight_initial;
+UProperty* StructProperty_Engine_PlayerController_TargetViewRotation = nullptr;
+std::map<int, bool> StructProperty_Engine_PlayerController_TargetViewRotation_initial;
+UProperty* FloatProperty_Engine_PlayerReplicationInfo_Deaths = nullptr;
+std::map<int, bool> FloatProperty_Engine_PlayerReplicationInfo_Deaths_initial;
+UProperty* StrProperty_Engine_PlayerReplicationInfo_PlayerAlias = nullptr;
+std::map<int, bool> StrProperty_Engine_PlayerReplicationInfo_PlayerAlias_initial;
+UProperty* ObjectProperty_Engine_PlayerReplicationInfo_PlayerLocationHint = nullptr;
+std::map<int, bool> ObjectProperty_Engine_PlayerReplicationInfo_PlayerLocationHint_initial;
+UProperty* StrProperty_Engine_PlayerReplicationInfo_PlayerName = nullptr;
+std::map<int, bool> StrProperty_Engine_PlayerReplicationInfo_PlayerName_initial;
+UProperty* IntProperty_Engine_PlayerReplicationInfo_PlayerSkill = nullptr;
+std::map<int, bool> IntProperty_Engine_PlayerReplicationInfo_PlayerSkill_initial;
+UProperty* FloatProperty_Engine_PlayerReplicationInfo_Score = nullptr;
+std::map<int, bool> FloatProperty_Engine_PlayerReplicationInfo_Score_initial;
+UProperty* IntProperty_Engine_PlayerReplicationInfo_StartTime = nullptr;
+std::map<int, bool> IntProperty_Engine_PlayerReplicationInfo_StartTime_initial;
+UProperty* ObjectProperty_Engine_PlayerReplicationInfo_Team = nullptr;
+std::map<int, bool> ObjectProperty_Engine_PlayerReplicationInfo_Team_initial;
+UProperty* StructProperty_Engine_PlayerReplicationInfo_UniqueId = nullptr;
+std::map<int, bool> StructProperty_Engine_PlayerReplicationInfo_UniqueId_initial;
+UProperty* BoolProperty_Engine_PlayerReplicationInfo_bAdmin = nullptr;
+std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bAdmin_initial;
+UProperty* BoolProperty_Engine_PlayerReplicationInfo_bHasFlag = nullptr;
+std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bHasFlag_initial;
+UProperty* BoolProperty_Engine_PlayerReplicationInfo_bIsFemale = nullptr;
+std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bIsFemale_initial;
+UProperty* BoolProperty_Engine_PlayerReplicationInfo_bIsSpectator = nullptr;
+std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bIsSpectator_initial;
+UProperty* BoolProperty_Engine_PlayerReplicationInfo_bOnlySpectator = nullptr;
+std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bOnlySpectator_initial;
+UProperty* BoolProperty_Engine_PlayerReplicationInfo_bOutOfLives = nullptr;
+std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bOutOfLives_initial;
+UProperty* BoolProperty_Engine_PlayerReplicationInfo_bReadyToPlay = nullptr;
+std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bReadyToPlay_initial;
+UProperty* BoolProperty_Engine_PlayerReplicationInfo_bWaitingPlayer = nullptr;
+std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bWaitingPlayer_initial;
+UProperty* ByteProperty_Engine_PlayerReplicationInfo_PacketLoss = nullptr;
+std::map<int, bool> ByteProperty_Engine_PlayerReplicationInfo_PacketLoss_initial;
+UProperty* ByteProperty_Engine_PlayerReplicationInfo_Ping = nullptr;
+std::map<int, bool> ByteProperty_Engine_PlayerReplicationInfo_Ping_initial;
+UProperty* IntProperty_Engine_PlayerReplicationInfo_SplitscreenIndex = nullptr;
+std::map<int, bool> IntProperty_Engine_PlayerReplicationInfo_SplitscreenIndex_initial;
+UProperty* IntProperty_Engine_PlayerReplicationInfo_PlayerID = nullptr;
+std::map<int, bool> IntProperty_Engine_PlayerReplicationInfo_PlayerID_initial;
+UProperty* BoolProperty_Engine_PlayerReplicationInfo_bBot = nullptr;
+std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bBot_initial;
+UProperty* BoolProperty_Engine_PlayerReplicationInfo_bIsInactive = nullptr;
+std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bIsInactive_initial;
+UProperty* BoolProperty_Engine_PostProcessVolume_bEnabled = nullptr;
+std::map<int, bool> BoolProperty_Engine_PostProcessVolume_bEnabled_initial;
+UProperty* FloatProperty_Engine_Projectile_MaxSpeed = nullptr;
+std::map<int, bool> FloatProperty_Engine_Projectile_MaxSpeed_initial;
+UProperty* FloatProperty_Engine_Projectile_Speed = nullptr;
+std::map<int, bool> FloatProperty_Engine_Projectile_Speed_initial;
+UProperty* BoolProperty_Engine_RB_CylindricalForceActor_bForceActive = nullptr;
+std::map<int, bool> BoolProperty_Engine_RB_CylindricalForceActor_bForceActive_initial;
+UProperty* ByteProperty_Engine_RB_LineImpulseActor_ImpulseCount = nullptr;
+std::map<int, bool> ByteProperty_Engine_RB_LineImpulseActor_ImpulseCount_initial;
+UProperty* BoolProperty_Engine_RB_RadialForceActor_bForceActive = nullptr;
+std::map<int, bool> BoolProperty_Engine_RB_RadialForceActor_bForceActive_initial;
+UProperty* ByteProperty_Engine_RB_RadialImpulseActor_ImpulseCount = nullptr;
+std::map<int, bool> ByteProperty_Engine_RB_RadialImpulseActor_ImpulseCount_initial;
+UProperty* FloatProperty_Engine_SVehicle_MaxSpeed = nullptr;
+std::map<int, bool> FloatProperty_Engine_SVehicle_MaxSpeed_initial;
+UProperty* StructProperty_Engine_SVehicle_VState = nullptr;
+std::map<int, bool> StructProperty_Engine_SVehicle_VState_initial;
+UProperty* ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMaterial = nullptr;
+std::map<int, bool> ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMaterial_initial;
+UProperty* ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMesh = nullptr;
+std::map<int, bool> ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMesh_initial;
+UProperty* FloatProperty_Engine_TeamInfo_Score = nullptr;
+std::map<int, bool> FloatProperty_Engine_TeamInfo_Score_initial;
+UProperty* IntProperty_Engine_TeamInfo_TeamIndex = nullptr;
+std::map<int, bool> IntProperty_Engine_TeamInfo_TeamIndex_initial;
+UProperty* StrProperty_Engine_TeamInfo_TeamName = nullptr;
+std::map<int, bool> StrProperty_Engine_TeamInfo_TeamName_initial;
+UProperty* StrProperty_Engine_Teleporter_URL = nullptr;
+std::map<int, bool> StrProperty_Engine_Teleporter_URL_initial;
+UProperty* BoolProperty_Engine_Teleporter_bEnabled = nullptr;
+std::map<int, bool> BoolProperty_Engine_Teleporter_bEnabled_initial;
+UProperty* StructProperty_Engine_Teleporter_TargetVelocity = nullptr;
+std::map<int, bool> StructProperty_Engine_Teleporter_TargetVelocity_initial;
+UProperty* BoolProperty_Engine_Teleporter_bChangesVelocity = nullptr;
+std::map<int, bool> BoolProperty_Engine_Teleporter_bChangesVelocity_initial;
+UProperty* BoolProperty_Engine_Teleporter_bChangesYaw = nullptr;
+std::map<int, bool> BoolProperty_Engine_Teleporter_bChangesYaw_initial;
+UProperty* BoolProperty_Engine_Teleporter_bReversesX = nullptr;
+std::map<int, bool> BoolProperty_Engine_Teleporter_bReversesX_initial;
+UProperty* BoolProperty_Engine_Teleporter_bReversesY = nullptr;
+std::map<int, bool> BoolProperty_Engine_Teleporter_bReversesY_initial;
+UProperty* BoolProperty_Engine_Teleporter_bReversesZ = nullptr;
+std::map<int, bool> BoolProperty_Engine_Teleporter_bReversesZ_initial;
+UProperty* BoolProperty_Engine_Vehicle_bDriving = nullptr;
+std::map<int, bool> BoolProperty_Engine_Vehicle_bDriving_initial;
+UProperty* ObjectProperty_Engine_Vehicle_Driver = nullptr;
+std::map<int, bool> ObjectProperty_Engine_Vehicle_Driver_initial;
+UProperty* ObjectProperty_Engine_WorldInfo_Pauser = nullptr;
+std::map<int, bool> ObjectProperty_Engine_WorldInfo_Pauser_initial;
+UProperty* StructProperty_Engine_WorldInfo_ReplicatedMusicTrack = nullptr;
+std::map<int, bool> StructProperty_Engine_WorldInfo_ReplicatedMusicTrack_initial;
+UProperty* FloatProperty_Engine_WorldInfo_TimeDilation = nullptr;
+std::map<int, bool> FloatProperty_Engine_WorldInfo_TimeDilation_initial;
+UProperty* FloatProperty_Engine_WorldInfo_WorldGravityZ = nullptr;
+std::map<int, bool> FloatProperty_Engine_WorldInfo_WorldGravityZ_initial;
+UProperty* BoolProperty_Engine_WorldInfo_bHighPriorityLoading = nullptr;
+std::map<int, bool> BoolProperty_Engine_WorldInfo_bHighPriorityLoading_initial;
+UProperty* ByteProperty_TgGame_TgChestActor_r_eChestState = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgChestActor_r_eChestState_initial;
+UProperty* BoolProperty_TgGame_TgDeploy_BeaconEntrance_r_bActive = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgDeploy_BeaconEntrance_r_bActive_initial;
+UProperty* BoolProperty_TgGame_TgDeploy_DestructibleCover_r_bHasFired = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgDeploy_DestructibleCover_r_bHasFired_initial;
+UProperty* IntProperty_TgGame_TgDeploy_Sensor_r_nSensorAudioWarning = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDeploy_Sensor_r_nSensorAudioWarning_initial;
+UProperty* IntProperty_TgGame_TgDeploy_Sensor_r_nTouchedPlayerCount = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDeploy_Sensor_r_nTouchedPlayerCount_initial;
+UProperty* BoolProperty_TgGame_TgDeployable_r_bDelayDeployed = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgDeployable_r_bDelayDeployed_initial;
+UProperty* IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt_initial;
+UProperty* ObjectProperty_TgGame_TgDeployable_r_DRI = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgDeployable_r_DRI_initial;
+UProperty* BoolProperty_TgGame_TgDeployable_r_bInitialIsEnemy = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgDeployable_r_bInitialIsEnemy_initial;
+UProperty* BoolProperty_TgGame_TgDeployable_r_bTakeDamage = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgDeployable_r_bTakeDamage_initial;
+UProperty* FloatProperty_TgGame_TgDeployable_r_fClientProximityRadius = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgDeployable_r_fClientProximityRadius_initial;
+UProperty* FloatProperty_TgGame_TgDeployable_r_fCurrentDeployTime = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgDeployable_r_fCurrentDeployTime_initial;
+UProperty* IntProperty_TgGame_TgDeployable_r_nDeployableId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDeployable_r_nDeployableId_initial;
+UProperty* IntProperty_TgGame_TgDeployable_r_nPhysicalType = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDeployable_r_nPhysicalType_initial;
+UProperty* IntProperty_TgGame_TgDeployable_r_nTickingTime = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDeployable_r_nTickingTime_initial;
+UProperty* ObjectProperty_TgGame_TgDeployable_r_Owner = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgDeployable_r_Owner_initial;
+UProperty* IntProperty_TgGame_TgDeployable_r_nOwnerFireMode = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDeployable_r_nOwnerFireMode_initial;
+UProperty* ByteProperty_TgGame_TgDevice_CurrentFireMode = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgDevice_CurrentFireMode_initial;
+UProperty* BoolProperty_TgGame_TgDevice_r_bIsStealthDevice = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgDevice_r_bIsStealthDevice_initial;
+UProperty* ByteProperty_TgGame_TgDevice_r_eEquippedAt = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgDevice_r_eEquippedAt_initial;
+UProperty* IntProperty_TgGame_TgDevice_r_nInventoryId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDevice_r_nInventoryId_initial;
+UProperty* IntProperty_TgGame_TgDevice_r_nMeleeComboSeed = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDevice_r_nMeleeComboSeed_initial;
+UProperty* BoolProperty_TgGame_TgDevice_r_bConsumedOnDeath = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgDevice_r_bConsumedOnDeath_initial;
+UProperty* BoolProperty_TgGame_TgDevice_r_bConsumedOnUse = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgDevice_r_bConsumedOnUse_initial;
+UProperty* IntProperty_TgGame_TgDevice_r_nDeviceId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDevice_r_nDeviceId_initial;
+UProperty* IntProperty_TgGame_TgDevice_r_nDeviceInstanceId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDevice_r_nDeviceInstanceId_initial;
+UProperty* IntProperty_TgGame_TgDevice_r_nQualityValueId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDevice_r_nQualityValueId_initial;
+UProperty* BoolProperty_TgGame_TgDevice_Morale_r_bIsActivelyFiring = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgDevice_Morale_r_bIsActivelyFiring_initial;
+UProperty* BoolProperty_TgGame_TgDoor_r_bOpen = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgDoor_r_bOpen_initial;
+UProperty* ByteProperty_TgGame_TgDoorMarker_r_eStatus = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgDoorMarker_r_eStatus_initial;
+UProperty* IntProperty_TgGame_TgDroppedItem_r_nItemId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDroppedItem_r_nItemId_initial;
+UProperty* IntProperty_TgGame_TgDynamicDestructible_r_nDestructibleId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDynamicDestructible_r_nDestructibleId_initial;
+UProperty* ObjectProperty_TgGame_TgDynamicDestructible_r_pFactory = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgDynamicDestructible_r_pFactory_initial;
+UProperty* StrProperty_TgGame_TgDynamicSMActor_m_sAssembly = nullptr;
+std::map<int, bool> StrProperty_TgGame_TgDynamicSMActor_m_sAssembly_initial;
+UProperty* ObjectProperty_TgGame_TgDynamicSMActor_r_EffectManager = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgDynamicSMActor_r_EffectManager_initial;
+UProperty* IntProperty_TgGame_TgDynamicSMActor_r_nHealth = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDynamicSMActor_r_nHealth_initial;
+UProperty* StructProperty_TgGame_TgEffectManager_r_EventQueue = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgEffectManager_r_EventQueue_initial;
+UProperty* StructProperty_TgGame_TgEffectManager_r_ManagedEffectList = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgEffectManager_r_ManagedEffectList_initial;
+UProperty* ObjectProperty_TgGame_TgEffectManager_r_Owner = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgEffectManager_r_Owner_initial;
+UProperty* BoolProperty_TgGame_TgEffectManager_r_bRelevancyNotify = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgEffectManager_r_bRelevancyNotify_initial;
+UProperty* IntProperty_TgGame_TgEffectManager_r_nInvulnerableCount = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgEffectManager_r_nInvulnerableCount_initial;
+UProperty* IntProperty_TgGame_TgEffectManager_r_nNextQueueIndex = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgEffectManager_r_nNextQueueIndex_initial;
+UProperty* NameProperty_TgGame_TgEmitter_BoneName = nullptr;
+std::map<int, bool> NameProperty_TgGame_TgEmitter_BoneName_initial;
+UProperty* ByteProperty_TgGame_TgFlagCaptureVolume_r_eCoalition = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgFlagCaptureVolume_r_eCoalition_initial;
+UProperty* ByteProperty_TgGame_TgFlagCaptureVolume_r_nTaskForce = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgFlagCaptureVolume_r_nTaskForce_initial;
+UProperty* ObjectProperty_TgGame_TgFracturedStaticMeshActor_r_EffectManager = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgFracturedStaticMeshActor_r_EffectManager_initial;
+UProperty* IntProperty_TgGame_TgFracturedStaticMeshActor_r_TakeHitNotifier = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgFracturedStaticMeshActor_r_TakeHitNotifier_initial;
+UProperty* FloatProperty_TgGame_TgFracturedStaticMeshActor_r_DamageRadius = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgFracturedStaticMeshActor_r_DamageRadius_initial;
+UProperty* ClassProperty_TgGame_TgFracturedStaticMeshActor_r_HitDamageType = nullptr;
+std::map<int, bool> ClassProperty_TgGame_TgFracturedStaticMeshActor_r_HitDamageType_initial;
+UProperty* StructProperty_TgGame_TgFracturedStaticMeshActor_r_HitInfo = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgFracturedStaticMeshActor_r_HitInfo_initial;
+UProperty* StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitLocation = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitLocation_initial;
+UProperty* StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitMomentum = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitMomentum_initial;
+UProperty* IntProperty_TgGame_TgHexLandMarkActor_r_nMeshAsmId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgHexLandMarkActor_r_nMeshAsmId_initial;
+UProperty* StrProperty_TgGame_TgInterpActor_r_sCurrState = nullptr;
+std::map<int, bool> StrProperty_TgGame_TgInterpActor_r_sCurrState_initial;
+UProperty* IntProperty_TgGame_TgInventoryManager_r_ItemCount = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgInventoryManager_r_ItemCount_initial;
+UProperty* IntProperty_TgGame_TgKismetTestActor_r_nCurrentTest = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgKismetTestActor_r_nCurrentTest_initial;
+UProperty* IntProperty_TgGame_TgKismetTestActor_r_nFailCount = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgKismetTestActor_r_nFailCount_initial;
+UProperty* IntProperty_TgGame_TgKismetTestActor_r_nPassCount = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgKismetTestActor_r_nPassCount_initial;
+UProperty* BoolProperty_TgGame_TgLevelCamera_r_bEnabled = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgLevelCamera_r_bEnabled_initial;
+UProperty* ObjectProperty_TgGame_TgMissionObjective_r_ObjectiveAssignment = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgMissionObjective_r_ObjectiveAssignment_initial;
+UProperty* BoolProperty_TgGame_TgMissionObjective_r_bHasBeenCapturedOnce = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgMissionObjective_r_bHasBeenCapturedOnce_initial;
+UProperty* BoolProperty_TgGame_TgMissionObjective_r_bIsActive = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgMissionObjective_r_bIsActive_initial;
+UProperty* BoolProperty_TgGame_TgMissionObjective_r_bIsLocked = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgMissionObjective_r_bIsLocked_initial;
+UProperty* BoolProperty_TgGame_TgMissionObjective_r_bIsPending = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgMissionObjective_r_bIsPending_initial;
+UProperty* ByteProperty_TgGame_TgMissionObjective_r_eOwningCoalition = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgMissionObjective_r_eOwningCoalition_initial;
+UProperty* ByteProperty_TgGame_TgMissionObjective_r_eStatus = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgMissionObjective_r_eStatus_initial;
+UProperty* FloatProperty_TgGame_TgMissionObjective_r_fCurrCaptureTime = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgMissionObjective_r_fCurrCaptureTime_initial;
+UProperty* FloatProperty_TgGame_TgMissionObjective_r_fLastCompletedTime = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgMissionObjective_r_fLastCompletedTime_initial;
+UProperty* IntProperty_TgGame_TgMissionObjective_r_nOwnerTaskForce = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgMissionObjective_r_nOwnerTaskForce_initial;
+UProperty* IntProperty_TgGame_TgMissionObjective_nObjectiveId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgMissionObjective_nObjectiveId_initial;
+UProperty* IntProperty_TgGame_TgMissionObjective_nPriority = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgMissionObjective_nPriority_initial;
+UProperty* ByteProperty_TgGame_TgMissionObjective_r_OpenWorldPlayerDefaultRole = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgMissionObjective_r_OpenWorldPlayerDefaultRole_initial;
+UProperty* BoolProperty_TgGame_TgMissionObjective_r_bUsePendingState = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgMissionObjective_r_bUsePendingState_initial;
+UProperty* ByteProperty_TgGame_TgMissionObjective_r_eDefaultCoalition = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgMissionObjective_r_eDefaultCoalition_initial;
+UProperty* ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBot = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBot_initial;
+UProperty* ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBotInfo = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBotInfo_initial;
+UProperty* ObjectProperty_TgGame_TgMissionObjective_Escort_r_AttachedActor = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgMissionObjective_Escort_r_AttachedActor_initial;
+UProperty* FloatProperty_TgGame_TgMissionObjective_Proximity_r_fCaptureRate = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgMissionObjective_Proximity_r_fCaptureRate_initial;
+UProperty* ObjectProperty_TgGame_TgObjectiveAssignment_r_AssignedObjective = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgObjectiveAssignment_r_AssignedObjective_initial;
+UProperty* ObjectProperty_TgGame_TgObjectiveAssignment_r_Attackers = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgObjectiveAssignment_r_Attackers_initial;
+UProperty* ObjectProperty_TgGame_TgObjectiveAssignment_r_Bots = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgObjectiveAssignment_r_Bots_initial;
+UProperty* ObjectProperty_TgGame_TgObjectiveAssignment_r_Defenders = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgObjectiveAssignment_r_Defenders_initial;
+UProperty* ByteProperty_TgGame_TgObjectiveAssignment_r_eState = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgObjectiveAssignment_r_eState_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bIsBot = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsBot_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bIsHenchman = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsHenchman_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bNeedPlaySpawnFx = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bNeedPlaySpawnFx_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fMakeVisibleIncreased = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fMakeVisibleIncreased_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nAllianceId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nAllianceId_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nBodyMeshAsmId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nBodyMeshAsmId_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nBotRankValueId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nBotRankValueId_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nFlashEvent = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nFlashEvent_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nFlashFireInfo = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nFlashFireInfo_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nFlashQueIndex = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nFlashQueIndex_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nPawnId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nPawnId_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nPhysicalType = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nPhysicalType_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nPreyProfileType = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nPreyProfileType_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nProfileId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nProfileId_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nProfileTypeValueId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nProfileTypeValueId_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nSoundGroupId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nSoundGroupId_initial;
+UProperty* StructProperty_TgGame_TgPawn_r_vFlashLocation = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgPawn_r_vFlashLocation_initial;
+UProperty* StructProperty_TgGame_TgPawn_r_vFlashRayDir = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgPawn_r_vFlashRayDir_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_vFlashRefireTime = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_vFlashRefireTime_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_vFlashSituationalAttack = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_vFlashSituationalAttack_initial;
+UProperty* StructProperty_TgGame_TgPawn_r_EquipDeviceInfo = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgPawn_r_EquipDeviceInfo_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bInitialIsEnemy = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bInitialIsEnemy_initial;
+UProperty* ByteProperty_TgGame_TgPawn_r_bMadeSound = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgPawn_r_bMadeSound_initial;
+UProperty* ByteProperty_TgGame_TgPawn_r_eDesiredInHand = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgPawn_r_eDesiredInHand_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_eEquippedInHandMode = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_eEquippedInHandMode_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nReplicateHit = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nReplicateHit_initial;
+UProperty* ObjectProperty_TgGame_TgPawn_r_ControlPawn = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_ControlPawn_initial;
+UProperty* ObjectProperty_TgGame_TgPawn_r_CurrentOmegaVolume = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_CurrentOmegaVolume_initial;
+UProperty* ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneBilboardVol = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneBilboardVol_initial;
+UProperty* ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneVol = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneVol_initial;
+UProperty* StructProperty_TgGame_TgPawn_r_ScannerSettings = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgPawn_r_ScannerSettings_initial;
+UProperty* ByteProperty_TgGame_TgPawn_r_UIClockState = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgPawn_r_UIClockState_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_UIClockTime = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_UIClockTime_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_UITextBox1MessageID = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_UITextBox1MessageID_initial;
+UProperty* ByteProperty_TgGame_TgPawn_r_UITextBox1Packet = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgPawn_r_UITextBox1Packet_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_UITextBox1Time = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_UITextBox1Time_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_UITextBox2MessageID = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_UITextBox2MessageID_initial;
+UProperty* ByteProperty_TgGame_TgPawn_r_UITextBox2Packet = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgPawn_r_UITextBox2Packet_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_UITextBox2Time = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_UITextBox2Time_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bAllowAddMoralePoints = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bAllowAddMoralePoints_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bDisableAllDevices = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bDisableAllDevices_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bEnableCrafting = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bEnableCrafting_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bEnableEquip = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bEnableEquip_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bEnableSkills = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bEnableSkills_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bInCombatFlag = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bInCombatFlag_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bInGlobalOffhandCooldown = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bInGlobalOffhandCooldown_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fCurrentPowerPool = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fCurrentPowerPool_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fCurrentServerMoralePoints = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fCurrentServerMoralePoints_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fMaxControlRange = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fMaxControlRange_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fMaxPowerPool = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fMaxPowerPool_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fMoraleRechargeRate = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fMoraleRechargeRate_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fRequiredMoralePoints = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fRequiredMoralePoints_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fSkillRating = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fSkillRating_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nCurrency = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nCurrency_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nHZPoints = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nHZPoints_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nMoraleDeviceSlot = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nMoraleDeviceSlot_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nRestDeviceSlot = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nRestDeviceSlot_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nToken = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nToken_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nXp = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nXp_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_DistanceToPushback = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_DistanceToPushback_initial;
+UProperty* ObjectProperty_TgGame_TgPawn_r_EffectManager = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_EffectManager_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_FlightAcceleration = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_FlightAcceleration_initial;
+UProperty* StructProperty_TgGame_TgPawn_r_HangingRotation = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgPawn_r_HangingRotation_initial;
+UProperty* ObjectProperty_TgGame_TgPawn_r_Owner = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_Owner_initial;
+UProperty* ObjectProperty_TgGame_TgPawn_r_Pet = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_Pet_initial;
+UProperty* StructProperty_TgGame_TgPawn_r_PlayAnimation = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgPawn_r_PlayAnimation_initial;
+UProperty* StructProperty_TgGame_TgPawn_r_PushbackDirection = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgPawn_r_PushbackDirection_initial;
+UProperty* ObjectProperty_TgGame_TgPawn_r_Target = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_Target_initial;
+UProperty* ObjectProperty_TgGame_TgPawn_r_TargetActor = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_TargetActor_initial;
+UProperty* ObjectProperty_TgGame_TgPawn_r_aDebugDestination = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_aDebugDestination_initial;
+UProperty* ObjectProperty_TgGame_TgPawn_r_aDebugNextNav = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_aDebugNextNav_initial;
+UProperty* ObjectProperty_TgGame_TgPawn_r_aDebugTarget = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_aDebugTarget_initial;
+UProperty* ByteProperty_TgGame_TgPawn_r_bAimType = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgPawn_r_bAimType_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bAimingMode = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bAimingMode_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bCallingForHelp = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bCallingForHelp_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bIsAFK = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsAFK_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bIsAnimInStrafeMode = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsAnimInStrafeMode_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bIsCrafting = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsCrafting_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bIsCrewing = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsCrewing_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bIsDecoy = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsDecoy_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bIsGrappleDismounting = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsGrappleDismounting_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bIsHacked = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsHacked_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bIsHacking = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsHacking_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bIsHanging = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsHanging_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bIsInSnipeScope = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsInSnipeScope_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bIsRappelling = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsRappelling_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bIsStealthed = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsStealthed_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bJumpedFromHanging = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bJumpedFromHanging_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bPostureIgnoreTransition = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bPostureIgnoreTransition_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bResistTagging = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bResistTagging_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bShouldKnockDownAnimFaceDown = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bShouldKnockDownAnimFaceDown_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bTagEnemy = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bTagEnemy_initial;
+UProperty* BoolProperty_TgGame_TgPawn_r_bUsingBinoculars = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bUsingBinoculars_initial;
+UProperty* ByteProperty_TgGame_TgPawn_r_eCurrentStunType = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgPawn_r_eCurrentStunType_initial;
+UProperty* ByteProperty_TgGame_TgPawn_r_eDeathReason = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgPawn_r_eDeathReason_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_eEmoteLength = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_eEmoteLength_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_eEmoteRepnotify = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_eEmoteRepnotify_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_eEmoteUpdate = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_eEmoteUpdate_initial;
+UProperty* ByteProperty_TgGame_TgPawn_r_ePosture = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgPawn_r_ePosture_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fDeployRate = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fDeployRate_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fFrictionMultiplier = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fFrictionMultiplier_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fGravityZModifier = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fGravityZModifier_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fKnockDownTimeRemaining = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fKnockDownTimeRemaining_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fMakeVisibleFadeRate = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fMakeVisibleFadeRate_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fPostureRateScale = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fPostureRateScale_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fRappelGravityModifier = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fRappelGravityModifier_initial;
+UProperty* FloatProperty_TgGame_TgPawn_r_fStealthTransitionTime = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fStealthTransitionTime_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_fWeightBonus = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_fWeightBonus_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_iKnockDownFlash = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_iKnockDownFlash_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nApplyStealth = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nApplyStealth_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nBotSoundCueId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nBotSoundCueId_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nDebugAggroRange = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nDebugAggroRange_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nDebugFOV = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nDebugFOV_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nDebugHearingRange = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nDebugHearingRange_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nDebugSightRange = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nDebugSightRange_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nGenericAIEventIndex = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nGenericAIEventIndex_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nHealthMaximum = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nHealthMaximum_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nNumberTimesCrewed = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nNumberTimesCrewed_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nPhase = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nPhase_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nPitchOffset = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nPitchOffset_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nReplicateDying = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nReplicateDying_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nResetCharacter = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nResetCharacter_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nSensorAlertLevel = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nSensorAlertLevel_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nShieldHealthMax = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nShieldHealthMax_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nShieldHealthRemaining = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nShieldHealthRemaining_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nSilentMode = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nSilentMode_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nStealthAggroRange = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nStealthAggroRange_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nStealthDisabled = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nStealthDisabled_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nStealthSensorRange = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nStealthSensorRange_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nStealthTypeCode = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nStealthTypeCode_initial;
+UProperty* IntProperty_TgGame_TgPawn_r_nYawOffset = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_r_nYawOffset_initial;
+UProperty* StrProperty_TgGame_TgPawn_r_sDebugAction = nullptr;
+std::map<int, bool> StrProperty_TgGame_TgPawn_r_sDebugAction_initial;
+UProperty* StrProperty_TgGame_TgPawn_r_sDebugName = nullptr;
+std::map<int, bool> StrProperty_TgGame_TgPawn_r_sDebugName_initial;
+UProperty* StrProperty_TgGame_TgPawn_r_sFactory = nullptr;
+std::map<int, bool> StrProperty_TgGame_TgPawn_r_sFactory_initial;
+UProperty* StructProperty_TgGame_TgPawn_r_vDown = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgPawn_r_vDown_initial;
+UProperty* BoolProperty_TgGame_TgPawn_Ambush_r_bIsDeployed = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_Ambush_r_bIsDeployed_initial;
+UProperty* ByteProperty_TgGame_TgPawn_AttackTransport_r_DeathType = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgPawn_AttackTransport_r_DeathType_initial;
+UProperty* StructProperty_TgGame_TgPawn_CTR_r_CustomCharacterAssembly = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgPawn_CTR_r_CustomCharacterAssembly_initial;
+UProperty* ObjectProperty_TgGame_TgPawn_CTR_r_PilotPawn = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgPawn_CTR_r_PilotPawn_initial;
+UProperty* IntProperty_TgGame_TgPawn_CTR_r_nMaxMorphIndexSentFromServer = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_CTR_r_nMaxMorphIndexSentFromServer_initial;
+UProperty* IntProperty_TgGame_TgPawn_CTR_r_nMorphSettings = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_CTR_r_nMorphSettings_initial;
+UProperty* StructProperty_TgGame_TgPawn_Character_r_CustomCharacterAssembly = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgPawn_Character_r_CustomCharacterAssembly_initial;
+UProperty* ByteProperty_TgGame_TgPawn_Character_r_eAttachedMesh = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgPawn_Character_r_eAttachedMesh_initial;
+UProperty* IntProperty_TgGame_TgPawn_Character_r_nBoostTimeRemaining = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nBoostTimeRemaining_initial;
+UProperty* IntProperty_TgGame_TgPawn_Character_r_nHeadMeshAsmId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nHeadMeshAsmId_initial;
+UProperty* IntProperty_TgGame_TgPawn_Character_r_nItemProfileId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nItemProfileId_initial;
+UProperty* IntProperty_TgGame_TgPawn_Character_r_nItemProfileNbr = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nItemProfileNbr_initial;
+UProperty* IntProperty_TgGame_TgPawn_Character_r_nMaxMorphIndexSentFromServer = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nMaxMorphIndexSentFromServer_initial;
+UProperty* IntProperty_TgGame_TgPawn_Character_r_nMorphSettings = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nMorphSettings_initial;
+UProperty* ObjectProperty_TgGame_TgPawn_Character_r_CurrentVanityPet = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgPawn_Character_r_CurrentVanityPet_initial;
+UProperty* FloatProperty_TgGame_TgPawn_Character_r_WallJumpUpperLineCheckOffset = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_Character_r_WallJumpUpperLineCheckOffset_initial;
+UProperty* FloatProperty_TgGame_TgPawn_Character_r_WallJumpZ = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_Character_r_WallJumpZ_initial;
+UProperty* BoolProperty_TgGame_TgPawn_Character_r_bElfGogglesEquipped = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_Character_r_bElfGogglesEquipped_initial;
+UProperty* IntProperty_TgGame_TgPawn_Character_r_nDeviceSlotUnlockGrpId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nDeviceSlotUnlockGrpId_initial;
+UProperty* IntProperty_TgGame_TgPawn_Character_r_nSkillGroupSetId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nSkillGroupSetId_initial;
+UProperty* BoolProperty_TgGame_TgPawn_DuneCommander_r_bDoCrashLanding = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_DuneCommander_r_bDoCrashLanding_initial;
+UProperty* ByteProperty_TgGame_TgPawn_Iris_r_nStartNewScan = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgPawn_Iris_r_nStartNewScan_initial;
+UProperty* FloatProperty_TgGame_TgPawn_Reaper_r_fBatteryPct = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_Reaper_r_fBatteryPct_initial;
+UProperty* ByteProperty_TgGame_TgPawn_Siege_r_AccelDirection = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgPawn_Siege_r_AccelDirection_initial;
+UProperty* BoolProperty_TgGame_TgPawn_Turret_r_bIsDeployed = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPawn_Turret_r_bIsDeployed_initial;
+UProperty* FloatProperty_TgGame_TgPawn_Turret_r_fInitDeployTime = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_Turret_r_fInitDeployTime_initial;
+UProperty* FloatProperty_TgGame_TgPawn_Turret_r_fTimeToDeploySecs = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_Turret_r_fTimeToDeploySecs_initial;
+UProperty* FloatProperty_TgGame_TgPawn_Turret_r_fCurrentDeployTime = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_Turret_r_fCurrentDeployTime_initial;
+UProperty* FloatProperty_TgGame_TgPawn_Turret_r_fDeployMaxHealthPCT = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgPawn_Turret_r_fDeployMaxHealthPCT_initial;
+UProperty* IntProperty_TgGame_TgPawn_VanityPet_r_nSpawningItemId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgPawn_VanityPet_r_nSpawningItemId_initial;
+UProperty* ByteProperty_TgGame_TgPlayerController_r_WatchOtherPlayer = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgPlayerController_r_WatchOtherPlayer_initial;
+UProperty* BoolProperty_TgGame_TgPlayerController_r_bEDDebugEffects = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPlayerController_r_bEDDebugEffects_initial;
+UProperty* BoolProperty_TgGame_TgPlayerController_r_bGMInvisible = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPlayerController_r_bGMInvisible_initial;
+UProperty* BoolProperty_TgGame_TgPlayerController_r_bIsHackingABot = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPlayerController_r_bIsHackingABot_initial;
+UProperty* BoolProperty_TgGame_TgPlayerController_r_bLockYawRotation = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPlayerController_r_bLockYawRotation_initial;
+UProperty* BoolProperty_TgGame_TgPlayerController_r_bRove = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgPlayerController_r_bRove_initial;
+UProperty* StructProperty_TgGame_TgProj_Grapple_r_vTargetLocation = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgProj_Grapple_r_vTargetLocation_initial;
+UProperty* ObjectProperty_TgGame_TgProj_Missile_r_aSeeking = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgProj_Missile_r_aSeeking_initial;
+UProperty* StructProperty_TgGame_TgProj_Missile_r_vTargetWorldLocation = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgProj_Missile_r_vTargetWorldLocation_initial;
+UProperty* IntProperty_TgGame_TgProj_Missile_r_nNumBounces = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgProj_Missile_r_nNumBounces_initial;
+UProperty* ByteProperty_TgGame_TgProj_Rocket_FlockIndex = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgProj_Rocket_FlockIndex_initial;
+UProperty* BoolProperty_TgGame_TgProj_Rocket_bCurl = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgProj_Rocket_bCurl_initial;
+UProperty* ObjectProperty_TgGame_TgProjectile_r_Owner = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgProjectile_r_Owner_initial;
+UProperty* FloatProperty_TgGame_TgProjectile_r_fAccelRate = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgProjectile_r_fAccelRate_initial;
+UProperty* FloatProperty_TgGame_TgProjectile_r_fDuration = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgProjectile_r_fDuration_initial;
+UProperty* FloatProperty_TgGame_TgProjectile_r_fRange = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgProjectile_r_fRange_initial;
+UProperty* IntProperty_TgGame_TgProjectile_r_nOwnerFireModeId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgProjectile_r_nOwnerFireModeId_initial;
+UProperty* IntProperty_TgGame_TgProjectile_r_nProjectileId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgProjectile_r_nProjectileId_initial;
+UProperty* StructProperty_TgGame_TgProjectile_r_vSpawnLocation = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgProjectile_r_vSpawnLocation_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Beacon_r_bDeployed = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Beacon_r_bDeployed_initial;
+UProperty* StructProperty_TgGame_TgRepInfo_Beacon_r_vLoc = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgRepInfo_Beacon_r_vLoc_initial;
+UProperty* StrProperty_TgGame_TgRepInfo_Beacon_r_nName = nullptr;
+std::map<int, bool> StrProperty_TgGame_TgRepInfo_Beacon_r_nName_initial;
+UProperty* ObjectProperty_TgGame_TgRepInfo_Deployable_r_InstigatorInfo = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_Deployable_r_InstigatorInfo_initial;
+UProperty* ObjectProperty_TgGame_TgRepInfo_Deployable_r_TaskforceInfo = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_Deployable_r_TaskforceInfo_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Deployable_r_bOwnedByTaskforce = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Deployable_r_bOwnedByTaskforce_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthCurrent = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthCurrent_initial;
+UProperty* ObjectProperty_TgGame_TgRepInfo_Deployable_r_DeployableOwner = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_Deployable_r_DeployableOwner_initial;
+UProperty* FloatProperty_TgGame_TgRepInfo_Deployable_r_fDeployMaxHealthPCT = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgRepInfo_Deployable_r_fDeployMaxHealthPCT_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Deployable_r_nDeployableId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Deployable_r_nDeployableId_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthMaximum = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthMaximum_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Deployable_r_nUniqueDeployableId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Deployable_r_nUniqueDeployableId_initial;
+UProperty* StructProperty_TgGame_TgRepInfo_Game_r_MiniMapInfo = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgRepInfo_Game_r_MiniMapInfo_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bActiveCombat = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bActiveCombat_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bAllowBuildMorale = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bAllowBuildMorale_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bAllowPlayerRelease = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bAllowPlayerRelease_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bDefenseAlarm = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bDefenseAlarm_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bInOverTime = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bInOverTime_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsTutorialMap = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsTutorialMap_initial;
+UProperty* FloatProperty_TgGame_TgRepInfo_Game_r_fGameSpeedModifier = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgRepInfo_Game_r_fGameSpeedModifier_initial;
+UProperty* FloatProperty_TgGame_TgRepInfo_Game_r_fMissionRemainingTime = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgRepInfo_Game_r_fMissionRemainingTime_initial;
+UProperty* FloatProperty_TgGame_TgRepInfo_Game_r_fServerTimeLastUpdate = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgRepInfo_Game_r_fServerTimeLastUpdate_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nMaxRoundNumber = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nMaxRoundNumber_initial;
+UProperty* ByteProperty_TgGame_TgRepInfo_Game_r_nMissionTimerState = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgRepInfo_Game_r_nMissionTimerState_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nMissionTimerStateChange = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nMissionTimerStateChange_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nRaidAttackerRespawnBonus = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nRaidAttackerRespawnBonus_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nRaidDefenderRespawnBonus = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nRaidDefenderRespawnBonus_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nReleaseDelay = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nReleaseDelay_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nRoundNumber = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nRoundNumber_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseAttackers = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseAttackers_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseDefenders = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseDefenders_initial;
+UProperty* ByteProperty_TgGame_TgRepInfo_Game_r_GameType = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgRepInfo_Game_r_GameType_initial;
+UProperty* StructProperty_TgGame_TgRepInfo_Game_r_MapLogoResIds = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgRepInfo_Game_r_MapLogoResIds_initial;
+UProperty* ObjectProperty_TgGame_TgRepInfo_Game_r_Objectives = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_Game_r_Objectives_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsArena = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsArena_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsMatch = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsMatch_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsMission = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsMission_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsPVP = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsPVP_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsRaid = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsRaid_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsTerritoryMap = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsTerritoryMap_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsTraining = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsTraining_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nAutoKickTimeout = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nAutoKickTimeout_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nPointsToWin = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nPointsToWin_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nVictoryBonusLives = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nVictoryBonusLives_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_GameOpenWorld_r_GameTickets = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_GameOpenWorld_r_GameTickets_initial;
+UProperty* StructProperty_TgGame_TgRepInfo_Player_r_ApproxLocation = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgRepInfo_Player_r_ApproxLocation_initial;
+UProperty* StructProperty_TgGame_TgRepInfo_Player_r_CustomCharacterAssembly = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgRepInfo_Player_r_CustomCharacterAssembly_initial;
+UProperty* StructProperty_TgGame_TgRepInfo_Player_r_EquipDeviceInfo = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgRepInfo_Player_r_EquipDeviceInfo_initial;
+UProperty* ObjectProperty_TgGame_TgRepInfo_Player_r_MasterPrep = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_Player_r_MasterPrep_initial;
+UProperty* ObjectProperty_TgGame_TgRepInfo_Player_r_PawnOwner = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_Player_r_PawnOwner_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Player_r_Scores = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_Scores_initial;
+UProperty* ObjectProperty_TgGame_TgRepInfo_Player_r_TaskForce = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_Player_r_TaskForce_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_Player_r_bDropped = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Player_r_bDropped_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Player_r_eBonusType = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_eBonusType_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Player_r_nCharacterId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_nCharacterId_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Player_r_nHealthCurrent = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_nHealthCurrent_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Player_r_nHealthMaximum = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_nHealthMaximum_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Player_r_nLevel = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_nLevel_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Player_r_nProfileId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_nProfileId_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_Player_r_nTitleMsgId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_nTitleMsgId_initial;
+UProperty* StrProperty_TgGame_TgRepInfo_Player_r_sAgencyName = nullptr;
+std::map<int, bool> StrProperty_TgGame_TgRepInfo_Player_r_sAgencyName_initial;
+UProperty* StrProperty_TgGame_TgRepInfo_Player_r_sAllianceName = nullptr;
+std::map<int, bool> StrProperty_TgGame_TgRepInfo_Player_r_sAllianceName_initial;
+UProperty* StrProperty_TgGame_TgRepInfo_Player_r_sOrigPlayerName = nullptr;
+std::map<int, bool> StrProperty_TgGame_TgRepInfo_Player_r_sOrigPlayerName_initial;
+UProperty* StructProperty_TgGame_TgRepInfo_Player_r_DeviceStats = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgRepInfo_Player_r_DeviceStats_initial;
+UProperty* ObjectProperty_TgGame_TgRepInfo_TaskForce_r_BeaconManager = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_TaskForce_r_BeaconManager_initial;
+UProperty* ObjectProperty_TgGame_TgRepInfo_TaskForce_r_CurrActiveObjective = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_TaskForce_r_CurrActiveObjective_initial;
+UProperty* ObjectProperty_TgGame_TgRepInfo_TaskForce_r_ObjectiveAssignment = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_TaskForce_r_ObjectiveAssignment_initial;
+UProperty* BoolProperty_TgGame_TgRepInfo_TaskForce_r_bBotOwned = nullptr;
+std::map<int, bool> BoolProperty_TgGame_TgRepInfo_TaskForce_r_bBotOwned_initial;
+UProperty* ByteProperty_TgGame_TgRepInfo_TaskForce_r_eCoalition = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgRepInfo_TaskForce_r_eCoalition_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_TaskForce_r_nCurrentPointCount = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_TaskForce_r_nCurrentPointCount_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_TaskForce_r_nLeaderCharId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_TaskForce_r_nLeaderCharId_initial;
+UProperty* FloatProperty_TgGame_TgRepInfo_TaskForce_r_nLookingForMembers = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgRepInfo_TaskForce_r_nLookingForMembers_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_TaskForce_r_nNumDeaths = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_TaskForce_r_nNumDeaths_initial;
+UProperty* ByteProperty_TgGame_TgRepInfo_TaskForce_r_nTaskForce = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgRepInfo_TaskForce_r_nTaskForce_initial;
+UProperty* IntProperty_TgGame_TgRepInfo_TaskForce_r_nTeamId = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgRepInfo_TaskForce_r_nTeamId_initial;
+UProperty* FloatProperty_TgGame_TgSkydiveTarget_m_LandRadius = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgSkydiveTarget_m_LandRadius_initial;
+UProperty* FloatProperty_TgGame_TgSkydivingVolume_r_PawnGravityModifier = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgSkydivingVolume_r_PawnGravityModifier_initial;
+UProperty* FloatProperty_TgGame_TgSkydivingVolume_r_PawnLaunchForce = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgSkydivingVolume_r_PawnLaunchForce_initial;
+UProperty* FloatProperty_TgGame_TgSkydivingVolume_r_PawnUpForce = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgSkydivingVolume_r_PawnUpForce_initial;
+UProperty* ObjectProperty_TgGame_TgSkydivingVolume_r_SkydiveTarget = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgSkydivingVolume_r_SkydiveTarget_initial;
+UProperty* ObjectProperty_TgGame_TgTeamBeaconManager_r_Beacon = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgTeamBeaconManager_r_Beacon_initial;
+UProperty* IntProperty_TgGame_TgTeamBeaconManager_r_BeaconDestroyed = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgTeamBeaconManager_r_BeaconDestroyed_initial;
+UProperty* ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconHolder = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconHolder_initial;
+UProperty* ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconInfo = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconInfo_initial;
+UProperty* ByteProperty_TgGame_TgTeamBeaconManager_r_BeaconStatus = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgTeamBeaconManager_r_BeaconStatus_initial;
+UProperty* ObjectProperty_TgGame_TgTeamBeaconManager_r_TaskForce = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgTeamBeaconManager_r_TaskForce_initial;
+UProperty* ByteProperty_TgGame_TgTimerManager_r_byEventQue = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgTimerManager_r_byEventQue_initial;
+UProperty* ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex_initial;
+UProperty* FloatProperty_TgGame_TgTimerManager_r_fRemaining = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgTimerManager_r_fRemaining_initial;
+UProperty* FloatProperty_TgGame_TgTimerManager_r_fStartTime = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgTimerManager_r_fStartTime_initial;
 
 
 int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, int param_1, void* param_2, int* param_3, int* param_4, int param_5) {
@@ -1023,12 +1033,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
 			UObject* obj = UObject::GObjObjects()->Data[i];
 			if (obj) {
-				if (strcmp(obj->GetFullName(), "ClassProperty Actor.BasedActors.BaseClass") == 0) {
-					ClassProperty_Actor_BasedActors_BaseClass = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Actor.Base") == 0) {
+					ObjectProperty_Engine_Actor_Base = (UProperty*)obj;
 					continue;
 				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Actor.PhysicsVolumeChange.NewVolume") == 0) {
-					ObjectProperty_Actor_PhysicsVolumeChange_NewVolume = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "ByteProperty Engine.Actor.Physics") == 0) {
+					ByteProperty_Engine_Actor_Physics = (UProperty*)obj;
 					continue;
 				}
 				if (strcmp(obj->GetFullName(), "StructProperty Engine.Actor.Velocity") == 0) {
@@ -1075,8 +1085,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 					BoolProperty_Engine_Actor_bProjTarget = (UProperty*)obj;
 					continue;
 				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty GameFramework.GameExplosionActor.InstigatorController") == 0) {
-					ObjectProperty_GameFramework_GameExplosionActor_InstigatorController = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Actor.Instigator") == 0) {
+					ObjectProperty_Engine_Actor_Instigator = (UProperty*)obj;
 					continue;
 				}
 				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Actor.Owner") == 0) {
@@ -1095,8 +1105,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 					FloatProperty_Engine_CameraActor_FOVAngle = (UProperty*)obj;
 					continue;
 				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgPlayerController.PawnPerformanceTest.bEnablePerfTest") == 0) {
-					BoolProperty_TgPlayerController_PawnPerformanceTest_bEnablePerfTest = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Controller.Pawn") == 0) {
+					ObjectProperty_Engine_Controller_Pawn = (UProperty*)obj;
 					continue;
 				}
 				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Controller.PlayerReplicationInfo") == 0) {
@@ -1155,8 +1165,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 					BoolProperty_Engine_Emitter_bCurrentlyActive = (UProperty*)obj;
 					continue;
 				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.PhysXEmitterSpawnable.ParticleTemplate") == 0) {
-					ObjectProperty_Engine_PhysXEmitterSpawnable_ParticleTemplate = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.EmitterSpawnable.ParticleTemplate") == 0) {
+					ObjectProperty_Engine_EmitterSpawnable_ParticleTemplate = (UProperty*)obj;
 					continue;
 				}
 				if (strcmp(obj->GetFullName(), "BoolProperty Engine.FluidInfluenceActor.bActive") == 0) {
@@ -1259,8 +1269,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 					ObjectProperty_Engine_Inventory_InvManager = (UProperty*)obj;
 					continue;
 				}
-				if (strcmp(obj->GetFullName(), "ClassProperty SeqAct_GiveInventory.InventoryList.InventoryList") == 0) {
-					ClassProperty_SeqAct_GiveInventory_InventoryList_InventoryList = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Inventory.Inventory") == 0) {
+					ObjectProperty_Engine_Inventory_Inventory = (UProperty*)obj;
 					continue;
 				}
 				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.InventoryManager.InventoryChain") == 0) {
@@ -1327,12 +1337,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 					ObjectProperty_Engine_Pawn_DrivenVehicle = (UProperty*)obj;
 					continue;
 				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Pawn.FlashLocationUpdated.bViaReplication") == 0) {
-					BoolProperty_Pawn_FlashLocationUpdated_bViaReplication = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "StructProperty Engine.Pawn.FlashLocation") == 0) {
+					StructProperty_Engine_Pawn_FlashLocation = (UProperty*)obj;
 					continue;
 				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.Pawn.HealthMax") == 0) {
-					IntProperty_Engine_Pawn_HealthMax = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "IntProperty Engine.Pawn.Health") == 0) {
+					IntProperty_Engine_Pawn_Health = (UProperty*)obj;
 					continue;
 				}
 				if (strcmp(obj->GetFullName(), "ClassProperty Engine.Pawn.HitDamageType") == 0) {
@@ -1367,8 +1377,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 					FloatProperty_Engine_Pawn_AirSpeed = (UProperty*)obj;
 					continue;
 				}
-				if (strcmp(obj->GetFullName(), "ClassProperty Engine.Pawn.ControllerClass") == 0) {
-					ClassProperty_Engine_Pawn_ControllerClass = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Pawn.Controller") == 0) {
+					ObjectProperty_Engine_Pawn_Controller = (UProperty*)obj;
 					continue;
 				}
 				if (strcmp(obj->GetFullName(), "FloatProperty Engine.Pawn.GroundSpeed") == 0) {
@@ -1387,12 +1397,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 					FloatProperty_Engine_Pawn_WaterSpeed = (UProperty*)obj;
 					continue;
 				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Pawn.FiringModeUpdated.bViaReplication") == 0) {
-					BoolProperty_Pawn_FiringModeUpdated_bViaReplication = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "ByteProperty Engine.Pawn.FiringMode") == 0) {
+					ByteProperty_Engine_Pawn_FiringMode = (UProperty*)obj;
 					continue;
 				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Pawn.FlashCountUpdated.bViaReplication") == 0) {
-					BoolProperty_Pawn_FlashCountUpdated_bViaReplication = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "ByteProperty Engine.Pawn.FlashCount") == 0) {
+					ByteProperty_Engine_Pawn_FlashCount = (UProperty*)obj;
 					continue;
 				}
 				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Pawn.bIsCrouched") == 0) {
@@ -1611,8 +1621,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 					BoolProperty_Engine_Vehicle_bDriving = (UProperty*)obj;
 					continue;
 				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.SVehicle.DriverViewPitch") == 0) {
-					IntProperty_Engine_SVehicle_DriverViewPitch = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Vehicle.Driver") == 0) {
+					ObjectProperty_Engine_Vehicle_Driver = (UProperty*)obj;
 					continue;
 				}
 				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.WorldInfo.Pauser") == 0) {
@@ -2299,8 +2309,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 					BoolProperty_TgGame_TgPawn_r_bIsHacking = (UProperty*)obj;
 					continue;
 				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsHangingDismounting") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsHanging") == 0) {
+					BoolProperty_TgGame_TgPawn_r_bIsHanging = (UProperty*)obj;
 					continue;
 				}
 				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsHangingDismounting") == 0) {
@@ -2799,8 +2809,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 					IntProperty_TgGame_TgRepInfo_Game_r_nMaxRoundNumber = (UProperty*)obj;
 					continue;
 				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Game.r_nMissionTimerStateChange") == 0) {
-					IntProperty_TgGame_TgRepInfo_Game_r_nMissionTimerStateChange = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgRepInfo_Game.r_nMissionTimerState") == 0) {
+					ByteProperty_TgGame_TgRepInfo_Game_r_nMissionTimerState = (UProperty*)obj;
 					continue;
 				}
 				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Game.r_nMissionTimerStateChange") == 0) {
@@ -3027,8 +3037,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 					ObjectProperty_TgGame_TgSkydivingVolume_r_SkydiveTarget = (UProperty*)obj;
 					continue;
 				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgTeamBeaconManager.r_BeaconDestroyed") == 0) {
-					IntProperty_TgGame_TgTeamBeaconManager_r_BeaconDestroyed = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgTeamBeaconManager.r_Beacon") == 0) {
+					ObjectProperty_TgGame_TgTeamBeaconManager_r_Beacon = (UProperty*)obj;
 					continue;
 				}
 				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgTeamBeaconManager.r_BeaconDestroyed") == 0) {
@@ -3051,8 +3061,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 					ObjectProperty_TgGame_TgTeamBeaconManager_r_TaskForce = (UProperty*)obj;
 					continue;
 				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgTimerManager.r_byEventQueIndex") == 0) {
-					ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex = (UProperty*)obj;
+				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgTimerManager.r_byEventQue") == 0) {
+					ByteProperty_TgGame_TgTimerManager_r_byEventQue = (UProperty*)obj;
 					continue;
 				}
 				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgTimerManager.r_byEventQueIndex") == 0) {
@@ -3076,12 +3086,16 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 	AActor* recent = (AActor*)param_1;
 	int repindex = 0;
 
-	if (strcmp(actor->Class->GetFullName(), "Class Engine.Actor") == 0) {
+	if (
+		strcmp(actor->Class->GetFullName(), "Class Engine.Actor") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgRandomSMActor") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgRandomSMManager") == 0
+	) {
 		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && actor->RemoteRole == 1) {
-			DO_REP(AActor, Base, ClassProperty_Actor_BasedActors_BaseClass);
+			DO_REP(AActor, Base, ObjectProperty_Engine_Actor_Base);
 		}
 		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && (actor->RemoteRole == 1) && actor->bNetInitial || actor->bUpdateSimulatedPosition) {
-			DO_REP(AActor, Physics, ObjectProperty_Actor_PhysicsVolumeChange_NewVolume);
+			DO_REP(AActor, Physics, ByteProperty_Engine_Actor_Physics);
 			DO_REP(AActor, Velocity, StructProperty_Engine_Actor_Velocity);
 		}
 		if ((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) {
@@ -3101,7 +3115,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(AActor, bProjTarget, BoolProperty_Engine_Actor_bProjTarget);
 		}
 		if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bReplicateInstigator) {
-			DO_REP(AActor, Instigator, ObjectProperty_GameFramework_GameExplosionActor_InstigatorController);
+			DO_REP(AActor, Instigator, ObjectProperty_Engine_Actor_Instigator);
 		}
 		if (((actor->bNetOwner && !actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) {
 			DO_REP(AActor, Owner, ObjectProperty_Engine_Actor_Owner);
@@ -3120,7 +3134,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 	}
 	if (strcmp(actor->Class->GetFullName(), "Class Engine.Controller") == 0) {
 		if (actor->bNetDirty && actor->Role == 3) {
-			DO_REP(AController, Pawn, BoolProperty_TgPlayerController_PawnPerformanceTest_bEnablePerfTest);
+			DO_REP(AController, Pawn, ObjectProperty_Engine_Controller_Pawn);
 			DO_REP(AController, PlayerReplicationInfo, ObjectProperty_Engine_Controller_PlayerReplicationInfo);
 		}
 	}
@@ -3159,7 +3173,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 	}
 	if (strcmp(actor->Class->GetFullName(), "Class Engine.EmitterSpawnable") == 0) {
 		if (actor->bNetInitial) {
-			DO_REP(AEmitterSpawnable, ParticleTemplate, ObjectProperty_Engine_PhysXEmitterSpawnable_ParticleTemplate);
+			DO_REP(AEmitterSpawnable, ParticleTemplate, ObjectProperty_Engine_EmitterSpawnable_ParticleTemplate);
 		}
 	}
 	if (strcmp(actor->Class->GetFullName(), "Class Engine.FluidInfluenceActor") == 0) {
@@ -3173,7 +3187,10 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(AFogVolumeDensityInfo, bEnabled, BoolProperty_Engine_FogVolumeDensityInfo_bEnabled);
 		}
 	}
-	if (strcmp(actor->Class->GetFullName(), "Class Engine.GameReplicationInfo") == 0) {
+	if (
+		strcmp(actor->Class->GetFullName(), "Class Engine.GameReplicationInfo") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgRepInfo_Game") == 0
+	) {
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(AGameReplicationInfo, MatchID, IntProperty_Engine_GameReplicationInfo_MatchID);
 			DO_REP(AGameReplicationInfo, Winner, ObjectProperty_Engine_GameReplicationInfo_Winner);
@@ -3209,7 +3226,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 	if (strcmp(actor->Class->GetFullName(), "Class Engine.Inventory") == 0) {
 		if (((actor->Role == 3) && actor->bNetDirty) && actor->bNetOwner) {
 			DO_REP(AInventory, InvManager, ObjectProperty_Engine_Inventory_InvManager);
-			DO_REP(AInventory, Inventory, ClassProperty_SeqAct_GiveInventory_InventoryList_InventoryList);
+			DO_REP(AInventory, Inventory, ObjectProperty_Engine_Inventory_Inventory);
 		}
 	}
 	if (strcmp(actor->Class->GetFullName(), "Class Engine.InventoryManager") == 0) {
@@ -3259,11 +3276,15 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ANxForceField, bForceActive, BoolProperty_Engine_NxForceField_bForceActive);
 		}
 	}
-	if (strcmp(actor->Class->GetFullName(), "Class Engine.Pawn") == 0) {
+	if (
+		strcmp(actor->Class->GetFullName(), "Class Engine.Pawn") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgPawn") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgPawn_Character") == 0
+	) {
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(APawn, DrivenVehicle, ObjectProperty_Engine_Pawn_DrivenVehicle);
-			DO_REP(APawn, FlashLocation, BoolProperty_Pawn_FlashLocationUpdated_bViaReplication);
-			DO_REP(APawn, Health, IntProperty_Engine_Pawn_HealthMax);
+			DO_REP(APawn, FlashLocation, StructProperty_Engine_Pawn_FlashLocation);
+			DO_REP(APawn, Health, IntProperty_Engine_Pawn_Health);
 			DO_REP(APawn, HitDamageType, ClassProperty_Engine_Pawn_HitDamageType);
 			DO_REP(APawn, PlayerReplicationInfo, ObjectProperty_Engine_Pawn_PlayerReplicationInfo);
 			DO_REP(APawn, TakeHitLocation, StructProperty_Engine_Pawn_TakeHitLocation);
@@ -3274,15 +3295,15 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(APawn, AccelRate, FloatProperty_Engine_Pawn_AccelRate);
 			DO_REP(APawn, AirControl, FloatProperty_Engine_Pawn_AirControl);
 			DO_REP(APawn, AirSpeed, FloatProperty_Engine_Pawn_AirSpeed);
-			DO_REP(APawn, Controller, ClassProperty_Engine_Pawn_ControllerClass);
+			DO_REP(APawn, Controller, ObjectProperty_Engine_Pawn_Controller);
 			DO_REP(APawn, GroundSpeed, FloatProperty_Engine_Pawn_GroundSpeed);
 			DO_REP(APawn, InvManager, ObjectProperty_Engine_Pawn_InvManager);
 			DO_REP(APawn, JumpZ, FloatProperty_Engine_Pawn_JumpZ);
 			DO_REP(APawn, WaterSpeed, FloatProperty_Engine_Pawn_WaterSpeed);
 		}
 		if ((actor->bNetDirty && !actor->bNetOwner || FALSE) && actor->Role == 3) {
-			DO_REP(APawn, FiringMode, BoolProperty_Pawn_FiringModeUpdated_bViaReplication);
-			DO_REP(APawn, FlashCount, BoolProperty_Pawn_FlashCountUpdated_bViaReplication);
+			DO_REP(APawn, FiringMode, ByteProperty_Engine_Pawn_FiringMode);
+			DO_REP(APawn, FlashCount, ByteProperty_Engine_Pawn_FlashCount);
 			DO_REP(APawn, bIsCrouched, BoolProperty_Engine_Pawn_bIsCrouched);
 		}
 		if ((actor->bTearOff && actor->bNetDirty) && actor->Role == 3) {
@@ -3413,7 +3434,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(AVehicle, bDriving, BoolProperty_Engine_Vehicle_bDriving);
 		}
 		if ((actor->bNetDirty && (actor->bNetOwner || ((AVehicle*)actor)->Driver == NULL) || !((AVehicle*)actor)->Driver->bHidden) && actor->Role == 3) {
-			DO_REP(AVehicle, Driver, IntProperty_Engine_SVehicle_DriverViewPitch);
+			DO_REP(AVehicle, Driver, ObjectProperty_Engine_Vehicle_Driver);
 		}
 	}
 	if (strcmp(actor->Class->GetFullName(), "Class Engine.WorldInfo") == 0) {
@@ -3430,52 +3451,11 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgChestActor, r_eChestState, ByteProperty_TgGame_TgChestActor_r_eChestState);
 		}
 	}
-
-	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgDeploy_Beacon") == 0) {
-		if (actor->Role == 3) {
-			DO_REP(ATgDeployable, r_bDelayDeployed, BoolProperty_TgGame_TgDeployable_r_bDelayDeployed);
-			DO_REP(ATgDeployable, r_nReplicateDestroyIt, IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt);
-		}
-		if ((actor->Role == 3) && actor->bNetInitial) {
-			DO_REP(ATgDeployable, r_DRI, ObjectProperty_TgGame_TgDeployable_r_DRI);
-			DO_REP(ATgDeployable, r_bInitialIsEnemy, BoolProperty_TgGame_TgDeployable_r_bInitialIsEnemy);
-			DO_REP(ATgDeployable, r_bTakeDamage, BoolProperty_TgGame_TgDeployable_r_bTakeDamage);
-			DO_REP(ATgDeployable, r_fClientProximityRadius, FloatProperty_TgGame_TgDeployable_r_fClientProximityRadius);
-			DO_REP(ATgDeployable, r_fCurrentDeployTime, FloatProperty_TgGame_TgDeployable_r_fCurrentDeployTime);
-			DO_REP(ATgDeployable, r_nDeployableId, IntProperty_TgGame_TgDeployable_r_nDeployableId);
-			DO_REP(ATgDeployable, r_nPhysicalType, IntProperty_TgGame_TgDeployable_r_nPhysicalType);
-			DO_REP(ATgDeployable, r_nTickingTime, IntProperty_TgGame_TgDeployable_r_nTickingTime);
-		}
-		if ((actor->Role == 3) && actor->bNetOwner) {
-			DO_REP(ATgDeployable, r_Owner, ObjectProperty_TgGame_TgDeployable_r_Owner);
-			DO_REP(ATgDeployable, r_nOwnerFireMode, IntProperty_TgGame_TgDeployable_r_nOwnerFireMode);
-		}
-	}
-
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgDeploy_BeaconEntrance") == 0) {
-		if (actor->Role == 3) {
-			DO_REP(ATgDeployable, r_bDelayDeployed, BoolProperty_TgGame_TgDeployable_r_bDelayDeployed);
-			DO_REP(ATgDeployable, r_nReplicateDestroyIt, IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt);
-		}
-		if ((actor->Role == 3) && actor->bNetInitial) {
-			DO_REP(ATgDeployable, r_DRI, ObjectProperty_TgGame_TgDeployable_r_DRI);
-			DO_REP(ATgDeployable, r_bInitialIsEnemy, BoolProperty_TgGame_TgDeployable_r_bInitialIsEnemy);
-			DO_REP(ATgDeployable, r_bTakeDamage, BoolProperty_TgGame_TgDeployable_r_bTakeDamage);
-			DO_REP(ATgDeployable, r_fClientProximityRadius, FloatProperty_TgGame_TgDeployable_r_fClientProximityRadius);
-			DO_REP(ATgDeployable, r_fCurrentDeployTime, FloatProperty_TgGame_TgDeployable_r_fCurrentDeployTime);
-			DO_REP(ATgDeployable, r_nDeployableId, IntProperty_TgGame_TgDeployable_r_nDeployableId);
-			DO_REP(ATgDeployable, r_nPhysicalType, IntProperty_TgGame_TgDeployable_r_nPhysicalType);
-			DO_REP(ATgDeployable, r_nTickingTime, IntProperty_TgGame_TgDeployable_r_nTickingTime);
-		}
-		if ((actor->Role == 3) && actor->bNetOwner) {
-			DO_REP(ATgDeployable, r_Owner, ObjectProperty_TgGame_TgDeployable_r_Owner);
-			DO_REP(ATgDeployable, r_nOwnerFireMode, IntProperty_TgGame_TgDeployable_r_nOwnerFireMode);
-		}
 		if (actor->Role == 3) {
 			DO_REP(ATgDeploy_BeaconEntrance, r_bActive, BoolProperty_TgGame_TgDeploy_BeaconEntrance_r_bActive);
 		}
 	}
-
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgDeploy_DestructibleCover") == 0) {
 		if (actor->Role == 3) {
 			DO_REP(ATgDeploy_DestructibleCover, r_bHasFired, BoolProperty_TgGame_TgDeploy_DestructibleCover_r_bHasFired);
@@ -3487,7 +3467,10 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgDeploy_Sensor, r_nTouchedPlayerCount, IntProperty_TgGame_TgDeploy_Sensor_r_nTouchedPlayerCount);
 		}
 	}
-	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgDeployable") == 0) {
+	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgDeployable") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgDeploy_Beacon") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgDeploy_BeaconEntrance") == 0
+	) {
 		if (actor->Role == 3) {
 			DO_REP(ATgDeployable, r_bDelayDeployed, BoolProperty_TgGame_TgDeployable_r_bDelayDeployed);
 			DO_REP(ATgDeployable, r_nReplicateDestroyIt, IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt);
@@ -3665,67 +3648,10 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgObjectiveAssignment, r_eState, ByteProperty_TgGame_TgObjectiveAssignment_r_eState);
 		}
 	}
-	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgPawn") == 0) {
-		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && actor->RemoteRole == 1) {
-			DO_REP(AActor, Base, ClassProperty_Actor_BasedActors_BaseClass);
-		}
-		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && (actor->RemoteRole == 1) && actor->bNetInitial || actor->bUpdateSimulatedPosition) {
-			DO_REP(AActor, Physics, ObjectProperty_Actor_PhysicsVolumeChange_NewVolume);
-			DO_REP(AActor, Velocity, StructProperty_Engine_Actor_Velocity);
-		}
-		if ((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) {
-			DO_REP(AActor, RemoteRole, ByteProperty_Engine_Actor_RemoteRole);
-			DO_REP(AActor, Role, ByteProperty_Engine_Actor_Role);
-			DO_REP(AActor, bNetOwner, BoolProperty_Engine_Actor_bNetOwner);
-			DO_REP(AActor, bTearOff, BoolProperty_Engine_Actor_bTearOff);
-		}
-		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) {
-			DO_REP(AActor, DrawScale, FloatProperty_Engine_Actor_DrawScale);
-			DO_REP(AActor, ReplicatedCollisionType, ByteProperty_Engine_Actor_ReplicatedCollisionType);
-			DO_REP(AActor, bCollideActors, BoolProperty_Engine_Actor_bCollideActors);
-			DO_REP(AActor, bCollideWorld, BoolProperty_Engine_Actor_bCollideWorld);
-		}
-		if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bCollideActors || actor->bCollideWorld) {
-			DO_REP(AActor, bBlockActors, BoolProperty_Engine_Actor_bBlockActors);
-			DO_REP(AActor, bProjTarget, BoolProperty_Engine_Actor_bProjTarget);
-		}
-		if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bReplicateInstigator) {
-			DO_REP(AActor, Instigator, ObjectProperty_GameFramework_GameExplosionActor_InstigatorController);
-		}
-		if (((actor->bNetOwner && !actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) {
-			DO_REP(AActor, Owner, ObjectProperty_Engine_Actor_Owner);
-		}
-		if (actor->bNetDirty && actor->Role == 3) {
-			DO_REP(APawn, DrivenVehicle, ObjectProperty_Engine_Pawn_DrivenVehicle);
-			DO_REP(APawn, FlashLocation, BoolProperty_Pawn_FlashLocationUpdated_bViaReplication);
-			DO_REP(APawn, Health, IntProperty_Engine_Pawn_HealthMax);
-			DO_REP(APawn, HitDamageType, ClassProperty_Engine_Pawn_HitDamageType);
-			DO_REP(APawn, PlayerReplicationInfo, ObjectProperty_Engine_Pawn_PlayerReplicationInfo);
-			DO_REP(APawn, TakeHitLocation, StructProperty_Engine_Pawn_TakeHitLocation);
-			DO_REP(APawn, bIsWalking, BoolProperty_Engine_Pawn_bIsWalking);
-			DO_REP(APawn, bSimulateGravity, BoolProperty_Engine_Pawn_bSimulateGravity);
-		}
-		if ((actor->bNetDirty && actor->bNetOwner) && actor->Role == 3) {
-			DO_REP(APawn, AccelRate, FloatProperty_Engine_Pawn_AccelRate);
-			DO_REP(APawn, AirControl, FloatProperty_Engine_Pawn_AirControl);
-			DO_REP(APawn, AirSpeed, FloatProperty_Engine_Pawn_AirSpeed);
-			DO_REP(APawn, Controller, ClassProperty_Engine_Pawn_ControllerClass);
-			DO_REP(APawn, GroundSpeed, FloatProperty_Engine_Pawn_GroundSpeed);
-			DO_REP(APawn, InvManager, ObjectProperty_Engine_Pawn_InvManager);
-			DO_REP(APawn, JumpZ, FloatProperty_Engine_Pawn_JumpZ);
-			DO_REP(APawn, WaterSpeed, FloatProperty_Engine_Pawn_WaterSpeed);
-		}
-		if ((actor->bNetDirty && !actor->bNetOwner || FALSE) && actor->Role == 3) {
-			DO_REP(APawn, FiringMode, BoolProperty_Pawn_FiringModeUpdated_bViaReplication);
-			DO_REP(APawn, FlashCount, BoolProperty_Pawn_FlashCountUpdated_bViaReplication);
-			DO_REP(APawn, bIsCrouched, BoolProperty_Engine_Pawn_bIsCrouched);
-		}
-		if ((actor->bTearOff && actor->bNetDirty) && actor->Role == 3) {
-			DO_REP(APawn, TearOffMomentum, StructProperty_Engine_Pawn_TearOffMomentum);
-		}
-		if ((!actor->bNetOwner || FALSE) && actor->Role == 3) {
-			DO_REP(APawn, RemoteViewPitch, ByteProperty_Engine_Pawn_RemoteViewPitch);
-		}
+	if (
+		strcmp(actor->Class->GetFullName(), "Class TgGame.TgPawn") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgPawn_Character") == 0
+	) {
 		if ((actor->Role == 3) && actor->bNetInitial) {
 			DO_REP(ATgPawn, r_bIsBot, BoolProperty_TgGame_TgPawn_r_bIsBot);
 			DO_REP(ATgPawn, r_bIsHenchman, BoolProperty_TgGame_TgPawn_r_bIsHenchman);
@@ -3816,8 +3742,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn, r_bIsGrappleDismounting, BoolProperty_TgGame_TgPawn_r_bIsGrappleDismounting);
 			DO_REP(ATgPawn, r_bIsHacked, BoolProperty_TgGame_TgPawn_r_bIsHacked);
 			DO_REP(ATgPawn, r_bIsHacking, BoolProperty_TgGame_TgPawn_r_bIsHacking);
-			DO_REP(ATgPawn, r_bIsHanging, BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting);
-			DO_REP(ATgPawn, r_bIsHanging, BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting);
+			DO_REP(ATgPawn, r_bIsHanging, BoolProperty_TgGame_TgPawn_r_bIsHanging);
+			DO_REP(ATgPawn, r_bIsHangingDismounting, BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting);
 			DO_REP(ATgPawn, r_bIsInSnipeScope, BoolProperty_TgGame_TgPawn_r_bIsInSnipeScope);
 			DO_REP(ATgPawn, r_bIsRappelling, BoolProperty_TgGame_TgPawn_r_bIsRappelling);
 			DO_REP(ATgPawn, r_bIsStealthed, BoolProperty_TgGame_TgPawn_r_bIsStealthed);
@@ -3889,220 +3815,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP_ARRAY(0xFF, ATgPawn_CTR, r_nMorphSettings, IntProperty_TgGame_TgPawn_CTR_r_nMorphSettings);
 		}
 	}
-
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgPawn_Character") == 0) {
-		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && actor->RemoteRole == 1) {
-			DO_REP(AActor, Base, ClassProperty_Actor_BasedActors_BaseClass);
-		}
-		// if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && (actor->RemoteRole == 1) && actor->bNetInitial || actor->bUpdateSimulatedPosition) {
-		// 	DO_REP(AActor, Physics, ObjectProperty_Actor_PhysicsVolumeChange_NewVolume);
-		// 	DO_REP(AActor, Velocity, StructProperty_Engine_Actor_Velocity);
-		// }
-		if ((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) {
-			DO_REP(AActor, RemoteRole, ByteProperty_Engine_Actor_RemoteRole);
-			DO_REP(AActor, Role, ByteProperty_Engine_Actor_Role);
-			DO_REP(AActor, bNetOwner, BoolProperty_Engine_Actor_bNetOwner);
-			DO_REP(AActor, bTearOff, BoolProperty_Engine_Actor_bTearOff);
-		}
-		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) {
-			DO_REP(AActor, DrawScale, FloatProperty_Engine_Actor_DrawScale);
-			DO_REP(AActor, ReplicatedCollisionType, ByteProperty_Engine_Actor_ReplicatedCollisionType);
-			DO_REP(AActor, bCollideActors, BoolProperty_Engine_Actor_bCollideActors);
-			DO_REP(AActor, bCollideWorld, BoolProperty_Engine_Actor_bCollideWorld);
-		}
-		if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bCollideActors || actor->bCollideWorld) {
-			DO_REP(AActor, bBlockActors, BoolProperty_Engine_Actor_bBlockActors);
-			DO_REP(AActor, bProjTarget, BoolProperty_Engine_Actor_bProjTarget);
-		}
-		if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bReplicateInstigator) {
-			DO_REP(AActor, Instigator, ObjectProperty_GameFramework_GameExplosionActor_InstigatorController);
-		}
-		if (((actor->bNetOwner && !actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) {
-			DO_REP(AActor, Owner, ObjectProperty_Engine_Actor_Owner);
-		}
-		if (actor->bNetDirty && actor->Role == 3) {
-			DO_REP(APawn, DrivenVehicle, ObjectProperty_Engine_Pawn_DrivenVehicle);
-			DO_REP(APawn, FlashLocation, BoolProperty_Pawn_FlashLocationUpdated_bViaReplication);
-			DO_REP(APawn, Health, IntProperty_Engine_Pawn_HealthMax);
-			DO_REP(APawn, HitDamageType, ClassProperty_Engine_Pawn_HitDamageType);
-			DO_REP(APawn, PlayerReplicationInfo, ObjectProperty_Engine_Pawn_PlayerReplicationInfo);
-			DO_REP(APawn, TakeHitLocation, StructProperty_Engine_Pawn_TakeHitLocation);
-			DO_REP(APawn, bIsWalking, BoolProperty_Engine_Pawn_bIsWalking);
-			DO_REP(APawn, bSimulateGravity, BoolProperty_Engine_Pawn_bSimulateGravity);
-		}
-		if ((actor->bNetDirty && actor->bNetOwner) && actor->Role == 3) {
-			DO_REP(APawn, AccelRate, FloatProperty_Engine_Pawn_AccelRate);
-			DO_REP(APawn, AirControl, FloatProperty_Engine_Pawn_AirControl);
-			DO_REP(APawn, AirSpeed, FloatProperty_Engine_Pawn_AirSpeed);
-			DO_REP(APawn, Controller, ClassProperty_Engine_Pawn_ControllerClass);
-			DO_REP(APawn, GroundSpeed, FloatProperty_Engine_Pawn_GroundSpeed);
-			DO_REP(APawn, InvManager, ObjectProperty_Engine_Pawn_InvManager);
-			DO_REP(APawn, JumpZ, FloatProperty_Engine_Pawn_JumpZ);
-			DO_REP(APawn, WaterSpeed, FloatProperty_Engine_Pawn_WaterSpeed);
-		}
-		if ((actor->bNetDirty && !actor->bNetOwner || FALSE) && actor->Role == 3) {
-			DO_REP(APawn, FiringMode, BoolProperty_Pawn_FiringModeUpdated_bViaReplication);
-			DO_REP(APawn, FlashCount, BoolProperty_Pawn_FlashCountUpdated_bViaReplication);
-			DO_REP(APawn, bIsCrouched, BoolProperty_Engine_Pawn_bIsCrouched);
-		}
-		if ((actor->bTearOff && actor->bNetDirty) && actor->Role == 3) {
-			DO_REP(APawn, TearOffMomentum, StructProperty_Engine_Pawn_TearOffMomentum);
-		}
-		if ((!actor->bNetOwner || FALSE) && actor->Role == 3) {
-			DO_REP(APawn, RemoteViewPitch, ByteProperty_Engine_Pawn_RemoteViewPitch);
-		}
-		if ((actor->Role == 3) && actor->bNetInitial) {
-			DO_REP(ATgPawn, r_bIsBot, BoolProperty_TgGame_TgPawn_r_bIsBot);
-			DO_REP(ATgPawn, r_bIsHenchman, BoolProperty_TgGame_TgPawn_r_bIsHenchman);
-			DO_REP(ATgPawn, r_bNeedPlaySpawnFx, BoolProperty_TgGame_TgPawn_r_bNeedPlaySpawnFx);
-			DO_REP(ATgPawn, r_fMakeVisibleIncreased, FloatProperty_TgGame_TgPawn_r_fMakeVisibleIncreased);
-			DO_REP(ATgPawn, r_nAllianceId, IntProperty_TgGame_TgPawn_r_nAllianceId);
-			DO_REP(ATgPawn, r_nBodyMeshAsmId, IntProperty_TgGame_TgPawn_r_nBodyMeshAsmId);
-			DO_REP(ATgPawn, r_nBotRankValueId, IntProperty_TgGame_TgPawn_r_nBotRankValueId);
-			DO_REP_ARRAY(0x20, ATgPawn, r_nFlashEvent, IntProperty_TgGame_TgPawn_r_nFlashEvent);
-			DO_REP_ARRAY(0x20, ATgPawn, r_nFlashFireInfo, IntProperty_TgGame_TgPawn_r_nFlashFireInfo);
-			DO_REP(ATgPawn, r_nFlashQueIndex, IntProperty_TgGame_TgPawn_r_nFlashQueIndex);
-			DO_REP(ATgPawn, r_nPawnId, IntProperty_TgGame_TgPawn_r_nPawnId);
-			DO_REP(ATgPawn, r_nPhysicalType, IntProperty_TgGame_TgPawn_r_nPhysicalType);
-			DO_REP(ATgPawn, r_nPreyProfileType, IntProperty_TgGame_TgPawn_r_nPreyProfileType);
-			DO_REP(ATgPawn, r_nProfileId, IntProperty_TgGame_TgPawn_r_nProfileId);
-			DO_REP(ATgPawn, r_nProfileTypeValueId, IntProperty_TgGame_TgPawn_r_nProfileTypeValueId);
-			DO_REP(ATgPawn, r_nSoundGroupId, IntProperty_TgGame_TgPawn_r_nSoundGroupId);
-			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashLocation, StructProperty_TgGame_TgPawn_r_vFlashLocation);
-			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashRayDir, StructProperty_TgGame_TgPawn_r_vFlashRayDir);
-			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashRefireTime, FloatProperty_TgGame_TgPawn_r_vFlashRefireTime);
-			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashSituationalAttack, IntProperty_TgGame_TgPawn_r_vFlashSituationalAttack);
-		}
-		if ((actor->Role == 3) && !actor->bNetOwner) {
-			DO_REP_ARRAY(0x19, ATgPawn, r_EquipDeviceInfo, StructProperty_TgGame_TgPawn_r_EquipDeviceInfo);
-			DO_REP(ATgPawn, r_bInitialIsEnemy, BoolProperty_TgGame_TgPawn_r_bInitialIsEnemy);
-			DO_REP(ATgPawn, r_bMadeSound, ByteProperty_TgGame_TgPawn_r_bMadeSound);
-			DO_REP(ATgPawn, r_eDesiredInHand, ByteProperty_TgGame_TgPawn_r_eDesiredInHand);
-			DO_REP(ATgPawn, r_eEquippedInHandMode, IntProperty_TgGame_TgPawn_r_eEquippedInHandMode);
-			DO_REP(ATgPawn, r_nReplicateHit, IntProperty_TgGame_TgPawn_r_nReplicateHit);
-		}
-		if ((actor->Role == 3) && actor->bNetOwner) {
-			DO_REP(ATgPawn, r_ControlPawn, ObjectProperty_TgGame_TgPawn_r_ControlPawn);
-			DO_REP(ATgPawn, r_CurrentOmegaVolume, ObjectProperty_TgGame_TgPawn_r_CurrentOmegaVolume);
-			DO_REP(ATgPawn, r_CurrentSubzoneBilboardVol, ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneBilboardVol);
-			DO_REP(ATgPawn, r_CurrentSubzoneVol, ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneVol);
-			DO_REP_ARRAY(0x2, ATgPawn, r_ScannerSettings, StructProperty_TgGame_TgPawn_r_ScannerSettings);
-			DO_REP(ATgPawn, r_UIClockState, ByteProperty_TgGame_TgPawn_r_UIClockState);
-			DO_REP(ATgPawn, r_UIClockTime, FloatProperty_TgGame_TgPawn_r_UIClockTime);
-			DO_REP(ATgPawn, r_UITextBox1MessageID, IntProperty_TgGame_TgPawn_r_UITextBox1MessageID);
-			DO_REP(ATgPawn, r_UITextBox1Packet, ByteProperty_TgGame_TgPawn_r_UITextBox1Packet);
-			DO_REP(ATgPawn, r_UITextBox1Time, FloatProperty_TgGame_TgPawn_r_UITextBox1Time);
-			DO_REP(ATgPawn, r_UITextBox2MessageID, IntProperty_TgGame_TgPawn_r_UITextBox2MessageID);
-			DO_REP(ATgPawn, r_UITextBox2Packet, ByteProperty_TgGame_TgPawn_r_UITextBox2Packet);
-			DO_REP(ATgPawn, r_UITextBox2Time, FloatProperty_TgGame_TgPawn_r_UITextBox2Time);
-			DO_REP(ATgPawn, r_bAllowAddMoralePoints, BoolProperty_TgGame_TgPawn_r_bAllowAddMoralePoints);
-			DO_REP(ATgPawn, r_bDisableAllDevices, BoolProperty_TgGame_TgPawn_r_bDisableAllDevices);
-			DO_REP(ATgPawn, r_bEnableCrafting, BoolProperty_TgGame_TgPawn_r_bEnableCrafting);
-			DO_REP(ATgPawn, r_bEnableEquip, BoolProperty_TgGame_TgPawn_r_bEnableEquip);
-			DO_REP(ATgPawn, r_bEnableSkills, BoolProperty_TgGame_TgPawn_r_bEnableSkills);
-			DO_REP(ATgPawn, r_bInCombatFlag, BoolProperty_TgGame_TgPawn_r_bInCombatFlag);
-			DO_REP(ATgPawn, r_bInGlobalOffhandCooldown, BoolProperty_TgGame_TgPawn_r_bInGlobalOffhandCooldown);
-			DO_REP(ATgPawn, r_fCurrentPowerPool, FloatProperty_TgGame_TgPawn_r_fCurrentPowerPool);
-			DO_REP(ATgPawn, r_fCurrentServerMoralePoints, FloatProperty_TgGame_TgPawn_r_fCurrentServerMoralePoints);
-			DO_REP(ATgPawn, r_fMaxControlRange, FloatProperty_TgGame_TgPawn_r_fMaxControlRange);
-			DO_REP(ATgPawn, r_fMaxPowerPool, FloatProperty_TgGame_TgPawn_r_fMaxPowerPool);
-			DO_REP(ATgPawn, r_fMoraleRechargeRate, FloatProperty_TgGame_TgPawn_r_fMoraleRechargeRate);
-			DO_REP(ATgPawn, r_fRequiredMoralePoints, FloatProperty_TgGame_TgPawn_r_fRequiredMoralePoints);
-			DO_REP(ATgPawn, r_fSkillRating, FloatProperty_TgGame_TgPawn_r_fSkillRating);
-			DO_REP(ATgPawn, r_nCurrency, IntProperty_TgGame_TgPawn_r_nCurrency);
-			DO_REP(ATgPawn, r_nHZPoints, IntProperty_TgGame_TgPawn_r_nHZPoints);
-			DO_REP(ATgPawn, r_nMoraleDeviceSlot, IntProperty_TgGame_TgPawn_r_nMoraleDeviceSlot);
-			DO_REP(ATgPawn, r_nRestDeviceSlot, IntProperty_TgGame_TgPawn_r_nRestDeviceSlot);
-			DO_REP(ATgPawn, r_nToken, IntProperty_TgGame_TgPawn_r_nToken);
-			DO_REP(ATgPawn, r_nXp, IntProperty_TgGame_TgPawn_r_nXp);
-		}
-		if ((actor->Role == 3) && actor->bNetDirty) {
-			DO_REP(ATgPawn, r_DistanceToPushback, FloatProperty_TgGame_TgPawn_r_DistanceToPushback);
-			DO_REP(ATgPawn, r_EffectManager, ObjectProperty_TgGame_TgPawn_r_EffectManager);
-			DO_REP(ATgPawn, r_FlightAcceleration, FloatProperty_TgGame_TgPawn_r_FlightAcceleration);
-			DO_REP(ATgPawn, r_HangingRotation, StructProperty_TgGame_TgPawn_r_HangingRotation);
-			DO_REP(ATgPawn, r_Owner, ObjectProperty_TgGame_TgPawn_r_Owner);
-			DO_REP(ATgPawn, r_Pet, ObjectProperty_TgGame_TgPawn_r_Pet);
-			DO_REP(ATgPawn, r_PlayAnimation, StructProperty_TgGame_TgPawn_r_PlayAnimation);
-			DO_REP(ATgPawn, r_PushbackDirection, StructProperty_TgGame_TgPawn_r_PushbackDirection);
-			DO_REP(ATgPawn, r_Target, ObjectProperty_TgGame_TgPawn_r_Target);
-			DO_REP(ATgPawn, r_TargetActor, ObjectProperty_TgGame_TgPawn_r_TargetActor);
-			DO_REP(ATgPawn, r_aDebugDestination, ObjectProperty_TgGame_TgPawn_r_aDebugDestination);
-			DO_REP(ATgPawn, r_aDebugNextNav, ObjectProperty_TgGame_TgPawn_r_aDebugNextNav);
-			DO_REP(ATgPawn, r_aDebugTarget, ObjectProperty_TgGame_TgPawn_r_aDebugTarget);
-			DO_REP(ATgPawn, r_bAimType, ByteProperty_TgGame_TgPawn_r_bAimType);
-			DO_REP(ATgPawn, r_bAimingMode, BoolProperty_TgGame_TgPawn_r_bAimingMode);
-			DO_REP(ATgPawn, r_bCallingForHelp, BoolProperty_TgGame_TgPawn_r_bCallingForHelp);
-			DO_REP(ATgPawn, r_bIsAFK, BoolProperty_TgGame_TgPawn_r_bIsAFK);
-			DO_REP(ATgPawn, r_bIsAnimInStrafeMode, BoolProperty_TgGame_TgPawn_r_bIsAnimInStrafeMode);
-			DO_REP(ATgPawn, r_bIsCrafting, BoolProperty_TgGame_TgPawn_r_bIsCrafting);
-			DO_REP(ATgPawn, r_bIsCrewing, BoolProperty_TgGame_TgPawn_r_bIsCrewing);
-			DO_REP(ATgPawn, r_bIsDecoy, BoolProperty_TgGame_TgPawn_r_bIsDecoy);
-			DO_REP(ATgPawn, r_bIsGrappleDismounting, BoolProperty_TgGame_TgPawn_r_bIsGrappleDismounting);
-			DO_REP(ATgPawn, r_bIsHacked, BoolProperty_TgGame_TgPawn_r_bIsHacked);
-			DO_REP(ATgPawn, r_bIsHacking, BoolProperty_TgGame_TgPawn_r_bIsHacking);
-			DO_REP(ATgPawn, r_bIsHanging, BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting);
-			DO_REP(ATgPawn, r_bIsHanging, BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting);
-			DO_REP(ATgPawn, r_bIsInSnipeScope, BoolProperty_TgGame_TgPawn_r_bIsInSnipeScope);
-			DO_REP(ATgPawn, r_bIsRappelling, BoolProperty_TgGame_TgPawn_r_bIsRappelling);
-			DO_REP(ATgPawn, r_bIsStealthed, BoolProperty_TgGame_TgPawn_r_bIsStealthed);
-			DO_REP(ATgPawn, r_bJumpedFromHanging, BoolProperty_TgGame_TgPawn_r_bJumpedFromHanging);
-			DO_REP(ATgPawn, r_bPostureIgnoreTransition, BoolProperty_TgGame_TgPawn_r_bPostureIgnoreTransition);
-			DO_REP(ATgPawn, r_bResistTagging, BoolProperty_TgGame_TgPawn_r_bResistTagging);
-			DO_REP(ATgPawn, r_bShouldKnockDownAnimFaceDown, BoolProperty_TgGame_TgPawn_r_bShouldKnockDownAnimFaceDown);
-			DO_REP(ATgPawn, r_bTagEnemy, BoolProperty_TgGame_TgPawn_r_bTagEnemy);
-			DO_REP(ATgPawn, r_bUsingBinoculars, BoolProperty_TgGame_TgPawn_r_bUsingBinoculars);
-			DO_REP(ATgPawn, r_eCurrentStunType, ByteProperty_TgGame_TgPawn_r_eCurrentStunType);
-			DO_REP(ATgPawn, r_eDeathReason, ByteProperty_TgGame_TgPawn_r_eDeathReason);
-			DO_REP(ATgPawn, r_eEmoteLength, IntProperty_TgGame_TgPawn_r_eEmoteLength);
-			DO_REP(ATgPawn, r_eEmoteRepnotify, IntProperty_TgGame_TgPawn_r_eEmoteRepnotify);
-			DO_REP(ATgPawn, r_eEmoteUpdate, IntProperty_TgGame_TgPawn_r_eEmoteUpdate);
-			DO_REP(ATgPawn, r_ePosture, ByteProperty_TgGame_TgPawn_r_ePosture);
-			DO_REP(ATgPawn, r_fDeployRate, FloatProperty_TgGame_TgPawn_r_fDeployRate);
-			DO_REP(ATgPawn, r_fFrictionMultiplier, FloatProperty_TgGame_TgPawn_r_fFrictionMultiplier);
-			DO_REP(ATgPawn, r_fGravityZModifier, FloatProperty_TgGame_TgPawn_r_fGravityZModifier);
-			DO_REP(ATgPawn, r_fKnockDownTimeRemaining, FloatProperty_TgGame_TgPawn_r_fKnockDownTimeRemaining);
-			DO_REP(ATgPawn, r_fMakeVisibleFadeRate, FloatProperty_TgGame_TgPawn_r_fMakeVisibleFadeRate);
-			DO_REP(ATgPawn, r_fPostureRateScale, FloatProperty_TgGame_TgPawn_r_fPostureRateScale);
-			DO_REP(ATgPawn, r_fRappelGravityModifier, FloatProperty_TgGame_TgPawn_r_fRappelGravityModifier);
-			DO_REP(ATgPawn, r_fStealthTransitionTime, FloatProperty_TgGame_TgPawn_r_fStealthTransitionTime);
-			DO_REP(ATgPawn, r_fWeightBonus, IntProperty_TgGame_TgPawn_r_fWeightBonus);
-			DO_REP(ATgPawn, r_iKnockDownFlash, IntProperty_TgGame_TgPawn_r_iKnockDownFlash);
-			DO_REP(ATgPawn, r_nApplyStealth, IntProperty_TgGame_TgPawn_r_nApplyStealth);
-			DO_REP(ATgPawn, r_nBotSoundCueId, IntProperty_TgGame_TgPawn_r_nBotSoundCueId);
-			DO_REP(ATgPawn, r_nDebugAggroRange, IntProperty_TgGame_TgPawn_r_nDebugAggroRange);
-			DO_REP(ATgPawn, r_nDebugFOV, IntProperty_TgGame_TgPawn_r_nDebugFOV);
-			DO_REP(ATgPawn, r_nDebugHearingRange, IntProperty_TgGame_TgPawn_r_nDebugHearingRange);
-			DO_REP(ATgPawn, r_nDebugSightRange, IntProperty_TgGame_TgPawn_r_nDebugSightRange);
-			DO_REP(ATgPawn, r_nGenericAIEventIndex, IntProperty_TgGame_TgPawn_r_nGenericAIEventIndex);
-			DO_REP(ATgPawn, r_nHealthMaximum, IntProperty_TgGame_TgPawn_r_nHealthMaximum);
-			DO_REP(ATgPawn, r_nNumberTimesCrewed, IntProperty_TgGame_TgPawn_r_nNumberTimesCrewed);
-			DO_REP(ATgPawn, r_nPhase, IntProperty_TgGame_TgPawn_r_nPhase);
-			DO_REP(ATgPawn, r_nPitchOffset, IntProperty_TgGame_TgPawn_r_nPitchOffset);
-			DO_REP(ATgPawn, r_nReplicateDying, IntProperty_TgGame_TgPawn_r_nReplicateDying);
-			DO_REP(ATgPawn, r_nResetCharacter, IntProperty_TgGame_TgPawn_r_nResetCharacter);
-			DO_REP(ATgPawn, r_nSensorAlertLevel, IntProperty_TgGame_TgPawn_r_nSensorAlertLevel);
-			DO_REP(ATgPawn, r_nShieldHealthMax, IntProperty_TgGame_TgPawn_r_nShieldHealthMax);
-			DO_REP(ATgPawn, r_nShieldHealthRemaining, IntProperty_TgGame_TgPawn_r_nShieldHealthRemaining);
-			DO_REP(ATgPawn, r_nSilentMode, IntProperty_TgGame_TgPawn_r_nSilentMode);
-			DO_REP(ATgPawn, r_nStealthAggroRange, IntProperty_TgGame_TgPawn_r_nStealthAggroRange);
-			DO_REP(ATgPawn, r_nStealthDisabled, IntProperty_TgGame_TgPawn_r_nStealthDisabled);
-			DO_REP(ATgPawn, r_nStealthSensorRange, IntProperty_TgGame_TgPawn_r_nStealthSensorRange);
-			DO_REP(ATgPawn, r_nStealthTypeCode, IntProperty_TgGame_TgPawn_r_nStealthTypeCode);
-			DO_REP(ATgPawn, r_nYawOffset, IntProperty_TgGame_TgPawn_r_nYawOffset);
-			DO_REP(ATgPawn, r_sDebugAction, StrProperty_TgGame_TgPawn_r_sDebugAction);
-			DO_REP(ATgPawn, r_sDebugName, StrProperty_TgGame_TgPawn_r_sDebugName);
-			DO_REP(ATgPawn, r_sFactory, StrProperty_TgGame_TgPawn_r_sFactory);
-			DO_REP(ATgPawn, r_vDown, StructProperty_TgGame_TgPawn_r_vDown);
-			// added:
-			DO_REP_ARRAY(0x20, ATgPawn, r_nFlashEvent, IntProperty_TgGame_TgPawn_r_nFlashEvent);
-			DO_REP_ARRAY(0x20, ATgPawn, r_nFlashFireInfo, IntProperty_TgGame_TgPawn_r_nFlashFireInfo);
-			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashLocation, StructProperty_TgGame_TgPawn_r_vFlashLocation);
-			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashRayDir, StructProperty_TgGame_TgPawn_r_vFlashRayDir);
-			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashRefireTime, FloatProperty_TgGame_TgPawn_r_vFlashRefireTime);
-			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashSituationalAttack, IntProperty_TgGame_TgPawn_r_vFlashSituationalAttack);
-			DO_REP(ATgPawn, r_nFlashQueIndex, IntProperty_TgGame_TgPawn_r_nFlashQueIndex);
-		}
 		if ((actor->Role == 3) && actor->bNetDirty || actor->bNetInitial) {
 			DO_REP(ATgPawn_Character, r_CustomCharacterAssembly, StructProperty_TgGame_TgPawn_Character_r_CustomCharacterAssembly);
 			DO_REP(ATgPawn_Character, r_eAttachedMesh, ByteProperty_TgGame_TgPawn_Character_r_eAttachedMesh);
@@ -4122,7 +3835,6 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn_Character, r_nSkillGroupSetId, IntProperty_TgGame_TgPawn_Character_r_nSkillGroupSetId);
 		}
 	}
-
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgPawn_DuneCommander") == 0) {
 		if ((actor->Role == 3) && actor->bNetDirty || actor->bNetInitial) {
 			DO_REP(ATgPawn_DuneCommander, r_bDoCrashLanding, BoolProperty_TgGame_TgPawn_DuneCommander_r_bDoCrashLanding);
@@ -4159,16 +3871,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn_VanityPet, r_nSpawningItemId, IntProperty_TgGame_TgPawn_VanityPet_r_nSpawningItemId);
 		}
 	}
-
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgPlayerController") == 0) {
-		if (actor->bNetDirty && actor->Role == 3) {
-			DO_REP(AController, Pawn, BoolProperty_TgPlayerController_PawnPerformanceTest_bEnablePerfTest);
-			DO_REP(AController, PlayerReplicationInfo, ObjectProperty_Engine_Controller_PlayerReplicationInfo);
-		}
-		if (((actor->bNetOwner && actor->Role == 3) && ((APlayerController*)actor)->ViewTarget != ((APlayerController*)actor)->Pawn) && ((APlayerController*)actor)->ViewTarget != NULL) {
-			DO_REP(APlayerController, TargetEyeHeight, FloatProperty_Engine_PlayerController_TargetEyeHeight);
-			DO_REP(APlayerController, TargetViewRotation, StructProperty_Engine_PlayerController_TargetViewRotation);
-		}
 		if ((actor->Role == 3) && actor->bNetOwner) {
 			DO_REP(ATgPlayerController, r_WatchOtherPlayer, ByteProperty_TgGame_TgPlayerController_r_WatchOtherPlayer);
 			DO_REP(ATgPlayerController, r_bEDDebugEffects, BoolProperty_TgGame_TgPlayerController_r_bEDDebugEffects);
@@ -4178,7 +3881,6 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPlayerController, r_bRove, BoolProperty_TgGame_TgPlayerController_r_bRove);
 		}
 	}
-
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Grapple") == 0) {
 		if (actor->Role == 3) {
 			DO_REP(ATgProj_Grapple, r_vTargetLocation, StructProperty_TgGame_TgProj_Grapple_r_vTargetLocation);
@@ -4210,21 +3912,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgProjectile, r_vSpawnLocation, StructProperty_TgGame_TgProjectile_r_vSpawnLocation);
 		}
 	}
-
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgRepInfo_Beacon") == 0) {
-		if (actor->bNetDirty && actor->Role == 3) {
-			DO_REP(ATgRepInfo_Deployable, r_InstigatorInfo, ObjectProperty_TgGame_TgRepInfo_Deployable_r_InstigatorInfo);
-			DO_REP(ATgRepInfo_Deployable, r_TaskforceInfo, ObjectProperty_TgGame_TgRepInfo_Deployable_r_TaskforceInfo);
-			DO_REP(ATgRepInfo_Deployable, r_bOwnedByTaskforce, BoolProperty_TgGame_TgRepInfo_Deployable_r_bOwnedByTaskforce);
-			DO_REP(ATgRepInfo_Deployable, r_nHealthCurrent, IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthCurrent);
-		}
-		if (actor->bNetInitial && actor->Role == 3) {
-			DO_REP(ATgRepInfo_Deployable, r_DeployableOwner, ObjectProperty_TgGame_TgRepInfo_Deployable_r_DeployableOwner);
-			DO_REP(ATgRepInfo_Deployable, r_fDeployMaxHealthPCT, FloatProperty_TgGame_TgRepInfo_Deployable_r_fDeployMaxHealthPCT);
-			DO_REP(ATgRepInfo_Deployable, r_nDeployableId, IntProperty_TgGame_TgRepInfo_Deployable_r_nDeployableId);
-			DO_REP(ATgRepInfo_Deployable, r_nHealthMaximum, IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthMaximum);
-			DO_REP(ATgRepInfo_Deployable, r_nUniqueDeployableId, IntProperty_TgGame_TgRepInfo_Deployable_r_nUniqueDeployableId);
-		}
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(ATgRepInfo_Beacon, r_bDeployed, BoolProperty_TgGame_TgRepInfo_Beacon_r_bDeployed);
 			DO_REP(ATgRepInfo_Beacon, r_vLoc, StructProperty_TgGame_TgRepInfo_Beacon_r_vLoc);
@@ -4233,8 +3921,10 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgRepInfo_Beacon, r_nName, StrProperty_TgGame_TgRepInfo_Beacon_r_nName);
 		}
 	}
-
-	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgRepInfo_Deployable") == 0) {
+	if (
+		strcmp(actor->Class->GetFullName(), "Class TgGame.TgRepInfo_Deployable") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgRepInfo_Beacon") == 0
+	) {
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(ATgRepInfo_Deployable, r_InstigatorInfo, ObjectProperty_TgGame_TgRepInfo_Deployable_r_InstigatorInfo);
 			DO_REP(ATgRepInfo_Deployable, r_TaskforceInfo, ObjectProperty_TgGame_TgRepInfo_Deployable_r_TaskforceInfo);
@@ -4262,8 +3952,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgRepInfo_Game, r_fMissionRemainingTime, FloatProperty_TgGame_TgRepInfo_Game_r_fMissionRemainingTime);
 			DO_REP(ATgRepInfo_Game, r_fServerTimeLastUpdate, FloatProperty_TgGame_TgRepInfo_Game_r_fServerTimeLastUpdate);
 			DO_REP(ATgRepInfo_Game, r_nMaxRoundNumber, IntProperty_TgGame_TgRepInfo_Game_r_nMaxRoundNumber);
-			DO_REP(ATgRepInfo_Game, r_nMissionTimerState, IntProperty_TgGame_TgRepInfo_Game_r_nMissionTimerStateChange);
-			DO_REP(ATgRepInfo_Game, r_nMissionTimerState, IntProperty_TgGame_TgRepInfo_Game_r_nMissionTimerStateChange);
+			DO_REP(ATgRepInfo_Game, r_nMissionTimerState, ByteProperty_TgGame_TgRepInfo_Game_r_nMissionTimerState);
+			DO_REP(ATgRepInfo_Game, r_nMissionTimerStateChange, IntProperty_TgGame_TgRepInfo_Game_r_nMissionTimerStateChange);
 			DO_REP(ATgRepInfo_Game, r_nRaidAttackerRespawnBonus, IntProperty_TgGame_TgRepInfo_Game_r_nRaidAttackerRespawnBonus);
 			DO_REP(ATgRepInfo_Game, r_nRaidDefenderRespawnBonus, IntProperty_TgGame_TgRepInfo_Game_r_nRaidDefenderRespawnBonus);
 			DO_REP(ATgRepInfo_Game, r_nReleaseDelay, IntProperty_TgGame_TgRepInfo_Game_r_nReleaseDelay);
@@ -4292,37 +3982,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP_ARRAY(0x3, ATgRepInfo_GameOpenWorld, r_GameTickets, IntProperty_TgGame_TgRepInfo_GameOpenWorld_r_GameTickets);
 		}
 	}
-
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgRepInfo_Player") == 0) {
-		if (actor->bNetDirty && actor->Role == 3) {
-			DO_REP(APlayerReplicationInfo, Deaths, FloatProperty_Engine_PlayerReplicationInfo_Deaths);
-			DO_REP(APlayerReplicationInfo, PlayerAlias, StrProperty_Engine_PlayerReplicationInfo_PlayerAlias);
-			DO_REP(APlayerReplicationInfo, PlayerLocationHint, ObjectProperty_Engine_PlayerReplicationInfo_PlayerLocationHint);
-			DO_REP(APlayerReplicationInfo, PlayerName, StrProperty_Engine_PlayerReplicationInfo_PlayerName);
-			DO_REP(APlayerReplicationInfo, PlayerSkill, IntProperty_Engine_PlayerReplicationInfo_PlayerSkill);
-			DO_REP(APlayerReplicationInfo, Score, FloatProperty_Engine_PlayerReplicationInfo_Score);
-			DO_REP(APlayerReplicationInfo, StartTime, IntProperty_Engine_PlayerReplicationInfo_StartTime);
-			DO_REP(APlayerReplicationInfo, Team, ObjectProperty_Engine_PlayerReplicationInfo_Team);
-			DO_REP(APlayerReplicationInfo, UniqueId, StructProperty_Engine_PlayerReplicationInfo_UniqueId);
-			DO_REP(APlayerReplicationInfo, bAdmin, BoolProperty_Engine_PlayerReplicationInfo_bAdmin);
-			DO_REP(APlayerReplicationInfo, bHasFlag, BoolProperty_Engine_PlayerReplicationInfo_bHasFlag);
-			DO_REP(APlayerReplicationInfo, bIsFemale, BoolProperty_Engine_PlayerReplicationInfo_bIsFemale);
-			DO_REP(APlayerReplicationInfo, bIsSpectator, BoolProperty_Engine_PlayerReplicationInfo_bIsSpectator);
-			DO_REP(APlayerReplicationInfo, bOnlySpectator, BoolProperty_Engine_PlayerReplicationInfo_bOnlySpectator);
-			DO_REP(APlayerReplicationInfo, bOutOfLives, BoolProperty_Engine_PlayerReplicationInfo_bOutOfLives);
-			DO_REP(APlayerReplicationInfo, bReadyToPlay, BoolProperty_Engine_PlayerReplicationInfo_bReadyToPlay);
-			DO_REP(APlayerReplicationInfo, bWaitingPlayer, BoolProperty_Engine_PlayerReplicationInfo_bWaitingPlayer);
-		}
-		if ((actor->bNetDirty && actor->Role == 3) && !actor->bNetOwner) {
-			DO_REP(APlayerReplicationInfo, PacketLoss, ByteProperty_Engine_PlayerReplicationInfo_PacketLoss);
-			DO_REP(APlayerReplicationInfo, Ping, ByteProperty_Engine_PlayerReplicationInfo_Ping);
-			DO_REP(APlayerReplicationInfo, SplitscreenIndex, IntProperty_Engine_PlayerReplicationInfo_SplitscreenIndex);
-		}
-		if (actor->bNetInitial && actor->Role == 3) {
-			DO_REP(APlayerReplicationInfo, PlayerID, IntProperty_Engine_PlayerReplicationInfo_PlayerID);
-			DO_REP(APlayerReplicationInfo, bBot, BoolProperty_Engine_PlayerReplicationInfo_bBot);
-			DO_REP(APlayerReplicationInfo, bIsInactive, BoolProperty_Engine_PlayerReplicationInfo_bIsInactive);
-		}
 		if (actor->Role == 3) {
 			DO_REP(ATgRepInfo_Player, r_ApproxLocation, StructProperty_TgGame_TgRepInfo_Player_r_ApproxLocation);
 			DO_REP(ATgRepInfo_Player, r_CustomCharacterAssembly, StructProperty_TgGame_TgRepInfo_Player_r_CustomCharacterAssembly);
@@ -4347,7 +4007,6 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP_ARRAY(0x9, ATgRepInfo_Player, r_DeviceStats, StructProperty_TgGame_TgRepInfo_Player_r_DeviceStats);
 		}
 	}
-
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgRepInfo_TaskForce") == 0) {
 		if (actor->Role == 3) {
 			DO_REP(ATgRepInfo_TaskForce, r_BeaconManager, ObjectProperty_TgGame_TgRepInfo_TaskForce_r_BeaconManager);
@@ -4380,8 +4039,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 	}
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgTeamBeaconManager") == 0) {
 		if (actor->Role == 3) {
-			DO_REP(ATgTeamBeaconManager, r_Beacon, IntProperty_TgGame_TgTeamBeaconManager_r_BeaconDestroyed);
-			DO_REP(ATgTeamBeaconManager, r_Beacon, IntProperty_TgGame_TgTeamBeaconManager_r_BeaconDestroyed);
+			DO_REP(ATgTeamBeaconManager, r_Beacon, ObjectProperty_TgGame_TgTeamBeaconManager_r_Beacon);
+			DO_REP(ATgTeamBeaconManager, r_BeaconDestroyed, IntProperty_TgGame_TgTeamBeaconManager_r_BeaconDestroyed);
 			DO_REP(ATgTeamBeaconManager, r_BeaconHolder, ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconHolder);
 			DO_REP(ATgTeamBeaconManager, r_BeaconInfo, ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconInfo);
 			DO_REP(ATgTeamBeaconManager, r_BeaconStatus, ByteProperty_TgGame_TgTeamBeaconManager_r_BeaconStatus);
@@ -4392,8 +4051,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 	}
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgTimerManager") == 0) {
 		if (actor->Role == 3) {
-			DO_REP_ARRAY(0x20, ATgTimerManager, r_byEventQue, ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex);
-			DO_REP_ARRAY(0x20, ATgTimerManager, r_byEventQue, ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex);
+			DO_REP_ARRAY(0x20, ATgTimerManager, r_byEventQue, ByteProperty_TgGame_TgTimerManager_r_byEventQue);
+			DO_REP(ATgTimerManager, r_byEventQueIndex, ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex);
 			DO_REP_ARRAY(0x20, ATgTimerManager, r_fRemaining, FloatProperty_TgGame_TgTimerManager_r_fRemaining);
 			DO_REP_ARRAY(0x20, ATgTimerManager, r_fStartTime, FloatProperty_TgGame_TgTimerManager_r_fStartTime);
 		}
