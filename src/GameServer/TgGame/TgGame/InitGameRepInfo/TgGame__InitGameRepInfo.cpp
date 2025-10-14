@@ -52,7 +52,12 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		defenders->eventPostInit();
 		attackers->eventPostInit();
 
+		defenders->bNetInitial = 1;
+		attackers->bNetInitial = 1;
+
 		gamerep->InitMissionTime();
+
+		gamerep->bNetInitial = 1;
 	}
 	Logger::Log("debug", "MINE TgGame::InitGameRepInfo END\n");
 }

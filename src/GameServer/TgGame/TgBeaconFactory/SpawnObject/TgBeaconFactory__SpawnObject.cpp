@@ -20,7 +20,7 @@ void __fastcall* TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* BeaconFact
 
 		FVector SpawnLocation = BeaconFactory->Location;
 		// SpawnLocation.X += 2500;
-		SpawnLocation.X += 1500;
+		// SpawnLocation.X += 1500;
 
 		ATgDeploy_Beacon* Beacon = (ATgDeploy_Beacon*)BeaconFactory->Spawn(
 			ClassPreloader::GetTgDeployBeaconClass(),
@@ -67,6 +67,8 @@ void __fastcall* TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* BeaconFact
 		Beacon->SetTaskForceNumber(BeaconFactory->s_nTaskForce);
 		Logger::Log("debug", "beacon task force set\n");
 		Beacon->Role = 3;
+
+		Beacon->bNetInitial = 1;
 	} else {
 		Logger::Log("debug", "trying to spawn beacon entrance\n");
 		ATgDeploy_BeaconEntrance* BeaconEntrance = (ATgDeploy_BeaconEntrance*)BeaconFactory->Spawn(
@@ -103,6 +105,8 @@ void __fastcall* TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* BeaconFact
 		BeaconEntrance->SetTaskForceNumber(BeaconFactory->s_nTaskForce);
 		Logger::Log("debug", "beacon task force set\n");
 		BeaconEntrance->Role = 3;
+
+		BeaconEntrance->bNetInitial = 1;
 	}
 	// LogToFile("C:\\mylog.txt", "MINE TgTeamBeaconManager::SpawnNewBeaconForTeam END");
 
