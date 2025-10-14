@@ -3430,11 +3430,52 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgChestActor, r_eChestState, ByteProperty_TgGame_TgChestActor_r_eChestState);
 		}
 	}
+
+	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgDeploy_Beacon") == 0) {
+		if (actor->Role == 3) {
+			DO_REP(ATgDeployable, r_bDelayDeployed, BoolProperty_TgGame_TgDeployable_r_bDelayDeployed);
+			DO_REP(ATgDeployable, r_nReplicateDestroyIt, IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt);
+		}
+		if ((actor->Role == 3) && actor->bNetInitial) {
+			DO_REP(ATgDeployable, r_DRI, ObjectProperty_TgGame_TgDeployable_r_DRI);
+			DO_REP(ATgDeployable, r_bInitialIsEnemy, BoolProperty_TgGame_TgDeployable_r_bInitialIsEnemy);
+			DO_REP(ATgDeployable, r_bTakeDamage, BoolProperty_TgGame_TgDeployable_r_bTakeDamage);
+			DO_REP(ATgDeployable, r_fClientProximityRadius, FloatProperty_TgGame_TgDeployable_r_fClientProximityRadius);
+			DO_REP(ATgDeployable, r_fCurrentDeployTime, FloatProperty_TgGame_TgDeployable_r_fCurrentDeployTime);
+			DO_REP(ATgDeployable, r_nDeployableId, IntProperty_TgGame_TgDeployable_r_nDeployableId);
+			DO_REP(ATgDeployable, r_nPhysicalType, IntProperty_TgGame_TgDeployable_r_nPhysicalType);
+			DO_REP(ATgDeployable, r_nTickingTime, IntProperty_TgGame_TgDeployable_r_nTickingTime);
+		}
+		if ((actor->Role == 3) && actor->bNetOwner) {
+			DO_REP(ATgDeployable, r_Owner, ObjectProperty_TgGame_TgDeployable_r_Owner);
+			DO_REP(ATgDeployable, r_nOwnerFireMode, IntProperty_TgGame_TgDeployable_r_nOwnerFireMode);
+		}
+	}
+
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgDeploy_BeaconEntrance") == 0) {
+		if (actor->Role == 3) {
+			DO_REP(ATgDeployable, r_bDelayDeployed, BoolProperty_TgGame_TgDeployable_r_bDelayDeployed);
+			DO_REP(ATgDeployable, r_nReplicateDestroyIt, IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt);
+		}
+		if ((actor->Role == 3) && actor->bNetInitial) {
+			DO_REP(ATgDeployable, r_DRI, ObjectProperty_TgGame_TgDeployable_r_DRI);
+			DO_REP(ATgDeployable, r_bInitialIsEnemy, BoolProperty_TgGame_TgDeployable_r_bInitialIsEnemy);
+			DO_REP(ATgDeployable, r_bTakeDamage, BoolProperty_TgGame_TgDeployable_r_bTakeDamage);
+			DO_REP(ATgDeployable, r_fClientProximityRadius, FloatProperty_TgGame_TgDeployable_r_fClientProximityRadius);
+			DO_REP(ATgDeployable, r_fCurrentDeployTime, FloatProperty_TgGame_TgDeployable_r_fCurrentDeployTime);
+			DO_REP(ATgDeployable, r_nDeployableId, IntProperty_TgGame_TgDeployable_r_nDeployableId);
+			DO_REP(ATgDeployable, r_nPhysicalType, IntProperty_TgGame_TgDeployable_r_nPhysicalType);
+			DO_REP(ATgDeployable, r_nTickingTime, IntProperty_TgGame_TgDeployable_r_nTickingTime);
+		}
+		if ((actor->Role == 3) && actor->bNetOwner) {
+			DO_REP(ATgDeployable, r_Owner, ObjectProperty_TgGame_TgDeployable_r_Owner);
+			DO_REP(ATgDeployable, r_nOwnerFireMode, IntProperty_TgGame_TgDeployable_r_nOwnerFireMode);
+		}
 		if (actor->Role == 3) {
 			DO_REP(ATgDeploy_BeaconEntrance, r_bActive, BoolProperty_TgGame_TgDeploy_BeaconEntrance_r_bActive);
 		}
 	}
+
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgDeploy_DestructibleCover") == 0) {
 		if (actor->Role == 3) {
 			DO_REP(ATgDeploy_DestructibleCover, r_bHasFired, BoolProperty_TgGame_TgDeploy_DestructibleCover_r_bHasFired);
@@ -3625,6 +3666,66 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgPawn") == 0) {
+		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && actor->RemoteRole == 1) {
+			DO_REP(AActor, Base, ClassProperty_Actor_BasedActors_BaseClass);
+		}
+		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && (actor->RemoteRole == 1) && actor->bNetInitial || actor->bUpdateSimulatedPosition) {
+			DO_REP(AActor, Physics, ObjectProperty_Actor_PhysicsVolumeChange_NewVolume);
+			DO_REP(AActor, Velocity, StructProperty_Engine_Actor_Velocity);
+		}
+		if ((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) {
+			DO_REP(AActor, RemoteRole, ByteProperty_Engine_Actor_RemoteRole);
+			DO_REP(AActor, Role, ByteProperty_Engine_Actor_Role);
+			DO_REP(AActor, bNetOwner, BoolProperty_Engine_Actor_bNetOwner);
+			DO_REP(AActor, bTearOff, BoolProperty_Engine_Actor_bTearOff);
+		}
+		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) {
+			DO_REP(AActor, DrawScale, FloatProperty_Engine_Actor_DrawScale);
+			DO_REP(AActor, ReplicatedCollisionType, ByteProperty_Engine_Actor_ReplicatedCollisionType);
+			DO_REP(AActor, bCollideActors, BoolProperty_Engine_Actor_bCollideActors);
+			DO_REP(AActor, bCollideWorld, BoolProperty_Engine_Actor_bCollideWorld);
+		}
+		if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bCollideActors || actor->bCollideWorld) {
+			DO_REP(AActor, bBlockActors, BoolProperty_Engine_Actor_bBlockActors);
+			DO_REP(AActor, bProjTarget, BoolProperty_Engine_Actor_bProjTarget);
+		}
+		if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bReplicateInstigator) {
+			DO_REP(AActor, Instigator, ObjectProperty_GameFramework_GameExplosionActor_InstigatorController);
+		}
+		if (((actor->bNetOwner && !actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) {
+			DO_REP(AActor, Owner, ObjectProperty_Engine_Actor_Owner);
+		}
+		if (actor->bNetDirty && actor->Role == 3) {
+			DO_REP(APawn, DrivenVehicle, ObjectProperty_Engine_Pawn_DrivenVehicle);
+			DO_REP(APawn, FlashLocation, BoolProperty_Pawn_FlashLocationUpdated_bViaReplication);
+			DO_REP(APawn, Health, IntProperty_Engine_Pawn_HealthMax);
+			DO_REP(APawn, HitDamageType, ClassProperty_Engine_Pawn_HitDamageType);
+			DO_REP(APawn, PlayerReplicationInfo, ObjectProperty_Engine_Pawn_PlayerReplicationInfo);
+			DO_REP(APawn, TakeHitLocation, StructProperty_Engine_Pawn_TakeHitLocation);
+			DO_REP(APawn, bIsWalking, BoolProperty_Engine_Pawn_bIsWalking);
+			DO_REP(APawn, bSimulateGravity, BoolProperty_Engine_Pawn_bSimulateGravity);
+		}
+		if ((actor->bNetDirty && actor->bNetOwner) && actor->Role == 3) {
+			DO_REP(APawn, AccelRate, FloatProperty_Engine_Pawn_AccelRate);
+			DO_REP(APawn, AirControl, FloatProperty_Engine_Pawn_AirControl);
+			DO_REP(APawn, AirSpeed, FloatProperty_Engine_Pawn_AirSpeed);
+			DO_REP(APawn, Controller, ClassProperty_Engine_Pawn_ControllerClass);
+			DO_REP(APawn, GroundSpeed, FloatProperty_Engine_Pawn_GroundSpeed);
+			DO_REP(APawn, InvManager, ObjectProperty_Engine_Pawn_InvManager);
+			DO_REP(APawn, JumpZ, FloatProperty_Engine_Pawn_JumpZ);
+			DO_REP(APawn, WaterSpeed, FloatProperty_Engine_Pawn_WaterSpeed);
+		}
+		if ((actor->bNetDirty && !actor->bNetOwner || FALSE) && actor->Role == 3) {
+			DO_REP(APawn, FiringMode, BoolProperty_Pawn_FiringModeUpdated_bViaReplication);
+			DO_REP(APawn, FlashCount, BoolProperty_Pawn_FlashCountUpdated_bViaReplication);
+			DO_REP(APawn, bIsCrouched, BoolProperty_Engine_Pawn_bIsCrouched);
+		}
+		if ((actor->bTearOff && actor->bNetDirty) && actor->Role == 3) {
+			DO_REP(APawn, TearOffMomentum, StructProperty_Engine_Pawn_TearOffMomentum);
+		}
+		if ((!actor->bNetOwner || FALSE) && actor->Role == 3) {
+			DO_REP(APawn, RemoteViewPitch, ByteProperty_Engine_Pawn_RemoteViewPitch);
+		}
 		if ((actor->Role == 3) && actor->bNetInitial) {
 			DO_REP(ATgPawn, r_bIsBot, BoolProperty_TgGame_TgPawn_r_bIsBot);
 			DO_REP(ATgPawn, r_bIsHenchman, BoolProperty_TgGame_TgPawn_r_bIsHenchman);
@@ -3788,7 +3889,220 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP_ARRAY(0xFF, ATgPawn_CTR, r_nMorphSettings, IntProperty_TgGame_TgPawn_CTR_r_nMorphSettings);
 		}
 	}
+
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgPawn_Character") == 0) {
+		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && actor->RemoteRole == 1) {
+			DO_REP(AActor, Base, ClassProperty_Actor_BasedActors_BaseClass);
+		}
+		// if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && (actor->RemoteRole == 1) && actor->bNetInitial || actor->bUpdateSimulatedPosition) {
+		// 	DO_REP(AActor, Physics, ObjectProperty_Actor_PhysicsVolumeChange_NewVolume);
+		// 	DO_REP(AActor, Velocity, StructProperty_Engine_Actor_Velocity);
+		// }
+		if ((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) {
+			DO_REP(AActor, RemoteRole, ByteProperty_Engine_Actor_RemoteRole);
+			DO_REP(AActor, Role, ByteProperty_Engine_Actor_Role);
+			DO_REP(AActor, bNetOwner, BoolProperty_Engine_Actor_bNetOwner);
+			DO_REP(AActor, bTearOff, BoolProperty_Engine_Actor_bTearOff);
+		}
+		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) {
+			DO_REP(AActor, DrawScale, FloatProperty_Engine_Actor_DrawScale);
+			DO_REP(AActor, ReplicatedCollisionType, ByteProperty_Engine_Actor_ReplicatedCollisionType);
+			DO_REP(AActor, bCollideActors, BoolProperty_Engine_Actor_bCollideActors);
+			DO_REP(AActor, bCollideWorld, BoolProperty_Engine_Actor_bCollideWorld);
+		}
+		if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bCollideActors || actor->bCollideWorld) {
+			DO_REP(AActor, bBlockActors, BoolProperty_Engine_Actor_bBlockActors);
+			DO_REP(AActor, bProjTarget, BoolProperty_Engine_Actor_bProjTarget);
+		}
+		if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bReplicateInstigator) {
+			DO_REP(AActor, Instigator, ObjectProperty_GameFramework_GameExplosionActor_InstigatorController);
+		}
+		if (((actor->bNetOwner && !actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) {
+			DO_REP(AActor, Owner, ObjectProperty_Engine_Actor_Owner);
+		}
+		if (actor->bNetDirty && actor->Role == 3) {
+			DO_REP(APawn, DrivenVehicle, ObjectProperty_Engine_Pawn_DrivenVehicle);
+			DO_REP(APawn, FlashLocation, BoolProperty_Pawn_FlashLocationUpdated_bViaReplication);
+			DO_REP(APawn, Health, IntProperty_Engine_Pawn_HealthMax);
+			DO_REP(APawn, HitDamageType, ClassProperty_Engine_Pawn_HitDamageType);
+			DO_REP(APawn, PlayerReplicationInfo, ObjectProperty_Engine_Pawn_PlayerReplicationInfo);
+			DO_REP(APawn, TakeHitLocation, StructProperty_Engine_Pawn_TakeHitLocation);
+			DO_REP(APawn, bIsWalking, BoolProperty_Engine_Pawn_bIsWalking);
+			DO_REP(APawn, bSimulateGravity, BoolProperty_Engine_Pawn_bSimulateGravity);
+		}
+		if ((actor->bNetDirty && actor->bNetOwner) && actor->Role == 3) {
+			DO_REP(APawn, AccelRate, FloatProperty_Engine_Pawn_AccelRate);
+			DO_REP(APawn, AirControl, FloatProperty_Engine_Pawn_AirControl);
+			DO_REP(APawn, AirSpeed, FloatProperty_Engine_Pawn_AirSpeed);
+			DO_REP(APawn, Controller, ClassProperty_Engine_Pawn_ControllerClass);
+			DO_REP(APawn, GroundSpeed, FloatProperty_Engine_Pawn_GroundSpeed);
+			DO_REP(APawn, InvManager, ObjectProperty_Engine_Pawn_InvManager);
+			DO_REP(APawn, JumpZ, FloatProperty_Engine_Pawn_JumpZ);
+			DO_REP(APawn, WaterSpeed, FloatProperty_Engine_Pawn_WaterSpeed);
+		}
+		if ((actor->bNetDirty && !actor->bNetOwner || FALSE) && actor->Role == 3) {
+			DO_REP(APawn, FiringMode, BoolProperty_Pawn_FiringModeUpdated_bViaReplication);
+			DO_REP(APawn, FlashCount, BoolProperty_Pawn_FlashCountUpdated_bViaReplication);
+			DO_REP(APawn, bIsCrouched, BoolProperty_Engine_Pawn_bIsCrouched);
+		}
+		if ((actor->bTearOff && actor->bNetDirty) && actor->Role == 3) {
+			DO_REP(APawn, TearOffMomentum, StructProperty_Engine_Pawn_TearOffMomentum);
+		}
+		if ((!actor->bNetOwner || FALSE) && actor->Role == 3) {
+			DO_REP(APawn, RemoteViewPitch, ByteProperty_Engine_Pawn_RemoteViewPitch);
+		}
+		if ((actor->Role == 3) && actor->bNetInitial) {
+			DO_REP(ATgPawn, r_bIsBot, BoolProperty_TgGame_TgPawn_r_bIsBot);
+			DO_REP(ATgPawn, r_bIsHenchman, BoolProperty_TgGame_TgPawn_r_bIsHenchman);
+			DO_REP(ATgPawn, r_bNeedPlaySpawnFx, BoolProperty_TgGame_TgPawn_r_bNeedPlaySpawnFx);
+			DO_REP(ATgPawn, r_fMakeVisibleIncreased, FloatProperty_TgGame_TgPawn_r_fMakeVisibleIncreased);
+			DO_REP(ATgPawn, r_nAllianceId, IntProperty_TgGame_TgPawn_r_nAllianceId);
+			DO_REP(ATgPawn, r_nBodyMeshAsmId, IntProperty_TgGame_TgPawn_r_nBodyMeshAsmId);
+			DO_REP(ATgPawn, r_nBotRankValueId, IntProperty_TgGame_TgPawn_r_nBotRankValueId);
+			DO_REP_ARRAY(0x20, ATgPawn, r_nFlashEvent, IntProperty_TgGame_TgPawn_r_nFlashEvent);
+			DO_REP_ARRAY(0x20, ATgPawn, r_nFlashFireInfo, IntProperty_TgGame_TgPawn_r_nFlashFireInfo);
+			DO_REP(ATgPawn, r_nFlashQueIndex, IntProperty_TgGame_TgPawn_r_nFlashQueIndex);
+			DO_REP(ATgPawn, r_nPawnId, IntProperty_TgGame_TgPawn_r_nPawnId);
+			DO_REP(ATgPawn, r_nPhysicalType, IntProperty_TgGame_TgPawn_r_nPhysicalType);
+			DO_REP(ATgPawn, r_nPreyProfileType, IntProperty_TgGame_TgPawn_r_nPreyProfileType);
+			DO_REP(ATgPawn, r_nProfileId, IntProperty_TgGame_TgPawn_r_nProfileId);
+			DO_REP(ATgPawn, r_nProfileTypeValueId, IntProperty_TgGame_TgPawn_r_nProfileTypeValueId);
+			DO_REP(ATgPawn, r_nSoundGroupId, IntProperty_TgGame_TgPawn_r_nSoundGroupId);
+			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashLocation, StructProperty_TgGame_TgPawn_r_vFlashLocation);
+			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashRayDir, StructProperty_TgGame_TgPawn_r_vFlashRayDir);
+			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashRefireTime, FloatProperty_TgGame_TgPawn_r_vFlashRefireTime);
+			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashSituationalAttack, IntProperty_TgGame_TgPawn_r_vFlashSituationalAttack);
+		}
+		if ((actor->Role == 3) && !actor->bNetOwner) {
+			DO_REP_ARRAY(0x19, ATgPawn, r_EquipDeviceInfo, StructProperty_TgGame_TgPawn_r_EquipDeviceInfo);
+			DO_REP(ATgPawn, r_bInitialIsEnemy, BoolProperty_TgGame_TgPawn_r_bInitialIsEnemy);
+			DO_REP(ATgPawn, r_bMadeSound, ByteProperty_TgGame_TgPawn_r_bMadeSound);
+			DO_REP(ATgPawn, r_eDesiredInHand, ByteProperty_TgGame_TgPawn_r_eDesiredInHand);
+			DO_REP(ATgPawn, r_eEquippedInHandMode, IntProperty_TgGame_TgPawn_r_eEquippedInHandMode);
+			DO_REP(ATgPawn, r_nReplicateHit, IntProperty_TgGame_TgPawn_r_nReplicateHit);
+		}
+		if ((actor->Role == 3) && actor->bNetOwner) {
+			DO_REP(ATgPawn, r_ControlPawn, ObjectProperty_TgGame_TgPawn_r_ControlPawn);
+			DO_REP(ATgPawn, r_CurrentOmegaVolume, ObjectProperty_TgGame_TgPawn_r_CurrentOmegaVolume);
+			DO_REP(ATgPawn, r_CurrentSubzoneBilboardVol, ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneBilboardVol);
+			DO_REP(ATgPawn, r_CurrentSubzoneVol, ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneVol);
+			DO_REP_ARRAY(0x2, ATgPawn, r_ScannerSettings, StructProperty_TgGame_TgPawn_r_ScannerSettings);
+			DO_REP(ATgPawn, r_UIClockState, ByteProperty_TgGame_TgPawn_r_UIClockState);
+			DO_REP(ATgPawn, r_UIClockTime, FloatProperty_TgGame_TgPawn_r_UIClockTime);
+			DO_REP(ATgPawn, r_UITextBox1MessageID, IntProperty_TgGame_TgPawn_r_UITextBox1MessageID);
+			DO_REP(ATgPawn, r_UITextBox1Packet, ByteProperty_TgGame_TgPawn_r_UITextBox1Packet);
+			DO_REP(ATgPawn, r_UITextBox1Time, FloatProperty_TgGame_TgPawn_r_UITextBox1Time);
+			DO_REP(ATgPawn, r_UITextBox2MessageID, IntProperty_TgGame_TgPawn_r_UITextBox2MessageID);
+			DO_REP(ATgPawn, r_UITextBox2Packet, ByteProperty_TgGame_TgPawn_r_UITextBox2Packet);
+			DO_REP(ATgPawn, r_UITextBox2Time, FloatProperty_TgGame_TgPawn_r_UITextBox2Time);
+			DO_REP(ATgPawn, r_bAllowAddMoralePoints, BoolProperty_TgGame_TgPawn_r_bAllowAddMoralePoints);
+			DO_REP(ATgPawn, r_bDisableAllDevices, BoolProperty_TgGame_TgPawn_r_bDisableAllDevices);
+			DO_REP(ATgPawn, r_bEnableCrafting, BoolProperty_TgGame_TgPawn_r_bEnableCrafting);
+			DO_REP(ATgPawn, r_bEnableEquip, BoolProperty_TgGame_TgPawn_r_bEnableEquip);
+			DO_REP(ATgPawn, r_bEnableSkills, BoolProperty_TgGame_TgPawn_r_bEnableSkills);
+			DO_REP(ATgPawn, r_bInCombatFlag, BoolProperty_TgGame_TgPawn_r_bInCombatFlag);
+			DO_REP(ATgPawn, r_bInGlobalOffhandCooldown, BoolProperty_TgGame_TgPawn_r_bInGlobalOffhandCooldown);
+			DO_REP(ATgPawn, r_fCurrentPowerPool, FloatProperty_TgGame_TgPawn_r_fCurrentPowerPool);
+			DO_REP(ATgPawn, r_fCurrentServerMoralePoints, FloatProperty_TgGame_TgPawn_r_fCurrentServerMoralePoints);
+			DO_REP(ATgPawn, r_fMaxControlRange, FloatProperty_TgGame_TgPawn_r_fMaxControlRange);
+			DO_REP(ATgPawn, r_fMaxPowerPool, FloatProperty_TgGame_TgPawn_r_fMaxPowerPool);
+			DO_REP(ATgPawn, r_fMoraleRechargeRate, FloatProperty_TgGame_TgPawn_r_fMoraleRechargeRate);
+			DO_REP(ATgPawn, r_fRequiredMoralePoints, FloatProperty_TgGame_TgPawn_r_fRequiredMoralePoints);
+			DO_REP(ATgPawn, r_fSkillRating, FloatProperty_TgGame_TgPawn_r_fSkillRating);
+			DO_REP(ATgPawn, r_nCurrency, IntProperty_TgGame_TgPawn_r_nCurrency);
+			DO_REP(ATgPawn, r_nHZPoints, IntProperty_TgGame_TgPawn_r_nHZPoints);
+			DO_REP(ATgPawn, r_nMoraleDeviceSlot, IntProperty_TgGame_TgPawn_r_nMoraleDeviceSlot);
+			DO_REP(ATgPawn, r_nRestDeviceSlot, IntProperty_TgGame_TgPawn_r_nRestDeviceSlot);
+			DO_REP(ATgPawn, r_nToken, IntProperty_TgGame_TgPawn_r_nToken);
+			DO_REP(ATgPawn, r_nXp, IntProperty_TgGame_TgPawn_r_nXp);
+		}
+		if ((actor->Role == 3) && actor->bNetDirty) {
+			DO_REP(ATgPawn, r_DistanceToPushback, FloatProperty_TgGame_TgPawn_r_DistanceToPushback);
+			DO_REP(ATgPawn, r_EffectManager, ObjectProperty_TgGame_TgPawn_r_EffectManager);
+			DO_REP(ATgPawn, r_FlightAcceleration, FloatProperty_TgGame_TgPawn_r_FlightAcceleration);
+			DO_REP(ATgPawn, r_HangingRotation, StructProperty_TgGame_TgPawn_r_HangingRotation);
+			DO_REP(ATgPawn, r_Owner, ObjectProperty_TgGame_TgPawn_r_Owner);
+			DO_REP(ATgPawn, r_Pet, ObjectProperty_TgGame_TgPawn_r_Pet);
+			DO_REP(ATgPawn, r_PlayAnimation, StructProperty_TgGame_TgPawn_r_PlayAnimation);
+			DO_REP(ATgPawn, r_PushbackDirection, StructProperty_TgGame_TgPawn_r_PushbackDirection);
+			DO_REP(ATgPawn, r_Target, ObjectProperty_TgGame_TgPawn_r_Target);
+			DO_REP(ATgPawn, r_TargetActor, ObjectProperty_TgGame_TgPawn_r_TargetActor);
+			DO_REP(ATgPawn, r_aDebugDestination, ObjectProperty_TgGame_TgPawn_r_aDebugDestination);
+			DO_REP(ATgPawn, r_aDebugNextNav, ObjectProperty_TgGame_TgPawn_r_aDebugNextNav);
+			DO_REP(ATgPawn, r_aDebugTarget, ObjectProperty_TgGame_TgPawn_r_aDebugTarget);
+			DO_REP(ATgPawn, r_bAimType, ByteProperty_TgGame_TgPawn_r_bAimType);
+			DO_REP(ATgPawn, r_bAimingMode, BoolProperty_TgGame_TgPawn_r_bAimingMode);
+			DO_REP(ATgPawn, r_bCallingForHelp, BoolProperty_TgGame_TgPawn_r_bCallingForHelp);
+			DO_REP(ATgPawn, r_bIsAFK, BoolProperty_TgGame_TgPawn_r_bIsAFK);
+			DO_REP(ATgPawn, r_bIsAnimInStrafeMode, BoolProperty_TgGame_TgPawn_r_bIsAnimInStrafeMode);
+			DO_REP(ATgPawn, r_bIsCrafting, BoolProperty_TgGame_TgPawn_r_bIsCrafting);
+			DO_REP(ATgPawn, r_bIsCrewing, BoolProperty_TgGame_TgPawn_r_bIsCrewing);
+			DO_REP(ATgPawn, r_bIsDecoy, BoolProperty_TgGame_TgPawn_r_bIsDecoy);
+			DO_REP(ATgPawn, r_bIsGrappleDismounting, BoolProperty_TgGame_TgPawn_r_bIsGrappleDismounting);
+			DO_REP(ATgPawn, r_bIsHacked, BoolProperty_TgGame_TgPawn_r_bIsHacked);
+			DO_REP(ATgPawn, r_bIsHacking, BoolProperty_TgGame_TgPawn_r_bIsHacking);
+			DO_REP(ATgPawn, r_bIsHanging, BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting);
+			DO_REP(ATgPawn, r_bIsHanging, BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting);
+			DO_REP(ATgPawn, r_bIsInSnipeScope, BoolProperty_TgGame_TgPawn_r_bIsInSnipeScope);
+			DO_REP(ATgPawn, r_bIsRappelling, BoolProperty_TgGame_TgPawn_r_bIsRappelling);
+			DO_REP(ATgPawn, r_bIsStealthed, BoolProperty_TgGame_TgPawn_r_bIsStealthed);
+			DO_REP(ATgPawn, r_bJumpedFromHanging, BoolProperty_TgGame_TgPawn_r_bJumpedFromHanging);
+			DO_REP(ATgPawn, r_bPostureIgnoreTransition, BoolProperty_TgGame_TgPawn_r_bPostureIgnoreTransition);
+			DO_REP(ATgPawn, r_bResistTagging, BoolProperty_TgGame_TgPawn_r_bResistTagging);
+			DO_REP(ATgPawn, r_bShouldKnockDownAnimFaceDown, BoolProperty_TgGame_TgPawn_r_bShouldKnockDownAnimFaceDown);
+			DO_REP(ATgPawn, r_bTagEnemy, BoolProperty_TgGame_TgPawn_r_bTagEnemy);
+			DO_REP(ATgPawn, r_bUsingBinoculars, BoolProperty_TgGame_TgPawn_r_bUsingBinoculars);
+			DO_REP(ATgPawn, r_eCurrentStunType, ByteProperty_TgGame_TgPawn_r_eCurrentStunType);
+			DO_REP(ATgPawn, r_eDeathReason, ByteProperty_TgGame_TgPawn_r_eDeathReason);
+			DO_REP(ATgPawn, r_eEmoteLength, IntProperty_TgGame_TgPawn_r_eEmoteLength);
+			DO_REP(ATgPawn, r_eEmoteRepnotify, IntProperty_TgGame_TgPawn_r_eEmoteRepnotify);
+			DO_REP(ATgPawn, r_eEmoteUpdate, IntProperty_TgGame_TgPawn_r_eEmoteUpdate);
+			DO_REP(ATgPawn, r_ePosture, ByteProperty_TgGame_TgPawn_r_ePosture);
+			DO_REP(ATgPawn, r_fDeployRate, FloatProperty_TgGame_TgPawn_r_fDeployRate);
+			DO_REP(ATgPawn, r_fFrictionMultiplier, FloatProperty_TgGame_TgPawn_r_fFrictionMultiplier);
+			DO_REP(ATgPawn, r_fGravityZModifier, FloatProperty_TgGame_TgPawn_r_fGravityZModifier);
+			DO_REP(ATgPawn, r_fKnockDownTimeRemaining, FloatProperty_TgGame_TgPawn_r_fKnockDownTimeRemaining);
+			DO_REP(ATgPawn, r_fMakeVisibleFadeRate, FloatProperty_TgGame_TgPawn_r_fMakeVisibleFadeRate);
+			DO_REP(ATgPawn, r_fPostureRateScale, FloatProperty_TgGame_TgPawn_r_fPostureRateScale);
+			DO_REP(ATgPawn, r_fRappelGravityModifier, FloatProperty_TgGame_TgPawn_r_fRappelGravityModifier);
+			DO_REP(ATgPawn, r_fStealthTransitionTime, FloatProperty_TgGame_TgPawn_r_fStealthTransitionTime);
+			DO_REP(ATgPawn, r_fWeightBonus, IntProperty_TgGame_TgPawn_r_fWeightBonus);
+			DO_REP(ATgPawn, r_iKnockDownFlash, IntProperty_TgGame_TgPawn_r_iKnockDownFlash);
+			DO_REP(ATgPawn, r_nApplyStealth, IntProperty_TgGame_TgPawn_r_nApplyStealth);
+			DO_REP(ATgPawn, r_nBotSoundCueId, IntProperty_TgGame_TgPawn_r_nBotSoundCueId);
+			DO_REP(ATgPawn, r_nDebugAggroRange, IntProperty_TgGame_TgPawn_r_nDebugAggroRange);
+			DO_REP(ATgPawn, r_nDebugFOV, IntProperty_TgGame_TgPawn_r_nDebugFOV);
+			DO_REP(ATgPawn, r_nDebugHearingRange, IntProperty_TgGame_TgPawn_r_nDebugHearingRange);
+			DO_REP(ATgPawn, r_nDebugSightRange, IntProperty_TgGame_TgPawn_r_nDebugSightRange);
+			DO_REP(ATgPawn, r_nGenericAIEventIndex, IntProperty_TgGame_TgPawn_r_nGenericAIEventIndex);
+			DO_REP(ATgPawn, r_nHealthMaximum, IntProperty_TgGame_TgPawn_r_nHealthMaximum);
+			DO_REP(ATgPawn, r_nNumberTimesCrewed, IntProperty_TgGame_TgPawn_r_nNumberTimesCrewed);
+			DO_REP(ATgPawn, r_nPhase, IntProperty_TgGame_TgPawn_r_nPhase);
+			DO_REP(ATgPawn, r_nPitchOffset, IntProperty_TgGame_TgPawn_r_nPitchOffset);
+			DO_REP(ATgPawn, r_nReplicateDying, IntProperty_TgGame_TgPawn_r_nReplicateDying);
+			DO_REP(ATgPawn, r_nResetCharacter, IntProperty_TgGame_TgPawn_r_nResetCharacter);
+			DO_REP(ATgPawn, r_nSensorAlertLevel, IntProperty_TgGame_TgPawn_r_nSensorAlertLevel);
+			DO_REP(ATgPawn, r_nShieldHealthMax, IntProperty_TgGame_TgPawn_r_nShieldHealthMax);
+			DO_REP(ATgPawn, r_nShieldHealthRemaining, IntProperty_TgGame_TgPawn_r_nShieldHealthRemaining);
+			DO_REP(ATgPawn, r_nSilentMode, IntProperty_TgGame_TgPawn_r_nSilentMode);
+			DO_REP(ATgPawn, r_nStealthAggroRange, IntProperty_TgGame_TgPawn_r_nStealthAggroRange);
+			DO_REP(ATgPawn, r_nStealthDisabled, IntProperty_TgGame_TgPawn_r_nStealthDisabled);
+			DO_REP(ATgPawn, r_nStealthSensorRange, IntProperty_TgGame_TgPawn_r_nStealthSensorRange);
+			DO_REP(ATgPawn, r_nStealthTypeCode, IntProperty_TgGame_TgPawn_r_nStealthTypeCode);
+			DO_REP(ATgPawn, r_nYawOffset, IntProperty_TgGame_TgPawn_r_nYawOffset);
+			DO_REP(ATgPawn, r_sDebugAction, StrProperty_TgGame_TgPawn_r_sDebugAction);
+			DO_REP(ATgPawn, r_sDebugName, StrProperty_TgGame_TgPawn_r_sDebugName);
+			DO_REP(ATgPawn, r_sFactory, StrProperty_TgGame_TgPawn_r_sFactory);
+			DO_REP(ATgPawn, r_vDown, StructProperty_TgGame_TgPawn_r_vDown);
+			// added:
+			DO_REP_ARRAY(0x20, ATgPawn, r_nFlashEvent, IntProperty_TgGame_TgPawn_r_nFlashEvent);
+			DO_REP_ARRAY(0x20, ATgPawn, r_nFlashFireInfo, IntProperty_TgGame_TgPawn_r_nFlashFireInfo);
+			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashLocation, StructProperty_TgGame_TgPawn_r_vFlashLocation);
+			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashRayDir, StructProperty_TgGame_TgPawn_r_vFlashRayDir);
+			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashRefireTime, FloatProperty_TgGame_TgPawn_r_vFlashRefireTime);
+			DO_REP_ARRAY(0x20, ATgPawn, r_vFlashSituationalAttack, IntProperty_TgGame_TgPawn_r_vFlashSituationalAttack);
+			DO_REP(ATgPawn, r_nFlashQueIndex, IntProperty_TgGame_TgPawn_r_nFlashQueIndex);
+		}
 		if ((actor->Role == 3) && actor->bNetDirty || actor->bNetInitial) {
 			DO_REP(ATgPawn_Character, r_CustomCharacterAssembly, StructProperty_TgGame_TgPawn_Character_r_CustomCharacterAssembly);
 			DO_REP(ATgPawn_Character, r_eAttachedMesh, ByteProperty_TgGame_TgPawn_Character_r_eAttachedMesh);
@@ -3808,6 +4122,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn_Character, r_nSkillGroupSetId, IntProperty_TgGame_TgPawn_Character_r_nSkillGroupSetId);
 		}
 	}
+
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgPawn_DuneCommander") == 0) {
 		if ((actor->Role == 3) && actor->bNetDirty || actor->bNetInitial) {
 			DO_REP(ATgPawn_DuneCommander, r_bDoCrashLanding, BoolProperty_TgGame_TgPawn_DuneCommander_r_bDoCrashLanding);
@@ -3844,7 +4159,16 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn_VanityPet, r_nSpawningItemId, IntProperty_TgGame_TgPawn_VanityPet_r_nSpawningItemId);
 		}
 	}
+
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgPlayerController") == 0) {
+		if (actor->bNetDirty && actor->Role == 3) {
+			DO_REP(AController, Pawn, BoolProperty_TgPlayerController_PawnPerformanceTest_bEnablePerfTest);
+			DO_REP(AController, PlayerReplicationInfo, ObjectProperty_Engine_Controller_PlayerReplicationInfo);
+		}
+		if (((actor->bNetOwner && actor->Role == 3) && ((APlayerController*)actor)->ViewTarget != ((APlayerController*)actor)->Pawn) && ((APlayerController*)actor)->ViewTarget != NULL) {
+			DO_REP(APlayerController, TargetEyeHeight, FloatProperty_Engine_PlayerController_TargetEyeHeight);
+			DO_REP(APlayerController, TargetViewRotation, StructProperty_Engine_PlayerController_TargetViewRotation);
+		}
 		if ((actor->Role == 3) && actor->bNetOwner) {
 			DO_REP(ATgPlayerController, r_WatchOtherPlayer, ByteProperty_TgGame_TgPlayerController_r_WatchOtherPlayer);
 			DO_REP(ATgPlayerController, r_bEDDebugEffects, BoolProperty_TgGame_TgPlayerController_r_bEDDebugEffects);
@@ -3854,6 +4178,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPlayerController, r_bRove, BoolProperty_TgGame_TgPlayerController_r_bRove);
 		}
 	}
+
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Grapple") == 0) {
 		if (actor->Role == 3) {
 			DO_REP(ATgProj_Grapple, r_vTargetLocation, StructProperty_TgGame_TgProj_Grapple_r_vTargetLocation);
@@ -3885,7 +4210,21 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgProjectile, r_vSpawnLocation, StructProperty_TgGame_TgProjectile_r_vSpawnLocation);
 		}
 	}
+
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgRepInfo_Beacon") == 0) {
+		if (actor->bNetDirty && actor->Role == 3) {
+			DO_REP(ATgRepInfo_Deployable, r_InstigatorInfo, ObjectProperty_TgGame_TgRepInfo_Deployable_r_InstigatorInfo);
+			DO_REP(ATgRepInfo_Deployable, r_TaskforceInfo, ObjectProperty_TgGame_TgRepInfo_Deployable_r_TaskforceInfo);
+			DO_REP(ATgRepInfo_Deployable, r_bOwnedByTaskforce, BoolProperty_TgGame_TgRepInfo_Deployable_r_bOwnedByTaskforce);
+			DO_REP(ATgRepInfo_Deployable, r_nHealthCurrent, IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthCurrent);
+		}
+		if (actor->bNetInitial && actor->Role == 3) {
+			DO_REP(ATgRepInfo_Deployable, r_DeployableOwner, ObjectProperty_TgGame_TgRepInfo_Deployable_r_DeployableOwner);
+			DO_REP(ATgRepInfo_Deployable, r_fDeployMaxHealthPCT, FloatProperty_TgGame_TgRepInfo_Deployable_r_fDeployMaxHealthPCT);
+			DO_REP(ATgRepInfo_Deployable, r_nDeployableId, IntProperty_TgGame_TgRepInfo_Deployable_r_nDeployableId);
+			DO_REP(ATgRepInfo_Deployable, r_nHealthMaximum, IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthMaximum);
+			DO_REP(ATgRepInfo_Deployable, r_nUniqueDeployableId, IntProperty_TgGame_TgRepInfo_Deployable_r_nUniqueDeployableId);
+		}
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(ATgRepInfo_Beacon, r_bDeployed, BoolProperty_TgGame_TgRepInfo_Beacon_r_bDeployed);
 			DO_REP(ATgRepInfo_Beacon, r_vLoc, StructProperty_TgGame_TgRepInfo_Beacon_r_vLoc);
@@ -3894,6 +4233,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgRepInfo_Beacon, r_nName, StrProperty_TgGame_TgRepInfo_Beacon_r_nName);
 		}
 	}
+
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgRepInfo_Deployable") == 0) {
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(ATgRepInfo_Deployable, r_InstigatorInfo, ObjectProperty_TgGame_TgRepInfo_Deployable_r_InstigatorInfo);
@@ -3952,7 +4292,37 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP_ARRAY(0x3, ATgRepInfo_GameOpenWorld, r_GameTickets, IntProperty_TgGame_TgRepInfo_GameOpenWorld_r_GameTickets);
 		}
 	}
+
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgRepInfo_Player") == 0) {
+		if (actor->bNetDirty && actor->Role == 3) {
+			DO_REP(APlayerReplicationInfo, Deaths, FloatProperty_Engine_PlayerReplicationInfo_Deaths);
+			DO_REP(APlayerReplicationInfo, PlayerAlias, StrProperty_Engine_PlayerReplicationInfo_PlayerAlias);
+			DO_REP(APlayerReplicationInfo, PlayerLocationHint, ObjectProperty_Engine_PlayerReplicationInfo_PlayerLocationHint);
+			DO_REP(APlayerReplicationInfo, PlayerName, StrProperty_Engine_PlayerReplicationInfo_PlayerName);
+			DO_REP(APlayerReplicationInfo, PlayerSkill, IntProperty_Engine_PlayerReplicationInfo_PlayerSkill);
+			DO_REP(APlayerReplicationInfo, Score, FloatProperty_Engine_PlayerReplicationInfo_Score);
+			DO_REP(APlayerReplicationInfo, StartTime, IntProperty_Engine_PlayerReplicationInfo_StartTime);
+			DO_REP(APlayerReplicationInfo, Team, ObjectProperty_Engine_PlayerReplicationInfo_Team);
+			DO_REP(APlayerReplicationInfo, UniqueId, StructProperty_Engine_PlayerReplicationInfo_UniqueId);
+			DO_REP(APlayerReplicationInfo, bAdmin, BoolProperty_Engine_PlayerReplicationInfo_bAdmin);
+			DO_REP(APlayerReplicationInfo, bHasFlag, BoolProperty_Engine_PlayerReplicationInfo_bHasFlag);
+			DO_REP(APlayerReplicationInfo, bIsFemale, BoolProperty_Engine_PlayerReplicationInfo_bIsFemale);
+			DO_REP(APlayerReplicationInfo, bIsSpectator, BoolProperty_Engine_PlayerReplicationInfo_bIsSpectator);
+			DO_REP(APlayerReplicationInfo, bOnlySpectator, BoolProperty_Engine_PlayerReplicationInfo_bOnlySpectator);
+			DO_REP(APlayerReplicationInfo, bOutOfLives, BoolProperty_Engine_PlayerReplicationInfo_bOutOfLives);
+			DO_REP(APlayerReplicationInfo, bReadyToPlay, BoolProperty_Engine_PlayerReplicationInfo_bReadyToPlay);
+			DO_REP(APlayerReplicationInfo, bWaitingPlayer, BoolProperty_Engine_PlayerReplicationInfo_bWaitingPlayer);
+		}
+		if ((actor->bNetDirty && actor->Role == 3) && !actor->bNetOwner) {
+			DO_REP(APlayerReplicationInfo, PacketLoss, ByteProperty_Engine_PlayerReplicationInfo_PacketLoss);
+			DO_REP(APlayerReplicationInfo, Ping, ByteProperty_Engine_PlayerReplicationInfo_Ping);
+			DO_REP(APlayerReplicationInfo, SplitscreenIndex, IntProperty_Engine_PlayerReplicationInfo_SplitscreenIndex);
+		}
+		if (actor->bNetInitial && actor->Role == 3) {
+			DO_REP(APlayerReplicationInfo, PlayerID, IntProperty_Engine_PlayerReplicationInfo_PlayerID);
+			DO_REP(APlayerReplicationInfo, bBot, BoolProperty_Engine_PlayerReplicationInfo_bBot);
+			DO_REP(APlayerReplicationInfo, bIsInactive, BoolProperty_Engine_PlayerReplicationInfo_bIsInactive);
+		}
 		if (actor->Role == 3) {
 			DO_REP(ATgRepInfo_Player, r_ApproxLocation, StructProperty_TgGame_TgRepInfo_Player_r_ApproxLocation);
 			DO_REP(ATgRepInfo_Player, r_CustomCharacterAssembly, StructProperty_TgGame_TgRepInfo_Player_r_CustomCharacterAssembly);
@@ -3977,6 +4347,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP_ARRAY(0x9, ATgRepInfo_Player, r_DeviceStats, StructProperty_TgGame_TgRepInfo_Player_r_DeviceStats);
 		}
 	}
+
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgRepInfo_TaskForce") == 0) {
 		if (actor->Role == 3) {
 			DO_REP(ATgRepInfo_TaskForce, r_BeaconManager, ObjectProperty_TgGame_TgRepInfo_TaskForce_r_BeaconManager);
