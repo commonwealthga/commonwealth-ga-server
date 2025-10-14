@@ -9,7 +9,22 @@ class World__NotifyAcceptedConnection : public HookBase<
 public:
 	static void __fastcall Call(void* Notify, void* edx, UNetConnection* Connection);
 	static inline void __fastcall CallOriginal(void* Notify, void* edx, UNetConnection* Connection) {
-		m_original(Notify, edx, Connection);
+
+		typedef void (*tNotifyAcceptedConnectionRaw)();  // no args, we push manually
+		tNotifyAcceptedConnectionRaw pOriginalWorldNotifyAcceptedConnection = (tNotifyAcceptedConnectionRaw)m_original;
+
+		asm volatile(
+			"push %[conn] \n\t"
+			"mov  %[notify], %%ecx \n\t"   // FIXED: move notify into ecx
+			"call *%[func] \n\t"
+			:
+			: [func] "r" (pOriginalWorldNotifyAcceptedConnection),
+			[notify] "r" (Notify),
+			[conn] "r" (Connection)
+			: "ecx", "memory"
+		);
+
+		// m_original(Notify, edx, Connection);
 	}
 };
 

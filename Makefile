@@ -1,6 +1,6 @@
 
 SOURCE_FILES= \
-			  $(SRC_DIR)/Config/Config/ConfigAvaPushLab.cpp \
+			  $(SRC_DIR)/Config/Config/ConfigTetraPier.cpp \
 			  \
 			  $(SRC_DIR)/Utils/Logger/Logger/FileLogger.cpp \
 			  \
@@ -30,7 +30,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.cpp \
-			  $(SRC_DIR)/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepList.cpp \
+			  $(SRC_DIR)/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepListV2.cpp \
 			  $(SRC_DIR)/dllmain.cpp
 
 

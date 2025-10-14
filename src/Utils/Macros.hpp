@@ -20,3 +20,27 @@
         *arrayname##CountPtr = Count + 1; \
     }
 
+#define DO_REP(actortype, propertyname, propertyfullname) \
+	{ \
+		bool &initialFlag = propertyfullname##_initial[(int)actor]; \
+		if (propertyfullname != nullptr && ((*(int *)(param_5 + 0x4c) == -1 && !initialFlag) || NEQ(((actortype*)recent)->propertyname, ((actortype*)actor)->propertyname, (void*)param_4, (void*)param_5))) { \
+			initialFlag = true; \
+			repindex = *(int*)((char*)propertyfullname + 0x5E); \
+			*param_3++ = repindex; \
+		} \
+	}
+
+#define DO_REP_ARRAY(count, actortype, propertyname, propertyfullname) \
+	{ \
+		bool &initialFlag = propertyfullname##_initial[(int)actor]; \
+		if (propertyfullname != nullptr) { \
+			for (int i = 0; i < count; i++) { \
+				if ((*(int *)(param_5 + 0x4c) == -1 && !initialFlag) || NEQ(((actortype*)recent)->propertyname[i], ((actortype*)actor)->propertyname[i], (void*)param_4, (void*)param_5)) { \
+						repindex = *(int*)((char*)propertyfullname + 0x5E); \
+						*param_3++ = repindex+i; \
+				} \
+			} \
+			initialFlag = true; \
+		} \
+	}
+

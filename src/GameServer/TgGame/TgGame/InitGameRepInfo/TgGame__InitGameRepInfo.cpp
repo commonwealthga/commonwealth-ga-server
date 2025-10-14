@@ -39,18 +39,18 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		ATgRepInfo_TaskForce* defenders = (ATgRepInfo_TaskForce*)gamerep->Spawn(ClassPreloader::GetTgRepInfoTaskForceClass(), gamerep, FName(), FVector(0, 0, 0), FRotator(0, 0, 0), nullptr, 1);
 		ATgRepInfo_TaskForce* attackers = (ATgRepInfo_TaskForce*)gamerep->Spawn(ClassPreloader::GetTgRepInfoTaskForceClass(), gamerep, FName(), FVector(0, 0, 0), FRotator(0, 0, 0), nullptr, 1);
 
-		GTeamsData.Attackers = attackers;
 		GTeamsData.Defenders = defenders;
+		GTeamsData.Attackers = attackers;
 
+		defenders->r_nTaskForce = 0;
 		attackers->r_nTaskForce = 1;
-		defenders->r_nTaskForce = 2;
 
-		gamerep->Teams.Data[0] = attackers;
-		gamerep->Teams.Data[1] = defenders;
+		gamerep->Teams.Data[0] = defenders;
+		gamerep->Teams.Data[1] = attackers;
 		gamerep->Teams.Count = 2;
 
-		attackers->eventPostInit();
 		defenders->eventPostInit();
+		attackers->eventPostInit();
 
 		gamerep->InitMissionTime();
 	}

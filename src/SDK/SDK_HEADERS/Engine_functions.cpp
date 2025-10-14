@@ -91403,8 +91403,18 @@ void APlayerReplicationInfo::SetPlayerTeam ( class ATeamInfo* NewTeam )
 {
 	static UFunction* pFnSetPlayerTeam = NULL;
 
-	if ( ! pFnSetPlayerTeam )
-		pFnSetPlayerTeam = (UFunction*) UObject::GObjObjects()->Data[ 22349 ];
+	if ( ! pFnSetPlayerTeam ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function Engine.PlayerReplicationInfo.SetPlayerTeam") == 0) {
+					pFnSetPlayerTeam = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnSetPlayerTeam = (UFunction*) UObject::GObjObjects()->Data[ 22349 ];
 
 	APlayerReplicationInfo_execSetPlayerTeam_Parms SetPlayerTeam_Parms;
 	SetPlayerTeam_Parms.NewTeam = NewTeam;

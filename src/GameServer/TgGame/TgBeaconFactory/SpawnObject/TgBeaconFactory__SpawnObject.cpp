@@ -19,7 +19,8 @@ void __fastcall* TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* BeaconFact
 		Logger::Log("debug", "trying to spawn beacon exit\n");
 
 		FVector SpawnLocation = BeaconFactory->Location;
-		SpawnLocation.X += 2500;
+		// SpawnLocation.X += 2500;
+		SpawnLocation.X += 1500;
 
 		ATgDeploy_Beacon* Beacon = (ATgDeploy_Beacon*)BeaconFactory->Spawn(
 			ClassPreloader::GetTgDeployBeaconClass(),
