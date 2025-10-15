@@ -3506,8 +3506,14 @@ void ATgRandomSMActor::PostBeginPlay ( )
 {
 	static UFunction* pFnPostBeginPlay = NULL;
 
-	if ( ! pFnPostBeginPlay )
-		pFnPostBeginPlay = (UFunction*) UObject::GObjObjects()->Data[ 46916 ];
+	if ( ! pFnPostBeginPlay ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgRandomSMActor.PostBeginPlay") == 0) {
+				pFnPostBeginPlay = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnPostBeginPlay = (UFunction*) UObject::GObjObjects()->Data[ 46916 ];
 
 	ATgRandomSMActor_execPostBeginPlay_Parms PostBeginPlay_Parms;
 
@@ -3582,8 +3588,14 @@ void ATgRandomSMManager::ManageRandomSMActors ( )
 {
 	static UFunction* pFnManageRandomSMActors = NULL;
 
-	if ( ! pFnManageRandomSMActors )
-		pFnManageRandomSMActors = (UFunction*) UObject::GObjObjects()->Data[ 46929 ];
+	if ( ! pFnManageRandomSMActors ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgRandomSMManager.ManageRandomSMActors") == 0) {
+				pFnManageRandomSMActors = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+	//	pFnManageRandomSMActors = (UFunction*) UObject::GObjObjects()->Data[ 46929 ];
 
 	ATgRandomSMManager_execManageRandomSMActors_Parms ManageRandomSMActors_Parms;
 

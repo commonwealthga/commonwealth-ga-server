@@ -19,3 +19,19 @@ void Logger::Log(const char* Channel, const char* Format, ...) {
     fclose(fp);
 }
 
+void Logger::DumpMemory(char* Channel, void* Address, int Size, int NegativeSize) {
+	char* base = (char*)Address;
+
+	Log(Channel, "[%p] Memory Dump:\n", Address);
+
+	if (NegativeSize > 0) {
+		for (int i = -NegativeSize * 4; i < 0; i += 4) {
+			Log(Channel, "  0x%04X:   %08X\n", i, *(int*)(base + i));
+		}
+	}
+
+	for (int i = 0; i < Size; i += 4) {
+		Log(Channel, "  0x%04X:   %08X\n", i, *(int*)(base + i));
+	}
+}
+

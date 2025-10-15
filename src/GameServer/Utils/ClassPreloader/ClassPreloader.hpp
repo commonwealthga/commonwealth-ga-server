@@ -14,5 +14,6 @@ public:
 	static UClass* GetTgRepInfoTaskForceClass();
 	static UClass* GetTgDeployBeaconClass();
 	static UClass* GetTgDeployBeaconEntranceClass();
+	static UClass* GetTgRandomSMManagerClass();
 };
 

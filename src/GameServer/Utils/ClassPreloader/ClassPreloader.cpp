@@ -46,3 +46,8 @@ UClass* ClassPreloader::GetTgDeployBeaconEntranceClass() {
 	return Classes["Class TgGame.TgDeploy_BeaconEntrance"];
 }
 
+UClass* ClassPreloader::GetTgRandomSMManagerClass() {
+	PreloadClasses();
+	return Classes["Class TgGame.TgRandomSMManager"];
+}
+

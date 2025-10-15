@@ -45,6 +45,47 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 			void* Notify = *(void**)((char*)NetDriver + 0x54);
 			Globals::Get().GWorld = reinterpret_cast<UWorld*>((char*)Notify - 0x3C);
 		}
+		if (!Globals::Get().GWorldInfo) {
+			bool bFirstSkipped = false;
+			for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+				if (UObject::GObjObjects()->Data[i]) {
+					if (strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "WorldInfo TheWorld.PersistentLevel.WorldInfo") == 0) {
+						if (!bFirstSkipped) {
+							bFirstSkipped = true;
+							continue;
+						}
+
+						Globals::Get().GWorldInfo = reinterpret_cast<AWorldInfo*>(UObject::GObjObjects()->Data[i]);
+					}
+				}
+			}
+		}
+
+
+		// random sm manager start
+		AWorldInfo* worldinfo = nullptr;
+		for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMManager") == 0) {
+					ATgRandomSMManager* randomactor = reinterpret_cast<ATgRandomSMManager*>(obj);
+					if (randomactor->WorldInfo == nullptr) {
+						randomactor->WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
+					}
+
+					randomactor->ManageRandomSMActors();
+					Logger::Log("debug", "ManageRandomSMActors() called\n");
+
+					break;
+				}
+			}
+		}
+		// AGameReplicationInfo* gamerep = worldinfo->GRI;
+		// void* randomsmsettings = *(void**)((char*)gamerep + 0x438);
+		// void* randomsmsettingsarr = *(void**)((char*)randomsmsettings + 0x10);
+		// void* randomsmsettingsarr4 = *(void**)((char*)randomsmsettingsarr + 0x4);
+		// Logger::DumpMemory("randomsmsettings", randomsmsettingsarr4, 0x300, 0);
+		// random sm manager end
 
 		// bPlayerConnected = true;
 
@@ -149,6 +190,112 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 
 		if (newcontrollerptr) {
 			MarshalChannel__NotifyControlMessage::HandlePlayerConnected(Connection, newcontrollerptr);
+
+
+			// AWorldInfo* worldinfo = nullptr;
+			// for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+			// 	if (UObject::GObjObjects()->Data[i]) {
+			// 		UObject* obj = UObject::GObjObjects()->Data[i];
+			// 		if (
+			// 			FALSE
+			// 			// strcmp(obj->Class->GetFullName(), "Class Engine.Actor") == 0
+			// 			// || strcmp(obj->Class->GetFullName(), "Class Engine.StaticMeshActor") == 0
+			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgStaticMeshActor") == 0
+			// 			|| strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMActor") == 0
+			// 			|| strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMManager") == 0
+			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgDynamicSMActor") == 0
+			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgDynamicDestructible") == 0
+			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgDummyActor") == 0
+			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgInterpActor") == 0
+			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgKActorSpawnable") == 0
+			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgKAssetSpawnable") == 0
+			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgMeshAssembly") == 0
+			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgDoor") == 0
+			// 		) {
+			// 			AActor* actor = reinterpret_cast<AActor*>(obj);
+			// 			// LogToFile("C:\\serveractors.txt", "%s %d", actor->GetFullName(), actor->NetIndex);
+			// 			actor->bAlwaysRelevant = 1;
+			// 			actor->bNetDirty = 1;
+			// 			actor->bNetInitial = 1;
+			// 			actor->bForceNetUpdate = 1;
+			// 			actor->RemoteRole = 1;
+			// 			actor->Role = 3;
+			// 			actor->NetUpdateFrequency = 0.1f;
+			// 			actor->bSkipActorPropertyReplication = 0;
+			// 			if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMActor") == 0) {
+			// 				ATgRandomSMActor* randomactor = reinterpret_cast<ATgRandomSMActor*>(obj);
+			// 				if (randomactor->WorldInfo == nullptr && worldinfo == nullptr) {
+			//
+			// 					bool bFirstSkipped = false;
+			// 					for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+			// 						if (UObject::GObjObjects()->Data[i]) {
+			// 							if (strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "WorldInfo TheWorld.PersistentLevel.WorldInfo") == 0) {
+			// 								if (!bFirstSkipped) {
+			// 									// LogToFile("C:\\tcplog.txt", "Skipping first WorldInfo");
+			// 									bFirstSkipped = true;
+			// 									continue;
+			// 								}
+			//
+			// 								worldinfo = reinterpret_cast<AWorldInfo*>(UObject::GObjObjects()->Data[i]);
+			//
+			//
+			// 								// LogToFile("C:\\tcplog.txt", "WI found: %s", WI->GetFullName());
+			//
+			// 								// UClass* GameClass = WI->GetGameClass( );
+			// 								// if (GameClass == nullptr) {
+			// 								// 	// LogToFile("C:\\tcplog.txt", "GameClass is nullptr");
+			// 								// 	continue;
+			// 								// }
+			//
+			// 								// LogToFile("C:\\tcplog.txt", "GameClass: %s", GameClass->GetFullName());
+			// 							}
+			// 						}
+			// 					}
+			// 				}
+			// 				randomactor->WorldInfo = worldinfo;
+			// 				randomactor->PostBeginPlay();
+			// 			}
+			// 			if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMManager") == 0) {
+			// 				ATgRandomSMManager* randomactor = reinterpret_cast<ATgRandomSMManager*>(obj);
+			// 				if (randomactor->WorldInfo == nullptr && worldinfo == nullptr) {
+			//
+			// 					bool bFirstSkipped = false;
+			// 					for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+			// 						if (UObject::GObjObjects()->Data[i]) {
+			// 							if (strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "WorldInfo TheWorld.PersistentLevel.WorldInfo") == 0) {
+			// 								if (!bFirstSkipped) {
+			// 									// LogToFile("C:\\tcplog.txt", "Skipping first WorldInfo");
+			// 									bFirstSkipped = true;
+			// 									continue;
+			// 								}
+			//
+			// 								worldinfo = reinterpret_cast<AWorldInfo*>(UObject::GObjObjects()->Data[i]);
+			//
+			//
+			// 								// LogToFile("C:\\tcplog.txt", "WI found: %s", WI->GetFullName());
+			//
+			// 								// UClass* GameClass = WI->GetGameClass( );
+			// 								// if (GameClass == nullptr) {
+			// 								// 	// LogToFile("C:\\tcplog.txt", "GameClass is nullptr");
+			// 								// 	continue;
+			// 								// }
+			//
+			// 								// LogToFile("C:\\tcplog.txt", "GameClass: %s", GameClass->GetFullName());
+			// 							}
+			// 						}
+			// 					}
+			// 				}
+			//
+			// 				randomactor->WorldInfo = worldinfo;
+			// 				randomactor->ManageRandomSMActors();
+			// 				Logger::Log("debug", "ManageRandomSMActors() called\n");
+			// 			}
+			//
+			//
+			// 			continue;
+			// 		}
+			// 	}
+			// }
 		}
 	}
 }
