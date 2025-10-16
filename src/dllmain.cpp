@@ -1,6 +1,7 @@
 #include "src/pch.hpp"
 
 #include "src/GameServer/Engine/GameEngine/Init/GameEngine__Init.hpp"
+#include "src/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.hpp"
 #include "src/GameServer/Engine/LaunchEngineLoop/ConstructCommandletObject/ConstructCommandletObject.hpp"
 #include "src/GameServer/Engine/ServerCommandlet/Main/ServerCommandlet__Main.hpp"
 #include "src/GameServer/Engine/GameEngine/SpawnServerActors/GameEngine__SpawnServerActors.hpp"
@@ -11,6 +12,7 @@
 #include "src/GameServer/Engine/ActorChannel/ReceivedBunch/CanExecute/ActorChannel__ReceivedBunch__CanExecute.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/IsReadyForStart/TgPlayerController__IsReadyForStart.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
+#include "src/GameServer/TgGame/TgGame/SpawnBotPawn/TgGame__SpawnBotPawn.hpp"
 #include "src/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.hpp"
 #include "src/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.hpp"
@@ -21,6 +23,12 @@
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.hpp"
 #include "src/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepList.hpp"
 #include "src/GameServer/Engine/Actor/Spawn/Actor__Spawn.hpp"
+#include "src/GameServer/TgGame/TgBotFactory/SpawnBot/TgBotFactory__SpawnBot.hpp"
+#include "src/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.hpp"
+#include "src/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.hpp"
+#include "src/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.hpp"
+#include "src/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.hpp"
+#include "src/GameServer/Misc/CAmBot/LoadBotBehaviorMarshal/CAmBot__LoadBotBehaviorMarshal.hpp"
 
 
 unsigned long ModuleThread( void* ) {
@@ -30,6 +38,8 @@ unsigned long ModuleThread( void* ) {
 	// low-level engine functions
 	GameEngine__Init::bInitTcpServer = true;
 	GameEngine__Init::Install();
+	// UObject__CollectGarbage::bDisableGarbageCollection = true;
+	UObject__CollectGarbage::Install();
 	ConstructCommandletObject::Install();
 	ServerCommandlet__Main::Install();
 	GameEngine__SpawnServerActors::Install();
@@ -44,6 +54,7 @@ unsigned long ModuleThread( void* ) {
 	// game functions
 	TgPlayerController__IsReadyForStart::Install();
 	TgGame__SpawnPlayerCharacter::Install();
+	TgGame__SpawnBotPawn::Install();
 	TgGame__LoadGameConfig::Install();
 	TgGame__InitGameRepInfo::Install();
 	TgGame_Arena__LoadGameConfig::Install();
@@ -52,6 +63,12 @@ unsigned long ModuleThread( void* ) {
 	TgTeamBeaconManager__SpawnNewBeaconForTeam::Install();
 	TgBeaconFactory__SpawnObject::Install();
 	TgInventoryManager__NonPersistAddDevice::Install();
+	TgBotFactory__SpawnBot::Install();
+	TgGame__SpawnBot::Install();
+	CMarshal__GetByte::Install();
+	CMarshal__GetInt32t::Install();
+	CAmBot__LoadBotMarshal::Install();
+	CAmBot__LoadBotBehaviorMarshal::Install();
 
 	::DetourTransactionCommit();
 

@@ -51,3 +51,13 @@ UClass* ClassPreloader::GetTgRandomSMManagerClass() {
 	return Classes["Class TgGame.TgRandomSMManager"];
 }
 
+UClass* ClassPreloader::GetTgPawnEliteAlchemistClass() {
+	PreloadClasses();
+	return Classes["Class TgGame.TgPawn_Elite_Alchemist"];
+}
+
+UClass* ClassPreloader::GetTgAIControllerClass() {
+	PreloadClasses();
+	return Classes["Class TgGame.TgAIController"];
+}
+

@@ -56,30 +56,53 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 						}
 
 						Globals::Get().GWorldInfo = reinterpret_cast<AWorldInfo*>(UObject::GObjObjects()->Data[i]);
+						break;
 					}
 				}
 			}
 		}
 
-
-		// random sm manager start
-		AWorldInfo* worldinfo = nullptr;
 		for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i]) {
 				UObject* obj = UObject::GObjObjects()->Data[i];
-				if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMManager") == 0) {
-					ATgRandomSMManager* randomactor = reinterpret_cast<ATgRandomSMManager*>(obj);
-					if (randomactor->WorldInfo == nullptr) {
-						randomactor->WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
+				if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgBotFactory") == 0) {
+					ATgBotFactory* botfactory = reinterpret_cast<ATgBotFactory*>(obj);
+					if (botfactory->WorldInfo == nullptr) {
+						botfactory->WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
 					}
 
-					randomactor->ManageRandomSMActors();
-					Logger::Log("debug", "ManageRandomSMActors() called\n");
-
-					break;
+					botfactory->SpawnBot();
+					// botfactory->SpawnBot();
+					// botfactory->SpawnBot();
+					// botfactory->SpawnBot();
+					// botfactory->SpawnBot();
+					// botfactory->SpawnBot();
+					// botfactory->SpawnBot();
+					// botfactory->SpawnBot();
+					// botfactory->SpawnBot();
+					botfactory->SpawnBot();
 				}
 			}
 		}
+
+		// random sm manager start
+		// AWorldInfo* worldinfo = nullptr;
+		// for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+		// 	if (UObject::GObjObjects()->Data[i]) {
+		// 		UObject* obj = UObject::GObjObjects()->Data[i];
+		// 		if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMManager") == 0) {
+		// 			ATgRandomSMManager* randomactor = reinterpret_cast<ATgRandomSMManager*>(obj);
+		// 			if (randomactor->WorldInfo == nullptr) {
+		// 				randomactor->WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
+		// 			}
+		//
+		// 			randomactor->ManageRandomSMActors();
+		// 			Logger::Log("debug", "ManageRandomSMActors() called\n");
+		//
+		// 			break;
+		// 		}
+		// 	}
+		// }
 		// AGameReplicationInfo* gamerep = worldinfo->GRI;
 		// void* randomsmsettings = *(void**)((char*)gamerep + 0x438);
 		// void* randomsmsettingsarr = *(void**)((char*)randomsmsettings + 0x10);

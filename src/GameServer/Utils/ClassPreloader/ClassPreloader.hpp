@@ -15,5 +15,7 @@ public:
 	static UClass* GetTgDeployBeaconClass();
 	static UClass* GetTgDeployBeaconEntranceClass();
 	static UClass* GetTgRandomSMManagerClass();
+	static UClass* GetTgPawnEliteAlchemistClass();
+	static UClass* GetTgAIControllerClass();
 };
 

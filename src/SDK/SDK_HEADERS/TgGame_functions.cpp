@@ -21790,8 +21790,18 @@ void ATgBotFactory::SpawnBot ( )
 {
 	static UFunction* pFnSpawnBot = NULL;
 
-	if ( ! pFnSpawnBot )
-		pFnSpawnBot = (UFunction*) UObject::GObjObjects()->Data[ 34635 ];
+	if ( ! pFnSpawnBot ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgBotFactory.SpawnBot") == 0) {
+					pFnSpawnBot = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnSpawnBot = (UFunction*) UObject::GObjObjects()->Data[ 34635 ];
 
 	ATgBotFactory_execSpawnBot_Parms SpawnBot_Parms;
 
@@ -28063,8 +28073,18 @@ void ATgAIController::eventSetWhatToDoNext ( int nMovementCode, int nMoveDestina
 {
 	static UFunction* pFnSetWhatToDoNext = NULL;
 
-	if ( ! pFnSetWhatToDoNext )
-		pFnSetWhatToDoNext = (UFunction*) UObject::GObjObjects()->Data[ 32092 ];
+	if ( ! pFnSetWhatToDoNext ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgAIController.SetWhatToDoNext") == 0) {
+					pFnSetWhatToDoNext = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnSetWhatToDoNext = (UFunction*) UObject::GObjObjects()->Data[ 32092 ];
 
 	ATgAIController_eventSetWhatToDoNext_Parms SetWhatToDoNext_Parms;
 	SetWhatToDoNext_Parms.nMovementCode = nMovementCode;
@@ -28649,8 +28669,18 @@ void ATgAIController::Possess ( class APawn* aPawn, unsigned long bVehicleTransi
 {
 	static UFunction* pFnPossess = NULL;
 
-	if ( ! pFnPossess )
-		pFnPossess = (UFunction*) UObject::GObjObjects()->Data[ 31960 ];
+	if ( ! pFnPossess ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgAIController.Possess") == 0) {
+					pFnPossess = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnPossess = (UFunction*) UObject::GObjObjects()->Data[ 31960 ];
 
 	ATgAIController_execPossess_Parms Possess_Parms;
 	Possess_Parms.aPawn = aPawn;

@@ -11,6 +11,7 @@ struct Globals {
 	void* GAssemblyDatManager = (void*)0x1199f868;
 	void* GTransientPackage = (void*)0x134659bc;
 	void** ClientConnectionClass = (void**)0x119a1ae0;
+	void* GGameInfo = nullptr;
 
 	// vtables
 	void** PackageMapVtable = (void**)0x11769a48;

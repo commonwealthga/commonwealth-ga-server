@@ -11,6 +11,46 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	ATgPawn_Character* newpawn = (ATgPawn_Character*)Game->Spawn(ClassPreloader::GetTgPawnCharacterClass(), PlayerController, FName(), SpawnLocation, PlayerController->Rotation, nullptr, 1);
 
+	newpawn->r_nPhysicalType = 860;
+	newpawn->ReplicatedCollisionType = newpawn->CollisionType;
+	newpawn->r_nHealthMaximum = 1300;
+	newpawn->r_nProfileId = 567; // medic
+	newpawn->r_bDisableAllDevices = 0;
+	newpawn->r_bEnableEquip = 1;
+	newpawn->r_bEnableSkills = 1;
+	newpawn->r_bEnableCrafting = 1;
+	newpawn->r_bIsStealthed = 0;
+	newpawn->r_bIsBot = 0;
+	newpawn->r_fCurrentPowerPool = 100;
+	newpawn->r_fMaxPowerPool = 100;
+	newpawn->r_nXp = 999999;
+	newpawn->Health = 1300;
+	newpawn->HealthMax = 1300;
+
+	newpawn->r_nBodyMeshAsmId = 1225;//0x5cc;
+	newpawn->r_CustomCharacterAssembly.SuitMeshId = 1225;
+	newpawn->r_CustomCharacterAssembly.HeadMeshId = GA_G::HEAD_ASM_ID_TROLL;
+	newpawn->r_CustomCharacterAssembly.HairMeshId = 1974;
+	newpawn->r_CustomCharacterAssembly.HelmetMeshId = -1;
+	newpawn->r_CustomCharacterAssembly.SkinToneParameterId = 0;
+	newpawn->r_CustomCharacterAssembly.SkinRaceParameterId = 0;
+	newpawn->r_CustomCharacterAssembly.EyeColorParameterId = 0;
+	newpawn->r_CustomCharacterAssembly.bBald = false;
+	newpawn->r_CustomCharacterAssembly.bHideHelmet = false;
+	newpawn->r_CustomCharacterAssembly.bValidCustomAssembly = true;
+	newpawn->r_CustomCharacterAssembly.bHalfHelmet = false;
+	newpawn->r_CustomCharacterAssembly.nGenderTypeId = GA_G::GENDER_TYPE_ID_MALE;
+	newpawn->r_CustomCharacterAssembly.HeadFlairId = -1;
+	newpawn->r_CustomCharacterAssembly.SuitFlairId = -1;
+	newpawn->r_CustomCharacterAssembly.JetpackTrailId = 7638;
+	newpawn->r_CustomCharacterAssembly.DyeList[0] = GA_G::DYE_ID_NONE_MORE_BLACK;
+	newpawn->r_CustomCharacterAssembly.DyeList[1] = GA_G::DYE_ID_NONE_MORE_BLACK;
+	newpawn->r_CustomCharacterAssembly.DyeList[2] = GA_G::DYE_ID_NONE_MORE_BLACK;
+	newpawn->r_CustomCharacterAssembly.DyeList[3] = GA_G::DYE_ID_NONE_MORE_BLACK;
+	newpawn->r_CustomCharacterAssembly.DyeList[4] = GA_G::DYE_ID_NONE_MORE_BLACK;
+	newpawn->r_nSkillGroupSetId = GA_G::SKILL_GROUP_SET_ID_MEDIC;
+	newpawn->s_nCharacterId = 373;
+
 	PlayerController->Pawn = newpawn;
 	newpawn->Controller = PlayerController;
 
@@ -19,14 +59,14 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	PlayerController->bNetInitial = 1;
 	PlayerController->bNetDirty = 1;
 	PlayerController->bForceNetUpdate = 1;
-	PlayerController->bReplicateMovement = 0;
+	PlayerController->bReplicateMovement = 1;
 
 	newpawn->PlayerReplicationInfo = PlayerController->PlayerReplicationInfo;
 
 	newpawn->bNetInitial = 1;
 	newpawn->bNetDirty = 1;
 	newpawn->bForceNetUpdate = 1;
-	newpawn->bReplicateMovement = 0;
+	newpawn->bReplicateMovement = 1;
 
 
 	ATgRepInfo_Player* newrepplayer = reinterpret_cast<ATgRepInfo_Player*>(PlayerController->PlayerReplicationInfo);
@@ -64,7 +104,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	newrepplayer->eventSetPlayerName(FString(L"Zaxik"));
 	// newrepplayer->SetTeam(GTeamsData.Attackers);
-	newrepplayer->r_TaskForce = GTeamsData.Attackers;
+	// newrepplayer->r_TaskForce = GTeamsData.Attackers;
+	newrepplayer->SetTeam(GTeamsData.Attackers);
 	// newrepplayer->SetPlayerTeam(GTeamsData.Attackers);
 	// newrepplayer->Team = GTeamsData.Attackers;
 	newrepplayer->bNetDirty = 1;
@@ -88,6 +129,13 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	TARRAY_INIT(defenders, TeamPlayersDefenders, FTGTEAM_ENTRY, 0x214, 32);
 
 	TARRAY_ADD(TeamPlayersAttackers, newplayerteamentry);
+
+
+	if (newpawn->Mesh == nullptr) {
+		Logger::Log("debug", " player mesh is null\n");
+	} else {
+		Logger::Log("debug", " player mesh is not null\n");
+	}
 
 	Logger::Log("debug", "MINE TgGame__SpawnPlayerCharacter END\n");
 
