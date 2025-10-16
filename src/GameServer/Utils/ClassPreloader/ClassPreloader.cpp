@@ -61,3 +61,13 @@ UClass* ClassPreloader::GetTgAIControllerClass() {
 	return Classes["Class TgGame.TgAIController"];
 }
 
+UClass* ClassPreloader::GetTgPawnThinkTankClass() {
+	PreloadClasses();
+	return Classes["Class TgGame.TgPawn_ThinkTank"];
+}
+
+UClass* ClassPreloader::GetTgPawnGuardianClass() {
+	PreloadClasses();
+	return Classes["Class TgGame.TgPawn_Guardian"];
+}
+

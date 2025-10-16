@@ -17,5 +17,7 @@ public:
 	static UClass* GetTgRandomSMManagerClass();
 	static UClass* GetTgPawnEliteAlchemistClass();
 	static UClass* GetTgAIControllerClass();
+	static UClass* GetTgPawnThinkTankClass();
+	static UClass* GetTgPawnGuardianClass();
 };
 

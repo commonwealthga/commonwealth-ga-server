@@ -72,15 +72,12 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 					}
 
 					botfactory->SpawnBot();
-					// botfactory->SpawnBot();
-					// botfactory->SpawnBot();
-					// botfactory->SpawnBot();
-					// botfactory->SpawnBot();
-					// botfactory->SpawnBot();
-					// botfactory->SpawnBot();
-					// botfactory->SpawnBot();
-					// botfactory->SpawnBot();
 					botfactory->SpawnBot();
+					// botfactory->SpawnBot();
+					// botfactory->SpawnBot();
+					// botfactory->SpawnBot();
+					// botfactory->SpawnBot();
+					// botfactory->SpawnBot();
 				}
 			}
 		}

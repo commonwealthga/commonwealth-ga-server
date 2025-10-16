@@ -30,7 +30,7 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 	sockaddr_in from;
 	int fromLen = sizeof(from);
 
-	char buffer[4096];
+	char buffer[16384];
 
 	while (socketInstance != nullptr) {
 		int bytesRead = 0;
@@ -136,7 +136,7 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 			
 			*(void**)((char*)Connection + 0x70) = (void*)NetDriver; // set Connection->Driver:
 
-			Connection->CurrentNetSpeed = 2600;
+			Connection->CurrentNetSpeed = 2600000;
 
 			UObject* PackageMap = (UObject*)PackageMapLevel__Create::CallOriginal(0xC4, Connection, 0, 0, 0, 0);
 			PackageMapLevel__Initialize::CallOriginal(PackageMap);
