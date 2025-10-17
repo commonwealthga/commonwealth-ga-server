@@ -13,6 +13,7 @@
 #include "src/GameServer/TgGame/TgPlayerController/IsReadyForStart/TgPlayerController__IsReadyForStart.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotPawn/TgGame__SpawnBotPawn.hpp"
+#include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.hpp"
 #include "src/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.hpp"
@@ -65,6 +66,7 @@ unsigned long ModuleThread( void* ) {
 	TgInventoryManager__NonPersistAddDevice::Install();
 	TgBotFactory__SpawnBot::Install();
 	TgGame__SpawnBot::Install();
+	TgGame__SpawnBotById::Install();
 	CMarshal__GetByte::Install();
 	CMarshal__GetInt32t::Install();
 	CAmBot__LoadBotMarshal::Install();

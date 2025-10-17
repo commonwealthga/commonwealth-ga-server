@@ -4,14 +4,39 @@
 #include "src/Utils/HookBase.hpp"
 
 class TgGame__SpawnBotById : public HookBase<
-	void(__fastcall*)(ATgGame*, void*, int),
-	0x10ad9bf0,
+	ATgPawn*(__fastcall*)(ATgGame*, void*, int, FVector, FRotator, bool, ATgBotFactory*, bool, ATgPawn*, bool, UTgDeviceFire*, float),
+	0x10ad9b70,
 	TgGame__SpawnBotById> {
 public:
-	static void __fastcall Call(ATgGame* Game, void* edx, int nPriority);
-	static inline void __fastcall CallOriginal(ATgGame* Game, void* edx, int nPriority) {
-		m_original(Game, edx, nPriority);
+	static ATgPawn* __fastcall Call(
+		ATgGame* Game,
+		void* edx,
+		int nBotId,
+		FVector vLocation,
+		FRotator rRotation,
+		bool bKillController,
+		ATgBotFactory* pFactory,
+		bool bIgnoreCollision,
+		ATgPawn* pOwnerPawn,
+		bool bIsDecoy,
+		UTgDeviceFire* deviceFire,
+		float fDeployAnimLength
+	);
+	static inline ATgPawn* __fastcall CallOriginal(
+		ATgGame* Game,
+		void* edx,
+		int nBotId,
+		FVector vLocation,
+		FRotator rRotation,
+		bool bKillController,
+		ATgBotFactory* pFactory,
+		bool bIgnoreCollision,
+		ATgPawn* pOwnerPawn,
+		bool bIsDecoy,
+		UTgDeviceFire* deviceFire,
+		float fDeployAnimLength
+	) {
+		return m_original(Game, edx, nBotId, vLocation, rRotation, bKillController, pFactory, bIgnoreCollision, pOwnerPawn, bIsDecoy, deviceFire, fDeployAnimLength);
 	};
 };
-
 

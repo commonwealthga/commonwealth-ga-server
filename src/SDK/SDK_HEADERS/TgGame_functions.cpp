@@ -69833,8 +69833,18 @@ class APawn* ATgGame::SpawnBotById ( int nBotId, struct FVector vLocation, struc
 {
 	static UFunction* pFnSpawnBotById = NULL;
 
-	if ( ! pFnSpawnBotById )
-		pFnSpawnBotById = (UFunction*) UObject::GObjObjects()->Data[ 38441 ];
+	if ( ! pFnSpawnBotById ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgGame.SpawnBotById") == 0) {
+					pFnSpawnBotById = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnSpawnBotById = (UFunction*) UObject::GObjObjects()->Data[ 38441 ];
 
 	ATgGame_execSpawnBotById_Parms SpawnBotById_Parms;
 	SpawnBotById_Parms.nBotId = nBotId;

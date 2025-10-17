@@ -136,7 +136,7 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 			
 			*(void**)((char*)Connection + 0x70) = (void*)NetDriver; // set Connection->Driver:
 
-			Connection->CurrentNetSpeed = 2600000;
+			Connection->CurrentNetSpeed = 2600000; // todo: get this from the client
 
 			UObject* PackageMap = (UObject*)PackageMapLevel__Create::CallOriginal(0xC4, Connection, 0, 0, 0, 0);
 			PackageMapLevel__Initialize::CallOriginal(PackageMap);
