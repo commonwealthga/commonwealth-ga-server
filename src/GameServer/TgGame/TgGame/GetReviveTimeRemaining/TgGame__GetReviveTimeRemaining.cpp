@@ -1,20 +1,16 @@
 #include "src/GameServer/TgGame/TgGame/GetReviveTimeRemaining/TgGame__GetReviveTimeRemaining.hpp"
-#include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 int __fastcall TgGame__GetReviveTimeRemaining::Call(ATgGame* Game, void* edx, AController* Controller) {
-	AWorldInfo* WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
+	int remaining = (int)Game->GetRemainingTimeForTimer(FName("ReviveAttackersTimer"), nullptr);
 
-	Game->ReviveAttackersTimer();
+	Logger::Log("debug", "TgGame::GetReviveTimeRemaining called, remaining time: %d\n", remaining);
 
-	return 1;
+	if (remaining == -1) {
+		Game->SetTimer(((ATgRepInfo_Game*)Game->GameReplicationInfo)->r_nSecsToAutoReleaseAttackers, 1, FName("ReviveAttackersTimer"), nullptr);
+		return ((ATgRepInfo_Game*)Game->GameReplicationInfo)->r_nSecsToAutoReleaseAttackers;
+	}
 
-	// int result = (int)WorldInfo->TimeSeconds % (int)Game->m_nSecsToAutoRelease;
-	//
-	// Logger::Log("debug", "TgGame::GetReviveTimeRemaining: %d\n", result);
-	//
-	// Game->SetTimer(result, 0, FName("ReviveAttackersTimer"), nullptr);
-	//
-	// return result;
+	return remaining;
 }
 

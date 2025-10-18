@@ -30,9 +30,9 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		gamerep->r_bAllowPlayerRelease = 1;
 		gamerep->r_bDefenseAlarm = 0;
 		gamerep->r_bInOverTime = 0;
-		gamerep->r_nSecsToAutoReleaseAttackers = Game->m_nSecsToAutoReleaseAttackers;
-		gamerep->r_nSecsToAutoReleaseDefenders = Game->m_nSecsToAutoReleaseDefenders;
-		gamerep->r_nReleaseDelay = 1;
+		gamerep->r_nSecsToAutoReleaseAttackers = 5;// Game->m_nSecsToAutoReleaseAttackers;
+		gamerep->r_nSecsToAutoReleaseDefenders = 5;//Game->m_nSecsToAutoReleaseDefenders;
+		gamerep->r_nReleaseDelay = 3;
 		gamerep->r_nPointsToWin = 3;
 		gamerep->r_nRoundNumber = 1;
 		gamerep->r_nMaxRoundNumber = 3;

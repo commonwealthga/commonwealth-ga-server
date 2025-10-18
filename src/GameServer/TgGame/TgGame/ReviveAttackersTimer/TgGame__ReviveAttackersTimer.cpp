@@ -16,5 +16,7 @@ void __fastcall TgGame__ReviveAttackersTimer::Call(ATgGame *Game, void *edx) {
 
 		Game->s_AttackerReviveList.Clear();
 	}
+
+	Game->SetTimer(((ATgRepInfo_Game*)Game->GameReplicationInfo)->r_nSecsToAutoReleaseAttackers, 1, FName("ReviveAttackersTimer"), nullptr);
 }
 

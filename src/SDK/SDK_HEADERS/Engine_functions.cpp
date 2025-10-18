@@ -3565,8 +3565,18 @@ float AActor::GetRemainingTimeForTimer ( struct FName TimerFuncName, class UObje
 {
 	static UFunction* pFnGetRemainingTimeForTimer = NULL;
 
-	if ( ! pFnGetRemainingTimeForTimer )
-		pFnGetRemainingTimeForTimer = (UFunction*) UObject::GObjObjects()->Data[ 3607 ];
+	if ( ! pFnGetRemainingTimeForTimer ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function Engine.Actor.GetRemainingTimeForTimer") == 0) {
+					pFnGetRemainingTimeForTimer = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnGetRemainingTimeForTimer = (UFunction*) UObject::GObjObjects()->Data[ 3607 ];
 
 	AActor_execGetRemainingTimeForTimer_Parms GetRemainingTimeForTimer_Parms;
 	memcpy ( &GetRemainingTimeForTimer_Parms.TimerFuncName, &TimerFuncName, 0x8 );
