@@ -71,3 +71,8 @@ UClass* ClassPreloader::GetTgPawnGuardianClass() {
 	return Classes["Class TgGame.TgPawn_Guardian"];
 }
 
+UClass* ClassPreloader::GetTgDeviceClass() {
+	PreloadClasses();
+	return Classes["Class TgGame.TgDevice"];
+}
+

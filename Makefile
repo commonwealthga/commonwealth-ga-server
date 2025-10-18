@@ -5,6 +5,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/Utils/Logger/Logger/FileLogger.cpp \
 			  \
 			  $(SRC_DIR)/TcpServer/TcpServerInit/TcpServerInit.cpp \
+			  $(SRC_DIR)/TcpServer/TcpEvents/TcpEvents.cpp \
 			  \
 			  $(SRC_DIR)/GameServer/Utils/ClassPreloader/ClassPreloader.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \

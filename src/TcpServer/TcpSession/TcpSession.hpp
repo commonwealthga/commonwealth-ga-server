@@ -4,7 +4,9 @@
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/GameServer/Constants/TcpFunctions.h"
 #include "src/GameServer/Constants/TcpTypes.h"
+#include "src/TcpServer/TcpEvents/TcpEvents.hpp"
 #include "src/Config/Config.hpp"
+#include "src/Utils/Logger/Logger.hpp"
 
 class TcpSession : public std::enable_shared_from_this<TcpSession> {
 public:
@@ -142,7 +144,7 @@ private:
 
     void handle_packet(const uint8_t* data, size_t length) {
         if (length < 6) {
-            LogToFile("C:\\tcplog.txt", "[TCP] Packet too short");
+			Logger::Log("tcp", "[%s] Packet too short\n", Logger::GetTime());
             return;
         }
 
@@ -154,23 +156,41 @@ private:
 
 		switch (packet_type) {
 			case GA_U::GSC_USER_LOGIN:
-				LogToFile("C:\\tcplog.txt", "Packet type: GSC_USER_LOGIN [0x%04X], item count: %d", packet_type, item_count);
+				Logger::Log("tcp", "[%s] Received: GSC_USER_LOGIN [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 				send_login_response();
 				break;
 			case GA_U::GSC_CHARACTER_LIST:
-				LogToFile("C:\\tcplog.txt", "Packet type: GSC_CHARACTER_LIST [0x%04X], item count: %d", packet_type, item_count);
+				Logger::Log("tcp", "[%s] Received: GSC_CHARACTER_LIST [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 				send_character_list_response();
 				// send_character_list_queue_response();
 				break;
 			case GA_U::PLAYER_UPDATE_CLIENT:
-				LogToFile("C:\\tcplog.txt", "Packet type: PLAYER_UPDATE_CLIENT [0x%04X], item count: %d", packet_type, item_count);
+				Logger::Log("tcp", "[%s] Received: PLAYER_UPDATE_CLIENT [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 				send_player_update_client_response();
 				break;
 			case GA_U::RELAY_LOG:
 				// keepalive
+				
+				if (GTcpEvents.size() > 0) {
+					TcpEvent event = GTcpEvents[0];
+					if (event.Type == 1) {
+						Logger::Log("tcp", "[%s] Received: RELAY_LOG [0x%04X], item count: %d, sending inventory for pawn %d\n", Logger::GetTime(), packet_type, item_count, event.Pawn->r_nPawnId);
+						send_inventory_response(event.Pawn->r_nPawnId);
+						GTcpEvents.erase(GTcpEvents.begin());
+
+						TcpEvent next;
+						next.Type = 2;
+						GTcpEvents.push_back(next);
+					} else if (event.Type == 2) {
+						Logger::Log("tcp", "[%s] Received: RELAY_LOG [0x%04X], item count: %d, sending character inventory\n", Logger::GetTime(), packet_type, item_count);
+						send_character_inventory_response();
+						GTcpEvents.erase(GTcpEvents.begin());
+					}
+				}
+
 				break;
 			case GA_U::GSC_SELECT_CHARACTER:
-				LogToFile("C:\\tcplog.txt", "Packet type: GSC_SELECT_CHARACTER [0x%04X], item count: %d", packet_type, item_count);
+				Logger::Log("tcp", "[%s] Received: GSC_SELECT_CHARACTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 				send_select_character_response();
 				Sleep(1000);
 				send_go_play_response();
@@ -179,39 +199,146 @@ private:
 				// send_marshal_channel_response();
 				break;
 			case GA_U::PLAYER_LOGOFF:
-				LogToFile("C:\\tcplog.txt", "Packet type: PLAYER_LOGOFF [0x%04X], item count: %d", packet_type, item_count);
+				Logger::Log("tcp", "[%s] Received: PLAYER_LOGOFF [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 				break;
 			case GA_U::ADD_PLAYER_CHARACTER:
-				LogToFile("C:\\tcplog.txt", "Packet type: ADD_PLAYER_CHARACTER [0x%04X], item count: %d", packet_type, item_count);
+				Logger::Log("tcp", "[%s] Received: ADD_PLAYER_CHARACTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 				send_go_play_tutorial_response();
 				// send_add_player_character_response();
 				// todo
 				break;
 			case GA_U::DELETE_CHARACTER:
-				LogToFile("C:\\tcplog.txt", "Packet type: DELETE_CHARACTER [0x%04X], item count: %d", packet_type, item_count);
+				Logger::Log("tcp", "[%s] Received: DELETE_CHARACTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 				// todo
 				break;
 			case GA_U::UPDATE_NEW_MAIL_COUNT:
-				LogToFile("C:\\tcplog.txt", "Packet type: UPDATE_NEW_MAIL_COUNT [0x%04X], item count: %d", packet_type, item_count);
+				Logger::Log("tcp", "[%s] Received: UPDATE_NEW_MAIL_COUNT [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 				send_update_new_mail_count_response();
 				break;
 			case GA_U::GET_TICKET_INFO:
-				LogToFile("C:\\tcplog.txt", "Packet type: GET_TICKET_INFO [0x%04X], item count: %d", packet_type, item_count);
+				Logger::Log("tcp", "[%s] Received: GET_TICKET_INFO [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 				send_get_ticket_info_response();
 				// send_instance_ready_response();
 				break;
 			case GA_U::AGENCY_GET_ROSTER:
-				LogToFile("C:\\tcplog.txt", "Packet type: AGENCY_GET_ROSTER [0x%04X], item count: %d", packet_type, item_count);
+				Logger::Log("tcp", "[%s] Received: AGENCY_GET_ROSTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 				send_agency_get_roster_response();
 				break;
 			default:
-				LogToFile("C:\\tcplog.txt", "Unknown packet type: %04X", packet_type);
+				Logger::Log("tcp", "[%s] Received unknown packet type: %04X, raw data:\n", Logger::GetTime(), packet_type);
 				for (int i = 0; i < length; i++) {
-					// LogToFileInline("C:\\tcplog.txt", "%02X", data[i]);
+					Logger::Log("tcp", "%02X", data[i]);
 				}
+				Logger::Log("tcp", "\n");
 				break;
 		}
     }
+
+	void send_inventory_response(int nPawnId) {
+		std::vector<uint8_t> response;
+
+		uint16_t packet_type = GA_U::SEND_INVENTORY;
+		uint16_t item_count = 2;
+
+		append(response, packet_type & 0xFF, packet_type >> 8);
+		append(response, item_count & 0xFF, item_count >> 8);
+
+		Write4B(response, GA_T::PAWN_ID, nPawnId);
+
+		append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);        // type 010C
+		append(response, 0x01, 0x00);        // count elements
+		{
+			append(response, 14, 0x00);  // inner item count
+
+			Write4B(response, GA_T::INV_REPLICATION_STATE, 0x2);
+
+			Write4B(response, GA_T::ITEM_ID, 0x1);
+
+			Write4B(response, GA_T::INVENTORY_ID, 0x1);
+			Write4B(response, GA_T::BLUEPRINT_ID, 0x1);
+			Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, 0x1);
+			Write4B(response, GA_T::DURABILITY, 0x1);
+			WriteFloat(response, GA_T::ACQUIRE_DATETIME, 0x1);
+			Write4B(response, GA_T::BOUND_FLAG, 0x1);
+			Write4B(response, GA_T::LOCATION_VALUE_ID, 0x1);
+			Write4B(response, GA_T::INSTANCE_COUNT, 0x1);
+			
+			Write4B(response, GA_T::ACTIVE_FLAG, 0x1);
+			Write4B(response, GA_T::DEVICE_ID, 7032);
+
+			append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
+			append(response, 0x01, 0x00);        // count elements
+			{
+				append(response, 2, 0x00);  // inner item count
+
+				Write4B(response, GA_T::INVENTORY_ID, 0x1);
+				Write4B(response, GA_T::EFFECT_GROUP_ID, 0x1);
+			}
+
+			append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
+			append(response, 0x01, 0x00);        // count elements
+			{
+				append(response, 4, 0x00);  // inner item count
+
+				Write4B(response, GA_T::CHARACTER_ID, 373);
+				Write4B(response, GA_T::INVENTORY_ID, 0x1);
+				Write4B(response, GA_T::PROFILE_ID, 0x1);
+				Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 5);
+			}
+		}
+
+		send_response(response);
+	}
+
+
+	void send_character_inventory_response() {
+		std::vector<uint8_t> response;
+
+		uint16_t packet_type = GA_U::SEND_CHARACTER_INVENTORY;
+		uint16_t item_count = 3;
+
+		append(response, packet_type & 0xFF, packet_type >> 8);
+		append(response, item_count & 0xFF, item_count >> 8);
+
+		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
+		append(response, 0x01, 0x00);        // count elements
+		{
+			append(response, 2, 0x00);  // inner item count
+
+			Write4B(response, GA_T::INVENTORY_ID, 0x1);
+			Write4B(response, GA_T::EFFECT_GROUP_ID, 0x1);
+		}
+
+		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
+		append(response, 0x01, 0x00);        // count elements
+		{
+			append(response, 4, 0x00);  // inner item count
+
+			Write4B(response, GA_T::CHARACTER_ID, 373);
+			Write4B(response, GA_T::INVENTORY_ID, 0x1);
+			Write4B(response, GA_T::PROFILE_ID, 0x1);
+			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 0x1);
+		}
+
+		append(response, GA_T::DATA_SET_PLAYER_INVENTORY & 0xFF, GA_T::DATA_SET_PLAYER_INVENTORY >> 8);
+		append(response, 0x01, 0x00);        // count elements
+		{
+			append(response, 9, 0x00);  // inner item count
+
+			Write4B(response, GA_T::ITEM_ID, 0x1);
+			Write4B(response, GA_T::INVENTORY_ID, 0x1);
+			Write4B(response, GA_T::BLUEPRINT_ID, 0x1);
+			Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, 0x1);
+			Write4B(response, GA_T::DURABILITY, 0x1);
+			WriteFloat(response, GA_T::ACQUIRE_DATETIME, 0x1);
+			Write4B(response, GA_T::BOUND_FLAG, 0x1);
+			Write4B(response, GA_T::LOCATION_VALUE_ID, 0x1);
+			Write4B(response, GA_T::INSTANCE_COUNT, 0x1);
+		}
+
+		send_response(response);
+	}
+
 
 	void send_player_skills_response() {
 		std::vector<uint8_t> response;

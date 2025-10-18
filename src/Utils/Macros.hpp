@@ -37,6 +37,7 @@
 			for (int i = 0; i < count; i++) { \
 				if ((*(int *)(param_5 + 0x4c) == -1 && !initialFlag) || NEQ(((actortype*)recent)->propertyname[i], ((actortype*)actor)->propertyname[i], (void*)param_4, (void*)param_5)) { \
 						repindex = *(int*)((char*)propertyfullname + 0x5E); \
+						if (repindex < 0 || repindex > 10000) { continue; } \
 						*param_3++ = repindex+i; \
 				} \
 			} \

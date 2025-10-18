@@ -57,6 +57,7 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	BotRepInfo->r_PawnOwner = Bot;
 	BotRepInfo->r_ApproxLocation = Bot->Location;
 
+	// todo: maybe pull team from pawn/factory?
 	BotRepInfo->r_TaskForce = GTeamsData.Defenders;
 	BotRepInfo->SetTeam(GTeamsData.Defenders);
 
@@ -68,20 +69,21 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		Logger::Log("debug", "Bot with id %d not found\n", nBotId);
 		return nullptr;
 	}
+
 	void* BotConfig = (void*)CAmBot__LoadBotMarshal::m_BotPointers[nBotId];
 
-	TgAIController__InitBehavior::CallOriginal(AIController, edx, BotConfig, pFactory);
-
 	// offsets pulled from 0x1094c730
-	Bot->r_nPhysicalType = *(int*)((char*)BotConfig + 0x64);
-	Bot->r_nBodyMeshAsmId = *(int*)((char*)BotConfig + 0x54);
-	Bot->s_nCharacterId = *(int*)((char*)BotConfig + 0x5C);
+	Bot->r_nPhysicalType = *(int*)((char*)BotConfig + 0x64); // PHYSICAL_TYPE_VALUE_ID
+	Bot->r_nBodyMeshAsmId = *(int*)((char*)BotConfig + 0x54); // BODY_ASM_ID
+	Bot->s_nCharacterId = *(int*)((char*)BotConfig + 0x5C); // BOT_TYPE_VALUE_ID
 	Bot->r_nHealthMaximum = *(int*)((char*)BotConfig + 0x74);
 	Bot->Health = *(int*)((char*)BotConfig + 0x74);
 	Bot->HealthMax = *(int*)((char*)BotConfig + 0x74);
 	BotRepInfo->r_nHealthCurrent = *(int*)((char*)BotConfig + 0x74);
 	BotRepInfo->r_nHealthMaximum = *(int*)((char*)BotConfig + 0x74);
 	BotRepInfo->r_nCharacterId = *(int*)((char*)BotConfig + 0x5C);
+
+	TgAIController__InitBehavior::CallOriginal(AIController, edx, BotConfig, pFactory);
 
 	BotRepInfo->bNetDirty = 1;
 	BotRepInfo->bSkipActorPropertyReplication = 0;

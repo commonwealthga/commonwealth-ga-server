@@ -19,5 +19,6 @@ public:
 	static UClass* GetTgAIControllerClass();
 	static UClass* GetTgPawnThinkTankClass();
 	static UClass* GetTgPawnGuardianClass();
+	static UClass* GetTgDeviceClass();
 };
 

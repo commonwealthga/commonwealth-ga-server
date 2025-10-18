@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
+#include "src/GameServer/TgGame/TgInventoryManager/PrepopulateInventoryId/TgInventoryManager__PrepopulateInventoryId.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
@@ -10,6 +11,58 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	Logger::Log("debug", "MINE TgGame__SpawnPlayerCharacter START\n");
 
 	ATgPawn_Character* newpawn = (ATgPawn_Character*)Game->Spawn(ClassPreloader::GetTgPawnCharacterClass(), PlayerController, FName(), SpawnLocation, PlayerController->Rotation, nullptr, 1);
+	ATgRepInfo_Player* newrepplayer = reinterpret_cast<ATgRepInfo_Player*>(PlayerController->PlayerReplicationInfo);
+
+	// Logger::DumpMemory("newpawn", newpawn, 0x800, 0);
+
+
+	// try equip jetpack
+	ATgDevice* Jetpack = newpawn->CreateEquipDevice(0, GA_G::DEVICE_ID_MEDIC_CJP, GA_G::EQUIP_POINT_JETPACK_ID);
+	if (Jetpack != nullptr) {
+		Jetpack->m_bIsOffHand = 1;
+		Jetpack->m_nDeviceType = 806;
+		Jetpack->bNetInitial = 1;
+		Jetpack->bNetDirty = 1;
+		Jetpack->bForceNetUpdate = 1;
+		Logger::Log("debug", "Jetpack = 0x%p, %s\n", Jetpack, Jetpack->GetFullName());
+		Logger::Log("debug", "Jetpack->r_nInventoryId = %d", Jetpack->r_nInventoryId);
+
+		if (Jetpack->s_InventoryObject != nullptr) {
+			Logger::Log("debug", "Jetpack->s_InventoryObject = 0x%p, %s\n", Jetpack->s_InventoryObject, Jetpack->s_InventoryObject->GetFullName());
+		} else {
+			Logger::Log("debug", "Jetpack->s_InventoryObject = nullptr\n");
+		}
+
+
+		for (int i = 0; i < 25; i++) {
+			newpawn->m_EquippedDevices[i] = Jetpack;
+			newpawn->r_EquipDeviceInfo[i].nDeviceId = GA_G::DEVICE_ID_MEDIC_CJP;
+			newpawn->r_EquipDeviceInfo[i].nDeviceInstanceId = 1;
+			newpawn->r_EquipDeviceInfo[i].nQualityValueId = 1165;
+
+			newrepplayer->r_EquipDeviceInfo[i].nDeviceId = GA_G::DEVICE_ID_MEDIC_CJP;
+			newrepplayer->r_EquipDeviceInfo[i].nDeviceInstanceId = 1;
+			newrepplayer->r_EquipDeviceInfo[i].nQualityValueId = 1165;
+		}
+
+		Jetpack->r_eEquippedAt = GA_G::EQUIP_POINT_JETPACK_ID;
+
+		Jetpack->r_nInventoryId = 1;
+		Jetpack->s_InventoryObject->m_InventoryData.nInvId = 1;
+
+		TgInventoryManager__PrepopulateInventoryId::CallOriginal((void*)((char*)newpawn->InvManager + 0x1f0), edx, 1, Jetpack->s_InventoryObject);
+		ATgDevice* JetpackFixed = newpawn->CreateEquipDevice(1, GA_G::DEVICE_ID_MEDIC_CJP, GA_G::EQUIP_POINT_JETPACK_ID);
+		if (JetpackFixed != nullptr) {
+			Logger::Log("debug", "JetpackFixed = 0x%p, %s\n", JetpackFixed, JetpackFixed->GetFullName());
+		} else {
+			Logger::Log("debug", "JetpackFixed = nullptr\n");
+		}
+
+		// newpawn->ForceUpdateEquippedDevices();
+		// newpawn->UpdateClientDevices();
+	} else {
+		Logger::Log("debug", "Jetpack = nullptr\n");
+	}
 
 	newpawn->r_nPhysicalType = 860;
 	newpawn->ReplicatedCollisionType = newpawn->CollisionType;
@@ -69,7 +122,6 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newpawn->bReplicateMovement = 1;
 
 
-	ATgRepInfo_Player* newrepplayer = reinterpret_cast<ATgRepInfo_Player*>(PlayerController->PlayerReplicationInfo);
 	// newrepplayer->Team = defenders;
 	newrepplayer->bAdmin = 1;
 	newrepplayer->r_CustomCharacterAssembly.SuitMeshId = 1225;
@@ -130,12 +182,6 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	TARRAY_ADD(TeamPlayersAttackers, newplayerteamentry);
 
-
-	if (newpawn->Mesh == nullptr) {
-		Logger::Log("debug", " player mesh is null\n");
-	} else {
-		Logger::Log("debug", " player mesh is not null\n");
-	}
 
 	Logger::Log("debug", "MINE TgGame__SpawnPlayerCharacter END\n");
 

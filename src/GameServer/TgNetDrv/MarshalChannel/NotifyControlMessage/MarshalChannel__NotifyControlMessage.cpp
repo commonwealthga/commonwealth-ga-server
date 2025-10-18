@@ -5,6 +5,7 @@
 #include "src/GameServer/Engine/PackageMap/Compute/PackageMap__Compute.hpp"
 #include "src/GameServer/Engine/FURL/Constructor/FURL__Constructor.hpp"
 #include "src/GameServer/Engine/World/SpawnPlayActor/World__SpawnPlayActor.hpp"
+#include "src/TcpServer/TcpEvents/TcpEvents.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Config/Config.hpp"
 #include "src/GameServer/Engine/World/GetGameInfo/World__GetGameInfo.hpp"
@@ -72,7 +73,7 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 					}
 
 					botfactory->SpawnBot();
-					botfactory->SpawnBot();
+					// botfactory->SpawnBot();
 					// botfactory->SpawnBot();
 					// botfactory->SpawnBot();
 					// botfactory->SpawnBot();
@@ -337,6 +338,10 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 
 	game->eventPostLogin(newcontroller);
 
+	TcpEvent PlayerPawnSpawned;
+	PlayerPawnSpawned.Type = 1;
+	PlayerPawnSpawned.Pawn = (ATgPawn*)newcontroller->Pawn;
+	GTcpEvents.push_back(PlayerPawnSpawned);
 
 	if (GTeamsData.Attackers->r_BeaconManager->r_Beacon == nullptr) {
 		if (GTeamsData.BeaconAttackers) {

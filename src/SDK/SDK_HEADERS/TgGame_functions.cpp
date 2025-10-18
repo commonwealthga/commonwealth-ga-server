@@ -40583,8 +40583,18 @@ void ATgPawn::ForceUpdateEquippedDevices ( )
 {
 	static UFunction* pFnForceUpdateEquippedDevices = NULL;
 
-	if ( ! pFnForceUpdateEquippedDevices )
-		pFnForceUpdateEquippedDevices = (UFunction*) UObject::GObjObjects()->Data[ 41225 ];
+	if ( ! pFnForceUpdateEquippedDevices ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgPawn.ForceUpdateEquippedDevices") == 0) {
+					pFnForceUpdateEquippedDevices = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnForceUpdateEquippedDevices = (UFunction*) UObject::GObjObjects()->Data[ 41225 ];
 
 	ATgPawn_execForceUpdateEquippedDevices_Parms ForceUpdateEquippedDevices_Parms;
 
@@ -43171,8 +43181,18 @@ unsigned char ATgPawn::GetEquipPointByType ( int nDeviceType )
 {
 	static UFunction* pFnGetEquipPointByType = NULL;
 
-	if ( ! pFnGetEquipPointByType )
-		pFnGetEquipPointByType = (UFunction*) UObject::GObjObjects()->Data[ 40899 ];
+	if ( ! pFnGetEquipPointByType ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgPawn.GetEquipPointByType") == 0) {
+					pFnGetEquipPointByType = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnGetEquipPointByType = (UFunction*) UObject::GObjObjects()->Data[ 40899 ];
 
 	ATgPawn_execGetEquipPointByType_Parms GetEquipPointByType_Parms;
 	GetEquipPointByType_Parms.nDeviceType = nDeviceType;
@@ -45256,8 +45276,18 @@ class ATgDevice* ATgPawn::CreateEquipDevice ( int nInventoryId, int nDeviceId, u
 {
 	static UFunction* pFnCreateEquipDevice = NULL;
 
-	if ( ! pFnCreateEquipDevice )
-		pFnCreateEquipDevice = (UFunction*) UObject::GObjObjects()->Data[ 40647 ];
+	if ( ! pFnCreateEquipDevice ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgPawn.CreateEquipDevice") == 0) {
+					pFnCreateEquipDevice = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnCreateEquipDevice = (UFunction*) UObject::GObjObjects()->Data[ 40647 ];
 
 	ATgPawn_execCreateEquipDevice_Parms CreateEquipDevice_Parms;
 	CreateEquipDevice_Parms.nInventoryId = nInventoryId;
@@ -45308,8 +45338,18 @@ void ATgPawn::UpdateClientDevices ( unsigned long bForce, unsigned long bForceDe
 {
 	static UFunction* pFnUpdateClientDevices = NULL;
 
-	if ( ! pFnUpdateClientDevices )
-		pFnUpdateClientDevices = (UFunction*) UObject::GObjObjects()->Data[ 40641 ];
+	if ( ! pFnUpdateClientDevices ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgPawn.UpdateClientDevices") == 0) {
+					pFnUpdateClientDevices = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnUpdateClientDevices = (UFunction*) UObject::GObjObjects()->Data[ 40641 ];
 
 	ATgPawn_execUpdateClientDevices_Parms UpdateClientDevices_Parms;
 	UpdateClientDevices_Parms.bForce = bForce;
