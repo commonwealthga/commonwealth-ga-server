@@ -4,13 +4,13 @@
 #include "src/Utils/HookBase.hpp"
 
 class TgGame__ReviveAttackersTimer : public HookBase<
-	void(__fastcall*)(ATgGame*, void*, int),
-	0x10ad9bf0,
+	void(__fastcall*)(ATgGame*, void*),
+	0x10ad9ca0,
 	TgGame__ReviveAttackersTimer> {
 public:
-	static void __fastcall Call(ATgGame* Game, void* edx, int nPriority);
-	static inline void __fastcall CallOriginal(ATgGame* Game, void* edx, int nPriority) {
-		m_original(Game, edx, nPriority);
+	static void __fastcall Call(ATgGame* Game, void* edx);
+	static inline void __fastcall CallOriginal(ATgGame* Game, void* edx) {
+		m_original(Game, edx);
 	};
 };
 

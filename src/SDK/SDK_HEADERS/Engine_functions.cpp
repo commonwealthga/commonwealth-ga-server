@@ -3720,8 +3720,18 @@ void AActor::SetTimer ( float InRate, unsigned long inbLoop, struct FName inTime
 {
 	static UFunction* pFnSetTimer = NULL;
 
-	if ( ! pFnSetTimer )
-		pFnSetTimer = (UFunction*) UObject::GObjObjects()->Data[ 3583 ];
+	if ( ! pFnSetTimer ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function Engine.Actor.SetTimer") == 0) {
+					pFnSetTimer = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnSetTimer = (UFunction*) UObject::GObjObjects()->Data[ 3583 ];
 
 	AActor_execSetTimer_Parms SetTimer_Parms;
 	SetTimer_Parms.InRate = InRate;

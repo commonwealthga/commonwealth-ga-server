@@ -4,13 +4,13 @@
 #include "src/Utils/HookBase.hpp"
 
 class TgGame__GetReviveTimeRemaining : public HookBase<
-	void(__fastcall*)(ATgGame*, void*, int),
-	0x10ad9bf0,
+	int(__fastcall*)(ATgGame*, void*, AController*),
+	0x10ad9ce0,
 	TgGame__GetReviveTimeRemaining> {
 public:
-	static void __fastcall Call(ATgGame* Game, void* edx, int nPriority);
-	static inline void __fastcall CallOriginal(ATgGame* Game, void* edx, int nPriority) {
-		m_original(Game, edx, nPriority);
+	static int __fastcall Call(ATgGame* Game, void* edx, AController* Controller);
+	static inline int __fastcall CallOriginal(ATgGame* Game, void* edx, AController* Controller) {
+		return m_original(Game, edx, Controller);
 	};
 };
 

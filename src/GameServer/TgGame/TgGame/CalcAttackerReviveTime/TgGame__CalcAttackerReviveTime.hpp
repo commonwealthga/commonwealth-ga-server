@@ -5,7 +5,7 @@
 
 class TgGame__CalcAttackerReviveTime : public HookBase<
 	void(__fastcall*)(ATgGame*, void*, int),
-	0x10ad9bf0,
+	0x10ad9cb0,
 	TgGame__CalcAttackerReviveTime> {
 public:
 	static void __fastcall Call(ATgGame* Game, void* edx, int nPriority);

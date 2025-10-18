@@ -57160,7 +57160,7 @@ void ATgPlayerController::eventRevive ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i]) {
 				UObject* obj = UObject::GObjObjects()->Data[i];
-				if (strcmp(obj->GetFullName(), "Function TgGame.TgPlayerController.Revive") == 0) {
+				if (strcmp(obj->GetFullName(), "Function TgPlayerController.Dead.Revive") == 0) {
 					pFnRevive = (UFunction*)obj;
 					break;
 				}
@@ -69254,8 +69254,18 @@ void ATgGame::ReviveAttackersTimer ( )
 {
 	static UFunction* pFnReviveAttackersTimer = NULL;
 
-	if ( ! pFnReviveAttackersTimer )
-		pFnReviveAttackersTimer = (UFunction*) UObject::GObjObjects()->Data[ 38510 ];
+	if ( ! pFnReviveAttackersTimer ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgGame.ReviveAttackersTimer") == 0) {
+					pFnReviveAttackersTimer = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnReviveAttackersTimer = (UFunction*) UObject::GObjObjects()->Data[ 38510 ];
 
 	ATgGame_execReviveAttackersTimer_Parms ReviveAttackersTimer_Parms;
 

@@ -107,8 +107,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	PlayerController->Pawn = newpawn;
 	newpawn->Controller = PlayerController;
 
-	PlayerController->Role = 3;
-	PlayerController->RemoteRole = 2;
+	// PlayerController->Role = 3;
+	// PlayerController->RemoteRole = 2;
 	PlayerController->bNetInitial = 1;
 	PlayerController->bNetDirty = 1;
 	PlayerController->bForceNetUpdate = 1;

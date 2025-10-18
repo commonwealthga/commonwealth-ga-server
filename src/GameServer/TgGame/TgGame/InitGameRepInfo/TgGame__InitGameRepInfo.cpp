@@ -32,7 +32,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		gamerep->r_bInOverTime = 0;
 		gamerep->r_nSecsToAutoReleaseAttackers = Game->m_nSecsToAutoReleaseAttackers;
 		gamerep->r_nSecsToAutoReleaseDefenders = Game->m_nSecsToAutoReleaseDefenders;
-		gamerep->r_nReleaseDelay = 15;
+		gamerep->r_nReleaseDelay = 1;
 		gamerep->r_nPointsToWin = 3;
 		gamerep->r_nRoundNumber = 1;
 		gamerep->r_nMaxRoundNumber = 3;
@@ -61,6 +61,8 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		gamerep->InitMissionTime();
 
 		gamerep->bNetInitial = 1;
+		gamerep->bNetDirty = 1;
+		gamerep->bForceNetUpdate = 1;
 
 	}
 	Logger::Log("debug", "MINE TgGame::InitGameRepInfo END\n");
