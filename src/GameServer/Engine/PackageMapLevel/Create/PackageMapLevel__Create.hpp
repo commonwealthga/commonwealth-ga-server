@@ -4,7 +4,8 @@
 
 class PackageMapLevel__Create : public HookBase<
 	void*(__cdecl*)(int32_t, void*, int32_t, int32_t, int32_t, int32_t),
-	0x10C198F0,
+	0x10C198F0, // level
+	// 0x10C19950, // seekfree
 	PackageMapLevel__Create> {
 public:
 	static void* Call(int32_t param1, void* param2, int32_t param3, int32_t param4, int32_t param5, int32_t param6);

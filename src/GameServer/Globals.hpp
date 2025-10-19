@@ -14,11 +14,12 @@ struct Globals {
 	void* GGameInfo = nullptr;
 
 	// vtables
-	void** PackageMapVtable = (void**)0x11769a48;
+	void** PackageMapVtable = (void**)0x11769a48; // level
+	// void** PackageMapVtable = (void**)0x11769B98; // seekfree
 
 	// global variables
 	int* GUseSeekFreeLoading = (int*)0x13433908;
-	int* GUseSeekFreePackageMap= (int*)0x134338E0;
+	int* GUseSeekFreePackageMap = (int*)0x134338E0;
 	int* GIsClient = (int*)0x1342B844;
 	int* GIsServer = (int*)0x1342B848;
 	int* GIsEditor = (int*)0x1342B830;

@@ -156,8 +156,12 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	newrepplayer->eventSetPlayerName(FString(L"Zaxik"));
 	// newrepplayer->SetTeam(GTeamsData.Attackers);
-	// newrepplayer->r_TaskForce = GTeamsData.Attackers;
+
+	newrepplayer->r_TaskForce = GTeamsData.Attackers;
 	newrepplayer->SetTeam(GTeamsData.Attackers);
+	newpawn->NotifyTeamChanged();
+
+	// newrepplayer->SetTeam(GTeamsData.Defenders);
 	// newrepplayer->SetPlayerTeam(GTeamsData.Attackers);
 	// newrepplayer->Team = GTeamsData.Attackers;
 	newrepplayer->bNetDirty = 1;

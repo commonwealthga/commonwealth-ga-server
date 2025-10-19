@@ -20,6 +20,7 @@
 #include "src/GameServer/TgGame/TgGame/RegisterForWaveRevive/TgGame__RegisterForWaveRevive.hpp"
 #include "src/GameServer/TgGame/TgGame/GetReviveTimeRemaining/TgGame__GetReviveTimeRemaining.hpp"
 #include "src/GameServer/TgGame/TgGame/ReviveAttackersTimer/TgGame__ReviveAttackersTimer.hpp"
+#include "src/GameServer/TgGame/TgGame/ReviveDefendersTimer/TgGame__ReviveDefendersTimer.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.hpp"
 #include "src/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.hpp"
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
@@ -78,6 +79,7 @@ unsigned long ModuleThread( void* ) {
 	TgGame__RegisterForWaveRevive::Install();
 	TgGame__GetReviveTimeRemaining::Install();
 	TgGame__ReviveAttackersTimer::Install();
+	TgGame__ReviveDefendersTimer::Install();
 	CMarshal__GetByte::Install();
 	CMarshal__GetInt32t::Install();
 	CAmBot__LoadBotMarshal::Install();

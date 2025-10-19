@@ -37025,8 +37025,18 @@ void ATgPawn::NotifyTeamChanged ( )
 {
 	static UFunction* pFnNotifyTeamChanged = NULL;
 
-	if ( ! pFnNotifyTeamChanged )
-		pFnNotifyTeamChanged = (UFunction*) UObject::GObjObjects()->Data[ 41722 ];
+	if ( ! pFnNotifyTeamChanged ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgPawn.NotifyTeamChanged") == 0) {
+					pFnNotifyTeamChanged = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnNotifyTeamChanged = (UFunction*) UObject::GObjObjects()->Data[ 41722 ];
 
 	ATgPawn_execNotifyTeamChanged_Parms NotifyTeamChanged_Parms;
 
@@ -73966,8 +73976,18 @@ bool ATgRepInfo_TaskForce::IsAttacker ( )
 {
 	static UFunction* pFnIsAttacker = NULL;
 
-	if ( ! pFnIsAttacker )
-		pFnIsAttacker = (UFunction*) UObject::GObjObjects()->Data[ 47185 ];
+	if ( ! pFnIsAttacker ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgRepInfo_TaskForce.IsAttacker") == 0) {
+					pFnIsAttacker = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnIsAttacker = (UFunction*) UObject::GObjObjects()->Data[ 47185 ];
 
 	ATgRepInfo_TaskForce_execIsAttacker_Parms IsAttacker_Parms;
 

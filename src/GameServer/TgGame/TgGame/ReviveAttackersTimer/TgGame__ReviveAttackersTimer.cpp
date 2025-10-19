@@ -8,8 +8,7 @@ void __fastcall TgGame__ReviveAttackersTimer::Call(ATgGame *Game, void *edx) {
 		for (int i = 0; i < Game->s_AttackerReviveList.Num(); i++) {
 			ATgPlayerController* PlayerController = (ATgPlayerController*)Game->s_AttackerReviveList.Data[i];
 			if (PlayerController != nullptr) {
-				Logger::Log("debug", "Reviving player %s\n", PlayerController->GetFullName());
-				// Game->RestartPlayer(PlayerController);
+				Logger::Log("debug", "Reviving attacker player %s\n", PlayerController->GetFullName());
 				PlayerController->eventRevive();
 			}
 		}
@@ -17,6 +16,18 @@ void __fastcall TgGame__ReviveAttackersTimer::Call(ATgGame *Game, void *edx) {
 		Game->s_AttackerReviveList.Clear();
 	}
 
-	Game->SetTimer(((ATgRepInfo_Game*)Game->GameReplicationInfo)->r_nSecsToAutoReleaseAttackers, 1, FName("ReviveAttackersTimer"), nullptr);
+	if (Game->s_DefenderReviveList.Data != nullptr) {
+		for (int i = 0; i < Game->s_DefenderReviveList.Num(); i++) {
+			ATgPlayerController* PlayerController = (ATgPlayerController*)Game->s_DefenderReviveList.Data[i];
+			if (PlayerController != nullptr) {
+				Logger::Log("debug", "Reviving defender player %s\n", PlayerController->GetFullName());
+				PlayerController->eventRevive();
+			}
+		}
+
+		Game->s_DefenderReviveList.Clear();
+	}
+
+	// Game->SetTimer(((ATgRepInfo_Game*)Game->GameReplicationInfo)->r_nSecsToAutoReleaseAttackers, 1, FName("ReviveAttackersTimer"), nullptr);
 }
 

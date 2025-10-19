@@ -13,6 +13,7 @@ void GameEngine__Init::FixGlobals() {
 	*Globals::Get().GIsEditor = 0;
 	*Globals::Get().GIsUCC = 0;
 	*Globals::Get().GUseNewOptimizedServerTick = 0;
+	// *Globals::Get().GUseSeekFreeLoading = 1;
 }
 
 void GameEngine__Init::Call(void* GameEngine) {
