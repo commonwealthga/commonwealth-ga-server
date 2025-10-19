@@ -166,6 +166,22 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newrepplayer->bOnlyDirtyReplication = 0;
 	newrepplayer->bNetInitial = 1;
 
+	// if (PlayerController->myHUD != nullptr) {
+	// 	PlayerController->myHUD->Destroy();
+	// 	PlayerController->myHUD = nullptr;
+	// }
+	// APlayerController* AController = reinterpret_cast<APlayerController*>(PlayerController);
+	// AController->ClientSetHUD(ClassPreloader::GetTgHudTeamGameClass(), Game->ScoreBoardType);
+	// Logger::Log("debug", "Client HUD changed");
+
+	// PlayerController->ClientShowHUDElement(5); // MissionInfo
+	// PlayerController->ClientShowHUDElement(7); // TeamInfo
+	// PlayerController->ClientHideHUDElement(10); // AgentInfo
+	// PlayerController->ClientHideHUDElement(11); // QuestTracking 
+
+	newpawn->r_UIClockState = 0;
+	newpawn->r_UIClockTime = 15 * 60;
+
 	ATgRepInfo_TaskForce* attackers = GTeamsData.Attackers;
 	ATgRepInfo_TaskForce* defenders = GTeamsData.Defenders;
 

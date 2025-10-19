@@ -1,6 +1,6 @@
 
 SOURCE_FILES= \
-			  $(SRC_DIR)/Config/Config/Config1P_CPLab04_P.cpp \
+			  $(SRC_DIR)/Config/Config/ConfigDomeCity.cpp \
 			  \
 			  $(SRC_DIR)/Utils/Logger/Logger/FileLogger.cpp \
 			  \
@@ -24,6 +24,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/ActorChannel/ReceivedBunch/CanExecute/ActorChannel__ReceivedBunch__CanExecute.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/IsReadyForStart/TgPlayerController__IsReadyForStart.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/SetSoundMode/TgPlayerController__SetSoundMode.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/CanPlayerUseVolume/TgPlayerController__CanPlayerUseVolume.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBotPawn/TgGame__SpawnBotPawn.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.cpp \
@@ -45,6 +46,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CAmBot/LoadBotBehaviorMarshal/CAmBot__LoadBotBehaviorMarshal.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CAmOmegaVolume/LoadOmegaVolumeMarshal/CAmOmegaVolume__LoadOmegaVolumeMarshal.cpp \
 			  $(SRC_DIR)/dllmain.cpp
 
 

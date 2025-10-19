@@ -3786,8 +3786,18 @@ bool AActor::Destroy ( )
 {
 	static UFunction* pFnDestroy = NULL;
 
-	if ( ! pFnDestroy )
-		pFnDestroy = (UFunction*) UObject::GObjObjects()->Data[ 3580 ];
+	if ( ! pFnDestroy ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function Engine.Actor.Destroy") == 0) {
+					pFnDestroy = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnDestroy = (UFunction*) UObject::GObjObjects()->Data[ 3580 ];
 
 	AActor_execDestroy_Parms Destroy_Parms;
 

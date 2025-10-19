@@ -5,6 +5,7 @@
 #include "src/GameServer/Engine/PackageMap/Compute/PackageMap__Compute.hpp"
 #include "src/GameServer/Engine/FURL/Constructor/FURL__Constructor.hpp"
 #include "src/GameServer/Engine/World/SpawnPlayActor/World__SpawnPlayActor.hpp"
+#include "src/GameServer/Misc/CAmOmegaVolume/LoadOmegaVolumeMarshal/CAmOmegaVolume__LoadOmegaVolumeMarshal.hpp"
 #include "src/TcpServer/TcpEvents/TcpEvents.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Config/Config.hpp"
@@ -212,6 +213,25 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 		if (newcontrollerptr) {
 			MarshalChannel__NotifyControlMessage::HandlePlayerConnected(Connection, newcontrollerptr);
 
+			for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+				if (UObject::GObjObjects()->Data[i]) {
+					UObject* obj = UObject::GObjObjects()->Data[i];
+					if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgOmegaVolume") == 0) {
+						ATgOmegaVolume* omegavolume = reinterpret_cast<ATgOmegaVolume*>(obj);
+						Logger::Log("debug", "Found omegavolume: %d", omegavolume->m_nOmegaAlertId);
+
+
+						Logger::Log("debug", ", previous marshal: %d", omegavolume->m_pAmVolume.Dummy);
+
+						if (CAmOmegaVolume__LoadOmegaVolumeMarshal::m_OmegaVolumePointers[omegavolume->m_nOmegaAlertId] != 0) {
+							// omegavolume->m_pAmVolume.Dummy = CAmOmegaVolume__LoadOmegaVolumeMarshal::m_OmegaVolumePointers[omegavolume->m_nOmegaAlertId];
+							Logger::Log("debug", ", marshal found: %d\n", CAmOmegaVolume__LoadOmegaVolumeMarshal::m_OmegaVolumePointers[omegavolume->m_nOmegaAlertId]);
+						} else {
+							Logger::Log("debug", ", marshal not found\n");
+						}
+					}
+				}
+			}
 
 			// AWorldInfo* worldinfo = nullptr;
 			// for (int i = 0; i < UObject::GObjObjects()->Count; i++) {

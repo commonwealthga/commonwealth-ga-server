@@ -20,5 +20,6 @@ public:
 	static UClass* GetTgPawnThinkTankClass();
 	static UClass* GetTgPawnGuardianClass();
 	static UClass* GetTgDeviceClass();
+	static UClass* GetTgHudTeamGameClass();
 };
 

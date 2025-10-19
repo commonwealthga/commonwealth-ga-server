@@ -51807,8 +51807,18 @@ void ATgPlayerController::ClientShowHUDElement ( unsigned char Element )
 {
 	static UFunction* pFnClientShowHUDElement = NULL;
 
-	if ( ! pFnClientShowHUDElement )
-		pFnClientShowHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 46063 ];
+	if ( ! pFnClientShowHUDElement ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgPlayerController.ClientShowHUDElement") == 0) {
+					pFnClientShowHUDElement = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnClientShowHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 46063 ];
 
 	ATgPlayerController_execClientShowHUDElement_Parms ClientShowHUDElement_Parms;
 	ClientShowHUDElement_Parms.Element = Element;
@@ -51825,8 +51835,18 @@ void ATgPlayerController::ClientHideHUDElement ( unsigned char Element )
 {
 	static UFunction* pFnClientHideHUDElement = NULL;
 
-	if ( ! pFnClientHideHUDElement )
-		pFnClientHideHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 46061 ];
+	if ( ! pFnClientHideHUDElement ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgPlayerController.ClientHideHUDElement") == 0) {
+					pFnClientHideHUDElement = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnClientHideHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 46061 ];
 
 	ATgPlayerController_execClientHideHUDElement_Parms ClientHideHUDElement_Parms;
 	ClientHideHUDElement_Parms.Element = Element;

@@ -12,6 +12,7 @@
 #include "src/GameServer/Engine/ActorChannel/ReceivedBunch/CanExecute/ActorChannel__ReceivedBunch__CanExecute.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/IsReadyForStart/TgPlayerController__IsReadyForStart.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/SetSoundMode/TgPlayerController__SetSoundMode.hpp"
+#include "src/GameServer/TgGame/TgPlayerController/CanPlayerUseVolume/TgPlayerController__CanPlayerUseVolume.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotPawn/TgGame__SpawnBotPawn.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
@@ -34,6 +35,7 @@
 #include "src/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotBehaviorMarshal/CAmBot__LoadBotBehaviorMarshal.hpp"
+#include "src/GameServer/Misc/CAmOmegaVolume/LoadOmegaVolumeMarshal/CAmOmegaVolume__LoadOmegaVolumeMarshal.hpp"
 
 
 unsigned long ModuleThread( void* ) {
@@ -59,6 +61,7 @@ unsigned long ModuleThread( void* ) {
 	// game functions
 	TgPlayerController__IsReadyForStart::Install();
 	TgPlayerController__SetSoundMode::Install();
+	TgPlayerController__CanPlayerUseVolume::Install();
 	TgGame__SpawnPlayerCharacter::Install();
 	TgGame__SpawnBotPawn::Install();
 	TgGame__LoadGameConfig::Install();
@@ -79,6 +82,7 @@ unsigned long ModuleThread( void* ) {
 	CMarshal__GetInt32t::Install();
 	CAmBot__LoadBotMarshal::Install();
 	CAmBot__LoadBotBehaviorMarshal::Install();
+	CAmOmegaVolume__LoadOmegaVolumeMarshal::Install();
 
 	::DetourTransactionCommit();
 
