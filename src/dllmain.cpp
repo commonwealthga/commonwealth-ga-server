@@ -1,6 +1,7 @@
 #include "src/pch.hpp"
 
 #include "src/GameServer/Engine/GameEngine/Init/GameEngine__Init.hpp"
+#include "src/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.hpp"
 #include "src/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.hpp"
 #include "src/GameServer/Engine/LaunchEngineLoop/ConstructCommandletObject/ConstructCommandletObject.hpp"
 #include "src/GameServer/Engine/ServerCommandlet/Main/ServerCommandlet__Main.hpp"
@@ -13,6 +14,7 @@
 #include "src/GameServer/TgGame/TgPlayerController/IsReadyForStart/TgPlayerController__IsReadyForStart.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/SetSoundMode/TgPlayerController__SetSoundMode.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/CanPlayerUseVolume/TgPlayerController__CanPlayerUseVolume.hpp"
+#include "src/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotPawn/TgGame__SpawnBotPawn.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
@@ -21,6 +23,8 @@
 #include "src/GameServer/TgGame/TgGame/GetReviveTimeRemaining/TgGame__GetReviveTimeRemaining.hpp"
 #include "src/GameServer/TgGame/TgGame/ReviveAttackersTimer/TgGame__ReviveAttackersTimer.hpp"
 #include "src/GameServer/TgGame/TgGame/ReviveDefendersTimer/TgGame__ReviveDefendersTimer.hpp"
+#include "src/GameServer/TgGame/TgGame/MissionTimeRemaining/TgGame__MissionTimeRemaining.hpp"
+#include "src/GameServer/TgGame/TgGame/SendMissionTimerEvent/TgGame__SendMissionTimerEvent.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.hpp"
 #include "src/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.hpp"
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
@@ -32,6 +36,8 @@
 #include "src/GameServer/Engine/Actor/Spawn/Actor__Spawn.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/SpawnBot/TgBotFactory__SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.hpp"
+#include "src/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.hpp"
+#include "src/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.hpp"
 #include "src/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.hpp"
 #include "src/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.hpp"
@@ -48,6 +54,7 @@ unsigned long ModuleThread( void* ) {
 	GameEngine__Init::Install();
 	// UObject__CollectGarbage::bDisableGarbageCollection = true;
 	UObject__CollectGarbage::Install();
+	UObject__ProcessEvent::Install();
 	ConstructCommandletObject::Install();
 	ServerCommandlet__Main::Install();
 	GameEngine__SpawnServerActors::Install();
@@ -63,6 +70,7 @@ unsigned long ModuleThread( void* ) {
 	TgPlayerController__IsReadyForStart::Install();
 	TgPlayerController__SetSoundMode::Install();
 	TgPlayerController__CanPlayerUseVolume::Install();
+	TgGame__TgFindPlayerStart::Install();
 	TgGame__SpawnPlayerCharacter::Install();
 	TgGame__SpawnBotPawn::Install();
 	TgGame__LoadGameConfig::Install();
@@ -80,6 +88,10 @@ unsigned long ModuleThread( void* ) {
 	TgGame__GetReviveTimeRemaining::Install();
 	TgGame__ReviveAttackersTimer::Install();
 	TgGame__ReviveDefendersTimer::Install();
+	TgGame__MissionTimeRemaining::Install();
+	TgGame__SendMissionTimerEvent::Install();
+	TgDevice__HasMinimumPowerPool::Install();
+	TgDevice__HasEnoughPowerPool::Install();
 	CMarshal__GetByte::Install();
 	CMarshal__GetInt32t::Install();
 	CAmBot__LoadBotMarshal::Install();

@@ -5,12 +5,13 @@
 
 class TgGame__SendMissionTimerEvent : public HookBase<
 	void(__fastcall*)(ATgGame*, void*, int),
-	0x10ad9bf0,
+	0x10ad9c30,
 	TgGame__SendMissionTimerEvent> {
 public:
-	static void __fastcall Call(ATgGame* Game, void* edx, int nPriority);
-	static inline void __fastcall CallOriginal(ATgGame* Game, void* edx, int nPriority) {
-		m_original(Game, edx, nPriority);
+	static TArray<int>* ActivateIndices;
+	static void __fastcall Call(ATgGame* Game, void* edx, int nEventId);
+	static inline void __fastcall CallOriginal(ATgGame* Game, void* edx, int nEventId) {
+		m_original(Game, edx, nEventId);
 	};
 };
 

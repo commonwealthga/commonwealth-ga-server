@@ -81,6 +81,20 @@ UClass* ClassPreloader::GetTgHudTeamGameClass() {
 	return Classes["Class TgClient.TgHUD_TeamGame"];
 }
 
+UClass* ClassPreloader::GetTgSeqEventMissionTimerClass() {
+	PreloadClasses();
+	return Classes["Class TgGame.TgSeqEvent_MissionTimer"];
+}
+
+UClass* ClassPreloader::GetTgSeqEventLevelFadedInClass() {
+	PreloadClasses();
+	return Classes["Class TgGame.TgSeqEvent_LevelFadedIn"];
+}
+
+UClass* ClassPreloader::GetSeqEventLevelLoadedClass() {
+	PreloadClasses();
+	return Classes["Class Engine.SeqEvent_LevelLoaded"];
+}
 
 
 

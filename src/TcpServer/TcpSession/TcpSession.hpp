@@ -168,6 +168,10 @@ private:
 				Logger::Log("tcp", "[%s] Received: PLAYER_UPDATE_CLIENT [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 				send_player_update_client_response();
 				break;
+			case GA_U::GET_LOOT_TABLE_ITEMS_BY_ID_FILTERED:
+				Logger::Log("tcp", "[%s] Received: GET_LOOT_TABLE_ITEMS_BY_ID_FILTERED [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+				send_get_loot_table_items_by_id_filtered_response();
+				break;
 			case GA_U::RELAY_LOG:
 				// keepalive
 				
@@ -233,6 +237,42 @@ private:
 				break;
 		}
     }
+
+	void send_get_loot_table_items_by_id_filtered_response() {
+		std::vector<uint8_t> response;
+
+		uint16_t packet_type = GA_U::GET_LOOT_TABLE_ITEMS_BY_ID_FILTERED;
+		uint16_t item_count = 2;
+
+		append(response, packet_type & 0xFF, packet_type >> 8);
+		append(response, item_count & 0xFF, item_count >> 8);
+
+		append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);        // type 010C
+		append(response, 0x01, 0x00);        // count elements
+		{
+			append(response, 0x06, 0x00);  // inner item count
+
+			Write4B(response, GA_T::LOOT_TABLE_ITEM_ID, 3470);
+			Write4B(response, GA_T::ITEM_ID, 2991);
+			Write4B(response, GA_T::CREATED_ITEM_ID, 2991);
+			Write4B(response, GA_T::AUTO_CREATE_FLAG, 122319617);
+			Write4B(response, GA_T::MAX_QUALITY_VALUE_ID, 1165);
+			Write4B(response, GA_T::SORT_ORDER, 0);
+		}
+
+		append(response, GA_T::DATA_SET_PRICES & 0xFF, GA_T::DATA_SET_PRICES >> 8);        // type 010C
+		append(response, 0x01, 0x00);        // count elements
+		{
+			append(response, 0x04, 0x00);  // inner item count
+
+			Write4B(response, GA_T::LOOT_TABLE_ITEM_ID, 3470);
+			Write4B(response, GA_T::CURRENT_PRICE, 0);
+			Write4B(response, GA_T::CURRENT_PRICE, 0);
+			Write4B(response, GA_T::CURRENCY_TYPE_VALUE_ID, 1603);
+		}
+		
+		send_response(response);
+	}
 
 	void send_inventory_response(int nPawnId) {
 		std::vector<uint8_t> response;

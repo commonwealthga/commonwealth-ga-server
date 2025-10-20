@@ -21,5 +21,9 @@ public:
 	static UClass* GetTgPawnGuardianClass();
 	static UClass* GetTgDeviceClass();
 	static UClass* GetTgHudTeamGameClass();
+	static UClass* GetTgSeqEventMissionTimerClass();
+	static UClass* GetTgSeqEventLevelFadedInClass();
+	static UClass* GetSeqEventLevelLoadedClass();
+
 };
 

@@ -26121,7 +26121,7 @@ public:
 
 	void eventToggled ( );
 	void Reset ( );
-	bool CheckActivate ( class AActor* InOriginator, class AActor* InInstigator, unsigned long bTest, unsigned long bPushTop, TArray< int >* ActivateIndices );
+	bool CheckActivate ( class AActor* InOriginator, class AActor* InInstigator, unsigned long bTest, unsigned long bPushTop, TArray< int > ActivateIndices );
 	void eventRegisterEvent ( );
 };
 

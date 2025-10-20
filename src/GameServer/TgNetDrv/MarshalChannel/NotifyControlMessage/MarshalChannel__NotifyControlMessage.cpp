@@ -8,6 +8,7 @@
 #include "src/GameServer/Misc/CAmOmegaVolume/LoadOmegaVolumeMarshal/CAmOmegaVolume__LoadOmegaVolumeMarshal.hpp"
 #include "src/TcpServer/TcpEvents/TcpEvents.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Config/Config.hpp"
 #include "src/GameServer/Engine/World/GetGameInfo/World__GetGameInfo.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
@@ -47,6 +48,7 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 			void* Notify = *(void**)((char*)NetDriver + 0x54);
 			Globals::Get().GWorld = reinterpret_cast<UWorld*>((char*)Notify - 0x3C);
 		}
+
 		if (!Globals::Get().GWorldInfo) {
 			bool bFirstSkipped = false;
 			for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
@@ -63,26 +65,25 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 				}
 			}
 		}
-
-		for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-			if (UObject::GObjObjects()->Data[i]) {
-				UObject* obj = UObject::GObjObjects()->Data[i];
-				if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgBotFactory") == 0) {
-					ATgBotFactory* botfactory = reinterpret_cast<ATgBotFactory*>(obj);
-					if (botfactory->WorldInfo == nullptr) {
-						botfactory->WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
-					}
-
-					botfactory->SpawnBot();
-					// botfactory->SpawnBot();
-					// botfactory->SpawnBot();
-					// botfactory->SpawnBot();
-					// botfactory->SpawnBot();
-					// botfactory->SpawnBot();
-					// botfactory->SpawnBot();
-				}
-			}
-		}
+		// for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+		// 	if (UObject::GObjObjects()->Data[i]) {
+		// 		UObject* obj = UObject::GObjObjects()->Data[i];
+		// 		if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgBotFactory") == 0) {
+		// 			ATgBotFactory* botfactory = reinterpret_cast<ATgBotFactory*>(obj);
+		// 			if (botfactory->WorldInfo == nullptr) {
+		// 				botfactory->WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
+		// 			}
+		//
+		// 			botfactory->SpawnBot();
+		// 			// botfactory->SpawnBot();
+		// 			// botfactory->SpawnBot();
+		// 			// botfactory->SpawnBot();
+		// 			// botfactory->SpawnBot();
+		// 			// botfactory->SpawnBot();
+		// 			// botfactory->SpawnBot();
+		// 		}
+		// 	}
+		// }
 
 		// random sm manager start
 		// AWorldInfo* worldinfo = nullptr;
@@ -355,6 +356,7 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	ATgPawn_Character* newpawn = NULL;
 
 	newcontroller->PlayerReplicationInfo->bOnlySpectator = 0;
+	newcontroller->PlayerReplicationInfo->Team = GTeamsData.Defenders;
 
 	game->eventPostLogin(newcontroller);
 
@@ -429,6 +431,42 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	} else {
 		Logger::Log("debug", "Attackers do not have beacon manager\n");
 	}
+
+	// todo check count players
+	game->m_fGameMissionTime = 15 * 60;
+	game->m_eTimerState = 0;
+	game->StartGameTimer();
+
+
+	TArray<USequenceObject*> Events;
+	TArray<int> Indices;
+
+	AWorldInfo* WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
+
+	WorldInfo->GetGameSequence()->FindSeqObjectsByClass(
+		ClassPreloader::GetSeqEventLevelLoadedClass(),
+		1,
+		&Events
+	);
+
+	for (int i = 0; i < Events.Num(); i++) {
+		USeqEvent_LevelLoaded* Event = (USeqEvent_LevelLoaded*)Events.Data[i];
+		Event->CheckActivate(game, game, 0, 0, Indices);
+	}
+
+	TArray<USequenceObject*> Events2;
+	TArray<int> Indices2;
+	WorldInfo->GetGameSequence()->FindSeqObjectsByClass(
+		ClassPreloader::GetTgSeqEventLevelFadedInClass(),
+		1,
+		&Events2
+	);
+
+	for (int i = 0; i < Events2.Num(); i++) {
+		UTgSeqEvent_LevelFadedIn* Event = (UTgSeqEvent_LevelFadedIn*)Events2.Data[i];
+		Event->CheckActivate(game, game, 0, 0, Indices2);
+	}
+
 
 	// LogToFile("C:\\mylog.txt", "Attackers beacon manager taskforce %d", GTeamsData.Attackers->r_BeaconManager->r_TaskForce->r_nTaskForce);
 	// LogToFile("C:\\mylog.txt", "Attackers beacon taskforce %d", GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo->r_nTaskForce);

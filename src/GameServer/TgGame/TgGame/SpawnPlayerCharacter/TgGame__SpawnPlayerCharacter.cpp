@@ -14,6 +14,11 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	ATgRepInfo_Player* newrepplayer = reinterpret_cast<ATgRepInfo_Player*>(PlayerController->PlayerReplicationInfo);
 
 	// Logger::DumpMemory("newpawn", newpawn, 0x800, 0);
+	int AgonizerSlot = newpawn->GetEquipPointByType(217);
+	ATgDevice* Agonizer = newpawn->CreateEquipDevice(0, GA_G::DEVICE_ID_AGONIZER, AgonizerSlot);
+	Agonizer->bNetInitial = 1;
+	Agonizer->bNetDirty = 1;
+	Agonizer->bForceNetUpdate = 1;
 
 
 	// try equip jetpack
@@ -35,17 +40,35 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 
 		for (int i = 0; i < 25; i++) {
-			newpawn->m_EquippedDevices[i] = Jetpack;
-			newpawn->r_EquipDeviceInfo[i].nDeviceId = GA_G::DEVICE_ID_MEDIC_CJP;
-			newpawn->r_EquipDeviceInfo[i].nDeviceInstanceId = 1;
-			newpawn->r_EquipDeviceInfo[i].nQualityValueId = 1165;
+			if (i == AgonizerSlot) {
+				newpawn->m_EquippedDevices[i] = Agonizer;
+				newpawn->r_EquipDeviceInfo[i].nDeviceId = GA_G::DEVICE_ID_AGONIZER;
+				newpawn->r_EquipDeviceInfo[i].nDeviceInstanceId = 2;
+				newpawn->r_EquipDeviceInfo[i].nQualityValueId = 1165;
 
-			newrepplayer->r_EquipDeviceInfo[i].nDeviceId = GA_G::DEVICE_ID_MEDIC_CJP;
-			newrepplayer->r_EquipDeviceInfo[i].nDeviceInstanceId = 1;
-			newrepplayer->r_EquipDeviceInfo[i].nQualityValueId = 1165;
+				newrepplayer->r_EquipDeviceInfo[i].nDeviceId = GA_G::DEVICE_ID_AGONIZER;
+				newrepplayer->r_EquipDeviceInfo[i].nDeviceInstanceId = 2;
+				newrepplayer->r_EquipDeviceInfo[i].nQualityValueId = 1165;
+			} else {
+				newpawn->m_EquippedDevices[i] = Jetpack;
+				newpawn->r_EquipDeviceInfo[i].nDeviceId = GA_G::DEVICE_ID_MEDIC_CJP;
+				newpawn->r_EquipDeviceInfo[i].nDeviceInstanceId = 1;
+				newpawn->r_EquipDeviceInfo[i].nQualityValueId = 1162;
+
+				newrepplayer->r_EquipDeviceInfo[i].nDeviceId = GA_G::DEVICE_ID_MEDIC_CJP;
+				newrepplayer->r_EquipDeviceInfo[i].nDeviceInstanceId = 1;
+				newrepplayer->r_EquipDeviceInfo[i].nQualityValueId = 1162;
+			}
 		}
 
 		Jetpack->r_eEquippedAt = GA_G::EQUIP_POINT_JETPACK_ID;
+		Agonizer->r_eEquippedAt = AgonizerSlot;
+
+		// for (int i = 0; i < Jetpack->m_FireMode.Num(); i++) {
+		// 	UTgDeviceFire* FireMode = Jetpack->m_FireMode.Data[i];
+		// 	Jetpack->CurrentFireMode = FireMode->m_nFireType;
+		// }
+		// Jetpack->CurrentFireMode = 2;
 
 		Jetpack->r_nInventoryId = 1;
 		Jetpack->s_InventoryObject->m_InventoryData.nInvId = 1;
@@ -57,6 +80,12 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		} else {
 			Logger::Log("debug", "JetpackFixed = nullptr\n");
 		}
+
+		Logger::DumpMemory("jetpack", JetpackFixed, 0x2D8, 0);
+
+		Agonizer->r_nInventoryId = 2;
+		Agonizer->s_InventoryObject->m_InventoryData.nInvId = 2;
+		TgInventoryManager__PrepopulateInventoryId::CallOriginal((void*)((char*)newpawn->InvManager + 0x1f0), edx, 2, Agonizer->s_InventoryObject);
 
 		// newpawn->ForceUpdateEquippedDevices();
 		// newpawn->UpdateClientDevices();
@@ -74,6 +103,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newpawn->r_bEnableCrafting = 1;
 	newpawn->r_bIsStealthed = 0;
 	newpawn->r_bIsBot = 0;
+	newpawn->r_bIsDecoy = 0;
+	newpawn->r_bIsHacking = 0;
 	newpawn->r_fCurrentPowerPool = 100;
 	newpawn->r_fMaxPowerPool = 100;
 	newpawn->r_nXp = 999999;
@@ -157,9 +188,16 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newrepplayer->eventSetPlayerName(FString(L"Zaxik"));
 	// newrepplayer->SetTeam(GTeamsData.Attackers);
 
-	newrepplayer->r_TaskForce = GTeamsData.Attackers;
-	newrepplayer->SetTeam(GTeamsData.Attackers);
-	newpawn->NotifyTeamChanged();
+	// newrepplayer->r_TaskForce = GTeamsData.Defenders;
+	// newrepplayer->Team = GTeamsData.Defenders;
+	// newrepplayer->SetTeam(GTeamsData.Defenders);
+
+
+
+	// newrepplayer->r_TaskForce = GTeamsData.Attackers;
+	// newrepplayer->SetTeam(GTeamsData.Attackers);
+
+	// newpawn->NotifyTeamChanged();
 
 	// newrepplayer->SetTeam(GTeamsData.Defenders);
 	// newrepplayer->SetPlayerTeam(GTeamsData.Attackers);
@@ -200,7 +238,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	TARRAY_INIT(attackers, TeamPlayersAttackers, FTGTEAM_ENTRY, 0x214, 32);
 	TARRAY_INIT(defenders, TeamPlayersDefenders, FTGTEAM_ENTRY, 0x214, 32);
 
-	TARRAY_ADD(TeamPlayersAttackers, newplayerteamentry);
+	// TARRAY_ADD(TeamPlayersAttackers, newplayerteamentry);
+	TARRAY_ADD(TeamPlayersDefenders, newplayerteamentry);
 
 
 	Logger::Log("debug", "MINE TgGame__SpawnPlayerCharacter END\n");

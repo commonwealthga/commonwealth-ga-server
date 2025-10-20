@@ -58,9 +58,13 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	BotRepInfo->r_ApproxLocation = Bot->Location;
 
 	// todo: maybe pull team from pawn/factory?
-	BotRepInfo->r_TaskForce = GTeamsData.Defenders;
-	BotRepInfo->SetTeam(GTeamsData.Defenders);
+	BotRepInfo->r_TaskForce = GTeamsData.Attackers;
+	BotRepInfo->SetTeam(GTeamsData.Attackers);
 	Bot->NotifyTeamChanged();
+
+	// BotRepInfo->r_TaskForce = GTeamsData.Defenders;
+	// BotRepInfo->SetTeam(GTeamsData.Defenders);
+	// Bot->NotifyTeamChanged();
 
 	AIController->Possess(Bot, 0, 1);
 	Bot->ApplyPawnSetup();

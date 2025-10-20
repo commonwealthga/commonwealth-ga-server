@@ -66,8 +66,9 @@ ATgPawn* __fastcall TgGame__SpawnBotPawn::Call(ATgGame* Game, void* edx, ATgAICo
 	// newrepplayer->PlayerName = FString(L"Zaxik");
 
 	// newrepplayer->eventSetPlayerName(FString(L"Zaxik"));
-	// newrepplayer->SetTeam(GTeamsData.Attackers);
 	newrepplayer->r_TaskForce = GTeamsData.Attackers;
+	newrepplayer->Team = GTeamsData.Attackers;
+	newrepplayer->SetTeam(GTeamsData.Attackers);
 	// newrepplayer->SetPlayerTeam(GTeamsData.Attackers);
 	// newrepplayer->Team = GTeamsData.Attackers;
 	newrepplayer->bNetDirty = 1;

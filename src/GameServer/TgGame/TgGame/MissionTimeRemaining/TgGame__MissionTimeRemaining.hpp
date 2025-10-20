@@ -4,13 +4,13 @@
 #include "src/Utils/HookBase.hpp"
 
 class TgGame__MissionTimeRemaining : public HookBase<
-	void(__fastcall*)(ATgGame*, void*, int),
-	0x10ad9bf0,
+	float(__fastcall*)(ATgGame*, void*),
+	0x10ad9c40,
 	TgGame__MissionTimeRemaining> {
 public:
-	static void __fastcall Call(ATgGame* Game, void* edx, int nPriority);
-	static inline void __fastcall CallOriginal(ATgGame* Game, void* edx, int nPriority) {
-		m_original(Game, edx, nPriority);
+	static float __fastcall Call(ATgGame* Game, void* edx);
+	static inline float __fastcall CallOriginal(ATgGame* Game, void* edx) {
+		return m_original(Game, edx);
 	};
 };
 

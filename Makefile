@@ -1,12 +1,13 @@
 
 SOURCE_FILES= \
-			  $(SRC_DIR)/Config/Config/Config1P_CPLab04_P.cpp \
+			  $(SRC_DIR)/Config/Config/ConfigInception_ALL.cpp \
 			  \
 			  $(SRC_DIR)/Utils/Logger/Logger/FileLogger.cpp \
 			  \
 			  $(SRC_DIR)/TcpServer/TcpServerInit/TcpServerInit.cpp \
 			  $(SRC_DIR)/TcpServer/TcpEvents/TcpEvents.cpp \
 			  \
+			  $(SRC_DIR)/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ClassPreloader/ClassPreloader.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
 			  $(SRC_DIR)/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.cpp \
@@ -25,6 +26,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/IsReadyForStart/TgPlayerController__IsReadyForStart.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/SetSoundMode/TgPlayerController__SetSoundMode.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/CanPlayerUseVolume/TgPlayerController__CanPlayerUseVolume.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBotPawn/TgGame__SpawnBotPawn.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.cpp \
@@ -33,6 +35,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/ReviveAttackersTimer/TgGame__ReviveAttackersTimer.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/ReviveDefendersTimer/TgGame__ReviveDefendersTimer.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame/MissionTimeRemaining/TgGame__MissionTimeRemaining.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame/SendMissionTimerEvent/TgGame__SendMissionTimerEvent.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.cpp \
@@ -43,6 +47,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepListV2.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/SpawnBot/TgBotFactory__SpawnBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.cpp \

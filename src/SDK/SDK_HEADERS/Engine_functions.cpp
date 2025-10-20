@@ -54226,8 +54226,18 @@ bool USequenceOp::ActivateOutputLink ( int OutputIdx )
 {
 	static UFunction* pFnActivateOutputLink = NULL;
 
-	if ( ! pFnActivateOutputLink )
-		pFnActivateOutputLink = (UFunction*) UObject::GObjObjects()->Data[ 11329 ];
+	if ( ! pFnActivateOutputLink ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function Engine.SequenceOp.ActivateOutputLink") == 0) {
+					pFnActivateOutputLink = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnActivateOutputLink = (UFunction*) UObject::GObjObjects()->Data[ 11329 ];
 
 	USequenceOp_execActivateOutputLink_Parms ActivateOutputLink_Parms;
 	ActivateOutputLink_Parms.OutputIdx = OutputIdx;
@@ -54479,8 +54489,18 @@ void USequence::FindSeqObjectsByClass ( class UClass* DesiredClass, unsigned lon
 {
 	static UFunction* pFnFindSeqObjectsByClass = NULL;
 
-	if ( ! pFnFindSeqObjectsByClass )
-		pFnFindSeqObjectsByClass = (UFunction*) UObject::GObjObjects()->Data[ 5603 ];
+	if ( ! pFnFindSeqObjectsByClass ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function Engine.Sequence.FindSeqObjectsByClass") == 0) {
+					pFnFindSeqObjectsByClass = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnFindSeqObjectsByClass = (UFunction*) UObject::GObjObjects()->Data[ 5603 ];
 
 	USequence_execFindSeqObjectsByClass_Parms FindSeqObjectsByClass_Parms;
 	FindSeqObjectsByClass_Parms.DesiredClass = DesiredClass;
@@ -55710,18 +55730,31 @@ void USequenceEvent::Reset ( )
 // unsigned long                  bPushTop                       ( CPF_OptionalParm | CPF_Parm )
 // TArray< int >                  ActivateIndices                ( CPF_Const | CPF_OptionalParm | CPF_Parm | CPF_OutParm | CPF_NeedCtorLink )
 
-bool USequenceEvent::CheckActivate ( class AActor* InOriginator, class AActor* InInstigator, unsigned long bTest, unsigned long bPushTop, TArray< int >* ActivateIndices )
+bool USequenceEvent::CheckActivate ( class AActor* InOriginator, class AActor* InInstigator, unsigned long bTest, unsigned long bPushTop, TArray< int > ActivateIndices )
 {
 	static UFunction* pFnCheckActivate = NULL;
 
-	if ( ! pFnCheckActivate )
-		pFnCheckActivate = (UFunction*) UObject::GObjObjects()->Data[ 3941 ];
+	if ( ! pFnCheckActivate ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function Engine.SequenceEvent.CheckActivate") == 0) {
+					pFnCheckActivate = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnCheckActivate = (UFunction*) UObject::GObjObjects()->Data[ 3941 ];
 
 	USequenceEvent_execCheckActivate_Parms CheckActivate_Parms;
 	CheckActivate_Parms.InOriginator = InOriginator;
 	CheckActivate_Parms.InInstigator = InInstigator;
 	CheckActivate_Parms.bTest = bTest;
 	CheckActivate_Parms.bPushTop = bPushTop;
+	for (int i = 0; i < ActivateIndices.Num(); i++) {
+		CheckActivate_Parms.ActivateIndices.Add(ActivateIndices.Data[i]);
+	}
 
 	pFnCheckActivate->FunctionFlags |= ~0x400;
 
@@ -55729,8 +55762,8 @@ bool USequenceEvent::CheckActivate ( class AActor* InOriginator, class AActor* I
 
 	pFnCheckActivate->FunctionFlags |= 0x400;
 
-	if ( ActivateIndices )
-		memcpy ( ActivateIndices, &CheckActivate_Parms.ActivateIndices, 0xC );
+	// if ( ActivateIndices )
+	// 	memcpy ( ActivateIndices, &CheckActivate_Parms.ActivateIndices, 0xC );
 
 	return CheckActivate_Parms.ReturnValue;
 };

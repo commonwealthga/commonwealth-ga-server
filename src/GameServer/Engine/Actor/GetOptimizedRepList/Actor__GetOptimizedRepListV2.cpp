@@ -3091,6 +3091,13 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		strcmp(actor->Class->GetFullName(), "Class Engine.Actor") == 0
 		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgRandomSMActor") == 0
 		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgRandomSMManager") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgDevice") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgDevice_Grenade") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgDevice_HitPulse") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgDevice_Morale") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgDevice_NewMelee") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgDevice_MeleeDualWield") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgDevice_NewRange") == 0
 	) {
 		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && actor->RemoteRole == 1) {
 			DO_REP(AActor, Base, ObjectProperty_Engine_Actor_Base);
@@ -3509,7 +3516,19 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgDeployable, r_nOwnerFireMode, IntProperty_TgGame_TgDeployable_r_nOwnerFireMode);
 		}
 	}
-	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgDevice") == 0) {
+	if (
+		strcmp(actor->Class->GetFullName(), "Class TgGame.TgDevice") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgDevice_Grenade") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgDevice_HitPulse") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgDevice_Morale") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgDevice_NewMelee") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgDevice_MeleeDualWield") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgDevice_NewRange") == 0
+	) {
+		if (((actor->Role == 3) && actor->bNetDirty) && actor->bNetOwner) {
+			DO_REP(AInventory, InvManager, ObjectProperty_Engine_Inventory_InvManager);
+			DO_REP(AInventory, Inventory, ObjectProperty_Engine_Inventory_Inventory);
+		}
 		if (actor->Role == 3) {
 			DO_REP(ATgDevice, CurrentFireMode, ByteProperty_TgGame_TgDevice_CurrentFireMode);
 			DO_REP(ATgDevice, r_bIsStealthDevice, BoolProperty_TgGame_TgDevice_r_bIsStealthDevice);
@@ -4040,10 +4059,11 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgRepInfo_TaskForce, r_nLeaderCharId, IntProperty_TgGame_TgRepInfo_TaskForce_r_nLeaderCharId);
 			DO_REP(ATgRepInfo_TaskForce, r_nLookingForMembers, FloatProperty_TgGame_TgRepInfo_TaskForce_r_nLookingForMembers);
 			DO_REP(ATgRepInfo_TaskForce, r_nNumDeaths, IntProperty_TgGame_TgRepInfo_TaskForce_r_nNumDeaths);
-		}
-		if ((actor->Role == 3) && actor->bNetInitial) {
+
 			DO_REP(ATgRepInfo_TaskForce, r_nTaskForce, ByteProperty_TgGame_TgRepInfo_TaskForce_r_nTaskForce);
 			DO_REP(ATgRepInfo_TaskForce, r_nTeamId, IntProperty_TgGame_TgRepInfo_TaskForce_r_nTeamId);
+		}
+		if ((actor->Role == 3) && actor->bNetInitial) {
 		}
 	}
 	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgSkydiveTarget") == 0) {
