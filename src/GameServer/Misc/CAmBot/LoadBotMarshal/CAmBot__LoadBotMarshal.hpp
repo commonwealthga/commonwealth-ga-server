@@ -8,6 +8,7 @@ class CAmBot__LoadBotMarshal : public HookBase<
 	0x1094c730,
 	CAmBot__LoadBotMarshal> {
 public:
+	static bool bPopulateDatabase;
 	static std::map<uint32_t, int> m_BotPointers;
 	static std::map<uint32_t, uint32_t> m_BotBehaviorIds;
 	static void __fastcall Call(void* CAmBotRow, void* edx, void* Marshal);

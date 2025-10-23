@@ -1,8 +1,10 @@
 #include "src/pch.hpp"
 
+#include "src/Database/Database.hpp"
 #include "src/GameServer/Engine/GameEngine/Init/GameEngine__Init.hpp"
 #include "src/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.hpp"
 #include "src/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.hpp"
+#include "src/GameServer/Engine/World/BeginPlay/World__BeginPlay.hpp"
 #include "src/GameServer/Engine/LaunchEngineLoop/ConstructCommandletObject/ConstructCommandletObject.hpp"
 #include "src/GameServer/Engine/ServerCommandlet/Main/ServerCommandlet__Main.hpp"
 #include "src/GameServer/Engine/GameEngine/SpawnServerActors/GameEngine__SpawnServerActors.hpp"
@@ -34,18 +36,28 @@
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.hpp"
 #include "src/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepList.hpp"
 #include "src/GameServer/Engine/Actor/Spawn/Actor__Spawn.hpp"
+#include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/SpawnBot/TgBotFactory__SpawnBot.hpp"
+#include "src/GameServer/TgGame/TgBotFactory/SpawnNextBot/TgBotFactory__SpawnNextBot.hpp"
+#include "src/GameServer/TgGame/TgBotFactory/SpawnWave/TgBotFactory__SpawnWave.hpp"
+#include "src/GameServer/TgGame/TgBotFactory/ResetQueue/TgBotFactory__ResetQueue.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.hpp"
 #include "src/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.hpp"
+#include "src/GameServer/TgGame/TgMissionObjective_Bot/SpawnObjectiveBot/TgMissionObjective_Bot__SpawnObjectiveBot.hpp"
 #include "src/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.hpp"
 #include "src/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.hpp"
+#include "src/GameServer/Misc/CMarshal/GetString2/CMarshal__GetString2.hpp"
+#include "src/GameServer/Misc/CMarshal/GetFloat/CMarshal__GetFloat.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotBehaviorMarshal/CAmBot__LoadBotBehaviorMarshal.hpp"
+#include "src/GameServer/Misc/CAmBot/LoadBotSpawnTableMarshal/CAmBot__LoadBotSpawnTableMarshal.hpp"
 #include "src/GameServer/Misc/CAmOmegaVolume/LoadOmegaVolumeMarshal/CAmOmegaVolume__LoadOmegaVolumeMarshal.hpp"
 
 
 unsigned long ModuleThread( void* ) {
+	Database::Init();
+
 	::DetourTransactionBegin();
 	::DetourUpdateThread(::GetCurrentThread());
 
@@ -54,7 +66,8 @@ unsigned long ModuleThread( void* ) {
 	GameEngine__Init::Install();
 	// UObject__CollectGarbage::bDisableGarbageCollection = true;
 	UObject__CollectGarbage::Install();
-	UObject__ProcessEvent::Install();
+	// UObject__ProcessEvent::Install();
+	World__BeginPlay::Install();
 	ConstructCommandletObject::Install();
 	ServerCommandlet__Main::Install();
 	GameEngine__SpawnServerActors::Install();
@@ -70,7 +83,7 @@ unsigned long ModuleThread( void* ) {
 	TgPlayerController__IsReadyForStart::Install();
 	TgPlayerController__SetSoundMode::Install();
 	TgPlayerController__CanPlayerUseVolume::Install();
-	TgGame__TgFindPlayerStart::Install();
+	// TgGame__TgFindPlayerStart::Install();
 	TgGame__SpawnPlayerCharacter::Install();
 	TgGame__SpawnBotPawn::Install();
 	TgGame__LoadGameConfig::Install();
@@ -81,7 +94,11 @@ unsigned long ModuleThread( void* ) {
 	TgTeamBeaconManager__SpawnNewBeaconForTeam::Install();
 	TgBeaconFactory__SpawnObject::Install();
 	TgInventoryManager__NonPersistAddDevice::Install();
+	TgBotFactory__LoadObjectConfig::Install();
 	TgBotFactory__SpawnBot::Install();
+	TgBotFactory__SpawnNextBot::Install();
+	TgBotFactory__SpawnWave::Install();
+	TgBotFactory__ResetQueue::Install();
 	TgGame__SpawnBot::Install();
 	TgGame__SpawnBotById::Install();
 	TgGame__RegisterForWaveRevive::Install();
@@ -92,10 +109,18 @@ unsigned long ModuleThread( void* ) {
 	TgGame__SendMissionTimerEvent::Install();
 	TgDevice__HasMinimumPowerPool::Install();
 	TgDevice__HasEnoughPowerPool::Install();
+	TgMissionObjective_Bot__SpawnObjectiveBot::Install();
+
+	// data collection
 	CMarshal__GetByte::Install();
 	CMarshal__GetInt32t::Install();
+	CMarshal__GetString2::Install();
+	CMarshal__GetFloat::Install();
+	CAmBot__LoadBotMarshal::bPopulateDatabase = false;
 	CAmBot__LoadBotMarshal::Install();
 	CAmBot__LoadBotBehaviorMarshal::Install();
+	CAmBot__LoadBotSpawnTableMarshal::bPopulateDatabase = false;
+	CAmBot__LoadBotSpawnTableMarshal::Install();
 	CAmOmegaVolume__LoadOmegaVolumeMarshal::Install();
 
 	::DetourTransactionCommit();

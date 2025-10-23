@@ -10,3 +10,5 @@ CompileFlags:
     - "-I."
     - "-I./lib/asio-1.34.2/include"
     - "-I./lib/detours"
+    - "-I./lib/sqlite3"
+

@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame/SendMissionTimerEvent/TgGame__SendMissionTimerEvent.hpp"
+#include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -14,24 +15,25 @@ void __fastcall TgGame__SendMissionTimerEvent::Call(ATgGame *Game, void *edx, in
 	Indices.Clear();
 	Indices.Add(nEventId);
 
-	if (!Globals::Get().GWorldInfo) {
-		bool bFirstSkipped = false;
-		for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-			if (UObject::GObjObjects()->Data[i]) {
-				if (strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "WorldInfo TheWorld.PersistentLevel.WorldInfo") == 0) {
-					if (!bFirstSkipped) {
-						bFirstSkipped = true;
-						continue;
-					}
+	// if (!Globals::Get().GWorldInfo) {
+	// 	bool bFirstSkipped = false;
+	// 	for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+	// 		if (UObject::GObjObjects()->Data[i]) {
+	// 			if (strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "WorldInfo TheWorld.PersistentLevel.WorldInfo") == 0) {
+	// 				if (!bFirstSkipped) {
+	// 					bFirstSkipped = true;
+	// 					continue;
+	// 				}
+	//
+	// 				Globals::Get().GWorldInfo = reinterpret_cast<AWorldInfo*>(UObject::GObjObjects()->Data[i]);
+	// 				break;
+	// 			}
+	// 		}
+	// 	}
+	// }
 
-					Globals::Get().GWorldInfo = reinterpret_cast<AWorldInfo*>(UObject::GObjObjects()->Data[i]);
-					break;
-				}
-			}
-		}
-	}
-
-	AWorldInfo* WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
+	AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
+	// AWorldInfo* WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
 
 	WorldInfo->GetGameSequence()->FindSeqObjectsByClass(
 		ClassPreloader::GetTgSeqEventMissionTimerClass(),

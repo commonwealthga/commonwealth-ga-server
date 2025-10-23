@@ -192,7 +192,11 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// newrepplayer->Team = GTeamsData.Defenders;
 	// newrepplayer->SetTeam(GTeamsData.Defenders);
 
+	newrepplayer->r_TaskForce = GTeamsData.Attackers;
+	newrepplayer->Team = GTeamsData.Attackers;
+	newrepplayer->SetTeam(GTeamsData.Attackers);
 
+	newpawn->NotifyTeamChanged();
 
 	// newrepplayer->r_TaskForce = GTeamsData.Attackers;
 	// newrepplayer->SetTeam(GTeamsData.Attackers);
@@ -240,7 +244,6 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	// TARRAY_ADD(TeamPlayersAttackers, newplayerteamentry);
 	TARRAY_ADD(TeamPlayersDefenders, newplayerteamentry);
-
 
 	Logger::Log("debug", "MINE TgGame__SpawnPlayerCharacter END\n");
 

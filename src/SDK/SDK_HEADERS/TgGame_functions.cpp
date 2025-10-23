@@ -21770,8 +21770,14 @@ void ATgBotFactory::SpawnNextBot ( )
 {
 	static UFunction* pFnSpawnNextBot = NULL;
 
-	if ( ! pFnSpawnNextBot )
-		pFnSpawnNextBot = (UFunction*) UObject::GObjObjects()->Data[ 34636 ];
+	if ( ! pFnSpawnNextBot ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgBotFactory.SpawnNextBot") == 0) {
+				pFnSpawnNextBot = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnSpawnNextBot = (UFunction*) UObject::GObjObjects()->Data[ 34636 ];
 
 	ATgBotFactory_execSpawnNextBot_Parms SpawnNextBot_Parms;
 

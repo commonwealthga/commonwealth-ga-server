@@ -6,7 +6,7 @@ struct Globals {
 	void* GNames = (void*)0x13454180;
 
 	// global objects
-	void* GWorld = nullptr;
+	void* GWorld = (void*)0x119abe54;// nullptr;
 	void* GWorldInfo = nullptr;
 	void* GAssemblyDatManager = (void*)0x1199f868;
 	void* GTransientPackage = (void*)0x134659bc;

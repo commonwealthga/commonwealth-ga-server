@@ -2,7 +2,9 @@
 SOURCE_FILES= \
 			  $(SRC_DIR)/Config/Config/ConfigInception_ALL.cpp \
 			  \
-			  $(SRC_DIR)/Utils/Logger/Logger/FileLogger.cpp \
+			  $(SRC_DIR)/Utils/Logger/Logger/NullLogger.cpp \
+			  \
+			  $(SRC_DIR)/Database/Database.cpp \
 			  \
 			  $(SRC_DIR)/TcpServer/TcpServerInit/TcpServerInit.cpp \
 			  $(SRC_DIR)/TcpServer/TcpEvents/TcpEvents.cpp \
@@ -11,6 +13,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Utils/ClassPreloader/ClassPreloader.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
 			  $(SRC_DIR)/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.cpp \
+			  $(SRC_DIR)/GameServer/Engine/World/BeginPlay/World__BeginPlay.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
 			  $(SRC_DIR)/GameServer/Engine/LaunchEngineLoop/ConstructCommandletObject/ConstructCommandletObject.cpp \
 			  $(SRC_DIR)/GameServer/Engine/ServerCommandlet/Main/ServerCommandlet__Main.cpp \
@@ -45,14 +48,22 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepListV2.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/SpawnBot/TgBotFactory__SpawnBot.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/SpawnNextBot/TgBotFactory__SpawnNextBot.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/SpawnWave/TgBotFactory__SpawnWave.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/ResetQueue/TgBotFactory__ResetQueue.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective_Bot/SpawnObjectiveBot/TgMissionObjective_Bot__SpawnObjectiveBot.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetString2/CMarshal__GetString2.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetFloat/CMarshal__GetFloat.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CAmBot/LoadBotBehaviorMarshal/CAmBot__LoadBotBehaviorMarshal.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CAmBot/LoadBotSpawnTableMarshal/CAmBot__LoadBotSpawnTableMarshal.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CAmOmegaVolume/LoadOmegaVolumeMarshal/CAmOmegaVolume__LoadOmegaVolumeMarshal.cpp \
 			  $(SRC_DIR)/dllmain.cpp
 
@@ -61,7 +72,7 @@ SOURCE_FILES= \
 # MAKEFLAGS += -j$(JOBS)
 MAKEFLAGS += -j4
 CC=i686-w64-mingw32-g++
-CFLAGS=-pthread -I. -I./lib/detours -I./lib/asio-1.34.2/include -L/usr/i686-w64-mingw32/lib -shared -static -static-libgcc -static-libstdc++ -fpermissive -s -w
+CFLAGS=-pthread -I. -I./lib/detours -I./lib/asio-1.34.2/include -I./lib/sqlite3 -L/usr/i686-w64-mingw32/lib -shared -static -static-libgcc -static-libstdc++ -fpermissive -s -w
 LDFLAGS=-lkernel32 -luser32 -ladvapi32 -lws2_32 -lpsapi -lstdc++ -Wl,--allow-multiple-definition
 SRC_DIR=src
 LIB_DIR=lib
@@ -93,7 +104,8 @@ VERSION_CPP_SRC=$(LIB_DIR)/detours/modules.cpp \
 
 # Object file mapping
 # VERSION_OBJS=$(VERSION_CPP_SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
-VERSION_OBJS := $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(VERSION_CPP_SRC))
+VERSION_CPP_OBJS := $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(VERSION_CPP_SRC))
+VERSION_OBJS := $(VERSION_CPP_OBJS) $(OBJ_DIR)/lib/sqlite3/sqlite3.o
 
 $(info VERSION_CPP_SRC = $(VERSION_CPP_SRC))
 $(info VERSION_OBJS    = $(VERSION_OBJS))
@@ -103,6 +115,7 @@ VERSION_OUT=$(OUT_DIR)/version.dll
 
 obj/pch.hpp.gch: src/pch.hpp
 	i686-w64-mingw32-g++ -std=c++17 -I. -I./lib/detours -I./lib/asio-1.34.2/include -x c++-header src/pch.hpp -o obj/pch.hpp.gch
+
 
 # Compile any src .cpp -> obj/src/... .o (with PCH)
 $(OBJ_DIR)/src/%.o: src/%.cpp obj/pch.hpp.gch
@@ -114,6 +127,9 @@ $(OBJ_DIR)/lib/%.o: lib/%.cpp
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(OBJ_DIR)/lib/sqlite3/sqlite3.o: lib/sqlite3/sqlite3.c
+	@mkdir -p $(dir $@)
+	i686-w64-mingw32-gcc -O2 -I./lib/sqlite3 -c $< -o $@
 
 # Default target
 all: $(VERSION_OUT)

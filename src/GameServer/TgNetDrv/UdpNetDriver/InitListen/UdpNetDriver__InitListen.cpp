@@ -37,8 +37,8 @@ int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* No
 		return 0;
 	}
 
-	int RecvSize = 0x2000000;
-	int SendSize = 0x200000;
+	int RecvSize = 0x20000000;
+	int SendSize = 0x2000000;
 	int SizeSize = sizeof(int);
 
 	bool bSetRecvSizeOk = setsockopt(Socket,SOL_SOCKET,SO_RCVBUF,(char*)&RecvSize,sizeof(int)) == 0;

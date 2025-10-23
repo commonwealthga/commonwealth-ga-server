@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
+#include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.hpp"
 #include "src/GameServer/TgGame/TgAIController/InitBehavior/TgAIController__InitBehavior.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
@@ -22,9 +23,12 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 ) {
 	Logger::Log("debug", "Spawning bot with id %d\n", nBotId);
 
+	AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
+
 	ATgAIController* AIController = (ATgAIController*)Game->Spawn(
 		ClassPreloader::GetTgAIControllerClass(),
-		(AWorldInfo*)Globals::Get().GWorldInfo,
+		// (AWorldInfo*)Globals::Get().GWorldInfo,
+		WorldInfo,
 		FName(),
 		vLocation,
 		rRotation,
@@ -41,14 +45,25 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		bIgnoreCollision ? 1 : 0
 	);
 
+	AIController->SetOwner(WorldInfo);
+
+	// AIController->Owner = WorldInfo;
+	// AIController->Base = WorldInfo;
+
 	Bot->r_bIsBot = 1;
 	AIController->Pawn = Bot;
 	Bot->Controller = AIController;
-	Bot->Owner = AIController->PlayerReplicationInfo;
+	// Bot->Owner = AIController->PlayerReplicationInfo;
+	// Bot->Owner = WorldInfo;
+	// Bot->Base = WorldInfo;
 	Bot->PlayerReplicationInfo = AIController->PlayerReplicationInfo;
+	Bot->Role = 3;
+	Bot->PlayerReplicationInfo->Role = 3;
+	AIController->Role = 3;
 
-	Bot->r_EffectManager->Owner = Bot;
+	// Bot->r_EffectManager->Owner = Bot;
 	Bot->r_EffectManager->r_Owner = Bot;
+	Bot->r_EffectManager->SetOwner(Bot);
 	Bot->r_EffectManager->Base = Bot;
 	Bot->r_EffectManager->Role = 3;
 
@@ -56,11 +71,14 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	BotRepInfo->bBot = 1;
 	BotRepInfo->r_PawnOwner = Bot;
 	BotRepInfo->r_ApproxLocation = Bot->Location;
+	BotRepInfo->SetOwner(AIController);
+	// BotRepInfo->Owner = WorldInfo;
+	// BotRepInfo->Base = WorldInfo;
 
 	// todo: maybe pull team from pawn/factory?
-	BotRepInfo->r_TaskForce = GTeamsData.Attackers;
-	BotRepInfo->SetTeam(GTeamsData.Attackers);
-	Bot->NotifyTeamChanged();
+	// BotRepInfo->r_TaskForce = GTeamsData.Attackers;
+	// BotRepInfo->SetTeam(GTeamsData.Attackers);
+	// Bot->NotifyTeamChanged();
 
 	// BotRepInfo->r_TaskForce = GTeamsData.Defenders;
 	// BotRepInfo->SetTeam(GTeamsData.Defenders);
@@ -88,6 +106,24 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	BotRepInfo->r_nHealthMaximum = *(int*)((char*)BotConfig + 0x74);
 	BotRepInfo->r_nCharacterId = *(int*)((char*)BotConfig + 0x5C);
 
+	if (pFactory == nullptr) {
+		for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strstr(obj->GetFullName(), "Default__")) {
+					continue;
+				}
+				if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgBotFactory") == 0) {
+					pFactory = reinterpret_cast<ATgBotFactory*>(obj);
+					Logger::Log("debug", "TgBotFactory fallback found: %s\n", pFactory->GetFullName());
+					break;
+				}
+			}
+		}
+	} else {
+		Logger::Log("debug", "TgBotFactory passed: %s\n", pFactory->GetFullName());
+	}
+
 	TgAIController__InitBehavior::CallOriginal(AIController, edx, BotConfig, pFactory);
 
 	BotRepInfo->bNetDirty = 1;
@@ -103,14 +139,14 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	Bot->bNetDirty = 1;
 	Bot->bReplicateMovement = 1;
 
-	Bot->NetUpdateFrequency = 15.0f;
-	Bot->NetPriority = 1.2f;
-
-	Bot->r_EffectManager->NetUpdateFrequency = 1.0f;
-	Bot->r_EffectManager->NetPriority = 1.0f;
-
-	Bot->PlayerReplicationInfo->NetUpdateFrequency = 1.0f;
-	Bot->PlayerReplicationInfo->NetPriority = 1.0f;
+	// Bot->NetUpdateFrequency = 15.0f;
+	// Bot->NetPriority = 1.2f;
+	//
+	// Bot->r_EffectManager->NetUpdateFrequency = 1.0f;
+	// Bot->r_EffectManager->NetPriority = 1.0f;
+	//
+	// Bot->PlayerReplicationInfo->NetUpdateFrequency = 1.0f;
+	// Bot->PlayerReplicationInfo->NetPriority = 1.0f;
 
 	return Bot;
 }

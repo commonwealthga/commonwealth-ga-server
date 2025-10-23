@@ -5330,8 +5330,18 @@ void AActor::SetOwner ( class AActor* NewOwner )
 {
 	static UFunction* pFnSetOwner = NULL;
 
-	if ( ! pFnSetOwner )
-		pFnSetOwner = (UFunction*) UObject::GObjObjects()->Data[ 3368 ];
+	if ( ! pFnSetOwner ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function Engine.Actor.SetOwner") == 0) {
+					pFnSetOwner = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnSetOwner = (UFunction*) UObject::GObjObjects()->Data[ 3368 ];
 
 	AActor_execSetOwner_Parms SetOwner_Parms;
 	SetOwner_Parms.NewOwner = NewOwner;

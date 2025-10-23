@@ -1,5 +1,6 @@
 #include "src/GameServer/TgNetDrv/MarshalChannel/NotifyControlMessage/MarshalChannel__NotifyControlMessage.hpp"
 #include "src/GameServer/Engine/World/GetGameInfo/World__GetGameInfo.hpp"
+#include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Misc/CMarshal/GetString/CMarshal__GetString.hpp"
 #include "src/GameServer/Engine/World/WelcomePlayer/World__WelcomePlayer.hpp"
 #include "src/GameServer/Engine/PackageMap/Compute/PackageMap__Compute.hpp"
@@ -42,29 +43,17 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 	// LogToFile("C:\\mylog.txt", "CMarshal_get_string:      result   =  %u      %s", result, tmp);
 
 	if (strncmp(tmp, "HELLO", 5) == 0) {
-		if (!Globals::Get().GWorld) {
+		// if (!Globals::Get().GWorld) {
 
-			void* NetDriver = *(void**)((char*)Connection + 0x70);
-			void* Notify = *(void**)((char*)NetDriver + 0x54);
-			Globals::Get().GWorld = reinterpret_cast<UWorld*>((char*)Notify - 0x3C);
-		}
+		// 	void* NetDriver = *(void**)((char*)Connection + 0x70);
+		// 	void* Notify = *(void**)((char*)NetDriver + 0x54);
+		// 	Globals::Get().GWorld = reinterpret_cast<UWorld*>((char*)Notify - 0x3C);
+		// // }
 
-		if (!Globals::Get().GWorldInfo) {
-			bool bFirstSkipped = false;
-			for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-				if (UObject::GObjObjects()->Data[i]) {
-					if (strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "WorldInfo TheWorld.PersistentLevel.WorldInfo") == 0) {
-						if (!bFirstSkipped) {
-							bFirstSkipped = true;
-							continue;
-						}
-
-						Globals::Get().GWorldInfo = reinterpret_cast<AWorldInfo*>(UObject::GObjObjects()->Data[i]);
-						break;
-					}
-				}
-			}
-		}
+		// if (!Globals::Get().GWorldInfo) {
+			// Globals::Get().GWorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
+			// Logger::Log("debug", "WorldInfo: %s\n", ((AWorldInfo*)Globals::Get().GWorldInfo)->GetFullName());
+		// }
 		// for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
 		// 	if (UObject::GObjObjects()->Data[i]) {
 		// 		UObject* obj = UObject::GObjObjects()->Data[i];
@@ -214,25 +203,81 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 		if (newcontrollerptr) {
 			MarshalChannel__NotifyControlMessage::HandlePlayerConnected(Connection, newcontrollerptr);
 
-			for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-				if (UObject::GObjObjects()->Data[i]) {
-					UObject* obj = UObject::GObjObjects()->Data[i];
-					if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgOmegaVolume") == 0) {
-						ATgOmegaVolume* omegavolume = reinterpret_cast<ATgOmegaVolume*>(obj);
-						Logger::Log("debug", "Found omegavolume: %d", omegavolume->m_nOmegaAlertId);
-
-
-						Logger::Log("debug", ", previous marshal: %d", omegavolume->m_pAmVolume.Dummy);
-
-						if (CAmOmegaVolume__LoadOmegaVolumeMarshal::m_OmegaVolumePointers[omegavolume->m_nOmegaAlertId] != 0) {
-							// omegavolume->m_pAmVolume.Dummy = CAmOmegaVolume__LoadOmegaVolumeMarshal::m_OmegaVolumePointers[omegavolume->m_nOmegaAlertId];
-							Logger::Log("debug", ", marshal found: %d\n", CAmOmegaVolume__LoadOmegaVolumeMarshal::m_OmegaVolumePointers[omegavolume->m_nOmegaAlertId]);
-						} else {
-							Logger::Log("debug", ", marshal not found\n");
-						}
-					}
-				}
-			}
+			// for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+			// 	if (UObject::GObjObjects()->Data[i]) {
+			// 		UObject* obj = UObject::GObjObjects()->Data[i];
+			//
+			// 		if (strstr(obj->GetFullName(), "Default__")) {
+			// 			continue;
+			// 		}
+			//
+			// 		if (
+			// 			strcmp(obj->Class->GetFullName(), "Class TgGame.TgMissionObjective_Bot") == 0
+			// 			|| strcmp(obj->Class->GetFullName(), "Class TgGame.TgPawn_Character") == 0
+			// 		) {
+			// 			AActor* actor = reinterpret_cast<AActor*>(obj);
+			// 			if (newcontrollerptr->Pawn == actor) {
+			// 				continue;
+			// 			}
+			//
+			// 			if (actor->Owner == nullptr) {
+			// 				actor->Owner = (AWorldInfo*)Globals::Get().GWorldInfo;
+			// 			}else if (actor->Owner->Owner == nullptr) {
+			// 				actor->Owner->Owner = (AWorldInfo*)Globals::Get().GWorldInfo;
+			// 			}
+			//
+			// 			// Logger::Log("debug", "Actor %s:\n", actor->GetFullName());
+			// 			// if (actor->Base == nullptr) {
+			// 			// 	Logger::Log("debug", "Actor->Base is null\n");
+			// 			// } else {
+			// 			// 	Logger::Log("debug", "Actor->Base %s\n", actor->Base->GetFullName());
+			// 			// }
+			// 			// if (actor->Owner == nullptr) {
+			// 			// 	Logger::Log("debug", "Actor->Owner is null\n");
+			// 			// } else {
+			// 			// 	Logger::Log("debug", "Actor->Owner %s\n", actor->Owner->GetFullName());
+			// 			// }
+			// 			//
+			// 			// if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgPawn_Character") == 0) {
+			// 			// 	ATgPawn_Character* pawn = reinterpret_cast<ATgPawn_Character*>(obj);
+			// 			// 	if (pawn->Owner && strcmp(pawn->Owner->GetFullName(), "Class TgGame.TgAIController") == 0) {
+			// 			// 		Logger::Log("debug", "Found AI pawn\n");
+			// 			// 		if (pawn->Owner->Owner == nullptr) {
+			// 			// 			Logger::Log("debug", "Pawn->Owner->Owner is null\n");
+			// 			// 			pawn->Owner->Owner = (AWorldInfo*)Globals::Get().GWorldInfo;
+			// 			// 		} else {
+			// 			// 			Logger::Log("debug", "Pawn->Owner->Owner %s\n", pawn->Owner->Owner->GetFullName());
+			// 			// 		}
+			// 			// 	}
+			// 			// }
+			//
+			// 			actor->bSkipActorPropertyReplication = 0;
+			// 			actor->bNetInitial = 1;
+			// 			actor->bNetDirty = 1;
+			// 			actor->bForceNetUpdate = 1;
+			// 			actor->bOnlyDirtyReplication = 0;
+			//
+			// 			// // if (actor->Base == nullptr) {
+			// 			// 	AWorldInfo* WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
+			// 			// 	actor->Base = WorldInfo;
+			// 			// 	actor->bNetInitial = 1;
+			// 			// 	actor->bNetDirty = 1;
+			// 			// 	actor->bForceNetUpdate = 1;
+			// 			// 	Logger::Log("debug", "Actor %s", actor->GetFullName());
+			// 			// 	Logger::Log("debug", "Actor->Base %s\n", actor->Base->GetFullName());
+			// 			// // }
+			// 			// // if (actor->Owner == nullptr) {
+			// 			// 	// AWorldInfo* WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
+			// 			// 	actor->Owner = WorldInfo;
+			// 			// 	actor->bNetInitial = 1;
+			// 			// 	actor->bNetDirty = 1;
+			// 			// 	actor->bForceNetUpdate = 1;
+			// 			// 	Logger::Log("debug", "Actor %s", actor->GetFullName());
+			// 			// 	Logger::Log("debug", "Actor->Owner %s\n", actor->Owner->GetFullName());
+			// 			// // }
+			// 		}
+			// 	}
+			// }
 
 			// AWorldInfo* worldinfo = nullptr;
 			// for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
@@ -356,7 +401,7 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	ATgPawn_Character* newpawn = NULL;
 
 	newcontroller->PlayerReplicationInfo->bOnlySpectator = 0;
-	newcontroller->PlayerReplicationInfo->Team = GTeamsData.Defenders;
+	newcontroller->PlayerReplicationInfo->Team = GTeamsData.Attackers;
 
 	game->eventPostLogin(newcontroller);
 
@@ -440,8 +485,8 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 
 	TArray<USequenceObject*> Events;
 	TArray<int> Indices;
-
-	AWorldInfo* WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
+	AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
+	// AWorldInfo* WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
 
 	WorldInfo->GetGameSequence()->FindSeqObjectsByClass(
 		ClassPreloader::GetSeqEventLevelLoadedClass(),

@@ -10,7 +10,7 @@ class UObject__CollectGarbage : public HookBase<
 public:
 	static bool bDisableGarbageCollection;
 	static void __cdecl Call(void* param_1, uint32_t param_2, void* param_3);
-	static inline ATgPawn_Character* __fastcall CallOriginal(void* param_1, uint32_t param_2, void* param_3) {
+	static inline void __fastcall CallOriginal(void* param_1, uint32_t param_2, void* param_3) {
 		m_original(param_1, param_2, param_3);
 	};
 };
