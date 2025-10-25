@@ -21,11 +21,10 @@ A built DLL is available for download [in the releases](https://github.com/commo
 **Phase 2 "make it work"** (august 2025 - est. end of year 2025)
 - [x] release the source code
 - [x] refactor code
-- [ ] *(in progress)* fix bugs
+- [x] figure out game modes/difficulty modifiers (same map can be played on High/Max/Ultra-max/Double-agent)
+- [x] allow multiple clients on one server
 - [ ] *(in progress)* spawn a player-controlled character with hardcoded settings (gear, skills, level etc.)
 - [ ] *(in progress)* start a match and play it to the end, with bots and enemy AI working
-- [ ] *(in progress)* figure out game modes/difficulty modifiers (same map can be played on High/Max/Ultra-max/Double-agent)
-- [ ] *(in progress)* allow multiple clients on one server
 
 **Phase 3 "make it right"** (2026)
 - [ ] get a public server up and running 24/7
