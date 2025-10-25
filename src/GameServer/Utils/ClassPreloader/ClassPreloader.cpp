@@ -76,6 +76,11 @@ UClass* ClassPreloader::GetTgDeviceClass() {
 	return Classes["Class TgGame.TgDevice"];
 }
 
+UClass* ClassPreloader::GetTgInventoryObjectDeviceClass() {
+	PreloadClasses();
+	return Classes["Class TgGame.TgInventoryObject_Device"];
+}
+
 UClass* ClassPreloader::GetTgHudTeamGameClass() {
 	PreloadClasses();
 	return Classes["Class TgClient.TgHUD_TeamGame"];

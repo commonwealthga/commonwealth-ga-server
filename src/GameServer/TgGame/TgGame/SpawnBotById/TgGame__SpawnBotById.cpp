@@ -1,11 +1,18 @@
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.hpp"
+#include "src/GameServer/Misc/CAmItem/LoadItemMarshal/CAmItem__LoadItemMarshal.hpp"
 #include "src/GameServer/TgGame/TgAIController/InitBehavior/TgAIController__InitBehavior.hpp"
+#include "src/GameServer/TgGame/TgInventoryManager/PrepopulateInventoryId/TgInventoryManager__PrepopulateInventoryId.hpp"
+#include "src/GameServer/TgGame/TgInventoryObject_Device/ConstructInventoryObject/TgInventoryObject_Device__ConstructInventoryObject.hpp"
+#include "src/GameServer/Misc/AssemblyDatManager/CreateDevice/AssemblyDatManager__CreateDevice.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+
+std::map<int, int> TgGame__SpawnBotById::m_spawnedBotIds;
 
 ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	ATgGame* Game,
@@ -24,6 +31,7 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	Logger::Log("debug", "Spawning bot with id %d\n", nBotId);
 
 	AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
+
 
 	ATgAIController* AIController = (ATgAIController*)Game->Spawn(
 		ClassPreloader::GetTgAIControllerClass(),
@@ -44,6 +52,9 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		nullptr,
 		bIgnoreCollision ? 1 : 0
 	);
+	ATgRepInfo_Player* BotRepInfo = reinterpret_cast<ATgRepInfo_Player*>(AIController->PlayerReplicationInfo);
+
+	m_spawnedBotIds[(int)Bot] = nBotId;
 
 	AIController->SetOwner(WorldInfo);
 
@@ -67,7 +78,6 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	Bot->r_EffectManager->Base = Bot;
 	Bot->r_EffectManager->Role = 3;
 
-	ATgRepInfo_Player* BotRepInfo = reinterpret_cast<ATgRepInfo_Player*>(AIController->PlayerReplicationInfo);
 	BotRepInfo->bBot = 1;
 	BotRepInfo->r_PawnOwner = Bot;
 	BotRepInfo->r_ApproxLocation = Bot->Location;
@@ -84,9 +94,13 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// BotRepInfo->SetTeam(GTeamsData.Defenders);
 	// Bot->NotifyTeamChanged();
 
+
+
 	AIController->Possess(Bot, 0, 1);
+
 	Bot->ApplyPawnSetup();
 	Bot->WaitForInventoryThenDoPostPawnSetup();
+	Bot->InvManager->Instigator = Bot;
 
 	if (!CAmBot__LoadBotMarshal::m_BotPointers[nBotId]) {
 		Logger::Log("debug", "Bot with id %d not found\n", nBotId);
@@ -126,6 +140,8 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 
 	TgAIController__InitBehavior::CallOriginal(AIController, edx, BotConfig, pFactory);
 
+
+
 	BotRepInfo->bNetDirty = 1;
 	BotRepInfo->bSkipActorPropertyReplication = 0;
 	BotRepInfo->bOnlyDirtyReplication = 0;
@@ -139,6 +155,9 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	Bot->bNetDirty = 1;
 	Bot->bReplicateMovement = 1;
 
+	// if (strcmp(Bot->Class->GetFullName(), "Class TgGame.TgPawn_Character") == 0) {
+	// 	Logger::DumpMemory("botspawned", Bot, 0x1c2c, 0);
+	// }
 	// Bot->NetUpdateFrequency = 15.0f;
 	// Bot->NetPriority = 1.2f;
 	//

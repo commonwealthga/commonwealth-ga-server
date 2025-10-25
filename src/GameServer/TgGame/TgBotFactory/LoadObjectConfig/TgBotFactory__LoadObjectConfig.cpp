@@ -12,7 +12,7 @@ bool TgBotFactory__LoadObjectConfig::bConfigLoaded = false;
 void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, void *edx) {
 	Logger::Log("tgbotfactory", "[%s] %s LoadObjectConfig mapObjectId=%d\n", Logger::GetTime(), BotFactory->GetName(), BotFactory->m_nMapObjectId);
 
-	// BotFactory->bAutoSpawn = 1;
+	BotFactory->bAutoSpawn = 1;
 	BotFactory->nPriority = 0;
 
 	if (!bConfigLoaded) {
@@ -145,31 +145,6 @@ void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, 
 		}
 	}
 
-	// if (
-	// 	BotFactory->m_nMapObjectId == 13639
-	// 	|| BotFactory->m_nMapObjectId == 13632
-	// 	|| BotFactory->m_nMapObjectId == 13629
-	// 	|| BotFactory->m_nMapObjectId == 13638
-	// 	|| BotFactory->m_nMapObjectId == 13647
-	// 	|| BotFactory->m_nMapObjectId == 13630
-	// 	|| BotFactory->m_nMapObjectId == 13634
-	// 	|| BotFactory->m_nMapObjectId == 13633
-	// 	|| BotFactory->m_nMapObjectId == 13637
-	// 	|| BotFactory->m_nMapObjectId == 13635
-	// 	|| BotFactory->m_nMapObjectId == 13636
-	// 	|| BotFactory->m_nMapObjectId == 13640
-	// ) {
-	// 	BotFactory->bAutoSpawn = 1;
-	// }
-	//
-// insert into obj_bot_factories (map_object_id, bot_spawn_table_id, task_force_number) values
-//  (12712, 29, 2),
-// (12708, 29, 2),
-// (12710, 58, 2),
-// (12711, 29, 2),
-// (12714, 34, 2),
-// (12713, 34, 2),
-// (12709, 28, 2);
 //
 // 12712, 29, 2 standard
 // 12708, 29, 2 initial T1 

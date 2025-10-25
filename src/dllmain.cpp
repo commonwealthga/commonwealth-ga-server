@@ -31,11 +31,13 @@
 #include "src/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.hpp"
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.hpp"
+#include "src/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.hpp"
 #include "src/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.hpp"
 #include "src/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepList.hpp"
 #include "src/GameServer/Engine/Actor/Spawn/Actor__Spawn.hpp"
+#include "src/GameServer/Engine/Actor/Tick/Actor__Tick.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/SpawnBot/TgBotFactory__SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/SpawnNextBot/TgBotFactory__SpawnNextBot.hpp"
@@ -49,9 +51,13 @@
 #include "src/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.hpp"
 #include "src/GameServer/Misc/CMarshal/GetString2/CMarshal__GetString2.hpp"
 #include "src/GameServer/Misc/CMarshal/GetFloat/CMarshal__GetFloat.hpp"
+#include "src/GameServer/Misc/CMarshal/Translate/CMarshal__Translate.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotBehaviorMarshal/CAmBot__LoadBotBehaviorMarshal.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotSpawnTableMarshal/CAmBot__LoadBotSpawnTableMarshal.hpp"
+#include "src/GameServer/Misc/CAmDeviceModel/LoadDeviceMarshal/CAmDeviceModel__LoadDeviceMarshal.hpp"
+#include "src/GameServer/Misc/CAmDeviceModel/LoadDeviceModeMarshal/CAmDeviceModel__LoadDeviceModeMarshal.hpp"
+#include "src/GameServer/Misc/CAmItem/LoadItemMarshal/CAmItem__LoadItemMarshal.hpp"
 #include "src/GameServer/Misc/CAmOmegaVolume/LoadOmegaVolumeMarshal/CAmOmegaVolume__LoadOmegaVolumeMarshal.hpp"
 
 
@@ -78,6 +84,7 @@ unsigned long ModuleThread( void* ) {
 	ActorChannel__ReceivedBunch__CanExecute::Install();
 	Actor__GetOptimizedRepList::Install();
 	Actor__Spawn::Install();
+	// Actor__Tick::Install();
 
 	// game functions
 	TgPlayerController__IsReadyForStart::Install();
@@ -91,11 +98,12 @@ unsigned long ModuleThread( void* ) {
 	TgGame_Arena__LoadGameConfig::Install();
 	TgPawn__InitializeDefaultProps::Install();
 	TgPawn__GetProperty::Install();
+	// TgPawn__SwapAttachedDeviceMaterials::Install();
 	TgTeamBeaconManager__SpawnNewBeaconForTeam::Install();
 	TgBeaconFactory__SpawnObject::Install();
 	TgInventoryManager__NonPersistAddDevice::Install();
 	TgBotFactory__LoadObjectConfig::Install();
-	TgBotFactory__SpawnBot::Install();
+	// TgBotFactory__SpawnBot::Install();
 	TgBotFactory__SpawnNextBot::Install();
 	TgBotFactory__SpawnWave::Install();
 	TgBotFactory__ResetQueue::Install();
@@ -107,8 +115,8 @@ unsigned long ModuleThread( void* ) {
 	TgGame__ReviveDefendersTimer::Install();
 	TgGame__MissionTimeRemaining::Install();
 	TgGame__SendMissionTimerEvent::Install();
-	TgDevice__HasMinimumPowerPool::Install();
-	TgDevice__HasEnoughPowerPool::Install();
+	// TgDevice__HasMinimumPowerPool::Install();
+	// TgDevice__HasEnoughPowerPool::Install();
 	TgMissionObjective_Bot__SpawnObjectiveBot::Install();
 
 	// data collection
@@ -116,11 +124,19 @@ unsigned long ModuleThread( void* ) {
 	CMarshal__GetInt32t::Install();
 	CMarshal__GetString2::Install();
 	CMarshal__GetFloat::Install();
-	CAmBot__LoadBotMarshal::bPopulateDatabase = false;
+	CMarshal__Translate::Install();
+	CAmBot__LoadBotMarshal::bPopulateDatabaseBots = false;
+	CAmBot__LoadBotMarshal::bPopulateDatabaseBotDevices = false;
 	CAmBot__LoadBotMarshal::Install();
 	CAmBot__LoadBotBehaviorMarshal::Install();
 	CAmBot__LoadBotSpawnTableMarshal::bPopulateDatabase = false;
 	CAmBot__LoadBotSpawnTableMarshal::Install();
+	CAmDeviceModel__LoadDeviceMarshal::bPopulateDatabaseDevices = false;
+	CAmDeviceModel__LoadDeviceMarshal::Install();
+	CAmDeviceModel__LoadDeviceModeMarshal::bPopulateDatabaseDeviceModes = false;
+	CAmDeviceModel__LoadDeviceModeMarshal::Install();
+	CAmItem__LoadItemMarshal::bPopulateDatabaseItems = false;
+	CAmItem__LoadItemMarshal::Install();
 	CAmOmegaVolume__LoadOmegaVolumeMarshal::Install();
 
 	::DetourTransactionCommit();

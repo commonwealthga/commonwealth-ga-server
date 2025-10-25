@@ -3113,6 +3113,22 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| strcmp(actor->Class->GetFullName(), "Class Engine.KAsset") == 0
 
 		|| strcmp(actor->Class->GetFullName(), "Class Engine.StaticMeshActor") == 0
+
+		|| strcmp(actor->Class->GetFullName(), "Class Engine.Projectile") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProjectile") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Teleporter") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_StraightTeleporter") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Rocket") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Net") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Mortar") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Missile") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Grenade") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Grapple") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_FreeGrenade") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Deployable") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Bounce") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Bot") == 0
+
 	) {
 		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && actor->RemoteRole == 1) {
 			DO_REP(AActor, Base, ObjectProperty_Engine_Actor_Base);
@@ -3398,7 +3414,22 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(APostProcessVolume, bEnabled, BoolProperty_Engine_PostProcessVolume_bEnabled);
 		}
 	}
-	if (strcmp(actor->Class->GetFullName(), "Class Engine.Projectile") == 0) {
+	if (
+		strcmp(actor->Class->GetFullName(), "Class Engine.Projectile") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProjectile") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Teleporter") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_StraightTeleporter") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Rocket") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Net") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Mortar") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Missile") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Grenade") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Grapple") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_FreeGrenade") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Deployable") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Bounce") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Bot") == 0
+	) {
 		if ((actor->Role == 3) && actor->bNetInitial) {
 			DO_REP(AProjectile, MaxSpeed, FloatProperty_Engine_Projectile_MaxSpeed);
 			DO_REP(AProjectile, Speed, FloatProperty_Engine_Projectile_Speed);
@@ -3968,7 +3999,21 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgProj_Rocket, bCurl, BoolProperty_TgGame_TgProj_Rocket_bCurl);
 		}
 	}
-	if (strcmp(actor->Class->GetFullName(), "Class TgGame.TgProjectile") == 0) {
+	if (
+		strcmp(actor->Class->GetFullName(), "Class TgGame.TgProjectile") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Teleporter") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_StraightTeleporter") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Rocket") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Net") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Mortar") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Missile") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Grenade") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Grapple") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_FreeGrenade") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Deployable") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Bounce") == 0
+		|| strcmp(actor->Class->GetFullName(), "Class TgGame.TgProj_Bot") == 0
+	) {
 		if ((actor->Role == 3) && actor->bNetInitial) {
 			DO_REP(ATgProjectile, r_Owner, ObjectProperty_TgGame_TgProjectile_r_Owner);
 			DO_REP(ATgProjectile, r_fAccelRate, FloatProperty_TgGame_TgProjectile_r_fAccelRate);

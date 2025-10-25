@@ -22382,8 +22382,14 @@ bool ATgInventoryManager::SetCurrentWeapon ( class ATgDevice* DesiredWeapon, int
 {
 	static UFunction* pFnSetCurrentWeapon = NULL;
 
-	if ( ! pFnSetCurrentWeapon )
-		pFnSetCurrentWeapon = (UFunction*) UObject::GObjObjects()->Data[ 39709 ];
+	if ( ! pFnSetCurrentWeapon ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgInventoryManager.SetCurrentWeapon") == 0) {
+				pFnSetCurrentWeapon = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnSetCurrentWeapon = (UFunction*) UObject::GObjObjects()->Data[ 39709 ];
 
 	ATgInventoryManager_execSetCurrentWeapon_Parms SetCurrentWeapon_Parms;
 	SetCurrentWeapon_Parms.DesiredWeapon = DesiredWeapon;
@@ -45265,8 +45271,18 @@ class UTgDeviceForm* ATgPawn::CreateDeviceForm ( struct FEquipDeviceInfo Info )
 {
 	static UFunction* pFnCreateDeviceForm = NULL;
 
-	if ( ! pFnCreateDeviceForm )
-		pFnCreateDeviceForm = (UFunction*) UObject::GObjObjects()->Data[ 40652 ];
+	if ( ! pFnCreateDeviceForm ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgPawn.CreateDeviceForm") == 0) {
+					pFnCreateDeviceForm = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnCreateDeviceForm = (UFunction*) UObject::GObjObjects()->Data[ 40652 ];
 
 	ATgPawn_execCreateDeviceForm_Parms CreateDeviceForm_Parms;
 	memcpy ( &CreateDeviceForm_Parms.Info, &Info, 0xC );
@@ -47455,8 +47471,14 @@ class UTgDeviceForm* ATgPawn_Character::CreateDeviceForm ( struct FEquipDeviceIn
 {
 	static UFunction* pFnCreateDeviceForm = NULL;
 
-	if ( ! pFnCreateDeviceForm )
-		pFnCreateDeviceForm = (UFunction*) UObject::GObjObjects()->Data[ 42803 ];
+	if ( ! pFnCreateDeviceForm ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn_Character.CreateDeviceForm") == 0) {
+				pFnCreateDeviceForm = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnCreateDeviceForm = (UFunction*) UObject::GObjObjects()->Data[ 42803 ];
 
 	ATgPawn_Character_execCreateDeviceForm_Parms CreateDeviceForm_Parms;
 	memcpy ( &CreateDeviceForm_Parms.Info, &Info, 0xC );

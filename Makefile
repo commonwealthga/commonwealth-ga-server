@@ -15,6 +15,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.cpp \
 			  $(SRC_DIR)/GameServer/Engine/World/BeginPlay/World__BeginPlay.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
+			  $(SRC_DIR)/GameServer/Engine/Actor/Tick/Actor__Tick.cpp \
 			  $(SRC_DIR)/GameServer/Engine/LaunchEngineLoop/ConstructCommandletObject/ConstructCommandletObject.cpp \
 			  $(SRC_DIR)/GameServer/Engine/ServerCommandlet/Main/ServerCommandlet__Main.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/SpawnServerActors/GameEngine__SpawnServerActors.cpp \
@@ -44,6 +45,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.cpp \
@@ -61,9 +63,13 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetString2/CMarshal__GetString2.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetFloat/CMarshal__GetFloat.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CMarshal/Translate/CMarshal__Translate.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CAmBot/LoadBotBehaviorMarshal/CAmBot__LoadBotBehaviorMarshal.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CAmBot/LoadBotSpawnTableMarshal/CAmBot__LoadBotSpawnTableMarshal.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CAmDeviceModel/LoadDeviceMarshal/CAmDeviceModel__LoadDeviceMarshal.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CAmDeviceModel/LoadDeviceModeMarshal/CAmDeviceModel__LoadDeviceModeMarshal.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CAmItem/LoadItemMarshal/CAmItem__LoadItemMarshal.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CAmOmegaVolume/LoadOmegaVolumeMarshal/CAmOmegaVolume__LoadOmegaVolumeMarshal.cpp \
 			  $(SRC_DIR)/dllmain.cpp
 

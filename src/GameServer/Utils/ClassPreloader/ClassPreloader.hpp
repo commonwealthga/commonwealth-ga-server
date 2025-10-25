@@ -20,6 +20,7 @@ public:
 	static UClass* GetTgPawnThinkTankClass();
 	static UClass* GetTgPawnGuardianClass();
 	static UClass* GetTgDeviceClass();
+	static UClass* GetTgInventoryObjectDeviceClass();
 	static UClass* GetTgHudTeamGameClass();
 	static UClass* GetTgSeqEventMissionTimerClass();
 	static UClass* GetTgSeqEventLevelFadedInClass();

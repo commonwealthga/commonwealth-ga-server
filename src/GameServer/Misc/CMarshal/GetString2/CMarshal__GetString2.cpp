@@ -6,7 +6,7 @@ int __fastcall CMarshal__GetString2::Call(void *CMarshal, void *edx, uint32_t a2
 	int result = CallOriginal(CMarshal, edx, a2, a3, a4);
 
 	wchar_t safeCopy[4096] = {0};
-	for (int i = 0; i < 1024; i++) {
+	for (int i = 0; i < 4096; i++) {
 		safeCopy[i] = a3[i];
 		if (a3[i] == L'\0') {
 			break;

@@ -8,6 +8,7 @@ class TgGame__SpawnBotById : public HookBase<
 	0x10ad9b70,
 	TgGame__SpawnBotById> {
 public:
+	static std::map<int, int> m_spawnedBotIds;
 	static ATgPawn* __fastcall Call(
 		ATgGame* Game,
 		void* edx,

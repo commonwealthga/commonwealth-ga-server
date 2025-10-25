@@ -58,15 +58,18 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void
 
 			Logger::Log("tgbotfactory", " Spawning bot %d %s at X=%d,Y=%d,Z=%d", randomSpawnEntry.EnemyBotId, randomSpawnEntry.ReferenceName.c_str(), BotFactory->LocationList.Data[BotFactory->s_nCurLocationIndex]->Location.X, BotFactory->LocationList.Data[BotFactory->s_nCurLocationIndex]->Location.Y, BotFactory->LocationList.Data[BotFactory->s_nCurLocationIndex]->Location.Z);
 
+			ANavigationPoint* BotStart = BotFactory->LocationList.Data[BotFactory->s_nCurLocationIndex];
+
 			FVector SpawnLocation;
-			SpawnLocation.X = BotFactory->LocationList.Data[BotFactory->s_nCurLocationIndex]->Location.X;
-			SpawnLocation.Y = BotFactory->LocationList.Data[BotFactory->s_nCurLocationIndex]->Location.Y;
-			SpawnLocation.Z = BotFactory->LocationList.Data[BotFactory->s_nCurLocationIndex]->Location.Z;
+			SpawnLocation.X = BotStart->Location.X;
+			SpawnLocation.Y = BotStart->Location.Y;
+			SpawnLocation.Z = BotStart->Location.Z;
+
 
 			ATgPawn* Bot = (ATgPawn*)Game->SpawnBotById(
 				randomSpawnEntry.EnemyBotId,
 				SpawnLocation,
-				BotFactory->LocationList.Data[BotFactory->s_nCurLocationIndex]->Rotation,
+				BotStart->Rotation,
 				false,
 				BotFactory,
 				true,
@@ -75,6 +78,11 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void
 				nullptr,
 				0.0f
 			);
+
+			ATgAIController* AIController = (ATgAIController*)Bot->Controller;
+			for (int j = 0; j < BotFactory->PatrolPath.Num(); j++) {
+				AIController->m_PatrolPath.Add(BotFactory->PatrolPath.Data[i]);
+			}
 
 			ATgRepInfo_Player* BotRep = (ATgRepInfo_Player*)Bot->PlayerReplicationInfo;
 

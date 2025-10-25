@@ -204,7 +204,90 @@ void Database::Init() {
 		}
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 3", nullptr, nullptr, &err);
+	if (version < 4) {
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS asm_data_set_bots_data_set_bot_devices ( \
+				id INTEGER PRIMARY KEY AUTOINCREMENT, \
+				bot_id INTEGER, \
+				device_id INTEGER, \
+				slot_used_value_id INTEGER \
+			);", nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create asm_data_set_bots_data_set_bot_devices table: %s\n", err);
+			return;
+		}
+	}
+
+	if (version < 5) {
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS asm_data_set_devices ( \
+				id INTEGER PRIMARY KEY AUTOINCREMENT, \
+				device_id INTEGER, \
+				form_class_res_id INTEGER, \
+				mount_socket_res_id INTEGER, \
+				time_to_equip_secs FLOAT, \
+				container_skill_group_id INTEGER, \
+				right_click_behavior_type_value_id INTEGER, \
+				slot_used_value_id INTEGER \
+			);", nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create asm_data_set_devices table: %s\n", err);
+			return;
+		}
+
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS asm_data_set_items ( \
+				id INTEGER PRIMARY KEY AUTOINCREMENT, \
+				name_msg_id INTEGER, \
+				name_msg_translated TEXT, \
+				desc_msg_id INTEGER, \
+				desc_msg_translated TEXT, \
+				class_res_id INTEGER, \
+				item_id INTEGER, \
+				item_type_value_id INTEGER, \
+				item_subtype_value_id INTEGER, \
+				skill_id INTEGER, \
+				sub_skill_id INTEGER, \
+				skill_level_min INTEGER, \
+				quantity INTEGER, \
+				icon_id INTEGER, \
+				weight FLOAT, \
+				time_to_live_secs FLOAT, \
+				quality_value_id INTEGER, \
+				required_achievement_id INTEGER, \
+				required_achievement_points INTEGER, \
+				ref_bot_id INTEGER, \
+				ref_deployable_id INTEGER, \
+				ref_device_id INTEGER, \
+				item_bind_type_value_id INTEGER, \
+				production_cost INTEGER, \
+				required_level INTEGER, \
+				purchased_value INTEGER, \
+				bundle_loot_table_id INTEGER \
+			); \
+		", nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create asm_data_set_items table: %s\n", err);
+			return;
+		}
+	}
+
+	if (version < 6) {
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS asm_data_set_devices_data_set_device_modes ( \
+				id INTEGER PRIMARY KEY AUTOINCREMENT, \
+				device_id INTEGER, \
+				device_mode_id INTEGER, \
+				name_msg_id INTEGER, \
+				name_msg_translated TEXT \
+			);", nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create asm_data_set_devices_data_set_device_modes table: %s\n", err);
+			return;
+		}
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 6", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
