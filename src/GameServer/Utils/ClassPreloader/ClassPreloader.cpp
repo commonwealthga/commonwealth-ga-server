@@ -21,6 +21,11 @@ void ClassPreloader::PreloadClasses() {
 	bClassesPreloaded = true;
 }
 
+UClass* ClassPreloader::GetClass(char* ClassName) {
+	PreloadClasses();
+	return Classes[ClassName];
+}
+
 UClass* ClassPreloader::GetTgPawnCharacterClass() {
 	PreloadClasses();
 	return Classes["Class TgGame.TgPawn_Character"];

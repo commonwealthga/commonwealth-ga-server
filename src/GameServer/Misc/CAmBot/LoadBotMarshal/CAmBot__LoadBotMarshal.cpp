@@ -39,8 +39,9 @@ void __fastcall CAmBot__LoadBotMarshal::Call(void* CAmBotRow, void* edx, void* M
 				movement_asm_id, \
 				hit_points, \
 				bot_type_value_id, \
-				physical_type_value_id \
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", -1, &stmt, 0);
+				physical_type_value_id, \
+				default_slot_value_id \
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", -1, &stmt, 0);
 
 		if (result != SQLITE_OK) {
 			Logger::Log("db", "Failed to prepare statement: %s\n", sqlite3_errmsg(db));
@@ -61,6 +62,7 @@ void __fastcall CAmBot__LoadBotMarshal::Call(void* CAmBotRow, void* edx, void* M
 		sqlite3_bind_int(stmt, 12, CMarshal__GetByte::m_values[GA_T::GA_T::HIT_POINTS]);
 		sqlite3_bind_int(stmt, 13, CMarshal__GetByte::m_values[GA_T::GA_T::BOT_TYPE_VALUE_ID]);
 		sqlite3_bind_int(stmt, 14, CMarshal__GetByte::m_values[GA_T::GA_T::PHYSICAL_TYPE_VALUE_ID]);
+		sqlite3_bind_int(stmt, 15, CMarshal__GetByte::m_values[GA_T::GA_T::DEFAULT_SLOT_VALUE_ID]);
 
 		sqlite3_step(stmt);
 		sqlite3_finalize(stmt);

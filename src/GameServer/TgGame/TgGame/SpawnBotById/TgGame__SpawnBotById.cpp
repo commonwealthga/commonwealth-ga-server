@@ -14,6 +14,7 @@
 
 std::map<int, int> TgGame__SpawnBotById::m_spawnedBotIds;
 
+
 ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	ATgGame* Game,
 	void* edx,
@@ -32,6 +33,7 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 
 	AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
 
+	UClass* PawnClass = ClassPreloader::GetTgPawnCharacterClass();
 
 	ATgAIController* AIController = (ATgAIController*)Game->Spawn(
 		ClassPreloader::GetTgAIControllerClass(),
@@ -44,7 +46,7 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		bIgnoreCollision ? 1 : 0
 	);
 	ATgPawn_Character* Bot = (ATgPawn_Character*)Game->Spawn(
-		ClassPreloader::GetTgPawnCharacterClass(),
+		ClassPreloader::GetClass(GetPawnClassName(nBotId)),
 		AIController->PlayerReplicationInfo,
 		FName(),
 		vLocation,
@@ -53,6 +55,11 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		bIgnoreCollision ? 1 : 0
 	);
 	ATgRepInfo_Player* BotRepInfo = reinterpret_cast<ATgRepInfo_Player*>(AIController->PlayerReplicationInfo);
+
+	// silly
+	// Bot->DrawScale = 0.4f;
+	// Bot->GroundSpeed = Bot->GroundSpeed / 2;
+	// Bot->SetCollisionSize(Bot->NativeGetCollisionRadius() * 0.4f, Bot->NativeGetCollisionHeight() * 0.4f);
 
 	m_spawnedBotIds[(int)Bot] = nBotId;
 

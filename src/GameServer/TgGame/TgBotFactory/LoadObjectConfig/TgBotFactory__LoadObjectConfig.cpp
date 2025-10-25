@@ -4,16 +4,15 @@
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/Utils/Macros.hpp"
 
-std::map<int, int> TgBotFactory__LoadObjectConfig::m_mapObjectIdToSpawnTableId;
-std::map<int, int> TgBotFactory__LoadObjectConfig::m_mapObjectIdToTaskForceNumber;
-std::map<int, std::map<int, std::vector<SpawnTableEntry>>> TgBotFactory__LoadObjectConfig::m_spawnTables;
+std::map<int, BotFactoryConfig> TgBotFactory__LoadObjectConfig::m_botFactoryConfigs;
+std::map<int, ATgBotFactory*> TgBotFactory__LoadObjectConfig::m_loadedBotFactories;
+std::map<int, int> TgBotFactory__LoadObjectConfig::m_missionObjectiveBotToBotFactoryId;
 bool TgBotFactory__LoadObjectConfig::bConfigLoaded = false;
 
 void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, void *edx) {
 	Logger::Log("tgbotfactory", "[%s] %s LoadObjectConfig mapObjectId=%d\n", Logger::GetTime(), BotFactory->GetName(), BotFactory->m_nMapObjectId);
 
-	BotFactory->bAutoSpawn = 1;
-	BotFactory->nPriority = 0;
+	m_loadedBotFactories[BotFactory->m_nMapObjectId] = BotFactory;
 
 	if (!bConfigLoaded) {
 		sqlite3* db = Database::GetConnection();
@@ -22,7 +21,15 @@ void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, 
 		int result = 0;
 
 		std::vector<std::map<std::string, std::string>> factories_data;
-		result = sqlite3_exec(db, "SELECT * FROM obj_bot_factories", Database::Callback, &factories_data, &err);
+		result = sqlite3_exec(db, "SELECT \
+				f.map_object_id AS map_object_id, \
+				f.bot_spawn_table_id AS bot_spawn_table_id, \
+				f.task_force_number AS task_force_number, \
+				COALESCE(ob.map_object_id, 0) AS objective_bot_map_object_id \
+			FROM obj_bot_factories f \
+			LEFT JOIN obj_mission_objective_bots ob ON ob.bot_factory_id = f.map_object_id \
+			WHERE f.mutator_number = 0", Database::Callback, &factories_data, &err);
+				
 		if (result != SQLITE_OK) {
 			Logger::Log("db", "Failed to select obj_bot_factories: %s\n", err);
 			return;
@@ -32,9 +39,16 @@ void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, 
 			int mapObjectId = std::stoi(row["map_object_id"]);
 			int botSpawnTableId = std::stoi(row["bot_spawn_table_id"]);
 			int taskForceNumber = std::stoi(row["task_force_number"]);
+			int objectiveBotMapObjectId = std::stoi(row["objective_bot_map_object_id"]);
 
-			m_mapObjectIdToSpawnTableId[mapObjectId] = botSpawnTableId;
-			m_mapObjectIdToTaskForceNumber[mapObjectId] = taskForceNumber;
+			m_botFactoryConfigs[mapObjectId].MapObjectId = mapObjectId;
+			m_botFactoryConfigs[mapObjectId].BotSpawnTableId = botSpawnTableId;
+			m_botFactoryConfigs[mapObjectId].TaskForceNumber = taskForceNumber;
+			m_botFactoryConfigs[mapObjectId].ObjectiveBotMapObjectId = objectiveBotMapObjectId;
+
+			if (objectiveBotMapObjectId > 0) {
+				m_missionObjectiveBotToBotFactoryId[objectiveBotMapObjectId] = mapObjectId;
+			}
 		}
 
 		std::vector<std::map<std::string, std::string>> spawn_tables_data;
@@ -84,55 +98,71 @@ void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, 
 			});
 		}
 
-		for (auto& spawnTable : spawnTables) {
-			for (auto& spawnGroup : spawnTable.second) {
-				std::vector<SpawnTableEntry> spawnTableWeighted;
-				for (auto& spawnEntry : spawnGroup.second) {
-					for (int i = 0; i < spawnEntry.SpawnChance * 100; i++) {
-						Logger::Log("tgbotfactory", " Adding spawn entry %d to spawn table %d, group %d\n", spawnEntry.EnemyBotId, spawnEntry.SpawnTableId, spawnEntry.SpawnGroup);
-						spawnTableWeighted.push_back(spawnEntry);
-					}
-				}
+		for (auto& botFactoryConfig : m_botFactoryConfigs) {
+			int mapObjectId = botFactoryConfig.first;
 
-				srand(time(NULL));
-
-				if (spawnTableWeighted.size() == 0) {
-					Logger::Log("tgbotfactory", " Weighted spawn table is empty\n");
+			for (auto& spawnTable : spawnTables) {
+				if (spawnTable.first != botFactoryConfig.second.BotSpawnTableId) {
 					continue;
 				}
+				for (auto& spawnGroup : spawnTable.second) {
+					std::vector<SpawnTableEntry> spawnTableWeighted;
+					for (auto& spawnEntry : spawnGroup.second) {
+						for (int i = 0; i < spawnEntry.SpawnChance * 100; i++) {
+							Logger::Log("tgbotfactory", " Adding spawn entry %d to spawn table %d, group %d\n", spawnEntry.EnemyBotId, spawnEntry.SpawnTableId, spawnEntry.SpawnGroup);
+							spawnTableWeighted.push_back(spawnEntry);
+						}
+					}
 
-				SpawnTableEntry randomSpawnEntry = spawnTableWeighted[rand() % spawnTableWeighted.size()];
+					srand(time(NULL));
 
-				Logger::Log("tgbotfactory", " Selected spawn entry %d to spawn table %d\n", randomSpawnEntry.EnemyBotId, randomSpawnEntry.SpawnTableId);
+					if (spawnTableWeighted.size() == 0) {
+						Logger::Log("tgbotfactory", " Weighted spawn table is empty\n");
+						continue;
+					}
 
-				m_spawnTables[randomSpawnEntry.SpawnTableId][spawnGroup.first].push_back(SpawnTableEntry{
-					randomSpawnEntry.SpawnTableId,
-					randomSpawnEntry.SpawnGroup,
-					randomSpawnEntry.EnemyBotId,
-					randomSpawnEntry.BotCount,
-					randomSpawnEntry.SpawnChance,
-					randomSpawnEntry.ReferenceName
-				});
+					SpawnTableEntry randomSpawnEntry = spawnTableWeighted[rand() % spawnTableWeighted.size()];
+
+					Logger::Log("tgbotfactory", " Selected spawn entry %d to spawn table %d\n", randomSpawnEntry.EnemyBotId, randomSpawnEntry.SpawnTableId);
+
+					m_botFactoryConfigs[mapObjectId].SpawnTables[spawnGroup.first].push_back(SpawnTableEntry{
+						randomSpawnEntry.SpawnTableId,
+						randomSpawnEntry.SpawnGroup,
+						randomSpawnEntry.EnemyBotId,
+						randomSpawnEntry.BotCount,
+						randomSpawnEntry.SpawnChance,
+						randomSpawnEntry.ReferenceName
+					});
+				}
 			}
 		}
 
 		bConfigLoaded = true;
 	}
 
-	if (!m_mapObjectIdToSpawnTableId[BotFactory->m_nMapObjectId]) {
+	if (!m_botFactoryConfigs[BotFactory->m_nMapObjectId].BotSpawnTableId) {
 		Logger::Log("tgbotfactory", "No spawn table found for map object id %d\n", BotFactory->m_nMapObjectId);
 		return;
 	}
 
-	Logger::Log("tgbotfactory", "Loaded spawn table %d for map object id %d\n", m_mapObjectIdToSpawnTableId[BotFactory->m_nMapObjectId], BotFactory->m_nMapObjectId);
+	Logger::Log("tgbotfactory", "Loaded spawn table %d for map object id %d\n", m_botFactoryConfigs[BotFactory->m_nMapObjectId].BotSpawnTableId, BotFactory->m_nMapObjectId);
 
-	BotFactory->nSpawnTableId = m_mapObjectIdToSpawnTableId[BotFactory->m_nMapObjectId];
-	BotFactory->s_nTaskForce = m_mapObjectIdToTaskForceNumber[BotFactory->m_nMapObjectId];
+	// only auto-spawn non-objective bots
+	if (m_botFactoryConfigs[BotFactory->m_nMapObjectId].ObjectiveBotMapObjectId > 0) {
+		BotFactory->bAutoSpawn = 0;
+		BotFactory->nPriority = 1;
+	} else {
+		BotFactory->bAutoSpawn = 1;
+		BotFactory->nPriority = 0;
+	}
+
+	BotFactory->nSpawnTableId = m_botFactoryConfigs[BotFactory->m_nMapObjectId].BotSpawnTableId;
+	BotFactory->s_nTaskForce = m_botFactoryConfigs[BotFactory->m_nMapObjectId].TaskForceNumber;
 
 	TARRAY_INIT(BotFactory, m_SpawnQueue, FSpawnQueueEntry, 0x240, 128);
 	TARRAY_INIT(BotFactory, m_SpawnGroups, FSpawnGroupDetail, 0x250, 128);
 
-	for (auto& spawnGroup : m_spawnTables[BotFactory->nSpawnTableId]) {
+	for (auto& spawnGroup : m_botFactoryConfigs[BotFactory->m_nMapObjectId].SpawnTables) {
 		int spawnGroupNumber = spawnGroup.first;
 		for (auto& spawnEntry : spawnGroup.second) {
 			FSpawnQueueEntry entry;

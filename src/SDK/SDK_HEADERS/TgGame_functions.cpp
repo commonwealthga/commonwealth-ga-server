@@ -39004,8 +39004,14 @@ float ATgPawn::NativeGetCollisionRadius ( )
 {
 	static UFunction* pFnNativeGetCollisionRadius = NULL;
 
-	if ( ! pFnNativeGetCollisionRadius )
-		pFnNativeGetCollisionRadius = (UFunction*) UObject::GObjObjects()->Data[ 41401 ];
+	if ( ! pFnNativeGetCollisionRadius ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.NativeGetCollisionRadius") == 0) {
+				pFnNativeGetCollisionRadius = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnNativeGetCollisionRadius = (UFunction*) UObject::GObjObjects()->Data[ 41401 ];
 
 	ATgPawn_execNativeGetCollisionRadius_Parms NativeGetCollisionRadius_Parms;
 
@@ -39027,8 +39033,14 @@ float ATgPawn::NativeGetCollisionHeight ( )
 {
 	static UFunction* pFnNativeGetCollisionHeight = NULL;
 
-	if ( ! pFnNativeGetCollisionHeight )
-		pFnNativeGetCollisionHeight = (UFunction*) UObject::GObjObjects()->Data[ 41399 ];
+	if ( ! pFnNativeGetCollisionHeight ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.NativeGetCollisionHeight") == 0) {
+				pFnNativeGetCollisionHeight = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnNativeGetCollisionHeight = (UFunction*) UObject::GObjObjects()->Data[ 41399 ];
 
 	ATgPawn_execNativeGetCollisionHeight_Parms NativeGetCollisionHeight_Parms;
 

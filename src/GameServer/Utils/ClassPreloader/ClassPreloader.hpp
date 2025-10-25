@@ -9,6 +9,7 @@ private:
 
 	static std::map <std::string, UClass*> Classes;
 public:
+	static UClass* GetClass(char* ClassName);
 	static UClass* GetTgPawnCharacterClass();
 	static UClass* GetTgPropertyClass();
 	static UClass* GetTgRepInfoTaskForceClass();

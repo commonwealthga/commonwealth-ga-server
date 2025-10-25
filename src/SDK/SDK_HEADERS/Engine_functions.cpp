@@ -5787,8 +5787,14 @@ void AActor::SetCollisionSize ( float NewRadius, float NewHeight )
 {
 	static UFunction* pFnSetCollisionSize = NULL;
 
-	if ( ! pFnSetCollisionSize )
-		pFnSetCollisionSize = (UFunction*) UObject::GObjObjects()->Data[ 3320 ];
+	if ( ! pFnSetCollisionSize ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function Engine.Actor.SetCollisionSize") == 0) {
+				pFnSetCollisionSize = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnSetCollisionSize = (UFunction*) UObject::GObjObjects()->Data[ 3320 ];
 
 	AActor_execSetCollisionSize_Parms SetCollisionSize_Parms;
 	SetCollisionSize_Parms.NewRadius = NewRadius;

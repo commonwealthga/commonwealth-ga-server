@@ -8,6 +8,7 @@ class TgBotFactory__SpawnNextBot : public HookBase<
 	0x10a8c2f0,
 	TgBotFactory__SpawnNextBot> {
 public:
+	static std::map<int, ATgPawn*> m_lastSpawnedBot;
 	static void __fastcall Call(ATgBotFactory* BotFactory, void* edx);
 	static inline void __fastcall CallOriginal(ATgBotFactory* BotFactory, void* edx) {
 		m_original(BotFactory, edx);

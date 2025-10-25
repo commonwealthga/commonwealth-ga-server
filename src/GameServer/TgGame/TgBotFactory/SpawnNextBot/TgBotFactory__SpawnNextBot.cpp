@@ -7,6 +7,8 @@
 #include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
+std::map<int, ATgPawn*> TgBotFactory__SpawnNextBot::m_lastSpawnedBot;
+
 void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void *edx) {
 
 	Logger::Log("tgbotfactory", "[%s] %s SpawnNextBot mapObjectId=%d\n", Logger::GetTime(), BotFactory->GetName(), BotFactory->m_nMapObjectId);
@@ -34,20 +36,26 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void
 		return;
 	}
 
-	FSpawnQueueEntry* entry = &BotFactory->m_SpawnQueue.Data[BotFactory->s_nCurListIndex];
-
-	if (TgBotFactory__LoadObjectConfig::m_spawnTables[entry->nSpawnTableId].size() == 0) {
-		Logger::Log("tgbotfactory", " No spawn table found for spawn queue entry %d\n", BotFactory->s_nCurListIndex);
+	if (!TgBotFactory__LoadObjectConfig::m_botFactoryConfigs[BotFactory->m_nMapObjectId].SpawnTables.size()) {
+		Logger::Log("tgbotfactory", " No config found for map object id %d\n", BotFactory->m_nMapObjectId);
 		return;
 	}
 
-	if (TgBotFactory__LoadObjectConfig::m_spawnTables[entry->nSpawnTableId][entry->nGroupNumber].size() == 0) {
+	BotFactoryConfig config = TgBotFactory__LoadObjectConfig::m_botFactoryConfigs[BotFactory->m_nMapObjectId];
+
+	FSpawnQueueEntry* entry = &BotFactory->m_SpawnQueue.Data[BotFactory->s_nCurListIndex];
+
+	if (config.SpawnTables.size() == 0) {
+		Logger::Log("tgbotfactory", " No spawn table found for map object id %d\n", BotFactory->m_nMapObjectId);
+		return;
+	}
+
+	if (config.SpawnTables[entry->nGroupNumber].size() == 0) {
 		Logger::Log("tgbotfactory", " No spawn table found for spawn queue entry %d and group %d\n", BotFactory->s_nCurListIndex, entry->nGroupNumber);
 		return;
 	}
 
-
-	std::vector<SpawnTableEntry> spawnTable = TgBotFactory__LoadObjectConfig::m_spawnTables[entry->nSpawnTableId][entry->nGroupNumber];
+	std::vector<SpawnTableEntry> spawnTable = config.SpawnTables[entry->nGroupNumber];
 
 	for (auto& randomSpawnEntry : spawnTable) {
 		for (int i = 0; i < randomSpawnEntry.BotCount; i++) {
@@ -78,6 +86,8 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void
 				nullptr,
 				0.0f
 			);
+
+			m_lastSpawnedBot[BotFactory->m_nMapObjectId] = Bot;
 
 			ATgAIController* AIController = (ATgAIController*)Bot->Controller;
 			for (int j = 0; j < BotFactory->PatrolPath.Num(); j++) {

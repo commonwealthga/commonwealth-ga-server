@@ -48,6 +48,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 				bd.device_id AS device_id, \
 				i.quality_value_id AS quality_value_id \
 				MIN(m.device_mode_id) AS device_mode_id, \
+				b.default_slot_value_id AS default_slot_value_id \
 				FROM asm_data_set_bots_data_set_bot_devices bd \
 				LEFT JOIN asm_data_set_bots b ON b.bot_id = bd.bot_id \
 				LEFT JOIN asm_data_set_items i ON i.item_id = bd.device_id \
@@ -65,6 +66,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 					int deviceId = sqlite3_column_int(stmt, 2);
 					int qualityValueId = sqlite3_column_int(stmt, 3);
 					int deviceModeId = sqlite3_column_int(stmt, 4);
+					int defaultSlotValueId = sqlite3_column_int(stmt, 5);
 					if (deviceId == 0) {
 						continue;
 					}
@@ -199,15 +201,15 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 						Device->bOnlyDirtyReplication = 0;
 						Device->bAlwaysRelevant = 0;
 
-						if (slotUsedValueId == 198 || slotUsedValueId == 221) {
+						if (defaultSlotValueId == slotUsedValueId) {
 							// Bot->Weapon = Device;
 							Bot->r_eDesiredInHand = equipPoint;
-							ATgInventoryManager* InventoryManager = (ATgInventoryManager*)Bot->InvManager;
-							AIController->m_eEquipmentSlot = equipPoint;
+							// ATgInventoryManager* InventoryManager = (ATgInventoryManager*)Bot->InvManager;
+							// AIController->m_eEquipmentSlot = equipPoint;
 							// AIController->m_nDeviceMode = deviceModeId;
-							InventoryManager->SetCurrentWeapon(Device, 0, 0, 0);
+							// InventoryManager->SetCurrentWeapon(Device, 0, 0, 0);
 						}
-						Bot->ForceUpdateEquippedDevices();
+						// Bot->ForceUpdateEquippedDevices();
 
 						Logger::Log("debug", "Device created successfully %p\n", Device);
 					} else {
