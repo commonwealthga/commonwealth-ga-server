@@ -23,11 +23,12 @@ void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, 
 		std::vector<std::map<std::string, std::string>> factories_data;
 		result = sqlite3_exec(db, "SELECT \
 				f.map_object_id AS map_object_id, \
-				f.bot_spawn_table_id AS bot_spawn_table_id, \
+				COALESCE(m.bot_spawn_table_id, f.bot_spawn_table_id) AS bot_spawn_table_id, \
 				f.task_force_number AS task_force_number, \
 				COALESCE(ob.map_object_id, 0) AS objective_bot_map_object_id \
 			FROM obj_bot_factories f \
 			LEFT JOIN obj_mission_objective_bots ob ON ob.bot_factory_id = f.map_object_id \
+			LEFT JOIN obj_bot_factories m ON m.map_object_id = f.map_object_id AND m.mutator_number = 1 \
 			WHERE f.mutator_number = 0", Database::Callback, &factories_data, &err);
 				
 		if (result != SQLITE_OK) {
