@@ -1,5 +1,6 @@
 #include "src/GameServer/TgNetDrv/UdpNetDriver/InitListen/UdpNetDriver__InitListen.hpp"
 #include "src/GameServer/IpDrv/SocketWin/CreateDGramSocket/SocketWin__CreateDGramSocket.hpp"
+#include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* Notify, FURL* Url, FString* Error) {
@@ -53,7 +54,7 @@ int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* No
 	sockaddr_in addr = *(sockaddr_in*)((char*)NetDriver + 0x148);
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);  // Or inet_addr("0.0.0.0")
-    addr.sin_port = htons(9002);
+    addr.sin_port = htons(Config::GetPort());
 
 	int bindResult = bind(Socket, (sockaddr*)&addr, sizeof(addr));
 	if (bindResult != 0) {

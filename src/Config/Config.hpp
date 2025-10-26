@@ -1,12 +1,14 @@
 #pragma once
 
+#include "src/pch.hpp"
+
 class Config {
 public:
-	static wchar_t* GetMapUrl();
-	static char* GetMapUrlChar();
-	static wchar_t* GetMapName();
-	static char* GetMapNameChar();
-	static wchar_t* GetMapParams();
-	static char* GetMapParamsChar();
+	static std::string GetIpChar();
+	static int GetPort();
+	static std::wstring GetMapUrl();
+	static std::string GetMapNameChar();
+	static std::wstring GetMapParams();
+	static std::string GetMapParamsChar();
 };
 

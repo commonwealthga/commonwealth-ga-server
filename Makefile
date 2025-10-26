@@ -1,8 +1,9 @@
 
 SOURCE_FILES= \
-			  $(SRC_DIR)/Config/Config/ConfigInception_ALL.cpp \
+			  $(SRC_DIR)/Config/Config.cpp \
 			  \
 			  $(SRC_DIR)/Utils/Logger/Logger/NullLogger.cpp \
+			  $(SRC_DIR)/Utils/CommandLineParser/CommandLineParser.cpp \
 			  \
 			  $(SRC_DIR)/Database/Database.cpp \
 			  \

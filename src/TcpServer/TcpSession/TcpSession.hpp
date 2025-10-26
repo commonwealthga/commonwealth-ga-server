@@ -189,6 +189,15 @@ private:
 						Logger::Log("tcp", "[%s] Received: RELAY_LOG [0x%04X], item count: %d, sending character inventory\n", Logger::GetTime(), packet_type, item_count);
 						send_character_inventory_response();
 						GTcpEvents.erase(GTcpEvents.begin());
+
+					// 	TcpEvent next;
+					// 	next.Type = 3;
+					// 	GTcpEvents.push_back(next);
+					// } else if (event.Type == 3) {
+					// 	Logger::Log("tcp", "[%s] Received: RELAY_LOG [0x%04X], item count: %d, sending character inventory\n", Logger::GetTime(), packet_type, item_count);
+					// 	send_map_randomsm_settings_response();
+					//
+					// 	GTcpEvents.erase(GTcpEvents.begin());
 					}
 				}
 
@@ -329,6 +338,20 @@ private:
 
 		send_response(response);
 	}
+
+	// void send_map_randomsm_settings_response() {
+	// 	std::vector<uint8_t> response;
+	// 	uint16_t packet_type = GA_U::MAP_RANDOMSM_SETTINGS;
+	// 	uint16_t item_count = 1;
+	//
+	// 	append(response, packet_type & 0xFF, packet_type >> 8);
+	// 	append(response, item_count & 0xFF, item_count >> 8);
+	//
+	// 	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);        // type 010C
+	//
+	//
+	// 	send_response(response);
+	// }
 
 
 	void send_character_inventory_response() {
@@ -800,7 +823,8 @@ private:
 		WriteString(response, GA_T::PLAYER_NAME, "Zaxik");
 		// Write4B(response, GA_T::CHARACTER_ID, 0x2AC950);
 		// Write4B(response, GA_T::PROFILE_ID, GA_G::GA_G::PROFILE_ID_ASSAULT);
-		WriteIP(response, GA_T::HOST_NET_ADDR, "127.0.0.1", 9002);
+		// WriteIP(response, GA_T::HOST_NET_ADDR, "77.237.240.162", 9002);
+		WriteIP(response, GA_T::HOST_NET_ADDR, Config::GetIpChar(), Config::GetPort());
 		WriteNBytes(response, GA_T::SESSION_GUID, std::vector<uint8_t>(16));
 		WriteString(response, GA_T::MAP_FILENAME, Config::GetMapNameChar());
 		WriteString(response, GA_T::PARAMETERS, Config::GetMapParamsChar());

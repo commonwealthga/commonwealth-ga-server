@@ -179,8 +179,11 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 
 		FString error;
 		FString error2;
-		FString url = FString(Config::GetMapUrl());
-		FString options = FString(Config::GetMapParams());
+		std::wstring urlstr = Config::GetMapUrl();
+		FString url = FString(urlstr.data());
+		std::wstring params = Config::GetMapParams();
+
+		FString options = FString(params.data());
 
 
 		// LogToFile("C:\\mylog.txt", "[SpawnPlayActor] start");
@@ -192,7 +195,8 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 
 		FString connrequesturl = *(FString*)((char*)Connection + 0xF8);
 		FURL requesturl;
-		FURL__Constructor::CallOriginal(&requesturl, nullptr, nullptr, Config::GetMapParams(), 0);
+		std::wstring params2 = Config::GetMapParams();
+		FURL__Constructor::CallOriginal(&requesturl, nullptr, nullptr, params2.data(), 0);
 
 		ATgPlayerController* newcontrollerptr = World__SpawnPlayActor::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, connplayer, 2, &requesturl, &error, 0);
 
