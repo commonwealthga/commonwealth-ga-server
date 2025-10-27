@@ -41,7 +41,7 @@ void __fastcall TgMissionObjective_Bot__SpawnObjectiveBot::Call(ATgMissionObject
 				Logger::Log("debug", "Bot != nullptr\n");
 			}
 
-			Bot->bAlwaysRelevant = 1;
+			// Bot->bAlwaysRelevant = 1;
 			ObjectiveBot->Role = 3;
 			ObjectiveBot->RemoteRole = 1;
 			ObjectiveBot->r_ObjectiveBot = Bot;

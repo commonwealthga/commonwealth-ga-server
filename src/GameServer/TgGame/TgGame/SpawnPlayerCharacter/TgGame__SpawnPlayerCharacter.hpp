@@ -8,6 +8,7 @@ class TgGame__SpawnPlayerCharacter : public HookBase<
 	0x10AD9AF0,
 	TgGame__SpawnPlayerCharacter> {
 public:
+	static bool bEnemyGearSpawned;
 	static inline int GetEquipPointByType(int slotUsedValueId) {
 		int equipPoint = 0;
 		if (slotUsedValueId == 198) {

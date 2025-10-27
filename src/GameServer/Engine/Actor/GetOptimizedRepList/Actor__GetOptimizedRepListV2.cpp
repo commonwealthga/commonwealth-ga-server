@@ -3191,34 +3191,36 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| strcmp(classname, "Class TgGame.TgProj_Bot") == 0
 
 	) {
-		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && actor->RemoteRole == 1) {
-			DO_REP(AActor, Base, ObjectProperty_Engine_Actor_Base);
-		}
-		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && (actor->RemoteRole == 1) && actor->bNetInitial || actor->bUpdateSimulatedPosition) {
-			DO_REP(AActor, Physics, ByteProperty_Engine_Actor_Physics);
-			DO_REP(AActor, Velocity, StructProperty_Engine_Actor_Velocity);
-		}
-		if ((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) {
-			DO_REP(AActor, RemoteRole, ByteProperty_Engine_Actor_RemoteRole);
-			DO_REP(AActor, Role, ByteProperty_Engine_Actor_Role);
-			DO_REP(AActor, bNetOwner, BoolProperty_Engine_Actor_bNetOwner);
-			DO_REP(AActor, bTearOff, BoolProperty_Engine_Actor_bTearOff);
-		}
-		if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) {
-			DO_REP(AActor, DrawScale, FloatProperty_Engine_Actor_DrawScale);
-			DO_REP(AActor, ReplicatedCollisionType, ByteProperty_Engine_Actor_ReplicatedCollisionType);
-			DO_REP(AActor, bCollideActors, BoolProperty_Engine_Actor_bCollideActors);
-			DO_REP(AActor, bCollideWorld, BoolProperty_Engine_Actor_bCollideWorld);
-		}
-		if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bCollideActors || actor->bCollideWorld) {
-			DO_REP(AActor, bBlockActors, BoolProperty_Engine_Actor_bBlockActors);
-			DO_REP(AActor, bProjTarget, BoolProperty_Engine_Actor_bProjTarget);
-		}
-		if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bReplicateInstigator) {
-			DO_REP(AActor, Instigator, ObjectProperty_Engine_Actor_Instigator);
-		}
-		if (((actor->bNetOwner && !actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) {
-			DO_REP(AActor, Owner, ObjectProperty_Engine_Actor_Owner);
+		if (actor->RemoteRole == 1) {
+			if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && actor->RemoteRole == 1) {
+				DO_REP(AActor, Base, ObjectProperty_Engine_Actor_Base);
+			}
+			if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && (actor->RemoteRole == 1) && actor->bNetInitial || actor->bUpdateSimulatedPosition) {
+				DO_REP(AActor, Physics, ByteProperty_Engine_Actor_Physics);
+				DO_REP(AActor, Velocity, StructProperty_Engine_Actor_Velocity);
+			}
+			if ((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) {
+				DO_REP(AActor, RemoteRole, ByteProperty_Engine_Actor_RemoteRole);
+				DO_REP(AActor, Role, ByteProperty_Engine_Actor_Role);
+				DO_REP(AActor, bNetOwner, BoolProperty_Engine_Actor_bNetOwner);
+				DO_REP(AActor, bTearOff, BoolProperty_Engine_Actor_bTearOff);
+			}
+			if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) {
+				DO_REP(AActor, DrawScale, FloatProperty_Engine_Actor_DrawScale);
+				DO_REP(AActor, ReplicatedCollisionType, ByteProperty_Engine_Actor_ReplicatedCollisionType);
+				DO_REP(AActor, bCollideActors, BoolProperty_Engine_Actor_bCollideActors);
+				DO_REP(AActor, bCollideWorld, BoolProperty_Engine_Actor_bCollideWorld);
+			}
+			if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bCollideActors || actor->bCollideWorld) {
+				DO_REP(AActor, bBlockActors, BoolProperty_Engine_Actor_bBlockActors);
+				DO_REP(AActor, bProjTarget, BoolProperty_Engine_Actor_bProjTarget);
+			}
+			if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bReplicateInstigator) {
+				DO_REP(AActor, Instigator, ObjectProperty_Engine_Actor_Instigator);
+			}
+			if (((actor->bNetOwner && !actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) {
+				DO_REP(AActor, Owner, ObjectProperty_Engine_Actor_Owner);
+			}
 		}
 	}
 	if (strcmp(classname, "Class Engine.AmbientSoundSimpleToggleable") == 0) {
