@@ -88,7 +88,9 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	BotRepInfo->bBot = 1;
 	BotRepInfo->r_PawnOwner = Bot;
 	BotRepInfo->r_ApproxLocation = Bot->Location;
-	BotRepInfo->SetOwner(AIController);
+	BotRepInfo->SetOwner(WorldInfo);
+
+	Bot->SetOwner(BotRepInfo);
 	// BotRepInfo->Owner = WorldInfo;
 	// BotRepInfo->Base = WorldInfo;
 

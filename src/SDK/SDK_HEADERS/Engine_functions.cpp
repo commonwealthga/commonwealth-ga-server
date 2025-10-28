@@ -6851,8 +6851,14 @@ void ACamera::SetViewTarget ( class AActor* NewViewTarget, struct FViewTargetTra
 {
 	static UFunction* pFnSetViewTarget = NULL;
 
-	if ( ! pFnSetViewTarget )
-		pFnSetViewTarget = (UFunction*) UObject::GObjObjects()->Data[ 7536 ];
+	if ( ! pFnSetViewTarget ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function Engine.Camera.SetViewTarget") == 0) {
+				pFnSetViewTarget = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnSetViewTarget = (UFunction*) UObject::GObjObjects()->Data[ 7536 ];
 
 	ACamera_execSetViewTarget_Parms SetViewTarget_Parms;
 	SetViewTarget_Parms.NewViewTarget = NewViewTarget;
@@ -23899,12 +23905,8 @@ void AController::ServerRestartPlayer ( )
 
 	if ( ! pFnServerRestartPlayer ) {
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
-			if (UObject::GObjObjects()->Data[i]) {
-				UObject* obj = UObject::GObjObjects()->Data[i];
-				if (strcmp(obj->GetFullName(), "Function Engine.Controller.ServerRestartPlayer") == 0) {
-					pFnServerRestartPlayer = (UFunction*)obj;
-					break;
-				}
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function Engine.Controller.ServerRestartPlayer") == 0) {
+				pFnServerRestartPlayer = (UFunction*)UObject::GObjObjects()->Data[i];
 			}
 		}
 	}
@@ -27450,8 +27452,14 @@ void APlayerController::SetViewTarget ( class AActor* NewViewTarget, struct FVie
 {
 	static UFunction* pFnSetViewTarget = NULL;
 
-	if ( ! pFnSetViewTarget )
-		pFnSetViewTarget = (UFunction*) UObject::GObjObjects()->Data[ 6257 ];
+	if ( ! pFnSetViewTarget ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function Engine.PlayerController.SetViewTarget") == 0) {
+				pFnSetViewTarget = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnSetViewTarget = (UFunction*) UObject::GObjObjects()->Data[ 6257 ];
 
 	APlayerController_execSetViewTarget_Parms SetViewTarget_Parms;
 	SetViewTarget_Parms.NewViewTarget = NewViewTarget;
@@ -27737,12 +27745,8 @@ void APlayerController::ClientRestart ( class APawn* NewPawn )
 
 	if ( ! pFnClientRestart ) {
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
-			if (UObject::GObjObjects()->Data[i]) {
-				UObject* obj = UObject::GObjObjects()->Data[i];
-				if (strcmp(obj->GetFullName(), "Function Engine.PlayerController.ClientRestart") == 0) {
-					pFnClientRestart = (UFunction*)obj;
-					break;
-				}
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function Engine.PlayerController.ClientRestart") == 0) {
+				pFnClientRestart = (UFunction*)UObject::GObjObjects()->Data[i];
 			}
 		}
 	}
@@ -27844,8 +27848,14 @@ void APlayerController::Restart ( unsigned long bVehicleTransition )
 {
 	static UFunction* pFnRestart = NULL;
 
-	if ( ! pFnRestart )
-		pFnRestart = (UFunction*) UObject::GObjObjects()->Data[ 6186 ];
+	if ( ! pFnRestart ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function Engine.PlayerController.Restart") == 0) {
+				pFnRestart = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnRestart = (UFunction*) UObject::GObjObjects()->Data[ 6186 ];
 
 	APlayerController_execRestart_Parms Restart_Parms;
 	Restart_Parms.bVehicleTransition = bVehicleTransition;

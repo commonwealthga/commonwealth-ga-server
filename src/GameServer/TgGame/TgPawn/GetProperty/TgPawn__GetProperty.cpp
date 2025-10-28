@@ -10,6 +10,22 @@ UTgProperty* __fastcall TgPawn__GetProperty::Call(ATgPawn* Pawn, void* edx, int 
 			if (prop->m_nPropertyId == PropertyId) {
 				// LogToFile("C:\\mylog.txt", "Pawn::GetProperty(%d) FOUND", PropertyId);
 				Logger::Log("debug", "Found property %d with values %f/%f\n", PropertyId, prop->m_fRaw, prop->m_fMaximum);
+
+				if (prop->m_nPropertyId == 51) {
+					Pawn->Health = prop->m_fRaw;
+					Pawn->r_nHealthMaximum = prop->m_fMaximum;
+
+					ATgRepInfo_Player* RepInfo = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+					if (RepInfo != nullptr) {
+						RepInfo->r_nHealthCurrent = prop->m_fRaw;
+						RepInfo->r_nHealthMaximum = prop->m_fMaximum;
+					}
+				} else if (prop->m_nPropertyId == 243) {
+					Pawn->r_fCurrentPowerPool = prop->m_fRaw;
+					Pawn->r_fMaxPowerPool = prop->m_fMaximum;
+				}
+
+
 				return prop;
 			}
 		}

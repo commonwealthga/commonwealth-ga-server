@@ -43,63 +43,7 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 	// LogToFile("C:\\mylog.txt", "CMarshal_get_string:      result   =  %u      %s", result, tmp);
 
 	if (strncmp(tmp, "HELLO", 5) == 0) {
-		// if (!Globals::Get().GWorld) {
-
-		// 	void* NetDriver = *(void**)((char*)Connection + 0x70);
-		// 	void* Notify = *(void**)((char*)NetDriver + 0x54);
-		// 	Globals::Get().GWorld = reinterpret_cast<UWorld*>((char*)Notify - 0x3C);
-		// // }
-
-		// if (!Globals::Get().GWorldInfo) {
-			// Globals::Get().GWorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
-			// Logger::Log("debug", "WorldInfo: %s\n", ((AWorldInfo*)Globals::Get().GWorldInfo)->GetFullName());
-		// }
-		// for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-		// 	if (UObject::GObjObjects()->Data[i]) {
-		// 		UObject* obj = UObject::GObjObjects()->Data[i];
-		// 		if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgBotFactory") == 0) {
-		// 			ATgBotFactory* botfactory = reinterpret_cast<ATgBotFactory*>(obj);
-		// 			if (botfactory->WorldInfo == nullptr) {
-		// 				botfactory->WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
-		// 			}
-		//
-		// 			botfactory->SpawnBot();
-		// 			// botfactory->SpawnBot();
-		// 			// botfactory->SpawnBot();
-		// 			// botfactory->SpawnBot();
-		// 			// botfactory->SpawnBot();
-		// 			// botfactory->SpawnBot();
-		// 			// botfactory->SpawnBot();
-		// 		}
-		// 	}
-		// }
-
-		// random sm manager start
-		// AWorldInfo* worldinfo = nullptr;
-		// for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-		// 	if (UObject::GObjObjects()->Data[i]) {
-		// 		UObject* obj = UObject::GObjObjects()->Data[i];
-		// 		if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMManager") == 0) {
-		// 			ATgRandomSMManager* randomactor = reinterpret_cast<ATgRandomSMManager*>(obj);
-		// 			if (randomactor->WorldInfo == nullptr) {
-		// 				randomactor->WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
-		// 			}
-		//
-		// 			randomactor->ManageRandomSMActors();
-		// 			Logger::Log("debug", "ManageRandomSMActors() called\n");
-		//
-		// 			break;
-		// 		}
-		// 	}
-		// }
-		// AGameReplicationInfo* gamerep = worldinfo->GRI;
-		// void* randomsmsettings = *(void**)((char*)gamerep + 0x438);
-		// void* randomsmsettingsarr = *(void**)((char*)randomsmsettings + 0x10);
-		// void* randomsmsettingsarr4 = *(void**)((char*)randomsmsettingsarr + 0x4);
-		// Logger::DumpMemory("randomsmsettings", randomsmsettingsarr4, 0x300, 0);
-		// random sm manager end
-
-		// bPlayerConnected = true;
+		
 
 		*(uint32_t*)((char*)Connection + 0xF4) = 4869; // set Connection->NegotiatedVersion
 
@@ -161,19 +105,19 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 	} else if (strncmp(tmp, "JOIN", 4) == 0) {
 
 		// todo: check if this is even needed
-		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
-			if (UObject::GObjObjects()->Data[i]) {
-				UObject* obj = UObject::GObjObjects()->Data[i];
-				if (strcmp(obj->GetFullName(), "Function TgGame.TgPlayerController.ClientEnterStartState") == 0) {
-					UFunction* func = (UFunction*)obj;
-					func->FunctionFlags &= ~0x00000002;
-					// func->FunctionFlags |= 0x40 | 0x200000;
-
-					// LogToFile("C:\\mylog.txt", "Function TgGame.TgPlayerController.ClientEnterStartState flags updated");
-					break;
-				}
-			}
-		}
+		// for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+		// 	if (UObject::GObjObjects()->Data[i]) {
+		// 		UObject* obj = UObject::GObjObjects()->Data[i];
+		// 		if (strcmp(obj->GetFullName(), "Function TgGame.TgPlayerController.ClientEnterStartState") == 0) {
+		// 			UFunction* func = (UFunction*)obj;
+		// 			func->FunctionFlags &= ~0x00000002;
+		// 			// func->FunctionFlags |= 0x40 | 0x200000;
+		//
+		// 			// LogToFile("C:\\mylog.txt", "Function TgGame.TgPlayerController.ClientEnterStartState flags updated");
+		// 			break;
+		// 		}
+		// 	}
+		// }
 
 		FString portal = FString(*(FString*)((char*)Connection + 0xF8));
 
@@ -199,6 +143,7 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 		FURL__Constructor::CallOriginal(&requesturl, nullptr, nullptr, params2.data(), 0);
 
 		ATgPlayerController* newcontrollerptr = World__SpawnPlayActor::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, connplayer, 2, &requesturl, &error, 0);
+		connplayer->Actor = newcontrollerptr;
 
 		// LogFString(error);
 
@@ -206,193 +151,13 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 
 		if (newcontrollerptr) {
 			MarshalChannel__NotifyControlMessage::HandlePlayerConnected(Connection, newcontrollerptr);
-
-			// for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-			// 	if (UObject::GObjObjects()->Data[i]) {
-			// 		UObject* obj = UObject::GObjObjects()->Data[i];
-			//
-			// 		if (strstr(obj->GetFullName(), "Default__")) {
-			// 			continue;
-			// 		}
-			//
-			// 		if (
-			// 			strcmp(obj->Class->GetFullName(), "Class TgGame.TgMissionObjective_Bot") == 0
-			// 			|| strcmp(obj->Class->GetFullName(), "Class TgGame.TgPawn_Character") == 0
-			// 		) {
-			// 			AActor* actor = reinterpret_cast<AActor*>(obj);
-			// 			if (newcontrollerptr->Pawn == actor) {
-			// 				continue;
-			// 			}
-			//
-			// 			if (actor->Owner == nullptr) {
-			// 				actor->Owner = (AWorldInfo*)Globals::Get().GWorldInfo;
-			// 			}else if (actor->Owner->Owner == nullptr) {
-			// 				actor->Owner->Owner = (AWorldInfo*)Globals::Get().GWorldInfo;
-			// 			}
-			//
-			// 			// Logger::Log("debug", "Actor %s:\n", actor->GetFullName());
-			// 			// if (actor->Base == nullptr) {
-			// 			// 	Logger::Log("debug", "Actor->Base is null\n");
-			// 			// } else {
-			// 			// 	Logger::Log("debug", "Actor->Base %s\n", actor->Base->GetFullName());
-			// 			// }
-			// 			// if (actor->Owner == nullptr) {
-			// 			// 	Logger::Log("debug", "Actor->Owner is null\n");
-			// 			// } else {
-			// 			// 	Logger::Log("debug", "Actor->Owner %s\n", actor->Owner->GetFullName());
-			// 			// }
-			// 			//
-			// 			// if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgPawn_Character") == 0) {
-			// 			// 	ATgPawn_Character* pawn = reinterpret_cast<ATgPawn_Character*>(obj);
-			// 			// 	if (pawn->Owner && strcmp(pawn->Owner->GetFullName(), "Class TgGame.TgAIController") == 0) {
-			// 			// 		Logger::Log("debug", "Found AI pawn\n");
-			// 			// 		if (pawn->Owner->Owner == nullptr) {
-			// 			// 			Logger::Log("debug", "Pawn->Owner->Owner is null\n");
-			// 			// 			pawn->Owner->Owner = (AWorldInfo*)Globals::Get().GWorldInfo;
-			// 			// 		} else {
-			// 			// 			Logger::Log("debug", "Pawn->Owner->Owner %s\n", pawn->Owner->Owner->GetFullName());
-			// 			// 		}
-			// 			// 	}
-			// 			// }
-			//
-			// 			actor->bSkipActorPropertyReplication = 0;
-			// 			actor->bNetInitial = 1;
-			// 			actor->bNetDirty = 1;
-			// 			actor->bForceNetUpdate = 1;
-			// 			actor->bOnlyDirtyReplication = 0;
-			//
-			// 			// // if (actor->Base == nullptr) {
-			// 			// 	AWorldInfo* WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
-			// 			// 	actor->Base = WorldInfo;
-			// 			// 	actor->bNetInitial = 1;
-			// 			// 	actor->bNetDirty = 1;
-			// 			// 	actor->bForceNetUpdate = 1;
-			// 			// 	Logger::Log("debug", "Actor %s", actor->GetFullName());
-			// 			// 	Logger::Log("debug", "Actor->Base %s\n", actor->Base->GetFullName());
-			// 			// // }
-			// 			// // if (actor->Owner == nullptr) {
-			// 			// 	// AWorldInfo* WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
-			// 			// 	actor->Owner = WorldInfo;
-			// 			// 	actor->bNetInitial = 1;
-			// 			// 	actor->bNetDirty = 1;
-			// 			// 	actor->bForceNetUpdate = 1;
-			// 			// 	Logger::Log("debug", "Actor %s", actor->GetFullName());
-			// 			// 	Logger::Log("debug", "Actor->Owner %s\n", actor->Owner->GetFullName());
-			// 			// // }
-			// 		}
-			// 	}
-			// }
-
-			// AWorldInfo* worldinfo = nullptr;
-			// for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-			// 	if (UObject::GObjObjects()->Data[i]) {
-			// 		UObject* obj = UObject::GObjObjects()->Data[i];
-			// 		if (
-			// 			FALSE
-			// 			// strcmp(obj->Class->GetFullName(), "Class Engine.Actor") == 0
-			// 			// || strcmp(obj->Class->GetFullName(), "Class Engine.StaticMeshActor") == 0
-			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgStaticMeshActor") == 0
-			// 			|| strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMActor") == 0
-			// 			|| strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMManager") == 0
-			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgDynamicSMActor") == 0
-			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgDynamicDestructible") == 0
-			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgDummyActor") == 0
-			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgInterpActor") == 0
-			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgKActorSpawnable") == 0
-			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgKAssetSpawnable") == 0
-			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgMeshAssembly") == 0
-			// 			// || strcmp(obj->Class->GetFullName(), "Class TgGame.TgDoor") == 0
-			// 		) {
-			// 			AActor* actor = reinterpret_cast<AActor*>(obj);
-			// 			// LogToFile("C:\\serveractors.txt", "%s %d", actor->GetFullName(), actor->NetIndex);
-			// 			actor->bAlwaysRelevant = 1;
-			// 			actor->bNetDirty = 1;
-			// 			actor->bNetInitial = 1;
-			// 			actor->bForceNetUpdate = 1;
-			// 			actor->RemoteRole = 1;
-			// 			actor->Role = 3;
-			// 			actor->NetUpdateFrequency = 0.1f;
-			// 			actor->bSkipActorPropertyReplication = 0;
-			// 			if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMActor") == 0) {
-			// 				ATgRandomSMActor* randomactor = reinterpret_cast<ATgRandomSMActor*>(obj);
-			// 				if (randomactor->WorldInfo == nullptr && worldinfo == nullptr) {
-			//
-			// 					bool bFirstSkipped = false;
-			// 					for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-			// 						if (UObject::GObjObjects()->Data[i]) {
-			// 							if (strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "WorldInfo TheWorld.PersistentLevel.WorldInfo") == 0) {
-			// 								if (!bFirstSkipped) {
-			// 									// LogToFile("C:\\tcplog.txt", "Skipping first WorldInfo");
-			// 									bFirstSkipped = true;
-			// 									continue;
-			// 								}
-			//
-			// 								worldinfo = reinterpret_cast<AWorldInfo*>(UObject::GObjObjects()->Data[i]);
-			//
-			//
-			// 								// LogToFile("C:\\tcplog.txt", "WI found: %s", WI->GetFullName());
-			//
-			// 								// UClass* GameClass = WI->GetGameClass( );
-			// 								// if (GameClass == nullptr) {
-			// 								// 	// LogToFile("C:\\tcplog.txt", "GameClass is nullptr");
-			// 								// 	continue;
-			// 								// }
-			//
-			// 								// LogToFile("C:\\tcplog.txt", "GameClass: %s", GameClass->GetFullName());
-			// 							}
-			// 						}
-			// 					}
-			// 				}
-			// 				randomactor->WorldInfo = worldinfo;
-			// 				randomactor->PostBeginPlay();
-			// 			}
-			// 			if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMManager") == 0) {
-			// 				ATgRandomSMManager* randomactor = reinterpret_cast<ATgRandomSMManager*>(obj);
-			// 				if (randomactor->WorldInfo == nullptr && worldinfo == nullptr) {
-			//
-			// 					bool bFirstSkipped = false;
-			// 					for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-			// 						if (UObject::GObjObjects()->Data[i]) {
-			// 							if (strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "WorldInfo TheWorld.PersistentLevel.WorldInfo") == 0) {
-			// 								if (!bFirstSkipped) {
-			// 									// LogToFile("C:\\tcplog.txt", "Skipping first WorldInfo");
-			// 									bFirstSkipped = true;
-			// 									continue;
-			// 								}
-			//
-			// 								worldinfo = reinterpret_cast<AWorldInfo*>(UObject::GObjObjects()->Data[i]);
-			//
-			//
-			// 								// LogToFile("C:\\tcplog.txt", "WI found: %s", WI->GetFullName());
-			//
-			// 								// UClass* GameClass = WI->GetGameClass( );
-			// 								// if (GameClass == nullptr) {
-			// 								// 	// LogToFile("C:\\tcplog.txt", "GameClass is nullptr");
-			// 								// 	continue;
-			// 								// }
-			//
-			// 								// LogToFile("C:\\tcplog.txt", "GameClass: %s", GameClass->GetFullName());
-			// 							}
-			// 						}
-			// 					}
-			// 				}
-			//
-			// 				randomactor->WorldInfo = worldinfo;
-			// 				randomactor->ManageRandomSMActors();
-			// 				Logger::Log("debug", "ManageRandomSMActors() called\n");
-			// 			}
-			//
-			//
-			// 			continue;
-			// 		}
-			// 	}
-			// }
 		}
 	}
 }
 
 
 void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection* Connection, ATgPlayerController* Controller) {
+	static bool bFirstPlayerSpawned = false;
 
 	ULocalPlayer* connplayer = (ULocalPlayer*)Connection;
 	UWorld* pWorld = (UWorld*)Globals::Get().GWorld;
@@ -409,111 +174,128 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 
 	game->eventPostLogin(newcontroller);
 
-	TcpEvent PlayerPawnSpawned;
-	PlayerPawnSpawned.Type = 1;
-	PlayerPawnSpawned.Pawn = (ATgPawn*)newcontroller->Pawn;
-	GTcpEvents.push_back(PlayerPawnSpawned);
+	newcontroller->ResetForceViewTarget();
 
-	if (GTeamsData.Attackers->r_BeaconManager->r_Beacon == nullptr) {
-		if (GTeamsData.BeaconAttackers) {
-			GTeamsData.Attackers->r_BeaconManager->r_Beacon = GTeamsData.BeaconAttackers;
-			GTeamsData.Attackers->r_BeaconManager->r_TaskForce = GTeamsData.Attackers;
-			GTeamsData.Attackers->r_BeaconManager->bNetDirty = 1;
-			GTeamsData.Attackers->r_BeaconManager->bForceNetUpdate = 1;
-			GTeamsData.Attackers->r_BeaconManager->bNetInitial = 1;
-			GTeamsData.BeaconAttackers->r_DRI->r_TaskforceInfo = GTeamsData.Attackers;
-			GTeamsData.Attackers->r_BeaconManager->RegisterBeacon(GTeamsData.BeaconAttackers, 1);
-			if (GTeamsData.BeaconEntranceAttackers) {
-				GTeamsData.BeaconEntranceAttackers->r_DRI->r_TaskforceInfo = GTeamsData.Attackers;
-				// LogToFile("C:\\mylog.txt", "Attackers beacon entrance taskforce set");
+	// TcpEvent PlayerPawnSpawned;
+	// PlayerPawnSpawned.Type = 1;
+	// PlayerPawnSpawned.Pawn = (ATgPawn*)newcontroller->Pawn;
+	// GTcpEvents.push_back(PlayerPawnSpawned);
+
+
+
+	if (!bFirstPlayerSpawned) {
+		bFirstPlayerSpawned = true;
+
+		if (GTeamsData.Attackers->r_BeaconManager->r_Beacon == nullptr) {
+			if (GTeamsData.BeaconAttackers) {
+				GTeamsData.Attackers->r_BeaconManager->r_Beacon = GTeamsData.BeaconAttackers;
+				GTeamsData.Attackers->r_BeaconManager->r_TaskForce = GTeamsData.Attackers;
+				GTeamsData.Attackers->r_BeaconManager->bNetDirty = 1;
+				GTeamsData.Attackers->r_BeaconManager->bForceNetUpdate = 1;
+				GTeamsData.Attackers->r_BeaconManager->bNetInitial = 1;
+				GTeamsData.Defenders->r_BeaconManager->bAlwaysRelevant = 1;
+				GTeamsData.BeaconAttackers->r_DRI->r_TaskforceInfo = GTeamsData.Attackers;
+				GTeamsData.Attackers->r_BeaconManager->RegisterBeacon(GTeamsData.BeaconAttackers, 1);
+				if (GTeamsData.BeaconEntranceAttackers) {
+					GTeamsData.BeaconEntranceAttackers->r_DRI->r_TaskforceInfo = GTeamsData.Attackers;
+					// ATgRepInfo_Beacon* AttackersBeaconRep = (ATgRepInfo_Beacon*)GTeamsData.BeaconEntranceAttackers->r_DRI;
+					// AttackersBeaconRep->r_bDeployed = 1;
+					// AttackersBeaconRep->r_vLoc = GTeamsData.BeaconAttackers->Location;
+
+					// LogToFile("C:\\mylog.txt", "Attackers beacon entrance taskforce set");
+				}
+				// LogToFile("C:\\mylog.txt", "Attackers beacon set");
+			} else {
+				// LogToFile("C:\\mylog.txt", "Attackers beacon global is null");
 			}
-			// LogToFile("C:\\mylog.txt", "Attackers beacon set");
 		} else {
-			// LogToFile("C:\\mylog.txt", "Attackers beacon global is null");
+			// LogToFile("C:\\mylog.txt", "Attackers beacon is not null");
 		}
-	} else {
-		// LogToFile("C:\\mylog.txt", "Attackers beacon is not null");
-	}
-	if (GTeamsData.Defenders->r_BeaconManager->r_Beacon == nullptr) {
-		if (GTeamsData.BeaconDefenders) {
-			GTeamsData.Defenders->r_BeaconManager->r_TaskForce = GTeamsData.Defenders;
-			GTeamsData.Defenders->r_BeaconManager->r_Beacon = GTeamsData.BeaconDefenders;
-			GTeamsData.Defenders->r_BeaconManager->bNetDirty = 1;
-			GTeamsData.Defenders->r_BeaconManager->bForceNetUpdate = 1;
-			GTeamsData.Defenders->r_BeaconManager->bNetInitial = 1;
-			GTeamsData.BeaconDefenders->r_DRI->r_TaskforceInfo = GTeamsData.Defenders;
-			GTeamsData.Defenders->r_BeaconManager->RegisterBeacon(GTeamsData.BeaconDefenders, 1);
-			if (GTeamsData.BeaconEntranceDefenders) {
-				GTeamsData.BeaconEntranceDefenders->r_DRI->r_TaskforceInfo = GTeamsData.Defenders;
-				// LogToFile("C:\\mylog.txt", "Defenders beacon entrance taskforce set");
+		if (GTeamsData.Defenders->r_BeaconManager->r_Beacon == nullptr) {
+			if (GTeamsData.BeaconDefenders) {
+				GTeamsData.Defenders->r_BeaconManager->r_TaskForce = GTeamsData.Defenders;
+				GTeamsData.Defenders->r_BeaconManager->r_Beacon = GTeamsData.BeaconDefenders;
+				GTeamsData.Defenders->r_BeaconManager->bNetDirty = 1;
+				GTeamsData.Defenders->r_BeaconManager->bForceNetUpdate = 1;
+				GTeamsData.Defenders->r_BeaconManager->bNetInitial = 1;
+				GTeamsData.Defenders->r_BeaconManager->bAlwaysRelevant = 1;
+				GTeamsData.BeaconDefenders->r_DRI->r_TaskforceInfo = GTeamsData.Defenders;
+				GTeamsData.Defenders->r_BeaconManager->RegisterBeacon(GTeamsData.BeaconDefenders, 1);
+				if (GTeamsData.BeaconEntranceDefenders) {
+					GTeamsData.BeaconEntranceDefenders->r_DRI->r_TaskforceInfo = GTeamsData.Defenders;
+					// ATgRepInfo_Beacon* DefendersBeaconRep = (ATgRepInfo_Beacon*)GTeamsData.BeaconEntranceDefenders->r_DRI;
+					// DefendersBeaconRep->r_bDeployed = 1;
+					// DefendersBeaconRep->r_vLoc = GTeamsData.BeaconDefenders->Location;
+
+					// LogToFile("C:\\mylog.txt", "Defenders beacon entrance taskforce set");
+				}
+				// LogToFile("C:\\mylog.txt", "Defenders beacon set");
+			} else {
+				// LogToFile("C:\\mylog.txt", "Defenders beacon global is null");
 			}
-			// LogToFile("C:\\mylog.txt", "Defenders beacon set");
 		} else {
-			// LogToFile("C:\\mylog.txt", "Defenders beacon global is null");
+			// LogToFile("C:\\mylog.txt", "Defenders beacon is not null");
 		}
-	} else {
-		// LogToFile("C:\\mylog.txt", "Defenders beacon is not null");
-	}
 
-	// LogToFile("C:\\mylog.txt", "Attackers taskforce %d", GTeamsData.Attackers->r_nTaskForce);
+		// LogToFile("C:\\mylog.txt", "Attackers taskforce %d", GTeamsData.Attackers->r_nTaskForce);
 
-	if (GTeamsData.Attackers->r_BeaconManager != nullptr) {
-		Logger::Log("debug", "Attackers have beacon manager\n");
-		if (GTeamsData.Attackers->r_BeaconManager->r_TaskForce != nullptr) {
-			Logger::Log("debug", "Attackers beacon manager taskforce %d\n", GTeamsData.Attackers->r_BeaconManager->r_TaskForce->r_nTaskForce);
-		}
-		if (GTeamsData.Attackers->r_BeaconManager->r_Beacon != nullptr) {
-			Logger::Log("debug", "Attackers have beacon\n");
-			if (GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI != nullptr) {
-				Logger::Log("debug", "Attackers beacon has replication info\n");
-				if (GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo != nullptr) {
-					Logger::Log("debug", "Attackers beacon taskforce %d\n", GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo->r_nTaskForce);
+		if (GTeamsData.Attackers->r_BeaconManager != nullptr) {
+			Logger::Log("debug", "Attackers have beacon manager\n");
+			if (GTeamsData.Attackers->r_BeaconManager->r_TaskForce != nullptr) {
+				Logger::Log("debug", "Attackers beacon manager taskforce %d\n", GTeamsData.Attackers->r_BeaconManager->r_TaskForce->r_nTaskForce);
+			}
+			if (GTeamsData.Attackers->r_BeaconManager->r_Beacon != nullptr) {
+				Logger::Log("debug", "Attackers have beacon\n");
+				if (GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI != nullptr) {
+					Logger::Log("debug", "Attackers beacon has replication info\n");
+					if (GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo != nullptr) {
+						Logger::Log("debug", "Attackers beacon taskforce %d\n", GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo->r_nTaskForce);
+					} else {
+						Logger::Log("debug", "Attackers beacon taskforce is null\n");
+					}
 				} else {
-					Logger::Log("debug", "Attackers beacon taskforce is null\n");
+					Logger::Log("debug", "Attackers beacon replication info is null\n");
 				}
 			} else {
-				Logger::Log("debug", "Attackers beacon replication info is null\n");
+				Logger::Log("debug", "Attackers beacon is null\n");
 			}
 		} else {
-			Logger::Log("debug", "Attackers beacon is null\n");
+			Logger::Log("debug", "Attackers do not have beacon manager\n");
 		}
-	} else {
-		Logger::Log("debug", "Attackers do not have beacon manager\n");
-	}
 
-	// todo check count players
-	game->m_fGameMissionTime = 15 * 60;
-	game->m_eTimerState = 0;
-	game->StartGameTimer();
+		game->m_fGameMissionTime = 15 * 60;
+		game->m_eTimerState = 0;
+		game->StartGameTimer();
 
 
-	TArray<USequenceObject*> Events;
-	TArray<int> Indices;
-	AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
-	// AWorldInfo* WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
+		TArray<USequenceObject*> Events;
+		TArray<int> Indices;
+		AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
+		// AWorldInfo* WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
 
-	WorldInfo->GetGameSequence()->FindSeqObjectsByClass(
-		ClassPreloader::GetSeqEventLevelLoadedClass(),
-		1,
-		&Events
-	);
+		WorldInfo->GetGameSequence()->FindSeqObjectsByClass(
+			ClassPreloader::GetSeqEventLevelLoadedClass(),
+			1,
+			&Events
+		);
 
-	for (int i = 0; i < Events.Num(); i++) {
-		USeqEvent_LevelLoaded* Event = (USeqEvent_LevelLoaded*)Events.Data[i];
-		Event->CheckActivate(game, game, 0, 0, Indices);
-	}
+		for (int i = 0; i < Events.Num(); i++) {
+			USeqEvent_LevelLoaded* Event = (USeqEvent_LevelLoaded*)Events.Data[i];
+			Event->CheckActivate(game, game, 0, 0, Indices);
+		}
 
-	TArray<USequenceObject*> Events2;
-	TArray<int> Indices2;
-	WorldInfo->GetGameSequence()->FindSeqObjectsByClass(
-		ClassPreloader::GetTgSeqEventLevelFadedInClass(),
-		1,
-		&Events2
-	);
+		TArray<USequenceObject*> Events2;
+		TArray<int> Indices2;
+		WorldInfo->GetGameSequence()->FindSeqObjectsByClass(
+			ClassPreloader::GetTgSeqEventLevelFadedInClass(),
+			1,
+			&Events2
+		);
 
-	for (int i = 0; i < Events2.Num(); i++) {
-		UTgSeqEvent_LevelFadedIn* Event = (UTgSeqEvent_LevelFadedIn*)Events2.Data[i];
-		Event->CheckActivate(game, game, 0, 0, Indices2);
+		for (int i = 0; i < Events2.Num(); i++) {
+			UTgSeqEvent_LevelFadedIn* Event = (UTgSeqEvent_LevelFadedIn*)Events2.Data[i];
+			Event->CheckActivate(game, game, 0, 0, Indices2);
+		}
 	}
 
 

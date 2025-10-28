@@ -59,6 +59,7 @@ void __fastcall* TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* BeaconFact
 		Beacon->r_bTakeDamage = 1;
 		Beacon->s_bIsActivated = 1;
 		Beacon->m_bIsDeployed = 1;
+		Beacon->bAlwaysRelevant = 1;
 
 		Logger::Log("debug", "trying to init beacon replication info\n");
 		Beacon->eventInitReplicationInfo();
@@ -105,6 +106,7 @@ void __fastcall* TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* BeaconFact
 		BeaconEntrance->SetTaskForceNumber(BeaconFactory->s_nTaskForce);
 		Logger::Log("debug", "beacon task force set\n");
 		BeaconEntrance->Role = 3;
+		BeaconEntrance->bAlwaysRelevant = 1;
 
 		BeaconEntrance->bNetInitial = 1;
 	}

@@ -54000,8 +54000,14 @@ void ATgPlayerController::eventForceKillPawn ( )
 {
 	static UFunction* pFnForceKillPawn = NULL;
 
-	if ( ! pFnForceKillPawn )
-		pFnForceKillPawn = (UFunction*) UObject::GObjObjects()->Data[ 45774 ];
+	if ( ! pFnForceKillPawn ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPlayerController.ForceKillPawn") == 0) {
+				pFnForceKillPawn = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnForceKillPawn = (UFunction*) UObject::GObjObjects()->Data[ 45774 ];
 
 	ATgPlayerController_eventForceKillPawn_Parms ForceKillPawn_Parms;
 
@@ -54195,8 +54201,14 @@ void ATgPlayerController::ResetForceViewTarget ( )
 {
 	static UFunction* pFnResetForceViewTarget = NULL;
 
-	if ( ! pFnResetForceViewTarget )
-		pFnResetForceViewTarget = (UFunction*) UObject::GObjObjects()->Data[ 45750 ];
+	if ( ! pFnResetForceViewTarget ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPlayerController.ResetForceViewTarget") == 0) {
+				pFnResetForceViewTarget = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnResetForceViewTarget = (UFunction*) UObject::GObjObjects()->Data[ 45750 ];
 
 	ATgPlayerController_execResetForceViewTarget_Parms ResetForceViewTarget_Parms;
 
@@ -56338,8 +56350,14 @@ void ATgPlayerController::DoSetViewTarget ( class AActor* NewTarget )
 {
 	static UFunction* pFnDoSetViewTarget = NULL;
 
-	if ( ! pFnDoSetViewTarget )
-		pFnDoSetViewTarget = (UFunction*) UObject::GObjObjects()->Data[ 45406 ];
+	if ( ! pFnDoSetViewTarget ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPlayerController.DoSetViewTarget") == 0) {
+				pFnDoSetViewTarget = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnDoSetViewTarget = (UFunction*) UObject::GObjObjects()->Data[ 45406 ];
 
 	ATgPlayerController_execDoSetViewTarget_Parms DoSetViewTarget_Parms;
 	DoSetViewTarget_Parms.NewTarget = NewTarget;
@@ -58323,8 +58341,14 @@ void ATgPlayerController::SetCorrectViewTarget ( )
 {
 	static UFunction* pFnSetCorrectViewTarget = NULL;
 
-	if ( ! pFnSetCorrectViewTarget )
-		pFnSetCorrectViewTarget = (UFunction*) UObject::GObjObjects()->Data[ 44862 ];
+	if ( ! pFnSetCorrectViewTarget ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPlayerController.SetCorrectViewTarget") == 0) {
+				pFnSetCorrectViewTarget = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnSetCorrectViewTarget = (UFunction*) UObject::GObjObjects()->Data[ 44862 ];
 
 	ATgPlayerController_execSetCorrectViewTarget_Parms SetCorrectViewTarget_Parms;
 
@@ -58340,8 +58364,14 @@ void ATgPlayerController::ServerSetViewTarget ( class AActor* me )
 {
 	static UFunction* pFnServerSetViewTarget = NULL;
 
-	if ( ! pFnServerSetViewTarget )
-		pFnServerSetViewTarget = (UFunction*) UObject::GObjObjects()->Data[ 44860 ];
+	if ( ! pFnServerSetViewTarget ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPlayerController.ServerSetViewTarget") == 0) {
+				pFnServerSetViewTarget = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnServerSetViewTarget = (UFunction*) UObject::GObjObjects()->Data[ 44860 ];
 
 	ATgPlayerController_execServerSetViewTarget_Parms ServerSetViewTarget_Parms;
 	ServerSetViewTarget_Parms.me = me;

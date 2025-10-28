@@ -141,7 +141,11 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 							if ((char*)Bot->InvManager + 0x1f0 == nullptr) {
 								TMap__Allocate::CallOriginal((void*)((char*)Bot->InvManager + 0x1f0));
 							}
+							if ((char*)Bot->InvManager + 0x22c == nullptr) {
+								TMap__Allocate::CallOriginal((void*)((char*)Bot->InvManager + 0x22c));
+							}
 							TgInventoryManager__PrepopulateInventoryId::CallOriginal((void*)((char*)Bot->InvManager + 0x1f0), edx, Device->s_InventoryObject->m_InventoryData.nInvId, Device->s_InventoryObject);
+							TgInventoryManager__PrepopulateInventoryId::CallOriginal((void*)((char*)Bot->InvManager + 0x22c), edx, Device->s_InventoryObject->m_InventoryData.nInvId, Device->s_InventoryObject);
 							
 							// Device = Bot->CreateEquipDevice(nMaxInventoryId, deviceId, equipPoint);
 
@@ -257,10 +261,15 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		if ((char*)newpawn->InvManager + 0x1f0 == nullptr) {
 			TMap__Allocate::CallOriginal((void*)((char*)newpawn->InvManager + 0x1f0));
 		}
+		if ((char*)newpawn->InvManager + 0x22c == nullptr) {
+			TMap__Allocate::CallOriginal((void*)((char*)newpawn->InvManager + 0x22c));
+		}
 		TgInventoryManager__PrepopulateInventoryId::CallOriginal((void*)((char*)newpawn->InvManager + 0x1f0), edx, Device->s_InventoryObject->m_InventoryData.nInvId, Device->s_InventoryObject);
+		TgInventoryManager__PrepopulateInventoryId::CallOriginal((void*)((char*)newpawn->InvManager + 0x22c), edx, Device->s_InventoryObject->m_InventoryData.nInvId, Device->s_InventoryObject);
 
 		Device->SetOwner(newpawn);
 		Device->Base = newpawn;
+		Device->Instigator = newpawn;
 		Device->Role = 3;
 		Device->RemoteRole = 1;
 		Device->bNetInitial = 1;
@@ -268,7 +277,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		Device->bReplicateMovement = 1;
 		Device->bSkipActorPropertyReplication = 0;
 		Device->bOnlyDirtyReplication = 0;
-		Device->bAlwaysRelevant = 1;
+		// Device->bAlwaysRelevant = 1;
 	}
 
 
@@ -416,12 +425,14 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	PlayerController->Pawn = newpawn;
 	newpawn->Controller = PlayerController;
 
+
 	// PlayerController->Role = 3;
 	// PlayerController->RemoteRole = 2;
 	PlayerController->bNetInitial = 1;
 	PlayerController->bNetDirty = 1;
 	PlayerController->bForceNetUpdate = 1;
 	PlayerController->bReplicateMovement = 1;
+
 
 	newpawn->PlayerReplicationInfo = PlayerController->PlayerReplicationInfo;
 
@@ -505,6 +516,14 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	newpawn->r_UIClockState = 0;
 	newpawn->r_UIClockTime = 15 * 60;
+
+	// PlayerController->ViewTarget = newpawn;
+	// if (PlayerController->PlayerCamera != nullptr) {
+	// 	PlayerController->PlayerCamera->ViewTarget.Controller = PlayerController;
+	// 	PlayerController->PlayerCamera->ViewTarget.PRI = newrepplayer;
+	// 	PlayerController->PlayerCamera->ViewTarget.Target = newpawn;
+	// }
+	// PlayerController->RealViewTarget = newrepplayer;
 
 	ATgRepInfo_TaskForce* attackers = GTeamsData.Attackers;
 	ATgRepInfo_TaskForce* defenders = GTeamsData.Defenders;

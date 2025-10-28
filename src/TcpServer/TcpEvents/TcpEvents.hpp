@@ -5,6 +5,7 @@
 struct TcpEvent {
 	int Type;
 	ATgPawn* Pawn;
+	std::vector<std::string> Names;
 };
 
 extern std::vector<TcpEvent> GTcpEvents;

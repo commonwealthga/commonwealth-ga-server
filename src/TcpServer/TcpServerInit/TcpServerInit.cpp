@@ -7,11 +7,8 @@ DWORD WINAPI TcpServerInit::TcpServerThread(LPVOID) {
 		asio::io_context io;
 		std::vector<std::shared_ptr<TcpServer>> servers;
 		servers.push_back(std::make_shared<TcpServer>(io, 9000));
-		// servers.push_back(std::make_shared<Server>(io, 9001));
 		io.run();
 
-		// asio::io_context io;
-		// Server s(io, 9000, 9003);
 		// io.run();
 	} catch (...) {
 		// LogToFile("C:\\tcplog.txt", "[TCP] Exception caught");

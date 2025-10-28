@@ -117,7 +117,7 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void
 			Bot->bNetInitial = 1;
 			Bot->bForceNetUpdate = 1;
 			Bot->bSkipActorPropertyReplication = 0;
-			Bot->bAlwaysRelevant = 1;
+			// Bot->bAlwaysRelevant = 1;
 
 			BotRep->Role = 3;
 			BotRep->RemoteRole = 1;

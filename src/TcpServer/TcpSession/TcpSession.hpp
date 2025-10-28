@@ -8,6 +8,8 @@
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
+#include "src/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.hpp"
+
 class TcpSession : public std::enable_shared_from_this<TcpSession> {
 public:
     TcpSession(asio::ip::tcp::socket socket)
@@ -178,17 +180,12 @@ private:
 				if (GTcpEvents.size() > 0) {
 					TcpEvent event = GTcpEvents[0];
 					if (event.Type == 1) {
-						Logger::Log("tcp", "[%s] Received: RELAY_LOG [0x%04X], item count: %d, sending inventory for pawn %d\n", Logger::GetTime(), packet_type, item_count, event.Pawn->r_nPawnId);
-						send_inventory_response(event.Pawn->r_nPawnId);
+						Logger::Log("tcp", "[%s] Received: RELAY_LOG [0x%04X], item count: %d, sending random SM settings\n", Logger::GetTime(), packet_type, item_count);
+						if (event.Names.size() > 0) {
+							send_map_randomsm_settings_response(event.Names);
+						}
 						GTcpEvents.erase(GTcpEvents.begin());
-
-						TcpEvent next;
-						next.Type = 2;
-						GTcpEvents.push_back(next);
-					} else if (event.Type == 2) {
-						Logger::Log("tcp", "[%s] Received: RELAY_LOG [0x%04X], item count: %d, sending character inventory\n", Logger::GetTime(), packet_type, item_count);
-						send_character_inventory_response();
-						GTcpEvents.erase(GTcpEvents.begin());
+					}
 
 					// 	TcpEvent next;
 					// 	next.Type = 3;
@@ -198,7 +195,6 @@ private:
 					// 	send_map_randomsm_settings_response();
 					//
 					// 	GTcpEvents.erase(GTcpEvents.begin());
-					}
 				}
 
 				break;
@@ -207,6 +203,13 @@ private:
 				send_select_character_response();
 				Sleep(1000);
 				send_go_play_response();
+				while (!TgGame__LoadGameConfig::bRandomSMSettingsLoaded) {
+					Sleep(100);
+				}
+
+				if (TgGame__LoadGameConfig::m_randomSMSettings.size() > 0) {
+					send_map_randomsm_settings_response(TgGame__LoadGameConfig::m_randomSMSettings);
+				}
 
 				// Sleep(1);
 				// send_marshal_channel_response();
@@ -246,6 +249,26 @@ private:
 				break;
 		}
     }
+
+	void send_map_randomsm_settings_response(std::vector<std::string> names) {
+		std::vector<uint8_t> response;
+
+		uint16_t packet_type = GA_U::MAP_RANDOMSM_SETTINGS;
+		uint16_t item_count = 1;
+
+		append(response, packet_type & 0xFF, packet_type >> 8);
+		append(response, item_count & 0xFF, item_count >> 8);
+
+		append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);        // type 010C
+		append(response, names.size(), 0x00);
+
+		for (auto name : names) {
+			append(response, 0x01, 0x00);  // inner item count
+			WriteString(response, GA_T::NAME, name);
+		}
+
+		send_response(response);
+	}
 
 	void send_get_loot_table_items_by_id_filtered_response() {
 		std::vector<uint8_t> response;

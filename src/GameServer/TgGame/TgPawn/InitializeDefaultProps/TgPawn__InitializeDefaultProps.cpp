@@ -2,12 +2,16 @@
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/TgGame/TgProperty/ConstructTgProperty/TgProperty__ConstructTgProperty.hpp"
+#include "src/GameServer/Core/TMap/Allocate/TMap__Allocate.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	// LogToFile("C:\\mylog.txt", "MINE TgPawn::InitializeDefaultProps START");
 	Logger::Log("debug", "MINE TgPawn::InitializeDefaultProps START\n");
 
+	if ((char*)Pawn + 0x400 == nullptr) {
+		TMap__Allocate::CallOriginal((void*)((char*)Pawn + 0x400));
+	}
 
 	UTgProperty* property_health = (UTgProperty*)TgProperty__ConstructTgProperty::CallOriginal(
 		ClassPreloader::GetTgPropertyClass(), -1, 0, 0,0,0,0,0,0);

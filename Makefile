@@ -2,7 +2,7 @@
 SOURCE_FILES= \
 			  $(SRC_DIR)/Config/Config.cpp \
 			  \
-			  $(SRC_DIR)/Utils/Logger/Logger/NullLogger.cpp \
+			  $(SRC_DIR)/Utils/Logger/Logger/FileLogger.cpp \
 			  $(SRC_DIR)/Utils/CommandLineParser/CommandLineParser.cpp \
 			  \
 			  $(SRC_DIR)/Database/Database.cpp \
@@ -31,6 +31,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/IsReadyForStart/TgPlayerController__IsReadyForStart.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/SetSoundMode/TgPlayerController__SetSoundMode.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/CanPlayerUseVolume/TgPlayerController__CanPlayerUseVolume.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/GetViewTarget/TgPlayerController__GetViewTarget.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBotPawn/TgGame__SpawnBotPawn.cpp \
