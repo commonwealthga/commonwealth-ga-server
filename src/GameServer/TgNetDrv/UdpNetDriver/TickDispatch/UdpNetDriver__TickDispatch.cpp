@@ -166,6 +166,10 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 				VirtualProtect(&vtable[0x120 / 4], sizeof(void*), PAGE_EXECUTE_READWRITE, &oldProtect);
 				vtable[0x120 / 4] = (void*)&NetConnection__LowLevelGetRemoteAddress::Call;
 				VirtualProtect(&vtable[0x120 / 4], sizeof(void*), oldProtect, &oldProtect);
+
+				VirtualProtect(&vtable[0x12C / 4], sizeof(void*), PAGE_EXECUTE_READWRITE, &oldProtect);
+				vtable[0x12C / 4] = (void*)0x1092d6b0; // NetConnection::SendMarshal
+				VirtualProtect(&vtable[0x12C / 4], sizeof(void*), oldProtect, &oldProtect);
 			}
 
 			Logger::Log("debug", "about to call notify accepted connection\n");

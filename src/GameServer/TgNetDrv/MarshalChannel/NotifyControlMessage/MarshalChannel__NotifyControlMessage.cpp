@@ -6,6 +6,8 @@
 #include "src/GameServer/Engine/PackageMap/Compute/PackageMap__Compute.hpp"
 #include "src/GameServer/Engine/FURL/Constructor/FURL__Constructor.hpp"
 #include "src/GameServer/Engine/World/SpawnPlayActor/World__SpawnPlayActor.hpp"
+#include "src/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.hpp"
+#include "src/GameServer/Misc/CGameClient/SendMapRandomSMSettingsMarshal/CGameClient__SendMapRandomSMSettingsMarshal.hpp"
 #include "src/GameServer/Misc/CAmOmegaVolume/LoadOmegaVolumeMarshal/CAmOmegaVolume__LoadOmegaVolumeMarshal.hpp"
 #include "src/TcpServer/TcpEvents/TcpEvents.hpp"
 #include "src/GameServer/Globals.hpp"
@@ -40,7 +42,7 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 	wcstombs(tmp, local_410, sizeof(tmp));
 	tmp[sizeof(tmp)-1] = '\0';
 
-	// LogToFile("C:\\mylog.txt", "CMarshal_get_string:      result   =  %u      %s", result, tmp);
+	// Logger::Log("wtf", "\n\n[MarshalChannel__NotifyControlMessage]: %s\n", tmp);
 
 	if (strncmp(tmp, "HELLO", 5) == 0) {
 		
@@ -51,6 +53,8 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 		PackageMap__Compute::CallOriginal(PackageMap);
 
 		World__WelcomePlayer::CallOriginal((UWorld*)Globals::Get().GWorld, edx, Connection);
+
+
 	} else if (strncmp(tmp, "HAVE", 4) == 0) {
 		// example message: "HAVE GUID=AA108FEF49E725083C1214A5E56117F7 GEN=2"
 		std::string msg(tmp); // copy
@@ -165,6 +169,20 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	void* gameinfoptr = World__GetGameInfo::CallOriginal((UWorld*)pWorld);
 	ATgGame* game = reinterpret_cast<ATgGame*>(gameinfoptr);
 	ATgRepInfo_Game* gamerep = reinterpret_cast<ATgRepInfo_Game*>(game->GameReplicationInfo);
+
+
+	// for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+	// 	if (UObject::GObjObjects()->Data[i]) {
+	// 		UObject* obj = UObject::GObjObjects()->Data[i];
+	// 		if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMActor") == 0) {
+	// 			ATgRandomSMActor* RandomSMActor = reinterpret_cast<ATgRandomSMActor*>(obj);
+	// 			Logger::Log("wtf", "%d hiddengame: %d\n", i, RandomSMActor->StaticMeshComponent->HiddenGame);
+	// 		}
+	// 	}
+	// }
+
+	CGameClient__SendMapRandomSMSettingsMarshal::Call(Connection, (void*)(gamerep->s_pRandomSMSettings.Dummy));
+	// Logger::DumpMemory("wtf", (void*)(gamerep->s_pRandomSMSettings.Dummy ), 0x1000, 0);
 
 	ATgPlayerController* newcontroller = reinterpret_cast<ATgPlayerController*>(Controller);
 	ATgPawn_Character* newpawn = NULL;

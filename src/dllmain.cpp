@@ -11,6 +11,7 @@
 #include "src/GameServer/TgNetDrv/UdpNetDriver/InitListen/UdpNetDriver__InitListen.hpp"
 #include "src/GameServer/TgNetDrv/UdpNetDriver/TickDispatch/UdpNetDriver__TickDispatch.hpp"
 #include "src/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.hpp"
+#include "src/GameServer/TgNetDrv/MarshalChannel/MarshalReceived/MarshalChannel__MarshalReceived.hpp"
 #include "src/GameServer/TgNetDrv/MarshalChannel/NotifyControlMessage/MarshalChannel__NotifyControlMessage.hpp"
 #include "src/GameServer/Engine/ActorChannel/ReceivedBunch/CanExecute/ActorChannel__ReceivedBunch__CanExecute.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/IsReadyForStart/TgPlayerController__IsReadyForStart.hpp"
@@ -48,6 +49,7 @@
 #include "src/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.hpp"
 #include "src/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective_Bot/SpawnObjectiveBot/TgMissionObjective_Bot__SpawnObjectiveBot.hpp"
+#include "src/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.hpp"
 #include "src/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.hpp"
 #include "src/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.hpp"
 #include "src/GameServer/Misc/CMarshal/GetString2/CMarshal__GetString2.hpp"
@@ -81,6 +83,7 @@ unsigned long ModuleThread( void* ) {
 	UdpNetDriver__InitListen::Install();
 	UdpNetDriver__TickDispatch::Install();
 	NetConnection__LowLevelSend::Install();
+	// MarshalChannel__MarshalReceived::Install();
 	MarshalChannel__NotifyControlMessage::Install();
 	ActorChannel__ReceivedBunch__CanExecute::Install();
 	Actor__GetOptimizedRepList::Install();
@@ -122,6 +125,7 @@ unsigned long ModuleThread( void* ) {
 	TgMissionObjective_Bot__SpawnObjectiveBot::Install();
 
 	// data collection
+	CGameClient__MarshalReceived::Install();
 	CMarshal__GetByte::Install();
 	CMarshal__GetInt32t::Install();
 	CMarshal__GetString2::Install();

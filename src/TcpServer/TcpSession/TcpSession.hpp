@@ -203,13 +203,13 @@ private:
 				send_select_character_response();
 				Sleep(1000);
 				send_go_play_response();
-				while (!TgGame__LoadGameConfig::bRandomSMSettingsLoaded) {
-					Sleep(100);
-				}
-
-				if (TgGame__LoadGameConfig::m_randomSMSettings.size() > 0) {
-					send_map_randomsm_settings_response(TgGame__LoadGameConfig::m_randomSMSettings);
-				}
+				// while (!TgGame__LoadGameConfig::bRandomSMSettingsLoaded) {
+				// 	Sleep(100);
+				// }
+				//
+				// if (TgGame__LoadGameConfig::m_randomSMSettings.size() > 0) {
+				// 	send_map_randomsm_settings_response(TgGame__LoadGameConfig::m_randomSMSettings);
+				// }
 
 				// Sleep(1);
 				// send_marshal_channel_response();
