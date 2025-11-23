@@ -9,7 +9,9 @@ class LoadStartupPackages : public HookBase<
 public:
     static void __stdcall Call();
 	static inline void __stdcall CallOriginal() {
-		return m_original();
+		LogCallOriginalBegin();
+		m_original();
+		LogCallOriginalEnd();
 	}
 };
 

@@ -10,7 +10,13 @@ class World__GetWorldInfo : public HookBase<
 public:
 	static AWorldInfo* __fastcall Call(UWorld* World, void* edx, int Param1);
 	static inline AWorldInfo* __fastcall CallOriginal(UWorld* World, void* edx, int Param1) {
-		return m_original(World, edx, Param1);
+		LogCallOriginalBegin();
+
+		AWorldInfo* result = m_original(World, edx, Param1);
+
+		LogCallOriginalEnd();
+
+		return result;
 	}
 };
 

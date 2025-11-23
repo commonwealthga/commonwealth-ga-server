@@ -10,7 +10,9 @@ class TgGame__InitGameRepInfo : public HookBase<
 public:
 	static void __fastcall* Call(ATgGame* Game, void* edx);
 	static inline void __fastcall* CallOriginal(ATgGame* Game, void* edx) {
+		LogCallOriginalBegin();
 		m_original(Game, edx);
+		LogCallOriginalEnd();
 	}
 };
 

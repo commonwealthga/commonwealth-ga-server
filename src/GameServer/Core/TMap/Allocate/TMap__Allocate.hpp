@@ -10,7 +10,10 @@ class TMap__Allocate : public HookBase<
 public:
 	static void* __fastcall Call(void* Pointer);
 	static inline void* __fastcall CallOriginal(void* Pointer) {
-		return m_original(Pointer);
+		LogCallOriginalBegin();
+		void* result = m_original(Pointer);
+		LogCallOriginalEnd();
+		return result;
 	};
 };
 

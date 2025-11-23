@@ -9,7 +9,10 @@ class ServerCommandlet__Main : public HookBase<
 public:
 	static int __stdcall Call();
 	static inline int __stdcall CallOriginal() {
-		return m_original();
+		LogCallOriginalBegin();
+		int result = m_original();
+		LogCallOriginalEnd();
+		return result;
 	}
 };
 

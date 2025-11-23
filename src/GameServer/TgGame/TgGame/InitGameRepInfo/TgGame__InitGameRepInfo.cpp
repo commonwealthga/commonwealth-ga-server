@@ -5,7 +5,7 @@
 #include "src/Utils/Logger/Logger.hpp"
 
 void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
-	Logger::Log("debug", "MINE TgGame::InitGameRepInfo START\n");
+	LogCallBegin();
 	// LogToFile("C:\\mylog.txt", "MINE TgGame::InitGameRepInfo START");
 
 	Globals::Get().GGameInfo = (void*)Game;
@@ -38,6 +38,202 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		gamerep->r_nMaxRoundNumber = 5;
 		gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
 
+
+		char* GameClassName = Game->Class->GetFullName();
+
+		if (strcmp(GameClassName, "Class TgGame.TgGame_Defense") == 0) {
+			gamerep->r_bIsRaid = 1;
+			gamerep->r_bIsMission = 1;
+			gamerep->r_bIsPVP = 0;
+			gamerep->r_bIsTraining = 0;
+			gamerep->r_bIsTutorialMap = 0;
+			gamerep->r_bIsArena = 0;
+			gamerep->r_bIsMatch = 1;
+			gamerep->r_bIsTerritoryMap = 0;
+			gamerep->r_bIsOpenWorld = 0;
+			gamerep->r_bAllowBuildMorale = 1;
+			gamerep->r_bActiveCombat = 1;
+			gamerep->r_bAllowPlayerRelease = 1;
+			gamerep->r_bDefenseAlarm = 0;
+			gamerep->r_bInOverTime = 0;
+			gamerep->r_nSecsToAutoReleaseAttackers = 5;// Game->m_nSecsToAutoReleaseAttackers;
+			gamerep->r_nSecsToAutoReleaseDefenders = 5;//Game->m_nSecsToAutoReleaseDefenders;
+			gamerep->r_nReleaseDelay = 3;
+			gamerep->r_nPointsToWin = 3;
+			gamerep->r_nRoundNumber = 1;
+			gamerep->r_nMaxRoundNumber = 5;
+			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+		}
+
+		if (strcmp(GameClassName, "Class TgGame.TgGame_PointRotation") == 0) {
+			gamerep->r_bIsRaid = 0;
+			gamerep->r_bIsMission = 1;
+			gamerep->r_bIsPVP = 1;
+			gamerep->r_bIsTraining = 0;
+			gamerep->r_bIsTutorialMap = 0;
+			gamerep->r_bIsArena = 1;
+			gamerep->r_bIsMatch = 1;
+			gamerep->r_bIsTerritoryMap = 0;
+			gamerep->r_bIsOpenWorld = 0;
+			gamerep->r_bAllowBuildMorale = 1;
+			gamerep->r_bActiveCombat = 1;
+			gamerep->r_bAllowPlayerRelease = 1;
+			gamerep->r_bDefenseAlarm = 1;
+			gamerep->r_bInOverTime = 0;
+			gamerep->r_nSecsToAutoReleaseAttackers = 5;// Game->m_nSecsToAutoReleaseAttackers;
+			gamerep->r_nSecsToAutoReleaseDefenders = 5;//Game->m_nSecsToAutoReleaseDefenders;
+			gamerep->r_nReleaseDelay = 3;
+			gamerep->r_nPointsToWin = 3;
+			gamerep->r_nRoundNumber = 1;
+			gamerep->r_nMaxRoundNumber = 5;
+			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+		}
+
+		if (strcmp(GameClassName, "Class TgGame.TgGame_Mission") == 0) {
+			gamerep->r_bIsRaid = 0;
+			gamerep->r_bIsMission = 1;
+			gamerep->r_bIsPVP = 1;
+			gamerep->r_bIsTraining = 0;
+			gamerep->r_bIsTutorialMap = 0;
+			gamerep->r_bIsArena = 1;
+			gamerep->r_bIsMatch = 1;
+			gamerep->r_bIsTerritoryMap = 0;
+			gamerep->r_bIsOpenWorld = 0;
+			gamerep->r_bAllowBuildMorale = 1;
+			gamerep->r_bActiveCombat = 1;
+			gamerep->r_bAllowPlayerRelease = 1;
+			gamerep->r_bDefenseAlarm = 1;
+			gamerep->r_bInOverTime = 0;
+			gamerep->r_nSecsToAutoReleaseAttackers = 5;// Game->m_nSecsToAutoReleaseAttackers;
+			gamerep->r_nSecsToAutoReleaseDefenders = 5;//Game->m_nSecsToAutoReleaseDefenders;
+			gamerep->r_nReleaseDelay = 3;
+			gamerep->r_nPointsToWin = 3;
+			gamerep->r_nRoundNumber = 1;
+			gamerep->r_nMaxRoundNumber = 5;
+			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+		}
+
+		if (strcmp(GameClassName, "Class TgGame.TgGame_City") == 0) {
+			gamerep->r_bIsRaid = 0;
+			gamerep->r_bIsMission = 0;
+			gamerep->r_bIsPVP = 0;
+			gamerep->r_bIsTraining = 0;
+			gamerep->r_bIsTutorialMap = 0;
+			gamerep->r_bIsArena = 0;
+			gamerep->r_bIsMatch = 0;
+			gamerep->r_bIsTerritoryMap = 0;
+			gamerep->r_bIsOpenWorld = 1;
+			gamerep->r_bAllowBuildMorale = 0;
+			gamerep->r_bActiveCombat = 0;
+			gamerep->r_bAllowPlayerRelease = 1;
+			gamerep->r_bDefenseAlarm = 1;
+			gamerep->r_bInOverTime = 0;
+			gamerep->r_nSecsToAutoReleaseAttackers = 5;// Game->m_nSecsToAutoReleaseAttackers;
+			gamerep->r_nSecsToAutoReleaseDefenders = 5;//Game->m_nSecsToAutoReleaseDefenders;
+			gamerep->r_nReleaseDelay = 3;
+			gamerep->r_nPointsToWin = 0;
+			gamerep->r_nRoundNumber = 0;
+			gamerep->r_nMaxRoundNumber = 0;
+			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+		}
+
+		if (strcmp(GameClassName, "Class TgGame.TgGame_OpenWorldPVE") == 0) {
+			gamerep->r_bIsRaid = 0;
+			gamerep->r_bIsMission = 0;
+			gamerep->r_bIsPVP = 0;
+			gamerep->r_bIsTraining = 0;
+			gamerep->r_bIsTutorialMap = 0;
+			gamerep->r_bIsArena = 0;
+			gamerep->r_bIsMatch = 0;
+			gamerep->r_bIsTerritoryMap = 0;
+			gamerep->r_bIsOpenWorld = 1;
+			gamerep->r_bAllowBuildMorale = 1;
+			gamerep->r_bActiveCombat = 1;
+			gamerep->r_bAllowPlayerRelease = 1;
+			gamerep->r_bDefenseAlarm = 1;
+			gamerep->r_bInOverTime = 0;
+			gamerep->r_nSecsToAutoReleaseAttackers = 5;// Game->m_nSecsToAutoReleaseAttackers;
+			gamerep->r_nSecsToAutoReleaseDefenders = 5;//Game->m_nSecsToAutoReleaseDefenders;
+			gamerep->r_nReleaseDelay = 3;
+			gamerep->r_nPointsToWin = 0;
+			gamerep->r_nRoundNumber = 0;
+			gamerep->r_nMaxRoundNumber = 0;
+			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+		}
+
+		if (strcmp(GameClassName, "Class TgGame.TgGame_Escort") == 0) {
+			gamerep->r_bIsRaid = 0;
+			gamerep->r_bIsMission = 1;
+			gamerep->r_bIsPVP = 1;
+			gamerep->r_bIsTraining = 0;
+			gamerep->r_bIsTutorialMap = 0;
+			gamerep->r_bIsArena = 1;
+			gamerep->r_bIsMatch = 1;
+			gamerep->r_bIsTerritoryMap = 0;
+			gamerep->r_bIsOpenWorld = 0;
+			gamerep->r_bAllowBuildMorale = 1;
+			gamerep->r_bActiveCombat = 1;
+			gamerep->r_bAllowPlayerRelease = 1;
+			gamerep->r_bDefenseAlarm = 1;
+			gamerep->r_bInOverTime = 0;
+			gamerep->r_nSecsToAutoReleaseAttackers = 5;// Game->m_nSecsToAutoReleaseAttackers;
+			gamerep->r_nSecsToAutoReleaseDefenders = 5;//Game->m_nSecsToAutoReleaseDefenders;
+			gamerep->r_nReleaseDelay = 3;
+			gamerep->r_nPointsToWin = 3;
+			gamerep->r_nRoundNumber = 1;
+			gamerep->r_nMaxRoundNumber = 3;
+			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+		}
+
+		if (strcmp(GameClassName, "Class TgGame.TgGame_Ticket") == 0) {
+			gamerep->r_bIsRaid = 0;
+			gamerep->r_bIsMission = 1;
+			gamerep->r_bIsPVP = 1;
+			gamerep->r_bIsTraining = 0;
+			gamerep->r_bIsTutorialMap = 0;
+			gamerep->r_bIsArena = 1;
+			gamerep->r_bIsMatch = 1;
+			gamerep->r_bIsTerritoryMap = 0;
+			gamerep->r_bIsOpenWorld = 0;
+			gamerep->r_bAllowBuildMorale = 1;
+			gamerep->r_bActiveCombat = 1;
+			gamerep->r_bAllowPlayerRelease = 1;
+			gamerep->r_bDefenseAlarm = 1;
+			gamerep->r_bInOverTime = 0;
+			gamerep->r_nSecsToAutoReleaseAttackers = 5;// Game->m_nSecsToAutoReleaseAttackers;
+			gamerep->r_nSecsToAutoReleaseDefenders = 5;//Game->m_nSecsToAutoReleaseDefenders;
+			gamerep->r_nReleaseDelay = 3;
+			gamerep->r_nPointsToWin = 3;
+			gamerep->r_nRoundNumber = 1;
+			gamerep->r_nMaxRoundNumber = 3;
+			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+		}
+
+		if (strcmp(GameClassName, "Class TgGame.TgGame_DualCTF") == 0) {
+			gamerep->r_bIsRaid = 0;
+			gamerep->r_bIsMission = 1;
+			gamerep->r_bIsPVP = 1;
+			gamerep->r_bIsTraining = 0;
+			gamerep->r_bIsTutorialMap = 0;
+			gamerep->r_bIsArena = 1;
+			gamerep->r_bIsMatch = 1;
+			gamerep->r_bIsTerritoryMap = 0;
+			gamerep->r_bIsOpenWorld = 0;
+			gamerep->r_bAllowBuildMorale = 1;
+			gamerep->r_bActiveCombat = 1;
+			gamerep->r_bAllowPlayerRelease = 1;
+			gamerep->r_bDefenseAlarm = 1;
+			gamerep->r_bInOverTime = 0;
+			gamerep->r_nSecsToAutoReleaseAttackers = 5;// Game->m_nSecsToAutoReleaseAttackers;
+			gamerep->r_nSecsToAutoReleaseDefenders = 5;//Game->m_nSecsToAutoReleaseDefenders;
+			gamerep->r_nReleaseDelay = 3;
+			gamerep->r_nPointsToWin = 3;
+			gamerep->r_nRoundNumber = 1;
+			gamerep->r_nMaxRoundNumber = 3;
+			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+		}
+
+
 		// PreloadClasses();
 
 		ATgRepInfo_TaskForce* attackers = (ATgRepInfo_TaskForce*)gamerep->Spawn(ClassPreloader::GetTgRepInfoTaskForceClass(), gamerep, FName(), FVector(0, 0, 0), FRotator(0, 0, 0), nullptr, 1);
@@ -48,6 +244,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 
 		attackers->TeamIndex = 1;
 		attackers->r_nTaskForce = 1;
+
 		defenders->TeamIndex = 2;
 		defenders->r_nTaskForce = 2;
 
@@ -92,6 +289,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		// gamerep->bReplicateInstigator = 0;
 
 	}
-	Logger::Log("debug", "MINE TgGame::InitGameRepInfo END\n");
+
+	LogCallEnd();
 }
 

@@ -4,42 +4,50 @@
 void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunction* Function, void* Params, void* Result) {
 
 	if (Object && Function) {
-		if (strcmp("Function Engine.Actor.Tick", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function Engine.GameInfoDataProvider.ProviderInstanceBound", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function TgGame.TgPlayerController.GetPlayerViewPoint", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function TgGame.TgPawn.ShouldRechargePowerPool", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function TgGame.TgPawn_Character.Tick", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function TgGame.TgDeployable.Tick", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function Engine.PlayerController.SendClientAdjustment", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function TgGame.TgMissionObjective_Proximity.Tick", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function Engine.PlayerController.ServerMove", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function TgGame.TgMissionObjective.IsLocalPlayerAttacker", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function TgGame.TgProperty.Copy", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function TgGame.TgDeploy_BeaconEntrance.Touch", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function TgGame.TgMissionObjective_Bot.Tick", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function Engine.Actor.PreBeginPlay", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function Engine.Actor.SetInitialState", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function Engine.Actor.PostBeginPlay", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function Engine.Emitter.PostBeginPlay", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function Engine.LadderVolume.PostBeginPlay", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function Engine.KAsset.PostBeginPlay", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function TgGame.TgRepInfo_Player.Timer", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function TgGame.GameRunning.Timer", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function Engine.GameReplicationInfo.Timer", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function TgGame.TgPawn.GetCameraValues", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function TgGame_Defense.RoundInProgress.Tick", Function->GetFullName()) == 0) {
-		} else if (strcmp("Function Engine.SequenceOp.Activated", Function->GetFullName()) == 0) {
-			Logger::Log("event", "%s", Function->GetFullName());
-			Logger::Log("event", " %s\n", Object->GetFullName());
+		std::string name = std::string(Function->GetFullName());
+		std::string objname = std::string(Object->GetFullName());
+
+		if (strcmp("Function Engine.Actor.Tick", name.c_str()) == 0
+		|| strcmp("Function Engine.GameInfoDataProvider.ProviderInstanceBound", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgPlayerController.GetPlayerViewPoint", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgPawn.ShouldRechargePowerPool", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgPawn_Character.Tick", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgDeployable.Tick", name.c_str()) == 0
+		|| strcmp("Function Engine.PlayerController.SendClientAdjustment", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgMissionObjective_Proximity.Tick", name.c_str()) == 0
+		|| strcmp("Function Engine.PlayerController.ServerMove", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgMissionObjective.IsLocalPlayerAttacker", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgProperty.Copy", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgDeploy_BeaconEntrance.Touch", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgMissionObjective_Bot.Tick", name.c_str()) == 0
+		|| strcmp("Function Engine.Actor.PreBeginPlay", name.c_str()) == 0
+		|| strcmp("Function Engine.Actor.SetInitialState", name.c_str()) == 0
+		|| strcmp("Function Engine.Actor.PostBeginPlay", name.c_str()) == 0
+		|| strcmp("Function Engine.Emitter.PostBeginPlay", name.c_str()) == 0
+		|| strcmp("Function Engine.LadderVolume.PostBeginPlay", name.c_str()) == 0
+		|| strcmp("Function Engine.KAsset.PostBeginPlay", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgRepInfo_Player.Timer", name.c_str()) == 0
+		|| strcmp("Function TgGame.GameRunning.Timer", name.c_str()) == 0
+		|| strcmp("Function Engine.GameReplicationInfo.Timer", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgPawn.GetCameraValues", name.c_str()) == 0
+		|| strcmp("Function TgGame_Defense.RoundInProgress.Tick", name.c_str()) == 0
+		|| strcmp("Function Engine.Actor.Touch", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgDeploy_BeaconEntrance.RecheckActiveTimer", name.c_str()) == 0
+		|| strcmp("Function TgGame_Arena.RoundInProgress.Tick", name.c_str()) == 0
+		|| strcmp("Function TgPawn.Dying.Tick", name.c_str()) == 0
+		|| strcmp("Function Engine.GameInfo.Timer", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgRepInfo_Game.ServerUpdateTimer", name.c_str()) == 0
+		|| strcmp("Function Engine.SequenceOp.Activated", name.c_str()) == 0) {
+			CallOriginal(Object, edx, Function, Params, Result);
 		} else {
-			Logger::Log("event", "%s\n", Function->GetFullName());
+			Logger::Log(GetLogChannel(), "├─ %s [%s]\n", name.c_str(), objname.c_str());
+			Logger::ChannelIndents[GetLogChannel()]++;
+
+			CallOriginal(Object, edx, Function, Params, Result);
+
+			Logger::ChannelIndents[GetLogChannel()]--;
+			// Logger::Log(GetLogChannel(), "}\n");
 		}
-
-
 	}
-
-
-
-	CallOriginal(Object, edx, Function, Params, Result);
 }
 

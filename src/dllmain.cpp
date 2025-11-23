@@ -1,5 +1,6 @@
 #include "src/pch.hpp"
 
+#include "src/Utils/Logger/Logger.hpp"
 #include "src/Database/Database.hpp"
 #include "src/GameServer/Engine/GameEngine/Init/GameEngine__Init.hpp"
 #include "src/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.hpp"
@@ -65,6 +66,8 @@
 
 
 unsigned long ModuleThread( void* ) {
+	Logger::EnabledChannels.push_back("hook_calltree");
+
 	Database::Init();
 
 	::DetourTransactionBegin();
@@ -75,7 +78,7 @@ unsigned long ModuleThread( void* ) {
 	GameEngine__Init::Install();
 	// UObject__CollectGarbage::bDisableGarbageCollection = true;
 	UObject__CollectGarbage::Install();
-	// UObject__ProcessEvent::Install();
+	UObject__ProcessEvent::Install();
 	World__BeginPlay::Install();
 	ConstructCommandletObject::Install();
 	ServerCommandlet__Main::Install();

@@ -9,6 +9,8 @@ class GameEngine__SpawnServerActors : public HookBase<
 public:
     static void __fastcall Call(void* GameEngine);
 	static inline void __fastcall CallOriginal(void* GameEngine) {
-		return m_original(GameEngine);
+		LogCallOriginalBegin();
+		m_original(GameEngine);
+		LogCallOriginalEnd();
 	}
 };

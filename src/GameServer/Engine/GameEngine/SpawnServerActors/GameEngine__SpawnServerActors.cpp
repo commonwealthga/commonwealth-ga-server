@@ -2,8 +2,8 @@
 #include "src/Utils/Logger/Logger.hpp"
 
 void GameEngine__SpawnServerActors::Call(void* GameEngine) {
-	Logger::Log("debug", "MINE GameEngine__SpawnServerActors START\n");
+	LogCallBegin();
 	GameEngine__SpawnServerActors::CallOriginal(GameEngine);
-	Logger::Log("debug", "MINE GameEngine__SpawnServerActors END\n");
+	LogCallEnd();
 }
 

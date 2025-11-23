@@ -10,7 +10,10 @@ class World__GetGameInfo : public HookBase<
 public:
 	static ATgGame* __fastcall Call(UWorld* World);
 	static inline ATgGame* __fastcall CallOriginal(UWorld* World) {
-		return m_original(World);
+		LogCallOriginalBegin();
+		ATgGame* result = m_original(World);
+		LogCallOriginalEnd();
+		return result;
 	}
 };
 

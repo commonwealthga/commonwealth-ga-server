@@ -2,10 +2,10 @@
 #include "src/Utils/Logger/Logger.hpp"
 
 int __stdcall ServerCommandlet__Main::Call() {
-	Logger::Log("debug", "MINE ServerCommandlet__Main START\n");
+	LogCallBegin();
 	int result = ServerCommandlet__Main::CallOriginal();
+	LogCallEnd();
 
-	Logger::Log("debug", "MINE ServerCommandlet__Main END\n");
 	return result;
 }
 

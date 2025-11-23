@@ -7,8 +7,25 @@
 bool TgGame__LoadGameConfig::bRandomSMSettingsLoaded = false;
 std::vector<std::string> TgGame__LoadGameConfig::m_randomSMSettings;
 
+/**
+
+Breach = TgGame_Mission
+Payload = TgGame_Escort
+Scramble = TgGame_PointRotation
+Control = TgGame_Ticket
+Dome = TgGame_City
+Desert = TgGame_OpenWorldPVE
+Raid = TgGame_Defense
+VR = TgGame_Mission
+Double agent = TgGame_Mission
+Umax = TgGame_Mission
+Acquisition = TgGame_DualCTF
+AvA theft = TgGame_Escort
+
+*/
+
 void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
-	Logger::Log("wtf", "MINE TgGame__LoadGameConfig START\n");
+	LogCallBegin();
 	Game->bWaitingToStartMatch = 0;
 
 	Game->m_nSecsToAutoRelease = 15;
@@ -18,10 +35,79 @@ void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 
 	LoadCommonGameConfig(Game);
 
-	Logger::Log("wtf", "MINE TgGame__LoadGameConfig END\n");
+	LogCallEnd();
 }
 
 void TgGame__LoadGameConfig::LoadCommonGameConfig(ATgGame* Game) {
+	return;
+
+	AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
+
+	int nObjectivesCounter = 0;
+	for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+		if (UObject::GObjObjects()->Data[i]) {
+			UObject* obj = UObject::GObjObjects()->Data[i];
+
+			char* classname = obj->Class->GetFullName();
+
+			if (strstr(obj->GetFullName(), "Default__")) {
+				continue;
+			}
+
+			if (strcmp(classname, "Class TgGame.TgObjectiveAttachActor") == 0) {
+				continue;
+				ATgObjectiveAttachActor* ObjectiveAttachActor = reinterpret_cast<ATgObjectiveAttachActor*>(obj);
+				ObjectiveAttachActor->ReplicatedMeshScale3D.X = 1;
+				ObjectiveAttachActor->ReplicatedMeshScale3D.Y = 1;
+				ObjectiveAttachActor->ReplicatedMeshScale3D.Z = 1;
+				ObjectiveAttachActor->ReplicatedMeshRotation = ObjectiveAttachActor->StaticMeshComponent->Rotation;
+				ObjectiveAttachActor->ReplicatedMeshTranslation = ObjectiveAttachActor->StaticMeshComponent->Translation;
+				ObjectiveAttachActor->ReplicatedMesh = ObjectiveAttachActor->StaticMeshComponent->StaticMesh;
+				ObjectiveAttachActor->DrawScale = 1;
+				ObjectiveAttachActor->DrawScale3D = 1;
+				// ObjectiveAttachActor->bNetInitial = 1;
+				// ObjectiveAttachActor->bNetDirty = 1;
+				// ObjectiveAttachActor->bForceNetUpdate = 1;
+				// ObjectiveAttachActor->bSkipActorPropertyReplication = 0;
+				ObjectiveAttachActor->Role = 3;
+				ObjectiveAttachActor->RemoteRole = 1;
+				ObjectiveAttachActor->SetOwner(WorldInfo);
+
+				// ObjectiveAttachActor->r_EffectManager->r_Owner = ObjectiveAttachActor;
+				// ObjectiveAttachActor->r_EffectManager->SetOwner(ObjectiveAttachActor);
+				// ObjectiveAttachActor->r_EffectManager->Base = ObjectiveAttachActor;
+				// ObjectiveAttachActor->r_EffectManager->Role = 3;
+				// ObjectiveAttachActor->r_EffectManager->RemoteRole = 1;
+				// ObjectiveAttachActor->r_EffectManager->bAlwaysRelevant = 1;
+				// ObjectiveAttachActor->r_EffectManager->bNetInitial = 1;
+				// ObjectiveAttachActor->r_EffectManager->bNetDirty = 1;
+			}
+
+			if (strcmp(classname, "Class TgGame.TgMissionObjective_Proximity") == 0) {
+				ATgMissionObjective_Proximity* Objective = reinterpret_cast<ATgMissionObjective_Proximity*>(obj);
+				Objective->bNetInitial = 1;
+				Objective->bNetDirty = 1;
+				Objective->bOnlyDirtyReplication = 0;
+				Objective->bForceNetUpdate = 1;
+				Objective->bSkipActorPropertyReplication = 0;
+				Objective->Role = 3;
+				Objective->RemoteRole = 1;
+				Objective->SetOwner(WorldInfo);
+				Objective->bAlwaysRelevant = 1;
+
+				Objective->r_eStatus = 3;
+				Objective->r_nOwnerTaskForce = 2;
+				Objective->r_bIsLocked = 0;
+				Objective->r_bIsActive = 1;
+
+				// ATgRepInfo_Game* GameRep = (ATgRepInfo_Game*)Game->GameReplicationInfo;
+				//
+				// GameRep->r_Objectives[nObjectivesCounter] = Objective;
+				// nObjectivesCounter++;
+			}
+		}
+	}
+
 	return;
 	if (!bRandomSMSettingsLoaded) {
 		bRandomSMSettingsLoaded = true;

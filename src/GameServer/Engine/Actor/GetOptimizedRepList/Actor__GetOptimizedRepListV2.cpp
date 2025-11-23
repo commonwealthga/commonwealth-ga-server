@@ -3090,8 +3090,68 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 	if (
 		strcmp(classname, "Class Engine.Actor") == 0
 
+		|| strcmp(classname, "Class Engine.WorldInfo") == 0
+
+		|| strcmp(classname, "Class Engine.Vehicle") == 0
+		|| strcmp(classname, "Class Engine.SVehicle") == 0
+		|| strcmp(classname, "Class Engine.Teleporter") == 0
+		|| strcmp(classname, "Class Engine.RB_RadialImpulseActor") == 0
+		|| strcmp(classname, "Class Engine.RB_RadialForceActor") == 0
+		|| strcmp(classname, "Class Engine.RB_LineImpulseActor") == 0
+		|| strcmp(classname, "Class Engine.RB_CylindricalForceActor") == 0
+		|| strcmp(classname, "Class Engine.PostProcessVolume") == 0
+
+		|| strcmp(classname, "Class Engine.TeamInfo") == 0
+		|| strcmp(classname, "Class Engine.GameReplicationInfo") == 0
+		|| strcmp(classname, "Class Engine.PlayerReplicationInfo") == 0
+		|| strcmp(classname, "Class Engine.PlayerController") == 0
+		|| strcmp(classname, "Class Engine.PickupFactory") == 0
+		|| strcmp(classname, "Class Engine.PhysXEmitterSpawnable") == 0
+		|| strcmp(classname, "Class Engine.NxForceField") == 0
+		|| strcmp(classname, "Class Engine.MatineeActor") == 0
+		|| strcmp(classname, "Class Engine.Light") == 0
+		|| strcmp(classname, "Class Engine.LensFlareSource") == 0
+		|| strcmp(classname, "Class Engine.KAsset") == 0
+		|| strcmp(classname, "Class Engine.KActor") == 0
+		|| strcmp(classname, "Class Engine.InventoryManager") == 0
+		|| strcmp(classname, "Class Engine.Inventory") == 0
+		|| strcmp(classname, "Class Engine.HeightFog") == 0
+		|| strcmp(classname, "Class Engine.FogVolumeDensityInfo") == 0
+		|| strcmp(classname, "Class Engine.FluidInfluenceActor") == 0
+		|| strcmp(classname, "Class Engine.EmitterSpawnable") == 0
+		|| strcmp(classname, "Class Engine.Emitter") == 0
+		|| strcmp(classname, "Class Engine.DroppedPickup") == 0
+		|| strcmp(classname, "Class Engine.CrowdReplicationActor") == 0
+		|| strcmp(classname, "Class Engine.CrowdAttractor") == 0
+		|| strcmp(classname, "Class Engine.Controller") == 0
+		|| strcmp(classname, "Class Engine.CameraActor") == 0
+		|| strcmp(classname, "Class Engine.AmbientSoundSimpleToggleable") == 0
+
+		|| strcmp(classname, "Class Engine.DynamicSMActor") == 0
+		|| strcmp(classname, "Class TgGame.TgDynamicSMActor") == 0
+		|| strcmp(classname, "Class TgGame.TgObjectiveAttachActor") == 0
+		|| strcmp(classname, "Class TgGame.TgInterpActor") == 0
+		|| strcmp(classname, "Class TgGame.TgHexLandMarkActor") == 0
+		|| strcmp(classname, "Class TgGame.TgFracturedStaticMeshActor") == 0
+		|| strcmp(classname, "Class TgGame.TgDynamicDestructible") == 0
+
+
+		|| strcmp(classname, "Class TgGame.TgFlagCaptureVolume") == 0
+
+		|| strcmp(classname, "Class TgGame.TgEmitter") == 0
+
+		|| strcmp(classname, "Class TgGame.TgStaticMeshActor") == 0
+
 		|| strcmp(classname, "Class TgGame.TgRandomSMActor") == 0
 		|| strcmp(classname, "Class TgGame.TgRandomSMManager") == 0
+
+		|| strcmp(classname, "Class TgGame.TgEffectManager") == 0
+
+		|| strcmp(classname, "Class TgGame.TgInventoryManager") == 0
+
+		|| strcmp(classname, "Class TgGame.TgDroppedItem") == 0
+
+		|| strcmp(classname, "Class TgGame.TgChestActor") == 0
 
 		|| strcmp(classname, "Class TgGame.TgDevice") == 0
 		|| strcmp(classname, "Class TgGame.TgDevice_Grenade") == 0
@@ -3101,8 +3161,15 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| strcmp(classname, "Class TgGame.TgDevice_MeleeDualWield") == 0
 		|| strcmp(classname, "Class TgGame.TgDevice_NewRange") == 0
 
+		|| strcmp(classname, "Class TgGame.TgDeployable") == 0
+		|| strcmp(classname, "Class TgGame.TgDeploy_Beacon") == 0
+		|| strcmp(classname, "Class TgGame.TgDeploy_BeaconEntrance") == 0
+		|| strcmp(classname, "Class TgGame.TgDeploy_DestructibleCover") == 0
+
 		|| strcmp(classname, "Class TgGame.TgMissionObjective") == 0
 		|| strcmp(classname, "Class TgGame.TgMissionObjective_Bot") == 0
+		|| strcmp(classname, "Class TgGame.TgMissionObjective_Escort") == 0
+		|| strcmp(classname, "Class TgGame.TgMissionObjective_Proximity") == 0
 
 		|| strcmp(classname, "Class Engine.Pawn") == 0
 		|| strcmp(classname, "Class TgGame.TgPawn") == 0
@@ -3167,6 +3234,14 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| strcmp(classname, "Class TgGame.TgPawn_Warlord") == 0
 		|| strcmp(classname, "Class TgGame.TgPawn_WaspSpawner") == 0
 		|| strcmp(classname, "Class TgGame.TgPawn_Widow") == 0
+		
+		|| strcmp(classname, "Class TgGame.TgObjectiveAssignment") == 0
+
+		|| strcmp(classname, "Class TgGame.TgRepInfo_Deployable") == 0
+		|| strcmp(classname, "Class TgGame.TgRepInfo_Beacon") == 0
+
+		|| strcmp(classname, "Class TgGame.TgRepInfo_Game") == 0
+		|| strcmp(classname, "Class TgGame.TgRepInfo_GameOpenWorld") == 0
 
 		|| strcmp(classname, "Class TgGame.TgRepInfo_Player") == 0
 		|| strcmp(classname, "Class TgGame.TgRepInfo_TaskForce") == 0
@@ -3190,6 +3265,33 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| strcmp(classname, "Class TgGame.TgProj_Bounce") == 0
 		|| strcmp(classname, "Class TgGame.TgProj_Bot") == 0
 
+		|| strcmp(classname, "Class TgGame.TgDoorMarker") == 0
+		|| strcmp(classname, "Class TgGame.TgDoor") == 0
+
+
+		|| strcmp(classname, "Class Engine.SkeletalMeshActor") == 0
+		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActorGenericUIPreview") == 0
+		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActorNPC") == 0
+		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActorNPCVendor") == 0
+		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActorSpawnable") == 0
+		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor_CharacterBuilder") == 0
+		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor_CharacterBuilderSpawnable") == 0
+		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor_Composite") == 0
+		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor_EquipScreen") == 0
+		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor_MeleePreVis") == 0
+		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor") == 0
+
+		|| strcmp(classname, "Class TgGame.TgSkydiveTarget") == 0
+
+		|| strcmp(classname, "Class TgGame.TgSkydivingVolume") == 0
+
+		|| strcmp(classname, "Class TgGame.TgTeamBeaconManager") == 0
+
+		|| strcmp(classname, "Class TgGame.TgTimerManager") == 0
+		
+		|| strcmp(classname, "Class TgGame.TgLevelCamera") == 0
+
+		|| strcmp(classname, "Class TgGame.TgKismetTestActor") == 0
 	) {
 		if (actor->RemoteRole == 1) {
 			if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && actor->RemoteRole == 1) {
@@ -3261,8 +3363,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ADroppedPickup, bFadeOut, BoolProperty_Engine_DroppedPickup_bFadeOut);
 		}
 	}
-	if (strcmp(classname, "Class Engine.DynamicSMActor") == 0) {
-		if (actor->bNetDirty) {
+	if (
+		strcmp(classname, "Class Engine.DynamicSMActor") == 0
+		|| strcmp(classname, "Class TgGame.TgDynamicSMActor") == 0
+		|| strcmp(classname, "Class TgGame.TgObjectiveAttachActor") == 0
+	) {
+		if (actor->bNetDirty || actor->bNetInitial) {
 			DO_REP(ADynamicSMActor, ReplicatedMaterial, ObjectProperty_Engine_DynamicSMActor_ReplicatedMaterial);
 			DO_REP(ADynamicSMActor, ReplicatedMesh, ObjectProperty_Engine_DynamicSMActor_ReplicatedMesh);
 			DO_REP(ADynamicSMActor, ReplicatedMeshRotation, StructProperty_Engine_DynamicSMActor_ReplicatedMeshRotation);
@@ -3745,9 +3851,19 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgDynamicDestructible, r_pFactory, ObjectProperty_TgGame_TgDynamicDestructible_r_pFactory);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgDynamicSMActor") == 0) {
+	if (
+		strcmp(classname, "Class TgGame.TgDynamicSMActor") == 0
+		|| strcmp(classname, "Class TgGame.TgObjectiveAttachActor") == 0
+	) {
 		if ((actor->Role == 3) && actor->bNetInitial) {
 			DO_REP(ATgDynamicSMActor, m_sAssembly, StrProperty_TgGame_TgDynamicSMActor_m_sAssembly);
+		}
+	}
+	if (
+		strcmp(classname, "Class TgGame.TgDynamicSMActor") == 0
+	) {
+
+		if ((actor->Role == 3) && actor->bNetInitial) {
 			DO_REP(ATgDynamicSMActor, r_EffectManager, ObjectProperty_TgGame_TgDynamicSMActor_r_EffectManager);
 		}
 		if (actor->Role == 3) {
@@ -3818,6 +3934,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 	if (
 		strcmp(classname, "Class TgGame.TgMissionObjective") == 0
 		|| strcmp(classname, "Class TgGame.TgMissionObjective_Bot") == 0
+		|| strcmp(classname, "Class TgGame.TgMissionObjective_Escort") == 0
+		|| strcmp(classname, "Class TgGame.TgMissionObjective_Proximity") == 0
 	) {
 		if (actor->Role == 3) {
 			DO_REP(ATgMissionObjective, r_ObjectiveAssignment, ObjectProperty_TgGame_TgMissionObjective_r_ObjectiveAssignment);
@@ -3850,7 +3968,10 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgMissionObjective_Escort, r_AttachedActor, ObjectProperty_TgGame_TgMissionObjective_Escort_r_AttachedActor);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgMissionObjective_Proximity") == 0) {
+	if (
+		strcmp(classname, "Class TgGame.TgMissionObjective_Proximity") == 0
+		|| strcmp(classname, "Class TgGame.TgMissionObjective_Escort") == 0
+	) {
 		if (actor->Role == 3) {
 			DO_REP(ATgMissionObjective_Proximity, r_fCaptureRate, FloatProperty_TgGame_TgMissionObjective_Proximity_r_fCaptureRate);
 		}

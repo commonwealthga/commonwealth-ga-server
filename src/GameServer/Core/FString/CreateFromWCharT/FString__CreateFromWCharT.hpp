@@ -9,7 +9,10 @@ class FString__CreateFromWCharT : public HookBase<
 public:
 	static void* __fastcall Call(void* param1, void* param2, short* param3);
 	static inline void* __fastcall CallOriginal(void* param1, void* param2, short* param3) {
-		return m_original(param1, param2, param3);
+		LogCallOriginalBegin();
+		void* result = m_original(param1, param2, param3);
+		LogCallOriginalEnd();
+		return result;
 	}
 };
 

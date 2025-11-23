@@ -19,30 +19,19 @@
 
 
 void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel, void* edx, UNetConnection* Connection, void* InBunch) {
-	Logger::Log("debug", "MINE MarshalChannel__NotifyControlMessage START\n");
+	LogCallBegin();
+
 	int param_1 = 0x4FF;
-	wchar_t local_410[512];
-	int result;
-	void* func = (void*)CMarshal__GetString::m_original;
-	__asm__ __volatile__ (
-		"push %[p2]\n\t"         // push param_2 (wchar_t*)
-		"push %[p1]\n\t"         // push param_1 (int)
-		"mov %[self], %%ecx\n\t" // move 'this' into ecx
-		"call *%[fn]\n\t"
-		"add $8, %%esp\n\t"      // clean stack (2 * 4 bytes)
-		: "=a" (result)
-		: [self] "r" (InBunch),
-		[fn]   "r" (func),
-		[p1]   "r" (param_1),
-		[p2]   "r" (local_410)
-		: "ecx", "memory"
-	);
+	wchar_t* local_410 = new wchar_t[512];
+	int result = CMarshal__GetString::CallOriginal(InBunch, edx, param_1, local_410);
 	
 	char tmp[1024];
 	wcstombs(tmp, local_410, sizeof(tmp));
 	tmp[sizeof(tmp)-1] = '\0';
 
 	// Logger::Log("wtf", "\n\n[MarshalChannel__NotifyControlMessage]: %s\n", tmp);
+
+	Logger::Log(GetLogChannel(), "Message: %s\n", tmp);
 
 	if (strncmp(tmp, "HELLO", 5) == 0) {
 		
@@ -157,6 +146,8 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 			MarshalChannel__NotifyControlMessage::HandlePlayerConnected(Connection, newcontrollerptr);
 		}
 	}
+
+	LogCallEnd();
 }
 
 
@@ -181,14 +172,18 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	// 	}
 	// }
 
-	CGameClient__SendMapRandomSMSettingsMarshal::Call(Connection, (void*)(gamerep->s_pRandomSMSettings.Dummy));
+	if (gamerep->s_pRandomSMSettings.Dummy > 0) {
+		CGameClient__SendMapRandomSMSettingsMarshal::Call(Connection, (void*)(gamerep->s_pRandomSMSettings.Dummy));
+	}
 	// Logger::DumpMemory("wtf", (void*)(gamerep->s_pRandomSMSettings.Dummy ), 0x1000, 0);
 
 	ATgPlayerController* newcontroller = reinterpret_cast<ATgPlayerController*>(Controller);
 	ATgPawn_Character* newpawn = NULL;
 
 	newcontroller->PlayerReplicationInfo->bOnlySpectator = 0;
+
 	newcontroller->PlayerReplicationInfo->Team = GTeamsData.Attackers;
+	// newcontroller->PlayerReplicationInfo->Team = GTeamsData.Defenders;
 
 	game->eventPostLogin(newcontroller);
 

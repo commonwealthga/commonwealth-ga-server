@@ -10,7 +10,9 @@ class MarshalChannel__NotifyControlMessage : public HookBase<
 public:
 	static void __fastcall Call(UMarshalChannel* MarshalChannel, void* edx, UNetConnection* Connection, void* InBunch);
 	static inline void __fastcall CallOriginal(UMarshalChannel* MarshalChannel, void* edx, UNetConnection* Connection, void* InBunch) {
-		return m_original(MarshalChannel, edx, Connection, InBunch);
+		LogCallOriginalBegin();
+		m_original(MarshalChannel, edx, Connection, InBunch);
+		LogCallOriginalEnd();
 	};
 
 	static inline std::string GuidToHex(const FGuid& g) {

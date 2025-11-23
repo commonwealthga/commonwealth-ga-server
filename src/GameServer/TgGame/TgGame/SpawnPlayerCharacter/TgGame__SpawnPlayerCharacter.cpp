@@ -539,8 +539,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	TARRAY_INIT(attackers, TeamPlayersAttackers, FTGTEAM_ENTRY, 0x214, 32);
 	TARRAY_INIT(defenders, TeamPlayersDefenders, FTGTEAM_ENTRY, 0x214, 32);
 
-	// TARRAY_ADD(TeamPlayersAttackers, newplayerteamentry);
-	TARRAY_ADD(TeamPlayersDefenders, newplayerteamentry);
+	TARRAY_ADD(TeamPlayersAttackers, newplayerteamentry);
+	// TARRAY_ADD(TeamPlayersDefenders, newplayerteamentry);
 
 	Logger::Log("debug", "MINE TgGame__SpawnPlayerCharacter END\n");
 

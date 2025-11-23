@@ -10,19 +10,27 @@ public:
 	static void __fastcall Call(void* Notify, void* edx, UNetConnection* Connection);
 	static inline void __fastcall CallOriginal(void* Notify, void* edx, UNetConnection* Connection) {
 
-		typedef void (*tNotifyAcceptedConnectionRaw)();  // no args, we push manually
-		tNotifyAcceptedConnectionRaw pOriginalWorldNotifyAcceptedConnection = (tNotifyAcceptedConnectionRaw)m_original;
-
-		asm volatile(
-			"push %[conn] \n\t"
-			"mov  %[notify], %%ecx \n\t"   // FIXED: move notify into ecx
-			"call *%[func] \n\t"
+		asm volatile (
+			"movl %0, %%ecx\n\t"   // set this pointer in ECX
+			"call *%1\n\t"         // call the original function pointer
 			:
-			: [func] "r" (pOriginalWorldNotifyAcceptedConnection),
-			[notify] "r" (Notify),
-			[conn] "r" (Connection)
-			: "ecx", "memory"
+			: "r"(Notify), "r"(m_original), "r"(Connection)
+			: "%ecx"
 		);
+
+		// typedef void (*tNotifyAcceptedConnectionRaw)();  // no args, we push manually
+		// tNotifyAcceptedConnectionRaw pOriginalWorldNotifyAcceptedConnection = (tNotifyAcceptedConnectionRaw)m_original;
+		//
+		// asm volatile(
+		// 	"push %[conn] \n\t"
+		// 	"mov  %[notify], %%ecx \n\t"   // FIXED: move notify into ecx
+		// 	"call *%[func] \n\t"
+		// 	:
+		// 	: [func] "r" (pOriginalWorldNotifyAcceptedConnection),
+		// 	[notify] "r" (Notify),
+		// 	[conn] "r" (Connection)
+		// 	: "ecx", "memory"
+		// );
 
 		// m_original(Notify, edx, Connection);
 	}

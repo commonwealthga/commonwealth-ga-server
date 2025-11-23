@@ -10,7 +10,9 @@ class World__WelcomePlayer : public HookBase<
 public:
 	static void __fastcall Call(UWorld* World, void* edx, UNetConnection* Connection);
 	static inline void __fastcall CallOriginal(UWorld* World, void* edx, UNetConnection* Connection) {
-		return m_original(World, edx, Connection);
+		LogCallOriginalBegin();
+		m_original(World, edx, Connection);
+		LogCallOriginalEnd();
 	}
 };
 

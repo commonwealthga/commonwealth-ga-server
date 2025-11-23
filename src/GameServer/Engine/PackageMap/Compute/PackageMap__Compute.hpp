@@ -9,7 +9,9 @@ class PackageMap__Compute : public HookBase<
 public:
 	static void __fastcall Call(void* PackageMap);
 	static inline void __fastcall CallOriginal(void* PackageMap) {
-		return m_original(PackageMap);
+		LogCallOriginalBegin();
+		m_original(PackageMap);
+		LogCallOriginalEnd();
 	}
 };
 

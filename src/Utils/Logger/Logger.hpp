@@ -4,6 +4,8 @@
 
 class Logger {
 public:
+	static std::vector<std::string> EnabledChannels;
+	static std::map<std::string, int> ChannelIndents;
 	static void Log(const char* Channel, const char* Format, ...);
 	static void DumpMemory(char* Channel, void* Address, int Size, int NegativeSize = 0);
 	static inline const char* GetTime() {

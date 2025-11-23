@@ -17,7 +17,7 @@ void GameEngine__Init::FixGlobals() {
 }
 
 void GameEngine__Init::Call(void* GameEngine) {
-	Logger::Log("debug", "MINE GameEngine__Init START\n");
+	LogCallBegin();
 
 	FixGlobals();
 
@@ -40,6 +40,6 @@ void GameEngine__Init::Call(void* GameEngine) {
 
 	GameEngine__Init::CallOriginal(GameEngine);
 
-	Logger::Log("debug", "MINE GameEngine__Init END\n");
+	LogCallEnd();
 }
 

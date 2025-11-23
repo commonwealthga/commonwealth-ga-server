@@ -9,7 +9,9 @@ class World__BeginPlay : public HookBase<
 public:
 	static void __fastcall Call(void* World, void* edx, void* Url, int bResetTime);
 	static inline void __fastcall CallOriginal(void* World, void* edx, void* Url, int bResetTime) {
+		LogCallOriginalBegin();
 		m_original(World, edx, Url, bResetTime);
+		LogCallOriginalEnd();
 	}
 };
 
