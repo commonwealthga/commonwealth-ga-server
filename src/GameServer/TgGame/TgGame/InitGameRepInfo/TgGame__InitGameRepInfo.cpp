@@ -2,6 +2,7 @@
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/Utils/DebugWindow/DebugWindow.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
@@ -11,7 +12,35 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 	Globals::Get().GGameInfo = (void*)Game;
 
 	ATgRepInfo_Game* gamerep = reinterpret_cast<ATgRepInfo_Game*>(Game->GameReplicationInfo);
+
 	if (gamerep != nullptr) {
+
+
+		for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMManager") == 0 && !strstr(obj->GetFullName(), "Default__")) {
+					ATgRandomSMManager* RandomSMManager = reinterpret_cast<ATgRandomSMManager*>(obj);
+
+					DebugWindow::Instances["RandomSMManager"] = {
+						.address = (uintptr_t)RandomSMManager,
+						.type = "RandomSMManager"
+					};
+					break;
+				}
+			}
+		}
+
+		DebugWindow::Instances["GameReplicationInfo"] = {
+			.address = (uintptr_t)gamerep,
+			.type = "GameReplicationInfo"
+		};
+		DebugWindow::Instances["Game"] = {
+			.address = (uintptr_t)Game,
+			.type = "Game"
+		};
+
+		DebugWindow::RefreshOptions();
 
 		gamerep->GameClass = Game->Class;
 		gamerep->r_GameType = Game->m_GameType;

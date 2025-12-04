@@ -79,7 +79,9 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 				// int* ClientConnectionsCountPtr = (int*)((char*)NetDriver + 0x48);
 				uint32_t ClientConnectionState = *(int*)((char*)Connection + 0x74);
 				if (ClientConnectionState != 3) { // != USOCK_Open
-					NetConnection__Cleanup::CallOriginal(Connection);
+					NetConnection__Cleanup::Call(Connection);
+					Logger::Log(GetLogChannel(), "Connection lost\n");
+					return;
 				}
 			}
 		}
@@ -115,10 +117,13 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 			ConnectionData.RemoteAddr = from;
 			ConnectionData.SocketInstance = socketInstance;
 			ConnectionData.url = FURL();
+			ConnectionData.RemoteAddrFString = nullptr;
+			ConnectionData.Pawn = nullptr;
+			ConnectionData.bClosed = false;
 
 			sprintf_s(ConnectionData.RemoteAddrString, sizeof(ConnectionData.RemoteAddrString), "%s:%d", inet_ntoa(from.sin_addr), ntohs(from.sin_port));
 
-			Logger::Log("debug", "New client connection: %s\n", ConnectionData.RemoteAddrString);
+			Logger::Log(GetLogChannel(), "New client connection: %s\n", ConnectionData.RemoteAddrString);
 
 			/* /- UNetConnection::InitConnection START */
 
@@ -176,19 +181,19 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 
 			// World__NotifyAcceptedConnection::CallOriginal(Notify, edx, Connection);
 
-			// typedef void (*tNotifyAcceptedConnectionRaw)();  // no args, we push manually
-			// tNotifyAcceptedConnectionRaw pOriginalWorldNotifyAcceptedConnection = (tNotifyAcceptedConnectionRaw)0x10BEBFD0;
-			//
-			// asm volatile(
-			// 	"push %[conn] \n\t"
-			// 	"mov  %[notify], %%ecx \n\t"   // FIXED: move notify into ecx
-			// 	"call *%[func] \n\t"
-			// 	:
-			// 	: [func] "r" (pOriginalWorldNotifyAcceptedConnection),
-			// 	[notify] "r" (Notify),
-			// 	[conn] "r" (Connection)
-			// 	: "ecx", "memory"
-			// );
+			typedef void (*tNotifyAcceptedConnectionRaw)();  // no args, we push manually
+			tNotifyAcceptedConnectionRaw pOriginalWorldNotifyAcceptedConnection = (tNotifyAcceptedConnectionRaw)0x10BEBFD0;
+
+			asm volatile(
+				"push %[conn] \n\t"
+				"mov  %[notify], %%ecx \n\t"   // FIXED: move notify into ecx
+				"call *%[func] \n\t"
+				:
+				: [func] "r" (pOriginalWorldNotifyAcceptedConnection),
+				[notify] "r" (Notify),
+				[conn] "r" (Connection)
+				: "ecx", "memory"
+			);
 
 			Logger::Log("debug", "notify accepted connection called\n");
 

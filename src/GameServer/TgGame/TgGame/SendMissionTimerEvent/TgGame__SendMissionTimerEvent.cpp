@@ -7,10 +7,12 @@
 // TArray<int> TgGame__SendMissionTimerEvent::ActivateIndices;
 
 void __fastcall TgGame__SendMissionTimerEvent::Call(ATgGame *Game, void *edx, int nEventId) {
+	LogCallBegin();
+
+	Logger::Log(GetLogChannel(), "nEventId: %d\n", nEventId);
+
 	TArray<USequenceObject*> Events;
 	TArray<int> Indices;
-
-	Logger::Log("debug", "TgGame__SendMissionTimerEvent::Call - nEventId: %d\n", nEventId);
 
 	Indices.Clear();
 	Indices.Add(nEventId);
@@ -45,6 +47,7 @@ void __fastcall TgGame__SendMissionTimerEvent::Call(ATgGame *Game, void *edx, in
 		UTgSeqEvent_MissionTimer* Event = (UTgSeqEvent_MissionTimer*)Events.Data[i];
 		Event->CheckActivate(Game, Game, 0, 0, Indices);
 	}
-	Logger::Log("debug", "TgGame__SendMissionTimerEvent::Call END\n", nEventId);
+
+	LogCallEnd();
 }
 

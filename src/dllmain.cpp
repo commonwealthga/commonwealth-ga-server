@@ -1,10 +1,12 @@
 #include "src/pch.hpp"
 
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/Utils/DebugWindow/DebugWindow.hpp"
 #include "src/Database/Database.hpp"
 #include "src/GameServer/Engine/GameEngine/Init/GameEngine__Init.hpp"
 #include "src/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.hpp"
 #include "src/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.hpp"
+#include "src/GameServer/Core/FMallocWindows/Free/FMallocWindows__Free.hpp"
 #include "src/GameServer/Engine/World/BeginPlay/World__BeginPlay.hpp"
 #include "src/GameServer/Engine/LaunchEngineLoop/ConstructCommandletObject/ConstructCommandletObject.hpp"
 #include "src/GameServer/Engine/ServerCommandlet/Main/ServerCommandlet__Main.hpp"
@@ -12,9 +14,12 @@
 #include "src/GameServer/TgNetDrv/UdpNetDriver/InitListen/UdpNetDriver__InitListen.hpp"
 #include "src/GameServer/TgNetDrv/UdpNetDriver/TickDispatch/UdpNetDriver__TickDispatch.hpp"
 #include "src/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.hpp"
+#include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
+#include "src/GameServer/IpDrv/NetConnection/CleanupActor/NetConnection__CleanupActor.hpp"
 #include "src/GameServer/TgNetDrv/MarshalChannel/MarshalReceived/MarshalChannel__MarshalReceived.hpp"
 #include "src/GameServer/TgNetDrv/MarshalChannel/NotifyControlMessage/MarshalChannel__NotifyControlMessage.hpp"
 #include "src/GameServer/Engine/ActorChannel/ReceivedBunch/CanExecute/ActorChannel__ReceivedBunch__CanExecute.hpp"
+#include "src/GameServer/Engine/Channel/ReceivedSequencedBunch/Channel__ReceivedSequencedBunch.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/IsReadyForStart/TgPlayerController__IsReadyForStart.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/SetSoundMode/TgPlayerController__SetSoundMode.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/CanPlayerUseVolume/TgPlayerController__CanPlayerUseVolume.hpp"
@@ -66,7 +71,7 @@
 
 
 unsigned long ModuleThread( void* ) {
-	Logger::EnabledChannels.push_back("hook_calltree");
+	// Logger::EnabledChannels.push_back("hook_calltree");
 
 	Database::Init();
 
@@ -78,7 +83,8 @@ unsigned long ModuleThread( void* ) {
 	GameEngine__Init::Install();
 	// UObject__CollectGarbage::bDisableGarbageCollection = true;
 	UObject__CollectGarbage::Install();
-	UObject__ProcessEvent::Install();
+	// UObject__ProcessEvent::Install();
+	FMallocWindows__Free::Install();
 	World__BeginPlay::Install();
 	ConstructCommandletObject::Install();
 	ServerCommandlet__Main::Install();
@@ -86,9 +92,12 @@ unsigned long ModuleThread( void* ) {
 	UdpNetDriver__InitListen::Install();
 	UdpNetDriver__TickDispatch::Install();
 	NetConnection__LowLevelSend::Install();
+	NetConnection__Cleanup::Install();
+	NetConnection__CleanupActor::Install();
 	// MarshalChannel__MarshalReceived::Install();
 	MarshalChannel__NotifyControlMessage::Install();
 	ActorChannel__ReceivedBunch__CanExecute::Install();
+	Channel__ReceivedSequencedBunch::Install();
 	Actor__GetOptimizedRepList::Install();
 	Actor__Spawn::Install();
 	// Actor__Tick::Install();
@@ -159,6 +168,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
 		case DLL_PROCESS_ATTACH:
             DisableThreadLibraryCalls(hinstDLL);
 			CreateThread( 0, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(ModuleThread), 0, 0, 0 );
+			// CreateThread( 0, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(DebugWindow::ModuleThread), 0, 0, 0 );
 			break;
 		case DLL_THREAD_ATTACH:
 			break;

@@ -9,6 +9,7 @@ struct ClientConnectionData {
 	char RemoteAddrString[32];
 	FString* RemoteAddrFString;
 	ATgPawn_Character* Pawn;
+	bool bClosed;
 };
 
 extern std::map <int32_t, ClientConnectionData> GClientConnectionsData;

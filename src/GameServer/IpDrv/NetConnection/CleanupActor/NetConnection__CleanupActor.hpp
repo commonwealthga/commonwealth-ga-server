@@ -2,10 +2,10 @@
 
 #include "src/Utils/HookBase.hpp"
 
-class NetConnection__Cleanup : public HookBase<
+class NetConnection__CleanupActor : public HookBase<
 	void(__fastcall*)(UNetConnection*),
-	0x10C1AF50,
-	NetConnection__Cleanup> {
+	0x10c199b0,
+	NetConnection__CleanupActor> {
 public:
     static void __fastcall Call(UNetConnection* NetConnection);
 	static inline void __fastcall CallOriginal(UNetConnection* NetConnection) {

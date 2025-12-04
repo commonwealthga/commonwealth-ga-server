@@ -4,59 +4,127 @@
 #include "src/GameServer/Core/FString/CreateFromWCharT/FString__CreateFromWCharT.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
-void __fastcall NetConnection__LowLevelGetRemoteAddress::Call(UNetConnection* NetConnection, void* edx, void* Out) {
+void* __fastcall NetConnection__LowLevelGetRemoteAddress::Call(UNetConnection* NetConnection, void* edx, void* Out) {
+	LogCallBegin();
 
-	Logger::Log("debug", "MINE NetConnection__LowLevelGetRemoteAddress START\n");
-    // param_1 is pointer to the caller-allocated FString memory (3 x 4 bytes)
-    // operate with raw pointer arithmetic (no struct)
     uint32_t *pParam = (uint32_t*)Out;
 
-    // mirror original: zero out the incoming FString triple first (like the engine does)
-    // param_1[0] = 0; param_1[1] = 0; param_1[2] = 0;
     if (pParam) {
         pParam[0] = 0;
         pParam[1] = 0;
         pParam[2] = 0;
     }
 
-    // Find our stored client info using NetConnection as the key (you used int32 index previously)
     int32_t index = (int32_t)NetConnection;
     auto it = GClientConnectionsData.find(index);
     if (it == GClientConnectionsData.end()) {
-		Logger::Log("debug", "connection not found\n");
-        // LogToFile("C:\\mylog.txt", "connection not found");
-        return; // keep behavior simple — leave FString zeroed like original started
+		Logger::Log(GetLogChannel(), "Connection not found\n");
+		LogCallEnd();
+        return nullptr;
     }
 
-    // local wchar buffer same size as the original implementation used
-    wchar_t local_50[32]; // room for small "IP:port" strings
-    // Ensure zero-init
+	if (it->second.bClosed) {
+		Logger::Log(GetLogChannel(), "Connection closed\n");
+	// } else if (it->second.RemoteAddrFString != nullptr) {
+	// 	Logger::Log(GetLogChannel(), "Remote address already set: 0x%p ", it->second.RemoteAddrFString);
+	//
+	// 	if (it->second.RemoteAddrFString->Count > 1 && it->second.RemoteAddrFString->Data) {
+	// 		size_t len = wcstombs(NULL, it->second.RemoteAddrFString->Data, 0);
+	// 		if (len != (size_t)-1) {
+	// 			char* buffer = (char*)malloc(len + 1);
+	// 			wcstombs(buffer, it->second.RemoteAddrFString->Data, len + 1);
+	// 			Logger::Log(GetLogChannel(), "%s\n", buffer);
+	// 			free(buffer);
+	// 		} else {
+	// 			// LogToFile(filename, "FString conversion failed.");
+	// 		}
+	// 	}
+	//
+	// 	Out = it->second.RemoteAddrFString;
+	// 	LogCallEnd();
+	// 	return;
+	}
+
+    wchar_t local_50[32];
     local_50[0] = L'\0';
 
-    // Source ANSI string stored for this connection
     const char* src = it->second.RemoteAddrString;
     if (!src) {
-        // nothing to copy
-		Logger::Log("debug", "no remote address\n");
-		FString__CreateFromWCharT::CallOriginal(Out, nullptr, local_50);
-        return;
+		// FString__CreateFromWCharT::CallOriginal(Out, nullptr, local_50);
+		Logger::Log(GetLogChannel(), "No remote address\n");
+		LogCallEnd();
+        return nullptr;
     }
 
-    // Convert ASCII/ANSI src -> UTF-16 in local_50 safely, truncating if necessary.
-    // local_50 capacity is 32 wchar_t (including null terminator).
-    int maxChars = 31; // leave space for NUL
-    int i = 0;
-    for (; i < maxChars && src[i] != '\0'; ++i) {
-        // map each byte to a wchar (0..255)
-        local_50[i] = (wchar_t)(unsigned char)src[i];
-    }
-    local_50[i] = L'\0';
+	const std::string s = src;
+    int size = MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), nullptr, 0);
+    std::wstring out(size, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), &out[0], size);
 
-    // Now call the engine helper to populate the FString properly (engine allocator, etc.)
-	FString__CreateFromWCharT::CallOriginal(Out, nullptr, local_50);
+	// for (int i = 0; i < out.size(); ++i) {
+	// 	local_50[i] = out[i];
+	// }
+	//    local_50[size] = L'\0';
 
-    // done; return to caller
-	Logger::Log("debug", "MINE NetConnection__LowLevelGetRemoteAddress END\n");
-    return;
+
+    // int maxChars = 31;
+    // int i = 0;
+    // for (; i < maxChars && src[i] != '\0'; ++i) {
+    //     local_50[i] = (wchar_t)(unsigned char)src[i];
+    // }
+    // local_50[i] = L'\0';
+
+	FString__CreateFromWCharT::CallOriginal(Out, nullptr, (void*)out.c_str());
+	// FString__CreateFromWCharT::CallOriginal(Out, nullptr, local_50);
+
+	it->second.RemoteAddrFString = (FString*)Out;
+
+
+	if (it->second.RemoteAddrFString->Count > 1 && it->second.RemoteAddrFString->Data) {
+		size_t len = wcstombs(NULL, it->second.RemoteAddrFString->Data, 0);
+		if (len != (size_t)-1) {
+			char* buffer = (char*)malloc(len + 1);
+			wcstombs(buffer, it->second.RemoteAddrFString->Data, len + 1);
+			Logger::Log(GetLogChannel(), "Built remote address FString [0x%p]: %s\n", it->second.RemoteAddrFString, buffer);
+			free(buffer);
+		} else {
+			Logger::Log(GetLogChannel(), "Built remote address FString [0x%p]\n", it->second.RemoteAddrFString);
+			// LogToFile(filename, "FString conversion failed.");
+		}
+	}
+
+	LogCallEnd();
+    return Out;
 }
+
+
+// void LogFStringToFile(const char* filename, FString& str)
+// {
+//     if (str.Count > 1 && str.Data)
+//     {
+//         size_t len = wcstombs(NULL, str.Data, 0);
+//         if (len != (size_t)-1)
+//         {
+//             char* buffer = (char*)malloc(len + 1);
+//             wcstombs(buffer, str.Data, len + 1);
+// 			LogToFile(filename, buffer);
+//             free(buffer);
+//         }
+//         else
+//         {
+// 			LogToFile(filename, "FString conversion failed.");
+//         }
+//     }
+// }
+
+
+
+
+// std::wstring CommandLineParser::Utf8ToWide(const std::string &s) {
+//     if (s.empty()) return {};
+//     int size = MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), nullptr, 0);
+//     std::wstring out(size, L'\0');
+//     MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), &out[0], size);
+//     return out;
+// }
 
