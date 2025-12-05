@@ -4,9 +4,8 @@
 bool __fastcall TgDevice__HasEnoughPowerPool::Call(ATgDevice* Device, void* edx, int FireModeNum) {
 	bool originalresult = CallOriginal(Device, edx, FireModeNum);
 
-	Logger::Log("debug", "[TgDevice__HasEnoughPowerPool::Call] %d\n", (int)originalresult);
+	Logger::Log(GetLogChannel(), "HasEnoughPowerPool(device: 0x%p, firemodenum: %d) -> %d\n", Device, FireModeNum, originalresult);
 
-
-	return true;
+	return originalresult;
 }
 

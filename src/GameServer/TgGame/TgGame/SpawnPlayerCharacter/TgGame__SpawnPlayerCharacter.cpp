@@ -17,10 +17,10 @@ bool TgGame__SpawnPlayerCharacter::bEnemyGearSpawned = true; // disable temporar
 
 ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, void* edx, ATgPlayerController* PlayerController, FVector SpawnLocation) {
 
-	Logger::Log("debug", "MINE TgGame__SpawnPlayerCharacter START\n");
+	LogCallBegin();
+
 
 	static int nMaxInventoryId = 1;
-
 
 	//////////////////// SPAWN ENEMY BOTS EQUIPMENT START
 
@@ -191,94 +191,12 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	ATgPawn_Character* newpawn = (ATgPawn_Character*)Game->Spawn(ClassPreloader::GetTgPawnCharacterClass(), PlayerController, FName(), SpawnLocation, PlayerController->Rotation, nullptr, 1);
 	ATgRepInfo_Player* newrepplayer = reinterpret_cast<ATgRepInfo_Player*>(PlayerController->PlayerReplicationInfo);
 
+	PlayerController->Pawn = newpawn;
+	newpawn->Controller = PlayerController;
 
 	nMaxInventoryId++;
 
-	UTgInventoryObject_Device* InventoryObject = (UTgInventoryObject_Device*)TgInventoryObject_Device__ConstructInventoryObject::CallOriginal(
-		ClassPreloader::GetTgInventoryObjectDeviceClass(),
-		-1, 0, 0, 0, 0, 0, 0, nullptr);
-	// add RF_RootSet flag 0x4000
-	InventoryObject->ObjectFlags.A |= 0x4000;
 
-	FInventoryData InventoryData;
-	InventoryData.bBoundFlag = 0;
-	InventoryData.bEquippedOnOtherChar = 0;
-	InventoryData.nCreatedByCharacterId = 0;
-	InventoryData.fAcquiredDatetime = 0.0f;
-	InventoryData.m_nEquipSlotValueIdArray[0] = 806;
-	InventoryData.nCraftedQualityValueId = 1162;
-	InventoryData.nBlueprintId = 0;
-	InventoryData.nDurability = 100;
-	InventoryData.nInstanceCount = 1;
-	InventoryData.nInvId = nMaxInventoryId;
-	InventoryData.nItemId = 7032;
-	InventoryData.nLocationCode = 370;
-
-	int equipPoint = 5;
-
-	InventoryObject->m_pAmItem.Dummy = CAmItem__LoadItemMarshal::m_ItemPointers[7032];
-	InventoryObject->m_InventoryData = InventoryData;
-	InventoryObject->s_bPersistsInInventory = 1;
-	InventoryObject->s_ReplicatedState = 0;
-	InventoryObject->m_nDeviceInstanceId = nMaxInventoryId;
-
-	InventoryObject->m_InvManager = (ATgInventoryManager*)newpawn->InvManager;
-	ATgDevice* Device = AssemblyDatManager__CreateDevice::CallOriginal(Globals::Get().GAssemblyDatManager, edx, InventoryObject->m_InventoryData.nItemId, newpawn);
-	InventoryObject->s_Device = Device;
-
-	if (Device != nullptr) {
-		Device->s_InventoryObject = InventoryObject;
-		Device->r_nDeviceInstanceId = nMaxInventoryId;
-		Device->m_bIsOffHand = 1;
-		Device->m_bHandDevice = 0;
-		Device->m_nDeviceType = 806;
-		Device->r_nDeviceId = 7032;
-		Device->r_nQualityValueId = 1162;
-
-		FEquipDeviceInfo EquipDeviceInfo;
-		EquipDeviceInfo.nDeviceId = InventoryObject->m_InventoryData.nItemId;
-		EquipDeviceInfo.nDeviceInstanceId = nMaxInventoryId;
-		EquipDeviceInfo.nQualityValueId = InventoryObject->m_InventoryData.nCraftedQualityValueId;
-
-		newpawn->m_EquippedDevices[equipPoint] = Device;
-
-		newpawn->r_EquipDeviceInfo[equipPoint] = EquipDeviceInfo;
-
-		newrepplayer->r_EquipDeviceInfo[equipPoint] = EquipDeviceInfo;
-
-		Device->r_eEquippedAt = equipPoint;
-		Device->r_nInventoryId = nMaxInventoryId;
-		Device->s_InventoryObject->m_InventoryData.nInvId = nMaxInventoryId;
-
-		// Logger::DumpMemory("newjetpack", Device, 0x2D8, 0);
-		//
-		// for (int i = 0; i < Device->m_FireMode.Num(); i++) {
-		// 	UTgDeviceFire* FireMode = Device->m_FireMode.Data[i];
-		// 	Logger::DumpMemory("newjetpackfire", FireMode, 0x164, 0);
-		// }
-
-		
-		if ((char*)newpawn->InvManager + 0x1f0 == nullptr) {
-			TMap__Allocate::CallOriginal((void*)((char*)newpawn->InvManager + 0x1f0));
-		}
-		if ((char*)newpawn->InvManager + 0x22c == nullptr) {
-			TMap__Allocate::CallOriginal((void*)((char*)newpawn->InvManager + 0x22c));
-		}
-		TgInventoryManager__PrepopulateInventoryId::CallOriginal((void*)((char*)newpawn->InvManager + 0x1f0), edx, Device->s_InventoryObject->m_InventoryData.nInvId, Device->s_InventoryObject);
-		TgInventoryManager__PrepopulateInventoryId::CallOriginal((void*)((char*)newpawn->InvManager + 0x22c), edx, Device->s_InventoryObject->m_InventoryData.nInvId, Device->s_InventoryObject);
-
-		Device->SetOwner(newpawn);
-		Device->Base = newpawn;
-		Device->Instigator = newpawn;
-		Device->Role = 3;
-		Device->RemoteRole = 1;
-		Device->bNetInitial = 1;
-		Device->bNetDirty = 1;
-		Device->bReplicateMovement = 1;
-		Device->bSkipActorPropertyReplication = 0;
-		Device->bOnlyDirtyReplication = 0;
-		// Device->bAlwaysRelevant = 1;
-	}
 
 
 
@@ -422,8 +340,6 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newpawn->r_nSkillGroupSetId = GA_G::SKILL_GROUP_SET_ID_MEDIC;
 	newpawn->s_nCharacterId = 373;
 
-	PlayerController->Pawn = newpawn;
-	newpawn->Controller = PlayerController;
 
 
 	// PlayerController->Role = 3;
@@ -542,7 +458,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	TARRAY_ADD(TeamPlayersAttackers, newplayerteamentry);
 	// TARRAY_ADD(TeamPlayersDefenders, newplayerteamentry);
 
-	Logger::Log("debug", "MINE TgGame__SpawnPlayerCharacter END\n");
+	LogCallEnd();
 
 	return newpawn;
 }

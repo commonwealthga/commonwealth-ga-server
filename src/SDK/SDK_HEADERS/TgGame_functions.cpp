@@ -6880,8 +6880,14 @@ bool ATgDevice::eventCanDeviceStartFiringNow ( unsigned char FireModeNum, unsign
 {
 	static UFunction* pFnCanDeviceStartFiringNow = NULL;
 
-	if ( ! pFnCanDeviceStartFiringNow )
-		pFnCanDeviceStartFiringNow = (UFunction*) UObject::GObjObjects()->Data[ 36108 ];
+	if ( ! pFnCanDeviceStartFiringNow ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDevice.CanDeviceStartFiringNow") == 0) {
+				pFnCanDeviceStartFiringNow = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnCanDeviceStartFiringNow = (UFunction*) UObject::GObjObjects()->Data[ 36108 ];
 
 	ATgDevice_eventCanDeviceStartFiringNow_Parms CanDeviceStartFiringNow_Parms;
 	CanDeviceStartFiringNow_Parms.FireModeNum = FireModeNum;
@@ -6921,8 +6927,14 @@ bool ATgDevice::eventCanDeviceFireNow ( unsigned char FireModeNum, unsigned long
 {
 	static UFunction* pFnCanDeviceFireNow = NULL;
 
-	if ( ! pFnCanDeviceFireNow )
-		pFnCanDeviceFireNow = (UFunction*) UObject::GObjObjects()->Data[ 36096 ];
+	if ( ! pFnCanDeviceFireNow ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDevice.CanDeviceFireNow") == 0) {
+				pFnCanDeviceFireNow = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnCanDeviceFireNow = (UFunction*) UObject::GObjObjects()->Data[ 36096 ];
 
 	ATgDevice_eventCanDeviceFireNow_Parms CanDeviceFireNow_Parms;
 	CanDeviceFireNow_Parms.FireModeNum = FireModeNum;
@@ -6942,8 +6954,14 @@ bool ATgDevice::IsNonCombatJetpack ( )
 {
 	static UFunction* pFnIsNonCombatJetpack = NULL;
 
-	if ( ! pFnIsNonCombatJetpack )
-		pFnIsNonCombatJetpack = (UFunction*) UObject::GObjObjects()->Data[ 36094 ];
+	if ( ! pFnIsNonCombatJetpack ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDevice.IsNonCombatJetpack") == 0) {
+				pFnIsNonCombatJetpack = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnIsNonCombatJetpack = (UFunction*) UObject::GObjObjects()->Data[ 36094 ];
 
 	ATgDevice_execIsNonCombatJetpack_Parms IsNonCombatJetpack_Parms;
 
@@ -7525,8 +7543,14 @@ bool ATgDevice::IsGameTypeDisabled ( )
 {
 	static UFunction* pFnIsGameTypeDisabled = NULL;
 
-	if ( ! pFnIsGameTypeDisabled )
-		pFnIsGameTypeDisabled = (UFunction*) UObject::GObjObjects()->Data[ 35992 ];
+	if ( ! pFnIsGameTypeDisabled ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDevice.IsGameTypeDisabled") == 0) {
+				pFnIsGameTypeDisabled = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnIsGameTypeDisabled = (UFunction*) UObject::GObjObjects()->Data[ 35992 ];
 
 	ATgDevice_execIsGameTypeDisabled_Parms IsGameTypeDisabled_Parms;
 
@@ -7813,8 +7837,14 @@ bool ATgDevice::IsOffhandJetpack ( )
 {
 	static UFunction* pFnIsOffhandJetpack = NULL;
 
-	if ( ! pFnIsOffhandJetpack )
-		pFnIsOffhandJetpack = (UFunction*) UObject::GObjObjects()->Data[ 35962 ];
+	if ( ! pFnIsOffhandJetpack ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDevice.IsOffhandJetpack") == 0) {
+				pFnIsOffhandJetpack = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnIsOffhandJetpack = (UFunction*) UObject::GObjObjects()->Data[ 35962 ];
 
 	ATgDevice_execIsOffhandJetpack_Parms IsOffhandJetpack_Parms;
 
@@ -7951,8 +7981,14 @@ class UTgDeviceFire* ATgDevice::GetCurrentFire ( )
 {
 	static UFunction* pFnGetCurrentFire = NULL;
 
-	if ( ! pFnGetCurrentFire )
-		pFnGetCurrentFire = (UFunction*) UObject::GObjObjects()->Data[ 35949 ];
+	if ( ! pFnGetCurrentFire ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDevice.GetCurrentFire") == 0) {
+				pFnGetCurrentFire = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnGetCurrentFire = (UFunction*) UObject::GObjObjects()->Data[ 35949 ];
 
 	ATgDevice_execGetCurrentFire_Parms GetCurrentFire_Parms;
 
@@ -40225,8 +40261,14 @@ bool ATgPawn::IsNonCombat ( )
 {
 	static UFunction* pFnIsNonCombat = NULL;
 
-	if ( ! pFnIsNonCombat )
-		pFnIsNonCombat = (UFunction*) UObject::GObjObjects()->Data[ 41271 ];
+	if ( ! pFnIsNonCombat ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.IsNonCombat") == 0) {
+				pFnIsNonCombat = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnIsNonCombat = (UFunction*) UObject::GObjObjects()->Data[ 41271 ];
 
 	ATgPawn_execIsNonCombat_Parms IsNonCombat_Parms;
 
@@ -45357,8 +45399,14 @@ class ATgDevice* ATgPawn::GetDeviceByEqPoint ( int eEqPoint )
 {
 	static UFunction* pFnGetDeviceByEqPoint = NULL;
 
-	if ( ! pFnGetDeviceByEqPoint )
-		pFnGetDeviceByEqPoint = (UFunction*) UObject::GObjObjects()->Data[ 40644 ];
+	if ( ! pFnGetDeviceByEqPoint ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.GetDeviceByEqPoint") == 0) {
+				pFnGetDeviceByEqPoint = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnGetDeviceByEqPoint = (UFunction*) UObject::GObjObjects()->Data[ 40644 ];
 
 	ATgPawn_execGetDeviceByEqPoint_Parms GetDeviceByEqPoint_Parms;
 	GetDeviceByEqPoint_Parms.eEqPoint = eEqPoint;

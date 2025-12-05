@@ -36,6 +36,11 @@ public:
 		// Logger::Log(GetLogChannel(), "}\n");
 	}
 
+	static inline void LogCallBegin(const char* FunctionName) {
+		Logger::Log(GetLogChannel(), "├─ %s::%s\n", GetFunctionName(), FunctionName);
+		Logger::ChannelIndents[GetLogChannel()]++;
+	}
+
 	static inline void LogCallOriginal() {
 		Logger::Log(GetLogChannel(), "├─ %s::CallOriginal();\n", GetFunctionName());
 	}

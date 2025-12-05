@@ -547,7 +547,7 @@ private:
 		Write4B(response, GA_T::CALLER_ID, 0x0);
 		Write4B(response, GA_T::ERROR_CODE, 0x0);
 		Write4B(response, GA_T::HOME_MAP_GAME_ID, 0x050B);
-		Write4B(response, GA_T::TASK_FORCE, 0x2);
+		Write4B(response, GA_T::TASK_FORCE, 0x1);
 		Write4B(response, GA_T::CHARACTER_ID, 0x1);
 		Write4B(response, GA_T::PROFILE_ID, GA_G::GA_G::PROFILE_ID_ASSAULT);
 		Write4B(response, GA_T::CLASS_MSG_ID, 22976);
@@ -1247,7 +1247,7 @@ private:
 		append(response, 0x01, 0x00);        // count elements
 		
 		append(response, 0x02, 0x00);  // inner item count
-		Write4B(response, GA_T::SYS_SITE_ID, 0x00000001);
+		Write4B(response, GA_T::SYS_SITE_ID, 0x00000002);
 		Write4B(response, GA_T::NAME_MSG_ID, 0x0000A20B);
 		
 		// append(response, 0x02, 0x00);  // inner item count

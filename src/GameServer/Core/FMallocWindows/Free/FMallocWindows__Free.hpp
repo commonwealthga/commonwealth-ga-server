@@ -10,13 +10,7 @@ public:
 	static bool bLogEnabled;
 	static void __fastcall Call(void* Malloc, void* edx, void* Ptr);
 	static inline void __fastcall CallOriginal(void* Malloc, void* edx, void* Ptr) {
-		// if (bLogEnabled) {
-		// 	LogCallOriginalBegin();
-		// }
 		m_original(Malloc, edx, Ptr);
-		// if (bLogEnabled) {
-		// 	LogCallOriginalEnd();
-		// }
 	}
 };
 

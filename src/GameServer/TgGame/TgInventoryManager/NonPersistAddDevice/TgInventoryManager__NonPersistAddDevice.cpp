@@ -11,6 +11,15 @@ ATgDevice* __fastcall TgInventoryManager__NonPersistAddDevice::Call(ATgInventory
 
 	ATgDevice* beacondevice = ownerpawn->c_PIEInHandDevice;
 
+	beacondevice->r_eEquippedAt = nEquipPoint;
+	beacondevice->r_nQualityValueId = 1165;
+	beacondevice->SetOwner(ownerpawn);
+	beacondevice->Base = ownerpawn;
+	beacondevice->bAlwaysRelevant = 1;
+	beacondevice->bNetInitial = 1;
+	beacondevice->bForceNetUpdate = 1;
+	beacondevice->bNetDirty = 1;
+
 	ownerpawn->r_EquipDeviceInfo[nEquipPoint].nDeviceId = nDeviceId;
 	ownerpawn->r_EquipDeviceInfo[nEquipPoint].nDeviceInstanceId = 1;
 	ownerpawn->r_EquipDeviceInfo[nEquipPoint].nQualityValueId = 1165;

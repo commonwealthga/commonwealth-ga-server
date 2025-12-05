@@ -3,24 +3,18 @@
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/TgGame/TgProperty/ConstructTgProperty/TgProperty__ConstructTgProperty.hpp"
 #include "src/GameServer/Core/TMap/Allocate/TMap__Allocate.hpp"
+#include "src/GameServer/Constants/TgProperties.h"
 #include "src/Utils/Logger/Logger.hpp"
 
-void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
-	// LogToFile("C:\\mylog.txt", "MINE TgPawn::InitializeDefaultProps START");
-	Logger::Log("debug", "MINE TgPawn::InitializeDefaultProps START\n");
-
-	if ((char*)Pawn + 0x400 == nullptr) {
-		TMap__Allocate::CallOriginal((void*)((char*)Pawn + 0x400));
-	}
-
-	UTgProperty* property_health = (UTgProperty*)TgProperty__ConstructTgProperty::CallOriginal(
+UTgProperty* TgPawn__InitializeDefaultProps::InitializeProperty(ATgPawn* Pawn, int nPropertyId, float fBase, float fRaw, float fMinimum, float fMaximum) {
+	UTgProperty* Property = (UTgProperty*)TgProperty__ConstructTgProperty::CallOriginal(
 		ClassPreloader::GetTgPropertyClass(), -1, 0, 0,0,0,0,0,0);
 
-	property_health->m_nPropertyId = 51;
-	property_health->m_fBase = 1300;
-	property_health->m_fRaw = 1300;
-	property_health->m_fMinimum = 0;
-	property_health->m_fMaximum = 1300;
+	Property->m_nPropertyId = nPropertyId;
+	Property->m_fBase = fBase;
+	Property->m_fRaw = fRaw;
+	Property->m_fMinimum = fMinimum;
+	Property->m_fMaximum = fMaximum;
 
 	UTgProperty*** PropertiesDataPtrPtr = (UTgProperty***)((char*)Pawn + 0x3F4);
 	int* PropertiesCountPtr = (int*)((char*)Pawn + 0x3F8);
@@ -29,48 +23,37 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// Initialize if not allocated yet
 	if (*PropertiesDataPtrPtr == nullptr)
 	{
-		*PropertiesDataPtrPtr = (UTgProperty**)malloc(sizeof(UTgProperty*) * 128);
-		memset(*PropertiesDataPtrPtr, 0, sizeof(UTgProperty*) * 128);
+		*PropertiesDataPtrPtr = (UTgProperty**)malloc(sizeof(UTgProperty*) * 512);
+		memset(*PropertiesDataPtrPtr, 0, sizeof(UTgProperty*) * 512);
 		*PropertiesCountPtr = 0;
-		*PropertiesMaxPtr = 128;
+		*PropertiesMaxPtr = 512;
 	}
 
 	// Add the property
 	int Count = *PropertiesCountPtr;
-	(*PropertiesDataPtrPtr)[Count] = property_health;
+	(*PropertiesDataPtrPtr)[Count] = Property;
 	*PropertiesCountPtr = Count + 1;
 
-	Pawn->SetProperty(51, property_health->m_fMaximum);
+	Pawn->SetProperty(nPropertyId, fRaw);
 
-	UTgProperty* property_power = (UTgProperty*)TgProperty__ConstructTgProperty::CallOriginal(
-		ClassPreloader::GetTgPropertyClass(), -1, 0, 0,0,0,0,0,0);
+	return Property;
+}
 
-	property_power->m_nPropertyId = 243;
-	property_power->m_fBase = 100;
-	property_power->m_fRaw = 100;
-	property_power->m_fMinimum = 0;
-	property_power->m_fMaximum = 100;
+void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
+	LogCallBegin();
 
-	// Add the property
-	(*PropertiesDataPtrPtr)[*PropertiesCountPtr] = property_power;
-	*PropertiesCountPtr = *PropertiesCountPtr + 1;
+	if ((char*)Pawn + 0x400 == nullptr) {
+		TMap__Allocate::CallOriginal((void*)((char*)Pawn + 0x400));
+	}
 
-	Pawn->SetProperty(243, property_power->m_fMaximum);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH, 1300, 1300, 0, 1300);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH_MAX, 1300, 1300, 0, 1300);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL, 100, 100, 0, 100);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_MAX, 100, 100, 0, 100);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_COST, 0, 0, 0, 0);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_MIN_COST, 0, 0, 0, 0);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_RECHARGE_RATE, 10, 10, 0, 10);
 
-	UTgProperty* property_health_max = (UTgProperty*)TgProperty__ConstructTgProperty::CallOriginal(
-		ClassPreloader::GetTgPropertyClass(), -1, 0, 0,0,0,0,0,0);
-
-	property_health_max->m_nPropertyId = 304;
-	property_health_max->m_fBase = 1300;
-	property_health_max->m_fRaw = 1300;
-	property_health_max->m_fMinimum = 0;
-	property_health_max->m_fMaximum = 1300;
-
-	// Add the property
-	(*PropertiesDataPtrPtr)[*PropertiesCountPtr] = property_health_max;
-	*PropertiesCountPtr = *PropertiesCountPtr + 1;
-
-	Pawn->SetProperty(304, property_health_max->m_fMaximum);
-	Logger::Log("debug", "MINE TgPawn::InitializeDefaultProps END\n");
+	LogCallEnd();
 }
 

@@ -4,9 +4,8 @@
 bool __fastcall TgDevice__HasMinimumPowerPool::Call(ATgDevice* Device, void* edx, int FireModeNum) {
 	bool originalresult = CallOriginal(Device, edx, FireModeNum);
 
-	Logger::Log("debug", "[TgDevice__HasMinimumPowerPool::Call] %d\n", (int)originalresult);
+	Logger::Log(GetLogChannel(), "HasMinimumPowerPool(device: 0x%p, firemodenum: %d) -> %d\n", Device, FireModeNum, originalresult);
 
-
-	return true;
+	return originalresult;
 }
 

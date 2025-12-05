@@ -71,7 +71,8 @@
 
 
 unsigned long ModuleThread( void* ) {
-	// Logger::EnabledChannels.push_back("hook_calltree");
+	Logger::EnabledChannels.push_back("hook_calltree");
+	Logger::EnabledChannels.push_back("tcp");
 
 	Database::Init();
 
@@ -83,7 +84,7 @@ unsigned long ModuleThread( void* ) {
 	GameEngine__Init::Install();
 	// UObject__CollectGarbage::bDisableGarbageCollection = true;
 	UObject__CollectGarbage::Install();
-	// UObject__ProcessEvent::Install();
+	UObject__ProcessEvent::Install();
 	FMallocWindows__Free::Install();
 	World__BeginPlay::Install();
 	ConstructCommandletObject::Install();
@@ -132,8 +133,8 @@ unsigned long ModuleThread( void* ) {
 	TgGame__ReviveDefendersTimer::Install();
 	TgGame__MissionTimeRemaining::Install();
 	TgGame__SendMissionTimerEvent::Install();
-	// TgDevice__HasMinimumPowerPool::Install();
-	// TgDevice__HasEnoughPowerPool::Install();
+	TgDevice__HasMinimumPowerPool::Install();
+	TgDevice__HasEnoughPowerPool::Install();
 	TgMissionObjective_Bot__SpawnObjectiveBot::Install();
 
 	// data collection

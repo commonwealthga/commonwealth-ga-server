@@ -7,6 +7,7 @@
 #include "src/GameServer/Engine/FURL/Constructor/FURL__Constructor.hpp"
 #include "src/GameServer/Engine/World/SpawnPlayActor/World__SpawnPlayActor.hpp"
 #include "src/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.hpp"
+#include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
 #include "src/GameServer/Misc/CGameClient/SendMapRandomSMSettingsMarshal/CGameClient__SendMapRandomSMSettingsMarshal.hpp"
 #include "src/GameServer/Misc/CAmOmegaVolume/LoadOmegaVolumeMarshal/CAmOmegaVolume__LoadOmegaVolumeMarshal.hpp"
 #include "src/TcpServer/TcpEvents/TcpEvents.hpp"
@@ -188,6 +189,9 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	game->eventPostLogin(newcontroller);
 
 	newcontroller->ResetForceViewTarget();
+
+
+	TgGame__SpawnPlayerCharacter::GiveJetpack((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 999);
 
 	// TcpEvent PlayerPawnSpawned;
 	// PlayerPawnSpawned.Type = 1;
