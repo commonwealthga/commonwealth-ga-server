@@ -84,6 +84,9 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Misc/CAmOmegaVolume/LoadOmegaVolumeMarshal/CAmOmegaVolume__LoadOmegaVolumeMarshal.cpp \
 			  $(SRC_DIR)/dllmain.cpp
 
+SOURCE_FILES_CLIENT= \
+			  $(SRC_DIR)/Utils/Logger/Logger/FileLogger.cpp \
+			  $(SRC_DIR)/dllmainclient.cpp
 
 # JOBS ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu)
 # MAKEFLAGS += -j$(JOBS)
@@ -96,10 +99,10 @@ LIB_DIR=lib
 DATA_DIR=data
 OBJ_DIR=obj
 OUT_DIR=out
-
+OUT_CLIENT_DIR=out/client
 
 # Ensure folders exist
-$(shell mkdir -p $(OBJ_DIR) $(OUT_DIR))
+$(shell mkdir -p $(OBJ_DIR) $(OUT_DIR) $(OUT_CLIENT_DIR))
 
 SDK_CPP_SRC=$(SRC_DIR)/SDK/SdkHeaders.cpp \
 			$(SRC_DIR)/SDK/SDK_HEADERS/Core_functions.cpp \
@@ -119,16 +122,25 @@ VERSION_CPP_SRC=$(LIB_DIR)/detours/modules.cpp \
 				$(SDK_CPP_SRC) \
 				$(SOURCE_FILES)
 
+VERSION_CPP_CLIENT_SRC=$(LIB_DIR)/detours/modules.cpp \
+				$(LIB_DIR)/detours/disasm.cpp \
+				$(LIB_DIR)/detours/detours.cpp \
+				$(SDK_CPP_SRC) \
+				$(SOURCE_FILES_CLIENT)
+
 # Object file mapping
 # VERSION_OBJS=$(VERSION_CPP_SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
+
 VERSION_CPP_OBJS := $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(VERSION_CPP_SRC))
 VERSION_OBJS := $(VERSION_CPP_OBJS) $(OBJ_DIR)/lib/sqlite3/sqlite3.o
+VERSION_CLIENT_OBJS := $(patsubst %.cpp,$(OBJ_DIR)/client/%.o,$(VERSION_CPP_CLIENT_SRC))
 
 $(info VERSION_CPP_SRC = $(VERSION_CPP_SRC))
 $(info VERSION_OBJS    = $(VERSION_OBJS))
 
 VERSION_DEF=$(DATA_DIR)/version.def
 VERSION_OUT=$(OUT_DIR)/version.dll
+VERSION_CLIENT_OUT=$(OUT_CLIENT_DIR)/version.dll
 
 obj/pch.hpp.gch: src/pch.hpp
 	i686-w64-mingw32-g++ -std=c++17 -I. -I./lib/detours -I./lib/asio-1.34.2/include -x c++-header src/pch.hpp -o obj/pch.hpp.gch
@@ -139,8 +151,16 @@ $(OBJ_DIR)/src/%.o: src/%.cpp obj/pch.hpp.gch
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(OBJ_DIR)/client/src/%.o: src/%.cpp obj/pch.hpp.gch
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 # Compile any lib .cpp -> obj/lib/... .o (without PCH)
 $(OBJ_DIR)/lib/%.o: lib/%.cpp
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/client/lib/%.o: lib/%.cpp
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -149,13 +169,16 @@ $(OBJ_DIR)/lib/sqlite3/sqlite3.o: lib/sqlite3/sqlite3.c
 	i686-w64-mingw32-gcc -O2 -I./lib/sqlite3 -c $< -o $@
 
 # Default target
-all: $(VERSION_OUT)
+all: $(VERSION_OUT) $(VERSION_CLIENT_OUT)
 
 # Build version.dll
 $(VERSION_OUT): $(VERSION_OBJS) $(VERSION_DEF)
 	$(CC) $(CFLAGS) -o $@ $(VERSION_OBJS) $(VERSION_DEF) $(LDFLAGS)
 
+$(VERSION_CLIENT_OUT): $(VERSION_CLIENT_OBJS) $(VERSION_DEF)
+	$(CC) $(CFLAGS) -o $@ $(VERSION_CLIENT_OBJS) $(VERSION_DEF) $(LDFLAGS)
+
 # Clean
 clean:
-	rm -rf $(OBJ_DIR) $(OUT_DIR)
+	rm -rf $(OBJ_DIR) $(OBJ_CLIENT_DIR) $(OUT_DIR) $(OUT_CLIENT_DIR)
 
