@@ -2,9 +2,6 @@
 #include "src/Utils/Logger/Logger.hpp"
 
 uint8_t __fastcall CGameClient__MarshalReceived::Call(void* GameClient, void* edx, void* InBunch) {
-
-	Logger::Log("wtf", "CGameClient__MarshalReceived::Call\n");
-
-	return CallOriginal(GameClient, edx, InBunch);
+	return 0; // this function should only work on the client
 }
 

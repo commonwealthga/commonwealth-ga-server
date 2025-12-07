@@ -39,12 +39,12 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		|| strcmp("Function TgGame.TgRepInfo_Game.ServerUpdateTimer", name.c_str()) == 0
 		|| strcmp("Function Engine.SequenceOp.Activated", name.c_str()) == 0) {
 			CallOriginal(Object, edx, Function, Params, Result);
-		} else if (strcmp("Function TgGame.TgDevice.CanDeviceStartFiringNow", name.c_str()) == 0) {
-			ATgDevice_eventCanDeviceStartFiringNow_Parms* CanDeviceStartFiringNowParams = (ATgDevice_eventCanDeviceStartFiringNow_Parms*)Params;
-			CanDeviceStartFiringNowParams->ReturnValue = true;
-		} else if (strcmp("Function TgGame.TgDevice.CanDeviceFireNow", name.c_str()) == 0) {
-			ATgDevice_eventCanDeviceFireNow_Parms* CanDeviceFireNowParams = (ATgDevice_eventCanDeviceFireNow_Parms*)Params;
-			CanDeviceFireNowParams->ReturnValue = true;
+		// } else if (strcmp("Function TgGame.TgDevice.CanDeviceStartFiringNow", name.c_str()) == 0) {
+		// 	ATgDevice_eventCanDeviceStartFiringNow_Parms* CanDeviceStartFiringNowParams = (ATgDevice_eventCanDeviceStartFiringNow_Parms*)Params;
+		// 	CanDeviceStartFiringNowParams->ReturnValue = true;
+		// } else if (strcmp("Function TgGame.TgDevice.CanDeviceFireNow", name.c_str()) == 0) {
+		// 	ATgDevice_eventCanDeviceFireNow_Parms* CanDeviceFireNowParams = (ATgDevice_eventCanDeviceFireNow_Parms*)Params;
+		// 	CanDeviceFireNowParams->ReturnValue = true;
 		} else {
 			Logger::Log(GetLogChannel(), "├─ %s [%s]\n", name.c_str(), objname.c_str());
 			Logger::ChannelIndents[GetLogChannel()]++;

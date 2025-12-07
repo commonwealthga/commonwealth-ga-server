@@ -1,18 +1,26 @@
 #include "src/pch.hpp"
 
+#include "src/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.hpp"
+#include "src/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.hpp"
+#include "src/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.hpp"
+#include "src/GameServer/Misc/CMarshal/GetArray/CMarshal__GetArray.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 unsigned long ModuleThread( void* ) {
-	// Logger::EnabledChannels.push_back("hook_calltree");
-	Logger::EnabledChannels.push_back("test");
+	Logger::EnabledChannels.push_back("hook_calltree");
+	// Logger::EnabledChannels.push_back("test");
 
-	Logger::Log("test", "It works!");
+	// Logger::Log("test", "It works!");
 
-	// ::DetourTransactionBegin();
-	// ::DetourUpdateThread(::GetCurrentThread());
-	//
-	//
-	// ::DetourTransactionCommit();
+	::DetourTransactionBegin();
+	::DetourUpdateThread(::GetCurrentThread());
+
+	CGameClient__MarshalReceived::Install();
+	CMarshal__GetByte::Install();
+	CMarshal__GetInt32t::Install();
+	CMarshal__GetArray::Install();
+
+	::DetourTransactionCommit();
 
 }
 

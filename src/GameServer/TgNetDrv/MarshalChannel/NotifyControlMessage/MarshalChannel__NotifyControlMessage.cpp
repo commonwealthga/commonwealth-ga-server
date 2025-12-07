@@ -191,7 +191,7 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	newcontroller->ResetForceViewTarget();
 
 
-	TgGame__SpawnPlayerCharacter::GiveJetpack((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 999);
+	TgGame__SpawnPlayerCharacter::GiveJetpack((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, newcontroller, 999);
 
 	// TcpEvent PlayerPawnSpawned;
 	// PlayerPawnSpawned.Type = 1;

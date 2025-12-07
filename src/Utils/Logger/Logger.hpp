@@ -7,7 +7,7 @@ public:
 	static std::vector<std::string> EnabledChannels;
 	static std::map<std::string, int> ChannelIndents;
 	static void Log(const char* Channel, const char* Format, ...);
-	static void DumpMemory(char* Channel, void* Address, int Size, int NegativeSize = 0);
+	static void DumpMemory(const char* Channel, void* Address, int Size, int NegativeSize = 0);
 	static inline const char* GetTime() {
 		auto now = std::chrono::system_clock::now();
 		std::time_t now_time_t = std::chrono::system_clock::to_time_t(now);

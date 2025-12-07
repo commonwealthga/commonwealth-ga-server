@@ -233,7 +233,8 @@ private:
 				break;
 			case GA_U::GET_TICKET_INFO:
 				Logger::Log("tcp", "[%s] Received: GET_TICKET_INFO [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-				send_get_ticket_info_response();
+				send_inventory_response(998); // test
+				// send_get_ticket_info_response();
 				// send_instance_ready_response();
 				break;
 			case GA_U::AGENCY_GET_ROSTER:
@@ -315,49 +316,45 @@ private:
 		append(response, packet_type & 0xFF, packet_type >> 8);
 		append(response, item_count & 0xFF, item_count >> 8);
 
-		Write4B(response, GA_T::PAWN_ID, nPawnId);
+		Write4B(response, GA_T::PAWN_ID, 998);
 
 		append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);        // type 010C
 		append(response, 0x01, 0x00);        // count elements
-		{
-			append(response, 14, 0x00);  // inner item count
 
-			Write4B(response, GA_T::INV_REPLICATION_STATE, 0x2);
+			// append(response, 0x0E, 0x00);  // inner item count
+			append(response, 0xB, 0x00);  // inner item count
 
-			Write4B(response, GA_T::ITEM_ID, 0x1);
-
-			Write4B(response, GA_T::INVENTORY_ID, 0x1);
-			Write4B(response, GA_T::BLUEPRINT_ID, 0x1);
-			Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, 0x1);
-			Write4B(response, GA_T::DURABILITY, 0x1);
-			WriteFloat(response, GA_T::ACQUIRE_DATETIME, 0x1);
-			Write4B(response, GA_T::BOUND_FLAG, 0x1);
-			Write4B(response, GA_T::LOCATION_VALUE_ID, 0x1);
+			Write4B(response, GA_T::INV_REPLICATION_STATE, 0x0);
+			// Write4B(response, GA_T::ITEM_ID, 7032);
+			Write4B(response, GA_T::ITEM_ID, 217);
+			Write4B(response, GA_T::INVENTORY_ID, 999);
+			Write4B(response, GA_T::BLUEPRINT_ID, 0);
+			Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, 1162);
+			Write4B(response, GA_T::DURABILITY, 100);
+			// WriteFloat(response, GA_T::ACQUIRE_DATETIME, 0x1);
+			// Write4B(response, GA_T::BOUND_FLAG, 0);
+			Write4B(response, GA_T::LOCATION_VALUE_ID, 369);
 			Write4B(response, GA_T::INSTANCE_COUNT, 0x1);
-			
-			Write4B(response, GA_T::ACTIVE_FLAG, 0x1);
+			// Write4B(response, GA_T::ACTIVE_FLAG, 0x1);
 			Write4B(response, GA_T::DEVICE_ID, 7032);
 
 			append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
 			append(response, 0x01, 0x00);        // count elements
-			{
-				append(response, 2, 0x00);  // inner item count
 
-				Write4B(response, GA_T::INVENTORY_ID, 0x1);
-				Write4B(response, GA_T::EFFECT_GROUP_ID, 0x1);
-			}
+				append(response, 0x02, 0x00);  // inner item count
+
+				Write4B(response, GA_T::INVENTORY_ID, 999);
+				Write4B(response, GA_T::EFFECT_GROUP_ID, 0x0);
 
 			append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
 			append(response, 0x01, 0x00);        // count elements
-			{
-				append(response, 4, 0x00);  // inner item count
+
+				append(response, 0x04, 0x00);  // inner item count
 
 				Write4B(response, GA_T::CHARACTER_ID, 373);
-				Write4B(response, GA_T::INVENTORY_ID, 0x1);
+				Write4B(response, GA_T::INVENTORY_ID, 999);
 				Write4B(response, GA_T::PROFILE_ID, 0x1);
 				Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 5);
-			}
-		}
 
 		send_response(response);
 	}

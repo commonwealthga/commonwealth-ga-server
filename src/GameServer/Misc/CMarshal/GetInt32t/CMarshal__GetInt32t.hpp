@@ -9,6 +9,7 @@ class CMarshal__GetInt32t : public HookBase<
 	CMarshal__GetInt32t> {
 public:
 	static std::map<int, uint32_t> m_values;
+	static bool bLogEnabled;
 	static int __fastcall Call(void* CMarshal, void* edx, int Field, uint32_t* Out);
 	static inline int __fastcall CallOriginal(void* CMarshal, void* edx, int Field, uint32_t* Out) {
 		return m_original(CMarshal, edx, Field, Out);

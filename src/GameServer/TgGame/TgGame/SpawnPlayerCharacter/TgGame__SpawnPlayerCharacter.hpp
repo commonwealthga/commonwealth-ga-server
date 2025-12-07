@@ -66,6 +66,6 @@ public:
 	static inline ATgPawn_Character* __fastcall CallOriginal(ATgGame* Game, void* edx, ATgPlayerController* PlayerController, FVector SpawnLocation) {
 		return m_original(Game, edx, PlayerController, SpawnLocation);
 	};
-	static ATgDevice* GiveJetpack(ATgPawn_Character* Pawn, ATgRepInfo_Player* PlayerReplicationInfo, int nInventoryId);
+	static ATgDevice* GiveJetpack(ATgPawn_Character* Pawn, ATgRepInfo_Player* PlayerReplicationInfo, ATgPlayerController* PlayerController, int nInventoryId);
 };
 

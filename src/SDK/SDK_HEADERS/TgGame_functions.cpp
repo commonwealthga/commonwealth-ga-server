@@ -7064,8 +7064,14 @@ bool ATgDevice::CanUseDeviceInThisPhysicsState ( int FireModeNum )
 {
 	static UFunction* pFnCanUseDeviceInThisPhysicsState = NULL;
 
-	if ( ! pFnCanUseDeviceInThisPhysicsState )
-		pFnCanUseDeviceInThisPhysicsState = (UFunction*) UObject::GObjObjects()->Data[ 36078 ];
+	if ( ! pFnCanUseDeviceInThisPhysicsState ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDevice.CanUseDeviceInThisPhysicsState") == 0) {
+				pFnCanUseDeviceInThisPhysicsState = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnCanUseDeviceInThisPhysicsState = (UFunction*) UObject::GObjObjects()->Data[ 36078 ];
 
 	ATgDevice_execCanUseDeviceInThisPhysicsState_Parms CanUseDeviceInThisPhysicsState_Parms;
 	CanUseDeviceInThisPhysicsState_Parms.FireModeNum = FireModeNum;
@@ -9564,8 +9570,14 @@ class ATgDevice* UTgDeviceFire::CheckSimutainousFiring ( )
 {
 	static UFunction* pFnCheckSimutainousFiring = NULL;
 
-	if ( ! pFnCheckSimutainousFiring )
-		pFnCheckSimutainousFiring = (UFunction*) UObject::GObjObjects()->Data[ 36678 ];
+	if ( ! pFnCheckSimutainousFiring ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDeviceFire.CheckSimutainousFiring") == 0) {
+				pFnCheckSimutainousFiring = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnCheckSimutainousFiring = (UFunction*) UObject::GObjObjects()->Data[ 36678 ];
 
 	UTgDeviceFire_execCheckSimutainousFiring_Parms CheckSimutainousFiring_Parms;
 
@@ -9583,8 +9595,14 @@ float UTgDeviceFire::GetAttackRate ( )
 {
 	static UFunction* pFnGetAttackRate = NULL;
 
-	if ( ! pFnGetAttackRate )
-		pFnGetAttackRate = (UFunction*) UObject::GObjObjects()->Data[ 36675 ];
+	if ( ! pFnGetAttackRate ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDeviceFire.GetAttackRate") == 0) {
+				pFnGetAttackRate = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnGetAttackRate = (UFunction*) UObject::GObjObjects()->Data[ 36675 ];
 
 	UTgDeviceFire_execGetAttackRate_Parms GetAttackRate_Parms;
 
@@ -35527,8 +35545,14 @@ bool ATgPawn::InCombat ( )
 {
 	static UFunction* pFnInCombat = NULL;
 
-	if ( ! pFnInCombat )
-		pFnInCombat = (UFunction*) UObject::GObjObjects()->Data[ 41959 ];
+	if ( ! pFnInCombat ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.InCombat") == 0) {
+				pFnInCombat = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		//pFnInCombat = (UFunction*) UObject::GObjObjects()->Data[ 41959 ];
 
 	ATgPawn_execInCombat_Parms InCombat_Parms;
 

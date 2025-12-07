@@ -16,6 +16,7 @@ public:
 	static bool bIsLoadingBots;
 	static std::map<int, uint32_t> m_values;
 	static std::map<int, std::vector<DeviceIdSlotPair>> m_botDevices;
+	static bool bLogEnabled;
 	static int __fastcall Call(void* CMarshal, void* edx, int Field, uint32_t* Out);
 	static inline int __fastcall CallOriginal(void* CMarshal, void* edx, int Field, uint32_t* Out) {
 		return m_original(CMarshal, edx, Field, Out);

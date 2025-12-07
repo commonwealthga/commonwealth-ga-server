@@ -86,7 +86,12 @@ SOURCE_FILES= \
 
 SOURCE_FILES_CLIENT= \
 			  $(SRC_DIR)/Utils/Logger/Logger/FileLogger.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceivedClient.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetArray/CMarshal__GetArray.cpp \
 			  $(SRC_DIR)/dllmainclient.cpp
+
 
 # JOBS ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu)
 # MAKEFLAGS += -j$(JOBS)

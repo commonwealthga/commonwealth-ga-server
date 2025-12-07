@@ -5,8 +5,13 @@
 bool CMarshal__GetByte::bIsLoadingBots = false;
 std::map<int, uint32_t> CMarshal__GetByte::m_values;
 std::map<int, std::vector<DeviceIdSlotPair>> CMarshal__GetByte::m_botDevices;
+bool CMarshal__GetByte::bLogEnabled = false;
 
 int __fastcall CMarshal__GetByte::Call(void* CMarshal, void* edx, int Field, uint32_t* Out) {
+	if (bLogEnabled) {
+		LogCallBegin();
+	}
+
 	int result = CallOriginal(CMarshal, edx, Field, Out);
 	m_values[Field] = *Out;
 
@@ -18,6 +23,11 @@ int __fastcall CMarshal__GetByte::Call(void* CMarshal, void* edx, int Field, uin
 
 			m_botDevices[BotId].push_back({ DeviceId, SlotUsedValueId });
 		}
+	}
+
+	if (bLogEnabled) {
+		Logger::Log(GetLogChannel(), "Field: 0x%04X value: %d\n", Field, *Out);
+		LogCallEnd();
 	}
 
 	return result;

@@ -8,7 +8,7 @@
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Globals.hpp"
 
-ATgDevice* TgGame__SpawnPlayerCharacter::GiveJetpack(ATgPawn_Character *Pawn, ATgRepInfo_Player* PlayerReplicationInfo, int nInventoryId) {
+ATgDevice* TgGame__SpawnPlayerCharacter::GiveJetpack(ATgPawn_Character *Pawn, ATgRepInfo_Player* PlayerReplicationInfo, ATgPlayerController* PlayerController, int nInventoryId) {
 	LogCallBegin("GiveJetpack");
 
 	UTgInventoryObject_Device* InventoryObject = (UTgInventoryObject_Device*)TgInventoryObject_Device__ConstructInventoryObject::CallOriginal(
@@ -104,11 +104,19 @@ ATgDevice* TgGame__SpawnPlayerCharacter::GiveJetpack(ATgPawn_Character *Pawn, AT
 	Logger::Log(GetLogChannel(), "IsOffhandJetpack() -> %d\n", CheckDevice->IsOffhandJetpack());
 	UTgDeviceFire* FireMode = CheckDevice->GetCurrentFire();
 	Logger::Log(GetLogChannel(), "FireMode -> 0x%p\n", FireMode);
-	Logger::Log(GetLogChannel(), "CanDeviceStartFiringNow() -> %d\n", CheckDevice->eventCanDeviceStartFiringNow(Device->CurrentFireMode, 1));
-	Logger::Log(GetLogChannel(), "CanDeviceFireNow() -> %d\n", CheckDevice->eventCanDeviceFireNow(Device->CurrentFireMode, 1));
+	Logger::Log(GetLogChannel(), "CanDeviceStartFiringNow() -> %d\n", CheckDevice->eventCanDeviceStartFiringNow(CheckDevice->CurrentFireMode, 1));
+	Logger::Log(GetLogChannel(), "CanDeviceFireNow() -> %d\n", CheckDevice->eventCanDeviceFireNow(CheckDevice->CurrentFireMode, 1));
 	Logger::Log(GetLogChannel(), "Pawn->IsNonCombat() -> %d\n", Pawn->IsNonCombat());
 	Logger::Log(GetLogChannel(), "IsNonCombatJetpack() -> %d\n", CheckDevice->IsNonCombatJetpack());
 	Logger::Log(GetLogChannel(), "IsGameTypeDisabled() -> %d\n", CheckDevice->IsGameTypeDisabled());
+	Logger::Log(GetLogChannel(), "Controller->bCinematicMode -> %d\n", PlayerController->bCinematicMode);
+	Logger::Log(GetLogChannel(), "m_nDeviceType -> %d\n", CheckDevice->m_nDeviceType);
+	Logger::Log(GetLogChannel(), "Pawn->c_bDisableAction -> %d\n", Pawn->c_bDisableAction);
+	Logger::Log(GetLogChannel(), "FireMode->GetAttackRate() -> %f\n", CheckDevice->m_FireMode.Data[CheckDevice->CurrentFireMode]->GetAttackRate());
+	Logger::Log(GetLogChannel(), "FireMode->m_bRestrictInCombat -> %d\n", CheckDevice->m_FireMode.Data[CheckDevice->CurrentFireMode]->m_bRestrictInCombat);
+	Logger::Log(GetLogChannel(), "Pawn->InCombat() -> %d\n", Pawn->InCombat());
+	Logger::Log(GetLogChannel(), "FireMode->CheckSimutainousFiring() -> 0x%p\n", CheckDevice->m_FireMode.Data[CheckDevice->CurrentFireMode]->CheckSimutainousFiring());
+	Logger::Log(GetLogChannel(), "CanUseDeviceInThisPhysicsState() -> %d\n", CheckDevice->CanUseDeviceInThisPhysicsState(CheckDevice->CurrentFireMode));
 
 	LogCallEnd();
 

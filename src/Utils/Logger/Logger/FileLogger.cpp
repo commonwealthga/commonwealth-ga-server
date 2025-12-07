@@ -30,7 +30,7 @@ void Logger::Log(const char* Channel, const char* Format, ...) {
     fclose(fp);
 }
 
-void Logger::DumpMemory(char* Channel, void* Address, int Size, int NegativeSize) {
+void Logger::DumpMemory(const char* Channel, void* Address, int Size, int NegativeSize) {
 	if (std::find(EnabledChannels.begin(), EnabledChannels.end(), Channel) == EnabledChannels.end()) {
 		return;
 	}
