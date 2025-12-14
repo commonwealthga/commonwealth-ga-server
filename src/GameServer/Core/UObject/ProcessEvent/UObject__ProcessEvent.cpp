@@ -16,6 +16,7 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		|| strcmp("Function Engine.PlayerController.SendClientAdjustment", name.c_str()) == 0
 		|| strcmp("Function TgGame.TgMissionObjective_Proximity.Tick", name.c_str()) == 0
 		|| strcmp("Function Engine.PlayerController.ServerMove", name.c_str()) == 0
+		|| strcmp("Function Engine.PlayerController.OldServerMove", name.c_str()) == 0
 		|| strcmp("Function TgGame.TgMissionObjective.IsLocalPlayerAttacker", name.c_str()) == 0
 		|| strcmp("Function TgGame.TgProperty.Copy", name.c_str()) == 0
 		|| strcmp("Function TgGame.TgDeploy_BeaconEntrance.Touch", name.c_str()) == 0

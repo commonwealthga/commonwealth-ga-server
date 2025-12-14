@@ -10,6 +10,7 @@ SOURCE_FILES= \
 			  \
 			  $(SRC_DIR)/TcpServer/TcpServerInit/TcpServerInit.cpp \
 			  $(SRC_DIR)/TcpServer/TcpEvents/TcpEvents.cpp \
+			  $(SRC_DIR)/TcpServer/TcpSession/TcpSession.cpp \
 			  \
 			  $(SRC_DIR)/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.cpp \
 			  $(SRC_DIR)/GameServer/Core/FMallocWindows/Free/FMallocWindows__Free.cpp \
@@ -38,6 +39,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/SetSoundMode/TgPlayerController__SetSoundMode.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/CanPlayerUseVolume/TgPlayerController__CanPlayerUseVolume.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/GetViewTarget/TgPlayerController__GetViewTarget.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/ServerAcceptNewProfileFromEquipScreen/TgPlayerController__ServerAcceptNewProfileFromEquipScreen.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter__GiveJetpack.cpp \
@@ -90,6 +92,9 @@ SOURCE_FILES_CLIENT= \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetArray/CMarshal__GetArray.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetFloat/CMarshal__GetFloat.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetFlag/CMarshal__GetFlag.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetIntEnum/CMarshal__GetIntEnum.cpp \
 			  $(SRC_DIR)/dllmainclient.cpp
 
 
@@ -186,4 +191,10 @@ $(VERSION_CLIENT_OUT): $(VERSION_CLIENT_OBJS) $(VERSION_DEF)
 # Clean
 clean:
 	rm -rf $(OBJ_DIR) $(OBJ_CLIENT_DIR) $(OUT_DIR) $(OUT_CLIENT_DIR)
+
+cleanserver:
+	rm -rf $(OBJ_DIR) $(OUT_DIR)/version.dll
+
+cleanclient:
+	rm -rf $(OBJ_CLIENT_DIR) $(OUT_CLIENT_DIR)
 

@@ -13,10 +13,14 @@ int __fastcall CMarshal__GetArray::Call(void* CMarshal, void* edx, int Field, ui
 	m_values[Field] = *Out;
 
 	if (bLogEnabled) {
-		Logger::Log(GetLogChannel(), "Field: 0x%04X value: %d \n", Field, *Out);
-		void* this_00 = *(void **)((*Out) + 4);
-		if (this_00 != nullptr && (int)this_00 > 0x1000) {
-			Logger::DumpMemory(GetLogChannel(), this_00, 0x200, 0);
+		if (Out != nullptr) {
+			Logger::Log(GetLogChannel(), "Field: 0x%04X value: %d \n", Field, *Out);
+			if (*Out != 0) {
+				void* this_00 = *(void **)((*Out) + 4);
+				if (this_00 != nullptr && (int)this_00 > 0x1000) {
+					// Logger::DumpMemory(GetLogChannel(), this_00, 0x200, 0);
+				}
+			}
 		}
 		LogCallEnd();
 	}

@@ -18,18 +18,24 @@ ATgDevice* TgGame__SpawnPlayerCharacter::GiveJetpack(ATgPawn_Character *Pawn, AT
 	InventoryObject->ObjectFlags.A |= 0x4000;
 
 	FInventoryData InventoryData;
-	InventoryData.bBoundFlag = 0;
+	InventoryData.bBoundFlag = 1;
 	InventoryData.bEquippedOnOtherChar = 0;
-	InventoryData.nCreatedByCharacterId = 0;
-	InventoryData.fAcquiredDatetime = 0.0f;
-	InventoryData.m_nEquipSlotValueIdArray[0] = 806;
+	InventoryData.nCreatedByCharacterId = 998;
+	InventoryData.fAcquiredDatetime = 1700000000.0f;
+	// InventoryData.m_nEquipSlotValueIdArray[0] = 806;
+	InventoryData.m_nEquipSlotValueIdArray[0] = 5;
+	InventoryData.m_nEquipSlotValueIdArray[1] = 5;
+	InventoryData.m_nEquipSlotValueIdArray[2] = 5;
+	InventoryData.m_nEquipSlotValueIdArray[3] = 5;
+	InventoryData.m_nEquipSlotValueIdArray[4] = 5;
+	InventoryData.m_nEquipSlotValueIdArray[5] = 5;
 	InventoryData.nCraftedQualityValueId = 1162;
 	InventoryData.nBlueprintId = 0;
 	InventoryData.nDurability = 100;
 	InventoryData.nInstanceCount = 1;
-	InventoryData.nInvId = nInventoryId;
+	InventoryData.nInvId = 999;
 	InventoryData.nItemId = GA_G::DEVICE_ID_MEDIC_CJP;
-	InventoryData.nLocationCode = 370;
+	InventoryData.nLocationCode = 369;
 
 	int equipPoint = GA_G::EQUIP_POINT_JETPACK_ID;
 	
@@ -37,8 +43,8 @@ ATgDevice* TgGame__SpawnPlayerCharacter::GiveJetpack(ATgPawn_Character *Pawn, AT
 	InventoryObject->m_pAmItem.Dummy = CAmItem__LoadItemMarshal::m_ItemPointers[GA_G::DEVICE_ID_MEDIC_CJP];
 	InventoryObject->m_InventoryData = InventoryData;
 	InventoryObject->s_bPersistsInInventory = 1;
-	InventoryObject->s_ReplicatedState = 0;
-	InventoryObject->m_nDeviceInstanceId = nInventoryId;
+	InventoryObject->s_ReplicatedState = 1;
+	InventoryObject->m_nDeviceInstanceId = 7032;
 
 	InventoryObject->m_InvManager = (ATgInventoryManager*)Pawn->InvManager;
 	ATgDevice* Device = AssemblyDatManager__CreateDevice::CallOriginal(Globals::Get().GAssemblyDatManager, nullptr, InventoryObject->m_InventoryData.nItemId, Pawn);
@@ -46,7 +52,7 @@ ATgDevice* TgGame__SpawnPlayerCharacter::GiveJetpack(ATgPawn_Character *Pawn, AT
 
 	if (Device != nullptr) {
 		Device->s_InventoryObject = InventoryObject;
-		Device->r_nDeviceInstanceId = nInventoryId;
+		Device->r_nDeviceInstanceId = 7032;
 		Device->m_bIsOffHand = 1;
 		Device->m_bHandDevice = 0;
 		Device->m_nDeviceType = 806;
@@ -54,8 +60,8 @@ ATgDevice* TgGame__SpawnPlayerCharacter::GiveJetpack(ATgPawn_Character *Pawn, AT
 		Device->r_nQualityValueId = 1162;
 
 		FEquipDeviceInfo EquipDeviceInfo;
-		EquipDeviceInfo.nDeviceId = InventoryObject->m_InventoryData.nItemId;
-		EquipDeviceInfo.nDeviceInstanceId = nInventoryId;
+		EquipDeviceInfo.nDeviceId = 7032;
+		EquipDeviceInfo.nDeviceInstanceId = 7032;
 		EquipDeviceInfo.nQualityValueId = InventoryObject->m_InventoryData.nCraftedQualityValueId;
 
 		Pawn->m_EquippedDevices[equipPoint] = Device;
@@ -65,8 +71,8 @@ ATgDevice* TgGame__SpawnPlayerCharacter::GiveJetpack(ATgPawn_Character *Pawn, AT
 		PlayerReplicationInfo->r_EquipDeviceInfo[equipPoint] = EquipDeviceInfo;
 
 		Device->r_eEquippedAt = equipPoint;
-		Device->r_nInventoryId = nInventoryId;
-		Device->s_InventoryObject->m_InventoryData.nInvId = nInventoryId;
+		Device->r_nInventoryId = 999;
+		Device->s_InventoryObject->m_InventoryData.nInvId = 999;
 
 		// Logger::DumpMemory("newjetpack", Device, 0x2D8, 0);
 		//

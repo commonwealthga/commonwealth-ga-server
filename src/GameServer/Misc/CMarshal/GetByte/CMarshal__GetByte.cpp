@@ -12,6 +12,11 @@ int __fastcall CMarshal__GetByte::Call(void* CMarshal, void* edx, int Field, uin
 		LogCallBegin();
 	}
 
+	if (bLogEnabled) {
+		int iVar2 = *(int *)(0x11943694 + Field * 0x68);
+		Logger::Log(GetLogChannel(), "Resolved type: %d\n", iVar2);
+	}
+
 	int result = CallOriginal(CMarshal, edx, Field, Out);
 	m_values[Field] = *Out;
 

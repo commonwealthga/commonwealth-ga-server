@@ -9,6 +9,7 @@ class CMarshal__GetFloat : public HookBase<
 	CMarshal__GetFloat> {
 public:
 	static std::map<int, float> m_values;
+	static bool bLogEnabled;
 	static int __fastcall Call(void* CMarshal, void* edx, int Field, float* Out);
 	static inline int __fastcall CallOriginal(void* CMarshal, void* edx, int Field, float* Out) {
 		return m_original(CMarshal, edx, Field, Out);

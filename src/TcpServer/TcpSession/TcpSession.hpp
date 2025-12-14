@@ -63,14 +63,64 @@ private:
         buffer.insert(buffer.end(), str.begin(), str.end());
     }
 
+	void WriteWideString(std::vector<uint8_t>& buffer, uint16_t type, const std::wstring& str)
+	{
+		append(buffer, type & 0xFF, type >> 8);
+
+		uint16_t len = static_cast<uint16_t>(str.size());
+		append(buffer, len & 0xFF, len >> 8);
+
+		for (wchar_t ch : str) {
+			append(buffer, ch & 0xFF, (ch >> 8) & 0xFF);
+		}
+	}
+
     void WriteNBytes(std::vector<uint8_t>& buffer, uint16_t type, const std::vector<uint8_t>& bytes) {
         append(buffer, type & 0xFF, type >> 8);
         buffer.insert(buffer.end(), bytes.begin(), bytes.end());
     }
 
-	void WriteFloat(std::vector<uint8_t>& buffer, uint16_t type, float val) {
+	// void WriteFloat(std::vector<uint8_t>& buffer, uint16_t type, float val) {
+	// 	append(buffer, type & 0xFF, type >> 8);
+	// 	buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&val), reinterpret_cast<uint8_t*>(&val) + sizeof(float));
+	// }
+
+	void WriteFloat(std::vector<uint8_t>& buffer, uint16_t type, float val)
+	{
 		append(buffer, type & 0xFF, type >> 8);
-		buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&val), reinterpret_cast<uint8_t*>(&val) + sizeof(float));
+
+		// static_assert(sizeof(float) == 4, "Unexpected float size");
+
+		uint32_t raw;
+		std::memcpy(&raw, &val, sizeof(raw));
+
+		append(buffer,
+		 raw & 0xFF,
+		 (raw >> 8) & 0xFF,
+		 (raw >> 16) & 0xFF,
+		 (raw >> 24) & 0xFF
+		 );
+	}
+
+	void WriteDouble(std::vector<uint8_t>& buffer, uint16_t type, double val)
+	{
+		append(buffer, type & 0xFF, type >> 8);
+
+		// static_assert(sizeof(double) == 8, "Unexpected double size");
+
+		uint64_t raw;
+		std::memcpy(&raw, &val, sizeof(raw));
+
+		append(buffer,
+		 raw & 0xFF,
+		 (raw >> 8) & 0xFF,
+		 (raw >> 16) & 0xFF,
+		 (raw >> 24) & 0xFF,
+		 (raw >> 32) & 0xFF,
+		 (raw >> 40) & 0xFF,
+		 (raw >> 48) & 0xFF,
+		 (raw >> 56) & 0xFF
+		 );
 	}
 
 	void WriteIP(std::vector<uint8_t>& response, uint16_t type, const std::string& ip, uint16_t port) {
@@ -203,6 +253,8 @@ private:
 				send_select_character_response();
 				Sleep(1000);
 				send_go_play_response();
+				Sleep(1000);
+				send_inventory_response(998);
 				// while (!TgGame__LoadGameConfig::bRandomSMSettingsLoaded) {
 				// 	Sleep(100);
 				// }
@@ -233,7 +285,7 @@ private:
 				break;
 			case GA_U::GET_TICKET_INFO:
 				Logger::Log("tcp", "[%s] Received: GET_TICKET_INFO [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-				send_inventory_response(998); // test
+				// send_inventory_response(998); // test
 				// send_get_ticket_info_response();
 				// send_instance_ready_response();
 				break;
@@ -307,57 +359,7 @@ private:
 		send_response(response);
 	}
 
-	void send_inventory_response(int nPawnId) {
-		std::vector<uint8_t> response;
-
-		uint16_t packet_type = GA_U::SEND_INVENTORY;
-		uint16_t item_count = 2;
-
-		append(response, packet_type & 0xFF, packet_type >> 8);
-		append(response, item_count & 0xFF, item_count >> 8);
-
-		Write4B(response, GA_T::PAWN_ID, 998);
-
-		append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);        // type 010C
-		append(response, 0x01, 0x00);        // count elements
-
-			// append(response, 0x0E, 0x00);  // inner item count
-			append(response, 0xB, 0x00);  // inner item count
-
-			Write4B(response, GA_T::INV_REPLICATION_STATE, 0x0);
-			// Write4B(response, GA_T::ITEM_ID, 7032);
-			Write4B(response, GA_T::ITEM_ID, 217);
-			Write4B(response, GA_T::INVENTORY_ID, 999);
-			Write4B(response, GA_T::BLUEPRINT_ID, 0);
-			Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, 1162);
-			Write4B(response, GA_T::DURABILITY, 100);
-			// WriteFloat(response, GA_T::ACQUIRE_DATETIME, 0x1);
-			// Write4B(response, GA_T::BOUND_FLAG, 0);
-			Write4B(response, GA_T::LOCATION_VALUE_ID, 369);
-			Write4B(response, GA_T::INSTANCE_COUNT, 0x1);
-			// Write4B(response, GA_T::ACTIVE_FLAG, 0x1);
-			Write4B(response, GA_T::DEVICE_ID, 7032);
-
-			append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
-			append(response, 0x01, 0x00);        // count elements
-
-				append(response, 0x02, 0x00);  // inner item count
-
-				Write4B(response, GA_T::INVENTORY_ID, 999);
-				Write4B(response, GA_T::EFFECT_GROUP_ID, 0x0);
-
-			append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
-			append(response, 0x01, 0x00);        // count elements
-
-				append(response, 0x04, 0x00);  // inner item count
-
-				Write4B(response, GA_T::CHARACTER_ID, 373);
-				Write4B(response, GA_T::INVENTORY_ID, 999);
-				Write4B(response, GA_T::PROFILE_ID, 0x1);
-				Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 5);
-
-		send_response(response);
-	}
+	void send_inventory_response(int nPawnId);
 
 	// void send_map_randomsm_settings_response() {
 	// 	std::vector<uint8_t> response;

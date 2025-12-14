@@ -7,6 +7,7 @@ class ActorChannel__ReceivedBunch__CanExecute : public HookBase<
 	0x1090FE50,
 	ActorChannel__ReceivedBunch__CanExecute> {
 public:
+	static bool bLogEnabled;
 	static bool __cdecl Call(void* param_1, void* param_2, int param_3);
 	static inline bool __cdecl CallOriginal(void* param_1, void* param_2, int param_3) {
 		return m_original(param_1, param_2, param_3);

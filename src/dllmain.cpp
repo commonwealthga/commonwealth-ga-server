@@ -24,6 +24,7 @@
 #include "src/GameServer/TgGame/TgPlayerController/SetSoundMode/TgPlayerController__SetSoundMode.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/CanPlayerUseVolume/TgPlayerController__CanPlayerUseVolume.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/GetViewTarget/TgPlayerController__GetViewTarget.hpp"
+#include "src/GameServer/TgGame/TgPlayerController/ServerAcceptNewProfileFromEquipScreen/TgPlayerController__ServerAcceptNewProfileFromEquipScreen.hpp"
 #include "src/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotPawn/TgGame__SpawnBotPawn.hpp"
@@ -97,6 +98,7 @@ unsigned long ModuleThread( void* ) {
 	NetConnection__CleanupActor::Install();
 	// MarshalChannel__MarshalReceived::Install();
 	MarshalChannel__NotifyControlMessage::Install();
+	ActorChannel__ReceivedBunch__CanExecute::bLogEnabled = true;
 	ActorChannel__ReceivedBunch__CanExecute::Install();
 	Channel__ReceivedSequencedBunch::Install();
 	Actor__GetOptimizedRepList::Install();
@@ -108,6 +110,7 @@ unsigned long ModuleThread( void* ) {
 	TgPlayerController__SetSoundMode::Install();
 	TgPlayerController__CanPlayerUseVolume::Install();
 	TgPlayerController__GetViewTarget::Install();
+	TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Install();
 	// TgGame__TgFindPlayerStart::Install();
 	TgGame__SpawnPlayerCharacter::Install();
 	TgGame__SpawnBotPawn::Install();
