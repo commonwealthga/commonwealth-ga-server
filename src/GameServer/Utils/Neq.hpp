@@ -283,7 +283,8 @@ bool NEQ(FDeviceStatInfo& A,FDeviceStatInfo& B,void* Map,void* Channel) {
 	|| A.Stats[8] != B.Stats[8] || A.Stats[9] != B.Stats[9] || A.Stats[10] != B.Stats[10];
 }
 bool NEQ(FEquipDeviceInfo& A,FEquipDeviceInfo& B,void* Map,void* Channel) {
-	return A.nDeviceId != B.nDeviceId || A.nDeviceInstanceId != B.nDeviceInstanceId || A.nQualityValueId != B.nQualityValueId;
+	return 1;
+	// return A.nDeviceId != B.nDeviceId || A.nDeviceInstanceId != B.nDeviceInstanceId || A.nQualityValueId != B.nQualityValueId;
 }
 bool NEQ(FEffectListEntry& A,FEffectListEntry& B,void* Map,void* Channel) {return A != B;}
 bool NEQ(FScanner_Settings& A,FScanner_Settings& B,void* Map,void* Channel) {return A != B;}

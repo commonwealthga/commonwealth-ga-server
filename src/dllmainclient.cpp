@@ -1,5 +1,6 @@
 #include "src/pch.hpp"
 
+#include "src/Utils/DebugWindow/DebugWindow.hpp"
 #include "src/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.hpp"
 #include "src/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.hpp"
 #include "src/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.hpp"
@@ -37,7 +38,9 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
 		case DLL_PROCESS_ATTACH:
             DisableThreadLibraryCalls(hinstDLL);
 			CreateThread( 0, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(ModuleThread), 0, 0, 0 );
-			// CreateThread( 0, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(DebugWindow::ModuleThread), 0, 0, 0 );
+
+			DebugWindow::WindowTitle = "CLIENT";
+			CreateThread( 0, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(DebugWindow::ModuleThread), 0, 0, 0 );
 			break;
 		case DLL_THREAD_ATTACH:
 			break;

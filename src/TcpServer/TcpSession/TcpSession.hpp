@@ -230,10 +230,9 @@ private:
 				if (GTcpEvents.size() > 0) {
 					TcpEvent event = GTcpEvents[0];
 					if (event.Type == 1) {
-						Logger::Log("tcp", "[%s] Received: RELAY_LOG [0x%04X], item count: %d, sending random SM settings\n", Logger::GetTime(), packet_type, item_count);
-						if (event.Names.size() > 0) {
-							send_map_randomsm_settings_response(event.Names);
-						}
+						Logger::Log("tcp", "[%s] Received: RELAY_LOG [0x%04X], item count: %d, player spawned\n", Logger::GetTime(), packet_type, item_count);
+						send_character_inventory_response(998);
+						send_inventory_response(998);
 						GTcpEvents.erase(GTcpEvents.begin());
 					}
 
@@ -253,8 +252,10 @@ private:
 				send_select_character_response();
 				Sleep(1000);
 				send_go_play_response();
-				Sleep(1000);
-				send_inventory_response(998);
+				// Sleep(1000);
+				// send_character_inventory_response(998);
+				// Sleep(1000);
+				// send_inventory_response(998);
 				// while (!TgGame__LoadGameConfig::bRandomSMSettingsLoaded) {
 				// 	Sleep(100);
 				// }
@@ -360,6 +361,7 @@ private:
 	}
 
 	void send_inventory_response(int nPawnId);
+	void send_character_inventory_response(int nPawnId);
 
 	// void send_map_randomsm_settings_response() {
 	// 	std::vector<uint8_t> response;
@@ -374,55 +376,6 @@ private:
 	//
 	// 	send_response(response);
 	// }
-
-
-	void send_character_inventory_response() {
-		std::vector<uint8_t> response;
-
-		uint16_t packet_type = GA_U::SEND_CHARACTER_INVENTORY;
-		uint16_t item_count = 3;
-
-		append(response, packet_type & 0xFF, packet_type >> 8);
-		append(response, item_count & 0xFF, item_count >> 8);
-
-		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
-		append(response, 0x01, 0x00);        // count elements
-		{
-			append(response, 2, 0x00);  // inner item count
-
-			Write4B(response, GA_T::INVENTORY_ID, 0x1);
-			Write4B(response, GA_T::EFFECT_GROUP_ID, 0x1);
-		}
-
-		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
-		append(response, 0x01, 0x00);        // count elements
-		{
-			append(response, 4, 0x00);  // inner item count
-
-			Write4B(response, GA_T::CHARACTER_ID, 373);
-			Write4B(response, GA_T::INVENTORY_ID, 0x1);
-			Write4B(response, GA_T::PROFILE_ID, 0x1);
-			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 0x1);
-		}
-
-		append(response, GA_T::DATA_SET_PLAYER_INVENTORY & 0xFF, GA_T::DATA_SET_PLAYER_INVENTORY >> 8);
-		append(response, 0x01, 0x00);        // count elements
-		{
-			append(response, 9, 0x00);  // inner item count
-
-			Write4B(response, GA_T::ITEM_ID, 0x1);
-			Write4B(response, GA_T::INVENTORY_ID, 0x1);
-			Write4B(response, GA_T::BLUEPRINT_ID, 0x1);
-			Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, 0x1);
-			Write4B(response, GA_T::DURABILITY, 0x1);
-			WriteFloat(response, GA_T::ACQUIRE_DATETIME, 0x1);
-			Write4B(response, GA_T::BOUND_FLAG, 0x1);
-			Write4B(response, GA_T::LOCATION_VALUE_ID, 0x1);
-			Write4B(response, GA_T::INSTANCE_COUNT, 0x1);
-		}
-
-		send_response(response);
-	}
 
 
 	void send_player_skills_response() {

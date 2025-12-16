@@ -193,12 +193,10 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 
 	TgGame__SpawnPlayerCharacter::GiveJetpack((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, newcontroller, 999);
 
-	// TcpEvent PlayerPawnSpawned;
-	// PlayerPawnSpawned.Type = 1;
-	// PlayerPawnSpawned.Pawn = (ATgPawn*)newcontroller->Pawn;
-	// GTcpEvents.push_back(PlayerPawnSpawned);
-
-
+	TcpEvent PlayerPawnSpawned;
+	PlayerPawnSpawned.Type = 1;
+	PlayerPawnSpawned.Pawn = (ATgPawn*)newcontroller->Pawn;
+	GTcpEvents.push_back(PlayerPawnSpawned);
 
 	if (!bFirstPlayerSpawned) {
 		bFirstPlayerSpawned = true;

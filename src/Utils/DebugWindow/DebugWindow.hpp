@@ -24,6 +24,10 @@ public:
 	static inline int TypeSelectId = 1004;
 	static inline int InstanceSelectId = 1005;
 	static inline int ApplyButtonId = 1006;
+	static inline int SearchInputId = 1007;
+	static inline int SearchButtonId = 1008;
+
+	static std::string WindowTitle;
 
     // static HWND hCombo;
     // static HWND hOutput;
@@ -35,6 +39,8 @@ public:
 	static HWND hTypeSelect;
 	static HWND hInstanceSelect;
 	static HWND hApplyButton;
+	static HWND hSearchInput;
+	static HWND hSearchButton;
 
 	static HWND hDumpBox;
 

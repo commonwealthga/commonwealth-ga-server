@@ -8,6 +8,8 @@ HWND DebugWindow::hSizeInput = nullptr;
 HWND DebugWindow::hTypeSelect = nullptr;
 HWND DebugWindow::hInstanceSelect = nullptr;
 HWND DebugWindow::hApplyButton = nullptr;
+HWND DebugWindow::hSearchInput = nullptr;
+HWND DebugWindow::hSearchButton = nullptr;
 HWND DebugWindow::hDumpBox = nullptr;
 bool DebugWindow::bAutoRefresh = false;
 std::string DebugWindow::SelectedInstance;
@@ -16,6 +18,8 @@ uintptr_t DebugWindow::SelectedAddress;
 int DebugWindow::SelectedSize = 100;
 HINSTANCE DebugWindow::hInstance = nullptr;
 // std::string DebugWindow::SelectedOption;
+
+std::string DebugWindow::WindowTitle = "Debug Window";
 
 DWORD WINAPI DebugWindow::ModuleThread(LPVOID lpParam)
 {
@@ -31,7 +35,7 @@ DWORD WINAPI DebugWindow::ModuleThread(LPVOID lpParam)
 	HWND hwnd = CreateWindowEx(
 		WS_EX_TOOLWINDOW,
 		wc.lpszClassName,
-		TEXT("Debug Window"),
+		TEXT(DebugWindow::WindowTitle.c_str()),
 		WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT,
 		1920, 1000,
@@ -98,6 +102,28 @@ DWORD WINAPI DebugWindow::ModuleThread(LPVOID lpParam)
 		1000, 20, 150, 25,      // position + size
 		hwnd,
 		(HMENU)AutoRefreshCheckboxId,
+		hInstance,
+		nullptr
+	);
+
+
+	hSearchInput = CreateWindowEx(
+		0,
+		TEXT("EDIT"),
+		TEXT(""),
+		WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
+		1300, 20, 200, 25,
+		hwnd, (HMENU)SearchInputId, hInstance, nullptr
+	);
+
+	hSearchButton = CreateWindowEx(
+		0,
+		TEXT("BUTTON"),
+		TEXT("Search"),
+		WS_CHILD | WS_VISIBLE,
+		1600, 20, 100, 25,
+		hwnd,
+		(HMENU)SearchButtonId, // button ID
 		hInstance,
 		nullptr
 	);
@@ -205,6 +231,26 @@ LRESULT CALLBACK DebugWindow::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
 					DebugWindow::SelectedSize = atoi(buf2);
 
 					ShowDebugInfo();
+
+					return 0;
+				}
+
+				if ((HWND)lParam == hSearchButton && HIWORD(wParam) == BN_CLICKED)
+				{
+					char buf[128];
+					GetWindowTextA(DebugWindow::hSearchInput, buf, 128);
+
+					for (int i = 0; i < UObject::GObjObjects()->Num(); i++) {
+						UObject* obj = UObject::GObjObjects()->Data[i];
+						if (obj && obj->Class) {
+							if (strcmp(obj->Class->GetFullName(), buf) == 0) {
+								DebugWindow::Instances[obj->GetFullName()].address = (uintptr_t)obj;
+								DebugWindow::Instances[obj->GetFullName()].type = "Raw";
+
+								RefreshOptions();
+							}
+						}
+					}
 
 					return 0;
 				}
