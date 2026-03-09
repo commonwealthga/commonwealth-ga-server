@@ -8,6 +8,7 @@
 #include "src/Utils/Logger/Logger.hpp"
 
 std::map<int, ATgPawn*> TgBotFactory__SpawnNextBot::m_lastSpawnedBot;
+static int nMaxInventoryId = 5000;  // start well above any player inventory IDs
 
 void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void *edx) {
 
@@ -110,6 +111,42 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void
 				Bot->NotifyTeamChanged();
 			}
 
+
+			// Give bot its devices from AssemblyDat config
+			auto& botDevices = TgBotFactory__LoadObjectConfig::m_botDevices[randomSpawnEntry.EnemyBotId];
+			int defaultSlot = TgBotFactory__LoadObjectConfig::m_botDefaultSlots[randomSpawnEntry.EnemyBotId];
+			ATgDevice* primaryDevice = nullptr;
+			int primaryEquipPoint = 0;
+
+			for (auto& deviceEntry : botDevices) {
+				int equipPoint = TgBotFactory__LoadObjectConfig::GetEquipPointBySlot(deviceEntry.SlotUsedValueId);
+				nMaxInventoryId++;
+
+				ATgDevice* Device = Bot->CreateEquipDevice(nMaxInventoryId, deviceEntry.DeviceId, equipPoint);
+				if (Device != nullptr) {
+					Device->r_nDeviceInstanceId = nMaxInventoryId;
+					Device->Role = 3;
+					Device->RemoteRole = 1;
+					Device->bNetInitial = 1;
+					Device->bNetDirty = 1;
+					Logger::Log("tgbotfactory", " Gave device %d at equip point %d (slot %d), invId=%d\n",
+						deviceEntry.DeviceId, equipPoint, deviceEntry.SlotUsedValueId, nMaxInventoryId);
+					if (primaryDevice == nullptr || deviceEntry.SlotUsedValueId == defaultSlot) {
+						primaryDevice = Device;
+						primaryEquipPoint = equipPoint;
+					}
+				} else {
+					Logger::Log("tgbotfactory", " Failed to create device %d (slot %d)\n",
+						deviceEntry.DeviceId, deviceEntry.SlotUsedValueId);
+				}
+			}
+
+			if (primaryDevice != nullptr) {
+				Bot->m_CurrentInHandDevice = primaryDevice;
+				Bot->r_eDesiredInHand = primaryEquipPoint;
+			}
+
+			Bot->UpdateClientDevices(0, 0);
 
 			Bot->Role = 3;
 			Bot->RemoteRole = 1;

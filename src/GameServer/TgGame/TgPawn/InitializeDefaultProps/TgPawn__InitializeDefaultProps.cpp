@@ -53,6 +53,7 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_COST, 0, 0, 0, 0);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_MIN_COST, 0, 0, 0, 0);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_RECHARGE_RATE, 10, 10, 0, 10);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_FLIGHT_ACCELERATION, 0, 0, 0, 1000);
 
 	LogCallEnd();
 }

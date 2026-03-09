@@ -13,7 +13,7 @@
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/Utils/Macros.hpp"
 
-bool TgGame__SpawnPlayerCharacter::bEnemyGearSpawned = true; // disable temporarily because of lag
+bool TgGame__SpawnPlayerCharacter::bEnemyGearSpawned = true;  // now handled in SpawnBotById
 
 ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, void* edx, ATgPlayerController* PlayerController, FVector SpawnLocation) {
 
@@ -46,141 +46,56 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 				sqlite3* db = Database::GetConnection();
 				sqlite3_stmt* stmt;
-				int result = sqlite3_prepare_v2(db, "SELECT \
-					b.bot_id AS bot_id, \
-					bd.slot_used_value_id AS slot_used_value_id, \
-					bd.device_id AS device_id, \
-					i.quality_value_id AS quality_value_id \
-					MIN(m.device_mode_id) AS device_mode_id, \
-					b.default_slot_value_id AS default_slot_value_id \
-					FROM asm_data_set_bots_data_set_bot_devices bd \
-					LEFT JOIN asm_data_set_bots b ON b.bot_id = bd.bot_id \
-					LEFT JOIN asm_data_set_items i ON i.item_id = bd.device_id \
-					LEFT JOIN asm_data_set_devices_data_set_device_modes m ON m.device_id = bd.device_id \
-					WHERE b.bot_id = ? \
-					GROUP BY b.bot_id, bd.device_id;", -1, &stmt, nullptr);
+				int result = sqlite3_prepare_v2(db,
+					"SELECT DISTINCT bd.device_id, bd.slot_used_value_id, "
+					"COALESCE(i.quality_value_id, 1162) AS quality_value_id, "
+					"b.default_slot_value_id "
+					"FROM asm_data_set_bots_data_set_bot_devices bd "
+					"LEFT JOIN asm_data_set_bots b ON b.bot_id = bd.bot_id "
+					"LEFT JOIN asm_data_set_items i ON i.item_id = bd.device_id "
+					"WHERE bd.bot_id = ?;",
+					-1, &stmt, nullptr);
+
 				if (result == SQLITE_OK) {
 					sqlite3_bind_int(stmt, 1, nBotId);
 
 					while (sqlite3_step(stmt) == SQLITE_ROW) {
+						int deviceId          = sqlite3_column_int(stmt, 0);
+						int slotUsedValueId   = sqlite3_column_int(stmt, 1);
+						int qualityValueId    = sqlite3_column_int(stmt, 2);
+						int defaultSlotValueId = sqlite3_column_int(stmt, 3);
 
-						nMaxInventoryId++;
-						int botId = sqlite3_column_int(stmt, 0);
-						int slotUsedValueId = sqlite3_column_int(stmt, 1);
-						int deviceId = sqlite3_column_int(stmt, 2);
-						int qualityValueId = sqlite3_column_int(stmt, 3);
-						int deviceModeId = sqlite3_column_int(stmt, 4);
-						int defaultSlotValueId = sqlite3_column_int(stmt, 5);
-						if (deviceId == 0) {
-							continue;
-						}
-
-						Logger::Log("debug", "Requested new device: botId = %d, slotUsedValueId = %d, deviceId = %d, qualityValueId = %d\n", botId, slotUsedValueId, deviceId, qualityValueId);
-
-						// int equipPoint = Bot->GetEquipPointByType(slotUsedValueId);
+						if (deviceId == 0) continue;
 
 						int equipPoint = GetEquipPointByType(slotUsedValueId);
 
-						Logger::Log("debug", "slotUsedValueId = %d, equipPoint = %d\n", slotUsedValueId, equipPoint);
-
-						UTgInventoryObject_Device* InventoryObject = (UTgInventoryObject_Device*)TgInventoryObject_Device__ConstructInventoryObject::CallOriginal(
-							ClassPreloader::GetTgInventoryObjectDeviceClass(),
-							-1, 0, 0, 0, 0, 0, 0, nullptr);
-						// add RF_RootSet flag 0x4000
-						InventoryObject->ObjectFlags.A |= 0x4000;
-
-
-						Logger::Log("debug", "Created inventory object %s\n", InventoryObject->GetFullName());
-
-						FInventoryData InventoryData;
-						InventoryData.bBoundFlag = 0;
-						InventoryData.bEquippedOnOtherChar = 0;
-						InventoryData.nCreatedByCharacterId = 0;
-						InventoryData.fAcquiredDatetime = 0.0f;
-						InventoryData.m_nEquipSlotValueIdArray[0] = slotUsedValueId;
-						InventoryData.nCraftedQualityValueId = qualityValueId;
-						InventoryData.nBlueprintId = 0;
-						InventoryData.nDurability = 100;
-						InventoryData.nInstanceCount = 1;
-						InventoryData.nInvId = nMaxInventoryId;
-						InventoryData.nItemId = deviceId;
-						InventoryData.nLocationCode = 370;
-
-						InventoryObject->m_pAmItem.Dummy = CAmItem__LoadItemMarshal::m_ItemPointers[deviceId];
-						InventoryObject->m_InventoryData = InventoryData;
-						InventoryObject->s_bPersistsInInventory = 0;
-						InventoryObject->s_ReplicatedState = 0;
-
-						InventoryObject->m_InvManager = (ATgInventoryManager*)Bot->InvManager;
-						ATgDevice* Device = AssemblyDatManager__CreateDevice::CallOriginal(Globals::Get().GAssemblyDatManager, edx, InventoryObject->m_InventoryData.nItemId, Bot);
-						InventoryObject->s_Device = Device;
-
+						// invId=0: CreateEquipDevice auto-creates the inventory object
+						ATgDevice* Device = Bot->CreateEquipDevice(0, deviceId, equipPoint);
 						if (Device != nullptr) {
-							Device->s_InventoryObject = InventoryObject;
+							nMaxInventoryId++;
 							Device->r_nDeviceInstanceId = nMaxInventoryId;
-
-							FEquipDeviceInfo EquipDeviceInfo;
-							EquipDeviceInfo.nDeviceId = InventoryObject->m_InventoryData.nItemId;
-							EquipDeviceInfo.nDeviceInstanceId = nMaxInventoryId;
-							EquipDeviceInfo.nQualityValueId = InventoryObject->m_InventoryData.nCraftedQualityValueId;
-
-							// UTgDeviceForm* DeviceForm = Bot->CreateDeviceForm(EquipDeviceInfo);
-							// Bot->c_EquipForm[equipPoint] = DeviceForm;
-
-							Bot->m_EquippedDevices[equipPoint] = Device;
-
-							Bot->r_EquipDeviceInfo[equipPoint] = EquipDeviceInfo;
-
-							BotRepInfo->r_EquipDeviceInfo[equipPoint] = EquipDeviceInfo;
-
-							Device->r_eEquippedAt = equipPoint;
-							Device->r_nInventoryId = nMaxInventoryId;
-							Device->s_InventoryObject->m_InventoryData.nInvId = nMaxInventoryId;
-
-							
-							if ((char*)Bot->InvManager + 0x1f0 == nullptr) {
-								TMap__Allocate::CallOriginal((void*)((char*)Bot->InvManager + 0x1f0));
-							}
-							if ((char*)Bot->InvManager + 0x22c == nullptr) {
-								TMap__Allocate::CallOriginal((void*)((char*)Bot->InvManager + 0x22c));
-							}
-							TgInventoryManager__PrepopulateInventoryId::CallOriginal((void*)((char*)Bot->InvManager + 0x1f0), edx, Device->s_InventoryObject->m_InventoryData.nInvId, Device->s_InventoryObject);
-							TgInventoryManager__PrepopulateInventoryId::CallOriginal((void*)((char*)Bot->InvManager + 0x22c), edx, Device->s_InventoryObject->m_InventoryData.nInvId, Device->s_InventoryObject);
-							
-							// Device = Bot->CreateEquipDevice(nMaxInventoryId, deviceId, equipPoint);
-
-
-							Device->SetOwner(Bot);
-							Device->Base = Bot;
 							Device->Role = 3;
 							Device->RemoteRole = 1;
 							Device->bNetInitial = 1;
 							Device->bNetDirty = 1;
-							Device->bReplicateMovement = 1;
-							Device->bSkipActorPropertyReplication = 0;
-							Device->bOnlyDirtyReplication = 0;
-							Device->bAlwaysRelevant = 0;
+
+							BotRepInfo->r_EquipDeviceInfo[equipPoint].nDeviceId = deviceId;
+							BotRepInfo->r_EquipDeviceInfo[equipPoint].nDeviceInstanceId = nMaxInventoryId;
+							BotRepInfo->r_EquipDeviceInfo[equipPoint].nQualityValueId = qualityValueId;
 
 							if (defaultSlotValueId == slotUsedValueId) {
-								// Bot->Weapon = Device;
+								Bot->m_CurrentInHandDevice = Device;
 								Bot->r_eDesiredInHand = equipPoint;
-								// ATgInventoryManager* InventoryManager = (ATgInventoryManager*)Bot->InvManager;
-								// AIController->m_eEquipmentSlot = equipPoint;
-								// AIController->m_nDeviceMode = deviceModeId;
-								// InventoryManager->SetCurrentWeapon(Device, 0, 0, 0);
 							}
-							// Bot->ForceUpdateEquippedDevices();
-
-							Logger::Log("debug", "Device created successfully %p\n", Device);
-						} else {
-							Logger::Log("debug", "Device not created\n");
 						}
-
-
-						// Logger::DumpMemory("inventoryobject", InventoryObject, 0xBC, 0);
-
-
 					}
+					sqlite3_finalize(stmt);
+
+					Bot->UpdateClientDevices(0, 0);
+					Bot->bNetDirty = 1;
+					Bot->bForceNetUpdate = 1;
+					BotRepInfo->bNetDirty = 1;
+					BotRepInfo->bForceNetUpdate = 1;
 				}
 
 			}
@@ -194,6 +109,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	PlayerController->Pawn = newpawn;
 	newpawn->Controller = PlayerController;
+	// newpawn->SetOwner(PlayerController);
 
 	nMaxInventoryId++;
 

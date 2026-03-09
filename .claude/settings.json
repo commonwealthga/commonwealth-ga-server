@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(./src/SDK/**_f_structs.h)",
+      "Read(./src/SDK/**_functions.cpp)",
+      "Read(./src/SDK/**ALAudio**)",
+      "Read(./src/SDK/**UnrealScriptTest**)",
+      "Read(./src/SDK/**WinDrv**)",
+      "Read(./src/SDK/**XAudio**)",
+      "Read(./src/SDK/UE3BasicCore**)",
+      "Read(./lib/**)",
+      "Read(./obj/**)",
+      "Read(./out/**)",
+      "Read(./data/**)",
+      "Read(./.github/**)",
+      "Read(./.cache/**)"
+    ]
+  }
+}
+

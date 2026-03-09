@@ -7,10 +7,13 @@
 std::map<int, BotFactoryConfig> TgBotFactory__LoadObjectConfig::m_botFactoryConfigs;
 std::map<int, ATgBotFactory*> TgBotFactory__LoadObjectConfig::m_loadedBotFactories;
 std::map<int, int> TgBotFactory__LoadObjectConfig::m_missionObjectiveBotToBotFactoryId;
+std::map<int, std::vector<BotDeviceEntry>> TgBotFactory__LoadObjectConfig::m_botDevices;
+std::map<int, int> TgBotFactory__LoadObjectConfig::m_botDefaultSlots;
 bool TgBotFactory__LoadObjectConfig::bConfigLoaded = false;
 
 void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, void *edx) {
 	Logger::Log("tgbotfactory", "[%s] %s LoadObjectConfig mapObjectId=%d\n", Logger::GetTime(), BotFactory->GetName(), BotFactory->m_nMapObjectId);
+	// return;
 
 	m_loadedBotFactories[BotFactory->m_nMapObjectId] = BotFactory;
 
@@ -135,6 +138,26 @@ void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, 
 						randomSpawnEntry.ReferenceName
 					});
 				}
+			}
+		}
+
+		// Load bot devices (distinct to avoid duplicates in the table)
+		std::vector<std::map<std::string, std::string>> bot_devices_data;
+		result = sqlite3_exec(db,
+			"SELECT DISTINCT bd.bot_id, bd.device_id, bd.slot_used_value_id, b.default_slot_value_id \
+			 FROM asm_data_set_bots_data_set_bot_devices bd \
+			 LEFT JOIN asm_data_set_bots b ON b.bot_id = bd.bot_id;",
+			Database::Callback, &bot_devices_data, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to select bot devices: %s\n", err);
+		} else {
+			for (auto& row : bot_devices_data) {
+				int botId = std::stoi(row["bot_id"]);
+				int deviceId = std::stoi(row["device_id"]);
+				int slotUsedValueId = std::stoi(row["slot_used_value_id"]);
+				int defaultSlotValueId = std::stoi(row["default_slot_value_id"]);
+				m_botDevices[botId].push_back({ deviceId, slotUsedValueId });
+				m_botDefaultSlots[botId] = defaultSlotValueId;
 			}
 		}
 

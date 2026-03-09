@@ -34,13 +34,31 @@
 	{ \
 		bool &initialFlag = propertyfullname##_initial[(int)actor]; \
 		if (propertyfullname != nullptr) { \
-			for (int i = 0; i < count; i++) { \
-				if ((*(int *)(param_5 + 0x4c) == -1 && !initialFlag) || NEQ(((actortype*)recent)->propertyname[i], ((actortype*)actor)->propertyname[i], (void*)param_4, (void*)param_5)) { \
+			if (!initialFlag) { \
+				initialFlag = true; \
+				for (int i = 0; i < count; i++) { \
+					repindex = (int)*(short *)((int)propertyfullname + 0x5e); \
+					*param_3++ = repindex+i; \
+				} \
+			} else { \
+				bool bDoRep = false; \
+				if (*(int *)(param_5 + 0x4c) == -1) { \
+					bDoRep = true; \
+				} else { \
+					for (int i = 0; i < count; i++) { \
+						if (NEQ(((actortype*)recent)->propertyname[i], ((actortype*)actor)->propertyname[i], (void*)param_4, (void*)param_5)) { \
+							bDoRep = true; \
+							break; \
+						} \
+					} \
+				} \
+				if (bDoRep) { \
+					for (int i = 0; i < count; i++) { \
 						repindex = (int)*(short *)((int)propertyfullname + 0x5e); \
 						*param_3++ = repindex+i; \
+					} \
 				} \
 			} \
-			initialFlag = true; \
 		} \
 	}
 

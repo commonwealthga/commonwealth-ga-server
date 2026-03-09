@@ -1,5 +1,12 @@
 #include "src/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Globals.hpp"
+
+// TgPawn__SetProperty @ 0x109bf420 — __thiscall(pawn, nPropertyId, fNewValue)
+// Called as __fastcall with dummy EDX to avoid inline asm.
+static void SetPawnProperty(ATgPawn* Pawn, int nPropertyId, float fNewValue) {
+	((void(__fastcall*)(ATgPawn*, void*, int, float))0x109bf420)(Pawn, nullptr, nPropertyId, fNewValue);
+}
 
 void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunction* Function, void* Params, void* Result) {
 
@@ -46,6 +53,25 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// } else if (strcmp("Function TgGame.TgDevice.CanDeviceFireNow", name.c_str()) == 0) {
 		// 	ATgDevice_eventCanDeviceFireNow_Parms* CanDeviceFireNowParams = (ATgDevice_eventCanDeviceFireNow_Parms*)Params;
 		// 	CanDeviceFireNowParams->ReturnValue = true;
+		} else if (strcmp("Function TgDevice.DeviceFiring.BeginState", name.c_str()) == 0) {
+			CallOriginal(Object, edx, Function, Params, Result);
+			ATgDevice* Device = (ATgDevice*)Object;
+			if (Device->IsOffhandJetpack() && Device->Instigator) {
+				ATgPawn* Pawn = (ATgPawn*)Device->Instigator;
+				SetPawnProperty(Pawn, 59, 1.0f);  // TGPID_FLIGHT_ACCELERATION
+				Pawn->bNetDirty = 1;
+				Pawn->bForceNetUpdate = 1;
+			}
+
+		} else if (strcmp("Function TgDevice.DeviceFiring.EndState", name.c_str()) == 0) {
+			CallOriginal(Object, edx, Function, Params, Result);
+			ATgDevice* Device = (ATgDevice*)Object;
+			if (Device->IsOffhandJetpack() && Device->Instigator) {
+				ATgPawn* Pawn = (ATgPawn*)Device->Instigator;
+				SetPawnProperty(Pawn, 59, 0.0f);  // clear TGPID_FLIGHT_ACCELERATION
+				Pawn->bNetDirty = 1;
+				Pawn->bForceNetUpdate = 1;
+			}
 		} else {
 			Logger::Log(GetLogChannel(), "├─ %s [%s]\n", name.c_str(), objname.c_str());
 			Logger::ChannelIndents[GetLogChannel()]++;

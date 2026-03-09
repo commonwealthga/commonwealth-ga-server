@@ -12,6 +12,22 @@
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
+static int nBotMaxInventoryId = 10000;
+
+static inline int BotGetEquipPointBySlot(int slotUsedValueId) {
+	switch (slotUsedValueId) {
+		case 221: return 1;  case 198: return 2;  case 200: return 3;
+		case 199: return 4;  case 201: return 5;  case 202: return 6;
+		case 203: return 7;  case 204: return 8;  case 385: return 9;
+		case 386: return 10; case 499: return 11; case 500: return 12;
+		case 501: return 13; case 502: return 14; case 823: return 15;
+		case 996: return 16; case 997: return 17; case 998: return 18;
+		case 999: return 19; case 1000: return 20; case 1001: return 21;
+		case 1002: return 22; case 1003: return 23; case 1004: return 24;
+		default:  return 0;
+	}
+}
+
 std::map<int, int> TgGame__SpawnBotById::m_spawnedBotIds;
 
 
@@ -175,6 +191,65 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	//
 	// Bot->PlayerReplicationInfo->NetUpdateFrequency = 1.0f;
 	// Bot->PlayerReplicationInfo->NetPriority = 1.0f;
+
+	// Give bot its devices from the database
+	if (Bot->InvManager != nullptr) {
+		sqlite3* db = Database::GetConnection();
+		sqlite3_stmt* stmt;
+		int result = sqlite3_prepare_v2(db,
+			"SELECT DISTINCT bd.device_id, bd.slot_used_value_id, "
+			"COALESCE(i.quality_value_id, 1162) AS quality_value_id, "
+			"b.default_slot_value_id "
+			"FROM asm_data_set_bots_data_set_bot_devices bd "
+			"LEFT JOIN asm_data_set_bots b ON b.bot_id = bd.bot_id "
+			"LEFT JOIN asm_data_set_items i ON i.item_id = bd.device_id "
+			"WHERE bd.bot_id = ?;",
+			-1, &stmt, nullptr);
+
+		if (result == SQLITE_OK) {
+			sqlite3_bind_int(stmt, 1, nBotId);
+			ATgDevice* primaryDevice = nullptr;
+			int primaryEquipPoint = 0;
+
+			while (sqlite3_step(stmt) == SQLITE_ROW) {
+				int deviceId           = sqlite3_column_int(stmt, 0);
+				int slotUsedValueId    = sqlite3_column_int(stmt, 1);
+				int qualityValueId     = sqlite3_column_int(stmt, 2);
+				int defaultSlotValueId = sqlite3_column_int(stmt, 3);
+				if (deviceId == 0) continue;
+
+				int equipPoint = BotGetEquipPointBySlot(slotUsedValueId);
+				ATgDevice* Device = Bot->CreateEquipDevice(0, deviceId, equipPoint);
+				if (Device != nullptr) {
+					nBotMaxInventoryId++;
+					Device->r_nDeviceInstanceId = nBotMaxInventoryId;
+					Device->Role = 3;
+					Device->RemoteRole = 1;
+					Device->bNetInitial = 1;
+					Device->bNetDirty = 1;
+					BotRepInfo->r_EquipDeviceInfo[equipPoint].nDeviceId = deviceId;
+					BotRepInfo->r_EquipDeviceInfo[equipPoint].nDeviceInstanceId = nBotMaxInventoryId;
+					BotRepInfo->r_EquipDeviceInfo[equipPoint].nQualityValueId = qualityValueId;
+					if (primaryDevice == nullptr || slotUsedValueId == defaultSlotValueId) {
+						primaryDevice = Device;
+						primaryEquipPoint = equipPoint;
+					}
+				}
+			}
+			sqlite3_finalize(stmt);
+
+			if (primaryDevice != nullptr) {
+				Bot->m_CurrentInHandDevice = primaryDevice;
+				Bot->r_eDesiredInHand = primaryEquipPoint;
+			}
+
+			Bot->UpdateClientDevices(0, 0);
+			Bot->bNetDirty = 1;
+			Bot->bForceNetUpdate = 1;
+			BotRepInfo->bNetDirty = 1;
+			BotRepInfo->bForceNetUpdate = 1;
+		}
+	}
 
 	return Bot;
 }

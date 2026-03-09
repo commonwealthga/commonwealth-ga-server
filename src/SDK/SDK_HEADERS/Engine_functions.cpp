@@ -14905,8 +14905,18 @@ void AInventory::GiveTo ( class APawn* Other )
 {
 	static UFunction* pFnGiveTo = NULL;
 
-	if ( ! pFnGiveTo )
-		pFnGiveTo = (UFunction*) UObject::GObjObjects()->Data[ 14221 ];
+	if ( ! pFnGiveTo ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function Engine.Inventory.GiveTo") == 0) {
+					pFnGiveTo = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnGiveTo = (UFunction*) UObject::GObjObjects()->Data[ 14221 ];
 
 	AInventory_execGiveTo_Parms GiveTo_Parms;
 	GiveTo_Parms.Other = Other;
