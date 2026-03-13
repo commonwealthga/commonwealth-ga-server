@@ -1,5 +1,6 @@
 #pragma once
 
+#include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/pch.hpp"
 
 struct ClientConnectionData {
@@ -10,6 +11,8 @@ struct ClientConnectionData {
 	FString* RemoteAddrFString;
 	ATgPawn_Character* Pawn;
 	bool bClosed;
+	std::string SessionGuid;
+	PlayerInfo PlayerInfo;
 };
 
 extern std::map <int32_t, ClientConnectionData> GClientConnectionsData;

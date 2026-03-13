@@ -41,6 +41,11 @@ UClass* ClassPreloader::GetTgRepInfoTaskForceClass() {
 	return Classes["Class TgGame.TgRepInfo_TaskForce"];
 }
 
+UClass* ClassPreloader::GetTgDeployableClass() {
+	PreloadClasses();
+	return Classes["Class TgGame.TgDeployable"];
+}
+
 UClass* ClassPreloader::GetTgDeployBeaconClass() {
 	PreloadClasses();
 	return Classes["Class TgGame.TgDeploy_Beacon"];

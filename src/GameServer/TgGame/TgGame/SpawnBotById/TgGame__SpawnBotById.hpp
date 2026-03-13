@@ -9,6 +9,20 @@ class TgGame__SpawnBotById : public HookBase<
 	TgGame__SpawnBotById> {
 public:
 	static std::map<int, int> m_spawnedBotIds;
+	static int nInventoryIdCounter;
+	static void GiveDeviceById(
+		ATgPawn* Pawn,
+		ATgRepInfo_Player* PlayerReplicationInfo,
+		int deviceId,
+		int slotUsedValueId,
+		int equipPoint,
+		int qualityValueId,
+		bool isOffHand,
+		bool isHandDevice,
+		int deviceType,
+		int nInventoryId
+	);
+	static void GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Player* BotRepInfo, int nBotId);
 	static inline char* GetPawnClassName(int nBotId) {
 		switch (nBotId) {
 			case 5951: return "Class TgGame.TgPawn_Ambush";
@@ -56,6 +70,7 @@ public:
 			case 475: return "Class TgGame.TgPawn_TurretPlasma";
 			case 5205: return "Class TgGame.TgPawn_Vanguard";
 			case 6909: return "Class TgGame.TgPawn_VanityPet";
+			case 1657: return "Class TgGame.TgPawn_VanityPet";
 			case 5515: return "Class TgGame.TgPawn_Vulcan";
 			case 6541: return "Class TgGame.TgPawn_Warlord";
 			case 7845: return "Class TgGame.TgPawn_WaspSpawner";

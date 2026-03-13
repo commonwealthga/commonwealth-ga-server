@@ -23,6 +23,28 @@ public:
 		return std::string(buf);
 	};
 
-	static void HandlePlayerConnected(UNetConnection* Connection, ATgPlayerController* Controller);
+	static inline std::string SessionGuidToHex(const UUID* id)
+	{
+		uint32_t d1 = ntohl(id->Data1);
+		uint16_t d2 = ntohs(id->Data2);
+		uint16_t d3 = ntohs(id->Data3);
+
+		char out[33];
+		std::snprintf(
+			out,
+			sizeof(out),
+			"%08x%04x%04x%02x%02x%02x%02x%02x%02x%02x%02x",
+			d1, d2, d3,
+			id->Data4[0], id->Data4[1],
+			id->Data4[2], id->Data4[3],
+			id->Data4[4], id->Data4[5],
+			id->Data4[6], id->Data4[7]
+		);
+
+		return std::string(out);
+	}
+
+	static void HandlePlayerConnected(UNetConnection* Connection, ATgPlayerController* Controller,
+		const std::string& session_guid, const std::string& player_name);
 };
 

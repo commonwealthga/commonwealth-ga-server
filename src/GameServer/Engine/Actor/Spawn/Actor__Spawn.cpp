@@ -8,10 +8,19 @@ AActor* __fastcall Actor__Spawn::Call(UWorld* pThis, void* edx, UClass* Class, u
 
 	if (ret) {
 		Logger::Log("debug", "MINE SpawnActor END Spawned: %s\n", ret->GetFullName());
+
+		// Projectiles are fast-moving and short-lived. Without bAlwaysRelevant they can miss
+		// the NetDriver's relevancy window and never replicate to clients.
+		const char* cn = ret->Class->GetFullName();
+		if (strstr(cn, "TgProj_") || strstr(cn, "TgProjectile") || strstr(cn, "Engine.Projectile")) {
+			ret->bAlwaysRelevant = 1;
+			ret->bForceNetUpdate = 1;
+			ret->bNetInitial = 1;
+		}
 	} else {
 		Logger::Log("debug", "MINE SpawnActor END Failed to spawn\n");
 	}
-	
+
 	return ret;
 }
 

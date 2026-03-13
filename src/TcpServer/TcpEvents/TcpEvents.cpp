@@ -1,4 +1,4 @@
 #include "src/TcpServer/TcpEvents/TcpEvents.hpp"
 
-std::vector<TcpEvent> GTcpEvents;
+std::map<std::string, TcpEvent> GTcpEvents;
 

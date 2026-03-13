@@ -2,13 +2,44 @@
 #include "src/Utils/CommandLineParser/CommandLineParser.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
+static std::string DetectLocalIP() {
+	// Connect a UDP socket to an external address to discover which
+	// local interface (and thus which IP) the OS would use for outbound traffic.
+	SOCKET s = socket(AF_INET, SOCK_DGRAM, 0);
+	if (s == INVALID_SOCKET) return "127.0.0.1";
+
+	sockaddr_in probe = {};
+	probe.sin_family = AF_INET;
+	probe.sin_port   = htons(53);
+	probe.sin_addr.s_addr = inet_addr("8.8.8.8");
+
+	if (connect(s, reinterpret_cast<sockaddr*>(&probe), sizeof(probe)) == SOCKET_ERROR) {
+		closesocket(s);
+		return "127.0.0.1";
+	}
+
+	sockaddr_in local = {};
+	int len = sizeof(local);
+	getsockname(s, reinterpret_cast<sockaddr*>(&local), &len);
+	closesocket(s);
+
+	char buf[INET_ADDRSTRLEN] = {};
+	const char* result = inet_ntoa(local.sin_addr);
+	if (result) strncpy(buf, result, sizeof(buf) - 1);
+	return buf;
+}
+
 std::string Config::GetIpChar() {
 	Logger::Log("config", "GetIpChar\n");
 	ParsedOptions options = CommandLineParser::ParseCommandLine();
 
-	std::wstring ip = options.switches[L"host"].empty() ? L"127.0.0.1" : options.switches[L"host"];
+	if (!options.switches[L"host"].empty()) {
+		return CommandLineParser::WideToUtf8(options.switches[L"host"]);
+	}
 
-	return CommandLineParser::WideToUtf8(ip);
+	std::string detected = DetectLocalIP();
+	Logger::Log("config", "GetIpChar: auto-detected IP = %s\n", detected.c_str());
+	return detected;
 }
 
 int Config::GetPort() {

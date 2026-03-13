@@ -2,12 +2,15 @@
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/PrepopulateInventoryId/TgInventoryManager__PrepopulateInventoryId.hpp"
 #include "src/GameServer/TgGame/TgInventoryObject_Device/ConstructInventoryObject/TgInventoryObject_Device__ConstructInventoryObject.hpp"
+#include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/GameServer/Core/TMap/Allocate/TMap__Allocate.hpp"
 #include "src/GameServer/Misc/AssemblyDatManager/CreateDevice/AssemblyDatManager__CreateDevice.hpp"
 #include "src/GameServer/Misc/CAmItem/LoadItemMarshal/CAmItem__LoadItemMarshal.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+#include "src/Utils/CommandLineParser/CommandLineParser.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -19,99 +22,23 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	LogCallBegin();
 
+	int32_t ConnectionIndex = (int32_t)((UNetConnection*)PlayerController->Player);
 
-	static int nMaxInventoryId = 1;
+	Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: connection=%d\n", ConnectionIndex);
 
-	//////////////////// SPAWN ENEMY BOTS EQUIPMENT START
+	// Use the medic player character config from asm_data_set_bots.
+	// bot_id 567 is the medic — the profile ID matches the bot_id for player characters.
+	static const int PLAYER_BOT_ID = 567;
 
-	if (!bEnemyGearSpawned) {
-		bEnemyGearSpawned = true;
-		for (int i = 0; i < UObject::GObjObjects()->Num(); i++) {
-			UObject* obj = UObject::GObjObjects()->Data[i];
-			if (!obj) {
-				continue;
-			}
-
-			if (TgGame__SpawnBotById::m_spawnedBotIds.find((int)obj) != TgGame__SpawnBotById::m_spawnedBotIds.end()) {
-				ATgPawn_Character* Bot = reinterpret_cast<ATgPawn_Character*>(obj);
-				ATgAIController* AIController = (ATgAIController*)Bot->Controller;
-				ATgRepInfo_Player* BotRepInfo = reinterpret_cast<ATgRepInfo_Player*>(AIController->PlayerReplicationInfo);
-				int nBotId = TgGame__SpawnBotById::m_spawnedBotIds[(int)Bot];
-
-				if (Bot->InvManager == nullptr) {
-					Logger::Log("debug", "Bot %d has no inventory manager\n", nBotId);
-					continue;
-				}
-
-
-				sqlite3* db = Database::GetConnection();
-				sqlite3_stmt* stmt;
-				int result = sqlite3_prepare_v2(db,
-					"SELECT DISTINCT bd.device_id, bd.slot_used_value_id, "
-					"COALESCE(i.quality_value_id, 1162) AS quality_value_id, "
-					"b.default_slot_value_id "
-					"FROM asm_data_set_bots_data_set_bot_devices bd "
-					"LEFT JOIN asm_data_set_bots b ON b.bot_id = bd.bot_id "
-					"LEFT JOIN asm_data_set_items i ON i.item_id = bd.device_id "
-					"WHERE bd.bot_id = ?;",
-					-1, &stmt, nullptr);
-
-				if (result == SQLITE_OK) {
-					sqlite3_bind_int(stmt, 1, nBotId);
-
-					while (sqlite3_step(stmt) == SQLITE_ROW) {
-						int deviceId          = sqlite3_column_int(stmt, 0);
-						int slotUsedValueId   = sqlite3_column_int(stmt, 1);
-						int qualityValueId    = sqlite3_column_int(stmt, 2);
-						int defaultSlotValueId = sqlite3_column_int(stmt, 3);
-
-						if (deviceId == 0) continue;
-
-						int equipPoint = GetEquipPointByType(slotUsedValueId);
-
-						// invId=0: CreateEquipDevice auto-creates the inventory object
-						ATgDevice* Device = Bot->CreateEquipDevice(0, deviceId, equipPoint);
-						if (Device != nullptr) {
-							nMaxInventoryId++;
-							Device->r_nDeviceInstanceId = nMaxInventoryId;
-							Device->Role = 3;
-							Device->RemoteRole = 1;
-							Device->bNetInitial = 1;
-							Device->bNetDirty = 1;
-
-							BotRepInfo->r_EquipDeviceInfo[equipPoint].nDeviceId = deviceId;
-							BotRepInfo->r_EquipDeviceInfo[equipPoint].nDeviceInstanceId = nMaxInventoryId;
-							BotRepInfo->r_EquipDeviceInfo[equipPoint].nQualityValueId = qualityValueId;
-
-							if (defaultSlotValueId == slotUsedValueId) {
-								Bot->m_CurrentInHandDevice = Device;
-								Bot->r_eDesiredInHand = equipPoint;
-							}
-						}
-					}
-					sqlite3_finalize(stmt);
-
-					Bot->UpdateClientDevices(0, 0);
-					Bot->bNetDirty = 1;
-					Bot->bForceNetUpdate = 1;
-					BotRepInfo->bNetDirty = 1;
-					BotRepInfo->bForceNetUpdate = 1;
-				}
-
-			}
-		}
-	}
-	//////////////////// SPAWN ENEMY BOTS EQUIPMENT END
-
+	TgPawn__InitializeDefaultProps::nPendingBotId = PLAYER_BOT_ID;
 	ATgPawn_Character* newpawn = (ATgPawn_Character*)Game->Spawn(ClassPreloader::GetTgPawnCharacterClass(), PlayerController, FName(), SpawnLocation, PlayerController->Rotation, nullptr, 1);
+	// nPendingBotId cleared inside InitializeDefaultProps::Call
+
 	newpawn->r_nPawnId = 998;
 	ATgRepInfo_Player* newrepplayer = reinterpret_cast<ATgRepInfo_Player*>(PlayerController->PlayerReplicationInfo);
 
 	PlayerController->Pawn = newpawn;
 	newpawn->Controller = PlayerController;
-	// newpawn->SetOwner(PlayerController);
-
-	nMaxInventoryId++;
 
 
 
@@ -307,7 +234,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newrepplayer->r_ApproxLocation = newpawn->Location;
 	// newrepplayer->PlayerName = FString(L"Zaxik");
 
-	newrepplayer->eventSetPlayerName(FString(L"Zaxik"));
+
+	newrepplayer->eventSetPlayerName(FString(GClientConnectionsData[(int)PlayerController->Player].PlayerInfo.player_name_w.data()));
 	// newrepplayer->SetTeam(GTeamsData.Attackers);
 
 	// newrepplayer->r_TaskForce = GTeamsData.Defenders;
@@ -347,8 +275,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// PlayerController->ClientHideHUDElement(10); // AgentInfo
 	// PlayerController->ClientHideHUDElement(11); // QuestTracking 
 
-	newpawn->r_UIClockState = 0;
 	newpawn->r_UIClockTime = 15 * 60;
+	newpawn->r_UIClockState = 0x00;
 
 	// PlayerController->ViewTarget = newpawn;
 	// if (PlayerController->PlayerCamera != nullptr) {
@@ -362,7 +290,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	ATgRepInfo_TaskForce* defenders = GTeamsData.Defenders;
 
 	FTGTEAM_ENTRY newplayerteamentry;
-	newplayerteamentry.fsName = FString(L"Zaxik");
+	newplayerteamentry.fsName = FString(GClientConnectionsData[(int32_t)((UNetConnection*)PlayerController->Player)].PlayerInfo.player_name_w.data());
 	newplayerteamentry.fsMapName = FString(L"Tetra Pier");
 	newplayerteamentry.nHealth = 1300;
 	newplayerteamentry.nMaxHealth = 1300;
@@ -374,6 +302,17 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	TARRAY_ADD(TeamPlayersAttackers, newplayerteamentry);
 	// TARRAY_ADD(TeamPlayersDefenders, newplayerteamentry);
+
+	// GIVE COLONY EYE PET
+
+	// FVector PetSpawnLocation = newpawn->Location;
+	// PetSpawnLocation.X += 100;
+	// ATgPawn_VanityPet* Pet = (ATgPawn_VanityPet*)Game->SpawnBotById(1657, PetSpawnLocation, newpawn->Rotation, false, nullptr, true, newpawn, false, nullptr, 0.0f);
+	// if (Pet != nullptr) {
+	// 	newpawn->r_CurrentVanityPet = Pet;
+	// }
+
+	TgGame__SpawnBotById::GiveDevicesFromBotConfig(newpawn, newrepplayer, PLAYER_BOT_ID);
 
 	LogCallEnd();
 

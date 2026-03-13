@@ -1,4 +1,5 @@
 #include "src/Database/Database.hpp"
+#include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 sqlite3* Database::connection = nullptr;
@@ -312,10 +313,127 @@ void Database::Init() {
 		}
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 7", nullptr, nullptr, &err);
+	if (version < 8) {
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS asm_data_set_effect_groups ( \
+				id INTEGER PRIMARY KEY AUTOINCREMENT, \
+				effect_group_id INTEGER, \
+				lifetime_sec REAL, \
+				apply_interval_sec REAL, \
+				target_fx_id INTEGER, \
+				fx_display_group_res_id INTEGER, \
+				icon_id INTEGER, \
+				application_value_id INTEGER, \
+				category_value_id INTEGER, \
+				application_value REAL, \
+				application_chance REAL, \
+				situational_type_value_id INTEGER, \
+				required_category_value_id INTEGER, \
+				required_skill_id INTEGER, \
+				effect_group_type_value_id INTEGER, \
+				health INTEGER, \
+				situational_value REAL, \
+				stack_count_max INTEGER, \
+				buff_value INTEGER, \
+				contagion_flag INTEGER, \
+				device_specific_flag INTEGER, \
+				posture_type_value_id INTEGER \
+			);", nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create asm_data_set_effect_groups table: %s\n", err);
+			return;
+		}
+
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS asm_data_set_effects ( \
+				id INTEGER PRIMARY KEY AUTOINCREMENT, \
+				effect_group_id INTEGER, \
+				effect_id INTEGER, \
+				class_res_id INTEGER, \
+				base_value REAL, \
+				min_value REAL, \
+				max_value REAL, \
+				calc_method_value_id INTEGER, \
+				prop_id INTEGER, \
+				property_value_id INTEGER, \
+				apply_on_interval_flag INTEGER \
+			);", nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create asm_data_set_effects table: %s\n", err);
+			return;
+		}
+	}
+
+	if (version < 9) {
+		result = sqlite3_exec(db,
+			"ALTER TABLE asm_data_set_bots ADD COLUMN default_sensor_range REAL; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN default_aggro_range INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN default_help_range INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN hearing_range REAL; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN default_speed REAL; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN walk_speed_pct REAL; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN crouch_speed_pct REAL; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN chase_range INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN chase_time_sec REAL; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN stealth_sensor_range INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN stealth_aggro_range INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN hibernate_on_idle_sec INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN hibernate_delay_rate REAL; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN icon_id INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN bot_rank_value_id INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN target_only_physical_type_value_id INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN skill_group_id INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN skill_group_set_id INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN fixed_fov_degrees INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN loot_table_id INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN default_power_pool INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN rotation_rate INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN class_type_value_id INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN device_slot_unlock_group_id INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN pickup_device_id INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN xp_value INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN currency_value INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN squad_role_value_id INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN default_posture_value_id INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN acceleration_rate REAL; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN accuracy_override REAL; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN bot_balance_multiplier REAL; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN power_pool_regen_per_sec REAL; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN hibernate_invulnerability_flag INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN can_jump_flag INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN can_climb_ladders_flag INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN path_only_flag INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN always_load_on_server_flag INTEGER; \
+			ALTER TABLE asm_data_set_bots ADD COLUMN destroy_on_owner_death_flag INTEGER; \
+		", nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to migrate asm_data_set_bots to v9: %s\n", err);
+			return;
+		}
+	}
+
+	if (version < 10) {
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_players ( \
+				session_guid TEXT PRIMARY KEY, \
+				player_name TEXT NOT NULL, \
+				ip_address TEXT NOT NULL, \
+				created_at INTEGER NOT NULL, \
+				last_seen_at INTEGER NOT NULL \
+			);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_players table: %s\n", err);
+			return;
+		}
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 10", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
 	}
+
+	PlayerRegistry::Init();
 }
 

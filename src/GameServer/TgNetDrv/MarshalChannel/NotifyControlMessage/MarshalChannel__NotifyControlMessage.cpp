@@ -2,20 +2,25 @@
 #include "src/GameServer/Engine/World/GetGameInfo/World__GetGameInfo.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Misc/CMarshal/GetString/CMarshal__GetString.hpp"
+#include "src/GameServer/Misc/CMarshal/GetGuid/CMarshal__GetGuid.hpp"
 #include "src/GameServer/Engine/World/WelcomePlayer/World__WelcomePlayer.hpp"
 #include "src/GameServer/Engine/PackageMap/Compute/PackageMap__Compute.hpp"
 #include "src/GameServer/Engine/FURL/Constructor/FURL__Constructor.hpp"
 #include "src/GameServer/Engine/World/SpawnPlayActor/World__SpawnPlayActor.hpp"
 #include "src/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.hpp"
+#include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
 #include "src/GameServer/Misc/CGameClient/SendMapRandomSMSettingsMarshal/CGameClient__SendMapRandomSMSettingsMarshal.hpp"
 #include "src/GameServer/Misc/CAmOmegaVolume/LoadOmegaVolumeMarshal/CAmOmegaVolume__LoadOmegaVolumeMarshal.hpp"
 #include "src/TcpServer/TcpEvents/TcpEvents.hpp"
+#include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Config/Config.hpp"
 #include "src/GameServer/Engine/World/GetGameInfo/World__GetGameInfo.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+#include "src/GameServer/Constants/GameTypes.h"
 #include "src/Utils/Logger/Logger.hpp"
 
 
@@ -25,6 +30,7 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 	int param_1 = 0x4FF;
 	wchar_t* local_410 = new wchar_t[512];
 	int result = CMarshal__GetString::CallOriginal(InBunch, edx, param_1, local_410);
+
 	
 	char tmp[1024];
 	wcstombs(tmp, local_410, sizeof(tmp));
@@ -35,14 +41,23 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 	Logger::Log(GetLogChannel(), "Message: %s\n", tmp);
 
 	if (strncmp(tmp, "HELLO", 5) == 0) {
-		
+
+		UUID* guid = new UUID();
+		int result2 = CMarshal__GetGuid::CallOriginal(InBunch, edx, 0x473, guid);
+
+		Logger::DumpMemory("session_guid", (void*)guid, 0x10, 0);
+
+		std::string session_guid = SessionGuidToHex(guid);
+
+		GClientConnectionsData[(int)Connection].SessionGuid = session_guid;
+		Logger::Log(GetLogChannel(), "[MarshalChannel__NotifyControlMessage] HELLO: session_guid=%s\n", session_guid.c_str());
 
 		*(uint32_t*)((char*)Connection + 0xF4) = 4869; // set Connection->NegotiatedVersion
 
 		void* PackageMap = *(void**)((char*)Connection + 0xBC);
 		PackageMap__Compute::CallOriginal(PackageMap);
 
-		World__WelcomePlayer::CallOriginal((UWorld*)Globals::Get().GWorld, edx, Connection);
+		World__WelcomePlayer::CallOriginal((UWorld*)Globals::Get().GWorld, edx, Connection, L"");
 
 
 	} else if (strncmp(tmp, "HAVE", 4) == 0) {
@@ -98,6 +113,24 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 		}
 	} else if (strncmp(tmp, "JOIN", 4) == 0) {
 
+		// Parse ?gaSession= from the JOIN message to correlate with TCP session
+	
+		std::string session_guid = GClientConnectionsData[(int32_t)Connection].SessionGuid;
+		std::string player_name_from_registry;
+
+		auto info = PlayerRegistry::GetByGuid(session_guid);
+		if (info) {
+			player_name_from_registry = info->player_name;
+			GClientConnectionsData[(int32_t)Connection].PlayerInfo.session_guid = session_guid;
+			GClientConnectionsData[(int32_t)Connection].PlayerInfo.player_name = info->player_name;
+			GClientConnectionsData[(int32_t)Connection].PlayerInfo.player_name_w = info->player_name_w;
+			GClientConnectionsData[(int32_t)Connection].PlayerInfo.ip_address = info->ip_address;
+			Logger::Log(GetLogChannel(), "JOIN: identified player '%s' (guid=%s, connection=%d)\n", info->player_name.c_str(), session_guid.c_str(), (int32_t)Connection);
+		} else {
+			Logger::Log(GetLogChannel(), "JOIN: session guid %s not found in registry\n", session_guid.c_str());
+		}
+
+
 		// todo: check if this is even needed
 		// for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 		// 	if (UObject::GObjObjects()->Data[i]) {
@@ -120,6 +153,8 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 		std::wstring urlstr = Config::GetMapUrl();
 		FString url = FString(urlstr.data());
 		std::wstring params = Config::GetMapParams();
+
+		Logger::Log(GetLogChannel(), "[SpawnPlayActor] params: %s\n", params.data());
 
 		FString options = FString(params.data());
 
@@ -144,7 +179,7 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 		// LogToFile("C:\\mylog.txt", "[SpawnPlayActor] end");
 
 		if (newcontrollerptr) {
-			MarshalChannel__NotifyControlMessage::HandlePlayerConnected(Connection, newcontrollerptr);
+			MarshalChannel__NotifyControlMessage::HandlePlayerConnected(Connection, newcontrollerptr, session_guid, player_name_from_registry);
 		}
 	}
 
@@ -152,7 +187,8 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 }
 
 
-void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection* Connection, ATgPlayerController* Controller) {
+void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection* Connection, ATgPlayerController* Controller,
+	const std::string& session_guid, const std::string& player_name) {
 	static bool bFirstPlayerSpawned = false;
 
 	ULocalPlayer* connplayer = (ULocalPlayer*)Connection;
@@ -190,13 +226,22 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 
 	newcontroller->ResetForceViewTarget();
 
-
-	TgGame__SpawnPlayerCharacter::GiveJetpack((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, newcontroller, 999);
+	// TgGame__SpawnPlayerCharacter::GiveJetpack((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, newcontroller, 999);
+	// TgGame__SpawnPlayerCharacter::GiveAgonizer((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, newcontroller, 1000);
+	TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 5800, 221, 1, 1162, 0, 1, GA_G::TGDT_MELEE, 996); // lifestealer
+	TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 2991, 198, 2, 1162, 0, 1, GA_G::TGDT_RANGED, 1000); // agonizer
+	TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 2906, 200, 3, 1162, 0, 1, GA_G::TGDT_SPECIALTY, 995); // bfb
+	TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 7032, 201, 5, 1162, 1, 0, GA_G::TGDT_TRAVEL, 999); // jetpack
+	TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 2531, 203, 7, 1162, 1, 0, GA_G::TGDT_OFF_HAND, 997); // healnade
+	TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 2773, 386, 10, 1162, 1, 0, GA_G::TGDT_MORALE, 994); // heal boost
+	TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 864, 502, 15, 1162, 1, 0, GA_G::TGDT_OFF_HAND, 998); // rest device
 
 	TcpEvent PlayerPawnSpawned;
 	PlayerPawnSpawned.Type = 1;
 	PlayerPawnSpawned.Pawn = (ATgPawn*)newcontroller->Pawn;
-	GTcpEvents.push_back(PlayerPawnSpawned);
+	PlayerPawnSpawned.session_guid = session_guid;
+	PlayerPawnSpawned.player_name = player_name;
+	GTcpEvents[session_guid] = PlayerPawnSpawned;
 
 	if (!bFirstPlayerSpawned) {
 		bFirstPlayerSpawned = true;

@@ -1,12 +1,14 @@
 #include "src/TcpServer/TcpServerInit/TcpServerInit.hpp"
 #include "src/TcpServer/TcpServer/TcpServer.hpp"
+#include "src/TcpServer/ChatServer/ChatServer.hpp"
+#include "src/TcpServer/TcpEvents/TcpEvents.hpp"
 
 DWORD WINAPI TcpServerInit::TcpServerThread(LPVOID) {
 	try {
 
 		asio::io_context io;
-		std::vector<std::shared_ptr<TcpServer>> servers;
-		servers.push_back(std::make_shared<TcpServer>(io, 9000));
+		auto main_server = std::make_shared<TcpServer>(io, 9000);
+		auto chat_server = std::make_shared<ChatServer>(io, 9001);
 		io.run();
 
 		// io.run();

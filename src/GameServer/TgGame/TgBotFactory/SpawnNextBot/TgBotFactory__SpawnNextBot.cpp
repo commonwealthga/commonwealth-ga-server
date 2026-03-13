@@ -92,7 +92,7 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void
 
 			ATgAIController* AIController = (ATgAIController*)Bot->Controller;
 			for (int j = 0; j < BotFactory->PatrolPath.Num(); j++) {
-				AIController->m_PatrolPath.Add(BotFactory->PatrolPath.Data[i]);
+				AIController->m_PatrolPath.Add(BotFactory->PatrolPath.Data[j]);
 			}
 
 			ATgRepInfo_Player* BotRep = (ATgRepInfo_Player*)Bot->PlayerReplicationInfo;
@@ -112,41 +112,9 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void
 			}
 
 
-			// Give bot its devices from AssemblyDat config
-			auto& botDevices = TgBotFactory__LoadObjectConfig::m_botDevices[randomSpawnEntry.EnemyBotId];
-			int defaultSlot = TgBotFactory__LoadObjectConfig::m_botDefaultSlots[randomSpawnEntry.EnemyBotId];
-			ATgDevice* primaryDevice = nullptr;
-			int primaryEquipPoint = 0;
-
-			for (auto& deviceEntry : botDevices) {
-				int equipPoint = TgBotFactory__LoadObjectConfig::GetEquipPointBySlot(deviceEntry.SlotUsedValueId);
-				nMaxInventoryId++;
-
-				ATgDevice* Device = Bot->CreateEquipDevice(nMaxInventoryId, deviceEntry.DeviceId, equipPoint);
-				if (Device != nullptr) {
-					Device->r_nDeviceInstanceId = nMaxInventoryId;
-					Device->Role = 3;
-					Device->RemoteRole = 1;
-					Device->bNetInitial = 1;
-					Device->bNetDirty = 1;
-					Logger::Log("tgbotfactory", " Gave device %d at equip point %d (slot %d), invId=%d\n",
-						deviceEntry.DeviceId, equipPoint, deviceEntry.SlotUsedValueId, nMaxInventoryId);
-					if (primaryDevice == nullptr || deviceEntry.SlotUsedValueId == defaultSlot) {
-						primaryDevice = Device;
-						primaryEquipPoint = equipPoint;
-					}
-				} else {
-					Logger::Log("tgbotfactory", " Failed to create device %d (slot %d)\n",
-						deviceEntry.DeviceId, deviceEntry.SlotUsedValueId);
-				}
-			}
-
-			if (primaryDevice != nullptr) {
-				Bot->m_CurrentInHandDevice = primaryDevice;
-				Bot->r_eDesiredInHand = primaryEquipPoint;
-			}
-
-			Bot->UpdateClientDevices(0, 0);
+			// Device equipping is handled by SpawnBotById (which was called above).
+			// Calling CreateEquipDevice here with a different invId would destroy the devices
+			// SpawnBotById just set up (CreateEquipDevice destroys the existing device when invId mismatches).
 
 			Bot->Role = 3;
 			Bot->RemoteRole = 1;

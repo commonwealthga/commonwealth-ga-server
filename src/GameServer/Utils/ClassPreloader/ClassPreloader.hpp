@@ -13,6 +13,7 @@ public:
 	static UClass* GetTgPawnCharacterClass();
 	static UClass* GetTgPropertyClass();
 	static UClass* GetTgRepInfoTaskForceClass();
+	static UClass* GetTgDeployableClass();
 	static UClass* GetTgDeployBeaconClass();
 	static UClass* GetTgDeployBeaconEntranceClass();
 	static UClass* GetTgRandomSMManagerClass();

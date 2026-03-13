@@ -13,6 +13,7 @@
 #include "src/GameServer/Engine/GameEngine/SpawnServerActors/GameEngine__SpawnServerActors.hpp"
 #include "src/GameServer/TgNetDrv/UdpNetDriver/InitListen/UdpNetDriver__InitListen.hpp"
 #include "src/GameServer/TgNetDrv/UdpNetDriver/TickDispatch/UdpNetDriver__TickDispatch.hpp"
+#include "src/GameServer/IpDrv/ClientConnection/SendMarshal/ClientConnection__SendMarshal.hpp"
 #include "src/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.hpp"
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
 #include "src/GameServer/IpDrv/NetConnection/CleanupActor/NetConnection__CleanupActor.hpp"
@@ -40,6 +41,7 @@
 #include "src/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.hpp"
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.hpp"
+#include "src/GameServer/TgGame/TgPawn/SetTaskForceNumber/TgPawn__SetTaskForceNumber.hpp"
 #include "src/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.hpp"
 #include "src/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.hpp"
@@ -53,7 +55,14 @@
 #include "src/GameServer/TgGame/TgBotFactory/SpawnWave/TgBotFactory__SpawnWave.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/ResetQueue/TgBotFactory__ResetQueue.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.hpp"
+#include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
+#include "src/GameServer/TgGame/TgDeviceFire/CustomFire/TgDeviceFire__CustomFire.hpp"
+#include "src/GameServer/TgGame/TgDeviceFire/Deploy/TgDeviceFire__Deploy.hpp"
+#include "src/GameServer/TgGame/TgDeviceFire/SpawnPet/TgDeviceFire__SpawnPet.hpp"
 #include "src/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.hpp"
+#include "src/GameServer/TgGame/TgEffectManager/ApplyDamage/TgEffectManager__ApplyDamage.hpp"
+#include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffectGroups/TgEffectManager__RemoveAllEffectGroups.hpp"
+#include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.hpp"
 #include "src/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective_Bot/SpawnObjectiveBot/TgMissionObjective_Bot__SpawnObjectiveBot.hpp"
 #include "src/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.hpp"
@@ -61,19 +70,32 @@
 #include "src/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.hpp"
 #include "src/GameServer/Misc/CMarshal/GetString2/CMarshal__GetString2.hpp"
 #include "src/GameServer/Misc/CMarshal/GetFloat/CMarshal__GetFloat.hpp"
+#include "src/GameServer/Misc/CMarshal/GetFlag/CMarshal__GetFlag.hpp"
+#include "src/GameServer/Misc/CMarshal/GetGuid/CMarshal__GetGuid.hpp"
 #include "src/GameServer/Misc/CMarshal/Translate/CMarshal__Translate.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotBehaviorMarshal/CAmBot__LoadBotBehaviorMarshal.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotSpawnTableMarshal/CAmBot__LoadBotSpawnTableMarshal.hpp"
 #include "src/GameServer/Misc/CAmDeviceModel/LoadDeviceMarshal/CAmDeviceModel__LoadDeviceMarshal.hpp"
 #include "src/GameServer/Misc/CAmDeviceModel/LoadDeviceModeMarshal/CAmDeviceModel__LoadDeviceModeMarshal.hpp"
+#include "src/GameServer/Misc/CAmEffectModel/LoadEffectGroupMarshal/CAmEffectModel__LoadEffectGroupMarshal.hpp"
+#include "src/GameServer/Misc/CAmEffectModel/LoadEffectMarshal/CAmEffectModel__LoadEffectMarshal.hpp"
 #include "src/GameServer/Misc/CAmItem/LoadItemMarshal/CAmItem__LoadItemMarshal.hpp"
 #include "src/GameServer/Misc/CAmOmegaVolume/LoadOmegaVolumeMarshal/CAmOmegaVolume__LoadOmegaVolumeMarshal.hpp"
 
 
 unsigned long ModuleThread( void* ) {
-	Logger::EnabledChannels.push_back("hook_calltree");
-	Logger::EnabledChannels.push_back("tcp");
+	// Logger::EnabledChannels.push_back("hook_calltree");
+	// Logger::EnabledChannels.push_back("effectgroup");
+	// Logger::EnabledChannels.push_back("firedeploy_m_pAmSetup");
+	// Logger::EnabledChannels.push_back("firedeploy_m_pFireModeSetup");
+	// Logger::EnabledChannels.push_back("firespawnpet_m_pAmSetup");
+	// Logger::EnabledChannels.push_back("firespawnpet_m_pFireModeSetup");
+	// Logger::EnabledChannels.push_back("tcp");
+	// Logger::EnabledChannels.push_back("db");
+	// Logger::EnabledChannels.push_back("debug");
+	// Logger::EnabledChannels.push_back("session_guid");
+	// Logger::EnabledChannels.push_back("chat");
 
 	Database::Init();
 
@@ -93,12 +115,13 @@ unsigned long ModuleThread( void* ) {
 	GameEngine__SpawnServerActors::Install();
 	UdpNetDriver__InitListen::Install();
 	UdpNetDriver__TickDispatch::Install();
+	ClientConnection__SendMarshal::Install();
 	NetConnection__LowLevelSend::Install();
 	NetConnection__Cleanup::Install();
 	NetConnection__CleanupActor::Install();
 	// MarshalChannel__MarshalReceived::Install();
 	MarshalChannel__NotifyControlMessage::Install();
-	ActorChannel__ReceivedBunch__CanExecute::bLogEnabled = true;
+	ActorChannel__ReceivedBunch__CanExecute::bLogEnabled = false;
 	ActorChannel__ReceivedBunch__CanExecute::Install();
 	Channel__ReceivedSequencedBunch::Install();
 	Actor__GetOptimizedRepList::Install();
@@ -119,6 +142,7 @@ unsigned long ModuleThread( void* ) {
 	TgGame_Arena__LoadGameConfig::Install();
 	TgPawn__InitializeDefaultProps::Install();
 	TgPawn__GetProperty::Install();
+	TgPawn__SetTaskForceNumber::Install();
 	// TgPawn__SwapAttachedDeviceMaterials::Install();
 	TgTeamBeaconManager__SpawnNewBeaconForTeam::Install();
 	TgBeaconFactory__SpawnObject::Install();
@@ -136,7 +160,14 @@ unsigned long ModuleThread( void* ) {
 	TgGame__ReviveDefendersTimer::Install();
 	TgGame__MissionTimeRemaining::Install();
 	TgGame__SendMissionTimerEvent::Install();
+	TgDeviceFire__GetEffectGroup::Install();
+	TgDeviceFire__CustomFire::Install();
+	TgDeviceFire__Deploy::Install();
+	TgDeviceFire__SpawnPet::Install();
 	TgDevice__HasMinimumPowerPool::Install();
+	TgEffectManager__ApplyDamage::Install();
+	TgEffectManager__RemoveAllEffectGroups::Install();
+	TgEffectManager__RemoveAllEffects::Install();
 	TgDevice__HasEnoughPowerPool::Install();
 	TgMissionObjective_Bot__SpawnObjectiveBot::Install();
 
@@ -146,6 +177,8 @@ unsigned long ModuleThread( void* ) {
 	CMarshal__GetInt32t::Install();
 	CMarshal__GetString2::Install();
 	CMarshal__GetFloat::Install();
+	CMarshal__GetFlag::Install();
+	CMarshal__GetGuid::Install();
 	CMarshal__Translate::Install();
 	CAmBot__LoadBotMarshal::bPopulateDatabaseBots = false;
 	CAmBot__LoadBotMarshal::bPopulateDatabaseBotDevices = false;
@@ -157,6 +190,10 @@ unsigned long ModuleThread( void* ) {
 	CAmDeviceModel__LoadDeviceMarshal::Install();
 	CAmDeviceModel__LoadDeviceModeMarshal::bPopulateDatabaseDeviceModes = false;
 	CAmDeviceModel__LoadDeviceModeMarshal::Install();
+	CAmEffectModel__LoadEffectGroupMarshal::bPopulateDatabaseEffectGroups = false;
+	CAmEffectModel__LoadEffectGroupMarshal::Install();
+	CAmEffectModel__LoadEffectMarshal::bPopulateDatabaseEffects = false;
+	CAmEffectModel__LoadEffectMarshal::Install();
 	CAmItem__LoadItemMarshal::bPopulateDatabaseItems = false;
 	CAmItem__LoadItemMarshal::Install();
 	CAmOmegaVolume__LoadOmegaVolumeMarshal::Install();
@@ -173,8 +210,8 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
             DisableThreadLibraryCalls(hinstDLL);
 			CreateThread( 0, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(ModuleThread), 0, 0, 0 );
 			
-			DebugWindow::WindowTitle = "SERVER";
-			CreateThread( 0, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(DebugWindow::ModuleThread), 0, 0, 0 );
+			// DebugWindow::WindowTitle = "SERVER";
+			// CreateThread( 0, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(DebugWindow::ModuleThread), 0, 0, 0 );
 			break;
 		case DLL_THREAD_ATTACH:
 			break;

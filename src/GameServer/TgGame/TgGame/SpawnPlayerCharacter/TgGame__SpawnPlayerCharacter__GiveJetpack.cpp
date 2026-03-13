@@ -97,7 +97,7 @@ ATgDevice* TgGame__SpawnPlayerCharacter::GiveJetpack(ATgPawn_Character *Pawn, AT
 		Device->bReplicateMovement = 1;
 		Device->bSkipActorPropertyReplication = 0;
 		Device->bOnlyDirtyReplication = 0;
-		Device->bAlwaysRelevant = 1;
+		// Device->bAlwaysRelevant = 1;
 
 		// UpdateClientDevices now detects r_nDeviceInstanceId mismatch (nInventoryId vs 0),
 		// updates r_EquipDeviceInfo, and fires the equip handler that drives client-side setup.

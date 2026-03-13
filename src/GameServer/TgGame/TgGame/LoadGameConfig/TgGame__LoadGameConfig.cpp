@@ -39,6 +39,7 @@ void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 }
 
 void TgGame__LoadGameConfig::LoadCommonGameConfig(ATgGame* Game) {
+
 	return;
 
 	AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);

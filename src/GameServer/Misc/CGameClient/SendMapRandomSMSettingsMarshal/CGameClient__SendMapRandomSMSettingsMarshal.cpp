@@ -1,97 +1,69 @@
 #include "src/GameServer/Misc/CGameClient/SendMapRandomSMSettingsMarshal/CGameClient__SendMapRandomSMSettingsMarshal.hpp"
 #include "src/GameServer/IpDrv/ClientConnection/SendMarshal/ClientConnection__SendMarshal.hpp"
 #include "src/GameServer/IpDrv/NetConnection/FlushNet/NetConnection__FlushNet.hpp"
-#include "src/GameServer/Misc/CMarshal/SetArray/CMarshal__SetArray.hpp"
+#include "src/GameServer/Misc/CMarshal/GetArray/CMarshal__GetArray.hpp"
 #include "src/GameServer/Misc/CMarshal/SetWcharT/CMarshal__SetWcharT.hpp"
 #include "src/GameServer/Misc/HeapAllocator/Allocate/HeapAllocator__Allocate.hpp"
-#include "src/GameServer/Misc/CMarshalObject/Create/CMarshalObject__Create.hpp"
-#include "src/GameServer/Misc/CMarshalRowSet/Initialize/CMarshalRowSet__Initialize.hpp"
 #include "src/GameServer/Misc/CMarshalRowSet/InsertRow/CMarshalRowSet__InsertRow.hpp"
 #include "src/GameServer/Misc/CMarshalRow/Initialize/CMarshalRow__Initialize.hpp"
-#include "src/GameServer/Constants/TcpFunctions.h"
 #include "src/GameServer/Constants/TcpTypes.h"
-#include "src/Utils/CommandLineParser/CommandLineParser.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 
 void CGameClient__SendMapRandomSMSettingsMarshal::Call(UNetConnection* Connection, void* MarshalPtr) {
 
-	ClientConnection__SendMarshal::CallOriginal(Connection, nullptr, MarshalPtr);
+	// ManageRandomSMActors adds names of explicitly-selected actors to the DATA_SET,
+	// but type-0 "companion" actors also get ToggleDisplay(1) server-side without
+	// their names being included. Add them here so the client shows them too.
+	uint32_t dataSet = 0;
+	CMarshal__GetArray::CallOriginal(MarshalPtr, nullptr, GA_T::DATA_SET, &dataSet);
+	if (dataSet != 0) {
+		UClass* smActorClass = ATgRandomSMActor::StaticClass();
+		for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+			UObject* obj = UObject::GObjObjects()->Data[i];
+			if (!obj || !obj->IsA(smActorClass)) continue;
+
+			ATgRandomSMActor* actor = reinterpret_cast<ATgRandomSMActor*>(obj);
+
+			// Only process type-0 companion actors
+			if (actor->m_nType != 0) continue;
+
+			// bCollideActors is at offset 0xB0, bit 0x08000000.
+			// ToggleDisplay(true) calls SetCollision(true,...), ToggleDisplay(false) calls SetCollision(false,...).
+			// Enabled companions will have bCollideActors set.
+			bool bEnabled = (*(uint32_t*)((char*)actor + 0xB0)) & 0x08000000;
+			if (!bEnabled) continue;
+
+			// Allocate and initialize a new row
+			void* rowBuf = HeapAllocator__Allocate::CallOriginal(0x24);
+			if (!rowBuf) continue;
+			void* row = CMarshalRow__Initialize::CallOriginal(rowBuf);
+
+			// Get the full actor name including FName instance number suffix (e.g. "TgRandomSMActor_23").
+			// actor->GetName() only returns the base FName string without the number suffix,
+			// which would fail the _wcsicmp comparison in RefreshRandomSMSettings.
+			int nameBuffer[3] = {0, 0, 0};
+			((void(__fastcall*)(void*, void*, int*))0x1090d1d0)(actor, nullptr, nameBuffer);
+			wchar_t* wname = (wchar_t*)nameBuffer[0];
+
+			if (wname) {
+				CMarshal__SetWcharT::CallOriginal(row, nullptr, GA_T::NAME, wname);
+				CMarshalRowSet__InsertRow::CallOriginal((void*)dataSet, nullptr, row);
+				Logger::Log("debug", "Added companion SM actor to marshal: %ls\n", wname);
+			}
+
+			// Free the FString buffer (appFree @ 0x112c18c0 resets FString struct and frees Data)
+			((void(__fastcall*)(int*))0x112c18c0)(nameBuffer);
+		}
+	}
+
+	// Send all chained marshals
+	void* CurrentMarshal = MarshalPtr;
+	while (CurrentMarshal) {
+		ClientConnection__SendMarshal::Call(Connection, nullptr, CurrentMarshal);
+		CurrentMarshal = *(void**)((char*)CurrentMarshal + 0x2f4);
+	}
 	NetConnection__FlushNet::CallOriginal(Connection);
 
-
-
-	// void* NextMarshalPtr = MarshalPtr;
-	//
-	// int i = 0;
-	// do {
-	// 	i++;
-	// 	Logger::Log("wtf", "NextMarshalPtr - %d: %p\n", i, NextMarshalPtr);
-	// 	Logger::DumpMemory("wtf", NextMarshalPtr, 0x1000, 0);
-	// 	ClientConnection__SendMarshal::CallOriginal(Connection, nullptr, NextMarshalPtr);
-	// 	NextMarshalPtr = *(void**)((char*)NextMarshalPtr + 0x2f4);
-	// } while (NextMarshalPtr);
-
-	return;
-
-	// Logger::Log("wtf", "CGameClient__SendMapRandomSMSettingsMarshal\n");
-	//
-	// Logger::Log("wtf", "%d\n", (int)((int)Connection + 0x4fb4));
-	// Logger::Log("wtf", "%d\n", *(int*)((int)Connection + 0x4fb4));
-	//
-	// uint16_t nRequestId = GA_U::MAP_RANDOMSM_SETTINGS;
-	//
-	// void** MarshalPtr[8];
-	// CMarshalObject__Create::CallOriginal(MarshalPtr);
-	// Logger::Log("wtf", "MarshalPtr: %p\n", MarshalPtr);
-	//
-	// 		// *(void**)((char*)PackageMap) = Globals::Get().PackageMapVtable;
-	//
-	// *(void**)((char*)MarshalPtr) = CMarshalObject__Create::CMarshal_vftable;
-	// // MarshalPtr[0] = CMarshalObject__Create::CMarshal_vftable;
-	// Logger::Log("wtf", "MarshalPtr[0]: %p\n", MarshalPtr[0]);
-	//
-	// *(uint16_t*)((char*)MarshalPtr + 0x26) = nRequestId;
-	//
-	// ClientConnection__SendMarshal::CallOriginal(Connection, nullptr, MarshalPtr);
-	//
-	// return;
-	//
-	//
-	// Logger::Log("wtf", "nRequestId: %d\n", nRequestId);
-	//
-	// void* DataSetPtr = HeapAllocator__Allocate::CallOriginal(0x18);
-	//
-	// Logger::Log("wtf", "DataSetPtr: %p\n", DataSetPtr);
-	// CMarshalRowSet__Initialize::CallOriginal(DataSetPtr);
-	//
-	// Logger::Log("wtf", "DataSetPtr: %p\n", DataSetPtr);
-	//
-	//
-	// for (int i = 0; i < Names.size(); i++) {
-	// 	int Pos = i * 0x18;
-	//
-	// 	Logger::Log("wtf", "\nRow Pos: %d\n", Pos);
-	//
-	// 	void* DataRowPtr = HeapAllocator__Allocate::CallOriginal(0x24);
-	// 	Logger::Log("wtf", "DataRowPtr: %p\n", DataRowPtr);
-	// 	CMarshalRow__Initialize::CallOriginal(DataRowPtr);
-	// 	Logger::Log("wtf", "DataRowPtr: %p\n", DataRowPtr);
-	//
-	// 	std::wstring WideName = CommandLineParser::Utf8ToWide(Names[i]);
-	// 	Logger::Log("wtf", "WideName: %ls\n", WideName.c_str());
-	//
-	// 	CMarshal__SetWcharT::CallOriginal(DataRowPtr, nullptr, GA_T::NAME, const_cast<wchar_t*>(WideName.c_str()));
-	// 	Logger::Log("wtf", "DataRowPtr: %p\n", DataRowPtr);
-	//
-	// 	CMarshalRowSet__InsertRow::CallOriginal(DataSetPtr, nullptr, DataRowPtr);
-	// 	Logger::Log("wtf", "DataSetPtr: %p\n", DataSetPtr);
-	// }
-	//
-	// CMarshal__SetArray::CallOriginal(MarshalPtr, nullptr, GA_T::DATA_SET, DataSetPtr);
-	// Logger::Log("wtf", "MarshalPtr: %p\n", MarshalPtr);
-	//
-	// ClientConnection__SendMarshal::CallOriginal(Connection, nullptr, MarshalPtr);
-	// Logger::Log("wtf", "DONE\n");
 }
 

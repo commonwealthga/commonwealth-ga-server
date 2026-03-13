@@ -67,5 +67,6 @@ public:
 		return m_original(Game, edx, PlayerController, SpawnLocation);
 	};
 	static ATgDevice* GiveJetpack(ATgPawn_Character* Pawn, ATgRepInfo_Player* PlayerReplicationInfo, ATgPlayerController* PlayerController, int nInventoryId);
+	static ATgDevice* GiveAgonizer(ATgPawn_Character* Pawn, ATgRepInfo_Player* PlayerReplicationInfo, ATgPlayerController* PlayerController, int nInventoryId);
 };
 

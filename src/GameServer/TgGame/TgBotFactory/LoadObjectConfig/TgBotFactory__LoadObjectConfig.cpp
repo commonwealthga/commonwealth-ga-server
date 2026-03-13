@@ -179,7 +179,6 @@ void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, 
 		BotFactory->bAutoSpawn = 1;
 		BotFactory->nPriority = 0;
 	}
-
 	BotFactory->nSpawnTableId = m_botFactoryConfigs[BotFactory->m_nMapObjectId].BotSpawnTableId;
 	BotFactory->s_nTaskForce = m_botFactoryConfigs[BotFactory->m_nMapObjectId].TaskForceNumber;
 

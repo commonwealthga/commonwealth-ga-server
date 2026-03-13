@@ -45,6 +45,9 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		|| strcmp("Function TgPawn.Dying.Tick", name.c_str()) == 0
 		|| strcmp("Function Engine.GameInfo.Timer", name.c_str()) == 0
 		|| strcmp("Function TgGame.TgRepInfo_Game.ServerUpdateTimer", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgPawn.IsCrewed", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgDevice.IsOffhand", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgAIController.SeePlayer", name.c_str()) == 0
 		|| strcmp("Function Engine.SequenceOp.Activated", name.c_str()) == 0) {
 			CallOriginal(Object, edx, Function, Params, Result);
 		// } else if (strcmp("Function TgGame.TgDevice.CanDeviceStartFiringNow", name.c_str()) == 0) {
@@ -53,16 +56,17 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// } else if (strcmp("Function TgGame.TgDevice.CanDeviceFireNow", name.c_str()) == 0) {
 		// 	ATgDevice_eventCanDeviceFireNow_Parms* CanDeviceFireNowParams = (ATgDevice_eventCanDeviceFireNow_Parms*)Params;
 		// 	CanDeviceFireNowParams->ReturnValue = true;
-		} else if (strcmp("Function TgDevice.DeviceFiring.BeginState", name.c_str()) == 0) {
-			CallOriginal(Object, edx, Function, Params, Result);
-			ATgDevice* Device = (ATgDevice*)Object;
-			if (Device->IsOffhandJetpack() && Device->Instigator) {
-				ATgPawn* Pawn = (ATgPawn*)Device->Instigator;
-				SetPawnProperty(Pawn, 59, 1.0f);  // TGPID_FLIGHT_ACCELERATION
-				Pawn->bNetDirty = 1;
-				Pawn->bForceNetUpdate = 1;
-			}
 
+
+		// } else if (strcmp("Function TgDevice.DeviceFiring.BeginState", name.c_str()) == 0) {
+		// 	CallOriginal(Object, edx, Function, Params, Result);
+		// 	ATgDevice* Device = (ATgDevice*)Object;
+		// 	if (Device->IsOffhandJetpack() && Device->Instigator) {
+		// 		ATgPawn* Pawn = (ATgPawn*)Device->Instigator;
+		// 		SetPawnProperty(Pawn, 59, 3.0f);  // TGPID_FLIGHT_ACCELERATION
+		// 		Pawn->bNetDirty = 1;
+		// 		Pawn->bForceNetUpdate = 1;
+		// 	}
 		} else if (strcmp("Function TgDevice.DeviceFiring.EndState", name.c_str()) == 0) {
 			CallOriginal(Object, edx, Function, Params, Result);
 			ATgDevice* Device = (ATgDevice*)Object;
@@ -72,6 +76,8 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 				Pawn->bNetDirty = 1;
 				Pawn->bForceNetUpdate = 1;
 			}
+
+
 		} else {
 			Logger::Log(GetLogChannel(), "├─ %s [%s]\n", name.c_str(), objname.c_str());
 			Logger::ChannelIndents[GetLogChannel()]++;

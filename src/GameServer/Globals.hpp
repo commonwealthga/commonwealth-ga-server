@@ -24,6 +24,8 @@ struct Globals {
 	int* GIsServer = (int*)0x1342B848;
 	int* GIsEditor = (int*)0x1342B830;
 	int* GIsUCC = (int*)0x1342B838;
+	int* GIsNonCombat = (int*)0x119A01C5;
+
 	int* GUseNewOptimizedServerTick = (int*)0x119863b8;
 	int* UObjectGObjFirstGCIndex = (int*)0x13465A10;
 
