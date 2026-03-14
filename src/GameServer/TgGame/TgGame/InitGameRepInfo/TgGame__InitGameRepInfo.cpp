@@ -16,20 +16,20 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 	if (gamerep != nullptr) {
 
 
-		for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-			if (UObject::GObjObjects()->Data[i]) {
-				UObject* obj = UObject::GObjObjects()->Data[i];
-				if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMManager") == 0 && !strstr(obj->GetFullName(), "Default__")) {
-					ATgRandomSMManager* RandomSMManager = reinterpret_cast<ATgRandomSMManager*>(obj);
-
-					DebugWindow::Instances["RandomSMManager"] = {
-						.address = (uintptr_t)RandomSMManager,
-						.type = "RandomSMManager"
-					};
-					break;
-				}
-			}
-		}
+		// for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+		// 	if (UObject::GObjObjects()->Data[i]) {
+		// 		UObject* obj = UObject::GObjObjects()->Data[i];
+		// 		if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgRandomSMManager") == 0 && !strstr(obj->GetFullName(), "Default__")) {
+		// 			ATgRandomSMManager* RandomSMManager = reinterpret_cast<ATgRandomSMManager*>(obj);
+		//
+		// 			DebugWindow::Instances["RandomSMManager"] = {
+		// 				.address = (uintptr_t)RandomSMManager,
+		// 				.type = "RandomSMManager"
+		// 			};
+		// 			break;
+		// 		}
+		// 	}
+		// }
 
 		DebugWindow::Instances["GameReplicationInfo"] = {
 			.address = (uintptr_t)gamerep,
@@ -45,7 +45,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		gamerep->GameClass = Game->Class;
 		gamerep->r_GameType = Game->m_GameType;
 
-		gamerep->r_bIsRaid = 1;
+		gamerep->r_bIsRaid = 0;
 		gamerep->r_bIsMission = 1;
 		gamerep->r_bIsPVP = 0;
 		gamerep->r_bIsTraining = 0;
@@ -66,7 +66,8 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		gamerep->r_nRoundNumber = 1;
 		gamerep->r_nMaxRoundNumber = 5;
 		gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
-
+		gamerep->TimeLimit = Game->TimeLimit;
+		gamerep->RemainingTime = Game->TimeLimit;
 
 		char* GameClassName = Game->Class->GetFullName();
 
@@ -124,8 +125,8 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_bIsPVP = 1;
 			gamerep->r_bIsTraining = 0;
 			gamerep->r_bIsTutorialMap = 0;
-			gamerep->r_bIsArena = 1;
-			gamerep->r_bIsMatch = 1;
+			gamerep->r_bIsArena = 0;
+			gamerep->r_bIsMatch = 0;
 			gamerep->r_bIsTerritoryMap = 0;
 			gamerep->r_bIsOpenWorld = 0;
 			gamerep->r_bAllowBuildMorale = 1;

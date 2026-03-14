@@ -1,12 +1,14 @@
 #include "src/GameServer/TgGame/TgDeviceFire/Deploy/TgDeviceFire__Deploy.hpp"
-#include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
-#include "src/Utils/Macros.hpp"
+#include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
+#include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
-// native function Deploy();
-// Called by CustomFire() for deployable attack types. Should spawn the deployable actor via
-// ATgDevice::SpawnDeployable(vLocation, TargetActor, vNormal). Address not yet identified
-// in the binary; stubbed until the spawn infrastructure is mapped.
+// FUN_10a1b7e0: aim-trace to find placement position for instant deployables.
+// __cdecl(float* extent, ATgPawn* pawn, FVector* outLoc, FVector* outNormal, char adjustZ, char ffCheck)
+// Writes target location + normal via out params. Returns non-null if valid placement found.
+static constexpr uintptr_t FN_PLACEMENT_TRACE = 0x10a1b7e0;
+using PlaceFn = void*(__cdecl*)(float*, int*, float*, float*, char, char);
+
 void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 	if (!pThis) return;
 
@@ -14,60 +16,42 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 	if (!device) return;
 
 	ATgPawn* pawn = (ATgPawn*)device->Instigator;
+	if (!pawn) return;
 
 	char* pFireModeSetup = (char*)pThis->m_pFireModeSetup.Dummy;
+	if (!pFireModeSetup) return;
+
 	int deployableId = *(int*)(pFireModeSetup + 0x28);
 
 	Logger::Log(GetLogChannel(), "TgDeviceFire::Deploy: device=%s pawn=%s attackType=%d deployableId=%d\n",
 		device->GetFullName(),
-		pawn ? pawn->GetFullName() : "null",
+		pawn->GetFullName(),
 		pThis->m_nAttackType,
 		deployableId);
 
-	if (deployableId == 209) { // techro buff station
-		UClass* TgDeployableClass = ClassPreloader::GetTgDeployableClass();
+	// For instant deployables (342), trace from the pawn's aim to find the placement position.
+	// This is the same trace UpdateDeployModeStatus uses to show the ghost preview.
+	FVector spawnLoc  = pawn->Location;
+	FVector spawnNorm = { 0.f, 0.f, 1.f };
 
-		FVector SpawnLocation = pawn->Location;
-
-		ATgDeployable* Deployable = (ATgDeployable*)pawn->Spawn(
-			TgDeployableClass,
-			pawn,
-			FName(),
-			SpawnLocation,
-			pawn->Rotation,
-		   nullptr,
-		   1
-		);
-		if (Deployable != nullptr) {
-			ATgRepInfo_Player* pawnrep = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
-			Deployable->eventInitReplicationInfo();
-			Deployable->SetTaskForceNumber(pawnrep->r_TaskForce->r_nTaskForce);
-			TARRAY_INIT(pawn, s_SelfDeployableList, ATgDeployable*, 0x1514, 255);
-			TARRAY_ADD(s_SelfDeployableList, Deployable);
-			Deployable->r_Owner = device;
-			Deployable->r_nHealth = 100;
-			Deployable->r_nDeployableId = deployableId;
-			Deployable->m_bInDestroyedState = 0;
-			Deployable->r_bTakeDamage = 1;
-			Deployable->s_bIsActivated = 1;
-			Deployable->m_bIsDeployed = 1;
-			Deployable->bOnlyDirtyReplication = 0;
-			Deployable->Role = 3;
-			Deployable->RemoteRole = 1;
-			Deployable->bNetInitial = 1;
-			Deployable->bNetDirty = 1;
-			Deployable->bForceNetUpdate = 1;
-			Deployable->bAlwaysRelevant = 1;
+	if (pThis->m_nAttackType == 0x156 /* TGTT_ATTACK_INSTANT_DEPLOYABLE */) {
+		FVector ext = { 0.f, 0.f, 0.f };
+		void* hit = ((PlaceFn)FN_PLACEMENT_TRACE)(
+			&ext.X, (int*)pawn, &spawnLoc.X, &spawnNorm.X, 1, 0);
+		if (!hit) {
+			// Trace found no valid spot — fall back to standing position.
+			spawnLoc  = pawn->Location;
+			spawnNorm = { 0.f, 0.f, 1.f };
 		}
-
-
-
 	}
 
-	// Logger::DumpMemory("firedeploy_m_pAmSetup", (void*)pThis->m_pAmSetup.Dummy, 0x1000);
-	// Logger::DumpMemory("firedeploy_m_pFireModeSetup", (void*)pThis->m_pFireModeSetup.Dummy, 0x1000);
+	ATgDeployable* Deployable = TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
+		pawn, deployableId, spawnLoc, spawnNorm);
 
-	// TODO: call ATgDevice::SpawnDeployable once its binary address is identified.
-	// Expected: device->SpawnDeployable(pawn->Location, nullptr, FVector{0,0,1});
+	if (Deployable) {
+		// Remove the beacon item from the player's inventory now that it has been placed.
+		ATgInventoryManager* invMgr = (ATgInventoryManager*)pawn->InvManager;
+		int nEquipPoint = (int)device->r_eEquippedAt;
+		TgInventoryManager__NonPersistRemoveDevice::Call(invMgr, nullptr, nEquipPoint);
+	}
 }
-

@@ -46,6 +46,7 @@
 #include "src/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.hpp"
 #include "src/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.hpp"
+#include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
 #include "src/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepList.hpp"
 #include "src/GameServer/Engine/Actor/Spawn/Actor__Spawn.hpp"
 #include "src/GameServer/Engine/Actor/Tick/Actor__Tick.hpp"
@@ -60,6 +61,7 @@
 #include "src/GameServer/TgGame/TgDeviceFire/Deploy/TgDeviceFire__Deploy.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/SpawnPet/TgDeviceFire__SpawnPet.hpp"
 #include "src/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.hpp"
+#include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/ApplyDamage/TgEffectManager__ApplyDamage.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffectGroups/TgEffectManager__RemoveAllEffectGroups.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.hpp"
@@ -121,7 +123,7 @@ unsigned long ModuleThread( void* ) {
 	NetConnection__CleanupActor::Install();
 	// MarshalChannel__MarshalReceived::Install();
 	MarshalChannel__NotifyControlMessage::Install();
-	ActorChannel__ReceivedBunch__CanExecute::bLogEnabled = false;
+	ActorChannel__ReceivedBunch__CanExecute::bLogEnabled = true;
 	ActorChannel__ReceivedBunch__CanExecute::Install();
 	Channel__ReceivedSequencedBunch::Install();
 	Actor__GetOptimizedRepList::Install();
@@ -147,6 +149,7 @@ unsigned long ModuleThread( void* ) {
 	TgTeamBeaconManager__SpawnNewBeaconForTeam::Install();
 	TgBeaconFactory__SpawnObject::Install();
 	TgInventoryManager__NonPersistAddDevice::Install();
+	TgInventoryManager__NonPersistRemoveDevice::Install();
 	TgBotFactory__LoadObjectConfig::Install();
 	// TgBotFactory__SpawnBot::Install();
 	TgBotFactory__SpawnNextBot::Install();
@@ -169,6 +172,7 @@ unsigned long ModuleThread( void* ) {
 	TgEffectManager__RemoveAllEffectGroups::Install();
 	TgEffectManager__RemoveAllEffects::Install();
 	TgDevice__HasEnoughPowerPool::Install();
+	TgProj_Deployable__SpawnDeployable::Install();
 	TgMissionObjective_Bot__SpawnObjectiveBot::Install();
 
 	// data collection

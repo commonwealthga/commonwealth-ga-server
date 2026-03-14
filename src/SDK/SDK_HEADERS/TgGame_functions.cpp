@@ -72447,6 +72447,7 @@ void ATgRepInfo_Deployable::SetTaskForce ( class ATgRepInfo_TaskForce* tf )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgRepInfo_Deployable.SetTaskForce") == 0) {
 				pFnSetTaskForce = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -74374,8 +74375,14 @@ bool ATgTeamBeaconManager::UnRegisterBeacon ( class ATgDeploy_Beacon* pBeacon )
 {
 	static UFunction* pFnUnRegisterBeacon = NULL;
 
-	if ( ! pFnUnRegisterBeacon )
-		pFnUnRegisterBeacon = (UFunction*) UObject::GObjObjects()->Data[ 48456 ];
+	if ( ! pFnUnRegisterBeacon ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgTeamBeaconManager.UnRegisterBeacon") == 0) {
+				pFnUnRegisterBeacon = (UFunction*)UObject::GObjObjects()->Data[i];
+			}
+		}
+	}
+		// pFnUnRegisterBeacon = (UFunction*) UObject::GObjObjects()->Data[ 48456 ];
 
 	ATgTeamBeaconManager_execUnRegisterBeacon_Parms UnRegisterBeacon_Parms;
 	UnRegisterBeacon_Parms.pBeacon = pBeacon;

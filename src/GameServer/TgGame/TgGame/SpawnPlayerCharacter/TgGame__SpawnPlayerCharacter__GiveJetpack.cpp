@@ -71,8 +71,8 @@ ATgDevice* TgGame__SpawnPlayerCharacter::GiveJetpack(ATgPawn_Character *Pawn, AT
 
 		Pawn->m_EquippedDevices[equipPoint] = Device;
 
-		Pawn->r_EquipDeviceInfo[equipPoint] = EquipDeviceInfo;
-
+		// Do NOT set Pawn->r_EquipDeviceInfo here — let UpdateClientDevices detect the mismatch.
+		// (See GiveDeviceById for the full explanation.)
 		PlayerReplicationInfo->r_EquipDeviceInfo[equipPoint] = EquipDeviceInfo;
 
 		Device->r_eEquippedAt = equipPoint;

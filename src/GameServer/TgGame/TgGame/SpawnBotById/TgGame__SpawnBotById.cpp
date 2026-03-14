@@ -106,22 +106,19 @@ void TgGame__SpawnBotById::GiveDeviceById(
 
 		Pawn->m_EquippedDevices[equipPoint] = Device;
 
-		Pawn->r_EquipDeviceInfo[equipPoint] = EquipDeviceInfo;
-
+		// NOTE: Do NOT set Pawn->r_EquipDeviceInfo[equipPoint] here.
+		// CreateEquipDevice already wrote r_EquipDeviceInfo[equipPoint].nDeviceInstanceId = 0
+		// (from device->r_nDeviceInstanceId which was 0 at that point). Now that we've set
+		// Device->r_nDeviceInstanceId = nInventoryId, UpdateClientDevices will detect the mismatch
+		// and both (a) update r_EquipDeviceInfo from device fields and (b) fire the equip handler
+		// + ProcessEvent notification that drives client-side device bar update.
+		// If we pre-set r_EquipDeviceInfo here, UpdateClientDevices sees equality → no-op → client never notified.
 		PlayerReplicationInfo->r_EquipDeviceInfo[equipPoint] = EquipDeviceInfo;
 
 		Device->r_eEquippedAt = equipPoint;
 		if (isHandDevice) Pawn->r_eDesiredInHand = equipPoint;
 		Device->r_nInventoryId = nInventoryId;
 		Device->s_InventoryObject->m_InventoryData.nInvId = nInventoryId;
-
-		// Logger::DumpMemory("newjetpack", Device, 0x2D8, 0);
-		//
-		// for (int i = 0; i < Device->m_FireMode.Num(); i++) {
-		// 	UTgDeviceFire* FireMode = Device->m_FireMode.Data[i];
-		// 	Logger::DumpMemory("newjetpackfire", FireMode, 0x164, 0);
-		// }
-
 
 		Device->Instigator = (APawn*)Pawn;
 
@@ -144,8 +141,8 @@ void TgGame__SpawnBotById::GiveDeviceById(
 			*(int*)((char*)Pawn + 0x1520) = equipPoint;             // r_nMoraleDeviceSlot (replicated)
 		}
 
-		// UpdateClientDevices now detects r_nDeviceInstanceId mismatch (nInventoryId vs 0),
-		// updates r_EquipDeviceInfo, and fires the equip handler that drives client-side setup.
+		// UpdateClientDevices detects: device->r_nDeviceInstanceId (nInventoryId) ≠ r_EquipDeviceInfo[slot] (0)
+		// → updates r_EquipDeviceInfo from device, fires equip handler + ProcessEvent → client device bar update.
 		Pawn->UpdateClientDevices(0, 0);
 
 		Pawn->bNetDirty = 1;

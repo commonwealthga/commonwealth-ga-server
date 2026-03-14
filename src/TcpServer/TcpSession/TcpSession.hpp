@@ -233,136 +233,16 @@ private:
     }
 
 
-    void handle_packet(const uint8_t* data, size_t length) {
-        if (length < 6) {
-			Logger::Log("tcp", "[%s] Packet too short\n", Logger::GetTime());
-            return;
-        }
-
-        const uint8_t* p = data + 2;
-        uint16_t packet_type = p[0] | (p[1] << 8);
-        uint16_t item_count  = p[2] | (p[3] << 8);
-
-        // LogToFile("C:\\tcplog.txt", "Packet type: %04X, item count: %d", packet_type, item_count);
-
-		switch (packet_type) {
-			case GA_U::GSC_USER_LOGIN: {
-
-				PacketView pkt(data + 6, length - 6);
-				player_name = pkt.ReadString(GA_T::USER_NAME).value_or("unknown");
-				session_guid_ = GenerateSessionGuid();
-				ip_address_ = socket_.remote_endpoint().address().to_string() + ":" + std::to_string(socket_.remote_endpoint().port());
-
-				{
-					PlayerInfo info;
-					info.session_guid = session_guid_;
-					info.player_name = player_name;
-					info.player_name_w = CommandLineParser::Utf8ToWide(player_name);
-					info.ip_address = ip_address_;
-					PlayerRegistry::Register(info);
-				}
-
-				Logger::Log("tcp", "[%s] Received: GSC_USER_LOGIN [0x%04X], name: %s guid: %s ip: %s\n",
-					Logger::GetTime(), packet_type, player_name.c_str(), session_guid_.c_str(), ip_address_.c_str());
-
-				send_login_response();
-				break;
-			}
-			case GA_U::GSC_CHARACTER_LIST:
-				Logger::Log("tcp", "[%s] Received: GSC_CHARACTER_LIST [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-				send_character_list_response();
-				// send_character_list_queue_response();
-				break;
-			case GA_U::PLAYER_UPDATE_CLIENT:
-				Logger::Log("tcp", "[%s] Received: PLAYER_UPDATE_CLIENT [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-				send_player_update_client_response();
-				break;
-			case GA_U::GET_LOOT_TABLE_ITEMS_BY_ID_FILTERED:
-				Logger::Log("tcp", "[%s] Received: GET_LOOT_TABLE_ITEMS_BY_ID_FILTERED [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-				send_get_loot_table_items_by_id_filtered_response();
-				break;
-			case GA_U::RELAY_LOG: {
-				// keepalive — check if a spawn event is pending for this session
-				if (!session_guid_.empty()) {
-					auto it = GTcpEvents.find(session_guid_);
-					if (it != GTcpEvents.end()) {
-						TcpEvent& event = it->second;
-						if (event.Type == 1) {
-							int retries = event.IntValues["retries"];
-							int pawnId = (event.Pawn != nullptr) ? event.Pawn->r_nPawnId : 998;
-							Logger::Log("tcp", "[%s] Received: RELAY_LOG, player '%s' spawned (pawnId=%d, retry %d)\n",
-								Logger::GetTime(), player_name.c_str(), pawnId, retries);
-							send_inventory_response(pawnId);
-							if (retries >= 9) {
-								GTcpEvents.erase(it);
-							} else {
-								event.IntValues["retries"] = retries + 1;
-							}
-						}
-					}
-				}
-				break;
-			}
-			case GA_U::GSC_SELECT_CHARACTER:
-				Logger::Log("tcp", "[%s] Received: GSC_SELECT_CHARACTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-				send_select_character_response();
-				Sleep(1000);
-				send_go_play_response();
-				// Sleep(1000);
-				// send_character_inventory_response(998);
-				// Sleep(1000);
-				// send_inventory_response(998);
-				// while (!TgGame__LoadGameConfig::bRandomSMSettingsLoaded) {
-				// 	Sleep(100);
-				// }
-				//
-				// if (TgGame__LoadGameConfig::m_randomSMSettings.size() > 0) {
-				// 	send_map_randomsm_settings_response(TgGame__LoadGameConfig::m_randomSMSettings);
-				// }
-
-				// Sleep(1);
-				// send_marshal_channel_response();
-				break;
-			case GA_U::PLAYER_LOGOFF:
-				Logger::Log("tcp", "[%s] Received: PLAYER_LOGOFF [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-				break;
-			case GA_U::ADD_PLAYER_CHARACTER:
-				Logger::Log("tcp", "[%s] Received: ADD_PLAYER_CHARACTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-				send_go_play_tutorial_response();
-				// send_add_player_character_response();
-				// todo
-				break;
-			case GA_U::DELETE_CHARACTER:
-				Logger::Log("tcp", "[%s] Received: DELETE_CHARACTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-				// todo
-				break;
-			case GA_U::UPDATE_NEW_MAIL_COUNT:
-				Logger::Log("tcp", "[%s] Received: UPDATE_NEW_MAIL_COUNT [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-				send_update_new_mail_count_response();
-				break;
-			case GA_U::GET_TICKET_INFO:
-				Logger::Log("tcp", "[%s] Received: GET_TICKET_INFO [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-				send_get_ticket_info_response();
-				break;
-			case GA_U::AGENCY_GET_ROSTER:
-				Logger::Log("tcp", "[%s] Received: AGENCY_GET_ROSTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-				send_agency_get_roster_response();
-				break;
-			default:
-				Logger::Log("tcp", "[%s] Received unknown packet type: %04X, raw data:\n", Logger::GetTime(), packet_type);
-				for (int i = 0; i < length; i++) {
-					Logger::Log("tcp", "%02X", data[i]);
-				}
-				Logger::Log("tcp", "\n");
-				break;
-		}
-    }
+    void handle_packet(const uint8_t* data, size_t length);
 
 	void send_map_randomsm_settings_response(std::vector<std::string> names);
 
 	void send_get_loot_table_items_by_id_filtered_response();
 
 	void send_inventory_response(int nPawnId);
+
+	void send_beacon_pickup_response(int nPawnId, int nDeviceId, int nInventoryId, int nEquipSlotValueId);
+	void send_beacon_remove_response(int nPawnId, int nInventoryId);
 
 	void send_character_inventory_response(int nPawnId);
 

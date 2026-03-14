@@ -1,5 +1,157 @@
 #include "src/TcpServer/TcpSession/TcpSession.hpp"
 
+
+void TcpSession::handle_packet(const uint8_t* data, size_t length) {
+	if (length < 6) {
+		Logger::Log("tcp", "[%s] Packet too short\n", Logger::GetTime());
+		return;
+	}
+
+	const uint8_t* p = data + 2;
+	uint16_t packet_type = p[0] | (p[1] << 8);
+	uint16_t item_count  = p[2] | (p[3] << 8);
+
+	// LogToFile("C:\\tcplog.txt", "Packet type: %04X, item count: %d", packet_type, item_count);
+
+	switch (packet_type) {
+		case GA_U::GSC_USER_LOGIN: {
+
+			PacketView pkt(data + 6, length - 6);
+			player_name = pkt.ReadString(GA_T::USER_NAME).value_or("unknown");
+			session_guid_ = GenerateSessionGuid();
+			ip_address_ = socket_.remote_endpoint().address().to_string() + ":" + std::to_string(socket_.remote_endpoint().port());
+
+			{
+				PlayerInfo info;
+				info.session_guid = session_guid_;
+				info.player_name = player_name;
+				info.player_name_w = CommandLineParser::Utf8ToWide(player_name);
+				info.ip_address = ip_address_;
+				PlayerRegistry::Register(info);
+			}
+
+			Logger::Log("tcp", "[%s] Received: GSC_USER_LOGIN [0x%04X], name: %s guid: %s ip: %s\n",
+			   Logger::GetTime(), packet_type, player_name.c_str(), session_guid_.c_str(), ip_address_.c_str());
+
+			send_login_response();
+			break;
+		}
+		case GA_U::GSC_CHARACTER_LIST:
+			Logger::Log("tcp", "[%s] Received: GSC_CHARACTER_LIST [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			send_character_list_response();
+			// send_character_list_queue_response();
+			break;
+		case GA_U::PLAYER_UPDATE_CLIENT:
+			Logger::Log("tcp", "[%s] Received: PLAYER_UPDATE_CLIENT [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			send_player_update_client_response();
+			break;
+		case GA_U::GET_LOOT_TABLE_ITEMS_BY_ID_FILTERED:
+			Logger::Log("tcp", "[%s] Received: GET_LOOT_TABLE_ITEMS_BY_ID_FILTERED [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			send_get_loot_table_items_by_id_filtered_response();
+			break;
+		case GA_U::RELAY_LOG: {
+			// keepalive — check if a spawn event is pending for this session
+			if (!session_guid_.empty()) {
+				auto it = GTcpEvents.find(session_guid_);
+				if (it != GTcpEvents.end()) {
+					TcpEvent& event = it->second;
+					if (event.Type == 1) {
+						int retries = event.IntValues["retries"];
+						int pawnId = (event.Pawn != nullptr) ? event.Pawn->r_nPawnId : 998;
+						Logger::Log("tcp", "[%s] Received: RELAY_LOG, player '%s' spawned (pawnId=%d, retry %d)\n",
+				  Logger::GetTime(), player_name.c_str(), pawnId, retries);
+						send_inventory_response(pawnId);
+						if (retries >= 9) {
+							GTcpEvents.erase(it);
+						} else {
+							event.IntValues["retries"] = retries + 1;
+						}
+					}
+				}
+
+				// Drain any queued mid-game inventory-add packets (e.g. beacon pickup).
+				auto bit = GBeaconPickupEvents.find(session_guid_);
+				if (bit != GBeaconPickupEvents.end() && !bit->second.empty()) {
+					for (auto& bev : bit->second) {
+						Logger::Log("tcp", "[%s] RELAY_LOG: sending beacon pickup packet pawnId=%d deviceId=%d invId=%d slot=%d\n",
+							Logger::GetTime(), bev.nPawnId, bev.nDeviceId, bev.nInventoryId, bev.nEquipSlotValueId);
+						send_beacon_pickup_response(bev.nPawnId, bev.nDeviceId, bev.nInventoryId, bev.nEquipSlotValueId);
+					}
+					GBeaconPickupEvents.erase(bit);
+				}
+
+				auto rit = GBeaconRemoveEvents.find(session_guid_);
+				if (rit != GBeaconRemoveEvents.end() && !rit->second.empty()) {
+					for (auto& rev : rit->second) {
+						Logger::Log("tcp", "[%s] RELAY_LOG: sending beacon remove packet pawnId=%d invId=%d\n",
+							Logger::GetTime(), rev.nPawnId, rev.nInventoryId);
+						send_beacon_remove_response(rev.nPawnId, rev.nInventoryId);
+					}
+					GBeaconRemoveEvents.erase(rit);
+				}
+			}
+			break;
+		}
+		case GA_U::GSC_SELECT_CHARACTER:
+			Logger::Log("tcp", "[%s] Received: GSC_SELECT_CHARACTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			send_select_character_response();
+			Sleep(1000);
+			send_go_play_response();
+			// Sleep(1000);
+			// send_character_inventory_response(998);
+			// Sleep(1000);
+			// send_inventory_response(998);
+			// while (!TgGame__LoadGameConfig::bRandomSMSettingsLoaded) {
+			// 	Sleep(100);
+			// }
+			//
+			// if (TgGame__LoadGameConfig::m_randomSMSettings.size() > 0) {
+			// 	send_map_randomsm_settings_response(TgGame__LoadGameConfig::m_randomSMSettings);
+			// }
+
+			// Sleep(1);
+			// send_marshal_channel_response();
+			break;
+		case GA_U::PLAYER_LOGOFF:
+			Logger::Log("tcp", "[%s] Received: PLAYER_LOGOFF [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			break;
+		case GA_U::ADD_PLAYER_CHARACTER:
+			// Logger::Log("tcp", "[%s] Received: ADD_PLAYER_CHARACTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			Logger::Log("tcp", "[%s] Received: ADD_PLAYER_CHARACTER [0x%04X], raw data:\n", Logger::GetTime(), packet_type);
+			for (int i = 0; i < length; i++) {
+				Logger::Log("tcp", "%02X", data[i]);
+			}
+			Logger::Log("tcp", "\n");
+			// send_add_player_character_response();
+			// todo
+			break;
+		case GA_U::DELETE_CHARACTER:
+			Logger::Log("tcp", "[%s] Received: DELETE_CHARACTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			// todo
+			break;
+		case GA_U::UPDATE_NEW_MAIL_COUNT:
+			Logger::Log("tcp", "[%s] Received: UPDATE_NEW_MAIL_COUNT [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			send_update_new_mail_count_response();
+			break;
+		case GA_U::GET_TICKET_INFO:
+			Logger::Log("tcp", "[%s] Received: GET_TICKET_INFO [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			send_get_ticket_info_response();
+			break;
+		case GA_U::AGENCY_GET_ROSTER:
+			Logger::Log("tcp", "[%s] Received: AGENCY_GET_ROSTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			send_agency_get_roster_response();
+			break;
+		default:
+			Logger::Log("tcp", "[%s] Received unknown packet type: %04X, raw data:\n", Logger::GetTime(), packet_type);
+			for (int i = 0; i < length; i++) {
+				Logger::Log("tcp", "%02X", data[i]);
+			}
+			Logger::Log("tcp", "\n");
+			break;
+	}
+
+}
+
 void TcpSession::send_get_ticket_info_response() {
 	std::vector<uint8_t> response;
 
@@ -690,6 +842,69 @@ void TcpSession::send_inventory_response(int nPawnId) {
 			Write4B(response, GA_T::PROFILE_ID, 0x1);
 			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 386); // → equip point 10 (morale slot)
 
+
+	send_response(response);
+}
+
+void TcpSession::send_beacon_pickup_response(int nPawnId, int nDeviceId, int nInventoryId, int nEquipSlotValueId) {
+	std::vector<uint8_t> response;
+
+	uint16_t packet_type = GA_U::SEND_INVENTORY;
+	uint16_t item_count = 2;
+
+	append(response, packet_type & 0xFF, packet_type >> 8);
+	append(response, item_count & 0xFF, item_count >> 8);
+
+	Write4B(response, GA_T::PAWN_ID, nPawnId);
+
+	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+	append(response, 0x01, 0x00);  // 1 item in DATA_SET
+
+		append(response, 0x0E, 0x00);  // 14 fields per item
+
+		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1);
+		Write4B(response, GA_T::ITEM_ID, nDeviceId);
+		Write4B(response, GA_T::INVENTORY_ID, nInventoryId);
+		Write4B(response, GA_T::BLUEPRINT_ID, 0);
+		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, 1162);
+		Write4B(response, GA_T::DURABILITY, 100);
+		WriteDouble(response, GA_T::ACQUIRE_DATETIME, 1700000000.0);
+		WriteString(response, GA_T::BOUND_FLAG, "T");
+		Write4B(response, GA_T::LOCATION_VALUE_ID, 369);
+		Write4B(response, GA_T::INSTANCE_COUNT, 0x1);
+		WriteString(response, GA_T::ACTIVE_FLAG, "T");
+		Write4B(response, GA_T::DEVICE_ID, nInventoryId);
+
+		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
+		append(response, 0x01, 0x00);
+			append(response, 0x02, 0x00);
+			Write4B(response, GA_T::INVENTORY_ID, nInventoryId);
+			Write4B(response, GA_T::EFFECT_GROUP_ID, 0);
+
+		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
+		append(response, 0x01, 0x00);
+			append(response, 0x04, 0x00);
+			Write4B(response, GA_T::CHARACTER_ID, 0);
+			Write4B(response, GA_T::INVENTORY_ID, nInventoryId);
+			Write4B(response, GA_T::PROFILE_ID, 0x1);
+			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, nEquipSlotValueId);
+
+	send_response(response);
+}
+
+void TcpSession::send_beacon_remove_response(int nPawnId, int nInventoryId) {
+	std::vector<uint8_t> response;
+
+	append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
+	append(response, 0x02, 0x00);  // 2 top-level items: PAWN_ID + DATA_SET
+
+	Write4B(response, GA_T::PAWN_ID, nPawnId);
+
+	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+	append(response, 0x01, 0x00);  // 1 item in DATA_SET
+		append(response, 0x02, 0x00);  // 2 fields
+		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x2);  // 2 = deleted
+		Write4B(response, GA_T::INVENTORY_ID, nInventoryId);
 
 	send_response(response);
 }

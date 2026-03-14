@@ -242,85 +242,30 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	PlayerPawnSpawned.session_guid = session_guid;
 	PlayerPawnSpawned.player_name = player_name;
 	GTcpEvents[session_guid] = PlayerPawnSpawned;
+	GPawnSessions[PlayerPawnSpawned.Pawn] = session_guid;
 
+	// First player: wire up BeaconManagers (RegisterBeacon sets r_BeaconStatus so entrance activates).
 	if (!bFirstPlayerSpawned) {
 		bFirstPlayerSpawned = true;
 
-		if (GTeamsData.Attackers->r_BeaconManager->r_Beacon == nullptr) {
-			if (GTeamsData.BeaconAttackers) {
-				GTeamsData.Attackers->r_BeaconManager->r_Beacon = GTeamsData.BeaconAttackers;
-				GTeamsData.Attackers->r_BeaconManager->r_TaskForce = GTeamsData.Attackers;
-				GTeamsData.Attackers->r_BeaconManager->bNetDirty = 1;
-				GTeamsData.Attackers->r_BeaconManager->bForceNetUpdate = 1;
-				GTeamsData.Attackers->r_BeaconManager->bNetInitial = 1;
-				GTeamsData.Defenders->r_BeaconManager->bAlwaysRelevant = 1;
-				GTeamsData.BeaconAttackers->r_DRI->r_TaskforceInfo = GTeamsData.Attackers;
-				GTeamsData.Attackers->r_BeaconManager->RegisterBeacon(GTeamsData.BeaconAttackers, 1);
-				if (GTeamsData.BeaconEntranceAttackers) {
-					GTeamsData.BeaconEntranceAttackers->r_DRI->r_TaskforceInfo = GTeamsData.Attackers;
-					// ATgRepInfo_Beacon* AttackersBeaconRep = (ATgRepInfo_Beacon*)GTeamsData.BeaconEntranceAttackers->r_DRI;
-					// AttackersBeaconRep->r_bDeployed = 1;
-					// AttackersBeaconRep->r_vLoc = GTeamsData.BeaconAttackers->Location;
-
-					// LogToFile("C:\\mylog.txt", "Attackers beacon entrance taskforce set");
-				}
-				// LogToFile("C:\\mylog.txt", "Attackers beacon set");
-			} else {
-				// LogToFile("C:\\mylog.txt", "Attackers beacon global is null");
-			}
-		} else {
-			// LogToFile("C:\\mylog.txt", "Attackers beacon is not null");
-		}
-		if (GTeamsData.Defenders->r_BeaconManager->r_Beacon == nullptr) {
-			if (GTeamsData.BeaconDefenders) {
-				GTeamsData.Defenders->r_BeaconManager->r_TaskForce = GTeamsData.Defenders;
-				GTeamsData.Defenders->r_BeaconManager->r_Beacon = GTeamsData.BeaconDefenders;
-				GTeamsData.Defenders->r_BeaconManager->bNetDirty = 1;
-				GTeamsData.Defenders->r_BeaconManager->bForceNetUpdate = 1;
-				GTeamsData.Defenders->r_BeaconManager->bNetInitial = 1;
-				GTeamsData.Defenders->r_BeaconManager->bAlwaysRelevant = 1;
-				GTeamsData.BeaconDefenders->r_DRI->r_TaskforceInfo = GTeamsData.Defenders;
-				GTeamsData.Defenders->r_BeaconManager->RegisterBeacon(GTeamsData.BeaconDefenders, 1);
-				if (GTeamsData.BeaconEntranceDefenders) {
-					GTeamsData.BeaconEntranceDefenders->r_DRI->r_TaskforceInfo = GTeamsData.Defenders;
-					// ATgRepInfo_Beacon* DefendersBeaconRep = (ATgRepInfo_Beacon*)GTeamsData.BeaconEntranceDefenders->r_DRI;
-					// DefendersBeaconRep->r_bDeployed = 1;
-					// DefendersBeaconRep->r_vLoc = GTeamsData.BeaconDefenders->Location;
-
-					// LogToFile("C:\\mylog.txt", "Defenders beacon entrance taskforce set");
-				}
-				// LogToFile("C:\\mylog.txt", "Defenders beacon set");
-			} else {
-				// LogToFile("C:\\mylog.txt", "Defenders beacon global is null");
-			}
-		} else {
-			// LogToFile("C:\\mylog.txt", "Defenders beacon is not null");
+		if (GTeamsData.BeaconAttackers && GTeamsData.Attackers->r_BeaconManager->r_Beacon == nullptr) {
+			GTeamsData.Attackers->r_BeaconManager->r_Beacon    = GTeamsData.BeaconAttackers;
+			GTeamsData.Attackers->r_BeaconManager->r_TaskForce = GTeamsData.Attackers;
+			GTeamsData.Attackers->r_BeaconManager->bNetDirty      = 1;
+			GTeamsData.Attackers->r_BeaconManager->bForceNetUpdate = 1;
+			GTeamsData.Attackers->r_BeaconManager->bNetInitial     = 1;
+			GTeamsData.Attackers->r_BeaconManager->bAlwaysRelevant = 1;
+			GTeamsData.Attackers->r_BeaconManager->RegisterBeacon(GTeamsData.BeaconAttackers, 1);
 		}
 
-		// LogToFile("C:\\mylog.txt", "Attackers taskforce %d", GTeamsData.Attackers->r_nTaskForce);
-
-		if (GTeamsData.Attackers->r_BeaconManager != nullptr) {
-			Logger::Log("debug", "Attackers have beacon manager\n");
-			if (GTeamsData.Attackers->r_BeaconManager->r_TaskForce != nullptr) {
-				Logger::Log("debug", "Attackers beacon manager taskforce %d\n", GTeamsData.Attackers->r_BeaconManager->r_TaskForce->r_nTaskForce);
-			}
-			if (GTeamsData.Attackers->r_BeaconManager->r_Beacon != nullptr) {
-				Logger::Log("debug", "Attackers have beacon\n");
-				if (GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI != nullptr) {
-					Logger::Log("debug", "Attackers beacon has replication info\n");
-					if (GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo != nullptr) {
-						Logger::Log("debug", "Attackers beacon taskforce %d\n", GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo->r_nTaskForce);
-					} else {
-						Logger::Log("debug", "Attackers beacon taskforce is null\n");
-					}
-				} else {
-					Logger::Log("debug", "Attackers beacon replication info is null\n");
-				}
-			} else {
-				Logger::Log("debug", "Attackers beacon is null\n");
-			}
-		} else {
-			Logger::Log("debug", "Attackers do not have beacon manager\n");
+		if (GTeamsData.BeaconDefenders && GTeamsData.Defenders->r_BeaconManager->r_Beacon == nullptr) {
+			GTeamsData.Defenders->r_BeaconManager->r_Beacon    = GTeamsData.BeaconDefenders;
+			GTeamsData.Defenders->r_BeaconManager->r_TaskForce = GTeamsData.Defenders;
+			GTeamsData.Defenders->r_BeaconManager->bNetDirty      = 1;
+			GTeamsData.Defenders->r_BeaconManager->bForceNetUpdate = 1;
+			GTeamsData.Defenders->r_BeaconManager->bNetInitial     = 1;
+			GTeamsData.Defenders->r_BeaconManager->bAlwaysRelevant = 1;
+			GTeamsData.Defenders->r_BeaconManager->RegisterBeacon(GTeamsData.BeaconDefenders, 1);
 		}
 
 		game->m_fGameMissionTime = 15 * 60;
@@ -358,9 +303,6 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 		}
 	}
 
-
-	// LogToFile("C:\\mylog.txt", "Attackers beacon manager taskforce %d", GTeamsData.Attackers->r_BeaconManager->r_TaskForce->r_nTaskForce);
-	// LogToFile("C:\\mylog.txt", "Attackers beacon taskforce %d", GTeamsData.Attackers->r_BeaconManager->r_Beacon->r_DRI->r_TaskforceInfo->r_nTaskForce);
 	Logger::Log("debug", "MINE MarshalChannel__NotifyControlMessage END\n");
 }
 

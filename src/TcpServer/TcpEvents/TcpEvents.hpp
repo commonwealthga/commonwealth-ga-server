@@ -12,6 +12,27 @@ struct TcpEvent {
 	std::map<std::string, int> IntValues;
 };
 
+struct BeaconPickupEvent {
+	int nPawnId;
+	int nDeviceId;
+	int nInventoryId;
+	int nEquipSlotValueId;
+};
+
+struct BeaconRemoveEvent {
+	int nPawnId;
+	int nInventoryId;
+};
+
 // Keyed by session_guid.
 extern std::map<std::string, TcpEvent> GTcpEvents;
+
+// Pending mid-game inventory-add packets, keyed by session_guid.
+extern std::map<std::string, std::vector<BeaconPickupEvent>> GBeaconPickupEvents;
+
+// Pending mid-game inventory-remove packets, keyed by session_guid.
+extern std::map<std::string, std::vector<BeaconRemoveEvent>> GBeaconRemoveEvents;
+
+// Reverse map: pawn pointer → session_guid (populated on spawn).
+extern std::map<ATgPawn*, std::string> GPawnSessions;
 

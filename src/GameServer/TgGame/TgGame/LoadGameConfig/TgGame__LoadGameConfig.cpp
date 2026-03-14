@@ -33,6 +33,8 @@ void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	Game->m_nSecsToAutoReleaseDefenders = 15;
 	Game->m_bIsTutorialMap = 0;
 
+	Game->TimeLimit = 15 * 60;
+
 	LoadCommonGameConfig(Game);
 
 	LogCallEnd();

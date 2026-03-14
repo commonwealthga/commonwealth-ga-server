@@ -36,7 +36,7 @@ void __fastcall* TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* BeaconFact
 		} else {
 			Logger::Log("debug", "beacon exit spawned\n");
 		}
-		
+
 
 		if (GTeamsData.BeaconAttackers == nullptr) {
 			GTeamsData.BeaconAttackers = Beacon;
@@ -69,6 +69,22 @@ void __fastcall* TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* BeaconFact
 		Beacon->SetTaskForceNumber(BeaconFactory->s_nTaskForce);
 		Logger::Log("debug", "beacon task force set\n");
 		Beacon->Role = 3;
+
+		// eventInitReplicationInfo calls GRI.GetTaskForce() which may return null during early
+		// init (before GTeamsData.Attackers/Defenders are populated).  Explicitly set the correct
+		// team so r_DRI.r_TaskforceInfo is non-null when the initial replication packet fires.
+		{
+			ATgRepInfo_TaskForce* tf = (GTeamsData.BeaconAttackers == Beacon) ? GTeamsData.Attackers : GTeamsData.Defenders;
+			if (Beacon->r_DRI && tf) {
+				Beacon->r_DRI->SetTaskForce(tf);
+				Logger::Log("debug", "beacon r_DRI taskforce explicitly set to 0x%p\n", tf);
+			}
+		}
+
+		// r_bInitialIsEnemy is a repnotify trigger: client fires NotifyGroupChanged() →
+		// IsFriendlyWithLocalPawn() → RecalculateMaterial().  Must be set before bNetInitial
+		// fires so the callback runs with correct r_DRI data.
+		Beacon->r_bInitialIsEnemy = 1;
 
 		Beacon->bNetInitial = 1;
 	} else {
@@ -110,10 +126,20 @@ void __fastcall* TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* BeaconFact
 		BeaconEntrance->bOnlyDirtyReplication = 1;
 		// BeaconEntrance->bAlwaysRelevant = 1;
 
+		// Same explicit team fix as the beacon above.
+		{
+			ATgRepInfo_TaskForce* tf = (GTeamsData.BeaconEntranceAttackers == BeaconEntrance) ? GTeamsData.Attackers : GTeamsData.Defenders;
+			if (BeaconEntrance->r_DRI && tf) {
+				BeaconEntrance->r_DRI->SetTaskForce(tf);
+				Logger::Log("debug", "entrance r_DRI taskforce explicitly set to 0x%p\n", tf);
+			}
+		}
+
+		BeaconEntrance->r_bInitialIsEnemy = 1;
+
 		BeaconEntrance->bNetInitial = 1;
 	}
 	// LogToFile("C:\\mylog.txt", "MINE TgTeamBeaconManager::SpawnNewBeaconForTeam END");
 
 	Logger::Log("debug", "MINE TgBeaconFactory::SpawnObject END\n");
 }
-

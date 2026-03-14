@@ -5,12 +5,12 @@
 
 class TgInventoryManager__NonPersistRemoveDevice : public HookBase<
 	void(__fastcall*)(ATgInventoryManager*, void*, int),
-	0x10ad9bf0,
+	0x10a12300,
 	TgInventoryManager__NonPersistRemoveDevice> {
 public:
-	static void __fastcall Call(ATgInventoryManager* InventoryManager, void* edx, int nPriority);
-	static inline void __fastcall CallOriginal(ATgInventoryManager* InventoryManager, void* edx, int nPriority) {
-		m_original(InventoryManager, edx, nPriority);
+	static void __fastcall Call(	ATgInventoryManager* InventoryManager, void* edx, int nEquipPoint);
+	static inline void __fastcall CallOriginal(	ATgInventoryManager* InventoryManager, void* edx, int nEquipPoint) {
+		m_original(InventoryManager, edx, nEquipPoint);
 	};
 };
 
