@@ -3,6 +3,10 @@
 #include "src/pch.hpp"
 #include "src/Utils/HookBase.hpp"
 
+// The UNetConnection for the marshal currently being dispatched. Set by
+// MarshalChannel__MarshalReceived before calling CGameClient__MarshalReceived.
+extern void* GCurrentMarshalConnection;
+
 class MarshalChannel__MarshalReceived : public HookBase<
 	void(__fastcall*)(void*, void*, void*),
 	0x109f9970,

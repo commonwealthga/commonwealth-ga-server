@@ -96,6 +96,7 @@ unsigned long ModuleThread( void* ) {
 	// Logger::EnabledChannels.push_back("tcp");
 	// Logger::EnabledChannels.push_back("db");
 	// Logger::EnabledChannels.push_back("debug");
+	// Logger::EnabledChannels.push_back("quest_update");
 	// Logger::EnabledChannels.push_back("session_guid");
 	// Logger::EnabledChannels.push_back("chat");
 
@@ -121,7 +122,7 @@ unsigned long ModuleThread( void* ) {
 	NetConnection__LowLevelSend::Install();
 	NetConnection__Cleanup::Install();
 	NetConnection__CleanupActor::Install();
-	// MarshalChannel__MarshalReceived::Install();
+	MarshalChannel__MarshalReceived::Install();
 	MarshalChannel__NotifyControlMessage::Install();
 	ActorChannel__ReceivedBunch__CanExecute::bLogEnabled = true;
 	ActorChannel__ReceivedBunch__CanExecute::Install();

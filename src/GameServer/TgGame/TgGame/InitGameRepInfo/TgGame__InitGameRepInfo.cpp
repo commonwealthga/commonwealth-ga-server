@@ -2,6 +2,7 @@
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/Config/Config.hpp"
 #include "src/Utils/DebugWindow/DebugWindow.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -141,6 +142,12 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nRoundNumber = 1;
 			gamerep->r_nMaxRoundNumber = 5;
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+
+			std::string MapName = Config::GetMapNameChar();
+			if (MapName == "Inception_ALL" || MapName == "Adrenaline_P" || MapName == "Skylark_P" || MapName == "AgencyZero_P") {
+				gamerep->r_bIsTutorialMap = 1;
+				gamerep->r_bIsPVP = 0;
+			}
 		}
 
 		if (strcmp(GameClassName, "Class TgGame.TgGame_City") == 0) {

@@ -43,7 +43,8 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 	if (strncmp(tmp, "HELLO", 5) == 0) {
 
 		UUID* guid = new UUID();
-		int result2 = CMarshal__GetGuid::CallOriginal(InBunch, edx, 0x473, guid);
+		memset(guid, 0, sizeof(UUID));
+		CMarshal__GetGuid::CallOriginal(InBunch, edx, 0x473, guid);
 
 		Logger::DumpMemory("session_guid", (void*)guid, 0x10, 0);
 
@@ -125,6 +126,7 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.player_name = info->player_name;
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.player_name_w = info->player_name_w;
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.ip_address = info->ip_address;
+			GClientConnectionsData[(int32_t)Connection].PlayerInfo.user_id = info->user_id;
 			Logger::Log(GetLogChannel(), "JOIN: identified player '%s' (guid=%s, connection=%d)\n", info->player_name.c_str(), session_guid.c_str(), (int32_t)Connection);
 		} else {
 			Logger::Log(GetLogChannel(), "JOIN: session guid %s not found in registry\n", session_guid.c_str());

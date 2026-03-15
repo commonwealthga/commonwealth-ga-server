@@ -14,15 +14,14 @@ public:
 
 		std::tm tm;
 #if defined(_WIN32) || defined(_WIN64)
-		localtime_s(&tm, &now_time_t);  // Windows
+		localtime_s(&tm, &now_time_t);
 #else
-		localtime_r(&now_time_t, &tm);  // POSIX
+		localtime_r(&now_time_t, &tm);
 #endif
 
-		std::ostringstream oss;
-		oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
-
-		return oss.str().c_str();
+		static thread_local char buf[32];
+		strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &tm);
+		return buf;
 	}
 };
 

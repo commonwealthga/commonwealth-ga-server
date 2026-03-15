@@ -428,12 +428,142 @@ void Database::Init() {
 		}
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 10", nullptr, nullptr, &err);
+	if (version < 11) {
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_users ( \
+				id INTEGER PRIMARY KEY AUTOINCREMENT, \
+				username TEXT UNIQUE NOT NULL \
+			);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_users table: %s\n", err);
+			return;
+		}
+
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_characters ( \
+				id INTEGER PRIMARY KEY AUTOINCREMENT, \
+				user_id INTEGER NOT NULL REFERENCES ga_users(id), \
+				profile_id INTEGER NOT NULL, \
+				head_asm_id INTEGER NOT NULL, \
+				gender_type_value_id INTEGER NOT NULL, \
+				morph_data BLOB \
+			);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_characters table: %s\n", err);
+			return;
+		}
+	}
+
+	if (version < 12) {
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_players ADD COLUMN user_id INTEGER;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to add user_id to ga_players: %s\n", err);
+			return;
+		}
+	}
+
+	if (version < 13) {
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_character_quests ( \
+				id INTEGER PRIMARY KEY AUTOINCREMENT, \
+				character_id INTEGER NOT NULL REFERENCES ga_characters(id), \
+				quest_id INTEGER NOT NULL, \
+				status TEXT NOT NULL DEFAULT 'active', \
+				accepted_at INTEGER NOT NULL DEFAULT (strftime('%s','now')), \
+				completed_at INTEGER, \
+				UNIQUE(character_id, quest_id) \
+			);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_character_quests table: %s\n", err);
+			return;
+		}
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 13", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
 	}
 
 	PlayerRegistry::Init();
+}
+
+std::string Database::GetQuestStatus(int64_t character_id, int quest_id) {
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT status FROM ga_character_quests WHERE character_id = ? AND quest_id = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Quest] GetQuestStatus prepare failed: %s\n", sqlite3_errmsg(db));
+		return "";
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+	sqlite3_bind_int(stmt, 2, quest_id);
+
+	std::string status;
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		const char* s = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+		if (s) status = s;
+	}
+	sqlite3_finalize(stmt);
+	return status;
+}
+
+void Database::AcceptQuest(int64_t character_id, int quest_id) {
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"INSERT OR IGNORE INTO ga_character_quests (character_id, quest_id, status) VALUES (?, ?, 'active')",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Quest] AcceptQuest prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+	sqlite3_bind_int(stmt, 2, quest_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	Logger::Log("db", "[Quest] Accepted quest %d for character %lld\n", quest_id, character_id);
+}
+
+void Database::CompleteQuest(int64_t character_id, int quest_id) {
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"UPDATE ga_character_quests SET status = 'complete', completed_at = strftime('%s','now') "
+		"WHERE character_id = ? AND quest_id = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Quest] CompleteQuest prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+	sqlite3_bind_int(stmt, 2, quest_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	Logger::Log("db", "[Quest] Completed quest %d for character %lld\n", quest_id, character_id);
+}
+
+void Database::AbandonQuest(int64_t character_id, int quest_id) {
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"DELETE FROM ga_character_quests WHERE character_id = ? AND quest_id = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Quest] AbandonQuest prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+	sqlite3_bind_int(stmt, 2, quest_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	Logger::Log("db", "[Quest] Abandoned quest %d for character %lld\n", quest_id, character_id);
 }
 

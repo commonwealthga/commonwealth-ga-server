@@ -1,4 +1,5 @@
 #include "src/TcpServer/TcpSession/TcpSession.hpp"
+#include "src/Database/Database.hpp"
 
 
 void TcpSession::handle_packet(const uint8_t* data, size_t length) {
@@ -20,6 +21,7 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			player_name = pkt.ReadString(GA_T::USER_NAME).value_or("unknown");
 			session_guid_ = GenerateSessionGuid();
 			ip_address_ = socket_.remote_endpoint().address().to_string() + ":" + std::to_string(socket_.remote_endpoint().port());
+			user_id_ = PlayerRegistry::UpsertUser(player_name);
 
 			{
 				PlayerInfo info;
@@ -27,6 +29,7 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				info.player_name = player_name;
 				info.player_name_w = CommandLineParser::Utf8ToWide(player_name);
 				info.ip_address = ip_address_;
+				info.user_id = user_id_;
 				PlayerRegistry::Register(info);
 			}
 
@@ -89,11 +92,58 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 					}
 					GBeaconRemoveEvents.erase(rit);
 				}
+
+				auto qit = GQuestEvents.find(session_guid_);
+				if (qit != GQuestEvents.end() && !qit->second.empty()) {
+					for (auto& qev : qit->second) {
+						if (qev.action == QuestAction::Abandon) {
+							Logger::Log("tcp", "[%s] RELAY_LOG: quest abandon questId=%d charId=%lld\n",
+								Logger::GetTime(), qev.nQuestId, selected_character_id_);
+							Database::AbandonQuest(selected_character_id_, qev.nQuestId);
+							send_quest_abandon_response(qev.nQuestId);
+						} else {
+							auto status = Database::GetQuestStatus(selected_character_id_, qev.nQuestId);
+							Logger::Log("tcp", "[%s] RELAY_LOG: quest request questId=%d charId=%lld status='%s'\n",
+								Logger::GetTime(), qev.nQuestId, selected_character_id_, status.c_str());
+							if (status == "active") {
+								Database::CompleteQuest(selected_character_id_, qev.nQuestId);
+								send_quest_complete_response(qev.nQuestId);
+							} else if (status.empty()) {
+								Database::AcceptQuest(selected_character_id_, qev.nQuestId);
+								send_quest_accept_response(qev.nQuestId);
+							}
+							// status == "complete": already done, ignore
+						}
+					}
+					GQuestEvents.erase(qit);
+				}
 			}
 			break;
 		}
-		case GA_U::GSC_SELECT_CHARACTER:
-			Logger::Log("tcp", "[%s] Received: GSC_SELECT_CHARACTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+		case GA_U::GSC_SELECT_CHARACTER: {
+			PacketView pkt(data + 6, length - 6);
+			int64_t nCharacterId = pkt.Read4B(GA_T::CHARACTER_ID).value_or(0);
+
+			Logger::Log("tcp", "[%s] Received: GSC_SELECT_CHARACTER [0x%04X] charId=%I64d session_guid=%s\n",
+				Logger::GetTime(), packet_type, nCharacterId, session_guid_.c_str());
+
+			LogData(data, length);
+
+			// Look up the requested character from DB and select it.
+			if (nCharacterId != 0) {
+				auto charInfo = PlayerRegistry::GetCharacterById(nCharacterId);
+				if (charInfo && charInfo->user_id == user_id_) {
+					selected_character_id_ = charInfo->id;
+					selected_profile_id_   = charInfo->profile_id;
+					PlayerRegistry::SetSelectedCharacter(session_guid_, charInfo->id, charInfo->profile_id);
+					Logger::Log("tcp", "[%s] GSC_SELECT_CHARACTER: selected charId=%I64d profile=%u\n",
+						Logger::GetTime(), selected_character_id_, selected_profile_id_);
+				} else {
+					Logger::Log("tcp", "[%s] GSC_SELECT_CHARACTER: charId=%I64d not found or wrong user (user_id_=%I64d)\n",
+						Logger::GetTime(), nCharacterId, user_id_);
+				}
+			}
+
 			send_select_character_response();
 			Sleep(1000);
 			send_go_play_response();
@@ -112,19 +162,38 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			// Sleep(1);
 			// send_marshal_channel_response();
 			break;
+		}
 		case GA_U::PLAYER_LOGOFF:
 			Logger::Log("tcp", "[%s] Received: PLAYER_LOGOFF [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 			break;
-		case GA_U::ADD_PLAYER_CHARACTER:
-			// Logger::Log("tcp", "[%s] Received: ADD_PLAYER_CHARACTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-			Logger::Log("tcp", "[%s] Received: ADD_PLAYER_CHARACTER [0x%04X], raw data:\n", Logger::GetTime(), packet_type);
-			for (int i = 0; i < length; i++) {
-				Logger::Log("tcp", "%02X", data[i]);
-			}
-			Logger::Log("tcp", "\n");
-			// send_add_player_character_response();
-			// todo
+		case GA_U::ADD_PLAYER_CHARACTER: {
+			Logger::Log("tcp", "[%s] Received: ADD_PLAYER_CHARACTER [0x%04X]\n", Logger::GetTime(), packet_type);
+			PacketView pkt(data + 6, length - 6);
+			uint32_t trainingMapGameId  = pkt.Read4B(GA_T::TRAINING_MAP_GAME_ID).value_or(0);
+			uint32_t profileId          = pkt.Read4B(GA_T::PROFILE_ID).value_or(GA_G::GA_G::PROFILE_ID_ASSAULT);
+			uint32_t headAsmId          = pkt.Read4B(GA_T::HEAD_ASM_ID).value_or(1605);
+			uint32_t genderTypeId       = pkt.Read4B(GA_T::GENDER_TYPE_VALUE_ID).value_or(853);
+
+			// DWORDS payload: 4B length prefix + raw morph bytes — strip prefix before storing.
+			std::vector<uint8_t> morphBlob;
+			auto dwordsRaw = pkt.ReadNBytes(GA_T::DWORDS);
+			if (dwordsRaw && dwordsRaw->size() > 4)
+				morphBlob.assign(dwordsRaw->begin() + 4, dwordsRaw->end());
+
+			selected_character_id_ = PlayerRegistry::InsertCharacter(user_id_, profileId, headAsmId, genderTypeId, morphBlob);
+			selected_profile_id_   = profileId;
+
+			Logger::Log("tcp", "[%s] ADD_PLAYER_CHARACTER: profile=%u head=%u gender=%u morphBytes=%u charId=%I64d\n",
+				Logger::GetTime(), profileId, headAsmId, genderTypeId, (unsigned)morphBlob.size(), selected_character_id_);
+
+			send_add_player_character_response();
+			if (trainingMapGameId != 0)
+				// send_go_play_tutorial_response();
+				send_go_play_response();
+			else
+				send_go_play_response();
 			break;
+		}
 		case GA_U::DELETE_CHARACTER:
 			Logger::Log("tcp", "[%s] Received: DELETE_CHARACTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 			// todo
@@ -909,6 +978,59 @@ void TcpSession::send_beacon_remove_response(int nPawnId, int nInventoryId) {
 	send_response(response);
 }
 
+void TcpSession::send_quest_accept_response(int nQuestId) {
+	std::vector<uint8_t> response;
+
+	append(response, GA_U::QUEST_UPDATE & 0xFF, GA_U::QUEST_UPDATE >> 8);
+	append(response, 0x01, 0x00);  // 1 top-level item: DATA_SET_QUESTS
+
+	append(response, GA_T::DATA_SET_QUESTS & 0xFF, GA_T::DATA_SET_QUESTS >> 8);
+	append(response, 0x01, 0x00);  // 1 quest entry
+		append(response, 0x02, 0x00);  // 2 fields: QUEST_ID + ACCEPT_FLAG
+		Write4B(response, GA_T::QUEST_ID, nQuestId);
+		Write1B(response, GA_T::ACCEPT_FLAG, 0x01);
+
+	send_response(response);
+}
+
+void TcpSession::send_quest_complete_response(int nQuestId) {
+	std::vector<uint8_t> response;
+
+	// Current time as a non-zero 64-bit timestamp — triggers the complete branch in LoadQuests.
+	uint64_t ts = static_cast<uint64_t>(
+		std::chrono::duration_cast<std::chrono::seconds>(
+			std::chrono::system_clock::now().time_since_epoch()).count());
+
+	append(response, GA_U::QUEST_UPDATE & 0xFF, GA_U::QUEST_UPDATE >> 8);
+	append(response, 0x01, 0x00);  // 1 top-level item: DATA_SET_QUESTS
+
+	append(response, GA_T::DATA_SET_QUESTS & 0xFF, GA_T::DATA_SET_QUESTS >> 8);
+	append(response, 0x01, 0x00);  // 1 quest entry
+		append(response, 0x03, 0x00);  // 3 fields: QUEST_ID + COMPLETED_DATETIME + COMPLETE_FLAG
+		Write4B(response, GA_T::QUEST_ID, nQuestId);
+		// COMPLETED_DATETIME (0x00D8): 8-byte value — non-zero triggers completion branch
+		append(response, GA_T::COMPLETED_DATETIME & 0xFF, GA_T::COMPLETED_DATETIME >> 8);
+		for (int i = 0; i < 8; i++) append(response, static_cast<uint8_t>((ts >> (i * 8)) & 0xFF));
+		Write1B(response, GA_T::COMPLETE_FLAG, 0x01);
+
+	send_response(response);
+}
+
+void TcpSession::send_quest_abandon_response(int nQuestId) {
+	std::vector<uint8_t> response;
+
+	append(response, GA_U::QUEST_UPDATE & 0xFF, GA_U::QUEST_UPDATE >> 8);
+	append(response, 0x01, 0x00);  // 1 top-level item: DATA_SET_QUESTS
+
+	append(response, GA_T::DATA_SET_QUESTS & 0xFF, GA_T::DATA_SET_QUESTS >> 8);
+	append(response, 0x01, 0x00);  // 1 quest entry
+		append(response, 0x02, 0x00);  // 2 fields: QUEST_ID + ABANDON_FLAG
+		Write4B(response, GA_T::QUEST_ID, nQuestId);
+		Write1B(response, GA_T::ABANDON_FLAG, 0x01);
+
+	send_response(response);
+}
+
 void TcpSession::send_map_randomsm_settings_response(std::vector<std::string> names)
 {
 	std::vector<uint8_t> response;
@@ -1071,8 +1193,8 @@ void TcpSession::send_add_player_character_response()
 	append(response, item_count & 0xFF, item_count >> 8);
 
 	WriteString(response, GA_T::PLAYER_NAME, player_name);
-	Write4B(response, GA_T::CHARACTER_ID, 0x2AC950);
-	Write4B(response, GA_T::PROFILE_ID, GA_G::GA_G::PROFILE_ID_ASSAULT);
+	Write4B(response, GA_T::CHARACTER_ID, static_cast<uint32_t>(selected_character_id_));
+	Write4B(response, GA_T::PROFILE_ID, selected_profile_id_);
 
 	Write4B(response, GA_T::CLASS_MSG_ID, 0x022976);
 	Write4B(response, GA_T::HOME_MAP_GAME_ID, 0x050B);
@@ -1094,12 +1216,14 @@ void TcpSession::send_select_character_response()
 	Write4B(response, GA_T::ERROR_CODE, 0x0);
 	Write4B(response, GA_T::HOME_MAP_GAME_ID, 0x050B);
 	Write4B(response, GA_T::TASK_FORCE, 0x1);
-	Write4B(response, GA_T::CHARACTER_ID, 0x1);
-	Write4B(response, GA_T::PROFILE_ID, GA_G::GA_G::PROFILE_ID_ASSAULT);
+	Write4B(response, GA_T::CHARACTER_ID, static_cast<uint32_t>(selected_character_id_));
+	Write4B(response, GA_T::PROFILE_ID, selected_profile_id_ != 0 ? selected_profile_id_ : GA_G::GA_G::PROFILE_ID_ASSAULT);
 	WriteString(response, GA_T::CLASS_MSG_ID, "22976");
 
 	WriteString(response, GA_T::PLAYER_NAME, player_name);
 	WriteNBytes(response, GA_T::SESSION_GUID, GuidHexToBytes(session_guid_));
+	Logger::Log("tcp", "[%s] send_select_character_response: charId=%I64d profile=%u session_guid=%s\n",
+		Logger::GetTime(), selected_character_id_, selected_profile_id_, session_guid_.c_str());
 
 	WriteIP(response, GA_T::CHAT_NET_ADDR, Config::GetIpChar(), 9001);
 
@@ -1293,6 +1417,55 @@ void TcpSession::send_instance_ready_response()
 
 void TcpSession::send_character_list_response()
 {
+	auto characters = PlayerRegistry::GetCharactersByUserId(user_id_);
+
+	auto skillGroupSetId = [](uint32_t profileId) -> uint32_t {
+		switch (profileId) {
+			case GA_G::GA_G::PROFILE_ID_ASSAULT: return GA_G::GA_G::SKILL_GROUP_SET_ID_ASSAULT;
+			case GA_G::GA_G::PROFILE_ID_MEDIC:   return GA_G::GA_G::SKILL_GROUP_SET_ID_MEDIC;
+			case GA_G::GA_G::PROFILE_ID_RECON:   return GA_G::GA_G::SKILL_GROUP_SET_ID_RECON;
+			case GA_G::GA_G::PROFILE_ID_ROBOTIC: return GA_G::GA_G::SKILL_GROUP_SET_ID_ROBOTIC;
+			default:                             return GA_G::GA_G::SKILL_GROUP_SET_ID_ASSAULT;
+		}
+	};
+
+	std::vector<uint8_t> response;
+
+	uint16_t packet_type = GA_U::GSC_CHARACTER_LIST;
+	uint16_t item_count = 3;
+
+	append(response, packet_type & 0xFF, packet_type >> 8);
+	append(response, item_count & 0xFF, item_count >> 8);
+
+	WriteString(response, GA_T::PLAYER_NAME, player_name.c_str());
+
+	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+	append(response, static_cast<uint8_t>(characters.size() & 0xFF),
+	                 static_cast<uint8_t>(characters.size() >> 8));
+
+	for (const auto& c : characters) {
+		append(response, 0x0B, 0x00);  // inner item count = 11
+		Write4B(response, GA_T::CHARACTER_ID,           static_cast<uint32_t>(c.id));
+		Write4B(response, GA_T::CHARACTER_LEVEL,        0x32);
+		Write4B(response, GA_T::CURRENT_LEVEL,          0x32);
+		Write4B(response, GA_T::FORCED_CHARACTER_LEVEL, 0x32);
+		Write4B(response, GA_T::PROFILE_ID,             c.profile_id);
+		Write4B(response, GA_T::HEAD_ASM_ID,            c.head_asm_id);
+		Write4B(response, GA_T::HAIR_ASM_ID,            0x85D);
+		Write4B(response, GA_T::GENDER_TYPE_VALUE_ID,   c.gender_type_value_id);
+		WriteString(response, GA_T::MAP_NAME,           "Scramble: Tetra Pier");
+		Write4B(response, GA_T::XP_VALUE,               0xbbddc);
+		Write4B(response, GA_T::SKILL_GROUP_SET_ID,     skillGroupSetId(c.profile_id));
+	}
+
+	append(response, GA_T::DATA_SET_PLAYER_INVENTORY & 0xFF, GA_T::DATA_SET_PLAYER_INVENTORY >> 8);
+	append(response, 0x00, 0x00);  // count elements
+
+	send_response(response);
+}
+
+void TcpSession::send_character_list_response_mock()
+{
 	std::vector<uint8_t> response;
 
 	uint16_t packet_type = GA_U::GSC_CHARACTER_LIST;
@@ -1304,7 +1477,6 @@ void TcpSession::send_character_list_response()
 	WriteString(response,	GA_T::PLAYER_NAME, player_name.c_str());
 
 	// ==== arrayofenumblockarrays (010C) ====
-	// append(response, 0x0C, 0x01);        // type 010C
 	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);        // type 010C
 	append(response, 0x04, 0x00);        // count elements
 
@@ -1320,7 +1492,7 @@ void TcpSession::send_character_list_response()
 	Write4B(response, GA_T::GENDER_TYPE_VALUE_ID, 0x355);
 	WriteString(response, GA_T::MAP_NAME, "Scramble: Tetra Pier");
 	Write4B(response, GA_T::XP_VALUE, 0xbbddc);
-	Write4B(response, GA_T::SKILL_GROUP_SET_ID, 0x13);
+	Write4B(response, GA_T::SKILL_GROUP_SET_ID, GA_G::GA_G::SKILL_GROUP_SET_ID_ASSAULT);
 
 	// MEDIC
 	append(response, 0x0B, 0x00);  // inner item count
@@ -1334,7 +1506,7 @@ void TcpSession::send_character_list_response()
 	Write4B(response, GA_T::GENDER_TYPE_VALUE_ID, 0x355);
 	WriteString(response, GA_T::MAP_NAME, "Commonwealth HQ");
 	Write4B(response, GA_T::XP_VALUE, 0xbbddc);
-	Write4B(response, GA_T::SKILL_GROUP_SET_ID, 0xB);
+	Write4B(response, GA_T::SKILL_GROUP_SET_ID, GA_G::GA_G::SKILL_GROUP_SET_ID_MEDIC);
 
 	// RECON
 	append(response, 0x0B, 0x00);  // inner item count
@@ -1348,7 +1520,7 @@ void TcpSession::send_character_list_response()
 	Write4B(response, GA_T::GENDER_TYPE_VALUE_ID, 0x355);
 	WriteString(response, GA_T::MAP_NAME, "Scramble: Tetra Pier");
 	Write4B(response, GA_T::XP_VALUE, 0xbbddc);
-	Write4B(response, GA_T::SKILL_GROUP_SET_ID, 0x11);
+	Write4B(response, GA_T::SKILL_GROUP_SET_ID, GA_G::GA_G::SKILL_GROUP_SET_ID_RECON);
 
 	// ROBO
 	append(response, 0x0B, 0x00);  // inner item count
@@ -1357,12 +1529,12 @@ void TcpSession::send_character_list_response()
 	Write4B(response, GA_T::CURRENT_LEVEL, 0x32);
 	Write4B(response, GA_T::FORCED_CHARACTER_LEVEL, 0x32);
 	Write4B(response, GA_T::PROFILE_ID, GA_G::GA_G::PROFILE_ID_ROBOTIC);
-	Write4B(response, GA_T::HEAD_ASM_ID,GA_G::GA_G::HEAD_ASM_ID_TROLL);// 0x645);
+	Write4B(response, GA_T::HEAD_ASM_ID, GA_G::GA_G::HEAD_ASM_ID_TROLL);
 	Write4B(response, GA_T::HAIR_ASM_ID, 0x85D);
 	Write4B(response, GA_T::GENDER_TYPE_VALUE_ID, 0x355);
 	WriteString(response, GA_T::MAP_NAME, "alsdfslfjlj");
 	Write4B(response, GA_T::XP_VALUE, 0xbbddc);
-	Write4B(response, GA_T::SKILL_GROUP_SET_ID, 0x12);
+	Write4B(response, GA_T::SKILL_GROUP_SET_ID, GA_G::GA_G::SKILL_GROUP_SET_ID_ROBOTIC);
 
 	append(response, GA_T::DATA_SET_PLAYER_INVENTORY & 0xFF, GA_T::DATA_SET_PLAYER_INVENTORY >> 8);
 	append(response, 0x00, 0x00);        // count elements

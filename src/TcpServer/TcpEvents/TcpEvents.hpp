@@ -33,6 +33,16 @@ extern std::map<std::string, std::vector<BeaconPickupEvent>> GBeaconPickupEvents
 // Pending mid-game inventory-remove packets, keyed by session_guid.
 extern std::map<std::string, std::vector<BeaconRemoveEvent>> GBeaconRemoveEvents;
 
+enum class QuestAction { Request, Abandon };
+
+struct QuestEvent {
+	int nQuestId;
+	QuestAction action;
+};
+
+// Pending quest update responses, keyed by session_guid.
+extern std::map<std::string, std::vector<QuestEvent>> GQuestEvents;
+
 // Reverse map: pawn pointer → session_guid (populated on spawn).
 extern std::map<ATgPawn*, std::string> GPawnSessions;
 

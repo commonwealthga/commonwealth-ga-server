@@ -35,6 +35,9 @@ private:
 	std::string player_name;
 	std::string session_guid_;
 	std::string ip_address_;
+	int64_t  user_id_              = 0;
+	int64_t  selected_character_id_ = 0;
+	uint32_t selected_profile_id_  = 0;
 
     void append(std::vector<uint8_t>& buffer, auto&&... bytes) {
         (buffer.push_back(bytes), ...);
@@ -243,6 +246,9 @@ private:
 
 	void send_beacon_pickup_response(int nPawnId, int nDeviceId, int nInventoryId, int nEquipSlotValueId);
 	void send_beacon_remove_response(int nPawnId, int nInventoryId);
+	void send_quest_accept_response(int nQuestId);
+	void send_quest_complete_response(int nQuestId);
+	void send_quest_abandon_response(int nQuestId);
 
 	void send_character_inventory_response(int nPawnId);
 
@@ -277,10 +283,18 @@ private:
 	void send_get_ticket_info_response();
 
 	void send_character_list_response();
+	void send_character_list_response_mock();
 
 	void send_character_list_queue_response();
 
 	void send_login_response();
+
+	static void LogData(const uint8_t* data, size_t length) {
+		for (int i = 0; i < length; i++) {
+			Logger::Log("tcp", "%02X", data[i]);
+		}
+		Logger::Log("tcp", "\n");
+	}
 
 	static std::string get_current_datetime() {
 		auto now = std::chrono::system_clock::now();

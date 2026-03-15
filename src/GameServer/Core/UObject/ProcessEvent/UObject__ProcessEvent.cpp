@@ -48,6 +48,9 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		|| strcmp("Function TgGame.TgPawn.IsCrewed", name.c_str()) == 0
 		|| strcmp("Function TgGame.TgDevice.IsOffhand", name.c_str()) == 0
 		|| strcmp("Function TgGame.TgAIController.SeePlayer", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgSkeletalMeshActorNPC.Tick", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgSkeletalMeshActor_CharacterBuilder.Tick", name.c_str()) == 0
+		|| strcmp("Function TgGame.TgInterpolatingCameraActor.Tick", name.c_str()) == 0
 		|| strcmp("Function Engine.SequenceOp.Activated", name.c_str()) == 0) {
 			CallOriginal(Object, edx, Function, Params, Result);
 		// } else if (strcmp("Function TgGame.TgDevice.CanDeviceStartFiringNow", name.c_str()) == 0) {
