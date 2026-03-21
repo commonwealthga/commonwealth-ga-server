@@ -11,5 +11,7 @@ public:
 	static std::wstring GetMapParams();
 	static std::string GetMapParamsChar();
 	static int GetDifficultyValueId();
+	static uint16_t GetIpcPort();
+	static std::string GetIpcHost();
 };
 

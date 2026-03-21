@@ -121,4 +121,18 @@ int Config::GetDifficultyValueId() {
 	return 1471;
 }
 
+uint16_t Config::GetIpcPort() {
+	ParsedOptions options = CommandLineParser::ParseCommandLine();
+	std::wstring port = options.switches[L"ipcport"].empty()
+	                  ? L"9010" : options.switches[L"ipcport"];
+	return static_cast<uint16_t>(std::stoi(CommandLineParser::WideToUtf8(port)));
+}
+
+std::string Config::GetIpcHost() {
+	ParsedOptions options = CommandLineParser::ParseCommandLine();
+	if (!options.switches[L"ipchost"].empty())
+		return CommandLineParser::WideToUtf8(options.switches[L"ipchost"]);
+	return "127.0.0.1";
+}
+
 

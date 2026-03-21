@@ -1,6 +1,8 @@
 #include "src/pch.hpp"
 
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/IpcClient/IpcClient.hpp"
+#include "src/Config/Config.hpp"
 #include "src/Utils/DebugWindow/DebugWindow.hpp"
 #include "src/Database/Database.hpp"
 #include "src/GameServer/Engine/GameEngine/Init/GameEngine__Init.hpp"
@@ -101,6 +103,7 @@
 
 unsigned long ModuleThread( void* ) {
 	Logger::EnabledChannels.push_back("hook_calltree");
+	Logger::EnabledChannels.push_back("ipc");
 	// Logger::EnabledChannels.push_back("kismet");
 	// Logger::EnabledChannels.push_back("tgbotfactory");
 	// Logger::EnabledChannels.push_back("effectgroup");
@@ -145,7 +148,7 @@ unsigned long ModuleThread( void* ) {
 	Channel__ReceivedSequencedBunch::Install();
 	Actor__GetOptimizedRepList::Install();
 	Actor__Spawn::Install();
-	// Actor__Tick::Install();
+	Actor__Tick::Install();
 
 	// game functions
 	TgPlayerController__IsReadyForStart::Install();
@@ -232,6 +235,8 @@ unsigned long ModuleThread( void* ) {
 	CAmOmegaVolume__LoadOmegaVolumeMarshal::Install();
 
 	::DetourTransactionCommit();
+
+	IpcClient::Init(Config::GetIpcHost(), Config::GetIpcPort());
 
 }
 

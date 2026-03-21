@@ -13,6 +13,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/TcpServer/TcpSession/TcpSession.cpp \
 			  $(SRC_DIR)/TcpServer/ChatSession/ChatSession.cpp \
 			  \
+			  $(SRC_DIR)/IpcClient/IpcClient.cpp \
+			  \
 			  $(SRC_DIR)/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.cpp \
 			  $(SRC_DIR)/GameServer/Core/FMallocWindows/Free/FMallocWindows__Free.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ClassPreloader/ClassPreloader.cpp \

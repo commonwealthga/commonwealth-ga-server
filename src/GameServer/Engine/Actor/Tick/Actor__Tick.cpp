@@ -1,6 +1,9 @@
 #include "src/GameServer/Engine/Actor/Tick/Actor__Tick.hpp"
+#include "src/IpcClient/IpcClient.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
+// Original debug body -- commented out for IPC drain
+/*
 void* __fastcall Actor__Tick::Call(void* a1, void* edx, float a2, int a3) {
 	Logger::Log("debug", "Pawn__CrashingFunc::Call called");
 	Logger::Log("debug", ", a1: %s\n", ((UObject*)a1)->GetFullName());
@@ -34,4 +37,9 @@ void* __fastcall Actor__Tick::Call(void* a1, void* edx, float a2, int a3) {
 	}
 	return CallOriginal(a1, edx, a2, a3);
 }
+*/
 
+void* __fastcall Actor__Tick::Call(void* a1, void* edx, float a2, int a3) {
+    IpcClient::DrainInbound();
+    return CallOriginal(a1, edx, a2, a3);
+}
