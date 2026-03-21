@@ -23,8 +23,8 @@
 
 ### Refactor
 
-- [ ] **REF-01**: Refactor SpawnPlayerCharacter to use Inventory::Equip instead of manual equip code
-- [ ] **REF-02**: Refactor GiveJetpack to use Inventory::Equip
+- [x] **REF-01**: Refactor SpawnPlayerCharacter to use Inventory::Equip instead of manual equip code
+- [x] **REF-02**: Refactor GiveJetpack to use Inventory::Equip
 - [ ] **REF-03**: Verify client sees equipped devices after refactor (no regression)
 
 ## v2 Requirements
@@ -58,8 +58,8 @@
 | API-04 | Phase 2 | Pending |
 | API-05 | Phase 2 | Pending |
 | API-06 | Phase 2 | Pending |
-| REF-01 | Phase 3 | Pending |
-| REF-02 | Phase 3 | Pending |
+| REF-01 | Phase 3 | Complete |
+| REF-02 | Phase 3 | Complete |
 | REF-03 | Phase 3 | Pending |
 
 **Coverage:**
