@@ -6,8 +6,10 @@
 
 std::map<std::string, PlayerInfo> PlayerRegistry::by_guid_;
 std::map<std::string, PlayerInfo> PlayerRegistry::by_ip_;
+std::mutex PlayerRegistry::mutex_;
 
 void PlayerRegistry::Init() {
+	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();
 	char* err = nullptr;
 	int rc = sqlite3_exec(db, "DELETE FROM ga_players", nullptr, nullptr, &err);
@@ -22,6 +24,7 @@ void PlayerRegistry::Init() {
 }
 
 void PlayerRegistry::Register(const PlayerInfo& info) {
+	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();
 
 	sqlite3_stmt* stmt = nullptr;
@@ -56,6 +59,7 @@ void PlayerRegistry::Register(const PlayerInfo& info) {
 }
 
 void PlayerRegistry::Unregister(const std::string& session_guid) {
+	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();
 
 	char sql[256];
@@ -83,24 +87,28 @@ void PlayerRegistry::Unregister(const std::string& session_guid) {
 }
 
 std::optional<PlayerInfo> PlayerRegistry::GetByGuid(const std::string& guid) {
+	std::lock_guard<std::mutex> lock(mutex_);
 	auto it = by_guid_.find(guid);
 	if (it != by_guid_.end()) return it->second;
 	return std::nullopt;
 }
 
 PlayerInfo* PlayerRegistry::GetByGuidPtr(const std::string& guid) {
+	std::lock_guard<std::mutex> lock(mutex_);
 	auto it = by_guid_.find(guid);
 	if (it != by_guid_.end()) return &it->second;
 	return nullptr;
 }
 
 std::optional<PlayerInfo> PlayerRegistry::GetByIp(const std::string& ip) {
+	std::lock_guard<std::mutex> lock(mutex_);
 	auto it = by_ip_.find(ip);
 	if (it != by_ip_.end()) return it->second;
 	return std::nullopt;
 }
 
 int64_t PlayerRegistry::UpsertUser(const std::string& username) {
+	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();
 
 	// Insert if not present (ignore on conflict keeps existing row).
@@ -133,6 +141,7 @@ int64_t PlayerRegistry::UpsertUser(const std::string& username) {
 int64_t PlayerRegistry::InsertCharacter(int64_t user_id, uint32_t profile_id,
                                         uint32_t head_asm_id, uint32_t gender_type_value_id,
                                         const std::vector<uint8_t>& morph_data) {
+	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();
 
 	sqlite3_stmt* stmt = nullptr;
@@ -159,6 +168,7 @@ int64_t PlayerRegistry::InsertCharacter(int64_t user_id, uint32_t profile_id,
 }
 
 std::vector<CharacterInfo> PlayerRegistry::GetCharactersByUserId(int64_t user_id) {
+	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();
 	std::vector<CharacterInfo> result;
 
@@ -192,6 +202,7 @@ std::vector<CharacterInfo> PlayerRegistry::GetCharactersByUserId(int64_t user_id
 }
 
 std::optional<CharacterInfo> PlayerRegistry::GetCharacterById(int64_t id) {
+	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();
 
 	sqlite3_stmt* stmt = nullptr;
@@ -225,6 +236,7 @@ std::optional<CharacterInfo> PlayerRegistry::GetCharacterById(int64_t id) {
 }
 
 void PlayerRegistry::SetSelectedCharacter(const std::string& session_guid, int64_t char_id, uint32_t profile_id) {
+	std::lock_guard<std::mutex> lock(mutex_);
 	auto it = by_guid_.find(session_guid);
 	if (it != by_guid_.end()) {
 		it->second.selected_character_id = char_id;

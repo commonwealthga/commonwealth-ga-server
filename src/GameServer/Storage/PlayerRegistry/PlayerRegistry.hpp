@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include <cstdint>
+#include <mutex>
 
 struct PlayerInfo {
 	std::string session_guid; // 32-char lowercase hex
@@ -55,4 +56,5 @@ public:
 private:
 	static std::map<std::string, PlayerInfo> by_guid_;
 	static std::map<std::string, PlayerInfo> by_ip_;
+	static std::mutex mutex_;
 };
