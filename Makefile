@@ -236,3 +236,40 @@ cleanserver:
 cleanclient:
 	rm -rf $(OBJ_CLIENT_DIR) $(OUT_CLIENT_DIR)
 
+# ── Control Server ──────────────────────────────────────────────────────────
+CS_SRC_DIR=src/ControlServer
+CS_CPP_SOURCES= \
+	$(CS_SRC_DIR)/main.cpp \
+	$(CS_SRC_DIR)/Constants/DeviceIds.cpp \
+	$(CS_SRC_DIR)/Database/Database.cpp \
+	$(CS_SRC_DIR)/PlayerSessionStore/PlayerSessionStore.cpp
+
+CS_SOURCES=$(CS_CPP_SOURCES)
+
+CS_CXXFLAGS=-std=c++17 -pthread -I. -I./lib/asio-1.34.2/include -I./lib/sqlite3 -DASIO_STANDALONE -O2 -Wall
+CS_CFLAGS_SQLITE=-O2 -I./lib/sqlite3
+CS_LDFLAGS_LINUX=-lpthread -ldl
+CS_LDFLAGS_WIN=-lws2_32 -static
+
+CS_OUT_LINUX=out/control-server
+CS_OUT_WIN=out/control-server.exe
+CS_SQLITE_OBJ_LINUX=out/sqlite3_cs_linux.o
+CS_SQLITE_OBJ_WIN=out/sqlite3_cs_win.o
+
+$(CS_SQLITE_OBJ_LINUX): lib/sqlite3/sqlite3.c
+	gcc $(CS_CFLAGS_SQLITE) -c lib/sqlite3/sqlite3.c -o $(CS_SQLITE_OBJ_LINUX)
+
+$(CS_SQLITE_OBJ_WIN): lib/sqlite3/sqlite3.c
+	x86_64-w64-mingw32-gcc $(CS_CFLAGS_SQLITE) -c lib/sqlite3/sqlite3.c -o $(CS_SQLITE_OBJ_WIN)
+
+control-server-linux: $(CS_CPP_SOURCES) $(CS_SQLITE_OBJ_LINUX)
+	g++ $(CS_CXXFLAGS) -o $(CS_OUT_LINUX) $(CS_CPP_SOURCES) $(CS_SQLITE_OBJ_LINUX) $(CS_LDFLAGS_LINUX)
+
+control-server-win: $(CS_CPP_SOURCES) $(CS_SQLITE_OBJ_WIN)
+	x86_64-w64-mingw32-g++ $(CS_CXXFLAGS) -o $(CS_OUT_WIN) $(CS_CPP_SOURCES) $(CS_SQLITE_OBJ_WIN) $(CS_LDFLAGS_WIN)
+
+control-server: control-server-linux control-server-win
+
+cleancs:
+	rm -f $(CS_OUT_LINUX) $(CS_OUT_WIN) $(CS_SQLITE_OBJ_LINUX) $(CS_SQLITE_OBJ_WIN)
+
