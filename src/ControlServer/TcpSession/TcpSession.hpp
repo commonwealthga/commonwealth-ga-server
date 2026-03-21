@@ -43,8 +43,9 @@ private:
     int64_t  selected_character_id_ = 0;
     uint32_t selected_profile_id_   = 0;
 
-    void append(std::vector<uint8_t>& buffer, auto&&... bytes) {
-        (buffer.push_back(bytes), ...);
+    template<typename... Bytes>
+    void append(std::vector<uint8_t>& buffer, Bytes&&... bytes) {
+        (buffer.push_back(static_cast<uint8_t>(bytes)), ...);
     }
 
     void WriteTLV(std::vector<uint8_t>& buffer, uint16_t type, const uint8_t* value, size_t len) {
