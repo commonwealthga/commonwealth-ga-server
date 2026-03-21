@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.0.6
-milestone_name: Class-Aware Spawning
-status: in-progress
+milestone: v0.0.7
+milestone_name: Multi-Instance Architecture
+status: in_progress
 last_updated: "2026-03-21"
 progress:
-  total_phases: 2
+  total_phases: 6
   completed_phases: 0
   total_plans: 1
   completed_plans: 1
@@ -17,47 +17,52 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-03-21)
 
-**Core value:** Equip any device on any pawn with a single function call
-**Current focus:** Phase 4 -- Class Identity
+**Core value:** Players connect to a control server, select a character, and seamlessly land in a shared home map instance
+**Current focus:** Phase 6 -- Thread Safety + IPC Plumbing
 
 ## Current Position
 
-Phase: 4 of 5 (Class Identity)
-Plan: 1 of 1 (04-01 complete)
-Status: Phase 4 plan 1 complete -- advancing to Phase 5
-Last activity: 2026-03-21 -- 04-01 executed (ClassConfig + class-aware SpawnPlayerCharacter)
+Phase: 6 of 11 (Phase 6 -- Thread Safety + IPC Plumbing)
+Plan: 06-01 complete, ready for 06-02
+Status: In progress
+Last activity: 2026-03-21 -- 06-01 complete (IpcProtocol/IpcFraming headers, nlohmann/json vendored, PlayerRegistry mutex)
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [#░░░░░░░░░] 10% (v0.0.7, 1/1 plans executed so far)
+
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed (v0.0.7): 1
+- Average duration: 2 min
+- Total execution time: 2 min
+
+*Updated after each plan completion*
 
 ## Accumulated Context
 
 ### Decisions
 
-- v0.0.5: constexpr int for all constants (avoids casts, zero overhead)
-- v0.0.5: Batch equip pattern (N x Equip + 1 x Finalize) avoids redundant UpdateClientDevices
-- v0.0.5: Explicit per-device Equip calls in SpawnPlayerCharacter (self-documenting loadout)
-- v0.0.6 (04-01): ClassConfig includes Phase 5 device ID fields so GetClassConfig is the single loadout source
-- v0.0.6 (04-01): nPendingBotId = profileId (player classes use profile_id as bot_id in DB)
-- v0.0.6 (04-01): HP/power read-back from InitializeDefaultProps (HealthMax, r_fMaxPowerPool) not hardcoded
-
-### Key Facts for v0.0.6
-
-- Profile IDs: Assault=680, Medic=567, Recon=681, Robotic=679
-- Skill group set IDs: Assault=19, Medic=11, Recon=17, Robotic=18
-- Jetpack device IDs: Assault=7031, Medic=7032, Recon=7033, Robotic=7034
-- selected_profile_id readable via GClientConnectionsData[connIdx].pPlayerInfo->selected_profile_id
-- All identity fields (CLID) and all equipment (EQUP) go into SpawnPlayerCharacter.cpp
+- v0.0.7: TCP sockets for IPC (works across Wine boundary, extends to multi-machine)
+- v0.0.7: Control server owns all client TCP connections (clean separation: control = TCP + state, game = UDP + gameplay)
+- v0.0.7: Session GUIDs are canonical cross-process identity (never raw UNetConnection pointers)
+- v0.0.7: IPC sends from game thread must be enqueued (dedicated sender thread drains; never synchronous send on UE3 tick)
+- v0.0.7: PlayerRegistry mutex required before any IPC work (race is latent, becomes certain crash with second thread)
+- v0.0.7: Shared home map instances (one UE3 process per map, pre-spawned at startup)
+- 06-01: Single std::mutex for all PlayerRegistry maps (by_guid_ and by_ip_ always updated together)
+- 06-01: src/Shared/ pattern established -- only standard C++ headers, compiles on i686 (DLL) and x86_64 (control server)
+- 06-01: 4-byte LE framing for IPC matches existing TcpSession convention
 
 ### Blockers/Concerns
 
-None yet.
+- Phase 9 open question: exact Wine CLI args for per-instance port passing (env vs args vs config) -- investigate during phase 9 planning
+- Phase 9 open question: UE3 startup time on this machine determines INSTANCE_READY timeout -- measure empirically during phase 9
+- Note for 06-02: Makefile will need -I./lib added to CFLAGS when IpcClient sources include nlohmann/json.hpp
 
-## History
+## Session Continuity
 
-- 2026-03-20: Project initialized with 3 phases, 13 requirements
-- 2026-03-21: v0.0.5 shipped -- 3 phases, 4 plans, 858 lines added
-- 2026-03-21: v0.0.6 roadmap created -- 2 phases (4-5), 12 requirements
-- 2026-03-21: 04-01 executed -- ClassConfig struct, GetClassConfig, class-aware SpawnPlayerCharacter
+Last session: 2026-03-21
+Stopped at: Completed 06-01 (IPC foundation + PlayerRegistry mutex). Ready for 06-02 (IpcClient ASIO thread).
+Resume file: None
 
 ---
-*Last updated: 2026-03-21 after 04-01 execution*
+*Last updated: 2026-03-21 after 06-01 completion*
