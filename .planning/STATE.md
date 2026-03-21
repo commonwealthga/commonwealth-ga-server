@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v0.0.7
 milestone_name: Multi-Instance Architecture
 status: in_progress
-last_updated: "2026-03-21"
+last_updated: "2026-03-22"
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 3
+  completed_plans: 3
 ---
 
 # Project State
@@ -18,23 +18,29 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Players connect to a control server, select a character, and seamlessly land in a shared home map instance
-**Current focus:** Phase 6 -- Thread Safety + IPC Plumbing
+**Current focus:** Phase 7 -- Control Server Protocol Migration
 
 ## Current Position
 
-Phase: 6 of 11 (Phase 6 -- Thread Safety + IPC Plumbing)
-Plan: 06-02 complete, ready for next plan
+Phase: 7 of 11 (Phase 7 -- Control Server Protocol Migration)
+Plan: 07-01 complete, ready for next plan
 Status: In progress
-Last activity: 2026-03-21 -- 06-02 complete (IpcClient ASIO thread, queues, reconnect, Actor__Tick drain)
+Last activity: 2026-03-22 -- 07-01 complete (control server skeleton: Makefile, Logger, Database, PlayerSessionStore)
 
-Progress: [##░░░░░░░] 20% (v0.0.7, 2/2 plans executed so far)
+Progress: [###░░░░░░] 27% (v0.0.7, 3/3 plans executed so far)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed (v0.0.7): 2
-- Average duration: 4.5 min
-- Total execution time: 9 min
+- Total plans completed (v0.0.7): 3
+- Average duration: 6.7 min
+- Total execution time: 18 min
+
+| Phase | Plan | Duration | Tasks | Files |
+|-------|------|----------|-------|-------|
+| 06    | 01   | ~4 min   | 3     | 3     |
+| 06    | 02   | ~5 min   | 4     | 8     |
+| 07    | 01   | ~9 min   | 3     | 13    |
 
 *Updated after each plan completion*
 
@@ -55,6 +61,10 @@ Progress: [##░░░░░░░] 20% (v0.0.7, 2/2 plans executed so far)
 - 06-02: write_in_progress chain pattern -- only one async_write in flight at a time on the ASIO thread
 - 06-02: asio::post() used from game thread Send() to safely kick writes to ASIO thread
 - 06-02: Actor__Tick hook activated -- game thread now drains IPC inbound queue each tick
+- 07-01: sqlite3.c compiled with gcc (not g++) -- g++ void* strictness breaks sqlite3 amalgamation; separate .o file
+- 07-01: SessionInfo drops player_name_w (wstring) -- control server has no UE3 SDK or Win32 wide-char dependency
+- 07-01: std::mutex used for PlayerSessionStore (native Linux has std::mutex unlike i686 MinGW)
+- 07-01: Database.cpp does not call PlayerSessionStore::Init() -- called separately from main.cpp
 
 ### Blockers/Concerns
 
@@ -64,9 +74,9 @@ Progress: [##░░░░░░░] 20% (v0.0.7, 2/2 plans executed so far)
 
 ## Session Continuity
 
-Last session: 2026-03-21
-Stopped at: Completed 06-02 (IpcClient ASIO thread, queues, reconnect). Ready for next plan in Phase 6.
+Last session: 2026-03-22
+Stopped at: Completed 07-01 (control server skeleton: Makefile, Logger, Database, PlayerSessionStore).
 Resume file: None
 
 ---
-*Last updated: 2026-03-21 after 06-02 completion*
+*Last updated: 2026-03-22 after 07-01 completion*

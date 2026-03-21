@@ -49,8 +49,8 @@
   4. IpcProtocol.hpp compiles cleanly in both the i686 DLL and the x86_64 control server with identical message type constants and GUID format
 **Plans:** 2/2 plans complete
 Plans:
-- [ ] 06-01-PLAN.md -- Shared protocol headers + vendor nlohmann/json + PlayerRegistry mutex
-- [ ] 06-02-PLAN.md -- IpcClient implementation + Actor__Tick wiring + Config + Makefile
+- [x] 06-01-PLAN.md -- Shared protocol headers + vendor nlohmann/json + PlayerRegistry mutex
+- [x] 06-02-PLAN.md -- IpcClient implementation + Actor__Tick wiring + Config + Makefile
 
 ### Phase 7: Control Server + Protocol Migration
 **Goal**: Standalone control server binary handles all client TCP connections using the full GA protocol
@@ -61,7 +61,11 @@ Plans:
   2. A GA client can connect to the control server on ports 9000/9001, complete auth, and reach character select without connecting to the DLL
   3. The DLL no longer starts a TCP listener or handles any GA client TCP protocol messages
   4. Control server reads and writes its own SQLite database for player/character/session state
-**Plans**: TBD
+**Plans:** 3 plans (1/3 complete)
+Plans:
+- [x] 07-01-PLAN.md -- Makefile dual-target + Logger + Constants + Database (WAL) + PlayerSessionStore
+- [ ] 07-02-PLAN.md -- TcpSession + TcpListener protocol migration from DLL
+- [ ] 07-03-PLAN.md -- IpcServer + main.cpp wiring + DLL TCP cutover
 
 ### Phase 8: Player Registration + UDP Redirect
 **Goal**: Control server routes an authenticated player to the correct game instance via IPC ACK-before-redirect
@@ -112,8 +116,8 @@ Plans:
 | 3. Refactor Existing Code | v0.0.5 | 2/2 | Complete | 2026-03-21 |
 | 4. Class Identity | v0.0.6 | 1/1 | Complete | 2026-03-21 |
 | 5. Class Equipment | v0.0.6 | 1/1 | Complete | 2026-03-21 |
-| 6. Thread Safety + IPC Plumbing | 2/2 | Complete   | 2026-03-21 | - |
-| 7. Control Server + Protocol Migration | v0.0.7 | 0/? | Not started | - |
+| 6. Thread Safety + IPC Plumbing | v0.0.7 | 2/2 | Complete | 2026-03-21 |
+| 7. Control Server + Protocol Migration | v0.0.7 | 0/3 | Planned | - |
 | 8. Player Registration + UDP Redirect | v0.0.7 | 0/? | Not started | - |
 | 9. Instance Lifecycle Management | v0.0.7 | 0/? | Not started | - |
 | 10. In-Game Event Routing | v0.0.7 | 0/? | Not started | - |
@@ -121,4 +125,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-03-20*
-*Last updated: 2026-03-21 after Phase 6 planning (2 plans created)*
+*Last updated: 2026-03-22 after Phase 7 planning (3 plans created)*
