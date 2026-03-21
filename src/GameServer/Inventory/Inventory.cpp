@@ -16,7 +16,30 @@
 // ---------------------------------------------------------------------------
 int Inventory::s_nextInventoryId = 10000;
 std::map<ATgPawn*, std::vector<EquippedEntry>> Inventory::s_equipped;
+std::map<int, std::vector<EquippedEntry>*> Inventory::s_equippedByPawnId;
 std::vector<EquippedEntry> Inventory::s_empty;
+
+// ---------------------------------------------------------------------------
+// Inventory::NextId — single source of truth for unique inventory IDs
+// ---------------------------------------------------------------------------
+int Inventory::NextId() {
+	return ++s_nextInventoryId;
+}
+
+// ---------------------------------------------------------------------------
+// Inventory::GetEffectGroupId — hardcoded effect group lookup by device ID
+// Replace with DB lookup when device->effect_group relation is added to DB.
+// ---------------------------------------------------------------------------
+int Inventory::GetEffectGroupId(int deviceId) {
+	switch (deviceId) {
+		case 7032: return 26173;  // jetpack (Medic CJP)
+		case 2991: return 16670;  // agonizer/ranged
+		case 2531: return 16653;  // healing grenade/offhand
+		case 5800: return 22334;  // melee/LifeStealer
+		case 2906: return 9071;   // specialty (used in medic bot config)
+		default:   return 0;      // REST, morale, unknown
+	}
+}
 
 // ---------------------------------------------------------------------------
 // Private helpers — auto-detect device metadata from equip slot
@@ -70,7 +93,7 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality) 
 	}
 
 	// --- Assign unique inventory ID ---
-	int invId = ++s_nextInventoryId;
+	int invId = NextId();
 
 	// --- Resolve slot value ID ---
 	int slotValueId = GA::SlotValueId(slot);
@@ -182,7 +205,11 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality) 
 	Device->bOnlyDirtyReplication = 0;
 
 	// --- Track in per-pawn map ---
-	s_equipped[Pawn].push_back({deviceId, slot, qualityValueId, invId});
+	s_equipped[Pawn].push_back({deviceId, slot, qualityValueId, invId, GetEffectGroupId(deviceId)});
+
+	// --- Update pawnId -> vector* lookup ---
+	int pawnId = Pawn->r_nPawnId;
+	s_equippedByPawnId[pawnId] = &s_equipped[Pawn];
 
 	Logger::Log("inventory", "Equip: pawn=0x%p device=%d slot=%d quality=%d invId=%d -> device=0x%p\n",
 		Pawn, deviceId, slot, qualityValueId, invId, Device);
@@ -219,8 +246,26 @@ const std::vector<EquippedEntry>& Inventory::GetEquipped(ATgPawn* Pawn) {
 }
 
 // ---------------------------------------------------------------------------
-// Inventory::ClearTracking — remove pawn from tracking map
+// Inventory::GetEquippedByPawnId — query tracked devices for a pawn by ID
+// ---------------------------------------------------------------------------
+const std::vector<EquippedEntry>& Inventory::GetEquippedByPawnId(int pawnId) {
+	auto it = s_equippedByPawnId.find(pawnId);
+	if (it != s_equippedByPawnId.end() && it->second != nullptr) return *(it->second);
+	return s_empty;
+}
+
+// ---------------------------------------------------------------------------
+// Inventory::ClearTracking — remove pawn from tracking maps
 // ---------------------------------------------------------------------------
 void Inventory::ClearTracking(ATgPawn* Pawn) {
+	// Remove from pawnId lookup first (pointer into s_equipped, must erase before s_equipped)
+	auto* vec = &s_equipped[Pawn];
+	for (auto it = s_equippedByPawnId.begin(); it != s_equippedByPawnId.end(); ) {
+		if (it->second == vec) {
+			it = s_equippedByPawnId.erase(it);
+		} else {
+			++it;
+		}
+	}
 	s_equipped.erase(Pawn);
 }
