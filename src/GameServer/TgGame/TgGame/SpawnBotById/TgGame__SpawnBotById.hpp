@@ -2,6 +2,7 @@
 
 #include "src/pch.hpp"
 #include "src/Utils/HookBase.hpp"
+#include "src/GameServer/Inventory/Inventory.hpp"
 
 class TgGame__SpawnBotById : public HookBase<
 	ATgPawn*(__fastcall*)(ATgGame*, void*, int, FVector, FRotator, bool, ATgBotFactory*, bool, ATgPawn*, bool, UTgDeviceFire*, float),
@@ -9,7 +10,6 @@ class TgGame__SpawnBotById : public HookBase<
 	TgGame__SpawnBotById> {
 public:
 	static std::map<int, int> m_spawnedBotIds;
-	static int nInventoryIdCounter;
 	static void GiveDeviceById(
 		ATgPawn* Pawn,
 		ATgRepInfo_Player* PlayerReplicationInfo,

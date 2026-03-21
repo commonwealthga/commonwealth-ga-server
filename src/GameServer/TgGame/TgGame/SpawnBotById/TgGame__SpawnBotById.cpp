@@ -15,7 +15,6 @@
 #include "src/Utils/Logger/Logger.hpp"
 
 std::map<int, int> TgGame__SpawnBotById::m_spawnedBotIds;
-int TgGame__SpawnBotById::nInventoryIdCounter = 10000;
 
 static inline int BotGetEquipPointBySlot(int slotUsedValueId) {
 	switch (slotUsedValueId) {
@@ -185,8 +184,8 @@ void TgGame__SpawnBotById::GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Pla
 		ATgDevice* Device = Bot->CreateEquipDevice(0, deviceId, equipPoint);
 		Logger::Log("debug", "GiveDevicesFromBotConfig: CreateEquipDevice returned 0x%p\n", Device);
 		if (Device != nullptr) {
-			nInventoryIdCounter++;
-			Device->r_nDeviceInstanceId = nInventoryIdCounter;
+			int invId = Inventory::NextId();
+			Device->r_nDeviceInstanceId = invId;
 			Device->r_eEquippedAt = equipPoint;
 			// CreateEquipDevice leaves r_eEquippedAt=0 at creation time, so the device ends up
 			// at m_EquippedDevices[0] and r_EquipDeviceInfo[0]. Fix both slot mappings.
@@ -196,7 +195,7 @@ void TgGame__SpawnBotById::GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Pla
 			Bot->r_EquipDeviceInfo[0].nDeviceInstanceId = 0;
 			Bot->r_EquipDeviceInfo[0].nQualityValueId = 0;
 			Bot->r_EquipDeviceInfo[equipPoint].nDeviceId = deviceId;
-			Bot->r_EquipDeviceInfo[equipPoint].nDeviceInstanceId = nInventoryIdCounter;
+			Bot->r_EquipDeviceInfo[equipPoint].nDeviceInstanceId = invId;
 			Bot->r_EquipDeviceInfo[equipPoint].nQualityValueId = qualityValueId;
 			// Instigator must be set so TgDeviceFire uses Instigator.GetAimStart() for
 			// projectile spawn location.
@@ -206,7 +205,7 @@ void TgGame__SpawnBotById::GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Pla
 			Device->bNetInitial = 1;
 			Device->bNetDirty = 1;
 			BotRepInfo->r_EquipDeviceInfo[equipPoint].nDeviceId = deviceId;
-			BotRepInfo->r_EquipDeviceInfo[equipPoint].nDeviceInstanceId = nInventoryIdCounter;
+			BotRepInfo->r_EquipDeviceInfo[equipPoint].nDeviceInstanceId = invId;
 			BotRepInfo->r_EquipDeviceInfo[equipPoint].nQualityValueId = qualityValueId;
 
 			// REST device: set the pawn-level REST tracking fields.

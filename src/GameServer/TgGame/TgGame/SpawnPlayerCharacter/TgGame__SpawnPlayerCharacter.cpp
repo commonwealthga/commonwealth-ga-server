@@ -1,5 +1,8 @@
 #include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
+#include "src/GameServer/Inventory/Inventory.hpp"
+#include "src/GameServer/Constants/EquipSlot.hpp"
+#include "src/GameServer/Constants/DeviceIds.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/PrepopulateInventoryId/TgInventoryManager__PrepopulateInventoryId.hpp"
 #include "src/GameServer/TgGame/TgInventoryObject_Device/ConstructInventoryObject/TgInventoryObject_Device__ConstructInventoryObject.hpp"
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
@@ -312,7 +315,17 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// 	newpawn->r_CurrentVanityPet = Pet;
 	// }
 
-	TgGame__SpawnBotById::GiveDevicesFromBotConfig(newpawn, newrepplayer, PLAYER_BOT_ID);
+	// OLD: TgGame__SpawnBotById::GiveDevicesFromBotConfig(newpawn, newrepplayer, PLAYER_BOT_ID);
+
+	// Equip medic loadout (bot_id=567 config) via Inventory API
+	Inventory::Equip(newpawn, GA::DeviceId::Medic::LifeStealer,    GA::EquipSlot::Melee);      // equip point 1
+	Inventory::Equip(newpawn, GA::DeviceId::Medic::Agonizer,       GA::EquipSlot::Ranged);     // equip point 2
+	Inventory::Equip(newpawn, 2906,                                 GA::EquipSlot::Specialty);  // equip point 3 (specialty device from bot config)
+	Inventory::Equip(newpawn, GA::DeviceId::Jetpack::Medic,        GA::EquipSlot::Jetpack);    // equip point 5
+	Inventory::Equip(newpawn, GA::DeviceId::Medic::HealingGrenade, GA::EquipSlot::Offhand2);   // equip point 7
+	Inventory::Equip(newpawn, GA::DeviceId::Medic::HealingBoost,   GA::EquipSlot::Rest);       // equip point 10 per bot_id=567 DB config
+	Inventory::Equip(newpawn, GA::DeviceId::RestDevice,            14);                         // equip point 14 per bot_id=567 DB config (slotValueId=502)
+	Inventory::Finalize(newpawn);
 
 	LogCallEnd();
 
