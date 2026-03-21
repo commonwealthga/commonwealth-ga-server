@@ -7,8 +7,8 @@ last_updated: "2026-03-21"
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 1
-  completed_plans: 1
+  total_plans: 2
+  completed_plans: 2
 ---
 
 # Project State
@@ -23,18 +23,18 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 ## Current Position
 
 Phase: 6 of 11 (Phase 6 -- Thread Safety + IPC Plumbing)
-Plan: 06-01 complete, ready for 06-02
+Plan: 06-02 complete, ready for next plan
 Status: In progress
-Last activity: 2026-03-21 -- 06-01 complete (IpcProtocol/IpcFraming headers, nlohmann/json vendored, PlayerRegistry mutex)
+Last activity: 2026-03-21 -- 06-02 complete (IpcClient ASIO thread, queues, reconnect, Actor__Tick drain)
 
-Progress: [#░░░░░░░░░] 10% (v0.0.7, 1/1 plans executed so far)
+Progress: [##░░░░░░░] 20% (v0.0.7, 2/2 plans executed so far)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed (v0.0.7): 1
-- Average duration: 2 min
-- Total execution time: 2 min
+- Total plans completed (v0.0.7): 2
+- Average duration: 4.5 min
+- Total execution time: 9 min
 
 *Updated after each plan completion*
 
@@ -51,18 +51,22 @@ Progress: [#░░░░░░░░░] 10% (v0.0.7, 1/1 plans executed so far)
 - 06-01: Single std::mutex for all PlayerRegistry maps (by_guid_ and by_ip_ always updated together)
 - 06-01: src/Shared/ pattern established -- only standard C++ headers, compiles on i686 (DLL) and x86_64 (control server)
 - 06-01: 4-byte LE framing for IPC matches existing TcpSession convention
+- 06-02: CRITICAL_SECTION used instead of std::mutex for IpcClient -- MinGW win32 threading model lacks <mutex>
+- 06-02: write_in_progress chain pattern -- only one async_write in flight at a time on the ASIO thread
+- 06-02: asio::post() used from game thread Send() to safely kick writes to ASIO thread
+- 06-02: Actor__Tick hook activated -- game thread now drains IPC inbound queue each tick
 
 ### Blockers/Concerns
 
 - Phase 9 open question: exact Wine CLI args for per-instance port passing (env vs args vs config) -- investigate during phase 9 planning
 - Phase 9 open question: UE3 startup time on this machine determines INSTANCE_READY timeout -- measure empirically during phase 9
-- Note for 06-02: Makefile will need -I./lib added to CFLAGS when IpcClient sources include nlohmann/json.hpp
+- Note resolved: nlohmann json.hpp included via direct path `lib/nlohmann/json.hpp` (no -I flag needed, -I. already covers it)
 
 ## Session Continuity
 
 Last session: 2026-03-21
-Stopped at: Completed 06-01 (IPC foundation + PlayerRegistry mutex). Ready for 06-02 (IpcClient ASIO thread).
+Stopped at: Completed 06-02 (IpcClient ASIO thread, queues, reconnect). Ready for next plan in Phase 6.
 Resume file: None
 
 ---
-*Last updated: 2026-03-21 after 06-01 completion*
+*Last updated: 2026-03-21 after 06-02 completion*

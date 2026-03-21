@@ -9,9 +9,9 @@ Requirements for multi-instance architecture. Each maps to roadmap phases.
 
 ### IPC Infrastructure
 
-- [ ] **IPC-01**: Control server and game instances communicate via TCP IPC channel with length-prefix framing on localhost
+- [x] **IPC-01**: Control server and game instances communicate via TCP IPC channel with length-prefix framing on localhost
 - [x] **IPC-02**: Shared IpcProtocol.hpp defines canonical message types and GUID format for both DLL and control server
-- [ ] **IPC-03**: Game thread IPC sends are non-blocking (enqueue to mutex-protected queue, dedicated sender thread drains)
+- [x] **IPC-03**: Game thread IPC sends are non-blocking (enqueue to mutex-protected queue, dedicated sender thread drains)
 - [x] **IPC-04**: PlayerRegistry protected with std::mutex for concurrent IPC thread + game thread access
 
 ### Control Server
@@ -80,9 +80,9 @@ Requirements for multi-instance architecture. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| IPC-01 | Phase 6 | Pending |
+| IPC-01 | Phase 6 | Complete |
 | IPC-02 | Phase 6 | Complete |
-| IPC-03 | Phase 6 | Pending |
+| IPC-03 | Phase 6 | Complete |
 | IPC-04 | Phase 6 | Complete |
 | CTRL-01 | Phase 7 | Pending |
 | CTRL-02 | Phase 7 | Pending |

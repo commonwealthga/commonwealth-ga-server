@@ -29,7 +29,7 @@
 
 **Milestone Goal:** Players connect to a control server, select a character, and seamlessly land in a shared home map instance -- the foundation for multi-map gameplay.
 
-- [ ] **Phase 6: Thread Safety + IPC Plumbing** - Mutex PlayerRegistry; build IPC channel and shared protocol header
+- [x] **Phase 6: Thread Safety + IPC Plumbing** - Mutex PlayerRegistry; build IPC channel and shared protocol header (completed 2026-03-21)
 - [ ] **Phase 7: Control Server + Protocol Migration** - Standalone control server binary; full GA TCP protocol migrated from DLL
 - [ ] **Phase 8: Player Registration + UDP Redirect** - PLAYER_REGISTER flow with ACK; dynamic GSC_GO_PLAY; profile ID fixed
 - [ ] **Phase 9: Instance Lifecycle Management** - Spawn/track UE3 instances; readiness signaling; home map pre-spawn
@@ -47,7 +47,7 @@
   2. A message sent from the game thread is enqueued and delivered by the sender thread without blocking the UE3 tick
   3. PlayerRegistry operations from the IPC thread and game thread do not race (mutex in place, no data corruption under concurrent access)
   4. IpcProtocol.hpp compiles cleanly in both the i686 DLL and the x86_64 control server with identical message type constants and GUID format
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 06-01-PLAN.md -- Shared protocol headers + vendor nlohmann/json + PlayerRegistry mutex
 - [ ] 06-02-PLAN.md -- IpcClient implementation + Actor__Tick wiring + Config + Makefile
@@ -112,7 +112,7 @@ Plans:
 | 3. Refactor Existing Code | v0.0.5 | 2/2 | Complete | 2026-03-21 |
 | 4. Class Identity | v0.0.6 | 1/1 | Complete | 2026-03-21 |
 | 5. Class Equipment | v0.0.6 | 1/1 | Complete | 2026-03-21 |
-| 6. Thread Safety + IPC Plumbing | 1/2 | In Progress|  | - |
+| 6. Thread Safety + IPC Plumbing | 2/2 | Complete   | 2026-03-21 | - |
 | 7. Control Server + Protocol Migration | v0.0.7 | 0/? | Not started | - |
 | 8. Player Registration + UDP Redirect | v0.0.7 | 0/? | Not started | - |
 | 9. Instance Lifecycle Management | v0.0.7 | 0/? | Not started | - |
