@@ -1,5 +1,87 @@
 #pragma once
 
+#include "src/GameServer/Constants/DeviceIds.hpp"
+
+// ---------------------------------------------------------------------------
+// ClassConfig — per-class identity and equipment constants.
+// Used by SpawnPlayerCharacter (Phase 4) and loadout assignment (Phase 5).
+// ---------------------------------------------------------------------------
+
+struct ClassConfig {
+    uint32_t profileId;
+    uint32_t skillGroupSetId;
+    // Device IDs for Phase 5 equipment loading
+    int meleeDeviceId;
+    int rangedDeviceId;
+    int specialtyDeviceId;
+    int jetpackDeviceId;
+    int offhand1DeviceId;
+    int offhand2DeviceId;
+    int offhand3DeviceId;
+    int moraleDeviceId;
+};
+
+inline const ClassConfig& GetClassConfig(uint32_t profileId) {
+    static const ClassConfig configs[] = {
+        // Assault — profileId=680
+        {
+            680, 19,
+            GA::DeviceId::Assault::ImpactHammer,
+            GA::DeviceId::Assault::RhinoSMG,
+            GA::DeviceId::Assault::InfernoXCannon,
+            GA::DeviceId::Jetpack::Assault,
+            GA::DeviceId::Assault::PowerStim,
+            GA::DeviceId::Assault::ConcussionGrenade,
+            GA::DeviceId::Assault::RangeShield,
+            GA::DeviceId::Assault::SuperSmashBoost,
+        },
+        // Medic — profileId=567
+        {
+            567, 11,
+            GA::DeviceId::Medic::LifeStealer,
+            GA::DeviceId::Medic::Agonizer,
+            GA::DeviceId::Medic::AdrenalineGun,
+            GA::DeviceId::Jetpack::Medic,
+            GA::DeviceId::Medic::HealingGrenade,
+            GA::DeviceId::Medic::FrenzyWave,
+            GA::DeviceId::Medic::PoisonGrenade,
+            GA::DeviceId::Medic::HealingBoost,
+        },
+        // Recon — profileId=681
+        {
+            681, 17,
+            GA::DeviceId::Recon::DualDaggers,
+            GA::DeviceId::Recon::Ballista,
+            GA::DeviceId::Recon::SpringStealth,
+            GA::DeviceId::Jetpack::Recon,
+            GA::DeviceId::Recon::EMPBomb,
+            GA::DeviceId::Recon::VisualScanner,
+            GA::DeviceId::Recon::Decoy,
+            GA::DeviceId::Recon::ShatterBombBoost,
+        },
+        // Robotic — profileId=679
+        {
+            679, 18,
+            GA::DeviceId::Robotic::MaceAndShield,
+            GA::DeviceId::Robotic::ColonyEnergyRifle,
+            GA::DeviceId::Robotic::FocusedRepairArm,
+            GA::DeviceId::Jetpack::Robotic,
+            GA::DeviceId::Robotic::PersonalTurret,
+            GA::DeviceId::Robotic::MedicalStation,
+            GA::DeviceId::Robotic::Sensor,
+            GA::DeviceId::Robotic::DomeShieldBoost,
+        },
+    };
+
+    switch (profileId) {
+        case 680: return configs[0]; // Assault
+        case 567: return configs[1]; // Medic
+        case 681: return configs[2]; // Recon
+        case 679: return configs[3]; // Robotic
+        default:  return configs[0]; // Default to Assault
+    }
+}
+
 namespace GA_G {
 	enum GA_G {
 		PROFILE_ID_ASSAULT = 0x2A8, // 680
