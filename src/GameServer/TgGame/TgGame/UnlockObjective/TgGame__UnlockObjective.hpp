@@ -5,7 +5,7 @@
 
 class TgGame__UnlockObjective : public HookBase<
 	void(__fastcall*)(ATgGame*, void*, int),
-	0x10ad9bf0,
+	0x10ad9be0,
 	TgGame__UnlockObjective> {
 public:
 	static void __fastcall Call(ATgGame* Game, void* edx, int nPriority);

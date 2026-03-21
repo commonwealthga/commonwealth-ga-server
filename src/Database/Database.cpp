@@ -484,7 +484,23 @@ void Database::Init() {
 		}
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 13", nullptr, nullptr, &err);
+	if (version < 14) { // tutorial inception bots
+		result = sqlite3_exec(db,
+			"insert into obj_bot_factories (map_object_id, bot_spawn_table_id, task_force_number, mutator_number) values \
+				(9832, 53, 2, 0), \
+				(9833, 53, 2, 0), \
+				(11812, 53, 2, 0), \
+				(12627, 53, 2, 0), \
+				(12628, 53, 2, 0); \
+			", nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to insert obj_bot_factories: %s\n", err);
+			return;
+		}
+	}
+
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 14", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

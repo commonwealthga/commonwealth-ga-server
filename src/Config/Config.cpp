@@ -111,3 +111,14 @@ std::string Config::GetMapParamsChar() {
 	return mapParams;
 }
 
+int Config::GetDifficultyValueId() {
+
+	std::string MapName = GetMapNameChar();
+	if (MapName == "Inception_ALL" || MapName == "Inception_3_TEMP" || MapName == "Adrenaline_P" || MapName == "Skylark_P" || MapName == "AgencyZero_P") {
+		return 1028;
+	}
+
+	return 1471;
+}
+
+

@@ -51,7 +51,8 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		|| strcmp("Function TgGame.TgSkeletalMeshActorNPC.Tick", name.c_str()) == 0
 		|| strcmp("Function TgGame.TgSkeletalMeshActor_CharacterBuilder.Tick", name.c_str()) == 0
 		|| strcmp("Function TgGame.TgInterpolatingCameraActor.Tick", name.c_str()) == 0
-		|| strcmp("Function Engine.SequenceOp.Activated", name.c_str()) == 0) {
+		// || strcmp("Function Engine.SequenceOp.Activated", name.c_str()) == 0
+		) {
 			CallOriginal(Object, edx, Function, Params, Result);
 		// } else if (strcmp("Function TgGame.TgDevice.CanDeviceStartFiringNow", name.c_str()) == 0) {
 		// 	ATgDevice_eventCanDeviceStartFiringNow_Parms* CanDeviceStartFiringNowParams = (ATgDevice_eventCanDeviceStartFiringNow_Parms*)Params;
@@ -70,6 +71,23 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// 		Pawn->bNetDirty = 1;
 		// 		Pawn->bForceNetUpdate = 1;
 		// 	}
+		} else if (strcmp("Function TgPawn.Dying.BeginState", name.c_str()) == 0) {
+			CallOriginal(Object, edx, Function, Params, Result);
+			// UScript TgPawn.Dying.BeginState only calls PawnDied for bIsPlayer==true.
+			// For AI bots the Timer would normally call Controller.Destroy() → PawnDied,
+			// but bots fall out of the world first (LifeSpan set by OutsideWorldBounds),
+			// so the Timer never fires and BotDied is never called.
+			// Fix: call TgBotFactory__BotDied @ 0x10a8cbf0 directly here,
+			// mirroring what TgAIController.PawnDied() would do.
+			ATgPawn* Pawn = (ATgPawn*)Object;
+			if (Pawn->Controller && !Pawn->Controller->bIsPlayer && !Pawn->r_bIsHenchman) {
+				ATgAIController* AIC = (ATgAIController*)Pawn->Controller;
+				if (AIC->m_pFactory) {
+					Logger::Log(GetLogChannel(), "Dying.BeginState: calling BotDied on factory for %s\n", Pawn->GetFullName());
+					((void(__thiscall*)(ATgBotFactory*, ATgPawn*, ATgAIController*))0x10a8cbf0)(AIC->m_pFactory, Pawn, AIC);
+					AIC->m_pFactory = nullptr;
+				}
+			}
 		} else if (strcmp("Function TgDevice.DeviceFiring.EndState", name.c_str()) == 0) {
 			CallOriginal(Object, edx, Function, Params, Result);
 			ATgDevice* Device = (ATgDevice*)Object;

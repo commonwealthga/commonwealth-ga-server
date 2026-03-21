@@ -32,6 +32,8 @@ public:
 	static void Unregister(const std::string& session_guid);
 	static std::optional<PlayerInfo> GetByGuid(const std::string& guid);
 	static std::optional<PlayerInfo> GetByIp(const std::string& ip);
+	// Returns a stable pointer into the registry map (valid until Unregister is called).
+	static PlayerInfo* GetByGuidPtr(const std::string& guid);
 
 	// Returns the ga_users.id for the given username, inserting if not present.
 	static int64_t UpsertUser(const std::string& username);

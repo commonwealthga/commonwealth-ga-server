@@ -10,5 +10,6 @@ public:
 	static std::string GetMapNameChar();
 	static std::wstring GetMapParams();
 	static std::string GetMapParamsChar();
+	static int GetDifficultyValueId();
 };
 

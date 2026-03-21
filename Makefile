@@ -19,6 +19,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
 			  $(SRC_DIR)/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.cpp \
 			  $(SRC_DIR)/GameServer/Engine/World/BeginPlay/World__BeginPlay.cpp \
+			  $(SRC_DIR)/GameServer/Engine/SeqActNullGuard/SeqActNullGuard.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Tick/Actor__Tick.cpp \
 			  $(SRC_DIR)/GameServer/Engine/LaunchEngineLoop/ConstructCommandletObject/ConstructCommandletObject.cpp \
@@ -57,6 +58,18 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/MissionTimeRemaining/TgGame__MissionTimeRemaining.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SendMissionTimerEvent/TgGame__SendMissionTimerEvent.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/FinalizeRoundScore/TgGame_Arena__FinalizeRoundScore.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/FinalizeGameScore/TgGame_Arena__FinalizeGameScore.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame_PointRotation/CalcNextObjective/TgGame_PointRotation__CalcNextObjective.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame_PointRotation/UnlockObjective/TgGame_PointRotation__UnlockObjective.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame/CheckRandomObjectives/TgGame__CheckRandomObjectives.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame/UnlockObjective/TgGame__UnlockObjective.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame/LockoutObjectives/TgGame__LockoutObjectives.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame/IsFinalObjective/TgGame__IsFinalObjective.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame/SetObjectivesInactive/TgGame__SetObjectivesInactive.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame/SetObjectivesOvertimeNotify/TgGame__SetObjectivesOvertimeNotify.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame/GetFinalObjectivesList/TgGame__GetFinalObjectivesList.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective/SetObjectiveActive/TgMissionObjective__SetObjectiveActive.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.cpp \

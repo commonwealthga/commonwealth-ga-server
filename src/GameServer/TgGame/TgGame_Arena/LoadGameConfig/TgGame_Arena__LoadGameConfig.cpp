@@ -13,9 +13,10 @@ void __fastcall* TgGame_Arena__LoadGameConfig::Call(ATgGame_Arena* Game, void* e
 	TgGame__LoadGameConfig::LoadCommonGameConfig(Game);
 
 
-	// Game->m_fMissionTime = 15 * 60;
-	// Game->m_fGameMissionTime = 15 * 60;
-	//
+	Game->m_fGameMissionTime = 15 * 60.0f;   // 15 minute mission
+	Game->m_fGameOvertimeTime = 4 * 60.0f;  // up to 4 minutes overtime
+	Game->m_bAllowOvertime = 1;
+
 	// Game->s_nRoundNumber = 1;
 	// Game->s_nBetweenRoundDelay = 15;
 	// Game->s_nRoundSetupTime = 15;

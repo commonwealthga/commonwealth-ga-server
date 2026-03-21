@@ -144,7 +144,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
 
 			std::string MapName = Config::GetMapNameChar();
-			if (MapName == "Inception_ALL" || MapName == "Adrenaline_P" || MapName == "Skylark_P" || MapName == "AgencyZero_P") {
+			if (MapName == "Inception_ALL" || MapName == "Inception_3_TEMP" || MapName == "Adrenaline_P" || MapName == "Skylark_P" || MapName == "AgencyZero_P") {
 				gamerep->r_bIsTutorialMap = 1;
 				gamerep->r_bIsPVP = 0;
 			}

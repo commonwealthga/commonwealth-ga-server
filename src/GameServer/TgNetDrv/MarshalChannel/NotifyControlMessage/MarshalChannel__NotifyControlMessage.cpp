@@ -127,6 +127,7 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.player_name_w = info->player_name_w;
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.ip_address = info->ip_address;
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.user_id = info->user_id;
+			GClientConnectionsData[(int32_t)Connection].pPlayerInfo = PlayerRegistry::GetByGuidPtr(session_guid);
 			Logger::Log(GetLogChannel(), "JOIN: identified player '%s' (guid=%s, connection=%d)\n", info->player_name.c_str(), session_guid.c_str(), (int32_t)Connection);
 		} else {
 			Logger::Log(GetLogChannel(), "JOIN: session guid %s not found in registry\n", session_guid.c_str());

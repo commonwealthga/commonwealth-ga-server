@@ -13,6 +13,7 @@ struct ClientConnectionData {
 	bool bClosed;
 	std::string SessionGuid;
 	PlayerInfo PlayerInfo;
+	struct PlayerInfo* pPlayerInfo = nullptr; // stable pointer into PlayerRegistry::by_guid_
 };
 
 extern std::map <int32_t, ClientConnectionData> GClientConnectionsData;

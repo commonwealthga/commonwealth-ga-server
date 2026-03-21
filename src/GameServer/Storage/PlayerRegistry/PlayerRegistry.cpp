@@ -88,6 +88,12 @@ std::optional<PlayerInfo> PlayerRegistry::GetByGuid(const std::string& guid) {
 	return std::nullopt;
 }
 
+PlayerInfo* PlayerRegistry::GetByGuidPtr(const std::string& guid) {
+	auto it = by_guid_.find(guid);
+	if (it != by_guid_.end()) return &it->second;
+	return nullptr;
+}
+
 std::optional<PlayerInfo> PlayerRegistry::GetByIp(const std::string& ip) {
 	auto it = by_ip_.find(ip);
 	if (it != by_ip_.end()) return it->second;

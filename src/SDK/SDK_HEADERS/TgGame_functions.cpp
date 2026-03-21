@@ -280,6 +280,7 @@ void ATgChestActor::ForceNetRelevant ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgChestActor.ForceNetRelevant") == 0) {
 				pFnForceNetRelevant = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -1107,6 +1108,7 @@ void ATgDynamicSMActor::ForceNetRelevant ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDynamicSMActor.ForceNetRelevant") == 0) {
 				pFnForceNetRelevant = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -3151,6 +3153,7 @@ void ATgMeshAssembly::ForceNetRelevant ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgMeshAssembly.ForceNetRelevant") == 0) {
 				pFnForceNetRelevant = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -3510,6 +3513,7 @@ void ATgRandomSMActor::PostBeginPlay ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgRandomSMActor.PostBeginPlay") == 0) {
 				pFnPostBeginPlay = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -3592,6 +3596,7 @@ void ATgRandomSMManager::ManageRandomSMActors ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgRandomSMManager.ManageRandomSMActors") == 0) {
 				pFnManageRandomSMActors = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -6884,6 +6889,7 @@ bool ATgDevice::eventCanDeviceStartFiringNow ( unsigned char FireModeNum, unsign
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDevice.CanDeviceStartFiringNow") == 0) {
 				pFnCanDeviceStartFiringNow = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -6931,6 +6937,7 @@ bool ATgDevice::eventCanDeviceFireNow ( unsigned char FireModeNum, unsigned long
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDevice.CanDeviceFireNow") == 0) {
 				pFnCanDeviceFireNow = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -6958,6 +6965,7 @@ bool ATgDevice::IsNonCombatJetpack ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDevice.IsNonCombatJetpack") == 0) {
 				pFnIsNonCombatJetpack = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -7068,6 +7076,7 @@ bool ATgDevice::CanUseDeviceInThisPhysicsState ( int FireModeNum )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDevice.CanUseDeviceInThisPhysicsState") == 0) {
 				pFnCanUseDeviceInThisPhysicsState = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -7553,6 +7562,7 @@ bool ATgDevice::IsGameTypeDisabled ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDevice.IsGameTypeDisabled") == 0) {
 				pFnIsGameTypeDisabled = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -7847,6 +7857,7 @@ bool ATgDevice::IsOffhandJetpack ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDevice.IsOffhandJetpack") == 0) {
 				pFnIsOffhandJetpack = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -7991,6 +8002,7 @@ class UTgDeviceFire* ATgDevice::GetCurrentFire ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDevice.GetCurrentFire") == 0) {
 				pFnGetCurrentFire = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -9574,6 +9586,7 @@ class ATgDevice* UTgDeviceFire::CheckSimutainousFiring ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDeviceFire.CheckSimutainousFiring") == 0) {
 				pFnCheckSimutainousFiring = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -9599,6 +9612,7 @@ float UTgDeviceFire::GetAttackRate ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDeviceFire.GetAttackRate") == 0) {
 				pFnGetAttackRate = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -12578,6 +12592,7 @@ void ATgDeployable::eventInitReplicationInfo ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDeployable.InitReplicationInfo") == 0) {
 				pFnInitReplicationInfo = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -13895,6 +13910,7 @@ void ATgDeployable::SetTaskForceNumber ( int nTaskForceId )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgDeployable.SetTaskForceNumber") == 0) {
 				pFnSetTaskForceNumber = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -21828,6 +21844,7 @@ void ATgBotFactory::SpawnNextBot ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgBotFactory.SpawnNextBot") == 0) {
 				pFnSpawnNextBot = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -22440,6 +22457,7 @@ bool ATgInventoryManager::SetCurrentWeapon ( class ATgDevice* DesiredWeapon, int
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgInventoryManager.SetCurrentWeapon") == 0) {
 				pFnSetCurrentWeapon = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -24464,8 +24482,18 @@ void ATgMissionObjective::eventLockObjective ( )
 {
 	static UFunction* pFnLockObjective = NULL;
 
-	if ( ! pFnLockObjective )
-		pFnLockObjective = (UFunction*) UObject::GObjObjects()->Data[ 34305 ];
+	if ( ! pFnLockObjective ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgMissionObjective.LockObjective") == 0) {
+					pFnLockObjective = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnLockObjective = (UFunction*) UObject::GObjObjects()->Data[ 34305 ];
 
 	ATgMissionObjective_eventLockObjective_Parms LockObjective_Parms;
 
@@ -24481,8 +24509,15 @@ void ATgMissionObjective::eventUnlockObjective ( unsigned long bActivateObjectiv
 {
 	static UFunction* pFnUnlockObjective = NULL;
 
-	if ( ! pFnUnlockObjective )
-		pFnUnlockObjective = (UFunction*) UObject::GObjObjects()->Data[ 34302 ];
+	if ( ! pFnUnlockObjective ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgMissionObjective.UnlockObjective") == 0) {
+				pFnUnlockObjective = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
+			}
+		}
+	}
+		//pFnUnlockObjective = (UFunction*) UObject::GObjObjects()->Data[ 34302 ];
 
 	ATgMissionObjective_eventUnlockObjective_Parms UnlockObjective_Parms;
 	UnlockObjective_Parms.bActivateObjective = bActivateObjective;
@@ -24571,8 +24606,18 @@ bool ATgMissionObjective::eventUpdateObjectiveStatus ( unsigned char eStatus )
 {
 	static UFunction* pFnUpdateObjectiveStatus = NULL;
 
-	if ( ! pFnUpdateObjectiveStatus )
-		pFnUpdateObjectiveStatus = (UFunction*) UObject::GObjObjects()->Data[ 34285 ];
+	if ( ! pFnUpdateObjectiveStatus ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgMissionObjective.UpdateObjectiveStatus") == 0) {
+					pFnUpdateObjectiveStatus = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnUpdateObjectiveStatus = (UFunction*) UObject::GObjObjects()->Data[ 34285 ];
 
 	ATgMissionObjective_eventUpdateObjectiveStatus_Parms UpdateObjectiveStatus_Parms;
 	UpdateObjectiveStatus_Parms.eStatus = eStatus;
@@ -25030,8 +25075,18 @@ void ATgMissionObjective::OnActiveStateChanged ( )
 {
 	static UFunction* pFnOnActiveStateChanged = NULL;
 
-	if ( ! pFnOnActiveStateChanged )
-		pFnOnActiveStateChanged = (UFunction*) UObject::GObjObjects()->Data[ 34231 ];
+	if ( ! pFnOnActiveStateChanged ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgMissionObjective.OnActiveStateChanged") == 0) {
+					pFnOnActiveStateChanged = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+	//	pFnOnActiveStateChanged = (UFunction*) UObject::GObjObjects()->Data[ 34231 ];
 
 	ATgMissionObjective_execOnActiveStateChanged_Parms OnActiveStateChanged_Parms;
 
@@ -25703,8 +25758,17 @@ bool ATgMissionObjective_Bot::eventUpdateObjectiveStatus ( unsigned char eStatus
 {
 	static UFunction* pFnUpdateObjectiveStatus = NULL;
 
-	if ( ! pFnUpdateObjectiveStatus )
-		pFnUpdateObjectiveStatus = (UFunction*) UObject::GObjObjects()->Data[ 34379 ];
+	if ( ! pFnUpdateObjectiveStatus ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgMissionObjective_Bot.UpdateObjectiveStatus") == 0) {
+					pFnUpdateObjectiveStatus = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
 
 	ATgMissionObjective_Bot_eventUpdateObjectiveStatus_Parms UpdateObjectiveStatus_Parms;
 	UpdateObjectiveStatus_Parms.eStatus = eStatus;
@@ -26369,8 +26433,17 @@ bool ATgMissionObjective_Kismet::eventUpdateObjectiveStatus ( unsigned char eSta
 {
 	static UFunction* pFnUpdateObjectiveStatus = NULL;
 
-	if ( ! pFnUpdateObjectiveStatus )
-		pFnUpdateObjectiveStatus = (UFunction*) UObject::GObjObjects()->Data[ 40148 ];
+	if ( ! pFnUpdateObjectiveStatus ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgMissionObjective_Kismet.UpdateObjectiveStatus") == 0) {
+					pFnUpdateObjectiveStatus = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
 
 	ATgMissionObjective_Kismet_eventUpdateObjectiveStatus_Parms UpdateObjectiveStatus_Parms;
 	UpdateObjectiveStatus_Parms.eStatus = eStatus;
@@ -26408,8 +26481,17 @@ bool ATgMissionObjective_Proximity::eventUpdateObjectiveStatus ( unsigned char e
 {
 	static UFunction* pFnUpdateObjectiveStatus = NULL;
 
-	if ( ! pFnUpdateObjectiveStatus )
-		pFnUpdateObjectiveStatus = (UFunction*) UObject::GObjObjects()->Data[ 34536 ];
+	if ( ! pFnUpdateObjectiveStatus ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgMissionObjective_Proximity.UpdateObjectiveStatus") == 0) {
+					pFnUpdateObjectiveStatus = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
 
 	ATgMissionObjective_Proximity_eventUpdateObjectiveStatus_Parms UpdateObjectiveStatus_Parms;
 	UpdateObjectiveStatus_Parms.eStatus = eStatus;
@@ -32506,6 +32588,7 @@ void ATgPawn::SetDevice ( int DeviceID )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.SetDevice") == 0) {
 				pFnSetDevice = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -35549,6 +35632,7 @@ bool ATgPawn::InCombat ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.InCombat") == 0) {
 				pFnInCombat = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -38839,6 +38923,7 @@ void ATgPawn::PossessedBy ( class AController* C, unsigned long bVehicleTransiti
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.PossessedBy") == 0) {
 				pFnPossessedBy = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -39068,6 +39153,7 @@ float ATgPawn::NativeGetCollisionRadius ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.NativeGetCollisionRadius") == 0) {
 				pFnNativeGetCollisionRadius = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -39097,6 +39183,7 @@ float ATgPawn::NativeGetCollisionHeight ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.NativeGetCollisionHeight") == 0) {
 				pFnNativeGetCollisionHeight = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -40289,6 +40376,7 @@ bool ATgPawn::IsNonCombat ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.IsNonCombat") == 0) {
 				pFnIsNonCombat = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -41605,6 +41693,7 @@ struct FString ATgPawn::GetDeviceNameByID ( int DeviceID )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.GetDeviceNameByID") == 0) {
 				pFnGetDeviceNameByID = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -45163,6 +45252,7 @@ void ATgPawn::SetProperty ( int nPropertyId, float fNewValue )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.SetProperty") == 0) {
 				pFnSetProperty = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -45193,6 +45283,7 @@ class UTgProperty* ATgPawn::GetProperty ( int nPropertyId )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.GetProperty") == 0) {
 				pFnGetProperty = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -45252,6 +45343,7 @@ void ATgPawn::InitializeDefaultProps ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.InitializeDefaultProps") == 0) {
 				pFnInitializeDefaultProps = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -45427,6 +45519,7 @@ class ATgDevice* ATgPawn::GetDeviceByEqPoint ( int eEqPoint )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.GetDeviceByEqPoint") == 0) {
 				pFnGetDeviceByEqPoint = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -45534,6 +45627,7 @@ void ATgPawn::RealSetDevice ( int DeviceID )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn.RealSetDevice") == 0) {
 				pFnRealSetDevice = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -46573,6 +46667,7 @@ void ATgPawn_Character::PossessedBy ( class AController* C, unsigned long bVehic
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn_Character.PossessedBy") == 0) {
 				pFnPossessedBy = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -47559,6 +47654,7 @@ class UTgDeviceForm* ATgPawn_Character::CreateDeviceForm ( struct FEquipDeviceIn
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPawn_Character.CreateDeviceForm") == 0) {
 				pFnCreateDeviceForm = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -54076,6 +54172,7 @@ void ATgPlayerController::eventForceKillPawn ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPlayerController.ForceKillPawn") == 0) {
 				pFnForceKillPawn = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -54277,6 +54374,7 @@ void ATgPlayerController::ResetForceViewTarget ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPlayerController.ResetForceViewTarget") == 0) {
 				pFnResetForceViewTarget = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -54467,6 +54565,7 @@ void ATgPlayerController::ServerSetReadyToPlay ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPlayerController.ServerSetReadyToPlay") == 0) {
 				pFnServerSetReadyToPlay = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -56426,6 +56525,7 @@ void ATgPlayerController::DoSetViewTarget ( class AActor* NewTarget )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPlayerController.DoSetViewTarget") == 0) {
 				pFnDoSetViewTarget = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -57803,6 +57903,7 @@ void ATgPlayerController::AcknowledgePossession ( class APawn* P )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPlayerController.AcknowledgePossession") == 0) {
 				pFnAcknowledgePossession = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -58417,6 +58518,7 @@ void ATgPlayerController::SetCorrectViewTarget ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPlayerController.SetCorrectViewTarget") == 0) {
 				pFnSetCorrectViewTarget = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -58440,6 +58542,7 @@ void ATgPlayerController::ServerSetViewTarget ( class AActor* me )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPlayerController.ServerSetViewTarget") == 0) {
 				pFnServerSetViewTarget = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -62069,6 +62172,7 @@ void ATgPlayerController::ChangeInstance ( int nMapGameId, int nInstanceId )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgPlayerController.ChangeInstance") == 0) {
 				pFnChangeInstance = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -68511,6 +68615,7 @@ void ATgGame::StartGameTimer ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgGame.StartGameTimer") == 0) {
 				pFnStartGameTimer = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -68573,6 +68678,7 @@ void ATgGame::eventPostLogin ( class APlayerController* NewPlayer )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgGame.PostLogin") == 0) {
 				pFnPostLogin = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -68637,6 +68743,7 @@ void ATgGame::RestartGame ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgGame.RestartGame") == 0) {
 				pFnRestartGame = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -68762,6 +68869,7 @@ bool ATgGame::ChangeTeam ( class AController* Other, int Num, unsigned long bNew
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgGame.ChangeTeam") == 0) {
 				pFnChangeTeam = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -68960,6 +69068,7 @@ void ATgGame::AddDefaultInventory ( class APawn* PlayerPawn )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgGame.AddDefaultInventory") == 0) {
 				pFnAddDefaultInventory = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -69281,6 +69390,7 @@ void ATgGame::InitGameReplicationInfo ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgGame.InitGameReplicationInfo") == 0) {
 				pFnInitGameReplicationInfo = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -69552,6 +69662,7 @@ void ATgGame::SpawnAllHenchman ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgGame.SpawnAllHenchman") == 0) {
 				pFnSpawnAllHenchman = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -69709,6 +69820,7 @@ TArray< class ATgMissionObjective* > ATgGame::GetFinalObjectivesList ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgGame.GetFinalObjectivesList") == 0) {
 				pFnGetFinalObjectivesList = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -69737,6 +69849,7 @@ void ATgGame::SpawnLandMarks ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgGame.SpawnLandMarks") == 0) {
 				pFnSpawnLandMarks = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -69824,8 +69937,15 @@ void ATgGame::UnlockObjective ( int nPrority )
 {
 	static UFunction* pFnUnlockObjective = NULL;
 
-	if ( ! pFnUnlockObjective )
-		pFnUnlockObjective = (UFunction*) UObject::GObjObjects()->Data[ 38479 ];
+	if ( ! pFnUnlockObjective ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgGame.UnlockObjective") == 0) {
+				pFnUnlockObjective = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
+			}
+		}
+	}
+		//pFnUnlockObjective = (UFunction*) UObject::GObjObjects()->Data[ 38479 ];
 
 	ATgGame_execUnlockObjective_Parms UnlockObjective_Parms;
 	UnlockObjective_Parms.nPrority = nPrority;
@@ -70551,6 +70671,7 @@ void ATgGame::InitGameRepInfo ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgGame.InitGameRepInfo") == 0) {
 				pFnInitGameRepInfo = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -70858,6 +70979,7 @@ void ATgGame_Arena::StartGameTimer ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgGame_Arena.StartGameTimer") == 0) {
 				pFnStartGameTimer = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -72970,6 +73092,7 @@ class ATgRepInfo_TaskForce* ATgRepInfo_Game::GetTaskForceFor ( class AActor* Act
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgRepInfo_Game.GetTaskForceFor") == 0) {
 				pFnGetTaskForceFor = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -73217,6 +73340,7 @@ void ATgRepInfo_Player::eventUpdateHealth ( int nCurrentHealth, int nMaxHealth )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgRepInfo_Player.UpdateHealth") == 0) {
 				pFnUpdateHealth = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -73257,6 +73381,7 @@ void ATgRepInfo_Player::eventUpdateIdAndProfile ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgRepInfo_Player.UpdateIdAndProfile") == 0) {
 				pFnUpdateIdAndProfile = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -73860,6 +73985,7 @@ class ATgTeamBeaconManager* ATgRepInfo_TaskForce::GetBeaconManager ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgRepInfo_TaskForce.GetBeaconManager") == 0) {
 				pFnGetBeaconManager = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -74201,6 +74327,7 @@ void ATgTeamBeaconManager::eventInitFor ( class ATgRepInfo_TaskForce* tf )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgTeamBeaconManager.InitFor") == 0) {
 				pFnInitFor = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -74379,6 +74506,7 @@ bool ATgTeamBeaconManager::UnRegisterBeacon ( class ATgDeploy_Beacon* pBeacon )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgTeamBeaconManager.UnRegisterBeacon") == 0) {
 				pFnUnRegisterBeacon = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -74411,6 +74539,7 @@ bool ATgTeamBeaconManager::RegisterBeacon ( class ATgDeploy_Beacon* pBeacon, uns
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgTeamBeaconManager.RegisterBeacon") == 0) {
 				pFnRegisterBeacon = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -74510,6 +74639,7 @@ class ATgDeploy_Beacon* ATgTeamBeaconManager::GetBeacon ( )
 		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
 			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function TgGame.TgTeamBeaconManager.GetBeacon") == 0) {
 				pFnGetBeacon = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
 			}
 		}
 	}
@@ -75107,8 +75237,17 @@ bool ATgBaseObjective_KOTH::eventUpdateObjectiveStatus ( unsigned char eStatus )
 {
 	static UFunction* pFnUpdateObjectiveStatus = NULL;
 
-	if ( ! pFnUpdateObjectiveStatus )
-		pFnUpdateObjectiveStatus = (UFunction*) UObject::GObjObjects()->Data[ 34549 ];
+	if ( ! pFnUpdateObjectiveStatus ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function TgGame.TgBaseObjective_KOTH.UpdateObjectiveStatus") == 0) {
+					pFnUpdateObjectiveStatus = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
 
 	ATgBaseObjective_KOTH_eventUpdateObjectiveStatus_Parms UpdateObjectiveStatus_Parms;
 	UpdateObjectiveStatus_Parms.eStatus = eStatus;

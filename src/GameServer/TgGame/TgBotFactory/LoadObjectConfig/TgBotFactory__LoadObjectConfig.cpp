@@ -1,6 +1,6 @@
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
 #include "src/Database/Database.hpp"
-#include "src/GameServer/Globals.hpp"
+#include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/Utils/Macros.hpp"
 
@@ -55,9 +55,12 @@ void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, 
 			}
 		}
 
+		int nDifficultyValueId = Config::GetDifficultyValueId();
 		std::vector<std::map<std::string, std::string>> spawn_tables_data;
-		result = sqlite3_exec(db, " \
-			SELECT \
+
+		sqlite3_stmt* stmt = nullptr;
+		int rc = sqlite3_prepare_v2(db,
+			"SELECT \
 				bot_spawn_table_id, \
 				spawn_group, \
 				enemy_bot_id, \
@@ -66,31 +69,22 @@ void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, 
 				reference_name \
 			FROM asm_data_set_bot_spawn_tables \
 			LEFT JOIN asm_data_set_bots ON asm_data_set_bot_spawn_tables.enemy_bot_id = asm_data_set_bots.bot_id \
-			WHERE difficulty_value_id = 1471; \
-			", Database::Callback, &spawn_tables_data, &err);
-		if (result != SQLITE_OK) {
-			Logger::Log("db", "Failed to select asm_data_set_bot_spawn_tables: %s\n", err);
+			WHERE difficulty_value_id = ?" ,
+			-1, &stmt, nullptr);
+		if (rc != SQLITE_OK || !stmt) {
+			Logger::Log("db", "[TgBotFactory] GetSpawnTableEntry prepare failed: %s\n", sqlite3_errmsg(db));
 			return;
 		}
+		sqlite3_bind_int(stmt, 1, nDifficultyValueId);
 
 		std::map<int, std::map<int, std::vector<SpawnTableEntry>>> spawnTables;
-
-		for (auto row : spawn_tables_data) {
-			int botSpawnTableId = std::stoi(row["bot_spawn_table_id"]);
-			int spawnGroup = std::stoi(row["spawn_group"]);
-			int enemyBotId = std::stoi(row["enemy_bot_id"]);
-			int botCount = std::stoi(row["bot_count"]);
-			float spawnChance = std::stof(row["spawn_chance"]);
-			std::string referenceName = row["reference_name"];
-
-			// SpawnGroups[spawnGroup].push_back(SpawnTableEntry{
-			// 	botSpawnTableId,
-			// 	spawnGroup,
-			// 	enemyBotId,
-			// 	botCount,
-			// 	spawnChance,
-			// 	referenceName
-			// });
+		while (sqlite3_step(stmt) == SQLITE_ROW) {
+			int botSpawnTableId = std::stoi(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)));
+			int spawnGroup = std::stoi(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)));
+			int enemyBotId = std::stoi(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2)));
+			int botCount = std::stoi(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3)));
+			float spawnChance = std::stof(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4)));
+			std::string referenceName = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
 
 			spawnTables[botSpawnTableId][spawnGroup].push_back(SpawnTableEntry{
 				botSpawnTableId,
@@ -101,6 +95,54 @@ void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, 
 				referenceName
 			});
 		}
+		sqlite3_finalize(stmt);
+
+
+		// result = sqlite3_exec(db, " \
+		// 	SELECT \
+		// 		bot_spawn_table_id, \
+		// 		spawn_group, \
+		// 		enemy_bot_id, \
+		// 		bot_count, \
+		// 		spawn_chance, \
+		// 		reference_name \
+		// 	FROM asm_data_set_bot_spawn_tables \
+		// 	LEFT JOIN asm_data_set_bots ON asm_data_set_bot_spawn_tables.enemy_bot_id = asm_data_set_bots.bot_id \
+		// 	WHERE difficulty_value_id = 1471; \
+		// 	", Database::Callback, &spawn_tables_data, &err);
+		// if (result != SQLITE_OK) {
+		// 	Logger::Log("db", "Failed to select asm_data_set_bot_spawn_tables: %s\n", err);
+		// 	return;
+		// }
+		//
+		// std::map<int, std::map<int, std::vector<SpawnTableEntry>>> spawnTables;
+		//
+		// for (auto row : spawn_tables_data) {
+		// 	int botSpawnTableId = std::stoi(row["bot_spawn_table_id"]);
+		// 	int spawnGroup = std::stoi(row["spawn_group"]);
+		// 	int enemyBotId = std::stoi(row["enemy_bot_id"]);
+		// 	int botCount = std::stoi(row["bot_count"]);
+		// 	float spawnChance = std::stof(row["spawn_chance"]);
+		// 	std::string referenceName = row["reference_name"];
+		//
+		// 	// SpawnGroups[spawnGroup].push_back(SpawnTableEntry{
+		// 	// 	botSpawnTableId,
+		// 	// 	spawnGroup,
+		// 	// 	enemyBotId,
+		// 	// 	botCount,
+		// 	// 	spawnChance,
+		// 	// 	referenceName
+		// 	// });
+		//
+		// 	spawnTables[botSpawnTableId][spawnGroup].push_back(SpawnTableEntry{
+		// 		botSpawnTableId,
+		// 		spawnGroup,
+		// 		enemyBotId,
+		// 		botCount,
+		// 		spawnChance,
+		// 		referenceName
+		// 	});
+		// }
 
 		for (auto& botFactoryConfig : m_botFactoryConfigs) {
 			int mapObjectId = botFactoryConfig.first;

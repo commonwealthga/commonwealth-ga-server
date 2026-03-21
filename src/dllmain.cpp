@@ -8,6 +8,7 @@
 #include "src/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.hpp"
 #include "src/GameServer/Core/FMallocWindows/Free/FMallocWindows__Free.hpp"
 #include "src/GameServer/Engine/World/BeginPlay/World__BeginPlay.hpp"
+#include "src/GameServer/Engine/SeqActNullGuard/SeqActNullGuard.hpp"
 #include "src/GameServer/Engine/LaunchEngineLoop/ConstructCommandletObject/ConstructCommandletObject.hpp"
 #include "src/GameServer/Engine/ServerCommandlet/Main/ServerCommandlet__Main.hpp"
 #include "src/GameServer/Engine/GameEngine/SpawnServerActors/GameEngine__SpawnServerActors.hpp"
@@ -38,6 +39,18 @@
 #include "src/GameServer/TgGame/TgGame/MissionTimeRemaining/TgGame__MissionTimeRemaining.hpp"
 #include "src/GameServer/TgGame/TgGame/SendMissionTimerEvent/TgGame__SendMissionTimerEvent.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.hpp"
+#include "src/GameServer/TgGame/TgGame_Arena/FinalizeRoundScore/TgGame_Arena__FinalizeRoundScore.hpp"
+#include "src/GameServer/TgGame/TgGame_Arena/FinalizeGameScore/TgGame_Arena__FinalizeGameScore.hpp"
+#include "src/GameServer/TgGame/TgGame_PointRotation/CalcNextObjective/TgGame_PointRotation__CalcNextObjective.hpp"
+#include "src/GameServer/TgGame/TgGame_PointRotation/UnlockObjective/TgGame_PointRotation__UnlockObjective.hpp"
+#include "src/GameServer/TgGame/TgGame/CheckRandomObjectives/TgGame__CheckRandomObjectives.hpp"
+#include "src/GameServer/TgGame/TgGame/UnlockObjective/TgGame__UnlockObjective.hpp"
+#include "src/GameServer/TgGame/TgGame/LockoutObjectives/TgGame__LockoutObjectives.hpp"
+#include "src/GameServer/TgGame/TgGame/IsFinalObjective/TgGame__IsFinalObjective.hpp"
+#include "src/GameServer/TgGame/TgGame/SetObjectivesInactive/TgGame__SetObjectivesInactive.hpp"
+#include "src/GameServer/TgGame/TgGame/SetObjectivesOvertimeNotify/TgGame__SetObjectivesOvertimeNotify.hpp"
+#include "src/GameServer/TgGame/TgGame/GetFinalObjectivesList/TgGame__GetFinalObjectivesList.hpp"
+#include "src/GameServer/TgGame/TgMissionObjective/SetObjectiveActive/TgMissionObjective__SetObjectiveActive.hpp"
 #include "src/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.hpp"
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.hpp"
@@ -87,7 +100,9 @@
 
 
 unsigned long ModuleThread( void* ) {
-	// Logger::EnabledChannels.push_back("hook_calltree");
+	Logger::EnabledChannels.push_back("hook_calltree");
+	// Logger::EnabledChannels.push_back("kismet");
+	// Logger::EnabledChannels.push_back("tgbotfactory");
 	// Logger::EnabledChannels.push_back("effectgroup");
 	// Logger::EnabledChannels.push_back("firedeploy_m_pAmSetup");
 	// Logger::EnabledChannels.push_back("firedeploy_m_pFireModeSetup");
@@ -113,6 +128,7 @@ unsigned long ModuleThread( void* ) {
 	UObject__ProcessEvent::Install();
 	FMallocWindows__Free::Install();
 	World__BeginPlay::Install();
+	SeqActNullGuard::Install();
 	ConstructCommandletObject::Install();
 	ServerCommandlet__Main::Install();
 	GameEngine__SpawnServerActors::Install();
@@ -143,6 +159,18 @@ unsigned long ModuleThread( void* ) {
 	TgGame__LoadGameConfig::Install();
 	TgGame__InitGameRepInfo::Install();
 	TgGame_Arena__LoadGameConfig::Install();
+	TgGame_Arena__FinalizeRoundScore::Install();
+	TgGame_Arena__FinalizeGameScore::Install();
+	TgGame_PointRotation__CalcNextObjective::Install();
+	TgGame_PointRotation__UnlockObjective::Install();
+	TgMissionObjective__SetObjectiveActive::Install();
+	TgGame__CheckRandomObjectives::Install();
+	TgGame__UnlockObjective::Install();
+	TgGame__LockoutObjectives::Install();
+	TgGame__IsFinalObjective::Install();
+	TgGame__SetObjectivesInactive::Install();
+	TgGame__SetObjectivesOvertimeNotify::Install();
+	TgGame__GetFinalObjectivesList::Install();
 	TgPawn__InitializeDefaultProps::Install();
 	TgPawn__GetProperty::Install();
 	TgPawn__SetTaskForceNumber::Install();

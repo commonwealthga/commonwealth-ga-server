@@ -54064,8 +54064,18 @@ void USequenceOp::ForceActivateInput ( int InputIdx )
 {
 	static UFunction* pFnForceActivateInput = NULL;
 
-	if ( ! pFnForceActivateInput )
-		pFnForceActivateInput = (UFunction*) UObject::GObjObjects()->Data[ 11353 ];
+	if ( ! pFnForceActivateInput ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i]) {
+				UObject* obj = UObject::GObjObjects()->Data[i];
+				if (strcmp(obj->GetFullName(), "Function Engine.SequenceOp.ForceActivateInput") == 0) {
+					pFnForceActivateInput = (UFunction*)obj;
+					break;
+				}
+			}
+		}
+	}
+		//pFnForceActivateInput = (UFunction*) UObject::GObjObjects()->Data[ 11353 ];
 
 	USequenceOp_execForceActivateInput_Parms ForceActivateInput_Parms;
 	ForceActivateInput_Parms.InputIdx = InputIdx;
