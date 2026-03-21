@@ -657,260 +657,73 @@ void TcpSession::send_character_inventory_response(int nPawnId) {
 	send_response(response);
 }
 
+// OLD send_inventory_response (replaced by Inventory::GetEquippedByPawnId loop):
+// The old implementation hardcoded 7 medic loadout items (CJP jetpack, Agonizer, specialty 864,
+// HealingGrenade 2531, LifeStealer 5800, specialty 2906, HealingBoost 2773) with fixed inventory
+// IDs 999-994. Replaced with a data-driven loop so the marshal automatically reflects whatever
+// Inventory::Equip was called with during SpawnPlayerCharacter.
+//
+// void TcpSession::send_inventory_response(int nPawnId) {
+//     ... (256 lines of hardcoded items removed) ...
+// }
+
 void TcpSession::send_inventory_response(int nPawnId) {
+	const auto& items = Inventory::GetEquippedByPawnId(nPawnId);
+	if (items.empty()) {
+		Logger::Log("tcp", "[TCP] send_inventory_response: no equipped items for pawnId=%d\n", nPawnId);
+		return;
+	}
+
 	std::vector<uint8_t> response;
 
 	uint16_t packet_type = GA_U::SEND_INVENTORY;
-	uint16_t item_count = 2;
+	uint16_t item_count = 2;  // packet header field count (PAWN_ID + DATA_SET)
 
 	append(response, packet_type & 0xFF, packet_type >> 8);
 	append(response, item_count & 0xFF, item_count >> 8);
 
 	Write4B(response, GA_T::PAWN_ID, nPawnId);
 
-	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);        // type 010C
-	append(response, 0x07, 0x00);        // count elements
+	// DATA_SET header: type + item count
+	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+	uint16_t dataSetCount = static_cast<uint16_t>(items.size());
+	append(response, dataSetCount & 0xFF, dataSetCount >> 8);
 
-		// append(response, 0x0E, 0x00);  // inner item count
-		append(response, 0xE, 0x00);  // inner item count
+	for (const auto& entry : items) {
+		int slotValueId = GA::SlotValueId(entry.slot);
 
-		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1); // 0=ok, 1=edited, 2=deleted
-		Write4B(response, GA_T::ITEM_ID, GA_G::DEVICE_ID_MEDIC_CJP); // 0x2DA <<< seems to represent device id
-		Write4B(response, GA_T::INVENTORY_ID, 999); // 0x2CF
-		Write4B(response, GA_T::BLUEPRINT_ID, 0); // 0x77
-		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, 1162); // 0xE7
-		Write4B(response, GA_T::DURABILITY, 100); // 0x220
-		WriteDouble(response, GA_T::ACQUIRE_DATETIME, 1700000000.0);
-		WriteString(response, GA_T::BOUND_FLAG, "T");
-		Write4B(response, GA_T::LOCATION_VALUE_ID, 369); // 0x310
-		Write4B(response, GA_T::INSTANCE_COUNT, 0x1); // 0x2C5
-		WriteString(response, GA_T::ACTIVE_FLAG, "T");
-		Write4B(response, GA_T::DEVICE_ID, 999); // 0x206 = m_nDeviceInstanceId (must match Device->r_nDeviceInstanceId on server)
-
-		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
-		append(response, 0x01, 0x00);        // count elements
-
-			append(response, 0x02, 0x00);  // inner item count
-
-			Write4B(response, GA_T::INVENTORY_ID, 999); // must match nInventoryId
-			Write4B(response, GA_T::EFFECT_GROUP_ID, 26173);
-
-		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
-		append(response, 0x01, 0x00);        // count elements
-
-			append(response, 0x04, 0x00);  // inner item count
-
-			Write4B(response, GA_T::CHARACTER_ID, 0); // 0 = applies to any pawn
-			Write4B(response, GA_T::INVENTORY_ID, 999); // must match nInventoryId
-			Write4B(response, GA_T::PROFILE_ID, 0x1);
-			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 201); // 0xC9 → equip point 5 (jetpack)
-
-
-		append(response, 0xE, 0x00);  // inner item count
-
-		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1); // 0=ok, 1=edited, 2=deleted
-		Write4B(response, GA_T::ITEM_ID, GA_G::DEVICE_ID_AGONIZER); // 0x2DA <<< seems to represent device id
-		Write4B(response, GA_T::INVENTORY_ID, 1000); // 0x2CF
-		Write4B(response, GA_T::BLUEPRINT_ID, 0); // 0x77
-		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, 1162); // 0xE7
-		Write4B(response, GA_T::DURABILITY, 100); // 0x220
-		WriteDouble(response, GA_T::ACQUIRE_DATETIME, 1700000000.0);
-		WriteString(response, GA_T::BOUND_FLAG, "T");
-		Write4B(response, GA_T::LOCATION_VALUE_ID, 369); // 0x310
-		Write4B(response, GA_T::INSTANCE_COUNT, 0x1); // 0x2C5
-		WriteString(response, GA_T::ACTIVE_FLAG, "T");
-		Write4B(response, GA_T::DEVICE_ID, 1000); // 0x206 = m_nDeviceInstanceId (must match Device->r_nDeviceInstanceId on server)
-
-		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
-		append(response, 0x01, 0x00);        // count elements
-
-			append(response, 0x02, 0x00);  // inner item count
-
-			Write4B(response, GA_T::INVENTORY_ID, 1000); // must match nInventoryId
-			Write4B(response, GA_T::EFFECT_GROUP_ID, 16670);
-
-		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
-		append(response, 0x01, 0x00);        // count elements
-
-			append(response, 0x04, 0x00);  // inner item count
-
-			Write4B(response, GA_T::CHARACTER_ID, 0); // 0 = applies to any pawn
-			Write4B(response, GA_T::INVENTORY_ID, 1000); // must match nInventoryId
-			Write4B(response, GA_T::PROFILE_ID, 0x1);
-			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 198); // 198 = ranged weapon slot value ID → equip point 2
-
-
-		append(response, 0xE, 0x00);  // inner item count
-
-		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1); // 0=ok, 1=edited, 2=deleted
-		Write4B(response, GA_T::ITEM_ID, 864); // 0x2DA <<< seems to represent device id
-		Write4B(response, GA_T::INVENTORY_ID, 998); // 0x2CF
-		Write4B(response, GA_T::BLUEPRINT_ID, 0); // 0x77
-		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, 1162); // 0xE7
-		Write4B(response, GA_T::DURABILITY, 100); // 0x220
-		WriteDouble(response, GA_T::ACQUIRE_DATETIME, 1700000000.0);
-		WriteString(response, GA_T::BOUND_FLAG, "T");
-		Write4B(response, GA_T::LOCATION_VALUE_ID, 369); // 0x310
-		Write4B(response, GA_T::INSTANCE_COUNT, 0x1); // 0x2C5
-		WriteString(response, GA_T::ACTIVE_FLAG, "T");
-		Write4B(response, GA_T::DEVICE_ID, 998); // 0x206 = m_nDeviceInstanceId (must match Device->r_nDeviceInstanceId on server)
-
-		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
-		append(response, 0x01, 0x00);        // count elements
-
-			append(response, 0x02, 0x00);  // inner item count
-
-			Write4B(response, GA_T::INVENTORY_ID, 998); // must match nInventoryId
-			Write4B(response, GA_T::EFFECT_GROUP_ID, 0);
-
-		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
-		append(response, 0x01, 0x00);        // count elements
-
-			append(response, 0x04, 0x00);  // inner item count
-
-			Write4B(response, GA_T::CHARACTER_ID, 0); // 0 = applies to any pawn
-			Write4B(response, GA_T::INVENTORY_ID, 998); // must match nInventoryId
-			Write4B(response, GA_T::PROFILE_ID, 0x1);
-			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 502); // 0xC9 → equip point 5 (jetpack)
-
-
-
-		append(response, 0xE, 0x00);  // inner item count
-
-		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1); // 0=ok, 1=edited, 2=deleted
-		Write4B(response, GA_T::ITEM_ID, 2531); // 0x2DA <<< seems to represent device id
-		Write4B(response, GA_T::INVENTORY_ID, 997); // 0x2CF
-		Write4B(response, GA_T::BLUEPRINT_ID, 0); // 0x77
-		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, 1162); // 0xE7
-		Write4B(response, GA_T::DURABILITY, 100); // 0x220
-		WriteDouble(response, GA_T::ACQUIRE_DATETIME, 1700000000.0);
-		WriteString(response, GA_T::BOUND_FLAG, "T");
-		Write4B(response, GA_T::LOCATION_VALUE_ID, 369); // 0x310
-		Write4B(response, GA_T::INSTANCE_COUNT, 0x1); // 0x2C5
-		WriteString(response, GA_T::ACTIVE_FLAG, "T");
-		Write4B(response, GA_T::DEVICE_ID, 997); // 0x206 = m_nDeviceInstanceId (must match Device->r_nDeviceInstanceId on server)
-
-		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
-		append(response, 0x01, 0x00);        // count elements
-
-			append(response, 0x02, 0x00);  // inner item count
-
-			Write4B(response, GA_T::INVENTORY_ID, 997); // must match nInventoryId
-			Write4B(response, GA_T::EFFECT_GROUP_ID, 16653);
-
-		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
-		append(response, 0x01, 0x00);        // count elements
-
-			append(response, 0x04, 0x00);  // inner item count
-
-			Write4B(response, GA_T::CHARACTER_ID, 0); // 0 = applies to any pawn
-			Write4B(response, GA_T::INVENTORY_ID, 997); // must match nInventoryId
-			Write4B(response, GA_T::PROFILE_ID, 0x1);
-			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 203); // 0xC9 → equip point 5 (jetpack)
-
-
-
-		append(response, 0xE, 0x00);  // inner item count
-
-		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1); // 0=ok, 1=edited, 2=deleted
-		Write4B(response, GA_T::ITEM_ID, 5800); // 0x2DA <<< seems to represent device id
-		Write4B(response, GA_T::INVENTORY_ID, 996); // 0x2CF
-		Write4B(response, GA_T::BLUEPRINT_ID, 0); // 0x77
-		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, 1162); // 0xE7
-		Write4B(response, GA_T::DURABILITY, 100); // 0x220
-		WriteDouble(response, GA_T::ACQUIRE_DATETIME, 1700000000.0);
-		WriteString(response, GA_T::BOUND_FLAG, "T");
-		Write4B(response, GA_T::LOCATION_VALUE_ID, 369); // 0x310
-		Write4B(response, GA_T::INSTANCE_COUNT, 0x1); // 0x2C5
-		WriteString(response, GA_T::ACTIVE_FLAG, "T");
-		Write4B(response, GA_T::DEVICE_ID, 996); // 0x206 = m_nDeviceInstanceId (must match Device->r_nDeviceInstanceId on server)
-
-		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
-		append(response, 0x01, 0x00);        // count elements
-
-			append(response, 0x02, 0x00);  // inner item count
-
-			Write4B(response, GA_T::INVENTORY_ID, 996); // must match nInventoryId
-			Write4B(response, GA_T::EFFECT_GROUP_ID, 22334);
-
-		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
-		append(response, 0x01, 0x00);        // count elements
-
-			append(response, 0x04, 0x00);  // inner item count
-
-			Write4B(response, GA_T::CHARACTER_ID, 0); // 0 = applies to any pawn
-			Write4B(response, GA_T::INVENTORY_ID, 996); // must match nInventoryId
-			Write4B(response, GA_T::PROFILE_ID, 0x1);
-			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 221); // 0xC9 → equip point 5 (jetpack)
-
-
-		append(response, 0xE, 0x00);  // inner item count
-
-		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1); // 0=ok, 1=edited, 2=deleted
-		Write4B(response, GA_T::ITEM_ID, 2906); // 0x2DA <<< seems to represent device id
-		Write4B(response, GA_T::INVENTORY_ID, 995); // 0x2CF
-		Write4B(response, GA_T::BLUEPRINT_ID, 0); // 0x77
-		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, 1162); // 0xE7
-		Write4B(response, GA_T::DURABILITY, 100); // 0x220
-		WriteDouble(response, GA_T::ACQUIRE_DATETIME, 1700000000.0);
-		WriteString(response, GA_T::BOUND_FLAG, "T");
-		Write4B(response, GA_T::LOCATION_VALUE_ID, 369); // 0x310
-		Write4B(response, GA_T::INSTANCE_COUNT, 0x1); // 0x2C5
-		WriteString(response, GA_T::ACTIVE_FLAG, "T");
-		Write4B(response, GA_T::DEVICE_ID, 995); // 0x206 = m_nDeviceInstanceId (must match Device->r_nDeviceInstanceId on server)
-
-		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
-		append(response, 0x01, 0x00);        // count elements
-
-			append(response, 0x02, 0x00);  // inner item count
-
-			Write4B(response, GA_T::INVENTORY_ID, 995); // must match nInventoryId
-			Write4B(response, GA_T::EFFECT_GROUP_ID, 9071);
-
-		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
-		append(response, 0x01, 0x00);        // count elements
-
-			append(response, 0x04, 0x00);  // inner item count
-
-			Write4B(response, GA_T::CHARACTER_ID, 0); // 0 = applies to any pawn
-			Write4B(response, GA_T::INVENTORY_ID, 995); // must match nInventoryId
-			Write4B(response, GA_T::PROFILE_ID, 0x1);
-			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 200); // → equip point 3 (specialty)
-
-
-		append(response, 0xE, 0x00);  // inner item count
+		// 14 fields per item (0x0E)
+		append(response, 0x0E, 0x00);
 
 		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1);
-		Write4B(response, GA_T::ITEM_ID, 2773); // heal boost device id
-		Write4B(response, GA_T::INVENTORY_ID, 994); // must match nInventoryId
+		Write4B(response, GA_T::ITEM_ID, entry.deviceId);
+		Write4B(response, GA_T::INVENTORY_ID, entry.inventoryId);
 		Write4B(response, GA_T::BLUEPRINT_ID, 0);
-		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, 1162);
+		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, entry.quality != 0 ? entry.quality : 1162);
 		Write4B(response, GA_T::DURABILITY, 100);
 		WriteDouble(response, GA_T::ACQUIRE_DATETIME, 1700000000.0);
 		WriteString(response, GA_T::BOUND_FLAG, "T");
 		Write4B(response, GA_T::LOCATION_VALUE_ID, 369);
 		Write4B(response, GA_T::INSTANCE_COUNT, 0x1);
 		WriteString(response, GA_T::ACTIVE_FLAG, "T");
-		Write4B(response, GA_T::DEVICE_ID, 994); // must match Device->r_nDeviceInstanceId on server
+		Write4B(response, GA_T::DEVICE_ID, entry.inventoryId);  // must match r_nDeviceInstanceId
 
+		// DATA_SET_INVENTORY_STATE (1 entry, 2 fields)
 		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
 		append(response, 0x01, 0x00);
-
 			append(response, 0x02, 0x00);
+			Write4B(response, GA_T::INVENTORY_ID, entry.inventoryId);
+			Write4B(response, GA_T::EFFECT_GROUP_ID, entry.effectGroupId);
 
-			Write4B(response, GA_T::INVENTORY_ID, 994);
-			Write4B(response, GA_T::EFFECT_GROUP_ID, 0);
-
+		// DATA_SET_CHARACTER_PROFILES (1 entry, 4 fields)
 		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
 		append(response, 0x01, 0x00);
-
 			append(response, 0x04, 0x00);
-
 			Write4B(response, GA_T::CHARACTER_ID, 0);
-			Write4B(response, GA_T::INVENTORY_ID, 994);
+			Write4B(response, GA_T::INVENTORY_ID, entry.inventoryId);
 			Write4B(response, GA_T::PROFILE_ID, 0x1);
-			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 386); // → equip point 10 (morale slot)
-
+			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, slotValueId);
+	}
 
 	send_response(response);
 }
@@ -1419,16 +1232,6 @@ void TcpSession::send_character_list_response()
 {
 	auto characters = PlayerRegistry::GetCharactersByUserId(user_id_);
 
-	auto skillGroupSetId = [](uint32_t profileId) -> uint32_t {
-		switch (profileId) {
-			case GA_G::GA_G::PROFILE_ID_ASSAULT: return GA_G::GA_G::SKILL_GROUP_SET_ID_ASSAULT;
-			case GA_G::GA_G::PROFILE_ID_MEDIC:   return GA_G::GA_G::SKILL_GROUP_SET_ID_MEDIC;
-			case GA_G::GA_G::PROFILE_ID_RECON:   return GA_G::GA_G::SKILL_GROUP_SET_ID_RECON;
-			case GA_G::GA_G::PROFILE_ID_ROBOTIC: return GA_G::GA_G::SKILL_GROUP_SET_ID_ROBOTIC;
-			default:                             return GA_G::GA_G::SKILL_GROUP_SET_ID_ASSAULT;
-		}
-	};
-
 	std::vector<uint8_t> response;
 
 	uint16_t packet_type = GA_U::GSC_CHARACTER_LIST;
@@ -1455,7 +1258,7 @@ void TcpSession::send_character_list_response()
 		Write4B(response, GA_T::GENDER_TYPE_VALUE_ID,   c.gender_type_value_id);
 		WriteString(response, GA_T::MAP_NAME,           "Scramble: Tetra Pier");
 		Write4B(response, GA_T::XP_VALUE,               0xbbddc);
-		Write4B(response, GA_T::SKILL_GROUP_SET_ID,     skillGroupSetId(c.profile_id));
+		Write4B(response, GA_T::SKILL_GROUP_SET_ID,     GetClassConfig(c.profile_id).skillGroupSetId);
 	}
 
 	append(response, GA_T::DATA_SET_PLAYER_INVENTORY & 0xFF, GA_T::DATA_SET_PLAYER_INVENTORY >> 8);

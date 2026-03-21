@@ -29,11 +29,20 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: connection=%d\n", ConnectionIndex);
 
-	// Use the medic player character config from asm_data_set_bots.
-	// bot_id 567 is the medic — the profile ID matches the bot_id for player characters.
-	static const int PLAYER_BOT_ID = 567;
+	// Read the player's selected class from connection data.
+	uint32_t profileId = GClientConnectionsData[ConnectionIndex].PlayerInfo.selected_profile_id;
 
-	TgPawn__InitializeDefaultProps::nPendingBotId = PLAYER_BOT_ID;
+	// Validate: fall back to Assault (680) for unknown or unset profile IDs.
+	if (profileId != 567 && profileId != 679 && profileId != 680 && profileId != 681) {
+		Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: invalid profile_id=%d for connection=%d, falling back to Assault\n", profileId, ConnectionIndex);
+		profileId = 680;
+	}
+
+	const ClassConfig& classConfig = GetClassConfig(profileId);
+
+	// nPendingBotId = profileId so InitializeDefaultProps loads the correct class stats from DB.
+	// For player classes, bot_id == profile_id in asm_data_set_bots.
+	TgPawn__InitializeDefaultProps::nPendingBotId = profileId;
 	ATgPawn_Character* newpawn = (ATgPawn_Character*)Game->Spawn(ClassPreloader::GetTgPawnCharacterClass(), PlayerController, FName(), SpawnLocation, PlayerController->Rotation, nullptr, 1);
 	// nPendingBotId cleared inside InitializeDefaultProps::Call
 
@@ -142,8 +151,12 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	newpawn->r_nPhysicalType = 860;
 	newpawn->ReplicatedCollisionType = newpawn->CollisionType;
-	newpawn->r_nHealthMaximum = 1300;
-	newpawn->r_nProfileId = 567; // medic
+	// HP and power pool are initialized by InitializeDefaultProps from asm_data_set_bots.
+	// Read back the initialized values after Spawn() returns.
+	int hp = (int)newpawn->HealthMax;  // set by SetProperty(TGPID_HEALTH_MAX) inside InitializeDefaultProps
+	newpawn->Health = newpawn->HealthMax;
+	newpawn->r_nHealthMaximum = hp;
+	newpawn->r_nProfileId = classConfig.profileId;
 	newpawn->r_bDisableAllDevices = 0;
 	newpawn->r_bEnableEquip = 1;
 	newpawn->r_bEnableSkills = 1;
@@ -152,11 +165,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newpawn->r_bIsBot = 0;
 	newpawn->r_bIsDecoy = 0;
 	newpawn->r_bIsHacking = 0;
-	newpawn->r_fCurrentPowerPool = 100;
-	newpawn->r_fMaxPowerPool = 100;
+	newpawn->r_fCurrentPowerPool = newpawn->r_fMaxPowerPool;  // set by SetProperty(TGPID_POWERPOOL_MAX)
 	newpawn->r_nXp = 999999;
-	newpawn->Health = 1300;
-	newpawn->HealthMax = 1300;
 
 	newpawn->r_EffectManager->r_Owner = newpawn;
 	newpawn->r_EffectManager->SetOwner(newpawn);
@@ -184,8 +194,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newpawn->r_CustomCharacterAssembly.DyeList[2] = GA_G::DYE_ID_NONE_MORE_BLACK;
 	newpawn->r_CustomCharacterAssembly.DyeList[3] = GA_G::DYE_ID_NONE_MORE_BLACK;
 	newpawn->r_CustomCharacterAssembly.DyeList[4] = GA_G::DYE_ID_NONE_MORE_BLACK;
-	newpawn->r_nSkillGroupSetId = GA_G::SKILL_GROUP_SET_ID_MEDIC;
-	newpawn->s_nCharacterId = 373;
+	newpawn->r_nSkillGroupSetId = classConfig.skillGroupSetId;
+	newpawn->s_nCharacterId = (int)GClientConnectionsData[ConnectionIndex].PlayerInfo.selected_character_id;
 
 
 
@@ -227,9 +237,9 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newrepplayer->r_CustomCharacterAssembly.DyeList[2] = GA_G::DYE_ID_NONE_MORE_BLACK;
 	newrepplayer->r_CustomCharacterAssembly.DyeList[3] = GA_G::DYE_ID_NONE_MORE_BLACK;
 	newrepplayer->r_CustomCharacterAssembly.DyeList[4] = GA_G::DYE_ID_NONE_MORE_BLACK;
-	newrepplayer->r_nProfileId = 567; // medic
-	newrepplayer->r_nHealthCurrent = 1300;
-	newrepplayer->r_nHealthMaximum = 1300;
+	newrepplayer->r_nProfileId = classConfig.profileId;
+	newrepplayer->r_nHealthCurrent = hp;
+	newrepplayer->r_nHealthMaximum = hp;
 	newrepplayer->r_nCharacterId = newpawn->s_nCharacterId;
 	newrepplayer->r_nLevel = 50;
 	// newrepplayer->r_sOrigPlayerName = FString(L"Zaxik");
@@ -295,8 +305,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	FTGTEAM_ENTRY newplayerteamentry;
 	newplayerteamentry.fsName = FString(GClientConnectionsData[(int32_t)((UNetConnection*)PlayerController->Player)].PlayerInfo.player_name_w.data());
 	newplayerteamentry.fsMapName = FString(L"Tetra Pier");
-	newplayerteamentry.nHealth = 1300;
-	newplayerteamentry.nMaxHealth = 1300;
+	newplayerteamentry.nHealth = hp;
+	newplayerteamentry.nMaxHealth = hp;
 	newplayerteamentry.bLeader = 0;
 	newplayerteamentry.pPrep = newrepplayer;
 
@@ -317,10 +327,14 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	// OLD: TgGame__SpawnBotById::GiveDevicesFromBotConfig(newpawn, newrepplayer, PLAYER_BOT_ID);
 
+	Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: profileId=%d, skillGroupSetId=%d, botId=%d, characterId=%d, hp=%d\n",
+	    classConfig.profileId, classConfig.skillGroupSetId, profileId, newpawn->s_nCharacterId, hp);
+
+	// TODO(Phase 5): Replace hardcoded medic loadout with classConfig device IDs
 	// Equip medic loadout (bot_id=567 config) via Inventory API
 	Inventory::Equip(newpawn, GA::DeviceId::Medic::LifeStealer,    GA::EquipSlot::Melee);      // equip point 1
 	Inventory::Equip(newpawn, GA::DeviceId::Medic::Agonizer,       GA::EquipSlot::Ranged);     // equip point 2
-	Inventory::Equip(newpawn, 2906,                                 GA::EquipSlot::Specialty);  // equip point 3 (specialty device from bot config)
+	Inventory::Equip(newpawn, GA::DeviceId::Medic::AdrenalineGun,                                 GA::EquipSlot::Specialty);  // equip point 3 (specialty device from bot config)
 	Inventory::Equip(newpawn, GA::DeviceId::Jetpack::Medic,        GA::EquipSlot::Jetpack);    // equip point 5
 	Inventory::Equip(newpawn, GA::DeviceId::Medic::HealingGrenade, GA::EquipSlot::Offhand2);   // equip point 7
 	Inventory::Equip(newpawn, GA::DeviceId::Medic::HealingBoost,   GA::EquipSlot::Rest);       // equip point 10 per bot_id=567 DB config
