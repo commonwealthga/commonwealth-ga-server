@@ -1,71 +1,68 @@
-# Requirements: Inventory API
+# Requirements: Commonwealth GA Server -- Class-Aware Spawning
 
-**Defined:** 2026-03-20
+**Defined:** 2026-03-21
 **Core Value:** Equip any device on any pawn with a single function call
 
-## v1 Requirements
+## v0.0.6 Requirements
 
-### Enums & Constants
+Requirements for class-aware player spawning. Each maps to roadmap phases.
 
-- [x] **ENUM-01**: EquipSlot enum with all 11 game slots (Melee, Ranged, Specialty, Jetpack, Offhand1-3, Morale, Rest, Beacon, Consumable)
-- [x] **ENUM-02**: Named DeviceId constants for known devices (Agonizer, MedicJetpack, etc.) populated from DB or UnrealScript
-- [x] **ENUM-03**: Quality enum/constants mapping quality names to value IDs
-- [x] **ENUM-04**: Slot-to-equip-point mapping table (slot value ID → equip point, wrapping FUN_109a1320)
+### Class Identity
 
-### API
+- [x] **CLID-01**: SpawnPlayerCharacter reads selected_profile_id from GClientConnectionsData for the spawning player
+- [x] **CLID-02**: Pawn r_nProfileId is set to the selected class profile ID (Assault=680, Medic=567, Recon=681, Robotic=679)
+- [x] **CLID-03**: PRI r_nProfileId is set to match Pawn's profile ID
+- [x] **CLID-04**: Pawn r_nSkillGroupSetId is set per class (Assault=19, Medic=11, Recon=17, Robotic=18)
+- [x] **CLID-05**: nPendingBotId is set to the class's bot_id before Pawn spawn
 
-- [ ] **API-01**: Inventory::Equip(Pawn, deviceId, slot, quality) function that handles the full equip flow
-- [ ] **API-02**: Equip function creates inventory object via CreateEquipDevice
-- [ ] **API-03**: Equip function assigns unique r_nDeviceInstanceId (non-zero)
-- [ ] **API-04**: Equip function syncs r_ItemCount with m_InventoryMap
-- [ ] **API-05**: Equip function triggers UpdateClientDevices for client replication
-- [ ] **API-06**: Quality parameter is optional, defaults to no quality (0)
+### Equipment
 
-### Refactor
+- [ ] **EQUP-01**: Each class equips its correct melee weapon (ImpactHammer/LifeStealer/DualDaggers/MaceAndShield)
+- [ ] **EQUP-02**: Each class equips its correct ranged weapon (RhinoSMG/Agonizer/Ballista/ColonyEnergyRifle)
+- [ ] **EQUP-03**: Each class equips its correct specialty device (InfernoXCannon/AdrenalineGun/SpringStealth/FocusedRepairArm)
+- [ ] **EQUP-04**: Each class equips its correct jetpack (Assault=7031, Medic=7032, Recon=7033, Robotic=7034)
+- [ ] **EQUP-05**: Each class equips all 3 offhand devices in slots Offhand1/Offhand2/Offhand3
+- [ ] **EQUP-06**: Each class equips its correct morale boost device
+- [ ] **EQUP-07**: Each class equips RestDevice (864) and the base attributes device at equip point 14
 
-- [x] **REF-01**: Refactor SpawnPlayerCharacter to use Inventory::Equip instead of manual equip code
-- [x] **REF-02**: Refactor GiveJetpack to use Inventory::Equip
-- [ ] **REF-03**: Verify client sees equipped devices after refactor (no regression)
+## Future Requirements
 
-## v2 Requirements
+### Equipment Management
 
-### Extended API
-
-- **EXT-01**: Inventory::Remove(Pawn, slot) to unequip a device
-- **EXT-02**: Inventory::GetEquipped(Pawn, slot) to query current device
-- **EXT-03**: String-based overloads for TCP/web integration
+- **EQMG-01**: Player can swap individual devices in loadout
+- **EQMG-02**: Loadout persists across respawns via database
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Persistent inventory | Future work — requires vendor/shop system |
-| Web loadout editor | Long-term vision, not current milestone |
-| Remove/swap API | Not needed for hardcoded loadout use case |
-| String-based lookups | Enum-only for now |
+| Per-class body mesh | DB shows all classes share body_asm_id=173; differentiation is via profileId + equipment |
+| Persistent loadout customization | Future work -- currently spawning with fixed default loadout per class |
+| Remove/swap API | Not needed for spawn-time equipping |
+| Web-based loadout editor | Long-term vision, not current scope |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ENUM-01 | Phase 1 | Complete |
-| ENUM-02 | Phase 1 | Complete |
-| ENUM-03 | Phase 1 | Complete |
-| ENUM-04 | Phase 1 | Complete |
-| API-01 | Phase 2 | Pending |
-| API-02 | Phase 2 | Pending |
-| API-03 | Phase 2 | Pending |
-| API-04 | Phase 2 | Pending |
-| API-05 | Phase 2 | Pending |
-| API-06 | Phase 2 | Pending |
-| REF-01 | Phase 3 | Complete |
-| REF-02 | Phase 3 | Complete |
-| REF-03 | Phase 3 | Pending |
+| CLID-01 | Phase 4 | Complete (04-01) |
+| CLID-02 | Phase 4 | Complete (04-01) |
+| CLID-03 | Phase 4 | Complete (04-01) |
+| CLID-04 | Phase 4 | Complete (04-01) |
+| CLID-05 | Phase 4 | Complete (04-01) |
+| EQUP-01 | Phase 5 | Pending |
+| EQUP-02 | Phase 5 | Pending |
+| EQUP-03 | Phase 5 | Pending |
+| EQUP-04 | Phase 5 | Pending |
+| EQUP-05 | Phase 5 | Pending |
+| EQUP-06 | Phase 5 | Pending |
+| EQUP-07 | Phase 5 | Pending |
 
 **Coverage:**
-- v1 requirements: 13 total
-- Mapped to phases: 13
-- Unmapped: 0 ✓
+- v0.0.6 requirements: 12 total
+- Mapped to phases: 12
+- Unmapped: 0
 
 ---
-*Requirements defined: 2026-03-20*
+*Requirements defined: 2026-03-21*
+*Last updated: 2026-03-21 after 04-01 execution (CLID-01 through CLID-05 complete)*

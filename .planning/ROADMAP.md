@@ -1,61 +1,59 @@
-# Roadmap: Inventory API
+# Roadmap: Commonwealth GA Server
 
-**Created:** 2026-03-20
-**Milestone:** v1 — Clean Inventory API
+## Milestones
+
+- ✅ **v0.0.5 Clean Inventory API** -- Phases 1-3 (shipped 2026-03-21)
+- 🚧 **v0.0.6 Class-Aware Spawning** -- Phases 4-5 (in progress)
 
 ## Phases
 
-### Phase 1: Enums & Constants
-**Goal:** Define all slot, device, and quality constants so the API has a vocabulary to work with.
-**Requirements:** ENUM-01, ENUM-02, ENUM-03, ENUM-04
-**Plans:** 1/1 plans complete
+<details>
+<summary>✅ v0.0.5 Clean Inventory API (Phases 1-3) -- SHIPPED 2026-03-21</summary>
 
-Plans:
-- [x] 01-01-PLAN.md — EquipSlot + Quality + DeviceId constants with bidirectional mapping and runtime lookup
+- [x] Phase 1: Enums & Constants (1/1 plans) -- completed 2026-03-21
+- [x] Phase 2: Inventory::Equip API (1/1 plans) -- completed 2026-03-21
+- [x] Phase 3: Refactor Existing Code (2/2 plans) -- completed 2026-03-21
 
-**Success Criteria:**
-1. EquipSlot enum covers all 11 game slots with correct slot value IDs
-2. DeviceId constants match actual device IDs from the game data
-3. Quality constants map to correct quality value IDs
-4. Equip point mapping produces correct results for all slots
+</details>
 
-### Phase 2: Inventory::Equip API
-**Goal:** Single function call that handles the full device equip flow end-to-end.
-**Requirements:** API-01, API-02, API-03, API-04, API-05, API-06
+### v0.0.6 Class-Aware Spawning (In Progress)
+
+**Milestone Goal:** Players spawn with the correct class identity and equipment based on their selected profile.
+
+### Phase 4: Class Identity
+**Goal**: SpawnPlayerCharacter reads the selected class and sets all identity fields on Pawn and PRI
+**Depends on**: Phase 3
+**Requirements**: CLID-01, CLID-02, CLID-03, CLID-04, CLID-05
+**Success Criteria** (what must be TRUE):
+  1. Spawned player's Pawn r_nProfileId matches the class they selected (Assault=680, Medic=567, Recon=681, Robotic=679)
+  2. PRI r_nProfileId matches Pawn r_nProfileId for the spawned player
+  3. Spawned player's Pawn r_nSkillGroupSetId is set to the correct value for their class
+  4. nPendingBotId is set to the class bot ID before Pawn spawn so InitializeDefaultProps loads the correct class defaults
 **Plans:** 1 plan
-
 Plans:
-- [x] 02-01-PLAN.md — Inventory class with Equip/Finalize/GetEquipped API and per-pawn tracking
+- [x] 04-01-PLAN.md — ClassConfig struct + class-aware SpawnPlayerCharacter + TcpSession consolidation
 
-**Success Criteria:**
-1. Inventory::Equip(Pawn, DeviceId::Agonizer, EquipSlot::Ranged, Quality::Epic) works
-2. Device appears on client with correct visuals
-3. No manual steps needed — function handles inventory object, instance ID, item count, replication
-4. Quality parameter is optional
+### Phase 5: Class Equipment
+**Goal**: Spawned player receives the full correct device loadout for their class across all equip slots
+**Depends on**: Phase 4
+**Requirements**: EQUP-01, EQUP-02, EQUP-03, EQUP-04, EQUP-05, EQUP-06, EQUP-07
+**Success Criteria** (what must be TRUE):
+  1. Spawned player has the correct melee and ranged weapons equipped for their class
+  2. Spawned player has the correct specialty device and jetpack equipped for their class
+  3. Spawned player has all 3 offhand devices equipped in Offhand1/Offhand2/Offhand3 slots for their class
+  4. Spawned player has the correct morale boost device, RestDevice, and base attributes device equipped
+**Plans**: TBD
 
-### Phase 3: Refactor Existing Code
-**Goal:** Replace GiveDevicesFromBotConfig call in SpawnPlayerCharacter with Inventory::Equip API, rewrite send_inventory_response to use Inventory tracking, and unify inventory ID counter.
-**Requirements:** REF-01, REF-02, REF-03
-**Plans:** 2 plans
+## Progress
 
-Plans:
-- [x] 03-01-PLAN.md — Extend Inventory API (NextId, effectGroupId, pawnId tracking) + refactor SpawnPlayerCharacter + unify ID counter
-- [ ] 03-02-PLAN.md — Rewrite send_inventory_response to use Inventory::GetEquippedByPawnId loop + verify compilation
-
-**Success Criteria:**
-1. SpawnPlayerCharacter uses Inventory::Equip for all devices
-2. GiveJetpack/GiveAgonizer kept as-is (dead code, harmless)
-3. Player spawns with correct loadout (no visual or functional regression)
-4. send_inventory_response is data-driven from Inventory tracking
-5. Single inventory ID source: Inventory::NextId()
-
-## Phase Summary
-
-| # | Phase | Requirements | Status |
-|---|-------|-------------|--------|
-| 1 | Enums & Constants | ENUM-01..04 | Complete (2026-03-21) |
-| 2 | Inventory::Equip API | API-01..06 | Complete (2026-03-21) |
-| 3 | Refactor Existing Code | REF-01..03 | In Progress (1/2 plans) |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Enums & Constants | v0.0.5 | 1/1 | Complete | 2026-03-21 |
+| 2. Inventory::Equip API | v0.0.5 | 1/1 | Complete | 2026-03-21 |
+| 3. Refactor Existing Code | v0.0.5 | 2/2 | Complete | 2026-03-21 |
+| 4. Class Identity | v0.0.6 | 1/1 | Complete | 2026-03-21 |
+| 5. Class Equipment | v0.0.6 | 0/1 | Not started | - |
 
 ---
 *Roadmap created: 2026-03-20*
+*Last updated: 2026-03-21 after Phase 4 execution (04-01 complete)*
