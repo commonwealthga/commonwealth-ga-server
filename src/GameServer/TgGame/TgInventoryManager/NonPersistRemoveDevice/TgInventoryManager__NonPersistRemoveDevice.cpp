@@ -1,5 +1,8 @@
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
 #include "src/TcpServer/TcpEvents/TcpEvents.hpp"
+#include "src/IpcClient/IpcClient.hpp"
+#include "src/Shared/IpcProtocol.hpp"
+#include "lib/nlohmann/json.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 void __fastcall TgInventoryManager__NonPersistRemoveDevice::Call(
@@ -39,14 +42,23 @@ void __fastcall TgInventoryManager__NonPersistRemoveDevice::Call(
 	if (InventoryManager->r_ItemCount > 0)
 		InventoryManager->r_ItemCount--;
 
-	// Queue TCP removal packet so the client's device bar clears the slot.
+	// Send GAME_EVENT beacon_remove IPC so the control server clears the client's device bar slot.
 	auto sessIt = GPawnSessions.find(pawn);
 	if (sessIt != GPawnSessions.end()) {
-		BeaconRemoveEvent rev;
-		rev.nPawnId      = pawn->r_nPawnId;
-		rev.nInventoryId = nInventoryId;
-		GBeaconRemoveEvents[sessIt->second].push_back(rev);
-		Logger::Log(GetLogChannel(), "NonPersistRemoveDevice: queued TCP removal for session %s\n",
+		// [Phase 10] Replaced: GBeaconRemoveEvents write -- now sends GAME_EVENT IPC
+		// BeaconRemoveEvent rev;
+		// rev.nPawnId      = pawn->r_nPawnId;
+		// rev.nInventoryId = nInventoryId;
+		// GBeaconRemoveEvents[sessIt->second].push_back(rev);
+		nlohmann::json ev;
+		ev["type"]         = IpcProtocol::MSG_GAME_EVENT;
+		ev["subtype"]      = "beacon_remove";
+		ev["instance_id"]  = IpcClient::GetInstanceId();
+		ev["session_guid"] = sessIt->second;
+		ev["pawn_id"]      = (int)pawn->r_nPawnId;
+		ev["inventory_id"] = nInventoryId;
+		IpcClient::Send(ev.dump());
+		Logger::Log(GetLogChannel(), "NonPersistRemoveDevice: Sent GAME_EVENT beacon_remove for session %s\n",
 			sessIt->second.c_str());
 	} else {
 		Logger::Log(GetLogChannel(), "NonPersistRemoveDevice: WARNING no session for pawn 0x%p\n", pawn);

@@ -8,6 +8,9 @@
 #include "src/GameServer/Misc/CMarshal/GetFlag/CMarshal__GetFlag.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/TcpServer/TcpEvents/TcpEvents.hpp"
+#include "src/IpcClient/IpcClient.hpp"
+#include "src/Shared/IpcProtocol.hpp"
+#include "lib/nlohmann/json.hpp"
 #include "src/Database/Database.hpp"
 #include "src/GameServer/Engine/KismetDump/KismetDump.hpp"
 #include "src/GameServer/Globals.hpp"
@@ -134,7 +137,19 @@ uint8_t __fastcall CGameClient__MarshalReceived::Call(void* GameClient, void* ed
 				}
 			}
 
-			GQuestEvents[session_guid].push_back({ (int)nQuestId, action });
+			// [Phase 10] Replaced: GQuestEvents write -- now sends GAME_EVENT IPC
+			// GQuestEvents[session_guid].push_back({ (int)nQuestId, action });
+			{
+				nlohmann::json ev;
+				ev["type"]         = IpcProtocol::MSG_GAME_EVENT;
+				ev["subtype"]      = "quest";
+				ev["instance_id"]  = IpcClient::GetInstanceId();
+				ev["session_guid"] = session_guid;
+				ev["quest_id"]     = (int)nQuestId;
+				ev["abandon"]      = (action == QuestAction::Abandon);
+				ev["character_id"] = nCharacterId;
+				IpcClient::Send(ev.dump());
+			}
 		}
 	}
 

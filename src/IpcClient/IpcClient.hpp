@@ -26,6 +26,9 @@ public:
     // Processes all queued inbound messages received since the last call.
     static void DrainInbound();
 
+    // GetInstanceId -- returns the instance_id assigned at Init().
+    static int64_t GetInstanceId() { return instance_id_; }
+
     // IpcThread -- background thread entry point (CreateThread callback).
     static DWORD WINAPI IpcThread(LPVOID);
 

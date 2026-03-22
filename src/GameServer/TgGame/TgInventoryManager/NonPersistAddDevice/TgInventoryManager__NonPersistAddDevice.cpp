@@ -1,7 +1,11 @@
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
+#include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/TcpServer/TcpEvents/TcpEvents.hpp"
+#include "src/IpcClient/IpcClient.hpp"
+#include "src/Shared/IpcProtocol.hpp"
+#include "lib/nlohmann/json.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 ATgDevice* __fastcall TgInventoryManager__NonPersistAddDevice::Call(ATgInventoryManager* InventoryManager, void* edx, int nDeviceId, int nEquipPoint) {
@@ -39,7 +43,7 @@ ATgDevice* __fastcall TgInventoryManager__NonPersistAddDevice::Call(ATgInventory
 		1004, // 24
 	};
 	int slotValueId = (nEquipPoint >= 1 && nEquipPoint <= 24) ? kEquipPointToSlotValueId[nEquipPoint] : 0;
-	int nInventoryId = ++TgGame__SpawnBotById::nInventoryIdCounter;
+	int nInventoryId = Inventory::NextId();
 
 	// Diagnostics: state before GiveDeviceById
 	void* controller = *(void**)((char*)ownerpawn + 0x1D8);
@@ -71,19 +75,30 @@ ATgDevice* __fastcall TgInventoryManager__NonPersistAddDevice::Call(ATgInventory
 	// If instanceIdAfter == 0:            UpdateClientDevices did NOT fire (guard condition failed)
 	// If instanceIdAfter == instanceIdBefore and != 0: slot was already occupied
 
-	// Queue a TCP inventory-add packet so the client's device bar updates.
+	// Send GAME_EVENT beacon_pickup IPC so the control server updates the client's device bar.
 	auto sessIt = GPawnSessions.find(ownerpawn);
 	if (sessIt != GPawnSessions.end()) {
-		BeaconPickupEvent bev;
-		bev.nPawnId      = ownerpawn->r_nPawnId;
-		bev.nDeviceId    = nDeviceId;
-		bev.nInventoryId = nInventoryId;
-		bev.nEquipSlotValueId = slotValueId;
-		GBeaconPickupEvents[sessIt->second].push_back(bev);
-		Logger::Log("debug", "  Queued BeaconPickupEvent for session %s (pawnId=%d deviceId=%d invId=%d slot=%d)\n",
-			sessIt->second.c_str(), bev.nPawnId, bev.nDeviceId, bev.nInventoryId, bev.nEquipSlotValueId);
+		// [Phase 10] Replaced: GBeaconPickupEvents write -- now sends GAME_EVENT IPC
+		// BeaconPickupEvent bev;
+		// bev.nPawnId      = ownerpawn->r_nPawnId;
+		// bev.nDeviceId    = nDeviceId;
+		// bev.nInventoryId = nInventoryId;
+		// bev.nEquipSlotValueId = slotValueId;
+		// GBeaconPickupEvents[sessIt->second].push_back(bev);
+		nlohmann::json ev;
+		ev["type"]                = IpcProtocol::MSG_GAME_EVENT;
+		ev["subtype"]             = "beacon_pickup";
+		ev["instance_id"]         = IpcClient::GetInstanceId();
+		ev["session_guid"]        = sessIt->second;
+		ev["pawn_id"]             = (int)ownerpawn->r_nPawnId;
+		ev["device_id"]           = nDeviceId;
+		ev["inventory_id"]        = nInventoryId;
+		ev["equip_slot_value_id"] = slotValueId;
+		IpcClient::Send(ev.dump());
+		Logger::Log("debug", "  Sent GAME_EVENT beacon_pickup for session %s (pawnId=%d deviceId=%d invId=%d slot=%d)\n",
+			sessIt->second.c_str(), (int)ownerpawn->r_nPawnId, nDeviceId, nInventoryId, slotValueId);
 	} else {
-		Logger::Log("debug", "  WARNING: no session found for pawn 0x%p — TCP device bar will not update\n", ownerpawn);
+		Logger::Log("debug", "  WARNING: no session found for pawn 0x%p — beacon_pickup IPC not sent\n", ownerpawn);
 	}
 
 	// If this is a beacon pickup, immediately unregister the deployed beacon so the entrance
