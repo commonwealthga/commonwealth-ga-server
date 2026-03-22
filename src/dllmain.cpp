@@ -236,7 +236,7 @@ unsigned long ModuleThread( void* ) {
 
 	::DetourTransactionCommit();
 
-	IpcClient::Init(Config::GetIpcHost(), Config::GetIpcPort());
+	IpcClient::Init(Config::GetIpcHost(), Config::GetIpcPort(), Config::GetInstanceId());
 
 }
 

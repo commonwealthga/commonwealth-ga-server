@@ -16,8 +16,8 @@
 
 class IpcClient {
 public:
-    // Init -- stores host/port, spawns IpcThread. Call once from ModuleThread.
-    static void Init(const std::string& host, uint16_t port);
+    // Init -- stores host/port/instance_id, spawns IpcThread. Call once from ModuleThread.
+    static void Init(const std::string& host, uint16_t port, int64_t instance_id);
 
     // Send -- game-thread API. Enqueues a JSON message for async send on the ASIO thread.
     static void Send(const std::string& json_msg);
@@ -40,6 +40,7 @@ private:
 
     static std::string host_;
     static uint16_t port_;
+    static int64_t instance_id_;
 
     // Set by IpcThread on connect, cleared on disconnect.
     // Accessed from both game thread (Send post) and ASIO thread.

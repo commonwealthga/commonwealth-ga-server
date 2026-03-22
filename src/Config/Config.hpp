@@ -13,5 +13,6 @@ public:
 	static int GetDifficultyValueId();
 	static uint16_t GetIpcPort();
 	static std::string GetIpcHost();
+	static int64_t GetInstanceId();
 };
 

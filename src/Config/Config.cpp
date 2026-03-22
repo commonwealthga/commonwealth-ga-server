@@ -135,4 +135,11 @@ std::string Config::GetIpcHost() {
 	return "127.0.0.1";
 }
 
+int64_t Config::GetInstanceId() {
+	ParsedOptions options = CommandLineParser::ParseCommandLine();
+	std::wstring val = options.switches[L"instanceid"];
+	if (val.empty()) return 0;
+	return static_cast<int64_t>(std::stoll(CommandLineParser::WideToUtf8(val)));
+}
+
 

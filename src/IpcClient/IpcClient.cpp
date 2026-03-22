@@ -17,6 +17,7 @@ std::deque<std::string> IpcClient::inbound_queue_;
 
 std::string             IpcClient::host_;
 uint16_t                IpcClient::port_         = 0;
+int64_t                 IpcClient::instance_id_  = 0;
 
 asio::io_context*       IpcClient::io_ctx_       = nullptr;
 bool                    IpcClient::write_in_progress_ = false;
@@ -37,9 +38,10 @@ struct IpcCsGuard {
 // Init
 // ---------------------------------------------------------------------------
 
-void IpcClient::Init(const std::string& host, uint16_t port) {
+void IpcClient::Init(const std::string& host, uint16_t port, int64_t instance_id) {
     host_ = host;
     port_ = port;
+    instance_id_ = instance_id;
 
     InitializeCriticalSection(&outbound_cs_);
     InitializeCriticalSection(&inbound_cs_);
@@ -84,6 +86,13 @@ DWORD WINAPI IpcClient::IpcThread(LPVOID) {
                 nlohmann::json ping_msg;
                 ping_msg["type"] = IpcProtocol::MSG_PING;
                 Send(ping_msg.dump());
+
+                // Send INSTANCE_HELLO to identify this game instance.
+                nlohmann::json hello;
+                hello["type"]        = IpcProtocol::MSG_INSTANCE_HELLO;
+                hello["instance_id"] = instance_id_;
+                Send(hello.dump());
+                Logger::Log("ipc", "[IPC] Sent INSTANCE_HELLO: instance_id=%lld\n", instance_id_);
 
                 // Arm the first async read.
                 do_read_header();
@@ -253,6 +262,9 @@ void IpcClient::DrainInbound() {
 
         if (type == IpcProtocol::MSG_PONG) {
             Logger::Log("ipc", "[IPC] PONG received\n");
+        } else if (type == IpcProtocol::MSG_INSTANCE_HELLO_ACK) {
+            bool accepted = j.value("accepted", false);
+            Logger::Log("ipc", "[IPC] INSTANCE_HELLO_ACK: accepted=%d\n", (int)accepted);
         } else if (type == IpcProtocol::MSG_PLAYER_REGISTER) {
             std::string guid        = j.value("session_guid", "");
             std::string pname       = j.value("player_name", "");
