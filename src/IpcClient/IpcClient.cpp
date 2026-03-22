@@ -2,6 +2,8 @@
 #include "src/Shared/IpcFraming.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "lib/nlohmann/json.hpp"
+#include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
+#include "src/Shared/HexUtils.hpp"
 
 // ---------------------------------------------------------------------------
 // Static member definitions
@@ -251,6 +253,40 @@ void IpcClient::DrainInbound() {
 
         if (type == IpcProtocol::MSG_PONG) {
             Logger::Log("ipc", "[IPC] PONG received\n");
+        } else if (type == IpcProtocol::MSG_PLAYER_REGISTER) {
+            std::string guid        = j.value("session_guid", "");
+            std::string pname       = j.value("player_name", "");
+            int64_t uid             = j.value("user_id", (int64_t)0);
+            int64_t char_id         = j.value("character_id", (int64_t)0);
+            uint32_t profile_id     = j.value("profile_id", (uint32_t)0);
+            // head_asm_id, gender_type_value_id, morph_data available in payload but not stored
+            // in PlayerInfo at registration time -- SpawnPlayerCharacter reads morph_data from
+            // the DLL's own sqlite DB (inserted at character creation via old flow).
+
+            PlayerInfo info;
+            info.session_guid          = guid;
+            info.player_name           = pname;
+            info.ip_address            = "";  // Not known yet; set by JOIN when UDP connects
+            info.user_id               = uid;
+            info.selected_character_id = char_id;
+            info.selected_profile_id   = profile_id;
+
+            // Convert player_name to wide string for UE3 APIs.
+            info.player_name_w = std::wstring(pname.begin(), pname.end());
+
+            PlayerRegistry::Register(info);
+
+            Logger::Log("ipc", "[IPC] PLAYER_REGISTER: guid=%s profile=%u char=%lld user=%lld\n",
+                guid.c_str(), profile_id, char_id, uid);
+
+            // Send ACK back to control server.
+            // pawn_id is 0 at registration time (pawn not yet spawned -- spawns at JOIN).
+            nlohmann::json ack;
+            ack["type"]         = IpcProtocol::MSG_PLAYER_REGISTER_ACK;
+            ack["session_guid"] = guid;
+            ack["success"]      = true;
+            ack["pawn_id"]      = 0;
+            IpcClient::Send(ack.dump());
         } else {
             Logger::Log("ipc", "[IPC] Unknown message type: %s\n", type.c_str());
         }
