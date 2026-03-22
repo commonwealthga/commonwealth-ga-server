@@ -30,7 +30,7 @@
 **Milestone Goal:** Players connect to a control server, select a character, and seamlessly land in a shared home map instance -- the foundation for multi-map gameplay.
 
 - [x] **Phase 6: Thread Safety + IPC Plumbing** - Mutex PlayerRegistry; build IPC channel and shared protocol header (completed 2026-03-21)
-- [ ] **Phase 7: Control Server + Protocol Migration** - Standalone control server binary; full GA TCP protocol migrated from DLL
+- [x] **Phase 7: Control Server + Protocol Migration** - Standalone control server binary; full GA TCP protocol migrated from DLL (completed 2026-03-22)
 - [ ] **Phase 8: Player Registration + UDP Redirect** - PLAYER_REGISTER flow with ACK; dynamic GSC_GO_PLAY; profile ID fixed
 - [ ] **Phase 9: Instance Lifecycle Management** - Spawn/track UE3 instances; readiness signaling; home map pre-spawn
 - [ ] **Phase 10: In-Game Event Routing** - Replace in-process event maps with IPC GAME_EVENT; control server routes to client
@@ -61,7 +61,7 @@ Plans:
   2. A GA client can connect to the control server on ports 9000/9001, complete auth, and reach character select without connecting to the DLL
   3. The DLL no longer starts a TCP listener or handles any GA client TCP protocol messages
   4. Control server reads and writes its own SQLite database for player/character/session state
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 - [x] 07-01-PLAN.md -- Makefile dual-target + Logger + Constants + Database (WAL) + PlayerSessionStore
 - [ ] 07-02-PLAN.md -- TcpSession + TcpListener protocol migration from DLL
@@ -117,7 +117,7 @@ Plans:
 | 4. Class Identity | v0.0.6 | 1/1 | Complete | 2026-03-21 |
 | 5. Class Equipment | v0.0.6 | 1/1 | Complete | 2026-03-21 |
 | 6. Thread Safety + IPC Plumbing | v0.0.7 | 2/2 | Complete | 2026-03-21 |
-| 7. Control Server + Protocol Migration | 2/3 | In Progress|  | - |
+| 7. Control Server + Protocol Migration | 3/3 | Complete   | 2026-03-22 | - |
 | 8. Player Registration + UDP Redirect | v0.0.7 | 0/? | Not started | - |
 | 9. Instance Lifecycle Management | v0.0.7 | 0/? | Not started | - |
 | 10. In-Game Event Routing | v0.0.7 | 0/? | Not started | - |
