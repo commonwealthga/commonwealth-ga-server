@@ -7,11 +7,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/Utils/DebugWindow/DebugWindow.cpp \
 			  \
 			  $(SRC_DIR)/Database/Database.cpp \
-			  \
-			  $(SRC_DIR)/TcpServer/TcpServerInit/TcpServerInit.cpp \
-			  $(SRC_DIR)/TcpServer/TcpEvents/TcpEvents.cpp \
-			  $(SRC_DIR)/TcpServer/TcpSession/TcpSession.cpp \
-			  $(SRC_DIR)/TcpServer/ChatSession/ChatSession.cpp \
+			  $(SRC_DIR)/GameServer/Storage/PawnSessions/PawnSessions.cpp \
 			  \
 			  $(SRC_DIR)/IpcClient/IpcClient.cpp \
 			  \
