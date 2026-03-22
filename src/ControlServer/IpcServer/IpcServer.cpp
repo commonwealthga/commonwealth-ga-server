@@ -1,5 +1,6 @@
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/ControlServer/Logger.hpp"
+#include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/Shared/IpcFraming.hpp"
 #include "lib/nlohmann/json.hpp"
@@ -16,7 +17,8 @@
 class IpcSession : public std::enable_shared_from_this<IpcSession> {
 public:
     explicit IpcSession(asio::ip::tcp::socket socket)
-        : socket_(std::move(socket)), write_in_progress_(false) {}
+        : socket_(std::move(socket)), write_in_progress_(false),
+          instance_id_(0), validated_(false) {}
 
     void start() {
         do_read_header();
@@ -35,6 +37,7 @@ private:
                 if (ec) {
                     Logger::Log("ipc", "[IpcServer] Read header error: %s\n",
                         ec.message().c_str());
+                    on_disconnect();
                     return;
                 }
 
@@ -60,6 +63,7 @@ private:
                 if (ec) {
                     Logger::Log("ipc", "[IpcServer] Read body error: %s\n",
                         ec.message().c_str());
+                    on_disconnect();
                     return;
                 }
 
@@ -67,6 +71,20 @@ private:
                 do_read_header();
             }
         );
+    }
+
+    // ── Disconnect cleanup ──────────────────────────────────────────────────
+
+    void on_disconnect() {
+        if (instance_id_ != 0) {
+            {
+                std::lock_guard<std::mutex> lock(sessions_mutex_);
+                g_sessions.erase(instance_id_);
+            }
+            InstanceRegistry::MarkStopped(instance_id_);
+            Logger::Log("ipc", "[IpcServer] Instance %lld disconnected, marked STOPPED\n",
+                (long long)instance_id_);
+        }
     }
 
     // ── Dispatch ────────────────────────────────────────────────────────────
@@ -80,7 +98,43 @@ private:
 
         std::string type = j.value("type", "");
 
-        if (type == IpcProtocol::MSG_PING) {
+        if (type == IpcProtocol::MSG_INSTANCE_HELLO) {
+            int64_t inst_id = j.value("instance_id", (int64_t)0);
+            Logger::Log("ipc", "[IpcServer] INSTANCE_HELLO: instance_id=%lld\n",
+                (long long)inst_id);
+
+            // Reject if instance_id is 0 (unassigned).
+            if (inst_id == 0) {
+                Logger::Log("ipc", "[IpcServer] INSTANCE_HELLO rejected: instance_id=0\n");
+                socket_.close();
+                return;
+            }
+
+            instance_id_ = inst_id;
+            validated_ = true;
+
+            // Register in g_sessions.
+            {
+                std::lock_guard<std::mutex> lock(sessions_mutex_);
+                g_sessions[inst_id] = shared_from_this();
+            }
+
+            // Send ACK.
+            nlohmann::json ack;
+            ack["type"]     = IpcProtocol::MSG_INSTANCE_HELLO_ACK;
+            ack["accepted"] = true;
+            send(ack.dump());
+            Logger::Log("ipc", "[IpcServer] INSTANCE_HELLO_ACK sent to instance_id=%lld\n",
+                (long long)inst_id);
+        }
+        else if (type == IpcProtocol::MSG_INSTANCE_READY) {
+            int64_t inst_id    = j.value("instance_id", (int64_t)0);
+            int max_players    = j.value("max_players", 0);
+            Logger::Log("ipc", "[IpcServer] INSTANCE_READY: instance_id=%lld max_players=%d\n",
+                (long long)inst_id, max_players);
+            InstanceRegistry::MarkReady(inst_id, max_players);
+        }
+        else if (type == IpcProtocol::MSG_PING) {
             Logger::Log("ipc", "[IpcServer] PING received, sending PONG\n");
             nlohmann::json pong;
             pong["type"] = IpcProtocol::MSG_PONG;
@@ -145,10 +199,23 @@ private:
     std::vector<uint8_t>     body_buf_;
     std::deque<std::string>  write_queue_;
     bool                     write_in_progress_;
+    int64_t                  instance_id_;   // 0 until INSTANCE_HELLO validated
+    bool                     validated_;     // true after INSTANCE_HELLO accepted
 
-    // IpcServer::send() calls IpcSession::send() -- grant access via friend.
+    // IpcServer::SendToInstance calls IpcSession::send() -- grant access via friend.
     friend class IpcServer;
+
+    // g_sessions and sessions_mutex_ accessed from dispatch() and on_disconnect().
+    static std::mutex sessions_mutex_;
+    static std::map<int64_t, std::weak_ptr<IpcSession>> g_sessions;
 };
+
+// ---------------------------------------------------------------------------
+// IpcSession static members (defined here, in IpcServer.cpp TU)
+// ---------------------------------------------------------------------------
+
+std::mutex IpcSession::sessions_mutex_;
+std::map<int64_t, std::weak_ptr<IpcSession>> IpcSession::g_sessions;
 
 // ---------------------------------------------------------------------------
 // IpcServer static members
@@ -156,9 +223,6 @@ private:
 
 std::mutex IpcServer::ack_mutex_;
 std::map<std::string, std::function<void(bool, int)>> IpcServer::pending_acks_;
-
-// Tracks the currently connected game instance. Phase 9 will expand to per-instance routing.
-static std::weak_ptr<IpcSession> g_active_ipc_session;
 
 // ---------------------------------------------------------------------------
 // IpcServer -- accepts game instance connections on the IPC port
@@ -176,17 +240,26 @@ void IpcServer::do_accept() {
             Logger::Log("ipc", "[IpcServer] Game instance connected from %s\n",
                 sock.remote_endpoint().address().to_string().c_str());
             auto session = std::make_shared<IpcSession>(std::move(sock));
-            g_active_ipc_session = session;
+            // Sessions are not tracked in g_sessions until INSTANCE_HELLO validates them.
             session->start();
         }
         do_accept();
     });
 }
 
-bool IpcServer::SendToInstance(const std::string& json_msg) {
-    auto session = g_active_ipc_session.lock();
+bool IpcServer::SendToInstance(int64_t instance_id, const std::string& json_msg) {
+    std::lock_guard<std::mutex> lock(IpcSession::sessions_mutex_);
+    auto it = IpcSession::g_sessions.find(instance_id);
+    if (it == IpcSession::g_sessions.end()) {
+        Logger::Log("ipc", "[IpcServer] SendToInstance: no session for instance_id=%lld\n",
+            (long long)instance_id);
+        return false;
+    }
+    auto session = it->second.lock();
     if (!session) {
-        Logger::Log("ipc", "[IpcServer] SendToInstance: no active IPC session\n");
+        IpcSession::g_sessions.erase(it);
+        Logger::Log("ipc", "[IpcServer] SendToInstance: expired session for instance_id=%lld\n",
+            (long long)instance_id);
         return false;
     }
     session->send(json_msg);

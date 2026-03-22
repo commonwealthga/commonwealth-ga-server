@@ -16,9 +16,9 @@ public:
                                    std::function<void(bool success, int pawn_id)> callback);
     static void ClearPendingAck(const std::string& session_guid);
 
-    // Send a JSON message to the connected game instance.
-    // Returns false if no IpcSession is connected.
-    static bool SendToInstance(const std::string& json_msg);
+    // Send a JSON message to a specific game instance by instance_id.
+    // Returns false if no session for that instance_id.
+    static bool SendToInstance(int64_t instance_id, const std::string& json_msg);
 
     // Delivers ACK from dispatch -- looks up and invokes pending callback.
     // Called from IpcSession (same TU) when PLAYER_REGISTER_ACK arrives.

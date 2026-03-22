@@ -54,8 +54,19 @@ void TcpSession::initiate_player_register_and_go_play() {
             }
         });
 
+    // Look up the home map instance to route PLAYER_REGISTER to the correct session.
+    auto home_instance = InstanceRegistry::GetReadyHomeInstance();
+    if (!home_instance) {
+        Logger::Log("tcp", "[TcpSession] No READY home map instance -- cannot send PLAYER_REGISTER for %s\n",
+            session_guid_.c_str());
+        pending_ack_timer_->cancel();
+        IpcServer::ClearPendingAck(session_guid_);
+        pending_ack_timer_.reset();
+        return;
+    }
+
     // Send PLAYER_REGISTER to game instance.
-    if (!IpcServer::SendToInstance(reg.dump())) {
+    if (!IpcServer::SendToInstance(home_instance->instance_id, reg.dump())) {
         Logger::Log("tcp", "[TcpSession] No IPC session -- cannot send PLAYER_REGISTER for %s\n",
             session_guid_.c_str());
         pending_ack_timer_->cancel();
