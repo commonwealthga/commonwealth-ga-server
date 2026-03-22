@@ -26,7 +26,7 @@ Requirements for multi-instance architecture. Each maps to roadmap phases.
 - [x] **ROUT-01**: Control server sends PLAYER_REGISTER IPC to game instance and waits for ACK before sending go_play_response to client
 - [x] **ROUT-02**: GSC_GO_PLAY uses dynamic instance address from registry instead of hardcoded Config::GetPort()
 - [x] **ROUT-03**: Control server maintains instance registry: mapName -> {pid, udp_port, ready, playerCount}
-- [ ] **ROUT-04**: Profile ID correctly flows from control server through IPC to game instance, resolving the default-profile bug
+- [x] **ROUT-04**: Profile ID correctly flows from control server through IPC to game instance, resolving the default-profile bug
 
 ### Instance Lifecycle
 
@@ -91,7 +91,7 @@ Requirements for multi-instance architecture. Each maps to roadmap phases.
 | ROUT-01 | Phase 8 | Complete |
 | ROUT-02 | Phase 8 | Complete |
 | ROUT-03 | Phase 8 | Complete |
-| ROUT-04 | Phase 8 | Pending |
+| ROUT-04 | Phase 8 | Complete |
 | INST-01 | Phase 9 | Pending |
 | INST-02 | Phase 9 | Pending |
 | INST-03 | Phase 9 | Pending |

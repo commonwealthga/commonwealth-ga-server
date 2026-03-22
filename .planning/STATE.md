@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 ## Current Position
 
 Phase: 8 of 11 (Phase 8 -- Player Registration UDP Redirect)
-Plan: 08-02 complete
+Plan: 08-03 complete (Phase 8 complete)
 Status: In progress
-Last activity: 2026-03-22 -- 08-02 complete (PLAYER_REGISTER ACK flow, 60s timer, InstanceRegistry go_play)
+Last activity: 2026-03-22 -- 08-03 complete (DLL PLAYER_REGISTER handler, JOIN profile_id copy, ROUT-04 fix)
 
-Progress: [####░░░░░] 44% (v0.0.8, 2/3 plans executed in phase 8)
+Progress: [#####░░░░] 55% (v0.0.8, 3/3 plans executed in phase 8, phase 8 complete)
 
 ## Performance Metrics
 
@@ -45,6 +45,7 @@ Progress: [####░░░░░] 44% (v0.0.8, 2/3 plans executed in phase 8)
 | 07    | 03   | ~12 min  | 3     | 5     |
 | 08    | 01   | ~4 min   | 2     | 7     |
 | 08    | 02   | ~5 min   | 2     | 4     |
+| 08    | 03   | ~3 min   | 2     | 2     |
 
 *Updated after each plan completion*
 
@@ -81,6 +82,9 @@ Progress: [####░░░░░] 44% (v0.0.8, 2/3 plans executed in phase 8)
 - [Phase 08-01]: --game-port default 9002 matches Config.cpp hardcoded UDP port from Phase 07-02
 - [Phase 08-02]: DeliverAck public in IpcServer so IpcSession (same TU) can call it without friend declaration
 - [Phase 08-02]: Both ADD_PLAYER_CHARACTER branches collapsed to single initiate_player_register_and_go_play() call
+- [Phase 08-03]: morph_data not stored in PlayerInfo at IPC registration -- SpawnPlayerCharacter reads from DLL sqlite DB
+- [Phase 08-03]: pawn_id=0 in PLAYER_REGISTER_ACK -- pawn spawns later at UDP JOIN, not at IPC registration time
+- [Phase 08-03]: Unregistered UDP players (no PLAYER_REGISTER) allowed through with log warning for direct-connect testing
 
 ### Blockers/Concerns
 
@@ -91,8 +95,8 @@ Progress: [####░░░░░] 44% (v0.0.8, 2/3 plans executed in phase 8)
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Completed 08-02 (PLAYER_REGISTER ACK flow, 60s timer, InstanceRegistry go_play).
+Stopped at: Completed 08-03 (DLL PLAYER_REGISTER handler, JOIN profile_id copy -- Phase 8 complete).
 Resume file: None
 
 ---
-*Last updated: 2026-03-22 after 08-02 completion*
+*Last updated: 2026-03-22 after 08-03 completion*

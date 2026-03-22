@@ -31,7 +31,7 @@
 
 - [x] **Phase 6: Thread Safety + IPC Plumbing** - Mutex PlayerRegistry; build IPC channel and shared protocol header (completed 2026-03-21)
 - [x] **Phase 7: Control Server + Protocol Migration** - Standalone control server binary; full GA TCP protocol migrated from DLL (completed 2026-03-22)
-- [ ] **Phase 8: Player Registration + UDP Redirect** - PLAYER_REGISTER flow with ACK; dynamic GSC_GO_PLAY; profile ID fixed
+- [x] **Phase 8: Player Registration + UDP Redirect** - PLAYER_REGISTER flow with ACK; dynamic GSC_GO_PLAY; profile ID fixed (completed 2026-03-22)
 - [ ] **Phase 9: Instance Lifecycle Management** - Spawn/track UE3 instances; readiness signaling; home map pre-spawn
 - [ ] **Phase 10: In-Game Event Routing** - Replace in-process event maps with IPC GAME_EVENT; control server routes to client
 - [ ] **Phase 11: Cleanup and Validation** - Remove dead DLL TCP code; validate end-to-end with two players
@@ -76,7 +76,7 @@ Plans:
   2. The go_play_response contains the dynamic instance UDP address from the instance registry, not a hardcoded port
   3. The game instance PlayerRegistry contains the correct profile ID for the player when their UDP HELLO arrives
   4. The instance registry holds mapName -> {pid, udp_port, ready, playerCount} and is queryable before routing
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 - [ ] 08-01-PLAN.md -- IpcProtocol extensions + HexUtils + InstanceRegistry + DB migration v15 + main.cpp seed
 - [ ] 08-02-PLAN.md -- IpcServer pending ACK map + TcpSession ACK-wait flow + go_play registry lookup
@@ -122,7 +122,7 @@ Plans:
 | 5. Class Equipment | v0.0.6 | 1/1 | Complete | 2026-03-21 |
 | 6. Thread Safety + IPC Plumbing | v0.0.7 | 2/2 | Complete | 2026-03-21 |
 | 7. Control Server + Protocol Migration | v0.0.7 | 3/3 | Complete | 2026-03-22 |
-| 8. Player Registration + UDP Redirect | 2/3 | In Progress|  | - |
+| 8. Player Registration + UDP Redirect | 3/3 | Complete   | 2026-03-22 | - |
 | 9. Instance Lifecycle Management | v0.0.7 | 0/? | Not started | - |
 | 10. In-Game Event Routing | v0.0.7 | 0/? | Not started | - |
 | 11. Cleanup and Validation | v0.0.7 | 0/? | Not started | - |
