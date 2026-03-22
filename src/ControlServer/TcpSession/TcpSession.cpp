@@ -2,6 +2,135 @@
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 
+// ---------------------------------------------------------------------------
+// TcpSession static member definitions
+// ---------------------------------------------------------------------------
+
+std::mutex TcpSession::sessions_mutex_;
+std::map<std::string, std::weak_ptr<TcpSession>> TcpSession::g_sessions_;
+
+// ---------------------------------------------------------------------------
+// TcpSession registry
+// ---------------------------------------------------------------------------
+
+void TcpSession::RegisterSession(const std::string& guid, std::weak_ptr<TcpSession> session) {
+    std::lock_guard<std::mutex> lock(sessions_mutex_);
+    g_sessions_[guid] = session;
+}
+
+void TcpSession::UnregisterSession(const std::string& guid) {
+    std::lock_guard<std::mutex> lock(sessions_mutex_);
+    g_sessions_.erase(guid);
+}
+
+// ---------------------------------------------------------------------------
+// DeliverGameEvent -- route IPC GAME_EVENT to the correct TcpSession
+// ---------------------------------------------------------------------------
+
+void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohmann::json& j) {
+    std::shared_ptr<TcpSession> session;
+    {
+        std::lock_guard<std::mutex> lock(sessions_mutex_);
+        auto it = g_sessions_.find(session_guid);
+        if (it == g_sessions_.end()) {
+            Logger::Log("ipc", "[TcpSession] DeliverGameEvent: no session for guid=%s -- dropped\n",
+                session_guid.c_str());
+            return;
+        }
+        session = it->second.lock();
+        if (!session) {
+            g_sessions_.erase(it);
+            Logger::Log("ipc", "[TcpSession] DeliverGameEvent: expired session guid=%s -- dropped\n",
+                session_guid.c_str());
+            return;
+        }
+    }
+
+    std::string subtype = j.value("subtype", "");
+
+    if (subtype == "spawn") {
+        int pawn_id = j.value("pawn_id", 0);
+        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: spawn pawn_id=%d guid=%s\n",
+            pawn_id, session_guid.c_str());
+        session->send_inventory_response(pawn_id);
+
+        // Request RandomSM actor names from game instance.
+        int64_t instance_id = j.value("instance_id", (int64_t)0);
+        if (instance_id != 0) {
+            nlohmann::json req;
+            req["type"]         = IpcProtocol::MSG_GET_RANDOMSM;
+            req["session_guid"] = session_guid;
+            IpcServer::SendToInstance(instance_id, req.dump());
+        }
+    }
+    else if (subtype == "beacon_pickup") {
+        int pawn_id            = j.value("pawn_id", 0);
+        int device_id          = j.value("device_id", 0);
+        int inventory_id       = j.value("inventory_id", 0);
+        int equip_slot_value_id = j.value("equip_slot_value_id", 0);
+        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: beacon_pickup pawn=%d dev=%d inv=%d slot=%d\n",
+            pawn_id, device_id, inventory_id, equip_slot_value_id);
+        session->send_beacon_pickup_response(pawn_id, device_id, inventory_id, equip_slot_value_id);
+    }
+    else if (subtype == "beacon_remove") {
+        int pawn_id      = j.value("pawn_id", 0);
+        int inventory_id = j.value("inventory_id", 0);
+        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: beacon_remove pawn=%d inv=%d\n",
+            pawn_id, inventory_id);
+        session->send_beacon_remove_response(pawn_id, inventory_id);
+    }
+    else if (subtype == "quest") {
+        int64_t character_id = j.value("character_id", (int64_t)0);
+        int quest_id         = j.value("quest_id", 0);
+        bool abandon         = j.value("abandon", false);
+
+        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: quest char=%lld quest=%d abandon=%d\n",
+            (long long)character_id, quest_id, (int)abandon);
+
+        if (abandon) {
+            PlayerSessionStore::Quests().Abandon(character_id, quest_id);
+            session->send_quest_abandon_response(quest_id);
+        } else {
+            std::string status = PlayerSessionStore::Quests().GetStatus(character_id, quest_id);
+            if (status.empty()) {
+                PlayerSessionStore::Quests().Accept(character_id, quest_id);
+                session->send_quest_accept_response(quest_id);
+            } else if (status == "active") {
+                PlayerSessionStore::Quests().Complete(character_id, quest_id);
+                session->send_quest_complete_response(quest_id);
+            } else {
+                // Already complete -- ignore
+                Logger::Log("ipc", "[TcpSession] DeliverGameEvent: quest already complete, ignored\n");
+            }
+        }
+    }
+    else {
+        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: unknown subtype=%s\n", subtype.c_str());
+    }
+}
+
+// ---------------------------------------------------------------------------
+// DeliverRandomSMResult -- route RANDOMSM_RESULT to the correct TcpSession
+// ---------------------------------------------------------------------------
+
+void TcpSession::DeliverRandomSMResult(const std::string& guid, std::vector<std::string> names) {
+    std::shared_ptr<TcpSession> session;
+    {
+        std::lock_guard<std::mutex> lock(sessions_mutex_);
+        auto it = g_sessions_.find(guid);
+        if (it == g_sessions_.end()) {
+            Logger::Log("ipc", "[TcpSession] DeliverRandomSMResult: no session guid=%s\n",
+                guid.c_str());
+            return;
+        }
+        session = it->second.lock();
+        if (!session) {
+            g_sessions_.erase(it);
+            return;
+        }
+    }
+    session->send_map_randomsm_settings_response(std::move(names));
+}
 
 void TcpSession::initiate_player_register_and_go_play() {
     // Build PLAYER_REGISTER JSON with full character state.
@@ -135,6 +264,7 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			PacketView pkt(data + 6, length - 6);
 			player_name = pkt.ReadString(GA_T::USER_NAME).value_or("unknown");
 			session_guid_ = GenerateSessionGuid();
+			RegisterSession(session_guid_, shared_from_this());
 			ip_address_ = socket_.remote_endpoint().address().to_string() + ":" + std::to_string(socket_.remote_endpoint().port());
 			user_id_ = PlayerSessionStore::UpsertUser(player_name);
 
@@ -641,9 +771,21 @@ void TcpSession::send_character_inventory_response(int nPawnId) {
 }
 
 void TcpSession::send_inventory_response(int nPawnId) {
-	// Phase 10: populate from IPC GAME_EVENT data.
-	// For Phase 7, send an empty inventory response (client needs SOMETHING to proceed).
-	Logger::Log("tcp", "[TCP] send_inventory_response: stub response for pawnId=%d (Phase 10: populate from IPC)\n", nPawnId);
+	// Hardcoded 7-device medic loadout matching DLL SpawnPlayerCharacter.
+	Logger::Log("tcp", "[TCP] send_inventory_response: 7-device loadout for pawnId=%d\n", nPawnId);
+
+	// Device table: {deviceId, invId, slotValueId, quality}
+	struct DeviceEntry { int deviceId; int invId; int slotValueId; int quality; };
+	static const DeviceEntry devices[] = {
+		{ 5800, 996,  221, 1162 },  // lifestealer/melee
+		{ 2991, 1000, 198, 1162 },  // agonizer/ranged
+		{ 2906, 995,  200, 1162 },  // bfb/specialty
+		{ 7032, 999,  201, 1162 },  // jetpack/travel
+		{ 2531, 997,  203, 1162 },  // healnade/offhand
+		{ 2773, 994,  386, 1162 },  // heal boost/morale
+		{ 864,  998,  502, 1162 },  // rest device/offhand
+	};
+	constexpr int kDeviceCount = 7;
 
 	std::vector<uint8_t> response;
 
@@ -655,9 +797,41 @@ void TcpSession::send_inventory_response(int nPawnId) {
 
 	Write4B(response, GA_T::PAWN_ID, nPawnId);
 
-	// Empty DATA_SET — no equipped items yet
 	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
-	append(response, 0x00, 0x00);  // 0 items
+	append(response, kDeviceCount & 0xFF, kDeviceCount >> 8);  // 7 items
+
+	for (int i = 0; i < kDeviceCount; i++) {
+		const auto& d = devices[i];
+
+		append(response, 0x0E, 0x00);  // 14 fields per item
+
+		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1);
+		Write4B(response, GA_T::ITEM_ID, d.deviceId);
+		Write4B(response, GA_T::INVENTORY_ID, d.invId);
+		Write4B(response, GA_T::BLUEPRINT_ID, 0);
+		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, d.quality);
+		Write4B(response, GA_T::DURABILITY, 100);
+		WriteDouble(response, GA_T::ACQUIRE_DATETIME, 1700000000.0);
+		WriteString(response, GA_T::BOUND_FLAG, "T");
+		Write4B(response, GA_T::LOCATION_VALUE_ID, 369);
+		Write4B(response, GA_T::INSTANCE_COUNT, 0x1);
+		WriteString(response, GA_T::ACTIVE_FLAG, "T");
+		Write4B(response, GA_T::DEVICE_ID, d.invId);
+
+		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
+		append(response, 0x01, 0x00);
+			append(response, 0x02, 0x00);
+			Write4B(response, GA_T::INVENTORY_ID, d.invId);
+			Write4B(response, GA_T::EFFECT_GROUP_ID, 0);
+
+		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
+		append(response, 0x01, 0x00);
+			append(response, 0x04, 0x00);
+			Write4B(response, GA_T::CHARACTER_ID, 0);  // 0 = applies to any pawn
+			Write4B(response, GA_T::INVENTORY_ID, d.invId);
+			Write4B(response, GA_T::PROFILE_ID, 0x1);
+			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, d.slotValueId);
+	}
 
 	send_response(response);
 }

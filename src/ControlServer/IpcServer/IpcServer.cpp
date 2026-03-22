@@ -1,6 +1,7 @@
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
+#include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/Shared/IpcFraming.hpp"
 #include "lib/nlohmann/json.hpp"
@@ -148,7 +149,31 @@ private:
                 guid.c_str(), (int)success, pawn_id);
             IpcServer::DeliverAck(guid, success, pawn_id);
         }
-        // Phase 10: GAME_EVENT, PLAYER_SPAWNED handlers go here
+        else if (type == IpcProtocol::MSG_GAME_EVENT) {
+            std::string subtype = j.value("subtype", "");
+            std::string guid    = j.value("session_guid", "");
+            Logger::Log("ipc", "[IpcServer] GAME_EVENT subtype=%s guid=%s\n",
+                subtype.c_str(), guid.c_str());
+            if (guid.empty()) {
+                Logger::Log("ipc", "[IpcServer] GAME_EVENT: empty guid -- dropped\n");
+                return;
+            }
+            TcpSession::DeliverGameEvent(guid, j);
+        }
+        else if (type == IpcProtocol::MSG_RANDOMSM_RESULT) {
+            std::string guid = j.value("session_guid", "");
+            Logger::Log("ipc", "[IpcServer] RANDOMSM_RESULT for guid=%s\n", guid.c_str());
+            if (guid.empty()) return;
+
+            std::vector<std::string> names;
+            if (j.contains("names") && j["names"].is_array()) {
+                for (auto& n : j["names"]) {
+                    if (n.is_string()) names.push_back(n.get<std::string>());
+                }
+            }
+
+            TcpSession::DeliverRandomSMResult(guid, std::move(names));
+        }
         else {
             Logger::Log("ipc", "[IpcServer] Unknown message type: %s\n", type.c_str());
         }

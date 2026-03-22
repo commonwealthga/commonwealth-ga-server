@@ -10,6 +10,8 @@
 #include <chrono>
 #include <cstring>
 #include <thread>
+#include <mutex>
+#include <map>
 
 #include "src/ControlServer/Constants/GameTypes.h"
 #include "src/ControlServer/Constants/TcpFunctions.h"
@@ -35,7 +37,21 @@ public:
         do_read();
     }
 
+    // ── TcpSession registry (session_guid -> weak_ptr<TcpSession>) ───────────
+
+    static void RegisterSession(const std::string& guid, std::weak_ptr<TcpSession> session);
+    static void UnregisterSession(const std::string& guid);
+
+    // Dispatch a GAME_EVENT JSON payload to the TcpSession identified by session_guid.
+    static void DeliverGameEvent(const std::string& session_guid, const nlohmann::json& j);
+
+    // Deliver a RANDOMSM_RESULT (list of actor names) to the TcpSession identified by guid.
+    static void DeliverRandomSMResult(const std::string& guid, std::vector<std::string> names);
+
 private:
+    // ── Static registry members ──────────────────────────────────────────────
+    static std::mutex sessions_mutex_;
+    static std::map<std::string, std::weak_ptr<TcpSession>> g_sessions_;
     asio::ip::tcp::socket socket_;
     asio::io_context& io_ctx_;
     std::vector<uint8_t> data_;
@@ -241,6 +257,7 @@ private:
                         pending_ack_timer_.reset();
                     }
                     if (!session_guid_.empty()) {
+                        UnregisterSession(session_guid_);
                         IpcServer::ClearPendingAck(session_guid_);
                         PlayerSessionStore::Unregister(session_guid_);
                     }
