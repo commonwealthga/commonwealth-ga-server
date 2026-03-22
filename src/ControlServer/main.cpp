@@ -1,7 +1,9 @@
 #include "src/ControlServer/Logger.hpp"
+#include "src/ControlServer/Config/ControlServerConfig.hpp"
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
+#include "src/ControlServer/InstanceSpawner/InstanceSpawner.hpp"
 #include "src/ControlServer/TcpListener/TcpListener.hpp"
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/Shared/IpcProtocol.hpp"
@@ -28,11 +30,7 @@ static void on_signal(int /*sig*/) {
 // ---------------------------------------------------------------------------
 
 int main(int argc, char* argv[]) {
-    // Defaults
-    uint16_t    tcp_port  = 9000;
-    uint16_t    ipc_port  = IpcProtocol::DEFAULT_IPC_PORT;
-    uint16_t    game_port = 9002;
-    std::string db_path   = "server.db";
+    std::string config_path = "control-server.json";
 
     // Parse CLI arguments
     for (int i = 1; i < argc; ++i) {
@@ -43,41 +41,17 @@ int main(int argc, char* argv[]) {
                 "Usage: control-server [OPTIONS]\n"
                 "\n"
                 "Options:\n"
-                "  --port=N          TCP listen port for GA clients (default: 9000)\n"
-                "  --port N          (space-separated form)\n"
-                "  --ipc-port=N      IPC listen port for game instances (default: 9010)\n"
-                "  --ipc-port N      (space-separated form)\n"
-                "  --game-port=N     Game instance UDP port for registry seed (default: 9002)\n"
-                "  --game-port N     (space-separated form)\n"
-                "  --db-path=PATH    SQLite database file path (default: server.db)\n"
-                "  --db-path PATH    (space-separated form)\n"
+                "  --config=PATH     Path to JSON config file (default: control-server.json)\n"
+                "  --config PATH     (space-separated form)\n"
                 "  --help, -h        Print this help and exit\n"
             );
             return 0;
         }
-        else if (arg == "--port" && i + 1 < argc) {
-            tcp_port = static_cast<uint16_t>(std::atoi(argv[++i]));
+        else if (arg == "--config" && i + 1 < argc) {
+            config_path = argv[++i];
         }
-        else if (arg.rfind("--port=", 0) == 0) {
-            tcp_port = static_cast<uint16_t>(std::atoi(arg.c_str() + 7));
-        }
-        else if (arg == "--ipc-port" && i + 1 < argc) {
-            ipc_port = static_cast<uint16_t>(std::atoi(argv[++i]));
-        }
-        else if (arg.rfind("--ipc-port=", 0) == 0) {
-            ipc_port = static_cast<uint16_t>(std::atoi(arg.c_str() + 11));
-        }
-        else if (arg == "--game-port" && i + 1 < argc) {
-            game_port = static_cast<uint16_t>(std::atoi(argv[++i]));
-        }
-        else if (arg.rfind("--game-port=", 0) == 0) {
-            game_port = static_cast<uint16_t>(std::atoi(arg.c_str() + 12));
-        }
-        else if (arg == "--db-path" && i + 1 < argc) {
-            db_path = argv[++i];
-        }
-        else if (arg.rfind("--db-path=", 0) == 0) {
-            db_path = arg.substr(10);
+        else if (arg.rfind("--config=", 0) == 0) {
+            config_path = arg.substr(9);
         }
         else {
             fprintf(stderr, "[control-server] Unknown argument: %s (use --help for usage)\n",
@@ -85,37 +59,68 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Load config from JSON file (falls back to defaults if file is absent).
+    ControlServerConfig cfg = ControlServerConfig::Load(config_path);
+
     // Signal handlers for clean shutdown
     std::signal(SIGINT,  on_signal);
     std::signal(SIGTERM, on_signal);
+    std::signal(SIGCHLD, SIG_IGN);  // Auto-reap child zombies (Linux)
 
-    Logger::Log("main", "Control server v0.0.7 starting...\n");
+    Logger::Log("main", "Control server v0.0.9 starting...\n");
 
     // Initialize database
-    Database::SetDbPath(db_path);
+    Database::SetDbPath(cfg.db_path);
     Database::Init();
 
     // Initialize session store
     PlayerSessionStore::Init();
 
-    // Initialize instance registry and seed the home map instance
+    // Initialize instance registry
     InstanceRegistry::Init();
-    InstanceRegistry::SeedHomeMapInstance("Rot_Redistribution05", game_port);
+
+    // Clear stale instances from any previous (crashed) run
+    InstanceRegistry::ClearStaleInstances();
+
+    // Allocate a UDP port for the home map instance
+    auto home_port = InstanceRegistry::AllocatePort(cfg.udp_port_range.lo, cfg.udp_port_range.hi);
+    if (!home_port) {
+        Logger::Log("main", "FATAL: No UDP ports available in range %d-%d\n",
+            (int)cfg.udp_port_range.lo, (int)cfg.udp_port_range.hi);
+        return 1;
+    }
+
+    // Register instance as STARTING in registry (returns instance_id = SQLite rowid)
+    int64_t home_instance_id = InstanceRegistry::InsertStarting(
+        cfg.home_map_name, *home_port, 0, /*is_home_map=*/true);
+
+    // Spawn the UE3 process via fork/exec with Wine
+    pid_t home_pid = InstanceSpawner::Spawn(
+        cfg, cfg.home_map_name, cfg.home_map_game_mode, *home_port, home_instance_id);
+
+    if (home_pid < 0) {
+        Logger::Log("main", "FATAL: Failed to spawn home map instance\n");
+        return 1;
+    }
+
+    Logger::Log("main", "Home map instance spawned: instance_id=%lld pid=%d port=%d map=%s\n",
+        (long long)home_instance_id, (int)home_pid, (int)*home_port, cfg.home_map_name.c_str());
 
     // Create ASIO io_context and register signal handler reference
     asio::io_context io;
     g_io = &io;
 
-    // Bind TCP listener (GA client connections on port 9000)
-    TcpListener listener(io, tcp_port);
+    // Bind TCP listener (GA client connections)
+    TcpListener listener(io, cfg.tcp_port);
 
-    // Bind IPC server (game instance connections on port 9010)
-    IpcServer ipc_server(io, ipc_port);
+    // Bind IPC server (game instance connections)
+    IpcServer ipc_server(io, cfg.ipc_port);
 
-    Logger::Log("main", "Control server ready. TCP port %d, IPC port %d, game port %d, DB %s\n",
-        (int)tcp_port, (int)ipc_port, (int)game_port, db_path.c_str());
+    Logger::Log("main", "Control server ready. TCP port %d, IPC port %d, DB %s, home_map=%s\n",
+        (int)cfg.tcp_port, (int)cfg.ipc_port, cfg.db_path.c_str(), cfg.home_map_name.c_str());
 
-    // Run event loop -- blocks until io.stop() or all work complete
+    // Run event loop -- blocks until io.stop() or all work complete.
+    // INSTANCE_READY from the game DLL will call InstanceRegistry::MarkReady() asynchronously.
     io.run();
 
     Logger::Log("main", "Control server shutting down.\n");
