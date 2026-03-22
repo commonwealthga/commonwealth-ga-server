@@ -34,7 +34,7 @@
 - [x] **Phase 8: Player Registration + UDP Redirect** - PLAYER_REGISTER flow with ACK; dynamic GSC_GO_PLAY; profile ID fixed (completed 2026-03-22)
 - [x] **Phase 9: Instance Lifecycle Management** - Spawn/track UE3 instances; readiness signaling; home map pre-spawn (completed 2026-03-22)
 - [x] **Phase 10: In-Game Event Routing** - Replace in-process event maps with IPC GAME_EVENT; control server routes to client (completed 2026-03-22)
-- [ ] **Phase 11: Cleanup and Validation** - Remove dead DLL TCP code; validate end-to-end with two players
+- [x] **Phase 11: Cleanup and Validation** - Remove dead DLL TCP code; validate end-to-end with two players (completed 2026-03-22)
 
 ## Phase Details
 
@@ -116,7 +116,9 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. DLL TcpServer, ChatServer, and TcpServerInit are removed; the DLL does not attempt to bind ports 9000/9001 at any point
   2. Two players can connect to the control server, complete auth and character select, land in the same home map instance with correct class identity, and receive in-game events
-**Plans**: TBD
+**Plans:** 1/1 plans complete
+Plans:
+- [ ] 11-01-PLAN.md -- Delete src/TcpServer/, relocate GPawnSessions, clean all references, verify DLL build
 
 ## Progress
 
@@ -132,8 +134,8 @@ Plans:
 | 8. Player Registration + UDP Redirect | v0.0.7 | 3/3 | Complete | 2026-03-22 |
 | 9. Instance Lifecycle Management | v0.0.7 | 3/3 | Complete | 2026-03-22 |
 | 10. In-Game Event Routing | 2/2 | Complete   | 2026-03-22 | - |
-| 11. Cleanup and Validation | v0.0.7 | 0/? | Not started | - |
+| 11. Cleanup and Validation | 1/1 | Complete   | 2026-03-22 | - |
 
 ---
 *Roadmap created: 2026-03-20*
-*Last updated: 2026-03-22 after Phase 10 planning (2 plans created)*
+*Last updated: 2026-03-22 after Phase 11 planning (1 plan created)*

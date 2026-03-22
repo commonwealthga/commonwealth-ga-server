@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Players connect to a control server, select a character, and seamlessly land in a shared home map instance
-**Current focus:** Phase 10 -- In-Game Event Routing
+**Current focus:** Phase 11 -- Cleanup and Validation
 
 ## Current Position
 
-Phase: 10 of 11 (Phase 10 -- In-Game Event Routing)
-Plan: 10-02 complete (2/2 plans executed in phase 10, phase complete)
-Status: Phase 10 complete -- Phase 11 next
-Last activity: 2026-03-22 -- 10-02 complete (all 4 event producers to IPC, DrainInbound GET_RANDOMSM handler)
+Phase: 11 of 11 (Phase 11 -- Cleanup and Validation)
+Plan: 11-01 complete (1/1 plans executed in phase 11)
+Status: Phase 11 in progress -- 11-01 complete
+Last activity: 2026-03-22 -- 11-01 complete (TcpServer deleted, GPawnSessions relocated, DLL builds clean)
 
-Progress: [##########] 93% (v0.0.11, 2/2 plans of phase 10 done)
+Progress: [##########] 96% (v0.0.11, 1/1 plans of phase 11 done)
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [##########] 93% (v0.0.11, 2/2 plans of phase 10 done)
 *Updated after each plan completion*
 | Phase 10-in-game-event-routing P01 | 5 | 2 tasks | 7 files |
 | Phase 10-in-game-event-routing P02 | 8 | 2 tasks | 6 files |
+| Phase 11-cleanup-and-validation P01 | 12 | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,8 @@ Progress: [##########] 93% (v0.0.11, 2/2 plans of phase 10 done)
 - [Phase 10-01]: spawn GAME_EVENT sends MSG_GET_RANDOMSM immediately after inventory -- separate IPC round-trip per 10-CONTEXT decision
 - [Phase 10]: GetInstanceId() inline in header -- zero overhead, no new .cpp linkage needed
 - [Phase 10]: Old global map writes commented out, not deleted -- Phase 11 CLEN-01 will remove TcpEvents.hpp entirely
+- [Phase 11-01]: GPawnSessions permanent home is src/GameServer/Storage/PawnSessions/ -- matches Storage layer convention
+- [Phase 11-01]: QuestAction enum defined locally in CGameClient__MarshalReceived.cpp (sole consumer after TcpEvents.hpp removal)
 
 ### Blockers/Concerns
 
@@ -116,7 +119,7 @@ Progress: [##########] 93% (v0.0.11, 2/2 plans of phase 10 done)
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Completed 10-02 (all 4 event producers to IPC, DrainInbound GET_RANDOMSM handler). Phase 10 complete.
+Stopped at: Completed 11-01 (TcpServer deleted, GPawnSessions relocated to Storage layer, DLL builds clean).
 Resume file: None
 
 ---
