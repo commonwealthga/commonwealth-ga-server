@@ -33,7 +33,7 @@
 - [x] **Phase 7: Control Server + Protocol Migration** - Standalone control server binary; full GA TCP protocol migrated from DLL (completed 2026-03-22)
 - [x] **Phase 8: Player Registration + UDP Redirect** - PLAYER_REGISTER flow with ACK; dynamic GSC_GO_PLAY; profile ID fixed (completed 2026-03-22)
 - [x] **Phase 9: Instance Lifecycle Management** - Spawn/track UE3 instances; readiness signaling; home map pre-spawn (completed 2026-03-22)
-- [ ] **Phase 10: In-Game Event Routing** - Replace in-process event maps with IPC GAME_EVENT; control server routes to client
+- [x] **Phase 10: In-Game Event Routing** - Replace in-process event maps with IPC GAME_EVENT; control server routes to client (completed 2026-03-22)
 - [ ] **Phase 11: Cleanup and Validation** - Remove dead DLL TCP code; validate end-to-end with two players
 
 ## Phase Details
@@ -104,7 +104,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Beacon pickup, quest event, and inventory event hooks send GAME_EVENT IPC messages instead of writing to GTcpEvents/GBeaconPickupEvents/GQuestEvents
   2. Control server receives GAME_EVENT, looks up the correct TcpSession by session GUID, and delivers the event to the client over TCP
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 10-01-PLAN.md -- Control server event infrastructure: IPC protocol constants, QuestStore, TcpSessionRegistry, IpcServer dispatch, inventory response
 - [ ] 10-02-PLAN.md -- DLL event producers: switch all 4 producers to IPC, GetInstanceId accessor, RandomSM IPC handler
@@ -131,7 +131,7 @@ Plans:
 | 7. Control Server + Protocol Migration | v0.0.7 | 3/3 | Complete | 2026-03-22 |
 | 8. Player Registration + UDP Redirect | v0.0.7 | 3/3 | Complete | 2026-03-22 |
 | 9. Instance Lifecycle Management | v0.0.7 | 3/3 | Complete | 2026-03-22 |
-| 10. In-Game Event Routing | 1/2 | In Progress|  | - |
+| 10. In-Game Event Routing | 2/2 | Complete   | 2026-03-22 | - |
 | 11. Cleanup and Validation | v0.0.7 | 0/? | Not started | - |
 
 ---

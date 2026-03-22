@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v0.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-22T09:36:11.793Z"
+last_updated: "2026-03-22T09:48:52.535Z"
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 14
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 ## Current Position
 
 Phase: 10 of 11 (Phase 10 -- In-Game Event Routing)
-Plan: 10-01 complete (1/2 plans executed in phase 10)
-Status: Phase 10 in progress
-Last activity: 2026-03-22 -- 10-01 complete (TcpSessionRegistry, GAME_EVENT dispatch, 7-device inventory, QuestStore)
+Plan: 10-02 complete (2/2 plans executed in phase 10, phase complete)
+Status: Phase 10 complete -- Phase 11 next
+Last activity: 2026-03-22 -- 10-02 complete (all 4 event producers to IPC, DrainInbound GET_RANDOMSM handler)
 
-Progress: [#########░] 87% (v0.0.10, 1/2 plans of phase 10 done)
+Progress: [##########] 93% (v0.0.11, 2/2 plans of phase 10 done)
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [#########░] 87% (v0.0.10, 1/2 plans of phase 10 done)
 
 *Updated after each plan completion*
 | Phase 10-in-game-event-routing P01 | 5 | 2 tasks | 7 files |
+| Phase 10-in-game-event-routing P02 | 8 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,8 @@ Progress: [#########░] 87% (v0.0.10, 1/2 plans of phase 10 done)
 - [Phase 10-01]: Session registry on TcpSession static members -- mirrors IpcSession g_sessions pattern, keeps lookup co-located with delivery
 - [Phase 10-01]: Hardcoded 7-device medic inventory in send_inventory_response -- matches DLL SpawnPlayerCharacter exactly, DB-driven deferred
 - [Phase 10-01]: spawn GAME_EVENT sends MSG_GET_RANDOMSM immediately after inventory -- separate IPC round-trip per 10-CONTEXT decision
+- [Phase 10]: GetInstanceId() inline in header -- zero overhead, no new .cpp linkage needed
+- [Phase 10]: Old global map writes commented out, not deleted -- Phase 11 CLEN-01 will remove TcpEvents.hpp entirely
 
 ### Blockers/Concerns
 
@@ -113,8 +116,8 @@ Progress: [#########░] 87% (v0.0.10, 1/2 plans of phase 10 done)
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Completed 10-01 (TcpSessionRegistry, GAME_EVENT dispatch, 7-device inventory response, QuestStore).
+Stopped at: Completed 10-02 (all 4 event producers to IPC, DrainInbound GET_RANDOMSM handler). Phase 10 complete.
 Resume file: None
 
 ---
-*Last updated: 2026-03-22 after 10-01 completion*
+*Last updated: 2026-03-22 after 10-02 completion*
