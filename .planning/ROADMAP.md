@@ -76,7 +76,11 @@ Plans:
   2. The go_play_response contains the dynamic instance UDP address from the instance registry, not a hardcoded port
   3. The game instance PlayerRegistry contains the correct profile ID for the player when their UDP HELLO arrives
   4. The instance registry holds mapName -> {pid, udp_port, ready, playerCount} and is queryable before routing
-**Plans**: TBD
+**Plans:** 1/3 plans executed
+Plans:
+- [ ] 08-01-PLAN.md -- IpcProtocol extensions + HexUtils + InstanceRegistry + DB migration v15 + main.cpp seed
+- [ ] 08-02-PLAN.md -- IpcServer pending ACK map + TcpSession ACK-wait flow + go_play registry lookup
+- [ ] 08-03-PLAN.md -- DLL IpcClient PLAYER_REGISTER handler + JOIN handler profile_id copy
 
 ### Phase 9: Instance Lifecycle Management
 **Goal**: Control server spawns, tracks, and reuses UE3 game instances; clients are never routed until an instance is ready
@@ -117,12 +121,12 @@ Plans:
 | 4. Class Identity | v0.0.6 | 1/1 | Complete | 2026-03-21 |
 | 5. Class Equipment | v0.0.6 | 1/1 | Complete | 2026-03-21 |
 | 6. Thread Safety + IPC Plumbing | v0.0.7 | 2/2 | Complete | 2026-03-21 |
-| 7. Control Server + Protocol Migration | 3/3 | Complete   | 2026-03-22 | - |
-| 8. Player Registration + UDP Redirect | v0.0.7 | 0/? | Not started | - |
+| 7. Control Server + Protocol Migration | v0.0.7 | 3/3 | Complete | 2026-03-22 |
+| 8. Player Registration + UDP Redirect | 1/3 | In Progress|  | - |
 | 9. Instance Lifecycle Management | v0.0.7 | 0/? | Not started | - |
 | 10. In-Game Event Routing | v0.0.7 | 0/? | Not started | - |
 | 11. Cleanup and Validation | v0.0.7 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-03-20*
-*Last updated: 2026-03-22 after Phase 7 planning (3 plans created)*
+*Last updated: 2026-03-22 after Phase 8 planning (3 plans created)*

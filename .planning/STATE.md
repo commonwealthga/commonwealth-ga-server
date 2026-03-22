@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Players connect to a control server, select a character, and seamlessly land in a shared home map instance
-**Current focus:** Phase 7 -- Control Server Protocol Migration
+**Current focus:** Phase 8 -- Player Registration UDP Redirect
 
 ## Current Position
 
-Phase: 7 of 11 (Phase 7 -- Control Server Protocol Migration)
-Plan: 07-03 complete
+Phase: 8 of 11 (Phase 8 -- Player Registration UDP Redirect)
+Plan: 08-01 complete
 Status: In progress
-Last activity: 2026-03-22 -- 07-03 complete (IpcServer, main.cpp wiring, DLL TCP cutover -- Phase 7 done)
+Last activity: 2026-03-22 -- 08-01 complete (IPC constants, HexUtils, InstanceRegistry, DB v15, --game-port wiring)
 
-Progress: [###░░░░░░] 30% (v0.0.7, 4/3 plans executed in phase 7)
+Progress: [####░░░░░] 40% (v0.0.8, 1/3 plans executed in phase 8)
 
 ## Performance Metrics
 
@@ -43,6 +43,7 @@ Progress: [###░░░░░░] 30% (v0.0.7, 4/3 plans executed in phase 7)
 | 07    | 01   | ~9 min   | 3     | 13    |
 | 07    | 02   | ~9 min   | 2     | 5     |
 | 07    | 03   | ~12 min  | 3     | 5     |
+| 08    | 01   | ~4 min   | 2     | 7     |
 
 *Updated after each plan completion*
 
@@ -74,6 +75,9 @@ Progress: [###░░░░░░] 30% (v0.0.7, 4/3 plans executed in phase 7)
 - [Phase 07]: IpcSession defined in IpcServer.cpp (not .hpp) -- private to TU, no external linkage needed
 - [Phase 07]: write_in_progress chain for IpcSession -- single-threaded ASIO ops, no strand needed, same pattern as IpcClient
 - [Phase 07]: Phase 10 stub comment in IpcServer::dispatch() marks where GAME_EVENT/PLAYER_SPAWNED handlers will be added
+- [Phase 08-01]: InstanceRegistry::Init() is a no-op (mutex default-constructed) for symmetry with PlayerSessionStore pattern
+- [Phase 08-01]: SeedHomeMapInstance stops all non-STOPPED rows before inserting fresh READY row (crash-recovery safe)
+- [Phase 08-01]: --game-port default 9002 matches Config.cpp hardcoded UDP port from Phase 07-02
 
 ### Blockers/Concerns
 
@@ -84,8 +88,8 @@ Progress: [###░░░░░░] 30% (v0.0.7, 4/3 plans executed in phase 7)
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Completed 07-03 (IpcServer, main.cpp wiring, DLL TCP cutover -- Phase 7 complete).
+Stopped at: Completed 08-01 (IPC constants, HexUtils, InstanceRegistry, DB v15, --game-port wiring).
 Resume file: None
 
 ---
-*Last updated: 2026-03-22 after 07-03 completion*
+*Last updated: 2026-03-22 after 08-01 completion*

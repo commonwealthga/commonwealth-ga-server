@@ -16,16 +16,16 @@ Requirements for multi-instance architecture. Each maps to roadmap phases.
 
 ### Control Server
 
-- [ ] **CTRL-01**: Standalone C++ control server binary compiles for both Linux (native ELF) and Windows (native PE) via build system
-- [ ] **CTRL-02**: Control server accepts client TCP connections on ports 9000/9001 using Asio
-- [ ] **CTRL-03**: Full GA TCP protocol (auth, character select, inventory, marshaling) migrated from DLL TcpSession to control server
-- [ ] **CTRL-04**: Control server has its own SQLite database for player/character/session state
+- [x] **CTRL-01**: Standalone C++ control server binary compiles for both Linux (native ELF) and Windows (native PE) via build system
+- [x] **CTRL-02**: Control server accepts client TCP connections on ports 9000/9001 using Asio
+- [x] **CTRL-03**: Full GA TCP protocol (auth, character select, inventory, marshaling) migrated from DLL TcpSession to control server
+- [x] **CTRL-04**: Control server has its own SQLite database for player/character/session state
 
 ### Player Routing
 
 - [ ] **ROUT-01**: Control server sends PLAYER_REGISTER IPC to game instance and waits for ACK before sending go_play_response to client
 - [ ] **ROUT-02**: GSC_GO_PLAY uses dynamic instance address from registry instead of hardcoded Config::GetPort()
-- [ ] **ROUT-03**: Control server maintains instance registry: mapName -> {pid, udp_port, ready, playerCount}
+- [x] **ROUT-03**: Control server maintains instance registry: mapName -> {pid, udp_port, ready, playerCount}
 - [ ] **ROUT-04**: Profile ID correctly flows from control server through IPC to game instance, resolving the default-profile bug
 
 ### Instance Lifecycle
@@ -84,13 +84,13 @@ Requirements for multi-instance architecture. Each maps to roadmap phases.
 | IPC-02 | Phase 6 | Complete |
 | IPC-03 | Phase 6 | Complete |
 | IPC-04 | Phase 6 | Complete |
-| CTRL-01 | Phase 7 | Pending |
-| CTRL-02 | Phase 7 | Pending |
-| CTRL-03 | Phase 7 | Pending |
-| CTRL-04 | Phase 7 | Pending |
+| CTRL-01 | Phase 7 | Complete |
+| CTRL-02 | Phase 7 | Complete |
+| CTRL-03 | Phase 7 | Complete |
+| CTRL-04 | Phase 7 | Complete |
 | ROUT-01 | Phase 8 | Pending |
 | ROUT-02 | Phase 8 | Pending |
-| ROUT-03 | Phase 8 | Pending |
+| ROUT-03 | Phase 8 | Complete |
 | ROUT-04 | Phase 8 | Pending |
 | INST-01 | Phase 9 | Pending |
 | INST-02 | Phase 9 | Pending |
