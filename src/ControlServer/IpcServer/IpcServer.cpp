@@ -86,6 +86,14 @@ private:
             pong["type"] = IpcProtocol::MSG_PONG;
             send(pong.dump());
         }
+        else if (type == IpcProtocol::MSG_PLAYER_REGISTER_ACK) {
+            std::string guid = j.value("session_guid", "");
+            bool success     = j.value("success", false);
+            int pawn_id      = j.value("pawn_id", 0);
+            Logger::Log("ipc", "[IpcServer] PLAYER_REGISTER_ACK: guid=%s success=%d pawn_id=%d\n",
+                guid.c_str(), (int)success, pawn_id);
+            IpcServer::DeliverAck(guid, success, pawn_id);
+        }
         // Phase 10: GAME_EVENT, PLAYER_SPAWNED handlers go here
         else {
             Logger::Log("ipc", "[IpcServer] Unknown message type: %s\n", type.c_str());
@@ -137,7 +145,20 @@ private:
     std::vector<uint8_t>     body_buf_;
     std::deque<std::string>  write_queue_;
     bool                     write_in_progress_;
+
+    // IpcServer::send() calls IpcSession::send() -- grant access via friend.
+    friend class IpcServer;
 };
+
+// ---------------------------------------------------------------------------
+// IpcServer static members
+// ---------------------------------------------------------------------------
+
+std::mutex IpcServer::ack_mutex_;
+std::map<std::string, std::function<void(bool, int)>> IpcServer::pending_acks_;
+
+// Tracks the currently connected game instance. Phase 9 will expand to per-instance routing.
+static std::weak_ptr<IpcSession> g_active_ipc_session;
 
 // ---------------------------------------------------------------------------
 // IpcServer -- accepts game instance connections on the IPC port
@@ -154,8 +175,47 @@ void IpcServer::do_accept() {
         if (!ec) {
             Logger::Log("ipc", "[IpcServer] Game instance connected from %s\n",
                 sock.remote_endpoint().address().to_string().c_str());
-            std::make_shared<IpcSession>(std::move(sock))->start();
+            auto session = std::make_shared<IpcSession>(std::move(sock));
+            g_active_ipc_session = session;
+            session->start();
         }
         do_accept();
     });
+}
+
+bool IpcServer::SendToInstance(const std::string& json_msg) {
+    auto session = g_active_ipc_session.lock();
+    if (!session) {
+        Logger::Log("ipc", "[IpcServer] SendToInstance: no active IPC session\n");
+        return false;
+    }
+    session->send(json_msg);
+    return true;
+}
+
+void IpcServer::RegisterPendingAck(const std::string& session_guid,
+                                   std::function<void(bool, int)> callback) {
+    std::lock_guard<std::mutex> lock(ack_mutex_);
+    pending_acks_[session_guid] = std::move(callback);
+}
+
+void IpcServer::ClearPendingAck(const std::string& session_guid) {
+    std::lock_guard<std::mutex> lock(ack_mutex_);
+    pending_acks_.erase(session_guid);
+}
+
+void IpcServer::DeliverAck(const std::string& session_guid, bool success, int pawn_id) {
+    std::function<void(bool, int)> cb;
+    {
+        std::lock_guard<std::mutex> lock(ack_mutex_);
+        auto it = pending_acks_.find(session_guid);
+        if (it == pending_acks_.end()) {
+            Logger::Log("ipc", "[IpcServer] DeliverAck: no pending ACK for guid %s (already timed out?)\n",
+                session_guid.c_str());
+            return;
+        }
+        cb = std::move(it->second);
+        pending_acks_.erase(it);
+    }
+    cb(success, pawn_id);
 }
