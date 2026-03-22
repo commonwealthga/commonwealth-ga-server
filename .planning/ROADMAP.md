@@ -32,7 +32,7 @@
 - [x] **Phase 6: Thread Safety + IPC Plumbing** - Mutex PlayerRegistry; build IPC channel and shared protocol header (completed 2026-03-21)
 - [x] **Phase 7: Control Server + Protocol Migration** - Standalone control server binary; full GA TCP protocol migrated from DLL (completed 2026-03-22)
 - [x] **Phase 8: Player Registration + UDP Redirect** - PLAYER_REGISTER flow with ACK; dynamic GSC_GO_PLAY; profile ID fixed (completed 2026-03-22)
-- [ ] **Phase 9: Instance Lifecycle Management** - Spawn/track UE3 instances; readiness signaling; home map pre-spawn
+- [x] **Phase 9: Instance Lifecycle Management** - Spawn/track UE3 instances; readiness signaling; home map pre-spawn (completed 2026-03-22)
 - [ ] **Phase 10: In-Game Event Routing** - Replace in-process event maps with IPC GAME_EVENT; control server routes to client
 - [ ] **Phase 11: Cleanup and Validation** - Remove dead DLL TCP code; validate end-to-end with two players
 
@@ -91,11 +91,11 @@ Plans:
   2. Control server does not route any player to an instance until INSTANCE_READY IPC is received from the DLL
   3. Home map instance is running and marked ready before the first client connection attempt
   4. A second player connecting to the same home map joins the already-running instance rather than spawning a new process
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
-- [ ] 09-01-PLAN.md -- ControlServerConfig + IpcProtocol extensions + InstanceRegistry extensions + DB migration v16
-- [ ] 09-02-PLAN.md -- InstanceSpawner fork/exec + IpcServer multi-session + main.cpp wiring
-- [ ] 09-03-PLAN.md -- DLL INSTANCE_HELLO/READY signaling + TcpSession readiness wait + instance_id routing
+- [x] 09-01-PLAN.md -- ControlServerConfig + IpcProtocol extensions + InstanceRegistry extensions + DB migration v16
+- [x] 09-02-PLAN.md -- InstanceSpawner fork/exec + IpcServer multi-session + main.cpp wiring
+- [x] 09-03-PLAN.md -- DLL INSTANCE_HELLO/READY signaling + TcpSession readiness wait + instance_id routing
 
 ### Phase 10: In-Game Event Routing
 **Goal**: In-game events (beacon pickups, quest progress, inventory updates) reach the client through IPC rather than in-process maps
@@ -127,10 +127,10 @@ Plans:
 | 6. Thread Safety + IPC Plumbing | v0.0.7 | 2/2 | Complete | 2026-03-21 |
 | 7. Control Server + Protocol Migration | v0.0.7 | 3/3 | Complete | 2026-03-22 |
 | 8. Player Registration + UDP Redirect | v0.0.7 | 3/3 | Complete | 2026-03-22 |
-| 9. Instance Lifecycle Management | 2/3 | In Progress|  | - |
+| 9. Instance Lifecycle Management | v0.0.7 | 3/3 | Complete | 2026-03-22 |
 | 10. In-Game Event Routing | v0.0.7 | 0/? | Not started | - |
 | 11. Cleanup and Validation | v0.0.7 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-03-20*
-*Last updated: 2026-03-22 after Phase 9 planning (3 plans created)*
+*Last updated: 2026-03-22 after Phase 9 completion (09-03 complete)*

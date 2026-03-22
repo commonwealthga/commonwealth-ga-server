@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 ## Current Position
 
 Phase: 9 of 11 (Phase 9 -- Instance Lifecycle Management)
-Plan: 09-02 complete (2/3 plans executed in phase 9)
-Status: In progress
-Last activity: 2026-03-22 -- 09-02 complete (InstanceSpawner fork/exec, IpcServer multi-session, main.cpp config-driven startup)
+Plan: 09-03 complete (3/3 plans executed in phase 9 -- PHASE COMPLETE)
+Status: Phase 9 complete
+Last activity: 2026-03-22 -- 09-03 complete (DLL INSTANCE_HELLO/READY signaling, TcpSession home-map readiness wait)
 
-Progress: [#######░░] 70% (v0.0.9, 2/3 plans executed in phase 9)
+Progress: [########░] 80% (v0.0.9, phase 9 of 11 complete)
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Progress: [#######░░] 70% (v0.0.9, 2/3 plans executed in phase 9)
 | 08    | 03   | ~3 min   | 2     | 2     |
 | 09    | 01   | ~3 min   | 2     | 9     |
 | 09    | 02   | ~8 min   | 2     | 6     |
+| 09    | 03   | ~10 min  | 2     | 8     |
 
 *Updated after each plan completion*
 
@@ -95,6 +96,9 @@ Progress: [#######░░] 70% (v0.0.9, 2/3 plans executed in phase 9)
 - [Phase 09-02]: on_disconnect() factored out of read error paths -- single place for g_sessions cleanup and MarkStopped
 - [Phase 09-02]: main.cpp config-only -- all flags consolidated to --config=PATH; JSON config drives all values
 - [Phase 09-02]: TcpSession routes PLAYER_REGISTER via GetReadyHomeInstance().instance_id -- single home map assumption for Phase 9
+- [Phase 09-03]: max_players hardcoded to 10 in INSTANCE_READY for Phase 9; read from GameInfo in future phase
+- [Phase 09-03]: wait_for_home_map_then_register uses 2s poll interval, 120s timeout; client stays on loading screen silently on timeout
+- [Phase 09-03]: assigned_instance_id_ cached on TcpSession when home map found -- prevents TOCTOU between find and route
 
 ### Blockers/Concerns
 
@@ -105,8 +109,8 @@ Progress: [#######░░] 70% (v0.0.9, 2/3 plans executed in phase 9)
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Completed 09-02 (InstanceSpawner fork/exec, IpcServer multi-session g_sessions, main.cpp config-driven startup with home map spawn).
+Stopped at: Completed 09-03 (DLL INSTANCE_HELLO/READY signaling, TcpSession home-map readiness wait -- Phase 9 complete).
 Resume file: None
 
 ---
-*Last updated: 2026-03-22 after 09-01 completion*
+*Last updated: 2026-03-22 after 09-03 completion*

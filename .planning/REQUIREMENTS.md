@@ -32,9 +32,9 @@ Requirements for multi-instance architecture. Each maps to roadmap phases.
 
 - [x] **INST-01**: Control server spawns UE3 game instances with DLL injection -- Linux via fork/exec + WINEDLLOVERRIDES, Windows via CreateProcess + built-in DLL injector
 - [x] **INST-02**: Per-instance UDP port assigned from control server port pool, passed as CLI arg
-- [ ] **INST-03**: DLL sends INSTANCE_READY IPC message after map load; control server blocks player routing until received
+- [x] **INST-03**: DLL sends INSTANCE_READY IPC message after map load; control server blocks player routing until received
 - [x] **INST-04**: Home map instance pre-spawned at control server startup
-- [ ] **INST-05**: Shared home map instances reused (existing running instance used instead of spawning duplicate)
+- [x] **INST-05**: Shared home map instances reused (existing running instance used instead of spawning duplicate)
 
 ### Event Routing
 
@@ -94,9 +94,9 @@ Requirements for multi-instance architecture. Each maps to roadmap phases.
 | ROUT-04 | Phase 8 | Complete |
 | INST-01 | Phase 9 | Complete |
 | INST-02 | Phase 9 | Complete |
-| INST-03 | Phase 9 | Pending |
+| INST-03 | Phase 9 | Complete |
 | INST-04 | Phase 9 | Complete |
-| INST-05 | Phase 9 | Pending |
+| INST-05 | Phase 9 | Complete |
 | EVNT-01 | Phase 10 | Pending |
 | EVNT-02 | Phase 10 | Pending |
 | CLEN-01 | Phase 11 | Pending |
