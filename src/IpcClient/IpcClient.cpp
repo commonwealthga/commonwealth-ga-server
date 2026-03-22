@@ -265,6 +265,55 @@ void IpcClient::DrainInbound() {
         } else if (type == IpcProtocol::MSG_INSTANCE_HELLO_ACK) {
             bool accepted = j.value("accepted", false);
             Logger::Log("ipc", "[IPC] INSTANCE_HELLO_ACK: accepted=%d\n", (int)accepted);
+        } else if (type == IpcProtocol::MSG_GET_RANDOMSM) {
+            std::string guid = j.value("session_guid", "");
+
+            // Iterate all UObjects looking for enabled TgRandomSMActors (bCollideActors=true).
+            // Same pattern as CGameClient__SendMapRandomSMSettingsMarshal.cpp.
+            UClass* smActorClass = ATgRandomSMActor::StaticClass();
+            std::vector<std::string> names;
+
+            for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
+                UObject* obj = UObject::GObjObjects()->Data[i];
+                if (!obj || !obj->IsA(smActorClass)) continue;
+
+                ATgRandomSMActor* actor = reinterpret_cast<ATgRandomSMActor*>(obj);
+
+                // bCollideActors is at offset 0xB0, bit 0x08000000.
+                // ToggleDisplay(true) calls SetCollision(true,...) which sets this bit.
+                bool bEnabled = (*(uint32_t*)((char*)actor + 0xB0)) & 0x08000000;
+                if (!bEnabled) continue;
+
+                // Get full actor name with FName instance number suffix (e.g. "TgRandomSMActor_23").
+                // actor->GetName() strips the numeric suffix -- must use UObject__GetName @ 0x1090d1d0.
+                int nameBuffer[3] = {0, 0, 0};
+                ((void(__fastcall*)(void*, void*, int*))0x1090d1d0)(actor, nullptr, nameBuffer);
+                wchar_t* wname = (wchar_t*)nameBuffer[0];
+
+                // Convert wide string to narrow (actor names are ASCII-safe).
+                std::string narrow;
+                if (wname) {
+                    for (wchar_t* p = wname; *p; ++p)
+                        narrow.push_back(static_cast<char>(*p));
+                }
+
+                // Free the FString buffer (appFree @ 0x112c18c0).
+                ((void(__fastcall*)(int*))0x112c18c0)(nameBuffer);
+
+                if (!narrow.empty()) {
+                    names.push_back(std::move(narrow));
+                }
+            }
+
+            Logger::Log("ipc", "[IPC] GET_RANDOMSM: collecting %d actors for guid=%s\n",
+                (int)names.size(), guid.c_str());
+
+            nlohmann::json result;
+            result["type"]         = IpcProtocol::MSG_RANDOMSM_RESULT;
+            result["session_guid"] = guid;
+            result["names"]        = names;
+            IpcClient::Send(result.dump());
+
         } else if (type == IpcProtocol::MSG_PLAYER_REGISTER) {
             std::string guid        = j.value("session_guid", "");
             std::string pname       = j.value("player_name", "");
