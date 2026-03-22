@@ -104,7 +104,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Beacon pickup, quest event, and inventory event hooks send GAME_EVENT IPC messages instead of writing to GTcpEvents/GBeaconPickupEvents/GQuestEvents
   2. Control server receives GAME_EVENT, looks up the correct TcpSession by session GUID, and delivers the event to the client over TCP
-**Plans**: TBD
+**Plans:** 1/2 plans executed
+Plans:
+- [ ] 10-01-PLAN.md -- Control server event infrastructure: IPC protocol constants, QuestStore, TcpSessionRegistry, IpcServer dispatch, inventory response
+- [ ] 10-02-PLAN.md -- DLL event producers: switch all 4 producers to IPC, GetInstanceId accessor, RandomSM IPC handler
 
 ### Phase 11: Cleanup and Validation
 **Goal**: Dead DLL TCP code is removed and two players can connect, spawn, and receive events through the full architecture
@@ -128,9 +131,9 @@ Plans:
 | 7. Control Server + Protocol Migration | v0.0.7 | 3/3 | Complete | 2026-03-22 |
 | 8. Player Registration + UDP Redirect | v0.0.7 | 3/3 | Complete | 2026-03-22 |
 | 9. Instance Lifecycle Management | v0.0.7 | 3/3 | Complete | 2026-03-22 |
-| 10. In-Game Event Routing | v0.0.7 | 0/? | Not started | - |
+| 10. In-Game Event Routing | 1/2 | In Progress|  | - |
 | 11. Cleanup and Validation | v0.0.7 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-03-20*
-*Last updated: 2026-03-22 after Phase 9 completion (09-03 complete)*
+*Last updated: 2026-03-22 after Phase 10 planning (2 plans created)*

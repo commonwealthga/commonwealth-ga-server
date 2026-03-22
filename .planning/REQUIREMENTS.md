@@ -39,7 +39,7 @@ Requirements for multi-instance architecture. Each maps to roadmap phases.
 ### Event Routing
 
 - [ ] **EVNT-01**: All in-process global event maps (GTcpEvents, GBeaconPickupEvents, GQuestEvents) replaced with IPC GAME_EVENT messages
-- [ ] **EVNT-02**: Control server routes received GAME_EVENT messages to the correct TcpSession for TCP delivery to client
+- [x] **EVNT-02**: Control server routes received GAME_EVENT messages to the correct TcpSession for TCP delivery to client
 
 ### Cleanup
 
@@ -98,7 +98,7 @@ Requirements for multi-instance architecture. Each maps to roadmap phases.
 | INST-04 | Phase 9 | Complete |
 | INST-05 | Phase 9 | Complete |
 | EVNT-01 | Phase 10 | Pending |
-| EVNT-02 | Phase 10 | Pending |
+| EVNT-02 | Phase 10 | Complete |
 | CLEN-01 | Phase 11 | Pending |
 
 **Coverage:**

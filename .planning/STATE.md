@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v0.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-22T00:08:49.917Z"
+last_updated: "2026-03-22T09:36:11.793Z"
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  total_phases: 6
+  completed_phases: 5
+  total_plans: 14
+  completed_plans: 13
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Players connect to a control server, select a character, and seamlessly land in a shared home map instance
-**Current focus:** Phase 9 -- Instance Lifecycle Management
+**Current focus:** Phase 10 -- In-Game Event Routing
 
 ## Current Position
 
-Phase: 9 of 11 (Phase 9 -- Instance Lifecycle Management)
-Plan: 09-03 complete (3/3 plans executed in phase 9 -- PHASE COMPLETE)
-Status: Phase 9 complete
-Last activity: 2026-03-22 -- 09-03 complete (DLL INSTANCE_HELLO/READY signaling, TcpSession home-map readiness wait)
+Phase: 10 of 11 (Phase 10 -- In-Game Event Routing)
+Plan: 10-01 complete (1/2 plans executed in phase 10)
+Status: Phase 10 in progress
+Last activity: 2026-03-22 -- 10-01 complete (TcpSessionRegistry, GAME_EVENT dispatch, 7-device inventory, QuestStore)
 
-Progress: [########░] 80% (v0.0.9, phase 9 of 11 complete)
+Progress: [#########░] 87% (v0.0.10, 1/2 plans of phase 10 done)
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Progress: [########░] 80% (v0.0.9, phase 9 of 11 complete)
 | 09    | 03   | ~10 min  | 2     | 8     |
 
 *Updated after each plan completion*
+| Phase 10-in-game-event-routing P01 | 5 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,9 @@ Progress: [########░] 80% (v0.0.9, phase 9 of 11 complete)
 - [Phase 09-03]: max_players hardcoded to 10 in INSTANCE_READY for Phase 9; read from GameInfo in future phase
 - [Phase 09-03]: wait_for_home_map_then_register uses 2s poll interval, 120s timeout; client stays on loading screen silently on timeout
 - [Phase 09-03]: assigned_instance_id_ cached on TcpSession when home map found -- prevents TOCTOU between find and route
+- [Phase 10-01]: Session registry on TcpSession static members -- mirrors IpcSession g_sessions pattern, keeps lookup co-located with delivery
+- [Phase 10-01]: Hardcoded 7-device medic inventory in send_inventory_response -- matches DLL SpawnPlayerCharacter exactly, DB-driven deferred
+- [Phase 10-01]: spawn GAME_EVENT sends MSG_GET_RANDOMSM immediately after inventory -- separate IPC round-trip per 10-CONTEXT decision
 
 ### Blockers/Concerns
 
@@ -109,8 +113,8 @@ Progress: [########░] 80% (v0.0.9, phase 9 of 11 complete)
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Completed 09-03 (DLL INSTANCE_HELLO/READY signaling, TcpSession home-map readiness wait -- Phase 9 complete).
+Stopped at: Completed 10-01 (TcpSessionRegistry, GAME_EVENT dispatch, 7-device inventory response, QuestStore).
 Resume file: None
 
 ---
-*Last updated: 2026-03-22 after 09-03 completion*
+*Last updated: 2026-03-22 after 10-01 completion*
