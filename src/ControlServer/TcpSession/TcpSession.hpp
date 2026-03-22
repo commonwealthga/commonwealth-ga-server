@@ -50,6 +50,9 @@ private:
     // ACK-wait timer for PLAYER_REGISTER flow. Cancelled on ACK arrival or disconnect.
     std::shared_ptr<asio::steady_timer> pending_ack_timer_;
 
+    // Set when a READY home map instance is found for this player.
+    int64_t assigned_instance_id_ = 0;
+
     template<typename... Bytes>
     void append(std::vector<uint8_t>& buffer, Bytes&&... bytes) {
         (buffer.push_back(static_cast<uint8_t>(bytes)), ...);
@@ -251,6 +254,10 @@ private:
     // Sends PLAYER_REGISTER over IPC and arms 60-second ACK-wait timer.
     // On ACK success: calls send_go_play_response(). On timeout/failure: silent.
     void initiate_player_register_and_go_play();
+
+    // Polls for a READY home map instance every 2 seconds up to remaining_seconds,
+    // then calls initiate_player_register_and_go_play().
+    void wait_for_home_map_then_register(int remaining_seconds);
 
     void send_map_randomsm_settings_response(std::vector<std::string> names);
 

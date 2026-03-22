@@ -89,6 +89,36 @@ void TcpSession::initiate_player_register_and_go_play() {
 }
 
 
+void TcpSession::wait_for_home_map_then_register(int remaining_seconds) {
+    if (remaining_seconds <= 0) {
+        Logger::Log("tcp", "[TcpSession] Home map instance not ready (timeout): %s\n",
+            session_guid_.c_str());
+        return;  // Client stays on loading screen; no go_play sent
+    }
+
+    auto instance = InstanceRegistry::GetReadyHomeInstance();
+    if (instance) {
+        // Instance is ready -- cache its instance_id and proceed.
+        assigned_instance_id_ = instance->instance_id;
+        Logger::Log("tcp", "[TcpSession] Home map ready: instance_id=%lld for %s\n",
+            assigned_instance_id_, session_guid_.c_str());
+        initiate_player_register_and_go_play();
+        return;
+    }
+
+    // Poll again in 2 seconds.
+    auto self(shared_from_this());
+    auto timer = std::make_shared<asio::steady_timer>(io_ctx_);
+    timer->expires_after(std::chrono::seconds(2));
+    timer->async_wait([this, self, timer, remaining_seconds](std::error_code ec) {
+        if (!ec) {
+            wait_for_home_map_then_register(remaining_seconds - 2);
+        }
+        // ec == operation_aborted means timer cancelled (e.g., disconnect) -- do nothing
+    });
+}
+
+
 void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 	if (length < 6) {
 		Logger::Log("tcp", "[%s] Packet too short\n", Logger::GetTime());
@@ -167,8 +197,8 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 
 			send_select_character_response();
 
-			// Send PLAYER_REGISTER to game instance and wait for ACK before go_play.
-			initiate_player_register_and_go_play();
+			// Wait for a READY home map instance, then send PLAYER_REGISTER.
+			wait_for_home_map_then_register(120);  // 120 second timeout
 
 			break;
 		}
@@ -197,8 +227,8 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				Logger::GetTime(), profileId, headAsmId, genderTypeId, (unsigned)morphBlob.size(), selected_character_id_);
 
 			send_add_player_character_response();
-			// Both tutorial and normal paths use PLAYER_REGISTER ACK-wait flow.
-			initiate_player_register_and_go_play();
+			// Both tutorial and normal paths use wait-for-READY then PLAYER_REGISTER flow.
+			wait_for_home_map_then_register(120);  // 120 second timeout
 			break;
 		}
 		case GA_U::DELETE_CHARACTER:
@@ -1044,9 +1074,9 @@ void TcpSession::send_match_launch_response()
 
 void TcpSession::send_go_play_tutorial_response()
 {
-	auto instance = InstanceRegistry::GetReadyInstance("Rot_Redistribution05");
+	auto instance = InstanceRegistry::GetReadyHomeInstance();
 	if (!instance) {
-		Logger::Log("tcp", "[TcpSession] No READY instance for go_play_tutorial\n");
+		Logger::Log("tcp", "[TcpSession] No READY home map instance for go_play_tutorial\n");
 		return;
 	}
 
@@ -1092,9 +1122,9 @@ void TcpSession::send_marshal_channel_response()
 
 void TcpSession::send_go_play_response()
 {
-	auto instance = InstanceRegistry::GetReadyInstance("Rot_Redistribution05");
+	auto instance = InstanceRegistry::GetReadyHomeInstance();
 	if (!instance) {
-		Logger::Log("tcp", "[TcpSession] No READY instance for go_play\n");
+		Logger::Log("tcp", "[TcpSession] No READY home map instance for go_play\n");
 		return;
 	}
 
