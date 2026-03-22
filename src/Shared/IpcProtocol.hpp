@@ -16,7 +16,10 @@ namespace IpcProtocol {
 constexpr const char* MSG_PING = "PING";
 constexpr const char* MSG_PONG = "PONG";
 
-// Future: MSG_PLAYER_REGISTER, MSG_INSTANCE_READY, MSG_GAME_EVENT
+constexpr const char* MSG_PLAYER_REGISTER     = "PLAYER_REGISTER";
+constexpr const char* MSG_PLAYER_REGISTER_ACK = "PLAYER_REGISTER_ACK";
+
+// Future: MSG_INSTANCE_READY, MSG_GAME_EVENT
 
 // ---------------------------------------------------------------------------
 // IPC transport
