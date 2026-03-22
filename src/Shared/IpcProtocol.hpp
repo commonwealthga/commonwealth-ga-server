@@ -19,7 +19,11 @@ constexpr const char* MSG_PONG = "PONG";
 constexpr const char* MSG_PLAYER_REGISTER     = "PLAYER_REGISTER";
 constexpr const char* MSG_PLAYER_REGISTER_ACK = "PLAYER_REGISTER_ACK";
 
-// Future: MSG_INSTANCE_READY, MSG_GAME_EVENT
+constexpr const char* MSG_INSTANCE_HELLO     = "INSTANCE_HELLO";
+constexpr const char* MSG_INSTANCE_HELLO_ACK = "INSTANCE_HELLO_ACK";
+constexpr const char* MSG_INSTANCE_READY     = "INSTANCE_READY";
+
+// Future: MSG_GAME_EVENT, MSG_PLAYER_SPAWNED
 
 // ---------------------------------------------------------------------------
 // IPC transport

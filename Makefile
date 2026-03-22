@@ -241,11 +241,13 @@ CS_SRC_DIR=src/ControlServer
 CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/main.cpp \
 	$(CS_SRC_DIR)/Constants/DeviceIds.cpp \
+	$(CS_SRC_DIR)/Config/ControlServerConfig.cpp \
 	$(CS_SRC_DIR)/Database/Database.cpp \
 	$(CS_SRC_DIR)/PlayerSessionStore/PlayerSessionStore.cpp \
 	$(CS_SRC_DIR)/TcpSession/TcpSession.cpp \
 	$(CS_SRC_DIR)/IpcServer/IpcServer.cpp \
-	$(CS_SRC_DIR)/InstanceRegistry/InstanceRegistry.cpp
+	$(CS_SRC_DIR)/InstanceRegistry/InstanceRegistry.cpp \
+	$(CS_SRC_DIR)/InstanceSpawner/InstanceSpawner.cpp
 
 CS_SOURCES=$(CS_CPP_SOURCES)
 
