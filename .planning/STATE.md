@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 ## Current Position
 
 Phase: 9 of 11 (Phase 9 -- Instance Lifecycle Management)
-Plan: 09-01 complete (1/3 plans executed in phase 9)
+Plan: 09-02 complete (2/3 plans executed in phase 9)
 Status: In progress
-Last activity: 2026-03-22 -- 09-01 complete (ControlServerConfig, IpcProtocol instance messages, InstanceRegistry methods, DB migration v16)
+Last activity: 2026-03-22 -- 09-02 complete (InstanceSpawner fork/exec, IpcServer multi-session, main.cpp config-driven startup)
 
-Progress: [######░░░] 64% (v0.0.9, 1/3 plans executed in phase 9)
+Progress: [#######░░] 70% (v0.0.9, 2/3 plans executed in phase 9)
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Progress: [######░░░] 64% (v0.0.9, 1/3 plans executed in phase 9)
 | 08    | 02   | ~5 min   | 2     | 4     |
 | 08    | 03   | ~3 min   | 2     | 2     |
 | 09    | 01   | ~3 min   | 2     | 9     |
+| 09    | 02   | ~8 min   | 2     | 6     |
 
 *Updated after each plan completion*
 
@@ -90,6 +91,10 @@ Progress: [######░░░] 64% (v0.0.9, 1/3 plans executed in phase 9)
 - [Phase 09-01]: AllocatePort holds mutex for full read-then-decide to avoid TOCTOU between port check and return
 - [Phase 09-01]: ClearStaleInstances at startup -- crash-recovery pattern, ensures no STARTING/READY rows survive a restart
 - [Phase 09-01]: InstanceSpawner stub added to Makefile in Plan 01 so Plan 02 only needs to create the .cpp file
+- [Phase 09-02]: g_sessions/sessions_mutex_ on IpcSession (same TU) -- avoids IpcServer.hpp pollution, accessed via friend
+- [Phase 09-02]: on_disconnect() factored out of read error paths -- single place for g_sessions cleanup and MarkStopped
+- [Phase 09-02]: main.cpp config-only -- all flags consolidated to --config=PATH; JSON config drives all values
+- [Phase 09-02]: TcpSession routes PLAYER_REGISTER via GetReadyHomeInstance().instance_id -- single home map assumption for Phase 9
 
 ### Blockers/Concerns
 
@@ -100,7 +105,7 @@ Progress: [######░░░] 64% (v0.0.9, 1/3 plans executed in phase 9)
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Completed 09-01 (ControlServerConfig, IpcProtocol instance messages, InstanceRegistry methods, DB migration v16).
+Stopped at: Completed 09-02 (InstanceSpawner fork/exec, IpcServer multi-session g_sessions, main.cpp config-driven startup with home map spawn).
 Resume file: None
 
 ---
