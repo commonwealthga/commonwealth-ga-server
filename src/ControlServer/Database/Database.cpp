@@ -512,15 +512,41 @@ void Database::Init() {
 		}
 	}
 
+	if (version < 15) {
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_instances ( \
+				id           INTEGER PRIMARY KEY AUTOINCREMENT, \
+				map_name     TEXT    NOT NULL, \
+				state        TEXT    NOT NULL DEFAULT 'STARTING', \
+				pid          INTEGER NOT NULL DEFAULT 0, \
+				udp_port     INTEGER NOT NULL, \
+				ip_address   TEXT    NOT NULL DEFAULT '127.0.0.1', \
+				player_count INTEGER NOT NULL DEFAULT 0, \
+				started_at   INTEGER NOT NULL DEFAULT (strftime('%s','now')), \
+				sealed_at    INTEGER \
+			);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_instances table: %s\n", err);
+			return;
+		}
+		result = sqlite3_exec(db,
+			"CREATE INDEX IF NOT EXISTS idx_ga_instances_state ON ga_instances(state);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_instances index: %s\n", err);
+			return;
+		}
+	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 14", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 15", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
 	}
 
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
-	Logger::Log("db", "[Database::Init] Schema at version 14, WAL mode enabled\n");
+	Logger::Log("db", "[Database::Init] Schema at version 15, WAL mode enabled\n");
 }
 
 std::string Database::GetQuestStatus(int64_t character_id, int quest_id) {

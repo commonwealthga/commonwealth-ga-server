@@ -1,6 +1,7 @@
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
+#include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/TcpListener/TcpListener.hpp"
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/Shared/IpcProtocol.hpp"
@@ -28,9 +29,10 @@ static void on_signal(int /*sig*/) {
 
 int main(int argc, char* argv[]) {
     // Defaults
-    uint16_t    tcp_port = 9000;
-    uint16_t    ipc_port = IpcProtocol::DEFAULT_IPC_PORT;
-    std::string db_path  = "server.db";
+    uint16_t    tcp_port  = 9000;
+    uint16_t    ipc_port  = IpcProtocol::DEFAULT_IPC_PORT;
+    uint16_t    game_port = 9002;
+    std::string db_path   = "server.db";
 
     // Parse CLI arguments
     for (int i = 1; i < argc; ++i) {
@@ -45,6 +47,8 @@ int main(int argc, char* argv[]) {
                 "  --port N          (space-separated form)\n"
                 "  --ipc-port=N      IPC listen port for game instances (default: 9010)\n"
                 "  --ipc-port N      (space-separated form)\n"
+                "  --game-port=N     Game instance UDP port for registry seed (default: 9002)\n"
+                "  --game-port N     (space-separated form)\n"
                 "  --db-path=PATH    SQLite database file path (default: server.db)\n"
                 "  --db-path PATH    (space-separated form)\n"
                 "  --help, -h        Print this help and exit\n"
@@ -62,6 +66,12 @@ int main(int argc, char* argv[]) {
         }
         else if (arg.rfind("--ipc-port=", 0) == 0) {
             ipc_port = static_cast<uint16_t>(std::atoi(arg.c_str() + 11));
+        }
+        else if (arg == "--game-port" && i + 1 < argc) {
+            game_port = static_cast<uint16_t>(std::atoi(argv[++i]));
+        }
+        else if (arg.rfind("--game-port=", 0) == 0) {
+            game_port = static_cast<uint16_t>(std::atoi(arg.c_str() + 12));
         }
         else if (arg == "--db-path" && i + 1 < argc) {
             db_path = argv[++i];
@@ -88,6 +98,10 @@ int main(int argc, char* argv[]) {
     // Initialize session store
     PlayerSessionStore::Init();
 
+    // Initialize instance registry and seed the home map instance
+    InstanceRegistry::Init();
+    InstanceRegistry::SeedHomeMapInstance("Rot_Redistribution05", game_port);
+
     // Create ASIO io_context and register signal handler reference
     asio::io_context io;
     g_io = &io;
@@ -98,8 +112,8 @@ int main(int argc, char* argv[]) {
     // Bind IPC server (game instance connections on port 9010)
     IpcServer ipc_server(io, ipc_port);
 
-    Logger::Log("main", "Control server ready. TCP port %d, IPC port %d, DB %s\n",
-        (int)tcp_port, (int)ipc_port, db_path.c_str());
+    Logger::Log("main", "Control server ready. TCP port %d, IPC port %d, game port %d, DB %s\n",
+        (int)tcp_port, (int)ipc_port, (int)game_port, db_path.c_str());
 
     // Run event loop -- blocks until io.stop() or all work complete
     io.run();

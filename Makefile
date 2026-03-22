@@ -244,7 +244,8 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/Database/Database.cpp \
 	$(CS_SRC_DIR)/PlayerSessionStore/PlayerSessionStore.cpp \
 	$(CS_SRC_DIR)/TcpSession/TcpSession.cpp \
-	$(CS_SRC_DIR)/IpcServer/IpcServer.cpp
+	$(CS_SRC_DIR)/IpcServer/IpcServer.cpp \
+	$(CS_SRC_DIR)/InstanceRegistry/InstanceRegistry.cpp
 
 CS_SOURCES=$(CS_CPP_SOURCES)
 
