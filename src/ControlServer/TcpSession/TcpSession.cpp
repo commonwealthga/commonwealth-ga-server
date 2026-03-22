@@ -1,5 +1,81 @@
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/Database/Database.hpp"
+#include "src/Shared/IpcProtocol.hpp"
+
+
+void TcpSession::initiate_player_register_and_go_play() {
+    // Build PLAYER_REGISTER JSON with full character state.
+    auto session = PlayerSessionStore::GetByGuid(session_guid_);
+    if (!session) {
+        Logger::Log("tcp", "[TcpSession] Cannot send PLAYER_REGISTER: session %s not found\n",
+            session_guid_.c_str());
+        return;
+    }
+
+    nlohmann::json reg;
+    reg["type"]         = IpcProtocol::MSG_PLAYER_REGISTER;
+    reg["session_guid"] = session_guid_;
+    reg["profile_id"]   = selected_profile_id_;
+    reg["player_name"]  = player_name;
+    reg["user_id"]      = user_id_;
+    reg["character_id"] = selected_character_id_;
+    reg["task_force"]   = 1;  // Hardcoded per user decision; matchmaking decides later
+
+    // Fetch character for morph_data, head_asm_id, gender_type_value_id
+    auto charInfo = PlayerSessionStore::GetCharacterById(selected_character_id_);
+    if (charInfo) {
+        reg["head_asm_id"]          = charInfo->head_asm_id;
+        reg["gender_type_value_id"] = charInfo->gender_type_value_id;
+        reg["morph_data"]           = HexUtils::hex_encode(charInfo->morph_data);
+    } else {
+        reg["head_asm_id"]          = 0;
+        reg["gender_type_value_id"] = 0;
+        reg["morph_data"]           = "";
+    }
+
+    // Arm 60-second ACK-wait timer.
+    auto self(shared_from_this());
+    pending_ack_timer_ = std::make_shared<asio::steady_timer>(io_ctx_);
+    pending_ack_timer_->expires_after(std::chrono::seconds(60));
+
+    // Register callback for when ACK arrives.
+    auto timer = pending_ack_timer_;  // capture by value
+    IpcServer::RegisterPendingAck(session_guid_,
+        [this, self, timer](bool success, int pawn_id) {
+            timer->cancel();
+            if (success) {
+                Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK success for %s pawn_id=%d\n",
+                    session_guid_.c_str(), pawn_id);
+                send_go_play_response();
+            } else {
+                Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK failed for %s\n",
+                    session_guid_.c_str());
+                // Silent: do not send go_play, do not send error to client
+            }
+        });
+
+    // Send PLAYER_REGISTER to game instance.
+    if (!IpcServer::SendToInstance(reg.dump())) {
+        Logger::Log("tcp", "[TcpSession] No IPC session -- cannot send PLAYER_REGISTER for %s\n",
+            session_guid_.c_str());
+        pending_ack_timer_->cancel();
+        IpcServer::ClearPendingAck(session_guid_);
+        pending_ack_timer_.reset();
+        return;
+    }
+
+    // Timeout handler.
+    pending_ack_timer_->async_wait([this, self, timer](std::error_code ec) {
+        if (!ec) {
+            // Timer expired (60-second timeout). ACK never arrived.
+            Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK timeout for %s\n",
+                session_guid_.c_str());
+            IpcServer::ClearPendingAck(session_guid_);
+            // Silent: do not send go_play, do not send error to client
+        }
+        // ec == operation_aborted means timer was cancelled (ACK arrived or disconnect) -- do nothing
+    });
+}
 
 
 void TcpSession::handle_packet(const uint8_t* data, size_t length) {
@@ -80,13 +156,8 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 
 			send_select_character_response();
 
-			// Replace Sleep(1000) with ASIO steady_timer (non-blocking).
-			auto self(shared_from_this());
-			auto timer = std::make_shared<asio::steady_timer>(io_ctx_);
-			timer->expires_after(std::chrono::milliseconds(1000));
-			timer->async_wait([this, self, timer](std::error_code ec) {
-				if (!ec) send_go_play_response();
-			});
+			// Send PLAYER_REGISTER to game instance and wait for ACK before go_play.
+			initiate_player_register_and_go_play();
 
 			break;
 		}
@@ -96,7 +167,8 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 		case GA_U::ADD_PLAYER_CHARACTER: {
 			Logger::Log("tcp", "[%s] Received: ADD_PLAYER_CHARACTER [0x%04X]\n", Logger::GetTime(), packet_type);
 			PacketView pkt(data + 6, length - 6);
-			uint32_t trainingMapGameId  = pkt.Read4B(GA_T::TRAINING_MAP_GAME_ID).value_or(0);
+			// uint32_t trainingMapGameId  = pkt.Read4B(GA_T::TRAINING_MAP_GAME_ID).value_or(0);  // unused: both paths now use initiate_player_register_and_go_play
+			pkt.Read4B(GA_T::TRAINING_MAP_GAME_ID);  // consume but ignore
 			uint32_t profileId          = pkt.Read4B(GA_T::PROFILE_ID).value_or(GA_G::PROFILE_ID_ASSAULT);
 			uint32_t headAsmId          = pkt.Read4B(GA_T::HEAD_ASM_ID).value_or(1605);
 			uint32_t genderTypeId       = pkt.Read4B(GA_T::GENDER_TYPE_VALUE_ID).value_or(853);
@@ -114,11 +186,8 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				Logger::GetTime(), profileId, headAsmId, genderTypeId, (unsigned)morphBlob.size(), selected_character_id_);
 
 			send_add_player_character_response();
-			if (trainingMapGameId != 0)
-				// send_go_play_tutorial_response();
-				send_go_play_response();
-			else
-				send_go_play_response();
+			// Both tutorial and normal paths use PLAYER_REGISTER ACK-wait flow.
+			initiate_player_register_and_go_play();
 			break;
 		}
 		case GA_U::DELETE_CHARACTER:
@@ -964,6 +1033,12 @@ void TcpSession::send_match_launch_response()
 
 void TcpSession::send_go_play_tutorial_response()
 {
+	auto instance = InstanceRegistry::GetReadyInstance("Rot_Redistribution05");
+	if (!instance) {
+		Logger::Log("tcp", "[TcpSession] No READY instance for go_play_tutorial\n");
+		return;
+	}
+
 	std::vector<uint8_t> response;
 
 	uint16_t packet_type = GA_U::GSC_GO_PLAY;
@@ -973,8 +1048,7 @@ void TcpSession::send_go_play_tutorial_response()
 	append(response, item_count & 0xFF, item_count >> 8);
 
 	WriteString(response, GA_T::PLAYER_NAME, player_name);
-	// TODO Phase 8: get instance address from instance registry
-	WriteIP(response, GA_T::HOST_NET_ADDR, "127.0.0.1", 9002);
+	WriteIP(response, GA_T::HOST_NET_ADDR, instance->ip_address, instance->udp_port);
 	WriteNBytes(response, GA_T::SESSION_GUID, GuidHexToBytes(session_guid_));
 	WriteString(response, GA_T::MAP_FILENAME, "Inception_ALL");
 	WriteString(response, GA_T::PARAMETERS, "?Game=TgGame.TgGame_Mission");
@@ -1007,6 +1081,12 @@ void TcpSession::send_marshal_channel_response()
 
 void TcpSession::send_go_play_response()
 {
+	auto instance = InstanceRegistry::GetReadyInstance("Rot_Redistribution05");
+	if (!instance) {
+		Logger::Log("tcp", "[TcpSession] No READY instance for go_play\n");
+		return;
+	}
+
 	std::vector<uint8_t> response;
 
 	uint16_t packet_type = GA_U::GSC_GO_PLAY;
@@ -1016,8 +1096,7 @@ void TcpSession::send_go_play_response()
 	append(response, item_count & 0xFF, item_count >> 8);
 
 	WriteString(response, GA_T::PLAYER_NAME, player_name);
-	// TODO Phase 8: get instance address from instance registry
-	WriteIP(response, GA_T::HOST_NET_ADDR, "127.0.0.1", 9002);
+	WriteIP(response, GA_T::HOST_NET_ADDR, instance->ip_address, instance->udp_port);
 	WriteNBytes(response, GA_T::SESSION_GUID, GuidHexToBytes(session_guid_));
 	WriteString(response, GA_T::MAP_FILENAME, "Rot_Redistribution05");
 	WriteString(response, GA_T::PARAMETERS, "?Game=TgGame.TgGame_Headhunter");

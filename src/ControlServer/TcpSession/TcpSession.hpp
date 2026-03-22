@@ -18,6 +18,10 @@
 #include "src/ControlServer/TcpSession/PacketView.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
+#include "src/ControlServer/IpcServer/IpcServer.hpp"
+#include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
+#include "src/Shared/HexUtils.hpp"
+#include "lib/nlohmann/json.hpp"
 
 class TcpSession : public std::enable_shared_from_this<TcpSession> {
 public:
@@ -42,6 +46,9 @@ private:
     int64_t  user_id_               = 0;
     int64_t  selected_character_id_ = 0;
     uint32_t selected_profile_id_   = 0;
+
+    // ACK-wait timer for PLAYER_REGISTER flow. Cancelled on ACK arrival or disconnect.
+    std::shared_ptr<asio::steady_timer> pending_ack_timer_;
 
     template<typename... Bytes>
     void append(std::vector<uint8_t>& buffer, Bytes&&... bytes) {
@@ -225,7 +232,13 @@ private:
                     handle_packet(data_.data(), length);
                     do_read();
                 } else {
+                    // Cancel any pending ACK wait timer.
+                    if (pending_ack_timer_) {
+                        pending_ack_timer_->cancel();
+                        pending_ack_timer_.reset();
+                    }
                     if (!session_guid_.empty()) {
+                        IpcServer::ClearPendingAck(session_guid_);
                         PlayerSessionStore::Unregister(session_guid_);
                     }
                     Logger::Log("tcp", "[TCP] Client disconnected: %s\n", player_name.c_str());
@@ -234,6 +247,10 @@ private:
     }
 
     void handle_packet(const uint8_t* data, size_t length);
+
+    // Sends PLAYER_REGISTER over IPC and arms 60-second ACK-wait timer.
+    // On ACK success: calls send_go_play_response(). On timeout/failure: silent.
+    void initiate_player_register_and_go_play();
 
     void send_map_randomsm_settings_response(std::vector<std::string> names);
 
