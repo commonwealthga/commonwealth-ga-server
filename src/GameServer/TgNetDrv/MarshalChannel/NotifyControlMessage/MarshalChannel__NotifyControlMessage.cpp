@@ -127,10 +127,13 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.player_name_w = info->player_name_w;
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.ip_address = info->ip_address;
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.user_id = info->user_id;
+			GClientConnectionsData[(int32_t)Connection].PlayerInfo.selected_profile_id  = info->selected_profile_id;
+			GClientConnectionsData[(int32_t)Connection].PlayerInfo.selected_character_id = info->selected_character_id;
 			GClientConnectionsData[(int32_t)Connection].pPlayerInfo = PlayerRegistry::GetByGuidPtr(session_guid);
-			Logger::Log(GetLogChannel(), "JOIN: identified player '%s' (guid=%s, connection=%d)\n", info->player_name.c_str(), session_guid.c_str(), (int32_t)Connection);
+			Logger::Log(GetLogChannel(), "JOIN: identified player '%s' (guid=%s, profile=%u, connection=%d)\n",
+				info->player_name.c_str(), session_guid.c_str(), info->selected_profile_id, (int32_t)Connection);
 		} else {
-			Logger::Log(GetLogChannel(), "JOIN: session guid %s not found in registry\n", session_guid.c_str());
+			Logger::Log(GetLogChannel(), "JOIN: session guid %s not found in registry (direct connect? no PLAYER_REGISTER received)\n", session_guid.c_str());
 		}
 
 
@@ -231,13 +234,14 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 
 	// TgGame__SpawnPlayerCharacter::GiveJetpack((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, newcontroller, 999);
 	// TgGame__SpawnPlayerCharacter::GiveAgonizer((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, newcontroller, 1000);
-	TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 5800, 221, 1, 1162, 0, 1, GA_G::TGDT_MELEE, 996); // lifestealer
-	TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 2991, 198, 2, 1162, 0, 1, GA_G::TGDT_RANGED, 1000); // agonizer
-	TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 2906, 200, 3, 1162, 0, 1, GA_G::TGDT_SPECIALTY, 995); // bfb
-	TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 7032, 201, 5, 1162, 1, 0, GA_G::TGDT_TRAVEL, 999); // jetpack
-	TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 2531, 203, 7, 1162, 1, 0, GA_G::TGDT_OFF_HAND, 997); // healnade
-	TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 2773, 386, 10, 1162, 1, 0, GA_G::TGDT_MORALE, 994); // heal boost
-	TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 864, 502, 15, 1162, 1, 0, GA_G::TGDT_OFF_HAND, 998); // rest device
+
+	// TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 5800, 221, 1, 1162, 0, 1, GA_G::TGDT_MELEE, 996); // lifestealer
+	// TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 2991, 198, 2, 1162, 0, 1, GA_G::TGDT_RANGED, 1000); // agonizer
+	// TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 2906, 200, 3, 1162, 0, 1, GA_G::TGDT_SPECIALTY, 995); // bfb
+	// TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 7032, 201, 5, 1162, 1, 0, GA_G::TGDT_TRAVEL, 999); // jetpack
+	// TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 2531, 203, 7, 1162, 1, 0, GA_G::TGDT_OFF_HAND, 997); // healnade
+	// TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 2773, 386, 10, 1162, 1, 0, GA_G::TGDT_MORALE, 994); // heal boost
+	// TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 864, 502, 15, 1162, 1, 0, GA_G::TGDT_OFF_HAND, 998); // rest device
 
 	TcpEvent PlayerPawnSpawned;
 	PlayerPawnSpawned.Type = 1;
