@@ -12,7 +12,7 @@
 #include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
 #include "src/GameServer/Misc/CGameClient/SendMapRandomSMSettingsMarshal/CGameClient__SendMapRandomSMSettingsMarshal.hpp"
 #include "src/GameServer/Misc/CAmOmegaVolume/LoadOmegaVolumeMarshal/CAmOmegaVolume__LoadOmegaVolumeMarshal.hpp"
-#include "src/TcpServer/TcpEvents/TcpEvents.hpp"
+#include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
@@ -246,13 +246,6 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	// TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 2773, 386, 10, 1162, 1, 0, GA_G::TGDT_MORALE, 994); // heal boost
 	// TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 864, 502, 15, 1162, 1, 0, GA_G::TGDT_OFF_HAND, 998); // rest device
 
-	// [Phase 10] Replaced: GTcpEvents write -- now sends GAME_EVENT IPC
-	// TcpEvent PlayerPawnSpawned;
-	// PlayerPawnSpawned.Type = 1;
-	// PlayerPawnSpawned.Pawn = (ATgPawn*)newcontroller->Pawn;
-	// PlayerPawnSpawned.session_guid = session_guid;
-	// PlayerPawnSpawned.player_name = player_name;
-	// GTcpEvents[session_guid] = PlayerPawnSpawned;
 	GPawnSessions[(ATgPawn*)newcontroller->Pawn] = session_guid;
 
 	{

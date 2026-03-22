@@ -2,12 +2,7 @@
 #include "src/GameServer/Engine/GameEngine/Init/GameEngine__Init.hpp"
 #include "src/GameServer/Misc/AssemblyDatManager/LoadAssemblyDat/AssemblyDatManager__LoadAssemblyDat.hpp"
 #include "src/GameServer/Engine/LaunchEngineLoop/LoadStartupPackages/LoadStartupPackages.hpp"
-#include "src/TcpServer/TcpServerInit/TcpServerInit.hpp"
 #include "src/Utils/Logger/Logger.hpp"
-
-// Phase 7: TCP client connections handled by the control server binary.
-// DLL no longer starts a TCP listener on ports 9000/9001.
-bool GameEngine__Init::bInitTcpServer = false;
 
 void GameEngine__Init::FixGlobals() {
 	*Globals::Get().GIsClient = 0;
@@ -35,11 +30,6 @@ void GameEngine__Init::Call(void* GameEngine) {
 	LoadStartupPackages::CallOriginal();
 
 	Logger::Log("debug", "LoadStartupPackages called\n");
-
-	if (bInitTcpServer) {
-		TcpServerInit::CreateTcpServerThread();
-		Logger::Log("debug", "TcpServerInit::CreateTcpServerThread called\n");
-	}
 
 	GameEngine__Init::CallOriginal(GameEngine);
 

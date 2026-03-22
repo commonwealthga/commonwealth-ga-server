@@ -7,7 +7,6 @@
 #include "src/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.hpp"
 #include "src/GameServer/Misc/CMarshal/GetFlag/CMarshal__GetFlag.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
-#include "src/TcpServer/TcpEvents/TcpEvents.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "lib/nlohmann/json.hpp"
@@ -137,8 +136,6 @@ uint8_t __fastcall CGameClient__MarshalReceived::Call(void* GameClient, void* ed
 				}
 			}
 
-			// [Phase 10] Replaced: GQuestEvents write -- now sends GAME_EVENT IPC
-			// GQuestEvents[session_guid].push_back({ (int)nQuestId, action });
 			{
 				nlohmann::json ev;
 				ev["type"]         = IpcProtocol::MSG_GAME_EVENT;

@@ -2,7 +2,7 @@
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
-#include "src/TcpServer/TcpEvents/TcpEvents.hpp"
+#include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "lib/nlohmann/json.hpp"
@@ -78,13 +78,6 @@ ATgDevice* __fastcall TgInventoryManager__NonPersistAddDevice::Call(ATgInventory
 	// Send GAME_EVENT beacon_pickup IPC so the control server updates the client's device bar.
 	auto sessIt = GPawnSessions.find(ownerpawn);
 	if (sessIt != GPawnSessions.end()) {
-		// [Phase 10] Replaced: GBeaconPickupEvents write -- now sends GAME_EVENT IPC
-		// BeaconPickupEvent bev;
-		// bev.nPawnId      = ownerpawn->r_nPawnId;
-		// bev.nDeviceId    = nDeviceId;
-		// bev.nInventoryId = nInventoryId;
-		// bev.nEquipSlotValueId = slotValueId;
-		// GBeaconPickupEvents[sessIt->second].push_back(bev);
 		nlohmann::json ev;
 		ev["type"]                = IpcProtocol::MSG_GAME_EVENT;
 		ev["subtype"]             = "beacon_pickup";

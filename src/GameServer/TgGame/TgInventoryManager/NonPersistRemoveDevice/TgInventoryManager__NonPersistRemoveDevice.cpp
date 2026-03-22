@@ -1,5 +1,5 @@
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
-#include "src/TcpServer/TcpEvents/TcpEvents.hpp"
+#include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "lib/nlohmann/json.hpp"
@@ -45,11 +45,6 @@ void __fastcall TgInventoryManager__NonPersistRemoveDevice::Call(
 	// Send GAME_EVENT beacon_remove IPC so the control server clears the client's device bar slot.
 	auto sessIt = GPawnSessions.find(pawn);
 	if (sessIt != GPawnSessions.end()) {
-		// [Phase 10] Replaced: GBeaconRemoveEvents write -- now sends GAME_EVENT IPC
-		// BeaconRemoveEvent rev;
-		// rev.nPawnId      = pawn->r_nPawnId;
-		// rev.nInventoryId = nInventoryId;
-		// GBeaconRemoveEvents[sessIt->second].push_back(rev);
 		nlohmann::json ev;
 		ev["type"]         = IpcProtocol::MSG_GAME_EVENT;
 		ev["subtype"]      = "beacon_remove";

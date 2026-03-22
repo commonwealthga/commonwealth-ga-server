@@ -124,7 +124,6 @@ unsigned long ModuleThread( void* ) {
 	::DetourUpdateThread(::GetCurrentThread());
 
 	// low-level engine functions
-	GameEngine__Init::bInitTcpServer = true;
 	GameEngine__Init::Install();
 	// UObject__CollectGarbage::bDisableGarbageCollection = true;
 	UObject__CollectGarbage::Install();
