@@ -91,7 +91,11 @@ Plans:
   2. Control server does not route any player to an instance until INSTANCE_READY IPC is received from the DLL
   3. Home map instance is running and marked ready before the first client connection attempt
   4. A second player connecting to the same home map joins the already-running instance rather than spawning a new process
-**Plans**: TBD
+**Plans:** 1/3 plans executed
+Plans:
+- [ ] 09-01-PLAN.md -- ControlServerConfig + IpcProtocol extensions + InstanceRegistry extensions + DB migration v16
+- [ ] 09-02-PLAN.md -- InstanceSpawner fork/exec + IpcServer multi-session + main.cpp wiring
+- [ ] 09-03-PLAN.md -- DLL INSTANCE_HELLO/READY signaling + TcpSession readiness wait + instance_id routing
 
 ### Phase 10: In-Game Event Routing
 **Goal**: In-game events (beacon pickups, quest progress, inventory updates) reach the client through IPC rather than in-process maps
@@ -122,11 +126,11 @@ Plans:
 | 5. Class Equipment | v0.0.6 | 1/1 | Complete | 2026-03-21 |
 | 6. Thread Safety + IPC Plumbing | v0.0.7 | 2/2 | Complete | 2026-03-21 |
 | 7. Control Server + Protocol Migration | v0.0.7 | 3/3 | Complete | 2026-03-22 |
-| 8. Player Registration + UDP Redirect | 3/3 | Complete   | 2026-03-22 | - |
-| 9. Instance Lifecycle Management | v0.0.7 | 0/? | Not started | - |
+| 8. Player Registration + UDP Redirect | v0.0.7 | 3/3 | Complete | 2026-03-22 |
+| 9. Instance Lifecycle Management | 1/3 | In Progress|  | - |
 | 10. In-Game Event Routing | v0.0.7 | 0/? | Not started | - |
 | 11. Cleanup and Validation | v0.0.7 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-03-20*
-*Last updated: 2026-03-22 after Phase 8 planning (3 plans created)*
+*Last updated: 2026-03-22 after Phase 9 planning (3 plans created)*

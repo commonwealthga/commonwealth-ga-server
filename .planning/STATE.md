@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Players connect to a control server, select a character, and seamlessly land in a shared home map instance
-**Current focus:** Phase 8 -- Player Registration UDP Redirect
+**Current focus:** Phase 9 -- Instance Lifecycle Management
 
 ## Current Position
 
-Phase: 8 of 11 (Phase 8 -- Player Registration UDP Redirect)
-Plan: 08-03 complete (Phase 8 complete)
+Phase: 9 of 11 (Phase 9 -- Instance Lifecycle Management)
+Plan: 09-01 complete (1/3 plans executed in phase 9)
 Status: In progress
-Last activity: 2026-03-22 -- 08-03 complete (DLL PLAYER_REGISTER handler, JOIN profile_id copy, ROUT-04 fix)
+Last activity: 2026-03-22 -- 09-01 complete (ControlServerConfig, IpcProtocol instance messages, InstanceRegistry methods, DB migration v16)
 
-Progress: [#####░░░░] 55% (v0.0.8, 3/3 plans executed in phase 8, phase 8 complete)
+Progress: [######░░░] 64% (v0.0.9, 1/3 plans executed in phase 9)
 
 ## Performance Metrics
 
@@ -46,6 +46,7 @@ Progress: [#####░░░░] 55% (v0.0.8, 3/3 plans executed in phase 8, phase 
 | 08    | 01   | ~4 min   | 2     | 7     |
 | 08    | 02   | ~5 min   | 2     | 4     |
 | 08    | 03   | ~3 min   | 2     | 2     |
+| 09    | 01   | ~3 min   | 2     | 9     |
 
 *Updated after each plan completion*
 
@@ -85,6 +86,10 @@ Progress: [#####░░░░] 55% (v0.0.8, 3/3 plans executed in phase 8, phase 
 - [Phase 08-03]: morph_data not stored in PlayerInfo at IPC registration -- SpawnPlayerCharacter reads from DLL sqlite DB
 - [Phase 08-03]: pawn_id=0 in PLAYER_REGISTER_ACK -- pawn spawns later at UDP JOIN, not at IPC registration time
 - [Phase 08-03]: Unregistered UDP players (no PLAYER_REGISTER) allowed through with log warning for direct-connect testing
+- [Phase 09-01]: rowid-as-instance-id -- INSERT then UPDATE instance_id=rowid; avoids UUID, stable within DB lifetime
+- [Phase 09-01]: AllocatePort holds mutex for full read-then-decide to avoid TOCTOU between port check and return
+- [Phase 09-01]: ClearStaleInstances at startup -- crash-recovery pattern, ensures no STARTING/READY rows survive a restart
+- [Phase 09-01]: InstanceSpawner stub added to Makefile in Plan 01 so Plan 02 only needs to create the .cpp file
 
 ### Blockers/Concerns
 
@@ -95,8 +100,8 @@ Progress: [#####░░░░] 55% (v0.0.8, 3/3 plans executed in phase 8, phase 
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Completed 08-03 (DLL PLAYER_REGISTER handler, JOIN profile_id copy -- Phase 8 complete).
+Stopped at: Completed 09-01 (ControlServerConfig, IpcProtocol instance messages, InstanceRegistry methods, DB migration v16).
 Resume file: None
 
 ---
-*Last updated: 2026-03-22 after 08-03 completion*
+*Last updated: 2026-03-22 after 09-01 completion*
