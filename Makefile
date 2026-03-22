@@ -247,7 +247,8 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/TcpSession/TcpSession.cpp \
 	$(CS_SRC_DIR)/IpcServer/IpcServer.cpp \
 	$(CS_SRC_DIR)/InstanceRegistry/InstanceRegistry.cpp \
-	$(CS_SRC_DIR)/InstanceSpawner/InstanceSpawner.cpp
+	$(CS_SRC_DIR)/InstanceSpawner/InstanceSpawner.cpp \
+	$(CS_SRC_DIR)/QuestStore/QuestStore.cpp
 
 CS_SOURCES=$(CS_CPP_SOURCES)
 

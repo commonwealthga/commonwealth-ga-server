@@ -6,6 +6,7 @@
 #include <vector>
 #include <cstdint>
 #include <mutex>
+#include "src/ControlServer/QuestStore/QuestStore.hpp"
 
 struct SessionInfo {
     std::string session_guid;
@@ -41,6 +42,11 @@ public:
     static std::vector<CharacterInfo> GetCharactersByUserId(int64_t user_id);
     static std::optional<CharacterInfo> GetCharacterById(int64_t id);
     static void SetSelectedCharacter(const std::string& guid, int64_t char_id, uint32_t profile_id);
+
+    static QuestStore& Quests() {
+        static QuestStore instance;
+        return instance;
+    }
 
 private:
     static std::mutex mutex_;

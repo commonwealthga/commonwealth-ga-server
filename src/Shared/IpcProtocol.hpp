@@ -23,7 +23,9 @@ constexpr const char* MSG_INSTANCE_HELLO     = "INSTANCE_HELLO";
 constexpr const char* MSG_INSTANCE_HELLO_ACK = "INSTANCE_HELLO_ACK";
 constexpr const char* MSG_INSTANCE_READY     = "INSTANCE_READY";
 
-// Future: MSG_GAME_EVENT, MSG_PLAYER_SPAWNED
+constexpr const char* MSG_GAME_EVENT      = "GAME_EVENT";
+constexpr const char* MSG_GET_RANDOMSM    = "GET_RANDOMSM";
+constexpr const char* MSG_RANDOMSM_RESULT = "RANDOMSM_RESULT";
 
 // ---------------------------------------------------------------------------
 // IPC transport
