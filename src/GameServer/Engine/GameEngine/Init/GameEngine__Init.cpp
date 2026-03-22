@@ -5,6 +5,8 @@
 #include "src/TcpServer/TcpServerInit/TcpServerInit.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
+// Phase 7: TCP client connections handled by the control server binary.
+// DLL no longer starts a TCP listener on ports 9000/9001.
 bool GameEngine__Init::bInitTcpServer = false;
 
 void GameEngine__Init::FixGlobals() {
