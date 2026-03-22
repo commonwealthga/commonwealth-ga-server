@@ -2,6 +2,7 @@
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "sqlite3.h"
+#include <set>
 
 std::mutex InstanceRegistry::mutex_;
 
@@ -18,7 +19,8 @@ std::optional<InstanceInfo> InstanceRegistry::GetReadyInstance(const std::string
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db,
         "SELECT id, map_name, state, pid, udp_port, ip_address, player_count, "
-        "       started_at, COALESCE(sealed_at, 0) "
+        "       started_at, COALESCE(sealed_at, 0), "
+        "       COALESCE(instance_id, 0), COALESCE(is_home_map, 0), COALESCE(max_players, 0) "
         "FROM ga_instances "
         "WHERE map_name = ? AND state = 'READY' "
         "LIMIT 1",
@@ -46,6 +48,9 @@ std::optional<InstanceInfo> InstanceRegistry::GetReadyInstance(const std::string
         info.player_count = sqlite3_column_int(stmt, 6);
         info.started_at   = sqlite3_column_int64(stmt, 7);
         info.sealed_at    = sqlite3_column_int64(stmt, 8);
+        info.instance_id  = sqlite3_column_int64(stmt, 9);
+        info.is_home_map  = sqlite3_column_int(stmt, 10) != 0;
+        info.max_players  = sqlite3_column_int(stmt, 11);
         result = std::move(info);
     }
     sqlite3_finalize(stmt);
@@ -96,4 +101,210 @@ void InstanceRegistry::SeedHomeMapInstance(const std::string& map_name, uint16_t
 
     Logger::Log("db", "[InstanceRegistry] Seeded instance: map=%s udp_port=%d\n",
         map_name.c_str(), (int)udp_port);
+}
+
+int64_t InstanceRegistry::InsertStarting(const std::string& map_name, uint16_t udp_port,
+                                          int pid, bool is_home_map) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    if (!db) return 0;
+
+    sqlite3_stmt* stmt = nullptr;
+    int rc = sqlite3_prepare_v2(db,
+        "INSERT INTO ga_instances "
+        "(map_name, state, pid, udp_port, ip_address, player_count, started_at, instance_id, is_home_map) "
+        "VALUES (?, 'STARTING', ?, ?, '127.0.0.1', 0, strftime('%s','now'), 0, ?)",
+        -1, &stmt, nullptr);
+    if (rc != SQLITE_OK || !stmt) {
+        Logger::Log("db", "[InstanceRegistry] InsertStarting prepare failed: %s\n",
+            sqlite3_errmsg(db));
+        return 0;
+    }
+
+    sqlite3_bind_text(stmt, 1, map_name.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt,  2, pid);
+    sqlite3_bind_int(stmt,  3, static_cast<int>(udp_port));
+    sqlite3_bind_int(stmt,  4, is_home_map ? 1 : 0);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE) {
+        Logger::Log("db", "[InstanceRegistry] InsertStarting insert failed: %s\n",
+            sqlite3_errmsg(db));
+        return 0;
+    }
+
+    int64_t rowid = sqlite3_last_insert_rowid(db);
+
+    // Use rowid as instance_id
+    char* err = nullptr;
+    char sql[128];
+    snprintf(sql, sizeof(sql),
+        "UPDATE ga_instances SET instance_id = %lld WHERE id = %lld",
+        (long long)rowid, (long long)rowid);
+    rc = sqlite3_exec(db, sql, nullptr, nullptr, &err);
+    if (rc != SQLITE_OK) {
+        Logger::Log("db", "[InstanceRegistry] InsertStarting update instance_id failed: %s\n", err);
+        sqlite3_free(err);
+    }
+
+    Logger::Log("db", "[InstanceRegistry] InsertStarting: map=%s udp_port=%d pid=%d is_home_map=%d -> instance_id=%lld\n",
+        map_name.c_str(), (int)udp_port, pid, (int)is_home_map, (long long)rowid);
+    return rowid;
+}
+
+void InstanceRegistry::MarkReady(int64_t instance_id, int max_players) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    if (!db) return;
+
+    sqlite3_stmt* stmt = nullptr;
+    int rc = sqlite3_prepare_v2(db,
+        "UPDATE ga_instances SET state='READY', max_players=? "
+        "WHERE instance_id=? AND state='STARTING'",
+        -1, &stmt, nullptr);
+    if (rc != SQLITE_OK || !stmt) {
+        Logger::Log("db", "[InstanceRegistry] MarkReady prepare failed: %s\n",
+            sqlite3_errmsg(db));
+        return;
+    }
+
+    sqlite3_bind_int(stmt,  1, max_players);
+    sqlite3_bind_int64(stmt, 2, instance_id);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE) {
+        Logger::Log("db", "[InstanceRegistry] MarkReady step failed: %s\n", sqlite3_errmsg(db));
+    } else {
+        Logger::Log("db", "[InstanceRegistry] MarkReady: instance_id=%lld max_players=%d\n",
+            (long long)instance_id, max_players);
+    }
+}
+
+std::optional<InstanceInfo> InstanceRegistry::GetReadyHomeInstance() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    if (!db) return std::nullopt;
+
+    sqlite3_stmt* stmt = nullptr;
+    int rc = sqlite3_prepare_v2(db,
+        "SELECT id, map_name, state, pid, udp_port, ip_address, player_count, "
+        "       started_at, COALESCE(sealed_at, 0), "
+        "       COALESCE(instance_id, 0), COALESCE(is_home_map, 0), COALESCE(max_players, 0) "
+        "FROM ga_instances "
+        "WHERE is_home_map=1 AND state='READY' "
+        "LIMIT 1",
+        -1, &stmt, nullptr);
+    if (rc != SQLITE_OK || !stmt) {
+        Logger::Log("db", "[InstanceRegistry] GetReadyHomeInstance prepare failed: %s\n",
+            sqlite3_errmsg(db));
+        return std::nullopt;
+    }
+
+    std::optional<InstanceInfo> result;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        InstanceInfo info;
+        info.id           = sqlite3_column_int64(stmt, 0);
+        const char* mn    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        info.map_name     = mn ? mn : "";
+        const char* st    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+        info.state        = st ? st : "";
+        info.pid          = sqlite3_column_int(stmt, 3);
+        info.udp_port     = static_cast<uint16_t>(sqlite3_column_int(stmt, 4));
+        const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+        info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
+        info.player_count = sqlite3_column_int(stmt, 6);
+        info.started_at   = sqlite3_column_int64(stmt, 7);
+        info.sealed_at    = sqlite3_column_int64(stmt, 8);
+        info.instance_id  = sqlite3_column_int64(stmt, 9);
+        info.is_home_map  = sqlite3_column_int(stmt, 10) != 0;
+        info.max_players  = sqlite3_column_int(stmt, 11);
+        result = std::move(info);
+    }
+    sqlite3_finalize(stmt);
+    return result;
+}
+
+void InstanceRegistry::MarkStopped(int64_t instance_id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    if (!db) return;
+
+    sqlite3_stmt* stmt = nullptr;
+    int rc = sqlite3_prepare_v2(db,
+        "UPDATE ga_instances SET state='STOPPED', sealed_at=strftime('%s','now') "
+        "WHERE instance_id=?",
+        -1, &stmt, nullptr);
+    if (rc != SQLITE_OK || !stmt) {
+        Logger::Log("db", "[InstanceRegistry] MarkStopped prepare failed: %s\n",
+            sqlite3_errmsg(db));
+        return;
+    }
+
+    sqlite3_bind_int64(stmt, 1, instance_id);
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE) {
+        Logger::Log("db", "[InstanceRegistry] MarkStopped step failed: %s\n", sqlite3_errmsg(db));
+    } else {
+        Logger::Log("db", "[InstanceRegistry] MarkStopped: instance_id=%lld\n",
+            (long long)instance_id);
+    }
+}
+
+std::optional<uint16_t> InstanceRegistry::AllocatePort(uint16_t lo, uint16_t hi) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    if (!db) return std::nullopt;
+
+    sqlite3_stmt* stmt = nullptr;
+    int rc = sqlite3_prepare_v2(db,
+        "SELECT udp_port FROM ga_instances WHERE state != 'STOPPED'",
+        -1, &stmt, nullptr);
+    if (rc != SQLITE_OK || !stmt) {
+        Logger::Log("db", "[InstanceRegistry] AllocatePort prepare failed: %s\n",
+            sqlite3_errmsg(db));
+        return std::nullopt;
+    }
+
+    std::set<uint16_t> in_use;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        in_use.insert(static_cast<uint16_t>(sqlite3_column_int(stmt, 0)));
+    }
+    sqlite3_finalize(stmt);
+
+    for (uint16_t port = lo; port <= hi; ++port) {
+        if (in_use.find(port) == in_use.end()) {
+            Logger::Log("db", "[InstanceRegistry] AllocatePort: allocated port %d\n", (int)port);
+            return port;
+        }
+    }
+
+    Logger::Log("db", "[InstanceRegistry] AllocatePort: port pool exhausted (range %d-%d)\n",
+        (int)lo, (int)hi);
+    return std::nullopt;
+}
+
+void InstanceRegistry::ClearStaleInstances() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    if (!db) return;
+
+    char* err = nullptr;
+    int rc = sqlite3_exec(db,
+        "UPDATE ga_instances SET state='STOPPED', sealed_at=strftime('%s','now') "
+        "WHERE state != 'STOPPED'",
+        nullptr, nullptr, &err);
+    if (rc != SQLITE_OK) {
+        Logger::Log("db", "[InstanceRegistry] ClearStaleInstances failed: %s\n", err);
+        sqlite3_free(err);
+        return;
+    }
+
+    int changed = sqlite3_changes(db);
+    Logger::Log("db", "[InstanceRegistry] ClearStaleInstances: cleared %d stale instance(s)\n", changed);
 }

@@ -539,14 +539,47 @@ void Database::Init() {
 		}
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 15", nullptr, nullptr, &err);
+	if (version < 16) {
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_instances ADD COLUMN instance_id INTEGER NOT NULL DEFAULT 0;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to add instance_id column: %s\n", err);
+			sqlite3_free(err);
+			// Column may already exist -- continue
+		}
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_instances ADD COLUMN is_home_map INTEGER NOT NULL DEFAULT 0;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to add is_home_map column: %s\n", err);
+			sqlite3_free(err);
+		}
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_instances ADD COLUMN max_players INTEGER NOT NULL DEFAULT 0;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to add max_players column: %s\n", err);
+			sqlite3_free(err);
+		}
+		result = sqlite3_exec(db,
+			"CREATE UNIQUE INDEX IF NOT EXISTS idx_ga_instances_instance_id "
+			"ON ga_instances(instance_id) WHERE instance_id != 0;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create instance_id index: %s\n", err);
+			sqlite3_free(err);
+		}
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 16", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
 	}
 
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
-	Logger::Log("db", "[Database::Init] Schema at version 15, WAL mode enabled\n");
+	Logger::Log("db", "[Database::Init] Schema at version 16, WAL mode enabled\n");
 }
 
 std::string Database::GetQuestStatus(int64_t character_id, int quest_id) {

@@ -18,6 +18,9 @@ struct InstanceInfo {
     int         player_count  = 0;
     int64_t     started_at    = 0;
     int64_t     sealed_at     = 0;  // 0 if not sealed
+    int64_t     instance_id   = 0;  // unique ID assigned at spawn time (rowid)
+    bool        is_home_map   = false; // true if spawned for home map
+    int         max_players   = 0;  // filled by INSTANCE_READY
 };
 
 class InstanceRegistry {
@@ -31,6 +34,25 @@ public:
     // Mark all non-STOPPED instances from a previous run as STOPPED, then insert
     // a fresh READY row for the home map at the given UDP port.
     static void SeedHomeMapInstance(const std::string& map_name, uint16_t udp_port);
+
+    // Insert a STARTING instance. Returns the SQLite rowid (used as instance_id).
+    static int64_t InsertStarting(const std::string& map_name, uint16_t udp_port,
+                                   int pid, bool is_home_map);
+
+    // Transition STARTING -> READY when INSTANCE_READY IPC arrives.
+    static void MarkReady(int64_t instance_id, int max_players);
+
+    // Find first READY instance with is_home_map=1.
+    static std::optional<InstanceInfo> GetReadyHomeInstance();
+
+    // Mark an instance STOPPED (IPC disconnect or crash).
+    static void MarkStopped(int64_t instance_id);
+
+    // Get next available UDP port from range. Returns nullopt if pool exhausted.
+    static std::optional<uint16_t> AllocatePort(uint16_t lo, uint16_t hi);
+
+    // Clear all non-STOPPED instances (startup recovery).
+    static void ClearStaleInstances();
 
 private:
     static std::mutex mutex_;
