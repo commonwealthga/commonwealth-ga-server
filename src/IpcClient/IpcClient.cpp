@@ -62,7 +62,10 @@ DWORD WINAPI IpcClient::IpcThread(LPVOID) {
         asio::io_context io;
         asio::ip::tcp::socket sock(io);
 
-        io_ctx_ = &io;
+        {
+            IpcCsGuard lock(outbound_cs_);
+            io_ctx_ = &io;
+        }
         socket_ = &sock;
         write_in_progress_ = false;
 
@@ -103,7 +106,10 @@ DWORD WINAPI IpcClient::IpcThread(LPVOID) {
         }
 
         // Disconnected or failed to connect.
-        io_ctx_ = nullptr;
+        {
+            IpcCsGuard lock(outbound_cs_);
+            io_ctx_ = nullptr;
+        }
         socket_ = nullptr;
         write_in_progress_ = false;
 
@@ -179,18 +185,16 @@ void IpcClient::do_read_body(uint32_t len) {
 // ---------------------------------------------------------------------------
 
 void IpcClient::Send(const std::string& json_msg) {
-    {
-        IpcCsGuard lock(outbound_cs_);
-        outbound_queue_.push_back(json_msg);
-    }
+    IpcCsGuard lock(outbound_cs_);
+    outbound_queue_.push_back(json_msg);
 
     // Post kick_write onto the ASIO thread if the io_context is live.
-    // NOTE: io_ctx_ may be set to nullptr by the ASIO thread on disconnect.
-    // This is a benign race -- if we miss the post, the next reconnect
-    // will drain the queue via kick_write after send.
-    asio::io_context* ctx = io_ctx_;
-    if (ctx != nullptr) {
-        asio::post(*ctx, kick_write);
+    // io_ctx_ is protected by outbound_cs_ to prevent use-after-free:
+    // without the lock, the game thread could read a valid io_ctx_ pointer,
+    // then the IPC thread disconnects and destroys the stack-local io_context,
+    // and asio::post would write to freed memory — corrupting the heap.
+    if (io_ctx_ != nullptr) {
+        asio::post(*io_ctx_, kick_write);
     }
 }
 

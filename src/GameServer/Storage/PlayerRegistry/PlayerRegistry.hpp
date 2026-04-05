@@ -5,7 +5,7 @@
 #include <map>
 #include <vector>
 #include <cstdint>
-#include <mutex>
+#include <windows.h>
 
 struct PlayerInfo {
 	std::string session_guid; // 32-char lowercase hex
@@ -56,5 +56,6 @@ public:
 private:
 	static std::map<std::string, PlayerInfo> by_guid_;
 	static std::map<std::string, PlayerInfo> by_ip_;
-	static std::mutex mutex_;
+	static CRITICAL_SECTION cs_;
+	static bool cs_initialized_;
 };

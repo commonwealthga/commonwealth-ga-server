@@ -280,7 +280,7 @@ private:
 
     void send_get_loot_table_items_by_id_filtered_response();
 
-    void send_inventory_response(int nPawnId);
+    void send_inventory_response(int nPawnId, int64_t character_id);
 
     void send_beacon_pickup_response(int nPawnId, int nDeviceId, int nInventoryId, int nEquipSlotValueId);
     void send_beacon_remove_response(int nPawnId, int nInventoryId);

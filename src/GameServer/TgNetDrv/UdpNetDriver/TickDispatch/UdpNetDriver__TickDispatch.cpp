@@ -62,9 +62,9 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 				UNetConnection* ClientConnection = NetDriver->ClientConnections.Data[i];
 				int32_t ClientConnectionIndex = (int32_t)ClientConnection;
 
-				if (GClientConnectionsData.find(ClientConnectionIndex) != GClientConnectionsData.end()) {
-					ClientConnectionData ConnectionData = GClientConnectionsData[ClientConnectionIndex];
-					sockaddr_in ClientRemoteAddr = ConnectionData.RemoteAddr;
+				auto ccIt = GClientConnectionsData.find(ClientConnectionIndex);
+				if (ccIt != GClientConnectionsData.end()) {
+					sockaddr_in ClientRemoteAddr = ccIt->second.RemoteAddr;
 
 					if (ClientRemoteAddr.sin_addr.s_addr == from.sin_addr.s_addr && ClientRemoteAddr.sin_port == from.sin_port) {
 						Connection = ClientConnection;

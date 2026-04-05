@@ -1,6 +1,7 @@
 #pragma once
 
-#include "src/ControlServer/Constants/DeviceIds.hpp"
+#include <cstdint>
+#include "DeviceIds.hpp"
 
 // ---------------------------------------------------------------------------
 // ClassConfig — per-class identity and equipment constants.

@@ -52,7 +52,7 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         int pawn_id = j.value("pawn_id", 0);
         Logger::Log("ipc", "[TcpSession] DeliverGameEvent: spawn pawn_id=%d guid=%s\n",
             pawn_id, session_guid.c_str());
-        session->send_inventory_response(pawn_id);
+        session->send_inventory_response(pawn_id, session->selected_character_id_);
 
         // Request RandomSM actor names from game instance.
         int64_t instance_id = j.value("instance_id", (int64_t)0);
@@ -689,103 +689,20 @@ void TcpSession::send_get_ticket_info_response() {
 }
 
 void TcpSession::send_character_inventory_response(int nPawnId) {
-	std::vector<uint8_t> response;
-
-	uint16_t packet_type = GA_U::SEND_CHARACTER_INVENTORY;
-	uint16_t item_count = 2;
-
-	append(response, packet_type & 0xFF, packet_type >> 8);
-	append(response, item_count & 0xFF, item_count >> 8);
-
-
-	append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
-	append(response, 0x01, 0x00);        // count elements
-
-		append(response, 0x02, 0x00);  // inner item count
-
-		Write4B(response, GA_T::INVENTORY_ID, GA_G::DEVICE_ID_MEDIC_CJP);
-		Write4B(response, GA_T::EFFECT_GROUP_ID, 0x0);
-
-	append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
-	append(response, 0x06, 0x00);        // count elements
-
-		append(response, 0x04, 0x00);  // inner item count
-
-		Write4B(response, GA_T::CHARACTER_ID, 0); // 0 = applies to any pawn
-		Write4B(response, GA_T::INVENTORY_ID, GA_G::DEVICE_ID_MEDIC_CJP);
-		Write4B(response, GA_T::PROFILE_ID, 0x0);
-		Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 201); // 0xC9 = jetpack slot value ID
-
-		append(response, 0x04, 0x00);  // inner item count
-
-		Write4B(response, GA_T::CHARACTER_ID, 0);
-		Write4B(response, GA_T::INVENTORY_ID, GA_G::DEVICE_ID_MEDIC_CJP);
-		Write4B(response, GA_T::PROFILE_ID, 0x1);
-		Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 201);
-
-		append(response, 0x04, 0x00);  // inner item count
-
-		Write4B(response, GA_T::CHARACTER_ID, 0);
-		Write4B(response, GA_T::INVENTORY_ID, GA_G::DEVICE_ID_MEDIC_CJP);
-		Write4B(response, GA_T::PROFILE_ID, 0x2);
-		Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 201);
-
-		append(response, 0x04, 0x00);  // inner item count
-
-		Write4B(response, GA_T::CHARACTER_ID, 0);
-		Write4B(response, GA_T::INVENTORY_ID, GA_G::DEVICE_ID_MEDIC_CJP);
-		Write4B(response, GA_T::PROFILE_ID, 0x3);
-		Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 201);
-
-		append(response, 0x04, 0x00);  // inner item count
-
-		Write4B(response, GA_T::CHARACTER_ID, 0);
-		Write4B(response, GA_T::INVENTORY_ID, GA_G::DEVICE_ID_MEDIC_CJP);
-		Write4B(response, GA_T::PROFILE_ID, 0x4);
-		Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 201);
-
-		append(response, 0x04, 0x00);  // inner item count
-
-		Write4B(response, GA_T::CHARACTER_ID, 0);
-		Write4B(response, GA_T::INVENTORY_ID, GA_G::DEVICE_ID_MEDIC_CJP);
-		Write4B(response, GA_T::PROFILE_ID, 0x5);
-		Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 201);
-
-	append(response, GA_T::DATA_SET_PLAYER_INVENTORY & 0xFF, GA_T::DATA_SET_PLAYER_INVENTORY >> 8);
-	append(response, 0x01, 0x00);        // count elements
-
-		append(response, 0x9, 0x00);  // inner item count
-
-		Write4B(response, GA_T::ITEM_ID, GA_G::DEVICE_ID_MEDIC_CJP);
-		Write4B(response, GA_T::INVENTORY_ID, GA_G::DEVICE_ID_MEDIC_CJP);
-		Write4B(response, GA_T::BLUEPRINT_ID, 0);
-		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, 1162);
-		Write4B(response, GA_T::DURABILITY, 100);
-		double ts = 1700000000.0;
-		WriteDouble(response, GA_T::ACQUIRE_DATETIME, ts);
-		WriteString(response, GA_T::BOUND_FLAG, "T");
-		Write4B(response, GA_T::LOCATION_VALUE_ID, 369);
-		Write4B(response, GA_T::INSTANCE_COUNT, 0x1);
-
-	send_response(response);
+	// Stub — no active callers. Reimplement from ga_character_devices if needed.
+	Logger::Log("tcp", "[TCP] send_character_inventory_response: STUB (no-op) pawnId=%d\n", nPawnId);
 }
 
-void TcpSession::send_inventory_response(int nPawnId) {
-	// Hardcoded 7-device medic loadout matching DLL SpawnPlayerCharacter.
-	Logger::Log("tcp", "[TCP] send_inventory_response: 7-device loadout for pawnId=%d\n", nPawnId);
+void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
+	auto devices = PlayerSessionStore::GetDevicesForCharacter(character_id);
+	if (devices.empty()) {
+		Logger::Log("tcp", "[TCP] send_inventory_response: no devices for charId=%lld pawnId=%d\n",
+			character_id, nPawnId);
+		return;
+	}
 
-	// Device table: {deviceId, invId, slotValueId, quality}
-	struct DeviceEntry { int deviceId; int invId; int slotValueId; int quality; };
-	static const DeviceEntry devices[] = {
-		{ 5800, 996,  221, 1162 },  // lifestealer/melee
-		{ 2991, 1000, 198, 1162 },  // agonizer/ranged
-		{ 2906, 995,  200, 1162 },  // bfb/specialty
-		{ 7032, 999,  201, 1162 },  // jetpack/travel
-		{ 2531, 997,  203, 1162 },  // healnade/offhand
-		{ 2773, 994,  386, 1162 },  // heal boost/morale
-		{ 864,  998,  502, 1162 },  // rest device/offhand
-	};
-	constexpr int kDeviceCount = 7;
+	Logger::Log("tcp", "[TCP] send_inventory_response: %d devices for charId=%lld pawnId=%d\n",
+		(int)devices.size(), character_id, nPawnId);
 
 	std::vector<uint8_t> response;
 
@@ -797,17 +714,16 @@ void TcpSession::send_inventory_response(int nPawnId) {
 
 	Write4B(response, GA_T::PAWN_ID, nPawnId);
 
+	int deviceCount = (int)devices.size();
 	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
-	append(response, kDeviceCount & 0xFF, kDeviceCount >> 8);  // 7 items
+	append(response, deviceCount & 0xFF, deviceCount >> 8);
 
-	for (int i = 0; i < kDeviceCount; i++) {
-		const auto& d = devices[i];
-
+	for (const auto& d : devices) {
 		append(response, 0x0E, 0x00);  // 14 fields per item
 
 		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1);
-		Write4B(response, GA_T::ITEM_ID, d.deviceId);
-		Write4B(response, GA_T::INVENTORY_ID, d.invId);
+		Write4B(response, GA_T::ITEM_ID, d.device_id);
+		Write4B(response, GA_T::INVENTORY_ID, d.inventory_id);
 		Write4B(response, GA_T::BLUEPRINT_ID, 0);
 		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, d.quality);
 		Write4B(response, GA_T::DURABILITY, 100);
@@ -816,21 +732,21 @@ void TcpSession::send_inventory_response(int nPawnId) {
 		Write4B(response, GA_T::LOCATION_VALUE_ID, 369);
 		Write4B(response, GA_T::INSTANCE_COUNT, 0x1);
 		WriteString(response, GA_T::ACTIVE_FLAG, "T");
-		Write4B(response, GA_T::DEVICE_ID, d.invId);
+		Write4B(response, GA_T::DEVICE_ID, d.inventory_id);
 
 		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
 		append(response, 0x01, 0x00);
 			append(response, 0x02, 0x00);
-			Write4B(response, GA_T::INVENTORY_ID, d.invId);
-			Write4B(response, GA_T::EFFECT_GROUP_ID, 0);
+			Write4B(response, GA_T::INVENTORY_ID, d.inventory_id);
+			Write4B(response, GA_T::EFFECT_GROUP_ID, d.effect_group_id);
 
 		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
 		append(response, 0x01, 0x00);
 			append(response, 0x04, 0x00);
-			Write4B(response, GA_T::CHARACTER_ID, 0);  // 0 = applies to any pawn
-			Write4B(response, GA_T::INVENTORY_ID, d.invId);
+			Write4B(response, GA_T::CHARACTER_ID, 0);
+			Write4B(response, GA_T::INVENTORY_ID, d.inventory_id);
 			Write4B(response, GA_T::PROFILE_ID, 0x1);
-			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, d.slotValueId);
+			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, d.slot_value_id);
 	}
 
 	send_response(response);

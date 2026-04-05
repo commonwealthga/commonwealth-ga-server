@@ -155,33 +155,29 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 		// 	}
 		// }
 
-		FString portal = FString(*(FString*)((char*)Connection + 0xF8));
+		// NOTE: Do NOT create local FString/FURL copies of UE3-owned data.
+		// FString's destructor calls delete[] but UE3 allocates with its own
+		// heap (appMalloc).  Mixing allocators corrupts the C++ heap.
 
 		FString error;
 		FString error2;
-		std::wstring urlstr = Config::GetMapUrl();
-		FString url = FString(urlstr.data());
-		std::wstring params = Config::GetMapParams();
 
-		Logger::Log(GetLogChannel(), "[SpawnPlayActor] params: %s\n", params.data());
-
-		FString options = FString(params.data());
-
-
-		// LogToFile("C:\\mylog.txt", "[SpawnPlayActor] start");
+		std::wstring params2 = Config::GetMapParams();
+		Logger::Log(GetLogChannel(), "[SpawnPlayActor] params: %s\n", params2.data());
 
 		ULocalPlayer* connplayer = (ULocalPlayer*)Connection;
 
-		// pOriginalLocalPlayerSpawnPlayActor(connection, edx_dummy, &url, &error);
-		// void* newcontrollerptr = *(void**)((char*)connplayer + 0x40);
-
-		FString connrequesturl = *(FString*)((char*)Connection + 0xF8);
 		FURL requesturl;
-		std::wstring params2 = Config::GetMapParams();
 		FURL__Constructor::CallOriginal(&requesturl, nullptr, nullptr, params2.data(), 0);
 
 		ATgPlayerController* newcontrollerptr = World__SpawnPlayActor::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, connplayer, 2, &requesturl, &error, 0);
 		connplayer->Actor = newcontrollerptr;
+
+		// Zero out FURL and error FStrings so their destructors don't delete[]
+		// memory that UE3 allocated with appMalloc.
+		memset(&requesturl, 0, sizeof(FURL));
+		memset(&error, 0, sizeof(FString));
+		memset(&error2, 0, sizeof(FString));
 
 		// LogFString(error);
 

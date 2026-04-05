@@ -17,7 +17,7 @@ public:
 	// Equip a device on a pawn. Does NOT call UpdateClientDevices.
 	// Call Finalize() after all equips to trigger replication.
 	// Returns ATgDevice* (nullptr on failure).
-	static ATgDevice* Equip(ATgPawn* Pawn, int deviceId, int slot, int quality = 0);
+	static ATgDevice* Equip(ATgPawn* Pawn, int deviceId, int slot, int quality = 0, int inventoryId = 0);
 
 	// Trigger replication after all equips are done.
 	// Calls UpdateClientDevices + sets bNetDirty/bForceNetUpdate on pawn and PRI.

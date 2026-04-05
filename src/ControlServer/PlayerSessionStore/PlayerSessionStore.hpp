@@ -26,6 +26,15 @@ struct CharacterInfo {
     std::vector<uint8_t> morph_data;
 };
 
+struct DeviceRow {
+    int device_id;
+    int equip_slot;
+    int slot_value_id;
+    int quality;
+    int inventory_id;
+    int effect_group_id;
+};
+
 class PlayerSessionStore {
 public:
     static void Init();
@@ -43,6 +52,8 @@ public:
     static std::optional<CharacterInfo> GetCharacterById(int64_t id);
     static void SetSelectedCharacter(const std::string& guid, int64_t char_id, uint32_t profile_id);
 
+    static std::vector<DeviceRow> GetDevicesForCharacter(int64_t character_id);
+
     static QuestStore& Quests() {
         static QuestStore instance;
         return instance;
@@ -52,4 +63,7 @@ private:
     static std::mutex mutex_;
     static std::map<std::string, SessionInfo> by_guid_;
     static std::map<std::string, SessionInfo> by_ip_;
+
+    static void SeedDefaultDevices(int64_t character_id, uint32_t profile_id);
+    static int GetEffectGroupId(int device_id);
 };

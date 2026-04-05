@@ -572,14 +572,34 @@ void Database::Init() {
 		}
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 16", nullptr, nullptr, &err);
+	if (version < 17) {
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_character_devices ("
+			"  id            INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  character_id  INTEGER NOT NULL REFERENCES ga_characters(id),"
+			"  device_id     INTEGER NOT NULL,"
+			"  equip_slot    INTEGER NOT NULL,"
+			"  slot_value_id INTEGER NOT NULL,"
+			"  quality       INTEGER NOT NULL DEFAULT 0,"
+			"  inventory_id  INTEGER NOT NULL,"
+			"  effect_group_id INTEGER NOT NULL DEFAULT 0"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_character_devices table: %s\n", err);
+			sqlite3_free(err);
+			return;
+		}
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 17", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
 	}
 
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
-	Logger::Log("db", "[Database::Init] Schema at version 16, WAL mode enabled\n");
+	Logger::Log("db", "[Database::Init] Schema at version 17, WAL mode enabled\n");
 }
 
 std::string Database::GetQuestStatus(int64_t character_id, int quest_id) {

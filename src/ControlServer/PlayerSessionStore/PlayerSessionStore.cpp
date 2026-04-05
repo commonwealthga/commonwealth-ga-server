@@ -159,7 +159,9 @@ int64_t PlayerSessionStore::InsertCharacter(int64_t user_id, uint32_t profile_id
 	sqlite3_step(stmt);
 	sqlite3_finalize(stmt);
 
-	return sqlite3_last_insert_rowid(db);
+	int64_t newId = sqlite3_last_insert_rowid(db);
+	SeedDefaultDevices(newId, profile_id);
+	return newId;
 }
 
 std::vector<CharacterInfo> PlayerSessionStore::GetCharactersByUserId(int64_t user_id) {
@@ -239,4 +241,110 @@ void PlayerSessionStore::SetSelectedCharacter(const std::string& session_guid, i
 		by_ip_[it->second.ip_address].selected_character_id = char_id;
 		by_ip_[it->second.ip_address].selected_profile_id   = profile_id;
 	}
+}
+
+int PlayerSessionStore::GetEffectGroupId(int deviceId) {
+	switch (deviceId) {
+		case 7031: return 26173;  // assault jetpack
+		case 7032: return 26173;  // medic jetpack
+		case 7033: return 26173;  // recon jetpack
+		case 7034: return 26173;  // robotic jetpack
+		case 2991: return 16670;  // agonizer
+		case 2531: return 16653;  // healing grenade
+		case 5800: return 22334;  // lifestealer
+		case 2906: return 9071;   // adrenaline gun / specialty
+		default:   return 0;
+	}
+}
+
+void PlayerSessionStore::SeedDefaultDevices(int64_t character_id, uint32_t profile_id) {
+	struct Seed { int deviceId; int slot; int slotValueId; int quality; };
+
+	std::vector<Seed> seeds;
+	switch (profile_id) {
+		case 567: // Medic
+			seeds = {
+				{5800, 1, 221, 0}, {2991, 2, 198, 0}, {6898, 3, 200, 0}, {7032, 5, 201, 0},
+				{2531, 7, 203, 0}, {2168, 8, 204, 0}, {2773, 10, 386, 0}, {864, 14, 502, 0},
+			};
+			break;
+		case 679: // Recon
+			seeds = {
+				{5799, 1, 221, 0}, {2110, 2, 198, 0}, {3023, 3, 200, 0}, {7033, 5, 201, 0},
+				{2219, 7, 203, 0}, {2129, 8, 204, 0}, {2113, 10, 386, 0}, {864, 14, 502, 0},
+			};
+			break;
+		case 680: // Robotic
+			seeds = {
+				{5802, 1, 221, 0}, {6885, 2, 198, 0}, {2918, 3, 200, 0}, {7034, 5, 201, 0},
+				{2300, 7, 203, 0}, {2066, 8, 204, 0}, {2886, 10, 386, 0}, {864, 14, 502, 0},
+			};
+			break;
+		case 681: // Assault
+		default:
+			seeds = {
+				{5801, 1, 221, 0}, {5788, 2, 198, 0}, {2914, 3, 200, 0}, {7031, 5, 201, 0},
+				{3699, 7, 203, 0}, {2498, 8, 204, 0}, {5775, 10, 386, 0}, {864, 14, 502, 0},
+			};
+			break;
+	}
+
+	sqlite3* db = Database::GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"INSERT INTO ga_character_devices "
+		"(character_id, device_id, equip_slot, slot_value_id, quality, inventory_id, effect_group_id) "
+		"VALUES (?, ?, ?, ?, ?, ?, ?)",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[PlayerSessionStore] SeedDefaultDevices prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+
+	int invId = 10000;
+	for (const auto& s : seeds) {
+		sqlite3_reset(stmt);
+		sqlite3_bind_int64(stmt, 1, character_id);
+		sqlite3_bind_int(stmt,   2, s.deviceId);
+		sqlite3_bind_int(stmt,   3, s.slot);
+		sqlite3_bind_int(stmt,   4, s.slotValueId);
+		sqlite3_bind_int(stmt,   5, s.quality);
+		sqlite3_bind_int(stmt,   6, invId++);
+		sqlite3_bind_int(stmt,   7, GetEffectGroupId(s.deviceId));
+		sqlite3_step(stmt);
+	}
+	sqlite3_finalize(stmt);
+
+	Logger::Log("db", "[PlayerSessionStore] Seeded %d default devices for character %lld (profile %u)\n",
+		(int)seeds.size(), character_id, profile_id);
+}
+
+std::vector<DeviceRow> PlayerSessionStore::GetDevicesForCharacter(int64_t character_id) {
+	std::lock_guard<std::mutex> lock(mutex_);
+	sqlite3* db = Database::GetConnection();
+	std::vector<DeviceRow> result;
+
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT device_id, equip_slot, slot_value_id, quality, inventory_id, effect_group_id "
+		"FROM ga_character_devices WHERE character_id = ? ORDER BY equip_slot",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[PlayerSessionStore] GetDevicesForCharacter prepare failed: %s\n", sqlite3_errmsg(db));
+		return result;
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		DeviceRow row;
+		row.device_id       = sqlite3_column_int(stmt, 0);
+		row.equip_slot      = sqlite3_column_int(stmt, 1);
+		row.slot_value_id   = sqlite3_column_int(stmt, 2);
+		row.quality         = sqlite3_column_int(stmt, 3);
+		row.inventory_id    = sqlite3_column_int(stmt, 4);
+		row.effect_group_id = sqlite3_column_int(stmt, 5);
+		result.push_back(row);
+	}
+	sqlite3_finalize(stmt);
+	return result;
 }

@@ -2,9 +2,19 @@
 
 std::map<std::string, int> Logger::ChannelIndents;
 std::vector<std::string> Logger::EnabledChannels;
+static CRITICAL_SECTION g_log_cs;
+static bool g_log_cs_init = false;
 
 void Logger::Log(const char* Channel, const char* Format, ...) {
+	if (!g_log_cs_init) {
+		InitializeCriticalSection(&g_log_cs);
+		g_log_cs_init = true;
+	}
+
+	EnterCriticalSection(&g_log_cs);
+
 	if (std::find(EnabledChannels.begin(), EnabledChannels.end(), Channel) == EnabledChannels.end()) {
+		LeaveCriticalSection(&g_log_cs);
 		return;
 	}
 
@@ -13,7 +23,8 @@ void Logger::Log(const char* Channel, const char* Format, ...) {
 
     FILE* fp = fopen(filename, "a");
     if (fp == NULL) {
-        return; // optionally log or handle error
+		LeaveCriticalSection(&g_log_cs);
+        return;
     }
 
 	int indent = ChannelIndents[Channel];
@@ -23,11 +34,13 @@ void Logger::Log(const char* Channel, const char* Format, ...) {
 
     va_list args;
     va_start(args, Format);
-    
+
     vfprintf(fp, Format, args);      // Write formatted content
-    
+
     va_end(args);
     fclose(fp);
+
+	LeaveCriticalSection(&g_log_cs);
 }
 
 void Logger::DumpMemory(const char* Channel, void* Address, int Size, int NegativeSize) {

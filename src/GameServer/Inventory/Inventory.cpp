@@ -81,7 +81,7 @@ bool Inventory::IsHandDevice(int slot) {
 // ---------------------------------------------------------------------------
 // Inventory::Equip — create and equip a device on a pawn
 // ---------------------------------------------------------------------------
-ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality) {
+ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, int inventoryId) {
 	// --- Null checks ---
 	if (Pawn == nullptr) {
 		Logger::Log("inventory", "Equip: ERROR — Pawn is null\n");
@@ -93,7 +93,7 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality) 
 	}
 
 	// --- Assign unique inventory ID ---
-	int invId = NextId();
+	int invId = (inventoryId > 0) ? inventoryId : NextId();
 
 	// --- Resolve slot value ID ---
 	int slotValueId = GA::SlotValueId(slot);
@@ -118,7 +118,7 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality) 
 	data.bEquippedOnOtherChar = 0;
 	data.nCreatedByCharacterId = 998;
 	data.fAcquiredDatetime = 1700000000.0f;
-	for (int i = 0; i < 6; i++) data.m_nEquipSlotValueIdArray[i] = slotValueId;
+	for (int i = 0; i < 5; i++) data.m_nEquipSlotValueIdArray[i] = slotValueId;
 	data.nCraftedQualityValueId = qualityValueId;
 	data.nBlueprintId = 0;
 	data.nDurability = 100;
@@ -183,14 +183,14 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality) 
 
 	// --- REST device auto-config (deviceId == 864) ---
 	if (deviceId == GA::DeviceId::RestDevice) {
-		*(uint32_t*)((char*)Device + 0x22C) |= 0x00020000;  // m_bIsRestDevice
-		*(ATgDevice**)((char*)Pawn + 0x0904) = Device;        // m_RestDevice
-		*(int*)((char*)Pawn + 0x1524) = slot;                  // r_nRestDeviceSlot
+		Device->m_bIsRestDevice = 1;
+		Pawn->m_RestDevice = Device;
+		Pawn->r_nRestDeviceSlot = slot;
 	}
 
 	// --- Morale device auto-config ---
 	if (GetDeviceType(slot) == GA_G::TGDT_MORALE) {
-		*(int*)((char*)Pawn + 0x1520) = slot;  // r_nMoraleDeviceSlot
+		Pawn->r_nMoraleDeviceSlot = slot;
 	}
 
 	// --- Replication flags ---

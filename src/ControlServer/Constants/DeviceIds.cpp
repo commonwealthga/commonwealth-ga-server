@@ -1,6 +1,6 @@
-#include "src/ControlServer/Constants/DeviceIds.hpp"
-#include "src/ControlServer/Database/Database.hpp"
-#include "src/ControlServer/Logger.hpp"
+#include "DeviceIds.hpp"
+#include "../Database/Database.hpp"
+#include "../Logger.hpp"
 #include "sqlite3.h"
 
 namespace GA {

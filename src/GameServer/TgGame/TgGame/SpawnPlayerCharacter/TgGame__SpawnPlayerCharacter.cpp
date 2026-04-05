@@ -35,7 +35,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// Validate: fall back to Assault (680) for unknown or unset profile IDs.
 	if (profileId != 567 && profileId != 679 && profileId != 680 && profileId != 681) {
 		Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: invalid profile_id=%d for connection=%d, falling back to Assault\n", profileId, ConnectionIndex);
-		profileId = 680;
+		profileId = 681;
+		// profileId = 680;
 	}
 
 	const ClassConfig& classConfig = GetClassConfig(profileId);
@@ -248,7 +249,20 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// newrepplayer->PlayerName = FString(L"Zaxik");
 
 
-	newrepplayer->eventSetPlayerName(FString(GClientConnectionsData[(int)PlayerController->Player].PlayerInfo.player_name_w.data()));
+	// eventSetPlayerName passes FString to ProcessEvent via memcpy (shallow copy).
+	// ProcessEvent's cleanup calls appFree on the FString::Data (CPF_NeedCtorLink).
+	// If Data was allocated with C++ new[], appFree corrupts the heap.
+	// Null out Data after the memcpy inside eventSetPlayerName copies it,
+	// so the C++ destructor doesn't also delete[] the same pointer.
+	{
+		FString playerNameStr(GClientConnectionsData[(int)PlayerController->Player].PlayerInfo.player_name_w.data());
+		newrepplayer->eventSetPlayerName(playerNameStr);
+		// eventSetPlayerName memcpy'd our FString into its Parms struct.
+		// ProcessEvent already consumed (and potentially freed) the Data.
+		// Null out so ~FString doesn't double-free.
+		playerNameStr.Data = nullptr;
+		playerNameStr.Count = playerNameStr.Max = 0;
+	}
 	// newrepplayer->SetTeam(GTeamsData.Attackers);
 
 	// newrepplayer->r_TaskForce = GTeamsData.Defenders;
@@ -316,6 +330,14 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	TARRAY_ADD(TeamPlayersAttackers, newplayerteamentry);
 	// TARRAY_ADD(TeamPlayersDefenders, newplayerteamentry);
 
+	// TARRAY_ADD shallow-copies the struct (memcpy-style).  The TArray copy
+	// now owns the FString Data pointers.  Null them in the local so
+	// ~FString doesn't delete[] memory that UE3 will later appFree.
+	newplayerteamentry.fsName.Data = nullptr;
+	newplayerteamentry.fsName.Count = newplayerteamentry.fsName.Max = 0;
+	newplayerteamentry.fsMapName.Data = nullptr;
+	newplayerteamentry.fsMapName.Count = newplayerteamentry.fsMapName.Max = 0;
+
 	// GIVE COLONY EYE PET
 
 	// FVector PetSpawnLocation = newpawn->Location;
@@ -330,16 +352,32 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: profileId=%d, skillGroupSetId=%d, botId=%d, characterId=%d, hp=%d\n",
 	    classConfig.profileId, classConfig.skillGroupSetId, profileId, newpawn->s_nCharacterId, hp);
 
-	// TODO(Phase 5): Replace hardcoded medic loadout with classConfig device IDs
-	// Equip medic loadout (bot_id=567 config) via Inventory API
-	Inventory::Equip(newpawn, GA::DeviceId::Medic::LifeStealer,    GA::EquipSlot::Melee);      // equip point 1
-	Inventory::Equip(newpawn, GA::DeviceId::Medic::Agonizer,       GA::EquipSlot::Ranged);     // equip point 2
-	Inventory::Equip(newpawn, GA::DeviceId::Medic::AdrenalineGun,                                 GA::EquipSlot::Specialty);  // equip point 3 (specialty device from bot config)
-	Inventory::Equip(newpawn, GA::DeviceId::Jetpack::Medic,        GA::EquipSlot::Jetpack);    // equip point 5
-	Inventory::Equip(newpawn, GA::DeviceId::Medic::HealingGrenade, GA::EquipSlot::Offhand2);   // equip point 7
-	Inventory::Equip(newpawn, GA::DeviceId::Medic::HealingBoost,   GA::EquipSlot::Rest);       // equip point 10 per bot_id=567 DB config
-	Inventory::Equip(newpawn, GA::DeviceId::RestDevice,            14);                         // equip point 14 per bot_id=567 DB config (slotValueId=502)
-	Inventory::Finalize(newpawn);
+	// Read equipped devices from DB — single source of truth shared with control server
+	{
+		int64_t charId = (int64_t)newpawn->s_nCharacterId;
+		sqlite3* db = Database::GetConnection();
+		sqlite3_stmt* stmt = nullptr;
+		int rc = sqlite3_prepare_v2(db,
+			"SELECT device_id, equip_slot, quality, inventory_id "
+			"FROM ga_character_devices WHERE character_id = ? ORDER BY equip_slot",
+			-1, &stmt, nullptr);
+		if (rc == SQLITE_OK && stmt) {
+			sqlite3_bind_int64(stmt, 1, charId);
+			while (sqlite3_step(stmt) == SQLITE_ROW) {
+				int deviceId    = sqlite3_column_int(stmt, 0);
+				int slot        = sqlite3_column_int(stmt, 1);
+				int quality     = sqlite3_column_int(stmt, 2);
+				int inventoryId = sqlite3_column_int(stmt, 3);
+				Inventory::Equip(newpawn, deviceId, slot, quality, inventoryId);
+			}
+			sqlite3_finalize(stmt);
+		} else {
+			Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: failed to query ga_character_devices for charId=%lld: %s\n",
+				charId, sqlite3_errmsg(db));
+		}
+		Inventory::Finalize(newpawn);
+	}
+
 
 	LogCallEnd();
 
