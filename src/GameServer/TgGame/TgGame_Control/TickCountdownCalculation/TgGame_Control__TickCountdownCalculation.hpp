@@ -4,14 +4,12 @@
 #include "src/Utils/HookBase.hpp"
 
 class TgGame_Control__TickCountdownCalculation : public HookBase<
-	void(__fastcall*)(ATgGame_Control*, void*, int),
-	0x10ad9bf0,
+	void(__fastcall*)(ATgGame_Control*, void*, float),
+	0x10ad9db0,
 	TgGame_Control__TickCountdownCalculation> {
 public:
-	static void __fastcall Call(ATgGame_Control* Game, void* edx, int nPriority);
-	static inline void __fastcall CallOriginal(ATgGame_Control* Game, void* edx, int nPriority) {
-		m_original(Game, edx, nPriority);
+	static void __fastcall Call(ATgGame_Control* Game, void* edx, float DeltaTime);
+	static inline void __fastcall CallOriginal(ATgGame_Control* Game, void* edx, float DeltaTime) {
+		m_original(Game, edx, DeltaTime);
 	};
 };
-
-

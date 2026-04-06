@@ -4,14 +4,12 @@
 #include "src/Utils/HookBase.hpp"
 
 class TgGame__TgFindPlayerSpawnLocation : public HookBase<
-	void(__fastcall*)(ATgGame*, void*, int),
-	0x10ad9bf0,
+	bool(__fastcall*)(ATgGame*, void*, AController*, FVector*),
+	0x10ad9d00,
 	TgGame__TgFindPlayerSpawnLocation> {
 public:
-	static void __fastcall Call(ATgGame* Game, void* edx, int nPriority);
-	static inline void __fastcall CallOriginal(ATgGame* Game, void* edx, int nPriority) {
-		m_original(Game, edx, nPriority);
+	static bool __fastcall Call(ATgGame* Game, void* edx, AController* pPlayer, FVector* vLoc);
+	static inline bool __fastcall CallOriginal(ATgGame* Game, void* edx, AController* pPlayer, FVector* vLoc) {
+		return m_original(Game, edx, pPlayer, vLoc);
 	};
 };
-
-

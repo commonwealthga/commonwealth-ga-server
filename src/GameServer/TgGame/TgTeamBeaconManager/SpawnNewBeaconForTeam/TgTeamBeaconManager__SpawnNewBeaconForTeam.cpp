@@ -22,4 +22,3 @@ void __fastcall* TgTeamBeaconManager__SpawnNewBeaconForTeam::Call(ATgTeamBeaconM
 	Logger::Log("debug", "MINE TgTeamBeaconManager::SpawnNewBeaconForTeam END\n");
 	// LogToFile("C:\\mylog.txt", "MINE TgTeamBeaconManager::SpawnNewBeaconForTeam END");
 }
-

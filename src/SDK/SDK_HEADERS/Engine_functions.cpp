@@ -20015,8 +20015,15 @@ void UCylinderComponent::SetCylinderSize ( float NewRadius, float NewHeight )
 {
 	static UFunction* pFnSetCylinderSize = NULL;
 
-	if ( ! pFnSetCylinderSize )
-		pFnSetCylinderSize = (UFunction*) UObject::GObjObjects()->Data[ 5327 ];
+	if ( ! pFnSetCylinderSize ) {
+		for (int i=0; i<UObject::GObjObjects()->Count; i++) {
+			if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Function Engine.CylinderComponent.SetCylinderSize") == 0) {
+				pFnSetCylinderSize = (UFunction*)UObject::GObjObjects()->Data[i];
+				break;
+			}
+		}
+	}
+		//pFnSetCylinderSize = (UFunction*) UObject::GObjObjects()->Data[ 5327 ];
 
 	UCylinderComponent_execSetCylinderSize_Parms SetCylinderSize_Parms;
 	SetCylinderSize_Parms.NewRadius = NewRadius;

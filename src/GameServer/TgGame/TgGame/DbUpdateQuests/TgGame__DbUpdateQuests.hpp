@@ -4,14 +4,12 @@
 #include "src/Utils/HookBase.hpp"
 
 class TgGame__DbUpdateQuests : public HookBase<
-	void(__fastcall*)(ATgGame*, void*, int),
-	0x10ad9bf0,
+	void(__fastcall*)(ATgGame*, void*),
+	0x10ad9b40,
 	TgGame__DbUpdateQuests> {
 public:
-	static void __fastcall Call(ATgGame* Game, void* edx, int nPriority);
-	static inline void __fastcall CallOriginal(ATgGame* Game, void* edx, int nPriority) {
-		m_original(Game, edx, nPriority);
+	static void __fastcall Call(ATgGame* Game, void* edx);
+	static inline void __fastcall CallOriginal(ATgGame* Game, void* edx) {
+		m_original(Game, edx);
 	};
 };
-
-

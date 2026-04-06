@@ -21,7 +21,11 @@ void CGameClient__SendMapRandomSMSettingsMarshal::Call(UNetConnection* Connectio
 		UClass* smActorClass = ATgRandomSMActor::StaticClass();
 		for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
 			UObject* obj = UObject::GObjObjects()->Data[i];
-			if (!obj || !obj->IsA(smActorClass)) continue;
+			if (!obj) continue;
+			char* className = obj->Class->GetFullName();
+			bool bIsRandomSMActor = strcmp(className, "Class TgGame.TgRandomSMActor") == 0;
+
+			if (!bIsRandomSMActor) continue;
 
 			ATgRandomSMActor* actor = reinterpret_cast<ATgRandomSMActor*>(obj);
 
@@ -33,6 +37,16 @@ void CGameClient__SendMapRandomSMSettingsMarshal::Call(UNetConnection* Connectio
 			// Enabled companions will have bCollideActors set.
 			bool bEnabled = (*(uint32_t*)((char*)actor + 0xB0)) & 0x08000000;
 			if (!bEnabled) continue;
+
+
+			// force net relevant
+			if (actor->RemoteRole == 0 && actor->bNoDelete && !actor->bStatic) {
+				actor->RemoteRole = 1; // ROLE_SimulatedProxy
+				actor->bAlwaysRelevant = 1;
+				actor->NetUpdateFrequency = 0.1f;
+			}
+
+			actor->bForceNetUpdate = 1;
 
 			// Allocate and initialize a new row
 			void* rowBuf = HeapAllocator__Allocate::CallOriginal(0x24);
@@ -57,9 +71,14 @@ void CGameClient__SendMapRandomSMSettingsMarshal::Call(UNetConnection* Connectio
 		}
 	}
 
-	// Send all chained marshals
+	// Send all chained marshals, copying the vtable from the first marshal
+	// to any chained ones that may be missing it
+	void* FirstVtable = *(void**)MarshalPtr;
 	void* CurrentMarshal = MarshalPtr;
 	while (CurrentMarshal) {
+		if (*(void**)CurrentMarshal == nullptr) {
+			*(void**)CurrentMarshal = FirstVtable;
+		}
 		ClientConnection__SendMarshal::Call(Connection, nullptr, CurrentMarshal);
 		CurrentMarshal = *(void**)((char*)CurrentMarshal + 0x2f4);
 	}

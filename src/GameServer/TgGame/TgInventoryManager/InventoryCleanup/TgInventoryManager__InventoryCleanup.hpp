@@ -4,14 +4,12 @@
 #include "src/Utils/HookBase.hpp"
 
 class TgInventoryManager__InventoryCleanup : public HookBase<
-	void(__fastcall*)(ATgInventoryManager*, void*, int),
-	0x10ad9bf0,
+	void(__fastcall*)(ATgInventoryManager*, void*),
+	0x10a122e0,
 	TgInventoryManager__InventoryCleanup> {
 public:
-	static void __fastcall Call(ATgInventoryManager* InventoryManager, void* edx, int nPriority);
-	static inline void __fastcall CallOriginal(ATgInventoryManager* InventoryManager, void* edx, int nPriority) {
-		m_original(InventoryManager, edx, nPriority);
+	static void __fastcall Call(ATgInventoryManager* Manager, void* edx);
+	static inline void __fastcall CallOriginal(ATgInventoryManager* Manager, void* edx) {
+		m_original(Manager, edx);
 	};
 };
-
-

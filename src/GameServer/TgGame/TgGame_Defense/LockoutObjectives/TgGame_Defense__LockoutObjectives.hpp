@@ -5,7 +5,7 @@
 
 class TgGame_Defense__LockoutObjectives : public HookBase<
 	void(__fastcall*)(ATgGame_Defense*, void*, int),
-	0x10ad9bf0,
+	0x10ad9f00,
 	TgGame_Defense__LockoutObjectives> {
 public:
 	static void __fastcall Call(ATgGame_Defense* Game, void* edx, int nPriority);
@@ -13,4 +13,3 @@ public:
 		m_original(Game, edx, nPriority);
 	};
 };
-

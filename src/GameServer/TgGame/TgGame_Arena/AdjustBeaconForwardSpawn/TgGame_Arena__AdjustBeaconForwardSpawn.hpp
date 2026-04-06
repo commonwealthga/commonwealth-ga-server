@@ -4,8 +4,8 @@
 #include "src/Utils/HookBase.hpp"
 
 class TgGame_Arena__AdjustBeaconForwardSpawn : public HookBase<
-	void(__fastcall*)(ATgGame*, void*, int),
-	0x10ad9bf0,
+	void(__fastcall*)(ATgGame_Arena*, void*, int),
+	0x10ad9d90,
 	TgGame_Arena__AdjustBeaconForwardSpawn> {
 public:
 	static void __fastcall Call(ATgGame_Arena* Game, void* edx, int nPriority);
@@ -13,4 +13,3 @@ public:
 		m_original(Game, edx, nPriority);
 	};
 };
-

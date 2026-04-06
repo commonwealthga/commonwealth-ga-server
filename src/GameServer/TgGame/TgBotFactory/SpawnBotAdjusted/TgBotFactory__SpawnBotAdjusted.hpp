@@ -8,9 +8,8 @@ class TgBotFactory__SpawnBotAdjusted : public HookBase<
 	0x10a8c310,
 	TgBotFactory__SpawnBotAdjusted> {
 public:
-	static void __fastcall Call(ATgBotFactory* BotFactory, void* edx, int nBotId, float fAdjustment);
-	static inline void __fastcall CallOriginal(ATgBotFactory* BotFactory, void* edx, int nBotId, float fAdjustment) {
-		m_original(BotFactory, edx, nBotId, fAdjustment);
+	static void __fastcall Call(ATgBotFactory* Factory, void* edx, int nBotId, float fAdjustment);
+	static inline void __fastcall CallOriginal(ATgBotFactory* Factory, void* edx, int nBotId, float fAdjustment) {
+		m_original(Factory, edx, nBotId, fAdjustment);
 	};
 };
-

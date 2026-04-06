@@ -8,9 +8,8 @@ class TgBotFactory__SpawnBotId : public HookBase<
 	0x10a8c300,
 	TgBotFactory__SpawnBotId> {
 public:
-	static void __fastcall Call(ATgBotFactory* BotFactory, void* edx, int nBotId);
-	static inline void __fastcall CallOriginal(ATgBotFactory* BotFactory, void* edx, int nBotId) {
-		m_original(BotFactory, edx, nBotId);
+	static void __fastcall Call(ATgBotFactory* Factory, void* edx, int nBotId);
+	static inline void __fastcall CallOriginal(ATgBotFactory* Factory, void* edx, int nBotId) {
+		m_original(Factory, edx, nBotId);
 	};
 };
-
