@@ -5,6 +5,7 @@
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/InstanceSpawner/InstanceSpawner.hpp"
 #include "src/ControlServer/TcpListener/TcpListener.hpp"
+#include "src/ControlServer/ChatListener/ChatListener.hpp"
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include <asio.hpp>
@@ -113,11 +114,14 @@ int main(int argc, char* argv[]) {
     // Bind TCP listener (GA client connections)
     TcpListener listener(io, cfg.tcp_port);
 
+    // Bind chat listener (GA chat connections — separate port)
+    ChatListener chat_listener(io, cfg.chat_port);
+
     // Bind IPC server (game instance connections)
     IpcServer ipc_server(io, cfg.ipc_port);
 
-    Logger::Log("main", "Control server ready. TCP port %d, IPC port %d, DB %s, home_map=%s\n",
-        (int)cfg.tcp_port, (int)cfg.ipc_port, cfg.db_path.c_str(), cfg.home_map_name.c_str());
+    Logger::Log("main", "Control server ready. TCP port %d, Chat port %d, IPC port %d, DB %s, home_map=%s\n",
+        (int)cfg.tcp_port, (int)cfg.chat_port, (int)cfg.ipc_port, cfg.db_path.c_str(), cfg.home_map_name.c_str());
 
     // Run event loop -- blocks until io.stop() or all work complete.
     // INSTANCE_READY from the game DLL will call InstanceRegistry::MarkReady() asynchronously.

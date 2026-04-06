@@ -43,7 +43,7 @@ ATgDevice* __fastcall TgInventoryManager__NonPersistAddDevice::Call(ATgInventory
 		1004, // 24
 	};
 	int slotValueId = (nEquipPoint >= 1 && nEquipPoint <= 24) ? kEquipPointToSlotValueId[nEquipPoint] : 0;
-	int nInventoryId = Inventory::NextId();
+	int nInventoryId = 999; // Inventory::NextId(); - TODO: fix this
 
 	// Diagnostics: state before GiveDeviceById
 	void* controller = *(void**)((char*)ownerpawn + 0x1D8);

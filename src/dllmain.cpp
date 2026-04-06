@@ -273,7 +273,7 @@
 
 
 unsigned long ModuleThread( void* ) {
-	Logger::EnabledChannels.push_back("hook_calltree");
+	// Logger::EnabledChannels.push_back("hook_calltree");
 	// Logger::EnabledChannels.push_back("ipc");
 	// Logger::EnabledChannels.push_back("kismet");
 	// Logger::EnabledChannels.push_back("tgbotfactory");

@@ -33,6 +33,7 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
     if (j.contains("home_map_name"))      cfg.home_map_name      = j["home_map_name"].get<std::string>();
     if (j.contains("home_map_game_mode")) cfg.home_map_game_mode = j["home_map_game_mode"].get<std::string>();
     if (j.contains("tcp_port"))           cfg.tcp_port           = j["tcp_port"].get<uint16_t>();
+    if (j.contains("chat_port"))          cfg.chat_port          = j["chat_port"].get<uint16_t>();
     if (j.contains("ipc_port"))           cfg.ipc_port           = j["ipc_port"].get<uint16_t>();
     if (j.contains("startup_timeout_seconds"))
         cfg.startup_timeout_seconds = j["startup_timeout_seconds"].get<int>();

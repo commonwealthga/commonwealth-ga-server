@@ -23,6 +23,7 @@ struct ControlServerConfig {
     std::string home_map_game_mode = "TgGame.TgGame";
     PortRange   udp_port_range     = {9002, 9020};
     uint16_t    tcp_port           = 9000;
+    uint16_t    chat_port          = 9001;
     uint16_t    ipc_port           = 9010;
     int         startup_timeout_seconds = 120;
     std::string db_path            = "server.db";
