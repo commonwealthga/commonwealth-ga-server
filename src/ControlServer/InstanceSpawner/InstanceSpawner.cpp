@@ -32,6 +32,8 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         std::string port_arg    = "-port=" + std::to_string(udp_port);
         std::string ipc_port_arg  = "-ipcport=" + std::to_string(cfg.ipc_port);
         std::string inst_id_arg   = "-instanceid=" + std::to_string(instance_id);
+        std::string gamepath_arg  = "-gamepath=" + cfg.game_binary;
+        std::string fixguids_arg  = std::string("-fixpackageguids=") + (cfg.fix_package_guids ? "1" : "0");
 
         std::vector<const char*> argv = {
             cfg.xvfb_run_path.c_str(), "-a",
@@ -42,7 +44,8 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
             "-nodatabase", "-unattended",
             host_arg.c_str(), hostdns_arg.c_str(), port_arg.c_str(),
             "-seekfreeloading", "-tcp=300", "-nullrhi",
-            ipc_port_arg.c_str(), inst_id_arg.c_str(),
+            ipc_port_arg.c_str(), inst_id_arg.c_str(), gamepath_arg.c_str(),
+            fixguids_arg.c_str(),
             nullptr
         };
 

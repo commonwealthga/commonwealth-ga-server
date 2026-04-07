@@ -1,5 +1,6 @@
 #include "src/GameServer/Engine/NetConnection/SendPackageMap/NetConnection__SendPackageMap.hpp"
 #include "src/GameServer/TgNetDrv/MarshalChannel/NotifyControlMessage/MarshalChannel__NotifyControlMessage.hpp"
+#include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 void __fastcall NetConnection__SendPackageMap::Call(void* Connection) {
@@ -11,7 +12,11 @@ void __fastcall NetConnection__SendPackageMap::Call(void* Connection) {
 	Logger::Log("packagemap", "[SendPackageMap HOOK] Connection=%p PackageMap=%p List=%p Count=%d\n",
 		Connection, PackageMap, List, ListCount);
 
-	MarshalChannel__NotifyControlMessage::FixForcedExportGuids(PackageMap);
+	if (Config::GetFixPackageGuids()) {
+		MarshalChannel__NotifyControlMessage::FixForcedExportGuids(PackageMap);
+	} else {
+		Logger::Log("packagemap", "[SendPackageMap] GUID fix disabled by config\n");
+	}
 
 	// Now send the (patched) package map
 	CallOriginal(Connection);

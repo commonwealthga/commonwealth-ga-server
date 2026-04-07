@@ -10,12 +10,13 @@
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
-#include "src/ControlServer/MatchmakingService/Rules/SimpleMatchRule.hpp"
+#include "src/ControlServer/MatchmakingService/Rules/SimplePvPMatchRule.hpp"
 #include <asio.hpp>
 #include <cstdlib>
 #include <cstdio>
 #include <string>
 #include <csignal>
+#include <functional>
 
 // ---------------------------------------------------------------------------
 // Signal handling for clean shutdown
@@ -82,6 +83,10 @@ int main(int argc, char* argv[]) {
 
     // Initialize instance registry
     InstanceRegistry::Init();
+    InstanceRegistry::SetHost(cfg.host);
+
+    // Set network config for TcpSession responses (external IP + chat port)
+    TcpSession::SetNetworkConfig(cfg.host, cfg.chat_port);
 
     // Clear stale instances from any previous (crashed) run
     InstanceRegistry::ClearStaleInstances();
@@ -89,10 +94,10 @@ int main(int argc, char* argv[]) {
     // Initialize matchmaking
     MatchmakingService::Init();
 
-    // Register queues (all use SimpleMatchRule for now)
+    // Register queues (all use SimplePvPMatchRule for now)
     uint32_t queue_ids[] = {5, 6, 7, 8, 9, 10, 11, 12, 13};
     for (uint32_t qid : queue_ids) {
-        MatchmakingService::RegisterQueue(qid, std::make_unique<SimpleMatchRule>());
+        MatchmakingService::RegisterQueue(qid, std::make_unique<SimplePvPMatchRule>());
     }
 
     // Provide running instance info to matchmaking rules
@@ -112,7 +117,10 @@ int main(int argc, char* argv[]) {
                     "[Matchmaking] Routing %zu players to existing instance %lld\n",
                     result.session_guids.size(), (long long)*result.existing_instance_id);
                 for (const auto& guid : result.session_guids) {
-                    TcpSession::DeliverMatchInvitation(guid, *result.existing_instance_id, result.game_mode);
+                    int tf = 1;
+                    auto it = result.task_force_assignments.find(guid);
+                    if (it != result.task_force_assignments.end()) tf = it->second;
+                    TcpSession::DeliverMatchInvitation(guid, *result.existing_instance_id, result.game_mode, tf);
                 }
                 return;
             }
@@ -139,6 +147,8 @@ int main(int argc, char* argv[]) {
                 return;
             }
 
+            InstanceRegistry::UpdatePid(instance_id, pid);
+
             Logger::Log("matchmaking",
                 "[Matchmaking] Spawned instance %lld (pid=%d port=%d) for queue %u\n",
                 (long long)instance_id, (int)pid, (int)*port, queue_id);
@@ -149,33 +159,42 @@ int main(int argc, char* argv[]) {
             pending.queue_id = queue_id;
             pending.game_mode = result.game_mode;
             pending.session_guids = std::move(result.session_guids);
+            pending.task_force_assignments = std::move(result.task_force_assignments);
             MatchmakingService::AddPendingMatch(instance_id, std::move(pending));
         }
     );
 
-    // Allocate a UDP port for the home map instance
-    auto home_port = InstanceRegistry::AllocatePort(cfg.udp_port_range.lo, cfg.udp_port_range.hi);
-    if (!home_port) {
-        Logger::Log("main", "FATAL: No UDP ports available in range %d-%d\n",
-            (int)cfg.udp_port_range.lo, (int)cfg.udp_port_range.hi);
-        return 1;
-    }
+    // Home map spawns on demand when the first player selects a character.
+    TcpSession::SetHomeMapSpawner([&cfg]() {
+        // Double-check: is there already a non-STOPPED home instance?
+        auto existing = InstanceRegistry::GetHomeInstance();
+        if (existing) {
+            Logger::Log("main", "Home map already exists (instance_id=%lld state=%s) — skipping spawn\n",
+                (long long)existing->instance_id, existing->state.c_str());
+            return;
+        }
 
-    // Register instance as STARTING in registry (returns instance_id = SQLite rowid)
-    int64_t home_instance_id = InstanceRegistry::InsertStarting(
-        cfg.home_map_name, cfg.home_map_game_mode, *home_port, 0, /*is_home_map=*/true);
+        auto port = InstanceRegistry::AllocatePort(cfg.udp_port_range.lo, cfg.udp_port_range.hi);
+        if (!port) {
+            Logger::Log("main", "No UDP ports available for home map spawn\n");
+            return;
+        }
 
-    // Spawn the UE3 process via fork/exec with Wine
-    pid_t home_pid = InstanceSpawner::Spawn(
-        cfg, cfg.home_map_name, cfg.home_map_game_mode, *home_port, home_instance_id);
+        int64_t instance_id = InstanceRegistry::InsertStarting(
+            cfg.home_map_name, cfg.home_map_game_mode, *port, 0, /*is_home_map=*/true);
 
-    if (home_pid < 0) {
-        Logger::Log("main", "FATAL: Failed to spawn home map instance\n");
-        return 1;
-    }
+        pid_t pid = InstanceSpawner::Spawn(cfg, cfg.home_map_name, cfg.home_map_game_mode, *port, instance_id);
+        if (pid < 0) {
+            Logger::Log("main", "Failed to spawn home map instance\n");
+            InstanceRegistry::MarkStopped(instance_id);
+            return;
+        }
 
-    Logger::Log("main", "Home map instance spawned: instance_id=%lld pid=%d port=%d map=%s\n",
-        (long long)home_instance_id, (int)home_pid, (int)*home_port, cfg.home_map_name.c_str());
+        InstanceRegistry::UpdatePid(instance_id, pid);
+
+        Logger::Log("main", "Home map instance spawned on demand: instance_id=%lld pid=%d port=%d\n",
+            (long long)instance_id, (int)pid, (int)*port);
+    });
 
     // Create ASIO io_context and register signal handler reference
     asio::io_context io;
@@ -189,6 +208,29 @@ int main(int argc, char* argv[]) {
 
     // Bind IPC server (game instance connections)
     IpcServer ipc_server(io, cfg.ipc_port);
+
+    // Periodic idle instance cleanup (every 60 seconds, kills instances empty for 5+ minutes)
+    auto idle_timer = std::make_shared<asio::steady_timer>(io);
+    std::function<void()> schedule_idle_check;
+    schedule_idle_check = [&io, &idle_timer, &schedule_idle_check]() {
+        idle_timer->expires_after(std::chrono::seconds(60));
+        idle_timer->async_wait([&io, &idle_timer, &schedule_idle_check](std::error_code ec) {
+            if (ec) return;  // timer cancelled (shutdown)
+
+            auto idle = InstanceRegistry::GetIdleInstances(300);  // 5 minutes
+            for (const auto& inst : idle) {
+                Logger::Log("main", "Idle cleanup: killing instance %lld (pid=%d, map=%s) — empty for 5+ minutes\n",
+                    (long long)inst.instance_id, inst.pid, inst.map_name.c_str());
+                if (inst.pid > 0) {
+                    kill(inst.pid, SIGTERM);
+                }
+                InstanceRegistry::MarkStopped(inst.instance_id);
+            }
+
+            schedule_idle_check();
+        });
+    };
+    schedule_idle_check();
 
     Logger::Log("main", "Control server ready. TCP port %d, Chat port %d, IPC port %d, DB %s, home_map=%s\n",
         (int)cfg.tcp_port, (int)cfg.chat_port, (int)cfg.ipc_port, cfg.db_path.c_str(), cfg.home_map_name.c_str());

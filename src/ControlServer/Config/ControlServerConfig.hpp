@@ -27,6 +27,7 @@ struct ControlServerConfig {
     uint16_t    ipc_port           = 9010;
     int         startup_timeout_seconds = 120;
     std::string db_path            = "server.db";
+    bool        fix_package_guids  = true;
 
     // Load config from JSON file at path. Returns defaults if file is absent or invalid.
     static ControlServerConfig Load(const std::string& path);

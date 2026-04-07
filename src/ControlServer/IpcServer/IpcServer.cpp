@@ -142,7 +142,10 @@ private:
                 Logger::Log("ipc", "[IpcServer] Instance %lld ready — sending MATCH_INVITATION to %zu players\n",
                     (long long)inst_id, pending->session_guids.size());
                 for (const auto& guid : pending->session_guids) {
-                    TcpSession::DeliverMatchInvitation(guid, inst_id, pending->game_mode);
+                    int tf = 1;
+                    auto tfit = pending->task_force_assignments.find(guid);
+                    if (tfit != pending->task_force_assignments.end()) tf = tfit->second;
+                    TcpSession::DeliverMatchInvitation(guid, inst_id, pending->game_mode, tf);
                 }
             }
         }
@@ -184,6 +187,26 @@ private:
             }
 
             TcpSession::DeliverRandomSMResult(guid, std::move(names));
+        }
+        else if (type == IpcProtocol::MSG_PLAYER_JOINED) {
+            int64_t inst_id    = j.value("instance_id", (int64_t)0);
+            std::string guid   = j.value("session_guid", "");
+            int task_force     = j.value("task_force", 1);
+            Logger::Log("ipc", "[IpcServer] PLAYER_JOINED: instance=%lld guid=%s tf=%d\n",
+                (long long)inst_id, guid.c_str(), task_force);
+            // Player already inserted at ACK time, but PLAYER_JOINED confirms the actual task_force.
+        }
+        else if (type == IpcProtocol::MSG_PLAYER_LEFT) {
+            int64_t inst_id    = j.value("instance_id", (int64_t)0);
+            std::string guid   = j.value("session_guid", "");
+            Logger::Log("ipc", "[IpcServer] PLAYER_LEFT: instance=%lld guid=%s\n",
+                (long long)inst_id, guid.c_str());
+            InstanceRegistry::MarkInstancePlayerLeft(inst_id, guid);
+        }
+        else if (type == IpcProtocol::MSG_INSTANCE_EMPTY) {
+            int64_t inst_id = j.value("instance_id", (int64_t)0);
+            Logger::Log("ipc", "[IpcServer] INSTANCE_EMPTY: instance=%lld\n", (long long)inst_id);
+            InstanceRegistry::SetLastEmptyAtIfEmpty(inst_id);
         }
         else {
             Logger::Log("ipc", "[IpcServer] Unknown message type: %s\n", type.c_str());

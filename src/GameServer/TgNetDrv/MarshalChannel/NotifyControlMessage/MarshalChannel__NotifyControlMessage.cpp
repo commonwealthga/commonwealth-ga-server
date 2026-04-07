@@ -257,6 +257,17 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 		IpcClient::Send(ev.dump());
 	}
 
+	// Also send PLAYER_JOINED to track this player in the instance
+	{
+		int tf = GClientConnectionsData[(int32_t)Connection].PlayerInfo.task_force;
+		nlohmann::json joined;
+		joined["type"]         = IpcProtocol::MSG_PLAYER_JOINED;
+		joined["instance_id"]  = IpcClient::GetInstanceId();
+		joined["session_guid"] = session_guid;
+		joined["task_force"]   = tf;
+		IpcClient::Send(joined.dump());
+	}
+
 	// First player: wire up BeaconManagers (RegisterBeacon sets r_BeaconStatus so entrance activates).
 	if (!bFirstPlayerSpawned) {
 		bFirstPlayerSpawned = true;
@@ -372,18 +383,23 @@ void MarshalChannel__NotifyControlMessage::BuildPackageFileMap() {
 	// Derive CookedPC path from the game binary's location.
 	// The game binary is at <GameRoot>/Binaries/GlobalAgenda.exe,
 	// and CookedPC is at <GameRoot>/TgGame/CookedPC/ (case may vary on Linux).
-	// Under Wine, GetModuleFileNameA returns a Windows-style path (Z:\...\Binaries\GlobalAgenda.exe).
-	// We convert to a POSIX path for opendir/readdir.
-	char exePath[512] = {};
-	GetModuleFileNameA(nullptr, exePath, sizeof(exePath) - 1);
-
-	// Convert Wine Z: path to POSIX: "Z:\home\..." -> "/home/..."
-	std::string path(exePath);
-	// Replace backslashes with forward slashes
-	for (char& c : path) { if (c == '\\') c = '/'; }
-	// Strip "Z:" or "z:" prefix if present
-	if (path.size() >= 2 && (path[0] == 'Z' || path[0] == 'z') && path[1] == ':') {
-		path = path.substr(2);
+	//
+	// Prefer the -gamepath= command-line arg (a real POSIX path passed by the
+	// control server spawner) over GetModuleFileNameA, which returns a Wine path
+	// that requires drive-letter stripping and may not resolve on all setups.
+	std::string path = Config::GetGamePath();
+	if (path.empty()) {
+		// Fallback: GetModuleFileNameA (Wine path, needs conversion)
+		char exePath[512] = {};
+		GetModuleFileNameA(nullptr, exePath, sizeof(exePath) - 1);
+		path = std::string(exePath);
+		for (char& c : path) { if (c == '\\') c = '/'; }
+		if (path.size() >= 2 && (path[0] == 'Z' || path[0] == 'z') && path[1] == ':') {
+			path = path.substr(2);
+		}
+		Logger::Log("packagemap", "[PackageMap] Using GetModuleFileNameA fallback: %s\n", path.c_str());
+	} else {
+		Logger::Log("packagemap", "[PackageMap] Using -gamepath: %s\n", path.c_str());
 	}
 
 	// Go up from Binaries/GlobalAgenda.exe to GameRoot, then into TgGame/CookedPC
@@ -417,7 +433,7 @@ void MarshalChannel__NotifyControlMessage::BuildPackageFileMap() {
 	}
 
 	if (cookedPCPath.empty()) {
-		Logger::Log("packagemap", "[PackageMap] Could not find CookedPC directory (exe=%s)\n", exePath);
+		Logger::Log("packagemap", "[PackageMap] Could not find CookedPC directory (path=%s)\n", path.c_str());
 		return;
 	}
 

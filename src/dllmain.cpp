@@ -290,6 +290,7 @@ unsigned long ModuleThread( void* ) {
 	// Logger::EnabledChannels.push_back("session_guid");
 	// Logger::EnabledChannels.push_back("chat");
 	// Logger::EnabledChannels.push_back("matchmaking");
+	// Logger::EnabledChannels.push_back("packagemap");
 
 	Database::Init();
 

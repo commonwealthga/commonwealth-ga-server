@@ -599,14 +599,49 @@ void Database::Init() {
 		}
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 17", nullptr, nullptr, &err);
+	if (version < 18) {
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_instance_players ("
+			"  id                INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  instance_id       INTEGER NOT NULL,"
+			"  session_guid      TEXT NOT NULL,"
+			"  character_id      INTEGER,"
+			"  task_force_number INTEGER NOT NULL DEFAULT 1,"
+			"  joined_at         INTEGER NOT NULL DEFAULT (strftime('%s','now')),"
+			"  left_at           INTEGER DEFAULT NULL,"
+			"  UNIQUE(instance_id, session_guid)"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_instance_players table: %s\n", err);
+			sqlite3_free(err);
+			return;
+		}
+		result = sqlite3_exec(db,
+			"CREATE INDEX IF NOT EXISTS idx_ga_instance_players_instance "
+			"ON ga_instance_players(instance_id) WHERE left_at IS NULL;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_instance_players index: %s\n", err);
+			sqlite3_free(err);
+		}
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_instances ADD COLUMN last_empty_at INTEGER DEFAULT NULL;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to add last_empty_at column: %s\n", err);
+			sqlite3_free(err);
+		}
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 18", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
 	}
 
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
-	Logger::Log("db", "[Database::Init] Schema at version 17, WAL mode enabled\n");
+	Logger::Log("db", "[Database::Init] Schema at version 18, WAL mode enabled\n");
 }
 
 std::string Database::GetQuestStatus(int64_t character_id, int quest_id) {

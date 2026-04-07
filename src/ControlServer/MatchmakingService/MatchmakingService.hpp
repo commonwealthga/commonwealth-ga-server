@@ -33,6 +33,7 @@ struct MatchResult {
     std::string game_mode;
     std::vector<std::string> session_guids;
     std::optional<int64_t> existing_instance_id;  // if set, skip spawn
+    std::unordered_map<std::string, int> task_force_assignments;  // session_guid -> task_force
 };
 
 struct PendingMatch {
@@ -40,6 +41,7 @@ struct PendingMatch {
     uint32_t queue_id;
     std::string game_mode;
     std::vector<std::string> session_guids;
+    std::unordered_map<std::string, int> task_force_assignments;  // session_guid -> task_force
 };
 
 // ---------------------------------------------------------------------------

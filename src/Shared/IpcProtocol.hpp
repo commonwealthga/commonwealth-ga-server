@@ -27,6 +27,10 @@ constexpr const char* MSG_GAME_EVENT      = "GAME_EVENT";
 constexpr const char* MSG_GET_RANDOMSM    = "GET_RANDOMSM";
 constexpr const char* MSG_RANDOMSM_RESULT = "RANDOMSM_RESULT";
 
+constexpr const char* MSG_PLAYER_JOINED  = "PLAYER_JOINED";
+constexpr const char* MSG_PLAYER_LEFT    = "PLAYER_LEFT";
+constexpr const char* MSG_INSTANCE_EMPTY = "INSTANCE_EMPTY";
+
 // ---------------------------------------------------------------------------
 // IPC transport
 // ---------------------------------------------------------------------------

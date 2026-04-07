@@ -4,6 +4,8 @@
 #include <optional>
 #include <cstdint>
 #include <mutex>
+#include <vector>
+#include <utility>
 
 // InstanceRegistry.hpp -- Tracks known game instances in the ga_instances SQLite table.
 // One row per running (or recently stopped) UE3 game server process.
@@ -29,6 +31,10 @@ public:
     // No-op -- mutex is default-constructed; here for symmetry with PlayerSessionStore.
     static void Init();
 
+    // Set the external IP that instances are reachable at (from config).
+    static void SetHost(const std::string& host);
+
+
     // Return the first READY instance for the given map name, or nullopt if none.
     static std::optional<InstanceInfo> GetReadyInstance(const std::string& map_name);
 
@@ -39,6 +45,9 @@ public:
     // Insert a STARTING instance. Returns the SQLite rowid (used as instance_id).
     static int64_t InsertStarting(const std::string& map_name, const std::string& game_mode,
                                    uint16_t udp_port, int pid, bool is_home_map);
+
+    // Store the real PID after the process has been spawned.
+    static void UpdatePid(int64_t instance_id, int pid);
 
     // Transition STARTING -> READY when INSTANCE_READY IPC arrives.
     static void MarkReady(int64_t instance_id, int max_players);
@@ -58,6 +67,18 @@ public:
     // Clear all non-STOPPED instances (startup recovery).
     static void ClearStaleInstances();
 
+    static void InsertInstancePlayer(int64_t instance_id, const std::string& session_guid,
+                                     int64_t character_id, int task_force);
+    static void MarkInstancePlayerLeft(int64_t instance_id, const std::string& session_guid);
+    static void MarkAllInstancePlayersLeft(int64_t instance_id);
+    static std::pair<int, int> GetTeamCounts(int64_t instance_id);
+    static int GetActivePlayerCount(int64_t instance_id);
+    static std::vector<InstanceInfo> GetReadyMissionInstances();
+    static std::optional<InstanceInfo> GetHomeInstance();
+    static std::vector<InstanceInfo> GetIdleInstances(int timeout_seconds);
+    static void SetLastEmptyAtIfEmpty(int64_t instance_id);
+
 private:
     static std::mutex mutex_;
+    static std::string s_host_;
 };

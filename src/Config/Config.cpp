@@ -142,4 +142,18 @@ int64_t Config::GetInstanceId() {
 	return static_cast<int64_t>(std::stoll(CommandLineParser::WideToUtf8(val)));
 }
 
+std::string Config::GetGamePath() {
+	ParsedOptions options = CommandLineParser::ParseCommandLine();
+	if (!options.switches[L"gamepath"].empty())
+		return CommandLineParser::WideToUtf8(options.switches[L"gamepath"]);
+	return "";
+}
+
+bool Config::GetFixPackageGuids() {
+	ParsedOptions options = CommandLineParser::ParseCommandLine();
+	std::wstring val = options.switches[L"fixpackageguids"];
+	if (val.empty()) return true; // default: on
+	return val == L"1";
+}
+
 

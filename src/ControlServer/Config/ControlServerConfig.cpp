@@ -38,6 +38,7 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
     if (j.contains("startup_timeout_seconds"))
         cfg.startup_timeout_seconds = j["startup_timeout_seconds"].get<int>();
     if (j.contains("db_path"))            cfg.db_path            = j["db_path"].get<std::string>();
+    if (j.contains("fix_package_guids"))  cfg.fix_package_guids  = j["fix_package_guids"].get<bool>();
 
     if (j.contains("udp_port_range")) {
         const auto& pr = j["udp_port_range"];

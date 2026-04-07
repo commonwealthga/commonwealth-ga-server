@@ -8,6 +8,18 @@
 
 std::mutex TcpSession::sessions_mutex_;
 std::map<std::string, std::weak_ptr<TcpSession>> TcpSession::g_sessions_;
+std::function<void()> TcpSession::on_need_home_map_;
+std::string TcpSession::s_host_ = "127.0.0.1";
+uint16_t    TcpSession::s_chat_port_ = 9001;
+
+void TcpSession::SetHomeMapSpawner(std::function<void()> cb) {
+    on_need_home_map_ = std::move(cb);
+}
+
+void TcpSession::SetNetworkConfig(const std::string& host, uint16_t chat_port) {
+    s_host_ = host;
+    s_chat_port_ = chat_port;
+}
 
 // ---------------------------------------------------------------------------
 // TcpSession registry
@@ -175,6 +187,12 @@ void TcpSession::initiate_player_register_and_go_play() {
             if (success) {
                 Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK success for %s pawn_id=%d\n",
                     session_guid_.c_str(), pawn_id);
+                // Track player in home map instance
+                auto home = InstanceRegistry::GetReadyHomeInstance();
+                if (home) {
+                    InstanceRegistry::InsertInstancePlayer(
+                        home->instance_id, session_guid_, selected_character_id_, 1);
+                }
                 send_go_play_response();
             } else {
                 Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK failed for %s\n",
@@ -225,17 +243,26 @@ void TcpSession::wait_for_home_map_then_register(int remaining_seconds) {
         return;  // Client stays on loading screen; no go_play sent
     }
 
-    auto instance = InstanceRegistry::GetReadyHomeInstance();
-    if (instance) {
-        // Instance is ready -- cache its instance_id and proceed.
-        assigned_instance_id_ = instance->instance_id;
+    // Check for READY home instance first
+    auto ready = InstanceRegistry::GetReadyHomeInstance();
+    if (ready) {
+        assigned_instance_id_ = ready->instance_id;
         Logger::Log("tcp", "[TcpSession] Home map ready: instance_id=%lld for %s\n",
             assigned_instance_id_, session_guid_.c_str());
         initiate_player_register_and_go_play();
         return;
     }
 
-    // Poll again in 2 seconds.
+    // Check if a home instance is STARTING (someone else triggered it)
+    auto home = InstanceRegistry::GetHomeInstance();
+    if (!home && on_need_home_map_) {
+        // No home instance at all — spawn one
+        Logger::Log("tcp", "[TcpSession] No home map instance — spawning on demand for %s\n",
+            session_guid_.c_str());
+        on_need_home_map_();
+    }
+
+    // Poll again in 2 seconds
     auto self(shared_from_this());
     auto timer = std::make_shared<asio::steady_timer>(io_ctx_);
     timer->expires_after(std::chrono::seconds(2));
@@ -243,7 +270,6 @@ void TcpSession::wait_for_home_map_then_register(int remaining_seconds) {
         if (!ec) {
             wait_for_home_map_then_register(remaining_seconds - 2);
         }
-        // ec == operation_aborted means timer cancelled (e.g., disconnect) -- do nothing
     });
 }
 
@@ -424,9 +450,10 @@ void TcpSession::send_match_leave_response() {
     current_match_queue_id_ = 0;
 }
 
-void TcpSession::send_match_invitation(int64_t instance_id, const std::string& game_mode) {
+void TcpSession::send_match_invitation(int64_t instance_id, const std::string& game_mode, int task_force) {
     pending_match_instance_id_ = instance_id;
     pending_match_game_mode_ = game_mode;
+    pending_match_task_force_ = task_force;
 
     std::vector<uint8_t> response;
 
@@ -442,13 +469,13 @@ void TcpSession::send_match_invitation(int64_t instance_id, const std::string& g
         player_name.c_str(), (long long)instance_id);
 }
 
-void TcpSession::DeliverMatchInvitation(const std::string& session_guid, int64_t instance_id, const std::string& game_mode) {
+void TcpSession::DeliverMatchInvitation(const std::string& session_guid, int64_t instance_id, const std::string& game_mode, int task_force) {
     std::lock_guard<std::mutex> lock(sessions_mutex_);
     auto it = g_sessions_.find(session_guid);
     if (it == g_sessions_.end()) return;
     auto session = it->second.lock();
     if (!session) return;
-    session->send_match_invitation(instance_id, game_mode);
+    session->send_match_invitation(instance_id, game_mode, task_force);
 }
 
 void TcpSession::send_match_accept_response() {
@@ -476,7 +503,7 @@ void TcpSession::send_match_accept_response() {
     reg["player_name"]  = player_name;
     reg["user_id"]      = user_id_;
     reg["character_id"] = selected_character_id_;
-    reg["task_force"]   = 1;
+    reg["task_force"]   = pending_match_task_force_;
 
     auto charInfo = PlayerSessionStore::GetCharacterById(selected_character_id_);
     if (charInfo) {
@@ -491,6 +518,7 @@ void TcpSession::send_match_accept_response() {
 
     // Send PLAYER_REGISTER to the MISSION instance (not home map).
     int64_t target_instance_id = pending_match_instance_id_;
+    int target_task_force = pending_match_task_force_;
     if (!IpcServer::SendToInstance(target_instance_id, reg.dump())) {
         Logger::Log("tcp", "[TcpSession] No IPC session for instance %lld — cannot register player %s\n",
             (long long)target_instance_id, player_name.c_str());
@@ -506,7 +534,7 @@ void TcpSession::send_match_accept_response() {
 
     auto timer = pending_ack_timer_;
     IpcServer::RegisterPendingAck(session_guid_,
-        [this, self, timer, target_instance_id](bool success, int pawn_id) {
+        [this, self, timer, target_instance_id, target_task_force](bool success, int pawn_id) {
             timer->cancel();
             if (!success) {
                 Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK failed for %s on mission instance\n",
@@ -518,6 +546,10 @@ void TcpSession::send_match_accept_response() {
 
             Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK success for %s pawn_id=%d — sending go_play to mission\n",
                 session_guid_.c_str(), pawn_id);
+
+            // Track player in mission instance
+            InstanceRegistry::InsertInstancePlayer(
+                target_instance_id, session_guid_, selected_character_id_, target_task_force);
 
             auto inst = InstanceRegistry::GetInstanceById(target_instance_id);
             if (!inst || inst->state != "READY") {
@@ -545,14 +577,15 @@ void TcpSession::send_match_accept_response() {
             Write4B(response, GA_T::MAP_GAME_ID, 0x050B);
             Write4B(response, GA_T::MAP_INSTANCE_ID, static_cast<uint32_t>(inst->instance_id));
             Write4B(response, GA_T::ENTRY_BACKGROUND_IMAGE_RES_ID, 5716);
-            Write4B(response, GA_T::TASK_FORCE, 0x1);
-            WriteIP(response, GA_T::CHAT_NET_ADDR, "127.0.0.1", 9001);
+            Write4B(response, GA_T::TASK_FORCE, static_cast<uint32_t>(target_task_force));
+            WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
             Write4B(response, GA_T::CLASS_MSG_ID, 22976);
 
             send_response(response);
 
             pending_match_instance_id_ = 0;
             pending_match_game_mode_.clear();
+            pending_match_task_force_ = 1;
             current_match_queue_id_ = 0;
         });
 
@@ -1152,7 +1185,7 @@ void TcpSession::send_start_listen_response()
 
 	Write4B(response, GA_T::CLASS_MSG_ID, 0x022976);
 	Write4B(response, GA_T::HOME_MAP_GAME_ID, 0x050B);
-	WriteIP(response, GA_T::CHAT_NET_ADDR, "127.0.0.1", 9001);
+	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
 	WriteNBytes(response, GA_T::SESSION_GUID, std::vector<uint8_t>(16));
 
 	WriteIP(response, GA_T::HOST_NET_ADDR, "127.0.0.1", 9002);
@@ -1242,7 +1275,7 @@ void TcpSession::send_select_character_response()
 		Logger::GetTime(), selected_character_id_, selected_profile_id_, session_guid_.c_str());
 
 	// TODO Phase 8: get instance address from instance registry
-	WriteIP(response, GA_T::CHAT_NET_ADDR, "127.0.0.1", 9001);
+	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
 
 	send_response(response);
 }
@@ -1263,7 +1296,7 @@ void TcpSession::send_change_map_prep_response()
 
 	Write4B(response, GA_T::CLASS_MSG_ID, 0x022976);
 	Write4B(response, GA_T::HOME_MAP_GAME_ID, 0x050B);
-	WriteIP(response, GA_T::CHAT_NET_ADDR, "127.0.0.1", 9001);
+	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
 	WriteNBytes(response, GA_T::SESSION_GUID, std::vector<uint8_t>(16));
 
 	WriteIP(response, GA_T::HOST_NET_ADDR, "127.0.0.1", 9002);
@@ -1294,7 +1327,7 @@ void TcpSession::send_change_map_response()
 
 	Write4B(response, GA_T::CLASS_MSG_ID, 0x022976);
 	Write4B(response, GA_T::HOME_MAP_GAME_ID, 0x050B);
-	WriteIP(response, GA_T::CHAT_NET_ADDR, "127.0.0.1", 9001);
+	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
 	WriteNBytes(response, GA_T::SESSION_GUID, std::vector<uint8_t>(16));
 
 	WriteIP(response, GA_T::HOST_NET_ADDR, "127.0.0.1", 9002);
@@ -1325,7 +1358,7 @@ void TcpSession::send_match_launch_response()
 
 	Write4B(response, GA_T::CLASS_MSG_ID, 0x022976);
 	Write4B(response, GA_T::HOME_MAP_GAME_ID, 0x050B);
-	WriteIP(response, GA_T::CHAT_NET_ADDR, "127.0.0.1", 9001);
+	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
 	WriteNBytes(response, GA_T::SESSION_GUID, std::vector<uint8_t>(16));
 
 	WriteIP(response, GA_T::HOST_NET_ADDR, "127.0.0.1", 9002);
@@ -1366,7 +1399,7 @@ void TcpSession::send_go_play_tutorial_response()
 	Write4B(response, GA_T::MAP_INSTANCE_ID, 0x1);
 	Write4B(response, GA_T::ENTRY_BACKGROUND_IMAGE_RES_ID, 5289);
 	Write4B(response, GA_T::TASK_FORCE, 0x1);
-	WriteIP(response, GA_T::CHAT_NET_ADDR, "127.0.0.1", 9001);
+	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
 
 	send_response(response);
 }
@@ -1414,7 +1447,7 @@ void TcpSession::send_go_play_response()
 	Write4B(response, GA_T::MAP_INSTANCE_ID, static_cast<uint32_t>(instance->instance_id));
 	Write4B(response, GA_T::ENTRY_BACKGROUND_IMAGE_RES_ID, 5716);
 	Write4B(response, GA_T::TASK_FORCE, 0x1);
-	WriteIP(response, GA_T::CHAT_NET_ADDR, "127.0.0.1", 9001);
+	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
 
 	Write4B(response, GA_T::CLASS_MSG_ID, 22976);
 

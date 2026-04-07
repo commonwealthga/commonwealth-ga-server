@@ -50,7 +50,7 @@ public:
     static void DeliverRandomSMResult(const std::string& guid, std::vector<std::string> names);
 
     // Deliver a MATCH_INVITATION to this session (called from matchmaking callback).
-    static void DeliverMatchInvitation(const std::string& session_guid, int64_t instance_id, const std::string& game_mode);
+    static void DeliverMatchInvitation(const std::string& session_guid, int64_t instance_id, const std::string& game_mode, int task_force);
 
 private:
     // ── Static registry members ──────────────────────────────────────────────
@@ -72,9 +72,21 @@ private:
     // Set when a MATCH_INVITATION is delivered — the instance to join on MATCH_ACCEPT.
     int64_t pending_match_instance_id_ = 0;
     std::string pending_match_game_mode_;
+    int pending_match_task_force_ = 1;
 
     // ACK-wait timer for PLAYER_REGISTER flow. Cancelled on ACK arrival or disconnect.
     std::shared_ptr<asio::steady_timer> pending_ack_timer_;
+
+    // Static callback to spawn a home map instance on demand.
+    static std::function<void()> on_need_home_map_;
+
+    // Network config: external IP and chat port, set once from main.
+    static std::string s_host_;
+    static uint16_t    s_chat_port_;
+public:
+    static void SetHomeMapSpawner(std::function<void()> cb);
+    static void SetNetworkConfig(const std::string& host, uint16_t chat_port);
+private:
 
     // Set when a READY home map instance is found for this player.
     int64_t assigned_instance_id_ = 0;
@@ -325,7 +337,7 @@ private:
 
 	void send_match_leave_response();
 
-    void send_match_invitation(int64_t instance_id, const std::string& game_mode);
+    void send_match_invitation(int64_t instance_id, const std::string& game_mode, int task_force);
 
     void send_match_accept_response();
 

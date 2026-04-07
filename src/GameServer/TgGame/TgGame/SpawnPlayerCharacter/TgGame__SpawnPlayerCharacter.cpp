@@ -269,11 +269,15 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// newrepplayer->Team = GTeamsData.Defenders;
 	// newrepplayer->SetTeam(GTeamsData.Defenders);
 
-	newrepplayer->r_TaskForce = GTeamsData.Attackers;
-	newrepplayer->Team = GTeamsData.Attackers;
-	newrepplayer->SetTeam(GTeamsData.Attackers);
-
-	newpawn->NotifyTeamChanged();
+	{
+		int tf = GClientConnectionsData[ConnectionIndex].PlayerInfo.task_force;
+		ATgRepInfo_TaskForce* taskforce = (tf == 2) ? GTeamsData.Defenders : GTeamsData.Attackers;
+		newrepplayer->r_TaskForce = taskforce;
+		newrepplayer->Team = taskforce;
+		newrepplayer->SetTeam(taskforce);
+		newpawn->NotifyTeamChanged();
+		Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: assigned to task_force=%d\n", tf);
+	}
 
 	// newrepplayer->r_TaskForce = GTeamsData.Attackers;
 	// newrepplayer->SetTeam(GTeamsData.Attackers);
@@ -327,8 +331,14 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	TARRAY_INIT(attackers, TeamPlayersAttackers, FTGTEAM_ENTRY, 0x214, 32);
 	TARRAY_INIT(defenders, TeamPlayersDefenders, FTGTEAM_ENTRY, 0x214, 32);
 
-	TARRAY_ADD(TeamPlayersAttackers, newplayerteamentry);
-	// TARRAY_ADD(TeamPlayersDefenders, newplayerteamentry);
+	{
+		int tf = GClientConnectionsData[ConnectionIndex].PlayerInfo.task_force;
+		if (tf == 2) {
+			TARRAY_ADD(TeamPlayersDefenders, newplayerteamentry);
+		} else {
+			TARRAY_ADD(TeamPlayersAttackers, newplayerteamentry);
+		}
+	}
 
 	// TARRAY_ADD shallow-copies the struct (memcpy-style).  The TArray copy
 	// now owns the FString Data pointers.  Null them in the local so
