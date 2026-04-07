@@ -20,8 +20,12 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
     }
 
     if (pid == 0) {
-        // Child process: set Wine environment and exec the game binary.
+        // Child process: become its own process group leader so the
+        // parent can kill the entire tree (xvfb-run + wine + game)
+        // with kill(-pid, SIGKILL).
+        setpgid(0, 0);
 
+        // Set Wine environment and exec the game binary.
         setenv("WINEDLLOVERRIDES", cfg.dll_overrides.c_str(), 1);
         setenv("WINEPREFIX", cfg.wine_prefix.c_str(), 1);
 

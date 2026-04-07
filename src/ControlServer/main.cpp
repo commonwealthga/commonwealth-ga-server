@@ -13,6 +13,7 @@
 #include "src/ControlServer/MatchmakingService/Rules/SimplePvPMatchRule.hpp"
 #include "src/ControlServer/MatchmakingService/Rules/SimpleSpecOpsMatchRule.hpp"
 #include <asio.hpp>
+#include <thread>
 #include <cstdlib>
 #include <cstdio>
 #include <string>
@@ -221,7 +222,16 @@ int main(int argc, char* argv[]) {
                 Logger::Log("main", "Idle cleanup: killing instance %lld (pid=%d, map=%s) — empty for 5+ minutes\n",
                     (long long)inst.instance_id, inst.pid, inst.map_name.c_str());
                 if (inst.pid > 0) {
-                    kill(inst.pid, SIGTERM);
+                    // Kill the entire process group (xvfb-run + wine + game).
+                    // SIGTERM first for graceful shutdown, then SIGKILL to ensure cleanup.
+                    kill(-inst.pid, SIGTERM);
+                    // Give it a moment then force-kill if still alive.
+                    std::thread([pid = inst.pid]() {
+                        sleep(3);
+                        if (kill(-pid, 0) == 0) {
+                            kill(-pid, SIGKILL);
+                        }
+                    }).detach();
                 }
                 InstanceRegistry::MarkStopped(inst.instance_id);
             }

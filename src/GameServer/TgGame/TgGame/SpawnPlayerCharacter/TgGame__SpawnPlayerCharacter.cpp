@@ -271,7 +271,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	{
 		int tf = GClientConnectionsData[ConnectionIndex].PlayerInfo.task_force;
-		ATgRepInfo_TaskForce* taskforce = (tf == 2) ? GTeamsData.Defenders : GTeamsData.Attackers;
+		ATgRepInfo_TaskForce* taskforce = (tf == 1) ? GTeamsData.Attackers : GTeamsData.Defenders;
 		newrepplayer->r_TaskForce = taskforce;
 		newrepplayer->Team = taskforce;
 		newrepplayer->SetTeam(taskforce);
@@ -333,10 +333,10 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	{
 		int tf = GClientConnectionsData[ConnectionIndex].PlayerInfo.task_force;
-		if (tf == 2) {
-			TARRAY_ADD(TeamPlayersDefenders, newplayerteamentry);
-		} else {
+		if (tf == 1) {
 			TARRAY_ADD(TeamPlayersAttackers, newplayerteamentry);
+		} else {
+			TARRAY_ADD(TeamPlayersDefenders, newplayerteamentry);
 		}
 	}
 

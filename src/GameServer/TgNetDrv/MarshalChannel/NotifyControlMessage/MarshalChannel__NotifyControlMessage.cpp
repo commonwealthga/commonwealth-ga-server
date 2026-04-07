@@ -135,6 +135,7 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.user_id = info->user_id;
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.selected_profile_id  = info->selected_profile_id;
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.selected_character_id = info->selected_character_id;
+			GClientConnectionsData[(int32_t)Connection].PlayerInfo.task_force = info->task_force;
 			GClientConnectionsData[(int32_t)Connection].pPlayerInfo = PlayerRegistry::GetByGuidPtr(session_guid);
 			Logger::Log(GetLogChannel(), "JOIN: identified player '%s' (guid=%s, profile=%u, connection=%d)\n",
 				info->player_name.c_str(), session_guid.c_str(), info->selected_profile_id, (int32_t)Connection);
@@ -227,7 +228,11 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 
 	newcontroller->PlayerReplicationInfo->bOnlySpectator = 0;
 
-	newcontroller->PlayerReplicationInfo->Team = GTeamsData.Attackers;
+	if (GClientConnectionsData[(int32_t)Connection].PlayerInfo.task_force == 1) {
+		newcontroller->PlayerReplicationInfo->Team = GTeamsData.Attackers;
+	} else {
+		newcontroller->PlayerReplicationInfo->Team = GTeamsData.Defenders;
+	}
 	// newcontroller->PlayerReplicationInfo->Team = GTeamsData.Defenders;
 
 	game->eventPostLogin(newcontroller);
