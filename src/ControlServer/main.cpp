@@ -11,6 +11,7 @@
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 #include "src/ControlServer/MatchmakingService/Rules/SimplePvPMatchRule.hpp"
+#include "src/ControlServer/MatchmakingService/Rules/SimpleSpecOpsMatchRule.hpp"
 #include <asio.hpp>
 #include <cstdlib>
 #include <cstdio>
@@ -94,11 +95,9 @@ int main(int argc, char* argv[]) {
     // Initialize matchmaking
     MatchmakingService::Init();
 
-    // Register queues (all use SimplePvPMatchRule for now)
-    uint32_t queue_ids[] = {5, 6, 7, 8, 9, 10, 11, 12, 13};
-    for (uint32_t qid : queue_ids) {
-        MatchmakingService::RegisterQueue(qid, std::make_unique<SimplePvPMatchRule>());
-    }
+    // Register queues
+	MatchmakingService::RegisterQueue(1, std::make_unique<SimpleSpecOpsMatchRule>());
+	MatchmakingService::RegisterQueue(2, std::make_unique<SimplePvPMatchRule>());
 
     // Provide running instance info to matchmaking rules
     MatchmakingService::SetInstanceProvider([]() -> std::vector<RunningInstance> {

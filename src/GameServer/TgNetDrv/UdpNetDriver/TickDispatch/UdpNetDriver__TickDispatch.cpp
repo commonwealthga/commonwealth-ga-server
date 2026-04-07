@@ -12,6 +12,7 @@
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 
 UClass* UdpNetDriver__TickDispatch::NetConnectionClass = nullptr;
 bool UdpNetDriver__TickDispatch::bNetConnectionVTableHooked = false;
@@ -95,17 +96,13 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 			// LogToFile("C:\\mylog.txt", "[UdpNetDriver::TickDispatch] flags: %d", CachedNetConnectionFlagsB);
 
 			if (!UdpNetDriver__TickDispatch::NetConnectionClass) {
-				for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-					if (UObject::GObjObjects()->Data[i] && strcmp(UObject::GObjObjects()->Data[i]->GetFullName(), "Class Engine.NetConnection") == 0) {
-						UdpNetDriver__TickDispatch::NetConnectionClass = (UClass*)UObject::GObjObjects()->Data[i];
-						UdpNetDriver__TickDispatch::NetConnectionClass->ClassFlags &= ~0x00000001; // remove CLASS_Abstract flag
+				UdpNetDriver__TickDispatch::NetConnectionClass = ClassPreloader::GetClass("Class Engine.NetConnection");
+				if (UdpNetDriver__TickDispatch::NetConnectionClass) {
+					UdpNetDriver__TickDispatch::NetConnectionClass->ClassFlags &= ~0x00000001; // remove CLASS_Abstract flag
 
-						// patch the global class pointer to trick the engine into accepting our class
-						void** ClientConnectionClass = Globals::Get().ClientConnectionClass;
-						*ClientConnectionClass = UdpNetDriver__TickDispatch::NetConnectionClass;
-
-						break;
-					}
+					// patch the global class pointer to trick the engine into accepting our class
+					void** ClientConnectionClass = Globals::Get().ClientConnectionClass;
+					*ClientConnectionClass = UdpNetDriver__TickDispatch::NetConnectionClass;
 				}
 			}
 

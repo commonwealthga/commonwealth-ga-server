@@ -1,5 +1,6 @@
 #pragma once
 #include "src/pch.hpp"
+#include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
 
 /*
 #############################################################################################
@@ -34,7 +35,7 @@ struct FsAgencyRankData UTgAgencyData::eventGetDefaultRankData ( )
 	static UFunction* pFnGetDefaultRankData = NULL;
 
 	if ( ! pFnGetDefaultRankData )
-		pFnGetDefaultRankData = (UFunction*) UObject::GObjObjects()->Data[ 51092 ];
+		pFnGetDefaultRankData = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.GetDefaultRankData" );
 
 	UTgAgencyData_eventGetDefaultRankData_Parms GetDefaultRankData_Parms;
 
@@ -53,7 +54,7 @@ struct FsAgencyMemberInfo UTgAgencyData::eventGetDefaultMemberInfo ( )
 	static UFunction* pFnGetDefaultMemberInfo = NULL;
 
 	if ( ! pFnGetDefaultMemberInfo )
-		pFnGetDefaultMemberInfo = (UFunction*) UObject::GObjObjects()->Data[ 51089 ];
+		pFnGetDefaultMemberInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.GetDefaultMemberInfo" );
 
 	UTgAgencyData_eventGetDefaultMemberInfo_Parms GetDefaultMemberInfo_Parms;
 
@@ -72,7 +73,7 @@ void UTgAgencyData::Tick ( float DeltaTime )
 	static UFunction* pFnTick = NULL;
 
 	if ( ! pFnTick )
-		pFnTick = (UFunction*) UObject::GObjObjects()->Data[ 51087 ];
+		pFnTick = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.Tick" );
 
 	UTgAgencyData_execTick_Parms Tick_Parms;
 	Tick_Parms.DeltaTime = DeltaTime;
@@ -94,7 +95,7 @@ void UTgAgencyData::SetTax ( float fTax )
 	static UFunction* pFnSetTax = NULL;
 
 	if ( ! pFnSetTax )
-		pFnSetTax = (UFunction*) UObject::GObjObjects()->Data[ 51085 ];
+		pFnSetTax = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.SetTax" );
 
 	UTgAgencyData_execSetTax_Parms SetTax_Parms;
 	SetTax_Parms.fTax = fTax;
@@ -116,7 +117,7 @@ void UTgAgencyData::SetDescription ( struct FString sDescription )
 	static UFunction* pFnSetDescription = NULL;
 
 	if ( ! pFnSetDescription )
-		pFnSetDescription = (UFunction*) UObject::GObjObjects()->Data[ 51083 ];
+		pFnSetDescription = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.SetDescription" );
 
 	UTgAgencyData_execSetDescription_Parms SetDescription_Parms;
 	memcpy ( &SetDescription_Parms.sDescription, &sDescription, 0xC );
@@ -139,7 +140,7 @@ void UTgAgencyData::SetOfficerComment ( int nPlayerId, struct FString sNote )
 	static UFunction* pFnSetOfficerComment = NULL;
 
 	if ( ! pFnSetOfficerComment )
-		pFnSetOfficerComment = (UFunction*) UObject::GObjObjects()->Data[ 51080 ];
+		pFnSetOfficerComment = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.SetOfficerComment" );
 
 	UTgAgencyData_execSetOfficerComment_Parms SetOfficerComment_Parms;
 	SetOfficerComment_Parms.nPlayerId = nPlayerId;
@@ -163,7 +164,7 @@ void UTgAgencyData::SetPublicComment ( int nPlayerId, struct FString sNote )
 	static UFunction* pFnSetPublicComment = NULL;
 
 	if ( ! pFnSetPublicComment )
-		pFnSetPublicComment = (UFunction*) UObject::GObjObjects()->Data[ 51077 ];
+		pFnSetPublicComment = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.SetPublicComment" );
 
 	UTgAgencyData_execSetPublicComment_Parms SetPublicComment_Parms;
 	SetPublicComment_Parms.nPlayerId = nPlayerId;
@@ -186,7 +187,7 @@ void UTgAgencyData::SetMOTD ( struct FString sMOTD )
 	static UFunction* pFnSetMOTD = NULL;
 
 	if ( ! pFnSetMOTD )
-		pFnSetMOTD = (UFunction*) UObject::GObjObjects()->Data[ 51075 ];
+		pFnSetMOTD = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.SetMOTD" );
 
 	UTgAgencyData_execSetMOTD_Parms SetMOTD_Parms;
 	memcpy ( &SetMOTD_Parms.sMOTD, &sMOTD, 0xC );
@@ -208,7 +209,7 @@ void UTgAgencyData::TransferLeader ( struct FString sPlayerName )
 	static UFunction* pFnTransferLeader = NULL;
 
 	if ( ! pFnTransferLeader )
-		pFnTransferLeader = (UFunction*) UObject::GObjObjects()->Data[ 51073 ];
+		pFnTransferLeader = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.TransferLeader" );
 
 	UTgAgencyData_execTransferLeader_Parms TransferLeader_Parms;
 	memcpy ( &TransferLeader_Parms.sPlayerName, &sPlayerName, 0xC );
@@ -229,7 +230,7 @@ void UTgAgencyData::Disband ( )
 	static UFunction* pFnDisband = NULL;
 
 	if ( ! pFnDisband )
-		pFnDisband = (UFunction*) UObject::GObjObjects()->Data[ 51072 ];
+		pFnDisband = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.Disband" );
 
 	UTgAgencyData_execDisband_Parms Disband_Parms;
 
@@ -251,7 +252,7 @@ void UTgAgencyData::Create ( struct FString sAgencyName, struct FLinearColor Age
 	static UFunction* pFnCreate = NULL;
 
 	if ( ! pFnCreate )
-		pFnCreate = (UFunction*) UObject::GObjObjects()->Data[ 51069 ];
+		pFnCreate = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.Create" );
 
 	UTgAgencyData_execCreate_Parms Create_Parms;
 	memcpy ( &Create_Parms.sAgencyName, &sAgencyName, 0xC );
@@ -274,7 +275,7 @@ void UTgAgencyData::Invite ( struct FString sPlayerName )
 	static UFunction* pFnInvite = NULL;
 
 	if ( ! pFnInvite )
-		pFnInvite = (UFunction*) UObject::GObjObjects()->Data[ 51067 ];
+		pFnInvite = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.Invite" );
 
 	UTgAgencyData_execInvite_Parms Invite_Parms;
 	memcpy ( &Invite_Parms.sPlayerName, &sPlayerName, 0xC );
@@ -296,7 +297,7 @@ void UTgAgencyData::Remove ( int nPlayerId )
 	static UFunction* pFnRemove = NULL;
 
 	if ( ! pFnRemove )
-		pFnRemove = (UFunction*) UObject::GObjObjects()->Data[ 51065 ];
+		pFnRemove = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.Remove" );
 
 	UTgAgencyData_execRemove_Parms Remove_Parms;
 	Remove_Parms.nPlayerId = nPlayerId;
@@ -318,7 +319,7 @@ void UTgAgencyData::Demote ( int nPlayerId )
 	static UFunction* pFnDemote = NULL;
 
 	if ( ! pFnDemote )
-		pFnDemote = (UFunction*) UObject::GObjObjects()->Data[ 51063 ];
+		pFnDemote = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.Demote" );
 
 	UTgAgencyData_execDemote_Parms Demote_Parms;
 	Demote_Parms.nPlayerId = nPlayerId;
@@ -340,7 +341,7 @@ void UTgAgencyData::Promote ( int nPlayerId )
 	static UFunction* pFnPromote = NULL;
 
 	if ( ! pFnPromote )
-		pFnPromote = (UFunction*) UObject::GObjObjects()->Data[ 51061 ];
+		pFnPromote = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.Promote" );
 
 	UTgAgencyData_execPromote_Parms Promote_Parms;
 	Promote_Parms.nPlayerId = nPlayerId;
@@ -364,7 +365,7 @@ void UTgAgencyData::UpdateRecruiting ( struct FString sText, unsigned long bRecr
 	static UFunction* pFnUpdateRecruiting = NULL;
 
 	if ( ! pFnUpdateRecruiting )
-		pFnUpdateRecruiting = (UFunction*) UObject::GObjObjects()->Data[ 51057 ];
+		pFnUpdateRecruiting = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.UpdateRecruiting" );
 
 	UTgAgencyData_execUpdateRecruiting_Parms UpdateRecruiting_Parms;
 	memcpy ( &UpdateRecruiting_Parms.sText, &sText, 0xC );
@@ -390,7 +391,7 @@ bool UTgAgencyData::CheckFiltered ( struct FsAgencyMemberInfo Info, int nFilter 
 	static UFunction* pFnCheckFiltered = NULL;
 
 	if ( ! pFnCheckFiltered )
-		pFnCheckFiltered = (UFunction*) UObject::GObjObjects()->Data[ 51053 ];
+		pFnCheckFiltered = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.CheckFiltered" );
 
 	UTgAgencyData_execCheckFiltered_Parms CheckFiltered_Parms;
 	memcpy ( &CheckFiltered_Parms.Info, &Info, 0x4C );
@@ -415,7 +416,7 @@ void UTgAgencyData::SetFilter ( int nNewFilter )
 	static UFunction* pFnSetFilter = NULL;
 
 	if ( ! pFnSetFilter )
-		pFnSetFilter = (UFunction*) UObject::GObjObjects()->Data[ 51051 ];
+		pFnSetFilter = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.SetFilter" );
 
 	UTgAgencyData_execSetFilter_Parms SetFilter_Parms;
 	SetFilter_Parms.nNewFilter = nNewFilter;
@@ -438,7 +439,7 @@ int UTgAgencyData::GetNumMembersOfRank ( int nRankId )
 	static UFunction* pFnGetNumMembersOfRank = NULL;
 
 	if ( ! pFnGetNumMembersOfRank )
-		pFnGetNumMembersOfRank = (UFunction*) UObject::GObjObjects()->Data[ 51048 ];
+		pFnGetNumMembersOfRank = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.GetNumMembersOfRank" );
 
 	UTgAgencyData_execGetNumMembersOfRank_Parms GetNumMembersOfRank_Parms;
 	GetNumMembersOfRank_Parms.nRankId = nRankId;
@@ -463,7 +464,7 @@ bool UTgAgencyData::LocalPlayerHasPermission ( int flag )
 	static UFunction* pFnLocalPlayerHasPermission = NULL;
 
 	if ( ! pFnLocalPlayerHasPermission )
-		pFnLocalPlayerHasPermission = (UFunction*) UObject::GObjObjects()->Data[ 51045 ];
+		pFnLocalPlayerHasPermission = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.LocalPlayerHasPermission" );
 
 	UTgAgencyData_execLocalPlayerHasPermission_Parms LocalPlayerHasPermission_Parms;
 	LocalPlayerHasPermission_Parms.flag = flag;
@@ -487,7 +488,7 @@ bool UTgAgencyData::LocalPlayerIsLeader ( )
 	static UFunction* pFnLocalPlayerIsLeader = NULL;
 
 	if ( ! pFnLocalPlayerIsLeader )
-		pFnLocalPlayerIsLeader = (UFunction*) UObject::GObjObjects()->Data[ 51043 ];
+		pFnLocalPlayerIsLeader = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.LocalPlayerIsLeader" );
 
 	UTgAgencyData_execLocalPlayerIsLeader_Parms LocalPlayerIsLeader_Parms;
 
@@ -510,7 +511,7 @@ struct FsAgencyMemberInfo UTgAgencyData::GetLocalPlayerInfo ( )
 	static UFunction* pFnGetLocalPlayerInfo = NULL;
 
 	if ( ! pFnGetLocalPlayerInfo )
-		pFnGetLocalPlayerInfo = (UFunction*) UObject::GObjObjects()->Data[ 51041 ];
+		pFnGetLocalPlayerInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.GetLocalPlayerInfo" );
 
 	UTgAgencyData_execGetLocalPlayerInfo_Parms GetLocalPlayerInfo_Parms;
 
@@ -534,7 +535,7 @@ struct FsAgencyMemberInfo UTgAgencyData::GetMemberInfo ( int nPlayerId )
 	static UFunction* pFnGetMemberInfo = NULL;
 
 	if ( ! pFnGetMemberInfo )
-		pFnGetMemberInfo = (UFunction*) UObject::GObjObjects()->Data[ 51038 ];
+		pFnGetMemberInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.GetMemberInfo" );
 
 	UTgAgencyData_execGetMemberInfo_Parms GetMemberInfo_Parms;
 	GetMemberInfo_Parms.nPlayerId = nPlayerId;
@@ -558,7 +559,7 @@ struct FsAgencyRankData UTgAgencyData::GetLocalRankData ( )
 	static UFunction* pFnGetLocalRankData = NULL;
 
 	if ( ! pFnGetLocalRankData )
-		pFnGetLocalRankData = (UFunction*) UObject::GObjObjects()->Data[ 51036 ];
+		pFnGetLocalRankData = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.GetLocalRankData" );
 
 	UTgAgencyData_execGetLocalRankData_Parms GetLocalRankData_Parms;
 
@@ -582,7 +583,7 @@ struct FsAgencyRankData UTgAgencyData::GetRankData ( int nRank )
 	static UFunction* pFnGetRankData = NULL;
 
 	if ( ! pFnGetRankData )
-		pFnGetRankData = (UFunction*) UObject::GObjObjects()->Data[ 51033 ];
+		pFnGetRankData = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.GetRankData" );
 
 	UTgAgencyData_execGetRankData_Parms GetRankData_Parms;
 	GetRankData_Parms.nRank = nRank;
@@ -606,7 +607,7 @@ void UTgAgencyData::ClearData ( int rosterflags )
 	static UFunction* pFnClearData = NULL;
 
 	if ( ! pFnClearData )
-		pFnClearData = (UFunction*) UObject::GObjObjects()->Data[ 51031 ];
+		pFnClearData = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.ClearData" );
 
 	UTgAgencyData_execClearData_Parms ClearData_Parms;
 	ClearData_Parms.rosterflags = rosterflags;
@@ -629,7 +630,7 @@ bool UTgAgencyData::RequestAgencyInfo ( int Flags )
 	static UFunction* pFnRequestAgencyInfo = NULL;
 
 	if ( ! pFnRequestAgencyInfo )
-		pFnRequestAgencyInfo = (UFunction*) UObject::GObjObjects()->Data[ 51028 ];
+		pFnRequestAgencyInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.RequestAgencyInfo" );
 
 	UTgAgencyData_execRequestAgencyInfo_Parms RequestAgencyInfo_Parms;
 	RequestAgencyInfo_Parms.Flags = Flags;
@@ -653,7 +654,7 @@ TArray< struct FsAgencyMemberInfo > UTgAgencyData::GetSortedInfoArray ( )
 	static UFunction* pFnGetSortedInfoArray = NULL;
 
 	if ( ! pFnGetSortedInfoArray )
-		pFnGetSortedInfoArray = (UFunction*) UObject::GObjObjects()->Data[ 51025 ];
+		pFnGetSortedInfoArray = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.GetSortedInfoArray" );
 
 	UTgAgencyData_execGetSortedInfoArray_Parms GetSortedInfoArray_Parms;
 
@@ -675,7 +676,7 @@ void UTgAgencyData::InitAgencyData ( )
 	static UFunction* pFnInitAgencyData = NULL;
 
 	if ( ! pFnInitAgencyData )
-		pFnInitAgencyData = (UFunction*) UObject::GObjObjects()->Data[ 51024 ];
+		pFnInitAgencyData = (UFunction*) ObjectCache::Find( "Function TgClient.TgAgencyData.InitAgencyData" );
 
 	UTgAgencyData_execInitAgencyData_Parms InitAgencyData_Parms;
 
@@ -696,7 +697,7 @@ struct FsAllianceMemberInfo UTgAllianceData::eventGetDefaultMemberInfo ( )
 	static UFunction* pFnGetDefaultMemberInfo = NULL;
 
 	if ( ! pFnGetDefaultMemberInfo )
-		pFnGetDefaultMemberInfo = (UFunction*) UObject::GObjObjects()->Data[ 51134 ];
+		pFnGetDefaultMemberInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgAllianceData.GetDefaultMemberInfo" );
 
 	UTgAllianceData_eventGetDefaultMemberInfo_Parms GetDefaultMemberInfo_Parms;
 
@@ -714,7 +715,7 @@ void UTgAllianceData::Disband ( )
 	static UFunction* pFnDisband = NULL;
 
 	if ( ! pFnDisband )
-		pFnDisband = (UFunction*) UObject::GObjObjects()->Data[ 51133 ];
+		pFnDisband = (UFunction*) ObjectCache::Find( "Function TgClient.TgAllianceData.Disband" );
 
 	UTgAllianceData_execDisband_Parms Disband_Parms;
 
@@ -735,7 +736,7 @@ void UTgAllianceData::Remove ( int nAgencyId )
 	static UFunction* pFnRemove = NULL;
 
 	if ( ! pFnRemove )
-		pFnRemove = (UFunction*) UObject::GObjObjects()->Data[ 51131 ];
+		pFnRemove = (UFunction*) ObjectCache::Find( "Function TgClient.TgAllianceData.Remove" );
 
 	UTgAllianceData_execRemove_Parms Remove_Parms;
 	Remove_Parms.nAgencyId = nAgencyId;
@@ -757,7 +758,7 @@ void UTgAllianceData::Invite ( struct FString sPlayerName )
 	static UFunction* pFnInvite = NULL;
 
 	if ( ! pFnInvite )
-		pFnInvite = (UFunction*) UObject::GObjObjects()->Data[ 51129 ];
+		pFnInvite = (UFunction*) ObjectCache::Find( "Function TgClient.TgAllianceData.Invite" );
 
 	UTgAllianceData_execInvite_Parms Invite_Parms;
 	memcpy ( &Invite_Parms.sPlayerName, &sPlayerName, 0xC );
@@ -779,7 +780,7 @@ void UTgAllianceData::Create ( struct FString sName )
 	static UFunction* pFnCreate = NULL;
 
 	if ( ! pFnCreate )
-		pFnCreate = (UFunction*) UObject::GObjObjects()->Data[ 51127 ];
+		pFnCreate = (UFunction*) ObjectCache::Find( "Function TgClient.TgAllianceData.Create" );
 
 	UTgAllianceData_execCreate_Parms Create_Parms;
 	memcpy ( &Create_Parms.sName, &sName, 0xC );
@@ -802,7 +803,7 @@ struct FsAllianceMemberInfo UTgAllianceData::GetMemberInfo ( int nAgencyId )
 	static UFunction* pFnGetMemberInfo = NULL;
 
 	if ( ! pFnGetMemberInfo )
-		pFnGetMemberInfo = (UFunction*) UObject::GObjObjects()->Data[ 51124 ];
+		pFnGetMemberInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgAllianceData.GetMemberInfo" );
 
 	UTgAllianceData_execGetMemberInfo_Parms GetMemberInfo_Parms;
 	GetMemberInfo_Parms.nAgencyId = nAgencyId;
@@ -826,7 +827,7 @@ void UTgAllianceData::Tick ( float DeltaSeconds )
 	static UFunction* pFnTick = NULL;
 
 	if ( ! pFnTick )
-		pFnTick = (UFunction*) UObject::GObjObjects()->Data[ 51122 ];
+		pFnTick = (UFunction*) ObjectCache::Find( "Function TgClient.TgAllianceData.Tick" );
 
 	UTgAllianceData_execTick_Parms Tick_Parms;
 	Tick_Parms.DeltaSeconds = DeltaSeconds;
@@ -849,7 +850,7 @@ void UTgAllianceData::ClearData ( unsigned long bGeneralData, unsigned long bMem
 	static UFunction* pFnClearData = NULL;
 
 	if ( ! pFnClearData )
-		pFnClearData = (UFunction*) UObject::GObjObjects()->Data[ 51119 ];
+		pFnClearData = (UFunction*) ObjectCache::Find( "Function TgClient.TgAllianceData.ClearData" );
 
 	UTgAllianceData_execClearData_Parms ClearData_Parms;
 	ClearData_Parms.bGeneralData = bGeneralData;
@@ -873,7 +874,7 @@ bool UTgAllianceData::RequestAllianceInfo ( int Flags )
 	static UFunction* pFnRequestAllianceInfo = NULL;
 
 	if ( ! pFnRequestAllianceInfo )
-		pFnRequestAllianceInfo = (UFunction*) UObject::GObjObjects()->Data[ 51116 ];
+		pFnRequestAllianceInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgAllianceData.RequestAllianceInfo" );
 
 	UTgAllianceData_execRequestAllianceInfo_Parms RequestAllianceInfo_Parms;
 	RequestAllianceInfo_Parms.Flags = Flags;
@@ -902,7 +903,7 @@ bool UTgConsole::InputKey ( int ControllerId, struct FName Key, unsigned char Ev
 	static UFunction* pFnInputKey = NULL;
 
 	if ( ! pFnInputKey )
-		pFnInputKey = (UFunction*) UObject::GObjObjects()->Data[ 51143 ];
+		pFnInputKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgConsole.InputKey" );
 
 	UTgConsole_execInputKey_Parms InputKey_Parms;
 	InputKey_Parms.ControllerId = ControllerId;
@@ -926,7 +927,7 @@ void UTgConsole::SetEnabled ( unsigned long bEnabled )
 	static UFunction* pFnSetEnabled = NULL;
 
 	if ( ! pFnSetEnabled )
-		pFnSetEnabled = (UFunction*) UObject::GObjObjects()->Data[ 51141 ];
+		pFnSetEnabled = (UFunction*) ObjectCache::Find( "Function TgClient.TgConsole.SetEnabled" );
 
 	UTgConsole_execSetEnabled_Parms SetEnabled_Parms;
 	SetEnabled_Parms.bEnabled = bEnabled;
@@ -948,7 +949,7 @@ void UTgDataInterface::GetLocalBotList ( class UTgDataSet* pDataSet )
 	static UFunction* pFnGetLocalBotList = NULL;
 
 	if ( ! pFnGetLocalBotList )
-		pFnGetLocalBotList = (UFunction*) UObject::GObjObjects()->Data[ 51178 ];
+		pFnGetLocalBotList = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataInterface.GetLocalBotList" );
 
 	UTgDataInterface_execGetLocalBotList_Parms GetLocalBotList_Parms;
 	GetLocalBotList_Parms.pDataSet = pDataSet;
@@ -970,7 +971,7 @@ void UTgDataInterface::GetInstanceList ( class UTgDataSet* pDataSet )
 	static UFunction* pFnGetInstanceList = NULL;
 
 	if ( ! pFnGetInstanceList )
-		pFnGetInstanceList = (UFunction*) UObject::GObjObjects()->Data[ 51176 ];
+		pFnGetInstanceList = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataInterface.GetInstanceList" );
 
 	UTgDataInterface_execGetInstanceList_Parms GetInstanceList_Parms;
 	GetInstanceList_Parms.pDataSet = pDataSet;
@@ -992,7 +993,7 @@ void UTgDataInterface::QueryPlayers ( class UTgDataSet* pDataSet )
 	static UFunction* pFnQueryPlayers = NULL;
 
 	if ( ! pFnQueryPlayers )
-		pFnQueryPlayers = (UFunction*) UObject::GObjObjects()->Data[ 51174 ];
+		pFnQueryPlayers = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataInterface.QueryPlayers" );
 
 	UTgDataInterface_execQueryPlayers_Parms QueryPlayers_Parms;
 	QueryPlayers_Parms.pDataSet = pDataSet;
@@ -1014,7 +1015,7 @@ void UTgDataInterface::GetCharacterStats ( class UTgDataSet* pDataSet )
 	static UFunction* pFnGetCharacterStats = NULL;
 
 	if ( ! pFnGetCharacterStats )
-		pFnGetCharacterStats = (UFunction*) UObject::GObjObjects()->Data[ 51172 ];
+		pFnGetCharacterStats = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataInterface.GetCharacterStats" );
 
 	UTgDataInterface_execGetCharacterStats_Parms GetCharacterStats_Parms;
 	GetCharacterStats_Parms.pDataSet = pDataSet;
@@ -1038,7 +1039,7 @@ void UTgDataInterface::GetLootTableItems ( int nLootTableId, int nProfileId, cla
 	static UFunction* pFnGetLootTableItems = NULL;
 
 	if ( ! pFnGetLootTableItems )
-		pFnGetLootTableItems = (UFunction*) UObject::GObjObjects()->Data[ 51168 ];
+		pFnGetLootTableItems = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataInterface.GetLootTableItems" );
 
 	UTgDataInterface_execGetLootTableItems_Parms GetLootTableItems_Parms;
 	GetLootTableItems_Parms.nLootTableId = nLootTableId;
@@ -1063,7 +1064,7 @@ void UTgDataInterface::AddCharacter ( struct FCharacterInfoStruct CharInfo, clas
 	static UFunction* pFnAddCharacter = NULL;
 
 	if ( ! pFnAddCharacter )
-		pFnAddCharacter = (UFunction*) UObject::GObjObjects()->Data[ 51165 ];
+		pFnAddCharacter = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataInterface.AddCharacter" );
 
 	UTgDataInterface_execAddCharacter_Parms AddCharacter_Parms;
 	memcpy ( &AddCharacter_Parms.CharInfo, &CharInfo, 0x38 );
@@ -1086,7 +1087,7 @@ void UTgDataSet::MakeRequest ( struct FString sFuncName )
 	static UFunction* pFnMakeRequest = NULL;
 
 	if ( ! pFnMakeRequest )
-		pFnMakeRequest = (UFunction*) UObject::GObjObjects()->Data[ 51251 ];
+		pFnMakeRequest = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.MakeRequest" );
 
 	UTgDataSet_execMakeRequest_Parms MakeRequest_Parms;
 	memcpy ( &MakeRequest_Parms.sFuncName, &sFuncName, 0xC );
@@ -1109,7 +1110,7 @@ void UTgDataSet::UpdateParam ( struct FString sName, struct FString sValue )
 	static UFunction* pFnUpdateParam = NULL;
 
 	if ( ! pFnUpdateParam )
-		pFnUpdateParam = (UFunction*) UObject::GObjObjects()->Data[ 51248 ];
+		pFnUpdateParam = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.UpdateParam" );
 
 	UTgDataSet_execUpdateParam_Parms UpdateParam_Parms;
 	memcpy ( &UpdateParam_Parms.sName, &sName, 0xC );
@@ -1133,7 +1134,7 @@ void UTgDataSet::AddParam ( struct FString sName, struct FString sValue )
 	static UFunction* pFnAddParam = NULL;
 
 	if ( ! pFnAddParam )
-		pFnAddParam = (UFunction*) UObject::GObjObjects()->Data[ 51245 ];
+		pFnAddParam = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.AddParam" );
 
 	UTgDataSet_execAddParam_Parms AddParam_Parms;
 	memcpy ( &AddParam_Parms.sName, &sName, 0xC );
@@ -1156,7 +1157,7 @@ void UTgDataSet::CallRegisteredForEvents ( unsigned char eEventType )
 	static UFunction* pFnCallRegisteredForEvents = NULL;
 
 	if ( ! pFnCallRegisteredForEvents )
-		pFnCallRegisteredForEvents = (UFunction*) UObject::GObjObjects()->Data[ 51243 ];
+		pFnCallRegisteredForEvents = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.CallRegisteredForEvents" );
 
 	UTgDataSet_execCallRegisteredForEvents_Parms CallRegisteredForEvents_Parms;
 	CallRegisteredForEvents_Parms.eEventType = eEventType;
@@ -1179,7 +1180,7 @@ void UTgDataSet::RegisterForEvents ( class UObject* pObject, struct FName nmFunc
 	static UFunction* pFnRegisterForEvents = NULL;
 
 	if ( ! pFnRegisterForEvents )
-		pFnRegisterForEvents = (UFunction*) UObject::GObjObjects()->Data[ 51240 ];
+		pFnRegisterForEvents = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.RegisterForEvents" );
 
 	UTgDataSet_execRegisterForEvents_Parms RegisterForEvents_Parms;
 	RegisterForEvents_Parms.pObject = pObject;
@@ -1202,7 +1203,7 @@ struct FString UTgDataSet::GetErrorText ( )
 	static UFunction* pFnGetErrorText = NULL;
 
 	if ( ! pFnGetErrorText )
-		pFnGetErrorText = (UFunction*) UObject::GObjObjects()->Data[ 51238 ];
+		pFnGetErrorText = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.GetErrorText" );
 
 	UTgDataSet_execGetErrorText_Parms GetErrorText_Parms;
 
@@ -1225,7 +1226,7 @@ struct FString UTgDataSet::GetErrorColumn ( )
 	static UFunction* pFnGetErrorColumn = NULL;
 
 	if ( ! pFnGetErrorColumn )
-		pFnGetErrorColumn = (UFunction*) UObject::GObjObjects()->Data[ 51236 ];
+		pFnGetErrorColumn = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.GetErrorColumn" );
 
 	UTgDataSet_execGetErrorColumn_Parms GetErrorColumn_Parms;
 
@@ -1248,7 +1249,7 @@ int UTgDataSet::GetErrorCode ( )
 	static UFunction* pFnGetErrorCode = NULL;
 
 	if ( ! pFnGetErrorCode )
-		pFnGetErrorCode = (UFunction*) UObject::GObjObjects()->Data[ 51234 ];
+		pFnGetErrorCode = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.GetErrorCode" );
 
 	UTgDataSet_execGetErrorCode_Parms GetErrorCode_Parms;
 
@@ -1271,7 +1272,7 @@ void UTgDataSet::AddCurrentRow ( class UTgDataSet* pDataSet )
 	static UFunction* pFnAddCurrentRow = NULL;
 
 	if ( ! pFnAddCurrentRow )
-		pFnAddCurrentRow = (UFunction*) UObject::GObjObjects()->Data[ 51232 ];
+		pFnAddCurrentRow = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.AddCurrentRow" );
 
 	UTgDataSet_execAddCurrentRow_Parms AddCurrentRow_Parms;
 	AddCurrentRow_Parms.pDataSet = pDataSet;
@@ -1294,7 +1295,7 @@ void UTgDataSet::Sort ( struct FString sColName, unsigned long bAscending )
 	static UFunction* pFnSort = NULL;
 
 	if ( ! pFnSort )
-		pFnSort = (UFunction*) UObject::GObjObjects()->Data[ 51229 ];
+		pFnSort = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.Sort" );
 
 	UTgDataSet_execSort_Parms Sort_Parms;
 	memcpy ( &Sort_Parms.sColName, &sColName, 0xC );
@@ -1317,7 +1318,7 @@ void UTgDataSet::DeleteAll ( unsigned long bUpdateBound )
 	static UFunction* pFnDeleteAll = NULL;
 
 	if ( ! pFnDeleteAll )
-		pFnDeleteAll = (UFunction*) UObject::GObjObjects()->Data[ 51227 ];
+		pFnDeleteAll = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.DeleteAll" );
 
 	UTgDataSet_execDeleteAll_Parms DeleteAll_Parms;
 	DeleteAll_Parms.bUpdateBound = bUpdateBound;
@@ -1338,7 +1339,7 @@ void UTgDataSet::DeleteRow ( )
 	static UFunction* pFnDeleteRow = NULL;
 
 	if ( ! pFnDeleteRow )
-		pFnDeleteRow = (UFunction*) UObject::GObjObjects()->Data[ 51226 ];
+		pFnDeleteRow = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.DeleteRow" );
 
 	UTgDataSet_execDeleteRow_Parms DeleteRow_Parms;
 
@@ -1358,7 +1359,7 @@ void UTgDataSet::AddRow ( )
 	static UFunction* pFnAddRow = NULL;
 
 	if ( ! pFnAddRow )
-		pFnAddRow = (UFunction*) UObject::GObjObjects()->Data[ 51225 ];
+		pFnAddRow = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.AddRow" );
 
 	UTgDataSet_execAddRow_Parms AddRow_Parms;
 
@@ -1380,7 +1381,7 @@ bool UTgDataSet::GoToRowSet ( int nTokenId )
 	static UFunction* pFnGoToRowSet = NULL;
 
 	if ( ! pFnGoToRowSet )
-		pFnGoToRowSet = (UFunction*) UObject::GObjObjects()->Data[ 51222 ];
+		pFnGoToRowSet = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.GoToRowSet" );
 
 	UTgDataSet_execGoToRowSet_Parms GoToRowSet_Parms;
 	GoToRowSet_Parms.nTokenId = nTokenId;
@@ -1405,7 +1406,7 @@ bool UTgDataSet::MoveTo ( int nRowNumber )
 	static UFunction* pFnMoveTo = NULL;
 
 	if ( ! pFnMoveTo )
-		pFnMoveTo = (UFunction*) UObject::GObjObjects()->Data[ 51219 ];
+		pFnMoveTo = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.MoveTo" );
 
 	UTgDataSet_execMoveTo_Parms MoveTo_Parms;
 	MoveTo_Parms.nRowNumber = nRowNumber;
@@ -1429,7 +1430,7 @@ bool UTgDataSet::MoveLast ( )
 	static UFunction* pFnMoveLast = NULL;
 
 	if ( ! pFnMoveLast )
-		pFnMoveLast = (UFunction*) UObject::GObjObjects()->Data[ 51217 ];
+		pFnMoveLast = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.MoveLast" );
 
 	UTgDataSet_execMoveLast_Parms MoveLast_Parms;
 
@@ -1452,7 +1453,7 @@ bool UTgDataSet::MoveNext ( )
 	static UFunction* pFnMoveNext = NULL;
 
 	if ( ! pFnMoveNext )
-		pFnMoveNext = (UFunction*) UObject::GObjObjects()->Data[ 51215 ];
+		pFnMoveNext = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.MoveNext" );
 
 	UTgDataSet_execMoveNext_Parms MoveNext_Parms;
 
@@ -1475,7 +1476,7 @@ bool UTgDataSet::MoveFirst ( )
 	static UFunction* pFnMoveFirst = NULL;
 
 	if ( ! pFnMoveFirst )
-		pFnMoveFirst = (UFunction*) UObject::GObjObjects()->Data[ 51213 ];
+		pFnMoveFirst = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.MoveFirst" );
 
 	UTgDataSet_execMoveFirst_Parms MoveFirst_Parms;
 
@@ -1499,7 +1500,7 @@ void UTgDataSet::SetNbrColValue ( struct FString sColName, float fValue )
 	static UFunction* pFnSetNbrColValue = NULL;
 
 	if ( ! pFnSetNbrColValue )
-		pFnSetNbrColValue = (UFunction*) UObject::GObjObjects()->Data[ 51210 ];
+		pFnSetNbrColValue = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.SetNbrColValue" );
 
 	UTgDataSet_execSetNbrColValue_Parms SetNbrColValue_Parms;
 	memcpy ( &SetNbrColValue_Parms.sColName, &sColName, 0xC );
@@ -1523,7 +1524,7 @@ void UTgDataSet::SetStrColValue ( struct FString sColName, struct FString sValue
 	static UFunction* pFnSetStrColValue = NULL;
 
 	if ( ! pFnSetStrColValue )
-		pFnSetStrColValue = (UFunction*) UObject::GObjObjects()->Data[ 51207 ];
+		pFnSetStrColValue = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.SetStrColValue" );
 
 	UTgDataSet_execSetStrColValue_Parms SetStrColValue_Parms;
 	memcpy ( &SetStrColValue_Parms.sColName, &sColName, 0xC );
@@ -1547,7 +1548,7 @@ float UTgDataSet::GetNbrColValue ( struct FString sColName )
 	static UFunction* pFnGetNbrColValue = NULL;
 
 	if ( ! pFnGetNbrColValue )
-		pFnGetNbrColValue = (UFunction*) UObject::GObjObjects()->Data[ 51204 ];
+		pFnGetNbrColValue = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.GetNbrColValue" );
 
 	UTgDataSet_execGetNbrColValue_Parms GetNbrColValue_Parms;
 	memcpy ( &GetNbrColValue_Parms.sColName, &sColName, 0xC );
@@ -1573,7 +1574,7 @@ struct FString UTgDataSet::GetStrColValueByRow ( struct FString sColName, int iR
 	static UFunction* pFnGetStrColValueByRow = NULL;
 
 	if ( ! pFnGetStrColValueByRow )
-		pFnGetStrColValueByRow = (UFunction*) UObject::GObjObjects()->Data[ 51200 ];
+		pFnGetStrColValueByRow = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.GetStrColValueByRow" );
 
 	UTgDataSet_execGetStrColValueByRow_Parms GetStrColValueByRow_Parms;
 	memcpy ( &GetStrColValueByRow_Parms.sColName, &sColName, 0xC );
@@ -1599,7 +1600,7 @@ struct FString UTgDataSet::GetStrColValue ( struct FString sColName )
 	static UFunction* pFnGetStrColValue = NULL;
 
 	if ( ! pFnGetStrColValue )
-		pFnGetStrColValue = (UFunction*) UObject::GObjObjects()->Data[ 51197 ];
+		pFnGetStrColValue = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.GetStrColValue" );
 
 	UTgDataSet_execGetStrColValue_Parms GetStrColValue_Parms;
 	memcpy ( &GetStrColValue_Parms.sColName, &sColName, 0xC );
@@ -1624,7 +1625,7 @@ struct FString UTgDataSet::GetStrColText ( struct FString sColName )
 	static UFunction* pFnGetStrColText = NULL;
 
 	if ( ! pFnGetStrColText )
-		pFnGetStrColText = (UFunction*) UObject::GObjObjects()->Data[ 51194 ];
+		pFnGetStrColText = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.GetStrColText" );
 
 	UTgDataSet_execGetStrColText_Parms GetStrColText_Parms;
 	memcpy ( &GetStrColText_Parms.sColName, &sColName, 0xC );
@@ -1648,7 +1649,7 @@ int UTgDataSet::GetCurrentRowId ( )
 	static UFunction* pFnGetCurrentRowId = NULL;
 
 	if ( ! pFnGetCurrentRowId )
-		pFnGetCurrentRowId = (UFunction*) UObject::GObjObjects()->Data[ 51192 ];
+		pFnGetCurrentRowId = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.GetCurrentRowId" );
 
 	UTgDataSet_execGetCurrentRowId_Parms GetCurrentRowId_Parms;
 
@@ -1672,7 +1673,7 @@ bool UTgDataSet::ColumnEmptyOrNull ( struct FString sColName )
 	static UFunction* pFnColumnEmptyOrNull = NULL;
 
 	if ( ! pFnColumnEmptyOrNull )
-		pFnColumnEmptyOrNull = (UFunction*) UObject::GObjObjects()->Data[ 51189 ];
+		pFnColumnEmptyOrNull = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.ColumnEmptyOrNull" );
 
 	UTgDataSet_execColumnEmptyOrNull_Parms ColumnEmptyOrNull_Parms;
 	memcpy ( &ColumnEmptyOrNull_Parms.sColName, &sColName, 0xC );
@@ -1696,7 +1697,7 @@ int UTgDataSet::RecordCount ( )
 	static UFunction* pFnRecordCount = NULL;
 
 	if ( ! pFnRecordCount )
-		pFnRecordCount = (UFunction*) UObject::GObjObjects()->Data[ 51187 ];
+		pFnRecordCount = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.RecordCount" );
 
 	UTgDataSet_execRecordCount_Parms RecordCount_Parms;
 
@@ -1718,7 +1719,7 @@ void UTgDataSet::Reinitialize ( )
 	static UFunction* pFnReinitialize = NULL;
 
 	if ( ! pFnReinitialize )
-		pFnReinitialize = (UFunction*) UObject::GObjObjects()->Data[ 51186 ];
+		pFnReinitialize = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.Reinitialize" );
 
 	UTgDataSet_execReinitialize_Parms Reinitialize_Parms;
 
@@ -1738,7 +1739,7 @@ void UTgDataSet::Clear ( )
 	static UFunction* pFnClear = NULL;
 
 	if ( ! pFnClear )
-		pFnClear = (UFunction*) UObject::GObjObjects()->Data[ 51185 ];
+		pFnClear = (UFunction*) ObjectCache::Find( "Function TgClient.TgDataSet.Clear" );
 
 	UTgDataSet_execClear_Parms Clear_Parms;
 
@@ -1758,7 +1759,7 @@ void UTgGameViewportClient::eventGameSessionEnded ( )
 	static UFunction* pFnGameSessionEnded = NULL;
 
 	if ( ! pFnGameSessionEnded )
-		pFnGameSessionEnded = (UFunction*) UObject::GObjObjects()->Data[ 51270 ];
+		pFnGameSessionEnded = (UFunction*) ObjectCache::Find( "Function TgClient.TgGameViewportClient.GameSessionEnded" );
 
 	UTgGameViewportClient_eventGameSessionEnded_Parms GameSessionEnded_Parms;
 
@@ -1775,7 +1776,7 @@ void UTgGameViewportClient::DrawTransition ( class UCanvas* Canvas )
 	static UFunction* pFnDrawTransition = NULL;
 
 	if ( ! pFnDrawTransition )
-		pFnDrawTransition = (UFunction*) UObject::GObjObjects()->Data[ 51268 ];
+		pFnDrawTransition = (UFunction*) ObjectCache::Find( "Function TgClient.TgGameViewportClient.DrawTransition" );
 
 	UTgGameViewportClient_execDrawTransition_Parms DrawTransition_Parms;
 	DrawTransition_Parms.Canvas = Canvas;
@@ -1794,7 +1795,7 @@ bool UTgGameViewportClient::eventInit ( struct FString* OutError )
 	static UFunction* pFnInit = NULL;
 
 	if ( ! pFnInit )
-		pFnInit = (UFunction*) UObject::GObjObjects()->Data[ 51265 ];
+		pFnInit = (UFunction*) ObjectCache::Find( "Function TgClient.TgGameViewportClient.Init" );
 
 	UTgGameViewportClient_eventInit_Parms Init_Parms;
 
@@ -1815,7 +1816,7 @@ void UTgGameViewportClient::NativeGameSessionEnded ( )
 	static UFunction* pFnNativeGameSessionEnded = NULL;
 
 	if ( ! pFnNativeGameSessionEnded )
-		pFnNativeGameSessionEnded = (UFunction*) UObject::GObjObjects()->Data[ 51264 ];
+		pFnNativeGameSessionEnded = (UFunction*) ObjectCache::Find( "Function TgClient.TgGameViewportClient.NativeGameSessionEnded" );
 
 	UTgGameViewportClient_execNativeGameSessionEnded_Parms NativeGameSessionEnded_Parms;
 
@@ -1835,7 +1836,7 @@ void UTgGameViewportClient::ClearDeferredManifests ( )
 	static UFunction* pFnClearDeferredManifests = NULL;
 
 	if ( ! pFnClearDeferredManifests )
-		pFnClearDeferredManifests = (UFunction*) UObject::GObjObjects()->Data[ 51263 ];
+		pFnClearDeferredManifests = (UFunction*) ObjectCache::Find( "Function TgClient.TgGameViewportClient.ClearDeferredManifests" );
 
 	UTgGameViewportClient_execClearDeferredManifests_Parms ClearDeferredManifests_Parms;
 
@@ -1856,7 +1857,7 @@ void UTgGameViewportClient::AddDeferredManifest ( class UTgObjectReferencer* Obj
 	static UFunction* pFnAddDeferredManifest = NULL;
 
 	if ( ! pFnAddDeferredManifest )
-		pFnAddDeferredManifest = (UFunction*) UObject::GObjObjects()->Data[ 51261 ];
+		pFnAddDeferredManifest = (UFunction*) ObjectCache::Find( "Function TgClient.TgGameViewportClient.AddDeferredManifest" );
 
 	UTgGameViewportClient_execAddDeferredManifest_Parms AddDeferredManifest_Parms;
 	AddDeferredManifest_Parms.ObjReferencer = ObjReferencer;
@@ -1877,7 +1878,7 @@ void UTgGameViewportClient::DetachHUDSettings ( )
 	static UFunction* pFnDetachHUDSettings = NULL;
 
 	if ( ! pFnDetachHUDSettings )
-		pFnDetachHUDSettings = (UFunction*) UObject::GObjObjects()->Data[ 51260 ];
+		pFnDetachHUDSettings = (UFunction*) ObjectCache::Find( "Function TgClient.TgGameViewportClient.DetachHUDSettings" );
 
 	UTgGameViewportClient_execDetachHUDSettings_Parms DetachHUDSettings_Parms;
 
@@ -1898,7 +1899,7 @@ void UTgGameViewportClient::CenterMouseInViewport ( unsigned long CenterPreCaptu
 	static UFunction* pFnCenterMouseInViewport = NULL;
 
 	if ( ! pFnCenterMouseInViewport )
-		pFnCenterMouseInViewport = (UFunction*) UObject::GObjObjects()->Data[ 51258 ];
+		pFnCenterMouseInViewport = (UFunction*) ObjectCache::Find( "Function TgClient.TgGameViewportClient.CenterMouseInViewport" );
 
 	UTgGameViewportClient_execCenterMouseInViewport_Parms CenterMouseInViewport_Parms;
 	CenterMouseInViewport_Parms.CenterPreCaptureMousePos = CenterPreCaptureMousePos;
@@ -1919,7 +1920,7 @@ void ATgHUD_Game::ShowPathToAttentionPOI ( )
 	static UFunction* pFnShowPathToAttentionPOI = NULL;
 
 	if ( ! pFnShowPathToAttentionPOI )
-		pFnShowPathToAttentionPOI = (UFunction*) UObject::GObjObjects()->Data[ 51978 ];
+		pFnShowPathToAttentionPOI = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShowPathToAttentionPOI" );
 
 	ATgHUD_Game_execShowPathToAttentionPOI_Parms ShowPathToAttentionPOI_Parms;
 
@@ -1939,7 +1940,7 @@ void ATgHUD_Game::StartVoiceMacroTree ( )
 	static UFunction* pFnStartVoiceMacroTree = NULL;
 
 	if ( ! pFnStartVoiceMacroTree )
-		pFnStartVoiceMacroTree = (UFunction*) UObject::GObjObjects()->Data[ 51977 ];
+		pFnStartVoiceMacroTree = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.StartVoiceMacroTree" );
 
 	ATgHUD_Game_execStartVoiceMacroTree_Parms StartVoiceMacroTree_Parms;
 
@@ -1959,7 +1960,7 @@ void ATgHUD_Game::eventClearTriggeredSceneInfo ( )
 	static UFunction* pFnClearTriggeredSceneInfo = NULL;
 
 	if ( ! pFnClearTriggeredSceneInfo )
-		pFnClearTriggeredSceneInfo = (UFunction*) UObject::GObjObjects()->Data[ 51976 ];
+		pFnClearTriggeredSceneInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ClearTriggeredSceneInfo" );
 
 	ATgHUD_Game_eventClearTriggeredSceneInfo_Parms ClearTriggeredSceneInfo_Parms;
 
@@ -1976,7 +1977,7 @@ void ATgHUD_Game::eventSetTriggeredSceneInfo ( class AActor* triggerActor )
 	static UFunction* pFnSetTriggeredSceneInfo = NULL;
 
 	if ( ! pFnSetTriggeredSceneInfo )
-		pFnSetTriggeredSceneInfo = (UFunction*) UObject::GObjObjects()->Data[ 51974 ];
+		pFnSetTriggeredSceneInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.SetTriggeredSceneInfo" );
 
 	ATgHUD_Game_eventSetTriggeredSceneInfo_Parms SetTriggeredSceneInfo_Parms;
 	SetTriggeredSceneInfo_Parms.triggerActor = triggerActor;
@@ -1993,7 +1994,7 @@ void ATgHUD_Game::CycleTrackedAssignment ( )
 	static UFunction* pFnCycleTrackedAssignment = NULL;
 
 	if ( ! pFnCycleTrackedAssignment )
-		pFnCycleTrackedAssignment = (UFunction*) UObject::GObjObjects()->Data[ 51973 ];
+		pFnCycleTrackedAssignment = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.CycleTrackedAssignment" );
 
 	ATgHUD_Game_execCycleTrackedAssignment_Parms CycleTrackedAssignment_Parms;
 
@@ -2013,7 +2014,7 @@ void ATgHUD_Game::ShowDevNotes ( )
 	static UFunction* pFnShowDevNotes = NULL;
 
 	if ( ! pFnShowDevNotes )
-		pFnShowDevNotes = (UFunction*) UObject::GObjObjects()->Data[ 51972 ];
+		pFnShowDevNotes = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShowDevNotes" );
 
 	ATgHUD_Game_execShowDevNotes_Parms ShowDevNotes_Parms;
 
@@ -2029,7 +2030,7 @@ void ATgHUD_Game::BrowseToDevNotes ( )
 	static UFunction* pFnBrowseToDevNotes = NULL;
 
 	if ( ! pFnBrowseToDevNotes )
-		pFnBrowseToDevNotes = (UFunction*) UObject::GObjObjects()->Data[ 51971 ];
+		pFnBrowseToDevNotes = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.BrowseToDevNotes" );
 
 	ATgHUD_Game_execBrowseToDevNotes_Parms BrowseToDevNotes_Parms;
 
@@ -2050,7 +2051,7 @@ void ATgHUD_Game::UpdateReleaseTime ( float fReleaseTime )
 	static UFunction* pFnUpdateReleaseTime = NULL;
 
 	if ( ! pFnUpdateReleaseTime )
-		pFnUpdateReleaseTime = (UFunction*) UObject::GObjObjects()->Data[ 51965 ];
+		pFnUpdateReleaseTime = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.UpdateReleaseTime" );
 
 	ATgHUD_Game_execUpdateReleaseTime_Parms UpdateReleaseTime_Parms;
 	UpdateReleaseTime_Parms.fReleaseTime = fReleaseTime;
@@ -2068,7 +2069,7 @@ class UTgUIReleaseMenus* ATgHUD_Game::GetActiveReleaseMenu ( )
 	static UFunction* pFnGetActiveReleaseMenu = NULL;
 
 	if ( ! pFnGetActiveReleaseMenu )
-		pFnGetActiveReleaseMenu = (UFunction*) UObject::GObjObjects()->Data[ 51962 ];
+		pFnGetActiveReleaseMenu = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.GetActiveReleaseMenu" );
 
 	ATgHUD_Game_execGetActiveReleaseMenu_Parms GetActiveReleaseMenu_Parms;
 
@@ -2090,7 +2091,7 @@ void ATgHUD_Game::ShowReleaseDialog ( unsigned long bShow, struct FDeathZoomInfo
 	static UFunction* pFnShowReleaseDialog = NULL;
 
 	if ( ! pFnShowReleaseDialog )
-		pFnShowReleaseDialog = (UFunction*) UObject::GObjObjects()->Data[ 51955 ];
+		pFnShowReleaseDialog = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShowReleaseDialog" );
 
 	ATgHUD_Game_execShowReleaseDialog_Parms ShowReleaseDialog_Parms;
 	ShowReleaseDialog_Parms.bShow = bShow;
@@ -2111,7 +2112,7 @@ class UTgUISceneDriver* ATgHUD_Game::ShowDevSpawnBotMenu ( )
 	static UFunction* pFnShowDevSpawnBotMenu = NULL;
 
 	if ( ! pFnShowDevSpawnBotMenu )
-		pFnShowDevSpawnBotMenu = (UFunction*) UObject::GObjObjects()->Data[ 51952 ];
+		pFnShowDevSpawnBotMenu = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShowDevSpawnBotMenu" );
 
 	ATgHUD_Game_execShowDevSpawnBotMenu_Parms ShowDevSpawnBotMenu_Parms;
 
@@ -2130,7 +2131,7 @@ void ATgHUD_Game::ForceUpdateDeviceBar ( int nActiveDeviceId )
 	static UFunction* pFnForceUpdateDeviceBar = NULL;
 
 	if ( ! pFnForceUpdateDeviceBar )
-		pFnForceUpdateDeviceBar = (UFunction*) UObject::GObjObjects()->Data[ 51948 ];
+		pFnForceUpdateDeviceBar = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ForceUpdateDeviceBar" );
 
 	ATgHUD_Game_execForceUpdateDeviceBar_Parms ForceUpdateDeviceBar_Parms;
 	ForceUpdateDeviceBar_Parms.nActiveDeviceId = nActiveDeviceId;
@@ -2147,7 +2148,7 @@ void ATgHUD_Game::HideWorldInteractionText ( )
 	static UFunction* pFnHideWorldInteractionText = NULL;
 
 	if ( ! pFnHideWorldInteractionText )
-		pFnHideWorldInteractionText = (UFunction*) UObject::GObjObjects()->Data[ 51947 ];
+		pFnHideWorldInteractionText = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.HideWorldInteractionText" );
 
 	ATgHUD_Game_execHideWorldInteractionText_Parms HideWorldInteractionText_Parms;
 
@@ -2164,7 +2165,7 @@ void ATgHUD_Game::ShowWorldInteractionTextById ( int nMsgId )
 	static UFunction* pFnShowWorldInteractionTextById = NULL;
 
 	if ( ! pFnShowWorldInteractionTextById )
-		pFnShowWorldInteractionTextById = (UFunction*) UObject::GObjObjects()->Data[ 51945 ];
+		pFnShowWorldInteractionTextById = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShowWorldInteractionTextById" );
 
 	ATgHUD_Game_execShowWorldInteractionTextById_Parms ShowWorldInteractionTextById_Parms;
 	ShowWorldInteractionTextById_Parms.nMsgId = nMsgId;
@@ -2182,7 +2183,7 @@ void ATgHUD_Game::ShowWorldInteractionText ( struct FString sMsg )
 	static UFunction* pFnShowWorldInteractionText = NULL;
 
 	if ( ! pFnShowWorldInteractionText )
-		pFnShowWorldInteractionText = (UFunction*) UObject::GObjObjects()->Data[ 51943 ];
+		pFnShowWorldInteractionText = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShowWorldInteractionText" );
 
 	ATgHUD_Game_execShowWorldInteractionText_Parms ShowWorldInteractionText_Parms;
 	memcpy ( &ShowWorldInteractionText_Parms.sMsg, &sMsg, 0xC );
@@ -2200,7 +2201,7 @@ void ATgHUD_Game::HideProgressBar ( unsigned long bWorldInteractionBar )
 	static UFunction* pFnHideProgressBar = NULL;
 
 	if ( ! pFnHideProgressBar )
-		pFnHideProgressBar = (UFunction*) UObject::GObjObjects()->Data[ 51941 ];
+		pFnHideProgressBar = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.HideProgressBar" );
 
 	ATgHUD_Game_execHideProgressBar_Parms HideProgressBar_Parms;
 	HideProgressBar_Parms.bWorldInteractionBar = bWorldInteractionBar;
@@ -2220,7 +2221,7 @@ void ATgHUD_Game::StartProgressBar ( float fDuration, struct FString sLabel, uns
 	static UFunction* pFnStartProgressBar = NULL;
 
 	if ( ! pFnStartProgressBar )
-		pFnStartProgressBar = (UFunction*) UObject::GObjObjects()->Data[ 51936 ];
+		pFnStartProgressBar = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.StartProgressBar" );
 
 	ATgHUD_Game_execStartProgressBar_Parms StartProgressBar_Parms;
 	StartProgressBar_Parms.fDuration = fDuration;
@@ -2239,7 +2240,7 @@ void ATgHUD_Game::DisplayBadConnectionAlert ( )
 	static UFunction* pFnDisplayBadConnectionAlert = NULL;
 
 	if ( ! pFnDisplayBadConnectionAlert )
-		pFnDisplayBadConnectionAlert = (UFunction*) UObject::GObjObjects()->Data[ 51934 ];
+		pFnDisplayBadConnectionAlert = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DisplayBadConnectionAlert" );
 
 	ATgHUD_Game_execDisplayBadConnectionAlert_Parms DisplayBadConnectionAlert_Parms;
 
@@ -2255,7 +2256,7 @@ void ATgHUD_Game::HideTaskForce ( )
 	static UFunction* pFnHideTaskForce = NULL;
 
 	if ( ! pFnHideTaskForce )
-		pFnHideTaskForce = (UFunction*) UObject::GObjObjects()->Data[ 51933 ];
+		pFnHideTaskForce = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.HideTaskForce" );
 
 	ATgHUD_Game_execHideTaskForce_Parms HideTaskForce_Parms;
 
@@ -2271,7 +2272,7 @@ void ATgHUD_Game::ShowTaskForce ( )
 	static UFunction* pFnShowTaskForce = NULL;
 
 	if ( ! pFnShowTaskForce )
-		pFnShowTaskForce = (UFunction*) UObject::GObjObjects()->Data[ 51932 ];
+		pFnShowTaskForce = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShowTaskForce" );
 
 	ATgHUD_Game_execShowTaskForce_Parms ShowTaskForce_Parms;
 
@@ -2289,7 +2290,7 @@ void ATgHUD_Game::SetReticuleVisibility ( unsigned long bCrossHairVisible, unsig
 	static UFunction* pFnSetReticuleVisibility = NULL;
 
 	if ( ! pFnSetReticuleVisibility )
-		pFnSetReticuleVisibility = (UFunction*) UObject::GObjObjects()->Data[ 51929 ];
+		pFnSetReticuleVisibility = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.SetReticuleVisibility" );
 
 	ATgHUD_Game_execSetReticuleVisibility_Parms SetReticuleVisibility_Parms;
 	SetReticuleVisibility_Parms.bCrossHairVisible = bCrossHairVisible;
@@ -2308,7 +2309,7 @@ void ATgHUD_Game::eventTick ( float DeltaTime )
 	static UFunction* pFnTick = NULL;
 
 	if ( ! pFnTick )
-		pFnTick = (UFunction*) UObject::GObjObjects()->Data[ 51927 ];
+		pFnTick = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.Tick" );
 
 	ATgHUD_Game_eventTick_Parms Tick_Parms;
 	Tick_Parms.DeltaTime = DeltaTime;
@@ -2326,7 +2327,7 @@ void ATgHUD_Game::NativeTick ( float DeltaTime )
 	static UFunction* pFnNativeTick = NULL;
 
 	if ( ! pFnNativeTick )
-		pFnNativeTick = (UFunction*) UObject::GObjObjects()->Data[ 51925 ];
+		pFnNativeTick = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.NativeTick" );
 
 	ATgHUD_Game_execNativeTick_Parms NativeTick_Parms;
 	NativeTick_Parms.DeltaTime = DeltaTime;
@@ -2347,7 +2348,7 @@ void ATgHUD_Game::PlayZoomBlur ( )
 	static UFunction* pFnPlayZoomBlur = NULL;
 
 	if ( ! pFnPlayZoomBlur )
-		pFnPlayZoomBlur = (UFunction*) UObject::GObjObjects()->Data[ 51924 ];
+		pFnPlayZoomBlur = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.PlayZoomBlur" );
 
 	ATgHUD_Game_execPlayZoomBlur_Parms PlayZoomBlur_Parms;
 
@@ -2365,7 +2366,7 @@ void ATgHUD_Game::PlayZoomEffect ( unsigned long bEnable, unsigned char ZoomType
 	static UFunction* pFnPlayZoomEffect = NULL;
 
 	if ( ! pFnPlayZoomEffect )
-		pFnPlayZoomEffect = (UFunction*) UObject::GObjObjects()->Data[ 51921 ];
+		pFnPlayZoomEffect = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.PlayZoomEffect" );
 
 	ATgHUD_Game_execPlayZoomEffect_Parms PlayZoomEffect_Parms;
 	PlayZoomEffect_Parms.bEnable = bEnable;
@@ -2384,7 +2385,7 @@ class UMaterialInstanceConstant* ATgHUD_Game::GetZoomEffectByAspectRatio ( )
 	static UFunction* pFnGetZoomEffectByAspectRatio = NULL;
 
 	if ( ! pFnGetZoomEffectByAspectRatio )
-		pFnGetZoomEffectByAspectRatio = (UFunction*) UObject::GObjObjects()->Data[ 51909 ];
+		pFnGetZoomEffectByAspectRatio = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.GetZoomEffectByAspectRatio" );
 
 	ATgHUD_Game_execGetZoomEffectByAspectRatio_Parms GetZoomEffectByAspectRatio_Parms;
 
@@ -2403,7 +2404,7 @@ void ATgHUD_Game::SetZoomScope ( struct FName ScopeName )
 	static UFunction* pFnSetZoomScope = NULL;
 
 	if ( ! pFnSetZoomScope )
-		pFnSetZoomScope = (UFunction*) UObject::GObjObjects()->Data[ 51907 ];
+		pFnSetZoomScope = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.SetZoomScope" );
 
 	ATgHUD_Game_execSetZoomScope_Parms SetZoomScope_Parms;
 	memcpy ( &SetZoomScope_Parms.ScopeName, &ScopeName, 0x8 );
@@ -2420,7 +2421,7 @@ void ATgHUD_Game::DisplayDamage ( )
 	static UFunction* pFnDisplayDamage = NULL;
 
 	if ( ! pFnDisplayDamage )
-		pFnDisplayDamage = (UFunction*) UObject::GObjObjects()->Data[ 51902 ];
+		pFnDisplayDamage = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DisplayDamage" );
 
 	ATgHUD_Game_execDisplayDamage_Parms DisplayDamage_Parms;
 
@@ -2436,7 +2437,7 @@ void ATgHUD_Game::UpdateDamage ( )
 	static UFunction* pFnUpdateDamage = NULL;
 
 	if ( ! pFnUpdateDamage )
-		pFnUpdateDamage = (UFunction*) UObject::GObjObjects()->Data[ 51900 ];
+		pFnUpdateDamage = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.UpdateDamage" );
 
 	ATgHUD_Game_execUpdateDamage_Parms UpdateDamage_Parms;
 
@@ -2454,7 +2455,7 @@ float ATgHUD_Game::CalcHitDirection ( struct FVector HitDir )
 	static UFunction* pFnCalcHitDirection = NULL;
 
 	if ( ! pFnCalcHitDirection )
-		pFnCalcHitDirection = (UFunction*) UObject::GObjObjects()->Data[ 51886 ];
+		pFnCalcHitDirection = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.CalcHitDirection" );
 
 	ATgHUD_Game_execCalcHitDirection_Parms CalcHitDirection_Parms;
 	memcpy ( &CalcHitDirection_Parms.HitDir, &HitDir, 0xC );
@@ -2475,7 +2476,7 @@ void ATgHUD_Game::PlayHitEffect ( float Damage, struct FVector HitDir )
 	static UFunction* pFnPlayHitEffect = NULL;
 
 	if ( ! pFnPlayHitEffect )
-		pFnPlayHitEffect = (UFunction*) UObject::GObjObjects()->Data[ 51880 ];
+		pFnPlayHitEffect = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.PlayHitEffect" );
 
 	ATgHUD_Game_execPlayHitEffect_Parms PlayHitEffect_Parms;
 	PlayHitEffect_Parms.Damage = Damage;
@@ -2494,7 +2495,7 @@ void ATgHUD_Game::RadarMapRotates ( unsigned long RotatingMapStyle )
 	static UFunction* pFnRadarMapRotates = NULL;
 
 	if ( ! pFnRadarMapRotates )
-		pFnRadarMapRotates = (UFunction*) UObject::GObjObjects()->Data[ 51878 ];
+		pFnRadarMapRotates = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.RadarMapRotates" );
 
 	ATgHUD_Game_execRadarMapRotates_Parms RadarMapRotates_Parms;
 	RadarMapRotates_Parms.RotatingMapStyle = RotatingMapStyle;
@@ -2512,7 +2513,7 @@ void ATgHUD_Game::LogBreak ( int I )
 	static UFunction* pFnLogBreak = NULL;
 
 	if ( ! pFnLogBreak )
-		pFnLogBreak = (UFunction*) UObject::GObjObjects()->Data[ 51876 ];
+		pFnLogBreak = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.LogBreak" );
 
 	ATgHUD_Game_execLogBreak_Parms LogBreak_Parms;
 	LogBreak_Parms.I = I;
@@ -2530,7 +2531,7 @@ bool ATgHUD_Game::SelectPreviousDevice ( )
 	static UFunction* pFnSelectPreviousDevice = NULL;
 
 	if ( ! pFnSelectPreviousDevice )
-		pFnSelectPreviousDevice = (UFunction*) UObject::GObjObjects()->Data[ 51874 ];
+		pFnSelectPreviousDevice = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.SelectPreviousDevice" );
 
 	ATgHUD_Game_execSelectPreviousDevice_Parms SelectPreviousDevice_Parms;
 
@@ -2549,7 +2550,7 @@ bool ATgHUD_Game::SelectNextDevice ( )
 	static UFunction* pFnSelectNextDevice = NULL;
 
 	if ( ! pFnSelectNextDevice )
-		pFnSelectNextDevice = (UFunction*) UObject::GObjObjects()->Data[ 51872 ];
+		pFnSelectNextDevice = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.SelectNextDevice" );
 
 	ATgHUD_Game_execSelectNextDevice_Parms SelectNextDevice_Parms;
 
@@ -2568,7 +2569,7 @@ void ATgHUD_Game::UpdateSelectedDevice ( class ATgDevice* Dev )
 	static UFunction* pFnUpdateSelectedDevice = NULL;
 
 	if ( ! pFnUpdateSelectedDevice )
-		pFnUpdateSelectedDevice = (UFunction*) UObject::GObjObjects()->Data[ 51870 ];
+		pFnUpdateSelectedDevice = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.UpdateSelectedDevice" );
 
 	ATgHUD_Game_execUpdateSelectedDevice_Parms UpdateSelectedDevice_Parms;
 	UpdateSelectedDevice_Parms.Dev = Dev;
@@ -2586,7 +2587,7 @@ bool ATgHUD_Game::UsePickupDevice ( )
 	static UFunction* pFnUsePickupDevice = NULL;
 
 	if ( ! pFnUsePickupDevice )
-		pFnUsePickupDevice = (UFunction*) UObject::GObjObjects()->Data[ 51868 ];
+		pFnUsePickupDevice = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.UsePickupDevice" );
 
 	ATgHUD_Game_execUsePickupDevice_Parms UsePickupDevice_Parms;
 
@@ -2606,7 +2607,7 @@ bool ATgHUD_Game::SelectDeviceBarType ( unsigned char eType )
 	static UFunction* pFnSelectDeviceBarType = NULL;
 
 	if ( ! pFnSelectDeviceBarType )
-		pFnSelectDeviceBarType = (UFunction*) UObject::GObjObjects()->Data[ 51865 ];
+		pFnSelectDeviceBarType = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.SelectDeviceBarType" );
 
 	ATgHUD_Game_execSelectDeviceBarType_Parms SelectDeviceBarType_Parms;
 	SelectDeviceBarType_Parms.eType = eType;
@@ -2627,7 +2628,7 @@ bool ATgHUD_Game::SelectDeviceBarSlot ( int Slot )
 	static UFunction* pFnSelectDeviceBarSlot = NULL;
 
 	if ( ! pFnSelectDeviceBarSlot )
-		pFnSelectDeviceBarSlot = (UFunction*) UObject::GObjObjects()->Data[ 51861 ];
+		pFnSelectDeviceBarSlot = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.SelectDeviceBarSlot" );
 
 	ATgHUD_Game_execSelectDeviceBarSlot_Parms SelectDeviceBarSlot_Parms;
 	SelectDeviceBarSlot_Parms.Slot = Slot;
@@ -2646,7 +2647,7 @@ void ATgHUD_Game::ToggleDrawAllHUD ( )
 	static UFunction* pFnToggleDrawAllHUD = NULL;
 
 	if ( ! pFnToggleDrawAllHUD )
-		pFnToggleDrawAllHUD = (UFunction*) UObject::GObjObjects()->Data[ 51858 ];
+		pFnToggleDrawAllHUD = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ToggleDrawAllHUD" );
 
 	ATgHUD_Game_execToggleDrawAllHUD_Parms ToggleDrawAllHUD_Parms;
 
@@ -2662,7 +2663,7 @@ void ATgHUD_Game::ToggleDrawPawnHUD ( )
 	static UFunction* pFnToggleDrawPawnHUD = NULL;
 
 	if ( ! pFnToggleDrawPawnHUD )
-		pFnToggleDrawPawnHUD = (UFunction*) UObject::GObjObjects()->Data[ 51857 ];
+		pFnToggleDrawPawnHUD = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ToggleDrawPawnHUD" );
 
 	ATgHUD_Game_execToggleDrawPawnHUD_Parms ToggleDrawPawnHUD_Parms;
 
@@ -2679,7 +2680,7 @@ bool ATgHUD_Game::ShouldDrawPawnHUD ( )
 	static UFunction* pFnShouldDrawPawnHUD = NULL;
 
 	if ( ! pFnShouldDrawPawnHUD )
-		pFnShouldDrawPawnHUD = (UFunction*) UObject::GObjObjects()->Data[ 51855 ];
+		pFnShouldDrawPawnHUD = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShouldDrawPawnHUD" );
 
 	ATgHUD_Game_execShouldDrawPawnHUD_Parms ShouldDrawPawnHUD_Parms;
 
@@ -2697,7 +2698,7 @@ void ATgHUD_Game::ToggleTargetExtraInfo ( )
 	static UFunction* pFnToggleTargetExtraInfo = NULL;
 
 	if ( ! pFnToggleTargetExtraInfo )
-		pFnToggleTargetExtraInfo = (UFunction*) UObject::GObjObjects()->Data[ 51854 ];
+		pFnToggleTargetExtraInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ToggleTargetExtraInfo" );
 
 	ATgHUD_Game_execToggleTargetExtraInfo_Parms ToggleTargetExtraInfo_Parms;
 
@@ -2714,7 +2715,7 @@ void ATgHUD_Game::eventShowRaidTab ( int nTab )
 	static UFunction* pFnShowRaidTab = NULL;
 
 	if ( ! pFnShowRaidTab )
-		pFnShowRaidTab = (UFunction*) UObject::GObjObjects()->Data[ 51852 ];
+		pFnShowRaidTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShowRaidTab" );
 
 	ATgHUD_Game_eventShowRaidTab_Parms ShowRaidTab_Parms;
 	ShowRaidTab_Parms.nTab = nTab;
@@ -2732,7 +2733,7 @@ void ATgHUD_Game::eventCheckLevelUnlocks ( unsigned long bIsTutorial )
 	static UFunction* pFnCheckLevelUnlocks = NULL;
 
 	if ( ! pFnCheckLevelUnlocks )
-		pFnCheckLevelUnlocks = (UFunction*) UObject::GObjObjects()->Data[ 51849 ];
+		pFnCheckLevelUnlocks = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.CheckLevelUnlocks" );
 
 	ATgHUD_Game_eventCheckLevelUnlocks_Parms CheckLevelUnlocks_Parms;
 	CheckLevelUnlocks_Parms.bIsTutorial = bIsTutorial;
@@ -2752,7 +2753,7 @@ class UUIScene* ATgHUD_Game::eventOpenIntroScene ( float FadeTime, float TotalTi
 	static UFunction* pFnOpenIntroScene = NULL;
 
 	if ( ! pFnOpenIntroScene )
-		pFnOpenIntroScene = (UFunction*) UObject::GObjObjects()->Data[ 51842 ];
+		pFnOpenIntroScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenIntroScene" );
 
 	ATgHUD_Game_eventOpenIntroScene_Parms OpenIntroScene_Parms;
 	OpenIntroScene_Parms.FadeTime = FadeTime;
@@ -2773,7 +2774,7 @@ void ATgHUD_Game::TgFxLightsOn ( unsigned long bOn )
 	static UFunction* pFnTgFxLightsOn = NULL;
 
 	if ( ! pFnTgFxLightsOn )
-		pFnTgFxLightsOn = (UFunction*) UObject::GObjObjects()->Data[ 51840 ];
+		pFnTgFxLightsOn = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.TgFxLightsOn" );
 
 	ATgHUD_Game_execTgFxLightsOn_Parms TgFxLightsOn_Parms;
 	TgFxLightsOn_Parms.bOn = bOn;
@@ -2794,7 +2795,7 @@ void ATgHUD_Game::OpenDevMenu ( )
 	static UFunction* pFnOpenDevMenu = NULL;
 
 	if ( ! pFnOpenDevMenu )
-		pFnOpenDevMenu = (UFunction*) UObject::GObjObjects()->Data[ 51838 ];
+		pFnOpenDevMenu = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenDevMenu" );
 
 	ATgHUD_Game_execOpenDevMenu_Parms OpenDevMenu_Parms;
 
@@ -2810,7 +2811,7 @@ void ATgHUD_Game::LiveTeamPerfStats ( )
 	static UFunction* pFnLiveTeamPerfStats = NULL;
 
 	if ( ! pFnLiveTeamPerfStats )
-		pFnLiveTeamPerfStats = (UFunction*) UObject::GObjObjects()->Data[ 51836 ];
+		pFnLiveTeamPerfStats = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.LiveTeamPerfStats" );
 
 	ATgHUD_Game_execLiveTeamPerfStats_Parms LiveTeamPerfStats_Parms;
 
@@ -2827,7 +2828,7 @@ bool ATgHUD_Game::IsForValidPlayer ( )
 	static UFunction* pFnIsForValidPlayer = NULL;
 
 	if ( ! pFnIsForValidPlayer )
-		pFnIsForValidPlayer = (UFunction*) UObject::GObjObjects()->Data[ 51832 ];
+		pFnIsForValidPlayer = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.IsForValidPlayer" );
 
 	ATgHUD_Game_execIsForValidPlayer_Parms IsForValidPlayer_Parms;
 
@@ -2846,7 +2847,7 @@ void ATgHUD_Game::eventShowEndRaidScreen ( unsigned long bAttackerWon )
 	static UFunction* pFnShowEndRaidScreen = NULL;
 
 	if ( ! pFnShowEndRaidScreen )
-		pFnShowEndRaidScreen = (UFunction*) UObject::GObjObjects()->Data[ 51828 ];
+		pFnShowEndRaidScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShowEndRaidScreen" );
 
 	ATgHUD_Game_eventShowEndRaidScreen_Parms ShowEndRaidScreen_Parms;
 	ShowEndRaidScreen_Parms.bAttackerWon = bAttackerWon;
@@ -2866,7 +2867,7 @@ void ATgHUD_Game::ShowQuestEndMissionScene ( unsigned long MissionVictor, unsign
 	static UFunction* pFnShowQuestEndMissionScene = NULL;
 
 	if ( ! pFnShowQuestEndMissionScene )
-		pFnShowQuestEndMissionScene = (UFunction*) UObject::GObjObjects()->Data[ 51823 ];
+		pFnShowQuestEndMissionScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShowQuestEndMissionScene" );
 
 	ATgHUD_Game_execShowQuestEndMissionScene_Parms ShowQuestEndMissionScene_Parms;
 	ShowQuestEndMissionScene_Parms.MissionVictor = MissionVictor;
@@ -2888,7 +2889,7 @@ void ATgHUD_Game::ShowEndMissionScreen ( unsigned long MissionVictor, unsigned l
 	static UFunction* pFnShowEndMissionScreen = NULL;
 
 	if ( ! pFnShowEndMissionScreen )
-		pFnShowEndMissionScreen = (UFunction*) UObject::GObjObjects()->Data[ 51818 ];
+		pFnShowEndMissionScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShowEndMissionScreen" );
 
 	ATgHUD_Game_execShowEndMissionScreen_Parms ShowEndMissionScreen_Parms;
 	ShowEndMissionScreen_Parms.MissionVictor = MissionVictor;
@@ -2909,7 +2910,7 @@ void ATgHUD_Game::UpdateScoreBoard ( unsigned long bPlayerVictor, unsigned long 
 	static UFunction* pFnUpdateScoreBoard = NULL;
 
 	if ( ! pFnUpdateScoreBoard )
-		pFnUpdateScoreBoard = (UFunction*) UObject::GObjObjects()->Data[ 51815 ];
+		pFnUpdateScoreBoard = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.UpdateScoreBoard" );
 
 	ATgHUD_Game_execUpdateScoreBoard_Parms UpdateScoreBoard_Parms;
 	UpdateScoreBoard_Parms.bPlayerVictor = bPlayerVictor;
@@ -2929,7 +2930,7 @@ void ATgHUD_Game::eventCloseConfirmPopup ( class UFunction* callbackPtr, unsigne
 	static UFunction* pFnCloseConfirmPopup = NULL;
 
 	if ( ! pFnCloseConfirmPopup )
-		pFnCloseConfirmPopup = (UFunction*) UObject::GObjObjects()->Data[ 51811 ];
+		pFnCloseConfirmPopup = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.CloseConfirmPopup" );
 
 	ATgHUD_Game_eventCloseConfirmPopup_Parms CloseConfirmPopup_Parms;
 	CloseConfirmPopup_Parms.callbackPtr = callbackPtr;
@@ -2949,7 +2950,7 @@ void ATgHUD_Game::eventCreateConfirmPopup ( struct FString Message, class UFunct
 	static UFunction* pFnCreateConfirmPopup = NULL;
 
 	if ( ! pFnCreateConfirmPopup )
-		pFnCreateConfirmPopup = (UFunction*) UObject::GObjObjects()->Data[ 51807 ];
+		pFnCreateConfirmPopup = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.CreateConfirmPopup" );
 
 	ATgHUD_Game_eventCreateConfirmPopup_Parms CreateConfirmPopup_Parms;
 	memcpy ( &CreateConfirmPopup_Parms.Message, &Message, 0xC );
@@ -2969,7 +2970,7 @@ class UTgUIPreviewScreen* ATgHUD_Game::eventViewItemPreview ( class UTgInventory
 	static UFunction* pFnViewItemPreview = NULL;
 
 	if ( ! pFnViewItemPreview )
-		pFnViewItemPreview = (UFunction*) UObject::GObjObjects()->Data[ 51803 ];
+		pFnViewItemPreview = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ViewItemPreview" );
 
 	ATgHUD_Game_eventViewItemPreview_Parms ViewItemPreview_Parms;
 	ViewItemPreview_Parms.Item = Item;
@@ -2989,7 +2990,7 @@ class UTgUISceneDriver* ATgHUD_Game::ToggleMainMenuScreen ( )
 	static UFunction* pFnToggleMainMenuScreen = NULL;
 
 	if ( ! pFnToggleMainMenuScreen )
-		pFnToggleMainMenuScreen = (UFunction*) UObject::GObjObjects()->Data[ 51801 ];
+		pFnToggleMainMenuScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ToggleMainMenuScreen" );
 
 	ATgHUD_Game_execToggleMainMenuScreen_Parms ToggleMainMenuScreen_Parms;
 
@@ -3007,7 +3008,7 @@ void ATgHUD_Game::OpenSkillScreen ( )
 	static UFunction* pFnOpenSkillScreen = NULL;
 
 	if ( ! pFnOpenSkillScreen )
-		pFnOpenSkillScreen = (UFunction*) UObject::GObjObjects()->Data[ 51798 ];
+		pFnOpenSkillScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenSkillScreen" );
 
 	ATgHUD_Game_execOpenSkillScreen_Parms OpenSkillScreen_Parms;
 
@@ -3023,7 +3024,7 @@ void ATgHUD_Game::OpenInventoryLog ( )
 	static UFunction* pFnOpenInventoryLog = NULL;
 
 	if ( ! pFnOpenInventoryLog )
-		pFnOpenInventoryLog = (UFunction*) UObject::GObjObjects()->Data[ 51797 ];
+		pFnOpenInventoryLog = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenInventoryLog" );
 
 	ATgHUD_Game_execOpenInventoryLog_Parms OpenInventoryLog_Parms;
 
@@ -3039,7 +3040,7 @@ void ATgHUD_Game::OpenItemModScreen ( )
 	static UFunction* pFnOpenItemModScreen = NULL;
 
 	if ( ! pFnOpenItemModScreen )
-		pFnOpenItemModScreen = (UFunction*) UObject::GObjObjects()->Data[ 51796 ];
+		pFnOpenItemModScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenItemModScreen" );
 
 	ATgHUD_Game_execOpenItemModScreen_Parms OpenItemModScreen_Parms;
 
@@ -3056,7 +3057,7 @@ void ATgHUD_Game::OpenAgentScreen ( unsigned long bIsTutorial )
 	static UFunction* pFnOpenAgentScreen = NULL;
 
 	if ( ! pFnOpenAgentScreen )
-		pFnOpenAgentScreen = (UFunction*) UObject::GObjObjects()->Data[ 51791 ];
+		pFnOpenAgentScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenAgentScreen" );
 
 	ATgHUD_Game_execOpenAgentScreen_Parms OpenAgentScreen_Parms;
 	OpenAgentScreen_Parms.bIsTutorial = bIsTutorial;
@@ -3073,7 +3074,7 @@ void ATgHUD_Game::ShowGametypeInfo ( )
 	static UFunction* pFnShowGametypeInfo = NULL;
 
 	if ( ! pFnShowGametypeInfo )
-		pFnShowGametypeInfo = (UFunction*) UObject::GObjObjects()->Data[ 51790 ];
+		pFnShowGametypeInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShowGametypeInfo" );
 
 	ATgHUD_Game_execShowGametypeInfo_Parms ShowGametypeInfo_Parms;
 
@@ -3093,7 +3094,7 @@ void ATgHUD_Game::OpenLFGScreen ( )
 	static UFunction* pFnOpenLFGScreen = NULL;
 
 	if ( ! pFnOpenLFGScreen )
-		pFnOpenLFGScreen = (UFunction*) UObject::GObjObjects()->Data[ 51789 ];
+		pFnOpenLFGScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenLFGScreen" );
 
 	ATgHUD_Game_execOpenLFGScreen_Parms OpenLFGScreen_Parms;
 
@@ -3109,7 +3110,7 @@ void ATgHUD_Game::OpenZoneMissions ( )
 	static UFunction* pFnOpenZoneMissions = NULL;
 
 	if ( ! pFnOpenZoneMissions )
-		pFnOpenZoneMissions = (UFunction*) UObject::GObjObjects()->Data[ 51788 ];
+		pFnOpenZoneMissions = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenZoneMissions" );
 
 	ATgHUD_Game_execOpenZoneMissions_Parms OpenZoneMissions_Parms;
 
@@ -3125,7 +3126,7 @@ void ATgHUD_Game::OpenAgencyDirectory ( )
 	static UFunction* pFnOpenAgencyDirectory = NULL;
 
 	if ( ! pFnOpenAgencyDirectory )
-		pFnOpenAgencyDirectory = (UFunction*) UObject::GObjObjects()->Data[ 51787 ];
+		pFnOpenAgencyDirectory = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenAgencyDirectory" );
 
 	ATgHUD_Game_execOpenAgencyDirectory_Parms OpenAgencyDirectory_Parms;
 
@@ -3141,7 +3142,7 @@ void ATgHUD_Game::OpenMailScreen ( )
 	static UFunction* pFnOpenMailScreen = NULL;
 
 	if ( ! pFnOpenMailScreen )
-		pFnOpenMailScreen = (UFunction*) UObject::GObjObjects()->Data[ 51786 ];
+		pFnOpenMailScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenMailScreen" );
 
 	ATgHUD_Game_execOpenMailScreen_Parms OpenMailScreen_Parms;
 
@@ -3157,7 +3158,7 @@ void ATgHUD_Game::OpenAuctionScreen ( )
 	static UFunction* pFnOpenAuctionScreen = NULL;
 
 	if ( ! pFnOpenAuctionScreen )
-		pFnOpenAuctionScreen = (UFunction*) UObject::GObjObjects()->Data[ 51785 ];
+		pFnOpenAuctionScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenAuctionScreen" );
 
 	ATgHUD_Game_execOpenAuctionScreen_Parms OpenAuctionScreen_Parms;
 
@@ -3174,7 +3175,7 @@ bool ATgHUD_Game::eventMainMenuDisplayed ( )
 	static UFunction* pFnMainMenuDisplayed = NULL;
 
 	if ( ! pFnMainMenuDisplayed )
-		pFnMainMenuDisplayed = (UFunction*) UObject::GObjObjects()->Data[ 51781 ];
+		pFnMainMenuDisplayed = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.MainMenuDisplayed" );
 
 	ATgHUD_Game_eventMainMenuDisplayed_Parms MainMenuDisplayed_Parms;
 
@@ -3193,7 +3194,7 @@ void ATgHUD_Game::eventOpenPlayerSearchPrepopulatedById ( int nPlayerId )
 	static UFunction* pFnOpenPlayerSearchPrepopulatedById = NULL;
 
 	if ( ! pFnOpenPlayerSearchPrepopulatedById )
-		pFnOpenPlayerSearchPrepopulatedById = (UFunction*) UObject::GObjObjects()->Data[ 51778 ];
+		pFnOpenPlayerSearchPrepopulatedById = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenPlayerSearchPrepopulatedById" );
 
 	ATgHUD_Game_eventOpenPlayerSearchPrepopulatedById_Parms OpenPlayerSearchPrepopulatedById_Parms;
 	OpenPlayerSearchPrepopulatedById_Parms.nPlayerId = nPlayerId;
@@ -3213,7 +3214,7 @@ void ATgHUD_Game::eventOpenPlayerSearchPrepopulated ( struct FString sPlayerName
 	static UFunction* pFnOpenPlayerSearchPrepopulated = NULL;
 
 	if ( ! pFnOpenPlayerSearchPrepopulated )
-		pFnOpenPlayerSearchPrepopulated = (UFunction*) UObject::GObjObjects()->Data[ 51773 ];
+		pFnOpenPlayerSearchPrepopulated = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenPlayerSearchPrepopulated" );
 
 	ATgHUD_Game_eventOpenPlayerSearchPrepopulated_Parms OpenPlayerSearchPrepopulated_Parms;
 	memcpy ( &OpenPlayerSearchPrepopulated_Parms.sPlayerName, &sPlayerName, 0xC );
@@ -3235,7 +3236,7 @@ class UTgUISceneDriver* ATgHUD_Game::eventSelectAgentTab ( unsigned char Tab, cl
 	static UFunction* pFnSelectAgentTab = NULL;
 
 	if ( ! pFnSelectAgentTab )
-		pFnSelectAgentTab = (UFunction*) UObject::GObjObjects()->Data[ 51765 ];
+		pFnSelectAgentTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.SelectAgentTab" );
 
 	ATgHUD_Game_eventSelectAgentTab_Parms SelectAgentTab_Parms;
 	SelectAgentTab_Parms.Tab = Tab;
@@ -3256,7 +3257,7 @@ void ATgHUD_Game::eventSelectAgencyTab ( unsigned char Tab )
 	static UFunction* pFnSelectAgencyTab = NULL;
 
 	if ( ! pFnSelectAgencyTab )
-		pFnSelectAgencyTab = (UFunction*) UObject::GObjObjects()->Data[ 51750 ];
+		pFnSelectAgencyTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.SelectAgencyTab" );
 
 	ATgHUD_Game_eventSelectAgencyTab_Parms SelectAgencyTab_Parms;
 	SelectAgencyTab_Parms.Tab = Tab;
@@ -3273,7 +3274,7 @@ void ATgHUD_Game::ZoneMap ( )
 	static UFunction* pFnZoneMap = NULL;
 
 	if ( ! pFnZoneMap )
-		pFnZoneMap = (UFunction*) UObject::GObjObjects()->Data[ 51748 ];
+		pFnZoneMap = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ZoneMap" );
 
 	ATgHUD_Game_execZoneMap_Parms ZoneMap_Parms;
 
@@ -3293,7 +3294,7 @@ void ATgHUD_Game::MissionLog ( )
 	static UFunction* pFnMissionLog = NULL;
 
 	if ( ! pFnMissionLog )
-		pFnMissionLog = (UFunction*) UObject::GObjObjects()->Data[ 51747 ];
+		pFnMissionLog = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.MissionLog" );
 
 	ATgHUD_Game_execMissionLog_Parms MissionLog_Parms;
 
@@ -3313,7 +3314,7 @@ void ATgHUD_Game::OpenAgencyMenu ( )
 	static UFunction* pFnOpenAgencyMenu = NULL;
 
 	if ( ! pFnOpenAgencyMenu )
-		pFnOpenAgencyMenu = (UFunction*) UObject::GObjObjects()->Data[ 51746 ];
+		pFnOpenAgencyMenu = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenAgencyMenu" );
 
 	ATgHUD_Game_execOpenAgencyMenu_Parms OpenAgencyMenu_Parms;
 
@@ -3329,7 +3330,7 @@ void ATgHUD_Game::OpenNavScreen ( )
 	static UFunction* pFnOpenNavScreen = NULL;
 
 	if ( ! pFnOpenNavScreen )
-		pFnOpenNavScreen = (UFunction*) UObject::GObjObjects()->Data[ 51745 ];
+		pFnOpenNavScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenNavScreen" );
 
 	ATgHUD_Game_execOpenNavScreen_Parms OpenNavScreen_Parms;
 
@@ -3345,7 +3346,7 @@ void ATgHUD_Game::OpenCharacterSkillScreen ( )
 	static UFunction* pFnOpenCharacterSkillScreen = NULL;
 
 	if ( ! pFnOpenCharacterSkillScreen )
-		pFnOpenCharacterSkillScreen = (UFunction*) UObject::GObjObjects()->Data[ 51744 ];
+		pFnOpenCharacterSkillScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenCharacterSkillScreen" );
 
 	ATgHUD_Game_execOpenCharacterSkillScreen_Parms OpenCharacterSkillScreen_Parms;
 
@@ -3361,7 +3362,7 @@ void ATgHUD_Game::OpenCharacterStatsScreen ( )
 	static UFunction* pFnOpenCharacterStatsScreen = NULL;
 
 	if ( ! pFnOpenCharacterStatsScreen )
-		pFnOpenCharacterStatsScreen = (UFunction*) UObject::GObjObjects()->Data[ 51743 ];
+		pFnOpenCharacterStatsScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenCharacterStatsScreen" );
 
 	ATgHUD_Game_execOpenCharacterStatsScreen_Parms OpenCharacterStatsScreen_Parms;
 
@@ -3377,7 +3378,7 @@ void ATgHUD_Game::OpenTeamDetailScreen ( )
 	static UFunction* pFnOpenTeamDetailScreen = NULL;
 
 	if ( ! pFnOpenTeamDetailScreen )
-		pFnOpenTeamDetailScreen = (UFunction*) UObject::GObjObjects()->Data[ 51742 ];
+		pFnOpenTeamDetailScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenTeamDetailScreen" );
 
 	ATgHUD_Game_execOpenTeamDetailScreen_Parms OpenTeamDetailScreen_Parms;
 
@@ -3393,7 +3394,7 @@ void ATgHUD_Game::OpenInventoryScreen ( )
 	static UFunction* pFnOpenInventoryScreen = NULL;
 
 	if ( ! pFnOpenInventoryScreen )
-		pFnOpenInventoryScreen = (UFunction*) UObject::GObjObjects()->Data[ 51741 ];
+		pFnOpenInventoryScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenInventoryScreen" );
 
 	ATgHUD_Game_execOpenInventoryScreen_Parms OpenInventoryScreen_Parms;
 
@@ -3409,7 +3410,7 @@ void ATgHUD_Game::OpenInstanceSelect ( )
 	static UFunction* pFnOpenInstanceSelect = NULL;
 
 	if ( ! pFnOpenInstanceSelect )
-		pFnOpenInstanceSelect = (UFunction*) UObject::GObjObjects()->Data[ 51740 ];
+		pFnOpenInstanceSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenInstanceSelect" );
 
 	ATgHUD_Game_execOpenInstanceSelect_Parms OpenInstanceSelect_Parms;
 
@@ -3425,7 +3426,7 @@ void ATgHUD_Game::OpenAchievementsNew ( )
 	static UFunction* pFnOpenAchievementsNew = NULL;
 
 	if ( ! pFnOpenAchievementsNew )
-		pFnOpenAchievementsNew = (UFunction*) UObject::GObjObjects()->Data[ 51739 ];
+		pFnOpenAchievementsNew = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenAchievementsNew" );
 
 	ATgHUD_Game_execOpenAchievementsNew_Parms OpenAchievementsNew_Parms;
 
@@ -3443,7 +3444,7 @@ class UTgUIProductionPopup* ATgHUD_Game::eventOpenProductionPopup ( class UTgUIS
 	static UFunction* pFnOpenProductionPopup = NULL;
 
 	if ( ! pFnOpenProductionPopup )
-		pFnOpenProductionPopup = (UFunction*) UObject::GObjObjects()->Data[ 51735 ];
+		pFnOpenProductionPopup = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenProductionPopup" );
 
 	ATgHUD_Game_eventOpenProductionPopup_Parms OpenProductionPopup_Parms;
 	OpenProductionPopup_Parms.ParentScene = ParentScene;
@@ -3464,7 +3465,7 @@ class UTgUIInventoryPopup* ATgHUD_Game::eventOpenFilteredInventoryPopup ( class 
 	static UFunction* pFnOpenFilteredInventoryPopup = NULL;
 
 	if ( ! pFnOpenFilteredInventoryPopup )
-		pFnOpenFilteredInventoryPopup = (UFunction*) UObject::GObjObjects()->Data[ 51731 ];
+		pFnOpenFilteredInventoryPopup = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenFilteredInventoryPopup" );
 
 	ATgHUD_Game_eventOpenFilteredInventoryPopup_Parms OpenFilteredInventoryPopup_Parms;
 	OpenFilteredInventoryPopup_Parms.ParentScene = ParentScene;
@@ -3484,7 +3485,7 @@ void ATgHUD_Game::OpenHexAuction ( int nHexId )
 	static UFunction* pFnOpenHexAuction = NULL;
 
 	if ( ! pFnOpenHexAuction )
-		pFnOpenHexAuction = (UFunction*) UObject::GObjObjects()->Data[ 51729 ];
+		pFnOpenHexAuction = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenHexAuction" );
 
 	ATgHUD_Game_execOpenHexAuction_Parms OpenHexAuction_Parms;
 	OpenHexAuction_Parms.nHexId = nHexId;
@@ -3502,7 +3503,7 @@ void ATgHUD_Game::eventSelectCampaignTab ( unsigned char Tab )
 	static UFunction* pFnSelectCampaignTab = NULL;
 
 	if ( ! pFnSelectCampaignTab )
-		pFnSelectCampaignTab = (UFunction*) UObject::GObjObjects()->Data[ 51726 ];
+		pFnSelectCampaignTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.SelectCampaignTab" );
 
 	ATgHUD_Game_eventSelectCampaignTab_Parms SelectCampaignTab_Parms;
 	SelectCampaignTab_Parms.Tab = Tab;
@@ -3519,7 +3520,7 @@ void ATgHUD_Game::OpenCombatAlerts ( )
 	static UFunction* pFnOpenCombatAlerts = NULL;
 
 	if ( ! pFnOpenCombatAlerts )
-		pFnOpenCombatAlerts = (UFunction*) UObject::GObjObjects()->Data[ 51724 ];
+		pFnOpenCombatAlerts = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenCombatAlerts" );
 
 	ATgHUD_Game_execOpenCombatAlerts_Parms OpenCombatAlerts_Parms;
 
@@ -3535,7 +3536,7 @@ void ATgHUD_Game::OpenHexMap ( )
 	static UFunction* pFnOpenHexMap = NULL;
 
 	if ( ! pFnOpenHexMap )
-		pFnOpenHexMap = (UFunction*) UObject::GObjObjects()->Data[ 51723 ];
+		pFnOpenHexMap = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenHexMap" );
 
 	ATgHUD_Game_execOpenHexMap_Parms OpenHexMap_Parms;
 
@@ -3551,7 +3552,7 @@ void ATgHUD_Game::OpenHexLeaderboard ( )
 	static UFunction* pFnOpenHexLeaderboard = NULL;
 
 	if ( ! pFnOpenHexLeaderboard )
-		pFnOpenHexLeaderboard = (UFunction*) UObject::GObjObjects()->Data[ 51722 ];
+		pFnOpenHexLeaderboard = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenHexLeaderboard" );
 
 	ATgHUD_Game_execOpenHexLeaderboard_Parms OpenHexLeaderboard_Parms;
 
@@ -3568,7 +3569,7 @@ void ATgHUD_Game::TestSetHexBackground ( int nResourceId )
 	static UFunction* pFnTestSetHexBackground = NULL;
 
 	if ( ! pFnTestSetHexBackground )
-		pFnTestSetHexBackground = (UFunction*) UObject::GObjObjects()->Data[ 51718 ];
+		pFnTestSetHexBackground = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.TestSetHexBackground" );
 
 	ATgHUD_Game_execTestSetHexBackground_Parms TestSetHexBackground_Parms;
 	TestSetHexBackground_Parms.nResourceId = nResourceId;
@@ -3586,7 +3587,7 @@ void ATgHUD_Game::ShowDeviceBarHUD ( unsigned long Show )
 	static UFunction* pFnShowDeviceBarHUD = NULL;
 
 	if ( ! pFnShowDeviceBarHUD )
-		pFnShowDeviceBarHUD = (UFunction*) UObject::GObjObjects()->Data[ 51714 ];
+		pFnShowDeviceBarHUD = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShowDeviceBarHUD" );
 
 	ATgHUD_Game_execShowDeviceBarHUD_Parms ShowDeviceBarHUD_Parms;
 	ShowDeviceBarHUD_Parms.Show = Show;
@@ -3606,7 +3607,7 @@ struct FName ATgHUD_Game::GetInputKeyForCommand ( class UPlayerInput* Input, str
 	static UFunction* pFnGetInputKeyForCommand = NULL;
 
 	if ( ! pFnGetInputKeyForCommand )
-		pFnGetInputKeyForCommand = (UFunction*) UObject::GObjObjects()->Data[ 51709 ];
+		pFnGetInputKeyForCommand = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.GetInputKeyForCommand" );
 
 	ATgHUD_Game_execGetInputKeyForCommand_Parms GetInputKeyForCommand_Parms;
 	GetInputKeyForCommand_Parms.Input = Input;
@@ -3629,7 +3630,7 @@ struct FString ATgHUD_Game::HUDLocalGetBind ( class UPlayerInput* Input, struct 
 	static UFunction* pFnHUDLocalGetBind = NULL;
 
 	if ( ! pFnHUDLocalGetBind )
-		pFnHUDLocalGetBind = (UFunction*) UObject::GObjObjects()->Data[ 51704 ];
+		pFnHUDLocalGetBind = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.HUDLocalGetBind" );
 
 	ATgHUD_Game_execHUDLocalGetBind_Parms HUDLocalGetBind_Parms;
 	HUDLocalGetBind_Parms.Input = Input;
@@ -3650,7 +3651,7 @@ float ATgHUD_Game::eventGetAmountCurrentlyOffOfTargetAccuracy ( )
 	static UFunction* pFnGetAmountCurrentlyOffOfTargetAccuracy = NULL;
 
 	if ( ! pFnGetAmountCurrentlyOffOfTargetAccuracy )
-		pFnGetAmountCurrentlyOffOfTargetAccuracy = (UFunction*) UObject::GObjObjects()->Data[ 51699 ];
+		pFnGetAmountCurrentlyOffOfTargetAccuracy = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.GetAmountCurrentlyOffOfTargetAccuracy" );
 
 	ATgHUD_Game_eventGetAmountCurrentlyOffOfTargetAccuracy_Parms GetAmountCurrentlyOffOfTargetAccuracy_Parms;
 
@@ -3669,7 +3670,7 @@ float ATgHUD_Game::eventGetCurrentDeviceAccuracy ( )
 	static UFunction* pFnGetCurrentDeviceAccuracy = NULL;
 
 	if ( ! pFnGetCurrentDeviceAccuracy )
-		pFnGetCurrentDeviceAccuracy = (UFunction*) UObject::GObjObjects()->Data[ 51694 ];
+		pFnGetCurrentDeviceAccuracy = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.GetCurrentDeviceAccuracy" );
 
 	ATgHUD_Game_eventGetCurrentDeviceAccuracy_Parms GetCurrentDeviceAccuracy_Parms;
 
@@ -3688,7 +3689,7 @@ struct FString ATgHUD_Game::FormatTime ( )
 	static UFunction* pFnFormatTime = NULL;
 
 	if ( ! pFnFormatTime )
-		pFnFormatTime = (UFunction*) UObject::GObjObjects()->Data[ 51688 ];
+		pFnFormatTime = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.FormatTime" );
 
 	ATgHUD_Game_execFormatTime_Parms FormatTime_Parms;
 
@@ -3708,7 +3709,7 @@ float ATgHUD_Game::ScaleY ( float Y )
 	static UFunction* pFnScaleY = NULL;
 
 	if ( ! pFnScaleY )
-		pFnScaleY = (UFunction*) UObject::GObjObjects()->Data[ 51685 ];
+		pFnScaleY = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ScaleY" );
 
 	ATgHUD_Game_execScaleY_Parms ScaleY_Parms;
 	ScaleY_Parms.Y = Y;
@@ -3729,7 +3730,7 @@ float ATgHUD_Game::ScaleX ( float X )
 	static UFunction* pFnScaleX = NULL;
 
 	if ( ! pFnScaleX )
-		pFnScaleX = (UFunction*) UObject::GObjObjects()->Data[ 51682 ];
+		pFnScaleX = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ScaleX" );
 
 	ATgHUD_Game_execScaleX_Parms ScaleX_Parms;
 	ScaleX_Parms.X = X;
@@ -3752,7 +3753,7 @@ bool ATgHUD_Game::InRange ( float X, float lower, float upper )
 	static UFunction* pFnInRange = NULL;
 
 	if ( ! pFnInRange )
-		pFnInRange = (UFunction*) UObject::GObjObjects()->Data[ 51677 ];
+		pFnInRange = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.InRange" );
 
 	ATgHUD_Game_execInRange_Parms InRange_Parms;
 	InRange_Parms.X = X;
@@ -3777,7 +3778,7 @@ void ATgHUD_Game::SizeInt ( int Value, float Scale, float* XL, float* YL )
 	static UFunction* pFnSizeInt = NULL;
 
 	if ( ! pFnSizeInt )
-		pFnSizeInt = (UFunction*) UObject::GObjObjects()->Data[ 51667 ];
+		pFnSizeInt = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.SizeInt" );
 
 	ATgHUD_Game_execSizeInt_Parms SizeInt_Parms;
 	SizeInt_Parms.Value = Value;
@@ -3805,7 +3806,7 @@ void ATgHUD_Game::DrawInt ( int Value, float X, float Y, float Scale )
 	static UFunction* pFnDrawInt = NULL;
 
 	if ( ! pFnDrawInt )
-		pFnDrawInt = (UFunction*) UObject::GObjObjects()->Data[ 51658 ];
+		pFnDrawInt = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DrawInt" );
 
 	ATgHUD_Game_execDrawInt_Parms DrawInt_Parms;
 	DrawInt_Parms.Value = Value;
@@ -3825,7 +3826,7 @@ void ATgHUD_Game::DrawSpectatorHud ( )
 	static UFunction* pFnDrawSpectatorHud = NULL;
 
 	if ( ! pFnDrawSpectatorHud )
-		pFnDrawSpectatorHud = (UFunction*) UObject::GObjObjects()->Data[ 51649 ];
+		pFnDrawSpectatorHud = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DrawSpectatorHud" );
 
 	ATgHUD_Game_execDrawSpectatorHud_Parms DrawSpectatorHud_Parms;
 
@@ -3842,7 +3843,7 @@ void ATgHUD_Game::DrawTargetText ( struct FString Str )
 	static UFunction* pFnDrawTargetText = NULL;
 
 	if ( ! pFnDrawTargetText )
-		pFnDrawTargetText = (UFunction*) UObject::GObjObjects()->Data[ 51647 ];
+		pFnDrawTargetText = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DrawTargetText" );
 
 	ATgHUD_Game_execDrawTargetText_Parms DrawTargetText_Parms;
 	memcpy ( &DrawTargetText_Parms.Str, &Str, 0xC );
@@ -3860,7 +3861,7 @@ void ATgHUD_Game::DrawHoverText ( struct FString Str )
 	static UFunction* pFnDrawHoverText = NULL;
 
 	if ( ! pFnDrawHoverText )
-		pFnDrawHoverText = (UFunction*) UObject::GObjObjects()->Data[ 51645 ];
+		pFnDrawHoverText = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DrawHoverText" );
 
 	ATgHUD_Game_execDrawHoverText_Parms DrawHoverText_Parms;
 	memcpy ( &DrawHoverText_Parms.Str, &Str, 0xC );
@@ -3877,7 +3878,7 @@ void ATgHUD_Game::DrawHealth ( )
 	static UFunction* pFnDrawHealth = NULL;
 
 	if ( ! pFnDrawHealth )
-		pFnDrawHealth = (UFunction*) UObject::GObjObjects()->Data[ 51639 ];
+		pFnDrawHealth = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DrawHealth" );
 
 	ATgHUD_Game_execDrawHealth_Parms DrawHealth_Parms;
 
@@ -3893,7 +3894,7 @@ void ATgHUD_Game::DrawTextPanel ( )
 	static UFunction* pFnDrawTextPanel = NULL;
 
 	if ( ! pFnDrawTextPanel )
-		pFnDrawTextPanel = (UFunction*) UObject::GObjObjects()->Data[ 51636 ];
+		pFnDrawTextPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DrawTextPanel" );
 
 	ATgHUD_Game_execDrawTextPanel_Parms DrawTextPanel_Parms;
 
@@ -3910,7 +3911,7 @@ void ATgHUD_Game::AddNewDisplayMessage ( struct FString sMessage )
 	static UFunction* pFnAddNewDisplayMessage = NULL;
 
 	if ( ! pFnAddNewDisplayMessage )
-		pFnAddNewDisplayMessage = (UFunction*) UObject::GObjObjects()->Data[ 51634 ];
+		pFnAddNewDisplayMessage = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.AddNewDisplayMessage" );
 
 	ATgHUD_Game_execAddNewDisplayMessage_Parms AddNewDisplayMessage_Parms;
 	memcpy ( &AddNewDisplayMessage_Parms.sMessage, &sMessage, 0xC );
@@ -3930,7 +3931,7 @@ void ATgHUD_Game::AddNewKilledTarget ( struct FString KilledName, struct FString
 	static UFunction* pFnAddNewKilledTarget = NULL;
 
 	if ( ! pFnAddNewKilledTarget )
-		pFnAddNewKilledTarget = (UFunction*) UObject::GObjObjects()->Data[ 51629 ];
+		pFnAddNewKilledTarget = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.AddNewKilledTarget" );
 
 	ATgHUD_Game_execAddNewKilledTarget_Parms AddNewKilledTarget_Parms;
 	memcpy ( &AddNewKilledTarget_Parms.KilledName, &KilledName, 0xC );
@@ -3953,7 +3954,7 @@ void ATgHUD_Game::AddConsoleMessage ( struct FString M, class UClass* InMessageC
 	static UFunction* pFnAddConsoleMessage = NULL;
 
 	if ( ! pFnAddConsoleMessage )
-		pFnAddConsoleMessage = (UFunction*) UObject::GObjObjects()->Data[ 51624 ];
+		pFnAddConsoleMessage = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.AddConsoleMessage" );
 
 	ATgHUD_Game_execAddConsoleMessage_Parms AddConsoleMessage_Parms;
 	memcpy ( &AddConsoleMessage_Parms.M, &M, 0xC );
@@ -3977,7 +3978,7 @@ void ATgHUD_Game::DisplayConsoleMessages ( )
 	static UFunction* pFnDisplayConsoleMessages = NULL;
 
 	if ( ! pFnDisplayConsoleMessages )
-		pFnDisplayConsoleMessages = (UFunction*) UObject::GObjObjects()->Data[ 51623 ];
+		pFnDisplayConsoleMessages = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DisplayConsoleMessages" );
 
 	ATgHUD_Game_execDisplayConsoleMessages_Parms DisplayConsoleMessages_Parms;
 
@@ -3993,7 +3994,7 @@ void ATgHUD_Game::eventCloseGUIItems ( )
 	static UFunction* pFnCloseGUIItems = NULL;
 
 	if ( ! pFnCloseGUIItems )
-		pFnCloseGUIItems = (UFunction*) UObject::GObjObjects()->Data[ 51622 ];
+		pFnCloseGUIItems = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.CloseGUIItems" );
 
 	ATgHUD_Game_eventCloseGUIItems_Parms CloseGUIItems_Parms;
 
@@ -4009,7 +4010,7 @@ void ATgHUD_Game::eventOpenGUIItems ( )
 	static UFunction* pFnOpenGUIItems = NULL;
 
 	if ( ! pFnOpenGUIItems )
-		pFnOpenGUIItems = (UFunction*) UObject::GObjObjects()->Data[ 51621 ];
+		pFnOpenGUIItems = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenGUIItems" );
 
 	ATgHUD_Game_eventOpenGUIItems_Parms OpenGUIItems_Parms;
 
@@ -4028,7 +4029,7 @@ void ATgHUD_Game::DisplayDebug ( class AHUD* HUD, float* out_YL, float* out_YPos
 	static UFunction* pFnDisplayDebug = NULL;
 
 	if ( ! pFnDisplayDebug )
-		pFnDisplayDebug = (UFunction*) UObject::GObjObjects()->Data[ 51617 ];
+		pFnDisplayDebug = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DisplayDebug" );
 
 	ATgHUD_Game_execDisplayDebug_Parms DisplayDebug_Parms;
 	DisplayDebug_Parms.HUD = HUD;
@@ -4051,7 +4052,7 @@ void ATgHUD_Game::CancelActiveCombat ( )
 	static UFunction* pFnCancelActiveCombat = NULL;
 
 	if ( ! pFnCancelActiveCombat )
-		pFnCancelActiveCombat = (UFunction*) UObject::GObjObjects()->Data[ 51616 ];
+		pFnCancelActiveCombat = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.CancelActiveCombat" );
 
 	ATgHUD_Game_execCancelActiveCombat_Parms CancelActiveCombat_Parms;
 
@@ -4068,7 +4069,7 @@ void ATgHUD_Game::DisplayActiveCombat ( int nStateParam )
 	static UFunction* pFnDisplayActiveCombat = NULL;
 
 	if ( ! pFnDisplayActiveCombat )
-		pFnDisplayActiveCombat = (UFunction*) UObject::GObjObjects()->Data[ 51614 ];
+		pFnDisplayActiveCombat = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DisplayActiveCombat" );
 
 	ATgHUD_Game_execDisplayActiveCombat_Parms DisplayActiveCombat_Parms;
 	DisplayActiveCombat_Parms.nStateParam = nStateParam;
@@ -4085,7 +4086,7 @@ void ATgHUD_Game::CancelBeingDetected ( )
 	static UFunction* pFnCancelBeingDetected = NULL;
 
 	if ( ! pFnCancelBeingDetected )
-		pFnCancelBeingDetected = (UFunction*) UObject::GObjObjects()->Data[ 51613 ];
+		pFnCancelBeingDetected = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.CancelBeingDetected" );
 
 	ATgHUD_Game_execCancelBeingDetected_Parms CancelBeingDetected_Parms;
 
@@ -4102,7 +4103,7 @@ void ATgHUD_Game::DisplayBeingDetected ( int nStateParam )
 	static UFunction* pFnDisplayBeingDetected = NULL;
 
 	if ( ! pFnDisplayBeingDetected )
-		pFnDisplayBeingDetected = (UFunction*) UObject::GObjObjects()->Data[ 51611 ];
+		pFnDisplayBeingDetected = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DisplayBeingDetected" );
 
 	ATgHUD_Game_execDisplayBeingDetected_Parms DisplayBeingDetected_Parms;
 	DisplayBeingDetected_Parms.nStateParam = nStateParam;
@@ -4119,7 +4120,7 @@ void ATgHUD_Game::CancelBeingTargeted ( )
 	static UFunction* pFnCancelBeingTargeted = NULL;
 
 	if ( ! pFnCancelBeingTargeted )
-		pFnCancelBeingTargeted = (UFunction*) UObject::GObjObjects()->Data[ 51610 ];
+		pFnCancelBeingTargeted = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.CancelBeingTargeted" );
 
 	ATgHUD_Game_execCancelBeingTargeted_Parms CancelBeingTargeted_Parms;
 
@@ -4135,7 +4136,7 @@ void ATgHUD_Game::DisplayBeingTargeted ( )
 	static UFunction* pFnDisplayBeingTargeted = NULL;
 
 	if ( ! pFnDisplayBeingTargeted )
-		pFnDisplayBeingTargeted = (UFunction*) UObject::GObjObjects()->Data[ 51609 ];
+		pFnDisplayBeingTargeted = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DisplayBeingTargeted" );
 
 	ATgHUD_Game_execDisplayBeingTargeted_Parms DisplayBeingTargeted_Parms;
 
@@ -4151,7 +4152,7 @@ void ATgHUD_Game::CancelInBombRange ( )
 	static UFunction* pFnCancelInBombRange = NULL;
 
 	if ( ! pFnCancelInBombRange )
-		pFnCancelInBombRange = (UFunction*) UObject::GObjObjects()->Data[ 51608 ];
+		pFnCancelInBombRange = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.CancelInBombRange" );
 
 	ATgHUD_Game_execCancelInBombRange_Parms CancelInBombRange_Parms;
 
@@ -4167,7 +4168,7 @@ void ATgHUD_Game::DisplayInBombRange ( )
 	static UFunction* pFnDisplayInBombRange = NULL;
 
 	if ( ! pFnDisplayInBombRange )
-		pFnDisplayInBombRange = (UFunction*) UObject::GObjObjects()->Data[ 51607 ];
+		pFnDisplayInBombRange = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DisplayInBombRange" );
 
 	ATgHUD_Game_execDisplayInBombRange_Parms DisplayInBombRange_Parms;
 
@@ -4183,7 +4184,7 @@ void ATgHUD_Game::CancelBeingLocked ( )
 	static UFunction* pFnCancelBeingLocked = NULL;
 
 	if ( ! pFnCancelBeingLocked )
-		pFnCancelBeingLocked = (UFunction*) UObject::GObjObjects()->Data[ 51606 ];
+		pFnCancelBeingLocked = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.CancelBeingLocked" );
 
 	ATgHUD_Game_execCancelBeingLocked_Parms CancelBeingLocked_Parms;
 
@@ -4199,7 +4200,7 @@ void ATgHUD_Game::DisplayBeingLocked ( )
 	static UFunction* pFnDisplayBeingLocked = NULL;
 
 	if ( ! pFnDisplayBeingLocked )
-		pFnDisplayBeingLocked = (UFunction*) UObject::GObjObjects()->Data[ 51605 ];
+		pFnDisplayBeingLocked = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DisplayBeingLocked" );
 
 	ATgHUD_Game_execDisplayBeingLocked_Parms DisplayBeingLocked_Parms;
 
@@ -4215,7 +4216,7 @@ void ATgHUD_Game::CancelBodyUnderAttack ( )
 	static UFunction* pFnCancelBodyUnderAttack = NULL;
 
 	if ( ! pFnCancelBodyUnderAttack )
-		pFnCancelBodyUnderAttack = (UFunction*) UObject::GObjObjects()->Data[ 51604 ];
+		pFnCancelBodyUnderAttack = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.CancelBodyUnderAttack" );
 
 	ATgHUD_Game_execCancelBodyUnderAttack_Parms CancelBodyUnderAttack_Parms;
 
@@ -4232,7 +4233,7 @@ void ATgHUD_Game::DisplayBodyUnderAttack ( int Damage )
 	static UFunction* pFnDisplayBodyUnderAttack = NULL;
 
 	if ( ! pFnDisplayBodyUnderAttack )
-		pFnDisplayBodyUnderAttack = (UFunction*) UObject::GObjObjects()->Data[ 51601 ];
+		pFnDisplayBodyUnderAttack = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DisplayBodyUnderAttack" );
 
 	ATgHUD_Game_execDisplayBodyUnderAttack_Parms DisplayBodyUnderAttack_Parms;
 	DisplayBodyUnderAttack_Parms.Damage = Damage;
@@ -4252,7 +4253,7 @@ void ATgHUD_Game::DisplayHit ( struct FVector HitDir, int Damage, class UClass* 
 	static UFunction* pFnDisplayHit = NULL;
 
 	if ( ! pFnDisplayHit )
-		pFnDisplayHit = (UFunction*) UObject::GObjObjects()->Data[ 51597 ];
+		pFnDisplayHit = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DisplayHit" );
 
 	ATgHUD_Game_execDisplayHit_Parms DisplayHit_Parms;
 	memcpy ( &DisplayHit_Parms.HitDir, &HitDir, 0xC );
@@ -4271,7 +4272,7 @@ void ATgHUD_Game::eventPostRender ( )
 	static UFunction* pFnPostRender = NULL;
 
 	if ( ! pFnPostRender )
-		pFnPostRender = (UFunction*) UObject::GObjObjects()->Data[ 51595 ];
+		pFnPostRender = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.PostRender" );
 
 	ATgHUD_Game_eventPostRender_Parms PostRender_Parms;
 
@@ -4287,7 +4288,7 @@ void ATgHUD_Game::PostRenderScenes ( )
 	static UFunction* pFnPostRenderScenes = NULL;
 
 	if ( ! pFnPostRenderScenes )
-		pFnPostRenderScenes = (UFunction*) UObject::GObjObjects()->Data[ 51594 ];
+		pFnPostRenderScenes = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.PostRenderScenes" );
 
 	ATgHUD_Game_execPostRenderScenes_Parms PostRenderScenes_Parms;
 
@@ -4307,7 +4308,7 @@ void ATgHUD_Game::PostRenderSceneTooltips ( )
 	static UFunction* pFnPostRenderSceneTooltips = NULL;
 
 	if ( ! pFnPostRenderSceneTooltips )
-		pFnPostRenderSceneTooltips = (UFunction*) UObject::GObjObjects()->Data[ 51593 ];
+		pFnPostRenderSceneTooltips = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.PostRenderSceneTooltips" );
 
 	ATgHUD_Game_execPostRenderSceneTooltips_Parms PostRenderSceneTooltips_Parms;
 
@@ -4329,7 +4330,7 @@ class UObject* ATgHUD_Game::GetTgUISceneDriver ( class UUIScene* Scene )
 	static UFunction* pFnGetTgUISceneDriver = NULL;
 
 	if ( ! pFnGetTgUISceneDriver )
-		pFnGetTgUISceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 51590 ];
+		pFnGetTgUISceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.GetTgUISceneDriver" );
 
 	ATgHUD_Game_execGetTgUISceneDriver_Parms GetTgUISceneDriver_Parms;
 	GetTgUISceneDriver_Parms.Scene = Scene;
@@ -4354,7 +4355,7 @@ bool ATgHUD_Game::TriggerCloseTgUIScene ( class UUIScene* Scene )
 	static UFunction* pFnTriggerCloseTgUIScene = NULL;
 
 	if ( ! pFnTriggerCloseTgUIScene )
-		pFnTriggerCloseTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 51587 ];
+		pFnTriggerCloseTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.TriggerCloseTgUIScene" );
 
 	ATgHUD_Game_execTriggerCloseTgUIScene_Parms TriggerCloseTgUIScene_Parms;
 	TriggerCloseTgUIScene_Parms.Scene = Scene;
@@ -4379,7 +4380,7 @@ class UUIScene* ATgHUD_Game::TriggerOpenTgUIScene ( class UUIScene* Scene )
 	static UFunction* pFnTriggerOpenTgUIScene = NULL;
 
 	if ( ! pFnTriggerOpenTgUIScene )
-		pFnTriggerOpenTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 51584 ];
+		pFnTriggerOpenTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.TriggerOpenTgUIScene" );
 
 	ATgHUD_Game_execTriggerOpenTgUIScene_Parms TriggerOpenTgUIScene_Parms;
 	TriggerOpenTgUIScene_Parms.Scene = Scene;
@@ -4402,7 +4403,7 @@ void ATgHUD_Game::InitializeTgUIScenes ( )
 	static UFunction* pFnInitializeTgUIScenes = NULL;
 
 	if ( ! pFnInitializeTgUIScenes )
-		pFnInitializeTgUIScenes = (UFunction*) UObject::GObjObjects()->Data[ 51583 ];
+		pFnInitializeTgUIScenes = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.InitializeTgUIScenes" );
 
 	ATgHUD_Game_execInitializeTgUIScenes_Parms InitializeTgUIScenes_Parms;
 
@@ -4422,7 +4423,7 @@ void ATgHUD_Game::PostBeginPlay ( )
 	static UFunction* pFnPostBeginPlay = NULL;
 
 	if ( ! pFnPostBeginPlay )
-		pFnPostBeginPlay = (UFunction*) UObject::GObjObjects()->Data[ 51581 ];
+		pFnPostBeginPlay = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.PostBeginPlay" );
 
 	ATgHUD_Game_execPostBeginPlay_Parms PostBeginPlay_Parms;
 
@@ -4439,7 +4440,7 @@ void ATgHUD_Game::DrawCommandInfo ( class ATgPlayerController* PC )
 	static UFunction* pFnDrawCommandInfo = NULL;
 
 	if ( ! pFnDrawCommandInfo )
-		pFnDrawCommandInfo = (UFunction*) UObject::GObjObjects()->Data[ 51578 ];
+		pFnDrawCommandInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DrawCommandInfo" );
 
 	ATgHUD_Game_execDrawCommandInfo_Parms DrawCommandInfo_Parms;
 	DrawCommandInfo_Parms.PC = PC;
@@ -4456,7 +4457,7 @@ void ATgHUD_Game::DrawHUD ( )
 	static UFunction* pFnDrawHUD = NULL;
 
 	if ( ! pFnDrawHUD )
-		pFnDrawHUD = (UFunction*) UObject::GObjObjects()->Data[ 51576 ];
+		pFnDrawHUD = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DrawHUD" );
 
 	ATgHUD_Game_execDrawHUD_Parms DrawHUD_Parms;
 
@@ -4473,7 +4474,7 @@ class UTgGameViewportClient* ATgHUD_Game::GetTgGameViewportClient ( )
 	static UFunction* pFnGetTgGameViewportClient = NULL;
 
 	if ( ! pFnGetTgGameViewportClient )
-		pFnGetTgGameViewportClient = (UFunction*) UObject::GObjObjects()->Data[ 51574 ];
+		pFnGetTgGameViewportClient = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.GetTgGameViewportClient" );
 
 	ATgHUD_Game_execGetTgGameViewportClient_Parms GetTgGameViewportClient_Parms;
 
@@ -4492,7 +4493,7 @@ struct FVector ATgHUD_Game::GetMouseHitNormal ( )
 	static UFunction* pFnGetMouseHitNormal = NULL;
 
 	if ( ! pFnGetMouseHitNormal )
-		pFnGetMouseHitNormal = (UFunction*) UObject::GObjObjects()->Data[ 51572 ];
+		pFnGetMouseHitNormal = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.GetMouseHitNormal" );
 
 	ATgHUD_Game_execGetMouseHitNormal_Parms GetMouseHitNormal_Parms;
 
@@ -4511,7 +4512,7 @@ struct FVector ATgHUD_Game::GetMouseHoverLocation ( )
 	static UFunction* pFnGetMouseHoverLocation = NULL;
 
 	if ( ! pFnGetMouseHoverLocation )
-		pFnGetMouseHoverLocation = (UFunction*) UObject::GObjObjects()->Data[ 51570 ];
+		pFnGetMouseHoverLocation = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.GetMouseHoverLocation" );
 
 	ATgHUD_Game_execGetMouseHoverLocation_Parms GetMouseHoverLocation_Parms;
 
@@ -4532,7 +4533,7 @@ void ATgHUD_Game::TestAgencyRemoveItem ( int nInvId, int nInstanceCount, int nIt
 	static UFunction* pFnTestAgencyRemoveItem = NULL;
 
 	if ( ! pFnTestAgencyRemoveItem )
-		pFnTestAgencyRemoveItem = (UFunction*) UObject::GObjObjects()->Data[ 51566 ];
+		pFnTestAgencyRemoveItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.TestAgencyRemoveItem" );
 
 	ATgHUD_Game_execTestAgencyRemoveItem_Parms TestAgencyRemoveItem_Parms;
 	TestAgencyRemoveItem_Parms.nInvId = nInvId;
@@ -4553,7 +4554,7 @@ void ATgHUD_Game::TestAgencyAddItem ( int nInvId, int nInstanceCount )
 	static UFunction* pFnTestAgencyAddItem = NULL;
 
 	if ( ! pFnTestAgencyAddItem )
-		pFnTestAgencyAddItem = (UFunction*) UObject::GObjObjects()->Data[ 51563 ];
+		pFnTestAgencyAddItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.TestAgencyAddItem" );
 
 	ATgHUD_Game_execTestAgencyAddItem_Parms TestAgencyAddItem_Parms;
 	TestAgencyAddItem_Parms.nInvId = nInvId;
@@ -4572,7 +4573,7 @@ void ATgHUD_Game::TestAgencyUpdateCurrency ( int nCurrencyChange )
 	static UFunction* pFnTestAgencyUpdateCurrency = NULL;
 
 	if ( ! pFnTestAgencyUpdateCurrency )
-		pFnTestAgencyUpdateCurrency = (UFunction*) UObject::GObjObjects()->Data[ 51561 ];
+		pFnTestAgencyUpdateCurrency = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.TestAgencyUpdateCurrency" );
 
 	ATgHUD_Game_execTestAgencyUpdateCurrency_Parms TestAgencyUpdateCurrency_Parms;
 	TestAgencyUpdateCurrency_Parms.nCurrencyChange = nCurrencyChange;
@@ -4592,7 +4593,7 @@ void ATgHUD_Game::TestStrikeForceRemoveItem ( int nInvId, int nInstanceCount, in
 	static UFunction* pFnTestStrikeForceRemoveItem = NULL;
 
 	if ( ! pFnTestStrikeForceRemoveItem )
-		pFnTestStrikeForceRemoveItem = (UFunction*) UObject::GObjObjects()->Data[ 51557 ];
+		pFnTestStrikeForceRemoveItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.TestStrikeForceRemoveItem" );
 
 	ATgHUD_Game_execTestStrikeForceRemoveItem_Parms TestStrikeForceRemoveItem_Parms;
 	TestStrikeForceRemoveItem_Parms.nInvId = nInvId;
@@ -4615,7 +4616,7 @@ void ATgHUD_Game::TestStrikeForceAddItem ( int nInvId, int nItemId, int nInstanc
 	static UFunction* pFnTestStrikeForceAddItem = NULL;
 
 	if ( ! pFnTestStrikeForceAddItem )
-		pFnTestStrikeForceAddItem = (UFunction*) UObject::GObjObjects()->Data[ 51552 ];
+		pFnTestStrikeForceAddItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.TestStrikeForceAddItem" );
 
 	ATgHUD_Game_execTestStrikeForceAddItem_Parms TestStrikeForceAddItem_Parms;
 	TestStrikeForceAddItem_Parms.nInvId = nInvId;
@@ -4639,7 +4640,7 @@ void ATgHUD_Game::TestRemoveFactoryItem ( int nZoneObjectId, int nPosition, int 
 	static UFunction* pFnTestRemoveFactoryItem = NULL;
 
 	if ( ! pFnTestRemoveFactoryItem )
-		pFnTestRemoveFactoryItem = (UFunction*) UObject::GObjObjects()->Data[ 51547 ];
+		pFnTestRemoveFactoryItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.TestRemoveFactoryItem" );
 
 	ATgHUD_Game_execTestRemoveFactoryItem_Parms TestRemoveFactoryItem_Parms;
 	TestRemoveFactoryItem_Parms.nZoneObjectId = nZoneObjectId;
@@ -4663,7 +4664,7 @@ void ATgHUD_Game::TestAddFactoryItem ( int nZoneObjectId, int nPosition, int nIn
 	static UFunction* pFnTestAddFactoryItem = NULL;
 
 	if ( ! pFnTestAddFactoryItem )
-		pFnTestAddFactoryItem = (UFunction*) UObject::GObjObjects()->Data[ 51542 ];
+		pFnTestAddFactoryItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.TestAddFactoryItem" );
 
 	ATgHUD_Game_execTestAddFactoryItem_Parms TestAddFactoryItem_Parms;
 	TestAddFactoryItem_Parms.nZoneObjectId = nZoneObjectId;
@@ -4686,7 +4687,7 @@ void ATgHUD_Game::TestAddFacility ( int nZoneObjectId, int nPosition, int nInvId
 	static UFunction* pFnTestAddFacility = NULL;
 
 	if ( ! pFnTestAddFacility )
-		pFnTestAddFacility = (UFunction*) UObject::GObjObjects()->Data[ 51538 ];
+		pFnTestAddFacility = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.TestAddFacility" );
 
 	ATgHUD_Game_execTestAddFacility_Parms TestAddFacility_Parms;
 	TestAddFacility_Parms.nZoneObjectId = nZoneObjectId;
@@ -4705,7 +4706,7 @@ void ATgHUD_Game::CheckStorePrompt ( )
 	static UFunction* pFnCheckStorePrompt = NULL;
 
 	if ( ! pFnCheckStorePrompt )
-		pFnCheckStorePrompt = (UFunction*) UObject::GObjObjects()->Data[ 51537 ];
+		pFnCheckStorePrompt = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.CheckStorePrompt" );
 
 	ATgHUD_Game_execCheckStorePrompt_Parms CheckStorePrompt_Parms;
 
@@ -4725,7 +4726,7 @@ void ATgHUD_Game::InitQuestVisuals ( )
 	static UFunction* pFnInitQuestVisuals = NULL;
 
 	if ( ! pFnInitQuestVisuals )
-		pFnInitQuestVisuals = (UFunction*) UObject::GObjObjects()->Data[ 51536 ];
+		pFnInitQuestVisuals = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.InitQuestVisuals" );
 
 	ATgHUD_Game_execInitQuestVisuals_Parms InitQuestVisuals_Parms;
 
@@ -4746,7 +4747,7 @@ void ATgHUD_Game::ClientTestAgencyUpdateCurrency ( int nCurrencyChange )
 	static UFunction* pFnClientTestAgencyUpdateCurrency = NULL;
 
 	if ( ! pFnClientTestAgencyUpdateCurrency )
-		pFnClientTestAgencyUpdateCurrency = (UFunction*) UObject::GObjObjects()->Data[ 51534 ];
+		pFnClientTestAgencyUpdateCurrency = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ClientTestAgencyUpdateCurrency" );
 
 	ATgHUD_Game_execClientTestAgencyUpdateCurrency_Parms ClientTestAgencyUpdateCurrency_Parms;
 	ClientTestAgencyUpdateCurrency_Parms.nCurrencyChange = nCurrencyChange;
@@ -4770,7 +4771,7 @@ void ATgHUD_Game::ClientTestAgencyRemoveItem ( int nInvId, int nInstanceCount, i
 	static UFunction* pFnClientTestAgencyRemoveItem = NULL;
 
 	if ( ! pFnClientTestAgencyRemoveItem )
-		pFnClientTestAgencyRemoveItem = (UFunction*) UObject::GObjObjects()->Data[ 51530 ];
+		pFnClientTestAgencyRemoveItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ClientTestAgencyRemoveItem" );
 
 	ATgHUD_Game_execClientTestAgencyRemoveItem_Parms ClientTestAgencyRemoveItem_Parms;
 	ClientTestAgencyRemoveItem_Parms.nInvId = nInvId;
@@ -4795,7 +4796,7 @@ void ATgHUD_Game::ClientTestAgencyAddItem ( int nInvId, int nInstanceCount )
 	static UFunction* pFnClientTestAgencyAddItem = NULL;
 
 	if ( ! pFnClientTestAgencyAddItem )
-		pFnClientTestAgencyAddItem = (UFunction*) UObject::GObjObjects()->Data[ 51527 ];
+		pFnClientTestAgencyAddItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ClientTestAgencyAddItem" );
 
 	ATgHUD_Game_execClientTestAgencyAddItem_Parms ClientTestAgencyAddItem_Parms;
 	ClientTestAgencyAddItem_Parms.nInvId = nInvId;
@@ -4821,7 +4822,7 @@ void ATgHUD_Game::ClientTestRemoveFactoryItem ( int nZoneObjectId, int nPosition
 	static UFunction* pFnClientTestRemoveFactoryItem = NULL;
 
 	if ( ! pFnClientTestRemoveFactoryItem )
-		pFnClientTestRemoveFactoryItem = (UFunction*) UObject::GObjObjects()->Data[ 51522 ];
+		pFnClientTestRemoveFactoryItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ClientTestRemoveFactoryItem" );
 
 	ATgHUD_Game_execClientTestRemoveFactoryItem_Parms ClientTestRemoveFactoryItem_Parms;
 	ClientTestRemoveFactoryItem_Parms.nZoneObjectId = nZoneObjectId;
@@ -4849,7 +4850,7 @@ void ATgHUD_Game::ClientTestAddFactoryItem ( int nZoneObjectId, int nPosition, i
 	static UFunction* pFnClientTestAddFactoryItem = NULL;
 
 	if ( ! pFnClientTestAddFactoryItem )
-		pFnClientTestAddFactoryItem = (UFunction*) UObject::GObjObjects()->Data[ 51517 ];
+		pFnClientTestAddFactoryItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ClientTestAddFactoryItem" );
 
 	ATgHUD_Game_execClientTestAddFactoryItem_Parms ClientTestAddFactoryItem_Parms;
 	ClientTestAddFactoryItem_Parms.nZoneObjectId = nZoneObjectId;
@@ -4876,7 +4877,7 @@ void ATgHUD_Game::ClientTestAddFacility ( int nZoneObjectId, int nPosition, int 
 	static UFunction* pFnClientTestAddFacility = NULL;
 
 	if ( ! pFnClientTestAddFacility )
-		pFnClientTestAddFacility = (UFunction*) UObject::GObjObjects()->Data[ 51513 ];
+		pFnClientTestAddFacility = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ClientTestAddFacility" );
 
 	ATgHUD_Game_execClientTestAddFacility_Parms ClientTestAddFacility_Parms;
 	ClientTestAddFacility_Parms.nZoneObjectId = nZoneObjectId;
@@ -4902,7 +4903,7 @@ void ATgHUD_Game::ClientTestStrikeForceRemoveItem ( int nInvId, int nInstanceCou
 	static UFunction* pFnClientTestStrikeForceRemoveItem = NULL;
 
 	if ( ! pFnClientTestStrikeForceRemoveItem )
-		pFnClientTestStrikeForceRemoveItem = (UFunction*) UObject::GObjObjects()->Data[ 51509 ];
+		pFnClientTestStrikeForceRemoveItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ClientTestStrikeForceRemoveItem" );
 
 	ATgHUD_Game_execClientTestStrikeForceRemoveItem_Parms ClientTestStrikeForceRemoveItem_Parms;
 	ClientTestStrikeForceRemoveItem_Parms.nInvId = nInvId;
@@ -4929,7 +4930,7 @@ void ATgHUD_Game::ClientTestStrikeForceAddItem ( int nInvId, int nItemId, int nI
 	static UFunction* pFnClientTestStrikeForceAddItem = NULL;
 
 	if ( ! pFnClientTestStrikeForceAddItem )
-		pFnClientTestStrikeForceAddItem = (UFunction*) UObject::GObjObjects()->Data[ 51504 ];
+		pFnClientTestStrikeForceAddItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ClientTestStrikeForceAddItem" );
 
 	ATgHUD_Game_execClientTestStrikeForceAddItem_Parms ClientTestStrikeForceAddItem_Parms;
 	ClientTestStrikeForceAddItem_Parms.nInvId = nInvId;
@@ -4954,7 +4955,7 @@ void ATgHUD_Game::UpdateRangedTargeterState ( unsigned char eNewState )
 	static UFunction* pFnUpdateRangedTargeterState = NULL;
 
 	if ( ! pFnUpdateRangedTargeterState )
-		pFnUpdateRangedTargeterState = (UFunction*) UObject::GObjObjects()->Data[ 51502 ];
+		pFnUpdateRangedTargeterState = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.UpdateRangedTargeterState" );
 
 	ATgHUD_Game_execUpdateRangedTargeterState_Parms UpdateRangedTargeterState_Parms;
 	UpdateRangedTargeterState_Parms.eNewState = eNewState;
@@ -4975,7 +4976,7 @@ void ATgHUD_Game::UpdateMouseVector ( )
 	static UFunction* pFnUpdateMouseVector = NULL;
 
 	if ( ! pFnUpdateMouseVector )
-		pFnUpdateMouseVector = (UFunction*) UObject::GObjObjects()->Data[ 51501 ];
+		pFnUpdateMouseVector = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.UpdateMouseVector" );
 
 	ATgHUD_Game_execUpdateMouseVector_Parms UpdateMouseVector_Parms;
 
@@ -4995,7 +4996,7 @@ void ATgHUD_Game::RevealHiddenRewardScreen ( )
 	static UFunction* pFnRevealHiddenRewardScreen = NULL;
 
 	if ( ! pFnRevealHiddenRewardScreen )
-		pFnRevealHiddenRewardScreen = (UFunction*) UObject::GObjObjects()->Data[ 51500 ];
+		pFnRevealHiddenRewardScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.RevealHiddenRewardScreen" );
 
 	ATgHUD_Game_execRevealHiddenRewardScreen_Parms RevealHiddenRewardScreen_Parms;
 
@@ -5015,7 +5016,7 @@ void ATgHUD_Game::DismissRewardScreen ( )
 	static UFunction* pFnDismissRewardScreen = NULL;
 
 	if ( ! pFnDismissRewardScreen )
-		pFnDismissRewardScreen = (UFunction*) UObject::GObjObjects()->Data[ 51499 ];
+		pFnDismissRewardScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DismissRewardScreen" );
 
 	ATgHUD_Game_execDismissRewardScreen_Parms DismissRewardScreen_Parms;
 
@@ -5036,7 +5037,7 @@ void ATgHUD_Game::SetRewardScreenReveal ( float fSeconds )
 	static UFunction* pFnSetRewardScreenReveal = NULL;
 
 	if ( ! pFnSetRewardScreenReveal )
-		pFnSetRewardScreenReveal = (UFunction*) UObject::GObjObjects()->Data[ 51497 ];
+		pFnSetRewardScreenReveal = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.SetRewardScreenReveal" );
 
 	ATgHUD_Game_execSetRewardScreenReveal_Parms SetRewardScreenReveal_Parms;
 	SetRewardScreenReveal_Parms.fSeconds = fSeconds;
@@ -5058,7 +5059,7 @@ void ATgHUD_Game::SetRewardScreenAutoDismiss ( float fSeconds )
 	static UFunction* pFnSetRewardScreenAutoDismiss = NULL;
 
 	if ( ! pFnSetRewardScreenAutoDismiss )
-		pFnSetRewardScreenAutoDismiss = (UFunction*) UObject::GObjObjects()->Data[ 51495 ];
+		pFnSetRewardScreenAutoDismiss = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.SetRewardScreenAutoDismiss" );
 
 	ATgHUD_Game_execSetRewardScreenAutoDismiss_Parms SetRewardScreenAutoDismiss_Parms;
 	SetRewardScreenAutoDismiss_Parms.fSeconds = fSeconds;
@@ -5080,7 +5081,7 @@ bool ATgHUD_Game::IsRewardScreenOpen ( )
 	static UFunction* pFnIsRewardScreenOpen = NULL;
 
 	if ( ! pFnIsRewardScreenOpen )
-		pFnIsRewardScreenOpen = (UFunction*) UObject::GObjObjects()->Data[ 51493 ];
+		pFnIsRewardScreenOpen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.IsRewardScreenOpen" );
 
 	ATgHUD_Game_execIsRewardScreenOpen_Parms IsRewardScreenOpen_Parms;
 
@@ -5102,7 +5103,7 @@ void ATgHUD_Game::OpenNextRewardScreen ( )
 	static UFunction* pFnOpenNextRewardScreen = NULL;
 
 	if ( ! pFnOpenNextRewardScreen )
-		pFnOpenNextRewardScreen = (UFunction*) UObject::GObjObjects()->Data[ 51492 ];
+		pFnOpenNextRewardScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenNextRewardScreen" );
 
 	ATgHUD_Game_execOpenNextRewardScreen_Parms OpenNextRewardScreen_Parms;
 
@@ -5125,7 +5126,7 @@ bool ATgHUD_Game::GetControllerAndViewport ( class ATgPlayerController** pContro
 	static UFunction* pFnGetControllerAndViewport = NULL;
 
 	if ( ! pFnGetControllerAndViewport )
-		pFnGetControllerAndViewport = (UFunction*) UObject::GObjObjects()->Data[ 51488 ];
+		pFnGetControllerAndViewport = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.GetControllerAndViewport" );
 
 	ATgHUD_Game_execGetControllerAndViewport_Parms GetControllerAndViewport_Parms;
 
@@ -5154,7 +5155,7 @@ class UTgUIMapTransition* ATgHUD_Game::GetMapTransition ( )
 	static UFunction* pFnGetMapTransition = NULL;
 
 	if ( ! pFnGetMapTransition )
-		pFnGetMapTransition = (UFunction*) UObject::GObjObjects()->Data[ 51486 ];
+		pFnGetMapTransition = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.GetMapTransition" );
 
 	ATgHUD_Game_execGetMapTransition_Parms GetMapTransition_Parms;
 
@@ -5176,7 +5177,7 @@ void ATgHUD_Game::ToggleMapNameDisplay ( )
 	static UFunction* pFnToggleMapNameDisplay = NULL;
 
 	if ( ! pFnToggleMapNameDisplay )
-		pFnToggleMapNameDisplay = (UFunction*) UObject::GObjObjects()->Data[ 51485 ];
+		pFnToggleMapNameDisplay = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ToggleMapNameDisplay" );
 
 	ATgHUD_Game_execToggleMapNameDisplay_Parms ToggleMapNameDisplay_Parms;
 
@@ -5198,7 +5199,7 @@ void ATgHUD_Game::SetDepthTestingEnabled ( class UCanvas* pCanvas, unsigned long
 	static UFunction* pFnSetDepthTestingEnabled = NULL;
 
 	if ( ! pFnSetDepthTestingEnabled )
-		pFnSetDepthTestingEnabled = (UFunction*) UObject::GObjObjects()->Data[ 51482 ];
+		pFnSetDepthTestingEnabled = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.SetDepthTestingEnabled" );
 
 	ATgHUD_Game_execSetDepthTestingEnabled_Parms SetDepthTestingEnabled_Parms;
 	SetDepthTestingEnabled_Parms.pCanvas = pCanvas;
@@ -5222,7 +5223,7 @@ void ATgHUD_Game::DrawObjectiveOverlays ( struct FVector CameraPosition, struct 
 	static UFunction* pFnDrawObjectiveOverlays = NULL;
 
 	if ( ! pFnDrawObjectiveOverlays )
-		pFnDrawObjectiveOverlays = (UFunction*) UObject::GObjObjects()->Data[ 51479 ];
+		pFnDrawObjectiveOverlays = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DrawObjectiveOverlays" );
 
 	ATgHUD_Game_execDrawObjectiveOverlays_Parms DrawObjectiveOverlays_Parms;
 	memcpy ( &DrawObjectiveOverlays_Parms.CameraPosition, &CameraPosition, 0xC );
@@ -5244,7 +5245,7 @@ void ATgHUD_Game::DrawActorOverlays ( )
 	static UFunction* pFnDrawActorOverlays = NULL;
 
 	if ( ! pFnDrawActorOverlays )
-		pFnDrawActorOverlays = (UFunction*) UObject::GObjObjects()->Data[ 51478 ];
+		pFnDrawActorOverlays = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.DrawActorOverlays" );
 
 	ATgHUD_Game_execDrawActorOverlays_Parms DrawActorOverlays_Parms;
 
@@ -5264,7 +5265,7 @@ void ATgHUD_Game::ResubmitPopups ( )
 	static UFunction* pFnResubmitPopups = NULL;
 
 	if ( ! pFnResubmitPopups )
-		pFnResubmitPopups = (UFunction*) UObject::GObjObjects()->Data[ 51477 ];
+		pFnResubmitPopups = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ResubmitPopups" );
 
 	ATgHUD_Game_execResubmitPopups_Parms ResubmitPopups_Parms;
 
@@ -5285,7 +5286,7 @@ bool ATgHUD_Game::CheckShouldSkipEndMission ( )
 	static UFunction* pFnCheckShouldSkipEndMission = NULL;
 
 	if ( ! pFnCheckShouldSkipEndMission )
-		pFnCheckShouldSkipEndMission = (UFunction*) UObject::GObjObjects()->Data[ 51475 ];
+		pFnCheckShouldSkipEndMission = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.CheckShouldSkipEndMission" );
 
 	ATgHUD_Game_execCheckShouldSkipEndMission_Parms CheckShouldSkipEndMission_Parms;
 
@@ -5308,7 +5309,7 @@ bool ATgHUD_Game::HideObjectiveNames ( )
 	static UFunction* pFnHideObjectiveNames = NULL;
 
 	if ( ! pFnHideObjectiveNames )
-		pFnHideObjectiveNames = (UFunction*) UObject::GObjObjects()->Data[ 51473 ];
+		pFnHideObjectiveNames = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.HideObjectiveNames" );
 
 	ATgHUD_Game_execHideObjectiveNames_Parms HideObjectiveNames_Parms;
 
@@ -5331,7 +5332,7 @@ bool ATgHUD_Game::HideObjectives ( )
 	static UFunction* pFnHideObjectives = NULL;
 
 	if ( ! pFnHideObjectives )
-		pFnHideObjectives = (UFunction*) UObject::GObjObjects()->Data[ 51471 ];
+		pFnHideObjectives = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.HideObjectives" );
 
 	ATgHUD_Game_execHideObjectives_Parms HideObjectives_Parms;
 
@@ -5354,7 +5355,7 @@ bool ATgHUD_Game::HideEnemyTags ( )
 	static UFunction* pFnHideEnemyTags = NULL;
 
 	if ( ! pFnHideEnemyTags )
-		pFnHideEnemyTags = (UFunction*) UObject::GObjObjects()->Data[ 51469 ];
+		pFnHideEnemyTags = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.HideEnemyTags" );
 
 	ATgHUD_Game_execHideEnemyTags_Parms HideEnemyTags_Parms;
 
@@ -5377,7 +5378,7 @@ bool ATgHUD_Game::ShowCombatText ( )
 	static UFunction* pFnShowCombatText = NULL;
 
 	if ( ! pFnShowCombatText )
-		pFnShowCombatText = (UFunction*) UObject::GObjObjects()->Data[ 51467 ];
+		pFnShowCombatText = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShowCombatText" );
 
 	ATgHUD_Game_execShowCombatText_Parms ShowCombatText_Parms;
 
@@ -5400,7 +5401,7 @@ bool ATgHUD_Game::ShowDeployableHealthBars ( )
 	static UFunction* pFnShowDeployableHealthBars = NULL;
 
 	if ( ! pFnShowDeployableHealthBars )
-		pFnShowDeployableHealthBars = (UFunction*) UObject::GObjObjects()->Data[ 51465 ];
+		pFnShowDeployableHealthBars = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ShowDeployableHealthBars" );
 
 	ATgHUD_Game_execShowDeployableHealthBars_Parms ShowDeployableHealthBars_Parms;
 
@@ -5423,7 +5424,7 @@ bool ATgHUD_Game::CheckDisableWorldRendering ( )
 	static UFunction* pFnCheckDisableWorldRendering = NULL;
 
 	if ( ! pFnCheckDisableWorldRendering )
-		pFnCheckDisableWorldRendering = (UFunction*) UObject::GObjObjects()->Data[ 51463 ];
+		pFnCheckDisableWorldRendering = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.CheckDisableWorldRendering" );
 
 	ATgHUD_Game_execCheckDisableWorldRendering_Parms CheckDisableWorldRendering_Parms;
 
@@ -5445,7 +5446,7 @@ void ATgHUD_Game::OpenTeamScreen ( )
 	static UFunction* pFnOpenTeamScreen = NULL;
 
 	if ( ! pFnOpenTeamScreen )
-		pFnOpenTeamScreen = (UFunction*) UObject::GObjObjects()->Data[ 51462 ];
+		pFnOpenTeamScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenTeamScreen" );
 
 	ATgHUD_Game_execOpenTeamScreen_Parms OpenTeamScreen_Parms;
 
@@ -5467,7 +5468,7 @@ class UTgUISceneDriver* ATgHUD_Game::OpenManagedSceneByID ( unsigned char funcID
 	static UFunction* pFnOpenManagedSceneByID = NULL;
 
 	if ( ! pFnOpenManagedSceneByID )
-		pFnOpenManagedSceneByID = (UFunction*) UObject::GObjObjects()->Data[ 51459 ];
+		pFnOpenManagedSceneByID = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.OpenManagedSceneByID" );
 
 	ATgHUD_Game_execOpenManagedSceneByID_Parms OpenManagedSceneByID_Parms;
 	OpenManagedSceneByID_Parms.funcID = funcID;
@@ -5493,7 +5494,7 @@ class UTgUISceneDriver* ATgHUD_Game::ToggleManagedSceneByID ( unsigned char func
 	static UFunction* pFnToggleManagedSceneByID = NULL;
 
 	if ( ! pFnToggleManagedSceneByID )
-		pFnToggleManagedSceneByID = (UFunction*) UObject::GObjObjects()->Data[ 51454 ];
+		pFnToggleManagedSceneByID = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ToggleManagedSceneByID" );
 
 	ATgHUD_Game_execToggleManagedSceneByID_Parms ToggleManagedSceneByID_Parms;
 	ToggleManagedSceneByID_Parms.funcID = funcID;
@@ -5520,7 +5521,7 @@ class UTgUISceneDriver* ATgHUD_Game::ToggleManagedScene ( struct FName ClassName
 	static UFunction* pFnToggleManagedScene = NULL;
 
 	if ( ! pFnToggleManagedScene )
-		pFnToggleManagedScene = (UFunction*) UObject::GObjObjects()->Data[ 51450 ];
+		pFnToggleManagedScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ToggleManagedScene" );
 
 	ATgHUD_Game_execToggleManagedScene_Parms ToggleManagedScene_Parms;
 	memcpy ( &ToggleManagedScene_Parms.ClassName, &ClassName, 0x8 );
@@ -5545,7 +5546,7 @@ void ATgHUD_Game::ChatCycleTab ( unsigned long Increment )
 	static UFunction* pFnChatCycleTab = NULL;
 
 	if ( ! pFnChatCycleTab )
-		pFnChatCycleTab = (UFunction*) UObject::GObjObjects()->Data[ 51448 ];
+		pFnChatCycleTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ChatCycleTab" );
 
 	ATgHUD_Game_execChatCycleTab_Parms ChatCycleTab_Parms;
 	ChatCycleTab_Parms.Increment = Increment;
@@ -5567,7 +5568,7 @@ void ATgHUD_Game::ChatOpacity ( float ChatOpacityIn )
 	static UFunction* pFnChatOpacity = NULL;
 
 	if ( ! pFnChatOpacity )
-		pFnChatOpacity = (UFunction*) UObject::GObjObjects()->Data[ 51446 ];
+		pFnChatOpacity = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ChatOpacity" );
 
 	ATgHUD_Game_execChatOpacity_Parms ChatOpacity_Parms;
 	ChatOpacity_Parms.ChatOpacityIn = ChatOpacityIn;
@@ -5588,7 +5589,7 @@ void ATgHUD_Game::ChatEnd ( )
 	static UFunction* pFnChatEnd = NULL;
 
 	if ( ! pFnChatEnd )
-		pFnChatEnd = (UFunction*) UObject::GObjObjects()->Data[ 51445 ];
+		pFnChatEnd = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ChatEnd" );
 
 	ATgHUD_Game_execChatEnd_Parms ChatEnd_Parms;
 
@@ -5609,7 +5610,7 @@ void ATgHUD_Game::ChatPageDown ( unsigned long Active )
 	static UFunction* pFnChatPageDown = NULL;
 
 	if ( ! pFnChatPageDown )
-		pFnChatPageDown = (UFunction*) UObject::GObjObjects()->Data[ 51443 ];
+		pFnChatPageDown = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ChatPageDown" );
 
 	ATgHUD_Game_execChatPageDown_Parms ChatPageDown_Parms;
 	ChatPageDown_Parms.Active = Active;
@@ -5631,7 +5632,7 @@ void ATgHUD_Game::ChatPageUp ( unsigned long Active )
 	static UFunction* pFnChatPageUp = NULL;
 
 	if ( ! pFnChatPageUp )
-		pFnChatPageUp = (UFunction*) UObject::GObjObjects()->Data[ 51441 ];
+		pFnChatPageUp = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ChatPageUp" );
 
 	ATgHUD_Game_execChatPageUp_Parms ChatPageUp_Parms;
 	ChatPageUp_Parms.Active = Active;
@@ -5652,7 +5653,7 @@ void ATgHUD_Game::ChatToggleMode ( )
 	static UFunction* pFnChatToggleMode = NULL;
 
 	if ( ! pFnChatToggleMode )
-		pFnChatToggleMode = (UFunction*) UObject::GObjObjects()->Data[ 51440 ];
+		pFnChatToggleMode = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ChatToggleMode" );
 
 	ATgHUD_Game_execChatToggleMode_Parms ChatToggleMode_Parms;
 
@@ -5672,7 +5673,7 @@ void ATgHUD_Game::ChatToggleOnTop ( )
 	static UFunction* pFnChatToggleOnTop = NULL;
 
 	if ( ! pFnChatToggleOnTop )
-		pFnChatToggleOnTop = (UFunction*) UObject::GObjObjects()->Data[ 51439 ];
+		pFnChatToggleOnTop = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ChatToggleOnTop" );
 
 	ATgHUD_Game_execChatToggleOnTop_Parms ChatToggleOnTop_Parms;
 
@@ -5692,7 +5693,7 @@ void ATgHUD_Game::ChatStartReply ( )
 	static UFunction* pFnChatStartReply = NULL;
 
 	if ( ! pFnChatStartReply )
-		pFnChatStartReply = (UFunction*) UObject::GObjObjects()->Data[ 51438 ];
+		pFnChatStartReply = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ChatStartReply" );
 
 	ATgHUD_Game_execChatStartReply_Parms ChatStartReply_Parms;
 
@@ -5712,7 +5713,7 @@ void ATgHUD_Game::ChatStartSlash ( )
 	static UFunction* pFnChatStartSlash = NULL;
 
 	if ( ! pFnChatStartSlash )
-		pFnChatStartSlash = (UFunction*) UObject::GObjObjects()->Data[ 51437 ];
+		pFnChatStartSlash = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ChatStartSlash" );
 
 	ATgHUD_Game_execChatStartSlash_Parms ChatStartSlash_Parms;
 
@@ -5732,7 +5733,7 @@ void ATgHUD_Game::ChatStartDefault ( )
 	static UFunction* pFnChatStartDefault = NULL;
 
 	if ( ! pFnChatStartDefault )
-		pFnChatStartDefault = (UFunction*) UObject::GObjObjects()->Data[ 51436 ];
+		pFnChatStartDefault = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ChatStartDefault" );
 
 	ATgHUD_Game_execChatStartDefault_Parms ChatStartDefault_Parms;
 
@@ -5753,7 +5754,7 @@ void ATgHUD_Game::FreemouseOnHUD ( unsigned long bFree )
 	static UFunction* pFnFreemouseOnHUD = NULL;
 
 	if ( ! pFnFreemouseOnHUD )
-		pFnFreemouseOnHUD = (UFunction*) UObject::GObjObjects()->Data[ 51434 ];
+		pFnFreemouseOnHUD = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.FreemouseOnHUD" );
 
 	ATgHUD_Game_execFreemouseOnHUD_Parms FreemouseOnHUD_Parms;
 	FreemouseOnHUD_Parms.bFree = bFree;
@@ -5778,7 +5779,7 @@ void ATgHUD_Game::GetStringDimensions ( class UFont* fontToUse, struct FString c
 	static UFunction* pFnGetStringDimensions = NULL;
 
 	if ( ! pFnGetStringDimensions )
-		pFnGetStringDimensions = (UFunction*) UObject::GObjObjects()->Data[ 51429 ];
+		pFnGetStringDimensions = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.GetStringDimensions" );
 
 	ATgHUD_Game_execGetStringDimensions_Parms GetStringDimensions_Parms;
 	GetStringDimensions_Parms.fontToUse = fontToUse;
@@ -5809,7 +5810,7 @@ void ATgHUD_Game::UpdateUITextBox ( unsigned char TextBoxBitfield, float Duratio
 	static UFunction* pFnUpdateUITextBox = NULL;
 
 	if ( ! pFnUpdateUITextBox )
-		pFnUpdateUITextBox = (UFunction*) UObject::GObjObjects()->Data[ 51425 ];
+		pFnUpdateUITextBox = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.UpdateUITextBox" );
 
 	ATgHUD_Game_execUpdateUITextBox_Parms UpdateUITextBox_Parms;
 	UpdateUITextBox_Parms.TextBoxBitfield = TextBoxBitfield;
@@ -5834,7 +5835,7 @@ void ATgHUD_Game::UpdateUITimer ( unsigned char ClockStateBitfield, float TimerD
 	static UFunction* pFnUpdateUITimer = NULL;
 
 	if ( ! pFnUpdateUITimer )
-		pFnUpdateUITimer = (UFunction*) UObject::GObjObjects()->Data[ 51422 ];
+		pFnUpdateUITimer = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.UpdateUITimer" );
 
 	ATgHUD_Game_execUpdateUITimer_Parms UpdateUITimer_Parms;
 	UpdateUITimer_Parms.ClockStateBitfield = ClockStateBitfield;
@@ -5856,7 +5857,7 @@ void ATgHUD_Game::InitializeVoiceMacroTree ( )
 	static UFunction* pFnInitializeVoiceMacroTree = NULL;
 
 	if ( ! pFnInitializeVoiceMacroTree )
-		pFnInitializeVoiceMacroTree = (UFunction*) UObject::GObjObjects()->Data[ 51421 ];
+		pFnInitializeVoiceMacroTree = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.InitializeVoiceMacroTree" );
 
 	ATgHUD_Game_execInitializeVoiceMacroTree_Parms InitializeVoiceMacroTree_Parms;
 
@@ -5876,7 +5877,7 @@ void ATgHUD_Game::InitializeCommonDataStores ( )
 	static UFunction* pFnInitializeCommonDataStores = NULL;
 
 	if ( ! pFnInitializeCommonDataStores )
-		pFnInitializeCommonDataStores = (UFunction*) UObject::GObjObjects()->Data[ 51420 ];
+		pFnInitializeCommonDataStores = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.InitializeCommonDataStores" );
 
 	ATgHUD_Game_execInitializeCommonDataStores_Parms InitializeCommonDataStores_Parms;
 
@@ -5896,7 +5897,7 @@ void ATgHUD_Game::NativePostBeginPlay ( )
 	static UFunction* pFnNativePostBeginPlay = NULL;
 
 	if ( ! pFnNativePostBeginPlay )
-		pFnNativePostBeginPlay = (UFunction*) UObject::GObjObjects()->Data[ 51419 ];
+		pFnNativePostBeginPlay = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.NativePostBeginPlay" );
 
 	ATgHUD_Game_execNativePostBeginPlay_Parms NativePostBeginPlay_Parms;
 
@@ -5917,7 +5918,7 @@ void ATgHUD_Game::UseCrosshairForReticule ( struct FName CrosshairName )
 	static UFunction* pFnUseCrosshairForReticule = NULL;
 
 	if ( ! pFnUseCrosshairForReticule )
-		pFnUseCrosshairForReticule = (UFunction*) UObject::GObjObjects()->Data[ 51417 ];
+		pFnUseCrosshairForReticule = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.UseCrosshairForReticule" );
 
 	ATgHUD_Game_execUseCrosshairForReticule_Parms UseCrosshairForReticule_Parms;
 	memcpy ( &UseCrosshairForReticule_Parms.CrosshairName, &CrosshairName, 0x8 );
@@ -5939,7 +5940,7 @@ void ATgHUD_Game::ResetDeviceHudTimersUI ( int DeviceEqpPoint )
 	static UFunction* pFnResetDeviceHudTimersUI = NULL;
 
 	if ( ! pFnResetDeviceHudTimersUI )
-		pFnResetDeviceHudTimersUI = (UFunction*) UObject::GObjObjects()->Data[ 51415 ];
+		pFnResetDeviceHudTimersUI = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.ResetDeviceHudTimersUI" );
 
 	ATgHUD_Game_execResetDeviceHudTimersUI_Parms ResetDeviceHudTimersUI_Parms;
 	ResetDeviceHudTimersUI_Parms.DeviceEqpPoint = DeviceEqpPoint;
@@ -5961,7 +5962,7 @@ void ATgHUD_Game::UpdateInHandDevicesUI ( class ATgDevice* pDevice )
 	static UFunction* pFnUpdateInHandDevicesUI = NULL;
 
 	if ( ! pFnUpdateInHandDevicesUI )
-		pFnUpdateInHandDevicesUI = (UFunction*) UObject::GObjObjects()->Data[ 51413 ];
+		pFnUpdateInHandDevicesUI = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.UpdateInHandDevicesUI" );
 
 	ATgHUD_Game_execUpdateInHandDevicesUI_Parms UpdateInHandDevicesUI_Parms;
 	UpdateInHandDevicesUI_Parms.pDevice = pDevice;
@@ -5982,7 +5983,7 @@ void ATgHUD_Game::UpdateHiddenDevicesUI ( )
 	static UFunction* pFnUpdateHiddenDevicesUI = NULL;
 
 	if ( ! pFnUpdateHiddenDevicesUI )
-		pFnUpdateHiddenDevicesUI = (UFunction*) UObject::GObjObjects()->Data[ 51412 ];
+		pFnUpdateHiddenDevicesUI = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.UpdateHiddenDevicesUI" );
 
 	ATgHUD_Game_execUpdateHiddenDevicesUI_Parms UpdateHiddenDevicesUI_Parms;
 
@@ -6002,7 +6003,7 @@ void ATgHUD_Game::UpdateDeviceBarUIItems ( )
 	static UFunction* pFnUpdateDeviceBarUIItems = NULL;
 
 	if ( ! pFnUpdateDeviceBarUIItems )
-		pFnUpdateDeviceBarUIItems = (UFunction*) UObject::GObjObjects()->Data[ 51411 ];
+		pFnUpdateDeviceBarUIItems = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.UpdateDeviceBarUIItems" );
 
 	ATgHUD_Game_execUpdateDeviceBarUIItems_Parms UpdateDeviceBarUIItems_Parms;
 
@@ -6024,7 +6025,7 @@ void ATgHUD_Game::UpdateModeEquipTimer ( int nIsActive, float fEquipTime )
 	static UFunction* pFnUpdateModeEquipTimer = NULL;
 
 	if ( ! pFnUpdateModeEquipTimer )
-		pFnUpdateModeEquipTimer = (UFunction*) UObject::GObjObjects()->Data[ 51408 ];
+		pFnUpdateModeEquipTimer = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.UpdateModeEquipTimer" );
 
 	ATgHUD_Game_execUpdateModeEquipTimer_Parms UpdateModeEquipTimer_Parms;
 	UpdateModeEquipTimer_Parms.nIsActive = nIsActive;
@@ -6051,7 +6052,7 @@ void ATgHUD_Game::UpdateDeviceSlotTimers ( int nDeviceInstanceId, int nDeviceMod
 	static UFunction* pFnUpdateDeviceSlotTimers = NULL;
 
 	if ( ! pFnUpdateDeviceSlotTimers )
-		pFnUpdateDeviceSlotTimers = (UFunction*) UObject::GObjObjects()->Data[ 51402 ];
+		pFnUpdateDeviceSlotTimers = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.UpdateDeviceSlotTimers" );
 
 	ATgHUD_Game_execUpdateDeviceSlotTimers_Parms UpdateDeviceSlotTimers_Parms;
 	UpdateDeviceSlotTimers_Parms.nDeviceInstanceId = nDeviceInstanceId;
@@ -6076,7 +6077,7 @@ void ATgHUD_Game::TriggerDeviceRefresh ( )
 	static UFunction* pFnTriggerDeviceRefresh = NULL;
 
 	if ( ! pFnTriggerDeviceRefresh )
-		pFnTriggerDeviceRefresh = (UFunction*) UObject::GObjObjects()->Data[ 51401 ];
+		pFnTriggerDeviceRefresh = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_Game.TriggerDeviceRefresh" );
 
 	ATgHUD_Game_execTriggerDeviceRefresh_Parms TriggerDeviceRefresh_Parms;
 
@@ -6096,7 +6097,7 @@ void ATgLoginHUD::ShowDevNotes ( )
 	static UFunction* pFnShowDevNotes = NULL;
 
 	if ( ! pFnShowDevNotes )
-		pFnShowDevNotes = (UFunction*) UObject::GObjObjects()->Data[ 52085 ];
+		pFnShowDevNotes = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.ShowDevNotes" );
 
 	ATgLoginHUD_execShowDevNotes_Parms ShowDevNotes_Parms;
 
@@ -6112,7 +6113,7 @@ void ATgLoginHUD::BrowseToDevNotes ( )
 	static UFunction* pFnBrowseToDevNotes = NULL;
 
 	if ( ! pFnBrowseToDevNotes )
-		pFnBrowseToDevNotes = (UFunction*) UObject::GObjObjects()->Data[ 52084 ];
+		pFnBrowseToDevNotes = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.BrowseToDevNotes" );
 
 	ATgLoginHUD_execBrowseToDevNotes_Parms BrowseToDevNotes_Parms;
 
@@ -6132,7 +6133,7 @@ void ATgLoginHUD::eventBackToLogin ( )
 	static UFunction* pFnBackToLogin = NULL;
 
 	if ( ! pFnBackToLogin )
-		pFnBackToLogin = (UFunction*) UObject::GObjObjects()->Data[ 52079 ];
+		pFnBackToLogin = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.BackToLogin" );
 
 	ATgLoginHUD_eventBackToLogin_Parms BackToLogin_Parms;
 
@@ -6149,7 +6150,7 @@ void ATgLoginHUD::eventSendCharCreateErrorCode ( int ErrorCode )
 	static UFunction* pFnSendCharCreateErrorCode = NULL;
 
 	if ( ! pFnSendCharCreateErrorCode )
-		pFnSendCharCreateErrorCode = (UFunction*) UObject::GObjObjects()->Data[ 52076 ];
+		pFnSendCharCreateErrorCode = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.SendCharCreateErrorCode" );
 
 	ATgLoginHUD_eventSendCharCreateErrorCode_Parms SendCharCreateErrorCode_Parms;
 	SendCharCreateErrorCode_Parms.ErrorCode = ErrorCode;
@@ -6166,7 +6167,7 @@ void ATgLoginHUD::eventCreateCharacter ( )
 	static UFunction* pFnCreateCharacter = NULL;
 
 	if ( ! pFnCreateCharacter )
-		pFnCreateCharacter = (UFunction*) UObject::GObjObjects()->Data[ 52070 ];
+		pFnCreateCharacter = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.CreateCharacter" );
 
 	ATgLoginHUD_eventCreateCharacter_Parms CreateCharacter_Parms;
 
@@ -6182,7 +6183,7 @@ void ATgLoginHUD::ConditionalSetTutorialFlag ( )
 	static UFunction* pFnConditionalSetTutorialFlag = NULL;
 
 	if ( ! pFnConditionalSetTutorialFlag )
-		pFnConditionalSetTutorialFlag = (UFunction*) UObject::GObjObjects()->Data[ 52069 ];
+		pFnConditionalSetTutorialFlag = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.ConditionalSetTutorialFlag" );
 
 	ATgLoginHUD_execConditionalSetTutorialFlag_Parms ConditionalSetTutorialFlag_Parms;
 
@@ -6203,7 +6204,7 @@ class UTgUIClassSelectScene* ATgLoginHUD::LoadClassSelect ( )
 	static UFunction* pFnLoadClassSelect = NULL;
 
 	if ( ! pFnLoadClassSelect )
-		pFnLoadClassSelect = (UFunction*) UObject::GObjObjects()->Data[ 52067 ];
+		pFnLoadClassSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.LoadClassSelect" );
 
 	ATgLoginHUD_execLoadClassSelect_Parms LoadClassSelect_Parms;
 
@@ -6226,7 +6227,7 @@ class UTgUICustomHeadMenu* ATgLoginHUD::LoadCustomHeadMenu ( )
 	static UFunction* pFnLoadCustomHeadMenu = NULL;
 
 	if ( ! pFnLoadCustomHeadMenu )
-		pFnLoadCustomHeadMenu = (UFunction*) UObject::GObjObjects()->Data[ 52065 ];
+		pFnLoadCustomHeadMenu = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.LoadCustomHeadMenu" );
 
 	ATgLoginHUD_execLoadCustomHeadMenu_Parms LoadCustomHeadMenu_Parms;
 
@@ -6249,7 +6250,7 @@ class UTgUICreateCharA* ATgLoginHUD::LoadCharCreateMenu ( )
 	static UFunction* pFnLoadCharCreateMenu = NULL;
 
 	if ( ! pFnLoadCharCreateMenu )
-		pFnLoadCharCreateMenu = (UFunction*) UObject::GObjObjects()->Data[ 52063 ];
+		pFnLoadCharCreateMenu = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.LoadCharCreateMenu" );
 
 	ATgLoginHUD_execLoadCharCreateMenu_Parms LoadCharCreateMenu_Parms;
 
@@ -6272,7 +6273,7 @@ void ATgLoginHUD::eventTick ( float DeltaTime )
 	static UFunction* pFnTick = NULL;
 
 	if ( ! pFnTick )
-		pFnTick = (UFunction*) UObject::GObjObjects()->Data[ 52061 ];
+		pFnTick = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.Tick" );
 
 	ATgLoginHUD_eventTick_Parms Tick_Parms;
 	Tick_Parms.DeltaTime = DeltaTime;
@@ -6290,7 +6291,7 @@ void ATgLoginHUD::NativeTick ( float DeltaTime )
 	static UFunction* pFnNativeTick = NULL;
 
 	if ( ! pFnNativeTick )
-		pFnNativeTick = (UFunction*) UObject::GObjObjects()->Data[ 52059 ];
+		pFnNativeTick = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.NativeTick" );
 
 	ATgLoginHUD_execNativeTick_Parms NativeTick_Parms;
 	NativeTick_Parms.DeltaTime = DeltaTime;
@@ -6311,7 +6312,7 @@ void ATgLoginHUD::InitializeDataInterface ( )
 	static UFunction* pFnInitializeDataInterface = NULL;
 
 	if ( ! pFnInitializeDataInterface )
-		pFnInitializeDataInterface = (UFunction*) UObject::GObjObjects()->Data[ 52058 ];
+		pFnInitializeDataInterface = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.InitializeDataInterface" );
 
 	ATgLoginHUD_execInitializeDataInterface_Parms InitializeDataInterface_Parms;
 
@@ -6327,7 +6328,7 @@ void ATgLoginHUD::OpenMenu ( )
 	static UFunction* pFnOpenMenu = NULL;
 
 	if ( ! pFnOpenMenu )
-		pFnOpenMenu = (UFunction*) UObject::GObjObjects()->Data[ 52055 ];
+		pFnOpenMenu = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.OpenMenu" );
 
 	ATgLoginHUD_execOpenMenu_Parms OpenMenu_Parms;
 
@@ -6343,7 +6344,7 @@ void ATgLoginHUD::PostBeginPlay ( )
 	static UFunction* pFnPostBeginPlay = NULL;
 
 	if ( ! pFnPostBeginPlay )
-		pFnPostBeginPlay = (UFunction*) UObject::GObjObjects()->Data[ 52054 ];
+		pFnPostBeginPlay = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.PostBeginPlay" );
 
 	ATgLoginHUD_execPostBeginPlay_Parms PostBeginPlay_Parms;
 
@@ -6360,7 +6361,7 @@ void ATgLoginHUD::SetMatineeCamToLogin ( unsigned long bSetToLogin )
 	static UFunction* pFnSetMatineeCamToLogin = NULL;
 
 	if ( ! pFnSetMatineeCamToLogin )
-		pFnSetMatineeCamToLogin = (UFunction*) UObject::GObjObjects()->Data[ 52052 ];
+		pFnSetMatineeCamToLogin = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.SetMatineeCamToLogin" );
 
 	ATgLoginHUD_execSetMatineeCamToLogin_Parms SetMatineeCamToLogin_Parms;
 	SetMatineeCamToLogin_Parms.bSetToLogin = bSetToLogin;
@@ -6382,7 +6383,7 @@ void ATgLoginHUD::LoadCharacterSelectMenu ( unsigned long bError )
 	static UFunction* pFnLoadCharacterSelectMenu = NULL;
 
 	if ( ! pFnLoadCharacterSelectMenu )
-		pFnLoadCharacterSelectMenu = (UFunction*) UObject::GObjObjects()->Data[ 52050 ];
+		pFnLoadCharacterSelectMenu = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.LoadCharacterSelectMenu" );
 
 	ATgLoginHUD_execLoadCharacterSelectMenu_Parms LoadCharacterSelectMenu_Parms;
 	LoadCharacterSelectMenu_Parms.bError = bError;
@@ -6403,7 +6404,7 @@ void ATgLoginHUD::LoadLoginMenu ( )
 	static UFunction* pFnLoadLoginMenu = NULL;
 
 	if ( ! pFnLoadLoginMenu )
-		pFnLoadLoginMenu = (UFunction*) UObject::GObjObjects()->Data[ 52049 ];
+		pFnLoadLoginMenu = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.LoadLoginMenu" );
 
 	ATgLoginHUD_execLoadLoginMenu_Parms LoadLoginMenu_Parms;
 
@@ -6423,7 +6424,7 @@ void ATgLoginHUD::InitializeTgUIScenes ( )
 	static UFunction* pFnInitializeTgUIScenes = NULL;
 
 	if ( ! pFnInitializeTgUIScenes )
-		pFnInitializeTgUIScenes = (UFunction*) UObject::GObjObjects()->Data[ 52048 ];
+		pFnInitializeTgUIScenes = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.InitializeTgUIScenes" );
 
 	ATgLoginHUD_execInitializeTgUIScenes_Parms InitializeTgUIScenes_Parms;
 
@@ -6444,7 +6445,7 @@ class AInterpActor* ATgLoginHUD::GetEarthModel ( )
 	static UFunction* pFnGetEarthModel = NULL;
 
 	if ( ! pFnGetEarthModel )
-		pFnGetEarthModel = (UFunction*) UObject::GObjObjects()->Data[ 52046 ];
+		pFnGetEarthModel = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.GetEarthModel" );
 
 	ATgLoginHUD_execGetEarthModel_Parms GetEarthModel_Parms;
 
@@ -6467,7 +6468,7 @@ class ATgSkeletalMeshActor_CharacterBuilder* ATgLoginHUD::GetCharacterBuilderSke
 	static UFunction* pFnGetCharacterBuilderSkelMeshActor = NULL;
 
 	if ( ! pFnGetCharacterBuilderSkelMeshActor )
-		pFnGetCharacterBuilderSkelMeshActor = (UFunction*) UObject::GObjObjects()->Data[ 52044 ];
+		pFnGetCharacterBuilderSkelMeshActor = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.GetCharacterBuilderSkelMeshActor" );
 
 	ATgLoginHUD_execGetCharacterBuilderSkelMeshActor_Parms GetCharacterBuilderSkelMeshActor_Parms;
 
@@ -6490,7 +6491,7 @@ void ATgLoginHUD::GetCharMorphSettings ( struct FCharacterInfoStruct* CharInfo )
 	static UFunction* pFnGetCharMorphSettings = NULL;
 
 	if ( ! pFnGetCharMorphSettings )
-		pFnGetCharMorphSettings = (UFunction*) UObject::GObjObjects()->Data[ 52042 ];
+		pFnGetCharMorphSettings = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.GetCharMorphSettings" );
 
 	ATgLoginHUD_execGetCharMorphSettings_Parms GetCharMorphSettings_Parms;
 
@@ -6514,7 +6515,7 @@ class UTgUIMapTransition* ATgLoginHUD::GetMapTransition ( )
 	static UFunction* pFnGetMapTransition = NULL;
 
 	if ( ! pFnGetMapTransition )
-		pFnGetMapTransition = (UFunction*) UObject::GObjObjects()->Data[ 52040 ];
+		pFnGetMapTransition = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.GetMapTransition" );
 
 	ATgLoginHUD_execGetMapTransition_Parms GetMapTransition_Parms;
 
@@ -6537,7 +6538,7 @@ void ATgLoginHUD::AddPlayerCharacterCallback ( int eType )
 	static UFunction* pFnAddPlayerCharacterCallback = NULL;
 
 	if ( ! pFnAddPlayerCharacterCallback )
-		pFnAddPlayerCharacterCallback = (UFunction*) UObject::GObjObjects()->Data[ 52038 ];
+		pFnAddPlayerCharacterCallback = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginHUD.AddPlayerCharacterCallback" );
 
 	ATgLoginHUD_execAddPlayerCharacterCallback_Parms AddPlayerCharacterCallback_Parms;
 	AddPlayerCharacterCallback_Parms.eType = eType;
@@ -6558,7 +6559,7 @@ void ATgLoginInfo::PostBeginPlay ( )
 	static UFunction* pFnPostBeginPlay = NULL;
 
 	if ( ! pFnPostBeginPlay )
-		pFnPostBeginPlay = (UFunction*) UObject::GObjObjects()->Data[ 52096 ];
+		pFnPostBeginPlay = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginInfo.PostBeginPlay" );
 
 	ATgLoginInfo_execPostBeginPlay_Parms PostBeginPlay_Parms;
 
@@ -6575,7 +6576,7 @@ bool ATgLoginInfo::ShouldSkipLoginHUD ( )
 	static UFunction* pFnShouldSkipLoginHUD = NULL;
 
 	if ( ! pFnShouldSkipLoginHUD )
-		pFnShouldSkipLoginHUD = (UFunction*) UObject::GObjObjects()->Data[ 52094 ];
+		pFnShouldSkipLoginHUD = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginInfo.ShouldSkipLoginHUD" );
 
 	ATgLoginInfo_execShouldSkipLoginHUD_Parms ShouldSkipLoginHUD_Parms;
 
@@ -6598,7 +6599,7 @@ bool ATgLoginInfo::HasSelectedCharacter ( )
 	static UFunction* pFnHasSelectedCharacter = NULL;
 
 	if ( ! pFnHasSelectedCharacter )
-		pFnHasSelectedCharacter = (UFunction*) UObject::GObjObjects()->Data[ 52092 ];
+		pFnHasSelectedCharacter = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginInfo.HasSelectedCharacter" );
 
 	ATgLoginInfo_execHasSelectedCharacter_Parms HasSelectedCharacter_Parms;
 
@@ -6621,7 +6622,7 @@ bool ATgLoginInfo::IsInGame ( )
 	static UFunction* pFnIsInGame = NULL;
 
 	if ( ! pFnIsInGame )
-		pFnIsInGame = (UFunction*) UObject::GObjObjects()->Data[ 52090 ];
+		pFnIsInGame = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginInfo.IsInGame" );
 
 	ATgLoginInfo_execIsInGame_Parms IsInGame_Parms;
 
@@ -6644,7 +6645,7 @@ bool ATgLoginInfo::IsLoggedIn ( )
 	static UFunction* pFnIsLoggedIn = NULL;
 
 	if ( ! pFnIsLoggedIn )
-		pFnIsLoggedIn = (UFunction*) UObject::GObjObjects()->Data[ 52088 ];
+		pFnIsLoggedIn = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginInfo.IsLoggedIn" );
 
 	ATgLoginInfo_execIsLoggedIn_Parms IsLoggedIn_Parms;
 
@@ -6666,7 +6667,7 @@ void ATgLoginInfo::CreateDebugStructure ( )
 	static UFunction* pFnCreateDebugStructure = NULL;
 
 	if ( ! pFnCreateDebugStructure )
-		pFnCreateDebugStructure = (UFunction*) UObject::GObjObjects()->Data[ 52087 ];
+		pFnCreateDebugStructure = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginInfo.CreateDebugStructure" );
 
 	ATgLoginInfo_execCreateDebugStructure_Parms CreateDebugStructure_Parms;
 
@@ -6687,7 +6688,7 @@ void ATgLoginPlayerController::StopAltFire ( unsigned char FireModeNum )
 	static UFunction* pFnStopAltFire = NULL;
 
 	if ( ! pFnStopAltFire )
-		pFnStopAltFire = (UFunction*) UObject::GObjObjects()->Data[ 52124 ];
+		pFnStopAltFire = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginPlayerController.StopAltFire" );
 
 	ATgLoginPlayerController_execStopAltFire_Parms StopAltFire_Parms;
 	StopAltFire_Parms.FireModeNum = FireModeNum;
@@ -6705,7 +6706,7 @@ void ATgLoginPlayerController::StartAltFire ( unsigned char FireModeNum )
 	static UFunction* pFnStartAltFire = NULL;
 
 	if ( ! pFnStartAltFire )
-		pFnStartAltFire = (UFunction*) UObject::GObjObjects()->Data[ 52122 ];
+		pFnStartAltFire = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginPlayerController.StartAltFire" );
 
 	ATgLoginPlayerController_execStartAltFire_Parms StartAltFire_Parms;
 	StartAltFire_Parms.FireModeNum = FireModeNum;
@@ -6722,7 +6723,7 @@ void ATgLoginPlayerController::StartFire ( )
 	static UFunction* pFnStartFire = NULL;
 
 	if ( ! pFnStartFire )
-		pFnStartFire = (UFunction*) UObject::GObjObjects()->Data[ 52121 ];
+		pFnStartFire = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginPlayerController.StartFire" );
 
 	ATgLoginPlayerController_execStartFire_Parms StartFire_Parms;
 
@@ -6738,7 +6739,7 @@ void ATgLoginPlayerController::NextWeapon ( )
 	static UFunction* pFnNextWeapon = NULL;
 
 	if ( ! pFnNextWeapon )
-		pFnNextWeapon = (UFunction*) UObject::GObjObjects()->Data[ 52120 ];
+		pFnNextWeapon = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginPlayerController.NextWeapon" );
 
 	ATgLoginPlayerController_execNextWeapon_Parms NextWeapon_Parms;
 
@@ -6754,7 +6755,7 @@ void ATgLoginPlayerController::PrevWeapon ( )
 	static UFunction* pFnPrevWeapon = NULL;
 
 	if ( ! pFnPrevWeapon )
-		pFnPrevWeapon = (UFunction*) UObject::GObjObjects()->Data[ 52119 ];
+		pFnPrevWeapon = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginPlayerController.PrevWeapon" );
 
 	ATgLoginPlayerController_execPrevWeapon_Parms PrevWeapon_Parms;
 
@@ -6770,7 +6771,7 @@ void ATgLoginPlayerController::PostBeginPlay ( )
 	static UFunction* pFnPostBeginPlay = NULL;
 
 	if ( ! pFnPostBeginPlay )
-		pFnPostBeginPlay = (UFunction*) UObject::GObjObjects()->Data[ 52118 ];
+		pFnPostBeginPlay = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginPlayerController.PostBeginPlay" );
 
 	ATgLoginPlayerController_execPostBeginPlay_Parms PostBeginPlay_Parms;
 
@@ -6787,7 +6788,7 @@ bool ATgLoginPlayerController::CheckAutoLogin ( )
 	static UFunction* pFnCheckAutoLogin = NULL;
 
 	if ( ! pFnCheckAutoLogin )
-		pFnCheckAutoLogin = (UFunction*) UObject::GObjObjects()->Data[ 52115 ];
+		pFnCheckAutoLogin = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginPlayerController.CheckAutoLogin" );
 
 	ATgLoginPlayerController_execCheckAutoLogin_Parms CheckAutoLogin_Parms;
 
@@ -6810,7 +6811,7 @@ void UTgStatsData::eventInit ( class ATgHUD_Game* HUD )
 	static UFunction* pFnInit = NULL;
 
 	if ( ! pFnInit )
-		pFnInit = (UFunction*) UObject::GObjObjects()->Data[ 52185 ];
+		pFnInit = (UFunction*) ObjectCache::Find( "Function TgClient.TgStatsData.Init" );
 
 	UTgStatsData_eventInit_Parms Init_Parms;
 	Init_Parms.HUD = HUD;
@@ -6828,7 +6829,7 @@ int UTgStatsData::GetPlayerCount ( )
 	static UFunction* pFnGetPlayerCount = NULL;
 
 	if ( ! pFnGetPlayerCount )
-		pFnGetPlayerCount = (UFunction*) UObject::GObjObjects()->Data[ 52183 ];
+		pFnGetPlayerCount = (UFunction*) ObjectCache::Find( "Function TgClient.TgStatsData.GetPlayerCount" );
 
 	UTgStatsData_execGetPlayerCount_Parms GetPlayerCount_Parms;
 
@@ -6851,7 +6852,7 @@ class ATgRepInfo_Player* UTgStatsData::GetMyPRI ( )
 	static UFunction* pFnGetMyPRI = NULL;
 
 	if ( ! pFnGetMyPRI )
-		pFnGetMyPRI = (UFunction*) UObject::GObjObjects()->Data[ 52181 ];
+		pFnGetMyPRI = (UFunction*) ObjectCache::Find( "Function TgClient.TgStatsData.GetMyPRI" );
 
 	UTgStatsData_execGetMyPRI_Parms GetMyPRI_Parms;
 
@@ -6873,7 +6874,7 @@ void UTgStatsData::PopulatePlayerRankArray ( )
 	static UFunction* pFnPopulatePlayerRankArray = NULL;
 
 	if ( ! pFnPopulatePlayerRankArray )
-		pFnPopulatePlayerRankArray = (UFunction*) UObject::GObjObjects()->Data[ 52180 ];
+		pFnPopulatePlayerRankArray = (UFunction*) ObjectCache::Find( "Function TgClient.TgStatsData.PopulatePlayerRankArray" );
 
 	UTgStatsData_execPopulatePlayerRankArray_Parms PopulatePlayerRankArray_Parms;
 
@@ -6894,7 +6895,7 @@ int UTgStatsData::GetBestPlayerRankIndex ( )
 	static UFunction* pFnGetBestPlayerRankIndex = NULL;
 
 	if ( ! pFnGetBestPlayerRankIndex )
-		pFnGetBestPlayerRankIndex = (UFunction*) UObject::GObjObjects()->Data[ 52178 ];
+		pFnGetBestPlayerRankIndex = (UFunction*) ObjectCache::Find( "Function TgClient.TgStatsData.GetBestPlayerRankIndex" );
 
 	UTgStatsData_execGetBestPlayerRankIndex_Parms GetBestPlayerRankIndex_Parms;
 
@@ -6917,7 +6918,7 @@ void UTgStatsData::SortScores ( int eSortField )
 	static UFunction* pFnSortScores = NULL;
 
 	if ( ! pFnSortScores )
-		pFnSortScores = (UFunction*) UObject::GObjObjects()->Data[ 52176 ];
+		pFnSortScores = (UFunction*) ObjectCache::Find( "Function TgClient.TgStatsData.SortScores" );
 
 	UTgStatsData_execSortScores_Parms SortScores_Parms;
 	SortScores_Parms.eSortField = eSortField;
@@ -6938,7 +6939,7 @@ void UTgStatsData::CopyScores ( )
 	static UFunction* pFnCopyScores = NULL;
 
 	if ( ! pFnCopyScores )
-		pFnCopyScores = (UFunction*) UObject::GObjObjects()->Data[ 52175 ];
+		pFnCopyScores = (UFunction*) ObjectCache::Find( "Function TgClient.TgStatsData.CopyScores" );
 
 	UTgStatsData_execCopyScores_Parms CopyScores_Parms;
 
@@ -6960,7 +6961,7 @@ void UTgStatsData::SetGameOver ( unsigned long bGameover, unsigned long bPlayerV
 	static UFunction* pFnSetGameOver = NULL;
 
 	if ( ! pFnSetGameOver )
-		pFnSetGameOver = (UFunction*) UObject::GObjObjects()->Data[ 52172 ];
+		pFnSetGameOver = (UFunction*) ObjectCache::Find( "Function TgClient.TgStatsData.SetGameOver" );
 
 	UTgStatsData_execSetGameOver_Parms SetGameOver_Parms;
 	SetGameOver_Parms.bGameover = bGameover;
@@ -6982,7 +6983,7 @@ void UTgUILevelMap::InitializeUniformScaleRadarMap ( )
 	static UFunction* pFnInitializeUniformScaleRadarMap = NULL;
 
 	if ( ! pFnInitializeUniformScaleRadarMap )
-		pFnInitializeUniformScaleRadarMap = (UFunction*) UObject::GObjObjects()->Data[ 56825 ];
+		pFnInitializeUniformScaleRadarMap = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILevelMap.InitializeUniformScaleRadarMap" );
 
 	UTgUILevelMap_execInitializeUniformScaleRadarMap_Parms InitializeUniformScaleRadarMap_Parms;
 
@@ -7004,7 +7005,7 @@ void UTgUILevelMap::ChangeDesiredMapOpacity ( unsigned long Activate, unsigned l
 	static UFunction* pFnChangeDesiredMapOpacity = NULL;
 
 	if ( ! pFnChangeDesiredMapOpacity )
-		pFnChangeDesiredMapOpacity = (UFunction*) UObject::GObjObjects()->Data[ 56822 ];
+		pFnChangeDesiredMapOpacity = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILevelMap.ChangeDesiredMapOpacity" );
 
 	UTgUILevelMap_execChangeDesiredMapOpacity_Parms ChangeDesiredMapOpacity_Parms;
 	ChangeDesiredMapOpacity_Parms.Activate = Activate;
@@ -7026,7 +7027,7 @@ void UTgUILevelMap::PostRender ( )
 	static UFunction* pFnPostRender = NULL;
 
 	if ( ! pFnPostRender )
-		pFnPostRender = (UFunction*) UObject::GObjObjects()->Data[ 56821 ];
+		pFnPostRender = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILevelMap.PostRender" );
 
 	UTgUILevelMap_execPostRender_Parms PostRender_Parms;
 
@@ -7046,7 +7047,7 @@ void UTgUILevelMap::GenMapElements ( )
 	static UFunction* pFnGenMapElements = NULL;
 
 	if ( ! pFnGenMapElements )
-		pFnGenMapElements = (UFunction*) UObject::GObjObjects()->Data[ 56820 ];
+		pFnGenMapElements = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILevelMap.GenMapElements" );
 
 	UTgUILevelMap_execGenMapElements_Parms GenMapElements_Parms;
 
@@ -7067,7 +7068,7 @@ void UTgUILevelMap::DrawMapElements ( class UCanvas* DrawCanvas )
 	static UFunction* pFnDrawMapElements = NULL;
 
 	if ( ! pFnDrawMapElements )
-		pFnDrawMapElements = (UFunction*) UObject::GObjObjects()->Data[ 56818 ];
+		pFnDrawMapElements = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILevelMap.DrawMapElements" );
 
 	UTgUILevelMap_execDrawMapElements_Parms DrawMapElements_Parms;
 	DrawMapElements_Parms.DrawCanvas = DrawCanvas;
@@ -7089,7 +7090,7 @@ void UTgUILevelMap::UpdateAnimatingValues ( float TimeDelay )
 	static UFunction* pFnUpdateAnimatingValues = NULL;
 
 	if ( ! pFnUpdateAnimatingValues )
-		pFnUpdateAnimatingValues = (UFunction*) UObject::GObjObjects()->Data[ 56816 ];
+		pFnUpdateAnimatingValues = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILevelMap.UpdateAnimatingValues" );
 
 	UTgUILevelMap_execUpdateAnimatingValues_Parms UpdateAnimatingValues_Parms;
 	UpdateAnimatingValues_Parms.TimeDelay = TimeDelay;
@@ -7111,7 +7112,7 @@ void UTgUILevelMap::SetOpacity ( float Opacity )
 	static UFunction* pFnSetOpacity = NULL;
 
 	if ( ! pFnSetOpacity )
-		pFnSetOpacity = (UFunction*) UObject::GObjObjects()->Data[ 56814 ];
+		pFnSetOpacity = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILevelMap.SetOpacity" );
 
 	UTgUILevelMap_execSetOpacity_Parms SetOpacity_Parms;
 	SetOpacity_Parms.Opacity = Opacity;
@@ -7133,7 +7134,7 @@ void UTgUILevelMap::Hide ( unsigned long Immediate )
 	static UFunction* pFnHide = NULL;
 
 	if ( ! pFnHide )
-		pFnHide = (UFunction*) UObject::GObjObjects()->Data[ 56812 ];
+		pFnHide = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILevelMap.Hide" );
 
 	UTgUILevelMap_execHide_Parms Hide_Parms;
 	Hide_Parms.Immediate = Immediate;
@@ -7155,7 +7156,7 @@ void UTgUILevelMap::Show ( unsigned long Immediate )
 	static UFunction* pFnShow = NULL;
 
 	if ( ! pFnShow )
-		pFnShow = (UFunction*) UObject::GObjObjects()->Data[ 56810 ];
+		pFnShow = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILevelMap.Show" );
 
 	UTgUILevelMap_execShow_Parms Show_Parms;
 	Show_Parms.Immediate = Immediate;
@@ -7177,7 +7178,7 @@ float UTgUILevelMap::GetWorldTime ( )
 	static UFunction* pFnGetWorldTime = NULL;
 
 	if ( ! pFnGetWorldTime )
-		pFnGetWorldTime = (UFunction*) UObject::GObjObjects()->Data[ 56808 ];
+		pFnGetWorldTime = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILevelMap.GetWorldTime" );
 
 	UTgUILevelMap_execGetWorldTime_Parms GetWorldTime_Parms;
 
@@ -7200,7 +7201,7 @@ void UTgUILevelMap::TickLevelMap ( float UpdateTime )
 	static UFunction* pFnTickLevelMap = NULL;
 
 	if ( ! pFnTickLevelMap )
-		pFnTickLevelMap = (UFunction*) UObject::GObjObjects()->Data[ 56806 ];
+		pFnTickLevelMap = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILevelMap.TickLevelMap" );
 
 	UTgUILevelMap_execTickLevelMap_Parms TickLevelMap_Parms;
 	TickLevelMap_Parms.UpdateTime = UpdateTime;
@@ -7223,7 +7224,7 @@ void UTgUILevelMap::InitLevelMap ( class UMaterialInstanceConstant* LevelMapMIC,
 	static UFunction* pFnInitLevelMap = NULL;
 
 	if ( ! pFnInitLevelMap )
-		pFnInitLevelMap = (UFunction*) UObject::GObjObjects()->Data[ 56803 ];
+		pFnInitLevelMap = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILevelMap.InitLevelMap" );
 
 	UTgUILevelMap_execInitLevelMap_Parms InitLevelMap_Parms;
 	InitLevelMap_Parms.LevelMapMIC = LevelMapMIC;
@@ -7246,7 +7247,7 @@ void UTgUIPrimaryHUD_ActiveItem::SetSecondaryValue ( float fSecondaryValue )
 	static UFunction* pFnSetSecondaryValue = NULL;
 
 	if ( ! pFnSetSecondaryValue )
-		pFnSetSecondaryValue = (UFunction*) UObject::GObjObjects()->Data[ 58212 ];
+		pFnSetSecondaryValue = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_ActiveItem.SetSecondaryValue" );
 
 	UTgUIPrimaryHUD_ActiveItem_execSetSecondaryValue_Parms SetSecondaryValue_Parms;
 	SetSecondaryValue_Parms.fSecondaryValue = fSecondaryValue;
@@ -7268,7 +7269,7 @@ void UTgUIPrimaryHUD_ActiveItem::SetSecondaryModeOn ( unsigned long bSecondaryMo
 	static UFunction* pFnSetSecondaryModeOn = NULL;
 
 	if ( ! pFnSetSecondaryModeOn )
-		pFnSetSecondaryModeOn = (UFunction*) UObject::GObjObjects()->Data[ 58210 ];
+		pFnSetSecondaryModeOn = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_ActiveItem.SetSecondaryModeOn" );
 
 	UTgUIPrimaryHUD_ActiveItem_execSetSecondaryModeOn_Parms SetSecondaryModeOn_Parms;
 	SetSecondaryModeOn_Parms.bSecondaryModeOn = bSecondaryModeOn;
@@ -7289,7 +7290,7 @@ void UTgUIPrimaryHUD_ActiveItem::ShowActiveText ( )
 	static UFunction* pFnShowActiveText = NULL;
 
 	if ( ! pFnShowActiveText )
-		pFnShowActiveText = (UFunction*) UObject::GObjObjects()->Data[ 58209 ];
+		pFnShowActiveText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_ActiveItem.ShowActiveText" );
 
 	UTgUIPrimaryHUD_ActiveItem_execShowActiveText_Parms ShowActiveText_Parms;
 
@@ -7309,7 +7310,7 @@ void UTgUIPrimaryHUD_ActiveItem::HideActiveText ( )
 	static UFunction* pFnHideActiveText = NULL;
 
 	if ( ! pFnHideActiveText )
-		pFnHideActiveText = (UFunction*) UObject::GObjObjects()->Data[ 58208 ];
+		pFnHideActiveText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_ActiveItem.HideActiveText" );
 
 	UTgUIPrimaryHUD_ActiveItem_execHideActiveText_Parms HideActiveText_Parms;
 
@@ -7330,7 +7331,7 @@ void UTgUIPrimaryHUD_ActiveItem::SetActiveTextById ( int nMsgId )
 	static UFunction* pFnSetActiveTextById = NULL;
 
 	if ( ! pFnSetActiveTextById )
-		pFnSetActiveTextById = (UFunction*) UObject::GObjObjects()->Data[ 58206 ];
+		pFnSetActiveTextById = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_ActiveItem.SetActiveTextById" );
 
 	UTgUIPrimaryHUD_ActiveItem_execSetActiveTextById_Parms SetActiveTextById_Parms;
 	SetActiveTextById_Parms.nMsgId = nMsgId;
@@ -7352,7 +7353,7 @@ void UTgUIPrimaryHUD_ActiveItem::SetActiveText ( struct FString sMessage )
 	static UFunction* pFnSetActiveText = NULL;
 
 	if ( ! pFnSetActiveText )
-		pFnSetActiveText = (UFunction*) UObject::GObjObjects()->Data[ 58204 ];
+		pFnSetActiveText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_ActiveItem.SetActiveText" );
 
 	UTgUIPrimaryHUD_ActiveItem_execSetActiveText_Parms SetActiveText_Parms;
 	memcpy ( &SetActiveText_Parms.sMessage, &sMessage, 0xC );
@@ -7374,7 +7375,7 @@ void UTgUIPrimaryHUD_ActiveItem::UpdateProgressBar ( float TimeNow )
 	static UFunction* pFnUpdateProgressBar = NULL;
 
 	if ( ! pFnUpdateProgressBar )
-		pFnUpdateProgressBar = (UFunction*) UObject::GObjObjects()->Data[ 58202 ];
+		pFnUpdateProgressBar = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_ActiveItem.UpdateProgressBar" );
 
 	UTgUIPrimaryHUD_ActiveItem_execUpdateProgressBar_Parms UpdateProgressBar_Parms;
 	UpdateProgressBar_Parms.TimeNow = TimeNow;
@@ -7395,7 +7396,7 @@ void UTgUIPrimaryHUD_ActiveItem::ShowProgressBar ( )
 	static UFunction* pFnShowProgressBar = NULL;
 
 	if ( ! pFnShowProgressBar )
-		pFnShowProgressBar = (UFunction*) UObject::GObjObjects()->Data[ 58201 ];
+		pFnShowProgressBar = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_ActiveItem.ShowProgressBar" );
 
 	UTgUIPrimaryHUD_ActiveItem_execShowProgressBar_Parms ShowProgressBar_Parms;
 
@@ -7415,7 +7416,7 @@ void UTgUIPrimaryHUD_ActiveItem::HideProgressBar ( )
 	static UFunction* pFnHideProgressBar = NULL;
 
 	if ( ! pFnHideProgressBar )
-		pFnHideProgressBar = (UFunction*) UObject::GObjObjects()->Data[ 58200 ];
+		pFnHideProgressBar = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_ActiveItem.HideProgressBar" );
 
 	UTgUIPrimaryHUD_ActiveItem_execHideProgressBar_Parms HideProgressBar_Parms;
 
@@ -7435,7 +7436,7 @@ void UTgUIPrimaryHUD_ActiveItem::DeactivateProgressBar ( )
 	static UFunction* pFnDeactivateProgressBar = NULL;
 
 	if ( ! pFnDeactivateProgressBar )
-		pFnDeactivateProgressBar = (UFunction*) UObject::GObjObjects()->Data[ 58199 ];
+		pFnDeactivateProgressBar = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_ActiveItem.DeactivateProgressBar" );
 
 	UTgUIPrimaryHUD_ActiveItem_execDeactivateProgressBar_Parms DeactivateProgressBar_Parms;
 
@@ -7456,7 +7457,7 @@ void UTgUIPrimaryHUD_ActiveItem::SetProgressBarText ( struct FString newProgress
 	static UFunction* pFnSetProgressBarText = NULL;
 
 	if ( ! pFnSetProgressBarText )
-		pFnSetProgressBarText = (UFunction*) UObject::GObjObjects()->Data[ 58197 ];
+		pFnSetProgressBarText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_ActiveItem.SetProgressBarText" );
 
 	UTgUIPrimaryHUD_ActiveItem_execSetProgressBarText_Parms SetProgressBarText_Parms;
 	memcpy ( &SetProgressBarText_Parms.newProgressBarText, &newProgressBarText, 0xC );
@@ -7479,7 +7480,7 @@ void UTgUIPrimaryHUD_ActiveItem::StartProgressBar ( float TimeDuration, struct F
 	static UFunction* pFnStartProgressBar = NULL;
 
 	if ( ! pFnStartProgressBar )
-		pFnStartProgressBar = (UFunction*) UObject::GObjObjects()->Data[ 58194 ];
+		pFnStartProgressBar = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_ActiveItem.StartProgressBar" );
 
 	UTgUIPrimaryHUD_ActiveItem_execStartProgressBar_Parms StartProgressBar_Parms;
 	StartProgressBar_Parms.TimeDuration = TimeDuration;
@@ -7503,7 +7504,7 @@ void UTgUIPrimaryHUD_ActiveItem::FixupWidgetsAsEmbedded ( class UUIScreenObject*
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58191 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_ActiveItem.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_ActiveItem_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -7527,7 +7528,7 @@ void UTgUIPrimaryHUD_ActiveItem::FixupWidgets ( class UUIPanel* BasePanel, class
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 58188 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_ActiveItem.FixupWidgets" );
 
 	UTgUIPrimaryHUD_ActiveItem_execFixupWidgets_Parms FixupWidgets_Parms;
 	FixupWidgets_Parms.BasePanel = BasePanel;
@@ -7550,7 +7551,7 @@ void UTgUIPrimaryHUD_ActiveItem::TickPrimaryHUDElement ( float TimeNow )
 	static UFunction* pFnTickPrimaryHUDElement = NULL;
 
 	if ( ! pFnTickPrimaryHUDElement )
-		pFnTickPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58186 ];
+		pFnTickPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_ActiveItem.TickPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_ActiveItem_execTickPrimaryHUDElement_Parms TickPrimaryHUDElement_Parms;
 	TickPrimaryHUDElement_Parms.TimeNow = TimeNow;
@@ -7572,7 +7573,7 @@ bool UTgUIPrimaryHUD_AgentInfo::CheckQueueUpdate ( )
 	static UFunction* pFnCheckQueueUpdate = NULL;
 
 	if ( ! pFnCheckQueueUpdate )
-		pFnCheckQueueUpdate = (UFunction*) UObject::GObjObjects()->Data[ 58267 ];
+		pFnCheckQueueUpdate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_AgentInfo.CheckQueueUpdate" );
 
 	UTgUIPrimaryHUD_AgentInfo_execCheckQueueUpdate_Parms CheckQueueUpdate_Parms;
 
@@ -7595,7 +7596,7 @@ bool UTgUIPrimaryHUD_AgentInfo::CheckPlayerUpdate ( )
 	static UFunction* pFnCheckPlayerUpdate = NULL;
 
 	if ( ! pFnCheckPlayerUpdate )
-		pFnCheckPlayerUpdate = (UFunction*) UObject::GObjObjects()->Data[ 58265 ];
+		pFnCheckPlayerUpdate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_AgentInfo.CheckPlayerUpdate" );
 
 	UTgUIPrimaryHUD_AgentInfo_execCheckPlayerUpdate_Parms CheckPlayerUpdate_Parms;
 
@@ -7617,7 +7618,7 @@ void UTgUIPrimaryHUD_AgentInfo::UpdatePositioning ( )
 	static UFunction* pFnUpdatePositioning = NULL;
 
 	if ( ! pFnUpdatePositioning )
-		pFnUpdatePositioning = (UFunction*) UObject::GObjObjects()->Data[ 58264 ];
+		pFnUpdatePositioning = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_AgentInfo.UpdatePositioning" );
 
 	UTgUIPrimaryHUD_AgentInfo_execUpdatePositioning_Parms UpdatePositioning_Parms;
 
@@ -7637,7 +7638,7 @@ void UTgUIPrimaryHUD_AgentInfo::UpdatePlayerValues ( )
 	static UFunction* pFnUpdatePlayerValues = NULL;
 
 	if ( ! pFnUpdatePlayerValues )
-		pFnUpdatePlayerValues = (UFunction*) UObject::GObjObjects()->Data[ 58263 ];
+		pFnUpdatePlayerValues = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_AgentInfo.UpdatePlayerValues" );
 
 	UTgUIPrimaryHUD_AgentInfo_execUpdatePlayerValues_Parms UpdatePlayerValues_Parms;
 
@@ -7657,7 +7658,7 @@ void UTgUIPrimaryHUD_AgentInfo::UpdateQueueValues ( )
 	static UFunction* pFnUpdateQueueValues = NULL;
 
 	if ( ! pFnUpdateQueueValues )
-		pFnUpdateQueueValues = (UFunction*) UObject::GObjObjects()->Data[ 58262 ];
+		pFnUpdateQueueValues = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_AgentInfo.UpdateQueueValues" );
 
 	UTgUIPrimaryHUD_AgentInfo_execUpdateQueueValues_Parms UpdateQueueValues_Parms;
 
@@ -7677,7 +7678,7 @@ void UTgUIPrimaryHUD_AgentInfo::UpdateAgencyValues ( )
 	static UFunction* pFnUpdateAgencyValues = NULL;
 
 	if ( ! pFnUpdateAgencyValues )
-		pFnUpdateAgencyValues = (UFunction*) UObject::GObjObjects()->Data[ 58261 ];
+		pFnUpdateAgencyValues = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_AgentInfo.UpdateAgencyValues" );
 
 	UTgUIPrimaryHUD_AgentInfo_execUpdateAgencyValues_Parms UpdateAgencyValues_Parms;
 
@@ -7698,7 +7699,7 @@ void UTgUIPrimaryHUD_AgentInfo::TickPrimaryHUDElement ( float TimeNow )
 	static UFunction* pFnTickPrimaryHUDElement = NULL;
 
 	if ( ! pFnTickPrimaryHUDElement )
-		pFnTickPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58259 ];
+		pFnTickPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_AgentInfo.TickPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_AgentInfo_execTickPrimaryHUDElement_Parms TickPrimaryHUDElement_Parms;
 	TickPrimaryHUDElement_Parms.TimeNow = TimeNow;
@@ -7721,7 +7722,7 @@ void UTgUIPrimaryHUD_AgentInfo::FixupWidgetsAsEmbedded ( class UUIScreenObject* 
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58256 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_AgentInfo.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_AgentInfo_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -7744,7 +7745,7 @@ void UTgUIPrimaryHUD_BeaconStatus::UpdateBeaconDirection ( struct FVector NewLoc
 	static UFunction* pFnUpdateBeaconDirection = NULL;
 
 	if ( ! pFnUpdateBeaconDirection )
-		pFnUpdateBeaconDirection = (UFunction*) UObject::GObjObjects()->Data[ 58288 ];
+		pFnUpdateBeaconDirection = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_BeaconStatus.UpdateBeaconDirection" );
 
 	UTgUIPrimaryHUD_BeaconStatus_execUpdateBeaconDirection_Parms UpdateBeaconDirection_Parms;
 	memcpy ( &UpdateBeaconDirection_Parms.NewLoc, &NewLoc, 0xC );
@@ -7766,7 +7767,7 @@ class ATgRepInfo_TaskForce* UTgUIPrimaryHUD_BeaconStatus::GetLocalPlayerTaskForc
 	static UFunction* pFnGetLocalPlayerTaskForce = NULL;
 
 	if ( ! pFnGetLocalPlayerTaskForce )
-		pFnGetLocalPlayerTaskForce = (UFunction*) UObject::GObjObjects()->Data[ 58286 ];
+		pFnGetLocalPlayerTaskForce = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_BeaconStatus.GetLocalPlayerTaskForce" );
 
 	UTgUIPrimaryHUD_BeaconStatus_execGetLocalPlayerTaskForce_Parms GetLocalPlayerTaskForce_Parms;
 
@@ -7789,7 +7790,7 @@ void UTgUIPrimaryHUD_BeaconStatus::UpdateBeaconHUDStatus ( unsigned char NewStat
 	static UFunction* pFnUpdateBeaconHUDStatus = NULL;
 
 	if ( ! pFnUpdateBeaconHUDStatus )
-		pFnUpdateBeaconHUDStatus = (UFunction*) UObject::GObjObjects()->Data[ 58284 ];
+		pFnUpdateBeaconHUDStatus = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_BeaconStatus.UpdateBeaconHUDStatus" );
 
 	UTgUIPrimaryHUD_BeaconStatus_execUpdateBeaconHUDStatus_Parms UpdateBeaconHUDStatus_Parms;
 	UpdateBeaconHUDStatus_Parms.NewStatus = NewStatus;
@@ -7811,7 +7812,7 @@ void UTgUIPrimaryHUD_BeaconStatus::TickPrimaryHUDElement ( float TimeNow )
 	static UFunction* pFnTickPrimaryHUDElement = NULL;
 
 	if ( ! pFnTickPrimaryHUDElement )
-		pFnTickPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58282 ];
+		pFnTickPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_BeaconStatus.TickPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_BeaconStatus_execTickPrimaryHUDElement_Parms TickPrimaryHUDElement_Parms;
 	TickPrimaryHUDElement_Parms.TimeNow = TimeNow;
@@ -7834,7 +7835,7 @@ void UTgUIPrimaryHUD_BeaconStatus::FixupWidgetsAsEmbedded ( class UUIScreenObjec
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58279 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_BeaconStatus.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_BeaconStatus_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -7856,7 +7857,7 @@ void UTgUIPrimaryHUD_BuffBar::CheckBuffs ( )
 	static UFunction* pFnCheckBuffs = NULL;
 
 	if ( ! pFnCheckBuffs )
-		pFnCheckBuffs = (UFunction*) UObject::GObjObjects()->Data[ 58326 ];
+		pFnCheckBuffs = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_BuffBar.CheckBuffs" );
 
 	UTgUIPrimaryHUD_BuffBar_execCheckBuffs_Parms CheckBuffs_Parms;
 
@@ -7877,7 +7878,7 @@ void UTgUIPrimaryHUD_BuffBar::Reset ( unsigned long bHide )
 	static UFunction* pFnReset = NULL;
 
 	if ( ! pFnReset )
-		pFnReset = (UFunction*) UObject::GObjObjects()->Data[ 58324 ];
+		pFnReset = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_BuffBar.Reset" );
 
 	UTgUIPrimaryHUD_BuffBar_execReset_Parms Reset_Parms;
 	Reset_Parms.bHide = bHide;
@@ -7903,7 +7904,7 @@ bool UTgUIPrimaryHUD_BuffBar::AddBuff ( int EffectID, int nIndex, float TimeRema
 	static UFunction* pFnAddBuff = NULL;
 
 	if ( ! pFnAddBuff )
-		pFnAddBuff = (UFunction*) UObject::GObjObjects()->Data[ 58318 ];
+		pFnAddBuff = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_BuffBar.AddBuff" );
 
 	UTgUIPrimaryHUD_BuffBar_execAddBuff_Parms AddBuff_Parms;
 	AddBuff_Parms.EffectID = EffectID;
@@ -7930,7 +7931,7 @@ void UTgUIPrimaryHUD_BuffBar::UpdateBuffWidget ( int WidgetIndex )
 	static UFunction* pFnUpdateBuffWidget = NULL;
 
 	if ( ! pFnUpdateBuffWidget )
-		pFnUpdateBuffWidget = (UFunction*) UObject::GObjObjects()->Data[ 58316 ];
+		pFnUpdateBuffWidget = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_BuffBar.UpdateBuffWidget" );
 
 	UTgUIPrimaryHUD_BuffBar_execUpdateBuffWidget_Parms UpdateBuffWidget_Parms;
 	UpdateBuffWidget_Parms.WidgetIndex = WidgetIndex;
@@ -7953,7 +7954,7 @@ void UTgUIPrimaryHUD_BuffBar::FixupWidgetsAsEmbedded ( class UUIScreenObject* Ba
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58313 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_BuffBar.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_BuffBar_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -7977,7 +7978,7 @@ void UTgUIPrimaryHUD_BuffBar::FixupWidgets ( class UUIPanel* BasePanel, class UT
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 58310 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_BuffBar.FixupWidgets" );
 
 	UTgUIPrimaryHUD_BuffBar_execFixupWidgets_Parms FixupWidgets_Parms;
 	FixupWidgets_Parms.BasePanel = BasePanel;
@@ -8000,7 +8001,7 @@ void UTgUIPrimaryHUD_BuffBar::TickPrimaryHUDElement ( float TimeNow )
 	static UFunction* pFnTickPrimaryHUDElement = NULL;
 
 	if ( ! pFnTickPrimaryHUDElement )
-		pFnTickPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58308 ];
+		pFnTickPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_BuffBar.TickPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_BuffBar_execTickPrimaryHUDElement_Parms TickPrimaryHUDElement_Parms;
 	TickPrimaryHUDElement_Parms.TimeNow = TimeNow;
@@ -8021,7 +8022,7 @@ void UTgUIPrimaryHUD_Clock::UpdateTimer ( )
 	static UFunction* pFnUpdateTimer = NULL;
 
 	if ( ! pFnUpdateTimer )
-		pFnUpdateTimer = (UFunction*) UObject::GObjObjects()->Data[ 58362 ];
+		pFnUpdateTimer = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Clock.UpdateTimer" );
 
 	UTgUIPrimaryHUD_Clock_execUpdateTimer_Parms UpdateTimer_Parms;
 
@@ -8041,7 +8042,7 @@ void UTgUIPrimaryHUD_Clock::UpdateMissionTimer ( )
 	static UFunction* pFnUpdateMissionTimer = NULL;
 
 	if ( ! pFnUpdateMissionTimer )
-		pFnUpdateMissionTimer = (UFunction*) UObject::GObjObjects()->Data[ 58361 ];
+		pFnUpdateMissionTimer = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Clock.UpdateMissionTimer" );
 
 	UTgUIPrimaryHUD_Clock_execUpdateMissionTimer_Parms UpdateMissionTimer_Parms;
 
@@ -8061,7 +8062,7 @@ void UTgUIPrimaryHUD_Clock::Clear ( )
 	static UFunction* pFnClear = NULL;
 
 	if ( ! pFnClear )
-		pFnClear = (UFunction*) UObject::GObjObjects()->Data[ 58360 ];
+		pFnClear = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Clock.Clear" );
 
 	UTgUIPrimaryHUD_Clock_execClear_Parms Clear_Parms;
 
@@ -8084,7 +8085,7 @@ void UTgUIPrimaryHUD_Clock::SetTime ( float fTimeBase, float fTimeStarted, unsig
 	static UFunction* pFnSetTime = NULL;
 
 	if ( ! pFnSetTime )
-		pFnSetTime = (UFunction*) UObject::GObjObjects()->Data[ 58356 ];
+		pFnSetTime = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Clock.SetTime" );
 
 	UTgUIPrimaryHUD_Clock_execSetTime_Parms SetTime_Parms;
 	SetTime_Parms.fTimeBase = fTimeBase;
@@ -8109,7 +8110,7 @@ void UTgUIPrimaryHUD_Clock::SetStyle ( unsigned long bUsingProgressBar, unsigned
 	static UFunction* pFnSetStyle = NULL;
 
 	if ( ! pFnSetStyle )
-		pFnSetStyle = (UFunction*) UObject::GObjObjects()->Data[ 58353 ];
+		pFnSetStyle = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Clock.SetStyle" );
 
 	UTgUIPrimaryHUD_Clock_execSetStyle_Parms SetStyle_Parms;
 	SetStyle_Parms.bUsingProgressBar = bUsingProgressBar;
@@ -8132,7 +8133,7 @@ void UTgUIPrimaryHUD_Clock::UseAsMissionTimer ( unsigned long bIsMissionTimer )
 	static UFunction* pFnUseAsMissionTimer = NULL;
 
 	if ( ! pFnUseAsMissionTimer )
-		pFnUseAsMissionTimer = (UFunction*) UObject::GObjObjects()->Data[ 58351 ];
+		pFnUseAsMissionTimer = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Clock.UseAsMissionTimer" );
 
 	UTgUIPrimaryHUD_Clock_execUseAsMissionTimer_Parms UseAsMissionTimer_Parms;
 	UseAsMissionTimer_Parms.bIsMissionTimer = bIsMissionTimer;
@@ -8154,7 +8155,7 @@ void UTgUIPrimaryHUD_Clock::TickPrimaryHUDElement ( float TimeNow )
 	static UFunction* pFnTickPrimaryHUDElement = NULL;
 
 	if ( ! pFnTickPrimaryHUDElement )
-		pFnTickPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58349 ];
+		pFnTickPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Clock.TickPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_Clock_execTickPrimaryHUDElement_Parms TickPrimaryHUDElement_Parms;
 	TickPrimaryHUDElement_Parms.TimeNow = TimeNow;
@@ -8177,7 +8178,7 @@ void UTgUIPrimaryHUD_Clock::FixupWidgets ( class UUIPanel* BasePanel, class UTgU
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 58346 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Clock.FixupWidgets" );
 
 	UTgUIPrimaryHUD_Clock_execFixupWidgets_Parms FixupWidgets_Parms;
 	FixupWidgets_Parms.BasePanel = BasePanel;
@@ -8201,7 +8202,7 @@ void UTgUIPrimaryHUD_Clock::FixupWidgetsAsEmbedded ( class UUIScreenObject* Base
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58343 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Clock.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_Clock_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -8223,7 +8224,7 @@ void UTgUIPrimaryHUD_CombatAlert::UpdateLabels ( )
 	static UFunction* pFnUpdateLabels = NULL;
 
 	if ( ! pFnUpdateLabels )
-		pFnUpdateLabels = (UFunction*) UObject::GObjObjects()->Data[ 58378 ];
+		pFnUpdateLabels = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_CombatAlert.UpdateLabels" );
 
 	UTgUIPrimaryHUD_CombatAlert_execUpdateLabels_Parms UpdateLabels_Parms;
 
@@ -8243,7 +8244,7 @@ void UTgUIPrimaryHUD_CombatAlert::OnHexAssignmentUpdated ( )
 	static UFunction* pFnOnHexAssignmentUpdated = NULL;
 
 	if ( ! pFnOnHexAssignmentUpdated )
-		pFnOnHexAssignmentUpdated = (UFunction*) UObject::GObjObjects()->Data[ 58377 ];
+		pFnOnHexAssignmentUpdated = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_CombatAlert.OnHexAssignmentUpdated" );
 
 	UTgUIPrimaryHUD_CombatAlert_execOnHexAssignmentUpdated_Parms OnHexAssignmentUpdated_Parms;
 
@@ -8264,7 +8265,7 @@ void UTgUIPrimaryHUD_CombatAlert::TickPrimaryHUDElement ( float TimeNow )
 	static UFunction* pFnTickPrimaryHUDElement = NULL;
 
 	if ( ! pFnTickPrimaryHUDElement )
-		pFnTickPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58375 ];
+		pFnTickPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_CombatAlert.TickPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_CombatAlert_execTickPrimaryHUDElement_Parms TickPrimaryHUDElement_Parms;
 	TickPrimaryHUDElement_Parms.TimeNow = TimeNow;
@@ -8287,7 +8288,7 @@ void UTgUIPrimaryHUD_CombatAlert::FixupWidgetsAsEmbedded ( class UUIScreenObject
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58372 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_CombatAlert.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_CombatAlert_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -8310,7 +8311,7 @@ class ATgPawn* UTgUIPrimaryHUD_DangerBox::GetLocalPawn ( )
 	static UFunction* pFnGetLocalPawn = NULL;
 
 	if ( ! pFnGetLocalPawn )
-		pFnGetLocalPawn = (UFunction*) UObject::GObjObjects()->Data[ 58432 ];
+		pFnGetLocalPawn = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DangerBox.GetLocalPawn" );
 
 	UTgUIPrimaryHUD_DangerBox_execGetLocalPawn_Parms GetLocalPawn_Parms;
 
@@ -8332,7 +8333,7 @@ void UTgUIPrimaryHUD_DangerBox::UnregisterForAlerts ( )
 	static UFunction* pFnUnregisterForAlerts = NULL;
 
 	if ( ! pFnUnregisterForAlerts )
-		pFnUnregisterForAlerts = (UFunction*) UObject::GObjObjects()->Data[ 58431 ];
+		pFnUnregisterForAlerts = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DangerBox.UnregisterForAlerts" );
 
 	UTgUIPrimaryHUD_DangerBox_execUnregisterForAlerts_Parms UnregisterForAlerts_Parms;
 
@@ -8352,7 +8353,7 @@ void UTgUIPrimaryHUD_DangerBox::RegisterForAlerts ( )
 	static UFunction* pFnRegisterForAlerts = NULL;
 
 	if ( ! pFnRegisterForAlerts )
-		pFnRegisterForAlerts = (UFunction*) UObject::GObjObjects()->Data[ 58430 ];
+		pFnRegisterForAlerts = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DangerBox.RegisterForAlerts" );
 
 	UTgUIPrimaryHUD_DangerBox_execRegisterForAlerts_Parms RegisterForAlerts_Parms;
 
@@ -8373,7 +8374,7 @@ void UTgUIPrimaryHUD_DangerBox::InitAlertFade ( int nAlertIndex )
 	static UFunction* pFnInitAlertFade = NULL;
 
 	if ( ! pFnInitAlertFade )
-		pFnInitAlertFade = (UFunction*) UObject::GObjObjects()->Data[ 58428 ];
+		pFnInitAlertFade = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DangerBox.InitAlertFade" );
 
 	UTgUIPrimaryHUD_DangerBox_execInitAlertFade_Parms InitAlertFade_Parms;
 	InitAlertFade_Parms.nAlertIndex = nAlertIndex;
@@ -8394,7 +8395,7 @@ void UTgUIPrimaryHUD_DangerBox::UpdateAlertFade ( )
 	static UFunction* pFnUpdateAlertFade = NULL;
 
 	if ( ! pFnUpdateAlertFade )
-		pFnUpdateAlertFade = (UFunction*) UObject::GObjObjects()->Data[ 58427 ];
+		pFnUpdateAlertFade = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DangerBox.UpdateAlertFade" );
 
 	UTgUIPrimaryHUD_DangerBox_execUpdateAlertFade_Parms UpdateAlertFade_Parms;
 
@@ -8414,7 +8415,7 @@ void UTgUIPrimaryHUD_DangerBox::UpdateDisplay ( )
 	static UFunction* pFnUpdateDisplay = NULL;
 
 	if ( ! pFnUpdateDisplay )
-		pFnUpdateDisplay = (UFunction*) UObject::GObjObjects()->Data[ 58426 ];
+		pFnUpdateDisplay = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DangerBox.UpdateDisplay" );
 
 	UTgUIPrimaryHUD_DangerBox_execUpdateDisplay_Parms UpdateDisplay_Parms;
 
@@ -8434,7 +8435,7 @@ void UTgUIPrimaryHUD_DangerBox::RemoveTimedOutAlerts ( )
 	static UFunction* pFnRemoveTimedOutAlerts = NULL;
 
 	if ( ! pFnRemoveTimedOutAlerts )
-		pFnRemoveTimedOutAlerts = (UFunction*) UObject::GObjObjects()->Data[ 58425 ];
+		pFnRemoveTimedOutAlerts = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DangerBox.RemoveTimedOutAlerts" );
 
 	UTgUIPrimaryHUD_DangerBox_execRemoveTimedOutAlerts_Parms RemoveTimedOutAlerts_Parms;
 
@@ -8454,7 +8455,7 @@ void UTgUIPrimaryHUD_DangerBox::CancelAllAlerts ( )
 	static UFunction* pFnCancelAllAlerts = NULL;
 
 	if ( ! pFnCancelAllAlerts )
-		pFnCancelAllAlerts = (UFunction*) UObject::GObjObjects()->Data[ 58424 ];
+		pFnCancelAllAlerts = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DangerBox.CancelAllAlerts" );
 
 	UTgUIPrimaryHUD_DangerBox_execCancelAllAlerts_Parms CancelAllAlerts_Parms;
 
@@ -8475,7 +8476,7 @@ void UTgUIPrimaryHUD_DangerBox::RemoveAlert ( int nMsgId )
 	static UFunction* pFnRemoveAlert = NULL;
 
 	if ( ! pFnRemoveAlert )
-		pFnRemoveAlert = (UFunction*) UObject::GObjObjects()->Data[ 58422 ];
+		pFnRemoveAlert = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DangerBox.RemoveAlert" );
 
 	UTgUIPrimaryHUD_DangerBox_execRemoveAlert_Parms RemoveAlert_Parms;
 	RemoveAlert_Parms.nMsgId = nMsgId;
@@ -8501,7 +8502,7 @@ void UTgUIPrimaryHUD_DangerBox::AddAlert ( unsigned char Priority, unsigned char
 	static UFunction* pFnAddAlert = NULL;
 
 	if ( ! pFnAddAlert )
-		pFnAddAlert = (UFunction*) UObject::GObjObjects()->Data[ 58416 ];
+		pFnAddAlert = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DangerBox.AddAlert" );
 
 	UTgUIPrimaryHUD_DangerBox_execAddAlert_Parms AddAlert_Parms;
 	AddAlert_Parms.Priority = Priority;
@@ -8527,7 +8528,7 @@ void UTgUIPrimaryHUD_DangerBox::TickPrimaryHUDElement ( float TimeNow )
 	static UFunction* pFnTickPrimaryHUDElement = NULL;
 
 	if ( ! pFnTickPrimaryHUDElement )
-		pFnTickPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58414 ];
+		pFnTickPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DangerBox.TickPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_DangerBox_execTickPrimaryHUDElement_Parms TickPrimaryHUDElement_Parms;
 	TickPrimaryHUDElement_Parms.TimeNow = TimeNow;
@@ -8550,7 +8551,7 @@ void UTgUIPrimaryHUD_DangerBox::FixupWidgetsAsEmbedded ( class UUIScreenObject* 
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58411 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DangerBox.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_DangerBox_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -8574,7 +8575,7 @@ int UTgUIPrimaryHUD_DeviceBar::GetSlotByEquipPoint ( unsigned char eqpPoint )
 	static UFunction* pFnGetSlotByEquipPoint = NULL;
 
 	if ( ! pFnGetSlotByEquipPoint )
-		pFnGetSlotByEquipPoint = (UFunction*) UObject::GObjObjects()->Data[ 58504 ];
+		pFnGetSlotByEquipPoint = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.GetSlotByEquipPoint" );
 
 	UTgUIPrimaryHUD_DeviceBar_execGetSlotByEquipPoint_Parms GetSlotByEquipPoint_Parms;
 	GetSlotByEquipPoint_Parms.eqpPoint = eqpPoint;
@@ -8599,7 +8600,7 @@ int UTgUIPrimaryHUD_DeviceBar::GetSlotBySubType ( unsigned char subtype )
 	static UFunction* pFnGetSlotBySubType = NULL;
 
 	if ( ! pFnGetSlotBySubType )
-		pFnGetSlotBySubType = (UFunction*) UObject::GObjObjects()->Data[ 58501 ];
+		pFnGetSlotBySubType = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.GetSlotBySubType" );
 
 	UTgUIPrimaryHUD_DeviceBar_execGetSlotBySubType_Parms GetSlotBySubType_Parms;
 	GetSlotBySubType_Parms.subtype = subtype;
@@ -8625,7 +8626,7 @@ void UTgUIPrimaryHUD_DeviceBar::UpdateCooldown ( int nEquipPoint, float fStartTi
 	static UFunction* pFnUpdateCooldown = NULL;
 
 	if ( ! pFnUpdateCooldown )
-		pFnUpdateCooldown = (UFunction*) UObject::GObjObjects()->Data[ 58497 ];
+		pFnUpdateCooldown = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.UpdateCooldown" );
 
 	UTgUIPrimaryHUD_DeviceBar_execUpdateCooldown_Parms UpdateCooldown_Parms;
 	UpdateCooldown_Parms.nEquipPoint = nEquipPoint;
@@ -8649,7 +8650,7 @@ bool UTgUIPrimaryHUD_DeviceBar::HasInhandDevice ( )
 	static UFunction* pFnHasInhandDevice = NULL;
 
 	if ( ! pFnHasInhandDevice )
-		pFnHasInhandDevice = (UFunction*) UObject::GObjObjects()->Data[ 58495 ];
+		pFnHasInhandDevice = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.HasInhandDevice" );
 
 	UTgUIPrimaryHUD_DeviceBar_execHasInhandDevice_Parms HasInhandDevice_Parms;
 
@@ -8672,7 +8673,7 @@ bool UTgUIPrimaryHUD_DeviceBar::SelectPreviousDevice ( )
 	static UFunction* pFnSelectPreviousDevice = NULL;
 
 	if ( ! pFnSelectPreviousDevice )
-		pFnSelectPreviousDevice = (UFunction*) UObject::GObjObjects()->Data[ 58493 ];
+		pFnSelectPreviousDevice = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.SelectPreviousDevice" );
 
 	UTgUIPrimaryHUD_DeviceBar_execSelectPreviousDevice_Parms SelectPreviousDevice_Parms;
 
@@ -8695,7 +8696,7 @@ bool UTgUIPrimaryHUD_DeviceBar::SelectNextDevice ( )
 	static UFunction* pFnSelectNextDevice = NULL;
 
 	if ( ! pFnSelectNextDevice )
-		pFnSelectNextDevice = (UFunction*) UObject::GObjObjects()->Data[ 58491 ];
+		pFnSelectNextDevice = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.SelectNextDevice" );
 
 	UTgUIPrimaryHUD_DeviceBar_execSelectNextDevice_Parms SelectNextDevice_Parms;
 
@@ -8719,7 +8720,7 @@ bool UTgUIPrimaryHUD_DeviceBar::SelectDeviceBarType ( unsigned char eType )
 	static UFunction* pFnSelectDeviceBarType = NULL;
 
 	if ( ! pFnSelectDeviceBarType )
-		pFnSelectDeviceBarType = (UFunction*) UObject::GObjObjects()->Data[ 58488 ];
+		pFnSelectDeviceBarType = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.SelectDeviceBarType" );
 
 	UTgUIPrimaryHUD_DeviceBar_execSelectDeviceBarType_Parms SelectDeviceBarType_Parms;
 	SelectDeviceBarType_Parms.eType = eType;
@@ -8744,7 +8745,7 @@ bool UTgUIPrimaryHUD_DeviceBar::SelectDeviceBarSlot ( int Slot )
 	static UFunction* pFnSelectDeviceBarSlot = NULL;
 
 	if ( ! pFnSelectDeviceBarSlot )
-		pFnSelectDeviceBarSlot = (UFunction*) UObject::GObjObjects()->Data[ 58485 ];
+		pFnSelectDeviceBarSlot = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.SelectDeviceBarSlot" );
 
 	UTgUIPrimaryHUD_DeviceBar_execSelectDeviceBarSlot_Parms SelectDeviceBarSlot_Parms;
 	SelectDeviceBarSlot_Parms.Slot = Slot;
@@ -8768,7 +8769,7 @@ void UTgUIPrimaryHUD_DeviceBar::ResetHUDCooldowns ( int DeviceEqpPt )
 	static UFunction* pFnResetHUDCooldowns = NULL;
 
 	if ( ! pFnResetHUDCooldowns )
-		pFnResetHUDCooldowns = (UFunction*) UObject::GObjObjects()->Data[ 58483 ];
+		pFnResetHUDCooldowns = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.ResetHUDCooldowns" );
 
 	UTgUIPrimaryHUD_DeviceBar_execResetHUDCooldowns_Parms ResetHUDCooldowns_Parms;
 	ResetHUDCooldowns_Parms.DeviceEqpPt = DeviceEqpPt;
@@ -8789,7 +8790,7 @@ void UTgUIPrimaryHUD_DeviceBar::UpdateKeyBindings ( )
 	static UFunction* pFnUpdateKeyBindings = NULL;
 
 	if ( ! pFnUpdateKeyBindings )
-		pFnUpdateKeyBindings = (UFunction*) UObject::GObjObjects()->Data[ 58482 ];
+		pFnUpdateKeyBindings = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.UpdateKeyBindings" );
 
 	UTgUIPrimaryHUD_DeviceBar_execUpdateKeyBindings_Parms UpdateKeyBindings_Parms;
 
@@ -8809,7 +8810,7 @@ void UTgUIPrimaryHUD_DeviceBar::RefreshUICooldowns ( )
 	static UFunction* pFnRefreshUICooldowns = NULL;
 
 	if ( ! pFnRefreshUICooldowns )
-		pFnRefreshUICooldowns = (UFunction*) UObject::GObjObjects()->Data[ 58481 ];
+		pFnRefreshUICooldowns = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.RefreshUICooldowns" );
 
 	UTgUIPrimaryHUD_DeviceBar_execRefreshUICooldowns_Parms RefreshUICooldowns_Parms;
 
@@ -8831,7 +8832,7 @@ bool UTgUIPrimaryHUD_DeviceBar::GetActiveDeviceSlotString ( struct FString* Devi
 	static UFunction* pFnGetActiveDeviceSlotString = NULL;
 
 	if ( ! pFnGetActiveDeviceSlotString )
-		pFnGetActiveDeviceSlotString = (UFunction*) UObject::GObjObjects()->Data[ 58478 ];
+		pFnGetActiveDeviceSlotString = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.GetActiveDeviceSlotString" );
 
 	UTgUIPrimaryHUD_DeviceBar_execGetActiveDeviceSlotString_Parms GetActiveDeviceSlotString_Parms;
 
@@ -8857,7 +8858,7 @@ void UTgUIPrimaryHUD_DeviceBar::UpdateSelectedDevice ( class ATgDevice* Dev )
 	static UFunction* pFnUpdateSelectedDevice = NULL;
 
 	if ( ! pFnUpdateSelectedDevice )
-		pFnUpdateSelectedDevice = (UFunction*) UObject::GObjObjects()->Data[ 58476 ];
+		pFnUpdateSelectedDevice = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.UpdateSelectedDevice" );
 
 	UTgUIPrimaryHUD_DeviceBar_execUpdateSelectedDevice_Parms UpdateSelectedDevice_Parms;
 	UpdateSelectedDevice_Parms.Dev = Dev;
@@ -8878,7 +8879,7 @@ void UTgUIPrimaryHUD_DeviceBar::ClearAllDeviceBarSlotWidgets ( )
 	static UFunction* pFnClearAllDeviceBarSlotWidgets = NULL;
 
 	if ( ! pFnClearAllDeviceBarSlotWidgets )
-		pFnClearAllDeviceBarSlotWidgets = (UFunction*) UObject::GObjObjects()->Data[ 58475 ];
+		pFnClearAllDeviceBarSlotWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.ClearAllDeviceBarSlotWidgets" );
 
 	UTgUIPrimaryHUD_DeviceBar_execClearAllDeviceBarSlotWidgets_Parms ClearAllDeviceBarSlotWidgets_Parms;
 
@@ -8899,7 +8900,7 @@ void UTgUIPrimaryHUD_DeviceBar::UserFlashOffhand ( int WhichSlot )
 	static UFunction* pFnUserFlashOffhand = NULL;
 
 	if ( ! pFnUserFlashOffhand )
-		pFnUserFlashOffhand = (UFunction*) UObject::GObjObjects()->Data[ 58473 ];
+		pFnUserFlashOffhand = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.UserFlashOffhand" );
 
 	UTgUIPrimaryHUD_DeviceBar_execUserFlashOffhand_Parms UserFlashOffhand_Parms;
 	UserFlashOffhand_Parms.WhichSlot = WhichSlot;
@@ -8921,7 +8922,7 @@ void UTgUIPrimaryHUD_DeviceBar::UserSelectedSlot ( int WhichSlot )
 	static UFunction* pFnUserSelectedSlot = NULL;
 
 	if ( ! pFnUserSelectedSlot )
-		pFnUserSelectedSlot = (UFunction*) UObject::GObjObjects()->Data[ 58471 ];
+		pFnUserSelectedSlot = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.UserSelectedSlot" );
 
 	UTgUIPrimaryHUD_DeviceBar_execUserSelectedSlot_Parms UserSelectedSlot_Parms;
 	UserSelectedSlot_Parms.WhichSlot = WhichSlot;
@@ -8942,7 +8943,7 @@ void UTgUIPrimaryHUD_DeviceBar::UpdateStatus ( )
 	static UFunction* pFnUpdateStatus = NULL;
 
 	if ( ! pFnUpdateStatus )
-		pFnUpdateStatus = (UFunction*) UObject::GObjObjects()->Data[ 58470 ];
+		pFnUpdateStatus = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.UpdateStatus" );
 
 	UTgUIPrimaryHUD_DeviceBar_execUpdateStatus_Parms UpdateStatus_Parms;
 
@@ -8962,7 +8963,7 @@ void UTgUIPrimaryHUD_DeviceBar::PopulateDeviceBarSlots ( )
 	static UFunction* pFnPopulateDeviceBarSlots = NULL;
 
 	if ( ! pFnPopulateDeviceBarSlots )
-		pFnPopulateDeviceBarSlots = (UFunction*) UObject::GObjObjects()->Data[ 58469 ];
+		pFnPopulateDeviceBarSlots = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.PopulateDeviceBarSlots" );
 
 	UTgUIPrimaryHUD_DeviceBar_execPopulateDeviceBarSlots_Parms PopulateDeviceBarSlots_Parms;
 
@@ -8985,7 +8986,7 @@ class AReplicationInfo* UTgUIPrimaryHUD_DeviceBar::FindSpawnedPet ( class ATgPaw
 	static UFunction* pFnFindSpawnedPet = NULL;
 
 	if ( ! pFnFindSpawnedPet )
-		pFnFindSpawnedPet = (UFunction*) UObject::GObjObjects()->Data[ 58465 ];
+		pFnFindSpawnedPet = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.FindSpawnedPet" );
 
 	UTgUIPrimaryHUD_DeviceBar_execFindSpawnedPet_Parms FindSpawnedPet_Parms;
 	FindSpawnedPet_Parms.PlayerPawn = PlayerPawn;
@@ -9009,7 +9010,7 @@ void UTgUIPrimaryHUD_DeviceBar::TickTurretHealth ( )
 	static UFunction* pFnTickTurretHealth = NULL;
 
 	if ( ! pFnTickTurretHealth )
-		pFnTickTurretHealth = (UFunction*) UObject::GObjObjects()->Data[ 58464 ];
+		pFnTickTurretHealth = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.TickTurretHealth" );
 
 	UTgUIPrimaryHUD_DeviceBar_execTickTurretHealth_Parms TickTurretHealth_Parms;
 
@@ -9030,7 +9031,7 @@ void UTgUIPrimaryHUD_DeviceBar::TickVisuals ( float TimeNow )
 	static UFunction* pFnTickVisuals = NULL;
 
 	if ( ! pFnTickVisuals )
-		pFnTickVisuals = (UFunction*) UObject::GObjObjects()->Data[ 58462 ];
+		pFnTickVisuals = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.TickVisuals" );
 
 	UTgUIPrimaryHUD_DeviceBar_execTickVisuals_Parms TickVisuals_Parms;
 	TickVisuals_Parms.TimeNow = TimeNow;
@@ -9052,7 +9053,7 @@ void UTgUIPrimaryHUD_DeviceBar::TickPrimaryHUDElement ( float TimeNow )
 	static UFunction* pFnTickPrimaryHUDElement = NULL;
 
 	if ( ! pFnTickPrimaryHUDElement )
-		pFnTickPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58460 ];
+		pFnTickPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.TickPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_DeviceBar_execTickPrimaryHUDElement_Parms TickPrimaryHUDElement_Parms;
 	TickPrimaryHUDElement_Parms.TimeNow = TimeNow;
@@ -9076,7 +9077,7 @@ void UTgUIPrimaryHUD_DeviceBar::FixupWidgetsAsEmbedded ( class UUIScreenObject* 
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58456 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_DeviceBar_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -9102,7 +9103,7 @@ void UTgUIPrimaryHUD_DeviceBar::FixupWidgets ( class UUIPanel* BasePanel, class 
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 58452 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DeviceBar.FixupWidgets" );
 
 	UTgUIPrimaryHUD_DeviceBar_execFixupWidgets_Parms FixupWidgets_Parms;
 	FixupWidgets_Parms.BasePanel = BasePanel;
@@ -9126,7 +9127,7 @@ void UTgUIPrimaryHUD_DialogQuery::eventSetDialogType ( unsigned char eType )
 	static UFunction* pFnSetDialogType = NULL;
 
 	if ( ! pFnSetDialogType )
-		pFnSetDialogType = (UFunction*) UObject::GObjObjects()->Data[ 58532 ];
+		pFnSetDialogType = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DialogQuery.SetDialogType" );
 
 	UTgUIPrimaryHUD_DialogQuery_eventSetDialogType_Parms SetDialogType_Parms;
 	SetDialogType_Parms.eType = eType;
@@ -9143,7 +9144,7 @@ void UTgUIPrimaryHUD_DialogQuery::HideDialog ( )
 	static UFunction* pFnHideDialog = NULL;
 
 	if ( ! pFnHideDialog )
-		pFnHideDialog = (UFunction*) UObject::GObjObjects()->Data[ 58531 ];
+		pFnHideDialog = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DialogQuery.HideDialog" );
 
 	UTgUIPrimaryHUD_DialogQuery_execHideDialog_Parms HideDialog_Parms;
 
@@ -9165,7 +9166,7 @@ void UTgUIPrimaryHUD_DialogQuery::ShowDialog ( struct FString sDialogText, float
 	static UFunction* pFnShowDialog = NULL;
 
 	if ( ! pFnShowDialog )
-		pFnShowDialog = (UFunction*) UObject::GObjObjects()->Data[ 58528 ];
+		pFnShowDialog = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DialogQuery.ShowDialog" );
 
 	UTgUIPrimaryHUD_DialogQuery_execShowDialog_Parms ShowDialog_Parms;
 	memcpy ( &ShowDialog_Parms.sDialogText, &sDialogText, 0xC );
@@ -9189,7 +9190,7 @@ void UTgUIPrimaryHUD_DialogQuery::FixupWidgetsAsEmbedded ( class UUIScreenObject
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58525 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DialogQuery.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_DialogQuery_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -9213,7 +9214,7 @@ void UTgUIPrimaryHUD_DialogQuery::FixupWidgets ( class UUIPanel* BasePanel, clas
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 58522 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DialogQuery.FixupWidgets" );
 
 	UTgUIPrimaryHUD_DialogQuery_execFixupWidgets_Parms FixupWidgets_Parms;
 	FixupWidgets_Parms.BasePanel = BasePanel;
@@ -9236,7 +9237,7 @@ void UTgUIPrimaryHUD_DialogQuery::TickPrimaryHUDElement ( float TimeNow )
 	static UFunction* pFnTickPrimaryHUDElement = NULL;
 
 	if ( ! pFnTickPrimaryHUDElement )
-		pFnTickPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58520 ];
+		pFnTickPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_DialogQuery.TickPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_DialogQuery_execTickPrimaryHUDElement_Parms TickPrimaryHUDElement_Parms;
 	TickPrimaryHUDElement_Parms.TimeNow = TimeNow;
@@ -9258,7 +9259,7 @@ void UTgUIPrimaryHUD_KillDisplay::AddNewDisplayMessage ( struct FString Message 
 	static UFunction* pFnAddNewDisplayMessage = NULL;
 
 	if ( ! pFnAddNewDisplayMessage )
-		pFnAddNewDisplayMessage = (UFunction*) UObject::GObjObjects()->Data[ 58552 ];
+		pFnAddNewDisplayMessage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_KillDisplay.AddNewDisplayMessage" );
 
 	UTgUIPrimaryHUD_KillDisplay_execAddNewDisplayMessage_Parms AddNewDisplayMessage_Parms;
 	memcpy ( &AddNewDisplayMessage_Parms.Message, &Message, 0xC );
@@ -9282,7 +9283,7 @@ void UTgUIPrimaryHUD_KillDisplay::AddNewKilledTarget ( struct FString Target, st
 	static UFunction* pFnAddNewKilledTarget = NULL;
 
 	if ( ! pFnAddNewKilledTarget )
-		pFnAddNewKilledTarget = (UFunction*) UObject::GObjObjects()->Data[ 58548 ];
+		pFnAddNewKilledTarget = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_KillDisplay.AddNewKilledTarget" );
 
 	UTgUIPrimaryHUD_KillDisplay_execAddNewKilledTarget_Parms AddNewKilledTarget_Parms;
 	memcpy ( &AddNewKilledTarget_Parms.Target, &Target, 0xC );
@@ -9306,7 +9307,7 @@ void UTgUIPrimaryHUD_KillDisplay::TickPrimaryHUDElement ( float TimeNow )
 	static UFunction* pFnTickPrimaryHUDElement = NULL;
 
 	if ( ! pFnTickPrimaryHUDElement )
-		pFnTickPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58546 ];
+		pFnTickPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_KillDisplay.TickPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_KillDisplay_execTickPrimaryHUDElement_Parms TickPrimaryHUDElement_Parms;
 	TickPrimaryHUDElement_Parms.TimeNow = TimeNow;
@@ -9329,7 +9330,7 @@ void UTgUIPrimaryHUD_KillDisplay::FixupWidgetsAsEmbedded ( class UUIScreenObject
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58543 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_KillDisplay.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_KillDisplay_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -9353,7 +9354,7 @@ void UTgUIPrimaryHUD_KillDisplay::FixupWidgets ( class UUIPanel* BasePanel, clas
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 58540 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_KillDisplay.FixupWidgets" );
 
 	UTgUIPrimaryHUD_KillDisplay_execFixupWidgets_Parms FixupWidgets_Parms;
 	FixupWidgets_Parms.BasePanel = BasePanel;
@@ -9376,7 +9377,7 @@ void UTgUIPrimaryHUD_MiniMap::Show ( unsigned long Immediate )
 	static UFunction* pFnShow = NULL;
 
 	if ( ! pFnShow )
-		pFnShow = (UFunction*) UObject::GObjObjects()->Data[ 58573 ];
+		pFnShow = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_MiniMap.Show" );
 
 	UTgUIPrimaryHUD_MiniMap_execShow_Parms Show_Parms;
 	Show_Parms.Immediate = Immediate;
@@ -9398,7 +9399,7 @@ void UTgUIPrimaryHUD_MiniMap::Hide ( unsigned long Immediate )
 	static UFunction* pFnHide = NULL;
 
 	if ( ! pFnHide )
-		pFnHide = (UFunction*) UObject::GObjObjects()->Data[ 58571 ];
+		pFnHide = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_MiniMap.Hide" );
 
 	UTgUIPrimaryHUD_MiniMap_execHide_Parms Hide_Parms;
 	Hide_Parms.Immediate = Immediate;
@@ -9419,7 +9420,7 @@ void UTgUIPrimaryHUD_MiniMap::InitPrimaryHUDElement ( )
 	static UFunction* pFnInitPrimaryHUDElement = NULL;
 
 	if ( ! pFnInitPrimaryHUDElement )
-		pFnInitPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58570 ];
+		pFnInitPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_MiniMap.InitPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_MiniMap_execInitPrimaryHUDElement_Parms InitPrimaryHUDElement_Parms;
 
@@ -9440,7 +9441,7 @@ void UTgUIPrimaryHUD_MiniMap::TickPrimaryHUDElement ( float TimeNow )
 	static UFunction* pFnTickPrimaryHUDElement = NULL;
 
 	if ( ! pFnTickPrimaryHUDElement )
-		pFnTickPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58568 ];
+		pFnTickPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_MiniMap.TickPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_MiniMap_execTickPrimaryHUDElement_Parms TickPrimaryHUDElement_Parms;
 	TickPrimaryHUDElement_Parms.TimeNow = TimeNow;
@@ -9463,7 +9464,7 @@ void UTgUIPrimaryHUD_MiniMap::FixupWidgetsAsEmbedded ( class UUIScreenObject* Ba
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58565 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_MiniMap.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_MiniMap_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -9487,7 +9488,7 @@ void UTgUIPrimaryHUD_MiniMap::FixupWidgets ( class UUIPanel* BasePanel, class UT
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 58562 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_MiniMap.FixupWidgets" );
 
 	UTgUIPrimaryHUD_MiniMap_execFixupWidgets_Parms FixupWidgets_Parms;
 	FixupWidgets_Parms.BasePanel = BasePanel;
@@ -9509,7 +9510,7 @@ void UTgUIPrimaryHUD_MissionInfo::RepositionWidgets ( )
 	static UFunction* pFnRepositionWidgets = NULL;
 
 	if ( ! pFnRepositionWidgets )
-		pFnRepositionWidgets = (UFunction*) UObject::GObjObjects()->Data[ 58671 ];
+		pFnRepositionWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_MissionInfo.RepositionWidgets" );
 
 	UTgUIPrimaryHUD_MissionInfo_execRepositionWidgets_Parms RepositionWidgets_Parms;
 
@@ -9530,7 +9531,7 @@ void UTgUIPrimaryHUD_MissionInfo::PopulateMissionInfo ( unsigned long bNoResetAc
 	static UFunction* pFnPopulateMissionInfo = NULL;
 
 	if ( ! pFnPopulateMissionInfo )
-		pFnPopulateMissionInfo = (UFunction*) UObject::GObjObjects()->Data[ 58669 ];
+		pFnPopulateMissionInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_MissionInfo.PopulateMissionInfo" );
 
 	UTgUIPrimaryHUD_MissionInfo_execPopulateMissionInfo_Parms PopulateMissionInfo_Parms;
 	PopulateMissionInfo_Parms.bNoResetActive = bNoResetActive;
@@ -9552,7 +9553,7 @@ void UTgUIPrimaryHUD_MissionInfo::TickPrimaryHUDElement ( float TimeNow )
 	static UFunction* pFnTickPrimaryHUDElement = NULL;
 
 	if ( ! pFnTickPrimaryHUDElement )
-		pFnTickPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58667 ];
+		pFnTickPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_MissionInfo.TickPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_MissionInfo_execTickPrimaryHUDElement_Parms TickPrimaryHUDElement_Parms;
 	TickPrimaryHUDElement_Parms.TimeNow = TimeNow;
@@ -9575,7 +9576,7 @@ void UTgUIPrimaryHUD_MissionInfo::FixupWidgetsAsEmbedded ( class UUIScreenObject
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58664 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_MissionInfo.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_MissionInfo_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -9599,7 +9600,7 @@ void UTgUIPrimaryHUD_MissionInfo::FixupWidgets ( class UUIPanel* BasePanel, clas
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 58661 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_MissionInfo.FixupWidgets" );
 
 	UTgUIPrimaryHUD_MissionInfo_execFixupWidgets_Parms FixupWidgets_Parms;
 	FixupWidgets_Parms.BasePanel = BasePanel;
@@ -9621,7 +9622,7 @@ void UTgUIPrimaryHUD_MissionInfo::InitPrimaryHUDElement ( )
 	static UFunction* pFnInitPrimaryHUDElement = NULL;
 
 	if ( ! pFnInitPrimaryHUDElement )
-		pFnInitPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58660 ];
+		pFnInitPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_MissionInfo.InitPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_MissionInfo_execInitPrimaryHUDElement_Parms InitPrimaryHUDElement_Parms;
 
@@ -9643,7 +9644,7 @@ void UTgUIPrimaryHUD_QuestTracking::FixupWidgetsAsEmbedded ( class UUIScreenObje
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58705 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_QuestTracking.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_QuestTracking_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -9667,7 +9668,7 @@ void UTgUIPrimaryHUD_QuestTracking::FixupWidgets ( class UUIPanel* BasePanel, cl
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 58702 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_QuestTracking.FixupWidgets" );
 
 	UTgUIPrimaryHUD_QuestTracking_execFixupWidgets_Parms FixupWidgets_Parms;
 	FixupWidgets_Parms.BasePanel = BasePanel;
@@ -9689,7 +9690,7 @@ void UTgUIPrimaryHUD_RaidTimer::UpdateRaidTicketBar ( )
 	static UFunction* pFnUpdateRaidTicketBar = NULL;
 
 	if ( ! pFnUpdateRaidTicketBar )
-		pFnUpdateRaidTicketBar = (UFunction*) UObject::GObjObjects()->Data[ 58742 ];
+		pFnUpdateRaidTicketBar = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_RaidTimer.UpdateRaidTicketBar" );
 
 	UTgUIPrimaryHUD_RaidTimer_execUpdateRaidTicketBar_Parms UpdateRaidTicketBar_Parms;
 
@@ -9710,7 +9711,7 @@ void UTgUIPrimaryHUD_RaidTimer::TickPrimaryHUDElement ( float TimeNow )
 	static UFunction* pFnTickPrimaryHUDElement = NULL;
 
 	if ( ! pFnTickPrimaryHUDElement )
-		pFnTickPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58740 ];
+		pFnTickPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_RaidTimer.TickPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_RaidTimer_execTickPrimaryHUDElement_Parms TickPrimaryHUDElement_Parms;
 	TickPrimaryHUDElement_Parms.TimeNow = TimeNow;
@@ -9733,7 +9734,7 @@ void UTgUIPrimaryHUD_RaidTimer::FixupWidgets ( class UUIPanel* BasePanel, class 
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 58737 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_RaidTimer.FixupWidgets" );
 
 	UTgUIPrimaryHUD_RaidTimer_execFixupWidgets_Parms FixupWidgets_Parms;
 	FixupWidgets_Parms.BasePanel = BasePanel;
@@ -9757,7 +9758,7 @@ void UTgUIPrimaryHUD_RaidTimer::FixupWidgetsAsEmbedded ( class UUIScreenObject* 
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58734 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_RaidTimer.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_RaidTimer_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -9779,7 +9780,7 @@ void UTgUIPrimaryHUD_Settings::Detach ( )
 	static UFunction* pFnDetach = NULL;
 
 	if ( ! pFnDetach )
-		pFnDetach = (UFunction*) UObject::GObjObjects()->Data[ 58169 ];
+		pFnDetach = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Settings.Detach" );
 
 	UTgUIPrimaryHUD_Settings_execDetach_Parms Detach_Parms;
 
@@ -9799,7 +9800,7 @@ void UTgUIPrimaryHUD_Settings::LoadConfigSettings ( )
 	static UFunction* pFnLoadConfigSettings = NULL;
 
 	if ( ! pFnLoadConfigSettings )
-		pFnLoadConfigSettings = (UFunction*) UObject::GObjObjects()->Data[ 58168 ];
+		pFnLoadConfigSettings = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Settings.LoadConfigSettings" );
 
 	UTgUIPrimaryHUD_Settings_execLoadConfigSettings_Parms LoadConfigSettings_Parms;
 
@@ -9819,7 +9820,7 @@ void UTgUIPrimaryHUD_Settings::SaveConfigSettings ( )
 	static UFunction* pFnSaveConfigSettings = NULL;
 
 	if ( ! pFnSaveConfigSettings )
-		pFnSaveConfigSettings = (UFunction*) UObject::GObjObjects()->Data[ 58167 ];
+		pFnSaveConfigSettings = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Settings.SaveConfigSettings" );
 
 	UTgUIPrimaryHUD_Settings_execSaveConfigSettings_Parms SaveConfigSettings_Parms;
 
@@ -9840,7 +9841,7 @@ bool UTgUIPrimaryHUD_Settings::ShouldTick ( )
 	static UFunction* pFnShouldTick = NULL;
 
 	if ( ! pFnShouldTick )
-		pFnShouldTick = (UFunction*) UObject::GObjObjects()->Data[ 58165 ];
+		pFnShouldTick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Settings.ShouldTick" );
 
 	UTgUIPrimaryHUD_Settings_execShouldTick_Parms ShouldTick_Parms;
 
@@ -9863,7 +9864,7 @@ bool UTgUIPrimaryHUD_Settings::IsHidden ( )
 	static UFunction* pFnIsHidden = NULL;
 
 	if ( ! pFnIsHidden )
-		pFnIsHidden = (UFunction*) UObject::GObjObjects()->Data[ 58163 ];
+		pFnIsHidden = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Settings.IsHidden" );
 
 	UTgUIPrimaryHUD_Settings_execIsHidden_Parms IsHidden_Parms;
 
@@ -9885,7 +9886,7 @@ void UTgUIPrimaryHUD_Settings::CleanBasePanelList ( )
 	static UFunction* pFnCleanBasePanelList = NULL;
 
 	if ( ! pFnCleanBasePanelList )
-		pFnCleanBasePanelList = (UFunction*) UObject::GObjObjects()->Data[ 58162 ];
+		pFnCleanBasePanelList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Settings.CleanBasePanelList" );
 
 	UTgUIPrimaryHUD_Settings_execCleanBasePanelList_Parms CleanBasePanelList_Parms;
 
@@ -9906,7 +9907,7 @@ void UTgUIPrimaryHUD_Settings::RemoveScene ( class UTgUISceneDriver* Scene )
 	static UFunction* pFnRemoveScene = NULL;
 
 	if ( ! pFnRemoveScene )
-		pFnRemoveScene = (UFunction*) UObject::GObjObjects()->Data[ 58160 ];
+		pFnRemoveScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Settings.RemoveScene" );
 
 	UTgUIPrimaryHUD_Settings_execRemoveScene_Parms RemoveScene_Parms;
 	RemoveScene_Parms.Scene = Scene;
@@ -9928,7 +9929,7 @@ void UTgUIPrimaryHUD_Settings::RemoveBasePanel ( class UUIPanel* BasePanel )
 	static UFunction* pFnRemoveBasePanel = NULL;
 
 	if ( ! pFnRemoveBasePanel )
-		pFnRemoveBasePanel = (UFunction*) UObject::GObjObjects()->Data[ 58158 ];
+		pFnRemoveBasePanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Settings.RemoveBasePanel" );
 
 	UTgUIPrimaryHUD_Settings_execRemoveBasePanel_Parms RemoveBasePanel_Parms;
 	RemoveBasePanel_Parms.BasePanel = BasePanel;
@@ -9951,7 +9952,7 @@ void UTgUIPrimaryHUD_Settings::AddBasePanel ( class UUIPanel* BasePanel, class U
 	static UFunction* pFnAddBasePanel = NULL;
 
 	if ( ! pFnAddBasePanel )
-		pFnAddBasePanel = (UFunction*) UObject::GObjObjects()->Data[ 58155 ];
+		pFnAddBasePanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Settings.AddBasePanel" );
 
 	UTgUIPrimaryHUD_Settings_execAddBasePanel_Parms AddBasePanel_Parms;
 	AddBasePanel_Parms.BasePanel = BasePanel;
@@ -9974,7 +9975,7 @@ void UTgUIPrimaryHUD_Settings::IgnoreSettings ( unsigned long bIgnore )
 	static UFunction* pFnIgnoreSettings = NULL;
 
 	if ( ! pFnIgnoreSettings )
-		pFnIgnoreSettings = (UFunction*) UObject::GObjObjects()->Data[ 58153 ];
+		pFnIgnoreSettings = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Settings.IgnoreSettings" );
 
 	UTgUIPrimaryHUD_Settings_execIgnoreSettings_Parms IgnoreSettings_Parms;
 	IgnoreSettings_Parms.bIgnore = bIgnore;
@@ -9996,7 +9997,7 @@ void UTgUIPrimaryHUD_Settings::SetUIVisibility ( unsigned long Visible )
 	static UFunction* pFnSetUIVisibility = NULL;
 
 	if ( ! pFnSetUIVisibility )
-		pFnSetUIVisibility = (UFunction*) UObject::GObjObjects()->Data[ 58151 ];
+		pFnSetUIVisibility = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_Settings.SetUIVisibility" );
 
 	UTgUIPrimaryHUD_Settings_execSetUIVisibility_Parms SetUIVisibility_Parms;
 	SetUIVisibility_Parms.Visible = Visible;
@@ -10018,7 +10019,7 @@ void UTgUIPrimaryHUD_SlotWidgets::Init ( class UUIButton* Button )
 	static UFunction* pFnInit = NULL;
 
 	if ( ! pFnInit )
-		pFnInit = (UFunction*) UObject::GObjObjects()->Data[ 58758 ];
+		pFnInit = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_SlotWidgets.Init" );
 
 	UTgUIPrimaryHUD_SlotWidgets_execInit_Parms Init_Parms;
 	Init_Parms.Button = Button;
@@ -10039,7 +10040,7 @@ void UTgUIPrimaryHUD_SlotWidgets::SetBlank ( )
 	static UFunction* pFnSetBlank = NULL;
 
 	if ( ! pFnSetBlank )
-		pFnSetBlank = (UFunction*) UObject::GObjObjects()->Data[ 58757 ];
+		pFnSetBlank = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_SlotWidgets.SetBlank" );
 
 	UTgUIPrimaryHUD_SlotWidgets_execSetBlank_Parms SetBlank_Parms;
 
@@ -10060,7 +10061,7 @@ void UTgUIPrimaryHUD_SlotWidgets::SetUnavailable ( unsigned long bUnavailable )
 	static UFunction* pFnSetUnavailable = NULL;
 
 	if ( ! pFnSetUnavailable )
-		pFnSetUnavailable = (UFunction*) UObject::GObjObjects()->Data[ 58755 ];
+		pFnSetUnavailable = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_SlotWidgets.SetUnavailable" );
 
 	UTgUIPrimaryHUD_SlotWidgets_execSetUnavailable_Parms SetUnavailable_Parms;
 	SetUnavailable_Parms.bUnavailable = bUnavailable;
@@ -10083,7 +10084,7 @@ void UTgUIPrimaryHUD_SlotWidgets::Show ( struct FString IconTexture, int IconInd
 	static UFunction* pFnShow = NULL;
 
 	if ( ! pFnShow )
-		pFnShow = (UFunction*) UObject::GObjObjects()->Data[ 58752 ];
+		pFnShow = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_SlotWidgets.Show" );
 
 	UTgUIPrimaryHUD_SlotWidgets_execShow_Parms Show_Parms;
 	memcpy ( &Show_Parms.IconTexture, &IconTexture, 0xC );
@@ -10105,7 +10106,7 @@ void UTgUIPrimaryHUD_SlotWidgets::Hide ( )
 	static UFunction* pFnHide = NULL;
 
 	if ( ! pFnHide )
-		pFnHide = (UFunction*) UObject::GObjObjects()->Data[ 58751 ];
+		pFnHide = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_SlotWidgets.Hide" );
 
 	UTgUIPrimaryHUD_SlotWidgets_execHide_Parms Hide_Parms;
 
@@ -10126,7 +10127,7 @@ void UTgUIPrimaryHUD_TeamPanel::TickPrimaryHUDElement ( float TimeNow )
 	static UFunction* pFnTickPrimaryHUDElement = NULL;
 
 	if ( ! pFnTickPrimaryHUDElement )
-		pFnTickPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58807 ];
+		pFnTickPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_TeamPanel.TickPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_TeamPanel_execTickPrimaryHUDElement_Parms TickPrimaryHUDElement_Parms;
 	TickPrimaryHUDElement_Parms.TimeNow = TimeNow;
@@ -10149,7 +10150,7 @@ void UTgUIPrimaryHUD_TeamPanel::FixupWidgetsAsEmbedded ( class UUIScreenObject* 
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58804 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_TeamPanel.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_TeamPanel_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -10173,7 +10174,7 @@ void UTgUIPrimaryHUD_TeamPanel::FixupWidgets ( class UUIPanel* BasePanel, class 
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 58801 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_TeamPanel.FixupWidgets" );
 
 	UTgUIPrimaryHUD_TeamPanel_execFixupWidgets_Parms FixupWidgets_Parms;
 	FixupWidgets_Parms.BasePanel = BasePanel;
@@ -10197,7 +10198,7 @@ bool UTgUIPrimaryHUD_VMTree::HandleKeyInput ( struct FName KeyInput )
 	static UFunction* pFnHandleKeyInput = NULL;
 
 	if ( ! pFnHandleKeyInput )
-		pFnHandleKeyInput = (UFunction*) UObject::GObjObjects()->Data[ 58842 ];
+		pFnHandleKeyInput = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_VMTree.HandleKeyInput" );
 
 	UTgUIPrimaryHUD_VMTree_execHandleKeyInput_Parms HandleKeyInput_Parms;
 	memcpy ( &HandleKeyInput_Parms.KeyInput, &KeyInput, 0x8 );
@@ -10220,7 +10221,7 @@ void UTgUIPrimaryHUD_VMTree::DeactivateTreeUI ( )
 	static UFunction* pFnDeactivateTreeUI = NULL;
 
 	if ( ! pFnDeactivateTreeUI )
-		pFnDeactivateTreeUI = (UFunction*) UObject::GObjObjects()->Data[ 58841 ];
+		pFnDeactivateTreeUI = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_VMTree.DeactivateTreeUI" );
 
 	UTgUIPrimaryHUD_VMTree_execDeactivateTreeUI_Parms DeactivateTreeUI_Parms;
 
@@ -10241,7 +10242,7 @@ void UTgUIPrimaryHUD_VMTree::ActivateTreeAndUI ( class UTgVoiceMacroTree* tree )
 	static UFunction* pFnActivateTreeAndUI = NULL;
 
 	if ( ! pFnActivateTreeAndUI )
-		pFnActivateTreeAndUI = (UFunction*) UObject::GObjObjects()->Data[ 58839 ];
+		pFnActivateTreeAndUI = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_VMTree.ActivateTreeAndUI" );
 
 	UTgUIPrimaryHUD_VMTree_execActivateTreeAndUI_Parms ActivateTreeAndUI_Parms;
 	ActivateTreeAndUI_Parms.tree = tree;
@@ -10262,7 +10263,7 @@ void UTgUIPrimaryHUD_VMTree::PopulateTreeDisplay ( )
 	static UFunction* pFnPopulateTreeDisplay = NULL;
 
 	if ( ! pFnPopulateTreeDisplay )
-		pFnPopulateTreeDisplay = (UFunction*) UObject::GObjObjects()->Data[ 58838 ];
+		pFnPopulateTreeDisplay = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_VMTree.PopulateTreeDisplay" );
 
 	UTgUIPrimaryHUD_VMTree_execPopulateTreeDisplay_Parms PopulateTreeDisplay_Parms;
 
@@ -10284,7 +10285,7 @@ void UTgUIPrimaryHUD_VMTree::FixupWidgetsAsEmbedded ( class UUIScreenObject* Bas
 	static UFunction* pFnFixupWidgetsAsEmbedded = NULL;
 
 	if ( ! pFnFixupWidgetsAsEmbedded )
-		pFnFixupWidgetsAsEmbedded = (UFunction*) UObject::GObjObjects()->Data[ 58835 ];
+		pFnFixupWidgetsAsEmbedded = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_VMTree.FixupWidgetsAsEmbedded" );
 
 	UTgUIPrimaryHUD_VMTree_execFixupWidgetsAsEmbedded_Parms FixupWidgetsAsEmbedded_Parms;
 	FixupWidgetsAsEmbedded_Parms.BaseScreenObject = BaseScreenObject;
@@ -10308,7 +10309,7 @@ void UTgUIPrimaryHUD_VMTree::FixupWidgets ( class UUIPanel* BasePanel, class UTg
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 58832 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_VMTree.FixupWidgets" );
 
 	UTgUIPrimaryHUD_VMTree_execFixupWidgets_Parms FixupWidgets_Parms;
 	FixupWidgets_Parms.BasePanel = BasePanel;
@@ -10331,7 +10332,7 @@ void UTgUIPrimaryHUD_VMTree::TickPrimaryHUDElement ( float TimeNow )
 	static UFunction* pFnTickPrimaryHUDElement = NULL;
 
 	if ( ! pFnTickPrimaryHUDElement )
-		pFnTickPrimaryHUDElement = (UFunction*) UObject::GObjObjects()->Data[ 58830 ];
+		pFnTickPrimaryHUDElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD_VMTree.TickPrimaryHUDElement" );
 
 	UTgUIPrimaryHUD_VMTree_execTickPrimaryHUDElement_Parms TickPrimaryHUDElement_Parms;
 	TickPrimaryHUDElement_Parms.TimeNow = TimeNow;
@@ -10356,7 +10357,7 @@ void UTgUISceneDriver::eventUIListCallbackWrapper ( class UUIList* Sender, int P
 	static UFunction* pFnUIListCallbackWrapper = NULL;
 
 	if ( ! pFnUIListCallbackWrapper )
-		pFnUIListCallbackWrapper = (UFunction*) UObject::GObjObjects()->Data[ 52322 ];
+		pFnUIListCallbackWrapper = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.UIListCallbackWrapper" );
 
 	UTgUISceneDriver_eventUIListCallbackWrapper_Parms UIListCallbackWrapper_Parms;
 	UIListCallbackWrapper_Parms.Sender = Sender;
@@ -10380,7 +10381,7 @@ void UTgUISceneDriver::OnNotifyEditBoxStateChanged ( class UUIScreenObject* Send
 	static UFunction* pFnOnNotifyEditBoxStateChanged = NULL;
 
 	if ( ! pFnOnNotifyEditBoxStateChanged )
-		pFnOnNotifyEditBoxStateChanged = (UFunction*) UObject::GObjObjects()->Data[ 52317 ];
+		pFnOnNotifyEditBoxStateChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.OnNotifyEditBoxStateChanged" );
 
 	UTgUISceneDriver_execOnNotifyEditBoxStateChanged_Parms OnNotifyEditBoxStateChanged_Parms;
 	OnNotifyEditBoxStateChanged_Parms.Sender = Sender;
@@ -10402,7 +10403,7 @@ class UFont* UTgUISceneDriver::eventGetFontFromUCByIndex ( int FontSize )
 	static UFunction* pFnGetFontFromUCByIndex = NULL;
 
 	if ( ! pFnGetFontFromUCByIndex )
-		pFnGetFontFromUCByIndex = (UFunction*) UObject::GObjObjects()->Data[ 52314 ];
+		pFnGetFontFromUCByIndex = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.GetFontFromUCByIndex" );
 
 	UTgUISceneDriver_eventGetFontFromUCByIndex_Parms GetFontFromUCByIndex_Parms;
 	GetFontFromUCByIndex_Parms.FontSize = FontSize;
@@ -10421,7 +10422,7 @@ void UTgUISceneDriver::eventSetDefaultSceneDriverSceneDelegates ( )
 	static UFunction* pFnSetDefaultSceneDriverSceneDelegates = NULL;
 
 	if ( ! pFnSetDefaultSceneDriverSceneDelegates )
-		pFnSetDefaultSceneDriverSceneDelegates = (UFunction*) UObject::GObjObjects()->Data[ 52313 ];
+		pFnSetDefaultSceneDriverSceneDelegates = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.SetDefaultSceneDriverSceneDelegates" );
 
 	UTgUISceneDriver_eventSetDefaultSceneDriverSceneDelegates_Parms SetDefaultSceneDriverSceneDelegates_Parms;
 
@@ -10439,7 +10440,7 @@ bool UTgUISceneDriver::DefaultSceneDriverSceneDelegate ( struct FInputEventParam
 	static UFunction* pFnDefaultSceneDriverSceneDelegate = NULL;
 
 	if ( ! pFnDefaultSceneDriverSceneDelegate )
-		pFnDefaultSceneDriverSceneDelegate = (UFunction*) UObject::GObjObjects()->Data[ 52308 ];
+		pFnDefaultSceneDriverSceneDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.DefaultSceneDriverSceneDelegate" );
 
 	UTgUISceneDriver_execDefaultSceneDriverSceneDelegate_Parms DefaultSceneDriverSceneDelegate_Parms;
 
@@ -10460,7 +10461,7 @@ void UTgUISceneDriver::eventTickTgUISceneUC ( )
 	static UFunction* pFnTickTgUISceneUC = NULL;
 
 	if ( ! pFnTickTgUISceneUC )
-		pFnTickTgUISceneUC = (UFunction*) UObject::GObjObjects()->Data[ 52307 ];
+		pFnTickTgUISceneUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.TickTgUISceneUC" );
 
 	UTgUISceneDriver_eventTickTgUISceneUC_Parms TickTgUISceneUC_Parms;
 
@@ -10476,7 +10477,7 @@ void UTgUISceneDriver::PostRender ( )
 	static UFunction* pFnPostRender = NULL;
 
 	if ( ! pFnPostRender )
-		pFnPostRender = (UFunction*) UObject::GObjObjects()->Data[ 52306 ];
+		pFnPostRender = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.PostRender" );
 
 	UTgUISceneDriver_execPostRender_Parms PostRender_Parms;
 
@@ -10497,7 +10498,7 @@ void UTgUISceneDriver::CheckSceneForUIModelDragRelease ( struct FInputEventParam
 	static UFunction* pFnCheckSceneForUIModelDragRelease = NULL;
 
 	if ( ! pFnCheckSceneForUIModelDragRelease )
-		pFnCheckSceneForUIModelDragRelease = (UFunction*) UObject::GObjObjects()->Data[ 52304 ];
+		pFnCheckSceneForUIModelDragRelease = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.CheckSceneForUIModelDragRelease" );
 
 	UTgUISceneDriver_execCheckSceneForUIModelDragRelease_Parms CheckSceneForUIModelDragRelease_Parms;
 
@@ -10522,7 +10523,7 @@ bool UTgUISceneDriver::HandleTgUIModelFixedRotation ( struct FInputEventParamete
 	static UFunction* pFnHandleTgUIModelFixedRotation = NULL;
 
 	if ( ! pFnHandleTgUIModelFixedRotation )
-		pFnHandleTgUIModelFixedRotation = (UFunction*) UObject::GObjObjects()->Data[ 52301 ];
+		pFnHandleTgUIModelFixedRotation = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.HandleTgUIModelFixedRotation" );
 
 	UTgUISceneDriver_execHandleTgUIModelFixedRotation_Parms HandleTgUIModelFixedRotation_Parms;
 
@@ -10549,7 +10550,7 @@ bool UTgUISceneDriver::HandleTgUIModelDragRotation ( struct FInputEventParameter
 	static UFunction* pFnHandleTgUIModelDragRotation = NULL;
 
 	if ( ! pFnHandleTgUIModelDragRotation )
-		pFnHandleTgUIModelDragRotation = (UFunction*) UObject::GObjObjects()->Data[ 52298 ];
+		pFnHandleTgUIModelDragRotation = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.HandleTgUIModelDragRotation" );
 
 	UTgUISceneDriver_execHandleTgUIModelDragRotation_Parms HandleTgUIModelDragRotation_Parms;
 
@@ -10576,7 +10577,7 @@ bool UTgUISceneDriver::SetFocusedWidget ( class UUIScreenObject* NewFocus )
 	static UFunction* pFnSetFocusedWidget = NULL;
 
 	if ( ! pFnSetFocusedWidget )
-		pFnSetFocusedWidget = (UFunction*) UObject::GObjObjects()->Data[ 52295 ];
+		pFnSetFocusedWidget = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.SetFocusedWidget" );
 
 	UTgUISceneDriver_execSetFocusedWidget_Parms SetFocusedWidget_Parms;
 	SetFocusedWidget_Parms.NewFocus = NewFocus;
@@ -10599,7 +10600,7 @@ void UTgUISceneDriver::SetNextWidgetFocused ( )
 	static UFunction* pFnSetNextWidgetFocused = NULL;
 
 	if ( ! pFnSetNextWidgetFocused )
-		pFnSetNextWidgetFocused = (UFunction*) UObject::GObjObjects()->Data[ 52294 ];
+		pFnSetNextWidgetFocused = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.SetNextWidgetFocused" );
 
 	UTgUISceneDriver_execSetNextWidgetFocused_Parms SetNextWidgetFocused_Parms;
 
@@ -10619,7 +10620,7 @@ void UTgUISceneDriver::SetPreviousWidgetFocused ( )
 	static UFunction* pFnSetPreviousWidgetFocused = NULL;
 
 	if ( ! pFnSetPreviousWidgetFocused )
-		pFnSetPreviousWidgetFocused = (UFunction*) UObject::GObjObjects()->Data[ 52293 ];
+		pFnSetPreviousWidgetFocused = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.SetPreviousWidgetFocused" );
 
 	UTgUISceneDriver_execSetPreviousWidgetFocused_Parms SetPreviousWidgetFocused_Parms;
 
@@ -10641,7 +10642,7 @@ bool UTgUISceneDriver::OnNextButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnNextButton = NULL;
 
 	if ( ! pFnOnNextButton )
-		pFnOnNextButton = (UFunction*) UObject::GObjObjects()->Data[ 52290 ];
+		pFnOnNextButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.OnNextButton" );
 
 	UTgUISceneDriver_execOnNextButton_Parms OnNextButton_Parms;
 
@@ -10668,7 +10669,7 @@ bool UTgUISceneDriver::OnPrevButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnPrevButton = NULL;
 
 	if ( ! pFnOnPrevButton )
-		pFnOnPrevButton = (UFunction*) UObject::GObjObjects()->Data[ 52287 ];
+		pFnOnPrevButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.OnPrevButton" );
 
 	UTgUISceneDriver_execOnPrevButton_Parms OnPrevButton_Parms;
 
@@ -10695,7 +10696,7 @@ bool UTgUISceneDriver::OnFirstButton ( struct FInputEventParameters* EventParms 
 	static UFunction* pFnOnFirstButton = NULL;
 
 	if ( ! pFnOnFirstButton )
-		pFnOnFirstButton = (UFunction*) UObject::GObjObjects()->Data[ 52284 ];
+		pFnOnFirstButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.OnFirstButton" );
 
 	UTgUISceneDriver_execOnFirstButton_Parms OnFirstButton_Parms;
 
@@ -10722,7 +10723,7 @@ bool UTgUISceneDriver::OnLastButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnLastButton = NULL;
 
 	if ( ! pFnOnLastButton )
-		pFnOnLastButton = (UFunction*) UObject::GObjObjects()->Data[ 52281 ];
+		pFnOnLastButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.OnLastButton" );
 
 	UTgUISceneDriver_execOnLastButton_Parms OnLastButton_Parms;
 
@@ -10748,7 +10749,7 @@ void UTgUISceneDriver::OpenTabScene ( int nFuncId )
 	static UFunction* pFnOpenTabScene = NULL;
 
 	if ( ! pFnOpenTabScene )
-		pFnOpenTabScene = (UFunction*) UObject::GObjObjects()->Data[ 52279 ];
+		pFnOpenTabScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.OpenTabScene" );
 
 	UTgUISceneDriver_execOpenTabScene_Parms OpenTabScene_Parms;
 	OpenTabScene_Parms.nFuncId = nFuncId;
@@ -10771,7 +10772,7 @@ bool UTgUISceneDriver::DefaultTgShouldModulateDelegate ( float* AlphaModulationP
 	static UFunction* pFnDefaultTgShouldModulateDelegate = NULL;
 
 	if ( ! pFnDefaultTgShouldModulateDelegate )
-		pFnDefaultTgShouldModulateDelegate = (UFunction*) UObject::GObjObjects()->Data[ 52276 ];
+		pFnDefaultTgShouldModulateDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.DefaultTgShouldModulateDelegate" );
 
 	UTgUISceneDriver_execDefaultTgShouldModulateDelegate_Parms DefaultTgShouldModulateDelegate_Parms;
 
@@ -10797,7 +10798,7 @@ void UTgUISceneDriver::SetParentUIScene ( class UTgUISceneDriver* Scene )
 	static UFunction* pFnSetParentUIScene = NULL;
 
 	if ( ! pFnSetParentUIScene )
-		pFnSetParentUIScene = (UFunction*) UObject::GObjObjects()->Data[ 52274 ];
+		pFnSetParentUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.SetParentUIScene" );
 
 	UTgUISceneDriver_execSetParentUIScene_Parms SetParentUIScene_Parms;
 	SetParentUIScene_Parms.Scene = Scene;
@@ -10818,7 +10819,7 @@ void UTgUISceneDriver::TriggerSceneFadeIn ( )
 	static UFunction* pFnTriggerSceneFadeIn = NULL;
 
 	if ( ! pFnTriggerSceneFadeIn )
-		pFnTriggerSceneFadeIn = (UFunction*) UObject::GObjObjects()->Data[ 52273 ];
+		pFnTriggerSceneFadeIn = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.TriggerSceneFadeIn" );
 
 	UTgUISceneDriver_execTriggerSceneFadeIn_Parms TriggerSceneFadeIn_Parms;
 
@@ -10841,7 +10842,7 @@ struct FString UTgUISceneDriver::CreateDataStoreBindingString ( class UUIDataSto
 	static UFunction* pFnCreateDataStoreBindingString = NULL;
 
 	if ( ! pFnCreateDataStoreBindingString )
-		pFnCreateDataStoreBindingString = (UFunction*) UObject::GObjObjects()->Data[ 52269 ];
+		pFnCreateDataStoreBindingString = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.CreateDataStoreBindingString" );
 
 	UTgUISceneDriver_execCreateDataStoreBindingString_Parms CreateDataStoreBindingString_Parms;
 	CreateDataStoreBindingString_Parms.DataStore = DataStore;
@@ -10867,7 +10868,7 @@ struct FName UTgUISceneDriver::GetCurrentKeyBinding ( int* bAltModified )
 	static UFunction* pFnGetCurrentKeyBinding = NULL;
 
 	if ( ! pFnGetCurrentKeyBinding )
-		pFnGetCurrentKeyBinding = (UFunction*) UObject::GObjObjects()->Data[ 52266 ];
+		pFnGetCurrentKeyBinding = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.GetCurrentKeyBinding" );
 
 	UTgUISceneDriver_execGetCurrentKeyBinding_Parms GetCurrentKeyBinding_Parms;
 
@@ -10893,7 +10894,7 @@ void UTgUISceneDriver::DefaultSceneDriverCloseDelegate ( class UUIScene* Deactiv
 	static UFunction* pFnDefaultSceneDriverCloseDelegate = NULL;
 
 	if ( ! pFnDefaultSceneDriverCloseDelegate )
-		pFnDefaultSceneDriverCloseDelegate = (UFunction*) UObject::GObjObjects()->Data[ 52264 ];
+		pFnDefaultSceneDriverCloseDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.DefaultSceneDriverCloseDelegate" );
 
 	UTgUISceneDriver_execDefaultSceneDriverCloseDelegate_Parms DefaultSceneDriverCloseDelegate_Parms;
 	DefaultSceneDriverCloseDelegate_Parms.DeactivatedScene = DeactivatedScene;
@@ -10916,7 +10917,7 @@ void UTgUISceneDriver::SetVisible ( class UUIObject* pObject, unsigned long bVis
 	static UFunction* pFnSetVisible = NULL;
 
 	if ( ! pFnSetVisible )
-		pFnSetVisible = (UFunction*) UObject::GObjObjects()->Data[ 52261 ];
+		pFnSetVisible = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.SetVisible" );
 
 	UTgUISceneDriver_execSetVisible_Parms SetVisible_Parms;
 	SetVisible_Parms.pObject = pObject;
@@ -10938,7 +10939,7 @@ void UTgUISceneDriver::UnregisterCallbacks ( )
 	static UFunction* pFnUnregisterCallbacks = NULL;
 
 	if ( ! pFnUnregisterCallbacks )
-		pFnUnregisterCallbacks = (UFunction*) UObject::GObjObjects()->Data[ 52260 ];
+		pFnUnregisterCallbacks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.UnregisterCallbacks" );
 
 	UTgUISceneDriver_execUnregisterCallbacks_Parms UnregisterCallbacks_Parms;
 
@@ -10958,7 +10959,7 @@ void UTgUISceneDriver::RegisterCallbacks ( )
 	static UFunction* pFnRegisterCallbacks = NULL;
 
 	if ( ! pFnRegisterCallbacks )
-		pFnRegisterCallbacks = (UFunction*) UObject::GObjObjects()->Data[ 52259 ];
+		pFnRegisterCallbacks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.RegisterCallbacks" );
 
 	UTgUISceneDriver_execRegisterCallbacks_Parms RegisterCallbacks_Parms;
 
@@ -10978,7 +10979,7 @@ void UTgUISceneDriver::Repaint ( )
 	static UFunction* pFnRepaint = NULL;
 
 	if ( ! pFnRepaint )
-		pFnRepaint = (UFunction*) UObject::GObjObjects()->Data[ 52258 ];
+		pFnRepaint = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.Repaint" );
 
 	UTgUISceneDriver_execRepaint_Parms Repaint_Parms;
 
@@ -10999,7 +11000,7 @@ void UTgUISceneDriver::SetButtonsEnabled ( unsigned long bEnabled )
 	static UFunction* pFnSetButtonsEnabled = NULL;
 
 	if ( ! pFnSetButtonsEnabled )
-		pFnSetButtonsEnabled = (UFunction*) UObject::GObjObjects()->Data[ 52256 ];
+		pFnSetButtonsEnabled = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.SetButtonsEnabled" );
 
 	UTgUISceneDriver_execSetButtonsEnabled_Parms SetButtonsEnabled_Parms;
 	SetButtonsEnabled_Parms.bEnabled = bEnabled;
@@ -11023,7 +11024,7 @@ void UTgUISceneDriver::HideChildControlsByTag ( class UUIScreenObject* Parent, s
 	static UFunction* pFnHideChildControlsByTag = NULL;
 
 	if ( ! pFnHideChildControlsByTag )
-		pFnHideChildControlsByTag = (UFunction*) UObject::GObjObjects()->Data[ 52252 ];
+		pFnHideChildControlsByTag = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.HideChildControlsByTag" );
 
 	UTgUISceneDriver_execHideChildControlsByTag_Parms HideChildControlsByTag_Parms;
 	HideChildControlsByTag_Parms.Parent = Parent;
@@ -11047,7 +11048,7 @@ bool UTgUISceneDriver::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 52250 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.TickTgUIScene" );
 
 	UTgUISceneDriver_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -11069,7 +11070,7 @@ void UTgUISceneDriver::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 52249 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.FixupTgUIScene" );
 
 	UTgUISceneDriver_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -11089,7 +11090,7 @@ void UTgUISceneDriver::CloseTgUIScene ( )
 	static UFunction* pFnCloseTgUIScene = NULL;
 
 	if ( ! pFnCloseTgUIScene )
-		pFnCloseTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 51717 ];
+		pFnCloseTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.CloseTgUIScene" );
 
 	UTgUISceneDriver_execCloseTgUIScene_Parms CloseTgUIScene_Parms;
 
@@ -11109,7 +11110,7 @@ void UTgUISceneDriver::OpenTgUIScene ( )
 	static UFunction* pFnOpenTgUIScene = NULL;
 
 	if ( ! pFnOpenTgUIScene )
-		pFnOpenTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 52248 ];
+		pFnOpenTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.OpenTgUIScene" );
 
 	UTgUISceneDriver_execOpenTgUIScene_Parms OpenTgUIScene_Parms;
 
@@ -11130,7 +11131,7 @@ class ATgPawn_Character* UTgUISceneDriver::GetLocalTgPawn ( )
 	static UFunction* pFnGetLocalTgPawn = NULL;
 
 	if ( ! pFnGetLocalTgPawn )
-		pFnGetLocalTgPawn = (UFunction*) UObject::GObjObjects()->Data[ 52246 ];
+		pFnGetLocalTgPawn = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.GetLocalTgPawn" );
 
 	UTgUISceneDriver_execGetLocalTgPawn_Parms GetLocalTgPawn_Parms;
 
@@ -11152,7 +11153,7 @@ void UTgUISceneDriver::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 52245 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.PreCloseScene" );
 
 	UTgUISceneDriver_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -11172,7 +11173,7 @@ void UTgUISceneDriver::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 52244 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.PostOpenScene" );
 
 	UTgUISceneDriver_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -11192,7 +11193,7 @@ void UTgUISceneDriver::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 52243 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver.PostInitSceneDriver" );
 
 	UTgUISceneDriver_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -11212,7 +11213,7 @@ void UTgUICameraSettingsMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 54428 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICameraSettingsMenu.FixupWidgetsUC" );
 
 	UTgUICameraSettingsMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -11230,7 +11231,7 @@ void UTgUICameraSettingsMenu::OnFakeRadioButtonChanged ( class UUIObject* Sender
 	static UFunction* pFnOnFakeRadioButtonChanged = NULL;
 
 	if ( ! pFnOnFakeRadioButtonChanged )
-		pFnOnFakeRadioButtonChanged = (UFunction*) UObject::GObjObjects()->Data[ 54425 ];
+		pFnOnFakeRadioButtonChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICameraSettingsMenu.OnFakeRadioButtonChanged" );
 
 	UTgUICameraSettingsMenu_execOnFakeRadioButtonChanged_Parms OnFakeRadioButtonChanged_Parms;
 	OnFakeRadioButtonChanged_Parms.Sender = Sender;
@@ -11250,7 +11251,7 @@ bool UTgUICameraSettingsMenu::OnApplyButtonKey ( struct FInputEventParameters* E
 	static UFunction* pFnOnApplyButtonKey = NULL;
 
 	if ( ! pFnOnApplyButtonKey )
-		pFnOnApplyButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 54422 ];
+		pFnOnApplyButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICameraSettingsMenu.OnApplyButtonKey" );
 
 	UTgUICameraSettingsMenu_execOnApplyButtonKey_Parms OnApplyButtonKey_Parms;
 
@@ -11273,7 +11274,7 @@ bool UTgUICameraSettingsMenu::OnBackButtonKey ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnBackButtonKey = NULL;
 
 	if ( ! pFnOnBackButtonKey )
-		pFnOnBackButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 54419 ];
+		pFnOnBackButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICameraSettingsMenu.OnBackButtonKey" );
 
 	UTgUICameraSettingsMenu_execOnBackButtonKey_Parms OnBackButtonKey_Parms;
 
@@ -11294,7 +11295,7 @@ void UTgUICameraSettingsMenu::ApplyCameraSettings ( )
 	static UFunction* pFnApplyCameraSettings = NULL;
 
 	if ( ! pFnApplyCameraSettings )
-		pFnApplyCameraSettings = (UFunction*) UObject::GObjObjects()->Data[ 54418 ];
+		pFnApplyCameraSettings = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICameraSettingsMenu.ApplyCameraSettings" );
 
 	UTgUICameraSettingsMenu_execApplyCameraSettings_Parms ApplyCameraSettings_Parms;
 
@@ -11314,7 +11315,7 @@ void UTgUICameraSettingsMenu::PopulateWidgets ( )
 	static UFunction* pFnPopulateWidgets = NULL;
 
 	if ( ! pFnPopulateWidgets )
-		pFnPopulateWidgets = (UFunction*) UObject::GObjObjects()->Data[ 54417 ];
+		pFnPopulateWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICameraSettingsMenu.PopulateWidgets" );
 
 	UTgUICameraSettingsMenu_execPopulateWidgets_Parms PopulateWidgets_Parms;
 
@@ -11334,7 +11335,7 @@ void UTgUICameraSettingsMenu::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 54416 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICameraSettingsMenu.FixupWidgets" );
 
 	UTgUICameraSettingsMenu_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -11355,7 +11356,7 @@ bool UTgUICameraSettingsMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54414 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICameraSettingsMenu.TickTgUIScene" );
 
 	UTgUICameraSettingsMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -11377,7 +11378,7 @@ void UTgUICameraSettingsMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54413 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICameraSettingsMenu.FixupTgUIScene" );
 
 	UTgUICameraSettingsMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -11399,7 +11400,7 @@ bool UTgUIChallengePopup::OnDeclineButton ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnDeclineButton = NULL;
 
 	if ( ! pFnOnDeclineButton )
-		pFnOnDeclineButton = (UFunction*) UObject::GObjObjects()->Data[ 55201 ];
+		pFnOnDeclineButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIChallengePopup.OnDeclineButton" );
 
 	UTgUIChallengePopup_execOnDeclineButton_Parms OnDeclineButton_Parms;
 
@@ -11426,7 +11427,7 @@ bool UTgUIChallengePopup::OnAcceptButton ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnAcceptButton = NULL;
 
 	if ( ! pFnOnAcceptButton )
-		pFnOnAcceptButton = (UFunction*) UObject::GObjObjects()->Data[ 55198 ];
+		pFnOnAcceptButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIChallengePopup.OnAcceptButton" );
 
 	UTgUIChallengePopup_execOnAcceptButton_Parms OnAcceptButton_Parms;
 
@@ -11452,7 +11453,7 @@ bool UTgUIChallengePopup::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55196 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIChallengePopup.TickTgUIScene" );
 
 	UTgUIChallengePopup_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -11474,7 +11475,7 @@ void UTgUIChallengePopup::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55195 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIChallengePopup.FixupTgUIScene" );
 
 	UTgUIChallengePopup_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -11495,7 +11496,7 @@ void UTgUIChat::Tick ( float DeltaTime )
 	static UFunction* pFnTick = NULL;
 
 	if ( ! pFnTick )
-		pFnTick = (UFunction*) UObject::GObjObjects()->Data[ 55437 ];
+		pFnTick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIChat.Tick" );
 
 	UTgUIChat_execTick_Parms Tick_Parms;
 	Tick_Parms.DeltaTime = DeltaTime;
@@ -11518,7 +11519,7 @@ bool UTgUIChat::OnChatScrollButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnChatScrollButton = NULL;
 
 	if ( ! pFnOnChatScrollButton )
-		pFnOnChatScrollButton = (UFunction*) UObject::GObjObjects()->Data[ 55434 ];
+		pFnOnChatScrollButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIChat.OnChatScrollButton" );
 
 	UTgUIChat_execOnChatScrollButton_Parms OnChatScrollButton_Parms;
 
@@ -11546,7 +11547,7 @@ bool UTgUIChat::OnChatEntrySubmitText ( class UUIEditBox* ebox, int PlayerIndex 
 	static UFunction* pFnOnChatEntrySubmitText = NULL;
 
 	if ( ! pFnOnChatEntrySubmitText )
-		pFnOnChatEntrySubmitText = (UFunction*) UObject::GObjObjects()->Data[ 55430 ];
+		pFnOnChatEntrySubmitText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIChat.OnChatEntrySubmitText" );
 
 	UTgUIChat_execOnChatEntrySubmitText_Parms OnChatEntrySubmitText_Parms;
 	OnChatEntrySubmitText_Parms.ebox = ebox;
@@ -11572,7 +11573,7 @@ bool UTgUIChat::OnChatTabClicked ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnChatTabClicked = NULL;
 
 	if ( ! pFnOnChatTabClicked )
-		pFnOnChatTabClicked = (UFunction*) UObject::GObjObjects()->Data[ 55427 ];
+		pFnOnChatTabClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIChat.OnChatTabClicked" );
 
 	UTgUIChat_execOnChatTabClicked_Parms OnChatTabClicked_Parms;
 
@@ -11599,7 +11600,7 @@ bool UTgUIChat::OnSceneInputKeyDelegate ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55424 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIChat.OnSceneInputKeyDelegate" );
 
 	UTgUIChat_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -11626,7 +11627,7 @@ void UTgUIChat::ChatEntryLineChanged ( class UUIObject* Sender, int PlayerIndex 
 	static UFunction* pFnChatEntryLineChanged = NULL;
 
 	if ( ! pFnChatEntryLineChanged )
-		pFnChatEntryLineChanged = (UFunction*) UObject::GObjObjects()->Data[ 55421 ];
+		pFnChatEntryLineChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIChat.ChatEntryLineChanged" );
 
 	UTgUIChat_execChatEntryLineChanged_Parms ChatEntryLineChanged_Parms;
 	ChatEntryLineChanged_Parms.Sender = Sender;
@@ -11650,7 +11651,7 @@ void UTgUIChat::UserSelectedChannel ( class UUIObject* Sender, int PlayerIndex )
 	static UFunction* pFnUserSelectedChannel = NULL;
 
 	if ( ! pFnUserSelectedChannel )
-		pFnUserSelectedChannel = (UFunction*) UObject::GObjObjects()->Data[ 55418 ];
+		pFnUserSelectedChannel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIChat.UserSelectedChannel" );
 
 	UTgUIChat_execUserSelectedChannel_Parms UserSelectedChannel_Parms;
 	UserSelectedChannel_Parms.Sender = Sender;
@@ -11672,7 +11673,7 @@ void UTgUIChat::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55417 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIChat.FixupTgUIScene" );
 
 	UTgUIChat_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -11692,7 +11693,7 @@ void UTgUIChat::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 55416 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIChat.PostInitSceneDriver" );
 
 	UTgUIChat_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -11712,7 +11713,7 @@ void UTgUIClassSelectScene::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 55482 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIClassSelectScene.FixupWidgetsUC" );
 
 	UTgUIClassSelectScene_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -11732,7 +11733,7 @@ void UTgUIClassSelectScene::OnClassMouseOverDelegate ( class UUIScreenObject* Se
 	static UFunction* pFnOnClassMouseOverDelegate = NULL;
 
 	if ( ! pFnOnClassMouseOverDelegate )
-		pFnOnClassMouseOverDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55477 ];
+		pFnOnClassMouseOverDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIClassSelectScene.OnClassMouseOverDelegate" );
 
 	UTgUIClassSelectScene_execOnClassMouseOverDelegate_Parms OnClassMouseOverDelegate_Parms;
 	OnClassMouseOverDelegate_Parms.Sender = Sender;
@@ -11758,7 +11759,7 @@ bool UTgUIClassSelectScene::OnNextButtonDelegate ( struct FInputEventParameters*
 	static UFunction* pFnOnNextButtonDelegate = NULL;
 
 	if ( ! pFnOnNextButtonDelegate )
-		pFnOnNextButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55474 ];
+		pFnOnNextButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIClassSelectScene.OnNextButtonDelegate" );
 
 	UTgUIClassSelectScene_execOnNextButtonDelegate_Parms OnNextButtonDelegate_Parms;
 
@@ -11785,7 +11786,7 @@ bool UTgUIClassSelectScene::OnBackButtonDelegate ( struct FInputEventParameters*
 	static UFunction* pFnOnBackButtonDelegate = NULL;
 
 	if ( ! pFnOnBackButtonDelegate )
-		pFnOnBackButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55471 ];
+		pFnOnBackButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIClassSelectScene.OnBackButtonDelegate" );
 
 	UTgUIClassSelectScene_execOnBackButtonDelegate_Parms OnBackButtonDelegate_Parms;
 
@@ -11812,7 +11813,7 @@ bool UTgUIClassSelectScene::OnSelectClassGenderDelegate ( struct FInputEventPara
 	static UFunction* pFnOnSelectClassGenderDelegate = NULL;
 
 	if ( ! pFnOnSelectClassGenderDelegate )
-		pFnOnSelectClassGenderDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55468 ];
+		pFnOnSelectClassGenderDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIClassSelectScene.OnSelectClassGenderDelegate" );
 
 	UTgUIClassSelectScene_execOnSelectClassGenderDelegate_Parms OnSelectClassGenderDelegate_Parms;
 
@@ -11839,7 +11840,7 @@ bool UTgUIClassSelectScene::OnSceneInputKeyDelegate ( struct FInputEventParamete
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55465 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIClassSelectScene.OnSceneInputKeyDelegate" );
 
 	UTgUIClassSelectScene_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -11866,7 +11867,7 @@ void UTgUIClassSelectScene::HighlightClassGender ( int ClassIndex, int genderInd
 	static UFunction* pFnHighlightClassGender = NULL;
 
 	if ( ! pFnHighlightClassGender )
-		pFnHighlightClassGender = (UFunction*) UObject::GObjObjects()->Data[ 55462 ];
+		pFnHighlightClassGender = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIClassSelectScene.HighlightClassGender" );
 
 	UTgUIClassSelectScene_execHighlightClassGender_Parms HighlightClassGender_Parms;
 	HighlightClassGender_Parms.ClassIndex = ClassIndex;
@@ -11888,7 +11889,7 @@ void UTgUIClassSelectScene::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55461 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIClassSelectScene.FixupTgUIScene" );
 
 	UTgUIClassSelectScene_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -11908,7 +11909,7 @@ void UTgUIConfirmPopup::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 55512 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIConfirmPopup.FixupWidgetsUC" );
 
 	UTgUIConfirmPopup_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -11926,7 +11927,7 @@ void UTgUIConfirmPopup::SetConfirmTextAndCallback ( struct FString Message, clas
 	static UFunction* pFnSetConfirmTextAndCallback = NULL;
 
 	if ( ! pFnSetConfirmTextAndCallback )
-		pFnSetConfirmTextAndCallback = (UFunction*) UObject::GObjObjects()->Data[ 55509 ];
+		pFnSetConfirmTextAndCallback = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIConfirmPopup.SetConfirmTextAndCallback" );
 
 	UTgUIConfirmPopup_execSetConfirmTextAndCallback_Parms SetConfirmTextAndCallback_Parms;
 	memcpy ( &SetConfirmTextAndCallback_Parms.Message, &Message, 0xC );
@@ -11949,7 +11950,7 @@ void UTgUIConfirmPopup::HandleConfirmButtonCallback ( unsigned long accepted )
 	static UFunction* pFnHandleConfirmButtonCallback = NULL;
 
 	if ( ! pFnHandleConfirmButtonCallback )
-		pFnHandleConfirmButtonCallback = (UFunction*) UObject::GObjObjects()->Data[ 55507 ];
+		pFnHandleConfirmButtonCallback = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIConfirmPopup.HandleConfirmButtonCallback" );
 
 	UTgUIConfirmPopup_execHandleConfirmButtonCallback_Parms HandleConfirmButtonCallback_Parms;
 	HandleConfirmButtonCallback_Parms.accepted = accepted;
@@ -11972,7 +11973,7 @@ void UTgUIConfirmPopup::RemoveConfirmPopupByCallback ( class UFunction* callback
 	static UFunction* pFnRemoveConfirmPopupByCallback = NULL;
 
 	if ( ! pFnRemoveConfirmPopupByCallback )
-		pFnRemoveConfirmPopupByCallback = (UFunction*) UObject::GObjObjects()->Data[ 55504 ];
+		pFnRemoveConfirmPopupByCallback = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIConfirmPopup.RemoveConfirmPopupByCallback" );
 
 	UTgUIConfirmPopup_execRemoveConfirmPopupByCallback_Parms RemoveConfirmPopupByCallback_Parms;
 	RemoveConfirmPopupByCallback_Parms.callbackPtr = callbackPtr;
@@ -11994,7 +11995,7 @@ void UTgUIConfirmPopup::SetConfirmDialogText ( )
 	static UFunction* pFnSetConfirmDialogText = NULL;
 
 	if ( ! pFnSetConfirmDialogText )
-		pFnSetConfirmDialogText = (UFunction*) UObject::GObjObjects()->Data[ 55503 ];
+		pFnSetConfirmDialogText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIConfirmPopup.SetConfirmDialogText" );
 
 	UTgUIConfirmPopup_execSetConfirmDialogText_Parms SetConfirmDialogText_Parms;
 
@@ -12014,7 +12015,7 @@ void UTgUIConfirmPopup::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 55502 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIConfirmPopup.FixupWidgets" );
 
 	UTgUIConfirmPopup_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -12035,7 +12036,7 @@ bool UTgUIConfirmPopup::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55500 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIConfirmPopup.TickTgUIScene" );
 
 	UTgUIConfirmPopup_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -12057,7 +12058,7 @@ void UTgUIConfirmPopup::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55499 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIConfirmPopup.FixupTgUIScene" );
 
 	UTgUIConfirmPopup_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -12079,7 +12080,7 @@ bool UTgUIConfirmPopup::OnConfirmNo ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnConfirmNo = NULL;
 
 	if ( ! pFnOnConfirmNo )
-		pFnOnConfirmNo = (UFunction*) UObject::GObjObjects()->Data[ 55496 ];
+		pFnOnConfirmNo = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIConfirmPopup.OnConfirmNo" );
 
 	UTgUIConfirmPopup_execOnConfirmNo_Parms OnConfirmNo_Parms;
 
@@ -12106,7 +12107,7 @@ bool UTgUIConfirmPopup::OnConfirmYes ( struct FInputEventParameters* EventParms 
 	static UFunction* pFnOnConfirmYes = NULL;
 
 	if ( ! pFnOnConfirmYes )
-		pFnOnConfirmYes = (UFunction*) UObject::GObjObjects()->Data[ 55493 ];
+		pFnOnConfirmYes = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIConfirmPopup.OnConfirmYes" );
 
 	UTgUIConfirmPopup_execOnConfirmYes_Parms OnConfirmYes_Parms;
 
@@ -12131,7 +12132,7 @@ void UTgUICreateCharA::eventSendSections ( )
 	static UFunction* pFnSendSections = NULL;
 
 	if ( ! pFnSendSections )
-		pFnSendSections = (UFunction*) UObject::GObjObjects()->Data[ 55698 ];
+		pFnSendSections = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreateCharA.SendSections" );
 
 	UTgUICreateCharA_eventSendSections_Parms SendSections_Parms;
 
@@ -12148,7 +12149,7 @@ void UTgUICreateCharA::eventSetSelectHeadDelegate ( class UUIScreenObject* Obj )
 	static UFunction* pFnSetSelectHeadDelegate = NULL;
 
 	if ( ! pFnSetSelectHeadDelegate )
-		pFnSetSelectHeadDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55696 ];
+		pFnSetSelectHeadDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreateCharA.SetSelectHeadDelegate" );
 
 	UTgUICreateCharA_eventSetSelectHeadDelegate_Parms SetSelectHeadDelegate_Parms;
 	SetSelectHeadDelegate_Parms.Obj = Obj;
@@ -12165,7 +12166,7 @@ void UTgUICreateCharA::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 55695 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreateCharA.FixupWidgetsUC" );
 
 	UTgUICreateCharA_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -12183,7 +12184,7 @@ bool UTgUICreateCharA::OnGenderButtonDelegate ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnGenderButtonDelegate = NULL;
 
 	if ( ! pFnOnGenderButtonDelegate )
-		pFnOnGenderButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55692 ];
+		pFnOnGenderButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreateCharA.OnGenderButtonDelegate" );
 
 	UTgUICreateCharA_execOnGenderButtonDelegate_Parms OnGenderButtonDelegate_Parms;
 
@@ -12210,7 +12211,7 @@ bool UTgUICreateCharA::OnSelectHeadDelegate ( struct FInputEventParameters* Even
 	static UFunction* pFnOnSelectHeadDelegate = NULL;
 
 	if ( ! pFnOnSelectHeadDelegate )
-		pFnOnSelectHeadDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55689 ];
+		pFnOnSelectHeadDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreateCharA.OnSelectHeadDelegate" );
 
 	UTgUICreateCharA_execOnSelectHeadDelegate_Parms OnSelectHeadDelegate_Parms;
 
@@ -12237,7 +12238,7 @@ bool UTgUICreateCharA::OnNextButtonDelegate ( struct FInputEventParameters* Even
 	static UFunction* pFnOnNextButtonDelegate = NULL;
 
 	if ( ! pFnOnNextButtonDelegate )
-		pFnOnNextButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55686 ];
+		pFnOnNextButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreateCharA.OnNextButtonDelegate" );
 
 	UTgUICreateCharA_execOnNextButtonDelegate_Parms OnNextButtonDelegate_Parms;
 
@@ -12264,7 +12265,7 @@ bool UTgUICreateCharA::OnBackButtonDelegate ( struct FInputEventParameters* Even
 	static UFunction* pFnOnBackButtonDelegate = NULL;
 
 	if ( ! pFnOnBackButtonDelegate )
-		pFnOnBackButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55683 ];
+		pFnOnBackButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreateCharA.OnBackButtonDelegate" );
 
 	UTgUICreateCharA_execOnBackButtonDelegate_Parms OnBackButtonDelegate_Parms;
 
@@ -12291,7 +12292,7 @@ bool UTgUICreateCharA::OnSceneInputKeyDelegate ( struct FInputEventParameters* E
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55680 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreateCharA.OnSceneInputKeyDelegate" );
 
 	UTgUICreateCharA_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -12316,7 +12317,7 @@ void UTgUICreateCharA::SaveMorphSettings ( )
 	static UFunction* pFnSaveMorphSettings = NULL;
 
 	if ( ! pFnSaveMorphSettings )
-		pFnSaveMorphSettings = (UFunction*) UObject::GObjObjects()->Data[ 55679 ];
+		pFnSaveMorphSettings = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreateCharA.SaveMorphSettings" );
 
 	UTgUICreateCharA_execSaveMorphSettings_Parms SaveMorphSettings_Parms;
 
@@ -12337,7 +12338,7 @@ void UTgUICreateCharA::SelectHead ( int headIndex )
 	static UFunction* pFnSelectHead = NULL;
 
 	if ( ! pFnSelectHead )
-		pFnSelectHead = (UFunction*) UObject::GObjObjects()->Data[ 55677 ];
+		pFnSelectHead = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreateCharA.SelectHead" );
 
 	UTgUICreateCharA_execSelectHead_Parms SelectHead_Parms;
 	SelectHead_Parms.headIndex = headIndex;
@@ -12358,7 +12359,7 @@ void UTgUICreateCharA::BuildHeadList ( )
 	static UFunction* pFnBuildHeadList = NULL;
 
 	if ( ! pFnBuildHeadList )
-		pFnBuildHeadList = (UFunction*) UObject::GObjObjects()->Data[ 55676 ];
+		pFnBuildHeadList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreateCharA.BuildHeadList" );
 
 	UTgUICreateCharA_execBuildHeadList_Parms BuildHeadList_Parms;
 
@@ -12378,7 +12379,7 @@ void UTgUICreateCharA::SetupCustomModel ( )
 	static UFunction* pFnSetupCustomModel = NULL;
 
 	if ( ! pFnSetupCustomModel )
-		pFnSetupCustomModel = (UFunction*) UObject::GObjObjects()->Data[ 55675 ];
+		pFnSetupCustomModel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreateCharA.SetupCustomModel" );
 
 	UTgUICreateCharA_execSetupCustomModel_Parms SetupCustomModel_Parms;
 
@@ -12398,7 +12399,7 @@ void UTgUICreateCharA::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55674 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreateCharA.FixupTgUIScene" );
 
 	UTgUICreateCharA_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -12418,7 +12419,7 @@ void UTgUICreateCharA::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 55673 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreateCharA.PreCloseScene" );
 
 	UTgUICreateCharA_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -12438,7 +12439,7 @@ void UTgUICreatePlayerScene::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 55710 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreatePlayerScene.FixupWidgetsUC" );
 
 	UTgUICreatePlayerScene_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -12456,7 +12457,7 @@ bool UTgUICreatePlayerScene::OnAcceptInputKeyDelegate ( struct FInputEventParame
 	static UFunction* pFnOnAcceptInputKeyDelegate = NULL;
 
 	if ( ! pFnOnAcceptInputKeyDelegate )
-		pFnOnAcceptInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55707 ];
+		pFnOnAcceptInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreatePlayerScene.OnAcceptInputKeyDelegate" );
 
 	UTgUICreatePlayerScene_execOnAcceptInputKeyDelegate_Parms OnAcceptInputKeyDelegate_Parms;
 
@@ -12483,7 +12484,7 @@ bool UTgUICreatePlayerScene::OnSceneInputKeyDelegate ( struct FInputEventParamet
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55704 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreatePlayerScene.OnSceneInputKeyDelegate" );
 
 	UTgUICreatePlayerScene_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -12508,7 +12509,7 @@ void UTgUICreatePlayerScene::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55703 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreatePlayerScene.FixupTgUIScene" );
 
 	UTgUICreatePlayerScene_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -12530,7 +12531,7 @@ bool UTgUICreditsMenu::OnSceneInput ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnSceneInput = NULL;
 
 	if ( ! pFnOnSceneInput )
-		pFnOnSceneInput = (UFunction*) UObject::GObjObjects()->Data[ 55723 ];
+		pFnOnSceneInput = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreditsMenu.OnSceneInput" );
 
 	UTgUICreditsMenu_execOnSceneInput_Parms OnSceneInput_Parms;
 
@@ -12555,7 +12556,7 @@ void UTgUICreditsMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55722 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICreditsMenu.FixupTgUIScene" );
 
 	UTgUICreditsMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -12575,7 +12576,7 @@ void UTgUIDevInGame::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 55948 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevInGame.FixupWidgetsUC" );
 
 	UTgUIDevInGame_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -12593,7 +12594,7 @@ bool UTgUIDevInGame::OnSpawnBotButtonKey ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSpawnBotButtonKey = NULL;
 
 	if ( ! pFnOnSpawnBotButtonKey )
-		pFnOnSpawnBotButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 55944 ];
+		pFnOnSpawnBotButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevInGame.OnSpawnBotButtonKey" );
 
 	UTgUIDevInGame_execOnSpawnBotButtonKey_Parms OnSpawnBotButtonKey_Parms;
 
@@ -12616,7 +12617,7 @@ bool UTgUIDevInGame::OnLaunchScreenButtonKey ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnLaunchScreenButtonKey = NULL;
 
 	if ( ! pFnOnLaunchScreenButtonKey )
-		pFnOnLaunchScreenButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 55941 ];
+		pFnOnLaunchScreenButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevInGame.OnLaunchScreenButtonKey" );
 
 	UTgUIDevInGame_execOnLaunchScreenButtonKey_Parms OnLaunchScreenButtonKey_Parms;
 
@@ -12639,7 +12640,7 @@ bool UTgUIDevInGame::OnMissionScreenButtonKey ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnMissionScreenButtonKey = NULL;
 
 	if ( ! pFnOnMissionScreenButtonKey )
-		pFnOnMissionScreenButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 55938 ];
+		pFnOnMissionScreenButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevInGame.OnMissionScreenButtonKey" );
 
 	UTgUIDevInGame_execOnMissionScreenButtonKey_Parms OnMissionScreenButtonKey_Parms;
 
@@ -12662,7 +12663,7 @@ bool UTgUIDevInGame::OnCloseButtonKey ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnCloseButtonKey = NULL;
 
 	if ( ! pFnOnCloseButtonKey )
-		pFnOnCloseButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 55935 ];
+		pFnOnCloseButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevInGame.OnCloseButtonKey" );
 
 	UTgUIDevInGame_execOnCloseButtonKey_Parms OnCloseButtonKey_Parms;
 
@@ -12683,7 +12684,7 @@ void UTgUIDevInGame::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 55934 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevInGame.FixupWidgets" );
 
 	UTgUIDevInGame_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -12704,7 +12705,7 @@ bool UTgUIDevInGame::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55932 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevInGame.TickTgUIScene" );
 
 	UTgUIDevInGame_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -12726,7 +12727,7 @@ void UTgUIDevInGame::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55931 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevInGame.FixupTgUIScene" );
 
 	UTgUIDevInGame_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -12746,7 +12747,7 @@ void UTgUIDevSpawnBot::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 56056 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.FixupWidgetsUC" );
 
 	UTgUIDevSpawnBot_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -12764,7 +12765,7 @@ bool UTgUIDevSpawnBot::OnBotList18 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList18 = NULL;
 
 	if ( ! pFnOnBotList18 )
-		pFnOnBotList18 = (UFunction*) UObject::GObjObjects()->Data[ 56053 ];
+		pFnOnBotList18 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList18" );
 
 	UTgUIDevSpawnBot_execOnBotList18_Parms OnBotList18_Parms;
 
@@ -12787,7 +12788,7 @@ bool UTgUIDevSpawnBot::OnBotList17 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList17 = NULL;
 
 	if ( ! pFnOnBotList17 )
-		pFnOnBotList17 = (UFunction*) UObject::GObjObjects()->Data[ 56050 ];
+		pFnOnBotList17 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList17" );
 
 	UTgUIDevSpawnBot_execOnBotList17_Parms OnBotList17_Parms;
 
@@ -12810,7 +12811,7 @@ bool UTgUIDevSpawnBot::OnBotList16 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList16 = NULL;
 
 	if ( ! pFnOnBotList16 )
-		pFnOnBotList16 = (UFunction*) UObject::GObjObjects()->Data[ 56047 ];
+		pFnOnBotList16 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList16" );
 
 	UTgUIDevSpawnBot_execOnBotList16_Parms OnBotList16_Parms;
 
@@ -12833,7 +12834,7 @@ bool UTgUIDevSpawnBot::OnBotList15 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList15 = NULL;
 
 	if ( ! pFnOnBotList15 )
-		pFnOnBotList15 = (UFunction*) UObject::GObjObjects()->Data[ 56044 ];
+		pFnOnBotList15 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList15" );
 
 	UTgUIDevSpawnBot_execOnBotList15_Parms OnBotList15_Parms;
 
@@ -12856,7 +12857,7 @@ bool UTgUIDevSpawnBot::OnBotList14 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList14 = NULL;
 
 	if ( ! pFnOnBotList14 )
-		pFnOnBotList14 = (UFunction*) UObject::GObjObjects()->Data[ 56041 ];
+		pFnOnBotList14 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList14" );
 
 	UTgUIDevSpawnBot_execOnBotList14_Parms OnBotList14_Parms;
 
@@ -12879,7 +12880,7 @@ bool UTgUIDevSpawnBot::OnBotList13 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList13 = NULL;
 
 	if ( ! pFnOnBotList13 )
-		pFnOnBotList13 = (UFunction*) UObject::GObjObjects()->Data[ 56038 ];
+		pFnOnBotList13 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList13" );
 
 	UTgUIDevSpawnBot_execOnBotList13_Parms OnBotList13_Parms;
 
@@ -12902,7 +12903,7 @@ bool UTgUIDevSpawnBot::OnBotList12 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList12 = NULL;
 
 	if ( ! pFnOnBotList12 )
-		pFnOnBotList12 = (UFunction*) UObject::GObjObjects()->Data[ 56035 ];
+		pFnOnBotList12 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList12" );
 
 	UTgUIDevSpawnBot_execOnBotList12_Parms OnBotList12_Parms;
 
@@ -12925,7 +12926,7 @@ bool UTgUIDevSpawnBot::OnBotList11 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList11 = NULL;
 
 	if ( ! pFnOnBotList11 )
-		pFnOnBotList11 = (UFunction*) UObject::GObjObjects()->Data[ 56032 ];
+		pFnOnBotList11 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList11" );
 
 	UTgUIDevSpawnBot_execOnBotList11_Parms OnBotList11_Parms;
 
@@ -12948,7 +12949,7 @@ bool UTgUIDevSpawnBot::OnBotList10 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList10 = NULL;
 
 	if ( ! pFnOnBotList10 )
-		pFnOnBotList10 = (UFunction*) UObject::GObjObjects()->Data[ 56029 ];
+		pFnOnBotList10 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList10" );
 
 	UTgUIDevSpawnBot_execOnBotList10_Parms OnBotList10_Parms;
 
@@ -12971,7 +12972,7 @@ bool UTgUIDevSpawnBot::OnBotList9 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList9 = NULL;
 
 	if ( ! pFnOnBotList9 )
-		pFnOnBotList9 = (UFunction*) UObject::GObjObjects()->Data[ 56026 ];
+		pFnOnBotList9 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList9" );
 
 	UTgUIDevSpawnBot_execOnBotList9_Parms OnBotList9_Parms;
 
@@ -12994,7 +12995,7 @@ bool UTgUIDevSpawnBot::OnBotList8 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList8 = NULL;
 
 	if ( ! pFnOnBotList8 )
-		pFnOnBotList8 = (UFunction*) UObject::GObjObjects()->Data[ 56023 ];
+		pFnOnBotList8 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList8" );
 
 	UTgUIDevSpawnBot_execOnBotList8_Parms OnBotList8_Parms;
 
@@ -13017,7 +13018,7 @@ bool UTgUIDevSpawnBot::OnBotList7 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList7 = NULL;
 
 	if ( ! pFnOnBotList7 )
-		pFnOnBotList7 = (UFunction*) UObject::GObjObjects()->Data[ 56020 ];
+		pFnOnBotList7 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList7" );
 
 	UTgUIDevSpawnBot_execOnBotList7_Parms OnBotList7_Parms;
 
@@ -13040,7 +13041,7 @@ bool UTgUIDevSpawnBot::OnBotList6 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList6 = NULL;
 
 	if ( ! pFnOnBotList6 )
-		pFnOnBotList6 = (UFunction*) UObject::GObjObjects()->Data[ 56017 ];
+		pFnOnBotList6 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList6" );
 
 	UTgUIDevSpawnBot_execOnBotList6_Parms OnBotList6_Parms;
 
@@ -13063,7 +13064,7 @@ bool UTgUIDevSpawnBot::OnBotList5 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList5 = NULL;
 
 	if ( ! pFnOnBotList5 )
-		pFnOnBotList5 = (UFunction*) UObject::GObjObjects()->Data[ 56014 ];
+		pFnOnBotList5 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList5" );
 
 	UTgUIDevSpawnBot_execOnBotList5_Parms OnBotList5_Parms;
 
@@ -13086,7 +13087,7 @@ bool UTgUIDevSpawnBot::OnBotList4 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList4 = NULL;
 
 	if ( ! pFnOnBotList4 )
-		pFnOnBotList4 = (UFunction*) UObject::GObjObjects()->Data[ 56011 ];
+		pFnOnBotList4 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList4" );
 
 	UTgUIDevSpawnBot_execOnBotList4_Parms OnBotList4_Parms;
 
@@ -13109,7 +13110,7 @@ bool UTgUIDevSpawnBot::OnBotList3 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList3 = NULL;
 
 	if ( ! pFnOnBotList3 )
-		pFnOnBotList3 = (UFunction*) UObject::GObjObjects()->Data[ 56008 ];
+		pFnOnBotList3 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList3" );
 
 	UTgUIDevSpawnBot_execOnBotList3_Parms OnBotList3_Parms;
 
@@ -13132,7 +13133,7 @@ bool UTgUIDevSpawnBot::OnBotList2 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList2 = NULL;
 
 	if ( ! pFnOnBotList2 )
-		pFnOnBotList2 = (UFunction*) UObject::GObjObjects()->Data[ 56005 ];
+		pFnOnBotList2 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList2" );
 
 	UTgUIDevSpawnBot_execOnBotList2_Parms OnBotList2_Parms;
 
@@ -13155,7 +13156,7 @@ bool UTgUIDevSpawnBot::OnBotList1 ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnBotList1 = NULL;
 
 	if ( ! pFnOnBotList1 )
-		pFnOnBotList1 = (UFunction*) UObject::GObjObjects()->Data[ 56002 ];
+		pFnOnBotList1 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotList1" );
 
 	UTgUIDevSpawnBot_execOnBotList1_Parms OnBotList1_Parms;
 
@@ -13180,7 +13181,7 @@ bool UTgUIDevSpawnBot::OnBotListBase ( struct FName Key, unsigned char Event, in
 	static UFunction* pFnOnBotListBase = NULL;
 
 	if ( ! pFnOnBotListBase )
-		pFnOnBotListBase = (UFunction*) UObject::GObjObjects()->Data[ 55997 ];
+		pFnOnBotListBase = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnBotListBase" );
 
 	UTgUIDevSpawnBot_execOnBotListBase_Parms OnBotListBase_Parms;
 	memcpy ( &OnBotListBase_Parms.Key, &Key, 0x8 );
@@ -13203,7 +13204,7 @@ bool UTgUIDevSpawnBot::OnSpawnBotButton ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnSpawnBotButton = NULL;
 
 	if ( ! pFnOnSpawnBotButton )
-		pFnOnSpawnBotButton = (UFunction*) UObject::GObjObjects()->Data[ 55994 ];
+		pFnOnSpawnBotButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnSpawnBotButton" );
 
 	UTgUIDevSpawnBot_execOnSpawnBotButton_Parms OnSpawnBotButton_Parms;
 
@@ -13226,7 +13227,7 @@ bool UTgUIDevSpawnBot::OnCloseButton ( struct FInputEventParameters* EventParms 
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 55991 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnCloseButton" );
 
 	UTgUIDevSpawnBot_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -13249,7 +13250,7 @@ bool UTgUIDevSpawnBot::OnSpawnBotSceneKey ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSpawnBotSceneKey = NULL;
 
 	if ( ! pFnOnSpawnBotSceneKey )
-		pFnOnSpawnBotSceneKey = (UFunction*) UObject::GObjObjects()->Data[ 55988 ];
+		pFnOnSpawnBotSceneKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnSpawnBotSceneKey" );
 
 	UTgUIDevSpawnBot_execOnSpawnBotSceneKey_Parms OnSpawnBotSceneKey_Parms;
 
@@ -13272,7 +13273,7 @@ bool UTgUIDevSpawnBot::OnScrollLowerButton ( struct FInputEventParameters* Event
 	static UFunction* pFnOnScrollLowerButton = NULL;
 
 	if ( ! pFnOnScrollLowerButton )
-		pFnOnScrollLowerButton = (UFunction*) UObject::GObjObjects()->Data[ 55985 ];
+		pFnOnScrollLowerButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnScrollLowerButton" );
 
 	UTgUIDevSpawnBot_execOnScrollLowerButton_Parms OnScrollLowerButton_Parms;
 
@@ -13295,7 +13296,7 @@ bool UTgUIDevSpawnBot::OnScrollHigherButton ( struct FInputEventParameters* Even
 	static UFunction* pFnOnScrollHigherButton = NULL;
 
 	if ( ! pFnOnScrollHigherButton )
-		pFnOnScrollHigherButton = (UFunction*) UObject::GObjObjects()->Data[ 55982 ];
+		pFnOnScrollHigherButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.OnScrollHigherButton" );
 
 	UTgUIDevSpawnBot_execOnScrollHigherButton_Parms OnScrollHigherButton_Parms;
 
@@ -13316,7 +13317,7 @@ void UTgUIDevSpawnBot::StopScrolling ( )
 	static UFunction* pFnStopScrolling = NULL;
 
 	if ( ! pFnStopScrolling )
-		pFnStopScrolling = (UFunction*) UObject::GObjObjects()->Data[ 55981 ];
+		pFnStopScrolling = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.StopScrolling" );
 
 	UTgUIDevSpawnBot_execStopScrolling_Parms StopScrolling_Parms;
 
@@ -13333,7 +13334,7 @@ void UTgUIDevSpawnBot::StartScrolling ( unsigned long bHigher )
 	static UFunction* pFnStartScrolling = NULL;
 
 	if ( ! pFnStartScrolling )
-		pFnStartScrolling = (UFunction*) UObject::GObjObjects()->Data[ 55979 ];
+		pFnStartScrolling = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.StartScrolling" );
 
 	UTgUIDevSpawnBot_execStartScrolling_Parms StartScrolling_Parms;
 	StartScrolling_Parms.bHigher = bHigher;
@@ -13351,7 +13352,7 @@ void UTgUIDevSpawnBot::ScrollChange ( unsigned long bHigher )
 	static UFunction* pFnScrollChange = NULL;
 
 	if ( ! pFnScrollChange )
-		pFnScrollChange = (UFunction*) UObject::GObjObjects()->Data[ 55977 ];
+		pFnScrollChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.ScrollChange" );
 
 	UTgUIDevSpawnBot_execScrollChange_Parms ScrollChange_Parms;
 	ScrollChange_Parms.bHigher = bHigher;
@@ -13368,7 +13369,7 @@ void UTgUIDevSpawnBot::eventSetupDataInterface ( )
 	static UFunction* pFnSetupDataInterface = NULL;
 
 	if ( ! pFnSetupDataInterface )
-		pFnSetupDataInterface = (UFunction*) UObject::GObjObjects()->Data[ 55976 ];
+		pFnSetupDataInterface = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.SetupDataInterface" );
 
 	UTgUIDevSpawnBot_eventSetupDataInterface_Parms SetupDataInterface_Parms;
 
@@ -13384,7 +13385,7 @@ void UTgUIDevSpawnBot::UpdateScrolling ( )
 	static UFunction* pFnUpdateScrolling = NULL;
 
 	if ( ! pFnUpdateScrolling )
-		pFnUpdateScrolling = (UFunction*) UObject::GObjObjects()->Data[ 55975 ];
+		pFnUpdateScrolling = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.UpdateScrolling" );
 
 	UTgUIDevSpawnBot_execUpdateScrolling_Parms UpdateScrolling_Parms;
 
@@ -13405,7 +13406,7 @@ bool UTgUIDevSpawnBot::AttemptSpawn ( )
 	static UFunction* pFnAttemptSpawn = NULL;
 
 	if ( ! pFnAttemptSpawn )
-		pFnAttemptSpawn = (UFunction*) UObject::GObjObjects()->Data[ 55973 ];
+		pFnAttemptSpawn = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.AttemptSpawn" );
 
 	UTgUIDevSpawnBot_execAttemptSpawn_Parms AttemptSpawn_Parms;
 
@@ -13427,7 +13428,7 @@ void UTgUIDevSpawnBot::PopulateWidgets ( )
 	static UFunction* pFnPopulateWidgets = NULL;
 
 	if ( ! pFnPopulateWidgets )
-		pFnPopulateWidgets = (UFunction*) UObject::GObjObjects()->Data[ 55972 ];
+		pFnPopulateWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.PopulateWidgets" );
 
 	UTgUIDevSpawnBot_execPopulateWidgets_Parms PopulateWidgets_Parms;
 
@@ -13447,7 +13448,7 @@ void UTgUIDevSpawnBot::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 55971 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.FixupWidgets" );
 
 	UTgUIDevSpawnBot_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -13468,7 +13469,7 @@ bool UTgUIDevSpawnBot::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55969 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.TickTgUIScene" );
 
 	UTgUIDevSpawnBot_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -13490,7 +13491,7 @@ void UTgUIDevSpawnBot::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55968 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDevSpawnBot.FixupTgUIScene" );
 
 	UTgUIDevSpawnBot_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -13510,7 +13511,7 @@ void UTgUIEndRaidScreen::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 56193 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndRaidScreen.FixupWidgetsUC" );
 
 	UTgUIEndRaidScreen_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -13526,7 +13527,7 @@ void UTgUIEndRaidScreen::ShowScene ( )
 	static UFunction* pFnShowScene = NULL;
 
 	if ( ! pFnShowScene )
-		pFnShowScene = (UFunction*) UObject::GObjObjects()->Data[ 56192 ];
+		pFnShowScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndRaidScreen.ShowScene" );
 
 	UTgUIEndRaidScreen_execShowScene_Parms ShowScene_Parms;
 
@@ -13546,7 +13547,7 @@ void UTgUIEndRaidScreen::HideScene ( )
 	static UFunction* pFnHideScene = NULL;
 
 	if ( ! pFnHideScene )
-		pFnHideScene = (UFunction*) UObject::GObjObjects()->Data[ 56191 ];
+		pFnHideScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndRaidScreen.HideScene" );
 
 	UTgUIEndRaidScreen_execHideScene_Parms HideScene_Parms;
 
@@ -13568,7 +13569,7 @@ bool UTgUIEndRaidScreen::OnCloseButtonPressed ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnCloseButtonPressed = NULL;
 
 	if ( ! pFnOnCloseButtonPressed )
-		pFnOnCloseButtonPressed = (UFunction*) UObject::GObjObjects()->Data[ 56188 ];
+		pFnOnCloseButtonPressed = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndRaidScreen.OnCloseButtonPressed" );
 
 	UTgUIEndRaidScreen_execOnCloseButtonPressed_Parms OnCloseButtonPressed_Parms;
 
@@ -13594,7 +13595,7 @@ void UTgUIEndRaidScreen::SetLabelTextAndColor ( unsigned long bAttackersWon )
 	static UFunction* pFnSetLabelTextAndColor = NULL;
 
 	if ( ! pFnSetLabelTextAndColor )
-		pFnSetLabelTextAndColor = (UFunction*) UObject::GObjObjects()->Data[ 56186 ];
+		pFnSetLabelTextAndColor = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndRaidScreen.SetLabelTextAndColor" );
 
 	UTgUIEndRaidScreen_execSetLabelTextAndColor_Parms SetLabelTextAndColor_Parms;
 	SetLabelTextAndColor_Parms.bAttackersWon = bAttackersWon;
@@ -13616,7 +13617,7 @@ bool UTgUIEndRaidScreen::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56184 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndRaidScreen.TickTgUIScene" );
 
 	UTgUIEndRaidScreen_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -13638,7 +13639,7 @@ void UTgUIEndRaidScreen::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56183 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndRaidScreen.FixupTgUIScene" );
 
 	UTgUIEndRaidScreen_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -13658,7 +13659,7 @@ void UTgUIEndRaidScreen::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 56182 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndRaidScreen.PreCloseScene" );
 
 	UTgUIEndRaidScreen_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -13678,7 +13679,7 @@ void UTgUIEndRaidScreen::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 56181 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndRaidScreen.PostOpenScene" );
 
 	UTgUIEndRaidScreen_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -13702,7 +13703,7 @@ bool UTgUIEULAMenu::OnScroll ( class UUIScreenObject* Sender, float Nudges, unsi
 	static UFunction* pFnOnScroll = NULL;
 
 	if ( ! pFnOnScroll )
-		pFnOnScroll = (UFunction*) UObject::GObjObjects()->Data[ 56208 ];
+		pFnOnScroll = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEULAMenu.OnScroll" );
 
 	UTgUIEULAMenu_execOnScroll_Parms OnScroll_Parms;
 	OnScroll_Parms.Sender = Sender;
@@ -13729,7 +13730,7 @@ bool UTgUIEULAMenu::OnSceneInput ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnSceneInput = NULL;
 
 	if ( ! pFnOnSceneInput )
-		pFnOnSceneInput = (UFunction*) UObject::GObjObjects()->Data[ 56205 ];
+		pFnOnSceneInput = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEULAMenu.OnSceneInput" );
 
 	UTgUIEULAMenu_execOnSceneInput_Parms OnSceneInput_Parms;
 
@@ -13756,7 +13757,7 @@ bool UTgUIEULAMenu::OnButtonClick ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnButtonClick = NULL;
 
 	if ( ! pFnOnButtonClick )
-		pFnOnButtonClick = (UFunction*) UObject::GObjObjects()->Data[ 56202 ];
+		pFnOnButtonClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEULAMenu.OnButtonClick" );
 
 	UTgUIEULAMenu_execOnButtonClick_Parms OnButtonClick_Parms;
 
@@ -13781,7 +13782,7 @@ void UTgUIEULAMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56201 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEULAMenu.FixupTgUIScene" );
 
 	UTgUIEULAMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -13801,7 +13802,7 @@ void UTgUIFriendsList::RegisterCallbacks ( )
 	static UFunction* pFnRegisterCallbacks = NULL;
 
 	if ( ! pFnRegisterCallbacks )
-		pFnRegisterCallbacks = (UFunction*) UObject::GObjObjects()->Data[ 56288 ];
+		pFnRegisterCallbacks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIFriendsList.RegisterCallbacks" );
 
 	UTgUIFriendsList_execRegisterCallbacks_Parms RegisterCallbacks_Parms;
 
@@ -13824,7 +13825,7 @@ bool UTgUIFriendsList::OnPopupSubmitText ( class UUIEditBox* ebox, int PlayerInd
 	static UFunction* pFnOnPopupSubmitText = NULL;
 
 	if ( ! pFnOnPopupSubmitText )
-		pFnOnPopupSubmitText = (UFunction*) UObject::GObjObjects()->Data[ 56284 ];
+		pFnOnPopupSubmitText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIFriendsList.OnPopupSubmitText" );
 
 	UTgUIFriendsList_execOnPopupSubmitText_Parms OnPopupSubmitText_Parms;
 	OnPopupSubmitText_Parms.ebox = ebox;
@@ -13850,7 +13851,7 @@ bool UTgUIFriendsList::OnPopupButtons ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnPopupButtons = NULL;
 
 	if ( ! pFnOnPopupButtons )
-		pFnOnPopupButtons = (UFunction*) UObject::GObjObjects()->Data[ 56281 ];
+		pFnOnPopupButtons = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIFriendsList.OnPopupButtons" );
 
 	UTgUIFriendsList_execOnPopupButtons_Parms OnPopupButtons_Parms;
 
@@ -13877,7 +13878,7 @@ bool UTgUIFriendsList::OnSceneButtons ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnSceneButtons = NULL;
 
 	if ( ! pFnOnSceneButtons )
-		pFnOnSceneButtons = (UFunction*) UObject::GObjObjects()->Data[ 56278 ];
+		pFnOnSceneButtons = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIFriendsList.OnSceneButtons" );
 
 	UTgUIFriendsList_execOnSceneButtons_Parms OnSceneButtons_Parms;
 
@@ -13904,7 +13905,7 @@ bool UTgUIFriendsList::OnSceneInputKey ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnSceneInputKey = NULL;
 
 	if ( ! pFnOnSceneInputKey )
-		pFnOnSceneInputKey = (UFunction*) UObject::GObjObjects()->Data[ 56275 ];
+		pFnOnSceneInputKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIFriendsList.OnSceneInputKey" );
 
 	UTgUIFriendsList_execOnSceneInputKey_Parms OnSceneInputKey_Parms;
 
@@ -13931,7 +13932,7 @@ bool UTgUIFriendsList::OnIgnoreButtons ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnIgnoreButtons = NULL;
 
 	if ( ! pFnOnIgnoreButtons )
-		pFnOnIgnoreButtons = (UFunction*) UObject::GObjObjects()->Data[ 56272 ];
+		pFnOnIgnoreButtons = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIFriendsList.OnIgnoreButtons" );
 
 	UTgUIFriendsList_execOnIgnoreButtons_Parms OnIgnoreButtons_Parms;
 
@@ -13958,7 +13959,7 @@ bool UTgUIFriendsList::OnListItemSelected ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnListItemSelected = NULL;
 
 	if ( ! pFnOnListItemSelected )
-		pFnOnListItemSelected = (UFunction*) UObject::GObjObjects()->Data[ 56269 ];
+		pFnOnListItemSelected = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIFriendsList.OnListItemSelected" );
 
 	UTgUIFriendsList_execOnListItemSelected_Parms OnListItemSelected_Parms;
 
@@ -13985,7 +13986,7 @@ bool UTgUIFriendsList::OnFriendButtons ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnFriendButtons = NULL;
 
 	if ( ! pFnOnFriendButtons )
-		pFnOnFriendButtons = (UFunction*) UObject::GObjObjects()->Data[ 56266 ];
+		pFnOnFriendButtons = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIFriendsList.OnFriendButtons" );
 
 	UTgUIFriendsList_execOnFriendButtons_Parms OnFriendButtons_Parms;
 
@@ -14010,7 +14011,7 @@ void UTgUIFriendsList::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56265 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIFriendsList.FixupTgUIScene" );
 
 	UTgUIFriendsList_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -14032,7 +14033,7 @@ bool UTgUIHexAuction::OnSceneInputKeyDelegate ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56350 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIHexAuction.OnSceneInputKeyDelegate" );
 
 	UTgUIHexAuction_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -14054,7 +14055,7 @@ void UTgUIHexAuction::SetHexPosition ( int nId )
 	static UFunction* pFnSetHexPosition = NULL;
 
 	if ( ! pFnSetHexPosition )
-		pFnSetHexPosition = (UFunction*) UObject::GObjObjects()->Data[ 56348 ];
+		pFnSetHexPosition = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIHexAuction.SetHexPosition" );
 
 	UTgUIHexAuction_execSetHexPosition_Parms SetHexPosition_Parms;
 	SetHexPosition_Parms.nId = nId;
@@ -14071,7 +14072,7 @@ void UTgUIHexAuction::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 56347 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIHexAuction.FixupWidgetsUC" );
 
 	UTgUIHexAuction_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -14089,7 +14090,7 @@ void UTgUIHexAuction::OnMissionTypeChanged ( class UUIObject* Sender, int Player
 	static UFunction* pFnOnMissionTypeChanged = NULL;
 
 	if ( ! pFnOnMissionTypeChanged )
-		pFnOnMissionTypeChanged = (UFunction*) UObject::GObjObjects()->Data[ 56344 ];
+		pFnOnMissionTypeChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIHexAuction.OnMissionTypeChanged" );
 
 	UTgUIHexAuction_execOnMissionTypeChanged_Parms OnMissionTypeChanged_Parms;
 	OnMissionTypeChanged_Parms.Sender = Sender;
@@ -14113,7 +14114,7 @@ bool UTgUIHexAuction::OnSelectMissile ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnSelectMissile = NULL;
 
 	if ( ! pFnOnSelectMissile )
-		pFnOnSelectMissile = (UFunction*) UObject::GObjObjects()->Data[ 56341 ];
+		pFnOnSelectMissile = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIHexAuction.OnSelectMissile" );
 
 	UTgUIHexAuction_execOnSelectMissile_Parms OnSelectMissile_Parms;
 
@@ -14140,7 +14141,7 @@ bool UTgUIHexAuction::OnPlaceBidClicked ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnPlaceBidClicked = NULL;
 
 	if ( ! pFnOnPlaceBidClicked )
-		pFnOnPlaceBidClicked = (UFunction*) UObject::GObjObjects()->Data[ 56338 ];
+		pFnOnPlaceBidClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIHexAuction.OnPlaceBidClicked" );
 
 	UTgUIHexAuction_execOnPlaceBidClicked_Parms OnPlaceBidClicked_Parms;
 
@@ -14165,7 +14166,7 @@ void UTgUIHexAuction::UpdateButtonCovers ( )
 	static UFunction* pFnUpdateButtonCovers = NULL;
 
 	if ( ! pFnUpdateButtonCovers )
-		pFnUpdateButtonCovers = (UFunction*) UObject::GObjObjects()->Data[ 56337 ];
+		pFnUpdateButtonCovers = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIHexAuction.UpdateButtonCovers" );
 
 	UTgUIHexAuction_execUpdateButtonCovers_Parms UpdateButtonCovers_Parms;
 
@@ -14185,7 +14186,7 @@ void UTgUIHexAuction::RequestHexAuctionData ( )
 	static UFunction* pFnRequestHexAuctionData = NULL;
 
 	if ( ! pFnRequestHexAuctionData )
-		pFnRequestHexAuctionData = (UFunction*) UObject::GObjObjects()->Data[ 56336 ];
+		pFnRequestHexAuctionData = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIHexAuction.RequestHexAuctionData" );
 
 	UTgUIHexAuction_execRequestHexAuctionData_Parms RequestHexAuctionData_Parms;
 
@@ -14205,7 +14206,7 @@ void UTgUIHexAuction::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 56335 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIHexAuction.PostOpenScene" );
 
 	UTgUIHexAuction_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -14225,7 +14226,7 @@ void UTgUIHexAuction::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 56334 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIHexAuction.FixupWidgets" );
 
 	UTgUIHexAuction_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -14246,7 +14247,7 @@ bool UTgUIHexAuction::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56332 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIHexAuction.TickTgUIScene" );
 
 	UTgUIHexAuction_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -14268,7 +14269,7 @@ void UTgUIHexAuction::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56331 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIHexAuction.FixupTgUIScene" );
 
 	UTgUIHexAuction_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -14288,7 +14289,7 @@ void UTgUIHexAuction::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 56330 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIHexAuction.PostInitSceneDriver" );
 
 	UTgUIHexAuction_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -14308,7 +14309,7 @@ void UTgUIInGameMainMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 56395 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInGameMainMenu.FixupWidgetsUC" );
 
 	UTgUIInGameMainMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -14326,7 +14327,7 @@ bool UTgUIInGameMainMenu::OnDisconnectButtonKey ( struct FInputEventParameters* 
 	static UFunction* pFnOnDisconnectButtonKey = NULL;
 
 	if ( ! pFnOnDisconnectButtonKey )
-		pFnOnDisconnectButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 56391 ];
+		pFnOnDisconnectButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInGameMainMenu.OnDisconnectButtonKey" );
 
 	UTgUIInGameMainMenu_execOnDisconnectButtonKey_Parms OnDisconnectButtonKey_Parms;
 
@@ -14349,7 +14350,7 @@ bool UTgUIInGameMainMenu::OnSpawnBotButtonKey ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnSpawnBotButtonKey = NULL;
 
 	if ( ! pFnOnSpawnBotButtonKey )
-		pFnOnSpawnBotButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 56387 ];
+		pFnOnSpawnBotButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInGameMainMenu.OnSpawnBotButtonKey" );
 
 	UTgUIInGameMainMenu_execOnSpawnBotButtonKey_Parms OnSpawnBotButtonKey_Parms;
 
@@ -14372,7 +14373,7 @@ bool UTgUIInGameMainMenu::OnLaunchScreenButtonKey ( struct FInputEventParameters
 	static UFunction* pFnOnLaunchScreenButtonKey = NULL;
 
 	if ( ! pFnOnLaunchScreenButtonKey )
-		pFnOnLaunchScreenButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 56384 ];
+		pFnOnLaunchScreenButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInGameMainMenu.OnLaunchScreenButtonKey" );
 
 	UTgUIInGameMainMenu_execOnLaunchScreenButtonKey_Parms OnLaunchScreenButtonKey_Parms;
 
@@ -14395,7 +14396,7 @@ bool UTgUIInGameMainMenu::OnSettingsButtonKey ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnSettingsButtonKey = NULL;
 
 	if ( ! pFnOnSettingsButtonKey )
-		pFnOnSettingsButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 56380 ];
+		pFnOnSettingsButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInGameMainMenu.OnSettingsButtonKey" );
 
 	UTgUIInGameMainMenu_execOnSettingsButtonKey_Parms OnSettingsButtonKey_Parms;
 
@@ -14418,7 +14419,7 @@ bool UTgUIInGameMainMenu::OnExitGameButtonKey ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnExitGameButtonKey = NULL;
 
 	if ( ! pFnOnExitGameButtonKey )
-		pFnOnExitGameButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 56377 ];
+		pFnOnExitGameButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInGameMainMenu.OnExitGameButtonKey" );
 
 	UTgUIInGameMainMenu_execOnExitGameButtonKey_Parms OnExitGameButtonKey_Parms;
 
@@ -14441,7 +14442,7 @@ bool UTgUIInGameMainMenu::OnReturnToGameButtonKey ( struct FInputEventParameters
 	static UFunction* pFnOnReturnToGameButtonKey = NULL;
 
 	if ( ! pFnOnReturnToGameButtonKey )
-		pFnOnReturnToGameButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 56374 ];
+		pFnOnReturnToGameButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInGameMainMenu.OnReturnToGameButtonKey" );
 
 	UTgUIInGameMainMenu_execOnReturnToGameButtonKey_Parms OnReturnToGameButtonKey_Parms;
 
@@ -14464,7 +14465,7 @@ bool UTgUIInGameMainMenu::OnEndMissionButton ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnEndMissionButton = NULL;
 
 	if ( ! pFnOnEndMissionButton )
-		pFnOnEndMissionButton = (UFunction*) UObject::GObjObjects()->Data[ 56369 ];
+		pFnOnEndMissionButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInGameMainMenu.OnEndMissionButton" );
 
 	UTgUIInGameMainMenu_execOnEndMissionButton_Parms OnEndMissionButton_Parms;
 
@@ -14485,7 +14486,7 @@ void UTgUIInGameMainMenu::ProcessQuit ( )
 	static UFunction* pFnProcessQuit = NULL;
 
 	if ( ! pFnProcessQuit )
-		pFnProcessQuit = (UFunction*) UObject::GObjObjects()->Data[ 56368 ];
+		pFnProcessQuit = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInGameMainMenu.ProcessQuit" );
 
 	UTgUIInGameMainMenu_execProcessQuit_Parms ProcessQuit_Parms;
 
@@ -14505,7 +14506,7 @@ void UTgUIInGameMainMenu::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 56367 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInGameMainMenu.FixupWidgets" );
 
 	UTgUIInGameMainMenu_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -14525,7 +14526,7 @@ void UTgUIInGameMainMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56366 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInGameMainMenu.FixupTgUIScene" );
 
 	UTgUIInGameMainMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -14546,7 +14547,7 @@ bool UTgUIInGameMainMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56364 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInGameMainMenu.TickTgUIScene" );
 
 	UTgUIInGameMainMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -14568,7 +14569,7 @@ void UTgUIInstanceSelect::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 56435 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInstanceSelect.FixupWidgetsUC" );
 
 	UTgUIInstanceSelect_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -14585,7 +14586,7 @@ void UTgUIInstanceSelect::eventSetSelectInstanceDelegate ( class UUIScreenObject
 	static UFunction* pFnSetSelectInstanceDelegate = NULL;
 
 	if ( ! pFnSetSelectInstanceDelegate )
-		pFnSetSelectInstanceDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56433 ];
+		pFnSetSelectInstanceDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInstanceSelect.SetSelectInstanceDelegate" );
 
 	UTgUIInstanceSelect_eventSetSelectInstanceDelegate_Parms SetSelectInstanceDelegate_Parms;
 	SetSelectInstanceDelegate_Parms.Obj = Obj;
@@ -14603,7 +14604,7 @@ void UTgUIInstanceSelect::GetInstanceListCallback ( int eType )
 	static UFunction* pFnGetInstanceListCallback = NULL;
 
 	if ( ! pFnGetInstanceListCallback )
-		pFnGetInstanceListCallback = (UFunction*) UObject::GObjObjects()->Data[ 56431 ];
+		pFnGetInstanceListCallback = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInstanceSelect.GetInstanceListCallback" );
 
 	UTgUIInstanceSelect_execGetInstanceListCallback_Parms GetInstanceListCallback_Parms;
 	GetInstanceListCallback_Parms.eType = eType;
@@ -14626,7 +14627,7 @@ bool UTgUIInstanceSelect::OnSelectInstanceDelegate ( struct FInputEventParameter
 	static UFunction* pFnOnSelectInstanceDelegate = NULL;
 
 	if ( ! pFnOnSelectInstanceDelegate )
-		pFnOnSelectInstanceDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56428 ];
+		pFnOnSelectInstanceDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInstanceSelect.OnSelectInstanceDelegate" );
 
 	UTgUIInstanceSelect_execOnSelectInstanceDelegate_Parms OnSelectInstanceDelegate_Parms;
 
@@ -14653,7 +14654,7 @@ bool UTgUIInstanceSelect::OnChangeButtonDelegate ( struct FInputEventParameters*
 	static UFunction* pFnOnChangeButtonDelegate = NULL;
 
 	if ( ! pFnOnChangeButtonDelegate )
-		pFnOnChangeButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56425 ];
+		pFnOnChangeButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInstanceSelect.OnChangeButtonDelegate" );
 
 	UTgUIInstanceSelect_execOnChangeButtonDelegate_Parms OnChangeButtonDelegate_Parms;
 
@@ -14680,7 +14681,7 @@ bool UTgUIInstanceSelect::OnCloseButtonDelegate ( struct FInputEventParameters* 
 	static UFunction* pFnOnCloseButtonDelegate = NULL;
 
 	if ( ! pFnOnCloseButtonDelegate )
-		pFnOnCloseButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56422 ];
+		pFnOnCloseButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInstanceSelect.OnCloseButtonDelegate" );
 
 	UTgUIInstanceSelect_execOnCloseButtonDelegate_Parms OnCloseButtonDelegate_Parms;
 
@@ -14707,7 +14708,7 @@ bool UTgUIInstanceSelect::OnSceneInputKeyDelegate ( struct FInputEventParameters
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56419 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInstanceSelect.OnSceneInputKeyDelegate" );
 
 	UTgUIInstanceSelect_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -14733,7 +14734,7 @@ void UTgUIInstanceSelect::SelectInstanceItem ( int ItemIndex )
 	static UFunction* pFnSelectInstanceItem = NULL;
 
 	if ( ! pFnSelectInstanceItem )
-		pFnSelectInstanceItem = (UFunction*) UObject::GObjObjects()->Data[ 56417 ];
+		pFnSelectInstanceItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInstanceSelect.SelectInstanceItem" );
 
 	UTgUIInstanceSelect_execSelectInstanceItem_Parms SelectInstanceItem_Parms;
 	SelectInstanceItem_Parms.ItemIndex = ItemIndex;
@@ -14755,7 +14756,7 @@ void UTgUIInstanceSelect::ResizeInstanceWidgets ( int newSize )
 	static UFunction* pFnResizeInstanceWidgets = NULL;
 
 	if ( ! pFnResizeInstanceWidgets )
-		pFnResizeInstanceWidgets = (UFunction*) UObject::GObjObjects()->Data[ 56415 ];
+		pFnResizeInstanceWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInstanceSelect.ResizeInstanceWidgets" );
 
 	UTgUIInstanceSelect_execResizeInstanceWidgets_Parms ResizeInstanceWidgets_Parms;
 	ResizeInstanceWidgets_Parms.newSize = newSize;
@@ -14776,7 +14777,7 @@ void UTgUIInstanceSelect::PopulateInstanceData ( )
 	static UFunction* pFnPopulateInstanceData = NULL;
 
 	if ( ! pFnPopulateInstanceData )
-		pFnPopulateInstanceData = (UFunction*) UObject::GObjObjects()->Data[ 56414 ];
+		pFnPopulateInstanceData = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInstanceSelect.PopulateInstanceData" );
 
 	UTgUIInstanceSelect_execPopulateInstanceData_Parms PopulateInstanceData_Parms;
 
@@ -14796,7 +14797,7 @@ void UTgUIInstanceSelect::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56413 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInstanceSelect.FixupTgUIScene" );
 
 	UTgUIInstanceSelect_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -14816,7 +14817,7 @@ void UTgUIInstanceSelect::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 56412 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInstanceSelect.PostInitSceneDriver" );
 
 	UTgUIInstanceSelect_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -14838,7 +14839,7 @@ void UTgUIIntroScene::SetIntroParams ( float FadeTime, float TotalTime )
 	static UFunction* pFnSetIntroParams = NULL;
 
 	if ( ! pFnSetIntroParams )
-		pFnSetIntroParams = (UFunction*) UObject::GObjObjects()->Data[ 56453 ];
+		pFnSetIntroParams = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIIntroScene.SetIntroParams" );
 
 	UTgUIIntroScene_execSetIntroParams_Parms SetIntroParams_Parms;
 	SetIntroParams_Parms.FadeTime = FadeTime;
@@ -14861,7 +14862,7 @@ bool UTgUIIntroScene::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56451 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIIntroScene.TickTgUIScene" );
 
 	UTgUIIntroScene_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -14883,7 +14884,7 @@ void UTgUIIntroScene::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56450 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIIntroScene.FixupTgUIScene" );
 
 	UTgUIIntroScene_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -14903,7 +14904,7 @@ void UTgUILFGPopup::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 56894 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGPopup.FixupWidgetsUC" );
 
 	UTgUILFGPopup_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -14919,7 +14920,7 @@ void UTgUILFGPopup::UpdateLFGWidgets ( )
 	static UFunction* pFnUpdateLFGWidgets = NULL;
 
 	if ( ! pFnUpdateLFGWidgets )
-		pFnUpdateLFGWidgets = (UFunction*) UObject::GObjObjects()->Data[ 56893 ];
+		pFnUpdateLFGWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGPopup.UpdateLFGWidgets" );
 
 	UTgUILFGPopup_execUpdateLFGWidgets_Parms UpdateLFGWidgets_Parms;
 
@@ -14941,7 +14942,7 @@ bool UTgUILFGPopup::OnCancelButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnCancelButton = NULL;
 
 	if ( ! pFnOnCancelButton )
-		pFnOnCancelButton = (UFunction*) UObject::GObjObjects()->Data[ 56890 ];
+		pFnOnCancelButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGPopup.OnCancelButton" );
 
 	UTgUILFGPopup_execOnCancelButton_Parms OnCancelButton_Parms;
 
@@ -14968,7 +14969,7 @@ bool UTgUILFGPopup::OnAcceptButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnAcceptButton = NULL;
 
 	if ( ! pFnOnAcceptButton )
-		pFnOnAcceptButton = (UFunction*) UObject::GObjObjects()->Data[ 56887 ];
+		pFnOnAcceptButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGPopup.OnAcceptButton" );
 
 	UTgUILFGPopup_execOnAcceptButton_Parms OnAcceptButton_Parms;
 
@@ -14995,7 +14996,7 @@ bool UTgUILFGPopup::OnCloseButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 56884 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGPopup.OnCloseButton" );
 
 	UTgUILFGPopup_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -15022,7 +15023,7 @@ bool UTgUILFGPopup::OnLFGPopupKey ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnLFGPopupKey = NULL;
 
 	if ( ! pFnOnLFGPopupKey )
-		pFnOnLFGPopupKey = (UFunction*) UObject::GObjObjects()->Data[ 56881 ];
+		pFnOnLFGPopupKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGPopup.OnLFGPopupKey" );
 
 	UTgUILFGPopup_execOnLFGPopupKey_Parms OnLFGPopupKey_Parms;
 
@@ -15048,7 +15049,7 @@ bool UTgUILFGPopup::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56879 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGPopup.TickTgUIScene" );
 
 	UTgUILFGPopup_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -15070,7 +15071,7 @@ void UTgUILFGPopup::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56878 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGPopup.FixupTgUIScene" );
 
 	UTgUILFGPopup_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -15092,7 +15093,7 @@ bool UTgUILoadItemProfile::OnDialogButtonKey ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnDialogButtonKey = NULL;
 
 	if ( ! pFnOnDialogButtonKey )
-		pFnOnDialogButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 56971 ];
+		pFnOnDialogButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoadItemProfile.OnDialogButtonKey" );
 
 	UTgUILoadItemProfile_execOnDialogButtonKey_Parms OnDialogButtonKey_Parms;
 
@@ -15113,7 +15114,7 @@ void UTgUILoadItemProfile::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 56970 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoadItemProfile.FixupWidgetsUC" );
 
 	UTgUILoadItemProfile_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -15129,7 +15130,7 @@ void UTgUILoadItemProfile::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 56969 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoadItemProfile.FixupWidgets" );
 
 	UTgUILoadItemProfile_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -15150,7 +15151,7 @@ bool UTgUILoadItemProfile::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56967 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoadItemProfile.TickTgUIScene" );
 
 	UTgUILoadItemProfile_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -15172,7 +15173,7 @@ void UTgUILoadItemProfile::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56966 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoadItemProfile.FixupTgUIScene" );
 
 	UTgUILoadItemProfile_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -15192,7 +15193,7 @@ void UTgUIMapTransition::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 57455 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMapTransition.FixupWidgetsUC" );
 
 	UTgUIMapTransition_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -15209,7 +15210,7 @@ bool UTgUIMapTransition::CanShowCloseButton ( )
 	static UFunction* pFnCanShowCloseButton = NULL;
 
 	if ( ! pFnCanShowCloseButton )
-		pFnCanShowCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 57453 ];
+		pFnCanShowCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMapTransition.CanShowCloseButton" );
 
 	UTgUIMapTransition_execCanShowCloseButton_Parms CanShowCloseButton_Parms;
 
@@ -15232,7 +15233,7 @@ void UTgUIMapTransition::PleaseShowCloseButton ( unsigned long bEnablePlease )
 	static UFunction* pFnPleaseShowCloseButton = NULL;
 
 	if ( ! pFnPleaseShowCloseButton )
-		pFnPleaseShowCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 57451 ];
+		pFnPleaseShowCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMapTransition.PleaseShowCloseButton" );
 
 	UTgUIMapTransition_execPleaseShowCloseButton_Parms PleaseShowCloseButton_Parms;
 	PleaseShowCloseButton_Parms.bEnablePlease = bEnablePlease;
@@ -15255,7 +15256,7 @@ bool UTgUIMapTransition::OnCloseButtonClick ( struct FInputEventParameters* Even
 	static UFunction* pFnOnCloseButtonClick = NULL;
 
 	if ( ! pFnOnCloseButtonClick )
-		pFnOnCloseButtonClick = (UFunction*) UObject::GObjObjects()->Data[ 57448 ];
+		pFnOnCloseButtonClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMapTransition.OnCloseButtonClick" );
 
 	UTgUIMapTransition_execOnCloseButtonClick_Parms OnCloseButtonClick_Parms;
 
@@ -15281,7 +15282,7 @@ void UTgUIMapTransition::SetBackgroundImage ( struct FString fsImage )
 	static UFunction* pFnSetBackgroundImage = NULL;
 
 	if ( ! pFnSetBackgroundImage )
-		pFnSetBackgroundImage = (UFunction*) UObject::GObjObjects()->Data[ 57446 ];
+		pFnSetBackgroundImage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMapTransition.SetBackgroundImage" );
 
 	UTgUIMapTransition_execSetBackgroundImage_Parms SetBackgroundImage_Parms;
 	memcpy ( &SetBackgroundImage_Parms.fsImage, &fsImage, 0xC );
@@ -15302,7 +15303,7 @@ void UTgUIMapTransition::ResetMapTransition ( )
 	static UFunction* pFnResetMapTransition = NULL;
 
 	if ( ! pFnResetMapTransition )
-		pFnResetMapTransition = (UFunction*) UObject::GObjObjects()->Data[ 57445 ];
+		pFnResetMapTransition = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMapTransition.ResetMapTransition" );
 
 	UTgUIMapTransition_execResetMapTransition_Parms ResetMapTransition_Parms;
 
@@ -15323,7 +15324,7 @@ bool UTgUIMapTransition::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57443 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMapTransition.TickTgUIScene" );
 
 	UTgUIMapTransition_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -15345,7 +15346,7 @@ void UTgUIMapTransition::RegisterCallbacks ( )
 	static UFunction* pFnRegisterCallbacks = NULL;
 
 	if ( ! pFnRegisterCallbacks )
-		pFnRegisterCallbacks = (UFunction*) UObject::GObjObjects()->Data[ 57442 ];
+		pFnRegisterCallbacks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMapTransition.RegisterCallbacks" );
 
 	UTgUIMapTransition_execRegisterCallbacks_Parms RegisterCallbacks_Parms;
 
@@ -15365,7 +15366,7 @@ void UTgUIMapTransition::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 57441 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMapTransition.PreCloseScene" );
 
 	UTgUIMapTransition_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -15385,7 +15386,7 @@ void UTgUIMapTransition::OpenTgUIScene ( )
 	static UFunction* pFnOpenTgUIScene = NULL;
 
 	if ( ! pFnOpenTgUIScene )
-		pFnOpenTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57440 ];
+		pFnOpenTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMapTransition.OpenTgUIScene" );
 
 	UTgUIMapTransition_execOpenTgUIScene_Parms OpenTgUIScene_Parms;
 
@@ -15405,7 +15406,7 @@ void UTgUIMapTransition::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57439 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMapTransition.FixupTgUIScene" );
 
 	UTgUIMapTransition_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -15427,7 +15428,7 @@ bool UTgUINavScene::OnShowPath ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnShowPath = NULL;
 
 	if ( ! pFnOnShowPath )
-		pFnOnShowPath = (UFunction*) UObject::GObjObjects()->Data[ 57754 ];
+		pFnOnShowPath = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINavScene.OnShowPath" );
 
 	UTgUINavScene_execOnShowPath_Parms OnShowPath_Parms;
 
@@ -15450,7 +15451,7 @@ bool UTgUINavScene::OnSelect ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnSelect = NULL;
 
 	if ( ! pFnOnSelect )
-		pFnOnSelect = (UFunction*) UObject::GObjObjects()->Data[ 57751 ];
+		pFnOnSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINavScene.OnSelect" );
 
 	UTgUINavScene_execOnSelect_Parms OnSelect_Parms;
 
@@ -15473,7 +15474,7 @@ bool UTgUINavScene::OnCloseButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 57748 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINavScene.OnCloseButton" );
 
 	UTgUINavScene_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -15495,7 +15496,7 @@ void UTgUINavScene::eventSetRawInputKeyForList ( class UUIButton* Button )
 	static UFunction* pFnSetRawInputKeyForList = NULL;
 
 	if ( ! pFnSetRawInputKeyForList )
-		pFnSetRawInputKeyForList = (UFunction*) UObject::GObjObjects()->Data[ 57746 ];
+		pFnSetRawInputKeyForList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINavScene.SetRawInputKeyForList" );
 
 	UTgUINavScene_eventSetRawInputKeyForList_Parms SetRawInputKeyForList_Parms;
 	SetRawInputKeyForList_Parms.Button = Button;
@@ -15512,7 +15513,7 @@ void UTgUINavScene::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 57745 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINavScene.FixupWidgetsUC" );
 
 	UTgUINavScene_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -15528,7 +15529,7 @@ void UTgUINavScene::ShowPathToSelected ( )
 	static UFunction* pFnShowPathToSelected = NULL;
 
 	if ( ! pFnShowPathToSelected )
-		pFnShowPathToSelected = (UFunction*) UObject::GObjObjects()->Data[ 57744 ];
+		pFnShowPathToSelected = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINavScene.ShowPathToSelected" );
 
 	UTgUINavScene_execShowPathToSelected_Parms ShowPathToSelected_Parms;
 
@@ -15548,7 +15549,7 @@ void UTgUINavScene::UpdateHighlight ( )
 	static UFunction* pFnUpdateHighlight = NULL;
 
 	if ( ! pFnUpdateHighlight )
-		pFnUpdateHighlight = (UFunction*) UObject::GObjObjects()->Data[ 57743 ];
+		pFnUpdateHighlight = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINavScene.UpdateHighlight" );
 
 	UTgUINavScene_execUpdateHighlight_Parms UpdateHighlight_Parms;
 
@@ -15570,7 +15571,7 @@ bool UTgUINavScene::Select ( int nIndex )
 	static UFunction* pFnSelect = NULL;
 
 	if ( ! pFnSelect )
-		pFnSelect = (UFunction*) UObject::GObjObjects()->Data[ 57740 ];
+		pFnSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINavScene.Select" );
 
 	UTgUINavScene_execSelect_Parms Select_Parms;
 	Select_Parms.nIndex = nIndex;
@@ -15595,7 +15596,7 @@ bool UTgUINavScene::SelectByButton ( class UUIButton* Button )
 	static UFunction* pFnSelectByButton = NULL;
 
 	if ( ! pFnSelectByButton )
-		pFnSelectByButton = (UFunction*) UObject::GObjObjects()->Data[ 57737 ];
+		pFnSelectByButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINavScene.SelectByButton" );
 
 	UTgUINavScene_execSelectByButton_Parms SelectByButton_Parms;
 	SelectByButton_Parms.Button = Button;
@@ -15618,7 +15619,7 @@ void UTgUINavScene::BuildPOIList ( )
 	static UFunction* pFnBuildPOIList = NULL;
 
 	if ( ! pFnBuildPOIList )
-		pFnBuildPOIList = (UFunction*) UObject::GObjObjects()->Data[ 57736 ];
+		pFnBuildPOIList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINavScene.BuildPOIList" );
 
 	UTgUINavScene_execBuildPOIList_Parms BuildPOIList_Parms;
 
@@ -15640,7 +15641,7 @@ bool UTgUINavScene::OnSceneKey ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnSceneKey = NULL;
 
 	if ( ! pFnOnSceneKey )
-		pFnOnSceneKey = (UFunction*) UObject::GObjObjects()->Data[ 57733 ];
+		pFnOnSceneKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINavScene.OnSceneKey" );
 
 	UTgUINavScene_execOnSceneKey_Parms OnSceneKey_Parms;
 
@@ -15665,7 +15666,7 @@ void UTgUINavScene::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57732 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINavScene.FixupTgUIScene" );
 
 	UTgUINavScene_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -15685,7 +15686,7 @@ void UTgUINavScene::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 57731 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINavScene.PreCloseScene" );
 
 	UTgUINavScene_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -15705,7 +15706,7 @@ void UTgUINavScene::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 57730 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINavScene.PostOpenScene" );
 
 	UTgUINavScene_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -15725,7 +15726,7 @@ void UTgUINewSettingsMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 57767 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINewSettingsMenu.FixupWidgetsUC" );
 
 	UTgUINewSettingsMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -15741,7 +15742,7 @@ void UTgUINewSettingsMenu::PopulateWidgets ( )
 	static UFunction* pFnPopulateWidgets = NULL;
 
 	if ( ! pFnPopulateWidgets )
-		pFnPopulateWidgets = (UFunction*) UObject::GObjObjects()->Data[ 57766 ];
+		pFnPopulateWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINewSettingsMenu.PopulateWidgets" );
 
 	UTgUINewSettingsMenu_execPopulateWidgets_Parms PopulateWidgets_Parms;
 
@@ -15761,7 +15762,7 @@ void UTgUINewSettingsMenu::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 57765 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINewSettingsMenu.FixupWidgets" );
 
 	UTgUINewSettingsMenu_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -15782,7 +15783,7 @@ bool UTgUINewSettingsMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57763 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINewSettingsMenu.TickTgUIScene" );
 
 	UTgUINewSettingsMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -15804,7 +15805,7 @@ void UTgUINewSettingsMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57762 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINewSettingsMenu.FixupTgUIScene" );
 
 	UTgUINewSettingsMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -15824,7 +15825,7 @@ void UTgUIOmegaMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 57801 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIOmegaMenu.FixupWidgetsUC" );
 
 	UTgUIOmegaMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -15843,7 +15844,7 @@ struct FString UTgUIOmegaMenu::GetUseMessage ( int msgId, struct FString vendorN
 	static UFunction* pFnGetUseMessage = NULL;
 
 	if ( ! pFnGetUseMessage )
-		pFnGetUseMessage = (UFunction*) UObject::GObjObjects()->Data[ 57797 ];
+		pFnGetUseMessage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIOmegaMenu.GetUseMessage" );
 
 	UTgUIOmegaMenu_execGetUseMessage_Parms GetUseMessage_Parms;
 	GetUseMessage_Parms.msgId = msgId;
@@ -15869,7 +15870,7 @@ void UTgUIOmegaMenu::SetUseMessage ( int msgId, struct FString vendorName )
 	static UFunction* pFnSetUseMessage = NULL;
 
 	if ( ! pFnSetUseMessage )
-		pFnSetUseMessage = (UFunction*) UObject::GObjObjects()->Data[ 57794 ];
+		pFnSetUseMessage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIOmegaMenu.SetUseMessage" );
 
 	UTgUIOmegaMenu_execSetUseMessage_Parms SetUseMessage_Parms;
 	SetUseMessage_Parms.msgId = msgId;
@@ -15892,7 +15893,7 @@ void UTgUIOmegaMenu::SetOmegaVisibility ( unsigned long bVisible )
 	static UFunction* pFnSetOmegaVisibility = NULL;
 
 	if ( ! pFnSetOmegaVisibility )
-		pFnSetOmegaVisibility = (UFunction*) UObject::GObjObjects()->Data[ 57792 ];
+		pFnSetOmegaVisibility = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIOmegaMenu.SetOmegaVisibility" );
 
 	UTgUIOmegaMenu_execSetOmegaVisibility_Parms SetOmegaVisibility_Parms;
 	SetOmegaVisibility_Parms.bVisible = bVisible;
@@ -15914,7 +15915,7 @@ void UTgUIOmegaMenu::TriggerOmegaAlert ( unsigned long bForced )
 	static UFunction* pFnTriggerOmegaAlert = NULL;
 
 	if ( ! pFnTriggerOmegaAlert )
-		pFnTriggerOmegaAlert = (UFunction*) UObject::GObjObjects()->Data[ 57790 ];
+		pFnTriggerOmegaAlert = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIOmegaMenu.TriggerOmegaAlert" );
 
 	UTgUIOmegaMenu_execTriggerOmegaAlert_Parms TriggerOmegaAlert_Parms;
 	TriggerOmegaAlert_Parms.bForced = bForced;
@@ -15937,7 +15938,7 @@ void UTgUIOmegaMenu::PopulateOmegaWidgets ( int omegaId, int omegaMode )
 	static UFunction* pFnPopulateOmegaWidgets = NULL;
 
 	if ( ! pFnPopulateOmegaWidgets )
-		pFnPopulateOmegaWidgets = (UFunction*) UObject::GObjObjects()->Data[ 57787 ];
+		pFnPopulateOmegaWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIOmegaMenu.PopulateOmegaWidgets" );
 
 	UTgUIOmegaMenu_execPopulateOmegaWidgets_Parms PopulateOmegaWidgets_Parms;
 	PopulateOmegaWidgets_Parms.omegaId = omegaId;
@@ -15960,7 +15961,7 @@ bool UTgUIOmegaMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57785 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIOmegaMenu.TickTgUIScene" );
 
 	UTgUIOmegaMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -15982,7 +15983,7 @@ void UTgUIOmegaMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57784 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIOmegaMenu.FixupTgUIScene" );
 
 	UTgUIOmegaMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -16004,7 +16005,7 @@ bool UTgUIOpenTerritories::OnSceneInputKeyDelegate ( struct FInputEventParameter
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57813 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIOpenTerritories.OnSceneInputKeyDelegate" );
 
 	UTgUIOpenTerritories_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -16025,7 +16026,7 @@ void UTgUIOpenTerritories::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 57812 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIOpenTerritories.FixupWidgetsUC" );
 
 	UTgUIOpenTerritories_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -16043,7 +16044,7 @@ bool UTgUIOpenTerritories::OnOpenClicked ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnOpenClicked = NULL;
 
 	if ( ! pFnOnOpenClicked )
-		pFnOnOpenClicked = (UFunction*) UObject::GObjObjects()->Data[ 57809 ];
+		pFnOnOpenClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIOpenTerritories.OnOpenClicked" );
 
 	UTgUIOpenTerritories_execOnOpenClicked_Parms OnOpenClicked_Parms;
 
@@ -16068,7 +16069,7 @@ void UTgUIOpenTerritories::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 57808 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIOpenTerritories.FixupWidgets" );
 
 	UTgUIOpenTerritories_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -16088,7 +16089,7 @@ void UTgUIOpenTerritories::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57807 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIOpenTerritories.FixupTgUIScene" );
 
 	UTgUIOpenTerritories_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -16111,7 +16112,7 @@ bool UTgUIPlayerSearchMenu::OnSubmitText ( class UUIEditBox* ebox, int PlayerInd
 	static UFunction* pFnOnSubmitText = NULL;
 
 	if ( ! pFnOnSubmitText )
-		pFnOnSubmitText = (UFunction*) UObject::GObjObjects()->Data[ 57975 ];
+		pFnOnSubmitText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnSubmitText" );
 
 	UTgUIPlayerSearchMenu_execOnSubmitText_Parms OnSubmitText_Parms;
 	OnSubmitText_Parms.ebox = ebox;
@@ -16133,7 +16134,7 @@ bool UTgUIPlayerSearchMenu::OnResetKey ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnResetKey = NULL;
 
 	if ( ! pFnOnResetKey )
-		pFnOnResetKey = (UFunction*) UObject::GObjObjects()->Data[ 57972 ];
+		pFnOnResetKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnResetKey" );
 
 	UTgUIPlayerSearchMenu_execOnResetKey_Parms OnResetKey_Parms;
 
@@ -16156,7 +16157,7 @@ bool UTgUIPlayerSearchMenu::OnSearchKey ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnSearchKey = NULL;
 
 	if ( ! pFnOnSearchKey )
-		pFnOnSearchKey = (UFunction*) UObject::GObjObjects()->Data[ 57969 ];
+		pFnOnSearchKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnSearchKey" );
 
 	UTgUIPlayerSearchMenu_execOnSearchKey_Parms OnSearchKey_Parms;
 
@@ -16178,7 +16179,7 @@ void UTgUIPlayerSearchMenu::eventSetRawInputKeyForResultsList ( class UUIButton*
 	static UFunction* pFnSetRawInputKeyForResultsList = NULL;
 
 	if ( ! pFnSetRawInputKeyForResultsList )
-		pFnSetRawInputKeyForResultsList = (UFunction*) UObject::GObjObjects()->Data[ 57967 ];
+		pFnSetRawInputKeyForResultsList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.SetRawInputKeyForResultsList" );
 
 	UTgUIPlayerSearchMenu_eventSetRawInputKeyForResultsList_Parms SetRawInputKeyForResultsList_Parms;
 	SetRawInputKeyForResultsList_Parms.Button = Button;
@@ -16197,7 +16198,7 @@ bool UTgUIPlayerSearchMenu::OnSendMessageSelected ( struct FInputEventParameters
 	static UFunction* pFnOnSendMessageSelected = NULL;
 
 	if ( ! pFnOnSendMessageSelected )
-		pFnOnSendMessageSelected = (UFunction*) UObject::GObjObjects()->Data[ 57964 ];
+		pFnOnSendMessageSelected = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnSendMessageSelected" );
 
 	UTgUIPlayerSearchMenu_execOnSendMessageSelected_Parms OnSendMessageSelected_Parms;
 
@@ -16220,7 +16221,7 @@ bool UTgUIPlayerSearchMenu::OnInviteSelected ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnInviteSelected = NULL;
 
 	if ( ! pFnOnInviteSelected )
-		pFnOnInviteSelected = (UFunction*) UObject::GObjObjects()->Data[ 57961 ];
+		pFnOnInviteSelected = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnInviteSelected" );
 
 	UTgUIPlayerSearchMenu_execOnInviteSelected_Parms OnInviteSelected_Parms;
 
@@ -16243,7 +16244,7 @@ bool UTgUIPlayerSearchMenu::OnTeamStatusHeaderKey ( struct FInputEventParameters
 	static UFunction* pFnOnTeamStatusHeaderKey = NULL;
 
 	if ( ! pFnOnTeamStatusHeaderKey )
-		pFnOnTeamStatusHeaderKey = (UFunction*) UObject::GObjObjects()->Data[ 57958 ];
+		pFnOnTeamStatusHeaderKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnTeamStatusHeaderKey" );
 
 	UTgUIPlayerSearchMenu_execOnTeamStatusHeaderKey_Parms OnTeamStatusHeaderKey_Parms;
 
@@ -16266,7 +16267,7 @@ bool UTgUIPlayerSearchMenu::OnLocationHeaderKey ( struct FInputEventParameters* 
 	static UFunction* pFnOnLocationHeaderKey = NULL;
 
 	if ( ! pFnOnLocationHeaderKey )
-		pFnOnLocationHeaderKey = (UFunction*) UObject::GObjObjects()->Data[ 57955 ];
+		pFnOnLocationHeaderKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnLocationHeaderKey" );
 
 	UTgUIPlayerSearchMenu_execOnLocationHeaderKey_Parms OnLocationHeaderKey_Parms;
 
@@ -16289,7 +16290,7 @@ bool UTgUIPlayerSearchMenu::OnLevelHeaderKey ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnLevelHeaderKey = NULL;
 
 	if ( ! pFnOnLevelHeaderKey )
-		pFnOnLevelHeaderKey = (UFunction*) UObject::GObjObjects()->Data[ 57952 ];
+		pFnOnLevelHeaderKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnLevelHeaderKey" );
 
 	UTgUIPlayerSearchMenu_execOnLevelHeaderKey_Parms OnLevelHeaderKey_Parms;
 
@@ -16312,7 +16313,7 @@ bool UTgUIPlayerSearchMenu::OnFactionHeaderKey ( struct FInputEventParameters* E
 	static UFunction* pFnOnFactionHeaderKey = NULL;
 
 	if ( ! pFnOnFactionHeaderKey )
-		pFnOnFactionHeaderKey = (UFunction*) UObject::GObjObjects()->Data[ 57949 ];
+		pFnOnFactionHeaderKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnFactionHeaderKey" );
 
 	UTgUIPlayerSearchMenu_execOnFactionHeaderKey_Parms OnFactionHeaderKey_Parms;
 
@@ -16335,7 +16336,7 @@ bool UTgUIPlayerSearchMenu::OnAllianceHeaderKey ( struct FInputEventParameters* 
 	static UFunction* pFnOnAllianceHeaderKey = NULL;
 
 	if ( ! pFnOnAllianceHeaderKey )
-		pFnOnAllianceHeaderKey = (UFunction*) UObject::GObjObjects()->Data[ 57946 ];
+		pFnOnAllianceHeaderKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnAllianceHeaderKey" );
 
 	UTgUIPlayerSearchMenu_execOnAllianceHeaderKey_Parms OnAllianceHeaderKey_Parms;
 
@@ -16358,7 +16359,7 @@ bool UTgUIPlayerSearchMenu::OnAgencyHeaderKey ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnAgencyHeaderKey = NULL;
 
 	if ( ! pFnOnAgencyHeaderKey )
-		pFnOnAgencyHeaderKey = (UFunction*) UObject::GObjObjects()->Data[ 57943 ];
+		pFnOnAgencyHeaderKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnAgencyHeaderKey" );
 
 	UTgUIPlayerSearchMenu_execOnAgencyHeaderKey_Parms OnAgencyHeaderKey_Parms;
 
@@ -16381,7 +16382,7 @@ bool UTgUIPlayerSearchMenu::OnNameHeaderKey ( struct FInputEventParameters* Even
 	static UFunction* pFnOnNameHeaderKey = NULL;
 
 	if ( ! pFnOnNameHeaderKey )
-		pFnOnNameHeaderKey = (UFunction*) UObject::GObjObjects()->Data[ 57940 ];
+		pFnOnNameHeaderKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnNameHeaderKey" );
 
 	UTgUIPlayerSearchMenu_execOnNameHeaderKey_Parms OnNameHeaderKey_Parms;
 
@@ -16404,7 +16405,7 @@ bool UTgUIPlayerSearchMenu::OnClassHeaderKey ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnClassHeaderKey = NULL;
 
 	if ( ! pFnOnClassHeaderKey )
-		pFnOnClassHeaderKey = (UFunction*) UObject::GObjObjects()->Data[ 57937 ];
+		pFnOnClassHeaderKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnClassHeaderKey" );
 
 	UTgUIPlayerSearchMenu_execOnClassHeaderKey_Parms OnClassHeaderKey_Parms;
 
@@ -16427,7 +16428,7 @@ bool UTgUIPlayerSearchMenu::OnNextPageKey ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnNextPageKey = NULL;
 
 	if ( ! pFnOnNextPageKey )
-		pFnOnNextPageKey = (UFunction*) UObject::GObjObjects()->Data[ 57934 ];
+		pFnOnNextPageKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnNextPageKey" );
 
 	UTgUIPlayerSearchMenu_execOnNextPageKey_Parms OnNextPageKey_Parms;
 
@@ -16450,7 +16451,7 @@ bool UTgUIPlayerSearchMenu::OnPrevPageKey ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnPrevPageKey = NULL;
 
 	if ( ! pFnOnPrevPageKey )
-		pFnOnPrevPageKey = (UFunction*) UObject::GObjObjects()->Data[ 57931 ];
+		pFnOnPrevPageKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnPrevPageKey" );
 
 	UTgUIPlayerSearchMenu_execOnPrevPageKey_Parms OnPrevPageKey_Parms;
 
@@ -16473,7 +16474,7 @@ bool UTgUIPlayerSearchMenu::OnLastPageKey ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnLastPageKey = NULL;
 
 	if ( ! pFnOnLastPageKey )
-		pFnOnLastPageKey = (UFunction*) UObject::GObjObjects()->Data[ 57928 ];
+		pFnOnLastPageKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnLastPageKey" );
 
 	UTgUIPlayerSearchMenu_execOnLastPageKey_Parms OnLastPageKey_Parms;
 
@@ -16496,7 +16497,7 @@ bool UTgUIPlayerSearchMenu::OnFirstPageKey ( struct FInputEventParameters* Event
 	static UFunction* pFnOnFirstPageKey = NULL;
 
 	if ( ! pFnOnFirstPageKey )
-		pFnOnFirstPageKey = (UFunction*) UObject::GObjObjects()->Data[ 57925 ];
+		pFnOnFirstPageKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnFirstPageKey" );
 
 	UTgUIPlayerSearchMenu_execOnFirstPageKey_Parms OnFirstPageKey_Parms;
 
@@ -16519,7 +16520,7 @@ bool UTgUIPlayerSearchMenu::OnSelectResult ( struct FInputEventParameters* Event
 	static UFunction* pFnOnSelectResult = NULL;
 
 	if ( ! pFnOnSelectResult )
-		pFnOnSelectResult = (UFunction*) UObject::GObjObjects()->Data[ 57922 ];
+		pFnOnSelectResult = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnSelectResult" );
 
 	UTgUIPlayerSearchMenu_execOnSelectResult_Parms OnSelectResult_Parms;
 
@@ -16542,7 +16543,7 @@ bool UTgUIPlayerSearchMenu::OnCloseButton ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 57919 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnCloseButton" );
 
 	UTgUIPlayerSearchMenu_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -16563,7 +16564,7 @@ void UTgUIPlayerSearchMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 57918 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.FixupWidgetsUC" );
 
 	UTgUIPlayerSearchMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -16580,7 +16581,7 @@ void UTgUIPlayerSearchMenu::SetParentUIScene ( class UTgUISceneDriver* Scene )
 	static UFunction* pFnSetParentUIScene = NULL;
 
 	if ( ! pFnSetParentUIScene )
-		pFnSetParentUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57916 ];
+		pFnSetParentUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.SetParentUIScene" );
 
 	UTgUIPlayerSearchMenu_execSetParentUIScene_Parms SetParentUIScene_Parms;
 	SetParentUIScene_Parms.Scene = Scene;
@@ -16601,7 +16602,7 @@ void UTgUIPlayerSearchMenu::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 57915 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.FixupWidgets" );
 
 	UTgUIPlayerSearchMenu_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -16621,7 +16622,7 @@ void UTgUIPlayerSearchMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57914 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.FixupTgUIScene" );
 
 	UTgUIPlayerSearchMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -16641,7 +16642,7 @@ void UTgUIPlayerSearchMenu::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 57913 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.PreCloseScene" );
 
 	UTgUIPlayerSearchMenu_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -16661,7 +16662,7 @@ void UTgUIPlayerSearchMenu::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 57912 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.PostOpenScene" );
 
 	UTgUIPlayerSearchMenu_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -16681,7 +16682,7 @@ void UTgUIPlayerSearchMenu::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 57911 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.PostInitSceneDriver" );
 
 	UTgUIPlayerSearchMenu_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -16703,7 +16704,7 @@ bool UTgUIPlayerSearchMenu::OnSearchMenuKey ( struct FInputEventParameters* Even
 	static UFunction* pFnOnSearchMenuKey = NULL;
 
 	if ( ! pFnOnSearchMenuKey )
-		pFnOnSearchMenuKey = (UFunction*) UObject::GObjObjects()->Data[ 57908 ];
+		pFnOnSearchMenuKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.OnSearchMenuKey" );
 
 	UTgUIPlayerSearchMenu_execOnSearchMenuKey_Parms OnSearchMenuKey_Parms;
 
@@ -16728,7 +16729,7 @@ void UTgUIPlayerSearchMenu::NextPage ( )
 	static UFunction* pFnNextPage = NULL;
 
 	if ( ! pFnNextPage )
-		pFnNextPage = (UFunction*) UObject::GObjObjects()->Data[ 57907 ];
+		pFnNextPage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.NextPage" );
 
 	UTgUIPlayerSearchMenu_execNextPage_Parms NextPage_Parms;
 
@@ -16748,7 +16749,7 @@ void UTgUIPlayerSearchMenu::PrevPage ( )
 	static UFunction* pFnPrevPage = NULL;
 
 	if ( ! pFnPrevPage )
-		pFnPrevPage = (UFunction*) UObject::GObjObjects()->Data[ 57906 ];
+		pFnPrevPage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.PrevPage" );
 
 	UTgUIPlayerSearchMenu_execPrevPage_Parms PrevPage_Parms;
 
@@ -16768,7 +16769,7 @@ void UTgUIPlayerSearchMenu::FirstPage ( )
 	static UFunction* pFnFirstPage = NULL;
 
 	if ( ! pFnFirstPage )
-		pFnFirstPage = (UFunction*) UObject::GObjObjects()->Data[ 57905 ];
+		pFnFirstPage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.FirstPage" );
 
 	UTgUIPlayerSearchMenu_execFirstPage_Parms FirstPage_Parms;
 
@@ -16788,7 +16789,7 @@ void UTgUIPlayerSearchMenu::LastPage ( )
 	static UFunction* pFnLastPage = NULL;
 
 	if ( ! pFnLastPage )
-		pFnLastPage = (UFunction*) UObject::GObjObjects()->Data[ 57904 ];
+		pFnLastPage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.LastPage" );
 
 	UTgUIPlayerSearchMenu_execLastPage_Parms LastPage_Parms;
 
@@ -16808,7 +16809,7 @@ void UTgUIPlayerSearchMenu::SendMessageSelected ( )
 	static UFunction* pFnSendMessageSelected = NULL;
 
 	if ( ! pFnSendMessageSelected )
-		pFnSendMessageSelected = (UFunction*) UObject::GObjObjects()->Data[ 57903 ];
+		pFnSendMessageSelected = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.SendMessageSelected" );
 
 	UTgUIPlayerSearchMenu_execSendMessageSelected_Parms SendMessageSelected_Parms;
 
@@ -16828,7 +16829,7 @@ void UTgUIPlayerSearchMenu::PlayerSelected ( )
 	static UFunction* pFnPlayerSelected = NULL;
 
 	if ( ! pFnPlayerSelected )
-		pFnPlayerSelected = (UFunction*) UObject::GObjObjects()->Data[ 57902 ];
+		pFnPlayerSelected = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.PlayerSelected" );
 
 	UTgUIPlayerSearchMenu_execPlayerSelected_Parms PlayerSelected_Parms;
 
@@ -16848,7 +16849,7 @@ void UTgUIPlayerSearchMenu::InviteSelected ( )
 	static UFunction* pFnInviteSelected = NULL;
 
 	if ( ! pFnInviteSelected )
-		pFnInviteSelected = (UFunction*) UObject::GObjObjects()->Data[ 57901 ];
+		pFnInviteSelected = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.InviteSelected" );
 
 	UTgUIPlayerSearchMenu_execInviteSelected_Parms InviteSelected_Parms;
 
@@ -16870,7 +16871,7 @@ bool UTgUIPlayerSearchMenu::SelectResult ( int nPlayerId )
 	static UFunction* pFnSelectResult = NULL;
 
 	if ( ! pFnSelectResult )
-		pFnSelectResult = (UFunction*) UObject::GObjObjects()->Data[ 57898 ];
+		pFnSelectResult = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.SelectResult" );
 
 	UTgUIPlayerSearchMenu_execSelectResult_Parms SelectResult_Parms;
 	SelectResult_Parms.nPlayerId = nPlayerId;
@@ -16895,7 +16896,7 @@ bool UTgUIPlayerSearchMenu::SelectResultByButton ( class UUIButton* Button )
 	static UFunction* pFnSelectResultByButton = NULL;
 
 	if ( ! pFnSelectResultByButton )
-		pFnSelectResultByButton = (UFunction*) UObject::GObjObjects()->Data[ 57895 ];
+		pFnSelectResultByButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.SelectResultByButton" );
 
 	UTgUIPlayerSearchMenu_execSelectResultByButton_Parms SelectResultByButton_Parms;
 	SelectResultByButton_Parms.Button = Button;
@@ -16918,7 +16919,7 @@ void UTgUIPlayerSearchMenu::UpdateHighlight ( )
 	static UFunction* pFnUpdateHighlight = NULL;
 
 	if ( ! pFnUpdateHighlight )
-		pFnUpdateHighlight = (UFunction*) UObject::GObjObjects()->Data[ 57894 ];
+		pFnUpdateHighlight = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.UpdateHighlight" );
 
 	UTgUIPlayerSearchMenu_execUpdateHighlight_Parms UpdateHighlight_Parms;
 
@@ -16939,7 +16940,7 @@ void UTgUIPlayerSearchMenu::UpdateDetailPanel ( int nPlayerId )
 	static UFunction* pFnUpdateDetailPanel = NULL;
 
 	if ( ! pFnUpdateDetailPanel )
-		pFnUpdateDetailPanel = (UFunction*) UObject::GObjObjects()->Data[ 57892 ];
+		pFnUpdateDetailPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.UpdateDetailPanel" );
 
 	UTgUIPlayerSearchMenu_execUpdateDetailPanel_Parms UpdateDetailPanel_Parms;
 	UpdateDetailPanel_Parms.nPlayerId = nPlayerId;
@@ -16960,7 +16961,7 @@ void UTgUIPlayerSearchMenu::UpdateResultListDisplay ( )
 	static UFunction* pFnUpdateResultListDisplay = NULL;
 
 	if ( ! pFnUpdateResultListDisplay )
-		pFnUpdateResultListDisplay = (UFunction*) UObject::GObjObjects()->Data[ 57891 ];
+		pFnUpdateResultListDisplay = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.UpdateResultListDisplay" );
 
 	UTgUIPlayerSearchMenu_execUpdateResultListDisplay_Parms UpdateResultListDisplay_Parms;
 
@@ -16981,7 +16982,7 @@ void UTgUIPlayerSearchMenu::GetPlayerSearchCallback ( int eType )
 	static UFunction* pFnGetPlayerSearchCallback = NULL;
 
 	if ( ! pFnGetPlayerSearchCallback )
-		pFnGetPlayerSearchCallback = (UFunction*) UObject::GObjObjects()->Data[ 57889 ];
+		pFnGetPlayerSearchCallback = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.GetPlayerSearchCallback" );
 
 	UTgUIPlayerSearchMenu_execGetPlayerSearchCallback_Parms GetPlayerSearchCallback_Parms;
 	GetPlayerSearchCallback_Parms.eType = eType;
@@ -17002,7 +17003,7 @@ void UTgUIPlayerSearchMenu::Search ( )
 	static UFunction* pFnSearch = NULL;
 
 	if ( ! pFnSearch )
-		pFnSearch = (UFunction*) UObject::GObjObjects()->Data[ 57888 ];
+		pFnSearch = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.Search" );
 
 	UTgUIPlayerSearchMenu_execSearch_Parms Search_Parms;
 
@@ -17022,7 +17023,7 @@ void UTgUIPlayerSearchMenu::SearchFromFields ( )
 	static UFunction* pFnSearchFromFields = NULL;
 
 	if ( ! pFnSearchFromFields )
-		pFnSearchFromFields = (UFunction*) UObject::GObjObjects()->Data[ 57887 ];
+		pFnSearchFromFields = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.SearchFromFields" );
 
 	UTgUIPlayerSearchMenu_execSearchFromFields_Parms SearchFromFields_Parms;
 
@@ -17043,7 +17044,7 @@ void UTgUIPlayerSearchMenu::PrepopulatedSearchById ( int nPlayerId )
 	static UFunction* pFnPrepopulatedSearchById = NULL;
 
 	if ( ! pFnPrepopulatedSearchById )
-		pFnPrepopulatedSearchById = (UFunction*) UObject::GObjObjects()->Data[ 57885 ];
+		pFnPrepopulatedSearchById = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.PrepopulatedSearchById" );
 
 	UTgUIPlayerSearchMenu_execPrepopulatedSearchById_Parms PrepopulatedSearchById_Parms;
 	PrepopulatedSearchById_Parms.nPlayerId = nPlayerId;
@@ -17067,7 +17068,7 @@ void UTgUIPlayerSearchMenu::PrepopulatedSearch ( struct FString sPlayerName, str
 	static UFunction* pFnPrepopulatedSearch = NULL;
 
 	if ( ! pFnPrepopulatedSearch )
-		pFnPrepopulatedSearch = (UFunction*) UObject::GObjObjects()->Data[ 57881 ];
+		pFnPrepopulatedSearch = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.PrepopulatedSearch" );
 
 	UTgUIPlayerSearchMenu_execPrepopulatedSearch_Parms PrepopulatedSearch_Parms;
 	memcpy ( &PrepopulatedSearch_Parms.sPlayerName, &sPlayerName, 0xC );
@@ -17090,7 +17091,7 @@ void UTgUIPlayerSearchMenu::ResetFields ( )
 	static UFunction* pFnResetFields = NULL;
 
 	if ( ! pFnResetFields )
-		pFnResetFields = (UFunction*) UObject::GObjObjects()->Data[ 57880 ];
+		pFnResetFields = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPlayerSearchMenu.ResetFields" );
 
 	UTgUIPlayerSearchMenu_execResetFields_Parms ResetFields_Parms;
 
@@ -17111,7 +17112,7 @@ bool UTgUIPostCreateLoad::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57981 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPostCreateLoad.TickTgUIScene" );
 
 	UTgUIPostCreateLoad_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -17133,7 +17134,7 @@ void UTgUIPostCreateLoad::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57980 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPostCreateLoad.FixupTgUIScene" );
 
 	UTgUIPostCreateLoad_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -17153,7 +17154,7 @@ void UTgUIPreviewScreen::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 58016 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPreviewScreen.FixupWidgetsUC" );
 
 	UTgUIPreviewScreen_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -17173,7 +17174,7 @@ void UTgUIPreviewScreen::OnRotateDudeStateChange ( class UUIScreenObject* Sender
 	static UFunction* pFnOnRotateDudeStateChange = NULL;
 
 	if ( ! pFnOnRotateDudeStateChange )
-		pFnOnRotateDudeStateChange = (UFunction*) UObject::GObjObjects()->Data[ 58011 ];
+		pFnOnRotateDudeStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPreviewScreen.OnRotateDudeStateChange" );
 
 	UTgUIPreviewScreen_execOnRotateDudeStateChange_Parms OnRotateDudeStateChange_Parms;
 	OnRotateDudeStateChange_Parms.Sender = Sender;
@@ -17199,7 +17200,7 @@ bool UTgUIPreviewScreen::OnRotateDudeCCWClicked ( struct FInputEventParameters* 
 	static UFunction* pFnOnRotateDudeCCWClicked = NULL;
 
 	if ( ! pFnOnRotateDudeCCWClicked )
-		pFnOnRotateDudeCCWClicked = (UFunction*) UObject::GObjObjects()->Data[ 58008 ];
+		pFnOnRotateDudeCCWClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPreviewScreen.OnRotateDudeCCWClicked" );
 
 	UTgUIPreviewScreen_execOnRotateDudeCCWClicked_Parms OnRotateDudeCCWClicked_Parms;
 
@@ -17226,7 +17227,7 @@ bool UTgUIPreviewScreen::OnRotateDudeCWClicked ( struct FInputEventParameters* E
 	static UFunction* pFnOnRotateDudeCWClicked = NULL;
 
 	if ( ! pFnOnRotateDudeCWClicked )
-		pFnOnRotateDudeCWClicked = (UFunction*) UObject::GObjObjects()->Data[ 58005 ];
+		pFnOnRotateDudeCWClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPreviewScreen.OnRotateDudeCWClicked" );
 
 	UTgUIPreviewScreen_execOnRotateDudeCWClicked_Parms OnRotateDudeCWClicked_Parms;
 
@@ -17253,7 +17254,7 @@ bool UTgUIPreviewScreen::OnCloseButtonDelegate ( struct FInputEventParameters* E
 	static UFunction* pFnOnCloseButtonDelegate = NULL;
 
 	if ( ! pFnOnCloseButtonDelegate )
-		pFnOnCloseButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 58002 ];
+		pFnOnCloseButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPreviewScreen.OnCloseButtonDelegate" );
 
 	UTgUIPreviewScreen_execOnCloseButtonDelegate_Parms OnCloseButtonDelegate_Parms;
 
@@ -17280,7 +17281,7 @@ bool UTgUIPreviewScreen::OnPreviewScreenDelegate ( struct FInputEventParameters*
 	static UFunction* pFnOnPreviewScreenDelegate = NULL;
 
 	if ( ! pFnOnPreviewScreenDelegate )
-		pFnOnPreviewScreenDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57999 ];
+		pFnOnPreviewScreenDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPreviewScreen.OnPreviewScreenDelegate" );
 
 	UTgUIPreviewScreen_execOnPreviewScreenDelegate_Parms OnPreviewScreenDelegate_Parms;
 
@@ -17306,7 +17307,7 @@ void UTgUIPreviewScreen::SetPaperDollPreviewItem ( class UTgInventoryObject* Ite
 	static UFunction* pFnSetPaperDollPreviewItem = NULL;
 
 	if ( ! pFnSetPaperDollPreviewItem )
-		pFnSetPaperDollPreviewItem = (UFunction*) UObject::GObjObjects()->Data[ 57997 ];
+		pFnSetPaperDollPreviewItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPreviewScreen.SetPaperDollPreviewItem" );
 
 	UTgUIPreviewScreen_execSetPaperDollPreviewItem_Parms SetPaperDollPreviewItem_Parms;
 	SetPaperDollPreviewItem_Parms.Item = Item;
@@ -17328,7 +17329,7 @@ bool UTgUIPreviewScreen::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57995 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPreviewScreen.TickTgUIScene" );
 
 	UTgUIPreviewScreen_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -17350,7 +17351,7 @@ void UTgUIPreviewScreen::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57994 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPreviewScreen.FixupTgUIScene" );
 
 	UTgUIPreviewScreen_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -17370,7 +17371,7 @@ void UTgUIPreviewScreen::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 57993 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPreviewScreen.PreCloseScene" );
 
 	UTgUIPreviewScreen_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -17390,7 +17391,7 @@ void UTgUIPrimaryHUD::eventFixupUIDeviceBarsUC ( )
 	static UFunction* pFnFixupUIDeviceBarsUC = NULL;
 
 	if ( ! pFnFixupUIDeviceBarsUC )
-		pFnFixupUIDeviceBarsUC = (UFunction*) UObject::GObjObjects()->Data[ 58137 ];
+		pFnFixupUIDeviceBarsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.FixupUIDeviceBarsUC" );
 
 	UTgUIPrimaryHUD_eventFixupUIDeviceBarsUC_Parms FixupUIDeviceBarsUC_Parms;
 
@@ -17408,7 +17409,7 @@ bool UTgUIPrimaryHUD::OnPrimaryHUDKeyDelegate ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnPrimaryHUDKeyDelegate = NULL;
 
 	if ( ! pFnOnPrimaryHUDKeyDelegate )
-		pFnOnPrimaryHUDKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 58134 ];
+		pFnOnPrimaryHUDKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.OnPrimaryHUDKeyDelegate" );
 
 	UTgUIPrimaryHUD_execOnPrimaryHUDKeyDelegate_Parms OnPrimaryHUDKeyDelegate_Parms;
 
@@ -17433,7 +17434,7 @@ void UTgUIPrimaryHUD::UpdateFade ( )
 	static UFunction* pFnUpdateFade = NULL;
 
 	if ( ! pFnUpdateFade )
-		pFnUpdateFade = (UFunction*) UObject::GObjObjects()->Data[ 58133 ];
+		pFnUpdateFade = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.UpdateFade" );
 
 	UTgUIPrimaryHUD_execUpdateFade_Parms UpdateFade_Parms;
 
@@ -17457,7 +17458,7 @@ void UTgUIPrimaryHUD::SetFade ( unsigned long bEnableFading, struct FColor FadeC
 	static UFunction* pFnSetFade = NULL;
 
 	if ( ! pFnSetFade )
-		pFnSetFade = (UFunction*) UObject::GObjObjects()->Data[ 58128 ];
+		pFnSetFade = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.SetFade" );
 
 	UTgUIPrimaryHUD_execSetFade_Parms SetFade_Parms;
 	SetFade_Parms.bEnableFading = bEnableFading;
@@ -17482,7 +17483,7 @@ void UTgUIPrimaryHUD::SetOmegaVisibility ( unsigned long bVisible )
 	static UFunction* pFnSetOmegaVisibility = NULL;
 
 	if ( ! pFnSetOmegaVisibility )
-		pFnSetOmegaVisibility = (UFunction*) UObject::GObjObjects()->Data[ 58126 ];
+		pFnSetOmegaVisibility = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.SetOmegaVisibility" );
 
 	UTgUIPrimaryHUD_execSetOmegaVisibility_Parms SetOmegaVisibility_Parms;
 	SetOmegaVisibility_Parms.bVisible = bVisible;
@@ -17505,7 +17506,7 @@ void UTgUIPrimaryHUD::TempToggleElement ( unsigned char Element, unsigned long b
 	static UFunction* pFnTempToggleElement = NULL;
 
 	if ( ! pFnTempToggleElement )
-		pFnTempToggleElement = (UFunction*) UObject::GObjObjects()->Data[ 58123 ];
+		pFnTempToggleElement = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.TempToggleElement" );
 
 	UTgUIPrimaryHUD_execTempToggleElement_Parms TempToggleElement_Parms;
 	TempToggleElement_Parms.Element = Element;
@@ -17529,7 +17530,7 @@ void UTgUIPrimaryHUD::UpdateEquipTimer ( unsigned long IsActive, float EquipTime
 	static UFunction* pFnUpdateEquipTimer = NULL;
 
 	if ( ! pFnUpdateEquipTimer )
-		pFnUpdateEquipTimer = (UFunction*) UObject::GObjObjects()->Data[ 58120 ];
+		pFnUpdateEquipTimer = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.UpdateEquipTimer" );
 
 	UTgUIPrimaryHUD_execUpdateEquipTimer_Parms UpdateEquipTimer_Parms;
 	UpdateEquipTimer_Parms.IsActive = IsActive;
@@ -17551,7 +17552,7 @@ void UTgUIPrimaryHUD::TriggerUIBarsFullUpdate ( )
 	static UFunction* pFnTriggerUIBarsFullUpdate = NULL;
 
 	if ( ! pFnTriggerUIBarsFullUpdate )
-		pFnTriggerUIBarsFullUpdate = (UFunction*) UObject::GObjObjects()->Data[ 58119 ];
+		pFnTriggerUIBarsFullUpdate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.TriggerUIBarsFullUpdate" );
 
 	UTgUIPrimaryHUD_execTriggerUIBarsFullUpdate_Parms TriggerUIBarsFullUpdate_Parms;
 
@@ -17576,7 +17577,7 @@ void UTgUIPrimaryHUD::UpdateHUDCooldowns ( int DeviceEqpPt, int DeviceMode, floa
 	static UFunction* pFnUpdateHUDCooldowns = NULL;
 
 	if ( ! pFnUpdateHUDCooldowns )
-		pFnUpdateHUDCooldowns = (UFunction*) UObject::GObjObjects()->Data[ 58113 ];
+		pFnUpdateHUDCooldowns = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.UpdateHUDCooldowns" );
 
 	UTgUIPrimaryHUD_execUpdateHUDCooldowns_Parms UpdateHUDCooldowns_Parms;
 	UpdateHUDCooldowns_Parms.DeviceEqpPt = DeviceEqpPt;
@@ -17603,7 +17604,7 @@ void UTgUIPrimaryHUD::UpdateReticleOffset ( float OffsetDistanceFromCenterX, flo
 	static UFunction* pFnUpdateReticleOffset = NULL;
 
 	if ( ! pFnUpdateReticleOffset )
-		pFnUpdateReticleOffset = (UFunction*) UObject::GObjObjects()->Data[ 58110 ];
+		pFnUpdateReticleOffset = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.UpdateReticleOffset" );
 
 	UTgUIPrimaryHUD_execUpdateReticleOffset_Parms UpdateReticleOffset_Parms;
 	UpdateReticleOffset_Parms.OffsetDistanceFromCenterX = OffsetDistanceFromCenterX;
@@ -17625,7 +17626,7 @@ void UTgUIPrimaryHUD::UpdateTargetHealthBar ( )
 	static UFunction* pFnUpdateTargetHealthBar = NULL;
 
 	if ( ! pFnUpdateTargetHealthBar )
-		pFnUpdateTargetHealthBar = (UFunction*) UObject::GObjObjects()->Data[ 58109 ];
+		pFnUpdateTargetHealthBar = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.UpdateTargetHealthBar" );
 
 	UTgUIPrimaryHUD_execUpdateTargetHealthBar_Parms UpdateTargetHealthBar_Parms;
 
@@ -17645,7 +17646,7 @@ void UTgUIPrimaryHUD::UpdateReticuleLabelValues ( )
 	static UFunction* pFnUpdateReticuleLabelValues = NULL;
 
 	if ( ! pFnUpdateReticuleLabelValues )
-		pFnUpdateReticuleLabelValues = (UFunction*) UObject::GObjObjects()->Data[ 58108 ];
+		pFnUpdateReticuleLabelValues = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.UpdateReticuleLabelValues" );
 
 	UTgUIPrimaryHUD_execUpdateReticuleLabelValues_Parms UpdateReticuleLabelValues_Parms;
 
@@ -17666,7 +17667,7 @@ void UTgUIPrimaryHUD::SwitchReticuleStatusBar ( int ReticuleToUse )
 	static UFunction* pFnSwitchReticuleStatusBar = NULL;
 
 	if ( ! pFnSwitchReticuleStatusBar )
-		pFnSwitchReticuleStatusBar = (UFunction*) UObject::GObjObjects()->Data[ 58106 ];
+		pFnSwitchReticuleStatusBar = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.SwitchReticuleStatusBar" );
 
 	UTgUIPrimaryHUD_execSwitchReticuleStatusBar_Parms SwitchReticuleStatusBar_Parms;
 	SwitchReticuleStatusBar_Parms.ReticuleToUse = ReticuleToUse;
@@ -17689,7 +17690,7 @@ void UTgUIPrimaryHUD::SetReticuleVisibility ( unsigned long CrossHairVisibility,
 	static UFunction* pFnSetReticuleVisibility = NULL;
 
 	if ( ! pFnSetReticuleVisibility )
-		pFnSetReticuleVisibility = (UFunction*) UObject::GObjObjects()->Data[ 58103 ];
+		pFnSetReticuleVisibility = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.SetReticuleVisibility" );
 
 	UTgUIPrimaryHUD_execSetReticuleVisibility_Parms SetReticuleVisibility_Parms;
 	SetReticuleVisibility_Parms.CrossHairVisibility = CrossHairVisibility;
@@ -17713,7 +17714,7 @@ void UTgUIPrimaryHUD::SetUIClockTimer ( unsigned char ClockStateBitfield, float 
 	static UFunction* pFnSetUIClockTimer = NULL;
 
 	if ( ! pFnSetUIClockTimer )
-		pFnSetUIClockTimer = (UFunction*) UObject::GObjObjects()->Data[ 58100 ];
+		pFnSetUIClockTimer = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.SetUIClockTimer" );
 
 	UTgUIPrimaryHUD_execSetUIClockTimer_Parms SetUIClockTimer_Parms;
 	SetUIClockTimer_Parms.ClockStateBitfield = ClockStateBitfield;
@@ -17735,7 +17736,7 @@ void UTgUIPrimaryHUD::UpdateAlerts ( )
 	static UFunction* pFnUpdateAlerts = NULL;
 
 	if ( ! pFnUpdateAlerts )
-		pFnUpdateAlerts = (UFunction*) UObject::GObjObjects()->Data[ 58099 ];
+		pFnUpdateAlerts = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.UpdateAlerts" );
 
 	UTgUIPrimaryHUD_execUpdateAlerts_Parms UpdateAlerts_Parms;
 
@@ -17756,7 +17757,7 @@ void UTgUIPrimaryHUD::OnSpeaking ( unsigned long bSpeaking )
 	static UFunction* pFnOnSpeaking = NULL;
 
 	if ( ! pFnOnSpeaking )
-		pFnOnSpeaking = (UFunction*) UObject::GObjObjects()->Data[ 58097 ];
+		pFnOnSpeaking = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.OnSpeaking" );
 
 	UTgUIPrimaryHUD_execOnSpeaking_Parms OnSpeaking_Parms;
 	OnSpeaking_Parms.bSpeaking = bSpeaking;
@@ -17777,7 +17778,7 @@ void UTgUIPrimaryHUD::ToggleMapNameDisplay ( )
 	static UFunction* pFnToggleMapNameDisplay = NULL;
 
 	if ( ! pFnToggleMapNameDisplay )
-		pFnToggleMapNameDisplay = (UFunction*) UObject::GObjObjects()->Data[ 58096 ];
+		pFnToggleMapNameDisplay = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.ToggleMapNameDisplay" );
 
 	UTgUIPrimaryHUD_execToggleMapNameDisplay_Parms ToggleMapNameDisplay_Parms;
 
@@ -17797,7 +17798,7 @@ void UTgUIPrimaryHUD::RegisterCallbacks ( )
 	static UFunction* pFnRegisterCallbacks = NULL;
 
 	if ( ! pFnRegisterCallbacks )
-		pFnRegisterCallbacks = (UFunction*) UObject::GObjObjects()->Data[ 58095 ];
+		pFnRegisterCallbacks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.RegisterCallbacks" );
 
 	UTgUIPrimaryHUD_execRegisterCallbacks_Parms RegisterCallbacks_Parms;
 
@@ -17817,7 +17818,7 @@ void UTgUIPrimaryHUD::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 58094 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.PostOpenScene" );
 
 	UTgUIPrimaryHUD_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -17837,7 +17838,7 @@ void UTgUIPrimaryHUD::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 58093 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.PreCloseScene" );
 
 	UTgUIPrimaryHUD_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -17858,7 +17859,7 @@ bool UTgUIPrimaryHUD::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 58091 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.TickTgUIScene" );
 
 	UTgUIPrimaryHUD_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -17880,7 +17881,7 @@ void UTgUIPrimaryHUD::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 58090 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.FixupWidgets" );
 
 	UTgUIPrimaryHUD_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -17900,7 +17901,7 @@ void UTgUIPrimaryHUD::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 58089 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIPrimaryHUD.PostInitSceneDriver" );
 
 	UTgUIPrimaryHUD_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -17920,7 +17921,7 @@ void UTgUIQueueScene::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 59167 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQueueScene.FixupWidgetsUC" );
 
 	UTgUIQueueScene_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -17937,7 +17938,7 @@ void UTgUIQueueScene::AddFeedbackMessage ( struct FString newMessage )
 	static UFunction* pFnAddFeedbackMessage = NULL;
 
 	if ( ! pFnAddFeedbackMessage )
-		pFnAddFeedbackMessage = (UFunction*) UObject::GObjObjects()->Data[ 59165 ];
+		pFnAddFeedbackMessage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQueueScene.AddFeedbackMessage" );
 
 	UTgUIQueueScene_execAddFeedbackMessage_Parms AddFeedbackMessage_Parms;
 	memcpy ( &AddFeedbackMessage_Parms.newMessage, &newMessage, 0xC );
@@ -17960,7 +17961,7 @@ bool UTgUIQueueScene::OnDevButtonDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnDevButtonDelegate = NULL;
 
 	if ( ! pFnOnDevButtonDelegate )
-		pFnOnDevButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59162 ];
+		pFnOnDevButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQueueScene.OnDevButtonDelegate" );
 
 	UTgUIQueueScene_execOnDevButtonDelegate_Parms OnDevButtonDelegate_Parms;
 
@@ -17987,7 +17988,7 @@ bool UTgUIQueueScene::OnCloseButtonDelegate ( struct FInputEventParameters* Even
 	static UFunction* pFnOnCloseButtonDelegate = NULL;
 
 	if ( ! pFnOnCloseButtonDelegate )
-		pFnOnCloseButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59159 ];
+		pFnOnCloseButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQueueScene.OnCloseButtonDelegate" );
 
 	UTgUIQueueScene_execOnCloseButtonDelegate_Parms OnCloseButtonDelegate_Parms;
 
@@ -18014,7 +18015,7 @@ bool UTgUIQueueScene::OnRefreshQueueDelegate ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnRefreshQueueDelegate = NULL;
 
 	if ( ! pFnOnRefreshQueueDelegate )
-		pFnOnRefreshQueueDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59156 ];
+		pFnOnRefreshQueueDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQueueScene.OnRefreshQueueDelegate" );
 
 	UTgUIQueueScene_execOnRefreshQueueDelegate_Parms OnRefreshQueueDelegate_Parms;
 
@@ -18041,7 +18042,7 @@ bool UTgUIQueueScene::OnLeaveQueueDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnLeaveQueueDelegate = NULL;
 
 	if ( ! pFnOnLeaveQueueDelegate )
-		pFnOnLeaveQueueDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59153 ];
+		pFnOnLeaveQueueDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQueueScene.OnLeaveQueueDelegate" );
 
 	UTgUIQueueScene_execOnLeaveQueueDelegate_Parms OnLeaveQueueDelegate_Parms;
 
@@ -18068,7 +18069,7 @@ bool UTgUIQueueScene::OnJoinQueueDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnJoinQueueDelegate = NULL;
 
 	if ( ! pFnOnJoinQueueDelegate )
-		pFnOnJoinQueueDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59150 ];
+		pFnOnJoinQueueDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQueueScene.OnJoinQueueDelegate" );
 
 	UTgUIQueueScene_execOnJoinQueueDelegate_Parms OnJoinQueueDelegate_Parms;
 
@@ -18095,7 +18096,7 @@ bool UTgUIQueueScene::OnSelectQueueDelegate ( struct FInputEventParameters* Even
 	static UFunction* pFnOnSelectQueueDelegate = NULL;
 
 	if ( ! pFnOnSelectQueueDelegate )
-		pFnOnSelectQueueDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59147 ];
+		pFnOnSelectQueueDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQueueScene.OnSelectQueueDelegate" );
 
 	UTgUIQueueScene_execOnSelectQueueDelegate_Parms OnSelectQueueDelegate_Parms;
 
@@ -18122,7 +18123,7 @@ bool UTgUIQueueScene::OnSceneKeyDelegate ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSceneKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneKeyDelegate )
-		pFnOnSceneKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59144 ];
+		pFnOnSceneKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQueueScene.OnSceneKeyDelegate" );
 
 	UTgUIQueueScene_execOnSceneKeyDelegate_Parms OnSceneKeyDelegate_Parms;
 
@@ -18147,7 +18148,7 @@ void UTgUIQueueScene::PopulateQueueList ( )
 	static UFunction* pFnPopulateQueueList = NULL;
 
 	if ( ! pFnPopulateQueueList )
-		pFnPopulateQueueList = (UFunction*) UObject::GObjObjects()->Data[ 59143 ];
+		pFnPopulateQueueList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQueueScene.PopulateQueueList" );
 
 	UTgUIQueueScene_execPopulateQueueList_Parms PopulateQueueList_Parms;
 
@@ -18167,7 +18168,7 @@ void UTgUIQueueScene::RegisterCallbacks ( )
 	static UFunction* pFnRegisterCallbacks = NULL;
 
 	if ( ! pFnRegisterCallbacks )
-		pFnRegisterCallbacks = (UFunction*) UObject::GObjObjects()->Data[ 59142 ];
+		pFnRegisterCallbacks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQueueScene.RegisterCallbacks" );
 
 	UTgUIQueueScene_execRegisterCallbacks_Parms RegisterCallbacks_Parms;
 
@@ -18188,7 +18189,7 @@ bool UTgUIQueueScene::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59140 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQueueScene.TickTgUIScene" );
 
 	UTgUIQueueScene_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -18210,7 +18211,7 @@ void UTgUIQueueScene::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59139 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQueueScene.FixupTgUIScene" );
 
 	UTgUIQueueScene_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -18230,7 +18231,7 @@ void UTgUIRaidHexMap::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 59246 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidHexMap.FixupWidgetsUC" );
 
 	UTgUIRaidHexMap_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -18248,7 +18249,7 @@ bool UTgUIRaidHexMap::OnSceneRaidDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSceneRaidDelegate = NULL;
 
 	if ( ! pFnOnSceneRaidDelegate )
-		pFnOnSceneRaidDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59243 ];
+		pFnOnSceneRaidDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidHexMap.OnSceneRaidDelegate" );
 
 	UTgUIRaidHexMap_execOnSceneRaidDelegate_Parms OnSceneRaidDelegate_Parms;
 
@@ -18275,7 +18276,7 @@ bool UTgUIRaidHexMap::OnSceneCargoDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnSceneCargoDelegate = NULL;
 
 	if ( ! pFnOnSceneCargoDelegate )
-		pFnOnSceneCargoDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59240 ];
+		pFnOnSceneCargoDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidHexMap.OnSceneCargoDelegate" );
 
 	UTgUIRaidHexMap_execOnSceneCargoDelegate_Parms OnSceneCargoDelegate_Parms;
 
@@ -18302,7 +18303,7 @@ bool UTgUIRaidHexMap::OnSceneDetailDelegate ( struct FInputEventParameters* Even
 	static UFunction* pFnOnSceneDetailDelegate = NULL;
 
 	if ( ! pFnOnSceneDetailDelegate )
-		pFnOnSceneDetailDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59237 ];
+		pFnOnSceneDetailDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidHexMap.OnSceneDetailDelegate" );
 
 	UTgUIRaidHexMap_execOnSceneDetailDelegate_Parms OnSceneDetailDelegate_Parms;
 
@@ -18329,7 +18330,7 @@ bool UTgUIRaidHexMap::OnSceneTeamDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSceneTeamDelegate = NULL;
 
 	if ( ! pFnOnSceneTeamDelegate )
-		pFnOnSceneTeamDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59234 ];
+		pFnOnSceneTeamDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidHexMap.OnSceneTeamDelegate" );
 
 	UTgUIRaidHexMap_execOnSceneTeamDelegate_Parms OnSceneTeamDelegate_Parms;
 
@@ -18356,7 +18357,7 @@ bool UTgUIRaidHexMap::OnSceneLeaveDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnSceneLeaveDelegate = NULL;
 
 	if ( ! pFnOnSceneLeaveDelegate )
-		pFnOnSceneLeaveDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59231 ];
+		pFnOnSceneLeaveDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidHexMap.OnSceneLeaveDelegate" );
 
 	UTgUIRaidHexMap_execOnSceneLeaveDelegate_Parms OnSceneLeaveDelegate_Parms;
 
@@ -18383,7 +18384,7 @@ bool UTgUIRaidHexMap::OnCloseDelegate ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnCloseDelegate = NULL;
 
 	if ( ! pFnOnCloseDelegate )
-		pFnOnCloseDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59228 ];
+		pFnOnCloseDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidHexMap.OnCloseDelegate" );
 
 	UTgUIRaidHexMap_execOnCloseDelegate_Parms OnCloseDelegate_Parms;
 
@@ -18410,7 +18411,7 @@ bool UTgUIRaidHexMap::OnReturnDelegate ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnReturnDelegate = NULL;
 
 	if ( ! pFnOnReturnDelegate )
-		pFnOnReturnDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59225 ];
+		pFnOnReturnDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidHexMap.OnReturnDelegate" );
 
 	UTgUIRaidHexMap_execOnReturnDelegate_Parms OnReturnDelegate_Parms;
 
@@ -18437,7 +18438,7 @@ bool UTgUIRaidHexMap::OnLaunchClickDelegate ( struct FInputEventParameters* Even
 	static UFunction* pFnOnLaunchClickDelegate = NULL;
 
 	if ( ! pFnOnLaunchClickDelegate )
-		pFnOnLaunchClickDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59222 ];
+		pFnOnLaunchClickDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidHexMap.OnLaunchClickDelegate" );
 
 	UTgUIRaidHexMap_execOnLaunchClickDelegate_Parms OnLaunchClickDelegate_Parms;
 
@@ -18462,7 +18463,7 @@ void UTgUIRaidHexMap::UpdateInfoPanel ( )
 	static UFunction* pFnUpdateInfoPanel = NULL;
 
 	if ( ! pFnUpdateInfoPanel )
-		pFnUpdateInfoPanel = (UFunction*) UObject::GObjObjects()->Data[ 59221 ];
+		pFnUpdateInfoPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidHexMap.UpdateInfoPanel" );
 
 	UTgUIRaidHexMap_execUpdateInfoPanel_Parms UpdateInfoPanel_Parms;
 
@@ -18484,7 +18485,7 @@ bool UTgUIRaidHexMap::OnSceneKey ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnSceneKey = NULL;
 
 	if ( ! pFnOnSceneKey )
-		pFnOnSceneKey = (UFunction*) UObject::GObjObjects()->Data[ 59218 ];
+		pFnOnSceneKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidHexMap.OnSceneKey" );
 
 	UTgUIRaidHexMap_execOnSceneKey_Parms OnSceneKey_Parms;
 
@@ -18510,7 +18511,7 @@ bool UTgUIRaidHexMap::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59216 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidHexMap.TickTgUIScene" );
 
 	UTgUIRaidHexMap_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -18532,7 +18533,7 @@ void UTgUIRaidHexMap::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59215 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidHexMap.FixupTgUIScene" );
 
 	UTgUIRaidHexMap_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -18552,7 +18553,7 @@ void UTgUIRaidHexMap::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 59214 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidHexMap.PreCloseScene" );
 
 	UTgUIRaidHexMap_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -18572,7 +18573,7 @@ void UTgUIRaidHexMap::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 59213 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidHexMap.PostOpenScene" );
 
 	UTgUIRaidHexMap_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -18592,7 +18593,7 @@ void UTgUIRaidMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 59348 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.FixupWidgetsUC" );
 
 	UTgUIRaidMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -18609,7 +18610,7 @@ bool UTgUIRaidMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59346 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.TickTgUIScene" );
 
 	UTgUIRaidMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -18631,7 +18632,7 @@ void UTgUIRaidMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59345 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.FixupTgUIScene" );
 
 	UTgUIRaidMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -18651,7 +18652,7 @@ void UTgUIRaidMenu::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 59344 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.PostOpenScene" );
 
 	UTgUIRaidMenu_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -18673,7 +18674,7 @@ bool UTgUIRaidMenu::OnSceneMapDelegate ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnSceneMapDelegate = NULL;
 
 	if ( ! pFnOnSceneMapDelegate )
-		pFnOnSceneMapDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59341 ];
+		pFnOnSceneMapDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.OnSceneMapDelegate" );
 
 	UTgUIRaidMenu_execOnSceneMapDelegate_Parms OnSceneMapDelegate_Parms;
 
@@ -18700,7 +18701,7 @@ bool UTgUIRaidMenu::OnSceneCargoDelegate ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSceneCargoDelegate = NULL;
 
 	if ( ! pFnOnSceneCargoDelegate )
-		pFnOnSceneCargoDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59338 ];
+		pFnOnSceneCargoDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.OnSceneCargoDelegate" );
 
 	UTgUIRaidMenu_execOnSceneCargoDelegate_Parms OnSceneCargoDelegate_Parms;
 
@@ -18727,7 +18728,7 @@ bool UTgUIRaidMenu::OnSceneDetailDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSceneDetailDelegate = NULL;
 
 	if ( ! pFnOnSceneDetailDelegate )
-		pFnOnSceneDetailDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59335 ];
+		pFnOnSceneDetailDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.OnSceneDetailDelegate" );
 
 	UTgUIRaidMenu_execOnSceneDetailDelegate_Parms OnSceneDetailDelegate_Parms;
 
@@ -18754,7 +18755,7 @@ bool UTgUIRaidMenu::OnSceneTeamDelegate ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnSceneTeamDelegate = NULL;
 
 	if ( ! pFnOnSceneTeamDelegate )
-		pFnOnSceneTeamDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59332 ];
+		pFnOnSceneTeamDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.OnSceneTeamDelegate" );
 
 	UTgUIRaidMenu_execOnSceneTeamDelegate_Parms OnSceneTeamDelegate_Parms;
 
@@ -18781,7 +18782,7 @@ bool UTgUIRaidMenu::OnReturnDelegate ( struct FInputEventParameters* EventParms 
 	static UFunction* pFnOnReturnDelegate = NULL;
 
 	if ( ! pFnOnReturnDelegate )
-		pFnOnReturnDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59329 ];
+		pFnOnReturnDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.OnReturnDelegate" );
 
 	UTgUIRaidMenu_execOnReturnDelegate_Parms OnReturnDelegate_Parms;
 
@@ -18808,7 +18809,7 @@ bool UTgUIRaidMenu::OnCloseDelegate ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnCloseDelegate = NULL;
 
 	if ( ! pFnOnCloseDelegate )
-		pFnOnCloseDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59326 ];
+		pFnOnCloseDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.OnCloseDelegate" );
 
 	UTgUIRaidMenu_execOnCloseDelegate_Parms OnCloseDelegate_Parms;
 
@@ -18835,7 +18836,7 @@ bool UTgUIRaidMenu::OnSceneLeaveDelegate ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSceneLeaveDelegate = NULL;
 
 	if ( ! pFnOnSceneLeaveDelegate )
-		pFnOnSceneLeaveDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59323 ];
+		pFnOnSceneLeaveDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.OnSceneLeaveDelegate" );
 
 	UTgUIRaidMenu_execOnSceneLeaveDelegate_Parms OnSceneLeaveDelegate_Parms;
 
@@ -18862,7 +18863,7 @@ bool UTgUIRaidMenu::OnScenePromoteDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnScenePromoteDelegate = NULL;
 
 	if ( ! pFnOnScenePromoteDelegate )
-		pFnOnScenePromoteDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59320 ];
+		pFnOnScenePromoteDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.OnScenePromoteDelegate" );
 
 	UTgUIRaidMenu_execOnScenePromoteDelegate_Parms OnScenePromoteDelegate_Parms;
 
@@ -18889,7 +18890,7 @@ bool UTgUIRaidMenu::OnSceneRemoveDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSceneRemoveDelegate = NULL;
 
 	if ( ! pFnOnSceneRemoveDelegate )
-		pFnOnSceneRemoveDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59317 ];
+		pFnOnSceneRemoveDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.OnSceneRemoveDelegate" );
 
 	UTgUIRaidMenu_execOnSceneRemoveDelegate_Parms OnSceneRemoveDelegate_Parms;
 
@@ -18916,7 +18917,7 @@ bool UTgUIRaidMenu::OnSceneInputKeyDelegate ( struct FInputEventParameters* Even
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59314 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.OnSceneInputKeyDelegate" );
 
 	UTgUIRaidMenu_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -18943,7 +18944,7 @@ bool UTgUIRaidMenu::OnMoveToDelegate ( struct FInputEventParameters* EventParms 
 	static UFunction* pFnOnMoveToDelegate = NULL;
 
 	if ( ! pFnOnMoveToDelegate )
-		pFnOnMoveToDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59311 ];
+		pFnOnMoveToDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.OnMoveToDelegate" );
 
 	UTgUIRaidMenu_execOnMoveToDelegate_Parms OnMoveToDelegate_Parms;
 
@@ -18970,7 +18971,7 @@ bool UTgUIRaidMenu::OnRaidTeamDelegate ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnRaidTeamDelegate = NULL;
 
 	if ( ! pFnOnRaidTeamDelegate )
-		pFnOnRaidTeamDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59308 ];
+		pFnOnRaidTeamDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.OnRaidTeamDelegate" );
 
 	UTgUIRaidMenu_execOnRaidTeamDelegate_Parms OnRaidTeamDelegate_Parms;
 
@@ -18997,7 +18998,7 @@ bool UTgUIRaidMenu::OnRaidMemberDelegate ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnRaidMemberDelegate = NULL;
 
 	if ( ! pFnOnRaidMemberDelegate )
-		pFnOnRaidMemberDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59305 ];
+		pFnOnRaidMemberDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRaidMenu.OnRaidMemberDelegate" );
 
 	UTgUIRaidMenu_execOnRaidMemberDelegate_Parms OnRaidMemberDelegate_Parms;
 
@@ -19022,7 +19023,7 @@ void UTgUIReleaseMenus::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 59441 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReleaseMenus.FixupWidgetsUC" );
 
 	UTgUIReleaseMenus_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -19040,7 +19041,7 @@ bool UTgUIReleaseMenus::OnBasicReleaseDialogButtonKey ( struct FInputEventParame
 	static UFunction* pFnOnBasicReleaseDialogButtonKey = NULL;
 
 	if ( ! pFnOnBasicReleaseDialogButtonKey )
-		pFnOnBasicReleaseDialogButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 59438 ];
+		pFnOnBasicReleaseDialogButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReleaseMenus.OnBasicReleaseDialogButtonKey" );
 
 	UTgUIReleaseMenus_execOnBasicReleaseDialogButtonKey_Parms OnBasicReleaseDialogButtonKey_Parms;
 
@@ -19061,7 +19062,7 @@ void UTgUIReleaseMenus::SetSpectateText ( )
 	static UFunction* pFnSetSpectateText = NULL;
 
 	if ( ! pFnSetSpectateText )
-		pFnSetSpectateText = (UFunction*) UObject::GObjObjects()->Data[ 59437 ];
+		pFnSetSpectateText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReleaseMenus.SetSpectateText" );
 
 	UTgUIReleaseMenus_execSetSpectateText_Parms SetSpectateText_Parms;
 
@@ -19082,7 +19083,7 @@ void UTgUIReleaseMenus::ToggleHideScene ( unsigned long hideFlag )
 	static UFunction* pFnToggleHideScene = NULL;
 
 	if ( ! pFnToggleHideScene )
-		pFnToggleHideScene = (UFunction*) UObject::GObjObjects()->Data[ 59435 ];
+		pFnToggleHideScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReleaseMenus.ToggleHideScene" );
 
 	UTgUIReleaseMenus_execToggleHideScene_Parms ToggleHideScene_Parms;
 	ToggleHideScene_Parms.hideFlag = hideFlag;
@@ -19104,7 +19105,7 @@ bool UTgUIReleaseMenus::IsReleaseDialogActive ( )
 	static UFunction* pFnIsReleaseDialogActive = NULL;
 
 	if ( ! pFnIsReleaseDialogActive )
-		pFnIsReleaseDialogActive = (UFunction*) UObject::GObjObjects()->Data[ 59433 ];
+		pFnIsReleaseDialogActive = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReleaseMenus.IsReleaseDialogActive" );
 
 	UTgUIReleaseMenus_execIsReleaseDialogActive_Parms IsReleaseDialogActive_Parms;
 
@@ -19127,7 +19128,7 @@ void UTgUIReleaseMenus::SetDeathZoomInfo ( struct FDeathZoomInfo Info )
 	static UFunction* pFnSetDeathZoomInfo = NULL;
 
 	if ( ! pFnSetDeathZoomInfo )
-		pFnSetDeathZoomInfo = (UFunction*) UObject::GObjObjects()->Data[ 59431 ];
+		pFnSetDeathZoomInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReleaseMenus.SetDeathZoomInfo" );
 
 	UTgUIReleaseMenus_execSetDeathZoomInfo_Parms SetDeathZoomInfo_Parms;
 	memcpy ( &SetDeathZoomInfo_Parms.Info, &Info, 0x1C );
@@ -19151,7 +19152,7 @@ void UTgUIReleaseMenus::SetReleaseData ( unsigned long bActive, float fReleaseTi
 	static UFunction* pFnSetReleaseData = NULL;
 
 	if ( ! pFnSetReleaseData )
-		pFnSetReleaseData = (UFunction*) UObject::GObjObjects()->Data[ 59427 ];
+		pFnSetReleaseData = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReleaseMenus.SetReleaseData" );
 
 	UTgUIReleaseMenus_execSetReleaseData_Parms SetReleaseData_Parms;
 	SetReleaseData_Parms.bActive = bActive;
@@ -19174,7 +19175,7 @@ void UTgUIReleaseMenus::UpdateReleaseDialog ( )
 	static UFunction* pFnUpdateReleaseDialog = NULL;
 
 	if ( ! pFnUpdateReleaseDialog )
-		pFnUpdateReleaseDialog = (UFunction*) UObject::GObjObjects()->Data[ 59426 ];
+		pFnUpdateReleaseDialog = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReleaseMenus.UpdateReleaseDialog" );
 
 	UTgUIReleaseMenus_execUpdateReleaseDialog_Parms UpdateReleaseDialog_Parms;
 
@@ -19194,7 +19195,7 @@ void UTgUIReleaseMenus::UserManuallyReleased ( )
 	static UFunction* pFnUserManuallyReleased = NULL;
 
 	if ( ! pFnUserManuallyReleased )
-		pFnUserManuallyReleased = (UFunction*) UObject::GObjObjects()->Data[ 59425 ];
+		pFnUserManuallyReleased = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReleaseMenus.UserManuallyReleased" );
 
 	UTgUIReleaseMenus_execUserManuallyReleased_Parms UserManuallyReleased_Parms;
 
@@ -19214,7 +19215,7 @@ void UTgUIReleaseMenus::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 59424 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReleaseMenus.FixupWidgets" );
 
 	UTgUIReleaseMenus_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -19235,7 +19236,7 @@ bool UTgUIReleaseMenus::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59422 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReleaseMenus.TickTgUIScene" );
 
 	UTgUIReleaseMenus_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -19257,7 +19258,7 @@ void UTgUIReleaseMenus::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59421 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReleaseMenus.FixupTgUIScene" );
 
 	UTgUIReleaseMenus_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -19277,7 +19278,7 @@ void UTgUIReleaseMenus::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 59420 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReleaseMenus.PreCloseScene" );
 
 	UTgUIReleaseMenus_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -19297,7 +19298,7 @@ void UTgUIReleaseMenus::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 59419 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReleaseMenus.PostInitSceneDriver" );
 
 	UTgUIReleaseMenus_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -19317,7 +19318,7 @@ void UTgUISceneDriver_Tooltip::eventFixupConfirmWidgets ( )
 	static UFunction* pFnFixupConfirmWidgets = NULL;
 
 	if ( ! pFnFixupConfirmWidgets )
-		pFnFixupConfirmWidgets = (UFunction*) UObject::GObjObjects()->Data[ 52427 ];
+		pFnFixupConfirmWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.FixupConfirmWidgets" );
 
 	UTgUISceneDriver_Tooltip_eventFixupConfirmWidgets_Parms FixupConfirmWidgets_Parms;
 
@@ -19334,7 +19335,7 @@ void UTgUISceneDriver_Tooltip::OpenFeatureUpgradePopup ( unsigned long bSubscrib
 	static UFunction* pFnOpenFeatureUpgradePopup = NULL;
 
 	if ( ! pFnOpenFeatureUpgradePopup )
-		pFnOpenFeatureUpgradePopup = (UFunction*) UObject::GObjObjects()->Data[ 52425 ];
+		pFnOpenFeatureUpgradePopup = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.OpenFeatureUpgradePopup" );
 
 	UTgUISceneDriver_Tooltip_execOpenFeatureUpgradePopup_Parms OpenFeatureUpgradePopup_Parms;
 	OpenFeatureUpgradePopup_Parms.bSubscriberCheck = bSubscriberCheck;
@@ -19359,7 +19360,7 @@ void UTgUISceneDriver_Tooltip::OnConfirmItemStateChange ( class UUIScreenObject*
 	static UFunction* pFnOnConfirmItemStateChange = NULL;
 
 	if ( ! pFnOnConfirmItemStateChange )
-		pFnOnConfirmItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 52420 ];
+		pFnOnConfirmItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.OnConfirmItemStateChange" );
 
 	UTgUISceneDriver_Tooltip_execOnConfirmItemStateChange_Parms OnConfirmItemStateChange_Parms;
 	OnConfirmItemStateChange_Parms.Sender = Sender;
@@ -19385,7 +19386,7 @@ void UTgUISceneDriver_Tooltip::OnAmountChangedDelegate ( class UUIObject* Sender
 	static UFunction* pFnOnAmountChangedDelegate = NULL;
 
 	if ( ! pFnOnAmountChangedDelegate )
-		pFnOnAmountChangedDelegate = (UFunction*) UObject::GObjObjects()->Data[ 52417 ];
+		pFnOnAmountChangedDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.OnAmountChangedDelegate" );
 
 	UTgUISceneDriver_Tooltip_execOnAmountChangedDelegate_Parms OnAmountChangedDelegate_Parms;
 	OnAmountChangedDelegate_Parms.Sender = Sender;
@@ -19409,7 +19410,7 @@ bool UTgUISceneDriver_Tooltip::OnConfirmOkClicked ( struct FInputEventParameters
 	static UFunction* pFnOnConfirmOkClicked = NULL;
 
 	if ( ! pFnOnConfirmOkClicked )
-		pFnOnConfirmOkClicked = (UFunction*) UObject::GObjObjects()->Data[ 52414 ];
+		pFnOnConfirmOkClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.OnConfirmOkClicked" );
 
 	UTgUISceneDriver_Tooltip_execOnConfirmOkClicked_Parms OnConfirmOkClicked_Parms;
 
@@ -19436,7 +19437,7 @@ bool UTgUISceneDriver_Tooltip::OnConfirmNoClicked ( struct FInputEventParameters
 	static UFunction* pFnOnConfirmNoClicked = NULL;
 
 	if ( ! pFnOnConfirmNoClicked )
-		pFnOnConfirmNoClicked = (UFunction*) UObject::GObjObjects()->Data[ 52411 ];
+		pFnOnConfirmNoClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.OnConfirmNoClicked" );
 
 	UTgUISceneDriver_Tooltip_execOnConfirmNoClicked_Parms OnConfirmNoClicked_Parms;
 
@@ -19463,7 +19464,7 @@ bool UTgUISceneDriver_Tooltip::OnConfirmYesClicked ( struct FInputEventParameter
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 52408 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.OnConfirmYesClicked" );
 
 	UTgUISceneDriver_Tooltip_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -19489,7 +19490,7 @@ void UTgUISceneDriver_Tooltip::OpenConfirmInfoPopup ( struct FString Text )
 	static UFunction* pFnOpenConfirmInfoPopup = NULL;
 
 	if ( ! pFnOpenConfirmInfoPopup )
-		pFnOpenConfirmInfoPopup = (UFunction*) UObject::GObjObjects()->Data[ 52406 ];
+		pFnOpenConfirmInfoPopup = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.OpenConfirmInfoPopup" );
 
 	UTgUISceneDriver_Tooltip_execOpenConfirmInfoPopup_Parms OpenConfirmInfoPopup_Parms;
 	memcpy ( &OpenConfirmInfoPopup_Parms.Text, &Text, 0xC );
@@ -19512,7 +19513,7 @@ void UTgUISceneDriver_Tooltip::OpenConfirmDeletePopup ( class UTgInventoryObject
 	static UFunction* pFnOpenConfirmDeletePopup = NULL;
 
 	if ( ! pFnOpenConfirmDeletePopup )
-		pFnOpenConfirmDeletePopup = (UFunction*) UObject::GObjObjects()->Data[ 52403 ];
+		pFnOpenConfirmDeletePopup = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.OpenConfirmDeletePopup" );
 
 	UTgUISceneDriver_Tooltip_execOpenConfirmDeletePopup_Parms OpenConfirmDeletePopup_Parms;
 	OpenConfirmDeletePopup_Parms.pItem = pItem;
@@ -19534,7 +19535,7 @@ void UTgUISceneDriver_Tooltip::CloseConfirmPopup ( )
 	static UFunction* pFnCloseConfirmPopup = NULL;
 
 	if ( ! pFnCloseConfirmPopup )
-		pFnCloseConfirmPopup = (UFunction*) UObject::GObjObjects()->Data[ 52402 ];
+		pFnCloseConfirmPopup = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.CloseConfirmPopup" );
 
 	UTgUISceneDriver_Tooltip_execCloseConfirmPopup_Parms CloseConfirmPopup_Parms;
 
@@ -19554,7 +19555,7 @@ void UTgUISceneDriver_Tooltip::ShowConfirmPopup ( )
 	static UFunction* pFnShowConfirmPopup = NULL;
 
 	if ( ! pFnShowConfirmPopup )
-		pFnShowConfirmPopup = (UFunction*) UObject::GObjObjects()->Data[ 52401 ];
+		pFnShowConfirmPopup = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.ShowConfirmPopup" );
 
 	UTgUISceneDriver_Tooltip_execShowConfirmPopup_Parms ShowConfirmPopup_Parms;
 
@@ -19574,7 +19575,7 @@ void UTgUISceneDriver_Tooltip::SetUpConfirmEditBoxes ( )
 	static UFunction* pFnSetUpConfirmEditBoxes = NULL;
 
 	if ( ! pFnSetUpConfirmEditBoxes )
-		pFnSetUpConfirmEditBoxes = (UFunction*) UObject::GObjObjects()->Data[ 52400 ];
+		pFnSetUpConfirmEditBoxes = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.SetUpConfirmEditBoxes" );
 
 	UTgUISceneDriver_Tooltip_execSetUpConfirmEditBoxes_Parms SetUpConfirmEditBoxes_Parms;
 
@@ -19594,7 +19595,7 @@ void UTgUISceneDriver_Tooltip::SetUpConfirmItemPanel ( )
 	static UFunction* pFnSetUpConfirmItemPanel = NULL;
 
 	if ( ! pFnSetUpConfirmItemPanel )
-		pFnSetUpConfirmItemPanel = (UFunction*) UObject::GObjObjects()->Data[ 52399 ];
+		pFnSetUpConfirmItemPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.SetUpConfirmItemPanel" );
 
 	UTgUISceneDriver_Tooltip_execSetUpConfirmItemPanel_Parms SetUpConfirmItemPanel_Parms;
 
@@ -19614,7 +19615,7 @@ void UTgUISceneDriver_Tooltip::CreateConfirmPopup ( )
 	static UFunction* pFnCreateConfirmPopup = NULL;
 
 	if ( ! pFnCreateConfirmPopup )
-		pFnCreateConfirmPopup = (UFunction*) UObject::GObjObjects()->Data[ 52398 ];
+		pFnCreateConfirmPopup = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.CreateConfirmPopup" );
 
 	UTgUISceneDriver_Tooltip_execCreateConfirmPopup_Parms CreateConfirmPopup_Parms;
 
@@ -19635,7 +19636,7 @@ bool UTgUISceneDriver_Tooltip::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 52396 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.TickTgUIScene" );
 
 	UTgUISceneDriver_Tooltip_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -19657,7 +19658,7 @@ void UTgUISceneDriver_Tooltip::OpenTgUIScene ( )
 	static UFunction* pFnOpenTgUIScene = NULL;
 
 	if ( ! pFnOpenTgUIScene )
-		pFnOpenTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 52395 ];
+		pFnOpenTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneDriver_Tooltip.OpenTgUIScene" );
 
 	UTgUISceneDriver_Tooltip_execOpenTgUIScene_Parms OpenTgUIScene_Parms;
 
@@ -19678,7 +19679,7 @@ void UTgUIAgencyDirectory::eventSetRawInputKeyForAgencyButton ( class UUIButton*
 	static UFunction* pFnSetRawInputKeyForAgencyButton = NULL;
 
 	if ( ! pFnSetRawInputKeyForAgencyButton )
-		pFnSetRawInputKeyForAgencyButton = (UFunction*) UObject::GObjObjects()->Data[ 52530 ];
+		pFnSetRawInputKeyForAgencyButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyDirectory.SetRawInputKeyForAgencyButton" );
 
 	UTgUIAgencyDirectory_eventSetRawInputKeyForAgencyButton_Parms SetRawInputKeyForAgencyButton_Parms;
 	SetRawInputKeyForAgencyButton_Parms.Button = Button;
@@ -19695,7 +19696,7 @@ void UTgUIAgencyDirectory::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 52529 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyDirectory.FixupWidgetsUC" );
 
 	UTgUIAgencyDirectory_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -19713,7 +19714,7 @@ void UTgUIAgencyDirectory::OnEnterValueChanged ( class UUIObject* ebox, int Play
 	static UFunction* pFnOnEnterValueChanged = NULL;
 
 	if ( ! pFnOnEnterValueChanged )
-		pFnOnEnterValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 52526 ];
+		pFnOnEnterValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyDirectory.OnEnterValueChanged" );
 
 	UTgUIAgencyDirectory_execOnEnterValueChanged_Parms OnEnterValueChanged_Parms;
 	OnEnterValueChanged_Parms.ebox = ebox;
@@ -19737,7 +19738,7 @@ bool UTgUIAgencyDirectory::OnConfirmYesClicked ( struct FInputEventParameters* E
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 52523 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyDirectory.OnConfirmYesClicked" );
 
 	UTgUIAgencyDirectory_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -19764,7 +19765,7 @@ bool UTgUIAgencyDirectory::OnCancelButtonDelegate ( struct FInputEventParameters
 	static UFunction* pFnOnCancelButtonDelegate = NULL;
 
 	if ( ! pFnOnCancelButtonDelegate )
-		pFnOnCancelButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 52520 ];
+		pFnOnCancelButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyDirectory.OnCancelButtonDelegate" );
 
 	UTgUIAgencyDirectory_execOnCancelButtonDelegate_Parms OnCancelButtonDelegate_Parms;
 
@@ -19791,7 +19792,7 @@ bool UTgUIAgencyDirectory::OnSendCancelButtonDelegate ( struct FInputEventParame
 	static UFunction* pFnOnSendCancelButtonDelegate = NULL;
 
 	if ( ! pFnOnSendCancelButtonDelegate )
-		pFnOnSendCancelButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 52517 ];
+		pFnOnSendCancelButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyDirectory.OnSendCancelButtonDelegate" );
 
 	UTgUIAgencyDirectory_execOnSendCancelButtonDelegate_Parms OnSendCancelButtonDelegate_Parms;
 
@@ -19818,7 +19819,7 @@ bool UTgUIAgencyDirectory::OnSendButtonDelegate ( struct FInputEventParameters* 
 	static UFunction* pFnOnSendButtonDelegate = NULL;
 
 	if ( ! pFnOnSendButtonDelegate )
-		pFnOnSendButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 52514 ];
+		pFnOnSendButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyDirectory.OnSendButtonDelegate" );
 
 	UTgUIAgencyDirectory_execOnSendButtonDelegate_Parms OnSendButtonDelegate_Parms;
 
@@ -19845,7 +19846,7 @@ bool UTgUIAgencyDirectory::OnApplyButtonDelegate ( struct FInputEventParameters*
 	static UFunction* pFnOnApplyButtonDelegate = NULL;
 
 	if ( ! pFnOnApplyButtonDelegate )
-		pFnOnApplyButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 52511 ];
+		pFnOnApplyButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyDirectory.OnApplyButtonDelegate" );
 
 	UTgUIAgencyDirectory_execOnApplyButtonDelegate_Parms OnApplyButtonDelegate_Parms;
 
@@ -19872,7 +19873,7 @@ bool UTgUIAgencyDirectory::OnSelectAgencyDelegate ( struct FInputEventParameters
 	static UFunction* pFnOnSelectAgencyDelegate = NULL;
 
 	if ( ! pFnOnSelectAgencyDelegate )
-		pFnOnSelectAgencyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 52508 ];
+		pFnOnSelectAgencyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyDirectory.OnSelectAgencyDelegate" );
 
 	UTgUIAgencyDirectory_execOnSelectAgencyDelegate_Parms OnSelectAgencyDelegate_Parms;
 
@@ -19899,7 +19900,7 @@ bool UTgUIAgencyDirectory::OnSearchButtonDelegate ( struct FInputEventParameters
 	static UFunction* pFnOnSearchButtonDelegate = NULL;
 
 	if ( ! pFnOnSearchButtonDelegate )
-		pFnOnSearchButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 52505 ];
+		pFnOnSearchButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyDirectory.OnSearchButtonDelegate" );
 
 	UTgUIAgencyDirectory_execOnSearchButtonDelegate_Parms OnSearchButtonDelegate_Parms;
 
@@ -19926,7 +19927,7 @@ bool UTgUIAgencyDirectory::OnCloseButtonDelegate ( struct FInputEventParameters*
 	static UFunction* pFnOnCloseButtonDelegate = NULL;
 
 	if ( ! pFnOnCloseButtonDelegate )
-		pFnOnCloseButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 52502 ];
+		pFnOnCloseButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyDirectory.OnCloseButtonDelegate" );
 
 	UTgUIAgencyDirectory_execOnCloseButtonDelegate_Parms OnCloseButtonDelegate_Parms;
 
@@ -19953,7 +19954,7 @@ bool UTgUIAgencyDirectory::OnSceneKeyDelegate ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnSceneKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneKeyDelegate )
-		pFnOnSceneKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 52499 ];
+		pFnOnSceneKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyDirectory.OnSceneKeyDelegate" );
 
 	UTgUIAgencyDirectory_execOnSceneKeyDelegate_Parms OnSceneKeyDelegate_Parms;
 
@@ -19978,7 +19979,7 @@ void UTgUIAgencyDirectory::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 52498 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyDirectory.PreCloseScene" );
 
 	UTgUIAgencyDirectory_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -19999,7 +20000,7 @@ bool UTgUIAgencyDirectory::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 52496 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyDirectory.TickTgUIScene" );
 
 	UTgUIAgencyDirectory_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -20021,7 +20022,7 @@ void UTgUIAgencyDirectory::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 52495 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyDirectory.FixupTgUIScene" );
 
 	UTgUIAgencyDirectory_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -20042,7 +20043,7 @@ void UTgUIAgencyMenu::eventSelectTab ( unsigned char Tab )
 	static UFunction* pFnSelectTab = NULL;
 
 	if ( ! pFnSelectTab )
-		pFnSelectTab = (UFunction*) UObject::GObjObjects()->Data[ 52588 ];
+		pFnSelectTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.SelectTab" );
 
 	UTgUIAgencyMenu_eventSelectTab_Parms SelectTab_Parms;
 	SelectTab_Parms.Tab = Tab;
@@ -20061,7 +20062,7 @@ bool UTgUIAgencyMenu::OnSelectInventoryTab ( struct FInputEventParameters* Event
 	static UFunction* pFnOnSelectInventoryTab = NULL;
 
 	if ( ! pFnOnSelectInventoryTab )
-		pFnOnSelectInventoryTab = (UFunction*) UObject::GObjObjects()->Data[ 52585 ];
+		pFnOnSelectInventoryTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.OnSelectInventoryTab" );
 
 	UTgUIAgencyMenu_execOnSelectInventoryTab_Parms OnSelectInventoryTab_Parms;
 
@@ -20084,7 +20085,7 @@ bool UTgUIAgencyMenu::OnSelectAuditingTab ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSelectAuditingTab = NULL;
 
 	if ( ! pFnOnSelectAuditingTab )
-		pFnOnSelectAuditingTab = (UFunction*) UObject::GObjObjects()->Data[ 52582 ];
+		pFnOnSelectAuditingTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.OnSelectAuditingTab" );
 
 	UTgUIAgencyMenu_execOnSelectAuditingTab_Parms OnSelectAuditingTab_Parms;
 
@@ -20107,7 +20108,7 @@ bool UTgUIAgencyMenu::OnSelectRecruitingTab ( struct FInputEventParameters* Even
 	static UFunction* pFnOnSelectRecruitingTab = NULL;
 
 	if ( ! pFnOnSelectRecruitingTab )
-		pFnOnSelectRecruitingTab = (UFunction*) UObject::GObjObjects()->Data[ 52579 ];
+		pFnOnSelectRecruitingTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.OnSelectRecruitingTab" );
 
 	UTgUIAgencyMenu_execOnSelectRecruitingTab_Parms OnSelectRecruitingTab_Parms;
 
@@ -20130,7 +20131,7 @@ bool UTgUIAgencyMenu::OnSelectFacilitiesTab ( struct FInputEventParameters* Even
 	static UFunction* pFnOnSelectFacilitiesTab = NULL;
 
 	if ( ! pFnOnSelectFacilitiesTab )
-		pFnOnSelectFacilitiesTab = (UFunction*) UObject::GObjObjects()->Data[ 52576 ];
+		pFnOnSelectFacilitiesTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.OnSelectFacilitiesTab" );
 
 	UTgUIAgencyMenu_execOnSelectFacilitiesTab_Parms OnSelectFacilitiesTab_Parms;
 
@@ -20153,7 +20154,7 @@ bool UTgUIAgencyMenu::OnSelectManagementTab ( struct FInputEventParameters* Even
 	static UFunction* pFnOnSelectManagementTab = NULL;
 
 	if ( ! pFnOnSelectManagementTab )
-		pFnOnSelectManagementTab = (UFunction*) UObject::GObjObjects()->Data[ 52573 ];
+		pFnOnSelectManagementTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.OnSelectManagementTab" );
 
 	UTgUIAgencyMenu_execOnSelectManagementTab_Parms OnSelectManagementTab_Parms;
 
@@ -20176,7 +20177,7 @@ bool UTgUIAgencyMenu::OnSelectApplicantsTab ( struct FInputEventParameters* Even
 	static UFunction* pFnOnSelectApplicantsTab = NULL;
 
 	if ( ! pFnOnSelectApplicantsTab )
-		pFnOnSelectApplicantsTab = (UFunction*) UObject::GObjObjects()->Data[ 52570 ];
+		pFnOnSelectApplicantsTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.OnSelectApplicantsTab" );
 
 	UTgUIAgencyMenu_execOnSelectApplicantsTab_Parms OnSelectApplicantsTab_Parms;
 
@@ -20199,7 +20200,7 @@ bool UTgUIAgencyMenu::OnSelectAllianceTab ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSelectAllianceTab = NULL;
 
 	if ( ! pFnOnSelectAllianceTab )
-		pFnOnSelectAllianceTab = (UFunction*) UObject::GObjObjects()->Data[ 52567 ];
+		pFnOnSelectAllianceTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.OnSelectAllianceTab" );
 
 	UTgUIAgencyMenu_execOnSelectAllianceTab_Parms OnSelectAllianceTab_Parms;
 
@@ -20222,7 +20223,7 @@ bool UTgUIAgencyMenu::OnSelectBaseTab ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnSelectBaseTab = NULL;
 
 	if ( ! pFnOnSelectBaseTab )
-		pFnOnSelectBaseTab = (UFunction*) UObject::GObjObjects()->Data[ 52564 ];
+		pFnOnSelectBaseTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.OnSelectBaseTab" );
 
 	UTgUIAgencyMenu_execOnSelectBaseTab_Parms OnSelectBaseTab_Parms;
 
@@ -20245,7 +20246,7 @@ bool UTgUIAgencyMenu::OnSelectGeneralTab ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSelectGeneralTab = NULL;
 
 	if ( ! pFnOnSelectGeneralTab )
-		pFnOnSelectGeneralTab = (UFunction*) UObject::GObjObjects()->Data[ 52561 ];
+		pFnOnSelectGeneralTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.OnSelectGeneralTab" );
 
 	UTgUIAgencyMenu_execOnSelectGeneralTab_Parms OnSelectGeneralTab_Parms;
 
@@ -20268,7 +20269,7 @@ bool UTgUIAgencyMenu::OnCloseButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 52558 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.OnCloseButton" );
 
 	UTgUIAgencyMenu_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -20289,7 +20290,7 @@ void UTgUIAgencyMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 52557 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.FixupWidgetsUC" );
 
 	UTgUIAgencyMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -20307,7 +20308,7 @@ bool UTgUIAgencyMenu::OnAgencyMenuKey ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnAgencyMenuKey = NULL;
 
 	if ( ! pFnOnAgencyMenuKey )
-		pFnOnAgencyMenuKey = (UFunction*) UObject::GObjObjects()->Data[ 52554 ];
+		pFnOnAgencyMenuKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.OnAgencyMenuKey" );
 
 	UTgUIAgencyMenu_execOnAgencyMenuKey_Parms OnAgencyMenuKey_Parms;
 
@@ -20333,7 +20334,7 @@ class UTgAllianceData* UTgUIAgencyMenu::GetAllianceData ( )
 	static UFunction* pFnGetAllianceData = NULL;
 
 	if ( ! pFnGetAllianceData )
-		pFnGetAllianceData = (UFunction*) UObject::GObjObjects()->Data[ 52552 ];
+		pFnGetAllianceData = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.GetAllianceData" );
 
 	UTgUIAgencyMenu_execGetAllianceData_Parms GetAllianceData_Parms;
 
@@ -20356,7 +20357,7 @@ class UTgAgencyData* UTgUIAgencyMenu::GetAgencyData ( )
 	static UFunction* pFnGetAgencyData = NULL;
 
 	if ( ! pFnGetAgencyData )
-		pFnGetAgencyData = (UFunction*) UObject::GObjObjects()->Data[ 52550 ];
+		pFnGetAgencyData = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.GetAgencyData" );
 
 	UTgUIAgencyMenu_execGetAgencyData_Parms GetAgencyData_Parms;
 
@@ -20378,7 +20379,7 @@ void UTgUIAgencyMenu::UpdateViewablePanels ( )
 	static UFunction* pFnUpdateViewablePanels = NULL;
 
 	if ( ! pFnUpdateViewablePanels )
-		pFnUpdateViewablePanels = (UFunction*) UObject::GObjObjects()->Data[ 52549 ];
+		pFnUpdateViewablePanels = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.UpdateViewablePanels" );
 
 	UTgUIAgencyMenu_execUpdateViewablePanels_Parms UpdateViewablePanels_Parms;
 
@@ -20398,7 +20399,7 @@ void UTgUIAgencyMenu::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 52548 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.FixupWidgets" );
 
 	UTgUIAgencyMenu_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -20418,7 +20419,7 @@ void UTgUIAgencyMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 52547 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.FixupTgUIScene" );
 
 	UTgUIAgencyMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -20438,7 +20439,7 @@ void UTgUIAgencyMenu::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 52546 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.PostOpenScene" );
 
 	UTgUIAgencyMenu_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -20459,7 +20460,7 @@ bool UTgUIAgencyMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 52544 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu.TickTgUIScene" );
 
 	UTgUIAgencyMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -20483,7 +20484,7 @@ bool UTgUIAgencyMenu_Alliance::OnSelectAllianceMember ( struct FInputEventParame
 	static UFunction* pFnOnSelectAllianceMember = NULL;
 
 	if ( ! pFnOnSelectAllianceMember )
-		pFnOnSelectAllianceMember = (UFunction*) UObject::GObjObjects()->Data[ 52690 ];
+		pFnOnSelectAllianceMember = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.OnSelectAllianceMember" );
 
 	UTgUIAgencyMenu_Alliance_execOnSelectAllianceMember_Parms OnSelectAllianceMember_Parms;
 
@@ -20505,7 +20506,7 @@ void UTgUIAgencyMenu_Alliance::eventSetRawInputKeyForAllianceMemberList ( class 
 	static UFunction* pFnSetRawInputKeyForAllianceMemberList = NULL;
 
 	if ( ! pFnSetRawInputKeyForAllianceMemberList )
-		pFnSetRawInputKeyForAllianceMemberList = (UFunction*) UObject::GObjObjects()->Data[ 52688 ];
+		pFnSetRawInputKeyForAllianceMemberList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.SetRawInputKeyForAllianceMemberList" );
 
 	UTgUIAgencyMenu_Alliance_eventSetRawInputKeyForAllianceMemberList_Parms SetRawInputKeyForAllianceMemberList_Parms;
 	SetRawInputKeyForAllianceMemberList_Parms.Button = Button;
@@ -20525,7 +20526,7 @@ bool UTgUIAgencyMenu_Alliance::OnAllianceApplicantInviteSubmitText ( class UUIEd
 	static UFunction* pFnOnAllianceApplicantInviteSubmitText = NULL;
 
 	if ( ! pFnOnAllianceApplicantInviteSubmitText )
-		pFnOnAllianceApplicantInviteSubmitText = (UFunction*) UObject::GObjObjects()->Data[ 52684 ];
+		pFnOnAllianceApplicantInviteSubmitText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.OnAllianceApplicantInviteSubmitText" );
 
 	UTgUIAgencyMenu_Alliance_execOnAllianceApplicantInviteSubmitText_Parms OnAllianceApplicantInviteSubmitText_Parms;
 	OnAllianceApplicantInviteSubmitText_Parms.ebox = ebox;
@@ -20547,7 +20548,7 @@ bool UTgUIAgencyMenu_Alliance::OnAllianceApplicantInviteButtonKey ( struct FInpu
 	static UFunction* pFnOnAllianceApplicantInviteButtonKey = NULL;
 
 	if ( ! pFnOnAllianceApplicantInviteButtonKey )
-		pFnOnAllianceApplicantInviteButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 52681 ];
+		pFnOnAllianceApplicantInviteButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.OnAllianceApplicantInviteButtonKey" );
 
 	UTgUIAgencyMenu_Alliance_execOnAllianceApplicantInviteButtonKey_Parms OnAllianceApplicantInviteButtonKey_Parms;
 
@@ -20570,7 +20571,7 @@ bool UTgUIAgencyMenu_Alliance::OnConfirmCancelKey ( struct FInputEventParameters
 	static UFunction* pFnOnConfirmCancelKey = NULL;
 
 	if ( ! pFnOnConfirmCancelKey )
-		pFnOnConfirmCancelKey = (UFunction*) UObject::GObjObjects()->Data[ 52678 ];
+		pFnOnConfirmCancelKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.OnConfirmCancelKey" );
 
 	UTgUIAgencyMenu_Alliance_execOnConfirmCancelKey_Parms OnConfirmCancelKey_Parms;
 
@@ -20593,7 +20594,7 @@ bool UTgUIAgencyMenu_Alliance::OnConfirmAcceptKey ( struct FInputEventParameters
 	static UFunction* pFnOnConfirmAcceptKey = NULL;
 
 	if ( ! pFnOnConfirmAcceptKey )
-		pFnOnConfirmAcceptKey = (UFunction*) UObject::GObjObjects()->Data[ 52675 ];
+		pFnOnConfirmAcceptKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.OnConfirmAcceptKey" );
 
 	UTgUIAgencyMenu_Alliance_execOnConfirmAcceptKey_Parms OnConfirmAcceptKey_Parms;
 
@@ -20616,7 +20617,7 @@ bool UTgUIAgencyMenu_Alliance::OnMemberLeaveButton ( struct FInputEventParameter
 	static UFunction* pFnOnMemberLeaveButton = NULL;
 
 	if ( ! pFnOnMemberLeaveButton )
-		pFnOnMemberLeaveButton = (UFunction*) UObject::GObjObjects()->Data[ 52672 ];
+		pFnOnMemberLeaveButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.OnMemberLeaveButton" );
 
 	UTgUIAgencyMenu_Alliance_execOnMemberLeaveButton_Parms OnMemberLeaveButton_Parms;
 
@@ -20639,7 +20640,7 @@ bool UTgUIAgencyMenu_Alliance::OnMemberRemoveButton ( struct FInputEventParamete
 	static UFunction* pFnOnMemberRemoveButton = NULL;
 
 	if ( ! pFnOnMemberRemoveButton )
-		pFnOnMemberRemoveButton = (UFunction*) UObject::GObjObjects()->Data[ 52669 ];
+		pFnOnMemberRemoveButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.OnMemberRemoveButton" );
 
 	UTgUIAgencyMenu_Alliance_execOnMemberRemoveButton_Parms OnMemberRemoveButton_Parms;
 
@@ -20663,7 +20664,7 @@ bool UTgUIAgencyMenu_Alliance::OnCreationSubmitText ( class UUIEditBox* ebox, in
 	static UFunction* pFnOnCreationSubmitText = NULL;
 
 	if ( ! pFnOnCreationSubmitText )
-		pFnOnCreationSubmitText = (UFunction*) UObject::GObjObjects()->Data[ 52665 ];
+		pFnOnCreationSubmitText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.OnCreationSubmitText" );
 
 	UTgUIAgencyMenu_Alliance_execOnCreationSubmitText_Parms OnCreationSubmitText_Parms;
 	OnCreationSubmitText_Parms.ebox = ebox;
@@ -20685,7 +20686,7 @@ bool UTgUIAgencyMenu_Alliance::OnCreationButtonKey ( struct FInputEventParameter
 	static UFunction* pFnOnCreationButtonKey = NULL;
 
 	if ( ! pFnOnCreationButtonKey )
-		pFnOnCreationButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 52662 ];
+		pFnOnCreationButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.OnCreationButtonKey" );
 
 	UTgUIAgencyMenu_Alliance_execOnCreationButtonKey_Parms OnCreationButtonKey_Parms;
 
@@ -20706,7 +20707,7 @@ void UTgUIAgencyMenu_Alliance::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 52661 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.FixupWidgetsUC" );
 
 	UTgUIAgencyMenu_Alliance_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -20724,7 +20725,7 @@ bool UTgUIAgencyMenu_Alliance::SelectAllianceMember ( int nAgencyId )
 	static UFunction* pFnSelectAllianceMember = NULL;
 
 	if ( ! pFnSelectAllianceMember )
-		pFnSelectAllianceMember = (UFunction*) UObject::GObjObjects()->Data[ 52658 ];
+		pFnSelectAllianceMember = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.SelectAllianceMember" );
 
 	UTgUIAgencyMenu_Alliance_execSelectAllianceMember_Parms SelectAllianceMember_Parms;
 	SelectAllianceMember_Parms.nAgencyId = nAgencyId;
@@ -20749,7 +20750,7 @@ bool UTgUIAgencyMenu_Alliance::SelectAllianceMemberByButton ( class UUIButton* B
 	static UFunction* pFnSelectAllianceMemberByButton = NULL;
 
 	if ( ! pFnSelectAllianceMemberByButton )
-		pFnSelectAllianceMemberByButton = (UFunction*) UObject::GObjObjects()->Data[ 52655 ];
+		pFnSelectAllianceMemberByButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.SelectAllianceMemberByButton" );
 
 	UTgUIAgencyMenu_Alliance_execSelectAllianceMemberByButton_Parms SelectAllianceMemberByButton_Parms;
 	SelectAllianceMemberByButton_Parms.Button = Button;
@@ -20772,7 +20773,7 @@ void UTgUIAgencyMenu_Alliance::UpdateAllianceMemberHighlight ( )
 	static UFunction* pFnUpdateAllianceMemberHighlight = NULL;
 
 	if ( ! pFnUpdateAllianceMemberHighlight )
-		pFnUpdateAllianceMemberHighlight = (UFunction*) UObject::GObjObjects()->Data[ 52654 ];
+		pFnUpdateAllianceMemberHighlight = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.UpdateAllianceMemberHighlight" );
 
 	UTgUIAgencyMenu_Alliance_execUpdateAllianceMemberHighlight_Parms UpdateAllianceMemberHighlight_Parms;
 
@@ -20793,7 +20794,7 @@ void UTgUIAgencyMenu_Alliance::UpdateDetailPanel ( struct FsAllianceMemberInfo s
 	static UFunction* pFnUpdateDetailPanel = NULL;
 
 	if ( ! pFnUpdateDetailPanel )
-		pFnUpdateDetailPanel = (UFunction*) UObject::GObjObjects()->Data[ 52652 ];
+		pFnUpdateDetailPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.UpdateDetailPanel" );
 
 	UTgUIAgencyMenu_Alliance_execUpdateDetailPanel_Parms UpdateDetailPanel_Parms;
 	memcpy ( &UpdateDetailPanel_Parms.selectedAgency, &selectedAgency, 0x24 );
@@ -20814,7 +20815,7 @@ void UTgUIAgencyMenu_Alliance::CloseConfirm ( )
 	static UFunction* pFnCloseConfirm = NULL;
 
 	if ( ! pFnCloseConfirm )
-		pFnCloseConfirm = (UFunction*) UObject::GObjObjects()->Data[ 52651 ];
+		pFnCloseConfirm = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.CloseConfirm" );
 
 	UTgUIAgencyMenu_Alliance_execCloseConfirm_Parms CloseConfirm_Parms;
 
@@ -20835,7 +20836,7 @@ void UTgUIAgencyMenu_Alliance::DoConfirm ( unsigned char Mode )
 	static UFunction* pFnDoConfirm = NULL;
 
 	if ( ! pFnDoConfirm )
-		pFnDoConfirm = (UFunction*) UObject::GObjObjects()->Data[ 52649 ];
+		pFnDoConfirm = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.DoConfirm" );
 
 	UTgUIAgencyMenu_Alliance_execDoConfirm_Parms DoConfirm_Parms;
 	DoConfirm_Parms.Mode = Mode;
@@ -20857,7 +20858,7 @@ void UTgUIAgencyMenu_Alliance::ResizeAllianceMemberList ( int nSize )
 	static UFunction* pFnResizeAllianceMemberList = NULL;
 
 	if ( ! pFnResizeAllianceMemberList )
-		pFnResizeAllianceMemberList = (UFunction*) UObject::GObjObjects()->Data[ 52647 ];
+		pFnResizeAllianceMemberList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.ResizeAllianceMemberList" );
 
 	UTgUIAgencyMenu_Alliance_execResizeAllianceMemberList_Parms ResizeAllianceMemberList_Parms;
 	ResizeAllianceMemberList_Parms.nSize = nSize;
@@ -20879,7 +20880,7 @@ void UTgUIAgencyMenu_Alliance::SendAllianceCreate ( struct FString sName )
 	static UFunction* pFnSendAllianceCreate = NULL;
 
 	if ( ! pFnSendAllianceCreate )
-		pFnSendAllianceCreate = (UFunction*) UObject::GObjObjects()->Data[ 52645 ];
+		pFnSendAllianceCreate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.SendAllianceCreate" );
 
 	UTgUIAgencyMenu_Alliance_execSendAllianceCreate_Parms SendAllianceCreate_Parms;
 	memcpy ( &SendAllianceCreate_Parms.sName, &sName, 0xC );
@@ -20900,7 +20901,7 @@ void UTgUIAgencyMenu_Alliance::UpdateViewablePanels ( )
 	static UFunction* pFnUpdateViewablePanels = NULL;
 
 	if ( ! pFnUpdateViewablePanels )
-		pFnUpdateViewablePanels = (UFunction*) UObject::GObjObjects()->Data[ 52644 ];
+		pFnUpdateViewablePanels = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.UpdateViewablePanels" );
 
 	UTgUIAgencyMenu_Alliance_execUpdateViewablePanels_Parms UpdateViewablePanels_Parms;
 
@@ -20920,7 +20921,7 @@ void UTgUIAgencyMenu_Alliance::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 52643 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.PreCloseScene" );
 
 	UTgUIAgencyMenu_Alliance_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -20940,7 +20941,7 @@ void UTgUIAgencyMenu_Alliance::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 52642 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.PostOpenScene" );
 
 	UTgUIAgencyMenu_Alliance_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -20960,7 +20961,7 @@ void UTgUIAgencyMenu_Alliance::UpdateAllianceDisplay ( )
 	static UFunction* pFnUpdateAllianceDisplay = NULL;
 
 	if ( ! pFnUpdateAllianceDisplay )
-		pFnUpdateAllianceDisplay = (UFunction*) UObject::GObjObjects()->Data[ 52641 ];
+		pFnUpdateAllianceDisplay = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.UpdateAllianceDisplay" );
 
 	UTgUIAgencyMenu_Alliance_execUpdateAllianceDisplay_Parms UpdateAllianceDisplay_Parms;
 
@@ -20980,7 +20981,7 @@ void UTgUIAgencyMenu_Alliance::SendAllianceLeave ( )
 	static UFunction* pFnSendAllianceLeave = NULL;
 
 	if ( ! pFnSendAllianceLeave )
-		pFnSendAllianceLeave = (UFunction*) UObject::GObjObjects()->Data[ 52640 ];
+		pFnSendAllianceLeave = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.SendAllianceLeave" );
 
 	UTgUIAgencyMenu_Alliance_execSendAllianceLeave_Parms SendAllianceLeave_Parms;
 
@@ -21001,7 +21002,7 @@ void UTgUIAgencyMenu_Alliance::SendAllianceRemove ( int nAgencyId )
 	static UFunction* pFnSendAllianceRemove = NULL;
 
 	if ( ! pFnSendAllianceRemove )
-		pFnSendAllianceRemove = (UFunction*) UObject::GObjObjects()->Data[ 52638 ];
+		pFnSendAllianceRemove = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.SendAllianceRemove" );
 
 	UTgUIAgencyMenu_Alliance_execSendAllianceRemove_Parms SendAllianceRemove_Parms;
 	SendAllianceRemove_Parms.nAgencyId = nAgencyId;
@@ -21023,7 +21024,7 @@ void UTgUIAgencyMenu_Alliance::SendAllianceInvite ( struct FString sPlayerName )
 	static UFunction* pFnSendAllianceInvite = NULL;
 
 	if ( ! pFnSendAllianceInvite )
-		pFnSendAllianceInvite = (UFunction*) UObject::GObjObjects()->Data[ 52636 ];
+		pFnSendAllianceInvite = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.SendAllianceInvite" );
 
 	UTgUIAgencyMenu_Alliance_execSendAllianceInvite_Parms SendAllianceInvite_Parms;
 	memcpy ( &SendAllianceInvite_Parms.sPlayerName, &sPlayerName, 0xC );
@@ -21044,7 +21045,7 @@ void UTgUIAgencyMenu_Alliance::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 52635 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Alliance.FixupWidgets" );
 
 	UTgUIAgencyMenu_Alliance_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -21067,7 +21068,7 @@ bool UTgUIAgencyMenu_Applicants::OnApplicantInviteSubmitText ( class UUIEditBox*
 	static UFunction* pFnOnApplicantInviteSubmitText = NULL;
 
 	if ( ! pFnOnApplicantInviteSubmitText )
-		pFnOnApplicantInviteSubmitText = (UFunction*) UObject::GObjObjects()->Data[ 52706 ];
+		pFnOnApplicantInviteSubmitText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Applicants.OnApplicantInviteSubmitText" );
 
 	UTgUIAgencyMenu_Applicants_execOnApplicantInviteSubmitText_Parms OnApplicantInviteSubmitText_Parms;
 	OnApplicantInviteSubmitText_Parms.ebox = ebox;
@@ -21089,7 +21090,7 @@ bool UTgUIAgencyMenu_Applicants::OnApplicantInviteButtonKey ( struct FInputEvent
 	static UFunction* pFnOnApplicantInviteButtonKey = NULL;
 
 	if ( ! pFnOnApplicantInviteButtonKey )
-		pFnOnApplicantInviteButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 52703 ];
+		pFnOnApplicantInviteButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Applicants.OnApplicantInviteButtonKey" );
 
 	UTgUIAgencyMenu_Applicants_execOnApplicantInviteButtonKey_Parms OnApplicantInviteButtonKey_Parms;
 
@@ -21110,7 +21111,7 @@ void UTgUIAgencyMenu_Applicants::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 52702 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Applicants.FixupWidgetsUC" );
 
 	UTgUIAgencyMenu_Applicants_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -21126,7 +21127,7 @@ void UTgUIAgencyMenu_Applicants::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 52701 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Applicants.PostOpenScene" );
 
 	UTgUIAgencyMenu_Applicants_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -21146,7 +21147,7 @@ void UTgUIAgencyMenu_Applicants::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 52700 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Applicants.FixupWidgets" );
 
 	UTgUIAgencyMenu_Applicants_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -21166,7 +21167,7 @@ void UTgUIAgencyMenu_Applicants::UpdateViewablePanels ( )
 	static UFunction* pFnUpdateViewablePanels = NULL;
 
 	if ( ! pFnUpdateViewablePanels )
-		pFnUpdateViewablePanels = (UFunction*) UObject::GObjObjects()->Data[ 52699 ];
+		pFnUpdateViewablePanels = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Applicants.UpdateViewablePanels" );
 
 	UTgUIAgencyMenu_Applicants_execUpdateViewablePanels_Parms UpdateViewablePanels_Parms;
 
@@ -21187,7 +21188,7 @@ void UTgUIAgencyMenu_Applicants::SendAgencyInvite ( struct FString sPlayerName )
 	static UFunction* pFnSendAgencyInvite = NULL;
 
 	if ( ! pFnSendAgencyInvite )
-		pFnSendAgencyInvite = (UFunction*) UObject::GObjObjects()->Data[ 52697 ];
+		pFnSendAgencyInvite = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Applicants.SendAgencyInvite" );
 
 	UTgUIAgencyMenu_Applicants_execSendAgencyInvite_Parms SendAgencyInvite_Parms;
 	memcpy ( &SendAgencyInvite_Parms.sPlayerName, &sPlayerName, 0xC );
@@ -21211,7 +21212,7 @@ bool UTgUIAgencyMenu_Creation::OnCreationSubmitText ( class UUIEditBox* ebox, in
 	static UFunction* pFnOnCreationSubmitText = NULL;
 
 	if ( ! pFnOnCreationSubmitText )
-		pFnOnCreationSubmitText = (UFunction*) UObject::GObjObjects()->Data[ 52730 ];
+		pFnOnCreationSubmitText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Creation.OnCreationSubmitText" );
 
 	UTgUIAgencyMenu_Creation_execOnCreationSubmitText_Parms OnCreationSubmitText_Parms;
 	OnCreationSubmitText_Parms.ebox = ebox;
@@ -21233,7 +21234,7 @@ bool UTgUIAgencyMenu_Creation::OnCreationButtonKey ( struct FInputEventParameter
 	static UFunction* pFnOnCreationButtonKey = NULL;
 
 	if ( ! pFnOnCreationButtonKey )
-		pFnOnCreationButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 52727 ];
+		pFnOnCreationButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Creation.OnCreationButtonKey" );
 
 	UTgUIAgencyMenu_Creation_execOnCreationButtonKey_Parms OnCreationButtonKey_Parms;
 
@@ -21256,7 +21257,7 @@ bool UTgUIAgencyMenu_Creation::OnGenerateColorKey ( struct FInputEventParameters
 	static UFunction* pFnOnGenerateColorKey = NULL;
 
 	if ( ! pFnOnGenerateColorKey )
-		pFnOnGenerateColorKey = (UFunction*) UObject::GObjObjects()->Data[ 52724 ];
+		pFnOnGenerateColorKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Creation.OnGenerateColorKey" );
 
 	UTgUIAgencyMenu_Creation_execOnGenerateColorKey_Parms OnGenerateColorKey_Parms;
 
@@ -21277,7 +21278,7 @@ void UTgUIAgencyMenu_Creation::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 52723 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Creation.FixupWidgetsUC" );
 
 	UTgUIAgencyMenu_Creation_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -21293,7 +21294,7 @@ void UTgUIAgencyMenu_Creation::GenerateNewColor ( )
 	static UFunction* pFnGenerateNewColor = NULL;
 
 	if ( ! pFnGenerateNewColor )
-		pFnGenerateNewColor = (UFunction*) UObject::GObjObjects()->Data[ 52722 ];
+		pFnGenerateNewColor = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Creation.GenerateNewColor" );
 
 	UTgUIAgencyMenu_Creation_execGenerateNewColor_Parms GenerateNewColor_Parms;
 
@@ -21313,7 +21314,7 @@ void UTgUIAgencyMenu_Creation::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 52721 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Creation.FixupWidgets" );
 
 	UTgUIAgencyMenu_Creation_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -21334,7 +21335,7 @@ void UTgUIAgencyMenu_Creation::SendAgencyCreate ( struct FString sAgencyName )
 	static UFunction* pFnSendAgencyCreate = NULL;
 
 	if ( ! pFnSendAgencyCreate )
-		pFnSendAgencyCreate = (UFunction*) UObject::GObjObjects()->Data[ 52719 ];
+		pFnSendAgencyCreate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Creation.SendAgencyCreate" );
 
 	UTgUIAgencyMenu_Creation_execSendAgencyCreate_Parms SendAgencyCreate_Parms;
 	memcpy ( &SendAgencyCreate_Parms.sAgencyName, &sAgencyName, 0xC );
@@ -21356,7 +21357,7 @@ void UTgUIAgencyMenu_Facilities::eventSetCancelTaskDelegate ( class UUIButton* B
 	static UFunction* pFnSetCancelTaskDelegate = NULL;
 
 	if ( ! pFnSetCancelTaskDelegate )
-		pFnSetCancelTaskDelegate = (UFunction*) UObject::GObjObjects()->Data[ 52869 ];
+		pFnSetCancelTaskDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.SetCancelTaskDelegate" );
 
 	UTgUIAgencyMenu_Facilities_eventSetCancelTaskDelegate_Parms SetCancelTaskDelegate_Parms;
 	SetCancelTaskDelegate_Parms.Button = Button;
@@ -21373,7 +21374,7 @@ void UTgUIAgencyMenu_Facilities::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 52868 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.FixupWidgetsUC" );
 
 	UTgUIAgencyMenu_Facilities_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -21391,7 +21392,7 @@ bool UTgUIAgencyMenu_Facilities::OnConfirmYesClicked ( struct FInputEventParamet
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 52865 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.OnConfirmYesClicked" );
 
 	UTgUIAgencyMenu_Facilities_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -21416,7 +21417,7 @@ void UTgUIAgencyMenu_Facilities::UpdateProductionInformation ( )
 	static UFunction* pFnUpdateProductionInformation = NULL;
 
 	if ( ! pFnUpdateProductionInformation )
-		pFnUpdateProductionInformation = (UFunction*) UObject::GObjObjects()->Data[ 52864 ];
+		pFnUpdateProductionInformation = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.UpdateProductionInformation" );
 
 	UTgUIAgencyMenu_Facilities_execUpdateProductionInformation_Parms UpdateProductionInformation_Parms;
 
@@ -21436,7 +21437,7 @@ void UTgUIAgencyMenu_Facilities::UpdateHexInformation ( )
 	static UFunction* pFnUpdateHexInformation = NULL;
 
 	if ( ! pFnUpdateHexInformation )
-		pFnUpdateHexInformation = (UFunction*) UObject::GObjObjects()->Data[ 52863 ];
+		pFnUpdateHexInformation = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.UpdateHexInformation" );
 
 	UTgUIAgencyMenu_Facilities_execUpdateHexInformation_Parms UpdateHexInformation_Parms;
 
@@ -21456,7 +21457,7 @@ void UTgUIAgencyMenu_Facilities::UpdateZoneList ( )
 	static UFunction* pFnUpdateZoneList = NULL;
 
 	if ( ! pFnUpdateZoneList )
-		pFnUpdateZoneList = (UFunction*) UObject::GObjObjects()->Data[ 52862 ];
+		pFnUpdateZoneList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.UpdateZoneList" );
 
 	UTgUIAgencyMenu_Facilities_execUpdateZoneList_Parms UpdateZoneList_Parms;
 
@@ -21478,7 +21479,7 @@ bool UTgUIAgencyMenu_Facilities::OnNavButton ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnNavButton = NULL;
 
 	if ( ! pFnOnNavButton )
-		pFnOnNavButton = (UFunction*) UObject::GObjObjects()->Data[ 52859 ];
+		pFnOnNavButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.OnNavButton" );
 
 	UTgUIAgencyMenu_Facilities_execOnNavButton_Parms OnNavButton_Parms;
 
@@ -21505,7 +21506,7 @@ bool UTgUIAgencyMenu_Facilities::OnDefenseApplied ( struct FInputEventParameters
 	static UFunction* pFnOnDefenseApplied = NULL;
 
 	if ( ! pFnOnDefenseApplied )
-		pFnOnDefenseApplied = (UFunction*) UObject::GObjObjects()->Data[ 52856 ];
+		pFnOnDefenseApplied = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.OnDefenseApplied" );
 
 	UTgUIAgencyMenu_Facilities_execOnDefenseApplied_Parms OnDefenseApplied_Parms;
 
@@ -21532,7 +21533,7 @@ bool UTgUIAgencyMenu_Facilities::OnShieldTileClicked ( struct FInputEventParamet
 	static UFunction* pFnOnShieldTileClicked = NULL;
 
 	if ( ! pFnOnShieldTileClicked )
-		pFnOnShieldTileClicked = (UFunction*) UObject::GObjObjects()->Data[ 52853 ];
+		pFnOnShieldTileClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.OnShieldTileClicked" );
 
 	UTgUIAgencyMenu_Facilities_execOnShieldTileClicked_Parms OnShieldTileClicked_Parms;
 
@@ -21557,7 +21558,7 @@ void UTgUIAgencyMenu_Facilities::UpdateDefenseButtons ( )
 	static UFunction* pFnUpdateDefenseButtons = NULL;
 
 	if ( ! pFnUpdateDefenseButtons )
-		pFnUpdateDefenseButtons = (UFunction*) UObject::GObjObjects()->Data[ 52852 ];
+		pFnUpdateDefenseButtons = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.UpdateDefenseButtons" );
 
 	UTgUIAgencyMenu_Facilities_execUpdateDefenseButtons_Parms UpdateDefenseButtons_Parms;
 
@@ -21581,7 +21582,7 @@ void UTgUIAgencyMenu_Facilities::OnCurrentTaskStateChanged ( class UUIScreenObje
 	static UFunction* pFnOnCurrentTaskStateChanged = NULL;
 
 	if ( ! pFnOnCurrentTaskStateChanged )
-		pFnOnCurrentTaskStateChanged = (UFunction*) UObject::GObjObjects()->Data[ 52847 ];
+		pFnOnCurrentTaskStateChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.OnCurrentTaskStateChanged" );
 
 	UTgUIAgencyMenu_Facilities_execOnCurrentTaskStateChanged_Parms OnCurrentTaskStateChanged_Parms;
 	OnCurrentTaskStateChanged_Parms.Sender = Sender;
@@ -21607,7 +21608,7 @@ bool UTgUIAgencyMenu_Facilities::OnCancelCurrentTask ( struct FInputEventParamet
 	static UFunction* pFnOnCancelCurrentTask = NULL;
 
 	if ( ! pFnOnCancelCurrentTask )
-		pFnOnCancelCurrentTask = (UFunction*) UObject::GObjObjects()->Data[ 52844 ];
+		pFnOnCancelCurrentTask = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.OnCancelCurrentTask" );
 
 	UTgUIAgencyMenu_Facilities_execOnCancelCurrentTask_Parms OnCancelCurrentTask_Parms;
 
@@ -21634,7 +21635,7 @@ bool UTgUIAgencyMenu_Facilities::OnCancelTask ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnCancelTask = NULL;
 
 	if ( ! pFnOnCancelTask )
-		pFnOnCancelTask = (UFunction*) UObject::GObjObjects()->Data[ 52841 ];
+		pFnOnCancelTask = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.OnCancelTask" );
 
 	UTgUIAgencyMenu_Facilities_execOnCancelTask_Parms OnCancelTask_Parms;
 
@@ -21661,7 +21662,7 @@ bool UTgUIAgencyMenu_Facilities::OnAddTask ( struct FInputEventParameters* Event
 	static UFunction* pFnOnAddTask = NULL;
 
 	if ( ! pFnOnAddTask )
-		pFnOnAddTask = (UFunction*) UObject::GObjObjects()->Data[ 52838 ];
+		pFnOnAddTask = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.OnAddTask" );
 
 	UTgUIAgencyMenu_Facilities_execOnAddTask_Parms OnAddTask_Parms;
 
@@ -21688,7 +21689,7 @@ bool UTgUIAgencyMenu_Facilities::OnAbandonHex ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnAbandonHex = NULL;
 
 	if ( ! pFnOnAbandonHex )
-		pFnOnAbandonHex = (UFunction*) UObject::GObjObjects()->Data[ 52835 ];
+		pFnOnAbandonHex = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.OnAbandonHex" );
 
 	UTgUIAgencyMenu_Facilities_execOnAbandonHex_Parms OnAbandonHex_Parms;
 
@@ -21715,7 +21716,7 @@ bool UTgUIAgencyMenu_Facilities::OnTransferHex ( struct FInputEventParameters* E
 	static UFunction* pFnOnTransferHex = NULL;
 
 	if ( ! pFnOnTransferHex )
-		pFnOnTransferHex = (UFunction*) UObject::GObjObjects()->Data[ 52832 ];
+		pFnOnTransferHex = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.OnTransferHex" );
 
 	UTgUIAgencyMenu_Facilities_execOnTransferHex_Parms OnTransferHex_Parms;
 
@@ -21742,7 +21743,7 @@ bool UTgUIAgencyMenu_Facilities::OnChangeHQ ( struct FInputEventParameters* Even
 	static UFunction* pFnOnChangeHQ = NULL;
 
 	if ( ! pFnOnChangeHQ )
-		pFnOnChangeHQ = (UFunction*) UObject::GObjObjects()->Data[ 52829 ];
+		pFnOnChangeHQ = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.OnChangeHQ" );
 
 	UTgUIAgencyMenu_Facilities_execOnChangeHQ_Parms OnChangeHQ_Parms;
 
@@ -21769,7 +21770,7 @@ bool UTgUIAgencyMenu_Facilities::OnChangeFacility ( struct FInputEventParameters
 	static UFunction* pFnOnChangeFacility = NULL;
 
 	if ( ! pFnOnChangeFacility )
-		pFnOnChangeFacility = (UFunction*) UObject::GObjObjects()->Data[ 52826 ];
+		pFnOnChangeFacility = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.OnChangeFacility" );
 
 	UTgUIAgencyMenu_Facilities_execOnChangeFacility_Parms OnChangeFacility_Parms;
 
@@ -21796,7 +21797,7 @@ void UTgUIAgencyMenu_Facilities::OnZoneChanged ( class UUIObject* Sender, int Pl
 	static UFunction* pFnOnZoneChanged = NULL;
 
 	if ( ! pFnOnZoneChanged )
-		pFnOnZoneChanged = (UFunction*) UObject::GObjObjects()->Data[ 52823 ];
+		pFnOnZoneChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.OnZoneChanged" );
 
 	UTgUIAgencyMenu_Facilities_execOnZoneChanged_Parms OnZoneChanged_Parms;
 	OnZoneChanged_Parms.Sender = Sender;
@@ -21820,7 +21821,7 @@ bool UTgUIAgencyMenu_Facilities::OnAgencyMenuKey ( struct FInputEventParameters*
 	static UFunction* pFnOnAgencyMenuKey = NULL;
 
 	if ( ! pFnOnAgencyMenuKey )
-		pFnOnAgencyMenuKey = (UFunction*) UObject::GObjObjects()->Data[ 52820 ];
+		pFnOnAgencyMenuKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.OnAgencyMenuKey" );
 
 	UTgUIAgencyMenu_Facilities_execOnAgencyMenuKey_Parms OnAgencyMenuKey_Parms;
 
@@ -21846,7 +21847,7 @@ int UTgUIAgencyMenu_Facilities::GetHoverHexCellPosition ( )
 	static UFunction* pFnGetHoverHexCellPosition = NULL;
 
 	if ( ! pFnGetHoverHexCellPosition )
-		pFnGetHoverHexCellPosition = (UFunction*) UObject::GObjObjects()->Data[ 52818 ];
+		pFnGetHoverHexCellPosition = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.GetHoverHexCellPosition" );
 
 	UTgUIAgencyMenu_Facilities_execGetHoverHexCellPosition_Parms GetHoverHexCellPosition_Parms;
 
@@ -21869,7 +21870,7 @@ int UTgUIAgencyMenu_Facilities::GetSelectedHexCellPosition ( )
 	static UFunction* pFnGetSelectedHexCellPosition = NULL;
 
 	if ( ! pFnGetSelectedHexCellPosition )
-		pFnGetSelectedHexCellPosition = (UFunction*) UObject::GObjObjects()->Data[ 52816 ];
+		pFnGetSelectedHexCellPosition = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.GetSelectedHexCellPosition" );
 
 	UTgUIAgencyMenu_Facilities_execGetSelectedHexCellPosition_Parms GetSelectedHexCellPosition_Parms;
 
@@ -21891,7 +21892,7 @@ void UTgUIAgencyMenu_Facilities::PostRender ( )
 	static UFunction* pFnPostRender = NULL;
 
 	if ( ! pFnPostRender )
-		pFnPostRender = (UFunction*) UObject::GObjObjects()->Data[ 52815 ];
+		pFnPostRender = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.PostRender" );
 
 	UTgUIAgencyMenu_Facilities_execPostRender_Parms PostRender_Parms;
 
@@ -21911,7 +21912,7 @@ void UTgUIAgencyMenu_Facilities::UpdateHexMap ( )
 	static UFunction* pFnUpdateHexMap = NULL;
 
 	if ( ! pFnUpdateHexMap )
-		pFnUpdateHexMap = (UFunction*) UObject::GObjObjects()->Data[ 52814 ];
+		pFnUpdateHexMap = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.UpdateHexMap" );
 
 	UTgUIAgencyMenu_Facilities_execUpdateHexMap_Parms UpdateHexMap_Parms;
 
@@ -21931,7 +21932,7 @@ void UTgUIAgencyMenu_Facilities::UpdateToolTipData ( )
 	static UFunction* pFnUpdateToolTipData = NULL;
 
 	if ( ! pFnUpdateToolTipData )
-		pFnUpdateToolTipData = (UFunction*) UObject::GObjObjects()->Data[ 52813 ];
+		pFnUpdateToolTipData = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.UpdateToolTipData" );
 
 	UTgUIAgencyMenu_Facilities_execUpdateToolTipData_Parms UpdateToolTipData_Parms;
 
@@ -21951,7 +21952,7 @@ void UTgUIAgencyMenu_Facilities::RegisterCallbacks ( )
 	static UFunction* pFnRegisterCallbacks = NULL;
 
 	if ( ! pFnRegisterCallbacks )
-		pFnRegisterCallbacks = (UFunction*) UObject::GObjObjects()->Data[ 52812 ];
+		pFnRegisterCallbacks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.RegisterCallbacks" );
 
 	UTgUIAgencyMenu_Facilities_execRegisterCallbacks_Parms RegisterCallbacks_Parms;
 
@@ -21972,7 +21973,7 @@ bool UTgUIAgencyMenu_Facilities::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 52810 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.TickTgUIScene" );
 
 	UTgUIAgencyMenu_Facilities_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -21994,7 +21995,7 @@ void UTgUIAgencyMenu_Facilities::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 52809 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.FixupWidgets" );
 
 	UTgUIAgencyMenu_Facilities_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -22014,7 +22015,7 @@ void UTgUIAgencyMenu_Facilities::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 52808 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.PreCloseScene" );
 
 	UTgUIAgencyMenu_Facilities_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -22034,7 +22035,7 @@ void UTgUIAgencyMenu_Facilities::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 52807 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Facilities.PostOpenScene" );
 
 	UTgUIAgencyMenu_Facilities_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -22055,7 +22056,7 @@ void UTgUIAgencyMenu_General::eventSetMemberListSortType ( unsigned char SortTyp
 	static UFunction* pFnSetMemberListSortType = NULL;
 
 	if ( ! pFnSetMemberListSortType )
-		pFnSetMemberListSortType = (UFunction*) UObject::GObjObjects()->Data[ 53013 ];
+		pFnSetMemberListSortType = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.SetMemberListSortType" );
 
 	UTgUIAgencyMenu_General_eventSetMemberListSortType_Parms SetMemberListSortType_Parms;
 	SetMemberListSortType_Parms.SortType = SortType;
@@ -22073,7 +22074,7 @@ void UTgUIAgencyMenu_General::eventSetRawInputKeyForMemberList ( class UUIButton
 	static UFunction* pFnSetRawInputKeyForMemberList = NULL;
 
 	if ( ! pFnSetRawInputKeyForMemberList )
-		pFnSetRawInputKeyForMemberList = (UFunction*) UObject::GObjObjects()->Data[ 53011 ];
+		pFnSetRawInputKeyForMemberList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.SetRawInputKeyForMemberList" );
 
 	UTgUIAgencyMenu_General_eventSetRawInputKeyForMemberList_Parms SetRawInputKeyForMemberList_Parms;
 	SetRawInputKeyForMemberList_Parms.Button = Button;
@@ -22092,7 +22093,7 @@ bool UTgUIAgencyMenu_General::OnChangeOfficerCommentButtonKey ( struct FInputEve
 	static UFunction* pFnOnChangeOfficerCommentButtonKey = NULL;
 
 	if ( ! pFnOnChangeOfficerCommentButtonKey )
-		pFnOnChangeOfficerCommentButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 53008 ];
+		pFnOnChangeOfficerCommentButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnChangeOfficerCommentButtonKey" );
 
 	UTgUIAgencyMenu_General_execOnChangeOfficerCommentButtonKey_Parms OnChangeOfficerCommentButtonKey_Parms;
 
@@ -22115,7 +22116,7 @@ bool UTgUIAgencyMenu_General::OnChangePublicCommentButtonKey ( struct FInputEven
 	static UFunction* pFnOnChangePublicCommentButtonKey = NULL;
 
 	if ( ! pFnOnChangePublicCommentButtonKey )
-		pFnOnChangePublicCommentButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 53005 ];
+		pFnOnChangePublicCommentButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnChangePublicCommentButtonKey" );
 
 	UTgUIAgencyMenu_General_execOnChangePublicCommentButtonKey_Parms OnChangePublicCommentButtonKey_Parms;
 
@@ -22138,7 +22139,7 @@ bool UTgUIAgencyMenu_General::OnChangeMOTDButtonKey ( struct FInputEventParamete
 	static UFunction* pFnOnChangeMOTDButtonKey = NULL;
 
 	if ( ! pFnOnChangeMOTDButtonKey )
-		pFnOnChangeMOTDButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 53002 ];
+		pFnOnChangeMOTDButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnChangeMOTDButtonKey" );
 
 	UTgUIAgencyMenu_General_execOnChangeMOTDButtonKey_Parms OnChangeMOTDButtonKey_Parms;
 
@@ -22159,7 +22160,7 @@ void UTgUIAgencyMenu_General::eventSubmitPopupEditBox ( )
 	static UFunction* pFnSubmitPopupEditBox = NULL;
 
 	if ( ! pFnSubmitPopupEditBox )
-		pFnSubmitPopupEditBox = (UFunction*) UObject::GObjObjects()->Data[ 53000 ];
+		pFnSubmitPopupEditBox = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.SubmitPopupEditBox" );
 
 	UTgUIAgencyMenu_General_eventSubmitPopupEditBox_Parms SubmitPopupEditBox_Parms;
 
@@ -22178,7 +22179,7 @@ bool UTgUIAgencyMenu_General::OnPopupSubmitText ( class UUIEditBox* ebox, int Pl
 	static UFunction* pFnOnPopupSubmitText = NULL;
 
 	if ( ! pFnOnPopupSubmitText )
-		pFnOnPopupSubmitText = (UFunction*) UObject::GObjObjects()->Data[ 52996 ];
+		pFnOnPopupSubmitText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnPopupSubmitText" );
 
 	UTgUIAgencyMenu_General_execOnPopupSubmitText_Parms OnPopupSubmitText_Parms;
 	OnPopupSubmitText_Parms.ebox = ebox;
@@ -22200,7 +22201,7 @@ bool UTgUIAgencyMenu_General::OnPopupPanelCancel ( struct FInputEventParameters*
 	static UFunction* pFnOnPopupPanelCancel = NULL;
 
 	if ( ! pFnOnPopupPanelCancel )
-		pFnOnPopupPanelCancel = (UFunction*) UObject::GObjObjects()->Data[ 52993 ];
+		pFnOnPopupPanelCancel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnPopupPanelCancel" );
 
 	UTgUIAgencyMenu_General_execOnPopupPanelCancel_Parms OnPopupPanelCancel_Parms;
 
@@ -22223,7 +22224,7 @@ bool UTgUIAgencyMenu_General::OnPopupPanelAccept ( struct FInputEventParameters*
 	static UFunction* pFnOnPopupPanelAccept = NULL;
 
 	if ( ! pFnOnPopupPanelAccept )
-		pFnOnPopupPanelAccept = (UFunction*) UObject::GObjObjects()->Data[ 52990 ];
+		pFnOnPopupPanelAccept = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnPopupPanelAccept" );
 
 	UTgUIAgencyMenu_General_execOnPopupPanelAccept_Parms OnPopupPanelAccept_Parms;
 
@@ -22245,7 +22246,7 @@ void UTgUIAgencyMenu_General::eventSetupPopupTextEditPanel ( unsigned char NewMo
 	static UFunction* pFnSetupPopupTextEditPanel = NULL;
 
 	if ( ! pFnSetupPopupTextEditPanel )
-		pFnSetupPopupTextEditPanel = (UFunction*) UObject::GObjObjects()->Data[ 52984 ];
+		pFnSetupPopupTextEditPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.SetupPopupTextEditPanel" );
 
 	UTgUIAgencyMenu_General_eventSetupPopupTextEditPanel_Parms SetupPopupTextEditPanel_Parms;
 	SetupPopupTextEditPanel_Parms.NewMode = NewMode;
@@ -22264,7 +22265,7 @@ bool UTgUIAgencyMenu_General::OnTeamInviteButtonKey ( struct FInputEventParamete
 	static UFunction* pFnOnTeamInviteButtonKey = NULL;
 
 	if ( ! pFnOnTeamInviteButtonKey )
-		pFnOnTeamInviteButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 52981 ];
+		pFnOnTeamInviteButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnTeamInviteButtonKey" );
 
 	UTgUIAgencyMenu_General_execOnTeamInviteButtonKey_Parms OnTeamInviteButtonKey_Parms;
 
@@ -22287,7 +22288,7 @@ bool UTgUIAgencyMenu_General::OnRemoveButtonKey ( struct FInputEventParameters* 
 	static UFunction* pFnOnRemoveButtonKey = NULL;
 
 	if ( ! pFnOnRemoveButtonKey )
-		pFnOnRemoveButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 52978 ];
+		pFnOnRemoveButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnRemoveButtonKey" );
 
 	UTgUIAgencyMenu_General_execOnRemoveButtonKey_Parms OnRemoveButtonKey_Parms;
 
@@ -22310,7 +22311,7 @@ bool UTgUIAgencyMenu_General::OnDemoteButtonKey ( struct FInputEventParameters* 
 	static UFunction* pFnOnDemoteButtonKey = NULL;
 
 	if ( ! pFnOnDemoteButtonKey )
-		pFnOnDemoteButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 52975 ];
+		pFnOnDemoteButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnDemoteButtonKey" );
 
 	UTgUIAgencyMenu_General_execOnDemoteButtonKey_Parms OnDemoteButtonKey_Parms;
 
@@ -22333,7 +22334,7 @@ bool UTgUIAgencyMenu_General::OnPromoteButtonKey ( struct FInputEventParameters*
 	static UFunction* pFnOnPromoteButtonKey = NULL;
 
 	if ( ! pFnOnPromoteButtonKey )
-		pFnOnPromoteButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 52972 ];
+		pFnOnPromoteButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnPromoteButtonKey" );
 
 	UTgUIAgencyMenu_General_execOnPromoteButtonKey_Parms OnPromoteButtonKey_Parms;
 
@@ -22356,7 +22357,7 @@ bool UTgUIAgencyMenu_General::OnSearchHotlinkKey ( struct FInputEventParameters*
 	static UFunction* pFnOnSearchHotlinkKey = NULL;
 
 	if ( ! pFnOnSearchHotlinkKey )
-		pFnOnSearchHotlinkKey = (UFunction*) UObject::GObjObjects()->Data[ 52969 ];
+		pFnOnSearchHotlinkKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnSearchHotlinkKey" );
 
 	UTgUIAgencyMenu_General_execOnSearchHotlinkKey_Parms OnSearchHotlinkKey_Parms;
 
@@ -22379,7 +22380,7 @@ bool UTgUIAgencyMenu_General::OnStatusHeaderKey ( struct FInputEventParameters* 
 	static UFunction* pFnOnStatusHeaderKey = NULL;
 
 	if ( ! pFnOnStatusHeaderKey )
-		pFnOnStatusHeaderKey = (UFunction*) UObject::GObjObjects()->Data[ 52966 ];
+		pFnOnStatusHeaderKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnStatusHeaderKey" );
 
 	UTgUIAgencyMenu_General_execOnStatusHeaderKey_Parms OnStatusHeaderKey_Parms;
 
@@ -22402,7 +22403,7 @@ bool UTgUIAgencyMenu_General::OnRankHeaderKey ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnRankHeaderKey = NULL;
 
 	if ( ! pFnOnRankHeaderKey )
-		pFnOnRankHeaderKey = (UFunction*) UObject::GObjObjects()->Data[ 52963 ];
+		pFnOnRankHeaderKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnRankHeaderKey" );
 
 	UTgUIAgencyMenu_General_execOnRankHeaderKey_Parms OnRankHeaderKey_Parms;
 
@@ -22425,7 +22426,7 @@ bool UTgUIAgencyMenu_General::OnNameHeaderKey ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnNameHeaderKey = NULL;
 
 	if ( ! pFnOnNameHeaderKey )
-		pFnOnNameHeaderKey = (UFunction*) UObject::GObjObjects()->Data[ 52960 ];
+		pFnOnNameHeaderKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnNameHeaderKey" );
 
 	UTgUIAgencyMenu_General_execOnNameHeaderKey_Parms OnNameHeaderKey_Parms;
 
@@ -22448,7 +22449,7 @@ bool UTgUIAgencyMenu_General::OnSelectMember ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnSelectMember = NULL;
 
 	if ( ! pFnOnSelectMember )
-		pFnOnSelectMember = (UFunction*) UObject::GObjObjects()->Data[ 52957 ];
+		pFnOnSelectMember = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnSelectMember" );
 
 	UTgUIAgencyMenu_General_execOnSelectMember_Parms OnSelectMember_Parms;
 
@@ -22471,7 +22472,7 @@ void UTgUIAgencyMenu_General::OnShowOfflineCheckBoxChanged ( class UUIObject* Se
 	static UFunction* pFnOnShowOfflineCheckBoxChanged = NULL;
 
 	if ( ! pFnOnShowOfflineCheckBoxChanged )
-		pFnOnShowOfflineCheckBoxChanged = (UFunction*) UObject::GObjObjects()->Data[ 52953 ];
+		pFnOnShowOfflineCheckBoxChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnShowOfflineCheckBoxChanged" );
 
 	UTgUIAgencyMenu_General_execOnShowOfflineCheckBoxChanged_Parms OnShowOfflineCheckBoxChanged_Parms;
 	OnShowOfflineCheckBoxChanged_Parms.Sender = Sender;
@@ -22489,7 +22490,7 @@ void UTgUIAgencyMenu_General::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 52952 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.FixupWidgetsUC" );
 
 	UTgUIAgencyMenu_General_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -22507,7 +22508,7 @@ bool UTgUIAgencyMenu_General::OnConfirmYesClicked ( struct FInputEventParameters
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 52949 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnConfirmYesClicked" );
 
 	UTgUIAgencyMenu_General_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -22532,7 +22533,7 @@ void UTgUIAgencyMenu_General::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 52948 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.PostOpenScene" );
 
 	UTgUIAgencyMenu_General_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -22552,7 +22553,7 @@ void UTgUIAgencyMenu_General::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 52947 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.PreCloseScene" );
 
 	UTgUIAgencyMenu_General_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -22572,7 +22573,7 @@ void UTgUIAgencyMenu_General::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 52946 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.FixupWidgets" );
 
 	UTgUIAgencyMenu_General_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -22592,7 +22593,7 @@ void UTgUIAgencyMenu_General::TeamInviteSelected ( )
 	static UFunction* pFnTeamInviteSelected = NULL;
 
 	if ( ! pFnTeamInviteSelected )
-		pFnTeamInviteSelected = (UFunction*) UObject::GObjObjects()->Data[ 52945 ];
+		pFnTeamInviteSelected = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.TeamInviteSelected" );
 
 	UTgUIAgencyMenu_General_execTeamInviteSelected_Parms TeamInviteSelected_Parms;
 
@@ -22612,7 +22613,7 @@ void UTgUIAgencyMenu_General::RemoveSelected ( )
 	static UFunction* pFnRemoveSelected = NULL;
 
 	if ( ! pFnRemoveSelected )
-		pFnRemoveSelected = (UFunction*) UObject::GObjObjects()->Data[ 52944 ];
+		pFnRemoveSelected = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.RemoveSelected" );
 
 	UTgUIAgencyMenu_General_execRemoveSelected_Parms RemoveSelected_Parms;
 
@@ -22632,7 +22633,7 @@ void UTgUIAgencyMenu_General::DemoteSelected ( )
 	static UFunction* pFnDemoteSelected = NULL;
 
 	if ( ! pFnDemoteSelected )
-		pFnDemoteSelected = (UFunction*) UObject::GObjObjects()->Data[ 52943 ];
+		pFnDemoteSelected = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.DemoteSelected" );
 
 	UTgUIAgencyMenu_General_execDemoteSelected_Parms DemoteSelected_Parms;
 
@@ -22652,7 +22653,7 @@ void UTgUIAgencyMenu_General::PromoteSelected ( )
 	static UFunction* pFnPromoteSelected = NULL;
 
 	if ( ! pFnPromoteSelected )
-		pFnPromoteSelected = (UFunction*) UObject::GObjObjects()->Data[ 52942 ];
+		pFnPromoteSelected = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.PromoteSelected" );
 
 	UTgUIAgencyMenu_General_execPromoteSelected_Parms PromoteSelected_Parms;
 
@@ -22672,7 +22673,7 @@ void UTgUIAgencyMenu_General::PlayerSearchSelected ( )
 	static UFunction* pFnPlayerSearchSelected = NULL;
 
 	if ( ! pFnPlayerSearchSelected )
-		pFnPlayerSearchSelected = (UFunction*) UObject::GObjObjects()->Data[ 52941 ];
+		pFnPlayerSearchSelected = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.PlayerSearchSelected" );
 
 	UTgUIAgencyMenu_General_execPlayerSearchSelected_Parms PlayerSearchSelected_Parms;
 
@@ -22694,7 +22695,7 @@ bool UTgUIAgencyMenu_General::OnAgencyMenuKey ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnAgencyMenuKey = NULL;
 
 	if ( ! pFnOnAgencyMenuKey )
-		pFnOnAgencyMenuKey = (UFunction*) UObject::GObjObjects()->Data[ 52938 ];
+		pFnOnAgencyMenuKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.OnAgencyMenuKey" );
 
 	UTgUIAgencyMenu_General_execOnAgencyMenuKey_Parms OnAgencyMenuKey_Parms;
 
@@ -22721,7 +22722,7 @@ bool UTgUIAgencyMenu_General::SelectMember ( int nPlayerId )
 	static UFunction* pFnSelectMember = NULL;
 
 	if ( ! pFnSelectMember )
-		pFnSelectMember = (UFunction*) UObject::GObjObjects()->Data[ 52935 ];
+		pFnSelectMember = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.SelectMember" );
 
 	UTgUIAgencyMenu_General_execSelectMember_Parms SelectMember_Parms;
 	SelectMember_Parms.nPlayerId = nPlayerId;
@@ -22746,7 +22747,7 @@ bool UTgUIAgencyMenu_General::SelectMemberByButton ( class UUIButton* Button )
 	static UFunction* pFnSelectMemberByButton = NULL;
 
 	if ( ! pFnSelectMemberByButton )
-		pFnSelectMemberByButton = (UFunction*) UObject::GObjObjects()->Data[ 52932 ];
+		pFnSelectMemberByButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.SelectMemberByButton" );
 
 	UTgUIAgencyMenu_General_execSelectMemberByButton_Parms SelectMemberByButton_Parms;
 	SelectMemberByButton_Parms.Button = Button;
@@ -22769,7 +22770,7 @@ void UTgUIAgencyMenu_General::UpdateHighlight ( )
 	static UFunction* pFnUpdateHighlight = NULL;
 
 	if ( ! pFnUpdateHighlight )
-		pFnUpdateHighlight = (UFunction*) UObject::GObjObjects()->Data[ 52931 ];
+		pFnUpdateHighlight = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.UpdateHighlight" );
 
 	UTgUIAgencyMenu_General_execUpdateHighlight_Parms UpdateHighlight_Parms;
 
@@ -22791,7 +22792,7 @@ void UTgUIAgencyMenu_General::UpdateDetailPanel ( struct FsAgencyMemberInfo sele
 	static UFunction* pFnUpdateDetailPanel = NULL;
 
 	if ( ! pFnUpdateDetailPanel )
-		pFnUpdateDetailPanel = (UFunction*) UObject::GObjObjects()->Data[ 52928 ];
+		pFnUpdateDetailPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.UpdateDetailPanel" );
 
 	UTgUIAgencyMenu_General_execUpdateDetailPanel_Parms UpdateDetailPanel_Parms;
 	memcpy ( &UpdateDetailPanel_Parms.selectedPlayer, &selectedPlayer, 0x4C );
@@ -22814,7 +22815,7 @@ void UTgUIAgencyMenu_General::UpdateMemberListDisplay ( unsigned long bNeedsReso
 	static UFunction* pFnUpdateMemberListDisplay = NULL;
 
 	if ( ! pFnUpdateMemberListDisplay )
-		pFnUpdateMemberListDisplay = (UFunction*) UObject::GObjObjects()->Data[ 52926 ];
+		pFnUpdateMemberListDisplay = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_General.UpdateMemberListDisplay" );
 
 	UTgUIAgencyMenu_General_execUpdateMemberListDisplay_Parms UpdateMemberListDisplay_Parms;
 	UpdateMemberListDisplay_Parms.bNeedsResort = bNeedsResort;
@@ -22835,7 +22836,7 @@ void UTgUIAgencyMenu_Inventory::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 53158 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.FixupWidgetsUC" );
 
 	UTgUIAgencyMenu_Inventory_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -22852,7 +22853,7 @@ void UTgUIAgencyMenu_Inventory::eventSetAgencyItemStateChange ( class UUIScreenO
 	static UFunction* pFnSetAgencyItemStateChange = NULL;
 
 	if ( ! pFnSetAgencyItemStateChange )
-		pFnSetAgencyItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53156 ];
+		pFnSetAgencyItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.SetAgencyItemStateChange" );
 
 	UTgUIAgencyMenu_Inventory_eventSetAgencyItemStateChange_Parms SetAgencyItemStateChange_Parms;
 	SetAgencyItemStateChange_Parms.Obj = Obj;
@@ -22870,7 +22871,7 @@ void UTgUIAgencyMenu_Inventory::eventSetSelectAgencyItemDelegate ( class UUIScre
 	static UFunction* pFnSetSelectAgencyItemDelegate = NULL;
 
 	if ( ! pFnSetSelectAgencyItemDelegate )
-		pFnSetSelectAgencyItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53154 ];
+		pFnSetSelectAgencyItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.SetSelectAgencyItemDelegate" );
 
 	UTgUIAgencyMenu_Inventory_eventSetSelectAgencyItemDelegate_Parms SetSelectAgencyItemDelegate_Parms;
 	SetSelectAgencyItemDelegate_Parms.Obj = Obj;
@@ -22888,7 +22889,7 @@ void UTgUIAgencyMenu_Inventory::eventSetInvItemStateChange ( class UUIScreenObje
 	static UFunction* pFnSetInvItemStateChange = NULL;
 
 	if ( ! pFnSetInvItemStateChange )
-		pFnSetInvItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53152 ];
+		pFnSetInvItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.SetInvItemStateChange" );
 
 	UTgUIAgencyMenu_Inventory_eventSetInvItemStateChange_Parms SetInvItemStateChange_Parms;
 	SetInvItemStateChange_Parms.Obj = Obj;
@@ -22906,7 +22907,7 @@ void UTgUIAgencyMenu_Inventory::eventSetSelectInventoryItemDelegate ( class UUIS
 	static UFunction* pFnSetSelectInventoryItemDelegate = NULL;
 
 	if ( ! pFnSetSelectInventoryItemDelegate )
-		pFnSetSelectInventoryItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53150 ];
+		pFnSetSelectInventoryItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.SetSelectInventoryItemDelegate" );
 
 	UTgUIAgencyMenu_Inventory_eventSetSelectInventoryItemDelegate_Parms SetSelectInventoryItemDelegate_Parms;
 	SetSelectInventoryItemDelegate_Parms.Obj = Obj;
@@ -22925,7 +22926,7 @@ bool UTgUIAgencyMenu_Inventory::OnPrevAgencyButton ( struct FInputEventParameter
 	static UFunction* pFnOnPrevAgencyButton = NULL;
 
 	if ( ! pFnOnPrevAgencyButton )
-		pFnOnPrevAgencyButton = (UFunction*) UObject::GObjObjects()->Data[ 53147 ];
+		pFnOnPrevAgencyButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnPrevAgencyButton" );
 
 	UTgUIAgencyMenu_Inventory_execOnPrevAgencyButton_Parms OnPrevAgencyButton_Parms;
 
@@ -22952,7 +22953,7 @@ bool UTgUIAgencyMenu_Inventory::OnNextAgencyButton ( struct FInputEventParameter
 	static UFunction* pFnOnNextAgencyButton = NULL;
 
 	if ( ! pFnOnNextAgencyButton )
-		pFnOnNextAgencyButton = (UFunction*) UObject::GObjObjects()->Data[ 53144 ];
+		pFnOnNextAgencyButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnNextAgencyButton" );
 
 	UTgUIAgencyMenu_Inventory_execOnNextAgencyButton_Parms OnNextAgencyButton_Parms;
 
@@ -22981,7 +22982,7 @@ void UTgUIAgencyMenu_Inventory::OnAgencyItemStateChange ( class UUIScreenObject*
 	static UFunction* pFnOnAgencyItemStateChange = NULL;
 
 	if ( ! pFnOnAgencyItemStateChange )
-		pFnOnAgencyItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53139 ];
+		pFnOnAgencyItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnAgencyItemStateChange" );
 
 	UTgUIAgencyMenu_Inventory_execOnAgencyItemStateChange_Parms OnAgencyItemStateChange_Parms;
 	OnAgencyItemStateChange_Parms.Sender = Sender;
@@ -23009,7 +23010,7 @@ void UTgUIAgencyMenu_Inventory::OnInvItemStateChange ( class UUIScreenObject* Se
 	static UFunction* pFnOnInvItemStateChange = NULL;
 
 	if ( ! pFnOnInvItemStateChange )
-		pFnOnInvItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53134 ];
+		pFnOnInvItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnInvItemStateChange" );
 
 	UTgUIAgencyMenu_Inventory_execOnInvItemStateChange_Parms OnInvItemStateChange_Parms;
 	OnInvItemStateChange_Parms.Sender = Sender;
@@ -23035,7 +23036,7 @@ void UTgUIAgencyMenu_Inventory::OnFilterChangedDelegate ( class UUIObject* Sende
 	static UFunction* pFnOnFilterChangedDelegate = NULL;
 
 	if ( ! pFnOnFilterChangedDelegate )
-		pFnOnFilterChangedDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53131 ];
+		pFnOnFilterChangedDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnFilterChangedDelegate" );
 
 	UTgUIAgencyMenu_Inventory_execOnFilterChangedDelegate_Parms OnFilterChangedDelegate_Parms;
 	OnFilterChangedDelegate_Parms.Sender = Sender;
@@ -23059,7 +23060,7 @@ bool UTgUIAgencyMenu_Inventory::OnConfirmNoClicked ( struct FInputEventParameter
 	static UFunction* pFnOnConfirmNoClicked = NULL;
 
 	if ( ! pFnOnConfirmNoClicked )
-		pFnOnConfirmNoClicked = (UFunction*) UObject::GObjObjects()->Data[ 53128 ];
+		pFnOnConfirmNoClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnConfirmNoClicked" );
 
 	UTgUIAgencyMenu_Inventory_execOnConfirmNoClicked_Parms OnConfirmNoClicked_Parms;
 
@@ -23086,7 +23087,7 @@ bool UTgUIAgencyMenu_Inventory::OnConfirmYesClicked ( struct FInputEventParamete
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 53125 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnConfirmYesClicked" );
 
 	UTgUIAgencyMenu_Inventory_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -23113,7 +23114,7 @@ bool UTgUIAgencyMenu_Inventory::OnItemSendToDelegate ( struct FInputEventParamet
 	static UFunction* pFnOnItemSendToDelegate = NULL;
 
 	if ( ! pFnOnItemSendToDelegate )
-		pFnOnItemSendToDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53122 ];
+		pFnOnItemSendToDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnItemSendToDelegate" );
 
 	UTgUIAgencyMenu_Inventory_execOnItemSendToDelegate_Parms OnItemSendToDelegate_Parms;
 
@@ -23140,7 +23141,7 @@ bool UTgUIAgencyMenu_Inventory::OnDeleteItemDelegate ( struct FInputEventParamet
 	static UFunction* pFnOnDeleteItemDelegate = NULL;
 
 	if ( ! pFnOnDeleteItemDelegate )
-		pFnOnDeleteItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53119 ];
+		pFnOnDeleteItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnDeleteItemDelegate" );
 
 	UTgUIAgencyMenu_Inventory_execOnDeleteItemDelegate_Parms OnDeleteItemDelegate_Parms;
 
@@ -23167,7 +23168,7 @@ bool UTgUIAgencyMenu_Inventory::OnWithdrawCreditsDelegate ( struct FInputEventPa
 	static UFunction* pFnOnWithdrawCreditsDelegate = NULL;
 
 	if ( ! pFnOnWithdrawCreditsDelegate )
-		pFnOnWithdrawCreditsDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53116 ];
+		pFnOnWithdrawCreditsDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnWithdrawCreditsDelegate" );
 
 	UTgUIAgencyMenu_Inventory_execOnWithdrawCreditsDelegate_Parms OnWithdrawCreditsDelegate_Parms;
 
@@ -23194,7 +23195,7 @@ bool UTgUIAgencyMenu_Inventory::OnDepositCreditsDelegate ( struct FInputEventPar
 	static UFunction* pFnOnDepositCreditsDelegate = NULL;
 
 	if ( ! pFnOnDepositCreditsDelegate )
-		pFnOnDepositCreditsDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53113 ];
+		pFnOnDepositCreditsDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnDepositCreditsDelegate" );
 
 	UTgUIAgencyMenu_Inventory_execOnDepositCreditsDelegate_Parms OnDepositCreditsDelegate_Parms;
 
@@ -23221,7 +23222,7 @@ bool UTgUIAgencyMenu_Inventory::OnWithdrawItemDelegate ( struct FInputEventParam
 	static UFunction* pFnOnWithdrawItemDelegate = NULL;
 
 	if ( ! pFnOnWithdrawItemDelegate )
-		pFnOnWithdrawItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53110 ];
+		pFnOnWithdrawItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnWithdrawItemDelegate" );
 
 	UTgUIAgencyMenu_Inventory_execOnWithdrawItemDelegate_Parms OnWithdrawItemDelegate_Parms;
 
@@ -23248,7 +23249,7 @@ bool UTgUIAgencyMenu_Inventory::OnDepositItemDelegate ( struct FInputEventParame
 	static UFunction* pFnOnDepositItemDelegate = NULL;
 
 	if ( ! pFnOnDepositItemDelegate )
-		pFnOnDepositItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53107 ];
+		pFnOnDepositItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnDepositItemDelegate" );
 
 	UTgUIAgencyMenu_Inventory_execOnDepositItemDelegate_Parms OnDepositItemDelegate_Parms;
 
@@ -23275,7 +23276,7 @@ bool UTgUIAgencyMenu_Inventory::OnSortAgencyInventoryDelegate ( struct FInputEve
 	static UFunction* pFnOnSortAgencyInventoryDelegate = NULL;
 
 	if ( ! pFnOnSortAgencyInventoryDelegate )
-		pFnOnSortAgencyInventoryDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53104 ];
+		pFnOnSortAgencyInventoryDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnSortAgencyInventoryDelegate" );
 
 	UTgUIAgencyMenu_Inventory_execOnSortAgencyInventoryDelegate_Parms OnSortAgencyInventoryDelegate_Parms;
 
@@ -23302,7 +23303,7 @@ bool UTgUIAgencyMenu_Inventory::OnSortInventoryDelegate ( struct FInputEventPara
 	static UFunction* pFnOnSortInventoryDelegate = NULL;
 
 	if ( ! pFnOnSortInventoryDelegate )
-		pFnOnSortInventoryDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53101 ];
+		pFnOnSortInventoryDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnSortInventoryDelegate" );
 
 	UTgUIAgencyMenu_Inventory_execOnSortInventoryDelegate_Parms OnSortInventoryDelegate_Parms;
 
@@ -23329,7 +23330,7 @@ bool UTgUIAgencyMenu_Inventory::OnSelectAgencyItemDelegate ( struct FInputEventP
 	static UFunction* pFnOnSelectAgencyItemDelegate = NULL;
 
 	if ( ! pFnOnSelectAgencyItemDelegate )
-		pFnOnSelectAgencyItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53098 ];
+		pFnOnSelectAgencyItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnSelectAgencyItemDelegate" );
 
 	UTgUIAgencyMenu_Inventory_execOnSelectAgencyItemDelegate_Parms OnSelectAgencyItemDelegate_Parms;
 
@@ -23356,7 +23357,7 @@ bool UTgUIAgencyMenu_Inventory::OnSelectInventoryItemDelegate ( struct FInputEve
 	static UFunction* pFnOnSelectInventoryItemDelegate = NULL;
 
 	if ( ! pFnOnSelectInventoryItemDelegate )
-		pFnOnSelectInventoryItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53095 ];
+		pFnOnSelectInventoryItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnSelectInventoryItemDelegate" );
 
 	UTgUIAgencyMenu_Inventory_execOnSelectInventoryItemDelegate_Parms OnSelectInventoryItemDelegate_Parms;
 
@@ -23383,7 +23384,7 @@ bool UTgUIAgencyMenu_Inventory::OnAgencyMenuKey ( struct FInputEventParameters* 
 	static UFunction* pFnOnAgencyMenuKey = NULL;
 
 	if ( ! pFnOnAgencyMenuKey )
-		pFnOnAgencyMenuKey = (UFunction*) UObject::GObjObjects()->Data[ 53092 ];
+		pFnOnAgencyMenuKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.OnAgencyMenuKey" );
 
 	UTgUIAgencyMenu_Inventory_execOnAgencyMenuKey_Parms OnAgencyMenuKey_Parms;
 
@@ -23408,7 +23409,7 @@ void UTgUIAgencyMenu_Inventory::HideTransferItemPanel ( )
 	static UFunction* pFnHideTransferItemPanel = NULL;
 
 	if ( ! pFnHideTransferItemPanel )
-		pFnHideTransferItemPanel = (UFunction*) UObject::GObjObjects()->Data[ 53091 ];
+		pFnHideTransferItemPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.HideTransferItemPanel" );
 
 	UTgUIAgencyMenu_Inventory_execHideTransferItemPanel_Parms HideTransferItemPanel_Parms;
 
@@ -23430,7 +23431,7 @@ void UTgUIAgencyMenu_Inventory::ShowTransferCreditsPanel ( int creditCount, unsi
 	static UFunction* pFnShowTransferCreditsPanel = NULL;
 
 	if ( ! pFnShowTransferCreditsPanel )
-		pFnShowTransferCreditsPanel = (UFunction*) UObject::GObjObjects()->Data[ 53088 ];
+		pFnShowTransferCreditsPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.ShowTransferCreditsPanel" );
 
 	UTgUIAgencyMenu_Inventory_execShowTransferCreditsPanel_Parms ShowTransferCreditsPanel_Parms;
 	ShowTransferCreditsPanel_Parms.creditCount = creditCount;
@@ -23455,7 +23456,7 @@ void UTgUIAgencyMenu_Inventory::ShowTransferItemPanel ( class UTgInventoryObject
 	static UFunction* pFnShowTransferItemPanel = NULL;
 
 	if ( ! pFnShowTransferItemPanel )
-		pFnShowTransferItemPanel = (UFunction*) UObject::GObjObjects()->Data[ 53084 ];
+		pFnShowTransferItemPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.ShowTransferItemPanel" );
 
 	UTgUIAgencyMenu_Inventory_execShowTransferItemPanel_Parms ShowTransferItemPanel_Parms;
 	ShowTransferItemPanel_Parms.pItem = pItem;
@@ -23479,7 +23480,7 @@ void UTgUIAgencyMenu_Inventory::SelectAgencyItem ( int ItemIndex )
 	static UFunction* pFnSelectAgencyItem = NULL;
 
 	if ( ! pFnSelectAgencyItem )
-		pFnSelectAgencyItem = (UFunction*) UObject::GObjObjects()->Data[ 53082 ];
+		pFnSelectAgencyItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.SelectAgencyItem" );
 
 	UTgUIAgencyMenu_Inventory_execSelectAgencyItem_Parms SelectAgencyItem_Parms;
 	SelectAgencyItem_Parms.ItemIndex = ItemIndex;
@@ -23501,7 +23502,7 @@ void UTgUIAgencyMenu_Inventory::SelectInventoryItem ( int ItemIndex )
 	static UFunction* pFnSelectInventoryItem = NULL;
 
 	if ( ! pFnSelectInventoryItem )
-		pFnSelectInventoryItem = (UFunction*) UObject::GObjObjects()->Data[ 53080 ];
+		pFnSelectInventoryItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.SelectInventoryItem" );
 
 	UTgUIAgencyMenu_Inventory_execSelectInventoryItem_Parms SelectInventoryItem_Parms;
 	SelectInventoryItem_Parms.ItemIndex = ItemIndex;
@@ -23522,7 +23523,7 @@ void UTgUIAgencyMenu_Inventory::PopulateAgencyItems ( )
 	static UFunction* pFnPopulateAgencyItems = NULL;
 
 	if ( ! pFnPopulateAgencyItems )
-		pFnPopulateAgencyItems = (UFunction*) UObject::GObjObjects()->Data[ 53079 ];
+		pFnPopulateAgencyItems = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.PopulateAgencyItems" );
 
 	UTgUIAgencyMenu_Inventory_execPopulateAgencyItems_Parms PopulateAgencyItems_Parms;
 
@@ -23542,7 +23543,7 @@ void UTgUIAgencyMenu_Inventory::PopulateInventoryItems ( )
 	static UFunction* pFnPopulateInventoryItems = NULL;
 
 	if ( ! pFnPopulateInventoryItems )
-		pFnPopulateInventoryItems = (UFunction*) UObject::GObjObjects()->Data[ 53078 ];
+		pFnPopulateInventoryItems = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.PopulateInventoryItems" );
 
 	UTgUIAgencyMenu_Inventory_execPopulateInventoryItems_Parms PopulateInventoryItems_Parms;
 
@@ -23563,7 +23564,7 @@ void UTgUIAgencyMenu_Inventory::ResizeAgencyPanelWidgets ( int newSize )
 	static UFunction* pFnResizeAgencyPanelWidgets = NULL;
 
 	if ( ! pFnResizeAgencyPanelWidgets )
-		pFnResizeAgencyPanelWidgets = (UFunction*) UObject::GObjObjects()->Data[ 53076 ];
+		pFnResizeAgencyPanelWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.ResizeAgencyPanelWidgets" );
 
 	UTgUIAgencyMenu_Inventory_execResizeAgencyPanelWidgets_Parms ResizeAgencyPanelWidgets_Parms;
 	ResizeAgencyPanelWidgets_Parms.newSize = newSize;
@@ -23585,7 +23586,7 @@ void UTgUIAgencyMenu_Inventory::ResizeInventoryPanelWidgets ( int newSize )
 	static UFunction* pFnResizeInventoryPanelWidgets = NULL;
 
 	if ( ! pFnResizeInventoryPanelWidgets )
-		pFnResizeInventoryPanelWidgets = (UFunction*) UObject::GObjObjects()->Data[ 53074 ];
+		pFnResizeInventoryPanelWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.ResizeInventoryPanelWidgets" );
 
 	UTgUIAgencyMenu_Inventory_execResizeInventoryPanelWidgets_Parms ResizeInventoryPanelWidgets_Parms;
 	ResizeInventoryPanelWidgets_Parms.newSize = newSize;
@@ -23606,7 +23607,7 @@ void UTgUIAgencyMenu_Inventory::BuildLocalInventoryStore ( )
 	static UFunction* pFnBuildLocalInventoryStore = NULL;
 
 	if ( ! pFnBuildLocalInventoryStore )
-		pFnBuildLocalInventoryStore = (UFunction*) UObject::GObjObjects()->Data[ 53073 ];
+		pFnBuildLocalInventoryStore = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.BuildLocalInventoryStore" );
 
 	UTgUIAgencyMenu_Inventory_execBuildLocalInventoryStore_Parms BuildLocalInventoryStore_Parms;
 
@@ -23626,7 +23627,7 @@ void UTgUIAgencyMenu_Inventory::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 53072 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.FixupWidgets" );
 
 	UTgUIAgencyMenu_Inventory_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -23647,7 +23648,7 @@ bool UTgUIAgencyMenu_Inventory::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 53070 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Inventory.TickTgUIScene" );
 
 	UTgUIAgencyMenu_Inventory_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -23669,7 +23670,7 @@ void UTgUIAgencyMenu_InventoryLog::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 53194 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_InventoryLog.FixupWidgetsUC" );
 
 	UTgUIAgencyMenu_InventoryLog_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -23687,7 +23688,7 @@ bool UTgUIAgencyMenu_InventoryLog::OnSearchButtonDelegate ( struct FInputEventPa
 	static UFunction* pFnOnSearchButtonDelegate = NULL;
 
 	if ( ! pFnOnSearchButtonDelegate )
-		pFnOnSearchButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53191 ];
+		pFnOnSearchButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_InventoryLog.OnSearchButtonDelegate" );
 
 	UTgUIAgencyMenu_InventoryLog_execOnSearchButtonDelegate_Parms OnSearchButtonDelegate_Parms;
 
@@ -23713,7 +23714,7 @@ void UTgUIAgencyMenu_InventoryLog::ResizeLogList ( int nSize )
 	static UFunction* pFnResizeLogList = NULL;
 
 	if ( ! pFnResizeLogList )
-		pFnResizeLogList = (UFunction*) UObject::GObjObjects()->Data[ 53189 ];
+		pFnResizeLogList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_InventoryLog.ResizeLogList" );
 
 	UTgUIAgencyMenu_InventoryLog_execResizeLogList_Parms ResizeLogList_Parms;
 	ResizeLogList_Parms.nSize = nSize;
@@ -23734,7 +23735,7 @@ void UTgUIAgencyMenu_InventoryLog::ResetFilters ( )
 	static UFunction* pFnResetFilters = NULL;
 
 	if ( ! pFnResetFilters )
-		pFnResetFilters = (UFunction*) UObject::GObjObjects()->Data[ 53188 ];
+		pFnResetFilters = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_InventoryLog.ResetFilters" );
 
 	UTgUIAgencyMenu_InventoryLog_execResetFilters_Parms ResetFilters_Parms;
 
@@ -23754,7 +23755,7 @@ void UTgUIAgencyMenu_InventoryLog::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 53187 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_InventoryLog.FixupTgUIScene" );
 
 	UTgUIAgencyMenu_InventoryLog_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -23774,7 +23775,7 @@ void UTgUIAgencyMenu_InventoryLog::OpenTgUIScene ( )
 	static UFunction* pFnOpenTgUIScene = NULL;
 
 	if ( ! pFnOpenTgUIScene )
-		pFnOpenTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 53186 ];
+		pFnOpenTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_InventoryLog.OpenTgUIScene" );
 
 	UTgUIAgencyMenu_InventoryLog_execOpenTgUIScene_Parms OpenTgUIScene_Parms;
 
@@ -23795,7 +23796,7 @@ bool UTgUIAgencyMenu_InventoryLog::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 53184 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_InventoryLog.TickTgUIScene" );
 
 	UTgUIAgencyMenu_InventoryLog_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -23819,7 +23820,7 @@ bool UTgUIAgencyMenu_Management::OnAgencyDescriptionButton ( struct FInputEventP
 	static UFunction* pFnOnAgencyDescriptionButton = NULL;
 
 	if ( ! pFnOnAgencyDescriptionButton )
-		pFnOnAgencyDescriptionButton = (UFunction*) UObject::GObjObjects()->Data[ 53314 ];
+		pFnOnAgencyDescriptionButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.OnAgencyDescriptionButton" );
 
 	UTgUIAgencyMenu_Management_execOnAgencyDescriptionButton_Parms OnAgencyDescriptionButton_Parms;
 
@@ -23843,7 +23844,7 @@ bool UTgUIAgencyMenu_Management::OnAgencyDescriptionSubmitText ( class UUIEditBo
 	static UFunction* pFnOnAgencyDescriptionSubmitText = NULL;
 
 	if ( ! pFnOnAgencyDescriptionSubmitText )
-		pFnOnAgencyDescriptionSubmitText = (UFunction*) UObject::GObjObjects()->Data[ 53310 ];
+		pFnOnAgencyDescriptionSubmitText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.OnAgencyDescriptionSubmitText" );
 
 	UTgUIAgencyMenu_Management_execOnAgencyDescriptionSubmitText_Parms OnAgencyDescriptionSubmitText_Parms;
 	OnAgencyDescriptionSubmitText_Parms.ebox = ebox;
@@ -23865,7 +23866,7 @@ bool UTgUIAgencyMenu_Management::OnTransferLeaderButton ( struct FInputEventPara
 	static UFunction* pFnOnTransferLeaderButton = NULL;
 
 	if ( ! pFnOnTransferLeaderButton )
-		pFnOnTransferLeaderButton = (UFunction*) UObject::GObjObjects()->Data[ 53307 ];
+		pFnOnTransferLeaderButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.OnTransferLeaderButton" );
 
 	UTgUIAgencyMenu_Management_execOnTransferLeaderButton_Parms OnTransferLeaderButton_Parms;
 
@@ -23889,7 +23890,7 @@ bool UTgUIAgencyMenu_Management::OnTransferLeaderSubmitText ( class UUIEditBox* 
 	static UFunction* pFnOnTransferLeaderSubmitText = NULL;
 
 	if ( ! pFnOnTransferLeaderSubmitText )
-		pFnOnTransferLeaderSubmitText = (UFunction*) UObject::GObjObjects()->Data[ 53303 ];
+		pFnOnTransferLeaderSubmitText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.OnTransferLeaderSubmitText" );
 
 	UTgUIAgencyMenu_Management_execOnTransferLeaderSubmitText_Parms OnTransferLeaderSubmitText_Parms;
 	OnTransferLeaderSubmitText_Parms.ebox = ebox;
@@ -23911,7 +23912,7 @@ bool UTgUIAgencyMenu_Management::OnRankDisabled ( struct FInputEventParameters* 
 	static UFunction* pFnOnRankDisabled = NULL;
 
 	if ( ! pFnOnRankDisabled )
-		pFnOnRankDisabled = (UFunction*) UObject::GObjObjects()->Data[ 53300 ];
+		pFnOnRankDisabled = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.OnRankDisabled" );
 
 	UTgUIAgencyMenu_Management_execOnRankDisabled_Parms OnRankDisabled_Parms;
 
@@ -23934,7 +23935,7 @@ void UTgUIAgencyMenu_Management::OnRankValueChanged ( class UUIObject* Sender, i
 	static UFunction* pFnOnRankValueChanged = NULL;
 
 	if ( ! pFnOnRankValueChanged )
-		pFnOnRankValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 53297 ];
+		pFnOnRankValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.OnRankValueChanged" );
 
 	UTgUIAgencyMenu_Management_execOnRankValueChanged_Parms OnRankValueChanged_Parms;
 	OnRankValueChanged_Parms.Sender = Sender;
@@ -23954,7 +23955,7 @@ bool UTgUIAgencyMenu_Management::OnRankDemote ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnRankDemote = NULL;
 
 	if ( ! pFnOnRankDemote )
-		pFnOnRankDemote = (UFunction*) UObject::GObjObjects()->Data[ 53294 ];
+		pFnOnRankDemote = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.OnRankDemote" );
 
 	UTgUIAgencyMenu_Management_execOnRankDemote_Parms OnRankDemote_Parms;
 
@@ -23977,7 +23978,7 @@ bool UTgUIAgencyMenu_Management::OnRankPromote ( struct FInputEventParameters* E
 	static UFunction* pFnOnRankPromote = NULL;
 
 	if ( ! pFnOnRankPromote )
-		pFnOnRankPromote = (UFunction*) UObject::GObjObjects()->Data[ 53291 ];
+		pFnOnRankPromote = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.OnRankPromote" );
 
 	UTgUIAgencyMenu_Management_execOnRankPromote_Parms OnRankPromote_Parms;
 
@@ -24000,7 +24001,7 @@ bool UTgUIAgencyMenu_Management::OnRankRevert ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnRankRevert = NULL;
 
 	if ( ! pFnOnRankRevert )
-		pFnOnRankRevert = (UFunction*) UObject::GObjObjects()->Data[ 53288 ];
+		pFnOnRankRevert = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.OnRankRevert" );
 
 	UTgUIAgencyMenu_Management_execOnRankRevert_Parms OnRankRevert_Parms;
 
@@ -24023,7 +24024,7 @@ bool UTgUIAgencyMenu_Management::OnRankSend ( struct FInputEventParameters* Even
 	static UFunction* pFnOnRankSend = NULL;
 
 	if ( ! pFnOnRankSend )
-		pFnOnRankSend = (UFunction*) UObject::GObjObjects()->Data[ 53285 ];
+		pFnOnRankSend = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.OnRankSend" );
 
 	UTgUIAgencyMenu_Management_execOnRankSend_Parms OnRankSend_Parms;
 
@@ -24046,7 +24047,7 @@ bool UTgUIAgencyMenu_Management::OnRankRemove ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnRankRemove = NULL;
 
 	if ( ! pFnOnRankRemove )
-		pFnOnRankRemove = (UFunction*) UObject::GObjObjects()->Data[ 53282 ];
+		pFnOnRankRemove = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.OnRankRemove" );
 
 	UTgUIAgencyMenu_Management_execOnRankRemove_Parms OnRankRemove_Parms;
 
@@ -24069,7 +24070,7 @@ bool UTgUIAgencyMenu_Management::OnRankAdd ( struct FInputEventParameters* Event
 	static UFunction* pFnOnRankAdd = NULL;
 
 	if ( ! pFnOnRankAdd )
-		pFnOnRankAdd = (UFunction*) UObject::GObjObjects()->Data[ 53279 ];
+		pFnOnRankAdd = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.OnRankAdd" );
 
 	UTgUIAgencyMenu_Management_execOnRankAdd_Parms OnRankAdd_Parms;
 
@@ -24092,7 +24093,7 @@ bool UTgUIAgencyMenu_Management::OnAgencyDisband ( struct FInputEventParameters*
 	static UFunction* pFnOnAgencyDisband = NULL;
 
 	if ( ! pFnOnAgencyDisband )
-		pFnOnAgencyDisband = (UFunction*) UObject::GObjObjects()->Data[ 53276 ];
+		pFnOnAgencyDisband = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.OnAgencyDisband" );
 
 	UTgUIAgencyMenu_Management_execOnAgencyDisband_Parms OnAgencyDisband_Parms;
 
@@ -24113,7 +24114,7 @@ void UTgUIAgencyMenu_Management::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 53275 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.FixupWidgetsUC" );
 
 	UTgUIAgencyMenu_Management_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -24131,7 +24132,7 @@ void UTgUIAgencyMenu_Management::RegionComboBoxChanged ( class UUIObject* Sender
 	static UFunction* pFnRegionComboBoxChanged = NULL;
 
 	if ( ! pFnRegionComboBoxChanged )
-		pFnRegionComboBoxChanged = (UFunction*) UObject::GObjObjects()->Data[ 53272 ];
+		pFnRegionComboBoxChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.RegionComboBoxChanged" );
 
 	UTgUIAgencyMenu_Management_execRegionComboBoxChanged_Parms RegionComboBoxChanged_Parms;
 	RegionComboBoxChanged_Parms.Sender = Sender;
@@ -24155,7 +24156,7 @@ void UTgUIAgencyMenu_Management::OnAgencyDescriptionValueChanged ( class UUIObje
 	static UFunction* pFnOnAgencyDescriptionValueChanged = NULL;
 
 	if ( ! pFnOnAgencyDescriptionValueChanged )
-		pFnOnAgencyDescriptionValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 53269 ];
+		pFnOnAgencyDescriptionValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.OnAgencyDescriptionValueChanged" );
 
 	UTgUIAgencyMenu_Management_execOnAgencyDescriptionValueChanged_Parms OnAgencyDescriptionValueChanged_Parms;
 	OnAgencyDescriptionValueChanged_Parms.Sender = Sender;
@@ -24179,7 +24180,7 @@ void UTgUIAgencyMenu_Management::OnRankChanged ( class UUIObject* Sender, int Pl
 	static UFunction* pFnOnRankChanged = NULL;
 
 	if ( ! pFnOnRankChanged )
-		pFnOnRankChanged = (UFunction*) UObject::GObjObjects()->Data[ 53266 ];
+		pFnOnRankChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.OnRankChanged" );
 
 	UTgUIAgencyMenu_Management_execOnRankChanged_Parms OnRankChanged_Parms;
 	OnRankChanged_Parms.Sender = Sender;
@@ -24202,7 +24203,7 @@ bool UTgUIAgencyMenu_Management::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 53264 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.TickTgUIScene" );
 
 	UTgUIAgencyMenu_Management_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -24224,7 +24225,7 @@ void UTgUIAgencyMenu_Management::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 53263 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.PreCloseScene" );
 
 	UTgUIAgencyMenu_Management_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -24244,7 +24245,7 @@ void UTgUIAgencyMenu_Management::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 53262 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.PostOpenScene" );
 
 	UTgUIAgencyMenu_Management_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -24264,7 +24265,7 @@ void UTgUIAgencyMenu_Management::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 53261 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.FixupWidgets" );
 
 	UTgUIAgencyMenu_Management_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -24285,7 +24286,7 @@ void UTgUIAgencyMenu_Management::UpdateDetailPanel ( struct FsAgencyRankData ran
 	static UFunction* pFnUpdateDetailPanel = NULL;
 
 	if ( ! pFnUpdateDetailPanel )
-		pFnUpdateDetailPanel = (UFunction*) UObject::GObjObjects()->Data[ 53259 ];
+		pFnUpdateDetailPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.UpdateDetailPanel" );
 
 	UTgUIAgencyMenu_Management_execUpdateDetailPanel_Parms UpdateDetailPanel_Parms;
 	memcpy ( &UpdateDetailPanel_Parms.rankData, &rankData, 0x18 );
@@ -24306,7 +24307,7 @@ void UTgUIAgencyMenu_Management::UpdateRankList ( )
 	static UFunction* pFnUpdateRankList = NULL;
 
 	if ( ! pFnUpdateRankList )
-		pFnUpdateRankList = (UFunction*) UObject::GObjObjects()->Data[ 53258 ];
+		pFnUpdateRankList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.UpdateRankList" );
 
 	UTgUIAgencyMenu_Management_execUpdateRankList_Parms UpdateRankList_Parms;
 
@@ -24327,7 +24328,7 @@ void UTgUIAgencyMenu_Management::RankValueUpdated ( class UUIObject* Sender )
 	static UFunction* pFnRankValueUpdated = NULL;
 
 	if ( ! pFnRankValueUpdated )
-		pFnRankValueUpdated = (UFunction*) UObject::GObjObjects()->Data[ 53256 ];
+		pFnRankValueUpdated = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.RankValueUpdated" );
 
 	UTgUIAgencyMenu_Management_execRankValueUpdated_Parms RankValueUpdated_Parms;
 	RankValueUpdated_Parms.Sender = Sender;
@@ -24348,7 +24349,7 @@ void UTgUIAgencyMenu_Management::DemoteRank ( )
 	static UFunction* pFnDemoteRank = NULL;
 
 	if ( ! pFnDemoteRank )
-		pFnDemoteRank = (UFunction*) UObject::GObjObjects()->Data[ 53255 ];
+		pFnDemoteRank = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.DemoteRank" );
 
 	UTgUIAgencyMenu_Management_execDemoteRank_Parms DemoteRank_Parms;
 
@@ -24368,7 +24369,7 @@ void UTgUIAgencyMenu_Management::PromoteRank ( )
 	static UFunction* pFnPromoteRank = NULL;
 
 	if ( ! pFnPromoteRank )
-		pFnPromoteRank = (UFunction*) UObject::GObjObjects()->Data[ 53254 ];
+		pFnPromoteRank = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.PromoteRank" );
 
 	UTgUIAgencyMenu_Management_execPromoteRank_Parms PromoteRank_Parms;
 
@@ -24388,7 +24389,7 @@ void UTgUIAgencyMenu_Management::RevertRankData ( )
 	static UFunction* pFnRevertRankData = NULL;
 
 	if ( ! pFnRevertRankData )
-		pFnRevertRankData = (UFunction*) UObject::GObjObjects()->Data[ 53253 ];
+		pFnRevertRankData = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.RevertRankData" );
 
 	UTgUIAgencyMenu_Management_execRevertRankData_Parms RevertRankData_Parms;
 
@@ -24408,7 +24409,7 @@ void UTgUIAgencyMenu_Management::SendRankData ( )
 	static UFunction* pFnSendRankData = NULL;
 
 	if ( ! pFnSendRankData )
-		pFnSendRankData = (UFunction*) UObject::GObjObjects()->Data[ 53252 ];
+		pFnSendRankData = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.SendRankData" );
 
 	UTgUIAgencyMenu_Management_execSendRankData_Parms SendRankData_Parms;
 
@@ -24428,7 +24429,7 @@ void UTgUIAgencyMenu_Management::RemoveRank ( )
 	static UFunction* pFnRemoveRank = NULL;
 
 	if ( ! pFnRemoveRank )
-		pFnRemoveRank = (UFunction*) UObject::GObjObjects()->Data[ 53251 ];
+		pFnRemoveRank = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.RemoveRank" );
 
 	UTgUIAgencyMenu_Management_execRemoveRank_Parms RemoveRank_Parms;
 
@@ -24448,7 +24449,7 @@ void UTgUIAgencyMenu_Management::AddRank ( )
 	static UFunction* pFnAddRank = NULL;
 
 	if ( ! pFnAddRank )
-		pFnAddRank = (UFunction*) UObject::GObjObjects()->Data[ 53250 ];
+		pFnAddRank = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.AddRank" );
 
 	UTgUIAgencyMenu_Management_execAddRank_Parms AddRank_Parms;
 
@@ -24468,7 +24469,7 @@ void UTgUIAgencyMenu_Management::Disband ( )
 	static UFunction* pFnDisband = NULL;
 
 	if ( ! pFnDisband )
-		pFnDisband = (UFunction*) UObject::GObjObjects()->Data[ 53249 ];
+		pFnDisband = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.Disband" );
 
 	UTgUIAgencyMenu_Management_execDisband_Parms Disband_Parms;
 
@@ -24488,7 +24489,7 @@ void UTgUIAgencyMenu_Management::TransferLeader ( )
 	static UFunction* pFnTransferLeader = NULL;
 
 	if ( ! pFnTransferLeader )
-		pFnTransferLeader = (UFunction*) UObject::GObjObjects()->Data[ 53248 ];
+		pFnTransferLeader = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.TransferLeader" );
 
 	UTgUIAgencyMenu_Management_execTransferLeader_Parms TransferLeader_Parms;
 
@@ -24508,7 +24509,7 @@ void UTgUIAgencyMenu_Management::SetAgencyRegion ( )
 	static UFunction* pFnSetAgencyRegion = NULL;
 
 	if ( ! pFnSetAgencyRegion )
-		pFnSetAgencyRegion = (UFunction*) UObject::GObjObjects()->Data[ 53247 ];
+		pFnSetAgencyRegion = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.SetAgencyRegion" );
 
 	UTgUIAgencyMenu_Management_execSetAgencyRegion_Parms SetAgencyRegion_Parms;
 
@@ -24528,7 +24529,7 @@ void UTgUIAgencyMenu_Management::SetAgencyDescription ( )
 	static UFunction* pFnSetAgencyDescription = NULL;
 
 	if ( ! pFnSetAgencyDescription )
-		pFnSetAgencyDescription = (UFunction*) UObject::GObjObjects()->Data[ 53246 ];
+		pFnSetAgencyDescription = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.SetAgencyDescription" );
 
 	UTgUIAgencyMenu_Management_execSetAgencyDescription_Parms SetAgencyDescription_Parms;
 
@@ -24550,7 +24551,7 @@ bool UTgUIAgencyMenu_Management::SelectRank ( int nRankId )
 	static UFunction* pFnSelectRank = NULL;
 
 	if ( ! pFnSelectRank )
-		pFnSelectRank = (UFunction*) UObject::GObjObjects()->Data[ 53243 ];
+		pFnSelectRank = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.SelectRank" );
 
 	UTgUIAgencyMenu_Management_execSelectRank_Parms SelectRank_Parms;
 	SelectRank_Parms.nRankId = nRankId;
@@ -24573,7 +24574,7 @@ void UTgUIAgencyMenu_Management::UpdateViewablePanels ( )
 	static UFunction* pFnUpdateViewablePanels = NULL;
 
 	if ( ! pFnUpdateViewablePanels )
-		pFnUpdateViewablePanels = (UFunction*) UObject::GObjObjects()->Data[ 53242 ];
+		pFnUpdateViewablePanels = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Management.UpdateViewablePanels" );
 
 	UTgUIAgencyMenu_Management_execUpdateViewablePanels_Parms UpdateViewablePanels_Parms;
 
@@ -24595,7 +24596,7 @@ bool UTgUIAgencyMenu_Recruiting::OnSubmitButtonKey ( struct FInputEventParameter
 	static UFunction* pFnOnSubmitButtonKey = NULL;
 
 	if ( ! pFnOnSubmitButtonKey )
-		pFnOnSubmitButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 53387 ];
+		pFnOnSubmitButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.OnSubmitButtonKey" );
 
 	UTgUIAgencyMenu_Recruiting_execOnSubmitButtonKey_Parms OnSubmitButtonKey_Parms;
 
@@ -24618,7 +24619,7 @@ bool UTgUIAgencyMenu_Recruiting::OnSelectAgent ( struct FInputEventParameters* E
 	static UFunction* pFnOnSelectAgent = NULL;
 
 	if ( ! pFnOnSelectAgent )
-		pFnOnSelectAgent = (UFunction*) UObject::GObjObjects()->Data[ 53384 ];
+		pFnOnSelectAgent = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.OnSelectAgent" );
 
 	UTgUIAgencyMenu_Recruiting_execOnSelectAgent_Parms OnSelectAgent_Parms;
 
@@ -24640,7 +24641,7 @@ void UTgUIAgencyMenu_Recruiting::eventSetRawInputKeyForAgentListMember ( class U
 	static UFunction* pFnSetRawInputKeyForAgentListMember = NULL;
 
 	if ( ! pFnSetRawInputKeyForAgentListMember )
-		pFnSetRawInputKeyForAgentListMember = (UFunction*) UObject::GObjObjects()->Data[ 53382 ];
+		pFnSetRawInputKeyForAgentListMember = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.SetRawInputKeyForAgentListMember" );
 
 	UTgUIAgencyMenu_Recruiting_eventSetRawInputKeyForAgentListMember_Parms SetRawInputKeyForAgentListMember_Parms;
 	SetRawInputKeyForAgentListMember_Parms.Button = Button;
@@ -24659,7 +24660,7 @@ bool UTgUIAgencyMenu_Recruiting::OnAcceptKey ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnAcceptKey = NULL;
 
 	if ( ! pFnOnAcceptKey )
-		pFnOnAcceptKey = (UFunction*) UObject::GObjObjects()->Data[ 53379 ];
+		pFnOnAcceptKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.OnAcceptKey" );
 
 	UTgUIAgencyMenu_Recruiting_execOnAcceptKey_Parms OnAcceptKey_Parms;
 
@@ -24682,7 +24683,7 @@ bool UTgUIAgencyMenu_Recruiting::OnDeclineKey ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnDeclineKey = NULL;
 
 	if ( ! pFnOnDeclineKey )
-		pFnOnDeclineKey = (UFunction*) UObject::GObjObjects()->Data[ 53376 ];
+		pFnOnDeclineKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.OnDeclineKey" );
 
 	UTgUIAgencyMenu_Recruiting_execOnDeclineKey_Parms OnDeclineKey_Parms;
 
@@ -24703,7 +24704,7 @@ void UTgUIAgencyMenu_Recruiting::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 53375 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.FixupWidgetsUC" );
 
 	UTgUIAgencyMenu_Recruiting_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -24721,7 +24722,7 @@ void UTgUIAgencyMenu_Recruiting::OnEnterValueChanged ( class UUIObject* ebox, in
 	static UFunction* pFnOnEnterValueChanged = NULL;
 
 	if ( ! pFnOnEnterValueChanged )
-		pFnOnEnterValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 53372 ];
+		pFnOnEnterValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.OnEnterValueChanged" );
 
 	UTgUIAgencyMenu_Recruiting_execOnEnterValueChanged_Parms OnEnterValueChanged_Parms;
 	OnEnterValueChanged_Parms.ebox = ebox;
@@ -24745,7 +24746,7 @@ bool UTgUIAgencyMenu_Recruiting::OnDeclineButtonDelegate ( struct FInputEventPar
 	static UFunction* pFnOnDeclineButtonDelegate = NULL;
 
 	if ( ! pFnOnDeclineButtonDelegate )
-		pFnOnDeclineButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53369 ];
+		pFnOnDeclineButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.OnDeclineButtonDelegate" );
 
 	UTgUIAgencyMenu_Recruiting_execOnDeclineButtonDelegate_Parms OnDeclineButtonDelegate_Parms;
 
@@ -24772,7 +24773,7 @@ bool UTgUIAgencyMenu_Recruiting::OnAcceptButtonDelegate ( struct FInputEventPara
 	static UFunction* pFnOnAcceptButtonDelegate = NULL;
 
 	if ( ! pFnOnAcceptButtonDelegate )
-		pFnOnAcceptButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53366 ];
+		pFnOnAcceptButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.OnAcceptButtonDelegate" );
 
 	UTgUIAgencyMenu_Recruiting_execOnAcceptButtonDelegate_Parms OnAcceptButtonDelegate_Parms;
 
@@ -24797,7 +24798,7 @@ void UTgUIAgencyMenu_Recruiting::SendRecruitingUpdate ( )
 	static UFunction* pFnSendRecruitingUpdate = NULL;
 
 	if ( ! pFnSendRecruitingUpdate )
-		pFnSendRecruitingUpdate = (UFunction*) UObject::GObjObjects()->Data[ 53365 ];
+		pFnSendRecruitingUpdate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.SendRecruitingUpdate" );
 
 	UTgUIAgencyMenu_Recruiting_execSendRecruitingUpdate_Parms SendRecruitingUpdate_Parms;
 
@@ -24819,7 +24820,7 @@ bool UTgUIAgencyMenu_Recruiting::SelectAgent ( int nCharacterId )
 	static UFunction* pFnSelectAgent = NULL;
 
 	if ( ! pFnSelectAgent )
-		pFnSelectAgent = (UFunction*) UObject::GObjObjects()->Data[ 53362 ];
+		pFnSelectAgent = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.SelectAgent" );
 
 	UTgUIAgencyMenu_Recruiting_execSelectAgent_Parms SelectAgent_Parms;
 	SelectAgent_Parms.nCharacterId = nCharacterId;
@@ -24844,7 +24845,7 @@ bool UTgUIAgencyMenu_Recruiting::SelectAgentByButton ( class UUIButton* Button )
 	static UFunction* pFnSelectAgentByButton = NULL;
 
 	if ( ! pFnSelectAgentByButton )
-		pFnSelectAgentByButton = (UFunction*) UObject::GObjObjects()->Data[ 53359 ];
+		pFnSelectAgentByButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.SelectAgentByButton" );
 
 	UTgUIAgencyMenu_Recruiting_execSelectAgentByButton_Parms SelectAgentByButton_Parms;
 	SelectAgentByButton_Parms.Button = Button;
@@ -24867,7 +24868,7 @@ void UTgUIAgencyMenu_Recruiting::UpdateViewablePanels ( )
 	static UFunction* pFnUpdateViewablePanels = NULL;
 
 	if ( ! pFnUpdateViewablePanels )
-		pFnUpdateViewablePanels = (UFunction*) UObject::GObjObjects()->Data[ 53358 ];
+		pFnUpdateViewablePanels = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.UpdateViewablePanels" );
 
 	UTgUIAgencyMenu_Recruiting_execUpdateViewablePanels_Parms UpdateViewablePanels_Parms;
 
@@ -24887,7 +24888,7 @@ void UTgUIAgencyMenu_Recruiting::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 53357 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.PreCloseScene" );
 
 	UTgUIAgencyMenu_Recruiting_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -24907,7 +24908,7 @@ void UTgUIAgencyMenu_Recruiting::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 53356 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.PostOpenScene" );
 
 	UTgUIAgencyMenu_Recruiting_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -24927,7 +24928,7 @@ void UTgUIAgencyMenu_Recruiting::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 53355 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgencyMenu_Recruiting.FixupWidgets" );
 
 	UTgUIAgencyMenu_Recruiting_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -24948,7 +24949,7 @@ void UTgUIAgentProfile::eventSelectTab ( unsigned char Tab )
 	static UFunction* pFnSelectTab = NULL;
 
 	if ( ! pFnSelectTab )
-		pFnSelectTab = (UFunction*) UObject::GObjObjects()->Data[ 53446 ];
+		pFnSelectTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.SelectTab" );
 
 	UTgUIAgentProfile_eventSelectTab_Parms SelectTab_Parms;
 	SelectTab_Parms.Tab = Tab;
@@ -24967,7 +24968,7 @@ bool UTgUIAgentProfile::OnSelectAchieveTab ( struct FInputEventParameters* Event
 	static UFunction* pFnOnSelectAchieveTab = NULL;
 
 	if ( ! pFnOnSelectAchieveTab )
-		pFnOnSelectAchieveTab = (UFunction*) UObject::GObjObjects()->Data[ 53443 ];
+		pFnOnSelectAchieveTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.OnSelectAchieveTab" );
 
 	UTgUIAgentProfile_execOnSelectAchieveTab_Parms OnSelectAchieveTab_Parms;
 
@@ -24990,7 +24991,7 @@ bool UTgUIAgentProfile::OnSelectInvTab ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnSelectInvTab = NULL;
 
 	if ( ! pFnOnSelectInvTab )
-		pFnOnSelectInvTab = (UFunction*) UObject::GObjObjects()->Data[ 53440 ];
+		pFnOnSelectInvTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.OnSelectInvTab" );
 
 	UTgUIAgentProfile_execOnSelectInvTab_Parms OnSelectInvTab_Parms;
 
@@ -25013,7 +25014,7 @@ bool UTgUIAgentProfile::OnSelectStatsTab ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSelectStatsTab = NULL;
 
 	if ( ! pFnOnSelectStatsTab )
-		pFnOnSelectStatsTab = (UFunction*) UObject::GObjObjects()->Data[ 53437 ];
+		pFnOnSelectStatsTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.OnSelectStatsTab" );
 
 	UTgUIAgentProfile_execOnSelectStatsTab_Parms OnSelectStatsTab_Parms;
 
@@ -25036,7 +25037,7 @@ bool UTgUIAgentProfile::OnSelectSkillsTab ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSelectSkillsTab = NULL;
 
 	if ( ! pFnOnSelectSkillsTab )
-		pFnOnSelectSkillsTab = (UFunction*) UObject::GObjObjects()->Data[ 53434 ];
+		pFnOnSelectSkillsTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.OnSelectSkillsTab" );
 
 	UTgUIAgentProfile_execOnSelectSkillsTab_Parms OnSelectSkillsTab_Parms;
 
@@ -25059,7 +25060,7 @@ bool UTgUIAgentProfile::OnSelectEquipTab ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSelectEquipTab = NULL;
 
 	if ( ! pFnOnSelectEquipTab )
-		pFnOnSelectEquipTab = (UFunction*) UObject::GObjObjects()->Data[ 53431 ];
+		pFnOnSelectEquipTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.OnSelectEquipTab" );
 
 	UTgUIAgentProfile_execOnSelectEquipTab_Parms OnSelectEquipTab_Parms;
 
@@ -25082,7 +25083,7 @@ bool UTgUIAgentProfile::OnCloseButton ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 53428 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.OnCloseButton" );
 
 	UTgUIAgentProfile_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -25103,7 +25104,7 @@ void UTgUIAgentProfile::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 53426 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.FixupWidgetsUC" );
 
 	UTgUIAgentProfile_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -25121,7 +25122,7 @@ bool UTgUIAgentProfile::OnSelectProfileButton ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnSelectProfileButton = NULL;
 
 	if ( ! pFnOnSelectProfileButton )
-		pFnOnSelectProfileButton = (UFunction*) UObject::GObjObjects()->Data[ 53423 ];
+		pFnOnSelectProfileButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.OnSelectProfileButton" );
 
 	UTgUIAgentProfile_execOnSelectProfileButton_Parms OnSelectProfileButton_Parms;
 
@@ -25147,7 +25148,7 @@ class ATgPawn_Character* UTgUIAgentProfile::GetPawnToUse ( )
 	static UFunction* pFnGetPawnToUse = NULL;
 
 	if ( ! pFnGetPawnToUse )
-		pFnGetPawnToUse = (UFunction*) UObject::GObjObjects()->Data[ 53421 ];
+		pFnGetPawnToUse = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.GetPawnToUse" );
 
 	UTgUIAgentProfile_execGetPawnToUse_Parms GetPawnToUse_Parms;
 
@@ -25170,7 +25171,7 @@ bool UTgUIAgentProfile::CanChangeProfiles ( )
 	static UFunction* pFnCanChangeProfiles = NULL;
 
 	if ( ! pFnCanChangeProfiles )
-		pFnCanChangeProfiles = (UFunction*) UObject::GObjObjects()->Data[ 53419 ];
+		pFnCanChangeProfiles = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.CanChangeProfiles" );
 
 	UTgUIAgentProfile_execCanChangeProfiles_Parms CanChangeProfiles_Parms;
 
@@ -25193,7 +25194,7 @@ bool UTgUIAgentProfile::IsReadOnlyMode ( )
 	static UFunction* pFnIsReadOnlyMode = NULL;
 
 	if ( ! pFnIsReadOnlyMode )
-		pFnIsReadOnlyMode = (UFunction*) UObject::GObjObjects()->Data[ 53417 ];
+		pFnIsReadOnlyMode = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.IsReadOnlyMode" );
 
 	UTgUIAgentProfile_execIsReadOnlyMode_Parms IsReadOnlyMode_Parms;
 
@@ -25216,7 +25217,7 @@ void UTgUIAgentProfile::SetInspectedPawn ( class ATgPawn_Character* Pawn )
 	static UFunction* pFnSetInspectedPawn = NULL;
 
 	if ( ! pFnSetInspectedPawn )
-		pFnSetInspectedPawn = (UFunction*) UObject::GObjObjects()->Data[ 53415 ];
+		pFnSetInspectedPawn = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.SetInspectedPawn" );
 
 	UTgUIAgentProfile_execSetInspectedPawn_Parms SetInspectedPawn_Parms;
 	SetInspectedPawn_Parms.Pawn = Pawn;
@@ -25239,7 +25240,7 @@ bool UTgUIAgentProfile::OnAgentMenuKey ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnAgentMenuKey = NULL;
 
 	if ( ! pFnOnAgentMenuKey )
-		pFnOnAgentMenuKey = (UFunction*) UObject::GObjObjects()->Data[ 53412 ];
+		pFnOnAgentMenuKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.OnAgentMenuKey" );
 
 	UTgUIAgentProfile_execOnAgentMenuKey_Parms OnAgentMenuKey_Parms;
 
@@ -25264,7 +25265,7 @@ void UTgUIAgentProfile::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 53411 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.FixupWidgets" );
 
 	UTgUIAgentProfile_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -25284,7 +25285,7 @@ void UTgUIAgentProfile::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 53410 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.FixupTgUIScene" );
 
 	UTgUIAgentProfile_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -25304,7 +25305,7 @@ void UTgUIAgentProfile::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 53409 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.PostOpenScene" );
 
 	UTgUIAgentProfile_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -25325,7 +25326,7 @@ bool UTgUIAgentProfile::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 53407 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile.TickTgUIScene" );
 
 	UTgUIAgentProfile_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -25347,7 +25348,7 @@ void UTgUIAgentProfile_Achievement::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 53537 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Achievement.FixupWidgetsUC" );
 
 	UTgUIAgentProfile_Achievement_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -25364,7 +25365,7 @@ void UTgUIAgentProfile_Achievement::eventClearRawInputKeyForAchievementsList ( c
 	static UFunction* pFnClearRawInputKeyForAchievementsList = NULL;
 
 	if ( ! pFnClearRawInputKeyForAchievementsList )
-		pFnClearRawInputKeyForAchievementsList = (UFunction*) UObject::GObjObjects()->Data[ 53535 ];
+		pFnClearRawInputKeyForAchievementsList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Achievement.ClearRawInputKeyForAchievementsList" );
 
 	UTgUIAgentProfile_Achievement_eventClearRawInputKeyForAchievementsList_Parms ClearRawInputKeyForAchievementsList_Parms;
 	ClearRawInputKeyForAchievementsList_Parms.Button = Button;
@@ -25382,7 +25383,7 @@ void UTgUIAgentProfile_Achievement::eventSetRawInputKeyForCategory ( class UUIBu
 	static UFunction* pFnSetRawInputKeyForCategory = NULL;
 
 	if ( ! pFnSetRawInputKeyForCategory )
-		pFnSetRawInputKeyForCategory = (UFunction*) UObject::GObjObjects()->Data[ 53533 ];
+		pFnSetRawInputKeyForCategory = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Achievement.SetRawInputKeyForCategory" );
 
 	UTgUIAgentProfile_Achievement_eventSetRawInputKeyForCategory_Parms SetRawInputKeyForCategory_Parms;
 	SetRawInputKeyForCategory_Parms.Button = Button;
@@ -25403,7 +25404,7 @@ void UTgUIAgentProfile_Achievement::ActiveTooltipChanged ( class UUIScreenObject
 	static UFunction* pFnActiveTooltipChanged = NULL;
 
 	if ( ! pFnActiveTooltipChanged )
-		pFnActiveTooltipChanged = (UFunction*) UObject::GObjObjects()->Data[ 53528 ];
+		pFnActiveTooltipChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Achievement.ActiveTooltipChanged" );
 
 	UTgUIAgentProfile_Achievement_execActiveTooltipChanged_Parms ActiveTooltipChanged_Parms;
 	ActiveTooltipChanged_Parms.Sender = Sender;
@@ -25431,7 +25432,7 @@ void UTgUIAgentProfile_Achievement::OnProgressBarStateChangeDelegate ( class UUI
 	static UFunction* pFnOnProgressBarStateChangeDelegate = NULL;
 
 	if ( ! pFnOnProgressBarStateChangeDelegate )
-		pFnOnProgressBarStateChangeDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53523 ];
+		pFnOnProgressBarStateChangeDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Achievement.OnProgressBarStateChangeDelegate" );
 
 	UTgUIAgentProfile_Achievement_execOnProgressBarStateChangeDelegate_Parms OnProgressBarStateChangeDelegate_Parms;
 	OnProgressBarStateChangeDelegate_Parms.Sender = Sender;
@@ -25457,7 +25458,7 @@ bool UTgUIAgentProfile_Achievement::OnAchievementNextButtonClicked ( struct FInp
 	static UFunction* pFnOnAchievementNextButtonClicked = NULL;
 
 	if ( ! pFnOnAchievementNextButtonClicked )
-		pFnOnAchievementNextButtonClicked = (UFunction*) UObject::GObjObjects()->Data[ 53520 ];
+		pFnOnAchievementNextButtonClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Achievement.OnAchievementNextButtonClicked" );
 
 	UTgUIAgentProfile_Achievement_execOnAchievementNextButtonClicked_Parms OnAchievementNextButtonClicked_Parms;
 
@@ -25484,7 +25485,7 @@ bool UTgUIAgentProfile_Achievement::OnAchievementPrevButtonClicked ( struct FInp
 	static UFunction* pFnOnAchievementPrevButtonClicked = NULL;
 
 	if ( ! pFnOnAchievementPrevButtonClicked )
-		pFnOnAchievementPrevButtonClicked = (UFunction*) UObject::GObjObjects()->Data[ 53517 ];
+		pFnOnAchievementPrevButtonClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Achievement.OnAchievementPrevButtonClicked" );
 
 	UTgUIAgentProfile_Achievement_execOnAchievementPrevButtonClicked_Parms OnAchievementPrevButtonClicked_Parms;
 
@@ -25511,7 +25512,7 @@ bool UTgUIAgentProfile_Achievement::OnCategoryNextButtonClicked ( struct FInputE
 	static UFunction* pFnOnCategoryNextButtonClicked = NULL;
 
 	if ( ! pFnOnCategoryNextButtonClicked )
-		pFnOnCategoryNextButtonClicked = (UFunction*) UObject::GObjObjects()->Data[ 53514 ];
+		pFnOnCategoryNextButtonClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Achievement.OnCategoryNextButtonClicked" );
 
 	UTgUIAgentProfile_Achievement_execOnCategoryNextButtonClicked_Parms OnCategoryNextButtonClicked_Parms;
 
@@ -25538,7 +25539,7 @@ bool UTgUIAgentProfile_Achievement::OnCategoryPrevButtonClicked ( struct FInputE
 	static UFunction* pFnOnCategoryPrevButtonClicked = NULL;
 
 	if ( ! pFnOnCategoryPrevButtonClicked )
-		pFnOnCategoryPrevButtonClicked = (UFunction*) UObject::GObjObjects()->Data[ 53511 ];
+		pFnOnCategoryPrevButtonClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Achievement.OnCategoryPrevButtonClicked" );
 
 	UTgUIAgentProfile_Achievement_execOnCategoryPrevButtonClicked_Parms OnCategoryPrevButtonClicked_Parms;
 
@@ -25565,7 +25566,7 @@ bool UTgUIAgentProfile_Achievement::OnAchievementCategoryClicked ( struct FInput
 	static UFunction* pFnOnAchievementCategoryClicked = NULL;
 
 	if ( ! pFnOnAchievementCategoryClicked )
-		pFnOnAchievementCategoryClicked = (UFunction*) UObject::GObjObjects()->Data[ 53508 ];
+		pFnOnAchievementCategoryClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Achievement.OnAchievementCategoryClicked" );
 
 	UTgUIAgentProfile_Achievement_execOnAchievementCategoryClicked_Parms OnAchievementCategoryClicked_Parms;
 
@@ -25590,7 +25591,7 @@ void UTgUIAgentProfile_Achievement::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 53507 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Achievement.PreCloseScene" );
 
 	UTgUIAgentProfile_Achievement_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -25611,7 +25612,7 @@ bool UTgUIAgentProfile_Achievement::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 53505 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Achievement.TickTgUIScene" );
 
 	UTgUIAgentProfile_Achievement_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -25633,7 +25634,7 @@ void UTgUIAgentProfile_Achievement::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 53504 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Achievement.FixupTgUIScene" );
 
 	UTgUIAgentProfile_Achievement_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -25654,7 +25655,7 @@ void UTgUIAgentProfile_Equip::eventSelectTab ( unsigned char Tab )
 	static UFunction* pFnSelectTab = NULL;
 
 	if ( ! pFnSelectTab )
-		pFnSelectTab = (UFunction*) UObject::GObjObjects()->Data[ 53700 ];
+		pFnSelectTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.SelectTab" );
 
 	UTgUIAgentProfile_Equip_eventSelectTab_Parms SelectTab_Parms;
 	SelectTab_Parms.Tab = Tab;
@@ -25673,7 +25674,7 @@ bool UTgUIAgentProfile_Equip::OnCloseButton ( struct FInputEventParameters* Even
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 53697 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnCloseButton" );
 
 	UTgUIAgentProfile_Equip_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -25695,7 +25696,7 @@ void UTgUIAgentProfile_Equip::eventSetEquippedItemRepairClick ( class UUIScreenO
 	static UFunction* pFnSetEquippedItemRepairClick = NULL;
 
 	if ( ! pFnSetEquippedItemRepairClick )
-		pFnSetEquippedItemRepairClick = (UFunction*) UObject::GObjObjects()->Data[ 53695 ];
+		pFnSetEquippedItemRepairClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.SetEquippedItemRepairClick" );
 
 	UTgUIAgentProfile_Equip_eventSetEquippedItemRepairClick_Parms SetEquippedItemRepairClick_Parms;
 	SetEquippedItemRepairClick_Parms.Obj = Obj;
@@ -25713,7 +25714,7 @@ void UTgUIAgentProfile_Equip::eventSetRepairButtonMouseOver ( class UUIScreenObj
 	static UFunction* pFnSetRepairButtonMouseOver = NULL;
 
 	if ( ! pFnSetRepairButtonMouseOver )
-		pFnSetRepairButtonMouseOver = (UFunction*) UObject::GObjObjects()->Data[ 53693 ];
+		pFnSetRepairButtonMouseOver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.SetRepairButtonMouseOver" );
 
 	UTgUIAgentProfile_Equip_eventSetRepairButtonMouseOver_Parms SetRepairButtonMouseOver_Parms;
 	SetRepairButtonMouseOver_Parms.Obj = Obj;
@@ -25731,7 +25732,7 @@ void UTgUIAgentProfile_Equip::eventSetEquippedItemStateChange ( class UUIScreenO
 	static UFunction* pFnSetEquippedItemStateChange = NULL;
 
 	if ( ! pFnSetEquippedItemStateChange )
-		pFnSetEquippedItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53691 ];
+		pFnSetEquippedItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.SetEquippedItemStateChange" );
 
 	UTgUIAgentProfile_Equip_eventSetEquippedItemStateChange_Parms SetEquippedItemStateChange_Parms;
 	SetEquippedItemStateChange_Parms.Obj = Obj;
@@ -25749,7 +25750,7 @@ void UTgUIAgentProfile_Equip::eventSetEquippedItemSelect ( class UUIScreenObject
 	static UFunction* pFnSetEquippedItemSelect = NULL;
 
 	if ( ! pFnSetEquippedItemSelect )
-		pFnSetEquippedItemSelect = (UFunction*) UObject::GObjObjects()->Data[ 53689 ];
+		pFnSetEquippedItemSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.SetEquippedItemSelect" );
 
 	UTgUIAgentProfile_Equip_eventSetEquippedItemSelect_Parms SetEquippedItemSelect_Parms;
 	SetEquippedItemSelect_Parms.Obj = Obj;
@@ -25767,7 +25768,7 @@ void UTgUIAgentProfile_Equip::eventSetDeviceListStateChange ( class UUIScreenObj
 	static UFunction* pFnSetDeviceListStateChange = NULL;
 
 	if ( ! pFnSetDeviceListStateChange )
-		pFnSetDeviceListStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53687 ];
+		pFnSetDeviceListStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.SetDeviceListStateChange" );
 
 	UTgUIAgentProfile_Equip_eventSetDeviceListStateChange_Parms SetDeviceListStateChange_Parms;
 	SetDeviceListStateChange_Parms.Obj = Obj;
@@ -25785,7 +25786,7 @@ void UTgUIAgentProfile_Equip::eventSetDeviceListSelect ( class UUIScreenObject* 
 	static UFunction* pFnSetDeviceListSelect = NULL;
 
 	if ( ! pFnSetDeviceListSelect )
-		pFnSetDeviceListSelect = (UFunction*) UObject::GObjObjects()->Data[ 53685 ];
+		pFnSetDeviceListSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.SetDeviceListSelect" );
 
 	UTgUIAgentProfile_Equip_eventSetDeviceListSelect_Parms SetDeviceListSelect_Parms;
 	SetDeviceListSelect_Parms.Obj = Obj;
@@ -25803,7 +25804,7 @@ void UTgUIAgentProfile_Equip::eventSetInvItemSelect ( class UUIScreenObject* Obj
 	static UFunction* pFnSetInvItemSelect = NULL;
 
 	if ( ! pFnSetInvItemSelect )
-		pFnSetInvItemSelect = (UFunction*) UObject::GObjObjects()->Data[ 53683 ];
+		pFnSetInvItemSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.SetInvItemSelect" );
 
 	UTgUIAgentProfile_Equip_eventSetInvItemSelect_Parms SetInvItemSelect_Parms;
 	SetInvItemSelect_Parms.Obj = Obj;
@@ -25821,7 +25822,7 @@ void UTgUIAgentProfile_Equip::eventSetInvItemStateChange ( class UUIScreenObject
 	static UFunction* pFnSetInvItemStateChange = NULL;
 
 	if ( ! pFnSetInvItemStateChange )
-		pFnSetInvItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53681 ];
+		pFnSetInvItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.SetInvItemStateChange" );
 
 	UTgUIAgentProfile_Equip_eventSetInvItemStateChange_Parms SetInvItemStateChange_Parms;
 	SetInvItemStateChange_Parms.Obj = Obj;
@@ -25838,7 +25839,7 @@ void UTgUIAgentProfile_Equip::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 53680 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.FixupWidgetsUC" );
 
 	UTgUIAgentProfile_Equip_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -25854,7 +25855,7 @@ void UTgUIAgentProfile_Equip::PostRender ( )
 	static UFunction* pFnPostRender = NULL;
 
 	if ( ! pFnPostRender )
-		pFnPostRender = (UFunction*) UObject::GObjObjects()->Data[ 53679 ];
+		pFnPostRender = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.PostRender" );
 
 	UTgUIAgentProfile_Equip_execPostRender_Parms PostRender_Parms;
 
@@ -25876,7 +25877,7 @@ bool UTgUIAgentProfile_Equip::CheckTutorialDisabled ( unsigned char Step )
 	static UFunction* pFnCheckTutorialDisabled = NULL;
 
 	if ( ! pFnCheckTutorialDisabled )
-		pFnCheckTutorialDisabled = (UFunction*) UObject::GObjObjects()->Data[ 53676 ];
+		pFnCheckTutorialDisabled = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.CheckTutorialDisabled" );
 
 	UTgUIAgentProfile_Equip_execCheckTutorialDisabled_Parms CheckTutorialDisabled_Parms;
 	CheckTutorialDisabled_Parms.Step = Step;
@@ -25901,7 +25902,7 @@ bool UTgUIAgentProfile_Equip::CheckTutorialStep ( unsigned char Step )
 	static UFunction* pFnCheckTutorialStep = NULL;
 
 	if ( ! pFnCheckTutorialStep )
-		pFnCheckTutorialStep = (UFunction*) UObject::GObjObjects()->Data[ 53673 ];
+		pFnCheckTutorialStep = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.CheckTutorialStep" );
 
 	UTgUIAgentProfile_Equip_execCheckTutorialStep_Parms CheckTutorialStep_Parms;
 	CheckTutorialStep_Parms.Step = Step;
@@ -25926,7 +25927,7 @@ void UTgUIAgentProfile_Equip::UpdateTutorialProgress ( unsigned char Step, int N
 	static UFunction* pFnUpdateTutorialProgress = NULL;
 
 	if ( ! pFnUpdateTutorialProgress )
-		pFnUpdateTutorialProgress = (UFunction*) UObject::GObjObjects()->Data[ 53670 ];
+		pFnUpdateTutorialProgress = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.UpdateTutorialProgress" );
 
 	UTgUIAgentProfile_Equip_execUpdateTutorialProgress_Parms UpdateTutorialProgress_Parms;
 	UpdateTutorialProgress_Parms.Step = Step;
@@ -25949,7 +25950,7 @@ void UTgUIAgentProfile_Equip::BeginTutorial ( unsigned char TutType )
 	static UFunction* pFnBeginTutorial = NULL;
 
 	if ( ! pFnBeginTutorial )
-		pFnBeginTutorial = (UFunction*) UObject::GObjObjects()->Data[ 53668 ];
+		pFnBeginTutorial = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.BeginTutorial" );
 
 	UTgUIAgentProfile_Equip_execBeginTutorial_Parms BeginTutorial_Parms;
 	BeginTutorial_Parms.TutType = TutType;
@@ -25970,7 +25971,7 @@ void UTgUIAgentProfile_Equip::OnPaperDollUpdated ( )
 	static UFunction* pFnOnPaperDollUpdated = NULL;
 
 	if ( ! pFnOnPaperDollUpdated )
-		pFnOnPaperDollUpdated = (UFunction*) UObject::GObjObjects()->Data[ 53667 ];
+		pFnOnPaperDollUpdated = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnPaperDollUpdated" );
 
 	UTgUIAgentProfile_Equip_execOnPaperDollUpdated_Parms OnPaperDollUpdated_Parms;
 
@@ -25991,7 +25992,7 @@ void UTgUIAgentProfile_Equip::UpdatePaperDoll ( unsigned long bInit )
 	static UFunction* pFnUpdatePaperDoll = NULL;
 
 	if ( ! pFnUpdatePaperDoll )
-		pFnUpdatePaperDoll = (UFunction*) UObject::GObjObjects()->Data[ 53665 ];
+		pFnUpdatePaperDoll = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.UpdatePaperDoll" );
 
 	UTgUIAgentProfile_Equip_execUpdatePaperDoll_Parms UpdatePaperDoll_Parms;
 	UpdatePaperDoll_Parms.bInit = bInit;
@@ -26012,7 +26013,7 @@ void UTgUIAgentProfile_Equip::DestroyPaperDoll ( )
 	static UFunction* pFnDestroyPaperDoll = NULL;
 
 	if ( ! pFnDestroyPaperDoll )
-		pFnDestroyPaperDoll = (UFunction*) UObject::GObjObjects()->Data[ 53664 ];
+		pFnDestroyPaperDoll = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.DestroyPaperDoll" );
 
 	UTgUIAgentProfile_Equip_execDestroyPaperDoll_Parms DestroyPaperDoll_Parms;
 
@@ -26032,7 +26033,7 @@ void UTgUIAgentProfile_Equip::SetupPaperDoll ( )
 	static UFunction* pFnSetupPaperDoll = NULL;
 
 	if ( ! pFnSetupPaperDoll )
-		pFnSetupPaperDoll = (UFunction*) UObject::GObjObjects()->Data[ 53663 ];
+		pFnSetupPaperDoll = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.SetupPaperDoll" );
 
 	UTgUIAgentProfile_Equip_execSetupPaperDoll_Parms SetupPaperDoll_Parms;
 
@@ -26054,7 +26055,7 @@ bool UTgUIAgentProfile_Equip::OnConfirmOkClicked ( struct FInputEventParameters*
 	static UFunction* pFnOnConfirmOkClicked = NULL;
 
 	if ( ! pFnOnConfirmOkClicked )
-		pFnOnConfirmOkClicked = (UFunction*) UObject::GObjObjects()->Data[ 53660 ];
+		pFnOnConfirmOkClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnConfirmOkClicked" );
 
 	UTgUIAgentProfile_Equip_execOnConfirmOkClicked_Parms OnConfirmOkClicked_Parms;
 
@@ -26081,7 +26082,7 @@ bool UTgUIAgentProfile_Equip::OnConfirmNoClicked ( struct FInputEventParameters*
 	static UFunction* pFnOnConfirmNoClicked = NULL;
 
 	if ( ! pFnOnConfirmNoClicked )
-		pFnOnConfirmNoClicked = (UFunction*) UObject::GObjObjects()->Data[ 53657 ];
+		pFnOnConfirmNoClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnConfirmNoClicked" );
 
 	UTgUIAgentProfile_Equip_execOnConfirmNoClicked_Parms OnConfirmNoClicked_Parms;
 
@@ -26108,7 +26109,7 @@ bool UTgUIAgentProfile_Equip::OnConfirmYesClicked ( struct FInputEventParameters
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 53654 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnConfirmYesClicked" );
 
 	UTgUIAgentProfile_Equip_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -26137,7 +26138,7 @@ void UTgUIAgentProfile_Equip::OnEquippedItemStateChange ( class UUIScreenObject*
 	static UFunction* pFnOnEquippedItemStateChange = NULL;
 
 	if ( ! pFnOnEquippedItemStateChange )
-		pFnOnEquippedItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53649 ];
+		pFnOnEquippedItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnEquippedItemStateChange" );
 
 	UTgUIAgentProfile_Equip_execOnEquippedItemStateChange_Parms OnEquippedItemStateChange_Parms;
 	OnEquippedItemStateChange_Parms.Sender = Sender;
@@ -26163,7 +26164,7 @@ bool UTgUIAgentProfile_Equip::OnEquippedItemSelect ( struct FInputEventParameter
 	static UFunction* pFnOnEquippedItemSelect = NULL;
 
 	if ( ! pFnOnEquippedItemSelect )
-		pFnOnEquippedItemSelect = (UFunction*) UObject::GObjObjects()->Data[ 53646 ];
+		pFnOnEquippedItemSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnEquippedItemSelect" );
 
 	UTgUIAgentProfile_Equip_execOnEquippedItemSelect_Parms OnEquippedItemSelect_Parms;
 
@@ -26190,7 +26191,7 @@ bool UTgUIAgentProfile_Equip::OnInvItemSelect ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnInvItemSelect = NULL;
 
 	if ( ! pFnOnInvItemSelect )
-		pFnOnInvItemSelect = (UFunction*) UObject::GObjObjects()->Data[ 53643 ];
+		pFnOnInvItemSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnInvItemSelect" );
 
 	UTgUIAgentProfile_Equip_execOnInvItemSelect_Parms OnInvItemSelect_Parms;
 
@@ -26219,7 +26220,7 @@ void UTgUIAgentProfile_Equip::OnInvItemStateChange ( class UUIScreenObject* Send
 	static UFunction* pFnOnInvItemStateChange = NULL;
 
 	if ( ! pFnOnInvItemStateChange )
-		pFnOnInvItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53638 ];
+		pFnOnInvItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnInvItemStateChange" );
 
 	UTgUIAgentProfile_Equip_execOnInvItemStateChange_Parms OnInvItemStateChange_Parms;
 	OnInvItemStateChange_Parms.Sender = Sender;
@@ -26245,7 +26246,7 @@ bool UTgUIAgentProfile_Equip::OnDeviceListSelect ( struct FInputEventParameters*
 	static UFunction* pFnOnDeviceListSelect = NULL;
 
 	if ( ! pFnOnDeviceListSelect )
-		pFnOnDeviceListSelect = (UFunction*) UObject::GObjObjects()->Data[ 53635 ];
+		pFnOnDeviceListSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnDeviceListSelect" );
 
 	UTgUIAgentProfile_Equip_execOnDeviceListSelect_Parms OnDeviceListSelect_Parms;
 
@@ -26274,7 +26275,7 @@ void UTgUIAgentProfile_Equip::OnDeviceListStateChange ( class UUIScreenObject* S
 	static UFunction* pFnOnDeviceListStateChange = NULL;
 
 	if ( ! pFnOnDeviceListStateChange )
-		pFnOnDeviceListStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53630 ];
+		pFnOnDeviceListStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnDeviceListStateChange" );
 
 	UTgUIAgentProfile_Equip_execOnDeviceListStateChange_Parms OnDeviceListStateChange_Parms;
 	OnDeviceListStateChange_Parms.Sender = Sender;
@@ -26302,7 +26303,7 @@ void UTgUIAgentProfile_Equip::OnRepairButtonMouseOver ( class UUIScreenObject* S
 	static UFunction* pFnOnRepairButtonMouseOver = NULL;
 
 	if ( ! pFnOnRepairButtonMouseOver )
-		pFnOnRepairButtonMouseOver = (UFunction*) UObject::GObjObjects()->Data[ 53625 ];
+		pFnOnRepairButtonMouseOver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnRepairButtonMouseOver" );
 
 	UTgUIAgentProfile_Equip_execOnRepairButtonMouseOver_Parms OnRepairButtonMouseOver_Parms;
 	OnRepairButtonMouseOver_Parms.Sender = Sender;
@@ -26328,7 +26329,7 @@ bool UTgUIAgentProfile_Equip::OnRepairButtonClick ( struct FInputEventParameters
 	static UFunction* pFnOnRepairButtonClick = NULL;
 
 	if ( ! pFnOnRepairButtonClick )
-		pFnOnRepairButtonClick = (UFunction*) UObject::GObjObjects()->Data[ 53622 ];
+		pFnOnRepairButtonClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnRepairButtonClick" );
 
 	UTgUIAgentProfile_Equip_execOnRepairButtonClick_Parms OnRepairButtonClick_Parms;
 
@@ -26355,7 +26356,7 @@ bool UTgUIAgentProfile_Equip::OnPrevDevicePageButton ( struct FInputEventParamet
 	static UFunction* pFnOnPrevDevicePageButton = NULL;
 
 	if ( ! pFnOnPrevDevicePageButton )
-		pFnOnPrevDevicePageButton = (UFunction*) UObject::GObjObjects()->Data[ 53619 ];
+		pFnOnPrevDevicePageButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnPrevDevicePageButton" );
 
 	UTgUIAgentProfile_Equip_execOnPrevDevicePageButton_Parms OnPrevDevicePageButton_Parms;
 
@@ -26382,7 +26383,7 @@ bool UTgUIAgentProfile_Equip::OnNextDevicePageButton ( struct FInputEventParamet
 	static UFunction* pFnOnNextDevicePageButton = NULL;
 
 	if ( ! pFnOnNextDevicePageButton )
-		pFnOnNextDevicePageButton = (UFunction*) UObject::GObjObjects()->Data[ 53616 ];
+		pFnOnNextDevicePageButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnNextDevicePageButton" );
 
 	UTgUIAgentProfile_Equip_execOnNextDevicePageButton_Parms OnNextDevicePageButton_Parms;
 
@@ -26409,7 +26410,7 @@ bool UTgUIAgentProfile_Equip::OnSelectAppearanceTab ( struct FInputEventParamete
 	static UFunction* pFnOnSelectAppearanceTab = NULL;
 
 	if ( ! pFnOnSelectAppearanceTab )
-		pFnOnSelectAppearanceTab = (UFunction*) UObject::GObjObjects()->Data[ 53613 ];
+		pFnOnSelectAppearanceTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnSelectAppearanceTab" );
 
 	UTgUIAgentProfile_Equip_execOnSelectAppearanceTab_Parms OnSelectAppearanceTab_Parms;
 
@@ -26436,7 +26437,7 @@ bool UTgUIAgentProfile_Equip::OnSelectArmorTab ( struct FInputEventParameters* E
 	static UFunction* pFnOnSelectArmorTab = NULL;
 
 	if ( ! pFnOnSelectArmorTab )
-		pFnOnSelectArmorTab = (UFunction*) UObject::GObjObjects()->Data[ 53610 ];
+		pFnOnSelectArmorTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnSelectArmorTab" );
 
 	UTgUIAgentProfile_Equip_execOnSelectArmorTab_Parms OnSelectArmorTab_Parms;
 
@@ -26463,7 +26464,7 @@ bool UTgUIAgentProfile_Equip::OnSelectDeviceTab ( struct FInputEventParameters* 
 	static UFunction* pFnOnSelectDeviceTab = NULL;
 
 	if ( ! pFnOnSelectDeviceTab )
-		pFnOnSelectDeviceTab = (UFunction*) UObject::GObjObjects()->Data[ 53607 ];
+		pFnOnSelectDeviceTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnSelectDeviceTab" );
 
 	UTgUIAgentProfile_Equip_execOnSelectDeviceTab_Parms OnSelectDeviceTab_Parms;
 
@@ -26490,7 +26491,7 @@ bool UTgUIAgentProfile_Equip::OnAgentMenuKey ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnAgentMenuKey = NULL;
 
 	if ( ! pFnOnAgentMenuKey )
-		pFnOnAgentMenuKey = (UFunction*) UObject::GObjObjects()->Data[ 53604 ];
+		pFnOnAgentMenuKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.OnAgentMenuKey" );
 
 	UTgUIAgentProfile_Equip_execOnAgentMenuKey_Parms OnAgentMenuKey_Parms;
 
@@ -26516,7 +26517,7 @@ bool UTgUIAgentProfile_Equip::IsReadOnlyMode ( )
 	static UFunction* pFnIsReadOnlyMode = NULL;
 
 	if ( ! pFnIsReadOnlyMode )
-		pFnIsReadOnlyMode = (UFunction*) UObject::GObjObjects()->Data[ 53602 ];
+		pFnIsReadOnlyMode = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.IsReadOnlyMode" );
 
 	UTgUIAgentProfile_Equip_execIsReadOnlyMode_Parms IsReadOnlyMode_Parms;
 
@@ -26538,7 +26539,7 @@ void UTgUIAgentProfile_Equip::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 53601 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.PreCloseScene" );
 
 	UTgUIAgentProfile_Equip_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -26558,7 +26559,7 @@ void UTgUIAgentProfile_Equip::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 53600 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.FixupWidgets" );
 
 	UTgUIAgentProfile_Equip_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -26579,7 +26580,7 @@ bool UTgUIAgentProfile_Equip::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 53598 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Equip.TickTgUIScene" );
 
 	UTgUIAgentProfile_Equip_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -26601,7 +26602,7 @@ void UTgUIAgentProfile_Inventory::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 53832 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.FixupWidgetsUC" );
 
 	UTgUIAgentProfile_Inventory_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -26618,7 +26619,7 @@ void UTgUIAgentProfile_Inventory::eventSetEquipIconStateChange ( class UUIScreen
 	static UFunction* pFnSetEquipIconStateChange = NULL;
 
 	if ( ! pFnSetEquipIconStateChange )
-		pFnSetEquipIconStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53830 ];
+		pFnSetEquipIconStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.SetEquipIconStateChange" );
 
 	UTgUIAgentProfile_Inventory_eventSetEquipIconStateChange_Parms SetEquipIconStateChange_Parms;
 	SetEquipIconStateChange_Parms.Obj = Obj;
@@ -26636,7 +26637,7 @@ void UTgUIAgentProfile_Inventory::eventSetSalvagedItemStateChange ( class UUIScr
 	static UFunction* pFnSetSalvagedItemStateChange = NULL;
 
 	if ( ! pFnSetSalvagedItemStateChange )
-		pFnSetSalvagedItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53828 ];
+		pFnSetSalvagedItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.SetSalvagedItemStateChange" );
 
 	UTgUIAgentProfile_Inventory_eventSetSalvagedItemStateChange_Parms SetSalvagedItemStateChange_Parms;
 	SetSalvagedItemStateChange_Parms.Obj = Obj;
@@ -26654,7 +26655,7 @@ void UTgUIAgentProfile_Inventory::eventSetInvMainStateChange ( class UUIScreenOb
 	static UFunction* pFnSetInvMainStateChange = NULL;
 
 	if ( ! pFnSetInvMainStateChange )
-		pFnSetInvMainStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53826 ];
+		pFnSetInvMainStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.SetInvMainStateChange" );
 
 	UTgUIAgentProfile_Inventory_eventSetInvMainStateChange_Parms SetInvMainStateChange_Parms;
 	SetInvMainStateChange_Parms.Obj = Obj;
@@ -26672,7 +26673,7 @@ void UTgUIAgentProfile_Inventory::eventSetInvItemStateChange ( class UUIScreenOb
 	static UFunction* pFnSetInvItemStateChange = NULL;
 
 	if ( ! pFnSetInvItemStateChange )
-		pFnSetInvItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53824 ];
+		pFnSetInvItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.SetInvItemStateChange" );
 
 	UTgUIAgentProfile_Inventory_eventSetInvItemStateChange_Parms SetInvItemStateChange_Parms;
 	SetInvItemStateChange_Parms.Obj = Obj;
@@ -26690,7 +26691,7 @@ void UTgUIAgentProfile_Inventory::eventSetSelectInventoryItemDelegate ( class UU
 	static UFunction* pFnSetSelectInventoryItemDelegate = NULL;
 
 	if ( ! pFnSetSelectInventoryItemDelegate )
-		pFnSetSelectInventoryItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53822 ];
+		pFnSetSelectInventoryItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.SetSelectInventoryItemDelegate" );
 
 	UTgUIAgentProfile_Inventory_eventSetSelectInventoryItemDelegate_Parms SetSelectInventoryItemDelegate_Parms;
 	SetSelectInventoryItemDelegate_Parms.Obj = Obj;
@@ -26708,7 +26709,7 @@ void UTgUIAgentProfile_Inventory::ResizeSalvagedDisplayList ( int nNewSize )
 	static UFunction* pFnResizeSalvagedDisplayList = NULL;
 
 	if ( ! pFnResizeSalvagedDisplayList )
-		pFnResizeSalvagedDisplayList = (UFunction*) UObject::GObjObjects()->Data[ 53820 ];
+		pFnResizeSalvagedDisplayList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.ResizeSalvagedDisplayList" );
 
 	UTgUIAgentProfile_Inventory_execResizeSalvagedDisplayList_Parms ResizeSalvagedDisplayList_Parms;
 	ResizeSalvagedDisplayList_Parms.nNewSize = nNewSize;
@@ -26733,7 +26734,7 @@ void UTgUIAgentProfile_Inventory::OnEquipIconStateChange ( class UUIScreenObject
 	static UFunction* pFnOnEquipIconStateChange = NULL;
 
 	if ( ! pFnOnEquipIconStateChange )
-		pFnOnEquipIconStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53815 ];
+		pFnOnEquipIconStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.OnEquipIconStateChange" );
 
 	UTgUIAgentProfile_Inventory_execOnEquipIconStateChange_Parms OnEquipIconStateChange_Parms;
 	OnEquipIconStateChange_Parms.Sender = Sender;
@@ -26761,7 +26762,7 @@ void UTgUIAgentProfile_Inventory::OnSalvagedItemStateChange ( class UUIScreenObj
 	static UFunction* pFnOnSalvagedItemStateChange = NULL;
 
 	if ( ! pFnOnSalvagedItemStateChange )
-		pFnOnSalvagedItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53810 ];
+		pFnOnSalvagedItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.OnSalvagedItemStateChange" );
 
 	UTgUIAgentProfile_Inventory_execOnSalvagedItemStateChange_Parms OnSalvagedItemStateChange_Parms;
 	OnSalvagedItemStateChange_Parms.Sender = Sender;
@@ -26789,7 +26790,7 @@ void UTgUIAgentProfile_Inventory::OnInvMainStateChange ( class UUIScreenObject* 
 	static UFunction* pFnOnInvMainStateChange = NULL;
 
 	if ( ! pFnOnInvMainStateChange )
-		pFnOnInvMainStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53805 ];
+		pFnOnInvMainStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.OnInvMainStateChange" );
 
 	UTgUIAgentProfile_Inventory_execOnInvMainStateChange_Parms OnInvMainStateChange_Parms;
 	OnInvMainStateChange_Parms.Sender = Sender;
@@ -26817,7 +26818,7 @@ void UTgUIAgentProfile_Inventory::OnInvItemStateChange ( class UUIScreenObject* 
 	static UFunction* pFnOnInvItemStateChange = NULL;
 
 	if ( ! pFnOnInvItemStateChange )
-		pFnOnInvItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 53800 ];
+		pFnOnInvItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.OnInvItemStateChange" );
 
 	UTgUIAgentProfile_Inventory_execOnInvItemStateChange_Parms OnInvItemStateChange_Parms;
 	OnInvItemStateChange_Parms.Sender = Sender;
@@ -26843,7 +26844,7 @@ bool UTgUIAgentProfile_Inventory::OnSalvageCloseDelegate ( struct FInputEventPar
 	static UFunction* pFnOnSalvageCloseDelegate = NULL;
 
 	if ( ! pFnOnSalvageCloseDelegate )
-		pFnOnSalvageCloseDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53797 ];
+		pFnOnSalvageCloseDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.OnSalvageCloseDelegate" );
 
 	UTgUIAgentProfile_Inventory_execOnSalvageCloseDelegate_Parms OnSalvageCloseDelegate_Parms;
 
@@ -26870,7 +26871,7 @@ bool UTgUIAgentProfile_Inventory::OnActivateInventoryItemDelegate ( struct FInpu
 	static UFunction* pFnOnActivateInventoryItemDelegate = NULL;
 
 	if ( ! pFnOnActivateInventoryItemDelegate )
-		pFnOnActivateInventoryItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53794 ];
+		pFnOnActivateInventoryItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.OnActivateInventoryItemDelegate" );
 
 	UTgUIAgentProfile_Inventory_execOnActivateInventoryItemDelegate_Parms OnActivateInventoryItemDelegate_Parms;
 
@@ -26897,7 +26898,7 @@ bool UTgUIAgentProfile_Inventory::OnSortInventoryDelegate ( struct FInputEventPa
 	static UFunction* pFnOnSortInventoryDelegate = NULL;
 
 	if ( ! pFnOnSortInventoryDelegate )
-		pFnOnSortInventoryDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53791 ];
+		pFnOnSortInventoryDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.OnSortInventoryDelegate" );
 
 	UTgUIAgentProfile_Inventory_execOnSortInventoryDelegate_Parms OnSortInventoryDelegate_Parms;
 
@@ -26924,7 +26925,7 @@ bool UTgUIAgentProfile_Inventory::OnSalvageInventoryItemDelegate ( struct FInput
 	static UFunction* pFnOnSalvageInventoryItemDelegate = NULL;
 
 	if ( ! pFnOnSalvageInventoryItemDelegate )
-		pFnOnSalvageInventoryItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53788 ];
+		pFnOnSalvageInventoryItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.OnSalvageInventoryItemDelegate" );
 
 	UTgUIAgentProfile_Inventory_execOnSalvageInventoryItemDelegate_Parms OnSalvageInventoryItemDelegate_Parms;
 
@@ -26951,7 +26952,7 @@ bool UTgUIAgentProfile_Inventory::OnDeleteInventoryItemDelegate ( struct FInputE
 	static UFunction* pFnOnDeleteInventoryItemDelegate = NULL;
 
 	if ( ! pFnOnDeleteInventoryItemDelegate )
-		pFnOnDeleteInventoryItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53785 ];
+		pFnOnDeleteInventoryItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.OnDeleteInventoryItemDelegate" );
 
 	UTgUIAgentProfile_Inventory_execOnDeleteInventoryItemDelegate_Parms OnDeleteInventoryItemDelegate_Parms;
 
@@ -26978,7 +26979,7 @@ bool UTgUIAgentProfile_Inventory::OnSelectInventoryItemDelegate ( struct FInputE
 	static UFunction* pFnOnSelectInventoryItemDelegate = NULL;
 
 	if ( ! pFnOnSelectInventoryItemDelegate )
-		pFnOnSelectInventoryItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53782 ];
+		pFnOnSelectInventoryItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.OnSelectInventoryItemDelegate" );
 
 	UTgUIAgentProfile_Inventory_execOnSelectInventoryItemDelegate_Parms OnSelectInventoryItemDelegate_Parms;
 
@@ -27005,7 +27006,7 @@ void UTgUIAgentProfile_Inventory::OnFilterChangedDelegate ( class UUIObject* Sen
 	static UFunction* pFnOnFilterChangedDelegate = NULL;
 
 	if ( ! pFnOnFilterChangedDelegate )
-		pFnOnFilterChangedDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53779 ];
+		pFnOnFilterChangedDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.OnFilterChangedDelegate" );
 
 	UTgUIAgentProfile_Inventory_execOnFilterChangedDelegate_Parms OnFilterChangedDelegate_Parms;
 	OnFilterChangedDelegate_Parms.Sender = Sender;
@@ -27029,7 +27030,7 @@ bool UTgUIAgentProfile_Inventory::OnSceneInputKeyDelegate ( struct FInputEventPa
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53776 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.OnSceneInputKeyDelegate" );
 
 	UTgUIAgentProfile_Inventory_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -27056,7 +27057,7 @@ bool UTgUIAgentProfile_Inventory::OnConfirmYesClicked ( struct FInputEventParame
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 53773 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.OnConfirmYesClicked" );
 
 	UTgUIAgentProfile_Inventory_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -27082,7 +27083,7 @@ void UTgUIAgentProfile_Inventory::SelectInventoryItem ( int ItemIndex )
 	static UFunction* pFnSelectInventoryItem = NULL;
 
 	if ( ! pFnSelectInventoryItem )
-		pFnSelectInventoryItem = (UFunction*) UObject::GObjObjects()->Data[ 53771 ];
+		pFnSelectInventoryItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.SelectInventoryItem" );
 
 	UTgUIAgentProfile_Inventory_execSelectInventoryItem_Parms SelectInventoryItem_Parms;
 	SelectInventoryItem_Parms.ItemIndex = ItemIndex;
@@ -27103,7 +27104,7 @@ void UTgUIAgentProfile_Inventory::PopulateInventoryItems ( )
 	static UFunction* pFnPopulateInventoryItems = NULL;
 
 	if ( ! pFnPopulateInventoryItems )
-		pFnPopulateInventoryItems = (UFunction*) UObject::GObjObjects()->Data[ 53770 ];
+		pFnPopulateInventoryItems = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.PopulateInventoryItems" );
 
 	UTgUIAgentProfile_Inventory_execPopulateInventoryItems_Parms PopulateInventoryItems_Parms;
 
@@ -27123,7 +27124,7 @@ void UTgUIAgentProfile_Inventory::BuildLocalInventoryStore ( )
 	static UFunction* pFnBuildLocalInventoryStore = NULL;
 
 	if ( ! pFnBuildLocalInventoryStore )
-		pFnBuildLocalInventoryStore = (UFunction*) UObject::GObjObjects()->Data[ 53769 ];
+		pFnBuildLocalInventoryStore = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.BuildLocalInventoryStore" );
 
 	UTgUIAgentProfile_Inventory_execBuildLocalInventoryStore_Parms BuildLocalInventoryStore_Parms;
 
@@ -27143,7 +27144,7 @@ void UTgUIAgentProfile_Inventory::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 53768 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.FixupTgUIScene" );
 
 	UTgUIAgentProfile_Inventory_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -27164,7 +27165,7 @@ bool UTgUIAgentProfile_Inventory::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 53766 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.TickTgUIScene" );
 
 	UTgUIAgentProfile_Inventory_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -27186,7 +27187,7 @@ void UTgUIAgentProfile_Inventory::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 53765 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Inventory.PreCloseScene" );
 
 	UTgUIAgentProfile_Inventory_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -27206,7 +27207,7 @@ void UTgUIAgentProfile_Skill::eventRequestPlayersSkillsFromServer ( )
 	static UFunction* pFnRequestPlayersSkillsFromServer = NULL;
 
 	if ( ! pFnRequestPlayersSkillsFromServer )
-		pFnRequestPlayersSkillsFromServer = (UFunction*) UObject::GObjObjects()->Data[ 53941 ];
+		pFnRequestPlayersSkillsFromServer = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Skill.RequestPlayersSkillsFromServer" );
 
 	UTgUIAgentProfile_Skill_eventRequestPlayersSkillsFromServer_Parms RequestPlayersSkillsFromServer_Parms;
 
@@ -27222,7 +27223,7 @@ void UTgUIAgentProfile_Skill::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 53936 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Skill.FixupWidgetsUC" );
 
 	UTgUIAgentProfile_Skill_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -27239,7 +27240,7 @@ bool UTgUIAgentProfile_Skill::ValidateRespecSkillFeature ( )
 	static UFunction* pFnValidateRespecSkillFeature = NULL;
 
 	if ( ! pFnValidateRespecSkillFeature )
-		pFnValidateRespecSkillFeature = (UFunction*) UObject::GObjObjects()->Data[ 53934 ];
+		pFnValidateRespecSkillFeature = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Skill.ValidateRespecSkillFeature" );
 
 	UTgUIAgentProfile_Skill_execValidateRespecSkillFeature_Parms ValidateRespecSkillFeature_Parms;
 
@@ -27265,7 +27266,7 @@ void UTgUIAgentProfile_Skill::OnSkillButtonStateChangeDelegate ( class UUIScreen
 	static UFunction* pFnOnSkillButtonStateChangeDelegate = NULL;
 
 	if ( ! pFnOnSkillButtonStateChangeDelegate )
-		pFnOnSkillButtonStateChangeDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53929 ];
+		pFnOnSkillButtonStateChangeDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Skill.OnSkillButtonStateChangeDelegate" );
 
 	UTgUIAgentProfile_Skill_execOnSkillButtonStateChangeDelegate_Parms OnSkillButtonStateChangeDelegate_Parms;
 	OnSkillButtonStateChangeDelegate_Parms.Sender = Sender;
@@ -27291,7 +27292,7 @@ bool UTgUIAgentProfile_Skill::OnSkillButtonDelegate ( struct FInputEventParamete
 	static UFunction* pFnOnSkillButtonDelegate = NULL;
 
 	if ( ! pFnOnSkillButtonDelegate )
-		pFnOnSkillButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53926 ];
+		pFnOnSkillButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Skill.OnSkillButtonDelegate" );
 
 	UTgUIAgentProfile_Skill_execOnSkillButtonDelegate_Parms OnSkillButtonDelegate_Parms;
 
@@ -27318,7 +27319,7 @@ bool UTgUIAgentProfile_Skill::OnResetAllDelegate ( struct FInputEventParameters*
 	static UFunction* pFnOnResetAllDelegate = NULL;
 
 	if ( ! pFnOnResetAllDelegate )
-		pFnOnResetAllDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53923 ];
+		pFnOnResetAllDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Skill.OnResetAllDelegate" );
 
 	UTgUIAgentProfile_Skill_execOnResetAllDelegate_Parms OnResetAllDelegate_Parms;
 
@@ -27345,7 +27346,7 @@ bool UTgUIAgentProfile_Skill::OnResetDelegate ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnResetDelegate = NULL;
 
 	if ( ! pFnOnResetDelegate )
-		pFnOnResetDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53920 ];
+		pFnOnResetDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Skill.OnResetDelegate" );
 
 	UTgUIAgentProfile_Skill_execOnResetDelegate_Parms OnResetDelegate_Parms;
 
@@ -27372,7 +27373,7 @@ bool UTgUIAgentProfile_Skill::OnSaveDelegate ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnSaveDelegate = NULL;
 
 	if ( ! pFnOnSaveDelegate )
-		pFnOnSaveDelegate = (UFunction*) UObject::GObjObjects()->Data[ 53917 ];
+		pFnOnSaveDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Skill.OnSaveDelegate" );
 
 	UTgUIAgentProfile_Skill_execOnSaveDelegate_Parms OnSaveDelegate_Parms;
 
@@ -27398,7 +27399,7 @@ bool UTgUIAgentProfile_Skill::IsReadOnlyMode ( )
 	static UFunction* pFnIsReadOnlyMode = NULL;
 
 	if ( ! pFnIsReadOnlyMode )
-		pFnIsReadOnlyMode = (UFunction*) UObject::GObjObjects()->Data[ 53915 ];
+		pFnIsReadOnlyMode = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Skill.IsReadOnlyMode" );
 
 	UTgUIAgentProfile_Skill_execIsReadOnlyMode_Parms IsReadOnlyMode_Parms;
 
@@ -27420,7 +27421,7 @@ void UTgUIAgentProfile_Skill::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 53914 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Skill.PostOpenScene" );
 
 	UTgUIAgentProfile_Skill_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -27440,7 +27441,7 @@ void UTgUIAgentProfile_Skill::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 53913 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Skill.PreCloseScene" );
 
 	UTgUIAgentProfile_Skill_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -27460,7 +27461,7 @@ void UTgUIAgentProfile_Skill::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 53912 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Skill.FixupTgUIScene" );
 
 	UTgUIAgentProfile_Skill_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -27481,7 +27482,7 @@ bool UTgUIAgentProfile_Skill::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 53910 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Skill.TickTgUIScene" );
 
 	UTgUIAgentProfile_Skill_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -27503,7 +27504,7 @@ void UTgUIAgentProfile_Stat::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 54080 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.FixupWidgetsUC" );
 
 	UTgUIAgentProfile_Stat_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -27523,7 +27524,7 @@ void UTgUIAgentProfile_Stat::OnBadgeIconStateChange ( class UUIScreenObject* Sen
 	static UFunction* pFnOnBadgeIconStateChange = NULL;
 
 	if ( ! pFnOnBadgeIconStateChange )
-		pFnOnBadgeIconStateChange = (UFunction*) UObject::GObjObjects()->Data[ 54075 ];
+		pFnOnBadgeIconStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.OnBadgeIconStateChange" );
 
 	UTgUIAgentProfile_Stat_execOnBadgeIconStateChange_Parms OnBadgeIconStateChange_Parms;
 	OnBadgeIconStateChange_Parms.Sender = Sender;
@@ -27551,7 +27552,7 @@ void UTgUIAgentProfile_Stat::OnFlairIconStateChange ( class UUIScreenObject* Sen
 	static UFunction* pFnOnFlairIconStateChange = NULL;
 
 	if ( ! pFnOnFlairIconStateChange )
-		pFnOnFlairIconStateChange = (UFunction*) UObject::GObjObjects()->Data[ 54070 ];
+		pFnOnFlairIconStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.OnFlairIconStateChange" );
 
 	UTgUIAgentProfile_Stat_execOnFlairIconStateChange_Parms OnFlairIconStateChange_Parms;
 	OnFlairIconStateChange_Parms.Sender = Sender;
@@ -27577,7 +27578,7 @@ bool UTgUIAgentProfile_Stat::OnUnequipFlairClicked ( struct FInputEventParameter
 	static UFunction* pFnOnUnequipFlairClicked = NULL;
 
 	if ( ! pFnOnUnequipFlairClicked )
-		pFnOnUnequipFlairClicked = (UFunction*) UObject::GObjObjects()->Data[ 54067 ];
+		pFnOnUnequipFlairClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.OnUnequipFlairClicked" );
 
 	UTgUIAgentProfile_Stat_execOnUnequipFlairClicked_Parms OnUnequipFlairClicked_Parms;
 
@@ -27604,7 +27605,7 @@ bool UTgUIAgentProfile_Stat::OnFlairIconClicked ( struct FInputEventParameters* 
 	static UFunction* pFnOnFlairIconClicked = NULL;
 
 	if ( ! pFnOnFlairIconClicked )
-		pFnOnFlairIconClicked = (UFunction*) UObject::GObjObjects()->Data[ 54064 ];
+		pFnOnFlairIconClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.OnFlairIconClicked" );
 
 	UTgUIAgentProfile_Stat_execOnFlairIconClicked_Parms OnFlairIconClicked_Parms;
 
@@ -27629,7 +27630,7 @@ void UTgUIAgentProfile_Stat::OnPaperDollUpdated ( )
 	static UFunction* pFnOnPaperDollUpdated = NULL;
 
 	if ( ! pFnOnPaperDollUpdated )
-		pFnOnPaperDollUpdated = (UFunction*) UObject::GObjObjects()->Data[ 54063 ];
+		pFnOnPaperDollUpdated = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.OnPaperDollUpdated" );
 
 	UTgUIAgentProfile_Stat_execOnPaperDollUpdated_Parms OnPaperDollUpdated_Parms;
 
@@ -27649,7 +27650,7 @@ void UTgUIAgentProfile_Stat::DestroyPaperDoll ( )
 	static UFunction* pFnDestroyPaperDoll = NULL;
 
 	if ( ! pFnDestroyPaperDoll )
-		pFnDestroyPaperDoll = (UFunction*) UObject::GObjObjects()->Data[ 54062 ];
+		pFnDestroyPaperDoll = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.DestroyPaperDoll" );
 
 	UTgUIAgentProfile_Stat_execDestroyPaperDoll_Parms DestroyPaperDoll_Parms;
 
@@ -27669,7 +27670,7 @@ void UTgUIAgentProfile_Stat::SetupPaperDoll ( )
 	static UFunction* pFnSetupPaperDoll = NULL;
 
 	if ( ! pFnSetupPaperDoll )
-		pFnSetupPaperDoll = (UFunction*) UObject::GObjObjects()->Data[ 54061 ];
+		pFnSetupPaperDoll = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.SetupPaperDoll" );
 
 	UTgUIAgentProfile_Stat_execSetupPaperDoll_Parms SetupPaperDoll_Parms;
 
@@ -27691,7 +27692,7 @@ bool UTgUIAgentProfile_Stat::OnNextBadgeButtonClicked ( struct FInputEventParame
 	static UFunction* pFnOnNextBadgeButtonClicked = NULL;
 
 	if ( ! pFnOnNextBadgeButtonClicked )
-		pFnOnNextBadgeButtonClicked = (UFunction*) UObject::GObjObjects()->Data[ 54058 ];
+		pFnOnNextBadgeButtonClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.OnNextBadgeButtonClicked" );
 
 	UTgUIAgentProfile_Stat_execOnNextBadgeButtonClicked_Parms OnNextBadgeButtonClicked_Parms;
 
@@ -27718,7 +27719,7 @@ bool UTgUIAgentProfile_Stat::OnPrevBadgeButtonClicked ( struct FInputEventParame
 	static UFunction* pFnOnPrevBadgeButtonClicked = NULL;
 
 	if ( ! pFnOnPrevBadgeButtonClicked )
-		pFnOnPrevBadgeButtonClicked = (UFunction*) UObject::GObjObjects()->Data[ 54055 ];
+		pFnOnPrevBadgeButtonClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.OnPrevBadgeButtonClicked" );
 
 	UTgUIAgentProfile_Stat_execOnPrevBadgeButtonClicked_Parms OnPrevBadgeButtonClicked_Parms;
 
@@ -27745,7 +27746,7 @@ bool UTgUIAgentProfile_Stat::OnNextButtonClicked ( struct FInputEventParameters*
 	static UFunction* pFnOnNextButtonClicked = NULL;
 
 	if ( ! pFnOnNextButtonClicked )
-		pFnOnNextButtonClicked = (UFunction*) UObject::GObjObjects()->Data[ 54052 ];
+		pFnOnNextButtonClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.OnNextButtonClicked" );
 
 	UTgUIAgentProfile_Stat_execOnNextButtonClicked_Parms OnNextButtonClicked_Parms;
 
@@ -27772,7 +27773,7 @@ bool UTgUIAgentProfile_Stat::OnPrevButtonClicked ( struct FInputEventParameters*
 	static UFunction* pFnOnPrevButtonClicked = NULL;
 
 	if ( ! pFnOnPrevButtonClicked )
-		pFnOnPrevButtonClicked = (UFunction*) UObject::GObjObjects()->Data[ 54049 ];
+		pFnOnPrevButtonClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.OnPrevButtonClicked" );
 
 	UTgUIAgentProfile_Stat_execOnPrevButtonClicked_Parms OnPrevButtonClicked_Parms;
 
@@ -27799,7 +27800,7 @@ bool UTgUIAgentProfile_Stat::OnSelectIconTab ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnSelectIconTab = NULL;
 
 	if ( ! pFnOnSelectIconTab )
-		pFnOnSelectIconTab = (UFunction*) UObject::GObjObjects()->Data[ 54046 ];
+		pFnOnSelectIconTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.OnSelectIconTab" );
 
 	UTgUIAgentProfile_Stat_execOnSelectIconTab_Parms OnSelectIconTab_Parms;
 
@@ -27826,7 +27827,7 @@ bool UTgUIAgentProfile_Stat::OnSelectSubTab ( struct FInputEventParameters* Even
 	static UFunction* pFnOnSelectSubTab = NULL;
 
 	if ( ! pFnOnSelectSubTab )
-		pFnOnSelectSubTab = (UFunction*) UObject::GObjObjects()->Data[ 54043 ];
+		pFnOnSelectSubTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.OnSelectSubTab" );
 
 	UTgUIAgentProfile_Stat_execOnSelectSubTab_Parms OnSelectSubTab_Parms;
 
@@ -27853,7 +27854,7 @@ bool UTgUIAgentProfile_Stat::OnSceneInputKeyDelegate ( struct FInputEventParamet
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54040 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.OnSceneInputKeyDelegate" );
 
 	UTgUIAgentProfile_Stat_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -27878,7 +27879,7 @@ void UTgUIAgentProfile_Stat::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 54039 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.PostOpenScene" );
 
 	UTgUIAgentProfile_Stat_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -27898,7 +27899,7 @@ void UTgUIAgentProfile_Stat::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 54038 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.PreCloseScene" );
 
 	UTgUIAgentProfile_Stat_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -27918,7 +27919,7 @@ void UTgUIAgentProfile_Stat::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54037 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.FixupTgUIScene" );
 
 	UTgUIAgentProfile_Stat_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -27939,7 +27940,7 @@ bool UTgUIAgentProfile_Stat::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54035 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAgentProfile_Stat.TickTgUIScene" );
 
 	UTgUIAgentProfile_Stat_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -27962,7 +27963,7 @@ bool UTgUIAuctionGeneral::ValidateAuctionFeature ( )
 	static UFunction* pFnValidateAuctionFeature = NULL;
 
 	if ( ! pFnValidateAuctionFeature )
-		pFnValidateAuctionFeature = (UFunction*) UObject::GObjObjects()->Data[ 54147 ];
+		pFnValidateAuctionFeature = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionGeneral.ValidateAuctionFeature" );
 
 	UTgUIAuctionGeneral_execValidateAuctionFeature_Parms ValidateAuctionFeature_Parms;
 
@@ -27986,7 +27987,7 @@ bool UTgUIAuctionGeneral::OnConfirmNoClicked ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnConfirmNoClicked = NULL;
 
 	if ( ! pFnOnConfirmNoClicked )
-		pFnOnConfirmNoClicked = (UFunction*) UObject::GObjObjects()->Data[ 54144 ];
+		pFnOnConfirmNoClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionGeneral.OnConfirmNoClicked" );
 
 	UTgUIAuctionGeneral_execOnConfirmNoClicked_Parms OnConfirmNoClicked_Parms;
 
@@ -28013,7 +28014,7 @@ bool UTgUIAuctionGeneral::OnConfirmYesClicked ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 54141 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionGeneral.OnConfirmYesClicked" );
 
 	UTgUIAuctionGeneral_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -28039,7 +28040,7 @@ void UTgUIAuctionGeneral::OpenBuyoutConfirmPopup ( struct FsAuctionItemStruct* s
 	static UFunction* pFnOpenBuyoutConfirmPopup = NULL;
 
 	if ( ! pFnOpenBuyoutConfirmPopup )
-		pFnOpenBuyoutConfirmPopup = (UFunction*) UObject::GObjObjects()->Data[ 54139 ];
+		pFnOpenBuyoutConfirmPopup = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionGeneral.OpenBuyoutConfirmPopup" );
 
 	UTgUIAuctionGeneral_execOpenBuyoutConfirmPopup_Parms OpenBuyoutConfirmPopup_Parms;
 
@@ -28064,7 +28065,7 @@ bool UTgUIAuctionGeneral::OnAuctionItemSelect ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnAuctionItemSelect = NULL;
 
 	if ( ! pFnOnAuctionItemSelect )
-		pFnOnAuctionItemSelect = (UFunction*) UObject::GObjObjects()->Data[ 54136 ];
+		pFnOnAuctionItemSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionGeneral.OnAuctionItemSelect" );
 
 	UTgUIAuctionGeneral_execOnAuctionItemSelect_Parms OnAuctionItemSelect_Parms;
 
@@ -28091,7 +28092,7 @@ bool UTgUIAuctionGeneral::OnBuyoutButton ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnBuyoutButton = NULL;
 
 	if ( ! pFnOnBuyoutButton )
-		pFnOnBuyoutButton = (UFunction*) UObject::GObjObjects()->Data[ 54133 ];
+		pFnOnBuyoutButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionGeneral.OnBuyoutButton" );
 
 	UTgUIAuctionGeneral_execOnBuyoutButton_Parms OnBuyoutButton_Parms;
 
@@ -28118,7 +28119,7 @@ bool UTgUIAuctionGeneral::OnTabButton ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnTabButton = NULL;
 
 	if ( ! pFnOnTabButton )
-		pFnOnTabButton = (UFunction*) UObject::GObjObjects()->Data[ 54130 ];
+		pFnOnTabButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionGeneral.OnTabButton" );
 
 	UTgUIAuctionGeneral_execOnTabButton_Parms OnTabButton_Parms;
 
@@ -28145,7 +28146,7 @@ bool UTgUIAuctionGeneral::OnCloseButton ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 54127 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionGeneral.OnCloseButton" );
 
 	UTgUIAuctionGeneral_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -28170,7 +28171,7 @@ void UTgUIAuctionBidMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 54203 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.FixupWidgetsUC" );
 
 	UTgUIAuctionBidMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -28187,7 +28188,7 @@ void UTgUIAuctionBidMenu::eventSetAuctionItemSelect ( class UUIScreenObject* Obj
 	static UFunction* pFnSetAuctionItemSelect = NULL;
 
 	if ( ! pFnSetAuctionItemSelect )
-		pFnSetAuctionItemSelect = (UFunction*) UObject::GObjObjects()->Data[ 54201 ];
+		pFnSetAuctionItemSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.SetAuctionItemSelect" );
 
 	UTgUIAuctionBidMenu_eventSetAuctionItemSelect_Parms SetAuctionItemSelect_Parms;
 	SetAuctionItemSelect_Parms.Obj = Obj;
@@ -28205,7 +28206,7 @@ void UTgUIAuctionBidMenu::eventSetAuctionItemStateChange ( class UUIScreenObject
 	static UFunction* pFnSetAuctionItemStateChange = NULL;
 
 	if ( ! pFnSetAuctionItemStateChange )
-		pFnSetAuctionItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 54199 ];
+		pFnSetAuctionItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.SetAuctionItemStateChange" );
 
 	UTgUIAuctionBidMenu_eventSetAuctionItemStateChange_Parms SetAuctionItemStateChange_Parms;
 	SetAuctionItemStateChange_Parms.Obj = Obj;
@@ -28226,7 +28227,7 @@ void UTgUIAuctionBidMenu::OnAuctionTimeStateChange ( class UUIScreenObject* Send
 	static UFunction* pFnOnAuctionTimeStateChange = NULL;
 
 	if ( ! pFnOnAuctionTimeStateChange )
-		pFnOnAuctionTimeStateChange = (UFunction*) UObject::GObjObjects()->Data[ 54194 ];
+		pFnOnAuctionTimeStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.OnAuctionTimeStateChange" );
 
 	UTgUIAuctionBidMenu_execOnAuctionTimeStateChange_Parms OnAuctionTimeStateChange_Parms;
 	OnAuctionTimeStateChange_Parms.Sender = Sender;
@@ -28254,7 +28255,7 @@ void UTgUIAuctionBidMenu::OnAuctionItemStateChange ( class UUIScreenObject* Send
 	static UFunction* pFnOnAuctionItemStateChange = NULL;
 
 	if ( ! pFnOnAuctionItemStateChange )
-		pFnOnAuctionItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 54189 ];
+		pFnOnAuctionItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.OnAuctionItemStateChange" );
 
 	UTgUIAuctionBidMenu_execOnAuctionItemStateChange_Parms OnAuctionItemStateChange_Parms;
 	OnAuctionItemStateChange_Parms.Sender = Sender;
@@ -28280,7 +28281,7 @@ bool UTgUIAuctionBidMenu::OnAuctionItemSelect ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnAuctionItemSelect = NULL;
 
 	if ( ! pFnOnAuctionItemSelect )
-		pFnOnAuctionItemSelect = (UFunction*) UObject::GObjObjects()->Data[ 54186 ];
+		pFnOnAuctionItemSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.OnAuctionItemSelect" );
 
 	UTgUIAuctionBidMenu_execOnAuctionItemSelect_Parms OnAuctionItemSelect_Parms;
 
@@ -28307,7 +28308,7 @@ bool UTgUIAuctionBidMenu::OnCancelAuctionButton ( struct FInputEventParameters* 
 	static UFunction* pFnOnCancelAuctionButton = NULL;
 
 	if ( ! pFnOnCancelAuctionButton )
-		pFnOnCancelAuctionButton = (UFunction*) UObject::GObjObjects()->Data[ 54183 ];
+		pFnOnCancelAuctionButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.OnCancelAuctionButton" );
 
 	UTgUIAuctionBidMenu_execOnCancelAuctionButton_Parms OnCancelAuctionButton_Parms;
 
@@ -28334,7 +28335,7 @@ bool UTgUIAuctionBidMenu::OnBidButton ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnBidButton = NULL;
 
 	if ( ! pFnOnBidButton )
-		pFnOnBidButton = (UFunction*) UObject::GObjObjects()->Data[ 54180 ];
+		pFnOnBidButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.OnBidButton" );
 
 	UTgUIAuctionBidMenu_execOnBidButton_Parms OnBidButton_Parms;
 
@@ -28361,7 +28362,7 @@ bool UTgUIAuctionBidMenu::OnSceneKeyPressed ( struct FInputEventParameters* Even
 	static UFunction* pFnOnSceneKeyPressed = NULL;
 
 	if ( ! pFnOnSceneKeyPressed )
-		pFnOnSceneKeyPressed = (UFunction*) UObject::GObjObjects()->Data[ 54177 ];
+		pFnOnSceneKeyPressed = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.OnSceneKeyPressed" );
 
 	UTgUIAuctionBidMenu_execOnSceneKeyPressed_Parms OnSceneKeyPressed_Parms;
 
@@ -28386,7 +28387,7 @@ void UTgUIAuctionBidMenu::UpdateHighlight ( )
 	static UFunction* pFnUpdateHighlight = NULL;
 
 	if ( ! pFnUpdateHighlight )
-		pFnUpdateHighlight = (UFunction*) UObject::GObjObjects()->Data[ 54176 ];
+		pFnUpdateHighlight = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.UpdateHighlight" );
 
 	UTgUIAuctionBidMenu_execUpdateHighlight_Parms UpdateHighlight_Parms;
 
@@ -28406,7 +28407,7 @@ void UTgUIAuctionBidMenu::UpdateBidListDisplay ( )
 	static UFunction* pFnUpdateBidListDisplay = NULL;
 
 	if ( ! pFnUpdateBidListDisplay )
-		pFnUpdateBidListDisplay = (UFunction*) UObject::GObjObjects()->Data[ 54175 ];
+		pFnUpdateBidListDisplay = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.UpdateBidListDisplay" );
 
 	UTgUIAuctionBidMenu_execUpdateBidListDisplay_Parms UpdateBidListDisplay_Parms;
 
@@ -28427,7 +28428,7 @@ void UTgUIAuctionBidMenu::ResizeDisplayList ( int newSize )
 	static UFunction* pFnResizeDisplayList = NULL;
 
 	if ( ! pFnResizeDisplayList )
-		pFnResizeDisplayList = (UFunction*) UObject::GObjObjects()->Data[ 54173 ];
+		pFnResizeDisplayList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.ResizeDisplayList" );
 
 	UTgUIAuctionBidMenu_execResizeDisplayList_Parms ResizeDisplayList_Parms;
 	ResizeDisplayList_Parms.newSize = newSize;
@@ -28449,7 +28450,7 @@ bool UTgUIAuctionBidMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54171 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.TickTgUIScene" );
 
 	UTgUIAuctionBidMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -28471,7 +28472,7 @@ void UTgUIAuctionBidMenu::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 54170 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.FixupWidgets" );
 
 	UTgUIAuctionBidMenu_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -28491,7 +28492,7 @@ void UTgUIAuctionBidMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54169 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.FixupTgUIScene" );
 
 	UTgUIAuctionBidMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -28511,7 +28512,7 @@ void UTgUIAuctionBidMenu::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 54168 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.PreCloseScene" );
 
 	UTgUIAuctionBidMenu_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -28531,7 +28532,7 @@ void UTgUIAuctionBidMenu::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 54167 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.PostOpenScene" );
 
 	UTgUIAuctionBidMenu_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -28551,7 +28552,7 @@ void UTgUIAuctionBidMenu::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 54166 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBidMenu.PostInitSceneDriver" );
 
 	UTgUIAuctionBidMenu_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -28571,7 +28572,7 @@ void UTgUIAuctionBrowseMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 54327 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.FixupWidgetsUC" );
 
 	UTgUIAuctionBrowseMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -28588,7 +28589,7 @@ void UTgUIAuctionBrowseMenu::eventSetAuctionTimeStateChange ( class UUIScreenObj
 	static UFunction* pFnSetAuctionTimeStateChange = NULL;
 
 	if ( ! pFnSetAuctionTimeStateChange )
-		pFnSetAuctionTimeStateChange = (UFunction*) UObject::GObjObjects()->Data[ 54325 ];
+		pFnSetAuctionTimeStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.SetAuctionTimeStateChange" );
 
 	UTgUIAuctionBrowseMenu_eventSetAuctionTimeStateChange_Parms SetAuctionTimeStateChange_Parms;
 	SetAuctionTimeStateChange_Parms.Obj = Obj;
@@ -28606,7 +28607,7 @@ void UTgUIAuctionBrowseMenu::eventSetAuctionItemSelect ( class UUIScreenObject* 
 	static UFunction* pFnSetAuctionItemSelect = NULL;
 
 	if ( ! pFnSetAuctionItemSelect )
-		pFnSetAuctionItemSelect = (UFunction*) UObject::GObjObjects()->Data[ 54323 ];
+		pFnSetAuctionItemSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.SetAuctionItemSelect" );
 
 	UTgUIAuctionBrowseMenu_eventSetAuctionItemSelect_Parms SetAuctionItemSelect_Parms;
 	SetAuctionItemSelect_Parms.Obj = Obj;
@@ -28624,7 +28625,7 @@ void UTgUIAuctionBrowseMenu::eventSetAuctionItemStateChange ( class UUIScreenObj
 	static UFunction* pFnSetAuctionItemStateChange = NULL;
 
 	if ( ! pFnSetAuctionItemStateChange )
-		pFnSetAuctionItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 54321 ];
+		pFnSetAuctionItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.SetAuctionItemStateChange" );
 
 	UTgUIAuctionBrowseMenu_eventSetAuctionItemStateChange_Parms SetAuctionItemStateChange_Parms;
 	SetAuctionItemStateChange_Parms.Obj = Obj;
@@ -28642,7 +28643,7 @@ void UTgUIAuctionBrowseMenu::eventSetRawInputKeyForType ( class UUIButton* Butto
 	static UFunction* pFnSetRawInputKeyForType = NULL;
 
 	if ( ! pFnSetRawInputKeyForType )
-		pFnSetRawInputKeyForType = (UFunction*) UObject::GObjObjects()->Data[ 54319 ];
+		pFnSetRawInputKeyForType = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.SetRawInputKeyForType" );
 
 	UTgUIAuctionBrowseMenu_eventSetRawInputKeyForType_Parms SetRawInputKeyForType_Parms;
 	SetRawInputKeyForType_Parms.Button = Button;
@@ -28663,7 +28664,7 @@ void UTgUIAuctionBrowseMenu::OnNotifyEditBoxStateChanged ( class UUIScreenObject
 	static UFunction* pFnOnNotifyEditBoxStateChanged = NULL;
 
 	if ( ! pFnOnNotifyEditBoxStateChanged )
-		pFnOnNotifyEditBoxStateChanged = (UFunction*) UObject::GObjObjects()->Data[ 54314 ];
+		pFnOnNotifyEditBoxStateChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.OnNotifyEditBoxStateChanged" );
 
 	UTgUIAuctionBrowseMenu_execOnNotifyEditBoxStateChanged_Parms OnNotifyEditBoxStateChanged_Parms;
 	OnNotifyEditBoxStateChanged_Parms.Sender = Sender;
@@ -28685,7 +28686,7 @@ void UTgUIAuctionBrowseMenu::OnLowestPriceOnlyChanged ( class UUIObject* ebox, i
 	static UFunction* pFnOnLowestPriceOnlyChanged = NULL;
 
 	if ( ! pFnOnLowestPriceOnlyChanged )
-		pFnOnLowestPriceOnlyChanged = (UFunction*) UObject::GObjObjects()->Data[ 54311 ];
+		pFnOnLowestPriceOnlyChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.OnLowestPriceOnlyChanged" );
 
 	UTgUIAuctionBrowseMenu_execOnLowestPriceOnlyChanged_Parms OnLowestPriceOnlyChanged_Parms;
 	OnLowestPriceOnlyChanged_Parms.ebox = ebox;
@@ -28709,7 +28710,7 @@ bool UTgUIAuctionBrowseMenu::OnTypeCategoryClicked ( struct FInputEventParameter
 	static UFunction* pFnOnTypeCategoryClicked = NULL;
 
 	if ( ! pFnOnTypeCategoryClicked )
-		pFnOnTypeCategoryClicked = (UFunction*) UObject::GObjObjects()->Data[ 54308 ];
+		pFnOnTypeCategoryClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.OnTypeCategoryClicked" );
 
 	UTgUIAuctionBrowseMenu_execOnTypeCategoryClicked_Parms OnTypeCategoryClicked_Parms;
 
@@ -28738,7 +28739,7 @@ void UTgUIAuctionBrowseMenu::OnAuctionTimeStateChange ( class UUIScreenObject* S
 	static UFunction* pFnOnAuctionTimeStateChange = NULL;
 
 	if ( ! pFnOnAuctionTimeStateChange )
-		pFnOnAuctionTimeStateChange = (UFunction*) UObject::GObjObjects()->Data[ 54303 ];
+		pFnOnAuctionTimeStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.OnAuctionTimeStateChange" );
 
 	UTgUIAuctionBrowseMenu_execOnAuctionTimeStateChange_Parms OnAuctionTimeStateChange_Parms;
 	OnAuctionTimeStateChange_Parms.Sender = Sender;
@@ -28766,7 +28767,7 @@ void UTgUIAuctionBrowseMenu::OnAuctionItemStateChange ( class UUIScreenObject* S
 	static UFunction* pFnOnAuctionItemStateChange = NULL;
 
 	if ( ! pFnOnAuctionItemStateChange )
-		pFnOnAuctionItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 54298 ];
+		pFnOnAuctionItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.OnAuctionItemStateChange" );
 
 	UTgUIAuctionBrowseMenu_execOnAuctionItemStateChange_Parms OnAuctionItemStateChange_Parms;
 	OnAuctionItemStateChange_Parms.Sender = Sender;
@@ -28792,7 +28793,7 @@ bool UTgUIAuctionBrowseMenu::OnAuctionItemSelect ( struct FInputEventParameters*
 	static UFunction* pFnOnAuctionItemSelect = NULL;
 
 	if ( ! pFnOnAuctionItemSelect )
-		pFnOnAuctionItemSelect = (UFunction*) UObject::GObjObjects()->Data[ 54295 ];
+		pFnOnAuctionItemSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.OnAuctionItemSelect" );
 
 	UTgUIAuctionBrowseMenu_execOnAuctionItemSelect_Parms OnAuctionItemSelect_Parms;
 
@@ -28819,7 +28820,7 @@ bool UTgUIAuctionBrowseMenu::OnBidButton ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnBidButton = NULL;
 
 	if ( ! pFnOnBidButton )
-		pFnOnBidButton = (UFunction*) UObject::GObjObjects()->Data[ 54292 ];
+		pFnOnBidButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.OnBidButton" );
 
 	UTgUIAuctionBrowseMenu_execOnBidButton_Parms OnBidButton_Parms;
 
@@ -28846,7 +28847,7 @@ bool UTgUIAuctionBrowseMenu::OnSearchButton ( struct FInputEventParameters* Even
 	static UFunction* pFnOnSearchButton = NULL;
 
 	if ( ! pFnOnSearchButton )
-		pFnOnSearchButton = (UFunction*) UObject::GObjObjects()->Data[ 54289 ];
+		pFnOnSearchButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.OnSearchButton" );
 
 	UTgUIAuctionBrowseMenu_execOnSearchButton_Parms OnSearchButton_Parms;
 
@@ -28873,7 +28874,7 @@ bool UTgUIAuctionBrowseMenu::OnResetButton ( struct FInputEventParameters* Event
 	static UFunction* pFnOnResetButton = NULL;
 
 	if ( ! pFnOnResetButton )
-		pFnOnResetButton = (UFunction*) UObject::GObjObjects()->Data[ 54286 ];
+		pFnOnResetButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.OnResetButton" );
 
 	UTgUIAuctionBrowseMenu_execOnResetButton_Parms OnResetButton_Parms;
 
@@ -28900,7 +28901,7 @@ bool UTgUIAuctionBrowseMenu::OnSceneKeyPressed ( struct FInputEventParameters* E
 	static UFunction* pFnOnSceneKeyPressed = NULL;
 
 	if ( ! pFnOnSceneKeyPressed )
-		pFnOnSceneKeyPressed = (UFunction*) UObject::GObjObjects()->Data[ 54283 ];
+		pFnOnSceneKeyPressed = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.OnSceneKeyPressed" );
 
 	UTgUIAuctionBrowseMenu_execOnSceneKeyPressed_Parms OnSceneKeyPressed_Parms;
 
@@ -28925,7 +28926,7 @@ void UTgUIAuctionBrowseMenu::UpdateHighlight ( )
 	static UFunction* pFnUpdateHighlight = NULL;
 
 	if ( ! pFnUpdateHighlight )
-		pFnUpdateHighlight = (UFunction*) UObject::GObjObjects()->Data[ 54282 ];
+		pFnUpdateHighlight = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.UpdateHighlight" );
 
 	UTgUIAuctionBrowseMenu_execUpdateHighlight_Parms UpdateHighlight_Parms;
 
@@ -28945,7 +28946,7 @@ void UTgUIAuctionBrowseMenu::UpdateBrowseListDisplay ( )
 	static UFunction* pFnUpdateBrowseListDisplay = NULL;
 
 	if ( ! pFnUpdateBrowseListDisplay )
-		pFnUpdateBrowseListDisplay = (UFunction*) UObject::GObjObjects()->Data[ 54281 ];
+		pFnUpdateBrowseListDisplay = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.UpdateBrowseListDisplay" );
 
 	UTgUIAuctionBrowseMenu_execUpdateBrowseListDisplay_Parms UpdateBrowseListDisplay_Parms;
 
@@ -28966,7 +28967,7 @@ void UTgUIAuctionBrowseMenu::ResizeDisplayList ( int newSize )
 	static UFunction* pFnResizeDisplayList = NULL;
 
 	if ( ! pFnResizeDisplayList )
-		pFnResizeDisplayList = (UFunction*) UObject::GObjObjects()->Data[ 54279 ];
+		pFnResizeDisplayList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.ResizeDisplayList" );
 
 	UTgUIAuctionBrowseMenu_execResizeDisplayList_Parms ResizeDisplayList_Parms;
 	ResizeDisplayList_Parms.newSize = newSize;
@@ -28988,7 +28989,7 @@ bool UTgUIAuctionBrowseMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54277 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.TickTgUIScene" );
 
 	UTgUIAuctionBrowseMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -29010,7 +29011,7 @@ void UTgUIAuctionBrowseMenu::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 54276 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.FixupWidgets" );
 
 	UTgUIAuctionBrowseMenu_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -29030,7 +29031,7 @@ void UTgUIAuctionBrowseMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54275 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.FixupTgUIScene" );
 
 	UTgUIAuctionBrowseMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -29050,7 +29051,7 @@ void UTgUIAuctionBrowseMenu::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 54274 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.PreCloseScene" );
 
 	UTgUIAuctionBrowseMenu_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -29070,7 +29071,7 @@ void UTgUIAuctionBrowseMenu::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 54273 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.PostOpenScene" );
 
 	UTgUIAuctionBrowseMenu_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -29090,7 +29091,7 @@ void UTgUIAuctionBrowseMenu::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 54272 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionBrowseMenu.PostInitSceneDriver" );
 
 	UTgUIAuctionBrowseMenu_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -29110,7 +29111,7 @@ void UTgUIAuctionSellMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 54404 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionSellMenu.FixupWidgetsUC" );
 
 	UTgUIAuctionSellMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -29126,7 +29127,7 @@ void UTgUIAuctionSellMenu::RegisterCallbacks ( )
 	static UFunction* pFnRegisterCallbacks = NULL;
 
 	if ( ! pFnRegisterCallbacks )
-		pFnRegisterCallbacks = (UFunction*) UObject::GObjObjects()->Data[ 54403 ];
+		pFnRegisterCallbacks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionSellMenu.RegisterCallbacks" );
 
 	UTgUIAuctionSellMenu_execRegisterCallbacks_Parms RegisterCallbacks_Parms;
 
@@ -29148,7 +29149,7 @@ void UTgUIAuctionSellMenu::OnQualityComboChanged ( class UUIObject* Sender, int 
 	static UFunction* pFnOnQualityComboChanged = NULL;
 
 	if ( ! pFnOnQualityComboChanged )
-		pFnOnQualityComboChanged = (UFunction*) UObject::GObjObjects()->Data[ 54400 ];
+		pFnOnQualityComboChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionSellMenu.OnQualityComboChanged" );
 
 	UTgUIAuctionSellMenu_execOnQualityComboChanged_Parms OnQualityComboChanged_Parms;
 	OnQualityComboChanged_Parms.Sender = Sender;
@@ -29172,7 +29173,7 @@ void UTgUIAuctionSellMenu::OnTypeComboChanged ( class UUIObject* Sender, int Pla
 	static UFunction* pFnOnTypeComboChanged = NULL;
 
 	if ( ! pFnOnTypeComboChanged )
-		pFnOnTypeComboChanged = (UFunction*) UObject::GObjObjects()->Data[ 54397 ];
+		pFnOnTypeComboChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionSellMenu.OnTypeComboChanged" );
 
 	UTgUIAuctionSellMenu_execOnTypeComboChanged_Parms OnTypeComboChanged_Parms;
 	OnTypeComboChanged_Parms.Sender = Sender;
@@ -29198,7 +29199,7 @@ void UTgUIAuctionSellMenu::OnInvItemStateChange ( class UUIScreenObject* Sender,
 	static UFunction* pFnOnInvItemStateChange = NULL;
 
 	if ( ! pFnOnInvItemStateChange )
-		pFnOnInvItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 54392 ];
+		pFnOnInvItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionSellMenu.OnInvItemStateChange" );
 
 	UTgUIAuctionSellMenu_execOnInvItemStateChange_Parms OnInvItemStateChange_Parms;
 	OnInvItemStateChange_Parms.Sender = Sender;
@@ -29224,7 +29225,7 @@ bool UTgUIAuctionSellMenu::OnSortInventoryDelegate ( struct FInputEventParameter
 	static UFunction* pFnOnSortInventoryDelegate = NULL;
 
 	if ( ! pFnOnSortInventoryDelegate )
-		pFnOnSortInventoryDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54389 ];
+		pFnOnSortInventoryDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionSellMenu.OnSortInventoryDelegate" );
 
 	UTgUIAuctionSellMenu_execOnSortInventoryDelegate_Parms OnSortInventoryDelegate_Parms;
 
@@ -29251,7 +29252,7 @@ bool UTgUIAuctionSellMenu::OnSelectInventoryItemDelegate ( struct FInputEventPar
 	static UFunction* pFnOnSelectInventoryItemDelegate = NULL;
 
 	if ( ! pFnOnSelectInventoryItemDelegate )
-		pFnOnSelectInventoryItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54386 ];
+		pFnOnSelectInventoryItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionSellMenu.OnSelectInventoryItemDelegate" );
 
 	UTgUIAuctionSellMenu_execOnSelectInventoryItemDelegate_Parms OnSelectInventoryItemDelegate_Parms;
 
@@ -29278,7 +29279,7 @@ bool UTgUIAuctionSellMenu::OnSellButton ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnSellButton = NULL;
 
 	if ( ! pFnOnSellButton )
-		pFnOnSellButton = (UFunction*) UObject::GObjObjects()->Data[ 54383 ];
+		pFnOnSellButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionSellMenu.OnSellButton" );
 
 	UTgUIAuctionSellMenu_execOnSellButton_Parms OnSellButton_Parms;
 
@@ -29305,7 +29306,7 @@ bool UTgUIAuctionSellMenu::OnSceneKeyPressed ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnSceneKeyPressed = NULL;
 
 	if ( ! pFnOnSceneKeyPressed )
-		pFnOnSceneKeyPressed = (UFunction*) UObject::GObjObjects()->Data[ 54380 ];
+		pFnOnSceneKeyPressed = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionSellMenu.OnSceneKeyPressed" );
 
 	UTgUIAuctionSellMenu_execOnSceneKeyPressed_Parms OnSceneKeyPressed_Parms;
 
@@ -29330,7 +29331,7 @@ void UTgUIAuctionSellMenu::UpdateInventoryHighlight ( )
 	static UFunction* pFnUpdateInventoryHighlight = NULL;
 
 	if ( ! pFnUpdateInventoryHighlight )
-		pFnUpdateInventoryHighlight = (UFunction*) UObject::GObjObjects()->Data[ 54379 ];
+		pFnUpdateInventoryHighlight = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionSellMenu.UpdateInventoryHighlight" );
 
 	UTgUIAuctionSellMenu_execUpdateInventoryHighlight_Parms UpdateInventoryHighlight_Parms;
 
@@ -29351,7 +29352,7 @@ bool UTgUIAuctionSellMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54377 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionSellMenu.TickTgUIScene" );
 
 	UTgUIAuctionSellMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -29373,7 +29374,7 @@ void UTgUIAuctionSellMenu::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 54376 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionSellMenu.FixupWidgets" );
 
 	UTgUIAuctionSellMenu_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -29393,7 +29394,7 @@ void UTgUIAuctionSellMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54375 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionSellMenu.FixupTgUIScene" );
 
 	UTgUIAuctionSellMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -29413,7 +29414,7 @@ void UTgUIAuctionSellMenu::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 54374 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIAuctionSellMenu.PostOpenScene" );
 
 	UTgUIAuctionSellMenu_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -29434,7 +29435,7 @@ void UTgUICampaignMenu::eventSelectTab ( unsigned char Tab )
 	static UFunction* pFnSelectTab = NULL;
 
 	if ( ! pFnSelectTab )
-		pFnSelectTab = (UFunction*) UObject::GObjObjects()->Data[ 54467 ];
+		pFnSelectTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.SelectTab" );
 
 	UTgUICampaignMenu_eventSelectTab_Parms SelectTab_Parms;
 	SelectTab_Parms.Tab = Tab;
@@ -29453,7 +29454,7 @@ bool UTgUICampaignMenu::OnSelectLeaderboardTab ( struct FInputEventParameters* E
 	static UFunction* pFnOnSelectLeaderboardTab = NULL;
 
 	if ( ! pFnOnSelectLeaderboardTab )
-		pFnOnSelectLeaderboardTab = (UFunction*) UObject::GObjObjects()->Data[ 54464 ];
+		pFnOnSelectLeaderboardTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.OnSelectLeaderboardTab" );
 
 	UTgUICampaignMenu_execOnSelectLeaderboardTab_Parms OnSelectLeaderboardTab_Parms;
 
@@ -29476,7 +29477,7 @@ bool UTgUICampaignMenu::OnSelectCombatLogTab ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnSelectCombatLogTab = NULL;
 
 	if ( ! pFnOnSelectCombatLogTab )
-		pFnOnSelectCombatLogTab = (UFunction*) UObject::GObjObjects()->Data[ 54461 ];
+		pFnOnSelectCombatLogTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.OnSelectCombatLogTab" );
 
 	UTgUICampaignMenu_execOnSelectCombatLogTab_Parms OnSelectCombatLogTab_Parms;
 
@@ -29499,7 +29500,7 @@ bool UTgUICampaignMenu::OnSelectCombatTab ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSelectCombatTab = NULL;
 
 	if ( ! pFnOnSelectCombatTab )
-		pFnOnSelectCombatTab = (UFunction*) UObject::GObjObjects()->Data[ 54458 ];
+		pFnOnSelectCombatTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.OnSelectCombatTab" );
 
 	UTgUICampaignMenu_execOnSelectCombatTab_Parms OnSelectCombatTab_Parms;
 
@@ -29522,7 +29523,7 @@ bool UTgUICampaignMenu::OnSelectHexMapTab ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSelectHexMapTab = NULL;
 
 	if ( ! pFnOnSelectHexMapTab )
-		pFnOnSelectHexMapTab = (UFunction*) UObject::GObjObjects()->Data[ 54455 ];
+		pFnOnSelectHexMapTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.OnSelectHexMapTab" );
 
 	UTgUICampaignMenu_execOnSelectHexMapTab_Parms OnSelectHexMapTab_Parms;
 
@@ -29545,7 +29546,7 @@ bool UTgUICampaignMenu::OnCloseButton ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 54452 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.OnCloseButton" );
 
 	UTgUICampaignMenu_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -29566,7 +29567,7 @@ void UTgUICampaignMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 54451 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.FixupWidgetsUC" );
 
 	UTgUICampaignMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -29582,7 +29583,7 @@ void UTgUICampaignMenu::OnHexAssignmentUpdated ( )
 	static UFunction* pFnOnHexAssignmentUpdated = NULL;
 
 	if ( ! pFnOnHexAssignmentUpdated )
-		pFnOnHexAssignmentUpdated = (UFunction*) UObject::GObjObjects()->Data[ 54450 ];
+		pFnOnHexAssignmentUpdated = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.OnHexAssignmentUpdated" );
 
 	UTgUICampaignMenu_execOnHexAssignmentUpdated_Parms OnHexAssignmentUpdated_Parms;
 
@@ -29602,7 +29603,7 @@ void UTgUICampaignMenu::OnHexAssignmentChanged ( )
 	static UFunction* pFnOnHexAssignmentChanged = NULL;
 
 	if ( ! pFnOnHexAssignmentChanged )
-		pFnOnHexAssignmentChanged = (UFunction*) UObject::GObjObjects()->Data[ 54449 ];
+		pFnOnHexAssignmentChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.OnHexAssignmentChanged" );
 
 	UTgUICampaignMenu_execOnHexAssignmentChanged_Parms OnHexAssignmentChanged_Parms;
 
@@ -29623,7 +29624,7 @@ class UTgAgencyData* UTgUICampaignMenu::GetAgencyData ( )
 	static UFunction* pFnGetAgencyData = NULL;
 
 	if ( ! pFnGetAgencyData )
-		pFnGetAgencyData = (UFunction*) UObject::GObjObjects()->Data[ 54447 ];
+		pFnGetAgencyData = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.GetAgencyData" );
 
 	UTgUICampaignMenu_execGetAgencyData_Parms GetAgencyData_Parms;
 
@@ -29646,7 +29647,7 @@ bool UTgUICampaignMenu::OnHexDataUpdated ( )
 	static UFunction* pFnOnHexDataUpdated = NULL;
 
 	if ( ! pFnOnHexDataUpdated )
-		pFnOnHexDataUpdated = (UFunction*) UObject::GObjObjects()->Data[ 54445 ];
+		pFnOnHexDataUpdated = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.OnHexDataUpdated" );
 
 	UTgUICampaignMenu_execOnHexDataUpdated_Parms OnHexDataUpdated_Parms;
 
@@ -29670,7 +29671,7 @@ bool UTgUICampaignMenu::OnSceneKey ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnSceneKey = NULL;
 
 	if ( ! pFnOnSceneKey )
-		pFnOnSceneKey = (UFunction*) UObject::GObjObjects()->Data[ 54442 ];
+		pFnOnSceneKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.OnSceneKey" );
 
 	UTgUICampaignMenu_execOnSceneKey_Parms OnSceneKey_Parms;
 
@@ -29695,7 +29696,7 @@ void UTgUICampaignMenu::RegisterCallbacks ( )
 	static UFunction* pFnRegisterCallbacks = NULL;
 
 	if ( ! pFnRegisterCallbacks )
-		pFnRegisterCallbacks = (UFunction*) UObject::GObjObjects()->Data[ 54441 ];
+		pFnRegisterCallbacks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.RegisterCallbacks" );
 
 	UTgUICampaignMenu_execRegisterCallbacks_Parms RegisterCallbacks_Parms;
 
@@ -29716,7 +29717,7 @@ bool UTgUICampaignMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54439 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.TickTgUIScene" );
 
 	UTgUICampaignMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -29738,7 +29739,7 @@ void UTgUICampaignMenu::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 54438 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.PreCloseScene" );
 
 	UTgUICampaignMenu_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -29758,7 +29759,7 @@ void UTgUICampaignMenu::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 54437 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.PostOpenScene" );
 
 	UTgUICampaignMenu_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -29778,7 +29779,7 @@ void UTgUICampaignMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54436 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu.FixupTgUIScene" );
 
 	UTgUICampaignMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -29799,7 +29800,7 @@ void UTgUICampaignMenu_Combat::eventSetSelectAttackerDelegate ( class UUIScreenO
 	static UFunction* pFnSetSelectAttackerDelegate = NULL;
 
 	if ( ! pFnSetSelectAttackerDelegate )
-		pFnSetSelectAttackerDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54570 ];
+		pFnSetSelectAttackerDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.SetSelectAttackerDelegate" );
 
 	UTgUICampaignMenu_Combat_eventSetSelectAttackerDelegate_Parms SetSelectAttackerDelegate_Parms;
 	SetSelectAttackerDelegate_Parms.Obj = Obj;
@@ -29817,7 +29818,7 @@ void UTgUICampaignMenu_Combat::eventSetSelectDefenderDelegate ( class UUIScreenO
 	static UFunction* pFnSetSelectDefenderDelegate = NULL;
 
 	if ( ! pFnSetSelectDefenderDelegate )
-		pFnSetSelectDefenderDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54568 ];
+		pFnSetSelectDefenderDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.SetSelectDefenderDelegate" );
 
 	UTgUICampaignMenu_Combat_eventSetSelectDefenderDelegate_Parms SetSelectDefenderDelegate_Parms;
 	SetSelectDefenderDelegate_Parms.Obj = Obj;
@@ -29834,7 +29835,7 @@ void UTgUICampaignMenu_Combat::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 54567 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.FixupWidgetsUC" );
 
 	UTgUICampaignMenu_Combat_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -29852,7 +29853,7 @@ bool UTgUICampaignMenu_Combat::OnAttackerSetSort ( struct FInputEventParameters*
 	static UFunction* pFnOnAttackerSetSort = NULL;
 
 	if ( ! pFnOnAttackerSetSort )
-		pFnOnAttackerSetSort = (UFunction*) UObject::GObjObjects()->Data[ 54564 ];
+		pFnOnAttackerSetSort = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.OnAttackerSetSort" );
 
 	UTgUICampaignMenu_Combat_execOnAttackerSetSort_Parms OnAttackerSetSort_Parms;
 
@@ -29879,7 +29880,7 @@ bool UTgUICampaignMenu_Combat::OnAttackerJoin ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnAttackerJoin = NULL;
 
 	if ( ! pFnOnAttackerJoin )
-		pFnOnAttackerJoin = (UFunction*) UObject::GObjObjects()->Data[ 54561 ];
+		pFnOnAttackerJoin = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.OnAttackerJoin" );
 
 	UTgUICampaignMenu_Combat_execOnAttackerJoin_Parms OnAttackerJoin_Parms;
 
@@ -29906,7 +29907,7 @@ bool UTgUICampaignMenu_Combat::OnSelectAttacker ( struct FInputEventParameters* 
 	static UFunction* pFnOnSelectAttacker = NULL;
 
 	if ( ! pFnOnSelectAttacker )
-		pFnOnSelectAttacker = (UFunction*) UObject::GObjObjects()->Data[ 54558 ];
+		pFnOnSelectAttacker = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.OnSelectAttacker" );
 
 	UTgUICampaignMenu_Combat_execOnSelectAttacker_Parms OnSelectAttacker_Parms;
 
@@ -29933,7 +29934,7 @@ void UTgUICampaignMenu_Combat::OnAttackerFilterChanged ( class UUIObject* Sender
 	static UFunction* pFnOnAttackerFilterChanged = NULL;
 
 	if ( ! pFnOnAttackerFilterChanged )
-		pFnOnAttackerFilterChanged = (UFunction*) UObject::GObjObjects()->Data[ 54555 ];
+		pFnOnAttackerFilterChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.OnAttackerFilterChanged" );
 
 	UTgUICampaignMenu_Combat_execOnAttackerFilterChanged_Parms OnAttackerFilterChanged_Parms;
 	OnAttackerFilterChanged_Parms.Sender = Sender;
@@ -29955,7 +29956,7 @@ void UTgUICampaignMenu_Combat::AttackerUpdateHighlight ( )
 	static UFunction* pFnAttackerUpdateHighlight = NULL;
 
 	if ( ! pFnAttackerUpdateHighlight )
-		pFnAttackerUpdateHighlight = (UFunction*) UObject::GObjObjects()->Data[ 54554 ];
+		pFnAttackerUpdateHighlight = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.AttackerUpdateHighlight" );
 
 	UTgUICampaignMenu_Combat_execAttackerUpdateHighlight_Parms AttackerUpdateHighlight_Parms;
 
@@ -29976,7 +29977,7 @@ void UTgUICampaignMenu_Combat::SelectAttacker ( int nIndex )
 	static UFunction* pFnSelectAttacker = NULL;
 
 	if ( ! pFnSelectAttacker )
-		pFnSelectAttacker = (UFunction*) UObject::GObjObjects()->Data[ 54552 ];
+		pFnSelectAttacker = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.SelectAttacker" );
 
 	UTgUICampaignMenu_Combat_execSelectAttacker_Parms SelectAttacker_Parms;
 	SelectAttacker_Parms.nIndex = nIndex;
@@ -29998,7 +29999,7 @@ void UTgUICampaignMenu_Combat::ResizeAttackerList ( int nSize )
 	static UFunction* pFnResizeAttackerList = NULL;
 
 	if ( ! pFnResizeAttackerList )
-		pFnResizeAttackerList = (UFunction*) UObject::GObjObjects()->Data[ 54550 ];
+		pFnResizeAttackerList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.ResizeAttackerList" );
 
 	UTgUICampaignMenu_Combat_execResizeAttackerList_Parms ResizeAttackerList_Parms;
 	ResizeAttackerList_Parms.nSize = nSize;
@@ -30019,7 +30020,7 @@ void UTgUICampaignMenu_Combat::UpdateAttackerList ( )
 	static UFunction* pFnUpdateAttackerList = NULL;
 
 	if ( ! pFnUpdateAttackerList )
-		pFnUpdateAttackerList = (UFunction*) UObject::GObjObjects()->Data[ 54549 ];
+		pFnUpdateAttackerList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.UpdateAttackerList" );
 
 	UTgUICampaignMenu_Combat_execUpdateAttackerList_Parms UpdateAttackerList_Parms;
 
@@ -30041,7 +30042,7 @@ bool UTgUICampaignMenu_Combat::OnDefenderSetSort ( struct FInputEventParameters*
 	static UFunction* pFnOnDefenderSetSort = NULL;
 
 	if ( ! pFnOnDefenderSetSort )
-		pFnOnDefenderSetSort = (UFunction*) UObject::GObjObjects()->Data[ 54546 ];
+		pFnOnDefenderSetSort = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.OnDefenderSetSort" );
 
 	UTgUICampaignMenu_Combat_execOnDefenderSetSort_Parms OnDefenderSetSort_Parms;
 
@@ -30068,7 +30069,7 @@ bool UTgUICampaignMenu_Combat::OnDefenderKickTeam ( struct FInputEventParameters
 	static UFunction* pFnOnDefenderKickTeam = NULL;
 
 	if ( ! pFnOnDefenderKickTeam )
-		pFnOnDefenderKickTeam = (UFunction*) UObject::GObjObjects()->Data[ 54543 ];
+		pFnOnDefenderKickTeam = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.OnDefenderKickTeam" );
 
 	UTgUICampaignMenu_Combat_execOnDefenderKickTeam_Parms OnDefenderKickTeam_Parms;
 
@@ -30095,7 +30096,7 @@ bool UTgUICampaignMenu_Combat::OnDefenderJoin ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnDefenderJoin = NULL;
 
 	if ( ! pFnOnDefenderJoin )
-		pFnOnDefenderJoin = (UFunction*) UObject::GObjObjects()->Data[ 54540 ];
+		pFnOnDefenderJoin = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.OnDefenderJoin" );
 
 	UTgUICampaignMenu_Combat_execOnDefenderJoin_Parms OnDefenderJoin_Parms;
 
@@ -30122,7 +30123,7 @@ bool UTgUICampaignMenu_Combat::OnSelectDefender ( struct FInputEventParameters* 
 	static UFunction* pFnOnSelectDefender = NULL;
 
 	if ( ! pFnOnSelectDefender )
-		pFnOnSelectDefender = (UFunction*) UObject::GObjObjects()->Data[ 54537 ];
+		pFnOnSelectDefender = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.OnSelectDefender" );
 
 	UTgUICampaignMenu_Combat_execOnSelectDefender_Parms OnSelectDefender_Parms;
 
@@ -30149,7 +30150,7 @@ void UTgUICampaignMenu_Combat::OnDefenderFilterChanged ( class UUIObject* Sender
 	static UFunction* pFnOnDefenderFilterChanged = NULL;
 
 	if ( ! pFnOnDefenderFilterChanged )
-		pFnOnDefenderFilterChanged = (UFunction*) UObject::GObjObjects()->Data[ 54534 ];
+		pFnOnDefenderFilterChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.OnDefenderFilterChanged" );
 
 	UTgUICampaignMenu_Combat_execOnDefenderFilterChanged_Parms OnDefenderFilterChanged_Parms;
 	OnDefenderFilterChanged_Parms.Sender = Sender;
@@ -30171,7 +30172,7 @@ void UTgUICampaignMenu_Combat::DefenderUpdateHighlight ( )
 	static UFunction* pFnDefenderUpdateHighlight = NULL;
 
 	if ( ! pFnDefenderUpdateHighlight )
-		pFnDefenderUpdateHighlight = (UFunction*) UObject::GObjObjects()->Data[ 54533 ];
+		pFnDefenderUpdateHighlight = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.DefenderUpdateHighlight" );
 
 	UTgUICampaignMenu_Combat_execDefenderUpdateHighlight_Parms DefenderUpdateHighlight_Parms;
 
@@ -30192,7 +30193,7 @@ void UTgUICampaignMenu_Combat::SelectDefender ( int nIndex )
 	static UFunction* pFnSelectDefender = NULL;
 
 	if ( ! pFnSelectDefender )
-		pFnSelectDefender = (UFunction*) UObject::GObjObjects()->Data[ 54531 ];
+		pFnSelectDefender = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.SelectDefender" );
 
 	UTgUICampaignMenu_Combat_execSelectDefender_Parms SelectDefender_Parms;
 	SelectDefender_Parms.nIndex = nIndex;
@@ -30214,7 +30215,7 @@ void UTgUICampaignMenu_Combat::ResizeDefenderList ( int nSize )
 	static UFunction* pFnResizeDefenderList = NULL;
 
 	if ( ! pFnResizeDefenderList )
-		pFnResizeDefenderList = (UFunction*) UObject::GObjObjects()->Data[ 54529 ];
+		pFnResizeDefenderList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.ResizeDefenderList" );
 
 	UTgUICampaignMenu_Combat_execResizeDefenderList_Parms ResizeDefenderList_Parms;
 	ResizeDefenderList_Parms.nSize = nSize;
@@ -30235,7 +30236,7 @@ void UTgUICampaignMenu_Combat::UpdateDefenderTimers ( )
 	static UFunction* pFnUpdateDefenderTimers = NULL;
 
 	if ( ! pFnUpdateDefenderTimers )
-		pFnUpdateDefenderTimers = (UFunction*) UObject::GObjObjects()->Data[ 54528 ];
+		pFnUpdateDefenderTimers = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.UpdateDefenderTimers" );
 
 	UTgUICampaignMenu_Combat_execUpdateDefenderTimers_Parms UpdateDefenderTimers_Parms;
 
@@ -30255,7 +30256,7 @@ void UTgUICampaignMenu_Combat::UpdateDefenderList ( )
 	static UFunction* pFnUpdateDefenderList = NULL;
 
 	if ( ! pFnUpdateDefenderList )
-		pFnUpdateDefenderList = (UFunction*) UObject::GObjObjects()->Data[ 54527 ];
+		pFnUpdateDefenderList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.UpdateDefenderList" );
 
 	UTgUICampaignMenu_Combat_execUpdateDefenderList_Parms UpdateDefenderList_Parms;
 
@@ -30275,7 +30276,7 @@ void UTgUICampaignMenu_Combat::RegisterCallbacks ( )
 	static UFunction* pFnRegisterCallbacks = NULL;
 
 	if ( ! pFnRegisterCallbacks )
-		pFnRegisterCallbacks = (UFunction*) UObject::GObjObjects()->Data[ 54526 ];
+		pFnRegisterCallbacks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.RegisterCallbacks" );
 
 	UTgUICampaignMenu_Combat_execRegisterCallbacks_Parms RegisterCallbacks_Parms;
 
@@ -30295,7 +30296,7 @@ void UTgUICampaignMenu_Combat::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54525 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.FixupTgUIScene" );
 
 	UTgUICampaignMenu_Combat_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -30315,7 +30316,7 @@ void UTgUICampaignMenu_Combat::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 54524 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.PostOpenScene" );
 
 	UTgUICampaignMenu_Combat_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -30336,7 +30337,7 @@ bool UTgUICampaignMenu_Combat::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54522 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.TickTgUIScene" );
 
 	UTgUICampaignMenu_Combat_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -30359,7 +30360,7 @@ bool UTgUICampaignMenu_Combat::OnACADataUpdated ( )
 	static UFunction* pFnOnACADataUpdated = NULL;
 
 	if ( ! pFnOnACADataUpdated )
-		pFnOnACADataUpdated = (UFunction*) UObject::GObjObjects()->Data[ 54520 ];
+		pFnOnACADataUpdated = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Combat.OnACADataUpdated" );
 
 	UTgUICampaignMenu_Combat_execOnACADataUpdated_Parms OnACADataUpdated_Parms;
 
@@ -30381,7 +30382,7 @@ void UTgUICampaignMenu_CombatLog::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 54613 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_CombatLog.FixupWidgetsUC" );
 
 	UTgUICampaignMenu_CombatLog_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -30399,7 +30400,7 @@ bool UTgUICampaignMenu_CombatLog::OnResetButtonDelegate ( struct FInputEventPara
 	static UFunction* pFnOnResetButtonDelegate = NULL;
 
 	if ( ! pFnOnResetButtonDelegate )
-		pFnOnResetButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54610 ];
+		pFnOnResetButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_CombatLog.OnResetButtonDelegate" );
 
 	UTgUICampaignMenu_CombatLog_execOnResetButtonDelegate_Parms OnResetButtonDelegate_Parms;
 
@@ -30426,7 +30427,7 @@ bool UTgUICampaignMenu_CombatLog::OnSearchButtonDelegate ( struct FInputEventPar
 	static UFunction* pFnOnSearchButtonDelegate = NULL;
 
 	if ( ! pFnOnSearchButtonDelegate )
-		pFnOnSearchButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54607 ];
+		pFnOnSearchButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_CombatLog.OnSearchButtonDelegate" );
 
 	UTgUICampaignMenu_CombatLog_execOnSearchButtonDelegate_Parms OnSearchButtonDelegate_Parms;
 
@@ -30452,7 +30453,7 @@ void UTgUICampaignMenu_CombatLog::ResizeLogList ( int nSize )
 	static UFunction* pFnResizeLogList = NULL;
 
 	if ( ! pFnResizeLogList )
-		pFnResizeLogList = (UFunction*) UObject::GObjObjects()->Data[ 54605 ];
+		pFnResizeLogList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_CombatLog.ResizeLogList" );
 
 	UTgUICampaignMenu_CombatLog_execResizeLogList_Parms ResizeLogList_Parms;
 	ResizeLogList_Parms.nSize = nSize;
@@ -30473,7 +30474,7 @@ void UTgUICampaignMenu_CombatLog::ResetFilters ( )
 	static UFunction* pFnResetFilters = NULL;
 
 	if ( ! pFnResetFilters )
-		pFnResetFilters = (UFunction*) UObject::GObjObjects()->Data[ 54604 ];
+		pFnResetFilters = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_CombatLog.ResetFilters" );
 
 	UTgUICampaignMenu_CombatLog_execResetFilters_Parms ResetFilters_Parms;
 
@@ -30493,7 +30494,7 @@ void UTgUICampaignMenu_CombatLog::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54603 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_CombatLog.FixupTgUIScene" );
 
 	UTgUICampaignMenu_CombatLog_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -30514,7 +30515,7 @@ bool UTgUICampaignMenu_CombatLog::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54601 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_CombatLog.TickTgUIScene" );
 
 	UTgUICampaignMenu_CombatLog_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -30538,7 +30539,7 @@ bool UTgUICampaignMenu_HexMap::OnPopupButton ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnPopupButton = NULL;
 
 	if ( ! pFnOnPopupButton )
-		pFnOnPopupButton = (UFunction*) UObject::GObjObjects()->Data[ 54742 ];
+		pFnOnPopupButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnPopupButton" );
 
 	UTgUICampaignMenu_HexMap_execOnPopupButton_Parms OnPopupButton_Parms;
 
@@ -30561,7 +30562,7 @@ bool UTgUICampaignMenu_HexMap::OnOpenTerritories ( struct FInputEventParameters*
 	static UFunction* pFnOnOpenTerritories = NULL;
 
 	if ( ! pFnOnOpenTerritories )
-		pFnOnOpenTerritories = (UFunction*) UObject::GObjObjects()->Data[ 54739 ];
+		pFnOnOpenTerritories = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnOpenTerritories" );
 
 	UTgUICampaignMenu_HexMap_execOnOpenTerritories_Parms OnOpenTerritories_Parms;
 
@@ -30584,7 +30585,7 @@ bool UTgUICampaignMenu_HexMap::OnHexWithdraw ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnHexWithdraw = NULL;
 
 	if ( ! pFnOnHexWithdraw )
-		pFnOnHexWithdraw = (UFunction*) UObject::GObjObjects()->Data[ 54736 ];
+		pFnOnHexWithdraw = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnHexWithdraw" );
 
 	UTgUICampaignMenu_HexMap_execOnHexWithdraw_Parms OnHexWithdraw_Parms;
 
@@ -30607,7 +30608,7 @@ bool UTgUICampaignMenu_HexMap::OnHexRaid ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnHexRaid = NULL;
 
 	if ( ! pFnOnHexRaid )
-		pFnOnHexRaid = (UFunction*) UObject::GObjObjects()->Data[ 54733 ];
+		pFnOnHexRaid = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnHexRaid" );
 
 	UTgUICampaignMenu_HexMap_execOnHexRaid_Parms OnHexRaid_Parms;
 
@@ -30630,7 +30631,7 @@ bool UTgUICampaignMenu_HexMap::OnHexSteal ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnHexSteal = NULL;
 
 	if ( ! pFnOnHexSteal )
-		pFnOnHexSteal = (UFunction*) UObject::GObjObjects()->Data[ 54730 ];
+		pFnOnHexSteal = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnHexSteal" );
 
 	UTgUICampaignMenu_HexMap_execOnHexSteal_Parms OnHexSteal_Parms;
 
@@ -30653,7 +30654,7 @@ bool UTgUICampaignMenu_HexMap::OnHexCapture ( struct FInputEventParameters* Even
 	static UFunction* pFnOnHexCapture = NULL;
 
 	if ( ! pFnOnHexCapture )
-		pFnOnHexCapture = (UFunction*) UObject::GObjObjects()->Data[ 54727 ];
+		pFnOnHexCapture = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnHexCapture" );
 
 	UTgUICampaignMenu_HexMap_execOnHexCapture_Parms OnHexCapture_Parms;
 
@@ -30676,7 +30677,7 @@ bool UTgUICampaignMenu_HexMap::OnHexJoin ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnHexJoin = NULL;
 
 	if ( ! pFnOnHexJoin )
-		pFnOnHexJoin = (UFunction*) UObject::GObjObjects()->Data[ 54724 ];
+		pFnOnHexJoin = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnHexJoin" );
 
 	UTgUICampaignMenu_HexMap_execOnHexJoin_Parms OnHexJoin_Parms;
 
@@ -30699,7 +30700,7 @@ bool UTgUICampaignMenu_HexMap::OnHexDefend ( struct FInputEventParameters* Event
 	static UFunction* pFnOnHexDefend = NULL;
 
 	if ( ! pFnOnHexDefend )
-		pFnOnHexDefend = (UFunction*) UObject::GObjObjects()->Data[ 54721 ];
+		pFnOnHexDefend = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnHexDefend" );
 
 	UTgUICampaignMenu_HexMap_execOnHexDefend_Parms OnHexDefend_Parms;
 
@@ -30720,7 +30721,7 @@ void UTgUICampaignMenu_HexMap::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 54720 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.FixupWidgetsUC" );
 
 	UTgUICampaignMenu_HexMap_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -30738,7 +30739,7 @@ bool UTgUICampaignMenu_HexMap::OnNavButton ( struct FInputEventParameters* Event
 	static UFunction* pFnOnNavButton = NULL;
 
 	if ( ! pFnOnNavButton )
-		pFnOnNavButton = (UFunction*) UObject::GObjObjects()->Data[ 54717 ];
+		pFnOnNavButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnNavButton" );
 
 	UTgUICampaignMenu_HexMap_execOnNavButton_Parms OnNavButton_Parms;
 
@@ -30765,7 +30766,7 @@ bool UTgUICampaignMenu_HexMap::OnConfirmYesClicked ( struct FInputEventParameter
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 54714 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnConfirmYesClicked" );
 
 	UTgUICampaignMenu_HexMap_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -30792,7 +30793,7 @@ bool UTgUICampaignMenu_HexMap::OnHexBidCancel ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnHexBidCancel = NULL;
 
 	if ( ! pFnOnHexBidCancel )
-		pFnOnHexBidCancel = (UFunction*) UObject::GObjObjects()->Data[ 54711 ];
+		pFnOnHexBidCancel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnHexBidCancel" );
 
 	UTgUICampaignMenu_HexMap_execOnHexBidCancel_Parms OnHexBidCancel_Parms;
 
@@ -30819,7 +30820,7 @@ bool UTgUICampaignMenu_HexMap::OnHexBid ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnHexBid = NULL;
 
 	if ( ! pFnOnHexBid )
-		pFnOnHexBid = (UFunction*) UObject::GObjObjects()->Data[ 54708 ];
+		pFnOnHexBid = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnHexBid" );
 
 	UTgUICampaignMenu_HexMap_execOnHexBid_Parms OnHexBid_Parms;
 
@@ -30846,7 +30847,7 @@ void UTgUICampaignMenu_HexMap::OnZoneChanged ( class UUIObject* Sender, int Play
 	static UFunction* pFnOnZoneChanged = NULL;
 
 	if ( ! pFnOnZoneChanged )
-		pFnOnZoneChanged = (UFunction*) UObject::GObjObjects()->Data[ 54705 ];
+		pFnOnZoneChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnZoneChanged" );
 
 	UTgUICampaignMenu_HexMap_execOnZoneChanged_Parms OnZoneChanged_Parms;
 	OnZoneChanged_Parms.Sender = Sender;
@@ -30868,7 +30869,7 @@ void UTgUICampaignMenu_HexMap::UpdateHexOptionDisplay ( )
 	static UFunction* pFnUpdateHexOptionDisplay = NULL;
 
 	if ( ! pFnUpdateHexOptionDisplay )
-		pFnUpdateHexOptionDisplay = (UFunction*) UObject::GObjObjects()->Data[ 54704 ];
+		pFnUpdateHexOptionDisplay = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.UpdateHexOptionDisplay" );
 
 	UTgUICampaignMenu_HexMap_execUpdateHexOptionDisplay_Parms UpdateHexOptionDisplay_Parms;
 
@@ -30888,7 +30889,7 @@ void UTgUICampaignMenu_HexMap::UpdateHexInformation ( )
 	static UFunction* pFnUpdateHexInformation = NULL;
 
 	if ( ! pFnUpdateHexInformation )
-		pFnUpdateHexInformation = (UFunction*) UObject::GObjObjects()->Data[ 54703 ];
+		pFnUpdateHexInformation = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.UpdateHexInformation" );
 
 	UTgUICampaignMenu_HexMap_execUpdateHexInformation_Parms UpdateHexInformation_Parms;
 
@@ -30908,7 +30909,7 @@ void UTgUICampaignMenu_HexMap::UpdateZoneList ( )
 	static UFunction* pFnUpdateZoneList = NULL;
 
 	if ( ! pFnUpdateZoneList )
-		pFnUpdateZoneList = (UFunction*) UObject::GObjObjects()->Data[ 54702 ];
+		pFnUpdateZoneList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.UpdateZoneList" );
 
 	UTgUICampaignMenu_HexMap_execUpdateZoneList_Parms UpdateZoneList_Parms;
 
@@ -30928,7 +30929,7 @@ void UTgUICampaignMenu_HexMap::UpdateToolTipData ( )
 	static UFunction* pFnUpdateToolTipData = NULL;
 
 	if ( ! pFnUpdateToolTipData )
-		pFnUpdateToolTipData = (UFunction*) UObject::GObjObjects()->Data[ 54701 ];
+		pFnUpdateToolTipData = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.UpdateToolTipData" );
 
 	UTgUICampaignMenu_HexMap_execUpdateToolTipData_Parms UpdateToolTipData_Parms;
 
@@ -30949,7 +30950,7 @@ bool UTgUICampaignMenu_HexMap::UpdateHexMap ( )
 	static UFunction* pFnUpdateHexMap = NULL;
 
 	if ( ! pFnUpdateHexMap )
-		pFnUpdateHexMap = (UFunction*) UObject::GObjObjects()->Data[ 54699 ];
+		pFnUpdateHexMap = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.UpdateHexMap" );
 
 	UTgUICampaignMenu_HexMap_execUpdateHexMap_Parms UpdateHexMap_Parms;
 
@@ -30971,7 +30972,7 @@ void UTgUICampaignMenu_HexMap::OnHexAssignmentUpdated ( )
 	static UFunction* pFnOnHexAssignmentUpdated = NULL;
 
 	if ( ! pFnOnHexAssignmentUpdated )
-		pFnOnHexAssignmentUpdated = (UFunction*) UObject::GObjObjects()->Data[ 54698 ];
+		pFnOnHexAssignmentUpdated = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnHexAssignmentUpdated" );
 
 	UTgUICampaignMenu_HexMap_execOnHexAssignmentUpdated_Parms OnHexAssignmentUpdated_Parms;
 
@@ -30992,7 +30993,7 @@ bool UTgUICampaignMenu_HexMap::OnHexDataUpdated ( )
 	static UFunction* pFnOnHexDataUpdated = NULL;
 
 	if ( ! pFnOnHexDataUpdated )
-		pFnOnHexDataUpdated = (UFunction*) UObject::GObjObjects()->Data[ 54696 ];
+		pFnOnHexDataUpdated = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnHexDataUpdated" );
 
 	UTgUICampaignMenu_HexMap_execOnHexDataUpdated_Parms OnHexDataUpdated_Parms;
 
@@ -31014,7 +31015,7 @@ void UTgUICampaignMenu_HexMap::OpenTerritories ( )
 	static UFunction* pFnOpenTerritories = NULL;
 
 	if ( ! pFnOpenTerritories )
-		pFnOpenTerritories = (UFunction*) UObject::GObjObjects()->Data[ 54695 ];
+		pFnOpenTerritories = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OpenTerritories" );
 
 	UTgUICampaignMenu_HexMap_execOpenTerritories_Parms OpenTerritories_Parms;
 
@@ -31034,7 +31035,7 @@ void UTgUICampaignMenu_HexMap::HexWithdraw ( )
 	static UFunction* pFnHexWithdraw = NULL;
 
 	if ( ! pFnHexWithdraw )
-		pFnHexWithdraw = (UFunction*) UObject::GObjObjects()->Data[ 54694 ];
+		pFnHexWithdraw = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.HexWithdraw" );
 
 	UTgUICampaignMenu_HexMap_execHexWithdraw_Parms HexWithdraw_Parms;
 
@@ -31054,7 +31055,7 @@ void UTgUICampaignMenu_HexMap::HexRaid ( )
 	static UFunction* pFnHexRaid = NULL;
 
 	if ( ! pFnHexRaid )
-		pFnHexRaid = (UFunction*) UObject::GObjObjects()->Data[ 54693 ];
+		pFnHexRaid = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.HexRaid" );
 
 	UTgUICampaignMenu_HexMap_execHexRaid_Parms HexRaid_Parms;
 
@@ -31074,7 +31075,7 @@ void UTgUICampaignMenu_HexMap::HexSteal ( )
 	static UFunction* pFnHexSteal = NULL;
 
 	if ( ! pFnHexSteal )
-		pFnHexSteal = (UFunction*) UObject::GObjObjects()->Data[ 54692 ];
+		pFnHexSteal = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.HexSteal" );
 
 	UTgUICampaignMenu_HexMap_execHexSteal_Parms HexSteal_Parms;
 
@@ -31094,7 +31095,7 @@ void UTgUICampaignMenu_HexMap::HexCapture ( )
 	static UFunction* pFnHexCapture = NULL;
 
 	if ( ! pFnHexCapture )
-		pFnHexCapture = (UFunction*) UObject::GObjObjects()->Data[ 54691 ];
+		pFnHexCapture = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.HexCapture" );
 
 	UTgUICampaignMenu_HexMap_execHexCapture_Parms HexCapture_Parms;
 
@@ -31114,7 +31115,7 @@ void UTgUICampaignMenu_HexMap::HexJoin ( )
 	static UFunction* pFnHexJoin = NULL;
 
 	if ( ! pFnHexJoin )
-		pFnHexJoin = (UFunction*) UObject::GObjObjects()->Data[ 54690 ];
+		pFnHexJoin = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.HexJoin" );
 
 	UTgUICampaignMenu_HexMap_execHexJoin_Parms HexJoin_Parms;
 
@@ -31134,7 +31135,7 @@ void UTgUICampaignMenu_HexMap::HexDefend ( )
 	static UFunction* pFnHexDefend = NULL;
 
 	if ( ! pFnHexDefend )
-		pFnHexDefend = (UFunction*) UObject::GObjObjects()->Data[ 54689 ];
+		pFnHexDefend = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.HexDefend" );
 
 	UTgUICampaignMenu_HexMap_execHexDefend_Parms HexDefend_Parms;
 
@@ -31154,7 +31155,7 @@ void UTgUICampaignMenu_HexMap::ClosePopupMessage ( )
 	static UFunction* pFnClosePopupMessage = NULL;
 
 	if ( ! pFnClosePopupMessage )
-		pFnClosePopupMessage = (UFunction*) UObject::GObjObjects()->Data[ 54688 ];
+		pFnClosePopupMessage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.ClosePopupMessage" );
 
 	UTgUICampaignMenu_HexMap_execClosePopupMessage_Parms ClosePopupMessage_Parms;
 
@@ -31175,7 +31176,7 @@ void UTgUICampaignMenu_HexMap::OpenPopupMessage ( int nMsgId )
 	static UFunction* pFnOpenPopupMessage = NULL;
 
 	if ( ! pFnOpenPopupMessage )
-		pFnOpenPopupMessage = (UFunction*) UObject::GObjObjects()->Data[ 54686 ];
+		pFnOpenPopupMessage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OpenPopupMessage" );
 
 	UTgUICampaignMenu_HexMap_execOpenPopupMessage_Parms OpenPopupMessage_Parms;
 	OpenPopupMessage_Parms.nMsgId = nMsgId;
@@ -31198,7 +31199,7 @@ bool UTgUICampaignMenu_HexMap::OnSceneKey ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSceneKey = NULL;
 
 	if ( ! pFnOnSceneKey )
-		pFnOnSceneKey = (UFunction*) UObject::GObjObjects()->Data[ 54683 ];
+		pFnOnSceneKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.OnSceneKey" );
 
 	UTgUICampaignMenu_HexMap_execOnSceneKey_Parms OnSceneKey_Parms;
 
@@ -31223,7 +31224,7 @@ void UTgUICampaignMenu_HexMap::PostRender ( )
 	static UFunction* pFnPostRender = NULL;
 
 	if ( ! pFnPostRender )
-		pFnPostRender = (UFunction*) UObject::GObjObjects()->Data[ 54682 ];
+		pFnPostRender = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.PostRender" );
 
 	UTgUICampaignMenu_HexMap_execPostRender_Parms PostRender_Parms;
 
@@ -31243,7 +31244,7 @@ void UTgUICampaignMenu_HexMap::RegisterCallbacks ( )
 	static UFunction* pFnRegisterCallbacks = NULL;
 
 	if ( ! pFnRegisterCallbacks )
-		pFnRegisterCallbacks = (UFunction*) UObject::GObjObjects()->Data[ 54681 ];
+		pFnRegisterCallbacks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.RegisterCallbacks" );
 
 	UTgUICampaignMenu_HexMap_execRegisterCallbacks_Parms RegisterCallbacks_Parms;
 
@@ -31264,7 +31265,7 @@ bool UTgUICampaignMenu_HexMap::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54679 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.TickTgUIScene" );
 
 	UTgUICampaignMenu_HexMap_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -31286,7 +31287,7 @@ void UTgUICampaignMenu_HexMap::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54678 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.FixupTgUIScene" );
 
 	UTgUICampaignMenu_HexMap_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -31306,7 +31307,7 @@ void UTgUICampaignMenu_HexMap::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 54677 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_HexMap.PostOpenScene" );
 
 	UTgUICampaignMenu_HexMap_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -31327,7 +31328,7 @@ void UTgUICampaignMenu_Leaderboard::eventSetRowMouseoverDelegate ( class UUIButt
 	static UFunction* pFnSetRowMouseoverDelegate = NULL;
 
 	if ( ! pFnSetRowMouseoverDelegate )
-		pFnSetRowMouseoverDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54776 ];
+		pFnSetRowMouseoverDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Leaderboard.SetRowMouseoverDelegate" );
 
 	UTgUICampaignMenu_Leaderboard_eventSetRowMouseoverDelegate_Parms SetRowMouseoverDelegate_Parms;
 	SetRowMouseoverDelegate_Parms.Button = Button;
@@ -31344,7 +31345,7 @@ void UTgUICampaignMenu_Leaderboard::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 54775 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Leaderboard.FixupWidgetsUC" );
 
 	UTgUICampaignMenu_Leaderboard_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -31364,7 +31365,7 @@ void UTgUICampaignMenu_Leaderboard::OnAgencyRowStateChange ( class UUIScreenObje
 	static UFunction* pFnOnAgencyRowStateChange = NULL;
 
 	if ( ! pFnOnAgencyRowStateChange )
-		pFnOnAgencyRowStateChange = (UFunction*) UObject::GObjObjects()->Data[ 54770 ];
+		pFnOnAgencyRowStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Leaderboard.OnAgencyRowStateChange" );
 
 	UTgUICampaignMenu_Leaderboard_execOnAgencyRowStateChange_Parms OnAgencyRowStateChange_Parms;
 	OnAgencyRowStateChange_Parms.Sender = Sender;
@@ -31390,7 +31391,7 @@ void UTgUICampaignMenu_Leaderboard::OnAgencyValueChanged ( class UUIObject* Send
 	static UFunction* pFnOnAgencyValueChanged = NULL;
 
 	if ( ! pFnOnAgencyValueChanged )
-		pFnOnAgencyValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 54767 ];
+		pFnOnAgencyValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Leaderboard.OnAgencyValueChanged" );
 
 	UTgUICampaignMenu_Leaderboard_execOnAgencyValueChanged_Parms OnAgencyValueChanged_Parms;
 	OnAgencyValueChanged_Parms.Sender = Sender;
@@ -31412,7 +31413,7 @@ void UTgUICampaignMenu_Leaderboard::RegisterCallbacks ( )
 	static UFunction* pFnRegisterCallbacks = NULL;
 
 	if ( ! pFnRegisterCallbacks )
-		pFnRegisterCallbacks = (UFunction*) UObject::GObjObjects()->Data[ 54766 ];
+		pFnRegisterCallbacks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Leaderboard.RegisterCallbacks" );
 
 	UTgUICampaignMenu_Leaderboard_execRegisterCallbacks_Parms RegisterCallbacks_Parms;
 
@@ -31432,7 +31433,7 @@ void UTgUICampaignMenu_Leaderboard::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54765 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Leaderboard.FixupTgUIScene" );
 
 	UTgUICampaignMenu_Leaderboard_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -31453,7 +31454,7 @@ bool UTgUICampaignMenu_Leaderboard::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54763 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Leaderboard.TickTgUIScene" );
 
 	UTgUICampaignMenu_Leaderboard_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -31475,7 +31476,7 @@ void UTgUICampaignMenu_Leaderboard::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 54762 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Leaderboard.PostOpenScene" );
 
 	UTgUICampaignMenu_Leaderboard_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -31495,7 +31496,7 @@ void UTgUICampaignMenu_Leaderboard::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 54761 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICampaignMenu_Leaderboard.PostInitSceneDriver" );
 
 	UTgUICampaignMenu_Leaderboard_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -31516,7 +31517,7 @@ void UTgUICargoMenu::eventSetCargoItemStateChange ( class UUIScreenObject* Obj )
 	static UFunction* pFnSetCargoItemStateChange = NULL;
 
 	if ( ! pFnSetCargoItemStateChange )
-		pFnSetCargoItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 54956 ];
+		pFnSetCargoItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.SetCargoItemStateChange" );
 
 	UTgUICargoMenu_eventSetCargoItemStateChange_Parms SetCargoItemStateChange_Parms;
 	SetCargoItemStateChange_Parms.Obj = Obj;
@@ -31534,7 +31535,7 @@ void UTgUICargoMenu::eventSetDropshipItemStateChange ( class UUIScreenObject* Ob
 	static UFunction* pFnSetDropshipItemStateChange = NULL;
 
 	if ( ! pFnSetDropshipItemStateChange )
-		pFnSetDropshipItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 54954 ];
+		pFnSetDropshipItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.SetDropshipItemStateChange" );
 
 	UTgUICargoMenu_eventSetDropshipItemStateChange_Parms SetDropshipItemStateChange_Parms;
 	SetDropshipItemStateChange_Parms.Obj = Obj;
@@ -31552,7 +31553,7 @@ void UTgUICargoMenu::eventSetRawInputKeyForCargoList ( class UUIButton* Button )
 	static UFunction* pFnSetRawInputKeyForCargoList = NULL;
 
 	if ( ! pFnSetRawInputKeyForCargoList )
-		pFnSetRawInputKeyForCargoList = (UFunction*) UObject::GObjObjects()->Data[ 54952 ];
+		pFnSetRawInputKeyForCargoList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.SetRawInputKeyForCargoList" );
 
 	UTgUICargoMenu_eventSetRawInputKeyForCargoList_Parms SetRawInputKeyForCargoList_Parms;
 	SetRawInputKeyForCargoList_Parms.Button = Button;
@@ -31570,7 +31571,7 @@ void UTgUICargoMenu::eventSetRawInputKeyForMemberList ( class UUIButton* Button 
 	static UFunction* pFnSetRawInputKeyForMemberList = NULL;
 
 	if ( ! pFnSetRawInputKeyForMemberList )
-		pFnSetRawInputKeyForMemberList = (UFunction*) UObject::GObjObjects()->Data[ 54950 ];
+		pFnSetRawInputKeyForMemberList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.SetRawInputKeyForMemberList" );
 
 	UTgUICargoMenu_eventSetRawInputKeyForMemberList_Parms SetRawInputKeyForMemberList_Parms;
 	SetRawInputKeyForMemberList_Parms.Button = Button;
@@ -31587,7 +31588,7 @@ void UTgUICargoMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 54948 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.FixupWidgetsUC" );
 
 	UTgUICargoMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -31605,7 +31606,7 @@ bool UTgUICargoMenu::SelectCargoByButton ( class UUIButton* Button )
 	static UFunction* pFnSelectCargoByButton = NULL;
 
 	if ( ! pFnSelectCargoByButton )
-		pFnSelectCargoByButton = (UFunction*) UObject::GObjObjects()->Data[ 54945 ];
+		pFnSelectCargoByButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.SelectCargoByButton" );
 
 	UTgUICargoMenu_execSelectCargoByButton_Parms SelectCargoByButton_Parms;
 	SelectCargoByButton_Parms.Button = Button;
@@ -31630,7 +31631,7 @@ bool UTgUICargoMenu::SelectMemberByButton ( class UUIButton* Button )
 	static UFunction* pFnSelectMemberByButton = NULL;
 
 	if ( ! pFnSelectMemberByButton )
-		pFnSelectMemberByButton = (UFunction*) UObject::GObjObjects()->Data[ 54942 ];
+		pFnSelectMemberByButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.SelectMemberByButton" );
 
 	UTgUICargoMenu_execSelectMemberByButton_Parms SelectMemberByButton_Parms;
 	SelectMemberByButton_Parms.Button = Button;
@@ -31655,7 +31656,7 @@ void UTgUICargoMenu::OnAmountChangedDelegate ( class UUIObject* Sender, int Play
 	static UFunction* pFnOnAmountChangedDelegate = NULL;
 
 	if ( ! pFnOnAmountChangedDelegate )
-		pFnOnAmountChangedDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54939 ];
+		pFnOnAmountChangedDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnAmountChangedDelegate" );
 
 	UTgUICargoMenu_execOnAmountChangedDelegate_Parms OnAmountChangedDelegate_Parms;
 	OnAmountChangedDelegate_Parms.Sender = Sender;
@@ -31681,7 +31682,7 @@ void UTgUICargoMenu::OnCargoItemStateChange ( class UUIScreenObject* Sender, int
 	static UFunction* pFnOnCargoItemStateChange = NULL;
 
 	if ( ! pFnOnCargoItemStateChange )
-		pFnOnCargoItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 54934 ];
+		pFnOnCargoItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnCargoItemStateChange" );
 
 	UTgUICargoMenu_execOnCargoItemStateChange_Parms OnCargoItemStateChange_Parms;
 	OnCargoItemStateChange_Parms.Sender = Sender;
@@ -31709,7 +31710,7 @@ void UTgUICargoMenu::OnDropshipItemStateChange ( class UUIScreenObject* Sender, 
 	static UFunction* pFnOnDropshipItemStateChange = NULL;
 
 	if ( ! pFnOnDropshipItemStateChange )
-		pFnOnDropshipItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 54929 ];
+		pFnOnDropshipItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnDropshipItemStateChange" );
 
 	UTgUICargoMenu_execOnDropshipItemStateChange_Parms OnDropshipItemStateChange_Parms;
 	OnDropshipItemStateChange_Parms.Sender = Sender;
@@ -31735,7 +31736,7 @@ bool UTgUICargoMenu::OnCargoRemoveDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnCargoRemoveDelegate = NULL;
 
 	if ( ! pFnOnCargoRemoveDelegate )
-		pFnOnCargoRemoveDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54926 ];
+		pFnOnCargoRemoveDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnCargoRemoveDelegate" );
 
 	UTgUICargoMenu_execOnCargoRemoveDelegate_Parms OnCargoRemoveDelegate_Parms;
 
@@ -31762,7 +31763,7 @@ bool UTgUICargoMenu::OnCargoAddDelegate ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnCargoAddDelegate = NULL;
 
 	if ( ! pFnOnCargoAddDelegate )
-		pFnOnCargoAddDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54923 ];
+		pFnOnCargoAddDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnCargoAddDelegate" );
 
 	UTgUICargoMenu_execOnCargoAddDelegate_Parms OnCargoAddDelegate_Parms;
 
@@ -31789,7 +31790,7 @@ bool UTgUICargoMenu::OnDropshipRemoveDelegate ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnDropshipRemoveDelegate = NULL;
 
 	if ( ! pFnOnDropshipRemoveDelegate )
-		pFnOnDropshipRemoveDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54920 ];
+		pFnOnDropshipRemoveDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnDropshipRemoveDelegate" );
 
 	UTgUICargoMenu_execOnDropshipRemoveDelegate_Parms OnDropshipRemoveDelegate_Parms;
 
@@ -31816,7 +31817,7 @@ bool UTgUICargoMenu::OnDropshipAddDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnDropshipAddDelegate = NULL;
 
 	if ( ! pFnOnDropshipAddDelegate )
-		pFnOnDropshipAddDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54917 ];
+		pFnOnDropshipAddDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnDropshipAddDelegate" );
 
 	UTgUICargoMenu_execOnDropshipAddDelegate_Parms OnDropshipAddDelegate_Parms;
 
@@ -31843,7 +31844,7 @@ bool UTgUICargoMenu::OnSelectSFTeamDelegate ( struct FInputEventParameters* Even
 	static UFunction* pFnOnSelectSFTeamDelegate = NULL;
 
 	if ( ! pFnOnSelectSFTeamDelegate )
-		pFnOnSelectSFTeamDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54914 ];
+		pFnOnSelectSFTeamDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnSelectSFTeamDelegate" );
 
 	UTgUICargoMenu_execOnSelectSFTeamDelegate_Parms OnSelectSFTeamDelegate_Parms;
 
@@ -31870,7 +31871,7 @@ bool UTgUICargoMenu::OnSceneMapDelegate ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnSceneMapDelegate = NULL;
 
 	if ( ! pFnOnSceneMapDelegate )
-		pFnOnSceneMapDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54911 ];
+		pFnOnSceneMapDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnSceneMapDelegate" );
 
 	UTgUICargoMenu_execOnSceneMapDelegate_Parms OnSceneMapDelegate_Parms;
 
@@ -31897,7 +31898,7 @@ bool UTgUICargoMenu::OnSceneManageDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnSceneManageDelegate = NULL;
 
 	if ( ! pFnOnSceneManageDelegate )
-		pFnOnSceneManageDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54908 ];
+		pFnOnSceneManageDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnSceneManageDelegate" );
 
 	UTgUICargoMenu_execOnSceneManageDelegate_Parms OnSceneManageDelegate_Parms;
 
@@ -31924,7 +31925,7 @@ bool UTgUICargoMenu::OnSceneDetailDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnSceneDetailDelegate = NULL;
 
 	if ( ! pFnOnSceneDetailDelegate )
-		pFnOnSceneDetailDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54905 ];
+		pFnOnSceneDetailDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnSceneDetailDelegate" );
 
 	UTgUICargoMenu_execOnSceneDetailDelegate_Parms OnSceneDetailDelegate_Parms;
 
@@ -31951,7 +31952,7 @@ bool UTgUICargoMenu::OnSceneTeamDelegate ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSceneTeamDelegate = NULL;
 
 	if ( ! pFnOnSceneTeamDelegate )
-		pFnOnSceneTeamDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54902 ];
+		pFnOnSceneTeamDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnSceneTeamDelegate" );
 
 	UTgUICargoMenu_execOnSceneTeamDelegate_Parms OnSceneTeamDelegate_Parms;
 
@@ -31978,7 +31979,7 @@ bool UTgUICargoMenu::OnSceneRaidDelegate ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSceneRaidDelegate = NULL;
 
 	if ( ! pFnOnSceneRaidDelegate )
-		pFnOnSceneRaidDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54899 ];
+		pFnOnSceneRaidDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnSceneRaidDelegate" );
 
 	UTgUICargoMenu_execOnSceneRaidDelegate_Parms OnSceneRaidDelegate_Parms;
 
@@ -32005,7 +32006,7 @@ bool UTgUICargoMenu::OnCargoListDelegate ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnCargoListDelegate = NULL;
 
 	if ( ! pFnOnCargoListDelegate )
-		pFnOnCargoListDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54896 ];
+		pFnOnCargoListDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnCargoListDelegate" );
 
 	UTgUICargoMenu_execOnCargoListDelegate_Parms OnCargoListDelegate_Parms;
 
@@ -32032,7 +32033,7 @@ bool UTgUICargoMenu::OnTeamMemberDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnTeamMemberDelegate = NULL;
 
 	if ( ! pFnOnTeamMemberDelegate )
-		pFnOnTeamMemberDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54893 ];
+		pFnOnTeamMemberDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnTeamMemberDelegate" );
 
 	UTgUICargoMenu_execOnTeamMemberDelegate_Parms OnTeamMemberDelegate_Parms;
 
@@ -32059,7 +32060,7 @@ bool UTgUICargoMenu::OnSceneLeaveDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSceneLeaveDelegate = NULL;
 
 	if ( ! pFnOnSceneLeaveDelegate )
-		pFnOnSceneLeaveDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54890 ];
+		pFnOnSceneLeaveDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnSceneLeaveDelegate" );
 
 	UTgUICargoMenu_execOnSceneLeaveDelegate_Parms OnSceneLeaveDelegate_Parms;
 
@@ -32086,7 +32087,7 @@ bool UTgUICargoMenu::OnScenePromoteDelegate ( struct FInputEventParameters* Even
 	static UFunction* pFnOnScenePromoteDelegate = NULL;
 
 	if ( ! pFnOnScenePromoteDelegate )
-		pFnOnScenePromoteDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54887 ];
+		pFnOnScenePromoteDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnScenePromoteDelegate" );
 
 	UTgUICargoMenu_execOnScenePromoteDelegate_Parms OnScenePromoteDelegate_Parms;
 
@@ -32113,7 +32114,7 @@ bool UTgUICargoMenu::OnSceneRemoveDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnSceneRemoveDelegate = NULL;
 
 	if ( ! pFnOnSceneRemoveDelegate )
-		pFnOnSceneRemoveDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54884 ];
+		pFnOnSceneRemoveDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnSceneRemoveDelegate" );
 
 	UTgUICargoMenu_execOnSceneRemoveDelegate_Parms OnSceneRemoveDelegate_Parms;
 
@@ -32140,7 +32141,7 @@ bool UTgUICargoMenu::OnCloseButtonDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnCloseButtonDelegate = NULL;
 
 	if ( ! pFnOnCloseButtonDelegate )
-		pFnOnCloseButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54881 ];
+		pFnOnCloseButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnCloseButtonDelegate" );
 
 	UTgUICargoMenu_execOnCloseButtonDelegate_Parms OnCloseButtonDelegate_Parms;
 
@@ -32167,7 +32168,7 @@ bool UTgUICargoMenu::OnSceneInputKeyDelegate ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 54878 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.OnSceneInputKeyDelegate" );
 
 	UTgUICargoMenu_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -32192,7 +32193,7 @@ void UTgUICargoMenu::RegisterCallbacks ( )
 	static UFunction* pFnRegisterCallbacks = NULL;
 
 	if ( ! pFnRegisterCallbacks )
-		pFnRegisterCallbacks = (UFunction*) UObject::GObjObjects()->Data[ 54877 ];
+		pFnRegisterCallbacks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.RegisterCallbacks" );
 
 	UTgUICargoMenu_execRegisterCallbacks_Parms RegisterCallbacks_Parms;
 
@@ -32213,7 +32214,7 @@ bool UTgUICargoMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54875 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.TickTgUIScene" );
 
 	UTgUICargoMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -32235,7 +32236,7 @@ void UTgUICargoMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 54874 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.FixupTgUIScene" );
 
 	UTgUICargoMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -32255,7 +32256,7 @@ void UTgUICargoMenu::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 54873 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICargoMenu.PostInitSceneDriver" );
 
 	UTgUICargoMenu_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -32275,7 +32276,7 @@ void UTgUICharacterSelectScene::eventClearModelData ( )
 	static UFunction* pFnClearModelData = NULL;
 
 	if ( ! pFnClearModelData )
-		pFnClearModelData = (UFunction*) UObject::GObjObjects()->Data[ 55352 ];
+		pFnClearModelData = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.ClearModelData" );
 
 	UTgUICharacterSelectScene_eventClearModelData_Parms ClearModelData_Parms;
 
@@ -32292,7 +32293,7 @@ bool UTgUICharacterSelectScene::eventUpdateCustomModel ( )
 	static UFunction* pFnUpdateCustomModel = NULL;
 
 	if ( ! pFnUpdateCustomModel )
-		pFnUpdateCustomModel = (UFunction*) UObject::GObjObjects()->Data[ 55350 ];
+		pFnUpdateCustomModel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.UpdateCustomModel" );
 
 	UTgUICharacterSelectScene_eventUpdateCustomModel_Parms UpdateCustomModel_Parms;
 
@@ -32312,7 +32313,7 @@ bool UTgUICharacterSelectScene::eventSelectCharacter ( int Index )
 	static UFunction* pFnSelectCharacter = NULL;
 
 	if ( ! pFnSelectCharacter )
-		pFnSelectCharacter = (UFunction*) UObject::GObjObjects()->Data[ 55346 ];
+		pFnSelectCharacter = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.SelectCharacter" );
 
 	UTgUICharacterSelectScene_eventSelectCharacter_Parms SelectCharacter_Parms;
 	SelectCharacter_Parms.Index = Index;
@@ -32331,7 +32332,7 @@ void UTgUICharacterSelectScene::OpenCreateCharacterScreen ( )
 	static UFunction* pFnOpenCreateCharacterScreen = NULL;
 
 	if ( ! pFnOpenCreateCharacterScreen )
-		pFnOpenCreateCharacterScreen = (UFunction*) UObject::GObjObjects()->Data[ 55344 ];
+		pFnOpenCreateCharacterScreen = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OpenCreateCharacterScreen" );
 
 	UTgUICharacterSelectScene_execOpenCreateCharacterScreen_Parms OpenCreateCharacterScreen_Parms;
 
@@ -32349,7 +32350,7 @@ bool UTgUICharacterSelectScene::OnDeleteCancel ( struct FInputEventParameters* E
 	static UFunction* pFnOnDeleteCancel = NULL;
 
 	if ( ! pFnOnDeleteCancel )
-		pFnOnDeleteCancel = (UFunction*) UObject::GObjObjects()->Data[ 55341 ];
+		pFnOnDeleteCancel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnDeleteCancel" );
 
 	UTgUICharacterSelectScene_execOnDeleteCancel_Parms OnDeleteCancel_Parms;
 
@@ -32372,7 +32373,7 @@ bool UTgUICharacterSelectScene::OnErrorOK ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnErrorOK = NULL;
 
 	if ( ! pFnOnErrorOK )
-		pFnOnErrorOK = (UFunction*) UObject::GObjObjects()->Data[ 55338 ];
+		pFnOnErrorOK = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnErrorOK" );
 
 	UTgUICharacterSelectScene_execOnErrorOK_Parms OnErrorOK_Parms;
 
@@ -32395,7 +32396,7 @@ bool UTgUICharacterSelectScene::OnDeleteOK ( struct FInputEventParameters* Event
 	static UFunction* pFnOnDeleteOK = NULL;
 
 	if ( ! pFnOnDeleteOK )
-		pFnOnDeleteOK = (UFunction*) UObject::GObjObjects()->Data[ 55335 ];
+		pFnOnDeleteOK = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnDeleteOK" );
 
 	UTgUICharacterSelectScene_execOnDeleteOK_Parms OnDeleteOK_Parms;
 
@@ -32418,7 +32419,7 @@ bool UTgUICharacterSelectScene::CamZoomToggleButton ( struct FInputEventParamete
 	static UFunction* pFnCamZoomToggleButton = NULL;
 
 	if ( ! pFnCamZoomToggleButton )
-		pFnCamZoomToggleButton = (UFunction*) UObject::GObjObjects()->Data[ 55332 ];
+		pFnCamZoomToggleButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.CamZoomToggleButton" );
 
 	UTgUICharacterSelectScene_execCamZoomToggleButton_Parms CamZoomToggleButton_Parms;
 
@@ -32441,7 +32442,7 @@ bool UTgUICharacterSelectScene::OnDeleteSelection ( struct FInputEventParameters
 	static UFunction* pFnOnDeleteSelection = NULL;
 
 	if ( ! pFnOnDeleteSelection )
-		pFnOnDeleteSelection = (UFunction*) UObject::GObjObjects()->Data[ 55329 ];
+		pFnOnDeleteSelection = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnDeleteSelection" );
 
 	UTgUICharacterSelectScene_execOnDeleteSelection_Parms OnDeleteSelection_Parms;
 
@@ -32464,7 +32465,7 @@ bool UTgUICharacterSelectScene::OnCreateSelection ( struct FInputEventParameters
 	static UFunction* pFnOnCreateSelection = NULL;
 
 	if ( ! pFnOnCreateSelection )
-		pFnOnCreateSelection = (UFunction*) UObject::GObjObjects()->Data[ 55326 ];
+		pFnOnCreateSelection = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnCreateSelection" );
 
 	UTgUICharacterSelectScene_execOnCreateSelection_Parms OnCreateSelection_Parms;
 
@@ -32487,7 +32488,7 @@ bool UTgUICharacterSelectScene::OnSelectSelection ( struct FInputEventParameters
 	static UFunction* pFnOnSelectSelection = NULL;
 
 	if ( ! pFnOnSelectSelection )
-		pFnOnSelectSelection = (UFunction*) UObject::GObjObjects()->Data[ 55323 ];
+		pFnOnSelectSelection = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnSelectSelection" );
 
 	UTgUICharacterSelectScene_execOnSelectSelection_Parms OnSelectSelection_Parms;
 
@@ -32510,7 +32511,7 @@ bool UTgUICharacterSelectScene::OnBackButton ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnBackButton = NULL;
 
 	if ( ! pFnOnBackButton )
-		pFnOnBackButton = (UFunction*) UObject::GObjObjects()->Data[ 55319 ];
+		pFnOnBackButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnBackButton" );
 
 	UTgUICharacterSelectScene_execOnBackButton_Parms OnBackButton_Parms;
 
@@ -32533,7 +32534,7 @@ bool UTgUICharacterSelectScene::OnSelectCharacter7 ( struct FInputEventParameter
 	static UFunction* pFnOnSelectCharacter7 = NULL;
 
 	if ( ! pFnOnSelectCharacter7 )
-		pFnOnSelectCharacter7 = (UFunction*) UObject::GObjObjects()->Data[ 55316 ];
+		pFnOnSelectCharacter7 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnSelectCharacter7" );
 
 	UTgUICharacterSelectScene_execOnSelectCharacter7_Parms OnSelectCharacter7_Parms;
 
@@ -32556,7 +32557,7 @@ bool UTgUICharacterSelectScene::OnSelectCharacter6 ( struct FInputEventParameter
 	static UFunction* pFnOnSelectCharacter6 = NULL;
 
 	if ( ! pFnOnSelectCharacter6 )
-		pFnOnSelectCharacter6 = (UFunction*) UObject::GObjObjects()->Data[ 55313 ];
+		pFnOnSelectCharacter6 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnSelectCharacter6" );
 
 	UTgUICharacterSelectScene_execOnSelectCharacter6_Parms OnSelectCharacter6_Parms;
 
@@ -32579,7 +32580,7 @@ bool UTgUICharacterSelectScene::OnSelectCharacter5 ( struct FInputEventParameter
 	static UFunction* pFnOnSelectCharacter5 = NULL;
 
 	if ( ! pFnOnSelectCharacter5 )
-		pFnOnSelectCharacter5 = (UFunction*) UObject::GObjObjects()->Data[ 55310 ];
+		pFnOnSelectCharacter5 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnSelectCharacter5" );
 
 	UTgUICharacterSelectScene_execOnSelectCharacter5_Parms OnSelectCharacter5_Parms;
 
@@ -32602,7 +32603,7 @@ bool UTgUICharacterSelectScene::OnSelectCharacter4 ( struct FInputEventParameter
 	static UFunction* pFnOnSelectCharacter4 = NULL;
 
 	if ( ! pFnOnSelectCharacter4 )
-		pFnOnSelectCharacter4 = (UFunction*) UObject::GObjObjects()->Data[ 55307 ];
+		pFnOnSelectCharacter4 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnSelectCharacter4" );
 
 	UTgUICharacterSelectScene_execOnSelectCharacter4_Parms OnSelectCharacter4_Parms;
 
@@ -32625,7 +32626,7 @@ bool UTgUICharacterSelectScene::OnSelectCharacter3 ( struct FInputEventParameter
 	static UFunction* pFnOnSelectCharacter3 = NULL;
 
 	if ( ! pFnOnSelectCharacter3 )
-		pFnOnSelectCharacter3 = (UFunction*) UObject::GObjObjects()->Data[ 55304 ];
+		pFnOnSelectCharacter3 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnSelectCharacter3" );
 
 	UTgUICharacterSelectScene_execOnSelectCharacter3_Parms OnSelectCharacter3_Parms;
 
@@ -32648,7 +32649,7 @@ bool UTgUICharacterSelectScene::OnSelectCharacter2 ( struct FInputEventParameter
 	static UFunction* pFnOnSelectCharacter2 = NULL;
 
 	if ( ! pFnOnSelectCharacter2 )
-		pFnOnSelectCharacter2 = (UFunction*) UObject::GObjObjects()->Data[ 55301 ];
+		pFnOnSelectCharacter2 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnSelectCharacter2" );
 
 	UTgUICharacterSelectScene_execOnSelectCharacter2_Parms OnSelectCharacter2_Parms;
 
@@ -32671,7 +32672,7 @@ bool UTgUICharacterSelectScene::OnSelectCharacter1 ( struct FInputEventParameter
 	static UFunction* pFnOnSelectCharacter1 = NULL;
 
 	if ( ! pFnOnSelectCharacter1 )
-		pFnOnSelectCharacter1 = (UFunction*) UObject::GObjObjects()->Data[ 55298 ];
+		pFnOnSelectCharacter1 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnSelectCharacter1" );
 
 	UTgUICharacterSelectScene_execOnSelectCharacter1_Parms OnSelectCharacter1_Parms;
 
@@ -32694,7 +32695,7 @@ bool UTgUICharacterSelectScene::OnSelectCharacter0 ( struct FInputEventParameter
 	static UFunction* pFnOnSelectCharacter0 = NULL;
 
 	if ( ! pFnOnSelectCharacter0 )
-		pFnOnSelectCharacter0 = (UFunction*) UObject::GObjObjects()->Data[ 55295 ];
+		pFnOnSelectCharacter0 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnSelectCharacter0" );
 
 	UTgUICharacterSelectScene_execOnSelectCharacter0_Parms OnSelectCharacter0_Parms;
 
@@ -32715,7 +32716,7 @@ void UTgUICharacterSelectScene::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 55293 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.FixupWidgetsUC" );
 
 	UTgUICharacterSelectScene_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -32731,7 +32732,7 @@ void UTgUICharacterSelectScene::eventInitializeDataInterface ( )
 	static UFunction* pFnInitializeDataInterface = NULL;
 
 	if ( ! pFnInitializeDataInterface )
-		pFnInitializeDataInterface = (UFunction*) UObject::GObjObjects()->Data[ 55292 ];
+		pFnInitializeDataInterface = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.InitializeDataInterface" );
 
 	UTgUICharacterSelectScene_eventInitializeDataInterface_Parms InitializeDataInterface_Parms;
 
@@ -32749,7 +32750,7 @@ bool UTgUICharacterSelectScene::OnSelectNext ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnSelectNext = NULL;
 
 	if ( ! pFnOnSelectNext )
-		pFnOnSelectNext = (UFunction*) UObject::GObjObjects()->Data[ 55289 ];
+		pFnOnSelectNext = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnSelectNext" );
 
 	UTgUICharacterSelectScene_execOnSelectNext_Parms OnSelectNext_Parms;
 
@@ -32776,7 +32777,7 @@ bool UTgUICharacterSelectScene::OnSelectPrevious ( struct FInputEventParameters*
 	static UFunction* pFnOnSelectPrevious = NULL;
 
 	if ( ! pFnOnSelectPrevious )
-		pFnOnSelectPrevious = (UFunction*) UObject::GObjObjects()->Data[ 55286 ];
+		pFnOnSelectPrevious = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnSelectPrevious" );
 
 	UTgUICharacterSelectScene_execOnSelectPrevious_Parms OnSelectPrevious_Parms;
 
@@ -32803,7 +32804,7 @@ bool UTgUICharacterSelectScene::OnSceneInputKeyDelegate ( struct FInputEventPara
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55283 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnSceneInputKeyDelegate" );
 
 	UTgUICharacterSelectScene_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -32829,7 +32830,7 @@ bool UTgUICharacterSelectScene::ValidateCharSlotFeature ( )
 	static UFunction* pFnValidateCharSlotFeature = NULL;
 
 	if ( ! pFnValidateCharSlotFeature )
-		pFnValidateCharSlotFeature = (UFunction*) UObject::GObjObjects()->Data[ 55281 ];
+		pFnValidateCharSlotFeature = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.ValidateCharSlotFeature" );
 
 	UTgUICharacterSelectScene_execValidateCharSlotFeature_Parms ValidateCharSlotFeature_Parms;
 
@@ -32853,7 +32854,7 @@ void UTgUICharacterSelectScene::OnDeleteFieldChangedDelegate ( class UUIObject* 
 	static UFunction* pFnOnDeleteFieldChangedDelegate = NULL;
 
 	if ( ! pFnOnDeleteFieldChangedDelegate )
-		pFnOnDeleteFieldChangedDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55278 ];
+		pFnOnDeleteFieldChangedDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.OnDeleteFieldChangedDelegate" );
 
 	UTgUICharacterSelectScene_execOnDeleteFieldChangedDelegate_Parms OnDeleteFieldChangedDelegate_Parms;
 	OnDeleteFieldChangedDelegate_Parms.Sender = Sender;
@@ -32875,7 +32876,7 @@ void UTgUICharacterSelectScene::PopulateCurrentMorphSettings ( )
 	static UFunction* pFnPopulateCurrentMorphSettings = NULL;
 
 	if ( ! pFnPopulateCurrentMorphSettings )
-		pFnPopulateCurrentMorphSettings = (UFunction*) UObject::GObjObjects()->Data[ 55277 ];
+		pFnPopulateCurrentMorphSettings = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.PopulateCurrentMorphSettings" );
 
 	UTgUICharacterSelectScene_execPopulateCurrentMorphSettings_Parms PopulateCurrentMorphSettings_Parms;
 
@@ -32896,7 +32897,7 @@ void UTgUICharacterSelectScene::ZoomOnChar ( unsigned long bZoomIn )
 	static UFunction* pFnZoomOnChar = NULL;
 
 	if ( ! pFnZoomOnChar )
-		pFnZoomOnChar = (UFunction*) UObject::GObjObjects()->Data[ 55275 ];
+		pFnZoomOnChar = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.ZoomOnChar" );
 
 	UTgUICharacterSelectScene_execZoomOnChar_Parms ZoomOnChar_Parms;
 	ZoomOnChar_Parms.bZoomIn = bZoomIn;
@@ -32919,7 +32920,7 @@ void UTgUICharacterSelectScene::UpdateStatusPanel ( unsigned long bEnable, struc
 	static UFunction* pFnUpdateStatusPanel = NULL;
 
 	if ( ! pFnUpdateStatusPanel )
-		pFnUpdateStatusPanel = (UFunction*) UObject::GObjObjects()->Data[ 55272 ];
+		pFnUpdateStatusPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.UpdateStatusPanel" );
 
 	UTgUICharacterSelectScene_execUpdateStatusPanel_Parms UpdateStatusPanel_Parms;
 	UpdateStatusPanel_Parms.bEnable = bEnable;
@@ -32942,7 +32943,7 @@ void UTgUICharacterSelectScene::UpdateCharacterListCallback ( int eType )
 	static UFunction* pFnUpdateCharacterListCallback = NULL;
 
 	if ( ! pFnUpdateCharacterListCallback )
-		pFnUpdateCharacterListCallback = (UFunction*) UObject::GObjObjects()->Data[ 55270 ];
+		pFnUpdateCharacterListCallback = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.UpdateCharacterListCallback" );
 
 	UTgUICharacterSelectScene_execUpdateCharacterListCallback_Parms UpdateCharacterListCallback_Parms;
 	UpdateCharacterListCallback_Parms.eType = eType;
@@ -32963,7 +32964,7 @@ void UTgUICharacterSelectScene::RegisterCallbacks ( )
 	static UFunction* pFnRegisterCallbacks = NULL;
 
 	if ( ! pFnRegisterCallbacks )
-		pFnRegisterCallbacks = (UFunction*) UObject::GObjObjects()->Data[ 55269 ];
+		pFnRegisterCallbacks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.RegisterCallbacks" );
 
 	UTgUICharacterSelectScene_execRegisterCallbacks_Parms RegisterCallbacks_Parms;
 
@@ -32983,7 +32984,7 @@ void UTgUICharacterSelectScene::TickDialogueBoxes ( )
 	static UFunction* pFnTickDialogueBoxes = NULL;
 
 	if ( ! pFnTickDialogueBoxes )
-		pFnTickDialogueBoxes = (UFunction*) UObject::GObjObjects()->Data[ 55268 ];
+		pFnTickDialogueBoxes = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.TickDialogueBoxes" );
 
 	UTgUICharacterSelectScene_execTickDialogueBoxes_Parms TickDialogueBoxes_Parms;
 
@@ -33004,7 +33005,7 @@ bool UTgUICharacterSelectScene::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55266 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.TickTgUIScene" );
 
 	UTgUICharacterSelectScene_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -33026,7 +33027,7 @@ void UTgUICharacterSelectScene::ClearCharacterData ( )
 	static UFunction* pFnClearCharacterData = NULL;
 
 	if ( ! pFnClearCharacterData )
-		pFnClearCharacterData = (UFunction*) UObject::GObjObjects()->Data[ 55265 ];
+		pFnClearCharacterData = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.ClearCharacterData" );
 
 	UTgUICharacterSelectScene_execClearCharacterData_Parms ClearCharacterData_Parms;
 
@@ -33046,7 +33047,7 @@ void UTgUICharacterSelectScene::ConfirmDeleteCharacter ( )
 	static UFunction* pFnConfirmDeleteCharacter = NULL;
 
 	if ( ! pFnConfirmDeleteCharacter )
-		pFnConfirmDeleteCharacter = (UFunction*) UObject::GObjObjects()->Data[ 55264 ];
+		pFnConfirmDeleteCharacter = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.ConfirmDeleteCharacter" );
 
 	UTgUICharacterSelectScene_execConfirmDeleteCharacter_Parms ConfirmDeleteCharacter_Parms;
 
@@ -33066,7 +33067,7 @@ void UTgUICharacterSelectScene::ConfirmSelectCharacter ( )
 	static UFunction* pFnConfirmSelectCharacter = NULL;
 
 	if ( ! pFnConfirmSelectCharacter )
-		pFnConfirmSelectCharacter = (UFunction*) UObject::GObjObjects()->Data[ 55263 ];
+		pFnConfirmSelectCharacter = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.ConfirmSelectCharacter" );
 
 	UTgUICharacterSelectScene_execConfirmSelectCharacter_Parms ConfirmSelectCharacter_Parms;
 
@@ -33086,7 +33087,7 @@ void UTgUICharacterSelectScene::UpdateShowHideWidgets ( )
 	static UFunction* pFnUpdateShowHideWidgets = NULL;
 
 	if ( ! pFnUpdateShowHideWidgets )
-		pFnUpdateShowHideWidgets = (UFunction*) UObject::GObjObjects()->Data[ 55262 ];
+		pFnUpdateShowHideWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.UpdateShowHideWidgets" );
 
 	UTgUICharacterSelectScene_execUpdateShowHideWidgets_Parms UpdateShowHideWidgets_Parms;
 
@@ -33106,7 +33107,7 @@ void UTgUICharacterSelectScene::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 55261 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.FixupWidgets" );
 
 	UTgUICharacterSelectScene_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -33126,7 +33127,7 @@ void UTgUICharacterSelectScene::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55260 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.FixupTgUIScene" );
 
 	UTgUICharacterSelectScene_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -33146,7 +33147,7 @@ void UTgUICharacterSelectScene::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 55259 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.PreCloseScene" );
 
 	UTgUICharacterSelectScene_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -33166,7 +33167,7 @@ void UTgUICharacterSelectScene::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 55258 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.PostOpenScene" );
 
 	UTgUICharacterSelectScene_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -33186,7 +33187,7 @@ void UTgUICharacterSelectScene::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 55257 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICharacterSelectScene.PostInitSceneDriver" );
 
 	UTgUICharacterSelectScene_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -33206,7 +33207,7 @@ void UTgUICraftScene::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 55645 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.FixupWidgetsUC" );
 
 	UTgUICraftScene_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -33223,7 +33224,7 @@ void UTgUICraftScene::eventSetHoverCraftItemDelegate ( class UUIScreenObject* Ob
 	static UFunction* pFnSetHoverCraftItemDelegate = NULL;
 
 	if ( ! pFnSetHoverCraftItemDelegate )
-		pFnSetHoverCraftItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55643 ];
+		pFnSetHoverCraftItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.SetHoverCraftItemDelegate" );
 
 	UTgUICraftScene_eventSetHoverCraftItemDelegate_Parms SetHoverCraftItemDelegate_Parms;
 	SetHoverCraftItemDelegate_Parms.Obj = Obj;
@@ -33241,7 +33242,7 @@ void UTgUICraftScene::eventSetSelectCraftItemDelegate ( class UUIScreenObject* O
 	static UFunction* pFnSetSelectCraftItemDelegate = NULL;
 
 	if ( ! pFnSetSelectCraftItemDelegate )
-		pFnSetSelectCraftItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55641 ];
+		pFnSetSelectCraftItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.SetSelectCraftItemDelegate" );
 
 	UTgUICraftScene_eventSetSelectCraftItemDelegate_Parms SetSelectCraftItemDelegate_Parms;
 	SetSelectCraftItemDelegate_Parms.Obj = Obj;
@@ -33259,7 +33260,7 @@ bool UTgUICraftScene::ValidateCraftingFeature ( )
 	static UFunction* pFnValidateCraftingFeature = NULL;
 
 	if ( ! pFnValidateCraftingFeature )
-		pFnValidateCraftingFeature = (UFunction*) UObject::GObjObjects()->Data[ 55639 ];
+		pFnValidateCraftingFeature = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.ValidateCraftingFeature" );
 
 	UTgUICraftScene_execValidateCraftingFeature_Parms ValidateCraftingFeature_Parms;
 
@@ -33283,7 +33284,7 @@ bool UTgUICraftScene::OnPrevPage ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnPrevPage = NULL;
 
 	if ( ! pFnOnPrevPage )
-		pFnOnPrevPage = (UFunction*) UObject::GObjObjects()->Data[ 55636 ];
+		pFnOnPrevPage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.OnPrevPage" );
 
 	UTgUICraftScene_execOnPrevPage_Parms OnPrevPage_Parms;
 
@@ -33310,7 +33311,7 @@ bool UTgUICraftScene::OnNextPage ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnNextPage = NULL;
 
 	if ( ! pFnOnNextPage )
-		pFnOnNextPage = (UFunction*) UObject::GObjObjects()->Data[ 55633 ];
+		pFnOnNextPage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.OnNextPage" );
 
 	UTgUICraftScene_execOnNextPage_Parms OnNextPage_Parms;
 
@@ -33339,7 +33340,7 @@ void UTgUICraftScene::OnCraftItemStateChange ( class UUIScreenObject* Sender, in
 	static UFunction* pFnOnCraftItemStateChange = NULL;
 
 	if ( ! pFnOnCraftItemStateChange )
-		pFnOnCraftItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 55628 ];
+		pFnOnCraftItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.OnCraftItemStateChange" );
 
 	UTgUICraftScene_execOnCraftItemStateChange_Parms OnCraftItemStateChange_Parms;
 	OnCraftItemStateChange_Parms.Sender = Sender;
@@ -33365,7 +33366,7 @@ void UTgUICraftScene::OnFilterChangedDelegate ( class UUIObject* Sender, int Pla
 	static UFunction* pFnOnFilterChangedDelegate = NULL;
 
 	if ( ! pFnOnFilterChangedDelegate )
-		pFnOnFilterChangedDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55625 ];
+		pFnOnFilterChangedDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.OnFilterChangedDelegate" );
 
 	UTgUICraftScene_execOnFilterChangedDelegate_Parms OnFilterChangedDelegate_Parms;
 	OnFilterChangedDelegate_Parms.Sender = Sender;
@@ -33389,7 +33390,7 @@ bool UTgUICraftScene::OnCraftButtonDelegate ( struct FInputEventParameters* Even
 	static UFunction* pFnOnCraftButtonDelegate = NULL;
 
 	if ( ! pFnOnCraftButtonDelegate )
-		pFnOnCraftButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55622 ];
+		pFnOnCraftButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.OnCraftButtonDelegate" );
 
 	UTgUICraftScene_execOnCraftButtonDelegate_Parms OnCraftButtonDelegate_Parms;
 
@@ -33416,7 +33417,7 @@ bool UTgUICraftScene::OnSortInventoryDelegate ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnSortInventoryDelegate = NULL;
 
 	if ( ! pFnOnSortInventoryDelegate )
-		pFnOnSortInventoryDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55619 ];
+		pFnOnSortInventoryDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.OnSortInventoryDelegate" );
 
 	UTgUICraftScene_execOnSortInventoryDelegate_Parms OnSortInventoryDelegate_Parms;
 
@@ -33443,7 +33444,7 @@ bool UTgUICraftScene::OnSelectCraftItemDelegate ( struct FInputEventParameters* 
 	static UFunction* pFnOnSelectCraftItemDelegate = NULL;
 
 	if ( ! pFnOnSelectCraftItemDelegate )
-		pFnOnSelectCraftItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55616 ];
+		pFnOnSelectCraftItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.OnSelectCraftItemDelegate" );
 
 	UTgUICraftScene_execOnSelectCraftItemDelegate_Parms OnSelectCraftItemDelegate_Parms;
 
@@ -33470,7 +33471,7 @@ bool UTgUICraftScene::OnCloseButtonDelegate ( struct FInputEventParameters* Even
 	static UFunction* pFnOnCloseButtonDelegate = NULL;
 
 	if ( ! pFnOnCloseButtonDelegate )
-		pFnOnCloseButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55613 ];
+		pFnOnCloseButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.OnCloseButtonDelegate" );
 
 	UTgUICraftScene_execOnCloseButtonDelegate_Parms OnCloseButtonDelegate_Parms;
 
@@ -33497,7 +33498,7 @@ bool UTgUICraftScene::OnSceneInputKeyDelegate ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55610 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.OnSceneInputKeyDelegate" );
 
 	UTgUICraftScene_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -33523,7 +33524,7 @@ void UTgUICraftScene::ResizeCraftDetailsWidgets ( int newSize )
 	static UFunction* pFnResizeCraftDetailsWidgets = NULL;
 
 	if ( ! pFnResizeCraftDetailsWidgets )
-		pFnResizeCraftDetailsWidgets = (UFunction*) UObject::GObjObjects()->Data[ 55608 ];
+		pFnResizeCraftDetailsWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.ResizeCraftDetailsWidgets" );
 
 	UTgUICraftScene_execResizeCraftDetailsWidgets_Parms ResizeCraftDetailsWidgets_Parms;
 	ResizeCraftDetailsWidgets_Parms.newSize = newSize;
@@ -33545,7 +33546,7 @@ void UTgUICraftScene::ResizeComponentPanelWidgets ( int newSize )
 	static UFunction* pFnResizeComponentPanelWidgets = NULL;
 
 	if ( ! pFnResizeComponentPanelWidgets )
-		pFnResizeComponentPanelWidgets = (UFunction*) UObject::GObjObjects()->Data[ 55606 ];
+		pFnResizeComponentPanelWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.ResizeComponentPanelWidgets" );
 
 	UTgUICraftScene_execResizeComponentPanelWidgets_Parms ResizeComponentPanelWidgets_Parms;
 	ResizeComponentPanelWidgets_Parms.newSize = newSize;
@@ -33567,7 +33568,7 @@ void UTgUICraftScene::SelectCraftItem ( int ItemIndex )
 	static UFunction* pFnSelectCraftItem = NULL;
 
 	if ( ! pFnSelectCraftItem )
-		pFnSelectCraftItem = (UFunction*) UObject::GObjObjects()->Data[ 55604 ];
+		pFnSelectCraftItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.SelectCraftItem" );
 
 	UTgUICraftScene_execSelectCraftItem_Parms SelectCraftItem_Parms;
 	SelectCraftItem_Parms.ItemIndex = ItemIndex;
@@ -33588,7 +33589,7 @@ void UTgUICraftScene::PopulateCraftDetails ( )
 	static UFunction* pFnPopulateCraftDetails = NULL;
 
 	if ( ! pFnPopulateCraftDetails )
-		pFnPopulateCraftDetails = (UFunction*) UObject::GObjObjects()->Data[ 55603 ];
+		pFnPopulateCraftDetails = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.PopulateCraftDetails" );
 
 	UTgUICraftScene_execPopulateCraftDetails_Parms PopulateCraftDetails_Parms;
 
@@ -33608,7 +33609,7 @@ void UTgUICraftScene::PopulateCraftItems ( )
 	static UFunction* pFnPopulateCraftItems = NULL;
 
 	if ( ! pFnPopulateCraftItems )
-		pFnPopulateCraftItems = (UFunction*) UObject::GObjObjects()->Data[ 55602 ];
+		pFnPopulateCraftItems = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.PopulateCraftItems" );
 
 	UTgUICraftScene_execPopulateCraftItems_Parms PopulateCraftItems_Parms;
 
@@ -33629,7 +33630,7 @@ void UTgUICraftScene::ResizeBlueprintPanelWidgets ( int newSize )
 	static UFunction* pFnResizeBlueprintPanelWidgets = NULL;
 
 	if ( ! pFnResizeBlueprintPanelWidgets )
-		pFnResizeBlueprintPanelWidgets = (UFunction*) UObject::GObjObjects()->Data[ 55600 ];
+		pFnResizeBlueprintPanelWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.ResizeBlueprintPanelWidgets" );
 
 	UTgUICraftScene_execResizeBlueprintPanelWidgets_Parms ResizeBlueprintPanelWidgets_Parms;
 	ResizeBlueprintPanelWidgets_Parms.newSize = newSize;
@@ -33650,7 +33651,7 @@ void UTgUICraftScene::BuildLocalCraftStore ( )
 	static UFunction* pFnBuildLocalCraftStore = NULL;
 
 	if ( ! pFnBuildLocalCraftStore )
-		pFnBuildLocalCraftStore = (UFunction*) UObject::GObjObjects()->Data[ 55599 ];
+		pFnBuildLocalCraftStore = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.BuildLocalCraftStore" );
 
 	UTgUICraftScene_execBuildLocalCraftStore_Parms BuildLocalCraftStore_Parms;
 
@@ -33670,7 +33671,7 @@ void UTgUICraftScene::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55598 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.FixupTgUIScene" );
 
 	UTgUICraftScene_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -33691,7 +33692,7 @@ bool UTgUICraftScene::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55596 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.TickTgUIScene" );
 
 	UTgUICraftScene_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -33713,7 +33714,7 @@ void UTgUICraftScene::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 55595 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.PreCloseScene" );
 
 	UTgUICraftScene_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -33733,7 +33734,7 @@ void UTgUICraftScene::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 55594 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICraftScene.PostOpenScene" );
 
 	UTgUICraftScene_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -33753,7 +33754,7 @@ void UTgUICustomHeadMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 55848 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.FixupWidgetsUC" );
 
 	UTgUICustomHeadMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -33769,7 +33770,7 @@ void UTgUICustomHeadMenu::eventZoomIn ( )
 	static UFunction* pFnZoomIn = NULL;
 
 	if ( ! pFnZoomIn )
-		pFnZoomIn = (UFunction*) UObject::GObjObjects()->Data[ 55846 ];
+		pFnZoomIn = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.ZoomIn" );
 
 	UTgUICustomHeadMenu_eventZoomIn_Parms ZoomIn_Parms;
 
@@ -33786,7 +33787,7 @@ void UTgUICustomHeadMenu::eventSetDetailButtonMouseOverDelegate ( class UUIButto
 	static UFunction* pFnSetDetailButtonMouseOverDelegate = NULL;
 
 	if ( ! pFnSetDetailButtonMouseOverDelegate )
-		pFnSetDetailButtonMouseOverDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55844 ];
+		pFnSetDetailButtonMouseOverDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.SetDetailButtonMouseOverDelegate" );
 
 	UTgUICustomHeadMenu_eventSetDetailButtonMouseOverDelegate_Parms SetDetailButtonMouseOverDelegate_Parms;
 	SetDetailButtonMouseOverDelegate_Parms.Button = Button;
@@ -33804,7 +33805,7 @@ void UTgUICustomHeadMenu::eventSetDetailButtonDelegate ( class UUIButton* Button
 	static UFunction* pFnSetDetailButtonDelegate = NULL;
 
 	if ( ! pFnSetDetailButtonDelegate )
-		pFnSetDetailButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55842 ];
+		pFnSetDetailButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.SetDetailButtonDelegate" );
 
 	UTgUICustomHeadMenu_eventSetDetailButtonDelegate_Parms SetDetailButtonDelegate_Parms;
 	SetDetailButtonDelegate_Parms.Button = Button;
@@ -33822,7 +33823,7 @@ void UTgUICustomHeadMenu::eventSetLockButtonDelegate ( class UUIButton* Button )
 	static UFunction* pFnSetLockButtonDelegate = NULL;
 
 	if ( ! pFnSetLockButtonDelegate )
-		pFnSetLockButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55840 ];
+		pFnSetLockButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.SetLockButtonDelegate" );
 
 	UTgUICustomHeadMenu_eventSetLockButtonDelegate_Parms SetLockButtonDelegate_Parms;
 	SetLockButtonDelegate_Parms.Button = Button;
@@ -33840,7 +33841,7 @@ void UTgUICustomHeadMenu::eventSetGroupSliderValueChangeDelegate ( class UUISlid
 	static UFunction* pFnSetGroupSliderValueChangeDelegate = NULL;
 
 	if ( ! pFnSetGroupSliderValueChangeDelegate )
-		pFnSetGroupSliderValueChangeDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55838 ];
+		pFnSetGroupSliderValueChangeDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.SetGroupSliderValueChangeDelegate" );
 
 	UTgUICustomHeadMenu_eventSetGroupSliderValueChangeDelegate_Parms SetGroupSliderValueChangeDelegate_Parms;
 	SetGroupSliderValueChangeDelegate_Parms.slider = slider;
@@ -33858,7 +33859,7 @@ void UTgUICustomHeadMenu::eventSetSliderValueChangeDelegate ( class UUISlider* s
 	static UFunction* pFnSetSliderValueChangeDelegate = NULL;
 
 	if ( ! pFnSetSliderValueChangeDelegate )
-		pFnSetSliderValueChangeDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55836 ];
+		pFnSetSliderValueChangeDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.SetSliderValueChangeDelegate" );
 
 	UTgUICustomHeadMenu_eventSetSliderValueChangeDelegate_Parms SetSliderValueChangeDelegate_Parms;
 	SetSliderValueChangeDelegate_Parms.slider = slider;
@@ -33875,7 +33876,7 @@ void UTgUICustomHeadMenu::eventGoToCharacterSelect ( )
 	static UFunction* pFnGoToCharacterSelect = NULL;
 
 	if ( ! pFnGoToCharacterSelect )
-		pFnGoToCharacterSelect = (UFunction*) UObject::GObjObjects()->Data[ 55834 ];
+		pFnGoToCharacterSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.GoToCharacterSelect" );
 
 	UTgUICustomHeadMenu_eventGoToCharacterSelect_Parms GoToCharacterSelect_Parms;
 
@@ -33891,7 +33892,7 @@ void UTgUICustomHeadMenu::eventSendSections ( )
 	static UFunction* pFnSendSections = NULL;
 
 	if ( ! pFnSendSections )
-		pFnSendSections = (UFunction*) UObject::GObjObjects()->Data[ 55832 ];
+		pFnSendSections = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.SendSections" );
 
 	UTgUICustomHeadMenu_eventSendSections_Parms SendSections_Parms;
 
@@ -33908,7 +33909,7 @@ void UTgUICustomHeadMenu::eventSetCreateHeadVerifyState ( unsigned char stateIn 
 	static UFunction* pFnSetCreateHeadVerifyState = NULL;
 
 	if ( ! pFnSetCreateHeadVerifyState )
-		pFnSetCreateHeadVerifyState = (UFunction*) UObject::GObjObjects()->Data[ 55830 ];
+		pFnSetCreateHeadVerifyState = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.SetCreateHeadVerifyState" );
 
 	UTgUICustomHeadMenu_eventSetCreateHeadVerifyState_Parms SetCreateHeadVerifyState_Parms;
 	SetCreateHeadVerifyState_Parms.stateIn = stateIn;
@@ -33925,7 +33926,7 @@ void UTgUICustomHeadMenu::SaveMorphSettings ( )
 	static UFunction* pFnSaveMorphSettings = NULL;
 
 	if ( ! pFnSaveMorphSettings )
-		pFnSaveMorphSettings = (UFunction*) UObject::GObjObjects()->Data[ 55829 ];
+		pFnSaveMorphSettings = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.SaveMorphSettings" );
 
 	UTgUICustomHeadMenu_execSaveMorphSettings_Parms SaveMorphSettings_Parms;
 
@@ -33949,7 +33950,7 @@ void UTgUICustomHeadMenu::OnDetailButtonMouseOverDelegate ( class UUIScreenObjec
 	static UFunction* pFnOnDetailButtonMouseOverDelegate = NULL;
 
 	if ( ! pFnOnDetailButtonMouseOverDelegate )
-		pFnOnDetailButtonMouseOverDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55824 ];
+		pFnOnDetailButtonMouseOverDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.OnDetailButtonMouseOverDelegate" );
 
 	UTgUICustomHeadMenu_execOnDetailButtonMouseOverDelegate_Parms OnDetailButtonMouseOverDelegate_Parms;
 	OnDetailButtonMouseOverDelegate_Parms.Sender = Sender;
@@ -33975,7 +33976,7 @@ bool UTgUICustomHeadMenu::CreateHeadNextButton ( struct FInputEventParameters* E
 	static UFunction* pFnCreateHeadNextButton = NULL;
 
 	if ( ! pFnCreateHeadNextButton )
-		pFnCreateHeadNextButton = (UFunction*) UObject::GObjObjects()->Data[ 55821 ];
+		pFnCreateHeadNextButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.CreateHeadNextButton" );
 
 	UTgUICustomHeadMenu_execCreateHeadNextButton_Parms CreateHeadNextButton_Parms;
 
@@ -34002,7 +34003,7 @@ bool UTgUICustomHeadMenu::OnDetailButtonDelegate ( struct FInputEventParameters*
 	static UFunction* pFnOnDetailButtonDelegate = NULL;
 
 	if ( ! pFnOnDetailButtonDelegate )
-		pFnOnDetailButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55818 ];
+		pFnOnDetailButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.OnDetailButtonDelegate" );
 
 	UTgUICustomHeadMenu_execOnDetailButtonDelegate_Parms OnDetailButtonDelegate_Parms;
 
@@ -34029,7 +34030,7 @@ bool UTgUICustomHeadMenu::OnLockButtonDelegate ( struct FInputEventParameters* E
 	static UFunction* pFnOnLockButtonDelegate = NULL;
 
 	if ( ! pFnOnLockButtonDelegate )
-		pFnOnLockButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55815 ];
+		pFnOnLockButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.OnLockButtonDelegate" );
 
 	UTgUICustomHeadMenu_execOnLockButtonDelegate_Parms OnLockButtonDelegate_Parms;
 
@@ -34056,7 +34057,7 @@ bool UTgUICustomHeadMenu::OnRandomAllButton ( struct FInputEventParameters* Even
 	static UFunction* pFnOnRandomAllButton = NULL;
 
 	if ( ! pFnOnRandomAllButton )
-		pFnOnRandomAllButton = (UFunction*) UObject::GObjObjects()->Data[ 55812 ];
+		pFnOnRandomAllButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.OnRandomAllButton" );
 
 	UTgUICustomHeadMenu_execOnRandomAllButton_Parms OnRandomAllButton_Parms;
 
@@ -34083,7 +34084,7 @@ bool UTgUICustomHeadMenu::OnBackButton ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnBackButton = NULL;
 
 	if ( ! pFnOnBackButton )
-		pFnOnBackButton = (UFunction*) UObject::GObjObjects()->Data[ 55809 ];
+		pFnOnBackButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.OnBackButton" );
 
 	UTgUICustomHeadMenu_execOnBackButton_Parms OnBackButton_Parms;
 
@@ -34110,7 +34111,7 @@ bool UTgUICustomHeadMenu::OnSceneInputKeyDelegate ( struct FInputEventParameters
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55806 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.OnSceneInputKeyDelegate" );
 
 	UTgUICustomHeadMenu_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -34137,7 +34138,7 @@ bool UTgUICustomHeadMenu::OnConfirmNoClicked ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnConfirmNoClicked = NULL;
 
 	if ( ! pFnOnConfirmNoClicked )
-		pFnOnConfirmNoClicked = (UFunction*) UObject::GObjObjects()->Data[ 55803 ];
+		pFnOnConfirmNoClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.OnConfirmNoClicked" );
 
 	UTgUICustomHeadMenu_execOnConfirmNoClicked_Parms OnConfirmNoClicked_Parms;
 
@@ -34164,7 +34165,7 @@ bool UTgUICustomHeadMenu::OnConfirmYesClicked ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 55800 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.OnConfirmYesClicked" );
 
 	UTgUICustomHeadMenu_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -34191,7 +34192,7 @@ void UTgUICustomHeadMenu::OnGroupSliderValueChanged ( class UUIObject* Sender, i
 	static UFunction* pFnOnGroupSliderValueChanged = NULL;
 
 	if ( ! pFnOnGroupSliderValueChanged )
-		pFnOnGroupSliderValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 55797 ];
+		pFnOnGroupSliderValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.OnGroupSliderValueChanged" );
 
 	UTgUICustomHeadMenu_execOnGroupSliderValueChanged_Parms OnGroupSliderValueChanged_Parms;
 	OnGroupSliderValueChanged_Parms.Sender = Sender;
@@ -34215,7 +34216,7 @@ void UTgUICustomHeadMenu::OnSliderValueChanged ( class UUIObject* Sender, int Pl
 	static UFunction* pFnOnSliderValueChanged = NULL;
 
 	if ( ! pFnOnSliderValueChanged )
-		pFnOnSliderValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 55794 ];
+		pFnOnSliderValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.OnSliderValueChanged" );
 
 	UTgUICustomHeadMenu_execOnSliderValueChanged_Parms OnSliderValueChanged_Parms;
 	OnSliderValueChanged_Parms.Sender = Sender;
@@ -34237,7 +34238,7 @@ void UTgUICustomHeadMenu::OpenTutorialConfirmPopup ( )
 	static UFunction* pFnOpenTutorialConfirmPopup = NULL;
 
 	if ( ! pFnOpenTutorialConfirmPopup )
-		pFnOpenTutorialConfirmPopup = (UFunction*) UObject::GObjObjects()->Data[ 55793 ];
+		pFnOpenTutorialConfirmPopup = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.OpenTutorialConfirmPopup" );
 
 	UTgUICustomHeadMenu_execOpenTutorialConfirmPopup_Parms OpenTutorialConfirmPopup_Parms;
 
@@ -34257,7 +34258,7 @@ void UTgUICustomHeadMenu::PopulateMorphSliders ( )
 	static UFunction* pFnPopulateMorphSliders = NULL;
 
 	if ( ! pFnPopulateMorphSliders )
-		pFnPopulateMorphSliders = (UFunction*) UObject::GObjObjects()->Data[ 55792 ];
+		pFnPopulateMorphSliders = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.PopulateMorphSliders" );
 
 	UTgUICustomHeadMenu_execPopulateMorphSliders_Parms PopulateMorphSliders_Parms;
 
@@ -34277,7 +34278,7 @@ void UTgUICustomHeadMenu::BuildNodeData ( )
 	static UFunction* pFnBuildNodeData = NULL;
 
 	if ( ! pFnBuildNodeData )
-		pFnBuildNodeData = (UFunction*) UObject::GObjObjects()->Data[ 55791 ];
+		pFnBuildNodeData = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.BuildNodeData" );
 
 	UTgUICustomHeadMenu_execBuildNodeData_Parms BuildNodeData_Parms;
 
@@ -34298,7 +34299,7 @@ bool UTgUICustomHeadMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55789 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.TickTgUIScene" );
 
 	UTgUICustomHeadMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -34320,7 +34321,7 @@ void UTgUICustomHeadMenu::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 55788 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.PostOpenScene" );
 
 	UTgUICustomHeadMenu_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -34340,7 +34341,7 @@ void UTgUICustomHeadMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55787 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICustomHeadMenu.FixupTgUIScene" );
 
 	UTgUICustomHeadMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -34360,7 +34361,7 @@ void UTgUIDeviceModPopup::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 55875 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceModPopup.FixupWidgetsUC" );
 
 	UTgUIDeviceModPopup_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -34376,7 +34377,7 @@ void UTgUIDeviceModPopup::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 55874 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceModPopup.FixupWidgets" );
 
 	UTgUIDeviceModPopup_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -34397,7 +34398,7 @@ bool UTgUIDeviceModPopup::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55872 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceModPopup.TickTgUIScene" );
 
 	UTgUIDeviceModPopup_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -34419,7 +34420,7 @@ void UTgUIDeviceModPopup::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55871 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceModPopup.FixupTgUIScene" );
 
 	UTgUIDeviceModPopup_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -34443,7 +34444,7 @@ void UTgUIDeviceModPopup::OnInvItemStateChange ( class UUIScreenObject* Sender, 
 	static UFunction* pFnOnInvItemStateChange = NULL;
 
 	if ( ! pFnOnInvItemStateChange )
-		pFnOnInvItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 55866 ];
+		pFnOnInvItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceModPopup.OnInvItemStateChange" );
 
 	UTgUIDeviceModPopup_execOnInvItemStateChange_Parms OnInvItemStateChange_Parms;
 	OnInvItemStateChange_Parms.Sender = Sender;
@@ -34469,7 +34470,7 @@ bool UTgUIDeviceModPopup::OnConfirmNo ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnConfirmNo = NULL;
 
 	if ( ! pFnOnConfirmNo )
-		pFnOnConfirmNo = (UFunction*) UObject::GObjObjects()->Data[ 55863 ];
+		pFnOnConfirmNo = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceModPopup.OnConfirmNo" );
 
 	UTgUIDeviceModPopup_execOnConfirmNo_Parms OnConfirmNo_Parms;
 
@@ -34496,7 +34497,7 @@ bool UTgUIDeviceModPopup::OnConfirmYes ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnConfirmYes = NULL;
 
 	if ( ! pFnOnConfirmYes )
-		pFnOnConfirmYes = (UFunction*) UObject::GObjObjects()->Data[ 55860 ];
+		pFnOnConfirmYes = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceModPopup.OnConfirmYes" );
 
 	UTgUIDeviceModPopup_execOnConfirmYes_Parms OnConfirmYes_Parms;
 
@@ -34521,7 +34522,7 @@ void UTgUIDeviceStats::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 55923 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceStats.FixupWidgetsUC" );
 
 	UTgUIDeviceStats_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -34539,7 +34540,7 @@ bool UTgUIDeviceStats::OnEndMissionButton ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnEndMissionButton = NULL;
 
 	if ( ! pFnOnEndMissionButton )
-		pFnOnEndMissionButton = (UFunction*) UObject::GObjObjects()->Data[ 55920 ];
+		pFnOnEndMissionButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceStats.OnEndMissionButton" );
 
 	UTgUIDeviceStats_execOnEndMissionButton_Parms OnEndMissionButton_Parms;
 
@@ -34566,7 +34567,7 @@ bool UTgUIDeviceStats::OnMatchStatsButton ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnMatchStatsButton = NULL;
 
 	if ( ! pFnOnMatchStatsButton )
-		pFnOnMatchStatsButton = (UFunction*) UObject::GObjObjects()->Data[ 55917 ];
+		pFnOnMatchStatsButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceStats.OnMatchStatsButton" );
 
 	UTgUIDeviceStats_execOnMatchStatsButton_Parms OnMatchStatsButton_Parms;
 
@@ -34593,7 +34594,7 @@ bool UTgUIDeviceStats::OnSummaryButton ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnSummaryButton = NULL;
 
 	if ( ! pFnOnSummaryButton )
-		pFnOnSummaryButton = (UFunction*) UObject::GObjObjects()->Data[ 55914 ];
+		pFnOnSummaryButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceStats.OnSummaryButton" );
 
 	UTgUIDeviceStats_execOnSummaryButton_Parms OnSummaryButton_Parms;
 
@@ -34620,7 +34621,7 @@ bool UTgUIDeviceStats::OnCloseButton ( struct FInputEventParameters* EventParms 
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 55911 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceStats.OnCloseButton" );
 
 	UTgUIDeviceStats_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -34649,7 +34650,7 @@ void UTgUIDeviceStats::OnDeviceItemStateChange ( class UUIScreenObject* Sender, 
 	static UFunction* pFnOnDeviceItemStateChange = NULL;
 
 	if ( ! pFnOnDeviceItemStateChange )
-		pFnOnDeviceItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 55906 ];
+		pFnOnDeviceItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceStats.OnDeviceItemStateChange" );
 
 	UTgUIDeviceStats_execOnDeviceItemStateChange_Parms OnDeviceItemStateChange_Parms;
 	OnDeviceItemStateChange_Parms.Sender = Sender;
@@ -34675,7 +34676,7 @@ bool UTgUIDeviceStats::OnFieldClicked ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnFieldClicked = NULL;
 
 	if ( ! pFnOnFieldClicked )
-		pFnOnFieldClicked = (UFunction*) UObject::GObjObjects()->Data[ 55903 ];
+		pFnOnFieldClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceStats.OnFieldClicked" );
 
 	UTgUIDeviceStats_execOnFieldClicked_Parms OnFieldClicked_Parms;
 
@@ -34702,7 +34703,7 @@ bool UTgUIDeviceStats::OnSceneKey ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnSceneKey = NULL;
 
 	if ( ! pFnOnSceneKey )
-		pFnOnSceneKey = (UFunction*) UObject::GObjObjects()->Data[ 55900 ];
+		pFnOnSceneKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceStats.OnSceneKey" );
 
 	UTgUIDeviceStats_execOnSceneKey_Parms OnSceneKey_Parms;
 
@@ -34727,7 +34728,7 @@ void UTgUIDeviceStats::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 55899 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceStats.PostInitSceneDriver" );
 
 	UTgUIDeviceStats_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -34748,7 +34749,7 @@ bool UTgUIDeviceStats::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55897 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceStats.TickTgUIScene" );
 
 	UTgUIDeviceStats_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -34770,7 +34771,7 @@ void UTgUIDeviceStats::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55896 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIDeviceStats.FixupTgUIScene" );
 
 	UTgUIDeviceStats_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -34792,7 +34793,7 @@ bool UTgUIEndMissionScreen::OnConfirmNoClicked ( struct FInputEventParameters* E
 	static UFunction* pFnOnConfirmNoClicked = NULL;
 
 	if ( ! pFnOnConfirmNoClicked )
-		pFnOnConfirmNoClicked = (UFunction*) UObject::GObjObjects()->Data[ 56149 ];
+		pFnOnConfirmNoClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndMissionScreen.OnConfirmNoClicked" );
 
 	UTgUIEndMissionScreen_execOnConfirmNoClicked_Parms OnConfirmNoClicked_Parms;
 
@@ -34819,7 +34820,7 @@ bool UTgUIEndMissionScreen::OnConfirmYesClicked ( struct FInputEventParameters* 
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 56146 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndMissionScreen.OnConfirmYesClicked" );
 
 	UTgUIEndMissionScreen_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -34846,7 +34847,7 @@ bool UTgUIEndMissionScreen::OnUpgradeButton ( struct FInputEventParameters* Even
 	static UFunction* pFnOnUpgradeButton = NULL;
 
 	if ( ! pFnOnUpgradeButton )
-		pFnOnUpgradeButton = (UFunction*) UObject::GObjObjects()->Data[ 56143 ];
+		pFnOnUpgradeButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndMissionScreen.OnUpgradeButton" );
 
 	UTgUIEndMissionScreen_execOnUpgradeButton_Parms OnUpgradeButton_Parms;
 
@@ -34873,7 +34874,7 @@ bool UTgUIEndMissionScreen::OnEndMissionButton ( struct FInputEventParameters* E
 	static UFunction* pFnOnEndMissionButton = NULL;
 
 	if ( ! pFnOnEndMissionButton )
-		pFnOnEndMissionButton = (UFunction*) UObject::GObjObjects()->Data[ 56140 ];
+		pFnOnEndMissionButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndMissionScreen.OnEndMissionButton" );
 
 	UTgUIEndMissionScreen_execOnEndMissionButton_Parms OnEndMissionButton_Parms;
 
@@ -34900,7 +34901,7 @@ bool UTgUIEndMissionScreen::OnDeviceStatsButton ( struct FInputEventParameters* 
 	static UFunction* pFnOnDeviceStatsButton = NULL;
 
 	if ( ! pFnOnDeviceStatsButton )
-		pFnOnDeviceStatsButton = (UFunction*) UObject::GObjObjects()->Data[ 56137 ];
+		pFnOnDeviceStatsButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndMissionScreen.OnDeviceStatsButton" );
 
 	UTgUIEndMissionScreen_execOnDeviceStatsButton_Parms OnDeviceStatsButton_Parms;
 
@@ -34927,7 +34928,7 @@ bool UTgUIEndMissionScreen::OnMatchStatsButton ( struct FInputEventParameters* E
 	static UFunction* pFnOnMatchStatsButton = NULL;
 
 	if ( ! pFnOnMatchStatsButton )
-		pFnOnMatchStatsButton = (UFunction*) UObject::GObjObjects()->Data[ 56134 ];
+		pFnOnMatchStatsButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndMissionScreen.OnMatchStatsButton" );
 
 	UTgUIEndMissionScreen_execOnMatchStatsButton_Parms OnMatchStatsButton_Parms;
 
@@ -34956,7 +34957,7 @@ void UTgUIEndMissionScreen::OnLootItemStateChange ( class UUIScreenObject* Sende
 	static UFunction* pFnOnLootItemStateChange = NULL;
 
 	if ( ! pFnOnLootItemStateChange )
-		pFnOnLootItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 56129 ];
+		pFnOnLootItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndMissionScreen.OnLootItemStateChange" );
 
 	UTgUIEndMissionScreen_execOnLootItemStateChange_Parms OnLootItemStateChange_Parms;
 	OnLootItemStateChange_Parms.Sender = Sender;
@@ -34980,7 +34981,7 @@ void UTgUIEndMissionScreen::BeginFadeIn ( )
 	static UFunction* pFnBeginFadeIn = NULL;
 
 	if ( ! pFnBeginFadeIn )
-		pFnBeginFadeIn = (UFunction*) UObject::GObjObjects()->Data[ 56128 ];
+		pFnBeginFadeIn = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndMissionScreen.BeginFadeIn" );
 
 	UTgUIEndMissionScreen_execBeginFadeIn_Parms BeginFadeIn_Parms;
 
@@ -35003,7 +35004,7 @@ void UTgUIEndMissionScreen::SetLabelTextAndColor ( unsigned long MissionVictor, 
 	static UFunction* pFnSetLabelTextAndColor = NULL;
 
 	if ( ! pFnSetLabelTextAndColor )
-		pFnSetLabelTextAndColor = (UFunction*) UObject::GObjObjects()->Data[ 56124 ];
+		pFnSetLabelTextAndColor = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndMissionScreen.SetLabelTextAndColor" );
 
 	UTgUIEndMissionScreen_execSetLabelTextAndColor_Parms SetLabelTextAndColor_Parms;
 	SetLabelTextAndColor_Parms.MissionVictor = MissionVictor;
@@ -35027,7 +35028,7 @@ bool UTgUIEndMissionScreen::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56122 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndMissionScreen.TickTgUIScene" );
 
 	UTgUIEndMissionScreen_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -35049,7 +35050,7 @@ void UTgUIEndMissionScreen::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 56121 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndMissionScreen.PostOpenScene" );
 
 	UTgUIEndMissionScreen_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -35069,7 +35070,7 @@ void UTgUIEndMissionScreen::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 56120 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndMissionScreen.PostInitSceneDriver" );
 
 	UTgUIEndMissionScreen_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -35091,7 +35092,7 @@ bool UTgUIEndQuestMission::OnEndMissionButton ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnEndMissionButton = NULL;
 
 	if ( ! pFnOnEndMissionButton )
-		pFnOnEndMissionButton = (UFunction*) UObject::GObjObjects()->Data[ 56167 ];
+		pFnOnEndMissionButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndQuestMission.OnEndMissionButton" );
 
 	UTgUIEndQuestMission_execOnEndMissionButton_Parms OnEndMissionButton_Parms;
 
@@ -35116,7 +35117,7 @@ void UTgUIEndQuestMission::BeginFadeIn ( )
 	static UFunction* pFnBeginFadeIn = NULL;
 
 	if ( ! pFnBeginFadeIn )
-		pFnBeginFadeIn = (UFunction*) UObject::GObjObjects()->Data[ 56166 ];
+		pFnBeginFadeIn = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndQuestMission.BeginFadeIn" );
 
 	UTgUIEndQuestMission_execBeginFadeIn_Parms BeginFadeIn_Parms;
 
@@ -35139,7 +35140,7 @@ void UTgUIEndQuestMission::SetLabelTextAndColor ( unsigned long MissionVictor, u
 	static UFunction* pFnSetLabelTextAndColor = NULL;
 
 	if ( ! pFnSetLabelTextAndColor )
-		pFnSetLabelTextAndColor = (UFunction*) UObject::GObjObjects()->Data[ 56162 ];
+		pFnSetLabelTextAndColor = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndQuestMission.SetLabelTextAndColor" );
 
 	UTgUIEndQuestMission_execSetLabelTextAndColor_Parms SetLabelTextAndColor_Parms;
 	SetLabelTextAndColor_Parms.MissionVictor = MissionVictor;
@@ -35163,7 +35164,7 @@ bool UTgUIEndQuestMission::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56160 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndQuestMission.TickTgUIScene" );
 
 	UTgUIEndQuestMission_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -35185,7 +35186,7 @@ void UTgUIEndQuestMission::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 56159 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIEndQuestMission.PostOpenScene" );
 
 	UTgUIEndQuestMission_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -35207,7 +35208,7 @@ bool UTgUIGameHelpItems::OnSceneDelegate ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSceneDelegate = NULL;
 
 	if ( ! pFnOnSceneDelegate )
-		pFnOnSceneDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56304 ];
+		pFnOnSceneDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIGameHelpItems.OnSceneDelegate" );
 
 	UTgUIGameHelpItems_execOnSceneDelegate_Parms OnSceneDelegate_Parms;
 
@@ -35234,7 +35235,7 @@ bool UTgUIGameHelpItems::OnCloseButton ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 56301 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIGameHelpItems.OnCloseButton" );
 
 	UTgUIGameHelpItems_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -35260,7 +35261,7 @@ bool UTgUIGameHelpItems::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56299 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIGameHelpItems.TickTgUIScene" );
 
 	UTgUIGameHelpItems_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -35282,7 +35283,7 @@ void UTgUIGameHelpItems::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 56298 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIGameHelpItems.PostOpenScene" );
 
 	UTgUIGameHelpItems_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -35302,7 +35303,7 @@ void UTgUIInventoryPopup::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 56550 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.FixupWidgetsUC" );
 
 	UTgUIInventoryPopup_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -35320,7 +35321,7 @@ bool UTgUIInventoryPopup::OnPrevPage ( struct FInputEventParameters* EventParms 
 	static UFunction* pFnOnPrevPage = NULL;
 
 	if ( ! pFnOnPrevPage )
-		pFnOnPrevPage = (UFunction*) UObject::GObjObjects()->Data[ 56547 ];
+		pFnOnPrevPage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.OnPrevPage" );
 
 	UTgUIInventoryPopup_execOnPrevPage_Parms OnPrevPage_Parms;
 
@@ -35347,7 +35348,7 @@ bool UTgUIInventoryPopup::OnNextPage ( struct FInputEventParameters* EventParms 
 	static UFunction* pFnOnNextPage = NULL;
 
 	if ( ! pFnOnNextPage )
-		pFnOnNextPage = (UFunction*) UObject::GObjObjects()->Data[ 56544 ];
+		pFnOnNextPage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.OnNextPage" );
 
 	UTgUIInventoryPopup_execOnNextPage_Parms OnNextPage_Parms;
 
@@ -35376,7 +35377,7 @@ void UTgUIInventoryPopup::OnInvItemStateChange ( class UUIScreenObject* Sender, 
 	static UFunction* pFnOnInvItemStateChange = NULL;
 
 	if ( ! pFnOnInvItemStateChange )
-		pFnOnInvItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 56539 ];
+		pFnOnInvItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.OnInvItemStateChange" );
 
 	UTgUIInventoryPopup_execOnInvItemStateChange_Parms OnInvItemStateChange_Parms;
 	OnInvItemStateChange_Parms.Sender = Sender;
@@ -35402,7 +35403,7 @@ bool UTgUIInventoryPopup::OnSortInventoryDelegate ( struct FInputEventParameters
 	static UFunction* pFnOnSortInventoryDelegate = NULL;
 
 	if ( ! pFnOnSortInventoryDelegate )
-		pFnOnSortInventoryDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56536 ];
+		pFnOnSortInventoryDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.OnSortInventoryDelegate" );
 
 	UTgUIInventoryPopup_execOnSortInventoryDelegate_Parms OnSortInventoryDelegate_Parms;
 
@@ -35429,7 +35430,7 @@ void UTgUIInventoryPopup::OnFilterChangedDelegate ( class UUIObject* Sender, int
 	static UFunction* pFnOnFilterChangedDelegate = NULL;
 
 	if ( ! pFnOnFilterChangedDelegate )
-		pFnOnFilterChangedDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56533 ];
+		pFnOnFilterChangedDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.OnFilterChangedDelegate" );
 
 	UTgUIInventoryPopup_execOnFilterChangedDelegate_Parms OnFilterChangedDelegate_Parms;
 	OnFilterChangedDelegate_Parms.Sender = Sender;
@@ -35453,7 +35454,7 @@ bool UTgUIInventoryPopup::OnConfirmYesClicked ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 56530 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.OnConfirmYesClicked" );
 
 	UTgUIInventoryPopup_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -35480,7 +35481,7 @@ bool UTgUIInventoryPopup::OnDeleteInventoryItemDelegate ( struct FInputEventPara
 	static UFunction* pFnOnDeleteInventoryItemDelegate = NULL;
 
 	if ( ! pFnOnDeleteInventoryItemDelegate )
-		pFnOnDeleteInventoryItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56527 ];
+		pFnOnDeleteInventoryItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.OnDeleteInventoryItemDelegate" );
 
 	UTgUIInventoryPopup_execOnDeleteInventoryItemDelegate_Parms OnDeleteInventoryItemDelegate_Parms;
 
@@ -35507,7 +35508,7 @@ bool UTgUIInventoryPopup::OnSelectInventoryItemDelegate ( struct FInputEventPara
 	static UFunction* pFnOnSelectInventoryItemDelegate = NULL;
 
 	if ( ! pFnOnSelectInventoryItemDelegate )
-		pFnOnSelectInventoryItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56524 ];
+		pFnOnSelectInventoryItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.OnSelectInventoryItemDelegate" );
 
 	UTgUIInventoryPopup_execOnSelectInventoryItemDelegate_Parms OnSelectInventoryItemDelegate_Parms;
 
@@ -35534,7 +35535,7 @@ bool UTgUIInventoryPopup::OnBlockTypeDelegate ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnBlockTypeDelegate = NULL;
 
 	if ( ! pFnOnBlockTypeDelegate )
-		pFnOnBlockTypeDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56521 ];
+		pFnOnBlockTypeDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.OnBlockTypeDelegate" );
 
 	UTgUIInventoryPopup_execOnBlockTypeDelegate_Parms OnBlockTypeDelegate_Parms;
 
@@ -35561,7 +35562,7 @@ bool UTgUIInventoryPopup::OnAddButtonDelegate ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnAddButtonDelegate = NULL;
 
 	if ( ! pFnOnAddButtonDelegate )
-		pFnOnAddButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56518 ];
+		pFnOnAddButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.OnAddButtonDelegate" );
 
 	UTgUIInventoryPopup_execOnAddButtonDelegate_Parms OnAddButtonDelegate_Parms;
 
@@ -35588,7 +35589,7 @@ bool UTgUIInventoryPopup::OnCloseButtonDelegate ( struct FInputEventParameters* 
 	static UFunction* pFnOnCloseButtonDelegate = NULL;
 
 	if ( ! pFnOnCloseButtonDelegate )
-		pFnOnCloseButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56515 ];
+		pFnOnCloseButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.OnCloseButtonDelegate" );
 
 	UTgUIInventoryPopup_execOnCloseButtonDelegate_Parms OnCloseButtonDelegate_Parms;
 
@@ -35615,7 +35616,7 @@ bool UTgUIInventoryPopup::OnSceneInputKeyDelegate ( struct FInputEventParameters
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56512 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.OnSceneInputKeyDelegate" );
 
 	UTgUIInventoryPopup_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -35640,7 +35641,7 @@ void UTgUIInventoryPopup::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56511 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.FixupTgUIScene" );
 
 	UTgUIInventoryPopup_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -35661,7 +35662,7 @@ bool UTgUIInventoryPopup::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56509 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.TickTgUIScene" );
 
 	UTgUIInventoryPopup_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -35683,7 +35684,7 @@ void UTgUIInventoryPopup::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 56508 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.PreCloseScene" );
 
 	UTgUIInventoryPopup_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -35703,7 +35704,7 @@ void UTgUIInventoryPopup::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 56507 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.PostOpenScene" );
 
 	UTgUIInventoryPopup_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -35723,7 +35724,7 @@ void UTgUIInventoryPopup::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 56506 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIInventoryPopup.PostInitSceneDriver" );
 
 	UTgUIInventoryPopup_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -35745,7 +35746,7 @@ bool UTgUIProductionPopup::OnAddButtonDelegate ( struct FInputEventParameters* E
 	static UFunction* pFnOnAddButtonDelegate = NULL;
 
 	if ( ! pFnOnAddButtonDelegate )
-		pFnOnAddButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 58855 ];
+		pFnOnAddButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIProductionPopup.OnAddButtonDelegate" );
 
 	UTgUIProductionPopup_execOnAddButtonDelegate_Parms OnAddButtonDelegate_Parms;
 
@@ -35772,7 +35773,7 @@ void UTgUIProductionPopup::SetHex ( int nZoneObjectId, int nPosition )
 	static UFunction* pFnSetHex = NULL;
 
 	if ( ! pFnSetHex )
-		pFnSetHex = (UFunction*) UObject::GObjObjects()->Data[ 58852 ];
+		pFnSetHex = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIProductionPopup.SetHex" );
 
 	UTgUIProductionPopup_execSetHex_Parms SetHex_Parms;
 	SetHex_Parms.nZoneObjectId = nZoneObjectId;
@@ -35795,7 +35796,7 @@ void UTgUIProductionPopup::SetMaximumTechLevel ( int nTechLevelValueId )
 	static UFunction* pFnSetMaximumTechLevel = NULL;
 
 	if ( ! pFnSetMaximumTechLevel )
-		pFnSetMaximumTechLevel = (UFunction*) UObject::GObjObjects()->Data[ 58850 ];
+		pFnSetMaximumTechLevel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIProductionPopup.SetMaximumTechLevel" );
 
 	UTgUIProductionPopup_execSetMaximumTechLevel_Parms SetMaximumTechLevel_Parms;
 	SetMaximumTechLevel_Parms.nTechLevelValueId = nTechLevelValueId;
@@ -35816,7 +35817,7 @@ void UTgUIProductionPopup::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 58849 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIProductionPopup.FixupTgUIScene" );
 
 	UTgUIProductionPopup_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -35837,7 +35838,7 @@ void UTgUIItemModification::eventSetOnKitMouseOver ( class UUIScreenObject* Obj 
 	static UFunction* pFnSetOnKitMouseOver = NULL;
 
 	if ( ! pFnSetOnKitMouseOver )
-		pFnSetOnKitMouseOver = (UFunction*) UObject::GObjObjects()->Data[ 56672 ];
+		pFnSetOnKitMouseOver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.SetOnKitMouseOver" );
 
 	UTgUIItemModification_eventSetOnKitMouseOver_Parms SetOnKitMouseOver_Parms;
 	SetOnKitMouseOver_Parms.Obj = Obj;
@@ -35855,7 +35856,7 @@ void UTgUIItemModification::eventSetOnKitClick ( class UUIScreenObject* Obj )
 	static UFunction* pFnSetOnKitClick = NULL;
 
 	if ( ! pFnSetOnKitClick )
-		pFnSetOnKitClick = (UFunction*) UObject::GObjObjects()->Data[ 56670 ];
+		pFnSetOnKitClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.SetOnKitClick" );
 
 	UTgUIItemModification_eventSetOnKitClick_Parms SetOnKitClick_Parms;
 	SetOnKitClick_Parms.Obj = Obj;
@@ -35873,7 +35874,7 @@ void UTgUIItemModification::eventSetOnKitItemClick ( class UUIScreenObject* Obj 
 	static UFunction* pFnSetOnKitItemClick = NULL;
 
 	if ( ! pFnSetOnKitItemClick )
-		pFnSetOnKitItemClick = (UFunction*) UObject::GObjObjects()->Data[ 56668 ];
+		pFnSetOnKitItemClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.SetOnKitItemClick" );
 
 	UTgUIItemModification_eventSetOnKitItemClick_Parms SetOnKitItemClick_Parms;
 	SetOnKitItemClick_Parms.Obj = Obj;
@@ -35891,7 +35892,7 @@ void UTgUIItemModification::eventSetOnKitItemMouseOver ( class UUIScreenObject* 
 	static UFunction* pFnSetOnKitItemMouseOver = NULL;
 
 	if ( ! pFnSetOnKitItemMouseOver )
-		pFnSetOnKitItemMouseOver = (UFunction*) UObject::GObjObjects()->Data[ 56666 ];
+		pFnSetOnKitItemMouseOver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.SetOnKitItemMouseOver" );
 
 	UTgUIItemModification_eventSetOnKitItemMouseOver_Parms SetOnKitItemMouseOver_Parms;
 	SetOnKitItemMouseOver_Parms.Obj = Obj;
@@ -35909,7 +35910,7 @@ void UTgUIItemModification::eventSetOnDeviceListMouseOver ( class UUIScreenObjec
 	static UFunction* pFnSetOnDeviceListMouseOver = NULL;
 
 	if ( ! pFnSetOnDeviceListMouseOver )
-		pFnSetOnDeviceListMouseOver = (UFunction*) UObject::GObjObjects()->Data[ 56664 ];
+		pFnSetOnDeviceListMouseOver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.SetOnDeviceListMouseOver" );
 
 	UTgUIItemModification_eventSetOnDeviceListMouseOver_Parms SetOnDeviceListMouseOver_Parms;
 	SetOnDeviceListMouseOver_Parms.Obj = Obj;
@@ -35927,7 +35928,7 @@ void UTgUIItemModification::eventSetOnDeviceListClick ( class UUIScreenObject* O
 	static UFunction* pFnSetOnDeviceListClick = NULL;
 
 	if ( ! pFnSetOnDeviceListClick )
-		pFnSetOnDeviceListClick = (UFunction*) UObject::GObjObjects()->Data[ 56662 ];
+		pFnSetOnDeviceListClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.SetOnDeviceListClick" );
 
 	UTgUIItemModification_eventSetOnDeviceListClick_Parms SetOnDeviceListClick_Parms;
 	SetOnDeviceListClick_Parms.Obj = Obj;
@@ -35945,7 +35946,7 @@ void UTgUIItemModification::eventSetOnDeviceItemClick ( class UUIScreenObject* O
 	static UFunction* pFnSetOnDeviceItemClick = NULL;
 
 	if ( ! pFnSetOnDeviceItemClick )
-		pFnSetOnDeviceItemClick = (UFunction*) UObject::GObjObjects()->Data[ 56660 ];
+		pFnSetOnDeviceItemClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.SetOnDeviceItemClick" );
 
 	UTgUIItemModification_eventSetOnDeviceItemClick_Parms SetOnDeviceItemClick_Parms;
 	SetOnDeviceItemClick_Parms.Obj = Obj;
@@ -35963,7 +35964,7 @@ void UTgUIItemModification::eventSetOnDeviceItemMouseOver ( class UUIScreenObjec
 	static UFunction* pFnSetOnDeviceItemMouseOver = NULL;
 
 	if ( ! pFnSetOnDeviceItemMouseOver )
-		pFnSetOnDeviceItemMouseOver = (UFunction*) UObject::GObjObjects()->Data[ 56658 ];
+		pFnSetOnDeviceItemMouseOver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.SetOnDeviceItemMouseOver" );
 
 	UTgUIItemModification_eventSetOnDeviceItemMouseOver_Parms SetOnDeviceItemMouseOver_Parms;
 	SetOnDeviceItemMouseOver_Parms.Obj = Obj;
@@ -35982,7 +35983,7 @@ bool UTgUIItemModification::OnCloseButton ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 56655 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnCloseButton" );
 
 	UTgUIItemModification_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -36003,7 +36004,7 @@ void UTgUIItemModification::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 56654 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.FixupWidgetsUC" );
 
 	UTgUIItemModification_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -36021,7 +36022,7 @@ void UTgUIItemModification::OnFilterChangedDelegate ( class UUIObject* Sender, i
 	static UFunction* pFnOnFilterChangedDelegate = NULL;
 
 	if ( ! pFnOnFilterChangedDelegate )
-		pFnOnFilterChangedDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56651 ];
+		pFnOnFilterChangedDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnFilterChangedDelegate" );
 
 	UTgUIItemModification_execOnFilterChangedDelegate_Parms OnFilterChangedDelegate_Parms;
 	OnFilterChangedDelegate_Parms.Sender = Sender;
@@ -36045,7 +36046,7 @@ bool UTgUIItemModification::OnKitClick ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnKitClick = NULL;
 
 	if ( ! pFnOnKitClick )
-		pFnOnKitClick = (UFunction*) UObject::GObjObjects()->Data[ 56648 ];
+		pFnOnKitClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnKitClick" );
 
 	UTgUIItemModification_execOnKitClick_Parms OnKitClick_Parms;
 
@@ -36074,7 +36075,7 @@ void UTgUIItemModification::OnKitMouseOver ( class UUIScreenObject* Sender, int 
 	static UFunction* pFnOnKitMouseOver = NULL;
 
 	if ( ! pFnOnKitMouseOver )
-		pFnOnKitMouseOver = (UFunction*) UObject::GObjObjects()->Data[ 56643 ];
+		pFnOnKitMouseOver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnKitMouseOver" );
 
 	UTgUIItemModification_execOnKitMouseOver_Parms OnKitMouseOver_Parms;
 	OnKitMouseOver_Parms.Sender = Sender;
@@ -36100,7 +36101,7 @@ bool UTgUIItemModification::OnKitItemClick ( struct FInputEventParameters* Event
 	static UFunction* pFnOnKitItemClick = NULL;
 
 	if ( ! pFnOnKitItemClick )
-		pFnOnKitItemClick = (UFunction*) UObject::GObjObjects()->Data[ 56640 ];
+		pFnOnKitItemClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnKitItemClick" );
 
 	UTgUIItemModification_execOnKitItemClick_Parms OnKitItemClick_Parms;
 
@@ -36129,7 +36130,7 @@ void UTgUIItemModification::OnKitItemMouseOver ( class UUIScreenObject* Sender, 
 	static UFunction* pFnOnKitItemMouseOver = NULL;
 
 	if ( ! pFnOnKitItemMouseOver )
-		pFnOnKitItemMouseOver = (UFunction*) UObject::GObjObjects()->Data[ 56635 ];
+		pFnOnKitItemMouseOver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnKitItemMouseOver" );
 
 	UTgUIItemModification_execOnKitItemMouseOver_Parms OnKitItemMouseOver_Parms;
 	OnKitItemMouseOver_Parms.Sender = Sender;
@@ -36155,7 +36156,7 @@ bool UTgUIItemModification::OnDeviceListClick ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnDeviceListClick = NULL;
 
 	if ( ! pFnOnDeviceListClick )
-		pFnOnDeviceListClick = (UFunction*) UObject::GObjObjects()->Data[ 56632 ];
+		pFnOnDeviceListClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnDeviceListClick" );
 
 	UTgUIItemModification_execOnDeviceListClick_Parms OnDeviceListClick_Parms;
 
@@ -36184,7 +36185,7 @@ void UTgUIItemModification::OnDeviceListMouseOver ( class UUIScreenObject* Sende
 	static UFunction* pFnOnDeviceListMouseOver = NULL;
 
 	if ( ! pFnOnDeviceListMouseOver )
-		pFnOnDeviceListMouseOver = (UFunction*) UObject::GObjObjects()->Data[ 56627 ];
+		pFnOnDeviceListMouseOver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnDeviceListMouseOver" );
 
 	UTgUIItemModification_execOnDeviceListMouseOver_Parms OnDeviceListMouseOver_Parms;
 	OnDeviceListMouseOver_Parms.Sender = Sender;
@@ -36210,7 +36211,7 @@ bool UTgUIItemModification::OnDeviceItemClick ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnDeviceItemClick = NULL;
 
 	if ( ! pFnOnDeviceItemClick )
-		pFnOnDeviceItemClick = (UFunction*) UObject::GObjObjects()->Data[ 56624 ];
+		pFnOnDeviceItemClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnDeviceItemClick" );
 
 	UTgUIItemModification_execOnDeviceItemClick_Parms OnDeviceItemClick_Parms;
 
@@ -36239,7 +36240,7 @@ void UTgUIItemModification::OnDeviceItemMouseOver ( class UUIScreenObject* Sende
 	static UFunction* pFnOnDeviceItemMouseOver = NULL;
 
 	if ( ! pFnOnDeviceItemMouseOver )
-		pFnOnDeviceItemMouseOver = (UFunction*) UObject::GObjObjects()->Data[ 56619 ];
+		pFnOnDeviceItemMouseOver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnDeviceItemMouseOver" );
 
 	UTgUIItemModification_execOnDeviceItemMouseOver_Parms OnDeviceItemMouseOver_Parms;
 	OnDeviceItemMouseOver_Parms.Sender = Sender;
@@ -36265,7 +36266,7 @@ bool UTgUIItemModification::OnPrevKitPageClick ( struct FInputEventParameters* E
 	static UFunction* pFnOnPrevKitPageClick = NULL;
 
 	if ( ! pFnOnPrevKitPageClick )
-		pFnOnPrevKitPageClick = (UFunction*) UObject::GObjObjects()->Data[ 56616 ];
+		pFnOnPrevKitPageClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnPrevKitPageClick" );
 
 	UTgUIItemModification_execOnPrevKitPageClick_Parms OnPrevKitPageClick_Parms;
 
@@ -36292,7 +36293,7 @@ bool UTgUIItemModification::OnNextKitPageClick ( struct FInputEventParameters* E
 	static UFunction* pFnOnNextKitPageClick = NULL;
 
 	if ( ! pFnOnNextKitPageClick )
-		pFnOnNextKitPageClick = (UFunction*) UObject::GObjObjects()->Data[ 56613 ];
+		pFnOnNextKitPageClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnNextKitPageClick" );
 
 	UTgUIItemModification_execOnNextKitPageClick_Parms OnNextKitPageClick_Parms;
 
@@ -36319,7 +36320,7 @@ bool UTgUIItemModification::OnPrevDevicePageClick ( struct FInputEventParameters
 	static UFunction* pFnOnPrevDevicePageClick = NULL;
 
 	if ( ! pFnOnPrevDevicePageClick )
-		pFnOnPrevDevicePageClick = (UFunction*) UObject::GObjObjects()->Data[ 56610 ];
+		pFnOnPrevDevicePageClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnPrevDevicePageClick" );
 
 	UTgUIItemModification_execOnPrevDevicePageClick_Parms OnPrevDevicePageClick_Parms;
 
@@ -36346,7 +36347,7 @@ bool UTgUIItemModification::OnNextDevicePageClick ( struct FInputEventParameters
 	static UFunction* pFnOnNextDevicePageClick = NULL;
 
 	if ( ! pFnOnNextDevicePageClick )
-		pFnOnNextDevicePageClick = (UFunction*) UObject::GObjObjects()->Data[ 56607 ];
+		pFnOnNextDevicePageClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnNextDevicePageClick" );
 
 	UTgUIItemModification_execOnNextDevicePageClick_Parms OnNextDevicePageClick_Parms;
 
@@ -36373,7 +36374,7 @@ bool UTgUIItemModification::OnConfirmNoClicked ( struct FInputEventParameters* E
 	static UFunction* pFnOnConfirmNoClicked = NULL;
 
 	if ( ! pFnOnConfirmNoClicked )
-		pFnOnConfirmNoClicked = (UFunction*) UObject::GObjObjects()->Data[ 56604 ];
+		pFnOnConfirmNoClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnConfirmNoClicked" );
 
 	UTgUIItemModification_execOnConfirmNoClicked_Parms OnConfirmNoClicked_Parms;
 
@@ -36400,7 +36401,7 @@ bool UTgUIItemModification::OnConfirmYesClicked ( struct FInputEventParameters* 
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 56601 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnConfirmYesClicked" );
 
 	UTgUIItemModification_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -36427,7 +36428,7 @@ bool UTgUIItemModification::OnCombineClick ( struct FInputEventParameters* Event
 	static UFunction* pFnOnCombineClick = NULL;
 
 	if ( ! pFnOnCombineClick )
-		pFnOnCombineClick = (UFunction*) UObject::GObjObjects()->Data[ 56598 ];
+		pFnOnCombineClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnCombineClick" );
 
 	UTgUIItemModification_execOnCombineClick_Parms OnCombineClick_Parms;
 
@@ -36454,7 +36455,7 @@ bool UTgUIItemModification::OnItemModMenuKey ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnItemModMenuKey = NULL;
 
 	if ( ! pFnOnItemModMenuKey )
-		pFnOnItemModMenuKey = (UFunction*) UObject::GObjObjects()->Data[ 56595 ];
+		pFnOnItemModMenuKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.OnItemModMenuKey" );
 
 	UTgUIItemModification_execOnItemModMenuKey_Parms OnItemModMenuKey_Parms;
 
@@ -36479,7 +36480,7 @@ void UTgUIItemModification::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 56594 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.FixupWidgets" );
 
 	UTgUIItemModification_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -36499,7 +36500,7 @@ void UTgUIItemModification::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56593 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.FixupTgUIScene" );
 
 	UTgUIItemModification_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -36519,7 +36520,7 @@ void UTgUIItemModification::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 56592 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.PostOpenScene" );
 
 	UTgUIItemModification_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -36540,7 +36541,7 @@ bool UTgUIItemModification::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56590 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIItemModification.TickTgUIScene" );
 
 	UTgUIItemModification_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -36563,7 +36564,7 @@ void UTgUILFGMenu::eventSetRawInputKeyForMemberList ( class UUIButton* Button )
 	static UFunction* pFnSetRawInputKeyForMemberList = NULL;
 
 	if ( ! pFnSetRawInputKeyForMemberList )
-		pFnSetRawInputKeyForMemberList = (UFunction*) UObject::GObjObjects()->Data[ 56961 ];
+		pFnSetRawInputKeyForMemberList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.SetRawInputKeyForMemberList" );
 
 	UTgUILFGMenu_eventSetRawInputKeyForMemberList_Parms SetRawInputKeyForMemberList_Parms;
 	SetRawInputKeyForMemberList_Parms.Button = Button;
@@ -36580,7 +36581,7 @@ void UTgUILFGMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 56959 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.FixupWidgetsUC" );
 
 	UTgUILFGMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -36598,7 +36599,7 @@ void UTgUILFGMenu::OnLFGCriteriaChanged ( class UUIObject* Sender, int PlayerInd
 	static UFunction* pFnOnLFGCriteriaChanged = NULL;
 
 	if ( ! pFnOnLFGCriteriaChanged )
-		pFnOnLFGCriteriaChanged = (UFunction*) UObject::GObjObjects()->Data[ 56956 ];
+		pFnOnLFGCriteriaChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.OnLFGCriteriaChanged" );
 
 	UTgUILFGMenu_execOnLFGCriteriaChanged_Parms OnLFGCriteriaChanged_Parms;
 	OnLFGCriteriaChanged_Parms.Sender = Sender;
@@ -36622,7 +36623,7 @@ bool UTgUILFGMenu::SelectMemberByButton ( class UUIButton* Button )
 	static UFunction* pFnSelectMemberByButton = NULL;
 
 	if ( ! pFnSelectMemberByButton )
-		pFnSelectMemberByButton = (UFunction*) UObject::GObjObjects()->Data[ 56953 ];
+		pFnSelectMemberByButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.SelectMemberByButton" );
 
 	UTgUILFGMenu_execSelectMemberByButton_Parms SelectMemberByButton_Parms;
 	SelectMemberByButton_Parms.Button = Button;
@@ -36647,7 +36648,7 @@ bool UTgUILFGMenu::OnSceneCargoDelegate ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnSceneCargoDelegate = NULL;
 
 	if ( ! pFnOnSceneCargoDelegate )
-		pFnOnSceneCargoDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56950 ];
+		pFnOnSceneCargoDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.OnSceneCargoDelegate" );
 
 	UTgUILFGMenu_execOnSceneCargoDelegate_Parms OnSceneCargoDelegate_Parms;
 
@@ -36674,7 +36675,7 @@ bool UTgUILFGMenu::OnSceneDetailDelegate ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSceneDetailDelegate = NULL;
 
 	if ( ! pFnOnSceneDetailDelegate )
-		pFnOnSceneDetailDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56947 ];
+		pFnOnSceneDetailDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.OnSceneDetailDelegate" );
 
 	UTgUILFGMenu_execOnSceneDetailDelegate_Parms OnSceneDetailDelegate_Parms;
 
@@ -36701,7 +36702,7 @@ bool UTgUILFGMenu::OnSceneTeamDelegate ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnSceneTeamDelegate = NULL;
 
 	if ( ! pFnOnSceneTeamDelegate )
-		pFnOnSceneTeamDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56944 ];
+		pFnOnSceneTeamDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.OnSceneTeamDelegate" );
 
 	UTgUILFGMenu_execOnSceneTeamDelegate_Parms OnSceneTeamDelegate_Parms;
 
@@ -36728,7 +36729,7 @@ bool UTgUILFGMenu::OnSceneStrikeForceDelegate ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnSceneStrikeForceDelegate = NULL;
 
 	if ( ! pFnOnSceneStrikeForceDelegate )
-		pFnOnSceneStrikeForceDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56941 ];
+		pFnOnSceneStrikeForceDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.OnSceneStrikeForceDelegate" );
 
 	UTgUILFGMenu_execOnSceneStrikeForceDelegate_Parms OnSceneStrikeForceDelegate_Parms;
 
@@ -36755,7 +36756,7 @@ bool UTgUILFGMenu::OnTeamMemberDelegate ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnTeamMemberDelegate = NULL;
 
 	if ( ! pFnOnTeamMemberDelegate )
-		pFnOnTeamMemberDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56938 ];
+		pFnOnTeamMemberDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.OnTeamMemberDelegate" );
 
 	UTgUILFGMenu_execOnTeamMemberDelegate_Parms OnTeamMemberDelegate_Parms;
 
@@ -36782,7 +36783,7 @@ bool UTgUILFGMenu::OnSceneLeaveDelegate ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnSceneLeaveDelegate = NULL;
 
 	if ( ! pFnOnSceneLeaveDelegate )
-		pFnOnSceneLeaveDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56935 ];
+		pFnOnSceneLeaveDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.OnSceneLeaveDelegate" );
 
 	UTgUILFGMenu_execOnSceneLeaveDelegate_Parms OnSceneLeaveDelegate_Parms;
 
@@ -36809,7 +36810,7 @@ bool UTgUILFGMenu::OnScenePromoteDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnScenePromoteDelegate = NULL;
 
 	if ( ! pFnOnScenePromoteDelegate )
-		pFnOnScenePromoteDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56932 ];
+		pFnOnScenePromoteDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.OnScenePromoteDelegate" );
 
 	UTgUILFGMenu_execOnScenePromoteDelegate_Parms OnScenePromoteDelegate_Parms;
 
@@ -36836,7 +36837,7 @@ bool UTgUILFGMenu::OnSceneRemoveDelegate ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSceneRemoveDelegate = NULL;
 
 	if ( ! pFnOnSceneRemoveDelegate )
-		pFnOnSceneRemoveDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56929 ];
+		pFnOnSceneRemoveDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.OnSceneRemoveDelegate" );
 
 	UTgUILFGMenu_execOnSceneRemoveDelegate_Parms OnSceneRemoveDelegate_Parms;
 
@@ -36863,7 +36864,7 @@ bool UTgUILFGMenu::OnCloseButtonDelegate ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnCloseButtonDelegate = NULL;
 
 	if ( ! pFnOnCloseButtonDelegate )
-		pFnOnCloseButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56926 ];
+		pFnOnCloseButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.OnCloseButtonDelegate" );
 
 	UTgUILFGMenu_execOnCloseButtonDelegate_Parms OnCloseButtonDelegate_Parms;
 
@@ -36890,7 +36891,7 @@ bool UTgUILFGMenu::OnSceneInputKeyDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 56923 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.OnSceneInputKeyDelegate" );
 
 	UTgUILFGMenu_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -36916,7 +36917,7 @@ bool UTgUILFGMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56921 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.TickTgUIScene" );
 
 	UTgUILFGMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -36938,7 +36939,7 @@ void UTgUILFGMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 56920 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILFGMenu.FixupTgUIScene" );
 
 	UTgUILFGMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -36960,7 +36961,7 @@ bool UTgUILoginMenu::OnWeblinkKey ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnWeblinkKey = NULL;
 
 	if ( ! pFnOnWeblinkKey )
-		pFnOnWeblinkKey = (UFunction*) UObject::GObjObjects()->Data[ 57120 ];
+		pFnOnWeblinkKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnWeblinkKey" );
 
 	UTgUILoginMenu_execOnWeblinkKey_Parms OnWeblinkKey_Parms;
 
@@ -36985,7 +36986,7 @@ void UTgUILoginMenu::OnNotifyPasswordEditBoxStateChanged ( class UUIScreenObject
 	static UFunction* pFnOnNotifyPasswordEditBoxStateChanged = NULL;
 
 	if ( ! pFnOnNotifyPasswordEditBoxStateChanged )
-		pFnOnNotifyPasswordEditBoxStateChanged = (UFunction*) UObject::GObjObjects()->Data[ 57115 ];
+		pFnOnNotifyPasswordEditBoxStateChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnNotifyPasswordEditBoxStateChanged" );
 
 	UTgUILoginMenu_execOnNotifyPasswordEditBoxStateChanged_Parms OnNotifyPasswordEditBoxStateChanged_Parms;
 	OnNotifyPasswordEditBoxStateChanged_Parms.Sender = Sender;
@@ -37009,7 +37010,7 @@ void UTgUILoginMenu::OnNotifyAccountEditBoxStateChanged ( class UUIScreenObject*
 	static UFunction* pFnOnNotifyAccountEditBoxStateChanged = NULL;
 
 	if ( ! pFnOnNotifyAccountEditBoxStateChanged )
-		pFnOnNotifyAccountEditBoxStateChanged = (UFunction*) UObject::GObjObjects()->Data[ 57110 ];
+		pFnOnNotifyAccountEditBoxStateChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnNotifyAccountEditBoxStateChanged" );
 
 	UTgUILoginMenu_execOnNotifyAccountEditBoxStateChanged_Parms OnNotifyAccountEditBoxStateChanged_Parms;
 	OnNotifyAccountEditBoxStateChanged_Parms.Sender = Sender;
@@ -37032,7 +37033,7 @@ bool UTgUILoginMenu::OnLoginSubmitText ( class UUIEditBox* ebox, int PlayerIndex
 	static UFunction* pFnOnLoginSubmitText = NULL;
 
 	if ( ! pFnOnLoginSubmitText )
-		pFnOnLoginSubmitText = (UFunction*) UObject::GObjObjects()->Data[ 57106 ];
+		pFnOnLoginSubmitText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnLoginSubmitText" );
 
 	UTgUILoginMenu_execOnLoginSubmitText_Parms OnLoginSubmitText_Parms;
 	OnLoginSubmitText_Parms.ebox = ebox;
@@ -37054,7 +37055,7 @@ bool UTgUILoginMenu::OnSetFocusToPasswordEditBox ( struct FInputEventParameters*
 	static UFunction* pFnOnSetFocusToPasswordEditBox = NULL;
 
 	if ( ! pFnOnSetFocusToPasswordEditBox )
-		pFnOnSetFocusToPasswordEditBox = (UFunction*) UObject::GObjObjects()->Data[ 57103 ];
+		pFnOnSetFocusToPasswordEditBox = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnSetFocusToPasswordEditBox" );
 
 	UTgUILoginMenu_execOnSetFocusToPasswordEditBox_Parms OnSetFocusToPasswordEditBox_Parms;
 
@@ -37077,7 +37078,7 @@ bool UTgUILoginMenu::OnSetFocusToAccountEditBox ( struct FInputEventParameters* 
 	static UFunction* pFnOnSetFocusToAccountEditBox = NULL;
 
 	if ( ! pFnOnSetFocusToAccountEditBox )
-		pFnOnSetFocusToAccountEditBox = (UFunction*) UObject::GObjObjects()->Data[ 57100 ];
+		pFnOnSetFocusToAccountEditBox = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnSetFocusToAccountEditBox" );
 
 	UTgUILoginMenu_execOnSetFocusToAccountEditBox_Parms OnSetFocusToAccountEditBox_Parms;
 
@@ -37100,7 +37101,7 @@ bool UTgUILoginMenu::OnEditBoxInputKey ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnEditBoxInputKey = NULL;
 
 	if ( ! pFnOnEditBoxInputKey )
-		pFnOnEditBoxInputKey = (UFunction*) UObject::GObjObjects()->Data[ 57097 ];
+		pFnOnEditBoxInputKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnEditBoxInputKey" );
 
 	UTgUILoginMenu_execOnEditBoxInputKey_Parms OnEditBoxInputKey_Parms;
 
@@ -37123,7 +37124,7 @@ bool UTgUILoginMenu::OnCheckboxKey ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnCheckboxKey = NULL;
 
 	if ( ! pFnOnCheckboxKey )
-		pFnOnCheckboxKey = (UFunction*) UObject::GObjObjects()->Data[ 57094 ];
+		pFnOnCheckboxKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnCheckboxKey" );
 
 	UTgUILoginMenu_execOnCheckboxKey_Parms OnCheckboxKey_Parms;
 
@@ -37146,7 +37147,7 @@ bool UTgUILoginMenu::OnSettingsCreditsButtonKey ( struct FInputEventParameters* 
 	static UFunction* pFnOnSettingsCreditsButtonKey = NULL;
 
 	if ( ! pFnOnSettingsCreditsButtonKey )
-		pFnOnSettingsCreditsButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 57091 ];
+		pFnOnSettingsCreditsButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnSettingsCreditsButtonKey" );
 
 	UTgUILoginMenu_execOnSettingsCreditsButtonKey_Parms OnSettingsCreditsButtonKey_Parms;
 
@@ -37173,7 +37174,7 @@ bool UTgUILoginMenu::OnCloseButtonKey ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnCloseButtonKey = NULL;
 
 	if ( ! pFnOnCloseButtonKey )
-		pFnOnCloseButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 57088 ];
+		pFnOnCloseButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnCloseButtonKey" );
 
 	UTgUILoginMenu_execOnCloseButtonKey_Parms OnCloseButtonKey_Parms;
 
@@ -37196,7 +37197,7 @@ bool UTgUILoginMenu::OnDisconnectButtonKey ( struct FInputEventParameters* Event
 	static UFunction* pFnOnDisconnectButtonKey = NULL;
 
 	if ( ! pFnOnDisconnectButtonKey )
-		pFnOnDisconnectButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 57085 ];
+		pFnOnDisconnectButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnDisconnectButtonKey" );
 
 	UTgUILoginMenu_execOnDisconnectButtonKey_Parms OnDisconnectButtonKey_Parms;
 
@@ -37219,7 +37220,7 @@ bool UTgUILoginMenu::OnQueueButtonKey ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnQueueButtonKey = NULL;
 
 	if ( ! pFnOnQueueButtonKey )
-		pFnOnQueueButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 57082 ];
+		pFnOnQueueButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnQueueButtonKey" );
 
 	UTgUILoginMenu_execOnQueueButtonKey_Parms OnQueueButtonKey_Parms;
 
@@ -37242,7 +37243,7 @@ bool UTgUILoginMenu::OnQuitButtonKey ( struct FInputEventParameters* EventParms 
 	static UFunction* pFnOnQuitButtonKey = NULL;
 
 	if ( ! pFnOnQuitButtonKey )
-		pFnOnQuitButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 57079 ];
+		pFnOnQuitButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnQuitButtonKey" );
 
 	UTgUILoginMenu_execOnQuitButtonKey_Parms OnQuitButtonKey_Parms;
 
@@ -37265,7 +37266,7 @@ bool UTgUILoginMenu::OnLoginButtonKey ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnLoginButtonKey = NULL;
 
 	if ( ! pFnOnLoginButtonKey )
-		pFnOnLoginButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 57076 ];
+		pFnOnLoginButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnLoginButtonKey" );
 
 	UTgUILoginMenu_execOnLoginButtonKey_Parms OnLoginButtonKey_Parms;
 
@@ -37288,7 +37289,7 @@ bool UTgUILoginMenu::OnStatusCancelButtonKey ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnStatusCancelButtonKey = NULL;
 
 	if ( ! pFnOnStatusCancelButtonKey )
-		pFnOnStatusCancelButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 57073 ];
+		pFnOnStatusCancelButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnStatusCancelButtonKey" );
 
 	UTgUILoginMenu_execOnStatusCancelButtonKey_Parms OnStatusCancelButtonKey_Parms;
 
@@ -37311,7 +37312,7 @@ bool UTgUILoginMenu::OnStatusOKButtonKey ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnStatusOKButtonKey = NULL;
 
 	if ( ! pFnOnStatusOKButtonKey )
-		pFnOnStatusOKButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 57070 ];
+		pFnOnStatusOKButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnStatusOKButtonKey" );
 
 	UTgUILoginMenu_execOnStatusOKButtonKey_Parms OnStatusOKButtonKey_Parms;
 
@@ -37334,7 +37335,7 @@ bool UTgUILoginMenu::OnSceneInputKeyDelegate ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57067 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnSceneInputKeyDelegate" );
 
 	UTgUILoginMenu_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -37360,7 +37361,7 @@ void UTgUILoginMenu::TickVisuals ( float DeltaTime )
 	static UFunction* pFnTickVisuals = NULL;
 
 	if ( ! pFnTickVisuals )
-		pFnTickVisuals = (UFunction*) UObject::GObjObjects()->Data[ 57065 ];
+		pFnTickVisuals = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.TickVisuals" );
 
 	UTgUILoginMenu_execTickVisuals_Parms TickVisuals_Parms;
 	TickVisuals_Parms.DeltaTime = DeltaTime;
@@ -37385,7 +37386,7 @@ bool UTgUILoginMenu::OnCrawlScrollOverride ( class UUIScreenObject* Sender, floa
 	static UFunction* pFnOnCrawlScrollOverride = NULL;
 
 	if ( ! pFnOnCrawlScrollOverride )
-		pFnOnCrawlScrollOverride = (UFunction*) UObject::GObjObjects()->Data[ 57060 ];
+		pFnOnCrawlScrollOverride = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnCrawlScrollOverride" );
 
 	UTgUILoginMenu_execOnCrawlScrollOverride_Parms OnCrawlScrollOverride_Parms;
 	OnCrawlScrollOverride_Parms.Sender = Sender;
@@ -37412,7 +37413,7 @@ bool UTgUILoginMenu::OnCrawlButtonClick ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnCrawlButtonClick = NULL;
 
 	if ( ! pFnOnCrawlButtonClick )
-		pFnOnCrawlButtonClick = (UFunction*) UObject::GObjObjects()->Data[ 57057 ];
+		pFnOnCrawlButtonClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnCrawlButtonClick" );
 
 	UTgUILoginMenu_execOnCrawlButtonClick_Parms OnCrawlButtonClick_Parms;
 
@@ -37437,7 +37438,7 @@ void UTgUILoginMenu::StartWebLink ( )
 	static UFunction* pFnStartWebLink = NULL;
 
 	if ( ! pFnStartWebLink )
-		pFnStartWebLink = (UFunction*) UObject::GObjObjects()->Data[ 57056 ];
+		pFnStartWebLink = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.StartWebLink" );
 
 	UTgUILoginMenu_execStartWebLink_Parms StartWebLink_Parms;
 
@@ -37457,7 +37458,7 @@ void UTgUILoginMenu::OnCreateCharacter ( )
 	static UFunction* pFnOnCreateCharacter = NULL;
 
 	if ( ! pFnOnCreateCharacter )
-		pFnOnCreateCharacter = (UFunction*) UObject::GObjObjects()->Data[ 57055 ];
+		pFnOnCreateCharacter = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.OnCreateCharacter" );
 
 	UTgUILoginMenu_execOnCreateCharacter_Parms OnCreateCharacter_Parms;
 
@@ -37477,7 +37478,7 @@ void UTgUILoginMenu::HandleStatusCancel ( )
 	static UFunction* pFnHandleStatusCancel = NULL;
 
 	if ( ! pFnHandleStatusCancel )
-		pFnHandleStatusCancel = (UFunction*) UObject::GObjObjects()->Data[ 57054 ];
+		pFnHandleStatusCancel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.HandleStatusCancel" );
 
 	UTgUILoginMenu_execHandleStatusCancel_Parms HandleStatusCancel_Parms;
 
@@ -37497,7 +37498,7 @@ void UTgUILoginMenu::HandleStatusOK ( )
 	static UFunction* pFnHandleStatusOK = NULL;
 
 	if ( ! pFnHandleStatusOK )
-		pFnHandleStatusOK = (UFunction*) UObject::GObjObjects()->Data[ 57053 ];
+		pFnHandleStatusOK = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.HandleStatusOK" );
 
 	UTgUILoginMenu_execHandleStatusOK_Parms HandleStatusOK_Parms;
 
@@ -37518,7 +37519,7 @@ void UTgUILoginMenu::UpdateSavedLoginInfo ( unsigned long bLog )
 	static UFunction* pFnUpdateSavedLoginInfo = NULL;
 
 	if ( ! pFnUpdateSavedLoginInfo )
-		pFnUpdateSavedLoginInfo = (UFunction*) UObject::GObjObjects()->Data[ 57051 ];
+		pFnUpdateSavedLoginInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.UpdateSavedLoginInfo" );
 
 	UTgUILoginMenu_execUpdateSavedLoginInfo_Parms UpdateSavedLoginInfo_Parms;
 	UpdateSavedLoginInfo_Parms.bLog = bLog;
@@ -37542,7 +37543,7 @@ void UTgUILoginMenu::UpdateStatusPanel ( unsigned long bEnable, struct FString D
 	static UFunction* pFnUpdateStatusPanel = NULL;
 
 	if ( ! pFnUpdateStatusPanel )
-		pFnUpdateStatusPanel = (UFunction*) UObject::GObjObjects()->Data[ 57047 ];
+		pFnUpdateStatusPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.UpdateStatusPanel" );
 
 	UTgUILoginMenu_execUpdateStatusPanel_Parms UpdateStatusPanel_Parms;
 	UpdateStatusPanel_Parms.bEnable = bEnable;
@@ -37565,7 +37566,7 @@ void UTgUILoginMenu::TickStatusPanel ( )
 	static UFunction* pFnTickStatusPanel = NULL;
 
 	if ( ! pFnTickStatusPanel )
-		pFnTickStatusPanel = (UFunction*) UObject::GObjObjects()->Data[ 57046 ];
+		pFnTickStatusPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.TickStatusPanel" );
 
 	UTgUILoginMenu_execTickStatusPanel_Parms TickStatusPanel_Parms;
 
@@ -37585,7 +37586,7 @@ void UTgUILoginMenu::TriggerCharCreate ( )
 	static UFunction* pFnTriggerCharCreate = NULL;
 
 	if ( ! pFnTriggerCharCreate )
-		pFnTriggerCharCreate = (UFunction*) UObject::GObjObjects()->Data[ 57045 ];
+		pFnTriggerCharCreate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.TriggerCharCreate" );
 
 	UTgUILoginMenu_execTriggerCharCreate_Parms TriggerCharCreate_Parms;
 
@@ -37605,7 +37606,7 @@ void UTgUILoginMenu::TriggerLogin ( )
 	static UFunction* pFnTriggerLogin = NULL;
 
 	if ( ! pFnTriggerLogin )
-		pFnTriggerLogin = (UFunction*) UObject::GObjObjects()->Data[ 57044 ];
+		pFnTriggerLogin = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.TriggerLogin" );
 
 	UTgUILoginMenu_execTriggerLogin_Parms TriggerLogin_Parms;
 
@@ -37626,7 +37627,7 @@ bool UTgUILoginMenu::IsProcessing ( )
 	static UFunction* pFnIsProcessing = NULL;
 
 	if ( ! pFnIsProcessing )
-		pFnIsProcessing = (UFunction*) UObject::GObjObjects()->Data[ 57042 ];
+		pFnIsProcessing = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.IsProcessing" );
 
 	UTgUILoginMenu_execIsProcessing_Parms IsProcessing_Parms;
 
@@ -37649,7 +37650,7 @@ unsigned char UTgUILoginMenu::GetProcessingState ( )
 	static UFunction* pFnGetProcessingState = NULL;
 
 	if ( ! pFnGetProcessingState )
-		pFnGetProcessingState = (UFunction*) UObject::GObjObjects()->Data[ 57040 ];
+		pFnGetProcessingState = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.GetProcessingState" );
 
 	UTgUILoginMenu_execGetProcessingState_Parms GetProcessingState_Parms;
 
@@ -37672,7 +37673,7 @@ void UTgUILoginMenu::SetProcessingState ( unsigned char NewState )
 	static UFunction* pFnSetProcessingState = NULL;
 
 	if ( ! pFnSetProcessingState )
-		pFnSetProcessingState = (UFunction*) UObject::GObjObjects()->Data[ 57038 ];
+		pFnSetProcessingState = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.SetProcessingState" );
 
 	UTgUILoginMenu_execSetProcessingState_Parms SetProcessingState_Parms;
 	SetProcessingState_Parms.NewState = NewState;
@@ -37693,7 +37694,7 @@ void UTgUILoginMenu::CloseQueuePanel ( )
 	static UFunction* pFnCloseQueuePanel = NULL;
 
 	if ( ! pFnCloseQueuePanel )
-		pFnCloseQueuePanel = (UFunction*) UObject::GObjObjects()->Data[ 57037 ];
+		pFnCloseQueuePanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.CloseQueuePanel" );
 
 	UTgUILoginMenu_execCloseQueuePanel_Parms CloseQueuePanel_Parms;
 
@@ -37713,7 +37714,7 @@ void UTgUILoginMenu::ProcessQueueButton ( )
 	static UFunction* pFnProcessQueueButton = NULL;
 
 	if ( ! pFnProcessQueueButton )
-		pFnProcessQueueButton = (UFunction*) UObject::GObjObjects()->Data[ 57036 ];
+		pFnProcessQueueButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.ProcessQueueButton" );
 
 	UTgUILoginMenu_execProcessQueueButton_Parms ProcessQueueButton_Parms;
 
@@ -37733,7 +37734,7 @@ void UTgUILoginMenu::ProcessDisconnect ( )
 	static UFunction* pFnProcessDisconnect = NULL;
 
 	if ( ! pFnProcessDisconnect )
-		pFnProcessDisconnect = (UFunction*) UObject::GObjObjects()->Data[ 57035 ];
+		pFnProcessDisconnect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.ProcessDisconnect" );
 
 	UTgUILoginMenu_execProcessDisconnect_Parms ProcessDisconnect_Parms;
 
@@ -37753,7 +37754,7 @@ void UTgUILoginMenu::ToggleSaveAccountInfo ( )
 	static UFunction* pFnToggleSaveAccountInfo = NULL;
 
 	if ( ! pFnToggleSaveAccountInfo )
-		pFnToggleSaveAccountInfo = (UFunction*) UObject::GObjObjects()->Data[ 57034 ];
+		pFnToggleSaveAccountInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.ToggleSaveAccountInfo" );
 
 	UTgUILoginMenu_execToggleSaveAccountInfo_Parms ToggleSaveAccountInfo_Parms;
 
@@ -37773,7 +37774,7 @@ void UTgUILoginMenu::ProcessQuit ( )
 	static UFunction* pFnProcessQuit = NULL;
 
 	if ( ! pFnProcessQuit )
-		pFnProcessQuit = (UFunction*) UObject::GObjObjects()->Data[ 57033 ];
+		pFnProcessQuit = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.ProcessQuit" );
 
 	UTgUILoginMenu_execProcessQuit_Parms ProcessQuit_Parms;
 
@@ -37793,7 +37794,7 @@ void UTgUILoginMenu::GetSavedAccountInfo ( )
 	static UFunction* pFnGetSavedAccountInfo = NULL;
 
 	if ( ! pFnGetSavedAccountInfo )
-		pFnGetSavedAccountInfo = (UFunction*) UObject::GObjObjects()->Data[ 57032 ];
+		pFnGetSavedAccountInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.GetSavedAccountInfo" );
 
 	UTgUILoginMenu_execGetSavedAccountInfo_Parms GetSavedAccountInfo_Parms;
 
@@ -37813,7 +37814,7 @@ void UTgUILoginMenu::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 57031 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.FixupWidgets" );
 
 	UTgUILoginMenu_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -37834,7 +37835,7 @@ bool UTgUILoginMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57029 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.TickTgUIScene" );
 
 	UTgUILoginMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -37856,7 +37857,7 @@ void UTgUILoginMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57028 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.FixupTgUIScene" );
 
 	UTgUILoginMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -37876,7 +37877,7 @@ void UTgUILoginMenu::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 57027 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUILoginMenu.PreCloseScene" );
 
 	UTgUILoginMenu_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -37896,7 +37897,7 @@ void UTgUIMailMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 57325 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.FixupWidgetsUC" );
 
 	UTgUIMailMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -37913,7 +37914,7 @@ void UTgUIMailMenu::eventSetDetailAttachmentStateChange ( class UUIScreenObject*
 	static UFunction* pFnSetDetailAttachmentStateChange = NULL;
 
 	if ( ! pFnSetDetailAttachmentStateChange )
-		pFnSetDetailAttachmentStateChange = (UFunction*) UObject::GObjObjects()->Data[ 57323 ];
+		pFnSetDetailAttachmentStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.SetDetailAttachmentStateChange" );
 
 	UTgUIMailMenu_eventSetDetailAttachmentStateChange_Parms SetDetailAttachmentStateChange_Parms;
 	SetDetailAttachmentStateChange_Parms.Obj = Obj;
@@ -37931,7 +37932,7 @@ void UTgUIMailMenu::eventSetAttachmentStateChange ( class UUIScreenObject* Obj )
 	static UFunction* pFnSetAttachmentStateChange = NULL;
 
 	if ( ! pFnSetAttachmentStateChange )
-		pFnSetAttachmentStateChange = (UFunction*) UObject::GObjObjects()->Data[ 57321 ];
+		pFnSetAttachmentStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.SetAttachmentStateChange" );
 
 	UTgUIMailMenu_eventSetAttachmentStateChange_Parms SetAttachmentStateChange_Parms;
 	SetAttachmentStateChange_Parms.Obj = Obj;
@@ -37949,7 +37950,7 @@ void UTgUIMailMenu::eventSetDetailAttachmentSelect ( class UUIScreenObject* Obj 
 	static UFunction* pFnSetDetailAttachmentSelect = NULL;
 
 	if ( ! pFnSetDetailAttachmentSelect )
-		pFnSetDetailAttachmentSelect = (UFunction*) UObject::GObjObjects()->Data[ 57319 ];
+		pFnSetDetailAttachmentSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.SetDetailAttachmentSelect" );
 
 	UTgUIMailMenu_eventSetDetailAttachmentSelect_Parms SetDetailAttachmentSelect_Parms;
 	SetDetailAttachmentSelect_Parms.Obj = Obj;
@@ -37967,7 +37968,7 @@ void UTgUIMailMenu::eventSetAttachmentSelect ( class UUIScreenObject* Obj )
 	static UFunction* pFnSetAttachmentSelect = NULL;
 
 	if ( ! pFnSetAttachmentSelect )
-		pFnSetAttachmentSelect = (UFunction*) UObject::GObjObjects()->Data[ 57317 ];
+		pFnSetAttachmentSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.SetAttachmentSelect" );
 
 	UTgUIMailMenu_eventSetAttachmentSelect_Parms SetAttachmentSelect_Parms;
 	SetAttachmentSelect_Parms.Obj = Obj;
@@ -37985,7 +37986,7 @@ void UTgUIMailMenu::eventSetInboxItemSelect ( class UUIScreenObject* Obj )
 	static UFunction* pFnSetInboxItemSelect = NULL;
 
 	if ( ! pFnSetInboxItemSelect )
-		pFnSetInboxItemSelect = (UFunction*) UObject::GObjObjects()->Data[ 57315 ];
+		pFnSetInboxItemSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.SetInboxItemSelect" );
 
 	UTgUIMailMenu_eventSetInboxItemSelect_Parms SetInboxItemSelect_Parms;
 	SetInboxItemSelect_Parms.Obj = Obj;
@@ -38003,7 +38004,7 @@ void UTgUIMailMenu::eventSetMailItemSelect ( class UUIScreenObject* Obj )
 	static UFunction* pFnSetMailItemSelect = NULL;
 
 	if ( ! pFnSetMailItemSelect )
-		pFnSetMailItemSelect = (UFunction*) UObject::GObjObjects()->Data[ 57313 ];
+		pFnSetMailItemSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.SetMailItemSelect" );
 
 	UTgUIMailMenu_eventSetMailItemSelect_Parms SetMailItemSelect_Parms;
 	SetMailItemSelect_Parms.Obj = Obj;
@@ -38021,7 +38022,7 @@ bool UTgUIMailMenu::ValidateMailFeature ( )
 	static UFunction* pFnValidateMailFeature = NULL;
 
 	if ( ! pFnValidateMailFeature )
-		pFnValidateMailFeature = (UFunction*) UObject::GObjObjects()->Data[ 57311 ];
+		pFnValidateMailFeature = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.ValidateMailFeature" );
 
 	UTgUIMailMenu_execValidateMailFeature_Parms ValidateMailFeature_Parms;
 
@@ -38045,7 +38046,7 @@ bool UTgUIMailMenu::SetFocusedWidget ( class UUIScreenObject* NewFocus )
 	static UFunction* pFnSetFocusedWidget = NULL;
 
 	if ( ! pFnSetFocusedWidget )
-		pFnSetFocusedWidget = (UFunction*) UObject::GObjObjects()->Data[ 57308 ];
+		pFnSetFocusedWidget = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.SetFocusedWidget" );
 
 	UTgUIMailMenu_execSetFocusedWidget_Parms SetFocusedWidget_Parms;
 	SetFocusedWidget_Parms.NewFocus = NewFocus;
@@ -38070,7 +38071,7 @@ bool UTgUIMailMenu::OnConfirmNoClicked ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnConfirmNoClicked = NULL;
 
 	if ( ! pFnOnConfirmNoClicked )
-		pFnOnConfirmNoClicked = (UFunction*) UObject::GObjObjects()->Data[ 57305 ];
+		pFnOnConfirmNoClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnConfirmNoClicked" );
 
 	UTgUIMailMenu_execOnConfirmNoClicked_Parms OnConfirmNoClicked_Parms;
 
@@ -38097,7 +38098,7 @@ bool UTgUIMailMenu::OnConfirmYesClicked ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 57302 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnConfirmYesClicked" );
 
 	UTgUIMailMenu_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -38123,7 +38124,7 @@ void UTgUIMailMenu::OpenCODConfirmPopup ( int nCurrencyValue )
 	static UFunction* pFnOpenCODConfirmPopup = NULL;
 
 	if ( ! pFnOpenCODConfirmPopup )
-		pFnOpenCODConfirmPopup = (UFunction*) UObject::GObjObjects()->Data[ 57300 ];
+		pFnOpenCODConfirmPopup = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OpenCODConfirmPopup" );
 
 	UTgUIMailMenu_execOpenCODConfirmPopup_Parms OpenCODConfirmPopup_Parms;
 	OpenCODConfirmPopup_Parms.nCurrencyValue = nCurrencyValue;
@@ -38145,7 +38146,7 @@ void UTgUIMailMenu::SelectMailTab ( int SelectTab )
 	static UFunction* pFnSelectMailTab = NULL;
 
 	if ( ! pFnSelectMailTab )
-		pFnSelectMailTab = (UFunction*) UObject::GObjObjects()->Data[ 57298 ];
+		pFnSelectMailTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.SelectMailTab" );
 
 	UTgUIMailMenu_execSelectMailTab_Parms SelectMailTab_Parms;
 	SelectMailTab_Parms.SelectTab = SelectTab;
@@ -38166,7 +38167,7 @@ void UTgUIMailMenu::UpdateAttachmentHighlight ( )
 	static UFunction* pFnUpdateAttachmentHighlight = NULL;
 
 	if ( ! pFnUpdateAttachmentHighlight )
-		pFnUpdateAttachmentHighlight = (UFunction*) UObject::GObjObjects()->Data[ 57297 ];
+		pFnUpdateAttachmentHighlight = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.UpdateAttachmentHighlight" );
 
 	UTgUIMailMenu_execUpdateAttachmentHighlight_Parms UpdateAttachmentHighlight_Parms;
 
@@ -38186,7 +38187,7 @@ void UTgUIMailMenu::UpdateHighlight ( )
 	static UFunction* pFnUpdateHighlight = NULL;
 
 	if ( ! pFnUpdateHighlight )
-		pFnUpdateHighlight = (UFunction*) UObject::GObjObjects()->Data[ 57296 ];
+		pFnUpdateHighlight = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.UpdateHighlight" );
 
 	UTgUIMailMenu_execUpdateHighlight_Parms UpdateHighlight_Parms;
 
@@ -38207,7 +38208,7 @@ void UTgUIMailMenu::ResizeDisplayList ( int newSize )
 	static UFunction* pFnResizeDisplayList = NULL;
 
 	if ( ! pFnResizeDisplayList )
-		pFnResizeDisplayList = (UFunction*) UObject::GObjObjects()->Data[ 57294 ];
+		pFnResizeDisplayList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.ResizeDisplayList" );
 
 	UTgUIMailMenu_execResizeDisplayList_Parms ResizeDisplayList_Parms;
 	ResizeDisplayList_Parms.newSize = newSize;
@@ -38229,7 +38230,7 @@ bool UTgUIMailMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57292 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.TickTgUIScene" );
 
 	UTgUIMailMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -38251,7 +38252,7 @@ void UTgUIMailMenu::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 57291 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.FixupWidgets" );
 
 	UTgUIMailMenu_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -38271,7 +38272,7 @@ void UTgUIMailMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57290 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.FixupTgUIScene" );
 
 	UTgUIMailMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -38291,7 +38292,7 @@ void UTgUIMailMenu::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 57289 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.PreCloseScene" );
 
 	UTgUIMailMenu_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -38311,7 +38312,7 @@ void UTgUIMailMenu::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 57288 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.PostOpenScene" );
 
 	UTgUIMailMenu_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -38331,7 +38332,7 @@ void UTgUIMailMenu::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 57287 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.PostInitSceneDriver" );
 
 	UTgUIMailMenu_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -38353,7 +38354,7 @@ void UTgUIMailMenu::OnSendMoneyCheckboxChanged ( class UUIObject* ebox, int Play
 	static UFunction* pFnOnSendMoneyCheckboxChanged = NULL;
 
 	if ( ! pFnOnSendMoneyCheckboxChanged )
-		pFnOnSendMoneyCheckboxChanged = (UFunction*) UObject::GObjObjects()->Data[ 57284 ];
+		pFnOnSendMoneyCheckboxChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnSendMoneyCheckboxChanged" );
 
 	UTgUIMailMenu_execOnSendMoneyCheckboxChanged_Parms OnSendMoneyCheckboxChanged_Parms;
 	OnSendMoneyCheckboxChanged_Parms.ebox = ebox;
@@ -38377,7 +38378,7 @@ void UTgUIMailMenu::OnCODCheckboxChanged ( class UUIObject* ebox, int PlayerInde
 	static UFunction* pFnOnCODCheckboxChanged = NULL;
 
 	if ( ! pFnOnCODCheckboxChanged )
-		pFnOnCODCheckboxChanged = (UFunction*) UObject::GObjObjects()->Data[ 57281 ];
+		pFnOnCODCheckboxChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnCODCheckboxChanged" );
 
 	UTgUIMailMenu_execOnCODCheckboxChanged_Parms OnCODCheckboxChanged_Parms;
 	OnCODCheckboxChanged_Parms.ebox = ebox;
@@ -38402,7 +38403,7 @@ bool UTgUIMailMenu::OnToSubmitText ( class UUIEditBox* ebox, int PlayerIndex )
 	static UFunction* pFnOnToSubmitText = NULL;
 
 	if ( ! pFnOnToSubmitText )
-		pFnOnToSubmitText = (UFunction*) UObject::GObjObjects()->Data[ 57277 ];
+		pFnOnToSubmitText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnToSubmitText" );
 
 	UTgUIMailMenu_execOnToSubmitText_Parms OnToSubmitText_Parms;
 	OnToSubmitText_Parms.ebox = ebox;
@@ -38428,7 +38429,7 @@ void UTgUIMailMenu::OnToValueChanged ( class UUIObject* ebox, int PlayerIndex )
 	static UFunction* pFnOnToValueChanged = NULL;
 
 	if ( ! pFnOnToValueChanged )
-		pFnOnToValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 57274 ];
+		pFnOnToValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnToValueChanged" );
 
 	UTgUIMailMenu_execOnToValueChanged_Parms OnToValueChanged_Parms;
 	OnToValueChanged_Parms.ebox = ebox;
@@ -38452,7 +38453,7 @@ void UTgUIMailMenu::OnEnterValueChanged ( class UUIObject* ebox, int PlayerIndex
 	static UFunction* pFnOnEnterValueChanged = NULL;
 
 	if ( ! pFnOnEnterValueChanged )
-		pFnOnEnterValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 57271 ];
+		pFnOnEnterValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnEnterValueChanged" );
 
 	UTgUIMailMenu_execOnEnterValueChanged_Parms OnEnterValueChanged_Parms;
 	OnEnterValueChanged_Parms.ebox = ebox;
@@ -38478,7 +38479,7 @@ void UTgUIMailMenu::OnDetailAttachmentStateChange ( class UUIScreenObject* Sende
 	static UFunction* pFnOnDetailAttachmentStateChange = NULL;
 
 	if ( ! pFnOnDetailAttachmentStateChange )
-		pFnOnDetailAttachmentStateChange = (UFunction*) UObject::GObjObjects()->Data[ 57266 ];
+		pFnOnDetailAttachmentStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnDetailAttachmentStateChange" );
 
 	UTgUIMailMenu_execOnDetailAttachmentStateChange_Parms OnDetailAttachmentStateChange_Parms;
 	OnDetailAttachmentStateChange_Parms.Sender = Sender;
@@ -38506,7 +38507,7 @@ void UTgUIMailMenu::OnAttachmentStateChange ( class UUIScreenObject* Sender, int
 	static UFunction* pFnOnAttachmentStateChange = NULL;
 
 	if ( ! pFnOnAttachmentStateChange )
-		pFnOnAttachmentStateChange = (UFunction*) UObject::GObjObjects()->Data[ 57261 ];
+		pFnOnAttachmentStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnAttachmentStateChange" );
 
 	UTgUIMailMenu_execOnAttachmentStateChange_Parms OnAttachmentStateChange_Parms;
 	OnAttachmentStateChange_Parms.Sender = Sender;
@@ -38532,7 +38533,7 @@ bool UTgUIMailMenu::OnMailItemSelect ( struct FInputEventParameters* EventParms 
 	static UFunction* pFnOnMailItemSelect = NULL;
 
 	if ( ! pFnOnMailItemSelect )
-		pFnOnMailItemSelect = (UFunction*) UObject::GObjObjects()->Data[ 57258 ];
+		pFnOnMailItemSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnMailItemSelect" );
 
 	UTgUIMailMenu_execOnMailItemSelect_Parms OnMailItemSelect_Parms;
 
@@ -38559,7 +38560,7 @@ bool UTgUIMailMenu::OnDetailAttachmentSelect ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnDetailAttachmentSelect = NULL;
 
 	if ( ! pFnOnDetailAttachmentSelect )
-		pFnOnDetailAttachmentSelect = (UFunction*) UObject::GObjObjects()->Data[ 57255 ];
+		pFnOnDetailAttachmentSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnDetailAttachmentSelect" );
 
 	UTgUIMailMenu_execOnDetailAttachmentSelect_Parms OnDetailAttachmentSelect_Parms;
 
@@ -38586,7 +38587,7 @@ bool UTgUIMailMenu::OnAttachmentSelect ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnAttachmentSelect = NULL;
 
 	if ( ! pFnOnAttachmentSelect )
-		pFnOnAttachmentSelect = (UFunction*) UObject::GObjObjects()->Data[ 57252 ];
+		pFnOnAttachmentSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnAttachmentSelect" );
 
 	UTgUIMailMenu_execOnAttachmentSelect_Parms OnAttachmentSelect_Parms;
 
@@ -38613,7 +38614,7 @@ bool UTgUIMailMenu::OnInboxItemSelect ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnInboxItemSelect = NULL;
 
 	if ( ! pFnOnInboxItemSelect )
-		pFnOnInboxItemSelect = (UFunction*) UObject::GObjObjects()->Data[ 57249 ];
+		pFnOnInboxItemSelect = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnInboxItemSelect" );
 
 	UTgUIMailMenu_execOnInboxItemSelect_Parms OnInboxItemSelect_Parms;
 
@@ -38640,7 +38641,7 @@ bool UTgUIMailMenu::OnSelectMailTab ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnSelectMailTab = NULL;
 
 	if ( ! pFnOnSelectMailTab )
-		pFnOnSelectMailTab = (UFunction*) UObject::GObjObjects()->Data[ 57246 ];
+		pFnOnSelectMailTab = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnSelectMailTab" );
 
 	UTgUIMailMenu_execOnSelectMailTab_Parms OnSelectMailTab_Parms;
 
@@ -38667,7 +38668,7 @@ bool UTgUIMailMenu::OnSendButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnSendButton = NULL;
 
 	if ( ! pFnOnSendButton )
-		pFnOnSendButton = (UFunction*) UObject::GObjObjects()->Data[ 57243 ];
+		pFnOnSendButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnSendButton" );
 
 	UTgUIMailMenu_execOnSendButton_Parms OnSendButton_Parms;
 
@@ -38694,7 +38695,7 @@ bool UTgUIMailMenu::OnCancelButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnCancelButton = NULL;
 
 	if ( ! pFnOnCancelButton )
-		pFnOnCancelButton = (UFunction*) UObject::GObjObjects()->Data[ 57240 ];
+		pFnOnCancelButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnCancelButton" );
 
 	UTgUIMailMenu_execOnCancelButton_Parms OnCancelButton_Parms;
 
@@ -38721,7 +38722,7 @@ bool UTgUIMailMenu::OnRemoveButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnRemoveButton = NULL;
 
 	if ( ! pFnOnRemoveButton )
-		pFnOnRemoveButton = (UFunction*) UObject::GObjObjects()->Data[ 57237 ];
+		pFnOnRemoveButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnRemoveButton" );
 
 	UTgUIMailMenu_execOnRemoveButton_Parms OnRemoveButton_Parms;
 
@@ -38748,7 +38749,7 @@ bool UTgUIMailMenu::OnAttachButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnAttachButton = NULL;
 
 	if ( ! pFnOnAttachButton )
-		pFnOnAttachButton = (UFunction*) UObject::GObjObjects()->Data[ 57234 ];
+		pFnOnAttachButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnAttachButton" );
 
 	UTgUIMailMenu_execOnAttachButton_Parms OnAttachButton_Parms;
 
@@ -38775,7 +38776,7 @@ bool UTgUIMailMenu::OnReplyButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnReplyButton = NULL;
 
 	if ( ! pFnOnReplyButton )
-		pFnOnReplyButton = (UFunction*) UObject::GObjObjects()->Data[ 57231 ];
+		pFnOnReplyButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnReplyButton" );
 
 	UTgUIMailMenu_execOnReplyButton_Parms OnReplyButton_Parms;
 
@@ -38802,7 +38803,7 @@ bool UTgUIMailMenu::OnTakeButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnTakeButton = NULL;
 
 	if ( ! pFnOnTakeButton )
-		pFnOnTakeButton = (UFunction*) UObject::GObjObjects()->Data[ 57228 ];
+		pFnOnTakeButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnTakeButton" );
 
 	UTgUIMailMenu_execOnTakeButton_Parms OnTakeButton_Parms;
 
@@ -38829,7 +38830,7 @@ bool UTgUIMailMenu::OnReturnButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnReturnButton = NULL;
 
 	if ( ! pFnOnReturnButton )
-		pFnOnReturnButton = (UFunction*) UObject::GObjObjects()->Data[ 57225 ];
+		pFnOnReturnButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnReturnButton" );
 
 	UTgUIMailMenu_execOnReturnButton_Parms OnReturnButton_Parms;
 
@@ -38856,7 +38857,7 @@ bool UTgUIMailMenu::OnDeleteButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnDeleteButton = NULL;
 
 	if ( ! pFnOnDeleteButton )
-		pFnOnDeleteButton = (UFunction*) UObject::GObjObjects()->Data[ 57222 ];
+		pFnOnDeleteButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnDeleteButton" );
 
 	UTgUIMailMenu_execOnDeleteButton_Parms OnDeleteButton_Parms;
 
@@ -38883,7 +38884,7 @@ bool UTgUIMailMenu::OnCloseButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 57219 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnCloseButton" );
 
 	UTgUIMailMenu_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -38910,7 +38911,7 @@ bool UTgUIMailMenu::OnMailMenuKey ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnMailMenuKey = NULL;
 
 	if ( ! pFnOnMailMenuKey )
-		pFnOnMailMenuKey = (UFunction*) UObject::GObjObjects()->Data[ 57216 ];
+		pFnOnMailMenuKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMailMenu.OnMailMenuKey" );
 
 	UTgUIMailMenu_execOnMailMenuKey_Parms OnMailMenuKey_Parms;
 
@@ -38935,7 +38936,7 @@ void UTgUIMainMenu::ExitQuitMode ( )
 	static UFunction* pFnExitQuitMode = NULL;
 
 	if ( ! pFnExitQuitMode )
-		pFnExitQuitMode = (UFunction*) UObject::GObjObjects()->Data[ 57417 ];
+		pFnExitQuitMode = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.ExitQuitMode" );
 
 	UTgUIMainMenu_execExitQuitMode_Parms ExitQuitMode_Parms;
 
@@ -38955,7 +38956,7 @@ void UTgUIMainMenu::EnterQuitMode ( )
 	static UFunction* pFnEnterQuitMode = NULL;
 
 	if ( ! pFnEnterQuitMode )
-		pFnEnterQuitMode = (UFunction*) UObject::GObjObjects()->Data[ 57416 ];
+		pFnEnterQuitMode = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.EnterQuitMode" );
 
 	UTgUIMainMenu_execEnterQuitMode_Parms EnterQuitMode_Parms;
 
@@ -38977,7 +38978,7 @@ bool UTgUIMainMenu::OnConfirmYesClicked ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 57413 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.OnConfirmYesClicked" );
 
 	UTgUIMainMenu_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -39002,7 +39003,7 @@ void UTgUIMainMenu::SetUpMenuButtons ( )
 	static UFunction* pFnSetUpMenuButtons = NULL;
 
 	if ( ! pFnSetUpMenuButtons )
-		pFnSetUpMenuButtons = (UFunction*) UObject::GObjObjects()->Data[ 57412 ];
+		pFnSetUpMenuButtons = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.SetUpMenuButtons" );
 
 	UTgUIMainMenu_execSetUpMenuButtons_Parms SetUpMenuButtons_Parms;
 
@@ -39023,7 +39024,7 @@ void UTgUIMainMenu::AddContextItem ( int funcID )
 	static UFunction* pFnAddContextItem = NULL;
 
 	if ( ! pFnAddContextItem )
-		pFnAddContextItem = (UFunction*) UObject::GObjObjects()->Data[ 57410 ];
+		pFnAddContextItem = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.AddContextItem" );
 
 	UTgUIMainMenu_execAddContextItem_Parms AddContextItem_Parms;
 	AddContextItem_Parms.funcID = funcID;
@@ -39044,7 +39045,7 @@ void UTgUIMainMenu::ConfigureContextItems ( )
 	static UFunction* pFnConfigureContextItems = NULL;
 
 	if ( ! pFnConfigureContextItems )
-		pFnConfigureContextItems = (UFunction*) UObject::GObjObjects()->Data[ 57409 ];
+		pFnConfigureContextItems = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.ConfigureContextItems" );
 
 	UTgUIMainMenu_execConfigureContextItems_Parms ConfigureContextItems_Parms;
 
@@ -39065,7 +39066,7 @@ int UTgUIMainMenu::CountContextItems ( )
 	static UFunction* pFnCountContextItems = NULL;
 
 	if ( ! pFnCountContextItems )
-		pFnCountContextItems = (UFunction*) UObject::GObjObjects()->Data[ 57407 ];
+		pFnCountContextItems = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.CountContextItems" );
 
 	UTgUIMainMenu_execCountContextItems_Parms CountContextItems_Parms;
 
@@ -39089,7 +39090,7 @@ int UTgUIMainMenu::GetButtonFunctionID ( class UUIScreenObject* buttonObject )
 	static UFunction* pFnGetButtonFunctionID = NULL;
 
 	if ( ! pFnGetButtonFunctionID )
-		pFnGetButtonFunctionID = (UFunction*) UObject::GObjObjects()->Data[ 57404 ];
+		pFnGetButtonFunctionID = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.GetButtonFunctionID" );
 
 	UTgUIMainMenu_execGetButtonFunctionID_Parms GetButtonFunctionID_Parms;
 	GetButtonFunctionID_Parms.buttonObject = buttonObject;
@@ -39114,7 +39115,7 @@ int UTgUIMainMenu::GetSceneReferenceByClassName ( struct FName ClassName )
 	static UFunction* pFnGetSceneReferenceByClassName = NULL;
 
 	if ( ! pFnGetSceneReferenceByClassName )
-		pFnGetSceneReferenceByClassName = (UFunction*) UObject::GObjObjects()->Data[ 57401 ];
+		pFnGetSceneReferenceByClassName = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.GetSceneReferenceByClassName" );
 
 	UTgUIMainMenu_execGetSceneReferenceByClassName_Parms GetSceneReferenceByClassName_Parms;
 	memcpy ( &GetSceneReferenceByClassName_Parms.ClassName, &ClassName, 0x8 );
@@ -39139,7 +39140,7 @@ unsigned char UTgUIMainMenu::GetBaseFunctionID ( unsigned char funcID )
 	static UFunction* pFnGetBaseFunctionID = NULL;
 
 	if ( ! pFnGetBaseFunctionID )
-		pFnGetBaseFunctionID = (UFunction*) UObject::GObjObjects()->Data[ 57398 ];
+		pFnGetBaseFunctionID = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.GetBaseFunctionID" );
 
 	UTgUIMainMenu_execGetBaseFunctionID_Parms GetBaseFunctionID_Parms;
 	GetBaseFunctionID_Parms.funcID = funcID;
@@ -39164,7 +39165,7 @@ int UTgUIMainMenu::GetOverrideSceneReference ( unsigned char funcID )
 	static UFunction* pFnGetOverrideSceneReference = NULL;
 
 	if ( ! pFnGetOverrideSceneReference )
-		pFnGetOverrideSceneReference = (UFunction*) UObject::GObjObjects()->Data[ 57395 ];
+		pFnGetOverrideSceneReference = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.GetOverrideSceneReference" );
 
 	UTgUIMainMenu_execGetOverrideSceneReference_Parms GetOverrideSceneReference_Parms;
 	GetOverrideSceneReference_Parms.funcID = funcID;
@@ -39188,7 +39189,7 @@ void UTgUIMainMenu::CloseManagedScene ( unsigned long bPreserveVolumeFlag )
 	static UFunction* pFnCloseManagedScene = NULL;
 
 	if ( ! pFnCloseManagedScene )
-		pFnCloseManagedScene = (UFunction*) UObject::GObjObjects()->Data[ 57393 ];
+		pFnCloseManagedScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.CloseManagedScene" );
 
 	UTgUIMainMenu_execCloseManagedScene_Parms CloseManagedScene_Parms;
 	CloseManagedScene_Parms.bPreserveVolumeFlag = bPreserveVolumeFlag;
@@ -39210,7 +39211,7 @@ class UTgUISceneDriver* UTgUIMainMenu::GetOpenManagedScene ( )
 	static UFunction* pFnGetOpenManagedScene = NULL;
 
 	if ( ! pFnGetOpenManagedScene )
-		pFnGetOpenManagedScene = (UFunction*) UObject::GObjObjects()->Data[ 57391 ];
+		pFnGetOpenManagedScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.GetOpenManagedScene" );
 
 	UTgUIMainMenu_execGetOpenManagedScene_Parms GetOpenManagedScene_Parms;
 
@@ -39236,7 +39237,7 @@ class UTgUISceneDriver* UTgUIMainMenu::OpenManagedSceneByName ( struct FName Cla
 	static UFunction* pFnOpenManagedSceneByName = NULL;
 
 	if ( ! pFnOpenManagedSceneByName )
-		pFnOpenManagedSceneByName = (UFunction*) UObject::GObjObjects()->Data[ 57386 ];
+		pFnOpenManagedSceneByName = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.OpenManagedSceneByName" );
 
 	UTgUIMainMenu_execOpenManagedSceneByName_Parms OpenManagedSceneByName_Parms;
 	memcpy ( &OpenManagedSceneByName_Parms.ClassName, &ClassName, 0x8 );
@@ -39266,7 +39267,7 @@ class UTgUISceneDriver* UTgUIMainMenu::OpenManagedScene ( int sceneReference, un
 	static UFunction* pFnOpenManagedScene = NULL;
 
 	if ( ! pFnOpenManagedScene )
-		pFnOpenManagedScene = (UFunction*) UObject::GObjObjects()->Data[ 57380 ];
+		pFnOpenManagedScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.OpenManagedScene" );
 
 	UTgUIMainMenu_execOpenManagedScene_Parms OpenManagedScene_Parms;
 	OpenManagedScene_Parms.sceneReference = sceneReference;
@@ -39292,7 +39293,7 @@ void UTgUIMainMenu::BuildManagedSceneList ( )
 	static UFunction* pFnBuildManagedSceneList = NULL;
 
 	if ( ! pFnBuildManagedSceneList )
-		pFnBuildManagedSceneList = (UFunction*) UObject::GObjObjects()->Data[ 57379 ];
+		pFnBuildManagedSceneList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.BuildManagedSceneList" );
 
 	UTgUIMainMenu_execBuildManagedSceneList_Parms BuildManagedSceneList_Parms;
 
@@ -39316,7 +39317,7 @@ void UTgUIMainMenu::OnButtonMouseOverDelegate ( class UUIScreenObject* Sender, i
 	static UFunction* pFnOnButtonMouseOverDelegate = NULL;
 
 	if ( ! pFnOnButtonMouseOverDelegate )
-		pFnOnButtonMouseOverDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57374 ];
+		pFnOnButtonMouseOverDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.OnButtonMouseOverDelegate" );
 
 	UTgUIMainMenu_execOnButtonMouseOverDelegate_Parms OnButtonMouseOverDelegate_Parms;
 	OnButtonMouseOverDelegate_Parms.Sender = Sender;
@@ -39342,7 +39343,7 @@ bool UTgUIMainMenu::OnMainMenuExitMissionKey ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnMainMenuExitMissionKey = NULL;
 
 	if ( ! pFnOnMainMenuExitMissionKey )
-		pFnOnMainMenuExitMissionKey = (UFunction*) UObject::GObjObjects()->Data[ 57371 ];
+		pFnOnMainMenuExitMissionKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.OnMainMenuExitMissionKey" );
 
 	UTgUIMainMenu_execOnMainMenuExitMissionKey_Parms OnMainMenuExitMissionKey_Parms;
 
@@ -39369,7 +39370,7 @@ bool UTgUIMainMenu::OnMainMenuQuitKey ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnMainMenuQuitKey = NULL;
 
 	if ( ! pFnOnMainMenuQuitKey )
-		pFnOnMainMenuQuitKey = (UFunction*) UObject::GObjObjects()->Data[ 57368 ];
+		pFnOnMainMenuQuitKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.OnMainMenuQuitKey" );
 
 	UTgUIMainMenu_execOnMainMenuQuitKey_Parms OnMainMenuQuitKey_Parms;
 
@@ -39396,7 +39397,7 @@ bool UTgUIMainMenu::OnFixedPurposeButton ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnFixedPurposeButton = NULL;
 
 	if ( ! pFnOnFixedPurposeButton )
-		pFnOnFixedPurposeButton = (UFunction*) UObject::GObjObjects()->Data[ 57365 ];
+		pFnOnFixedPurposeButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.OnFixedPurposeButton" );
 
 	UTgUIMainMenu_execOnFixedPurposeButton_Parms OnFixedPurposeButton_Parms;
 
@@ -39423,7 +39424,7 @@ bool UTgUIMainMenu::OnMainMenuButtonKey ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnMainMenuButtonKey = NULL;
 
 	if ( ! pFnOnMainMenuButtonKey )
-		pFnOnMainMenuButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 57362 ];
+		pFnOnMainMenuButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.OnMainMenuButtonKey" );
 
 	UTgUIMainMenu_execOnMainMenuButtonKey_Parms OnMainMenuButtonKey_Parms;
 
@@ -39450,7 +39451,7 @@ bool UTgUIMainMenu::OnMainMenuSceneKey ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnMainMenuSceneKey = NULL;
 
 	if ( ! pFnOnMainMenuSceneKey )
-		pFnOnMainMenuSceneKey = (UFunction*) UObject::GObjObjects()->Data[ 57359 ];
+		pFnOnMainMenuSceneKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.OnMainMenuSceneKey" );
 
 	UTgUIMainMenu_execOnMainMenuSceneKey_Parms OnMainMenuSceneKey_Parms;
 
@@ -39476,7 +39477,7 @@ bool UTgUIMainMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57357 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.TickTgUIScene" );
 
 	UTgUIMainMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -39498,7 +39499,7 @@ void UTgUIMainMenu::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 57356 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.PostOpenScene" );
 
 	UTgUIMainMenu_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -39518,7 +39519,7 @@ void UTgUIMainMenu::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 57355 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMainMenu.PreCloseScene" );
 
 	UTgUIMainMenu_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -39538,7 +39539,7 @@ void UTgUIMissionScene::eventSetMissionReturn ( )
 	static UFunction* pFnSetMissionReturn = NULL;
 
 	if ( ! pFnSetMissionReturn )
-		pFnSetMissionReturn = (UFunction*) UObject::GObjObjects()->Data[ 57667 ];
+		pFnSetMissionReturn = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.SetMissionReturn" );
 
 	UTgUIMissionScene_eventSetMissionReturn_Parms SetMissionReturn_Parms;
 
@@ -39555,7 +39556,7 @@ void UTgUIMissionScene::eventSetIconButtonDelegate ( class UUIButton* btn )
 	static UFunction* pFnSetIconButtonDelegate = NULL;
 
 	if ( ! pFnSetIconButtonDelegate )
-		pFnSetIconButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57665 ];
+		pFnSetIconButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.SetIconButtonDelegate" );
 
 	UTgUIMissionScene_eventSetIconButtonDelegate_Parms SetIconButtonDelegate_Parms;
 	SetIconButtonDelegate_Parms.btn = btn;
@@ -39572,7 +39573,7 @@ void UTgUIMissionScene::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 57663 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.FixupWidgetsUC" );
 
 	UTgUIMissionScene_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -39590,7 +39591,7 @@ bool UTgUIMissionScene::CheckStopBriefing ( struct FInputEventParameters* EventP
 	static UFunction* pFnCheckStopBriefing = NULL;
 
 	if ( ! pFnCheckStopBriefing )
-		pFnCheckStopBriefing = (UFunction*) UObject::GObjObjects()->Data[ 57660 ];
+		pFnCheckStopBriefing = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.CheckStopBriefing" );
 
 	UTgUIMissionScene_execCheckStopBriefing_Parms CheckStopBriefing_Parms;
 
@@ -39616,7 +39617,7 @@ void UTgUIMissionScene::GetQueueListCallback ( int eType )
 	static UFunction* pFnGetQueueListCallback = NULL;
 
 	if ( ! pFnGetQueueListCallback )
-		pFnGetQueueListCallback = (UFunction*) UObject::GObjObjects()->Data[ 57658 ];
+		pFnGetQueueListCallback = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.GetQueueListCallback" );
 
 	UTgUIMissionScene_execGetQueueListCallback_Parms GetQueueListCallback_Parms;
 	GetQueueListCallback_Parms.eType = eType;
@@ -39641,7 +39642,7 @@ void UTgUIMissionScene::ToolTipDelegate ( class UUIScreenObject* Sender, int Pla
 	static UFunction* pFnToolTipDelegate = NULL;
 
 	if ( ! pFnToolTipDelegate )
-		pFnToolTipDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57653 ];
+		pFnToolTipDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.ToolTipDelegate" );
 
 	UTgUIMissionScene_execToolTipDelegate_Parms ToolTipDelegate_Parms;
 	ToolTipDelegate_Parms.Sender = Sender;
@@ -39669,7 +39670,7 @@ void UTgUIMissionScene::OnButtonStateChangeDelegate ( class UUIScreenObject* Sen
 	static UFunction* pFnOnButtonStateChangeDelegate = NULL;
 
 	if ( ! pFnOnButtonStateChangeDelegate )
-		pFnOnButtonStateChangeDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57648 ];
+		pFnOnButtonStateChangeDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.OnButtonStateChangeDelegate" );
 
 	UTgUIMissionScene_execOnButtonStateChangeDelegate_Parms OnButtonStateChangeDelegate_Parms;
 	OnButtonStateChangeDelegate_Parms.Sender = Sender;
@@ -39695,7 +39696,7 @@ bool UTgUIMissionScene::OnLocationPrevButton ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnLocationPrevButton = NULL;
 
 	if ( ! pFnOnLocationPrevButton )
-		pFnOnLocationPrevButton = (UFunction*) UObject::GObjObjects()->Data[ 57645 ];
+		pFnOnLocationPrevButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.OnLocationPrevButton" );
 
 	UTgUIMissionScene_execOnLocationPrevButton_Parms OnLocationPrevButton_Parms;
 
@@ -39722,7 +39723,7 @@ bool UTgUIMissionScene::OnLocationNextButton ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnLocationNextButton = NULL;
 
 	if ( ! pFnOnLocationNextButton )
-		pFnOnLocationNextButton = (UFunction*) UObject::GObjObjects()->Data[ 57642 ];
+		pFnOnLocationNextButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.OnLocationNextButton" );
 
 	UTgUIMissionScene_execOnLocationNextButton_Parms OnLocationNextButton_Parms;
 
@@ -39749,7 +39750,7 @@ bool UTgUIMissionScene::OnSelectDifficultyDelegate ( struct FInputEventParameter
 	static UFunction* pFnOnSelectDifficultyDelegate = NULL;
 
 	if ( ! pFnOnSelectDifficultyDelegate )
-		pFnOnSelectDifficultyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57639 ];
+		pFnOnSelectDifficultyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.OnSelectDifficultyDelegate" );
 
 	UTgUIMissionScene_execOnSelectDifficultyDelegate_Parms OnSelectDifficultyDelegate_Parms;
 
@@ -39776,7 +39777,7 @@ bool UTgUIMissionScene::OnSelectTeamTypeDelegate ( struct FInputEventParameters*
 	static UFunction* pFnOnSelectTeamTypeDelegate = NULL;
 
 	if ( ! pFnOnSelectTeamTypeDelegate )
-		pFnOnSelectTeamTypeDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57636 ];
+		pFnOnSelectTeamTypeDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.OnSelectTeamTypeDelegate" );
 
 	UTgUIMissionScene_execOnSelectTeamTypeDelegate_Parms OnSelectTeamTypeDelegate_Parms;
 
@@ -39803,7 +39804,7 @@ bool UTgUIMissionScene::OnSelectGameTypeDelegate ( struct FInputEventParameters*
 	static UFunction* pFnOnSelectGameTypeDelegate = NULL;
 
 	if ( ! pFnOnSelectGameTypeDelegate )
-		pFnOnSelectGameTypeDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57633 ];
+		pFnOnSelectGameTypeDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.OnSelectGameTypeDelegate" );
 
 	UTgUIMissionScene_execOnSelectGameTypeDelegate_Parms OnSelectGameTypeDelegate_Parms;
 
@@ -39830,7 +39831,7 @@ bool UTgUIMissionScene::OnTabClickDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnTabClickDelegate = NULL;
 
 	if ( ! pFnOnTabClickDelegate )
-		pFnOnTabClickDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57630 ];
+		pFnOnTabClickDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.OnTabClickDelegate" );
 
 	UTgUIMissionScene_execOnTabClickDelegate_Parms OnTabClickDelegate_Parms;
 
@@ -39857,7 +39858,7 @@ bool UTgUIMissionScene::OnPreferenceChangeDelegate ( struct FInputEventParameter
 	static UFunction* pFnOnPreferenceChangeDelegate = NULL;
 
 	if ( ! pFnOnPreferenceChangeDelegate )
-		pFnOnPreferenceChangeDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57627 ];
+		pFnOnPreferenceChangeDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.OnPreferenceChangeDelegate" );
 
 	UTgUIMissionScene_execOnPreferenceChangeDelegate_Parms OnPreferenceChangeDelegate_Parms;
 
@@ -39884,7 +39885,7 @@ bool UTgUIMissionScene::OnBriefingButtonDelegate ( struct FInputEventParameters*
 	static UFunction* pFnOnBriefingButtonDelegate = NULL;
 
 	if ( ! pFnOnBriefingButtonDelegate )
-		pFnOnBriefingButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57624 ];
+		pFnOnBriefingButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.OnBriefingButtonDelegate" );
 
 	UTgUIMissionScene_execOnBriefingButtonDelegate_Parms OnBriefingButtonDelegate_Parms;
 
@@ -39911,7 +39912,7 @@ bool UTgUIMissionScene::OnCloseButtonDelegate ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnCloseButtonDelegate = NULL;
 
 	if ( ! pFnOnCloseButtonDelegate )
-		pFnOnCloseButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57621 ];
+		pFnOnCloseButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.OnCloseButtonDelegate" );
 
 	UTgUIMissionScene_execOnCloseButtonDelegate_Parms OnCloseButtonDelegate_Parms;
 
@@ -39938,7 +39939,7 @@ bool UTgUIMissionScene::OnLeaveQueueDelegate ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnLeaveQueueDelegate = NULL;
 
 	if ( ! pFnOnLeaveQueueDelegate )
-		pFnOnLeaveQueueDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57618 ];
+		pFnOnLeaveQueueDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.OnLeaveQueueDelegate" );
 
 	UTgUIMissionScene_execOnLeaveQueueDelegate_Parms OnLeaveQueueDelegate_Parms;
 
@@ -39965,7 +39966,7 @@ bool UTgUIMissionScene::OnJoinQueueDelegate ( struct FInputEventParameters* Even
 	static UFunction* pFnOnJoinQueueDelegate = NULL;
 
 	if ( ! pFnOnJoinQueueDelegate )
-		pFnOnJoinQueueDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57615 ];
+		pFnOnJoinQueueDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.OnJoinQueueDelegate" );
 
 	UTgUIMissionScene_execOnJoinQueueDelegate_Parms OnJoinQueueDelegate_Parms;
 
@@ -39992,7 +39993,7 @@ bool UTgUIMissionScene::OnSelectQueueDelegate ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnSelectQueueDelegate = NULL;
 
 	if ( ! pFnOnSelectQueueDelegate )
-		pFnOnSelectQueueDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57612 ];
+		pFnOnSelectQueueDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.OnSelectQueueDelegate" );
 
 	UTgUIMissionScene_execOnSelectQueueDelegate_Parms OnSelectQueueDelegate_Parms;
 
@@ -40019,7 +40020,7 @@ bool UTgUIMissionScene::OnSceneKeyDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnSceneKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneKeyDelegate )
-		pFnOnSceneKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57609 ];
+		pFnOnSceneKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.OnSceneKeyDelegate" );
 
 	UTgUIMissionScene_execOnSceneKeyDelegate_Parms OnSceneKeyDelegate_Parms;
 
@@ -40045,7 +40046,7 @@ void UTgUIMissionScene::SelectTeamType ( class UUIButton* btn )
 	static UFunction* pFnSelectTeamType = NULL;
 
 	if ( ! pFnSelectTeamType )
-		pFnSelectTeamType = (UFunction*) UObject::GObjObjects()->Data[ 57607 ];
+		pFnSelectTeamType = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.SelectTeamType" );
 
 	UTgUIMissionScene_execSelectTeamType_Parms SelectTeamType_Parms;
 	SelectTeamType_Parms.btn = btn;
@@ -40067,7 +40068,7 @@ void UTgUIMissionScene::ShowMissionPage ( int nPage )
 	static UFunction* pFnShowMissionPage = NULL;
 
 	if ( ! pFnShowMissionPage )
-		pFnShowMissionPage = (UFunction*) UObject::GObjObjects()->Data[ 57605 ];
+		pFnShowMissionPage = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.ShowMissionPage" );
 
 	UTgUIMissionScene_execShowMissionPage_Parms ShowMissionPage_Parms;
 	ShowMissionPage_Parms.nPage = nPage;
@@ -40088,7 +40089,7 @@ void UTgUIMissionScene::UpdateInfoPanel ( )
 	static UFunction* pFnUpdateInfoPanel = NULL;
 
 	if ( ! pFnUpdateInfoPanel )
-		pFnUpdateInfoPanel = (UFunction*) UObject::GObjObjects()->Data[ 57604 ];
+		pFnUpdateInfoPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.UpdateInfoPanel" );
 
 	UTgUIMissionScene_execUpdateInfoPanel_Parms UpdateInfoPanel_Parms;
 
@@ -40109,7 +40110,7 @@ void UTgUIMissionScene::TickVisual ( float DeltaTime )
 	static UFunction* pFnTickVisual = NULL;
 
 	if ( ! pFnTickVisual )
-		pFnTickVisual = (UFunction*) UObject::GObjObjects()->Data[ 57602 ];
+		pFnTickVisual = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.TickVisual" );
 
 	UTgUIMissionScene_execTickVisual_Parms TickVisual_Parms;
 	TickVisual_Parms.DeltaTime = DeltaTime;
@@ -40130,7 +40131,7 @@ void UTgUIMissionScene::PostRender ( )
 	static UFunction* pFnPostRender = NULL;
 
 	if ( ! pFnPostRender )
-		pFnPostRender = (UFunction*) UObject::GObjObjects()->Data[ 57601 ];
+		pFnPostRender = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.PostRender" );
 
 	UTgUIMissionScene_execPostRender_Parms PostRender_Parms;
 
@@ -40151,7 +40152,7 @@ bool UTgUIMissionScene::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57599 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.TickTgUIScene" );
 
 	UTgUIMissionScene_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -40173,7 +40174,7 @@ void UTgUIMissionScene::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57598 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.FixupTgUIScene" );
 
 	UTgUIMissionScene_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -40193,7 +40194,7 @@ void UTgUIMissionScene::RegisterCallbacks ( )
 	static UFunction* pFnRegisterCallbacks = NULL;
 
 	if ( ! pFnRegisterCallbacks )
-		pFnRegisterCallbacks = (UFunction*) UObject::GObjObjects()->Data[ 57597 ];
+		pFnRegisterCallbacks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.RegisterCallbacks" );
 
 	UTgUIMissionScene_execRegisterCallbacks_Parms RegisterCallbacks_Parms;
 
@@ -40213,7 +40214,7 @@ void UTgUIMissionScene::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 57596 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene.PostOpenScene" );
 
 	UTgUIMissionScene_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -40233,7 +40234,7 @@ void UTgUIMissionScene_Zone::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 57715 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene_Zone.FixupWidgetsUC" );
 
 	UTgUIMissionScene_Zone_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -40251,7 +40252,7 @@ bool UTgUIMissionScene_Zone::OnTabClickDelegate ( struct FInputEventParameters* 
 	static UFunction* pFnOnTabClickDelegate = NULL;
 
 	if ( ! pFnOnTabClickDelegate )
-		pFnOnTabClickDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57712 ];
+		pFnOnTabClickDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene_Zone.OnTabClickDelegate" );
 
 	UTgUIMissionScene_Zone_execOnTabClickDelegate_Parms OnTabClickDelegate_Parms;
 
@@ -40278,7 +40279,7 @@ bool UTgUIMissionScene_Zone::OnMapClickDelegate ( struct FInputEventParameters* 
 	static UFunction* pFnOnMapClickDelegate = NULL;
 
 	if ( ! pFnOnMapClickDelegate )
-		pFnOnMapClickDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57709 ];
+		pFnOnMapClickDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene_Zone.OnMapClickDelegate" );
 
 	UTgUIMissionScene_Zone_execOnMapClickDelegate_Parms OnMapClickDelegate_Parms;
 
@@ -40305,7 +40306,7 @@ bool UTgUIMissionScene_Zone::OnCloseButtonDelegate ( struct FInputEventParameter
 	static UFunction* pFnOnCloseButtonDelegate = NULL;
 
 	if ( ! pFnOnCloseButtonDelegate )
-		pFnOnCloseButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57706 ];
+		pFnOnCloseButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene_Zone.OnCloseButtonDelegate" );
 
 	UTgUIMissionScene_Zone_execOnCloseButtonDelegate_Parms OnCloseButtonDelegate_Parms;
 
@@ -40332,7 +40333,7 @@ bool UTgUIMissionScene_Zone::OnSceneKeyDelegate ( struct FInputEventParameters* 
 	static UFunction* pFnOnSceneKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneKeyDelegate )
-		pFnOnSceneKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 57703 ];
+		pFnOnSceneKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene_Zone.OnSceneKeyDelegate" );
 
 	UTgUIMissionScene_Zone_execOnSceneKeyDelegate_Parms OnSceneKeyDelegate_Parms;
 
@@ -40357,7 +40358,7 @@ void UTgUIMissionScene_Zone::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 57702 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene_Zone.PreCloseScene" );
 
 	UTgUIMissionScene_Zone_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -40378,7 +40379,7 @@ void UTgUIMissionScene_Zone::TickVisual ( float DeltaTime )
 	static UFunction* pFnTickVisual = NULL;
 
 	if ( ! pFnTickVisual )
-		pFnTickVisual = (UFunction*) UObject::GObjObjects()->Data[ 57700 ];
+		pFnTickVisual = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene_Zone.TickVisual" );
 
 	UTgUIMissionScene_Zone_execTickVisual_Parms TickVisual_Parms;
 	TickVisual_Parms.DeltaTime = DeltaTime;
@@ -40400,7 +40401,7 @@ bool UTgUIMissionScene_Zone::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57698 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene_Zone.TickTgUIScene" );
 
 	UTgUIMissionScene_Zone_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -40422,7 +40423,7 @@ void UTgUIMissionScene_Zone::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 57697 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIMissionScene_Zone.FixupTgUIScene" );
 
 	UTgUIMissionScene_Zone_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -40444,7 +40445,7 @@ bool UTgUINewPlayerHelp::OnCloseButton ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 57759 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINewPlayerHelp.OnCloseButton" );
 
 	UTgUINewPlayerHelp_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -40469,7 +40470,7 @@ void UTgUINewPlayerHelp::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 57758 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUINewPlayerHelp.PostOpenScene" );
 
 	UTgUINewPlayerHelp_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -40491,7 +40492,7 @@ bool UTgUIQuestDialog::CheckTutorialTypeDisabled ( unsigned char eType )
 	static UFunction* pFnCheckTutorialTypeDisabled = NULL;
 
 	if ( ! pFnCheckTutorialTypeDisabled )
-		pFnCheckTutorialTypeDisabled = (UFunction*) UObject::GObjObjects()->Data[ 59042 ];
+		pFnCheckTutorialTypeDisabled = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestDialog.CheckTutorialTypeDisabled" );
 
 	UTgUIQuestDialog_execCheckTutorialTypeDisabled_Parms CheckTutorialTypeDisabled_Parms;
 	CheckTutorialTypeDisabled_Parms.eType = eType;
@@ -40516,7 +40517,7 @@ bool UTgUIQuestDialog::CheckTutorialDisabled ( unsigned char Step )
 	static UFunction* pFnCheckTutorialDisabled = NULL;
 
 	if ( ! pFnCheckTutorialDisabled )
-		pFnCheckTutorialDisabled = (UFunction*) UObject::GObjObjects()->Data[ 59039 ];
+		pFnCheckTutorialDisabled = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestDialog.CheckTutorialDisabled" );
 
 	UTgUIQuestDialog_execCheckTutorialDisabled_Parms CheckTutorialDisabled_Parms;
 	CheckTutorialDisabled_Parms.Step = Step;
@@ -40541,7 +40542,7 @@ bool UTgUIQuestDialog::CheckTutorialStep ( unsigned char Step )
 	static UFunction* pFnCheckTutorialStep = NULL;
 
 	if ( ! pFnCheckTutorialStep )
-		pFnCheckTutorialStep = (UFunction*) UObject::GObjObjects()->Data[ 59036 ];
+		pFnCheckTutorialStep = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestDialog.CheckTutorialStep" );
 
 	UTgUIQuestDialog_execCheckTutorialStep_Parms CheckTutorialStep_Parms;
 	CheckTutorialStep_Parms.Step = Step;
@@ -40566,7 +40567,7 @@ void UTgUIQuestDialog::UpdateTutorialProgress ( unsigned char Step, int NewTutor
 	static UFunction* pFnUpdateTutorialProgress = NULL;
 
 	if ( ! pFnUpdateTutorialProgress )
-		pFnUpdateTutorialProgress = (UFunction*) UObject::GObjObjects()->Data[ 59033 ];
+		pFnUpdateTutorialProgress = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestDialog.UpdateTutorialProgress" );
 
 	UTgUIQuestDialog_execUpdateTutorialProgress_Parms UpdateTutorialProgress_Parms;
 	UpdateTutorialProgress_Parms.Step = Step;
@@ -40589,7 +40590,7 @@ void UTgUIQuestDialog::BeginTutorial ( unsigned char TutType )
 	static UFunction* pFnBeginTutorial = NULL;
 
 	if ( ! pFnBeginTutorial )
-		pFnBeginTutorial = (UFunction*) UObject::GObjObjects()->Data[ 59031 ];
+		pFnBeginTutorial = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestDialog.BeginTutorial" );
 
 	UTgUIQuestDialog_execBeginTutorial_Parms BeginTutorial_Parms;
 	BeginTutorial_Parms.TutType = TutType;
@@ -40614,7 +40615,7 @@ void UTgUIQuestDialog::ActiveHighlightChanged ( class UUIScreenObject* Sender, i
 	static UFunction* pFnActiveHighlightChanged = NULL;
 
 	if ( ! pFnActiveHighlightChanged )
-		pFnActiveHighlightChanged = (UFunction*) UObject::GObjObjects()->Data[ 59026 ];
+		pFnActiveHighlightChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestDialog.ActiveHighlightChanged" );
 
 	UTgUIQuestDialog_execActiveHighlightChanged_Parms ActiveHighlightChanged_Parms;
 	ActiveHighlightChanged_Parms.Sender = Sender;
@@ -40642,7 +40643,7 @@ void UTgUIQuestDialog::ActiveTooltipChanged ( class UUIScreenObject* Sender, int
 	static UFunction* pFnActiveTooltipChanged = NULL;
 
 	if ( ! pFnActiveTooltipChanged )
-		pFnActiveTooltipChanged = (UFunction*) UObject::GObjObjects()->Data[ 59021 ];
+		pFnActiveTooltipChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestDialog.ActiveTooltipChanged" );
 
 	UTgUIQuestDialog_execActiveTooltipChanged_Parms ActiveTooltipChanged_Parms;
 	ActiveTooltipChanged_Parms.Sender = Sender;
@@ -40668,7 +40669,7 @@ bool UTgUIQuestDialog::DefaultSceneHandler ( struct FInputEventParameters* Event
 	static UFunction* pFnDefaultSceneHandler = NULL;
 
 	if ( ! pFnDefaultSceneHandler )
-		pFnDefaultSceneHandler = (UFunction*) UObject::GObjObjects()->Data[ 59018 ];
+		pFnDefaultSceneHandler = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestDialog.DefaultSceneHandler" );
 
 	UTgUIQuestDialog_execDefaultSceneHandler_Parms DefaultSceneHandler_Parms;
 
@@ -40695,7 +40696,7 @@ bool UTgUIQuestDialog::OnBuyNowButton ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnBuyNowButton = NULL;
 
 	if ( ! pFnOnBuyNowButton )
-		pFnOnBuyNowButton = (UFunction*) UObject::GObjObjects()->Data[ 59015 ];
+		pFnOnBuyNowButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestDialog.OnBuyNowButton" );
 
 	UTgUIQuestDialog_execOnBuyNowButton_Parms OnBuyNowButton_Parms;
 
@@ -40722,7 +40723,7 @@ bool UTgUIQuestDialog::OnQuestButton ( struct FInputEventParameters* EventParms 
 	static UFunction* pFnOnQuestButton = NULL;
 
 	if ( ! pFnOnQuestButton )
-		pFnOnQuestButton = (UFunction*) UObject::GObjObjects()->Data[ 59012 ];
+		pFnOnQuestButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestDialog.OnQuestButton" );
 
 	UTgUIQuestDialog_execOnQuestButton_Parms OnQuestButton_Parms;
 
@@ -40749,7 +40750,7 @@ bool UTgUIQuestDialog::OnItemButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnItemButton = NULL;
 
 	if ( ! pFnOnItemButton )
-		pFnOnItemButton = (UFunction*) UObject::GObjObjects()->Data[ 59009 ];
+		pFnOnItemButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestDialog.OnItemButton" );
 
 	UTgUIQuestDialog_execOnItemButton_Parms OnItemButton_Parms;
 
@@ -40776,7 +40777,7 @@ bool UTgUIQuestDialog::OnDialogButton ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnDialogButton = NULL;
 
 	if ( ! pFnOnDialogButton )
-		pFnOnDialogButton = (UFunction*) UObject::GObjObjects()->Data[ 59006 ];
+		pFnOnDialogButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestDialog.OnDialogButton" );
 
 	UTgUIQuestDialog_execOnDialogButton_Parms OnDialogButton_Parms;
 
@@ -40803,7 +40804,7 @@ bool UTgUIQuestDialog::OnCloseButton ( struct FInputEventParameters* EventParms 
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 59003 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestDialog.OnCloseButton" );
 
 	UTgUIQuestDialog_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -40828,7 +40829,7 @@ void UTgUIQuestDialog::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 59002 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestDialog.PreCloseScene" );
 
 	UTgUIQuestDialog_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -40848,7 +40849,7 @@ void UTgUIQuestDialog::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 59001 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestDialog.PostOpenScene" );
 
 	UTgUIQuestDialog_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -40872,7 +40873,7 @@ void UTgUIQuestLog::ActiveTooltipChanged ( class UUIScreenObject* Sender, int Pl
 	static UFunction* pFnActiveTooltipChanged = NULL;
 
 	if ( ! pFnActiveTooltipChanged )
-		pFnActiveTooltipChanged = (UFunction*) UObject::GObjObjects()->Data[ 59095 ];
+		pFnActiveTooltipChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestLog.ActiveTooltipChanged" );
 
 	UTgUIQuestLog_execActiveTooltipChanged_Parms ActiveTooltipChanged_Parms;
 	ActiveTooltipChanged_Parms.Sender = Sender;
@@ -40898,7 +40899,7 @@ bool UTgUIQuestLog::DefaultSceneHandler ( struct FInputEventParameters* EventPar
 	static UFunction* pFnDefaultSceneHandler = NULL;
 
 	if ( ! pFnDefaultSceneHandler )
-		pFnDefaultSceneHandler = (UFunction*) UObject::GObjObjects()->Data[ 59092 ];
+		pFnDefaultSceneHandler = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestLog.DefaultSceneHandler" );
 
 	UTgUIQuestLog_execDefaultSceneHandler_Parms DefaultSceneHandler_Parms;
 
@@ -40925,7 +40926,7 @@ bool UTgUIQuestLog::OnSceneButton ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnSceneButton = NULL;
 
 	if ( ! pFnOnSceneButton )
-		pFnOnSceneButton = (UFunction*) UObject::GObjObjects()->Data[ 59089 ];
+		pFnOnSceneButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestLog.OnSceneButton" );
 
 	UTgUIQuestLog_execOnSceneButton_Parms OnSceneButton_Parms;
 
@@ -40952,7 +40953,7 @@ bool UTgUIQuestLog::OnConfirmNoClicked ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnConfirmNoClicked = NULL;
 
 	if ( ! pFnOnConfirmNoClicked )
-		pFnOnConfirmNoClicked = (UFunction*) UObject::GObjObjects()->Data[ 59086 ];
+		pFnOnConfirmNoClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestLog.OnConfirmNoClicked" );
 
 	UTgUIQuestLog_execOnConfirmNoClicked_Parms OnConfirmNoClicked_Parms;
 
@@ -40979,7 +40980,7 @@ bool UTgUIQuestLog::OnConfirmYesClicked ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 59083 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestLog.OnConfirmYesClicked" );
 
 	UTgUIQuestLog_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -41004,7 +41005,7 @@ void UTgUIQuestLog::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 59082 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIQuestLog.PostOpenScene" );
 
 	UTgUIQuestLog_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -41026,7 +41027,7 @@ bool UTgUIRewardScreen::OnCloseButton ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 59368 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRewardScreen.OnCloseButton" );
 
 	UTgUIRewardScreen_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -41047,7 +41048,7 @@ void UTgUIRewardScreen::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 59367 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRewardScreen.FixupWidgetsUC" );
 
 	UTgUIRewardScreen_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -41063,7 +41064,7 @@ void UTgUIRewardScreen::RevealHiddenReward ( )
 	static UFunction* pFnRevealHiddenReward = NULL;
 
 	if ( ! pFnRevealHiddenReward )
-		pFnRevealHiddenReward = (UFunction*) UObject::GObjObjects()->Data[ 59366 ];
+		pFnRevealHiddenReward = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRewardScreen.RevealHiddenReward" );
 
 	UTgUIRewardScreen_execRevealHiddenReward_Parms RevealHiddenReward_Parms;
 
@@ -41083,7 +41084,7 @@ void UTgUIRewardScreen::SetTimeToReveal ( )
 	static UFunction* pFnSetTimeToReveal = NULL;
 
 	if ( ! pFnSetTimeToReveal )
-		pFnSetTimeToReveal = (UFunction*) UObject::GObjObjects()->Data[ 59365 ];
+		pFnSetTimeToReveal = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRewardScreen.SetTimeToReveal" );
 
 	UTgUIRewardScreen_execSetTimeToReveal_Parms SetTimeToReveal_Parms;
 
@@ -41103,7 +41104,7 @@ void UTgUIRewardScreen::BeginAutoDismiss ( )
 	static UFunction* pFnBeginAutoDismiss = NULL;
 
 	if ( ! pFnBeginAutoDismiss )
-		pFnBeginAutoDismiss = (UFunction*) UObject::GObjObjects()->Data[ 59364 ];
+		pFnBeginAutoDismiss = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRewardScreen.BeginAutoDismiss" );
 
 	UTgUIRewardScreen_execBeginAutoDismiss_Parms BeginAutoDismiss_Parms;
 
@@ -41124,7 +41125,7 @@ bool UTgUIRewardScreen::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59362 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRewardScreen.TickTgUIScene" );
 
 	UTgUIRewardScreen_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -41146,7 +41147,7 @@ void UTgUIRewardScreen::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59361 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRewardScreen.FixupTgUIScene" );
 
 	UTgUIRewardScreen_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -41166,7 +41167,7 @@ void UTgUIRewardScreen::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 59360 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRewardScreen.PreCloseScene" );
 
 	UTgUIRewardScreen_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -41186,7 +41187,7 @@ void UTgUIRewardScreen::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 59359 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRewardScreen.PostOpenScene" );
 
 	UTgUIRewardScreen_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -41208,7 +41209,7 @@ bool UTgUIRewardScreen::OnSceneKeyPressed ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSceneKeyPressed = NULL;
 
 	if ( ! pFnOnSceneKeyPressed )
-		pFnOnSceneKeyPressed = (UFunction*) UObject::GObjObjects()->Data[ 59356 ];
+		pFnOnSceneKeyPressed = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIRewardScreen.OnSceneKeyPressed" );
 
 	UTgUIRewardScreen_execOnSceneKeyPressed_Parms OnSceneKeyPressed_Parms;
 
@@ -41234,7 +41235,7 @@ void UTgUIReceivedItemScreen::eventSetItemStateChange ( class UUIScreenObject* O
 	static UFunction* pFnSetItemStateChange = NULL;
 
 	if ( ! pFnSetItemStateChange )
-		pFnSetItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 59396 ];
+		pFnSetItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReceivedItemScreen.SetItemStateChange" );
 
 	UTgUIReceivedItemScreen_eventSetItemStateChange_Parms SetItemStateChange_Parms;
 	SetItemStateChange_Parms.Obj = Obj;
@@ -41255,7 +41256,7 @@ void UTgUIReceivedItemScreen::OnItemStateChange ( class UUIScreenObject* Sender,
 	static UFunction* pFnOnItemStateChange = NULL;
 
 	if ( ! pFnOnItemStateChange )
-		pFnOnItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 59391 ];
+		pFnOnItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReceivedItemScreen.OnItemStateChange" );
 
 	UTgUIReceivedItemScreen_execOnItemStateChange_Parms OnItemStateChange_Parms;
 	OnItemStateChange_Parms.Sender = Sender;
@@ -41279,7 +41280,7 @@ void UTgUIReceivedItemScreen::RevealHiddenReward ( )
 	static UFunction* pFnRevealHiddenReward = NULL;
 
 	if ( ! pFnRevealHiddenReward )
-		pFnRevealHiddenReward = (UFunction*) UObject::GObjObjects()->Data[ 59390 ];
+		pFnRevealHiddenReward = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReceivedItemScreen.RevealHiddenReward" );
 
 	UTgUIReceivedItemScreen_execRevealHiddenReward_Parms RevealHiddenReward_Parms;
 
@@ -41300,7 +41301,7 @@ bool UTgUIReceivedItemScreen::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59388 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReceivedItemScreen.TickTgUIScene" );
 
 	UTgUIReceivedItemScreen_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -41322,7 +41323,7 @@ void UTgUIReceivedItemScreen::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59387 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReceivedItemScreen.FixupTgUIScene" );
 
 	UTgUIReceivedItemScreen_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -41342,7 +41343,7 @@ void UTgUIReceivedItemScreen::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 59386 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIReceivedItemScreen.PostInitSceneDriver" );
 
 	UTgUIReceivedItemScreen_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -41362,7 +41363,7 @@ void UTgUISettingsMenu_General::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 59863 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.FixupWidgetsUC" );
 
 	UTgUISettingsMenu_General_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -41380,7 +41381,7 @@ void UTgUISettingsMenu_General::OnHitEffectFullChanged ( class UUIObject* Sender
 	static UFunction* pFnOnHitEffectFullChanged = NULL;
 
 	if ( ! pFnOnHitEffectFullChanged )
-		pFnOnHitEffectFullChanged = (UFunction*) UObject::GObjObjects()->Data[ 59860 ];
+		pFnOnHitEffectFullChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.OnHitEffectFullChanged" );
 
 	UTgUISettingsMenu_General_execOnHitEffectFullChanged_Parms OnHitEffectFullChanged_Parms;
 	OnHitEffectFullChanged_Parms.Sender = Sender;
@@ -41400,7 +41401,7 @@ void UTgUISettingsMenu_General::OnHitEffectZoomChanged ( class UUIObject* Sender
 	static UFunction* pFnOnHitEffectZoomChanged = NULL;
 
 	if ( ! pFnOnHitEffectZoomChanged )
-		pFnOnHitEffectZoomChanged = (UFunction*) UObject::GObjObjects()->Data[ 59857 ];
+		pFnOnHitEffectZoomChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.OnHitEffectZoomChanged" );
 
 	UTgUISettingsMenu_General_execOnHitEffectZoomChanged_Parms OnHitEffectZoomChanged_Parms;
 	OnHitEffectZoomChanged_Parms.Sender = Sender;
@@ -41422,7 +41423,7 @@ void UTgUISettingsMenu_General::ActiveStateChanged ( class UUIScreenObject* Send
 	static UFunction* pFnActiveStateChanged = NULL;
 
 	if ( ! pFnActiveStateChanged )
-		pFnActiveStateChanged = (UFunction*) UObject::GObjObjects()->Data[ 59852 ];
+		pFnActiveStateChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.ActiveStateChanged" );
 
 	UTgUISettingsMenu_General_execActiveStateChanged_Parms ActiveStateChanged_Parms;
 	ActiveStateChanged_Parms.Sender = Sender;
@@ -41448,7 +41449,7 @@ void UTgUISettingsMenu_General::OnSiteChanged ( class UUIObject* Sender, int Pla
 	static UFunction* pFnOnSiteChanged = NULL;
 
 	if ( ! pFnOnSiteChanged )
-		pFnOnSiteChanged = (UFunction*) UObject::GObjObjects()->Data[ 59849 ];
+		pFnOnSiteChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.OnSiteChanged" );
 
 	UTgUISettingsMenu_General_execOnSiteChanged_Parms OnSiteChanged_Parms;
 	OnSiteChanged_Parms.Sender = Sender;
@@ -41474,7 +41475,7 @@ void UTgUISettingsMenu_General::OnMouseEditBoxStateChanged ( class UUIScreenObje
 	static UFunction* pFnOnMouseEditBoxStateChanged = NULL;
 
 	if ( ! pFnOnMouseEditBoxStateChanged )
-		pFnOnMouseEditBoxStateChanged = (UFunction*) UObject::GObjObjects()->Data[ 59844 ];
+		pFnOnMouseEditBoxStateChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.OnMouseEditBoxStateChanged" );
 
 	UTgUISettingsMenu_General_execOnMouseEditBoxStateChanged_Parms OnMouseEditBoxStateChanged_Parms;
 	OnMouseEditBoxStateChanged_Parms.Sender = Sender;
@@ -41500,7 +41501,7 @@ void UTgUISettingsMenu_General::OnMouseSliderChanged ( class UUIObject* Sender, 
 	static UFunction* pFnOnMouseSliderChanged = NULL;
 
 	if ( ! pFnOnMouseSliderChanged )
-		pFnOnMouseSliderChanged = (UFunction*) UObject::GObjObjects()->Data[ 59841 ];
+		pFnOnMouseSliderChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.OnMouseSliderChanged" );
 
 	UTgUISettingsMenu_General_execOnMouseSliderChanged_Parms OnMouseSliderChanged_Parms;
 	OnMouseSliderChanged_Parms.Sender = Sender;
@@ -41525,7 +41526,7 @@ bool UTgUISettingsMenu_General::OnMouseSensitivitySubmit ( class UUIEditBox* ebo
 	static UFunction* pFnOnMouseSensitivitySubmit = NULL;
 
 	if ( ! pFnOnMouseSensitivitySubmit )
-		pFnOnMouseSensitivitySubmit = (UFunction*) UObject::GObjObjects()->Data[ 59837 ];
+		pFnOnMouseSensitivitySubmit = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.OnMouseSensitivitySubmit" );
 
 	UTgUISettingsMenu_General_execOnMouseSensitivitySubmit_Parms OnMouseSensitivitySubmit_Parms;
 	OnMouseSensitivitySubmit_Parms.ebox = ebox;
@@ -41551,7 +41552,7 @@ bool UTgUISettingsMenu_General::OnCloseButton ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 59834 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.OnCloseButton" );
 
 	UTgUISettingsMenu_General_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -41578,7 +41579,7 @@ bool UTgUISettingsMenu_General::OnTabClickedDelegate ( struct FInputEventParamet
 	static UFunction* pFnOnTabClickedDelegate = NULL;
 
 	if ( ! pFnOnTabClickedDelegate )
-		pFnOnTabClickedDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59831 ];
+		pFnOnTabClickedDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.OnTabClickedDelegate" );
 
 	UTgUISettingsMenu_General_execOnTabClickedDelegate_Parms OnTabClickedDelegate_Parms;
 
@@ -41605,7 +41606,7 @@ bool UTgUISettingsMenu_General::OnApplyButtonKey ( struct FInputEventParameters*
 	static UFunction* pFnOnApplyButtonKey = NULL;
 
 	if ( ! pFnOnApplyButtonKey )
-		pFnOnApplyButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 59828 ];
+		pFnOnApplyButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.OnApplyButtonKey" );
 
 	UTgUISettingsMenu_General_execOnApplyButtonKey_Parms OnApplyButtonKey_Parms;
 
@@ -41630,7 +41631,7 @@ void UTgUISettingsMenu_General::PopulateSiteList ( )
 	static UFunction* pFnPopulateSiteList = NULL;
 
 	if ( ! pFnPopulateSiteList )
-		pFnPopulateSiteList = (UFunction*) UObject::GObjObjects()->Data[ 59827 ];
+		pFnPopulateSiteList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.PopulateSiteList" );
 
 	UTgUISettingsMenu_General_execPopulateSiteList_Parms PopulateSiteList_Parms;
 
@@ -41650,7 +41651,7 @@ void UTgUISettingsMenu_General::PopulateQueueSettingWidgets ( )
 	static UFunction* pFnPopulateQueueSettingWidgets = NULL;
 
 	if ( ! pFnPopulateQueueSettingWidgets )
-		pFnPopulateQueueSettingWidgets = (UFunction*) UObject::GObjObjects()->Data[ 59826 ];
+		pFnPopulateQueueSettingWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.PopulateQueueSettingWidgets" );
 
 	UTgUISettingsMenu_General_execPopulateQueueSettingWidgets_Parms PopulateQueueSettingWidgets_Parms;
 
@@ -41670,7 +41671,7 @@ void UTgUISettingsMenu_General::PopulateHUDVisibilityWidgets ( )
 	static UFunction* pFnPopulateHUDVisibilityWidgets = NULL;
 
 	if ( ! pFnPopulateHUDVisibilityWidgets )
-		pFnPopulateHUDVisibilityWidgets = (UFunction*) UObject::GObjObjects()->Data[ 59825 ];
+		pFnPopulateHUDVisibilityWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.PopulateHUDVisibilityWidgets" );
 
 	UTgUISettingsMenu_General_execPopulateHUDVisibilityWidgets_Parms PopulateHUDVisibilityWidgets_Parms;
 
@@ -41690,7 +41691,7 @@ void UTgUISettingsMenu_General::PopulateWidgets ( )
 	static UFunction* pFnPopulateWidgets = NULL;
 
 	if ( ! pFnPopulateWidgets )
-		pFnPopulateWidgets = (UFunction*) UObject::GObjObjects()->Data[ 59824 ];
+		pFnPopulateWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.PopulateWidgets" );
 
 	UTgUISettingsMenu_General_execPopulateWidgets_Parms PopulateWidgets_Parms;
 
@@ -41710,7 +41711,7 @@ void UTgUISettingsMenu_General::ApplyHUDVisibilitySettings ( )
 	static UFunction* pFnApplyHUDVisibilitySettings = NULL;
 
 	if ( ! pFnApplyHUDVisibilitySettings )
-		pFnApplyHUDVisibilitySettings = (UFunction*) UObject::GObjObjects()->Data[ 59823 ];
+		pFnApplyHUDVisibilitySettings = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.ApplyHUDVisibilitySettings" );
 
 	UTgUISettingsMenu_General_execApplyHUDVisibilitySettings_Parms ApplyHUDVisibilitySettings_Parms;
 
@@ -41730,7 +41731,7 @@ void UTgUISettingsMenu_General::ApplyPrimaryHUDSettings ( )
 	static UFunction* pFnApplyPrimaryHUDSettings = NULL;
 
 	if ( ! pFnApplyPrimaryHUDSettings )
-		pFnApplyPrimaryHUDSettings = (UFunction*) UObject::GObjObjects()->Data[ 59822 ];
+		pFnApplyPrimaryHUDSettings = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.ApplyPrimaryHUDSettings" );
 
 	UTgUISettingsMenu_General_execApplyPrimaryHUDSettings_Parms ApplyPrimaryHUDSettings_Parms;
 
@@ -41750,7 +41751,7 @@ void UTgUISettingsMenu_General::ApplyControllerSettings ( )
 	static UFunction* pFnApplyControllerSettings = NULL;
 
 	if ( ! pFnApplyControllerSettings )
-		pFnApplyControllerSettings = (UFunction*) UObject::GObjObjects()->Data[ 59821 ];
+		pFnApplyControllerSettings = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.ApplyControllerSettings" );
 
 	UTgUISettingsMenu_General_execApplyControllerSettings_Parms ApplyControllerSettings_Parms;
 
@@ -41770,7 +41771,7 @@ void UTgUISettingsMenu_General::ApplyMouseSettings ( )
 	static UFunction* pFnApplyMouseSettings = NULL;
 
 	if ( ! pFnApplyMouseSettings )
-		pFnApplyMouseSettings = (UFunction*) UObject::GObjObjects()->Data[ 59820 ];
+		pFnApplyMouseSettings = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.ApplyMouseSettings" );
 
 	UTgUISettingsMenu_General_execApplyMouseSettings_Parms ApplyMouseSettings_Parms;
 
@@ -41790,7 +41791,7 @@ void UTgUISettingsMenu_General::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 59819 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.FixupWidgets" );
 
 	UTgUISettingsMenu_General_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -41811,7 +41812,7 @@ bool UTgUISettingsMenu_General::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59817 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.TickTgUIScene" );
 
 	UTgUISettingsMenu_General_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -41833,7 +41834,7 @@ void UTgUISettingsMenu_General::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59816 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_General.FixupTgUIScene" );
 
 	UTgUISettingsMenu_General_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -41853,7 +41854,7 @@ void UTgUISettingsMenu_Sound::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 59924 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.FixupWidgetsUC" );
 
 	UTgUISettingsMenu_Sound_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -41871,7 +41872,7 @@ void UTgUISettingsMenu_Sound::OnEnableAudioChanged ( class UUIObject* Sender, in
 	static UFunction* pFnOnEnableAudioChanged = NULL;
 
 	if ( ! pFnOnEnableAudioChanged )
-		pFnOnEnableAudioChanged = (UFunction*) UObject::GObjObjects()->Data[ 59921 ];
+		pFnOnEnableAudioChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.OnEnableAudioChanged" );
 
 	UTgUISettingsMenu_Sound_execOnEnableAudioChanged_Parms OnEnableAudioChanged_Parms;
 	OnEnableAudioChanged_Parms.Sender = Sender;
@@ -41889,7 +41890,7 @@ void UTgUISettingsMenu_Sound::ShowHideAudioPanel ( )
 	static UFunction* pFnShowHideAudioPanel = NULL;
 
 	if ( ! pFnShowHideAudioPanel )
-		pFnShowHideAudioPanel = (UFunction*) UObject::GObjObjects()->Data[ 59918 ];
+		pFnShowHideAudioPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.ShowHideAudioPanel" );
 
 	UTgUISettingsMenu_Sound_execShowHideAudioPanel_Parms ShowHideAudioPanel_Parms;
 
@@ -41907,7 +41908,7 @@ void UTgUISettingsMenu_Sound::OnEnableVoipChanged ( class UUIObject* Sender, int
 	static UFunction* pFnOnEnableVoipChanged = NULL;
 
 	if ( ! pFnOnEnableVoipChanged )
-		pFnOnEnableVoipChanged = (UFunction*) UObject::GObjObjects()->Data[ 59915 ];
+		pFnOnEnableVoipChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.OnEnableVoipChanged" );
 
 	UTgUISettingsMenu_Sound_execOnEnableVoipChanged_Parms OnEnableVoipChanged_Parms;
 	OnEnableVoipChanged_Parms.Sender = Sender;
@@ -41925,7 +41926,7 @@ void UTgUISettingsMenu_Sound::ShowHideVoipPanel ( )
 	static UFunction* pFnShowHideVoipPanel = NULL;
 
 	if ( ! pFnShowHideVoipPanel )
-		pFnShowHideVoipPanel = (UFunction*) UObject::GObjObjects()->Data[ 59912 ];
+		pFnShowHideVoipPanel = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.ShowHideVoipPanel" );
 
 	UTgUISettingsMenu_Sound_execShowHideVoipPanel_Parms ShowHideVoipPanel_Parms;
 
@@ -41943,7 +41944,7 @@ bool UTgUISettingsMenu_Sound::OnConfirmNoClicked ( struct FInputEventParameters*
 	static UFunction* pFnOnConfirmNoClicked = NULL;
 
 	if ( ! pFnOnConfirmNoClicked )
-		pFnOnConfirmNoClicked = (UFunction*) UObject::GObjObjects()->Data[ 59909 ];
+		pFnOnConfirmNoClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.OnConfirmNoClicked" );
 
 	UTgUISettingsMenu_Sound_execOnConfirmNoClicked_Parms OnConfirmNoClicked_Parms;
 
@@ -41970,7 +41971,7 @@ bool UTgUISettingsMenu_Sound::OnConfirmYesClicked ( struct FInputEventParameters
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 59906 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.OnConfirmYesClicked" );
 
 	UTgUISettingsMenu_Sound_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -41995,7 +41996,7 @@ void UTgUISettingsMenu_Sound::OpenRestartConfirmPopup ( )
 	static UFunction* pFnOpenRestartConfirmPopup = NULL;
 
 	if ( ! pFnOpenRestartConfirmPopup )
-		pFnOpenRestartConfirmPopup = (UFunction*) UObject::GObjObjects()->Data[ 59905 ];
+		pFnOpenRestartConfirmPopup = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.OpenRestartConfirmPopup" );
 
 	UTgUISettingsMenu_Sound_execOpenRestartConfirmPopup_Parms OpenRestartConfirmPopup_Parms;
 
@@ -42017,7 +42018,7 @@ bool UTgUISettingsMenu_Sound::OnCloseButton ( struct FInputEventParameters* Even
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 59902 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.OnCloseButton" );
 
 	UTgUISettingsMenu_Sound_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -42044,7 +42045,7 @@ bool UTgUISettingsMenu_Sound::OnTabClickedDelegate ( struct FInputEventParameter
 	static UFunction* pFnOnTabClickedDelegate = NULL;
 
 	if ( ! pFnOnTabClickedDelegate )
-		pFnOnTabClickedDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59899 ];
+		pFnOnTabClickedDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.OnTabClickedDelegate" );
 
 	UTgUISettingsMenu_Sound_execOnTabClickedDelegate_Parms OnTabClickedDelegate_Parms;
 
@@ -42071,7 +42072,7 @@ bool UTgUISettingsMenu_Sound::OnApplyButtonKey ( struct FInputEventParameters* E
 	static UFunction* pFnOnApplyButtonKey = NULL;
 
 	if ( ! pFnOnApplyButtonKey )
-		pFnOnApplyButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 59896 ];
+		pFnOnApplyButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.OnApplyButtonKey" );
 
 	UTgUISettingsMenu_Sound_execOnApplyButtonKey_Parms OnApplyButtonKey_Parms;
 
@@ -42096,7 +42097,7 @@ void UTgUISettingsMenu_Sound::ApplyVoiceSliders ( )
 	static UFunction* pFnApplyVoiceSliders = NULL;
 
 	if ( ! pFnApplyVoiceSliders )
-		pFnApplyVoiceSliders = (UFunction*) UObject::GObjObjects()->Data[ 59895 ];
+		pFnApplyVoiceSliders = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.ApplyVoiceSliders" );
 
 	UTgUISettingsMenu_Sound_execApplyVoiceSliders_Parms ApplyVoiceSliders_Parms;
 
@@ -42116,7 +42117,7 @@ void UTgUISettingsMenu_Sound::ApplyGameSliders ( )
 	static UFunction* pFnApplyGameSliders = NULL;
 
 	if ( ! pFnApplyGameSliders )
-		pFnApplyGameSliders = (UFunction*) UObject::GObjObjects()->Data[ 59894 ];
+		pFnApplyGameSliders = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.ApplyGameSliders" );
 
 	UTgUISettingsMenu_Sound_execApplyGameSliders_Parms ApplyGameSliders_Parms;
 
@@ -42136,7 +42137,7 @@ void UTgUISettingsMenu_Sound::PopulateWidgets ( )
 	static UFunction* pFnPopulateWidgets = NULL;
 
 	if ( ! pFnPopulateWidgets )
-		pFnPopulateWidgets = (UFunction*) UObject::GObjObjects()->Data[ 59893 ];
+		pFnPopulateWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.PopulateWidgets" );
 
 	UTgUISettingsMenu_Sound_execPopulateWidgets_Parms PopulateWidgets_Parms;
 
@@ -42156,7 +42157,7 @@ void UTgUISettingsMenu_Sound::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 59892 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.FixupWidgets" );
 
 	UTgUISettingsMenu_Sound_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -42177,7 +42178,7 @@ bool UTgUISettingsMenu_Sound::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59890 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.TickTgUIScene" );
 
 	UTgUISettingsMenu_Sound_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -42199,7 +42200,7 @@ void UTgUISettingsMenu_Sound::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59889 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.FixupTgUIScene" );
 
 	UTgUISettingsMenu_Sound_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -42219,7 +42220,7 @@ void UTgUISettingsMenu_Sound::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 59888 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.PreCloseScene" );
 
 	UTgUISettingsMenu_Sound_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -42239,7 +42240,7 @@ void UTgUISettingsMenu_Sound::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 59887 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Sound.PostOpenScene" );
 
 	UTgUISettingsMenu_Sound_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -42261,7 +42262,7 @@ void UTgUISettingsMenu_Video::OnGammaCorrectionSliderChanged ( class UUIObject* 
 	static UFunction* pFnOnGammaCorrectionSliderChanged = NULL;
 
 	if ( ! pFnOnGammaCorrectionSliderChanged )
-		pFnOnGammaCorrectionSliderChanged = (UFunction*) UObject::GObjObjects()->Data[ 59999 ];
+		pFnOnGammaCorrectionSliderChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Video.OnGammaCorrectionSliderChanged" );
 
 	UTgUISettingsMenu_Video_execOnGammaCorrectionSliderChanged_Parms OnGammaCorrectionSliderChanged_Parms;
 	OnGammaCorrectionSliderChanged_Parms.Sender = Sender;
@@ -42287,7 +42288,7 @@ void UTgUISettingsMenu_Video::ActiveStateChanged ( class UUIScreenObject* Sender
 	static UFunction* pFnActiveStateChanged = NULL;
 
 	if ( ! pFnActiveStateChanged )
-		pFnActiveStateChanged = (UFunction*) UObject::GObjObjects()->Data[ 59994 ];
+		pFnActiveStateChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Video.ActiveStateChanged" );
 
 	UTgUISettingsMenu_Video_execActiveStateChanged_Parms ActiveStateChanged_Parms;
 	ActiveStateChanged_Parms.Sender = Sender;
@@ -42313,7 +42314,7 @@ void UTgUISettingsMenu_Video::CBoxChanged ( class UUIObject* Sender, int PlayerI
 	static UFunction* pFnCBoxChanged = NULL;
 
 	if ( ! pFnCBoxChanged )
-		pFnCBoxChanged = (UFunction*) UObject::GObjObjects()->Data[ 59991 ];
+		pFnCBoxChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Video.CBoxChanged" );
 
 	UTgUISettingsMenu_Video_execCBoxChanged_Parms CBoxChanged_Parms;
 	CBoxChanged_Parms.Sender = Sender;
@@ -42337,7 +42338,7 @@ bool UTgUISettingsMenu_Video::ConfirmHandler ( struct FInputEventParameters* Eve
 	static UFunction* pFnConfirmHandler = NULL;
 
 	if ( ! pFnConfirmHandler )
-		pFnConfirmHandler = (UFunction*) UObject::GObjObjects()->Data[ 59988 ];
+		pFnConfirmHandler = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Video.ConfirmHandler" );
 
 	UTgUISettingsMenu_Video_execConfirmHandler_Parms ConfirmHandler_Parms;
 
@@ -42364,7 +42365,7 @@ bool UTgUISettingsMenu_Video::ButtonHandler ( struct FInputEventParameters* Even
 	static UFunction* pFnButtonHandler = NULL;
 
 	if ( ! pFnButtonHandler )
-		pFnButtonHandler = (UFunction*) UObject::GObjObjects()->Data[ 59985 ];
+		pFnButtonHandler = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Video.ButtonHandler" );
 
 	UTgUISettingsMenu_Video_execButtonHandler_Parms ButtonHandler_Parms;
 
@@ -42391,7 +42392,7 @@ bool UTgUISettingsMenu_Video::TabHandler ( struct FInputEventParameters* EventPa
 	static UFunction* pFnTabHandler = NULL;
 
 	if ( ! pFnTabHandler )
-		pFnTabHandler = (UFunction*) UObject::GObjObjects()->Data[ 59982 ];
+		pFnTabHandler = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Video.TabHandler" );
 
 	UTgUISettingsMenu_Video_execTabHandler_Parms TabHandler_Parms;
 
@@ -42417,7 +42418,7 @@ bool UTgUISettingsMenu_Video::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59980 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Video.TickTgUIScene" );
 
 	UTgUISettingsMenu_Video_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -42439,7 +42440,7 @@ void UTgUISettingsMenu_Video::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59979 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Video.FixupTgUIScene" );
 
 	UTgUISettingsMenu_Video_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -42459,7 +42460,7 @@ void UTgUISettingsMenu_Video::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 59978 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Video.PostInitSceneDriver" );
 
 	UTgUISettingsMenu_Video_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -42480,7 +42481,7 @@ void UTgUITeamDetailMenu::eventSetRawInputKeyForMemberList ( class UUIButton* Bu
 	static UFunction* pFnSetRawInputKeyForMemberList = NULL;
 
 	if ( ! pFnSetRawInputKeyForMemberList )
-		pFnSetRawInputKeyForMemberList = (UFunction*) UObject::GObjObjects()->Data[ 60088 ];
+		pFnSetRawInputKeyForMemberList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.SetRawInputKeyForMemberList" );
 
 	UTgUITeamDetailMenu_eventSetRawInputKeyForMemberList_Parms SetRawInputKeyForMemberList_Parms;
 	SetRawInputKeyForMemberList_Parms.Button = Button;
@@ -42497,7 +42498,7 @@ void UTgUITeamDetailMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 60086 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.FixupWidgetsUC" );
 
 	UTgUITeamDetailMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -42515,7 +42516,7 @@ bool UTgUITeamDetailMenu::SelectMemberByButton ( class UUIButton* Button )
 	static UFunction* pFnSelectMemberByButton = NULL;
 
 	if ( ! pFnSelectMemberByButton )
-		pFnSelectMemberByButton = (UFunction*) UObject::GObjObjects()->Data[ 60083 ];
+		pFnSelectMemberByButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.SelectMemberByButton" );
 
 	UTgUITeamDetailMenu_execSelectMemberByButton_Parms SelectMemberByButton_Parms;
 	SelectMemberByButton_Parms.Button = Button;
@@ -42540,7 +42541,7 @@ bool UTgUITeamDetailMenu::OnSceneMapDelegate ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnSceneMapDelegate = NULL;
 
 	if ( ! pFnOnSceneMapDelegate )
-		pFnOnSceneMapDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60080 ];
+		pFnOnSceneMapDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.OnSceneMapDelegate" );
 
 	UTgUITeamDetailMenu_execOnSceneMapDelegate_Parms OnSceneMapDelegate_Parms;
 
@@ -42567,7 +42568,7 @@ bool UTgUITeamDetailMenu::OnSceneManageDelegate ( struct FInputEventParameters* 
 	static UFunction* pFnOnSceneManageDelegate = NULL;
 
 	if ( ! pFnOnSceneManageDelegate )
-		pFnOnSceneManageDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60077 ];
+		pFnOnSceneManageDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.OnSceneManageDelegate" );
 
 	UTgUITeamDetailMenu_execOnSceneManageDelegate_Parms OnSceneManageDelegate_Parms;
 
@@ -42594,7 +42595,7 @@ bool UTgUITeamDetailMenu::OnSceneCargoDelegate ( struct FInputEventParameters* E
 	static UFunction* pFnOnSceneCargoDelegate = NULL;
 
 	if ( ! pFnOnSceneCargoDelegate )
-		pFnOnSceneCargoDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60074 ];
+		pFnOnSceneCargoDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.OnSceneCargoDelegate" );
 
 	UTgUITeamDetailMenu_execOnSceneCargoDelegate_Parms OnSceneCargoDelegate_Parms;
 
@@ -42621,7 +42622,7 @@ bool UTgUITeamDetailMenu::OnSceneTeamDelegate ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnSceneTeamDelegate = NULL;
 
 	if ( ! pFnOnSceneTeamDelegate )
-		pFnOnSceneTeamDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60071 ];
+		pFnOnSceneTeamDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.OnSceneTeamDelegate" );
 
 	UTgUITeamDetailMenu_execOnSceneTeamDelegate_Parms OnSceneTeamDelegate_Parms;
 
@@ -42648,7 +42649,7 @@ bool UTgUITeamDetailMenu::OnSceneRaidDelegate ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnSceneRaidDelegate = NULL;
 
 	if ( ! pFnOnSceneRaidDelegate )
-		pFnOnSceneRaidDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60068 ];
+		pFnOnSceneRaidDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.OnSceneRaidDelegate" );
 
 	UTgUITeamDetailMenu_execOnSceneRaidDelegate_Parms OnSceneRaidDelegate_Parms;
 
@@ -42675,7 +42676,7 @@ bool UTgUITeamDetailMenu::OnSceneStrikeForceDelegate ( struct FInputEventParamet
 	static UFunction* pFnOnSceneStrikeForceDelegate = NULL;
 
 	if ( ! pFnOnSceneStrikeForceDelegate )
-		pFnOnSceneStrikeForceDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60065 ];
+		pFnOnSceneStrikeForceDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.OnSceneStrikeForceDelegate" );
 
 	UTgUITeamDetailMenu_execOnSceneStrikeForceDelegate_Parms OnSceneStrikeForceDelegate_Parms;
 
@@ -42702,7 +42703,7 @@ bool UTgUITeamDetailMenu::OnTeamMemberDelegate ( struct FInputEventParameters* E
 	static UFunction* pFnOnTeamMemberDelegate = NULL;
 
 	if ( ! pFnOnTeamMemberDelegate )
-		pFnOnTeamMemberDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60062 ];
+		pFnOnTeamMemberDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.OnTeamMemberDelegate" );
 
 	UTgUITeamDetailMenu_execOnTeamMemberDelegate_Parms OnTeamMemberDelegate_Parms;
 
@@ -42729,7 +42730,7 @@ bool UTgUITeamDetailMenu::OnSceneLeaveDelegate ( struct FInputEventParameters* E
 	static UFunction* pFnOnSceneLeaveDelegate = NULL;
 
 	if ( ! pFnOnSceneLeaveDelegate )
-		pFnOnSceneLeaveDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60059 ];
+		pFnOnSceneLeaveDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.OnSceneLeaveDelegate" );
 
 	UTgUITeamDetailMenu_execOnSceneLeaveDelegate_Parms OnSceneLeaveDelegate_Parms;
 
@@ -42756,7 +42757,7 @@ bool UTgUITeamDetailMenu::OnScenePromoteDelegate ( struct FInputEventParameters*
 	static UFunction* pFnOnScenePromoteDelegate = NULL;
 
 	if ( ! pFnOnScenePromoteDelegate )
-		pFnOnScenePromoteDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60056 ];
+		pFnOnScenePromoteDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.OnScenePromoteDelegate" );
 
 	UTgUITeamDetailMenu_execOnScenePromoteDelegate_Parms OnScenePromoteDelegate_Parms;
 
@@ -42783,7 +42784,7 @@ bool UTgUITeamDetailMenu::OnSceneRemoveDelegate ( struct FInputEventParameters* 
 	static UFunction* pFnOnSceneRemoveDelegate = NULL;
 
 	if ( ! pFnOnSceneRemoveDelegate )
-		pFnOnSceneRemoveDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60053 ];
+		pFnOnSceneRemoveDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.OnSceneRemoveDelegate" );
 
 	UTgUITeamDetailMenu_execOnSceneRemoveDelegate_Parms OnSceneRemoveDelegate_Parms;
 
@@ -42810,7 +42811,7 @@ bool UTgUITeamDetailMenu::OnCloseButtonDelegate ( struct FInputEventParameters* 
 	static UFunction* pFnOnCloseButtonDelegate = NULL;
 
 	if ( ! pFnOnCloseButtonDelegate )
-		pFnOnCloseButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60050 ];
+		pFnOnCloseButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.OnCloseButtonDelegate" );
 
 	UTgUITeamDetailMenu_execOnCloseButtonDelegate_Parms OnCloseButtonDelegate_Parms;
 
@@ -42837,7 +42838,7 @@ bool UTgUITeamDetailMenu::OnSceneInputKeyDelegate ( struct FInputEventParameters
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60047 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.OnSceneInputKeyDelegate" );
 
 	UTgUITeamDetailMenu_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -42863,7 +42864,7 @@ bool UTgUITeamDetailMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 60045 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.TickTgUIScene" );
 
 	UTgUITeamDetailMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -42885,7 +42886,7 @@ void UTgUITeamDetailMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 60044 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamDetailMenu.FixupTgUIScene" );
 
 	UTgUITeamDetailMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -42906,7 +42907,7 @@ void UTgUITeamMenu::eventSetRawInputKeyForMemberList ( class UUIButton* Button )
 	static UFunction* pFnSetRawInputKeyForMemberList = NULL;
 
 	if ( ! pFnSetRawInputKeyForMemberList )
-		pFnSetRawInputKeyForMemberList = (UFunction*) UObject::GObjObjects()->Data[ 60213 ];
+		pFnSetRawInputKeyForMemberList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.SetRawInputKeyForMemberList" );
 
 	UTgUITeamMenu_eventSetRawInputKeyForMemberList_Parms SetRawInputKeyForMemberList_Parms;
 	SetRawInputKeyForMemberList_Parms.Button = Button;
@@ -42924,7 +42925,7 @@ void UTgUITeamMenu::eventSetRawInputKeyForPlayerList ( class UUIButton* Button )
 	static UFunction* pFnSetRawInputKeyForPlayerList = NULL;
 
 	if ( ! pFnSetRawInputKeyForPlayerList )
-		pFnSetRawInputKeyForPlayerList = (UFunction*) UObject::GObjObjects()->Data[ 60211 ];
+		pFnSetRawInputKeyForPlayerList = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.SetRawInputKeyForPlayerList" );
 
 	UTgUITeamMenu_eventSetRawInputKeyForPlayerList_Parms SetRawInputKeyForPlayerList_Parms;
 	SetRawInputKeyForPlayerList_Parms.Button = Button;
@@ -42941,7 +42942,7 @@ void UTgUITeamMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 60209 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.FixupWidgetsUC" );
 
 	UTgUITeamMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -42958,7 +42959,7 @@ void UTgUITeamMenu::GetPlayerSearchCallback ( int eType )
 	static UFunction* pFnGetPlayerSearchCallback = NULL;
 
 	if ( ! pFnGetPlayerSearchCallback )
-		pFnGetPlayerSearchCallback = (UFunction*) UObject::GObjObjects()->Data[ 60207 ];
+		pFnGetPlayerSearchCallback = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.GetPlayerSearchCallback" );
 
 	UTgUITeamMenu_execGetPlayerSearchCallback_Parms GetPlayerSearchCallback_Parms;
 	GetPlayerSearchCallback_Parms.eType = eType;
@@ -42981,7 +42982,7 @@ bool UTgUITeamMenu::SelectPlayerByButton ( class UUIButton* Button )
 	static UFunction* pFnSelectPlayerByButton = NULL;
 
 	if ( ! pFnSelectPlayerByButton )
-		pFnSelectPlayerByButton = (UFunction*) UObject::GObjObjects()->Data[ 60204 ];
+		pFnSelectPlayerByButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.SelectPlayerByButton" );
 
 	UTgUITeamMenu_execSelectPlayerByButton_Parms SelectPlayerByButton_Parms;
 	SelectPlayerByButton_Parms.Button = Button;
@@ -43006,7 +43007,7 @@ bool UTgUITeamMenu::SelectMemberByButton ( class UUIButton* Button )
 	static UFunction* pFnSelectMemberByButton = NULL;
 
 	if ( ! pFnSelectMemberByButton )
-		pFnSelectMemberByButton = (UFunction*) UObject::GObjObjects()->Data[ 60201 ];
+		pFnSelectMemberByButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.SelectMemberByButton" );
 
 	UTgUITeamMenu_execSelectMemberByButton_Parms SelectMemberByButton_Parms;
 	SelectMemberByButton_Parms.Button = Button;
@@ -43031,7 +43032,7 @@ bool UTgUITeamMenu::OnSceneSortDelegate ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnSceneSortDelegate = NULL;
 
 	if ( ! pFnOnSceneSortDelegate )
-		pFnOnSceneSortDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60198 ];
+		pFnOnSceneSortDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnSceneSortDelegate" );
 
 	UTgUITeamMenu_execOnSceneSortDelegate_Parms OnSceneSortDelegate_Parms;
 
@@ -43058,7 +43059,7 @@ bool UTgUITeamMenu::OnSceneMapDelegate ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnSceneMapDelegate = NULL;
 
 	if ( ! pFnOnSceneMapDelegate )
-		pFnOnSceneMapDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60195 ];
+		pFnOnSceneMapDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnSceneMapDelegate" );
 
 	UTgUITeamMenu_execOnSceneMapDelegate_Parms OnSceneMapDelegate_Parms;
 
@@ -43085,7 +43086,7 @@ bool UTgUITeamMenu::OnSceneManageDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSceneManageDelegate = NULL;
 
 	if ( ! pFnOnSceneManageDelegate )
-		pFnOnSceneManageDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60192 ];
+		pFnOnSceneManageDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnSceneManageDelegate" );
 
 	UTgUITeamMenu_execOnSceneManageDelegate_Parms OnSceneManageDelegate_Parms;
 
@@ -43112,7 +43113,7 @@ bool UTgUITeamMenu::OnSceneDetailDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSceneDetailDelegate = NULL;
 
 	if ( ! pFnOnSceneDetailDelegate )
-		pFnOnSceneDetailDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60189 ];
+		pFnOnSceneDetailDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnSceneDetailDelegate" );
 
 	UTgUITeamMenu_execOnSceneDetailDelegate_Parms OnSceneDetailDelegate_Parms;
 
@@ -43139,7 +43140,7 @@ bool UTgUITeamMenu::OnSceneCargoDelegate ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSceneCargoDelegate = NULL;
 
 	if ( ! pFnOnSceneCargoDelegate )
-		pFnOnSceneCargoDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60186 ];
+		pFnOnSceneCargoDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnSceneCargoDelegate" );
 
 	UTgUITeamMenu_execOnSceneCargoDelegate_Parms OnSceneCargoDelegate_Parms;
 
@@ -43166,7 +43167,7 @@ bool UTgUITeamMenu::OnSceneRaidDelegate ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnSceneRaidDelegate = NULL;
 
 	if ( ! pFnOnSceneRaidDelegate )
-		pFnOnSceneRaidDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60183 ];
+		pFnOnSceneRaidDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnSceneRaidDelegate" );
 
 	UTgUITeamMenu_execOnSceneRaidDelegate_Parms OnSceneRaidDelegate_Parms;
 
@@ -43193,7 +43194,7 @@ bool UTgUITeamMenu::OnSceneStrikeForceDelegate ( struct FInputEventParameters* E
 	static UFunction* pFnOnSceneStrikeForceDelegate = NULL;
 
 	if ( ! pFnOnSceneStrikeForceDelegate )
-		pFnOnSceneStrikeForceDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60180 ];
+		pFnOnSceneStrikeForceDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnSceneStrikeForceDelegate" );
 
 	UTgUITeamMenu_execOnSceneStrikeForceDelegate_Parms OnSceneStrikeForceDelegate_Parms;
 
@@ -43220,7 +43221,7 @@ bool UTgUITeamMenu::OnSelectPlayer ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnSelectPlayer = NULL;
 
 	if ( ! pFnOnSelectPlayer )
-		pFnOnSelectPlayer = (UFunction*) UObject::GObjObjects()->Data[ 60177 ];
+		pFnOnSelectPlayer = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnSelectPlayer" );
 
 	UTgUITeamMenu_execOnSelectPlayer_Parms OnSelectPlayer_Parms;
 
@@ -43247,7 +43248,7 @@ bool UTgUITeamMenu::OnTeamMemberDelegate ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnTeamMemberDelegate = NULL;
 
 	if ( ! pFnOnTeamMemberDelegate )
-		pFnOnTeamMemberDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60174 ];
+		pFnOnTeamMemberDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnTeamMemberDelegate" );
 
 	UTgUITeamMenu_execOnTeamMemberDelegate_Parms OnTeamMemberDelegate_Parms;
 
@@ -43274,7 +43275,7 @@ bool UTgUITeamMenu::OnSceneLeaveDelegate ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSceneLeaveDelegate = NULL;
 
 	if ( ! pFnOnSceneLeaveDelegate )
-		pFnOnSceneLeaveDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60171 ];
+		pFnOnSceneLeaveDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnSceneLeaveDelegate" );
 
 	UTgUITeamMenu_execOnSceneLeaveDelegate_Parms OnSceneLeaveDelegate_Parms;
 
@@ -43301,7 +43302,7 @@ bool UTgUITeamMenu::OnScenePromoteDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnScenePromoteDelegate = NULL;
 
 	if ( ! pFnOnScenePromoteDelegate )
-		pFnOnScenePromoteDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60168 ];
+		pFnOnScenePromoteDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnScenePromoteDelegate" );
 
 	UTgUITeamMenu_execOnScenePromoteDelegate_Parms OnScenePromoteDelegate_Parms;
 
@@ -43328,7 +43329,7 @@ bool UTgUITeamMenu::OnSceneRemoveDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSceneRemoveDelegate = NULL;
 
 	if ( ! pFnOnSceneRemoveDelegate )
-		pFnOnSceneRemoveDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60165 ];
+		pFnOnSceneRemoveDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnSceneRemoveDelegate" );
 
 	UTgUITeamMenu_execOnSceneRemoveDelegate_Parms OnSceneRemoveDelegate_Parms;
 
@@ -43355,7 +43356,7 @@ bool UTgUITeamMenu::OnSceneMessageDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnSceneMessageDelegate = NULL;
 
 	if ( ! pFnOnSceneMessageDelegate )
-		pFnOnSceneMessageDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60162 ];
+		pFnOnSceneMessageDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnSceneMessageDelegate" );
 
 	UTgUITeamMenu_execOnSceneMessageDelegate_Parms OnSceneMessageDelegate_Parms;
 
@@ -43382,7 +43383,7 @@ bool UTgUITeamMenu::OnSceneInviteDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSceneInviteDelegate = NULL;
 
 	if ( ! pFnOnSceneInviteDelegate )
-		pFnOnSceneInviteDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60159 ];
+		pFnOnSceneInviteDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnSceneInviteDelegate" );
 
 	UTgUITeamMenu_execOnSceneInviteDelegate_Parms OnSceneInviteDelegate_Parms;
 
@@ -43409,7 +43410,7 @@ bool UTgUITeamMenu::OnSceneSearchDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSceneSearchDelegate = NULL;
 
 	if ( ! pFnOnSceneSearchDelegate )
-		pFnOnSceneSearchDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60156 ];
+		pFnOnSceneSearchDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnSceneSearchDelegate" );
 
 	UTgUITeamMenu_execOnSceneSearchDelegate_Parms OnSceneSearchDelegate_Parms;
 
@@ -43436,7 +43437,7 @@ bool UTgUITeamMenu::OnSceneResetDelegate ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSceneResetDelegate = NULL;
 
 	if ( ! pFnOnSceneResetDelegate )
-		pFnOnSceneResetDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60153 ];
+		pFnOnSceneResetDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnSceneResetDelegate" );
 
 	UTgUITeamMenu_execOnSceneResetDelegate_Parms OnSceneResetDelegate_Parms;
 
@@ -43463,7 +43464,7 @@ bool UTgUITeamMenu::OnCloseButtonDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnCloseButtonDelegate = NULL;
 
 	if ( ! pFnOnCloseButtonDelegate )
-		pFnOnCloseButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60150 ];
+		pFnOnCloseButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnCloseButtonDelegate" );
 
 	UTgUITeamMenu_execOnCloseButtonDelegate_Parms OnCloseButtonDelegate_Parms;
 
@@ -43490,7 +43491,7 @@ bool UTgUITeamMenu::OnSceneInputKeyDelegate ( struct FInputEventParameters* Even
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60147 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.OnSceneInputKeyDelegate" );
 
 	UTgUITeamMenu_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -43515,7 +43516,7 @@ void UTgUITeamMenu::SortSearchResults ( )
 	static UFunction* pFnSortSearchResults = NULL;
 
 	if ( ! pFnSortSearchResults )
-		pFnSortSearchResults = (UFunction*) UObject::GObjObjects()->Data[ 60146 ];
+		pFnSortSearchResults = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.SortSearchResults" );
 
 	UTgUITeamMenu_execSortSearchResults_Parms SortSearchResults_Parms;
 
@@ -43535,7 +43536,7 @@ void UTgUITeamMenu::Search ( )
 	static UFunction* pFnSearch = NULL;
 
 	if ( ! pFnSearch )
-		pFnSearch = (UFunction*) UObject::GObjObjects()->Data[ 60145 ];
+		pFnSearch = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.Search" );
 
 	UTgUITeamMenu_execSearch_Parms Search_Parms;
 
@@ -43555,7 +43556,7 @@ void UTgUITeamMenu::SearchFromFields ( )
 	static UFunction* pFnSearchFromFields = NULL;
 
 	if ( ! pFnSearchFromFields )
-		pFnSearchFromFields = (UFunction*) UObject::GObjObjects()->Data[ 60144 ];
+		pFnSearchFromFields = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.SearchFromFields" );
 
 	UTgUITeamMenu_execSearchFromFields_Parms SearchFromFields_Parms;
 
@@ -43575,7 +43576,7 @@ void UTgUITeamMenu::ResetFields ( )
 	static UFunction* pFnResetFields = NULL;
 
 	if ( ! pFnResetFields )
-		pFnResetFields = (UFunction*) UObject::GObjObjects()->Data[ 60143 ];
+		pFnResetFields = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.ResetFields" );
 
 	UTgUITeamMenu_execResetFields_Parms ResetFields_Parms;
 
@@ -43596,7 +43597,7 @@ void UTgUITeamMenu::PrepopulatedSearchById ( int nPlayerId )
 	static UFunction* pFnPrepopulatedSearchById = NULL;
 
 	if ( ! pFnPrepopulatedSearchById )
-		pFnPrepopulatedSearchById = (UFunction*) UObject::GObjObjects()->Data[ 60141 ];
+		pFnPrepopulatedSearchById = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.PrepopulatedSearchById" );
 
 	UTgUITeamMenu_execPrepopulatedSearchById_Parms PrepopulatedSearchById_Parms;
 	PrepopulatedSearchById_Parms.nPlayerId = nPlayerId;
@@ -43620,7 +43621,7 @@ void UTgUITeamMenu::PrepopulatedSearch ( struct FString sPlayerName, struct FStr
 	static UFunction* pFnPrepopulatedSearch = NULL;
 
 	if ( ! pFnPrepopulatedSearch )
-		pFnPrepopulatedSearch = (UFunction*) UObject::GObjObjects()->Data[ 60137 ];
+		pFnPrepopulatedSearch = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.PrepopulatedSearch" );
 
 	UTgUITeamMenu_execPrepopulatedSearch_Parms PrepopulatedSearch_Parms;
 	memcpy ( &PrepopulatedSearch_Parms.sPlayerName, &sPlayerName, 0xC );
@@ -43644,7 +43645,7 @@ bool UTgUITeamMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 60135 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.TickTgUIScene" );
 
 	UTgUITeamMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -43666,7 +43667,7 @@ void UTgUITeamMenu::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 60134 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.FixupTgUIScene" );
 
 	UTgUITeamMenu_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -43686,7 +43687,7 @@ void UTgUITeamMenu::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 60133 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.PreCloseScene" );
 
 	UTgUITeamMenu_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -43706,7 +43707,7 @@ void UTgUITeamMenu::PostInitSceneDriver ( )
 	static UFunction* pFnPostInitSceneDriver = NULL;
 
 	if ( ! pFnPostInitSceneDriver )
-		pFnPostInitSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 60132 ];
+		pFnPostInitSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITeamMenu.PostInitSceneDriver" );
 
 	UTgUITeamMenu_execPostInitSceneDriver_Parms PostInitSceneDriver_Parms;
 
@@ -43728,7 +43729,7 @@ bool UTgUITutorialItem::OnCloseButton ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 60232 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITutorialItem.OnCloseButton" );
 
 	UTgUITutorialItem_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -43754,7 +43755,7 @@ bool UTgUITutorialItem::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 60230 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITutorialItem.TickTgUIScene" );
 
 	UTgUITutorialItem_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -43776,7 +43777,7 @@ void UTgUITutorialItem::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 60229 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUITutorialItem.PostOpenScene" );
 
 	UTgUITutorialItem_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -43796,7 +43797,7 @@ void UTgUIVendorBase::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 54967 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorBase.PostOpenScene" );
 
 	UTgUIVendorBase_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -43817,7 +43818,7 @@ bool UTgUISteamTxnStatus::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 60017 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISteamTxnStatus.TickTgUIScene" );
 
 	UTgUISteamTxnStatus_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -43839,7 +43840,7 @@ void UTgUISteamTxnStatus::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 60016 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISteamTxnStatus.PreCloseScene" );
 
 	UTgUISteamTxnStatus_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -43859,7 +43860,7 @@ void UTgUISteamTxnStatus::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 60015 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISteamTxnStatus.PostOpenScene" );
 
 	UTgUISteamTxnStatus_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -43881,7 +43882,7 @@ bool UTgUISteamTxnStatus::OnButtonDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnButtonDelegate = NULL;
 
 	if ( ! pFnOnButtonDelegate )
-		pFnOnButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60012 ];
+		pFnOnButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISteamTxnStatus.OnButtonDelegate" );
 
 	UTgUISteamTxnStatus_execOnButtonDelegate_Parms OnButtonDelegate_Parms;
 
@@ -43908,7 +43909,7 @@ void UTgUIUpdateFaceMenu::OnInkSliderChanged ( class UUIObject* Sender, int Play
 	static UFunction* pFnOnInkSliderChanged = NULL;
 
 	if ( ! pFnOnInkSliderChanged )
-		pFnOnInkSliderChanged = (UFunction*) UObject::GObjObjects()->Data[ 60376 ];
+		pFnOnInkSliderChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.OnInkSliderChanged" );
 
 	UTgUIUpdateFaceMenu_execOnInkSliderChanged_Parms OnInkSliderChanged_Parms;
 	OnInkSliderChanged_Parms.Sender = Sender;
@@ -43932,7 +43933,7 @@ void UTgUIUpdateFaceMenu::OnSliderValueChanged ( class UUIObject* Sender, int Pl
 	static UFunction* pFnOnSliderValueChanged = NULL;
 
 	if ( ! pFnOnSliderValueChanged )
-		pFnOnSliderValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 60373 ];
+		pFnOnSliderValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.OnSliderValueChanged" );
 
 	UTgUIUpdateFaceMenu_execOnSliderValueChanged_Parms OnSliderValueChanged_Parms;
 	OnSliderValueChanged_Parms.Sender = Sender;
@@ -43956,7 +43957,7 @@ void UTgUIUpdateFaceMenu::OnGroupSliderValueChanged ( class UUIObject* Sender, i
 	static UFunction* pFnOnGroupSliderValueChanged = NULL;
 
 	if ( ! pFnOnGroupSliderValueChanged )
-		pFnOnGroupSliderValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 60370 ];
+		pFnOnGroupSliderValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.OnGroupSliderValueChanged" );
 
 	UTgUIUpdateFaceMenu_execOnGroupSliderValueChanged_Parms OnGroupSliderValueChanged_Parms;
 	OnGroupSliderValueChanged_Parms.Sender = Sender;
@@ -43982,7 +43983,7 @@ void UTgUIUpdateFaceMenu::OnDetailButtonMouseOver ( class UUIScreenObject* Sende
 	static UFunction* pFnOnDetailButtonMouseOver = NULL;
 
 	if ( ! pFnOnDetailButtonMouseOver )
-		pFnOnDetailButtonMouseOver = (UFunction*) UObject::GObjObjects()->Data[ 60365 ];
+		pFnOnDetailButtonMouseOver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.OnDetailButtonMouseOver" );
 
 	UTgUIUpdateFaceMenu_execOnDetailButtonMouseOver_Parms OnDetailButtonMouseOver_Parms;
 	OnDetailButtonMouseOver_Parms.Sender = Sender;
@@ -44008,7 +44009,7 @@ bool UTgUIUpdateFaceMenu::OnRandomButton ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnRandomButton = NULL;
 
 	if ( ! pFnOnRandomButton )
-		pFnOnRandomButton = (UFunction*) UObject::GObjObjects()->Data[ 60362 ];
+		pFnOnRandomButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.OnRandomButton" );
 
 	UTgUIUpdateFaceMenu_execOnRandomButton_Parms OnRandomButton_Parms;
 
@@ -44035,7 +44036,7 @@ bool UTgUIUpdateFaceMenu::OnDetailButton ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnDetailButton = NULL;
 
 	if ( ! pFnOnDetailButton )
-		pFnOnDetailButton = (UFunction*) UObject::GObjObjects()->Data[ 60359 ];
+		pFnOnDetailButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.OnDetailButton" );
 
 	UTgUIUpdateFaceMenu_execOnDetailButton_Parms OnDetailButton_Parms;
 
@@ -44062,7 +44063,7 @@ bool UTgUIUpdateFaceMenu::OnLockButton ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnLockButton = NULL;
 
 	if ( ! pFnOnLockButton )
-		pFnOnLockButton = (UFunction*) UObject::GObjObjects()->Data[ 60356 ];
+		pFnOnLockButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.OnLockButton" );
 
 	UTgUIUpdateFaceMenu_execOnLockButton_Parms OnLockButton_Parms;
 
@@ -44089,7 +44090,7 @@ bool UTgUIUpdateFaceMenu::OnSubmitButton ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSubmitButton = NULL;
 
 	if ( ! pFnOnSubmitButton )
-		pFnOnSubmitButton = (UFunction*) UObject::GObjObjects()->Data[ 60353 ];
+		pFnOnSubmitButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.OnSubmitButton" );
 
 	UTgUIUpdateFaceMenu_execOnSubmitButton_Parms OnSubmitButton_Parms;
 
@@ -44116,7 +44117,7 @@ bool UTgUIUpdateFaceMenu::OnCancelButton ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnCancelButton = NULL;
 
 	if ( ! pFnOnCancelButton )
-		pFnOnCancelButton = (UFunction*) UObject::GObjObjects()->Data[ 60350 ];
+		pFnOnCancelButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.OnCancelButton" );
 
 	UTgUIUpdateFaceMenu_execOnCancelButton_Parms OnCancelButton_Parms;
 
@@ -44143,7 +44144,7 @@ bool UTgUIUpdateFaceMenu::OnCloseButton ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 60347 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.OnCloseButton" );
 
 	UTgUIUpdateFaceMenu_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -44170,7 +44171,7 @@ bool UTgUIUpdateFaceMenu::OnConfirmNoClicked ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnConfirmNoClicked = NULL;
 
 	if ( ! pFnOnConfirmNoClicked )
-		pFnOnConfirmNoClicked = (UFunction*) UObject::GObjObjects()->Data[ 60344 ];
+		pFnOnConfirmNoClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.OnConfirmNoClicked" );
 
 	UTgUIUpdateFaceMenu_execOnConfirmNoClicked_Parms OnConfirmNoClicked_Parms;
 
@@ -44197,7 +44198,7 @@ bool UTgUIUpdateFaceMenu::OnConfirmYesClicked ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 60341 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.OnConfirmYesClicked" );
 
 	UTgUIUpdateFaceMenu_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -44222,7 +44223,7 @@ void UTgUIUpdateFaceMenu::UpdateCreditsInfo ( )
 	static UFunction* pFnUpdateCreditsInfo = NULL;
 
 	if ( ! pFnUpdateCreditsInfo )
-		pFnUpdateCreditsInfo = (UFunction*) UObject::GObjObjects()->Data[ 60340 ];
+		pFnUpdateCreditsInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.UpdateCreditsInfo" );
 
 	UTgUIUpdateFaceMenu_execUpdateCreditsInfo_Parms UpdateCreditsInfo_Parms;
 
@@ -44242,7 +44243,7 @@ void UTgUIUpdateFaceMenu::CompleteTransaction ( )
 	static UFunction* pFnCompleteTransaction = NULL;
 
 	if ( ! pFnCompleteTransaction )
-		pFnCompleteTransaction = (UFunction*) UObject::GObjObjects()->Data[ 60339 ];
+		pFnCompleteTransaction = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.CompleteTransaction" );
 
 	UTgUIUpdateFaceMenu_execCompleteTransaction_Parms CompleteTransaction_Parms;
 
@@ -44262,7 +44263,7 @@ void UTgUIUpdateFaceMenu::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 60338 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.PreCloseScene" );
 
 	UTgUIUpdateFaceMenu_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -44283,7 +44284,7 @@ bool UTgUIUpdateFaceMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 60336 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.TickTgUIScene" );
 
 	UTgUIUpdateFaceMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -44305,7 +44306,7 @@ void UTgUIUpdateFaceMenu::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 60335 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateFaceMenu.PostOpenScene" );
 
 	UTgUIUpdateFaceMenu_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -44327,7 +44328,7 @@ bool UTgUIUpdateHairMenu::OnSubmitButton ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnSubmitButton = NULL;
 
 	if ( ! pFnOnSubmitButton )
-		pFnOnSubmitButton = (UFunction*) UObject::GObjObjects()->Data[ 60456 ];
+		pFnOnSubmitButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.OnSubmitButton" );
 
 	UTgUIUpdateHairMenu_execOnSubmitButton_Parms OnSubmitButton_Parms;
 
@@ -44350,7 +44351,7 @@ bool UTgUIUpdateHairMenu::OnCancelButton ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnCancelButton = NULL;
 
 	if ( ! pFnOnCancelButton )
-		pFnOnCancelButton = (UFunction*) UObject::GObjObjects()->Data[ 60453 ];
+		pFnOnCancelButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.OnCancelButton" );
 
 	UTgUIUpdateHairMenu_execOnCancelButton_Parms OnCancelButton_Parms;
 
@@ -44373,7 +44374,7 @@ bool UTgUIUpdateHairMenu::OnCloseButton ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 60450 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.OnCloseButton" );
 
 	UTgUIUpdateHairMenu_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -44394,7 +44395,7 @@ void UTgUIUpdateHairMenu::eventInitializeUpdateHairMenu ( )
 	static UFunction* pFnInitializeUpdateHairMenu = NULL;
 
 	if ( ! pFnInitializeUpdateHairMenu )
-		pFnInitializeUpdateHairMenu = (UFunction*) UObject::GObjObjects()->Data[ 60449 ];
+		pFnInitializeUpdateHairMenu = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.InitializeUpdateHairMenu" );
 
 	UTgUIUpdateHairMenu_eventInitializeUpdateHairMenu_Parms InitializeUpdateHairMenu_Parms;
 
@@ -44410,7 +44411,7 @@ void UTgUIUpdateHairMenu::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 60448 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.FixupWidgetsUC" );
 
 	UTgUIUpdateHairMenu_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -44428,7 +44429,7 @@ bool UTgUIUpdateHairMenu::OnConfirmNoClicked ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnConfirmNoClicked = NULL;
 
 	if ( ! pFnOnConfirmNoClicked )
-		pFnOnConfirmNoClicked = (UFunction*) UObject::GObjObjects()->Data[ 60445 ];
+		pFnOnConfirmNoClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.OnConfirmNoClicked" );
 
 	UTgUIUpdateHairMenu_execOnConfirmNoClicked_Parms OnConfirmNoClicked_Parms;
 
@@ -44455,7 +44456,7 @@ bool UTgUIUpdateHairMenu::OnConfirmYesClicked ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 60442 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.OnConfirmYesClicked" );
 
 	UTgUIUpdateHairMenu_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -44480,7 +44481,7 @@ void UTgUIUpdateHairMenu::CompleteTransaction ( )
 	static UFunction* pFnCompleteTransaction = NULL;
 
 	if ( ! pFnCompleteTransaction )
-		pFnCompleteTransaction = (UFunction*) UObject::GObjObjects()->Data[ 60441 ];
+		pFnCompleteTransaction = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.CompleteTransaction" );
 
 	UTgUIUpdateHairMenu_execCompleteTransaction_Parms CompleteTransaction_Parms;
 
@@ -44500,7 +44501,7 @@ void UTgUIUpdateHairMenu::UpdateCreditsInfo ( )
 	static UFunction* pFnUpdateCreditsInfo = NULL;
 
 	if ( ! pFnUpdateCreditsInfo )
-		pFnUpdateCreditsInfo = (UFunction*) UObject::GObjObjects()->Data[ 60440 ];
+		pFnUpdateCreditsInfo = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.UpdateCreditsInfo" );
 
 	UTgUIUpdateHairMenu_execUpdateCreditsInfo_Parms UpdateCreditsInfo_Parms;
 
@@ -44520,7 +44521,7 @@ void UTgUIUpdateHairMenu::UpdateExclusiveLabelStatus ( )
 	static UFunction* pFnUpdateExclusiveLabelStatus = NULL;
 
 	if ( ! pFnUpdateExclusiveLabelStatus )
-		pFnUpdateExclusiveLabelStatus = (UFunction*) UObject::GObjObjects()->Data[ 60439 ];
+		pFnUpdateExclusiveLabelStatus = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.UpdateExclusiveLabelStatus" );
 
 	UTgUIUpdateHairMenu_execUpdateExclusiveLabelStatus_Parms UpdateExclusiveLabelStatus_Parms;
 
@@ -44540,7 +44541,7 @@ void UTgUIUpdateHairMenu::UpdateSliderDisableStatus ( )
 	static UFunction* pFnUpdateSliderDisableStatus = NULL;
 
 	if ( ! pFnUpdateSliderDisableStatus )
-		pFnUpdateSliderDisableStatus = (UFunction*) UObject::GObjObjects()->Data[ 60438 ];
+		pFnUpdateSliderDisableStatus = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.UpdateSliderDisableStatus" );
 
 	UTgUIUpdateHairMenu_execUpdateSliderDisableStatus_Parms UpdateSliderDisableStatus_Parms;
 
@@ -44560,7 +44561,7 @@ void UTgUIUpdateHairMenu::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 60437 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.PreCloseScene" );
 
 	UTgUIUpdateHairMenu_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -44582,7 +44583,7 @@ void UTgUIUpdateHairMenu::OnSecondaryHairColorSliderValueChanged ( class UUIObje
 	static UFunction* pFnOnSecondaryHairColorSliderValueChanged = NULL;
 
 	if ( ! pFnOnSecondaryHairColorSliderValueChanged )
-		pFnOnSecondaryHairColorSliderValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 60434 ];
+		pFnOnSecondaryHairColorSliderValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.OnSecondaryHairColorSliderValueChanged" );
 
 	UTgUIUpdateHairMenu_execOnSecondaryHairColorSliderValueChanged_Parms OnSecondaryHairColorSliderValueChanged_Parms;
 	OnSecondaryHairColorSliderValueChanged_Parms.Sender = Sender;
@@ -44606,7 +44607,7 @@ void UTgUIUpdateHairMenu::OnHairAccessoryColorSliderValueChanged ( class UUIObje
 	static UFunction* pFnOnHairAccessoryColorSliderValueChanged = NULL;
 
 	if ( ! pFnOnHairAccessoryColorSliderValueChanged )
-		pFnOnHairAccessoryColorSliderValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 60431 ];
+		pFnOnHairAccessoryColorSliderValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.OnHairAccessoryColorSliderValueChanged" );
 
 	UTgUIUpdateHairMenu_execOnHairAccessoryColorSliderValueChanged_Parms OnHairAccessoryColorSliderValueChanged_Parms;
 	OnHairAccessoryColorSliderValueChanged_Parms.Sender = Sender;
@@ -44630,7 +44631,7 @@ void UTgUIUpdateHairMenu::OnFacialHairSliderValueChanged ( class UUIObject* Send
 	static UFunction* pFnOnFacialHairSliderValueChanged = NULL;
 
 	if ( ! pFnOnFacialHairSliderValueChanged )
-		pFnOnFacialHairSliderValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 60428 ];
+		pFnOnFacialHairSliderValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.OnFacialHairSliderValueChanged" );
 
 	UTgUIUpdateHairMenu_execOnFacialHairSliderValueChanged_Parms OnFacialHairSliderValueChanged_Parms;
 	OnFacialHairSliderValueChanged_Parms.Sender = Sender;
@@ -44654,7 +44655,7 @@ void UTgUIUpdateHairMenu::OnHairColorSliderValueChanged ( class UUIObject* Sende
 	static UFunction* pFnOnHairColorSliderValueChanged = NULL;
 
 	if ( ! pFnOnHairColorSliderValueChanged )
-		pFnOnHairColorSliderValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 60425 ];
+		pFnOnHairColorSliderValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.OnHairColorSliderValueChanged" );
 
 	UTgUIUpdateHairMenu_execOnHairColorSliderValueChanged_Parms OnHairColorSliderValueChanged_Parms;
 	OnHairColorSliderValueChanged_Parms.Sender = Sender;
@@ -44678,7 +44679,7 @@ void UTgUIUpdateHairMenu::OnHairStyleSliderValueChanged ( class UUIObject* Sende
 	static UFunction* pFnOnHairStyleSliderValueChanged = NULL;
 
 	if ( ! pFnOnHairStyleSliderValueChanged )
-		pFnOnHairStyleSliderValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 60422 ];
+		pFnOnHairStyleSliderValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.OnHairStyleSliderValueChanged" );
 
 	UTgUIUpdateHairMenu_execOnHairStyleSliderValueChanged_Parms OnHairStyleSliderValueChanged_Parms;
 	OnHairStyleSliderValueChanged_Parms.Sender = Sender;
@@ -44700,7 +44701,7 @@ void UTgUIUpdateHairMenu::SubmitButtonPressed ( )
 	static UFunction* pFnSubmitButtonPressed = NULL;
 
 	if ( ! pFnSubmitButtonPressed )
-		pFnSubmitButtonPressed = (UFunction*) UObject::GObjObjects()->Data[ 60421 ];
+		pFnSubmitButtonPressed = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.SubmitButtonPressed" );
 
 	UTgUIUpdateHairMenu_execSubmitButtonPressed_Parms SubmitButtonPressed_Parms;
 
@@ -44721,7 +44722,7 @@ bool UTgUIUpdateHairMenu::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 60419 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.TickTgUIScene" );
 
 	UTgUIUpdateHairMenu_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -44743,7 +44744,7 @@ void UTgUIUpdateHairMenu::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 60418 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUpdateHairMenu.PostOpenScene" );
 
 	UTgUIUpdateHairMenu_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -44763,7 +44764,7 @@ void UTgUIVendorPaymentPopup::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 60503 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorPaymentPopup.PreCloseScene" );
 
 	UTgUIVendorPaymentPopup_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -44783,7 +44784,7 @@ void UTgUIVendorPaymentPopup::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 60502 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorPaymentPopup.PostOpenScene" );
 
 	UTgUIVendorPaymentPopup_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -44807,7 +44808,7 @@ void UTgUIVendorPaymentPopup::OnInvItemStateChange ( class UUIScreenObject* Send
 	static UFunction* pFnOnInvItemStateChange = NULL;
 
 	if ( ! pFnOnInvItemStateChange )
-		pFnOnInvItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 60497 ];
+		pFnOnInvItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorPaymentPopup.OnInvItemStateChange" );
 
 	UTgUIVendorPaymentPopup_execOnInvItemStateChange_Parms OnInvItemStateChange_Parms;
 	OnInvItemStateChange_Parms.Sender = Sender;
@@ -44833,7 +44834,7 @@ bool UTgUIVendorPaymentPopup::OnButtonDelegate ( struct FInputEventParameters* E
 	static UFunction* pFnOnButtonDelegate = NULL;
 
 	if ( ! pFnOnButtonDelegate )
-		pFnOnButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60494 ];
+		pFnOnButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorPaymentPopup.OnButtonDelegate" );
 
 	UTgUIVendorPaymentPopup_execOnButtonDelegate_Parms OnButtonDelegate_Parms;
 
@@ -44858,7 +44859,7 @@ void UTgUIVendorScene::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 55182 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.FixupWidgetsUC" );
 
 	UTgUIVendorScene_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -44876,7 +44877,7 @@ bool UTgUIVendorScene::OnTogglePreviewInvButton ( struct FInputEventParameters* 
 	static UFunction* pFnOnTogglePreviewInvButton = NULL;
 
 	if ( ! pFnOnTogglePreviewInvButton )
-		pFnOnTogglePreviewInvButton = (UFunction*) UObject::GObjObjects()->Data[ 55179 ];
+		pFnOnTogglePreviewInvButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnTogglePreviewInvButton" );
 
 	UTgUIVendorScene_execOnTogglePreviewInvButton_Parms OnTogglePreviewInvButton_Parms;
 
@@ -44903,7 +44904,7 @@ bool UTgUIVendorScene::OnResetPreviewButton ( struct FInputEventParameters* Even
 	static UFunction* pFnOnResetPreviewButton = NULL;
 
 	if ( ! pFnOnResetPreviewButton )
-		pFnOnResetPreviewButton = (UFunction*) UObject::GObjObjects()->Data[ 55176 ];
+		pFnOnResetPreviewButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnResetPreviewButton" );
 
 	UTgUIVendorScene_execOnResetPreviewButton_Parms OnResetPreviewButton_Parms;
 
@@ -44930,7 +44931,7 @@ bool UTgUIVendorScene::OnVendorPrevButton ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnVendorPrevButton = NULL;
 
 	if ( ! pFnOnVendorPrevButton )
-		pFnOnVendorPrevButton = (UFunction*) UObject::GObjObjects()->Data[ 55173 ];
+		pFnOnVendorPrevButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnVendorPrevButton" );
 
 	UTgUIVendorScene_execOnVendorPrevButton_Parms OnVendorPrevButton_Parms;
 
@@ -44957,7 +44958,7 @@ bool UTgUIVendorScene::OnVendorNextButton ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnVendorNextButton = NULL;
 
 	if ( ! pFnOnVendorNextButton )
-		pFnOnVendorNextButton = (UFunction*) UObject::GObjObjects()->Data[ 55170 ];
+		pFnOnVendorNextButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnVendorNextButton" );
 
 	UTgUIVendorScene_execOnVendorNextButton_Parms OnVendorNextButton_Parms;
 
@@ -44986,7 +44987,7 @@ void UTgUIVendorScene::OnInvItemStateChange ( class UUIScreenObject* Sender, int
 	static UFunction* pFnOnInvItemStateChange = NULL;
 
 	if ( ! pFnOnInvItemStateChange )
-		pFnOnInvItemStateChange = (UFunction*) UObject::GObjObjects()->Data[ 55165 ];
+		pFnOnInvItemStateChange = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnInvItemStateChange" );
 
 	UTgUIVendorScene_execOnInvItemStateChange_Parms OnInvItemStateChange_Parms;
 	OnInvItemStateChange_Parms.Sender = Sender;
@@ -45012,7 +45013,7 @@ void UTgUIVendorScene::OnResetDoubleClick ( class UUIScreenObject* Sender, int P
 	static UFunction* pFnOnResetDoubleClick = NULL;
 
 	if ( ! pFnOnResetDoubleClick )
-		pFnOnResetDoubleClick = (UFunction*) UObject::GObjObjects()->Data[ 55162 ];
+		pFnOnResetDoubleClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnResetDoubleClick" );
 
 	UTgUIVendorScene_execOnResetDoubleClick_Parms OnResetDoubleClick_Parms;
 	OnResetDoubleClick_Parms.Sender = Sender;
@@ -45036,7 +45037,7 @@ void UTgUIVendorScene::OnFilterChangedDelegate ( class UUIObject* Sender, int Pl
 	static UFunction* pFnOnFilterChangedDelegate = NULL;
 
 	if ( ! pFnOnFilterChangedDelegate )
-		pFnOnFilterChangedDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55159 ];
+		pFnOnFilterChangedDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnFilterChangedDelegate" );
 
 	UTgUIVendorScene_execOnFilterChangedDelegate_Parms OnFilterChangedDelegate_Parms;
 	OnFilterChangedDelegate_Parms.Sender = Sender;
@@ -45060,7 +45061,7 @@ bool UTgUIVendorScene::OnConfirmYesClicked ( struct FInputEventParameters* Event
 	static UFunction* pFnOnConfirmYesClicked = NULL;
 
 	if ( ! pFnOnConfirmYesClicked )
-		pFnOnConfirmYesClicked = (UFunction*) UObject::GObjObjects()->Data[ 55156 ];
+		pFnOnConfirmYesClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnConfirmYesClicked" );
 
 	UTgUIVendorScene_execOnConfirmYesClicked_Parms OnConfirmYesClicked_Parms;
 
@@ -45087,7 +45088,7 @@ bool UTgUIVendorScene::OnSortVendorDelegate ( struct FInputEventParameters* Even
 	static UFunction* pFnOnSortVendorDelegate = NULL;
 
 	if ( ! pFnOnSortVendorDelegate )
-		pFnOnSortVendorDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55153 ];
+		pFnOnSortVendorDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnSortVendorDelegate" );
 
 	UTgUIVendorScene_execOnSortVendorDelegate_Parms OnSortVendorDelegate_Parms;
 
@@ -45114,7 +45115,7 @@ bool UTgUIVendorScene::OnSortInventoryDelegate ( struct FInputEventParameters* E
 	static UFunction* pFnOnSortInventoryDelegate = NULL;
 
 	if ( ! pFnOnSortInventoryDelegate )
-		pFnOnSortInventoryDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55150 ];
+		pFnOnSortInventoryDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnSortInventoryDelegate" );
 
 	UTgUIVendorScene_execOnSortInventoryDelegate_Parms OnSortInventoryDelegate_Parms;
 
@@ -45141,7 +45142,7 @@ bool UTgUIVendorScene::OnDeleteInventoryItemDelegate ( struct FInputEventParamet
 	static UFunction* pFnOnDeleteInventoryItemDelegate = NULL;
 
 	if ( ! pFnOnDeleteInventoryItemDelegate )
-		pFnOnDeleteInventoryItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55147 ];
+		pFnOnDeleteInventoryItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnDeleteInventoryItemDelegate" );
 
 	UTgUIVendorScene_execOnDeleteInventoryItemDelegate_Parms OnDeleteInventoryItemDelegate_Parms;
 
@@ -45168,7 +45169,7 @@ bool UTgUIVendorScene::OnCloseButtonDelegate ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnCloseButtonDelegate = NULL;
 
 	if ( ! pFnOnCloseButtonDelegate )
-		pFnOnCloseButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55144 ];
+		pFnOnCloseButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnCloseButtonDelegate" );
 
 	UTgUIVendorScene_execOnCloseButtonDelegate_Parms OnCloseButtonDelegate_Parms;
 
@@ -45195,7 +45196,7 @@ bool UTgUIVendorScene::OnSelectInventoryItemDelegate ( struct FInputEventParamet
 	static UFunction* pFnOnSelectInventoryItemDelegate = NULL;
 
 	if ( ! pFnOnSelectInventoryItemDelegate )
-		pFnOnSelectInventoryItemDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55141 ];
+		pFnOnSelectInventoryItemDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnSelectInventoryItemDelegate" );
 
 	UTgUIVendorScene_execOnSelectInventoryItemDelegate_Parms OnSelectInventoryItemDelegate_Parms;
 
@@ -45222,7 +45223,7 @@ bool UTgUIVendorScene::OnVendorItemSellDelegate ( struct FInputEventParameters* 
 	static UFunction* pFnOnVendorItemSellDelegate = NULL;
 
 	if ( ! pFnOnVendorItemSellDelegate )
-		pFnOnVendorItemSellDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55138 ];
+		pFnOnVendorItemSellDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnVendorItemSellDelegate" );
 
 	UTgUIVendorScene_execOnVendorItemSellDelegate_Parms OnVendorItemSellDelegate_Parms;
 
@@ -45249,7 +45250,7 @@ bool UTgUIVendorScene::OnVendorItemPurchaseDelegate ( struct FInputEventParamete
 	static UFunction* pFnOnVendorItemPurchaseDelegate = NULL;
 
 	if ( ! pFnOnVendorItemPurchaseDelegate )
-		pFnOnVendorItemPurchaseDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55135 ];
+		pFnOnVendorItemPurchaseDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnVendorItemPurchaseDelegate" );
 
 	UTgUIVendorScene_execOnVendorItemPurchaseDelegate_Parms OnVendorItemPurchaseDelegate_Parms;
 
@@ -45276,7 +45277,7 @@ bool UTgUIVendorScene::OnVendorItemSelectDelegate ( struct FInputEventParameters
 	static UFunction* pFnOnVendorItemSelectDelegate = NULL;
 
 	if ( ! pFnOnVendorItemSelectDelegate )
-		pFnOnVendorItemSelectDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55132 ];
+		pFnOnVendorItemSelectDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnVendorItemSelectDelegate" );
 
 	UTgUIVendorScene_execOnVendorItemSelectDelegate_Parms OnVendorItemSelectDelegate_Parms;
 
@@ -45303,7 +45304,7 @@ bool UTgUIVendorScene::OnSceneInputKeyDelegate ( struct FInputEventParameters* E
 	static UFunction* pFnOnSceneInputKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneInputKeyDelegate )
-		pFnOnSceneInputKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55129 ];
+		pFnOnSceneInputKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.OnSceneInputKeyDelegate" );
 
 	UTgUIVendorScene_execOnSceneInputKeyDelegate_Parms OnSceneInputKeyDelegate_Parms;
 
@@ -45328,7 +45329,7 @@ void UTgUIVendorScene::PostRender ( )
 	static UFunction* pFnPostRender = NULL;
 
 	if ( ! pFnPostRender )
-		pFnPostRender = (UFunction*) UObject::GObjObjects()->Data[ 55128 ];
+		pFnPostRender = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.PostRender" );
 
 	UTgUIVendorScene_execPostRender_Parms PostRender_Parms;
 
@@ -45348,7 +45349,7 @@ void UTgUIVendorScene::PostOpenScene ( )
 	static UFunction* pFnPostOpenScene = NULL;
 
 	if ( ! pFnPostOpenScene )
-		pFnPostOpenScene = (UFunction*) UObject::GObjObjects()->Data[ 55127 ];
+		pFnPostOpenScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.PostOpenScene" );
 
 	UTgUIVendorScene_execPostOpenScene_Parms PostOpenScene_Parms;
 
@@ -45369,7 +45370,7 @@ bool UTgUIVendorScene::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 55125 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.TickTgUIScene" );
 
 	UTgUIVendorScene_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -45391,7 +45392,7 @@ void UTgUIVendorScene::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 55124 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVendorScene.PreCloseScene" );
 
 	UTgUIVendorScene_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -45413,7 +45414,7 @@ bool UTgUICashShop::OnVendorItemPurchaseDelegate ( struct FInputEventParameters*
 	static UFunction* pFnOnVendorItemPurchaseDelegate = NULL;
 
 	if ( ! pFnOnVendorItemPurchaseDelegate )
-		pFnOnVendorItemPurchaseDelegate = (UFunction*) UObject::GObjObjects()->Data[ 55183 ];
+		pFnOnVendorItemPurchaseDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUICashShop.OnVendorItemPurchaseDelegate" );
 
 	UTgUICashShop_execOnVendorItemPurchaseDelegate_Parms OnVendorItemPurchaseDelegate_Parms;
 
@@ -45438,7 +45439,7 @@ void UTgUIScoreboard::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 59535 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIScoreboard.FixupWidgetsUC" );
 
 	UTgUIScoreboard_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -45454,7 +45455,7 @@ void UTgUIScoreboard::PopulateStructsWithUIPointers ( )
 	static UFunction* pFnPopulateStructsWithUIPointers = NULL;
 
 	if ( ! pFnPopulateStructsWithUIPointers )
-		pFnPopulateStructsWithUIPointers = (UFunction*) UObject::GObjObjects()->Data[ 59534 ];
+		pFnPopulateStructsWithUIPointers = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIScoreboard.PopulateStructsWithUIPointers" );
 
 	UTgUIScoreboard_execPopulateStructsWithUIPointers_Parms PopulateStructsWithUIPointers_Parms;
 
@@ -45474,7 +45475,7 @@ void UTgUIScoreboard::UpdateLabels ( )
 	static UFunction* pFnUpdateLabels = NULL;
 
 	if ( ! pFnUpdateLabels )
-		pFnUpdateLabels = (UFunction*) UObject::GObjObjects()->Data[ 59533 ];
+		pFnUpdateLabels = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIScoreboard.UpdateLabels" );
 
 	UTgUIScoreboard_execUpdateLabels_Parms UpdateLabels_Parms;
 
@@ -45496,7 +45497,7 @@ bool UTgUIScoreboard::OnSceneKey ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnSceneKey = NULL;
 
 	if ( ! pFnOnSceneKey )
-		pFnOnSceneKey = (UFunction*) UObject::GObjObjects()->Data[ 59530 ];
+		pFnOnSceneKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIScoreboard.OnSceneKey" );
 
 	UTgUIScoreboard_execOnSceneKey_Parms OnSceneKey_Parms;
 
@@ -45522,7 +45523,7 @@ bool UTgUIScoreboard::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59528 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIScoreboard.TickTgUIScene" );
 
 	UTgUIScoreboard_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -45544,7 +45545,7 @@ void UTgUIScoreboard::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59527 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIScoreboard.FixupTgUIScene" );
 
 	UTgUIScoreboard_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -45564,7 +45565,7 @@ void UTgUIScoreDetails::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 59581 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIScoreDetails.FixupWidgetsUC" );
 
 	UTgUIScoreDetails_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -45582,7 +45583,7 @@ bool UTgUIScoreDetails::OnEndMissionButton ( struct FInputEventParameters* Event
 	static UFunction* pFnOnEndMissionButton = NULL;
 
 	if ( ! pFnOnEndMissionButton )
-		pFnOnEndMissionButton = (UFunction*) UObject::GObjObjects()->Data[ 59578 ];
+		pFnOnEndMissionButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIScoreDetails.OnEndMissionButton" );
 
 	UTgUIScoreDetails_execOnEndMissionButton_Parms OnEndMissionButton_Parms;
 
@@ -45609,7 +45610,7 @@ bool UTgUIScoreDetails::OnDeviceStatsButton ( struct FInputEventParameters* Even
 	static UFunction* pFnOnDeviceStatsButton = NULL;
 
 	if ( ! pFnOnDeviceStatsButton )
-		pFnOnDeviceStatsButton = (UFunction*) UObject::GObjObjects()->Data[ 59575 ];
+		pFnOnDeviceStatsButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIScoreDetails.OnDeviceStatsButton" );
 
 	UTgUIScoreDetails_execOnDeviceStatsButton_Parms OnDeviceStatsButton_Parms;
 
@@ -45636,7 +45637,7 @@ bool UTgUIScoreDetails::OnSummaryButton ( struct FInputEventParameters* EventPar
 	static UFunction* pFnOnSummaryButton = NULL;
 
 	if ( ! pFnOnSummaryButton )
-		pFnOnSummaryButton = (UFunction*) UObject::GObjObjects()->Data[ 59572 ];
+		pFnOnSummaryButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIScoreDetails.OnSummaryButton" );
 
 	UTgUIScoreDetails_execOnSummaryButton_Parms OnSummaryButton_Parms;
 
@@ -45663,7 +45664,7 @@ bool UTgUIScoreDetails::OnCloseButton ( struct FInputEventParameters* EventParms
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 59569 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIScoreDetails.OnCloseButton" );
 
 	UTgUIScoreDetails_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -45690,7 +45691,7 @@ bool UTgUIScoreDetails::OnFieldClicked ( struct FInputEventParameters* EventParm
 	static UFunction* pFnOnFieldClicked = NULL;
 
 	if ( ! pFnOnFieldClicked )
-		pFnOnFieldClicked = (UFunction*) UObject::GObjObjects()->Data[ 59566 ];
+		pFnOnFieldClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIScoreDetails.OnFieldClicked" );
 
 	UTgUIScoreDetails_execOnFieldClicked_Parms OnFieldClicked_Parms;
 
@@ -45717,7 +45718,7 @@ bool UTgUIScoreDetails::OnSceneKey ( struct FInputEventParameters* EventParms )
 	static UFunction* pFnOnSceneKey = NULL;
 
 	if ( ! pFnOnSceneKey )
-		pFnOnSceneKey = (UFunction*) UObject::GObjObjects()->Data[ 59563 ];
+		pFnOnSceneKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIScoreDetails.OnSceneKey" );
 
 	UTgUIScoreDetails_execOnSceneKey_Parms OnSceneKey_Parms;
 
@@ -45743,7 +45744,7 @@ bool UTgUIScoreDetails::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59561 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIScoreDetails.TickTgUIScene" );
 
 	UTgUIScoreDetails_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -45765,7 +45766,7 @@ void UTgUIScoreDetails::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59560 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIScoreDetails.FixupTgUIScene" );
 
 	UTgUIScoreDetails_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -45787,7 +45788,7 @@ bool UTgUISelectionList::SelectSelectionRow9 ( struct FInputEventParameters* Eve
 	static UFunction* pFnSelectSelectionRow9 = NULL;
 
 	if ( ! pFnSelectSelectionRow9 )
-		pFnSelectSelectionRow9 = (UFunction*) UObject::GObjObjects()->Data[ 59649 ];
+		pFnSelectSelectionRow9 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.SelectSelectionRow9" );
 
 	UTgUISelectionList_execSelectSelectionRow9_Parms SelectSelectionRow9_Parms;
 
@@ -45810,7 +45811,7 @@ bool UTgUISelectionList::SelectSelectionRow8 ( struct FInputEventParameters* Eve
 	static UFunction* pFnSelectSelectionRow8 = NULL;
 
 	if ( ! pFnSelectSelectionRow8 )
-		pFnSelectSelectionRow8 = (UFunction*) UObject::GObjObjects()->Data[ 59646 ];
+		pFnSelectSelectionRow8 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.SelectSelectionRow8" );
 
 	UTgUISelectionList_execSelectSelectionRow8_Parms SelectSelectionRow8_Parms;
 
@@ -45833,7 +45834,7 @@ bool UTgUISelectionList::SelectSelectionRow7 ( struct FInputEventParameters* Eve
 	static UFunction* pFnSelectSelectionRow7 = NULL;
 
 	if ( ! pFnSelectSelectionRow7 )
-		pFnSelectSelectionRow7 = (UFunction*) UObject::GObjObjects()->Data[ 59643 ];
+		pFnSelectSelectionRow7 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.SelectSelectionRow7" );
 
 	UTgUISelectionList_execSelectSelectionRow7_Parms SelectSelectionRow7_Parms;
 
@@ -45856,7 +45857,7 @@ bool UTgUISelectionList::SelectSelectionRow6 ( struct FInputEventParameters* Eve
 	static UFunction* pFnSelectSelectionRow6 = NULL;
 
 	if ( ! pFnSelectSelectionRow6 )
-		pFnSelectSelectionRow6 = (UFunction*) UObject::GObjObjects()->Data[ 59640 ];
+		pFnSelectSelectionRow6 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.SelectSelectionRow6" );
 
 	UTgUISelectionList_execSelectSelectionRow6_Parms SelectSelectionRow6_Parms;
 
@@ -45879,7 +45880,7 @@ bool UTgUISelectionList::SelectSelectionRow5 ( struct FInputEventParameters* Eve
 	static UFunction* pFnSelectSelectionRow5 = NULL;
 
 	if ( ! pFnSelectSelectionRow5 )
-		pFnSelectSelectionRow5 = (UFunction*) UObject::GObjObjects()->Data[ 59637 ];
+		pFnSelectSelectionRow5 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.SelectSelectionRow5" );
 
 	UTgUISelectionList_execSelectSelectionRow5_Parms SelectSelectionRow5_Parms;
 
@@ -45902,7 +45903,7 @@ bool UTgUISelectionList::SelectSelectionRow4 ( struct FInputEventParameters* Eve
 	static UFunction* pFnSelectSelectionRow4 = NULL;
 
 	if ( ! pFnSelectSelectionRow4 )
-		pFnSelectSelectionRow4 = (UFunction*) UObject::GObjObjects()->Data[ 59634 ];
+		pFnSelectSelectionRow4 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.SelectSelectionRow4" );
 
 	UTgUISelectionList_execSelectSelectionRow4_Parms SelectSelectionRow4_Parms;
 
@@ -45925,7 +45926,7 @@ bool UTgUISelectionList::SelectSelectionRow3 ( struct FInputEventParameters* Eve
 	static UFunction* pFnSelectSelectionRow3 = NULL;
 
 	if ( ! pFnSelectSelectionRow3 )
-		pFnSelectSelectionRow3 = (UFunction*) UObject::GObjObjects()->Data[ 59631 ];
+		pFnSelectSelectionRow3 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.SelectSelectionRow3" );
 
 	UTgUISelectionList_execSelectSelectionRow3_Parms SelectSelectionRow3_Parms;
 
@@ -45948,7 +45949,7 @@ bool UTgUISelectionList::SelectSelectionRow2 ( struct FInputEventParameters* Eve
 	static UFunction* pFnSelectSelectionRow2 = NULL;
 
 	if ( ! pFnSelectSelectionRow2 )
-		pFnSelectSelectionRow2 = (UFunction*) UObject::GObjObjects()->Data[ 59628 ];
+		pFnSelectSelectionRow2 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.SelectSelectionRow2" );
 
 	UTgUISelectionList_execSelectSelectionRow2_Parms SelectSelectionRow2_Parms;
 
@@ -45971,7 +45972,7 @@ bool UTgUISelectionList::SelectSelectionRow1 ( struct FInputEventParameters* Eve
 	static UFunction* pFnSelectSelectionRow1 = NULL;
 
 	if ( ! pFnSelectSelectionRow1 )
-		pFnSelectSelectionRow1 = (UFunction*) UObject::GObjObjects()->Data[ 59625 ];
+		pFnSelectSelectionRow1 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.SelectSelectionRow1" );
 
 	UTgUISelectionList_execSelectSelectionRow1_Parms SelectSelectionRow1_Parms;
 
@@ -45994,7 +45995,7 @@ bool UTgUISelectionList::SelectSelectionRow0 ( struct FInputEventParameters* Eve
 	static UFunction* pFnSelectSelectionRow0 = NULL;
 
 	if ( ! pFnSelectSelectionRow0 )
-		pFnSelectSelectionRow0 = (UFunction*) UObject::GObjObjects()->Data[ 59622 ];
+		pFnSelectSelectionRow0 = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.SelectSelectionRow0" );
 
 	UTgUISelectionList_execSelectSelectionRow0_Parms SelectSelectionRow0_Parms;
 
@@ -46017,7 +46018,7 @@ void UTgUISelectionList::ModifyScrollPos ( int nTimerId, unsigned char eEvent )
 	static UFunction* pFnModifyScrollPos = NULL;
 
 	if ( ! pFnModifyScrollPos )
-		pFnModifyScrollPos = (UFunction*) UObject::GObjObjects()->Data[ 59618 ];
+		pFnModifyScrollPos = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.ModifyScrollPos" );
 
 	UTgUISelectionList_execModifyScrollPos_Parms ModifyScrollPos_Parms;
 	ModifyScrollPos_Parms.nTimerId = nTimerId;
@@ -46037,7 +46038,7 @@ bool UTgUISelectionList::ScrollListUp ( struct FInputEventParameters* EventParms
 	static UFunction* pFnScrollListUp = NULL;
 
 	if ( ! pFnScrollListUp )
-		pFnScrollListUp = (UFunction*) UObject::GObjObjects()->Data[ 59615 ];
+		pFnScrollListUp = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.ScrollListUp" );
 
 	UTgUISelectionList_execScrollListUp_Parms ScrollListUp_Parms;
 
@@ -46060,7 +46061,7 @@ bool UTgUISelectionList::ScrollListDown ( struct FInputEventParameters* EventPar
 	static UFunction* pFnScrollListDown = NULL;
 
 	if ( ! pFnScrollListDown )
-		pFnScrollListDown = (UFunction*) UObject::GObjObjects()->Data[ 59612 ];
+		pFnScrollListDown = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.ScrollListDown" );
 
 	UTgUISelectionList_execScrollListDown_Parms ScrollListDown_Parms;
 
@@ -46081,7 +46082,7 @@ void UTgUISelectionList::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 59610 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.FixupWidgetsUC" );
 
 	UTgUISelectionList_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -46097,7 +46098,7 @@ void UTgUISelectionList::eventInitSelectionListScene ( )
 	static UFunction* pFnInitSelectionListScene = NULL;
 
 	if ( ! pFnInitSelectionListScene )
-		pFnInitSelectionListScene = (UFunction*) UObject::GObjObjects()->Data[ 59609 ];
+		pFnInitSelectionListScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.InitSelectionListScene" );
 
 	UTgUISelectionList_eventInitSelectionListScene_Parms InitSelectionListScene_Parms;
 
@@ -46117,7 +46118,7 @@ bool UTgUISelectionList::SelectSelectionRow ( struct FName Key, unsigned char Ev
 	static UFunction* pFnSelectSelectionRow = NULL;
 
 	if ( ! pFnSelectSelectionRow )
-		pFnSelectSelectionRow = (UFunction*) UObject::GObjObjects()->Data[ 59604 ];
+		pFnSelectSelectionRow = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.SelectSelectionRow" );
 
 	UTgUISelectionList_execSelectSelectionRow_Parms SelectSelectionRow_Parms;
 	memcpy ( &SelectSelectionRow_Parms.Key, &Key, 0x8 );
@@ -46138,7 +46139,7 @@ void UTgUISelectionList::PreCloseScene ( )
 	static UFunction* pFnPreCloseScene = NULL;
 
 	if ( ! pFnPreCloseScene )
-		pFnPreCloseScene = (UFunction*) UObject::GObjObjects()->Data[ 59603 ];
+		pFnPreCloseScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.PreCloseScene" );
 
 	UTgUISelectionList_execPreCloseScene_Parms PreCloseScene_Parms;
 
@@ -46158,7 +46159,7 @@ void UTgUISelectionList::DrawGrid ( )
 	static UFunction* pFnDrawGrid = NULL;
 
 	if ( ! pFnDrawGrid )
-		pFnDrawGrid = (UFunction*) UObject::GObjObjects()->Data[ 59602 ];
+		pFnDrawGrid = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.DrawGrid" );
 
 	UTgUISelectionList_execDrawGrid_Parms DrawGrid_Parms;
 
@@ -46178,7 +46179,7 @@ void UTgUISelectionList::GetSelectionCallback ( )
 	static UFunction* pFnGetSelectionCallback = NULL;
 
 	if ( ! pFnGetSelectionCallback )
-		pFnGetSelectionCallback = (UFunction*) UObject::GObjObjects()->Data[ 59601 ];
+		pFnGetSelectionCallback = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.GetSelectionCallback" );
 
 	UTgUISelectionList_execGetSelectionCallback_Parms GetSelectionCallback_Parms;
 
@@ -46198,7 +46199,7 @@ void UTgUISelectionList::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 59600 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.FixupWidgets" );
 
 	UTgUISelectionList_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -46219,7 +46220,7 @@ bool UTgUISelectionList::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59598 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.TickTgUIScene" );
 
 	UTgUISelectionList_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -46241,7 +46242,7 @@ void UTgUISelectionList::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59597 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISelectionList.FixupTgUIScene" );
 
 	UTgUISelectionList_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -46264,7 +46265,7 @@ bool UTgUISettingsMenu_Chat::OnSubmitText ( class UUIEditBox* ebox, int PlayerIn
 	static UFunction* pFnOnSubmitText = NULL;
 
 	if ( ! pFnOnSubmitText )
-		pFnOnSubmitText = (UFunction*) UObject::GObjObjects()->Data[ 59690 ];
+		pFnOnSubmitText = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Chat.OnSubmitText" );
 
 	UTgUISettingsMenu_Chat_execOnSubmitText_Parms OnSubmitText_Parms;
 	OnSubmitText_Parms.ebox = ebox;
@@ -46290,7 +46291,7 @@ bool UTgUISettingsMenu_Chat::OnCloseButton ( struct FInputEventParameters* Event
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 59687 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Chat.OnCloseButton" );
 
 	UTgUISettingsMenu_Chat_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -46317,7 +46318,7 @@ bool UTgUISettingsMenu_Chat::OnEboxClicked ( struct FInputEventParameters* Event
 	static UFunction* pFnOnEboxClicked = NULL;
 
 	if ( ! pFnOnEboxClicked )
-		pFnOnEboxClicked = (UFunction*) UObject::GObjObjects()->Data[ 59684 ];
+		pFnOnEboxClicked = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Chat.OnEboxClicked" );
 
 	UTgUISettingsMenu_Chat_execOnEboxClicked_Parms OnEboxClicked_Parms;
 
@@ -46344,7 +46345,7 @@ bool UTgUISettingsMenu_Chat::OnTabClickedDelegate ( struct FInputEventParameters
 	static UFunction* pFnOnTabClickedDelegate = NULL;
 
 	if ( ! pFnOnTabClickedDelegate )
-		pFnOnTabClickedDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59681 ];
+		pFnOnTabClickedDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Chat.OnTabClickedDelegate" );
 
 	UTgUISettingsMenu_Chat_execOnTabClickedDelegate_Parms OnTabClickedDelegate_Parms;
 
@@ -46371,7 +46372,7 @@ bool UTgUISettingsMenu_Chat::OnApplyButtonKey ( struct FInputEventParameters* Ev
 	static UFunction* pFnOnApplyButtonKey = NULL;
 
 	if ( ! pFnOnApplyButtonKey )
-		pFnOnApplyButtonKey = (UFunction*) UObject::GObjObjects()->Data[ 59678 ];
+		pFnOnApplyButtonKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Chat.OnApplyButtonKey" );
 
 	UTgUISettingsMenu_Chat_execOnApplyButtonKey_Parms OnApplyButtonKey_Parms;
 
@@ -46398,7 +46399,7 @@ void UTgUISettingsMenu_Chat::OnOpacityValueChanged ( class UUIObject* Sender, in
 	static UFunction* pFnOnOpacityValueChanged = NULL;
 
 	if ( ! pFnOnOpacityValueChanged )
-		pFnOnOpacityValueChanged = (UFunction*) UObject::GObjObjects()->Data[ 59675 ];
+		pFnOnOpacityValueChanged = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Chat.OnOpacityValueChanged" );
 
 	UTgUISettingsMenu_Chat_execOnOpacityValueChanged_Parms OnOpacityValueChanged_Parms;
 	OnOpacityValueChanged_Parms.Sender = Sender;
@@ -46420,7 +46421,7 @@ void UTgUISettingsMenu_Chat::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59674 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Chat.FixupTgUIScene" );
 
 	UTgUISettingsMenu_Chat_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -46440,7 +46441,7 @@ void UTgUISettingsMenu_Controls::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 59794 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.FixupWidgetsUC" );
 
 	UTgUISettingsMenu_Controls_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -46457,7 +46458,7 @@ void UTgUISettingsMenu_Controls::eventSetKeyBindSelectDelegate ( class UUIScreen
 	static UFunction* pFnSetKeyBindSelectDelegate = NULL;
 
 	if ( ! pFnSetKeyBindSelectDelegate )
-		pFnSetKeyBindSelectDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59792 ];
+		pFnSetKeyBindSelectDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.SetKeyBindSelectDelegate" );
 
 	UTgUISettingsMenu_Controls_eventSetKeyBindSelectDelegate_Parms SetKeyBindSelectDelegate_Parms;
 	SetKeyBindSelectDelegate_Parms.Obj = Obj;
@@ -46477,7 +46478,7 @@ void UTgUISettingsMenu_Controls::eventSetBind ( struct FName BindName, struct FS
 	static UFunction* pFnSetBind = NULL;
 
 	if ( ! pFnSetBind )
-		pFnSetBind = (UFunction*) UObject::GObjObjects()->Data[ 59787 ];
+		pFnSetBind = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.SetBind" );
 
 	UTgUISettingsMenu_Controls_eventSetBind_Parms SetBind_Parms;
 	memcpy ( &SetBind_Parms.BindName, &BindName, 0x8 );
@@ -46496,7 +46497,7 @@ void UTgUISettingsMenu_Controls::OnBindingsUpdated ( )
 	static UFunction* pFnOnBindingsUpdated = NULL;
 
 	if ( ! pFnOnBindingsUpdated )
-		pFnOnBindingsUpdated = (UFunction*) UObject::GObjObjects()->Data[ 59786 ];
+		pFnOnBindingsUpdated = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.OnBindingsUpdated" );
 
 	UTgUISettingsMenu_Controls_execOnBindingsUpdated_Parms OnBindingsUpdated_Parms;
 
@@ -46519,7 +46520,7 @@ struct FString UTgUISettingsMenu_Controls::GetBind ( struct FName Key, unsigned 
 	static UFunction* pFnGetBind = NULL;
 
 	if ( ! pFnGetBind )
-		pFnGetBind = (UFunction*) UObject::GObjObjects()->Data[ 59782 ];
+		pFnGetBind = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.GetBind" );
 
 	UTgUISettingsMenu_Controls_execGetBind_Parms GetBind_Parms;
 	memcpy ( &GetBind_Parms.Key, &Key, 0x8 );
@@ -46545,7 +46546,7 @@ struct FString UTgUISettingsMenu_Controls::GetPreviousCommandName ( struct FStri
 	static UFunction* pFnGetPreviousCommandName = NULL;
 
 	if ( ! pFnGetPreviousCommandName )
-		pFnGetPreviousCommandName = (UFunction*) UObject::GObjObjects()->Data[ 59779 ];
+		pFnGetPreviousCommandName = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.GetPreviousCommandName" );
 
 	UTgUISettingsMenu_Controls_execGetPreviousCommandName_Parms GetPreviousCommandName_Parms;
 	memcpy ( &GetPreviousCommandName_Parms.currentBinding, &currentBinding, 0xC );
@@ -46569,7 +46570,7 @@ void UTgUISettingsMenu_Controls::UnbindCommand ( struct FString Command )
 	static UFunction* pFnUnbindCommand = NULL;
 
 	if ( ! pFnUnbindCommand )
-		pFnUnbindCommand = (UFunction*) UObject::GObjObjects()->Data[ 59777 ];
+		pFnUnbindCommand = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.UnbindCommand" );
 
 	UTgUISettingsMenu_Controls_execUnbindCommand_Parms UnbindCommand_Parms;
 	memcpy ( &UnbindCommand_Parms.Command, &Command, 0xC );
@@ -46591,7 +46592,7 @@ void UTgUISettingsMenu_Controls::CaptureKeyToBind ( struct FName KeyName )
 	static UFunction* pFnCaptureKeyToBind = NULL;
 
 	if ( ! pFnCaptureKeyToBind )
-		pFnCaptureKeyToBind = (UFunction*) UObject::GObjObjects()->Data[ 59775 ];
+		pFnCaptureKeyToBind = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.CaptureKeyToBind" );
 
 	UTgUISettingsMenu_Controls_execCaptureKeyToBind_Parms CaptureKeyToBind_Parms;
 	memcpy ( &CaptureKeyToBind_Parms.KeyName, &KeyName, 0x8 );
@@ -46612,7 +46613,7 @@ void UTgUISettingsMenu_Controls::DisableBinding ( )
 	static UFunction* pFnDisableBinding = NULL;
 
 	if ( ! pFnDisableBinding )
-		pFnDisableBinding = (UFunction*) UObject::GObjObjects()->Data[ 59774 ];
+		pFnDisableBinding = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.DisableBinding" );
 
 	UTgUISettingsMenu_Controls_execDisableBinding_Parms DisableBinding_Parms;
 
@@ -46632,7 +46633,7 @@ void UTgUISettingsMenu_Controls::EnableBinding ( )
 	static UFunction* pFnEnableBinding = NULL;
 
 	if ( ! pFnEnableBinding )
-		pFnEnableBinding = (UFunction*) UObject::GObjObjects()->Data[ 59773 ];
+		pFnEnableBinding = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.EnableBinding" );
 
 	UTgUISettingsMenu_Controls_execEnableBinding_Parms EnableBinding_Parms;
 
@@ -46652,7 +46653,7 @@ void UTgUISettingsMenu_Controls::CreateWidgetsFromBindData ( )
 	static UFunction* pFnCreateWidgetsFromBindData = NULL;
 
 	if ( ! pFnCreateWidgetsFromBindData )
-		pFnCreateWidgetsFromBindData = (UFunction*) UObject::GObjObjects()->Data[ 59772 ];
+		pFnCreateWidgetsFromBindData = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.CreateWidgetsFromBindData" );
 
 	UTgUISettingsMenu_Controls_execCreateWidgetsFromBindData_Parms CreateWidgetsFromBindData_Parms;
 
@@ -46672,7 +46673,7 @@ void UTgUISettingsMenu_Controls::PopulateBindDataArray ( )
 	static UFunction* pFnPopulateBindDataArray = NULL;
 
 	if ( ! pFnPopulateBindDataArray )
-		pFnPopulateBindDataArray = (UFunction*) UObject::GObjObjects()->Data[ 59771 ];
+		pFnPopulateBindDataArray = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.PopulateBindDataArray" );
 
 	UTgUISettingsMenu_Controls_execPopulateBindDataArray_Parms PopulateBindDataArray_Parms;
 
@@ -46692,7 +46693,7 @@ void UTgUISettingsMenu_Controls::PopulateWidgets ( )
 	static UFunction* pFnPopulateWidgets = NULL;
 
 	if ( ! pFnPopulateWidgets )
-		pFnPopulateWidgets = (UFunction*) UObject::GObjObjects()->Data[ 59770 ];
+		pFnPopulateWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.PopulateWidgets" );
 
 	UTgUISettingsMenu_Controls_execPopulateWidgets_Parms PopulateWidgets_Parms;
 
@@ -46712,7 +46713,7 @@ void UTgUISettingsMenu_Controls::FixupWidgets ( )
 	static UFunction* pFnFixupWidgets = NULL;
 
 	if ( ! pFnFixupWidgets )
-		pFnFixupWidgets = (UFunction*) UObject::GObjObjects()->Data[ 59769 ];
+		pFnFixupWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.FixupWidgets" );
 
 	UTgUISettingsMenu_Controls_execFixupWidgets_Parms FixupWidgets_Parms;
 
@@ -46733,7 +46734,7 @@ bool UTgUISettingsMenu_Controls::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59767 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.TickTgUIScene" );
 
 	UTgUISettingsMenu_Controls_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -46755,7 +46756,7 @@ void UTgUISettingsMenu_Controls::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 59766 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.FixupTgUIScene" );
 
 	UTgUISettingsMenu_Controls_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -46777,7 +46778,7 @@ bool UTgUISettingsMenu_Controls::OnTabClickedDelegate ( struct FInputEventParame
 	static UFunction* pFnOnTabClickedDelegate = NULL;
 
 	if ( ! pFnOnTabClickedDelegate )
-		pFnOnTabClickedDelegate = (UFunction*) UObject::GObjObjects()->Data[ 59763 ];
+		pFnOnTabClickedDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.OnTabClickedDelegate" );
 
 	UTgUISettingsMenu_Controls_execOnTabClickedDelegate_Parms OnTabClickedDelegate_Parms;
 
@@ -46804,7 +46805,7 @@ bool UTgUISettingsMenu_Controls::OnCloseButton ( struct FInputEventParameters* E
 	static UFunction* pFnOnCloseButton = NULL;
 
 	if ( ! pFnOnCloseButton )
-		pFnOnCloseButton = (UFunction*) UObject::GObjObjects()->Data[ 59760 ];
+		pFnOnCloseButton = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.OnCloseButton" );
 
 	UTgUISettingsMenu_Controls_execOnCloseButton_Parms OnCloseButton_Parms;
 
@@ -46831,7 +46832,7 @@ bool UTgUISettingsMenu_Controls::OnKeyBindConfirmNo ( struct FInputEventParamete
 	static UFunction* pFnOnKeyBindConfirmNo = NULL;
 
 	if ( ! pFnOnKeyBindConfirmNo )
-		pFnOnKeyBindConfirmNo = (UFunction*) UObject::GObjObjects()->Data[ 59757 ];
+		pFnOnKeyBindConfirmNo = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.OnKeyBindConfirmNo" );
 
 	UTgUISettingsMenu_Controls_execOnKeyBindConfirmNo_Parms OnKeyBindConfirmNo_Parms;
 
@@ -46858,7 +46859,7 @@ bool UTgUISettingsMenu_Controls::OnKeyBindConfirmYes ( struct FInputEventParamet
 	static UFunction* pFnOnKeyBindConfirmYes = NULL;
 
 	if ( ! pFnOnKeyBindConfirmYes )
-		pFnOnKeyBindConfirmYes = (UFunction*) UObject::GObjObjects()->Data[ 59754 ];
+		pFnOnKeyBindConfirmYes = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.OnKeyBindConfirmYes" );
 
 	UTgUISettingsMenu_Controls_execOnKeyBindConfirmYes_Parms OnKeyBindConfirmYes_Parms;
 
@@ -46885,7 +46886,7 @@ bool UTgUISettingsMenu_Controls::OnKeyBindBase ( struct FInputEventParameters* E
 	static UFunction* pFnOnKeyBindBase = NULL;
 
 	if ( ! pFnOnKeyBindBase )
-		pFnOnKeyBindBase = (UFunction*) UObject::GObjObjects()->Data[ 59751 ];
+		pFnOnKeyBindBase = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.OnKeyBindBase" );
 
 	UTgUISettingsMenu_Controls_execOnKeyBindBase_Parms OnKeyBindBase_Parms;
 
@@ -46912,7 +46913,7 @@ bool UTgUISettingsMenu_Controls::OnKeyBindDefaults ( struct FInputEventParameter
 	static UFunction* pFnOnKeyBindDefaults = NULL;
 
 	if ( ! pFnOnKeyBindDefaults )
-		pFnOnKeyBindDefaults = (UFunction*) UObject::GObjObjects()->Data[ 59748 ];
+		pFnOnKeyBindDefaults = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.OnKeyBindDefaults" );
 
 	UTgUISettingsMenu_Controls_execOnKeyBindDefaults_Parms OnKeyBindDefaults_Parms;
 
@@ -46939,7 +46940,7 @@ bool UTgUISettingsMenu_Controls::OnKeyBindMenuKey ( struct FInputEventParameters
 	static UFunction* pFnOnKeyBindMenuKey = NULL;
 
 	if ( ! pFnOnKeyBindMenuKey )
-		pFnOnKeyBindMenuKey = (UFunction*) UObject::GObjObjects()->Data[ 59745 ];
+		pFnOnKeyBindMenuKey = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISettingsMenu_Controls.OnKeyBindMenuKey" );
 
 	UTgUISettingsMenu_Controls_execOnKeyBindMenuKey_Parms OnKeyBindMenuKey_Parms;
 
@@ -46965,7 +46966,7 @@ void UTgUIUnlockScene::eventRequestPlayersSkillsFromServer ( class ATgPawn_Chara
 	static UFunction* pFnRequestPlayersSkillsFromServer = NULL;
 
 	if ( ! pFnRequestPlayersSkillsFromServer )
-		pFnRequestPlayersSkillsFromServer = (UFunction*) UObject::GObjObjects()->Data[ 60280 ];
+		pFnRequestPlayersSkillsFromServer = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUnlockScene.RequestPlayersSkillsFromServer" );
 
 	UTgUIUnlockScene_eventRequestPlayersSkillsFromServer_Parms RequestPlayersSkillsFromServer_Parms;
 	RequestPlayersSkillsFromServer_Parms.MyPawn = MyPawn;
@@ -46982,7 +46983,7 @@ void UTgUIUnlockScene::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 60278 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUnlockScene.FixupWidgetsUC" );
 
 	UTgUIUnlockScene_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -47000,7 +47001,7 @@ bool UTgUIUnlockScene::OnNavButtonDelegate ( struct FInputEventParameters* Event
 	static UFunction* pFnOnNavButtonDelegate = NULL;
 
 	if ( ! pFnOnNavButtonDelegate )
-		pFnOnNavButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60275 ];
+		pFnOnNavButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUnlockScene.OnNavButtonDelegate" );
 
 	UTgUIUnlockScene_execOnNavButtonDelegate_Parms OnNavButtonDelegate_Parms;
 
@@ -47027,7 +47028,7 @@ bool UTgUIUnlockScene::OnEquipButtonDelegate ( struct FInputEventParameters* Eve
 	static UFunction* pFnOnEquipButtonDelegate = NULL;
 
 	if ( ! pFnOnEquipButtonDelegate )
-		pFnOnEquipButtonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60272 ];
+		pFnOnEquipButtonDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUnlockScene.OnEquipButtonDelegate" );
 
 	UTgUIUnlockScene_execOnEquipButtonDelegate_Parms OnEquipButtonDelegate_Parms;
 
@@ -47054,7 +47055,7 @@ bool UTgUIUnlockScene::OnSceneKeyDelegate ( struct FInputEventParameters* EventP
 	static UFunction* pFnOnSceneKeyDelegate = NULL;
 
 	if ( ! pFnOnSceneKeyDelegate )
-		pFnOnSceneKeyDelegate = (UFunction*) UObject::GObjObjects()->Data[ 60269 ];
+		pFnOnSceneKeyDelegate = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUnlockScene.OnSceneKeyDelegate" );
 
 	UTgUIUnlockScene_execOnSceneKeyDelegate_Parms OnSceneKeyDelegate_Parms;
 
@@ -47081,7 +47082,7 @@ class ATgPointOfInterest* UTgUIUnlockScene::GetPOIByMsgId ( int msgId )
 	static UFunction* pFnGetPOIByMsgId = NULL;
 
 	if ( ! pFnGetPOIByMsgId )
-		pFnGetPOIByMsgId = (UFunction*) UObject::GObjObjects()->Data[ 60266 ];
+		pFnGetPOIByMsgId = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUnlockScene.GetPOIByMsgId" );
 
 	UTgUIUnlockScene_execGetPOIByMsgId_Parms GetPOIByMsgId_Parms;
 	GetPOIByMsgId_Parms.msgId = msgId;
@@ -47104,7 +47105,7 @@ void UTgUIUnlockScene::ProcessUnlockData ( )
 	static UFunction* pFnProcessUnlockData = NULL;
 
 	if ( ! pFnProcessUnlockData )
-		pFnProcessUnlockData = (UFunction*) UObject::GObjObjects()->Data[ 60265 ];
+		pFnProcessUnlockData = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUnlockScene.ProcessUnlockData" );
 
 	UTgUIUnlockScene_execProcessUnlockData_Parms ProcessUnlockData_Parms;
 
@@ -47125,7 +47126,7 @@ void UTgUIUnlockScene::CheckLevelUnlocks ( unsigned long bNewLevel )
 	static UFunction* pFnCheckLevelUnlocks = NULL;
 
 	if ( ! pFnCheckLevelUnlocks )
-		pFnCheckLevelUnlocks = (UFunction*) UObject::GObjObjects()->Data[ 60263 ];
+		pFnCheckLevelUnlocks = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUnlockScene.CheckLevelUnlocks" );
 
 	UTgUIUnlockScene_execCheckLevelUnlocks_Parms CheckLevelUnlocks_Parms;
 	CheckLevelUnlocks_Parms.bNewLevel = bNewLevel;
@@ -47146,7 +47147,7 @@ void UTgUIUnlockScene::PopulateUnlockWidgets ( )
 	static UFunction* pFnPopulateUnlockWidgets = NULL;
 
 	if ( ! pFnPopulateUnlockWidgets )
-		pFnPopulateUnlockWidgets = (UFunction*) UObject::GObjObjects()->Data[ 60262 ];
+		pFnPopulateUnlockWidgets = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUnlockScene.PopulateUnlockWidgets" );
 
 	UTgUIUnlockScene_execPopulateUnlockWidgets_Parms PopulateUnlockWidgets_Parms;
 
@@ -47167,7 +47168,7 @@ bool UTgUIUnlockScene::TickTgUIScene ( )
 	static UFunction* pFnTickTgUIScene = NULL;
 
 	if ( ! pFnTickTgUIScene )
-		pFnTickTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 60260 ];
+		pFnTickTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUnlockScene.TickTgUIScene" );
 
 	UTgUIUnlockScene_execTickTgUIScene_Parms TickTgUIScene_Parms;
 
@@ -47189,7 +47190,7 @@ void UTgUIUnlockScene::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 60259 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIUnlockScene.FixupTgUIScene" );
 
 	UTgUIUnlockScene_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -47211,7 +47212,7 @@ bool UTgUIVoiceSetup::OnApplyButtonClick ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnApplyButtonClick = NULL;
 
 	if ( ! pFnOnApplyButtonClick )
-		pFnOnApplyButtonClick = (UFunction*) UObject::GObjObjects()->Data[ 60516 ];
+		pFnOnApplyButtonClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVoiceSetup.OnApplyButtonClick" );
 
 	UTgUIVoiceSetup_execOnApplyButtonClick_Parms OnApplyButtonClick_Parms;
 
@@ -47234,7 +47235,7 @@ bool UTgUIVoiceSetup::OnCloseButtonClick ( struct FInputEventParameters* EventPa
 	static UFunction* pFnOnCloseButtonClick = NULL;
 
 	if ( ! pFnOnCloseButtonClick )
-		pFnOnCloseButtonClick = (UFunction*) UObject::GObjObjects()->Data[ 60513 ];
+		pFnOnCloseButtonClick = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVoiceSetup.OnCloseButtonClick" );
 
 	UTgUIVoiceSetup_execOnCloseButtonClick_Parms OnCloseButtonClick_Parms;
 
@@ -47255,7 +47256,7 @@ void UTgUIVoiceSetup::eventFixupWidgetsUC ( )
 	static UFunction* pFnFixupWidgetsUC = NULL;
 
 	if ( ! pFnFixupWidgetsUC )
-		pFnFixupWidgetsUC = (UFunction*) UObject::GObjObjects()->Data[ 60512 ];
+		pFnFixupWidgetsUC = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVoiceSetup.FixupWidgetsUC" );
 
 	UTgUIVoiceSetup_eventFixupWidgetsUC_Parms FixupWidgetsUC_Parms;
 
@@ -47271,7 +47272,7 @@ void UTgUIVoiceSetup::FixupTgUIScene ( )
 	static UFunction* pFnFixupTgUIScene = NULL;
 
 	if ( ! pFnFixupTgUIScene )
-		pFnFixupTgUIScene = (UFunction*) UObject::GObjObjects()->Data[ 60511 ];
+		pFnFixupTgUIScene = (UFunction*) ObjectCache::Find( "Function TgClient.TgUIVoiceSetup.FixupTgUIScene" );
 
 	UTgUIVoiceSetup_execFixupTgUIScene_Parms FixupTgUIScene_Parms;
 
@@ -47291,7 +47292,7 @@ void UTgUISceneManager::TickOpenScenes ( )
 	static UFunction* pFnTickOpenScenes = NULL;
 
 	if ( ! pFnTickOpenScenes )
-		pFnTickOpenScenes = (UFunction*) UObject::GObjObjects()->Data[ 59506 ];
+		pFnTickOpenScenes = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneManager.TickOpenScenes" );
 
 	UTgUISceneManager_execTickOpenScenes_Parms TickOpenScenes_Parms;
 
@@ -47313,7 +47314,7 @@ bool UTgUISceneManager::ReleaseSceneDriverIfNotOpened ( class UTgUISceneDriver* 
 	static UFunction* pFnReleaseSceneDriverIfNotOpened = NULL;
 
 	if ( ! pFnReleaseSceneDriverIfNotOpened )
-		pFnReleaseSceneDriverIfNotOpened = (UFunction*) UObject::GObjObjects()->Data[ 59503 ];
+		pFnReleaseSceneDriverIfNotOpened = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneManager.ReleaseSceneDriverIfNotOpened" );
 
 	UTgUISceneManager_execReleaseSceneDriverIfNotOpened_Parms ReleaseSceneDriverIfNotOpened_Parms;
 	ReleaseSceneDriverIfNotOpened_Parms.SceneDriver = SceneDriver;
@@ -47338,7 +47339,7 @@ struct FName UTgUISceneManager::GetSceneDriverNameByResource ( struct FString Re
 	static UFunction* pFnGetSceneDriverNameByResource = NULL;
 
 	if ( ! pFnGetSceneDriverNameByResource )
-		pFnGetSceneDriverNameByResource = (UFunction*) UObject::GObjObjects()->Data[ 59500 ];
+		pFnGetSceneDriverNameByResource = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneManager.GetSceneDriverNameByResource" );
 
 	UTgUISceneManager_execGetSceneDriverNameByResource_Parms GetSceneDriverNameByResource_Parms;
 	memcpy ( &GetSceneDriverNameByResource_Parms.ResourceName, &ResourceName, 0xC );
@@ -47364,7 +47365,7 @@ class UTgUISceneDriver* UTgUISceneManager::GetSceneDriver ( struct FName DriverC
 	static UFunction* pFnGetSceneDriver = NULL;
 
 	if ( ! pFnGetSceneDriver )
-		pFnGetSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 59496 ];
+		pFnGetSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneManager.GetSceneDriver" );
 
 	UTgUISceneManager_execGetSceneDriver_Parms GetSceneDriver_Parms;
 	memcpy ( &GetSceneDriver_Parms.DriverClass, &DriverClass, 0x8 );
@@ -47390,7 +47391,7 @@ class UTgUISceneDriver* UTgUISceneManager::OpenSceneDriver ( struct FName Driver
 	static UFunction* pFnOpenSceneDriver = NULL;
 
 	if ( ! pFnOpenSceneDriver )
-		pFnOpenSceneDriver = (UFunction*) UObject::GObjObjects()->Data[ 59493 ];
+		pFnOpenSceneDriver = (UFunction*) ObjectCache::Find( "Function TgClient.TgUISceneManager.OpenSceneDriver" );
 
 	UTgUISceneManager_execOpenSceneDriver_Parms OpenSceneDriver_Parms;
 	memcpy ( &OpenSceneDriver_Parms.DriverClass, &DriverClass, 0x8 );
@@ -47413,7 +47414,7 @@ void ATgEntryHUD::DrawHUD ( )
 	static UFunction* pFnDrawHUD = NULL;
 
 	if ( ! pFnDrawHUD )
-		pFnDrawHUD = (UFunction*) UObject::GObjObjects()->Data[ 51254 ];
+		pFnDrawHUD = (UFunction*) ObjectCache::Find( "Function TgClient.TgEntryHUD.DrawHUD" );
 
 	ATgEntryHUD_execDrawHUD_Parms DrawHUD_Parms;
 
@@ -47433,7 +47434,7 @@ void ATgHUD_TeamGame::DrawCol ( float X1, float X2, float Y, class ATgRepInfo_Pl
 	static UFunction* pFnDrawCol = NULL;
 
 	if ( ! pFnDrawCol )
-		pFnDrawCol = (UFunction*) UObject::GObjObjects()->Data[ 52017 ];
+		pFnDrawCol = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_TeamGame.DrawCol" );
 
 	ATgHUD_TeamGame_execDrawCol_Parms DrawCol_Parms;
 	DrawCol_Parms.X1 = X1;
@@ -47453,7 +47454,7 @@ void ATgHUD_TeamGame::DrawTeams ( )
 	static UFunction* pFnDrawTeams = NULL;
 
 	if ( ! pFnDrawTeams )
-		pFnDrawTeams = (UFunction*) UObject::GObjObjects()->Data[ 51997 ];
+		pFnDrawTeams = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_TeamGame.DrawTeams" );
 
 	ATgHUD_TeamGame_execDrawTeams_Parms DrawTeams_Parms;
 
@@ -47469,7 +47470,7 @@ void ATgHUD_TeamGame::DrawHUD ( )
 	static UFunction* pFnDrawHUD = NULL;
 
 	if ( ! pFnDrawHUD )
-		pFnDrawHUD = (UFunction*) UObject::GObjObjects()->Data[ 51996 ];
+		pFnDrawHUD = (UFunction*) ObjectCache::Find( "Function TgClient.TgHUD_TeamGame.DrawHUD" );
 
 	ATgHUD_TeamGame_execDrawHUD_Parms DrawHUD_Parms;
 
@@ -47485,7 +47486,7 @@ void ATgLoginPawn::StartUI ( )
 	static UFunction* pFnStartUI = NULL;
 
 	if ( ! pFnStartUI )
-		pFnStartUI = (UFunction*) UObject::GObjObjects()->Data[ 52105 ];
+		pFnStartUI = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginPawn.StartUI" );
 
 	ATgLoginPawn_execStartUI_Parms StartUI_Parms;
 
@@ -47501,7 +47502,7 @@ void ATgLoginPawn::eventOutsideWorldBounds ( )
 	static UFunction* pFnOutsideWorldBounds = NULL;
 
 	if ( ! pFnOutsideWorldBounds )
-		pFnOutsideWorldBounds = (UFunction*) UObject::GObjObjects()->Data[ 52104 ];
+		pFnOutsideWorldBounds = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginPawn.OutsideWorldBounds" );
 
 	ATgLoginPawn_eventOutsideWorldBounds_Parms OutsideWorldBounds_Parms;
 
@@ -47518,7 +47519,7 @@ void ATgLoginPawn::eventFellOutOfWorld ( class UClass* dmgType )
 	static UFunction* pFnFellOutOfWorld = NULL;
 
 	if ( ! pFnFellOutOfWorld )
-		pFnFellOutOfWorld = (UFunction*) UObject::GObjObjects()->Data[ 52102 ];
+		pFnFellOutOfWorld = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginPawn.FellOutOfWorld" );
 
 	ATgLoginPawn_eventFellOutOfWorld_Parms FellOutOfWorld_Parms;
 	FellOutOfWorld_Parms.dmgType = dmgType;
@@ -47535,7 +47536,7 @@ void ATgLoginPawn::PostBeginPlay ( )
 	static UFunction* pFnPostBeginPlay = NULL;
 
 	if ( ! pFnPostBeginPlay )
-		pFnPostBeginPlay = (UFunction*) UObject::GObjObjects()->Data[ 52101 ];
+		pFnPostBeginPlay = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginPawn.PostBeginPlay" );
 
 	ATgLoginPawn_execPostBeginPlay_Parms PostBeginPlay_Parms;
 
@@ -47552,7 +47553,7 @@ void ATgLoginPawn::eventTick ( float DeltaTime )
 	static UFunction* pFnTick = NULL;
 
 	if ( ! pFnTick )
-		pFnTick = (UFunction*) UObject::GObjObjects()->Data[ 52099 ];
+		pFnTick = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginPawn.Tick" );
 
 	ATgLoginPawn_eventTick_Parms Tick_Parms;
 	Tick_Parms.DeltaTime = DeltaTime;
@@ -47569,7 +47570,7 @@ void ATgLoginPlayerCamera::PostBeginPlay ( )
 	static UFunction* pFnPostBeginPlay = NULL;
 
 	if ( ! pFnPostBeginPlay )
-		pFnPostBeginPlay = (UFunction*) UObject::GObjObjects()->Data[ 52113 ];
+		pFnPostBeginPlay = (UFunction*) ObjectCache::Find( "Function TgClient.TgLoginPlayerCamera.PostBeginPlay" );
 
 	ATgLoginPlayerCamera_execPostBeginPlay_Parms PostBeginPlay_Parms;
 

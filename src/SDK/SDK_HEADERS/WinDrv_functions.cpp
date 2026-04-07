@@ -1,5 +1,6 @@
 #pragma once
 #include "src/pch.hpp"
+#include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
 
 /*
 #############################################################################################

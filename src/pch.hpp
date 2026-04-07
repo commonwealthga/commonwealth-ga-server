@@ -12,8 +12,8 @@
 #include <stdarg.h>
 #include <cstdio>
 #include <shellapi.h>
-// #include <unordered_set>
-// #include <unordered_map>
+#include <unordered_set>
+#include <unordered_map>
 #include <vector>
 #include "lib/sqlite3/sqlite3.h"
 #include <mswsock.h>

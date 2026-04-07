@@ -1,115 +1,78 @@
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
+#include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
 
-std::map <std::string, UClass*> ClassPreloader::Classes;
-bool ClassPreloader::bClassesPreloaded = false;
-
-void ClassPreloader::PreloadClasses() {
-	if (bClassesPreloaded) {
-		return;
-	}
-
-	for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-		if (UObject::GObjObjects()->Data[i]) {
-			UObject* obj = UObject::GObjObjects()->Data[i];
-			char* name = obj->GetFullName();
-			if (strncmp(name, "Class ", 6) == 0) {
-				Classes[std::string(name)] = (UClass*)obj;
-			}
-		}
-	}
-
-	bClassesPreloaded = true;
+UClass* ClassPreloader::GetClass(const char* ClassName) {
+	return (UClass*)ObjectCache::Find(ClassName);
 }
 
-UClass* ClassPreloader::GetClass(char* ClassName) {
-	PreloadClasses();
-	return Classes[ClassName];
+UObject* ClassPreloader::GetObject(const char* FullName) {
+	return ObjectCache::Find(FullName);
 }
 
 UClass* ClassPreloader::GetTgPawnCharacterClass() {
-	PreloadClasses();
-	return Classes["Class TgGame.TgPawn_Character"];
+	return GetClass("Class TgGame.TgPawn_Character");
 }
 
 UClass* ClassPreloader::GetTgPropertyClass() {
-	PreloadClasses();
-	return Classes["Class TgGame.TgProperty"];
+	return GetClass("Class TgGame.TgProperty");
 }
 
 UClass* ClassPreloader::GetTgRepInfoTaskForceClass() {
-	PreloadClasses();
-	return Classes["Class TgGame.TgRepInfo_TaskForce"];
+	return GetClass("Class TgGame.TgRepInfo_TaskForce");
 }
 
 UClass* ClassPreloader::GetTgDeployableClass() {
-	PreloadClasses();
-	return Classes["Class TgGame.TgDeployable"];
+	return GetClass("Class TgGame.TgDeployable");
 }
 
 UClass* ClassPreloader::GetTgDeployBeaconClass() {
-	PreloadClasses();
-	return Classes["Class TgGame.TgDeploy_Beacon"];
+	return GetClass("Class TgGame.TgDeploy_Beacon");
 }
 
 UClass* ClassPreloader::GetTgDeployBeaconEntranceClass() {
-	PreloadClasses();
-	return Classes["Class TgGame.TgDeploy_BeaconEntrance"];
+	return GetClass("Class TgGame.TgDeploy_BeaconEntrance");
 }
 
 UClass* ClassPreloader::GetTgRandomSMManagerClass() {
-	PreloadClasses();
-	return Classes["Class TgGame.TgRandomSMManager"];
+	return GetClass("Class TgGame.TgRandomSMManager");
 }
 
 UClass* ClassPreloader::GetTgPawnEliteAlchemistClass() {
-	PreloadClasses();
-	return Classes["Class TgGame.TgPawn_Elite_Alchemist"];
+	return GetClass("Class TgGame.TgPawn_Elite_Alchemist");
 }
 
 UClass* ClassPreloader::GetTgAIControllerClass() {
-	PreloadClasses();
-	return Classes["Class TgGame.TgAIController"];
+	return GetClass("Class TgGame.TgAIController");
 }
 
 UClass* ClassPreloader::GetTgPawnThinkTankClass() {
-	PreloadClasses();
-	return Classes["Class TgGame.TgPawn_ThinkTank"];
+	return GetClass("Class TgGame.TgPawn_ThinkTank");
 }
 
 UClass* ClassPreloader::GetTgPawnGuardianClass() {
-	PreloadClasses();
-	return Classes["Class TgGame.TgPawn_Guardian"];
+	return GetClass("Class TgGame.TgPawn_Guardian");
 }
 
 UClass* ClassPreloader::GetTgDeviceClass() {
-	PreloadClasses();
-	return Classes["Class TgGame.TgDevice"];
+	return GetClass("Class TgGame.TgDevice");
 }
 
 UClass* ClassPreloader::GetTgInventoryObjectDeviceClass() {
-	PreloadClasses();
-	return Classes["Class TgGame.TgInventoryObject_Device"];
+	return GetClass("Class TgGame.TgInventoryObject_Device");
 }
 
 UClass* ClassPreloader::GetTgHudTeamGameClass() {
-	PreloadClasses();
-	return Classes["Class TgClient.TgHUD_TeamGame"];
+	return GetClass("Class TgClient.TgHUD_TeamGame");
 }
 
 UClass* ClassPreloader::GetTgSeqEventMissionTimerClass() {
-	PreloadClasses();
-	return Classes["Class TgGame.TgSeqEvent_MissionTimer"];
+	return GetClass("Class TgGame.TgSeqEvent_MissionTimer");
 }
 
 UClass* ClassPreloader::GetTgSeqEventLevelFadedInClass() {
-	PreloadClasses();
-	return Classes["Class TgGame.TgSeqEvent_LevelFadedIn"];
+	return GetClass("Class TgGame.TgSeqEvent_LevelFadedIn");
 }
 
 UClass* ClassPreloader::GetSeqEventLevelLoadedClass() {
-	PreloadClasses();
-	return Classes["Class Engine.SeqEvent_LevelLoaded"];
+	return GetClass("Class Engine.SeqEvent_LevelLoaded");
 }
-
-
-

@@ -8,9 +8,13 @@ void ConstructCommandletObject::Call(void* param_1, int param_2, void* param_3, 
 	LogCallBegin();
 
 	for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-		if (UObject::GObjObjects()->Data[i] && UObject::GObjObjects()->Data[i]->IsA(UServerCommandlet::StaticClass())) {
-			param_1 = UObject::GObjObjects()->Data[i];
-			return;
+		UObject* obj = UObject::GObjObjects()->Data[i];
+		if (obj) {
+			char* className = obj->Class->GetFullName();
+			if (strcmp(className, "Class Engine.ServerCommandlet") == 0) {
+				param_1 = obj;
+				return;
+			}
 		}
 	}
 
@@ -18,4 +22,3 @@ void ConstructCommandletObject::Call(void* param_1, int param_2, void* param_3, 
 
 	LogCallEnd();
 }
-

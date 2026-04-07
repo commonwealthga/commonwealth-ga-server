@@ -1,5 +1,6 @@
 #pragma once
 #include "src/pch.hpp"
+#include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
 
 /*
 #############################################################################################
@@ -35,7 +36,7 @@ void AGameAIController::SetDesiredRotation ( struct FRotator TargetDesiredRotati
 	static UFunction* pFnSetDesiredRotation = NULL;
 
 	if ( ! pFnSetDesiredRotation )
-		pFnSetDesiredRotation = (UFunction*) UObject::GObjObjects()->Data[ 30190 ];
+		pFnSetDesiredRotation = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAIController.SetDesiredRotation" );
 
 	AGameAIController_execSetDesiredRotation_Parms SetDesiredRotation_Parms;
 	memcpy ( &SetDesiredRotation_Parms.TargetDesiredRotation, &TargetDesiredRotation, 0xC );
@@ -56,7 +57,7 @@ void AGameAIController::eventAILog_Internal ( struct FString LogText, struct FNa
 	static UFunction* pFnAILog_Internal = NULL;
 
 	if ( ! pFnAILog_Internal )
-		pFnAILog_Internal = (UFunction*) UObject::GObjObjects()->Data[ 30186 ];
+		pFnAILog_Internal = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAIController.AILog_Internal" );
 
 	AGameAIController_eventAILog_Internal_Parms AILog_Internal_Parms;
 	memcpy ( &AILog_Internal_Parms.LogText, &LogText, 0xC );
@@ -76,7 +77,7 @@ void AGameAIController::RecordDemoAILog ( struct FString LogText )
 	static UFunction* pFnRecordDemoAILog = NULL;
 
 	if ( ! pFnRecordDemoAILog )
-		pFnRecordDemoAILog = (UFunction*) UObject::GObjObjects()->Data[ 30184 ];
+		pFnRecordDemoAILog = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAIController.RecordDemoAILog" );
 
 	AGameAIController_execRecordDemoAILog_Parms RecordDemoAILog_Parms;
 	memcpy ( &RecordDemoAILog_Parms.LogText, &LogText, 0xC );
@@ -93,7 +94,7 @@ void AGameAIController::eventDestroyed ( )
 	static UFunction* pFnDestroyed = NULL;
 
 	if ( ! pFnDestroyed )
-		pFnDestroyed = (UFunction*) UObject::GObjObjects()->Data[ 30183 ];
+		pFnDestroyed = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAIController.Destroyed" );
 
 	AGameAIController_eventDestroyed_Parms Destroyed_Parms;
 
@@ -111,7 +112,7 @@ class UGameAICommand* AGameAIController::FindCommandOfClass ( class UClass* Sear
 	static UFunction* pFnFindCommandOfClass = NULL;
 
 	if ( ! pFnFindCommandOfClass )
-		pFnFindCommandOfClass = (UFunction*) UObject::GObjObjects()->Data[ 30180 ];
+		pFnFindCommandOfClass = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAIController.FindCommandOfClass" );
 
 	AGameAIController_execFindCommandOfClass_Parms FindCommandOfClass_Parms;
 	FindCommandOfClass_Parms.SearchClass = SearchClass;
@@ -134,7 +135,7 @@ void AGameAIController::DumpCommandStack ( )
 	static UFunction* pFnDumpCommandStack = NULL;
 
 	if ( ! pFnDumpCommandStack )
-		pFnDumpCommandStack = (UFunction*) UObject::GObjObjects()->Data[ 30179 ];
+		pFnDumpCommandStack = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAIController.DumpCommandStack" );
 
 	AGameAIController_execDumpCommandStack_Parms DumpCommandStack_Parms;
 
@@ -154,7 +155,7 @@ void AGameAIController::CheckCommandCount ( )
 	static UFunction* pFnCheckCommandCount = NULL;
 
 	if ( ! pFnCheckCommandCount )
-		pFnCheckCommandCount = (UFunction*) UObject::GObjObjects()->Data[ 30178 ];
+		pFnCheckCommandCount = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAIController.CheckCommandCount" );
 
 	AGameAIController_execCheckCommandCount_Parms CheckCommandCount_Parms;
 
@@ -175,7 +176,7 @@ class UGameAICommand* AGameAIController::GetActiveCommand ( )
 	static UFunction* pFnGetActiveCommand = NULL;
 
 	if ( ! pFnGetActiveCommand )
-		pFnGetActiveCommand = (UFunction*) UObject::GObjObjects()->Data[ 30176 ];
+		pFnGetActiveCommand = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAIController.GetActiveCommand" );
 
 	AGameAIController_execGetActiveCommand_Parms GetActiveCommand_Parms;
 
@@ -200,7 +201,7 @@ bool AGameAIController::AbortCommand ( class UGameAICommand* AbortCmd, class UCl
 	static UFunction* pFnAbortCommand = NULL;
 
 	if ( ! pFnAbortCommand )
-		pFnAbortCommand = (UFunction*) UObject::GObjObjects()->Data[ 30172 ];
+		pFnAbortCommand = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAIController.AbortCommand" );
 
 	AGameAIController_execAbortCommand_Parms AbortCommand_Parms;
 	AbortCommand_Parms.AbortCmd = AbortCmd;
@@ -225,7 +226,7 @@ void AGameAIController::PopCommand ( class UGameAICommand* NewCommand )
 	static UFunction* pFnPopCommand = NULL;
 
 	if ( ! pFnPopCommand )
-		pFnPopCommand = (UFunction*) UObject::GObjObjects()->Data[ 30170 ];
+		pFnPopCommand = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAIController.PopCommand" );
 
 	AGameAIController_execPopCommand_Parms PopCommand_Parms;
 	PopCommand_Parms.NewCommand = NewCommand;
@@ -247,7 +248,7 @@ void AGameAIController::PushCommand ( class UGameAICommand* NewCommand )
 	static UFunction* pFnPushCommand = NULL;
 
 	if ( ! pFnPushCommand )
-		pFnPushCommand = (UFunction*) UObject::GObjObjects()->Data[ 30131 ];
+		pFnPushCommand = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAIController.PushCommand" );
 
 	AGameAIController_execPushCommand_Parms PushCommand_Parms;
 	PushCommand_Parms.NewCommand = NewCommand;
@@ -269,7 +270,7 @@ struct FString UGameAICommand::eventGetDumpString ( )
 	static UFunction* pFnGetDumpString = NULL;
 
 	if ( ! pFnGetDumpString )
-		pFnGetDumpString = (UFunction*) UObject::GObjObjects()->Data[ 30158 ];
+		pFnGetDumpString = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.GetDumpString" );
 
 	UGameAICommand_eventGetDumpString_Parms GetDumpString_Parms;
 
@@ -288,7 +289,7 @@ void UGameAICommand::Resumed ( struct FName OldCommandName )
 	static UFunction* pFnResumed = NULL;
 
 	if ( ! pFnResumed )
-		pFnResumed = (UFunction*) UObject::GObjObjects()->Data[ 30156 ];
+		pFnResumed = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.Resumed" );
 
 	UGameAICommand_execResumed_Parms Resumed_Parms;
 	memcpy ( &Resumed_Parms.OldCommandName, &OldCommandName, 0x8 );
@@ -306,7 +307,7 @@ void UGameAICommand::Paused ( class UGameAICommand* NewCommand )
 	static UFunction* pFnPaused = NULL;
 
 	if ( ! pFnPaused )
-		pFnPaused = (UFunction*) UObject::GObjObjects()->Data[ 30154 ];
+		pFnPaused = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.Paused" );
 
 	UGameAICommand_execPaused_Parms Paused_Parms;
 	Paused_Parms.NewCommand = NewCommand;
@@ -323,7 +324,7 @@ void UGameAICommand::Popped ( )
 	static UFunction* pFnPopped = NULL;
 
 	if ( ! pFnPopped )
-		pFnPopped = (UFunction*) UObject::GObjObjects()->Data[ 30153 ];
+		pFnPopped = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.Popped" );
 
 	UGameAICommand_execPopped_Parms Popped_Parms;
 
@@ -339,7 +340,7 @@ void UGameAICommand::Pushed ( )
 	static UFunction* pFnPushed = NULL;
 
 	if ( ! pFnPushed )
-		pFnPushed = (UFunction*) UObject::GObjObjects()->Data[ 30152 ];
+		pFnPushed = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.Pushed" );
 
 	UGameAICommand_execPushed_Parms Pushed_Parms;
 
@@ -355,7 +356,7 @@ void UGameAICommand::PostPopped ( )
 	static UFunction* pFnPostPopped = NULL;
 
 	if ( ! pFnPostPopped )
-		pFnPostPopped = (UFunction*) UObject::GObjObjects()->Data[ 30151 ];
+		pFnPostPopped = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.PostPopped" );
 
 	UGameAICommand_execPostPopped_Parms PostPopped_Parms;
 
@@ -372,7 +373,7 @@ void UGameAICommand::PrePushed ( class AGameAIController* AI )
 	static UFunction* pFnPrePushed = NULL;
 
 	if ( ! pFnPrePushed )
-		pFnPrePushed = (UFunction*) UObject::GObjObjects()->Data[ 30149 ];
+		pFnPrePushed = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.PrePushed" );
 
 	UGameAICommand_execPrePushed_Parms PrePushed_Parms;
 	PrePushed_Parms.AI = AI;
@@ -391,7 +392,7 @@ bool UGameAICommand::AllowTransitionTo ( class UClass* AttemptCommand )
 	static UFunction* pFnAllowTransitionTo = NULL;
 
 	if ( ! pFnAllowTransitionTo )
-		pFnAllowTransitionTo = (UFunction*) UObject::GObjObjects()->Data[ 30146 ];
+		pFnAllowTransitionTo = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.AllowTransitionTo" );
 
 	UGameAICommand_execAllowTransitionTo_Parms AllowTransitionTo_Parms;
 	AllowTransitionTo_Parms.AttemptCommand = AttemptCommand;
@@ -411,7 +412,7 @@ void UGameAICommand::Tick ( float DeltaTime )
 	static UFunction* pFnTick = NULL;
 
 	if ( ! pFnTick )
-		pFnTick = (UFunction*) UObject::GObjObjects()->Data[ 30144 ];
+		pFnTick = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.Tick" );
 
 	UGameAICommand_execTick_Parms Tick_Parms;
 	Tick_Parms.DeltaTime = DeltaTime;
@@ -429,7 +430,7 @@ bool UGameAICommand::ShouldIgnoreNotifies ( )
 	static UFunction* pFnShouldIgnoreNotifies = NULL;
 
 	if ( ! pFnShouldIgnoreNotifies )
-		pFnShouldIgnoreNotifies = (UFunction*) UObject::GObjObjects()->Data[ 30142 ];
+		pFnShouldIgnoreNotifies = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.ShouldIgnoreNotifies" );
 
 	UGameAICommand_execShouldIgnoreNotifies_Parms ShouldIgnoreNotifies_Parms;
 
@@ -452,7 +453,7 @@ void UGameAICommand::eventInternalTick ( float DeltaTime )
 	static UFunction* pFnInternalTick = NULL;
 
 	if ( ! pFnInternalTick )
-		pFnInternalTick = (UFunction*) UObject::GObjObjects()->Data[ 30140 ];
+		pFnInternalTick = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.InternalTick" );
 
 	UGameAICommand_eventInternalTick_Parms InternalTick_Parms;
 	InternalTick_Parms.DeltaTime = DeltaTime;
@@ -470,7 +471,7 @@ void UGameAICommand::eventInternalResumed ( struct FName OldCommandName )
 	static UFunction* pFnInternalResumed = NULL;
 
 	if ( ! pFnInternalResumed )
-		pFnInternalResumed = (UFunction*) UObject::GObjObjects()->Data[ 30138 ];
+		pFnInternalResumed = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.InternalResumed" );
 
 	UGameAICommand_eventInternalResumed_Parms InternalResumed_Parms;
 	memcpy ( &InternalResumed_Parms.OldCommandName, &OldCommandName, 0x8 );
@@ -488,7 +489,7 @@ void UGameAICommand::eventInternalPaused ( class UGameAICommand* NewCommand )
 	static UFunction* pFnInternalPaused = NULL;
 
 	if ( ! pFnInternalPaused )
-		pFnInternalPaused = (UFunction*) UObject::GObjObjects()->Data[ 30136 ];
+		pFnInternalPaused = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.InternalPaused" );
 
 	UGameAICommand_eventInternalPaused_Parms InternalPaused_Parms;
 	InternalPaused_Parms.NewCommand = NewCommand;
@@ -505,7 +506,7 @@ void UGameAICommand::eventInternalPopped ( )
 	static UFunction* pFnInternalPopped = NULL;
 
 	if ( ! pFnInternalPopped )
-		pFnInternalPopped = (UFunction*) UObject::GObjObjects()->Data[ 30135 ];
+		pFnInternalPopped = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.InternalPopped" );
 
 	UGameAICommand_eventInternalPopped_Parms InternalPopped_Parms;
 
@@ -521,7 +522,7 @@ void UGameAICommand::eventInternalPushed ( )
 	static UFunction* pFnInternalPushed = NULL;
 
 	if ( ! pFnInternalPushed )
-		pFnInternalPushed = (UFunction*) UObject::GObjObjects()->Data[ 30134 ];
+		pFnInternalPushed = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.InternalPushed" );
 
 	UGameAICommand_eventInternalPushed_Parms InternalPushed_Parms;
 
@@ -538,7 +539,7 @@ void UGameAICommand::eventInternalPrePushed ( class AGameAIController* AI )
 	static UFunction* pFnInternalPrePushed = NULL;
 
 	if ( ! pFnInternalPrePushed )
-		pFnInternalPrePushed = (UFunction*) UObject::GObjObjects()->Data[ 30132 ];
+		pFnInternalPrePushed = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.InternalPrePushed" );
 
 	UGameAICommand_eventInternalPrePushed_Parms InternalPrePushed_Parms;
 	InternalPrePushed_Parms.AI = AI;
@@ -557,7 +558,7 @@ bool UGameAICommand::InitCommand ( class AGameAIController* AI )
 	static UFunction* pFnInitCommand = NULL;
 
 	if ( ! pFnInitCommand )
-		pFnInitCommand = (UFunction*) UObject::GObjObjects()->Data[ 30127 ];
+		pFnInitCommand = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.InitCommand" );
 
 	UGameAICommand_execInitCommand_Parms InitCommand_Parms;
 	InitCommand_Parms.AI = AI;
@@ -579,7 +580,7 @@ bool UGameAICommand::InitCommandUserActor ( class AGameAIController* AI, class A
 	static UFunction* pFnInitCommandUserActor = NULL;
 
 	if ( ! pFnInitCommandUserActor )
-		pFnInitCommandUserActor = (UFunction*) UObject::GObjObjects()->Data[ 30123 ];
+		pFnInitCommandUserActor = (UFunction*) ObjectCache::Find( "Function GameFramework.GameAICommand.InitCommandUserActor" );
 
 	UGameAICommand_execInitCommandUserActor_Parms InitCommandUserActor_Parms;
 	InitCommandUserActor_Parms.AI = AI;
@@ -600,7 +601,7 @@ void AGameExplosionActor::Tick ( float DeltaTime )
 	static UFunction* pFnTick = NULL;
 
 	if ( ! pFnTick )
-		pFnTick = (UFunction*) UObject::GObjObjects()->Data[ 30308 ];
+		pFnTick = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.Tick" );
 
 	AGameExplosionActor_execTick_Parms Tick_Parms;
 	Tick_Parms.DeltaTime = DeltaTime;
@@ -617,7 +618,7 @@ void AGameExplosionActor::DoExplosionDamage ( )
 	static UFunction* pFnDoExplosionDamage = NULL;
 
 	if ( ! pFnDoExplosionDamage )
-		pFnDoExplosionDamage = (UFunction*) UObject::GObjObjects()->Data[ 30307 ];
+		pFnDoExplosionDamage = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.DoExplosionDamage" );
 
 	AGameExplosionActor_execDoExplosionDamage_Parms DoExplosionDamage_Parms;
 
@@ -634,7 +635,7 @@ void AGameExplosionActor::eventExplode ( class UGameExplosion* NewExplosionTempl
 	static UFunction* pFnExplode = NULL;
 
 	if ( ! pFnExplode )
-		pFnExplode = (UFunction*) UObject::GObjObjects()->Data[ 30303 ];
+		pFnExplode = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.Explode" );
 
 	AGameExplosionActor_eventExplode_Parms Explode_Parms;
 	Explode_Parms.NewExplosionTemplate = NewExplosionTemplate;
@@ -651,7 +652,7 @@ void AGameExplosionActor::SpawnExplosionFogVolume ( )
 	static UFunction* pFnSpawnExplosionFogVolume = NULL;
 
 	if ( ! pFnSpawnExplosionFogVolume )
-		pFnSpawnExplosionFogVolume = (UFunction*) UObject::GObjObjects()->Data[ 30302 ];
+		pFnSpawnExplosionFogVolume = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.SpawnExplosionFogVolume" );
 
 	AGameExplosionActor_execSpawnExplosionFogVolume_Parms SpawnExplosionFogVolume_Parms;
 
@@ -667,7 +668,7 @@ void AGameExplosionActor::DoExplosionCameraShakes ( )
 	static UFunction* pFnDoExplosionCameraShakes = NULL;
 
 	if ( ! pFnDoExplosionCameraShakes )
-		pFnDoExplosionCameraShakes = (UFunction*) UObject::GObjObjects()->Data[ 30301 ];
+		pFnDoExplosionCameraShakes = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.DoExplosionCameraShakes" );
 
 	AGameExplosionActor_execDoExplosionCameraShakes_Parms DoExplosionCameraShakes_Parms;
 
@@ -683,7 +684,7 @@ void AGameExplosionActor::SpawnExplosionDecal ( )
 	static UFunction* pFnSpawnExplosionDecal = NULL;
 
 	if ( ! pFnSpawnExplosionDecal )
-		pFnSpawnExplosionDecal = (UFunction*) UObject::GObjObjects()->Data[ 30300 ];
+		pFnSpawnExplosionDecal = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.SpawnExplosionDecal" );
 
 	AGameExplosionActor_execSpawnExplosionDecal_Parms SpawnExplosionDecal_Parms;
 
@@ -700,7 +701,7 @@ void AGameExplosionActor::SpawnExplosionParticleSystem ( class UParticleSystem* 
 	static UFunction* pFnSpawnExplosionParticleSystem = NULL;
 
 	if ( ! pFnSpawnExplosionParticleSystem )
-		pFnSpawnExplosionParticleSystem = (UFunction*) UObject::GObjObjects()->Data[ 30298 ];
+		pFnSpawnExplosionParticleSystem = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.SpawnExplosionParticleSystem" );
 
 	AGameExplosionActor_execSpawnExplosionParticleSystem_Parms SpawnExplosionParticleSystem_Parms;
 	SpawnExplosionParticleSystem_Parms.Template = Template;
@@ -718,7 +719,7 @@ void AGameExplosionActor::UpdateExplosionTemplateWithPerMaterialFX ( class UPhys
 	static UFunction* pFnUpdateExplosionTemplateWithPerMaterialFX = NULL;
 
 	if ( ! pFnUpdateExplosionTemplateWithPerMaterialFX )
-		pFnUpdateExplosionTemplateWithPerMaterialFX = (UFunction*) UObject::GObjObjects()->Data[ 30296 ];
+		pFnUpdateExplosionTemplateWithPerMaterialFX = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.UpdateExplosionTemplateWithPerMaterialFX" );
 
 	AGameExplosionActor_execUpdateExplosionTemplateWithPerMaterialFX_Parms UpdateExplosionTemplateWithPerMaterialFX_Parms;
 	UpdateExplosionTemplateWithPerMaterialFX_Parms.PhysMaterial = PhysMaterial;
@@ -737,7 +738,7 @@ void AGameExplosionActor::KnockdownPawn ( class AGamePawn* Victim, float DistFro
 	static UFunction* pFnKnockdownPawn = NULL;
 
 	if ( ! pFnKnockdownPawn )
-		pFnKnockdownPawn = (UFunction*) UObject::GObjObjects()->Data[ 30293 ];
+		pFnKnockdownPawn = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.KnockdownPawn" );
 
 	AGameExplosionActor_execKnockdownPawn_Parms KnockdownPawn_Parms;
 	KnockdownPawn_Parms.Victim = Victim;
@@ -755,7 +756,7 @@ void AGameExplosionActor::DoCringesAndKnockdowns ( )
 	static UFunction* pFnDoCringesAndKnockdowns = NULL;
 
 	if ( ! pFnDoCringesAndKnockdowns )
-		pFnDoCringesAndKnockdowns = (UFunction*) UObject::GObjObjects()->Data[ 30286 ];
+		pFnDoCringesAndKnockdowns = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.DoCringesAndKnockdowns" );
 
 	AGameExplosionActor_execDoCringesAndKnockdowns_Parms DoCringesAndKnockdowns_Parms;
 
@@ -773,7 +774,7 @@ bool AGameExplosionActor::ShouldDoCringeFor ( class AGamePawn* Victim )
 	static UFunction* pFnShouldDoCringeFor = NULL;
 
 	if ( ! pFnShouldDoCringeFor )
-		pFnShouldDoCringeFor = (UFunction*) UObject::GObjObjects()->Data[ 30283 ];
+		pFnShouldDoCringeFor = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.ShouldDoCringeFor" );
 
 	AGameExplosionActor_execShouldDoCringeFor_Parms ShouldDoCringeFor_Parms;
 	ShouldDoCringeFor_Parms.Victim = Victim;
@@ -796,7 +797,7 @@ void AGameExplosionActor::DoBreakFracturedMeshes ( struct FVector ExploOrigin, f
 	static UFunction* pFnDoBreakFracturedMeshes = NULL;
 
 	if ( ! pFnDoBreakFracturedMeshes )
-		pFnDoBreakFracturedMeshes = (UFunction*) UObject::GObjObjects()->Data[ 30276 ];
+		pFnDoBreakFracturedMeshes = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.DoBreakFracturedMeshes" );
 
 	AGameExplosionActor_execDoBreakFracturedMeshes_Parms DoBreakFracturedMeshes_Parms;
 	memcpy ( &DoBreakFracturedMeshes_Parms.ExploOrigin, &ExploOrigin, 0xC );
@@ -826,7 +827,7 @@ void AGameExplosionActor::HurtExplosion ( float BaseDamage, float DamageRadius, 
 	static UFunction* pFnHurtExplosion = NULL;
 
 	if ( ! pFnHurtExplosion )
-		pFnHurtExplosion = (UFunction*) UObject::GObjObjects()->Data[ 30248 ];
+		pFnHurtExplosion = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.HurtExplosion" );
 
 	AGameExplosionActor_execHurtExplosion_Parms HurtExplosion_Parms;
 	HurtExplosion_Parms.BaseDamage = BaseDamage;
@@ -854,7 +855,7 @@ bool AGameExplosionActor::DoFullDamageToActor ( class AActor* Victim )
 	static UFunction* pFnDoFullDamageToActor = NULL;
 
 	if ( ! pFnDoFullDamageToActor )
-		pFnDoFullDamageToActor = (UFunction*) UObject::GObjObjects()->Data[ 30245 ];
+		pFnDoFullDamageToActor = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.DoFullDamageToActor" );
 
 	AGameExplosionActor_execDoFullDamageToActor_Parms DoFullDamageToActor_Parms;
 	DoFullDamageToActor_Parms.Victim = Victim;
@@ -874,7 +875,7 @@ class UPhysicalMaterial* AGameExplosionActor::GetPhysicalMaterial ( )
 	static UFunction* pFnGetPhysicalMaterial = NULL;
 
 	if ( ! pFnGetPhysicalMaterial )
-		pFnGetPhysicalMaterial = (UFunction*) UObject::GObjObjects()->Data[ 30237 ];
+		pFnGetPhysicalMaterial = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.GetPhysicalMaterial" );
 
 	AGameExplosionActor_execGetPhysicalMaterial_Parms GetPhysicalMaterial_Parms;
 
@@ -892,7 +893,7 @@ void AGameExplosionActor::eventPreBeginPlay ( )
 	static UFunction* pFnPreBeginPlay = NULL;
 
 	if ( ! pFnPreBeginPlay )
-		pFnPreBeginPlay = (UFunction*) UObject::GObjObjects()->Data[ 30236 ];
+		pFnPreBeginPlay = (UFunction*) ObjectCache::Find( "Function GameFramework.GameExplosionActor.PreBeginPlay" );
 
 	AGameExplosionActor_eventPreBeginPlay_Parms PreBeginPlay_Parms;
 
@@ -908,7 +909,7 @@ void AGameHUD::StopDrawingChapterTitle ( )
 	static UFunction* pFnStopDrawingChapterTitle = NULL;
 
 	if ( ! pFnStopDrawingChapterTitle )
-		pFnStopDrawingChapterTitle = (UFunction*) UObject::GObjObjects()->Data[ 30327 ];
+		pFnStopDrawingChapterTitle = (UFunction*) ObjectCache::Find( "Function GameFramework.GameHUD.StopDrawingChapterTitle" );
 
 	AGameHUD_execStopDrawingChapterTitle_Parms StopDrawingChapterTitle_Parms;
 
@@ -928,7 +929,7 @@ void AGameHUD::StartDrawingChapterTitle ( struct FString ChapterName, struct FSt
 	static UFunction* pFnStartDrawingChapterTitle = NULL;
 
 	if ( ! pFnStartDrawingChapterTitle )
-		pFnStartDrawingChapterTitle = (UFunction*) UObject::GObjObjects()->Data[ 30322 ];
+		pFnStartDrawingChapterTitle = (UFunction*) ObjectCache::Find( "Function GameFramework.GameHUD.StartDrawingChapterTitle" );
 
 	AGameHUD_execStartDrawingChapterTitle_Parms StartDrawingChapterTitle_Parms;
 	memcpy ( &StartDrawingChapterTitle_Parms.ChapterName, &ChapterName, 0xC );
@@ -950,7 +951,7 @@ void AGameHUD::SetHUDDrawColor ( unsigned char eColor, unsigned char Alpha )
 	static UFunction* pFnSetHUDDrawColor = NULL;
 
 	if ( ! pFnSetHUDDrawColor )
-		pFnSetHUDDrawColor = (UFunction*) UObject::GObjObjects()->Data[ 30319 ];
+		pFnSetHUDDrawColor = (UFunction*) ObjectCache::Find( "Function GameFramework.GameHUD.SetHUDDrawColor" );
 
 	AGameHUD_execSetHUDDrawColor_Parms SetHUDDrawColor_Parms;
 	SetHUDDrawColor_Parms.eColor = eColor;
@@ -969,7 +970,7 @@ void AGamePawn::eventCringe ( float Duration )
 	static UFunction* pFnCringe = NULL;
 
 	if ( ! pFnCringe )
-		pFnCringe = (UFunction*) UObject::GObjObjects()->Data[ 30340 ];
+		pFnCringe = (UFunction*) ObjectCache::Find( "Function GameFramework.GamePawn.Cringe" );
 
 	AGamePawn_eventCringe_Parms Cringe_Parms;
 	Cringe_Parms.Duration = Duration;
@@ -994,7 +995,7 @@ void AGamePawn::ServerKnockdown ( struct FVector RBLinearVelocity, struct FVecto
 	static UFunction* pFnServerKnockdown = NULL;
 
 	if ( ! pFnServerKnockdown )
-		pFnServerKnockdown = (UFunction*) UObject::GObjObjects()->Data[ 30331 ];
+		pFnServerKnockdown = (UFunction*) ObjectCache::Find( "Function GameFramework.GamePawn.ServerKnockdown" );
 
 	AGamePawn_execServerKnockdown_Parms ServerKnockdown_Parms;
 	memcpy ( &ServerKnockdown_Parms.RBLinearVelocity, &RBLinearVelocity, 0xC );
@@ -1020,7 +1021,7 @@ void AGamePawn::GetTargetFrictionCylinder ( float* CylinderRadius, float* Cylind
 	static UFunction* pFnGetTargetFrictionCylinder = NULL;
 
 	if ( ! pFnGetTargetFrictionCylinder )
-		pFnGetTargetFrictionCylinder = (UFunction*) UObject::GObjObjects()->Data[ 30328 ];
+		pFnGetTargetFrictionCylinder = (UFunction*) ObjectCache::Find( "Function GameFramework.GamePawn.GetTargetFrictionCylinder" );
 
 	AGamePawn_execGetTargetFrictionCylinder_Parms GetTargetFrictionCylinder_Parms;
 

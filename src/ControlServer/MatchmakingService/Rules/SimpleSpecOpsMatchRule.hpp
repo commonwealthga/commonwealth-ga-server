@@ -15,8 +15,8 @@ public:
 
         auto mission_instances = InstanceRegistry::GetReadyMissionInstances();
         for (const auto& inst : mission_instances) {
-            if (inst.map_name == "Rot_Redistribution05" &&
-                inst.game_mode == "TgGame.TgGame_PointRotation") {
+            if (inst.map_name == "1P_CPLab05_P" &&
+                inst.game_mode == "TgGame.TgGame_Mission") {
                 MatchResult result;
                 result.map_name = inst.map_name;
                 result.game_mode = inst.game_mode;
@@ -30,8 +30,8 @@ public:
         }
 
         MatchResult result;
-        result.map_name = "Rot_Redistribution05";
-        result.game_mode = "TgGame.TgGame_PointRotation";
+        result.map_name = "1P_CPLab05_P";
+        result.game_mode = "TgGame.TgGame_Mission";
         for (const auto& p : players) {
             result.session_guids.push_back(p.session_guid);
             result.task_force_assignments[p.session_guid] = 1;

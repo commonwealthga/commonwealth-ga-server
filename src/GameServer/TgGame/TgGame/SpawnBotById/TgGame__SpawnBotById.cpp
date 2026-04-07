@@ -9,6 +9,7 @@
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
+#include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/Database/Database.hpp"
@@ -363,18 +364,10 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	BotRepInfo->r_nCharacterId    = *(int*)((char*)BotConfig + 0x5C);
 
 	if (pFactory == nullptr) {
-		for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-			if (UObject::GObjObjects()->Data[i]) {
-				UObject* obj = UObject::GObjObjects()->Data[i];
-				if (strstr(obj->GetFullName(), "Default__")) {
-					continue;
-				}
-				if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgBotFactory") == 0) {
-					pFactory = reinterpret_cast<ATgBotFactory*>(obj);
-					Logger::Log("debug", "TgBotFactory fallback found: %s\n", pFactory->GetFullName());
-					break;
-				}
-			}
+		ActorCache::CacheMapActors();
+		pFactory = ActorCache::BotFactory;
+		if (pFactory) {
+			Logger::Log("debug", "TgBotFactory fallback found: %s\n", pFactory->GetFullName());
 		}
 	} else {
 		Logger::Log("debug", "TgBotFactory passed: %s\n", pFactory->GetFullName());

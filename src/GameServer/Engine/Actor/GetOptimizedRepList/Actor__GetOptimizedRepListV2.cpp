@@ -1,6 +1,7 @@
 #include "src/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepList.hpp"
 #include "src/Utils/Macros.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 
 bool Actor__GetOptimizedRepList::bRepListCached = false;
 UProperty* ObjectProperty_Engine_Actor_Base = nullptr;
@@ -1027,2060 +1028,526 @@ UProperty* FloatProperty_TgGame_TgTimerManager_r_fStartTime = nullptr;
 std::map<int, bool> FloatProperty_TgGame_TgTimerManager_r_fStartTime_initial;
 
 
+static void ResolveRepListProperties() {
+	ObjectProperty_Engine_Actor_Base = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.Actor.Base");
+	ByteProperty_Engine_Actor_Physics = (UProperty*)ClassPreloader::GetObject("ByteProperty Engine.Actor.Physics");
+	StructProperty_Engine_Actor_Velocity = (UProperty*)ClassPreloader::GetObject("StructProperty Engine.Actor.Velocity");
+	ByteProperty_Engine_Actor_RemoteRole = (UProperty*)ClassPreloader::GetObject("ByteProperty Engine.Actor.RemoteRole");
+	ByteProperty_Engine_Actor_Role = (UProperty*)ClassPreloader::GetObject("ByteProperty Engine.Actor.Role");
+	BoolProperty_Engine_Actor_bNetOwner = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Actor.bNetOwner");
+	BoolProperty_Engine_Actor_bTearOff = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Actor.bTearOff");
+	FloatProperty_Engine_Actor_DrawScale = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.Actor.DrawScale");
+	ByteProperty_Engine_Actor_ReplicatedCollisionType = (UProperty*)ClassPreloader::GetObject("ByteProperty Engine.Actor.ReplicatedCollisionType");
+	BoolProperty_Engine_Actor_bCollideActors = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Actor.bCollideActors");
+	BoolProperty_Engine_Actor_bCollideWorld = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Actor.bCollideWorld");
+	BoolProperty_Engine_Actor_bBlockActors = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Actor.bBlockActors");
+	BoolProperty_Engine_Actor_bProjTarget = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Actor.bProjTarget");
+	ObjectProperty_Engine_Actor_Instigator = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.Actor.Instigator");
+	ObjectProperty_Engine_Actor_Owner = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.Actor.Owner");
+	BoolProperty_Engine_AmbientSoundSimpleToggleable_bCurrentlyPlaying = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.AmbientSoundSimpleToggleable.bCurrentlyPlaying");
+	FloatProperty_Engine_CameraActor_AspectRatio = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.CameraActor.AspectRatio");
+	FloatProperty_Engine_CameraActor_FOVAngle = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.CameraActor.FOVAngle");
+	ObjectProperty_Engine_Controller_Pawn = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.Controller.Pawn");
+	ObjectProperty_Engine_Controller_PlayerReplicationInfo = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.Controller.PlayerReplicationInfo");
+	BoolProperty_Engine_CrowdAttractor_bAttractorEnabled = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.CrowdAttractor.bAttractorEnabled");
+	IntProperty_Engine_CrowdReplicationActor_DestroyAllCount = (UProperty*)ClassPreloader::GetObject("IntProperty Engine.CrowdReplicationActor.DestroyAllCount");
+	ObjectProperty_Engine_CrowdReplicationActor_Spawner = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.CrowdReplicationActor.Spawner");
+	BoolProperty_Engine_CrowdReplicationActor_bSpawningActive = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.CrowdReplicationActor.bSpawningActive");
+	ClassProperty_Engine_DroppedPickup_InventoryClass = (UProperty*)ClassPreloader::GetObject("ClassProperty Engine.DroppedPickup.InventoryClass");
+	BoolProperty_Engine_DroppedPickup_bFadeOut = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.DroppedPickup.bFadeOut");
+	ObjectProperty_Engine_DynamicSMActor_ReplicatedMaterial = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.DynamicSMActor.ReplicatedMaterial");
+	ObjectProperty_Engine_DynamicSMActor_ReplicatedMesh = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.DynamicSMActor.ReplicatedMesh");
+	StructProperty_Engine_DynamicSMActor_ReplicatedMeshRotation = (UProperty*)ClassPreloader::GetObject("StructProperty Engine.DynamicSMActor.ReplicatedMeshRotation");
+	StructProperty_Engine_DynamicSMActor_ReplicatedMeshScale3D = (UProperty*)ClassPreloader::GetObject("StructProperty Engine.DynamicSMActor.ReplicatedMeshScale3D");
+	StructProperty_Engine_DynamicSMActor_ReplicatedMeshTranslation = (UProperty*)ClassPreloader::GetObject("StructProperty Engine.DynamicSMActor.ReplicatedMeshTranslation");
+	BoolProperty_Engine_DynamicSMActor_bForceStaticDecals = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.DynamicSMActor.bForceStaticDecals");
+	BoolProperty_Engine_Emitter_bCurrentlyActive = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Emitter.bCurrentlyActive");
+	ObjectProperty_Engine_EmitterSpawnable_ParticleTemplate = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.EmitterSpawnable.ParticleTemplate");
+	BoolProperty_Engine_FluidInfluenceActor_bActive = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.FluidInfluenceActor.bActive");
+	BoolProperty_Engine_FluidInfluenceActor_bToggled = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.FluidInfluenceActor.bToggled");
+	BoolProperty_Engine_FogVolumeDensityInfo_bEnabled = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.FogVolumeDensityInfo.bEnabled");
+	IntProperty_Engine_GameReplicationInfo_MatchID = (UProperty*)ClassPreloader::GetObject("IntProperty Engine.GameReplicationInfo.MatchID");
+	ObjectProperty_Engine_GameReplicationInfo_Winner = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.GameReplicationInfo.Winner");
+	BoolProperty_Engine_GameReplicationInfo_bMatchHasBegun = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.GameReplicationInfo.bMatchHasBegun");
+	BoolProperty_Engine_GameReplicationInfo_bMatchIsOver = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.GameReplicationInfo.bMatchIsOver");
+	BoolProperty_Engine_GameReplicationInfo_bStopCountDown = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.GameReplicationInfo.bStopCountDown");
+	IntProperty_Engine_GameReplicationInfo_RemainingMinute = (UProperty*)ClassPreloader::GetObject("IntProperty Engine.GameReplicationInfo.RemainingMinute");
+	StrProperty_Engine_GameReplicationInfo_AdminEmail = (UProperty*)ClassPreloader::GetObject("StrProperty Engine.GameReplicationInfo.AdminEmail");
+	StrProperty_Engine_GameReplicationInfo_AdminName = (UProperty*)ClassPreloader::GetObject("StrProperty Engine.GameReplicationInfo.AdminName");
+	IntProperty_Engine_GameReplicationInfo_ElapsedTime = (UProperty*)ClassPreloader::GetObject("IntProperty Engine.GameReplicationInfo.ElapsedTime");
+	ClassProperty_Engine_GameReplicationInfo_GameClass = (UProperty*)ClassPreloader::GetObject("ClassProperty Engine.GameReplicationInfo.GameClass");
+	IntProperty_Engine_GameReplicationInfo_GoalScore = (UProperty*)ClassPreloader::GetObject("IntProperty Engine.GameReplicationInfo.GoalScore");
+	IntProperty_Engine_GameReplicationInfo_MaxLives = (UProperty*)ClassPreloader::GetObject("IntProperty Engine.GameReplicationInfo.MaxLives");
+	StrProperty_Engine_GameReplicationInfo_MessageOfTheDay = (UProperty*)ClassPreloader::GetObject("StrProperty Engine.GameReplicationInfo.MessageOfTheDay");
+	IntProperty_Engine_GameReplicationInfo_RemainingTime = (UProperty*)ClassPreloader::GetObject("IntProperty Engine.GameReplicationInfo.RemainingTime");
+	StrProperty_Engine_GameReplicationInfo_ServerName = (UProperty*)ClassPreloader::GetObject("StrProperty Engine.GameReplicationInfo.ServerName");
+	IntProperty_Engine_GameReplicationInfo_ServerRegion = (UProperty*)ClassPreloader::GetObject("IntProperty Engine.GameReplicationInfo.ServerRegion");
+	StrProperty_Engine_GameReplicationInfo_ShortName = (UProperty*)ClassPreloader::GetObject("StrProperty Engine.GameReplicationInfo.ShortName");
+	IntProperty_Engine_GameReplicationInfo_TimeLimit = (UProperty*)ClassPreloader::GetObject("IntProperty Engine.GameReplicationInfo.TimeLimit");
+	BoolProperty_Engine_GameReplicationInfo_bIsArbitrated = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.GameReplicationInfo.bIsArbitrated");
+	BoolProperty_Engine_GameReplicationInfo_bTrackStats = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.GameReplicationInfo.bTrackStats");
+	BoolProperty_Engine_HeightFog_bEnabled = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.HeightFog.bEnabled");
+	ObjectProperty_Engine_Inventory_InvManager = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.Inventory.InvManager");
+	ObjectProperty_Engine_Inventory_Inventory = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.Inventory.Inventory");
+	ObjectProperty_Engine_InventoryManager_InventoryChain = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.InventoryManager.InventoryChain");
+	StructProperty_Engine_KActor_RBState = (UProperty*)ClassPreloader::GetObject("StructProperty Engine.KActor.RBState");
+	StructProperty_Engine_KActor_ReplicatedDrawScale3D = (UProperty*)ClassPreloader::GetObject("StructProperty Engine.KActor.ReplicatedDrawScale3D");
+	BoolProperty_Engine_KActor_bWakeOnLevelStart = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.KActor.bWakeOnLevelStart");
+	ObjectProperty_Engine_KAsset_ReplicatedMesh = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.KAsset.ReplicatedMesh");
+	ObjectProperty_Engine_KAsset_ReplicatedPhysAsset = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.KAsset.ReplicatedPhysAsset");
+	BoolProperty_Engine_LensFlareSource_bCurrentlyActive = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.LensFlareSource.bCurrentlyActive");
+	BoolProperty_Engine_Light_bEnabled = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Light.bEnabled");
+	ObjectProperty_Engine_MatineeActor_InterpAction = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.MatineeActor.InterpAction");
+	FloatProperty_Engine_MatineeActor_PlayRate = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.MatineeActor.PlayRate");
+	FloatProperty_Engine_MatineeActor_Position = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.MatineeActor.Position");
+	BoolProperty_Engine_MatineeActor_bIsPlaying = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.MatineeActor.bIsPlaying");
+	BoolProperty_Engine_MatineeActor_bPaused = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.MatineeActor.bPaused");
+	BoolProperty_Engine_MatineeActor_bReversePlayback = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.MatineeActor.bReversePlayback");
+	BoolProperty_Engine_NxForceField_bForceActive = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.NxForceField.bForceActive");
+	ObjectProperty_Engine_Pawn_DrivenVehicle = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.Pawn.DrivenVehicle");
+	StructProperty_Engine_Pawn_FlashLocation = (UProperty*)ClassPreloader::GetObject("StructProperty Engine.Pawn.FlashLocation");
+	IntProperty_Engine_Pawn_Health = (UProperty*)ClassPreloader::GetObject("IntProperty Engine.Pawn.Health");
+	ClassProperty_Engine_Pawn_HitDamageType = (UProperty*)ClassPreloader::GetObject("ClassProperty Engine.Pawn.HitDamageType");
+	ObjectProperty_Engine_Pawn_PlayerReplicationInfo = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.Pawn.PlayerReplicationInfo");
+	StructProperty_Engine_Pawn_TakeHitLocation = (UProperty*)ClassPreloader::GetObject("StructProperty Engine.Pawn.TakeHitLocation");
+	BoolProperty_Engine_Pawn_bIsWalking = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Pawn.bIsWalking");
+	BoolProperty_Engine_Pawn_bSimulateGravity = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Pawn.bSimulateGravity");
+	FloatProperty_Engine_Pawn_AccelRate = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.Pawn.AccelRate");
+	FloatProperty_Engine_Pawn_AirControl = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.Pawn.AirControl");
+	FloatProperty_Engine_Pawn_AirSpeed = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.Pawn.AirSpeed");
+	ObjectProperty_Engine_Pawn_Controller = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.Pawn.Controller");
+	FloatProperty_Engine_Pawn_GroundSpeed = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.Pawn.GroundSpeed");
+	ObjectProperty_Engine_Pawn_InvManager = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.Pawn.InvManager");
+	FloatProperty_Engine_Pawn_JumpZ = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.Pawn.JumpZ");
+	FloatProperty_Engine_Pawn_WaterSpeed = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.Pawn.WaterSpeed");
+	ByteProperty_Engine_Pawn_FiringMode = (UProperty*)ClassPreloader::GetObject("ByteProperty Engine.Pawn.FiringMode");
+	ByteProperty_Engine_Pawn_FlashCount = (UProperty*)ClassPreloader::GetObject("ByteProperty Engine.Pawn.FlashCount");
+	BoolProperty_Engine_Pawn_bIsCrouched = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Pawn.bIsCrouched");
+	StructProperty_Engine_Pawn_TearOffMomentum = (UProperty*)ClassPreloader::GetObject("StructProperty Engine.Pawn.TearOffMomentum");
+	ByteProperty_Engine_Pawn_RemoteViewPitch = (UProperty*)ClassPreloader::GetObject("ByteProperty Engine.Pawn.RemoteViewPitch");
+	ObjectProperty_Engine_PhysXEmitterSpawnable_ParticleTemplate = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.PhysXEmitterSpawnable.ParticleTemplate");
+	BoolProperty_Engine_PickupFactory_bPickupHidden = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.PickupFactory.bPickupHidden");
+	ClassProperty_Engine_PickupFactory_InventoryType = (UProperty*)ClassPreloader::GetObject("ClassProperty Engine.PickupFactory.InventoryType");
+	FloatProperty_Engine_PlayerController_TargetEyeHeight = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.PlayerController.TargetEyeHeight");
+	StructProperty_Engine_PlayerController_TargetViewRotation = (UProperty*)ClassPreloader::GetObject("StructProperty Engine.PlayerController.TargetViewRotation");
+	FloatProperty_Engine_PlayerReplicationInfo_Deaths = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.PlayerReplicationInfo.Deaths");
+	StrProperty_Engine_PlayerReplicationInfo_PlayerAlias = (UProperty*)ClassPreloader::GetObject("StrProperty Engine.PlayerReplicationInfo.PlayerAlias");
+	ObjectProperty_Engine_PlayerReplicationInfo_PlayerLocationHint = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.PlayerReplicationInfo.PlayerLocationHint");
+	StrProperty_Engine_PlayerReplicationInfo_PlayerName = (UProperty*)ClassPreloader::GetObject("StrProperty Engine.PlayerReplicationInfo.PlayerName");
+	IntProperty_Engine_PlayerReplicationInfo_PlayerSkill = (UProperty*)ClassPreloader::GetObject("IntProperty Engine.PlayerReplicationInfo.PlayerSkill");
+	FloatProperty_Engine_PlayerReplicationInfo_Score = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.PlayerReplicationInfo.Score");
+	IntProperty_Engine_PlayerReplicationInfo_StartTime = (UProperty*)ClassPreloader::GetObject("IntProperty Engine.PlayerReplicationInfo.StartTime");
+	ObjectProperty_Engine_PlayerReplicationInfo_Team = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.PlayerReplicationInfo.Team");
+	StructProperty_Engine_PlayerReplicationInfo_UniqueId = (UProperty*)ClassPreloader::GetObject("StructProperty Engine.PlayerReplicationInfo.UniqueId");
+	BoolProperty_Engine_PlayerReplicationInfo_bAdmin = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.PlayerReplicationInfo.bAdmin");
+	BoolProperty_Engine_PlayerReplicationInfo_bHasFlag = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.PlayerReplicationInfo.bHasFlag");
+	BoolProperty_Engine_PlayerReplicationInfo_bIsFemale = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.PlayerReplicationInfo.bIsFemale");
+	BoolProperty_Engine_PlayerReplicationInfo_bIsSpectator = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.PlayerReplicationInfo.bIsSpectator");
+	BoolProperty_Engine_PlayerReplicationInfo_bOnlySpectator = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.PlayerReplicationInfo.bOnlySpectator");
+	BoolProperty_Engine_PlayerReplicationInfo_bOutOfLives = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.PlayerReplicationInfo.bOutOfLives");
+	BoolProperty_Engine_PlayerReplicationInfo_bReadyToPlay = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.PlayerReplicationInfo.bReadyToPlay");
+	BoolProperty_Engine_PlayerReplicationInfo_bWaitingPlayer = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.PlayerReplicationInfo.bWaitingPlayer");
+	ByteProperty_Engine_PlayerReplicationInfo_PacketLoss = (UProperty*)ClassPreloader::GetObject("ByteProperty Engine.PlayerReplicationInfo.PacketLoss");
+	ByteProperty_Engine_PlayerReplicationInfo_Ping = (UProperty*)ClassPreloader::GetObject("ByteProperty Engine.PlayerReplicationInfo.Ping");
+	IntProperty_Engine_PlayerReplicationInfo_SplitscreenIndex = (UProperty*)ClassPreloader::GetObject("IntProperty Engine.PlayerReplicationInfo.SplitscreenIndex");
+	IntProperty_Engine_PlayerReplicationInfo_PlayerID = (UProperty*)ClassPreloader::GetObject("IntProperty Engine.PlayerReplicationInfo.PlayerID");
+	BoolProperty_Engine_PlayerReplicationInfo_bBot = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.PlayerReplicationInfo.bBot");
+	BoolProperty_Engine_PlayerReplicationInfo_bIsInactive = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.PlayerReplicationInfo.bIsInactive");
+	BoolProperty_Engine_PostProcessVolume_bEnabled = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.PostProcessVolume.bEnabled");
+	FloatProperty_Engine_Projectile_MaxSpeed = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.Projectile.MaxSpeed");
+	FloatProperty_Engine_Projectile_Speed = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.Projectile.Speed");
+	BoolProperty_Engine_RB_CylindricalForceActor_bForceActive = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.RB_CylindricalForceActor.bForceActive");
+	ByteProperty_Engine_RB_LineImpulseActor_ImpulseCount = (UProperty*)ClassPreloader::GetObject("ByteProperty Engine.RB_LineImpulseActor.ImpulseCount");
+	BoolProperty_Engine_RB_RadialForceActor_bForceActive = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.RB_RadialForceActor.bForceActive");
+	ByteProperty_Engine_RB_RadialImpulseActor_ImpulseCount = (UProperty*)ClassPreloader::GetObject("ByteProperty Engine.RB_RadialImpulseActor.ImpulseCount");
+	FloatProperty_Engine_SVehicle_MaxSpeed = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.SVehicle.MaxSpeed");
+	StructProperty_Engine_SVehicle_VState = (UProperty*)ClassPreloader::GetObject("StructProperty Engine.SVehicle.VState");
+	ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMaterial = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.SkeletalMeshActor.ReplicatedMaterial");
+	ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMesh = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.SkeletalMeshActor.ReplicatedMesh");
+	FloatProperty_Engine_TeamInfo_Score = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.TeamInfo.Score");
+	IntProperty_Engine_TeamInfo_TeamIndex = (UProperty*)ClassPreloader::GetObject("IntProperty Engine.TeamInfo.TeamIndex");
+	StrProperty_Engine_TeamInfo_TeamName = (UProperty*)ClassPreloader::GetObject("StrProperty Engine.TeamInfo.TeamName");
+	StrProperty_Engine_Teleporter_URL = (UProperty*)ClassPreloader::GetObject("StrProperty Engine.Teleporter.URL");
+	BoolProperty_Engine_Teleporter_bEnabled = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Teleporter.bEnabled");
+	StructProperty_Engine_Teleporter_TargetVelocity = (UProperty*)ClassPreloader::GetObject("StructProperty Engine.Teleporter.TargetVelocity");
+	BoolProperty_Engine_Teleporter_bChangesVelocity = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Teleporter.bChangesVelocity");
+	BoolProperty_Engine_Teleporter_bChangesYaw = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Teleporter.bChangesYaw");
+	BoolProperty_Engine_Teleporter_bReversesX = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Teleporter.bReversesX");
+	BoolProperty_Engine_Teleporter_bReversesY = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Teleporter.bReversesY");
+	BoolProperty_Engine_Teleporter_bReversesZ = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Teleporter.bReversesZ");
+	BoolProperty_Engine_Vehicle_bDriving = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.Vehicle.bDriving");
+	ObjectProperty_Engine_Vehicle_Driver = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.Vehicle.Driver");
+	ObjectProperty_Engine_WorldInfo_Pauser = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.WorldInfo.Pauser");
+	StructProperty_Engine_WorldInfo_ReplicatedMusicTrack = (UProperty*)ClassPreloader::GetObject("StructProperty Engine.WorldInfo.ReplicatedMusicTrack");
+	FloatProperty_Engine_WorldInfo_TimeDilation = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.WorldInfo.TimeDilation");
+	FloatProperty_Engine_WorldInfo_WorldGravityZ = (UProperty*)ClassPreloader::GetObject("FloatProperty Engine.WorldInfo.WorldGravityZ");
+	BoolProperty_Engine_WorldInfo_bHighPriorityLoading = (UProperty*)ClassPreloader::GetObject("BoolProperty Engine.WorldInfo.bHighPriorityLoading");
+	ByteProperty_TgGame_TgChestActor_r_eChestState = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgChestActor.r_eChestState");
+	BoolProperty_TgGame_TgDeploy_BeaconEntrance_r_bActive = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgDeploy_BeaconEntrance.r_bActive");
+	BoolProperty_TgGame_TgDeploy_DestructibleCover_r_bHasFired = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgDeploy_DestructibleCover.r_bHasFired");
+	IntProperty_TgGame_TgDeploy_Sensor_r_nSensorAudioWarning = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDeploy_Sensor.r_nSensorAudioWarning");
+	IntProperty_TgGame_TgDeploy_Sensor_r_nTouchedPlayerCount = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDeploy_Sensor.r_nTouchedPlayerCount");
+	BoolProperty_TgGame_TgDeployable_r_bDelayDeployed = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgDeployable.r_bDelayDeployed");
+	IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDeployable.r_nReplicateDestroyIt");
+	ObjectProperty_TgGame_TgDeployable_r_DRI = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgDeployable.r_DRI");
+	BoolProperty_TgGame_TgDeployable_r_bInitialIsEnemy = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgDeployable.r_bInitialIsEnemy");
+	BoolProperty_TgGame_TgDeployable_r_bTakeDamage = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgDeployable.r_bTakeDamage");
+	FloatProperty_TgGame_TgDeployable_r_fClientProximityRadius = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgDeployable.r_fClientProximityRadius");
+	FloatProperty_TgGame_TgDeployable_r_fCurrentDeployTime = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgDeployable.r_fCurrentDeployTime");
+	IntProperty_TgGame_TgDeployable_r_nDeployableId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDeployable.r_nDeployableId");
+	IntProperty_TgGame_TgDeployable_r_nPhysicalType = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDeployable.r_nPhysicalType");
+	IntProperty_TgGame_TgDeployable_r_nTickingTime = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDeployable.r_nTickingTime");
+	ObjectProperty_TgGame_TgDeployable_r_Owner = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgDeployable.r_Owner");
+	IntProperty_TgGame_TgDeployable_r_nOwnerFireMode = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDeployable.r_nOwnerFireMode");
+	ByteProperty_TgGame_TgDevice_CurrentFireMode = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgDevice.CurrentFireMode");
+	BoolProperty_TgGame_TgDevice_r_bIsStealthDevice = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgDevice.r_bIsStealthDevice");
+	ByteProperty_TgGame_TgDevice_r_eEquippedAt = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgDevice.r_eEquippedAt");
+	IntProperty_TgGame_TgDevice_r_nInventoryId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDevice.r_nInventoryId");
+	IntProperty_TgGame_TgDevice_r_nMeleeComboSeed = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDevice.r_nMeleeComboSeed");
+	BoolProperty_TgGame_TgDevice_r_bConsumedOnDeath = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgDevice.r_bConsumedOnDeath");
+	BoolProperty_TgGame_TgDevice_r_bConsumedOnUse = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgDevice.r_bConsumedOnUse");
+	IntProperty_TgGame_TgDevice_r_nDeviceId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDevice.r_nDeviceId");
+	IntProperty_TgGame_TgDevice_r_nDeviceInstanceId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDevice.r_nDeviceInstanceId");
+	IntProperty_TgGame_TgDevice_r_nQualityValueId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDevice.r_nQualityValueId");
+	BoolProperty_TgGame_TgDevice_Morale_r_bIsActivelyFiring = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgDevice_Morale.r_bIsActivelyFiring");
+	BoolProperty_TgGame_TgDoor_r_bOpen = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgDoor.r_bOpen");
+	ByteProperty_TgGame_TgDoorMarker_r_eStatus = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgDoorMarker.r_eStatus");
+	IntProperty_TgGame_TgDroppedItem_r_nItemId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDroppedItem.r_nItemId");
+	IntProperty_TgGame_TgDynamicDestructible_r_nDestructibleId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDynamicDestructible.r_nDestructibleId");
+	ObjectProperty_TgGame_TgDynamicDestructible_r_pFactory = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgDynamicDestructible.r_pFactory");
+	StrProperty_TgGame_TgDynamicSMActor_m_sAssembly = (UProperty*)ClassPreloader::GetObject("StrProperty TgGame.TgDynamicSMActor.m_sAssembly");
+	ObjectProperty_TgGame_TgDynamicSMActor_r_EffectManager = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgDynamicSMActor.r_EffectManager");
+	IntProperty_TgGame_TgDynamicSMActor_r_nHealth = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDynamicSMActor.r_nHealth");
+	StructProperty_TgGame_TgEffectManager_r_EventQueue = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgEffectManager.r_EventQueue");
+	StructProperty_TgGame_TgEffectManager_r_ManagedEffectList = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgEffectManager.r_ManagedEffectList");
+	ObjectProperty_TgGame_TgEffectManager_r_Owner = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgEffectManager.r_Owner");
+	BoolProperty_TgGame_TgEffectManager_r_bRelevancyNotify = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgEffectManager.r_bRelevancyNotify");
+	IntProperty_TgGame_TgEffectManager_r_nInvulnerableCount = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgEffectManager.r_nInvulnerableCount");
+	IntProperty_TgGame_TgEffectManager_r_nNextQueueIndex = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgEffectManager.r_nNextQueueIndex");
+	NameProperty_TgGame_TgEmitter_BoneName = (UProperty*)ClassPreloader::GetObject("NameProperty TgGame.TgEmitter.BoneName");
+	ByteProperty_TgGame_TgFlagCaptureVolume_r_eCoalition = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgFlagCaptureVolume.r_eCoalition");
+	ByteProperty_TgGame_TgFlagCaptureVolume_r_nTaskForce = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgFlagCaptureVolume.r_nTaskForce");
+	ObjectProperty_TgGame_TgFracturedStaticMeshActor_r_EffectManager = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgFracturedStaticMeshActor.r_EffectManager");
+	IntProperty_TgGame_TgFracturedStaticMeshActor_r_TakeHitNotifier = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgFracturedStaticMeshActor.r_TakeHitNotifier");
+	FloatProperty_TgGame_TgFracturedStaticMeshActor_r_DamageRadius = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgFracturedStaticMeshActor.r_DamageRadius");
+	ClassProperty_TgGame_TgFracturedStaticMeshActor_r_HitDamageType = (UProperty*)ClassPreloader::GetObject("ClassProperty TgGame.TgFracturedStaticMeshActor.r_HitDamageType");
+	StructProperty_TgGame_TgFracturedStaticMeshActor_r_HitInfo = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgFracturedStaticMeshActor.r_HitInfo");
+	StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitLocation = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgFracturedStaticMeshActor.r_vTakeHitLocation");
+	StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitMomentum = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgFracturedStaticMeshActor.r_vTakeHitMomentum");
+	IntProperty_TgGame_TgHexLandMarkActor_r_nMeshAsmId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgHexLandMarkActor.r_nMeshAsmId");
+	StrProperty_TgGame_TgInterpActor_r_sCurrState = (UProperty*)ClassPreloader::GetObject("StrProperty TgGame.TgInterpActor.r_sCurrState");
+	IntProperty_TgGame_TgInventoryManager_r_ItemCount = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgInventoryManager.r_ItemCount");
+	IntProperty_TgGame_TgKismetTestActor_r_nCurrentTest = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgKismetTestActor.r_nCurrentTest");
+	IntProperty_TgGame_TgKismetTestActor_r_nFailCount = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgKismetTestActor.r_nFailCount");
+	IntProperty_TgGame_TgKismetTestActor_r_nPassCount = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgKismetTestActor.r_nPassCount");
+	BoolProperty_TgGame_TgLevelCamera_r_bEnabled = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgLevelCamera.r_bEnabled");
+	ObjectProperty_TgGame_TgMissionObjective_r_ObjectiveAssignment = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgMissionObjective.r_ObjectiveAssignment");
+	BoolProperty_TgGame_TgMissionObjective_r_bHasBeenCapturedOnce = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgMissionObjective.r_bHasBeenCapturedOnce");
+	BoolProperty_TgGame_TgMissionObjective_r_bIsActive = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgMissionObjective.r_bIsActive");
+	BoolProperty_TgGame_TgMissionObjective_r_bIsLocked = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgMissionObjective.r_bIsLocked");
+	BoolProperty_TgGame_TgMissionObjective_r_bIsPending = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgMissionObjective.r_bIsPending");
+	ByteProperty_TgGame_TgMissionObjective_r_eOwningCoalition = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgMissionObjective.r_eOwningCoalition");
+	ByteProperty_TgGame_TgMissionObjective_r_eStatus = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgMissionObjective.r_eStatus");
+	FloatProperty_TgGame_TgMissionObjective_r_fCurrCaptureTime = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgMissionObjective.r_fCurrCaptureTime");
+	FloatProperty_TgGame_TgMissionObjective_r_fLastCompletedTime = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgMissionObjective.r_fLastCompletedTime");
+	IntProperty_TgGame_TgMissionObjective_r_nOwnerTaskForce = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgMissionObjective.r_nOwnerTaskForce");
+	IntProperty_TgGame_TgMissionObjective_nObjectiveId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgMissionObjective.nObjectiveId");
+	IntProperty_TgGame_TgMissionObjective_nPriority = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgMissionObjective.nPriority");
+	ByteProperty_TgGame_TgMissionObjective_r_OpenWorldPlayerDefaultRole = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgMissionObjective.r_OpenWorldPlayerDefaultRole");
+	BoolProperty_TgGame_TgMissionObjective_r_bUsePendingState = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgMissionObjective.r_bUsePendingState");
+	ByteProperty_TgGame_TgMissionObjective_r_eDefaultCoalition = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgMissionObjective.r_eDefaultCoalition");
+	ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBot = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgMissionObjective_Bot.r_ObjectiveBot");
+	ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBotInfo = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgMissionObjective_Bot.r_ObjectiveBotInfo");
+	ObjectProperty_TgGame_TgMissionObjective_Escort_r_AttachedActor = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgMissionObjective_Escort.r_AttachedActor");
+	FloatProperty_TgGame_TgMissionObjective_Proximity_r_fCaptureRate = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgMissionObjective_Proximity.r_fCaptureRate");
+	ObjectProperty_TgGame_TgObjectiveAssignment_r_AssignedObjective = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgObjectiveAssignment.r_AssignedObjective");
+	ObjectProperty_TgGame_TgObjectiveAssignment_r_Attackers = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgObjectiveAssignment.r_Attackers");
+	ObjectProperty_TgGame_TgObjectiveAssignment_r_Bots = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgObjectiveAssignment.r_Bots");
+	ObjectProperty_TgGame_TgObjectiveAssignment_r_Defenders = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgObjectiveAssignment.r_Defenders");
+	ByteProperty_TgGame_TgObjectiveAssignment_r_eState = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgObjectiveAssignment.r_eState");
+	BoolProperty_TgGame_TgPawn_r_bIsBot = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bIsBot");
+	BoolProperty_TgGame_TgPawn_r_bIsHenchman = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bIsHenchman");
+	BoolProperty_TgGame_TgPawn_r_bNeedPlaySpawnFx = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bNeedPlaySpawnFx");
+	FloatProperty_TgGame_TgPawn_r_fMakeVisibleIncreased = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fMakeVisibleIncreased");
+	IntProperty_TgGame_TgPawn_r_nAllianceId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nAllianceId");
+	IntProperty_TgGame_TgPawn_r_nBodyMeshAsmId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nBodyMeshAsmId");
+	IntProperty_TgGame_TgPawn_r_nBotRankValueId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nBotRankValueId");
+	IntProperty_TgGame_TgPawn_r_nFlashEvent = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nFlashEvent");
+	IntProperty_TgGame_TgPawn_r_nFlashFireInfo = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nFlashFireInfo");
+	IntProperty_TgGame_TgPawn_r_nFlashQueIndex = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nFlashQueIndex");
+	IntProperty_TgGame_TgPawn_r_nPawnId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nPawnId");
+	IntProperty_TgGame_TgPawn_r_nPhysicalType = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nPhysicalType");
+	IntProperty_TgGame_TgPawn_r_nPreyProfileType = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nPreyProfileType");
+	IntProperty_TgGame_TgPawn_r_nProfileId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nProfileId");
+	IntProperty_TgGame_TgPawn_r_nProfileTypeValueId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nProfileTypeValueId");
+	IntProperty_TgGame_TgPawn_r_nSoundGroupId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nSoundGroupId");
+	StructProperty_TgGame_TgPawn_r_vFlashLocation = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgPawn.r_vFlashLocation");
+	StructProperty_TgGame_TgPawn_r_vFlashRayDir = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgPawn.r_vFlashRayDir");
+	FloatProperty_TgGame_TgPawn_r_vFlashRefireTime = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_vFlashRefireTime");
+	IntProperty_TgGame_TgPawn_r_vFlashSituationalAttack = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_vFlashSituationalAttack");
+	StructProperty_TgGame_TgPawn_r_EquipDeviceInfo = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgPawn.r_EquipDeviceInfo");
+	BoolProperty_TgGame_TgPawn_r_bInitialIsEnemy = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bInitialIsEnemy");
+	ByteProperty_TgGame_TgPawn_r_bMadeSound = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgPawn.r_bMadeSound");
+	ByteProperty_TgGame_TgPawn_r_eDesiredInHand = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgPawn.r_eDesiredInHand");
+	IntProperty_TgGame_TgPawn_r_eEquippedInHandMode = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_eEquippedInHandMode");
+	IntProperty_TgGame_TgPawn_r_nReplicateHit = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nReplicateHit");
+	ObjectProperty_TgGame_TgPawn_r_ControlPawn = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgPawn.r_ControlPawn");
+	ObjectProperty_TgGame_TgPawn_r_CurrentOmegaVolume = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgPawn.r_CurrentOmegaVolume");
+	ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneBilboardVol = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgPawn.r_CurrentSubzoneBilboardVol");
+	ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneVol = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgPawn.r_CurrentSubzoneVol");
+	StructProperty_TgGame_TgPawn_r_ScannerSettings = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgPawn.r_ScannerSettings");
+	ByteProperty_TgGame_TgPawn_r_UIClockState = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgPawn.r_UIClockState");
+	FloatProperty_TgGame_TgPawn_r_UIClockTime = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_UIClockTime");
+	IntProperty_TgGame_TgPawn_r_UITextBox1MessageID = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_UITextBox1MessageID");
+	ByteProperty_TgGame_TgPawn_r_UITextBox1Packet = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgPawn.r_UITextBox1Packet");
+	FloatProperty_TgGame_TgPawn_r_UITextBox1Time = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_UITextBox1Time");
+	IntProperty_TgGame_TgPawn_r_UITextBox2MessageID = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_UITextBox2MessageID");
+	ByteProperty_TgGame_TgPawn_r_UITextBox2Packet = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgPawn.r_UITextBox2Packet");
+	FloatProperty_TgGame_TgPawn_r_UITextBox2Time = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_UITextBox2Time");
+	BoolProperty_TgGame_TgPawn_r_bAllowAddMoralePoints = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bAllowAddMoralePoints");
+	BoolProperty_TgGame_TgPawn_r_bDisableAllDevices = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bDisableAllDevices");
+	BoolProperty_TgGame_TgPawn_r_bEnableCrafting = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bEnableCrafting");
+	BoolProperty_TgGame_TgPawn_r_bEnableEquip = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bEnableEquip");
+	BoolProperty_TgGame_TgPawn_r_bEnableSkills = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bEnableSkills");
+	BoolProperty_TgGame_TgPawn_r_bInCombatFlag = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bInCombatFlag");
+	BoolProperty_TgGame_TgPawn_r_bInGlobalOffhandCooldown = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bInGlobalOffhandCooldown");
+	FloatProperty_TgGame_TgPawn_r_fCurrentPowerPool = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fCurrentPowerPool");
+	FloatProperty_TgGame_TgPawn_r_fCurrentServerMoralePoints = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fCurrentServerMoralePoints");
+	FloatProperty_TgGame_TgPawn_r_fMaxControlRange = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fMaxControlRange");
+	FloatProperty_TgGame_TgPawn_r_fMaxPowerPool = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fMaxPowerPool");
+	FloatProperty_TgGame_TgPawn_r_fMoraleRechargeRate = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fMoraleRechargeRate");
+	FloatProperty_TgGame_TgPawn_r_fRequiredMoralePoints = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fRequiredMoralePoints");
+	FloatProperty_TgGame_TgPawn_r_fSkillRating = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fSkillRating");
+	IntProperty_TgGame_TgPawn_r_nCurrency = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nCurrency");
+	IntProperty_TgGame_TgPawn_r_nHZPoints = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nHZPoints");
+	IntProperty_TgGame_TgPawn_r_nMoraleDeviceSlot = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nMoraleDeviceSlot");
+	IntProperty_TgGame_TgPawn_r_nRestDeviceSlot = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nRestDeviceSlot");
+	IntProperty_TgGame_TgPawn_r_nToken = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nToken");
+	IntProperty_TgGame_TgPawn_r_nXp = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nXp");
+	FloatProperty_TgGame_TgPawn_r_DistanceToPushback = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_DistanceToPushback");
+	ObjectProperty_TgGame_TgPawn_r_EffectManager = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgPawn.r_EffectManager");
+	FloatProperty_TgGame_TgPawn_r_FlightAcceleration = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_FlightAcceleration");
+	StructProperty_TgGame_TgPawn_r_HangingRotation = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgPawn.r_HangingRotation");
+	ObjectProperty_TgGame_TgPawn_r_Owner = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgPawn.r_Owner");
+	ObjectProperty_TgGame_TgPawn_r_Pet = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgPawn.r_Pet");
+	StructProperty_TgGame_TgPawn_r_PlayAnimation = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgPawn.r_PlayAnimation");
+	StructProperty_TgGame_TgPawn_r_PushbackDirection = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgPawn.r_PushbackDirection");
+	ObjectProperty_TgGame_TgPawn_r_Target = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgPawn.r_Target");
+	ObjectProperty_TgGame_TgPawn_r_TargetActor = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgPawn.r_TargetActor");
+	ObjectProperty_TgGame_TgPawn_r_aDebugDestination = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgPawn.r_aDebugDestination");
+	ObjectProperty_TgGame_TgPawn_r_aDebugNextNav = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgPawn.r_aDebugNextNav");
+	ObjectProperty_TgGame_TgPawn_r_aDebugTarget = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgPawn.r_aDebugTarget");
+	ByteProperty_TgGame_TgPawn_r_bAimType = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgPawn.r_bAimType");
+	BoolProperty_TgGame_TgPawn_r_bAimingMode = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bAimingMode");
+	BoolProperty_TgGame_TgPawn_r_bCallingForHelp = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bCallingForHelp");
+	BoolProperty_TgGame_TgPawn_r_bIsAFK = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bIsAFK");
+	BoolProperty_TgGame_TgPawn_r_bIsAnimInStrafeMode = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bIsAnimInStrafeMode");
+	BoolProperty_TgGame_TgPawn_r_bIsCrafting = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bIsCrafting");
+	BoolProperty_TgGame_TgPawn_r_bIsCrewing = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bIsCrewing");
+	BoolProperty_TgGame_TgPawn_r_bIsDecoy = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bIsDecoy");
+	BoolProperty_TgGame_TgPawn_r_bIsGrappleDismounting = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bIsGrappleDismounting");
+	BoolProperty_TgGame_TgPawn_r_bIsHacked = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bIsHacked");
+	BoolProperty_TgGame_TgPawn_r_bIsHacking = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bIsHacking");
+	BoolProperty_TgGame_TgPawn_r_bIsHanging = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bIsHanging");
+	BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bIsHangingDismounting");
+	BoolProperty_TgGame_TgPawn_r_bIsInSnipeScope = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bIsInSnipeScope");
+	BoolProperty_TgGame_TgPawn_r_bIsRappelling = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bIsRappelling");
+	BoolProperty_TgGame_TgPawn_r_bIsStealthed = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bIsStealthed");
+	BoolProperty_TgGame_TgPawn_r_bJumpedFromHanging = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bJumpedFromHanging");
+	BoolProperty_TgGame_TgPawn_r_bPostureIgnoreTransition = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bPostureIgnoreTransition");
+	BoolProperty_TgGame_TgPawn_r_bResistTagging = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bResistTagging");
+	BoolProperty_TgGame_TgPawn_r_bShouldKnockDownAnimFaceDown = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bShouldKnockDownAnimFaceDown");
+	BoolProperty_TgGame_TgPawn_r_bTagEnemy = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bTagEnemy");
+	BoolProperty_TgGame_TgPawn_r_bUsingBinoculars = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn.r_bUsingBinoculars");
+	ByteProperty_TgGame_TgPawn_r_eCurrentStunType = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgPawn.r_eCurrentStunType");
+	ByteProperty_TgGame_TgPawn_r_eDeathReason = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgPawn.r_eDeathReason");
+	IntProperty_TgGame_TgPawn_r_eEmoteLength = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_eEmoteLength");
+	IntProperty_TgGame_TgPawn_r_eEmoteRepnotify = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_eEmoteRepnotify");
+	IntProperty_TgGame_TgPawn_r_eEmoteUpdate = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_eEmoteUpdate");
+	ByteProperty_TgGame_TgPawn_r_ePosture = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgPawn.r_ePosture");
+	FloatProperty_TgGame_TgPawn_r_fDeployRate = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fDeployRate");
+	FloatProperty_TgGame_TgPawn_r_fFrictionMultiplier = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fFrictionMultiplier");
+	FloatProperty_TgGame_TgPawn_r_fGravityZModifier = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fGravityZModifier");
+	FloatProperty_TgGame_TgPawn_r_fKnockDownTimeRemaining = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fKnockDownTimeRemaining");
+	FloatProperty_TgGame_TgPawn_r_fMakeVisibleFadeRate = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fMakeVisibleFadeRate");
+	FloatProperty_TgGame_TgPawn_r_fPostureRateScale = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fPostureRateScale");
+	FloatProperty_TgGame_TgPawn_r_fRappelGravityModifier = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fRappelGravityModifier");
+	FloatProperty_TgGame_TgPawn_r_fStealthTransitionTime = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn.r_fStealthTransitionTime");
+	IntProperty_TgGame_TgPawn_r_fWeightBonus = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_fWeightBonus");
+	IntProperty_TgGame_TgPawn_r_iKnockDownFlash = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_iKnockDownFlash");
+	IntProperty_TgGame_TgPawn_r_nApplyStealth = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nApplyStealth");
+	IntProperty_TgGame_TgPawn_r_nBotSoundCueId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nBotSoundCueId");
+	IntProperty_TgGame_TgPawn_r_nDebugAggroRange = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nDebugAggroRange");
+	IntProperty_TgGame_TgPawn_r_nDebugFOV = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nDebugFOV");
+	IntProperty_TgGame_TgPawn_r_nDebugHearingRange = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nDebugHearingRange");
+	IntProperty_TgGame_TgPawn_r_nDebugSightRange = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nDebugSightRange");
+	IntProperty_TgGame_TgPawn_r_nGenericAIEventIndex = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nGenericAIEventIndex");
+	IntProperty_TgGame_TgPawn_r_nHealthMaximum = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nHealthMaximum");
+	IntProperty_TgGame_TgPawn_r_nNumberTimesCrewed = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nNumberTimesCrewed");
+	IntProperty_TgGame_TgPawn_r_nPhase = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nPhase");
+	IntProperty_TgGame_TgPawn_r_nPitchOffset = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nPitchOffset");
+	IntProperty_TgGame_TgPawn_r_nReplicateDying = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nReplicateDying");
+	IntProperty_TgGame_TgPawn_r_nResetCharacter = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nResetCharacter");
+	IntProperty_TgGame_TgPawn_r_nSensorAlertLevel = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nSensorAlertLevel");
+	IntProperty_TgGame_TgPawn_r_nShieldHealthMax = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nShieldHealthMax");
+	IntProperty_TgGame_TgPawn_r_nShieldHealthRemaining = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nShieldHealthRemaining");
+	IntProperty_TgGame_TgPawn_r_nSilentMode = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nSilentMode");
+	IntProperty_TgGame_TgPawn_r_nStealthAggroRange = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nStealthAggroRange");
+	IntProperty_TgGame_TgPawn_r_nStealthDisabled = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nStealthDisabled");
+	IntProperty_TgGame_TgPawn_r_nStealthSensorRange = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nStealthSensorRange");
+	IntProperty_TgGame_TgPawn_r_nStealthTypeCode = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nStealthTypeCode");
+	IntProperty_TgGame_TgPawn_r_nYawOffset = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn.r_nYawOffset");
+	StrProperty_TgGame_TgPawn_r_sDebugAction = (UProperty*)ClassPreloader::GetObject("StrProperty TgGame.TgPawn.r_sDebugAction");
+	StrProperty_TgGame_TgPawn_r_sDebugName = (UProperty*)ClassPreloader::GetObject("StrProperty TgGame.TgPawn.r_sDebugName");
+	StrProperty_TgGame_TgPawn_r_sFactory = (UProperty*)ClassPreloader::GetObject("StrProperty TgGame.TgPawn.r_sFactory");
+	StructProperty_TgGame_TgPawn_r_vDown = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgPawn.r_vDown");
+	BoolProperty_TgGame_TgPawn_Ambush_r_bIsDeployed = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn_Ambush.r_bIsDeployed");
+	ByteProperty_TgGame_TgPawn_AttackTransport_r_DeathType = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgPawn_AttackTransport.r_DeathType");
+	StructProperty_TgGame_TgPawn_CTR_r_CustomCharacterAssembly = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgPawn_CTR.r_CustomCharacterAssembly");
+	ObjectProperty_TgGame_TgPawn_CTR_r_PilotPawn = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgPawn_CTR.r_PilotPawn");
+	IntProperty_TgGame_TgPawn_CTR_r_nMaxMorphIndexSentFromServer = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn_CTR.r_nMaxMorphIndexSentFromServer");
+	IntProperty_TgGame_TgPawn_CTR_r_nMorphSettings = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn_CTR.r_nMorphSettings");
+	StructProperty_TgGame_TgPawn_Character_r_CustomCharacterAssembly = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgPawn_Character.r_CustomCharacterAssembly");
+	ByteProperty_TgGame_TgPawn_Character_r_eAttachedMesh = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgPawn_Character.r_eAttachedMesh");
+	IntProperty_TgGame_TgPawn_Character_r_nBoostTimeRemaining = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn_Character.r_nBoostTimeRemaining");
+	IntProperty_TgGame_TgPawn_Character_r_nHeadMeshAsmId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn_Character.r_nHeadMeshAsmId");
+	IntProperty_TgGame_TgPawn_Character_r_nItemProfileId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn_Character.r_nItemProfileId");
+	IntProperty_TgGame_TgPawn_Character_r_nItemProfileNbr = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn_Character.r_nItemProfileNbr");
+	IntProperty_TgGame_TgPawn_Character_r_nMaxMorphIndexSentFromServer = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn_Character.r_nMaxMorphIndexSentFromServer");
+	IntProperty_TgGame_TgPawn_Character_r_nMorphSettings = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn_Character.r_nMorphSettings");
+	ObjectProperty_TgGame_TgPawn_Character_r_CurrentVanityPet = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgPawn_Character.r_CurrentVanityPet");
+	FloatProperty_TgGame_TgPawn_Character_r_WallJumpUpperLineCheckOffset = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn_Character.r_WallJumpUpperLineCheckOffset");
+	FloatProperty_TgGame_TgPawn_Character_r_WallJumpZ = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn_Character.r_WallJumpZ");
+	BoolProperty_TgGame_TgPawn_Character_r_bElfGogglesEquipped = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn_Character.r_bElfGogglesEquipped");
+	IntProperty_TgGame_TgPawn_Character_r_nDeviceSlotUnlockGrpId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn_Character.r_nDeviceSlotUnlockGrpId");
+	IntProperty_TgGame_TgPawn_Character_r_nSkillGroupSetId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn_Character.r_nSkillGroupSetId");
+	BoolProperty_TgGame_TgPawn_DuneCommander_r_bDoCrashLanding = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn_DuneCommander.r_bDoCrashLanding");
+	ByteProperty_TgGame_TgPawn_Iris_r_nStartNewScan = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgPawn_Iris.r_nStartNewScan");
+	FloatProperty_TgGame_TgPawn_Reaper_r_fBatteryPct = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn_Reaper.r_fBatteryPct");
+	ByteProperty_TgGame_TgPawn_Siege_r_AccelDirection = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgPawn_Siege.r_AccelDirection");
+	BoolProperty_TgGame_TgPawn_Turret_r_bIsDeployed = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPawn_Turret.r_bIsDeployed");
+	FloatProperty_TgGame_TgPawn_Turret_r_fInitDeployTime = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn_Turret.r_fInitDeployTime");
+	FloatProperty_TgGame_TgPawn_Turret_r_fTimeToDeploySecs = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn_Turret.r_fTimeToDeploySecs");
+	FloatProperty_TgGame_TgPawn_Turret_r_fCurrentDeployTime = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn_Turret.r_fCurrentDeployTime");
+	FloatProperty_TgGame_TgPawn_Turret_r_fDeployMaxHealthPCT = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgPawn_Turret.r_fDeployMaxHealthPCT");
+	IntProperty_TgGame_TgPawn_VanityPet_r_nSpawningItemId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgPawn_VanityPet.r_nSpawningItemId");
+	ByteProperty_TgGame_TgPlayerController_r_WatchOtherPlayer = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgPlayerController.r_WatchOtherPlayer");
+	BoolProperty_TgGame_TgPlayerController_r_bEDDebugEffects = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPlayerController.r_bEDDebugEffects");
+	BoolProperty_TgGame_TgPlayerController_r_bGMInvisible = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPlayerController.r_bGMInvisible");
+	BoolProperty_TgGame_TgPlayerController_r_bIsHackingABot = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPlayerController.r_bIsHackingABot");
+	BoolProperty_TgGame_TgPlayerController_r_bLockYawRotation = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPlayerController.r_bLockYawRotation");
+	BoolProperty_TgGame_TgPlayerController_r_bRove = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgPlayerController.r_bRove");
+	StructProperty_TgGame_TgProj_Grapple_r_vTargetLocation = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgProj_Grapple.r_vTargetLocation");
+	ObjectProperty_TgGame_TgProj_Missile_r_aSeeking = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgProj_Missile.r_aSeeking");
+	StructProperty_TgGame_TgProj_Missile_r_vTargetWorldLocation = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgProj_Missile.r_vTargetWorldLocation");
+	IntProperty_TgGame_TgProj_Missile_r_nNumBounces = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgProj_Missile.r_nNumBounces");
+	ByteProperty_TgGame_TgProj_Rocket_FlockIndex = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgProj_Rocket.FlockIndex");
+	BoolProperty_TgGame_TgProj_Rocket_bCurl = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgProj_Rocket.bCurl");
+	ObjectProperty_TgGame_TgProjectile_r_Owner = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgProjectile.r_Owner");
+	FloatProperty_TgGame_TgProjectile_r_fAccelRate = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgProjectile.r_fAccelRate");
+	FloatProperty_TgGame_TgProjectile_r_fDuration = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgProjectile.r_fDuration");
+	FloatProperty_TgGame_TgProjectile_r_fRange = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgProjectile.r_fRange");
+	IntProperty_TgGame_TgProjectile_r_nOwnerFireModeId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgProjectile.r_nOwnerFireModeId");
+	IntProperty_TgGame_TgProjectile_r_nProjectileId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgProjectile.r_nProjectileId");
+	StructProperty_TgGame_TgProjectile_r_vSpawnLocation = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgProjectile.r_vSpawnLocation");
+	BoolProperty_TgGame_TgRepInfo_Beacon_r_bDeployed = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Beacon.r_bDeployed");
+	StructProperty_TgGame_TgRepInfo_Beacon_r_vLoc = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgRepInfo_Beacon.r_vLoc");
+	StrProperty_TgGame_TgRepInfo_Beacon_r_nName = (UProperty*)ClassPreloader::GetObject("StrProperty TgGame.TgRepInfo_Beacon.r_nName");
+	ObjectProperty_TgGame_TgRepInfo_Deployable_r_InstigatorInfo = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgRepInfo_Deployable.r_InstigatorInfo");
+	ObjectProperty_TgGame_TgRepInfo_Deployable_r_TaskforceInfo = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgRepInfo_Deployable.r_TaskforceInfo");
+	BoolProperty_TgGame_TgRepInfo_Deployable_r_bOwnedByTaskforce = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Deployable.r_bOwnedByTaskforce");
+	IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthCurrent = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Deployable.r_nHealthCurrent");
+	ObjectProperty_TgGame_TgRepInfo_Deployable_r_DeployableOwner = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgRepInfo_Deployable.r_DeployableOwner");
+	FloatProperty_TgGame_TgRepInfo_Deployable_r_fDeployMaxHealthPCT = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgRepInfo_Deployable.r_fDeployMaxHealthPCT");
+	IntProperty_TgGame_TgRepInfo_Deployable_r_nDeployableId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Deployable.r_nDeployableId");
+	IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthMaximum = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Deployable.r_nHealthMaximum");
+	IntProperty_TgGame_TgRepInfo_Deployable_r_nUniqueDeployableId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Deployable.r_nUniqueDeployableId");
+	StructProperty_TgGame_TgRepInfo_Game_r_MiniMapInfo = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgRepInfo_Game.r_MiniMapInfo");
+	BoolProperty_TgGame_TgRepInfo_Game_r_bActiveCombat = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Game.r_bActiveCombat");
+	BoolProperty_TgGame_TgRepInfo_Game_r_bAllowBuildMorale = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Game.r_bAllowBuildMorale");
+	BoolProperty_TgGame_TgRepInfo_Game_r_bAllowPlayerRelease = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Game.r_bAllowPlayerRelease");
+	BoolProperty_TgGame_TgRepInfo_Game_r_bDefenseAlarm = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Game.r_bDefenseAlarm");
+	BoolProperty_TgGame_TgRepInfo_Game_r_bInOverTime = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Game.r_bInOverTime");
+	BoolProperty_TgGame_TgRepInfo_Game_r_bIsTutorialMap = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Game.r_bIsTutorialMap");
+	FloatProperty_TgGame_TgRepInfo_Game_r_fGameSpeedModifier = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgRepInfo_Game.r_fGameSpeedModifier");
+	FloatProperty_TgGame_TgRepInfo_Game_r_fMissionRemainingTime = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgRepInfo_Game.r_fMissionRemainingTime");
+	FloatProperty_TgGame_TgRepInfo_Game_r_fServerTimeLastUpdate = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgRepInfo_Game.r_fServerTimeLastUpdate");
+	IntProperty_TgGame_TgRepInfo_Game_r_nMaxRoundNumber = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Game.r_nMaxRoundNumber");
+	ByteProperty_TgGame_TgRepInfo_Game_r_nMissionTimerState = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgRepInfo_Game.r_nMissionTimerState");
+	IntProperty_TgGame_TgRepInfo_Game_r_nMissionTimerStateChange = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Game.r_nMissionTimerStateChange");
+	IntProperty_TgGame_TgRepInfo_Game_r_nRaidAttackerRespawnBonus = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Game.r_nRaidAttackerRespawnBonus");
+	IntProperty_TgGame_TgRepInfo_Game_r_nRaidDefenderRespawnBonus = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Game.r_nRaidDefenderRespawnBonus");
+	IntProperty_TgGame_TgRepInfo_Game_r_nReleaseDelay = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Game.r_nReleaseDelay");
+	IntProperty_TgGame_TgRepInfo_Game_r_nRoundNumber = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Game.r_nRoundNumber");
+	IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseAttackers = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Game.r_nSecsToAutoReleaseAttackers");
+	IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseDefenders = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Game.r_nSecsToAutoReleaseDefenders");
+	ByteProperty_TgGame_TgRepInfo_Game_r_GameType = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgRepInfo_Game.r_GameType");
+	StructProperty_TgGame_TgRepInfo_Game_r_MapLogoResIds = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgRepInfo_Game.r_MapLogoResIds");
+	ObjectProperty_TgGame_TgRepInfo_Game_r_Objectives = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgRepInfo_Game.r_Objectives");
+	BoolProperty_TgGame_TgRepInfo_Game_r_bIsArena = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Game.r_bIsArena");
+	BoolProperty_TgGame_TgRepInfo_Game_r_bIsMatch = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Game.r_bIsMatch");
+	BoolProperty_TgGame_TgRepInfo_Game_r_bIsMission = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Game.r_bIsMission");
+	BoolProperty_TgGame_TgRepInfo_Game_r_bIsPVP = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Game.r_bIsPVP");
+	BoolProperty_TgGame_TgRepInfo_Game_r_bIsRaid = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Game.r_bIsRaid");
+	BoolProperty_TgGame_TgRepInfo_Game_r_bIsTerritoryMap = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Game.r_bIsTerritoryMap");
+	BoolProperty_TgGame_TgRepInfo_Game_r_bIsTraining = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Game.r_bIsTraining");
+	IntProperty_TgGame_TgRepInfo_Game_r_nAutoKickTimeout = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Game.r_nAutoKickTimeout");
+	IntProperty_TgGame_TgRepInfo_Game_r_nPointsToWin = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Game.r_nPointsToWin");
+	IntProperty_TgGame_TgRepInfo_Game_r_nVictoryBonusLives = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Game.r_nVictoryBonusLives");
+	IntProperty_TgGame_TgRepInfo_GameOpenWorld_r_GameTickets = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_GameOpenWorld.r_GameTickets");
+	StructProperty_TgGame_TgRepInfo_Player_r_ApproxLocation = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgRepInfo_Player.r_ApproxLocation");
+	StructProperty_TgGame_TgRepInfo_Player_r_CustomCharacterAssembly = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgRepInfo_Player.r_CustomCharacterAssembly");
+	StructProperty_TgGame_TgRepInfo_Player_r_EquipDeviceInfo = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgRepInfo_Player.r_EquipDeviceInfo");
+	ObjectProperty_TgGame_TgRepInfo_Player_r_MasterPrep = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgRepInfo_Player.r_MasterPrep");
+	ObjectProperty_TgGame_TgRepInfo_Player_r_PawnOwner = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgRepInfo_Player.r_PawnOwner");
+	IntProperty_TgGame_TgRepInfo_Player_r_Scores = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Player.r_Scores");
+	ObjectProperty_TgGame_TgRepInfo_Player_r_TaskForce = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgRepInfo_Player.r_TaskForce");
+	BoolProperty_TgGame_TgRepInfo_Player_r_bDropped = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_Player.r_bDropped");
+	IntProperty_TgGame_TgRepInfo_Player_r_eBonusType = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Player.r_eBonusType");
+	IntProperty_TgGame_TgRepInfo_Player_r_nCharacterId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Player.r_nCharacterId");
+	IntProperty_TgGame_TgRepInfo_Player_r_nHealthCurrent = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Player.r_nHealthCurrent");
+	IntProperty_TgGame_TgRepInfo_Player_r_nHealthMaximum = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Player.r_nHealthMaximum");
+	IntProperty_TgGame_TgRepInfo_Player_r_nLevel = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Player.r_nLevel");
+	IntProperty_TgGame_TgRepInfo_Player_r_nProfileId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Player.r_nProfileId");
+	IntProperty_TgGame_TgRepInfo_Player_r_nTitleMsgId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_Player.r_nTitleMsgId");
+	StrProperty_TgGame_TgRepInfo_Player_r_sAgencyName = (UProperty*)ClassPreloader::GetObject("StrProperty TgGame.TgRepInfo_Player.r_sAgencyName");
+	StrProperty_TgGame_TgRepInfo_Player_r_sAllianceName = (UProperty*)ClassPreloader::GetObject("StrProperty TgGame.TgRepInfo_Player.r_sAllianceName");
+	StrProperty_TgGame_TgRepInfo_Player_r_sOrigPlayerName = (UProperty*)ClassPreloader::GetObject("StrProperty TgGame.TgRepInfo_Player.r_sOrigPlayerName");
+	StructProperty_TgGame_TgRepInfo_Player_r_DeviceStats = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgRepInfo_Player.r_DeviceStats");
+	ObjectProperty_TgGame_TgRepInfo_TaskForce_r_BeaconManager = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgRepInfo_TaskForce.r_BeaconManager");
+	ObjectProperty_TgGame_TgRepInfo_TaskForce_r_CurrActiveObjective = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgRepInfo_TaskForce.r_CurrActiveObjective");
+	ObjectProperty_TgGame_TgRepInfo_TaskForce_r_ObjectiveAssignment = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgRepInfo_TaskForce.r_ObjectiveAssignment");
+	BoolProperty_TgGame_TgRepInfo_TaskForce_r_bBotOwned = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgRepInfo_TaskForce.r_bBotOwned");
+	ByteProperty_TgGame_TgRepInfo_TaskForce_r_eCoalition = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgRepInfo_TaskForce.r_eCoalition");
+	IntProperty_TgGame_TgRepInfo_TaskForce_r_nCurrentPointCount = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_TaskForce.r_nCurrentPointCount");
+	IntProperty_TgGame_TgRepInfo_TaskForce_r_nLeaderCharId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_TaskForce.r_nLeaderCharId");
+	FloatProperty_TgGame_TgRepInfo_TaskForce_r_nLookingForMembers = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgRepInfo_TaskForce.r_nLookingForMembers");
+	IntProperty_TgGame_TgRepInfo_TaskForce_r_nNumDeaths = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_TaskForce.r_nNumDeaths");
+	ByteProperty_TgGame_TgRepInfo_TaskForce_r_nTaskForce = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgRepInfo_TaskForce.r_nTaskForce");
+	IntProperty_TgGame_TgRepInfo_TaskForce_r_nTeamId = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgRepInfo_TaskForce.r_nTeamId");
+	FloatProperty_TgGame_TgSkydiveTarget_m_LandRadius = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgSkydiveTarget.m_LandRadius");
+	FloatProperty_TgGame_TgSkydivingVolume_r_PawnGravityModifier = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgSkydivingVolume.r_PawnGravityModifier");
+	FloatProperty_TgGame_TgSkydivingVolume_r_PawnLaunchForce = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgSkydivingVolume.r_PawnLaunchForce");
+	FloatProperty_TgGame_TgSkydivingVolume_r_PawnUpForce = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgSkydivingVolume.r_PawnUpForce");
+	ObjectProperty_TgGame_TgSkydivingVolume_r_SkydiveTarget = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgSkydivingVolume.r_SkydiveTarget");
+	ObjectProperty_TgGame_TgTeamBeaconManager_r_Beacon = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgTeamBeaconManager.r_Beacon");
+	IntProperty_TgGame_TgTeamBeaconManager_r_BeaconDestroyed = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgTeamBeaconManager.r_BeaconDestroyed");
+	ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconHolder = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgTeamBeaconManager.r_BeaconHolder");
+	ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconInfo = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgTeamBeaconManager.r_BeaconInfo");
+	ByteProperty_TgGame_TgTeamBeaconManager_r_BeaconStatus = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgTeamBeaconManager.r_BeaconStatus");
+	ObjectProperty_TgGame_TgTeamBeaconManager_r_TaskForce = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgTeamBeaconManager.r_TaskForce");
+	ByteProperty_TgGame_TgTimerManager_r_byEventQue = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgTimerManager.r_byEventQue");
+	ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgTimerManager.r_byEventQueIndex");
+	FloatProperty_TgGame_TgTimerManager_r_fRemaining = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgTimerManager.r_fRemaining");
+	FloatProperty_TgGame_TgTimerManager_r_fStartTime = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgTimerManager.r_fStartTime");
+}
+
+
 int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, int param_1, void* param_2, int* param_3, int* param_4, int param_5) {
 	param_3 = CallOriginal(thisxx, edx_dummy, param_1, param_2, param_3, param_4, param_5);
 	if (!bRepListCached) {
 		bRepListCached = true;
-		for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-			UObject* obj = UObject::GObjObjects()->Data[i];
-			if (obj) {
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Actor.Base") == 0) {
-					ObjectProperty_Engine_Actor_Base = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty Engine.Actor.Physics") == 0) {
-					ByteProperty_Engine_Actor_Physics = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty Engine.Actor.Velocity") == 0) {
-					StructProperty_Engine_Actor_Velocity = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty Engine.Actor.RemoteRole") == 0) {
-					ByteProperty_Engine_Actor_RemoteRole = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty Engine.Actor.Role") == 0) {
-					ByteProperty_Engine_Actor_Role = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Actor.bNetOwner") == 0) {
-					BoolProperty_Engine_Actor_bNetOwner = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Actor.bTearOff") == 0) {
-					BoolProperty_Engine_Actor_bTearOff = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.Actor.DrawScale") == 0) {
-					FloatProperty_Engine_Actor_DrawScale = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty Engine.Actor.ReplicatedCollisionType") == 0) {
-					ByteProperty_Engine_Actor_ReplicatedCollisionType = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Actor.bCollideActors") == 0) {
-					BoolProperty_Engine_Actor_bCollideActors = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Actor.bCollideWorld") == 0) {
-					BoolProperty_Engine_Actor_bCollideWorld = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Actor.bBlockActors") == 0) {
-					BoolProperty_Engine_Actor_bBlockActors = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Actor.bProjTarget") == 0) {
-					BoolProperty_Engine_Actor_bProjTarget = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Actor.Instigator") == 0) {
-					ObjectProperty_Engine_Actor_Instigator = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Actor.Owner") == 0) {
-					ObjectProperty_Engine_Actor_Owner = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.AmbientSoundSimpleToggleable.bCurrentlyPlaying") == 0) {
-					BoolProperty_Engine_AmbientSoundSimpleToggleable_bCurrentlyPlaying = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.CameraActor.AspectRatio") == 0) {
-					FloatProperty_Engine_CameraActor_AspectRatio = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.CameraActor.FOVAngle") == 0) {
-					FloatProperty_Engine_CameraActor_FOVAngle = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Controller.Pawn") == 0) {
-					ObjectProperty_Engine_Controller_Pawn = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Controller.PlayerReplicationInfo") == 0) {
-					ObjectProperty_Engine_Controller_PlayerReplicationInfo = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.CrowdAttractor.bAttractorEnabled") == 0) {
-					BoolProperty_Engine_CrowdAttractor_bAttractorEnabled = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.CrowdReplicationActor.DestroyAllCount") == 0) {
-					IntProperty_Engine_CrowdReplicationActor_DestroyAllCount = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.CrowdReplicationActor.Spawner") == 0) {
-					ObjectProperty_Engine_CrowdReplicationActor_Spawner = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.CrowdReplicationActor.bSpawningActive") == 0) {
-					BoolProperty_Engine_CrowdReplicationActor_bSpawningActive = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ClassProperty Engine.DroppedPickup.InventoryClass") == 0) {
-					ClassProperty_Engine_DroppedPickup_InventoryClass = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.DroppedPickup.bFadeOut") == 0) {
-					BoolProperty_Engine_DroppedPickup_bFadeOut = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.DynamicSMActor.ReplicatedMaterial") == 0) {
-					ObjectProperty_Engine_DynamicSMActor_ReplicatedMaterial = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.DynamicSMActor.ReplicatedMesh") == 0) {
-					ObjectProperty_Engine_DynamicSMActor_ReplicatedMesh = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty Engine.DynamicSMActor.ReplicatedMeshRotation") == 0) {
-					StructProperty_Engine_DynamicSMActor_ReplicatedMeshRotation = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty Engine.DynamicSMActor.ReplicatedMeshScale3D") == 0) {
-					StructProperty_Engine_DynamicSMActor_ReplicatedMeshScale3D = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty Engine.DynamicSMActor.ReplicatedMeshTranslation") == 0) {
-					StructProperty_Engine_DynamicSMActor_ReplicatedMeshTranslation = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.DynamicSMActor.bForceStaticDecals") == 0) {
-					BoolProperty_Engine_DynamicSMActor_bForceStaticDecals = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Emitter.bCurrentlyActive") == 0) {
-					BoolProperty_Engine_Emitter_bCurrentlyActive = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.EmitterSpawnable.ParticleTemplate") == 0) {
-					ObjectProperty_Engine_EmitterSpawnable_ParticleTemplate = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.FluidInfluenceActor.bActive") == 0) {
-					BoolProperty_Engine_FluidInfluenceActor_bActive = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.FluidInfluenceActor.bToggled") == 0) {
-					BoolProperty_Engine_FluidInfluenceActor_bToggled = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.FogVolumeDensityInfo.bEnabled") == 0) {
-					BoolProperty_Engine_FogVolumeDensityInfo_bEnabled = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.GameReplicationInfo.MatchID") == 0) {
-					IntProperty_Engine_GameReplicationInfo_MatchID = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.GameReplicationInfo.Winner") == 0) {
-					ObjectProperty_Engine_GameReplicationInfo_Winner = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.GameReplicationInfo.bMatchHasBegun") == 0) {
-					BoolProperty_Engine_GameReplicationInfo_bMatchHasBegun = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.GameReplicationInfo.bMatchIsOver") == 0) {
-					BoolProperty_Engine_GameReplicationInfo_bMatchIsOver = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.GameReplicationInfo.bStopCountDown") == 0) {
-					BoolProperty_Engine_GameReplicationInfo_bStopCountDown = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.GameReplicationInfo.RemainingMinute") == 0) {
-					IntProperty_Engine_GameReplicationInfo_RemainingMinute = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty Engine.GameReplicationInfo.AdminEmail") == 0) {
-					StrProperty_Engine_GameReplicationInfo_AdminEmail = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty Engine.GameReplicationInfo.AdminName") == 0) {
-					StrProperty_Engine_GameReplicationInfo_AdminName = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.GameReplicationInfo.ElapsedTime") == 0) {
-					IntProperty_Engine_GameReplicationInfo_ElapsedTime = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ClassProperty Engine.GameReplicationInfo.GameClass") == 0) {
-					ClassProperty_Engine_GameReplicationInfo_GameClass = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.GameReplicationInfo.GoalScore") == 0) {
-					IntProperty_Engine_GameReplicationInfo_GoalScore = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.GameReplicationInfo.MaxLives") == 0) {
-					IntProperty_Engine_GameReplicationInfo_MaxLives = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty Engine.GameReplicationInfo.MessageOfTheDay") == 0) {
-					StrProperty_Engine_GameReplicationInfo_MessageOfTheDay = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.GameReplicationInfo.RemainingTime") == 0) {
-					IntProperty_Engine_GameReplicationInfo_RemainingTime = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty Engine.GameReplicationInfo.ServerName") == 0) {
-					StrProperty_Engine_GameReplicationInfo_ServerName = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.GameReplicationInfo.ServerRegion") == 0) {
-					IntProperty_Engine_GameReplicationInfo_ServerRegion = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty Engine.GameReplicationInfo.ShortName") == 0) {
-					StrProperty_Engine_GameReplicationInfo_ShortName = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.GameReplicationInfo.TimeLimit") == 0) {
-					IntProperty_Engine_GameReplicationInfo_TimeLimit = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.GameReplicationInfo.bIsArbitrated") == 0) {
-					BoolProperty_Engine_GameReplicationInfo_bIsArbitrated = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.GameReplicationInfo.bTrackStats") == 0) {
-					BoolProperty_Engine_GameReplicationInfo_bTrackStats = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.HeightFog.bEnabled") == 0) {
-					BoolProperty_Engine_HeightFog_bEnabled = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Inventory.InvManager") == 0) {
-					ObjectProperty_Engine_Inventory_InvManager = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Inventory.Inventory") == 0) {
-					ObjectProperty_Engine_Inventory_Inventory = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.InventoryManager.InventoryChain") == 0) {
-					ObjectProperty_Engine_InventoryManager_InventoryChain = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty Engine.KActor.RBState") == 0) {
-					StructProperty_Engine_KActor_RBState = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty Engine.KActor.ReplicatedDrawScale3D") == 0) {
-					StructProperty_Engine_KActor_ReplicatedDrawScale3D = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.KActor.bWakeOnLevelStart") == 0) {
-					BoolProperty_Engine_KActor_bWakeOnLevelStart = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.KAsset.ReplicatedMesh") == 0) {
-					ObjectProperty_Engine_KAsset_ReplicatedMesh = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.KAsset.ReplicatedPhysAsset") == 0) {
-					ObjectProperty_Engine_KAsset_ReplicatedPhysAsset = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.LensFlareSource.bCurrentlyActive") == 0) {
-					BoolProperty_Engine_LensFlareSource_bCurrentlyActive = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Light.bEnabled") == 0) {
-					BoolProperty_Engine_Light_bEnabled = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.MatineeActor.InterpAction") == 0) {
-					ObjectProperty_Engine_MatineeActor_InterpAction = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.MatineeActor.PlayRate") == 0) {
-					FloatProperty_Engine_MatineeActor_PlayRate = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.MatineeActor.Position") == 0) {
-					FloatProperty_Engine_MatineeActor_Position = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.MatineeActor.bIsPlaying") == 0) {
-					BoolProperty_Engine_MatineeActor_bIsPlaying = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.MatineeActor.bPaused") == 0) {
-					BoolProperty_Engine_MatineeActor_bPaused = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.MatineeActor.bReversePlayback") == 0) {
-					BoolProperty_Engine_MatineeActor_bReversePlayback = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.NxForceField.bForceActive") == 0) {
-					BoolProperty_Engine_NxForceField_bForceActive = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Pawn.DrivenVehicle") == 0) {
-					ObjectProperty_Engine_Pawn_DrivenVehicle = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty Engine.Pawn.FlashLocation") == 0) {
-					StructProperty_Engine_Pawn_FlashLocation = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.Pawn.Health") == 0) {
-					IntProperty_Engine_Pawn_Health = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ClassProperty Engine.Pawn.HitDamageType") == 0) {
-					ClassProperty_Engine_Pawn_HitDamageType = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Pawn.PlayerReplicationInfo") == 0) {
-					ObjectProperty_Engine_Pawn_PlayerReplicationInfo = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty Engine.Pawn.TakeHitLocation") == 0) {
-					StructProperty_Engine_Pawn_TakeHitLocation = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Pawn.bIsWalking") == 0) {
-					BoolProperty_Engine_Pawn_bIsWalking = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Pawn.bSimulateGravity") == 0) {
-					BoolProperty_Engine_Pawn_bSimulateGravity = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.Pawn.AccelRate") == 0) {
-					FloatProperty_Engine_Pawn_AccelRate = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.Pawn.AirControl") == 0) {
-					FloatProperty_Engine_Pawn_AirControl = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.Pawn.AirSpeed") == 0) {
-					FloatProperty_Engine_Pawn_AirSpeed = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Pawn.Controller") == 0) {
-					ObjectProperty_Engine_Pawn_Controller = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.Pawn.GroundSpeed") == 0) {
-					FloatProperty_Engine_Pawn_GroundSpeed = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Pawn.InvManager") == 0) {
-					ObjectProperty_Engine_Pawn_InvManager = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.Pawn.JumpZ") == 0) {
-					FloatProperty_Engine_Pawn_JumpZ = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.Pawn.WaterSpeed") == 0) {
-					FloatProperty_Engine_Pawn_WaterSpeed = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty Engine.Pawn.FiringMode") == 0) {
-					ByteProperty_Engine_Pawn_FiringMode = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty Engine.Pawn.FlashCount") == 0) {
-					ByteProperty_Engine_Pawn_FlashCount = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Pawn.bIsCrouched") == 0) {
-					BoolProperty_Engine_Pawn_bIsCrouched = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty Engine.Pawn.TearOffMomentum") == 0) {
-					StructProperty_Engine_Pawn_TearOffMomentum = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty Engine.Pawn.RemoteViewPitch") == 0) {
-					ByteProperty_Engine_Pawn_RemoteViewPitch = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.PhysXEmitterSpawnable.ParticleTemplate") == 0) {
-					ObjectProperty_Engine_PhysXEmitterSpawnable_ParticleTemplate = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.PickupFactory.bPickupHidden") == 0) {
-					BoolProperty_Engine_PickupFactory_bPickupHidden = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ClassProperty Engine.PickupFactory.InventoryType") == 0) {
-					ClassProperty_Engine_PickupFactory_InventoryType = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.PlayerController.TargetEyeHeight") == 0) {
-					FloatProperty_Engine_PlayerController_TargetEyeHeight = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty Engine.PlayerController.TargetViewRotation") == 0) {
-					StructProperty_Engine_PlayerController_TargetViewRotation = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.PlayerReplicationInfo.Deaths") == 0) {
-					FloatProperty_Engine_PlayerReplicationInfo_Deaths = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty Engine.PlayerReplicationInfo.PlayerAlias") == 0) {
-					StrProperty_Engine_PlayerReplicationInfo_PlayerAlias = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.PlayerReplicationInfo.PlayerLocationHint") == 0) {
-					ObjectProperty_Engine_PlayerReplicationInfo_PlayerLocationHint = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty Engine.PlayerReplicationInfo.PlayerName") == 0) {
-					StrProperty_Engine_PlayerReplicationInfo_PlayerName = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.PlayerReplicationInfo.PlayerSkill") == 0) {
-					IntProperty_Engine_PlayerReplicationInfo_PlayerSkill = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.PlayerReplicationInfo.Score") == 0) {
-					FloatProperty_Engine_PlayerReplicationInfo_Score = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.PlayerReplicationInfo.StartTime") == 0) {
-					IntProperty_Engine_PlayerReplicationInfo_StartTime = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.PlayerReplicationInfo.Team") == 0) {
-					ObjectProperty_Engine_PlayerReplicationInfo_Team = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty Engine.PlayerReplicationInfo.UniqueId") == 0) {
-					StructProperty_Engine_PlayerReplicationInfo_UniqueId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.PlayerReplicationInfo.bAdmin") == 0) {
-					BoolProperty_Engine_PlayerReplicationInfo_bAdmin = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.PlayerReplicationInfo.bHasFlag") == 0) {
-					BoolProperty_Engine_PlayerReplicationInfo_bHasFlag = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.PlayerReplicationInfo.bIsFemale") == 0) {
-					BoolProperty_Engine_PlayerReplicationInfo_bIsFemale = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.PlayerReplicationInfo.bIsSpectator") == 0) {
-					BoolProperty_Engine_PlayerReplicationInfo_bIsSpectator = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.PlayerReplicationInfo.bOnlySpectator") == 0) {
-					BoolProperty_Engine_PlayerReplicationInfo_bOnlySpectator = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.PlayerReplicationInfo.bOutOfLives") == 0) {
-					BoolProperty_Engine_PlayerReplicationInfo_bOutOfLives = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.PlayerReplicationInfo.bReadyToPlay") == 0) {
-					BoolProperty_Engine_PlayerReplicationInfo_bReadyToPlay = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.PlayerReplicationInfo.bWaitingPlayer") == 0) {
-					BoolProperty_Engine_PlayerReplicationInfo_bWaitingPlayer = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty Engine.PlayerReplicationInfo.PacketLoss") == 0) {
-					ByteProperty_Engine_PlayerReplicationInfo_PacketLoss = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty Engine.PlayerReplicationInfo.Ping") == 0) {
-					ByteProperty_Engine_PlayerReplicationInfo_Ping = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.PlayerReplicationInfo.SplitscreenIndex") == 0) {
-					IntProperty_Engine_PlayerReplicationInfo_SplitscreenIndex = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.PlayerReplicationInfo.PlayerID") == 0) {
-					IntProperty_Engine_PlayerReplicationInfo_PlayerID = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.PlayerReplicationInfo.bBot") == 0) {
-					BoolProperty_Engine_PlayerReplicationInfo_bBot = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.PlayerReplicationInfo.bIsInactive") == 0) {
-					BoolProperty_Engine_PlayerReplicationInfo_bIsInactive = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.PostProcessVolume.bEnabled") == 0) {
-					BoolProperty_Engine_PostProcessVolume_bEnabled = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.Projectile.MaxSpeed") == 0) {
-					FloatProperty_Engine_Projectile_MaxSpeed = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.Projectile.Speed") == 0) {
-					FloatProperty_Engine_Projectile_Speed = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.RB_CylindricalForceActor.bForceActive") == 0) {
-					BoolProperty_Engine_RB_CylindricalForceActor_bForceActive = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty Engine.RB_LineImpulseActor.ImpulseCount") == 0) {
-					ByteProperty_Engine_RB_LineImpulseActor_ImpulseCount = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.RB_RadialForceActor.bForceActive") == 0) {
-					BoolProperty_Engine_RB_RadialForceActor_bForceActive = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty Engine.RB_RadialImpulseActor.ImpulseCount") == 0) {
-					ByteProperty_Engine_RB_RadialImpulseActor_ImpulseCount = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.SVehicle.MaxSpeed") == 0) {
-					FloatProperty_Engine_SVehicle_MaxSpeed = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty Engine.SVehicle.VState") == 0) {
-					StructProperty_Engine_SVehicle_VState = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.SkeletalMeshActor.ReplicatedMaterial") == 0) {
-					ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMaterial = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.SkeletalMeshActor.ReplicatedMesh") == 0) {
-					ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMesh = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.TeamInfo.Score") == 0) {
-					FloatProperty_Engine_TeamInfo_Score = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty Engine.TeamInfo.TeamIndex") == 0) {
-					IntProperty_Engine_TeamInfo_TeamIndex = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty Engine.TeamInfo.TeamName") == 0) {
-					StrProperty_Engine_TeamInfo_TeamName = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty Engine.Teleporter.URL") == 0) {
-					StrProperty_Engine_Teleporter_URL = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Teleporter.bEnabled") == 0) {
-					BoolProperty_Engine_Teleporter_bEnabled = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty Engine.Teleporter.TargetVelocity") == 0) {
-					StructProperty_Engine_Teleporter_TargetVelocity = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Teleporter.bChangesVelocity") == 0) {
-					BoolProperty_Engine_Teleporter_bChangesVelocity = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Teleporter.bChangesYaw") == 0) {
-					BoolProperty_Engine_Teleporter_bChangesYaw = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Teleporter.bReversesX") == 0) {
-					BoolProperty_Engine_Teleporter_bReversesX = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Teleporter.bReversesY") == 0) {
-					BoolProperty_Engine_Teleporter_bReversesY = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Teleporter.bReversesZ") == 0) {
-					BoolProperty_Engine_Teleporter_bReversesZ = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.Vehicle.bDriving") == 0) {
-					BoolProperty_Engine_Vehicle_bDriving = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.Vehicle.Driver") == 0) {
-					ObjectProperty_Engine_Vehicle_Driver = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty Engine.WorldInfo.Pauser") == 0) {
-					ObjectProperty_Engine_WorldInfo_Pauser = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty Engine.WorldInfo.ReplicatedMusicTrack") == 0) {
-					StructProperty_Engine_WorldInfo_ReplicatedMusicTrack = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.WorldInfo.TimeDilation") == 0) {
-					FloatProperty_Engine_WorldInfo_TimeDilation = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty Engine.WorldInfo.WorldGravityZ") == 0) {
-					FloatProperty_Engine_WorldInfo_WorldGravityZ = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty Engine.WorldInfo.bHighPriorityLoading") == 0) {
-					BoolProperty_Engine_WorldInfo_bHighPriorityLoading = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgChestActor.r_eChestState") == 0) {
-					ByteProperty_TgGame_TgChestActor_r_eChestState = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgDeploy_BeaconEntrance.r_bActive") == 0) {
-					BoolProperty_TgGame_TgDeploy_BeaconEntrance_r_bActive = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgDeploy_DestructibleCover.r_bHasFired") == 0) {
-					BoolProperty_TgGame_TgDeploy_DestructibleCover_r_bHasFired = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgDeploy_Sensor.r_nSensorAudioWarning") == 0) {
-					IntProperty_TgGame_TgDeploy_Sensor_r_nSensorAudioWarning = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgDeploy_Sensor.r_nTouchedPlayerCount") == 0) {
-					IntProperty_TgGame_TgDeploy_Sensor_r_nTouchedPlayerCount = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgDeployable.r_bDelayDeployed") == 0) {
-					BoolProperty_TgGame_TgDeployable_r_bDelayDeployed = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgDeployable.r_nReplicateDestroyIt") == 0) {
-					IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgDeployable.r_DRI") == 0) {
-					ObjectProperty_TgGame_TgDeployable_r_DRI = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgDeployable.r_bInitialIsEnemy") == 0) {
-					BoolProperty_TgGame_TgDeployable_r_bInitialIsEnemy = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgDeployable.r_bTakeDamage") == 0) {
-					BoolProperty_TgGame_TgDeployable_r_bTakeDamage = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgDeployable.r_fClientProximityRadius") == 0) {
-					FloatProperty_TgGame_TgDeployable_r_fClientProximityRadius = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgDeployable.r_fCurrentDeployTime") == 0) {
-					FloatProperty_TgGame_TgDeployable_r_fCurrentDeployTime = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgDeployable.r_nDeployableId") == 0) {
-					IntProperty_TgGame_TgDeployable_r_nDeployableId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgDeployable.r_nPhysicalType") == 0) {
-					IntProperty_TgGame_TgDeployable_r_nPhysicalType = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgDeployable.r_nTickingTime") == 0) {
-					IntProperty_TgGame_TgDeployable_r_nTickingTime = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgDeployable.r_Owner") == 0) {
-					ObjectProperty_TgGame_TgDeployable_r_Owner = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgDeployable.r_nOwnerFireMode") == 0) {
-					IntProperty_TgGame_TgDeployable_r_nOwnerFireMode = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgDevice.CurrentFireMode") == 0) {
-					ByteProperty_TgGame_TgDevice_CurrentFireMode = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgDevice.r_bIsStealthDevice") == 0) {
-					BoolProperty_TgGame_TgDevice_r_bIsStealthDevice = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgDevice.r_eEquippedAt") == 0) {
-					ByteProperty_TgGame_TgDevice_r_eEquippedAt = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgDevice.r_nInventoryId") == 0) {
-					IntProperty_TgGame_TgDevice_r_nInventoryId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgDevice.r_nMeleeComboSeed") == 0) {
-					IntProperty_TgGame_TgDevice_r_nMeleeComboSeed = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgDevice.r_bConsumedOnDeath") == 0) {
-					BoolProperty_TgGame_TgDevice_r_bConsumedOnDeath = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgDevice.r_bConsumedOnUse") == 0) {
-					BoolProperty_TgGame_TgDevice_r_bConsumedOnUse = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgDevice.r_nDeviceId") == 0) {
-					IntProperty_TgGame_TgDevice_r_nDeviceId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgDevice.r_nDeviceInstanceId") == 0) {
-					IntProperty_TgGame_TgDevice_r_nDeviceInstanceId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgDevice.r_nQualityValueId") == 0) {
-					IntProperty_TgGame_TgDevice_r_nQualityValueId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgDevice_Morale.r_bIsActivelyFiring") == 0) {
-					BoolProperty_TgGame_TgDevice_Morale_r_bIsActivelyFiring = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgDoor.r_bOpen") == 0) {
-					BoolProperty_TgGame_TgDoor_r_bOpen = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgDoorMarker.r_eStatus") == 0) {
-					ByteProperty_TgGame_TgDoorMarker_r_eStatus = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgDroppedItem.r_nItemId") == 0) {
-					IntProperty_TgGame_TgDroppedItem_r_nItemId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgDynamicDestructible.r_nDestructibleId") == 0) {
-					IntProperty_TgGame_TgDynamicDestructible_r_nDestructibleId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgDynamicDestructible.r_pFactory") == 0) {
-					ObjectProperty_TgGame_TgDynamicDestructible_r_pFactory = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty TgGame.TgDynamicSMActor.m_sAssembly") == 0) {
-					StrProperty_TgGame_TgDynamicSMActor_m_sAssembly = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgDynamicSMActor.r_EffectManager") == 0) {
-					ObjectProperty_TgGame_TgDynamicSMActor_r_EffectManager = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgDynamicSMActor.r_nHealth") == 0) {
-					IntProperty_TgGame_TgDynamicSMActor_r_nHealth = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgEffectManager.r_EventQueue") == 0) {
-					StructProperty_TgGame_TgEffectManager_r_EventQueue = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgEffectManager.r_ManagedEffectList") == 0) {
-					StructProperty_TgGame_TgEffectManager_r_ManagedEffectList = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgEffectManager.r_Owner") == 0) {
-					ObjectProperty_TgGame_TgEffectManager_r_Owner = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgEffectManager.r_bRelevancyNotify") == 0) {
-					BoolProperty_TgGame_TgEffectManager_r_bRelevancyNotify = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgEffectManager.r_nInvulnerableCount") == 0) {
-					IntProperty_TgGame_TgEffectManager_r_nInvulnerableCount = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgEffectManager.r_nNextQueueIndex") == 0) {
-					IntProperty_TgGame_TgEffectManager_r_nNextQueueIndex = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "NameProperty TgGame.TgEmitter.BoneName") == 0) {
-					NameProperty_TgGame_TgEmitter_BoneName = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgFlagCaptureVolume.r_eCoalition") == 0) {
-					ByteProperty_TgGame_TgFlagCaptureVolume_r_eCoalition = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgFlagCaptureVolume.r_nTaskForce") == 0) {
-					ByteProperty_TgGame_TgFlagCaptureVolume_r_nTaskForce = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgFracturedStaticMeshActor.r_EffectManager") == 0) {
-					ObjectProperty_TgGame_TgFracturedStaticMeshActor_r_EffectManager = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgFracturedStaticMeshActor.r_TakeHitNotifier") == 0) {
-					IntProperty_TgGame_TgFracturedStaticMeshActor_r_TakeHitNotifier = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgFracturedStaticMeshActor.r_DamageRadius") == 0) {
-					FloatProperty_TgGame_TgFracturedStaticMeshActor_r_DamageRadius = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ClassProperty TgGame.TgFracturedStaticMeshActor.r_HitDamageType") == 0) {
-					ClassProperty_TgGame_TgFracturedStaticMeshActor_r_HitDamageType = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgFracturedStaticMeshActor.r_HitInfo") == 0) {
-					StructProperty_TgGame_TgFracturedStaticMeshActor_r_HitInfo = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgFracturedStaticMeshActor.r_vTakeHitLocation") == 0) {
-					StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitLocation = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgFracturedStaticMeshActor.r_vTakeHitMomentum") == 0) {
-					StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitMomentum = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgHexLandMarkActor.r_nMeshAsmId") == 0) {
-					IntProperty_TgGame_TgHexLandMarkActor_r_nMeshAsmId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty TgGame.TgInterpActor.r_sCurrState") == 0) {
-					StrProperty_TgGame_TgInterpActor_r_sCurrState = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgInventoryManager.r_ItemCount") == 0) {
-					IntProperty_TgGame_TgInventoryManager_r_ItemCount = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgKismetTestActor.r_nCurrentTest") == 0) {
-					IntProperty_TgGame_TgKismetTestActor_r_nCurrentTest = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgKismetTestActor.r_nFailCount") == 0) {
-					IntProperty_TgGame_TgKismetTestActor_r_nFailCount = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgKismetTestActor.r_nPassCount") == 0) {
-					IntProperty_TgGame_TgKismetTestActor_r_nPassCount = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgLevelCamera.r_bEnabled") == 0) {
-					BoolProperty_TgGame_TgLevelCamera_r_bEnabled = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgMissionObjective.r_ObjectiveAssignment") == 0) {
-					ObjectProperty_TgGame_TgMissionObjective_r_ObjectiveAssignment = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgMissionObjective.r_bHasBeenCapturedOnce") == 0) {
-					BoolProperty_TgGame_TgMissionObjective_r_bHasBeenCapturedOnce = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgMissionObjective.r_bIsActive") == 0) {
-					BoolProperty_TgGame_TgMissionObjective_r_bIsActive = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgMissionObjective.r_bIsLocked") == 0) {
-					BoolProperty_TgGame_TgMissionObjective_r_bIsLocked = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgMissionObjective.r_bIsPending") == 0) {
-					BoolProperty_TgGame_TgMissionObjective_r_bIsPending = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgMissionObjective.r_eOwningCoalition") == 0) {
-					ByteProperty_TgGame_TgMissionObjective_r_eOwningCoalition = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgMissionObjective.r_eStatus") == 0) {
-					ByteProperty_TgGame_TgMissionObjective_r_eStatus = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgMissionObjective.r_fCurrCaptureTime") == 0) {
-					FloatProperty_TgGame_TgMissionObjective_r_fCurrCaptureTime = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgMissionObjective.r_fLastCompletedTime") == 0) {
-					FloatProperty_TgGame_TgMissionObjective_r_fLastCompletedTime = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgMissionObjective.r_nOwnerTaskForce") == 0) {
-					IntProperty_TgGame_TgMissionObjective_r_nOwnerTaskForce = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgMissionObjective.nObjectiveId") == 0) {
-					IntProperty_TgGame_TgMissionObjective_nObjectiveId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgMissionObjective.nPriority") == 0) {
-					IntProperty_TgGame_TgMissionObjective_nPriority = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgMissionObjective.r_OpenWorldPlayerDefaultRole") == 0) {
-					ByteProperty_TgGame_TgMissionObjective_r_OpenWorldPlayerDefaultRole = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgMissionObjective.r_bUsePendingState") == 0) {
-					BoolProperty_TgGame_TgMissionObjective_r_bUsePendingState = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgMissionObjective.r_eDefaultCoalition") == 0) {
-					ByteProperty_TgGame_TgMissionObjective_r_eDefaultCoalition = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgMissionObjective_Bot.r_ObjectiveBot") == 0) {
-					ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBot = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgMissionObjective_Bot.r_ObjectiveBotInfo") == 0) {
-					ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBotInfo = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgMissionObjective_Escort.r_AttachedActor") == 0) {
-					ObjectProperty_TgGame_TgMissionObjective_Escort_r_AttachedActor = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgMissionObjective_Proximity.r_fCaptureRate") == 0) {
-					FloatProperty_TgGame_TgMissionObjective_Proximity_r_fCaptureRate = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgObjectiveAssignment.r_AssignedObjective") == 0) {
-					ObjectProperty_TgGame_TgObjectiveAssignment_r_AssignedObjective = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgObjectiveAssignment.r_Attackers") == 0) {
-					ObjectProperty_TgGame_TgObjectiveAssignment_r_Attackers = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgObjectiveAssignment.r_Bots") == 0) {
-					ObjectProperty_TgGame_TgObjectiveAssignment_r_Bots = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgObjectiveAssignment.r_Defenders") == 0) {
-					ObjectProperty_TgGame_TgObjectiveAssignment_r_Defenders = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgObjectiveAssignment.r_eState") == 0) {
-					ByteProperty_TgGame_TgObjectiveAssignment_r_eState = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsBot") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsBot = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsHenchman") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsHenchman = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bNeedPlaySpawnFx") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bNeedPlaySpawnFx = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fMakeVisibleIncreased") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fMakeVisibleIncreased = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nAllianceId") == 0) {
-					IntProperty_TgGame_TgPawn_r_nAllianceId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nBodyMeshAsmId") == 0) {
-					IntProperty_TgGame_TgPawn_r_nBodyMeshAsmId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nBotRankValueId") == 0) {
-					IntProperty_TgGame_TgPawn_r_nBotRankValueId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nFlashEvent") == 0) {
-					IntProperty_TgGame_TgPawn_r_nFlashEvent = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nFlashFireInfo") == 0) {
-					IntProperty_TgGame_TgPawn_r_nFlashFireInfo = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nFlashQueIndex") == 0) {
-					IntProperty_TgGame_TgPawn_r_nFlashQueIndex = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nPawnId") == 0) {
-					IntProperty_TgGame_TgPawn_r_nPawnId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nPhysicalType") == 0) {
-					IntProperty_TgGame_TgPawn_r_nPhysicalType = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nPreyProfileType") == 0) {
-					IntProperty_TgGame_TgPawn_r_nPreyProfileType = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nProfileId") == 0) {
-					IntProperty_TgGame_TgPawn_r_nProfileId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nProfileTypeValueId") == 0) {
-					IntProperty_TgGame_TgPawn_r_nProfileTypeValueId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nSoundGroupId") == 0) {
-					IntProperty_TgGame_TgPawn_r_nSoundGroupId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgPawn.r_vFlashLocation") == 0) {
-					StructProperty_TgGame_TgPawn_r_vFlashLocation = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgPawn.r_vFlashRayDir") == 0) {
-					StructProperty_TgGame_TgPawn_r_vFlashRayDir = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_vFlashRefireTime") == 0) {
-					FloatProperty_TgGame_TgPawn_r_vFlashRefireTime = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_vFlashSituationalAttack") == 0) {
-					IntProperty_TgGame_TgPawn_r_vFlashSituationalAttack = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgPawn.r_EquipDeviceInfo") == 0) {
-					StructProperty_TgGame_TgPawn_r_EquipDeviceInfo = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bInitialIsEnemy") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bInitialIsEnemy = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgPawn.r_bMadeSound") == 0) {
-					ByteProperty_TgGame_TgPawn_r_bMadeSound = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgPawn.r_eDesiredInHand") == 0) {
-					ByteProperty_TgGame_TgPawn_r_eDesiredInHand = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_eEquippedInHandMode") == 0) {
-					IntProperty_TgGame_TgPawn_r_eEquippedInHandMode = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nReplicateHit") == 0) {
-					IntProperty_TgGame_TgPawn_r_nReplicateHit = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgPawn.r_ControlPawn") == 0) {
-					ObjectProperty_TgGame_TgPawn_r_ControlPawn = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgPawn.r_CurrentOmegaVolume") == 0) {
-					ObjectProperty_TgGame_TgPawn_r_CurrentOmegaVolume = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgPawn.r_CurrentSubzoneBilboardVol") == 0) {
-					ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneBilboardVol = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgPawn.r_CurrentSubzoneVol") == 0) {
-					ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneVol = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgPawn.r_ScannerSettings") == 0) {
-					StructProperty_TgGame_TgPawn_r_ScannerSettings = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgPawn.r_UIClockState") == 0) {
-					ByteProperty_TgGame_TgPawn_r_UIClockState = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_UIClockTime") == 0) {
-					FloatProperty_TgGame_TgPawn_r_UIClockTime = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_UITextBox1MessageID") == 0) {
-					IntProperty_TgGame_TgPawn_r_UITextBox1MessageID = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgPawn.r_UITextBox1Packet") == 0) {
-					ByteProperty_TgGame_TgPawn_r_UITextBox1Packet = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_UITextBox1Time") == 0) {
-					FloatProperty_TgGame_TgPawn_r_UITextBox1Time = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_UITextBox2MessageID") == 0) {
-					IntProperty_TgGame_TgPawn_r_UITextBox2MessageID = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgPawn.r_UITextBox2Packet") == 0) {
-					ByteProperty_TgGame_TgPawn_r_UITextBox2Packet = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_UITextBox2Time") == 0) {
-					FloatProperty_TgGame_TgPawn_r_UITextBox2Time = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bAllowAddMoralePoints") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bAllowAddMoralePoints = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bDisableAllDevices") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bDisableAllDevices = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bEnableCrafting") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bEnableCrafting = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bEnableEquip") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bEnableEquip = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bEnableSkills") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bEnableSkills = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bInCombatFlag") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bInCombatFlag = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bInGlobalOffhandCooldown") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bInGlobalOffhandCooldown = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fCurrentPowerPool") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fCurrentPowerPool = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fCurrentServerMoralePoints") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fCurrentServerMoralePoints = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fMaxControlRange") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fMaxControlRange = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fMaxPowerPool") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fMaxPowerPool = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fMoraleRechargeRate") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fMoraleRechargeRate = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fRequiredMoralePoints") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fRequiredMoralePoints = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fSkillRating") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fSkillRating = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nCurrency") == 0) {
-					IntProperty_TgGame_TgPawn_r_nCurrency = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nHZPoints") == 0) {
-					IntProperty_TgGame_TgPawn_r_nHZPoints = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nMoraleDeviceSlot") == 0) {
-					IntProperty_TgGame_TgPawn_r_nMoraleDeviceSlot = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nRestDeviceSlot") == 0) {
-					IntProperty_TgGame_TgPawn_r_nRestDeviceSlot = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nToken") == 0) {
-					IntProperty_TgGame_TgPawn_r_nToken = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nXp") == 0) {
-					IntProperty_TgGame_TgPawn_r_nXp = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_DistanceToPushback") == 0) {
-					FloatProperty_TgGame_TgPawn_r_DistanceToPushback = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgPawn.r_EffectManager") == 0) {
-					ObjectProperty_TgGame_TgPawn_r_EffectManager = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_FlightAcceleration") == 0) {
-					FloatProperty_TgGame_TgPawn_r_FlightAcceleration = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgPawn.r_HangingRotation") == 0) {
-					StructProperty_TgGame_TgPawn_r_HangingRotation = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgPawn.r_Owner") == 0) {
-					ObjectProperty_TgGame_TgPawn_r_Owner = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgPawn.r_Pet") == 0) {
-					ObjectProperty_TgGame_TgPawn_r_Pet = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgPawn.r_PlayAnimation") == 0) {
-					StructProperty_TgGame_TgPawn_r_PlayAnimation = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgPawn.r_PushbackDirection") == 0) {
-					StructProperty_TgGame_TgPawn_r_PushbackDirection = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgPawn.r_Target") == 0) {
-					ObjectProperty_TgGame_TgPawn_r_Target = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgPawn.r_TargetActor") == 0) {
-					ObjectProperty_TgGame_TgPawn_r_TargetActor = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgPawn.r_aDebugDestination") == 0) {
-					ObjectProperty_TgGame_TgPawn_r_aDebugDestination = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgPawn.r_aDebugNextNav") == 0) {
-					ObjectProperty_TgGame_TgPawn_r_aDebugNextNav = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgPawn.r_aDebugTarget") == 0) {
-					ObjectProperty_TgGame_TgPawn_r_aDebugTarget = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgPawn.r_bAimType") == 0) {
-					ByteProperty_TgGame_TgPawn_r_bAimType = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bAimingMode") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bAimingMode = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bCallingForHelp") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bCallingForHelp = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsAFK") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsAFK = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsAnimInStrafeMode") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsAnimInStrafeMode = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsCrafting") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsCrafting = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsCrewing") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsCrewing = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsDecoy") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsDecoy = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsGrappleDismounting") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsGrappleDismounting = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsHacked") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsHacked = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsHacking") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsHacking = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsHanging") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsHanging = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsHangingDismounting") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsInSnipeScope") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsInSnipeScope = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsRappelling") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsRappelling = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bIsStealthed") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bIsStealthed = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bJumpedFromHanging") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bJumpedFromHanging = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bPostureIgnoreTransition") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bPostureIgnoreTransition = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bResistTagging") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bResistTagging = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bShouldKnockDownAnimFaceDown") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bShouldKnockDownAnimFaceDown = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bTagEnemy") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bTagEnemy = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn.r_bUsingBinoculars") == 0) {
-					BoolProperty_TgGame_TgPawn_r_bUsingBinoculars = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgPawn.r_eCurrentStunType") == 0) {
-					ByteProperty_TgGame_TgPawn_r_eCurrentStunType = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgPawn.r_eDeathReason") == 0) {
-					ByteProperty_TgGame_TgPawn_r_eDeathReason = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_eEmoteLength") == 0) {
-					IntProperty_TgGame_TgPawn_r_eEmoteLength = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_eEmoteRepnotify") == 0) {
-					IntProperty_TgGame_TgPawn_r_eEmoteRepnotify = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_eEmoteUpdate") == 0) {
-					IntProperty_TgGame_TgPawn_r_eEmoteUpdate = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgPawn.r_ePosture") == 0) {
-					ByteProperty_TgGame_TgPawn_r_ePosture = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fDeployRate") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fDeployRate = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fFrictionMultiplier") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fFrictionMultiplier = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fGravityZModifier") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fGravityZModifier = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fKnockDownTimeRemaining") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fKnockDownTimeRemaining = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fMakeVisibleFadeRate") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fMakeVisibleFadeRate = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fPostureRateScale") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fPostureRateScale = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fRappelGravityModifier") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fRappelGravityModifier = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn.r_fStealthTransitionTime") == 0) {
-					FloatProperty_TgGame_TgPawn_r_fStealthTransitionTime = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_fWeightBonus") == 0) {
-					IntProperty_TgGame_TgPawn_r_fWeightBonus = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_iKnockDownFlash") == 0) {
-					IntProperty_TgGame_TgPawn_r_iKnockDownFlash = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nApplyStealth") == 0) {
-					IntProperty_TgGame_TgPawn_r_nApplyStealth = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nBotSoundCueId") == 0) {
-					IntProperty_TgGame_TgPawn_r_nBotSoundCueId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nDebugAggroRange") == 0) {
-					IntProperty_TgGame_TgPawn_r_nDebugAggroRange = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nDebugFOV") == 0) {
-					IntProperty_TgGame_TgPawn_r_nDebugFOV = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nDebugHearingRange") == 0) {
-					IntProperty_TgGame_TgPawn_r_nDebugHearingRange = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nDebugSightRange") == 0) {
-					IntProperty_TgGame_TgPawn_r_nDebugSightRange = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nGenericAIEventIndex") == 0) {
-					IntProperty_TgGame_TgPawn_r_nGenericAIEventIndex = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nHealthMaximum") == 0) {
-					IntProperty_TgGame_TgPawn_r_nHealthMaximum = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nNumberTimesCrewed") == 0) {
-					IntProperty_TgGame_TgPawn_r_nNumberTimesCrewed = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nPhase") == 0) {
-					IntProperty_TgGame_TgPawn_r_nPhase = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nPitchOffset") == 0) {
-					IntProperty_TgGame_TgPawn_r_nPitchOffset = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nReplicateDying") == 0) {
-					IntProperty_TgGame_TgPawn_r_nReplicateDying = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nResetCharacter") == 0) {
-					IntProperty_TgGame_TgPawn_r_nResetCharacter = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nSensorAlertLevel") == 0) {
-					IntProperty_TgGame_TgPawn_r_nSensorAlertLevel = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nShieldHealthMax") == 0) {
-					IntProperty_TgGame_TgPawn_r_nShieldHealthMax = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nShieldHealthRemaining") == 0) {
-					IntProperty_TgGame_TgPawn_r_nShieldHealthRemaining = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nSilentMode") == 0) {
-					IntProperty_TgGame_TgPawn_r_nSilentMode = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nStealthAggroRange") == 0) {
-					IntProperty_TgGame_TgPawn_r_nStealthAggroRange = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nStealthDisabled") == 0) {
-					IntProperty_TgGame_TgPawn_r_nStealthDisabled = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nStealthSensorRange") == 0) {
-					IntProperty_TgGame_TgPawn_r_nStealthSensorRange = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nStealthTypeCode") == 0) {
-					IntProperty_TgGame_TgPawn_r_nStealthTypeCode = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn.r_nYawOffset") == 0) {
-					IntProperty_TgGame_TgPawn_r_nYawOffset = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty TgGame.TgPawn.r_sDebugAction") == 0) {
-					StrProperty_TgGame_TgPawn_r_sDebugAction = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty TgGame.TgPawn.r_sDebugName") == 0) {
-					StrProperty_TgGame_TgPawn_r_sDebugName = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty TgGame.TgPawn.r_sFactory") == 0) {
-					StrProperty_TgGame_TgPawn_r_sFactory = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgPawn.r_vDown") == 0) {
-					StructProperty_TgGame_TgPawn_r_vDown = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn_Ambush.r_bIsDeployed") == 0) {
-					BoolProperty_TgGame_TgPawn_Ambush_r_bIsDeployed = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgPawn_AttackTransport.r_DeathType") == 0) {
-					ByteProperty_TgGame_TgPawn_AttackTransport_r_DeathType = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgPawn_CTR.r_CustomCharacterAssembly") == 0) {
-					StructProperty_TgGame_TgPawn_CTR_r_CustomCharacterAssembly = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgPawn_CTR.r_PilotPawn") == 0) {
-					ObjectProperty_TgGame_TgPawn_CTR_r_PilotPawn = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn_CTR.r_nMaxMorphIndexSentFromServer") == 0) {
-					IntProperty_TgGame_TgPawn_CTR_r_nMaxMorphIndexSentFromServer = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn_CTR.r_nMorphSettings") == 0) {
-					IntProperty_TgGame_TgPawn_CTR_r_nMorphSettings = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgPawn_Character.r_CustomCharacterAssembly") == 0) {
-					StructProperty_TgGame_TgPawn_Character_r_CustomCharacterAssembly = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgPawn_Character.r_eAttachedMesh") == 0) {
-					ByteProperty_TgGame_TgPawn_Character_r_eAttachedMesh = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn_Character.r_nBoostTimeRemaining") == 0) {
-					IntProperty_TgGame_TgPawn_Character_r_nBoostTimeRemaining = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn_Character.r_nHeadMeshAsmId") == 0) {
-					IntProperty_TgGame_TgPawn_Character_r_nHeadMeshAsmId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn_Character.r_nItemProfileId") == 0) {
-					IntProperty_TgGame_TgPawn_Character_r_nItemProfileId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn_Character.r_nItemProfileNbr") == 0) {
-					IntProperty_TgGame_TgPawn_Character_r_nItemProfileNbr = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn_Character.r_nMaxMorphIndexSentFromServer") == 0) {
-					IntProperty_TgGame_TgPawn_Character_r_nMaxMorphIndexSentFromServer = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn_Character.r_nMorphSettings") == 0) {
-					IntProperty_TgGame_TgPawn_Character_r_nMorphSettings = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgPawn_Character.r_CurrentVanityPet") == 0) {
-					ObjectProperty_TgGame_TgPawn_Character_r_CurrentVanityPet = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn_Character.r_WallJumpUpperLineCheckOffset") == 0) {
-					FloatProperty_TgGame_TgPawn_Character_r_WallJumpUpperLineCheckOffset = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn_Character.r_WallJumpZ") == 0) {
-					FloatProperty_TgGame_TgPawn_Character_r_WallJumpZ = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn_Character.r_bElfGogglesEquipped") == 0) {
-					BoolProperty_TgGame_TgPawn_Character_r_bElfGogglesEquipped = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn_Character.r_nDeviceSlotUnlockGrpId") == 0) {
-					IntProperty_TgGame_TgPawn_Character_r_nDeviceSlotUnlockGrpId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn_Character.r_nSkillGroupSetId") == 0) {
-					IntProperty_TgGame_TgPawn_Character_r_nSkillGroupSetId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn_DuneCommander.r_bDoCrashLanding") == 0) {
-					BoolProperty_TgGame_TgPawn_DuneCommander_r_bDoCrashLanding = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgPawn_Iris.r_nStartNewScan") == 0) {
-					ByteProperty_TgGame_TgPawn_Iris_r_nStartNewScan = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn_Reaper.r_fBatteryPct") == 0) {
-					FloatProperty_TgGame_TgPawn_Reaper_r_fBatteryPct = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgPawn_Siege.r_AccelDirection") == 0) {
-					ByteProperty_TgGame_TgPawn_Siege_r_AccelDirection = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPawn_Turret.r_bIsDeployed") == 0) {
-					BoolProperty_TgGame_TgPawn_Turret_r_bIsDeployed = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn_Turret.r_fInitDeployTime") == 0) {
-					FloatProperty_TgGame_TgPawn_Turret_r_fInitDeployTime = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn_Turret.r_fTimeToDeploySecs") == 0) {
-					FloatProperty_TgGame_TgPawn_Turret_r_fTimeToDeploySecs = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn_Turret.r_fCurrentDeployTime") == 0) {
-					FloatProperty_TgGame_TgPawn_Turret_r_fCurrentDeployTime = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgPawn_Turret.r_fDeployMaxHealthPCT") == 0) {
-					FloatProperty_TgGame_TgPawn_Turret_r_fDeployMaxHealthPCT = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgPawn_VanityPet.r_nSpawningItemId") == 0) {
-					IntProperty_TgGame_TgPawn_VanityPet_r_nSpawningItemId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgPlayerController.r_WatchOtherPlayer") == 0) {
-					ByteProperty_TgGame_TgPlayerController_r_WatchOtherPlayer = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPlayerController.r_bEDDebugEffects") == 0) {
-					BoolProperty_TgGame_TgPlayerController_r_bEDDebugEffects = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPlayerController.r_bGMInvisible") == 0) {
-					BoolProperty_TgGame_TgPlayerController_r_bGMInvisible = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPlayerController.r_bIsHackingABot") == 0) {
-					BoolProperty_TgGame_TgPlayerController_r_bIsHackingABot = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPlayerController.r_bLockYawRotation") == 0) {
-					BoolProperty_TgGame_TgPlayerController_r_bLockYawRotation = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgPlayerController.r_bRove") == 0) {
-					BoolProperty_TgGame_TgPlayerController_r_bRove = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgProj_Grapple.r_vTargetLocation") == 0) {
-					StructProperty_TgGame_TgProj_Grapple_r_vTargetLocation = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgProj_Missile.r_aSeeking") == 0) {
-					ObjectProperty_TgGame_TgProj_Missile_r_aSeeking = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgProj_Missile.r_vTargetWorldLocation") == 0) {
-					StructProperty_TgGame_TgProj_Missile_r_vTargetWorldLocation = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgProj_Missile.r_nNumBounces") == 0) {
-					IntProperty_TgGame_TgProj_Missile_r_nNumBounces = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgProj_Rocket.FlockIndex") == 0) {
-					ByteProperty_TgGame_TgProj_Rocket_FlockIndex = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgProj_Rocket.bCurl") == 0) {
-					BoolProperty_TgGame_TgProj_Rocket_bCurl = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgProjectile.r_Owner") == 0) {
-					ObjectProperty_TgGame_TgProjectile_r_Owner = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgProjectile.r_fAccelRate") == 0) {
-					FloatProperty_TgGame_TgProjectile_r_fAccelRate = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgProjectile.r_fDuration") == 0) {
-					FloatProperty_TgGame_TgProjectile_r_fDuration = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgProjectile.r_fRange") == 0) {
-					FloatProperty_TgGame_TgProjectile_r_fRange = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgProjectile.r_nOwnerFireModeId") == 0) {
-					IntProperty_TgGame_TgProjectile_r_nOwnerFireModeId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgProjectile.r_nProjectileId") == 0) {
-					IntProperty_TgGame_TgProjectile_r_nProjectileId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgProjectile.r_vSpawnLocation") == 0) {
-					StructProperty_TgGame_TgProjectile_r_vSpawnLocation = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Beacon.r_bDeployed") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Beacon_r_bDeployed = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgRepInfo_Beacon.r_vLoc") == 0) {
-					StructProperty_TgGame_TgRepInfo_Beacon_r_vLoc = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty TgGame.TgRepInfo_Beacon.r_nName") == 0) {
-					StrProperty_TgGame_TgRepInfo_Beacon_r_nName = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgRepInfo_Deployable.r_InstigatorInfo") == 0) {
-					ObjectProperty_TgGame_TgRepInfo_Deployable_r_InstigatorInfo = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgRepInfo_Deployable.r_TaskforceInfo") == 0) {
-					ObjectProperty_TgGame_TgRepInfo_Deployable_r_TaskforceInfo = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Deployable.r_bOwnedByTaskforce") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Deployable_r_bOwnedByTaskforce = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Deployable.r_nHealthCurrent") == 0) {
-					IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthCurrent = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgRepInfo_Deployable.r_DeployableOwner") == 0) {
-					ObjectProperty_TgGame_TgRepInfo_Deployable_r_DeployableOwner = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgRepInfo_Deployable.r_fDeployMaxHealthPCT") == 0) {
-					FloatProperty_TgGame_TgRepInfo_Deployable_r_fDeployMaxHealthPCT = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Deployable.r_nDeployableId") == 0) {
-					IntProperty_TgGame_TgRepInfo_Deployable_r_nDeployableId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Deployable.r_nHealthMaximum") == 0) {
-					IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthMaximum = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Deployable.r_nUniqueDeployableId") == 0) {
-					IntProperty_TgGame_TgRepInfo_Deployable_r_nUniqueDeployableId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgRepInfo_Game.r_MiniMapInfo") == 0) {
-					StructProperty_TgGame_TgRepInfo_Game_r_MiniMapInfo = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Game.r_bActiveCombat") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Game_r_bActiveCombat = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Game.r_bAllowBuildMorale") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Game_r_bAllowBuildMorale = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Game.r_bAllowPlayerRelease") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Game_r_bAllowPlayerRelease = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Game.r_bDefenseAlarm") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Game_r_bDefenseAlarm = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Game.r_bInOverTime") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Game_r_bInOverTime = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Game.r_bIsTutorialMap") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Game_r_bIsTutorialMap = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgRepInfo_Game.r_fGameSpeedModifier") == 0) {
-					FloatProperty_TgGame_TgRepInfo_Game_r_fGameSpeedModifier = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgRepInfo_Game.r_fMissionRemainingTime") == 0) {
-					FloatProperty_TgGame_TgRepInfo_Game_r_fMissionRemainingTime = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgRepInfo_Game.r_fServerTimeLastUpdate") == 0) {
-					FloatProperty_TgGame_TgRepInfo_Game_r_fServerTimeLastUpdate = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Game.r_nMaxRoundNumber") == 0) {
-					IntProperty_TgGame_TgRepInfo_Game_r_nMaxRoundNumber = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgRepInfo_Game.r_nMissionTimerState") == 0) {
-					ByteProperty_TgGame_TgRepInfo_Game_r_nMissionTimerState = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Game.r_nMissionTimerStateChange") == 0) {
-					IntProperty_TgGame_TgRepInfo_Game_r_nMissionTimerStateChange = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Game.r_nRaidAttackerRespawnBonus") == 0) {
-					IntProperty_TgGame_TgRepInfo_Game_r_nRaidAttackerRespawnBonus = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Game.r_nRaidDefenderRespawnBonus") == 0) {
-					IntProperty_TgGame_TgRepInfo_Game_r_nRaidDefenderRespawnBonus = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Game.r_nReleaseDelay") == 0) {
-					IntProperty_TgGame_TgRepInfo_Game_r_nReleaseDelay = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Game.r_nRoundNumber") == 0) {
-					IntProperty_TgGame_TgRepInfo_Game_r_nRoundNumber = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Game.r_nSecsToAutoReleaseAttackers") == 0) {
-					IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseAttackers = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Game.r_nSecsToAutoReleaseDefenders") == 0) {
-					IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseDefenders = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgRepInfo_Game.r_GameType") == 0) {
-					ByteProperty_TgGame_TgRepInfo_Game_r_GameType = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgRepInfo_Game.r_MapLogoResIds") == 0) {
-					StructProperty_TgGame_TgRepInfo_Game_r_MapLogoResIds = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgRepInfo_Game.r_Objectives") == 0) {
-					ObjectProperty_TgGame_TgRepInfo_Game_r_Objectives = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Game.r_bIsArena") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Game_r_bIsArena = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Game.r_bIsMatch") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Game_r_bIsMatch = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Game.r_bIsMission") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Game_r_bIsMission = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Game.r_bIsPVP") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Game_r_bIsPVP = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Game.r_bIsRaid") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Game_r_bIsRaid = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Game.r_bIsTerritoryMap") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Game_r_bIsTerritoryMap = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Game.r_bIsTraining") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Game_r_bIsTraining = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Game.r_nAutoKickTimeout") == 0) {
-					IntProperty_TgGame_TgRepInfo_Game_r_nAutoKickTimeout = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Game.r_nPointsToWin") == 0) {
-					IntProperty_TgGame_TgRepInfo_Game_r_nPointsToWin = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Game.r_nVictoryBonusLives") == 0) {
-					IntProperty_TgGame_TgRepInfo_Game_r_nVictoryBonusLives = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_GameOpenWorld.r_GameTickets") == 0) {
-					IntProperty_TgGame_TgRepInfo_GameOpenWorld_r_GameTickets = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgRepInfo_Player.r_ApproxLocation") == 0) {
-					StructProperty_TgGame_TgRepInfo_Player_r_ApproxLocation = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgRepInfo_Player.r_CustomCharacterAssembly") == 0) {
-					StructProperty_TgGame_TgRepInfo_Player_r_CustomCharacterAssembly = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgRepInfo_Player.r_EquipDeviceInfo") == 0) {
-					StructProperty_TgGame_TgRepInfo_Player_r_EquipDeviceInfo = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgRepInfo_Player.r_MasterPrep") == 0) {
-					ObjectProperty_TgGame_TgRepInfo_Player_r_MasterPrep = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgRepInfo_Player.r_PawnOwner") == 0) {
-					ObjectProperty_TgGame_TgRepInfo_Player_r_PawnOwner = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Player.r_Scores") == 0) {
-					IntProperty_TgGame_TgRepInfo_Player_r_Scores = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgRepInfo_Player.r_TaskForce") == 0) {
-					ObjectProperty_TgGame_TgRepInfo_Player_r_TaskForce = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_Player.r_bDropped") == 0) {
-					BoolProperty_TgGame_TgRepInfo_Player_r_bDropped = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Player.r_eBonusType") == 0) {
-					IntProperty_TgGame_TgRepInfo_Player_r_eBonusType = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Player.r_nCharacterId") == 0) {
-					IntProperty_TgGame_TgRepInfo_Player_r_nCharacterId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Player.r_nHealthCurrent") == 0) {
-					IntProperty_TgGame_TgRepInfo_Player_r_nHealthCurrent = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Player.r_nHealthMaximum") == 0) {
-					IntProperty_TgGame_TgRepInfo_Player_r_nHealthMaximum = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Player.r_nLevel") == 0) {
-					IntProperty_TgGame_TgRepInfo_Player_r_nLevel = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Player.r_nProfileId") == 0) {
-					IntProperty_TgGame_TgRepInfo_Player_r_nProfileId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_Player.r_nTitleMsgId") == 0) {
-					IntProperty_TgGame_TgRepInfo_Player_r_nTitleMsgId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty TgGame.TgRepInfo_Player.r_sAgencyName") == 0) {
-					StrProperty_TgGame_TgRepInfo_Player_r_sAgencyName = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty TgGame.TgRepInfo_Player.r_sAllianceName") == 0) {
-					StrProperty_TgGame_TgRepInfo_Player_r_sAllianceName = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StrProperty TgGame.TgRepInfo_Player.r_sOrigPlayerName") == 0) {
-					StrProperty_TgGame_TgRepInfo_Player_r_sOrigPlayerName = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "StructProperty TgGame.TgRepInfo_Player.r_DeviceStats") == 0) {
-					StructProperty_TgGame_TgRepInfo_Player_r_DeviceStats = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgRepInfo_TaskForce.r_BeaconManager") == 0) {
-					ObjectProperty_TgGame_TgRepInfo_TaskForce_r_BeaconManager = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgRepInfo_TaskForce.r_CurrActiveObjective") == 0) {
-					ObjectProperty_TgGame_TgRepInfo_TaskForce_r_CurrActiveObjective = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgRepInfo_TaskForce.r_ObjectiveAssignment") == 0) {
-					ObjectProperty_TgGame_TgRepInfo_TaskForce_r_ObjectiveAssignment = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "BoolProperty TgGame.TgRepInfo_TaskForce.r_bBotOwned") == 0) {
-					BoolProperty_TgGame_TgRepInfo_TaskForce_r_bBotOwned = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgRepInfo_TaskForce.r_eCoalition") == 0) {
-					ByteProperty_TgGame_TgRepInfo_TaskForce_r_eCoalition = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_TaskForce.r_nCurrentPointCount") == 0) {
-					IntProperty_TgGame_TgRepInfo_TaskForce_r_nCurrentPointCount = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_TaskForce.r_nLeaderCharId") == 0) {
-					IntProperty_TgGame_TgRepInfo_TaskForce_r_nLeaderCharId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgRepInfo_TaskForce.r_nLookingForMembers") == 0) {
-					FloatProperty_TgGame_TgRepInfo_TaskForce_r_nLookingForMembers = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_TaskForce.r_nNumDeaths") == 0) {
-					IntProperty_TgGame_TgRepInfo_TaskForce_r_nNumDeaths = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgRepInfo_TaskForce.r_nTaskForce") == 0) {
-					ByteProperty_TgGame_TgRepInfo_TaskForce_r_nTaskForce = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgRepInfo_TaskForce.r_nTeamId") == 0) {
-					IntProperty_TgGame_TgRepInfo_TaskForce_r_nTeamId = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgSkydiveTarget.m_LandRadius") == 0) {
-					FloatProperty_TgGame_TgSkydiveTarget_m_LandRadius = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgSkydivingVolume.r_PawnGravityModifier") == 0) {
-					FloatProperty_TgGame_TgSkydivingVolume_r_PawnGravityModifier = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgSkydivingVolume.r_PawnLaunchForce") == 0) {
-					FloatProperty_TgGame_TgSkydivingVolume_r_PawnLaunchForce = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgSkydivingVolume.r_PawnUpForce") == 0) {
-					FloatProperty_TgGame_TgSkydivingVolume_r_PawnUpForce = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgSkydivingVolume.r_SkydiveTarget") == 0) {
-					ObjectProperty_TgGame_TgSkydivingVolume_r_SkydiveTarget = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgTeamBeaconManager.r_Beacon") == 0) {
-					ObjectProperty_TgGame_TgTeamBeaconManager_r_Beacon = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "IntProperty TgGame.TgTeamBeaconManager.r_BeaconDestroyed") == 0) {
-					IntProperty_TgGame_TgTeamBeaconManager_r_BeaconDestroyed = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgTeamBeaconManager.r_BeaconHolder") == 0) {
-					ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconHolder = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgTeamBeaconManager.r_BeaconInfo") == 0) {
-					ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconInfo = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgTeamBeaconManager.r_BeaconStatus") == 0) {
-					ByteProperty_TgGame_TgTeamBeaconManager_r_BeaconStatus = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ObjectProperty TgGame.TgTeamBeaconManager.r_TaskForce") == 0) {
-					ObjectProperty_TgGame_TgTeamBeaconManager_r_TaskForce = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgTimerManager.r_byEventQue") == 0) {
-					ByteProperty_TgGame_TgTimerManager_r_byEventQue = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "ByteProperty TgGame.TgTimerManager.r_byEventQueIndex") == 0) {
-					ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgTimerManager.r_fRemaining") == 0) {
-					FloatProperty_TgGame_TgTimerManager_r_fRemaining = (UProperty*)obj;
-					continue;
-				}
-				if (strcmp(obj->GetFullName(), "FloatProperty TgGame.TgTimerManager.r_fStartTime") == 0) {
-					FloatProperty_TgGame_TgTimerManager_r_fStartTime = (UProperty*)obj;
-					continue;
-				}
-			}
-		}
-
+		ResolveRepListProperties();
 	}
 
 	AActor* actor = (AActor*)thisxx;

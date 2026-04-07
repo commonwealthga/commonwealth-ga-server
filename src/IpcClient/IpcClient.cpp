@@ -4,6 +4,7 @@
 #include "lib/nlohmann/json.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/Shared/HexUtils.hpp"
+#include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 
 // ---------------------------------------------------------------------------
 // Static member definitions
@@ -272,17 +273,11 @@ void IpcClient::DrainInbound() {
         } else if (type == IpcProtocol::MSG_GET_RANDOMSM) {
             std::string guid = j.value("session_guid", "");
 
-            // Iterate all UObjects looking for enabled TgRandomSMActors (bCollideActors=true).
-            // Same pattern as CGameClient__SendMapRandomSMSettingsMarshal.cpp.
-            UClass* smActorClass = ATgRandomSMActor::StaticClass();
+            // Use cached TgRandomSMActors instead of scanning GObjObjects.
+            ActorCache::CacheMapActors();
             std::vector<std::string> names;
 
-            for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-                UObject* obj = UObject::GObjObjects()->Data[i];
-                if (!obj || !obj->IsA(smActorClass)) continue;
-
-                ATgRandomSMActor* actor = reinterpret_cast<ATgRandomSMActor*>(obj);
-
+            for (ATgRandomSMActor* actor : ActorCache::RandomSMActors) {
                 // bCollideActors is at offset 0xB0, bit 0x08000000.
                 // ToggleDisplay(true) calls SetCollision(true,...) which sets this bit.
                 bool bEnabled = (*(uint32_t*)((char*)actor + 0xB0)) & 0x08000000;

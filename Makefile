@@ -13,7 +13,9 @@ SOURCE_FILES= \
 			  \
 			  $(SRC_DIR)/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.cpp \
 			  $(SRC_DIR)/GameServer/Core/FMallocWindows/Free/FMallocWindows__Free.cpp \
+			  $(SRC_DIR)/GameServer/Utils/ObjectCache/ObjectCache.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ClassPreloader/ClassPreloader.cpp \
+			  $(SRC_DIR)/GameServer/Utils/ActorCache/ActorCache.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
 			  $(SRC_DIR)/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.cpp \
 			  $(SRC_DIR)/GameServer/Engine/World/BeginPlay/World__BeginPlay.cpp \

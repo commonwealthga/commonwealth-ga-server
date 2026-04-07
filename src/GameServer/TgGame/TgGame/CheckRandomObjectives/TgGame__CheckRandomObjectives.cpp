@@ -1,9 +1,10 @@
 #include "src/GameServer/TgGame/TgGame/CheckRandomObjectives/TgGame__CheckRandomObjectives.hpp"
+#include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Called at PostBeginPlay to mark objectives for random selection.
 // If GRI->m_MissionObjectives is empty (AddObjectivePointToList stub never ran),
-// we scan GObjObjects and populate it manually using the native function.
+// we scan ActorCache and populate it manually using the native function.
 // Then marks all objectives as s_bRandomPicked=1 for CalcNextObjective.
 void __fastcall TgGame__CheckRandomObjectives::Call(ATgGame* Game, void* edx) {
 	LogCallBegin();
@@ -16,7 +17,7 @@ void __fastcall TgGame__CheckRandomObjectives::Call(ATgGame* Game, void* edx) {
 	}
 
 	// If objectives weren't self-registered via AddToList/AddObjectivePointToList,
-	// scan GObjObjects and add them manually.
+	// use cached actors to add them manually.
 	if (GRI->m_MissionObjectives.Count == 0) {
 
 		Logger::Log(GetLogChannel(), "GRI->m_MissionObjectives is empty, populating manually\n");
@@ -24,15 +25,11 @@ void __fastcall TgGame__CheckRandomObjectives::Call(ATgGame* Game, void* edx) {
 		using AddObjectivePointToList_t = void(__fastcall*)(ATgRepInfo_Game*, void*, ATgMissionObjective*);
 		auto AddObjectivePointToList = reinterpret_cast<AddObjectivePointToList_t>(0x109f0580);
 
-		for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
-			UObject* obj = UObject::GObjObjects()->Data[i];
-			if (obj && strstr(obj->Class->GetFullName(), "Class TgGame.TgMissionObjective")) {
-				if (strstr(obj->GetFullName(), "Default__")) continue;
+		ActorCache::CacheMapActors();
 
-				ATgMissionObjective* Objective = reinterpret_cast<ATgMissionObjective*>(obj);
-				AddObjectivePointToList(GRI, nullptr, Objective);
-				Logger::Log(GetLogChannel(), "Added objective %s to GRI->m_MissionObjectives\n", Objective->GetFullName());
-			}
+		for (ATgMissionObjective* Objective : ActorCache::MissionObjectives) {
+			AddObjectivePointToList(GRI, nullptr, Objective);
+			Logger::Log(GetLogChannel(), "Added objective %s to GRI->m_MissionObjectives\n", ((UObject*)Objective)->GetFullName());
 		}
 	}
 

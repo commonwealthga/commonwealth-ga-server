@@ -306,6 +306,17 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			Logger::Log("tcp", "[%s] Received: GSC_USER_LOGIN [0x%04X], name: %s guid: %s ip: %s\n",
 			   Logger::GetTime(), packet_type, player_name.c_str(), session_guid_.c_str(), ip_address_.c_str());
 
+			// Preemptively ensure a home map instance is starting so it's
+			// likely READY by the time the player selects a character.
+			if (on_need_home_map_) {
+				auto home = InstanceRegistry::GetHomeInstance();
+				if (!home) {
+					Logger::Log("tcp", "[TcpSession] Pre-spawning home map instance for %s\n",
+						session_guid_.c_str());
+					on_need_home_map_();
+				}
+			}
+
 			send_login_response();
 			break;
 		}
@@ -614,98 +625,98 @@ void TcpSession::send_get_ticket_info_response() {
 
 	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
 
-	append(response, 0x9, 0x00);        // count elements (9 entries)
+	append(response, 0x2, 0x00);
 
 
-		append(response, 0x1c, 0x00);  // inner item count
-			Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000003fd);
-			Write4B(response, GA_T::MATCH_QUEUE_ID, 0x00000005);
-			Write4B(response, GA_T::NAME_MSG_ID, 0x0000d8a1); // Low security
-			Write4B(response, GA_T::DESC_MSG_ID, 0x0000d8a0);
-			Write4B(response, GA_T::ICON_ID, 0x00000219);
-			Write4B(response, GA_T::PLAYER_COUNT, 0x00000000);
-			Write4B(response, GA_T::MAX_PLAYERS_PER_SIDE, 0x0000000a);
-			Write4B(response, GA_T::MIN_PLAYERS_PER_TEAM, 0x00000001);
-			Write4B(response, GA_T::MAX_PLAYERS_PER_TEAM, 0x0000000a);
-			Write4B(response, GA_T::INSTANCE_COUNT, 0x00000000);
-			Write4B(response, GA_T::LEVEL_MIN, 0x00000001);
-			Write4B(response, GA_T::LEVEL_MAX, 0x000000c8);
-			Write4B(response, GA_T::TAB, 0x000001bb);
-			WriteFloat(response, GA_T::MAP_X, 6.0f);
-			Write4B(response, GA_T::MAP_Y, 0x00);
-			WriteNBytes(response, GA_T::MAP_ACTIVE_FLAG, {0x01, 0x00, 0x79});
-			Write4B(response, GA_T::MAP_ICON_TEXTURE_RES_ID, 0x00001406);
-			Write4B(response, GA_T::VIDEO_RES_ID, 0x00000000);
-			Write4B(response, GA_T::LOCATION_VALUE_ID, 0x000005c5);
-			WriteNBytes(response, GA_T::DOUBLE_AGENT_FLAG, {0x01, 0x00, 0x6e});
-			Write4B(response, GA_T::SYS_SITE_ID, 0x00000000);
-			Write4B(response, GA_T::SORT_ORDER, 0x00000000);
-			WriteNBytes(response, GA_T::BONUS_QUEUE_FLAG, {0x00, 0x08, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
-			Write4B(response, GA_T::DIFFICULTY_VALUE_ID, 0x00000404);
-			WriteNBytes(response, GA_T::ACTIVE_FLAG, {0x01, 0x00, 0x79});
-			append(response, GA_T::DATA_SET_PROFILE_COUNTS & 0xFF, GA_T::DATA_SET_PROFILE_COUNTS >> 8);
-			append(response, 0x00, 0x00);        // count elements
-			Write1B(response, GA_T::LOCKED_FLAG, 0x00);
+		// append(response, 0x1c, 0x00);  // inner item count
+		// 	Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000003fd);
+		// 	Write4B(response, GA_T::MATCH_QUEUE_ID, 0x00000005);
+		// 	Write4B(response, GA_T::NAME_MSG_ID, 0x0000d8a1); // Low security
+		// 	Write4B(response, GA_T::DESC_MSG_ID, 0x0000d8a0);
+		// 	Write4B(response, GA_T::ICON_ID, 0x00000219);
+		// 	Write4B(response, GA_T::PLAYER_COUNT, 0x00000000);
+		// 	Write4B(response, GA_T::MAX_PLAYERS_PER_SIDE, 0x0000000a);
+		// 	Write4B(response, GA_T::MIN_PLAYERS_PER_TEAM, 0x00000001);
+		// 	Write4B(response, GA_T::MAX_PLAYERS_PER_TEAM, 0x0000000a);
+		// 	Write4B(response, GA_T::INSTANCE_COUNT, 0x00000000);
+		// 	Write4B(response, GA_T::LEVEL_MIN, 0x00000001);
+		// 	Write4B(response, GA_T::LEVEL_MAX, 0x000000c8);
+		// 	Write4B(response, GA_T::TAB, 0x000001bb);
+		// 	WriteFloat(response, GA_T::MAP_X, 6.0f);
+		// 	Write4B(response, GA_T::MAP_Y, 0x00);
+		// 	WriteNBytes(response, GA_T::MAP_ACTIVE_FLAG, {0x01, 0x00, 0x79});
+		// 	Write4B(response, GA_T::MAP_ICON_TEXTURE_RES_ID, 0x00001406);
+		// 	Write4B(response, GA_T::VIDEO_RES_ID, 0x00000000);
+		// 	Write4B(response, GA_T::LOCATION_VALUE_ID, 0x000005c5);
+		// 	WriteNBytes(response, GA_T::DOUBLE_AGENT_FLAG, {0x01, 0x00, 0x6e});
+		// 	Write4B(response, GA_T::SYS_SITE_ID, 0x00000000);
+		// 	Write4B(response, GA_T::SORT_ORDER, 0x00000000);
+		// 	WriteNBytes(response, GA_T::BONUS_QUEUE_FLAG, {0x00, 0x08, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+		// 	Write4B(response, GA_T::DIFFICULTY_VALUE_ID, 0x00000404);
+		// 	WriteNBytes(response, GA_T::ACTIVE_FLAG, {0x01, 0x00, 0x79});
+		// 	append(response, GA_T::DATA_SET_PROFILE_COUNTS & 0xFF, GA_T::DATA_SET_PROFILE_COUNTS >> 8);
+		// 	append(response, 0x00, 0x00);        // count elements
+		// 	Write1B(response, GA_T::LOCKED_FLAG, 0x00);
 
-		append(response, 0x1c, 0x00);  // inner item count
-			Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000003fd);
-			Write4B(response, GA_T::MATCH_QUEUE_ID, 0x00000006);
-			Write4B(response, GA_T::NAME_MSG_ID, 0x0000a1f7); // Medium security
-			Write4B(response, GA_T::DESC_MSG_ID, 0x0000a1f6);
-			Write4B(response, GA_T::ICON_ID, 0x00000219);
-			Write4B(response, GA_T::PLAYER_COUNT, 0x00000000);
-			Write4B(response, GA_T::MAX_PLAYERS_PER_SIDE, 0x0000000a);
-			Write4B(response, GA_T::MIN_PLAYERS_PER_TEAM, 0x00000001);
-			Write4B(response, GA_T::MAX_PLAYERS_PER_TEAM, 0x0000000a);
-			Write4B(response, GA_T::INSTANCE_COUNT, 0x00000000);
-			Write4B(response, GA_T::LEVEL_MIN, 0x00000001);
-			Write4B(response, GA_T::LEVEL_MAX, 0x000000c8);
-			Write4B(response, GA_T::TAB, 0x000001bb);
-			WriteFloat(response, GA_T::MAP_X, 6.0f);
-			Write4B(response, GA_T::MAP_Y, 0x00);
-			WriteNBytes(response, GA_T::MAP_ACTIVE_FLAG, {0x01, 0x00, 0x79});
-			Write4B(response, GA_T::MAP_ICON_TEXTURE_RES_ID, 0x00001406);
-			Write4B(response, GA_T::VIDEO_RES_ID, 0x00000000);
-			Write4B(response, GA_T::LOCATION_VALUE_ID, 0x000005c5);
-			WriteNBytes(response, GA_T::DOUBLE_AGENT_FLAG, {0x01, 0x00, 0x6e});
-			Write4B(response, GA_T::SYS_SITE_ID, 0x00000000);
-			Write4B(response, GA_T::SORT_ORDER, 0x00000000);
-			WriteNBytes(response, GA_T::BONUS_QUEUE_FLAG, {0x00, 0x08, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
-			Write4B(response, GA_T::DIFFICULTY_VALUE_ID, 0x00000405);
-			WriteNBytes(response, GA_T::ACTIVE_FLAG, {0x01, 0x00, 0x79});
-			append(response, GA_T::DATA_SET_PROFILE_COUNTS & 0xFF, GA_T::DATA_SET_PROFILE_COUNTS >> 8);
-			append(response, 0x00, 0x00);        // count elements
-			Write1B(response, GA_T::LOCKED_FLAG, 0x00);
+		// append(response, 0x1c, 0x00);  // inner item count
+		// 	Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000003fd);
+		// 	Write4B(response, GA_T::MATCH_QUEUE_ID, 0x00000006);
+		// 	Write4B(response, GA_T::NAME_MSG_ID, 0x0000a1f7); // Medium security
+		// 	Write4B(response, GA_T::DESC_MSG_ID, 0x0000a1f6);
+		// 	Write4B(response, GA_T::ICON_ID, 0x00000219);
+		// 	Write4B(response, GA_T::PLAYER_COUNT, 0x00000000);
+		// 	Write4B(response, GA_T::MAX_PLAYERS_PER_SIDE, 0x0000000a);
+		// 	Write4B(response, GA_T::MIN_PLAYERS_PER_TEAM, 0x00000001);
+		// 	Write4B(response, GA_T::MAX_PLAYERS_PER_TEAM, 0x0000000a);
+		// 	Write4B(response, GA_T::INSTANCE_COUNT, 0x00000000);
+		// 	Write4B(response, GA_T::LEVEL_MIN, 0x00000001);
+		// 	Write4B(response, GA_T::LEVEL_MAX, 0x000000c8);
+		// 	Write4B(response, GA_T::TAB, 0x000001bb);
+		// 	WriteFloat(response, GA_T::MAP_X, 6.0f);
+		// 	Write4B(response, GA_T::MAP_Y, 0x00);
+		// 	WriteNBytes(response, GA_T::MAP_ACTIVE_FLAG, {0x01, 0x00, 0x79});
+		// 	Write4B(response, GA_T::MAP_ICON_TEXTURE_RES_ID, 0x00001406);
+		// 	Write4B(response, GA_T::VIDEO_RES_ID, 0x00000000);
+		// 	Write4B(response, GA_T::LOCATION_VALUE_ID, 0x000005c5);
+		// 	WriteNBytes(response, GA_T::DOUBLE_AGENT_FLAG, {0x01, 0x00, 0x6e});
+		// 	Write4B(response, GA_T::SYS_SITE_ID, 0x00000000);
+		// 	Write4B(response, GA_T::SORT_ORDER, 0x00000000);
+		// 	WriteNBytes(response, GA_T::BONUS_QUEUE_FLAG, {0x00, 0x08, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+		// 	Write4B(response, GA_T::DIFFICULTY_VALUE_ID, 0x00000405);
+		// 	WriteNBytes(response, GA_T::ACTIVE_FLAG, {0x01, 0x00, 0x79});
+		// 	append(response, GA_T::DATA_SET_PROFILE_COUNTS & 0xFF, GA_T::DATA_SET_PROFILE_COUNTS >> 8);
+		// 	append(response, 0x00, 0x00);        // count elements
+		// 	Write1B(response, GA_T::LOCKED_FLAG, 0x00);
 
-		append(response, 0x1c, 0x00);  // inner item count
-			Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000003fd);
-			Write4B(response, GA_T::MATCH_QUEUE_ID, 0x00000007);
-			Write4B(response, GA_T::NAME_MSG_ID, 0x0000a1f9); // High security
-			Write4B(response, GA_T::DESC_MSG_ID, 0x0000a1f8);
-			Write4B(response, GA_T::ICON_ID, 0x00000219);
-			Write4B(response, GA_T::PLAYER_COUNT, 0x00000000);
-			Write4B(response, GA_T::MAX_PLAYERS_PER_SIDE, 0x0000000a);
-			Write4B(response, GA_T::MIN_PLAYERS_PER_TEAM, 0x00000001);
-			Write4B(response, GA_T::MAX_PLAYERS_PER_TEAM, 0x0000000a);
-			Write4B(response, GA_T::INSTANCE_COUNT, 0x00000000);
-			Write4B(response, GA_T::LEVEL_MIN, 0x00000001);
-			Write4B(response, GA_T::LEVEL_MAX, 0x000000c8);
-			Write4B(response, GA_T::TAB, 0x000001bb);
-			WriteFloat(response, GA_T::MAP_X, 6.0f);
-			Write4B(response, GA_T::MAP_Y, 0x00);
-			WriteNBytes(response, GA_T::MAP_ACTIVE_FLAG, {0x01, 0x00, 0x79});
-			Write4B(response, GA_T::MAP_ICON_TEXTURE_RES_ID, 0x00001406);
-			Write4B(response, GA_T::VIDEO_RES_ID, 0x00000000);
-			Write4B(response, GA_T::LOCATION_VALUE_ID, 0x000005c5);
-			WriteNBytes(response, GA_T::DOUBLE_AGENT_FLAG, {0x01, 0x00, 0x6e});
-			Write4B(response, GA_T::SYS_SITE_ID, 0x00000000);
-			Write4B(response, GA_T::SORT_ORDER, 0x00000000);
-			WriteNBytes(response, GA_T::BONUS_QUEUE_FLAG, {0x00, 0x08, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
-			Write4B(response, GA_T::DIFFICULTY_VALUE_ID, 0x00000406);
-			WriteNBytes(response, GA_T::ACTIVE_FLAG, {0x01, 0x00, 0x79});
-			append(response, GA_T::DATA_SET_PROFILE_COUNTS & 0xFF, GA_T::DATA_SET_PROFILE_COUNTS >> 8);
-			append(response, 0x00, 0x00);        // count elements
-			Write1B(response, GA_T::LOCKED_FLAG, 0x00);
+		// append(response, 0x1c, 0x00);  // inner item count
+		// 	Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000003fd);
+		// 	Write4B(response, GA_T::MATCH_QUEUE_ID, 0x00000007);
+		// 	Write4B(response, GA_T::NAME_MSG_ID, 0x0000a1f9); // High security
+		// 	Write4B(response, GA_T::DESC_MSG_ID, 0x0000a1f8);
+		// 	Write4B(response, GA_T::ICON_ID, 0x00000219);
+		// 	Write4B(response, GA_T::PLAYER_COUNT, 0x00000000);
+		// 	Write4B(response, GA_T::MAX_PLAYERS_PER_SIDE, 0x0000000a);
+		// 	Write4B(response, GA_T::MIN_PLAYERS_PER_TEAM, 0x00000001);
+		// 	Write4B(response, GA_T::MAX_PLAYERS_PER_TEAM, 0x0000000a);
+		// 	Write4B(response, GA_T::INSTANCE_COUNT, 0x00000000);
+		// 	Write4B(response, GA_T::LEVEL_MIN, 0x00000001);
+		// 	Write4B(response, GA_T::LEVEL_MAX, 0x000000c8);
+		// 	Write4B(response, GA_T::TAB, 0x000001bb);
+		// 	WriteFloat(response, GA_T::MAP_X, 6.0f);
+		// 	Write4B(response, GA_T::MAP_Y, 0x00);
+		// 	WriteNBytes(response, GA_T::MAP_ACTIVE_FLAG, {0x01, 0x00, 0x79});
+		// 	Write4B(response, GA_T::MAP_ICON_TEXTURE_RES_ID, 0x00001406);
+		// 	Write4B(response, GA_T::VIDEO_RES_ID, 0x00000000);
+		// 	Write4B(response, GA_T::LOCATION_VALUE_ID, 0x000005c5);
+		// 	WriteNBytes(response, GA_T::DOUBLE_AGENT_FLAG, {0x01, 0x00, 0x6e});
+		// 	Write4B(response, GA_T::SYS_SITE_ID, 0x00000000);
+		// 	Write4B(response, GA_T::SORT_ORDER, 0x00000000);
+		// 	WriteNBytes(response, GA_T::BONUS_QUEUE_FLAG, {0x00, 0x08, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+		// 	Write4B(response, GA_T::DIFFICULTY_VALUE_ID, 0x00000406);
+		// 	WriteNBytes(response, GA_T::ACTIVE_FLAG, {0x01, 0x00, 0x79});
+		// 	append(response, GA_T::DATA_SET_PROFILE_COUNTS & 0xFF, GA_T::DATA_SET_PROFILE_COUNTS >> 8);
+		// 	append(response, 0x00, 0x00);        // count elements
+		// 	Write1B(response, GA_T::LOCKED_FLAG, 0x00);
 
 		// append(response, 0x1c, 0x00);  // inner item count
 		// 	Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000003fd);
@@ -744,65 +755,65 @@ void TcpSession::send_get_ticket_info_response() {
 			append(response, 0x00, 0x00);        // count elements
 			Write1B(response, GA_T::LOCKED_FLAG, 0x00);
 
-		append(response, 0x1c, 0x00);  // inner item count
-			Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000003fd);
-			Write4B(response, GA_T::MATCH_QUEUE_ID, 0x0000000a);
-			Write4B(response, GA_T::NAME_MSG_ID, 0x0000d8a9); // Ultra max security - sonoran desert
-			Write4B(response, GA_T::DESC_MSG_ID, 0x0000d8a8);
-			Write4B(response, GA_T::ICON_ID, 0x00000219);
-			Write4B(response, GA_T::PLAYER_COUNT, 0x00000000);
-			Write4B(response, GA_T::MAX_PLAYERS_PER_SIDE, 0x0000000a);
-			Write4B(response, GA_T::MIN_PLAYERS_PER_TEAM, 0x00000001);
-			Write4B(response, GA_T::MAX_PLAYERS_PER_TEAM, 0x0000000a);
-			Write4B(response, GA_T::INSTANCE_COUNT, 0x00000000);
-			Write4B(response, GA_T::LEVEL_MIN, 0x00000005);
-			Write4B(response, GA_T::LEVEL_MAX, 0x000000c8);
-			Write4B(response, GA_T::TAB, 0x000001bb);
-			WriteFloat(response, GA_T::MAP_X, 6.0f);
-			Write4B(response, GA_T::MAP_Y, 0x00);
-			WriteNBytes(response, GA_T::MAP_ACTIVE_FLAG, {0x01, 0x00, 0x79});
-			Write4B(response, GA_T::MAP_ICON_TEXTURE_RES_ID, 0x00001406);
-			Write4B(response, GA_T::VIDEO_RES_ID, 0x00000000);
-			Write4B(response, GA_T::LOCATION_VALUE_ID, 0x000005cb);
-			WriteNBytes(response, GA_T::DOUBLE_AGENT_FLAG, {0x01, 0x00, 0x6e});
-			Write4B(response, GA_T::SYS_SITE_ID, 0x00000000);
-			Write4B(response, GA_T::SORT_ORDER, 0x00000000);
-			WriteNBytes(response, GA_T::BONUS_QUEUE_FLAG, {0x00, 0x08, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
-			Write4B(response, GA_T::DIFFICULTY_VALUE_ID, 0x000005bf);
-			WriteNBytes(response, GA_T::ACTIVE_FLAG, {0x01, 0x00, 0x79});
-			append(response, GA_T::DATA_SET_PROFILE_COUNTS & 0xFF, GA_T::DATA_SET_PROFILE_COUNTS >> 8);
-			append(response, 0x00, 0x00);        // count elements
-			Write1B(response, GA_T::LOCKED_FLAG, 0x00);
+		// append(response, 0x1c, 0x00);  // inner item count
+		// 	Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000003fd);
+		// 	Write4B(response, GA_T::MATCH_QUEUE_ID, 0x0000000a);
+		// 	Write4B(response, GA_T::NAME_MSG_ID, 0x0000d8a9); // Ultra max security - sonoran desert
+		// 	Write4B(response, GA_T::DESC_MSG_ID, 0x0000d8a8);
+		// 	Write4B(response, GA_T::ICON_ID, 0x00000219);
+		// 	Write4B(response, GA_T::PLAYER_COUNT, 0x00000000);
+		// 	Write4B(response, GA_T::MAX_PLAYERS_PER_SIDE, 0x0000000a);
+		// 	Write4B(response, GA_T::MIN_PLAYERS_PER_TEAM, 0x00000001);
+		// 	Write4B(response, GA_T::MAX_PLAYERS_PER_TEAM, 0x0000000a);
+		// 	Write4B(response, GA_T::INSTANCE_COUNT, 0x00000000);
+		// 	Write4B(response, GA_T::LEVEL_MIN, 0x00000005);
+		// 	Write4B(response, GA_T::LEVEL_MAX, 0x000000c8);
+		// 	Write4B(response, GA_T::TAB, 0x000001bb);
+		// 	WriteFloat(response, GA_T::MAP_X, 6.0f);
+		// 	Write4B(response, GA_T::MAP_Y, 0x00);
+		// 	WriteNBytes(response, GA_T::MAP_ACTIVE_FLAG, {0x01, 0x00, 0x79});
+		// 	Write4B(response, GA_T::MAP_ICON_TEXTURE_RES_ID, 0x00001406);
+		// 	Write4B(response, GA_T::VIDEO_RES_ID, 0x00000000);
+		// 	Write4B(response, GA_T::LOCATION_VALUE_ID, 0x000005cb);
+		// 	WriteNBytes(response, GA_T::DOUBLE_AGENT_FLAG, {0x01, 0x00, 0x6e});
+		// 	Write4B(response, GA_T::SYS_SITE_ID, 0x00000000);
+		// 	Write4B(response, GA_T::SORT_ORDER, 0x00000000);
+		// 	WriteNBytes(response, GA_T::BONUS_QUEUE_FLAG, {0x00, 0x08, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+		// 	Write4B(response, GA_T::DIFFICULTY_VALUE_ID, 0x000005bf);
+		// 	WriteNBytes(response, GA_T::ACTIVE_FLAG, {0x01, 0x00, 0x79});
+		// 	append(response, GA_T::DATA_SET_PROFILE_COUNTS & 0xFF, GA_T::DATA_SET_PROFILE_COUNTS >> 8);
+		// 	append(response, 0x00, 0x00);        // count elements
+		// 	Write1B(response, GA_T::LOCKED_FLAG, 0x00);
 
-		append(response, 0x1c, 0x00);  // inner item count
-			Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000003fd);
-			Write4B(response, GA_T::MATCH_QUEUE_ID, 0x0000000b);
-			Write4B(response, GA_T::NAME_MSG_ID, 0x0000d8a9); // Ultra max security - mining province
-			Write4B(response, GA_T::DESC_MSG_ID, 0x0000d8a8);
-			Write4B(response, GA_T::ICON_ID, 0x00000219);
-			Write4B(response, GA_T::PLAYER_COUNT, 0x00000000);
-			Write4B(response, GA_T::MAX_PLAYERS_PER_SIDE, 0x0000000a);
-			Write4B(response, GA_T::MIN_PLAYERS_PER_TEAM, 0x00000001);
-			Write4B(response, GA_T::MAX_PLAYERS_PER_TEAM, 0x0000000a);
-			Write4B(response, GA_T::INSTANCE_COUNT, 0x00000000);
-			Write4B(response, GA_T::LEVEL_MIN, 0x00000005);
-			Write4B(response, GA_T::LEVEL_MAX, 0x000000c8);
-			Write4B(response, GA_T::TAB, 0x000001bb);
-			WriteFloat(response, GA_T::MAP_X, 6.0f);
-			Write4B(response, GA_T::MAP_Y, 0x00);
-			WriteNBytes(response, GA_T::MAP_ACTIVE_FLAG, {0x01, 0x00, 0x79});
-			Write4B(response, GA_T::MAP_ICON_TEXTURE_RES_ID, 0x00001406);
-			Write4B(response, GA_T::VIDEO_RES_ID, 0x00000000);
-			Write4B(response, GA_T::LOCATION_VALUE_ID, 0x000005c6);
-			WriteNBytes(response, GA_T::DOUBLE_AGENT_FLAG, {0x01, 0x00, 0x6e});
-			Write4B(response, GA_T::SYS_SITE_ID, 0x00000000);
-			Write4B(response, GA_T::SORT_ORDER, 0x00000000);
-			WriteNBytes(response, GA_T::BONUS_QUEUE_FLAG, {0x00, 0x08, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
-			Write4B(response, GA_T::DIFFICULTY_VALUE_ID, 0x000005bf);
-			WriteNBytes(response, GA_T::ACTIVE_FLAG, {0x01, 0x00, 0x79});
-			append(response, GA_T::DATA_SET_PROFILE_COUNTS & 0xFF, GA_T::DATA_SET_PROFILE_COUNTS >> 8);
-			append(response, 0x00, 0x00);        // count elements
-			Write1B(response, GA_T::LOCKED_FLAG, 0x00);
+		// append(response, 0x1c, 0x00);  // inner item count
+		// 	Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000003fd);
+		// 	Write4B(response, GA_T::MATCH_QUEUE_ID, 0x0000000b);
+		// 	Write4B(response, GA_T::NAME_MSG_ID, 0x0000d8a9); // Ultra max security - mining province
+		// 	Write4B(response, GA_T::DESC_MSG_ID, 0x0000d8a8);
+		// 	Write4B(response, GA_T::ICON_ID, 0x00000219);
+		// 	Write4B(response, GA_T::PLAYER_COUNT, 0x00000000);
+		// 	Write4B(response, GA_T::MAX_PLAYERS_PER_SIDE, 0x0000000a);
+		// 	Write4B(response, GA_T::MIN_PLAYERS_PER_TEAM, 0x00000001);
+		// 	Write4B(response, GA_T::MAX_PLAYERS_PER_TEAM, 0x0000000a);
+		// 	Write4B(response, GA_T::INSTANCE_COUNT, 0x00000000);
+		// 	Write4B(response, GA_T::LEVEL_MIN, 0x00000005);
+		// 	Write4B(response, GA_T::LEVEL_MAX, 0x000000c8);
+		// 	Write4B(response, GA_T::TAB, 0x000001bb);
+		// 	WriteFloat(response, GA_T::MAP_X, 6.0f);
+		// 	Write4B(response, GA_T::MAP_Y, 0x00);
+		// 	WriteNBytes(response, GA_T::MAP_ACTIVE_FLAG, {0x01, 0x00, 0x79});
+		// 	Write4B(response, GA_T::MAP_ICON_TEXTURE_RES_ID, 0x00001406);
+		// 	Write4B(response, GA_T::VIDEO_RES_ID, 0x00000000);
+		// 	Write4B(response, GA_T::LOCATION_VALUE_ID, 0x000005c6);
+		// 	WriteNBytes(response, GA_T::DOUBLE_AGENT_FLAG, {0x01, 0x00, 0x6e});
+		// 	Write4B(response, GA_T::SYS_SITE_ID, 0x00000000);
+		// 	Write4B(response, GA_T::SORT_ORDER, 0x00000000);
+		// 	WriteNBytes(response, GA_T::BONUS_QUEUE_FLAG, {0x00, 0x08, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+		// 	Write4B(response, GA_T::DIFFICULTY_VALUE_ID, 0x000005bf);
+		// 	WriteNBytes(response, GA_T::ACTIVE_FLAG, {0x01, 0x00, 0x79});
+		// 	append(response, GA_T::DATA_SET_PROFILE_COUNTS & 0xFF, GA_T::DATA_SET_PROFILE_COUNTS >> 8);
+		// 	append(response, 0x00, 0x00);        // count elements
+		// 	Write1B(response, GA_T::LOCKED_FLAG, 0x00);
 
 		append(response, 0x1c, 0x00);  // inner item count
 			Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000003fe);
@@ -834,68 +845,67 @@ void TcpSession::send_get_ticket_info_response() {
 			append(response, 0x00, 0x00);        // count elements
 			Write1B(response, GA_T::LOCKED_FLAG, 0x00);
 
-		append(response, 0x1c, 0x00);  // inner item count
-			Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000003fd);
-			Write4B(response, GA_T::MATCH_QUEUE_ID, 0x00000003);
-			Write4B(response, GA_T::NAME_MSG_ID, 0x0000a1fc); // Double Agent
-			Write4B(response, GA_T::DESC_MSG_ID, 0x0000a1fb);
-			Write4B(response, GA_T::ICON_ID, 0x000001c9);
-			Write4B(response, GA_T::PLAYER_COUNT, 0x00000000);
-			Write4B(response, GA_T::MAX_PLAYERS_PER_SIDE, 0x00000004);
-			Write4B(response, GA_T::MIN_PLAYERS_PER_TEAM, 0x00000001);
-			Write4B(response, GA_T::MAX_PLAYERS_PER_TEAM, 0x00000004);
-			Write4B(response, GA_T::INSTANCE_COUNT, 0x00000000);
-			Write4B(response, GA_T::LEVEL_MIN, 0x00000005);
-			Write4B(response, GA_T::LEVEL_MAX, 0x000000c8);
-			Write4B(response, GA_T::TAB, 0x000000e8);
-			WriteFloat(response, GA_T::MAP_X, 10.0f);
-			WriteFloat(response, GA_T::MAP_Y, 0.5f);
-			WriteNBytes(response, GA_T::MAP_ACTIVE_FLAG, {0x01, 0x00, 0x79});
-			Write4B(response, GA_T::MAP_ICON_TEXTURE_RES_ID, 0x00001406);
-			Write4B(response, GA_T::VIDEO_RES_ID, 0x00000000);
-			Write4B(response, GA_T::LOCATION_VALUE_ID, 0x000005c5);
-			WriteNBytes(response, GA_T::DOUBLE_AGENT_FLAG, {0x01, 0x00, 0x79});
-			Write4B(response, GA_T::SYS_SITE_ID, 0x00000000);
-			Write4B(response, GA_T::SORT_ORDER, 0x00000004);
-			WriteNBytes(response, GA_T::BONUS_QUEUE_FLAG, {0x00, 0x08, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
-			Write4B(response, GA_T::DIFFICULTY_VALUE_ID, 0x000004ec);
-			WriteNBytes(response, GA_T::ACTIVE_FLAG, {0x01, 0x00, 0x79});
-			// Write4B(response, GA_T::REMAINING_SECONDS, 0x00000001);
-			append(response, GA_T::DATA_SET_PROFILE_COUNTS & 0xFF, GA_T::DATA_SET_PROFILE_COUNTS >> 8);
-			append(response, 0x00, 0x00);        // count elements
+		// append(response, 0x1c, 0x00);  // inner item count
+		// 	Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000003fd);
+		// 	Write4B(response, GA_T::MATCH_QUEUE_ID, 0x00000003);
+		// 	Write4B(response, GA_T::NAME_MSG_ID, 0x0000a1fc); // Double Agent
+		// 	Write4B(response, GA_T::DESC_MSG_ID, 0x0000a1fb);
+		// 	Write4B(response, GA_T::ICON_ID, 0x000001c9);
+		// 	Write4B(response, GA_T::PLAYER_COUNT, 0x00000000);
+		// 	Write4B(response, GA_T::MAX_PLAYERS_PER_SIDE, 0x00000004);
+		// 	Write4B(response, GA_T::MIN_PLAYERS_PER_TEAM, 0x00000001);
+		// 	Write4B(response, GA_T::MAX_PLAYERS_PER_TEAM, 0x00000004);
+		// 	Write4B(response, GA_T::INSTANCE_COUNT, 0x00000000);
+		// 	Write4B(response, GA_T::LEVEL_MIN, 0x00000005);
+		// 	Write4B(response, GA_T::LEVEL_MAX, 0x000000c8);
+		// 	Write4B(response, GA_T::TAB, 0x000000e8);
+		// 	WriteFloat(response, GA_T::MAP_X, 10.0f);
+		// 	WriteFloat(response, GA_T::MAP_Y, 0.5f);
+		// 	WriteNBytes(response, GA_T::MAP_ACTIVE_FLAG, {0x01, 0x00, 0x79});
+		// 	Write4B(response, GA_T::MAP_ICON_TEXTURE_RES_ID, 0x00001406);
+		// 	Write4B(response, GA_T::VIDEO_RES_ID, 0x00000000);
+		// 	Write4B(response, GA_T::LOCATION_VALUE_ID, 0x000005c5);
+		// 	WriteNBytes(response, GA_T::DOUBLE_AGENT_FLAG, {0x01, 0x00, 0x79});
+		// 	Write4B(response, GA_T::SYS_SITE_ID, 0x00000000);
+		// 	Write4B(response, GA_T::SORT_ORDER, 0x00000004);
+		// 	WriteNBytes(response, GA_T::BONUS_QUEUE_FLAG, {0x00, 0x08, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+		// 	Write4B(response, GA_T::DIFFICULTY_VALUE_ID, 0x000004ec);
+		// 	WriteNBytes(response, GA_T::ACTIVE_FLAG, {0x01, 0x00, 0x79});
+		// 	// Write4B(response, GA_T::REMAINING_SECONDS, 0x00000001);
+		// 	append(response, GA_T::DATA_SET_PROFILE_COUNTS & 0xFF, GA_T::DATA_SET_PROFILE_COUNTS >> 8);
+		// 	append(response, 0x00, 0x00);        // count elements
+		// 	Write1B(response, GA_T::LOCKED_FLAG, 0x00);
 
-			Write1B(response, GA_T::LOCKED_FLAG, 0x00);
-
-		append(response, 0x1c, 0x00);  // inner item count
-			Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000005ae);
-			Write4B(response, GA_T::MATCH_QUEUE_ID, 0x00000004);
-			Write4B(response, GA_T::NAME_MSG_ID, 0x00008fdc); // Sonoran Raid
-			Write4B(response, GA_T::DESC_MSG_ID, 0x0000e7b0);
-			Write4B(response, GA_T::ICON_ID, 0x000006b4);
-			Write4B(response, GA_T::PLAYER_COUNT, 0x00000000);
-			Write4B(response, GA_T::MAX_PLAYERS_PER_SIDE, 0x00000015);
-			Write4B(response, GA_T::MIN_PLAYERS_PER_TEAM, 0x00000000);
-			Write4B(response, GA_T::MAX_PLAYERS_PER_TEAM, 0x00000015);
-			Write4B(response, GA_T::INSTANCE_COUNT, 0x00000000);
-			Write4B(response, GA_T::LEVEL_MIN, 0x00000005);
-			Write4B(response, GA_T::LEVEL_MAX, 0x0000003c);
-			Write4B(response, GA_T::TAB, 0x000000e7);
-			Write4B(response, GA_T::MAP_X, 0x00);
-			Write4B(response, GA_T::MAP_Y, 0x00);
-			WriteNBytes(response, GA_T::MAP_ACTIVE_FLAG, {0x01, 0x00, 0x79});
-			Write4B(response, GA_T::MAP_ICON_TEXTURE_RES_ID, 0x00001406);
-			Write4B(response, GA_T::VIDEO_RES_ID, 0x00000000);
-			Write4B(response, GA_T::LOCATION_VALUE_ID, 0x00000000);
-			WriteNBytes(response, GA_T::DOUBLE_AGENT_FLAG, {0x01, 0x00, 0x6e});
-			Write4B(response, GA_T::SYS_SITE_ID, 0x00000000);
-			Write4B(response, GA_T::SORT_ORDER, 0x00000000);
-			WriteNBytes(response, GA_T::BONUS_QUEUE_FLAG, {0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
-			Write4B(response, GA_T::DIFFICULTY_VALUE_ID, 0x000004eb);
-			WriteNBytes(response, GA_T::ACTIVE_FLAG, {0x01, 0x00, 0x79});
-			// Write4B(response, GA_T::REMAINING_SECONDS, 0x00000001);
-			append(response, GA_T::DATA_SET_PROFILE_COUNTS & 0xFF, GA_T::DATA_SET_PROFILE_COUNTS >> 8);
-			append(response, 0x00, 0x00);        // count elements
-			Write1B(response, GA_T::LOCKED_FLAG, 0x00);
+		// append(response, 0x1c, 0x00);  // inner item count
+		// 	Write4B(response, GA_T::QUEUE_TYPE_VALUE_ID, 0x000005ae);
+		// 	Write4B(response, GA_T::MATCH_QUEUE_ID, 0x00000004);
+		// 	Write4B(response, GA_T::NAME_MSG_ID, 0x00008fdc); // Sonoran Raid
+		// 	Write4B(response, GA_T::DESC_MSG_ID, 0x0000e7b0);
+		// 	Write4B(response, GA_T::ICON_ID, 0x000006b4);
+		// 	Write4B(response, GA_T::PLAYER_COUNT, 0x00000000);
+		// 	Write4B(response, GA_T::MAX_PLAYERS_PER_SIDE, 0x00000015);
+		// 	Write4B(response, GA_T::MIN_PLAYERS_PER_TEAM, 0x00000000);
+		// 	Write4B(response, GA_T::MAX_PLAYERS_PER_TEAM, 0x00000015);
+		// 	Write4B(response, GA_T::INSTANCE_COUNT, 0x00000000);
+		// 	Write4B(response, GA_T::LEVEL_MIN, 0x00000005);
+		// 	Write4B(response, GA_T::LEVEL_MAX, 0x0000003c);
+		// 	Write4B(response, GA_T::TAB, 0x000000e7);
+		// 	Write4B(response, GA_T::MAP_X, 0x00);
+		// 	Write4B(response, GA_T::MAP_Y, 0x00);
+		// 	WriteNBytes(response, GA_T::MAP_ACTIVE_FLAG, {0x01, 0x00, 0x79});
+		// 	Write4B(response, GA_T::MAP_ICON_TEXTURE_RES_ID, 0x00001406);
+		// 	Write4B(response, GA_T::VIDEO_RES_ID, 0x00000000);
+		// 	Write4B(response, GA_T::LOCATION_VALUE_ID, 0x00000000);
+		// 	WriteNBytes(response, GA_T::DOUBLE_AGENT_FLAG, {0x01, 0x00, 0x6e});
+		// 	Write4B(response, GA_T::SYS_SITE_ID, 0x00000000);
+		// 	Write4B(response, GA_T::SORT_ORDER, 0x00000000);
+		// 	WriteNBytes(response, GA_T::BONUS_QUEUE_FLAG, {0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+		// 	Write4B(response, GA_T::DIFFICULTY_VALUE_ID, 0x000004eb);
+		// 	WriteNBytes(response, GA_T::ACTIVE_FLAG, {0x01, 0x00, 0x79});
+		// 	// Write4B(response, GA_T::REMAINING_SECONDS, 0x00000001);
+		// 	append(response, GA_T::DATA_SET_PROFILE_COUNTS & 0xFF, GA_T::DATA_SET_PROFILE_COUNTS >> 8);
+		// 	append(response, 0x00, 0x00);        // count elements
+		// 	Write1B(response, GA_T::LOCKED_FLAG, 0x00);
 
 	send_response(response);
 }

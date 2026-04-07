@@ -2,14 +2,12 @@
 
 #include "src/pch.hpp"
 
+// Thin proxy over ObjectCache. Keeps existing API to avoid refactoring all callers.
 class ClassPreloader {
-private:
-	static bool bClassesPreloaded;
-	static void PreloadClasses();
-
-	static std::map <std::string, UClass*> Classes;
 public:
-	static UClass* GetClass(char* ClassName);
+	static UClass* GetClass(const char* ClassName);
+	static UObject* GetObject(const char* FullName);
+
 	static UClass* GetTgPawnCharacterClass();
 	static UClass* GetTgPropertyClass();
 	static UClass* GetTgRepInfoTaskForceClass();
@@ -27,6 +25,4 @@ public:
 	static UClass* GetTgSeqEventMissionTimerClass();
 	static UClass* GetTgSeqEventLevelFadedInClass();
 	static UClass* GetSeqEventLevelLoadedClass();
-
 };
-

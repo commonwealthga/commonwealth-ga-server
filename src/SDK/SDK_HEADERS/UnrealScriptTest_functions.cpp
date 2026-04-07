@@ -1,5 +1,6 @@
 #pragma once
 #include "src/pch.hpp"
+#include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
 
 /*
 #############################################################################################
@@ -33,7 +34,7 @@ void UTest0002_InterfaceNative::TestObjectToInterfaceConversions ( )
 	static UFunction* pFnTestObjectToInterfaceConversions = NULL;
 
 	if ( ! pFnTestObjectToInterfaceConversions )
-		pFnTestObjectToInterfaceConversions = (UFunction*) UObject::GObjObjects()->Data[ 30531 ];
+		pFnTestObjectToInterfaceConversions = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0002_InterfaceNative.TestObjectToInterfaceConversions" );
 
 	UTest0002_InterfaceNative_execTestObjectToInterfaceConversions_Parms TestObjectToInterfaceConversions_Parms;
 
@@ -50,7 +51,7 @@ void UTest0002_InterfaceNative::eventTestInterfaceEvent ( class UObject* ObjPara
 	static UFunction* pFnTestInterfaceEvent = NULL;
 
 	if ( ! pFnTestInterfaceEvent )
-		pFnTestInterfaceEvent = (UFunction*) UObject::GObjObjects()->Data[ 30529 ];
+		pFnTestInterfaceEvent = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0002_InterfaceNative.TestInterfaceEvent" );
 
 	UTest0002_InterfaceNative_eventTestInterfaceEvent_Parms TestInterfaceEvent_Parms;
 	TestInterfaceEvent_Parms.ObjParam = ObjParam;
@@ -68,7 +69,7 @@ void UTest0002_InterfaceNative::TestNativeFunction ( unsigned long bBoolParm )
 	static UFunction* pFnTestNativeFunction = NULL;
 
 	if ( ! pFnTestNativeFunction )
-		pFnTestNativeFunction = (UFunction*) UObject::GObjObjects()->Data[ 30527 ];
+		pFnTestNativeFunction = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0002_InterfaceNative.TestNativeFunction" );
 
 	UTest0002_InterfaceNative_execTestNativeFunction_Parms TestNativeFunction_Parms;
 	TestNativeFunction_Parms.bBoolParm = bBoolParm;
@@ -91,7 +92,7 @@ void UTest0010_NativeObject::eventTestOptionalEventStringParm ( struct FString F
 	static UFunction* pFnTestOptionalEventStringParm = NULL;
 
 	if ( ! pFnTestOptionalEventStringParm )
-		pFnTestOptionalEventStringParm = (UFunction*) UObject::GObjObjects()->Data[ 30715 ];
+		pFnTestOptionalEventStringParm = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_NativeObject.TestOptionalEventStringParm" );
 
 	UTest0010_NativeObject_eventTestOptionalEventStringParm_Parms TestOptionalEventStringParm_Parms;
 	memcpy ( &TestOptionalEventStringParm_Parms.FirstString, &FirstString, 0xC );
@@ -111,7 +112,7 @@ void UTest0010_NativeObject::FunctionWithMultipleOptionalParms ( struct FString 
 	static UFunction* pFnFunctionWithMultipleOptionalParms = NULL;
 
 	if ( ! pFnFunctionWithMultipleOptionalParms )
-		pFnFunctionWithMultipleOptionalParms = (UFunction*) UObject::GObjObjects()->Data[ 30712 ];
+		pFnFunctionWithMultipleOptionalParms = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_NativeObject.FunctionWithMultipleOptionalParms" );
 
 	UTest0010_NativeObject_execFunctionWithMultipleOptionalParms_Parms FunctionWithMultipleOptionalParms_Parms;
 	memcpy ( &FunctionWithMultipleOptionalParms_Parms.FirstString, &FirstString, 0xC );
@@ -129,7 +130,7 @@ void UTest0010_NativeObject::eventTestMultipleOptionalParms ( )
 	static UFunction* pFnTestMultipleOptionalParms = NULL;
 
 	if ( ! pFnTestMultipleOptionalParms )
-		pFnTestMultipleOptionalParms = (UFunction*) UObject::GObjObjects()->Data[ 30711 ];
+		pFnTestMultipleOptionalParms = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_NativeObject.TestMultipleOptionalParms" );
 
 	UTest0010_NativeObject_eventTestMultipleOptionalParms_Parms TestMultipleOptionalParms_Parms;
 
@@ -147,7 +148,7 @@ void UTest0010_NativeObject::VerifyConversionFromInterfaceToObjectAsNativeParm (
 	static UFunction* pFnVerifyConversionFromInterfaceToObjectAsNativeParm = NULL;
 
 	if ( ! pFnVerifyConversionFromInterfaceToObjectAsNativeParm )
-		pFnVerifyConversionFromInterfaceToObjectAsNativeParm = (UFunction*) UObject::GObjObjects()->Data[ 30705 ];
+		pFnVerifyConversionFromInterfaceToObjectAsNativeParm = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_NativeObject.VerifyConversionFromInterfaceToObjectAsNativeParm" );
 
 	UTest0010_NativeObject_execVerifyConversionFromInterfaceToObjectAsNativeParm_Parms VerifyConversionFromInterfaceToObjectAsNativeParm_Parms;
 	VerifyConversionFromInterfaceToObjectAsNativeParm_Parms.InObject = InObject;
@@ -171,7 +172,7 @@ void UTest0010_NativeObject::TestInterfaceObject_OutParmCompatibility ( class UO
 	static UFunction* pFnTestInterfaceObject_OutParmCompatibility = NULL;
 
 	if ( ! pFnTestInterfaceObject_OutParmCompatibility )
-		pFnTestInterfaceObject_OutParmCompatibility = (UFunction*) UObject::GObjObjects()->Data[ 30706 ];
+		pFnTestInterfaceObject_OutParmCompatibility = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_NativeObject.TestInterfaceObject_OutParmCompatibility" );
 
 	UTest0010_NativeObject_execTestInterfaceObject_OutParmCompatibility_Parms TestInterfaceObject_OutParmCompatibility_Parms;
 
@@ -193,7 +194,7 @@ void UTest0010_NativeObject::eventTest06_InterfaceToObjectConversions ( )
 	static UFunction* pFnTest06_InterfaceToObjectConversions = NULL;
 
 	if ( ! pFnTest06_InterfaceToObjectConversions )
-		pFnTest06_InterfaceToObjectConversions = (UFunction*) UObject::GObjObjects()->Data[ 30702 ];
+		pFnTest06_InterfaceToObjectConversions = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_NativeObject.Test06_InterfaceToObjectConversions" );
 
 	UTest0010_NativeObject_eventTest06_InterfaceToObjectConversions_Parms Test06_InterfaceToObjectConversions_Parms;
 
@@ -209,7 +210,7 @@ void UTest0010_NativeObject::eventTest05_StructInheritance ( )
 	static UFunction* pFnTest05_StructInheritance = NULL;
 
 	if ( ! pFnTest05_StructInheritance )
-		pFnTest05_StructInheritance = (UFunction*) UObject::GObjObjects()->Data[ 30701 ];
+		pFnTest05_StructInheritance = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_NativeObject.Test05_StructInheritance" );
 
 	UTest0010_NativeObject_eventTest05_StructInheritance_Parms Test05_StructInheritance_Parms;
 
@@ -225,7 +226,7 @@ void UTest0010_NativeObject::TestObjectToInterfaceConversions ( )
 	static UFunction* pFnTestObjectToInterfaceConversions = NULL;
 
 	if ( ! pFnTestObjectToInterfaceConversions )
-		pFnTestObjectToInterfaceConversions = (UFunction*) UObject::GObjObjects()->Data[ 30699 ];
+		pFnTestObjectToInterfaceConversions = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_NativeObject.TestObjectToInterfaceConversions" );
 
 	UTest0010_NativeObject_execTestObjectToInterfaceConversions_Parms TestObjectToInterfaceConversions_Parms;
 
@@ -242,7 +243,7 @@ void UTest0010_NativeObject::eventTestInterfaceEvent ( class UObject* ObjParam )
 	static UFunction* pFnTestInterfaceEvent = NULL;
 
 	if ( ! pFnTestInterfaceEvent )
-		pFnTestInterfaceEvent = (UFunction*) UObject::GObjObjects()->Data[ 30697 ];
+		pFnTestInterfaceEvent = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_NativeObject.TestInterfaceEvent" );
 
 	UTest0010_NativeObject_eventTestInterfaceEvent_Parms TestInterfaceEvent_Parms;
 	TestInterfaceEvent_Parms.ObjParam = ObjParam;
@@ -260,7 +261,7 @@ void UTest0010_NativeObject::TestNativeFunction ( unsigned long bBoolParm )
 	static UFunction* pFnTestNativeFunction = NULL;
 
 	if ( ! pFnTestNativeFunction )
-		pFnTestNativeFunction = (UFunction*) UObject::GObjObjects()->Data[ 30695 ];
+		pFnTestNativeFunction = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_NativeObject.TestNativeFunction" );
 
 	UTest0010_NativeObject_execTestNativeFunction_Parms TestNativeFunction_Parms;
 	TestNativeFunction_Parms.bBoolParm = bBoolParm;
@@ -282,7 +283,7 @@ void UTest0010_NativeObject::eventTest03_CallEventWithNativeInterface ( class UT
 	static UFunction* pFnTest03_CallEventWithNativeInterface = NULL;
 
 	if ( ! pFnTest03_CallEventWithNativeInterface )
-		pFnTest03_CallEventWithNativeInterface = (UFunction*) UObject::GObjObjects()->Data[ 30693 ];
+		pFnTest03_CallEventWithNativeInterface = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_NativeObject.Test03_CallEventWithNativeInterface" );
 
 	UTest0010_NativeObject_eventTest03_CallEventWithNativeInterface_Parms Test03_CallEventWithNativeInterface_Parms;
 	Test03_CallEventWithNativeInterface_Parms.InterfaceParm = InterfaceParm;
@@ -300,7 +301,7 @@ void UTest0010_NativeObject::Test02_PassNativeInterfaceToNativeFunction ( class 
 	static UFunction* pFnTest02_PassNativeInterfaceToNativeFunction = NULL;
 
 	if ( ! pFnTest02_PassNativeInterfaceToNativeFunction )
-		pFnTest02_PassNativeInterfaceToNativeFunction = (UFunction*) UObject::GObjObjects()->Data[ 30691 ];
+		pFnTest02_PassNativeInterfaceToNativeFunction = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_NativeObject.Test02_PassNativeInterfaceToNativeFunction" );
 
 	UTest0010_NativeObject_execTest02_PassNativeInterfaceToNativeFunction_Parms Test02_PassNativeInterfaceToNativeFunction_Parms;
 	Test02_PassNativeInterfaceToNativeFunction_Parms.InterfaceParm = InterfaceParm;
@@ -326,7 +327,7 @@ void UTest0010_NativeObject::eventTest01_CallEventWithStruct ( struct FNoCtorPro
 	static UFunction* pFnTest01_CallEventWithStruct = NULL;
 
 	if ( ! pFnTest01_CallEventWithStruct )
-		pFnTest01_CallEventWithStruct = (UFunction*) UObject::GObjObjects()->Data[ 30685 ];
+		pFnTest01_CallEventWithStruct = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_NativeObject.Test01_CallEventWithStruct" );
 
 	UTest0010_NativeObject_eventTest01_CallEventWithStruct_Parms Test01_CallEventWithStruct_Parms;
 	memcpy ( &Test01_CallEventWithStruct_Parms.NoCtor, &NoCtor, 0xC );
@@ -348,7 +349,7 @@ void UTest0010_NativeObject::PerformNativeTest ( int TestNumber )
 	static UFunction* pFnPerformNativeTest = NULL;
 
 	if ( ! pFnPerformNativeTest )
-		pFnPerformNativeTest = (UFunction*) UObject::GObjObjects()->Data[ 30646 ];
+		pFnPerformNativeTest = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_NativeObject.PerformNativeTest" );
 
 	UTest0010_NativeObject_execPerformNativeTest_Parms PerformNativeTest_Parms;
 	PerformNativeTest_Parms.TestNumber = TestNumber;
@@ -370,7 +371,7 @@ void UTest0011_NativeObjectBoolOrder::eventNativeTestBoolOrderEvent ( unsigned l
 	static UFunction* pFnNativeTestBoolOrderEvent = NULL;
 
 	if ( ! pFnNativeTestBoolOrderEvent )
-		pFnNativeTestBoolOrderEvent = (UFunction*) UObject::GObjObjects()->Data[ 30732 ];
+		pFnNativeTestBoolOrderEvent = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0011_NativeObjectBoolOrder.NativeTestBoolOrderEvent" );
 
 	UTest0011_NativeObjectBoolOrder_eventNativeTestBoolOrderEvent_Parms NativeTestBoolOrderEvent_Parms;
 	NativeTestBoolOrderEvent_Parms.EventBoolParm = EventBoolParm;
@@ -389,7 +390,7 @@ bool UTest0011_NativeObjectBoolOrder::NativeTestBoolOrderFunction ( unsigned lon
 	static UFunction* pFnNativeTestBoolOrderFunction = NULL;
 
 	if ( ! pFnNativeTestBoolOrderFunction )
-		pFnNativeTestBoolOrderFunction = (UFunction*) UObject::GObjObjects()->Data[ 30729 ];
+		pFnNativeTestBoolOrderFunction = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0011_NativeObjectBoolOrder.NativeTestBoolOrderFunction" );
 
 	UTest0011_NativeObjectBoolOrder_execNativeTestBoolOrderFunction_Parms NativeTestBoolOrderFunction_Parms;
 	NativeTestBoolOrderFunction_Parms.BoolParm = BoolParm;
@@ -412,7 +413,7 @@ void UTest0011_NativeObjectBoolOrder::PerformBoolOrderTest ( )
 	static UFunction* pFnPerformBoolOrderTest = NULL;
 
 	if ( ! pFnPerformBoolOrderTest )
-		pFnPerformBoolOrderTest = (UFunction*) UObject::GObjObjects()->Data[ 30728 ];
+		pFnPerformBoolOrderTest = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0011_NativeObjectBoolOrder.PerformBoolOrderTest" );
 
 	UTest0011_NativeObjectBoolOrder_execPerformBoolOrderTest_Parms PerformBoolOrderTest_Parms;
 
@@ -432,7 +433,7 @@ void UTest0025_NativeIssues::RunTest ( )
 	static UFunction* pFnRunTest = NULL;
 
 	if ( ! pFnRunTest )
-		pFnRunTest = (UFunction*) UObject::GObjObjects()->Data[ 30959 ];
+		pFnRunTest = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0025_NativeIssues.RunTest" );
 
 	UTest0025_NativeIssues_execRunTest_Parms RunTest_Parms;
 
@@ -448,7 +449,7 @@ void UTest0025_NativeIssues::ShowNativeBoolAssignmentTestResults ( )
 	static UFunction* pFnShowNativeBoolAssignmentTestResults = NULL;
 
 	if ( ! pFnShowNativeBoolAssignmentTestResults )
-		pFnShowNativeBoolAssignmentTestResults = (UFunction*) UObject::GObjObjects()->Data[ 30958 ];
+		pFnShowNativeBoolAssignmentTestResults = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0025_NativeIssues.ShowNativeBoolAssignmentTestResults" );
 
 	UTest0025_NativeIssues_execShowNativeBoolAssignmentTestResults_Parms ShowNativeBoolAssignmentTestResults_Parms;
 
@@ -469,7 +470,7 @@ int UTest0003_Commandlet::Test0003 ( )
 	static UFunction* pFnTest0003 = NULL;
 
 	if ( ! pFnTest0003 )
-		pFnTest0003 = (UFunction*) UObject::GObjObjects()->Data[ 30541 ];
+		pFnTest0003 = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0003_Commandlet.Test0003" );
 
 	UTest0003_Commandlet_execTest0003_Parms Test0003_Parms;
 
@@ -489,7 +490,7 @@ int UTest0003_Commandlet::eventMain ( struct FString Params )
 	static UFunction* pFnMain = NULL;
 
 	if ( ! pFnMain )
-		pFnMain = (UFunction*) UObject::GObjObjects()->Data[ 30537 ];
+		pFnMain = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0003_Commandlet.Main" );
 
 	UTest0003_Commandlet_eventMain_Parms Main_Parms;
 	memcpy ( &Main_Parms.Params, &Params, 0xC );
@@ -509,7 +510,7 @@ unsigned char UTest0003_Interface::Test0003_FunctionF ( )
 	static UFunction* pFnTest0003_FunctionF = NULL;
 
 	if ( ! pFnTest0003_FunctionF )
-		pFnTest0003_FunctionF = (UFunction*) UObject::GObjObjects()->Data[ 30570 ];
+		pFnTest0003_FunctionF = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0003_Interface.Test0003_FunctionF" );
 
 	UTest0003_Interface_execTest0003_FunctionF_Parms Test0003_FunctionF_Parms;
 
@@ -528,7 +529,7 @@ float UTest0003_Interface::Test0003_FunctionE ( )
 	static UFunction* pFnTest0003_FunctionE = NULL;
 
 	if ( ! pFnTest0003_FunctionE )
-		pFnTest0003_FunctionE = (UFunction*) UObject::GObjObjects()->Data[ 30568 ];
+		pFnTest0003_FunctionE = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0003_Interface.Test0003_FunctionE" );
 
 	UTest0003_Interface_execTest0003_FunctionE_Parms Test0003_FunctionE_Parms;
 
@@ -547,7 +548,7 @@ int UTest0003_Interface::Test0003_FunctionD ( )
 	static UFunction* pFnTest0003_FunctionD = NULL;
 
 	if ( ! pFnTest0003_FunctionD )
-		pFnTest0003_FunctionD = (UFunction*) UObject::GObjObjects()->Data[ 30566 ];
+		pFnTest0003_FunctionD = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0003_Interface.Test0003_FunctionD" );
 
 	UTest0003_Interface_execTest0003_FunctionD_Parms Test0003_FunctionD_Parms;
 
@@ -566,7 +567,7 @@ struct FString UTest0003_Interface::Test0003_FunctionC ( )
 	static UFunction* pFnTest0003_FunctionC = NULL;
 
 	if ( ! pFnTest0003_FunctionC )
-		pFnTest0003_FunctionC = (UFunction*) UObject::GObjObjects()->Data[ 30564 ];
+		pFnTest0003_FunctionC = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0003_Interface.Test0003_FunctionC" );
 
 	UTest0003_Interface_execTest0003_FunctionC_Parms Test0003_FunctionC_Parms;
 
@@ -585,7 +586,7 @@ bool UTest0003_Interface::Test0003_FunctionB ( )
 	static UFunction* pFnTest0003_FunctionB = NULL;
 
 	if ( ! pFnTest0003_FunctionB )
-		pFnTest0003_FunctionB = (UFunction*) UObject::GObjObjects()->Data[ 30562 ];
+		pFnTest0003_FunctionB = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0003_Interface.Test0003_FunctionB" );
 
 	UTest0003_Interface_execTest0003_FunctionB_Parms Test0003_FunctionB_Parms;
 
@@ -603,7 +604,7 @@ void UTest0003_Interface::Test0003_FunctionA ( )
 	static UFunction* pFnTest0003_FunctionA = NULL;
 
 	if ( ! pFnTest0003_FunctionA )
-		pFnTest0003_FunctionA = (UFunction*) UObject::GObjObjects()->Data[ 30561 ];
+		pFnTest0003_FunctionA = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0003_Interface.Test0003_FunctionA" );
 
 	UTest0003_Interface_execTest0003_FunctionA_Parms Test0003_FunctionA_Parms;
 
@@ -620,7 +621,7 @@ unsigned char UTest0003_DerivedClass::Test0003_FunctionF ( )
 	static UFunction* pFnTest0003_FunctionF = NULL;
 
 	if ( ! pFnTest0003_FunctionF )
-		pFnTest0003_FunctionF = (UFunction*) UObject::GObjObjects()->Data[ 30558 ];
+		pFnTest0003_FunctionF = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0003_DerivedClass.Test0003_FunctionF" );
 
 	UTest0003_DerivedClass_execTest0003_FunctionF_Parms Test0003_FunctionF_Parms;
 
@@ -639,7 +640,7 @@ float UTest0003_DerivedClass::Test0003_FunctionE ( )
 	static UFunction* pFnTest0003_FunctionE = NULL;
 
 	if ( ! pFnTest0003_FunctionE )
-		pFnTest0003_FunctionE = (UFunction*) UObject::GObjObjects()->Data[ 30556 ];
+		pFnTest0003_FunctionE = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0003_DerivedClass.Test0003_FunctionE" );
 
 	UTest0003_DerivedClass_execTest0003_FunctionE_Parms Test0003_FunctionE_Parms;
 
@@ -658,7 +659,7 @@ int UTest0003_DerivedClass::Test0003_FunctionD ( )
 	static UFunction* pFnTest0003_FunctionD = NULL;
 
 	if ( ! pFnTest0003_FunctionD )
-		pFnTest0003_FunctionD = (UFunction*) UObject::GObjObjects()->Data[ 30554 ];
+		pFnTest0003_FunctionD = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0003_DerivedClass.Test0003_FunctionD" );
 
 	UTest0003_DerivedClass_execTest0003_FunctionD_Parms Test0003_FunctionD_Parms;
 
@@ -677,7 +678,7 @@ struct FString UTest0003_DerivedClass::Test0003_FunctionC ( )
 	static UFunction* pFnTest0003_FunctionC = NULL;
 
 	if ( ! pFnTest0003_FunctionC )
-		pFnTest0003_FunctionC = (UFunction*) UObject::GObjObjects()->Data[ 30552 ];
+		pFnTest0003_FunctionC = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0003_DerivedClass.Test0003_FunctionC" );
 
 	UTest0003_DerivedClass_execTest0003_FunctionC_Parms Test0003_FunctionC_Parms;
 
@@ -696,7 +697,7 @@ bool UTest0003_DerivedClass::Test0003_FunctionB ( )
 	static UFunction* pFnTest0003_FunctionB = NULL;
 
 	if ( ! pFnTest0003_FunctionB )
-		pFnTest0003_FunctionB = (UFunction*) UObject::GObjObjects()->Data[ 30550 ];
+		pFnTest0003_FunctionB = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0003_DerivedClass.Test0003_FunctionB" );
 
 	UTest0003_DerivedClass_execTest0003_FunctionB_Parms Test0003_FunctionB_Parms;
 
@@ -714,7 +715,7 @@ void UTest0003_DerivedClass::Test0003_FunctionA ( )
 	static UFunction* pFnTest0003_FunctionA = NULL;
 
 	if ( ! pFnTest0003_FunctionA )
-		pFnTest0003_FunctionA = (UFunction*) UObject::GObjObjects()->Data[ 30549 ];
+		pFnTest0003_FunctionA = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0003_DerivedClass.Test0003_FunctionA" );
 
 	UTest0003_DerivedClass_execTest0003_FunctionA_Parms Test0003_FunctionA_Parms;
 
@@ -731,7 +732,7 @@ unsigned char UTest0004_BaseClass::Test0004_FunctionF ( )
 	static UFunction* pFnTest0004_FunctionF = NULL;
 
 	if ( ! pFnTest0004_FunctionF )
-		pFnTest0004_FunctionF = (UFunction*) UObject::GObjObjects()->Data[ 30583 ];
+		pFnTest0004_FunctionF = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0004_BaseClass.Test0004_FunctionF" );
 
 	UTest0004_BaseClass_execTest0004_FunctionF_Parms Test0004_FunctionF_Parms;
 
@@ -750,7 +751,7 @@ float UTest0004_BaseClass::Test0004_FunctionE ( )
 	static UFunction* pFnTest0004_FunctionE = NULL;
 
 	if ( ! pFnTest0004_FunctionE )
-		pFnTest0004_FunctionE = (UFunction*) UObject::GObjObjects()->Data[ 30581 ];
+		pFnTest0004_FunctionE = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0004_BaseClass.Test0004_FunctionE" );
 
 	UTest0004_BaseClass_execTest0004_FunctionE_Parms Test0004_FunctionE_Parms;
 
@@ -769,7 +770,7 @@ int UTest0004_BaseClass::Test0004_FunctionD ( )
 	static UFunction* pFnTest0004_FunctionD = NULL;
 
 	if ( ! pFnTest0004_FunctionD )
-		pFnTest0004_FunctionD = (UFunction*) UObject::GObjObjects()->Data[ 30579 ];
+		pFnTest0004_FunctionD = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0004_BaseClass.Test0004_FunctionD" );
 
 	UTest0004_BaseClass_execTest0004_FunctionD_Parms Test0004_FunctionD_Parms;
 
@@ -788,7 +789,7 @@ struct FString UTest0004_BaseClass::Test0004_FunctionC ( )
 	static UFunction* pFnTest0004_FunctionC = NULL;
 
 	if ( ! pFnTest0004_FunctionC )
-		pFnTest0004_FunctionC = (UFunction*) UObject::GObjObjects()->Data[ 30577 ];
+		pFnTest0004_FunctionC = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0004_BaseClass.Test0004_FunctionC" );
 
 	UTest0004_BaseClass_execTest0004_FunctionC_Parms Test0004_FunctionC_Parms;
 
@@ -807,7 +808,7 @@ bool UTest0004_BaseClass::Test0004_FunctionB ( )
 	static UFunction* pFnTest0004_FunctionB = NULL;
 
 	if ( ! pFnTest0004_FunctionB )
-		pFnTest0004_FunctionB = (UFunction*) UObject::GObjObjects()->Data[ 30575 ];
+		pFnTest0004_FunctionB = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0004_BaseClass.Test0004_FunctionB" );
 
 	UTest0004_BaseClass_execTest0004_FunctionB_Parms Test0004_FunctionB_Parms;
 
@@ -825,7 +826,7 @@ void UTest0004_BaseClass::Test0004_FunctionA ( )
 	static UFunction* pFnTest0004_FunctionA = NULL;
 
 	if ( ! pFnTest0004_FunctionA )
-		pFnTest0004_FunctionA = (UFunction*) UObject::GObjObjects()->Data[ 30574 ];
+		pFnTest0004_FunctionA = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0004_BaseClass.Test0004_FunctionA" );
 
 	UTest0004_BaseClass_execTest0004_FunctionA_Parms Test0004_FunctionA_Parms;
 
@@ -842,7 +843,7 @@ unsigned char UTest0004_Interface::Test0004_FunctionF ( )
 	static UFunction* pFnTest0004_FunctionF = NULL;
 
 	if ( ! pFnTest0004_FunctionF )
-		pFnTest0004_FunctionF = (UFunction*) UObject::GObjObjects()->Data[ 30599 ];
+		pFnTest0004_FunctionF = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0004_Interface.Test0004_FunctionF" );
 
 	UTest0004_Interface_execTest0004_FunctionF_Parms Test0004_FunctionF_Parms;
 
@@ -861,7 +862,7 @@ float UTest0004_Interface::Test0004_FunctionE ( )
 	static UFunction* pFnTest0004_FunctionE = NULL;
 
 	if ( ! pFnTest0004_FunctionE )
-		pFnTest0004_FunctionE = (UFunction*) UObject::GObjObjects()->Data[ 30597 ];
+		pFnTest0004_FunctionE = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0004_Interface.Test0004_FunctionE" );
 
 	UTest0004_Interface_execTest0004_FunctionE_Parms Test0004_FunctionE_Parms;
 
@@ -880,7 +881,7 @@ int UTest0004_Interface::Test0004_FunctionD ( )
 	static UFunction* pFnTest0004_FunctionD = NULL;
 
 	if ( ! pFnTest0004_FunctionD )
-		pFnTest0004_FunctionD = (UFunction*) UObject::GObjObjects()->Data[ 30595 ];
+		pFnTest0004_FunctionD = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0004_Interface.Test0004_FunctionD" );
 
 	UTest0004_Interface_execTest0004_FunctionD_Parms Test0004_FunctionD_Parms;
 
@@ -899,7 +900,7 @@ struct FString UTest0004_Interface::Test0004_FunctionC ( )
 	static UFunction* pFnTest0004_FunctionC = NULL;
 
 	if ( ! pFnTest0004_FunctionC )
-		pFnTest0004_FunctionC = (UFunction*) UObject::GObjObjects()->Data[ 30593 ];
+		pFnTest0004_FunctionC = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0004_Interface.Test0004_FunctionC" );
 
 	UTest0004_Interface_execTest0004_FunctionC_Parms Test0004_FunctionC_Parms;
 
@@ -918,7 +919,7 @@ bool UTest0004_Interface::Test0004_FunctionB ( )
 	static UFunction* pFnTest0004_FunctionB = NULL;
 
 	if ( ! pFnTest0004_FunctionB )
-		pFnTest0004_FunctionB = (UFunction*) UObject::GObjObjects()->Data[ 30591 ];
+		pFnTest0004_FunctionB = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0004_Interface.Test0004_FunctionB" );
 
 	UTest0004_Interface_execTest0004_FunctionB_Parms Test0004_FunctionB_Parms;
 
@@ -936,7 +937,7 @@ void UTest0004_Interface::Test0004_FunctionA ( )
 	static UFunction* pFnTest0004_FunctionA = NULL;
 
 	if ( ! pFnTest0004_FunctionA )
-		pFnTest0004_FunctionA = (UFunction*) UObject::GObjObjects()->Data[ 30590 ];
+		pFnTest0004_FunctionA = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0004_Interface.Test0004_FunctionA" );
 
 	UTest0004_Interface_execTest0004_FunctionA_Parms Test0004_FunctionA_Parms;
 
@@ -952,7 +953,7 @@ void UTest0004_DerivedClass::Test0004_FunctionA ( )
 	static UFunction* pFnTest0004_FunctionA = NULL;
 
 	if ( ! pFnTest0004_FunctionA )
-		pFnTest0004_FunctionA = (UFunction*) UObject::GObjObjects()->Data[ 30588 ];
+		pFnTest0004_FunctionA = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0004_DerivedClass.Test0004_FunctionA" );
 
 	UTest0004_DerivedClass_execTest0004_FunctionA_Parms Test0004_FunctionA_Parms;
 
@@ -969,7 +970,7 @@ int UTest0005_Commandlet::Test0005 ( )
 	static UFunction* pFnTest0005 = NULL;
 
 	if ( ! pFnTest0005 )
-		pFnTest0005 = (UFunction*) UObject::GObjObjects()->Data[ 30607 ];
+		pFnTest0005 = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0005_Commandlet.Test0005" );
 
 	UTest0005_Commandlet_execTest0005_Parms Test0005_Parms;
 
@@ -989,7 +990,7 @@ int UTest0005_Commandlet::eventMain ( struct FString Params )
 	static UFunction* pFnMain = NULL;
 
 	if ( ! pFnMain )
-		pFnMain = (UFunction*) UObject::GObjObjects()->Data[ 30603 ];
+		pFnMain = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0005_Commandlet.Main" );
 
 	UTest0005_Commandlet_eventMain_Parms Main_Parms;
 	memcpy ( &Main_Parms.Params, &Params, 0xC );
@@ -1009,7 +1010,7 @@ struct FString UTest0005_ImplementingClass::derivedFoo ( )
 	static UFunction* pFnderivedFoo = NULL;
 
 	if ( ! pFnderivedFoo )
-		pFnderivedFoo = (UFunction*) UObject::GObjObjects()->Data[ 30618 ];
+		pFnderivedFoo = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0005_ImplementingClass.derivedFoo" );
 
 	UTest0005_ImplementingClass_execderivedFoo_Parms derivedFoo_Parms;
 
@@ -1028,7 +1029,7 @@ struct FString UTest0005_ImplementingClass::baseFoo ( )
 	static UFunction* pFnbaseFoo = NULL;
 
 	if ( ! pFnbaseFoo )
-		pFnbaseFoo = (UFunction*) UObject::GObjObjects()->Data[ 30616 ];
+		pFnbaseFoo = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0005_ImplementingClass.baseFoo" );
 
 	UTest0005_ImplementingClass_execbaseFoo_Parms baseFoo_Parms;
 
@@ -1047,7 +1048,7 @@ struct FString UTest0005_InterfaceDerived::derivedFoo ( )
 	static UFunction* pFnderivedFoo = NULL;
 
 	if ( ! pFnderivedFoo )
-		pFnderivedFoo = (UFunction*) UObject::GObjObjects()->Data[ 30625 ];
+		pFnderivedFoo = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0005_InterfaceDerived.derivedFoo" );
 
 	UTest0005_InterfaceDerived_execderivedFoo_Parms derivedFoo_Parms;
 
@@ -1066,7 +1067,7 @@ struct FString UTest0005_InterfaceBase::baseFoo ( )
 	static UFunction* pFnbaseFoo = NULL;
 
 	if ( ! pFnbaseFoo )
-		pFnbaseFoo = (UFunction*) UObject::GObjObjects()->Data[ 30622 ];
+		pFnbaseFoo = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0005_InterfaceBase.baseFoo" );
 
 	UTest0005_InterfaceBase_execbaseFoo_Parms baseFoo_Parms;
 
@@ -1084,7 +1085,7 @@ void UTest0010_Commandlet::TestInterface ( )
 	static UFunction* pFnTestInterface = NULL;
 
 	if ( ! pFnTestInterface )
-		pFnTestInterface = (UFunction*) UObject::GObjObjects()->Data[ 30647 ];
+		pFnTestInterface = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_Commandlet.TestInterface" );
 
 	UTest0010_Commandlet_execTestInterface_Parms TestInterface_Parms;
 
@@ -1102,7 +1103,7 @@ int UTest0010_Commandlet::Test0010 ( int TestNumber )
 	static UFunction* pFnTest0010 = NULL;
 
 	if ( ! pFnTest0010 )
-		pFnTest0010 = (UFunction*) UObject::GObjObjects()->Data[ 30641 ];
+		pFnTest0010 = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_Commandlet.Test0010" );
 
 	UTest0010_Commandlet_execTest0010_Parms Test0010_Parms;
 	Test0010_Parms.TestNumber = TestNumber;
@@ -1123,7 +1124,7 @@ int UTest0010_Commandlet::eventMain ( struct FString Params )
 	static UFunction* pFnMain = NULL;
 
 	if ( ! pFnMain )
-		pFnMain = (UFunction*) UObject::GObjObjects()->Data[ 30637 ];
+		pFnMain = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0010_Commandlet.Main" );
 
 	UTest0010_Commandlet_eventMain_Parms Main_Parms;
 	memcpy ( &Main_Parms.Params, &Params, 0xC );
@@ -1142,7 +1143,7 @@ void UTest0011_Commandlet::PerformBoolOrderTest ( )
 	static UFunction* pFnPerformBoolOrderTest = NULL;
 
 	if ( ! pFnPerformBoolOrderTest )
-		pFnPerformBoolOrderTest = (UFunction*) UObject::GObjObjects()->Data[ 30722 ];
+		pFnPerformBoolOrderTest = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0011_Commandlet.PerformBoolOrderTest" );
 
 	UTest0011_Commandlet_execPerformBoolOrderTest_Parms PerformBoolOrderTest_Parms;
 
@@ -1160,7 +1161,7 @@ int UTest0011_Commandlet::eventMain ( struct FString Parms )
 	static UFunction* pFnMain = NULL;
 
 	if ( ! pFnMain )
-		pFnMain = (UFunction*) UObject::GObjObjects()->Data[ 30719 ];
+		pFnMain = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0011_Commandlet.Main" );
 
 	UTest0011_Commandlet_eventMain_Parms Main_Parms;
 	memcpy ( &Main_Parms.Parms, &Parms, 0xC );
@@ -1179,7 +1180,7 @@ void UTest0012_IfVarEqualEqualEnum::VarEqualEqualEnumTypeEnum ( )
 	static UFunction* pFnVarEqualEqualEnumTypeEnum = NULL;
 
 	if ( ! pFnVarEqualEqualEnumTypeEnum )
-		pFnVarEqualEqualEnumTypeEnum = (UFunction*) UObject::GObjObjects()->Data[ 30738 ];
+		pFnVarEqualEqualEnumTypeEnum = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0012_IfVarEqualEqualEnum.VarEqualEqualEnumTypeEnum" );
 
 	UTest0012_IfVarEqualEqualEnum_execVarEqualEqualEnumTypeEnum_Parms VarEqualEqualEnumTypeEnum_Parms;
 
@@ -1195,7 +1196,7 @@ void UTest0012_IfVarEqualEqualEnum::VarEqualEqualEnum ( )
 	static UFunction* pFnVarEqualEqualEnum = NULL;
 
 	if ( ! pFnVarEqualEqualEnum )
-		pFnVarEqualEqualEnum = (UFunction*) UObject::GObjObjects()->Data[ 30736 ];
+		pFnVarEqualEqualEnum = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0012_IfVarEqualEqualEnum.VarEqualEqualEnum" );
 
 	UTest0012_IfVarEqualEqualEnum_execVarEqualEqualEnum_Parms VarEqualEqualEnum_Parms;
 
@@ -1211,7 +1212,7 @@ void UTest0012_IfVarEqualEqualEnumDerivedClass::VarEqualEqualEnumTypeEnum ( )
 	static UFunction* pFnVarEqualEqualEnumTypeEnum = NULL;
 
 	if ( ! pFnVarEqualEqualEnumTypeEnum )
-		pFnVarEqualEqualEnumTypeEnum = (UFunction*) UObject::GObjObjects()->Data[ 30744 ];
+		pFnVarEqualEqualEnumTypeEnum = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0012_IfVarEqualEqualEnumDerivedClass.VarEqualEqualEnumTypeEnum" );
 
 	UTest0012_IfVarEqualEqualEnumDerivedClass_execVarEqualEqualEnumTypeEnum_Parms VarEqualEqualEnumTypeEnum_Parms;
 
@@ -1227,7 +1228,7 @@ void UTest0012_IfVarEqualEqualEnumDerivedClass::VarEqualEqualEnum ( )
 	static UFunction* pFnVarEqualEqualEnum = NULL;
 
 	if ( ! pFnVarEqualEqualEnum )
-		pFnVarEqualEqualEnum = (UFunction*) UObject::GObjObjects()->Data[ 30742 ];
+		pFnVarEqualEqualEnum = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0012_IfVarEqualEqualEnumDerivedClass.VarEqualEqualEnum" );
 
 	UTest0012_IfVarEqualEqualEnumDerivedClass_execVarEqualEqualEnum_Parms VarEqualEqualEnum_Parms;
 
@@ -1245,7 +1246,7 @@ int UTest0013_Commandlet::eventMain ( struct FString Parms )
 	static UFunction* pFnMain = NULL;
 
 	if ( ! pFnMain )
-		pFnMain = (UFunction*) UObject::GObjObjects()->Data[ 30747 ];
+		pFnMain = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0013_Commandlet.Main" );
 
 	UTest0013_Commandlet_eventMain_Parms Main_Parms;
 	memcpy ( &Main_Parms.Parms, &Parms, 0xC );
@@ -1264,7 +1265,7 @@ void UTest0013_IfEnumEqualEqualVar::CompareDifferentEnumTypes ( )
 	static UFunction* pFnCompareDifferentEnumTypes = NULL;
 
 	if ( ! pFnCompareDifferentEnumTypes )
-		pFnCompareDifferentEnumTypes = (UFunction*) UObject::GObjObjects()->Data[ 30764 ];
+		pFnCompareDifferentEnumTypes = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0013_IfEnumEqualEqualVar.CompareDifferentEnumTypes" );
 
 	UTest0013_IfEnumEqualEqualVar_execCompareDifferentEnumTypes_Parms CompareDifferentEnumTypes_Parms;
 
@@ -1280,7 +1281,7 @@ void UTest0013_IfEnumEqualEqualVar::EnumTypeEnumEqualEqualVar ( )
 	static UFunction* pFnEnumTypeEnumEqualEqualVar = NULL;
 
 	if ( ! pFnEnumTypeEnumEqualEqualVar )
-		pFnEnumTypeEnumEqualEqualVar = (UFunction*) UObject::GObjObjects()->Data[ 30762 ];
+		pFnEnumTypeEnumEqualEqualVar = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0013_IfEnumEqualEqualVar.EnumTypeEnumEqualEqualVar" );
 
 	UTest0013_IfEnumEqualEqualVar_execEnumTypeEnumEqualEqualVar_Parms EnumTypeEnumEqualEqualVar_Parms;
 
@@ -1296,7 +1297,7 @@ void UTest0013_IfEnumEqualEqualVar::EnumEqualEqualVar ( )
 	static UFunction* pFnEnumEqualEqualVar = NULL;
 
 	if ( ! pFnEnumEqualEqualVar )
-		pFnEnumEqualEqualVar = (UFunction*) UObject::GObjObjects()->Data[ 30761 ];
+		pFnEnumEqualEqualVar = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0013_IfEnumEqualEqualVar.EnumEqualEqualVar" );
 
 	UTest0013_IfEnumEqualEqualVar_execEnumEqualEqualVar_Parms EnumEqualEqualVar_Parms;
 
@@ -1312,7 +1313,7 @@ void UTest0013_IfEnumEqualEqualVarDerivedClass::EnumTypeEnumEqualEqualVar ( )
 	static UFunction* pFnEnumTypeEnumEqualEqualVar = NULL;
 
 	if ( ! pFnEnumTypeEnumEqualEqualVar )
-		pFnEnumTypeEnumEqualEqualVar = (UFunction*) UObject::GObjObjects()->Data[ 30769 ];
+		pFnEnumTypeEnumEqualEqualVar = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0013_IfEnumEqualEqualVarDerivedClass.EnumTypeEnumEqualEqualVar" );
 
 	UTest0013_IfEnumEqualEqualVarDerivedClass_execEnumTypeEnumEqualEqualVar_Parms EnumTypeEnumEqualEqualVar_Parms;
 
@@ -1328,7 +1329,7 @@ void UTest0013_IfEnumEqualEqualVarDerivedClass::EnumEqualEqualVar ( )
 	static UFunction* pFnEnumEqualEqualVar = NULL;
 
 	if ( ! pFnEnumEqualEqualVar )
-		pFnEnumEqualEqualVar = (UFunction*) UObject::GObjObjects()->Data[ 30768 ];
+		pFnEnumEqualEqualVar = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0013_IfEnumEqualEqualVarDerivedClass.EnumEqualEqualVar" );
 
 	UTest0013_IfEnumEqualEqualVarDerivedClass_execEnumEqualEqualVar_Parms EnumEqualEqualVar_Parms;
 
@@ -1344,7 +1345,7 @@ void UTest0014_FullyQualifiedEnumFunction::Caller ( )
 	static UFunction* pFnCaller = NULL;
 
 	if ( ! pFnCaller )
-		pFnCaller = (UFunction*) UObject::GObjObjects()->Data[ 30775 ];
+		pFnCaller = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0014_FullyQualifiedEnumFunction.Caller" );
 
 	UTest0014_FullyQualifiedEnumFunction_execCaller_Parms Caller_Parms;
 
@@ -1361,7 +1362,7 @@ void UTest0014_FullyQualifiedEnumFunction::FullyQualifiedEnum ( unsigned char va
 	static UFunction* pFnFullyQualifiedEnum = NULL;
 
 	if ( ! pFnFullyQualifiedEnum )
-		pFnFullyQualifiedEnum = (UFunction*) UObject::GObjObjects()->Data[ 30773 ];
+		pFnFullyQualifiedEnum = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0014_FullyQualifiedEnumFunction.FullyQualifiedEnum" );
 
 	UTest0014_FullyQualifiedEnumFunction_execFullyQualifiedEnum_Parms FullyQualifiedEnum_Parms;
 	FullyQualifiedEnum_Parms.val = val;
@@ -1378,7 +1379,7 @@ void UTest0014_FullyQualifiedEnumFunctionDerivedClass::Caller ( )
 	static UFunction* pFnCaller = NULL;
 
 	if ( ! pFnCaller )
-		pFnCaller = (UFunction*) UObject::GObjObjects()->Data[ 30780 ];
+		pFnCaller = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0014_FullyQualifiedEnumFunctionDerivedClass.Caller" );
 
 	UTest0014_FullyQualifiedEnumFunctionDerivedClass_execCaller_Parms Caller_Parms;
 
@@ -1395,7 +1396,7 @@ void UTest0014_FullyQualifiedEnumFunctionDerivedClass::FullyQualifiedEnum ( unsi
 	static UFunction* pFnFullyQualifiedEnum = NULL;
 
 	if ( ! pFnFullyQualifiedEnum )
-		pFnFullyQualifiedEnum = (UFunction*) UObject::GObjObjects()->Data[ 30778 ];
+		pFnFullyQualifiedEnum = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0014_FullyQualifiedEnumFunctionDerivedClass.FullyQualifiedEnum" );
 
 	UTest0014_FullyQualifiedEnumFunctionDerivedClass_execFullyQualifiedEnum_Parms FullyQualifiedEnum_Parms;
 	FullyQualifiedEnum_Parms.val = val;
@@ -1412,7 +1413,7 @@ void UTest0015_FullyQualifiedEnumSwitchCase::CaseStatementWithFullQualifiedEnum 
 	static UFunction* pFnCaseStatementWithFullQualifiedEnum = NULL;
 
 	if ( ! pFnCaseStatementWithFullQualifiedEnum )
-		pFnCaseStatementWithFullQualifiedEnum = (UFunction*) UObject::GObjObjects()->Data[ 30784 ];
+		pFnCaseStatementWithFullQualifiedEnum = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0015_FullyQualifiedEnumSwitchCase.CaseStatementWithFullQualifiedEnum" );
 
 	UTest0015_FullyQualifiedEnumSwitchCase_execCaseStatementWithFullQualifiedEnum_Parms CaseStatementWithFullQualifiedEnum_Parms;
 
@@ -1428,7 +1429,7 @@ void UTest0015_FullyQualifiedEnumSwitchCaseDerivedClass::CaseStatementWithFullQu
 	static UFunction* pFnCaseStatementWithFullQualifiedEnum = NULL;
 
 	if ( ! pFnCaseStatementWithFullQualifiedEnum )
-		pFnCaseStatementWithFullQualifiedEnum = (UFunction*) UObject::GObjObjects()->Data[ 30788 ];
+		pFnCaseStatementWithFullQualifiedEnum = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0015_FullyQualifiedEnumSwitchCaseDerivedClass.CaseStatementWithFullQualifiedEnum" );
 
 	UTest0015_FullyQualifiedEnumSwitchCaseDerivedClass_execCaseStatementWithFullQualifiedEnum_Parms CaseStatementWithFullQualifiedEnum_Parms;
 
@@ -1444,7 +1445,7 @@ void UTest0020_Commandlet::PerformStructSerializationTest ( )
 	static UFunction* pFnPerformStructSerializationTest = NULL;
 
 	if ( ! pFnPerformStructSerializationTest )
-		pFnPerformStructSerializationTest = (UFunction*) UObject::GObjObjects()->Data[ 30809 ];
+		pFnPerformStructSerializationTest = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0020_Commandlet.PerformStructSerializationTest" );
 
 	UTest0020_Commandlet_execPerformStructSerializationTest_Parms PerformStructSerializationTest_Parms;
 
@@ -1462,7 +1463,7 @@ int UTest0020_Commandlet::eventMain ( struct FString Parms )
 	static UFunction* pFnMain = NULL;
 
 	if ( ! pFnMain )
-		pFnMain = (UFunction*) UObject::GObjObjects()->Data[ 30806 ];
+		pFnMain = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0020_Commandlet.Main" );
 
 	UTest0020_Commandlet_eventMain_Parms Main_Parms;
 	memcpy ( &Main_Parms.Parms, &Parms, 0xC );
@@ -1482,7 +1483,7 @@ void UTest0020_StructDefaults::LogPropertyValues ( struct FTestStruct ParameterS
 	static UFunction* pFnLogPropertyValues = NULL;
 
 	if ( ! pFnLogPropertyValues )
-		pFnLogPropertyValues = (UFunction*) UObject::GObjObjects()->Data[ 30812 ];
+		pFnLogPropertyValues = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0020_StructDefaults.LogPropertyValues" );
 
 	UTest0020_StructDefaults_execLogPropertyValues_Parms LogPropertyValues_Parms;
 	memcpy ( &LogPropertyValues_Parms.ParameterStruct, &ParameterStruct, 0x20 );
@@ -1500,7 +1501,7 @@ int UTest0021_Commandlet::Test0021 ( )
 	static UFunction* pFnTest0021 = NULL;
 
 	if ( ! pFnTest0021 )
-		pFnTest0021 = (UFunction*) UObject::GObjObjects()->Data[ 30842 ];
+		pFnTest0021 = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0021_Commandlet.Test0021" );
 
 	UTest0021_Commandlet_execTest0021_Parms Test0021_Parms;
 
@@ -1520,7 +1521,7 @@ int UTest0021_Commandlet::eventMain ( struct FString Params )
 	static UFunction* pFnMain = NULL;
 
 	if ( ! pFnMain )
-		pFnMain = (UFunction*) UObject::GObjObjects()->Data[ 30838 ];
+		pFnMain = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0021_Commandlet.Main" );
 
 	UTest0021_Commandlet_eventMain_Parms Main_Parms;
 	memcpy ( &Main_Parms.Params, &Params, 0xC );
@@ -1540,7 +1541,7 @@ void UTest0021_PrivateFunctionLookupDerived::DifferentNumberOfParams ( float Del
 	static UFunction* pFnDifferentNumberOfParams = NULL;
 
 	if ( ! pFnDifferentNumberOfParams )
-		pFnDifferentNumberOfParams = (UFunction*) UObject::GObjObjects()->Data[ 30855 ];
+		pFnDifferentNumberOfParams = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0021_PrivateFunctionLookupDerived.DifferentNumberOfParams" );
 
 	UTest0021_PrivateFunctionLookupDerived_execDifferentNumberOfParams_Parms DifferentNumberOfParams_Parms;
 	DifferentNumberOfParams_Parms.DeltaTime = DeltaTime;
@@ -1559,7 +1560,7 @@ void UTest0021_PrivateFunctionLookupBase::DifferentNumberOfParams ( float DeltaT
 	static UFunction* pFnDifferentNumberOfParams = NULL;
 
 	if ( ! pFnDifferentNumberOfParams )
-		pFnDifferentNumberOfParams = (UFunction*) UObject::GObjObjects()->Data[ 30851 ];
+		pFnDifferentNumberOfParams = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0021_PrivateFunctionLookupBase.DifferentNumberOfParams" );
 
 	UTest0021_PrivateFunctionLookupBase_execDifferentNumberOfParams_Parms DifferentNumberOfParams_Parms;
 	DifferentNumberOfParams_Parms.DeltaTime = DeltaTime;
@@ -1577,7 +1578,7 @@ void UTest0021_PrivateFunctionLookupBase::Test0021 ( )
 	static UFunction* pFnTest0021 = NULL;
 
 	if ( ! pFnTest0021 )
-		pFnTest0021 = (UFunction*) UObject::GObjObjects()->Data[ 30849 ];
+		pFnTest0021 = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0021_PrivateFunctionLookupBase.Test0021" );
 
 	UTest0021_PrivateFunctionLookupBase_execTest0021_Parms Test0021_Parms;
 
@@ -1595,7 +1596,7 @@ int UTest0022_Commandlet::eventMain ( struct FString Parms )
 	static UFunction* pFnMain = NULL;
 
 	if ( ! pFnMain )
-		pFnMain = (UFunction*) UObject::GObjObjects()->Data[ 30859 ];
+		pFnMain = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0022_Commandlet.Main" );
 
 	UTest0022_Commandlet_eventMain_Parms Main_Parms;
 	memcpy ( &Main_Parms.Parms, &Parms, 0xC );
@@ -1614,7 +1615,7 @@ void UTest0022_StructMemberAccess::TestInvalidArrayExpansion ( )
 	static UFunction* pFnTestInvalidArrayExpansion = NULL;
 
 	if ( ! pFnTestInvalidArrayExpansion )
-		pFnTestInvalidArrayExpansion = (UFunction*) UObject::GObjObjects()->Data[ 30904 ];
+		pFnTestInvalidArrayExpansion = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0022_StructMemberAccess.TestInvalidArrayExpansion" );
 
 	UTest0022_StructMemberAccess_execTestInvalidArrayExpansion_Parms TestInvalidArrayExpansion_Parms;
 
@@ -1631,7 +1632,7 @@ struct FVector UTest0022_StructMemberAccess::ReturnInlineStruct ( )
 	static UFunction* pFnReturnInlineStruct = NULL;
 
 	if ( ! pFnReturnInlineStruct )
-		pFnReturnInlineStruct = (UFunction*) UObject::GObjObjects()->Data[ 30898 ];
+		pFnReturnInlineStruct = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0022_StructMemberAccess.ReturnInlineStruct" );
 
 	UTest0022_StructMemberAccess_execReturnInlineStruct_Parms ReturnInlineStruct_Parms;
 
@@ -1650,7 +1651,7 @@ struct FOuterStruct UTest0022_StructMemberAccess::ReturnMemberStruct ( )
 	static UFunction* pFnReturnMemberStruct = NULL;
 
 	if ( ! pFnReturnMemberStruct )
-		pFnReturnMemberStruct = (UFunction*) UObject::GObjObjects()->Data[ 30897 ];
+		pFnReturnMemberStruct = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0022_StructMemberAccess.ReturnMemberStruct" );
 
 	UTest0022_StructMemberAccess_execReturnMemberStruct_Parms ReturnMemberStruct_Parms;
 
@@ -1668,7 +1669,7 @@ void UTest0022_StructMemberAccess::InlineStructAccessTest ( )
 	static UFunction* pFnInlineStructAccessTest = NULL;
 
 	if ( ! pFnInlineStructAccessTest )
-		pFnInlineStructAccessTest = (UFunction*) UObject::GObjObjects()->Data[ 30900 ];
+		pFnInlineStructAccessTest = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0022_StructMemberAccess.InlineStructAccessTest" );
 
 	UTest0022_StructMemberAccess_execInlineStructAccessTest_Parms InlineStructAccessTest_Parms;
 
@@ -1684,7 +1685,7 @@ void UTest0022_StructMemberAccess::DelegateReturnValueAccessTest ( )
 	static UFunction* pFnDelegateReturnValueAccessTest = NULL;
 
 	if ( ! pFnDelegateReturnValueAccessTest )
-		pFnDelegateReturnValueAccessTest = (UFunction*) UObject::GObjObjects()->Data[ 30899 ];
+		pFnDelegateReturnValueAccessTest = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0022_StructMemberAccess.DelegateReturnValueAccessTest" );
 
 	UTest0022_StructMemberAccess_execDelegateReturnValueAccessTest_Parms DelegateReturnValueAccessTest_Parms;
 
@@ -1700,7 +1701,7 @@ void UTest0022_StructMemberAccess::ReturnValueAccessTest ( )
 	static UFunction* pFnReturnValueAccessTest = NULL;
 
 	if ( ! pFnReturnValueAccessTest )
-		pFnReturnValueAccessTest = (UFunction*) UObject::GObjObjects()->Data[ 30894 ];
+		pFnReturnValueAccessTest = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0022_StructMemberAccess.ReturnValueAccessTest" );
 
 	UTest0022_StructMemberAccess_execReturnValueAccessTest_Parms ReturnValueAccessTest_Parms;
 
@@ -1716,7 +1717,7 @@ void UTest0022_StructMemberAccess::ArrayStructAccessTest ( )
 	static UFunction* pFnArrayStructAccessTest = NULL;
 
 	if ( ! pFnArrayStructAccessTest )
-		pFnArrayStructAccessTest = (UFunction*) UObject::GObjObjects()->Data[ 30892 ];
+		pFnArrayStructAccessTest = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0022_StructMemberAccess.ArrayStructAccessTest" );
 
 	UTest0022_StructMemberAccess_execArrayStructAccessTest_Parms ArrayStructAccessTest_Parms;
 
@@ -1732,7 +1733,7 @@ void UTest0022_StructMemberAccess::SimpleStructAccess_CtorTest ( )
 	static UFunction* pFnSimpleStructAccess_CtorTest = NULL;
 
 	if ( ! pFnSimpleStructAccess_CtorTest )
-		pFnSimpleStructAccess_CtorTest = (UFunction*) UObject::GObjObjects()->Data[ 30890 ];
+		pFnSimpleStructAccess_CtorTest = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0022_StructMemberAccess.SimpleStructAccess_CtorTest" );
 
 	UTest0022_StructMemberAccess_execSimpleStructAccess_CtorTest_Parms SimpleStructAccess_CtorTest_Parms;
 
@@ -1748,7 +1749,7 @@ void UTest0022_StructMemberAccess::SimpleStructAccess_NonCtorTest ( )
 	static UFunction* pFnSimpleStructAccess_NonCtorTest = NULL;
 
 	if ( ! pFnSimpleStructAccess_NonCtorTest )
-		pFnSimpleStructAccess_NonCtorTest = (UFunction*) UObject::GObjObjects()->Data[ 30887 ];
+		pFnSimpleStructAccess_NonCtorTest = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0022_StructMemberAccess.SimpleStructAccess_NonCtorTest" );
 
 	UTest0022_StructMemberAccess_execSimpleStructAccess_NonCtorTest_Parms SimpleStructAccess_NonCtorTest_Parms;
 
@@ -1765,7 +1766,7 @@ struct FOuterStruct UTest0022_StructMemberAccess::ReturnStructDelegate ( )
 	static UFunction* pFnReturnStructDelegate = NULL;
 
 	if ( ! pFnReturnStructDelegate )
-		pFnReturnStructDelegate = (UFunction*) UObject::GObjObjects()->Data[ 30879 ];
+		pFnReturnStructDelegate = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0022_StructMemberAccess.ReturnStructDelegate" );
 
 	UTest0022_StructMemberAccess_execReturnStructDelegate_Parms ReturnStructDelegate_Parms;
 
@@ -1784,7 +1785,7 @@ void UTest0024_Commandlet::CommandletDelegateFunction ( int Param1 )
 	static UFunction* pFnCommandletDelegateFunction = NULL;
 
 	if ( ! pFnCommandletDelegateFunction )
-		pFnCommandletDelegateFunction = (UFunction*) UObject::GObjObjects()->Data[ 30924 ];
+		pFnCommandletDelegateFunction = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0024_Commandlet.CommandletDelegateFunction" );
 
 	UTest0024_Commandlet_execCommandletDelegateFunction_Parms CommandletDelegateFunction_Parms;
 	CommandletDelegateFunction_Parms.Param1 = Param1;
@@ -1803,7 +1804,7 @@ int UTest0024_Commandlet::eventMain ( struct FString Parms )
 	static UFunction* pFnMain = NULL;
 
 	if ( ! pFnMain )
-		pFnMain = (UFunction*) UObject::GObjObjects()->Data[ 30919 ];
+		pFnMain = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0024_Commandlet.Main" );
 
 	UTest0024_Commandlet_eventMain_Parms Main_Parms;
 	memcpy ( &Main_Parms.Parms, &Parms, 0xC );
@@ -1823,7 +1824,7 @@ void UTest0024_Commandlet::CommandletDelegate ( int I )
 	static UFunction* pFnCommandletDelegate = NULL;
 
 	if ( ! pFnCommandletDelegate )
-		pFnCommandletDelegate = (UFunction*) UObject::GObjObjects()->Data[ 30916 ];
+		pFnCommandletDelegate = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0024_Commandlet.CommandletDelegate" );
 
 	UTest0024_Commandlet_execCommandletDelegate_Parms CommandletDelegate_Parms;
 	CommandletDelegate_Parms.I = I;
@@ -1841,7 +1842,7 @@ void UTest0024_DelegateComparison::SomeOtherDelegate ( unsigned long bFoo )
 	static UFunction* pFnSomeOtherDelegate = NULL;
 
 	if ( ! pFnSomeOtherDelegate )
-		pFnSomeOtherDelegate = (UFunction*) UObject::GObjObjects()->Data[ 30928 ];
+		pFnSomeOtherDelegate = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0024_DelegateComparison.SomeOtherDelegate" );
 
 	UTest0024_DelegateComparison_execSomeOtherDelegate_Parms SomeOtherDelegate_Parms;
 	SomeOtherDelegate_Parms.bFoo = bFoo;
@@ -1859,7 +1860,7 @@ void UTest0024_DelegateComparison::DelegateExample ( class UTest0024_Commandlet*
 	static UFunction* pFnDelegateExample = NULL;
 
 	if ( ! pFnDelegateExample )
-		pFnDelegateExample = (UFunction*) UObject::GObjObjects()->Data[ 30937 ];
+		pFnDelegateExample = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0024_DelegateComparison.DelegateExample" );
 
 	UTest0024_DelegateComparison_execDelegateExample_Parms DelegateExample_Parms;
 	DelegateExample_Parms.Owner = Owner;
@@ -1877,7 +1878,7 @@ void UTest0024_DelegateComparison::DelegateFunction ( int Param1 )
 	static UFunction* pFnDelegateFunction = NULL;
 
 	if ( ! pFnDelegateFunction )
-		pFnDelegateFunction = (UFunction*) UObject::GObjObjects()->Data[ 30935 ];
+		pFnDelegateFunction = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0024_DelegateComparison.DelegateFunction" );
 
 	UTest0024_DelegateComparison_execDelegateFunction_Parms DelegateFunction_Parms;
 	DelegateFunction_Parms.Param1 = Param1;
@@ -1895,7 +1896,7 @@ void UTest0024_DelegateComparison::TestDelegateParam ( struct FScriptDelegate My
 	static UFunction* pFnTestDelegateParam = NULL;
 
 	if ( ! pFnTestDelegateParam )
-		pFnTestDelegateParam = (UFunction*) UObject::GObjObjects()->Data[ 30933 ];
+		pFnTestDelegateParam = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0024_DelegateComparison.TestDelegateParam" );
 
 	UTest0024_DelegateComparison_execTestDelegateParam_Parms TestDelegateParam_Parms;
 	memcpy ( &TestDelegateParam_Parms.MyDelegate, &MyDelegate, 0xC );
@@ -1913,7 +1914,7 @@ void UTest0024_DelegateComparison::ComparisonDelegate ( int Param1 )
 	static UFunction* pFnComparisonDelegate = NULL;
 
 	if ( ! pFnComparisonDelegate )
-		pFnComparisonDelegate = (UFunction*) UObject::GObjObjects()->Data[ 30930 ];
+		pFnComparisonDelegate = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0024_DelegateComparison.ComparisonDelegate" );
 
 	UTest0024_DelegateComparison_execComparisonDelegate_Parms ComparisonDelegate_Parms;
 	ComparisonDelegate_Parms.Param1 = Param1;
@@ -1932,7 +1933,7 @@ void UTest0025_Commandlet::RunBoolTest ( unsigned long bValueToApply, unsigned l
 	static UFunction* pFnRunBoolTest = NULL;
 
 	if ( ! pFnRunBoolTest )
-		pFnRunBoolTest = (UFunction*) UObject::GObjObjects()->Data[ 30951 ];
+		pFnRunBoolTest = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0025_Commandlet.RunBoolTest" );
 
 	UTest0025_Commandlet_execRunBoolTest_Parms RunBoolTest_Parms;
 	RunBoolTest_Parms.bValueToApply = bValueToApply;
@@ -1952,7 +1953,7 @@ int UTest0025_Commandlet::eventMain ( struct FString Params )
 	static UFunction* pFnMain = NULL;
 
 	if ( ! pFnMain )
-		pFnMain = (UFunction*) UObject::GObjObjects()->Data[ 30945 ];
+		pFnMain = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.Test0025_Commandlet.Main" );
 
 	UTest0025_Commandlet_eventMain_Parms Main_Parms;
 	memcpy ( &Main_Parms.Params, &Params, 0xC );
@@ -1973,7 +1974,7 @@ int UTestCommandlet::eventMain ( struct FString Params )
 	static UFunction* pFnMain = NULL;
 
 	if ( ! pFnMain )
-		pFnMain = (UFunction*) UObject::GObjObjects()->Data[ 30961 ];
+		pFnMain = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.TestCommandlet.Main" );
 
 	UTestCommandlet_eventMain_Parms Main_Parms;
 	memcpy ( &Main_Parms.Params, &Params, 0xC );
@@ -1994,7 +1995,7 @@ int UUDebuggerRegressionCommandlet::eventMain ( struct FString Parms )
 	static UFunction* pFnMain = NULL;
 
 	if ( ! pFnMain )
-		pFnMain = (UFunction*) UObject::GObjObjects()->Data[ 30999 ];
+		pFnMain = (UFunction*) ObjectCache::Find( "Function UnrealScriptTest.UDebuggerRegressionCommandlet.Main" );
 
 	UUDebuggerRegressionCommandlet_eventMain_Parms Main_Parms;
 	memcpy ( &Main_Parms.Parms, &Parms, 0xC );

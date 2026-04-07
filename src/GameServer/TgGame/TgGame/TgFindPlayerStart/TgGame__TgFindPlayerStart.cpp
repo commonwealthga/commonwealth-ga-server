@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.hpp"
+#include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 ANavigationPoint* __fastcall TgGame__TgFindPlayerStart::Call(ATgGame* Game, void* edx, AController* Controller, FName IncomingName) {
@@ -17,20 +18,16 @@ ANavigationPoint* __fastcall TgGame__TgFindPlayerStart::Call(ATgGame* Game, void
 	// 	return m_original(Game, edx, Controller, IncomingName);
 	// }
 
-	for (int i = 0; i < UObject::GObjObjects()->Num(); i++) {
-		UObject* obj = UObject::GObjObjects()->Data[i];
+	ActorCache::CacheMapActors();
 
-		if (obj && strcmp(obj->Class->GetFullName(), "Class TgGame.TgTeamPlayerStart") == 0) {
-			ATgTeamPlayerStart* playerStart = (ATgTeamPlayerStart*)obj;
-			playerStart->Location.Z += 2000;
-			Logger::Log("debug", "Player start found");
-
-			return playerStart;
-		}
+	if (!ActorCache::PlayerStarts.empty()) {
+		ATgTeamPlayerStart* playerStart = ActorCache::PlayerStarts[0];
+		playerStart->Location.Z += 2000;
+		Logger::Log("debug", "Player start found");
+		return playerStart;
 	}
 
 	Logger::Log("debug", "Player start not found");
 
 	return m_original(Game, edx, Controller, IncomingName);
 }
-
