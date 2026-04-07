@@ -11,6 +11,7 @@
 struct InstanceInfo {
     int64_t     id           = 0;
     std::string map_name;
+    std::string game_mode;
     std::string state;          // "STARTING" | "READY" | "DRAINING" | "STOPPED"
     int         pid           = 0;
     uint16_t    udp_port      = 0;
@@ -36,14 +37,17 @@ public:
     static void SeedHomeMapInstance(const std::string& map_name, uint16_t udp_port);
 
     // Insert a STARTING instance. Returns the SQLite rowid (used as instance_id).
-    static int64_t InsertStarting(const std::string& map_name, uint16_t udp_port,
-                                   int pid, bool is_home_map);
+    static int64_t InsertStarting(const std::string& map_name, const std::string& game_mode,
+                                   uint16_t udp_port, int pid, bool is_home_map);
 
     // Transition STARTING -> READY when INSTANCE_READY IPC arrives.
     static void MarkReady(int64_t instance_id, int max_players);
 
     // Find first READY instance with is_home_map=1.
     static std::optional<InstanceInfo> GetReadyHomeInstance();
+
+    // Look up any instance by instance_id (any state).
+    static std::optional<InstanceInfo> GetInstanceById(int64_t instance_id);
 
     // Mark an instance STOPPED (IPC disconnect or crash).
     static void MarkStopped(int64_t instance_id);

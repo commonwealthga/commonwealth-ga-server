@@ -18,6 +18,7 @@
 #include "src/GameServer/TgNetDrv/UdpNetDriver/TickDispatch/UdpNetDriver__TickDispatch.hpp"
 #include "src/GameServer/IpDrv/ClientConnection/SendMarshal/ClientConnection__SendMarshal.hpp"
 #include "src/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.hpp"
+#include "src/GameServer/Engine/NetConnection/SendPackageMap/NetConnection__SendPackageMap.hpp"
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
 #include "src/GameServer/IpDrv/NetConnection/CleanupActor/NetConnection__CleanupActor.hpp"
 #include "src/GameServer/TgNetDrv/MarshalChannel/MarshalReceived/MarshalChannel__MarshalReceived.hpp"
@@ -288,6 +289,7 @@ unsigned long ModuleThread( void* ) {
 	// Logger::EnabledChannels.push_back("quest_update");
 	// Logger::EnabledChannels.push_back("session_guid");
 	// Logger::EnabledChannels.push_back("chat");
+	// Logger::EnabledChannels.push_back("matchmaking");
 
 	Database::Init();
 
@@ -313,6 +315,7 @@ unsigned long ModuleThread( void* ) {
 	NetConnection__CleanupActor::Install();
 	MarshalChannel__MarshalReceived::Install();
 	MarshalChannel__NotifyControlMessage::Install();
+	NetConnection__SendPackageMap::Install();
 	ActorChannel__ReceivedBunch__CanExecute::bLogEnabled = true;
 	ActorChannel__ReceivedBunch__CanExecute::Install();
 	Channel__ReceivedSequencedBunch::Install();

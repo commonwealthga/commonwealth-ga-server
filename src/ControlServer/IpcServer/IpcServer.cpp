@@ -10,6 +10,7 @@
 #include <vector>
 #include <deque>
 #include <string>
+#include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 
 // ---------------------------------------------------------------------------
 // IpcSession -- handles a single game instance connection (server side)
@@ -134,6 +135,16 @@ private:
             Logger::Log("ipc", "[IpcServer] INSTANCE_READY: instance_id=%lld max_players=%d\n",
                 (long long)inst_id, max_players);
             InstanceRegistry::MarkReady(inst_id, max_players);
+
+            // Check if this instance was spawned for a pending match
+            auto pending = MatchmakingService::ConsumePendingMatch(inst_id);
+            if (pending) {
+                Logger::Log("ipc", "[IpcServer] Instance %lld ready — sending MATCH_INVITATION to %zu players\n",
+                    (long long)inst_id, pending->session_guids.size());
+                for (const auto& guid : pending->session_guids) {
+                    TcpSession::DeliverMatchInvitation(guid, inst_id, pending->game_mode);
+                }
+            }
         }
         else if (type == IpcProtocol::MSG_PING) {
             Logger::Log("ipc", "[IpcServer] PING received, sending PONG\n");

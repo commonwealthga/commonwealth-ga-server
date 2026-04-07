@@ -8,6 +8,9 @@
 #include "src/ControlServer/ChatListener/ChatListener.hpp"
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/Shared/IpcProtocol.hpp"
+#include "src/ControlServer/TcpSession/TcpSession.hpp"
+#include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
+#include "src/ControlServer/MatchmakingService/Rules/SimpleMatchRule.hpp"
 #include <asio.hpp>
 #include <cstdlib>
 #include <cstdio>
@@ -83,6 +86,73 @@ int main(int argc, char* argv[]) {
     // Clear stale instances from any previous (crashed) run
     InstanceRegistry::ClearStaleInstances();
 
+    // Initialize matchmaking
+    MatchmakingService::Init();
+
+    // Register queues (all use SimpleMatchRule for now)
+    uint32_t queue_ids[] = {5, 6, 7, 8, 9, 10, 11, 12, 13};
+    for (uint32_t qid : queue_ids) {
+        MatchmakingService::RegisterQueue(qid, std::make_unique<SimpleMatchRule>());
+    }
+
+    // Provide running instance info to matchmaking rules
+    MatchmakingService::SetInstanceProvider([]() -> std::vector<RunningInstance> {
+        // For now, return empty — rules that need instance info will
+        // query InstanceRegistry directly in their own implementations later.
+        // This is the hook point for that data.
+        return {};
+    });
+
+    // Handle match pop: spawn instance or route to existing one
+    MatchmakingService::SetMatchPopCallback(
+        [&cfg](uint32_t queue_id, MatchResult result) {
+            if (result.existing_instance_id) {
+                // Route to existing instance — send invitation immediately
+                Logger::Log("matchmaking",
+                    "[Matchmaking] Routing %zu players to existing instance %lld\n",
+                    result.session_guids.size(), (long long)*result.existing_instance_id);
+                for (const auto& guid : result.session_guids) {
+                    TcpSession::DeliverMatchInvitation(guid, *result.existing_instance_id, result.game_mode);
+                }
+                return;
+            }
+
+            // Spawn new instance
+            auto port = InstanceRegistry::AllocatePort(
+                cfg.udp_port_range.lo, cfg.udp_port_range.hi);
+            if (!port) {
+                Logger::Log("matchmaking",
+                    "[Matchmaking] No UDP ports available for match spawn\n");
+                return;
+            }
+
+            int64_t instance_id = InstanceRegistry::InsertStarting(
+                result.map_name, result.game_mode, *port, 0, /*is_home_map=*/false);
+
+            pid_t pid = InstanceSpawner::Spawn(
+                cfg, result.map_name, result.game_mode, *port, instance_id);
+
+            if (pid < 0) {
+                Logger::Log("matchmaking",
+                    "[Matchmaking] Failed to spawn instance for queue %u\n", queue_id);
+                InstanceRegistry::MarkStopped(instance_id);
+                return;
+            }
+
+            Logger::Log("matchmaking",
+                "[Matchmaking] Spawned instance %lld (pid=%d port=%d) for queue %u\n",
+                (long long)instance_id, (int)pid, (int)*port, queue_id);
+
+            // Store pending match — will be consumed when INSTANCE_READY arrives
+            PendingMatch pending;
+            pending.instance_id = instance_id;
+            pending.queue_id = queue_id;
+            pending.game_mode = result.game_mode;
+            pending.session_guids = std::move(result.session_guids);
+            MatchmakingService::AddPendingMatch(instance_id, std::move(pending));
+        }
+    );
+
     // Allocate a UDP port for the home map instance
     auto home_port = InstanceRegistry::AllocatePort(cfg.udp_port_range.lo, cfg.udp_port_range.hi);
     if (!home_port) {
@@ -93,7 +163,7 @@ int main(int argc, char* argv[]) {
 
     // Register instance as STARTING in registry (returns instance_id = SQLite rowid)
     int64_t home_instance_id = InstanceRegistry::InsertStarting(
-        cfg.home_map_name, *home_port, 0, /*is_home_map=*/true);
+        cfg.home_map_name, cfg.home_map_game_mode, *home_port, 0, /*is_home_map=*/true);
 
     // Spawn the UE3 process via fork/exec with Wine
     pid_t home_pid = InstanceSpawner::Spawn(

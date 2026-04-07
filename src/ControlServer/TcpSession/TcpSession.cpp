@@ -373,19 +373,198 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			Logger::Log("tcp", "[%s] Received: GET_TICKET_INFO [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 			send_get_ticket_info_response();
 			break;
+		case GA_U::MATCH_JOIN: {
+			Logger::Log("tcp", "[%s] Received: MATCH_JOIN [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			PacketView pkt(data + 6, length - 6);
+			uint32_t matchQueueId = pkt.Read4B(GA_T::MATCH_QUEUE_ID).value_or(0);
+			uint32_t matchFilters = pkt.Read4B(GA_T::MATCH_FILTERS).value_or(0);
+
+			send_match_join_response(matchQueueId, matchFilters);
+
+			break;
+		}
+		case GA_U::MATCH_LEAVE: {
+			Logger::Log("tcp", "[%s] Received: MATCH_LEAVE [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			// todo: MATCH_TEAM_FLAG is being passed
+
+			send_match_leave_response();
+
+			break;
+
+		}
+		case GA_U::MATCH_ACCEPT:
+			Logger::Log("tcp", "[%s] Received: MATCH_ACCEPT [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			send_match_accept_response();
+			break;
 		case GA_U::AGENCY_GET_ROSTER:
 			Logger::Log("tcp", "[%s] Received: AGENCY_GET_ROSTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 			send_agency_get_roster_response();
 			break;
 		default:
 			Logger::Log("tcp", "[%s] Received unknown packet type: %04X, raw data:\n", Logger::GetTime(), packet_type);
-			for (size_t i = 0; i < length; i++) {
-				Logger::Log("tcp", "%02X", data[i]);
-			}
-			Logger::Log("tcp", "\n");
+			LogData(data, length);
 			break;
 	}
 
+}
+
+void TcpSession::send_match_join_response(uint32_t matchQueueId, uint32_t matchFilters) {
+    current_match_queue_id_ = matchQueueId;
+
+    QueuedPlayer player;
+    player.session_guid = session_guid_;
+    player.profile_id = selected_profile_id_;
+    player.joined_at = std::chrono::steady_clock::now();
+
+    MatchmakingService::AddPlayer(matchQueueId, player);
+}
+
+void TcpSession::send_match_leave_response() {
+    MatchmakingService::RemovePlayer(session_guid_);
+    current_match_queue_id_ = 0;
+}
+
+void TcpSession::send_match_invitation(int64_t instance_id, const std::string& game_mode) {
+    pending_match_instance_id_ = instance_id;
+    pending_match_game_mode_ = game_mode;
+
+    std::vector<uint8_t> response;
+
+    uint16_t packet_type = GA_U::MATCH_INVITATION;
+    uint16_t item_count = 0;
+
+    append(response, packet_type & 0xFF, packet_type >> 8);
+    append(response, item_count & 0xFF, item_count >> 8);
+
+    send_response(response);
+
+    Logger::Log("tcp", "[TcpSession] Sent MATCH_INVITATION to %s (instance %lld)\n",
+        player_name.c_str(), (long long)instance_id);
+}
+
+void TcpSession::DeliverMatchInvitation(const std::string& session_guid, int64_t instance_id, const std::string& game_mode) {
+    std::lock_guard<std::mutex> lock(sessions_mutex_);
+    auto it = g_sessions_.find(session_guid);
+    if (it == g_sessions_.end()) return;
+    auto session = it->second.lock();
+    if (!session) return;
+    session->send_match_invitation(instance_id, game_mode);
+}
+
+void TcpSession::send_match_accept_response() {
+    if (pending_match_instance_id_ == 0) {
+        Logger::Log("tcp", "[TcpSession] MATCH_ACCEPT from %s but no pending instance\n", player_name.c_str());
+        return;
+    }
+
+    auto instance = InstanceRegistry::GetInstanceById(pending_match_instance_id_);
+    if (!instance || instance->state != "READY") {
+        Logger::Log("tcp", "[TcpSession] MATCH_ACCEPT: instance %lld not ready\n",
+            (long long)pending_match_instance_id_);
+        pending_match_instance_id_ = 0;
+        return;
+    }
+
+    Logger::Log("tcp", "[TcpSession] MATCH_ACCEPT from %s — registering with instance %lld then sending go_play\n",
+        player_name.c_str(), (long long)instance->instance_id);
+
+    // Build PLAYER_REGISTER JSON with full character state (same as initiate_player_register_and_go_play).
+    nlohmann::json reg;
+    reg["type"]         = IpcProtocol::MSG_PLAYER_REGISTER;
+    reg["session_guid"] = session_guid_;
+    reg["profile_id"]   = selected_profile_id_;
+    reg["player_name"]  = player_name;
+    reg["user_id"]      = user_id_;
+    reg["character_id"] = selected_character_id_;
+    reg["task_force"]   = 1;
+
+    auto charInfo = PlayerSessionStore::GetCharacterById(selected_character_id_);
+    if (charInfo) {
+        reg["head_asm_id"]          = charInfo->head_asm_id;
+        reg["gender_type_value_id"] = charInfo->gender_type_value_id;
+        reg["morph_data"]           = HexUtils::hex_encode(charInfo->morph_data);
+    } else {
+        reg["head_asm_id"]          = 0;
+        reg["gender_type_value_id"] = 0;
+        reg["morph_data"]           = "";
+    }
+
+    // Send PLAYER_REGISTER to the MISSION instance (not home map).
+    int64_t target_instance_id = pending_match_instance_id_;
+    if (!IpcServer::SendToInstance(target_instance_id, reg.dump())) {
+        Logger::Log("tcp", "[TcpSession] No IPC session for instance %lld — cannot register player %s\n",
+            (long long)target_instance_id, player_name.c_str());
+        pending_match_instance_id_ = 0;
+        pending_match_game_mode_.clear();
+        return;
+    }
+
+    // Arm 60-second ACK-wait timer, then send go_play on success.
+    auto self(shared_from_this());
+    pending_ack_timer_ = std::make_shared<asio::steady_timer>(io_ctx_);
+    pending_ack_timer_->expires_after(std::chrono::seconds(60));
+
+    auto timer = pending_ack_timer_;
+    IpcServer::RegisterPendingAck(session_guid_,
+        [this, self, timer, target_instance_id](bool success, int pawn_id) {
+            timer->cancel();
+            if (!success) {
+                Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK failed for %s on mission instance\n",
+                    session_guid_.c_str());
+                pending_match_instance_id_ = 0;
+                pending_match_game_mode_.clear();
+                return;
+            }
+
+            Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK success for %s pawn_id=%d — sending go_play to mission\n",
+                session_guid_.c_str(), pawn_id);
+
+            auto inst = InstanceRegistry::GetInstanceById(target_instance_id);
+            if (!inst || inst->state != "READY") {
+                Logger::Log("tcp", "[TcpSession] Mission instance %lld no longer ready\n",
+                    (long long)target_instance_id);
+                pending_match_instance_id_ = 0;
+                pending_match_game_mode_.clear();
+                return;
+            }
+
+            std::vector<uint8_t> response;
+
+            uint16_t packet_type = GA_U::GSC_GO_PLAY;
+            uint16_t item_count = 12;
+
+            append(response, packet_type & 0xFF, packet_type >> 8);
+            append(response, item_count & 0xFF, item_count >> 8);
+
+            WriteString(response, GA_T::PLAYER_NAME, player_name);
+            WriteIP(response, GA_T::HOST_NET_ADDR, inst->ip_address, inst->udp_port);
+            WriteNBytes(response, GA_T::SESSION_GUID, GuidHexToBytes(session_guid_));
+            WriteString(response, GA_T::MAP_FILENAME, inst->map_name);
+            WriteString(response, GA_T::PARAMETERS, "?Game=" + inst->game_mode);
+            Write4B(response, GA_T::FRIENDLY_NAME_MSG_ID, 22845);
+            Write4B(response, GA_T::MAP_GAME_ID, 0x050B);
+            Write4B(response, GA_T::MAP_INSTANCE_ID, static_cast<uint32_t>(inst->instance_id));
+            Write4B(response, GA_T::ENTRY_BACKGROUND_IMAGE_RES_ID, 5716);
+            Write4B(response, GA_T::TASK_FORCE, 0x1);
+            WriteIP(response, GA_T::CHAT_NET_ADDR, "127.0.0.1", 9001);
+            Write4B(response, GA_T::CLASS_MSG_ID, 22976);
+
+            send_response(response);
+
+            pending_match_instance_id_ = 0;
+            pending_match_game_mode_.clear();
+            current_match_queue_id_ = 0;
+        });
+
+    pending_ack_timer_->async_wait([this, self, timer](std::error_code ec) {
+        if (!ec) {
+            Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK timeout for %s on mission instance\n",
+                session_guid_.c_str());
+            IpcServer::ClearPendingAck(session_guid_);
+            pending_match_instance_id_ = 0;
+            pending_match_game_mode_.clear();
+        }
+    });
 }
 
 void TcpSession::send_get_ticket_info_response() {
@@ -398,7 +577,7 @@ void TcpSession::send_get_ticket_info_response() {
 	append(response, item_count & 0xFF, item_count >> 8);
 
 	Write1B(response, GA_T::TEAM_LEADER_FLAG, 0x1);
-	Write4B(response, GA_T::CURRENT_MATCH_QUEUE_ID, 0x0);
+	Write4B(response, GA_T::CURRENT_MATCH_QUEUE_ID, current_match_queue_id_);
 
 	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
 
@@ -917,10 +1096,9 @@ void TcpSession::send_get_loot_table_items_by_id_filtered_response()
 	append(response, GA_T::DATA_SET_PRICES & 0xFF, GA_T::DATA_SET_PRICES >> 8);
 	append(response, 0x01, 0x00);        // count elements
 	{
-		append(response, 0x04, 0x00);  // inner item count
+		append(response, 0x03, 0x00);  // inner item count
 
 		Write4B(response, GA_T::LOOT_TABLE_ITEM_ID, 3470);
-		Write4B(response, GA_T::CURRENT_PRICE, 0);
 		Write4B(response, GA_T::CURRENT_PRICE, 0);
 		Write4B(response, GA_T::CURRENCY_TYPE_VALUE_ID, 1603);
 	}
@@ -1229,11 +1407,11 @@ void TcpSession::send_go_play_response()
 	WriteString(response, GA_T::PLAYER_NAME, player_name);
 	WriteIP(response, GA_T::HOST_NET_ADDR, instance->ip_address, instance->udp_port);
 	WriteNBytes(response, GA_T::SESSION_GUID, GuidHexToBytes(session_guid_));
-	WriteString(response, GA_T::MAP_FILENAME, "Rot_Redistribution05");
-	WriteString(response, GA_T::PARAMETERS, "?Game=TgGame.TgGame_Headhunter");
+	WriteString(response, GA_T::MAP_FILENAME, instance->map_name);
+	WriteString(response, GA_T::PARAMETERS, "?Game=" + instance->game_mode);
 	Write4B(response, GA_T::FRIENDLY_NAME_MSG_ID, 22845);
 	Write4B(response, GA_T::MAP_GAME_ID, 0x050B);
-	Write4B(response, GA_T::MAP_INSTANCE_ID, 0x1);
+	Write4B(response, GA_T::MAP_INSTANCE_ID, static_cast<uint32_t>(instance->instance_id));
 	Write4B(response, GA_T::ENTRY_BACKGROUND_IMAGE_RES_ID, 5716);
 	Write4B(response, GA_T::TASK_FORCE, 0x1);
 	WriteIP(response, GA_T::CHAT_NET_ADDR, "127.0.0.1", 9001);

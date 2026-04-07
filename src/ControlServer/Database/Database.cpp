@@ -563,6 +563,13 @@ void Database::Init() {
 			sqlite3_free(err);
 		}
 		result = sqlite3_exec(db,
+			"ALTER TABLE ga_instances ADD COLUMN game_mode TEXT NOT NULL DEFAULT '';",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to add game_mode column: %s\n", err);
+			sqlite3_free(err);
+		}
+		result = sqlite3_exec(db,
 			"CREATE UNIQUE INDEX IF NOT EXISTS idx_ga_instances_instance_id "
 			"ON ga_instances(instance_id) WHERE instance_id != 0;",
 			nullptr, nullptr, &err);

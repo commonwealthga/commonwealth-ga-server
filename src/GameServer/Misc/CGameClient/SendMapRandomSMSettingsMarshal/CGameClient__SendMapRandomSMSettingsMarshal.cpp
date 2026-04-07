@@ -11,6 +11,7 @@
 
 
 void CGameClient__SendMapRandomSMSettingsMarshal::Call(UNetConnection* Connection, void* MarshalPtr) {
+	return;
 
 	// ManageRandomSMActors adds names of explicitly-selected actors to the DATA_SET,
 	// but type-0 "companion" actors also get ToggleDisplay(1) server-side without
@@ -40,13 +41,12 @@ void CGameClient__SendMapRandomSMSettingsMarshal::Call(UNetConnection* Connectio
 
 
 			// force net relevant
-			if (actor->RemoteRole == 0 && actor->bNoDelete && !actor->bStatic) {
-				actor->RemoteRole = 1; // ROLE_SimulatedProxy
-				actor->bAlwaysRelevant = 1;
-				actor->NetUpdateFrequency = 0.1f;
-			}
-
-			actor->bForceNetUpdate = 1;
+			// if (actor->RemoteRole == 0 && actor->bNoDelete && !actor->bStatic) {
+			// 	actor->RemoteRole = 1; // ROLE_SimulatedProxy
+			// 	actor->bAlwaysRelevant = 1;
+			// 	actor->NetUpdateFrequency = 0.1f;
+			// }
+			// actor->bForceNetUpdate = 1;
 
 			// Allocate and initialize a new row
 			void* rowBuf = HeapAllocator__Allocate::CallOriginal(0x24);
@@ -76,11 +76,12 @@ void CGameClient__SendMapRandomSMSettingsMarshal::Call(UNetConnection* Connectio
 	void* FirstVtable = *(void**)MarshalPtr;
 	void* CurrentMarshal = MarshalPtr;
 	while (CurrentMarshal) {
-		if (*(void**)CurrentMarshal == nullptr) {
-			*(void**)CurrentMarshal = FirstVtable;
-		}
+		// if (*(void**)CurrentMarshal == nullptr) {
+		// 	*(void**)CurrentMarshal = FirstVtable;
+		// }
 		ClientConnection__SendMarshal::Call(Connection, nullptr, CurrentMarshal);
-		CurrentMarshal = *(void**)((char*)CurrentMarshal + 0x2f4);
+		CurrentMarshal = nullptr;
+		// CurrentMarshal = *(void**)((char*)CurrentMarshal + 0x2f4);
 	}
 	NetConnection__FlushNet::CallOriginal(Connection);
 

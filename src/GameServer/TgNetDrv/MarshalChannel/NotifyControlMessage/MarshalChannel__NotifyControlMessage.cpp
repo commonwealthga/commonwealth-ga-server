@@ -61,6 +61,9 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 		void* PackageMap = *(void**)((char*)Connection + 0xBC);
 		PackageMap__Compute::CallOriginal(PackageMap);
 
+		// GUID fix for forced exports now runs inside the SendPackageMap hook
+		// (NetConnection__SendPackageMap), where the list is already populated.
+
 		World__WelcomePlayer::CallOriginal((UWorld*)Globals::Get().GWorld, edx, Connection, L"");
 
 
@@ -314,5 +317,330 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	}
 
 	Logger::Log("debug", "MINE MarshalChannel__NotifyControlMessage END\n");
+}
+
+// ---------------------------------------------------------------------------
+// Forced-export GUID fix
+// ---------------------------------------------------------------------------
+
+std::unordered_map<std::string, std::string> MarshalChannel__NotifyControlMessage::s_packageFileMap;
+bool MarshalChannel__NotifyControlMessage::s_packageFileMapBuilt = false;
+
+// Recursively scan a directory for .upk and .u files, building name -> path map.
+// Uses POSIX dirent (Wine supports this).
+#include <dirent.h>
+#include <sys/stat.h>
+#include <cstring>
+
+static void ScanDirectory(const std::string& dir, std::unordered_map<std::string, std::string>& outMap) {
+	DIR* d = opendir(dir.c_str());
+	if (!d) return;
+
+	struct dirent* entry;
+	while ((entry = readdir(d)) != nullptr) {
+		if (entry->d_name[0] == '.') continue; // skip . and ..
+
+		std::string fullPath = dir + "/" + entry->d_name;
+
+		struct stat st;
+		if (stat(fullPath.c_str(), &st) != 0) continue;
+
+		if (S_ISDIR(st.st_mode)) {
+			ScanDirectory(fullPath, outMap);
+		} else if (S_ISREG(st.st_mode)) {
+			std::string name(entry->d_name);
+			// Check for .upk or .u extension
+			size_t dotPos = name.rfind('.');
+			if (dotPos == std::string::npos) continue;
+			std::string ext = name.substr(dotPos);
+			if (ext != ".upk" && ext != ".u") continue;
+
+			std::string baseName = name.substr(0, dotPos);
+			// Only store first found (don't overwrite)
+			if (outMap.find(baseName) == outMap.end()) {
+				outMap[baseName] = fullPath;
+			}
+		}
+	}
+	closedir(d);
+}
+
+void MarshalChannel__NotifyControlMessage::BuildPackageFileMap() {
+	if (s_packageFileMapBuilt) return;
+	s_packageFileMapBuilt = true;
+
+	// Derive CookedPC path from the game binary's location.
+	// The game binary is at <GameRoot>/Binaries/GlobalAgenda.exe,
+	// and CookedPC is at <GameRoot>/TgGame/CookedPC/ (case may vary on Linux).
+	// Under Wine, GetModuleFileNameA returns a Windows-style path (Z:\...\Binaries\GlobalAgenda.exe).
+	// We convert to a POSIX path for opendir/readdir.
+	char exePath[512] = {};
+	GetModuleFileNameA(nullptr, exePath, sizeof(exePath) - 1);
+
+	// Convert Wine Z: path to POSIX: "Z:\home\..." -> "/home/..."
+	std::string path(exePath);
+	// Replace backslashes with forward slashes
+	for (char& c : path) { if (c == '\\') c = '/'; }
+	// Strip "Z:" or "z:" prefix if present
+	if (path.size() >= 2 && (path[0] == 'Z' || path[0] == 'z') && path[1] == ':') {
+		path = path.substr(2);
+	}
+
+	// Go up from Binaries/GlobalAgenda.exe to GameRoot, then into TgGame/CookedPC
+	size_t binPos = path.rfind("/Binaries/");
+	if (binPos == std::string::npos) {
+		// Fallback: try going up two levels from the executable
+		size_t lastSlash = path.rfind('/');
+		if (lastSlash != std::string::npos) {
+			binPos = path.rfind('/', lastSlash - 1);
+		}
+	}
+
+	std::string cookedPCPath;
+	if (binPos != std::string::npos) {
+		std::string gameRoot = path.substr(0, binPos);
+		// Try common casing variants for TgGame/tggame
+		std::string candidates[] = {
+			gameRoot + "/TgGame/CookedPC",
+			gameRoot + "/tggame/CookedPC",
+			gameRoot + "/TgGame/cookedpc",
+			gameRoot + "/tggame/cookedpc",
+		};
+		for (const auto& candidate : candidates) {
+			DIR* test = opendir(candidate.c_str());
+			if (test) {
+				closedir(test);
+				cookedPCPath = candidate;
+				break;
+			}
+		}
+	}
+
+	if (cookedPCPath.empty()) {
+		Logger::Log("packagemap", "[PackageMap] Could not find CookedPC directory (exe=%s)\n", exePath);
+		return;
+	}
+
+	Logger::Log("packagemap", "[PackageMap] CookedPC path: %s\n", cookedPCPath.c_str());
+	ScanDirectory(cookedPCPath, s_packageFileMap);
+	Logger::Log("packagemap", "[PackageMap] Built file map: %zu packages indexed\n", s_packageFileMap.size());
+}
+
+bool MarshalChannel__NotifyControlMessage::ReadGuidFromPackageFile(const char* filePath, FGuid& outGuid) {
+	FILE* f = fopen(filePath, "rb");
+	if (!f) return false;
+
+	// UE3 FPackageFileSummary serialization order (UnLinker.cpp):
+	//   Tag(4), FileVersion(4), TotalHeaderSize(4),
+	//   FString FolderName (INT length + length bytes),
+	//   PackageFlags(4),
+	//   NameCount(4), NameOffset(4), ExportCount(4), ExportOffset(4),
+	//   ImportCount(4), ImportOffset(4), DependsOffset(4),
+	//   [if version >= 623: ImportExportGuidsOffset(4), ImportGuidsCount(4), ExportGuidsCount(4)]
+	//   [if version >= 584: ThumbnailTableOffset(4)]
+	//   FGuid(16)
+
+	// Read FileVersion
+	fseek(f, 4, SEEK_SET); // skip Tag
+	int fileVersion = 0;
+	if (fread(&fileVersion, 4, 1, f) != 1) { fclose(f); return false; }
+	int mainVer = fileVersion & 0xFFFF;
+
+	// Skip to FolderName (offset 12: Tag + FileVersion + TotalHeaderSize)
+	fseek(f, 12, SEEK_SET);
+
+	// Read FString: INT length, then length bytes
+	int folderNameLen = 0;
+	if (fread(&folderNameLen, 4, 1, f) != 1) { fclose(f); return false; }
+	if (folderNameLen < 0 || folderNameLen > 4096) {
+		Logger::Log("packagemap", "[PackageMap] Bad FolderName length %d in %s\n", folderNameLen, filePath);
+		fclose(f);
+		return false;
+	}
+	fseek(f, folderNameLen, SEEK_CUR); // skip FolderName content
+
+	// Skip PackageFlags(4) + NameCount(4) + NameOffset(4) + ExportCount(4) +
+	//       ExportOffset(4) + ImportCount(4) + ImportOffset(4) + DependsOffset(4) = 32 bytes
+	fseek(f, 32, SEEK_CUR);
+
+	// Version-conditional fields
+	if (mainVer >= 623) {
+		fseek(f, 12, SEEK_CUR); // ImportExportGuidsOffset + ImportGuidsCount + ExportGuidsCount
+	}
+	if (mainVer >= 584) {
+		fseek(f, 4, SEEK_CUR); // ThumbnailTableOffset
+	}
+
+	if (fread(&outGuid, sizeof(FGuid), 1, f) != 1) { fclose(f); return false; }
+	fclose(f);
+	return true;
+}
+
+bool MarshalChannel__NotifyControlMessage::ReadGuidAndGenerationsFromPackageFile(
+		const char* filePath, FGuid& outGuid, std::vector<int>& outNetObjectCounts) {
+	FILE* f = fopen(filePath, "rb");
+	if (!f) return false;
+
+	// Same header parsing as ReadGuidFromPackageFile
+	fseek(f, 4, SEEK_SET);
+	int fileVersion = 0;
+	if (fread(&fileVersion, 4, 1, f) != 1) { fclose(f); return false; }
+	int mainVer = fileVersion & 0xFFFF;
+
+	fseek(f, 12, SEEK_SET);
+	int folderNameLen = 0;
+	if (fread(&folderNameLen, 4, 1, f) != 1) { fclose(f); return false; }
+	if (folderNameLen < 0 || folderNameLen > 4096) { fclose(f); return false; }
+	fseek(f, folderNameLen, SEEK_CUR);
+
+	fseek(f, 32, SEEK_CUR); // PackageFlags + 7 INTs
+	if (mainVer >= 623) fseek(f, 12, SEEK_CUR);
+	if (mainVer >= 584) fseek(f, 4, SEEK_CUR);
+
+	if (fread(&outGuid, sizeof(FGuid), 1, f) != 1) { fclose(f); return false; }
+
+	// Read Generations array: TArray serialized as INT count, then count * FGenerationInfo
+	// FGenerationInfo: ExportCount(4), NameCount(4), NetObjectCount(4) = 12 bytes each
+	int genCount = 0;
+	if (fread(&genCount, 4, 1, f) != 1) { fclose(f); return false; }
+	if (genCount < 0 || genCount > 100) { fclose(f); return false; }
+
+	outNetObjectCounts.clear();
+	for (int g = 0; g < genCount; g++) {
+		int exportCount, nameCount, netObjectCount;
+		if (fread(&exportCount, 4, 1, f) != 1) { fclose(f); return false; }
+		if (fread(&nameCount, 4, 1, f) != 1) { fclose(f); return false; }
+		if (fread(&netObjectCount, 4, 1, f) != 1) { fclose(f); return false; }
+		outNetObjectCounts.push_back(netObjectCount);
+	}
+
+	fclose(f);
+	return true;
+}
+
+void MarshalChannel__NotifyControlMessage::FixForcedExportGuids(void* PackageMap) {
+	BuildPackageFileMap();
+
+	char* List = *(char**)((char*)PackageMap + 0x3C);
+	int ListCount = *(int*)((char*)PackageMap + 0x40);
+
+	// Dump first 3 entries raw to determine actual FPackageInfo layout
+	Logger::Log("packagemap", "[PackageMap] List=%p Count=%d stride=0x44\n", List, ListCount);
+	for (int i = 0; i < ListCount && i < 3; i++) {
+		char* Entry = List + i * 0x44;
+		// Dump raw hex of the 0x44-byte entry
+		char hexBuf[0x44 * 3 + 1];
+		for (int b = 0; b < 0x44; b++) {
+			snprintf(hexBuf + b * 3, 4, "%02X ", (unsigned char)Entry[b]);
+		}
+		Logger::Log("packagemap", "[PackageMap] Entry[%d] raw: %s\n", i, hexBuf);
+
+		// Try to interpret known fields
+		FName* pkgName = (FName*)(Entry + 0x00);
+		UObject* parent = *(UObject**)(Entry + 0x08);
+		FGuid* guid = (FGuid*)(Entry + 0x0C);
+		const char* name = parent ? parent->GetName() : "(null)";
+		Logger::Log("packagemap", "[PackageMap] Entry[%d] FName.Index=%d Parent=%p Name='%s' GUID=%08X%08X%08X%08X\n",
+			i, pkgName->Index, parent, name, guid->A, guid->B, guid->C, guid->D);
+
+		// Log what's at various candidate offsets for ForcedExportBasePackageName
+		FName* at34 = (FName*)(Entry + 0x34);
+		FName* at38 = (FName*)(Entry + 0x38);
+		FName* at3C = (FName*)(Entry + 0x3C);
+		Logger::Log("packagemap", "[PackageMap] Entry[%d] FName@+0x34=%d FName@+0x38=%d FName@+0x3C=%d\n",
+			i, at34->Index, at38->Index, at3C->Index);
+	}
+
+	// Check ForcedExportBasePackageName on the UPackage itself (at UPackage+0x8C),
+	// NOT on FPackageInfo (struct layout differs from vanilla UE3 in this game).
+	// For packages where the server's GUID (from forced export) differs from the
+	// standalone .upk GUID, we fix the GUID AND update GenerationNetObjectCount
+	// on the UPackage to match the standalone version.
+	int fixed = 0;
+	for (int i = 0; i < ListCount; i++) {
+		char* Entry = List + i * 0x44;
+		UObject* Parent = *(UObject**)(Entry + 0x08);
+		if (!Parent) continue;
+
+		// Check ForcedExportBasePackageName on UPackage (offset 0x90 in this build;
+		// GenerationNetObjectCount TArray ends at +0x84+12=+0x90)
+		FName* forcedBase = (FName*)((char*)Parent + 0x90);
+		if (forcedBase->Index == 0) continue; // NAME_None — not a forced export
+
+		const char* pkgName = Parent->GetName();
+		if (!pkgName) continue;
+
+		auto it = s_packageFileMap.find(std::string(pkgName));
+		if (it == s_packageFileMap.end()) continue;
+
+		FGuid diskGuid;
+		std::vector<int> diskNetObjCounts;
+		if (!ReadGuidAndGenerationsFromPackageFile(it->second.c_str(), diskGuid, diskNetObjCounts)) continue;
+
+		FGuid* entryGuid = (FGuid*)(Entry + 0x0C);
+		if (entryGuid->A != diskGuid.A || entryGuid->B != diskGuid.B ||
+			entryGuid->C != diskGuid.C || entryGuid->D != diskGuid.D) {
+			// Log server's GenerationNetObjectCount from UPackage
+			// UPackage layout: +0x84 = TArray<INT> GenerationNetObjectCount (confirmed from Compute decompilation)
+			TArray<int>* serverGenCounts = (TArray<int>*)((char*)Parent + 0x84);
+			Logger::Log("packagemap", "[PackageMap] '%s' server GenNetObjCount: Num=%d [", pkgName, serverGenCounts->Num());
+			for (int g = 0; g < serverGenCounts->Num(); g++) {
+				Logger::Log("packagemap", "%d%s", serverGenCounts->Data[g], g < serverGenCounts->Num()-1 ? ", " : "");
+			}
+			Logger::Log("packagemap", "]\n");
+
+			// Log disk file's GenerationNetObjectCount for comparison
+			Logger::Log("packagemap", "[PackageMap] '%s' disk   GenNetObjCount: Num=%zu [", pkgName, diskNetObjCounts.size());
+			for (size_t g = 0; g < diskNetObjCounts.size(); g++) {
+				Logger::Log("packagemap", "%d%s", diskNetObjCounts[g], g < diskNetObjCounts.size()-1 ? ", " : "");
+			}
+			Logger::Log("packagemap", "]\n");
+
+			Logger::Log("packagemap", "[PackageMap] Fixing GUID for forced export '%s': %08X%08X%08X%08X -> %08X%08X%08X%08X\n",
+				pkgName,
+				entryGuid->A, entryGuid->B, entryGuid->C, entryGuid->D,
+				diskGuid.A, diskGuid.B, diskGuid.C, diskGuid.D);
+			*entryGuid = diskGuid;
+
+			// Also update the UPackage's own Guid (at UPackage+0x5C) so that
+			// PackageMap::Compute uses consistent data.
+			FGuid* pkgGuid = (FGuid*)((char*)Parent + 0x5C);
+			*pkgGuid = diskGuid;
+
+			// Clear ForcedExportBasePackageName so the client loads standalone version
+			forcedBase->Index = 0;
+
+			// Fix PackageFlags in FPackageInfo to match standalone (524297 = 0x80009)
+			int32_t* flags = (int32_t*)(Entry + 0x2C);
+			Logger::Log("packagemap", "[PackageMap] '%s' flags: 0x%X -> 0x80009\n", pkgName, *flags);
+			*flags = 0x80009;
+
+			// Fix GenerationNetObjectCount on the UPackage to match the standalone file.
+			// Without this, Compute produces wrong object indices (off by the count difference).
+			// TArray<INT> at UPackage+0x84: {INT* Data, INT Num, INT Max}
+			if (!diskNetObjCounts.empty()) {
+				int serverNum = serverGenCounts->Num();
+				int diskNum = (int)diskNetObjCounts.size();
+				if (serverNum == diskNum) {
+					for (int g = 0; g < diskNum; g++) {
+						if (serverGenCounts->Data[g] != diskNetObjCounts[g]) {
+							Logger::Log("packagemap", "[PackageMap] '%s' GenNetObjCount[%d]: %d -> %d\n",
+								pkgName, g, serverGenCounts->Data[g], diskNetObjCounts[g]);
+							serverGenCounts->Data[g] = diskNetObjCounts[g];
+						}
+					}
+				} else {
+					Logger::Log("packagemap", "[PackageMap] '%s' GenNetObjCount size mismatch: server=%d disk=%d (cannot fix)\n",
+						pkgName, serverNum, diskNum);
+				}
+			}
+
+			fixed++;
+		}
+	}
+
+	if (fixed > 0) {
+		Logger::Log("packagemap", "[PackageMap] Fixed %d forced-export package(s)\n", fixed);
+	}
 }
 

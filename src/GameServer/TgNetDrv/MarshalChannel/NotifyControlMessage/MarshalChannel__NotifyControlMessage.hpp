@@ -2,6 +2,8 @@
 
 #include "src/pch.hpp"
 #include "src/Utils/HookBase.hpp"
+#include <unordered_map>
+#include <vector>
 
 class MarshalChannel__NotifyControlMessage : public HookBase<
 	void(__fastcall*)(void*, void*, UNetConnection*, void*),
@@ -46,5 +48,16 @@ public:
 
 	static void HandlePlayerConnected(UNetConnection* Connection, ATgPlayerController* Controller,
 		const std::string& session_guid, const std::string& player_name);
+
+	// Fix forced-export GUIDs in the package map to match standalone .upk disk GUIDs.
+	static void FixForcedExportGuids(void* PackageMap);
+
+private:
+	// Lazily-built map of package name -> full file path for .upk/.u files in CookedPC
+	static std::unordered_map<std::string, std::string> s_packageFileMap;
+	static bool s_packageFileMapBuilt;
+	static void BuildPackageFileMap();
+	static bool ReadGuidFromPackageFile(const char* filePath, FGuid& outGuid);
+	static bool ReadGuidAndGenerationsFromPackageFile(const char* filePath, FGuid& outGuid, std::vector<int>& outNetObjectCounts);
 };
 

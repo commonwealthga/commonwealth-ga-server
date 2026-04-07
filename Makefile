@@ -31,6 +31,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Storage/PlayerRegistry/PlayerRegistry.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/ClientConnection/SendMarshal/ClientConnection__SendMarshal.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.cpp \
+			  $(SRC_DIR)/GameServer/Engine/NetConnection/SendPackageMap/NetConnection__SendPackageMap.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/CleanupActor/NetConnection__CleanupActor.cpp \
 			  $(SRC_DIR)/GameServer/TgNetDrv/MarshalChannel/MarshalReceived/MarshalChannel__MarshalReceived.cpp \
@@ -415,7 +416,8 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/IpcServer/IpcServer.cpp \
 	$(CS_SRC_DIR)/InstanceRegistry/InstanceRegistry.cpp \
 	$(CS_SRC_DIR)/InstanceSpawner/InstanceSpawner.cpp \
-	$(CS_SRC_DIR)/QuestStore/QuestStore.cpp
+	$(CS_SRC_DIR)/QuestStore/QuestStore.cpp \
+	$(CS_SRC_DIR)/MatchmakingService/MatchmakingService.cpp
 
 CS_SOURCES=$(CS_CPP_SOURCES)
 

@@ -20,7 +20,8 @@ std::optional<InstanceInfo> InstanceRegistry::GetReadyInstance(const std::string
     int rc = sqlite3_prepare_v2(db,
         "SELECT id, map_name, state, pid, udp_port, ip_address, player_count, "
         "       started_at, COALESCE(sealed_at, 0), "
-        "       COALESCE(instance_id, 0), COALESCE(is_home_map, 0), COALESCE(max_players, 0) "
+        "       COALESCE(instance_id, 0), COALESCE(is_home_map, 0), COALESCE(max_players, 0), "
+        "       COALESCE(game_mode, '') "
         "FROM ga_instances "
         "WHERE map_name = ? AND state = 'READY' "
         "LIMIT 1",
@@ -51,6 +52,8 @@ std::optional<InstanceInfo> InstanceRegistry::GetReadyInstance(const std::string
         info.instance_id  = sqlite3_column_int64(stmt, 9);
         info.is_home_map  = sqlite3_column_int(stmt, 10) != 0;
         info.max_players  = sqlite3_column_int(stmt, 11);
+        const char* gm    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 12));
+        info.game_mode    = gm ? gm : "";
         result = std::move(info);
     }
     sqlite3_finalize(stmt);
@@ -103,8 +106,8 @@ void InstanceRegistry::SeedHomeMapInstance(const std::string& map_name, uint16_t
         map_name.c_str(), (int)udp_port);
 }
 
-int64_t InstanceRegistry::InsertStarting(const std::string& map_name, uint16_t udp_port,
-                                          int pid, bool is_home_map) {
+int64_t InstanceRegistry::InsertStarting(const std::string& map_name, const std::string& game_mode,
+                                          uint16_t udp_port, int pid, bool is_home_map) {
     std::lock_guard<std::mutex> lock(mutex_);
     sqlite3* db = Database::GetConnection();
     if (!db) return 0;
@@ -112,8 +115,8 @@ int64_t InstanceRegistry::InsertStarting(const std::string& map_name, uint16_t u
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db,
         "INSERT INTO ga_instances "
-        "(map_name, state, pid, udp_port, ip_address, player_count, started_at, instance_id, is_home_map) "
-        "VALUES (?, 'STARTING', ?, ?, '127.0.0.1', 0, strftime('%s','now'), 0, ?)",
+        "(map_name, game_mode, state, pid, udp_port, ip_address, player_count, started_at, instance_id, is_home_map) "
+        "VALUES (?, ?, 'STARTING', ?, ?, '127.0.0.1', 0, strftime('%s','now'), 0, ?)",
         -1, &stmt, nullptr);
     if (rc != SQLITE_OK || !stmt) {
         Logger::Log("db", "[InstanceRegistry] InsertStarting prepare failed: %s\n",
@@ -122,9 +125,10 @@ int64_t InstanceRegistry::InsertStarting(const std::string& map_name, uint16_t u
     }
 
     sqlite3_bind_text(stmt, 1, map_name.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt,  2, pid);
-    sqlite3_bind_int(stmt,  3, static_cast<int>(udp_port));
-    sqlite3_bind_int(stmt,  4, is_home_map ? 1 : 0);
+    sqlite3_bind_text(stmt, 2, game_mode.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt,  3, pid);
+    sqlite3_bind_int(stmt,  4, static_cast<int>(udp_port));
+    sqlite3_bind_int(stmt,  5, is_home_map ? 1 : 0);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -193,7 +197,8 @@ std::optional<InstanceInfo> InstanceRegistry::GetReadyHomeInstance() {
     int rc = sqlite3_prepare_v2(db,
         "SELECT id, map_name, state, pid, udp_port, ip_address, player_count, "
         "       started_at, COALESCE(sealed_at, 0), "
-        "       COALESCE(instance_id, 0), COALESCE(is_home_map, 0), COALESCE(max_players, 0) "
+        "       COALESCE(instance_id, 0), COALESCE(is_home_map, 0), COALESCE(max_players, 0), "
+        "       COALESCE(game_mode, '') "
         "FROM ga_instances "
         "WHERE is_home_map=1 AND state='READY' "
         "LIMIT 1",
@@ -222,6 +227,57 @@ std::optional<InstanceInfo> InstanceRegistry::GetReadyHomeInstance() {
         info.instance_id  = sqlite3_column_int64(stmt, 9);
         info.is_home_map  = sqlite3_column_int(stmt, 10) != 0;
         info.max_players  = sqlite3_column_int(stmt, 11);
+        const char* gm    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 12));
+        info.game_mode    = gm ? gm : "";
+        result = std::move(info);
+    }
+    sqlite3_finalize(stmt);
+    return result;
+}
+
+std::optional<InstanceInfo> InstanceRegistry::GetInstanceById(int64_t instance_id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    if (!db) return std::nullopt;
+
+    sqlite3_stmt* stmt = nullptr;
+    int rc = sqlite3_prepare_v2(db,
+        "SELECT id, map_name, state, pid, udp_port, ip_address, player_count, "
+        "       started_at, COALESCE(sealed_at, 0), "
+        "       COALESCE(instance_id, 0), COALESCE(is_home_map, 0), COALESCE(max_players, 0), "
+        "       COALESCE(game_mode, '') "
+        "FROM ga_instances "
+        "WHERE instance_id = ? "
+        "LIMIT 1",
+        -1, &stmt, nullptr);
+    if (rc != SQLITE_OK || !stmt) {
+        Logger::Log("db", "[InstanceRegistry] GetInstanceById prepare failed: %s\n",
+            sqlite3_errmsg(db));
+        return std::nullopt;
+    }
+
+    sqlite3_bind_int64(stmt, 1, instance_id);
+
+    std::optional<InstanceInfo> result;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        InstanceInfo info;
+        info.id           = sqlite3_column_int64(stmt, 0);
+        const char* mn    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        info.map_name     = mn ? mn : "";
+        const char* st    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+        info.state        = st ? st : "";
+        info.pid          = sqlite3_column_int(stmt, 3);
+        info.udp_port     = static_cast<uint16_t>(sqlite3_column_int(stmt, 4));
+        const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+        info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
+        info.player_count = sqlite3_column_int(stmt, 6);
+        info.started_at   = sqlite3_column_int64(stmt, 7);
+        info.sealed_at    = sqlite3_column_int64(stmt, 8);
+        info.instance_id  = sqlite3_column_int64(stmt, 9);
+        info.is_home_map  = sqlite3_column_int(stmt, 10) != 0;
+        info.max_players  = sqlite3_column_int(stmt, 11);
+        const char* gm    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 12));
+        info.game_mode    = gm ? gm : "";
         result = std::move(info);
     }
     sqlite3_finalize(stmt);

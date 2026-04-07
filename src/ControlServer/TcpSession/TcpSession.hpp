@@ -24,6 +24,7 @@
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/Shared/HexUtils.hpp"
 #include "lib/nlohmann/json.hpp"
+#include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 
 class TcpSession : public std::enable_shared_from_this<TcpSession> {
 public:
@@ -48,6 +49,9 @@ public:
     // Deliver a RANDOMSM_RESULT (list of actor names) to the TcpSession identified by guid.
     static void DeliverRandomSMResult(const std::string& guid, std::vector<std::string> names);
 
+    // Deliver a MATCH_INVITATION to this session (called from matchmaking callback).
+    static void DeliverMatchInvitation(const std::string& session_guid, int64_t instance_id, const std::string& game_mode);
+
 private:
     // ── Static registry members ──────────────────────────────────────────────
     static std::mutex sessions_mutex_;
@@ -62,6 +66,12 @@ private:
     int64_t  user_id_               = 0;
     int64_t  selected_character_id_ = 0;
     uint32_t selected_profile_id_   = 0;
+
+	uint32_t current_match_queue_id_ = 0;
+
+    // Set when a MATCH_INVITATION is delivered — the instance to join on MATCH_ACCEPT.
+    int64_t pending_match_instance_id_ = 0;
+    std::string pending_match_game_mode_;
 
     // ACK-wait timer for PLAYER_REGISTER flow. Cancelled on ACK arrival or disconnect.
     std::shared_ptr<asio::steady_timer> pending_ack_timer_;
@@ -257,6 +267,7 @@ private:
                         pending_ack_timer_.reset();
                     }
                     if (!session_guid_.empty()) {
+                        MatchmakingService::RemovePlayer(session_guid_);
                         UnregisterSession(session_guid_);
                         IpcServer::ClearPendingAck(session_guid_);
                         PlayerSessionStore::Unregister(session_guid_);
@@ -310,6 +321,14 @@ private:
 
     void send_match_launch_response();
 
+	void send_match_join_response(uint32_t matchQueueId, uint32_t matchFilters);
+
+	void send_match_leave_response();
+
+    void send_match_invitation(int64_t instance_id, const std::string& game_mode);
+
+    void send_match_accept_response();
+
     void send_go_play_tutorial_response();
 
     void send_marshal_channel_response();
@@ -328,10 +347,11 @@ private:
     void send_login_response();
 
     static void LogData(const uint8_t* data, size_t length) {
+        std::ostringstream oss;
         for (size_t i = 0; i < length; i++) {
-            Logger::Log("tcp", "%02X", data[i]);
+            oss << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(data[i]);
         }
-        Logger::Log("tcp", "\n");
+        Logger::Log("tcp", "%s\n", oss.str().c_str());
     }
 
     static std::string get_current_datetime() {
