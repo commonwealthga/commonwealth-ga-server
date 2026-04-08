@@ -1,33 +1,29 @@
 #include "src/GameServer/TgGame/TgGame/ReviveAttackersTimer/TgGame__ReviveAttackersTimer.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
+// Revives all attackers in the wave revive queue and re-arms the repeating timer.
+// Called from PostBeginPlay (initial setup) and then periodically via SetTimer.
 void __fastcall TgGame__ReviveAttackersTimer::Call(ATgGame *Game, void *edx) {
-	Logger::Log("debug", "TgGame::ReviveAttackersTimer called\n");
+	LogCallBegin();
 
-	if (Game->s_AttackerReviveList.Data != nullptr) {
+	if (Game->s_AttackerReviveList.Data != nullptr && Game->s_AttackerReviveList.Num() > 0) {
+		Logger::Log("revive", "ReviveAttackersTimer: reviving %d attackers\n", Game->s_AttackerReviveList.Num());
 		for (int i = 0; i < Game->s_AttackerReviveList.Num(); i++) {
 			ATgPlayerController* PlayerController = (ATgPlayerController*)Game->s_AttackerReviveList.Data[i];
 			if (PlayerController != nullptr) {
-				Logger::Log("debug", "Reviving attacker player %s\n", PlayerController->GetFullName());
+				Logger::Log("revive", "  Reviving attacker %s\n", PlayerController->GetFullName());
 				PlayerController->eventRevive();
 			}
 		}
-
 		Game->s_AttackerReviveList.Clear();
 	}
 
-	if (Game->s_DefenderReviveList.Data != nullptr) {
-		for (int i = 0; i < Game->s_DefenderReviveList.Num(); i++) {
-			ATgPlayerController* PlayerController = (ATgPlayerController*)Game->s_DefenderReviveList.Data[i];
-			if (PlayerController != nullptr) {
-				Logger::Log("debug", "Reviving defender player %s\n", PlayerController->GetFullName());
-				PlayerController->eventRevive();
-			}
-		}
-
-		Game->s_DefenderReviveList.Clear();
+	// Re-arm repeating timer for the next wave
+	ATgRepInfo_Game* GRI = (ATgRepInfo_Game*)Game->GameReplicationInfo;
+	if (GRI != nullptr && GRI->r_nSecsToAutoReleaseAttackers > 0) {
+		Game->SetTimer((float)GRI->r_nSecsToAutoReleaseAttackers, 1, FName("ReviveAttackersTimer"), nullptr);
 	}
 
-	// Game->SetTimer(((ATgRepInfo_Game*)Game->GameReplicationInfo)->r_nSecsToAutoReleaseAttackers, 1, FName("ReviveAttackersTimer"), nullptr);
+	LogCallEnd();
 }
 

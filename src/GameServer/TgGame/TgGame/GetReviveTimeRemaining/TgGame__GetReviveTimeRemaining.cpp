@@ -1,41 +1,43 @@
 #include "src/GameServer/TgGame/TgGame/GetReviveTimeRemaining/TgGame__GetReviveTimeRemaining.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
+// Returns the number of seconds until the next wave revive fires for this controller.
+// Called from TgPlayerController::Dead.BeginState after RegisterForWaveRevive.
+// The result is sent to the client via ClientUpdateTimeRemaining so the death screen
+// shows a countdown.
 int __fastcall TgGame__GetReviveTimeRemaining::Call(ATgGame* Game, void* edx, AController* Controller) {
+	LogCallBegin();
 
-	if (Game->s_AttackerReviveList.Data != nullptr) {
-		for (int i = 0; i < Game->s_AttackerReviveList.Num(); i++) {
-			ATgPlayerController* PlayerController = (ATgPlayerController*)Game->s_AttackerReviveList.Data[i];
-			if (PlayerController != nullptr) {
-				Logger::Log("debug", "Reviving attacker player %s\n", PlayerController->GetFullName());
-				PlayerController->eventRevive();
-			}
-		}
-
-		Game->s_AttackerReviveList.Clear();
+	ATgRepInfo_Game* GRI = (ATgRepInfo_Game*)Game->GameReplicationInfo;
+	if (GRI == nullptr) {
+		LogCallEnd();
+		return 0;
 	}
 
-	if (Game->s_DefenderReviveList.Data != nullptr) {
-		for (int i = 0; i < Game->s_DefenderReviveList.Num(); i++) {
-			ATgPlayerController* PlayerController = (ATgPlayerController*)Game->s_DefenderReviveList.Data[i];
-			if (PlayerController != nullptr) {
-				Logger::Log("debug", "Reviving defender player %s\n", PlayerController->GetFullName());
-				PlayerController->eventRevive();
-			}
-		}
+	// Determine which timer applies to this controller
+	ATgPlayerController* PC = (ATgPlayerController*)Controller;
+	ATgRepInfo_Player* RepInfo = (ATgRepInfo_Player*)PC->PlayerReplicationInfo;
 
-		Game->s_DefenderReviveList.Clear();
+	bool bIsAttacker = false;
+	if (RepInfo != nullptr && RepInfo->r_TaskForce != nullptr) {
+		bIsAttacker = RepInfo->r_TaskForce->IsAttacker();
 	}
 
-	// int remaining = (int)Game->GetRemainingTimeForTimer(FName("ReviveAttackersTimer"), nullptr);
-	//
-	// Logger::Log("debug", "TgGame::GetReviveTimeRemaining called, remaining time: %d\n", remaining);
-	//
-	// if (remaining == -1) {
-	// 	Game->SetTimer(((ATgRepInfo_Game*)Game->GameReplicationInfo)->r_nSecsToAutoReleaseAttackers, 1, FName("ReviveAttackersTimer"), nullptr);
-	// 	return ((ATgRepInfo_Game*)Game->GameReplicationInfo)->r_nSecsToAutoReleaseAttackers;
-	// }
-	//
-	// return remaining;
+	FName TimerName = bIsAttacker ? FName("ReviveAttackersTimer") : FName("ReviveDefendersTimer");
+	int autoReleaseSecs = bIsAttacker ? GRI->r_nSecsToAutoReleaseAttackers : GRI->r_nSecsToAutoReleaseDefenders;
+
+	float remaining = Game->GetRemainingTimeForTimer(TimerName, nullptr);
+
+	Logger::Log("revive", "GetReviveTimeRemaining controller=%s isAttacker=%d remaining=%.1f autoRelease=%d\n",
+		Controller->GetName(), bIsAttacker, remaining, autoReleaseSecs);
+
+	// If the timer isn't running yet (returns -1 or 0), return the full auto-release interval
+	if (remaining <= 0.0f) {
+		LogCallEnd();
+		return autoReleaseSecs;
+	}
+
+	LogCallEnd();
+	return (int)remaining;
 }
 

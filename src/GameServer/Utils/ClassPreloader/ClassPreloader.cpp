@@ -69,6 +69,10 @@ UClass* ClassPreloader::GetTgSeqEventMissionTimerClass() {
 	return GetClass("Class TgGame.TgSeqEvent_MissionTimer");
 }
 
+UClass* ClassPreloader::GetTgSeqEventMissionTimeRemainingClass() {
+	return GetClass("Class TgGame.TgSeqEvent_MissionTimeRemaining");
+}
+
 UClass* ClassPreloader::GetTgSeqEventLevelFadedInClass() {
 	return GetClass("Class TgGame.TgSeqEvent_LevelFadedIn");
 }

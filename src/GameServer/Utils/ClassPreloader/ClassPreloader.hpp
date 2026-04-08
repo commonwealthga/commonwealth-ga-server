@@ -23,6 +23,7 @@ public:
 	static UClass* GetTgInventoryObjectDeviceClass();
 	static UClass* GetTgHudTeamGameClass();
 	static UClass* GetTgSeqEventMissionTimerClass();
+	static UClass* GetTgSeqEventMissionTimeRemainingClass();
 	static UClass* GetTgSeqEventLevelFadedInClass();
 	static UClass* GetSeqEventLevelLoadedClass();
 };
