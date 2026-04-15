@@ -14,6 +14,8 @@ void __fastcall CAmEffectModel__LoadEffectGroupMarshal::Call(void* CAmEffectGrou
 
 	CallOriginal(CAmEffectGroupModelRow, edx, Marshal);
 
+	// DB population moved to AsmDataCapture::WalkEffectGroups.
+#if 0
 	if (bPopulateDatabaseEffectGroups) {
 
 		// CMarshal__Translate::m_values[GA_T::GA_T::NAME_MSG_ID]
@@ -98,6 +100,7 @@ void __fastcall CAmEffectModel__LoadEffectGroupMarshal::Call(void* CAmEffectGrou
 		sqlite3_step(stmt);
 		sqlite3_finalize(stmt);
 	}
+#endif
 
 }
 

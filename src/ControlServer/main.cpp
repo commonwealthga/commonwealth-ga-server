@@ -38,6 +38,7 @@ static void on_signal(int /*sig*/) {
 
 int main(int argc, char* argv[]) {
     std::string config_path = "control-server.json";
+    bool wine_debug = false;
 
     // Parse CLI arguments
     for (int i = 1; i < argc; ++i) {
@@ -50,9 +51,13 @@ int main(int argc, char* argv[]) {
                 "Options:\n"
                 "  --config=PATH     Path to JSON config file (default: control-server.json)\n"
                 "  --config PATH     (space-separated form)\n"
+                "  --wine-debug      Use winedbg with --command cont (prints crash traces)\n"
                 "  --help, -h        Print this help and exit\n"
             );
             return 0;
+        }
+        else if (arg == "--wine-debug") {
+            wine_debug = true;
         }
         else if (arg == "--config" && i + 1 < argc) {
             config_path = argv[++i];
@@ -68,6 +73,7 @@ int main(int argc, char* argv[]) {
 
     // Load config from JSON file (falls back to defaults if file is absent).
     ControlServerConfig cfg = ControlServerConfig::Load(config_path);
+    cfg.wine_debug = wine_debug;
 
     // Signal handlers for clean shutdown
     std::signal(SIGINT,  on_signal);

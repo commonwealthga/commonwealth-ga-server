@@ -108,6 +108,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetFloat/CMarshal__GetFloat.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetGuid/CMarshal__GetGuid.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/Translate/CMarshal__Translate.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetArray/CMarshal__GetArray.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CAmBot/LoadBotBehaviorMarshal/CAmBot__LoadBotBehaviorMarshal.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CAmBot/LoadBotSpawnTableMarshal/CAmBot__LoadBotSpawnTableMarshal.cpp \
@@ -288,6 +289,9 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/ServerSetTaskForceLead/TgPlayerController__ServerSetTaskForceLead.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/SetHomeMapGame/TgPlayerController__SetHomeMapGame.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/ShouldAutoKick/TgPlayerController__ShouldAutoKick.cpp \
+			  $(SRC_DIR)/Database/AsmDataCapture/AsmDataCapture.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetName/CMarshal__GetName.cpp \
+			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetWcharT/CMarshal__GetWcharT.cpp \
 			  $(SRC_DIR)/dllmain.cpp
 
 SOURCE_FILES_CLIENT= \

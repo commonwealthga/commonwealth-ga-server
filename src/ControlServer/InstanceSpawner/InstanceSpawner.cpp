@@ -39,9 +39,18 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         std::string gamepath_arg  = "-gamepath=" + cfg.game_binary;
         std::string fixguids_arg  = std::string("-fixpackageguids=") + (cfg.fix_package_guids ? "1" : "0");
 
+        // --wine-debug: use winedbg instead of wine, with "--command cont" to auto-resume
+        std::string wine_bin = cfg.wine_debug ? cfg.wine_binary + "dbg" : cfg.wine_binary;
+
         std::vector<const char*> argv = {
             cfg.xvfb_run_path.c_str(), "-a",
-            cfg.wine_binary.c_str(),
+            wine_bin.c_str(),
+        };
+        if (cfg.wine_debug) {
+            argv.push_back("--command");
+            argv.push_back("cont");
+        }
+        for (const char* a : {
             cfg.game_binary.c_str(),
             "server",
             map_arg.c_str(),
@@ -50,8 +59,10 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
             "-seekfreeloading", "-tcp=300", "-nullrhi",
             ipc_port_arg.c_str(), inst_id_arg.c_str(), gamepath_arg.c_str(),
             fixguids_arg.c_str(),
-            nullptr
-        };
+        }) {
+            argv.push_back(a);
+        }
+        argv.push_back(nullptr);
 
         execvp(cfg.xvfb_run_path.c_str(), const_cast<char* const*>(argv.data()));
 

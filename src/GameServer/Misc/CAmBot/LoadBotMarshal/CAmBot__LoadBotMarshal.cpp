@@ -14,15 +14,18 @@ std::map<uint32_t, int> CAmBot__LoadBotMarshal::m_BotPointers;
 std::map<uint32_t, uint32_t> CAmBot__LoadBotMarshal::m_BotBehaviorIds;
 
 void __fastcall CAmBot__LoadBotMarshal::Call(void* CAmBotRow, void* edx, void* Marshal) {
-	CMarshal__GetByte::bIsLoadingBots = true;
-
+	// bIsLoadingBots / m_botDevices side-channel is obsolete — bot device capture
+	// now happens in AsmDataCapture::WalkBotDevices (driven by CMarshal__GetArray
+	// dispatch for DATA_SET_BOT_DEVICES).
 	CallOriginal(CAmBotRow, edx, Marshal);
-
-	CMarshal__GetByte::bIsLoadingBots = false;
 
 	m_BotPointers[CMarshal__GetByte::m_values[GA_T::GA_T::BOT_ID]] = (int)(CAmBotRow);
 	m_BotBehaviorIds[CMarshal__GetByte::m_values[GA_T::GA_T::BOT_ID]] = CMarshal__GetByte::m_values[GA_T::GA_T::BEHAVIOR_ID];
 
+	// DB population moved to AsmDataCapture (bots + nested bot_devices).  Keeping
+	// bPopulateDatabaseBots / bPopulateDatabaseBotDevices fields for source-compat;
+	// they're read but never true.  Original INSERT code preserved in #if 0 block.
+#if 0
 	if (bPopulateDatabaseBots) {
 		sqlite3* db = Database::GetConnection();
 		sqlite3_stmt* stmt;
@@ -177,5 +180,6 @@ void __fastcall CAmBot__LoadBotMarshal::Call(void* CAmBotRow, void* edx, void* M
 			sqlite3_finalize(stmt);
 		}
 	}
+#endif
 }
 

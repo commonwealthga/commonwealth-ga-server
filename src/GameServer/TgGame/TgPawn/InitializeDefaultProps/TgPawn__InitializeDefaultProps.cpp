@@ -110,6 +110,16 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// Engine APawn default AirSpeed = 600.0f
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_AIR_SPEED,               600.0f, 600.0f, 0, 600.0f);
 
+	// Gravity Z modifier — replicated at ATgPawn+0x117C. Default 1.0 = normal gravity.
+	// Applied in TgPawn physics; 0 would mean no gravity.
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_GRAVITYZ_MODIFIER,       1.0f, 1.0f, 0, 100.0f);
+
+	// Falling damage modifier — server-only at ATgPawn+0x1180.
+	// TakeFallingDamage (TgPawn.uc:2784) multiplies fall damage by this value.
+	// Returns early if <= 0.0, so it MUST be initialized to a positive value.
+	// 1.0 = normal fall damage; 0 = disabled; >1 = amplified.
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_FALLING_DAMAGE_MODIFIER, 1.0f, 1.0f, 0, 100.0f);
+
 	// TGPID_STEALTH_TYPE_CODE (341): UScript class default is r_nStealthTypeCode=1037 (TG_STEALTH_GENERAL).
 	// SetProperty(341, 0) overrides that → r_nStealthTypeCode = 0 = no stealth active.
 	// Stealth effects will set it to a non-zero value ID (e.g. 1037) when they activate.

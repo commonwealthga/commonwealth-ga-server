@@ -8,13 +8,16 @@
 //                             optional int nEffectGroupCategory);
 // Direct damage path used e.g. for falling damage — bypasses TgEffectGroup pipeline.
 // Address identified at 0x10a73960.
+// IMPORTANT: FImpactInfo is passed BY VALUE (96 bytes on stack, RET 0x74).
+// GCC __fastcall can't reliably forward large by-value structs, so the hook is a
+// naked trampoline: it calls a logging helper then JMPs to the original, reusing
+// the caller's stack frame verbatim.
 class TgEffectManager__ApplyDamage : public HookBase<
-	void(__fastcall*)(ATgEffectManager*, void*, int, AActor*, int, int, FImpactInfo*, int),
+	void(__fastcall*)(ATgEffectManager*, void*),   // minimal type — actual params stay on stack
 	0x10a73960,
 	TgEffectManager__ApplyDamage> {
 public:
-	static void __fastcall Call(ATgEffectManager* pThis, void* edx, int nDamage, AActor* aInstigator, int nAttackType, int nDamageType, FImpactInfo* Impact, int nEffectGroupCategory);
-	static inline void __fastcall CallOriginal(ATgEffectManager* pThis, void* edx, int nDamage, AActor* aInstigator, int nAttackType, int nDamageType, FImpactInfo* Impact, int nEffectGroupCategory) {
-		m_original(pThis, edx, nDamage, aInstigator, nAttackType, nDamageType, Impact, nEffectGroupCategory);
-	};
+	static void __cdecl LogCall(ATgEffectManager* pThis, int nDamage, AActor* aInstigator,
+	                            int nAttackType, int nDamageType, int nEffectGroupCategory);
+	static void __fastcall Call(ATgEffectManager* pThis, void* edx);
 };

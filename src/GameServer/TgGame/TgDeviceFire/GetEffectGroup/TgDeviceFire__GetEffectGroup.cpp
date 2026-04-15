@@ -150,13 +150,28 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 			int** begin = *(int***)((char*)pFireMode + 0x98);
 			int** end   = *(int***)((char*)pFireMode + 0x9C);
 
+			// Read fire mode's damage type (UTgDeviceFire+0xBC) and attack type (+0x88)
+			// to propagate onto each effect group for CalcDamageTypeProtection / CalcAttackTypeProtection.
+			int   fmDamageType = *(int*)((char*)pThis + 0xBC);
+			int   fmAttackType = *(int*)((char*)pThis + 0x88);
+
+			// Map fire-mode attack-type value ID to TG_EQUIP_ATTACK_TYPE enum:
+			//   170 (0xAA) = melee → 1, 85 (0x55) / 177 (0xB1) = ranged → 2
+			unsigned char eAttackType = 0;
+			if (fmAttackType == 170)                       eAttackType = 1; // TGEAT_MELEE
+			else if (fmAttackType == 85 || fmAttackType == 177) eAttackType = 2; // TGEAT_RANGE
+
 			TARRAY_INIT(pThis, egList, UTgEffectGroup*, 0x48, 8)
 
 			for (int** pp = begin; pp != end; pp++) {
 				int egId   = (*pp)[0];
 				int egType = (*pp)[1];
 				UTgEffectGroup* g = BuildEffectGroup(egId, egType);
-				if (g) { TARRAY_ADD(egList, g) }
+				if (g) {
+					g->m_nDamageType = fmDamageType;
+					g->m_eAttackType = eAttackType;
+					TARRAY_ADD(egList, g)
+				}
 			}
 		}
 	}

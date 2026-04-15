@@ -14,6 +14,8 @@ void __fastcall CAmDeviceModel__LoadDeviceModeMarshal::Call(void* CAmDeviceModel
 
 	CallOriginal(CAmDeviceModelRow, edx, Marshal);
 
+	// DB population moved to AsmDataCapture::WalkDeviceModes.
+#if 0
 	if (bPopulateDatabaseDeviceModes) {
 		sqlite3* db = Database::GetConnection();
 		sqlite3_stmt* stmt;
@@ -38,6 +40,7 @@ void __fastcall CAmDeviceModel__LoadDeviceModeMarshal::Call(void* CAmDeviceModel
 		sqlite3_step(stmt);
 		sqlite3_finalize(stmt);
 	}
+#endif
 
 }
 

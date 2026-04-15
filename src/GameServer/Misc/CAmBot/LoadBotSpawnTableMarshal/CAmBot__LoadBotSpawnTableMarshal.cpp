@@ -10,6 +10,9 @@
 bool CAmBot__LoadBotSpawnTableMarshal::bPopulateDatabase = false;
 
 void __fastcall CAmBot__LoadBotSpawnTableMarshal::Call(void *param_1, void *edx, void *param_2, int param_3) {
+	// DB population moved to AsmDataCapture::WalkBotSpawnTables (driven by
+	// CMarshal__GetArray dispatch for DATA_SET_BOT_SPAWN_TABLES).
+#if 0
 	if (bPopulateDatabase) {
 		sqlite3* db = Database::GetConnection();
 		sqlite3_stmt* stmt;
@@ -54,6 +57,7 @@ void __fastcall CAmBot__LoadBotSpawnTableMarshal::Call(void *param_1, void *edx,
 			sqlite3_finalize(stmt);
 		}
 	}
+#endif
 
 	CallOriginal(param_1, edx, param_2, param_3);
 }

@@ -1,4 +1,5 @@
 #include "src/GameServer/Misc/CMarshal/GetArray/CMarshal__GetArray.hpp"
+#include "src/Database/AsmDataCapture/AsmDataCapture.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 std::map<int, uint32_t> CMarshal__GetArray::m_values;
@@ -11,6 +12,8 @@ int __fastcall CMarshal__GetArray::Call(void* CMarshal, void* edx, int Field, ui
 
 	int result = CallOriginal(CMarshal, edx, Field, Out);
 	m_values[Field] = *Out;
+
+	AsmDataCapture::OnGetArray(CMarshal, Field, *Out);
 
 	if (bLogEnabled) {
 		if (Out != nullptr) {

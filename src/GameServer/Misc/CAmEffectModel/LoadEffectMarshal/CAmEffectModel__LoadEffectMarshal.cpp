@@ -14,6 +14,8 @@ void __fastcall CAmEffectModel__LoadEffectMarshal::Call(void* CAmEffectModelRow,
 
 	CallOriginal(CAmEffectModelRow, edx, Marshal);
 
+	// DB population moved to AsmDataCapture::WalkEffects.
+#if 0
 	if (bPopulateDatabaseEffects) {
 
 		// CMarshal__GetInt32t::m_values[GA_T::GA_T::EFFECT_GROUP_ID]
@@ -62,6 +64,7 @@ void __fastcall CAmEffectModel__LoadEffectMarshal::Call(void* CAmEffectModelRow,
 		sqlite3_step(stmt);
 		sqlite3_finalize(stmt);
 	}
+#endif
 
 }
 

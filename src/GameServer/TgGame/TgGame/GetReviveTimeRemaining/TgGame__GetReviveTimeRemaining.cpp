@@ -26,7 +26,7 @@ int __fastcall TgGame__GetReviveTimeRemaining::Call(ATgGame* Game, void* edx, AC
 	FName TimerName = bIsAttacker ? FName("ReviveAttackersTimer") : FName("ReviveDefendersTimer");
 	int autoReleaseSecs = bIsAttacker ? GRI->r_nSecsToAutoReleaseAttackers : GRI->r_nSecsToAutoReleaseDefenders;
 
-	float remaining = Game->GetRemainingTimeForTimer(TimerName, nullptr);
+	float remaining = Game->GetRemainingTimeForTimer(TimerName, Game);
 
 	Logger::Log("revive", "GetReviveTimeRemaining controller=%s isAttacker=%d remaining=%.1f autoRelease=%d\n",
 		Controller->GetName(), bIsAttacker, remaining, autoReleaseSecs);

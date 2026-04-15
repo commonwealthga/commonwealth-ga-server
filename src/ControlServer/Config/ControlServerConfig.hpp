@@ -28,6 +28,7 @@ struct ControlServerConfig {
     int         startup_timeout_seconds = 120;
     std::string db_path            = "server.db";
     bool        fix_package_guids  = true;
+    bool        wine_debug         = false;  // --wine-debug CLI flag: uses winedbg --command cont
 
     // Load config from JSON file at path. Returns defaults if file is absent or invalid.
     static ControlServerConfig Load(const std::string& path);

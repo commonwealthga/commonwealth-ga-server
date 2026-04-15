@@ -91,6 +91,7 @@
 #include "src/GameServer/Misc/CMarshal/GetFlag/CMarshal__GetFlag.hpp"
 #include "src/GameServer/Misc/CMarshal/GetGuid/CMarshal__GetGuid.hpp"
 #include "src/GameServer/Misc/CMarshal/Translate/CMarshal__Translate.hpp"
+#include "src/GameServer/Misc/CMarshal/GetArray/CMarshal__GetArray.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotBehaviorMarshal/CAmBot__LoadBotBehaviorMarshal.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotSpawnTableMarshal/CAmBot__LoadBotSpawnTableMarshal.hpp"
@@ -100,6 +101,9 @@
 #include "src/GameServer/Misc/CAmEffectModel/LoadEffectMarshal/CAmEffectModel__LoadEffectMarshal.hpp"
 #include "src/GameServer/Misc/CAmItem/LoadItemMarshal/CAmItem__LoadItemMarshal.hpp"
 #include "src/GameServer/Misc/CAmOmegaVolume/LoadOmegaVolumeMarshal/CAmOmegaVolume__LoadOmegaVolumeMarshal.hpp"
+#include "src/Database/AsmDataCapture/AsmDataCapture.hpp"
+#include "src/GameServer/Misc/CMarshal/GetName/CMarshal__GetName.hpp"
+#include "src/GameServer/Misc/CMarshal/GetWcharT/CMarshal__GetWcharT.hpp"
 
 // --- stub hook includes (logging only) ---
 #include "src/GameServer/TgGame/TgBotFactory/ClearQueue/TgBotFactory__ClearQueue.hpp"
@@ -284,13 +288,15 @@ unsigned long ModuleThread( void* ) {
 	// Logger::EnabledChannels.push_back("firespawnpet_m_pAmSetup");
 	// Logger::EnabledChannels.push_back("firespawnpet_m_pFireModeSetup");
 	// Logger::EnabledChannels.push_back("tcp");
-	// Logger::EnabledChannels.push_back("db");
+	Logger::EnabledChannels.push_back("db");
 	// Logger::EnabledChannels.push_back("debug");
 	// Logger::EnabledChannels.push_back("quest_update");
 	// Logger::EnabledChannels.push_back("session_guid");
 	// Logger::EnabledChannels.push_back("chat");
 	// Logger::EnabledChannels.push_back("matchmaking");
 	// Logger::EnabledChannels.push_back("packagemap");
+	// Logger::EnabledChannels.push_back("revive");
+
 
 	Database::Init();
 
@@ -374,7 +380,7 @@ unsigned long ModuleThread( void* ) {
 	TgDeviceFire__Deploy::Install();
 	TgDeviceFire__SpawnPet::Install();
 	TgDevice__HasMinimumPowerPool::Install();
-	TgEffectManager__ApplyDamage::Install();
+	// TgEffectManager__ApplyDamage::Install();
 	TgEffectManager__RemoveAllEffectGroups::Install();
 	TgEffectManager__RemoveAllEffects::Install();
 	TgDevice__HasEnoughPowerPool::Install();
@@ -557,10 +563,13 @@ unsigned long ModuleThread( void* ) {
 	CMarshal__GetByte::Install();
 	CMarshal__GetInt32t::Install();
 	CMarshal__GetString2::Install();
+	CMarshal__GetName::Install();
+	CMarshal__GetWcharT::Install();
 	CMarshal__GetFloat::Install();
 	CMarshal__GetFlag::Install();
 	CMarshal__GetGuid::Install();
 	CMarshal__Translate::Install();
+	CMarshal__GetArray::Install();
 	CAmBot__LoadBotMarshal::bPopulateDatabaseBots = false;
 	CAmBot__LoadBotMarshal::bPopulateDatabaseBotDevices = false;
 	CAmBot__LoadBotMarshal::Install();
@@ -578,6 +587,10 @@ unsigned long ModuleThread( void* ) {
 	CAmItem__LoadItemMarshal::bPopulateDatabaseItems = false;
 	CAmItem__LoadItemMarshal::Install();
 	CAmOmegaVolume__LoadOmegaVolumeMarshal::Install();
+
+	// Unified asm_* data-set capture via CMarshal__GetArray dispatch.
+	// Flip to true for a single game run to populate, then back to false.
+	AsmDataCapture::bPopulateDatabase = true;
 
 	::DetourTransactionCommit();
 

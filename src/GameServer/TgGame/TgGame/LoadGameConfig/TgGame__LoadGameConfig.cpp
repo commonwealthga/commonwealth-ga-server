@@ -28,6 +28,7 @@ void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	LogCallBegin();
 	Game->bWaitingToStartMatch = 0;
 
+	Game->s_UseCustomReviveTimer = 0;
 	Game->m_nSecsToAutoRelease = 15;
 	Game->m_nSecsToAutoReleaseAttackers = 15;
 	Game->m_nSecsToAutoReleaseDefenders = 15;
