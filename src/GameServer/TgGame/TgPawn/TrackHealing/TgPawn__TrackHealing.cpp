@@ -1,5 +1,4 @@
 #include "src/GameServer/TgGame/TgPawn/TrackHealing/TgPawn__TrackHealing.hpp"
-#include "src/Utils/Logger/Logger.hpp"
 
 // Called on the HEALER pawn when they heal a player.
 // fDamage is the heal amount, fMissingHealth is how much the target was missing.

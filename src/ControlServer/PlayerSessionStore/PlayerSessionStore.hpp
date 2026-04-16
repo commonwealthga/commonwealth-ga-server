@@ -54,6 +54,14 @@ public:
 
     static std::vector<DeviceRow> GetDevicesForCharacter(int64_t character_id);
 
+    // Returns every effect group that should be reported in DATA_SET_INVENTORY_STATE
+    // for a given equipped device. Client (FUN_10a13820 @ 0x10a13820) accumulates
+    // these into the inventory object's effect list, which drives TgDeviceFire::
+    // GetEffectGroup runtime lookups. Queried from asm_data_set_device_effect_groups
+    // + asm_data_set_device_mode_effect_groups; falls back to the legacy hardcoded
+    // map when the asm tables are empty (pre-capture runs).
+    static std::vector<int> GetEffectGroupIds(int device_id);
+
     static QuestStore& Quests() {
         static QuestStore instance;
         return instance;

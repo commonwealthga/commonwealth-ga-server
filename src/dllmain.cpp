@@ -73,6 +73,7 @@
 #include "src/GameServer/TgGame/TgBotFactory/ResetQueue/TgBotFactory__ResetQueue.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
+#include "src/GameServer/TgGame/TgDeviceFire/GetPropertyValueById/TgDeviceFire__GetPropertyValueById.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/CustomFire/TgDeviceFire__CustomFire.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/Deploy/TgDeviceFire__Deploy.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/SpawnPet/TgDeviceFire__SpawnPet.hpp"
@@ -119,6 +120,8 @@
 #include "src/GameServer/TgGame/TgEffectManager/IsStrongest/TgEffectManager__IsStrongest.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroup/TgEffectManager__RemoveEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.hpp"
+#include "src/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.hpp"
+#include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/AdjustBeaconForwardSpawn/TgGame_Arena__AdjustBeaconForwardSpawn.hpp"
 #include "src/GameServer/TgGame/TgGame_Control/CalcAttackerReviveTime/TgGame_Control__CalcAttackerReviveTime.hpp"
 #include "src/GameServer/TgGame/TgGame_Control/CalcDefenderReviveTime/TgGame_Control__CalcDefenderReviveTime.hpp"
@@ -173,11 +176,13 @@
 #include "src/GameServer/TgGame/TgPawn_Character/UpdateDurability/TgPawn_Character__UpdateDurability.hpp"
 #include "src/GameServer/TgGame/TgPawn_Character/VanityPetDestroyed/TgPawn_Character__VanityPetDestroyed.hpp"
 #include "src/GameServer/TgGame/TgPawn/AddProperty/TgPawn__AddProperty.hpp"
+#include "src/GameServer/TgGame/TgPawn/AddDamageInfo/TgPawn__AddDamageInfo.hpp"
 #include "src/GameServer/TgGame/TgPawn/ApplyBuff/TgPawn__ApplyBuff.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackBotHealing/TgPawn__TrackBotHealing.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackCompleteKillInfo/TgPawn__TrackCompleteKillInfo.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackDamagedBot/TgPawn__TrackDamagedBot.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackDamagedPlayer/TgPawn__TrackDamagedPlayer.hpp"
+#include "src/GameServer/TgGame/TgPawn_Character/SendCombatMessage/TgPawn_Character__SendCombatMessage.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackHealing/TgPawn__TrackHealing.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackHit/TgPawn__TrackHit.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/ServerApplyFlair/TgPlayerController__ServerApplyFlair.hpp"
@@ -279,6 +284,7 @@
 
 unsigned long ModuleThread( void* ) {
 	// Logger::EnabledChannels.push_back("hook_calltree");
+	// Logger::EnabledChannels.push_back("combat-trace");
 	// Logger::EnabledChannels.push_back("ipc");
 	// Logger::EnabledChannels.push_back("kismet");
 	// Logger::EnabledChannels.push_back("tgbotfactory");
@@ -288,14 +294,16 @@ unsigned long ModuleThread( void* ) {
 	// Logger::EnabledChannels.push_back("firespawnpet_m_pAmSetup");
 	// Logger::EnabledChannels.push_back("firespawnpet_m_pFireModeSetup");
 	// Logger::EnabledChannels.push_back("tcp");
-	Logger::EnabledChannels.push_back("db");
+	// Logger::EnabledChannels.push_back("db");
+	// Logger::EnabledChannels.push_back("process_event");
+	// Logger::EnabledChannels.push_back("damage-info");
 	// Logger::EnabledChannels.push_back("debug");
 	// Logger::EnabledChannels.push_back("quest_update");
 	// Logger::EnabledChannels.push_back("session_guid");
 	// Logger::EnabledChannels.push_back("chat");
 	// Logger::EnabledChannels.push_back("matchmaking");
 	// Logger::EnabledChannels.push_back("packagemap");
-	// Logger::EnabledChannels.push_back("revive");
+	Logger::EnabledChannels.push_back("revive");
 
 
 	Database::Init();
@@ -376,6 +384,7 @@ unsigned long ModuleThread( void* ) {
 	TgGame__MissionTimeRemaining::Install();
 	TgGame__SendMissionTimerEvent::Install();
 	TgDeviceFire__GetEffectGroup::Install();
+	TgDeviceFire__GetPropertyValueById::Install();
 	TgDeviceFire__CustomFire::Install();
 	TgDeviceFire__Deploy::Install();
 	TgDeviceFire__SpawnPet::Install();
@@ -397,6 +406,8 @@ unsigned long ModuleThread( void* ) {
 	TgDevice__ApplyInventoryEquipEffects::Install();
 	TgDevice__ClearInstigatorEquippedDevices::Install();
 	TgDevice__PopulateInstigatorEquippedDevices::Install();
+	TgEffectGroup__CloneEffectGroup::Install();
+	TgEffectGroup__RemoveEffects::Install();
 	TgEffectManager__GetSkillBasedEffectGroup::Install();
 	TgEffectManager__IsStrongest::Install();
 	TgEffectManager__RemoveEffectGroup::Install();
@@ -455,11 +466,13 @@ unsigned long ModuleThread( void* ) {
 	TgPawn_Character__UpdateDurability::Install();
 	TgPawn_Character__VanityPetDestroyed::Install();
 	TgPawn__AddProperty::Install();
+	TgPawn__AddDamageInfo::Install();
 	TgPawn__ApplyBuff::Install();
 	TgPawn__TrackBotHealing::Install();
 	TgPawn__TrackCompleteKillInfo::Install();
 	TgPawn__TrackDamagedBot::Install();
 	TgPawn__TrackDamagedPlayer::Install();
+	TgPawn_Character__SendCombatMessage::Install();
 	TgPawn__TrackHealing::Install();
 	TgPawn__TrackHit::Install();
 	TgPlayerController__ServerApplyFlair::Install();

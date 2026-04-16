@@ -6,6 +6,7 @@
 #include "src/GameServer/TgGame/TgInventoryManager/PrepopulateInventoryId/TgInventoryManager__PrepopulateInventoryId.hpp"
 #include "src/GameServer/TgGame/TgInventoryObject_Device/ConstructInventoryObject/TgInventoryObject_Device__ConstructInventoryObject.hpp"
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
+#include "src/GameServer/TgGame/TgPawn/SyncPawnHealth/SyncPawnHealth.hpp"
 #include "src/GameServer/Core/TMap/Allocate/TMap__Allocate.hpp"
 #include "src/GameServer/Misc/AssemblyDatManager/CreateDevice/AssemblyDatManager__CreateDevice.hpp"
 #include "src/GameServer/Misc/CAmItem/LoadItemMarshal/CAmItem__LoadItemMarshal.hpp"
@@ -52,6 +53,15 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	PlayerController->Pawn = newpawn;
 	newpawn->Controller = PlayerController;
+
+	PlayerController->eventPossess(PlayerController->Pawn, 0, 0);
+
+	// NOTE: don't call ClientSetCinematicMode here — we're still inside
+	// PostLogin → RestartPlayer → SpawnDefaultPawnFor, i.e. BEFORE
+	// GenericPlayerInitialization → ClientSetHUD spawns the real TgHUD_Game
+	// on the client. Firing the RPC now would target the stale TgLoginHUD.
+	// It's invoked from MarshalChannel__NotifyControlMessage::HandlePlayerConnected
+	// after eventPostLogin completes.
 
 
 
@@ -152,11 +162,10 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	newpawn->r_nPhysicalType = 860;
 	newpawn->ReplicatedCollisionType = newpawn->CollisionType;
-	// HP and power pool are initialized by InitializeDefaultProps from asm_data_set_bots.
-	// Read back the initialized values after Spawn() returns.
-	int hp = (int)newpawn->HealthMax;  // set by SetProperty(TGPID_HEALTH_MAX) inside InitializeDefaultProps
-	newpawn->Health = newpawn->HealthMax;
-	newpawn->r_nHealthMaximum = hp;
+	// HP and power pool are initialized by InitializeDefaultProps from
+	// asm_data_set_bots. r_nHealthMaximum is the post-init source of truth
+	// (Engine APawn::HealthMax isn't written by SetProperty(304)).
+	int hp = newpawn->r_nHealthMaximum;
 	newpawn->r_nProfileId = classConfig.profileId;
 	newpawn->r_bDisableAllDevices = 0;
 	newpawn->r_bEnableEquip = 1;
@@ -239,8 +248,9 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newrepplayer->r_CustomCharacterAssembly.DyeList[3] = GA_G::DYE_ID_NONE_MORE_BLACK;
 	newrepplayer->r_CustomCharacterAssembly.DyeList[4] = GA_G::DYE_ID_NONE_MORE_BLACK;
 	newrepplayer->r_nProfileId = classConfig.profileId;
-	newrepplayer->r_nHealthCurrent = hp;
-	newrepplayer->r_nHealthMaximum = hp;
+	// PRI is now wired to newpawn — fan HP across all 7 storage locations
+	// (engine fields + property descriptors + PRI replicated fields).
+	SyncPawnHealth::Apply(newpawn, hp, hp);
 	newrepplayer->r_nCharacterId = newpawn->s_nCharacterId;
 	newrepplayer->r_nLevel = 50;
 	// newrepplayer->r_sOrigPlayerName = FString(L"Zaxik");

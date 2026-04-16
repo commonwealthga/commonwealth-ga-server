@@ -1,5 +1,4 @@
 #include "src/GameServer/TgGame/TgPawn/TrackDamagedBot/TgPawn__TrackDamagedBot.hpp"
-#include "src/Utils/Logger/Logger.hpp"
 
 // Called on the ATTACKER pawn when they damage a bot.
 // Accumulates damage dealt in r_Scores[STYPE_DAMAGE].

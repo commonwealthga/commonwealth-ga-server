@@ -95,37 +95,43 @@ struct FName
 	int				Index; 
 	unsigned char	unknownData00[ 0x4 ]; 
 
-	FName() : Index ( 0 ) {}; 
+	FName() : Index ( 0 ) { memset( unknownData00, 0, sizeof(unknownData00) ); };
 
-	FName ( int i ) : Index ( i ) {}; 
+	FName ( int i ) : Index ( i ) { memset( unknownData00, 0, sizeof(unknownData00) ); };
 
-	~FName() {}; 
+	~FName() {};
 
-	FName ( char* FindName ) 
-	{ 
-		static TArray< int > NameCache; 
+	FName ( char* FindName )
+	{
+		// Zero the instance-number half of the FName up front. Native UE3 APIs that
+		// consume the Number portion (e.g. SetTimer's function-name lookup) would
+		// otherwise read uninitialized stack bytes and append a garbage suffix like
+		// "ReviveAttackersTimer_279405059", causing lookups to fail silently.
+		memset( unknownData00, 0, sizeof(unknownData00) );
 
-		for ( int i = 0; i < NameCache.Count; ++i ) 
-		{ 
-		if ( ! strcmp ( this->Names()->Data[ NameCache ( i ) ]->Name, FindName ) ) 
-			{ 
-				Index = NameCache ( i ); 
-				return; 
-			} 
-		} 
+		static TArray< int > NameCache;
 
-		for ( int i = 0; i < this->Names()->Count; ++i ) 
-		{ 
-			if ( this->Names()->Data[ i ] ) 
-			{ 
-				if ( ! strcmp ( this->Names()->Data[ i ]->Name, FindName ) ) 
-				{ 
-					NameCache.Add ( i ); 
-					Index = i; 
+		for ( int i = 0; i < NameCache.Count; ++i )
+		{
+		if ( ! strcmp ( this->Names()->Data[ NameCache ( i ) ]->Name, FindName ) )
+			{
+				Index = NameCache ( i );
+				return;
+			}
+		}
+
+		for ( int i = 0; i < this->Names()->Count; ++i )
+		{
+			if ( this->Names()->Data[ i ] )
+			{
+				if ( ! strcmp ( this->Names()->Data[ i ]->Name, FindName ) )
+				{
+					NameCache.Add ( i );
+					Index = i;
 					return;
-				} 
-			} 
-		} 
+				}
+			}
+		}
 
 		// Not found — insert a new FNameEntry
 		FNameEntry* NewEntry = (FNameEntry*)malloc(sizeof(FNameEntry));
@@ -136,7 +142,7 @@ struct FName
 		Names()->Add(NewEntry);  // Append to GNames
 		Index = Names()->Count - 1;
 		NameCache.Add(Index);
-	}; 
+	};
 
 	static TArray< FNameEntry* >* Names() 
 	{ 

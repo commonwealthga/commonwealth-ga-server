@@ -9,6 +9,22 @@
 
 int TgPawn__InitializeDefaultProps::nPendingBotId = 0;
 
+namespace {
+struct BotDefaults {
+	float hitPoints;
+	float speed;
+	float powerPool;
+	float rechargeRate;
+	float accuracy;
+	float sightRange;
+};
+// Per-bot defaults cache. Populated lazily on the first InitializeDefaultProps
+// call for a given bot_id; subsequent spawns of the same bot reuse the row
+// without hitting SQLite. The DB rows are static reference data (loaded from
+// assembly.dat at startup), so once cached they don't need invalidation.
+std::unordered_map<int, BotDefaults> g_botDefaultsCache;
+}
+
 UTgProperty* TgPawn__InitializeDefaultProps::InitializeProperty(ATgPawn* Pawn, int nPropertyId, float fBase, float fRaw, float fMinimum, float fMaximum) {
 	UTgProperty* Property = (UTgProperty*)TgProperty__ConstructTgProperty::CallOriginal(
 		ClassPreloader::GetTgPropertyClass(), -1, 0, 0,0,0,0,0,0);
@@ -60,35 +76,64 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	float sightRange   = 800.0f;
 
 	if (nPendingBotId != 0) {
-		sqlite3* db = Database::GetConnection();
-		sqlite3_stmt* stmt;
-		if (sqlite3_prepare_v2(db,
-			"SELECT hit_points, default_speed, default_power_pool, power_pool_regen_per_sec, accuracy_override, default_sensor_range "
-			"FROM asm_data_set_bots WHERE bot_id = ? LIMIT 1",
-			-1, &stmt, nullptr) == SQLITE_OK) {
-			sqlite3_bind_int(stmt, 1, nPendingBotId);
-			if (sqlite3_step(stmt) == SQLITE_ROW) {
-				if (sqlite3_column_type(stmt, 0) != SQLITE_NULL && sqlite3_column_int(stmt, 0) > 0)
-					hitPoints    = (float)sqlite3_column_int(stmt, 0);
-				if (sqlite3_column_type(stmt, 1) != SQLITE_NULL && sqlite3_column_double(stmt, 1) > 0.0)
-					speed        = (float)sqlite3_column_double(stmt, 1) * 16.0f;
-				if (sqlite3_column_type(stmt, 2) != SQLITE_NULL && sqlite3_column_int(stmt, 2) > 0)
-					powerPool    = (float)sqlite3_column_int(stmt, 2);
-				if (sqlite3_column_type(stmt, 3) != SQLITE_NULL && sqlite3_column_double(stmt, 3) > 0.0)
-					rechargeRate = (float)sqlite3_column_double(stmt, 3);
-				if (sqlite3_column_type(stmt, 4) != SQLITE_NULL && sqlite3_column_double(stmt, 4) > 0.0)
-					accuracy     = (float)sqlite3_column_double(stmt, 4);
-				if (sqlite3_column_type(stmt, 5) != SQLITE_NULL && sqlite3_column_double(stmt, 5) > 0.0)
-					sightRange   = (float)sqlite3_column_double(stmt, 5);
+		auto it = g_botDefaultsCache.find(nPendingBotId);
+		if (it == g_botDefaultsCache.end()) {
+			// First spawn of this bot — query the DB row and cache it.
+			BotDefaults d{ hitPoints, speed, powerPool, rechargeRate, accuracy, sightRange };
+			sqlite3* db = Database::GetConnection();
+			sqlite3_stmt* stmt;
+			if (sqlite3_prepare_v2(db,
+				"SELECT hit_points, default_speed, default_power_pool, power_pool_regen_per_sec, accuracy_override, default_sensor_range "
+				"FROM asm_data_set_bots WHERE bot_id = ? LIMIT 1",
+				-1, &stmt, nullptr) == SQLITE_OK) {
+				sqlite3_bind_int(stmt, 1, nPendingBotId);
+				if (sqlite3_step(stmt) == SQLITE_ROW) {
+					if (sqlite3_column_type(stmt, 0) != SQLITE_NULL && sqlite3_column_int(stmt, 0) > 0)
+						d.hitPoints    = (float)sqlite3_column_int(stmt, 0);
+					if (sqlite3_column_type(stmt, 1) != SQLITE_NULL && sqlite3_column_double(stmt, 1) > 0.0)
+						d.speed        = (float)sqlite3_column_double(stmt, 1) * 16.0f;
+					if (sqlite3_column_type(stmt, 2) != SQLITE_NULL && sqlite3_column_int(stmt, 2) > 0)
+						d.powerPool    = (float)sqlite3_column_int(stmt, 2);
+					if (sqlite3_column_type(stmt, 3) != SQLITE_NULL && sqlite3_column_double(stmt, 3) > 0.0)
+						d.rechargeRate = (float)sqlite3_column_double(stmt, 3);
+					if (sqlite3_column_type(stmt, 4) != SQLITE_NULL && sqlite3_column_double(stmt, 4) > 0.0)
+						d.accuracy     = (float)sqlite3_column_double(stmt, 4);
+					if (sqlite3_column_type(stmt, 5) != SQLITE_NULL && sqlite3_column_double(stmt, 5) > 0.0)
+						d.sightRange   = (float)sqlite3_column_double(stmt, 5);
+				}
+				sqlite3_finalize(stmt);
 			}
-			sqlite3_finalize(stmt);
+			it = g_botDefaultsCache.emplace(nPendingBotId, d).first;
 		}
+		const BotDefaults& d = it->second;
+		hitPoints    = d.hitPoints;
+		speed        = d.speed;
+		powerPool    = d.powerPool;
+		rechargeRate = d.rechargeRate;
+		accuracy     = d.accuracy;
+		sightRange   = d.sightRange;
 		nBotId = nPendingBotId;
 		nPendingBotId = 0;
 	}
 
+	// DIAG: per-respawn buff investigation. Log the values feeding
+	// InitializeProperty and the post-init engine power-regen field. If the
+	// engine field reads back higher than `rechargeRate` we know a property
+	// already existed (duplicate) or something wrote it after our SetProperty.
+	Logger::Log("debug",
+	    "[InitDefaults] pawn=0x%p botId=%d hp=%.1f speed=%.1f power=%.1f recharge=%.2f sProps.Count(pre)=%d s_fPowerPoolRechargeRate(pre)=%.2f\n",
+	    Pawn, nBotId, hitPoints, speed, powerPool, rechargeRate,
+	    Pawn->s_Properties.Data ? Pawn->s_Properties.Num() : -1,
+	    Pawn->s_fPowerPoolRechargeRate);
+
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH,                  hitPoints,    hitPoints,    0, hitPoints);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH_MAX,              hitPoints,    hitPoints,    0, hitPoints);
+	// TGPID_GROUND_SPEED (49): kept disabled — initializing it makes the rest
+	// device root the player in place instead of slowing him. Root cause not
+	// yet identified; suspect either (a) the active rest effect group has
+	// prop=49 with calc_method=69 and base>=1.0 (i.e. >=100% reduction) or (b)
+	// a stripped native writes ground speed to 0 directly via SetProperty(49,0)
+	// without restoring it. Re-enable once that path is found.
 	// InitializeProperty(Pawn, GA_PROPERTY::TGPID_GROUND_SPEED,            speed,        speed,        0, 10000);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL,               powerPool,    powerPool,    0, powerPool);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_MAX,           powerPool,    powerPool,    0, powerPool);
@@ -148,6 +193,16 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_MELEE,        0, 0, 0, 100);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_RANGED,       0, 0, 0, 100);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_AOE,          0, 0, 0, 100);
+
+	// DIAG: per-respawn buff investigation — read back the engine power-regen
+	// field after all SetProperty calls. If higher than `rechargeRate`, the
+	// pre/post values diverging on subsequent spawns tells us where the
+	// stacking comes from.
+	Logger::Log("debug",
+	    "[InitDefaults] pawn=0x%p sProps.Count(post)=%d s_fPowerPoolRechargeRate(post)=%.2f r_fMaxPowerPool=%.2f\n",
+	    Pawn,
+	    Pawn->s_Properties.Data ? Pawn->s_Properties.Num() : -1,
+	    Pawn->s_fPowerPoolRechargeRate, Pawn->r_fMaxPowerPool);
 
 	LogCallEnd();
 }

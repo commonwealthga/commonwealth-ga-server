@@ -1,5 +1,4 @@
 #include "src/GameServer/TgGame/TgPawn/TrackBotHealing/TgPawn__TrackBotHealing.hpp"
-#include "src/Utils/Logger/Logger.hpp"
 
 // Called on the HEALER pawn when they heal a bot. Same logic as TrackHealing.
 void __fastcall TgPawn__TrackBotHealing::Call(ATgPawn* Pawn, void* edx, int nDeviceModeID, float fDamage, float fMissingHealth, int nMaxHealth) {

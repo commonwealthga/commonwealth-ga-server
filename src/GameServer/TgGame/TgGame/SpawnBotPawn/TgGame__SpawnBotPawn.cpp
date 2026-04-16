@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame/SpawnBotPawn/TgGame__SpawnBotPawn.hpp"
+#include "src/GameServer/TgGame/TgPawn/SyncPawnHealth/SyncPawnHealth.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
@@ -56,8 +57,10 @@ ATgPawn* __fastcall TgGame__SpawnBotPawn::Call(ATgGame* Game, void* edx, ATgAICo
 	newrepplayer->r_CustomCharacterAssembly.DyeList[3] = GA_G::DYE_ID_NONE_MORE_BLACK;
 	newrepplayer->r_CustomCharacterAssembly.DyeList[4] = GA_G::DYE_ID_NONE_MORE_BLACK;
 	newrepplayer->r_nProfileId = 567; // medic
-	newrepplayer->r_nHealthCurrent = 1300;
-	newrepplayer->r_nHealthMaximum = 1300;
+	// Bot pawn HP wasn't seeded through nPendingBotId before Spawn(), so
+	// InitializeDefaultProps used fallbacks. Force the canonical 1300 across
+	// all 7 storage locations now that PRI is wired.
+	SyncPawnHealth::Apply((ATgPawn*)newpawn, 1300, 1300);
 	newrepplayer->r_nCharacterId = newpawn->s_nCharacterId;
 	newrepplayer->r_nLevel = 50;
 	// newrepplayer->r_sOrigPlayerName = FString(L"Zaxik");

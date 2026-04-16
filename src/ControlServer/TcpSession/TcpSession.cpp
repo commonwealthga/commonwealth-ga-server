@@ -956,11 +956,22 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 		WriteString(response, GA_T::ACTIVE_FLAG, "T");
 		Write4B(response, GA_T::DEVICE_ID, d.inventory_id);
 
+		// DATA_SET_INVENTORY_STATE carries a list of {INVENTORY_ID, EFFECT_GROUP_ID}
+		// pairs. Client FUN_10a13820 @ 0x10a13820 appends every row whose
+		// INVENTORY_ID matches this item's inv_id into the inventory object's
+		// effect-group list, which TgDeviceFire::GetEffectGroup consults at
+		// runtime. Emit one row per effect group so fire/equip/hit/cooldown
+		// effects all attach — not just the single placeholder we used to send.
+		auto effectGroups = PlayerSessionStore::GetEffectGroupIds(d.device_id);
+		if (effectGroups.empty()) effectGroups.push_back(0); // preserve 1-row shape for unknown devices
+
 		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
-		append(response, 0x01, 0x00);
+		append(response, (uint8_t)(effectGroups.size() & 0xFF), (uint8_t)(effectGroups.size() >> 8));
+		for (int egid : effectGroups) {
 			append(response, 0x02, 0x00);
 			Write4B(response, GA_T::INVENTORY_ID, d.inventory_id);
-			Write4B(response, GA_T::EFFECT_GROUP_ID, d.effect_group_id);
+			Write4B(response, GA_T::EFFECT_GROUP_ID, egid);
+		}
 
 		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
 		append(response, 0x01, 0x00);

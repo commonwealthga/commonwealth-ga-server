@@ -19,6 +19,7 @@
 #include "lib/nlohmann/json.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
+#include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
 #include "src/Config/Config.hpp"
 #include "src/GameServer/Engine/World/GetGameInfo/World__GetGameInfo.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
@@ -237,7 +238,27 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 
 	game->eventPostLogin(newcontroller);
 
-	newcontroller->ResetForceViewTarget();
+	// Activate the game HUD's gameplay flags. TgPlayerController overrides
+	// ClientSetCinematicMode: when bAffectsHUD is set and current bShowHUD
+	// doesn't match the requested state, it calls TgHUD.ToggleDrawAllHUD()
+	// which flips BOTH bShowHUD → true AND m_bDrawPawnHUD → true — which
+	// are the two flags DrawActorOverlays' inner gate requires.
+	//
+	// NOTE: the SDK wrapper APlayerController::ClientSetCinematicMode uses
+	// a C++ bitfield params struct (`unsigned long x : 1` at each 4-byte
+	// offset). C++ default packing puts all four bools in the SAME dword,
+	// but UC bytecode reads each bool as LOW BIT of a SEPARATE dword at
+	// offsets 0x0/0x4/0x8/0xC. The SDK wrapper therefore sends garbage
+	// params — bAffectsHUD arrives as 0 on the client and the inner if
+	// is skipped. We call ProcessEvent directly with a manually-laid-out
+	// params struct to work around this.
+	{
+		struct { uint32_t bInCinematicMode, bAffectsMovement, bAffectsTurning, bAffectsHUD; } parms = { 0, 0, 0, 1 };
+		UFunction* pFn = (UFunction*)ObjectCache::Find("Function Engine.PlayerController.ClientSetCinematicMode");
+		if (pFn) newcontroller->ProcessEvent(pFn, &parms, nullptr);
+	}
+
+	//newcontroller->ResetForceViewTarget(); // fix for pawn relevancy - they otherwise don't show up until a player dies and respawns, because the game things view isn't moving
 
 	// TgGame__SpawnPlayerCharacter::GiveJetpack((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, newcontroller, 999);
 	// TgGame__SpawnPlayerCharacter::GiveAgonizer((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, newcontroller, 1000);

@@ -2,37 +2,14 @@
 
 #include "src/Utils/DebugWindow/DebugWindow.hpp"
 #include "src/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.hpp"
-#include "src/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.hpp"
-#include "src/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.hpp"
-#include "src/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.hpp"
-#include "src/GameServer/Misc/CMarshal/GetArray/CMarshal__GetArray.hpp"
-#include "src/GameServer/Misc/CMarshal/GetFloat/CMarshal__GetFloat.hpp"
-#include "src/GameServer/Misc/CMarshal/GetFlag/CMarshal__GetFlag.hpp"
-#include "src/GameServer/Misc/CMarshal/GetIntEnum/CMarshal__GetIntEnum.hpp"
-#include "src/GameServer/TgGame/TgHUD_Game/NativePostBeginPlay/TgHUD_Game__NativePostBeginPlay.hpp"
-#include "src/Utils/Logger/Logger.hpp"
 
 unsigned long ModuleThread( void* ) {
-	Logger::EnabledChannels.push_back("hook_calltree");
-	// Logger::EnabledChannels.push_back("test");
-
-	// Logger::Log("test", "It works!");
-
 	::DetourTransactionBegin();
 	::DetourUpdateThread(::GetCurrentThread());
 
 	UObject__ProcessEvent::Install();
-	CGameClient__MarshalReceived::Install();
-	CMarshal__GetByte::Install();
-	CMarshal__GetInt32t::Install();
-	CMarshal__GetArray::Install();
-	CMarshal__GetFloat::Install();
-	CMarshal__GetFlag::Install();
-	CMarshal__GetIntEnum::Install();
-	TgHUD_Game__NativePostBeginPlay::Install();
 
 	::DetourTransactionCommit();
-
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
@@ -55,4 +32,3 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
 	}
 	return TRUE;
 }
-

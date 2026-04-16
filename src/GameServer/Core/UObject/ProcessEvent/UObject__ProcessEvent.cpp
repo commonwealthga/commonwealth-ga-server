@@ -1,6 +1,5 @@
 #include "src/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.hpp"
 #include "src/Utils/Logger/Logger.hpp"
-#include "src/GameServer/Globals.hpp"
 
 // TgPawn__SetProperty @ 0x109bf420 — __thiscall(pawn, nPropertyId, fNewValue)
 // Called as __fastcall with dummy EDX to avoid inline asm.
@@ -13,6 +12,14 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 	if (Object && Function) {
 		std::string name = std::string(Function->GetFullName());
 		std::string objname = std::string(Object->GetFullName());
+
+		// Diagnostic: log any damage-dispatch related UC event. Temporary.
+		if (name.find("TakeDamage") != std::string::npos
+			|| name.find("SendCombatMessage") != std::string::npos
+			|| name.find("ApplyDamage") != std::string::npos
+			|| name.find("ApplyHealth") != std::string::npos) {
+			Logger::Log("combat-trace", "PE: %s  obj=%s\n", name.c_str(), objname.c_str());
+		}
 
 		if (strcmp("Function Engine.Actor.Tick", name.c_str()) == 0
 		|| strcmp("Function Engine.GameInfoDataProvider.ProviderInstanceBound", name.c_str()) == 0
@@ -97,7 +104,6 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 				Pawn->bNetDirty = 1;
 				Pawn->bForceNetUpdate = 1;
 			}
-
 
 		} else {
 			Logger::Log(GetLogChannel(), "├─ %s [%s]\n", name.c_str(), objname.c_str());

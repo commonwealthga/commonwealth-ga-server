@@ -22,11 +22,12 @@ public:
 		LogCallEnd();
 	}
 
-	// Convenience wrapper that accepts FName
+	// Convenience wrapper that accepts FName.
+	// Force NameNumber=0 — timer function lookup matches the FName Number suffix,
+	// and we never want a "_<n>" instance number on registered timer functions.
 	static inline void SetTimer(AActor* Actor, float InRate, bool bLoop, FName TimerFunc, UObject* inObj = nullptr) {
-		int idx, num;
+		int idx;
 		memcpy(&idx, &TimerFunc, 4);
-		memcpy(&num, (char*)&TimerFunc + 4, 4);
-		CallOriginal(Actor, nullptr, InRate, bLoop ? 1 : 0, idx, num, inObj);
+		CallOriginal(Actor, nullptr, InRate, bLoop ? 1 : 0, idx, 0, inObj);
 	}
 };

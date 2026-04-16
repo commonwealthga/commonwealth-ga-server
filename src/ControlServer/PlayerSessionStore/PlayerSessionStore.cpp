@@ -244,6 +244,9 @@ void PlayerSessionStore::SetSelectedCharacter(const std::string& session_guid, i
 }
 
 int PlayerSessionStore::GetEffectGroupId(int deviceId) {
+	// Legacy scalar version — kept for the seed path that persists a single
+	// representative effect_group_id on ga_character_devices. The authoritative
+	// list used at response-time now comes from GetEffectGroupIds().
 	switch (deviceId) {
 		case 7031: return 26173;  // assault jetpack
 		case 7032: return 26173;  // medic jetpack
@@ -257,30 +260,89 @@ int PlayerSessionStore::GetEffectGroupId(int deviceId) {
 	}
 }
 
+std::vector<int> PlayerSessionStore::GetEffectGroupIds(int deviceId) {
+	// Union of every effect group associated with this device in asm.dat:
+	//   - asm_data_set_device_effect_groups  (equip effect — what the device
+	//     stores at offset 0xE0 from DATA_SET_DEVICE_EFFECT_GROUPS)
+	//   - asm_data_set_device_mode_effect_groups  (per-fire-mode effects,
+	//     consulted by TgDeviceFire::GetEffectGroup at runtime)
+	//
+	// The client's FUN_10a13820 @ 0x10a13820 accumulates every row whose
+	// INVENTORY_ID matches the inventory item, so we need to emit one
+	// DATA_SET_INVENTORY_STATE entry per effect group.
+	std::vector<int> result;
+
+	sqlite3* db = Database::GetConnection();
+	if (!db) return result;
+
+	auto runQuery = [&](const char* sql) {
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+			// Table may not exist yet (asm capture hasn't run) — quietly skip.
+			return;
+		}
+		sqlite3_bind_int(stmt, 1, deviceId);
+		while (sqlite3_step(stmt) == SQLITE_ROW) {
+			int egid = sqlite3_column_int(stmt, 0);
+			if (egid != 0) result.push_back(egid);
+		}
+		sqlite3_finalize(stmt);
+	};
+
+	runQuery(
+		"SELECT DISTINCT effect_group_id FROM asm_data_set_device_effect_groups "
+		"WHERE device_id = ? AND effect_group_id <> 0");
+	runQuery(
+		"SELECT DISTINCT effect_group_id FROM asm_data_set_device_mode_effect_groups "
+		"WHERE device_id = ? AND effect_group_id <> 0");
+
+	// Dedupe while preserving insertion order (equip effect first, then mode
+	// effects in their natural order).
+	std::vector<int> dedup;
+	dedup.reserve(result.size());
+	for (int egid : result) {
+		bool seen = false;
+		for (int x : dedup) if (x == egid) { seen = true; break; }
+		if (!seen) dedup.push_back(egid);
+	}
+
+	if (!dedup.empty()) return dedup;
+
+	// Fallback: asm tables empty or missing (pre-capture run). Use the legacy
+	// hardcoded single effect so at least the already-working cases keep working.
+	int legacy = GetEffectGroupId(deviceId);
+	if (legacy != 0) dedup.push_back(legacy);
+	return dedup;
+}
+
 void PlayerSessionStore::SeedDefaultDevices(int64_t character_id, uint32_t profile_id) {
 	struct Seed { int deviceId; int slot; int slotValueId; int quality; };
 
+	// Profile→class mapping per asm_data_set_bots.reference_name. Jetpack
+	// device IDs are the unambiguous tell: 7031=Assault, 7032=Medic,
+	// 7033=Recon, 7034=Robotics. Earlier the labels here were rotated, so
+	// every non-medic player got another class's loadout.
 	std::vector<Seed> seeds;
 	switch (profile_id) {
-		case 567: // Medic
+		case 567: // Medic   — Life Stealer + Medic Crescent Jetpack
 			seeds = {
 				{5800, 1, 221, 0}, {2991, 2, 198, 0}, {6898, 3, 200, 0}, {7032, 5, 201, 0},
 				{2531, 7, 203, 0}, {2168, 8, 204, 0}, {2773, 10, 386, 0}, {864, 14, 502, 0},
 			};
 			break;
-		case 679: // Recon
-			seeds = {
-				{5799, 1, 221, 0}, {2110, 2, 198, 0}, {3023, 3, 200, 0}, {7033, 5, 201, 0},
-				{2219, 7, 203, 0}, {2129, 8, 204, 0}, {2113, 10, 386, 0}, {864, 14, 502, 0},
-			};
-			break;
-		case 680: // Robotic
+		case 679: // Robotics — Mace and Shield + Robotics Crescent Jetpack
 			seeds = {
 				{5802, 1, 221, 0}, {6885, 2, 198, 0}, {2918, 3, 200, 0}, {7034, 5, 201, 0},
 				{2300, 7, 203, 0}, {2066, 8, 204, 0}, {2886, 10, 386, 0}, {864, 14, 502, 0},
 			};
 			break;
-		case 681: // Assault
+		case 681: // Recon    — Dual Daggers + Recon Crescent Jetpack
+			seeds = {
+				{5799, 1, 221, 0}, {2110, 2, 198, 0}, {3023, 3, 200, 0}, {7033, 5, 201, 0},
+				{2219, 7, 203, 0}, {2129, 8, 204, 0}, {2113, 10, 386, 0}, {864, 14, 502, 0},
+			};
+			break;
+		case 680: // Assault  — Impact Hammer + Assault Crescent Jetpack
 		default:
 			seeds = {
 				{5801, 1, 221, 0}, {5788, 2, 198, 0}, {2914, 3, 200, 0}, {7031, 5, 201, 0},

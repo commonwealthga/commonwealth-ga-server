@@ -1398,7 +1398,111 @@ void Database::Init() {
 		}
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 18", nullptr, nullptr, &err);
+	if (version < 19) {
+		// v19: re-seed ga_character_devices for characters affected by the
+		// PlayerSessionStore::SeedDefaultDevices class-label rotation bug
+		// (fixed alongside this migration). Three of four switch cases were
+		// misassigned, so every existing character with profile_id 679 / 680
+		// / 681 was equipped with another class's loadout. Profile 567
+		// (Medic) was unaffected.
+		//
+		// Seed lists below MUST stay in sync with SeedDefaultDevices in
+		// PlayerSessionStore.cpp — duplicated intentionally so the migration
+		// is self-contained (no need to expose the private static, no
+		// accidental drift from future seed changes touching only the live
+		// path).
+		struct Seed { int deviceId; int slot; int slotValueId; int quality; };
+		auto effectGroupId = [](int deviceId) -> int {
+			switch (deviceId) {
+				case 7031: return 26173;
+				case 7032: return 26173;
+				case 7033: return 26173;
+				case 7034: return 26173;
+				case 2991: return 16670;
+				case 2531: return 16653;
+				case 5800: return 22334;
+				case 2906: return 9071;
+				default:   return 0;
+			}
+		};
+		auto seedFor = [](uint32_t profile_id) -> std::vector<Seed> {
+			switch (profile_id) {
+				case 679: // Robotics
+					return {{5802,1,221,0},{6885,2,198,0},{2918,3,200,0},{7034,5,201,0},
+					        {2300,7,203,0},{2066,8,204,0},{2886,10,386,0},{864,14,502,0}};
+				case 680: // Assault
+					return {{5801,1,221,0},{5788,2,198,0},{2914,3,200,0},{7031,5,201,0},
+					        {3699,7,203,0},{2498,8,204,0},{5775,10,386,0},{864,14,502,0}};
+				case 681: // Recon
+					return {{5799,1,221,0},{2110,2,198,0},{3023,3,200,0},{7033,5,201,0},
+					        {2219,7,203,0},{2129,8,204,0},{2113,10,386,0},{864,14,502,0}};
+				default:
+					return {};
+			}
+		};
+
+		// Find every affected character.
+		std::vector<std::pair<int64_t, uint32_t>> affected;
+		sqlite3_stmt* qstmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+		    "SELECT id, profile_id FROM ga_characters WHERE profile_id IN (679, 680, 681)",
+		    -1, &qstmt, nullptr) == SQLITE_OK) {
+			while (sqlite3_step(qstmt) == SQLITE_ROW) {
+				affected.emplace_back(sqlite3_column_int64(qstmt, 0),
+				                      static_cast<uint32_t>(sqlite3_column_int(qstmt, 1)));
+			}
+			sqlite3_finalize(qstmt);
+		} else {
+			Logger::Log("db", "v19: select affected characters failed: %s\n", sqlite3_errmsg(db));
+		}
+
+		sqlite3_stmt* delstmt = nullptr;
+		sqlite3_stmt* insstmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+		    "DELETE FROM ga_character_devices WHERE character_id = ?",
+		    -1, &delstmt, nullptr) != SQLITE_OK) {
+			Logger::Log("db", "v19: delete prepare failed: %s\n", sqlite3_errmsg(db));
+		} else if (sqlite3_prepare_v2(db,
+		    "INSERT INTO ga_character_devices "
+		    "(character_id, device_id, equip_slot, slot_value_id, quality, inventory_id, effect_group_id) "
+		    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+		    -1, &insstmt, nullptr) != SQLITE_OK) {
+			Logger::Log("db", "v19: insert prepare failed: %s\n", sqlite3_errmsg(db));
+			sqlite3_finalize(delstmt);
+			delstmt = nullptr;
+		} else {
+			sqlite3_exec(db, "BEGIN TRANSACTION", nullptr, nullptr, nullptr);
+			int fixed = 0;
+			for (const auto& [character_id, profile_id] : affected) {
+				const auto seeds = seedFor(profile_id);
+				if (seeds.empty()) continue;
+
+				sqlite3_reset(delstmt);
+				sqlite3_bind_int64(delstmt, 1, character_id);
+				sqlite3_step(delstmt);
+
+				int invId = 10000;
+				for (const auto& s : seeds) {
+					sqlite3_reset(insstmt);
+					sqlite3_bind_int64(insstmt, 1, character_id);
+					sqlite3_bind_int(insstmt,   2, s.deviceId);
+					sqlite3_bind_int(insstmt,   3, s.slot);
+					sqlite3_bind_int(insstmt,   4, s.slotValueId);
+					sqlite3_bind_int(insstmt,   5, s.quality);
+					sqlite3_bind_int(insstmt,   6, invId++);
+					sqlite3_bind_int(insstmt,   7, effectGroupId(s.deviceId));
+					sqlite3_step(insstmt);
+				}
+				++fixed;
+			}
+			sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr);
+			sqlite3_finalize(delstmt);
+			sqlite3_finalize(insstmt);
+			Logger::Log("db", "v19: re-seeded devices for %d characters with rotated loadouts\n", fixed);
+		}
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 19", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

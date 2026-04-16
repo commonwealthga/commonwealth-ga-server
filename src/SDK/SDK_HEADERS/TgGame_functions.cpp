@@ -56784,7 +56784,7 @@ void ATgPlayerController::eventRevive ( )
 	static UFunction* pFnRevive = NULL;
 
 	if ( ! pFnRevive )
-		pFnRevive = (UFunction*) ObjectCache::Find( "Function TgGame.TgPlayerController.Revive" );
+		pFnRevive = (UFunction*) ObjectCache::Find( "Function TgPlayerController.Dead.Revive" );
 
 	ATgPlayerController_eventRevive_Parms Revive_Parms;
 

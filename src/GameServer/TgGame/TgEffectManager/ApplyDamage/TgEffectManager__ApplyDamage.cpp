@@ -2,8 +2,10 @@
 #include "src/Utils/Logger/Logger.hpp"
 #include <cstring>
 
-// Logging helper — called from the naked trampoline with individual params.
-// Uses __cdecl so the caller (our asm) cleans the stack.
+// Logging-only: called from the naked trampoline with individual params.
+// Combat-message emission lives in the ProcessEvent intercept for
+// `Function TgGame.TgEffectManager.ApplyDamage` so we don't double-fire
+// when UC dispatches into this native body.
 void __cdecl TgEffectManager__ApplyDamage::LogCall(
 		ATgEffectManager* pThis, int nDamage, AActor* aInstigator,
 		int nAttackType, int nDamageType, int nEffectGroupCategory) {

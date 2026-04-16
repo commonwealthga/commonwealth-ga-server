@@ -74,6 +74,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SyncPawnHealth/SyncPawnHealth.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SetTaskForceNumber/TgPawn__SetTaskForceNumber.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.cpp \
@@ -90,6 +91,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/ResetQueue/TgBotFactory__ResetQueue.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/GetPropertyValueById/TgDeviceFire__GetPropertyValueById.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/CustomFire/TgDeviceFire__CustomFire.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/Deploy/TgDeviceFire__Deploy.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/SpawnPet/TgDeviceFire__SpawnPet.cpp \
@@ -129,6 +131,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/ApplyInventoryEquipEffects/TgDevice__ApplyInventoryEquipEffects.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/ClearInstigatorEquippedDevices/TgDevice__ClearInstigatorEquippedDevices.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/PopulateInstigatorEquippedDevices/TgDevice__PopulateInstigatorEquippedDevices.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/GetSkillBasedEffectGroup/TgEffectManager__GetSkillBasedEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/IsStrongest/TgEffectManager__IsStrongest.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveEffectGroup/TgEffectManager__RemoveEffectGroup.cpp \
@@ -187,9 +191,12 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Character/UpdateDurability/TgPawn_Character__UpdateDurability.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Character/VanityPetDestroyed/TgPawn_Character__VanityPetDestroyed.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/AddProperty/TgPawn__AddProperty.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn/AddDamageInfo/TgPawn__AddDamageInfo.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/ApplyBuff/TgPawn__ApplyBuff.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackBotHealing/TgPawn__TrackBotHealing.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackCompleteKillInfo/TgPawn__TrackCompleteKillInfo.cpp \
+			  $(SRC_DIR)/GameServer/Combat/SendCombatMessage/SendCombatMessage.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Character/SendCombatMessage/TgPawn_Character__SendCombatMessage.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackDamagedBot/TgPawn__TrackDamagedBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackDamagedPlayer/TgPawn__TrackDamagedPlayer.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackHealing/TgPawn__TrackHealing.cpp \
@@ -297,6 +304,8 @@ SOURCE_FILES= \
 SOURCE_FILES_CLIENT= \
 			  $(SRC_DIR)/Utils/Logger/Logger/FileLogger.cpp \
 			  $(SRC_DIR)/Utils/DebugWindow/DebugWindow.cpp \
+			  $(SRC_DIR)/GameServer/Utils/ObjectCache/ObjectCache.cpp \
+			  $(SRC_DIR)/Database/AsmDataCapture/AsmDataCapture_client_stub.cpp \
 			  $(SRC_DIR)/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceivedClient.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.cpp \
@@ -306,6 +315,10 @@ SOURCE_FILES_CLIENT= \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetFlag/CMarshal__GetFlag.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetIntEnum/CMarshal__GetIntEnum.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgHUD_Game/NativePostBeginPlay/TgHUD_Game__NativePostBeginPlay.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn/AddDamageInfo/TgPawn__AddDamageInfo.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn/DisplayDamageInfo/TgPawn__DisplayDamageInfo.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TGPostRenderFor/TgPawn__TGPostRenderFor.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgHUD_Game/DrawActorOverlays/TgHUD_Game__DrawActorOverlays.cpp \
 			  $(SRC_DIR)/dllmainclient.cpp
 
 

@@ -7,6 +7,7 @@
 #include "src/GameServer/TgGame/TgInventoryObject_Device/ConstructInventoryObject/TgInventoryObject_Device__ConstructInventoryObject.hpp"
 #include "src/GameServer/Misc/AssemblyDatManager/CreateDevice/AssemblyDatManager__CreateDevice.hpp"
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
+#include "src/GameServer/TgGame/TgPawn/SyncPawnHealth/SyncPawnHealth.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
@@ -353,14 +354,13 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	Bot->r_nPhysicalType    = *(int*)((char*)BotConfig + 0x64); // PHYSICAL_TYPE_VALUE_ID
 	Bot->r_nBodyMeshAsmId   = *(int*)((char*)BotConfig + 0x54); // BODY_ASM_ID
 	Bot->s_nCharacterId     = *(int*)((char*)BotConfig + 0x5C); // BOT_TYPE_VALUE_ID
-	Bot->r_nHealthMaximum   = *(int*)((char*)BotConfig + 0x74);
-	Bot->Health             = *(int*)((char*)BotConfig + 0x74);
-	Bot->HealthMax          = *(int*)((char*)BotConfig + 0x74);
 
 	Bot->r_bIsStealthed = 0;
 
-	BotRepInfo->r_nHealthCurrent  = *(int*)((char*)BotConfig + 0x74);
-	BotRepInfo->r_nHealthMaximum  = *(int*)((char*)BotConfig + 0x74);
+	// PRI is wired by this point — fan HP across all 7 storage locations
+	// (engine fields, ATgPawn replicated max, property descriptors, PRI).
+	const int botHp = *(int*)((char*)BotConfig + 0x74);
+	SyncPawnHealth::Apply(Bot, botHp, botHp);
 	BotRepInfo->r_nCharacterId    = *(int*)((char*)BotConfig + 0x5C);
 
 	if (pFactory == nullptr) {
