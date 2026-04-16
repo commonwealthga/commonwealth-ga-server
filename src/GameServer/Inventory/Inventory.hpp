@@ -37,6 +37,17 @@ public:
 	// Clear tracking for a pawn (call on pawn death/destroy).
 	static void ClearTracking(ATgPawn* Pawn);
 
+	// Apply the device's permanent (lifetime_sec=0) equip-effect groups to the
+	// pawn's properties. Reimplements what UC `ApplyEquipEffects` would do if
+	// the asm.dat → device->m_EquipEffect setter (a stripped native) were
+	// running. Source for the "30% physical protection by default" baseline:
+	// device 864 ("HUMAN BASE ATTRIBUTES", slot 14) → effect group 3575 →
+	// prop 155 +30 cm=67.
+	//
+	// Called automatically by Equip(); call manually after CreateEquipDevice
+	// in bot-spawn paths that bypass Equip().
+	static void ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId);
+
 private:
 	static int s_nextInventoryId;  // starts at 10000
 	static std::map<ATgPawn*, std::vector<EquippedEntry>> s_equipped;

@@ -176,7 +176,11 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// Protection properties — CalcProtection in TgEffectGroup calls GetProperty(nProtectionType).
 	// If the property is absent, SetProperty from damage resistance effects silently does nothing.
 	// Initialize all to 0 (no resistance); effects buff them above zero.
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_PHYSICAL,     30.0f, 0, 0, 100);
+	// The "default 30% physical" everyone expects comes from device 864 ("HUMAN BASE
+	// ATTRIBUTES", slot 14/Rest) via permanent equip-effect group 3575 — applied by
+	// Inventory::ApplyDeviceEquipEffects after CreateEquipDevice, since the asm.dat
+	// loader that sets device->m_EquipEffect is one of the stripped natives.
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_PHYSICAL,     0, 0, 0, 100);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_ENERGY,       0, 0, 0, 100);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_THERMAL,      0, 0, 0, 100);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_SLOW,         0, 0, 0, 100);

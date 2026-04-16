@@ -92,6 +92,11 @@ void TgGame__SpawnBotById::GiveDeviceById(
 	InventoryObject->s_Device = Device;
 
 	if (Device != nullptr) {
+		// Stand-in for the stripped m_EquipEffect path. Mirrors what
+		// Inventory::Equip() does — necessary here because this bot path
+		// bypasses Inventory::Equip and goes straight to CreateEquipDevice.
+		Inventory::ApplyDeviceEquipEffects(Pawn, deviceId);
+
 		Device->s_InventoryObject = InventoryObject;
 		Device->r_nDeviceInstanceId = nInventoryId;  // non-zero so UpdateClientDevices detects the change
 		Device->m_bIsOffHand = isOffHand;
@@ -186,6 +191,10 @@ void TgGame__SpawnBotById::GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Pla
 		ATgDevice* Device = Bot->CreateEquipDevice(0, deviceId, equipPoint);
 		Logger::Log("debug", "GiveDevicesFromBotConfig: CreateEquipDevice returned 0x%p\n", Device);
 		if (Device != nullptr) {
+			// Stand-in for the stripped m_EquipEffect path — applies permanent
+			// equip-effect groups (e.g. device 864's +30 physical protection).
+			Inventory::ApplyDeviceEquipEffects(Bot, deviceId);
+
 			int invId = Inventory::NextId();
 			Device->r_nDeviceInstanceId = invId;
 			Device->r_eEquippedAt = equipPoint;

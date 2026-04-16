@@ -74,6 +74,7 @@
 #include "src/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/GetPropertyValueById/TgDeviceFire__GetPropertyValueById.hpp"
+#include "src/GameServer/TgGame/TgDeviceFire/InitializeProjectile/TgDeviceFire__InitializeProjectile.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/CustomFire/TgDeviceFire__CustomFire.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/Deploy/TgDeviceFire__Deploy.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/SpawnPet/TgDeviceFire__SpawnPet.hpp"
@@ -303,7 +304,7 @@ unsigned long ModuleThread( void* ) {
 	// Logger::EnabledChannels.push_back("chat");
 	// Logger::EnabledChannels.push_back("matchmaking");
 	// Logger::EnabledChannels.push_back("packagemap");
-	Logger::EnabledChannels.push_back("revive");
+	Logger::EnabledChannels.push_back("combat-trace");
 
 
 	Database::Init();
@@ -385,6 +386,7 @@ unsigned long ModuleThread( void* ) {
 	TgGame__SendMissionTimerEvent::Install();
 	TgDeviceFire__GetEffectGroup::Install();
 	TgDeviceFire__GetPropertyValueById::Install();
+	TgDeviceFire__InitializeProjectile::Install();
 	TgDeviceFire__CustomFire::Install();
 	TgDeviceFire__Deploy::Install();
 	TgDeviceFire__SpawnPet::Install();

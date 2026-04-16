@@ -9,6 +9,7 @@
 #include "src/GameServer/Constants/Quality.hpp"
 #include "src/GameServer/Constants/DeviceIds.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
+#include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // ---------------------------------------------------------------------------
@@ -76,6 +77,97 @@ bool Inventory::IsHandDevice(int slot) {
 	return slot == GA::EquipSlot::Melee
 		|| slot == GA::EquipSlot::Ranged
 		|| slot == GA::EquipSlot::Specialty;
+}
+
+// ---------------------------------------------------------------------------
+// Inventory::ApplyDeviceEquipEffects — DB-driven reimplementation of the
+// stripped asm.dat equip-effect path (UC ApplyEquipEffects → m_EquipEffect →
+// ProcessEffect). Applies every permanent (lifetime_sec=0) effect attached to
+// the device's equip-effect groups directly to the pawn's properties.
+//
+// Calc-method semantics follow TgEffect.uc:448 (apply, !bRemove):
+//   67 ADD             newRaw = curRaw + base
+//   70 SUBTRACT        newRaw = curRaw - base
+//   68 PERC_INCREASE   newRaw = curRaw + (propBase * base)
+//   69 PERC_DECREASE   newRaw = curRaw - (propBase * base)
+//   119 NA / other     no-op
+//
+// IMPORTANT — we mutate prop->m_fRaw DIRECTLY rather than calling
+// Pawn->SetProperty(). The native SetProperty (0x109bf420) does its property
+// lookup through vtable[0x4F0] which uses the TMap at pawn+0x400; that map
+// is never populated for properties added by our InitializeProperty path
+// (only the s_Properties array gets the entry). So SetProperty silently
+// no-ops for protection / vision / etc. Same workaround SyncPawnHealth uses
+// for HP. Direct write is correct here because every consumer reads
+// prop->m_fRaw (CalcProtection in TgEffectGroup.uc:757 calls
+// FClamp(m_fRaw, m_fMinimum, m_fMaximum), so out-of-range values are
+// clamped at read time — no need to clamp at write).
+//
+// The DISTINCT is load-bearing: asm_data_set_effects and
+// asm_data_set_effect_groups currently contain duplicate rows because the
+// capture path runs twice during startup. Without it, +30 protection becomes
+// +60.
+// ---------------------------------------------------------------------------
+void Inventory::ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId) {
+	if (Pawn == nullptr || Pawn->s_Properties.Data == nullptr) return;
+
+	sqlite3* db = Database::GetConnection();
+	if (db == nullptr) return;
+
+	static const char* kSql =
+		"SELECT DISTINCT e.prop_id, e.base_value, e.calc_method_value_id "
+		"FROM asm_data_set_device_effect_groups deg "
+		"JOIN asm_data_set_effect_groups eg ON eg.effect_group_id = deg.effect_group_id "
+		"JOIN asm_data_set_effects e ON e.effect_group_id = deg.effect_group_id "
+		"WHERE deg.device_id = ? AND eg.lifetime_sec = 0";
+
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db, kSql, -1, &stmt, nullptr) != SQLITE_OK) {
+		Logger::Log("inventory", "ApplyDeviceEquipEffects: prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int(stmt, 1, deviceId);
+
+	int applied = 0, skipped = 0;
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		int   propId     = sqlite3_column_int   (stmt, 0);
+		float baseValue  = (float)sqlite3_column_double(stmt, 1);
+		int   calcMethod = sqlite3_column_int   (stmt, 2);
+
+		UTgProperty* prop = nullptr;
+		for (int i = 0; i < Pawn->s_Properties.Num(); ++i) {
+			UTgProperty* p = Pawn->s_Properties.Data[i];
+			if (p && p->m_nPropertyId == propId) { prop = p; break; }
+		}
+		if (prop == nullptr) {
+			Logger::Log("inventory", "ApplyDeviceEquipEffects: pawn=0x%p device=%d propId=%d not in s_Properties — skipped\n",
+				Pawn, deviceId, propId);
+			++skipped;
+			continue;
+		}
+
+		const float curRaw   = prop->m_fRaw;
+		const float propBase = prop->m_fBase;
+		float newRaw;
+		switch (calcMethod) {
+			case 67: newRaw = curRaw + baseValue;              break;
+			case 70: newRaw = curRaw - baseValue;              break;
+			case 68: newRaw = curRaw + (propBase * baseValue); break;
+			case 69: newRaw = curRaw - (propBase * baseValue); break;
+			default: continue;
+		}
+		prop->m_fRaw = newRaw;
+		Logger::Log("inventory",
+			"ApplyDeviceEquipEffects: pawn=0x%p device=%d propId=%d cm=%d base=%.2f  m_fRaw %.2f -> %.2f\n",
+			Pawn, deviceId, propId, calcMethod, baseValue, curRaw, newRaw);
+		++applied;
+	}
+	sqlite3_finalize(stmt);
+
+	if (applied > 0 || skipped > 0) {
+		Logger::Log("inventory", "ApplyDeviceEquipEffects: pawn=0x%p device=%d applied=%d skipped=%d\n",
+			Pawn, deviceId, applied, skipped);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -203,6 +295,12 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 	Device->bReplicateMovement = 1;
 	Device->bSkipActorPropertyReplication = 0;
 	Device->bOnlyDirtyReplication = 0;
+
+	// --- Apply permanent equip-effect groups (DB-driven) ---
+	// Stand-in for the stripped asm.dat → device->m_EquipEffect path. Most
+	// importantly, this is what gives every pawn the +30 physical protection
+	// baseline via device 864 (HUMAN BASE ATTRIBUTES).
+	ApplyDeviceEquipEffects(Pawn, deviceId);
 
 	// --- Track in per-pawn map ---
 	s_equipped[Pawn].push_back({deviceId, slot, qualityValueId, invId, GetEffectGroupId(deviceId)});

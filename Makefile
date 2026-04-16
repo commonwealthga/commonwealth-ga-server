@@ -92,6 +92,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/GetPropertyValueById/TgDeviceFire__GetPropertyValueById.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/InitializeProjectile/TgDeviceFire__InitializeProjectile.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/CustomFire/TgDeviceFire__CustomFire.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/Deploy/TgDeviceFire__Deploy.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/SpawnPet/TgDeviceFire__SpawnPet.cpp \
