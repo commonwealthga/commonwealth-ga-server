@@ -128,13 +128,16 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH,                  hitPoints,    hitPoints,    0, hitPoints);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH_MAX,              hitPoints,    hitPoints,    0, hitPoints);
-	// TGPID_GROUND_SPEED (49): kept disabled — initializing it makes the rest
-	// device root the player in place instead of slowing him. Root cause not
-	// yet identified; suspect either (a) the active rest effect group has
-	// prop=49 with calc_method=69 and base>=1.0 (i.e. >=100% reduction) or (b)
-	// a stripped native writes ground speed to 0 directly via SetProperty(49,0)
-	// without restoring it. Re-enable once that path is found.
-	// InitializeProperty(Pawn, GA_PROPERTY::TGPID_GROUND_SPEED,            speed,        speed,        0, 10000);
+	// TGPID_GROUND_SPEED (49): the rest device applies PERC_DECREASE here.
+	// Was previously disabled because UC's Remove math leaks per apply/remove
+	// cycle (passes effBase instead of propBase*effBase), so repeated rest
+	// toggles compounded ground speed toward 0. The global device-fire bracket
+	// (see UObject__ProcessEvent.cpp:CaptureBaselineOnBeginState /
+	// RestoreBaselineOnStopFire) now snapshots m_fRaw at BeginState and
+	// overwrites UC's leaked value with the baseline on ServerStopFire, so
+	// it's safe to re-register. Without this line, any effect modifying
+	// prop 49 silently no-ops (SetProperty needs the prop in s_Properties).
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_GROUND_SPEED,            speed,        speed,        0, 10000);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL,               powerPool,    powerPool,    0, powerPool);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_MAX,           powerPool,    powerPool,    0, powerPool);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_RECHARGE_RATE, rechargeRate, rechargeRate, 0, 1000);
@@ -152,8 +155,24 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	}
 
 	// Air speed — used by PlayerJetting state for lateral movement (TgPlayerController.uc)
-	// Engine APawn default AirSpeed = 600.0f
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_AIR_SPEED,               600.0f, 600.0f, 0, 600.0f);
+	// Engine APawn default AirSpeed = 600.0f. Max raised to 5000 so PERC
+	// stacking (stealth's +300%, plus skill/device modifiers) isn't clamped
+	// back to 600 at ApplyProperty time — the engine field needs room to
+	// actually receive the buffed value.
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_AIR_SPEED,               600.0f, 600.0f, 0, 5000.0f);
+
+	// JumpZ (prop 50): must be in s_Properties so SetProperty(50) can resolve
+	// through our GetProperty hook and propagate to the APawn::JumpZ engine
+	// field via ApplyProperty — otherwise stealth/buff effects that modify
+	// JumpZ silently no-op. BUT: the pawn's UC class defaults (TgPawn_Character
+	// and subclasses) already set JumpZ, and hardcoding a value here overwrites
+	// that default and makes ambient jumps feel wrong. So read whatever the
+	// engine/UC has already populated and register that as the base — which
+	// makes the init a no-op for APawn::JumpZ (the SetProperty call inside
+	// InitializeProperty writes the same value back) and gives stealth a valid
+	// baseline to add to / subtract from.
+	float jumpZ = Pawn->JumpZ > 0.0f ? Pawn->JumpZ : 420.0f;  // APawn default fallback
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_JUMPZ, jumpZ, jumpZ, 0, 5000);
 
 	// Gravity Z modifier — replicated at ATgPawn+0x117C. Default 1.0 = normal gravity.
 	// Applied in TgPawn physics; 0 would mean no gravity.

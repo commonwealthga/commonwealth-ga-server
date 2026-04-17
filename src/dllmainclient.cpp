@@ -6,6 +6,9 @@
 unsigned long ModuleThread( void* ) {
 	::DetourTransactionBegin();
 	::DetourUpdateThread(::GetCurrentThread());
+	Logger::EnabledChannels.push_back("stealth");
+	Logger::EnabledChannels.push_back("hook_calltree");
+	Logger::EnabledChannels.push_back("replicated_event");
 
 	UObject__ProcessEvent::Install();
 

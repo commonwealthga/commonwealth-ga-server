@@ -186,6 +186,7 @@
 #include "src/GameServer/TgGame/TgPawn_Character/SendCombatMessage/TgPawn_Character__SendCombatMessage.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackHealing/TgPawn__TrackHealing.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackHit/TgPawn__TrackHit.hpp"
+#include "src/GameServer/TgGame/TgPawn/TickMakeVisibleCalculation/TgPawn__TickMakeVisibleCalculation.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/ServerApplyFlair/TgPlayerController__ServerApplyFlair.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/ServerTestSystemMailItem/TgPlayerController__ServerTestSystemMailItem.hpp"
 #include "src/GameServer/TgGame/TgRepInfo_Player/OnAllFlairManifestsLoaded/TgRepInfo_Player__OnAllFlairManifestsLoaded.hpp"
@@ -289,7 +290,7 @@ unsigned long ModuleThread( void* ) {
 	// Logger::EnabledChannels.push_back("ipc");
 	// Logger::EnabledChannels.push_back("kismet");
 	// Logger::EnabledChannels.push_back("tgbotfactory");
-	// Logger::EnabledChannels.push_back("effectgroup");
+	// Logger::EnabledChannels.push_back("effects");
 	// Logger::EnabledChannels.push_back("firedeploy_m_pAmSetup");
 	// Logger::EnabledChannels.push_back("firedeploy_m_pFireModeSetup");
 	// Logger::EnabledChannels.push_back("firespawnpet_m_pAmSetup");
@@ -304,7 +305,8 @@ unsigned long ModuleThread( void* ) {
 	// Logger::EnabledChannels.push_back("chat");
 	// Logger::EnabledChannels.push_back("matchmaking");
 	// Logger::EnabledChannels.push_back("packagemap");
-	Logger::EnabledChannels.push_back("combat-trace");
+	// Logger::EnabledChannels.push_back("stealth");
+
 
 
 	Database::Init();
@@ -477,6 +479,7 @@ unsigned long ModuleThread( void* ) {
 	TgPawn_Character__SendCombatMessage::Install();
 	TgPawn__TrackHealing::Install();
 	TgPawn__TrackHit::Install();
+	TgPawn__TickMakeVisibleCalculation::Install();
 	TgPlayerController__ServerApplyFlair::Install();
 	TgPlayerController__ServerTestSystemMailItem::Install();
 	TgRepInfo_Player__OnAllFlairManifestsLoaded::Install();

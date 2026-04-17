@@ -34,13 +34,13 @@ static UClass* GetEffectClassById(int classResId) {
 static UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 	UClass* egClass = ClassPreloader::GetClass("Class TgGame.TgEffectGroup");
 	if (!egClass) {
-		Logger::Log("effectgroup", "BuildEffectGroup: TgEffectGroup class not found\n");
+		Logger::Log("effects", "[BUILD] TgEffectGroup class not found\n");
 		return nullptr;
 	}
 
 	UTgEffectGroup* g = (UTgEffectGroup*)ConstructEffectGroup(egClass, -1, 0, 0, 0, 0, 0, 0, nullptr);
 	if (!g) {
-		Logger::Log("effectgroup", "BuildEffectGroup: ConstructObject failed for egId=%d\n", egId);
+		Logger::Log("effects", "[BUILD] ConstructObject failed for egId=%d\n", egId);
 		return nullptr;
 	}
 
@@ -113,14 +113,18 @@ static UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 				e->m_nCalcMethodCode  = sqlite3_column_int   (stmt, 5);
 				e->m_nPropertyValueId = sqlite3_column_int   (stmt, 6);
 
-				// Flags at +0x48: bit 0x01 = m_bUseOnInterval, bit 0x02 = m_bRemovable
-				// CDO defaultproperties sets m_bRemovable=true for all UTgEffect subclasses.
-				// ApplyEffects() runs effects where !m_bRemovable → use for instant groups (lifetime==0).
-				// ApplyEventBasedEffects() runs effects where m_bRemovable → use for timed groups (lifetime>0),
-				// so they are tracked and reversed by RemoveEffectGroup when the timer expires.
+				// Flags at +0x48: bit 0x01 = m_bUseOnInterval, bit 0x02 = m_bRemovable.
+				// CDO defaults m_bRemovable=true for UTgEffect (TgEffect.uc:662) so
+				// apply/remove pairs go through the symmetric `ApplyEventBasedEffects`
+				// → `TgEffect.Remove` → `ApplyToProperty(bRemove=true)` path. We
+				// previously cleared this for lifetime==0 groups on the assumption
+				// that "lifetime=0 means instant damage", but many lifetime=0
+				// groups are *hold-to-sustain* (scope/aim nType=266, stealth,
+				// rest): they must remain removable so scope-out actually reverses
+				// the ground-speed debuff via UC's Remove path. Leaving the CDO
+				// default in place is correct.
 				unsigned int& eflags = *(unsigned int*)((char*)e + 0x48);
 				if (sqlite3_column_int(stmt, 7)) eflags |= 0x01; else eflags &= ~0x01;
-				if (g->m_fLifeTime == 0.0f) eflags &= ~0x02; // instant group: clear m_bRemovable
 
 				TARRAY_ADD(effects, e)
 			}
@@ -128,8 +132,60 @@ static UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 		}
 	}
 
-	Logger::Log("effectgroup", "BuildEffectGroup: egId=%d egType=%d effects=%d\n",
-		egId, egType, g->m_Effects.Count);
+	// Stealth-category (621) effect groups in the DB have lifetime=0
+	// (e.g. egId 9315 for Spring Stealth, slot 981 / device 3023). Promote
+	// to a SHORT 1s lifetime to make the group register a HUD buff icon via
+	// SetEffectRep. The generic hold-to-sustain path (scope, rest) works
+	// fine with lifetime=0 — they don't need a HUD icon — but stealth wants
+	// a visible countdown. The UC effect manager's re-submit logic for
+	// application_value=156 ("Newest Wins") ignores duplicate submissions
+	// instead of refreshing the timer, so we refresh ourselves from
+	// `DeviceFiring.RefireCheckTimer` in UObject__ProcessEvent.cpp — each
+	// refire resets the LifeDone timer's elapsed counter and re-replicates
+	// the full time remaining. On fire-release, ServerStopFire explicitly
+	// clears category=621 for immediate HUD teardown.
+	if (g->m_nCategoryCode == 621 && g->m_fLifeTime == 0.0f) {
+		g->m_fLifeTime = 1.0f;
+		Logger::Log("effects",
+			"[BUILD] egId=%d promoted stealth lifetime 0 -> 1s (HUD icon)\n", egId);
+	}
+
+	// Set m_bIsManaged (bit 0x01 at offset 0x74). UC's *apply* gate at
+	// `TgEffectManager.ProcessEffect:231` is `(lifetime > 0 OR m_bIsManaged)`
+	// — without either, `ApplyEventBasedEffects` never runs and removable
+	// effects don't apply. UC's *remove* gate at `TgDeviceFire.RemoveEffectType`
+	// is `theEffectGroup.m_bIsManaged || bForceRemove` — `RemoveAimEffects`,
+	// `RemoveRestEffects`, and all non-forced remove paths pass bForceRemove=false,
+	// so the remove is silently skipped unless the TEMPLATE has m_bIsManaged=true.
+	//
+	// Every built effect group represents a tracked apply/remove lifecycle
+	// (application_value ∈ {155 Stacking, 156 Newest Wins, 157 Strongest,
+	// 836 Refresh, 874 SameInstigator} per the DB) — there are no pure
+	// "fire-and-forget instant" groups in asm_data_set_effect_groups. So
+	// mark every built group as managed. Apply becomes reliable, Remove
+	// becomes reliable, compounding goes away.
+	{
+		unsigned int& gflags = *(unsigned int*)((char*)g + 0x74);
+		gflags |= 0x01; // m_bIsManaged
+	}
+
+	{
+		unsigned int gflags = *(unsigned int*)((char*)g + 0x74);
+		Logger::Log("effects",
+			"[BUILD] egId=%d egType=%d effects=%d lifetime=%.2f category=%d app=%d bIsManaged=%d\n",
+			egId, egType, g->m_Effects.Count, g->m_fLifeTime, g->m_nCategoryCode,
+			g->m_nApplicationType, (gflags & 0x01) ? 1 : 0);
+		for (int i = 0; i < g->m_Effects.Count; i++) {
+			UTgEffect* e = g->m_Effects.Data[i];
+			if (!e) continue;
+			unsigned int eflags = *(unsigned int*)((char*)e + 0x48);
+			Logger::Log("effects",
+				"[BUILD]   effect[%d]: propId=%d calc=%d base=%.3f min=%.3f max=%.3f bRemovable=%d bUseOnInterval=%d\n",
+				i, e->m_nPropertyId, e->m_nCalcMethodCode, e->m_fBase,
+				e->m_fMinimum, e->m_fMaximum,
+				(eflags & 0x02) ? 1 : 0, (eflags & 0x01) ? 1 : 0);
+		}
+	}
 
 	return g;
 }
@@ -183,10 +239,16 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 		UTgEffectGroup* g = list.Data[i];
 		if (g && g->m_nType == nType) {
 			if (nIndex) *nIndex = i;
+			Logger::Log("effects",
+				"[GET] fireMode=%s nType=%d -> egId=%d (startIdx=%d resultIdx=%d)\n",
+				pThis->GetFullName(), nType, g->m_nEffectGroupId, startIdx, i);
 			return g;
 		}
 	}
 
 	if (nIndex) *nIndex = -1;
+	Logger::Log("effects",
+		"[GET] fireMode=%s nType=%d -> NONE (searched from %d in list of %d)\n",
+		pThis->GetFullName(), nType, startIdx, list.Count);
 	return nullptr;
 }

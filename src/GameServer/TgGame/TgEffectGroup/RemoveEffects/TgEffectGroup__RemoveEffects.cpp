@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
+#include "src/Utils/Logger/Logger.hpp"
 
 // Walks m_Effects and ProcessEvents the UC `Remove` event on each one.
 // SDK's UTgEffect::eventRemove builds the parm struct (Target +
@@ -14,9 +15,19 @@
 void __fastcall TgEffectGroup__RemoveEffects::Call(UTgEffectGroup* eg, void* /*edx*/, AActor* Target, unsigned long bResetToFollow) {
 	if (!eg) return;
 
+	Logger::Log("effects",
+		"[REMOVE-EFFECTS] eg=%p (egId=%d) target=%p  effects=%d bReset=%d\n",
+		(void*)eg, eg->m_nEffectGroupId, (void*)Target, eg->m_Effects.Count, (int)bResetToFollow);
+
 	for (int i = 0; i < eg->m_Effects.Count; ++i) {
 		UTgEffect* effect = eg->m_Effects.Data[i];
 		if (effect) {
+			unsigned int eflags = *(unsigned int*)((char*)effect + 0x48);
+			Logger::Log("effects",
+				"[REMOVE-EFFECTS]   [%d] effect=%p propId=%d calc=%d m_fCurrent=%.3f m_bRemovable=%d -> eventRemove\n",
+				i, (void*)effect,
+				effect->m_nPropertyId, effect->m_nCalcMethodCode,
+				effect->m_fCurrent, (eflags & 0x02) ? 1 : 0);
 			effect->eventRemove(Target, bResetToFollow);
 		}
 	}

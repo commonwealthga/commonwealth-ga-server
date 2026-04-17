@@ -202,6 +202,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackDamagedPlayer/TgPawn__TrackDamagedPlayer.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackHealing/TgPawn__TrackHealing.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackHit/TgPawn__TrackHit.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TickMakeVisibleCalculation/TgPawn__TickMakeVisibleCalculation.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/ServerApplyFlair/TgPlayerController__ServerApplyFlair.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/ServerTestSystemMailItem/TgPlayerController__ServerTestSystemMailItem.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgRepInfo_Player/OnAllFlairManifestsLoaded/TgRepInfo_Player__OnAllFlairManifestsLoaded.cpp \
