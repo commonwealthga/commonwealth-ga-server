@@ -336,10 +336,24 @@ void IpcClient::DrainInbound() {
             // Convert player_name to wide string for UE3 APIs.
             info.player_name_w = std::wstring(pname.begin(), pname.end());
 
+            // Skill-tree allocation payload (optional). Consumed at pawn spawn
+            // by ReapplyCharacterSkillTree to materialize s_SkillBasedEffectGroups.
+            if (j.contains("skills") && j["skills"].is_array()) {
+                for (const auto& s : j["skills"]) {
+                    SkillAllocation a;
+                    a.skill_group_id = s.value("skill_group_id", 0);
+                    a.skill_id       = s.value("skill_id", 0);
+                    a.points         = s.value("points", 0);
+                    if (a.skill_group_id && a.skill_id && a.points > 0)
+                        info.skills.push_back(a);
+                }
+            }
+            info.last_respec_at = j.value("last_respec_at", (int64_t)0);
+
             PlayerRegistry::Register(info);
 
-            Logger::Log("ipc", "[IPC] PLAYER_REGISTER: guid=%s profile=%u char=%lld user=%lld tf=%d\n",
-                guid.c_str(), profile_id, char_id, uid, task_force);
+            Logger::Log("ipc", "[IPC] PLAYER_REGISTER: guid=%s profile=%u char=%lld user=%lld tf=%d skills=%d\n",
+                guid.c_str(), profile_id, char_id, uid, task_force, (int)info.skills.size());
 
             // Send ACK back to control server.
             // pawn_id is 0 at registration time (pawn not yet spawned -- spawns at JOIN).

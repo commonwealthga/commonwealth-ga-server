@@ -126,8 +126,14 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	    Pawn->s_Properties.Data ? Pawn->s_Properties.Num() : -1,
 	    Pawn->s_fPowerPoolRechargeRate);
 
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH,                  hitPoints,    hitPoints,    0, hitPoints);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH_MAX,              hitPoints,    hitPoints,    0, hitPoints);
+	// Per-prop m_fMaximum is a hard CLAMP inside TgPawn::ApplyProperty
+	// (FUN_1095bd40 = clamp(raw, min, max)). If skills push HP_MAX above the
+	// base, the fanned-out replicated r_nHealthMaximum gets clipped back to
+	// the base and the player never sees the buff. Raise the ceiling so
+	// skill/item/effect modifiers have room to land. 10x base handles any
+	// realistic stack; cap at 1e6 just in case.
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH,                  hitPoints,    hitPoints,    0, hitPoints * 10.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH_MAX,              hitPoints,    hitPoints,    0, hitPoints * 10.0f);
 	// TGPID_GROUND_SPEED (49): the rest device applies PERC_DECREASE here.
 	// Was previously disabled because UC's Remove math leaks per apply/remove
 	// cycle (passes effBase instead of propBase*effBase), so repeated rest
@@ -138,8 +144,12 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// it's safe to re-register. Without this line, any effect modifying
 	// prop 49 silently no-ops (SetProperty needs the prop in s_Properties).
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_GROUND_SPEED,            speed,        speed,        0, 10000);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL,               powerPool,    powerPool,    0, powerPool);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_MAX,           powerPool,    powerPool,    0, powerPool);
+	// Same clamp trap as HP above — POWERPOOL_MAX (255) skill buffs like the
+	// +40% Power Pool tree node were being computed into UTgProperty.m_fRaw
+	// (verified 100 -> 140) but clipped back to 100 at fan-out because
+	// m_fMaximum was set to `powerPool`. Raise the ceiling.
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL,               powerPool,    powerPool,    0, powerPool * 10.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_MAX,           powerPool,    powerPool,    0, powerPool * 10.0f);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_RECHARGE_RATE, rechargeRate, rechargeRate, 0, 1000);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_COST,          0, 0, 0, 0);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_MIN_COST,      0, 0, 0, 0);

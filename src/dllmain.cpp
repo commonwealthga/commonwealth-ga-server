@@ -114,6 +114,9 @@
 #include "src/GameServer/TgGame/TgBotFactory/UseSpawnTable/TgBotFactory__UseSpawnTable.hpp"
 #include "src/GameServer/TgGame/TgDeployable/AddProperty/TgDeployable__AddProperty.hpp"
 #include "src/GameServer/TgGame/TgDeployable/InitializeDefaultProps/TgDeployable__InitializeDefaultProps.hpp"
+#include "src/GameServer/TgGame/TgDeployable/NotifyGroupChanged/TgDeployable__NotifyGroupChanged.hpp"
+#include "src/GameServer/TgAssemblyMisc/LoadAssetRefs/TgAssemblyMisc__LoadAssetRefs.hpp"
+#include "src/GameServer/Core/LoadObject/Core__LoadObject.hpp"
 #include "src/GameServer/TgGame/TgDevice/ApplyInventoryEquipEffects/TgDevice__ApplyInventoryEquipEffects.hpp"
 #include "src/GameServer/TgGame/TgDevice/ClearInstigatorEquippedDevices/TgDevice__ClearInstigatorEquippedDevices.hpp"
 #include "src/GameServer/TgGame/TgDevice/PopulateInstigatorEquippedDevices/TgDevice__PopulateInstigatorEquippedDevices.hpp"
@@ -287,10 +290,20 @@
 unsigned long ModuleThread( void* ) {
 	// Logger::EnabledChannels.push_back("hook_calltree");
 	// Logger::EnabledChannels.push_back("combat-trace");
+	Logger::EnabledChannels.push_back("asset_load");
+	Logger::EnabledChannels.push_back("deploy_phase");
+	Logger::EnabledChannels.push_back("team_colors");
+	Logger::EnabledChannels.push_back("pet_spawn");
+	Logger::EnabledChannels.push_back("bomb");
+	Logger::EnabledChannels.push_back("deployable_props");
+	Logger::EnabledChannels.push_back("heal_tick");
+	Logger::EnabledChannels.push_back("skills");
+	Logger::EnabledChannels.push_back("skills-trace");
+	Logger::EnabledChannels.push_back("skills_debug");
 	// Logger::EnabledChannels.push_back("ipc");
 	// Logger::EnabledChannels.push_back("kismet");
 	// Logger::EnabledChannels.push_back("tgbotfactory");
-	// Logger::EnabledChannels.push_back("effects");
+	Logger::EnabledChannels.push_back("effects");
 	// Logger::EnabledChannels.push_back("firedeploy_m_pAmSetup");
 	// Logger::EnabledChannels.push_back("firedeploy_m_pFireModeSetup");
 	// Logger::EnabledChannels.push_back("firespawnpet_m_pAmSetup");
@@ -400,6 +413,11 @@ unsigned long ModuleThread( void* ) {
 	TgProj_Deployable__SpawnDeployable::Install();
 	TgMissionObjective_Bot__SpawnObjectiveBot::Install();
 
+	// Diagnostic hooks for the ApplyDeployableSetup → LoadObject crash.
+	// Both log on the "asset_load" channel. Remove once the crash is fixed.
+	TgAssemblyMisc__LoadAssetRefs::Install();
+	Core__LoadObject::Install();
+
 	// --- stub hooks (logging only) ---
 	TgBotFactory__ClearQueue::Install();
 	TgBotFactory__SpawnBotAdjusted::Install();
@@ -407,6 +425,7 @@ unsigned long ModuleThread( void* ) {
 	TgBotFactory__UseSpawnTable::Install();
 	TgDeployable__AddProperty::Install();
 	TgDeployable__InitializeDefaultProps::Install();
+	TgDeployable__NotifyGroupChanged::Install();
 	TgDevice__ApplyInventoryEquipEffects::Install();
 	TgDevice__ClearInstigatorEquippedDevices::Install();
 	TgDevice__PopulateInstigatorEquippedDevices::Install();

@@ -12,4 +12,11 @@ public:
 	static inline void __fastcall CallOriginal(ATgDeployable* Deployable, void* edx) {
 		m_original(Deployable, edx);
 	};
+
+	// Construct a UTgProperty, push it onto Deployable->s_Properties, then
+	// call native SetProperty so the ApplyProperty vtable slot pushes the
+	// value into any engine-owned mirror field.
+	static UTgProperty* InitializeProperty(
+		ATgDeployable* Deployable, int nPropertyId,
+		float fBase, float fRaw, float fMinimum, float fMaximum);
 };

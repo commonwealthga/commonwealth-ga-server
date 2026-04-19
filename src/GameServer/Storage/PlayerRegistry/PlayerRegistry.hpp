@@ -7,6 +7,12 @@
 #include <cstdint>
 #include <windows.h>
 
+struct SkillAllocation {
+	int skill_group_id = 0;
+	int skill_id = 0;
+	int points = 0;
+};
+
 struct PlayerInfo {
 	std::string session_guid; // 32-char lowercase hex
 	std::string player_name;
@@ -16,6 +22,10 @@ struct PlayerInfo {
 	int64_t selected_character_id = 0;
 	uint32_t selected_profile_id = 0;
 	int task_force = 1;
+	// Sent by the control server in PLAYER_REGISTER; consumed by
+	// ReapplyCharacterSkillTree to build s_SkillBasedEffectGroups.
+	std::vector<SkillAllocation> skills;
+	int64_t last_respec_at = 0;
 };
 
 struct CharacterInfo {

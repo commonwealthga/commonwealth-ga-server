@@ -42,20 +42,34 @@ void __fastcall TgInventoryManager__NonPersistRemoveDevice::Call(
 	if (InventoryManager->r_ItemCount > 0)
 		InventoryManager->r_ItemCount--;
 
-	// Send GAME_EVENT beacon_remove IPC so the control server clears the client's device bar slot.
-	auto sessIt = GPawnSessions.find(pawn);
-	if (sessIt != GPawnSessions.end()) {
-		nlohmann::json ev;
-		ev["type"]         = IpcProtocol::MSG_GAME_EVENT;
-		ev["subtype"]      = "beacon_remove";
-		ev["instance_id"]  = IpcClient::GetInstanceId();
-		ev["session_guid"] = sessIt->second;
-		ev["pawn_id"]      = (int)pawn->r_nPawnId;
-		ev["inventory_id"] = nInventoryId;
-		IpcClient::Send(ev.dump());
-		Logger::Log(GetLogChannel(), "NonPersistRemoveDevice: Sent GAME_EVENT beacon_remove for session %s\n",
-			sessIt->second.c_str());
+	// Send GAME_EVENT beacon_remove IPC so the control server clears the
+	// client's device bar slot. Only for beacon-placing devices though —
+	// calling this from the consume path of a medical station / turret /
+	// sensor removal would wrongly clear an in-use device bar slot on the
+	// control server. IsABeaconPlacingDevice is a real native @ 0x10a19a40
+	// that returns device+0x22E bit0 (m_bIsOffHand) — currently always false
+	// on our server since we don't set that bit, but kept here so once
+	// loadout wiring populates the bit the IPC fires again.
+	using IsBeaconFn = int(__fastcall*)(ATgDevice*, void*);
+	bool bIsBeacon = ((IsBeaconFn)0x10a19a40)(device, nullptr) != 0;
+	if (bIsBeacon) {
+		auto sessIt = GPawnSessions.find(pawn);
+		if (sessIt != GPawnSessions.end()) {
+			nlohmann::json ev;
+			ev["type"]         = IpcProtocol::MSG_GAME_EVENT;
+			ev["subtype"]      = "beacon_remove";
+			ev["instance_id"]  = IpcClient::GetInstanceId();
+			ev["session_guid"] = sessIt->second;
+			ev["pawn_id"]      = (int)pawn->r_nPawnId;
+			ev["inventory_id"] = nInventoryId;
+			IpcClient::Send(ev.dump());
+			Logger::Log(GetLogChannel(), "NonPersistRemoveDevice: Sent GAME_EVENT beacon_remove for session %s\n",
+				sessIt->second.c_str());
+		} else {
+			Logger::Log(GetLogChannel(), "NonPersistRemoveDevice: WARNING no session for pawn 0x%p\n", pawn);
+		}
 	} else {
-		Logger::Log(GetLogChannel(), "NonPersistRemoveDevice: WARNING no session for pawn 0x%p\n", pawn);
+		Logger::Log(GetLogChannel(),
+			"NonPersistRemoveDevice: skipping beacon_remove IPC (device is not a beacon-placing device)\n");
 	}
 }

@@ -268,7 +268,8 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	UTgDeviceFire* deviceFire,
 	float fDeployAnimLength
 ) {
-	Logger::Log("debug", "Spawning bot with id %d\n", nBotId);
+	Logger::Log("pet_spawn", "SpawnBotById: nBotId=%d ignoreCollision=%d loc=(%.1f,%.1f,%.1f)\n",
+		nBotId, (int)bIgnoreCollision, vLocation.X, vLocation.Y, vLocation.Z);
 
 	AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
 
@@ -282,11 +283,35 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		bIgnoreCollision ? 1 : 0
 	);
 
-	if (AIController == nullptr) return nullptr;
+	if (AIController == nullptr) {
+		Logger::Log("pet_spawn", "SpawnBotById: AIController spawn FAILED (TgAIControllerClass=%p)\n",
+			(void*)ClassPreloader::GetTgAIControllerClass());
+		return nullptr;
+	}
+
+	const char* pawnClassName = GetPawnClassName(nBotId);
+	UClass* pawnClass = ClassPreloader::GetClass(pawnClassName);
+	// DB-resolved class may be defined in a package that isn't loaded server-
+	// side (e.g. TgPawn_TurretPlasma lives in a sub-package only loaded for
+	// specific maps). Fall back to the base class along the known inheritance
+	// chain before giving up. Order matches the SDK inheritance in
+	// TgGame_classes.h: TurretX → TgPawn_Turret → TgPawn_Character.
+	if (pawnClass == nullptr && strstr(pawnClassName, "TgPawn_Turret") != nullptr) {
+		Logger::Log("pet_spawn", "SpawnBotById: '%s' not loaded, falling back to Class TgGame.TgPawn_Turret\n", pawnClassName);
+		pawnClassName = "Class TgGame.TgPawn_Turret";
+		pawnClass = ClassPreloader::GetClass(pawnClassName);
+	}
+	if (pawnClass == nullptr) {
+		Logger::Log("pet_spawn", "SpawnBotById: fallback '%s' also not loaded, falling back to Class TgGame.TgPawn_Character\n", pawnClassName);
+		pawnClassName = "Class TgGame.TgPawn_Character";
+		pawnClass = ClassPreloader::GetClass(pawnClassName);
+	}
+	Logger::Log("pet_spawn", "SpawnBotById: pawnClassName='%s'  pawnClass=%p  AIController=%p\n",
+		pawnClassName, (void*)pawnClass, (void*)AIController);
 
 	TgPawn__InitializeDefaultProps::nPendingBotId = nBotId;
 	ATgPawn_Character* Bot = (ATgPawn_Character*)Game->Spawn(
-		ClassPreloader::GetClass(GetPawnClassName(nBotId)),
+		pawnClass,
 		AIController->PlayerReplicationInfo,
 		FName(),
 		vLocation,
@@ -297,6 +322,8 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// nPendingBotId is cleared inside InitializeDefaultProps::Call
 
 	if (Bot == nullptr) {
+		Logger::Log("pet_spawn", "SpawnBotById: Bot spawn FAILED — pawnClass='%s' (%p)  loc=(%.1f,%.1f,%.1f)\n",
+			pawnClassName, (void*)pawnClass, vLocation.X, vLocation.Y, vLocation.Z);
 		TgPawn__InitializeDefaultProps::nPendingBotId = 0;
 		return nullptr;
 	}
@@ -353,9 +380,10 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	Bot->InvManager->Instigator = Bot;
 
 	if (!CAmBot__LoadBotMarshal::m_BotPointers[nBotId]) {
-		Logger::Log("debug", "Bot with id %d not found\n", nBotId);
+		Logger::Log("pet_spawn", "SpawnBotById: BotConfig pointer missing for nBotId=%d — no assembly.dat row loaded\n", nBotId);
 		return nullptr;
 	}
+	Logger::Log("pet_spawn", "SpawnBotById: BotConfig resolved, proceeding with post-spawn setup for nBotId=%d Bot=%p\n", nBotId, (void*)Bot);
 
 	void* BotConfig = (void*)CAmBot__LoadBotMarshal::m_BotPointers[nBotId];
 

@@ -410,3 +410,112 @@ std::vector<DeviceRow> PlayerSessionStore::GetDevicesForCharacter(int64_t charac
 	sqlite3_finalize(stmt);
 	return result;
 }
+
+std::vector<SkillRow> PlayerSessionStore::GetSkillsForCharacter(int64_t character_id) {
+	std::lock_guard<std::mutex> lock(mutex_);
+	sqlite3* db = Database::GetConnection();
+	std::vector<SkillRow> result;
+
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT skill_group_id, skill_id, points "
+		"FROM ga_character_skills WHERE character_id = ? AND points > 0 "
+		"ORDER BY skill_group_id, skill_id",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[PlayerSessionStore] GetSkillsForCharacter prepare failed: %s\n", sqlite3_errmsg(db));
+		return result;
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		SkillRow row;
+		row.skill_group_id = sqlite3_column_int(stmt, 0);
+		row.skill_id       = sqlite3_column_int(stmt, 1);
+		row.points         = sqlite3_column_int(stmt, 2);
+		result.push_back(row);
+	}
+	sqlite3_finalize(stmt);
+	return result;
+}
+
+void PlayerSessionStore::SetSkillsForCharacter(int64_t character_id, const std::vector<SkillRow>& skills) {
+	std::lock_guard<std::mutex> lock(mutex_);
+	sqlite3* db = Database::GetConnection();
+
+	char* err = nullptr;
+	if (sqlite3_exec(db, "BEGIN", nullptr, nullptr, &err) != SQLITE_OK) {
+		Logger::Log("db", "[PlayerSessionStore] SetSkillsForCharacter begin failed: %s\n", err);
+		sqlite3_free(err);
+		return;
+	}
+
+	sqlite3_stmt* del = nullptr;
+	sqlite3_prepare_v2(db, "DELETE FROM ga_character_skills WHERE character_id = ?", -1, &del, nullptr);
+	if (del) {
+		sqlite3_bind_int64(del, 1, character_id);
+		sqlite3_step(del);
+		sqlite3_finalize(del);
+	}
+
+	sqlite3_stmt* ins = nullptr;
+	sqlite3_prepare_v2(db,
+		"INSERT INTO ga_character_skills (character_id, skill_group_id, skill_id, points) "
+		"VALUES (?, ?, ?, ?)",
+		-1, &ins, nullptr);
+	if (ins) {
+		for (const auto& s : skills) {
+			if (s.points <= 0) continue;  // skip zero rows — not worth persisting
+			sqlite3_bind_int64(ins, 1, character_id);
+			sqlite3_bind_int(ins, 2, s.skill_group_id);
+			sqlite3_bind_int(ins, 3, s.skill_id);
+			sqlite3_bind_int(ins, 4, s.points);
+			sqlite3_step(ins);
+			sqlite3_reset(ins);
+		}
+		sqlite3_finalize(ins);
+	}
+
+	sqlite3_stmt* bump = nullptr;
+	sqlite3_prepare_v2(db,
+		"UPDATE ga_characters SET last_respec_at = strftime('%s','now') WHERE id = ?",
+		-1, &bump, nullptr);
+	if (bump) {
+		sqlite3_bind_int64(bump, 1, character_id);
+		sqlite3_step(bump);
+		sqlite3_finalize(bump);
+	}
+
+	if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, &err) != SQLITE_OK) {
+		Logger::Log("db", "[PlayerSessionStore] SetSkillsForCharacter commit failed: %s\n", err);
+		sqlite3_free(err);
+		sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+		return;
+	}
+
+	Logger::Log("db", "[PlayerSessionStore] Saved %d skill rows for character %lld\n",
+		(int)skills.size(), (long long)character_id);
+}
+
+void PlayerSessionStore::ClearSkillsForCharacter(int64_t character_id) {
+	SetSkillsForCharacter(character_id, {});
+}
+
+int64_t PlayerSessionStore::GetLastRespecAt(int64_t character_id) {
+	std::lock_guard<std::mutex> lock(mutex_);
+	sqlite3* db = Database::GetConnection();
+
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT last_respec_at FROM ga_characters WHERE id = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) return 0;
+
+	sqlite3_bind_int64(stmt, 1, character_id);
+	int64_t out = 0;
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		out = sqlite3_column_int64(stmt, 0);
+	}
+	sqlite3_finalize(stmt);
+	return out;
+}

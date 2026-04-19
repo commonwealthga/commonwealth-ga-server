@@ -398,6 +398,13 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		Inventory::Finalize(newpawn);
 	}
 
+	// NOTE: we do NOT call ReapplyCharacterSkillTree here — GPawnSessions is
+	// only populated later in MarshalChannel__NotifyControlMessage::
+	// HandlePlayerConnected, and our Reapply hook looks up the pawn's session
+	// guid there to resolve PlayerInfo.skills. Calling it at this stage logs
+	// "pawn has no session mapping" and silently no-ops. The hook is invoked
+	// from HandlePlayerConnected instead (right after GPawnSessions[pawn] is
+	// set), so the skill data is reachable.
 
 	LogCallEnd();
 

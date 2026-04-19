@@ -62,9 +62,16 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
 
     if (subtype == "spawn") {
         int pawn_id = j.value("pawn_id", 0);
-        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: spawn pawn_id=%d guid=%s\n",
-            pawn_id, session_guid.c_str());
+        session->item_profile_id_ = j.value("item_profile_id", 0);
+        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: spawn pawn_id=%d item_profile_id=%d guid=%s\n",
+            pawn_id, (int)session->item_profile_id_, session_guid.c_str());
         session->send_inventory_response(pawn_id, session->selected_character_id_);
+        // Push the character's skill-tree allocation so the in-game skill UI
+        // renders the saved state. Client caches the response; opening the
+        // skill screen then doesn't require a server round-trip. A later
+        // SendCharacterSkillMarshal RPC (when supported) can trigger another
+        // push if the data becomes stale.
+        session->send_player_skills_response();
 
         // Request RandomSM actor names from game instance.
         int64_t instance_id = j.value("instance_id", (int64_t)0);
@@ -90,6 +97,54 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         Logger::Log("ipc", "[TcpSession] DeliverGameEvent: beacon_remove pawn=%d inv=%d\n",
             pawn_id, inventory_id);
         session->send_beacon_remove_response(pawn_id, inventory_id);
+    }
+    else if (subtype == "skill_request") {
+        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: skill_request guid=%s\n",
+            session_guid.c_str());
+        session->send_player_skills_response();
+    }
+    else if (subtype == "skill_save") {
+        int64_t character_id = j.value("character_id", (int64_t)0);
+        if (j.contains("item_profile_id")) {
+            int32_t ipid = j.value("item_profile_id", 0);
+            if (ipid >= 0) session->item_profile_id_ = ipid;
+        }
+        std::vector<SkillRow> skills;
+        if (j.contains("skills") && j["skills"].is_array()) {
+            for (const auto& s : j["skills"]) {
+                SkillRow r{};
+                r.skill_group_id = s.value("skill_group_id", 0);
+                r.skill_id       = s.value("skill_id", 0);
+                r.points         = s.value("points", 0);
+                if (r.skill_group_id && r.skill_id && r.points > 0)
+                    skills.push_back(r);
+            }
+        }
+        // Opcode 0x00A0 is used bidirectionally: the client also sends it
+        // with an empty DATA_SET_CHARACTER_SKILLS array to REQUEST the
+        // server's current state (observed on skill-UI reopen). Treat an
+        // empty inbound as a request — don't wipe the DB. Real respec goes
+        // through the separate skill_respec IPC subtype.
+        Logger::Log("ipc",
+            "[TcpSession] DeliverGameEvent: skill_save char=%lld rows=%d guid=%s%s\n",
+            (long long)character_id, (int)skills.size(), session_guid.c_str(),
+            skills.empty() ? " (empty -> treated as REQUEST, not persisting)" : "");
+        if (character_id != 0 && !skills.empty()) {
+            PlayerSessionStore::SetSkillsForCharacter(character_id, skills);
+        }
+        // Echo current DB state so the UI's inbound 0x00A0 handler has
+        // authoritative data whether this was a save or a request.
+        session->send_player_skills_response();
+    }
+    else if (subtype == "skill_respec") {
+        int64_t character_id = j.value("character_id", (int64_t)0);
+        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: skill_respec char=%lld\n",
+            (long long)character_id);
+        if (character_id != 0) {
+            PlayerSessionStore::ClearSkillsForCharacter(character_id);
+        }
+        // Echo the zeroed allocation to the client so the UI matches.
+        session->send_player_skills_response();
     }
     else if (subtype == "quest") {
         int64_t character_id = j.value("character_id", (int64_t)0);
@@ -172,6 +227,23 @@ void TcpSession::initiate_player_register_and_go_play() {
         reg["head_asm_id"]          = 0;
         reg["gender_type_value_id"] = 0;
         reg["morph_data"]           = "";
+    }
+
+    // Embed the character's skill-tree allocation so the game server can apply
+    // skill-based effect groups during pawn spawn without a second IPC round-
+    // trip. Saves (inbound 0xA0) persist to the same DB, so the next spawn or
+    // PLAYER_REGISTER sees fresh rows.
+    {
+        nlohmann::json skillsArr = nlohmann::json::array();
+        for (const auto& s : PlayerSessionStore::GetSkillsForCharacter(selected_character_id_)) {
+            nlohmann::json row;
+            row["skill_group_id"] = s.skill_group_id;
+            row["skill_id"]       = s.skill_id;
+            row["points"]         = s.points;
+            skillsArr.push_back(row);
+        }
+        reg["skills"] = skillsArr;
+        reg["last_respec_at"] = PlayerSessionStore::GetLastRespecAt(selected_character_id_);
     }
 
     // Arm 60-second ACK-wait timer.
@@ -437,6 +509,42 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			Logger::Log("tcp", "[%s] Received: AGENCY_GET_ROSTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 			send_agency_get_roster_response();
 			break;
+		case GA_U::SEND_PLAYER_SKILLS: {
+			// CGameClient::SendSkillsToServer @ 0x1141fd00 sends this when the player
+			// hits Save on the skill tree. Payload carries a DATA_SET_CHARACTER_SKILLS
+			// array; each record is {SKILL_GROUP_ID, SKILL_ID, POINTS_ALLOCATED}.
+			// Persist the allocation and echo the saved state back so the UI picks up
+			// the authoritative values.
+			Logger::Log("tcp", "[%s] Received: SEND_PLAYER_SKILLS [0x%04X], item count: %d\n",
+				Logger::GetTime(), packet_type, item_count);
+
+			if (selected_character_id_ == 0) {
+				Logger::Log("tcp", "[%s] SEND_PLAYER_SKILLS: no selected character, dropping\n",
+					Logger::GetTime());
+				break;
+			}
+
+			PacketView pkt(data + 6, length - 6);
+			std::vector<SkillRow> skills;
+			for (const auto& rec : pkt.GetDataSet(GA_T::DATA_SET_CHARACTER_SKILLS)) {
+				SkillRow row{};
+				row.skill_group_id = (int)rec.Read4B(GA_T::SKILL_GROUP_ID).value_or(0);
+				row.skill_id       = (int)rec.Read4B(GA_T::SKILL_ID).value_or(0);
+				row.points         = (int)rec.Read4B(GA_T::POINTS_ALLOCATED).value_or(0);
+				// The client only emits rows with points > 0, but guard anyway.
+				if (row.skill_group_id && row.skill_id && row.points > 0)
+					skills.push_back(row);
+			}
+
+			Logger::Log("tcp", "[TCP] SEND_PLAYER_SKILLS: charId=%lld parsed %d skill rows\n",
+				(long long)selected_character_id_, (int)skills.size());
+
+			PlayerSessionStore::SetSkillsForCharacter(selected_character_id_, skills);
+
+			// Echo back so the UI updates; also refreshes LAST_RESPEC_DATETIME client-side.
+			send_player_skills_response();
+			break;
+		}
 		default:
 			Logger::Log("tcp", "[%s] Received unknown packet type: %04X, raw data:\n", Logger::GetTime(), packet_type);
 			LogData(data, length);
@@ -525,6 +633,21 @@ void TcpSession::send_match_accept_response() {
         reg["head_asm_id"]          = 0;
         reg["gender_type_value_id"] = 0;
         reg["morph_data"]           = "";
+    }
+
+    // Mirror the skill-tree embedding from initiate_player_register_and_go_play
+    // so a match-accept spawn gets the same skill effects as a home-map spawn.
+    {
+        nlohmann::json skillsArr = nlohmann::json::array();
+        for (const auto& s : PlayerSessionStore::GetSkillsForCharacter(selected_character_id_)) {
+            nlohmann::json row;
+            row["skill_group_id"] = s.skill_group_id;
+            row["skill_id"]       = s.skill_id;
+            row["points"]         = s.points;
+            skillsArr.push_back(row);
+        }
+        reg["skills"] = skillsArr;
+        reg["last_respec_at"] = PlayerSessionStore::GetLastRespecAt(selected_character_id_);
     }
 
     // Send PLAYER_REGISTER to the MISSION instance (not home map).
@@ -1164,13 +1287,45 @@ void TcpSession::send_player_skills_response()
 {
 	std::vector<uint8_t> response;
 
+	// Authoritative skill allocation for the currently-selected character.
+	std::vector<SkillRow> skills;
+	double respecUnix = 1.0;
+	if (selected_character_id_ != 0) {
+		skills = PlayerSessionStore::GetSkillsForCharacter(selected_character_id_);
+		int64_t t = PlayerSessionStore::GetLastRespecAt(selected_character_id_);
+		if (t > 0) respecUnix = (double)t;
+	}
+
 	uint16_t packet_type = GA_U::SEND_PLAYER_SKILLS;
-	uint16_t item_count = 1;
+	// Top-level fields: LAST_RESPEC_DATETIME + DATA_SET_CHARACTER_SKILLS.
+	uint16_t item_count = 2;
 
 	append(response, packet_type & 0xFF, packet_type >> 8);
 	append(response, item_count & 0xFF, item_count >> 8);
 
-	Write4B(response, GA_T::LAST_RESPEC_DATETIME, 0x1);
+	// LAST_RESPEC_DATETIME is encoded as DATETIME (type 7 = 8 bytes / double).
+	// The client parses it via CMarshal::get_datetime_2 — a 4-byte write here
+	// would leak garbage into the next field.
+	WriteDouble(response, GA_T::LAST_RESPEC_DATETIME, respecUnix);
+
+	uint16_t count = (uint16_t)skills.size();
+	append(response, GA_T::DATA_SET_CHARACTER_SKILLS & 0xFF, GA_T::DATA_SET_CHARACTER_SKILLS >> 8);
+	append(response, count & 0xFF, count >> 8);
+	for (const auto& s : skills) {
+		// Client's receive-side lookup (FUN_1141f750) matches rows on THREE
+		// keys: SKILL_GROUP_ID, SKILL_ID, and PROFILE_ID — matched against
+		// character+0x1634 = r_nItemProfileId (NOT the class profile id).
+		// Item profiles aren't implemented yet, so hardcode 0 to match the
+		// default; revisit when multi-profile item sets come online.
+		append(response, 0x04, 0x00);
+		Write4B(response, GA_T::SKILL_GROUP_ID,   (uint32_t)s.skill_group_id);
+		Write4B(response, GA_T::SKILL_ID,         (uint32_t)s.skill_id);
+		Write4B(response, GA_T::PROFILE_ID,       (uint32_t)item_profile_id_);
+		Write4B(response, GA_T::POINTS_ALLOCATED, (uint32_t)s.points);
+	}
+
+	Logger::Log("tcp", "[TCP] SEND_PLAYER_SKILLS: sent %d skills for charId=%lld item_profile_id=%d\n",
+		(int)skills.size(), (long long)selected_character_id_, (int)item_profile_id_);
 
 	send_response(response);
 }

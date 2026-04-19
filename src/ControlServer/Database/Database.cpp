@@ -634,14 +634,58 @@ void Database::Init() {
 		}
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 18", nullptr, nullptr, &err);
+	// NOTE: ga_character_skills migration runs UNCONDITIONALLY, not gated by
+	// `version < N`. Reason: the game-server DLL's Database::Init
+	// (src/Database/Database.cpp) runs independent migrations against the same
+	// shared server.db and bumps `version_info.version` to its own target
+	// (currently 20). Whichever server ran last wins — so any control-server
+	// migration gated by a lower version number gets silently skipped on
+	// subsequent boots. All three statements below are idempotent (CREATE IF
+	// NOT EXISTS / ALTER with error-swallow) so running every boot is cheap
+	// and safe.
+	{
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_character_skills ("
+			"  id             INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  character_id   INTEGER NOT NULL REFERENCES ga_characters(id),"
+			"  skill_group_id INTEGER NOT NULL,"
+			"  skill_id       INTEGER NOT NULL,"
+			"  points         INTEGER NOT NULL DEFAULT 0,"
+			"  UNIQUE(character_id, skill_group_id, skill_id)"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_character_skills table: %s\n", err);
+			sqlite3_free(err);
+			return;
+		}
+		result = sqlite3_exec(db,
+			"CREATE INDEX IF NOT EXISTS idx_ga_character_skills_char "
+			"ON ga_character_skills(character_id);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_character_skills index: %s\n", err);
+			sqlite3_free(err);
+		}
+		// ALTER TABLE ADD COLUMN fails once the column exists — swallow that
+		// error so we stay idempotent across boots.
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_characters ADD COLUMN last_respec_at INTEGER NOT NULL DEFAULT 0;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			// Expected on second+ boot — log at debug level rather than error.
+			sqlite3_free(err);
+		}
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 19", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
 	}
 
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
-	Logger::Log("db", "[Database::Init] Schema at version 18, WAL mode enabled\n");
+	Logger::Log("db", "[Database::Init] Schema at version 19, WAL mode enabled\n");
 }
 
 std::string Database::GetQuestStatus(int64_t character_id, int quest_id) {

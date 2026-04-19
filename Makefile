@@ -129,6 +129,9 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/UseSpawnTable/TgBotFactory__UseSpawnTable.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/AddProperty/TgDeployable__AddProperty.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/InitializeDefaultProps/TgDeployable__InitializeDefaultProps.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/NotifyGroupChanged/TgDeployable__NotifyGroupChanged.cpp \
+			  $(SRC_DIR)/GameServer/TgAssemblyMisc/LoadAssetRefs/TgAssemblyMisc__LoadAssetRefs.cpp \
+			  $(SRC_DIR)/GameServer/Core/LoadObject/Core__LoadObject.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/ApplyInventoryEquipEffects/TgDevice__ApplyInventoryEquipEffects.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/ClearInstigatorEquippedDevices/TgDevice__ClearInstigatorEquippedDevices.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/PopulateInstigatorEquippedDevices/TgDevice__PopulateInstigatorEquippedDevices.cpp \
@@ -308,7 +311,7 @@ SOURCE_FILES_CLIENT= \
 			  $(SRC_DIR)/Utils/DebugWindow/DebugWindow.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ObjectCache/ObjectCache.cpp \
 			  $(SRC_DIR)/Database/AsmDataCapture/AsmDataCapture_client_stub.cpp \
-			  $(SRC_DIR)/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.cpp \
+			  $(SRC_DIR)/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent_client.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceivedClient.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.cpp \
@@ -321,6 +324,9 @@ SOURCE_FILES_CLIENT= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/DisplayDamageInfo/TgPawn__DisplayDamageInfo.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TGPostRenderFor/TgPawn__TGPostRenderFor.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgHUD_Game/DrawActorOverlays/TgHUD_Game__DrawActorOverlays.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/NotifyGroupChanged/TgDeployable__NotifyGroupChanged.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgRepInfo_Game/GetTaskForceFor/TgRepInfo_Game__GetTaskForceFor.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/IsFriendlyWithLocalPawn/TgDeployable__IsFriendlyWithLocalPawn.cpp \
 			  $(SRC_DIR)/dllmainclient.cpp
 
 
@@ -329,6 +335,12 @@ SOURCE_FILES_CLIENT= \
 MAKEFLAGS += -j4
 CC=i686-w64-mingw32-g++
 CFLAGS=-std=c++17 -pthread -I. -I./lib/detours -I./lib/asio-1.34.2/include -I./lib/sqlite3 -L/usr/i686-w64-mingw32/lib -shared -static -static-libgcc -static-libstdc++ -fpermissive -s -w
+# Header-dependency tracking: -MMD writes a .d file next to every .o listing
+# every user header that TU included, as a makefile rule.  -MP adds phony rules
+# per header so deleting a header doesn't break the build.  Combined with the
+# `-include $(DEPS)` at the bottom of this file, edits to .hpp files mark only
+# the TUs that actually include them as stale instead of forcing a full rebuild.
+DEPFLAGS=-MMD -MP
 LDFLAGS=-lkernel32 -luser32 -ladvapi32 -lws2_32 -lpsapi -lstdc++ -lgdi32 -Wl,--allow-multiple-definition
 SRC_DIR=src
 LIB_DIR=lib
@@ -385,20 +397,20 @@ obj/pch.hpp.gch: src/pch.hpp
 # Compile any src .cpp -> obj/src/... .o (with PCH)
 $(OBJ_DIR)/src/%.o: src/%.cpp obj/pch.hpp.gch
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/client/src/%.o: src/%.cpp obj/pch.hpp.gch
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 # Compile any lib .cpp -> obj/lib/... .o (without PCH)
 $(OBJ_DIR)/lib/%.o: lib/%.cpp
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/client/lib/%.o: lib/%.cpp
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/lib/sqlite3/sqlite3.o: lib/sqlite3/sqlite3.c
 	@mkdir -p $(dir $@)
@@ -413,6 +425,13 @@ $(VERSION_OUT): $(VERSION_OBJS) $(VERSION_DEF)
 
 $(VERSION_CLIENT_OUT): $(VERSION_CLIENT_OBJS) $(VERSION_DEF)
 	$(CC) $(CFLAGS) -o $@ $(VERSION_CLIENT_OBJS) $(VERSION_DEF) $(LDFLAGS)
+
+# Pull in header-dependency rules emitted by -MMD.  Each .o has a sibling .d
+# file listing the headers its .cpp included; when a header's mtime is newer
+# than a .o, make knows to rebuild that .o.  `-include` (leading dash) is
+# silent if the .d doesn't exist yet (first build), so this is zero-cost.
+DEPS := $(VERSION_OBJS:.o=.d) $(VERSION_CLIENT_OBJS:.o=.d)
+-include $(DEPS)
 
 # Clean
 clean:

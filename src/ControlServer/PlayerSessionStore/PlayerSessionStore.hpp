@@ -35,6 +35,12 @@ struct DeviceRow {
     int effect_group_id;
 };
 
+struct SkillRow {
+    int skill_group_id;
+    int skill_id;
+    int points;
+};
+
 class PlayerSessionStore {
 public:
     static void Init();
@@ -61,6 +67,16 @@ public:
     // + asm_data_set_device_mode_effect_groups; falls back to the legacy hardcoded
     // map when the asm tables are empty (pre-capture runs).
     static std::vector<int> GetEffectGroupIds(int device_id);
+
+    // Skill tree allocations — ga_character_skills.
+    static std::vector<SkillRow> GetSkillsForCharacter(int64_t character_id);
+    // Replaces the full allocation in one transaction. `last_respec_at` on
+    // ga_characters is bumped to now.
+    static void SetSkillsForCharacter(int64_t character_id, const std::vector<SkillRow>& skills);
+    // Clears every row for this character and bumps last_respec_at.
+    static void ClearSkillsForCharacter(int64_t character_id);
+    // Epoch seconds of the last save/respec, 0 if never set.
+    static int64_t GetLastRespecAt(int64_t character_id);
 
     static QuestStore& Quests() {
         static QuestStore instance;

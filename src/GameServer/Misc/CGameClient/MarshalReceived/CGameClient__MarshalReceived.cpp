@@ -4,6 +4,7 @@
 #include "src/GameServer/Constants/TcpTypes.h"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/TgNetDrv/MarshalChannel/MarshalReceived/MarshalChannel__MarshalReceived.hpp"
+#include "src/GameServer/Misc/CMarshal/GetArray/CMarshal__GetArray.hpp"
 #include "src/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.hpp"
 #include "src/GameServer/Misc/CMarshal/GetFlag/CMarshal__GetFlag.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
@@ -18,12 +19,114 @@
 
 enum class QuestAction { Request, Abandon };
 
+// Node-list walk: CMarshal::GetArray returns a struct whose head is at
+// (arr + 4), next pointer at (row + 8). Matches the AsmDataCapture pattern.
+template <class Fn>
+static void WalkArrayNodes(uint32_t arrayPtr, Fn fn) {
+	if (arrayPtr == 0) return;
+	void* head = *(void**)((char*)arrayPtr + 4);
+	for (void* row = head; row; row = *(void**)((char*)row + 8)) {
+		fn(row);
+	}
+}
+
 uint8_t __fastcall CGameClient__MarshalReceived::Call(void* GameClient, void* edx, void* InBunch) {
 
 	LogCallBegin();
 
 	short uVar1 = *(short*)((int)InBunch + 0x26);
 	Logger::Log(GetLogChannel(), "Received packet type [0x%04X] (suppressed on server)\n", uVar1);
+
+	if (uVar1 == GA_U::SEND_PLAYER_SKILLS) {
+		// Client-sent skill-tree save. The client's SendRequest routes this
+		// opcode (flag=0x3000 in the shipped per-opcode table) through the
+		// game NetDriver's marshal channel — i.e. straight to our game
+		// server — rather than the lobby TCP. TgMarshalChannel::
+		// MarshalReceived fans it into this function. Parse the payload,
+		// forward to the control server for DB persistence, and don't let
+		// it fall through to the client-bound default (which would try to
+		// update a client UI that doesn't exist on this process).
+		std::string session_guid;
+		int64_t nCharacterId = 0;
+		int itemProfileId = -1;
+		auto it = GClientConnectionsData.find((int32_t)(intptr_t)GCurrentMarshalConnection);
+		if (it != GClientConnectionsData.end()) {
+			session_guid = it->second.SessionGuid;
+			if (it->second.pPlayerInfo) nCharacterId = it->second.pPlayerInfo->selected_character_id;
+			if (it->second.Pawn) itemProfileId = ((ATgPawn_Character*)it->second.Pawn)->r_nItemProfileId;
+		}
+		Logger::Log("skills_debug",
+			"[SEND_PLAYER_SKILLS inbound] pawn r_nItemProfileId=%d char=%lld\n",
+			itemProfileId, (long long)nCharacterId);
+
+		uint32_t arrayPtr = 0;
+		int ok = CMarshal__GetArray::CallOriginal(InBunch, edx,
+			GA_T::DATA_SET_CHARACTER_SKILLS, &arrayPtr);
+
+		nlohmann::json rows = nlohmann::json::array();
+		int counted = 0;
+		if (ok && arrayPtr != 0) {
+			WalkArrayNodes(arrayPtr, [&](void* row) {
+				uint32_t groupId = 0, skillId = 0, points = 0;
+				CMarshal__GetInt32t::CallOriginal(row, nullptr, GA_T::SKILL_GROUP_ID,   &groupId);
+				CMarshal__GetInt32t::CallOriginal(row, nullptr, GA_T::SKILL_ID,         &skillId);
+				CMarshal__GetInt32t::CallOriginal(row, nullptr, GA_T::POINTS_ALLOCATED, &points);
+				if (groupId && skillId && points > 0) {
+					nlohmann::json r;
+					r["skill_group_id"] = (int)groupId;
+					r["skill_id"]       = (int)skillId;
+					r["points"]         = (int)points;
+					rows.push_back(r);
+					counted++;
+				}
+			});
+		}
+
+		Logger::Log(GetLogChannel(),
+			"[SEND_PLAYER_SKILLS] parsed %d rows session_guid=%s char=%lld\n",
+			counted, session_guid.c_str(), (long long)nCharacterId);
+
+		if (!session_guid.empty()) {
+			nlohmann::json ev;
+			ev["type"]         = IpcProtocol::MSG_GAME_EVENT;
+			ev["subtype"]      = "skill_save";
+			ev["instance_id"]  = IpcClient::GetInstanceId();
+			ev["session_guid"] = session_guid;
+			ev["character_id"] = nCharacterId;
+			// Only include item_profile_id if we actually read it from the
+			// pawn (>=0). Sending -1 would clobber the control server's
+			// cached value from the spawn IPC and break the echo PROFILE_ID.
+			if (itemProfileId >= 0)
+				ev["item_profile_id"] = itemProfileId;
+			ev["skills"] = rows;
+			IpcClient::Send(ev.dump());
+		}
+
+		// Respec: refresh this session's PlayerInfo.skills from the just-
+		// received marshal, then re-run ReapplyCharacterSkillTree so the
+		// new allocation takes effect (old deltas reversed + new applied)
+		// without waiting for a respawn. Only do this for a real save —
+		// counted>0. An empty payload is a request, we don't want to wipe.
+		if (counted > 0 && it != GClientConnectionsData.end()
+			&& it->second.pPlayerInfo && it->second.Pawn) {
+			it->second.pPlayerInfo->skills.clear();
+			for (const auto& r : rows) {
+				SkillAllocation a;
+				a.skill_group_id = r.value("skill_group_id", 0);
+				a.skill_id       = r.value("skill_id",       0);
+				a.points         = r.value("points",         0);
+				if (a.skill_group_id && a.skill_id && a.points > 0)
+					it->second.pPlayerInfo->skills.push_back(a);
+			}
+			Logger::Log(GetLogChannel(),
+				"[SEND_PLAYER_SKILLS] respec → PlayerInfo.skills refreshed (%d rows), calling ReapplyCharacterSkillTree\n",
+				(int)it->second.pPlayerInfo->skills.size());
+			it->second.Pawn->ReapplyCharacterSkillTree();
+		}
+
+		LogCallEnd();
+		return 0;
+	}
 
 	if (uVar1 == GA_U::QUEST_UPDATE_REQUEST) {
 		uint32_t nQuestId = 0;

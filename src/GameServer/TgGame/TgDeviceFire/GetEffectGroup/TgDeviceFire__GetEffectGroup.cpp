@@ -16,22 +16,71 @@ static ConstructEffectFn ConstructEffect = (ConstructEffectFn)0x10a73f30;
 // Map class_res_id from asm_data_set_effects to a UClass*
 // IDs observed in DB: 80 (base), 89 (visibility), 157 (buff), 181 (damage), 244 (sensor), 692 (heal)
 // -------------------------------------------------------------------------
-static UClass* GetEffectClassById(int classResId) {
-	switch (classResId) {
-		case 181: return ClassPreloader::GetClass("Class TgGame.TgEffectDamage");
-		case 692: return ClassPreloader::GetClass("Class TgGame.TgEffectHeal");
-		case  89: return ClassPreloader::GetClass("Class TgGame.TgEffectVisibility");
-		case 157: return ClassPreloader::GetClass("Class TgGame.TgEffectBuff");
-		case 244: return ClassPreloader::GetClass("Class TgGame.TgEffectSensor");
-		case  80:
-		default:  return ClassPreloader::GetClass("Class TgGame.TgEffect");
+// Full-scan GObjObjects for a class by full name. Fallback when
+// ObjectCache misses. Also tries prefix-match so we can diagnose naming
+// skew if the stored full name doesn't exactly match "Class TgGame.Name".
+static UClass* FindClassByFullName(const char* target) {
+	TArray<UObject*>* objs = UObject::GObjObjects();
+	if (!objs || !objs->Data) return nullptr;
+	static bool dumpedTgEffect = false;
+	for (int i = 0; i < objs->Count; i++) {
+		UObject* obj = objs->Data[i];
+		if (!obj) continue;
+		char* fullName = obj->GetFullName();
+		if (!fullName) continue;
+		if (strcmp(fullName, target) == 0) {
+			return (UClass*)obj;
+		}
+		// Debug: dump every object whose name mentions TgEffectBuff or
+		// TgEffect classes — tells us whether the class object exists under
+		// a different name format, or whether it's missing entirely.
+		if (!dumpedTgEffect && strstr(fullName, "TgEffect") != nullptr) {
+			Logger::Log("effects", "[CLASS-DUMP] i=%d obj=%p fullName='%s'\n",
+				i, (void*)obj, fullName);
+		}
 	}
+	dumpedTgEffect = true;
+	return nullptr;
+}
+
+static UClass* GetEffectClassById(int classResId) {
+	const char* name = nullptr;
+	switch (classResId) {
+		case 181: name = "Class TgGame.TgEffectDamage";     break;
+		case 692: name = "Class TgGame.TgEffectHeal";       break;
+		case  89: name = "Class TgGame.TgEffectVisibility"; break;
+		case 157: name = "Class TgGame.TgEffectBuff";       break;
+		case 244: name = "Class TgGame.TgEffectSensor";     break;
+		case  80:
+		default:  name = "Class TgGame.TgEffect";           break;
+	}
+	UClass* c = ClassPreloader::GetClass(name);
+	if (!c) c = FindClassByFullName(name);
+
+	// TgEffectBuff is not registered in this build's GObjObjects (verified by
+	// a full-scan miss while base TgEffect, TgEffectDamage, TgEffectHeal,
+	// TgEffectSensor, TgEffectVisibility all exist). The class is referenced
+	// only by its properties/functions — no UClass instance to construct
+	// from. Since TgEffectBuff only adds `m_BuffSourceType` (one byte) on
+	// top of UTgEffect and our apply path doesn't use it, fall back to the
+	// base TgEffect class so the effect still gets created and its property-
+	// modifier math runs.
+	if (!c && classResId == 157) {
+		c = ClassPreloader::GetClass("Class TgGame.TgEffect");
+		if (!c) c = FindClassByFullName("Class TgGame.TgEffect");
+		Logger::Log("effects",
+			"[BUILD] class_res_id=157 TgEffectBuff not found — falling back to TgEffect\n");
+	}
+	return c;
 }
 
 // -------------------------------------------------------------------------
 // Build a UTgEffectGroup (with its UTgEffect children) from the database
+//
+// Non-static: also consumed by ReapplyCharacterSkillTree for skill-tree
+// allocations. Declared in BuildEffectGroup.hpp.
 // -------------------------------------------------------------------------
-static UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
+UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 	UClass* egClass = ClassPreloader::GetClass("Class TgGame.TgEffectGroup");
 	if (!egClass) {
 		Logger::Log("effects", "[BUILD] TgEffectGroup class not found\n");
@@ -99,18 +148,41 @@ static UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 			TARRAY_INIT(g, effects, UTgEffect*, 0x60, 64)
 
 			while (sqlite3_step(stmt) == SQLITE_ROW) {
-				UClass* effectClass = GetEffectClassById(sqlite3_column_int(stmt, 0));
-				if (!effectClass) continue;
+				int classResId = sqlite3_column_int(stmt, 0);
+				UClass* effectClass = GetEffectClassById(classResId);
+				if (!effectClass) {
+					Logger::Log("effects",
+						"[BUILD] egId=%d skipped effect: GetEffectClassById(%d) returned null\n",
+						egId, classResId);
+					continue;
+				}
 
 				UTgEffect* e = (UTgEffect*)ConstructEffect(effectClass, -1, 0, 0, 0, 0, 0, 0, nullptr);
-				if (!e) continue;
+				if (!e) {
+					Logger::Log("effects",
+						"[BUILD] egId=%d skipped effect: ConstructEffect failed (class_res_id=%d)\n",
+						egId, classResId);
+					continue;
+				}
+
+				float baseValue = (float)sqlite3_column_double(stmt, 2);
+				int   calcCode  = sqlite3_column_int(stmt, 5);
+				// Class-157 (TgEffectBuff) stores %-modifier amounts in
+				// PERCENT (10.0 = 10%), while class-80 (TgEffect) stores them
+				// in FRACTION (0.1 = 10%). Normalize to fraction at build
+				// time so downstream code can treat base_value uniformly.
+				// Only applies to calc codes 68 (+%) and 69 (-%); additive
+				// codes 67/70 are absolute values regardless of class.
+				if (classResId == 157 && (calcCode == 68 || calcCode == 69)) {
+					baseValue /= 100.0f;
+				}
 
 				e->m_EffectGroup      = g;
 				e->m_nPropertyId      = sqlite3_column_int   (stmt, 1);
-				e->m_fBase            = (float)sqlite3_column_double(stmt, 2);
+				e->m_fBase            = baseValue;
 				e->m_fMinimum         = (float)sqlite3_column_double(stmt, 3);
 				e->m_fMaximum         = (float)sqlite3_column_double(stmt, 4);
-				e->m_nCalcMethodCode  = sqlite3_column_int   (stmt, 5);
+				e->m_nCalcMethodCode  = calcCode;
 				e->m_nPropertyValueId = sqlite3_column_int   (stmt, 6);
 
 				// Flags at +0x48: bit 0x01 = m_bUseOnInterval, bit 0x02 = m_bRemovable.

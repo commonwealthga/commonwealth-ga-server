@@ -1140,13 +1140,15 @@ void Database::Init() {
 			"  effect_group_type_value_id INTEGER"
 			");"
 
-			// per-mode property overrides
+			// per-mode property overrides (base/min/max triple — see v20 notes)
 			"CREATE TABLE IF NOT EXISTS asm_data_set_device_mode_properties ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  device_id INTEGER,"
 			"  device_mode_id INTEGER,"
 			"  prop_id INTEGER,"
-			"  value REAL"
+			"  base_value REAL,"
+			"  min_value REAL,"
+			"  max_value REAL"
 			");"
 
 			// device animation set groups (gender × dest_type → anim_set_res_id)
@@ -1502,7 +1504,61 @@ void Database::Init() {
 		}
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 19", nullptr, nullptr, &err);
+	if (version < 20) {
+		// v20: fix asm_data_set_device_mode_properties schema.
+		//
+		// The original walker (AsmDataCapture::WalkDeviceModeProperties) was
+		// reading a non-existent `VALUE` float field and the wrong reader for
+		// PROP_ID (byte instead of uint32).  All 9373 rows were captured with
+		// prop_id truncated to 8 bits and value=0.0.  Ground truth from the
+		// client's native loader (FUN_109a7d20):
+		//
+		//   PROP_ID    (0x03E7, TCP_UINT32)  →  TgProperty descriptor + 0x3C
+		//   BASE_VALUE (0x0067, TCP_FLOAT)   →  TgProperty descriptor + 0x40
+		//   MIN_VALUE  (0x035E, TCP_FLOAT)   →  TgProperty descriptor + 0x48
+		//   MAX_VALUE  (0x034B, TCP_FLOAT)   →  TgProperty descriptor + 0x4C
+		//
+		// The in-memory descriptor also copies base_value → raw_value at +0x44,
+		// but raw_value is not a marshal field — it's a runtime-only mirror.
+		// Not stored here; callers that need it can treat base_value as raw.
+		//
+		// Only drop+recreate when the OLD schema is still present (legacy `value`
+		// column).  Fresh installs hit the updated v17 CREATE which already uses
+		// the new columns, so the drop would needlessly wipe freshly-captured
+		// data — and if AsmDataCapture::bPopulateDatabase is off at that moment,
+		// nothing refills the table.  Detect via pragma_table_info.
+		bool needsRewrite = false;
+		sqlite3_stmt* checkStmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+			"SELECT 1 FROM pragma_table_info('asm_data_set_device_mode_properties') WHERE name='value';",
+			-1, &checkStmt, nullptr) == SQLITE_OK) {
+			if (sqlite3_step(checkStmt) == SQLITE_ROW) needsRewrite = true;
+			sqlite3_finalize(checkStmt);
+		}
+		if (needsRewrite) {
+			const char* kV20 =
+				"DROP TABLE IF EXISTS asm_data_set_device_mode_properties;"
+				"CREATE TABLE asm_data_set_device_mode_properties ("
+				"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+				"  device_id INTEGER,"
+				"  device_mode_id INTEGER,"
+				"  prop_id INTEGER,"
+				"  base_value REAL,"
+				"  min_value REAL,"
+				"  max_value REAL"
+				");";
+			result = sqlite3_exec(db, kV20, nullptr, nullptr, &err);
+			if (result != SQLITE_OK) {
+				Logger::Log("db", "Failed v20 migration: %s\n", err);
+				return;
+			}
+			Logger::Log("db", "v20: old schema detected — dropped+recreated asm_data_set_device_mode_properties for recapture\n");
+		} else {
+			Logger::Log("db", "v20: table already on new schema — no data touched\n");
+		}
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 20", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

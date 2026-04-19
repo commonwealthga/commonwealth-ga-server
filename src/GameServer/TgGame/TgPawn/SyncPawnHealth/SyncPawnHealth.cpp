@@ -13,20 +13,22 @@ void SyncPawnHealth::Apply(ATgPawn* pawn, int hp, int maxHp) {
 	pawn->r_nHealthMaximum = maxHp;
 
 	// (4)(5) Property descriptors. Walk s_Properties because GetProperty's
-	// TMap may not be populated. m_fMaximum on prop[51] is what ApplyProperty
-	// uses to clamp current health, so it must track maxHp too.
+	// TMap may not be populated. Intentionally do NOT touch m_fMaximum here
+	// — InitializeDefaultProps sets it to hitPoints*10 to leave headroom for
+	// skill/item buffs that push current/max HP above the base hit-point
+	// value. ApplyProperty clamps current HP against both the UTgProperty
+	// ceiling AND r_nHealthMaximum, so keeping UTgProperty.m_fMaximum high
+	// is what lets r_nHealthMaximum itself grow above the base.
 	if (pawn->s_Properties.Data) {
 		for (int i = 0; i < pawn->s_Properties.Num(); ++i) {
 			UTgProperty* p = pawn->s_Properties.Data[i];
 			if (!p) continue;
 			if (p->m_nPropertyId == GA_PROPERTY::TGPID_HEALTH) {
-				p->m_fBase    = fMaxHp;
-				p->m_fRaw     = fHp;
-				p->m_fMaximum = fMaxHp;
+				p->m_fBase = fMaxHp;
+				p->m_fRaw  = fHp;
 			} else if (p->m_nPropertyId == GA_PROPERTY::TGPID_HEALTH_MAX) {
-				p->m_fBase    = fMaxHp;
-				p->m_fRaw     = fMaxHp;
-				p->m_fMaximum = fMaxHp;
+				p->m_fBase = fMaxHp;
+				p->m_fRaw  = fMaxHp;
 			}
 		}
 	}

@@ -130,6 +130,21 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			Logger::Log("effects", "[PE] %s  obj=%s\n", name.c_str(), objname.c_str());
 		}
 
+		// Skill-UI trace: log every UFunction dispatch on a TgUIAgentProfile_Skill
+		// instance, plus the key server-side RPC (SendCharacterSkillMarshal) and
+		// CGameClient handlers. Lets us answer: does OnSkillButtonDelegate fire on
+		// click? does OnSaveDelegate fire on Save? Does the send path actually
+		// reach CGameClient::SendSkillsToServer? Channel "skills-trace".
+		if (objname.find("TgUIAgentProfile_Skill") != std::string::npos
+			|| name.find("UIAgentProfile_Skill") != std::string::npos
+			|| name.find("SendCharacterSkillMarshal") != std::string::npos
+			|| name.find("SendSkillsToServer") != std::string::npos
+			|| name.find("ReapplyCharacterSkillTree") != std::string::npos
+			|| name.find("RemoveCharacterSkillTree") != std::string::npos
+			|| name.find("ProcessSkillPromptResponse") != std::string::npos) {
+			Logger::Log("skills-trace", "[PE] %s  obj=%s\n", name.c_str(), objname.c_str());
+		}
+
 		// Stealth state snapshot: log pawn's stealth-related fields when
 		// ApplyStealth fires — tells us whether ApplyProperty case 0x7C actually
 		// flipped the bit, vs. ApplyStealth being dispatched via some path that
@@ -164,6 +179,72 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			ATgDevice* Device = (ATgDevice*)Object;
 			if (Device && Device->Instigator && HasStealthEffectGroup(Device)) {
 				RefreshStealthEffectTimers((ATgPawn*)Device->Instigator);
+			}
+		}
+
+		// Deployable state-machine diagnostic — traces Deploy → Active →
+		// DeviceBuildup → DeviceFiring transitions and the DeviceFiring
+		// refire timer.  If the medstation (or any persistent-tick deployable)
+		// never reaches DeviceFiring.BeginState, whichever preceding step is
+		// missing tells us where the UC state machine stalls.
+		//
+		// State-method UFunction names drop the package prefix (see
+		// reference_state_ufunction_names.md): Function <Class>.<State>.<Method>
+		// — NOT Function TgGame.<Class>.<State>.<Method>.
+		//
+		// Also taps class-level StartFire on both the deployable and the device
+		// (prefix kept — non-state methods keep `TgGame.`).  A station's
+		// Active.BeginState typically calls StartFire to transition into
+		// DeviceBuildup; if the log shows Active.BeginState but no StartFire,
+		// Active itself is the dead end.
+		if (strncmp("Function TgDeployable.", name.c_str(), 22) == 0) {
+			const char* suffix = name.c_str() + 22;
+			if (strcmp(suffix, "Deploy.BeginState") == 0
+			 || strcmp(suffix, "Deploy.EndState") == 0
+			 || strcmp(suffix, "Deploy.StartFire") == 0
+			 || strcmp(suffix, "Active.BeginState") == 0
+			 || strcmp(suffix, "DeviceBuildup.BeginState") == 0
+			 || strcmp(suffix, "DeviceBuildup.EndState") == 0
+			 || strcmp(suffix, "DeviceBuildup.DeployableTimer") == 0
+			 || strcmp(suffix, "DeviceFiring.BeginState") == 0
+			 || strcmp(suffix, "DeviceFiring.EndState") == 0
+			 || strcmp(suffix, "DeviceFiring.RefireCheckTimer") == 0) {
+				ATgDeployable* D = (ATgDeployable*)Object;
+				Logger::Log("heal_tick",
+					"[DEPLOYABLE STATE] %s  deployable=0x%p id=%d mFireMode=%p props=%d role=%d bIsDeployed=%d bInDestroyed=%d\n",
+					suffix, D, D ? D->r_nDeployableId : -1,
+					D ? (void*)D->m_FireMode : nullptr,
+					D ? D->s_Properties.Count : -1,
+					D ? (int)D->Role : -1,
+					D ? (int)D->m_bIsDeployed : -1,
+					D ? (int)D->m_bInDestroyedState : -1);
+			}
+		}
+		if (strcmp("Function TgGame.TgDeployable.StartFire", name.c_str()) == 0) {
+			ATgDeployable* D = (ATgDeployable*)Object;
+			Logger::Log("heal_tick",
+				"[DEPLOYABLE] StartFire() called  deployable=0x%p id=%d\n",
+				D, D ? D->r_nDeployableId : -1);
+		}
+		// Device-level state machine (independent of the deployable's).  Only
+		// fire modes on deployables run — noise from player weapons is filtered
+		// via the Owner check: a UTgDeviceFire owned by an ATgDeployable is
+		// what we want.
+		if (strncmp("Function TgDevice.", name.c_str(), 18) == 0) {
+			const char* suffix = name.c_str() + 18;
+			if (strcmp(suffix, "DeviceBuildup.BeginState") == 0
+			 || strcmp(suffix, "DeviceBuildup.EndState") == 0
+			 || strcmp(suffix, "DeviceFiring.BeginState") == 0) {
+				// Object is a UTgDeviceFire or an ATgDevice — log class name
+				// so player-weapon noise is visually separable from station
+				// fire-mode transitions when scanning the log.
+				UObject* obj = (UObject*)Object;
+				if (obj) {
+					const char* cn = obj->Class ? obj->Class->GetFullName() : nullptr;
+					Logger::Log("heal_tick",
+						"[DEVICE STATE] %s  obj=0x%p class=%s\n",
+						suffix, obj, cn ? cn : "<null>");
+				}
 			}
 		}
 

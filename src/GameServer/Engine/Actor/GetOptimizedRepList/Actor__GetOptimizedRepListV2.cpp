@@ -324,6 +324,29 @@ UProperty* BoolProperty_TgGame_TgDeployable_r_bDelayDeployed = nullptr;
 std::map<int, bool> BoolProperty_TgGame_TgDeployable_r_bDelayDeployed_initial;
 UProperty* IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt = nullptr;
 std::map<int, bool> IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt_initial;
+// Regen gap: UC TgDeployable.uc lines 116-120 declares these as always-replicate
+// CPF_Net fields (Role==Authority block) but the generator dropped them.
+// Without r_nFlashFireCount replicating, the client's
+// ReplicatedEvent('r_nFlashFireCount') never fires → PlayFireFx() skipped →
+// no heal-pulse visual/audio on stations.  r_nHealth is needed for pulse
+// damage/heal UI.  r_fDeployRate/r_fTimeToDeploySecs/r_fInitDeployTime drive
+// the client's deploy-progress bar during the Deploy state.
+UProperty* ObjectProperty_TgGame_TgDeployable_r_EffectManager = nullptr;
+std::map<int, bool> ObjectProperty_TgGame_TgDeployable_r_EffectManager_initial;
+UProperty* FloatProperty_TgGame_TgDeployable_r_fDeployRate = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgDeployable_r_fDeployRate_initial;
+UProperty* FloatProperty_TgGame_TgDeployable_r_fInitDeployTime = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgDeployable_r_fInitDeployTime_initial;
+UProperty* FloatProperty_TgGame_TgDeployable_r_fTimeToDeploySecs = nullptr;
+std::map<int, bool> FloatProperty_TgGame_TgDeployable_r_fTimeToDeploySecs_initial;
+UProperty* ByteProperty_TgGame_TgDeployable_r_nFlashCount = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgDeployable_r_nFlashCount_initial;
+UProperty* ByteProperty_TgGame_TgDeployable_r_nFlashFireCount = nullptr;
+std::map<int, bool> ByteProperty_TgGame_TgDeployable_r_nFlashFireCount_initial;
+UProperty* IntProperty_TgGame_TgDeployable_r_nHealth = nullptr;
+std::map<int, bool> IntProperty_TgGame_TgDeployable_r_nHealth_initial;
+UProperty* StructProperty_TgGame_TgDeployable_r_vFlashLocation = nullptr;
+std::map<int, bool> StructProperty_TgGame_TgDeployable_r_vFlashLocation_initial;
 UProperty* ObjectProperty_TgGame_TgDeployable_r_DRI = nullptr;
 std::map<int, bool> ObjectProperty_TgGame_TgDeployable_r_DRI_initial;
 UProperty* BoolProperty_TgGame_TgDeployable_r_bInitialIsEnemy = nullptr;
@@ -1189,6 +1212,15 @@ static void ResolveRepListProperties() {
 	IntProperty_TgGame_TgDeploy_Sensor_r_nTouchedPlayerCount = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDeploy_Sensor.r_nTouchedPlayerCount");
 	BoolProperty_TgGame_TgDeployable_r_bDelayDeployed = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgDeployable.r_bDelayDeployed");
 	IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDeployable.r_nReplicateDestroyIt");
+	// Regen gap — see declarations above.
+	ObjectProperty_TgGame_TgDeployable_r_EffectManager = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgDeployable.r_EffectManager");
+	FloatProperty_TgGame_TgDeployable_r_fDeployRate = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgDeployable.r_fDeployRate");
+	FloatProperty_TgGame_TgDeployable_r_fInitDeployTime = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgDeployable.r_fInitDeployTime");
+	FloatProperty_TgGame_TgDeployable_r_fTimeToDeploySecs = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgDeployable.r_fTimeToDeploySecs");
+	ByteProperty_TgGame_TgDeployable_r_nFlashCount = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgDeployable.r_nFlashCount");
+	ByteProperty_TgGame_TgDeployable_r_nFlashFireCount = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgDeployable.r_nFlashFireCount");
+	IntProperty_TgGame_TgDeployable_r_nHealth = (UProperty*)ClassPreloader::GetObject("IntProperty TgGame.TgDeployable.r_nHealth");
+	StructProperty_TgGame_TgDeployable_r_vFlashLocation = (UProperty*)ClassPreloader::GetObject("StructProperty TgGame.TgDeployable.r_vFlashLocation");
 	ObjectProperty_TgGame_TgDeployable_r_DRI = (UProperty*)ClassPreloader::GetObject("ObjectProperty TgGame.TgDeployable.r_DRI");
 	BoolProperty_TgGame_TgDeployable_r_bInitialIsEnemy = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgDeployable.r_bInitialIsEnemy");
 	BoolProperty_TgGame_TgDeployable_r_bTakeDamage = (UProperty*)ClassPreloader::GetObject("BoolProperty TgGame.TgDeployable.r_bTakeDamage");
@@ -2629,6 +2661,19 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		if (actor->Role == 3) {
 			DO_REP(ATgDeployable, r_bDelayDeployed, BoolProperty_TgGame_TgDeployable_r_bDelayDeployed);
 			DO_REP(ATgDeployable, r_nReplicateDestroyIt, IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt);
+			// Regen gap — UC TgDeployable.uc 116-120 "Role==Authority" block.
+			// r_nFlashFireCount is the FX-pulse signal: every tick of
+			// DeviceFiring.RefireCheckTimer bumps it (TgDeployable.uc:619),
+			// client's ReplicatedEvent fires PlayFireFx(). Without this entry,
+			// stations heal/pulse server-side but are silent + invisible.
+			DO_REP(ATgDeployable, r_EffectManager, ObjectProperty_TgGame_TgDeployable_r_EffectManager);
+			DO_REP(ATgDeployable, r_fDeployRate, FloatProperty_TgGame_TgDeployable_r_fDeployRate);
+			DO_REP(ATgDeployable, r_fInitDeployTime, FloatProperty_TgGame_TgDeployable_r_fInitDeployTime);
+			DO_REP(ATgDeployable, r_fTimeToDeploySecs, FloatProperty_TgGame_TgDeployable_r_fTimeToDeploySecs);
+			DO_REP(ATgDeployable, r_nFlashCount, ByteProperty_TgGame_TgDeployable_r_nFlashCount);
+			DO_REP(ATgDeployable, r_nFlashFireCount, ByteProperty_TgGame_TgDeployable_r_nFlashFireCount);
+			DO_REP(ATgDeployable, r_nHealth, IntProperty_TgGame_TgDeployable_r_nHealth);
+			DO_REP(ATgDeployable, r_vFlashLocation, StructProperty_TgGame_TgDeployable_r_vFlashLocation);
 		}
 		if ((actor->Role == 3) && actor->bNetInitial) {
 			DO_REP(ATgDeployable, r_DRI, ObjectProperty_TgGame_TgDeployable_r_DRI);
@@ -3251,6 +3296,17 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		strcmp(classname, "Class TgGame.TgRepInfo_Deployable") == 0
 		|| strcmp(classname, "Class TgGame.TgRepInfo_Beacon") == 0
 	) {
+		// DIAG: DRI replication isn't reaching the client — no ReplicatedEvent
+		// for r_TaskforceInfo / r_InstigatorInfo / r_bOwnedByTaskforce / etc.
+		// ever fires client-side (verified in replicated_event.txt).  If this
+		// log is ABSENT, the engine isn't queuing the DRI for replication at
+		// all (relevance/channel failure).  If PRESENT, rep is evaluated but
+		// something downstream drops the bunch.
+		Logger::Log("heal_tick",
+			"[V2 DRI rep] dri=0x%p class=%s  Role=%d  bNetInitial=%d  bNetDirty=%d\n",
+			actor, classname,
+			(int)actor->Role, (int)actor->bNetInitial, (int)actor->bNetDirty);
+
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(ATgRepInfo_Deployable, r_InstigatorInfo, ObjectProperty_TgGame_TgRepInfo_Deployable_r_InstigatorInfo);
 			DO_REP(ATgRepInfo_Deployable, r_TaskforceInfo, ObjectProperty_TgGame_TgRepInfo_Deployable_r_TaskforceInfo);
@@ -3258,11 +3314,11 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgRepInfo_Deployable, r_nHealthCurrent, IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthCurrent);
 		}
 		if (actor->bNetInitial && actor->Role == 3) {
-			DO_REP(ATgRepInfo_Deployable, r_DeployableOwner, ObjectProperty_TgGame_TgRepInfo_Deployable_r_DeployableOwner);
 			DO_REP(ATgRepInfo_Deployable, r_fDeployMaxHealthPCT, FloatProperty_TgGame_TgRepInfo_Deployable_r_fDeployMaxHealthPCT);
 			DO_REP(ATgRepInfo_Deployable, r_nDeployableId, IntProperty_TgGame_TgRepInfo_Deployable_r_nDeployableId);
 			DO_REP(ATgRepInfo_Deployable, r_nHealthMaximum, IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthMaximum);
 			DO_REP(ATgRepInfo_Deployable, r_nUniqueDeployableId, IntProperty_TgGame_TgRepInfo_Deployable_r_nUniqueDeployableId);
+			DO_REP(ATgRepInfo_Deployable, r_DeployableOwner, ObjectProperty_TgGame_TgRepInfo_Deployable_r_DeployableOwner);
 		}
 	}
 	if (

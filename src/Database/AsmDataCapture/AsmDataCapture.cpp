@@ -1877,8 +1877,19 @@ namespace {
 
     // ---------- Device Mode Properties (DATA_SET_DEVICE_MODE_PROPERTIES = 0x0147) ----------
     //
-    // Per-mode {prop_id, value} override list, walked by the device mode's base
-    // class init after LoadDeviceModeMarshal returns.
+    // Per-mode property-override list.  Each row contributes a TgProperty descriptor
+    // attached to the mode's property list.  The original walker (FUN_109a7d20 in the
+    // client binary) reads FOUR fields per row:
+    //   PROP_ID   (0x03E7, TCP_UINT32) → descriptor + 0x3C
+    //   BASE_VALUE(0x0067, TCP_FLOAT)  → descriptor + 0x40   (also cloned to +0x44 as "raw")
+    //   MIN_VALUE (0x035E, TCP_FLOAT)  → descriptor + 0x48
+    //   MAX_VALUE (0x034B, TCP_FLOAT)  → descriptor + 0x4C
+    //
+    // The earlier version of this walker read a single `VALUE` float (which doesn't
+    // exist in this data set) and used `Byte` for PROP_ID (which is TCP_UINT32, not
+    // a byte).  Result: every row landed with 0.0 and PROP_ID truncated to 8 bits.
+    // Fixed for real here — see also v20 migration that drops the old `value`
+    // column and re-captures the table on next game launch.
     void WalkDeviceModeProperties(void* /*marshal*/, uint32_t arr) {
         sqlite3* db = Database::GetConnection();
         if (!db) return;
@@ -1888,16 +1899,18 @@ namespace {
 
         Stmt st(db,
             "INSERT INTO asm_data_set_device_mode_properties ("
-            "  device_id, device_mode_id, prop_id, value"
-            ") VALUES (?,?,?,?)");
+            "  device_id, device_mode_id, prop_id, base_value, min_value, max_value"
+            ") VALUES (?,?,?,?,?,?)");
         if (!st.s) return;
 
         Txn txn(db);
         WalkArray(arr, [&](void* row) {
             sqlite3_bind_int   (st.s, 1, (int)deviceId);
             sqlite3_bind_int   (st.s, 2, (int)modeId);
-            sqlite3_bind_int   (st.s, 3, (int)Byte (row, GA_T::PROP_ID));
-            sqlite3_bind_double(st.s, 4, (double)Float(row, GA_T::VALUE));
+            sqlite3_bind_int   (st.s, 3, (int)Int32(row, GA_T::PROP_ID));
+            sqlite3_bind_double(st.s, 4, (double)Float(row, GA_T::BASE_VALUE));
+            sqlite3_bind_double(st.s, 5, (double)Float(row, GA_T::MIN_VALUE));
+            sqlite3_bind_double(st.s, 6, (double)Float(row, GA_T::MAX_VALUE));
             st.step();
         });
     }

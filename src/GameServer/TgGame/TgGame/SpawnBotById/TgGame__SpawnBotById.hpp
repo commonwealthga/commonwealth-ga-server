@@ -3,6 +3,7 @@
 #include "src/pch.hpp"
 #include "src/Utils/HookBase.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
+#include "src/Database/Database.hpp"
 
 class TgGame__SpawnBotById : public HookBase<
 	ATgPawn*(__fastcall*)(ATgGame*, void*, int, FVector, FRotator, bool, ATgBotFactory*, bool, ATgPawn*, bool, UTgDeviceFire*, float),
@@ -10,6 +11,93 @@ class TgGame__SpawnBotById : public HookBase<
 	TgGame__SpawnBotById> {
 public:
 	static std::map<int, int> m_spawnedBotIds;
+	// bot_id → fully-qualified UClass name; filled from DB on first miss.
+	static inline std::unordered_map<int, std::string> m_dbClassCache;
+
+	// bot_id → (radius, halfHeight) for pawn spawn placement.
+	static inline std::unordered_map<int, std::pair<float, float>> m_dbCylinderCache;
+
+	// Resolve the bot's collision cylinder from the DB (asm_data_set_bots
+	// joined to asm_data_set_assembly_meshes via body_asm_id). Falls back to
+	// the UC default on TgPawn.CollisionCylinder (Height=46, Radius=25) —
+	// every pawn subclass including TgPawn_Turret inherits this when the
+	// mesh row doesn't override. Cached per bot_id.
+	static void GetBotCollisionCylinder(int nBotId, float* outRadius, float* outHalfHeight) {
+		// UC default: TgPawn.CollisionCylinder (Height=46, Radius=25),
+		// inherited by TgPawn_Character → TgPawn_Turret unchanged.
+		constexpr float kUCDefaultRadius     = 25.0f;
+		constexpr float kUCDefaultHalfHeight = 46.0f;
+
+		auto it = m_dbCylinderCache.find(nBotId);
+		if (it != m_dbCylinderCache.end()) {
+			*outRadius     = it->second.first;
+			*outHalfHeight = it->second.second;
+			return;
+		}
+
+		float radius     = kUCDefaultRadius;
+		float halfHeight = kUCDefaultHalfHeight;
+		sqlite3* db = Database::GetConnection();
+		if (db) {
+			sqlite3_stmt* stmt = nullptr;
+			if (sqlite3_prepare_v2(db,
+				"SELECT am.collision_radius, am.collision_height "
+				"FROM asm_data_set_bots b "
+				"JOIN asm_data_set_assembly_meshes am ON b.body_asm_id = am.asm_id "
+				"WHERE b.bot_id = ? LIMIT 1;",
+				-1, &stmt, nullptr) == SQLITE_OK) {
+				sqlite3_bind_int(stmt, 1, nBotId);
+				if (sqlite3_step(stmt) == SQLITE_ROW) {
+					float dbRadius = (float)sqlite3_column_double(stmt, 0);
+					float dbHeight = (float)sqlite3_column_double(stmt, 1);
+					// DB stores FULL height; UE3 CylinderComponent convention
+					// is half-height (client multiplies by 0.5 — DAT_1168bac0).
+					if (dbRadius > 0.0f) radius     = dbRadius;
+					if (dbHeight > 0.0f) halfHeight = dbHeight * 0.5f;
+				}
+				sqlite3_finalize(stmt);
+			}
+		}
+
+		m_dbCylinderCache[nBotId] = { radius, halfHeight };
+		*outRadius     = radius;
+		*outHalfHeight = halfHeight;
+	}
+
+	// DB-backed resolver: joins asm_data_set_bots.pawn_class_res_id to
+	// asm_data_set_resources.res_id to recover the UC class name. Falls back
+	// to empty string if the bot row is missing or the class isn't in the
+	// resources table. Cached per bot_id.
+	static const char* LookupPawnClassFromDb(int nBotId) {
+		auto it = m_dbClassCache.find(nBotId);
+		if (it != m_dbClassCache.end()) {
+			return it->second.empty() ? nullptr : it->second.c_str();
+		}
+		std::string result;
+		sqlite3* db = Database::GetConnection();
+		if (db) {
+			sqlite3_stmt* stmt = nullptr;
+			if (sqlite3_prepare_v2(db,
+				"SELECT r.name FROM asm_data_set_bots b "
+				"JOIN asm_data_set_resources r ON b.pawn_class_res_id = r.res_id "
+				"WHERE b.bot_id = ? LIMIT 1;",
+				-1, &stmt, nullptr) == SQLITE_OK) {
+				sqlite3_bind_int(stmt, 1, nBotId);
+				if (sqlite3_step(stmt) == SQLITE_ROW) {
+					const unsigned char* name = sqlite3_column_text(stmt, 0);
+					if (name) {
+						// UC full-name convention expected by ClassPreloader::GetClass
+						// is "Class <FullPath>" (e.g. "Class TgGame.TgPawn_Turret").
+						result  = "Class ";
+						result += reinterpret_cast<const char*>(name);
+					}
+				}
+				sqlite3_finalize(stmt);
+			}
+		}
+		auto [ins, _] = m_dbClassCache.emplace(nBotId, std::move(result));
+		return ins->second.empty() ? nullptr : ins->second.c_str();
+	}
 	static void GiveDeviceById(
 		ATgPawn* Pawn,
 		ATgRepInfo_Player* PlayerReplicationInfo,
@@ -75,7 +163,15 @@ public:
 			case 6541: return "Class TgGame.TgPawn_Warlord";
 			case 7845: return "Class TgGame.TgPawn_WaspSpawner";
 			case 6009: return "Class TgGame.TgPawn_Widow";
-			default: return "Class TgGame.TgPawn_Character";
+			default: {
+				// Fall back to DB-backed resolution: asm_data_set_bots has the
+				// correct pawn_class_res_id for every known bot, joined against
+				// asm_data_set_resources. This covers turret pets (bot 1316 →
+				// TgPawn_TurretPlasma) and every other bot not in the switch
+				// above without having to manually maintain every case.
+				const char* dbClass = LookupPawnClassFromDb(nBotId);
+				return const_cast<char*>(dbClass ? dbClass : "Class TgGame.TgPawn_Character");
+			}
 
 
 			// todo:
