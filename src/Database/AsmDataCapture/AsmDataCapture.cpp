@@ -2534,6 +2534,29 @@ namespace {
     // fallback after a localized first pass) overwrites with the English
     // text. Result: final table is always English regardless of locale.
     void WalkMessageTranslations(void* /*marshal*/, uint32_t arr) {
+        if (arr == 0) return;
+
+        // Context guard.
+        //
+        // We dispatch on BOTH `DATA_SET_MSG_TRANSLATIONS (0x17A)` (specific) and
+        // `DATA_SET (0x10C)` (generic) because the lang loaders try 0x17A first
+        // and fall back to 0x10C — and our lang_English.dat is tagged with the
+        // generic id.  But 0x10C is also used by unrelated paths (e.g.
+        // CGameClient::SendMapRandomSMSettings), so we need to confirm we're
+        // actually looking at translation rows before walking.
+        //
+        // Probe the first row for the MESSAGE (0x355) wchar field.  Only
+        // translation rows carry it; non-translation 0x10C arrays will fail the
+        // probe and we bail out.
+        void* head = *(void**)((char*)arr + 4);
+        if (!head) return;
+        {
+            wchar_t probe[256] = {0};
+            uint32_t probeSize = 256;
+            if (!CMarshal__GetString2::CallOriginal(head, nullptr, GA_T::MESSAGE, probe, &probeSize))
+                return;
+        }
+
         sqlite3* db = Database::GetConnection(); if (!db) return;
         Stmt st(db,
             "INSERT OR REPLACE INTO asm_data_set_msg_translations ("
@@ -2545,8 +2568,10 @@ namespace {
         // text). 8 KB is comfortable for the longest known entries.
         char msgBuf[8192];
         WalkArray(arr, [&](void* r) {
+            uint32_t msgId = Int32(r, GA_T::MSG_ID);
+            if (msgId == 0) return; // belt-and-suspenders: skip non-translation rows
             GetWcharName(r, GA_T::MESSAGE, msgBuf, sizeof(msgBuf));
-            sqlite3_bind_int (st.s, 1, (int)Int32(r, GA_T::MSG_ID));
+            sqlite3_bind_int (st.s, 1, (int)msgId);
             sqlite3_bind_text(st.s, 2, msgBuf, -1, SQLITE_TRANSIENT);
             sqlite3_bind_int (st.s, 3, (int)Int32(r, GA_T::SOUND_RES_ID));
             st.step();
@@ -2726,7 +2751,20 @@ namespace {
 
             // v23 — translations from lang_English.dat (NOT assembly.dat,
             // but loaded via the same CMarshal__get_array pipeline).
+            //
+            // Dispatched on BOTH `DATA_SET_MSG_TRANSLATIONS (0x17A)` (the
+            // specific id) AND `DATA_SET (0x10C)` (the generic id).  The lang
+            // loaders (FUN_1093ebb0, FUN_1093d1a0) call `get_array(0x17A)`
+            // first and fall back to `get_array(0x10C)` — observed lang files
+            // are tagged with the generic id, so the 0x17A call returns empty
+            // and only the 0x10C fallback delivers rows.
+            //
+            // 0x10C is also used by unrelated paths (e.g.
+            // CGameClient::SendMapRandomSMSettings); WalkMessageTranslations
+            // probes the first row for the MESSAGE (0x355) field and bails on
+            // non-translation arrays.
             { GA_T::DATA_SET_MSG_TRANSLATIONS,            "asm_data_set_msg_translations" },
+            { GA_T::DATA_SET,                             "asm_data_set_msg_translations" },
         };
         return m;
     }
@@ -2847,7 +2885,10 @@ void AsmDataCapture::OnGetArray(void* marshal, int field, uint32_t arrayPtr) {
         case GA_T::DATA_SET_ACHIEVEMENT_REQS:           WalkAchievementReqs        (marshal, arrayPtr); break;
 
         // v23: lang_English.dat translation table.
-        case GA_T::DATA_SET_MSG_TRANSLATIONS:           WalkMessageTranslations    (marshal, arrayPtr); break;
+        // Dispatched on both the specific id and the generic DATA_SET fallback;
+        // walker probes for MESSAGE field to filter unrelated 0x10C arrays.
+        case GA_T::DATA_SET_MSG_TRANSLATIONS:
+        case GA_T::DATA_SET:                            WalkMessageTranslations    (marshal, arrayPtr); break;
 
         default: break;
     }

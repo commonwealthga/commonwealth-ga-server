@@ -1,8 +1,12 @@
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/Database/Database.hpp"
+#include "src/ControlServer/Loadouts/ClassLoadouts.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "sqlite3.h"
 #include <cstdio>
+#include <cstdlib>
+#include <sstream>
+#include <string>
 
 std::mutex PlayerSessionStore::mutex_;
 std::map<std::string, SessionInfo> PlayerSessionStore::by_guid_;
@@ -160,7 +164,7 @@ int64_t PlayerSessionStore::InsertCharacter(int64_t user_id, uint32_t profile_id
 	sqlite3_finalize(stmt);
 
 	int64_t newId = sqlite3_last_insert_rowid(db);
-	SeedDefaultDevices(newId, profile_id);
+	ResyncCharacterDevicesFromLoadout(newId, profile_id);
 	return newId;
 }
 
@@ -260,6 +264,38 @@ int PlayerSessionStore::GetEffectGroupId(int deviceId) {
 	}
 }
 
+int PlayerSessionStore::GetBlueprintIdForDevice(int deviceId) {
+	// Cache: device_id → blueprint_id. Looked up once per process.
+	static std::map<int, int> cache;
+	static std::mutex cacheMutex;
+
+	{
+		std::lock_guard<std::mutex> lock(cacheMutex);
+		auto it = cache.find(deviceId);
+		if (it != cache.end()) return it->second;
+	}
+
+	int blueprintId = 0;
+	sqlite3* db = Database::GetConnection();
+	if (db) {
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+		    "SELECT MIN(blueprint_id) FROM asm_data_set_blueprints WHERE created_item_id = ?",
+		    -1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int(stmt, 1, deviceId);
+			if (sqlite3_step(stmt) == SQLITE_ROW)
+				blueprintId = sqlite3_column_int(stmt, 0);
+			sqlite3_finalize(stmt);
+		}
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(cacheMutex);
+		cache[deviceId] = blueprintId;
+	}
+	return blueprintId;
+}
+
 std::vector<int> PlayerSessionStore::GetEffectGroupIds(int deviceId) {
 	// Union of every effect group associated with this device in asm.dat:
 	//   - asm_data_set_device_effect_groups  (equip effect — what the device
@@ -315,80 +351,103 @@ std::vector<int> PlayerSessionStore::GetEffectGroupIds(int deviceId) {
 	return dedup;
 }
 
-void PlayerSessionStore::SeedDefaultDevices(int64_t character_id, uint32_t profile_id) {
-	struct Seed { int deviceId; int slot; int slotValueId; int quality; };
-
-	// Profile→class mapping per asm_data_set_bots.reference_name. Jetpack
-	// device IDs are the unambiguous tell: 7031=Assault, 7032=Medic,
-	// 7033=Recon, 7034=Robotics. Earlier the labels here were rotated, so
-	// every non-medic player got another class's loadout.
-	std::vector<Seed> seeds;
-	switch (profile_id) {
-		case 567: // Medic   — Life Stealer + Medic Crescent Jetpack
-			seeds = {
-				{5800, 1, 221, 0}, {2991, 2, 198, 0}, {6898, 3, 200, 0}, {7032, 5, 201, 0},
-				{2531, 7, 203, 0}, {2168, 8, 204, 0}, {2773, 10, 386, 0}, {864, 14, 502, 0},
-			};
-			break;
-		case 679: // Robotics — Mace and Shield + Robotics Crescent Jetpack
-			seeds = {
-				{5802, 1, 221, 0}, {6885, 2, 198, 0}, {2918, 3, 200, 0}, {7034, 5, 201, 0},
-				{2300, 7, 203, 0}, {2066, 8, 204, 0}, {2886, 10, 386, 0}, {864, 14, 502, 0},
-			};
-			break;
-		case 681: // Recon    — Dual Daggers + Recon Crescent Jetpack
-			seeds = {
-				{5799, 1, 221, 0}, {2110, 2, 198, 0}, {3023, 3, 200, 0}, {7033, 5, 201, 0},
-				{2219, 7, 203, 0}, {2129, 8, 204, 0}, {2113, 10, 386, 0}, {864, 14, 502, 0},
-			};
-			break;
-		case 680: // Assault  — Impact Hammer + Assault Crescent Jetpack
-		default:
-			seeds = {
-				{5801, 1, 221, 0}, {5788, 2, 198, 0}, {2914, 3, 200, 0}, {7031, 5, 201, 0},
-				{3699, 7, 203, 0}, {2498, 8, 204, 0}, {5775, 10, 386, 0}, {864, 14, 502, 0},
-			};
-			break;
+// Format the rolled-mod effect_group_ids as a CSV for storage in
+// ga_character_devices.mod_effect_group_ids. Empty vector → empty string.
+static std::string ModsToCsv(const std::vector<int>& mods) {
+	if (mods.empty()) return std::string();
+	std::ostringstream oss;
+	for (size_t i = 0; i < mods.size(); ++i) {
+		if (i) oss << ',';
+		oss << mods[i];
 	}
+	return oss.str();
+}
 
-	sqlite3* db = Database::GetConnection();
-	sqlite3_stmt* stmt = nullptr;
-	int rc = sqlite3_prepare_v2(db,
-		"INSERT INTO ga_character_devices "
-		"(character_id, device_id, equip_slot, slot_value_id, quality, inventory_id, effect_group_id) "
-		"VALUES (?, ?, ?, ?, ?, ?, ?)",
-		-1, &stmt, nullptr);
-	if (rc != SQLITE_OK || !stmt) {
-		Logger::Log("db", "[PlayerSessionStore] SeedDefaultDevices prepare failed: %s\n", sqlite3_errmsg(db));
+// Inverse of ModsToCsv. Tolerates blanks and trailing commas.
+static std::vector<int> CsvToMods(const char* csv) {
+	std::vector<int> out;
+	if (!csv || !*csv) return out;
+	const char* p = csv;
+	while (*p) {
+		while (*p == ',' || *p == ' ') ++p;
+		if (!*p) break;
+		char* end = nullptr;
+		long v = std::strtol(p, &end, 10);
+		if (end == p) break;
+		out.push_back(static_cast<int>(v));
+		p = end;
+	}
+	return out;
+}
+
+void PlayerSessionStore::ResyncCharacterDevicesFromLoadout(int64_t character_id, uint32_t profile_id) {
+	const auto& loadout = Loadouts::GetLoadout(profile_id);
+	if (loadout.empty()) {
+		Logger::Log("db", "[PlayerSessionStore] ResyncCharacterDevicesFromLoadout: no loadout for profile %u — character %lld left untouched\n",
+			profile_id, character_id);
 		return;
 	}
 
-	int invId = 10000;
-	for (const auto& s : seeds) {
-		sqlite3_reset(stmt);
-		sqlite3_bind_int64(stmt, 1, character_id);
-		sqlite3_bind_int(stmt,   2, s.deviceId);
-		sqlite3_bind_int(stmt,   3, s.slot);
-		sqlite3_bind_int(stmt,   4, s.slotValueId);
-		sqlite3_bind_int(stmt,   5, s.quality);
-		sqlite3_bind_int(stmt,   6, invId++);
-		sqlite3_bind_int(stmt,   7, GetEffectGroupId(s.deviceId));
-		sqlite3_step(stmt);
-	}
-	sqlite3_finalize(stmt);
+	sqlite3* db = Database::GetConnection();
 
-	Logger::Log("db", "[PlayerSessionStore] Seeded %d default devices for character %lld (profile %u)\n",
-		(int)seeds.size(), character_id, profile_id);
+	sqlite3_stmt* delstmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+	    "DELETE FROM ga_character_devices WHERE character_id = ?",
+	    -1, &delstmt, nullptr) != SQLITE_OK) {
+		Logger::Log("db", "[PlayerSessionStore] Resync delete prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int64(delstmt, 1, character_id);
+	sqlite3_step(delstmt);
+	sqlite3_finalize(delstmt);
+
+	sqlite3_stmt* insstmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"INSERT INTO ga_character_devices "
+		"(character_id, device_id, equip_slot, slot_value_id, quality, inventory_id, effect_group_id, mod_effect_group_ids) "
+		"VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		-1, &insstmt, nullptr);
+	if (rc != SQLITE_OK || !insstmt) {
+		Logger::Log("db", "[PlayerSessionStore] Resync insert prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+
+	for (const auto& g : loadout) {
+		// Stable per-slot inventory id so reseeds don't shuffle ids.
+		const int invId = 10000 + g.equip_slot;
+		const std::string modsCsv = ModsToCsv(g.mods);
+
+		sqlite3_reset(insstmt);
+		sqlite3_bind_int64(insstmt, 1, character_id);
+		sqlite3_bind_int(insstmt,   2, g.device_id);
+		sqlite3_bind_int(insstmt,   3, g.equip_slot);
+		sqlite3_bind_int(insstmt,   4, g.slot_value_id);
+		sqlite3_bind_int(insstmt,   5, g.quality);
+		sqlite3_bind_int(insstmt,   6, invId);
+		sqlite3_bind_int(insstmt,   7, GetEffectGroupId(g.device_id));  // legacy column kept for back-compat
+		sqlite3_bind_text(insstmt,  8, modsCsv.c_str(), -1, SQLITE_TRANSIENT);
+		sqlite3_step(insstmt);
+	}
+	sqlite3_finalize(insstmt);
+
+	Logger::Log("db", "[PlayerSessionStore] Resynced %d devices for character %lld (profile %u)\n",
+		(int)loadout.size(), character_id, profile_id);
 }
 
 std::vector<DeviceRow> PlayerSessionStore::GetDevicesForCharacter(int64_t character_id) {
+	// NB: resync happens at SetSelectedCharacter time (TCP GSC_SELECT_CHARACTER
+	// handler), NOT here. SpawnPlayerCharacter (game-side DLL) reads this same
+	// table directly to build in-engine devices, and it runs BEFORE the IPC
+	// "spawn" event that fires send_inventory_response → this function. If we
+	// resynced here we'd rewrite inventory_ids after the game DLL had already
+	// keyed devices by the old ones, producing slot/device mismatches.
 	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();
 	std::vector<DeviceRow> result;
 
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
-		"SELECT device_id, equip_slot, slot_value_id, quality, inventory_id, effect_group_id "
+		"SELECT device_id, equip_slot, slot_value_id, quality, inventory_id, effect_group_id, mod_effect_group_ids "
 		"FROM ga_character_devices WHERE character_id = ? ORDER BY equip_slot",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
@@ -405,6 +464,7 @@ std::vector<DeviceRow> PlayerSessionStore::GetDevicesForCharacter(int64_t charac
 		row.quality         = sqlite3_column_int(stmt, 3);
 		row.inventory_id    = sqlite3_column_int(stmt, 4);
 		row.effect_group_id = sqlite3_column_int(stmt, 5);
+		row.mods            = CsvToMods(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6)));
 		result.push_back(row);
 	}
 	sqlite3_finalize(stmt);

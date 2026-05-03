@@ -27,12 +27,13 @@ struct CharacterInfo {
 };
 
 struct DeviceRow {
-    int device_id;
-    int equip_slot;
-    int slot_value_id;
-    int quality;
-    int inventory_id;
-    int effect_group_id;
+    int              device_id;
+    int              equip_slot;
+    int              slot_value_id;
+    int              quality;
+    int              inventory_id;
+    int              effect_group_id;  // legacy single-egid (still written for back-compat); unused on read
+    std::vector<int> mods;             // rolled-mod effect_group_ids (one entry → one [...] letter on client)
 };
 
 struct SkillRow {
@@ -58,6 +59,15 @@ public:
     static std::optional<CharacterInfo> GetCharacterById(int64_t id);
     static void SetSelectedCharacter(const std::string& guid, int64_t char_id, uint32_t profile_id);
 
+    // Wipes ga_character_devices for this character and re-inserts rows from
+    // Loadouts::GetLoadout(profile_id). MUST be called before the game DLL's
+    // SpawnPlayerCharacter reads the table — i.e. at character-SELECT time,
+    // not later — otherwise the in-engine pawn keys devices by stale
+    // inventory_ids while the client gets the resynced ones.
+    static void ResyncCharacterDevicesFromLoadout(int64_t character_id, uint32_t profile_id);
+
+    // Returns whatever is currently in ga_character_devices for this character.
+    // No side-effects; the resync is gated to character-SELECT (above).
     static std::vector<DeviceRow> GetDevicesForCharacter(int64_t character_id);
 
     // Returns every effect group that should be reported in DATA_SET_INVENTORY_STATE
@@ -67,6 +77,14 @@ public:
     // + asm_data_set_device_mode_effect_groups; falls back to the legacy hardcoded
     // map when the asm tables are empty (pre-capture runs).
     static std::vector<int> GetEffectGroupIds(int device_id);
+
+    // Returns the lowest blueprint_id from asm_data_set_blueprints whose
+    // created_item_id matches the given device id, or 0 if none exists.
+    // The client gates the [...] mod-letter suffix on m_pAmBlueprint != null
+    // (FUN_10a12740 sets it from FInventoryData.nBlueprintId). Items that
+    // ship rolled mods need a non-zero BLUEPRINT_ID for the suffix to render.
+    // Result is cached per-device for the lifetime of the process.
+    static int GetBlueprintIdForDevice(int device_id);
 
     // Skill tree allocations — ga_character_skills.
     static std::vector<SkillRow> GetSkillsForCharacter(int64_t character_id);
@@ -88,6 +106,5 @@ private:
     static std::map<std::string, SessionInfo> by_guid_;
     static std::map<std::string, SessionInfo> by_ip_;
 
-    static void SeedDefaultDevices(int64_t character_id, uint32_t profile_id);
     static int GetEffectGroupId(int device_id);
 };

@@ -1402,17 +1402,18 @@ void Database::Init() {
 
 	if (version < 19) {
 		// v19: re-seed ga_character_devices for characters affected by the
-		// PlayerSessionStore::SeedDefaultDevices class-label rotation bug
-		// (fixed alongside this migration). Three of four switch cases were
-		// misassigned, so every existing character with profile_id 679 / 680
-		// / 681 was equipped with another class's loadout. Profile 567
-		// (Medic) was unaffected.
+		// class-label rotation bug (fixed alongside this migration). Three of
+		// four switch cases were misassigned, so every existing character with
+		// profile_id 679 / 680 / 681 was equipped with another class's loadout.
+		// Profile 567 (Medic) was unaffected.
 		//
-		// Seed lists below MUST stay in sync with SeedDefaultDevices in
-		// PlayerSessionStore.cpp — duplicated intentionally so the migration
-		// is self-contained (no need to expose the private static, no
-		// accidental drift from future seed changes touching only the live
-		// path).
+		// Historical: this migration mirrored a now-removed
+		// PlayerSessionStore::SeedDefaultDevices. Live seeding now reads from
+		// src/ControlServer/Loadouts/ClassLoadouts.cpp via
+		// PlayerSessionStore::ResyncCharacterDevicesFromLoadout, which runs on
+		// every character login — so on next login this migration's output is
+		// overwritten with whatever the current ClassLoadouts.cpp says. Kept
+		// here so freshly-restored old DBs still pass through the fix once.
 		struct Seed { int deviceId; int slot; int slotValueId; int quality; };
 		auto effectGroupId = [](int deviceId) -> int {
 			switch (deviceId) {
@@ -1918,7 +1919,32 @@ void Database::Init() {
 		Logger::Log("db", "v23: created asm_data_set_msg_translations\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 23", nullptr, nullptr, &err);
+	if (version < 24) {
+		// v24: add mod_effect_group_ids to ga_character_devices.
+		//
+		// Stores per-equipped-item rolled-mod effect_group_ids as a CSV list
+		// (e.g. "24208,24211,24212,24208,24211,24212" → six 'h' letters).
+		// Source-of-truth is src/ControlServer/Loadouts/ClassLoadouts.cpp;
+		// PlayerSessionStore::ResyncCharacterDevicesFromLoadout overwrites
+		// this column on character SELECT, so editing the loadout file +
+		// restart is enough to take effect.
+		//
+		// Idempotent: ControlServer/Database.cpp resets version_info=19 at
+		// every boot, so this can re-run after the column already exists —
+		// swallow the duplicate-column error and let the version bump below
+		// flag the table as fully migrated.
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_character_devices ADD COLUMN mod_effect_group_ids TEXT NOT NULL DEFAULT '';",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			sqlite3_free(err);
+			err = nullptr;
+		} else {
+			Logger::Log("db", "v24: added ga_character_devices.mod_effect_group_ids\n");
+		}
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 24", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

@@ -455,6 +455,7 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/Constants/DeviceIds.cpp \
 	$(CS_SRC_DIR)/Config/ControlServerConfig.cpp \
 	$(CS_SRC_DIR)/Database/Database.cpp \
+	$(CS_SRC_DIR)/Loadouts/ClassLoadouts.cpp \
 	$(CS_SRC_DIR)/PlayerSessionStore/PlayerSessionStore.cpp \
 	$(CS_SRC_DIR)/TcpSession/TcpSession.cpp \
 	$(CS_SRC_DIR)/ChatSession/ChatSession.cpp \

@@ -426,6 +426,12 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 					selected_character_id_ = charInfo->id;
 					selected_profile_id_   = charInfo->profile_id;
 					PlayerSessionStore::SetSelectedCharacter(session_guid_, charInfo->id, charInfo->profile_id);
+					// Reseed ga_character_devices from ClassLoadouts.cpp BEFORE
+					// PLAYER_REGISTER fires the game-DLL spawn flow. The DLL's
+					// SpawnPlayerCharacter reads the same table to build in-engine
+					// devices; resyncing here guarantees both sides see identical
+					// (device_id, slot, inventory_id, mods) tuples.
+					PlayerSessionStore::ResyncCharacterDevicesFromLoadout(charInfo->id, charInfo->profile_id);
 					Logger::Log("tcp", "[%s] GSC_SELECT_CHARACTER: selected charId=%lld profile=%u\n",
 						Logger::GetTime(), selected_character_id_, selected_profile_id_);
 				} else {
@@ -1066,10 +1072,19 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 	for (const auto& d : devices) {
 		append(response, 0x0E, 0x00);  // 14 fields per item
 
+		// nBlueprintId gates m_pAmBlueprint on the client (FUN_10a12740 sets it
+		// from this field). The mod-letter [...] suffix is rendered only when
+		// m_pAmBlueprint is non-null, so for any item carrying rolled mods we
+		// must send a real blueprint_id whose created_item_id matches this
+		// device. Items with no mods send 0 (no fake blueprint, no suffix).
+		const int blueprintId = d.mods.empty()
+			? 0
+			: PlayerSessionStore::GetBlueprintIdForDevice(d.device_id);
+
 		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1);
 		Write4B(response, GA_T::ITEM_ID, d.device_id);
 		Write4B(response, GA_T::INVENTORY_ID, d.inventory_id);
-		Write4B(response, GA_T::BLUEPRINT_ID, 0);
+		Write4B(response, GA_T::BLUEPRINT_ID, blueprintId);
 		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, d.quality);
 		Write4B(response, GA_T::DURABILITY, 100);
 		WriteDouble(response, GA_T::ACQUIRE_DATETIME, 1700000000.0);
@@ -1082,10 +1097,17 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 		// DATA_SET_INVENTORY_STATE carries a list of {INVENTORY_ID, EFFECT_GROUP_ID}
 		// pairs. Client FUN_10a13820 @ 0x10a13820 appends every row whose
 		// INVENTORY_ID matches this item's inv_id into the inventory object's
-		// effect-group list, which TgDeviceFire::GetEffectGroup consults at
-		// runtime. Emit one row per effect group so fire/equip/hit/cooldown
-		// effects all attach — not just the single placeholder we used to send.
+		// effect-group list (m_nStateEffectGroupIdArray), which drives both the
+		// TgDeviceFire::GetEffectGroup runtime lookup AND the [...] letter
+		// suffix in the UI (one letter per row, derived from each effect's
+		// property.ui_code).
+		//
+		// Compose: static device-template effects + rolled-mod effect groups
+		// from the loadout (DeviceRow::mods). Six-letter suffixes like
+		// [hhhhhh] come from emitting six rows whose effect_group_id resolves
+		// to a property with ui_code='h'.
 		auto effectGroups = PlayerSessionStore::GetEffectGroupIds(d.device_id);
+		for (int egid : d.mods) effectGroups.push_back(egid);
 		if (effectGroups.empty()) effectGroups.push_back(0); // preserve 1-row shape for unknown devices
 
 		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
