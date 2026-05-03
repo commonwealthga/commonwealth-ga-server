@@ -38,6 +38,21 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         std::string inst_id_arg   = "-instanceid=" + std::to_string(instance_id);
         std::string gamepath_arg  = "-gamepath=" + cfg.game_binary;
         std::string fixguids_arg  = std::string("-fixpackageguids=") + (cfg.fix_package_guids ? "1" : "0");
+        std::string crashdir_arg  = "-crashdir=" + cfg.crash_dir;
+        std::string logdir_arg    = "-logdir=" + cfg.log_dir;
+
+        // Join channel allowlists with ',' for transport to the in-process DLL.
+        // Empty list -> empty value, which the DLL treats as "no channels".
+        auto join_csv = [](const std::vector<std::string>& v) {
+            std::string out;
+            for (size_t i = 0; i < v.size(); ++i) {
+                if (i) out += ',';
+                out += v[i];
+            }
+            return out;
+        };
+        std::string enabled_channels_arg       = "-enabledchannels="      + join_csv(cfg.enabled_channels);
+        std::string enabled_crash_channels_arg = "-enabledcrashchannels=" + join_csv(cfg.enabled_crash_channels);
 
         // --wine-debug: use winedbg instead of wine, with "--command cont" to auto-resume
         std::string wine_bin = cfg.wine_debug ? cfg.wine_binary + "dbg" : cfg.wine_binary;
@@ -58,7 +73,8 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
             host_arg.c_str(), hostdns_arg.c_str(), port_arg.c_str(),
             "-seekfreeloading", "-tcp=300", "-nullrhi",
             ipc_port_arg.c_str(), inst_id_arg.c_str(), gamepath_arg.c_str(),
-            fixguids_arg.c_str(),
+            fixguids_arg.c_str(), crashdir_arg.c_str(), logdir_arg.c_str(),
+            enabled_channels_arg.c_str(), enabled_crash_channels_arg.c_str(),
         }) {
             argv.push_back(a);
         }

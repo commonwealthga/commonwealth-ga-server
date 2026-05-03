@@ -1558,7 +1558,367 @@ void Database::Init() {
 		}
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 20", nullptr, nullptr, &err);
+	if (version < 21) {
+		// v21: re-verification of asm.dat capture against
+		// CAssemblyManager::LoadAssemblyDatFile @ 0x10951030 found:
+		//
+		// (a) wrong field id in two material_* walkers:
+		//     `material_res_id` was being read as GA_T::MATERIAL_RES_ID = 0x033D,
+		//     but the loader (FUN_1094a650) reads MATERIAL_RESOURCE_ID = 0x033B
+		//     into that slot. All `material_res_id` rows in
+		//     asm_data_set_material_resources / mat_res_params are NULL/0/garbage.
+		//
+		// (b) missing columns (loader reads them, we never bound a column):
+		//     - asm_data_set_items: wear_flair_start_date (W 0x551), wear_flair_duration (B 0x550)
+		//     - asm_data_set_devices: in_hand_device_flag (Fg 0x2D4)
+		//     - asm_data_set_bots: crew_control_radius (F 0xEC)
+		//     - asm_data_set_assembly_meshes: 18 named flag bits packed into row+0x74
+		//
+		// (c) type mismatch on asm_mesh_audio_groups: loader (FUN_1094b470) reads
+		//     AUDIO_GROUP_ID via Int32 (0x58, TYPE_TCP_UINT32); our walker used Byte.
+		//     Same field is read as Byte in the sound_cues loader, so values likely
+		//     fit in 8 bits in practice, but we should match the dataset-of-record.
+		//
+		// (d) missing dataset: DATA_SET_ACHIEVEMENT_REQS (0x10F) is nested under
+		//     achievements (per FUN_1094d1b0 → FUN_1093f110 + FUN_1093dbf0). We
+		//     never registered a walker.
+		//
+		// Strategy: for each affected existing table, DROP + CREATE with the new
+		// schema so AsmDataCapture::ShouldWalk fires on the next launch and
+		// re-populates with corrected reads. For the new ACHIEVEMENT_REQS table,
+		// CREATE IF NOT EXISTS. Idempotent across fresh / v20 / v21 databases.
+		//
+		// All dropped tables are pure asm.dat captures (read-only mirrors of
+		// game data) — no user data is at risk.
+		const char* kV21 =
+			// Items: add wear_flair_start_date / wear_flair_duration.
+			"DROP TABLE IF EXISTS asm_data_set_items;"
+			"CREATE TABLE asm_data_set_items ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  name_msg_id INTEGER,"
+			"  name_msg_translated TEXT,"
+			"  desc_msg_id INTEGER,"
+			"  desc_msg_translated TEXT,"
+			"  class_res_id INTEGER,"
+			"  item_id INTEGER,"
+			"  item_type_value_id INTEGER,"
+			"  item_subtype_value_id INTEGER,"
+			"  skill_id INTEGER,"
+			"  sub_skill_id INTEGER,"
+			"  skill_level_min INTEGER,"
+			"  quantity INTEGER,"
+			"  icon_id INTEGER,"
+			"  weight FLOAT,"
+			"  time_to_live_secs FLOAT,"
+			"  quality_value_id INTEGER,"
+			"  required_achievement_id INTEGER,"
+			"  required_achievement_points INTEGER,"
+			"  ref_bot_id INTEGER,"
+			"  ref_deployable_id INTEGER,"
+			"  ref_device_id INTEGER,"
+			"  item_bind_type_value_id INTEGER,"
+			"  production_cost INTEGER,"
+			"  required_level INTEGER,"
+			"  wear_flair_start_date TEXT,"
+			"  wear_flair_duration INTEGER,"
+			"  purchased_value INTEGER,"
+			"  bundle_loot_table_id INTEGER"
+			");"
+
+			// Devices: add in_hand_device_flag.
+			"DROP TABLE IF EXISTS asm_data_set_devices;"
+			"CREATE TABLE asm_data_set_devices ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  device_id INTEGER,"
+			"  form_class_res_id INTEGER,"
+			"  mount_socket_res_id INTEGER,"
+			"  time_to_equip_secs FLOAT,"
+			"  container_skill_group_id INTEGER,"
+			"  right_click_behavior_type_value_id INTEGER,"
+			"  slot_used_value_id INTEGER,"
+			"  in_hand_device_flag INTEGER"
+			");"
+
+			// Bots: add crew_control_radius.
+			"DROP TABLE IF EXISTS asm_data_set_bots;"
+			"CREATE TABLE asm_data_set_bots ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  bot_id INTEGER,"
+			"  reference_name TEXT,"
+			"  name_msg_id INTEGER,"
+			"  desc_msg_id INTEGER,"
+			"  level INTEGER,"
+			"  pawn_class_res_id INTEGER,"
+			"  controller_class_res_id INTEGER,"
+			"  behavior_id INTEGER,"
+			"  head_asm_id INTEGER,"
+			"  body_asm_id INTEGER,"
+			"  movement_asm_id INTEGER,"
+			"  hit_points INTEGER,"
+			"  bot_type_value_id INTEGER,"
+			"  physical_type_value_id INTEGER,"
+			"  default_slot_value_id INTEGER,"
+			"  default_sensor_range REAL,"
+			"  default_aggro_range INTEGER,"
+			"  default_help_range INTEGER,"
+			"  hearing_range REAL,"
+			"  default_speed REAL,"
+			"  walk_speed_pct REAL,"
+			"  crouch_speed_pct REAL,"
+			"  chase_range INTEGER,"
+			"  chase_time_sec REAL,"
+			"  stealth_sensor_range INTEGER,"
+			"  stealth_aggro_range INTEGER,"
+			"  hibernate_on_idle_sec INTEGER,"
+			"  hibernate_delay_rate REAL,"
+			"  icon_id INTEGER,"
+			"  bot_rank_value_id INTEGER,"
+			"  target_only_physical_type_value_id INTEGER,"
+			"  skill_group_id INTEGER,"
+			"  skill_group_set_id INTEGER,"
+			"  fixed_fov_degrees INTEGER,"
+			"  loot_table_id INTEGER,"
+			"  default_power_pool INTEGER,"
+			"  rotation_rate INTEGER,"
+			"  class_type_value_id INTEGER,"
+			"  device_slot_unlock_group_id INTEGER,"
+			"  pickup_device_id INTEGER,"
+			"  xp_value INTEGER,"
+			"  currency_value INTEGER,"
+			"  squad_role_value_id INTEGER,"
+			"  default_posture_value_id INTEGER,"
+			"  acceleration_rate REAL,"
+			"  accuracy_override REAL,"
+			"  bot_balance_multiplier REAL,"
+			"  power_pool_regen_per_sec REAL,"
+			"  crew_control_radius REAL,"
+			"  hibernate_invulnerability_flag INTEGER,"
+			"  can_jump_flag INTEGER,"
+			"  can_climb_ladders_flag INTEGER,"
+			"  path_only_flag INTEGER,"
+			"  always_load_on_server_flag INTEGER,"
+			"  destroy_on_owner_death_flag INTEGER"
+			");"
+
+			// Assembly meshes: add 18 named flag bit columns.
+			"DROP TABLE IF EXISTS asm_data_set_assembly_meshes;"
+			"CREATE TABLE asm_data_set_assembly_meshes ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  asm_id INTEGER,"
+			"  name TEXT,"
+			"  mesh_res_id INTEGER,"
+			"  anim_tree_res_id INTEGER,"
+			"  physics_asset_res_id INTEGER,"
+			"  socket_res_id INTEGER,"
+			"  aim_offset_profile_res_id INTEGER,"
+			"  socket_offset_info_res_id INTEGER,"
+			"  asm_mesh_type_value_id INTEGER,"
+			"  scale REAL,"
+			"  cull_distance REAL,"
+			"  scale_3d_x REAL,"
+			"  scale_3d_y REAL,"
+			"  scale_3d_z REAL,"
+			"  translation_x REAL,"
+			"  translation_y REAL,"
+			"  translation_z REAL,"
+			"  rotator_pitch INTEGER,"
+			"  rotator_yaw INTEGER,"
+			"  rotator_roll INTEGER,"
+			"  collision_height REAL,"
+			"  collision_radius REAL,"
+			"  collision_depth REAL,"
+			"  crouch_height REAL,"
+			"  hit_collision_height REAL,"
+			"  hit_collision_radius REAL,"
+			"  physics_weight REAL,"
+			"  life_after_death_secs REAL,"
+			"  destroyed_asm_id INTEGER,"
+			"  material_res_group_id INTEGER,"
+			"  race_material_parameter_id INTEGER,"
+			"  accept_decals_flag INTEGER,"
+			"  accept_decals_runtime_flag INTEGER,"
+			"  accept_lights_flag INTEGER,"
+			"  allow_approx_occlusion_flag INTEGER,"
+			"  block_actors_flag INTEGER,"
+			"  block_non_zero_extent_flag INTEGER,"
+			"  block_rigid_body_flag INTEGER,"
+			"  block_zero_extent_flag INTEGER,"
+			"  cast_dynamic_shadow_flag INTEGER,"
+			"  cast_shadow_flag INTEGER,"
+			"  collide_actors_flag INTEGER,"
+			"  force_dir_light_map_flag INTEGER,"
+			"  has_physics_asset_inst_flag INTEGER,"
+			"  is_female_flag INTEGER,"
+			"  notify_rigid_body_collision_flag INTEGER,"
+			"  only_owner_see_flag INTEGER,"
+			"  owner_no_see_flag INTEGER,"
+			"  update_joints_from_anim_flag INTEGER"
+			");"
+
+			// Material resources: parent FK column was reading the wrong field id
+			// (GA_T::MATERIAL_RES_ID = 0x033D vs the loader's MATERIAL_RESOURCE_ID
+			// = 0x033B). Drop+recreate so corrected walker re-populates.
+			"DROP TABLE IF EXISTS asm_data_set_material_resources;"
+			"CREATE TABLE asm_data_set_material_resources ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  material_res_group_id INTEGER,"
+			"  material_res_id INTEGER,"
+			"  material_res_sub_type_value_id INTEGER,"
+			"  material_res_type_value_id INTEGER,"
+			"  res_id INTEGER,"
+			"  sort_order INTEGER"
+			");"
+
+			// Mat-res params: same fix — parent linkage was via wrong field id.
+			"DROP TABLE IF EXISTS asm_data_set_mat_res_params;"
+			"CREATE TABLE asm_data_set_mat_res_params ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  material_res_id INTEGER,"
+			"  mat_res_param_id INTEGER,"
+			"  material_parameter_id INTEGER,"
+			"  parameter_res_id INTEGER"
+			");"
+
+			// Asm-mesh audio groups: type bug. Loader reads via Int32.
+			// Schema column type unchanged (INTEGER); only the reader is fixed.
+			// Drop+recapture so any rows that were silently truncated get
+			// re-bound with the full uint32 value.
+			"DROP TABLE IF EXISTS asm_data_set_asm_mesh_audio_groups;"
+			"CREATE TABLE asm_data_set_asm_mesh_audio_groups ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  asm_id INTEGER,"
+			"  audio_group_id INTEGER"
+			");"
+
+			// New: DATA_SET_ACHIEVEMENT_REQS (0x10F) — nested under achievements.
+			// Per-row scalars come from FUN_1093f110 + FUN_1093dbf0.
+			"CREATE TABLE IF NOT EXISTS asm_data_set_achievement_reqs ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  achievement_id INTEGER,"
+			"  requirement_id INTEGER,"
+			"  requirement_list_id INTEGER,"
+			"  requirement_value REAL,"
+			"  metric_value_id INTEGER,"
+			"  map_game_id INTEGER,"
+			"  gameplay_type_value_id INTEGER,"
+			"  class_value_id INTEGER,"
+			"  difficulty_value_id INTEGER,"
+			"  team_size INTEGER"
+			");"
+			;
+		result = sqlite3_exec(db, kV21, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed v21 migration: %s\n", err);
+			return;
+		}
+		Logger::Log("db", "v21: rebuilt items/devices/bots/assembly_meshes/material_resources/"
+		            "mat_res_params/asm_mesh_audio_groups for recapture; created achievement_reqs\n");
+	}
+
+	if (version < 22) {
+		// v22: deep-dive audit of vtable-dispatched per-row readers found:
+		//
+		// (a) `asm_data_set_skill_group_ranks` was capturing only
+		//     {skill_group_id, skill_id} but the actual SKILL_GROUP_RANKS row
+		//     reader (FUN_1094c250 = vtable[1] of CAmSkillRank @ 0x1168f16c)
+		//     reads 8 more scalars: RANK_ID (B 0x417), name (Translate 0x371),
+		//     desc (Translate 0x1F9), RANK (B 0x416), TRAINING_MAP_GAME_ID
+		//     (B 0x515), DESC_TEXTURE_RES_ID (I 0x1FB), REQUIRED_XP_LEVEL_ID
+		//     (B 0x434), AUTO_ALLOCATE_FLAG (Fg 0x5C). Plus nested
+		//     DATA_SET_SKILL_EFFECT_GROUPS per rank row.
+		//
+		// (b) `asm_data_set_skill_effect_groups` lost the rank_id parent
+		//     context when fired from a skill-group-rank row. Add `rank_id`.
+		//
+		// (c) `asm_data_set_fx.name` was a wchar read of field 0x370, but the
+		//     loader (FUN_1094a800) reads 0x370 as int32-resource-id and
+		//     resolves through DAT_119a1c80. Rename to `name_res_id` and
+		//     read as Int32; consumers join with asm_data_set_resources for
+		//     the human-readable name.
+		//
+		// All three tables are pure asm.dat captures — drop+recreate then let
+		// AsmDataCapture::ShouldWalk fire on the next launch to repopulate.
+		const char* kV22 =
+			// Skill group ranks: full row schema.
+			"DROP TABLE IF EXISTS asm_data_set_skill_group_ranks;"
+			"CREATE TABLE asm_data_set_skill_group_ranks ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  skill_group_id INTEGER,"
+			"  skill_id INTEGER,"
+			"  rank_id INTEGER,"
+			"  name_msg_translated TEXT,"
+			"  desc_msg_translated TEXT,"
+			"  rank INTEGER,"
+			"  training_map_game_id INTEGER,"
+			"  desc_texture_res_id INTEGER,"
+			"  required_xp_level_id INTEGER,"
+			"  auto_allocate_flag INTEGER"
+			");"
+
+			// Skill effect groups: add rank_id parent linkage.
+			"DROP TABLE IF EXISTS asm_data_set_skill_effect_groups;"
+			"CREATE TABLE asm_data_set_skill_effect_groups ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  skill_group_id INTEGER,"
+			"  skill_id INTEGER,"
+			"  sub_skill_id INTEGER,"
+			"  rank_id INTEGER,"
+			"  effect_group_id INTEGER,"
+			"  effect_group_type_value_id INTEGER"
+			");"
+
+			// FX: rename `name` → `name_res_id`. Loader reads 0x370 via
+			// get_int32_t (resource-id), not get_wchar_2.
+			"DROP TABLE IF EXISTS asm_data_set_fx;"
+			"CREATE TABLE asm_data_set_fx ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  fx_id INTEGER,"
+			"  name_res_id INTEGER,"
+			"  priority_value_id INTEGER,"
+			"  mic_res_id INTEGER,"
+			"  transition_sec REAL"
+			");"
+			;
+		result = sqlite3_exec(db, kV22, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed v22 migration: %s\n", err);
+			return;
+		}
+		Logger::Log("db", "v22: rebuilt skill_group_ranks (full 10-col schema), "
+		            "skill_effect_groups (added rank_id), and fx (name→name_res_id)\n");
+	}
+
+	if (version < 23) {
+		// v23: capture message translations from lang_English.dat.
+		//
+		// FUN_1093ebb0 (locale-specific) and FUN_1093d1a0 (English fallback)
+		// both call CMarshal__get_array(0x017A = DATA_SET_MSG_TRANSLATIONS) on
+		// the language file's marshal context. The per-row schema (per
+		// FUN_10939430) is:
+		//   MSG_ID       (I 0x036E)  — translation key
+		//   MESSAGE      (W 0x0355)  — translation text
+		//   SOUND_RES_ID (I 0x0493)  — linked voice clip res id (often 0)
+		//
+		// On non-English locales, lang_<locale>.dat loads first (giving
+		// localized text), then lang_English.dat loads as fallback (giving
+		// English). Using `msg_id INTEGER PRIMARY KEY` with INSERT OR
+		// REPLACE in the walker means the English pass overwrites — final
+		// table holds English content regardless of locale.
+		const char* kV23 =
+			"CREATE TABLE IF NOT EXISTS asm_data_set_msg_translations ("
+			"  msg_id INTEGER PRIMARY KEY,"
+			"  message TEXT,"
+			"  sound_res_id INTEGER"
+			");";
+		result = sqlite3_exec(db, kV23, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed v23 migration: %s\n", err);
+			return;
+		}
+		Logger::Log("db", "v23: created asm_data_set_msg_translations\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 23", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

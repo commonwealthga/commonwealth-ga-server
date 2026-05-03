@@ -21,6 +21,14 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 	if (!device) return;
 
 	ATgPawn* pawn = (ATgPawn*)device->Instigator;
+	if (!pawn) {
+		// Matches the null-check in TgDeviceFire::Deploy (sibling of this
+		// hook). AI-spawned pets whose fire-mode runs before Instigator is
+		// wired would null-deref pawn->Location below. Bail early.
+		Logger::Log(GetLogChannel(),
+			"TgDeviceFire::SpawnPet: device has no Instigator, bailing\n");
+		return;
+	}
 
 	char* pFireModeSetup = (char*)pThis->m_pFireModeSetup.Dummy;
 	int petId = *(int*)(pFireModeSetup + 0x2C);

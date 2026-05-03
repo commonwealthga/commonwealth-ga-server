@@ -1,6 +1,7 @@
 #include "src/pch.hpp"
 
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/Utils/CrashHandler/CrashHandler.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Config/Config.hpp"
 #include "src/Utils/DebugWindow/DebugWindow.hpp"
@@ -66,6 +67,7 @@
 #include "src/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepList.hpp"
 #include "src/GameServer/Engine/Actor/Spawn/Actor__Spawn.hpp"
 #include "src/GameServer/Engine/Actor/Tick/Actor__Tick.hpp"
+#include "src/GameServer/Engine/GameEngine/Tick/GameEngine__Tick.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/SpawnBot/TgBotFactory__SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/SpawnNextBot/TgBotFactory__SpawnNextBot.hpp"
@@ -79,6 +81,9 @@
 #include "src/GameServer/TgGame/TgDeviceFire/Deploy/TgDeviceFire__Deploy.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/SpawnPet/TgDeviceFire__SpawnPet.hpp"
 #include "src/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.hpp"
+#include "src/GameServer/TgGame/TgDevice/UpdateDeployModeStatus/TgDevice__UpdateDeployModeStatus.hpp"
+#include "src/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RosterWalker.hpp"
+#include "src/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RefIter.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/ApplyDamage/TgEffectManager__ApplyDamage.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffectGroups/TgEffectManager__RemoveAllEffectGroups.hpp"
@@ -288,22 +293,33 @@
 
 
 unsigned long ModuleThread( void* ) {
+	// Each crash channel gets its own 100-entry ring; high-frequency channels
+	// like hook_calltree no longer flush targeted diagnostics.
+	// Logger::EnabledCrashChannels.push_back("hook_calltree");
+	// Logger::EnabledCrashChannels.push_back("deploy_validate");
+	// Logger::EnabledCrashChannels.push_back("roster_walker");
+	// Logger::EnabledCrashChannels.push_back("boot_sentinel");
+	// Sentinel: if this ring appears in a crash dump, the logger pipeline
+	// works and the absence of roster_walker/deploy_validate rings means the
+	// relevant hooks never fired. If this ring is ALSO missing, something is
+	// wrong with the ring plumbing itself.
+	// Logger::Log("boot_sentinel", "ModuleThread init — hooks about to install\n");
 	// Logger::EnabledChannels.push_back("hook_calltree");
 	// Logger::EnabledChannels.push_back("combat-trace");
-	Logger::EnabledChannels.push_back("asset_load");
-	Logger::EnabledChannels.push_back("deploy_phase");
-	Logger::EnabledChannels.push_back("team_colors");
-	Logger::EnabledChannels.push_back("pet_spawn");
-	Logger::EnabledChannels.push_back("bomb");
-	Logger::EnabledChannels.push_back("deployable_props");
-	Logger::EnabledChannels.push_back("heal_tick");
-	Logger::EnabledChannels.push_back("skills");
-	Logger::EnabledChannels.push_back("skills-trace");
-	Logger::EnabledChannels.push_back("skills_debug");
+	// Logger::EnabledChannels.push_back("asset_load");
+	// Logger::EnabledChannels.push_back("deploy_phase");
+	// Logger::EnabledChannels.push_back("team_colors");
+	// Logger::EnabledChannels.push_back("pet_spawn");
+	// Logger::EnabledChannels.push_back("bomb");
+	// Logger::EnabledChannels.push_back("deployable_props");
+	// Logger::EnabledChannels.push_back("heal_tick");
+	// Logger::EnabledChannels.push_back("skills");
+	// Logger::EnabledChannels.push_back("skills-trace");
+	// Logger::EnabledChannels.push_back("skills_debug");
 	// Logger::EnabledChannels.push_back("ipc");
 	// Logger::EnabledChannels.push_back("kismet");
 	// Logger::EnabledChannels.push_back("tgbotfactory");
-	Logger::EnabledChannels.push_back("effects");
+	// Logger::EnabledChannels.push_back("effects");
 	// Logger::EnabledChannels.push_back("firedeploy_m_pAmSetup");
 	// Logger::EnabledChannels.push_back("firedeploy_m_pFireModeSetup");
 	// Logger::EnabledChannels.push_back("firespawnpet_m_pAmSetup");
@@ -353,6 +369,7 @@ unsigned long ModuleThread( void* ) {
 	Actor__GetOptimizedRepList::Install();
 	Actor__Spawn::Install();
 	Actor__Tick::Install();
+	GameEngine__Tick::Install();
 
 	// game functions
 	TgPlayerController__IsReadyForStart::Install();
@@ -410,6 +427,32 @@ unsigned long ModuleThread( void* ) {
 	TgEffectManager__RemoveAllEffectGroups::Install();
 	TgEffectManager__RemoveAllEffects::Install();
 	TgDevice__HasEnoughPowerPool::Install();
+	// Pre-install: read first 12 bytes at each hook target. Expected UE3
+	// SEH-wrapped prologue begins with 6A FF 68 <imm32> 64 A1 00 00 00 00
+	// (PUSH -1; PUSH <cookie>; MOV EAX, FS:[0]). If the runtime bytes don't
+	// match this pattern, our hook address doesn't point to the intended
+	// function — Detours will still patch the memory but nothing calls it.
+	{
+		auto dumpBytes = [](const char* name, uintptr_t addr) {
+			const uint8_t* p = (const uint8_t*)addr;
+			Logger::Log("boot_sentinel",
+				"  %s @ 0x%08lx: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+				name, (unsigned long)addr,
+				p[0], p[1], p[2], p[3], p[4], p[5],
+				p[6], p[7], p[8], p[9], p[10], p[11]);
+		};
+		Logger::Log("boot_sentinel", "Target bytes (expecting 6a ff 68 .. 64 a1 00 00 ..):\n");
+		dumpBytes("UpdateDeployModeStatus", 0x10a273b0);
+		dumpBytes("RosterWalker (FUN_11346d30)", 0x11346d30);
+		dumpBytes("RefIter (FUN_11326f90)", 0x11326f90);
+		// Compare against a hook we KNOW works so the bytes can be contrasted.
+		dumpBytes("HasEnoughPowerPool(ref)", 0x10a1e3a0);
+		dumpBytes("UObject__ProcessEvent(ref)", 0x11347c20);
+	}
+
+	TgDevice__UpdateDeployModeStatus::Install();
+	TgPawn__RosterWalker::Install();
+	TgPawn__RefIter::Install();
 	TgProj_Deployable__SpawnDeployable::Install();
 	TgMissionObjective_Bot__SpawnObjectiveBot::Install();
 
@@ -627,9 +670,39 @@ unsigned long ModuleThread( void* ) {
 
 	// Unified asm_* data-set capture via CMarshal__GetArray dispatch.
 	// Flip to true for a single game run to populate, then back to false.
-	AsmDataCapture::bPopulateDatabase = true;
+	AsmDataCapture::bPopulateDatabase = false;
 
-	::DetourTransactionCommit();
+	const LONG detourResult = ::DetourTransactionCommit();
+	Logger::Log("boot_sentinel",
+		"DetourTransactionCommit returned %ld (0=success)\n", (long)detourResult);
+	// After commit, m_original is replaced with the trampoline pointer if
+	// DetourAttach succeeded. If it equals the raw address, install failed.
+	Logger::Log("boot_sentinel",
+		"UpdateDeployModeStatus m_original=%p (raw=0x10a273b0)\n",
+		(void*)TgDevice__UpdateDeployModeStatus::m_original);
+	Logger::Log("boot_sentinel",
+		"RosterWalker          m_original=%p (raw=0x11346d30)\n",
+		(void*)TgPawn__RosterWalker::m_original);
+	Logger::Log("boot_sentinel",
+		"RefIter               m_original=%p (raw=0x11326f90)\n",
+		(void*)TgPawn__RefIter::m_original);
+	// Post-commit bytes at original addresses. Detours writes `e9 <rel32>`
+	// (JMP rel32) at the function entry. If bytes still match the SEH
+	// prologue (6a ff 68 ...), the patch was never actually written despite
+	// m_original being updated — and Detours lied about success.
+	{
+		auto dumpBytes = [](const char* name, uintptr_t addr) {
+			const uint8_t* p = (const uint8_t*)addr;
+			Logger::Log("boot_sentinel",
+				"  post-commit %s @ 0x%08lx: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+				name, (unsigned long)addr,
+				p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+		};
+		dumpBytes("UpdateDeployModeStatus", 0x10a273b0);
+		dumpBytes("RosterWalker (FUN_11346d30)", 0x11346d30);
+		dumpBytes("RefIter (FUN_11326f90)", 0x11326f90);
+		dumpBytes("HasEnoughPowerPool(ref)", 0x10a1e3a0);
+	}
 
 	IpcClient::Init(Config::GetIpcHost(), Config::GetIpcPort(), Config::GetInstanceId());
 
@@ -641,6 +714,13 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
 	{
 		case DLL_PROCESS_ATTACH:
             DisableThreadLibraryCalls(hinstDLL);
+            Logger::LogDir = Config::GetLogDir();
+            // Channel allowlists come from control-server.json. The commented
+            // push_back lines below in ModuleThread are kept as a known-channel
+            // reference; uncomment them only for one-off in-source overrides.
+            for (const auto& ch : Config::GetEnabledChannels())      Logger::EnabledChannels.push_back(ch);
+            for (const auto& ch : Config::GetEnabledCrashChannels()) Logger::EnabledCrashChannels.push_back(ch);
+            CrashHandler::Init(Config::GetCrashDir());
 			CreateThread( 0, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(ModuleThread), 0, 0, 0 );
 			
 			// DebugWindow::WindowTitle = "SERVER";

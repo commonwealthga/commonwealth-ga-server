@@ -34,10 +34,10 @@ static UClass* FindClassByFullName(const char* target) {
 		// Debug: dump every object whose name mentions TgEffectBuff or
 		// TgEffect classes — tells us whether the class object exists under
 		// a different name format, or whether it's missing entirely.
-		if (!dumpedTgEffect && strstr(fullName, "TgEffect") != nullptr) {
-			Logger::Log("effects", "[CLASS-DUMP] i=%d obj=%p fullName='%s'\n",
-				i, (void*)obj, fullName);
-		}
+		// if (!dumpedTgEffect && strstr(fullName, "TgEffect") != nullptr) {
+		// 	Logger::Log("effects", "[CLASS-DUMP] i=%d obj=%p fullName='%s'\n",
+		// 		i, (void*)obj, fullName);
+		// }
 	}
 	dumpedTgEffect = true;
 	return nullptr;
@@ -49,13 +49,14 @@ static UClass* GetEffectClassById(int classResId) {
 		case 181: name = "Class TgGame.TgEffectDamage";     break;
 		case 692: name = "Class TgGame.TgEffectHeal";       break;
 		case  89: name = "Class TgGame.TgEffectVisibility"; break;
-		case 157: name = "Class TgGame.TgEffectBuff";       break;
+		// case 157: name = "Class TgGame.TgEffectBuff";       break;
+		case 157: name = "Class TgGame.TgEffect";       break;
 		case 244: name = "Class TgGame.TgEffectSensor";     break;
 		case  80:
 		default:  name = "Class TgGame.TgEffect";           break;
 	}
 	UClass* c = ClassPreloader::GetClass(name);
-	if (!c) c = FindClassByFullName(name);
+	// if (!c) c = FindClassByFullName(name);
 
 	// TgEffectBuff is not registered in this build's GObjObjects (verified by
 	// a full-scan miss while base TgEffect, TgEffectDamage, TgEffectHeal,
@@ -65,12 +66,12 @@ static UClass* GetEffectClassById(int classResId) {
 	// top of UTgEffect and our apply path doesn't use it, fall back to the
 	// base TgEffect class so the effect still gets created and its property-
 	// modifier math runs.
-	if (!c && classResId == 157) {
-		c = ClassPreloader::GetClass("Class TgGame.TgEffect");
-		if (!c) c = FindClassByFullName("Class TgGame.TgEffect");
-		Logger::Log("effects",
-			"[BUILD] class_res_id=157 TgEffectBuff not found — falling back to TgEffect\n");
-	}
+	// if (!c && classResId == 157) {
+	// 	c = ClassPreloader::GetClass("Class TgGame.TgEffect");
+	// 	if (!c) c = FindClassByFullName("Class TgGame.TgEffect");
+	// 	Logger::Log("effects",
+	// 		"[BUILD] class_res_id=157 TgEffectBuff not found — falling back to TgEffect\n");
+	// }
 	return c;
 }
 

@@ -40,6 +40,6 @@ void* __fastcall Actor__Tick::Call(void* a1, void* edx, float a2, int a3) {
 */
 
 void* __fastcall Actor__Tick::Call(void* a1, void* edx, float a2, int a3) {
-    IpcClient::DrainInbound();
+    // IpcClient::DrainInbound();  // moved to World__Tick — was firing per-actor per-frame
     return CallOriginal(a1, edx, a2, a3);
 }

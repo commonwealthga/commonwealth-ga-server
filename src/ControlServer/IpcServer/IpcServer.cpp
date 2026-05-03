@@ -92,7 +92,7 @@ private:
     // ── Dispatch ────────────────────────────────────────────────────────────
 
     void dispatch(const std::string& json_msg) {
-        auto j = nlohmann::json::parse(json_msg, nullptr, false);
+        auto j = nlohmann::json::parse(json_msg, nullptr, /*allow_exceptions=*/false, /*ignore_comments=*/true);
         if (j.is_discarded()) {
             Logger::Log("ipc", "[IpcServer] Malformed JSON from game instance\n");
             return;

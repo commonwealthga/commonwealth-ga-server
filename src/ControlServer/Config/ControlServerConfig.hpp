@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <cstdint>
 
 // ControlServerConfig.hpp -- Configuration for the control server.
@@ -27,6 +28,13 @@ struct ControlServerConfig {
     uint16_t    ipc_port           = 9010;
     int         startup_timeout_seconds = 120;
     std::string db_path            = "server.db";
+    std::string crash_dir          = "Z:\\home\\zax\\games\\crashes";
+    std::string log_dir            = "C:";
+    // Logger channel allowlists. Names map 1:1 to Logger::EnabledChannels and
+    // Logger::EnabledCrashChannels — file logging vs. crash-ring recording.
+    // Channel names must not contain commas (the wire format joins on ',').
+    std::vector<std::string> enabled_channels;
+    std::vector<std::string> enabled_crash_channels;
     bool        fix_package_guids  = true;
     bool        wine_debug         = false;  // --wine-debug CLI flag: uses winedbg --command cont
 

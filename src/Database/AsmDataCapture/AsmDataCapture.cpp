@@ -162,8 +162,9 @@ namespace {
             "  required_achievement_id, required_achievement_points,"
             "  ref_bot_id, ref_deployable_id, ref_device_id,"
             "  item_bind_type_value_id, production_cost, required_level,"
+            "  wear_flair_start_date, wear_flair_duration,"
             "  purchased_value, bundle_loot_table_id"
-            ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+            ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         sqlite3_stmt* stmt = nullptr;
         if (sqlite3_prepare_v2(db, kSql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -172,7 +173,7 @@ namespace {
         }
 
         Txn txn(db);
-        char nameBuf[4096], descBuf[4096];
+        char nameBuf[4096], descBuf[4096], wearBuf[1024];
 
         WalkArray(arr, [&](void* row) {
             uint32_t nameMsgId = Int32(row, GA_T::NAME_MSG_ID);
@@ -180,6 +181,9 @@ namespace {
 
             Translate(nameMsgId, row, nameBuf, sizeof(nameBuf));
             Translate(descMsgId, row, descBuf, sizeof(descBuf));
+            // WEAR_FLAIR_START_DATE is a wchar field on item rows (loader uses
+            // get_wchar_t at FUN_1094f1b0). Most items leave it empty.
+            GetWcharName(row, GA_T::WEAR_FLAIR_START_DATE, wearBuf, sizeof(wearBuf));
 
             sqlite3_bind_int   (stmt,  1, (int)nameMsgId);
             sqlite3_bind_text  (stmt,  2, nameBuf, -1, SQLITE_TRANSIENT);
@@ -205,8 +209,10 @@ namespace {
             sqlite3_bind_int   (stmt, 22, (int)Byte (row, GA_T::ITEM_BIND_TYPE_VALUE_ID));
             sqlite3_bind_int   (stmt, 23, (int)Byte (row, GA_T::PRODUCTION_COST));
             sqlite3_bind_int   (stmt, 24, (int)Byte (row, GA_T::REQUIRED_LEVEL));
-            sqlite3_bind_int   (stmt, 25, (int)Byte (row, GA_T::PURCHASED_VALUE));
-            sqlite3_bind_int   (stmt, 26, (int)Byte (row, GA_T::BUNDLE_LOOT_TABLE_ID));
+            sqlite3_bind_text  (stmt, 25, wearBuf, -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int   (stmt, 26, (int)Byte (row, GA_T::WEAR_FLAIR_DURATION));
+            sqlite3_bind_int   (stmt, 27, (int)Byte (row, GA_T::PURCHASED_VALUE));
+            sqlite3_bind_int   (stmt, 28, (int)Byte (row, GA_T::BUNDLE_LOOT_TABLE_ID));
 
             sqlite3_step(stmt);
             sqlite3_reset(stmt);
@@ -242,11 +248,12 @@ namespace {
             "  device_slot_unlock_group_id, pickup_device_id, xp_value, currency_value,"
             "  squad_role_value_id, default_posture_value_id, acceleration_rate,"
             "  accuracy_override, bot_balance_multiplier, power_pool_regen_per_sec,"
+            "  crew_control_radius,"
             "  hibernate_invulnerability_flag, can_jump_flag, can_climb_ladders_flag,"
             "  path_only_flag, always_load_on_server_flag, destroy_on_owner_death_flag"
             ") VALUES ("
             "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,"
-            "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+            "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         sqlite3_stmt* stmt = nullptr;
         if (sqlite3_prepare_v2(db, kSql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -309,12 +316,13 @@ namespace {
             sqlite3_bind_double(stmt, 46, (double)Float(row, GA_T::ACCURACY_OVERRIDE));
             sqlite3_bind_double(stmt, 47, (double)Float(row, GA_T::BOT_BALANCE_MULTIPLIER));
             sqlite3_bind_double(stmt, 48, (double)Float(row, GA_T::POWER_POOL_REGEN_PER_SEC));
-            sqlite3_bind_int   (stmt, 49, (int)Flag (row, GA_T::HIBERNATE_INVULNERABILITY_FLAG));
-            sqlite3_bind_int   (stmt, 50, (int)Flag (row, GA_T::CAN_JUMP_FLAG));
-            sqlite3_bind_int   (stmt, 51, (int)Flag (row, GA_T::CAN_CLIMB_LADDERS_FLAG));
-            sqlite3_bind_int   (stmt, 52, (int)Flag (row, GA_T::PATH_ONLY_FLAG));
-            sqlite3_bind_int   (stmt, 53, (int)Flag (row, GA_T::ALWAYS_LOAD_ON_SERVER_FLAG));
-            sqlite3_bind_int   (stmt, 54, (int)Flag (row, GA_T::DESTROY_ON_OWNER_DEATH_FLAG));
+            sqlite3_bind_double(stmt, 49, (double)Float(row, GA_T::CREW_CONTROL_RADIUS));
+            sqlite3_bind_int   (stmt, 50, (int)Flag (row, GA_T::HIBERNATE_INVULNERABILITY_FLAG));
+            sqlite3_bind_int   (stmt, 51, (int)Flag (row, GA_T::CAN_JUMP_FLAG));
+            sqlite3_bind_int   (stmt, 52, (int)Flag (row, GA_T::CAN_CLIMB_LADDERS_FLAG));
+            sqlite3_bind_int   (stmt, 53, (int)Flag (row, GA_T::PATH_ONLY_FLAG));
+            sqlite3_bind_int   (stmt, 54, (int)Flag (row, GA_T::ALWAYS_LOAD_ON_SERVER_FLAG));
+            sqlite3_bind_int   (stmt, 55, (int)Flag (row, GA_T::DESTROY_ON_OWNER_DEATH_FLAG));
 
             sqlite3_step(stmt);
             sqlite3_reset(stmt);
@@ -410,8 +418,8 @@ namespace {
             "INSERT INTO asm_data_set_devices ("
             "  device_id, form_class_res_id, mount_socket_res_id, time_to_equip_secs,"
             "  container_skill_group_id, right_click_behavior_type_value_id,"
-            "  slot_used_value_id"
-            ") VALUES (?,?,?,?,?,?,?)";
+            "  slot_used_value_id, in_hand_device_flag"
+            ") VALUES (?,?,?,?,?,?,?,?)";
 
         sqlite3_stmt* stmt = nullptr;
         if (sqlite3_prepare_v2(db, kSql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -430,6 +438,7 @@ namespace {
             sqlite3_bind_int   (stmt, 5, (int)Byte (row, GA_T::CONTAINER_SKILL_GROUP_ID));
             sqlite3_bind_int   (stmt, 6, (int)Byte (row, GA_T::RIGHT_CLICK_BEHAVIOR_TYPE_VALUE_ID));
             sqlite3_bind_int   (stmt, 7, (int)Byte (row, GA_T::SLOT_USED_VALUE_ID));
+            sqlite3_bind_int   (stmt, 8, (int)Flag (row, GA_T::IN_HAND_DEVICE_FLAG));
             sqlite3_step(stmt);
             sqlite3_reset(stmt);
             sqlite3_clear_bindings(stmt);
@@ -737,6 +746,9 @@ namespace {
     }
 
     // ---------- AssemblyMeshes (0x011C) ----------
+    //
+    // Per-row init FUN_1094b470 packs ~20 named flag bits into row+0x74. We
+    // capture each as its own INTEGER (0/1) column for easier querying.
     void WalkAssemblyMeshes(void*, uint32_t arr) {
         sqlite3* db = Database::GetConnection(); if (!db) return;
         Stmt st(db,
@@ -750,8 +762,17 @@ namespace {
             " collision_height, collision_radius, collision_depth, crouch_height,"
             " hit_collision_height, hit_collision_radius,"
             " physics_weight, life_after_death_secs, destroyed_asm_id,"
-            " material_res_group_id, race_material_parameter_id"
-            ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+            " material_res_group_id, race_material_parameter_id,"
+            " accept_decals_flag, accept_decals_runtime_flag, accept_lights_flag,"
+            " allow_approx_occlusion_flag, block_actors_flag,"
+            " block_non_zero_extent_flag, block_rigid_body_flag,"
+            " block_zero_extent_flag, cast_dynamic_shadow_flag, cast_shadow_flag,"
+            " collide_actors_flag, force_dir_light_map_flag,"
+            " has_physics_asset_inst_flag, is_female_flag,"
+            " notify_rigid_body_collision_flag, only_owner_see_flag,"
+            " owner_no_see_flag, update_joints_from_anim_flag"
+            ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,"
+            "          ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
         if (!st.s) return;
         Txn txn(db);
         char nameBuf[4096];
@@ -789,21 +810,47 @@ namespace {
             sqlite3_bind_int   (st.s, 29, (int)Byte (r, GA_T::DESTROYED_ASM_ID));
             sqlite3_bind_int   (st.s, 30, (int)Byte (r, GA_T::MATERIAL_RES_GROUP_ID));
             sqlite3_bind_int   (st.s, 31, (int)Byte (r, GA_T::RACE_MATERIAL_PARAMETER_ID));
+            sqlite3_bind_int   (st.s, 32, (int)Flag (r, GA_T::ACCEPT_DECALS_FLAG));
+            sqlite3_bind_int   (st.s, 33, (int)Flag (r, GA_T::ACCEPT_DECALS_RUNTIME_FLAG));
+            sqlite3_bind_int   (st.s, 34, (int)Flag (r, GA_T::ACCEPT_LIGHTS_FLAG));
+            sqlite3_bind_int   (st.s, 35, (int)Flag (r, GA_T::ALLOW_APPROX_OCCLUSION_FLAG));
+            sqlite3_bind_int   (st.s, 36, (int)Flag (r, GA_T::BLOCK_ACTORS_FLAG));
+            sqlite3_bind_int   (st.s, 37, (int)Flag (r, GA_T::BLOCK_NON_ZERO_EXTENT_FLAG));
+            sqlite3_bind_int   (st.s, 38, (int)Flag (r, GA_T::BLOCK_RIGID_BODY_FLAG));
+            sqlite3_bind_int   (st.s, 39, (int)Flag (r, GA_T::BLOCK_ZERO_EXTENT_FLAG));
+            sqlite3_bind_int   (st.s, 40, (int)Flag (r, GA_T::CAST_DYNAMIC_SHADOW_FLAG));
+            sqlite3_bind_int   (st.s, 41, (int)Flag (r, GA_T::CAST_SHADOW_FLAG));
+            sqlite3_bind_int   (st.s, 42, (int)Flag (r, GA_T::COLLIDE_ACTORS_FLAG));
+            sqlite3_bind_int   (st.s, 43, (int)Flag (r, GA_T::FORCE_DIR_LIGHT_MAP_FLAG));
+            sqlite3_bind_int   (st.s, 44, (int)Flag (r, GA_T::HAS_PHYSICS_ASSET_INST_FLAG));
+            sqlite3_bind_int   (st.s, 45, (int)Flag (r, GA_T::IS_FEMALE_FLAG));
+            sqlite3_bind_int   (st.s, 46, (int)Flag (r, GA_T::NOTIFY_RIGID_BODY_COLLISION_FLAG));
+            sqlite3_bind_int   (st.s, 47, (int)Flag (r, GA_T::ONLY_OWNER_SEE_FLAG));
+            sqlite3_bind_int   (st.s, 48, (int)Flag (r, GA_T::OWNER_NO_SEE_FLAG));
+            sqlite3_bind_int   (st.s, 49, (int)Flag (r, GA_T::UPDATE_JOINTS_FROM_ANIM_FLAG));
             st.step();
         });
     }
 
     // ---------- FX (0x019F) ----------
+    //
+    // Field 0x370 (NAME) is read by the per-row init (FUN_1094a800) via
+    // get_int32_t and resolved through DAT_119a1c80 — i.e. it's a
+    // resource-id, not a wchar string. Storing as `name_res_id` (INTEGER)
+    // lets consumers JOIN against asm_data_set_resources to recover the
+    // human-readable name. The earlier `name` column populated by
+    // GetWcharName likely held empty strings.
     void WalkFx(void*, uint32_t arr) {
         sqlite3* db = Database::GetConnection(); if (!db) return;
-        Stmt st(db, "INSERT INTO asm_data_set_fx (fx_id, name, priority_value_id, mic_res_id, transition_sec) VALUES (?,?,?,?,?)");
+        Stmt st(db,
+            "INSERT INTO asm_data_set_fx ("
+            " fx_id, name_res_id, priority_value_id, mic_res_id, transition_sec"
+            ") VALUES (?,?,?,?,?)");
         if (!st.s) return;
         Txn txn(db);
-        char nb[4096];
         WalkArray(arr, [&](void* r) {
-            GetWcharName(r, GA_T::NAME, nb, sizeof(nb));
             sqlite3_bind_int   (st.s, 1, (int)Byte (r, GA_T::FX_ID));
-            sqlite3_bind_text  (st.s, 2, nb, -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int   (st.s, 2, (int)Int32(r, GA_T::NAME));
             sqlite3_bind_int   (st.s, 3, (int)Byte (r, GA_T::PRIORITY_VALUE_ID));
             sqlite3_bind_int   (st.s, 4, (int)Int32(r, GA_T::MIC_RES_ID));
             sqlite3_bind_double(st.s, 5, (double)Float(r, GA_T::TRANSITION_SEC));
@@ -1259,14 +1306,35 @@ namespace {
     }
 
     // ---------- SkillGroupRanks (0x019A) ----------
+    //
+    // Master loader processes each rank row by reading SKILL_GROUP_ID + SKILL_ID
+    // inline, then handing the row to FUN_1094c160 → CAmSkillRank vtable[1]
+    // (FUN_1094c250) which reads 8 more scalar fields. The earlier walker only
+    // stored the two parent-key fields; v22 captures the full row.
     void WalkSkillGroupRanks(void*, uint32_t arr) {
         sqlite3* db = Database::GetConnection(); if (!db) return;
-        Stmt st(db, "INSERT INTO asm_data_set_skill_group_ranks (skill_group_id, skill_id) VALUES (?,?)");
+        Stmt st(db,
+            "INSERT INTO asm_data_set_skill_group_ranks ("
+            "  skill_group_id, skill_id, rank_id, name_msg_translated,"
+            "  desc_msg_translated, rank, training_map_game_id,"
+            "  desc_texture_res_id, required_xp_level_id, auto_allocate_flag"
+            ") VALUES (?,?,?,?,?,?,?,?,?,?)");
         if (!st.s) return;
         Txn txn(db);
+        char nameBuf[4096], descBuf[4096];
         WalkArray(arr, [&](void* r) {
-            sqlite3_bind_int(st.s, 1, (int)Byte(r, GA_T::SKILL_GROUP_ID));
-            sqlite3_bind_int(st.s, 2, (int)Byte(r, GA_T::SKILL_ID));
+            Translate(GA_T::NAME_MSG_ID, r, nameBuf, sizeof(nameBuf));
+            Translate(GA_T::DESC_MSG_ID, r, descBuf, sizeof(descBuf));
+            sqlite3_bind_int (st.s,  1, (int)Byte (r, GA_T::SKILL_GROUP_ID));
+            sqlite3_bind_int (st.s,  2, (int)Byte (r, GA_T::SKILL_ID));
+            sqlite3_bind_int (st.s,  3, (int)Byte (r, GA_T::RANK_ID));
+            sqlite3_bind_text(st.s,  4, nameBuf, -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(st.s,  5, descBuf, -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int (st.s,  6, (int)Byte (r, GA_T::RANK));
+            sqlite3_bind_int (st.s,  7, (int)Byte (r, GA_T::TRAINING_MAP_GAME_ID));
+            sqlite3_bind_int (st.s,  8, (int)Int32(r, GA_T::DESC_TEXTURE_RES_ID));
+            sqlite3_bind_int (st.s,  9, (int)Byte (r, GA_T::REQUIRED_XP_LEVEL_ID));
+            sqlite3_bind_int (st.s, 10, (int)Flag (r, GA_T::AUTO_ALLOCATE_FLAG));
             st.step();
         });
     }
@@ -2084,8 +2152,11 @@ namespace {
         if (!st.s) return;
         Txn txn(db);
         WalkArray(arr, [&](void* r) {
+            // Field is TCP_UINT32; the asm-mesh loader (FUN_1094b470) uses
+            // get_int32_t. Earlier capture used Byte and would silently
+            // truncate any audio_group_id ≥ 256.
             sqlite3_bind_int(st.s, 1, (int)asmId);
-            sqlite3_bind_int(st.s, 2, (int)Byte(r, GA_T::AUDIO_GROUP_ID));
+            sqlite3_bind_int(st.s, 2, (int)Int32(r, GA_T::AUDIO_GROUP_ID));
             st.step();
         });
     }
@@ -2228,8 +2299,11 @@ namespace {
         if (!st.s) return;
         Txn txn(db);
         WalkArray(arr, [&](void* r) {
+            // The loader (FUN_1094a650) reads MATERIAL_RESOURCE_ID = 0x033B as
+            // the row's primary key, NOT MATERIAL_RES_ID = 0x033D. Earlier
+            // captures stored garbage here — see v21 migration.
             sqlite3_bind_int(st.s, 1, (int)groupId);
-            sqlite3_bind_int(st.s, 2, (int)Byte (r, GA_T::MATERIAL_RES_ID));
+            sqlite3_bind_int(st.s, 2, (int)Byte (r, GA_T::MATERIAL_RESOURCE_ID));
             sqlite3_bind_int(st.s, 3, (int)Byte (r, GA_T::MATERIAL_RES_SUB_TYPE_VALUE_ID));
             sqlite3_bind_int(st.s, 4, (int)Byte (r, GA_T::MATERIAL_RES_TYPE_VALUE_ID));
             sqlite3_bind_int(st.s, 5, (int)Int32(r, GA_T::RES_ID));
@@ -2240,7 +2314,10 @@ namespace {
 
     void WalkMatResParams(void* /*marshal*/, uint32_t arr) {
         sqlite3* db = Database::GetConnection(); if (!db) return;
-        uint32_t materialResId = CachedByte(GA_T::MATERIAL_RES_ID);
+        // Parent (MATERIAL_RESOURCES) reads MATERIAL_RESOURCE_ID via get_byte
+        // before this nested array fires. Read from that cache slot, not
+        // MATERIAL_RES_ID (a different field id, 0x033D).
+        uint32_t materialResId = CachedByte(GA_T::MATERIAL_RESOURCE_ID);
         Stmt st(db,
             "INSERT INTO asm_data_set_mat_res_params ("
             "  material_res_id, mat_res_param_id,"
@@ -2445,19 +2522,97 @@ namespace {
     // whether the effect is attached to a skill_group, skill, or sub_skill — the
     // game's loader may fire this from more than one level.  We capture all three
     // cached keys and let the consumer filter by which is non-zero.
+    // ---------- Message Translations (DATA_SET_MSG_TRANSLATIONS = 0x017A) ----------
+    //
+    // Loaded from lang_*.dat (NOT assembly.dat). FUN_1093ebb0 fires this for
+    // the player's locale-specific file; FUN_1093d1a0 fires it for the
+    // English fallback when locale ≠ English. Per-row schema mirrors
+    // FUN_10939430 in the binary: {msg_id (I 0x36E), message (W 0x355),
+    // sound_res_id (I 0x493)}.
+    //
+    // Uses INSERT OR REPLACE keyed on msg_id so that a second pass (English
+    // fallback after a localized first pass) overwrites with the English
+    // text. Result: final table is always English regardless of locale.
+    void WalkMessageTranslations(void* /*marshal*/, uint32_t arr) {
+        sqlite3* db = Database::GetConnection(); if (!db) return;
+        Stmt st(db,
+            "INSERT OR REPLACE INTO asm_data_set_msg_translations ("
+            "  msg_id, message, sound_res_id"
+            ") VALUES (?,?,?)");
+        if (!st.s) return;
+        Txn txn(db);
+        // Translation strings can be long (paragraphs of mission briefing
+        // text). 8 KB is comfortable for the longest known entries.
+        char msgBuf[8192];
+        WalkArray(arr, [&](void* r) {
+            GetWcharName(r, GA_T::MESSAGE, msgBuf, sizeof(msgBuf));
+            sqlite3_bind_int (st.s, 1, (int)Int32(r, GA_T::MSG_ID));
+            sqlite3_bind_text(st.s, 2, msgBuf, -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int (st.s, 3, (int)Int32(r, GA_T::SOUND_RES_ID));
+            st.step();
+        });
+    }
+
+    // ---------- Achievement Reqs (DATA_SET_ACHIEVEMENT_REQS = 0x010F) ----------
+    //
+    // Nested under DATA_SET_ACHIEVEMENTS. The achievement row init
+    // (FUN_1094d1b0) reads ACHIEVEMENT_ID via get_byte before issuing
+    // get_array(row, 0x10F) — child rows arrive here with that cache populated.
+    //
+    // Field schema is split across two functions in the binary:
+    //   FUN_1093f110 reads REQUIREMENT_ID (B 0x435), ACHIEVEMENT_ID (B 0xD),
+    //                      REQUIREMENT_LIST_ID (B 0x436), REQUIREMENT_VALUE (F 0x438)
+    //                      and then dispatches to FUN_1093dbf0 on row+0x14.
+    //   FUN_1093dbf0 reads REQUIREMENT_ID (B 0x435 again), METRIC_VALUE_ID (B 0x357),
+    //                      MAP_GAME_ID (B 0x322), GAMEPLAY_TYPE_VALUE_ID (B 0x5C4),
+    //                      CLASS_VALUE_ID (B 0x5C5), DIFFICULTY_VALUE_ID (B 0x210),
+    //                      TEAM_SIZE (B 0x4F2).
+    void WalkAchievementReqs(void* /*marshal*/, uint32_t arr) {
+        sqlite3* db = Database::GetConnection(); if (!db) return;
+        uint32_t achievementId = CachedByte(GA_T::ACHIEVEMENT_ID);
+        Stmt st(db,
+            "INSERT INTO asm_data_set_achievement_reqs ("
+            "  achievement_id, requirement_id, requirement_list_id,"
+            "  requirement_value, metric_value_id, map_game_id,"
+            "  gameplay_type_value_id, class_value_id, difficulty_value_id,"
+            "  team_size"
+            ") VALUES (?,?,?,?,?,?,?,?,?,?)");
+        if (!st.s) return;
+        Txn txn(db);
+        WalkArray(arr, [&](void* r) {
+            sqlite3_bind_int   (st.s,  1, (int)achievementId);
+            sqlite3_bind_int   (st.s,  2, (int)Byte (r, GA_T::REQUIREMENT_ID));
+            sqlite3_bind_int   (st.s,  3, (int)Byte (r, GA_T::REQUIREMENT_LIST_ID));
+            sqlite3_bind_double(st.s,  4, (double)Float(r, GA_T::REQUIREMENT_VALUE));
+            sqlite3_bind_int   (st.s,  5, (int)Byte (r, GA_T::METRIC_VALUE_ID));
+            sqlite3_bind_int   (st.s,  6, (int)Byte (r, GA_T::MAP_GAME_ID));
+            sqlite3_bind_int   (st.s,  7, (int)Byte (r, GA_T::GAMEPLAY_TYPE_VALUE_ID));
+            sqlite3_bind_int   (st.s,  8, (int)Byte (r, GA_T::CLASS_VALUE_ID));
+            sqlite3_bind_int   (st.s,  9, (int)Byte (r, GA_T::DIFFICULTY_VALUE_ID));
+            sqlite3_bind_int   (st.s, 10, (int)Byte (r, GA_T::TEAM_SIZE));
+            st.step();
+        });
+    }
+
     void WalkSkillEffectGroups(void* /*marshal*/, uint32_t arr) {
         sqlite3* db = Database::GetConnection();
         if (!db) return;
 
+        // SKILL_EFFECT_GROUPS can be nested under skill_group / skill /
+        // sub_skill / skill_group_rank — the loader sets each parent's
+        // primary key into get_byte's m_values cache before issuing the
+        // nested get_array. We capture all four cache slots so the consumer
+        // can pick the non-zero one for their context.
         uint32_t skillGroupId = CachedByte(GA_T::SKILL_GROUP_ID);
         uint32_t skillId      = CachedByte(GA_T::SKILL_ID);
         uint32_t subSkillId   = CachedByte(GA_T::SUB_SKILL_ID);
+        uint32_t rankId       = CachedByte(GA_T::RANK_ID);
 
         Stmt st(db,
             "INSERT INTO asm_data_set_skill_effect_groups ("
-            "  skill_group_id, skill_id, sub_skill_id,"
+            "  skill_group_id, skill_id, sub_skill_id, rank_id,"
             "  effect_group_id, effect_group_type_value_id"
-            ") VALUES (?,?,?,?,?)");
+            ") VALUES (?,?,?,?,?,?)");
         if (!st.s) return;
 
         Txn txn(db);
@@ -2465,8 +2620,9 @@ namespace {
             sqlite3_bind_int(st.s, 1, (int)skillGroupId);
             sqlite3_bind_int(st.s, 2, (int)skillId);
             sqlite3_bind_int(st.s, 3, (int)subSkillId);
-            sqlite3_bind_int(st.s, 4, (int)Byte(row, GA_T::EFFECT_GROUP_ID));
-            sqlite3_bind_int(st.s, 5, (int)Byte(row, GA_T::EFFECT_GROUP_TYPE_VALUE_ID));
+            sqlite3_bind_int(st.s, 4, (int)rankId);
+            sqlite3_bind_int(st.s, 5, (int)Byte(row, GA_T::EFFECT_GROUP_ID));
+            sqlite3_bind_int(st.s, 6, (int)Byte(row, GA_T::EFFECT_GROUP_TYPE_VALUE_ID));
             st.step();
         });
     }
@@ -2564,6 +2720,13 @@ namespace {
             { GA_T::DATA_SET_BOT_BEHAVIORS,               "asm_data_set_bot_behaviors" },
             { GA_T::DATA_SET_BOT_ACTIONS,                 "asm_data_set_bot_actions" },
             { GA_T::DATA_SET_BOT_TESTS,                   "asm_data_set_bot_tests" },
+
+            // v21 additions (re-verification audit, .planning/asm-dat-audit/)
+            { GA_T::DATA_SET_ACHIEVEMENT_REQS,            "asm_data_set_achievement_reqs" },
+
+            // v23 — translations from lang_English.dat (NOT assembly.dat,
+            // but loaded via the same CMarshal__get_array pipeline).
+            { GA_T::DATA_SET_MSG_TRANSLATIONS,            "asm_data_set_msg_translations" },
         };
         return m;
     }
@@ -2679,6 +2842,12 @@ void AsmDataCapture::OnGetArray(void* marshal, int field, uint32_t arrayPtr) {
         case GA_T::DATA_SET_BOT_BEHAVIORS:              WalkBotBehaviors           (marshal, arrayPtr); break;
         case GA_T::DATA_SET_BOT_ACTIONS:                WalkBotActions             (marshal, arrayPtr); break;
         case GA_T::DATA_SET_BOT_TESTS:                  WalkBotTests               (marshal, arrayPtr); break;
+
+        // v21: re-verification audit. See .planning/asm-dat-audit/REVERIFY_2026-05-02.md
+        case GA_T::DATA_SET_ACHIEVEMENT_REQS:           WalkAchievementReqs        (marshal, arrayPtr); break;
+
+        // v23: lang_English.dat translation table.
+        case GA_T::DATA_SET_MSG_TRANSLATIONS:           WalkMessageTranslations    (marshal, arrayPtr); break;
 
         default: break;
     }

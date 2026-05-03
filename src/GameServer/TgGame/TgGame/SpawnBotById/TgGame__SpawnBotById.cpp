@@ -390,7 +390,26 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// offsets pulled from 0x1094c730
 	Bot->r_nPhysicalType    = *(int*)((char*)BotConfig + 0x64); // PHYSICAL_TYPE_VALUE_ID
 	Bot->r_nBodyMeshAsmId   = *(int*)((char*)BotConfig + 0x54); // BODY_ASM_ID
-	Bot->s_nCharacterId     = *(int*)((char*)BotConfig + 0x5C); // BOT_TYPE_VALUE_ID
+	// s_nCharacterId is defined on ATgPawn_Character (offset 0x162C). Non-
+	// Character bots (TgPawn_Hover, TgPawn_Robot, TgPawn_VanityPet, ...) reuse
+	// that offset for subclass fields. In particular TgPawn_Hover has a
+	// UAnimNodePlayCustomAnim* m_CustomHitWallNode at 0x162C — writing the
+	// int BOT_TYPE_VALUE_ID there would corrupt a UObject* pointer and
+	// produce the recurring 0x1d5 crashes (VM dispatch via HitWall + GC walk
+	// both dereference this field). Only write when the spawned class is
+	// actually a Character descendant.
+	const bool isCharacter =
+		pawnClassName &&
+		(strstr(pawnClassName, "TgPawn_Character") ||
+		 strstr(pawnClassName, "TgPawn_Boss")      ||
+		 strstr(pawnClassName, "TgPawn_NPC")       ||
+		 strstr(pawnClassName, "TgPawn_Interact_NPC") ||
+		 strstr(pawnClassName, "TgPawn_Sniper")    ||
+		 strstr(pawnClassName, "TgPawn_SonoranCommander") ||
+		 strstr(pawnClassName, "TgPawn_Turret"));
+	if (isCharacter) {
+		Bot->s_nCharacterId = *(int*)((char*)BotConfig + 0x5C); // BOT_TYPE_VALUE_ID
+	}
 
 	Bot->r_bIsStealthed = 0;
 

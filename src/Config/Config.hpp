@@ -16,5 +16,9 @@ public:
 	static int64_t GetInstanceId();
 	static std::string GetGamePath();
 	static bool GetFixPackageGuids();
+	static std::string GetCrashDir();
+	static std::string GetLogDir();
+	static std::vector<std::string> GetEnabledChannels();
+	static std::vector<std::string> GetEnabledCrashChannels();
 };
 

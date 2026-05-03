@@ -257,7 +257,7 @@ void IpcClient::DrainInbound() {
     }
 
     for (const std::string& raw : local) {
-        auto j = nlohmann::json::parse(raw, nullptr, false);
+        auto j = nlohmann::json::parse(raw, nullptr, /*allow_exceptions=*/false, /*ignore_comments=*/true);
         if (j.is_discarded()) {
             Logger::Log("ipc", "[IPC] Malformed JSON: %s\n", raw.c_str());
             continue;
