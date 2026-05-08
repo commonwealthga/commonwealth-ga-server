@@ -3,6 +3,7 @@
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/TgGame/TgProperty/ConstructTgProperty/TgProperty__ConstructTgProperty.hpp"
 #include "src/GameServer/Core/TMap/Allocate/TMap__Allocate.hpp"
+#include "src/GameServer/Core/TMap/Set/TMap__Set.hpp"
 #include "src/GameServer/Constants/TgProperties.h"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -52,6 +53,22 @@ UTgProperty* TgPawn__InitializeDefaultProps::InitializeProperty(ATgPawn* Pawn, i
 	int Count = *PropertiesCountPtr;
 	(*PropertiesDataPtrPtr)[Count] = Property;
 	*PropertiesCountPtr = Count + 1;
+
+	// Register (propId → s_Properties index) in the TMap at pawn+0x400 — the
+	// `s_PropertyIndx` MapProperty (UE3 TMap<int,int>, 0x3C bytes wide). The
+	// binary's `TgPawn::SetProperty` (0x109bf420) does its lookup via
+	// vtable[0x4F0], which under the hood calls `FUN_10b52ba0` to query this
+	// exact TMap. Without an entry here, SetProperty silently no-ops (the
+	// linear-scan fallback in our `TgPawn__GetProperty` hook only catches
+	// callers that route through that vtable slot — direct binary callers of
+	// `FUN_10b52ba0` skip it entirely and saw an empty map). Populating the
+	// TMap fixes both call paths at once. Concrete failure: power station
+	// effect group 13270 fires `ApplyToProperty(target, 243, +10)` →
+	// `SetProperty(target, 243, ...)` which silently no-op'd; the player's
+	// `r_fCurrentPowerPool` never moved.
+	TMap_Set::Call((void*)((char*)Pawn + 0x400),
+		(unsigned int)nPropertyId,
+		(unsigned int)Count);
 
 	Pawn->SetProperty(nPropertyId, fRaw);
 
@@ -132,8 +149,13 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// the base and the player never sees the buff. Raise the ceiling so
 	// skill/item/effect modifiers have room to land. 10x base handles any
 	// realistic stack; cap at 1e6 just in case.
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH,                  hitPoints,    hitPoints,    0, hitPoints * 10.0f);
+	// Order matters: ApplyProperty fanout for TGPID_HEALTH (51) clamps the
+	// value against r_nHealthMaximum at +0x43c, which is written by
+	// TGPID_HEALTH_MAX (304)'s fanout. With 51 first, the clamp ceiling is 0
+	// → m_fRaw is forced to 0, and any subsequent additive heal effect adds
+	// to 0 instead of the spawn HP. Same trap below for POWERPOOL/_MAX.
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH_MAX,              hitPoints,    hitPoints,    0, hitPoints * 10.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH,                  hitPoints,    hitPoints,    0, hitPoints * 10.0f);
 	// TGPID_GROUND_SPEED (49): the rest device applies PERC_DECREASE here.
 	// Was previously disabled because UC's Remove math leaks per apply/remove
 	// cycle (passes effBase instead of propBase*effBase), so repeated rest
@@ -148,8 +170,10 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// +40% Power Pool tree node were being computed into UTgProperty.m_fRaw
 	// (verified 100 -> 140) but clipped back to 100 at fan-out because
 	// m_fMaximum was set to `powerPool`. Raise the ceiling.
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL,               powerPool,    powerPool,    0, powerPool * 10.0f);
+	// MAX before CURRENT (see HEALTH note above) — TGPID_POWERPOOL fanout
+	// clamps to r_fMaxPowerPool which is written by TGPID_POWERPOOL_MAX.
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_MAX,           powerPool,    powerPool,    0, powerPool * 10.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL,               powerPool,    powerPool,    0, powerPool * 10.0f);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_RECHARGE_RATE, rechargeRate, rechargeRate, 0, 1000);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_COST,          0, 0, 0, 0);
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_MIN_COST,      0, 0, 0, 0);
@@ -187,6 +211,17 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// Gravity Z modifier — replicated at ATgPawn+0x117C. Default 1.0 = normal gravity.
 	// Applied in TgPawn physics; 0 would mean no gravity.
 	InitializeProperty(Pawn, GA_PROPERTY::TGPID_GRAVITYZ_MODIFIER,       1.0f, 1.0f, 0, 100.0f);
+
+	// Deploy rate (prop 278) — `r_fDeployRate` lives at ATgPawn+0x1034 and is
+	// what `TgPawn_Turret.uc:TickDeploy` multiplies DeltaSeconds by each tick:
+	// `r_fCurrentDeployTime += DeltaSeconds * r_fDeployRate`. Repair-arm
+	// effect groups carry a prop-278 effect (class TgEffect, calc 67 ADD,
+	// base +4.5, lifetime 1s, eg-type 264) that fires `SetProperty(target, 278,
+	// raw+4.5)` on hit; without seeding the slot here, the linear scan in
+	// SetProperty finds nothing and the write silently no-ops, leaving turret
+	// deploy rate locked at 1.0 even while a teammate is repairing it.
+	// Identity 1.0 matches APawn's r_fDeployRate UC default.
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_DEPLOY_RATE_MODIFIER,    1.0f, 1.0f, 0, 100.0f);
 
 	// Falling damage modifier — server-only at ATgPawn+0x1180.
 	// TakeFallingDamage (TgPawn.uc:2784) multiplies fall damage by this value.

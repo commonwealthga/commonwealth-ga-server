@@ -38,6 +38,7 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         std::string inst_id_arg   = "-instanceid=" + std::to_string(instance_id);
         std::string gamepath_arg  = "-gamepath=" + cfg.game_binary;
         std::string fixguids_arg  = std::string("-fixpackageguids=") + (cfg.fix_package_guids ? "1" : "0");
+        std::string clearlogs_arg = std::string("-clearlogs=")       + (cfg.clear_logs        ? "1" : "0");
         std::string crashdir_arg  = "-crashdir=" + cfg.crash_dir;
         std::string logdir_arg    = "-logdir=" + cfg.log_dir;
 
@@ -73,7 +74,8 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
             host_arg.c_str(), hostdns_arg.c_str(), port_arg.c_str(),
             "-seekfreeloading", "-tcp=300", "-nullrhi",
             ipc_port_arg.c_str(), inst_id_arg.c_str(), gamepath_arg.c_str(),
-            fixguids_arg.c_str(), crashdir_arg.c_str(), logdir_arg.c_str(),
+            fixguids_arg.c_str(), clearlogs_arg.c_str(),
+            crashdir_arg.c_str(), logdir_arg.c_str(),
             enabled_channels_arg.c_str(), enabled_crash_channels_arg.c_str(),
         }) {
             argv.push_back(a);

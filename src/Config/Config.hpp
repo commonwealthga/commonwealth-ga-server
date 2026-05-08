@@ -20,5 +20,10 @@ public:
 	static std::string GetLogDir();
 	static std::vector<std::string> GetEnabledChannels();
 	static std::vector<std::string> GetEnabledCrashChannels();
+	// When true, truncate every file under <LogDir>/<channel>.txt for each
+	// channel in EnabledChannels at DLL load. Convenience for repeated tests
+	// where stale entries from prior runs hide the new ones we care about.
+	// Switch: -clearlogs=1. Default: false.
+	static bool GetClearLogs();
 };
 

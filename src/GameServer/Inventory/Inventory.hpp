@@ -17,7 +17,14 @@ public:
 	// Equip a device on a pawn. Does NOT call UpdateClientDevices.
 	// Call Finalize() after all equips to trigger replication.
 	// Returns ATgDevice* (nullptr on failure).
-	static ATgDevice* Equip(ATgPawn* Pawn, int deviceId, int slot, int quality = 0, int inventoryId = 0);
+	//
+	// `mods` is the list of rolled mod effect_group_ids stored in
+	// ga_character_devices.mod_effect_group_ids — one entry per [letter] in
+	// the item's UI suffix. Each effect_group's effects get applied to the
+	// pawn's s_Properties at equip time so the modifiers actually affect
+	// gameplay (not just the tooltip).
+	static ATgDevice* Equip(ATgPawn* Pawn, int deviceId, int slot, int quality = 0,
+	                        int inventoryId = 0, const std::vector<int>& mods = {});
 
 	// Trigger replication after all equips are done.
 	// Calls UpdateClientDevices + sets bNetDirty/bForceNetUpdate on pawn and PRI.
@@ -47,6 +54,15 @@ public:
 	// Called automatically by Equip(); call manually after CreateEquipDevice
 	// in bot-spawn paths that bypass Equip().
 	static void ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId);
+
+	// Apply each effect attached to the listed effect_group_ids to the pawn's
+	// s_Properties (calc-method semantics same as ApplyDeviceEquipEffects).
+	// Used for rolled mods carried on UTgInventoryObject::m_nStateEffectGroupIdArray.
+	// If a target property is missing on the pawn, it is initialized on demand
+	// (m_fBase=1.0 so percent-style modifiers — calc method 68/69 — multiply
+	// correctly; m_fRaw=0 so additive starts at zero; m_fMaximum=10000 to
+	// avoid clipping). Logs the resulting m_fRaw per (prop, device).
+	static void ApplyRolledModEffects(ATgPawn* Pawn, int deviceId, const std::vector<int>& effectGroupIds);
 
 private:
 	static int s_nextInventoryId;  // starts at 10000

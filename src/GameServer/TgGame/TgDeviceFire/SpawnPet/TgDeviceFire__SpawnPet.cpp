@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgDeviceFire/SpawnPet/TgDeviceFire__SpawnPet.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
+#include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Engine/World/GetGameInfo/World__GetGameInfo.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -150,49 +151,96 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 			const char* clsName = PetPawn->Class->GetFullName();
 			if (clsName && strstr(clsName, "TgPawn_Turret") != nullptr) {
 				ATgPawn_Turret* turret = (ATgPawn_Turret*)PetPawn;
-				turret->StartDeploy();
 
-				// UC StartDeploy pulls the deploy-time from the mesh's
-				// "Deploy" animation via ExtractDeployTimeFromMyAnimation. On
-				// our server the mesh's anim asset isn't always loaded, so
-				// that extraction returns 0 — the deploy completes instantly
-				// and the client observes a turret that spawns "almost fully
-				// deployed" with no animation phase. Force a sensible default
-				// so the deploy takes visible time; the client's posture-blend
-				// anim node drives the visual based on these replicated fields.
-				if (turret->r_fTimeToDeploySecs <= 0.0f) {
-					turret->r_fTimeToDeploySecs  = 2.0f;
-					turret->r_fInitDeployTime    = 2.0f;
-					turret->r_fCurrentDeployTime = 0.0f;
-					turret->r_bIsDeployed        = 0;
-					turret->bNetDirty            = 1;
-					turret->bForceNetUpdate      = 1;
-				}
+				// Write the deploy-time fields BEFORE StartDeploy(). UC's
+				// `Deploy.BeginState` runs synchronously inside GotoState('Deploy')
+				// and bails to DeployComplete() (instant deploy) when
+				// r_fTimeToDeploySecs == 0. ExtractDeployTimeFromMyAnimation
+				// returns 0 server-side because the mesh's anim asset isn't
+				// loaded, so without seeding the field first the turret
+				// snap-deploys regardless of the DB value.
+				//
+				// prop 279 ("Time To Deploy (secs)") lives on the spawn-pet
+				// device-mode keyed by this pet's bot_id — 1s personal turret,
+				// 25–60s big emplaced turrets. Authoritative; overrides any
+				// anim-length fallback.
+				//
+				// Don't write r_fInitDeployTime here — UC sets it to
+				// WorldInfo.TimeSeconds inside Deploy.BeginState (it's a
+				// timestamp, not a duration). r_fCurrentDeployTime and
+				// r_bIsDeployed reset to fresh values for a clean deploy cycle.
+				float petDeploySecs = TgProj_Deployable__SpawnDeployable
+					::GetPetDeployTimeSecs(petId);
+				turret->r_fTimeToDeploySecs  = petDeploySecs;
+				turret->r_fCurrentDeployTime = 0.0f;
+				turret->r_bIsDeployed        = 0;
 
-				// Force rotation again AFTER StartDeploy — the UC deploy path
-				// can overwrite the pawn's rotation (AI init / Possess aftermath /
-				// turret-specific BeginPlay), and we want the turret locked on the
-				// player's aim at the moment of deploy.  Pin the controller,
-				// DesiredRotation, and Rotation so nothing drifts during the
-				// 2-second deploy window.
+				// Drive deploy via the canonical posture transition (1=HIBERNATE/
+				// stowed → 0=DEFAULT/deployed) instead of calling StartDeploy()
+				// directly. Reason: clients receive the deploy through
+				// `ReplicatedEvent('r_ePosture')` → `SetDeployStateBasedOnPosture()` →
+				// `StartDeploy()` → `GotoState('Deploy')` → client-side
+				// `Deploy.BeginState` runs `FxActivateGroup('Deploying')` and the
+				// posture-blend anim node animates from stowed pose toward deployed.
+				// Calling `StartDeploy()` directly only replicates the state name —
+				// the visual buildup FX never fire client-side and the turret stays
+				// invisible until DeployComplete swaps to the deployed mesh.
+				//
+				// Step 1: mark stowed. r_ePosture replicates so clients lock in the
+				// stowed pose as the blend source.
+				turret->r_ePosture = 1;  // TG_POSTURE_HIBERNATE
+				turret->bNetDirty            = 1;
+				turret->bForceNetUpdate      = 1;
+
+				// Step 2: transition to deployed. SetPosture handles the 1→0 path
+				// (super-call into TgPawn::SetPosture replicates r_ePosture, then
+				// SetDeployStateBasedOnPosture sees the transition and calls
+				// StartDeploy on both server and client). Use the SDK
+				// eventSetPosture wrapper — it dispatches via ProcessEvent so the
+				// UC override on TgPawn_Turret is what runs.
+				turret->eventSetPosture(/*ePosture=*/0, /*fRateScale=*/1.0f, /*bIgnoreTransition=*/0);
+
+				// Pin rotation everywhere the AI rotation tick reads from. UC's
+				// TgAIController.uc:2080–2093 picks DesiredRotation from one of
+				// `m_rFixedDirection` (when `m_fFixedFOV != 1.0` and no target)
+				// or `m_rSpawnDirection` (when at spawn location with move-code
+				// 241). Without seeding those, the AI tick reasserts whatever
+				// default Possess() left in them — typically (0,0,0) world-X —
+				// and snaps the turret to a "random" facing the moment it ticks.
+				//
+				// Pawn->Rotation/DesiredRotation alone aren't enough: bForceDesiredRotation
+				// gets re-set true on the AI side every tick, then the rotation
+				// tick blends Pawn->Rotation toward Controller->DesiredRotation
+				// (which the AI just overwrote from m_rSpawnDirection).
+				//
+				// Setting m_rSpawnDirection + m_rFixedDirection on the controller
+				// (and m_vSpawnLocation so the AtLocation check in branch 241
+				// passes) makes both AI paths face our spawnRot. Focus = null
+				// keeps any auto-lookat off.
 				PetPawn->Rotation         = spawnRot;
 				PetPawn->DesiredRotation  = spawnRot;
 				if (PetPawn->Controller) {
-					PetPawn->Controller->Rotation = spawnRot;
-					PetPawn->Controller->Focus    = nullptr;  // clear any AI focus target
+					ATgAIController* aic = (ATgAIController*)PetPawn->Controller;
+					aic->Rotation           = spawnRot;
+					aic->Focus              = nullptr;
+					aic->DesiredRotation    = spawnRot;
+					aic->m_rFixedDirection  = spawnRot;
+					aic->m_rSpawnDirection  = spawnRot;
+					aic->m_vSpawnLocation   = PetPawn->Location;
 				}
 				PetPawn->bNetDirty       = 1;
 				PetPawn->bForceNetUpdate = 1;
 				Logger::Log("pet_spawn",
-					"TgDeviceFire::SpawnPet: rotation locked to (%d,%d,%d) post-StartDeploy\n",
+					"TgDeviceFire::SpawnPet: rotation locked to (%d,%d,%d) "
+					"(pawn + AI m_rFixedDirection/m_rSpawnDirection)\n",
 					spawnRot.Pitch, spawnRot.Yaw, spawnRot.Roll);
 
 				Logger::Log("pet_spawn",
-					"TgDeviceFire::SpawnPet: StartDeploy() dispatched on %s\n"
+					"TgDeviceFire::SpawnPet: StartDeploy() dispatched on %s  botId=%d  prop279=%.2fs\n"
 					"                        r_fTimeToDeploySecs=%.2f  r_fInitDeployTime=%.2f\n"
 					"                        r_fCurrentDeployTime=%.2f  r_bIsDeployed=%d\n"
 					"                        m_fDefaultDeployAnimLength=%.2f  m_fDeployAnimLength=%.2f\n",
-					clsName,
+					clsName, petId, petDeploySecs,
 					turret->r_fTimeToDeploySecs, turret->r_fInitDeployTime,
 					turret->r_fCurrentDeployTime, (int)turret->r_bIsDeployed,
 					turret->m_fDefaultDeployAnimLength, turret->m_fDeployAnimLength);

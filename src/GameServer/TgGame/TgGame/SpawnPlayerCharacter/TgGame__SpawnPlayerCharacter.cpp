@@ -183,6 +183,16 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newpawn->r_EffectManager->Base = newpawn;
 	newpawn->r_EffectManager->Role = 3;
 
+	// Force ROLE_Authority on the server-spawned player pawn, mirroring every
+	// other server-spawn path (SpawnBotById/SpawnNextBot/SpawnDeployable/
+	// SpawnPet all set Role=3). UWorld::SpawnActor swaps Role<->RemoteRole when
+	// bRemoteOwned=true (PlayerController-owned spawns), which would land us
+	// at Role=ROLE_AutonomousProxy(2). UC gates ProcessInstantHit on
+	// `Instigator.Role == ROLE_Authority` (TgDevice.uc:1593), so without this
+	// every player-fired hitscan/repair impact gets dropped before ApplyHit.
+	newpawn->Role       = 3;  // ROLE_Authority
+	newpawn->RemoteRole = 1;  // ROLE_SimulatedProxy
+
 	newpawn->r_nBodyMeshAsmId = 1225;//0x5cc;
 	newpawn->r_CustomCharacterAssembly.SuitMeshId = 1225;
 	newpawn->r_CustomCharacterAssembly.HeadMeshId = GA_G::HEAD_ASM_ID_TROLL;
@@ -378,7 +388,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		sqlite3* db = Database::GetConnection();
 		sqlite3_stmt* stmt = nullptr;
 		int rc = sqlite3_prepare_v2(db,
-			"SELECT device_id, equip_slot, quality, inventory_id "
+			"SELECT device_id, equip_slot, quality, inventory_id, mod_effect_group_ids "
 			"FROM ga_character_devices WHERE character_id = ? ORDER BY equip_slot",
 			-1, &stmt, nullptr);
 		if (rc == SQLITE_OK && stmt) {
@@ -388,7 +398,24 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 				int slot        = sqlite3_column_int(stmt, 1);
 				int quality     = sqlite3_column_int(stmt, 2);
 				int inventoryId = sqlite3_column_int(stmt, 3);
-				Inventory::Equip(newpawn, deviceId, slot, quality, inventoryId);
+
+				// Parse mod_effect_group_ids CSV ("24208,24211,24212,...") into ints.
+				std::vector<int> mods;
+				const char* csv = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+				if (csv && *csv) {
+					const char* p = csv;
+					while (*p) {
+						while (*p == ',' || *p == ' ') ++p;
+						if (!*p) break;
+						char* end = nullptr;
+						long v = std::strtol(p, &end, 10);
+						if (end == p) break;
+						mods.push_back((int)v);
+						p = end;
+					}
+				}
+
+				Inventory::Equip(newpawn, deviceId, slot, quality, inventoryId, mods);
 			}
 			sqlite3_finalize(stmt);
 		} else {

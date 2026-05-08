@@ -89,6 +89,7 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
     if (j.contains("crash_dir"))          cfg.crash_dir          = j["crash_dir"].get<std::string>();
     if (j.contains("log_dir"))            cfg.log_dir            = j["log_dir"].get<std::string>();
     if (j.contains("fix_package_guids"))  cfg.fix_package_guids  = j["fix_package_guids"].get<bool>();
+    if (j.contains("clear_logs"))         cfg.clear_logs         = j["clear_logs"].get<bool>();
 
     if (j.contains("enabled_channels") && j["enabled_channels"].is_array()) {
         for (const auto& item : j["enabled_channels"]) {

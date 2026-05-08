@@ -18,6 +18,8 @@ UTgProperty* __fastcall TgPawn__GetProperty::Call(ATgPawn* Pawn, void* /*edx*/, 
 	if (!Pawn || !Pawn->s_Properties.Data) {
 		return nullptr;
 	}
+
+
 	for (int i = 0; i < Pawn->s_Properties.Num(); ++i) {
 		UTgProperty* prop = Pawn->s_Properties.Data[i];
 		if (prop && prop->m_nPropertyId == PropertyId) {

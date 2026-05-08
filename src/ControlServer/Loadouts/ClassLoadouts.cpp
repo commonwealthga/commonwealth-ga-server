@@ -35,8 +35,8 @@ static const std::vector<GearSlot> kMedic = {
 // Arm in the specialty slot with three Healing kit tiers stacked twice. Edit
 // the mods vector to whatever you want to test.
 static const std::vector<GearSlot> kRobotics = {
-    { 5802,  1,  SVID_MELEE,      Q_EPIC,   {} },  // Mace and Shield
-    { 6885,  2,  SVID_RANGED,     Q_EPIC,   {} },  // Colony Energy Rifle
+    { 6278,  1,  SVID_MELEE,      Q_EPIC,   {} },  // Mace and Shield
+    { 5796,  2,  SVID_RANGED,     Q_EPIC,   {} },  // Colony Energy Rifle
     { 2918,  3,  SVID_OFFHAND,    Q_EPIC,   {                       // Focused Repair Arm [hhhhhh]
                                               Mods::Healing::UNCOMMON,
                                               Mods::Healing::RARE,
@@ -46,8 +46,19 @@ static const std::vector<GearSlot> kRobotics = {
                                               Mods::Healing::EPIC,
                                             } },
     { 7034,  5,  SVID_JETPACK,    Q_EPIC,   {} },  // Robotics Crescent Jetpack
-    { 2300,  7,  SVID_SPECIALTY1, Q_EPIC,   {} },  // Personal Turret
-    { 2066,  8,  SVID_SPECIALTY2, Q_EPIC,   {} },  // Medical Station
+    // --- TEMP: testing NPC stations as player gear (revert after) ---
+    // { 2300,  7,  SVID_SPECIALTY1, Q_EPIC,   {} },  // Personal Turret
+    // { 2066,  8,  SVID_SPECIALTY2, Q_EPIC,   {} },  // Medical Station
+    // { 2095,  7,  SVID_SPECIALTY1, Q_EPIC,   {} },  // Rocket Turret R4 (player; proto rocket has no player device — bot_id 1439 has no handheld)
+    { 4076,  7,  SVID_SPECIALTY1, Q_EPIC,   {} },  // Rocket Turret R4 (player; proto rocket has no player device — bot_id 1439 has no handheld)
+    { 6143,  8,  SVID_SPECIALTY2, Q_EPIC,   {} },  // Techro Buff Station (handheld → deployable_id 209)
+    // --- TEMP: testing sensor in place of power station (revert after) ---
+    // { 4076,  9,  SVID_HEAD_FLAIR, Q_EPIC,   {
+    // 	Mods::AOERadius::ANY,
+    // 	Mods::AOERadius::ANY,
+    // 	Mods::AOERadius::ANY,
+    // } },  // Power Station
+    { 2326,  9,  SVID_HEAD_FLAIR, Q_EPIC,   {} },  // Sensor (handheld → deployable_id 85)
     { 2886, 10,  SVID_AMMO,       Q_COMMON, {} },  // Dome Shield Boost
     {  864, 14,  SVID_SHIRT,      Q_COMMON, {} },
 };
@@ -60,6 +71,7 @@ static const std::vector<GearSlot> kAssault = {
     { 7031,  5,  SVID_JETPACK,    Q_EPIC,   {} },  // Assault Crescent Jetpack
     { 3699,  7,  SVID_SPECIALTY1, Q_EPIC,   {} },  // Power Stim
     { 2498,  8,  SVID_SPECIALTY2, Q_EPIC,   {} },  // Concussion Grenade
+    { 6143,  9,  SVID_HEAD_FLAIR, Q_EPIC,   {} },  // Techro Buff Station (handheld → deployable_id 209)
     { 5775, 10,  SVID_AMMO,       Q_COMMON, {} },  // Super Smash Boost
     {  864, 14,  SVID_SHIRT,      Q_COMMON, {} },
 };
@@ -67,10 +79,17 @@ static const std::vector<GearSlot> kAssault = {
 // 681 — Recon — Dual Daggers + Recon Crescent Jetpack
 static const std::vector<GearSlot> kRecon = {
     { 5799,  1,  SVID_MELEE,      Q_EPIC,   {} },  // Dual Daggers
-    { 2110,  2,  SVID_RANGED,     Q_EPIC,   {} },  // Ballista
+    { 2110,  2,  SVID_RANGED,     Q_EPIC,   {
+		Mods::Damage::EPIC,
+		Mods::Damage::EPIC,
+		Mods::Damage::EPIC,
+		Mods::Damage::EPIC,
+		Mods::Damage::EPIC,
+		Mods::Damage::EPIC,
+	} },  // Ballista
     { 3023,  3,  SVID_OFFHAND,    Q_EPIC,   {} },  // Spring Stealth
     { 7033,  5,  SVID_JETPACK,    Q_EPIC,   {} },  // Recon Crescent Jetpack
-    { 2219,  7,  SVID_SPECIALTY1, Q_EPIC,   {
+    { 2113,  7,  SVID_SPECIALTY1, Q_EPIC,   {
 		Mods::AOERadius::ANY,
 		Mods::AOERadius::ANY,
 		Mods::AOERadius::ANY,
@@ -78,7 +97,16 @@ static const std::vector<GearSlot> kRecon = {
 		Mods::AOERadius::ANY,
 		Mods::AOERadius::ANY,
 	} },  // EMP Bomb
-    { 2129,  8,  SVID_SPECIALTY2, Q_EPIC,   {} },  // Decoy
+    { 5804,  8,  SVID_SPECIALTY2, Q_EPIC,   {
+		Mods::AOERadius::ANY,
+		Mods::AOERadius::ANY,
+		Mods::AOERadius::ANY,
+		Mods::Damage::EPIC,
+		Mods::Damage::EPIC,
+		Mods::Damage::EPIC,
+	} },  // Decon
+    { 6012,  9,  SVID_HEAD_FLAIR, Q_EPIC,   {} },  // vulture vision
+
     { 2113, 10,  SVID_AMMO,       Q_COMMON, {} },  // Shatter Bomb Boost
     {  864, 14,  SVID_SHIRT,      Q_COMMON, {} },
 };

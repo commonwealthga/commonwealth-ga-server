@@ -199,4 +199,11 @@ std::vector<std::string> Config::GetEnabledCrashChannels() {
 	return ParseCsvSwitch(L"enabledcrashchannels");
 }
 
+bool Config::GetClearLogs() {
+	ParsedOptions options = CommandLineParser::ParseCommandLine();
+	std::wstring val = options.switches[L"clearlogs"];
+	if (val.empty()) return false; // default: keep prior logs
+	return val == L"1" || val == L"true";
+}
+
 

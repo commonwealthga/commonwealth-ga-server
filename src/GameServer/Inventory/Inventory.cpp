@@ -3,6 +3,7 @@
 #include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/GameServer/TgGame/TgInventoryObject_Device/ConstructInventoryObject/TgInventoryObject_Device__ConstructInventoryObject.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/PrepopulateInventoryId/TgInventoryManager__PrepopulateInventoryId.hpp"
+#include "src/GameServer/TgGame/TgPawn/ApplyBuff/TgPawn__ApplyBuff.hpp"
 #include "src/GameServer/Misc/CAmItem/LoadItemMarshal/CAmItem__LoadItemMarshal.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Constants/EquipSlot.hpp"
@@ -11,6 +12,8 @@
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include <algorithm>
+#include <string>
 
 // ---------------------------------------------------------------------------
 // Static member initialization
@@ -171,9 +174,114 @@ void Inventory::ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId) {
 }
 
 // ---------------------------------------------------------------------------
+// Inventory::ApplyRolledModEffects — register rolled-mod effects with the
+// pawn's buff system (m_EffectBuffInfo TArray @ +0x100C). Each effect maps
+// to one TgPawn::ApplyBuff call.
+//
+// Why the buff system rather than direct s_Properties writes:
+//   The original TgDeviceFire::GetPropertyValueById (binary @ 0x10a27d40) is
+//   already correct — when it reads a fire-mode param, it routes through
+//   vtable[0x570] (ConvertPropToPropList) and vtable[0x56C] (the formula
+//   function decompiled at 0x109cd4a0) to apply layered Item/Skill/Self/
+//   Generic modifiers. ConvertPropToPropList specifically expands a request
+//   for fire-mode prop 6 (Effect Radius) into {6, 352} so an entry registered
+//   under the AOE Radius Modifier prop_id (352) is summed in. The single
+//   missing piece was that TgPawn::ApplyBuff was a stripped no-op, so the
+//   buff registry stayed empty. Reimplemented in TgPawn__ApplyBuff::Call.
+//
+// Source-type for rolled mods is BUFF_SOURCE_TYPE_ITEM (=1) → fItem* slots.
+// ---------------------------------------------------------------------------
+void Inventory::ApplyRolledModEffects(ATgPawn* Pawn, int deviceId, const std::vector<int>& effectGroupIds) {
+	if (Pawn == nullptr) return;
+	if (effectGroupIds.empty()) return;
+
+	sqlite3* db = Database::GetConnection();
+	if (db == nullptr) return;
+
+	// Build the SQL IN-clause from the *unique* set of egids (SQLite would
+	// collapse `IN (X,X,X)` to `IN (X)` anyway). Then iterate the *full* input
+	// list — duplicates included — and emit one ApplyBuff per occurrence: each
+	// mod kit slotted in the device is a separate stacking instance, e.g. 6×
+	// AOE Radius +15% must produce IP=90, not IP=15.
+	//
+	// Earlier shape used `SELECT DISTINCT ...` and applied one effect per
+	// distinct row, which silently collapsed N identical mods into a single
+	// buff entry — log evidence: "applied=1 effect(s) from 6 group(s)" with
+	// 320→368 instead of 320→608.
+	std::vector<int> uniqueIds(effectGroupIds.begin(), effectGroupIds.end());
+	std::sort(uniqueIds.begin(), uniqueIds.end());
+	uniqueIds.erase(std::unique(uniqueIds.begin(), uniqueIds.end()), uniqueIds.end());
+
+	std::string sql =
+		"SELECT e.effect_group_id, e.prop_id, e.base_value, e.calc_method_value_id "
+		"FROM asm_data_set_effects e "
+		"JOIN asm_data_set_effect_groups eg ON eg.effect_group_id = e.effect_group_id "
+		"WHERE eg.lifetime_sec = 0 AND e.effect_group_id IN (";
+	for (size_t i = 0; i < uniqueIds.size(); ++i) {
+		if (i) sql += ',';
+		sql += std::to_string(uniqueIds[i]);
+	}
+	sql += ')';
+
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+		Logger::Log("inventory", "ApplyRolledModEffects: prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+
+	struct EffectRow { int propId; float baseValue; int calcMethod; };
+	std::map<int, std::vector<EffectRow>> effectsByEgid;
+
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		int   egid       = sqlite3_column_int   (stmt, 0);
+		int   propId     = sqlite3_column_int   (stmt, 1);
+		float baseValue  = (float)sqlite3_column_double(stmt, 2);
+		int   calcMethod = sqlite3_column_int   (stmt, 3);
+
+		// Calc methods 67/68/69/70 are the only ones our reimplemented
+		// ApplyBuff handles. Skip anything else (effects targeting
+		// non-modifier props, conditional effects, etc.).
+		if (calcMethod < 67 || calcMethod > 70) continue;
+
+		effectsByEgid[egid].push_back({ propId, baseValue, calcMethod });
+	}
+	sqlite3_finalize(stmt);
+
+	int applied = 0;
+	for (int egid : effectGroupIds) {
+		auto it = effectsByEgid.find(egid);
+		if (it == effectsByEgid.end()) continue;
+		for (const EffectRow& r : it->second) {
+			// Header has nPropId set; secondary fields zero so the entry
+			// matches every query for this prop regardless of category /
+			// skill / device-instance constraints (per FUN_109cd890 match rule).
+			FBuffHeader header{};
+			header.nPropId = r.propId;
+			header.nReqCategoryCode = 0;
+			header.nReqSkillId = 0;
+			header.nReqDeviceInstId = 0;
+
+			TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, header, r.calcMethod, r.baseValue,
+			                        /*bRemove=*/0, /*buffSourceType=BUFF_SOURCE_TYPE_ITEM=*/1);
+
+			Logger::Log("inventory",
+				"ApplyRolledModEffects: pawn=0x%p device=%d egid=%d propId=%d cm=%d base=%.2f -> ApplyBuff\n",
+				Pawn, deviceId, egid, r.propId, r.calcMethod, r.baseValue);
+			++applied;
+		}
+	}
+
+	if (applied > 0) {
+		Logger::Log("inventory", "ApplyRolledModEffects: pawn=0x%p device=%d applied=%d effect(s) from %zu group(s)\n",
+			Pawn, deviceId, applied, effectGroupIds.size());
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Inventory::Equip — create and equip a device on a pawn
 // ---------------------------------------------------------------------------
-ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, int inventoryId) {
+ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, int inventoryId,
+                            const std::vector<int>& mods) {
 	// --- Null checks ---
 	if (Pawn == nullptr) {
 		Logger::Log("inventory", "Equip: ERROR — Pawn is null\n");
@@ -301,6 +409,20 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 	// importantly, this is what gives every pawn the +30 physical protection
 	// baseline via device 864 (HUMAN BASE ATTRIBUTES).
 	ApplyDeviceEquipEffects(Pawn, deviceId);
+
+	// --- Apply rolled mods (the [letters] suffix) ---
+	// effect_group_ids stored on UTgInventoryObject::m_nStateEffectGroupIdArray
+	// in the live game; we read them from ga_character_devices.mod_effect_group_ids
+	// here. Each one targets a property like AOE Radius / Recharge / Healing,
+	// applied as additive or percent modifier on the pawn's s_Properties.
+	ApplyRolledModEffects(Pawn, deviceId, mods);
+
+	// --- Mirror rolled mods onto the inventory object so server-side UC reads
+	// see them too. The TArray is freshly constructed (Data=NULL, Count=0) by
+	// ConstructInventoryObject, so a plain Add() per entry is safe.
+	if (!mods.empty() && InvObj != nullptr) {
+		for (int egid : mods) InvObj->m_nStateEffectGroupIdArray.Add(egid);
+	}
 
 	// --- Track in per-pawn map ---
 	s_equipped[Pawn].push_back({deviceId, slot, qualityValueId, invId, GetEffectGroupId(deviceId)});

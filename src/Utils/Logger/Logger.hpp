@@ -21,6 +21,12 @@ public:
 	static void DumpMemory(const char* Channel, void* Address, int Size, int NegativeSize = 0);
 	// Called by CrashHandler to append the ring buffer to the crash dump file.
 	static void DumpCrashBuffer(void* fileHandle);
+	// Truncate every <LogDir>/<channel>.txt for each channel currently in
+	// EnabledChannels. Intended to be called once at DLL init when the
+	// `-clearlogs=1` switch is set, so repeated test runs don't pile new
+	// entries on top of stale ones. Crash-only channels are left alone (they
+	// only ever land in the in-memory ring, never on disk during normal ops).
+	static void ClearEnabledChannelFiles();
 	static inline const char* GetTime() {
 		auto now = std::chrono::system_clock::now();
 		std::time_t now_time_t = std::chrono::system_clock::to_time_t(now);

@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
+#include "src/GameServer/TgGame/BuffEffectRegistry/BuffEffectRegistry.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -199,6 +200,19 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 				unsigned int& eflags = *(unsigned int*)((char*)e + 0x48);
 				if (sqlite3_column_int(stmt, 7)) eflags |= 0x01; else eflags &= ~0x01;
 
+				// Class-157 effects (TgEffectBuff) need to apply via Pawn.ApplyBuff
+				// rather than TgEffect.ApplyToProperty — the latter writes to
+				// `target->s_Properties[propId]->m_fRaw` which silently no-ops for
+				// modifier props (113, 65, 352, …) the pawn doesn't carry there.
+				// TgEffectBuff itself is stripped from this binary so we constructed
+				// `e` as base TgEffect above; flag it in the side-set so
+				// `UObject__ProcessEvent` recognises it at apply/remove time and
+				// routes through `TgPawn__ApplyBuff::Call` instead. Mirrors
+				// `unrealscript/TgGame/Classes/TgEffectBuff.uc:121-200`.
+				if (classResId == 157) {
+					BuffEffectRegistry::Mark(e);
+				}
+
 				TARRAY_ADD(effects, e)
 			}
 			sqlite3_finalize(stmt);
@@ -311,6 +325,38 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 	for (int i = startIdx; i < list.Count; i++) {
 		UTgEffectGroup* g = list.Data[i];
 		if (g && g->m_nType == nType) {
+			// Surgical blacklist: Techro Buff Station (device 6144) egId=24419
+			// is type 263 (DeviceFiring), effects=0 (visual-only), target=self,
+			// target_fx_id=1275. Each refire pulse runs ApplyEffectType(self,
+			// 263) which clones the group, adds it to s_AppliedEffectGroups,
+			// triggers SetEffectRep → form attached to the station's
+			// r_ManagedEffectList[1]. Each per-pulse zero+repopulate cycle
+			// destroys and recreates the form on the client. FX 1275's intrinsic
+			// asset duration is long enough that recreated FX instances overlap
+			// into a "huge dome" visual on the station. The original game does
+			// not render this visual on buff stations (per gameplay testing); we
+			// suspect target_fx_id=1275 is either dead/asset-dummy in the
+			// shipped client or there's a class-specific suppression we don't
+			// reproduce. Same-pattern medical-station egid 6025 with FX 227 has
+			// a short asset duration so cycle-recreation looks like discrete
+			// pulses (intended). Mechanically identical effect groups whose
+			// only differentiator is asset behavior — can't tell apart from
+			// server data, so we hardcode the buff-station egid.
+			//
+			// Confirmed unique to device 6144 via:
+			//   sqlite3 server.db "SELECT device_id FROM asm_data_set_device_mode_effect_groups WHERE effect_group_id = 24419;"
+			// → 6144 (only). No other device uses 24419, so filtering here
+			// doesn't bleed.
+			//
+			// Returning null+nIndex=-1 mimics "no more type-263 groups" for UC;
+			// since 24419 is the buff station's only type-263 group, the
+			// ApplyEffectType iteration cleanly bails on the next index.
+			if (g->m_nEffectGroupId == 24419) {
+				Logger::Log("effects",
+					"[GET] fireMode=%s nType=%d skipping egId=24419 (Techro buff station visual-only — see code comment)\n",
+					pThis->GetFullName(), nType);
+				continue;
+			}
 			if (nIndex) *nIndex = i;
 			Logger::Log("effects",
 				"[GET] fireMode=%s nType=%d -> egId=%d (startIdx=%d resultIdx=%d)\n",

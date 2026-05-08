@@ -76,6 +76,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SetProperty/TgPawn__SetProperty.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SyncPawnHealth/SyncPawnHealth.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SetTaskForceNumber/TgPawn__SetTaskForceNumber.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.cpp \
@@ -94,16 +95,20 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/GetPropertyValueById/TgDeviceFire__GetPropertyValueById.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/ApplyFireModeSetup/TgDeviceFire__ApplyFireModeSetup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/InitializeProjectile/TgDeviceFire__InitializeProjectile.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/CustomFire/TgDeviceFire__CustomFire.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/Deploy/TgDeviceFire__Deploy.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/SpawnPet/TgDeviceFire__SpawnPet.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/CheckTeamPassThrough/TgDeviceFire__CheckTeamPassThrough.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/IsValidTarget/TgDeviceFire__IsValidTarget.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/UpdateDeployModeStatus/TgDevice__UpdateDeployModeStatus.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RosterWalker.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RefIter.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/ApplyPlayerModsToDeployable.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/ApplyDamage/TgEffectManager__ApplyDamage.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveAllEffectGroups/TgEffectManager__RemoveAllEffectGroups.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.cpp \
@@ -135,17 +140,20 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/AddProperty/TgDeployable__AddProperty.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/InitializeDefaultProps/TgDeployable__InitializeDefaultProps.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/NotifyGroupChanged/TgDeployable__NotifyGroupChanged.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/SetProperty/TgDeployable__SetProperty.cpp \
 			  $(SRC_DIR)/GameServer/TgAssemblyMisc/LoadAssetRefs/TgAssemblyMisc__LoadAssetRefs.cpp \
 			  $(SRC_DIR)/GameServer/Core/LoadObject/Core__LoadObject.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/ApplyInventoryEquipEffects/TgDevice__ApplyInventoryEquipEffects.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/ClearInstigatorEquippedDevices/TgDevice__ClearInstigatorEquippedDevices.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/PopulateInstigatorEquippedDevices/TgDevice__PopulateInstigatorEquippedDevices.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/ApplyBuffEffect.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/GetSkillBasedEffectGroup/TgEffectManager__GetSkillBasedEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/IsStrongest/TgEffectManager__IsStrongest.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveEffectGroup/TgEffectManager__RemoveEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/SetEffectRep/TgEffectManager__SetEffectRep.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/AdjustBeaconForwardSpawn/TgGame_Arena__AdjustBeaconForwardSpawn.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Control/CalcAttackerReviveTime/TgGame_Control__CalcAttackerReviveTime.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Control/CalcDefenderReviveTime/TgGame_Control__CalcDefenderReviveTime.cpp \

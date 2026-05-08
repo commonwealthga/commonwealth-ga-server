@@ -1,4 +1,6 @@
 #include "src/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.hpp"
+#include "src/GameServer/TgGame/BuffEffectRegistry/ApplyBuffEffect.hpp"
+#include "src/GameServer/TgGame/BuffEffectRegistry/BuffEffectRegistry.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -83,6 +85,16 @@ static void RefreshStealthEffectTimers(ATgPawn* Pawn) {
 // in Call() below for the reasoning. UC owns the apply/remove math now; we
 // just promote stealth-category groups to managed lifetime, refresh their
 // timers on continuous fire, and tear down explicitly on fire-release.)
+//
+// Buff-routing for class-157 effects splits across two hook sites:
+//  - Apply: `TgEffectManager__SetEffectRep::Call` (post-original) — the
+//    apply chain doesn't surface in our ProcessEvent hook for reasons
+//    documented in `ApplyBuffEffect.hpp`, but SetEffectRep does fire
+//    reliably and arrives with `s_AppliedEffectGroups` populated.
+//  - Remove: the `Function TgGame.TgEffect.Remove` branch below — our
+//    reimplemented `TgEffectGroup__RemoveEffects` explicitly dispatches
+//    `eventRemove` via ProcessEvent for each effect, so this branch fires
+//    symmetrically with the SetEffectRep apply.
 
 void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunction* Function, void* Params, void* Result) {
 
@@ -94,8 +106,46 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		if (name.find("TakeDamage") != std::string::npos
 			|| name.find("SendCombatMessage") != std::string::npos
 			|| name.find("ApplyDamage") != std::string::npos
-			|| name.find("ApplyHealth") != std::string::npos) {
+			|| name.find("ApplyHealth") != std::string::npos
+			|| name.find("ApplyHit") != std::string::npos
+			|| name.find("ProcessInstantHit") != std::string::npos
+			|| name.find("CalcInstantFire") != std::string::npos
+			|| name.find("AdjustDamage") != std::string::npos) {
 			Logger::Log("combat-trace", "PE: %s  obj=%s\n", name.c_str(), objname.c_str());
+		}
+
+		// Diagnostic: log UC dispatch on TgDeployable, EXCLUDING per-tick
+		// noise (Tick, RefireCheckTimer, RecheckActiveTimer, Touch, UnTouch,
+		// SetProperty, Deploy.Tick — none of these are part of the damage
+		// flow). Want to see ProcessEffect, TakeDamage, eventXxx etc.
+		if ((objname.find("TgDeployable") != std::string::npos
+				|| objname.find("TgDeploy_") != std::string::npos)
+			&& name.find(".Tick") == std::string::npos
+			&& name.find("RefireCheckTimer") == std::string::npos
+			&& name.find("RecheckActiveTimer") == std::string::npos
+			&& name.find(".Touch") == std::string::npos
+			&& name.find(".UnTouch") == std::string::npos
+			&& name.find(".SetProperty") == std::string::npos) {
+			Logger::Log("combat-trace", "PE-DEP: %s  obj=%s\n",
+				name.c_str(), objname.c_str());
+		}
+
+		// Diagnostic: hitscan-chain dispatches — exclude ServerStopFire
+		// (~350x per ServerStartFire, pure noise) and the Get* helpers.
+		if ((name.find("Fire") != std::string::npos
+				|| name.find("Trace") != std::string::npos
+				|| name.find("Impact") != std::string::npos
+				|| name.find("Hit") != std::string::npos)
+			&& name.find("ServerStopFire") == std::string::npos
+			&& name.find("GetCone") == std::string::npos
+			&& name.find("GetInterruption") == std::string::npos) {
+			if (objname.find("TgDeviceFire") != std::string::npos
+				|| objname.find("TgDevice_") != std::string::npos
+				|| objname.find("TgProj") != std::string::npos
+				|| objname.find("TgPawn_Character") != std::string::npos) {
+				Logger::Log("combat-trace", "PE-FIRE: %s  obj=%s\n",
+					name.c_str(), objname.c_str());
+			}
 		}
 
 		// Diagnostic: log every Actor.ReplicatedEvent (and subclass overrides)
@@ -210,14 +260,41 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			 || strcmp(suffix, "DeviceFiring.EndState") == 0
 			 || strcmp(suffix, "DeviceFiring.RefireCheckTimer") == 0) {
 				ATgDeployable* D = (ATgDeployable*)Object;
+				// Diagnostic only — observe the actor flag dword + cylinder
+				// flag dword at each state transition to verify the
+				// post-ApplyDeployableSetup CollisionType revert held.
+				// Field offsets per Engine SDK header:
+				//   AActor +0xB0:      bCanBeDamaged=0x80000, bCollideActors=0x8000000,
+				//                      bCollideWorld=0x10000000, bBlockActors=0x40000000,
+				//                      bProjTarget=0x80000000.
+				//   UPrimitive +0x128: CollideActors=0x10, BlockActors=0x40,
+				//                      BlockZeroExtent=0x80, BlockNonZeroExtent=0x100,
+				//                      BlockRigidBody=0x400.
+				uint32_t actorFlags = D ? *(uint32_t*)((char*)D + 0xB0) : 0;
+				uint32_t cylFlags = (D && D->CollisionComponent)
+					? *(uint32_t*)((char*)D->CollisionComponent + 0x128) : 0;
 				Logger::Log("heal_tick",
-					"[DEPLOYABLE STATE] %s  deployable=0x%p id=%d mFireMode=%p props=%d role=%d bIsDeployed=%d bInDestroyed=%d\n",
+					"[DEPLOYABLE STATE] %s  deployable=0x%p id=%d mFireMode=%p props=%d role=%d bIsDeployed=%d bInDestroyed=%d\n"
+					"                   actorFlags=0x%08x (bCollide=%d bBlock=%d bProj=%d bDmg=%d bWorld=%d)\n"
+					"                   cylComp=%p cylFlags=0x%08x (CollideActors=%d BlockActors=%d BlockZero=%d BlockNonZero=%d)\n",
 					suffix, D, D ? D->r_nDeployableId : -1,
 					D ? (void*)D->m_FireMode : nullptr,
 					D ? D->s_Properties.Count : -1,
 					D ? (int)D->Role : -1,
 					D ? (int)D->m_bIsDeployed : -1,
-					D ? (int)D->m_bInDestroyedState : -1);
+					D ? (int)D->m_bInDestroyedState : -1,
+					actorFlags,
+					(int)((actorFlags >> 27) & 1),
+					(int)((actorFlags >> 30) & 1),
+					(int)((actorFlags >> 31) & 1),
+					(int)((actorFlags >> 19) & 1),
+					(int)((actorFlags >> 28) & 1),
+					D ? (void*)D->CollisionComponent : nullptr,
+					cylFlags,
+					(int)((cylFlags >> 4) & 1),
+					(int)((cylFlags >> 6) & 1),
+					(int)((cylFlags >> 7) & 1),
+					(int)((cylFlags >> 8) & 1));
 			}
 		}
 		if (strcmp("Function TgGame.TgDeployable.StartFire", name.c_str()) == 0) {
@@ -225,6 +302,27 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			Logger::Log("heal_tick",
 				"[DEPLOYABLE] StartFire() called  deployable=0x%p id=%d\n",
 				D, D ? D->r_nDeployableId : -1);
+		}
+
+		// Diagnostic: log every TgDeployable.UpdateHealth call. UC's
+		// TgEffectHeal.ApplyEffect (prop 260 / Repair) dispatches here for
+		// deployable targets, so a repair-arm pulse on a station should
+		// produce one of these per pulse — and the resulting r_nHealth /
+		// DRI.r_nHealthCurrent change is the "did the heal land?" answer.
+		// Channel: heal_tick (already enabled when investigating station
+		// repair). Prints the new HP, current HP before, and the address of
+		// the calling Function so we can tell whether it came from the
+		// effect-system path or somewhere else (e.g. internal damage).
+		if (Params && strcmp("Function TgGame.TgDeployable.UpdateHealth", name.c_str()) == 0) {
+			ATgDeployable* D = (ATgDeployable*)Object;
+			int newHp = *(int*)Params;
+			Logger::Log("heal_tick",
+				"[DEPLOYABLE] UpdateHealth: deployable=0x%p id=%d  r_nHealth %d -> %d  "
+				"r_DRI=%p DRI.r_nHealthCurrent=%d\n",
+				D, D ? D->r_nDeployableId : -1,
+				D ? D->r_nHealth : -1, newHp,
+				D ? (void*)D->r_DRI : nullptr,
+				(D && D->r_DRI) ? D->r_DRI->r_nHealthCurrent : -1);
 		}
 		// Device-level state machine (independent of the deployable's).  Only
 		// fire modes on deployables run — noise from player weapons is filtered
@@ -347,6 +445,164 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 						Mgr, nullptr, /*nCategoryCode=*/621, /*nQuantity=*/99);
 				}
 			}
+
+		} else if (Params
+				&& strcmp("Function TgGame.TgEffect.Remove", name.c_str()) == 0
+				&& BuffEffectRegistry::IsBuff((UTgEffect*)Object)) {
+			// Symmetric counterpart to the SetEffectRep-driven apply
+			// (`TgEffectManager__SetEffectRep.cpp`). Pulls the originally-
+			// applied amount out of `effect->m_fCurrent` (which our apply
+			// hook stored as PERCENT for calc 68/69) and reverses the buff
+			// entry, mirroring `TgEffectBuff.uc:202`. We rely on our
+			// reimplemented `TgEffectGroup__RemoveEffects` to dispatch
+			// `eventRemove` via ProcessEvent — that path IS visible to this
+			// hook (whereas the apply path runs invisibly, see
+			// ApplyBuffEffect.hpp for the full diagnosis).
+			auto* parms = (UTgEffect_eventRemove_Parms*)Params;
+			ApplyBuffEffectFromHook((UTgEffect*)Object, parms->Target, /*bRemove=*/true);
+
+		} else if (Params
+				&& strcmp("Function TgGame.TgEffect.CheckEffectBuffModifier", name.c_str()) == 0) {
+			// CheckEffectBuffModifier is a UC native that the binary STRIPPED.
+			// UC's TgEffect.ApplyEffect:115 and TgEffectDamage:131 call it to
+			// scale fProratedAmount by the instigator's m_EffectBuffInfo
+			// damage-modifier entries (prop 65). Without this, damage buffs
+			// from Techro/Sensor stations and rolled mods that target prop 65
+			// silently no-op even though the entry is correctly placed in
+			// the buff registry.
+			//
+			// HOOK DOES NOT FIRE FOR UC CALLERS. UC bytecode dispatches
+			// natives via inline VM (ProcessInternal → UFunction.Func), not
+			// via UObject::ProcessEvent. This branch only catches SDK-wrapper
+			// callers. The UC-call path is patched by the TgPawn.TakeDamage
+			// hook below, which scales the integer Damage parm before UC's
+			// TakeDamage body subtracts it from health — see that branch for
+			// the working implementation. Kept here for the SDK-wrapper case.
+			auto* parms = (UTgEffect_execCheckEffectBuffModifier_Parms*)Params;
+			UTgEffect* effect = (UTgEffect*)Object;
+			UTgEffectGroup* g = effect ? effect->m_EffectGroup : nullptr;
+			AActor* instigator = g ? g->m_Instigator : nullptr;
+			if (instigator && parms && parms->NewValue != 0.0f) {
+				const char* className = instigator->Class ? instigator->Class->GetFullName() : nullptr;
+				if (className && strstr(className, "TgPawn") != nullptr) {
+					ATgPawn* pawn = (ATgPawn*)instigator;
+					typedef void(__fastcall* GetBuffedPropertyFn)(
+						ATgPawn*, void*, unsigned char,
+						int, int, int, int, int, float, float*, void*);
+					static const GetBuffedPropertyFn GetBuffedPropertyNative =
+						(GetBuffedPropertyFn)0x109d7ff0;
+					float out = parms->NewValue;
+					GetBuffedPropertyNative(
+						pawn, /*edx=*/nullptr,
+						/*eRequestContext=*/4,
+						/*nPropId=*/65,                   // TGPID_DAMAGE_MODIFIER
+						/*nReqCategoryCode=*/0,
+						/*nReqSkillId=*/0,
+						/*nReqDeviceInstId=*/0,
+						/*bUsePotencyModifier=*/0,
+						/*fBaseValue=*/parms->NewValue,
+						/*fBuffedValue=*/&out,
+						/*Effect=*/effect);
+					if (out > 0.0f && out != parms->NewValue) {
+						Logger::Log("effects",
+							"[CHECK-BUFF-MOD] effect=%p propId=%d  base=%.3f -> buffed=%.3f  pawn=%p\n",
+							effect, effect->m_nPropertyId, parms->NewValue, out, pawn);
+						parms->NewValue = out;
+					}
+				}
+			}
+
+		// DEAD CODE — left commented for archaeology. Hypothesized that
+		// FUNC_Event UC functions called from UC bytecode dispatch through
+		// ProcessEvent, so a TakeDamage hook here would catch the damage
+		// path. Verified WRONG via combat-trace: zero `PE: …TakeDamage…`
+		// lines across full damage cycles. UC-to-UC dispatches via inline
+		// VM (CallFunction → ProcessInternal → run bytecode) regardless of
+		// FUNC_Event. Damage-buff scaling now lives in CloneEffectGroup
+		// (m_fBase pre-scale on cloned damage effects) — see the [DAMAGE-
+		// BUFF] log line emitted there.
+		// } else if (Params
+		// 		&& name.size() >= 11
+		// 		&& name.compare(name.size() - 11, 11, ".TakeDamage") == 0
+		// 		&& name.compare(0, sizeof("Function TgGame.")-1, "Function TgGame.") == 0) {
+		} else if (false) {
+			// Damage-buff scaling happens HERE — *.TakeDamage are FUNC_Event
+			// (FunctionFlags 0x00024802 includes 0x20000 = FUNC_Event), so
+			// UC's `Target.TakeDamage(int(fProratedAmount), …)` from
+			// TgEffectDamage dispatches via ProcessEvent and lands in this
+			// hook. The CheckEffectBuffModifier hook above can NOT see UC-
+			// side calls (inline VM native-dispatch bypasses ProcessEvent),
+			// which is why fixed-base damage was leaving the player's
+			// prop-65 buff unapplied.
+			//
+			// Param layout: every *.TakeDamage variant in TgGame_f_structs.h
+			// (TgPawn, TgDeployable, TgPawn_Scanner, TgDeploy_ForceField,
+			// TgDynamicSMActor, TgFracturedStaticMeshActor,
+			// TgObjectiveAttachActor) has the same first 0x44 bytes:
+			//   +0x00 int Damage     +0x04 AController* InstigatedBy
+			//   +0x40 AActor* DamageCauser
+			//
+			// Resolution priority for the buff-source pawn:
+			//   1. InstigatedBy.Pawn — the controller drives the firing pawn,
+			//      which is what's looked up for buffs (player/AI alike).
+			//   2. DamageCauser — fallback when no controller (e.g. trigger
+			//      damage). Only used if it's itself a pawn; projectiles and
+			//      deployables-as-causer don't carry buffs.
+			//
+			// Order-of-operations vs. UC: UC's TgEffectDamage::ApplyEffect
+			// computes fProratedAmount × buff THEN applies protection. We
+			// scale at TakeDamage which is post-protection. For prop-65 calc
+			// 68 (PERC_INCREASE) this is mathematically identical because
+			// (1+buff)*(1-armor) is commutative under multiplication. An
+			// absolute (calc-67 ADD) prop-65 would differ by a protection
+			// factor — none in the current DB; acceptable until concrete.
+			int* pDamage = (int*)Params;
+			if (pDamage && *pDamage > 0) {
+				AController* instigatedBy = *(AController**)((char*)Params + 0x4);
+				AActor*      causer       = *(AActor**)((char*)Params + 0x40);
+
+				ATgPawn* causerPawn = nullptr;
+				if (instigatedBy && instigatedBy->Pawn) {
+					ATgPawn* p = (ATgPawn*)instigatedBy->Pawn;
+					const char* cn = p->Class ? p->Class->GetFullName() : nullptr;
+					if (cn && strstr(cn, "TgPawn") != nullptr) causerPawn = p;
+				}
+				if (!causerPawn && causer) {
+					const char* cn = causer->Class ? causer->Class->GetFullName() : nullptr;
+					if (cn && strstr(cn, "TgPawn") != nullptr) causerPawn = (ATgPawn*)causer;
+				}
+
+				if (causerPawn) {
+					typedef void(__fastcall* GetBuffedPropertyFn)(
+						ATgPawn*, void*, unsigned char,
+						int, int, int, int, int, float, float*, void*);
+					static const GetBuffedPropertyFn GetBuffedPropertyNative =
+						(GetBuffedPropertyFn)0x109d7ff0;
+					float baseValue = (float)*pDamage;
+					float out = baseValue;
+					GetBuffedPropertyNative(
+						causerPawn, /*edx=*/nullptr,
+						/*eRequestContext=*/4,            // BUFF_OTHER (identity for prop 65)
+						/*nPropId=*/65,                   // TGPID_DAMAGE_MODIFIER
+						/*nReqCategoryCode=*/0,
+						/*nReqSkillId=*/0,
+						/*nReqDeviceInstId=*/0,
+						/*bUsePotencyModifier=*/0,
+						/*fBaseValue=*/baseValue,
+						/*fBuffedValue=*/&out,
+						/*Effect=*/nullptr);
+					if (out > baseValue) {
+						int newDamage = (int)(out + 0.5f);
+						Logger::Log("effects",
+							"[DAMAGE-BUFF] %s  %d -> %d  (+%.1f%%)  causer=%p target=%s\n",
+							name.c_str(), *pDamage, newDamage,
+							(out / baseValue - 1.0f) * 100.0f,
+							(void*)causerPawn, objname.c_str());
+						*pDamage = newDamage;
+					}
+				}
+			}
+			CallOriginal(Object, edx, Function, Params, Result);
 
 		} else if (Params
 				&& (strcmp("Function TgGame.TgPawn_Character.ReplicatedEvent", name.c_str()) == 0

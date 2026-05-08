@@ -29,11 +29,25 @@ void __fastcall TgEffectManager__RemoveAllEffectGroups::Call(ATgEffectManager* p
 
 		if (applied->m_nCategoryCode == nCategoryCode) {
 			// 0. Reverse property modifiers installed by the applied group's
-			//    effects. Runs the symmetric inverse math via UC's
-			//    TgEffect.Remove. Prefer the clone's own m_Target; fall back
-			//    to the manager's owner if it was never InitInstance'd.
+			//    effects — but ONLY for time-bound buffs (m_fLifeTime > 0).
+			//
+			//    Per the original engine: lifetime=0 effects are *permanent*
+			//    instant applies — once Apply has run, the delta is meant to
+			//    persist (instant heals, regen-station +N power, instant stat
+			//    boosts). The original engine never sets a LifeDone timer for
+			//    them and never auto-removes them on displacement. Reversing
+			//    here was the power-station bug: every per-tick re-emission
+			//    of the +10 effect ran into Strongest-displacement → our
+			//    RemoveEffects undid the +10, then the new emission re-applied
+			//    +10, net 0 per tick. With the gate, the previous emission's
+			//    +10 stays committed and re-emissions stack via ApplyProperty's
+			//    natural clamp-to-max.
+			//
+			//    For lifetime>0 (movement-speed debuffs, knockdown, scope
+			//    debuff, etc.) reversal stays correct — those are time-bound
+			//    and need their stat changes undone when displaced.
 			AActor* target = applied->m_Target ? applied->m_Target : pThis->r_Owner;
-			if (target) {
+			if (target && applied->m_fLifeTime > 0.0f) {
 				TgEffectGroup__RemoveEffects::Call(applied, nullptr, target, 0);
 			}
 

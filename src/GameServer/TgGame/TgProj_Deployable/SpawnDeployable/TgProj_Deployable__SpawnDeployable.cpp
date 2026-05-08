@@ -1,10 +1,33 @@
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
+#include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/ApplyPlayerModsToDeployable.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/Utils/Macros.hpp"
+
+namespace {
+// Binary entry point for `AActor::SetCollisionFromCollisionType`.  Reads
+// `this->CollisionType` (offset 0x93) and rewrites the collision flag bits
+// on `this->CollisionComponent` to match the engine's per-mode pattern,
+// then runs ConditionalDetach + ConditionalUpdateComponents to re-register
+// the primitives in the spatial query system with the new flags.  See UE3
+// source UnActor.cpp:2094 for the canonical implementation — the binary
+// matches it byte-for-byte at this address.
+//
+// We need this to undo the side-effect of `ApplyDeployableSetup`: that
+// native invokes `UpdateTargetCylinder`, which sets
+// `CollisionType = COLLIDE_BlockAllButWeapons` (clearing
+// `CollisionComponent->BlockZeroExtent`) — making the cylinder invisible
+// to hitscan weapon traces.  After ApplyDeployableSetup we set
+// `CollisionType` back to `COLLIDE_CustomDefault` (0) and re-run this
+// function to restore the CDO-default flag pattern (BlockZeroExtent=true).
+using SetCollisionFromCollisionType_Fn = void(__thiscall*)(AActor*);
+inline void SetCollisionFromCollisionType(AActor* a) {
+	reinterpret_cast<SetCollisionFromCollisionType_Fn>(0x10c65910)(a);
+}
+} // namespace
 
 namespace {
 // deployable_id → class full name (literal). Cached to avoid DB round-trips
@@ -172,6 +195,82 @@ void TgProj_Deployable__SpawnDeployable::GetTimerBombParams(
 	*outDamageRadiusUU  = radiusUU;
 }
 
+float TgProj_Deployable__SpawnDeployable::GetDeployTimeSecs(int nDeployableId) {
+	// Stations/turrets: explicit prop 279 (5–15s). Bombs/mines/force fields:
+	// fall back to 0.1s so UC's Deploy.BeginState completes effectively at
+	// once — matches AVA Bomb's explicit 0.1s in the DB. Without an explicit
+	// override, UC reads m_fDefaultDeployAnimLength which is similar across
+	// all deployables and drowns out the per-type tuning.
+	constexpr float kDefaultDeployTimeSecs = 0.1f;
+
+	static std::unordered_map<int, float> s_cache;
+	auto it = s_cache.find(nDeployableId);
+	if (it != s_cache.end()) return it->second;
+
+	float secs = kDefaultDeployTimeSecs;
+	sqlite3* db = Database::GetConnection();
+	if (db) {
+		// Prop 279 lives on the *thrower* device-mode (the player's deploy
+		// action), looked up by deployable_id via the m2m table. MIN() collapses
+		// duplicates that come from a thrower device with multiple modes
+		// targeting the same deployable.
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+			"SELECT MIN(p.base_value) "
+			"FROM asm_data_set_devices_data_set_device_modes m "
+			"JOIN asm_data_set_device_mode_properties p "
+			"  ON p.device_id = m.device_id AND p.device_mode_id = m.device_mode_id "
+			"WHERE m.deployable_id = ? AND p.prop_id = 279;",
+			-1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int(stmt, 1, nDeployableId);
+			if (sqlite3_step(stmt) == SQLITE_ROW &&
+				sqlite3_column_type(stmt, 0) != SQLITE_NULL) {
+				float v = (float)sqlite3_column_double(stmt, 0);
+				if (v > 0.0f) secs = v;
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+
+	s_cache[nDeployableId] = secs;
+	return secs;
+}
+
+float TgProj_Deployable__SpawnDeployable::GetPetDeployTimeSecs(int nBotId) {
+	// Personal turret = 1s; bigger emplaced turrets 25–60s. Default 2s when
+	// missing — matches the prior SpawnPet hardcode used as a "no anim length
+	// available" floor. Cache per bot_id.
+	constexpr float kDefaultPetDeployTimeSecs = 2.0f;
+
+	static std::unordered_map<int, float> s_cache;
+	auto it = s_cache.find(nBotId);
+	if (it != s_cache.end()) return it->second;
+
+	float secs = kDefaultPetDeployTimeSecs;
+	sqlite3* db = Database::GetConnection();
+	if (db) {
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+			"SELECT MIN(p.base_value) "
+			"FROM asm_data_set_devices_data_set_device_modes m "
+			"JOIN asm_data_set_device_mode_properties p "
+			"  ON p.device_id = m.device_id AND p.device_mode_id = m.device_mode_id "
+			"WHERE m.bot_id = ? AND p.prop_id = 279;",
+			-1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int(stmt, 1, nBotId);
+			if (sqlite3_step(stmt) == SQLITE_ROW &&
+				sqlite3_column_type(stmt, 0) != SQLITE_NULL) {
+				float v = (float)sqlite3_column_double(stmt, 0);
+				if (v > 0.0f) secs = v;
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+
+	s_cache[nBotId] = secs;
+	return secs;
+}
+
 bool TgProj_Deployable__SpawnDeployable::IsTimerBombDeployableId(int nDeployableId) {
 	// Cache keyed by id (positive for bomb, zero for non-bomb). Use a sentinel
 	// in the existing cylinder cache? No — separate map to avoid ambiguity.
@@ -235,11 +334,16 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// likely the game's standard ground-penetration padding).  Without this
 	// deployables spawned with half their cylinder below terrain.  Was
 	// previously a hardcoded `vLocation.Z += 5.0f` beacon-only fudge.
-	{
-		float radius = 0.f, halfHeight = 0.f;
-		GetDeployableCollisionCylinder(deployableId, &radius, &halfHeight);
-		vLocation.Z += halfHeight + 5.0f;
-	}
+	//
+	// We also keep the values around (`cylRadius`, `cylHalfHeight`) so we can
+	// resize the spawned actor's CollisionComponent after Spawn — the UC CDO
+	// default is 12r×10h, far smaller than every real station's mesh, so
+	// weapon traces and walking collision miss the visible mesh entirely
+	// (no damage/heal/repair-arm trace ever reaches the deployable as a
+	// target).
+	float cylRadius = 0.f, cylHalfHeight = 0.f;
+	GetDeployableCollisionCylinder(deployableId, &cylRadius, &cylHalfHeight);
+	vLocation.Z += cylHalfHeight + 5.0f;
 
 	Logger::Log(GetLogChannel(),
 		"SpawnDeployableActor: class=%s deployableId=%d%s\n",
@@ -280,6 +384,26 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	if (!Deployable) {
 		Logger::Log(GetLogChannel(), "SpawnDeployableActor: Spawn returned null\n");
 		return nullptr;
+	}
+
+	// Cylinder resize.
+	//
+	// The UC CDO sets CollisionRadius=12 / CollisionHeight=10, which is tiny
+	// relative to the visible mesh (per `asm_data_set_assembly_meshes`:
+	// medstation 28×10, power station 18×12). Resize to the per-deployable
+	// dimensions so the cylinder matches the visible footprint — the cfg
+	// values were already pulled into `cylRadius`/`cylHalfHeight` above.
+	//
+	// `AActor::SetCollisionSize` is the canonical entry point: it updates
+	// CollisionRadius + CollisionHeight on the primary CollisionComponent and
+	// schedules a deferred reattach. Mirror to `m_TargetComponent` (the AI
+	// aim cylinder) so the two stay in sync — the actor wrapper only
+	// resizes CollisionComponent.
+	if (cylRadius > 0.0f && cylHalfHeight > 0.0f) {
+		Deployable->SetCollisionSize(cylRadius, cylHalfHeight);
+		if (Deployable->m_TargetComponent) {
+			Deployable->m_TargetComponent->SetCylinderSize(cylRadius, cylHalfHeight);
+		}
 	}
 
 	// Instigator propagation fix — matches the projectile pattern
@@ -466,6 +590,7 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	Deployable->r_bTakeDamage      = 1;
 	Deployable->s_bIsActivated     = 1;
 	Deployable->m_bIsDeployed      = 0;
+	Deployable->r_nPhysicalType    = 861; // TgPawn.TG_PHYSICALITY_MECHANICAL
 	Deployable->bOnlyDirtyReplication = 0;
 	Deployable->Role               = 3;
 	Deployable->RemoteRole         = 1;
@@ -474,9 +599,46 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	Deployable->bForceNetUpdate    = 1;
 	Deployable->bAlwaysRelevant    = 1;
 
+	// TgDeployable does NOT auto-spawn its r_EffectManager (unlike TgPawn,
+	// which has explicit code in its spawn path:
+	//   if (Role == ROLE_Authority && r_EffectManager == none) {
+	//     r_EffectManager = Spawn(Class'TgGame.TgEffectManager', self,, vect(0,0,0));
+	//     r_EffectManager.r_Owner = self;
+	//     r_EffectManager.Instigator = self;
+	//   }
+	// — see TgPawn.uc).  TgDeployable.uc declares only `var TgEffectManager
+	// r_EffectManager;` with no defaultsubobject and no PostBeginPlay spawn,
+	// so it stays null on every plain TgDeployable instance.
+	//
+	// Without this, UC `TgDeployable.ProcessEffect` calls
+	// `r_EffectManager.ProcessEffect(...)` which "Accessed None"-warns and
+	// no-ops.  That's the entire reason hitscan damage and repair-arm beams
+	// never apply to stations: trace lands, IsValidTarget=true, ApplyHit
+	// runs, SubmitHitEffects looks up effect groups, SubmitEffect dispatches
+	// to TgDeployable.ProcessEffect — and the chain dies right at the null
+	// EffectManager dereference.  Turrets work because they're TgPawn.
+	if (!Deployable->r_EffectManager) {
+		UClass* emClass = ClassPreloader::GetClass("Class TgGame.TgEffectManager");
+		if (emClass) {
+			FVector emLoc = {0.0f, 0.0f, 0.0f};
+			Deployable->r_EffectManager = (ATgEffectManager*)Deployable->Spawn(
+				emClass,
+				Deployable,         // SpawnOwner
+				FName(),
+				emLoc,
+				Deployable->Rotation,
+				nullptr,            // ActorTemplate
+				1                   // bNoCollisionFail
+			);
+		}
+		Logger::Log(GetLogChannel(),
+			"SpawnDeployableActor: r_EffectManager bootstrap — was null; %s%s\n",
+			emClass ? "" : "EM CLASS NOT PRELOADED  ",
+			Deployable->r_EffectManager ? "spawned OK" : "spawn FAILED");
+	}
+
 	// Wire the effect-manager owner fields so applied effects know who to
-	// report to / reverse against. The EffectManager subobject is auto-spawned
-	// by UE3 as part of the actor's default-properties chain.
+	// report to / reverse against.
 	if (Deployable->r_EffectManager) {
 		Deployable->r_EffectManager->r_Owner    = (AActor*)Deployable;
 		Deployable->r_EffectManager->SetOwner((AActor*)Deployable);
@@ -507,6 +669,81 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// + deferred InitializeDefaultProps + effect-manager owner wiring); the
 	// hooks stay registered in case it re-surfaces.
 	Deployable->ApplyDeployableSetup();
+
+	// Restore CollisionType to COLLIDE_CustomDefault and re-derive the
+	// CollisionComponent flags from the class CDO.
+	//
+	// `ApplyDeployableSetup` (vtable slot 250 → InitializeFromDeployableDat @
+	// 0x10a243e0) calls `UpdateTargetCylinder` (vtable slot 235), which writes
+	// `CollisionType = COLLIDE_BlockAllButWeapons` (= 6) and runs
+	// `SetCollisionFromCollisionType`.  That mode clears
+	// `CollisionComponent->BlockZeroExtent` (per UE3's
+	// UnActor.cpp:2147 — only BlockAll/BlockWeapons/BlockWeaponsKickable get
+	// BlockZeroExtent=true).  In the shipped game this was balanced by a
+	// custom hitscan path (TgDeviceFire's GetTraceImpact native) and/or by
+	// per-cfg c_Mesh trace flags — neither of which we have on this
+	// reverse-engineered server.  Net effect on us: hitscan weapon traces
+	// (zero-extent line traces in UE3's octree, gated on
+	// `TestPrimitive->BlockZeroExtent` per UnOctree.cpp:951) skip the
+	// cylinder, and `c_Mesh`'s cfg-driven flags are all 0 too (verified via
+	// `asm_data_set_assembly_meshes` — medstation/power station have
+	// `block_zero_extent_flag=0`), so NO component on the deployable is a
+	// valid hitscan target.  Result: bullets, melee, and repair-arm pulses
+	// pass straight through.
+	//
+	// Reverting to COLLIDE_CustomDefault makes the engine copy the flag
+	// pattern from the CDO's CollisionComponent (CylinderComponent CDO has
+	// `BlockZeroExtent=true, BlockNonZeroExtent=true` — see
+	// CylinderComponent.uc:24-25), which gives the cylinder
+	// `BlockZeroExtent=true` and makes it a valid hitscan target.  Other
+	// flags stay correct: bCollideActors=true, bBlockActors=true (player
+	// movement still blocked), BlockNonZeroExtent=true (projectile sweeps
+	// still hit), BlockRigidBody=false (was true under BlockAllButWeapons —
+	// reverted, but this only affects rigid-body push interactions which the
+	// stations don't use).
+	//
+	// We write the `CollisionType` field directly (offset 0x93 — see
+	// Engine SDK header) instead of going through the binary's
+	// `SetCollisionType` native (0x10c6cd20): that native ALSO updates
+	// `ReplicatedCollisionType` and `bNetDirty`, which is exactly what we
+	// want for the client side too — the value will replicate, and the
+	// client's `PostNetReceive` will run the same `SetCollisionFromCollisionType`
+	// to apply the same CDO flags locally.  But to keep this transparent
+	// and self-contained, we set both fields explicitly and call
+	// `SetCollisionFromCollisionType` directly.
+	*(unsigned char*)((char*)Deployable + 0x93) = 0; // CollisionType = COLLIDE_CustomDefault
+	*(unsigned char*)((char*)Deployable + 0x94) = 0; // ReplicatedCollisionType
+	*(uint32_t*)((char*)Deployable + 0xAC) |= 0x100000; // bNetDirty
+	SetCollisionFromCollisionType(Deployable);
+
+	// Diagnostic: confirm the post-revert flag state.  Should show
+	// cylFlags with bit 7 (BlockZeroExtent) set.
+	{
+		uint32_t cylFlags = Deployable->CollisionComponent
+			? *(uint32_t*)((char*)Deployable->CollisionComponent + 0x128) : 0;
+		uint32_t actorFlags = *(uint32_t*)((char*)Deployable + 0xB0);
+		Logger::Log("deploy_phase",
+			"[cylinder-resize] deployable=0x%p id=%d  radius=%.1f halfHeight=%.1f\n"
+			"                  collisionComp=%p targetComp=%p  CollisionType=%d (post-revert)\n"
+			"                  actorFlags@+0xB0=0x%08x  (bCollide=%d bBlock=%d bProj=%d bDmg=%d bWorld=%d)\n"
+			"                  cylFlags@+0x128=0x%08x  (CollideActors=%d BlockActors=%d BlockZero=%d BlockNonZero=%d BlockRigidBody=%d)\n",
+			Deployable, deployableId, cylRadius, cylHalfHeight,
+			(void*)Deployable->CollisionComponent,
+			(void*)Deployable->m_TargetComponent,
+			(int)*(unsigned char*)((char*)Deployable + 0x93),
+			actorFlags,
+			(int)((actorFlags >> 27) & 1),
+			(int)((actorFlags >> 30) & 1),
+			(int)((actorFlags >> 31) & 1),
+			(int)((actorFlags >> 19) & 1),
+			(int)((actorFlags >> 28) & 1),
+			cylFlags,
+			(int)((cylFlags >> 4) & 1),
+			(int)((cylFlags >> 6) & 1),
+			(int)((cylFlags >> 7) & 1),
+			(int)((cylFlags >> 8) & 1),
+			(int)((cylFlags >> 10) & 1));
+	}
 
 	// Phase 3: populate s_Properties from asm_data_set_deployables (HP, etc).
 	// Our hook replaces the no-op native stub at 0x10a194d0. It's safe to
@@ -650,6 +887,21 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// after the delay.  If that UC chain doesn't fire an effect server-side,
 	// we iterate — but first we see whether it does.
 	//
+	// Per-deployable deploy time. UC's Deploy.BeginState reads
+	// r_fTimeToDeploySecs first; only when 0 does it fall back to the deploy
+	// anim length (which is similar across all assets and was making every
+	// deployable feel uniform). Stations/turrets get explicit 5–15s from
+	// prop 279; bombs/mines/forcefields get 0.1s so they "deploy" instantly.
+	{
+		float deploySecs = GetDeployTimeSecs(deployableId);
+		Deployable->r_fTimeToDeploySecs = deploySecs;
+		Deployable->bNetDirty           = 1;
+		Deployable->bForceNetUpdate     = 1;
+		Logger::Log("bomb",
+			"[deploy time] deployableId=%d  r_fTimeToDeploySecs=%.3fs (DB-driven)\n",
+			deployableId, deploySecs);
+	}
+
 	// Discriminator: show_countdown_timer_flag=1 in asm_data_set_deployables.
 	// Covers EMP Bomb, Shatter Bomb, Fire Bomb, Venom Bomb, Graviton Bomb.
 	// Excludes mines (trigger on proximity), stations, beacons, deconstructor.
@@ -690,6 +942,15 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 			"             SetTimer('StartFire', %.2fs) scheduled\n",
 			deployableId, activationSecs, radiusUU, activationSecs);
 	}
+
+	// Phase 5: apply the placing pawn's rolled-mod buffs to the deployable's
+	// s_Properties AND the timer-bomb engine mirrors (s_fProximityRadius,
+	// r_fClientProximityRadius). Runs AFTER the timer-bomb block above so we
+	// can scale the just-set proximity radius (which the client warning HUD
+	// reads) in addition to the s_Properties[6] value (which the server-side
+	// damage AoE reads via GetDamageRadius). Handles both the visual-warning
+	// path AND the actual-damage path in one shot. See ApplyPlayerModsToDeployable.cpp.
+	ApplyPlayerModsToDeployable::Apply(pawn, Deployable);
 
 	// Bomb diagnostic: after all setup is done, dump bomb-specific replicated
 	// state (tick time, destroy flags, mesh, fire mode, life span).  If bombs

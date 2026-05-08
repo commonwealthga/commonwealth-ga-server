@@ -297,6 +297,25 @@ void __fastcall TgDeployable__InitializeDefaultProps::Call(ATgDeployable* Deploy
 		Deployable->r_DRI->bForceNetUpdate  = 1;
 	}
 
+	// `r_bTakeDamage` gates *every* type-264 effect application on a deployable
+	// in UC's TgDeployable.uc:279:
+	//   if ((Effect.m_nType != 264) || r_bTakeDamage) r_EffectManager.ProcessEffect(...);
+	// Type-264 is "per-tick / continuous" effects — what repair arms (heal,
+	// damage-buff, deploy-rate) and most periodic auras dispatch through. UC
+	// default is false on the base TgDeployable class; only ForceField /
+	// DestructibleCover / Beacon explicitly override it true. So a vanilla
+	// medstation / power station / repair station spawned via any path other
+	// than SpawnDeployableActor (which sets it true at line 543) silently
+	// drops every per-tick effect — observed symptom: focused repair arm
+	// fetches egId=9129 (Repair +48), 9132 (DamageBuff), 10439 (DeployRate
+	// +4.5) every pulse but none apply, because the m_nType=264 gate fails.
+	//
+	// Set unconditionally here so InitializeDefaultProps becomes the universal
+	// fan-in for "this thing is a real damageable/healable deployable" —
+	// covers level-placed stations, mission-spawned turrets, and our own
+	// spawn path uniformly.
+	Deployable->r_bTakeDamage   = 1;
+
 	Deployable->bNetDirty       = 1;
 	Deployable->bForceNetUpdate = 1;
 }

@@ -58,6 +58,7 @@
 #include "src/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.hpp"
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.hpp"
+#include "src/GameServer/TgGame/TgPawn/SetProperty/TgPawn__SetProperty.hpp"
 #include "src/GameServer/TgGame/TgPawn/SetTaskForceNumber/TgPawn__SetTaskForceNumber.hpp"
 #include "src/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.hpp"
@@ -76,10 +77,13 @@
 #include "src/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/GetPropertyValueById/TgDeviceFire__GetPropertyValueById.hpp"
+#include "src/GameServer/TgGame/TgDeviceFire/ApplyFireModeSetup/TgDeviceFire__ApplyFireModeSetup.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/InitializeProjectile/TgDeviceFire__InitializeProjectile.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/CustomFire/TgDeviceFire__CustomFire.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/Deploy/TgDeviceFire__Deploy.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/SpawnPet/TgDeviceFire__SpawnPet.hpp"
+#include "src/GameServer/TgGame/TgDeviceFire/CheckTeamPassThrough/TgDeviceFire__CheckTeamPassThrough.hpp"
+#include "src/GameServer/TgGame/TgDeviceFire/IsValidTarget/TgDeviceFire__IsValidTarget.hpp"
 #include "src/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.hpp"
 #include "src/GameServer/TgGame/TgDevice/UpdateDeployModeStatus/TgDevice__UpdateDeployModeStatus.hpp"
 #include "src/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RosterWalker.hpp"
@@ -120,6 +124,7 @@
 #include "src/GameServer/TgGame/TgDeployable/AddProperty/TgDeployable__AddProperty.hpp"
 #include "src/GameServer/TgGame/TgDeployable/InitializeDefaultProps/TgDeployable__InitializeDefaultProps.hpp"
 #include "src/GameServer/TgGame/TgDeployable/NotifyGroupChanged/TgDeployable__NotifyGroupChanged.hpp"
+#include "src/GameServer/TgGame/TgDeployable/SetProperty/TgDeployable__SetProperty.hpp"
 #include "src/GameServer/TgAssemblyMisc/LoadAssetRefs/TgAssemblyMisc__LoadAssetRefs.hpp"
 #include "src/GameServer/Core/LoadObject/Core__LoadObject.hpp"
 #include "src/GameServer/TgGame/TgDevice/ApplyInventoryEquipEffects/TgDevice__ApplyInventoryEquipEffects.hpp"
@@ -129,6 +134,7 @@
 #include "src/GameServer/TgGame/TgEffectManager/IsStrongest/TgEffectManager__IsStrongest.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroup/TgEffectManager__RemoveEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.hpp"
+#include "src/GameServer/TgGame/TgEffectManager/SetEffectRep/TgEffectManager__SetEffectRep.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/AdjustBeaconForwardSpawn/TgGame_Arena__AdjustBeaconForwardSpawn.hpp"
@@ -397,6 +403,7 @@ unsigned long ModuleThread( void* ) {
 	TgGame__GetFinalObjectivesList::Install();
 	TgPawn__InitializeDefaultProps::Install();
 	TgPawn__GetProperty::Install();
+	TgPawn__SetProperty::Install();
 	TgPawn__SetTaskForceNumber::Install();
 	// TgPawn__SwapAttachedDeviceMaterials::Install();
 	TgTeamBeaconManager__SpawnNewBeaconForTeam::Install();
@@ -418,10 +425,13 @@ unsigned long ModuleThread( void* ) {
 	TgGame__SendMissionTimerEvent::Install();
 	TgDeviceFire__GetEffectGroup::Install();
 	TgDeviceFire__GetPropertyValueById::Install();
+	TgDeviceFire__ApplyFireModeSetup::Install();
 	TgDeviceFire__InitializeProjectile::Install();
 	TgDeviceFire__CustomFire::Install();
 	TgDeviceFire__Deploy::Install();
 	TgDeviceFire__SpawnPet::Install();
+	TgDeviceFire__CheckTeamPassThrough::Install();
+	TgDeviceFire__IsValidTarget::Install();
 	TgDevice__HasMinimumPowerPool::Install();
 	// TgEffectManager__ApplyDamage::Install();
 	TgEffectManager__RemoveAllEffectGroups::Install();
@@ -469,6 +479,7 @@ unsigned long ModuleThread( void* ) {
 	TgDeployable__AddProperty::Install();
 	TgDeployable__InitializeDefaultProps::Install();
 	TgDeployable__NotifyGroupChanged::Install();
+	TgDeployable__SetProperty::Install();
 	TgDevice__ApplyInventoryEquipEffects::Install();
 	TgDevice__ClearInstigatorEquippedDevices::Install();
 	TgDevice__PopulateInstigatorEquippedDevices::Install();
@@ -478,6 +489,7 @@ unsigned long ModuleThread( void* ) {
 	TgEffectManager__IsStrongest::Install();
 	TgEffectManager__RemoveEffectGroup::Install();
 	TgEffectManager__RemoveEffectGroupsByCategory::Install();
+	TgEffectManager__SetEffectRep::Install();
 	TgGame_Arena__AdjustBeaconForwardSpawn::Install();
 	TgGame_Control__CalcAttackerReviveTime::Install();
 	TgGame_Control__CalcDefenderReviveTime::Install();
@@ -670,7 +682,7 @@ unsigned long ModuleThread( void* ) {
 
 	// Unified asm_* data-set capture via CMarshal__GetArray dispatch.
 	// Flip to true for a single game run to populate, then back to false.
-	AsmDataCapture::bPopulateDatabase = false;
+	AsmDataCapture::bPopulateDatabase = true;
 
 	const LONG detourResult = ::DetourTransactionCommit();
 	Logger::Log("boot_sentinel",
@@ -720,6 +732,12 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
             // reference; uncomment them only for one-off in-source overrides.
             for (const auto& ch : Config::GetEnabledChannels())      Logger::EnabledChannels.push_back(ch);
             for (const auto& ch : Config::GetEnabledCrashChannels()) Logger::EnabledCrashChannels.push_back(ch);
+            // Optional: truncate every enabled channel's log file at boot so
+            // repeated test runs start from a clean slate. Off by default;
+            // turn on with -clearlogs=1 in the launcher invocation.
+            if (Config::GetClearLogs()) {
+                Logger::ClearEnabledChannelFiles();
+            }
             CrashHandler::Init(Config::GetCrashDir());
 			CreateThread( 0, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(ModuleThread), 0, 0, 0 );
 			

@@ -37,6 +37,7 @@ struct ControlServerConfig {
     std::vector<std::string> enabled_crash_channels;
     bool        fix_package_guids  = true;
     bool        wine_debug         = false;  // --wine-debug CLI flag: uses winedbg --command cont
+    bool        clear_logs         = false;  // truncate per-channel files at boot for repeated tests
 
     // Load config from JSON file at path. Returns defaults if file is absent or invalid.
     static ControlServerConfig Load(const std::string& path);

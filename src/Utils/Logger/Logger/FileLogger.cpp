@@ -174,6 +174,25 @@ void Logger::Log(const char* Channel, const char* Format, ...) {
 	LeaveCriticalSection(&g_log_cs);
 }
 
+void Logger::ClearEnabledChannelFiles() {
+	if (!g_log_cs_init) {
+		InitializeCriticalSection(&g_log_cs);
+		g_log_cs_init = true;
+	}
+
+	EnterCriticalSection(&g_log_cs);
+	for (const auto& channel : EnabledChannels) {
+		char filename[512];
+		snprintf(filename, sizeof(filename), "%s\\%s.txt", LogDir.c_str(), channel.c_str());
+		// "w" truncates; if the file doesn't exist yet (first run), this just
+		// creates an empty one — harmless. Ignore errors silently — there's
+		// nothing useful to do here at boot.
+		FILE* fp = fopen(filename, "w");
+		if (fp) fclose(fp);
+	}
+	LeaveCriticalSection(&g_log_cs);
+}
+
 void Logger::DumpMemory(const char* Channel, void* Address, int Size, int NegativeSize) {
 	// Honor either output mode: if the channel is enabled for file OR crash
 	// recording, produce output. (Previously only file mode was checked.)

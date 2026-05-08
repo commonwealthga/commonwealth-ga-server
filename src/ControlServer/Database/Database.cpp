@@ -638,11 +638,11 @@ void Database::Init() {
 	// `version < N`. Reason: the game-server DLL's Database::Init
 	// (src/Database/Database.cpp) runs independent migrations against the same
 	// shared server.db and bumps `version_info.version` to its own target
-	// (currently 20). Whichever server ran last wins — so any control-server
-	// migration gated by a lower version number gets silently skipped on
-	// subsequent boots. All three statements below are idempotent (CREATE IF
-	// NOT EXISTS / ALTER with error-swallow) so running every boot is cheap
-	// and safe.
+	// (currently 24). Both servers share the same version counter; control-
+	// server migrations gated by a lower version number get silently skipped
+	// on subsequent boots when the game DLL has already bumped past them. All
+	// three statements below are idempotent (CREATE IF NOT EXISTS / ALTER with
+	// error-swallow) so running every boot is cheap and safe.
 	{
 		result = sqlite3_exec(db,
 			"CREATE TABLE IF NOT EXISTS ga_character_skills ("
@@ -678,14 +678,24 @@ void Database::Init() {
 		}
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 19", nullptr, nullptr, &err);
+	// Floor-only version write. The game-server DLL bumps `version_info.version`
+	// past 19 (currently to 24) — an unconditional UPDATE here would silently
+	// downgrade the counter, causing the DLL's `version < 21` block to re-fire
+	// on its next boot, which DROPs seven asm_* tables for recapture. Without
+	// `AsmDataCapture::bPopulateDatabase = true` on that next launch the drops
+	// run but the recapture doesn't, leaving those tables empty across every
+	// subsequent boot. The WHERE clause keeps this write a one-way ratchet so
+	// the DLL's higher version sticks.
+	result = sqlite3_exec(db,
+		"UPDATE version_info SET version = 19 WHERE version < 19",
+		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
 	}
 
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
-	Logger::Log("db", "[Database::Init] Schema at version 19, WAL mode enabled\n");
+	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
 }
 
 std::string Database::GetQuestStatus(int64_t character_id, int quest_id) {

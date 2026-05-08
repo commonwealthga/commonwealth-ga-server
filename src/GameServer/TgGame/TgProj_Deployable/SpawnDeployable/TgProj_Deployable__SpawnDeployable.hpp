@@ -61,4 +61,20 @@ public:
 	// Cached per deployable_id.
 	static void GetTimerBombParams(int nDeployableId,
 		float* outActivationSecs, float* outDamageRadiusUU);
+
+	// Resolve `Time To Deploy (secs)` for a deployable from prop 279 on its
+	// thrower device-mode (asm_data_set_devices_data_set_device_modes joined
+	// to asm_data_set_device_mode_properties on prop_id=279). Stations/turrets
+	// have explicit per-rank values (5–15s); bombs / mines / force fields lack
+	// the prop and fall back to 0.1s so they "deploy" effectively instantly.
+	// Without this, every deployable inherits m_fDefaultDeployAnimLength via
+	// UC's Deploy.BeginState fallback — close to identical across types.
+	// Cached per deployable_id.
+	static float GetDeployTimeSecs(int nDeployableId);
+
+	// Same as GetDeployTimeSecs but keyed by bot_id (for pet/turret pawns
+	// spawned via TgDeviceFire::SpawnPet, not the deployable path). Joins the
+	// same prop 279 row through `m.bot_id = ?`. Default 2.0s fallback when
+	// missing — matches the existing SpawnPet fallback.
+	static float GetPetDeployTimeSecs(int nBotId);
 };

@@ -66,14 +66,32 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 	UTgEffectGroup* applied = Manager->s_AppliedEffectGroups.Data[idx];
 
 	// 0. Reverse every modifier the group's effects installed (movement speed,
-	//    power regen, damage protection, etc.). Without this step, the
-	//    properties stay clamped at the modified value forever after the
-	//    group is torn down.  Prefer the group's own m_Target; fall back to
-	//    the manager's r_Owner if the group never had InitInstance called.
+	//    damage protection, etc.). Reversal is unconditional here — the
+	//    `m_fCurrent == 0` skip inside `TgEffectGroup__RemoveEffects` already
+	//    protects effects whose Apply was gated out (phantom clones, see
+	//    reference_phantom_clone_skipped_apply.md), so we don't need a
+	//    lifetime guard.
+	//
+	//    Earlier (2026-05-07) this had a `m_fLifeTime > 0` gate copied from
+	//    `RemoveAllEffectGroups` to fix the power-station +10/tick case, where
+	//    Strongest-displacement was reversing a permanent regen apply on every
+	//    re-emission. **That gate belongs in RemoveAllEffectGroups (the
+	//    displacement caller) only.** RemoveEffectGroup is also the explicit
+	//    remove path used by UC `RemoveEffectType` → `ProcessEffect(bRemove=true)`
+	//    (scope-out, jetpack-stop, fire-release) AND the Newest-Wins
+	//    per-fire-pulse displacement; for both of those the caller's intent is
+	//    "reverse this clone." The mis-placed gate broke them: scope-in
+	//    repeatedly drove ground speed to zero (~-57.8/cycle), jetpack repeated
+	//    use compounded air speed upward (~+115/cycle). Confirmed via SET-PROP
+	//    diagnostic.
+	//
+	//    Prefer the group's own m_Target; fall back to r_Owner if InitInstance
+	//    never wired it.
 	AActor* target = applied->m_Target ? applied->m_Target : Manager->r_Owner;
 	Logger::Log("effects",
-		"[REMOVE-GROUP]   reversing via RemoveEffects on target=%p  effects=%d\n",
-		(void*)target, applied->m_Effects.Count);
+		"[REMOVE-GROUP]   target=%p  effects=%d  lifetime=%.2f  reverseModifiers=%s\n",
+		(void*)target, applied->m_Effects.Count, applied->m_fLifeTime,
+		target ? "yes" : "no (no target)");
 	if (target) {
 		// Direct call into our impl — `CallOriginal` would route to the empty
 		// 0x10a6f3d0 stub even after Install().

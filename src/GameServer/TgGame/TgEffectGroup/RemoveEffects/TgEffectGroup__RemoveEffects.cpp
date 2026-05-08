@@ -21,14 +21,36 @@ void __fastcall TgEffectGroup__RemoveEffects::Call(UTgEffectGroup* eg, void* /*e
 
 	for (int i = 0; i < eg->m_Effects.Count; ++i) {
 		UTgEffect* effect = eg->m_Effects.Data[i];
-		if (effect) {
-			unsigned int eflags = *(unsigned int*)((char*)effect + 0x48);
+		if (!effect) continue;
+
+		unsigned int eflags = *(unsigned int*)((char*)effect + 0x48);
+
+		// Skip Remove if Apply never ran. m_fCurrent is set by ApplyEffect as
+		// its first statement (TgEffect.uc:116), so 0 here means the Apply was
+		// gated out — typically by ProtectionModifier returning 0 in
+		// ApplyEventBasedEffects, failing the inner lifetime test. The clone
+		// still entered s_AppliedEffectGroups via the m_bIsManaged add-clause,
+		// and several UC `event Remove` branches mutate pawn state
+		// UNCONDITIONALLY (166/167/187 Stun(false), 100 Unhacked, 254
+		// r_bResistTagging, 308 ForceResetTaskForce, 323 yaw-lock). Letting
+		// those fire clobbers state that a *different* group's Apply set —
+		// e.g. EMP eg 6995 (cat=653 stun) phantom-cloned past prop-235
+		// protection, then on the next EMP its RemoveAllEffectGroups path
+		// undid the cat=378 stun the new fire had just applied.
+		if (effect->m_fCurrent == 0.0f) {
 			Logger::Log("effects",
-				"[REMOVE-EFFECTS]   [%d] effect=%p propId=%d calc=%d m_fCurrent=%.3f m_bRemovable=%d -> eventRemove\n",
+				"[REMOVE-EFFECTS]   [%d] effect=%p propId=%d calc=%d m_fCurrent=0 m_bRemovable=%d -> SKIP (Apply never ran)\n",
 				i, (void*)effect,
 				effect->m_nPropertyId, effect->m_nCalcMethodCode,
-				effect->m_fCurrent, (eflags & 0x02) ? 1 : 0);
-			effect->eventRemove(Target, bResetToFollow);
+				(eflags & 0x02) ? 1 : 0);
+			continue;
 		}
+
+		Logger::Log("effects",
+			"[REMOVE-EFFECTS]   [%d] effect=%p propId=%d calc=%d m_fCurrent=%.3f m_bRemovable=%d -> eventRemove\n",
+			i, (void*)effect,
+			effect->m_nPropertyId, effect->m_nCalcMethodCode,
+			effect->m_fCurrent, (eflags & 0x02) ? 1 : 0);
+		effect->eventRemove(Target, bResetToFollow);
 	}
 }
