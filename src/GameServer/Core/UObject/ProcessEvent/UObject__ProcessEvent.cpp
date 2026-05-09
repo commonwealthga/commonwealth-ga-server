@@ -493,13 +493,19 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 					static const GetBuffedPropertyFn GetBuffedPropertyNative =
 						(GetBuffedPropertyFn)0x109d7ff0;
 					float out = parms->NewValue;
+					// Per-device buff scoping: the effect's m_EffectGroup
+					// carries m_nSourceDeviceInstId from UC InitInstance
+					// (the firing device's r_nDeviceInstanceId). Passing
+					// it filters the buff registry to that device's
+					// rolled mods + wildcards (skills) — preventing
+					// cross-device damage-mod stacking.
 					GetBuffedPropertyNative(
 						pawn, /*edx=*/nullptr,
 						/*eRequestContext=*/4,
 						/*nPropId=*/65,                   // TGPID_DAMAGE_MODIFIER
 						/*nReqCategoryCode=*/0,
 						/*nReqSkillId=*/0,
-						/*nReqDeviceInstId=*/0,
+						/*nReqDeviceInstId=*/g ? g->m_nSourceDeviceInstId : 0,
 						/*bUsePotencyModifier=*/0,
 						/*fBaseValue=*/parms->NewValue,
 						/*fBuffedValue=*/&out,

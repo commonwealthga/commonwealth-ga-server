@@ -100,6 +100,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/CustomFire/TgDeviceFire__CustomFire.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/Deploy/TgDeviceFire__Deploy.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/SpawnPet/TgDeviceFire__SpawnPet.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/SpawnPet/ApplyPlayerModsToPet.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/CheckTeamPassThrough/TgDeviceFire__CheckTeamPassThrough.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/IsValidTarget/TgDeviceFire__IsValidTarget.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.cpp \
@@ -147,6 +148,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/ClearInstigatorEquippedDevices/TgDevice__ClearInstigatorEquippedDevices.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/PopulateInstigatorEquippedDevices/TgDevice__PopulateInstigatorEquippedDevices.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/ApplyBuffEffect.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/DeployableOriginRegistry.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/DeviceCategorySkill.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/ModifierProps.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.cpp \

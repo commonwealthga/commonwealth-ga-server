@@ -17,11 +17,34 @@
 // @ 0x109e5220). Use ModifierProps::IsModifierProp(pid) at call sites below.
 
 // Per-pawn record of what each Reapply pass wrote so a subsequent respec
-// can REVERSE it before applying the new allocation. Keyed by pawn pointer
-// → (propId → cumulative delta m_fRaw received from the direct-apply path).
-// Ticker-based skill effects track themselves via s_AppliedEffectGroups and
-// get removed separately.
+// (or respawn — Reapply runs on every spawn) can REVERSE it before applying
+// the new allocation. Keyed by pawn pointer → (propId → cumulative delta
+// m_fRaw received from the direct-apply path). Ticker-based skill effects
+// track themselves via s_AppliedEffectGroups and get removed separately.
 static std::map<ATgPawn_Character*, std::map<int, float>> g_appliedSkillDeltas;
+
+// Parallel record for the IsModifierProp() routing branch — these entries
+// land in m_EffectBuffInfo via TgPawn__ApplyBuff, NOT in s_Properties, so
+// the deltas-map above doesn't see them. Without an explicit reversal,
+// every Reapply call re-adds the same buff-registry delta on top of the
+// previous one. Power-cost (-30%) example: after 4 respawns fSkillPercent
+// reaches -120 → GetShotPowerCost's `<=0` guard clamps cost to 0 →
+// unlimited power. Damage and accuracy skills had the same bug but the
+// over-stacking is less visible there.
+//
+// Each entry stores the args we'd pass to ApplyBuff with `bRemove=1` to
+// undo it. propId/calc/amount/src must match the apply call exactly so
+// GetBuffIndex finds the same entry and applies the inverse delta.
+struct AppliedBuffRecord {
+	int   propId;
+	int   calc;        // 67/68/69/70 — same as the apply
+	float amount;      // amount we passed to ApplyBuff
+	int   src;         // BUFF_SOURCE_TYPE_*
+	int   devInst;     // header.nReqDeviceInstId at apply time (0 for skills)
+	int   reqSkillId;  // effect_group.required_skill_id (0=wildcard)
+	int   reqCatCode;  // effect_group.required_category_value_id (0=wildcard)
+};
+static std::map<ATgPawn_Character*, std::vector<AppliedBuffRecord>> g_appliedSkillBuffs;
 
 // TgPawn::SetProperty @ 0x109bf420 — (pawn, propId, fNewValue). Writes
 // UTgProperty.m_fRaw then dispatches ApplyProperty (vtable[0x8f4]) which is
@@ -100,6 +123,29 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 			if (prop) SetPawnProperty((ATgPawn*)Pawn, pid, prop->m_fRaw);
 		}
 
+		// Reverse buff-registry entries written by the previous Reapply via the
+		// IsModifierProp() branch. Skip-this-step is what causes the unlimited-
+		// power bug after a few respawns: each Reapply added another -30 to
+		// fSkillPercent for prop 242 without reversing the prior entry.
+		auto bufIt = g_appliedSkillBuffs.find(Pawn);
+		if (bufIt != g_appliedSkillBuffs.end()) {
+			for (const AppliedBuffRecord& r : bufIt->second) {
+				FBuffHeader header{};
+				header.nPropId          = r.propId;
+				header.nReqCategoryCode = r.reqCatCode;
+				header.nReqSkillId      = r.reqSkillId;
+				header.nReqDeviceInstId = r.devInst;
+				TgPawn__ApplyBuff::Call((ATgPawn*)Pawn, /*edx=*/nullptr,
+					header, r.calc, r.amount,
+					/*bRemove=*/1,
+					(unsigned char)r.src);
+				Logger::Log("skills",
+					"[Reapply/respec] reverse buff propId=%d calc=%d amt=%.3f src=%d devInst=%d skillId=%d cat=%d\n",
+					r.propId, r.calc, r.amount, r.src, r.devInst, r.reqSkillId, r.reqCatCode);
+			}
+			bufIt->second.clear();
+		}
+
 		// Remove any s_AppliedEffectGroups clones tagged m_bSkillEffect.
 		// Iterate in reverse because ProcessEffect(bRemove) mutates the list.
 		for (int i = mgr->s_AppliedEffectGroups.Count - 1; i >= 0; i--) {
@@ -150,11 +196,31 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 		return;
 	}
 
+	// Multi-row skills are NOT a "ranks per point" structure — each row gates
+	// on `asm_data_set_effect_groups.required_skill_id` to a specific device
+	// class. Skill 526 Jetpack Power lists four rows because the skill's
+	// tooltip enumerates four jetpack variants:
+	//   "Medic Jetpack -30% Power Cost"  (effect_group required_skill_id=360)
+	//   "Recon Jetpack -30%"             (=359)
+	//   "Robotic Jetpack -30%"           (=361)
+	//   "Assault Jetpack -30%"           (=358)
+	// Only the row matching the equipped jetpack should apply. We honor that
+	// by tagging the ApplyBuff entry's `header.nReqSkillId` with the row's
+	// required_skill_id; the binary's GetBuffIndex match rule (FUN_109cd890)
+	// then filters: stored>0 entries only match queries with the same skillId.
+	// required_skill_id=0 stays wildcard (universal effects).
+	//
+	// Earlier (mistaken) fix: ORDER BY id LIMIT s.points. That collapsed the
+	// stack from -120% to -30% for power-cost skills but treated unrelated
+	// rows as ranks. Reverted in favor of the correct discriminator.
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
-		"SELECT effect_group_id, effect_group_type_value_id "
-		"FROM asm_data_set_skill_effect_groups "
-		"WHERE skill_group_id = ? AND skill_id = ?",
+		"SELECT seg.effect_group_id, seg.effect_group_type_value_id, "
+		"       COALESCE(eg.required_skill_id, 0) "
+		"FROM asm_data_set_skill_effect_groups seg "
+		"LEFT JOIN asm_data_set_effect_groups eg "
+		"  ON eg.effect_group_id = seg.effect_group_id "
+		"WHERE seg.skill_group_id = ? AND seg.skill_id = ?",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
 		Logger::Log("skills", "[Reapply] prepare failed: %s\n", sqlite3_errmsg(db));
@@ -180,8 +246,9 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 		sqlite3_bind_int(stmt, 2, s.skill_id);
 
 		while (sqlite3_step(stmt) == SQLITE_ROW) {
-			int egId   = sqlite3_column_int(stmt, 0);
-			int egType = sqlite3_column_int(stmt, 1);
+			int egId         = sqlite3_column_int(stmt, 0);
+			int egType       = sqlite3_column_int(stmt, 1);
+			int reqSkillId   = sqlite3_column_int(stmt, 2);  // 0 = wildcard, >0 = device-class gate
 
 			UTgEffectGroup* group = BuildEffectGroup(egId, egType);
 			if (!group) {
@@ -282,16 +349,54 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 						// percent for buff registry storage.
 						float buffAmount = (calc == 68 || calc == 69) ? (amt * 100.0f) : amt;
 
+						// Tag the buff entry with two gating fields:
+						//
+						//  1. `nReqSkillId = effect_group.required_skill_id`
+						//     filters by firing-DEVICE class. Multi-row skills
+						//     like Jetpack Power gate each row on a specific
+						//     jetpack-variant skillId (358..361); the
+						//     equipping device's m_nSkillId is what the binary
+						//     passes at query time.
+						//
+						//  2. `nReqCategoryCode = effect.property_value_id`
+						//     filters by firing-EFFECT category. Station
+						//     Buff has one effect-group with three prop-376
+						//     effects, each carrying a different
+						//     property_value_id (1324 Station Healing /
+						//     1326 Station Damage / 1327 Station Protection).
+						//     Without this filter all three would collapse
+						//     into one slot — when a Medical Station heals,
+						//     all 3 effects (+20+50+20) would stack to +90%
+						//     instead of the intended +20% (Station Healing
+						//     only).
+						//
+						//  At fire time, CloneEffectGroup [EFFECT-BUFF] /
+						//  [DAMAGE-BUFF] passes `clone->m_nCategoryCode`
+						//  (= the firing effect_group's category_value_id,
+						//  e.g. 1324 for medical-station heal effect_group
+						//  6026) — so only the matching tagged entry fires.
+						//
+						//  Both fields use the binary's match rule (stored>0
+						//  must equal query; stored=0 wildcard accept any).
 						FBuffHeader header{};
-						header.nPropId = pid;
-						header.nReqCategoryCode = 0;
-						header.nReqSkillId = 0;
+						header.nPropId          = pid;
+						header.nReqCategoryCode = effect->m_nPropertyValueId;
+						header.nReqSkillId      = reqSkillId;
 						header.nReqDeviceInstId = 0;
 
 						TgPawn__ApplyBuff::Call((ATgPawn*)Pawn, /*edx=*/nullptr,
 							header, calc, buffAmount,
 							/*bRemove=*/0,
 							/*buffSourceType=BUFF_SOURCE_TYPE_SKILL=*/0);
+
+						// Record so the next Reapply (respawn / respec) reverses
+						// this exact entry. Without this, fSkillPercent stacks
+						// every respawn. The reverse call must pass the same
+						// skillId/catCode so GetBuffIndex finds the same slot.
+						g_appliedSkillBuffs[Pawn].push_back(
+							AppliedBuffRecord{ pid, calc, buffAmount,
+							                   /*src=SKILL=*/0, /*devInst=*/0,
+							                   reqSkillId, effect->m_nPropertyValueId });
 
 						Logger::Log("skills",
 							"[Reapply/effect] egId=%d propId=%d calc=%d amt=%.3f → ApplyBuff(SKILL slot, modifier prop)\n",

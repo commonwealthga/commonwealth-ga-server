@@ -160,6 +160,46 @@ int LookupLetterProp(int device_id, char letter) {
     return li->second;
 }
 
+// Look up the Output Mod egid (prop 385, Common-tier slot of the device's
+// blueprint). Standard items ship with +70%, OC items with +75%, a few
+// outliers with other values. Cached per (device_id, oc).
+int LookupOutputModEgid(int device_id, bool oc) {
+    static std::map<std::pair<int, bool>, int> cache;
+    const auto key = std::make_pair(device_id, oc);
+    auto it = cache.find(key);
+    if (it != cache.end()) return it->second;
+
+    sqlite3* db = Database::GetConnection();
+    if (!db) { cache[key] = 0; return 0; }
+
+    // Output Mod lives on the Common-tier slot (quality_value_id=1165) of the
+    // blueprint's mod table — one egid per blueprint, prop 385.
+    const char* sql = oc
+        ? "SELECT bmg.effect_group_id FROM asm_data_set_blueprints b "
+          "  JOIN asm_data_set_blueprint_item_mods bim ON bim.blueprint_id=b.blueprint_id "
+          "  JOIN asm_data_set_blueprint_mod_effect_groups bmg ON bmg.blueprint_mod_id=bim.blueprint_mod_id "
+          "  JOIN asm_data_set_effects e ON e.effect_group_id=bmg.effect_group_id "
+          " WHERE e.prop_id=385 AND b.created_item_id=? AND b.override_name_msg_id != 0 "
+          " ORDER BY b.blueprint_id LIMIT 1"
+        : "SELECT bmg.effect_group_id FROM asm_data_set_blueprints b "
+          "  JOIN asm_data_set_blueprint_item_mods bim ON bim.blueprint_id=b.blueprint_id "
+          "  JOIN asm_data_set_blueprint_mod_effect_groups bmg ON bmg.blueprint_mod_id=bim.blueprint_mod_id "
+          "  JOIN asm_data_set_effects e ON e.effect_group_id=bmg.effect_group_id "
+          " WHERE e.prop_id=385 AND b.created_item_id=? AND b.override_name_msg_id=0 "
+          " ORDER BY b.blueprint_id LIMIT 1";
+
+    int egid = 0;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, device_id);
+        if (sqlite3_step(stmt) == SQLITE_ROW)
+            egid = sqlite3_column_int(stmt, 0);
+        sqlite3_finalize(stmt);
+    }
+    cache[key] = egid;
+    return egid;
+}
+
 }  // namespace
 
 namespace ModResolver {
@@ -173,6 +213,17 @@ std::vector<int> Resolve(int device_id, int quality, const Mods::Result& mods) {
     }
 
     std::vector<int> out;
+
+    // Output Mod (prop 385): every shipped device's blueprint carries a
+    // Common-tier prop-385 egid (+70% standard, +75% OC, a few outliers).
+    // Now safe to prepend because rolled-mod buff entries are scoped to
+    // the equipping device's `r_nDeviceInstanceId` (see
+    // `Inventory::ApplyRolledModEffects`), so 9 devices' Output Mods
+    // each land in their own scoped FBuffInfo entry instead of collapsing
+    // into one shared 700% slot. Each device's fire-mode reads pick up
+    // ONLY its own scoped entry + skill wildcards.
+    int outputEgid = LookupOutputModEgid(device_id, mods.oc);
+    if (outputEgid) out.push_back(outputEgid);
 
     // Innate letters: device-specific lookup, skip unknowns silently
     for (char c : mods.innate) {

@@ -85,36 +85,15 @@ static const std::vector<GearSlot> kAssault = {
 
 // 681 — Recon — Dual Daggers + Recon Crescent Jetpack
 static const std::vector<GearSlot> kRecon = {
-    { 5799,  1,  SVID_MELEE,      Q_EPIC,   {} },  // Dual Daggers
-    { 2110,  2,  SVID_RANGED,     Q_EPIC,   {
-		Mods::Damage::EPIC,
-		Mods::Damage::EPIC,
-		Mods::Damage::EPIC,
-		Mods::Damage::EPIC,
-		Mods::Damage::EPIC,
-		Mods::Damage::EPIC,
-	} },  // Ballista
-    { 5807,  3,  SVID_OFFHAND,    Q_EPIC,   {} },  // Spring Stealth
-    { 7033,  5,  SVID_JETPACK,    Q_EPIC,   {} },  // Recon Crescent Jetpack
-    { 4708,  7,  SVID_SPECIALTY1, Q_EPIC,   {
-		Mods::AOERadius::ANY,
-		Mods::AOERadius::ANY,
-		Mods::AOERadius::ANY,
-		Mods::AOERadius::ANY,
-		Mods::AOERadius::ANY,
-		Mods::AOERadius::ANY,
-	} },  // Venom bomb
-    { 5804,  8,  SVID_SPECIALTY2, Q_EPIC,   {
-		Mods::AOERadius::ANY,
-		Mods::AOERadius::ANY,
-		Mods::AOERadius::ANY,
-		Mods::Damage::EPIC,
-		Mods::Damage::EPIC,
-		Mods::Damage::EPIC,
-	} },  // Decon
-    { 6012,  9,  SVID_HEAD_FLAIR, Q_EPIC,   {} },  // vulture vision
+    { 5799,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // Dual Daggers
+    { 2110,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // Ballista
+    { 5807,  3,  SVID_OFFHAND,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // targetting system
+    { 7033,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Recon Crescent Jetpack
+    { 4708,  7,  SVID_SPECIALTY1, Q_EPIC,   Mods::Letters("xxx", "ddd", false) },  // Venom bomb
+    { 5804,  8,  SVID_SPECIALTY2, Q_EPIC,   Mods::Letters("ddx", "ddd", false) },  // Decon
+    { 6012,  9,  SVID_HEAD_FLAIR, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // vulture vision
 
-    { 2113, 10,  SVID_AMMO,       Q_COMMON, {} },  // Shatter Bomb Boost
+    { 2113, 10,  SVID_AMMO,       Q_EPIC, Mods::Letters("mmm", "ddd", false) },  // Shatter Bomb Boost
     {  864, 14,  SVID_SHIRT,      Q_COMMON, {} },
 };
 

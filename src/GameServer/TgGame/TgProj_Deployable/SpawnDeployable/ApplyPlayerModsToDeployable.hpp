@@ -24,7 +24,16 @@
 // also runs every spawn so multiple deployable casts each get their own
 // fresh scaling.
 //
+// `sourceDeviceInstId` filters the player's m_EffectBuffInfo to entries
+// scoped to the deploying device (`r_nDeviceInstanceId`) plus wildcards
+// (entry stored devInst == 0; covers skills + cross-pawn auras). Without
+// this filter, every other equipped device's mods (e.g. Output Mod on
+// every weapon, prop 385) would also fold into the deployable's
+// s_Properties — same accumulation pathology that broke fire-mode reads.
+// Pass 0 when the spawner device is unknown (skill-spawned deployables);
+// only wildcard entries fold in then.
+//
 // Skip when pawn is null or has no m_EffectBuffInfo.
 namespace ApplyPlayerModsToDeployable {
-	void Apply(ATgPawn* pawn, ATgDeployable* deployable);
+	void Apply(ATgPawn* pawn, ATgDeployable* deployable, int sourceDeviceInstId);
 }

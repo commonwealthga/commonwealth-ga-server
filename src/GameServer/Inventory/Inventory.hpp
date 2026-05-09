@@ -55,14 +55,22 @@ public:
 	// in bot-spawn paths that bypass Equip().
 	static void ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId);
 
-	// Apply each effect attached to the listed effect_group_ids to the pawn's
-	// s_Properties (calc-method semantics same as ApplyDeviceEquipEffects).
-	// Used for rolled mods carried on UTgInventoryObject::m_nStateEffectGroupIdArray.
-	// If a target property is missing on the pawn, it is initialized on demand
-	// (m_fBase=1.0 so percent-style modifiers — calc method 68/69 — multiply
-	// correctly; m_fRaw=0 so additive starts at zero; m_fMaximum=10000 to
-	// avoid clipping). Logs the resulting m_fRaw per (prop, device).
-	static void ApplyRolledModEffects(ATgPawn* Pawn, int deviceId, const std::vector<int>& effectGroupIds);
+	// Register the rolled mods carried on a freshly-equipped device with the
+	// pawn's buff registry (m_EffectBuffInfo). Each ApplyBuff entry is
+	// **tagged with the device's instance id** so the binary's `GetBuffIndex`
+	// search-mode treats it as device-scoped: queries from this device match,
+	// queries from other devices skip. Without that, every device's
+	// (propId, 0, 0, 0) entry collides into one shared slot — Output Mod
+	// (prop 385, present on every device) was the discovery case where 9
+	// devices stacked into ~700% fItemPercent.
+	//
+	// `deviceInstanceId` is the device's `r_nDeviceInstanceId`, freshly
+	// assigned by Equip() for player loadouts. Skills bypass this path and
+	// register with devInst=0 (wildcard) so they continue to apply across
+	// every device the pawn carries.
+	static void ApplyRolledModEffects(ATgPawn* Pawn, int deviceId,
+	                                  int deviceInstanceId,
+	                                  const std::vector<int>& effectGroupIds);
 
 private:
 	static int s_nextInventoryId;  // starts at 10000

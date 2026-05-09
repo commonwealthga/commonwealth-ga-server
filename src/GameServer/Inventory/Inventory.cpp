@@ -4,6 +4,7 @@
 #include "src/GameServer/TgGame/TgInventoryObject_Device/ConstructInventoryObject/TgInventoryObject_Device__ConstructInventoryObject.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/PrepopulateInventoryId/TgInventoryManager__PrepopulateInventoryId.hpp"
 #include "src/GameServer/TgGame/TgPawn/ApplyBuff/TgPawn__ApplyBuff.hpp"
+#include "src/GameServer/TgGame/BuffEffectRegistry/DeviceCategorySkill.hpp"
 #include "src/GameServer/Misc/CAmItem/LoadItemMarshal/CAmItem__LoadItemMarshal.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Constants/EquipSlot.hpp"
@@ -191,7 +192,7 @@ void Inventory::ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId) {
 //
 // Source-type for rolled mods is BUFF_SOURCE_TYPE_ITEM (=1) → fItem* slots.
 // ---------------------------------------------------------------------------
-void Inventory::ApplyRolledModEffects(ATgPawn* Pawn, int deviceId, const std::vector<int>& effectGroupIds) {
+void Inventory::ApplyRolledModEffects(ATgPawn* Pawn, int deviceId, int deviceInstanceId, const std::vector<int>& effectGroupIds) {
 	if (Pawn == nullptr) return;
 	if (effectGroupIds.empty()) return;
 
@@ -212,11 +213,17 @@ void Inventory::ApplyRolledModEffects(ATgPawn* Pawn, int deviceId, const std::ve
 	std::sort(uniqueIds.begin(), uniqueIds.end());
 	uniqueIds.erase(std::unique(uniqueIds.begin(), uniqueIds.end()), uniqueIds.end());
 
+	// `asm_data_set_effect_groups` has duplicate rows per effect_group_id (the
+	// asm.dat capture pulls each row twice for unrelated reasons), so a plain
+	// JOIN doubled every effect — `applied=12 from 6 group(s)` instead of 6,
+	// inflating the fItemPercent slot to 2× its intended value. Filter the
+	// `lifetime_sec=0` constraint via a subquery instead so the JOIN can't
+	// multiply rows.
 	std::string sql =
 		"SELECT e.effect_group_id, e.prop_id, e.base_value, e.calc_method_value_id "
 		"FROM asm_data_set_effects e "
-		"JOIN asm_data_set_effect_groups eg ON eg.effect_group_id = e.effect_group_id "
-		"WHERE eg.lifetime_sec = 0 AND e.effect_group_id IN (";
+		"WHERE e.effect_group_id IN (SELECT effect_group_id FROM asm_data_set_effect_groups WHERE lifetime_sec = 0) "
+		"  AND e.effect_group_id IN (";
 	for (size_t i = 0; i < uniqueIds.size(); ++i) {
 		if (i) sql += ',';
 		sql += std::to_string(uniqueIds[i]);
@@ -252,21 +259,57 @@ void Inventory::ApplyRolledModEffects(ATgPawn* Pawn, int deviceId, const std::ve
 		auto it = effectsByEgid.find(egid);
 		if (it == effectsByEgid.end()) continue;
 		for (const EffectRow& r : it->second) {
-			// Header has nPropId set; secondary fields zero so the entry
-			// matches every query for this prop regardless of category /
-			// skill / device-instance constraints (per FUN_109cd890 match rule).
+			// Tag the buff entry with the equipping device's instance id so
+			// the registry naturally per-device-scopes mods. Without this,
+			// every equipped device's mods land in one shared (propId, 0,0,0)
+			// entry — Output Mod (prop 385, on every device) collapses 9
+			// entries into one with fItemPercent ≈ 700.
+			//
+			// FUN_109cd890 search-mode match rule:
+			//   stored devInst > 0 → match only when query devInst equals it
+			//   stored devInst == 0 → wildcard (matches any query)
+			// Skills register with devInst=0 (wildcard) so they continue to
+			// apply across all this pawn's devices. Cross-pawn aura buffs
+			// (Techro station → friendly's accuracy) carry whatever devInst
+			// their effect group's m_nReqDeviceInstanceId says — typically 0.
 			FBuffHeader header{};
-			header.nPropId = r.propId;
+			header.nPropId          = r.propId;
 			header.nReqCategoryCode = 0;
-			header.nReqSkillId = 0;
-			header.nReqDeviceInstId = 0;
+			header.nReqSkillId      = 0;
+			header.nReqDeviceInstId = deviceInstanceId;
+
+			// Output Mod (prop 385) is the universal "secondary output" multiplier
+			// in every ConvertPropToPropList expansion that mentions it (51→{330,
+			// 385} for heal, 51→{65, 385, …} for damage, 318→{357, 385}, 339→
+			// {339, 385}). The PRIMARY modifier in each list (330/65/357/339)
+			// belongs in the ITEM layer of BuffFormula — it sums with other
+			// rolled mods of the same prop additively, then multiplies as one
+			// factor. Output Mod must compose ON TOP of that, in a separate
+			// multiplicative layer; otherwise +8/+9% Heal (IP=17) and +70%
+			// Output Mod (IP=70) collapse into a single IP=87 bucket and the
+			// cross-term is lost (Medical Station heal: 446/tick instead of
+			// 473/tick — verified empirically 2026-05-09).
+			//
+			// Routing 385 to BUFF_SOURCE_TYPE_OTHER (=4) lands it in
+			// fPercentModifier, which BuffFormula consumes as the
+			// SELF+GENERIC layer `(1 + (ΣLP+ΣGP)/100)`. This composes with
+			// the ITEM and SKILL layers as separate factors, matching the
+			// original game's 1.17 × 1.55 × 1.70 ≈ 3.07× multiplier shape.
+			//
+			// ApplyPlayerModsToDeployable's layered formula reads the same
+			// FBuffInfo entry through the same 8-float lens, so changing the
+			// slot from IP to GP is a no-op for deploy-time s_Properties
+			// scaling: when Output Mod is the only entry on prop 385, the
+			// formula collapses to base × (1 + GP/100) either way.
+			const unsigned char srcType =
+				(r.propId == 385) ? /*OTHER*/4 : /*ITEM*/1;
 
 			TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, header, r.calcMethod, r.baseValue,
-			                        /*bRemove=*/0, /*buffSourceType=BUFF_SOURCE_TYPE_ITEM=*/1);
+			                        /*bRemove=*/0, srcType);
 
 			Logger::Log("inventory",
-				"ApplyRolledModEffects: pawn=0x%p device=%d egid=%d propId=%d cm=%d base=%.2f -> ApplyBuff\n",
-				Pawn, deviceId, egid, r.propId, r.calcMethod, r.baseValue);
+				"ApplyRolledModEffects: pawn=0x%p device=%d devInst=%d egid=%d propId=%d cm=%d base=%.2f -> ApplyBuff\n",
+				Pawn, deviceId, deviceInstanceId, egid, r.propId, r.calcMethod, r.baseValue);
 			++applied;
 		}
 	}
@@ -359,6 +402,18 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 	Device->r_nDeviceId = deviceId;
 	Device->r_nQualityValueId = qualityValueId;
 
+	// `m_nSkillId` (offset 0x2B0) — the device's classifying skill_id from
+	// asm_data_set_items.skill_id. The binary's TgDeviceFire::GetPropertyValueById
+	// (0x10a27d40) reads this and passes it as nReqSkillId when calling
+	// GetBuffedProperty, which is what makes multi-row skills (Jetpack Power,
+	// Heavy Impact, Super Engineer, …) deliver only the row matching the firing
+	// device's class. AssemblyDatManager::CreateDevice doesn't populate this
+	// field — that's likely a stripped path on this binary — so we set it
+	// directly. Without this, the binary's GetBuffedProperty queries with
+	// skillId=0, which means stored>0 entries (the multi-row skill rows) never
+	// match → skills silently no-op.
+	Device->m_nSkillId = DeviceCategorySkill::Lookup(deviceId);
+
 	FEquipDeviceInfo eqInfo;
 	eqInfo.nDeviceId = deviceId;
 	eqInfo.nDeviceInstanceId = invId;
@@ -444,7 +499,11 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 	// in the live game; we read them from ga_character_devices.mod_effect_group_ids
 	// here. Each one targets a property like AOE Radius / Recharge / Healing,
 	// applied as additive or percent modifier on the pawn's s_Properties.
-	ApplyRolledModEffects(Pawn, deviceId, mods);
+	//
+	// Pass `invId` so each entry is tagged with the device's instance id,
+	// scoping the mod to this device only. See ApplyRolledModEffects header
+	// for the per-device-scoping rationale.
+	ApplyRolledModEffects(Pawn, deviceId, invId, mods);
 
 	// --- Mirror rolled mods onto the inventory object so server-side UC reads
 	// see them too. The TArray is freshly constructed (Data=NULL, Count=0) by

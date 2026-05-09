@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgDeviceFire/GetPropertyValueById/TgDeviceFire__GetPropertyValueById.hpp"
+#include "src/GameServer/TgGame/BuffEffectRegistry/DeviceCategorySkill.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <cstring>
 
@@ -104,22 +105,39 @@ typedef void(__fastcall* GetBuffedPropertyFn)(ATgPawn*, void*, unsigned char,
 static const GetBuffedPropertyFn GetBuffedPropertyNative =
     (GetBuffedPropertyFn)0x109d7ff0;
 
-static float ApplyBuffsToBaseValue(ATgPawn* pawn, int propertyId, float baseVal) {
+static float ApplyBuffsToBaseValue(ATgPawn* pawn, int propertyId, float baseVal,
+                                   int firingDeviceInstId,
+                                   int firingDeviceCategorySkillId) {
     if (!pawn) return baseVal;
     float out = baseVal;
     // Context 3 = BUFF_DEVICE — same context the binary's cached-index path
     // uses. ConvertPropToPropList(BUFF_DEVICE, prop) expands the input prop
     // to its modifier counterpart (e.g. 245 Accuracy-Walk → 113 Accuracy
-    // Modifier; 6 DamageRadius → 352 AOE Radius Modifier). Filter all four
-    // header secondaries to 0 — the binary's search-only match treats stored
-    // 0 as a wildcard, so this filter matches both wildcard registry entries
-    // (our station auras, src=4) and category/skill-tagged ones.
+    // Modifier; 6 DamageRadius → 352 AOE Radius Modifier).
+    //
+    // `firingDeviceInstId` filters by device: per FUN_109cd890 search-mode,
+    // an entry stored with devInst > 0 only matches when the query devInst
+    // equals it; entries stored with devInst == 0 are wildcards and match
+    // any query. So this query picks up:
+    //   - the firing device's own rolled-mod entries (stored devInst = X)
+    //   - skill-source entries (stored devInst = 0, wildcard)
+    //   - cross-pawn aura buffs (stored devInst = 0, wildcard)
+    // and skips OTHER equipped devices' rolled-mod entries (stored
+    // devInst = Y ≠ X) — fixing the prop-385 (Output Mod) accumulation
+    // pathology where 9 equipped devices each contributed 70-75%.
+    //
+    // `firingDeviceCategorySkillId` filters by device class. Skills like
+    // Heavy Impact / Jetpack Power / Super Engineer write per-row entries
+    // with `nReqSkillId = required_skill_id` (e.g., 276 Assault Guns,
+    // 360 Medic Jetpack). Passing the firing device's classifying skillId
+    // here means only the matching row contributes — non-matching rows
+    // silently miss per the search rule. 0 = wildcard / unknown device.
     GetBuffedPropertyNative(pawn, /*edx=*/nullptr,
                             /*eRequestContext=*/3,
                             /*nPropId=*/propertyId,
                             /*nReqCategoryCode=*/0,
-                            /*nReqSkillId=*/0,
-                            /*nReqDeviceInstId=*/0,
+                            /*nReqSkillId=*/firingDeviceCategorySkillId,
+                            /*nReqDeviceInstId=*/firingDeviceInstId,
                             /*bUsePotencyModifier=*/0,
                             /*fBaseValue=*/baseVal,
                             /*fBuffedValue=*/&out,
@@ -140,16 +158,32 @@ float __fastcall TgDeviceFire__GetPropertyValueById::Call(UTgDeviceFire* DeviceF
 	//     deployable's s_Properties via ApplyPlayerModsToDeployable at spawn.
 	//
 	// Same trick the binary uses: classify owner type, route fallback accordingly.
-	ATgPawn*       pawn       = nullptr;
-	ATgDeployable* deployable = nullptr;
+	ATgPawn*       pawn               = nullptr;
+	ATgDeployable* deployable         = nullptr;
+	int            firingDeviceInstId = 0;  // 0 = wildcard (deployable / unknown owner)
+	int            firingDeviceCatSkill = 0;  // 0 = wildcard (deployable / unknown)
 	if (DeviceFire->m_Owner) {
 		if (IsTgDeployable((UObject*)DeviceFire->m_Owner)) {
 			deployable = (ATgDeployable*)DeviceFire->m_Owner;
 			// Pawn = the player who placed the deployable (Instigator @ +0xD4).
 			pawn = (ATgPawn*)deployable->Instigator;
+			// Deployable fire-modes don't tag to a player-side device instId.
+			// Their rolled-mod scaling is already baked into the deployable's
+			// s_Properties at spawn (ApplyPlayerModsToDeployable), so leaving
+			// the query as wildcard here just picks up the placer's wildcard
+			// entries (skills, station auras) on top. Same reasoning for the
+			// classifying skillId — leave at 0 so any device-class skill the
+			// player has registers.
+			firingDeviceInstId   = 0;
+			firingDeviceCatSkill = 0;
 		} else {
-			ATgDevice* device = (ATgDevice*)DeviceFire->m_Owner;
-			pawn = (ATgPawn*)device->Instigator;
+			ATgDevice* device    = (ATgDevice*)DeviceFire->m_Owner;
+			pawn                 = (ATgPawn*)device->Instigator;
+			firingDeviceInstId   = device->r_nDeviceInstanceId;
+			// Map device id → classifying skill id so multi-row skills
+			// (Jetpack Power, Heavy Impact, Super Engineer, …) deliver the
+			// correct row. Looked up from asm_data_set_items.skill_id.
+			firingDeviceCatSkill = DeviceCategorySkill::Lookup(device->r_nDeviceId);
 		}
 	}
 
@@ -221,7 +255,8 @@ float __fastcall TgDeviceFire__GetPropertyValueById::Call(UTgDeviceFire* DeviceF
 	// already baked into the deployable's s_Properties by
 	// ApplyPlayerModsToDeployable at spawn.
 	if (!resolved && !deployable && pawn) {
-		val = ApplyBuffsToBaseValue(pawn, nPropertyId, val);
+		val = ApplyBuffsToBaseValue(pawn, nPropertyId, val, firingDeviceInstId,
+		                            firingDeviceCatSkill);
 	}
 
 	if (trace) {

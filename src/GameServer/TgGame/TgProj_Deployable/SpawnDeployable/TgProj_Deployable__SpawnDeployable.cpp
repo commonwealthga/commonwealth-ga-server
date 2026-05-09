@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/ApplyPlayerModsToDeployable.hpp"
+#include "src/GameServer/TgGame/BuffEffectRegistry/DeployableOriginRegistry.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
@@ -271,7 +272,7 @@ float TgProj_Deployable__SpawnDeployable::GetPetDeployTimeSecs(int nBotId) {
 	return secs;
 }
 
-float TgProj_Deployable__SpawnDeployable::ApplyDeployTimeBuff(ATgPawn* pawn, float baseSecs) {
+float TgProj_Deployable__SpawnDeployable::ApplyDeployTimeBuff(ATgPawn* pawn, float baseSecs, int deviceInstId) {
 	if (!pawn || baseSecs <= 0.0f) return baseSecs;
 
 	// GetBuffedProperty (TgPawn vtable[0x55C], FUN_109d7ff0). Direct call rather
@@ -291,7 +292,7 @@ float TgProj_Deployable__SpawnDeployable::ApplyDeployTimeBuff(ATgPawn* pawn, flo
 		/*nPropId=*/279,              // Time To Deploy (secs)
 		/*nReqCategoryCode=*/0,
 		/*nReqSkillId=*/0,
-		/*nReqDeviceInstId=*/0,
+		/*nReqDeviceInstId=*/deviceInstId,
 		/*bUsePotencyModifier=*/0,
 		/*fBaseValue=*/baseSecs,
 		/*fBuffedValue=*/&buffedSecs,
@@ -671,6 +672,9 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// Both fields are CPF_Net so the client also sees the attribution.
 	if (sourceDevice)   Deployable->r_Owner             = sourceDevice;
 	if (sourceFireMode) Deployable->s_SpawnerDeviceMode = sourceFireMode;
+
+	// (Identity stamping moved to end-of-function — m_FireMode isn't
+	// initialized at this point; needs to run after all deploy setup.)
 
 	Logger::Log("team_colors",
 		"[Instigator-fix] deployable=0x%p  Spawn returned Instigator=%p Owner=%p  → patched to Instigator=%p Owner=%p  (pawn=%p)\n",
@@ -1204,7 +1208,8 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// deployable feel uniform). Stations/turrets get explicit 5–15s from
 	// prop 279; bombs/mines/forcefields get 0.1s so they "deploy" instantly.
 	{
-		float deploySecs = ApplyDeployTimeBuff(pawn, GetDeployTimeSecs(deployableId));
+		float deploySecs = ApplyDeployTimeBuff(pawn, GetDeployTimeSecs(deployableId),
+		                                       sourceDevice ? sourceDevice->r_nDeviceInstanceId : 0);
 		Deployable->r_fTimeToDeploySecs = deploySecs;
 		Deployable->bNetDirty           = 1;
 		Deployable->bForceNetUpdate     = 1;
@@ -1261,7 +1266,81 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// reads) in addition to the s_Properties[6] value (which the server-side
 	// damage AoE reads via GetDamageRadius). Handles both the visual-warning
 	// path AND the actual-damage path in one shot. See ApplyPlayerModsToDeployable.cpp.
-	ApplyPlayerModsToDeployable::Apply(pawn, Deployable);
+	// `sourceDevice->r_nDeviceInstanceId` filters the pawn's buff registry to
+	// THIS deploying device's mods + wildcards (skills). Without it, every
+	// other equipped weapon's mods would also fold into the deployable's
+	// props (Output Mod on every device alone would inflate radius/damage
+	// by ~7×). Pass 0 if no source device — only wildcard entries fold in.
+	ApplyPlayerModsToDeployable::Apply(pawn, Deployable,
+	                                   sourceDevice ? sourceDevice->r_nDeviceInstanceId : 0);
+
+	// Stamp deployable + internal fire-mode owner with the deploy device's
+	// identity so UC's `TgEffectGroup.InitInstance` (TgEffectGroup.uc:121-141)
+	// can populate cloned heal/buff effects' `m_nSourceDeviceInstId` /
+	// `m_nSourceDeviceSkillId` from the player's deploy device instead of
+	// from the (zeroed) deployable-internal device.
+	//
+	// UC reads `Impact.DeviceModeReference.m_Owner` and switches:
+	//   - if TgDevice → reads `Dev.r_nDeviceInstanceId` / `Dev.m_nSkillId`
+	//   - else if TgDeployable → reads `dep.GetSpawnerDeviceInstanceId()` /
+	//                                `dep.GetFireDeviceSkillId()`
+	//
+	// Both natively return 0 in our env unless we wire the underlying fields.
+	// Diagnostic confirmed: cloneSrcDevInst=0 at heal-fire time → query
+	// passes devInst=0 / skillId=0 → only pure-wildcard buff entries match.
+	//
+	// Done at end-of-function: m_FireMode is initialized AFTER Spawn (e.g.,
+	// by ApplyDeployableSetup further up); stamping at the early r_Owner-set
+	// site found m_FireMode=null and silently skipped.
+	if (sourceDevice) {
+		// `m_FireSkillId` (offset 0x22C) → covers UC's dep branch via
+		// `GetFireDeviceSkillId`. The s_SpawnerDeviceMode chain we already
+		// set above gives `GetSpawnerDeviceInstanceId` the right answer.
+		Deployable->m_FireSkillId = sourceDevice->m_nSkillId;
+
+		// Internal-device case: if m_FireMode's owner is a TgDevice (the
+		// deployable's stub heal/damage device, not the deployable itself),
+		// stamp that device's identity so UC's Dev branch reads the
+		// player's deploy-device values.
+		if (Deployable->m_FireMode && Deployable->m_FireMode->m_Owner) {
+			AActor* fireOwner = Deployable->m_FireMode->m_Owner;
+			const char* foClass = fireOwner->Class ? fireOwner->Class->GetFullName() : nullptr;
+			if (foClass && strstr(foClass, "TgDeployable") == nullptr
+			            && strstr(foClass, "TgDeploy_")    == nullptr) {
+				ATgDevice* internalDev = (ATgDevice*)fireOwner;
+				internalDev->r_nDeviceInstanceId = sourceDevice->r_nDeviceInstanceId;
+				internalDev->m_nSkillId          = sourceDevice->m_nSkillId;
+				Logger::Log("deployable",
+					"[fire-owner-stamp] deployable=0x%p  internalDev=0x%p (class=%s)  "
+					"r_nDeviceInstanceId=%d m_nSkillId=%d (from sourceDevice 0x%p)\n",
+					Deployable, internalDev, foClass,
+					sourceDevice->r_nDeviceInstanceId, sourceDevice->m_nSkillId,
+					sourceDevice);
+			} else {
+				Logger::Log("deployable",
+					"[fire-owner-stamp] deployable=0x%p  fire owner is %s — skipping device stamp "
+					"(dep branch handled via m_FireSkillId + s_SpawnerDeviceMode)\n",
+					Deployable, foClass ? foClass : "<null>");
+			}
+		} else {
+			Logger::Log("deployable",
+				"[fire-owner-stamp] deployable=0x%p  m_FireMode=%p m_Owner=%p — no fire-mode owner to stamp\n",
+				Deployable, (void*)Deployable->m_FireMode,
+				(void*)(Deployable->m_FireMode ? Deployable->m_FireMode->m_Owner : nullptr));
+		}
+	}
+
+	// Track the spawning device on the deployable so the deployable's
+	// fire-time effect-clone path can use the deploy device's instId+skillId
+	// instead of the deployable's internal fire-mode device. Without this,
+	// a medical station's heal-fire CloneEffectGroup queries with the
+	// station's internal device instId — none of the player's mods or
+	// multi-row skills (which are tagged with the player's deploy-device
+	// instId/skillId) match, so heal output is unmodified.
+	DeployableOriginRegistry::Register(
+		Deployable,
+		sourceDevice ? sourceDevice->r_nDeviceInstanceId : 0,
+		sourceDevice ? sourceDevice->m_nSkillId            : 0);
 
 	// Bomb diagnostic: after all setup is done, dump bomb-specific replicated
 	// state (tick time, destroy flags, mesh, fire mode, life span).  If bombs

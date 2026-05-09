@@ -65,7 +65,23 @@ bool IsModifierProp(int pid) {
 		case 215:  // Attack Rating Modifier - Ranged
 		case 231:  // Attack Rate Modifier - Melee
 		case 232:  // Attack Rate Modifier - Ranged
+		case 242:  // Power Pool Cost (per shot) — 13 class-157 skills (Jetpack Power,
+		           // Bio Rifle Power, Beam Heal Cost, Stealth Restealth, Spare Power…)
+		           // reduce per-fire power cost by %. Direct write to s_Properties[242]
+		           // silently no-ops (pawn prop 242 base=0; POWERPOOL_COST lives on the
+		           // device-mode, not the pawn). ConvertPropToPropList(BUFF_DEVICE, 242)
+		           // falls through to identity in FUN_109e5220, so an entry stored under
+		           // propId=242 should be picked up by GetBuffedProperty(BUFF_DEVICE, 242).
+		           // Note: GetShotPowerCost @ 0x10a1b640 calls UTgDeviceFire vtable[0x12c]
+		           // with propId=0xf2 — that slot's exact buff-math behavior is
+		           // unverified. Worst case the skill no-ops the same way as today.
 		case 360:  // DeployRate Modifier Buff
+		case 322:  // Power Pool Cost - Block (per sec) — class 157, used by Robotic/Assault/Medic Melee II
+		case 381:  // Pet Range Modifier — class 157, Drone Range / pet rifle range skills
+		case 382:  // Pet Damage Radius Modifier — class 157, Super Destroyer / Combat Off-Hand Utility
+		case 383:  // Pet Accuracy Modifier — class 157, pet accuracy skills
+		// (prop 353 MakeVisible Fade Rate is NOT here — it's class 80 TgEffect, intended as a direct
+		//  pawn property write. Initialize it in InitializeDefaultProps so the direct path lands.)
 			return true;
 		default:
 			return false;

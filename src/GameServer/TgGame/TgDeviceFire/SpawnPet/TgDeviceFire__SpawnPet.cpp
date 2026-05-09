@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgDeviceFire/SpawnPet/TgDeviceFire__SpawnPet.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
+#include "src/GameServer/TgGame/TgDeviceFire/SpawnPet/ApplyPlayerModsToPet.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Engine/World/GetGameInfo/World__GetGameInfo.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -118,6 +119,16 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 			PetPawn->Controller ? PetPawn->Controller->Rotation.Yaw   : 0,
 			PetPawn->Controller ? PetPawn->Controller->Rotation.Roll  : 0);
 		PetPawn->r_bInitialIsEnemy = 0;
+
+		// Bridge the deploying player's pet-related buff registry to the pet's
+		// own s_Properties so player skills (Drone Damage / Pet Range / etc.)
+		// actually scale the pet's stats. The pet's TgDeviceFire reads the
+		// PET's m_EffectBuffInfo at fire time, not the player's, so without
+		// this baking step those skills silently no-op. Mirrors
+		// ApplyPlayerModsToDeployable's design for deployables.
+		ApplyPlayerModsToPet::Apply(pawn, PetPawn,
+		                            device ? device->r_nDeviceInstanceId : 0);
+
 		ATgRepInfo_Player* PetRep = (ATgRepInfo_Player*)PetPawn->PlayerReplicationInfo;
 		ATgRepInfo_Player* PawnRep = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
 		PetRep->r_TaskForce = PawnRep->r_TaskForce;
@@ -172,7 +183,8 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 				// r_bIsDeployed reset to fresh values for a clean deploy cycle.
 				float petDeploySecs = TgProj_Deployable__SpawnDeployable::ApplyDeployTimeBuff(
 					pawn,
-					TgProj_Deployable__SpawnDeployable::GetPetDeployTimeSecs(petId));
+					TgProj_Deployable__SpawnDeployable::GetPetDeployTimeSecs(petId),
+					device ? device->r_nDeviceInstanceId : 0);
 				turret->r_fTimeToDeploySecs  = petDeploySecs;
 				turret->r_fCurrentDeployTime = 0.0f;
 				turret->r_bIsDeployed        = 0;

@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
 #include "src/GameServer/TgGame/BuffEffectRegistry/BuffEffectRegistry.hpp"
+#include "src/GameServer/TgGame/BuffEffectRegistry/DeployableOriginRegistry.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -376,6 +377,14 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 					g->m_nDamageType = fmDamageType;
 					g->m_eAttackType = eAttackType;
 					TARRAY_ADD(egList, g)
+					// Associate this template with the fire-mode that owns
+					// it. CloneEffectGroup uses this to recover the firing
+					// entity (deployable) when UC's `InitInstance` leaves
+					// `m_nSourceDeviceInstId == 0` — happens for
+					// deployable-fired effects whose Impact has no
+					// DeviceModeReference. Set-once per template (lazy
+					// init), so no race between simultaneous deployers.
+					DeployableOriginRegistry::NoteTemplateOwner(g, pThis);
 				}
 			}
 		}

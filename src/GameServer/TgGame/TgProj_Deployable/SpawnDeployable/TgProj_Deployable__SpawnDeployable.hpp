@@ -94,7 +94,12 @@ public:
 	// BUFF_DEVICE context, which in turn calls ConvertPropToPropList(3, 279)
 	// → {391}, picks up the player's stacked skill modifiers, and returns the
 	// scaled time. Pass-through when the pawn has no relevant buff.
-	static float ApplyDeployTimeBuff(class ATgPawn* pawn, float baseSecs);
+	//
+	// `deviceInstId` filters the buff registry to entries scoped to the
+	// deploying device (`r_nDeviceInstanceId`) plus wildcards. Skills register
+	// wildcard so they always fold in. Other equipped weapons' deploy-time
+	// rolled mods (if any) stay scoped to their own device.
+	static float ApplyDeployTimeBuff(class ATgPawn* pawn, float baseSecs, int deviceInstId);
 
 	// True iff asm_data_set_deployables.health > 0 for this deployable_id.
 	// HP-zero deployables (Shatter Bomb, EMP Bomb, etc) are pre-explosion

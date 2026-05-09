@@ -3,11 +3,20 @@
 #include "src/Utils/Logger/Logger.hpp"
 
 namespace {
-// Find the FBuffInfo entry on the pawn whose nPropId matches `modifierPropId`.
-// Sums across multiple matching entries (mirrors the binary's aggregator).
-// Out: (IP, IM, SP, SM, LP, LM, GP, GM) — the 8 floats from FBuffInfo summed
-// across all matches, used by the layered formula.
-static bool GatherBuffSums(ATgPawn* pawn, int modifierPropId,
+// Find the FBuffInfo entries on the pawn whose nPropId matches and whose
+// devInst either matches `sourceDeviceInstId` (device-scoped) or is 0
+// (wildcard). Sums across all matches — mirrors the binary's aggregator
+// (FUN_109cd6f0) feeding the layered formula (FUN_109cd4a0).
+//
+// Out: (IP, IM, SP, SM, LP, LM, GP, GM) — the 8 modifier floats summed
+// across all matched entries.
+//
+// Match rule (mirrors FUN_109cd890 search-mode):
+//   entry.devInst > 0 → match only when entry.devInst == sourceDeviceInstId
+//   entry.devInst == 0 → wildcard, always match
+// Skills register with devInst=0 → fold in. Other equipped devices'
+// rolled mods register with their own devInst > 0 → filtered out.
+static bool GatherBuffSums(ATgPawn* pawn, int modifierPropId, int sourceDeviceInstId,
                            float& IP, float& IM,
                            float& SP, float& SM,
                            float& LP, float& LM,
@@ -19,6 +28,8 @@ static bool GatherBuffSums(ATgPawn* pawn, int modifierPropId,
 	for (int i = 0; i < pawn->m_EffectBuffInfo.Num(); ++i) {
 		FBuffInfo& e = pawn->m_EffectBuffInfo.Data[i];
 		if (e.BuffHeader.nPropId != modifierPropId) continue;
+		const int storedInst = e.BuffHeader.nReqDeviceInstId;
+		if (storedInst > 0 && storedInst != sourceDeviceInstId) continue;
 		IP += e.fItemPercentModifier;
 		IM += e.fItemModifier;
 		SP += e.fSkillPercentModifier;
@@ -43,7 +54,7 @@ static UTgProperty* FindDeployableProp(ATgDeployable* deployable, int propId) {
 }
 } // anonymous namespace
 
-void ApplyPlayerModsToDeployable::Apply(ATgPawn* pawn, ATgDeployable* deployable) {
+void ApplyPlayerModsToDeployable::Apply(ATgPawn* pawn, ATgDeployable* deployable, int sourceDeviceInstId) {
 	if (!pawn || !deployable) return;
 	if (!pawn->m_EffectBuffInfo.Data || pawn->m_EffectBuffInfo.Num() == 0) {
 		Logger::Log("inventory",
@@ -58,7 +69,8 @@ void ApplyPlayerModsToDeployable::Apply(ATgPawn* pawn, ATgDeployable* deployable
 	for (int m = 0; m < kNumMaps; ++m) {
 		const ModifierProps::BuffDeviceMapping& mm = ModifierProps::kBuffDeviceModMap[m];
 		float IP, IM, SP, SM, LP, LM, GP, GM;
-		if (!GatherBuffSums(pawn, mm.modifierPropId, IP, IM, SP, SM, LP, LM, GP, GM))
+		if (!GatherBuffSums(pawn, mm.modifierPropId, sourceDeviceInstId,
+		                    IP, IM, SP, SM, LP, LM, GP, GM))
 			continue;
 
 		// Apply layered formula to each target prop on the deployable.
@@ -131,7 +143,7 @@ void ApplyPlayerModsToDeployable::Apply(ATgPawn* pawn, ATgDeployable* deployable
 	// runs when prop 352 has at least one entry on the pawn.
 	{
 		float IP, IM, SP, SM, LP, LM, GP, GM;
-		if (GatherBuffSums(pawn, /*modifierPropId=*/352,
+		if (GatherBuffSums(pawn, /*modifierPropId=*/352, sourceDeviceInstId,
 		                   IP, IM, SP, SM, LP, LM, GP, GM)) {
 			float proxBase = deployable->s_fProximityRadius;
 			if (proxBase > 0.0f) {

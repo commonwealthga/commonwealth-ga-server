@@ -1,6 +1,8 @@
 #include "src/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/ConstructEffectGroup/TgEffectGroup__ConstructEffectGroup.hpp"
 #include "src/GameServer/TgGame/BuffEffectRegistry/BuffEffectRegistry.hpp"
+#include "src/GameServer/TgGame/BuffEffectRegistry/DeviceCategorySkill.hpp"
+#include "src/GameServer/TgGame/BuffEffectRegistry/DeployableOriginRegistry.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -189,9 +191,27 @@ UTgEffectGroup* __fastcall TgEffectGroup__CloneEffectGroup::Call(UTgEffectGroup*
 		if (effClassName && strstr(effClassName, "TgEffectDamage") != nullptr) {
 			AActor* inst = clone->m_Instigator;
 			if (inst && effClone->m_fBase > 0.0f) {
+				ATgPawn* instPawn = nullptr;
+				ATgDeployable* depInstigator = nullptr;
 				const char* instClass = inst->Class ? inst->Class->GetFullName() : nullptr;
 				if (instClass && strstr(instClass, "TgPawn") != nullptr) {
-					ATgPawn* instPawn = (ATgPawn*)inst;
+					instPawn = (ATgPawn*)inst;
+				} else if (instClass && strstr(instClass, "TgDeployable") != nullptr) {
+					// Damage-dealing deployable (sentry mine, AOE bomb).
+					// Walk back to the deploying pawn; we'll override the
+					// query's devInst+skillId with the deploy device's
+					// values from the registry.
+					depInstigator = (ATgDeployable*)inst;
+					APawn* depInst = ((AActor*)inst)->Instigator;
+					if (depInst && depInst->Class) {
+						const char* depCls = depInst->Class->GetFullName();
+						if (depCls && strstr(depCls, "TgPawn") != nullptr) {
+							instPawn = (ATgPawn*)depInst;
+						}
+					}
+				}
+
+				if (instPawn) {
 					typedef void(__fastcall* GetBuffedPropertyFn)(
 						ATgPawn*, void*, unsigned char,
 						int, int, int, int, int, float, float*, void*);
@@ -199,13 +219,57 @@ UTgEffectGroup* __fastcall TgEffectGroup__CloneEffectGroup::Call(UTgEffectGroup*
 						(GetBuffedPropertyFn)0x109d7ff0;
 					float origBase = effClone->m_fBase;
 					float buffedBase = origBase;
+
+					// Resolve the firing-device identity for the buff query.
+					// Player-fired: clone->m_nSourceDeviceInstId is the
+					// equipped device — Inventory tracks it.
+					// Deployable-fired: it's the deployable's internal
+					// device which the player never equipped, so we use
+					// the deploy device's instId+skillId from
+					// DeployableOriginRegistry. Without this override
+					// damage-dealing deployables ignore all rolled mods
+					// and multi-row skills.
+					int queryDevInst  = clone->m_nSourceDeviceInstId;
+					int queryCatSkill = DeviceCategorySkill::LookupByInstanceId(
+						instPawn, queryDevInst);
+					if (depInstigator) {
+						DeployableOriginRegistry::Origin origin =
+							DeployableOriginRegistry::Lookup(depInstigator);
+						queryDevInst  = origin.spawnDeviceInstId;
+						queryCatSkill = origin.spawnDeviceSkillId;
+					} else if (queryDevInst == 0) {
+						// Same fallback as [EFFECT-BUFF] — recover firing
+						// fire-mode from the per-template owner map for
+						// deployable-fired damage effects (sentry mines,
+						// AOE bombs) where UC's InitInstance failed to
+						// populate m_nSourceDeviceInstId.
+						UTgDeviceFire* firingFM = DeployableOriginRegistry::GetTemplateOwner(eg);
+						if (firingFM && firingFM->m_Owner && firingFM->m_Owner->Class) {
+							const char* fmoCls = firingFM->m_Owner->Class->GetFullName();
+							if (fmoCls && (strstr(fmoCls, "TgDeployable") != nullptr ||
+							               strstr(fmoCls, "TgDeploy_")    != nullptr)) {
+								ATgDeployable* dep = (ATgDeployable*)firingFM->m_Owner;
+								DeployableOriginRegistry::Origin origin =
+									DeployableOriginRegistry::Lookup(dep);
+								queryDevInst  = origin.spawnDeviceInstId;
+								queryCatSkill = origin.spawnDeviceSkillId;
+							}
+						}
+					}
+
+					// `nReqCategoryCode = clone->m_nCategoryCode`: pass
+					// firing effect-group's category. A sentry mine's
+					// damage effect-group has its own cat tag (e.g.
+					// "Station Damage" 1326 for damage-dealing stations);
+					// only Station Buff's +20% Station Damage entry
+					// (stored cat=1326) matches.
 					GetBuffedPropertyNative(
 						instPawn, /*edx=*/nullptr,
 						/*eRequestContext=*/4,         // BUFF_OTHER (identity for prop 65)
 						/*nPropId=*/65,                // TGPID_DAMAGE_MODIFIER
-						/*nReqCategoryCode=*/0,
-						/*nReqSkillId=*/0,
-						/*nReqDeviceInstId=*/0,
+						/*nReqCategoryCode=*/clone->m_nCategoryCode,
+						/*nReqSkillId=*/queryCatSkill,
+						/*nReqDeviceInstId=*/queryDevInst,
 						/*bUsePotencyModifier=*/0,
 						/*fBaseValue=*/origBase,
 						/*fBuffedValue=*/&buffedBase,
@@ -287,6 +351,7 @@ UTgEffectGroup* __fastcall TgEffectGroup__CloneEffectGroup::Call(UTgEffectGroup*
 		if (effClassName && strstr(effClassName, "TgEffectDamage") == nullptr
 		    && effClone->m_fBase != 0.0f) {
 			ATgPawn* srcPawn = nullptr;
+			ATgDeployable* depInstigator = nullptr;
 			AActor* inst = clone->m_Instigator;
 			if (inst && inst->Class) {
 				const char* instCls = inst->Class->GetFullName();
@@ -296,6 +361,7 @@ UTgEffectGroup* __fastcall TgEffectGroup__CloneEffectGroup::Call(UTgEffectGroup*
 					// Walk back to the deploying pawn via the deployable's
 					// engine Instigator field. Cast through APawn — both
 					// TgDeployable and TgPawn inherit Instigator from AActor.
+					depInstigator = (ATgDeployable*)inst;
 					APawn* depInst = ((AActor*)inst)->Instigator;
 					if (depInst && depInst->Class) {
 						const char* depCls = depInst->Class->GetFullName();
@@ -314,14 +380,117 @@ UTgEffectGroup* __fastcall TgEffectGroup__CloneEffectGroup::Call(UTgEffectGroup*
 					(GetBuffedPropertyFn)0x109d7ff0;
 				float origBase = effClone->m_fBase;
 				float buffedBase = origBase;
+
+				// Resolve the firing-device identity for the buff query.
+				// For a player-fired effect: clone->m_nSourceDeviceInstId is
+				// the player's own equipped device — Inventory tracks it,
+				// so DeviceCategorySkill::LookupByInstanceId resolves the
+				// skillId from item_id.
+				//
+				// For a deployable-fired effect (medical station heal,
+				// sensor scan, etc.): clone->m_nSourceDeviceInstId is the
+				// DEPLOYABLE's internal fire-mode device — a separate
+				// device the player has never equipped, so it's not in
+				// Inventory, the skillId lookup misses, AND the rolled
+				// mods (registered on the player's deploy device) don't
+				// match either. Override with the deploy device's instId
+				// + skillId from DeployableOriginRegistry, which we
+				// recorded at SpawnDeployableActor time.
+				int queryDevInst   = clone->m_nSourceDeviceInstId;
+				int queryCatSkill  = DeviceCategorySkill::LookupByInstanceId(
+					srcPawn, queryDevInst);
+				const char* pathTag = "player";
+				if (depInstigator) {
+					DeployableOriginRegistry::Origin origin =
+						DeployableOriginRegistry::Lookup(depInstigator);
+					queryDevInst  = origin.spawnDeviceInstId;
+					queryCatSkill = origin.spawnDeviceSkillId;
+					pathTag = "deployable";
+				} else if (queryDevInst == 0) {
+					// Player-instigator path (e.g. medical-station heals where
+					// UC sets m_Instigator = the deploying player) AND UC's
+					// InitInstance failed to populate m_nSourceDeviceInstId
+					// because Impact.DeviceModeReference was null.
+					//
+					// Recover the firing fire-mode from the per-template
+					// owner map (set when GetEffectGroup lazy-populates
+					// s_EffectGroupList). The map is keyed on the TEMPLATE
+					// effect group pointer, which the caller passed to us
+					// as `eg` (closed over by the surrounding function).
+					// Templates are 1:1 with their owning fire-mode and
+					// set-once at init, so this is race-free even if
+					// multiple players deploy simultaneously.
+					UTgDeviceFire* firingFM = DeployableOriginRegistry::GetTemplateOwner(eg);
+					if (firingFM && firingFM->m_Owner && firingFM->m_Owner->Class) {
+						const char* fmoCls = firingFM->m_Owner->Class->GetFullName();
+						if (fmoCls && (strstr(fmoCls, "TgDeployable") != nullptr ||
+						               strstr(fmoCls, "TgDeploy_")    != nullptr)) {
+							ATgDeployable* dep = (ATgDeployable*)firingFM->m_Owner;
+							DeployableOriginRegistry::Origin origin =
+								DeployableOriginRegistry::Lookup(dep);
+							queryDevInst  = origin.spawnDeviceInstId;
+							queryCatSkill = origin.spawnDeviceSkillId;
+							pathTag = "deployable-via-template";
+						}
+					}
+				}
+
+				// Diagnostic: see what cat/skill/devInst we end up querying with.
+				Logger::Log("effects",
+					"[EFFECT-BUFF/probe] propId=%d cloneCat=%d cloneSrcDevInst=%d  path=%s  "
+					"queryCat=%d querySkill=%d queryDevInst=%d  inst=%p depInst=%p src=%p\n",
+					effClone->m_nPropertyId, clone->m_nCategoryCode,
+					clone->m_nSourceDeviceInstId, pathTag,
+					clone->m_nCategoryCode, queryCatSkill, queryDevInst,
+					inst, depInstigator, srcPawn);
+
+				// Dump matching prop-330/385/376 buff entries on srcPawn so we
+				// can see whether Station Buff/Cyber Specialist/rolled mods
+				// are even in m_EffectBuffInfo, with what stored gating values.
+				if (srcPawn && srcPawn->m_EffectBuffInfo.Data) {
+					int n = srcPawn->m_EffectBuffInfo.Num();
+					for (int bi = 0; bi < n; ++bi) {
+						FBuffInfo& e = srcPawn->m_EffectBuffInfo.Data[bi];
+						int p = e.BuffHeader.nPropId;
+						if (p == 330 || p == 385 || p == 376 || p == 51) {
+							Logger::Log("effects",
+								"   [BUFFINFO/probe] idx=%d prop=%d cat=%d skill=%d devInst=%d  "
+								"IP=%.2f IM=%.2f SP=%.2f SM=%.2f selfP=%.2f selfM=%.2f genP=%.2f genM=%.2f\n",
+								bi, p, e.BuffHeader.nReqCategoryCode,
+								e.BuffHeader.nReqSkillId, e.BuffHeader.nReqDeviceInstId,
+								e.fItemPercentModifier, e.fItemModifier,
+								e.fSkillPercentModifier, e.fSkillModifier,
+								e.fSelfPercentModifier, e.fSelfModifier,
+								e.fPercentModifier,     e.fModifier);
+						}
+					}
+				}
+
+				// `bUsePotencyModifier=1`: ConvertPropToPropList(BUFF_PAWN, …)
+				// adds prop 376 (Effect Potency Modifier) to the search list
+				// only when the potency flag is set. Skills like Station Buff
+				// (+20/50/20% prop 376 gated to "Stations") and Cyber
+				// Specialist's stations row (+15/15/50% prop 376) are
+				// otherwise unreachable. Safe in BUFF_PAWN context — the
+				// binary's expansion only adds 376 in this branch.
+				//
+				// `nReqCategoryCode = clone->m_nCategoryCode`: pass the
+				// firing effect-group's category. For a Medical Station's
+				// heal effect-group 6026 this is 1324 (Station Healing) —
+				// only Station Buff's +20% Station Healing entry matches,
+				// while +50% Station Protection / +20% Station Damage
+				// entries (stored cat 1327 / 1326) miss per the
+				// stored>0-must-equal-query rule. Without this filter all
+				// three prop-376 entries collapse into one slot and stack
+				// to +90% (the "absurd over-buffing" path).
 				GetBuffedPropertyNative(
 					srcPawn, /*edx=*/nullptr,
 					/*eRequestContext=*/1,         // BUFF_PAWN — effect-on-pawn
 					/*nPropId=*/effClone->m_nPropertyId,
-					/*nReqCategoryCode=*/0,
-					/*nReqSkillId=*/0,
-					/*nReqDeviceInstId=*/0,
-					/*bUsePotencyModifier=*/0,
+					/*nReqCategoryCode=*/clone->m_nCategoryCode,
+					/*nReqSkillId=*/queryCatSkill,
+					/*nReqDeviceInstId=*/queryDevInst,
+					/*bUsePotencyModifier=*/1,
 					/*fBaseValue=*/origBase,
 					/*fBuffedValue=*/&buffedBase,
 					/*Effect=*/effClone);
