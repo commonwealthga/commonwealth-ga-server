@@ -128,14 +128,16 @@ void TgGame__SpawnBotById::GiveDeviceById(
 
 		Device->Instigator = (APawn*)Pawn;
 
-		Device->Base = Pawn;
 		Device->Role = 3;
 		Device->RemoteRole = 1;
 		Device->bNetInitial = 1;
 		Device->bNetDirty = 1;
-		Device->bReplicateMovement = 1;
 		Device->bSkipActorPropertyReplication = 0;
 		Device->bOnlyDirtyReplication = 0;
+		Device->bHidden = 1;
+		// Inherit Inventory.uc defaults bReplicateMovement=false — see
+		// `Inventory::Equip` for the rationale (don't replicate the device's
+		// stale spawn-time transform; visible mesh is c_DeviceForm).
 		// Device->bAlwaysRelevant = 1;
 
 		if (deviceId == 864) {

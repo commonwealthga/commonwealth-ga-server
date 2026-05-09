@@ -479,14 +479,28 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 
 	// --- Replication flags ---
 	Device->Instigator = (APawn*)Pawn;
-	Device->Base = Pawn;
 	Device->Role = 3;
 	Device->RemoteRole = 1;
 	Device->bNetInitial = 1;
 	Device->bNetDirty = 1;
-	Device->bReplicateMovement = 1;
 	Device->bSkipActorPropertyReplication = 0;
 	Device->bOnlyDirtyReplication = 0;
+
+	// Inventory.uc defaults: bHidden=true, bReplicateMovement=false. TgDevice
+	// inherits both. We DELIBERATELY do NOT override bReplicateMovement here
+	// — earlier shape forced it to 1, which made the device's absolute
+	// Location/Rotation replicate to clients. CreateEquipDevice spawns the
+	// device without ever setting its transform, so it stays at whatever
+	// world point the engine's SpawnActor picked (observed: ~ (-4038, -448,
+	// 666)) and replicates that stale point forever. Result on remote
+	// clients: the AI's Device actor (and weapon mesh attached to it via
+	// c_DeviceForm fallback paths) shows at a fixed world point instead of
+	// following the pawn — the "AI weapon strangely misplaced" symptom.
+	//
+	// With bReplicateMovement=false the device's transform is server-only
+	// and the client renders the visible weapon via c_DeviceForm attached
+	// to the pawn's mesh socket — which is the correct UE3 inventory pattern.
+	Device->bHidden = 1;
 
 	// --- Apply permanent equip-effect groups (DB-driven) ---
 	// Stand-in for the stripped asm.dat → device->m_EquipEffect path. Most

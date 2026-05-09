@@ -29,25 +29,46 @@ void __fastcall TgEffectManager__RemoveAllEffectGroups::Call(ATgEffectManager* p
 
 		if (applied->m_nCategoryCode == nCategoryCode) {
 			// 0. Reverse property modifiers installed by the applied group's
-			//    effects — but ONLY for time-bound buffs (m_fLifeTime > 0).
+			//    effects — UNLESS this is a regen-ticker (any effect with
+			//    apply_on_interval_flag = 1, bit 0x01 at effect+0x48).
 			//
-			//    Per the original engine: lifetime=0 effects are *permanent*
-			//    instant applies — once Apply has run, the delta is meant to
-			//    persist (instant heals, regen-station +N power, instant stat
-			//    boosts). The original engine never sets a LifeDone timer for
-			//    them and never auto-removes them on displacement. Reversing
-			//    here was the power-station bug: every per-tick re-emission
-			//    of the +10 effect ran into Strongest-displacement → our
-			//    RemoveEffects undid the +10, then the new emission re-applied
-			//    +10, net 0 per tick. With the gate, the previous emission's
-			//    +10 stays committed and re-emissions stack via ApplyProperty's
-			//    natural clamp-to-max.
+			//    Why this gate exists at all: regen tickers (power-station
+			//    +N HP / tick, lifetime=0 + interval>0 + aoi=1) re-emit the
+			//    same effect group every tick. Each tick's submission runs
+			//    Strongest-displacement against the previous tick → if we
+			//    reverse, we undo the just-given +N, then the new tick
+			//    re-applies +N — net 0 per tick, no regen.
 			//
-			//    For lifetime>0 (movement-speed debuffs, knockdown, scope
-			//    debuff, etc.) reversal stays correct — those are time-bound
-			//    and need their stat changes undone when displaced.
+			//    Earlier shape used `applied->m_fLifeTime > 0.0f`. That gate
+			//    correctly skipped reversal for power-station regen (life=0)
+			//    but ALSO skipped reversal for one-shot buffs that happen to
+			//    have lifetime=0 — most importantly the jetpack-fire effect
+			//    (eg 10450/10452/10454/10456: prop 70 +45 AirSpeed,
+			//    prop 59 +0.02 FlightAccel, life=0, itv=1, **aoi=0**).
+			//    Each fire-pulse triggered Newest-Wins displacement of the
+			//    previous pulse; the gate skipped reversal → +45 AirSpeed
+			//    compounded per pulse, observed in playtest as jetpack
+			//    flight speed creeping up over time and especially across
+			//    multiple respec cycles (the static +10/+15% AirSpeed skill
+			//    deltas amplified the compounded base).
+			//
+			//    `apply_on_interval_flag` is the right discriminator: it
+			//    distinguishes "ticker that gives a one-shot resource each
+			//    interval" (aoi=1, e.g. regen, DoT) from "buff that installs
+			//    a temporary modifier" (aoi=0, e.g. jetpack, scope, generic
+			//    speed buff). For aoi=1, each tick's apply is meant to
+			//    persist; reversing on displacement would un-give the
+			//    resource. For aoi=0, each application is a single delta
+			//    that pairs with a single reversal at remove/displace time.
+			bool isRegenTicker = false;
+			for (int e = 0; e < applied->m_Effects.Count; ++e) {
+				UTgEffect* eff = applied->m_Effects.Data[e];
+				if (!eff) continue;
+				unsigned int eflags = *(unsigned int*)((char*)eff + 0x48);
+				if (eflags & 0x01) { isRegenTicker = true; break; }
+			}
 			AActor* target = applied->m_Target ? applied->m_Target : pThis->r_Owner;
-			if (target && applied->m_fLifeTime > 0.0f) {
+			if (target && !isRegenTicker) {
 				TgEffectGroup__RemoveEffects::Call(applied, nullptr, target, 0);
 			}
 

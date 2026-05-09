@@ -228,16 +228,26 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	ATgPlayerController* newcontroller = reinterpret_cast<ATgPlayerController*>(Controller);
 	ATgPawn_Character* newpawn = NULL;
 
-	newcontroller->PlayerReplicationInfo->bOnlySpectator = 0;
+	// bOnlySpectator/bIsSpectator/bOutOfLives are now cleared inside our
+	// `Function TgGame.TgGame.Login` ProcessEvent hook, BEFORE SpawnPlayActor's
+	// internal eventPostLogin runs. That first PostLogin now spawns the pawn
+	// naturally, so we no longer need:
+	//   1. the manual `bOnlySpectator = 0` flip here, and
+	//   2. the redundant second `game->eventPostLogin(...)` call below.
+	// Removing both eliminates the UnPossess+re-Possess transient ViewTarget
+	// flip caused by the second Possess and the SpectatingMatch-state race
+	// (client's replicated bOnlySpectator landing as TRUE when ClientSetReadyState
+	// fires, causing client to GotoState('SpectatingMatch') → BeginState fires
+	// ServerSetViewTarget(Pawn=null on client) → server SetViewTarget(none) →
+	// null→self conversion in public SetViewTarget → ViewTarget = PC permanently).
 
 	if (GClientConnectionsData[(int32_t)Connection].PlayerInfo.task_force == 1) {
 		newcontroller->PlayerReplicationInfo->Team = GTeamsData.Attackers;
 	} else {
 		newcontroller->PlayerReplicationInfo->Team = GTeamsData.Defenders;
 	}
-	// newcontroller->PlayerReplicationInfo->Team = GTeamsData.Defenders;
 
-	game->eventPostLogin(newcontroller);
+	// game->eventPostLogin(newcontroller);  // removed: now runs inside SpawnPlayActor naturally
 
 	// Activate the game HUD's gameplay flags. TgPlayerController overrides
 	// ClientSetCinematicMode: when bAffectsHUD is set and current bShowHUD
@@ -253,11 +263,15 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	// params — bAffectsHUD arrives as 0 on the client and the inner if
 	// is skipped. We call ProcessEvent directly with a manually-laid-out
 	// params struct to work around this.
-	{
-		struct { uint32_t bInCinematicMode, bAffectsMovement, bAffectsTurning, bAffectsHUD; } parms = { 0, 0, 0, 1 };
-		UFunction* pFn = (UFunction*)ObjectCache::Find("Function Engine.PlayerController.ClientSetCinematicMode");
-		if (pFn) newcontroller->ProcessEvent(pFn, &parms, nullptr);
-	}
+	// {
+	// 	struct { uint32_t bInCinematicMode, bAffectsMovement, bAffectsTurning, bAffectsHUD; } parms = { 0, 0, 0, 1 };
+	// 	UFunction* pFn = (UFunction*)ObjectCache::Find("Function Engine.PlayerController.ClientSetCinematicMode");
+	// 	if (pFn) newcontroller->ProcessEvent(pFn, &parms, nullptr);
+	// }
+
+	Logger::Log("aim-trace", "RESETFORCEVIEWTARGET pawn = 0x%p\n", newcontroller->Pawn);
+	newcontroller->ResetForceViewTarget();
+	Logger::Log("aim-trace", "NEW VIEWTARGET = 0x%p\n", newcontroller->ViewTarget);
 
 	// Pre-spawned beacon deferral (team colors).
 	//

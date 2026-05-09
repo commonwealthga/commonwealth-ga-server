@@ -86,6 +86,15 @@ uint8_t __fastcall CGameClient__MarshalReceived::Call(void* GameClient, void* ed
 			"[SEND_PLAYER_SKILLS] parsed %d rows session_guid=%s char=%lld\n",
 			counted, session_guid.c_str(), (long long)nCharacterId);
 
+		// pawn_id: forwarded to the control server so the skill_save IPC
+		// handler can push a SEND_INVENTORY refresh after persisting — the
+		// client's per-device stat panels can then re-render against the
+		// new skill build.
+		int pawnId = 0;
+		if (it != GClientConnectionsData.end() && it->second.Pawn) {
+			pawnId = (int)it->second.Pawn->r_nPawnId;
+		}
+
 		if (!session_guid.empty()) {
 			nlohmann::json ev;
 			ev["type"]         = IpcProtocol::MSG_GAME_EVENT;
@@ -93,6 +102,7 @@ uint8_t __fastcall CGameClient__MarshalReceived::Call(void* GameClient, void* ed
 			ev["instance_id"]  = IpcClient::GetInstanceId();
 			ev["session_guid"] = session_guid;
 			ev["character_id"] = nCharacterId;
+			ev["pawn_id"]      = pawnId;
 			// Only include item_profile_id if we actually read it from the
 			// pawn (>=0). Sending -1 would clobber the control server's
 			// cached value from the spawn IPC and break the echo PROFILE_ID.
@@ -105,9 +115,15 @@ uint8_t __fastcall CGameClient__MarshalReceived::Call(void* GameClient, void* ed
 		// Respec: refresh this session's PlayerInfo.skills from the just-
 		// received marshal, then re-run ReapplyCharacterSkillTree so the
 		// new allocation takes effect (old deltas reversed + new applied)
-		// without waiting for a respawn. Only do this for a real save —
-		// counted>0. An empty payload is a request, we don't want to wipe.
-		if (counted > 0 && it != GClientConnectionsData.end()
+		// without waiting for a respawn.
+		//
+		// We unconditionally honor an empty marshal as "player respec'd to
+		// zero" — without this, a respec back to no allocation kept all the
+		// previous build's modifiers/tickers/buff entries active until the
+		// next spawn. The control server's skill_save IPC handler has its
+		// own "empty payload = client requesting current state" guard for
+		// DB writes, so an inadvertent empty here doesn't wipe persistence.
+		if (it != GClientConnectionsData.end()
 			&& it->second.pPlayerInfo && it->second.Pawn) {
 			it->second.pPlayerInfo->skills.clear();
 			for (const auto& r : rows) {

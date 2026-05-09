@@ -105,6 +105,7 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
     }
     else if (subtype == "skill_save") {
         int64_t character_id = j.value("character_id", (int64_t)0);
+        int     pawn_id      = j.value("pawn_id", 0);
         if (j.contains("item_profile_id")) {
             int32_t ipid = j.value("item_profile_id", 0);
             if (ipid >= 0) session->item_profile_id_ = ipid;
@@ -126,8 +127,8 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         // empty inbound as a request — don't wipe the DB. Real respec goes
         // through the separate skill_respec IPC subtype.
         Logger::Log("ipc",
-            "[TcpSession] DeliverGameEvent: skill_save char=%lld rows=%d guid=%s%s\n",
-            (long long)character_id, (int)skills.size(), session_guid.c_str(),
+            "[TcpSession] DeliverGameEvent: skill_save char=%lld pawnId=%d rows=%d guid=%s%s\n",
+            (long long)character_id, pawn_id, (int)skills.size(), session_guid.c_str(),
             skills.empty() ? " (empty -> treated as REQUEST, not persisting)" : "");
         if (character_id != 0 && !skills.empty()) {
             PlayerSessionStore::SetSkillsForCharacter(character_id, skills);
@@ -135,16 +136,30 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         // Echo current DB state so the UI's inbound 0x00A0 handler has
         // authoritative data whether this was a save or a request.
         session->send_player_skills_response();
+        // After a skill change, also push SEND_INVENTORY so the client's
+        // per-device stat panels re-render against the new buff state.
+        // Only when pawn_id is provided (game-server-forwarded path) AND
+        // this was a real save (skills non-empty) — a request-shaped empty
+        // marshal shouldn't trigger a redundant inventory blast.
+        if (pawn_id != 0 && !skills.empty() && character_id != 0) {
+            session->send_inventory_response(pawn_id, character_id);
+        }
     }
     else if (subtype == "skill_respec") {
         int64_t character_id = j.value("character_id", (int64_t)0);
-        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: skill_respec char=%lld\n",
-            (long long)character_id);
+        int     pawn_id      = j.value("pawn_id", 0);
+        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: skill_respec char=%lld pawnId=%d\n",
+            (long long)character_id, pawn_id);
         if (character_id != 0) {
             PlayerSessionStore::ClearSkillsForCharacter(character_id);
         }
         // Echo the zeroed allocation to the client so the UI matches.
         session->send_player_skills_response();
+        // Trainer respec wipes everything → also re-send inventory so
+        // per-device stat displays drop the previously-buffed numbers.
+        if (pawn_id != 0 && character_id != 0) {
+            session->send_inventory_response(pawn_id, character_id);
+        }
     }
     else if (subtype == "quest") {
         int64_t character_id = j.value("character_id", (int64_t)0);

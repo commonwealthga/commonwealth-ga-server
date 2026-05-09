@@ -4,6 +4,7 @@
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include <math.h>
 
 // TgPawn__SetProperty @ 0x109bf420 — __thiscall(pawn, nPropertyId, fNewValue)
 // Called as __fastcall with dummy EDX to avoid inline asm.
@@ -395,6 +396,38 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// 	CanDeviceFireNowParams->ReturnValue = true;
 
 
+		} else if (strcmp("Function TgGame.TgGame.Login", name.c_str()) == 0) {
+			// GameInfo.Login (called via super.Login from TgGame.Login) takes the
+			// spectator branch when ChangeTeam returns false (TgGame.ChangeTeam
+			// hardcoded false). It sets PRI.bOnlySpectator/bIsSpectator/bOutOfLives
+			// = true on the new PC.
+			//
+			// SpawnPlayActor immediately calls eventPostLogin → TgGame.RestartPlayer,
+			// which gates on bOnlySpectator and returns without spawning. Without
+			// intervention the player is permanently stuck as spectator.
+			//
+			// Fix: clear those flags right after Login returns, BEFORE
+			// SpawnPlayActor's subsequent eventPostLogin runs. The first PostLogin
+			// then takes the non-spectator branch and spawns naturally — no need
+			// for a redundant second eventPostLogin call from HandlePlayerConnected,
+			// and no replication race that lands the client in SpectatingMatch (which
+			// fires ServerSetViewTarget(none) on its BeginState and locks server-side
+			// PC.ViewTarget = self, breaking aim until respawn).
+			CallOriginal(Object, edx, Function, Params, Result);
+			if (Params) {
+				// Parms layout (ATgGame_eventLogin_Parms / AGameInfo_eventLogin_Parms):
+				//   0x00 Portal (FString)
+				//   0x0C Options (FString)
+				//   0x18 ErrorMessage (FString)
+				//   0x24 ReturnValue (APlayerController*)
+				APlayerController* PC = *(APlayerController**)((char*)Params + 0x24);
+				if (PC && PC->PlayerReplicationInfo) {
+					PC->PlayerReplicationInfo->bOnlySpectator = 0;
+					PC->PlayerReplicationInfo->bIsSpectator   = 0;
+					PC->PlayerReplicationInfo->bOutOfLives    = 0;
+				}
+			}
+
 		} else if (strcmp("Function TgPawn.Dying.BeginState", name.c_str()) == 0) {
 			CallOriginal(Object, edx, Function, Params, Result);
 			// UScript TgPawn.Dying.BeginState only calls PawnDied for bIsPlayer==true.
@@ -655,4 +688,5 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		}
 	}
 }
+
 
