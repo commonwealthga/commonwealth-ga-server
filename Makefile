@@ -147,13 +147,17 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/ClearInstigatorEquippedDevices/TgDevice__ClearInstigatorEquippedDevices.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/PopulateInstigatorEquippedDevices/TgDevice__PopulateInstigatorEquippedDevices.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/ApplyBuffEffect.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/ModifierProps.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgEffect/TrackStats/TgEffect__TrackStats.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/GetSkillBasedEffectGroup/TgEffectManager__GetSkillBasedEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/IsStrongest/TgEffectManager__IsStrongest.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/ProcessReactiveSkillBasedEffectGroup/TgEffectManager__ProcessReactiveSkillBasedEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveEffectGroup/TgEffectManager__RemoveEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/SetEffectRep/TgEffectManager__SetEffectRep.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/SubmitMitigationDamage/TgEffectManager__SubmitMitigationDamage.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/AdjustBeaconForwardSpawn/TgGame_Arena__AdjustBeaconForwardSpawn.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Control/CalcAttackerReviveTime/TgGame_Control__CalcAttackerReviveTime.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Control/CalcDefenderReviveTime/TgGame_Control__CalcDefenderReviveTime.cpp \
@@ -227,6 +231,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgMeshAssembly/ForceNetRelevant/TgMeshAssembly__ForceNetRelevant.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective/RegisterSelf/TgMissionObjective__RegisterSelf.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDynamicSMActor/ForceNetRelevant/TgDynamicSMActor__ForceNetRelevant.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgAIController/TargetInLOS/TgAIController__TargetInLOS.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/ApplyDye/TgPawn__ApplyDye.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/ApplyJetpackTrail/TgPawn__ApplyJetpackTrail.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/BeginStats/TgPawn__BeginStats.cpp \
@@ -464,6 +469,7 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/Config/ControlServerConfig.cpp \
 	$(CS_SRC_DIR)/Database/Database.cpp \
 	$(CS_SRC_DIR)/Loadouts/ClassLoadouts.cpp \
+	$(CS_SRC_DIR)/Loadouts/ModResolver.cpp \
 	$(CS_SRC_DIR)/PlayerSessionStore/PlayerSessionStore.cpp \
 	$(CS_SRC_DIR)/TcpSession/TcpSession.cpp \
 	$(CS_SRC_DIR)/ChatSession/ChatSession.cpp \

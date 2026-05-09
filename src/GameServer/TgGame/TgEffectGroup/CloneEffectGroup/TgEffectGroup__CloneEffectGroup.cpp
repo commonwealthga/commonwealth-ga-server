@@ -224,6 +224,120 @@ UTgEffectGroup* __fastcall TgEffectGroup__CloneEffectGroup::Call(UTgEffectGroup*
 			}
 		}
 
+		// [EFFECT-BUFF] — instigator-side effect-modifier scaling for non-damage
+		// effects. UC's `TgEffect.ApplyEffect:114-115` was supposed to call
+		// `CheckEffectBuffModifier(fProratedAmount)` between GetProratedValue
+		// and ApplyToProperty to scale the effect's amount by the firing pawn's
+		// buff registry. That UC native is stripped, and UC-to-UC dispatches
+		// it via inline VM (bypassing our ProcessEvent intercept). Same
+		// workaround shape as the [DAMAGE-BUFF] block above: pre-scale the
+		// cloned effect's m_fBase here, before UC reads it.
+		//
+		// Source of truth for the prop-id mapping: the binary's
+		// `ConvertPropToPropList` (FUN_109e5220), which we hand off to via
+		// GetBuffedPropertyNative below — so this block automatically picks
+		// up every (effect-prop → modifier-prop) expansion the function
+		// defines, no per-prop hardcoding here.
+		//
+		// Concrete example chains:
+		//
+		// (1) Super Tank + AOE Shield (self-cast modifier on self-cast effect):
+		//   - Super Tank skill effect: prop 66 calc 69 base 100 → routed
+		//     through ApplyBuff(SKILL) → m_EffectBuffInfo entry on player
+		//     with nPropId=66, fSkillPercentModifier=-100.
+		//   - Player activates AOE Shield → cloned effect on prop 49 with
+		//     instigator=player, target=player (self-cast).
+		//   - Here: GetBuffedProperty(BUFF_PAWN, 49) on player →
+		//     ConvertPropToPropList(1, 49) → 66 → finds the entry → formula
+		//     collapses 0.1 → 0 → no speed penalty.
+		//
+		// (2) Heal-output skill + deployed medical station:
+		//   - Skill puts prop 385 (Heal Output Modifier) in deployer's buff
+		//     registry.
+		//   - Medical station fires its heal effect → m_Instigator = the
+		//     deployable. We walk the deployable's engine `Instigator` field
+		//     back to the deploying pawn and look up THAT pawn's prop 385.
+		//   - The healed teammate gets the buffed amount even though they
+		//     don't have the skill themselves.
+		//
+		// Why INSTIGATOR-side: the props in the BUFF_PAWN expansion table
+		// (heal output, damage output, effect-on-target modifiers) are
+		// SOURCE-side modifiers — properties of the actor producing the
+		// effect, not the receiver. For self-cast (instigator=target) it's
+		// indistinguishable. For cross-target effects, the firer's modifier
+		// is what should scale outgoing effect amounts.
+		//
+		// Deployable instigator walkback: medical stations / turrets / bombs
+		// fire effects with m_Instigator set to the deployable itself
+		// (TgDeployable.uc:528 passes `self` to ApplyHit). The deployable's
+		// engine `Instigator` field points to the deploying pawn (set by
+		// SpawnDeployableActor). Walking through this chain means a player's
+		// heal-output / damage-output skills propagate to the things they
+		// deploy without per-call site code.
+		//
+		// TgEffectDamage skipped: damage gets prop-65 instigator scaling
+		// above + target-side mitigation via CalcCategoryProtection /
+		// CalcDamageTypeProtection / CalcAttackTypeProtection at apply time
+		// + SubmitMitigationDamage hook. Adding generic scaling on top would
+		// double-count.
+		//
+		// Scaling DOWN allowed (no `if (buffedBase > origBase)` guard): the
+		// registry can legitimately reduce effect strength (e.g. Super Tank's
+		// -100% speed-effect modifier collapses shield speed-penalty to 0).
+		if (effClassName && strstr(effClassName, "TgEffectDamage") == nullptr
+		    && effClone->m_fBase != 0.0f) {
+			ATgPawn* srcPawn = nullptr;
+			AActor* inst = clone->m_Instigator;
+			if (inst && inst->Class) {
+				const char* instCls = inst->Class->GetFullName();
+				if (instCls && strstr(instCls, "TgPawn") != nullptr) {
+					srcPawn = (ATgPawn*)inst;
+				} else if (instCls && strstr(instCls, "TgDeployable") != nullptr) {
+					// Walk back to the deploying pawn via the deployable's
+					// engine Instigator field. Cast through APawn — both
+					// TgDeployable and TgPawn inherit Instigator from AActor.
+					APawn* depInst = ((AActor*)inst)->Instigator;
+					if (depInst && depInst->Class) {
+						const char* depCls = depInst->Class->GetFullName();
+						if (depCls && strstr(depCls, "TgPawn") != nullptr) {
+							srcPawn = (ATgPawn*)depInst;
+						}
+					}
+				}
+			}
+
+			if (srcPawn) {
+				typedef void(__fastcall* GetBuffedPropertyFn)(
+					ATgPawn*, void*, unsigned char,
+					int, int, int, int, int, float, float*, void*);
+				static const GetBuffedPropertyFn GetBuffedPropertyNative =
+					(GetBuffedPropertyFn)0x109d7ff0;
+				float origBase = effClone->m_fBase;
+				float buffedBase = origBase;
+				GetBuffedPropertyNative(
+					srcPawn, /*edx=*/nullptr,
+					/*eRequestContext=*/1,         // BUFF_PAWN — effect-on-pawn
+					/*nPropId=*/effClone->m_nPropertyId,
+					/*nReqCategoryCode=*/0,
+					/*nReqSkillId=*/0,
+					/*nReqDeviceInstId=*/0,
+					/*bUsePotencyModifier=*/0,
+					/*fBaseValue=*/origBase,
+					/*fBuffedValue=*/&buffedBase,
+					/*Effect=*/effClone);
+				if (buffedBase != origBase) {
+					const float mult = (origBase != 0.0f) ? (buffedBase / origBase) : 1.0f;
+					effClone->m_fBase    = buffedBase;
+					effClone->m_fMinimum *= mult;
+					effClone->m_fMaximum *= mult;
+					Logger::Log("effects",
+						"[EFFECT-BUFF] cloned effect: propId=%d  m_fBase %.3f -> %.3f (×%.3f)  src=%p egId=%d\n",
+						effClone->m_nPropertyId, origBase, buffedBase, mult,
+						srcPawn, clone->m_nEffectGroupId);
+				}
+			}
+		}
+
 		clone->m_Effects.Add(effClone);
 	}
 

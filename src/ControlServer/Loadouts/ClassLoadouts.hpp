@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "src/ControlServer/Loadouts/ModConstants.hpp"
+
 // =============================================================================
 // Hardcoded class loadouts — single source of truth for what every character
 // gets equipped on login. Every character logs in → ga_character_devices is
@@ -46,11 +48,11 @@ constexpr uint32_t PROFILE_ASSAULT  = 680;
 constexpr uint32_t PROFILE_RECON    = 681;
 
 struct GearSlot {
-    int              device_id;       // asm_data_set_devices.device_id (= asm_data_set_items.ref_device_id)
-    int              equip_slot;      // engine equip point 1..24
-    int              slot_value_id;   // SVID_*
-    int              quality;         // Q_* — reaches client via CRAFTED_QUALITY_VALUE_ID
-    std::vector<int> mods;            // rolled-mod effect_group_ids; one letter per entry
+    int          device_id;       // asm_data_set_devices.device_id (= asm_data_set_items.ref_device_id)
+    int          equip_slot;      // engine equip point 1..24
+    int          slot_value_id;   // SVID_*
+    int          quality;         // Q_* — reaches client via CRAFTED_QUALITY_VALUE_ID
+    Mods::Result mods;            // rolled-mod effect_group_ids + OC flag (see ModConstants.hpp)
 };
 
 // Returns the gear list for a class. Empty list for unknown profile_id.

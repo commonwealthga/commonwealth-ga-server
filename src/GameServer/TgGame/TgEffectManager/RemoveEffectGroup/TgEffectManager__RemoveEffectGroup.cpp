@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroup/TgEffectManager__RemoveEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
+#include "src/GameServer/TgGame/TgEffectManager/ProcessReactiveSkillBasedEffectGroup/TgEffectManager__ProcessReactiveSkillBasedEffectGroup.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // UTgEffectManager::RemoveEffectGroup — original is empty stub @ 0x10a6ef10.
@@ -128,9 +129,29 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 	}
 
 	// 4. Swap-remove from s_AppliedEffectGroups.
+	int removedCategory = applied->m_nCategoryCode;
 	int last = Manager->s_AppliedEffectGroups.Count - 1;
 	Manager->s_AppliedEffectGroups.Data[idx] = Manager->s_AppliedEffectGroups.Data[last];
 	Manager->s_AppliedEffectGroups.Count--;
+
+	// 5. If we just removed the LAST group of this category, fire the reactive
+	//    skill OFF dispatch — mirrors UC `TgEffectManager.ProcessEffect:272-275`'s
+	//    `!bCategoryExisted` apply branch. Reactive skills (e.g. Aegis Armament,
+	//    +25% Protection-Physical while any shield is active) flip on when the
+	//    first group of their required category arrives and off when the last
+	//    leaves. The displacement-style remove path (RemoveAllEffectGroups,
+	//    called from GetNewEffectGroupByApp before applying a replacement of
+	//    the same category) intentionally skips this — the category is about to
+	//    be re-populated, the reactive should stay on across the swap.
+	bool stillHasCategory = false;
+	for (int i = 0; i < Manager->s_AppliedEffectGroups.Count; i++) {
+		UTgEffectGroup* g = Manager->s_AppliedEffectGroups.Data[i];
+		if (g && g->m_nCategoryCode == removedCategory) { stillHasCategory = true; break; }
+	}
+	if (!stillHasCategory && removedCategory > 0) {
+		TgEffectManager__ProcessReactiveSkillBasedEffectGroup::Call(
+			Manager, nullptr, removedCategory, 1u);
+	}
 
 	Manager->bNetDirty = 1;
 	return true;

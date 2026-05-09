@@ -369,8 +369,117 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 
 	if (pOwnerPawn != nullptr) {
 		Bot->r_Owner = pOwnerPawn;
-		pOwnerPawn->r_Pet = Bot;
 		AIController->m_pOwner = pOwnerPawn;
+
+		// Spawner attribution: which fire mode + device instance produced this
+		// bot. Server-only fields (no CPF_Net) but consumed by stripped natives
+		// that walk pet lists by spawner identity (e.g. HUD device-bar slot
+		// matching, "find my turret for slot N" lookups). Without these, those
+		// natives see zero on every bot and silently fall through.
+		if (deviceFire) {
+			Bot->s_nSpawnerDeviceModeId = deviceFire->m_nId;
+			ATgDevice* sourceDevice = (ATgDevice*)deviceFire->m_Owner;
+			if (sourceDevice) {
+				Bot->s_nSpawnerDeviceInstId = sourceDevice->r_nDeviceInstanceId;
+			}
+		}
+
+		// HUD device-bar healthbar wiring for pets. The HUD's FindSpawnedPet
+		// (0x114de150) walks `localPlayer.PRI.m_PRIArray` for pets and matches
+		// by `BotPRI->r_nProfileId == fireMode.bot_id`. Two pieces required:
+		//
+		//   1. r_nProfileId on the bot's PRI must equal the bot_id (lookup key).
+		//
+		//   2. m_PRIArray on the OWNER's PRI must contain the bot's PRI. The
+		//      population mechanism is replication-driven: setting
+		//      BotPRI.r_MasterPrep = ownerPRI (server) → replicates to client →
+		//      client UC fires ReplicatedEvent('r_MasterPrep') →
+		//      CheckMembership native (0x109f0030) → calls vtable[0x390] on
+		//      the new master with this PRI → master's m_PRIArray gets the
+		//      bot's PRI appended. (vtable[0x390] is the AddMinion-equivalent
+		//      slot per the CheckMembership decompile.)
+		//
+		// Both fields (r_MasterPrep, r_nProfileId) are CPF_Net + repnotify and
+		// already in our optimized rep list, so the client receives them.
+		ATgRepInfo_Player* OwnerPRI = (ATgRepInfo_Player*)pOwnerPawn->PlayerReplicationInfo;
+		if (BotRepInfo && OwnerPRI) {
+			BotRepInfo->r_MasterPrep = OwnerPRI;
+			BotRepInfo->r_nProfileId = nBotId;
+
+			// NOTE: We previously also assigned `Team` and `r_TaskForce` here
+			// to fix the team-color flicker on the deployer's first frame.
+			// That broke the device-bar healthbar — setting r_TaskForce makes
+			// `TgRepInfo_Player::CheckMembership` (0x109f0030) run its second
+			// branch (the r_TaskForce-change path) which does additional
+			// bookkeeping that appears to interfere with the m_PRIArray
+			// membership the FIRST branch establishes. Setting `Team`
+			// triggers stock UE3 APlayerReplicationInfo::SetTeam which
+			// calls AddToTeam/RemoveFromTeam on the TaskForce. Combined,
+			// the BotPRI ends up not in the deployer's m_PRIArray after
+			// the dust settles → HUD's FindSpawnedPet finds nothing → no
+			// healthbar. Leaving these unset; team color will resolve via
+			// r_MasterPrep → CheckMembership chain (with the brief flicker).
+
+			// Two-knob fix for the team-color flicker on the deployer's client:
+			//
+			// (1) NetPriority bump (8.0 vs TgPawn's 4.0) so within a single
+			// relevance pass BotRepInfo's bunch is serialized before the bot
+			// pawn's. The bot pawn carries a NetGUID reference to its PRI;
+			// we want the PRI's actor channel open on the client first so the
+			// reference resolves immediately instead of hitting the deferred
+			// NetGUID resolution path (which takes ~1 second to settle).
+			//
+			// (2) NetUpdateFrequency bump (10.0 vs APlayerReplicationInfo's
+			// default 1.0). PRI's default 1Hz cadence means after the initial
+			// replication, the engine doesn't re-consider the PRI for ~1
+			// second — exactly the flicker duration. The bot pawn replicates
+			// at 100Hz the whole time. Bumping the PRI frequency lets the
+			// engine re-replicate the BotRepInfo / re-resolve its NetGUID on
+			// the client within a few frames if anything was pending.
+			//
+			// Trace: TgRepInfo_Game::CheckIsEnemy (0x109ee170) compares
+			// taskforce bytes from GRI::GetTaskForceFor(actor) (0x109f1fa0).
+			// For a bot pawn the only path is `pawn->GetPRI()->r_TaskForce`
+			// — null PRI on first frame → both sides resolve to null →
+			// returns "enemy". Once GUID resolution catches up, repnotify on
+			// r_TaskForce fires, NotifyTeamChanged → RecalculateMaterial(true).
+			BotRepInfo->NetPriority        = 8.0f;
+			BotRepInfo->NetUpdateFrequency = 10.0f;
+			BotRepInfo->bNetDirty       = 1;
+			BotRepInfo->bForceNetUpdate = 1;
+		}
+
+		// Per-category pet limit: 1 turret + 1 drone allowed simultaneously,
+		// deploying a 2nd of the SAME category destroys the prior one.
+		// Two slots:
+		//   pawn->s_Turret  → TgPawn_Turret subclasses (sentry-style turrets)
+		//   pawn->r_Pet     → everything else spawned via SpawnPet (drones)
+		// Don't fan the new bot into BOTH slots — that breaks coexistence
+		// (deploying a drone while a turret is alive would clobber r_Pet,
+		// then UC's `r_Owner.r_Pet == self` check on the drone returns true
+		// while the next turret deploy would Suicide it via the wrong slot).
+		const bool botIsTurret = (Bot->Class &&
+			strstr(Bot->Class->GetFullName(), "TgPawn_Turret") != nullptr);
+
+		if (botIsTurret) {
+			ATgPawn* prior = (ATgPawn*)pOwnerPawn->s_Turret;
+			if (prior && prior != Bot && !prior->bDeleteMe) {
+				Logger::Log("pet_spawn",
+					"[PetLimit] suiciding prior turret 0x%p (replaced by 0x%p)\n",
+					prior, Bot);
+				prior->Suicide();
+			}
+			pOwnerPawn->s_Turret = (ATgPawn_Turret*)Bot;
+		} else {
+			ATgPawn* prior = pOwnerPawn->r_Pet;
+			if (prior && prior != Bot && !prior->bDeleteMe) {
+				Logger::Log("pet_spawn",
+					"[PetLimit] suiciding prior drone 0x%p (replaced by 0x%p)\n",
+					prior, Bot);
+				prior->Suicide();
+			}
+			pOwnerPawn->r_Pet = Bot;
+		}
 	}
 
 	AIController->Possess(Bot, 0, 1);

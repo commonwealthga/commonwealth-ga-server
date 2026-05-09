@@ -132,11 +132,14 @@
 #include "src/GameServer/TgGame/TgDevice/PopulateInstigatorEquippedDevices/TgDevice__PopulateInstigatorEquippedDevices.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/GetSkillBasedEffectGroup/TgEffectManager__GetSkillBasedEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/IsStrongest/TgEffectManager__IsStrongest.hpp"
+#include "src/GameServer/TgGame/TgEffectManager/ProcessReactiveSkillBasedEffectGroup/TgEffectManager__ProcessReactiveSkillBasedEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroup/TgEffectManager__RemoveEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/SetEffectRep/TgEffectManager__SetEffectRep.hpp"
+#include "src/GameServer/TgGame/TgEffectManager/SubmitMitigationDamage/TgEffectManager__SubmitMitigationDamage.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
+#include "src/GameServer/TgGame/TgEffect/TrackStats/TgEffect__TrackStats.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/AdjustBeaconForwardSpawn/TgGame_Arena__AdjustBeaconForwardSpawn.hpp"
 #include "src/GameServer/TgGame/TgGame_Control/CalcAttackerReviveTime/TgGame_Control__CalcAttackerReviveTime.hpp"
 #include "src/GameServer/TgGame/TgGame_Control/CalcDefenderReviveTime/TgGame_Control__CalcDefenderReviveTime.hpp"
@@ -209,6 +212,7 @@
 #include "src/GameServer/TgGame/TgMeshAssembly/ForceNetRelevant/TgMeshAssembly__ForceNetRelevant.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective/RegisterSelf/TgMissionObjective__RegisterSelf.hpp"
 #include "src/GameServer/TgGame/TgDynamicSMActor/ForceNetRelevant/TgDynamicSMActor__ForceNetRelevant.hpp"
+#include "src/GameServer/TgGame/TgAIController/TargetInLOS/TgAIController__TargetInLOS.hpp"
 #include "src/GameServer/TgGame/TgPawn/ApplyDye/TgPawn__ApplyDye.hpp"
 #include "src/GameServer/TgGame/TgPawn/ApplyJetpackTrail/TgPawn__ApplyJetpackTrail.hpp"
 #include "src/GameServer/TgGame/TgPawn/BeginStats/TgPawn__BeginStats.hpp"
@@ -299,50 +303,6 @@
 
 
 unsigned long ModuleThread( void* ) {
-	// Each crash channel gets its own 100-entry ring; high-frequency channels
-	// like hook_calltree no longer flush targeted diagnostics.
-	// Logger::EnabledCrashChannels.push_back("hook_calltree");
-	// Logger::EnabledCrashChannels.push_back("deploy_validate");
-	// Logger::EnabledCrashChannels.push_back("roster_walker");
-	// Logger::EnabledCrashChannels.push_back("boot_sentinel");
-	// Sentinel: if this ring appears in a crash dump, the logger pipeline
-	// works and the absence of roster_walker/deploy_validate rings means the
-	// relevant hooks never fired. If this ring is ALSO missing, something is
-	// wrong with the ring plumbing itself.
-	// Logger::Log("boot_sentinel", "ModuleThread init — hooks about to install\n");
-	// Logger::EnabledChannels.push_back("hook_calltree");
-	// Logger::EnabledChannels.push_back("combat-trace");
-	// Logger::EnabledChannels.push_back("asset_load");
-	// Logger::EnabledChannels.push_back("deploy_phase");
-	// Logger::EnabledChannels.push_back("team_colors");
-	// Logger::EnabledChannels.push_back("pet_spawn");
-	// Logger::EnabledChannels.push_back("bomb");
-	// Logger::EnabledChannels.push_back("deployable_props");
-	// Logger::EnabledChannels.push_back("heal_tick");
-	// Logger::EnabledChannels.push_back("skills");
-	// Logger::EnabledChannels.push_back("skills-trace");
-	// Logger::EnabledChannels.push_back("skills_debug");
-	// Logger::EnabledChannels.push_back("ipc");
-	// Logger::EnabledChannels.push_back("kismet");
-	// Logger::EnabledChannels.push_back("tgbotfactory");
-	// Logger::EnabledChannels.push_back("effects");
-	// Logger::EnabledChannels.push_back("firedeploy_m_pAmSetup");
-	// Logger::EnabledChannels.push_back("firedeploy_m_pFireModeSetup");
-	// Logger::EnabledChannels.push_back("firespawnpet_m_pAmSetup");
-	// Logger::EnabledChannels.push_back("firespawnpet_m_pFireModeSetup");
-	// Logger::EnabledChannels.push_back("tcp");
-	// Logger::EnabledChannels.push_back("db");
-	// Logger::EnabledChannels.push_back("process_event");
-	// Logger::EnabledChannels.push_back("damage-info");
-	// Logger::EnabledChannels.push_back("debug");
-	// Logger::EnabledChannels.push_back("quest_update");
-	// Logger::EnabledChannels.push_back("session_guid");
-	// Logger::EnabledChannels.push_back("chat");
-	// Logger::EnabledChannels.push_back("matchmaking");
-	// Logger::EnabledChannels.push_back("packagemap");
-	// Logger::EnabledChannels.push_back("stealth");
-
-
 
 	Database::Init();
 
@@ -485,11 +445,14 @@ unsigned long ModuleThread( void* ) {
 	TgDevice__PopulateInstigatorEquippedDevices::Install();
 	TgEffectGroup__CloneEffectGroup::Install();
 	TgEffectGroup__RemoveEffects::Install();
+	TgEffect__TrackStats::Install();
 	TgEffectManager__GetSkillBasedEffectGroup::Install();
 	TgEffectManager__IsStrongest::Install();
+	TgEffectManager__ProcessReactiveSkillBasedEffectGroup::Install();
 	TgEffectManager__RemoveEffectGroup::Install();
 	TgEffectManager__RemoveEffectGroupsByCategory::Install();
 	TgEffectManager__SetEffectRep::Install();
+	TgEffectManager__SubmitMitigationDamage::Install();
 	TgGame_Arena__AdjustBeaconForwardSpawn::Install();
 	TgGame_Control__CalcAttackerReviveTime::Install();
 	TgGame_Control__CalcDefenderReviveTime::Install();
@@ -566,6 +529,7 @@ unsigned long ModuleThread( void* ) {
 	TgPawn__ApplyJetpackTrail::Install();
 	TgPawn__BeginStats::Install();
 	TgPawn__CanMove::Install();
+	TgAIController__TargetInLOS::Install();
 	TgPawn__CheckKillQuestCredit::Install();
 	TgPawn__CheckUseQuestCredit::Install();
 	TgPawn__EndStats::Install();

@@ -9,9 +9,28 @@ namespace Loadouts {
 // Format per row:
 //   { device_id, equip_slot, slot_value_id, quality, { mod_effect_group_ids... } }
 //
-// Each entry in the mods vector renders as ONE letter in the item's [...]
-// suffix (whatever ui_code the effect's prop has). Repeat the same constant
-// to repeat a letter — six Mods::Healing entries → [hhhhhh].
+// The mods vector is one effect_group_id per visible letter in the [...]
+// suffix on the item name. Two ways to write it:
+//
+//   (A) Letter API — `Mods::Letters(innate, kit)`:
+//       Pick the suffix you want as two strings. First arg = innate/rolled
+//       letters (4–10% values, what the weapon ships with); second arg =
+//       kit letters (2–3% values, applied by player crafting). Call returns
+//       a std::vector<int> ready to drop in.
+//
+//         { 2066, 8, ..., Q_EPIC, Mods::Letters("hhx", "hhh") }     // [hhxhhh]
+//         { 2066, 8, ..., Q_EPIC, Mods::Letters("xxx", "ccc") }     // [xxxccc]
+//         { 2066, 8, ..., Q_EPIC, Mods::Letters("chx", "hhh") }     // [chxhhh]
+//
+//       Add `, /*oc=*/true` to use an Overclocked variant (+75% Output Mod
+//       prepended vs the standard +70%):
+//
+//         { 2066, 8, ..., Q_EPIC, Mods::Letters("hhx", "hhh", true) }
+//
+//   (B) Raw constants — `Mods::Healing::EPIC` etc.:
+//       For the rare cases where you need a specific effect_group_id (e.g.
+//       a particular tier value, a different prop within a letter family).
+//       See ModConstants.hpp namespaces.
 //
 // device_id values come from asm_data_set_devices; names below are from
 // asm_data_set_items.name_msg_translated for the matching ref_device_id.
@@ -35,43 +54,31 @@ static const std::vector<GearSlot> kMedic = {
 // Arm in the specialty slot with three Healing kit tiers stacked twice. Edit
 // the mods vector to whatever you want to test.
 static const std::vector<GearSlot> kRobotics = {
-    { 6278,  1,  SVID_MELEE,      Q_EPIC,   {} },  // Mace and Shield
-    { 5796,  2,  SVID_RANGED,     Q_EPIC,   {} },  // Colony Energy Rifle
-    { 2918,  3,  SVID_OFFHAND,    Q_EPIC,   {                       // Focused Repair Arm [hhhhhh]
-                                              Mods::Healing::UNCOMMON,
-                                              Mods::Healing::RARE,
-                                              Mods::Healing::EPIC,
-                                              Mods::Healing::UNCOMMON,
-                                              Mods::Healing::RARE,
-                                              Mods::Healing::EPIC,
-                                            } },
-    { 7034,  5,  SVID_JETPACK,    Q_EPIC,   {} },  // Robotics Crescent Jetpack
-    // --- TEMP: testing NPC stations as player gear (revert after) ---
-    // { 2300,  7,  SVID_SPECIALTY1, Q_EPIC,   {} },  // Personal Turret
-    // { 2066,  8,  SVID_SPECIALTY2, Q_EPIC,   {} },  // Medical Station
-    // { 2095,  7,  SVID_SPECIALTY1, Q_EPIC,   {} },  // Rocket Turret R4 (player; proto rocket has no player device — bot_id 1439 has no handheld)
-    { 4076,  7,  SVID_SPECIALTY1, Q_EPIC,   {} },  // Rocket Turret R4 (player; proto rocket has no player device — bot_id 1439 has no handheld)
-    { 6143,  8,  SVID_SPECIALTY2, Q_EPIC,   {} },  // Techro Buff Station (handheld → deployable_id 209)
-    // --- TEMP: testing sensor in place of power station (revert after) ---
-    // { 4076,  9,  SVID_HEAD_FLAIR, Q_EPIC,   {
-    // 	Mods::AOERadius::ANY,
-    // 	Mods::AOERadius::ANY,
-    // 	Mods::AOERadius::ANY,
-    // } },  // Power Station
-    { 2326,  9,  SVID_HEAD_FLAIR, Q_EPIC,   {} },  // Sensor (handheld → deployable_id 85)
-    { 2886, 10,  SVID_AMMO,       Q_COMMON, {} },  // Dome Shield Boost
-    {  864, 14,  SVID_SHIRT,      Q_COMMON, {} },
+    { 5802,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd" , false)},
+    { 6885,  2,  SVID_RANGED,     Q_RARE,   Mods::Letters("dd", "ddd", false )},
+    { 2918,  3,  SVID_OFFHAND,    Q_EPIC,   Mods::Letters("hhh", "hhh", true )},
+    { 7034,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false)},
+    { 2095,  7,  SVID_SPECIALTY1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )},
+    { 2066,  8,  SVID_SPECIALTY2, Q_EPIC,   Mods::Letters("hhx", "hhh" , false)},
+    { 6143,  9,  SVID_HEAD_FLAIR, Q_EPIC,   Mods::Letters("xxx", "ccc" , false)},
+    { 2886, 10,  SVID_AMMO,       Q_COMMON, {}},
+    {  864, 14,  SVID_SHIRT,      Q_COMMON, {}},
 };
 
 // 680 — Assault — Impact Hammer + Assault Crescent Jetpack
 static const std::vector<GearSlot> kAssault = {
     { 5801,  1,  SVID_MELEE,      Q_EPIC,   {} },  // Impact Hammer
     { 5788,  2,  SVID_RANGED,     Q_EPIC,   {} },  // Rhino SMG
-    { 2914,  3,  SVID_OFFHAND,    Q_EPIC,   {} },  // Inferno-X Cannon
+    { 1987,  3,  SVID_OFFHAND,    Q_EPIC,   {
+		Mods::Damage::EPIC,
+		Mods::Damage::EPIC,
+		Mods::Damage::EPIC,
+	} },  // Inferno-X Cannon
     { 7031,  5,  SVID_JETPACK,    Q_EPIC,   {} },  // Assault Crescent Jetpack
     { 3699,  7,  SVID_SPECIALTY1, Q_EPIC,   {} },  // Power Stim
-    { 2498,  8,  SVID_SPECIALTY2, Q_EPIC,   {} },  // Concussion Grenade
-    { 6143,  9,  SVID_HEAD_FLAIR, Q_EPIC,   {} },  // Techro Buff Station (handheld → deployable_id 209)
+    { 2163,  8,  SVID_SPECIALTY2, Q_EPIC,   {} },  // Concussion Grenade
+
+    { 2013,  9,  SVID_HEAD_FLAIR, Q_EPIC,   {} },  // Techro Buff Station (handheld → deployable_id 209)
     { 5775, 10,  SVID_AMMO,       Q_COMMON, {} },  // Super Smash Boost
     {  864, 14,  SVID_SHIRT,      Q_COMMON, {} },
 };
@@ -87,16 +94,16 @@ static const std::vector<GearSlot> kRecon = {
 		Mods::Damage::EPIC,
 		Mods::Damage::EPIC,
 	} },  // Ballista
-    { 3023,  3,  SVID_OFFHAND,    Q_EPIC,   {} },  // Spring Stealth
+    { 5807,  3,  SVID_OFFHAND,    Q_EPIC,   {} },  // Spring Stealth
     { 7033,  5,  SVID_JETPACK,    Q_EPIC,   {} },  // Recon Crescent Jetpack
-    { 2113,  7,  SVID_SPECIALTY1, Q_EPIC,   {
+    { 4708,  7,  SVID_SPECIALTY1, Q_EPIC,   {
 		Mods::AOERadius::ANY,
 		Mods::AOERadius::ANY,
 		Mods::AOERadius::ANY,
 		Mods::AOERadius::ANY,
 		Mods::AOERadius::ANY,
 		Mods::AOERadius::ANY,
-	} },  // EMP Bomb
+	} },  // Venom bomb
     { 5804,  8,  SVID_SPECIALTY2, Q_EPIC,   {
 		Mods::AOERadius::ANY,
 		Mods::AOERadius::ANY,

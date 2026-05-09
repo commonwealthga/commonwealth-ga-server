@@ -34,6 +34,7 @@ struct DeviceRow {
     int              inventory_id;
     int              effect_group_id;  // legacy single-egid (still written for back-compat); unused on read
     std::vector<int> mods;             // rolled-mod effect_group_ids (one entry → one [...] letter on client)
+    bool             oc;               // pick an Overclocked-named blueprint when sending BLUEPRINT_ID
 };
 
 struct SkillRow {
@@ -70,12 +71,15 @@ public:
     // No side-effects; the resync is gated to character-SELECT (above).
     static std::vector<DeviceRow> GetDevicesForCharacter(int64_t character_id);
 
-    // Returns every effect group that should be reported in DATA_SET_INVENTORY_STATE
-    // for a given equipped device. Client (FUN_10a13820 @ 0x10a13820) accumulates
-    // these into the inventory object's effect list, which drives TgDeviceFire::
-    // GetEffectGroup runtime lookups. Queried from asm_data_set_device_effect_groups
-    // + asm_data_set_device_mode_effect_groups; falls back to the legacy hardcoded
-    // map when the asm tables are empty (pre-capture runs).
+    // UNUSED — kept for reference. Returns the union of every static effect
+    // group attached to a device in asm.dat (equip + per-fire-mode). We used
+    // to send these via DATA_SET_INVENTORY_STATE alongside rolled mods, but
+    // that leaked built-in props into the [...] letter suffix on the client
+    // (e.g. a built-in +25% Mech Damage equip-effect rendered as a stray 'm').
+    // The pipe is now rolled-mods-only; built-in effects are applied
+    // server-side via Inventory::ApplyDeviceEquipEffects and read on the
+    // client from its own asm.dat (Device.m_EquipEffect / m_pFireModeSetup).
+    // See TcpSession::send_inventory_response for the current shape.
     static std::vector<int> GetEffectGroupIds(int device_id);
 
     // Returns the lowest blueprint_id from asm_data_set_blueprints whose
@@ -83,8 +87,12 @@ public:
     // The client gates the [...] mod-letter suffix on m_pAmBlueprint != null
     // (FUN_10a12740 sets it from FInventoryData.nBlueprintId). Items that
     // ship rolled mods need a non-zero BLUEPRINT_ID for the suffix to render.
-    // Result is cached per-device for the lifetime of the process.
-    static int GetBlueprintIdForDevice(int device_id);
+    //
+    // When `oc` is true, prefers a blueprint with override_name_msg_id != 0
+    // (Overclocked-named variant — e.g. 6424 = "Focused Repair Arm OC" for
+    // device 2918). Falls back to the standard MIN(blueprint_id) if no OC
+    // variant exists for the device. Result is cached per (device_id, oc).
+    static int GetBlueprintIdForDevice(int device_id, bool oc = false);
 
     // Skill tree allocations — ga_character_skills.
     static std::vector<SkillRow> GetSkillsForCharacter(int64_t character_id);

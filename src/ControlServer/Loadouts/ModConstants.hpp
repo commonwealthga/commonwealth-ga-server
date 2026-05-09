@@ -1,26 +1,115 @@
 #pragma once
 
+#include <string>
+#include <vector>
+
 // =============================================================================
-// Mod effect_group_id constants for hardcoded loadouts.
+// Mod effect_group_id helpers for hardcoded loadouts.
 //
-// Each constant is an effect_group_id from asm_data_set_effect_groups whose
-// effect targets a property with a non-empty `ui_code` letter — that letter
-// is what shows inside the [...] suffix on the item name.
+// Each effect_group_id in a device's mods vector becomes ONE entry in the
+// inventory state blob and renders as ONE letter in the item's [...] suffix
+// (using the effect's prop's ui_code; props without one are gameplay-meaningful
+// but render no letter).
 //
-// When TcpSession sends DATA_SET_INVENTORY_STATE, every effect_group_id in a
-// device's mods array becomes one row → one letter on the client. So adding
-// the same constant six times produces six identical letters (e.g. [hhhhhh]).
+// PRIMARY API — `Mods::Letters(innate, kit)`:
+//   Pass two strings; each character names a letter to appear in the suffix.
+//   Letter → effect_group_id resolution happens at Resync time using the
+//   device's own blueprint pool (asm_data_set_blueprint_item_mods), so the
+//   same letter on different devices can resolve to different props (e.g.
+//   'd' on a rocket turret picks Pet Damage; 'd' on a melee weapon picks
+//   Melee Damage; 'd' on a regular weapon picks Effect Damage). The actual
+//   resolution lives in ModResolver.cpp.
 //
-// The `Kits` block contains the canonical 100%-make-chance effect groups from
-// shipped Weapon/Armor mod kits (item types 1434/1441). The `Unused` block
-// holds props that have a `ui_code` but no shipped kit — pick whichever
-// effect_group_id makes sense for experimentation; the picks below are just
-// the highest-base-value representative for each prop.
+//   First arg is the "rolled / innate" half (4–10% per letter — picked from
+//   the device's own innate pool); second arg is the "kit" half (2–3% per
+//   letter — generic kit egid keyed by the letter's prop). Letters that have
+//   no entry in the device's pool (innate) or no kit egid for the derived
+//   prop (kit) are silently dropped.
+//
+//   Multi-letter kit pair: 'v' and 'n' written adjacently ("vn" or "nv") in
+//   the kit string emit ONE Survivor kit egid which renders as both letters.
+//   A lone 'v' (no adjacent 'n') is dropped because no single-letter 'v' kit
+//   exists; a lone 'n' falls back to Padding (HP Max) when the device's pool
+//   maps 'n' to prop 412.
+//
+//     // Medical Station with [hhxhhh] — 'hhx' innate, 'hhh' kit:
+//     { 2066, 8, ..., Q_EPIC, Mods::Letters("hhx", "hhh") }
+//
+//     // Same slot, different mods → [xxxccc]:
+//     { 2066, 8, ..., Q_EPIC, Mods::Letters("xxx", "ccc") }
+//
+//     // Innate only → [hhh]:    Mods::Letters("hhh", "")
+//     // Kit only → [hhh]:       Mods::Letters("", "hhh")
+//
+//   OC overload (third bool arg, default false):
+//     { 2918, 3, ..., Q_EPIC, Mods::Letters("hhh", "hhh", /*oc=*/true) }
+//   Marks the slot as Overclocked. The OC flag is purely cosmetic / metadata:
+//   we send a different blueprint_id (one with override_name_msg_id != 0,
+//   e.g. 6424 for FRA → "Focused Repair Arm OC") and the client renders the
+//   "OC" name suffix. Not every device has an OC variant — see
+//   asm_data_set_blueprints rows where override_name_msg_id != 0 (77 rows
+//   covering the canon Mercenary OC weapons + a handful of grenades).
+//   Devices without an OC variant silently fall back to their standard
+//   blueprint when oc=true. NO gameplay buff is implied — the item's actual
+//   stats come from the rolled mods + device base data, exactly as without
+//   the flag.
+//
+// LETTERS BY PROP (canonical mapping — actual letter ⇄ prop binding for any
+// specific device comes from that device's blueprint pool, not this table):
+//
+//   Letter | Common prop_ids (which one applies depends on device)
+//   -------+----------------------------------------------------------
+//   d      | 65 Effect Damage / 212 Melee / 214 Ranged / 350 Pet Damage
+//   h      | 330 Effect Healing
+//   x      | 352 AOE Radius
+//   r      | 114 Device Range / 218 Protection-Ranged / 381 Pet Range
+//   c      | 203 Recharge Time
+//   p      | 242 Power Pool Cost
+//   s      | 386 Effect Shield
+//   t      | 208 Effect Lifetime
+//   v      | 366 Pet Max Health
+//   n      | 339 HP Max Deployables / 412 Health Max (armor)
+//   m      | 217 Protection-Melee
+//   b      | 219 Protection-AOE
+//   T      | 421 Threat
+//
+// Multi-letter Survivor kit (egid 24219 etc): one egid produces both 'v'
+// and 'n' visible. Write "vn" or "nv" in the kit string to invoke it.
 // =============================================================================
 
 namespace Mods {
 
+// Output of `Letters()` and the type stored in `GearSlot::mods`. Carries
+// either letter strings (resolved at Resync time per-device) OR a raw egid
+// list (back-compat path used by rows that pass concrete `Mods::*::EPIC`
+// constants directly). The `oc` flag picks an Overclocked-named blueprint
+// at TCP-send time. Constructors keep the existing brace-list patterns in
+// ClassLoadouts.cpp working without per-row migration:
+//
+//     Q_EPIC, {}                                    // empty Result
+//     Q_EPIC, { Mods::Damage::EPIC, ... }           // raw egids (bypass letter resolution)
+//     Q_EPIC, Mods::Letters("hhh", "hhh")           // letters, device-resolved
+//     Q_EPIC, Mods::Letters("hhh", "hhh", true)     // letters + OC name
+//
+// Raw `raw_egids` non-empty short-circuits letter resolution entirely —
+// useful when you want a specific egid the resolver wouldn't pick.
+struct Result {
+    std::vector<int> raw_egids;  // explicit egids; bypasses letter resolution
+    std::string      innate;     // letters → device-specific innate egids
+    std::string      kit;        // letters → kit egids (prop derived from device pool)
+    bool             oc = false;
+
+    Result() = default;
+    Result(std::initializer_list<int> il) : raw_egids(il) {}
+
+    bool empty() const { return raw_egids.empty() && innate.empty() && kit.empty(); }
+};
+
 // ── Shipped weapon mod kits ──────────────────────────────────────────────────
+// Three constants per family — UNCOMMON/RARE/EPIC — represent the three rolls
+// from a shipped Mod Kit blueprint. Per-tier values are typically identical
+// inside any one family (the "tier" controls how many letters the kit adds,
+// not how much each one is worth).
 
 namespace Cooldown {  // 'c' Recharge Time Modifier (prop 203) — Weapon Cooldown Mod
     constexpr int UNCOMMON = 24188;
@@ -46,14 +135,13 @@ namespace Healing {  // 'h' Effect Healing Modifier (prop 330) — Weapon Healin
     constexpr int EPIC     = 24212;
 }
 
-namespace Power {  // 'p' Power Pool Cost (prop 242) — Weapon Power Mod (cheaper firing)
+namespace Power {  // 'p' Power Pool Cost (prop 242) — Weapon Power Mod
     constexpr int UNCOMMON = 24233;
     constexpr int RARE     = 24234;
     constexpr int EPIC     = 24230;
 }
 
-namespace Survivor {  // 'n'+'v' Health Max Deployables / Pet Max Health — Weapon Survivor Mod
-    // Note: kit blueprints reuse the same effect_group_id for both props.
+namespace Survivor {  // 'n'+'v' HP Max Deployables / Pet Max Health — Weapon Survivor Mod
     constexpr int UNCOMMON = 24222;
     constexpr int RARE     = 24223;
     constexpr int EPIC     = 24219;
@@ -91,11 +179,21 @@ namespace ArmorPlate {  // 'm' Protection - Melee (prop 217) — Armor Plate Mod
     constexpr int EPIC     = 24170;
 }
 
-// ── Mods that exist in DB but were never shipped as kits ─────────────────────
-//
-// No tier separation exists in any blueprint for these — the constants here
-// are single representatives. Edit / replace at will; any effect_group_id
-// whose effect's prop has the matching ui_code will render the right letter.
+// Build a Result from compact letter strings. Resolution is deferred to
+// Resync time (ModResolver::Resolve) so the same letter can map to different
+// props on different devices.
+inline Result Letters(const char* innate, const char* kit, bool oc = false) {
+    Result r;
+    if (innate) r.innate = innate;
+    if (kit)    r.kit    = kit;
+    r.oc = oc;
+    return r;
+}
+
+// ── Single-tier "Any" picks (props with a ui_code but no shipped kit) ────────
+// Useful when you want raw egid access. The Letters() table above already
+// picks representatives; reach for these only when you specifically need
+// a non-default egid.
 
 namespace Accuracy        { constexpr int ANY = 22312; }   // 'a' +50 accuracy (Accuracy Modifier prop 113)
 namespace EffectiveRange  { constexpr int ANY = 13381; }   // 'q' Device Effective Range Modifier (prop 207)
@@ -104,7 +202,7 @@ namespace HealSelf        { constexpr int ANY = 27742; }   // 'y' Effect Heal Mo
 namespace EffectLifetime  { constexpr int ANY = 24420; }   // 't' Effect Lifetime Modifier (prop 208) — Berserk Epic
 namespace PetLifespan     { constexpr int ANY = 24601; }   // 'l' Pet LifeSpan Modifier (prop 355) — Eye Drone Epic
 namespace Shield          { constexpr int ANY = 24503; }   // 's' Effect Shield Modifier (prop 386) — AOE Shield
-namespace EffectRadius    { constexpr int ANY = 16255; }   // 'z' Effect Radius (prop ?) — share AOE pool
+namespace EffectRadius    { constexpr int ANY = 16255; }   // 'z' Effect Radius — share AOE pool
 namespace FallingDamage   { constexpr int ANY = 7312;  }   // 'f' Falling Damage Modifier (prop 137)
 namespace EffectPotency   { constexpr int ANY = 16795; }   // '*' Effect Potency Modifier (prop 376) — +200 (massive)
 namespace ProtPhysical    { constexpr int ANY = 16601; }   // 'g' Protection - Physical (prop 155) — +20000

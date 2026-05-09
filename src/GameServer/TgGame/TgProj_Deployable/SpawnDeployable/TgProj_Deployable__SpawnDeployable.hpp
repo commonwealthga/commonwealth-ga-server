@@ -14,7 +14,14 @@ public:
 	};
 
 	// Shared helper used by both SpawnDeployable (projectile path) and TgDeviceFire::Deploy.
-	static ATgDeployable* SpawnDeployableActor(ATgPawn* pawn, int deployableId, FVector vLocation, FVector vNormal);
+	// `sourceDevice` / `sourceFireMode` are the ATgDevice + UTgDeviceFire that issued
+	// the deploy. Stored on the spawned deployable as r_Owner / s_SpawnerDeviceMode so
+	// downstream code (effect attribution, per-type limits, source-trace for morale
+	// credit, etc.) can chase from the deployable back to the equipping device.
+	// Either may be null if the caller can't resolve them.
+	static ATgDeployable* SpawnDeployableActor(ATgPawn* pawn, int deployableId,
+		FVector vLocation, FVector vNormal,
+		ATgDevice* sourceDevice = nullptr, UTgDeviceFire* sourceFireMode = nullptr);
 
 	// True iff the deployed actor is a TgDeploy_Beacon (or subclass). Used by
 	// Deploy to decide whether to consume the spawning device from inventory.
@@ -77,4 +84,57 @@ public:
 	// same prop 279 row through `m.bot_id = ?`. Default 2.0s fallback when
 	// missing — matches the existing SpawnPet fallback.
 	static float GetPetDeployTimeSecs(int nBotId);
+
+	// Scale a base deploy-time value by the deploying pawn's buff registry.
+	// Both `GetDeployTimeSecs` and `GetPetDeployTimeSecs` do raw DB reads of
+	// prop 279 ("Time To Deploy (secs)"), bypassing the buff system. Skills
+	// targeting prop 391 ("Pet Deploy Time Modifier", BUFF_DEVICE expansion of
+	// 279) — e.g. Repair Arm Speed (-15%) and Cyber Specialist (-20%) — never
+	// reach the deploy path without this hook. Calls GetBuffedProperty with
+	// BUFF_DEVICE context, which in turn calls ConvertPropToPropList(3, 279)
+	// → {391}, picks up the player's stacked skill modifiers, and returns the
+	// scaled time. Pass-through when the pawn has no relevant buff.
+	static float ApplyDeployTimeBuff(class ATgPawn* pawn, float baseSecs);
+
+	// True iff asm_data_set_deployables.health > 0 for this deployable_id.
+	// HP-zero deployables (Shatter Bomb, EMP Bomb, etc) are pre-explosion
+	// timer bombs and most mines — they should NOT take damage and should
+	// NOT be hitscan-targetable by enemies. Stations/turrets/destructibles
+	// all carry positive HP and remain damageable. Cached per deployable_id.
+	static bool IsDestructibleDeployableId(int nDeployableId);
+
+	// Resolve TGPID_MAX_DEPLOYABLES_OUT (prop 154) for a fire-mode. Returns
+	// the configured limit (1 for stations / force fields / sensors, 2-3 for
+	// mines / grenades, larger for bombs), or 0 when no row exists (no limit
+	// enforced). Cached per device_mode_id.
+	static int GetMaxDeployablesOut(int device_mode_id);
+
+	// Drops null + already-destroyed entries from `pawn->s_SelfDeployableList`
+	// in place, preserving the relative order of the remaining entries. Without
+	// this, the list grows unbounded (preallocated to 255 slots) and would
+	// eventually overflow on a long-lived pawn that keeps deploying & losing
+	// entries to natural destruction. Also called as the first step of
+	// EnforceDeployableLimit so the count reflects only live deployables.
+	static void CompactDeployableList(ATgPawn* pawn);
+
+	// Enforce the per-fire-mode limit (prop 154) before adding a new
+	// deployable. Counts existing entries in `pawn->s_SelfDeployableList`
+	// whose `r_Owner == sourceDevice` (the "same device" rule that lets a
+	// player keep e.g. one medical station AND one power station, but not
+	// two of either). When count >= limit, calls `eventDestroyIt(false)` on
+	// the oldest matching entries until count < limit. The destroyed entries
+	// stay in the list — they're filtered out next time CompactDeployableList
+	// runs (next spawn) or wiped wholesale by KillDeployables on owner death.
+	// No-op when sourceDevice is null or limit <= 0 (unlimited).
+	static void EnforceDeployableLimit(ATgPawn* pawn, ATgDevice* sourceDevice, UTgDeviceFire* sourceFireMode);
+
+	// Append `dep` to the global `GRI.m_Deployables` list (TgRepInfo_Game's
+	// world-wide deployable registry, replicated to every client). UC's
+	// TgBeaconFactory.uc:58 iterates this list, and the HUD's device-bar
+	// healthbar pipeline likely walks it too — without it, any client-side
+	// "show me all deployables" enumeration sees zero entries on our server.
+	// The native that should populate it is stripped. Compacts (drops null
+	// + already-destroyed entries) before appending so the list doesn't
+	// grow unbounded across a long match.
+	static void RegisterDeployableInGRI(ATgDeployable* dep);
 };

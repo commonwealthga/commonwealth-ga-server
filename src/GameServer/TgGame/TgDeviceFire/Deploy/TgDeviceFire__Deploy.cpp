@@ -60,7 +60,7 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 	}
 
 	ATgDeployable* Deployable = TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
-		pawn, deployableId, spawnLoc, spawnNorm);
+		pawn, deployableId, spawnLoc, spawnNorm, device, pThis);
 
 	if (Deployable) {
 		// Only consume the spawning device for beacons. Stations, turrets,

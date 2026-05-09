@@ -1,35 +1,8 @@
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/ApplyPlayerModsToDeployable.hpp"
+#include "src/GameServer/TgGame/BuffEffectRegistry/ModifierProps.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 namespace {
-// Reverse of ConvertPropToPropList(BUFF_DEVICE) (FUN_109e5220 in the binary).
-// For each modifier-prop the player can have buffed in m_EffectBuffInfo, list
-// the deployable-side base props it scales. Multiple entries possible (e.g.
-// AOE Radius Modifier affects both DAMAGE_RADIUS=6 and EFFECTIVE_RADIUS=343).
-//
-// Don't include modifier-props whose targets only matter on the player pawn
-// (HEAL_OUTPUT_MODIFIER=385 → 318/339 on the pawn, not on the deployable).
-//
-// First int is the modifier prop_id; the rest are its targets.
-struct ModMap {
-	int modifierPropId;
-	int targets[4];   // -1 sentinel terminator
-};
-
-static const ModMap kModMap[] = {
-	{ 352, { 6, 343, -1 }            },  // AOE Radius Modifier  → Damage Radius / Effective Radius
-	{ 203, { 4, -1 }                 },  // Recharge Rate Modifier → CoolDown
-	{ 114, { 5, -1 }                 },  // Range Modifier → Range
-	{ 113, { 10, 245, 246, 249 }     },  // Damage Modifier → Damage variants
-	{ 349, { 7, -1 }                 },  // Activation Time Modifier → ActivationTime
-	{ 356, { 46, -1 }                },  // Prop-46 Modifier
-	{ 207, { 153, -1 }               },  // Prop-153 Modifier
-	{ 256, { 247, 248, -1 }          },  // Prop-247/248 Modifier
-	{ 391, { 279, -1 }               },  // Prop-279 Modifier
-	{ 284, { 283, -1 }               },  // Prop-283 Modifier
-	{ 355, { 354, -1 }               },  // Prop-354 Modifier
-};
-
 // Find the FBuffInfo entry on the pawn whose nPropId matches `modifierPropId`.
 // Sums across multiple matching entries (mirrors the binary's aggregator).
 // Out: (IP, IM, SP, SM, LP, LM, GP, GM) — the 8 floats from FBuffInfo summed
@@ -79,17 +52,17 @@ void ApplyPlayerModsToDeployable::Apply(ATgPawn* pawn, ATgDeployable* deployable
 		return;
 	}
 
-	const int kNumMaps = (int)(sizeof(kModMap) / sizeof(kModMap[0]));
+	const int kNumMaps = ModifierProps::kBuffDeviceModMapCount;
 	int totalModified = 0;
 
 	for (int m = 0; m < kNumMaps; ++m) {
-		const ModMap& mm = kModMap[m];
+		const ModifierProps::BuffDeviceMapping& mm = ModifierProps::kBuffDeviceModMap[m];
 		float IP, IM, SP, SM, LP, LM, GP, GM;
 		if (!GatherBuffSums(pawn, mm.modifierPropId, IP, IM, SP, SM, LP, LM, GP, GM))
 			continue;
 
 		// Apply layered formula to each target prop on the deployable.
-		for (int t = 0; t < 4 && mm.targets[t] >= 0; ++t) {
+		for (int t = 0; t < 5 && mm.targets[t] >= 0; ++t) {
 			int targetPropId = mm.targets[t];
 			UTgProperty* prop = FindDeployableProp(deployable, targetPropId);
 			if (!prop) continue;
@@ -129,8 +102,8 @@ void ApplyPlayerModsToDeployable::Apply(ATgPawn* pawn, ATgDeployable* deployable
 		// (proximity radius), call SetProperty so the mirror fans out too.
 		// Safe because SetProperty's linear scan finds the entry we just mutated.
 		for (int m = 0; m < kNumMaps; ++m) {
-			const ModMap& mm = kModMap[m];
-			for (int t = 0; t < 4 && mm.targets[t] >= 0; ++t) {
+			const ModifierProps::BuffDeviceMapping& mm = ModifierProps::kBuffDeviceModMap[m];
+			for (int t = 0; t < 5 && mm.targets[t] >= 0; ++t) {
 				int propId = mm.targets[t];
 				if (propId == 8 || propId == 278) {
 					UTgProperty* prop = FindDeployableProp(deployable, propId);

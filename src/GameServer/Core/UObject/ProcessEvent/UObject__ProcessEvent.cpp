@@ -304,6 +304,7 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 				D, D ? D->r_nDeployableId : -1);
 		}
 
+
 		// Diagnostic: log every TgDeployable.UpdateHealth call. UC's
 		// TgEffectHeal.ApplyEffect (prop 260 / Repair) dispatches here for
 		// deployable targets, so a repair-arm pulse on a station should

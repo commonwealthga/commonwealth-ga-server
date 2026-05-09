@@ -44,6 +44,54 @@ static UClass* FindClassByFullName(const char* target) {
 	return nullptr;
 }
 
+// -------------------------------------------------------------------------
+// asm_data_set_effect_groups.posture_type_value_id is a FK into
+// asm_data_set_valid_values (group 61), NOT the TG_POSTURE byte enum.
+// UC's TgEffectGroup.ApplyPosture passes m_nPosture straight to
+// TgPawn.SetPosture which writes `r_ePosture = byte(ePosture)` — so the
+// raw FK gets truncated. e.g. 814 (=None) becomes byte(814)=46, which is
+// out of the 0..32 enum range → BlendByPostureAnimNode finds no matching
+// child and the pawn freezes (turret idle/fire animations missing).
+// Translate FK → enum byte at load time. Unmapped/zero values map to
+// TG_POSTURE_NONE (31) which makes ApplyPosture early-return.
+static int MapPostureValueIdToEnum(int valueId) {
+	switch (valueId) {
+		case 334: return 0;  // Default
+		case 336: return 1;  // Hibernate
+		case 337: return 2;  // Enraged
+		case 338: return 3;  // Scared
+		case 339: return 4;  // Wounded
+		case 404: return 5;  // Stunned
+		case 405: return 6;  // ShortCircuit
+		case 406: return 7;  // Confuse
+		case 407: return 8;  // Slow
+		case 408: return 9;  // Knockback
+		case 409: return 10; // Sleep
+		case 410: return 11; // CriticalFailure
+		case 411: return 12; // Immobilize
+		case 412: return 13; // VisionBlur
+		case 414: return 14; // Weakness
+		case 415: return 15; // Blocking
+		case 446: return 16; // Job1
+		case 447: return 17; // Job2
+		case 496: return 18; // Patrol
+		case 669: return 20; // AtConsole (no value_id for Relax=19 in DB)
+		case 720: return 21; // GenericFire1
+		case 721: return 22; // GenericFire2
+		case 722: return 23; // GenericFire3
+		case 742: return 24; // BlockStun
+		case 1055: return 25; // Rest
+		case 1150: return 26; // Startled
+		case 1151: return 27; // Low Profile Panic
+		case 1152: return 28; // Running Panic
+		case 1153: return 29; // ScaredAndWounded
+		case 1189: return 30; // Searching
+		case 814: return 31; // None
+		case 0:
+		default:  return 31; // unset / unknown → TG_POSTURE_NONE (no posture change)
+	}
+}
+
 static UClass* GetEffectClassById(int classResId) {
 	const char* name = nullptr;
 	switch (classResId) {
@@ -125,7 +173,7 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 				g->m_fSituationalValue = (float)sqlite3_column_double(stmt,  9);
 				g->m_nNumMaxStacks     = sqlite3_column_int   (stmt, 10);
 				g->m_fBuffValue        = (float)sqlite3_column_double(stmt, 11);
-				g->m_nPosture          = sqlite3_column_int   (stmt, 14);
+				g->m_nPosture          = MapPostureValueIdToEnum(sqlite3_column_int(stmt, 14));
 				g->m_nHealth           = sqlite3_column_int   (stmt, 15);
 
 				unsigned int& flags = *(unsigned int*)((char*)g + 0x74);
@@ -259,9 +307,9 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 	{
 		unsigned int gflags = *(unsigned int*)((char*)g + 0x74);
 		Logger::Log("effects",
-			"[BUILD] egId=%d egType=%d effects=%d lifetime=%.2f category=%d app=%d bIsManaged=%d\n",
+			"[BUILD] egId=%d egType=%d effects=%d lifetime=%.2f category=%d app=%d posture=%d bIsManaged=%d\n",
 			egId, egType, g->m_Effects.Count, g->m_fLifeTime, g->m_nCategoryCode,
-			g->m_nApplicationType, (gflags & 0x01) ? 1 : 0);
+			g->m_nApplicationType, g->m_nPosture, (gflags & 0x01) ? 1 : 0);
 		for (int i = 0; i < g->m_Effects.Count; i++) {
 			UTgEffect* e = g->m_Effects.Data[i];
 			if (!e) continue;
@@ -297,12 +345,26 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 			// to propagate onto each effect group for CalcDamageTypeProtection / CalcAttackTypeProtection.
 			int   fmDamageType = *(int*)((char*)pThis + 0xBC);
 			int   fmAttackType = *(int*)((char*)pThis + 0x88);
+			// m_bIsAOE bit 0x01 at +0x44 (UTgDeviceFire bitfield, SDK_HEADERS/TgGame_classes.h:7497).
+			bool  fmIsAOE      = (*(unsigned char*)((char*)pThis + 0x44) & 0x01) != 0;
 
-			// Map fire-mode attack-type value ID to TG_EQUIP_ATTACK_TYPE enum:
-			//   170 (0xAA) = melee → 1, 85 (0x55) / 177 (0xB1) = ranged → 2
+			// Map fire-mode attack signal to TgEffectGroup.AttackType enum
+			// (TgEffectGroup.uc:40-48): None=0, Melee=1, Range=2, AOE=3.
+			//
+			// AOE takes precedence over melee/range — the only `valid_value_group=25`
+			// entries are 83/85/87/170/177/...; none of them encode "AOE", so the
+			// original game distinguishes splash damage via the m_bIsAOE bit on
+			// the fire mode (UC TgDeviceFire.uc keys all of its AoE handling off
+			// it: ApplyHit:339, splash distance scaling:448-465). Without this
+			// override, grenade/bomb/aftershock/gammaburst splash damage gets
+			// tagged as Range (2) and CalcAttackTypeProtection looks up prop 218
+			// (Protection-Ranged) instead of prop 219 (Protection-AOE) — making
+			// the AoE Shield (effect 5835: prop 219 +100, 10s/2000hp) silently
+			// useless against the very damage it's meant to absorb.
 			unsigned char eAttackType = 0;
-			if (fmAttackType == 170)                       eAttackType = 1; // TGEAT_MELEE
-			else if (fmAttackType == 85 || fmAttackType == 177) eAttackType = 2; // TGEAT_RANGE
+			if (fmIsAOE)                                        eAttackType = 3; // TGAT_AOE
+			else if (fmAttackType == 170)                       eAttackType = 1; // TGAT_Melee
+			else if (fmAttackType == 85 || fmAttackType == 177) eAttackType = 2; // TGAT_Range
 
 			TARRAY_INIT(pThis, egList, UTgEffectGroup*, 0x48, 8)
 

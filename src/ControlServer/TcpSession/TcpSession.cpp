@@ -1077,9 +1077,11 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 		// m_pAmBlueprint is non-null, so for any item carrying rolled mods we
 		// must send a real blueprint_id whose created_item_id matches this
 		// device. Items with no mods send 0 (no fake blueprint, no suffix).
+		// When d.oc is set, picks a blueprint with override_name_msg_id != 0
+		// so the client renders the "OC" name suffix.
 		const int blueprintId = d.mods.empty()
 			? 0
-			: PlayerSessionStore::GetBlueprintIdForDevice(d.device_id);
+			: PlayerSessionStore::GetBlueprintIdForDevice(d.device_id, d.oc);
 
 		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1);
 		Write4B(response, GA_T::ITEM_ID, d.device_id);
@@ -1097,18 +1099,26 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 		// DATA_SET_INVENTORY_STATE carries a list of {INVENTORY_ID, EFFECT_GROUP_ID}
 		// pairs. Client FUN_10a13820 @ 0x10a13820 appends every row whose
 		// INVENTORY_ID matches this item's inv_id into the inventory object's
-		// effect-group list (m_nStateEffectGroupIdArray), which drives both the
-		// TgDeviceFire::GetEffectGroup runtime lookup AND the [...] letter
-		// suffix in the UI (one letter per row, derived from each effect's
-		// property.ui_code).
+		// effect-group list (m_nStateEffectGroupIdArray), which drives the
+		// [...] letter suffix in the UI (one letter per row, derived from each
+		// effect's property.ui_code).
 		//
-		// Compose: static device-template effects + rolled-mod effect groups
-		// from the loadout (DeviceRow::mods). Six-letter suffixes like
-		// [hhhhhh] come from emitting six rows whose effect_group_id resolves
-		// to a property with ui_code='h'.
-		auto effectGroups = PlayerSessionStore::GetEffectGroupIds(d.device_id);
-		for (int egid : d.mods) effectGroups.push_back(egid);
-		if (effectGroups.empty()) effectGroups.push_back(0); // preserve 1-row shape for unknown devices
+		// Send ONLY rolled mods here. The device's built-in equip effects
+		// (asm_data_set_device_effect_groups) and built-in fire-mode effects
+		// (asm_data_set_device_mode_effect_groups) are NOT replicated through
+		// this pipe — the client already has them from its own asm.dat (via
+		// Device.m_EquipEffect + m_pFireModeSetup native data). Mixing them in
+		// here leaks built-in props into the suffix (e.g. a built-in +25% Mech
+		// Damage equip-effect with ui_code='m' would render as a stray 'm'
+		// alongside the rolled-mod letters).
+		//
+		// Server-side: built-in equip effects are applied by
+		// Inventory::ApplyDeviceEquipEffects (direct s_Properties writes), and
+		// TgDeviceFire::GetEffectGroup reads m_pFireModeSetup+0x98 directly —
+		// neither path consults m_nStateEffectGroupIdArray, so dropping built-in
+		// effects from this blob has no gameplay side-effects.
+		std::vector<int> effectGroups = d.mods;
+		if (effectGroups.empty()) effectGroups.push_back(0); // preserve 1-row shape
 
 		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
 		append(response, (uint8_t)(effectGroups.size() & 0xFF), (uint8_t)(effectGroups.size() >> 8));

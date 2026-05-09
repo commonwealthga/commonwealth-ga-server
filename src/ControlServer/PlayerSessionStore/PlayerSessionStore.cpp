@@ -1,6 +1,7 @@
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/Loadouts/ClassLoadouts.hpp"
+#include "src/ControlServer/Loadouts/ModResolver.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "sqlite3.h"
 #include <cstdio>
@@ -264,34 +265,53 @@ int PlayerSessionStore::GetEffectGroupId(int deviceId) {
 	}
 }
 
-int PlayerSessionStore::GetBlueprintIdForDevice(int deviceId) {
-	// Cache: device_id → blueprint_id. Looked up once per process.
-	static std::map<int, int> cache;
+int PlayerSessionStore::GetBlueprintIdForDevice(int deviceId, bool oc) {
+	// Cache: (device_id, oc) → blueprint_id. Looked up once per process per pair.
+	static std::map<std::pair<int, bool>, int> cache;
 	static std::mutex cacheMutex;
 
+	const auto key = std::make_pair(deviceId, oc);
 	{
 		std::lock_guard<std::mutex> lock(cacheMutex);
-		auto it = cache.find(deviceId);
+		auto it = cache.find(key);
 		if (it != cache.end()) return it->second;
 	}
 
 	int blueprintId = 0;
 	sqlite3* db = Database::GetConnection();
 	if (db) {
+		// OC: prefer the lowest blueprint_id with override_name_msg_id != 0.
+		// Standard: pick MIN(blueprint_id) regardless. If OC was requested but
+		// no OC variant exists for this device, fall through to the standard
+		// query so the suffix still renders.
+		const char* sql = oc
+			? "SELECT blueprint_id FROM asm_data_set_blueprints "
+			  "WHERE created_item_id = ? AND override_name_msg_id != 0 "
+			  "ORDER BY blueprint_id LIMIT 1"
+			: "SELECT MIN(blueprint_id) FROM asm_data_set_blueprints "
+			  "WHERE created_item_id = ?";
 		sqlite3_stmt* stmt = nullptr;
-		if (sqlite3_prepare_v2(db,
-		    "SELECT MIN(blueprint_id) FROM asm_data_set_blueprints WHERE created_item_id = ?",
-		    -1, &stmt, nullptr) == SQLITE_OK) {
+		if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
 			sqlite3_bind_int(stmt, 1, deviceId);
 			if (sqlite3_step(stmt) == SQLITE_ROW)
 				blueprintId = sqlite3_column_int(stmt, 0);
 			sqlite3_finalize(stmt);
 		}
+		if (oc && blueprintId == 0) {
+			if (sqlite3_prepare_v2(db,
+			    "SELECT MIN(blueprint_id) FROM asm_data_set_blueprints WHERE created_item_id = ?",
+			    -1, &stmt, nullptr) == SQLITE_OK) {
+				sqlite3_bind_int(stmt, 1, deviceId);
+				if (sqlite3_step(stmt) == SQLITE_ROW)
+					blueprintId = sqlite3_column_int(stmt, 0);
+				sqlite3_finalize(stmt);
+			}
+		}
 	}
 
 	{
 		std::lock_guard<std::mutex> lock(cacheMutex);
-		cache[deviceId] = blueprintId;
+		cache[key] = blueprintId;
 	}
 	return blueprintId;
 }
@@ -404,8 +424,8 @@ void PlayerSessionStore::ResyncCharacterDevicesFromLoadout(int64_t character_id,
 	sqlite3_stmt* insstmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
 		"INSERT INTO ga_character_devices "
-		"(character_id, device_id, equip_slot, slot_value_id, quality, inventory_id, effect_group_id, mod_effect_group_ids) "
-		"VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		"(character_id, device_id, equip_slot, slot_value_id, quality, inventory_id, effect_group_id, mod_effect_group_ids, oc) "
+		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		-1, &insstmt, nullptr);
 	if (rc != SQLITE_OK || !insstmt) {
 		Logger::Log("db", "[PlayerSessionStore] Resync insert prepare failed: %s\n", sqlite3_errmsg(db));
@@ -415,7 +435,12 @@ void PlayerSessionStore::ResyncCharacterDevicesFromLoadout(int64_t character_id,
 	for (const auto& g : loadout) {
 		// Stable per-slot inventory id so reseeds don't shuffle ids.
 		const int invId = 10000 + g.equip_slot;
-		const std::string modsCsv = ModsToCsv(g.mods);
+
+		// Letters → egids via this device's blueprint pool. raw_egids form
+		// (rows that pass concrete `Mods::*::EPIC` constants directly) is
+		// passed through unchanged.
+		const std::vector<int> egids = ModResolver::Resolve(g.device_id, g.quality, g.mods);
+		const std::string modsCsv = ModsToCsv(egids);
 
 		sqlite3_reset(insstmt);
 		sqlite3_bind_int64(insstmt, 1, character_id);
@@ -426,6 +451,7 @@ void PlayerSessionStore::ResyncCharacterDevicesFromLoadout(int64_t character_id,
 		sqlite3_bind_int(insstmt,   6, invId);
 		sqlite3_bind_int(insstmt,   7, GetEffectGroupId(g.device_id));  // legacy column kept for back-compat
 		sqlite3_bind_text(insstmt,  8, modsCsv.c_str(), -1, SQLITE_TRANSIENT);
+		sqlite3_bind_int(insstmt,   9, g.mods.oc ? 1 : 0);
 		sqlite3_step(insstmt);
 	}
 	sqlite3_finalize(insstmt);
@@ -447,7 +473,7 @@ std::vector<DeviceRow> PlayerSessionStore::GetDevicesForCharacter(int64_t charac
 
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
-		"SELECT device_id, equip_slot, slot_value_id, quality, inventory_id, effect_group_id, mod_effect_group_ids "
+		"SELECT device_id, equip_slot, slot_value_id, quality, inventory_id, effect_group_id, mod_effect_group_ids, oc "
 		"FROM ga_character_devices WHERE character_id = ? ORDER BY equip_slot",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
@@ -465,6 +491,7 @@ std::vector<DeviceRow> PlayerSessionStore::GetDevicesForCharacter(int64_t charac
 		row.inventory_id    = sqlite3_column_int(stmt, 4);
 		row.effect_group_id = sqlite3_column_int(stmt, 5);
 		row.mods            = CsvToMods(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6)));
+		row.oc              = sqlite3_column_int(stmt, 7) != 0;
 		result.push_back(row);
 	}
 	sqlite3_finalize(stmt);

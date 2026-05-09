@@ -271,6 +271,222 @@ float TgProj_Deployable__SpawnDeployable::GetPetDeployTimeSecs(int nBotId) {
 	return secs;
 }
 
+float TgProj_Deployable__SpawnDeployable::ApplyDeployTimeBuff(ATgPawn* pawn, float baseSecs) {
+	if (!pawn || baseSecs <= 0.0f) return baseSecs;
+
+	// GetBuffedProperty (TgPawn vtable[0x55C], FUN_109d7ff0). Direct call rather
+	// than SDK wrapper for the same reason TgPawn__ApplyBuff calls GetBuffIndex
+	// directly: avoid the wrapper's parm-struct shenanigans. Signature mirrors
+	// the one used in CloneEffectGroup's [DAMAGE-BUFF] / [EFFECT-BUFF] blocks.
+	typedef void(__fastcall* GetBuffedPropertyFn)(
+		ATgPawn*, void*, unsigned char,
+		int, int, int, int, int, float, float*, void*);
+	static const GetBuffedPropertyFn GetBuffedPropertyNative =
+		(GetBuffedPropertyFn)0x109d7ff0;
+
+	float buffedSecs = baseSecs;
+	GetBuffedPropertyNative(
+		pawn, /*edx=*/nullptr,
+		/*eRequestContext=*/3,        // BUFF_DEVICE — fire-mode prop reads
+		/*nPropId=*/279,              // Time To Deploy (secs)
+		/*nReqCategoryCode=*/0,
+		/*nReqSkillId=*/0,
+		/*nReqDeviceInstId=*/0,
+		/*bUsePotencyModifier=*/0,
+		/*fBaseValue=*/baseSecs,
+		/*fBuffedValue=*/&buffedSecs,
+		/*Effect=*/nullptr);
+
+	if (buffedSecs != baseSecs) {
+		Logger::Log("inventory",
+			"[DEPLOY-TIME] pawn=%p prop279  base=%.3fs -> buffed=%.3fs (×%.3f)\n",
+			(void*)pawn, baseSecs, buffedSecs,
+			(baseSecs > 0.0f) ? buffedSecs / baseSecs : 1.0f);
+	}
+	return buffedSecs;
+}
+
+bool TgProj_Deployable__SpawnDeployable::IsDestructibleDeployableId(int nDeployableId) {
+	// Cache: 0 = HP=0 (indestructible), 1 = HP>0 (destructible).
+	static std::unordered_map<int, int> s_cache;
+	auto it = s_cache.find(nDeployableId);
+	if (it != s_cache.end()) return it->second == 1;
+
+	int destructible = 1;  // assume HP>0 if DB lookup misses
+	sqlite3* db = Database::GetConnection();
+	if (db) {
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+			"SELECT health FROM asm_data_set_deployables WHERE deployable_id = ? LIMIT 1;",
+			-1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int(stmt, 1, nDeployableId);
+			if (sqlite3_step(stmt) == SQLITE_ROW) {
+				const int hp = sqlite3_column_int(stmt, 0);
+				destructible = (hp > 0) ? 1 : 0;
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+	s_cache[nDeployableId] = destructible;
+	return destructible == 1;
+}
+
+int TgProj_Deployable__SpawnDeployable::GetMaxDeployablesOut(int device_mode_id) {
+	// -1 sentinel = uninit; 0 = no limit (DB row absent); positive = configured limit.
+	static std::unordered_map<int, int> s_cache;
+	auto it = s_cache.find(device_mode_id);
+	if (it != s_cache.end()) return it->second;
+
+	int limit = 0;
+	sqlite3* db = Database::GetConnection();
+	if (db) {
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+			"SELECT base_value FROM asm_data_set_device_mode_properties "
+			"WHERE device_mode_id = ? AND prop_id = 154 LIMIT 1;",
+			-1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int(stmt, 1, device_mode_id);
+			if (sqlite3_step(stmt) == SQLITE_ROW &&
+				sqlite3_column_type(stmt, 0) != SQLITE_NULL) {
+				const float v = (float)sqlite3_column_double(stmt, 0);
+				if (v > 0.0f) limit = (int)v;
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+	s_cache[device_mode_id] = limit;
+	return limit;
+}
+
+void TgProj_Deployable__SpawnDeployable::CompactDeployableList(ATgPawn* pawn) {
+	if (!pawn) return;
+	auto& arr = pawn->s_SelfDeployableList;
+	int write = 0;
+	for (int read = 0; read < arr.Count; ++read) {
+		ATgDeployable* dep = arr.Data[read];
+		// Drop null entries (allocator slack) and already-destroyed deployables
+		// (the actor still exists until LifeSpan expires, but it shouldn't
+		// count toward the live-deployable limit).
+		if (!dep) continue;
+		if (dep->m_bInDestroyedState) continue;
+		if (dep->bDeleteMe) continue;
+		arr.Data[write++] = dep;
+	}
+	// Zero out the freed tail so stale pointers don't survive between compacts
+	// in case anything reads past Count by accident.
+	for (int i = write; i < arr.Count; ++i) arr.Data[i] = nullptr;
+	arr.Count = write;
+}
+
+void TgProj_Deployable__SpawnDeployable::EnforceDeployableLimit(
+	ATgPawn* pawn, ATgDevice* sourceDevice, UTgDeviceFire* sourceFireMode)
+{
+	if (!pawn || !sourceDevice || !sourceFireMode) return;
+
+	const int device_mode_id = sourceFireMode->m_nId;
+	const int limit = GetMaxDeployablesOut(device_mode_id);
+	if (limit <= 0) return;  // no DB row → no limit
+
+	CompactDeployableList(pawn);
+
+	auto& arr = pawn->s_SelfDeployableList;
+
+	// Count live deployables sharing the same source device. "Same device"
+	// matches the user-observable rule: deploying a second medical station
+	// destroys the first, but a medical station + power station coexist
+	// (different devices, separate counts). Match by pointer identity since
+	// each player has at most one device of each kind equipped.
+	auto matches = [&](ATgDeployable* d) -> bool {
+		return d && d->r_Owner == sourceDevice;
+	};
+
+	int liveCount = 0;
+	for (int i = 0; i < arr.Count; ++i) if (matches(arr.Data[i])) ++liveCount;
+
+	// Already at or above limit → destroy the oldest (lowest-index) matching
+	// entries until adding the new one will leave us at exactly `limit`.
+	int toKill = (liveCount + 1) - limit;
+	if (toKill <= 0) return;
+
+	Logger::Log(GetLogChannel(),
+		"[DeployableLimit] pawn=0x%p device=0x%p mode_id=%d limit=%d live=%d killing oldest %d\n",
+		pawn, sourceDevice, device_mode_id, limit, liveCount, toKill);
+
+	for (int i = 0; i < arr.Count && toKill > 0; ++i) {
+		ATgDeployable* dep = arr.Data[i];
+		if (!matches(dep)) continue;
+
+		Logger::Log(GetLogChannel(),
+			"[DeployableLimit]   destroying [%d] 0x%p deployableId=%d\n",
+			i, dep, dep->r_nDeployableId);
+
+		// `eventDestroyIt(false)` runs UC's full destroy event: stops fire,
+		// sets LifeSpan, swaps to destroyed mesh, flips m_bInDestroyedState,
+		// and bumps r_nReplicateDestroyIt so the client repnotify fires.
+		// Match KillDeployables' approach so behavior is consistent across
+		// owner-death cleanup and limit-enforcement cleanup.
+		dep->eventDestroyIt(0 /* bSkipFx */);
+		--toKill;
+	}
+}
+
+void TgProj_Deployable__SpawnDeployable::RegisterDeployableInGRI(ATgDeployable* dep) {
+	if (!dep) return;
+	AWorldInfo* worldInfo = dep->WorldInfo;
+	if (!worldInfo || !worldInfo->GRI) return;
+	ATgRepInfo_Game* gri = (ATgRepInfo_Game*)worldInfo->GRI;
+
+	// TARRAY_INIT preallocates a 255-slot libc-malloc'd buffer ONLY when
+	// the engine left Data == null (the usual state for UC's `var init array`
+	// declaration — nothing in UC writes m_Deployables, and the only would-be
+	// populator is a stripped binary native). Subsequent TARRAY_ADD calls
+	// write within the preallocated bounds without ever realloc'ing — so we
+	// never mix libc/engine allocators.
+	//
+	// The previous attempt used the SDK's TArray::Add which does
+	// `realloc(Data, ...)` on every grow. With Data==null on first call that
+	// degenerates to malloc, but the bNetDirty flag we set immediately after
+	// triggered the engine's replication tick to walk the array — and
+	// something in that path crashed badly enough to take out the crash
+	// reporter too. Sticking with the macro pattern for safety.
+	TARRAY_INIT(gri, m_Deployables, ATgDeployable*, 0x2B4, 255);
+
+	// Compact in place: drop nulls and already-destroyed entries before the
+	// append, so the global list reflects only live deployables. Stays
+	// within the preallocated buffer; never grows.
+	int liveCount = 0;
+	for (int read = 0; read < *m_DeployablesCountPtr; ++read) {
+		ATgDeployable* d = (*m_DeployablesDataPtr)[read];
+		if (!d) continue;
+		if (d->m_bInDestroyedState) continue;
+		if (d->bDeleteMe) continue;
+		if (d == dep) continue;  // dedupe — defensive against double-register
+		(*m_DeployablesDataPtr)[liveCount++] = d;
+	}
+	*m_DeployablesCountPtr = liveCount;
+
+	// Bail out if the buffer is somehow full — better to skip the registration
+	// than overflow the preallocated slab.
+	if (liveCount >= *m_DeployablesMaxPtr) {
+		Logger::Log(GetLogChannel(),
+			"[GRI.m_Deployables] buffer full (%d/%d) — skipping append\n",
+			liveCount, *m_DeployablesMaxPtr);
+		return;
+	}
+
+	TARRAY_ADD(m_Deployables, dep);
+
+	// Deliberately NOT setting gri->bNetDirty / bForceNetUpdate here. The
+	// optimized rep list walks the array by content-equality each tick, so
+	// changes propagate naturally. Forcing dirty in the previous attempt
+	// appeared to be what surfaced the heap corruption as a downstream
+	// replication-tick fault.
+
+	Logger::Log(GetLogChannel(),
+		"[GRI.m_Deployables] registered 0x%p deployableId=%d  list count=%d\n",
+		dep, dep->r_nDeployableId, *m_DeployablesCountPtr);
+}
+
 bool TgProj_Deployable__SpawnDeployable::IsTimerBombDeployableId(int nDeployableId) {
 	// Cache keyed by id (positive for bomb, zero for non-bomb). Use a sentinel
 	// in the existing cylinder cache? No — separate map to avoid ambiguity.
@@ -313,7 +529,8 @@ bool TgProj_Deployable__SpawnDeployable::IsBeaconDeployable(ATgDeployable* Deplo
 // Shared spawn helper: spawn + initialise a deployable of the right class.
 // Called from both SpawnDeployable (projectile path) and TgDeviceFire::Deploy (custom-fire path).
 ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
-	ATgPawn* pawn, int deployableId, FVector vLocation, FVector vNormal)
+	ATgPawn* pawn, int deployableId, FVector vLocation, FVector vNormal,
+	ATgDevice* sourceDevice, UTgDeviceFire* sourceFireMode)
 {
 	if (!pawn) return nullptr;
 
@@ -386,6 +603,17 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 		return nullptr;
 	}
 
+	// r_nDeployableId MUST be set BEFORE eventInitReplicationInfo() runs
+	// further down — UC's TgDeployable.InitReplicationInfo copies
+	// `r_nDeployableId` into the freshly-spawned DRI's `r_nDeployableId`,
+	// and the HUD's device-bar healthbar lookup (FindSpawnedPet @
+	// 0x114de150) matches by `DRI->r_nDeployableId == fireMode.deployable_id`.
+	// Previous order set this AFTER eventInitReplicationInfo, so the DRI
+	// inherited 0 → match always failed → no healthbar appeared.
+	// (The later assignment further down is now redundant but harmless;
+	// kept to preserve the "set before ApplyDeployableSetup" invariant.)
+	Deployable->r_nDeployableId = deployableId;
+
 	// Cylinder resize.
 	//
 	// The UC CDO sets CollisionRadius=12 / CollisionHeight=10, which is tiny
@@ -430,6 +658,20 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	Deployable->bNetDirty        = 1;
 	Deployable->bForceNetUpdate  = 1;
 
+	// Source-device attribution. UC SpawnDeployable native sets these via
+	// TgDeployable::DeployedBy / DeployedByFireMode; without them, downstream
+	// code reading deployable->r_Owner gets null:
+	//   - per-type deployable limits can't find the existing instances to
+	//     destroy (a player could deploy unlimited turrets/stations);
+	//   - TgEffect::TrackStats source-trace can't tell that the bomb's
+	//     explosion came from a morale device, so morale credits the firer
+	//     for their own bomb's damage (infinite-loop ultimate refill);
+	//   - block/counter-effect lookups that walk back to the firing device
+	//     return null and silently no-op.
+	// Both fields are CPF_Net so the client also sees the attribution.
+	if (sourceDevice)   Deployable->r_Owner             = sourceDevice;
+	if (sourceFireMode) Deployable->s_SpawnerDeviceMode = sourceFireMode;
+
 	Logger::Log("team_colors",
 		"[Instigator-fix] deployable=0x%p  Spawn returned Instigator=%p Owner=%p  → patched to Instigator=%p Owner=%p  (pawn=%p)\n",
 		Deployable, spawnedInstigator, spawnedOwner,
@@ -441,6 +683,12 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	if (pawnrep && pawnrep->r_TaskForce) {
 		Deployable->SetTaskForceNumber(pawnrep->r_TaskForce->r_nTaskForce);
 	}
+
+	// Register in the global per-game deployable list. UC consumers
+	// (TgBeaconFactory) and the HUD device-bar healthbar pipeline likely walk
+	// this list to enumerate live deployables. The native that originally
+	// populated it is stripped — see RegisterDeployableInGRI.
+	RegisterDeployableInGRI(Deployable);
 
 	// Team-ownership fix (long-standing bug: deployables rendered as enemy
 	// to their own team, repair arm refused to target them).
@@ -519,6 +767,24 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 		dri->bSkipActorPropertyReplication = 0;
 		dri->Role               = 3;   // ROLE_Authority
 		dri->RemoteRole         = 1;   // ROLE_SimulatedProxy
+
+		// HUD healthbar diagnostic: dump (a) DRI's r_InstigatorInfo (should ==
+		// pawnrep), and (b) the post-deploy state of pawnrep->m_DRIArray —
+		// if Count incremented, server-side AddMinion (called from UC
+		// InitReplicationInfo) ran successfully and the bookkeeping side is
+		// healthy; if Count did NOT increment, the AddMinion path didn't fire
+		// (likely because Instigator was null at InitReplicationInfo time, or
+		// the cast inside AddMinion missed). Pair this with the client-side
+		// `replicated_event` channel: if the server count is correct but no
+		// `RE: var=r_InstigatorInfo` line appears on the client, the bug is
+		// in DRI rep / RepNotify dispatch, not in our spawn flow.
+		struct ArrPtr { void* Data; int Count; int Max; };
+		ArrPtr* dris = reinterpret_cast<ArrPtr*>((char*)pawnrep + 0x2AC);
+		Logger::Log("hud_healthbar",
+			"[deploy] dep=0x%p deployableId=%d  dri=0x%p  r_InstigatorInfo=0x%p (expect %p)  "
+			"pawnrep=0x%p pawnrep.m_DRIArray.Count=%d\n",
+			Deployable, Deployable->r_nDeployableId, dri, dri->r_InstigatorInfo, pawnrep,
+			pawnrep, dris->Count);
 	}
 	// r_bInitialIsEnemy chooses the initial material color BEFORE the DRI
 	// has replicated.  Client's IsFriendlyWithLocalPawn short-circuits to
@@ -580,6 +846,13 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	}
 
 	TARRAY_INIT(pawn, s_SelfDeployableList, ATgDeployable*, 0x1514, 255);
+
+	// Per-device deploy limit (TGPID_MAX_DEPLOYABLES_OUT, prop 154 in DB).
+	// Walks pawn->s_SelfDeployableList, drops dead entries, and destroys the
+	// oldest matching deployables when adding a new one would exceed the
+	// configured limit. No-op when the firing fire mode has no prop-154 row.
+	EnforceDeployableLimit(pawn, sourceDevice, sourceFireMode);
+
 	TARRAY_ADD(s_SelfDeployableList, Deployable);
 
 	// r_nDeployableId MUST be set before ApplyDeployableSetup/InitializeDefaultProps —
@@ -587,7 +860,15 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// InitializeDefaultProps uses it to query asm_data_set_deployables for HP.
 	Deployable->r_nDeployableId    = deployableId;
 	Deployable->m_bInDestroyedState = 0;
-	Deployable->r_bTakeDamage      = 1;
+	// HP=0 deployables (Shatter Bomb, EMP Bomb, mines, etc) are not meant to
+	// take damage in the seconds before they trigger — enemies should ignore
+	// them entirely. Drive r_bTakeDamage from the DB's `health` column so the
+	// asm-data-driven contract holds: HP>0 → destructible station/turret,
+	// HP=0 → indestructible bomb/mine. Pairs with the collision gate further
+	// down (we keep the cylinder in COLLIDE_BlockAllButWeapons so hitscan
+	// passes through but movement still blocks).
+	const bool destructible = IsDestructibleDeployableId(deployableId);
+	Deployable->r_bTakeDamage      = destructible ? 1 : 0;
 	Deployable->s_bIsActivated     = 1;
 	Deployable->m_bIsDeployed      = 0;
 	Deployable->r_nPhysicalType    = 861; // TgPawn.TG_PHYSICALITY_MECHANICAL
@@ -617,7 +898,22 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// runs, SubmitHitEffects looks up effect groups, SubmitEffect dispatches
 	// to TgDeployable.ProcessEffect — and the chain dies right at the null
 	// EffectManager dereference.  Turrets work because they're TgPawn.
-	if (!Deployable->r_EffectManager) {
+	//
+	// For HP=0 deployables (timer bombs, mines) we *deliberately* skip the
+	// bootstrap so r_EffectManager stays null. UC's ProcessEffect gate on
+	// these deployables checks `(Effect.m_nType != 264) || r_bTakeDamage`;
+	// type-263 instants (e.g. Venom Bomb's −10 Health instant in cat=302
+	// <Local>) pass that gate regardless of r_bTakeDamage and would land
+	// damage. Letting the manager dereference null short-circuits ALL
+	// incoming effects on bombs (the data design treats HP=0 as "no health,
+	// no effects"), so a player's Venom Bomb explosion no longer destroys
+	// the Shatter Bomb sitting next to it. HP>0 deployables — including the
+	// Assassin's Timed Explosive — still get a manager and remain reachable
+	// by Shatter Bomb's protection-stripping cat=653 effect group as
+	// designed (the Assassin bomb's +100 Protection-AOE/Melee/Ranged from
+	// equip-effect 13992 absorbs ordinary damage; only Shatter Bomb's
+	// SUBTRACT 100 Protection effects punch through).
+	if (!Deployable->r_EffectManager && destructible) {
 		UClass* emClass = ClassPreloader::GetClass("Class TgGame.TgEffectManager");
 		if (emClass) {
 			FVector emLoc = {0.0f, 0.0f, 0.0f};
@@ -711,10 +1007,25 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// to apply the same CDO flags locally.  But to keep this transparent
 	// and self-contained, we set both fields explicitly and call
 	// `SetCollisionFromCollisionType` directly.
-	*(unsigned char*)((char*)Deployable + 0x93) = 0; // CollisionType = COLLIDE_CustomDefault
-	*(unsigned char*)((char*)Deployable + 0x94) = 0; // ReplicatedCollisionType
-	*(uint32_t*)((char*)Deployable + 0xAC) |= 0x100000; // bNetDirty
-	SetCollisionFromCollisionType(Deployable);
+	// Indestructible (HP=0) deployables — bombs, mines, etc — should NOT have
+	// hitscan-targetable collision. Leave them in the COLLIDE_BlockAllButWeapons
+	// state that ApplyDeployableSetup just installed (BlockZeroExtent=false on
+	// the cylinder), so enemy bullets and AI line-traces pass straight through.
+	// Movement still blocks (BlockNonZeroExtent stays true), and the bomb's own
+	// proximity/explosion logic continues working since that's a UC-driven
+	// timer, not a hit response. Stations/turrets need the revert below for
+	// repair-arm beams and weapon damage to land.
+	if (destructible) {
+		*(unsigned char*)((char*)Deployable + 0x93) = 0; // CollisionType = COLLIDE_CustomDefault
+		*(unsigned char*)((char*)Deployable + 0x94) = 0; // ReplicatedCollisionType
+		*(uint32_t*)((char*)Deployable + 0xAC) |= 0x100000; // bNetDirty
+		SetCollisionFromCollisionType(Deployable);
+	} else {
+		Logger::Log("deploy_phase",
+			"[invuln-deployable] deployableId=%d  HP=0 in DB — leaving CollisionType=COLLIDE_BlockAllButWeapons "
+			"(hitscan passes through, movement still blocks); r_bTakeDamage=0\n",
+			deployableId);
+	}
 
 	// Diagnostic: confirm the post-revert flag state.  Should show
 	// cylFlags with bit 7 (BlockZeroExtent) set.
@@ -893,12 +1204,12 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// deployable feel uniform). Stations/turrets get explicit 5–15s from
 	// prop 279; bombs/mines/forcefields get 0.1s so they "deploy" instantly.
 	{
-		float deploySecs = GetDeployTimeSecs(deployableId);
+		float deploySecs = ApplyDeployTimeBuff(pawn, GetDeployTimeSecs(deployableId));
 		Deployable->r_fTimeToDeploySecs = deploySecs;
 		Deployable->bNetDirty           = 1;
 		Deployable->bForceNetUpdate     = 1;
 		Logger::Log("bomb",
-			"[deploy time] deployableId=%d  r_fTimeToDeploySecs=%.3fs (DB-driven)\n",
+			"[deploy time] deployableId=%d  r_fTimeToDeploySecs=%.3fs (DB+buff)\n",
 			deployableId, deploySecs);
 	}
 
@@ -1065,7 +1376,14 @@ ATgDeployable* __fastcall TgProj_Deployable__SpawnDeployable::Call(
 	Logger::Log(GetLogChannel(), "TgProj_Deployable::SpawnDeployable: pawn=%s deployableId=%d loc=(%.0f,%.0f,%.0f)\n",
 		pawn->GetFullName(), deployableId, vLocation.X, vLocation.Y, vLocation.Z);
 
-	ATgDeployable* result = SpawnDeployableActor(pawn, deployableId, vLocation, vNormal);
+	// Forward the projectile's source device + fire mode to the deployable so
+	// it carries r_Owner / s_SpawnerDeviceMode. ATgProjectile.r_Owner is the
+	// device that fired the projectile (set by TgDeviceFire::InitializeProjectile).
+	ATgDevice*     srcDevice   = (ATgDevice*)pThis->r_Owner;
+	UTgDeviceFire* srcFireMode = pThis->s_OwnerFireMode;
+
+	ATgDeployable* result = SpawnDeployableActor(pawn, deployableId, vLocation, vNormal,
+		srcDevice, srcFireMode);
 
 	Logger::Log("bomb",
 		"[SpawnDeployable] SpawnDeployableActor returned 0x%p (class=%s)\n",

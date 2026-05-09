@@ -8,6 +8,7 @@
 namespace {
 struct DeployableDefaults {
 	int health;
+	int device_id;  // for asm_data_set_device_effect_groups lookup
 };
 // Per-deployable_id cache. Populated on first call; reused across spawns.
 // asm_data_set_deployables is static reference data loaded from assembly.dat.
@@ -86,6 +87,23 @@ UTgProperty* TgDeployable__InitializeDefaultProps::InitializeProperty(
 namespace {
 struct CachedProp { int propId; float base; float minV; float maxV; };
 std::unordered_map<int, std::vector<CachedProp>> g_deployablePropCache;
+
+// Per-device_id cache of permanent (lifetime_sec=0) equip-effect rows pulled
+// from asm_data_set_device_effect_groups → asm_data_set_effects.
+//
+// This is the deployable-side analog of Inventory::ApplyDeviceEquipEffects.
+// Both Shatter Bomb (device 1524) and the Assassin's Timed Explosive (device
+// 4417) get +100 Protection-Melee/Ranged/AOE this way (effect groups 7188 and
+// 13992 respectively); without it the equip-effect is never applied to the
+// deployable's s_Properties and the bomb's "data-described invulnerability"
+// silently fails.  Every station/turret with a passive aura (e.g. Power
+// Station's protection halos) lands here too.
+struct CachedEquipEffect {
+	int   propId;
+	float baseValue;
+	int   calcMethod;  // 67 ADD / 68 PERC_INC / 69 PERC_DEC / 70 SUBTRACT
+};
+std::unordered_map<int, std::vector<CachedEquipEffect>> g_deviceEquipEffectCache;
 }
 
 static void SeedPropertiesFromDeviceModeDb(ATgDeployable* Deployable, int deployableId) {
@@ -181,6 +199,92 @@ static void SeedPropertiesFromDeviceModeDb(ATgDeployable* Deployable, int deploy
 		Deployable->s_fProximityRadius);
 }
 
+// Apply the deployable's device's permanent equip-effects (lifetime_sec=0) to
+// the deployable's s_Properties. Mirrors Inventory::ApplyDeviceEquipEffects's
+// SQL + calc-method semantics — same plumbing UC's stripped m_EquipEffect
+// path was supposed to drive — but keyed off the deployable's device_id and
+// writing into the deployable's properties array. Effects are applied directly
+// to m_fRaw (skips SetProperty fan-out for the same reason the pawn helper
+// does: ATgDeployable::ApplyProperty only mirrors props 8 and 278; everything
+// else stays in s_Properties for GetProperty consumers like the damage path).
+//
+// SQL uses DISTINCT to collapse the duplicate rows asm.dat capture currently
+// produces (otherwise +100 protection would compound to +200/+300 across
+// repeated startup runs).
+static void ApplyDeviceEquipEffects(ATgDeployable* Deployable, int deviceId) {
+	if (!Deployable || deviceId <= 0) return;
+	if (Deployable->s_Properties.Data == nullptr) return;
+
+	auto cit = g_deviceEquipEffectCache.find(deviceId);
+	if (cit == g_deviceEquipEffectCache.end()) {
+		std::vector<CachedEquipEffect> rows;
+		sqlite3* db = Database::GetConnection();
+		if (db) {
+			sqlite3_stmt* stmt = nullptr;
+			static const char* kSql =
+				"SELECT DISTINCT e.prop_id, e.base_value, e.calc_method_value_id "
+				"FROM asm_data_set_device_effect_groups deg "
+				"JOIN asm_data_set_effect_groups eg ON eg.effect_group_id = deg.effect_group_id "
+				"JOIN asm_data_set_effects e ON e.effect_group_id = deg.effect_group_id "
+				"WHERE deg.device_id = ? AND eg.lifetime_sec = 0";
+			if (sqlite3_prepare_v2(db, kSql, -1, &stmt, nullptr) == SQLITE_OK) {
+				sqlite3_bind_int(stmt, 1, deviceId);
+				while (sqlite3_step(stmt) == SQLITE_ROW) {
+					rows.push_back({
+						sqlite3_column_int(stmt, 0),
+						(float)sqlite3_column_double(stmt, 1),
+						sqlite3_column_int(stmt, 2),
+					});
+				}
+				sqlite3_finalize(stmt);
+			}
+		}
+		cit = g_deviceEquipEffectCache.emplace(deviceId, std::move(rows)).first;
+		Logger::Log("deployable_props",
+			"[ApplyEquipEffects] deviceId=%d cached %zu equip-effect row(s)\n",
+			deviceId, cit->second.size());
+	}
+
+	const std::vector<CachedEquipEffect>& effects = cit->second;
+	if (effects.empty()) return;
+
+	int applied = 0, skipped = 0;
+	for (const CachedEquipEffect& e : effects) {
+		// Locate the matching prop in s_Properties. Identity defaults in the
+		// caller pre-register every Protection-* prop at 0 so the +100 lands
+		// on a real slot. For props the identity block doesn't seed,
+		// SeedPropertiesFromDeviceModeDb may have added them; otherwise skip.
+		UTgProperty* prop = nullptr;
+		for (int i = 0; i < Deployable->s_Properties.Num(); ++i) {
+			UTgProperty* p = Deployable->s_Properties.Data[i];
+			if (p && p->m_nPropertyId == e.propId) { prop = p; break; }
+		}
+		if (!prop) { ++skipped; continue; }
+
+		const float curRaw   = prop->m_fRaw;
+		const float propBase = prop->m_fBase;
+		float newRaw;
+		switch (e.calcMethod) {
+			case 67: newRaw = curRaw + e.baseValue;              break;  // ADD
+			case 70: newRaw = curRaw - e.baseValue;              break;  // SUBTRACT
+			case 68: newRaw = curRaw + (propBase * e.baseValue); break;  // PERC_INCREASE
+			case 69: newRaw = curRaw - (propBase * e.baseValue); break;  // PERC_DECREASE
+			default: continue;
+		}
+		prop->m_fRaw = newRaw;
+		Logger::Log("deployable_props",
+			"[ApplyEquipEffects] dep=0x%p deviceId=%d propId=%d cm=%d base=%.2f  m_fRaw %.2f -> %.2f\n",
+			Deployable, deviceId, e.propId, e.calcMethod, e.baseValue, curRaw, newRaw);
+		++applied;
+	}
+
+	if (applied > 0 || skipped > 0) {
+		Logger::Log("deployable_props",
+			"[ApplyEquipEffects] dep=0x%p deviceId=%d applied=%d skipped=%d\n",
+			Deployable, deviceId, applied, skipped);
+	}
+}
+
 void __fastcall TgDeployable__InitializeDefaultProps::Call(ATgDeployable* Deployable, void* edx) {
 	if (!Deployable) return;
 
@@ -203,11 +307,11 @@ void __fastcall TgDeployable__InitializeDefaultProps::Call(ATgDeployable* Deploy
 
 	auto it = g_deployableDefaultsCache.find(deployableId);
 	if (it == g_deployableDefaultsCache.end()) {
-		DeployableDefaults d{ (int)health };
+		DeployableDefaults d{ (int)health, /*device_id=*/0 };
 		sqlite3* db = Database::GetConnection();
 		sqlite3_stmt* stmt;
 		if (sqlite3_prepare_v2(db,
-			"SELECT health FROM asm_data_set_deployables WHERE deployable_id = ? LIMIT 1",
+			"SELECT health, device_id FROM asm_data_set_deployables WHERE deployable_id = ? LIMIT 1",
 			-1, &stmt, nullptr) == SQLITE_OK) {
 			sqlite3_bind_int(stmt, 1, deployableId);
 			if (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -215,12 +319,16 @@ void __fastcall TgDeployable__InitializeDefaultProps::Call(ATgDeployable* Deploy
 					int h = sqlite3_column_int(stmt, 0);
 					if (h > 0) d.health = h;
 				}
+				if (sqlite3_column_type(stmt, 1) != SQLITE_NULL) {
+					d.device_id = sqlite3_column_int(stmt, 1);
+				}
 			}
 			sqlite3_finalize(stmt);
 		}
 		it = g_deployableDefaultsCache.emplace(deployableId, d).first;
 	}
 	health = (float)it->second.health;
+	const int deviceId = it->second.device_id;
 
 	Logger::Log("deployable_props",
 		"[InitDefaultProps] 0x%p deployableId=%d health=%.1f\n",
@@ -287,6 +395,18 @@ void __fastcall TgDeployable__InitializeDefaultProps::Call(ATgDeployable* Deploy
 	// exists.  Upsert in InitializeProperty guarantees no duplicate slots.
 	SeedPropertiesFromDeviceModeDb(Deployable, deployableId);
 
+	// Permanent equip-effects (lifetime_sec=0) from asm_data_set_device_effect_groups.
+	// This is what gives the player Shatter Bomb (device 1524 → group 7188) and
+	// the Assassin's Timed Explosive (device 4417 → group 13992) their +100
+	// Protection-Melee/Ranged/AOE shielding — the same data-driven mechanism the
+	// stripped UC m_EquipEffect path was supposed to drive. Stations with passive
+	// auras (Power Station's Bio/Disease aura, etc.) also land here. Runs after
+	// SeedPropertiesFromDeviceModeDb so all property slots a row might target
+	// already exist.
+	if (deviceId > 0) {
+		ApplyDeviceEquipEffects(Deployable, deviceId);
+	}
+
 	// DRI carries the replicated HP fields separately from ATgDeployable.r_nHealth.
 	// Without this sync the client's health bar reads stale maximum.
 	if (Deployable->r_DRI) {
@@ -303,18 +423,15 @@ void __fastcall TgDeployable__InitializeDefaultProps::Call(ATgDeployable* Deploy
 	// Type-264 is "per-tick / continuous" effects — what repair arms (heal,
 	// damage-buff, deploy-rate) and most periodic auras dispatch through. UC
 	// default is false on the base TgDeployable class; only ForceField /
-	// DestructibleCover / Beacon explicitly override it true. So a vanilla
-	// medstation / power station / repair station spawned via any path other
-	// than SpawnDeployableActor (which sets it true at line 543) silently
-	// drops every per-tick effect — observed symptom: focused repair arm
-	// fetches egId=9129 (Repair +48), 9132 (DamageBuff), 10439 (DeployRate
-	// +4.5) every pulse but none apply, because the m_nType=264 gate fails.
+	// DestructibleCover / Beacon explicitly override it true.
 	//
-	// Set unconditionally here so InitializeDefaultProps becomes the universal
-	// fan-in for "this thing is a real damageable/healable deployable" —
-	// covers level-placed stations, mission-spawned turrets, and our own
-	// spawn path uniformly.
-	Deployable->r_bTakeDamage   = 1;
+	// Universal fan-in for the spawn paths: enable for HP>0 deployables (real
+	// damageable/healable stations + turrets), disable for HP=0 (bombs/mines —
+	// the asm-data contract for "no HP, no damage routing"). For bombs the
+	// equip-effect protections we just applied above would absorb 100% of any
+	// damage anyway, but skipping the type-264 dispatch entirely is cheaper and
+	// matches the source-data intent.
+	Deployable->r_bTakeDamage = (health > 0.0f) ? 1 : 0;
 
 	Deployable->bNetDirty       = 1;
 	Deployable->bForceNetUpdate = 1;

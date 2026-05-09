@@ -117,6 +117,7 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 			PetPawn->Controller ? PetPawn->Controller->Rotation.Pitch : 0,
 			PetPawn->Controller ? PetPawn->Controller->Rotation.Yaw   : 0,
 			PetPawn->Controller ? PetPawn->Controller->Rotation.Roll  : 0);
+		PetPawn->r_bInitialIsEnemy = 0;
 		ATgRepInfo_Player* PetRep = (ATgRepInfo_Player*)PetPawn->PlayerReplicationInfo;
 		ATgRepInfo_Player* PawnRep = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
 		PetRep->r_TaskForce = PawnRep->r_TaskForce;
@@ -169,8 +170,9 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 				// WorldInfo.TimeSeconds inside Deploy.BeginState (it's a
 				// timestamp, not a duration). r_fCurrentDeployTime and
 				// r_bIsDeployed reset to fresh values for a clean deploy cycle.
-				float petDeploySecs = TgProj_Deployable__SpawnDeployable
-					::GetPetDeployTimeSecs(petId);
+				float petDeploySecs = TgProj_Deployable__SpawnDeployable::ApplyDeployTimeBuff(
+					pawn,
+					TgProj_Deployable__SpawnDeployable::GetPetDeployTimeSecs(petId));
 				turret->r_fTimeToDeploySecs  = petDeploySecs;
 				turret->r_fCurrentDeployTime = 0.0f;
 				turret->r_bIsDeployed        = 0;
@@ -217,6 +219,11 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 				// (and m_vSpawnLocation so the AtLocation check in branch 241
 				// passes) makes both AI paths face our spawnRot. Focus = null
 				// keeps any auto-lookat off.
+				//
+				// 2026-05-08: confirmed the pin does NOT suppress idle scanning
+				// (with pin removed, AI defaults m_rFixedDirection to (0,0,0)
+				// world-X — same fixed-pin behavior, just to a wrong direction).
+				// Idle scanning is anim-tree-driven, not AI-driven.
 				PetPawn->Rotation         = spawnRot;
 				PetPawn->DesiredRotation  = spawnRot;
 				if (PetPawn->Controller) {
@@ -238,11 +245,12 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 				Logger::Log("pet_spawn",
 					"TgDeviceFire::SpawnPet: StartDeploy() dispatched on %s  botId=%d  prop279=%.2fs\n"
 					"                        r_fTimeToDeploySecs=%.2f  r_fInitDeployTime=%.2f\n"
-					"                        r_fCurrentDeployTime=%.2f  r_bIsDeployed=%d\n"
+					"                        r_fCurrentDeployTime=%.2f  r_bIsDeployed=%d  r_ePosture=%d\n"
 					"                        m_fDefaultDeployAnimLength=%.2f  m_fDeployAnimLength=%.2f\n",
 					clsName, petId, petDeploySecs,
 					turret->r_fTimeToDeploySecs, turret->r_fInitDeployTime,
 					turret->r_fCurrentDeployTime, (int)turret->r_bIsDeployed,
+					(int)turret->r_ePosture,
 					turret->m_fDefaultDeployAnimLength, turret->m_fDeployAnimLength);
 			}
 		}

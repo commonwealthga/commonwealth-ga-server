@@ -393,6 +393,35 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 		Pawn->r_nMoraleDeviceSlot = slot;
 	}
 
+	// --- Morale-device threshold init (was UC `TgDevice_Morale.SetRequiredMoralePoints`,
+	// stripped on this binary). Without this every pawn keeps the UC default
+	// r_fRequiredMoralePoints=100. The morale device's primary fire mode carries
+	// the real value as prop 318 ("Required Points To Fire"); the fire mode's
+	// GetPropertyValueById path also folds in any prop 357 ("Required Morale
+	// Points Modifier") buff registry entries from skills/mod-kits, so this
+	// reads the right post-modifier value.
+	//
+	// Native binary call: TgDeviceFire::GetRequiredMoralePoints @ 0x10a19910
+	// (vtable[0x134] does the GetPropertyValueById(318, fire->s_nRequiredMoralePointsIndex)).
+	if (GetDeviceType(slot) == GA_G::TGDT_MORALE && Device != nullptr) {
+		typedef float (__fastcall* GetRequiredMoralePointsFn)(UTgDeviceFire*, void*);
+		static const GetRequiredMoralePointsFn GetRequiredMoralePointsNative =
+			(GetRequiredMoralePointsFn)0x10a19910;
+
+		if (Device->m_FireMode.Num() > 0 && Device->m_FireMode.Data != nullptr) {
+			UTgDeviceFire* fire = Device->m_FireMode.Data[0];
+			if (fire != nullptr) {
+				const float required = GetRequiredMoralePointsNative(fire, nullptr);
+				if (required > 0.0f) {
+					Pawn->r_fRequiredMoralePoints = required;
+					Logger::Log("morale",
+						"Equip: pawn=0x%p morale device=%d slot=%d  r_fRequiredMoralePoints -> %.2f\n",
+						Pawn, deviceId, slot, required);
+				}
+			}
+		}
+	}
+
 	// --- Replication flags ---
 	Device->Instigator = (APawn*)Pawn;
 	Device->Base = Pawn;

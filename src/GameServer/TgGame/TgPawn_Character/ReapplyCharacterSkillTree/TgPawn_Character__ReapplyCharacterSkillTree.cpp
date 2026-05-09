@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgPawn_Character/ReapplyCharacterSkillTree/TgPawn_Character__ReapplyCharacterSkillTree.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/BuildEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgPawn/ApplyBuff/TgPawn__ApplyBuff.hpp"
+#include "src/GameServer/TgGame/BuffEffectRegistry/ModifierProps.hpp"
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
@@ -9,68 +10,11 @@
 #include <set>
 #include <map>
 
-// Modifier props that should be routed through the buff registry rather than
-// written to pawn->s_Properties (where they'd silently no-op since the prop
-// isn't initialized OR has m_fBase=0 making PERC math collapse to 0).
-//
-// These propIds are the ones the binary's `ConvertPropToPropList` (FUN_109e5220)
-// produces for the BUFF_DEVICE / BUFF_EFFECT / BUFF_SELFEFFECT contexts —
-// expansions of base props (e.g. prop 6 → {352}). The aggregator (vtable[0x568])
-// sums FBuffInfo entries matching these propIds and the formula (vtable[0x56C])
-// applies the layered Item/Skill/Self/Generic math.
-//
-// ApplyPlayerModsToDeployable also picks these up at deployable spawn time so
-// player AOE Radius / damage / cooldown skills propagate to deployables.
-//
-// IsModifierProp returns true if pid is one of these — for skill effects with
-// such pids, route through ApplyBuff (BUFF_SOURCE_TYPE_SKILL) instead of
-// direct s_Properties write.
-static bool IsModifierProp(int pid) {
-	switch (pid) {
-		// Damage / fire-mode params (BUFF_DEVICE expansions)
-		case 113:  // Accuracy Modifier (also damage-mod target)
-		case 114:  // Device Range Modifier
-		case 203:  // Recharge Time Modifier
-		case 207:  // Device Effective Range Modifier
-		case 256:  // Accuracy Correction Rate Modifier
-		case 284:  // Max Control Range Modifier
-		case 349:  // Remote Activation Time Modifier
-		case 352:  // AOE Radius Modifier
-		case 355:  // Pet LifeSpan Modifier
-		case 356:  // Projectile Speed Modifier
-		case 357:  // Required Morale Points Modifier
-		case 391:  // (prop 279 modifier)
-		// Damage modifier family
-		case  65:  // Effect Damage Modifier
-		case 212:  // Damage Modifier - Melee
-		case 214:  // Damage Modifier - Range
-		case 321:  // Damage Modifier - AoE
-		case 350:  // Pet Damage Modifier
-		case 361:  // Buff - Damage Buff Modifier
-		case 362:  // Buff-Damage AOE Modifier
-		case 363:  // Buff - Damage Melee Modifier
-		case 364:  // Buff - Damage Ranged Modifier
-		case 369:  // Buff - Damage Situational Modifier
-		// Heal / threat / lifetime modifiers
-		case 208:  // Effect Lifetime Modifier
-		case 210:  // Effect Heal Modifier (Self)
-		case 261:  // Effect Repair Modifier (self)
-		case 280:  // Critical Hit Modifier
-		case 330:  // Effect Healing Modifier
-		case 366:  // Pet Max Health Modifier
-		case 385:  // Heal Output Modifier
-		// Cooldown / firerate variants
-		case 202:  // Clip Reload Modifier
-		case 213:  // Attack Rating Modifier - Melee
-		case 215:  // Attack Rating Modifier - Ranged
-		case 231:  // Attack Rate Modifier - Melee
-		case 232:  // Attack Rate Modifier - Ranged
-		case 360:  // DeployRate Modifier Buff
-			return true;
-		default:
-			return false;
-	}
-}
+// Modifier-prop classification (was a local IsModifierProp here) lives in
+// `src/GameServer/TgGame/BuffEffectRegistry/ModifierProps.hpp` so it can be
+// shared with ApplyPlayerModsToDeployable's kBuffDeviceModMap. Both tables
+// derive from the same source of truth (the binary's ConvertPropToPropList
+// @ 0x109e5220). Use ModifierProps::IsModifierProp(pid) at call sites below.
 
 // Per-pawn record of what each Reapply pass wrote so a subsequent respec
 // can REVERSE it before applying the new allocation. Keyed by pawn pointer
@@ -330,7 +274,7 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 					// rolled mods (fItem*), so they STACK in the formula:
 					//   v1 = base * (1+IP/100) + IM        // mods
 					//   v2 = v1   * (1+SP/100) + SM        // skills layered on top
-					if (IsModifierProp(pid)) {
+					if (ModifierProps::IsModifierProp(pid)) {
 						// BuildEffectGroup already normalized class-157
 						// percent values to fractions (0.15 for +15%). The
 						// binary's formula expects PERCENT (15.0 for +15%) in
@@ -363,10 +307,21 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 					// Redirect to the base prop so the calc math uses the
 					// real m_fBase (1300 for HEALTH_MAX) and m_fRaw lands
 					// on the stat that ApplyProperty fans out.
+					// Modifier-prop redirect for the rare cases where no
+					// GetBuffedProperty caller consults the registry entry (so
+					// putting the buff there would be a no-op). Each entry here
+					// is a workaround for missing engine plumbing — drop it
+					// once the corresponding effect-time scaling lands.
 					int applyPid = pid;
 					switch (pid) {
-						case 412: applyPid = 304; break; // HEALTH_MAX_MODIFIER -> HEALTH_MAX
-						case  66: applyPid =  49; break; // GROUNDSPEED_MODIFIER -> GROUND_SPEED
+						// HEALTH_MAX_MODIFIER → HEALTH_MAX. No caller consults
+						// GetBuffedProperty(BUFF_PAWN, 304) today, so the +%
+						// has to be baked into HEALTH_MAX directly.
+						case 412: applyPid = 304; break;
+						// (prop 66 GROUNDSPEED_MODIFIER used to redirect to 49
+						// here — removed because IsModifierProp now routes it
+						// through ApplyBuff and CloneEffectGroup's [EFFECT-BUFF]
+						// block scales prop 49 effects via the registry.)
 						default: break;
 					}
 

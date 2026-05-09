@@ -1944,7 +1944,28 @@ void Database::Init() {
 		}
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 24", nullptr, nullptr, &err);
+	if (version < 25) {
+		// v25: add `oc` flag to ga_character_devices.
+		//
+		// 0/1 — when 1, send_inventory_response picks an Overclocked-named
+		// blueprint_id (asm_data_set_blueprints.override_name_msg_id != 0,
+		// e.g. 6424 → "Focused Repair Arm OC") so the client renders the
+		// "OC" name suffix. Cosmetic-only; stats still come from the rolled
+		// mods + device base data. Wiped & rewritten by
+		// ResyncCharacterDevicesFromLoadout from g.mods.oc on every login.
+		// Idempotent — swallow duplicate-column error.
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_character_devices ADD COLUMN oc INTEGER NOT NULL DEFAULT 0;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			sqlite3_free(err);
+			err = nullptr;
+		} else {
+			Logger::Log("db", "v25: added ga_character_devices.oc\n");
+		}
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 25", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
