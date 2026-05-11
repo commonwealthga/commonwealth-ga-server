@@ -815,7 +815,7 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// or silently no-op'd (e.g. UFunction cache miss). If Role != 3 /
 	// RemoteRole == 0 on DRI, it won't replicate → client's r_DRI stays null
 	// → IsFriendlyWithLocalPawn falls back to !r_bInitialIsEnemy = enemy.
-	{
+	if (Logger::IsChannelEnabled("team_colors")) {
 		ATgRepInfo_Deployable* dri = Deployable->r_DRI;
 		if (!dri) {
 			Logger::Log("team_colors",
@@ -827,6 +827,7 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 			int tfReadNum = tfRead ? tfRead->r_nTaskForce : -1;
 			int attackersNum = GTeamsData.Attackers ? GTeamsData.Attackers->r_nTaskForce : -1;
 			int defendersNum = GTeamsData.Defenders ? GTeamsData.Defenders->r_nTaskForce : -1;
+
 
 			Logger::Log("team_colors",
 				"[team-fix readback] deployable=0x%p class=%s\n"
@@ -1347,30 +1348,32 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// vanish visually, one of these is almost certainly uninitialised — the
 	// tick system never starts, LifeSpan goes to 0 immediately, or the mesh
 	// fails to load.
-	Logger::Log("bomb",
-		"[bomb final state] deployable=0x%p id=%d class=%s\n"
-		"                   r_nTickingTime=%d  c_fStartTickingTime=%.2f\n"
-		"                   r_bInitialIsEnemy=%d  r_nReplicateDestroyIt=%d  r_bDelayDeployed=%d\n"
-		"                   m_bInDestroyedState=%d  m_bIsDeployed=%d  s_bIsActivated=%d\n"
-		"                   m_FireMode=0x%p  c_Mesh=0x%p  m_EquipEffect=0x%p\n"
-		"                   LifeSpan=%.2f  m_fLifeAfterDeathSecs=%.2f\n"
-		"                   r_fClientProximityRadius=%.2f  s_fProximityRadius=%.2f\n",
-		Deployable, Deployable->r_nDeployableId,
-		Deployable->Class ? Deployable->Class->GetFullName() : "<null>",
-		Deployable->r_nTickingTime, Deployable->c_fStartTickingTime,
-		(int)Deployable->r_bInitialIsEnemy,
-		Deployable->r_nReplicateDestroyIt,
-		(int)Deployable->r_bDelayDeployed,
-		(int)Deployable->m_bInDestroyedState,
-		(int)Deployable->m_bIsDeployed,
-		(int)Deployable->s_bIsActivated,
-		(void*)Deployable->m_FireMode,
-		(void*)Deployable->c_Mesh,
-		(void*)Deployable->m_EquipEffect,
-		Deployable->LifeSpan,
-		Deployable->m_fLifeAfterDeathSecs,
-		Deployable->r_fClientProximityRadius,
-		Deployable->s_fProximityRadius);
+	if (Logger::IsChannelEnabled("bomb")) {
+		Logger::Log("bomb",
+			"[bomb final state] deployable=0x%p id=%d class=%s\n"
+			"                   r_nTickingTime=%d  c_fStartTickingTime=%.2f\n"
+			"                   r_bInitialIsEnemy=%d  r_nReplicateDestroyIt=%d  r_bDelayDeployed=%d\n"
+			"                   m_bInDestroyedState=%d  m_bIsDeployed=%d  s_bIsActivated=%d\n"
+			"                   m_FireMode=0x%p  c_Mesh=0x%p  m_EquipEffect=0x%p\n"
+			"                   LifeSpan=%.2f  m_fLifeAfterDeathSecs=%.2f\n"
+			"                   r_fClientProximityRadius=%.2f  s_fProximityRadius=%.2f\n",
+			Deployable, Deployable->r_nDeployableId,
+			Deployable->Class ? Deployable->Class->GetFullName() : "<null>",
+			Deployable->r_nTickingTime, Deployable->c_fStartTickingTime,
+			(int)Deployable->r_bInitialIsEnemy,
+			Deployable->r_nReplicateDestroyIt,
+			(int)Deployable->r_bDelayDeployed,
+			(int)Deployable->m_bInDestroyedState,
+			(int)Deployable->m_bIsDeployed,
+			(int)Deployable->s_bIsActivated,
+			(void*)Deployable->m_FireMode,
+			(void*)Deployable->c_Mesh,
+			(void*)Deployable->m_EquipEffect,
+			Deployable->LifeSpan,
+			Deployable->m_fLifeAfterDeathSecs,
+			Deployable->r_fClientProximityRadius,
+			Deployable->s_fProximityRadius);
+	}
 
 	// Second readback — after ApplyDeployableSetup, eventApplyEquipEffects,
 	// and BeaconFactory registration.  Any of those could silently re-invoke
@@ -1405,10 +1408,12 @@ ATgDeployable* __fastcall TgProj_Deployable__SpawnDeployable::Call(
 	// SpawnDeployable path — either no projectile was server-spawned or it's
 	// a different projectile class (TgProj_Grenade etc.) whose HitWall doesn't
 	// call SpawnDeployable.
-	Logger::Log("bomb",
-		"[SpawnDeployable entry] pThis=0x%p  targetActor=0x%p  loc=(%.1f,%.1f,%.1f)  pThis.class=%s\n",
-		pThis, TargetActor, vLocation.X, vLocation.Y, vLocation.Z,
-		(pThis && pThis->Class) ? pThis->Class->GetFullName() : "<null>");
+	if (Logger::IsChannelEnabled("bomb")) {
+		Logger::Log("bomb",
+			"[SpawnDeployable entry] pThis=0x%p  targetActor=0x%p  loc=(%.1f,%.1f,%.1f)  pThis.class=%s\n",
+			pThis, TargetActor, vLocation.X, vLocation.Y, vLocation.Z,
+			(pThis && pThis->Class) ? pThis->Class->GetFullName() : "<null>");
+	}
 
 	if (!pThis) return nullptr;
 
@@ -1449,11 +1454,13 @@ ATgDeployable* __fastcall TgProj_Deployable__SpawnDeployable::Call(
 		return nullptr;
 	}
 
-	Logger::Log("bomb",
-		"[SpawnDeployable] resolved deployableId=%d for pawn=%s — calling SpawnDeployableActor\n",
-		deployableId, pawn->GetFullName());
-	Logger::Log(GetLogChannel(), "TgProj_Deployable::SpawnDeployable: pawn=%s deployableId=%d loc=(%.0f,%.0f,%.0f)\n",
-		pawn->GetFullName(), deployableId, vLocation.X, vLocation.Y, vLocation.Z);
+	if (Logger::IsChannelEnabled("bomb")) {
+		Logger::Log("bomb",
+			"[SpawnDeployable] resolved deployableId=%d for pawn=%s — calling SpawnDeployableActor\n",
+			deployableId, pawn->GetFullName());
+		Logger::Log(GetLogChannel(), "TgProj_Deployable::SpawnDeployable: pawn=%s deployableId=%d loc=(%.0f,%.0f,%.0f)\n",
+			pawn->GetFullName(), deployableId, vLocation.X, vLocation.Y, vLocation.Z);
+	}
 
 	// Forward the projectile's source device + fire mode to the deployable so
 	// it carries r_Owner / s_SpawnerDeviceMode. ATgProjectile.r_Owner is the
@@ -1464,10 +1471,12 @@ ATgDeployable* __fastcall TgProj_Deployable__SpawnDeployable::Call(
 	ATgDeployable* result = SpawnDeployableActor(pawn, deployableId, vLocation, vNormal,
 		srcDevice, srcFireMode);
 
-	Logger::Log("bomb",
-		"[SpawnDeployable] SpawnDeployableActor returned 0x%p (class=%s)\n",
-		result,
-		(result && result->Class) ? result->Class->GetFullName() : "<null>");
+	if (Logger::IsChannelEnabled("bomb")) {
+		Logger::Log("bomb",
+			"[SpawnDeployable] SpawnDeployableActor returned 0x%p (class=%s)\n",
+			result,
+			(result && result->Class) ? result->Class->GetFullName() : "<null>");
+	}
 
 	return result;
 }

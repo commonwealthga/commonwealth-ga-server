@@ -605,6 +605,48 @@ std::vector<InstanceInfo> InstanceRegistry::GetReadyMissionInstances() {
     return results;
 }
 
+std::vector<InstanceInfo> InstanceRegistry::GetAllRunningInstances() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    std::vector<InstanceInfo> results;
+    if (!db) return results;
+
+    sqlite3_stmt* stmt = nullptr;
+    int rc = sqlite3_prepare_v2(db,
+        "SELECT id, map_name, state, pid, udp_port, ip_address, player_count, "
+        "       started_at, COALESCE(sealed_at, 0), "
+        "       COALESCE(instance_id, 0), COALESCE(is_home_map, 0), COALESCE(max_players, 0), "
+        "       COALESCE(game_mode, '') "
+        "FROM ga_instances "
+        "WHERE state != 'STOPPED' AND pid IS NOT NULL AND pid > 0",
+        -1, &stmt, nullptr);
+    if (rc != SQLITE_OK || !stmt) return results;
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        InstanceInfo info;
+        info.id           = sqlite3_column_int64(stmt, 0);
+        const char* mn    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        info.map_name     = mn ? mn : "";
+        const char* st    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+        info.state        = st ? st : "";
+        info.pid          = sqlite3_column_int(stmt, 3);
+        info.udp_port     = static_cast<uint16_t>(sqlite3_column_int(stmt, 4));
+        const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+        info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
+        info.player_count = sqlite3_column_int(stmt, 6);
+        info.started_at   = sqlite3_column_int64(stmt, 7);
+        info.sealed_at    = sqlite3_column_int64(stmt, 8);
+        info.instance_id  = sqlite3_column_int64(stmt, 9);
+        info.is_home_map  = sqlite3_column_int(stmt, 10) != 0;
+        info.max_players  = sqlite3_column_int(stmt, 11);
+        const char* gm    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 12));
+        info.game_mode    = gm ? gm : "";
+        results.push_back(std::move(info));
+    }
+    sqlite3_finalize(stmt);
+    return results;
+}
+
 std::optional<InstanceInfo> InstanceRegistry::GetHomeInstance() {
     std::lock_guard<std::mutex> lock(mutex_);
     sqlite3* db = Database::GetConnection();

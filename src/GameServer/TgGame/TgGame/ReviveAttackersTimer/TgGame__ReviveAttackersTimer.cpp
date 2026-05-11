@@ -13,12 +13,14 @@ void __fastcall TgGame__ReviveAttackersTimer::Call(ATgGame *Game, void *edx) {
 			ATgPlayerController* PC = (ATgPlayerController*)Game->s_AttackerReviveList.Data[i];
 			if (PC == nullptr) continue;
 
-			Logger::Log("revive", "  Reviving attacker[%d] %s pawn=%s\n",
-				i, PC->GetName(),
-				PC->Pawn ? PC->Pawn->GetName() : "NULL");
+			if (Logger::IsChannelEnabled("revive")) {
+				Logger::Log("revive", "  Reviving attacker[%d] %s pawn=%s\n",
+					i, PC->GetName(),
+					PC->Pawn ? PC->Pawn->GetName() : "NULL");
 
-			if (PC->Pawn == nullptr) {
-				Logger::Log("revive", "  WARNING: %s has NULL Pawn, eventRevive will likely fail\n", PC->GetName());
+				if (PC->Pawn == nullptr) {
+					Logger::Log("revive", "  WARNING: %s has NULL Pawn, eventRevive will likely fail\n", PC->GetName());
+				}
 			}
 
 			PC->eventRevive();

@@ -17,11 +17,13 @@ void __fastcall TgDeviceFire__CustomFire::Call(UTgDeviceFire* pThis, void* edx) 
 	// branch. If it dispatches via ProjectileFire/ArcingFire instead, this log
 	// never fires for bombs and we know to look elsewhere.
 	ATgDevice* device = (ATgDevice*)pThis->m_Owner;
-	Logger::Log("bomb",
-		"[CustomFire entry] attackType=%d  fireType=%d  device=%s  fireMode.class=%s\n",
-		attackType, (int)pThis->m_nFireType,
-		device ? (device->GetFullName()) : "<null>",
-		pThis->Class ? pThis->Class->GetFullName() : "<null>");
+	if (Logger::IsChannelEnabled("bomb")) {
+		Logger::Log("bomb",
+			"[CustomFire entry] attackType=%d  fireType=%d  device=%s  fireMode.class=%s\n",
+			attackType, (int)pThis->m_nFireType,
+			device ? (device->GetFullName()) : "<null>",
+			pThis->Class ? pThis->Class->GetFullName() : "<null>");
+	}
 
 	switch (attackType) {
 		case CONST_TGTT_ATTACK_PLACE_DEPLOYABLE:   // 209

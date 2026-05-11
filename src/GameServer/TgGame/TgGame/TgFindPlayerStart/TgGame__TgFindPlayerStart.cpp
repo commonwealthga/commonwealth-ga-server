@@ -70,8 +70,10 @@ ANavigationPoint* __fastcall TgGame__TgFindPlayerStart::Call(ATgGame* Game, void
 			}
 		}
 
-		Logger::Log("spawn", "TgFindPlayerStart: player taskForce=%d -> start %s (taskForce=%d, rating=%.1f)\n",
-			playerTaskForce, ((UObject*)chosen)->GetName(), chosen->m_nTaskForce, bestRating);
+		if (Logger::IsChannelEnabled("spawn")) {
+			Logger::Log("spawn", "TgFindPlayerStart: player taskForce=%d -> start %s (taskForce=%d, rating=%.1f)\n",
+				playerTaskForce, ((UObject*)chosen)->GetName(), chosen->m_nTaskForce, bestRating);
+		}
 
 		LogCallEnd();
 		return chosen;

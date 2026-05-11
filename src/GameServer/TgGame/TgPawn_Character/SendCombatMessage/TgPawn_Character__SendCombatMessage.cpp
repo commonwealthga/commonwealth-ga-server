@@ -8,21 +8,26 @@ void __fastcall TgPawn_Character__SendCombatMessage::Call(
 		int nMsgId, int nIdAttacker, int nIdAssist,
 		int nIdVictim, int nValueHealth, int nValueShield) {
 
-	// Diagnostic: for the secondary AddDamageInfo dispatch on the client, the
-	// client needs the VICTIM's PRI->r_PawnOwner (+0x690) to be non-null.
-	// Log state of the recipient pawn's PRI so we can see whether server side
-	// has r_PawnOwner set when we emit. If null on server → server never wired
-	// it. If set on server → the issue is replication not reaching the client.
-	ATgRepInfo_Player* recipientPRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
-	void* rPawnOwner = recipientPRI ? (void*)recipientPRI->r_PawnOwner : nullptr;
-	int playerID = recipientPRI ? recipientPRI->PlayerID : -1;
+	// Diagnostic gate: this fires on every damage event in combat. When the
+	// "combat-trace" channel is off we skip the PRI deref + log entirely.
+	if (Logger::IsChannelEnabled("combat-trace")) {
+		// For the secondary AddDamageInfo dispatch on the client, the client
+		// needs the VICTIM's PRI->r_PawnOwner (+0x690) to be non-null. Log
+		// state of the recipient pawn's PRI so we can see whether server side
+		// has r_PawnOwner set when we emit. If null on server → server never
+		// wired it. If set on server → the issue is replication not reaching
+		// the client.
+		ATgRepInfo_Player* recipientPRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+		void* rPawnOwner = recipientPRI ? (void*)recipientPRI->r_PawnOwner : nullptr;
+		int playerID = recipientPRI ? recipientPRI->PlayerID : -1;
 
-	Logger::Log("combat-trace",
-		"TgPawn_Character::SendCombatMessage pawn=%p msgId=%d ids=[%d,%d,%d] vals=[%d,%d] | "
-		"recipientPRI=%p PlayerID=%d r_PawnOwner=%p (pawn==r_PawnOwner? %s)\n",
-		Pawn, nMsgId, nIdAttacker, nIdAssist, nIdVictim, nValueHealth, nValueShield,
-		recipientPRI, playerID, rPawnOwner,
-		((void*)Pawn == rPawnOwner) ? "yes" : "NO");
+		Logger::Log("combat-trace",
+			"TgPawn_Character::SendCombatMessage pawn=%p msgId=%d ids=[%d,%d,%d] vals=[%d,%d] | "
+			"recipientPRI=%p PlayerID=%d r_PawnOwner=%p (pawn==r_PawnOwner? %s)\n",
+			Pawn, nMsgId, nIdAttacker, nIdAssist, nIdVictim, nValueHealth, nValueShield,
+			recipientPRI, playerID, rPawnOwner,
+			((void*)Pawn == rPawnOwner) ? "yes" : "NO");
+	}
 
 	// Skip bots/AI — the game dispatches vtable[0x984] on every recipient pawn
 	// including bots. On bots Controller is ATgAIController; APlayerController's

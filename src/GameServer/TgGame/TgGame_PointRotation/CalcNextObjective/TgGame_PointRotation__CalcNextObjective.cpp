@@ -38,7 +38,9 @@ void __fastcall TgGame_PointRotation__CalcNextObjective::Call(ATgGame_PointRotat
 	Game->m_NextObjective = candidates[index];
 	Game->m_PreviousObjective = Game->m_NextObjective;
 
-	Logger::Log(GetLogChannel(), "Chosen objective: %s\n", Game->m_NextObjective->GetFullName());
+	if (Logger::IsChannelEnabled(GetLogChannel())) {
+		Logger::Log(GetLogChannel(), "Chosen objective: %s\n", Game->m_NextObjective->GetFullName());
+	}
 
 	// Update r_Objectives so newly connecting clients only see the current objective
 	GRI->r_Objectives[0] = Game->m_NextObjective;

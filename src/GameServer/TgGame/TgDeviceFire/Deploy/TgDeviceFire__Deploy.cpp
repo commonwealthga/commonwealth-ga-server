@@ -23,12 +23,6 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 
 	int deployableId = *(int*)(pFireModeSetup + 0x28);
 
-	Logger::Log(GetLogChannel(), "TgDeviceFire::Deploy: device=%s pawn=%s attackType=%d deployableId=%d\n",
-		device->GetFullName(),
-		pawn->GetFullName(),
-		pThis->m_nAttackType,
-		deployableId);
-
 	// For instant deployables (342), trace from the pawn's aim to find the placement position.
 	// This is the same trace UpdateDeployModeStatus uses to show the ghost preview.
 	FVector spawnLoc  = pawn->Location;
@@ -74,10 +68,13 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 		// Class-based gating is a stand-in until the r_bConsumedOnUse pipe is
 		// wired.
 		bool bConsume = TgProj_Deployable__SpawnDeployable::IsBeaconDeployable(Deployable);
-		Logger::Log(GetLogChannel(),
-			"TgDeviceFire::Deploy: consume-on-deploy=%d (class=%s)\n",
-			(int)bConsume,
-			Deployable->Class ? Deployable->Class->GetFullName() : "<null>");
+
+		if (Logger::IsChannelEnabled(GetLogChannel())) {
+			Logger::Log(GetLogChannel(),
+				"TgDeviceFire::Deploy: consume-on-deploy=%d (class=%s)\n",
+				(int)bConsume,
+				Deployable->Class ? Deployable->Class->GetFullName() : "<null>");
+		}
 
 		if (bConsume) {
 			ATgInventoryManager* invMgr = (ATgInventoryManager*)pawn->InvManager;

@@ -309,6 +309,31 @@ unsigned long ModuleThread( void* ) {
 	::DetourTransactionBegin();
 	::DetourUpdateThread(::GetCurrentThread());
 
+	// Binary patch: silence the per-create "Client attempting to add an
+	// item to inventory manager without an inventory id" warning emitted
+	// from inside FUN_10a164c0 (TgInventoryManager::CreateInventoryObject)
+	// at 0x10a16549 (5-byte CALL to debugf at 0x112b1810).
+	//
+	// The warning fires every time the auto-assign-negative-id path runs
+	// — a normal flow for SEND_INVENTORY-driven creates (we don't ship a
+	// pre-assigned invId for any item we add via NonPersistAddDevice /
+	// the equip-flow CreateEquipDevice paths, so EVERY device hits it).
+	// Each line is a synchronous fwrite to Logs/Launch_<inst>.log on the
+	// game tick thread; profiling on the prod box showed it stalling the
+	// tick under load.
+	//
+	// Patching only the CALL (5 bytes -> 0x90*5). Surrounding `PUSH 0x...
+	// / PUSH ECX / ... / ADD ESP, 0x8` self-balances so we leave the
+	// pushes alone. The post-warn body (auto-assign from DAT_1197edd0
+	// negative-counter, then jmp LAB_10a16560) executes unchanged.
+	{
+		BYTE* target = reinterpret_cast<BYTE*>(0x10a16549);
+		DWORD oldProtect = 0;
+		VirtualProtect(target, 5, PAGE_EXECUTE_READWRITE, &oldProtect);
+		memset(target, 0x90, 5);
+		VirtualProtect(target, 5, oldProtect, &oldProtect);
+	}
+
 	// low-level engine functions
 	GameEngine__Init::Install();
 	// UObject__CollectGarbage::bDisableGarbageCollection = true;
@@ -390,35 +415,12 @@ unsigned long ModuleThread( void* ) {
 	TgDeviceFire__CustomFire::Install();
 	TgDeviceFire__Deploy::Install();
 	TgDeviceFire__SpawnPet::Install();
-	TgDeviceFire__CheckTeamPassThrough::Install();
-	TgDeviceFire__IsValidTarget::Install();
-	TgDevice__HasMinimumPowerPool::Install();
+	// TgDeviceFire__CheckTeamPassThrough::Install();
+	// TgDeviceFire__IsValidTarget::Install();
+	// TgDevice__HasMinimumPowerPool::Install();
 	// TgEffectManager__ApplyDamage::Install();
 	TgEffectManager__RemoveAllEffectGroups::Install();
 	TgEffectManager__RemoveAllEffects::Install();
-	TgDevice__HasEnoughPowerPool::Install();
-	// Pre-install: read first 12 bytes at each hook target. Expected UE3
-	// SEH-wrapped prologue begins with 6A FF 68 <imm32> 64 A1 00 00 00 00
-	// (PUSH -1; PUSH <cookie>; MOV EAX, FS:[0]). If the runtime bytes don't
-	// match this pattern, our hook address doesn't point to the intended
-	// function — Detours will still patch the memory but nothing calls it.
-	{
-		auto dumpBytes = [](const char* name, uintptr_t addr) {
-			const uint8_t* p = (const uint8_t*)addr;
-			Logger::Log("boot_sentinel",
-				"  %s @ 0x%08lx: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
-				name, (unsigned long)addr,
-				p[0], p[1], p[2], p[3], p[4], p[5],
-				p[6], p[7], p[8], p[9], p[10], p[11]);
-		};
-		Logger::Log("boot_sentinel", "Target bytes (expecting 6a ff 68 .. 64 a1 00 00 ..):\n");
-		dumpBytes("UpdateDeployModeStatus", 0x10a273b0);
-		dumpBytes("RosterWalker (FUN_11346d30)", 0x11346d30);
-		dumpBytes("RefIter (FUN_11326f90)", 0x11326f90);
-		// Compare against a hook we KNOW works so the bytes can be contrasted.
-		dumpBytes("HasEnoughPowerPool(ref)", 0x10a1e3a0);
-		dumpBytes("UObject__ProcessEvent(ref)", 0x11347c20);
-	}
 
 	TgDevice__UpdateDeployModeStatus::Install();
 	TgPawn__RosterWalker::Install();
@@ -426,8 +428,6 @@ unsigned long ModuleThread( void* ) {
 	TgProj_Deployable__SpawnDeployable::Install();
 	TgMissionObjective_Bot__SpawnObjectiveBot::Install();
 
-	// Diagnostic hooks for the ApplyDeployableSetup → LoadObject crash.
-	// Both log on the "asset_load" channel. Remove once the crash is fixed.
 	TgAssemblyMisc__LoadAssetRefs::Install();
 	Core__LoadObject::Install();
 
@@ -529,7 +529,7 @@ unsigned long ModuleThread( void* ) {
 	TgPawn__ApplyJetpackTrail::Install();
 	TgPawn__BeginStats::Install();
 	TgPawn__CanMove::Install();
-	TgAIController__TargetInLOS::Install();
+	// TgAIController__TargetInLOS::Install();
 	TgPawn__CheckKillQuestCredit::Install();
 	TgPawn__CheckUseQuestCredit::Install();
 	TgPawn__EndStats::Install();
@@ -649,39 +649,8 @@ unsigned long ModuleThread( void* ) {
 	AsmDataCapture::bPopulateDatabase = true;
 
 	const LONG detourResult = ::DetourTransactionCommit();
-	Logger::Log("boot_sentinel",
-		"DetourTransactionCommit returned %ld (0=success)\n", (long)detourResult);
-	// After commit, m_original is replaced with the trampoline pointer if
-	// DetourAttach succeeded. If it equals the raw address, install failed.
-	Logger::Log("boot_sentinel",
-		"UpdateDeployModeStatus m_original=%p (raw=0x10a273b0)\n",
-		(void*)TgDevice__UpdateDeployModeStatus::m_original);
-	Logger::Log("boot_sentinel",
-		"RosterWalker          m_original=%p (raw=0x11346d30)\n",
-		(void*)TgPawn__RosterWalker::m_original);
-	Logger::Log("boot_sentinel",
-		"RefIter               m_original=%p (raw=0x11326f90)\n",
-		(void*)TgPawn__RefIter::m_original);
-	// Post-commit bytes at original addresses. Detours writes `e9 <rel32>`
-	// (JMP rel32) at the function entry. If bytes still match the SEH
-	// prologue (6a ff 68 ...), the patch was never actually written despite
-	// m_original being updated — and Detours lied about success.
-	{
-		auto dumpBytes = [](const char* name, uintptr_t addr) {
-			const uint8_t* p = (const uint8_t*)addr;
-			Logger::Log("boot_sentinel",
-				"  post-commit %s @ 0x%08lx: %02x %02x %02x %02x %02x %02x %02x %02x\n",
-				name, (unsigned long)addr,
-				p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
-		};
-		dumpBytes("UpdateDeployModeStatus", 0x10a273b0);
-		dumpBytes("RosterWalker (FUN_11346d30)", 0x11346d30);
-		dumpBytes("RefIter (FUN_11326f90)", 0x11326f90);
-		dumpBytes("HasEnoughPowerPool(ref)", 0x10a1e3a0);
-	}
 
 	IpcClient::Init(Config::GetIpcHost(), Config::GetIpcPort(), Config::GetInstanceId());
-
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)

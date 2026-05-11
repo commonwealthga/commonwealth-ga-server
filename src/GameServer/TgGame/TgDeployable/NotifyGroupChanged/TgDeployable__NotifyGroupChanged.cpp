@@ -20,16 +20,18 @@ void __fastcall TgDeployable__NotifyGroupChanged::Call(ATgDeployable* Deployable
 		bool r_bInitialIsEnemy     = (bits & 0x00100000) != 0;
 		bool guardPasses           = c_bInitialized && (!m_bInDestroyedState || s_bDestroyedThisTick);
 
-		Logger::Log("heal_tick",
-			"[NotifyGroupChanged] deployable=0x%p id=%d class=%s  guard=%s\n"
-			"                   c_bInitialized=%d  m_bInDestroyedState=%d  s_bDestroyedThisTick=%d  r_bInitialIsEnemy=%d\n"
-			"                   r_DRI=0x%p  c_Mesh=0x%p\n",
-			Deployable, Deployable->r_nDeployableId,
-			Deployable->Class ? Deployable->Class->GetFullName() : "<null>",
-			guardPasses ? "PASS" : "FAIL",
-			(int)c_bInitialized, (int)m_bInDestroyedState,
-			(int)s_bDestroyedThisTick, (int)r_bInitialIsEnemy,
-			dri, Deployable->c_Mesh);
+		if (Logger::IsChannelEnabled("heal_tick")) {
+			Logger::Log("heal_tick",
+				"[NotifyGroupChanged] deployable=0x%p id=%d class=%s  guard=%s\n"
+				"                   c_bInitialized=%d  m_bInDestroyedState=%d  s_bDestroyedThisTick=%d  r_bInitialIsEnemy=%d\n"
+				"                   r_DRI=0x%p  c_Mesh=0x%p\n",
+				Deployable, Deployable->r_nDeployableId,
+				Deployable->Class ? Deployable->Class->GetFullName() : "<null>",
+				guardPasses ? "PASS" : "FAIL",
+				(int)c_bInitialized, (int)m_bInDestroyedState,
+				(int)s_bDestroyedThisTick, (int)r_bInitialIsEnemy,
+				dri, Deployable->c_Mesh);
+		}
 
 		if (dri) {
 			// r_bOwnedByTaskforce is bit 0 of the dword at +0x1EC on the DRI.

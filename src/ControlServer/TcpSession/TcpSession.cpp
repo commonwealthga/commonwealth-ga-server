@@ -1067,25 +1067,27 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 		return;
 	}
 
-	Logger::Log("tcp", "[TCP] send_inventory_response: %d devices for charId=%lld pawnId=%d\n",
+	Logger::Log("tcp", "[TCP] send_inventory_response: %d devices for charId=%lld pawnId=%d (one packet per device)\n",
 		(int)devices.size(), character_id, nPawnId);
 
-	std::vector<uint8_t> response;
-
-	uint16_t packet_type = GA_U::SEND_INVENTORY;
-	uint16_t item_count = 2;
-
-	append(response, packet_type & 0xFF, packet_type >> 8);
-	append(response, item_count & 0xFF, item_count >> 8);
-
-	Write4B(response, GA_T::PAWN_ID, nPawnId);
-
-	int deviceCount = (int)devices.size();
-	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
-	append(response, deviceCount & 0xFF, deviceCount >> 8);
-
+	// One SEND_INVENTORY message per device. Bundling everything into a single
+	// DATA_SET worked for small loadouts but exceeded the client's per-packet
+	// receive cap (~1450 bytes) on heavily-modded loadouts — items past the cap
+	// silently dropped. The parser accumulates records into m_InventoryMap
+	// across messages, so per-device messages are equivalent semantically and
+	// each is comfortably small (~150-200 bytes worst case with 6 mods).
 	for (const auto& d : devices) {
-		append(response, 0x0E, 0x00);  // 14 fields per item
+		std::vector<uint8_t> response;
+
+		append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
+		append(response, 0x02, 0x00);   // 2 top-level fields: PAWN_ID + DATA_SET
+
+		Write4B(response, GA_T::PAWN_ID, nPawnId);
+
+		append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+		append(response, 0x01, 0x00);   // 1 item in DATA_SET
+
+		append(response, 0x0E, 0x00);   // 14 fields in this record
 
 		// nBlueprintId gates m_pAmBlueprint on the client (FUN_10a12740 sets it
 		// from this field). The mod-letter [...] suffix is rendered only when
@@ -1145,14 +1147,15 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 
 		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
 		append(response, 0x01, 0x00);
+
 			append(response, 0x04, 0x00);
 			Write4B(response, GA_T::CHARACTER_ID, 0);
 			Write4B(response, GA_T::INVENTORY_ID, d.inventory_id);
 			Write4B(response, GA_T::PROFILE_ID, 0x1);
 			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, d.slot_value_id);
-	}
 
-	send_response(response);
+		send_response(response);
+	}
 }
 
 void TcpSession::send_beacon_pickup_response(int nPawnId, int nDeviceId, int nInventoryId, int nEquipSlotValueId) {

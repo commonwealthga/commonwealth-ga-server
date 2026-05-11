@@ -76,6 +76,11 @@ public:
     static std::vector<InstanceInfo> GetReadyMissionInstances();
     static std::optional<InstanceInfo> GetHomeInstance();
     static std::vector<InstanceInfo> GetIdleInstances(int timeout_seconds);
+    // All instances not in STOPPED state with a valid pid. Used by the
+    // control-server shutdown path to SIGTERM-then-SIGKILL each game
+    // process group before exiting, so systemd doesn't get stuck waiting
+    // on orphaned wine processes (winedevice.exe ignores SIGTERM).
+    static std::vector<InstanceInfo> GetAllRunningInstances();
     static void SetLastEmptyAtIfEmpty(int64_t instance_id);
 
 private:

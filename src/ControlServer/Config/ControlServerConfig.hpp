@@ -12,6 +12,13 @@ struct PortRange {
     uint16_t hi;
 };
 
+// Inclusive CPU core range for round-robin pinning of spawned game
+// instances via sched_setaffinity. {-1, -1} disables pinning.
+struct CpuRange {
+    int lo;
+    int hi;
+};
+
 struct ControlServerConfig {
     std::string wine_binary        = "/home/zax/lutrisproton/lutrisprotonge/bin/wine";
     std::string wine_prefix        = "/home/zax/games/gawineprefixserver";
@@ -23,6 +30,29 @@ struct ControlServerConfig {
     std::string home_map_name      = "Rot_Redistribution05";
     std::string home_map_game_mode = "TgGame.TgGame";
     PortRange   udp_port_range     = {9002, 9020};
+    // Cores for game-instance affinity. Spawned instances round-robin
+    // across [lo..hi] inclusive; once exhausted, wraps. {-1, -1} disables.
+    CpuRange    game_cpu_range     = {-1, -1};
+    // How many consecutive cores each instance is pinned to.
+    // 2 = sweet spot for UE3 -nullrhi (1 hot game thread + PhysX/Wine on
+    // the second). 0 (or >= range span) = full pool, kernel decides per
+    // thread. 1 = strict single-core pinning (highest cache locality but
+    // worst tail latency under PhysX load).
+    int         cores_per_instance = 2;
+    // Whether to widen wineserver's affinity to cover all game_cpu_range
+    // cores after each spawn. wineserver is a singleton per WINEPREFIX
+    // and inherits the affinity of whichever instance forked it first;
+    // without this, every Win32 syscall from instances on other cores
+    // round-trips IPC across cores, costing ~25% %sys on the active core.
+    // Ignored when per_slot_prefix=true (slot prefixes give each slot
+    // its own wineserver, so cross-core IPC simply doesn't exist).
+    bool        pin_wineserver     = false;
+    // Per-slot WINEPREFIX isolation. When true, each pinning slot gets
+    // its own prefix at "<wine_prefix>-slot-<N>", cloned from the base
+    // prefix at startup. Each slot's wineserver is dedicated to its
+    // cores — no cross-slot contention, no cross-core IPC, no pinning
+    // gymnastics. Requires game_cpu_range to be valid.
+    bool        per_slot_prefix    = false;
     uint16_t    tcp_port           = 9000;
     uint16_t    chat_port          = 9001;
     uint16_t    ipc_port           = 9010;

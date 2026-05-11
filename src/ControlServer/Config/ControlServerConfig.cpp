@@ -108,6 +108,15 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
         cfg.udp_port_range.hi = pr.value("hi", cfg.udp_port_range.hi);
     }
 
+    if (j.contains("game_cpu_range")) {
+        const auto& cr = j["game_cpu_range"];
+        cfg.game_cpu_range.lo = cr.value("lo", cfg.game_cpu_range.lo);
+        cfg.game_cpu_range.hi = cr.value("hi", cfg.game_cpu_range.hi);
+    }
+    if (j.contains("cores_per_instance")) cfg.cores_per_instance = j["cores_per_instance"].get<int>();
+    if (j.contains("pin_wineserver"))     cfg.pin_wineserver     = j["pin_wineserver"].get<bool>();
+    if (j.contains("per_slot_prefix"))    cfg.per_slot_prefix    = j["per_slot_prefix"].get<bool>();
+
     Logger::Log("config", "[ControlServerConfig] Loaded config from '%s'\n", path.c_str());
     return cfg;
 }

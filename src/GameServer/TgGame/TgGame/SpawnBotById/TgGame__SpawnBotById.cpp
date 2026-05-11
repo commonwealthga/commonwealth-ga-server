@@ -128,11 +128,21 @@ void TgGame__SpawnBotById::GiveDeviceById(
 
 		Device->Instigator = (APawn*)Pawn;
 
+		// Bot devices are server-only. Bots have no autonomous-proxy
+		// client doing prediction, so the device actor on the client
+		// would have nothing to do. The bot's weapon mesh on the client
+		// comes from c_DeviceForm built off r_EquipDeviceInfo on the
+		// bot pawn + BotRepInfo PRI; muzzle FX / fire animation come
+		// from anim notifies on the pawn's skeletal mesh; projectiles
+		// replicate as their own actors. Keeping RemoteRole=1 here just
+		// opened a per-bot-device actor channel on every client and
+		// burned NetDriver tick time for nothing — meaningful drag in
+		// bot-heavy missions.
 		Device->Role = 3;
-		Device->RemoteRole = 1;
-		Device->bNetInitial = 1;
-		Device->bNetDirty = 1;
-		Device->bSkipActorPropertyReplication = 0;
+		Device->RemoteRole = 0;
+		Device->bNetInitial = 0;
+		Device->bNetDirty = 0;
+		Device->bSkipActorPropertyReplication = 1;
 		Device->bOnlyDirtyReplication = 0;
 		Device->bHidden = 1;
 		// Inherit Inventory.uc defaults bReplicateMovement=false — see
@@ -213,10 +223,14 @@ void TgGame__SpawnBotById::GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Pla
 			// Instigator must be set so TgDeviceFire uses Instigator.GetAimStart() for
 			// projectile spawn location.
 			Device->Instigator = (APawn*)Bot;
+			// Server-only — see the matching block in the first device-spawn
+			// path above for the full rationale. tl;dr: bot weapon visuals
+			// come from r_EquipDeviceInfo on the pawn/PRI, not the device
+			// actor. Replicating these to clients is pure overhead.
 			Device->Role = 3;
-			Device->RemoteRole = 1;
-			Device->bNetInitial = 1;
-			Device->bNetDirty = 1;
+			Device->RemoteRole = 0;
+			Device->bNetInitial = 0;
+			Device->bNetDirty = 0;
 			BotRepInfo->r_EquipDeviceInfo[equipPoint].nDeviceId = deviceId;
 			BotRepInfo->r_EquipDeviceInfo[equipPoint].nDeviceInstanceId = invId;
 			BotRepInfo->r_EquipDeviceInfo[equipPoint].nQualityValueId = qualityValueId;
@@ -286,8 +300,10 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	);
 
 	if (AIController == nullptr) {
-		Logger::Log("pet_spawn", "SpawnBotById: AIController spawn FAILED (TgAIControllerClass=%p)\n",
-			(void*)ClassPreloader::GetTgAIControllerClass());
+		if (Logger::IsChannelEnabled("pet_spawn")) {
+			Logger::Log("pet_spawn", "SpawnBotById: AIController spawn FAILED (TgAIControllerClass=%p)\n",
+				(void*)ClassPreloader::GetTgAIControllerClass());
+		}
 		return nullptr;
 	}
 
@@ -533,10 +549,10 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	if (pFactory == nullptr) {
 		ActorCache::CacheMapActors();
 		pFactory = ActorCache::BotFactory;
-		if (pFactory) {
+		if (pFactory && Logger::IsChannelEnabled("debug")) {
 			Logger::Log("debug", "TgBotFactory fallback found: %s\n", pFactory->GetFullName());
 		}
-	} else {
+	} else if (Logger::IsChannelEnabled("debug")) {
 		Logger::Log("debug", "TgBotFactory passed: %s\n", pFactory->GetFullName());
 	}
 

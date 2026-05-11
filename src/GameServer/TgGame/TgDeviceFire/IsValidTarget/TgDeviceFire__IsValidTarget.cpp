@@ -35,7 +35,10 @@ bool __fastcall TgDeviceFire__IsValidTarget::Call(
 
 	bool result = CallOriginal(FireMode, edx, TargetActor, OverrideTargeterType);
 
-	if (!TargetActor) return result;
+	// IsValidTarget fires per-target per-fire-tick — easily thousands of
+	// calls/sec under aggressive AI. Skip every diagnostic touch when the
+	// "combat-trace" channel is off.
+	if (!TargetActor || !Logger::IsChannelEnabled("combat-trace")) return result;
 
 	// Capture target class name BEFORE other GetFullName calls clobber buffer.
 	std::string targetClass = SafeGetFullName(TargetActor);

@@ -12,7 +12,9 @@ static int nMaxInventoryId = 5000;  // start well above any player inventory IDs
 
 void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void *edx) {
 
-	Logger::Log("tgbotfactory", "[%s] %s SpawnNextBot mapObjectId=%d\n", Logger::GetTime(), BotFactory->GetName(), BotFactory->m_nMapObjectId);
+	if (Logger::IsChannelEnabled("tgbotfactory")) {
+		Logger::Log("tgbotfactory", "[%s] %s SpawnNextBot mapObjectId=%d\n", Logger::GetTime(), BotFactory->GetName(), BotFactory->m_nMapObjectId);
+	}
 
 	ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
 

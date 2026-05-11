@@ -47,9 +47,11 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 	// in that case (a separate stub) which originally awarded zero morale.
 	// Don't credit.
 	if (!isHeal && !bIsEnemy) {
-		Logger::Log("morale",
-			"[TrackStats] team-damage no credit: instigator=0x%p target=0x%p fDamage=%.2f\n",
-			Instigator, Target, fDamage);
+		if (Logger::IsChannelEnabled("morale")) {
+			Logger::Log("morale",
+				"[TrackStats] team-damage no credit: instigator=0x%p target=0x%p fDamage=%.2f\n",
+				Instigator, Target, fDamage);
+		}
 		return;
 	}
 
@@ -69,60 +71,74 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 	//       Case A — TgDevice_Morale directly (e.g. melee/hitscan morale device):
 	//         skip.
 	//       Case B — TgDeployable (bomb): chase .r_Owner (ATgDevice* @ +0x2AC)
-	//         to the source device; if that's a TgDevice_Morale, skip.
+	//             to the source device; if that's a TgDevice_Morale, skip.
 	//
 	// Class-name strstr per `reference_sdk_staticclass_misalignment` — IsA() is
 	// unreliable on this server build.
+	//
+	// We previously copied each GetFullName() into std::string to dodge the
+	// shared-buffer clobber when both names cohabit a log line. That's only
+	// needed when we actually log; for the gate decision itself, evaluating
+	// each name+strstr in sequence is allocation-free and immune to clobber
+	// (we don't keep the pointer around after strstr).
 	{
 		UObject* deviceModeRef = (UObject*)Impact.dw[0x54 / 4];
 		UTgDeviceFire* fireMode  = (UTgDeviceFire*)deviceModeRef;
 		AActor*        fireOwner = fireMode ? fireMode->m_Owner : nullptr;
+		ATgDevice*     sourceDevice = nullptr;
 
-		// Copy class names eagerly into std::string — GetFullName returns into a
-		// shared static buffer (reference_getfullname_shared_buffer), so the
-		// second call clobbers the first.
-		std::string ownerClass;
-		std::string srcDeviceClass;
-		ATgDevice*  sourceDevice = nullptr;
-
+		bool ownerIsDeployable = false;
+		bool ownerIsMorale     = false;
 		if (fireOwner && fireOwner->Class) {
-			ownerClass = fireOwner->Class->GetFullName();
-			if (ownerClass.find("TgDeploy") != std::string::npos) {
-				// fireMode.m_Owner is the spawned deployable; chase its r_Owner
-				// (set by SpawnDeployableActor) back to the firing ATgDevice.
-				sourceDevice = ((ATgDeployable*)fireOwner)->r_Owner;
-				if (sourceDevice && sourceDevice->Class) {
-					srcDeviceClass = sourceDevice->Class->GetFullName();
-				}
+			const char* oc = fireOwner->Class->GetFullName();
+			if (oc) {
+				ownerIsMorale     = (strstr(oc, "TgDevice_Morale") != nullptr);
+				ownerIsDeployable = (strstr(oc, "TgDeploy")        != nullptr);
 			}
 		}
 
-		const bool isDirectMorale  = ownerClass.find("TgDevice_Morale")    != std::string::npos;
-		const bool isBombFromMorale = srcDeviceClass.find("TgDevice_Morale") != std::string::npos;
+		bool srcIsMorale = false;
+		if (ownerIsDeployable) {
+			sourceDevice = ((ATgDeployable*)fireOwner)->r_Owner;
+			if (sourceDevice && sourceDevice->Class) {
+				const char* sc = sourceDevice->Class->GetFullName();
+				if (sc) srcIsMorale = (strstr(sc, "TgDevice_Morale") != nullptr);
+			}
+		}
 
-		if (isDirectMorale || isBombFromMorale) {
-			Logger::Log("morale",
-				"[TrackStats] morale-device source (no credit): instigator=0x%p target=0x%p "
-				"fireOwner.class=%s sourceDevice.class=%s fDamage=%.2f\n",
-				Instigator, Target,
-				ownerClass.empty()      ? "<null>" : ownerClass.c_str(),
-				srcDeviceClass.empty()  ? "<n/a>"  : srcDeviceClass.c_str(),
-				fDamage);
+		if (ownerIsMorale || srcIsMorale) {
+			if (Logger::IsChannelEnabled("morale")) {
+				// Re-evaluate the names into std::strings just for the log so
+				// the two GetFullName() pointers don't share a buffer in the
+				// same printf line.
+				std::string oc = (fireOwner && fireOwner->Class && fireOwner->Class->GetFullName())
+				                   ? fireOwner->Class->GetFullName() : std::string("<null>");
+				std::string sc = (sourceDevice && sourceDevice->Class && sourceDevice->Class->GetFullName())
+				                   ? sourceDevice->Class->GetFullName() : std::string("<n/a>");
+				Logger::Log("morale",
+					"[TrackStats] morale-device source (no credit): instigator=0x%p target=0x%p "
+					"fireOwner.class=%s sourceDevice.class=%s fDamage=%.2f\n",
+					Instigator, Target, oc.c_str(), sc.c_str(), fDamage);
+			}
 			return;
 		}
 
 		// Diagnostic: record the source attribution we DID see, so when the
 		// chain breaks we can tell whether DeviceModeReference was null,
 		// fireMode.m_Owner was null, or r_Owner on the deployable was missing.
-		Logger::Log("morale",
-			"[TrackStats] credit-eligible: instigator=0x%p target=0x%p "
-			"deviceModeRef=%p fireOwner=%p ownerClass=%s srcDevice=%p srcClass=%s fDamage=%.2f\n",
-			Instigator, Target,
-			(void*)deviceModeRef, (void*)fireOwner,
-			ownerClass.empty()     ? "<null>" : ownerClass.c_str(),
-			(void*)sourceDevice,
-			srcDeviceClass.empty() ? "<n/a>"  : srcDeviceClass.c_str(),
-			fDamage);
+		if (Logger::IsChannelEnabled("morale")) {
+			std::string oc = (fireOwner && fireOwner->Class && fireOwner->Class->GetFullName())
+			                   ? fireOwner->Class->GetFullName() : std::string("<null>");
+			std::string sc = (sourceDevice && sourceDevice->Class && sourceDevice->Class->GetFullName())
+			                   ? sourceDevice->Class->GetFullName() : std::string("<n/a>");
+			Logger::Log("morale",
+				"[TrackStats] credit-eligible: instigator=0x%p target=0x%p "
+				"deviceModeRef=%p fireOwner=%p ownerClass=%s srcDevice=%p srcClass=%s fDamage=%.2f\n",
+				Instigator, Target,
+				(void*)deviceModeRef, (void*)fireOwner, oc.c_str(),
+				(void*)sourceDevice, sc.c_str(),
+				fDamage);
+		}
 	}
 
 	// Pawn must have a morale device equipped (otherwise nothing to charge).
@@ -153,10 +169,12 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 		Instigator->bNetDirty       = 1;
 	}
 
-	Logger::Log("morale",
-		"[TrackStats] %s: instigator=0x%p target=0x%p mag=%.2f points=%.2f  morale %.2f -> %.2f / %.2f  targetDevMode=%d\n",
-		isHeal ? "heal" : "dmg",
-		Instigator, Target, magnitude, points,
-		before, after, Instigator->r_fRequiredMoralePoints,
-		iTargetDeviceModeId);
+	if (Logger::IsChannelEnabled("morale")) {
+		Logger::Log("morale",
+			"[TrackStats] %s: instigator=0x%p target=0x%p mag=%.2f points=%.2f  morale %.2f -> %.2f / %.2f  targetDevMode=%d\n",
+			isHeal ? "heal" : "dmg",
+			Instigator, Target, magnitude, points,
+			before, after, Instigator->r_fRequiredMoralePoints,
+			iTargetDeviceModeId);
+	}
 }

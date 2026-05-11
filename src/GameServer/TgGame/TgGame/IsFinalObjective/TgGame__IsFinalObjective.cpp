@@ -30,8 +30,10 @@ bool __fastcall TgGame__IsFinalObjective::Call(ATgGame* Game, void* edx, ATgMiss
 
 	bool bIsFinal = (Objective->nPriority == maxPriority);
 
-	Logger::Log("objective", "IsFinalObjective: %s priority=%d maxPriority=%d isFinal=%d\n",
-		((UObject*)Objective)->GetName(), Objective->nPriority, maxPriority, bIsFinal);
+	if (Logger::IsChannelEnabled("objective")) {
+		Logger::Log("objective", "IsFinalObjective: %s priority=%d maxPriority=%d isFinal=%d\n",
+			((UObject*)Objective)->GetName(), Objective->nPriority, maxPriority, bIsFinal);
+	}
 
 	LogCallEnd();
 	return bIsFinal;

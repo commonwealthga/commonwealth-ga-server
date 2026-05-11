@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgDeviceFire/GetPropertyValueById/TgDeviceFire__GetPropertyValueById.hpp"
 #include "src/GameServer/TgGame/BuffEffectRegistry/DeviceCategorySkill.hpp"
+#include "src/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <cstring>
 
@@ -35,18 +36,13 @@ static void DumpMatchingBuffEntries(ATgPawn* pawn, int targetProp, const char* l
 	}
 }
 
-// Resolve nPropertyId → UTgProperty* by walking the pawn's s_Properties.
-// Mirror of the lookup in our TgPawn__GetProperty hook, but inlined here so
-// we don't take a dependency on its specific signature.
+// Resolve nPropertyId → UTgProperty* via the binary's O(1) TMap lookup at
+// pawn+0x400. Routes through TgPawn__GetProperty, whose Call body is now a
+// pass-through to the native (the TMap is populated reliably by our
+// InitializeProperty — see reference_pawn_property_tmap.md).
 static inline UTgProperty* FindPropertyOnPawn(ATgPawn* pawn, int propertyId) {
-	if (!pawn || !pawn->s_Properties.Data) return nullptr;
-	for (int i = 0; i < pawn->s_Properties.Num(); ++i) {
-		UTgProperty* p = pawn->s_Properties.Data[i];
-		if (p && p->m_nPropertyId == propertyId) {
-			return p;
-		}
-	}
-	return nullptr;
+	if (!pawn) return nullptr;
+	return TgPawn__GetProperty::CallOriginal(pawn, nullptr, propertyId);
 }
 
 // Same lookup but on a deployable (different s_Properties offset 0x1F0 vs
@@ -187,8 +183,10 @@ float __fastcall TgDeviceFire__GetPropertyValueById::Call(UTgDeviceFire* DeviceF
 		}
 	}
 
-	const bool trace = kLogTrace && ShouldTrace(nPropertyId);
-	const int  buffCount = pawn ? pawn->m_EffectBuffInfo.Num() : -1;
+	// Runtime gate: even when ShouldTrace matches a watched propId, only pay
+	// the diagnostic cost when the "effects" channel is actually enabled.
+	const bool trace = kLogTrace && ShouldTrace(nPropertyId) && Logger::IsChannelEnabled("effects");
+	const int  buffCount = trace && pawn ? pawn->m_EffectBuffInfo.Num() : -1;
 
 	float val = 0.0f;
 	bool resolved = false;

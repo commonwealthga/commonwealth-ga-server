@@ -34,6 +34,14 @@ void* __cdecl Core__LoadObject::Call(void* ObjectClass, wchar_t* InOuter, wchar_
 	bool nested = (TgAssemblyMisc__LoadAssetRefs::s_nestLevel > 0);
 	bool failed = (result == nullptr);
 
+	if (!Logger::IsChannelEnabled("asset_load")) {
+		if (nested && failed) {
+			return ObjectClass;
+		}
+
+		return result;
+	}
+
 	if (nested || failed) {
 		char nameBuf[256];
 		char outerBuf[128];

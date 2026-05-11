@@ -4,326 +4,592 @@
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 
 bool Actor__GetOptimizedRepList::bRepListCached = false;
+
+// Per-class UClass* pointers used for O(1) class-identity dispatch in Call().
+// Resolved once at first invocation by ResolveRepListProperties().
+// Replaces the per-call strcmp(actor->Class->GetFullName(), "Class X") cascade.
+static UClass* Class_Engine_AIController = nullptr;
+static UClass* Class_Engine_AccessControl = nullptr;
+static UClass* Class_Engine_Actor = nullptr;
+static UClass* Class_Engine_Admin = nullptr;
+static UClass* Class_Engine_AmbientSound = nullptr;
+static UClass* Class_Engine_AmbientSoundMovable = nullptr;
+static UClass* Class_Engine_AmbientSoundNonLoop = nullptr;
+static UClass* Class_Engine_AmbientSoundSimple = nullptr;
+static UClass* Class_Engine_AmbientSoundSimpleToggleable = nullptr;
+static UClass* Class_Engine_AnimatedCamera = nullptr;
+static UClass* Class_Engine_AutoLadder = nullptr;
+static UClass* Class_Engine_BlockingVolume = nullptr;
+static UClass* Class_Engine_BroadcastHandler = nullptr;
+static UClass* Class_Engine_Brush = nullptr;
+static UClass* Class_Engine_Camera = nullptr;
+static UClass* Class_Engine_CameraActor = nullptr;
+static UClass* Class_Engine_ClipMarker = nullptr;
+static UClass* Class_Engine_ColorScaleVolume = nullptr;
+static UClass* Class_Engine_Controller = nullptr;
+static UClass* Class_Engine_CoverGroup = nullptr;
+static UClass* Class_Engine_CoverLink = nullptr;
+static UClass* Class_Engine_CoverReplicator = nullptr;
+static UClass* Class_Engine_CoverSlotMarker = nullptr;
+static UClass* Class_Engine_CrowdAgent = nullptr;
+static UClass* Class_Engine_CrowdAttractor = nullptr;
+static UClass* Class_Engine_CrowdReplicationActor = nullptr;
+static UClass* Class_Engine_CullDistanceVolume = nullptr;
+static UClass* Class_Engine_DebugCameraController = nullptr;
+static UClass* Class_Engine_DebugCameraHUD = nullptr;
+static UClass* Class_Engine_DecalActor = nullptr;
+static UClass* Class_Engine_DecalActorBase = nullptr;
+static UClass* Class_Engine_DecalActorMovable = nullptr;
+static UClass* Class_Engine_DecalManager = nullptr;
+static UClass* Class_Engine_DefaultPhysicsVolume = nullptr;
+static UClass* Class_Engine_DirectionalLight = nullptr;
+static UClass* Class_Engine_DirectionalLightToggleable = nullptr;
+static UClass* Class_Engine_DoorMarker = nullptr;
+static UClass* Class_Engine_DroppedPickup = nullptr;
+static UClass* Class_Engine_DynamicAnchor = nullptr;
+static UClass* Class_Engine_DynamicBlockingVolume = nullptr;
+static UClass* Class_Engine_DynamicCameraActor = nullptr;
+static UClass* Class_Engine_DynamicPhysicsVolume = nullptr;
+static UClass* Class_Engine_DynamicSMActor = nullptr;
+static UClass* Class_Engine_DynamicSMActor_Spawnable = nullptr;
+static UClass* Class_Engine_DynamicTriggerVolume = nullptr;
+static UClass* Class_Engine_Emitter = nullptr;
+static UClass* Class_Engine_EmitterCameraLensEffectBase = nullptr;
+static UClass* Class_Engine_EmitterPool = nullptr;
+static UClass* Class_Engine_EmitterSpawnable = nullptr;
+static UClass* Class_Engine_FileLog = nullptr;
+static UClass* Class_Engine_FileWriter = nullptr;
+static UClass* Class_Engine_FluidInfluenceActor = nullptr;
+static UClass* Class_Engine_FluidSurfaceActor = nullptr;
+static UClass* Class_Engine_FluidSurfaceActorMovable = nullptr;
+static UClass* Class_Engine_FogVolumeConeDensityInfo = nullptr;
+static UClass* Class_Engine_FogVolumeConstantDensityInfo = nullptr;
+static UClass* Class_Engine_FogVolumeDensityInfo = nullptr;
+static UClass* Class_Engine_FogVolumeLinearHalfspaceDensityInfo = nullptr;
+static UClass* Class_Engine_FogVolumeSphericalDensityInfo = nullptr;
+static UClass* Class_Engine_FoliageFactory = nullptr;
+static UClass* Class_Engine_FractureManager = nullptr;
+static UClass* Class_Engine_FracturedStaticMeshActor = nullptr;
+static UClass* Class_Engine_FracturedStaticMeshPart = nullptr;
+static UClass* Class_Engine_GameInfo = nullptr;
+static UClass* Class_Engine_GameReplicationInfo = nullptr;
+static UClass* Class_Engine_GravityVolume = nullptr;
+static UClass* Class_Engine_HUD = nullptr;
+static UClass* Class_Engine_HeightFog = nullptr;
+static UClass* Class_Engine_Info = nullptr;
+static UClass* Class_Engine_InternetInfo = nullptr;
+static UClass* Class_Engine_InterpActor = nullptr;
+static UClass* Class_Engine_Inventory = nullptr;
+static UClass* Class_Engine_InventoryManager = nullptr;
+static UClass* Class_Engine_KActor = nullptr;
+static UClass* Class_Engine_KActorSpawnable = nullptr;
+static UClass* Class_Engine_KAsset = nullptr;
+static UClass* Class_Engine_KAssetSpawnable = nullptr;
+static UClass* Class_Engine_Keypoint = nullptr;
+static UClass* Class_Engine_Ladder = nullptr;
+static UClass* Class_Engine_LadderVolume = nullptr;
+static UClass* Class_Engine_LensFlareSource = nullptr;
+static UClass* Class_Engine_LevelStreamingVolume = nullptr;
+static UClass* Class_Engine_LiftCenter = nullptr;
+static UClass* Class_Engine_LiftExit = nullptr;
+static UClass* Class_Engine_Light = nullptr;
+static UClass* Class_Engine_LightVolume = nullptr;
+static UClass* Class_Engine_MantleMarker = nullptr;
+static UClass* Class_Engine_MaterialInstanceActor = nullptr;
+static UClass* Class_Engine_MatineeActor = nullptr;
+static UClass* Class_Engine_Mutator = nullptr;
+static UClass* Class_Engine_NavigationPoint = nullptr;
+static UClass* Class_Engine_Note = nullptr;
+static UClass* Class_Engine_NxCylindricalForceField = nullptr;
+static UClass* Class_Engine_NxCylindricalForceFieldCapsule = nullptr;
+static UClass* Class_Engine_NxForceField = nullptr;
+static UClass* Class_Engine_NxForceFieldGeneric = nullptr;
+static UClass* Class_Engine_NxForceFieldRadial = nullptr;
+static UClass* Class_Engine_NxForceFieldTornado = nullptr;
+static UClass* Class_Engine_NxGenericForceField = nullptr;
+static UClass* Class_Engine_NxGenericForceFieldBox = nullptr;
+static UClass* Class_Engine_NxGenericForceFieldBrush = nullptr;
+static UClass* Class_Engine_NxGenericForceFieldCapsule = nullptr;
+static UClass* Class_Engine_NxRadialCustomForceField = nullptr;
+static UClass* Class_Engine_NxRadialForceField = nullptr;
+static UClass* Class_Engine_NxTornadoAngularForceField = nullptr;
+static UClass* Class_Engine_NxTornadoAngularForceFieldCapsule = nullptr;
+static UClass* Class_Engine_NxTornadoForceField = nullptr;
+static UClass* Class_Engine_NxTornadoForceFieldCapsule = nullptr;
+static UClass* Class_Engine_Objective = nullptr;
+static UClass* Class_Engine_PathBlockingVolume = nullptr;
+static UClass* Class_Engine_PathNode = nullptr;
+static UClass* Class_Engine_PathNode_Dynamic = nullptr;
+static UClass* Class_Engine_Pawn = nullptr;
+static UClass* Class_Engine_PhysXDestructibleActor = nullptr;
+static UClass* Class_Engine_PhysXDestructiblePart = nullptr;
+static UClass* Class_Engine_PhysXEmitterSpawnable = nullptr;
+static UClass* Class_Engine_PhysicsVolume = nullptr;
+static UClass* Class_Engine_PickupFactory = nullptr;
+static UClass* Class_Engine_PlayerController = nullptr;
+static UClass* Class_Engine_PlayerReplicationInfo = nullptr;
+static UClass* Class_Engine_PlayerStart = nullptr;
+static UClass* Class_Engine_PointLight = nullptr;
+static UClass* Class_Engine_PointLightMovable = nullptr;
+static UClass* Class_Engine_PointLightToggleable = nullptr;
+static UClass* Class_Engine_PolyMarker = nullptr;
+static UClass* Class_Engine_PortalMarker = nullptr;
+static UClass* Class_Engine_PortalTeleporter = nullptr;
+static UClass* Class_Engine_PortalVolume = nullptr;
+static UClass* Class_Engine_PostProcessVolume = nullptr;
+static UClass* Class_Engine_PotentialClimbWatcher = nullptr;
+static UClass* Class_Engine_PrefabInstance = nullptr;
+static UClass* Class_Engine_Projectile = nullptr;
+static UClass* Class_Engine_RB_BSJointActor = nullptr;
+static UClass* Class_Engine_RB_ConstraintActor = nullptr;
+static UClass* Class_Engine_RB_ConstraintActorSpawnable = nullptr;
+static UClass* Class_Engine_RB_CylindricalForceActor = nullptr;
+static UClass* Class_Engine_RB_ForceFieldExcludeVolume = nullptr;
+static UClass* Class_Engine_RB_HingeActor = nullptr;
+static UClass* Class_Engine_RB_LineImpulseActor = nullptr;
+static UClass* Class_Engine_RB_PrismaticActor = nullptr;
+static UClass* Class_Engine_RB_PulleyJointActor = nullptr;
+static UClass* Class_Engine_RB_RadialForceActor = nullptr;
+static UClass* Class_Engine_RB_RadialImpulseActor = nullptr;
+static UClass* Class_Engine_RB_Thruster = nullptr;
+static UClass* Class_Engine_ReplicationInfo = nullptr;
+static UClass* Class_Engine_ReverbVolume = nullptr;
+static UClass* Class_Engine_Route = nullptr;
+static UClass* Class_Engine_SVehicle = nullptr;
+static UClass* Class_Engine_SceneCapture2DActor = nullptr;
+static UClass* Class_Engine_SceneCaptureActor = nullptr;
+static UClass* Class_Engine_SceneCaptureCubeMapActor = nullptr;
+static UClass* Class_Engine_SceneCapturePortalActor = nullptr;
+static UClass* Class_Engine_SceneCaptureReflectActor = nullptr;
+static UClass* Class_Engine_ScoreBoard = nullptr;
+static UClass* Class_Engine_Scout = nullptr;
+static UClass* Class_Engine_SkeletalMeshActor = nullptr;
+static UClass* Class_Engine_SkeletalMeshActorBasedOnExtremeContent = nullptr;
+static UClass* Class_Engine_SkeletalMeshActorMAT = nullptr;
+static UClass* Class_Engine_SkeletalMeshActorMATSpawnable = nullptr;
+static UClass* Class_Engine_SkeletalMeshActorSpawnable = nullptr;
+static UClass* Class_Engine_SkyLight = nullptr;
+static UClass* Class_Engine_SkyLightToggleable = nullptr;
+static UClass* Class_Engine_SpeedTreeActor = nullptr;
+static UClass* Class_Engine_SpotLight = nullptr;
+static UClass* Class_Engine_SpotLightMovable = nullptr;
+static UClass* Class_Engine_SpotLightToggleable = nullptr;
+static UClass* Class_Engine_StaticLightCollectionActor = nullptr;
+static UClass* Class_Engine_StaticMeshActor = nullptr;
+static UClass* Class_Engine_StaticMeshActorBase = nullptr;
+static UClass* Class_Engine_StaticMeshActorBasedOnExtremeContent = nullptr;
+static UClass* Class_Engine_StaticMeshCollectionActor = nullptr;
+static UClass* Class_Engine_TargetPoint = nullptr;
+static UClass* Class_Engine_TeamInfo = nullptr;
+static UClass* Class_Engine_Teleporter = nullptr;
+static UClass* Class_Engine_Terrain = nullptr;
+static UClass* Class_Engine_Trigger = nullptr;
+static UClass* Class_Engine_TriggerStreamingLevel = nullptr;
+static UClass* Class_Engine_TriggerVolume = nullptr;
+static UClass* Class_Engine_Trigger_Dynamic = nullptr;
+static UClass* Class_Engine_Trigger_LOS = nullptr;
+static UClass* Class_Engine_TriggeredPath = nullptr;
+static UClass* Class_Engine_Vehicle = nullptr;
+static UClass* Class_Engine_Volume = nullptr;
+static UClass* Class_Engine_VolumePathNode = nullptr;
+static UClass* Class_Engine_VolumeTimer = nullptr;
+static UClass* Class_Engine_WaterVolume = nullptr;
+static UClass* Class_Engine_Weapon = nullptr;
+static UClass* Class_Engine_WindDirectionalSource = nullptr;
+static UClass* Class_Engine_WorldInfo = nullptr;
+static UClass* Class_Engine_ZoneInfo = nullptr;
+static UClass* Class_GameFramework_GameAIController = nullptr;
+static UClass* Class_GameFramework_GameExplosionActor = nullptr;
+static UClass* Class_GameFramework_GameHUD = nullptr;
+static UClass* Class_GameFramework_GamePawn = nullptr;
+static UClass* Class_GameFramework_GamePlayerController = nullptr;
+static UClass* Class_GameFramework_GameProjectile = nullptr;
+static UClass* Class_GameFramework_GameVehicle = nullptr;
+static UClass* Class_GameFramework_GameWeapon = nullptr;
+static UClass* Class_TgGame_TgAIController = nullptr;
+static UClass* Class_TgGame_TgActionPoint = nullptr;
+static UClass* Class_TgGame_TgActorFactory = nullptr;
+static UClass* Class_TgGame_TgAlarmPoint = nullptr;
+static UClass* Class_TgGame_TgAnnouncer = nullptr;
+static UClass* Class_TgGame_TgBaseObjective_CTFBot = nullptr;
+static UClass* Class_TgGame_TgBaseObjective_KOTH = nullptr;
+static UClass* Class_TgGame_TgBeaconFactory = nullptr;
+static UClass* Class_TgGame_TgBotEncounterVolume = nullptr;
+static UClass* Class_TgGame_TgBotFactory = nullptr;
+static UClass* Class_TgGame_TgBotFactorySpawnable = nullptr;
+static UClass* Class_TgGame_TgBotStart = nullptr;
+static UClass* Class_TgGame_TgCharacterBuilderLight = nullptr;
+static UClass* Class_TgGame_TgChestActor = nullptr;
+static UClass* Class_TgGame_TgCollisionProxy = nullptr;
+static UClass* Class_TgGame_TgCollisionProxy_Vortex = nullptr;
+static UClass* Class_TgGame_TgCoverPoint = nullptr;
+static UClass* Class_TgGame_TgDebugCameraController = nullptr;
+static UClass* Class_TgGame_TgDecalActor_Logo = nullptr;
+static UClass* Class_TgGame_TgDefensePoint = nullptr;
+static UClass* Class_TgGame_TgDeploy_Artillery = nullptr;
+static UClass* Class_TgGame_TgDeploy_Beacon = nullptr;
+static UClass* Class_TgGame_TgDeploy_BeaconEntrance = nullptr;
+static UClass* Class_TgGame_TgDeploy_DestructibleCover = nullptr;
+static UClass* Class_TgGame_TgDeploy_ForceField = nullptr;
+static UClass* Class_TgGame_TgDeploy_Sensor = nullptr;
+static UClass* Class_TgGame_TgDeploy_SweepSensor = nullptr;
+static UClass* Class_TgGame_TgDeployable = nullptr;
+static UClass* Class_TgGame_TgDeployableFactory = nullptr;
+static UClass* Class_TgGame_TgDestructibleFactory = nullptr;
+static UClass* Class_TgGame_TgDevice = nullptr;
+static UClass* Class_TgGame_TgDeviceVolume = nullptr;
+static UClass* Class_TgGame_TgDeviceVolumeInfo = nullptr;
+static UClass* Class_TgGame_TgDevice_Grenade = nullptr;
+static UClass* Class_TgGame_TgDevice_HitPulse = nullptr;
+static UClass* Class_TgGame_TgDevice_MeleeDualWield = nullptr;
+static UClass* Class_TgGame_TgDevice_Morale = nullptr;
+static UClass* Class_TgGame_TgDevice_NewMelee = nullptr;
+static UClass* Class_TgGame_TgDevice_NewRange = nullptr;
+static UClass* Class_TgGame_TgDoor = nullptr;
+static UClass* Class_TgGame_TgDoorMarker = nullptr;
+static UClass* Class_TgGame_TgDroppedItem = nullptr;
+static UClass* Class_TgGame_TgDummyActor = nullptr;
+static UClass* Class_TgGame_TgDynamicDestructible = nullptr;
+static UClass* Class_TgGame_TgDynamicSMActor = nullptr;
+static UClass* Class_TgGame_TgEffectManager = nullptr;
+static UClass* Class_TgGame_TgElevatingVolume = nullptr;
+static UClass* Class_TgGame_TgEmitter = nullptr;
+static UClass* Class_TgGame_TgEmitterCrashlanding = nullptr;
+static UClass* Class_TgGame_TgEmitterSpawnable = nullptr;
+static UClass* Class_TgGame_TgFlagCaptureVolume = nullptr;
+static UClass* Class_TgGame_TgFracturedStaticMeshActor = nullptr;
+static UClass* Class_TgGame_TgGame = nullptr;
+static UClass* Class_TgGame_TgGame_Arena = nullptr;
+static UClass* Class_TgGame_TgGame_CTF = nullptr;
+static UClass* Class_TgGame_TgGame_City = nullptr;
+static UClass* Class_TgGame_TgGame_Control = nullptr;
+static UClass* Class_TgGame_TgGame_Defense = nullptr;
+static UClass* Class_TgGame_TgGame_DualCTF = nullptr;
+static UClass* Class_TgGame_TgGame_Escort = nullptr;
+static UClass* Class_TgGame_TgGame_Mission = nullptr;
+static UClass* Class_TgGame_TgGame_OpenWorld = nullptr;
+static UClass* Class_TgGame_TgGame_OpenWorldPVE = nullptr;
+static UClass* Class_TgGame_TgGame_OpenWorldPVP = nullptr;
+static UClass* Class_TgGame_TgGame_PointRotation = nullptr;
+static UClass* Class_TgGame_TgGame_Ticket = nullptr;
+static UClass* Class_TgGame_TgHUD = nullptr;
+static UClass* Class_TgGame_TgHeightFog = nullptr;
+static UClass* Class_TgGame_TgHelpAlertVolume = nullptr;
+static UClass* Class_TgGame_TgHexItemFactory = nullptr;
+static UClass* Class_TgGame_TgHexLandMarkActor = nullptr;
+static UClass* Class_TgGame_TgHitDisplayActor = nullptr;
+static UClass* Class_TgGame_TgHoldSpot = nullptr;
+static UClass* Class_TgGame_TgInterpActor = nullptr;
+static UClass* Class_TgGame_TgInterpolatingCameraActor = nullptr;
+static UClass* Class_TgGame_TgInventoryManager = nullptr;
+static UClass* Class_TgGame_TgKActorSpawnable = nullptr;
+static UClass* Class_TgGame_TgKAssetSpawnable = nullptr;
+static UClass* Class_TgGame_TgKAsset_ClientSideSim = nullptr;
+static UClass* Class_TgGame_TgKismetTestActor = nullptr;
+static UClass* Class_TgGame_TgLevelCamera = nullptr;
+static UClass* Class_TgGame_TgMeshAssembly = nullptr;
+static UClass* Class_TgGame_TgMiniMapActor = nullptr;
+static UClass* Class_TgGame_TgMissionListVolume = nullptr;
+static UClass* Class_TgGame_TgMissionObjective = nullptr;
+static UClass* Class_TgGame_TgMissionObjective_Bot = nullptr;
+static UClass* Class_TgGame_TgMissionObjective_Escort = nullptr;
+static UClass* Class_TgGame_TgMissionObjective_Kismet = nullptr;
+static UClass* Class_TgGame_TgMissionObjective_Proximity = nullptr;
+static UClass* Class_TgGame_TgModifyPawnPropertiesVolume = nullptr;
+static UClass* Class_TgGame_TgMorphFX = nullptr;
+static UClass* Class_TgGame_TgNavRouteIndicator = nullptr;
+static UClass* Class_TgGame_TgNavigationPoint = nullptr;
+static UClass* Class_TgGame_TgNavigationPointSpawnable = nullptr;
+static UClass* Class_TgGame_TgNewsStand = nullptr;
+static UClass* Class_TgGame_TgObjectiveAssignment = nullptr;
+static UClass* Class_TgGame_TgObjectiveAttachActor = nullptr;
+static UClass* Class_TgGame_TgOmegaVolume = nullptr;
+static UClass* Class_TgGame_TgPawn = nullptr;
+static UClass* Class_TgGame_TgPawn_AVCompositeWalker = nullptr;
+static UClass* Class_TgGame_TgPawn_Ambush = nullptr;
+static UClass* Class_TgGame_TgPawn_AndroidMinion = nullptr;
+static UClass* Class_TgGame_TgPawn_AttackTransport = nullptr;
+static UClass* Class_TgGame_TgPawn_Boss = nullptr;
+static UClass* Class_TgGame_TgPawn_Boss_Destroyer = nullptr;
+static UClass* Class_TgGame_TgPawn_Brawler = nullptr;
+static UClass* Class_TgGame_TgPawn_CTR = nullptr;
+static UClass* Class_TgGame_TgPawn_Character = nullptr;
+static UClass* Class_TgGame_TgPawn_ColonyEye = nullptr;
+static UClass* Class_TgGame_TgPawn_Destructible = nullptr;
+static UClass* Class_TgGame_TgPawn_Detonator = nullptr;
+static UClass* Class_TgGame_TgPawn_Dismantler = nullptr;
+static UClass* Class_TgGame_TgPawn_DuneCommander = nullptr;
+static UClass* Class_TgGame_TgPawn_Elite_Alchemist = nullptr;
+static UClass* Class_TgGame_TgPawn_Elite_Assassin = nullptr;
+static UClass* Class_TgGame_TgPawn_EscortRobot = nullptr;
+static UClass* Class_TgGame_TgPawn_FlyingBoss = nullptr;
+static UClass* Class_TgGame_TgPawn_GroundPetA = nullptr;
+static UClass* Class_TgGame_TgPawn_Guardian = nullptr;
+static UClass* Class_TgGame_TgPawn_Hover = nullptr;
+static UClass* Class_TgGame_TgPawn_HoverShieldSphere = nullptr;
+static UClass* Class_TgGame_TgPawn_Hunter = nullptr;
+static UClass* Class_TgGame_TgPawn_Inquisitor = nullptr;
+static UClass* Class_TgGame_TgPawn_Interact_NPC = nullptr;
+static UClass* Class_TgGame_TgPawn_Iris = nullptr;
+static UClass* Class_TgGame_TgPawn_Juggernaut = nullptr;
+static UClass* Class_TgGame_TgPawn_Marauder = nullptr;
+static UClass* Class_TgGame_TgPawn_NPC = nullptr;
+static UClass* Class_TgGame_TgPawn_NewWasp = nullptr;
+static UClass* Class_TgGame_TgPawn_Raptor = nullptr;
+static UClass* Class_TgGame_TgPawn_Reaper = nullptr;
+static UClass* Class_TgGame_TgPawn_RecursiveSpawner = nullptr;
+static UClass* Class_TgGame_TgPawn_Remote = nullptr;
+static UClass* Class_TgGame_TgPawn_Robot = nullptr;
+static UClass* Class_TgGame_TgPawn_Scanner = nullptr;
+static UClass* Class_TgGame_TgPawn_ScannerRecursive = nullptr;
+static UClass* Class_TgGame_TgPawn_Siege = nullptr;
+static UClass* Class_TgGame_TgPawn_SiegeBarrage = nullptr;
+static UClass* Class_TgGame_TgPawn_SiegeHover = nullptr;
+static UClass* Class_TgGame_TgPawn_SiegeRapidFire = nullptr;
+static UClass* Class_TgGame_TgPawn_Sniper = nullptr;
+static UClass* Class_TgGame_TgPawn_SonoranCommander = nullptr;
+static UClass* Class_TgGame_TgPawn_SupportForeman = nullptr;
+static UClass* Class_TgGame_TgPawn_Switchblade = nullptr;
+static UClass* Class_TgGame_TgPawn_Tentacle = nullptr;
+static UClass* Class_TgGame_TgPawn_ThinkTank = nullptr;
+static UClass* Class_TgGame_TgPawn_TreadRobot = nullptr;
+static UClass* Class_TgGame_TgPawn_Turret = nullptr;
+static UClass* Class_TgGame_TgPawn_TurretAVAFlak = nullptr;
+static UClass* Class_TgGame_TgPawn_TurretAVARocket = nullptr;
+static UClass* Class_TgGame_TgPawn_TurretFlak = nullptr;
+static UClass* Class_TgGame_TgPawn_TurretFlame = nullptr;
+static UClass* Class_TgGame_TgPawn_TurretPlasma = nullptr;
+static UClass* Class_TgGame_TgPawn_UberWalker = nullptr;
+static UClass* Class_TgGame_TgPawn_Vanguard = nullptr;
+static UClass* Class_TgGame_TgPawn_VanityPet = nullptr;
+static UClass* Class_TgGame_TgPawn_Vulcan = nullptr;
+static UClass* Class_TgGame_TgPawn_Warlord = nullptr;
+static UClass* Class_TgGame_TgPawn_WaspSpawner = nullptr;
+static UClass* Class_TgGame_TgPawn_Widow = nullptr;
+static UClass* Class_TgGame_TgPhysAnimTestActor = nullptr;
+static UClass* Class_TgGame_TgPickupFactory = nullptr;
+static UClass* Class_TgGame_TgPickupFactory_Item = nullptr;
+static UClass* Class_TgGame_TgPlayerController = nullptr;
+static UClass* Class_TgGame_TgPlayerCountVolume = nullptr;
+static UClass* Class_TgGame_TgPointOfInterest = nullptr;
+static UClass* Class_TgGame_TgPostProcessVolume = nullptr;
+static UClass* Class_TgGame_TgProj_Bot = nullptr;
+static UClass* Class_TgGame_TgProj_Bounce = nullptr;
+static UClass* Class_TgGame_TgProj_Deployable = nullptr;
+static UClass* Class_TgGame_TgProj_FreeGrenade = nullptr;
+static UClass* Class_TgGame_TgProj_Grapple = nullptr;
+static UClass* Class_TgGame_TgProj_Grenade = nullptr;
+static UClass* Class_TgGame_TgProj_Missile = nullptr;
+static UClass* Class_TgGame_TgProj_Mortar = nullptr;
+static UClass* Class_TgGame_TgProj_Net = nullptr;
+static UClass* Class_TgGame_TgProj_Rocket = nullptr;
+static UClass* Class_TgGame_TgProj_StraightTeleporter = nullptr;
+static UClass* Class_TgGame_TgProj_Teleporter = nullptr;
+static UClass* Class_TgGame_TgProjectile = nullptr;
+static UClass* Class_TgGame_TgQueuedAnnouncement = nullptr;
+static UClass* Class_TgGame_TgRandomSMActor = nullptr;
+static UClass* Class_TgGame_TgRandomSMManager = nullptr;
+static UClass* Class_TgGame_TgReferenceArray = nullptr;
+static UClass* Class_TgGame_TgRepInfo_Beacon = nullptr;
+static UClass* Class_TgGame_TgRepInfo_Deployable = nullptr;
+static UClass* Class_TgGame_TgRepInfo_Game = nullptr;
+static UClass* Class_TgGame_TgRepInfo_GameOpenWorld = nullptr;
+static UClass* Class_TgGame_TgRepInfo_Player = nullptr;
+static UClass* Class_TgGame_TgRepInfo_TaskForce = nullptr;
+static UClass* Class_TgGame_TgScoreboard = nullptr;
+static UClass* Class_TgGame_TgSkeletalMeshActor = nullptr;
+static UClass* Class_TgGame_TgSkeletalMeshActorGenericUIPreview = nullptr;
+static UClass* Class_TgGame_TgSkeletalMeshActorNPC = nullptr;
+static UClass* Class_TgGame_TgSkeletalMeshActorNPCVendor = nullptr;
+static UClass* Class_TgGame_TgSkeletalMeshActorSpawnable = nullptr;
+static UClass* Class_TgGame_TgSkeletalMeshActor_CharacterBuilder = nullptr;
+static UClass* Class_TgGame_TgSkeletalMeshActor_CharacterBuilderSpawnable = nullptr;
+static UClass* Class_TgGame_TgSkeletalMeshActor_Composite = nullptr;
+static UClass* Class_TgGame_TgSkeletalMeshActor_EquipScreen = nullptr;
+static UClass* Class_TgGame_TgSkeletalMeshActor_MeleePreVis = nullptr;
+static UClass* Class_TgGame_TgSkydiveTarget = nullptr;
+static UClass* Class_TgGame_TgSkydivingVolume = nullptr;
+static UClass* Class_TgGame_TgSoundInsulationVolume = nullptr;
+static UClass* Class_TgGame_TgStartPoint = nullptr;
+static UClass* Class_TgGame_TgStartpointPortalNetwork = nullptr;
+static UClass* Class_TgGame_TgStaticMeshActor = nullptr;
+static UClass* Class_TgGame_TgStaticMeshActor_Logo = nullptr;
+static UClass* Class_TgGame_TgTeamBeaconManager = nullptr;
+static UClass* Class_TgGame_TgTeamBlocker = nullptr;
+static UClass* Class_TgGame_TgTeamMarker = nullptr;
+static UClass* Class_TgGame_TgTeamPlayerStart = nullptr;
+static UClass* Class_TgGame_TgTeamScoreboard = nullptr;
+static UClass* Class_TgGame_TgTeleportPlayerVolume = nullptr;
+static UClass* Class_TgGame_TgTeleporter = nullptr;
+static UClass* Class_TgGame_TgTimerManager = nullptr;
+static UClass* Class_TgGame_TgTrigger_Instance = nullptr;
+static UClass* Class_TgGame_TgTrigger_Use = nullptr;
+static UClass* Class_TgGame_TgVolumePathNode = nullptr;
+static UClass* Class_TgGame_TgWaterVolume = nullptr;
+static UClass* Class_TgGame_TgWindManager = nullptr;
+
+// Backing storage for the unified initial-rep flag (see DO_REP in Macros.hpp).
+std::unordered_set<AActor*> g_RepListInitialDoneActors;
 UProperty* ObjectProperty_Engine_Actor_Base = nullptr;
-std::map<int, bool> ObjectProperty_Engine_Actor_Base_initial;
 UProperty* ByteProperty_Engine_Actor_Physics = nullptr;
-std::map<int, bool> ByteProperty_Engine_Actor_Physics_initial;
 UProperty* StructProperty_Engine_Actor_Velocity = nullptr;
-std::map<int, bool> StructProperty_Engine_Actor_Velocity_initial;
 UProperty* ByteProperty_Engine_Actor_RemoteRole = nullptr;
-std::map<int, bool> ByteProperty_Engine_Actor_RemoteRole_initial;
 UProperty* ByteProperty_Engine_Actor_Role = nullptr;
-std::map<int, bool> ByteProperty_Engine_Actor_Role_initial;
 UProperty* BoolProperty_Engine_Actor_bNetOwner = nullptr;
-std::map<int, bool> BoolProperty_Engine_Actor_bNetOwner_initial;
 UProperty* BoolProperty_Engine_Actor_bTearOff = nullptr;
-std::map<int, bool> BoolProperty_Engine_Actor_bTearOff_initial;
 UProperty* FloatProperty_Engine_Actor_DrawScale = nullptr;
-std::map<int, bool> FloatProperty_Engine_Actor_DrawScale_initial;
 UProperty* ByteProperty_Engine_Actor_ReplicatedCollisionType = nullptr;
-std::map<int, bool> ByteProperty_Engine_Actor_ReplicatedCollisionType_initial;
 UProperty* BoolProperty_Engine_Actor_bCollideActors = nullptr;
-std::map<int, bool> BoolProperty_Engine_Actor_bCollideActors_initial;
 UProperty* BoolProperty_Engine_Actor_bCollideWorld = nullptr;
-std::map<int, bool> BoolProperty_Engine_Actor_bCollideWorld_initial;
 UProperty* BoolProperty_Engine_Actor_bBlockActors = nullptr;
-std::map<int, bool> BoolProperty_Engine_Actor_bBlockActors_initial;
 UProperty* BoolProperty_Engine_Actor_bProjTarget = nullptr;
-std::map<int, bool> BoolProperty_Engine_Actor_bProjTarget_initial;
 UProperty* ObjectProperty_Engine_Actor_Instigator = nullptr;
-std::map<int, bool> ObjectProperty_Engine_Actor_Instigator_initial;
 UProperty* ObjectProperty_Engine_Actor_Owner = nullptr;
-std::map<int, bool> ObjectProperty_Engine_Actor_Owner_initial;
 UProperty* BoolProperty_Engine_AmbientSoundSimpleToggleable_bCurrentlyPlaying = nullptr;
-std::map<int, bool> BoolProperty_Engine_AmbientSoundSimpleToggleable_bCurrentlyPlaying_initial;
 UProperty* FloatProperty_Engine_CameraActor_AspectRatio = nullptr;
-std::map<int, bool> FloatProperty_Engine_CameraActor_AspectRatio_initial;
 UProperty* FloatProperty_Engine_CameraActor_FOVAngle = nullptr;
-std::map<int, bool> FloatProperty_Engine_CameraActor_FOVAngle_initial;
 UProperty* ObjectProperty_Engine_Controller_Pawn = nullptr;
-std::map<int, bool> ObjectProperty_Engine_Controller_Pawn_initial;
 UProperty* ObjectProperty_Engine_Controller_PlayerReplicationInfo = nullptr;
-std::map<int, bool> ObjectProperty_Engine_Controller_PlayerReplicationInfo_initial;
 UProperty* BoolProperty_Engine_CrowdAttractor_bAttractorEnabled = nullptr;
-std::map<int, bool> BoolProperty_Engine_CrowdAttractor_bAttractorEnabled_initial;
 UProperty* IntProperty_Engine_CrowdReplicationActor_DestroyAllCount = nullptr;
-std::map<int, bool> IntProperty_Engine_CrowdReplicationActor_DestroyAllCount_initial;
 UProperty* ObjectProperty_Engine_CrowdReplicationActor_Spawner = nullptr;
-std::map<int, bool> ObjectProperty_Engine_CrowdReplicationActor_Spawner_initial;
 UProperty* BoolProperty_Engine_CrowdReplicationActor_bSpawningActive = nullptr;
-std::map<int, bool> BoolProperty_Engine_CrowdReplicationActor_bSpawningActive_initial;
 UProperty* ClassProperty_Engine_DroppedPickup_InventoryClass = nullptr;
-std::map<int, bool> ClassProperty_Engine_DroppedPickup_InventoryClass_initial;
 UProperty* BoolProperty_Engine_DroppedPickup_bFadeOut = nullptr;
-std::map<int, bool> BoolProperty_Engine_DroppedPickup_bFadeOut_initial;
 UProperty* ObjectProperty_Engine_DynamicSMActor_ReplicatedMaterial = nullptr;
-std::map<int, bool> ObjectProperty_Engine_DynamicSMActor_ReplicatedMaterial_initial;
 UProperty* ObjectProperty_Engine_DynamicSMActor_ReplicatedMesh = nullptr;
-std::map<int, bool> ObjectProperty_Engine_DynamicSMActor_ReplicatedMesh_initial;
 UProperty* StructProperty_Engine_DynamicSMActor_ReplicatedMeshRotation = nullptr;
-std::map<int, bool> StructProperty_Engine_DynamicSMActor_ReplicatedMeshRotation_initial;
 UProperty* StructProperty_Engine_DynamicSMActor_ReplicatedMeshScale3D = nullptr;
-std::map<int, bool> StructProperty_Engine_DynamicSMActor_ReplicatedMeshScale3D_initial;
 UProperty* StructProperty_Engine_DynamicSMActor_ReplicatedMeshTranslation = nullptr;
-std::map<int, bool> StructProperty_Engine_DynamicSMActor_ReplicatedMeshTranslation_initial;
 UProperty* BoolProperty_Engine_DynamicSMActor_bForceStaticDecals = nullptr;
-std::map<int, bool> BoolProperty_Engine_DynamicSMActor_bForceStaticDecals_initial;
 UProperty* BoolProperty_Engine_Emitter_bCurrentlyActive = nullptr;
-std::map<int, bool> BoolProperty_Engine_Emitter_bCurrentlyActive_initial;
 UProperty* ObjectProperty_Engine_EmitterSpawnable_ParticleTemplate = nullptr;
-std::map<int, bool> ObjectProperty_Engine_EmitterSpawnable_ParticleTemplate_initial;
 UProperty* BoolProperty_Engine_FluidInfluenceActor_bActive = nullptr;
-std::map<int, bool> BoolProperty_Engine_FluidInfluenceActor_bActive_initial;
 UProperty* BoolProperty_Engine_FluidInfluenceActor_bToggled = nullptr;
-std::map<int, bool> BoolProperty_Engine_FluidInfluenceActor_bToggled_initial;
 UProperty* BoolProperty_Engine_FogVolumeDensityInfo_bEnabled = nullptr;
-std::map<int, bool> BoolProperty_Engine_FogVolumeDensityInfo_bEnabled_initial;
 UProperty* IntProperty_Engine_GameReplicationInfo_MatchID = nullptr;
-std::map<int, bool> IntProperty_Engine_GameReplicationInfo_MatchID_initial;
 UProperty* ObjectProperty_Engine_GameReplicationInfo_Winner = nullptr;
-std::map<int, bool> ObjectProperty_Engine_GameReplicationInfo_Winner_initial;
 UProperty* BoolProperty_Engine_GameReplicationInfo_bMatchHasBegun = nullptr;
-std::map<int, bool> BoolProperty_Engine_GameReplicationInfo_bMatchHasBegun_initial;
 UProperty* BoolProperty_Engine_GameReplicationInfo_bMatchIsOver = nullptr;
-std::map<int, bool> BoolProperty_Engine_GameReplicationInfo_bMatchIsOver_initial;
 UProperty* BoolProperty_Engine_GameReplicationInfo_bStopCountDown = nullptr;
-std::map<int, bool> BoolProperty_Engine_GameReplicationInfo_bStopCountDown_initial;
 UProperty* IntProperty_Engine_GameReplicationInfo_RemainingMinute = nullptr;
-std::map<int, bool> IntProperty_Engine_GameReplicationInfo_RemainingMinute_initial;
 UProperty* StrProperty_Engine_GameReplicationInfo_AdminEmail = nullptr;
-std::map<int, bool> StrProperty_Engine_GameReplicationInfo_AdminEmail_initial;
 UProperty* StrProperty_Engine_GameReplicationInfo_AdminName = nullptr;
-std::map<int, bool> StrProperty_Engine_GameReplicationInfo_AdminName_initial;
 UProperty* IntProperty_Engine_GameReplicationInfo_ElapsedTime = nullptr;
-std::map<int, bool> IntProperty_Engine_GameReplicationInfo_ElapsedTime_initial;
 UProperty* ClassProperty_Engine_GameReplicationInfo_GameClass = nullptr;
-std::map<int, bool> ClassProperty_Engine_GameReplicationInfo_GameClass_initial;
 UProperty* IntProperty_Engine_GameReplicationInfo_GoalScore = nullptr;
-std::map<int, bool> IntProperty_Engine_GameReplicationInfo_GoalScore_initial;
 UProperty* IntProperty_Engine_GameReplicationInfo_MaxLives = nullptr;
-std::map<int, bool> IntProperty_Engine_GameReplicationInfo_MaxLives_initial;
 UProperty* StrProperty_Engine_GameReplicationInfo_MessageOfTheDay = nullptr;
-std::map<int, bool> StrProperty_Engine_GameReplicationInfo_MessageOfTheDay_initial;
 UProperty* IntProperty_Engine_GameReplicationInfo_RemainingTime = nullptr;
-std::map<int, bool> IntProperty_Engine_GameReplicationInfo_RemainingTime_initial;
 UProperty* StrProperty_Engine_GameReplicationInfo_ServerName = nullptr;
-std::map<int, bool> StrProperty_Engine_GameReplicationInfo_ServerName_initial;
 UProperty* IntProperty_Engine_GameReplicationInfo_ServerRegion = nullptr;
-std::map<int, bool> IntProperty_Engine_GameReplicationInfo_ServerRegion_initial;
 UProperty* StrProperty_Engine_GameReplicationInfo_ShortName = nullptr;
-std::map<int, bool> StrProperty_Engine_GameReplicationInfo_ShortName_initial;
 UProperty* IntProperty_Engine_GameReplicationInfo_TimeLimit = nullptr;
-std::map<int, bool> IntProperty_Engine_GameReplicationInfo_TimeLimit_initial;
 UProperty* BoolProperty_Engine_GameReplicationInfo_bIsArbitrated = nullptr;
-std::map<int, bool> BoolProperty_Engine_GameReplicationInfo_bIsArbitrated_initial;
 UProperty* BoolProperty_Engine_GameReplicationInfo_bTrackStats = nullptr;
-std::map<int, bool> BoolProperty_Engine_GameReplicationInfo_bTrackStats_initial;
 UProperty* BoolProperty_Engine_HeightFog_bEnabled = nullptr;
-std::map<int, bool> BoolProperty_Engine_HeightFog_bEnabled_initial;
 UProperty* ObjectProperty_Engine_Inventory_InvManager = nullptr;
-std::map<int, bool> ObjectProperty_Engine_Inventory_InvManager_initial;
 UProperty* ObjectProperty_Engine_Inventory_Inventory = nullptr;
-std::map<int, bool> ObjectProperty_Engine_Inventory_Inventory_initial;
 UProperty* ObjectProperty_Engine_InventoryManager_InventoryChain = nullptr;
-std::map<int, bool> ObjectProperty_Engine_InventoryManager_InventoryChain_initial;
 UProperty* StructProperty_Engine_KActor_RBState = nullptr;
-std::map<int, bool> StructProperty_Engine_KActor_RBState_initial;
 UProperty* StructProperty_Engine_KActor_ReplicatedDrawScale3D = nullptr;
-std::map<int, bool> StructProperty_Engine_KActor_ReplicatedDrawScale3D_initial;
 UProperty* BoolProperty_Engine_KActor_bWakeOnLevelStart = nullptr;
-std::map<int, bool> BoolProperty_Engine_KActor_bWakeOnLevelStart_initial;
 UProperty* ObjectProperty_Engine_KAsset_ReplicatedMesh = nullptr;
-std::map<int, bool> ObjectProperty_Engine_KAsset_ReplicatedMesh_initial;
 UProperty* ObjectProperty_Engine_KAsset_ReplicatedPhysAsset = nullptr;
-std::map<int, bool> ObjectProperty_Engine_KAsset_ReplicatedPhysAsset_initial;
 UProperty* BoolProperty_Engine_LensFlareSource_bCurrentlyActive = nullptr;
-std::map<int, bool> BoolProperty_Engine_LensFlareSource_bCurrentlyActive_initial;
 UProperty* BoolProperty_Engine_Light_bEnabled = nullptr;
-std::map<int, bool> BoolProperty_Engine_Light_bEnabled_initial;
 UProperty* ObjectProperty_Engine_MatineeActor_InterpAction = nullptr;
-std::map<int, bool> ObjectProperty_Engine_MatineeActor_InterpAction_initial;
 UProperty* FloatProperty_Engine_MatineeActor_PlayRate = nullptr;
-std::map<int, bool> FloatProperty_Engine_MatineeActor_PlayRate_initial;
 UProperty* FloatProperty_Engine_MatineeActor_Position = nullptr;
-std::map<int, bool> FloatProperty_Engine_MatineeActor_Position_initial;
 UProperty* BoolProperty_Engine_MatineeActor_bIsPlaying = nullptr;
-std::map<int, bool> BoolProperty_Engine_MatineeActor_bIsPlaying_initial;
 UProperty* BoolProperty_Engine_MatineeActor_bPaused = nullptr;
-std::map<int, bool> BoolProperty_Engine_MatineeActor_bPaused_initial;
 UProperty* BoolProperty_Engine_MatineeActor_bReversePlayback = nullptr;
-std::map<int, bool> BoolProperty_Engine_MatineeActor_bReversePlayback_initial;
 UProperty* BoolProperty_Engine_NxForceField_bForceActive = nullptr;
-std::map<int, bool> BoolProperty_Engine_NxForceField_bForceActive_initial;
 UProperty* ObjectProperty_Engine_Pawn_DrivenVehicle = nullptr;
-std::map<int, bool> ObjectProperty_Engine_Pawn_DrivenVehicle_initial;
 UProperty* StructProperty_Engine_Pawn_FlashLocation = nullptr;
-std::map<int, bool> StructProperty_Engine_Pawn_FlashLocation_initial;
 UProperty* IntProperty_Engine_Pawn_Health = nullptr;
-std::map<int, bool> IntProperty_Engine_Pawn_Health_initial;
 UProperty* ClassProperty_Engine_Pawn_HitDamageType = nullptr;
-std::map<int, bool> ClassProperty_Engine_Pawn_HitDamageType_initial;
 UProperty* ObjectProperty_Engine_Pawn_PlayerReplicationInfo = nullptr;
-std::map<int, bool> ObjectProperty_Engine_Pawn_PlayerReplicationInfo_initial;
 UProperty* StructProperty_Engine_Pawn_TakeHitLocation = nullptr;
-std::map<int, bool> StructProperty_Engine_Pawn_TakeHitLocation_initial;
 UProperty* BoolProperty_Engine_Pawn_bIsWalking = nullptr;
-std::map<int, bool> BoolProperty_Engine_Pawn_bIsWalking_initial;
 UProperty* BoolProperty_Engine_Pawn_bSimulateGravity = nullptr;
-std::map<int, bool> BoolProperty_Engine_Pawn_bSimulateGravity_initial;
 UProperty* FloatProperty_Engine_Pawn_AccelRate = nullptr;
-std::map<int, bool> FloatProperty_Engine_Pawn_AccelRate_initial;
 UProperty* FloatProperty_Engine_Pawn_AirControl = nullptr;
-std::map<int, bool> FloatProperty_Engine_Pawn_AirControl_initial;
 UProperty* FloatProperty_Engine_Pawn_AirSpeed = nullptr;
-std::map<int, bool> FloatProperty_Engine_Pawn_AirSpeed_initial;
 UProperty* ObjectProperty_Engine_Pawn_Controller = nullptr;
-std::map<int, bool> ObjectProperty_Engine_Pawn_Controller_initial;
 UProperty* FloatProperty_Engine_Pawn_GroundSpeed = nullptr;
-std::map<int, bool> FloatProperty_Engine_Pawn_GroundSpeed_initial;
 UProperty* ObjectProperty_Engine_Pawn_InvManager = nullptr;
-std::map<int, bool> ObjectProperty_Engine_Pawn_InvManager_initial;
 UProperty* FloatProperty_Engine_Pawn_JumpZ = nullptr;
-std::map<int, bool> FloatProperty_Engine_Pawn_JumpZ_initial;
 UProperty* FloatProperty_Engine_Pawn_WaterSpeed = nullptr;
-std::map<int, bool> FloatProperty_Engine_Pawn_WaterSpeed_initial;
 UProperty* ByteProperty_Engine_Pawn_FiringMode = nullptr;
-std::map<int, bool> ByteProperty_Engine_Pawn_FiringMode_initial;
 UProperty* ByteProperty_Engine_Pawn_FlashCount = nullptr;
-std::map<int, bool> ByteProperty_Engine_Pawn_FlashCount_initial;
 UProperty* BoolProperty_Engine_Pawn_bIsCrouched = nullptr;
-std::map<int, bool> BoolProperty_Engine_Pawn_bIsCrouched_initial;
 UProperty* StructProperty_Engine_Pawn_TearOffMomentum = nullptr;
-std::map<int, bool> StructProperty_Engine_Pawn_TearOffMomentum_initial;
 UProperty* ByteProperty_Engine_Pawn_RemoteViewPitch = nullptr;
-std::map<int, bool> ByteProperty_Engine_Pawn_RemoteViewPitch_initial;
 UProperty* ObjectProperty_Engine_PhysXEmitterSpawnable_ParticleTemplate = nullptr;
-std::map<int, bool> ObjectProperty_Engine_PhysXEmitterSpawnable_ParticleTemplate_initial;
 UProperty* BoolProperty_Engine_PickupFactory_bPickupHidden = nullptr;
-std::map<int, bool> BoolProperty_Engine_PickupFactory_bPickupHidden_initial;
 UProperty* ClassProperty_Engine_PickupFactory_InventoryType = nullptr;
-std::map<int, bool> ClassProperty_Engine_PickupFactory_InventoryType_initial;
 UProperty* FloatProperty_Engine_PlayerController_TargetEyeHeight = nullptr;
-std::map<int, bool> FloatProperty_Engine_PlayerController_TargetEyeHeight_initial;
 UProperty* StructProperty_Engine_PlayerController_TargetViewRotation = nullptr;
-std::map<int, bool> StructProperty_Engine_PlayerController_TargetViewRotation_initial;
 UProperty* FloatProperty_Engine_PlayerReplicationInfo_Deaths = nullptr;
-std::map<int, bool> FloatProperty_Engine_PlayerReplicationInfo_Deaths_initial;
 UProperty* StrProperty_Engine_PlayerReplicationInfo_PlayerAlias = nullptr;
-std::map<int, bool> StrProperty_Engine_PlayerReplicationInfo_PlayerAlias_initial;
 UProperty* ObjectProperty_Engine_PlayerReplicationInfo_PlayerLocationHint = nullptr;
-std::map<int, bool> ObjectProperty_Engine_PlayerReplicationInfo_PlayerLocationHint_initial;
 UProperty* StrProperty_Engine_PlayerReplicationInfo_PlayerName = nullptr;
-std::map<int, bool> StrProperty_Engine_PlayerReplicationInfo_PlayerName_initial;
 UProperty* IntProperty_Engine_PlayerReplicationInfo_PlayerSkill = nullptr;
-std::map<int, bool> IntProperty_Engine_PlayerReplicationInfo_PlayerSkill_initial;
 UProperty* FloatProperty_Engine_PlayerReplicationInfo_Score = nullptr;
-std::map<int, bool> FloatProperty_Engine_PlayerReplicationInfo_Score_initial;
 UProperty* IntProperty_Engine_PlayerReplicationInfo_StartTime = nullptr;
-std::map<int, bool> IntProperty_Engine_PlayerReplicationInfo_StartTime_initial;
 UProperty* ObjectProperty_Engine_PlayerReplicationInfo_Team = nullptr;
-std::map<int, bool> ObjectProperty_Engine_PlayerReplicationInfo_Team_initial;
 UProperty* StructProperty_Engine_PlayerReplicationInfo_UniqueId = nullptr;
-std::map<int, bool> StructProperty_Engine_PlayerReplicationInfo_UniqueId_initial;
 UProperty* BoolProperty_Engine_PlayerReplicationInfo_bAdmin = nullptr;
-std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bAdmin_initial;
 UProperty* BoolProperty_Engine_PlayerReplicationInfo_bHasFlag = nullptr;
-std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bHasFlag_initial;
 UProperty* BoolProperty_Engine_PlayerReplicationInfo_bIsFemale = nullptr;
-std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bIsFemale_initial;
 UProperty* BoolProperty_Engine_PlayerReplicationInfo_bIsSpectator = nullptr;
-std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bIsSpectator_initial;
 UProperty* BoolProperty_Engine_PlayerReplicationInfo_bOnlySpectator = nullptr;
-std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bOnlySpectator_initial;
 UProperty* BoolProperty_Engine_PlayerReplicationInfo_bOutOfLives = nullptr;
-std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bOutOfLives_initial;
 UProperty* BoolProperty_Engine_PlayerReplicationInfo_bReadyToPlay = nullptr;
-std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bReadyToPlay_initial;
 UProperty* BoolProperty_Engine_PlayerReplicationInfo_bWaitingPlayer = nullptr;
-std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bWaitingPlayer_initial;
 UProperty* ByteProperty_Engine_PlayerReplicationInfo_PacketLoss = nullptr;
-std::map<int, bool> ByteProperty_Engine_PlayerReplicationInfo_PacketLoss_initial;
 UProperty* ByteProperty_Engine_PlayerReplicationInfo_Ping = nullptr;
-std::map<int, bool> ByteProperty_Engine_PlayerReplicationInfo_Ping_initial;
 UProperty* IntProperty_Engine_PlayerReplicationInfo_SplitscreenIndex = nullptr;
-std::map<int, bool> IntProperty_Engine_PlayerReplicationInfo_SplitscreenIndex_initial;
 UProperty* IntProperty_Engine_PlayerReplicationInfo_PlayerID = nullptr;
-std::map<int, bool> IntProperty_Engine_PlayerReplicationInfo_PlayerID_initial;
 UProperty* BoolProperty_Engine_PlayerReplicationInfo_bBot = nullptr;
-std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bBot_initial;
 UProperty* BoolProperty_Engine_PlayerReplicationInfo_bIsInactive = nullptr;
-std::map<int, bool> BoolProperty_Engine_PlayerReplicationInfo_bIsInactive_initial;
 UProperty* BoolProperty_Engine_PostProcessVolume_bEnabled = nullptr;
-std::map<int, bool> BoolProperty_Engine_PostProcessVolume_bEnabled_initial;
 UProperty* FloatProperty_Engine_Projectile_MaxSpeed = nullptr;
-std::map<int, bool> FloatProperty_Engine_Projectile_MaxSpeed_initial;
 UProperty* FloatProperty_Engine_Projectile_Speed = nullptr;
-std::map<int, bool> FloatProperty_Engine_Projectile_Speed_initial;
 UProperty* BoolProperty_Engine_RB_CylindricalForceActor_bForceActive = nullptr;
-std::map<int, bool> BoolProperty_Engine_RB_CylindricalForceActor_bForceActive_initial;
 UProperty* ByteProperty_Engine_RB_LineImpulseActor_ImpulseCount = nullptr;
-std::map<int, bool> ByteProperty_Engine_RB_LineImpulseActor_ImpulseCount_initial;
 UProperty* BoolProperty_Engine_RB_RadialForceActor_bForceActive = nullptr;
-std::map<int, bool> BoolProperty_Engine_RB_RadialForceActor_bForceActive_initial;
 UProperty* ByteProperty_Engine_RB_RadialImpulseActor_ImpulseCount = nullptr;
-std::map<int, bool> ByteProperty_Engine_RB_RadialImpulseActor_ImpulseCount_initial;
 UProperty* FloatProperty_Engine_SVehicle_MaxSpeed = nullptr;
-std::map<int, bool> FloatProperty_Engine_SVehicle_MaxSpeed_initial;
 UProperty* StructProperty_Engine_SVehicle_VState = nullptr;
-std::map<int, bool> StructProperty_Engine_SVehicle_VState_initial;
 UProperty* ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMaterial = nullptr;
-std::map<int, bool> ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMaterial_initial;
 UProperty* ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMesh = nullptr;
-std::map<int, bool> ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMesh_initial;
 UProperty* FloatProperty_Engine_TeamInfo_Score = nullptr;
-std::map<int, bool> FloatProperty_Engine_TeamInfo_Score_initial;
 UProperty* IntProperty_Engine_TeamInfo_TeamIndex = nullptr;
-std::map<int, bool> IntProperty_Engine_TeamInfo_TeamIndex_initial;
 UProperty* StrProperty_Engine_TeamInfo_TeamName = nullptr;
-std::map<int, bool> StrProperty_Engine_TeamInfo_TeamName_initial;
 UProperty* StrProperty_Engine_Teleporter_URL = nullptr;
-std::map<int, bool> StrProperty_Engine_Teleporter_URL_initial;
 UProperty* BoolProperty_Engine_Teleporter_bEnabled = nullptr;
-std::map<int, bool> BoolProperty_Engine_Teleporter_bEnabled_initial;
 UProperty* StructProperty_Engine_Teleporter_TargetVelocity = nullptr;
-std::map<int, bool> StructProperty_Engine_Teleporter_TargetVelocity_initial;
 UProperty* BoolProperty_Engine_Teleporter_bChangesVelocity = nullptr;
-std::map<int, bool> BoolProperty_Engine_Teleporter_bChangesVelocity_initial;
 UProperty* BoolProperty_Engine_Teleporter_bChangesYaw = nullptr;
-std::map<int, bool> BoolProperty_Engine_Teleporter_bChangesYaw_initial;
 UProperty* BoolProperty_Engine_Teleporter_bReversesX = nullptr;
-std::map<int, bool> BoolProperty_Engine_Teleporter_bReversesX_initial;
 UProperty* BoolProperty_Engine_Teleporter_bReversesY = nullptr;
-std::map<int, bool> BoolProperty_Engine_Teleporter_bReversesY_initial;
 UProperty* BoolProperty_Engine_Teleporter_bReversesZ = nullptr;
-std::map<int, bool> BoolProperty_Engine_Teleporter_bReversesZ_initial;
 UProperty* BoolProperty_Engine_Vehicle_bDriving = nullptr;
-std::map<int, bool> BoolProperty_Engine_Vehicle_bDriving_initial;
 UProperty* ObjectProperty_Engine_Vehicle_Driver = nullptr;
-std::map<int, bool> ObjectProperty_Engine_Vehicle_Driver_initial;
 UProperty* ObjectProperty_Engine_WorldInfo_Pauser = nullptr;
-std::map<int, bool> ObjectProperty_Engine_WorldInfo_Pauser_initial;
 UProperty* StructProperty_Engine_WorldInfo_ReplicatedMusicTrack = nullptr;
-std::map<int, bool> StructProperty_Engine_WorldInfo_ReplicatedMusicTrack_initial;
 UProperty* FloatProperty_Engine_WorldInfo_TimeDilation = nullptr;
-std::map<int, bool> FloatProperty_Engine_WorldInfo_TimeDilation_initial;
 UProperty* FloatProperty_Engine_WorldInfo_WorldGravityZ = nullptr;
-std::map<int, bool> FloatProperty_Engine_WorldInfo_WorldGravityZ_initial;
 UProperty* BoolProperty_Engine_WorldInfo_bHighPriorityLoading = nullptr;
-std::map<int, bool> BoolProperty_Engine_WorldInfo_bHighPriorityLoading_initial;
 UProperty* ByteProperty_TgGame_TgChestActor_r_eChestState = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgChestActor_r_eChestState_initial;
 UProperty* BoolProperty_TgGame_TgDeploy_BeaconEntrance_r_bActive = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgDeploy_BeaconEntrance_r_bActive_initial;
 UProperty* BoolProperty_TgGame_TgDeploy_DestructibleCover_r_bHasFired = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgDeploy_DestructibleCover_r_bHasFired_initial;
 UProperty* IntProperty_TgGame_TgDeploy_Sensor_r_nSensorAudioWarning = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDeploy_Sensor_r_nSensorAudioWarning_initial;
 UProperty* IntProperty_TgGame_TgDeploy_Sensor_r_nTouchedPlayerCount = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDeploy_Sensor_r_nTouchedPlayerCount_initial;
 UProperty* BoolProperty_TgGame_TgDeployable_r_bDelayDeployed = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgDeployable_r_bDelayDeployed_initial;
 UProperty* IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt_initial;
 // Regen gap: UC TgDeployable.uc lines 116-120 declares these as always-replicate
 // CPF_Net fields (Role==Authority block) but the generator dropped them.
 // Without r_nFlashFireCount replicating, the client's
@@ -332,723 +598,364 @@ std::map<int, bool> IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt_initia
 // damage/heal UI.  r_fDeployRate/r_fTimeToDeploySecs/r_fInitDeployTime drive
 // the client's deploy-progress bar during the Deploy state.
 UProperty* ObjectProperty_TgGame_TgDeployable_r_EffectManager = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgDeployable_r_EffectManager_initial;
 UProperty* FloatProperty_TgGame_TgDeployable_r_fDeployRate = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgDeployable_r_fDeployRate_initial;
 UProperty* FloatProperty_TgGame_TgDeployable_r_fInitDeployTime = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgDeployable_r_fInitDeployTime_initial;
 UProperty* FloatProperty_TgGame_TgDeployable_r_fTimeToDeploySecs = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgDeployable_r_fTimeToDeploySecs_initial;
 UProperty* ByteProperty_TgGame_TgDeployable_r_nFlashCount = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgDeployable_r_nFlashCount_initial;
 UProperty* ByteProperty_TgGame_TgDeployable_r_nFlashFireCount = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgDeployable_r_nFlashFireCount_initial;
 UProperty* IntProperty_TgGame_TgDeployable_r_nHealth = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDeployable_r_nHealth_initial;
 UProperty* StructProperty_TgGame_TgDeployable_r_vFlashLocation = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgDeployable_r_vFlashLocation_initial;
 UProperty* ObjectProperty_TgGame_TgDeployable_r_DRI = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgDeployable_r_DRI_initial;
 UProperty* BoolProperty_TgGame_TgDeployable_r_bInitialIsEnemy = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgDeployable_r_bInitialIsEnemy_initial;
 UProperty* BoolProperty_TgGame_TgDeployable_r_bTakeDamage = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgDeployable_r_bTakeDamage_initial;
 UProperty* FloatProperty_TgGame_TgDeployable_r_fClientProximityRadius = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgDeployable_r_fClientProximityRadius_initial;
 UProperty* FloatProperty_TgGame_TgDeployable_r_fCurrentDeployTime = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgDeployable_r_fCurrentDeployTime_initial;
 UProperty* IntProperty_TgGame_TgDeployable_r_nDeployableId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDeployable_r_nDeployableId_initial;
 UProperty* IntProperty_TgGame_TgDeployable_r_nPhysicalType = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDeployable_r_nPhysicalType_initial;
 UProperty* IntProperty_TgGame_TgDeployable_r_nTickingTime = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDeployable_r_nTickingTime_initial;
 UProperty* ObjectProperty_TgGame_TgDeployable_r_Owner = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgDeployable_r_Owner_initial;
 UProperty* IntProperty_TgGame_TgDeployable_r_nOwnerFireMode = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDeployable_r_nOwnerFireMode_initial;
 UProperty* ByteProperty_TgGame_TgDevice_CurrentFireMode = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgDevice_CurrentFireMode_initial;
 UProperty* BoolProperty_TgGame_TgDevice_r_bIsStealthDevice = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgDevice_r_bIsStealthDevice_initial;
 UProperty* ByteProperty_TgGame_TgDevice_r_eEquippedAt = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgDevice_r_eEquippedAt_initial;
 UProperty* IntProperty_TgGame_TgDevice_r_nInventoryId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDevice_r_nInventoryId_initial;
 UProperty* IntProperty_TgGame_TgDevice_r_nMeleeComboSeed = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDevice_r_nMeleeComboSeed_initial;
 UProperty* BoolProperty_TgGame_TgDevice_r_bConsumedOnDeath = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgDevice_r_bConsumedOnDeath_initial;
 UProperty* BoolProperty_TgGame_TgDevice_r_bConsumedOnUse = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgDevice_r_bConsumedOnUse_initial;
 UProperty* IntProperty_TgGame_TgDevice_r_nDeviceId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDevice_r_nDeviceId_initial;
 UProperty* IntProperty_TgGame_TgDevice_r_nDeviceInstanceId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDevice_r_nDeviceInstanceId_initial;
 UProperty* IntProperty_TgGame_TgDevice_r_nQualityValueId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDevice_r_nQualityValueId_initial;
 UProperty* BoolProperty_TgGame_TgDevice_Morale_r_bIsActivelyFiring = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgDevice_Morale_r_bIsActivelyFiring_initial;
 UProperty* BoolProperty_TgGame_TgDoor_r_bOpen = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgDoor_r_bOpen_initial;
 UProperty* ByteProperty_TgGame_TgDoorMarker_r_eStatus = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgDoorMarker_r_eStatus_initial;
 UProperty* IntProperty_TgGame_TgDroppedItem_r_nItemId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDroppedItem_r_nItemId_initial;
 UProperty* IntProperty_TgGame_TgDynamicDestructible_r_nDestructibleId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDynamicDestructible_r_nDestructibleId_initial;
 UProperty* ObjectProperty_TgGame_TgDynamicDestructible_r_pFactory = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgDynamicDestructible_r_pFactory_initial;
 UProperty* StrProperty_TgGame_TgDynamicSMActor_m_sAssembly = nullptr;
-std::map<int, bool> StrProperty_TgGame_TgDynamicSMActor_m_sAssembly_initial;
 UProperty* ObjectProperty_TgGame_TgDynamicSMActor_r_EffectManager = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgDynamicSMActor_r_EffectManager_initial;
 UProperty* IntProperty_TgGame_TgDynamicSMActor_r_nHealth = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgDynamicSMActor_r_nHealth_initial;
 UProperty* StructProperty_TgGame_TgEffectManager_r_EventQueue = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgEffectManager_r_EventQueue_initial;
 UProperty* StructProperty_TgGame_TgEffectManager_r_ManagedEffectList = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgEffectManager_r_ManagedEffectList_initial;
 UProperty* ObjectProperty_TgGame_TgEffectManager_r_Owner = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgEffectManager_r_Owner_initial;
 UProperty* BoolProperty_TgGame_TgEffectManager_r_bRelevancyNotify = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgEffectManager_r_bRelevancyNotify_initial;
 UProperty* IntProperty_TgGame_TgEffectManager_r_nInvulnerableCount = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgEffectManager_r_nInvulnerableCount_initial;
 UProperty* IntProperty_TgGame_TgEffectManager_r_nNextQueueIndex = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgEffectManager_r_nNextQueueIndex_initial;
 UProperty* NameProperty_TgGame_TgEmitter_BoneName = nullptr;
-std::map<int, bool> NameProperty_TgGame_TgEmitter_BoneName_initial;
 UProperty* ByteProperty_TgGame_TgFlagCaptureVolume_r_eCoalition = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgFlagCaptureVolume_r_eCoalition_initial;
 UProperty* ByteProperty_TgGame_TgFlagCaptureVolume_r_nTaskForce = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgFlagCaptureVolume_r_nTaskForce_initial;
 UProperty* ObjectProperty_TgGame_TgFracturedStaticMeshActor_r_EffectManager = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgFracturedStaticMeshActor_r_EffectManager_initial;
 UProperty* IntProperty_TgGame_TgFracturedStaticMeshActor_r_TakeHitNotifier = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgFracturedStaticMeshActor_r_TakeHitNotifier_initial;
 UProperty* FloatProperty_TgGame_TgFracturedStaticMeshActor_r_DamageRadius = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgFracturedStaticMeshActor_r_DamageRadius_initial;
 UProperty* ClassProperty_TgGame_TgFracturedStaticMeshActor_r_HitDamageType = nullptr;
-std::map<int, bool> ClassProperty_TgGame_TgFracturedStaticMeshActor_r_HitDamageType_initial;
 UProperty* StructProperty_TgGame_TgFracturedStaticMeshActor_r_HitInfo = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgFracturedStaticMeshActor_r_HitInfo_initial;
 UProperty* StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitLocation = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitLocation_initial;
 UProperty* StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitMomentum = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitMomentum_initial;
 UProperty* IntProperty_TgGame_TgHexLandMarkActor_r_nMeshAsmId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgHexLandMarkActor_r_nMeshAsmId_initial;
 UProperty* StrProperty_TgGame_TgInterpActor_r_sCurrState = nullptr;
-std::map<int, bool> StrProperty_TgGame_TgInterpActor_r_sCurrState_initial;
 UProperty* IntProperty_TgGame_TgInventoryManager_r_ItemCount = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgInventoryManager_r_ItemCount_initial;
 UProperty* IntProperty_TgGame_TgKismetTestActor_r_nCurrentTest = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgKismetTestActor_r_nCurrentTest_initial;
 UProperty* IntProperty_TgGame_TgKismetTestActor_r_nFailCount = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgKismetTestActor_r_nFailCount_initial;
 UProperty* IntProperty_TgGame_TgKismetTestActor_r_nPassCount = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgKismetTestActor_r_nPassCount_initial;
 UProperty* BoolProperty_TgGame_TgLevelCamera_r_bEnabled = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgLevelCamera_r_bEnabled_initial;
 UProperty* ObjectProperty_TgGame_TgMissionObjective_r_ObjectiveAssignment = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgMissionObjective_r_ObjectiveAssignment_initial;
 UProperty* BoolProperty_TgGame_TgMissionObjective_r_bHasBeenCapturedOnce = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgMissionObjective_r_bHasBeenCapturedOnce_initial;
 UProperty* BoolProperty_TgGame_TgMissionObjective_r_bIsActive = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgMissionObjective_r_bIsActive_initial;
 UProperty* BoolProperty_TgGame_TgMissionObjective_r_bIsLocked = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgMissionObjective_r_bIsLocked_initial;
 UProperty* BoolProperty_TgGame_TgMissionObjective_r_bIsPending = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgMissionObjective_r_bIsPending_initial;
 UProperty* ByteProperty_TgGame_TgMissionObjective_r_eOwningCoalition = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgMissionObjective_r_eOwningCoalition_initial;
 UProperty* ByteProperty_TgGame_TgMissionObjective_r_eStatus = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgMissionObjective_r_eStatus_initial;
 UProperty* FloatProperty_TgGame_TgMissionObjective_r_fCurrCaptureTime = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgMissionObjective_r_fCurrCaptureTime_initial;
 UProperty* FloatProperty_TgGame_TgMissionObjective_r_fLastCompletedTime = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgMissionObjective_r_fLastCompletedTime_initial;
 UProperty* IntProperty_TgGame_TgMissionObjective_r_nOwnerTaskForce = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgMissionObjective_r_nOwnerTaskForce_initial;
 UProperty* IntProperty_TgGame_TgMissionObjective_nObjectiveId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgMissionObjective_nObjectiveId_initial;
 UProperty* IntProperty_TgGame_TgMissionObjective_nPriority = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgMissionObjective_nPriority_initial;
 UProperty* ByteProperty_TgGame_TgMissionObjective_r_OpenWorldPlayerDefaultRole = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgMissionObjective_r_OpenWorldPlayerDefaultRole_initial;
 UProperty* BoolProperty_TgGame_TgMissionObjective_r_bUsePendingState = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgMissionObjective_r_bUsePendingState_initial;
 UProperty* ByteProperty_TgGame_TgMissionObjective_r_eDefaultCoalition = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgMissionObjective_r_eDefaultCoalition_initial;
 UProperty* ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBot = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBot_initial;
 UProperty* ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBotInfo = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBotInfo_initial;
 UProperty* ObjectProperty_TgGame_TgMissionObjective_Escort_r_AttachedActor = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgMissionObjective_Escort_r_AttachedActor_initial;
 UProperty* FloatProperty_TgGame_TgMissionObjective_Proximity_r_fCaptureRate = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgMissionObjective_Proximity_r_fCaptureRate_initial;
 UProperty* ObjectProperty_TgGame_TgObjectiveAssignment_r_AssignedObjective = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgObjectiveAssignment_r_AssignedObjective_initial;
 UProperty* ObjectProperty_TgGame_TgObjectiveAssignment_r_Attackers = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgObjectiveAssignment_r_Attackers_initial;
 UProperty* ObjectProperty_TgGame_TgObjectiveAssignment_r_Bots = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgObjectiveAssignment_r_Bots_initial;
 UProperty* ObjectProperty_TgGame_TgObjectiveAssignment_r_Defenders = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgObjectiveAssignment_r_Defenders_initial;
 UProperty* ByteProperty_TgGame_TgObjectiveAssignment_r_eState = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgObjectiveAssignment_r_eState_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bIsBot = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsBot_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bIsHenchman = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsHenchman_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bNeedPlaySpawnFx = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bNeedPlaySpawnFx_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fMakeVisibleIncreased = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fMakeVisibleIncreased_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nAllianceId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nAllianceId_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nBodyMeshAsmId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nBodyMeshAsmId_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nBotRankValueId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nBotRankValueId_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nFlashEvent = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nFlashEvent_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nFlashFireInfo = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nFlashFireInfo_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nFlashQueIndex = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nFlashQueIndex_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nPawnId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nPawnId_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nPhysicalType = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nPhysicalType_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nPreyProfileType = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nPreyProfileType_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nProfileId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nProfileId_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nProfileTypeValueId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nProfileTypeValueId_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nSoundGroupId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nSoundGroupId_initial;
 UProperty* StructProperty_TgGame_TgPawn_r_vFlashLocation = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgPawn_r_vFlashLocation_initial;
 UProperty* StructProperty_TgGame_TgPawn_r_vFlashRayDir = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgPawn_r_vFlashRayDir_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_vFlashRefireTime = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_vFlashRefireTime_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_vFlashSituationalAttack = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_vFlashSituationalAttack_initial;
 UProperty* StructProperty_TgGame_TgPawn_r_EquipDeviceInfo = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgPawn_r_EquipDeviceInfo_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bInitialIsEnemy = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bInitialIsEnemy_initial;
 UProperty* ByteProperty_TgGame_TgPawn_r_bMadeSound = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgPawn_r_bMadeSound_initial;
 UProperty* ByteProperty_TgGame_TgPawn_r_eDesiredInHand = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgPawn_r_eDesiredInHand_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_eEquippedInHandMode = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_eEquippedInHandMode_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nReplicateHit = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nReplicateHit_initial;
 UProperty* ObjectProperty_TgGame_TgPawn_r_ControlPawn = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_ControlPawn_initial;
 UProperty* ObjectProperty_TgGame_TgPawn_r_CurrentOmegaVolume = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_CurrentOmegaVolume_initial;
 UProperty* ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneBilboardVol = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneBilboardVol_initial;
 UProperty* ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneVol = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneVol_initial;
 UProperty* StructProperty_TgGame_TgPawn_r_ScannerSettings = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgPawn_r_ScannerSettings_initial;
 UProperty* ByteProperty_TgGame_TgPawn_r_UIClockState = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgPawn_r_UIClockState_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_UIClockTime = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_UIClockTime_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_UITextBox1MessageID = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_UITextBox1MessageID_initial;
 UProperty* ByteProperty_TgGame_TgPawn_r_UITextBox1Packet = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgPawn_r_UITextBox1Packet_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_UITextBox1Time = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_UITextBox1Time_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_UITextBox2MessageID = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_UITextBox2MessageID_initial;
 UProperty* ByteProperty_TgGame_TgPawn_r_UITextBox2Packet = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgPawn_r_UITextBox2Packet_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_UITextBox2Time = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_UITextBox2Time_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bAllowAddMoralePoints = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bAllowAddMoralePoints_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bDisableAllDevices = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bDisableAllDevices_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bEnableCrafting = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bEnableCrafting_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bEnableEquip = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bEnableEquip_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bEnableSkills = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bEnableSkills_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bInCombatFlag = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bInCombatFlag_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bInGlobalOffhandCooldown = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bInGlobalOffhandCooldown_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fCurrentPowerPool = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fCurrentPowerPool_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fCurrentServerMoralePoints = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fCurrentServerMoralePoints_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fMaxControlRange = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fMaxControlRange_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fMaxPowerPool = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fMaxPowerPool_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fMoraleRechargeRate = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fMoraleRechargeRate_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fRequiredMoralePoints = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fRequiredMoralePoints_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fSkillRating = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fSkillRating_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nCurrency = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nCurrency_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nHZPoints = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nHZPoints_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nMoraleDeviceSlot = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nMoraleDeviceSlot_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nRestDeviceSlot = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nRestDeviceSlot_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nToken = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nToken_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nXp = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nXp_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_DistanceToPushback = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_DistanceToPushback_initial;
 UProperty* ObjectProperty_TgGame_TgPawn_r_EffectManager = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_EffectManager_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_FlightAcceleration = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_FlightAcceleration_initial;
 UProperty* StructProperty_TgGame_TgPawn_r_HangingRotation = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgPawn_r_HangingRotation_initial;
 UProperty* ObjectProperty_TgGame_TgPawn_r_Owner = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_Owner_initial;
 UProperty* ObjectProperty_TgGame_TgPawn_r_Pet = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_Pet_initial;
 UProperty* StructProperty_TgGame_TgPawn_r_PlayAnimation = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgPawn_r_PlayAnimation_initial;
 UProperty* StructProperty_TgGame_TgPawn_r_PushbackDirection = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgPawn_r_PushbackDirection_initial;
 UProperty* ObjectProperty_TgGame_TgPawn_r_Target = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_Target_initial;
 UProperty* ObjectProperty_TgGame_TgPawn_r_TargetActor = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_TargetActor_initial;
 UProperty* ObjectProperty_TgGame_TgPawn_r_aDebugDestination = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_aDebugDestination_initial;
 UProperty* ObjectProperty_TgGame_TgPawn_r_aDebugNextNav = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_aDebugNextNav_initial;
 UProperty* ObjectProperty_TgGame_TgPawn_r_aDebugTarget = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgPawn_r_aDebugTarget_initial;
 UProperty* ByteProperty_TgGame_TgPawn_r_bAimType = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgPawn_r_bAimType_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bAimingMode = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bAimingMode_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bCallingForHelp = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bCallingForHelp_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bIsAFK = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsAFK_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bIsAnimInStrafeMode = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsAnimInStrafeMode_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bIsCrafting = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsCrafting_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bIsCrewing = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsCrewing_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bIsDecoy = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsDecoy_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bIsGrappleDismounting = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsGrappleDismounting_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bIsHacked = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsHacked_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bIsHacking = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsHacking_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bIsHanging = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsHanging_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsHangingDismounting_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bIsInSnipeScope = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsInSnipeScope_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bIsRappelling = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsRappelling_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bIsStealthed = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bIsStealthed_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bJumpedFromHanging = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bJumpedFromHanging_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bPostureIgnoreTransition = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bPostureIgnoreTransition_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bResistTagging = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bResistTagging_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bShouldKnockDownAnimFaceDown = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bShouldKnockDownAnimFaceDown_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bTagEnemy = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bTagEnemy_initial;
 UProperty* BoolProperty_TgGame_TgPawn_r_bUsingBinoculars = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_r_bUsingBinoculars_initial;
 UProperty* ByteProperty_TgGame_TgPawn_r_eCurrentStunType = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgPawn_r_eCurrentStunType_initial;
 UProperty* ByteProperty_TgGame_TgPawn_r_eDeathReason = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgPawn_r_eDeathReason_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_eEmoteLength = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_eEmoteLength_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_eEmoteRepnotify = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_eEmoteRepnotify_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_eEmoteUpdate = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_eEmoteUpdate_initial;
 UProperty* ByteProperty_TgGame_TgPawn_r_ePosture = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgPawn_r_ePosture_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fDeployRate = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fDeployRate_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fFrictionMultiplier = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fFrictionMultiplier_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fGravityZModifier = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fGravityZModifier_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fKnockDownTimeRemaining = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fKnockDownTimeRemaining_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fMakeVisibleFadeRate = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fMakeVisibleFadeRate_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fPostureRateScale = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fPostureRateScale_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fRappelGravityModifier = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fRappelGravityModifier_initial;
 UProperty* FloatProperty_TgGame_TgPawn_r_fStealthTransitionTime = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_r_fStealthTransitionTime_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_fWeightBonus = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_fWeightBonus_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_iKnockDownFlash = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_iKnockDownFlash_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nApplyStealth = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nApplyStealth_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nBotSoundCueId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nBotSoundCueId_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nDebugAggroRange = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nDebugAggroRange_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nDebugFOV = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nDebugFOV_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nDebugHearingRange = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nDebugHearingRange_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nDebugSightRange = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nDebugSightRange_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nGenericAIEventIndex = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nGenericAIEventIndex_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nHealthMaximum = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nHealthMaximum_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nNumberTimesCrewed = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nNumberTimesCrewed_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nPhase = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nPhase_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nPitchOffset = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nPitchOffset_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nReplicateDying = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nReplicateDying_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nResetCharacter = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nResetCharacter_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nSensorAlertLevel = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nSensorAlertLevel_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nShieldHealthMax = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nShieldHealthMax_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nShieldHealthRemaining = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nShieldHealthRemaining_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nSilentMode = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nSilentMode_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nStealthAggroRange = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nStealthAggroRange_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nStealthDisabled = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nStealthDisabled_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nStealthSensorRange = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nStealthSensorRange_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nStealthTypeCode = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nStealthTypeCode_initial;
 UProperty* IntProperty_TgGame_TgPawn_r_nYawOffset = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_r_nYawOffset_initial;
 UProperty* StrProperty_TgGame_TgPawn_r_sDebugAction = nullptr;
-std::map<int, bool> StrProperty_TgGame_TgPawn_r_sDebugAction_initial;
 UProperty* StrProperty_TgGame_TgPawn_r_sDebugName = nullptr;
-std::map<int, bool> StrProperty_TgGame_TgPawn_r_sDebugName_initial;
 UProperty* StrProperty_TgGame_TgPawn_r_sFactory = nullptr;
-std::map<int, bool> StrProperty_TgGame_TgPawn_r_sFactory_initial;
 UProperty* StructProperty_TgGame_TgPawn_r_vDown = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgPawn_r_vDown_initial;
 UProperty* BoolProperty_TgGame_TgPawn_Ambush_r_bIsDeployed = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_Ambush_r_bIsDeployed_initial;
 UProperty* ByteProperty_TgGame_TgPawn_AttackTransport_r_DeathType = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgPawn_AttackTransport_r_DeathType_initial;
 UProperty* StructProperty_TgGame_TgPawn_CTR_r_CustomCharacterAssembly = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgPawn_CTR_r_CustomCharacterAssembly_initial;
 UProperty* ObjectProperty_TgGame_TgPawn_CTR_r_PilotPawn = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgPawn_CTR_r_PilotPawn_initial;
 UProperty* IntProperty_TgGame_TgPawn_CTR_r_nMaxMorphIndexSentFromServer = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_CTR_r_nMaxMorphIndexSentFromServer_initial;
 UProperty* IntProperty_TgGame_TgPawn_CTR_r_nMorphSettings = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_CTR_r_nMorphSettings_initial;
 UProperty* StructProperty_TgGame_TgPawn_Character_r_CustomCharacterAssembly = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgPawn_Character_r_CustomCharacterAssembly_initial;
 UProperty* ByteProperty_TgGame_TgPawn_Character_r_eAttachedMesh = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgPawn_Character_r_eAttachedMesh_initial;
 UProperty* IntProperty_TgGame_TgPawn_Character_r_nBoostTimeRemaining = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nBoostTimeRemaining_initial;
 UProperty* IntProperty_TgGame_TgPawn_Character_r_nHeadMeshAsmId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nHeadMeshAsmId_initial;
 UProperty* IntProperty_TgGame_TgPawn_Character_r_nItemProfileId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nItemProfileId_initial;
 UProperty* IntProperty_TgGame_TgPawn_Character_r_nItemProfileNbr = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nItemProfileNbr_initial;
 UProperty* IntProperty_TgGame_TgPawn_Character_r_nMaxMorphIndexSentFromServer = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nMaxMorphIndexSentFromServer_initial;
 UProperty* IntProperty_TgGame_TgPawn_Character_r_nMorphSettings = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nMorphSettings_initial;
 UProperty* ObjectProperty_TgGame_TgPawn_Character_r_CurrentVanityPet = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgPawn_Character_r_CurrentVanityPet_initial;
 UProperty* FloatProperty_TgGame_TgPawn_Character_r_WallJumpUpperLineCheckOffset = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_Character_r_WallJumpUpperLineCheckOffset_initial;
 UProperty* FloatProperty_TgGame_TgPawn_Character_r_WallJumpZ = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_Character_r_WallJumpZ_initial;
 UProperty* BoolProperty_TgGame_TgPawn_Character_r_bElfGogglesEquipped = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_Character_r_bElfGogglesEquipped_initial;
 UProperty* IntProperty_TgGame_TgPawn_Character_r_nDeviceSlotUnlockGrpId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nDeviceSlotUnlockGrpId_initial;
 UProperty* IntProperty_TgGame_TgPawn_Character_r_nSkillGroupSetId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_Character_r_nSkillGroupSetId_initial;
 UProperty* BoolProperty_TgGame_TgPawn_DuneCommander_r_bDoCrashLanding = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_DuneCommander_r_bDoCrashLanding_initial;
 UProperty* ByteProperty_TgGame_TgPawn_Iris_r_nStartNewScan = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgPawn_Iris_r_nStartNewScan_initial;
 UProperty* FloatProperty_TgGame_TgPawn_Reaper_r_fBatteryPct = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_Reaper_r_fBatteryPct_initial;
 UProperty* ByteProperty_TgGame_TgPawn_Siege_r_AccelDirection = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgPawn_Siege_r_AccelDirection_initial;
 UProperty* BoolProperty_TgGame_TgPawn_Turret_r_bIsDeployed = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPawn_Turret_r_bIsDeployed_initial;
 UProperty* FloatProperty_TgGame_TgPawn_Turret_r_fInitDeployTime = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_Turret_r_fInitDeployTime_initial;
 UProperty* FloatProperty_TgGame_TgPawn_Turret_r_fTimeToDeploySecs = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_Turret_r_fTimeToDeploySecs_initial;
 UProperty* FloatProperty_TgGame_TgPawn_Turret_r_fCurrentDeployTime = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_Turret_r_fCurrentDeployTime_initial;
 UProperty* FloatProperty_TgGame_TgPawn_Turret_r_fDeployMaxHealthPCT = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgPawn_Turret_r_fDeployMaxHealthPCT_initial;
 UProperty* IntProperty_TgGame_TgPawn_VanityPet_r_nSpawningItemId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgPawn_VanityPet_r_nSpawningItemId_initial;
 UProperty* ByteProperty_TgGame_TgPlayerController_r_WatchOtherPlayer = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgPlayerController_r_WatchOtherPlayer_initial;
 UProperty* BoolProperty_TgGame_TgPlayerController_r_bEDDebugEffects = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPlayerController_r_bEDDebugEffects_initial;
 UProperty* BoolProperty_TgGame_TgPlayerController_r_bGMInvisible = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPlayerController_r_bGMInvisible_initial;
 UProperty* BoolProperty_TgGame_TgPlayerController_r_bIsHackingABot = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPlayerController_r_bIsHackingABot_initial;
 UProperty* BoolProperty_TgGame_TgPlayerController_r_bLockYawRotation = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPlayerController_r_bLockYawRotation_initial;
 UProperty* BoolProperty_TgGame_TgPlayerController_r_bRove = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgPlayerController_r_bRove_initial;
 UProperty* StructProperty_TgGame_TgProj_Grapple_r_vTargetLocation = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgProj_Grapple_r_vTargetLocation_initial;
 UProperty* ObjectProperty_TgGame_TgProj_Missile_r_aSeeking = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgProj_Missile_r_aSeeking_initial;
 UProperty* StructProperty_TgGame_TgProj_Missile_r_vTargetWorldLocation = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgProj_Missile_r_vTargetWorldLocation_initial;
 UProperty* IntProperty_TgGame_TgProj_Missile_r_nNumBounces = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgProj_Missile_r_nNumBounces_initial;
 UProperty* ByteProperty_TgGame_TgProj_Rocket_FlockIndex = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgProj_Rocket_FlockIndex_initial;
 UProperty* BoolProperty_TgGame_TgProj_Rocket_bCurl = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgProj_Rocket_bCurl_initial;
 UProperty* ObjectProperty_TgGame_TgProjectile_r_Owner = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgProjectile_r_Owner_initial;
 UProperty* FloatProperty_TgGame_TgProjectile_r_fAccelRate = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgProjectile_r_fAccelRate_initial;
 UProperty* FloatProperty_TgGame_TgProjectile_r_fDuration = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgProjectile_r_fDuration_initial;
 UProperty* FloatProperty_TgGame_TgProjectile_r_fRange = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgProjectile_r_fRange_initial;
 UProperty* IntProperty_TgGame_TgProjectile_r_nOwnerFireModeId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgProjectile_r_nOwnerFireModeId_initial;
 UProperty* IntProperty_TgGame_TgProjectile_r_nProjectileId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgProjectile_r_nProjectileId_initial;
 UProperty* StructProperty_TgGame_TgProjectile_r_vSpawnLocation = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgProjectile_r_vSpawnLocation_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Beacon_r_bDeployed = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Beacon_r_bDeployed_initial;
 UProperty* StructProperty_TgGame_TgRepInfo_Beacon_r_vLoc = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgRepInfo_Beacon_r_vLoc_initial;
 UProperty* StrProperty_TgGame_TgRepInfo_Beacon_r_nName = nullptr;
-std::map<int, bool> StrProperty_TgGame_TgRepInfo_Beacon_r_nName_initial;
 UProperty* ObjectProperty_TgGame_TgRepInfo_Deployable_r_InstigatorInfo = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_Deployable_r_InstigatorInfo_initial;
 UProperty* ObjectProperty_TgGame_TgRepInfo_Deployable_r_TaskforceInfo = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_Deployable_r_TaskforceInfo_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Deployable_r_bOwnedByTaskforce = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Deployable_r_bOwnedByTaskforce_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthCurrent = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthCurrent_initial;
 UProperty* ObjectProperty_TgGame_TgRepInfo_Deployable_r_DeployableOwner = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_Deployable_r_DeployableOwner_initial;
 UProperty* FloatProperty_TgGame_TgRepInfo_Deployable_r_fDeployMaxHealthPCT = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgRepInfo_Deployable_r_fDeployMaxHealthPCT_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Deployable_r_nDeployableId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Deployable_r_nDeployableId_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthMaximum = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthMaximum_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Deployable_r_nUniqueDeployableId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Deployable_r_nUniqueDeployableId_initial;
 UProperty* StructProperty_TgGame_TgRepInfo_Game_r_MiniMapInfo = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgRepInfo_Game_r_MiniMapInfo_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bActiveCombat = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bActiveCombat_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bAllowBuildMorale = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bAllowBuildMorale_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bAllowPlayerRelease = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bAllowPlayerRelease_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bDefenseAlarm = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bDefenseAlarm_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bInOverTime = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bInOverTime_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsTutorialMap = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsTutorialMap_initial;
 UProperty* FloatProperty_TgGame_TgRepInfo_Game_r_fGameSpeedModifier = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgRepInfo_Game_r_fGameSpeedModifier_initial;
 UProperty* FloatProperty_TgGame_TgRepInfo_Game_r_fMissionRemainingTime = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgRepInfo_Game_r_fMissionRemainingTime_initial;
 UProperty* FloatProperty_TgGame_TgRepInfo_Game_r_fServerTimeLastUpdate = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgRepInfo_Game_r_fServerTimeLastUpdate_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nMaxRoundNumber = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nMaxRoundNumber_initial;
 UProperty* ByteProperty_TgGame_TgRepInfo_Game_r_nMissionTimerState = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgRepInfo_Game_r_nMissionTimerState_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nMissionTimerStateChange = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nMissionTimerStateChange_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nRaidAttackerRespawnBonus = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nRaidAttackerRespawnBonus_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nRaidDefenderRespawnBonus = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nRaidDefenderRespawnBonus_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nReleaseDelay = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nReleaseDelay_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nRoundNumber = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nRoundNumber_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseAttackers = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseAttackers_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseDefenders = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nSecsToAutoReleaseDefenders_initial;
 UProperty* ByteProperty_TgGame_TgRepInfo_Game_r_GameType = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgRepInfo_Game_r_GameType_initial;
 UProperty* StructProperty_TgGame_TgRepInfo_Game_r_MapLogoResIds = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgRepInfo_Game_r_MapLogoResIds_initial;
 UProperty* ObjectProperty_TgGame_TgRepInfo_Game_r_Objectives = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_Game_r_Objectives_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsArena = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsArena_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsMatch = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsMatch_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsMission = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsMission_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsPVP = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsPVP_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsRaid = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsRaid_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsTerritoryMap = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsTerritoryMap_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Game_r_bIsTraining = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Game_r_bIsTraining_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nAutoKickTimeout = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nAutoKickTimeout_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nPointsToWin = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nPointsToWin_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nVictoryBonusLives = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Game_r_nVictoryBonusLives_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_GameOpenWorld_r_GameTickets = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_GameOpenWorld_r_GameTickets_initial;
 UProperty* StructProperty_TgGame_TgRepInfo_Player_r_ApproxLocation = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgRepInfo_Player_r_ApproxLocation_initial;
 UProperty* StructProperty_TgGame_TgRepInfo_Player_r_CustomCharacterAssembly = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgRepInfo_Player_r_CustomCharacterAssembly_initial;
 UProperty* StructProperty_TgGame_TgRepInfo_Player_r_EquipDeviceInfo = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgRepInfo_Player_r_EquipDeviceInfo_initial;
 UProperty* ObjectProperty_TgGame_TgRepInfo_Player_r_MasterPrep = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_Player_r_MasterPrep_initial;
 UProperty* ObjectProperty_TgGame_TgRepInfo_Player_r_PawnOwner = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_Player_r_PawnOwner_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Player_r_Scores = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_Scores_initial;
 UProperty* ObjectProperty_TgGame_TgRepInfo_Player_r_TaskForce = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_Player_r_TaskForce_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_Player_r_bDropped = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_Player_r_bDropped_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Player_r_eBonusType = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_eBonusType_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Player_r_nCharacterId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_nCharacterId_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Player_r_nHealthCurrent = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_nHealthCurrent_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Player_r_nHealthMaximum = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_nHealthMaximum_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Player_r_nLevel = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_nLevel_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Player_r_nProfileId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_nProfileId_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_Player_r_nTitleMsgId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_Player_r_nTitleMsgId_initial;
 UProperty* StrProperty_TgGame_TgRepInfo_Player_r_sAgencyName = nullptr;
-std::map<int, bool> StrProperty_TgGame_TgRepInfo_Player_r_sAgencyName_initial;
 UProperty* StrProperty_TgGame_TgRepInfo_Player_r_sAllianceName = nullptr;
-std::map<int, bool> StrProperty_TgGame_TgRepInfo_Player_r_sAllianceName_initial;
 UProperty* StrProperty_TgGame_TgRepInfo_Player_r_sOrigPlayerName = nullptr;
-std::map<int, bool> StrProperty_TgGame_TgRepInfo_Player_r_sOrigPlayerName_initial;
 UProperty* StructProperty_TgGame_TgRepInfo_Player_r_DeviceStats = nullptr;
-std::map<int, bool> StructProperty_TgGame_TgRepInfo_Player_r_DeviceStats_initial;
 UProperty* ObjectProperty_TgGame_TgRepInfo_TaskForce_r_BeaconManager = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_TaskForce_r_BeaconManager_initial;
 UProperty* ObjectProperty_TgGame_TgRepInfo_TaskForce_r_CurrActiveObjective = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_TaskForce_r_CurrActiveObjective_initial;
 UProperty* ObjectProperty_TgGame_TgRepInfo_TaskForce_r_ObjectiveAssignment = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgRepInfo_TaskForce_r_ObjectiveAssignment_initial;
 UProperty* BoolProperty_TgGame_TgRepInfo_TaskForce_r_bBotOwned = nullptr;
-std::map<int, bool> BoolProperty_TgGame_TgRepInfo_TaskForce_r_bBotOwned_initial;
 UProperty* ByteProperty_TgGame_TgRepInfo_TaskForce_r_eCoalition = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgRepInfo_TaskForce_r_eCoalition_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_TaskForce_r_nCurrentPointCount = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_TaskForce_r_nCurrentPointCount_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_TaskForce_r_nLeaderCharId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_TaskForce_r_nLeaderCharId_initial;
 UProperty* FloatProperty_TgGame_TgRepInfo_TaskForce_r_nLookingForMembers = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgRepInfo_TaskForce_r_nLookingForMembers_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_TaskForce_r_nNumDeaths = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_TaskForce_r_nNumDeaths_initial;
 UProperty* ByteProperty_TgGame_TgRepInfo_TaskForce_r_nTaskForce = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgRepInfo_TaskForce_r_nTaskForce_initial;
 UProperty* IntProperty_TgGame_TgRepInfo_TaskForce_r_nTeamId = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgRepInfo_TaskForce_r_nTeamId_initial;
 UProperty* FloatProperty_TgGame_TgSkydiveTarget_m_LandRadius = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgSkydiveTarget_m_LandRadius_initial;
 UProperty* FloatProperty_TgGame_TgSkydivingVolume_r_PawnGravityModifier = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgSkydivingVolume_r_PawnGravityModifier_initial;
 UProperty* FloatProperty_TgGame_TgSkydivingVolume_r_PawnLaunchForce = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgSkydivingVolume_r_PawnLaunchForce_initial;
 UProperty* FloatProperty_TgGame_TgSkydivingVolume_r_PawnUpForce = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgSkydivingVolume_r_PawnUpForce_initial;
 UProperty* ObjectProperty_TgGame_TgSkydivingVolume_r_SkydiveTarget = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgSkydivingVolume_r_SkydiveTarget_initial;
 UProperty* ObjectProperty_TgGame_TgTeamBeaconManager_r_Beacon = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgTeamBeaconManager_r_Beacon_initial;
 UProperty* IntProperty_TgGame_TgTeamBeaconManager_r_BeaconDestroyed = nullptr;
-std::map<int, bool> IntProperty_TgGame_TgTeamBeaconManager_r_BeaconDestroyed_initial;
 UProperty* ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconHolder = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconHolder_initial;
 UProperty* ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconInfo = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconInfo_initial;
 UProperty* ByteProperty_TgGame_TgTeamBeaconManager_r_BeaconStatus = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgTeamBeaconManager_r_BeaconStatus_initial;
 UProperty* ObjectProperty_TgGame_TgTeamBeaconManager_r_TaskForce = nullptr;
-std::map<int, bool> ObjectProperty_TgGame_TgTeamBeaconManager_r_TaskForce_initial;
 UProperty* ByteProperty_TgGame_TgTimerManager_r_byEventQue = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgTimerManager_r_byEventQue_initial;
 UProperty* ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex = nullptr;
-std::map<int, bool> ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex_initial;
 UProperty* FloatProperty_TgGame_TgTimerManager_r_fRemaining = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgTimerManager_r_fRemaining_initial;
 UProperty* FloatProperty_TgGame_TgTimerManager_r_fStartTime = nullptr;
-std::map<int, bool> FloatProperty_TgGame_TgTimerManager_r_fStartTime_initial;
 
 
 static void ResolveRepListProperties() {
@@ -1572,6 +1479,427 @@ static void ResolveRepListProperties() {
 	ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex = (UProperty*)ClassPreloader::GetObject("ByteProperty TgGame.TgTimerManager.r_byEventQueIndex");
 	FloatProperty_TgGame_TgTimerManager_r_fRemaining = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgTimerManager.r_fRemaining");
 	FloatProperty_TgGame_TgTimerManager_r_fStartTime = (UProperty*)ClassPreloader::GetObject("FloatProperty TgGame.TgTimerManager.r_fStartTime");
+
+	// --- UClass* pointer resolution for class-dispatch ---
+	Class_Engine_AIController = (UClass*)ClassPreloader::GetObject("Class Engine.AIController");
+	Class_Engine_AccessControl = (UClass*)ClassPreloader::GetObject("Class Engine.AccessControl");
+	Class_Engine_Actor = (UClass*)ClassPreloader::GetObject("Class Engine.Actor");
+	Class_Engine_Admin = (UClass*)ClassPreloader::GetObject("Class Engine.Admin");
+	Class_Engine_AmbientSound = (UClass*)ClassPreloader::GetObject("Class Engine.AmbientSound");
+	Class_Engine_AmbientSoundMovable = (UClass*)ClassPreloader::GetObject("Class Engine.AmbientSoundMovable");
+	Class_Engine_AmbientSoundNonLoop = (UClass*)ClassPreloader::GetObject("Class Engine.AmbientSoundNonLoop");
+	Class_Engine_AmbientSoundSimple = (UClass*)ClassPreloader::GetObject("Class Engine.AmbientSoundSimple");
+	Class_Engine_AmbientSoundSimpleToggleable = (UClass*)ClassPreloader::GetObject("Class Engine.AmbientSoundSimpleToggleable");
+	Class_Engine_AnimatedCamera = (UClass*)ClassPreloader::GetObject("Class Engine.AnimatedCamera");
+	Class_Engine_AutoLadder = (UClass*)ClassPreloader::GetObject("Class Engine.AutoLadder");
+	Class_Engine_BlockingVolume = (UClass*)ClassPreloader::GetObject("Class Engine.BlockingVolume");
+	Class_Engine_BroadcastHandler = (UClass*)ClassPreloader::GetObject("Class Engine.BroadcastHandler");
+	Class_Engine_Brush = (UClass*)ClassPreloader::GetObject("Class Engine.Brush");
+	Class_Engine_Camera = (UClass*)ClassPreloader::GetObject("Class Engine.Camera");
+	Class_Engine_CameraActor = (UClass*)ClassPreloader::GetObject("Class Engine.CameraActor");
+	Class_Engine_ClipMarker = (UClass*)ClassPreloader::GetObject("Class Engine.ClipMarker");
+	Class_Engine_ColorScaleVolume = (UClass*)ClassPreloader::GetObject("Class Engine.ColorScaleVolume");
+	Class_Engine_Controller = (UClass*)ClassPreloader::GetObject("Class Engine.Controller");
+	Class_Engine_CoverGroup = (UClass*)ClassPreloader::GetObject("Class Engine.CoverGroup");
+	Class_Engine_CoverLink = (UClass*)ClassPreloader::GetObject("Class Engine.CoverLink");
+	Class_Engine_CoverReplicator = (UClass*)ClassPreloader::GetObject("Class Engine.CoverReplicator");
+	Class_Engine_CoverSlotMarker = (UClass*)ClassPreloader::GetObject("Class Engine.CoverSlotMarker");
+	Class_Engine_CrowdAgent = (UClass*)ClassPreloader::GetObject("Class Engine.CrowdAgent");
+	Class_Engine_CrowdAttractor = (UClass*)ClassPreloader::GetObject("Class Engine.CrowdAttractor");
+	Class_Engine_CrowdReplicationActor = (UClass*)ClassPreloader::GetObject("Class Engine.CrowdReplicationActor");
+	Class_Engine_CullDistanceVolume = (UClass*)ClassPreloader::GetObject("Class Engine.CullDistanceVolume");
+	Class_Engine_DebugCameraController = (UClass*)ClassPreloader::GetObject("Class Engine.DebugCameraController");
+	Class_Engine_DebugCameraHUD = (UClass*)ClassPreloader::GetObject("Class Engine.DebugCameraHUD");
+	Class_Engine_DecalActor = (UClass*)ClassPreloader::GetObject("Class Engine.DecalActor");
+	Class_Engine_DecalActorBase = (UClass*)ClassPreloader::GetObject("Class Engine.DecalActorBase");
+	Class_Engine_DecalActorMovable = (UClass*)ClassPreloader::GetObject("Class Engine.DecalActorMovable");
+	Class_Engine_DecalManager = (UClass*)ClassPreloader::GetObject("Class Engine.DecalManager");
+	Class_Engine_DefaultPhysicsVolume = (UClass*)ClassPreloader::GetObject("Class Engine.DefaultPhysicsVolume");
+	Class_Engine_DirectionalLight = (UClass*)ClassPreloader::GetObject("Class Engine.DirectionalLight");
+	Class_Engine_DirectionalLightToggleable = (UClass*)ClassPreloader::GetObject("Class Engine.DirectionalLightToggleable");
+	Class_Engine_DoorMarker = (UClass*)ClassPreloader::GetObject("Class Engine.DoorMarker");
+	Class_Engine_DroppedPickup = (UClass*)ClassPreloader::GetObject("Class Engine.DroppedPickup");
+	Class_Engine_DynamicAnchor = (UClass*)ClassPreloader::GetObject("Class Engine.DynamicAnchor");
+	Class_Engine_DynamicBlockingVolume = (UClass*)ClassPreloader::GetObject("Class Engine.DynamicBlockingVolume");
+	Class_Engine_DynamicCameraActor = (UClass*)ClassPreloader::GetObject("Class Engine.DynamicCameraActor");
+	Class_Engine_DynamicPhysicsVolume = (UClass*)ClassPreloader::GetObject("Class Engine.DynamicPhysicsVolume");
+	Class_Engine_DynamicSMActor = (UClass*)ClassPreloader::GetObject("Class Engine.DynamicSMActor");
+	Class_Engine_DynamicSMActor_Spawnable = (UClass*)ClassPreloader::GetObject("Class Engine.DynamicSMActor_Spawnable");
+	Class_Engine_DynamicTriggerVolume = (UClass*)ClassPreloader::GetObject("Class Engine.DynamicTriggerVolume");
+	Class_Engine_Emitter = (UClass*)ClassPreloader::GetObject("Class Engine.Emitter");
+	Class_Engine_EmitterCameraLensEffectBase = (UClass*)ClassPreloader::GetObject("Class Engine.EmitterCameraLensEffectBase");
+	Class_Engine_EmitterPool = (UClass*)ClassPreloader::GetObject("Class Engine.EmitterPool");
+	Class_Engine_EmitterSpawnable = (UClass*)ClassPreloader::GetObject("Class Engine.EmitterSpawnable");
+	Class_Engine_FileLog = (UClass*)ClassPreloader::GetObject("Class Engine.FileLog");
+	Class_Engine_FileWriter = (UClass*)ClassPreloader::GetObject("Class Engine.FileWriter");
+	Class_Engine_FluidInfluenceActor = (UClass*)ClassPreloader::GetObject("Class Engine.FluidInfluenceActor");
+	Class_Engine_FluidSurfaceActor = (UClass*)ClassPreloader::GetObject("Class Engine.FluidSurfaceActor");
+	Class_Engine_FluidSurfaceActorMovable = (UClass*)ClassPreloader::GetObject("Class Engine.FluidSurfaceActorMovable");
+	Class_Engine_FogVolumeConeDensityInfo = (UClass*)ClassPreloader::GetObject("Class Engine.FogVolumeConeDensityInfo");
+	Class_Engine_FogVolumeConstantDensityInfo = (UClass*)ClassPreloader::GetObject("Class Engine.FogVolumeConstantDensityInfo");
+	Class_Engine_FogVolumeDensityInfo = (UClass*)ClassPreloader::GetObject("Class Engine.FogVolumeDensityInfo");
+	Class_Engine_FogVolumeLinearHalfspaceDensityInfo = (UClass*)ClassPreloader::GetObject("Class Engine.FogVolumeLinearHalfspaceDensityInfo");
+	Class_Engine_FogVolumeSphericalDensityInfo = (UClass*)ClassPreloader::GetObject("Class Engine.FogVolumeSphericalDensityInfo");
+	Class_Engine_FoliageFactory = (UClass*)ClassPreloader::GetObject("Class Engine.FoliageFactory");
+	Class_Engine_FractureManager = (UClass*)ClassPreloader::GetObject("Class Engine.FractureManager");
+	Class_Engine_FracturedStaticMeshActor = (UClass*)ClassPreloader::GetObject("Class Engine.FracturedStaticMeshActor");
+	Class_Engine_FracturedStaticMeshPart = (UClass*)ClassPreloader::GetObject("Class Engine.FracturedStaticMeshPart");
+	Class_Engine_GameInfo = (UClass*)ClassPreloader::GetObject("Class Engine.GameInfo");
+	Class_Engine_GameReplicationInfo = (UClass*)ClassPreloader::GetObject("Class Engine.GameReplicationInfo");
+	Class_Engine_GravityVolume = (UClass*)ClassPreloader::GetObject("Class Engine.GravityVolume");
+	Class_Engine_HUD = (UClass*)ClassPreloader::GetObject("Class Engine.HUD");
+	Class_Engine_HeightFog = (UClass*)ClassPreloader::GetObject("Class Engine.HeightFog");
+	Class_Engine_Info = (UClass*)ClassPreloader::GetObject("Class Engine.Info");
+	Class_Engine_InternetInfo = (UClass*)ClassPreloader::GetObject("Class Engine.InternetInfo");
+	Class_Engine_InterpActor = (UClass*)ClassPreloader::GetObject("Class Engine.InterpActor");
+	Class_Engine_Inventory = (UClass*)ClassPreloader::GetObject("Class Engine.Inventory");
+	Class_Engine_InventoryManager = (UClass*)ClassPreloader::GetObject("Class Engine.InventoryManager");
+	Class_Engine_KActor = (UClass*)ClassPreloader::GetObject("Class Engine.KActor");
+	Class_Engine_KActorSpawnable = (UClass*)ClassPreloader::GetObject("Class Engine.KActorSpawnable");
+	Class_Engine_KAsset = (UClass*)ClassPreloader::GetObject("Class Engine.KAsset");
+	Class_Engine_KAssetSpawnable = (UClass*)ClassPreloader::GetObject("Class Engine.KAssetSpawnable");
+	Class_Engine_Keypoint = (UClass*)ClassPreloader::GetObject("Class Engine.Keypoint");
+	Class_Engine_Ladder = (UClass*)ClassPreloader::GetObject("Class Engine.Ladder");
+	Class_Engine_LadderVolume = (UClass*)ClassPreloader::GetObject("Class Engine.LadderVolume");
+	Class_Engine_LensFlareSource = (UClass*)ClassPreloader::GetObject("Class Engine.LensFlareSource");
+	Class_Engine_LevelStreamingVolume = (UClass*)ClassPreloader::GetObject("Class Engine.LevelStreamingVolume");
+	Class_Engine_LiftCenter = (UClass*)ClassPreloader::GetObject("Class Engine.LiftCenter");
+	Class_Engine_LiftExit = (UClass*)ClassPreloader::GetObject("Class Engine.LiftExit");
+	Class_Engine_Light = (UClass*)ClassPreloader::GetObject("Class Engine.Light");
+	Class_Engine_LightVolume = (UClass*)ClassPreloader::GetObject("Class Engine.LightVolume");
+	Class_Engine_MantleMarker = (UClass*)ClassPreloader::GetObject("Class Engine.MantleMarker");
+	Class_Engine_MaterialInstanceActor = (UClass*)ClassPreloader::GetObject("Class Engine.MaterialInstanceActor");
+	Class_Engine_MatineeActor = (UClass*)ClassPreloader::GetObject("Class Engine.MatineeActor");
+	Class_Engine_Mutator = (UClass*)ClassPreloader::GetObject("Class Engine.Mutator");
+	Class_Engine_NavigationPoint = (UClass*)ClassPreloader::GetObject("Class Engine.NavigationPoint");
+	Class_Engine_Note = (UClass*)ClassPreloader::GetObject("Class Engine.Note");
+	Class_Engine_NxCylindricalForceField = (UClass*)ClassPreloader::GetObject("Class Engine.NxCylindricalForceField");
+	Class_Engine_NxCylindricalForceFieldCapsule = (UClass*)ClassPreloader::GetObject("Class Engine.NxCylindricalForceFieldCapsule");
+	Class_Engine_NxForceField = (UClass*)ClassPreloader::GetObject("Class Engine.NxForceField");
+	Class_Engine_NxForceFieldGeneric = (UClass*)ClassPreloader::GetObject("Class Engine.NxForceFieldGeneric");
+	Class_Engine_NxForceFieldRadial = (UClass*)ClassPreloader::GetObject("Class Engine.NxForceFieldRadial");
+	Class_Engine_NxForceFieldTornado = (UClass*)ClassPreloader::GetObject("Class Engine.NxForceFieldTornado");
+	Class_Engine_NxGenericForceField = (UClass*)ClassPreloader::GetObject("Class Engine.NxGenericForceField");
+	Class_Engine_NxGenericForceFieldBox = (UClass*)ClassPreloader::GetObject("Class Engine.NxGenericForceFieldBox");
+	Class_Engine_NxGenericForceFieldBrush = (UClass*)ClassPreloader::GetObject("Class Engine.NxGenericForceFieldBrush");
+	Class_Engine_NxGenericForceFieldCapsule = (UClass*)ClassPreloader::GetObject("Class Engine.NxGenericForceFieldCapsule");
+	Class_Engine_NxRadialCustomForceField = (UClass*)ClassPreloader::GetObject("Class Engine.NxRadialCustomForceField");
+	Class_Engine_NxRadialForceField = (UClass*)ClassPreloader::GetObject("Class Engine.NxRadialForceField");
+	Class_Engine_NxTornadoAngularForceField = (UClass*)ClassPreloader::GetObject("Class Engine.NxTornadoAngularForceField");
+	Class_Engine_NxTornadoAngularForceFieldCapsule = (UClass*)ClassPreloader::GetObject("Class Engine.NxTornadoAngularForceFieldCapsule");
+	Class_Engine_NxTornadoForceField = (UClass*)ClassPreloader::GetObject("Class Engine.NxTornadoForceField");
+	Class_Engine_NxTornadoForceFieldCapsule = (UClass*)ClassPreloader::GetObject("Class Engine.NxTornadoForceFieldCapsule");
+	Class_Engine_Objective = (UClass*)ClassPreloader::GetObject("Class Engine.Objective");
+	Class_Engine_PathBlockingVolume = (UClass*)ClassPreloader::GetObject("Class Engine.PathBlockingVolume");
+	Class_Engine_PathNode = (UClass*)ClassPreloader::GetObject("Class Engine.PathNode");
+	Class_Engine_PathNode_Dynamic = (UClass*)ClassPreloader::GetObject("Class Engine.PathNode_Dynamic");
+	Class_Engine_Pawn = (UClass*)ClassPreloader::GetObject("Class Engine.Pawn");
+	Class_Engine_PhysXDestructibleActor = (UClass*)ClassPreloader::GetObject("Class Engine.PhysXDestructibleActor");
+	Class_Engine_PhysXDestructiblePart = (UClass*)ClassPreloader::GetObject("Class Engine.PhysXDestructiblePart");
+	Class_Engine_PhysXEmitterSpawnable = (UClass*)ClassPreloader::GetObject("Class Engine.PhysXEmitterSpawnable");
+	Class_Engine_PhysicsVolume = (UClass*)ClassPreloader::GetObject("Class Engine.PhysicsVolume");
+	Class_Engine_PickupFactory = (UClass*)ClassPreloader::GetObject("Class Engine.PickupFactory");
+	Class_Engine_PlayerController = (UClass*)ClassPreloader::GetObject("Class Engine.PlayerController");
+	Class_Engine_PlayerReplicationInfo = (UClass*)ClassPreloader::GetObject("Class Engine.PlayerReplicationInfo");
+	Class_Engine_PlayerStart = (UClass*)ClassPreloader::GetObject("Class Engine.PlayerStart");
+	Class_Engine_PointLight = (UClass*)ClassPreloader::GetObject("Class Engine.PointLight");
+	Class_Engine_PointLightMovable = (UClass*)ClassPreloader::GetObject("Class Engine.PointLightMovable");
+	Class_Engine_PointLightToggleable = (UClass*)ClassPreloader::GetObject("Class Engine.PointLightToggleable");
+	Class_Engine_PolyMarker = (UClass*)ClassPreloader::GetObject("Class Engine.PolyMarker");
+	Class_Engine_PortalMarker = (UClass*)ClassPreloader::GetObject("Class Engine.PortalMarker");
+	Class_Engine_PortalTeleporter = (UClass*)ClassPreloader::GetObject("Class Engine.PortalTeleporter");
+	Class_Engine_PortalVolume = (UClass*)ClassPreloader::GetObject("Class Engine.PortalVolume");
+	Class_Engine_PostProcessVolume = (UClass*)ClassPreloader::GetObject("Class Engine.PostProcessVolume");
+	Class_Engine_PotentialClimbWatcher = (UClass*)ClassPreloader::GetObject("Class Engine.PotentialClimbWatcher");
+	Class_Engine_PrefabInstance = (UClass*)ClassPreloader::GetObject("Class Engine.PrefabInstance");
+	Class_Engine_Projectile = (UClass*)ClassPreloader::GetObject("Class Engine.Projectile");
+	Class_Engine_RB_BSJointActor = (UClass*)ClassPreloader::GetObject("Class Engine.RB_BSJointActor");
+	Class_Engine_RB_ConstraintActor = (UClass*)ClassPreloader::GetObject("Class Engine.RB_ConstraintActor");
+	Class_Engine_RB_ConstraintActorSpawnable = (UClass*)ClassPreloader::GetObject("Class Engine.RB_ConstraintActorSpawnable");
+	Class_Engine_RB_CylindricalForceActor = (UClass*)ClassPreloader::GetObject("Class Engine.RB_CylindricalForceActor");
+	Class_Engine_RB_ForceFieldExcludeVolume = (UClass*)ClassPreloader::GetObject("Class Engine.RB_ForceFieldExcludeVolume");
+	Class_Engine_RB_HingeActor = (UClass*)ClassPreloader::GetObject("Class Engine.RB_HingeActor");
+	Class_Engine_RB_LineImpulseActor = (UClass*)ClassPreloader::GetObject("Class Engine.RB_LineImpulseActor");
+	Class_Engine_RB_PrismaticActor = (UClass*)ClassPreloader::GetObject("Class Engine.RB_PrismaticActor");
+	Class_Engine_RB_PulleyJointActor = (UClass*)ClassPreloader::GetObject("Class Engine.RB_PulleyJointActor");
+	Class_Engine_RB_RadialForceActor = (UClass*)ClassPreloader::GetObject("Class Engine.RB_RadialForceActor");
+	Class_Engine_RB_RadialImpulseActor = (UClass*)ClassPreloader::GetObject("Class Engine.RB_RadialImpulseActor");
+	Class_Engine_RB_Thruster = (UClass*)ClassPreloader::GetObject("Class Engine.RB_Thruster");
+	Class_Engine_ReplicationInfo = (UClass*)ClassPreloader::GetObject("Class Engine.ReplicationInfo");
+	Class_Engine_ReverbVolume = (UClass*)ClassPreloader::GetObject("Class Engine.ReverbVolume");
+	Class_Engine_Route = (UClass*)ClassPreloader::GetObject("Class Engine.Route");
+	Class_Engine_SVehicle = (UClass*)ClassPreloader::GetObject("Class Engine.SVehicle");
+	Class_Engine_SceneCapture2DActor = (UClass*)ClassPreloader::GetObject("Class Engine.SceneCapture2DActor");
+	Class_Engine_SceneCaptureActor = (UClass*)ClassPreloader::GetObject("Class Engine.SceneCaptureActor");
+	Class_Engine_SceneCaptureCubeMapActor = (UClass*)ClassPreloader::GetObject("Class Engine.SceneCaptureCubeMapActor");
+	Class_Engine_SceneCapturePortalActor = (UClass*)ClassPreloader::GetObject("Class Engine.SceneCapturePortalActor");
+	Class_Engine_SceneCaptureReflectActor = (UClass*)ClassPreloader::GetObject("Class Engine.SceneCaptureReflectActor");
+	Class_Engine_ScoreBoard = (UClass*)ClassPreloader::GetObject("Class Engine.ScoreBoard");
+	Class_Engine_Scout = (UClass*)ClassPreloader::GetObject("Class Engine.Scout");
+	Class_Engine_SkeletalMeshActor = (UClass*)ClassPreloader::GetObject("Class Engine.SkeletalMeshActor");
+	Class_Engine_SkeletalMeshActorBasedOnExtremeContent = (UClass*)ClassPreloader::GetObject("Class Engine.SkeletalMeshActorBasedOnExtremeContent");
+	Class_Engine_SkeletalMeshActorMAT = (UClass*)ClassPreloader::GetObject("Class Engine.SkeletalMeshActorMAT");
+	Class_Engine_SkeletalMeshActorMATSpawnable = (UClass*)ClassPreloader::GetObject("Class Engine.SkeletalMeshActorMATSpawnable");
+	Class_Engine_SkeletalMeshActorSpawnable = (UClass*)ClassPreloader::GetObject("Class Engine.SkeletalMeshActorSpawnable");
+	Class_Engine_SkyLight = (UClass*)ClassPreloader::GetObject("Class Engine.SkyLight");
+	Class_Engine_SkyLightToggleable = (UClass*)ClassPreloader::GetObject("Class Engine.SkyLightToggleable");
+	Class_Engine_SpeedTreeActor = (UClass*)ClassPreloader::GetObject("Class Engine.SpeedTreeActor");
+	Class_Engine_SpotLight = (UClass*)ClassPreloader::GetObject("Class Engine.SpotLight");
+	Class_Engine_SpotLightMovable = (UClass*)ClassPreloader::GetObject("Class Engine.SpotLightMovable");
+	Class_Engine_SpotLightToggleable = (UClass*)ClassPreloader::GetObject("Class Engine.SpotLightToggleable");
+	Class_Engine_StaticLightCollectionActor = (UClass*)ClassPreloader::GetObject("Class Engine.StaticLightCollectionActor");
+	Class_Engine_StaticMeshActor = (UClass*)ClassPreloader::GetObject("Class Engine.StaticMeshActor");
+	Class_Engine_StaticMeshActorBase = (UClass*)ClassPreloader::GetObject("Class Engine.StaticMeshActorBase");
+	Class_Engine_StaticMeshActorBasedOnExtremeContent = (UClass*)ClassPreloader::GetObject("Class Engine.StaticMeshActorBasedOnExtremeContent");
+	Class_Engine_StaticMeshCollectionActor = (UClass*)ClassPreloader::GetObject("Class Engine.StaticMeshCollectionActor");
+	Class_Engine_TargetPoint = (UClass*)ClassPreloader::GetObject("Class Engine.TargetPoint");
+	Class_Engine_TeamInfo = (UClass*)ClassPreloader::GetObject("Class Engine.TeamInfo");
+	Class_Engine_Teleporter = (UClass*)ClassPreloader::GetObject("Class Engine.Teleporter");
+	Class_Engine_Terrain = (UClass*)ClassPreloader::GetObject("Class Engine.Terrain");
+	Class_Engine_Trigger = (UClass*)ClassPreloader::GetObject("Class Engine.Trigger");
+	Class_Engine_TriggerStreamingLevel = (UClass*)ClassPreloader::GetObject("Class Engine.TriggerStreamingLevel");
+	Class_Engine_TriggerVolume = (UClass*)ClassPreloader::GetObject("Class Engine.TriggerVolume");
+	Class_Engine_Trigger_Dynamic = (UClass*)ClassPreloader::GetObject("Class Engine.Trigger_Dynamic");
+	Class_Engine_Trigger_LOS = (UClass*)ClassPreloader::GetObject("Class Engine.Trigger_LOS");
+	Class_Engine_TriggeredPath = (UClass*)ClassPreloader::GetObject("Class Engine.TriggeredPath");
+	Class_Engine_Vehicle = (UClass*)ClassPreloader::GetObject("Class Engine.Vehicle");
+	Class_Engine_Volume = (UClass*)ClassPreloader::GetObject("Class Engine.Volume");
+	Class_Engine_VolumePathNode = (UClass*)ClassPreloader::GetObject("Class Engine.VolumePathNode");
+	Class_Engine_VolumeTimer = (UClass*)ClassPreloader::GetObject("Class Engine.VolumeTimer");
+	Class_Engine_WaterVolume = (UClass*)ClassPreloader::GetObject("Class Engine.WaterVolume");
+	Class_Engine_Weapon = (UClass*)ClassPreloader::GetObject("Class Engine.Weapon");
+	Class_Engine_WindDirectionalSource = (UClass*)ClassPreloader::GetObject("Class Engine.WindDirectionalSource");
+	Class_Engine_WorldInfo = (UClass*)ClassPreloader::GetObject("Class Engine.WorldInfo");
+	Class_Engine_ZoneInfo = (UClass*)ClassPreloader::GetObject("Class Engine.ZoneInfo");
+	Class_GameFramework_GameAIController = (UClass*)ClassPreloader::GetObject("Class GameFramework.GameAIController");
+	Class_GameFramework_GameExplosionActor = (UClass*)ClassPreloader::GetObject("Class GameFramework.GameExplosionActor");
+	Class_GameFramework_GameHUD = (UClass*)ClassPreloader::GetObject("Class GameFramework.GameHUD");
+	Class_GameFramework_GamePawn = (UClass*)ClassPreloader::GetObject("Class GameFramework.GamePawn");
+	Class_GameFramework_GamePlayerController = (UClass*)ClassPreloader::GetObject("Class GameFramework.GamePlayerController");
+	Class_GameFramework_GameProjectile = (UClass*)ClassPreloader::GetObject("Class GameFramework.GameProjectile");
+	Class_GameFramework_GameVehicle = (UClass*)ClassPreloader::GetObject("Class GameFramework.GameVehicle");
+	Class_GameFramework_GameWeapon = (UClass*)ClassPreloader::GetObject("Class GameFramework.GameWeapon");
+	Class_TgGame_TgAIController = (UClass*)ClassPreloader::GetObject("Class TgGame.TgAIController");
+	Class_TgGame_TgActionPoint = (UClass*)ClassPreloader::GetObject("Class TgGame.TgActionPoint");
+	Class_TgGame_TgActorFactory = (UClass*)ClassPreloader::GetObject("Class TgGame.TgActorFactory");
+	Class_TgGame_TgAlarmPoint = (UClass*)ClassPreloader::GetObject("Class TgGame.TgAlarmPoint");
+	Class_TgGame_TgAnnouncer = (UClass*)ClassPreloader::GetObject("Class TgGame.TgAnnouncer");
+	Class_TgGame_TgBaseObjective_CTFBot = (UClass*)ClassPreloader::GetObject("Class TgGame.TgBaseObjective_CTFBot");
+	Class_TgGame_TgBaseObjective_KOTH = (UClass*)ClassPreloader::GetObject("Class TgGame.TgBaseObjective_KOTH");
+	Class_TgGame_TgBeaconFactory = (UClass*)ClassPreloader::GetObject("Class TgGame.TgBeaconFactory");
+	Class_TgGame_TgBotEncounterVolume = (UClass*)ClassPreloader::GetObject("Class TgGame.TgBotEncounterVolume");
+	Class_TgGame_TgBotFactory = (UClass*)ClassPreloader::GetObject("Class TgGame.TgBotFactory");
+	Class_TgGame_TgBotFactorySpawnable = (UClass*)ClassPreloader::GetObject("Class TgGame.TgBotFactorySpawnable");
+	Class_TgGame_TgBotStart = (UClass*)ClassPreloader::GetObject("Class TgGame.TgBotStart");
+	Class_TgGame_TgCharacterBuilderLight = (UClass*)ClassPreloader::GetObject("Class TgGame.TgCharacterBuilderLight");
+	Class_TgGame_TgChestActor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgChestActor");
+	Class_TgGame_TgCollisionProxy = (UClass*)ClassPreloader::GetObject("Class TgGame.TgCollisionProxy");
+	Class_TgGame_TgCollisionProxy_Vortex = (UClass*)ClassPreloader::GetObject("Class TgGame.TgCollisionProxy_Vortex");
+	Class_TgGame_TgCoverPoint = (UClass*)ClassPreloader::GetObject("Class TgGame.TgCoverPoint");
+	Class_TgGame_TgDebugCameraController = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDebugCameraController");
+	Class_TgGame_TgDecalActor_Logo = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDecalActor_Logo");
+	Class_TgGame_TgDefensePoint = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDefensePoint");
+	Class_TgGame_TgDeploy_Artillery = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDeploy_Artillery");
+	Class_TgGame_TgDeploy_Beacon = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDeploy_Beacon");
+	Class_TgGame_TgDeploy_BeaconEntrance = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDeploy_BeaconEntrance");
+	Class_TgGame_TgDeploy_DestructibleCover = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDeploy_DestructibleCover");
+	Class_TgGame_TgDeploy_ForceField = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDeploy_ForceField");
+	Class_TgGame_TgDeploy_Sensor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDeploy_Sensor");
+	Class_TgGame_TgDeploy_SweepSensor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDeploy_SweepSensor");
+	Class_TgGame_TgDeployable = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDeployable");
+	Class_TgGame_TgDeployableFactory = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDeployableFactory");
+	Class_TgGame_TgDestructibleFactory = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDestructibleFactory");
+	Class_TgGame_TgDevice = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDevice");
+	Class_TgGame_TgDeviceVolume = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDeviceVolume");
+	Class_TgGame_TgDeviceVolumeInfo = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDeviceVolumeInfo");
+	Class_TgGame_TgDevice_Grenade = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDevice_Grenade");
+	Class_TgGame_TgDevice_HitPulse = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDevice_HitPulse");
+	Class_TgGame_TgDevice_MeleeDualWield = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDevice_MeleeDualWield");
+	Class_TgGame_TgDevice_Morale = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDevice_Morale");
+	Class_TgGame_TgDevice_NewMelee = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDevice_NewMelee");
+	Class_TgGame_TgDevice_NewRange = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDevice_NewRange");
+	Class_TgGame_TgDoor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDoor");
+	Class_TgGame_TgDoorMarker = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDoorMarker");
+	Class_TgGame_TgDroppedItem = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDroppedItem");
+	Class_TgGame_TgDummyActor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDummyActor");
+	Class_TgGame_TgDynamicDestructible = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDynamicDestructible");
+	Class_TgGame_TgDynamicSMActor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgDynamicSMActor");
+	Class_TgGame_TgEffectManager = (UClass*)ClassPreloader::GetObject("Class TgGame.TgEffectManager");
+	Class_TgGame_TgElevatingVolume = (UClass*)ClassPreloader::GetObject("Class TgGame.TgElevatingVolume");
+	Class_TgGame_TgEmitter = (UClass*)ClassPreloader::GetObject("Class TgGame.TgEmitter");
+	Class_TgGame_TgEmitterCrashlanding = (UClass*)ClassPreloader::GetObject("Class TgGame.TgEmitterCrashlanding");
+	Class_TgGame_TgEmitterSpawnable = (UClass*)ClassPreloader::GetObject("Class TgGame.TgEmitterSpawnable");
+	Class_TgGame_TgFlagCaptureVolume = (UClass*)ClassPreloader::GetObject("Class TgGame.TgFlagCaptureVolume");
+	Class_TgGame_TgFracturedStaticMeshActor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgFracturedStaticMeshActor");
+	Class_TgGame_TgGame = (UClass*)ClassPreloader::GetObject("Class TgGame.TgGame");
+	Class_TgGame_TgGame_Arena = (UClass*)ClassPreloader::GetObject("Class TgGame.TgGame_Arena");
+	Class_TgGame_TgGame_CTF = (UClass*)ClassPreloader::GetObject("Class TgGame.TgGame_CTF");
+	Class_TgGame_TgGame_City = (UClass*)ClassPreloader::GetObject("Class TgGame.TgGame_City");
+	Class_TgGame_TgGame_Control = (UClass*)ClassPreloader::GetObject("Class TgGame.TgGame_Control");
+	Class_TgGame_TgGame_Defense = (UClass*)ClassPreloader::GetObject("Class TgGame.TgGame_Defense");
+	Class_TgGame_TgGame_DualCTF = (UClass*)ClassPreloader::GetObject("Class TgGame.TgGame_DualCTF");
+	Class_TgGame_TgGame_Escort = (UClass*)ClassPreloader::GetObject("Class TgGame.TgGame_Escort");
+	Class_TgGame_TgGame_Mission = (UClass*)ClassPreloader::GetObject("Class TgGame.TgGame_Mission");
+	Class_TgGame_TgGame_OpenWorld = (UClass*)ClassPreloader::GetObject("Class TgGame.TgGame_OpenWorld");
+	Class_TgGame_TgGame_OpenWorldPVE = (UClass*)ClassPreloader::GetObject("Class TgGame.TgGame_OpenWorldPVE");
+	Class_TgGame_TgGame_OpenWorldPVP = (UClass*)ClassPreloader::GetObject("Class TgGame.TgGame_OpenWorldPVP");
+	Class_TgGame_TgGame_PointRotation = (UClass*)ClassPreloader::GetObject("Class TgGame.TgGame_PointRotation");
+	Class_TgGame_TgGame_Ticket = (UClass*)ClassPreloader::GetObject("Class TgGame.TgGame_Ticket");
+	Class_TgGame_TgHUD = (UClass*)ClassPreloader::GetObject("Class TgGame.TgHUD");
+	Class_TgGame_TgHeightFog = (UClass*)ClassPreloader::GetObject("Class TgGame.TgHeightFog");
+	Class_TgGame_TgHelpAlertVolume = (UClass*)ClassPreloader::GetObject("Class TgGame.TgHelpAlertVolume");
+	Class_TgGame_TgHexItemFactory = (UClass*)ClassPreloader::GetObject("Class TgGame.TgHexItemFactory");
+	Class_TgGame_TgHexLandMarkActor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgHexLandMarkActor");
+	Class_TgGame_TgHitDisplayActor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgHitDisplayActor");
+	Class_TgGame_TgHoldSpot = (UClass*)ClassPreloader::GetObject("Class TgGame.TgHoldSpot");
+	Class_TgGame_TgInterpActor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgInterpActor");
+	Class_TgGame_TgInterpolatingCameraActor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgInterpolatingCameraActor");
+	Class_TgGame_TgInventoryManager = (UClass*)ClassPreloader::GetObject("Class TgGame.TgInventoryManager");
+	Class_TgGame_TgKActorSpawnable = (UClass*)ClassPreloader::GetObject("Class TgGame.TgKActorSpawnable");
+	Class_TgGame_TgKAssetSpawnable = (UClass*)ClassPreloader::GetObject("Class TgGame.TgKAssetSpawnable");
+	Class_TgGame_TgKAsset_ClientSideSim = (UClass*)ClassPreloader::GetObject("Class TgGame.TgKAsset_ClientSideSim");
+	Class_TgGame_TgKismetTestActor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgKismetTestActor");
+	Class_TgGame_TgLevelCamera = (UClass*)ClassPreloader::GetObject("Class TgGame.TgLevelCamera");
+	Class_TgGame_TgMeshAssembly = (UClass*)ClassPreloader::GetObject("Class TgGame.TgMeshAssembly");
+	Class_TgGame_TgMiniMapActor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgMiniMapActor");
+	Class_TgGame_TgMissionListVolume = (UClass*)ClassPreloader::GetObject("Class TgGame.TgMissionListVolume");
+	Class_TgGame_TgMissionObjective = (UClass*)ClassPreloader::GetObject("Class TgGame.TgMissionObjective");
+	Class_TgGame_TgMissionObjective_Bot = (UClass*)ClassPreloader::GetObject("Class TgGame.TgMissionObjective_Bot");
+	Class_TgGame_TgMissionObjective_Escort = (UClass*)ClassPreloader::GetObject("Class TgGame.TgMissionObjective_Escort");
+	Class_TgGame_TgMissionObjective_Kismet = (UClass*)ClassPreloader::GetObject("Class TgGame.TgMissionObjective_Kismet");
+	Class_TgGame_TgMissionObjective_Proximity = (UClass*)ClassPreloader::GetObject("Class TgGame.TgMissionObjective_Proximity");
+	Class_TgGame_TgModifyPawnPropertiesVolume = (UClass*)ClassPreloader::GetObject("Class TgGame.TgModifyPawnPropertiesVolume");
+	Class_TgGame_TgMorphFX = (UClass*)ClassPreloader::GetObject("Class TgGame.TgMorphFX");
+	Class_TgGame_TgNavRouteIndicator = (UClass*)ClassPreloader::GetObject("Class TgGame.TgNavRouteIndicator");
+	Class_TgGame_TgNavigationPoint = (UClass*)ClassPreloader::GetObject("Class TgGame.TgNavigationPoint");
+	Class_TgGame_TgNavigationPointSpawnable = (UClass*)ClassPreloader::GetObject("Class TgGame.TgNavigationPointSpawnable");
+	Class_TgGame_TgNewsStand = (UClass*)ClassPreloader::GetObject("Class TgGame.TgNewsStand");
+	Class_TgGame_TgObjectiveAssignment = (UClass*)ClassPreloader::GetObject("Class TgGame.TgObjectiveAssignment");
+	Class_TgGame_TgObjectiveAttachActor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgObjectiveAttachActor");
+	Class_TgGame_TgOmegaVolume = (UClass*)ClassPreloader::GetObject("Class TgGame.TgOmegaVolume");
+	Class_TgGame_TgPawn = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn");
+	Class_TgGame_TgPawn_AVCompositeWalker = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_AVCompositeWalker");
+	Class_TgGame_TgPawn_Ambush = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Ambush");
+	Class_TgGame_TgPawn_AndroidMinion = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_AndroidMinion");
+	Class_TgGame_TgPawn_AttackTransport = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_AttackTransport");
+	Class_TgGame_TgPawn_Boss = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Boss");
+	Class_TgGame_TgPawn_Boss_Destroyer = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Boss_Destroyer");
+	Class_TgGame_TgPawn_Brawler = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Brawler");
+	Class_TgGame_TgPawn_CTR = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_CTR");
+	Class_TgGame_TgPawn_Character = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Character");
+	Class_TgGame_TgPawn_ColonyEye = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_ColonyEye");
+	Class_TgGame_TgPawn_Destructible = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Destructible");
+	Class_TgGame_TgPawn_Detonator = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Detonator");
+	Class_TgGame_TgPawn_Dismantler = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Dismantler");
+	Class_TgGame_TgPawn_DuneCommander = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_DuneCommander");
+	Class_TgGame_TgPawn_Elite_Alchemist = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Elite_Alchemist");
+	Class_TgGame_TgPawn_Elite_Assassin = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Elite_Assassin");
+	Class_TgGame_TgPawn_EscortRobot = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_EscortRobot");
+	Class_TgGame_TgPawn_FlyingBoss = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_FlyingBoss");
+	Class_TgGame_TgPawn_GroundPetA = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_GroundPetA");
+	Class_TgGame_TgPawn_Guardian = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Guardian");
+	Class_TgGame_TgPawn_Hover = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Hover");
+	Class_TgGame_TgPawn_HoverShieldSphere = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_HoverShieldSphere");
+	Class_TgGame_TgPawn_Hunter = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Hunter");
+	Class_TgGame_TgPawn_Inquisitor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Inquisitor");
+	Class_TgGame_TgPawn_Interact_NPC = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Interact_NPC");
+	Class_TgGame_TgPawn_Iris = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Iris");
+	Class_TgGame_TgPawn_Juggernaut = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Juggernaut");
+	Class_TgGame_TgPawn_Marauder = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Marauder");
+	Class_TgGame_TgPawn_NPC = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_NPC");
+	Class_TgGame_TgPawn_NewWasp = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_NewWasp");
+	Class_TgGame_TgPawn_Raptor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Raptor");
+	Class_TgGame_TgPawn_Reaper = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Reaper");
+	Class_TgGame_TgPawn_RecursiveSpawner = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_RecursiveSpawner");
+	Class_TgGame_TgPawn_Remote = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Remote");
+	Class_TgGame_TgPawn_Robot = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Robot");
+	Class_TgGame_TgPawn_Scanner = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Scanner");
+	Class_TgGame_TgPawn_ScannerRecursive = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_ScannerRecursive");
+	Class_TgGame_TgPawn_Siege = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Siege");
+	Class_TgGame_TgPawn_SiegeBarrage = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_SiegeBarrage");
+	Class_TgGame_TgPawn_SiegeHover = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_SiegeHover");
+	Class_TgGame_TgPawn_SiegeRapidFire = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_SiegeRapidFire");
+	Class_TgGame_TgPawn_Sniper = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Sniper");
+	Class_TgGame_TgPawn_SonoranCommander = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_SonoranCommander");
+	Class_TgGame_TgPawn_SupportForeman = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_SupportForeman");
+	Class_TgGame_TgPawn_Switchblade = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Switchblade");
+	Class_TgGame_TgPawn_Tentacle = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Tentacle");
+	Class_TgGame_TgPawn_ThinkTank = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_ThinkTank");
+	Class_TgGame_TgPawn_TreadRobot = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_TreadRobot");
+	Class_TgGame_TgPawn_Turret = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Turret");
+	Class_TgGame_TgPawn_TurretAVAFlak = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_TurretAVAFlak");
+	Class_TgGame_TgPawn_TurretAVARocket = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_TurretAVARocket");
+	Class_TgGame_TgPawn_TurretFlak = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_TurretFlak");
+	Class_TgGame_TgPawn_TurretFlame = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_TurretFlame");
+	Class_TgGame_TgPawn_TurretPlasma = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_TurretPlasma");
+	Class_TgGame_TgPawn_UberWalker = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_UberWalker");
+	Class_TgGame_TgPawn_Vanguard = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Vanguard");
+	Class_TgGame_TgPawn_VanityPet = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_VanityPet");
+	Class_TgGame_TgPawn_Vulcan = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Vulcan");
+	Class_TgGame_TgPawn_Warlord = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Warlord");
+	Class_TgGame_TgPawn_WaspSpawner = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_WaspSpawner");
+	Class_TgGame_TgPawn_Widow = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPawn_Widow");
+	Class_TgGame_TgPhysAnimTestActor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPhysAnimTestActor");
+	Class_TgGame_TgPickupFactory = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPickupFactory");
+	Class_TgGame_TgPickupFactory_Item = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPickupFactory_Item");
+	Class_TgGame_TgPlayerController = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPlayerController");
+	Class_TgGame_TgPlayerCountVolume = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPlayerCountVolume");
+	Class_TgGame_TgPointOfInterest = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPointOfInterest");
+	Class_TgGame_TgPostProcessVolume = (UClass*)ClassPreloader::GetObject("Class TgGame.TgPostProcessVolume");
+	Class_TgGame_TgProj_Bot = (UClass*)ClassPreloader::GetObject("Class TgGame.TgProj_Bot");
+	Class_TgGame_TgProj_Bounce = (UClass*)ClassPreloader::GetObject("Class TgGame.TgProj_Bounce");
+	Class_TgGame_TgProj_Deployable = (UClass*)ClassPreloader::GetObject("Class TgGame.TgProj_Deployable");
+	Class_TgGame_TgProj_FreeGrenade = (UClass*)ClassPreloader::GetObject("Class TgGame.TgProj_FreeGrenade");
+	Class_TgGame_TgProj_Grapple = (UClass*)ClassPreloader::GetObject("Class TgGame.TgProj_Grapple");
+	Class_TgGame_TgProj_Grenade = (UClass*)ClassPreloader::GetObject("Class TgGame.TgProj_Grenade");
+	Class_TgGame_TgProj_Missile = (UClass*)ClassPreloader::GetObject("Class TgGame.TgProj_Missile");
+	Class_TgGame_TgProj_Mortar = (UClass*)ClassPreloader::GetObject("Class TgGame.TgProj_Mortar");
+	Class_TgGame_TgProj_Net = (UClass*)ClassPreloader::GetObject("Class TgGame.TgProj_Net");
+	Class_TgGame_TgProj_Rocket = (UClass*)ClassPreloader::GetObject("Class TgGame.TgProj_Rocket");
+	Class_TgGame_TgProj_StraightTeleporter = (UClass*)ClassPreloader::GetObject("Class TgGame.TgProj_StraightTeleporter");
+	Class_TgGame_TgProj_Teleporter = (UClass*)ClassPreloader::GetObject("Class TgGame.TgProj_Teleporter");
+	Class_TgGame_TgProjectile = (UClass*)ClassPreloader::GetObject("Class TgGame.TgProjectile");
+	Class_TgGame_TgQueuedAnnouncement = (UClass*)ClassPreloader::GetObject("Class TgGame.TgQueuedAnnouncement");
+	Class_TgGame_TgRandomSMActor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgRandomSMActor");
+	Class_TgGame_TgRandomSMManager = (UClass*)ClassPreloader::GetObject("Class TgGame.TgRandomSMManager");
+	Class_TgGame_TgReferenceArray = (UClass*)ClassPreloader::GetObject("Class TgGame.TgReferenceArray");
+	Class_TgGame_TgRepInfo_Beacon = (UClass*)ClassPreloader::GetObject("Class TgGame.TgRepInfo_Beacon");
+	Class_TgGame_TgRepInfo_Deployable = (UClass*)ClassPreloader::GetObject("Class TgGame.TgRepInfo_Deployable");
+	Class_TgGame_TgRepInfo_Game = (UClass*)ClassPreloader::GetObject("Class TgGame.TgRepInfo_Game");
+	Class_TgGame_TgRepInfo_GameOpenWorld = (UClass*)ClassPreloader::GetObject("Class TgGame.TgRepInfo_GameOpenWorld");
+	Class_TgGame_TgRepInfo_Player = (UClass*)ClassPreloader::GetObject("Class TgGame.TgRepInfo_Player");
+	Class_TgGame_TgRepInfo_TaskForce = (UClass*)ClassPreloader::GetObject("Class TgGame.TgRepInfo_TaskForce");
+	Class_TgGame_TgScoreboard = (UClass*)ClassPreloader::GetObject("Class TgGame.TgScoreboard");
+	Class_TgGame_TgSkeletalMeshActor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgSkeletalMeshActor");
+	Class_TgGame_TgSkeletalMeshActorGenericUIPreview = (UClass*)ClassPreloader::GetObject("Class TgGame.TgSkeletalMeshActorGenericUIPreview");
+	Class_TgGame_TgSkeletalMeshActorNPC = (UClass*)ClassPreloader::GetObject("Class TgGame.TgSkeletalMeshActorNPC");
+	Class_TgGame_TgSkeletalMeshActorNPCVendor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgSkeletalMeshActorNPCVendor");
+	Class_TgGame_TgSkeletalMeshActorSpawnable = (UClass*)ClassPreloader::GetObject("Class TgGame.TgSkeletalMeshActorSpawnable");
+	Class_TgGame_TgSkeletalMeshActor_CharacterBuilder = (UClass*)ClassPreloader::GetObject("Class TgGame.TgSkeletalMeshActor_CharacterBuilder");
+	Class_TgGame_TgSkeletalMeshActor_CharacterBuilderSpawnable = (UClass*)ClassPreloader::GetObject("Class TgGame.TgSkeletalMeshActor_CharacterBuilderSpawnable");
+	Class_TgGame_TgSkeletalMeshActor_Composite = (UClass*)ClassPreloader::GetObject("Class TgGame.TgSkeletalMeshActor_Composite");
+	Class_TgGame_TgSkeletalMeshActor_EquipScreen = (UClass*)ClassPreloader::GetObject("Class TgGame.TgSkeletalMeshActor_EquipScreen");
+	Class_TgGame_TgSkeletalMeshActor_MeleePreVis = (UClass*)ClassPreloader::GetObject("Class TgGame.TgSkeletalMeshActor_MeleePreVis");
+	Class_TgGame_TgSkydiveTarget = (UClass*)ClassPreloader::GetObject("Class TgGame.TgSkydiveTarget");
+	Class_TgGame_TgSkydivingVolume = (UClass*)ClassPreloader::GetObject("Class TgGame.TgSkydivingVolume");
+	Class_TgGame_TgSoundInsulationVolume = (UClass*)ClassPreloader::GetObject("Class TgGame.TgSoundInsulationVolume");
+	Class_TgGame_TgStartPoint = (UClass*)ClassPreloader::GetObject("Class TgGame.TgStartPoint");
+	Class_TgGame_TgStartpointPortalNetwork = (UClass*)ClassPreloader::GetObject("Class TgGame.TgStartpointPortalNetwork");
+	Class_TgGame_TgStaticMeshActor = (UClass*)ClassPreloader::GetObject("Class TgGame.TgStaticMeshActor");
+	Class_TgGame_TgStaticMeshActor_Logo = (UClass*)ClassPreloader::GetObject("Class TgGame.TgStaticMeshActor_Logo");
+	Class_TgGame_TgTeamBeaconManager = (UClass*)ClassPreloader::GetObject("Class TgGame.TgTeamBeaconManager");
+	Class_TgGame_TgTeamBlocker = (UClass*)ClassPreloader::GetObject("Class TgGame.TgTeamBlocker");
+	Class_TgGame_TgTeamMarker = (UClass*)ClassPreloader::GetObject("Class TgGame.TgTeamMarker");
+	Class_TgGame_TgTeamPlayerStart = (UClass*)ClassPreloader::GetObject("Class TgGame.TgTeamPlayerStart");
+	Class_TgGame_TgTeamScoreboard = (UClass*)ClassPreloader::GetObject("Class TgGame.TgTeamScoreboard");
+	Class_TgGame_TgTeleportPlayerVolume = (UClass*)ClassPreloader::GetObject("Class TgGame.TgTeleportPlayerVolume");
+	Class_TgGame_TgTeleporter = (UClass*)ClassPreloader::GetObject("Class TgGame.TgTeleporter");
+	Class_TgGame_TgTimerManager = (UClass*)ClassPreloader::GetObject("Class TgGame.TgTimerManager");
+	Class_TgGame_TgTrigger_Instance = (UClass*)ClassPreloader::GetObject("Class TgGame.TgTrigger_Instance");
+	Class_TgGame_TgTrigger_Use = (UClass*)ClassPreloader::GetObject("Class TgGame.TgTrigger_Use");
+	Class_TgGame_TgVolumePathNode = (UClass*)ClassPreloader::GetObject("Class TgGame.TgVolumePathNode");
+	Class_TgGame_TgWaterVolume = (UClass*)ClassPreloader::GetObject("Class TgGame.TgWaterVolume");
+	Class_TgGame_TgWindManager = (UClass*)ClassPreloader::GetObject("Class TgGame.TgWindManager");
 }
 
 
@@ -1585,463 +1913,468 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 	AActor* actor = (AActor*)thisxx;
 	AActor* recent = (AActor*)param_1;
 	int repindex = 0;
-	char* classname = actor->Class->GetFullName();
+	// Class-identity dispatch: pointer compare against pre-resolved UClass* values
+	// (see declarations above + ResolveRepListProperties). Replaces strcmp(GetFullName).
+	UClass* cls = actor->Class;
+	// Captured once per call; consumed by every DO_REP / DO_REP_ARRAY in this function.
+	// True the first time the rep list ever sees this actor, false thereafter.
+	const bool isInitialRep = (g_RepListInitialDoneActors.find(actor) == g_RepListInitialDoneActors.end());
 	if (
-		strcmp(classname, "Class Engine.Actor") == 0
+		cls == Class_Engine_Actor
 
-		|| strcmp(classname, "Class Engine.WorldInfo") == 0
+		|| cls == Class_Engine_WorldInfo
 
-		|| strcmp(classname, "Class Engine.Vehicle") == 0
-		|| strcmp(classname, "Class Engine.SVehicle") == 0
-		|| strcmp(classname, "Class Engine.Teleporter") == 0
-		|| strcmp(classname, "Class Engine.RB_RadialImpulseActor") == 0
-		|| strcmp(classname, "Class Engine.RB_RadialForceActor") == 0
-		|| strcmp(classname, "Class Engine.RB_LineImpulseActor") == 0
-		|| strcmp(classname, "Class Engine.RB_CylindricalForceActor") == 0
-		|| strcmp(classname, "Class Engine.PostProcessVolume") == 0
+		|| cls == Class_Engine_Vehicle
+		|| cls == Class_Engine_SVehicle
+		|| cls == Class_Engine_Teleporter
+		|| cls == Class_Engine_RB_RadialImpulseActor
+		|| cls == Class_Engine_RB_RadialForceActor
+		|| cls == Class_Engine_RB_LineImpulseActor
+		|| cls == Class_Engine_RB_CylindricalForceActor
+		|| cls == Class_Engine_PostProcessVolume
 
-		|| strcmp(classname, "Class Engine.TeamInfo") == 0
-		|| strcmp(classname, "Class Engine.GameReplicationInfo") == 0
-		|| strcmp(classname, "Class Engine.PlayerReplicationInfo") == 0
-		|| strcmp(classname, "Class Engine.PlayerController") == 0
-		|| strcmp(classname, "Class Engine.PickupFactory") == 0
-		|| strcmp(classname, "Class Engine.PhysXEmitterSpawnable") == 0
-		|| strcmp(classname, "Class Engine.NxForceField") == 0
-		|| strcmp(classname, "Class Engine.MatineeActor") == 0
-		|| strcmp(classname, "Class Engine.Light") == 0
-		|| strcmp(classname, "Class Engine.LensFlareSource") == 0
-		|| strcmp(classname, "Class Engine.KAsset") == 0
-		|| strcmp(classname, "Class Engine.KActor") == 0
-		|| strcmp(classname, "Class Engine.InventoryManager") == 0
-		|| strcmp(classname, "Class Engine.Inventory") == 0
-		|| strcmp(classname, "Class Engine.HeightFog") == 0
-		|| strcmp(classname, "Class Engine.FogVolumeDensityInfo") == 0
-		|| strcmp(classname, "Class Engine.FluidInfluenceActor") == 0
-		|| strcmp(classname, "Class Engine.EmitterSpawnable") == 0
-		|| strcmp(classname, "Class Engine.Emitter") == 0
-		|| strcmp(classname, "Class Engine.DroppedPickup") == 0
-		|| strcmp(classname, "Class Engine.CrowdReplicationActor") == 0
-		|| strcmp(classname, "Class Engine.CrowdAttractor") == 0
-		|| strcmp(classname, "Class Engine.Controller") == 0
-		|| strcmp(classname, "Class Engine.CameraActor") == 0
-		|| strcmp(classname, "Class Engine.AmbientSoundSimpleToggleable") == 0
+		|| cls == Class_Engine_TeamInfo
+		|| cls == Class_Engine_GameReplicationInfo
+		|| cls == Class_Engine_PlayerReplicationInfo
+		|| cls == Class_Engine_PlayerController
+		|| cls == Class_Engine_PickupFactory
+		|| cls == Class_Engine_PhysXEmitterSpawnable
+		|| cls == Class_Engine_NxForceField
+		|| cls == Class_Engine_MatineeActor
+		|| cls == Class_Engine_Light
+		|| cls == Class_Engine_LensFlareSource
+		|| cls == Class_Engine_KAsset
+		|| cls == Class_Engine_KActor
+		|| cls == Class_Engine_InventoryManager
+		|| cls == Class_Engine_Inventory
+		|| cls == Class_Engine_HeightFog
+		|| cls == Class_Engine_FogVolumeDensityInfo
+		|| cls == Class_Engine_FluidInfluenceActor
+		|| cls == Class_Engine_EmitterSpawnable
+		|| cls == Class_Engine_Emitter
+		|| cls == Class_Engine_DroppedPickup
+		|| cls == Class_Engine_CrowdReplicationActor
+		|| cls == Class_Engine_CrowdAttractor
+		|| cls == Class_Engine_Controller
+		|| cls == Class_Engine_CameraActor
+		|| cls == Class_Engine_AmbientSoundSimpleToggleable
 
-		|| strcmp(classname, "Class Engine.DynamicSMActor") == 0
-		|| strcmp(classname, "Class TgGame.TgDynamicSMActor") == 0
-		|| strcmp(classname, "Class TgGame.TgObjectiveAttachActor") == 0
-		|| strcmp(classname, "Class TgGame.TgInterpActor") == 0
-		|| strcmp(classname, "Class TgGame.TgHexLandMarkActor") == 0
-		|| strcmp(classname, "Class TgGame.TgFracturedStaticMeshActor") == 0
-		|| strcmp(classname, "Class TgGame.TgDynamicDestructible") == 0
+		|| cls == Class_Engine_DynamicSMActor
+		|| cls == Class_TgGame_TgDynamicSMActor
+		|| cls == Class_TgGame_TgObjectiveAttachActor
+		|| cls == Class_TgGame_TgInterpActor
+		|| cls == Class_TgGame_TgHexLandMarkActor
+		|| cls == Class_TgGame_TgFracturedStaticMeshActor
+		|| cls == Class_TgGame_TgDynamicDestructible
 
 
-		|| strcmp(classname, "Class TgGame.TgFlagCaptureVolume") == 0
+		|| cls == Class_TgGame_TgFlagCaptureVolume
 
-		|| strcmp(classname, "Class TgGame.TgEmitter") == 0
+		|| cls == Class_TgGame_TgEmitter
 
-		|| strcmp(classname, "Class TgGame.TgStaticMeshActor") == 0
+		|| cls == Class_TgGame_TgStaticMeshActor
 
-		|| strcmp(classname, "Class TgGame.TgRandomSMActor") == 0
-		|| strcmp(classname, "Class TgGame.TgRandomSMManager") == 0
+		|| cls == Class_TgGame_TgRandomSMActor
+		|| cls == Class_TgGame_TgRandomSMManager
 
-		|| strcmp(classname, "Class TgGame.TgEffectManager") == 0
+		|| cls == Class_TgGame_TgEffectManager
 
-		|| strcmp(classname, "Class TgGame.TgInventoryManager") == 0
+		|| cls == Class_TgGame_TgInventoryManager
 
-		|| strcmp(classname, "Class TgGame.TgDroppedItem") == 0
+		|| cls == Class_TgGame_TgDroppedItem
 
-		|| strcmp(classname, "Class TgGame.TgChestActor") == 0
+		|| cls == Class_TgGame_TgChestActor
 
-		|| strcmp(classname, "Class TgGame.TgDevice") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_Grenade") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_HitPulse") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_Morale") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_NewMelee") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_MeleeDualWield") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_NewRange") == 0
+		|| cls == Class_TgGame_TgDevice
+		|| cls == Class_TgGame_TgDevice_Grenade
+		|| cls == Class_TgGame_TgDevice_HitPulse
+		|| cls == Class_TgGame_TgDevice_Morale
+		|| cls == Class_TgGame_TgDevice_NewMelee
+		|| cls == Class_TgGame_TgDevice_MeleeDualWield
+		|| cls == Class_TgGame_TgDevice_NewRange
 
-		|| strcmp(classname, "Class TgGame.TgDeployable") == 0
-		|| strcmp(classname, "Class TgGame.TgDeploy_Beacon") == 0
-		|| strcmp(classname, "Class TgGame.TgDeploy_BeaconEntrance") == 0
-		|| strcmp(classname, "Class TgGame.TgDeploy_DestructibleCover") == 0
+		|| cls == Class_TgGame_TgDeployable
+		|| cls == Class_TgGame_TgDeploy_Beacon
+		|| cls == Class_TgGame_TgDeploy_BeaconEntrance
+		|| cls == Class_TgGame_TgDeploy_DestructibleCover
 
-		|| strcmp(classname, "Class TgGame.TgMissionObjective") == 0
-		|| strcmp(classname, "Class TgGame.TgMissionObjective_Bot") == 0
-		|| strcmp(classname, "Class TgGame.TgMissionObjective_Escort") == 0
-		|| strcmp(classname, "Class TgGame.TgMissionObjective_Proximity") == 0
+		|| cls == Class_TgGame_TgMissionObjective
+		|| cls == Class_TgGame_TgMissionObjective_Bot
+		|| cls == Class_TgGame_TgMissionObjective_Escort
+		|| cls == Class_TgGame_TgMissionObjective_Proximity
 
-		|| strcmp(classname, "Class Engine.Pawn") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_AVCompositeWalker") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Ambush") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_AndroidMinion") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_AttackTransport") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Boss") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Boss_Destroyer") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Brawler") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_CTR") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Character") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_ColonyEye") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Destructible") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Detonator") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Dismantler") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_DuneCommander") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Elite_Alchemist") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Elite_Assassin") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_EscortRobot") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_FlyingBoss") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_GroundPetA") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Guardian") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Hover") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_HoverShieldSphere") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Hunter") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Inquisitor") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Interact_NPC") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Iris") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Juggernaut") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Marauder") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_NPC") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_NewWasp") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Raptor") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Reaper") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_RecursiveSpawner") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Remote") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Robot") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Scanner") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_ScannerRecursive") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Siege") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SiegeBarrage") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SiegeHover") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SiegeRapidFire") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Sniper") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SonoranCommander") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SupportForeman") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Switchblade") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Tentacle") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_ThinkTank") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TreadRobot") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Turret") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretAVAFlak") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretAVARocket") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretFlak") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretFlame") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretPlasma") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_UberWalker") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Vanguard") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_VanityPet") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Vulcan") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Warlord") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_WaspSpawner") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Widow") == 0
+		|| cls == Class_Engine_Pawn
+		|| cls == Class_TgGame_TgPawn
+		|| cls == Class_TgGame_TgPawn_AVCompositeWalker
+		|| cls == Class_TgGame_TgPawn_Ambush
+		|| cls == Class_TgGame_TgPawn_AndroidMinion
+		|| cls == Class_TgGame_TgPawn_AttackTransport
+		|| cls == Class_TgGame_TgPawn_Boss
+		|| cls == Class_TgGame_TgPawn_Boss_Destroyer
+		|| cls == Class_TgGame_TgPawn_Brawler
+		|| cls == Class_TgGame_TgPawn_CTR
+		|| cls == Class_TgGame_TgPawn_Character
+		|| cls == Class_TgGame_TgPawn_ColonyEye
+		|| cls == Class_TgGame_TgPawn_Destructible
+		|| cls == Class_TgGame_TgPawn_Detonator
+		|| cls == Class_TgGame_TgPawn_Dismantler
+		|| cls == Class_TgGame_TgPawn_DuneCommander
+		|| cls == Class_TgGame_TgPawn_Elite_Alchemist
+		|| cls == Class_TgGame_TgPawn_Elite_Assassin
+		|| cls == Class_TgGame_TgPawn_EscortRobot
+		|| cls == Class_TgGame_TgPawn_FlyingBoss
+		|| cls == Class_TgGame_TgPawn_GroundPetA
+		|| cls == Class_TgGame_TgPawn_Guardian
+		|| cls == Class_TgGame_TgPawn_Hover
+		|| cls == Class_TgGame_TgPawn_HoverShieldSphere
+		|| cls == Class_TgGame_TgPawn_Hunter
+		|| cls == Class_TgGame_TgPawn_Inquisitor
+		|| cls == Class_TgGame_TgPawn_Interact_NPC
+		|| cls == Class_TgGame_TgPawn_Iris
+		|| cls == Class_TgGame_TgPawn_Juggernaut
+		|| cls == Class_TgGame_TgPawn_Marauder
+		|| cls == Class_TgGame_TgPawn_NPC
+		|| cls == Class_TgGame_TgPawn_NewWasp
+		|| cls == Class_TgGame_TgPawn_Raptor
+		|| cls == Class_TgGame_TgPawn_Reaper
+		|| cls == Class_TgGame_TgPawn_RecursiveSpawner
+		|| cls == Class_TgGame_TgPawn_Remote
+		|| cls == Class_TgGame_TgPawn_Robot
+		|| cls == Class_TgGame_TgPawn_Scanner
+		|| cls == Class_TgGame_TgPawn_ScannerRecursive
+		|| cls == Class_TgGame_TgPawn_Siege
+		|| cls == Class_TgGame_TgPawn_SiegeBarrage
+		|| cls == Class_TgGame_TgPawn_SiegeHover
+		|| cls == Class_TgGame_TgPawn_SiegeRapidFire
+		|| cls == Class_TgGame_TgPawn_Sniper
+		|| cls == Class_TgGame_TgPawn_SonoranCommander
+		|| cls == Class_TgGame_TgPawn_SupportForeman
+		|| cls == Class_TgGame_TgPawn_Switchblade
+		|| cls == Class_TgGame_TgPawn_Tentacle
+		|| cls == Class_TgGame_TgPawn_ThinkTank
+		|| cls == Class_TgGame_TgPawn_TreadRobot
+		|| cls == Class_TgGame_TgPawn_Turret
+		|| cls == Class_TgGame_TgPawn_TurretAVAFlak
+		|| cls == Class_TgGame_TgPawn_TurretAVARocket
+		|| cls == Class_TgGame_TgPawn_TurretFlak
+		|| cls == Class_TgGame_TgPawn_TurretFlame
+		|| cls == Class_TgGame_TgPawn_TurretPlasma
+		|| cls == Class_TgGame_TgPawn_UberWalker
+		|| cls == Class_TgGame_TgPawn_Vanguard
+		|| cls == Class_TgGame_TgPawn_VanityPet
+		|| cls == Class_TgGame_TgPawn_Vulcan
+		|| cls == Class_TgGame_TgPawn_Warlord
+		|| cls == Class_TgGame_TgPawn_WaspSpawner
+		|| cls == Class_TgGame_TgPawn_Widow
 		
-		|| strcmp(classname, "Class TgGame.TgObjectiveAssignment") == 0
+		|| cls == Class_TgGame_TgObjectiveAssignment
 
-		|| strcmp(classname, "Class TgGame.TgRepInfo_Deployable") == 0
-		|| strcmp(classname, "Class TgGame.TgRepInfo_Beacon") == 0
+		|| cls == Class_TgGame_TgRepInfo_Deployable
+		|| cls == Class_TgGame_TgRepInfo_Beacon
 
-		|| strcmp(classname, "Class TgGame.TgRepInfo_Game") == 0
-		|| strcmp(classname, "Class TgGame.TgRepInfo_GameOpenWorld") == 0
+		|| cls == Class_TgGame_TgRepInfo_Game
+		|| cls == Class_TgGame_TgRepInfo_GameOpenWorld
 
-		|| strcmp(classname, "Class TgGame.TgRepInfo_Player") == 0
-		|| strcmp(classname, "Class TgGame.TgRepInfo_TaskForce") == 0
+		|| cls == Class_TgGame_TgRepInfo_Player
+		|| cls == Class_TgGame_TgRepInfo_TaskForce
 
-		|| strcmp(classname, "Class Engine.KAsset") == 0
+		|| cls == Class_Engine_KAsset
 
-		|| strcmp(classname, "Class Engine.StaticMeshActor") == 0
+		|| cls == Class_Engine_StaticMeshActor
 
-		|| strcmp(classname, "Class Engine.Projectile") == 0
-		|| strcmp(classname, "Class TgGame.TgProjectile") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Teleporter") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_StraightTeleporter") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Rocket") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Net") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Mortar") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Missile") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Grenade") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Grapple") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_FreeGrenade") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Deployable") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Bounce") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Bot") == 0
+		|| cls == Class_Engine_Projectile
+		|| cls == Class_TgGame_TgProjectile
+		|| cls == Class_TgGame_TgProj_Teleporter
+		|| cls == Class_TgGame_TgProj_StraightTeleporter
+		|| cls == Class_TgGame_TgProj_Rocket
+		|| cls == Class_TgGame_TgProj_Net
+		|| cls == Class_TgGame_TgProj_Mortar
+		|| cls == Class_TgGame_TgProj_Missile
+		|| cls == Class_TgGame_TgProj_Grenade
+		|| cls == Class_TgGame_TgProj_Grapple
+		|| cls == Class_TgGame_TgProj_FreeGrenade
+		|| cls == Class_TgGame_TgProj_Deployable
+		|| cls == Class_TgGame_TgProj_Bounce
+		|| cls == Class_TgGame_TgProj_Bot
 
-		|| strcmp(classname, "Class TgGame.TgDoorMarker") == 0
-		|| strcmp(classname, "Class TgGame.TgDoor") == 0
+		|| cls == Class_TgGame_TgDoorMarker
+		|| cls == Class_TgGame_TgDoor
 
 
-		|| strcmp(classname, "Class Engine.SkeletalMeshActor") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActorGenericUIPreview") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActorNPC") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActorNPCVendor") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActorSpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor_CharacterBuilder") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor_CharacterBuilderSpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor_Composite") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor_EquipScreen") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor_MeleePreVis") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor") == 0
+		|| cls == Class_Engine_SkeletalMeshActor
+		|| cls == Class_TgGame_TgSkeletalMeshActorGenericUIPreview
+		|| cls == Class_TgGame_TgSkeletalMeshActorNPC
+		|| cls == Class_TgGame_TgSkeletalMeshActorNPCVendor
+		|| cls == Class_TgGame_TgSkeletalMeshActorSpawnable
+		|| cls == Class_TgGame_TgSkeletalMeshActor_CharacterBuilder
+		|| cls == Class_TgGame_TgSkeletalMeshActor_CharacterBuilderSpawnable
+		|| cls == Class_TgGame_TgSkeletalMeshActor_Composite
+		|| cls == Class_TgGame_TgSkeletalMeshActor_EquipScreen
+		|| cls == Class_TgGame_TgSkeletalMeshActor_MeleePreVis
+		|| cls == Class_TgGame_TgSkeletalMeshActor
 
-		|| strcmp(classname, "Class TgGame.TgSkydiveTarget") == 0
+		|| cls == Class_TgGame_TgSkydiveTarget
 
-		|| strcmp(classname, "Class TgGame.TgSkydivingVolume") == 0
+		|| cls == Class_TgGame_TgSkydivingVolume
 
-		|| strcmp(classname, "Class TgGame.TgTeamBeaconManager") == 0
+		|| cls == Class_TgGame_TgTeamBeaconManager
 
-		|| strcmp(classname, "Class TgGame.TgTimerManager") == 0
+		|| cls == Class_TgGame_TgTimerManager
 		
-		|| strcmp(classname, "Class TgGame.TgLevelCamera") == 0
+		|| cls == Class_TgGame_TgLevelCamera
 
-		|| strcmp(classname, "Class TgGame.TgKismetTestActor") == 0
+		|| cls == Class_TgGame_TgKismetTestActor
 
-		|| strcmp(classname, "Class Engine.AIController") == 0
-		|| strcmp(classname, "Class Engine.Admin") == 0
-		|| strcmp(classname, "Class Engine.DebugCameraController") == 0
-		|| strcmp(classname, "Class Engine.DynamicCameraActor") == 0
-		|| strcmp(classname, "Class Engine.AnimatedCamera") == 0
-		|| strcmp(classname, "Class Engine.EmitterCameraLensEffectBase") == 0
-		|| strcmp(classname, "Class Engine.EmitterPool") == 0
-		|| strcmp(classname, "Class Engine.FogVolumeConeDensityInfo") == 0
-		|| strcmp(classname, "Class Engine.FogVolumeConstantDensityInfo") == 0
-		|| strcmp(classname, "Class Engine.FogVolumeLinearHalfspaceDensityInfo") == 0
-		|| strcmp(classname, "Class Engine.FogVolumeSphericalDensityInfo") == 0
-		|| strcmp(classname, "Class Engine.DynamicSMActor_Spawnable") == 0
-		|| strcmp(classname, "Class Engine.InterpActor") == 0
-		|| strcmp(classname, "Class Engine.KActorSpawnable") == 0
-		|| strcmp(classname, "Class Engine.KAssetSpawnable") == 0
-		|| strcmp(classname, "Class Engine.Scout") == 0
-		|| strcmp(classname, "Class Engine.DirectionalLight") == 0
-		|| strcmp(classname, "Class Engine.DirectionalLightToggleable") == 0
-		|| strcmp(classname, "Class Engine.PointLight") == 0
-		|| strcmp(classname, "Class Engine.PointLightMovable") == 0
-		|| strcmp(classname, "Class Engine.PointLightToggleable") == 0
-		|| strcmp(classname, "Class Engine.SkyLight") == 0
-		|| strcmp(classname, "Class Engine.SkyLightToggleable") == 0
-		|| strcmp(classname, "Class Engine.SpotLight") == 0
-		|| strcmp(classname, "Class Engine.SpotLightMovable") == 0
-		|| strcmp(classname, "Class Engine.SpotLightToggleable") == 0
-		|| strcmp(classname, "Class Engine.StaticLightCollectionActor") == 0
-		|| strcmp(classname, "Class Engine.NxCylindricalForceField") == 0
-		|| strcmp(classname, "Class Engine.NxCylindricalForceFieldCapsule") == 0
-		|| strcmp(classname, "Class Engine.NxForceFieldGeneric") == 0
-		|| strcmp(classname, "Class Engine.NxForceFieldRadial") == 0
-		|| strcmp(classname, "Class Engine.NxForceFieldTornado") == 0
-		|| strcmp(classname, "Class Engine.NxGenericForceField") == 0
-		|| strcmp(classname, "Class Engine.NxGenericForceFieldBox") == 0
-		|| strcmp(classname, "Class Engine.NxGenericForceFieldCapsule") == 0
-		|| strcmp(classname, "Class Engine.NxRadialCustomForceField") == 0
-		|| strcmp(classname, "Class Engine.NxRadialForceField") == 0
-		|| strcmp(classname, "Class Engine.NxTornadoAngularForceField") == 0
-		|| strcmp(classname, "Class Engine.NxTornadoAngularForceFieldCapsule") == 0
-		|| strcmp(classname, "Class Engine.NxTornadoForceField") == 0
-		|| strcmp(classname, "Class Engine.NxTornadoForceFieldCapsule") == 0
-		|| strcmp(classname, "Class Engine.Admin") == 0
-		|| strcmp(classname, "Class Engine.SkeletalMeshActorBasedOnExtremeContent") == 0
-		|| strcmp(classname, "Class Engine.SkeletalMeshActorMAT") == 0
-		|| strcmp(classname, "Class Engine.SkeletalMeshActorMATSpawnable") == 0
-		|| strcmp(classname, "Class Engine.SkeletalMeshActorSpawnable") == 0
-		|| strcmp(classname, "Class Engine.Weapon") == 0
-		|| strcmp(classname, "Class GameFramework.GameAIController") == 0
-		|| strcmp(classname, "Class GameFramework.GamePawn") == 0
-		|| strcmp(classname, "Class GameFramework.GamePlayerController") == 0
-		|| strcmp(classname, "Class GameFramework.GameProjectile") == 0
-		|| strcmp(classname, "Class GameFramework.GameVehicle") == 0
-		|| strcmp(classname, "Class GameFramework.GameWeapon") == 0
-		|| strcmp(classname, "Class TgGame.TgAIController") == 0
-		|| strcmp(classname, "Class TgGame.TgBaseObjective_CTFBot") == 0
-		|| strcmp(classname, "Class TgGame.TgBaseObjective_KOTH") == 0
-		|| strcmp(classname, "Class TgGame.TgMissionObjective_Kismet") == 0
-		|| strcmp(classname, "Class TgGame.TgDeploy_Artillery") == 0
-		|| strcmp(classname, "Class TgGame.TgDeploy_ForceField") == 0
-		|| strcmp(classname, "Class TgGame.TgDeploy_Sensor") == 0
-		|| strcmp(classname, "Class TgGame.TgDeploy_SweepSensor") == 0
-		|| strcmp(classname, "Class TgGame.TgDebugCameraController") == 0
-		|| strcmp(classname, "Class TgGame.TgEmitterSpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgEmitterCrashlanding") == 0
-		|| strcmp(classname, "Class TgGame.TgInterpolatingCameraActor") == 0
-		|| strcmp(classname, "Class TgGame.TgTeleporter") == 0
-		|| strcmp(classname, "Class TgGame.TgPostProcessVolume") == 0
-		|| strcmp(classname, "Class TgGame.TgPickupFactory") == 0
-		|| strcmp(classname, "Class TgGame.TgPickupFactory_Item") == 0
-		|| strcmp(classname, "Class TgGame.TgKActorSpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgKAssetSpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgKAsset_ClientSideSim") == 0
-		|| strcmp(classname, "Class TgGame.TgNavRouteIndicator") == 0
-		|| strcmp(classname, "Class TgGame.TgCharacterBuilderLight") == 0
-		|| strcmp(classname, "Class Engine.AccessControl") == 0
-		|| strcmp(classname, "Class Engine.AmbientSound") == 0
-		|| strcmp(classname, "Class Engine.AmbientSoundMovable") == 0
-		|| strcmp(classname, "Class Engine.AmbientSoundNonLoop") == 0
-		|| strcmp(classname, "Class Engine.AmbientSoundSimple") == 0
-		|| strcmp(classname, "Class Engine.AutoLadder") == 0
-		|| strcmp(classname, "Class Engine.BlockingVolume") == 0
-		|| strcmp(classname, "Class Engine.BroadcastHandler") == 0
-		|| strcmp(classname, "Class Engine.Brush") == 0
-		|| strcmp(classname, "Class Engine.Camera") == 0
-		|| strcmp(classname, "Class Engine.ClipMarker") == 0
-		|| strcmp(classname, "Class Engine.ColorScaleVolume") == 0
-		|| strcmp(classname, "Class Engine.CoverGroup") == 0
-		|| strcmp(classname, "Class Engine.CoverLink") == 0
-		|| strcmp(classname, "Class Engine.CoverReplicator") == 0
-		|| strcmp(classname, "Class Engine.CoverSlotMarker") == 0
-		|| strcmp(classname, "Class Engine.CrowdAgent") == 0
-		|| strcmp(classname, "Class Engine.CullDistanceVolume") == 0
-		|| strcmp(classname, "Class Engine.DebugCameraHUD") == 0
-		|| strcmp(classname, "Class Engine.DecalActor") == 0
-		|| strcmp(classname, "Class Engine.DecalActorBase") == 0
-		|| strcmp(classname, "Class Engine.DecalActorMovable") == 0
-		|| strcmp(classname, "Class Engine.DecalManager") == 0
-		|| strcmp(classname, "Class Engine.DefaultPhysicsVolume") == 0
-		|| strcmp(classname, "Class Engine.DoorMarker") == 0
-		|| strcmp(classname, "Class Engine.DynamicAnchor") == 0
-		|| strcmp(classname, "Class Engine.DynamicBlockingVolume") == 0
-		|| strcmp(classname, "Class Engine.DynamicPhysicsVolume") == 0
-		|| strcmp(classname, "Class Engine.DynamicTriggerVolume") == 0
-		|| strcmp(classname, "Class Engine.FileLog") == 0
-		|| strcmp(classname, "Class Engine.FileWriter") == 0
-		|| strcmp(classname, "Class Engine.FluidSurfaceActor") == 0
-		|| strcmp(classname, "Class Engine.FluidSurfaceActorMovable") == 0
-		|| strcmp(classname, "Class Engine.FoliageFactory") == 0
-		|| strcmp(classname, "Class Engine.FractureManager") == 0
-		|| strcmp(classname, "Class Engine.FracturedStaticMeshActor") == 0
-		|| strcmp(classname, "Class Engine.FracturedStaticMeshPart") == 0
-		|| strcmp(classname, "Class Engine.GameInfo") == 0
-		|| strcmp(classname, "Class Engine.GravityVolume") == 0
-		|| strcmp(classname, "Class Engine.HUD") == 0
-		|| strcmp(classname, "Class Engine.Info") == 0
-		|| strcmp(classname, "Class Engine.InternetInfo") == 0
-		|| strcmp(classname, "Class Engine.Keypoint") == 0
-		|| strcmp(classname, "Class Engine.Ladder") == 0
-		|| strcmp(classname, "Class Engine.LadderVolume") == 0
-		|| strcmp(classname, "Class Engine.LevelStreamingVolume") == 0
-		|| strcmp(classname, "Class Engine.LiftCenter") == 0
-		|| strcmp(classname, "Class Engine.LiftExit") == 0
-		|| strcmp(classname, "Class Engine.LightVolume") == 0
-		|| strcmp(classname, "Class Engine.MantleMarker") == 0
-		|| strcmp(classname, "Class Engine.MaterialInstanceActor") == 0
-		|| strcmp(classname, "Class Engine.Mutator") == 0
-		|| strcmp(classname, "Class Engine.NavigationPoint") == 0
-		|| strcmp(classname, "Class Engine.Note") == 0
-		|| strcmp(classname, "Class Engine.NxGenericForceFieldBrush") == 0
-		|| strcmp(classname, "Class Engine.Objective") == 0
-		|| strcmp(classname, "Class Engine.PathBlockingVolume") == 0
-		|| strcmp(classname, "Class Engine.PathNode") == 0
-		|| strcmp(classname, "Class Engine.PathNode_Dynamic") == 0
-		|| strcmp(classname, "Class Engine.PhysXDestructibleActor") == 0
-		|| strcmp(classname, "Class Engine.PhysXDestructiblePart") == 0
-		|| strcmp(classname, "Class Engine.PhysicsVolume") == 0
-		|| strcmp(classname, "Class Engine.PlayerStart") == 0
-		|| strcmp(classname, "Class Engine.PolyMarker") == 0
-		|| strcmp(classname, "Class Engine.PortalMarker") == 0
-		|| strcmp(classname, "Class Engine.PortalTeleporter") == 0
-		|| strcmp(classname, "Class Engine.PortalVolume") == 0
-		|| strcmp(classname, "Class Engine.PotentialClimbWatcher") == 0
-		|| strcmp(classname, "Class Engine.PrefabInstance") == 0
-		|| strcmp(classname, "Class Engine.RB_BSJointActor") == 0
-		|| strcmp(classname, "Class Engine.RB_ConstraintActor") == 0
-		|| strcmp(classname, "Class Engine.RB_ConstraintActorSpawnable") == 0
-		|| strcmp(classname, "Class Engine.RB_ForceFieldExcludeVolume") == 0
-		|| strcmp(classname, "Class Engine.RB_HingeActor") == 0
-		|| strcmp(classname, "Class Engine.RB_PrismaticActor") == 0
-		|| strcmp(classname, "Class Engine.RB_PulleyJointActor") == 0
-		|| strcmp(classname, "Class Engine.RB_Thruster") == 0
-		|| strcmp(classname, "Class Engine.ReplicationInfo") == 0
-		|| strcmp(classname, "Class Engine.ReverbVolume") == 0
-		|| strcmp(classname, "Class Engine.Route") == 0
-		|| strcmp(classname, "Class Engine.SceneCapture2DActor") == 0
-		|| strcmp(classname, "Class Engine.SceneCaptureActor") == 0
-		|| strcmp(classname, "Class Engine.SceneCaptureCubeMapActor") == 0
-		|| strcmp(classname, "Class Engine.SceneCapturePortalActor") == 0
-		|| strcmp(classname, "Class Engine.SceneCaptureReflectActor") == 0
-		|| strcmp(classname, "Class Engine.ScoreBoard") == 0
-		|| strcmp(classname, "Class Engine.SpeedTreeActor") == 0
-		|| strcmp(classname, "Class Engine.StaticMeshActorBase") == 0
-		|| strcmp(classname, "Class Engine.StaticMeshActorBasedOnExtremeContent") == 0
-		|| strcmp(classname, "Class Engine.StaticMeshCollectionActor") == 0
-		|| strcmp(classname, "Class Engine.TargetPoint") == 0
-		|| strcmp(classname, "Class Engine.Terrain") == 0
-		|| strcmp(classname, "Class Engine.Trigger") == 0
-		|| strcmp(classname, "Class Engine.TriggerStreamingLevel") == 0
-		|| strcmp(classname, "Class Engine.TriggerVolume") == 0
-		|| strcmp(classname, "Class Engine.Trigger_Dynamic") == 0
-		|| strcmp(classname, "Class Engine.Trigger_LOS") == 0
-		|| strcmp(classname, "Class Engine.TriggeredPath") == 0
-		|| strcmp(classname, "Class Engine.Volume") == 0
-		|| strcmp(classname, "Class Engine.VolumePathNode") == 0
-		|| strcmp(classname, "Class Engine.VolumeTimer") == 0
-		|| strcmp(classname, "Class Engine.WaterVolume") == 0
-		|| strcmp(classname, "Class Engine.WindDirectionalSource") == 0
-		|| strcmp(classname, "Class Engine.ZoneInfo") == 0
-		|| strcmp(classname, "Class GameFramework.GameExplosionActor") == 0
-		|| strcmp(classname, "Class GameFramework.GameHUD") == 0
-		|| strcmp(classname, "Class TgGame.TgActionPoint") == 0
-		|| strcmp(classname, "Class TgGame.TgActorFactory") == 0
-		|| strcmp(classname, "Class TgGame.TgAlarmPoint") == 0
-		|| strcmp(classname, "Class TgGame.TgAnnouncer") == 0
-		|| strcmp(classname, "Class TgGame.TgBeaconFactory") == 0
-		|| strcmp(classname, "Class TgGame.TgBotEncounterVolume") == 0
-		|| strcmp(classname, "Class TgGame.TgBotFactory") == 0
-		|| strcmp(classname, "Class TgGame.TgBotFactorySpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgBotStart") == 0
-		|| strcmp(classname, "Class TgGame.TgCollisionProxy") == 0
-		|| strcmp(classname, "Class TgGame.TgCollisionProxy_Vortex") == 0
-		|| strcmp(classname, "Class TgGame.TgCoverPoint") == 0
-		|| strcmp(classname, "Class TgGame.TgDecalActor_Logo") == 0
-		|| strcmp(classname, "Class TgGame.TgDefensePoint") == 0
-		|| strcmp(classname, "Class TgGame.TgDeployableFactory") == 0
-		|| strcmp(classname, "Class TgGame.TgDestructibleFactory") == 0
-		|| strcmp(classname, "Class TgGame.TgDeviceVolume") == 0
-		|| strcmp(classname, "Class TgGame.TgDeviceVolumeInfo") == 0
-		|| strcmp(classname, "Class TgGame.TgDummyActor") == 0
-		|| strcmp(classname, "Class TgGame.TgElevatingVolume") == 0
-		|| strcmp(classname, "Class TgGame.TgGame") == 0
-		|| strcmp(classname, "Class TgGame.TgGame_Arena") == 0
-		|| strcmp(classname, "Class TgGame.TgGame_CTF") == 0
-		|| strcmp(classname, "Class TgGame.TgGame_City") == 0
-		|| strcmp(classname, "Class TgGame.TgGame_Control") == 0
-		|| strcmp(classname, "Class TgGame.TgGame_Defense") == 0
-		|| strcmp(classname, "Class TgGame.TgGame_DualCTF") == 0
-		|| strcmp(classname, "Class TgGame.TgGame_Escort") == 0
-		|| strcmp(classname, "Class TgGame.TgGame_Mission") == 0
-		|| strcmp(classname, "Class TgGame.TgGame_OpenWorld") == 0
-		|| strcmp(classname, "Class TgGame.TgGame_OpenWorldPVE") == 0
-		|| strcmp(classname, "Class TgGame.TgGame_OpenWorldPVP") == 0
-		|| strcmp(classname, "Class TgGame.TgGame_PointRotation") == 0
-		|| strcmp(classname, "Class TgGame.TgGame_Ticket") == 0
-		|| strcmp(classname, "Class TgGame.TgHUD") == 0
-		|| strcmp(classname, "Class TgGame.TgHeightFog") == 0
-		|| strcmp(classname, "Class TgGame.TgHelpAlertVolume") == 0
-		|| strcmp(classname, "Class TgGame.TgHexItemFactory") == 0
-		|| strcmp(classname, "Class TgGame.TgHitDisplayActor") == 0
-		|| strcmp(classname, "Class TgGame.TgHoldSpot") == 0
-		|| strcmp(classname, "Class TgGame.TgMeshAssembly") == 0
-		|| strcmp(classname, "Class TgGame.TgMiniMapActor") == 0
-		|| strcmp(classname, "Class TgGame.TgMissionListVolume") == 0
-		|| strcmp(classname, "Class TgGame.TgModifyPawnPropertiesVolume") == 0
-		|| strcmp(classname, "Class TgGame.TgMorphFX") == 0
-		|| strcmp(classname, "Class TgGame.TgNavigationPoint") == 0
-		|| strcmp(classname, "Class TgGame.TgNavigationPointSpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgNewsStand") == 0
-		|| strcmp(classname, "Class TgGame.TgOmegaVolume") == 0
-		|| strcmp(classname, "Class TgGame.TgPhysAnimTestActor") == 0
-		|| strcmp(classname, "Class TgGame.TgPlayerController") == 0
-		|| strcmp(classname, "Class TgGame.TgPlayerCountVolume") == 0
-		|| strcmp(classname, "Class TgGame.TgPointOfInterest") == 0
-		|| strcmp(classname, "Class TgGame.TgQueuedAnnouncement") == 0
-		|| strcmp(classname, "Class TgGame.TgReferenceArray") == 0
-		|| strcmp(classname, "Class TgGame.TgScoreboard") == 0
-		|| strcmp(classname, "Class TgGame.TgSoundInsulationVolume") == 0
-		|| strcmp(classname, "Class TgGame.TgStartPoint") == 0
-		|| strcmp(classname, "Class TgGame.TgStartpointPortalNetwork") == 0
-		|| strcmp(classname, "Class TgGame.TgStaticMeshActor_Logo") == 0
-		|| strcmp(classname, "Class TgGame.TgTeamBlocker") == 0
-		|| strcmp(classname, "Class TgGame.TgTeamMarker") == 0
-		|| strcmp(classname, "Class TgGame.TgTeamPlayerStart") == 0
-		|| strcmp(classname, "Class TgGame.TgTeamScoreboard") == 0
-		|| strcmp(classname, "Class TgGame.TgTeleportPlayerVolume") == 0
-		|| strcmp(classname, "Class TgGame.TgTrigger_Instance") == 0
-		|| strcmp(classname, "Class TgGame.TgTrigger_Use") == 0
-		|| strcmp(classname, "Class TgGame.TgVolumePathNode") == 0
-		|| strcmp(classname, "Class TgGame.TgWaterVolume") == 0
-		|| strcmp(classname, "Class TgGame.TgWindManager") == 0
+		|| cls == Class_Engine_AIController
+		|| cls == Class_Engine_Admin
+		|| cls == Class_Engine_DebugCameraController
+		|| cls == Class_Engine_DynamicCameraActor
+		|| cls == Class_Engine_AnimatedCamera
+		|| cls == Class_Engine_EmitterCameraLensEffectBase
+		|| cls == Class_Engine_EmitterPool
+		|| cls == Class_Engine_FogVolumeConeDensityInfo
+		|| cls == Class_Engine_FogVolumeConstantDensityInfo
+		|| cls == Class_Engine_FogVolumeLinearHalfspaceDensityInfo
+		|| cls == Class_Engine_FogVolumeSphericalDensityInfo
+		|| cls == Class_Engine_DynamicSMActor_Spawnable
+		|| cls == Class_Engine_InterpActor
+		|| cls == Class_Engine_KActorSpawnable
+		|| cls == Class_Engine_KAssetSpawnable
+		|| cls == Class_Engine_Scout
+		|| cls == Class_Engine_DirectionalLight
+		|| cls == Class_Engine_DirectionalLightToggleable
+		|| cls == Class_Engine_PointLight
+		|| cls == Class_Engine_PointLightMovable
+		|| cls == Class_Engine_PointLightToggleable
+		|| cls == Class_Engine_SkyLight
+		|| cls == Class_Engine_SkyLightToggleable
+		|| cls == Class_Engine_SpotLight
+		|| cls == Class_Engine_SpotLightMovable
+		|| cls == Class_Engine_SpotLightToggleable
+		|| cls == Class_Engine_StaticLightCollectionActor
+		|| cls == Class_Engine_NxCylindricalForceField
+		|| cls == Class_Engine_NxCylindricalForceFieldCapsule
+		|| cls == Class_Engine_NxForceFieldGeneric
+		|| cls == Class_Engine_NxForceFieldRadial
+		|| cls == Class_Engine_NxForceFieldTornado
+		|| cls == Class_Engine_NxGenericForceField
+		|| cls == Class_Engine_NxGenericForceFieldBox
+		|| cls == Class_Engine_NxGenericForceFieldCapsule
+		|| cls == Class_Engine_NxRadialCustomForceField
+		|| cls == Class_Engine_NxRadialForceField
+		|| cls == Class_Engine_NxTornadoAngularForceField
+		|| cls == Class_Engine_NxTornadoAngularForceFieldCapsule
+		|| cls == Class_Engine_NxTornadoForceField
+		|| cls == Class_Engine_NxTornadoForceFieldCapsule
+		|| cls == Class_Engine_Admin
+		|| cls == Class_Engine_SkeletalMeshActorBasedOnExtremeContent
+		|| cls == Class_Engine_SkeletalMeshActorMAT
+		|| cls == Class_Engine_SkeletalMeshActorMATSpawnable
+		|| cls == Class_Engine_SkeletalMeshActorSpawnable
+		|| cls == Class_Engine_Weapon
+		|| cls == Class_GameFramework_GameAIController
+		|| cls == Class_GameFramework_GamePawn
+		|| cls == Class_GameFramework_GamePlayerController
+		|| cls == Class_GameFramework_GameProjectile
+		|| cls == Class_GameFramework_GameVehicle
+		|| cls == Class_GameFramework_GameWeapon
+		|| cls == Class_TgGame_TgAIController
+		|| cls == Class_TgGame_TgBaseObjective_CTFBot
+		|| cls == Class_TgGame_TgBaseObjective_KOTH
+		|| cls == Class_TgGame_TgMissionObjective_Kismet
+		|| cls == Class_TgGame_TgDeploy_Artillery
+		|| cls == Class_TgGame_TgDeploy_ForceField
+		|| cls == Class_TgGame_TgDeploy_Sensor
+		|| cls == Class_TgGame_TgDeploy_SweepSensor
+		|| cls == Class_TgGame_TgDebugCameraController
+		|| cls == Class_TgGame_TgEmitterSpawnable
+		|| cls == Class_TgGame_TgEmitterCrashlanding
+		|| cls == Class_TgGame_TgInterpolatingCameraActor
+		|| cls == Class_TgGame_TgTeleporter
+		|| cls == Class_TgGame_TgPostProcessVolume
+		|| cls == Class_TgGame_TgPickupFactory
+		|| cls == Class_TgGame_TgPickupFactory_Item
+		|| cls == Class_TgGame_TgKActorSpawnable
+		|| cls == Class_TgGame_TgKAssetSpawnable
+		|| cls == Class_TgGame_TgKAsset_ClientSideSim
+		|| cls == Class_TgGame_TgNavRouteIndicator
+		|| cls == Class_TgGame_TgCharacterBuilderLight
+		|| cls == Class_Engine_AccessControl
+		|| cls == Class_Engine_AmbientSound
+		|| cls == Class_Engine_AmbientSoundMovable
+		|| cls == Class_Engine_AmbientSoundNonLoop
+		|| cls == Class_Engine_AmbientSoundSimple
+		|| cls == Class_Engine_AutoLadder
+		|| cls == Class_Engine_BlockingVolume
+		|| cls == Class_Engine_BroadcastHandler
+		|| cls == Class_Engine_Brush
+		|| cls == Class_Engine_Camera
+		|| cls == Class_Engine_ClipMarker
+		|| cls == Class_Engine_ColorScaleVolume
+		|| cls == Class_Engine_CoverGroup
+		|| cls == Class_Engine_CoverLink
+		|| cls == Class_Engine_CoverReplicator
+		|| cls == Class_Engine_CoverSlotMarker
+		|| cls == Class_Engine_CrowdAgent
+		|| cls == Class_Engine_CullDistanceVolume
+		|| cls == Class_Engine_DebugCameraHUD
+		|| cls == Class_Engine_DecalActor
+		|| cls == Class_Engine_DecalActorBase
+		|| cls == Class_Engine_DecalActorMovable
+		|| cls == Class_Engine_DecalManager
+		|| cls == Class_Engine_DefaultPhysicsVolume
+		|| cls == Class_Engine_DoorMarker
+		|| cls == Class_Engine_DynamicAnchor
+		|| cls == Class_Engine_DynamicBlockingVolume
+		|| cls == Class_Engine_DynamicPhysicsVolume
+		|| cls == Class_Engine_DynamicTriggerVolume
+		|| cls == Class_Engine_FileLog
+		|| cls == Class_Engine_FileWriter
+		|| cls == Class_Engine_FluidSurfaceActor
+		|| cls == Class_Engine_FluidSurfaceActorMovable
+		|| cls == Class_Engine_FoliageFactory
+		|| cls == Class_Engine_FractureManager
+		|| cls == Class_Engine_FracturedStaticMeshActor
+		|| cls == Class_Engine_FracturedStaticMeshPart
+		|| cls == Class_Engine_GameInfo
+		|| cls == Class_Engine_GravityVolume
+		|| cls == Class_Engine_HUD
+		|| cls == Class_Engine_Info
+		|| cls == Class_Engine_InternetInfo
+		|| cls == Class_Engine_Keypoint
+		|| cls == Class_Engine_Ladder
+		|| cls == Class_Engine_LadderVolume
+		|| cls == Class_Engine_LevelStreamingVolume
+		|| cls == Class_Engine_LiftCenter
+		|| cls == Class_Engine_LiftExit
+		|| cls == Class_Engine_LightVolume
+		|| cls == Class_Engine_MantleMarker
+		|| cls == Class_Engine_MaterialInstanceActor
+		|| cls == Class_Engine_Mutator
+		|| cls == Class_Engine_NavigationPoint
+		|| cls == Class_Engine_Note
+		|| cls == Class_Engine_NxGenericForceFieldBrush
+		|| cls == Class_Engine_Objective
+		|| cls == Class_Engine_PathBlockingVolume
+		|| cls == Class_Engine_PathNode
+		|| cls == Class_Engine_PathNode_Dynamic
+		|| cls == Class_Engine_PhysXDestructibleActor
+		|| cls == Class_Engine_PhysXDestructiblePart
+		|| cls == Class_Engine_PhysicsVolume
+		|| cls == Class_Engine_PlayerStart
+		|| cls == Class_Engine_PolyMarker
+		|| cls == Class_Engine_PortalMarker
+		|| cls == Class_Engine_PortalTeleporter
+		|| cls == Class_Engine_PortalVolume
+		|| cls == Class_Engine_PotentialClimbWatcher
+		|| cls == Class_Engine_PrefabInstance
+		|| cls == Class_Engine_RB_BSJointActor
+		|| cls == Class_Engine_RB_ConstraintActor
+		|| cls == Class_Engine_RB_ConstraintActorSpawnable
+		|| cls == Class_Engine_RB_ForceFieldExcludeVolume
+		|| cls == Class_Engine_RB_HingeActor
+		|| cls == Class_Engine_RB_PrismaticActor
+		|| cls == Class_Engine_RB_PulleyJointActor
+		|| cls == Class_Engine_RB_Thruster
+		|| cls == Class_Engine_ReplicationInfo
+		|| cls == Class_Engine_ReverbVolume
+		|| cls == Class_Engine_Route
+		|| cls == Class_Engine_SceneCapture2DActor
+		|| cls == Class_Engine_SceneCaptureActor
+		|| cls == Class_Engine_SceneCaptureCubeMapActor
+		|| cls == Class_Engine_SceneCapturePortalActor
+		|| cls == Class_Engine_SceneCaptureReflectActor
+		|| cls == Class_Engine_ScoreBoard
+		|| cls == Class_Engine_SpeedTreeActor
+		|| cls == Class_Engine_StaticMeshActorBase
+		|| cls == Class_Engine_StaticMeshActorBasedOnExtremeContent
+		|| cls == Class_Engine_StaticMeshCollectionActor
+		|| cls == Class_Engine_TargetPoint
+		|| cls == Class_Engine_Terrain
+		|| cls == Class_Engine_Trigger
+		|| cls == Class_Engine_TriggerStreamingLevel
+		|| cls == Class_Engine_TriggerVolume
+		|| cls == Class_Engine_Trigger_Dynamic
+		|| cls == Class_Engine_Trigger_LOS
+		|| cls == Class_Engine_TriggeredPath
+		|| cls == Class_Engine_Volume
+		|| cls == Class_Engine_VolumePathNode
+		|| cls == Class_Engine_VolumeTimer
+		|| cls == Class_Engine_WaterVolume
+		|| cls == Class_Engine_WindDirectionalSource
+		|| cls == Class_Engine_ZoneInfo
+		|| cls == Class_GameFramework_GameExplosionActor
+		|| cls == Class_GameFramework_GameHUD
+		|| cls == Class_TgGame_TgActionPoint
+		|| cls == Class_TgGame_TgActorFactory
+		|| cls == Class_TgGame_TgAlarmPoint
+		|| cls == Class_TgGame_TgAnnouncer
+		|| cls == Class_TgGame_TgBeaconFactory
+		|| cls == Class_TgGame_TgBotEncounterVolume
+		|| cls == Class_TgGame_TgBotFactory
+		|| cls == Class_TgGame_TgBotFactorySpawnable
+		|| cls == Class_TgGame_TgBotStart
+		|| cls == Class_TgGame_TgCollisionProxy
+		|| cls == Class_TgGame_TgCollisionProxy_Vortex
+		|| cls == Class_TgGame_TgCoverPoint
+		|| cls == Class_TgGame_TgDecalActor_Logo
+		|| cls == Class_TgGame_TgDefensePoint
+		|| cls == Class_TgGame_TgDeployableFactory
+		|| cls == Class_TgGame_TgDestructibleFactory
+		|| cls == Class_TgGame_TgDeviceVolume
+		|| cls == Class_TgGame_TgDeviceVolumeInfo
+		|| cls == Class_TgGame_TgDummyActor
+		|| cls == Class_TgGame_TgElevatingVolume
+		|| cls == Class_TgGame_TgGame
+		|| cls == Class_TgGame_TgGame_Arena
+		|| cls == Class_TgGame_TgGame_CTF
+		|| cls == Class_TgGame_TgGame_City
+		|| cls == Class_TgGame_TgGame_Control
+		|| cls == Class_TgGame_TgGame_Defense
+		|| cls == Class_TgGame_TgGame_DualCTF
+		|| cls == Class_TgGame_TgGame_Escort
+		|| cls == Class_TgGame_TgGame_Mission
+		|| cls == Class_TgGame_TgGame_OpenWorld
+		|| cls == Class_TgGame_TgGame_OpenWorldPVE
+		|| cls == Class_TgGame_TgGame_OpenWorldPVP
+		|| cls == Class_TgGame_TgGame_PointRotation
+		|| cls == Class_TgGame_TgGame_Ticket
+		|| cls == Class_TgGame_TgHUD
+		|| cls == Class_TgGame_TgHeightFog
+		|| cls == Class_TgGame_TgHelpAlertVolume
+		|| cls == Class_TgGame_TgHexItemFactory
+		|| cls == Class_TgGame_TgHitDisplayActor
+		|| cls == Class_TgGame_TgHoldSpot
+		|| cls == Class_TgGame_TgMeshAssembly
+		|| cls == Class_TgGame_TgMiniMapActor
+		|| cls == Class_TgGame_TgMissionListVolume
+		|| cls == Class_TgGame_TgModifyPawnPropertiesVolume
+		|| cls == Class_TgGame_TgMorphFX
+		|| cls == Class_TgGame_TgNavigationPoint
+		|| cls == Class_TgGame_TgNavigationPointSpawnable
+		|| cls == Class_TgGame_TgNewsStand
+		|| cls == Class_TgGame_TgOmegaVolume
+		|| cls == Class_TgGame_TgPhysAnimTestActor
+		|| cls == Class_TgGame_TgPlayerController
+		|| cls == Class_TgGame_TgPlayerCountVolume
+		|| cls == Class_TgGame_TgPointOfInterest
+		|| cls == Class_TgGame_TgQueuedAnnouncement
+		|| cls == Class_TgGame_TgReferenceArray
+		|| cls == Class_TgGame_TgScoreboard
+		|| cls == Class_TgGame_TgSoundInsulationVolume
+		|| cls == Class_TgGame_TgStartPoint
+		|| cls == Class_TgGame_TgStartpointPortalNetwork
+		|| cls == Class_TgGame_TgStaticMeshActor_Logo
+		|| cls == Class_TgGame_TgTeamBlocker
+		|| cls == Class_TgGame_TgTeamMarker
+		|| cls == Class_TgGame_TgTeamPlayerStart
+		|| cls == Class_TgGame_TgTeamScoreboard
+		|| cls == Class_TgGame_TgTeleportPlayerVolume
+		|| cls == Class_TgGame_TgTrigger_Instance
+		|| cls == Class_TgGame_TgTrigger_Use
+		|| cls == Class_TgGame_TgVolumePathNode
+		|| cls == Class_TgGame_TgWaterVolume
+		|| cls == Class_TgGame_TgWindManager
 	) {
 		if (actor->RemoteRole == 1) {
 			if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && actor->RemoteRole == 1) {
@@ -2075,16 +2408,16 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			}
 		}
 	}
-	if (strcmp(classname, "Class Engine.AmbientSoundSimpleToggleable") == 0) {
+	if (cls == Class_Engine_AmbientSoundSimpleToggleable) {
 		if (actor->Role == 3) {
 			DO_REP(AAmbientSoundSimpleToggleable, bCurrentlyPlaying, BoolProperty_Engine_AmbientSoundSimpleToggleable_bCurrentlyPlaying);
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.CameraActor") == 0
-		|| strcmp(classname, "Class Engine.DynamicCameraActor") == 0
-		|| strcmp(classname, "Class TgGame.TgInterpolatingCameraActor") == 0
-		|| strcmp(classname, "Class TgGame.TgLevelCamera") == 0
+		cls == Class_Engine_CameraActor
+		|| cls == Class_Engine_DynamicCameraActor
+		|| cls == Class_TgGame_TgInterpolatingCameraActor
+		|| cls == Class_TgGame_TgLevelCamera
 	) {
 		if (actor->Role == 3) {
 			DO_REP(ACameraActor, AspectRatio, FloatProperty_Engine_CameraActor_AspectRatio);
@@ -2092,53 +2425,53 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.Controller") == 0
-		|| strcmp(classname, "Class Engine.AIController") == 0
-		|| strcmp(classname, "Class Engine.Admin") == 0
-		|| strcmp(classname, "Class Engine.DebugCameraController") == 0
-		|| strcmp(classname, "Class Engine.PlayerController") == 0
-		|| strcmp(classname, "Class GameFramework.GameAIController") == 0
-		|| strcmp(classname, "Class GameFramework.GamePlayerController") == 0
-		|| strcmp(classname, "Class TgGame.TgAIController") == 0
-		|| strcmp(classname, "Class TgGame.TgDebugCameraController") == 0
-		|| strcmp(classname, "Class TgGame.TgPlayerController") == 0
+		cls == Class_Engine_Controller
+		|| cls == Class_Engine_AIController
+		|| cls == Class_Engine_Admin
+		|| cls == Class_Engine_DebugCameraController
+		|| cls == Class_Engine_PlayerController
+		|| cls == Class_GameFramework_GameAIController
+		|| cls == Class_GameFramework_GamePlayerController
+		|| cls == Class_TgGame_TgAIController
+		|| cls == Class_TgGame_TgDebugCameraController
+		|| cls == Class_TgGame_TgPlayerController
 	) {
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(AController, Pawn, ObjectProperty_Engine_Controller_Pawn);
 			DO_REP(AController, PlayerReplicationInfo, ObjectProperty_Engine_Controller_PlayerReplicationInfo);
 		}
 	}
-	if (strcmp(classname, "Class Engine.CrowdAttractor") == 0) {
+	if (cls == Class_Engine_CrowdAttractor) {
 		if (actor->bNoDelete) {
 			DO_REP(ACrowdAttractor, bAttractorEnabled, BoolProperty_Engine_CrowdAttractor_bAttractorEnabled);
 		}
 	}
-	if (strcmp(classname, "Class Engine.CrowdReplicationActor") == 0) {
+	if (cls == Class_Engine_CrowdReplicationActor) {
 		if (actor->Role == 3) {
 			DO_REP(ACrowdReplicationActor, DestroyAllCount, IntProperty_Engine_CrowdReplicationActor_DestroyAllCount);
 			DO_REP(ACrowdReplicationActor, Spawner, ObjectProperty_Engine_CrowdReplicationActor_Spawner);
 			DO_REP(ACrowdReplicationActor, bSpawningActive, BoolProperty_Engine_CrowdReplicationActor_bSpawningActive);
 		}
 	}
-	if (strcmp(classname, "Class Engine.DroppedPickup") == 0) {
+	if (cls == Class_Engine_DroppedPickup) {
 		if (actor->Role == 3) {
 			DO_REP(ADroppedPickup, InventoryClass, ClassProperty_Engine_DroppedPickup_InventoryClass);
 			DO_REP(ADroppedPickup, bFadeOut, BoolProperty_Engine_DroppedPickup_bFadeOut);
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.DynamicSMActor") == 0
-		|| strcmp(classname, "Class Engine.DynamicSMActor_Spawnable") == 0
-		|| strcmp(classname, "Class Engine.InterpActor") == 0
-		|| strcmp(classname, "Class Engine.KActor") == 0
-		|| strcmp(classname, "Class Engine.KActorSpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgDoor") == 0
-		|| strcmp(classname, "Class TgGame.TgDynamicDestructible") == 0
-		|| strcmp(classname, "Class TgGame.TgDynamicSMActor") == 0
-		|| strcmp(classname, "Class TgGame.TgInterpActor") == 0
-		|| strcmp(classname, "Class TgGame.TgKActorSpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgKismetTestActor") == 0
-		|| strcmp(classname, "Class TgGame.TgObjectiveAttachActor") == 0
+		cls == Class_Engine_DynamicSMActor
+		|| cls == Class_Engine_DynamicSMActor_Spawnable
+		|| cls == Class_Engine_InterpActor
+		|| cls == Class_Engine_KActor
+		|| cls == Class_Engine_KActorSpawnable
+		|| cls == Class_TgGame_TgDoor
+		|| cls == Class_TgGame_TgDynamicDestructible
+		|| cls == Class_TgGame_TgDynamicSMActor
+		|| cls == Class_TgGame_TgInterpActor
+		|| cls == Class_TgGame_TgKActorSpawnable
+		|| cls == Class_TgGame_TgKismetTestActor
+		|| cls == Class_TgGame_TgObjectiveAttachActor
 	) {
 		if (actor->bNetDirty || actor->bNetInitial) {
 			DO_REP(ADynamicSMActor, ReplicatedMaterial, ObjectProperty_Engine_DynamicSMActor_ReplicatedMaterial);
@@ -2150,44 +2483,44 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.Emitter") == 0
-		|| strcmp(classname, "Class Engine.EmitterCameraLensEffectBase") == 0
-		|| strcmp(classname, "Class Engine.EmitterSpawnable") == 0
-		|| strcmp(classname, "Class Engine.PhysXEmitterSpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgEmitter") == 0
-		|| strcmp(classname, "Class TgGame.TgEmitterCrashlanding") == 0
-		|| strcmp(classname, "Class TgGame.TgEmitterSpawnable") == 0
+		cls == Class_Engine_Emitter
+		|| cls == Class_Engine_EmitterCameraLensEffectBase
+		|| cls == Class_Engine_EmitterSpawnable
+		|| cls == Class_Engine_PhysXEmitterSpawnable
+		|| cls == Class_TgGame_TgEmitter
+		|| cls == Class_TgGame_TgEmitterCrashlanding
+		|| cls == Class_TgGame_TgEmitterSpawnable
 	) {
 		if (actor->bNoDelete) {
 			DO_REP(AEmitter, bCurrentlyActive, BoolProperty_Engine_Emitter_bCurrentlyActive);
 		}
 	}
-	if (strcmp(classname, "Class Engine.EmitterSpawnable") == 0) {
+	if (cls == Class_Engine_EmitterSpawnable) {
 		if (actor->bNetInitial) {
 			DO_REP(AEmitterSpawnable, ParticleTemplate, ObjectProperty_Engine_EmitterSpawnable_ParticleTemplate);
 		}
 	}
-	if (strcmp(classname, "Class Engine.FluidInfluenceActor") == 0) {
+	if (cls == Class_Engine_FluidInfluenceActor) {
 		if (actor->bNetDirty) {
 			DO_REP(AFluidInfluenceActor, bActive, BoolProperty_Engine_FluidInfluenceActor_bActive);
 			DO_REP(AFluidInfluenceActor, bToggled, BoolProperty_Engine_FluidInfluenceActor_bToggled);
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.FogVolumeDensityInfo") == 0
-		|| strcmp(classname, "Class Engine.FogVolumeConeDensityInfo") == 0
-		|| strcmp(classname, "Class Engine.FogVolumeConstantDensityInfo") == 0
-		|| strcmp(classname, "Class Engine.FogVolumeLinearHalfspaceDensityInfo") == 0
-		|| strcmp(classname, "Class Engine.FogVolumeSphericalDensityInfo") == 0
+		cls == Class_Engine_FogVolumeDensityInfo
+		|| cls == Class_Engine_FogVolumeConeDensityInfo
+		|| cls == Class_Engine_FogVolumeConstantDensityInfo
+		|| cls == Class_Engine_FogVolumeLinearHalfspaceDensityInfo
+		|| cls == Class_Engine_FogVolumeSphericalDensityInfo
 	) {
 		if (actor->Role == 3) {
 			DO_REP(AFogVolumeDensityInfo, bEnabled, BoolProperty_Engine_FogVolumeDensityInfo_bEnabled);
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.GameReplicationInfo") == 0
-		|| strcmp(classname, "Class TgGame.TgRepInfo_Game") == 0
-		|| strcmp(classname, "Class TgGame.TgRepInfo_GameOpenWorld") == 0
+		cls == Class_Engine_GameReplicationInfo
+		|| cls == Class_TgGame_TgRepInfo_Game
+		|| cls == Class_TgGame_TgRepInfo_GameOpenWorld
 	) {
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(AGameReplicationInfo, MatchID, IntProperty_Engine_GameReplicationInfo_MatchID);
@@ -2216,22 +2549,22 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(AGameReplicationInfo, bTrackStats, BoolProperty_Engine_GameReplicationInfo_bTrackStats);
 		}
 	}
-	if (strcmp(classname, "Class Engine.HeightFog") == 0) {
+	if (cls == Class_Engine_HeightFog) {
 		if (actor->Role == 3) {
 			DO_REP(AHeightFog, bEnabled, BoolProperty_Engine_HeightFog_bEnabled);
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.Inventory") == 0
-		|| strcmp(classname, "Class Engine.Weapon") == 0
-		|| strcmp(classname, "Class GameFramework.GameWeapon") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_Grenade") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_HitPulse") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_MeleeDualWield") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_Morale") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_NewMelee") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_NewRange") == 0
+		cls == Class_Engine_Inventory
+		|| cls == Class_Engine_Weapon
+		|| cls == Class_GameFramework_GameWeapon
+		|| cls == Class_TgGame_TgDevice
+		|| cls == Class_TgGame_TgDevice_Grenade
+		|| cls == Class_TgGame_TgDevice_HitPulse
+		|| cls == Class_TgGame_TgDevice_MeleeDualWield
+		|| cls == Class_TgGame_TgDevice_Morale
+		|| cls == Class_TgGame_TgDevice_NewMelee
+		|| cls == Class_TgGame_TgDevice_NewRange
 	) {
 		if (((actor->Role == 3) && actor->bNetDirty) && actor->bNetOwner) {
 			DO_REP(AInventory, InvManager, ObjectProperty_Engine_Inventory_InvManager);
@@ -2239,17 +2572,17 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.InventoryManager") == 0
-		|| strcmp(classname, "Class TgGame.TgInventoryManager") == 0
+		cls == Class_Engine_InventoryManager
+		|| cls == Class_TgGame_TgInventoryManager
 	) {
 		if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bNetOwner) {
 			DO_REP(AInventoryManager, InventoryChain, ObjectProperty_Engine_InventoryManager_InventoryChain);
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.KActor") == 0
-		|| strcmp(classname, "Class Engine.KActorSpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgKActorSpawnable") == 0
+		cls == Class_Engine_KActor
+		|| cls == Class_Engine_KActorSpawnable
+		|| cls == Class_TgGame_TgKActorSpawnable
 	) {
 		if (!((AKActor*)actor)->bNeedsRBStateReplication && actor->Role == 3) {
 			DO_REP(AKActor, RBState, StructProperty_Engine_KActor_RBState);
@@ -2260,41 +2593,41 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.KAsset") == 0
-		|| strcmp(classname, "Class Engine.KAssetSpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgKAssetSpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgKAsset_ClientSideSim") == 0
+		cls == Class_Engine_KAsset
+		|| cls == Class_Engine_KAssetSpawnable
+		|| cls == Class_TgGame_TgKAssetSpawnable
+		|| cls == Class_TgGame_TgKAsset_ClientSideSim
 	) {
 		if (actor->Role == 3) {
 			DO_REP(AKAsset, ReplicatedMesh, ObjectProperty_Engine_KAsset_ReplicatedMesh);
 			DO_REP(AKAsset, ReplicatedPhysAsset, ObjectProperty_Engine_KAsset_ReplicatedPhysAsset);
 		}
 	}
-	if (strcmp(classname, "Class Engine.LensFlareSource") == 0) {
+	if (cls == Class_Engine_LensFlareSource) {
 		if (actor->bNoDelete) {
 			DO_REP(ALensFlareSource, bCurrentlyActive, BoolProperty_Engine_LensFlareSource_bCurrentlyActive);
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.Light") == 0
-		|| strcmp(classname, "Class Engine.DirectionalLight") == 0
-		|| strcmp(classname, "Class Engine.DirectionalLightToggleable") == 0
-		|| strcmp(classname, "Class Engine.PointLight") == 0
-		|| strcmp(classname, "Class Engine.PointLightMovable") == 0
-		|| strcmp(classname, "Class Engine.PointLightToggleable") == 0
-		|| strcmp(classname, "Class Engine.SkyLight") == 0
-		|| strcmp(classname, "Class Engine.SkyLightToggleable") == 0
-		|| strcmp(classname, "Class Engine.SpotLight") == 0
-		|| strcmp(classname, "Class Engine.SpotLightMovable") == 0
-		|| strcmp(classname, "Class Engine.SpotLightToggleable") == 0
-		|| strcmp(classname, "Class Engine.StaticLightCollectionActor") == 0
-		|| strcmp(classname, "Class TgGame.TgCharacterBuilderLight") == 0
+		cls == Class_Engine_Light
+		|| cls == Class_Engine_DirectionalLight
+		|| cls == Class_Engine_DirectionalLightToggleable
+		|| cls == Class_Engine_PointLight
+		|| cls == Class_Engine_PointLightMovable
+		|| cls == Class_Engine_PointLightToggleable
+		|| cls == Class_Engine_SkyLight
+		|| cls == Class_Engine_SkyLightToggleable
+		|| cls == Class_Engine_SpotLight
+		|| cls == Class_Engine_SpotLightMovable
+		|| cls == Class_Engine_SpotLightToggleable
+		|| cls == Class_Engine_StaticLightCollectionActor
+		|| cls == Class_TgGame_TgCharacterBuilderLight
 	) {
 		if (actor->Role == 3) {
 			DO_REP(ALight, bEnabled, BoolProperty_Engine_Light_bEnabled);
 		}
 	}
-	if (strcmp(classname, "Class Engine.MatineeActor") == 0) {
+	if (cls == Class_Engine_MatineeActor) {
 		if (actor->bNetInitial && actor->Role == 3) {
 			DO_REP(AMatineeActor, InterpAction, ObjectProperty_Engine_MatineeActor_InterpAction);
 		}
@@ -2307,21 +2640,21 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.NxForceField") == 0
-		|| strcmp(classname, "Class Engine.NxCylindricalForceField") == 0
-		|| strcmp(classname, "Class Engine.NxCylindricalForceFieldCapsule") == 0
-		|| strcmp(classname, "Class Engine.NxForceFieldGeneric") == 0
-		|| strcmp(classname, "Class Engine.NxForceFieldRadial") == 0
-		|| strcmp(classname, "Class Engine.NxForceFieldTornado") == 0
-		|| strcmp(classname, "Class Engine.NxGenericForceField") == 0
-		|| strcmp(classname, "Class Engine.NxGenericForceFieldBox") == 0
-		|| strcmp(classname, "Class Engine.NxGenericForceFieldCapsule") == 0
-		|| strcmp(classname, "Class Engine.NxRadialCustomForceField") == 0
-		|| strcmp(classname, "Class Engine.NxRadialForceField") == 0
-		|| strcmp(classname, "Class Engine.NxTornadoAngularForceField") == 0
-		|| strcmp(classname, "Class Engine.NxTornadoAngularForceFieldCapsule") == 0
-		|| strcmp(classname, "Class Engine.NxTornadoForceField") == 0
-		|| strcmp(classname, "Class Engine.NxTornadoForceFieldCapsule") == 0
+		cls == Class_Engine_NxForceField
+		|| cls == Class_Engine_NxCylindricalForceField
+		|| cls == Class_Engine_NxCylindricalForceFieldCapsule
+		|| cls == Class_Engine_NxForceFieldGeneric
+		|| cls == Class_Engine_NxForceFieldRadial
+		|| cls == Class_Engine_NxForceFieldTornado
+		|| cls == Class_Engine_NxGenericForceField
+		|| cls == Class_Engine_NxGenericForceFieldBox
+		|| cls == Class_Engine_NxGenericForceFieldCapsule
+		|| cls == Class_Engine_NxRadialCustomForceField
+		|| cls == Class_Engine_NxRadialForceField
+		|| cls == Class_Engine_NxTornadoAngularForceField
+		|| cls == Class_Engine_NxTornadoAngularForceFieldCapsule
+		|| cls == Class_Engine_NxTornadoForceField
+		|| cls == Class_Engine_NxTornadoForceFieldCapsule
 	) {
 		if (actor->bNetDirty) {
 			DO_REP(ANxForceField, bForceActive, BoolProperty_Engine_NxForceField_bForceActive);
@@ -2331,74 +2664,74 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 
 
 	if (
-		strcmp(classname, "Class Engine.Pawn") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_AVCompositeWalker") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Ambush") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_AndroidMinion") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_AttackTransport") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Boss") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Boss_Destroyer") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Brawler") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_CTR") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Character") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_ColonyEye") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Destructible") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Detonator") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Dismantler") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_DuneCommander") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Elite_Alchemist") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Elite_Assassin") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_EscortRobot") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_FlyingBoss") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_GroundPetA") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Guardian") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Hover") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_HoverShieldSphere") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Hunter") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Inquisitor") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Interact_NPC") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Iris") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Juggernaut") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Marauder") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_NPC") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_NewWasp") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Raptor") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Reaper") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_RecursiveSpawner") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Remote") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Robot") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Scanner") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_ScannerRecursive") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Siege") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SiegeBarrage") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SiegeHover") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SiegeRapidFire") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Sniper") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SonoranCommander") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SupportForeman") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Switchblade") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Tentacle") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_ThinkTank") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TreadRobot") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Turret") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretAVAFlak") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretAVARocket") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretFlak") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretFlame") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretPlasma") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_UberWalker") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Vanguard") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_VanityPet") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Vulcan") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Warlord") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_WaspSpawner") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Widow") == 0
-		|| strcmp(classname, "Class Engine.Scout") == 0
-		|| strcmp(classname, "Class Engine.Vehicle") == 0
-		|| strcmp(classname, "Class Engine.SVehicle") == 0
-		|| strcmp(classname, "Class GameFramework.GamePawn") == 0
-		|| strcmp(classname, "Class GameFramework.GameVehicle") == 0
+		cls == Class_Engine_Pawn
+		|| cls == Class_TgGame_TgPawn
+		|| cls == Class_TgGame_TgPawn_AVCompositeWalker
+		|| cls == Class_TgGame_TgPawn_Ambush
+		|| cls == Class_TgGame_TgPawn_AndroidMinion
+		|| cls == Class_TgGame_TgPawn_AttackTransport
+		|| cls == Class_TgGame_TgPawn_Boss
+		|| cls == Class_TgGame_TgPawn_Boss_Destroyer
+		|| cls == Class_TgGame_TgPawn_Brawler
+		|| cls == Class_TgGame_TgPawn_CTR
+		|| cls == Class_TgGame_TgPawn_Character
+		|| cls == Class_TgGame_TgPawn_ColonyEye
+		|| cls == Class_TgGame_TgPawn_Destructible
+		|| cls == Class_TgGame_TgPawn_Detonator
+		|| cls == Class_TgGame_TgPawn_Dismantler
+		|| cls == Class_TgGame_TgPawn_DuneCommander
+		|| cls == Class_TgGame_TgPawn_Elite_Alchemist
+		|| cls == Class_TgGame_TgPawn_Elite_Assassin
+		|| cls == Class_TgGame_TgPawn_EscortRobot
+		|| cls == Class_TgGame_TgPawn_FlyingBoss
+		|| cls == Class_TgGame_TgPawn_GroundPetA
+		|| cls == Class_TgGame_TgPawn_Guardian
+		|| cls == Class_TgGame_TgPawn_Hover
+		|| cls == Class_TgGame_TgPawn_HoverShieldSphere
+		|| cls == Class_TgGame_TgPawn_Hunter
+		|| cls == Class_TgGame_TgPawn_Inquisitor
+		|| cls == Class_TgGame_TgPawn_Interact_NPC
+		|| cls == Class_TgGame_TgPawn_Iris
+		|| cls == Class_TgGame_TgPawn_Juggernaut
+		|| cls == Class_TgGame_TgPawn_Marauder
+		|| cls == Class_TgGame_TgPawn_NPC
+		|| cls == Class_TgGame_TgPawn_NewWasp
+		|| cls == Class_TgGame_TgPawn_Raptor
+		|| cls == Class_TgGame_TgPawn_Reaper
+		|| cls == Class_TgGame_TgPawn_RecursiveSpawner
+		|| cls == Class_TgGame_TgPawn_Remote
+		|| cls == Class_TgGame_TgPawn_Robot
+		|| cls == Class_TgGame_TgPawn_Scanner
+		|| cls == Class_TgGame_TgPawn_ScannerRecursive
+		|| cls == Class_TgGame_TgPawn_Siege
+		|| cls == Class_TgGame_TgPawn_SiegeBarrage
+		|| cls == Class_TgGame_TgPawn_SiegeHover
+		|| cls == Class_TgGame_TgPawn_SiegeRapidFire
+		|| cls == Class_TgGame_TgPawn_Sniper
+		|| cls == Class_TgGame_TgPawn_SonoranCommander
+		|| cls == Class_TgGame_TgPawn_SupportForeman
+		|| cls == Class_TgGame_TgPawn_Switchblade
+		|| cls == Class_TgGame_TgPawn_Tentacle
+		|| cls == Class_TgGame_TgPawn_ThinkTank
+		|| cls == Class_TgGame_TgPawn_TreadRobot
+		|| cls == Class_TgGame_TgPawn_Turret
+		|| cls == Class_TgGame_TgPawn_TurretAVAFlak
+		|| cls == Class_TgGame_TgPawn_TurretAVARocket
+		|| cls == Class_TgGame_TgPawn_TurretFlak
+		|| cls == Class_TgGame_TgPawn_TurretFlame
+		|| cls == Class_TgGame_TgPawn_TurretPlasma
+		|| cls == Class_TgGame_TgPawn_UberWalker
+		|| cls == Class_TgGame_TgPawn_Vanguard
+		|| cls == Class_TgGame_TgPawn_VanityPet
+		|| cls == Class_TgGame_TgPawn_Vulcan
+		|| cls == Class_TgGame_TgPawn_Warlord
+		|| cls == Class_TgGame_TgPawn_WaspSpawner
+		|| cls == Class_TgGame_TgPawn_Widow
+		|| cls == Class_Engine_Scout
+		|| cls == Class_Engine_Vehicle
+		|| cls == Class_Engine_SVehicle
+		|| cls == Class_GameFramework_GamePawn
+		|| cls == Class_GameFramework_GameVehicle
 	) {
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(APawn, DrivenVehicle, ObjectProperty_Engine_Pawn_DrivenVehicle);
@@ -2432,15 +2765,15 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(APawn, RemoteViewPitch, ByteProperty_Engine_Pawn_RemoteViewPitch);
 		}
 	}
-	if (strcmp(classname, "Class Engine.PhysXEmitterSpawnable") == 0) {
+	if (cls == Class_Engine_PhysXEmitterSpawnable) {
 		if (actor->bNetInitial) {
 			DO_REP(APhysXEmitterSpawnable, ParticleTemplate, ObjectProperty_Engine_PhysXEmitterSpawnable_ParticleTemplate);
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.PickupFactory") == 0
-		|| strcmp(classname, "Class TgGame.TgPickupFactory") == 0
-		|| strcmp(classname, "Class TgGame.TgPickupFactory_Item") == 0
+		cls == Class_Engine_PickupFactory
+		|| cls == Class_TgGame_TgPickupFactory
+		|| cls == Class_TgGame_TgPickupFactory_Item
 	) {
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(APickupFactory, bPickupHidden, BoolProperty_Engine_PickupFactory_bPickupHidden);
@@ -2450,12 +2783,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.PlayerController") == 0
-		|| strcmp(classname, "Class Engine.Admin") == 0
-		|| strcmp(classname, "Class Engine.DebugCameraController") == 0
-		|| strcmp(classname, "Class GameFramework.GamePlayerController") == 0
-		|| strcmp(classname, "Class TgGame.TgDebugCameraController") == 0
-		|| strcmp(classname, "Class TgGame.TgPlayerController") == 0
+		cls == Class_Engine_PlayerController
+		|| cls == Class_Engine_Admin
+		|| cls == Class_Engine_DebugCameraController
+		|| cls == Class_GameFramework_GamePlayerController
+		|| cls == Class_TgGame_TgDebugCameraController
+		|| cls == Class_TgGame_TgPlayerController
 	) {
 		if (((actor->bNetOwner && actor->Role == 3) && ((APlayerController*)actor)->ViewTarget != ((APlayerController*)actor)->Pawn) && ((APlayerController*)actor)->ViewTarget != NULL) {
 			DO_REP(APlayerController, TargetEyeHeight, FloatProperty_Engine_PlayerController_TargetEyeHeight);
@@ -2463,8 +2796,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.PlayerReplicationInfo") == 0
-		|| strcmp(classname, "Class TgGame.TgRepInfo_Player") == 0
+		cls == Class_Engine_PlayerReplicationInfo
+		|| cls == Class_TgGame_TgRepInfo_Player
 	) {
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(APlayerReplicationInfo, Deaths, FloatProperty_Engine_PlayerReplicationInfo_Deaths);
@@ -2497,58 +2830,58 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.PostProcessVolume") == 0
-		|| strcmp(classname, "Class TgGame.TgPostProcessVolume") == 0
+		cls == Class_Engine_PostProcessVolume
+		|| cls == Class_TgGame_TgPostProcessVolume
 	) {
 		if (actor->bNetDirty) {
 			DO_REP(APostProcessVolume, bEnabled, BoolProperty_Engine_PostProcessVolume_bEnabled);
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.Projectile") == 0
-		|| strcmp(classname, "Class GameFramework.GameProjectile") == 0
-		|| strcmp(classname, "Class TgGame.TgProjectile") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Teleporter") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_StraightTeleporter") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Rocket") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Net") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Mortar") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Missile") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Grenade") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Grapple") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_FreeGrenade") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Deployable") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Bounce") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Bot") == 0
+		cls == Class_Engine_Projectile
+		|| cls == Class_GameFramework_GameProjectile
+		|| cls == Class_TgGame_TgProjectile
+		|| cls == Class_TgGame_TgProj_Teleporter
+		|| cls == Class_TgGame_TgProj_StraightTeleporter
+		|| cls == Class_TgGame_TgProj_Rocket
+		|| cls == Class_TgGame_TgProj_Net
+		|| cls == Class_TgGame_TgProj_Mortar
+		|| cls == Class_TgGame_TgProj_Missile
+		|| cls == Class_TgGame_TgProj_Grenade
+		|| cls == Class_TgGame_TgProj_Grapple
+		|| cls == Class_TgGame_TgProj_FreeGrenade
+		|| cls == Class_TgGame_TgProj_Deployable
+		|| cls == Class_TgGame_TgProj_Bounce
+		|| cls == Class_TgGame_TgProj_Bot
 	) {
 		if ((actor->Role == 3) && actor->bNetInitial) {
 			DO_REP(AProjectile, MaxSpeed, FloatProperty_Engine_Projectile_MaxSpeed);
 			DO_REP(AProjectile, Speed, FloatProperty_Engine_Projectile_Speed);
 		}
 	}
-	if (strcmp(classname, "Class Engine.RB_CylindricalForceActor") == 0) {
+	if (cls == Class_Engine_RB_CylindricalForceActor) {
 		if (actor->bNetDirty) {
 			DO_REP(ARB_CylindricalForceActor, bForceActive, BoolProperty_Engine_RB_CylindricalForceActor_bForceActive);
 		}
 	}
-	if (strcmp(classname, "Class Engine.RB_LineImpulseActor") == 0) {
+	if (cls == Class_Engine_RB_LineImpulseActor) {
 		if (actor->bNetDirty) {
 			DO_REP(ARB_LineImpulseActor, ImpulseCount, ByteProperty_Engine_RB_LineImpulseActor_ImpulseCount);
 		}
 	}
-	if (strcmp(classname, "Class Engine.RB_RadialForceActor") == 0) {
+	if (cls == Class_Engine_RB_RadialForceActor) {
 		if (actor->bNetDirty) {
 			DO_REP(ARB_RadialForceActor, bForceActive, BoolProperty_Engine_RB_RadialForceActor_bForceActive);
 		}
 	}
-	if (strcmp(classname, "Class Engine.RB_RadialImpulseActor") == 0) {
+	if (cls == Class_Engine_RB_RadialImpulseActor) {
 		if (actor->bNetDirty) {
 			DO_REP(ARB_RadialImpulseActor, ImpulseCount, ByteProperty_Engine_RB_RadialImpulseActor_ImpulseCount);
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.SVehicle") == 0
-		|| strcmp(classname, "Class GameFramework.GameVehicle") == 0
+		cls == Class_Engine_SVehicle
+		|| cls == Class_GameFramework_GameVehicle
 	) {
 		if (actor->Physics == 10) {
 			DO_REP(ASVehicle, MaxSpeed, FloatProperty_Engine_SVehicle_MaxSpeed);
@@ -2556,22 +2889,22 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.SkeletalMeshActor") == 0
-		|| strcmp(classname, "Class Engine.SkeletalMeshActorBasedOnExtremeContent") == 0
-		|| strcmp(classname, "Class Engine.SkeletalMeshActorMAT") == 0
-		|| strcmp(classname, "Class Engine.SkeletalMeshActorMATSpawnable") == 0
-		|| strcmp(classname, "Class Engine.SkeletalMeshActorSpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgNavRouteIndicator") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActorGenericUIPreview") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActorNPC") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActorNPCVendor") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActorSpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor_CharacterBuilder") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor_CharacterBuilderSpawnable") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor_Composite") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor_EquipScreen") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor_MeleePreVis") == 0
-		|| strcmp(classname, "Class TgGame.TgSkeletalMeshActor") == 0
+		cls == Class_Engine_SkeletalMeshActor
+		|| cls == Class_Engine_SkeletalMeshActorBasedOnExtremeContent
+		|| cls == Class_Engine_SkeletalMeshActorMAT
+		|| cls == Class_Engine_SkeletalMeshActorMATSpawnable
+		|| cls == Class_Engine_SkeletalMeshActorSpawnable
+		|| cls == Class_TgGame_TgNavRouteIndicator
+		|| cls == Class_TgGame_TgSkeletalMeshActorGenericUIPreview
+		|| cls == Class_TgGame_TgSkeletalMeshActorNPC
+		|| cls == Class_TgGame_TgSkeletalMeshActorNPCVendor
+		|| cls == Class_TgGame_TgSkeletalMeshActorSpawnable
+		|| cls == Class_TgGame_TgSkeletalMeshActor_CharacterBuilder
+		|| cls == Class_TgGame_TgSkeletalMeshActor_CharacterBuilderSpawnable
+		|| cls == Class_TgGame_TgSkeletalMeshActor_Composite
+		|| cls == Class_TgGame_TgSkeletalMeshActor_EquipScreen
+		|| cls == Class_TgGame_TgSkeletalMeshActor_MeleePreVis
+		|| cls == Class_TgGame_TgSkeletalMeshActor
 	) {
 		if (actor->Role == 3) {
 			DO_REP(ASkeletalMeshActor, ReplicatedMaterial, ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMaterial);
@@ -2579,8 +2912,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.TeamInfo") == 0
-		|| strcmp(classname, "Class TgGame.TgRepInfo_TaskForce") == 0
+		cls == Class_Engine_TeamInfo
+		|| cls == Class_TgGame_TgRepInfo_TaskForce
 	) {
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(ATeamInfo, Score, FloatProperty_Engine_TeamInfo_Score);
@@ -2591,8 +2924,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.Teleporter") == 0
-		|| strcmp(classname, "Class TgGame.TgTeleporter") == 0
+		cls == Class_Engine_Teleporter
+		|| cls == Class_TgGame_TgTeleporter
 	) {
 		if (actor->Role == 3) {
 			DO_REP(ATeleporter, URL, StrProperty_Engine_Teleporter_URL);
@@ -2608,9 +2941,9 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class Engine.Vehicle") == 0
-		|| strcmp(classname, "Class Engine.SVehicle") == 0
-		|| strcmp(classname, "Class GameFramework.GameVehicle") == 0
+		cls == Class_Engine_Vehicle
+		|| cls == Class_Engine_SVehicle
+		|| cls == Class_GameFramework_GameVehicle
 	) {
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(AVehicle, bDriving, BoolProperty_Engine_Vehicle_bDriving);
@@ -2619,7 +2952,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(AVehicle, Driver, ObjectProperty_Engine_Vehicle_Driver);
 		}
 	}
-	if (strcmp(classname, "Class Engine.WorldInfo") == 0) {
+	if (cls == Class_Engine_WorldInfo) {
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(AWorldInfo, Pauser, ObjectProperty_Engine_WorldInfo_Pauser);
 			DO_REP(AWorldInfo, ReplicatedMusicTrack, StructProperty_Engine_WorldInfo_ReplicatedMusicTrack);
@@ -2628,35 +2961,35 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(AWorldInfo, bHighPriorityLoading, BoolProperty_Engine_WorldInfo_bHighPriorityLoading);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgChestActor") == 0) {
+	if (cls == Class_TgGame_TgChestActor) {
 		if ((actor->Role == 3) && actor->bNetDirty) {
 			DO_REP(ATgChestActor, r_eChestState, ByteProperty_TgGame_TgChestActor_r_eChestState);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgDeploy_BeaconEntrance") == 0) {
+	if (cls == Class_TgGame_TgDeploy_BeaconEntrance) {
 		if (actor->Role == 3) {
 			DO_REP(ATgDeploy_BeaconEntrance, r_bActive, BoolProperty_TgGame_TgDeploy_BeaconEntrance_r_bActive);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgDeploy_DestructibleCover") == 0) {
+	if (cls == Class_TgGame_TgDeploy_DestructibleCover) {
 		if (actor->Role == 3) {
 			DO_REP(ATgDeploy_DestructibleCover, r_bHasFired, BoolProperty_TgGame_TgDeploy_DestructibleCover_r_bHasFired);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgDeploy_Sensor") == 0) {
+	if (cls == Class_TgGame_TgDeploy_Sensor) {
 		if (actor->Role == 3) {
 			DO_REP(ATgDeploy_Sensor, r_nSensorAudioWarning, IntProperty_TgGame_TgDeploy_Sensor_r_nSensorAudioWarning);
 			DO_REP(ATgDeploy_Sensor, r_nTouchedPlayerCount, IntProperty_TgGame_TgDeploy_Sensor_r_nTouchedPlayerCount);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgDeployable") == 0
-		|| strcmp(classname, "Class TgGame.TgDeploy_Artillery") == 0
-		|| strcmp(classname, "Class TgGame.TgDeploy_Beacon") == 0
-		|| strcmp(classname, "Class TgGame.TgDeploy_BeaconEntrance") == 0
-		|| strcmp(classname, "Class TgGame.TgDeploy_DestructibleCover") == 0
-		|| strcmp(classname, "Class TgGame.TgDeploy_ForceField") == 0
-		|| strcmp(classname, "Class TgGame.TgDeploy_Sensor") == 0
-		|| strcmp(classname, "Class TgGame.TgDeploy_SweepSensor") == 0
+	if (cls == Class_TgGame_TgDeployable
+		|| cls == Class_TgGame_TgDeploy_Artillery
+		|| cls == Class_TgGame_TgDeploy_Beacon
+		|| cls == Class_TgGame_TgDeploy_BeaconEntrance
+		|| cls == Class_TgGame_TgDeploy_DestructibleCover
+		|| cls == Class_TgGame_TgDeploy_ForceField
+		|| cls == Class_TgGame_TgDeploy_Sensor
+		|| cls == Class_TgGame_TgDeploy_SweepSensor
 	) {
 		if (actor->Role == 3) {
 			DO_REP(ATgDeployable, r_bDelayDeployed, BoolProperty_TgGame_TgDeployable_r_bDelayDeployed);
@@ -2691,13 +3024,13 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class TgGame.TgDevice") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_Grenade") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_HitPulse") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_Morale") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_NewMelee") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_MeleeDualWield") == 0
-		|| strcmp(classname, "Class TgGame.TgDevice_NewRange") == 0
+		cls == Class_TgGame_TgDevice
+		|| cls == Class_TgGame_TgDevice_Grenade
+		|| cls == Class_TgGame_TgDevice_HitPulse
+		|| cls == Class_TgGame_TgDevice_Morale
+		|| cls == Class_TgGame_TgDevice_NewMelee
+		|| cls == Class_TgGame_TgDevice_MeleeDualWield
+		|| cls == Class_TgGame_TgDevice_NewRange
 	) {
 		if (((actor->Role == 3) && actor->bNetDirty) && actor->bNetOwner) {
 			DO_REP(AInventory, InvManager, ObjectProperty_Engine_Inventory_InvManager);
@@ -2718,45 +3051,45 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgDevice, r_nQualityValueId, IntProperty_TgGame_TgDevice_r_nQualityValueId);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgDevice_Morale") == 0) {
+	if (cls == Class_TgGame_TgDevice_Morale) {
 		if (actor->Role == 3) {
 			DO_REP(ATgDevice_Morale, r_bIsActivelyFiring, BoolProperty_TgGame_TgDevice_Morale_r_bIsActivelyFiring);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgDoor") == 0) {
+	if (cls == Class_TgGame_TgDoor) {
 		if ((actor->Role == 3) && actor->bNetDirty) {
 			DO_REP(ATgDoor, r_bOpen, BoolProperty_TgGame_TgDoor_r_bOpen);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgDoorMarker") == 0) {
+	if (cls == Class_TgGame_TgDoorMarker) {
 		if (actor->Role == 3) {
 			DO_REP(ATgDoorMarker, r_eStatus, ByteProperty_TgGame_TgDoorMarker_r_eStatus);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgDroppedItem") == 0) {
+	if (cls == Class_TgGame_TgDroppedItem) {
 		if ((actor->Role == 3) && actor->bNetDirty) {
 			DO_REP(ATgDroppedItem, r_nItemId, IntProperty_TgGame_TgDroppedItem_r_nItemId);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgDynamicDestructible") == 0) {
+	if (cls == Class_TgGame_TgDynamicDestructible) {
 		if ((actor->Role == 3) && actor->bNetInitial) {
 			DO_REP(ATgDynamicDestructible, r_nDestructibleId, IntProperty_TgGame_TgDynamicDestructible_r_nDestructibleId);
 			DO_REP(ATgDynamicDestructible, r_pFactory, ObjectProperty_TgGame_TgDynamicDestructible_r_pFactory);
 		}
 	}
 	if (
-		strcmp(classname, "Class TgGame.TgDynamicSMActor") == 0
-		|| strcmp(classname, "Class TgGame.TgDynamicDestructible") == 0
-		|| strcmp(classname, "Class TgGame.TgObjectiveAttachActor") == 0
+		cls == Class_TgGame_TgDynamicSMActor
+		|| cls == Class_TgGame_TgDynamicDestructible
+		|| cls == Class_TgGame_TgObjectiveAttachActor
 	) {
 		if ((actor->Role == 3) && actor->bNetInitial) {
 			DO_REP(ATgDynamicSMActor, m_sAssembly, StrProperty_TgGame_TgDynamicSMActor_m_sAssembly);
 		}
 	}
 	if (
-		strcmp(classname, "Class TgGame.TgDynamicSMActor") == 0
-		|| strcmp(classname, "Class TgGame.TgDynamicDestructible") == 0
-		|| strcmp(classname, "Class TgGame.TgObjectiveAttachActor") == 0
+		cls == Class_TgGame_TgDynamicSMActor
+		|| cls == Class_TgGame_TgDynamicDestructible
+		|| cls == Class_TgGame_TgObjectiveAttachActor
 	) {
 
 		if ((actor->Role == 3) && actor->bNetInitial) {
@@ -2766,7 +3099,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgDynamicSMActor, r_nHealth, IntProperty_TgGame_TgDynamicSMActor_r_nHealth);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgEffectManager") == 0) {
+	if (cls == Class_TgGame_TgEffectManager) {
 		if (actor->Role == 3) {
 			DO_REP_ARRAY(0x20, ATgEffectManager, r_EventQueue, StructProperty_TgGame_TgEffectManager_r_EventQueue);
 			DO_REP_ARRAY(0x10, ATgEffectManager, r_ManagedEffectList, StructProperty_TgGame_TgEffectManager_r_ManagedEffectList);
@@ -2776,18 +3109,18 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgEffectManager, r_nNextQueueIndex, IntProperty_TgGame_TgEffectManager_r_nNextQueueIndex);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgEmitter") == 0) {
+	if (cls == Class_TgGame_TgEmitter) {
 		if (actor->Role == 3) {
 			DO_REP(ATgEmitter, BoneName, NameProperty_TgGame_TgEmitter_BoneName);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgFlagCaptureVolume") == 0) {
+	if (cls == Class_TgGame_TgFlagCaptureVolume) {
 		if (actor->Role == 3) {
 			DO_REP(ATgFlagCaptureVolume, r_eCoalition, ByteProperty_TgGame_TgFlagCaptureVolume_r_eCoalition);
 			DO_REP(ATgFlagCaptureVolume, r_nTaskForce, ByteProperty_TgGame_TgFlagCaptureVolume_r_nTaskForce);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgFracturedStaticMeshActor") == 0) {
+	if (cls == Class_TgGame_TgFracturedStaticMeshActor) {
 		if ((actor->Role == 3) && actor->bNetInitial) {
 			DO_REP(ATgFracturedStaticMeshActor, r_EffectManager, ObjectProperty_TgGame_TgFracturedStaticMeshActor_r_EffectManager);
 			DO_REP(ATgFracturedStaticMeshActor, r_TakeHitNotifier, IntProperty_TgGame_TgFracturedStaticMeshActor_r_TakeHitNotifier);
@@ -2800,41 +3133,41 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgFracturedStaticMeshActor, r_vTakeHitMomentum, StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitMomentum);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgHexLandMarkActor") == 0) {
+	if (cls == Class_TgGame_TgHexLandMarkActor) {
 		if ((actor->Role == 3) && actor->bNetInitial) {
 			DO_REP(ATgHexLandMarkActor, r_nMeshAsmId, IntProperty_TgGame_TgHexLandMarkActor_r_nMeshAsmId);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgInterpActor") == 0) {
+	if (cls == Class_TgGame_TgInterpActor) {
 		if (actor->Role == 3) {
 			DO_REP(ATgInterpActor, r_sCurrState, StrProperty_TgGame_TgInterpActor_r_sCurrState);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgInventoryManager") == 0) {
+	if (cls == Class_TgGame_TgInventoryManager) {
 		if (actor->Role == 3) {
 			DO_REP(ATgInventoryManager, r_ItemCount, IntProperty_TgGame_TgInventoryManager_r_ItemCount);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgKismetTestActor") == 0) {
+	if (cls == Class_TgGame_TgKismetTestActor) {
 		if (actor->Role == 3) {
 			DO_REP(ATgKismetTestActor, r_nCurrentTest, IntProperty_TgGame_TgKismetTestActor_r_nCurrentTest);
 			DO_REP(ATgKismetTestActor, r_nFailCount, IntProperty_TgGame_TgKismetTestActor_r_nFailCount);
 			DO_REP(ATgKismetTestActor, r_nPassCount, IntProperty_TgGame_TgKismetTestActor_r_nPassCount);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgLevelCamera") == 0) {
+	if (cls == Class_TgGame_TgLevelCamera) {
 		if (actor->Role == 3) {
 			DO_REP(ATgLevelCamera, r_bEnabled, BoolProperty_TgGame_TgLevelCamera_r_bEnabled);
 		}
 	}
 	if (
-		strcmp(classname, "Class TgGame.TgMissionObjective") == 0
-		|| strcmp(classname, "Class TgGame.TgBaseObjective_CTFBot") == 0
-		|| strcmp(classname, "Class TgGame.TgBaseObjective_KOTH") == 0
-		|| strcmp(classname, "Class TgGame.TgMissionObjective_Bot") == 0
-		|| strcmp(classname, "Class TgGame.TgMissionObjective_Escort") == 0
-		|| strcmp(classname, "Class TgGame.TgMissionObjective_Kismet") == 0
-		|| strcmp(classname, "Class TgGame.TgMissionObjective_Proximity") == 0
+		cls == Class_TgGame_TgMissionObjective
+		|| cls == Class_TgGame_TgBaseObjective_CTFBot
+		|| cls == Class_TgGame_TgBaseObjective_KOTH
+		|| cls == Class_TgGame_TgMissionObjective_Bot
+		|| cls == Class_TgGame_TgMissionObjective_Escort
+		|| cls == Class_TgGame_TgMissionObjective_Kismet
+		|| cls == Class_TgGame_TgMissionObjective_Proximity
 	) {
 		if (actor->Role == 3) {
 			DO_REP(ATgMissionObjective, r_ObjectiveAssignment, ObjectProperty_TgGame_TgMissionObjective_r_ObjectiveAssignment);
@@ -2857,29 +3190,29 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class TgGame.TgMissionObjective_Bot") == 0
-		|| strcmp(classname, "Class TgGame.TgBaseObjective_CTFBot") == 0
+		cls == Class_TgGame_TgMissionObjective_Bot
+		|| cls == Class_TgGame_TgBaseObjective_CTFBot
 	) {
 		if (actor->Role == 3) {
 			DO_REP(ATgMissionObjective_Bot, r_ObjectiveBot, ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBot);
 			DO_REP(ATgMissionObjective_Bot, r_ObjectiveBotInfo, ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBotInfo);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgMissionObjective_Escort") == 0) {
+	if (cls == Class_TgGame_TgMissionObjective_Escort) {
 		if (actor->Role == 3) {
 			DO_REP(ATgMissionObjective_Escort, r_AttachedActor, ObjectProperty_TgGame_TgMissionObjective_Escort_r_AttachedActor);
 		}
 	}
 	if (
-		strcmp(classname, "Class TgGame.TgMissionObjective_Proximity") == 0
-		|| strcmp(classname, "Class TgGame.TgBaseObjective_KOTH") == 0
-		|| strcmp(classname, "Class TgGame.TgMissionObjective_Escort") == 0
+		cls == Class_TgGame_TgMissionObjective_Proximity
+		|| cls == Class_TgGame_TgBaseObjective_KOTH
+		|| cls == Class_TgGame_TgMissionObjective_Escort
 	) {
 		if (actor->Role == 3) {
 			DO_REP(ATgMissionObjective_Proximity, r_fCaptureRate, FloatProperty_TgGame_TgMissionObjective_Proximity_r_fCaptureRate);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgObjectiveAssignment") == 0) {
+	if (cls == Class_TgGame_TgObjectiveAssignment) {
 		if (actor->Role == 3) {
 			DO_REP(ATgObjectiveAssignment, r_AssignedObjective, ObjectProperty_TgGame_TgObjectiveAssignment_r_AssignedObjective);
 			DO_REP(ATgObjectiveAssignment, r_Attackers, ObjectProperty_TgGame_TgObjectiveAssignment_r_Attackers);
@@ -2889,68 +3222,68 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class TgGame.TgPawn") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_AVCompositeWalker") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Ambush") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_AndroidMinion") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_AttackTransport") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Boss") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Boss_Destroyer") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Brawler") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_CTR") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Character") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_ColonyEye") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Destructible") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Detonator") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Dismantler") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_DuneCommander") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Elite_Alchemist") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Elite_Assassin") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_EscortRobot") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_FlyingBoss") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_GroundPetA") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Guardian") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Hover") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_HoverShieldSphere") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Hunter") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Inquisitor") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Interact_NPC") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Iris") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Juggernaut") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Marauder") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_NPC") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_NewWasp") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Raptor") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Reaper") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_RecursiveSpawner") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Remote") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Robot") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Scanner") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_ScannerRecursive") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Siege") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SiegeBarrage") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SiegeHover") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SiegeRapidFire") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Sniper") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SonoranCommander") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SupportForeman") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Switchblade") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Tentacle") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_ThinkTank") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TreadRobot") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Turret") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretAVAFlak") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretAVARocket") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretFlak") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretFlame") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretPlasma") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_UberWalker") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Vanguard") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_VanityPet") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Vulcan") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Warlord") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_WaspSpawner") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Widow") == 0
+		cls == Class_TgGame_TgPawn
+		|| cls == Class_TgGame_TgPawn_AVCompositeWalker
+		|| cls == Class_TgGame_TgPawn_Ambush
+		|| cls == Class_TgGame_TgPawn_AndroidMinion
+		|| cls == Class_TgGame_TgPawn_AttackTransport
+		|| cls == Class_TgGame_TgPawn_Boss
+		|| cls == Class_TgGame_TgPawn_Boss_Destroyer
+		|| cls == Class_TgGame_TgPawn_Brawler
+		|| cls == Class_TgGame_TgPawn_CTR
+		|| cls == Class_TgGame_TgPawn_Character
+		|| cls == Class_TgGame_TgPawn_ColonyEye
+		|| cls == Class_TgGame_TgPawn_Destructible
+		|| cls == Class_TgGame_TgPawn_Detonator
+		|| cls == Class_TgGame_TgPawn_Dismantler
+		|| cls == Class_TgGame_TgPawn_DuneCommander
+		|| cls == Class_TgGame_TgPawn_Elite_Alchemist
+		|| cls == Class_TgGame_TgPawn_Elite_Assassin
+		|| cls == Class_TgGame_TgPawn_EscortRobot
+		|| cls == Class_TgGame_TgPawn_FlyingBoss
+		|| cls == Class_TgGame_TgPawn_GroundPetA
+		|| cls == Class_TgGame_TgPawn_Guardian
+		|| cls == Class_TgGame_TgPawn_Hover
+		|| cls == Class_TgGame_TgPawn_HoverShieldSphere
+		|| cls == Class_TgGame_TgPawn_Hunter
+		|| cls == Class_TgGame_TgPawn_Inquisitor
+		|| cls == Class_TgGame_TgPawn_Interact_NPC
+		|| cls == Class_TgGame_TgPawn_Iris
+		|| cls == Class_TgGame_TgPawn_Juggernaut
+		|| cls == Class_TgGame_TgPawn_Marauder
+		|| cls == Class_TgGame_TgPawn_NPC
+		|| cls == Class_TgGame_TgPawn_NewWasp
+		|| cls == Class_TgGame_TgPawn_Raptor
+		|| cls == Class_TgGame_TgPawn_Reaper
+		|| cls == Class_TgGame_TgPawn_RecursiveSpawner
+		|| cls == Class_TgGame_TgPawn_Remote
+		|| cls == Class_TgGame_TgPawn_Robot
+		|| cls == Class_TgGame_TgPawn_Scanner
+		|| cls == Class_TgGame_TgPawn_ScannerRecursive
+		|| cls == Class_TgGame_TgPawn_Siege
+		|| cls == Class_TgGame_TgPawn_SiegeBarrage
+		|| cls == Class_TgGame_TgPawn_SiegeHover
+		|| cls == Class_TgGame_TgPawn_SiegeRapidFire
+		|| cls == Class_TgGame_TgPawn_Sniper
+		|| cls == Class_TgGame_TgPawn_SonoranCommander
+		|| cls == Class_TgGame_TgPawn_SupportForeman
+		|| cls == Class_TgGame_TgPawn_Switchblade
+		|| cls == Class_TgGame_TgPawn_Tentacle
+		|| cls == Class_TgGame_TgPawn_ThinkTank
+		|| cls == Class_TgGame_TgPawn_TreadRobot
+		|| cls == Class_TgGame_TgPawn_Turret
+		|| cls == Class_TgGame_TgPawn_TurretAVAFlak
+		|| cls == Class_TgGame_TgPawn_TurretAVARocket
+		|| cls == Class_TgGame_TgPawn_TurretFlak
+		|| cls == Class_TgGame_TgPawn_TurretFlame
+		|| cls == Class_TgGame_TgPawn_TurretPlasma
+		|| cls == Class_TgGame_TgPawn_UberWalker
+		|| cls == Class_TgGame_TgPawn_Vanguard
+		|| cls == Class_TgGame_TgPawn_VanityPet
+		|| cls == Class_TgGame_TgPawn_Vulcan
+		|| cls == Class_TgGame_TgPawn_Warlord
+		|| cls == Class_TgGame_TgPawn_WaspSpawner
+		|| cls == Class_TgGame_TgPawn_Widow
 	) {
 		if ((actor->Role == 3) && actor->bNetInitial) {
 			DO_REP(ATgPawn, r_bIsBot, BoolProperty_TgGame_TgPawn_r_bIsBot);
@@ -3101,19 +3434,19 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		// DO_REP_ARRAY(25, ATgPawn, r_EquipDeviceInfo, StructProperty_TgGame_TgPawn_r_EquipDeviceInfo); // todo: investigate why it only works here
 	}
 	if (
-		strcmp(classname, "Class TgGame.TgPawn_Ambush") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Tentacle") == 0
+		cls == Class_TgGame_TgPawn_Ambush
+		|| cls == Class_TgGame_TgPawn_Tentacle
 	) {
 		if (actor->Role == 3) {
 			DO_REP(ATgPawn_Ambush, r_bIsDeployed, BoolProperty_TgGame_TgPawn_Ambush_r_bIsDeployed);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgPawn_AttackTransport") == 0) {
+	if (cls == Class_TgGame_TgPawn_AttackTransport) {
 		if ((actor->Role == 3) && actor->bNetDirty) {
 			DO_REP(ATgPawn_AttackTransport, r_DeathType, ByteProperty_TgGame_TgPawn_AttackTransport_r_DeathType);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgPawn_CTR") == 0) {
+	if (cls == Class_TgGame_TgPawn_CTR) {
 		if ((actor->Role == 3) && actor->bNetDirty || actor->bNetInitial) {
 			DO_REP(ATgPawn_CTR, r_CustomCharacterAssembly, StructProperty_TgGame_TgPawn_CTR_r_CustomCharacterAssembly);
 			DO_REP(ATgPawn_CTR, r_PilotPawn, ObjectProperty_TgGame_TgPawn_CTR_r_PilotPawn);
@@ -3122,42 +3455,42 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class TgGame.TgPawn_Character") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_AndroidMinion") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Boss") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Boss_Destroyer") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Brawler") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_CTR") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_ColonyEye") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Dismantler") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_DuneCommander") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Elite_Alchemist") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Elite_Assassin") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_FlyingBoss") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Guardian") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Hunter") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Inquisitor") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Interact_NPC") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Juggernaut") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Marauder") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_NPC") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Raptor") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Reaper") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_RecursiveSpawner") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Sniper") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SonoranCommander") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Switchblade") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_ThinkTank") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Turret") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretAVAFlak") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretAVARocket") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretFlak") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretFlame") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretPlasma") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_UberWalker") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Vanguard") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Vulcan") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_Warlord") == 0
+		cls == Class_TgGame_TgPawn_Character
+		|| cls == Class_TgGame_TgPawn_AndroidMinion
+		|| cls == Class_TgGame_TgPawn_Boss
+		|| cls == Class_TgGame_TgPawn_Boss_Destroyer
+		|| cls == Class_TgGame_TgPawn_Brawler
+		|| cls == Class_TgGame_TgPawn_CTR
+		|| cls == Class_TgGame_TgPawn_ColonyEye
+		|| cls == Class_TgGame_TgPawn_Dismantler
+		|| cls == Class_TgGame_TgPawn_DuneCommander
+		|| cls == Class_TgGame_TgPawn_Elite_Alchemist
+		|| cls == Class_TgGame_TgPawn_Elite_Assassin
+		|| cls == Class_TgGame_TgPawn_FlyingBoss
+		|| cls == Class_TgGame_TgPawn_Guardian
+		|| cls == Class_TgGame_TgPawn_Hunter
+		|| cls == Class_TgGame_TgPawn_Inquisitor
+		|| cls == Class_TgGame_TgPawn_Interact_NPC
+		|| cls == Class_TgGame_TgPawn_Juggernaut
+		|| cls == Class_TgGame_TgPawn_Marauder
+		|| cls == Class_TgGame_TgPawn_NPC
+		|| cls == Class_TgGame_TgPawn_Raptor
+		|| cls == Class_TgGame_TgPawn_Reaper
+		|| cls == Class_TgGame_TgPawn_RecursiveSpawner
+		|| cls == Class_TgGame_TgPawn_Sniper
+		|| cls == Class_TgGame_TgPawn_SonoranCommander
+		|| cls == Class_TgGame_TgPawn_Switchblade
+		|| cls == Class_TgGame_TgPawn_ThinkTank
+		|| cls == Class_TgGame_TgPawn_Turret
+		|| cls == Class_TgGame_TgPawn_TurretAVAFlak
+		|| cls == Class_TgGame_TgPawn_TurretAVARocket
+		|| cls == Class_TgGame_TgPawn_TurretFlak
+		|| cls == Class_TgGame_TgPawn_TurretFlame
+		|| cls == Class_TgGame_TgPawn_TurretPlasma
+		|| cls == Class_TgGame_TgPawn_UberWalker
+		|| cls == Class_TgGame_TgPawn_Vanguard
+		|| cls == Class_TgGame_TgPawn_Vulcan
+		|| cls == Class_TgGame_TgPawn_Warlord
 	) {
 
 
@@ -3180,38 +3513,38 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn_Character, r_nSkillGroupSetId, IntProperty_TgGame_TgPawn_Character_r_nSkillGroupSetId);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgPawn_DuneCommander") == 0) {
+	if (cls == Class_TgGame_TgPawn_DuneCommander) {
 		if ((actor->Role == 3) && actor->bNetDirty || actor->bNetInitial) {
 			DO_REP(ATgPawn_DuneCommander, r_bDoCrashLanding, BoolProperty_TgGame_TgPawn_DuneCommander_r_bDoCrashLanding);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgPawn_Iris") == 0) {
+	if (cls == Class_TgGame_TgPawn_Iris) {
 		if (actor->Role == 3) {
 			DO_REP(ATgPawn_Iris, r_nStartNewScan, ByteProperty_TgGame_TgPawn_Iris_r_nStartNewScan);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgPawn_Reaper") == 0) {
+	if (cls == Class_TgGame_TgPawn_Reaper) {
 		if ((actor->Role == 3) && actor->bNetDirty) {
 			DO_REP(ATgPawn_Reaper, r_fBatteryPct, FloatProperty_TgGame_TgPawn_Reaper_r_fBatteryPct);
 		}
 	}
 	if (
-		strcmp(classname, "Class TgGame.TgPawn_Siege") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SiegeBarrage") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SiegeHover") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_SiegeRapidFire") == 0
+		cls == Class_TgGame_TgPawn_Siege
+		|| cls == Class_TgGame_TgPawn_SiegeBarrage
+		|| cls == Class_TgGame_TgPawn_SiegeHover
+		|| cls == Class_TgGame_TgPawn_SiegeRapidFire
 	) {
 		if ((actor->Role == 3) && actor->bNetDirty) {
 			DO_REP(ATgPawn_Siege, r_AccelDirection, ByteProperty_TgGame_TgPawn_Siege_r_AccelDirection);
 		}
 	}
 	if (
-		strcmp(classname, "Class TgGame.TgPawn_Turret") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretAVAFlak") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretAVARocket") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretFlak") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretFlame") == 0
-		|| strcmp(classname, "Class TgGame.TgPawn_TurretPlasma") == 0
+		cls == Class_TgGame_TgPawn_Turret
+		|| cls == Class_TgGame_TgPawn_TurretAVAFlak
+		|| cls == Class_TgGame_TgPawn_TurretAVARocket
+		|| cls == Class_TgGame_TgPawn_TurretFlak
+		|| cls == Class_TgGame_TgPawn_TurretFlame
+		|| cls == Class_TgGame_TgPawn_TurretPlasma
 	) {
 		if (actor->Role == 3) {
 			DO_REP(ATgPawn_Turret, r_bIsDeployed, BoolProperty_TgGame_TgPawn_Turret_r_bIsDeployed);
@@ -3223,12 +3556,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn_Turret, r_fDeployMaxHealthPCT, FloatProperty_TgGame_TgPawn_Turret_r_fDeployMaxHealthPCT);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgPawn_VanityPet") == 0) {
+	if (cls == Class_TgGame_TgPawn_VanityPet) {
 		if (actor->Role == 3) {
 			DO_REP(ATgPawn_VanityPet, r_nSpawningItemId, IntProperty_TgGame_TgPawn_VanityPet_r_nSpawningItemId);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgPlayerController") == 0) {
+	if (cls == Class_TgGame_TgPlayerController) {
 		if ((actor->Role == 3) && actor->bNetOwner) {
 			DO_REP(ATgPlayerController, r_WatchOtherPlayer, ByteProperty_TgGame_TgPlayerController_r_WatchOtherPlayer);
 			// DO_REP(ATgPlayerController, r_bEDDebugEffects, BoolProperty_TgGame_TgPlayerController_r_bEDDebugEffects);
@@ -3238,12 +3571,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPlayerController, r_bRove, BoolProperty_TgGame_TgPlayerController_r_bRove);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgProj_Grapple") == 0) {
+	if (cls == Class_TgGame_TgProj_Grapple) {
 		if (actor->Role == 3) {
 			DO_REP(ATgProj_Grapple, r_vTargetLocation, StructProperty_TgGame_TgProj_Grapple_r_vTargetLocation);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgProj_Missile") == 0) {
+	if (cls == Class_TgGame_TgProj_Missile) {
 		if (actor->Role == 3) {
 			DO_REP(ATgProj_Missile, r_aSeeking, ObjectProperty_TgGame_TgProj_Missile_r_aSeeking);
 			DO_REP(ATgProj_Missile, r_vTargetWorldLocation, StructProperty_TgGame_TgProj_Missile_r_vTargetWorldLocation);
@@ -3252,26 +3585,26 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgProj_Missile, r_nNumBounces, IntProperty_TgGame_TgProj_Missile_r_nNumBounces);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgProj_Rocket") == 0) {
+	if (cls == Class_TgGame_TgProj_Rocket) {
 		if (actor->bNetInitial && actor->Role == 3) {
 			DO_REP(ATgProj_Rocket, FlockIndex, ByteProperty_TgGame_TgProj_Rocket_FlockIndex);
 			DO_REP(ATgProj_Rocket, bCurl, BoolProperty_TgGame_TgProj_Rocket_bCurl);
 		}
 	}
 	if (
-		strcmp(classname, "Class TgGame.TgProjectile") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Teleporter") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_StraightTeleporter") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Rocket") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Net") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Mortar") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Missile") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Grenade") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Grapple") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_FreeGrenade") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Deployable") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Bounce") == 0
-		|| strcmp(classname, "Class TgGame.TgProj_Bot") == 0
+		cls == Class_TgGame_TgProjectile
+		|| cls == Class_TgGame_TgProj_Teleporter
+		|| cls == Class_TgGame_TgProj_StraightTeleporter
+		|| cls == Class_TgGame_TgProj_Rocket
+		|| cls == Class_TgGame_TgProj_Net
+		|| cls == Class_TgGame_TgProj_Mortar
+		|| cls == Class_TgGame_TgProj_Missile
+		|| cls == Class_TgGame_TgProj_Grenade
+		|| cls == Class_TgGame_TgProj_Grapple
+		|| cls == Class_TgGame_TgProj_FreeGrenade
+		|| cls == Class_TgGame_TgProj_Deployable
+		|| cls == Class_TgGame_TgProj_Bounce
+		|| cls == Class_TgGame_TgProj_Bot
 	) {
 		if ((actor->Role == 3) && actor->bNetInitial) {
 			DO_REP(ATgProjectile, r_Owner, ObjectProperty_TgGame_TgProjectile_r_Owner);
@@ -3283,7 +3616,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgProjectile, r_vSpawnLocation, StructProperty_TgGame_TgProjectile_r_vSpawnLocation);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgRepInfo_Beacon") == 0) {
+	if (cls == Class_TgGame_TgRepInfo_Beacon) {
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(ATgRepInfo_Beacon, r_bDeployed, BoolProperty_TgGame_TgRepInfo_Beacon_r_bDeployed);
 			DO_REP(ATgRepInfo_Beacon, r_vLoc, StructProperty_TgGame_TgRepInfo_Beacon_r_vLoc);
@@ -3293,8 +3626,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class TgGame.TgRepInfo_Deployable") == 0
-		|| strcmp(classname, "Class TgGame.TgRepInfo_Beacon") == 0
+		cls == Class_TgGame_TgRepInfo_Deployable
+		|| cls == Class_TgGame_TgRepInfo_Beacon
 	) {
 		// DIAG: DRI replication isn't reaching the client — no ReplicatedEvent
 		// for r_TaskforceInfo / r_InstigatorInfo / r_bOwnedByTaskforce / etc.
@@ -3302,10 +3635,10 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		// log is ABSENT, the engine isn't queuing the DRI for replication at
 		// all (relevance/channel failure).  If PRESENT, rep is evaluated but
 		// something downstream drops the bunch.
-		Logger::Log("heal_tick",
-			"[V2 DRI rep] dri=0x%p class=%s  Role=%d  bNetInitial=%d  bNetDirty=%d\n",
-			actor, classname,
-			(int)actor->Role, (int)actor->bNetInitial, (int)actor->bNetDirty);
+		// Logger::Log("heal_tick",
+		// 	"[V2 DRI rep] dri=0x%p class=%s  Role=%d  bNetInitial=%d  bNetDirty=%d\n",
+		// 	actor, cls->GetFullName(),
+		// 	(int)actor->Role, (int)actor->bNetInitial, (int)actor->bNetDirty);
 
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(ATgRepInfo_Deployable, r_InstigatorInfo, ObjectProperty_TgGame_TgRepInfo_Deployable_r_InstigatorInfo);
@@ -3322,8 +3655,8 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class TgGame.TgRepInfo_Game") == 0
-		|| strcmp(classname, "Class TgGame.TgRepInfo_GameOpenWorld") == 0
+		cls == Class_TgGame_TgRepInfo_Game
+		|| cls == Class_TgGame_TgRepInfo_GameOpenWorld
 	) {
 		if (actor->Role == 3) {
 			DO_REP(ATgRepInfo_Game, r_MiniMapInfo, StructProperty_TgGame_TgRepInfo_Game_r_MiniMapInfo);
@@ -3365,12 +3698,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgRepInfo_Game, r_nMissionTimerState, ByteProperty_TgGame_TgRepInfo_Game_r_nMissionTimerState);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgRepInfo_GameOpenWorld") == 0) {
+	if (cls == Class_TgGame_TgRepInfo_GameOpenWorld) {
 		if (actor->Role == 3) {
 			DO_REP_ARRAY(0x3, ATgRepInfo_GameOpenWorld, r_GameTickets, IntProperty_TgGame_TgRepInfo_GameOpenWorld_r_GameTickets);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgRepInfo_Player") == 0) {
+	if (cls == Class_TgGame_TgRepInfo_Player) {
 		if (actor->bNetDirty && actor->Role == 3) {
 			DO_REP(ATgRepInfo_Player, r_ApproxLocation, StructProperty_TgGame_TgRepInfo_Player_r_ApproxLocation);
 			DO_REP(ATgRepInfo_Player, r_CustomCharacterAssembly, StructProperty_TgGame_TgRepInfo_Player_r_CustomCharacterAssembly);
@@ -3396,7 +3729,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (
-		strcmp(classname, "Class TgGame.TgRepInfo_TaskForce") == 0
+		cls == Class_TgGame_TgRepInfo_TaskForce
 	) {
 		if (actor->Role == 3) {
 			DO_REP(ATgRepInfo_TaskForce, r_BeaconManager, ObjectProperty_TgGame_TgRepInfo_TaskForce_r_BeaconManager);
@@ -3415,12 +3748,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgRepInfo_TaskForce, r_nTeamId, IntProperty_TgGame_TgRepInfo_TaskForce_r_nTeamId);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgSkydiveTarget") == 0) {
+	if (cls == Class_TgGame_TgSkydiveTarget) {
 		if (actor->Role == 3) {
 			DO_REP(ATgSkydiveTarget, m_LandRadius, FloatProperty_TgGame_TgSkydiveTarget_m_LandRadius);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgSkydivingVolume") == 0) {
+	if (cls == Class_TgGame_TgSkydivingVolume) {
 		if (actor->Role == 3) {
 			DO_REP(ATgSkydivingVolume, r_PawnGravityModifier, FloatProperty_TgGame_TgSkydivingVolume_r_PawnGravityModifier);
 			DO_REP(ATgSkydivingVolume, r_PawnLaunchForce, FloatProperty_TgGame_TgSkydivingVolume_r_PawnLaunchForce);
@@ -3428,7 +3761,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgSkydivingVolume, r_SkydiveTarget, ObjectProperty_TgGame_TgSkydivingVolume_r_SkydiveTarget);
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgTeamBeaconManager") == 0) {
+	if (cls == Class_TgGame_TgTeamBeaconManager) {
 		if (actor->Role == 3) {
 			DO_REP(ATgTeamBeaconManager, r_Beacon, ObjectProperty_TgGame_TgTeamBeaconManager_r_Beacon);
 			DO_REP(ATgTeamBeaconManager, r_BeaconDestroyed, IntProperty_TgGame_TgTeamBeaconManager_r_BeaconDestroyed);
@@ -3441,7 +3774,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		if ((actor->Role == 3) && actor->bNetInitial) {
 		}
 	}
-	if (strcmp(classname, "Class TgGame.TgTimerManager") == 0) {
+	if (cls == Class_TgGame_TgTimerManager) {
 		if (actor->Role == 3) {
 			DO_REP_ARRAY(0x20, ATgTimerManager, r_byEventQue, ByteProperty_TgGame_TgTimerManager_r_byEventQue);
 			DO_REP(ATgTimerManager, r_byEventQueIndex, ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex);
@@ -3450,6 +3783,10 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 
+	// Mark the actor as having had its initial replication pass; subsequent calls
+	// will see isInitialRep == false. Performed once at end-of-call (vs the original
+	// per-property-on-first-DO_REP fan-out into 511 separate maps).
+	if (isInitialRep) g_RepListInitialDoneActors.insert(actor);
 	return param_3;
 }
 

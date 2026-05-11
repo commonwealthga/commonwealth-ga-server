@@ -18,7 +18,9 @@ void __fastcall TgGame_PointRotation__UnlockObjective::Call(ATgGame_PointRotatio
 	char className[256];
 	strncpy(className, Obj->Class->GetFullName(), sizeof(className) - 1);
 	className[sizeof(className) - 1] = '\0';
-	Logger::Log(GetLogChannel(), "Unlocking objective %s (class: %s)\n", Obj->GetFullName(), className);
+	if (Logger::IsChannelEnabled(GetLogChannel())) {
+		Logger::Log(GetLogChannel(), "Unlocking objective %s (class: %s)\n", Obj->GetFullName(), className);
+	}
 	Obj->eventUnlockObjective(1);
 
 	// eventUpdateObjectiveStatus must dispatch to the actual class's UFunction.

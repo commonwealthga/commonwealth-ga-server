@@ -28,8 +28,10 @@ int __fastcall TgGame__GetReviveTimeRemaining::Call(ATgGame* Game, void* edx, AC
 
 	float remaining = Game->GetRemainingTimeForTimer(TimerName, Game);
 
-	Logger::Log("revive", "GetReviveTimeRemaining controller=%s isAttacker=%d remaining=%.1f autoRelease=%d\n",
-		Controller->GetName(), bIsAttacker, remaining, autoReleaseSecs);
+	if (Logger::IsChannelEnabled("revive")) {
+		Logger::Log("revive", "GetReviveTimeRemaining controller=%s isAttacker=%d remaining=%.1f autoRelease=%d\n",
+			Controller->GetName(), bIsAttacker, remaining, autoReleaseSecs);
+	}
 
 	// If the timer isn't running yet (returns -1 or 0), return the full auto-release interval
 	if (remaining <= 0.0f) {

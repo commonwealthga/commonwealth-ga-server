@@ -425,6 +425,18 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		Inventory::Finalize(newpawn);
 	}
 
+	// Force a post-spawn transform refresh. TgGame.RestartPlayer's bHadPawn
+	// branch (TgGame.uc:558-559) does this on every respawn but NOT on the
+	// first spawn — and without it, server-side hitscan traces fire from a
+	// position that tracks the player but is angularly displaced, making
+	// aiming nearly impossible until the player dies and respawns.
+	// SetLocation/SetRotation force ConditionalUpdateComponents on the pawn,
+	// which re-resolves component-relative transforms (collision cylinder,
+	// skeletal mesh, attached weapon meshes) against the now-correct
+	// Location/Rotation. Mirrors the respawn fix-up so first spawn matches.
+	newpawn->SetLocation(SpawnLocation);
+	newpawn->SetRotation(PlayerController->Rotation);
+
 	// NOTE: we do NOT call ReapplyCharacterSkillTree here — GPawnSessions is
 	// only populated later in MarshalChannel__NotifyControlMessage::
 	// HandlePlayerConnected, and our Reapply hook looks up the pawn's session

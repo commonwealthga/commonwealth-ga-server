@@ -99,6 +99,14 @@ int main(int argc, char* argv[]) {
     // Clear stale instances from any previous (crashed) run
     InstanceRegistry::ClearStaleInstances();
 
+    // Provision per-slot WINEPREFIXes if enabled. Idempotent — only clones
+    // missing prefixes. Must run before any Spawn() so the first match
+    // doesn't pay clone latency.
+    if (!InstanceSpawner::EnsureSlotPrefixes(cfg)) {
+        Logger::Log("main", "EnsureSlotPrefixes failed — aborting startup\n");
+        return 1;
+    }
+
     // Initialize matchmaking
     MatchmakingService::Init();
 
@@ -254,7 +262,39 @@ int main(int argc, char* argv[]) {
     // INSTANCE_READY from the game DLL will call InstanceRegistry::MarkReady() asynchronously.
     io.run();
 
-    Logger::Log("main", "Control server shutting down.\n");
+    Logger::Log("main", "Control server shutting down — terminating spawned instances.\n");
+
+    // Kill every spawned game-instance process group BEFORE we exit so
+    // they don't get orphaned into the systemd cgroup. winedevice.exe
+    // ignores SIGTERM (it's a Wine-internal helper that doesn't react
+    // to Unix signals the way native processes do), and systemd's
+    // `KillMode=control-group` would then sit in stop-sigterm for
+    // TimeoutStopSec (typically 90s) before escalating to SIGKILL.
+    // We do SIGTERM-then-wait-then-SIGKILL on each pgid, mirroring the
+    // idle-cleanup path. Negative pid = kill the process group, which
+    // catches xvfb-run + Xvfb + wine + winedevice + the game binary.
+    {
+        auto running = InstanceRegistry::GetAllRunningInstances();
+        Logger::Log("main", "  %zu running instance(s) to terminate\n", running.size());
+        for (const auto& inst : running) {
+            if (inst.pid > 0) {
+                Logger::Log("main", "  SIGTERM pgid=%d (instance_id=%lld map=%s)\n",
+                    inst.pid, (long long)inst.instance_id, inst.map_name.c_str());
+                kill(-inst.pid, SIGTERM);
+            }
+        }
+        // Brief grace period for clean shutdown, then SIGKILL stragglers.
+        sleep(2);
+        for (const auto& inst : running) {
+            if (inst.pid > 0 && kill(-inst.pid, 0) == 0) {
+                Logger::Log("main", "  SIGKILL pgid=%d (didn't exit on SIGTERM)\n", inst.pid);
+                kill(-inst.pid, SIGKILL);
+            }
+            InstanceRegistry::MarkStopped(inst.instance_id);
+        }
+    }
+
+    Logger::Log("main", "Control server shutdown complete.\n");
     g_io = nullptr;
 
     return 0;

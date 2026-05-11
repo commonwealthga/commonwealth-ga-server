@@ -14,6 +14,18 @@ int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* No
 		return 0;
 	}
 
+	// UE3 stock defaults are 15000 B/s per client (LAN-era values). UE3
+	// clamps each connection's CurrentNetSpeed to NetDriver->MaxClientRate
+	// (see UnConn.cpp), so the 26 Mbps we write to CurrentNetSpeed in
+	// UdpNetDriver__TickDispatch is dead code at the stock cap. With many
+	// always-relevant deployables/DRIs/projectiles replicating, the per-tick
+	// budget at 15 KB/s is easily exceeded; UE3 defers bunches to the next
+	// 30 Hz tick, queue grows, ping balloons (fine on LAN where RTT is ~0,
+	// catastrophic across a 30-50 ms internet link). 50000 is well within
+	// modern home upload and what UDK Internet defaults landed on.
+	NetDriver->MaxClientRate         = 50000;
+	NetDriver->MaxInternetClientRate = 50000;
+
 	void* SocketInstance = nullptr;
 	*(void**)((char*)NetDriver + 0x14C) = SocketInstance = SocketWin__CreateDGramSocket::CallOriginal();
 

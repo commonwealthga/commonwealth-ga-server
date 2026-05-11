@@ -6,8 +6,10 @@
 // Called by TgBotEncounterVolume and Kismet wave spawner sequences.
 // Resets the queue and spawns Num entries worth of bots via SpawnNextBot.
 void __fastcall TgBotFactory__SpawnWave::Call(ATgBotFactory *BotFactory, void *edx, int Num) {
-	Logger::Log("tgbotfactory", "[%s] %s SpawnWave Num=%d mapObjectId=%d\n",
-		Logger::GetTime(), BotFactory->GetName(), Num, BotFactory->m_nMapObjectId);
+	if (Logger::IsChannelEnabled("tgbotfactory")) {
+		Logger::Log("tgbotfactory", "[%s] %s SpawnWave Num=%d mapObjectId=%d\n",
+			Logger::GetTime(), BotFactory->GetName(), Num, BotFactory->m_nMapObjectId);
+	}
 
 	if (Num <= 0) return;
 

@@ -11,26 +11,36 @@
 // Logging the args + return value lets us tell, per fire, whether the call
 // hit the queue path or the managed-list path, and which slot it landed in.
 int __fastcall TgEffectManager__SetEffectRep::Call(ATgEffectManager* Manager, void* edx, int nEffectGroupID, float fTime, unsigned long bIsBuff, int nHealthChange) {
+	// The snapshot/diff diagnostic is the only consumer of the "effects"
+	// channel from this function; the post-call queue-push and buff-routing
+	// blocks below are unconditional. Skip the 16-slot snapshot when the
+	// channel is off — it ran every effect application in production
+	// otherwise.
+	const bool effectsLog = Logger::IsChannelEnabled("effects");
 	int slotBefore[0x10];
-	for (int i = 0; i < 0x10; i++) {
-		slotBefore[i] = Manager ? Manager->r_ManagedEffectList[i].nEffectGroupID : 0;
+	if (effectsLog) {
+		for (int i = 0; i < 0x10; i++) {
+			slotBefore[i] = Manager ? Manager->r_ManagedEffectList[i].nEffectGroupID : 0;
+		}
 	}
 
 	int ret = CallOriginal(Manager, edx, nEffectGroupID, fTime, bIsBuff, nHealthChange);
 
-	Logger::Log("effects",
-		"[SET-REP] egId=%d fTime=%.3f bIsBuff=%d nHpΔ=%d -> ret=%d (branch=%s)\n",
-		nEffectGroupID, fTime, (int)(bIsBuff ? 1 : 0), nHealthChange, ret,
-		(ret == -1) ? "A:queue" : "B:managed");
+	if (effectsLog) {
+		Logger::Log("effects",
+			"[SET-REP] egId=%d fTime=%.3f bIsBuff=%d nHpΔ=%d -> ret=%d (branch=%s)\n",
+			nEffectGroupID, fTime, (int)(bIsBuff ? 1 : 0), nHealthChange, ret,
+			(ret == -1) ? "A:queue" : "B:managed");
 
-	if (Manager) {
-		for (int i = 0; i < 0x10; i++) {
-			int after = Manager->r_ManagedEffectList[i].nEffectGroupID;
-			if (slotBefore[i] != after) {
-				FEffectListEntry& e = Manager->r_ManagedEffectList[i];
-				Logger::Log("effects",
-					"[SET-REP]   slot[%d]: egId %d -> %d  byNumStacks=%u fTimeRem=%.3f nExtra=0x%x\n",
-					i, slotBefore[i], after, (unsigned)e.byNumStacks, e.fInitTimeRemaining, e.nExtraInfo);
+		if (Manager) {
+			for (int i = 0; i < 0x10; i++) {
+				int after = Manager->r_ManagedEffectList[i].nEffectGroupID;
+				if (slotBefore[i] != after) {
+					FEffectListEntry& e = Manager->r_ManagedEffectList[i];
+					Logger::Log("effects",
+						"[SET-REP]   slot[%d]: egId %d -> %d  byNumStacks=%u fTimeRem=%.3f nExtra=0x%x\n",
+						i, slotBefore[i], after, (unsigned)e.byNumStacks, e.fInitTimeRemaining, e.nExtraInfo);
+				}
 			}
 		}
 	}
@@ -70,10 +80,12 @@ int __fastcall TgEffectManager__SetEffectRep::Call(ATgEffectManager* Manager, vo
 				(nHealthChange & 0xFFFF) | (bIsBuff ? 0x01000000 : 0);
 			Manager->r_nNextQueueIndex = (qIdx + 1) % 0x20;
 			Manager->bNetDirty = 1;
-			Logger::Log("effects",
-				"[SET-REP]   queue-push idx=%d egId=%d nExtra=0x%x  next=%d\n",
-				qIdx, nEffectGroupID, Manager->r_EventQueue[qIdx].nExtraInfo,
-				Manager->r_nNextQueueIndex);
+			if (effectsLog) {
+				Logger::Log("effects",
+					"[SET-REP]   queue-push idx=%d egId=%d nExtra=0x%x  next=%d\n",
+					qIdx, nEffectGroupID, Manager->r_EventQueue[qIdx].nExtraInfo,
+					Manager->r_nNextQueueIndex);
+			}
 		}
 	}
 

@@ -48,12 +48,14 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 		}
 	}
 	if (idx < 0) {
-		Logger::Log("effects",
-			"[REMOVE-GROUP]   NO MATCH for egId=%d — bailing out. Current list:\n", inEgId);
-		for (int i = 0; i < Manager->s_AppliedEffectGroups.Count; i++) {
-			UTgEffectGroup* a = Manager->s_AppliedEffectGroups.Data[i];
-			Logger::Log("effects", "[REMOVE-GROUP]     [%d] egId=%d cat=%d ptr=%p\n",
-				i, a ? a->m_nEffectGroupId : -1, a ? a->m_nCategoryCode : -1, (void*)a);
+		if (Logger::IsChannelEnabled("effects")) {
+			Logger::Log("effects",
+				"[REMOVE-GROUP]   NO MATCH for egId=%d — bailing out. Current list:\n", inEgId);
+			for (int i = 0; i < Manager->s_AppliedEffectGroups.Count; i++) {
+				UTgEffectGroup* a = Manager->s_AppliedEffectGroups.Data[i];
+				Logger::Log("effects", "[REMOVE-GROUP]     [%d] egId=%d cat=%d ptr=%p\n",
+					i, a ? a->m_nEffectGroupId : -1, a ? a->m_nCategoryCode : -1, (void*)a);
+			}
 		}
 		return false;
 	}

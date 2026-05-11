@@ -99,11 +99,13 @@ void __fastcall TgPawn__RosterWalker::Call(void* pThis, void* edx,
             fn_vtbl, fn_name_idx, fn_numparms, fn_flags);
 
         // Resolve UFunction full name via SDK (copy before next Log).
-        std::string fn_name = "?";
-        if ((uintptr_t)p3 >= 0x00100000u && (uintptr_t)p3 < 0x80000000u) {
-            fn_name = ((UObject*)(uintptr_t)p3)->GetFullName();
-        }
-        Logger::Log("roster_walker", "  UFunction name: %s", fn_name.c_str());
+		if (Logger::IsChannelEnabled("roster_walker")) {
+			std::string fn_name = "?";
+			if ((uintptr_t)p3 >= 0x00100000u && (uintptr_t)p3 < 0x80000000u) {
+				fn_name = ((UObject*)(uintptr_t)p3)->GetFullName();
+			}
+			Logger::Log("roster_walker", "  UFunction name: %s", fn_name.c_str());
+		}
 
         // Dump bytecode around the cursor. execContext advanced FFrame.Code
         // past [inner_opcode_1 + 4-byte header + inner_opcode_2 start].

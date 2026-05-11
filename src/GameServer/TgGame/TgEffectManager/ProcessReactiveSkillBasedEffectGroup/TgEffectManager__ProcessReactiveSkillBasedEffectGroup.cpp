@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgEffectManager/ProcessReactiveSkillBasedEffectGroup/TgEffectManager__ProcessReactiveSkillBasedEffectGroup.hpp"
+#include "src/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <string.h>
 
@@ -38,13 +39,10 @@
 namespace {
 
 void ApplyOrReverseStatMod(ATgPawn* pawn, int propId, int calcMethod, float base, bool bRemove) {
-	if (!pawn || !pawn->s_Properties.Data) return;
+	if (!pawn) return;
 
-	UTgProperty* prop = nullptr;
-	for (int i = 0; i < pawn->s_Properties.Num(); ++i) {
-		UTgProperty* p = pawn->s_Properties.Data[i];
-		if (p && p->m_nPropertyId == propId) { prop = p; break; }
-	}
+	// O(1) TMap lookup at pawn+0x400 — the binary native uses this same path.
+	UTgProperty* prop = TgPawn__GetProperty::CallOriginal(pawn, nullptr, propId);
 	if (!prop) {
 		Logger::Log("skills",
 			"[REACTIVE]   propId=%d not in pawn s_Properties — skipped\n", propId);

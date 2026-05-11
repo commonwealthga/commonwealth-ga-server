@@ -16,4 +16,18 @@ public:
                        const std::string& game_mode,
                        uint16_t udp_port,
                        int64_t instance_id);
+
+    // Number of round-robin slots derivable from cfg.game_cpu_range and
+    // cfg.cores_per_instance. 0 if pinning is disabled. Used for both
+    // affinity assignment and per-slot WINEPREFIX provisioning.
+    static int SlotCount(const ControlServerConfig& cfg);
+
+    // Path of the WINEPREFIX for a given slot. Empty if pinning disabled.
+    static std::string SlotPrefixPath(const ControlServerConfig& cfg, int slot_idx);
+
+    // If cfg.per_slot_prefix is on, ensure each slot has its own
+    // WINEPREFIX cloned from the base. Idempotent — skips slots whose
+    // prefix dir already exists. Returns false on irrecoverable error.
+    // Call once at control-server startup, before any Spawn().
+    static bool EnsureSlotPrefixes(const ControlServerConfig& cfg);
 };

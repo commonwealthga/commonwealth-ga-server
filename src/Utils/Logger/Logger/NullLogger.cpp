@@ -3,6 +3,12 @@
 std::map<std::string, int> Logger::ChannelIndents;
 std::vector<std::string> Logger::EnabledChannels;
 
+bool Logger::IsChannelEnabled(const char* Channel) {
+	// NullLogger never emits anything — always tell callers the channel is
+	// off so they skip building expensive log args.
+	return false;
+}
+
 void Logger::Log(const char* Channel, const char* Format, ...) {
 }
 

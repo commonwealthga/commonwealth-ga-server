@@ -423,22 +423,33 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 			// since 24419 is the buff station's only type-263 group, the
 			// ApplyEffectType iteration cleanly bails on the next index.
 			if (g->m_nEffectGroupId == 24419) {
-				Logger::Log("effects",
-					"[GET] fireMode=%s nType=%d skipping egId=24419 (Techro buff station visual-only — see code comment)\n",
-					pThis->GetFullName(), nType);
+				if (Logger::IsChannelEnabled("effects")) {
+					Logger::Log("effects",
+						"[GET] fireMode=%s nType=%d skipping egId=24419 (Techro buff station visual-only — see code comment)\n",
+						pThis->GetFullName(), nType);
+				}
 				continue;
 			}
+
 			if (nIndex) *nIndex = i;
-			Logger::Log("effects",
-				"[GET] fireMode=%s nType=%d -> egId=%d (startIdx=%d resultIdx=%d)\n",
-				pThis->GetFullName(), nType, g->m_nEffectGroupId, startIdx, i);
+
+			if (Logger::IsChannelEnabled("effects")) {
+				Logger::Log("effects",
+					"[GET] fireMode=%s nType=%d -> egId=%d (startIdx=%d resultIdx=%d)\n",
+					pThis->GetFullName(), nType, g->m_nEffectGroupId, startIdx, i);
+			}
 			return g;
 		}
 	}
 
 	if (nIndex) *nIndex = -1;
-	Logger::Log("effects",
-		"[GET] fireMode=%s nType=%d -> NONE (searched from %d in list of %d)\n",
-		pThis->GetFullName(), nType, startIdx, list.Count);
+
+	if (Logger::IsChannelEnabled("effects")) {
+		Logger::Log("effects",
+			"[GET] fireMode=%s nType=%d -> NONE (searched from %d in list of %d)\n",
+			pThis->GetFullName(), nType, startIdx, list.Count);
+	}
+
 	return nullptr;
 }
+

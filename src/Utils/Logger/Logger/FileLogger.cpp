@@ -129,6 +129,17 @@ static void CrashRingAppend(const char* channel, const char* format, va_list arg
 	slot[kCrashRingEntrySize - 1] = '\0';
 }
 
+bool Logger::IsChannelEnabled(const char* Channel) {
+	// Mirrors the gate Logger::Log uses below. Either output mode (file OR
+	// crash-ring) qualifies as "enabled" — a caller that gated expensive
+	// argument construction on this would still want to record into the
+	// ring even when file output is off.
+	if (std::find(EnabledChannels.begin(), EnabledChannels.end(), Channel) != EnabledChannels.end()) {
+		return true;
+	}
+	return IsCrashChannel(Channel);
+}
+
 void Logger::Log(const char* Channel, const char* Format, ...) {
 	// Fast path for crash-only channels: no mutex, no file I/O.
 	if (IsCrashChannel(Channel)) {

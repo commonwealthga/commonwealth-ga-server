@@ -24,22 +24,32 @@ constexpr int Q_UNCOMMON = 1164;
 constexpr int Q_RARE     = 1163;
 constexpr int Q_EPIC     = 1162;
 
-// Equip-slot value IDs (FUN_109a1320 maps these → engine equip points 1..24).
-constexpr int SVID_MELEE      = 221;  // → equip point 1
-constexpr int SVID_RANGED     = 198;  // → equip point 2
-constexpr int SVID_OFFHAND    = 200;  // → equip point 3
-constexpr int SVID_SIDE       = 199;  // → equip point 4
-constexpr int SVID_JETPACK    = 201;  // → equip point 5
-constexpr int SVID_MODULE_1   = 202;  // → equip point 6
-constexpr int SVID_SPECIALTY1 = 203;  // → equip point 7
-constexpr int SVID_SPECIALTY2 = 204;  // → equip point 8
-constexpr int SVID_HEAD_FLAIR = 385;  // → equip point 9
-constexpr int SVID_AMMO       = 386;  // → equip point 10
-constexpr int SVID_BAG        = 499;  // → equip point 11
-constexpr int SVID_TROUSERS   = 500;  // → equip point 12
-constexpr int SVID_BOOTS      = 501;  // → equip point 13
-constexpr int SVID_SHIRT      = 502;  // → equip point 14
-constexpr int SVID_BELT       = 823;  // → equip point 15
+// Equip-slot value IDs (asm_data_set_valid_values group 48; FUN_109a1320 maps
+// these → engine equip points 1..24). Names match the DB ESnn labels.
+constexpr int SVID_MELEE              = 221;   // → equip point 1  (ES1  Melee)
+constexpr int SVID_RANGED             = 198;   // → equip point 2  (ES2  Ranged)
+constexpr int SVID_SPECIALTY          = 200;   // → equip point 3  (ES3  Specialty)
+constexpr int SVID_UNUSED_4           = 199;   // → equip point 4  (ES4  ** Unused **)
+constexpr int SVID_JETPACK            = 201;   // → equip point 5  (ES5  Travel)
+constexpr int SVID_SUIT               = 202;   // → equip point 6  (ES6  Suit)
+constexpr int SVID_OFFHAND1           = 203;   // → equip point 7  (ES7  Offhand 1)
+constexpr int SVID_OFFHAND2           = 204;   // → equip point 8  (ES8  Offhand 2)
+constexpr int SVID_OFFHAND3           = 385;   // → equip point 9  (ES9  Offhand 3)
+constexpr int SVID_MORALE             = 386;   // → equip point 10 (ES10 Morale)
+constexpr int SVID_BEACON             = 499;   // → equip point 11 (ES11 Beacon)
+constexpr int SVID_HELMET             = 500;   // → equip point 12 (ES12 Helmet)
+constexpr int SVID_CONSUMABLE         = 501;   // → equip point 13 (ES13 Consumable)
+constexpr int SVID_CLASS_DEVICE       = 502;   // → equip point 14 (ES14 Class Device)
+constexpr int SVID_UNUSED_15          = 823;   // → equip point 15 (ES15 ** Unused **)
+constexpr int SVID_DYE_PRIMARY        = 996;   // → equip point 16 (ES16 Dye Primary)
+constexpr int SVID_DYE_SECONDARY      = 997;   // → equip point 17 (ES17 Dye Secondary)
+constexpr int SVID_DYE_EMISSIVE       = 998;   // → equip point 18 (ES18 Dye Emissive)
+constexpr int SVID_DYE_WEAPON_PRIMARY = 999;   // → equip point 19 (ES19 Dye Weapon Pri)
+constexpr int SVID_DYE_WEAPON_EMISSIVE= 1000;  // → equip point 20 (ES20 Dye Weapon Emi)
+constexpr int SVID_DYE_JETPACK_TRAIL  = 1001;  // → equip point 21 (ES21 Jetpack Trail Dye)
+constexpr int SVID_UNUSED_22          = 1002;  // → equip point 22 (ES22 ** Unused **)
+constexpr int SVID_UNUSED_23          = 1003;  // → equip point 23 (ES23 ** Unused **)
+constexpr int SVID_UNUSED_24          = 1004;  // → equip point 24 (ES24 ** Unused **)
 
 // Profile IDs (asm_data_set_bots.id, used as profile selector).
 constexpr uint32_t PROFILE_MEDIC    = 567;

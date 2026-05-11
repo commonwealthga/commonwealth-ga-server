@@ -51,9 +51,11 @@ void __fastcall TgPawn__TrackKill::Call(ATgPawn* Pawn, void* edx, ATgPawn* Kille
 		candidatePRI->bNetDirty = 1;
 		candidatePRI->bForceNetUpdate = 1;
 
-		Logger::Log("stats", "Assist credited to %s for kill on %s (%s)\n",
-			candidate->GetName(), Pawn->GetName(),
-			(i < 2) ? "damage" : "healing");
+		if (Logger::IsChannelEnabled("stats")) {
+			Logger::Log("stats", "Assist credited to %s for kill on %s (%s)\n",
+				candidate->GetName(), Pawn->GetName(),
+				(i < 2) ? "damage" : "healing");
+		}
 	}
 
 	LogCallEnd();

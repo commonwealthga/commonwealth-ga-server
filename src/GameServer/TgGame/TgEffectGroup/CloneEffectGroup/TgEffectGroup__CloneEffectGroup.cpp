@@ -100,9 +100,11 @@ UTgEffectGroup* __fastcall TgEffectGroup__CloneEffectGroup::Call(UTgEffectGroup*
 
 		int instSize = GetEffectInstanceSize(tmplEffect);
 		if (instSize <= 0x3C) {
-			Logger::Log("effects",
-				"[CLONE] effect[%d] unknown class size for %s — sharing template ptr (legacy)\n",
-				i, tmplEffect->Class ? tmplEffect->Class->GetFullName() : "<no-class>");
+			if (Logger::IsChannelEnabled("effects")) {
+				Logger::Log("effects",
+					"[CLONE] effect[%d] unknown class size for %s — sharing template ptr (legacy)\n",
+					i, tmplEffect->Class ? tmplEffect->Class->GetFullName() : "<no-class>");
+			}
 			clone->m_Effects.Add(tmplEffect);
 			continue;
 		}
@@ -436,32 +438,38 @@ UTgEffectGroup* __fastcall TgEffectGroup__CloneEffectGroup::Call(UTgEffectGroup*
 				}
 
 				// Diagnostic: see what cat/skill/devInst we end up querying with.
-				Logger::Log("effects",
-					"[EFFECT-BUFF/probe] propId=%d cloneCat=%d cloneSrcDevInst=%d  path=%s  "
-					"queryCat=%d querySkill=%d queryDevInst=%d  inst=%p depInst=%p src=%p\n",
-					effClone->m_nPropertyId, clone->m_nCategoryCode,
-					clone->m_nSourceDeviceInstId, pathTag,
-					clone->m_nCategoryCode, queryCatSkill, queryDevInst,
-					inst, depInstigator, srcPawn);
+				// CloneEffectGroup runs per fire-pulse on every pawn affected by an
+				// effect group, so the inner buffinfo dump is gated behind the
+				// "effects" channel — it walked srcPawn->m_EffectBuffInfo on every
+				// clone otherwise.
+				if (Logger::IsChannelEnabled("effects")) {
+					Logger::Log("effects",
+						"[EFFECT-BUFF/probe] propId=%d cloneCat=%d cloneSrcDevInst=%d  path=%s  "
+						"queryCat=%d querySkill=%d queryDevInst=%d  inst=%p depInst=%p src=%p\n",
+						effClone->m_nPropertyId, clone->m_nCategoryCode,
+						clone->m_nSourceDeviceInstId, pathTag,
+						clone->m_nCategoryCode, queryCatSkill, queryDevInst,
+						inst, depInstigator, srcPawn);
 
-				// Dump matching prop-330/385/376 buff entries on srcPawn so we
-				// can see whether Station Buff/Cyber Specialist/rolled mods
-				// are even in m_EffectBuffInfo, with what stored gating values.
-				if (srcPawn && srcPawn->m_EffectBuffInfo.Data) {
-					int n = srcPawn->m_EffectBuffInfo.Num();
-					for (int bi = 0; bi < n; ++bi) {
-						FBuffInfo& e = srcPawn->m_EffectBuffInfo.Data[bi];
-						int p = e.BuffHeader.nPropId;
-						if (p == 330 || p == 385 || p == 376 || p == 51) {
-							Logger::Log("effects",
-								"   [BUFFINFO/probe] idx=%d prop=%d cat=%d skill=%d devInst=%d  "
-								"IP=%.2f IM=%.2f SP=%.2f SM=%.2f selfP=%.2f selfM=%.2f genP=%.2f genM=%.2f\n",
-								bi, p, e.BuffHeader.nReqCategoryCode,
-								e.BuffHeader.nReqSkillId, e.BuffHeader.nReqDeviceInstId,
-								e.fItemPercentModifier, e.fItemModifier,
-								e.fSkillPercentModifier, e.fSkillModifier,
-								e.fSelfPercentModifier, e.fSelfModifier,
-								e.fPercentModifier,     e.fModifier);
+					// Dump matching prop-330/385/376 buff entries on srcPawn so we
+					// can see whether Station Buff/Cyber Specialist/rolled mods
+					// are even in m_EffectBuffInfo, with what stored gating values.
+					if (srcPawn && srcPawn->m_EffectBuffInfo.Data) {
+						int n = srcPawn->m_EffectBuffInfo.Num();
+						for (int bi = 0; bi < n; ++bi) {
+							FBuffInfo& e = srcPawn->m_EffectBuffInfo.Data[bi];
+							int p = e.BuffHeader.nPropId;
+							if (p == 330 || p == 385 || p == 376 || p == 51) {
+								Logger::Log("effects",
+									"   [BUFFINFO/probe] idx=%d prop=%d cat=%d skill=%d devInst=%d  "
+									"IP=%.2f IM=%.2f SP=%.2f SM=%.2f selfP=%.2f selfM=%.2f genP=%.2f genM=%.2f\n",
+									bi, p, e.BuffHeader.nReqCategoryCode,
+									e.BuffHeader.nReqSkillId, e.BuffHeader.nReqDeviceInstId,
+									e.fItemPercentModifier, e.fItemModifier,
+									e.fSkillPercentModifier, e.fSkillModifier,
+									e.fSelfPercentModifier, e.fSelfModifier,
+									e.fPercentModifier,     e.fModifier);
+							}
 						}
 					}
 				}

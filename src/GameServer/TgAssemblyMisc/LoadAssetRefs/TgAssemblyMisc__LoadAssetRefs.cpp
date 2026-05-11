@@ -34,10 +34,12 @@ int __fastcall TgAssemblyMisc__LoadAssetRefs::Call(void* pThis, void* edx, int p
 		default:         caller = "Other (ClientLoadDevices / UpdateDeviceAssetRefs / other)";
 	}
 
-	Logger::Log("asset_load",
-		"[LoadAssetRefs] ENTER this=0x%p caller='%s'(0x%08x) context=0x%p name='%s' state=%d refList=0x%p refOwner=0x%p\n",
-		pThis, caller, (unsigned)param_1, param_2,
-		SafeFullName(param_2), preState, refList, refOwner);
+	if (Logger::IsChannelEnabled("asset_load")) {
+		Logger::Log("asset_load",
+			"[LoadAssetRefs] ENTER this=0x%p caller='%s'(0x%08x) context=0x%p name='%s' state=%d refList=0x%p refOwner=0x%p\n",
+			pThis, caller, (unsigned)param_1, param_2,
+			SafeFullName(param_2), preState, refList, refOwner);
+	}
 
 	s_nestLevel++;
 	int ret = -1;
@@ -61,19 +63,26 @@ int __fastcall TgAssemblyMisc__LoadAssetRefs::Call(void* pThis, void* edx, int p
 			void** form_m_AssetReference = (void**)((char*)param_2 + 0x10C);
 			void* prev = *form_m_AssetReference;
 			*form_m_AssetReference = referencer;
-			Logger::Log("asset_load",
-				"[LoadAssetRefs] SET form+0x10C (m_AssetReference): form=0x%p  was=0x%p  now=0x%p\n",
-				param_2, prev, referencer);
+
+			if (Logger::IsChannelEnabled("asset_load")) {
+				Logger::Log("asset_load",
+					"[LoadAssetRefs] SET form+0x10C (m_AssetReference): form=0x%p  was=0x%p  now=0x%p\n",
+					param_2, prev, referencer);
+			}
 		} else {
-			Logger::Log("asset_load",
-				"[LoadAssetRefs] WARNING state=3 but referencer (this+0x18)==null; form+0x10C not updated\n");
+			if (Logger::IsChannelEnabled("asset_load")) {
+				Logger::Log("asset_load",
+					"[LoadAssetRefs] WARNING state=3 but referencer (this+0x18)==null; form+0x10C not updated\n");
+			}
 		}
 	}
 
-	Logger::Log("asset_load",
-		"[LoadAssetRefs] EXIT  this=0x%p caller='%s' → state=%d (ret=%d)\n",
-		pThis, caller,
-		pThis ? *(int*)((char*)pThis + 0x10) : -1, ret);
+	if (Logger::IsChannelEnabled("asset_load")) {
+		Logger::Log("asset_load",
+			"[LoadAssetRefs] EXIT  this=0x%p caller='%s' → state=%d (ret=%d)\n",
+			pThis, caller,
+			pThis ? *(int*)((char*)pThis + 0x10) : -1, ret);
+	}
 
 	return ret;
 }

@@ -35,11 +35,13 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 	char* pFireModeSetup = (char*)pThis->m_pFireModeSetup.Dummy;
 	int petId = *(int*)(pFireModeSetup + 0x2C);
 
-	Logger::Log(GetLogChannel(), "TgDeviceFire::SpawnPet: bPet=%d device=%s pawn=%s petId=%d\n",
-		(int)bPet,
-		device->GetFullName(),
-		pawn ? pawn->GetFullName() : "null",
-		petId);
+	if (Logger::IsChannelEnabled(GetLogChannel())) {
+		Logger::Log(GetLogChannel(), "TgDeviceFire::SpawnPet: bPet=%d device=%s pawn=%s petId=%d\n",
+			(int)bPet,
+			device->GetFullName(),
+			pawn ? pawn->GetFullName() : "null",
+			petId);
+	}
 
 
 	ATgGame* game = reinterpret_cast<ATgGame*>(Globals::Get().GGameInfo);
@@ -106,18 +108,20 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 			petId, spawnLocation.X, spawnLocation.Y, spawnLocation.Z);
 	}
 	if (PetPawn) {
-		Logger::Log("pet_spawn",
-			"TgDeviceFire::SpawnPet: pet spawned 0x%p class=%s at (%.1f,%.1f,%.1f)\n",
-			PetPawn,
-			PetPawn->Class ? PetPawn->Class->GetFullName() : "<null>",
-			PetPawn->Location.X, PetPawn->Location.Y, PetPawn->Location.Z);
-		Logger::Log("pet_spawn",
-			"TgDeviceFire::SpawnPet: rotation check — spawnRot=(%d,%d,%d) pawn.Rotation=(%d,%d,%d) ctrl.Rotation=(%d,%d,%d)\n",
-			spawnRot.Pitch, spawnRot.Yaw, spawnRot.Roll,
-			PetPawn->Rotation.Pitch, PetPawn->Rotation.Yaw, PetPawn->Rotation.Roll,
-			PetPawn->Controller ? PetPawn->Controller->Rotation.Pitch : 0,
-			PetPawn->Controller ? PetPawn->Controller->Rotation.Yaw   : 0,
-			PetPawn->Controller ? PetPawn->Controller->Rotation.Roll  : 0);
+		if (Logger::IsChannelEnabled("pet_spawn")) {
+			Logger::Log("pet_spawn",
+				"TgDeviceFire::SpawnPet: pet spawned 0x%p class=%s at (%.1f,%.1f,%.1f)\n",
+				PetPawn,
+				PetPawn->Class ? PetPawn->Class->GetFullName() : "<null>",
+				PetPawn->Location.X, PetPawn->Location.Y, PetPawn->Location.Z);
+			Logger::Log("pet_spawn",
+				"TgDeviceFire::SpawnPet: rotation check — spawnRot=(%d,%d,%d) pawn.Rotation=(%d,%d,%d) ctrl.Rotation=(%d,%d,%d)\n",
+				spawnRot.Pitch, spawnRot.Yaw, spawnRot.Roll,
+				PetPawn->Rotation.Pitch, PetPawn->Rotation.Yaw, PetPawn->Rotation.Roll,
+				PetPawn->Controller ? PetPawn->Controller->Rotation.Pitch : 0,
+				PetPawn->Controller ? PetPawn->Controller->Rotation.Yaw   : 0,
+				PetPawn->Controller ? PetPawn->Controller->Rotation.Roll  : 0);
+		}
 		PetPawn->r_bInitialIsEnemy = 0;
 
 		// Bridge the deploying player's pet-related buff registry to the pet's

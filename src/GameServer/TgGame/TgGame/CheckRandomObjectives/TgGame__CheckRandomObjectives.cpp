@@ -29,7 +29,9 @@ void __fastcall TgGame__CheckRandomObjectives::Call(ATgGame* Game, void* edx) {
 
 		for (ATgMissionObjective* Objective : ActorCache::MissionObjectives) {
 			AddObjectivePointToList(GRI, nullptr, Objective);
-			Logger::Log(GetLogChannel(), "Added objective %s to GRI->m_MissionObjectives\n", ((UObject*)Objective)->GetFullName());
+			if (Logger::IsChannelEnabled(GetLogChannel())) {
+				Logger::Log(GetLogChannel(), "Added objective %s to GRI->m_MissionObjectives\n", ((UObject*)Objective)->GetFullName());
+			}
 		}
 	}
 

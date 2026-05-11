@@ -18,6 +18,15 @@ public:
 	// Config::GetLogDir() at DLL init; do NOT include a trailing slash.
 	static std::string LogDir;
 	static void Log(const char* Channel, const char* Format, ...);
+	// Cheap-side channel check exposed so callers can gate expensive log-arg
+	// construction (e.g. UObject->GetFullName(), std::string copies of class
+	// names) behind it. Logger::Log does the same check internally before
+	// printing, but C++ evaluates every variadic argument before the call —
+	// so when the channel is off, the args still run and get thrown away.
+	// Use `if (Logger::IsChannelEnabled(ch)) Logger::Log(ch, fmt, expensive_args());`
+	// at hot sites where args are non-trivial. Cheap sites can keep using
+	// Logger::Log directly.
+	static bool IsChannelEnabled(const char* Channel);
 	static void DumpMemory(const char* Channel, void* Address, int Size, int NegativeSize = 0);
 	// Called by CrashHandler to append the ring buffer to the crash dump file.
 	static void DumpCrashBuffer(void* fileHandle);

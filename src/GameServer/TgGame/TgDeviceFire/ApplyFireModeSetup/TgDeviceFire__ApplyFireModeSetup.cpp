@@ -5,6 +5,10 @@
 static constexpr const char* CH = "fire_mode_setup";
 
 int __fastcall TgDeviceFire__ApplyFireModeSetup::Call(UTgDeviceFire* DeviceFire, void* /*edx*/, void* Owner, void* SetupStruct) {
+	if (!Logger::IsChannelEnabled(CH)) {
+		return CallOriginal(DeviceFire, /*edx=*/nullptr, Owner, SetupStruct);
+	}
+
 	// Best-effort owner classification.
 	const char* ownerClass = "?";
 	if (Owner) {
