@@ -66,4 +66,18 @@ namespace DeployableOriginRegistry {
 	// never races between simultaneous deployers.
 	void NoteTemplateOwner(::UTgEffectGroup* templateEg, ::UTgDeviceFire* fireMode);
 	::UTgDeviceFire* GetTemplateOwner(::UTgEffectGroup* templateEg);
+
+	// Cloned effect group → deploy origin map.
+	//
+	// Why this exists separately from m_nSourceDeviceInstId on the clone:
+	// UC's `TgEffectGroup::InitInstance` runs AFTER `CloneEffectGroup` and
+	// unconditionally CLEARS m_nSourceDeviceInstId / m_nSourceDeviceSkillId
+	// to 0 before only setting them if `Impact.DeviceModeReference != none`.
+	// For deployable-fired heals whose Impact has no DeviceModeReference (the
+	// common medical-station case), the engine fields stay 0 even if we
+	// pre-populate them at clone time. This side-map preserves the origin
+	// across InitInstance's clear so CheckEffectBuffModifier can recover it.
+	void RegisterClone(::UTgEffectGroup* clone, int spawnDevInstId, int spawnDevSkillId);
+	Origin LookupClone(::UTgEffectGroup* clone);
+	void UnregisterClone(::UTgEffectGroup* clone);
 }

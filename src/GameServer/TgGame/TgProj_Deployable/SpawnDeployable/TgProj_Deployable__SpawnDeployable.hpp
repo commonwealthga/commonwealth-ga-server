@@ -50,6 +50,17 @@ public:
 	// the solid force-field volume instead of passing through it.
 	static bool IsForceFieldDeployableId(int nDeployableId);
 
+	// True iff the deployable's mesh is a Force Field DOME (sphere) rather than
+	// a wall slab. Dome shields (currently just deployable_id 22, the Robotics
+	// class "Dome Shield Boost") should spawn CENTERED on the deploying pawn,
+	// not at an aim-traced ground point — they're "engulf-me" bubbles, not
+	// placed structures. They also must NOT receive the +halfHeight ground lift
+	// SpawnDeployableActor applies for trace-based placements; the pawn's own
+	// cylinder-center Location is the desired sphere center. Discriminator:
+	// asm_data_set_assembly_meshes.name LIKE 'DEV_ForceField_Dome_%' joined via
+	// asm_data_set_deployables.asm_id. Cached per deployable_id.
+	static bool IsDomeShieldDeployableId(int nDeployableId);
+
 	// True if the deployable is a "timer bomb" — explodes after a fixed delay
 	// when the player deploys it (EMP Bomb, Shatter Bomb, Fire Bomb, etc).
 	// Discriminator: asm_data_set_deployables.show_countdown_timer_flag=1

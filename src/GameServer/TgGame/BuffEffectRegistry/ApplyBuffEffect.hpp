@@ -44,10 +44,16 @@ class AActor;
 // for calc 68/69. Matches the symmetric reversal in
 // `ReapplyCharacterSkillTree.cpp:339`.
 //
-// `buffSourceType` = 4 (OTHER) for station-applied effects. Per the formula
-// in `TgPawn__ApplyBuff.cpp:14-23`, OTHER and SELF both contribute to the
-// final layer (`v3 = v2 * (1 + (ΣfSelfPercent + ΣfPercent)/100)
-// + ΣfSelfMod + ΣfMod`), so picking OTHER yields correct math for both the
-// placer-self case and the teammate case without needing to derive
-// `GetBuffType` from a (template-shared, possibly stale) m_Instigator.
+// `buffSourceType` is derived by `GetBuffType(effect, target)` in the .cpp
+// — full mirror of `TgEffectBuff.GetBuffType` (TgEffectBuff.uc:16-119)
+// including the m_nType-based SELF classification (device-fire-mode types
+// 261/262/263/265/266/283/397/759/1104), instigator-equality, owner-pawn
+// equality (via GetCurrentOwnerPawn) and r_DRI.r_InstigatorInfo matching for
+// deployable instigators/targets. SDK enum: 0 SKILL, 1 ITEM, 2 EFFICIENCY,
+// 3 SELF, 4 OTHER.
+//
+// Apply path also gates via `CanBeApplied(target)` — TgDeployable targets
+// check `!m_bInDestroyedState`, TgPawn targets check `s_bCanApplyEffects`.
+// Remove path is unconditional (a pawn that became uncanapply between apply
+// and remove still needs its buff entry cleaned up).
 void ApplyBuffEffectFromHook(UTgEffect* effect, AActor* target, bool bRemove);

@@ -36,6 +36,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/IpDrv/ClientConnection/SendMarshal/ClientConnection__SendMarshal.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.cpp \
 			  $(SRC_DIR)/GameServer/Engine/NetConnection/SendPackageMap/NetConnection__SendPackageMap.cpp \
+			  $(SRC_DIR)/GameServer/Engine/PackageMap/Compute/PackageMap__Compute.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/CleanupActor/NetConnection__CleanupActor.cpp \
 			  $(SRC_DIR)/GameServer/TgNetDrv/MarshalChannel/MarshalReceived/MarshalChannel__MarshalReceived.cpp \
@@ -46,6 +47,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/SetSoundMode/TgPlayerController__SetSoundMode.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/CanPlayerUseVolume/TgPlayerController__CanPlayerUseVolume.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/GetViewTarget/TgPlayerController__GetViewTarget.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/TraceWeaponFire/TgPlayerController__TraceWeaponFire.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/ServerAcceptNewProfileFromEquipScreen/TgPlayerController__ServerAcceptNewProfileFromEquipScreen.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.cpp \
@@ -79,6 +81,9 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SetProperty/TgPawn__SetProperty.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SyncPawnHealth/SyncPawnHealth.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SetTaskForceNumber/TgPawn__SetTaskForceNumber.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/ChangeTeam/ChangeTeam.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/SpawnBot/SpawnBot.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.cpp \
@@ -105,6 +110,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/IsValidTarget/TgDeviceFire__IsValidTarget.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/UpdateDeployModeStatus/TgDevice__UpdateDeployModeStatus.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDevice/CalcFireSocketIndexMax/TgDevice__CalcFireSocketIndexMax.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RosterWalker.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RefIter.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.cpp \
@@ -154,6 +160,10 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffect/TrackStats/TgEffect__TrackStats.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgEffect/CloneEffect/TgEffect__CloneEffect.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgEffect/CheckEffectBuffModifier/TgEffect__CheckEffectBuffModifier.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgEffect/CheckEffectThreatModifier/TgEffect__CheckEffectThreatModifier.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgEffect/CheckOwnerPetBuff/TgEffect__CheckOwnerPetBuff.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/GetSkillBasedEffectGroup/TgEffectManager__GetSkillBasedEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/IsStrongest/TgEffectManager__IsStrongest.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/ProcessReactiveSkillBasedEffectGroup/TgEffectManager__ProcessReactiveSkillBasedEffectGroup.cpp \
@@ -220,6 +230,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackBotHealing/TgPawn__TrackBotHealing.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackCompleteKillInfo/TgPawn__TrackCompleteKillInfo.cpp \
 			  $(SRC_DIR)/GameServer/Combat/SendCombatMessage/SendCombatMessage.cpp \
+			  $(SRC_DIR)/GameServer/Combat/SendKillAlert/SendKillAlert.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Character/SendCombatMessage/TgPawn_Character__SendCombatMessage.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackDamagedBot/TgPawn__TrackDamagedBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackDamagedPlayer/TgPawn__TrackDamagedPlayer.cpp \
@@ -235,6 +246,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective/RegisterSelf/TgMissionObjective__RegisterSelf.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDynamicSMActor/ForceNetRelevant/TgDynamicSMActor__ForceNetRelevant.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgAIController/TargetInLOS/TgAIController__TargetInLOS.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgAIController/CanBeRepaired/TgAIController__CanBeRepaired.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/ApplyDye/TgPawn__ApplyDye.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/ApplyJetpackTrail/TgPawn__ApplyJetpackTrail.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/BeginStats/TgPawn__BeginStats.cpp \
@@ -476,6 +488,7 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/PlayerSessionStore/PlayerSessionStore.cpp \
 	$(CS_SRC_DIR)/TcpSession/TcpSession.cpp \
 	$(CS_SRC_DIR)/ChatSession/ChatSession.cpp \
+	$(CS_SRC_DIR)/ChatSession/ChatCommand.cpp \
 	$(CS_SRC_DIR)/IpcServer/IpcServer.cpp \
 	$(CS_SRC_DIR)/InstanceRegistry/InstanceRegistry.cpp \
 	$(CS_SRC_DIR)/InstanceSpawner/InstanceSpawner.cpp \

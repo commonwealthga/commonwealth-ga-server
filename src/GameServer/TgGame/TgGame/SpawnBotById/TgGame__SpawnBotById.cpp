@@ -128,21 +128,18 @@ void TgGame__SpawnBotById::GiveDeviceById(
 
 		Device->Instigator = (APawn*)Pawn;
 
-		// Bot devices are server-only. Bots have no autonomous-proxy
-		// client doing prediction, so the device actor on the client
-		// would have nothing to do. The bot's weapon mesh on the client
-		// comes from c_DeviceForm built off r_EquipDeviceInfo on the
-		// bot pawn + BotRepInfo PRI; muzzle FX / fire animation come
-		// from anim notifies on the pawn's skeletal mesh; projectiles
-		// replicate as their own actors. Keeping RemoteRole=1 here just
-		// opened a per-bot-device actor channel on every client and
-		// burned NetDriver tick time for nothing — meaningful drag in
-		// bot-heavy missions.
-		Device->Role = 3;
-		Device->RemoteRole = 0;
-		Device->bNetInitial = 0;
-		Device->bNetDirty = 0;
-		Device->bSkipActorPropertyReplication = 1;
+		// Replicate device actor (was server-only as a perf optimization).
+		// See the matching block below in GiveDevicesFromBotConfig for the
+		// rationale: bots can be possessed by players via -possess or the
+		// in-game hacking ability, and possession requires the device
+		// NetGUID be registered on the client's connection at the moment
+		// of Possess so that ClientWeaponSet's `Instigator != None` check
+		// passes. Pre-replicating at spawn makes this deterministic.
+		Device->Role        = 3;
+		Device->RemoteRole  = 1;
+		Device->bNetInitial = 1;
+		Device->bNetDirty   = 1;
+		Device->bSkipActorPropertyReplication = 0;
 		Device->bOnlyDirtyReplication = 0;
 		Device->bHidden = 1;
 		// Inherit Inventory.uc defaults bReplicateMovement=false — see
@@ -177,10 +174,12 @@ void TgGame__SpawnBotById::GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Pla
 	int result = sqlite3_prepare_v2(db,
 		"SELECT DISTINCT bd.device_id, bd.slot_used_value_id, "
 		"COALESCE(i.quality_value_id, 1162) AS quality_value_id, "
-		"b.default_slot_value_id "
+		"b.default_slot_value_id, "
+		"COALESCE(d.in_hand_device_flag, 0) AS in_hand_device_flag "
 		"FROM asm_data_set_bots_data_set_bot_devices bd "
 		"LEFT JOIN asm_data_set_bots b ON b.bot_id = bd.bot_id "
 		"LEFT JOIN asm_data_set_items i ON i.item_id = bd.device_id "
+		"LEFT JOIN asm_data_set_devices d ON d.device_id = bd.device_id "
 		"WHERE bd.bot_id = ?;",
 		-1, &stmt, nullptr);
 
@@ -196,6 +195,7 @@ void TgGame__SpawnBotById::GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Pla
 		int slotUsedValueId    = sqlite3_column_int(stmt, 1);
 		int qualityValueId     = sqlite3_column_int(stmt, 2);
 		int defaultSlotValueId = sqlite3_column_int(stmt, 3);
+		bool inHandDeviceFlag  = sqlite3_column_int(stmt, 4) != 0;
 		if (deviceId == 0) continue;
 
 		int equipPoint = BotGetEquipPointBySlot(slotUsedValueId);
@@ -210,6 +210,25 @@ void TgGame__SpawnBotById::GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Pla
 			int invId = Inventory::NextId();
 			Device->r_nDeviceInstanceId = invId;
 			Device->r_eEquippedAt = equipPoint;
+
+			// Hand-vs-offhand classification. `asm_data_set_devices.in_hand_device_flag`
+			// distinguishes weapons that must be in-hand to fire (melee, ranged,
+			// specialty — flag=1) from off-hand devices that fire without
+			// switching the main weapon (grenades, bombs, deployers — flag=0).
+			//
+			// Without these flags set, the AI's "use device" path treats every
+			// device as a regular in-hand weapon. For the assassin specifically,
+			// that meant the EMP bomb in ES7 (slot 203, in_hand_device_flag=0)
+			// silently failed to fire — the fire path tries to bring it in-hand
+			// first, can't (the device's CDO refuses), and the action aborts.
+			// The melee equivalent (action 10902 DRIVE BY - HUMAN, slot 221)
+			// works fine because slot 221's device IS an in-hand weapon, so
+			// the default zero on m_bHandDevice didn't matter as much.
+			//
+			// Mirror what `GiveDeviceById` (player-equip path) does at line 102-103.
+			Device->m_bIsOffHand  = !inHandDeviceFlag;
+			Device->m_bHandDevice = inHandDeviceFlag;
+
 			// CreateEquipDevice leaves r_eEquippedAt=0 at creation time, so the device ends up
 			// at m_EquippedDevices[0] and r_EquipDeviceInfo[0]. Fix both slot mappings.
 			Bot->m_EquippedDevices[0] = nullptr;
@@ -223,14 +242,25 @@ void TgGame__SpawnBotById::GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Pla
 			// Instigator must be set so TgDeviceFire uses Instigator.GetAimStart() for
 			// projectile spawn location.
 			Device->Instigator = (APawn*)Bot;
-			// Server-only — see the matching block in the first device-spawn
-			// path above for the full rationale. tl;dr: bot weapon visuals
-			// come from r_EquipDeviceInfo on the pawn/PRI, not the device
-			// actor. Replicating these to clients is pure overhead.
-			Device->Role = 3;
-			Device->RemoteRole = 0;
-			Device->bNetInitial = 0;
-			Device->bNetDirty = 0;
+			// Replicate the device actor to all clients. The original perf
+			// optimization set RemoteRole=0 because "bot weapon visuals come
+			// from r_EquipDeviceInfo on the pawn/PRI, not the device actor."
+			// That's true for the rendering visuals, but the device actor's
+			// NetGUID must be registered on a client's connection BEFORE
+			// that client can ever take over the bot (via -possess or the
+			// in-game hacking ability). When we tried to enable replication
+			// at possess time, ClientWeaponSet fired with an unresolved
+			// NetGUID and the weapon-fire path silently stayed broken on
+			// the client (the user verified this empirically: a second
+			// -possess after the first works, because by then the device's
+			// NetGUID has been registered). Enabling replication at spawn
+			// pays the cost up-front but makes possession deterministic.
+			Device->Role        = 3;
+			Device->RemoteRole  = 1;
+			Device->bNetInitial = 1;
+			Device->bNetDirty   = 1;
+			Device->bSkipActorPropertyReplication = 0;
+			Device->SetOwner((AActor*)Bot);
 			BotRepInfo->r_EquipDeviceInfo[equipPoint].nDeviceId = deviceId;
 			BotRepInfo->r_EquipDeviceInfo[equipPoint].nDeviceInstanceId = invId;
 			BotRepInfo->r_EquipDeviceInfo[equipPoint].nQualityValueId = qualityValueId;
@@ -307,6 +337,28 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		return nullptr;
 	}
 
+	// Look up BotConfig and wire m_pBot.Dummy BEFORE spawning the bot pawn.
+	//
+	// Once `AIController->Possess(Bot, ...)` runs it sets `Bot->Controller`,
+	// which makes the new pawn fully visible to AI scanning natives elsewhere
+	// in the world. One such scan is `TgPawn::IsCrewable` (vtable[0x71c]) —
+	// the native body reads `pawn->Controller->m_pBot` (offset 0x73c) and
+	// dereferences `[m_pBot + 0x5c]` (BOT_TYPE_VALUE_ID) to detect crewable
+	// vehicles. If `m_pBot` is still null at that moment we segfault.
+	//
+	// Previously we assigned `AIController->m_pBot.Dummy = BotConfig` only
+	// after `Possess` + `ApplyPawnSetup` (around line 609). That window is
+	// safe at map start (no other AI exists yet) but crashes mid-game when a
+	// nearby AI controller scans the freshly-spawned bot. Setting it up here
+	// closes the window. Also lets us early-out cleanly if BotConfig is
+	// missing instead of leaking a half-initialized pawn.
+	if (!CAmBot__LoadBotMarshal::m_BotPointers[nBotId]) {
+		Logger::Log("pet_spawn", "SpawnBotById: BotConfig pointer missing for nBotId=%d — no assembly.dat row loaded\n", nBotId);
+		return nullptr;
+	}
+	void* BotConfig = (void*)CAmBot__LoadBotMarshal::m_BotPointers[nBotId];
+	AIController->m_pBot.Dummy = BotConfig;
+
 	const char* pawnClassName = GetPawnClassName(nBotId);
 	UClass* pawnClass = ClassPreloader::GetClass(pawnClassName);
 	// DB-resolved class may be defined in a package that isn't loaded server-
@@ -364,6 +416,20 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	Bot->PlayerReplicationInfo->Role = 3;
 	AIController->Role = 3;
 
+	// Give every spawned bot a unique, non-zero r_nPawnId. The client uses
+	// pawn->r_nPawnId (offset 0x3E8) as the routing key for several
+	// per-pawn messages — notably SEND_INVENTORY (opcode 0x182), where
+	// FUN_10913760 matches the incoming PAWN_ID against the local
+	// controller's pawn (or its r_ControlPawn fallback). With every bot
+	// defaulting to 0, multiple bots share an ID and the dispatcher's
+	// "pick the local pawn" routing is ambiguous if anything ever runs
+	// against a bot. Players use 998 (hardcoded in SpawnPlayerCharacter);
+	// reserve >=10000 for bots so the ranges never collide.
+	{
+		static int s_nextBotPawnId = 10000;
+		Bot->r_nPawnId = s_nextBotPawnId++;
+	}
+
 	Bot->r_EffectManager->r_Owner = Bot;
 	Bot->r_EffectManager->SetOwner(Bot);
 	Bot->r_EffectManager->Base = Bot;
@@ -388,6 +454,7 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	if (pOwnerPawn != nullptr) {
 		Bot->r_Owner = pOwnerPawn;
 		AIController->m_pOwner = pOwnerPawn;
+
 
 		// Spawner attribution: which fire mode + device instance produced this
 		// bot. Server-only fields (no CPF_Net) but consumed by stripped natives
@@ -502,21 +569,96 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 
 	AIController->Possess(Bot, 0, 1);
 
+	// PHYS_Flying setup is handled by the ProcessEvent hook on
+	// `Function TgGame.TgPawn.PostPawnSetup` (UObject__ProcessEvent.cpp).
+	// Writing Physics=4 here would just be clobbered — UC's
+	// `TgPawn.PostPawnSetup` does an unconditional `SetPhysics(ROLE_SimulatedProxy)`
+	// (= PHYS_Falling, value 2) which runs asynchronously via the
+	// `WaitForInventoryThenDoPostPawnSetup` timer, AFTER SpawnBotById returns.
+	// The hook applies the right physics after that call completes.
+
+	// Apply DB-derived collision cylinder size — the base TgPawn CDO has
+	// CollisionHeight=46, CollisionRadius=25 (TgPawn.uc:10552-10554) which is
+	// way smaller than the visible mesh for most bots (e.g. Boss Shrike
+	// asm_data_set_assembly_meshes row gives 65×117). Without this, weapons
+	// "miss" when hitting the edges of the visible body. `GetBotCollisionCylinder`
+	// already pulls the right values from
+	// asm_data_set_assembly_meshes.{collision_radius, collision_height} (via
+	// asm_data_set_bots.body_asm_id join); we just have to actually apply
+	// them. SetCollisionSize dispatches via ProcessEvent → engine native; same
+	// path the deployable fix uses successfully.
+	{
+		float cylRadius = 0.0f, cylHalfHeight = 0.0f;
+		GetBotCollisionCylinder(nBotId, &cylRadius, &cylHalfHeight);
+		if (cylRadius > 0.0f && cylHalfHeight > 0.0f) {
+			Bot->SetCollisionSize(cylRadius, cylHalfHeight);
+			Logger::Log("pet_spawn",
+				"SpawnBotById: nBotId=%d SetCollisionSize(radius=%.1f, halfHeight=%.1f)\n",
+				nBotId, cylRadius, cylHalfHeight);
+		}
+	}
+
 	Bot->ApplyPawnSetup();
 	Bot->WaitForInventoryThenDoPostPawnSetup();
 	Bot->InvManager->Instigator = Bot;
 
-	if (!CAmBot__LoadBotMarshal::m_BotPointers[nBotId]) {
-		Logger::Log("pet_spawn", "SpawnBotById: BotConfig pointer missing for nBotId=%d — no assembly.dat row loaded\n", nBotId);
-		return nullptr;
-	}
+	// BotConfig was already resolved and assigned to AIController->m_pBot.Dummy
+	// up top (see the comment block right after AIController spawn). Reuse it
+	// here for the pawn-level field; no second lookup needed.
 	Logger::Log("pet_spawn", "SpawnBotById: BotConfig resolved, proceeding with post-spawn setup for nBotId=%d Bot=%p\n", nBotId, (void*)Bot);
 
-	void* BotConfig = (void*)CAmBot__LoadBotMarshal::m_BotPointers[nBotId];
+	Bot->m_pAmBot.Dummy = BotConfig;
 
-	// offsets pulled from 0x1094c730
-	Bot->r_nPhysicalType    = *(int*)((char*)BotConfig + 0x64); // PHYSICAL_TYPE_VALUE_ID
-	Bot->r_nBodyMeshAsmId   = *(int*)((char*)BotConfig + 0x54); // BODY_ASM_ID
+	// BotConfig field layout decoded from CGameClient__BotSetup @ 0x1094c730.
+	// The original engine's `TgPawn::InitializeDefaultProps` (0x109bf400) was
+	// the native that copied these into the spawned pawn; it's stripped to a
+	// stub in our build, so we have to do it here. All replicated fields are
+	// CPF_Net so the client picks them up automatically.
+	Bot->r_nPhysicalType       = *(int*)((char*)BotConfig + 0x64); // PHYSICAL_TYPE_VALUE_ID
+	Bot->r_nBodyMeshAsmId      = *(int*)((char*)BotConfig + 0x54); // BODY_ASM_ID
+
+	// Identity / classification — none of these were being set, so every bot
+	// looked like a "rank=0, profile=0, hunts=nothing" pawn to AI natives that
+	// branch on them (e.g. henchman/prey/rank-based action selection).
+	Bot->r_nProfileId          = nBotId;                                  // matches BotConfig+0x1c bot_id
+	Bot->r_nProfileTypeValueId = *(int*)((char*)BotConfig + 0x60);        // CLASS_TYPE_VALUE_ID (0 for most bots; Medic/Recon/Assault/Robotics 941-944 only for player profiles)
+	Bot->r_nBotRankValueId     = *(int*)((char*)BotConfig + 0x68);        // BOT_RANK_VALUE_ID — group 119: 1048 Elite, 1051 Support, 1052 Minion
+	Bot->r_nPreyProfileType    = *(int*)((char*)BotConfig + 0x6c);        // TARGET_ONLY_PHYSICAL_TYPE_VALUE_ID — pairs with target's r_nProfileTypeValueId in IsPreyOfHunter (TgPawn.uc:7318)
+
+	// Death-drop rewards. Currently zero everywhere, so killing a bot gives
+	// nothing — XP/currency progression for players is dead until we set these.
+	Bot->r_nXp                 = *(int*)((char*)BotConfig + 0xf4);        // XP_VALUE — XP awarded on death
+	Bot->r_nCurrency           = *(int*)((char*)BotConfig + 0xf8);        // CURRENCY_VALUE — currency dropped on death
+
+	// Default posture. CGameClient__BotSetup (0x1094c730) marshals the DB's
+	// default_posture_value_id (FK group 61) into BotConfig+0xa4 already
+	// translated to the TG_POSTURE byte enum via DAT_119a1c80 vtable[0x28].
+	// We must propagate that byte onto r_ePosture (offset 0x6F0, CPF_Net)
+	// AND mark the field dirty so the initial replication actually fires —
+	// otherwise the client's BlendByPostureAnimNode picks the wrong child
+	// (or never selects one) and bots visibly settle into a "kinda crouching"
+	// idle even though their collision cylinder is full-size. 333/346 bots in
+	// the DB have default_posture_value_id=334 (Default → enum 0), so most
+	// just get a clean Default-posture announcement; the Hibernate/Patrol/
+	// Job1 bots get their actual non-zero starting posture.
+	Bot->r_ePosture = (unsigned char)(*(int*)((char*)BotConfig + 0xa4));
+
+	// Explicitly clear UE3 crouch state on the bot. APawn::bIsCrouched
+	// (offset 0x1EC bit 0x08, CPF_Net) replicates to non-owning clients via
+	// the V2 rep block's `bNetDirty && !bNetOwner` gate. If it's true at spawn,
+	// every observing client renders the mesh with `m_fCrouchTranslationOffset
+	// = -32` translated down via AdjustMeshTranslation (native, fired from
+	// StartCrouch) — the mesh looks "low" but the collision cylinder stays
+	// full-size. That matches the symptom: boss bots (and several other AI
+	// bots) appear crouched while walking. Possessing the bot bypasses this
+	// because crewing's UC ProcessEvent path on the player must eventually
+	// touch state that uncrouches it (or repathing forces ShouldCrouch(false)),
+	// so the user sees normal stance only while controlling.
+	//
+	// Clear both bIsCrouched and bWantsToCrouch — the engine processes the
+	// pending want flag next tick and would re-crouch otherwise.
+	*(unsigned int*)((char*)Bot + 0x1EC) &= ~0x0Cu;  // clear bits 0x04 (bWantsToCrouch) + 0x08 (bIsCrouched)
+
 	// s_nCharacterId is defined on ATgPawn_Character (offset 0x162C). Non-
 	// Character bots (TgPawn_Hover, TgPawn_Robot, TgPawn_VanityPet, ...) reuse
 	// that offset for subclass fields. In particular TgPawn_Hover has a
@@ -536,6 +678,11 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		 strstr(pawnClassName, "TgPawn_Turret"));
 	if (isCharacter) {
 		Bot->s_nCharacterId = *(int*)((char*)BotConfig + 0x5C); // BOT_TYPE_VALUE_ID
+		// Character-subclass replicated fields. Same offset-collision caveat
+		// as s_nCharacterId — only safe to write when the actual class is
+		// Character-descended.
+		*(int*)((char*)Bot + 0x1630) = *(int*)((char*)BotConfig + 0x50); // r_nHeadMeshAsmId ← HEAD_ASM_ID
+		*(int*)((char*)Bot + 0x1640) = *(int*)((char*)BotConfig + 0xb4); // r_nSkillGroupSetId ← SKILL_GROUP_SET_ID
 	}
 
 	Bot->r_bIsStealthed = 0;
@@ -556,6 +703,10 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		Logger::Log("debug", "TgBotFactory passed: %s\n", pFactory->GetFullName());
 	}
 
+	// AIController->m_nSquadRole = 1404;
+
+	// AIController->m_pBot.Dummy was set up-top before bot Spawn — see the
+	// IsCrewable race comment in the AIController-spawn block.
 	TgAIController__InitBehavior::CallOriginal(AIController, edx, BotConfig, pFactory);
 
 	BotRepInfo->bNetDirty = 1;

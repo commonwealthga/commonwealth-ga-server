@@ -192,6 +192,34 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 				turret->r_fTimeToDeploySecs  = petDeploySecs;
 				turret->r_fCurrentDeployTime = 0.0f;
 				turret->r_bIsDeployed        = 0;
+				turret->r_nPhysicalType = 861;
+				turret->r_bIsBot = 1;
+				turret->s_bInvisibleToPets = 0;
+				turret->s_bCanSeePets = 1;
+				turret->r_bIsHacked = 0;
+				turret->r_bIsHacking = 0;
+				turret->r_bIsDecoy = 0;
+				turret->m_bIsInvisibleToAI = 0;
+				turret->s_bIsCrewable = 0;
+
+
+				// Henchman + r_Owner is what TgAIController::IsEnemy uses to decide
+				// hostility for a pet-pawn. With r_bIsHenchman=1, the IsEnemy native
+				// (0x10a80ff0) takes the henchman branch and returns
+				// `Actor::IsEnemy(this, target->r_Owner)`; with r_bIsHenchman=0 it
+				// falls through to the standard parent IsEnemy which compares PRI
+				// teams — but our pet's PRI team isn't reliably propagated from the
+				// deployer at the moment enemy AI evaluates it, so the assassin
+				// never promotes the turret to Controller::Enemy and EMP action
+				// 10907 never fires.
+				//
+				// The wave-revive crash that originally motivated commenting this
+				// out is already defended against in
+				// RegisterForWaveRevive/Revive*Timer (see
+				// reference_wave_revive_henchman_collision.md). Re-enabled here so
+				// enemy AI correctly engages player-deployed turrets.
+				turret->r_bIsHenchman = 1;
+				turret->r_Owner = pawn;
 
 				// Drive deploy via the canonical posture transition (1=HIBERNATE/
 				// stowed → 0=DEFAULT/deployed) instead of calling StartDeploy()

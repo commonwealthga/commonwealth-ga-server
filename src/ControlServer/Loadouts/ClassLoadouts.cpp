@@ -83,7 +83,9 @@ static const std::vector<GearSlot> kAssault = {
 static const std::vector<GearSlot> kRecon = {
     { 5799,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // Dual Daggers
     { 2110,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // Ballista
-    { 5807,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // targetting system
+    // { 5807,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // targetting system
+    { 3023,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // spring stealth
+
     { 7033,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Recon Crescent Jetpack
     { 4708,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "ddd", false) },  // Venom bomb
     { 5804,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ddx", "ddd", false) },  // Deconstructor

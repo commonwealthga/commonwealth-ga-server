@@ -26,16 +26,28 @@ class UTgEffect;
 // be reused natively by subclasses or alignment. Keeping the flag external
 // avoids the risk.
 //
-// Lifetime: entries are added at `BuildEffectGroup` time (once per template
-// effect, never per-clone — clones share the template effect pointer per
-// `TgEffectGroup__CloneEffectGroup.cpp:55-57`). Templates live as long as
-// their owning `s_EffectGroupList` (effectively the deployable / device's
-// fire mode lifetime). We don't currently observe template GC events, so
-// stale entries can accumulate; the keys are pointer-typed so the only
-// failure mode is a NEW UTgEffect happening to land at the same address as a
-// freed one — astronomically unlikely under UE3 GC pacing, and the
-// downstream path is still safe (worst case: a non-buff effect routes
-// through ApplyBuff once and applies an additive 0 to the registry).
+// Lifetime: TEMPLATE effects are added at `BuildEffectGroup` time (once per
+// template, lives with the device's fire mode `s_EffectGroupList`). CLONE
+// effects are added per-instance in `TgEffectGroup__CloneEffectGroup.cpp` —
+// each apply creates fresh `UTgEffect`s via `TgEffect__CloneEffect::Call` and
+// marks them if their template is marked. Clones are deliberately NOT
+// RootSet: while the clone group is alive (RootSet'd) and references the
+// clone via m_Effects, UE3 GC keeps it; once the group is removed from
+// `s_AppliedEffectGroups`, GC eventually reclaims the clone effects too.
+//
+// **Stale-entry hazard**: clone pointers are never `Forget()`ed when the
+// group is removed, so the set accumulates dead-clone addresses over a
+// session. When a fresh allocation lands on a reused address, `IsBuff()`
+// returns a false positive. This is benign for the apply path
+// (`SetEffectRep`'s buff-route runs alongside UC `ApplyEffect`, which is
+// already a silent no-op for modifier props the pawn doesn't carry in
+// `s_Properties`) AND for the remove path (`UObject__ProcessEvent`'s
+// `TgEffectRemove` hook is ADDITIVE — `ApplyBuffEffectFromHook(bRemove=true)`
+// runs alongside UC `TgEffect.Remove`, not instead of it). The asymmetric
+// behavior we used to have — buff-route Remove REPLACING UC Remove — caused
+// the iMINIGUN stuck-root bug; see UObject__ProcessEvent.cpp:507-535 for the
+// fix. Until clones get `Forget()`ed at remove time, false positives are
+// occurring in normal play but are no longer load-bearing.
 namespace BuffEffectRegistry {
 
 inline std::unordered_set<UTgEffect*>& Set() {

@@ -28,7 +28,22 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 	FVector spawnLoc  = pawn->Location;
 	FVector spawnNorm = { 0.f, 0.f, 1.f };
 
-	if (pThis->m_nAttackType == 0x156 /* TGTT_ATTACK_INSTANT_DEPLOYABLE */) {
+	const bool bIsDomeShield = TgProj_Deployable__SpawnDeployable::IsDomeShieldDeployableId(deployableId);
+
+	if (bIsDomeShield) {
+		// Dome must be centered at the pawn's FEET, not their waist. `pawn->Location`
+		// is at the cylinder CENTER (waist-height); drop it by the pawn's cylinder
+		// half-height so the dome's actor.Location lands exactly at the feet.
+		// SpawnDeployableActor's `+halfHeight+5` ground-lift is also skipped for
+		// domes (see IsDomeShieldDeployableId branch there), so the value we set
+		// here is the final actor.Location. Result on flat ground: dome center at
+		// ground.Z → top hemisphere visible above ground, bottom hemisphere below.
+		UCylinderComponent* pawnCyl = (UCylinderComponent*)pawn->CollisionComponent;
+		if (pawnCyl) {
+			spawnLoc.Z -= pawnCyl->CollisionHeight;
+		}
+	}
+	else if (pThis->m_nAttackType == 0x156 /* TGTT_ATTACK_INSTANT_DEPLOYABLE */) {
 		// Match the client's ghost-preview trace: pass the deployable's real
 		// collision cylinder (radius, radius, halfHeight) as the box extent so
 		// the returned contact point accounts for the footprint instead of the
@@ -52,6 +67,11 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 		// so both this path and the projectile-landing path (which passes the
 		// impact point) get the same ground-to-center adjustment.
 	}
+	// Dome path summary: spawnLoc was set above to pawn->Location.Z - pawnHalfHeight
+	// (pawn's feet). SpawnDeployableActor skips its +halfHeight ground-lift for
+	// domes, so actor.Location.Z = feet. Net: on flat ground, dome center at
+	// ground level → exactly half-sphere above ground. Can deploy mid-air too —
+	// no ground snap, dome just centers on wherever the player's feet are.
 
 	ATgDeployable* Deployable = TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 		pawn, deployableId, spawnLoc, spawnNorm, device, pThis);

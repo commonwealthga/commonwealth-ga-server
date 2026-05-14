@@ -2,12 +2,28 @@
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
-// Removes all applied effect groups that share the same m_nCategoryCode as
-// the given effect group. Called from GetNewEffectGroupByApp before applying
-// a replacement effect (Newest Wins / SameInstigator / Strongest cases) —
-// which means any property mods those groups installed MUST be reversed
-// here, otherwise the caller's subsequent ApplyEffects will stack on top of
-// the un-reversed modifiers and compound m_fRaw on every re-apply.
+// Removes all applied effect groups that share the same displacement bucket
+// as the given effect group. Called from GetNewEffectGroupByApp before
+// applying a replacement effect (Newest Wins / SameInstigator / Strongest
+// cases) — which means any property mods those groups installed MUST be
+// reversed here, otherwise the caller's subsequent ApplyEffects will stack
+// on top of the un-reversed modifiers and compound m_fRaw on every re-apply.
+//
+// Bucket scope mirrors the cat-302 ("Local") special case used by every
+// other displacement path in TgEffectManager.uc — see
+// GetStackingEffectGroup (uc:464) and GetRefreshedEffectGroup (uc:504):
+//   if (eg.cat == 302)  match by m_nEffectGroupId
+//   else                match by m_nCategoryCode
+// Without this scope, ANY cat-302 displacement (Newest Wins / Strongest
+// Wins / SameInstigator) would wipe every other cat-302 effect — including
+// the jetpack's per-pulse +AirSpeed / +FlightAccel effects (egs
+// 10450/52/54/56). Dropping FlightAccel triggers the client's
+// r_FlightAcceleration ReplicatedEvent → SetPhysics(2) → player falls
+// out of the air mid-flight while jetpack VFX/SFX/power-drain continue
+// (the jetpack device's UC state has no idea its effects were displaced).
+// Concrete trigger: Targeting System (eg 24240) and Inferno-X Cannon
+// Mk III (eg 9360) — the only two devices in the DB with cat-302 + app-157
+// + type-263.
 //
 // Previously this function only cleared the HUD slot + s_AppliedEffectGroups
 // entry; it did NOT run RemoveEffects, so movement-speed debuffs and similar
@@ -20,14 +36,19 @@ void __fastcall TgEffectManager__RemoveAllEffectGroups::Call(ATgEffectManager* p
 		return;
 	}
 
-	int nCategoryCode = EffectGroup->m_nCategoryCode;
+	const int nCategoryCode = EffectGroup->m_nCategoryCode;
+	const int nEffectGroupId = EffectGroup->m_nEffectGroupId;
+	const bool isLocal = (nCategoryCode == 302);
 
-	// Iterate s_AppliedEffectGroups, remove matching category entries
+	// Iterate s_AppliedEffectGroups, remove matching bucket entries
 	for (int i = pThis->s_AppliedEffectGroups.Count - 1; i >= 0; i--) {
 		UTgEffectGroup* applied = pThis->s_AppliedEffectGroups.Data[i];
 		if (applied == nullptr) continue;
 
-		if (applied->m_nCategoryCode == nCategoryCode) {
+		const bool matches = isLocal
+			? (applied->m_nEffectGroupId == nEffectGroupId)
+			: (applied->m_nCategoryCode == nCategoryCode);
+		if (matches) {
 			// 0. Reverse property modifiers installed by the applied group's
 			//    effects — UNLESS this is a regen-ticker (any effect with
 			//    apply_on_interval_flag = 1, bit 0x01 at effect+0x48).

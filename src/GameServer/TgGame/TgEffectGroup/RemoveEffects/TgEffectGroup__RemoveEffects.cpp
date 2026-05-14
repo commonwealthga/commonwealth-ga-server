@@ -1,5 +1,8 @@
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
+#include "src/GameServer/TgGame/BuffEffectRegistry/BuffEffectRegistry.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+
+#include <cstring>
 
 // Walks m_Effects and ProcessEvents the UC `Remove` event on each one.
 // SDK's UTgEffect::eventRemove builds the parm struct (Target +
@@ -51,6 +54,69 @@ void __fastcall TgEffectGroup__RemoveEffects::Call(UTgEffectGroup* eg, void* /*e
 			i, (void*)effect,
 			effect->m_nPropertyId, effect->m_nCalcMethodCode,
 			effect->m_fCurrent, (eflags & 0x02) ? 1 : 0);
+
+		// AirSpeed/FlightAccel diagnostic: log the m_fRaw/Pawn.AirSpeed/
+		// Pawn.r_FlightAcceleration triple immediately before AND after the
+		// eventRemove fires, when the effect targets prop 70 or 59. SetProperty
+		// hook will also emit a [SET-PROP] line for the inner write — these
+		// REMOVE-CTX bookends let us see the eventRemove's net effect with
+		// the egId/effect-ptr context that [SET-PROP] alone lacks.
+		const bool track = (effect->m_nPropertyId == 70 || effect->m_nPropertyId == 59);
+		ATgPawn* pawnTarget = nullptr;
+		float    rawBefore = -99999.0f, airBefore = -99999.0f, faBefore = -99999.0f;
+		if (track && Target) {
+			const char* tname = Target->Class ? Target->Class->GetFullName() : nullptr;
+			if (tname && strstr(tname, "TgPawn") != nullptr) {
+				pawnTarget = (ATgPawn*)Target;
+				if (pawnTarget->s_Properties.Data) {
+					for (int j = 0; j < pawnTarget->s_Properties.Num(); ++j) {
+						UTgProperty* p = pawnTarget->s_Properties.Data[j];
+						if (p && p->m_nPropertyId == effect->m_nPropertyId) { rawBefore = p->m_fRaw; break; }
+					}
+				}
+				airBefore = pawnTarget->AirSpeed;
+				faBefore  = pawnTarget->r_FlightAcceleration;
+				Logger::Log("effects",
+					"[REMOVE-CTX] PRE  egId=%d eff=%p prop=%d  m_fRaw=%.4f Pawn.AirSpeed=%.3f Pawn.r_FlightAccel=%.4f\n",
+					eg->m_nEffectGroupId, (void*)effect, effect->m_nPropertyId,
+					rawBefore, airBefore, faBefore);
+			}
+		}
+
 		effect->eventRemove(Target, bResetToFollow);
+
+		if (track && pawnTarget) {
+			float rawAfter = -99999.0f;
+			if (pawnTarget->s_Properties.Data) {
+				for (int j = 0; j < pawnTarget->s_Properties.Num(); ++j) {
+					UTgProperty* p = pawnTarget->s_Properties.Data[j];
+					if (p && p->m_nPropertyId == effect->m_nPropertyId) { rawAfter = p->m_fRaw; break; }
+				}
+			}
+			Logger::Log("effects",
+				"[REMOVE-CTX] POST egId=%d eff=%p prop=%d  m_fRaw=%.4f (Δ%+.4f)  Pawn.AirSpeed=%.3f (Δ%+.3f)  Pawn.r_FlightAccel=%.4f (Δ%+.4f)\n",
+				eg->m_nEffectGroupId, (void*)effect, effect->m_nPropertyId,
+				rawAfter, rawAfter - rawBefore,
+				pawnTarget->AirSpeed, pawnTarget->AirSpeed - airBefore,
+				pawnTarget->r_FlightAcceleration, pawnTarget->r_FlightAcceleration - faBefore);
+		}
+
+		// Stale-pointer cleanup. CLONE effects (not template effects) get
+		// marked into BuffEffectRegistry by CloneEffectGroup; without a
+		// Forget on remove they accumulate across the session. UE3 GC
+		// eventually reclaims the clone's memory, the allocator hands the
+		// same address back to a fresh allocation, and `IsBuff()` returns
+		// a false positive — see BuffEffectRegistry.hpp for the full story.
+		//
+		// The asymmetric-remove fix in UObject__ProcessEvent makes false
+		// positives benign already, so this is defense-in-depth. Order
+		// matters: Forget AFTER eventRemove so the ProcessEvent hook that
+		// fires during eventRemove still sees IsBuff()=true and runs the
+		// buff-route Remove. Forget'ing before would silently drop
+		// legitimate buff cleanup.
+		//
+		// Templates aren't passed in here (templates aren't reaped via this
+		// path), so we don't risk Forget'ing the template by mistake.
+		BuffEffectRegistry::Forget(effect);
 	}
 }

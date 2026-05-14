@@ -26,6 +26,7 @@ private:
     std::vector<uint8_t> read_buf_;
     std::deque<std::vector<uint8_t>> write_queue_;
     std::string player_name_;
+    std::string session_guid_;
 
     template<typename... Bytes>
     void append(std::vector<uint8_t>& buffer, Bytes&&... bytes) {

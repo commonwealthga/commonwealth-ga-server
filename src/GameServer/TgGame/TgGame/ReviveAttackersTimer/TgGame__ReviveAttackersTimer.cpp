@@ -10,9 +10,27 @@ void __fastcall TgGame__ReviveAttackersTimer::Call(ATgGame *Game, void *edx) {
 		int count = Game->s_AttackerReviveList.Num();
 		Logger::Log("revive", "ReviveAttackersTimer: reviving %d attackers\n", count);
 		for (int i = 0; i < count; i++) {
-			ATgPlayerController* PC = (ATgPlayerController*)Game->s_AttackerReviveList.Data[i];
-			if (PC == nullptr) continue;
+			AController* Controller = Game->s_AttackerReviveList.Data[i];
+			if (Controller == nullptr) continue;
 
+			// Defensive: reject anything that isn't a player controller. The
+			// SDK's `eventRevive()` accessor uses TgPlayerController's UFunction
+			// table, so calling it on a TgAIController dispatches the wrong
+			// `Revive` (TgPlayerController.Dead.Revive instead of
+			// TgAIController.Dead.Revive) — player-revive logic then runs on a
+			// bot/turret context and crashes. RegisterForWaveRevive already
+			// filters these out, but if some other code path ever pushes an
+			// AIController onto the list this guard catches it.
+			if (Controller->Class == nullptr ||
+			    strstr(Controller->Class->GetFullName(), "PlayerController") == nullptr) {
+				Logger::Log("revive",
+					"  skipping[%d] %s (class=%s) — not a PlayerController\n",
+					i, Controller->GetName(),
+					Controller->Class ? Controller->Class->GetFullName() : "NULL");
+				continue;
+			}
+
+			ATgPlayerController* PC = (ATgPlayerController*)Controller;
 			if (Logger::IsChannelEnabled("revive")) {
 				Logger::Log("revive", "  Reviving attacker[%d] %s pawn=%s\n",
 					i, PC->GetName(),

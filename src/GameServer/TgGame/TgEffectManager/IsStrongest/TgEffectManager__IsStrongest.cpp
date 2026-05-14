@@ -1,5 +1,4 @@
 #include "src/GameServer/TgGame/TgEffectManager/IsStrongest/TgEffectManager__IsStrongest.hpp"
-#include "src/Utils/Logger/Logger.hpp"
 
 // UTgEffectManager::IsStrongest — original is an empty stub returning 0.
 //
@@ -19,23 +18,40 @@
 //
 // Implementation walks s_AppliedEffectGroups (TArray @ TgEffectManager+0x468)
 // and compares m_fApplicationValue (and m_fLifeTime when bConsiderLifetime).
-// When no existing same-category effect is present, eg is automatically
+// When no existing same-bucket effect is present, eg is automatically
 // strongest.
+//
+// Category-302 ("Local") special case: cat-302 is a sentinel used by every
+// other displacement path in TgEffectManager.uc — see GetStackingEffectGroup
+// (uc:464) and GetRefreshedEffectGroup (uc:504): for cat-302 the bucket is
+// scoped by m_nEffectGroupId, NOT category. Without this scope, ANY cat-302
+// + app-157 effect (Strongest Wins) would wipe every other cat-302 effect
+// in s_AppliedEffectGroups — including the jetpack's per-pulse +AirSpeed /
+// +FlightAccel effects (egs 10450/52/54/56). Dropping FlightAccel triggers
+// the client's r_FlightAcceleration ReplicatedEvent → SetPhysics(2) →
+// player falls out of the air mid-flight while jetpack VFX/SFX/power-drain
+// continue (the jetpack device's UC state has no idea its effects were
+// displaced). Concrete trigger: Targeting System (eg 24240) and Inferno-X
+// Cannon Mk III (eg 9360) — the only two devices with cat-302 + app-157 +
+// type-263 in the DB.
 bool __fastcall TgEffectManager__IsStrongest::Call(ATgEffectManager* Manager, void* /*edx*/, UTgEffectGroup* eg, unsigned long bConsiderLifetime) {
 	if (!Manager || !eg) return false;
 
 	const int egCategory   = eg->m_nCategoryCode;
+	const int egGroupId    = eg->m_nEffectGroupId;
 	const float egValue    = eg->m_fApplicationValue;
 	const float egLifeTime = eg->m_fLifeTime;
-
-	bool foundSameCategory = false;
+	const bool isLocal     = (egCategory == 302);
 
 	for (int i = 0; i < Manager->s_AppliedEffectGroups.Count; i++) {
 		UTgEffectGroup* existing = Manager->s_AppliedEffectGroups.Data[i];
 		if (!existing) continue;
-		if (existing->m_nCategoryCode != egCategory) continue;
 
-		foundSameCategory = true;
+		if (isLocal) {
+			if (existing->m_nEffectGroupId != egGroupId) continue;
+		} else {
+			if (existing->m_nCategoryCode != egCategory) continue;
+		}
 
 		// If existing has strictly greater application value, eg is NOT strongest.
 		if (existing->m_fApplicationValue > egValue) return false;
@@ -48,9 +64,8 @@ bool __fastcall TgEffectManager__IsStrongest::Call(ATgEffectManager* Manager, vo
 		}
 	}
 
-	// Either no existing effect of this category, or eg matches/exceeds every
+	// Either no existing effect in this bucket, or eg matches/exceeds every
 	// one. In both cases eg is at least as strong as anything present, so let
 	// the caller proceed with cloning and replacing.
-	(void)foundSameCategory;
 	return true;
 }

@@ -10,9 +10,22 @@ void __fastcall TgGame__ReviveDefendersTimer::Call(ATgGame *Game, void *edx) {
 		int count = Game->s_DefenderReviveList.Num();
 		Logger::Log("revive", "ReviveDefendersTimer: reviving %d defenders\n", count);
 		for (int i = 0; i < count; i++) {
-			ATgPlayerController* PC = (ATgPlayerController*)Game->s_DefenderReviveList.Data[i];
-			if (PC == nullptr) continue;
+			AController* Controller = Game->s_DefenderReviveList.Data[i];
+			if (Controller == nullptr) continue;
 
+			// Defensive: see ReviveAttackersTimer.cpp comment — eventRevive()
+			// dispatches the wrong UFunction on a non-PlayerController and
+			// crashes when the underlying pawn isn't player-shaped.
+			if (Controller->Class == nullptr ||
+			    strstr(Controller->Class->GetFullName(), "PlayerController") == nullptr) {
+				Logger::Log("revive",
+					"  skipping[%d] %s (class=%s) — not a PlayerController\n",
+					i, Controller->GetName(),
+					Controller->Class ? Controller->Class->GetFullName() : "NULL");
+				continue;
+			}
+
+			ATgPlayerController* PC = (ATgPlayerController*)Controller;
 			if (Logger::IsChannelEnabled("revive")) {
 				Logger::Log("revive", "  Reviving defender[%d] %s pawn=%s\n",
 					i, PC->GetName(),

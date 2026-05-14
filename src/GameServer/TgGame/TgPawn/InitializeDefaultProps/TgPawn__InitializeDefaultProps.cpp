@@ -251,23 +251,23 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// ATTRIBUTES", slot 14/Rest) via permanent equip-effect group 3575 — applied by
 	// Inventory::ApplyDeviceEquipEffects after CreateEquipDevice, since the asm.dat
 	// loader that sets device->m_EquipEffect is one of the stripped natives.
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_PHYSICAL,     0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_ENERGY,       0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_THERMAL,      0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_SLOW,         0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_POISON,       0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_DISEASE,      0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_STUN,         0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_SLEEP,        0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_KNOCKBACK,    0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_EMP_STUN,     0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_IGNITE,       0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_BIO,          0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_EMP_BURN,     0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_BLEED,        0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_MELEE,        0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_RANGED,       0, 0, 0, 100);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_AOE,          0, 0, 0, 100);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_PHYSICAL,     0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_ENERGY,       0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_THERMAL,      0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_SLOW,         0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_POISON,       0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_DISEASE,      0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_STUN,         0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_SLEEP,        0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_KNOCKBACK,    0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_EMP_STUN,     0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_IGNITE,       0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_BIO,          0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_EMP_BURN,     0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_BLEED,        0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_MELEE,        0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_RANGED,       0, 0, 0, 1000.0f);
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_AOE,          0, 0, 0, 1000.0f);
 
 	// DIAG: per-respawn buff investigation — read back the engine power-regen
 	// field after all SetProperty calls. If higher than `rechargeRate`, the

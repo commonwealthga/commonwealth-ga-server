@@ -68,7 +68,6 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 
 		World__WelcomePlayer::CallOriginal((UWorld*)Globals::Get().GWorld, edx, Connection, L"");
 
-
 	} else if (strncmp(tmp, "HAVE", 4) == 0) {
 		// example message: "HAVE GUID=AA108FEF49E725083C1214A5E56117F7 GEN=2"
 		std::string msg(tmp); // copy

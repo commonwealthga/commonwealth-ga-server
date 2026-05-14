@@ -11,6 +11,7 @@
 #include "src/Utils/Macros.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+#include "src/GameServer/Storage/RecentlyClosedAddrs/RecentlyClosedAddrs.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 
@@ -88,6 +89,21 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 		}
 
 		if (!Connection) {
+
+			// Reject phantom-connection births: if this packet's source addr
+			// matches a UNetConnection we just tore down, the packet is almost
+			// certainly an in-flight straggler (ack/replication tail) from the
+			// dead session — NOT a HELLO from a re-connecting client (which
+			// opens a fresh UDP socket on a new ephemeral port). Stock UE3 has
+			// an equivalent gate (`!bWelcomed && ClientConnections.ContainsItem`
+			// path in UnConn.cpp). Without this, the engine adds the new conn
+			// to ClientConnections and starts running its output pipeline on
+			// it, which interferes with the legitimate reconnect arriving on
+			// a different source port (the real new conn aborts partway
+			// through handshake).
+			if (RecentlyClosedAddrs::IsRecent(from.sin_addr.s_addr, from.sin_port, 3.0)) {
+				continue;
+			}
 
 			// LogToFile("C:\\tickdispatch.txt", "[UdpNetDriver::TickDispatch] Client connection not found, creating new one");
 			// FName ObjName = MakeUniqueConnectionFName();

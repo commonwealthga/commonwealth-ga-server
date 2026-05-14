@@ -1,4 +1,5 @@
 #include "src/ControlServer/ChatSession/ChatSession.hpp"
+#include "src/ControlServer/ChatSession/ChatCommand.hpp"
 
 // All chat sessions — safe without mutex since io_context runs single-threaded.
 static std::vector<std::weak_ptr<ChatSession>> g_chat_sessions;
@@ -70,6 +71,7 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
                 for (int i = 0; i < 16; i++)
                     oss << std::hex << std::setw(2) << std::setfill('0') << (int)data[8 + i];
                 std::string guid_hex = oss.str();
+                session_guid_ = guid_hex;
                 auto info = PlayerSessionStore::GetByGuid(guid_hex);
                 if (info) {
                     player_name_ = info->player_name;
@@ -81,6 +83,29 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
             } else {
                 Logger::Log("chat", "[Chat] Handshake received (guid too short)\n");
             }
+            return;
+        }
+    }
+
+    // Peek at MESSAGE before broadcasting so we can intercept slash commands.
+    {
+        PacketView pkt(data + 6, length - 6);
+        std::string message_text = pkt.ReadString(GA_T::MESSAGE).value_or("");
+        auto parsed = ChatCommand::TryParseChatCommand(message_text);
+        if (parsed.recognized && parsed.change_team) {
+            ChatCommand::DispatchChangeTeam(*parsed.change_team, session_guid_);
+        }
+        if (parsed.recognized && parsed.spawn_bot) {
+            ChatCommand::DispatchSpawnBot(*parsed.spawn_bot, session_guid_);
+        }
+        if (parsed.recognized && parsed.possess) {
+            ChatCommand::DispatchPossess(session_guid_);
+        }
+        if (parsed.recognized && parsed.unpossess) {
+            ChatCommand::DispatchUnpossess(session_guid_);
+        }
+        if (parsed.suppress_broadcast) {
+            // Recognized command (valid or invalid arg) — do not broadcast.
             return;
         }
     }

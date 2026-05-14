@@ -54,12 +54,35 @@ void __fastcall TgEffectManager__RemoveAllEffects::Call(ATgEffectManager* pThis,
 			continue;
 		}
 
-		// 1. Reverse property modifiers — same gating logic as
-		//    RemoveAllEffectGroups (lifetime>0 only; lifetime=0 instant
-		//    applies stay committed). Without this, stun (prop 166) and
-		//    every other time-bound modifier persists past death.
+		// 1. Reverse property modifiers — gate matches RemoveAllEffectGroups
+		//    (aoi-flag check, not lifetime). Regen tickers (aoi=1, e.g.
+		//    power-station +HP/tick) stay committed: each tick's apply was
+		//    meant as a one-shot resource and reversing on death would un-give
+		//    it. One-shot held buffs (aoi=0, e.g. jetpack-fire +45 AirSpeed,
+		//    iMINIGUN right-click root via prop 338 → prop 49 m_fRaw -= 10000,
+		//    scope -GroundSpeed) MUST be reversed — they're paired with an
+		//    explicit remove that the death path replaces.
+		//
+		//    Previous gate was `m_fLifeTime > 0.0f`, which skipped reversal
+		//    for ALL lifetime=0 clones. That worked for power-station regen
+		//    (aoi=1, leave alone) but left jetpack/root/scope-style buffs
+		//    stuck on the revived pawn: the UC death flow schedules a
+		//    deferred `RemoveAllEffects` timer, but `Dying.EndState`
+		//    `ClearTimer('RemoveAllEffects')` + `ReapplyLoadoutEffects()`
+		//    runs when the player revives instead — and our
+		//    `TgPawn_Character::ReapplyLoadoutEffects` reimpl calls back
+		//    into us to do this cleanup. With the old gate the cleanup was
+		//    a no-op for lifetime=0 buffs → root stayed applied through
+		//    revive, AirSpeed compounded across revive cycles.
+		bool isRegenTicker = false;
+		for (int e = 0; e < applied->m_Effects.Count; ++e) {
+			UTgEffect* eff = applied->m_Effects.Data[e];
+			if (!eff) continue;
+			unsigned int eflags = *(unsigned int*)((char*)eff + 0x48);
+			if (eflags & 0x01) { isRegenTicker = true; break; }
+		}
 		AActor* target = applied->m_Target ? applied->m_Target : pThis->r_Owner;
-		if (target && applied->m_fLifeTime > 0.0f) {
+		if (target && !isRegenTicker) {
 			TgEffectGroup__RemoveEffects::Call(applied, nullptr, target, 0);
 		}
 

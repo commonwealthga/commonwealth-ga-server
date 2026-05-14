@@ -128,14 +128,25 @@ struct PetMapping {
 
 // Map player modifier props → pet-side scaling.
 //
-// 350 PetDamage     → pet's prop 65 (Effect Damage Modifier) via BUFF: scales pet's TgEffectDamage at fire time
 // 381 PetRange      → pet's prop 114 (Range Modifier) via BUFF: scales pet's GetPropertyValueById(prop=5)
 // 382 PetDmgRadius  → pet's prop 352 (AOE Radius Modifier) via BUFF: scales pet's GetPropertyValueById(prop=6)
 // 383 PetAccuracy   → pet's prop 113 (Accuracy Modifier) via BUFF: scales pet's GetPropertyValueById(prop=10)
 // 366 PetMaxHealth  → pet's prop 304 (HEALTH_MAX) via DIRECT (also 51 HEALTH); HP is set once at spawn
 // 355 PetLifespan   → pet's prop 354 (PET_LIFESPAN) via DIRECT
+//
+// **prop 350 PetDamage is intentionally NOT bridged.** UC `TgEffectDamage::
+// ApplyEffect` calls `CheckOwnerPetBuff(350, ...)` at fire time, which queries
+// the owner's `m_EffectBuffInfo` for prop 350 (BUFF_OTHER expansion = {350,
+// 385} — also picks up Output Mod). Bridging player's prop 350 entries onto
+// the pet's prop 65 caused double-application: the same skill/mod buff hit
+// the damage value once via owner-side `CheckOwnerPetBuff` and a second time
+// via pet-side `CheckEffectBuffModifier` (which queries pet for prop 51
+// expansion {65, 385, …}). This bridge dates from when `CheckOwnerPetBuff`
+// was a stripped stub and we needed a spawn-time path; that native is now
+// re-implemented (`TgEffect/CheckOwnerPetBuff/`) so the bridge is redundant.
+// The other modifier props below stay because there is no analogous fire-
+// time owner-side query for range / radius / accuracy / HP / lifespan.
 static const PetMapping kPetMap[] = {
-	{ 350, 65,  -1, BRIDGE_BUFF   },
 	{ 381, 114, -1, BRIDGE_BUFF   },
 	{ 382, 352, -1, BRIDGE_BUFF   },
 	{ 383, 113, -1, BRIDGE_BUFF   },

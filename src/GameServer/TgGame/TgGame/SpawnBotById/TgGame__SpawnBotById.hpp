@@ -50,10 +50,21 @@ public:
 				if (sqlite3_step(stmt) == SQLITE_ROW) {
 					float dbRadius = (float)sqlite3_column_double(stmt, 0);
 					float dbHeight = (float)sqlite3_column_double(stmt, 1);
-					// DB stores FULL height; UE3 CylinderComponent convention
-					// is half-height (client multiplies by 0.5 — DAT_1168bac0).
+					// asm_data_set_assembly_meshes.collision_height stores the
+					// HALF-height directly, matching UE3's UCylinderComponent
+					// convention (CollisionHeight = half). Verified by sanity:
+					// human (asm 2562) = 46 → full = 92 UU ≈ 1.84m (realistic),
+					// Shrike (asm 794) = 117 → full = 234 UU (boss-sized).
+					// Treating these as full and halving gave 23/58.5 — too
+					// short, so gravity rests the bot's cylinder bottom too low,
+					// and with the client's Mesh.Translation.Z stuck at 0
+					// (ApplyPawnSetup never fires for AI bots client-side) the
+					// mesh pivot ends up at cylinder center, sinking the body
+					// halfMeshHeight below ground. With the proper half-height,
+					// the cylinder bottom sits at ground level naturally and
+					// the mesh-at-center renders at the right vertical position.
 					if (dbRadius > 0.0f) radius     = dbRadius;
-					if (dbHeight > 0.0f) halfHeight = dbHeight * 0.5f;
+					if (dbHeight > 0.0f) halfHeight = dbHeight;
 				}
 				sqlite3_finalize(stmt);
 			}
@@ -112,6 +123,10 @@ public:
 	);
 	static void GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Player* BotRepInfo, int nBotId);
 	static inline char* GetPawnClassName(int nBotId) {
+
+		const char* dbClass = LookupPawnClassFromDb(nBotId);
+		return const_cast<char*>(dbClass ? dbClass : "Class TgGame.TgPawn_Character");
+
 		switch (nBotId) {
 			case 5951: return "Class TgGame.TgPawn_Ambush";
 			case 4562: return "Class TgGame.TgPawn_AndroidMinion";

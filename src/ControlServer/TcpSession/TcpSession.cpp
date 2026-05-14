@@ -98,6 +98,34 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
             pawn_id, inventory_id);
         session->send_beacon_remove_response(pawn_id, inventory_id);
     }
+    else if (subtype == "possess_show_loadout") {
+        int pawn_id = j.value("pawn_id", 0);
+        std::vector<TcpSession::LoadoutItem> items;
+        if (j.contains("devices") && j["devices"].is_array()) {
+            for (const auto& d : j["devices"]) {
+                TcpSession::LoadoutItem it{};
+                it.device_id     = d.value("device_id", 0);
+                it.inventory_id  = d.value("inventory_id", 0);
+                it.quality       = d.value("quality", 1162);
+                it.slot_value_id = d.value("slot_value_id", 0);
+                if (it.device_id != 0 && it.inventory_id != 0 && it.slot_value_id != 0) {
+                    items.push_back(it);
+                }
+            }
+        }
+        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: possess_show_loadout pawn=%d items=%d\n",
+            pawn_id, (int)items.size());
+        session->send_loadout_inventory_response(pawn_id, items);
+    }
+    else if (subtype == "possess_restore_inventory") {
+        int     pawn_id      = j.value("pawn_id", 0);
+        int64_t character_id = j.value("character_id", (int64_t)0);
+        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: possess_restore_inventory pawn=%d char=%lld\n",
+            pawn_id, (long long)character_id);
+        if (pawn_id != 0 && character_id != 0) {
+            session->send_inventory_response(pawn_id, character_id);
+        }
+    }
     else if (subtype == "skill_request") {
         Logger::Log("ipc", "[TcpSession] DeliverGameEvent: skill_request guid=%s\n",
             session_guid.c_str());
@@ -189,6 +217,41 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
     else {
         Logger::Log("ipc", "[TcpSession] DeliverGameEvent: unknown subtype=%s\n", subtype.c_str());
     }
+}
+
+// ---------------------------------------------------------------------------
+// DeliverPlayerAction -- forward a PLAYER_ACTION IPC to the game-DLL instance
+// the player is currently assigned to. Mirrors DeliverGameEvent's locking
+// pattern. Silent on failure (logged on the "chat-command" channel).
+// ---------------------------------------------------------------------------
+
+bool TcpSession::DeliverPlayerAction(const std::string& session_guid, const nlohmann::json& payload) {
+    std::shared_ptr<TcpSession> session;
+    {
+        std::lock_guard<std::mutex> lock(sessions_mutex_);
+        auto it = g_sessions_.find(session_guid);
+        if (it == g_sessions_.end()) {
+            Logger::Log("chat-command", "[ChatCmd] DeliverPlayerAction: no TcpSession for guid=%s\n",
+                session_guid.c_str());
+            return false;
+        }
+        session = it->second.lock();
+        if (!session) {
+            g_sessions_.erase(it);
+            Logger::Log("chat-command", "[ChatCmd] DeliverPlayerAction: expired TcpSession for guid=%s\n",
+                session_guid.c_str());
+            return false;
+        }
+    }
+    if (session->assigned_instance_id_ == 0) {
+        Logger::Log("chat-command", "[ChatCmd] DeliverPlayerAction: guid=%s has no assigned instance\n",
+            session_guid.c_str());
+        return false;
+    }
+    bool ok = IpcServer::SendToInstance(session->assigned_instance_id_, payload.dump());
+    Logger::Log("chat-command", "[ChatCmd] DeliverPlayerAction: guid=%s instance=%lld send=%d\n",
+        session_guid.c_str(), (long long)session->assigned_instance_id_, (int)ok);
+    return ok;
 }
 
 // ---------------------------------------------------------------------------
@@ -465,6 +528,34 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 		case GA_U::PLAYER_LOGOFF:
 			Logger::Log("tcp", "[%s] Received: PLAYER_LOGOFF [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 			break;
+		case GA_U::PLAYER_LEAVE_GAME: {
+			// Client sends this when the user clicks "Disconnect" in the in-game
+			// menu — TCP stays alive but the player goes back to character select.
+			// We must tell the game-DLL instance to tear down the UDP UNetConnection,
+			// PlayerController and Pawn for this session_guid right now. Without
+			// this the stale connection lingers in NetDriver->ClientConnections
+			// until the engine's ConnectionTimeout (~30s), so picking a character
+			// again routes the new HELLO into the stale USOCK_Open connection
+			// and the client times out back to the login screen.
+			Logger::Log("tcp", "[%s] Received: PLAYER_LEAVE_GAME [0x%04X] guid=%s instance=%lld\n",
+				Logger::GetTime(), packet_type, session_guid_.c_str(), (long long)assigned_instance_id_);
+
+			if (assigned_instance_id_ != 0 && !session_guid_.empty()) {
+				nlohmann::json leave;
+				leave["type"]         = IpcProtocol::MSG_PLAYER_LEAVE;
+				leave["session_guid"] = session_guid_;
+				bool ok = IpcServer::SendToInstance(assigned_instance_id_, leave.dump());
+				Logger::Log("tcp", "[TcpSession] PLAYER_LEAVE dispatched guid=%s instance=%lld send=%d\n",
+					session_guid_.c_str(), (long long)assigned_instance_id_, (int)ok);
+			}
+
+			// Drop the instance assignment so a subsequent SELECT_CHARACTER goes
+			// through wait_for_home_map_then_register again from a clean slate.
+			assigned_instance_id_      = 0;
+			pending_match_instance_id_ = 0;
+			pending_match_game_mode_.clear();
+			break;
+		}
 		case GA_U::ADD_PLAYER_CHARACTER: {
 			Logger::Log("tcp", "[%s] Received: ADD_PLAYER_CHARACTER [0x%04X]\n", Logger::GetTime(), packet_type);
 			PacketView pkt(data + 6, length - 6);
@@ -701,6 +792,12 @@ void TcpSession::send_match_accept_response() {
 
             Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK success for %s pawn_id=%d — sending go_play to mission\n",
                 session_guid_.c_str(), pawn_id);
+
+            // The player now lives on the mission instance, not the home
+            // instance. Keep assigned_instance_id_ in sync so any subsequent
+            // control-server-→-DLL messages (e.g. PLAYER_ACTION /changeteam)
+            // route to the right DLL.
+            assigned_instance_id_ = target_instance_id;
 
             // Track player in mission instance
             InstanceRegistry::InsertInstancePlayer(
@@ -1156,6 +1253,64 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 
 		send_response(response);
 	}
+}
+
+void TcpSession::send_loadout_inventory_response(int nPawnId, const std::vector<LoadoutItem>& items) {
+    if (items.empty()) {
+        Logger::Log("tcp", "[TCP] send_loadout_inventory_response: empty loadout for pawnId=%d\n", nPawnId);
+        return;
+    }
+    Logger::Log("tcp",
+        "[TCP] send_loadout_inventory_response: %d items for pawnId=%d (one packet per item)\n",
+        (int)items.size(), nPawnId);
+
+    // Same per-record wire format as send_inventory_response, minus the DB
+    // lookup. BLUEPRINT_ID is 0 (no rolled mods on bot devices, so no [...]
+    // suffix needed). DATA_SET_INVENTORY_STATE carries a single placeholder
+    // row with EFFECT_GROUP_ID=0 to preserve the 1-row shape — harmless when
+    // BLUEPRINT_ID=0 (parser skips mod application).
+    for (const auto& d : items) {
+        std::vector<uint8_t> response;
+
+        append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
+        append(response, 0x02, 0x00);   // 2 top-level fields: PAWN_ID + DATA_SET
+
+        Write4B(response, GA_T::PAWN_ID, nPawnId);
+
+        append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+        append(response, 0x01, 0x00);   // 1 item per DATA_SET
+
+        append(response, 0x0E, 0x00);   // 14 fields per record
+
+        Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1);
+        Write4B(response, GA_T::ITEM_ID, d.device_id);
+        Write4B(response, GA_T::INVENTORY_ID, d.inventory_id);
+        Write4B(response, GA_T::BLUEPRINT_ID, 0);
+        Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, d.quality);
+        Write4B(response, GA_T::DURABILITY, 100);
+        WriteDouble(response, GA_T::ACQUIRE_DATETIME, 1700000000.0);
+        WriteString(response, GA_T::BOUND_FLAG, "T");
+        Write4B(response, GA_T::LOCATION_VALUE_ID, 369);
+        Write4B(response, GA_T::INSTANCE_COUNT, 0x1);
+        WriteString(response, GA_T::ACTIVE_FLAG, "T");
+        Write4B(response, GA_T::DEVICE_ID, d.inventory_id);
+
+        append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
+        append(response, 0x01, 0x00);
+        append(response, 0x02, 0x00);
+        Write4B(response, GA_T::INVENTORY_ID, d.inventory_id);
+        Write4B(response, GA_T::EFFECT_GROUP_ID, 0);
+
+        append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
+        append(response, 0x01, 0x00);
+        append(response, 0x04, 0x00);
+        Write4B(response, GA_T::CHARACTER_ID, 0);
+        Write4B(response, GA_T::INVENTORY_ID, d.inventory_id);
+        Write4B(response, GA_T::PROFILE_ID, 0x1);
+        Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, d.slot_value_id);
+
+        send_response(response);
+    }
 }
 
 void TcpSession::send_beacon_pickup_response(int nPawnId, int nDeviceId, int nInventoryId, int nEquipSlotValueId) {

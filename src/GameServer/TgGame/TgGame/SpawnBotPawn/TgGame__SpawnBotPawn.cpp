@@ -15,6 +15,14 @@ ATgPawn* __fastcall TgGame__SpawnBotPawn::Call(ATgGame* Game, void* edx, ATgAICo
 	pTgAI->Pawn = newpawn;
 	newpawn->Controller = pTgAI;
 
+	// IMPORTANT: do NOT clear pTgAI->bIsPlayer here. In this build, AI bots
+	// keep bIsPlayer=true by default — it's used by combat code (turret
+	// target acquisition, threat-list eligibility, AI evaluator gates) as
+	// the "valid combatant" signal, NOT as "has client connection". We
+	// learned this the hard way when an earlier `pTgAI->bIsPlayer = 0`
+	// here broke deployable turrets' targeting. Use class-name check
+	// (strstr "PlayerController") for the "is real player" signal instead.
+
 	// pTgAI->Role = 3;
 	// pTgAI->RemoteRole = 2;
 	// pTgAI->bNetInitial = 1;

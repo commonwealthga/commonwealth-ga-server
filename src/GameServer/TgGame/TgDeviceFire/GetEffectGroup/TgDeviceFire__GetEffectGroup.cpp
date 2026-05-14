@@ -6,9 +6,65 @@
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/Utils/Macros.hpp"
 
+#include <unordered_set>
+
 // ConstructObject<UTgEffectGroup> (validates IsChildOf UTgEffectGroup::StaticClass())
 typedef void*(__cdecl* ConstructEffectGroupFn)(void*, int, int, int, unsigned, unsigned, int, int, int*);
 static ConstructEffectGroupFn ConstructEffectGroup = (ConstructEffectGroupFn)0x109a90b0;
+
+// -------------------------------------------------------------------------
+// Visual-noise blacklist: type-263 (DeviceFiring) effect groups whose
+// target_fx_id is the "dome ring" asset 1275. On every refire pulse
+// ApplyEffectType clones the group, SetEffectRep recreates the form on the
+// client, and FX 1275's intrinsic asset duration is long enough that the
+// recreated instances overlap into a huge screen-obscuring dome. The
+// original game does not render this visual on these deployables (per
+// gameplay testing on Techro Buff Station and EMP Field Generator I) —
+// suspect FX 1275 is a dead/asset-dummy in the shipped client or there's a
+// class-specific suppression we don't reproduce. Same-pattern groups with
+// other FX assets (e.g. medical station egid 6025 with FX 227) have short
+// asset durations and cycle-recreate as discrete pulses (intended), so we
+// narrow the filter to exactly the FX-1275 cohort.
+//
+// 14 known egIds across Buff Stations (incl. zAvA Mk1–4), Medical Hub
+// I/II/III + zAvA Medical Mk4, EMP Field Generator I, and four unnamed
+// zAvA power-hub variants. Confirmed each egId is unique to one device via:
+//   sqlite3 server.db "SELECT effect_group_id, COUNT(DISTINCT device_id)
+//     FROM asm_data_set_device_mode_effect_groups
+//     WHERE effect_group_id IN (SELECT effect_group_id
+//       FROM asm_data_set_effect_groups
+//       WHERE target_fx_id=1275 AND effect_group_type_value_id=263)
+//     GROUP BY effect_group_id;"
+// → all 1, so filtering doesn't bleed across devices.
+//
+// Returning null+nIndex=-1 from the consumer mimics "no more type-263
+// groups" for UC; since each device's only type-263 group is the suppressed
+// one, the ApplyEffectType iteration cleanly bails on the next index.
+// -------------------------------------------------------------------------
+static bool IsVisualNoiseEffectGroup(int egId) {
+	static std::unordered_set<int> badEgIds;
+	static bool initialized = false;
+	if (!initialized) {
+		initialized = true;
+		sqlite3* db = Database::GetConnection();
+		if (db) {
+			sqlite3_stmt* stmt = nullptr;
+			if (sqlite3_prepare_v2(db,
+				"SELECT effect_group_id FROM asm_data_set_effect_groups "
+				"WHERE target_fx_id = 1275 AND effect_group_type_value_id = 263",
+				-1, &stmt, nullptr) == SQLITE_OK) {
+				while (sqlite3_step(stmt) == SQLITE_ROW) {
+					badEgIds.insert(sqlite3_column_int(stmt, 0));
+				}
+				sqlite3_finalize(stmt);
+			}
+			Logger::Log("effects",
+				"[INIT] IsVisualNoiseEffectGroup loaded %d egIds (target_fx_id=1275, type=263)\n",
+				(int)badEgIds.size());
+		}
+	}
+	return badEgIds.count(egId) > 0;
+}
 
 // ConstructObject<UTgEffect> (validates IsChildOf UTgEffect::StaticClass(), works for all subclasses)
 typedef void*(__cdecl* ConstructEffectFn)(void*, int, int, int, unsigned, unsigned, int, int, int*);
@@ -146,6 +202,13 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 
 	sqlite3* db = Database::GetConnection();
 
+	// Captured from the effect_groups SELECT below; the m_bHasVisual decision
+	// is deferred to AFTER the stealth-lifetime promotion further down (cat 621
+	// gets a synthetic 1s lifetime that we want the visual gate to honor).
+	int iconId          = 0;
+	int targetFxId      = 0;
+	int fxDisplayGroup  = 0;
+
 	// --- Fill UTgEffectGroup fields ---
 	{
 		sqlite3_stmt* stmt = nullptr;
@@ -154,7 +217,8 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 			"application_value, application_chance, category_value_id, "
 			"required_category_value_id, required_skill_id, situational_type_value_id, "
 			"situational_value, stack_count_max, buff_value, contagion_flag, "
-			"device_specific_flag, posture_type_value_id, health "
+			"device_specific_flag, posture_type_value_id, health, icon_id, "
+			"target_fx_id, fx_display_group_res_id "
 			"FROM asm_data_set_effect_groups WHERE effect_group_id = ? LIMIT 1",
 			-1, &stmt, nullptr);
 		if (rc == SQLITE_OK) {
@@ -172,14 +236,37 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 				g->m_nRequiredSkillId  = sqlite3_column_int   (stmt,  7);
 				g->m_nSituationalType  = sqlite3_column_int   (stmt,  8);
 				g->m_fSituationalValue = (float)sqlite3_column_double(stmt,  9);
-				g->m_nNumMaxStacks     = sqlite3_column_int   (stmt, 10);
+				// m_nNumMaxStacks: engine (FUN_10a6f300) only writes the DB value
+				// when > 0; otherwise leaves CDO default (20). 14627 effect groups
+				// have stack_count_max=0 in DB — unconditional write was silently
+				// capping their stacking at 1 (UC GetStackingEffectGroup:479
+				// removes oldest when nCurrentStacks >= m_nNumMaxStacks; with 0
+				// that fires on the second stack). Mirror the engine.
+				{
+					int dbStacks = sqlite3_column_int(stmt, 10);
+					if (dbStacks > 0) g->m_nNumMaxStacks = dbStacks;
+					// else: leave CDO default of 20 (TgEffectGroup.uc:913)
+				}
 				g->m_fBuffValue        = (float)sqlite3_column_double(stmt, 11);
 				g->m_nPosture          = MapPostureValueIdToEnum(sqlite3_column_int(stmt, 14));
 				g->m_nHealth           = sqlite3_column_int   (stmt, 15);
+				// Engine FUN_10a6f300 sets m_nHealthMitigated = m_nHealth at
+				// build time (lines 0x120/0x124 both written from same DB int).
+				// UC ProcessEffect:243 overwrites with GetEffectHealth(Impact)
+				// for groups where m_nHealth > 0, so the build-time value is
+				// only read between build and first apply, but mirroring the
+				// engine prevents any read of an uninitialized 0.
+				g->m_nHealthMitigated  = g->m_nHealth;
 
 				unsigned int& flags = *(unsigned int*)((char*)g + 0x74);
 				if (sqlite3_column_int(stmt, 12)) flags |= 0x10; else flags &= ~0x10; // m_bContagious
 				if (sqlite3_column_int(stmt, 13)) flags |= 0x20; else flags &= ~0x20; // m_bDeviceSpecificFlag
+
+				// Stash visual columns for the m_bHasVisual gate below (post
+				// stealth-lifetime promotion). Don't set bit 0x80 here.
+				iconId         = sqlite3_column_int(stmt, 16);
+				targetFxId     = sqlite3_column_int(stmt, 17);
+				fxDisplayGroup = sqlite3_column_int(stmt, 18);
 			}
 			sqlite3_finalize(stmt);
 		}
@@ -286,23 +373,75 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 			"[BUILD] egId=%d promoted stealth lifetime 0 -> 1s (HUD icon)\n", egId);
 	}
 
-	// Set m_bIsManaged (bit 0x01 at offset 0x74). UC's *apply* gate at
-	// `TgEffectManager.ProcessEffect:231` is `(lifetime > 0 OR m_bIsManaged)`
-	// — without either, `ApplyEventBasedEffects` never runs and removable
-	// effects don't apply. UC's *remove* gate at `TgDeviceFire.RemoveEffectType`
-	// is `theEffectGroup.m_bIsManaged || bForceRemove` — `RemoveAimEffects`,
-	// `RemoveRestEffects`, and all non-forced remove paths pass bForceRemove=false,
-	// so the remove is silently skipped unless the TEMPLATE has m_bIsManaged=true.
+	// m_bHasVisual (bit 0x80 @ +0x74) — necessary-but-not-sufficient gate for
+	// `SetEffectRep` / `RefreshEffectRep` in `TgEffectManager.ProcessEffect`
+	// (TgEffectManager.uc:280). `SetEffectRep` is the **client-notification
+	// primitive for ANY effect visual** — it writes either:
+	//   • `r_ManagedEffectList` (HUD-icon strip slot, Branch B in the native),
+	//   • OR `r_EventQueue` (transient FX/sound ring buffer, Branch A — which
+	//     our hook reaches manually for fTime==0).
+	// The client decodes the egId and renders whatever the DB metadata
+	// dictates: HUD icon (`icon_id`), target particle/audio asset
+	// (`target_fx_id`), or grouped FX (`fx_display_group_res_id`).
 	//
-	// Every built effect group represents a tracked apply/remove lifecycle
-	// (application_value ∈ {155 Stacking, 156 Newest Wins, 157 Strongest,
-	// 836 Refresh, 874 SameInstigator} per the DB) — there are no pure
-	// "fire-and-forget instant" groups in asm_data_set_effect_groups. So
-	// mark every built group as managed. Apply becomes reliable, Remove
-	// becomes reliable, compounding goes away.
+	// So "has visual" ≠ "has HUD icon". An earlier icon-only gate dropped the
+	// transient FX/sound for ~1968 effect groups (Medical Station heal pulse
+	// target_fx_id=432, Crescent jetpack thrust target_fx_id=1265, knockback
+	// impact target_fx_id, etc.). The right gate is "any of the three visual
+	// resource ids is non-zero": 3935 / 14649 effect groups, leaving 10714
+	// (mostly rolled mods + cat-302 mechanical-only modifiers) blocked.
+	//
+	// The lingering-icon case (Boss Shrike Energy Cannon AoE on player: cat
+	// 302, lifetime 0, icon_id 20, target_fx_id 122) is handled at apply time
+	// in the `SetEffectRep` hook — we suppress the managed-list slot when
+	// `fTime==0 && m_Target != m_Instigator`, while still keeping the queue
+	// push so impact FX/sound plays.
 	{
 		unsigned int& gflags = *(unsigned int*)((char*)g + 0x74);
-		gflags |= 0x01; // m_bIsManaged
+		if (iconId > 0 || targetFxId > 0 || fxDisplayGroup > 0) {
+			gflags |= 0x80;
+		} else {
+			gflags &= ~0x80u;
+		}
+	}
+
+	// Set m_bIsManaged (bit 0x01 at offset 0x74). Criterion is a direct port
+	// of the original engine's native `InstantiateDeviceFire` @ 0x10a26780,
+	// which after building each device-bound effect group does:
+	//
+	//   if (eg->m_fLifeTime <= epsilon)
+	//       eg->flags |= 0x01;     // m_bIsManaged = true
+	//   else
+	//       eg->flags &= ~0x01;    // m_bIsManaged = false
+	//
+	// Semantic: m_bIsManaged means "this group needs explicit apply/remove
+	// tracking because no LifeDone timer will reap it." Three UC consumers:
+	//   • `TgEffectManager.ProcessEffect:231` apply gate
+	//       (lifetime > 0 || m_bIsManaged) — lifetime=0 hold-to-sustain groups
+	//       need m_bIsManaged to enter the apply chain at all.
+	//   • `TgEffectManager.ProcessEffect:262` add-clause
+	//       (bEventApplied || bTimerStarted || m_bIsManaged) — final fallback
+	//       to add into s_AppliedEffectGroups.
+	//   • `TgDeviceFire.RemoveEffectType:1156/1195` non-forced explicit-remove
+	//       filter — only managed groups respond to RemoveAimEffects /
+	//       RemoveRestEffects. Both call sites pass nEffectGroupType ∈ {266,283}
+	//       which the DB shows are 100% lifetime=0.
+	//
+	// History: we previously force-set m_bIsManaged=1 on every built group.
+	// That broke the engine's intended semantic by force-promoting lifetime>0
+	// effect groups whose Apply was gated out by category protection into
+	// `s_AppliedEffectGroups` as "phantom clones" — and those phantoms then
+	// leaked side effects (notably SendCombatMessage for cat=921 EMP Burn on
+	// biological targets, producing the `*EMP Burn*` popup that should have
+	// been suppressed by HUMAN BASE ATTRIBUTES' prop 328 protection). Matching
+	// the binary's criterion restores the original behavior.
+	{
+		unsigned int& gflags = *(unsigned int*)((char*)g + 0x74);
+		if (g->m_fLifeTime <= 0.0f) {
+			gflags |= 0x01; // m_bIsManaged = true
+		} else {
+			gflags &= ~0x01u; // m_bIsManaged = false (lifetime expires via LifeDone)
+		}
 	}
 
 	{
@@ -396,37 +535,13 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 	for (int i = startIdx; i < list.Count; i++) {
 		UTgEffectGroup* g = list.Data[i];
 		if (g && g->m_nType == nType) {
-			// Surgical blacklist: Techro Buff Station (device 6144) egId=24419
-			// is type 263 (DeviceFiring), effects=0 (visual-only), target=self,
-			// target_fx_id=1275. Each refire pulse runs ApplyEffectType(self,
-			// 263) which clones the group, adds it to s_AppliedEffectGroups,
-			// triggers SetEffectRep → form attached to the station's
-			// r_ManagedEffectList[1]. Each per-pulse zero+repopulate cycle
-			// destroys and recreates the form on the client. FX 1275's intrinsic
-			// asset duration is long enough that recreated FX instances overlap
-			// into a "huge dome" visual on the station. The original game does
-			// not render this visual on buff stations (per gameplay testing); we
-			// suspect target_fx_id=1275 is either dead/asset-dummy in the
-			// shipped client or there's a class-specific suppression we don't
-			// reproduce. Same-pattern medical-station egid 6025 with FX 227 has
-			// a short asset duration so cycle-recreation looks like discrete
-			// pulses (intended). Mechanically identical effect groups whose
-			// only differentiator is asset behavior — can't tell apart from
-			// server data, so we hardcode the buff-station egid.
-			//
-			// Confirmed unique to device 6144 via:
-			//   sqlite3 server.db "SELECT device_id FROM asm_data_set_device_mode_effect_groups WHERE effect_group_id = 24419;"
-			// → 6144 (only). No other device uses 24419, so filtering here
-			// doesn't bleed.
-			//
-			// Returning null+nIndex=-1 mimics "no more type-263 groups" for UC;
-			// since 24419 is the buff station's only type-263 group, the
-			// ApplyEffectType iteration cleanly bails on the next index.
-			if (g->m_nEffectGroupId == 24419) {
+			// Skip groups in the FX-1275 visual-noise cohort. See big
+			// comment block on IsVisualNoiseEffectGroup near top of file.
+			if (IsVisualNoiseEffectGroup(g->m_nEffectGroupId)) {
 				if (Logger::IsChannelEnabled("effects")) {
 					Logger::Log("effects",
-						"[GET] fireMode=%s nType=%d skipping egId=24419 (Techro buff station visual-only — see code comment)\n",
-						pThis->GetFullName(), nType);
+						"[GET] fireMode=%s nType=%d skipping egId=%d (FX-1275 visual-noise cohort)\n",
+						pThis->GetFullName(), nType, g->m_nEffectGroupId);
 				}
 				continue;
 			}

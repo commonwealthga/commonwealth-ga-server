@@ -1,34 +1,12 @@
 #include "src/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/ConstructEffectGroup/TgEffectGroup__ConstructEffectGroup.hpp"
+#include "src/GameServer/TgGame/TgEffect/CloneEffect/TgEffect__CloneEffect.hpp"
 #include "src/GameServer/TgGame/BuffEffectRegistry/BuffEffectRegistry.hpp"
-#include "src/GameServer/TgGame/BuffEffectRegistry/DeviceCategorySkill.hpp"
 #include "src/GameServer/TgGame/BuffEffectRegistry/DeployableOriginRegistry.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 #include <cstring>
-
-// ConstructObject<UTgEffect> — same call site BuildEffectGroup uses to allocate
-// fresh effect instances. UClass*, then 8 unused args, returns the new object.
-typedef void*(__cdecl* ConstructEffectFn)(void*, int, int, int, unsigned, unsigned, int, int, int*);
-static ConstructEffectFn ConstructEffect = (ConstructEffectFn)0x10a73f30;
-
-// Per-class instance size for our supported effect classes (from SDK header).
-// Used by CloneEffectField to know how many bytes to memcpy from template→clone.
-//
-// Memcpying past PropertiesSize would write into the next allocation. Looking
-// up via UClass.PropertiesSize at runtime would be more general but the SDK
-// hides UStruct internals behind unknown-data; the table is small and the set
-// of classes we ever construct is fixed (see GetEffectClassById).
-static int GetEffectInstanceSize(UTgEffect* effect) {
-	if (!effect || !effect->Class) return 0;
-	const char* name = effect->Class->GetFullName();
-	if (!name) return 0;
-	if (strstr(name, "TgEffectDamage") != nullptr)     return 0x80;
-	if (strstr(name, "TgEffectHeal") != nullptr)       return 0x74;
-	// TgEffectSensor, TgEffectVisibility, TgEffect — all 0x70.
-	return 0x70;
-}
 
 // UTgEffectGroup::CloneEffectGroup — original native @ 0x10a6f3c0 is an empty
 // stub. UC's TgEffectManager::GetClonedEffectGroup → eg.CloneEffectGroup()
@@ -38,25 +16,33 @@ static int GetEffectInstanceSize(UTgEffect* effect) {
 // callers.
 //
 // Effects are cloned independently too. UC declares `native function TgEffect
-// CloneEffect();` (also stripped) and the original CloneEffectGroup almost
-// certainly walked m_Effects calling CloneEffect on each — `m_fCurrent` lives
-// on the effect, and Apply/Remove math depends on per-application bookkeeping.
-// If we shared template effect pointers across clones, two simultaneous
-// applications (two buff stations / overlapping pulses) would BOTH write to
-// the same `m_fCurrent`, and the first reversal would zero it — the second
-// reversal then sees `m_fCurrent==0`, hits the phantom-clone skip in
-// `TgEffectGroup__RemoveEffects`, and the buff registry / s_Properties stays
-// stuck at `+amount` permanently. Verified against effects.txt: BUFF-ROUTE
-// APPLY count exceeds REMOVE count by ≥1 per player per buff-station session,
-// and the player ends with `genM=10.000` residual on prop 113 long after
-// leaving the radius. Same shape causes the protection prop 155 buff to stack
-// across multiple stations and never go away.
+// CloneEffect();` (also stripped, also reimplemented in this codebase at
+// `TgEffect__CloneEffect`). If we shared template effect pointers across
+// clones, two simultaneous applications (two buff stations / overlapping
+// pulses) would BOTH write to the same `m_fCurrent`, and the first reversal
+// would zero it — the second reversal then sees `m_fCurrent==0`, hits the
+// phantom-clone skip in `TgEffectGroup__RemoveEffects`, and the buff registry
+// / s_Properties stays stuck at `+amount` permanently. Verified against
+// effects.txt: BUFF-ROUTE APPLY count exceeds REMOVE count by ≥1 per player
+// per buff-station session, and the player ends with `genM=10.000` residual
+// on prop 113 long after leaving the radius.
 //
-// Field copy strategy: split memcpy around the only TArray (m_Effects @ 0x60).
-// The ctor-linked fresh instance has m_Effects = {nullptr,0,0}; we re-Add each
-// cloned UTgEffect* so the clone owns an independent TArray container with
-// its own per-clone effect copies. FName / FImpactInfo / FPointer fields in
-// the second range are inline storage — shallow memcpy is correct.
+// Group-level field copy strategy: split memcpy around the only TArray
+// (m_Effects @ 0x60). The ctor-linked fresh instance has m_Effects = {nullptr,
+// 0,0}; we re-Add each cloned UTgEffect* so the clone owns an independent
+// TArray container with its own per-clone effect copies. FName / FImpactInfo /
+// FPointer fields in the second range are inline storage — shallow memcpy is
+// correct.
+//
+// Per-effect cloning is delegated to `TgEffect__CloneEffect::Call` (the
+// reimplemented `TgEffect::CloneEffect` native at 0x10a6f2a0). Apply-time
+// scaling of damage / non-damage effects by the instigator's buff registry
+// is handled by the reimplemented `TgEffect::CheckEffectBuffModifier` native
+// at 0x10a6f270 — see `TgEffect__CheckEffectBuffModifier.cpp` for the
+// rationale. Before that native was implemented, this function carried two
+// "pre-scale m_fBase / m_fMinimum / m_fMaximum at clone time" blocks that
+// approximated the same scaling; they're gone now that the canonical apply-
+// time path works.
 UTgEffectGroup* __fastcall TgEffectGroup__CloneEffectGroup::Call(UTgEffectGroup* eg, void* /*edx*/) {
 	if (!eg) {
 		return nullptr;
@@ -69,8 +55,10 @@ UTgEffectGroup* __fastcall TgEffectGroup__CloneEffectGroup::Call(UTgEffectGroup*
 
 	if (!clone) {
 		// Fall back to legacy aliased-self behavior so callers still get a
-		// non-null group rather than crashing in GetClonedEffectGroup.
-		eg->m_bHasVisual = 1;
+		// non-null group rather than crashing in GetClonedEffectGroup. Do not
+		// mutate the template's m_bHasVisual flag here: BuildEffectGroup sets
+		// it from DB icon_id and clobbering it would either spawn spurious
+		// HUD icons (if forced on) or hide legitimate ones (if forced off).
 		return eg;
 	}
 
@@ -98,44 +86,33 @@ UTgEffectGroup* __fastcall TgEffectGroup__CloneEffectGroup::Call(UTgEffectGroup*
 			continue;
 		}
 
-		int instSize = GetEffectInstanceSize(tmplEffect);
-		if (instSize <= 0x3C) {
-			if (Logger::IsChannelEnabled("effects")) {
-				Logger::Log("effects",
-					"[CLONE] effect[%d] unknown class size for %s — sharing template ptr (legacy)\n",
-					i, tmplEffect->Class ? tmplEffect->Class->GetFullName() : "<no-class>");
-			}
-			clone->m_Effects.Add(tmplEffect);
-			continue;
-		}
-
-		UTgEffect* effClone = (UTgEffect*)
-			ConstructEffect(tmplEffect->Class, -1, 0, 0, 0, 0, 0, 0, nullptr);
+		UTgEffect* effClone = TgEffect__CloneEffect::Call(tmplEffect, /*edx=*/nullptr);
 		if (!effClone) {
+			// CloneEffect couldn't determine class size or ConstructObject
+			// failed — fall back to sharing the template pointer. Functionally
+			// the same as the pre-CloneEffect implementation's escape hatch;
+			// per-effect state will alias the template until GC.
 			Logger::Log("effects",
-				"[CLONE] effect[%d] ConstructEffect failed — sharing template ptr (legacy)\n", i);
+				"[CLONE] effect[%d] CloneEffect returned null — sharing template ptr (legacy)\n", i);
 			clone->m_Effects.Add(tmplEffect);
 			continue;
 		}
 
-		// Memcpy fields 0x3C..instSize. Skips UObject header (which the ctor
-		// already filled in for the new instance — name, Outer, Class, etc.)
-		// and stays within the allocated size for this concrete subclass.
-		std::memcpy((uint8_t*)effClone + 0x3C, (uint8_t*)tmplEffect + 0x3C,
-			instSize - 0x3C);
-
-		// Wire the cloned effect to the new clone group, not the template —
-		// otherwise CalcCategoryProtection / m_EffectGroup.GetProperty etc.
-		// would dereference the template's m_Target / m_Instigator (which
-		// aren't set per-instance) and read stale state.
+		// Wire the cloned effect to the new clone group, not the template.
+		// CloneEffect's memcpy copied m_EffectGroup from the template (= the
+		// template group), so CalcCategoryProtection / m_EffectGroup.GetProperty
+		// / etc. would dereference the template's m_Target / m_Instigator
+		// (which aren't set per-instance) and read stale state without this.
 		effClone->m_EffectGroup = clone;
 
-		// Force m_bRemovable to its CDO default (true, bit 0x02 at +0x48).
-		// Memcpy above copied flags from the template; if any prior code path
-		// cleared this, the clone would inherit it. Safe to set unconditionally
-		// — see BuildEffectGroup's identical reasoning.
-		unsigned int& eflags = *(unsigned int*)((char*)effClone + 0x48);
-		eflags |= 0x02;
+		// Do not touch m_bRemovable here. CDO default is true (TgEffect.uc:662);
+		// ConstructEffect's UObject template-copy gives every fresh instance
+		// m_bRemovable=true, BuildEffectGroup never clears bit 0x02, the
+		// engine asm-data loader (FUN_10a6f300) doesn't touch +0x48, and UC
+		// has no write site. So the memcpy in CloneEffect already produces
+		// m_bRemovable=true on the clone. Force-setting it would silently
+		// override any legitimate future `false` (instant-only effects per
+		// TgEffectGroup.uc:364) instead of honoring it.
 
 		// Effect classes 157 (TgEffectBuff) are flagged in the side-set on
 		// the TEMPLATE effect during BuildEffectGroup; the clone needs the
@@ -151,377 +128,53 @@ UTgEffectGroup* __fastcall TgEffectGroup__CloneEffectGroup::Call(UTgEffectGroup*
 		// and eventually unreferenced, GC will collect the cloned effect.
 		// RootSet'ing it here would leak.
 
-		// Damage-buff (prop 65) scaling — performed HERE, not in any
-		// CheckEffectBuffModifier or TakeDamage hook. Reasoning:
-		//
-		// UC's `CheckEffectBuffModifier` is a stripped native; UC-to-UC
-		// bytecode dispatches it via inline VM (ProcessInternal → Func),
-		// which bypasses our ProcessEvent hook entirely. UC's
-		// `Target.TakeDamage(int(fProratedAmount), …)` is *also* dispatched
-		// inline (FUNC_Event flag does NOT route UC-to-UC calls through
-		// ProcessEvent, despite folklore — verified by zero combat-trace
-		// `PE: …TakeDamage…` lines across full damage cycles). Both hook
-		// approaches were dead.
-		//
-		// Working approach: pre-scale the *cloned* damage effect's m_fBase
-		// (and m_fMinimum / m_fMaximum for charge weapons) up front, before
-		// UC's `TgEffectDamage::ApplyEffect` reads them via GetProratedValue
-		// or ChargeModifier. UC then computes:
-		//     fProratedAmount = m_fBase                           ← scaled
-		//     ChargeModifier → m_fMinimum + (m_fMaximum - m_fMinimum) * pct
-		//     × m_fPercAbsorbedDamage, m_fPctDamageDecreaseDueToWeakSpot
-		//     × InstigatorPawn.s_fDamageAdjustment
-		//     CheckEffectBuffModifier(…)                          ← no-op
-		//     CheckDamageTakenModifier(…)
-		//     ProtectionModifier(…)
-		// Because every step except CheckEffectBuffModifier is a percent
-		// scalar, scaling m_fBase up front is mathematically identical to
-		// scaling at CheckEffectBuffModifier. Scaling m_fMinimum / m_fMaximum
-		// proportionally keeps charge-weapon ramps consistent.
-		//
-		// `m_fBuffedDamageInitial` cache (TgEffectDamage.uc:103) is fine:
-		// for DOT damage (m_bUseOnInterval=true), the first tick computes
-		// fProratedAmount from our scaled m_fBase and caches it; later ticks
-		// reuse the cached *already-buffed* value. For instant damage
-		// (!m_bUseOnInterval) the cache is bypassed every call.
-		//
-		// Per-clone scaling is the right granularity: the clone's
-		// m_Instigator was just memcpy'd from the template (which UC's
-		// `InitInstance` set to the firing pawn before `GetClonedEffectGroup`
-		// ran), so each clone scales by the firer that produced it.
-		const char* effClassName = effClone->Class ? effClone->Class->GetFullName() : nullptr;
-		if (effClassName && strstr(effClassName, "TgEffectDamage") != nullptr) {
-			AActor* inst = clone->m_Instigator;
-			if (inst && effClone->m_fBase > 0.0f) {
-				ATgPawn* instPawn = nullptr;
-				ATgDeployable* depInstigator = nullptr;
-				const char* instClass = inst->Class ? inst->Class->GetFullName() : nullptr;
-				if (instClass && strstr(instClass, "TgPawn") != nullptr) {
-					instPawn = (ATgPawn*)inst;
-				} else if (instClass && strstr(instClass, "TgDeployable") != nullptr) {
-					// Damage-dealing deployable (sentry mine, AOE bomb).
-					// Walk back to the deploying pawn; we'll override the
-					// query's devInst+skillId with the deploy device's
-					// values from the registry.
-					depInstigator = (ATgDeployable*)inst;
-					APawn* depInst = ((AActor*)inst)->Instigator;
-					if (depInst && depInst->Class) {
-						const char* depCls = depInst->Class->GetFullName();
-						if (depCls && strstr(depCls, "TgPawn") != nullptr) {
-							instPawn = (ATgPawn*)depInst;
-						}
-					}
-				}
-
-				if (instPawn) {
-					typedef void(__fastcall* GetBuffedPropertyFn)(
-						ATgPawn*, void*, unsigned char,
-						int, int, int, int, int, float, float*, void*);
-					static const GetBuffedPropertyFn GetBuffedPropertyNative =
-						(GetBuffedPropertyFn)0x109d7ff0;
-					float origBase = effClone->m_fBase;
-					float buffedBase = origBase;
-
-					// Resolve the firing-device identity for the buff query.
-					// Player-fired: clone->m_nSourceDeviceInstId is the
-					// equipped device — Inventory tracks it.
-					// Deployable-fired: it's the deployable's internal
-					// device which the player never equipped, so we use
-					// the deploy device's instId+skillId from
-					// DeployableOriginRegistry. Without this override
-					// damage-dealing deployables ignore all rolled mods
-					// and multi-row skills.
-					int queryDevInst  = clone->m_nSourceDeviceInstId;
-					int queryCatSkill = DeviceCategorySkill::LookupByInstanceId(
-						instPawn, queryDevInst);
-					if (depInstigator) {
-						DeployableOriginRegistry::Origin origin =
-							DeployableOriginRegistry::Lookup(depInstigator);
-						queryDevInst  = origin.spawnDeviceInstId;
-						queryCatSkill = origin.spawnDeviceSkillId;
-					} else if (queryDevInst == 0) {
-						// Same fallback as [EFFECT-BUFF] — recover firing
-						// fire-mode from the per-template owner map for
-						// deployable-fired damage effects (sentry mines,
-						// AOE bombs) where UC's InitInstance failed to
-						// populate m_nSourceDeviceInstId.
-						UTgDeviceFire* firingFM = DeployableOriginRegistry::GetTemplateOwner(eg);
-						if (firingFM && firingFM->m_Owner && firingFM->m_Owner->Class) {
-							const char* fmoCls = firingFM->m_Owner->Class->GetFullName();
-							if (fmoCls && (strstr(fmoCls, "TgDeployable") != nullptr ||
-							               strstr(fmoCls, "TgDeploy_")    != nullptr)) {
-								ATgDeployable* dep = (ATgDeployable*)firingFM->m_Owner;
-								DeployableOriginRegistry::Origin origin =
-									DeployableOriginRegistry::Lookup(dep);
-								queryDevInst  = origin.spawnDeviceInstId;
-								queryCatSkill = origin.spawnDeviceSkillId;
-							}
-						}
-					}
-
-					// `nReqCategoryCode = clone->m_nCategoryCode`: pass
-					// firing effect-group's category. A sentry mine's
-					// damage effect-group has its own cat tag (e.g.
-					// "Station Damage" 1326 for damage-dealing stations);
-					// only Station Buff's +20% Station Damage entry
-					// (stored cat=1326) matches.
-					GetBuffedPropertyNative(
-						instPawn, /*edx=*/nullptr,
-						/*eRequestContext=*/4,         // BUFF_OTHER (identity for prop 65)
-						/*nPropId=*/65,                // TGPID_DAMAGE_MODIFIER
-						/*nReqCategoryCode=*/clone->m_nCategoryCode,
-						/*nReqSkillId=*/queryCatSkill,
-						/*nReqDeviceInstId=*/queryDevInst,
-						/*bUsePotencyModifier=*/0,
-						/*fBaseValue=*/origBase,
-						/*fBuffedValue=*/&buffedBase,
-						/*Effect=*/effClone);
-					if (buffedBase > origBase) {
-						const float mult = buffedBase / origBase;
-						effClone->m_fBase    = buffedBase;
-						effClone->m_fMinimum *= mult;
-						effClone->m_fMaximum *= mult;
-						Logger::Log("effects",
-							"[DAMAGE-BUFF] cloned damage effect: m_fBase %.3f -> %.3f (×%.3f)  instigator=%p egId=%d propId=%d\n",
-							origBase, buffedBase, mult, instPawn,
-							clone->m_nEffectGroupId, effClone->m_nPropertyId);
-					}
-				}
-			}
-		}
-
-		// [EFFECT-BUFF] — instigator-side effect-modifier scaling for non-damage
-		// effects. UC's `TgEffect.ApplyEffect:114-115` was supposed to call
-		// `CheckEffectBuffModifier(fProratedAmount)` between GetProratedValue
-		// and ApplyToProperty to scale the effect's amount by the firing pawn's
-		// buff registry. That UC native is stripped, and UC-to-UC dispatches
-		// it via inline VM (bypassing our ProcessEvent intercept). Same
-		// workaround shape as the [DAMAGE-BUFF] block above: pre-scale the
-		// cloned effect's m_fBase here, before UC reads it.
-		//
-		// Source of truth for the prop-id mapping: the binary's
-		// `ConvertPropToPropList` (FUN_109e5220), which we hand off to via
-		// GetBuffedPropertyNative below — so this block automatically picks
-		// up every (effect-prop → modifier-prop) expansion the function
-		// defines, no per-prop hardcoding here.
-		//
-		// Concrete example chains:
-		//
-		// (1) Super Tank + AOE Shield (self-cast modifier on self-cast effect):
-		//   - Super Tank skill effect: prop 66 calc 69 base 100 → routed
-		//     through ApplyBuff(SKILL) → m_EffectBuffInfo entry on player
-		//     with nPropId=66, fSkillPercentModifier=-100.
-		//   - Player activates AOE Shield → cloned effect on prop 49 with
-		//     instigator=player, target=player (self-cast).
-		//   - Here: GetBuffedProperty(BUFF_PAWN, 49) on player →
-		//     ConvertPropToPropList(1, 49) → 66 → finds the entry → formula
-		//     collapses 0.1 → 0 → no speed penalty.
-		//
-		// (2) Heal-output skill + deployed medical station:
-		//   - Skill puts prop 385 (Heal Output Modifier) in deployer's buff
-		//     registry.
-		//   - Medical station fires its heal effect → m_Instigator = the
-		//     deployable. We walk the deployable's engine `Instigator` field
-		//     back to the deploying pawn and look up THAT pawn's prop 385.
-		//   - The healed teammate gets the buffed amount even though they
-		//     don't have the skill themselves.
-		//
-		// Why INSTIGATOR-side: the props in the BUFF_PAWN expansion table
-		// (heal output, damage output, effect-on-target modifiers) are
-		// SOURCE-side modifiers — properties of the actor producing the
-		// effect, not the receiver. For self-cast (instigator=target) it's
-		// indistinguishable. For cross-target effects, the firer's modifier
-		// is what should scale outgoing effect amounts.
-		//
-		// Deployable instigator walkback: medical stations / turrets / bombs
-		// fire effects with m_Instigator set to the deployable itself
-		// (TgDeployable.uc:528 passes `self` to ApplyHit). The deployable's
-		// engine `Instigator` field points to the deploying pawn (set by
-		// SpawnDeployableActor). Walking through this chain means a player's
-		// heal-output / damage-output skills propagate to the things they
-		// deploy without per-call site code.
-		//
-		// TgEffectDamage skipped: damage gets prop-65 instigator scaling
-		// above + target-side mitigation via CalcCategoryProtection /
-		// CalcDamageTypeProtection / CalcAttackTypeProtection at apply time
-		// + SubmitMitigationDamage hook. Adding generic scaling on top would
-		// double-count.
-		//
-		// Scaling DOWN allowed (no `if (buffedBase > origBase)` guard): the
-		// registry can legitimately reduce effect strength (e.g. Super Tank's
-		// -100% speed-effect modifier collapses shield speed-penalty to 0).
-		if (effClassName && strstr(effClassName, "TgEffectDamage") == nullptr
-		    && effClone->m_fBase != 0.0f) {
-			ATgPawn* srcPawn = nullptr;
-			ATgDeployable* depInstigator = nullptr;
-			AActor* inst = clone->m_Instigator;
-			if (inst && inst->Class) {
-				const char* instCls = inst->Class->GetFullName();
-				if (instCls && strstr(instCls, "TgPawn") != nullptr) {
-					srcPawn = (ATgPawn*)inst;
-				} else if (instCls && strstr(instCls, "TgDeployable") != nullptr) {
-					// Walk back to the deploying pawn via the deployable's
-					// engine Instigator field. Cast through APawn — both
-					// TgDeployable and TgPawn inherit Instigator from AActor.
-					depInstigator = (ATgDeployable*)inst;
-					APawn* depInst = ((AActor*)inst)->Instigator;
-					if (depInst && depInst->Class) {
-						const char* depCls = depInst->Class->GetFullName();
-						if (depCls && strstr(depCls, "TgPawn") != nullptr) {
-							srcPawn = (ATgPawn*)depInst;
-						}
-					}
-				}
-			}
-
-			if (srcPawn) {
-				typedef void(__fastcall* GetBuffedPropertyFn)(
-					ATgPawn*, void*, unsigned char,
-					int, int, int, int, int, float, float*, void*);
-				static const GetBuffedPropertyFn GetBuffedPropertyNative =
-					(GetBuffedPropertyFn)0x109d7ff0;
-				float origBase = effClone->m_fBase;
-				float buffedBase = origBase;
-
-				// Resolve the firing-device identity for the buff query.
-				// For a player-fired effect: clone->m_nSourceDeviceInstId is
-				// the player's own equipped device — Inventory tracks it,
-				// so DeviceCategorySkill::LookupByInstanceId resolves the
-				// skillId from item_id.
-				//
-				// For a deployable-fired effect (medical station heal,
-				// sensor scan, etc.): clone->m_nSourceDeviceInstId is the
-				// DEPLOYABLE's internal fire-mode device — a separate
-				// device the player has never equipped, so it's not in
-				// Inventory, the skillId lookup misses, AND the rolled
-				// mods (registered on the player's deploy device) don't
-				// match either. Override with the deploy device's instId
-				// + skillId from DeployableOriginRegistry, which we
-				// recorded at SpawnDeployableActor time.
-				int queryDevInst   = clone->m_nSourceDeviceInstId;
-				int queryCatSkill  = DeviceCategorySkill::LookupByInstanceId(
-					srcPawn, queryDevInst);
-				const char* pathTag = "player";
-				if (depInstigator) {
-					DeployableOriginRegistry::Origin origin =
-						DeployableOriginRegistry::Lookup(depInstigator);
-					queryDevInst  = origin.spawnDeviceInstId;
-					queryCatSkill = origin.spawnDeviceSkillId;
-					pathTag = "deployable";
-				} else if (queryDevInst == 0) {
-					// Player-instigator path (e.g. medical-station heals where
-					// UC sets m_Instigator = the deploying player) AND UC's
-					// InitInstance failed to populate m_nSourceDeviceInstId
-					// because Impact.DeviceModeReference was null.
-					//
-					// Recover the firing fire-mode from the per-template
-					// owner map (set when GetEffectGroup lazy-populates
-					// s_EffectGroupList). The map is keyed on the TEMPLATE
-					// effect group pointer, which the caller passed to us
-					// as `eg` (closed over by the surrounding function).
-					// Templates are 1:1 with their owning fire-mode and
-					// set-once at init, so this is race-free even if
-					// multiple players deploy simultaneously.
-					UTgDeviceFire* firingFM = DeployableOriginRegistry::GetTemplateOwner(eg);
-					if (firingFM && firingFM->m_Owner && firingFM->m_Owner->Class) {
-						const char* fmoCls = firingFM->m_Owner->Class->GetFullName();
-						if (fmoCls && (strstr(fmoCls, "TgDeployable") != nullptr ||
-						               strstr(fmoCls, "TgDeploy_")    != nullptr)) {
-							ATgDeployable* dep = (ATgDeployable*)firingFM->m_Owner;
-							DeployableOriginRegistry::Origin origin =
-								DeployableOriginRegistry::Lookup(dep);
-							queryDevInst  = origin.spawnDeviceInstId;
-							queryCatSkill = origin.spawnDeviceSkillId;
-							pathTag = "deployable-via-template";
-						}
-					}
-				}
-
-				// Diagnostic: see what cat/skill/devInst we end up querying with.
-				// CloneEffectGroup runs per fire-pulse on every pawn affected by an
-				// effect group, so the inner buffinfo dump is gated behind the
-				// "effects" channel — it walked srcPawn->m_EffectBuffInfo on every
-				// clone otherwise.
-				if (Logger::IsChannelEnabled("effects")) {
-					Logger::Log("effects",
-						"[EFFECT-BUFF/probe] propId=%d cloneCat=%d cloneSrcDevInst=%d  path=%s  "
-						"queryCat=%d querySkill=%d queryDevInst=%d  inst=%p depInst=%p src=%p\n",
-						effClone->m_nPropertyId, clone->m_nCategoryCode,
-						clone->m_nSourceDeviceInstId, pathTag,
-						clone->m_nCategoryCode, queryCatSkill, queryDevInst,
-						inst, depInstigator, srcPawn);
-
-					// Dump matching prop-330/385/376 buff entries on srcPawn so we
-					// can see whether Station Buff/Cyber Specialist/rolled mods
-					// are even in m_EffectBuffInfo, with what stored gating values.
-					if (srcPawn && srcPawn->m_EffectBuffInfo.Data) {
-						int n = srcPawn->m_EffectBuffInfo.Num();
-						for (int bi = 0; bi < n; ++bi) {
-							FBuffInfo& e = srcPawn->m_EffectBuffInfo.Data[bi];
-							int p = e.BuffHeader.nPropId;
-							if (p == 330 || p == 385 || p == 376 || p == 51) {
-								Logger::Log("effects",
-									"   [BUFFINFO/probe] idx=%d prop=%d cat=%d skill=%d devInst=%d  "
-									"IP=%.2f IM=%.2f SP=%.2f SM=%.2f selfP=%.2f selfM=%.2f genP=%.2f genM=%.2f\n",
-									bi, p, e.BuffHeader.nReqCategoryCode,
-									e.BuffHeader.nReqSkillId, e.BuffHeader.nReqDeviceInstId,
-									e.fItemPercentModifier, e.fItemModifier,
-									e.fSkillPercentModifier, e.fSkillModifier,
-									e.fSelfPercentModifier, e.fSelfModifier,
-									e.fPercentModifier,     e.fModifier);
-							}
-						}
-					}
-				}
-
-				// `bUsePotencyModifier=1`: ConvertPropToPropList(BUFF_PAWN, …)
-				// adds prop 376 (Effect Potency Modifier) to the search list
-				// only when the potency flag is set. Skills like Station Buff
-				// (+20/50/20% prop 376 gated to "Stations") and Cyber
-				// Specialist's stations row (+15/15/50% prop 376) are
-				// otherwise unreachable. Safe in BUFF_PAWN context — the
-				// binary's expansion only adds 376 in this branch.
-				//
-				// `nReqCategoryCode = clone->m_nCategoryCode`: pass the
-				// firing effect-group's category. For a Medical Station's
-				// heal effect-group 6026 this is 1324 (Station Healing) —
-				// only Station Buff's +20% Station Healing entry matches,
-				// while +50% Station Protection / +20% Station Damage
-				// entries (stored cat 1327 / 1326) miss per the
-				// stored>0-must-equal-query rule. Without this filter all
-				// three prop-376 entries collapse into one slot and stack
-				// to +90% (the "absurd over-buffing" path).
-				GetBuffedPropertyNative(
-					srcPawn, /*edx=*/nullptr,
-					/*eRequestContext=*/1,         // BUFF_PAWN — effect-on-pawn
-					/*nPropId=*/effClone->m_nPropertyId,
-					/*nReqCategoryCode=*/clone->m_nCategoryCode,
-					/*nReqSkillId=*/queryCatSkill,
-					/*nReqDeviceInstId=*/queryDevInst,
-					/*bUsePotencyModifier=*/1,
-					/*fBaseValue=*/origBase,
-					/*fBuffedValue=*/&buffedBase,
-					/*Effect=*/effClone);
-				if (buffedBase != origBase) {
-					const float mult = (origBase != 0.0f) ? (buffedBase / origBase) : 1.0f;
-					effClone->m_fBase    = buffedBase;
-					effClone->m_fMinimum *= mult;
-					effClone->m_fMaximum *= mult;
-					Logger::Log("effects",
-						"[EFFECT-BUFF] cloned effect: propId=%d  m_fBase %.3f -> %.3f (×%.3f)  src=%p egId=%d\n",
-						effClone->m_nPropertyId, origBase, buffedBase, mult,
-						srcPawn, clone->m_nEffectGroupId);
-				}
-			}
-		}
-
 		clone->m_Effects.Add(effClone);
 	}
 
-	// Templates have m_bHasVisual=0 because the loader native that would set it
-	// is stripped; force it on so TgEffectManager::ProcessEffect's HUD gate
-	// passes and r_ManagedEffectList is populated.
-	clone->m_bHasVisual = 1;
+	// m_bHasVisual is now seeded by `BuildEffectGroup` from
+	// `asm_data_set_effect_groups.icon_id > 0` and propagates through the
+	// 0x6C..0x140 memcpy above. Don't touch it here — force-on caused HUD
+	// icons to appear for effect groups that should never have shown one
+	// (rolled mods, knockback impulses, hold-to-sustain modifier groups,
+	// etc., all of which have icon_id=0 in the DB).
+
+	// **Deployable source-device side-map.** For deployable-fired effects,
+	// resolve the deploying player's spawn-device origin via the
+	// template→fire-mode → deployable chain and stash it on the clone
+	// pointer in DeployableOriginRegistry::g_cloneOrigins.
+	//
+	// Why a side-map instead of writing m_nSourceDeviceInstId on the clone
+	// directly: UC's `TgEffectGroup::InitInstance` runs AFTER us and
+	// unconditionally CLEARS m_nSourceDeviceInstId / m_nSourceDeviceSkillId
+	// before only re-setting them when `Impact.DeviceModeReference != none`.
+	// For Medical Station's heal chain the Impact arrives with no
+	// DeviceModeReference, so any field write here would be wiped before
+	// CheckEffectBuffModifier runs. The side-map survives the clear.
+	//
+	// Concrete failure (2026-05-14): Medical Station heal egId 6026 cat 1324
+	// queried CheckEffectBuffModifier with devInst=0 skill=0; `GetBuffIndex`
+	// rejected every entry stored with devInst>0 (Output Mod +70%,
+	// per-skill rows). Heal scaled only by the one universal entry
+	// (Super Engineer +20%) → 184/tick instead of expected ~470.
+	UTgDeviceFire* templateOwner = DeployableOriginRegistry::GetTemplateOwner(eg);
+	if (templateOwner && templateOwner->m_Owner && templateOwner->m_Owner->Class) {
+		const char* ownerCls = templateOwner->m_Owner->Class->GetFullName();
+		if (ownerCls && (std::strstr(ownerCls, "TgDeployable") != nullptr ||
+		                 std::strstr(ownerCls, "TgDeploy_")    != nullptr)) {
+			ATgDeployable* dep = (ATgDeployable*)templateOwner->m_Owner;
+			DeployableOriginRegistry::Origin origin = DeployableOriginRegistry::Lookup(dep);
+			if (origin.spawnDeviceInstId != 0) {
+				DeployableOriginRegistry::RegisterClone(clone,
+					origin.spawnDeviceInstId, origin.spawnDeviceSkillId);
+				if (Logger::IsChannelEnabled("effects")) {
+					Logger::Log("effects",
+						"[CLONE-ORIGIN] clone=%p (template=%p) cat=%d  source from deployable=%p  devInst=%d skill=%d\n",
+						clone, eg, clone->m_nCategoryCode, dep,
+						origin.spawnDeviceInstId, origin.spawnDeviceSkillId);
+				}
+			}
+		}
+	}
 
 	// Per-instance state — caller (GetClonedEffectGroup) wires s_OwnerEffectManager;
 	// InitInstance later sets m_Target / m_Instigator / m_SavedImpact.

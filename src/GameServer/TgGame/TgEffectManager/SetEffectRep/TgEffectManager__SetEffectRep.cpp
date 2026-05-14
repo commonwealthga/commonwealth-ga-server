@@ -24,13 +24,49 @@ int __fastcall TgEffectManager__SetEffectRep::Call(ATgEffectManager* Manager, vo
 		}
 	}
 
-	int ret = CallOriginal(Manager, edx, nEffectGroupID, fTime, bIsBuff, nHealthChange);
+	// Suppress managed-list slot for "instant effect from someone else" — the
+	// concrete failure was Boss Shrike Energy Cannon AoE hit (eg 17701: cat
+	// 302, lifetime 0, icon_id 20) and other enemy hit effects landing
+	// permanent lingering icons on the player's HUD strip. fTime==0 means the
+	// client never times the slot out, and for cross-pawn hits there's no
+	// matching Remove path to clear it explicitly.
+	//
+	// We can't decide this at BuildEffectGroup time: the SAME template (e.g.
+	// any lifetime=0 + icon_id>0 effect) may legitimately be self-cast (scope,
+	// rest, certain stealth/aim modes) where the icon SHOULD show — for those,
+	// the user releases the input and ServerStopFire/RemoveAimEffects → our
+	// RemoveEffectType natives clear the slot via s_ManagedEffectListIndex.
+	//
+	// Decision at apply time: look up the just-added clone in
+	// s_AppliedEffectGroups by egId. If `m_Target != m_Instigator` AND fTime==0
+	// (instant cross-pawn effect), skip the original SetEffectRep (no managed
+	// slot allocated) but STILL push to the event queue below so the impact
+	// sound/FX still play. Returning -1 matches the native's Branch A return,
+	// and UC writes `s_ManagedEffectListIndex = -1` — our Remove paths then
+	// correctly skip slot-zeroing for this group.
+	bool suppressManaged = false;
+	if (Manager && fTime == 0.0f && Manager->r_Owner) {
+		for (int i = Manager->s_AppliedEffectGroups.Count - 1; i >= 0; --i) {
+			UTgEffectGroup* g = Manager->s_AppliedEffectGroups.Data[i];
+			if (g && g->m_nEffectGroupId == nEffectGroupID) {
+				if (g->m_Target && g->m_Instigator && g->m_Target != g->m_Instigator) {
+					suppressManaged = true;
+				}
+				break;
+			}
+		}
+	}
+
+	int ret = suppressManaged
+		? -1
+		: CallOriginal(Manager, edx, nEffectGroupID, fTime, bIsBuff, nHealthChange);
 
 	if (effectsLog) {
 		Logger::Log("effects",
 			"[SET-REP] egId=%d fTime=%.3f bIsBuff=%d nHpΔ=%d -> ret=%d (branch=%s)\n",
 			nEffectGroupID, fTime, (int)(bIsBuff ? 1 : 0), nHealthChange, ret,
-			(ret == -1) ? "A:queue" : "B:managed");
+			suppressManaged ? "X:cross-pawn-instant-suppressed"
+			                : ((ret == -1) ? "A:queue" : "B:managed"));
 
 		if (Manager) {
 			for (int i = 0; i < 0x10; i++) {
@@ -71,8 +107,11 @@ int __fastcall TgEffectManager__SetEffectRep::Call(ATgEffectManager* Manager, vo
 	//
 	// `ret >= 0` rules out Branch A (which already pushed to the queue itself
 	// and returned -1) — guards against a future case where vtable[0x39c]
-	// classifies an egId differently.
-	if (Manager && fTime == 0.0f && ret >= 0) {
+	// classifies an egId differently. `suppressManaged` is our own skip-the-
+	// managed-slot path above; we skipped CallOriginal entirely, so we need
+	// to do the queue push ourselves to keep impact sound/FX (the user-visible
+	// part of cross-pawn instant hits that we DO want).
+	if (Manager && fTime == 0.0f && (ret >= 0 || suppressManaged)) {
 		int qIdx = Manager->r_nNextQueueIndex;
 		if (qIdx >= 0 && qIdx < 0x20) {
 			Manager->r_EventQueue[qIdx].nEffectGroupID = nEffectGroupID;

@@ -19,7 +19,16 @@
 // ---------------------------------------------------------------------------
 // Static member initialization
 // ---------------------------------------------------------------------------
-int Inventory::s_nextInventoryId = 10000;
+// Start far above the player-device range. Player device inventory_ids are
+// minted by PlayerSessionStore::ResyncCharacterDevicesFromLoadout as
+// `10000 + equip_slot` (i.e. 10001..10025+), so bot devices minted from this
+// counter MUST stay outside that window. The original starting value of
+// 10000 produced direct collisions: bot device #1 got 10001 = player slot 1.
+// Result was the client's `FUN_10a14a50` device-by-instance-id lookup
+// returning whichever ATgDevice (player vs bot) had been registered first
+// for that id — so slot bindings, c_DeviceForm pointers, and cooldown timers
+// silently swapped between pawns during possession. Verified 2026-05-12.
+int Inventory::s_nextInventoryId = 1000000;
 std::map<ATgPawn*, std::vector<EquippedEntry>> Inventory::s_equipped;
 std::map<int, std::vector<EquippedEntry>*> Inventory::s_equippedByPawnId;
 std::vector<EquippedEntry> Inventory::s_empty;

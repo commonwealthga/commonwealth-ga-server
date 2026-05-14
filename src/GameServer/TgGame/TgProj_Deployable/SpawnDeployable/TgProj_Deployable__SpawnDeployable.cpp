@@ -141,6 +141,37 @@ bool TgProj_Deployable__SpawnDeployable::IsForceFieldDeployableId(int nDeployabl
 	return strstr(clsName, "TgDeploy_ForceField") != nullptr;
 }
 
+bool TgProj_Deployable__SpawnDeployable::IsDomeShieldDeployableId(int nDeployableId) {
+	static std::unordered_map<int, bool> s_cache;
+	auto it = s_cache.find(nDeployableId);
+	if (it != s_cache.end()) return it->second;
+
+	bool isDome = false;
+	sqlite3* db = Database::GetConnection();
+	if (db) {
+		sqlite3_stmt* stmt = nullptr;
+		// Mesh-name prefix is the cleanest discriminator: `DEV_ForceField_Dome_*`
+		// is reserved for the dome shield meshes (957 Large, 956 Medium, 955
+		// Small) and never appears on wall meshes (`DEV_ForceField_Wall_*`).
+		// Attack type and target type don't separate dome from wall — they both
+		// use 342/214/0.
+		int rc = sqlite3_prepare_v2(db,
+			"SELECT 1 FROM asm_data_set_deployables d "
+			"JOIN asm_data_set_assembly_meshes am ON am.asm_id = d.asm_id "
+			"WHERE d.deployable_id = ? AND am.name LIKE 'DEV_ForceField_Dome%' "
+			"LIMIT 1",
+			-1, &stmt, nullptr);
+		if (rc == SQLITE_OK) {
+			sqlite3_bind_int(stmt, 1, nDeployableId);
+			isDome = (sqlite3_step(stmt) == SQLITE_ROW);
+			sqlite3_finalize(stmt);
+		}
+	}
+
+	s_cache[nDeployableId] = isDome;
+	return isDome;
+}
+
 void TgProj_Deployable__SpawnDeployable::GetTimerBombParams(
 	int nDeployableId, float* outActivationSecs, float* outDamageRadiusUU)
 {
@@ -561,7 +592,18 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// target).
 	float cylRadius = 0.f, cylHalfHeight = 0.f;
 	GetDeployableCollisionCylinder(deployableId, &cylRadius, &cylHalfHeight);
-	vLocation.Z += cylHalfHeight + 5.0f;
+
+	// Dome shield bubbles spawn CENTERED on the pawn — `vLocation` from the
+	// caller already IS `pawn->Location` (cylinder center, roughly waist-
+	// height). Lifting by halfHeight would push the sphere's center way above
+	// the pawn's head, making the bubble float overhead instead of engulfing
+	// them. The lift exists for trace-based placements where `vLocation` is a
+	// ground contact point and the actor's cylinder center needs to clear the
+	// terrain.
+	const bool isDomeShield = IsDomeShieldDeployableId(deployableId);
+	if (!isDomeShield) {
+		vLocation.Z += cylHalfHeight + 5.0f;
+	}
 
 	Logger::Log(GetLogChannel(),
 		"SpawnDeployableActor: class=%s deployableId=%d%s\n",

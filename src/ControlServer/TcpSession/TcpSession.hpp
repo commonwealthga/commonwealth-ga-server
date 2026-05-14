@@ -52,6 +52,10 @@ public:
     // Deliver a MATCH_INVITATION to this session (called from matchmaking callback).
     static void DeliverMatchInvitation(const std::string& session_guid, int64_t instance_id, const std::string& game_mode, int task_force);
 
+    // Deliver a PLAYER_ACTION IPC to the game-DLL instance the player is currently assigned to.
+    // Returns true if dispatched, false if the session is unknown or the player is not assigned to an instance.
+    static bool DeliverPlayerAction(const std::string& session_guid, const nlohmann::json& payload);
+
 private:
     // ── Static registry members ──────────────────────────────────────────────
     static std::mutex sessions_mutex_;
@@ -308,6 +312,17 @@ private:
     void send_get_loot_table_items_by_id_filtered_response();
 
     void send_inventory_response(int nPawnId, int64_t character_id);
+
+    // Identical wire format to send_inventory_response but pulls the records
+    // from an in-memory list (no DB lookup). Used by the -possess chat command
+    // to display the bot's loadout in the player's inventory UI.
+    struct LoadoutItem {
+        int device_id     = 0;
+        int inventory_id  = 0;
+        int quality       = 1162;
+        int slot_value_id = 0;
+    };
+    void send_loadout_inventory_response(int nPawnId, const std::vector<LoadoutItem>& items);
 
     void send_beacon_pickup_response(int nPawnId, int nDeviceId, int nInventoryId, int nEquipSlotValueId);
     void send_beacon_remove_response(int nPawnId, int nInventoryId);

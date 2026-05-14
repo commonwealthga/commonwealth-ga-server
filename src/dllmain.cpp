@@ -20,6 +20,7 @@
 #include "src/GameServer/IpDrv/ClientConnection/SendMarshal/ClientConnection__SendMarshal.hpp"
 #include "src/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.hpp"
 #include "src/GameServer/Engine/NetConnection/SendPackageMap/NetConnection__SendPackageMap.hpp"
+#include "src/GameServer/Engine/PackageMap/Compute/PackageMap__Compute.hpp"
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
 #include "src/GameServer/IpDrv/NetConnection/CleanupActor/NetConnection__CleanupActor.hpp"
 #include "src/GameServer/TgNetDrv/MarshalChannel/MarshalReceived/MarshalChannel__MarshalReceived.hpp"
@@ -30,6 +31,7 @@
 #include "src/GameServer/TgGame/TgPlayerController/SetSoundMode/TgPlayerController__SetSoundMode.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/CanPlayerUseVolume/TgPlayerController__CanPlayerUseVolume.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/GetViewTarget/TgPlayerController__GetViewTarget.hpp"
+#include "src/GameServer/TgGame/TgPlayerController/TraceWeaponFire/TgPlayerController__TraceWeaponFire.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/ServerAcceptNewProfileFromEquipScreen/TgPlayerController__ServerAcceptNewProfileFromEquipScreen.hpp"
 #include "src/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
@@ -86,6 +88,7 @@
 #include "src/GameServer/TgGame/TgDeviceFire/IsValidTarget/TgDeviceFire__IsValidTarget.hpp"
 #include "src/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.hpp"
 #include "src/GameServer/TgGame/TgDevice/UpdateDeployModeStatus/TgDevice__UpdateDeployModeStatus.hpp"
+#include "src/GameServer/TgGame/TgDevice/CalcFireSocketIndexMax/TgDevice__CalcFireSocketIndexMax.hpp"
 #include "src/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RosterWalker.hpp"
 #include "src/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RefIter.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
@@ -140,6 +143,10 @@
 #include "src/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
 #include "src/GameServer/TgGame/TgEffect/TrackStats/TgEffect__TrackStats.hpp"
+#include "src/GameServer/TgGame/TgEffect/CloneEffect/TgEffect__CloneEffect.hpp"
+#include "src/GameServer/TgGame/TgEffect/CheckEffectBuffModifier/TgEffect__CheckEffectBuffModifier.hpp"
+#include "src/GameServer/TgGame/TgEffect/CheckEffectThreatModifier/TgEffect__CheckEffectThreatModifier.hpp"
+#include "src/GameServer/TgGame/TgEffect/CheckOwnerPetBuff/TgEffect__CheckOwnerPetBuff.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/AdjustBeaconForwardSpawn/TgGame_Arena__AdjustBeaconForwardSpawn.hpp"
 #include "src/GameServer/TgGame/TgGame_Control/CalcAttackerReviveTime/TgGame_Control__CalcAttackerReviveTime.hpp"
 #include "src/GameServer/TgGame/TgGame_Control/CalcDefenderReviveTime/TgGame_Control__CalcDefenderReviveTime.hpp"
@@ -213,6 +220,7 @@
 #include "src/GameServer/TgGame/TgMissionObjective/RegisterSelf/TgMissionObjective__RegisterSelf.hpp"
 #include "src/GameServer/TgGame/TgDynamicSMActor/ForceNetRelevant/TgDynamicSMActor__ForceNetRelevant.hpp"
 #include "src/GameServer/TgGame/TgAIController/TargetInLOS/TgAIController__TargetInLOS.hpp"
+#include "src/GameServer/TgGame/TgAIController/CanBeRepaired/TgAIController__CanBeRepaired.hpp"
 #include "src/GameServer/TgGame/TgPawn/ApplyDye/TgPawn__ApplyDye.hpp"
 #include "src/GameServer/TgGame/TgPawn/ApplyJetpackTrail/TgPawn__ApplyJetpackTrail.hpp"
 #include "src/GameServer/TgGame/TgPawn/BeginStats/TgPawn__BeginStats.hpp"
@@ -354,6 +362,7 @@ unsigned long ModuleThread( void* ) {
 	MarshalChannel__MarshalReceived::Install();
 	MarshalChannel__NotifyControlMessage::Install();
 	NetConnection__SendPackageMap::Install();
+	PackageMap__Compute::Install();
 	ActorChannel__ReceivedBunch__CanExecute::bLogEnabled = true;
 	ActorChannel__ReceivedBunch__CanExecute::Install();
 	Channel__ReceivedSequencedBunch::Install();
@@ -367,8 +376,9 @@ unsigned long ModuleThread( void* ) {
 	TgPlayerController__SetSoundMode::Install();
 	TgPlayerController__CanPlayerUseVolume::Install();
 	TgPlayerController__GetViewTarget::Install();
+	TgPlayerController__TraceWeaponFire::Install();
 	TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Install();
-	// TgGame__TgFindPlayerStart::Install();
+	TgGame__TgFindPlayerStart::Install();
 	TgGame__SpawnPlayerCharacter::Install();
 	TgGame__SpawnBotPawn::Install();
 	TgGame__LoadGameConfig::Install();
@@ -423,6 +433,7 @@ unsigned long ModuleThread( void* ) {
 	TgEffectManager__RemoveAllEffects::Install();
 
 	TgDevice__UpdateDeployModeStatus::Install();
+	TgDevice__CalcFireSocketIndexMax::Install();
 	TgPawn__RosterWalker::Install();
 	TgPawn__RefIter::Install();
 	TgProj_Deployable__SpawnDeployable::Install();
@@ -446,6 +457,10 @@ unsigned long ModuleThread( void* ) {
 	TgEffectGroup__CloneEffectGroup::Install();
 	TgEffectGroup__RemoveEffects::Install();
 	TgEffect__TrackStats::Install();
+	TgEffect__CloneEffect::Install();
+	TgEffect__CheckEffectBuffModifier::Install();
+	TgEffect__CheckEffectThreatModifier::Install();
+	TgEffect__CheckOwnerPetBuff::Install();
 	TgEffectManager__GetSkillBasedEffectGroup::Install();
 	TgEffectManager__IsStrongest::Install();
 	TgEffectManager__ProcessReactiveSkillBasedEffectGroup::Install();
@@ -530,6 +545,7 @@ unsigned long ModuleThread( void* ) {
 	TgPawn__BeginStats::Install();
 	TgPawn__CanMove::Install();
 	// TgAIController__TargetInLOS::Install();
+	// TgAIController__CanBeRepaired::Install();
 	TgPawn__CheckKillQuestCredit::Install();
 	TgPawn__CheckUseQuestCredit::Install();
 	TgPawn__EndStats::Install();

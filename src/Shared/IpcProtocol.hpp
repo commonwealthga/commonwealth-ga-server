@@ -19,6 +19,15 @@ constexpr const char* MSG_PONG = "PONG";
 constexpr const char* MSG_PLAYER_REGISTER     = "PLAYER_REGISTER";
 constexpr const char* MSG_PLAYER_REGISTER_ACK = "PLAYER_REGISTER_ACK";
 
+// Sent by the control server when the client emits PLAYER_LEAVE_GAME (0x0200)
+// over TCP. The game DLL looks up the UDP UNetConnection by session_guid and
+// invokes NetConnection__Cleanup so the stale Pawn/PlayerController and the
+// ClientConnections entry are torn down immediately rather than waiting for
+// the engine's 30s ConnectionTimeout — without this, picking a character
+// again after Disconnect routes the new HELLO packets through a stale
+// USOCK_Open connection and the client times out back to login.
+constexpr const char* MSG_PLAYER_LEAVE = "PLAYER_LEAVE";
+
 constexpr const char* MSG_INSTANCE_HELLO     = "INSTANCE_HELLO";
 constexpr const char* MSG_INSTANCE_HELLO_ACK = "INSTANCE_HELLO_ACK";
 constexpr const char* MSG_INSTANCE_READY     = "INSTANCE_READY";
@@ -30,6 +39,8 @@ constexpr const char* MSG_RANDOMSM_RESULT = "RANDOMSM_RESULT";
 constexpr const char* MSG_PLAYER_JOINED  = "PLAYER_JOINED";
 constexpr const char* MSG_PLAYER_LEFT    = "PLAYER_LEFT";
 constexpr const char* MSG_INSTANCE_EMPTY = "INSTANCE_EMPTY";
+
+constexpr const char* MSG_PLAYER_ACTION = "PLAYER_ACTION";
 
 // ---------------------------------------------------------------------------
 // IPC transport

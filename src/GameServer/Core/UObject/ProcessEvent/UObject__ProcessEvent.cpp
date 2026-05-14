@@ -111,7 +111,9 @@ enum class DispatchTag : uint8_t {
 	DeviceFiringEndState,         // CallOriginal then jetpack-flag clear
 	ServerStopFire,               // CallOriginal then RemoveEffectGroupsByCategory(stealth)
 	TgEffectRemove,               // (guarded) ApplyBuffEffectFromHook in lieu of original
-	CheckEffectBuffModifier,      // (guarded) scale parms->NewValue via GetBuffedProperty
+	PostPawnSetup,                // CallOriginal (sets PHYS_Falling) then restore PHYS_Flying for flying bots
+	ServerStartFire,              // Diagnostic: log every CanDeviceFireNow gate before CallOriginal
+	GetPlayerViewPoint,           // Pre-sync c_nCameraYawOffset / c_nCameraPitchOffset from ctrl.Rotation
 };
 
 // First-sight classification: walks the strcmp ladder once per unique
@@ -125,7 +127,6 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	// Hottest set first: per-tick / per-move noise that we want to pass straight through.
 	if (   strcmp(name, "Function Engine.Actor.Tick") == 0
 		|| strcmp(name, "Function Engine.GameInfoDataProvider.ProviderInstanceBound") == 0
-		|| strcmp(name, "Function TgGame.TgPlayerController.GetPlayerViewPoint") == 0
 		|| strcmp(name, "Function TgGame.TgPawn.ShouldRechargePowerPool") == 0
 		|| strcmp(name, "Function TgGame.TgPawn_Character.Tick") == 0
 		|| strcmp(name, "Function TgGame.TgDeployable.Tick") == 0
@@ -170,8 +171,10 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	if (strcmp(name, "Function TgPawn.Dying.BeginState") == 0)                       return DispatchTag::DyingBeginState;
 	if (strcmp(name, "Function TgDevice.DeviceFiring.EndState") == 0)                return DispatchTag::DeviceFiringEndState;
 	if (strcmp(name, "Function TgGame.TgDevice.ServerStopFire") == 0)                return DispatchTag::ServerStopFire;
+	if (strcmp(name, "Function TgGame.TgDevice.ServerStartFire") == 0)               return DispatchTag::ServerStartFire;
 	if (strcmp(name, "Function TgGame.TgEffect.Remove") == 0)                        return DispatchTag::TgEffectRemove;
-	if (strcmp(name, "Function TgGame.TgEffect.CheckEffectBuffModifier") == 0)       return DispatchTag::CheckEffectBuffModifier;
+	if (strcmp(name, "Function TgGame.TgPawn.WaitForInventoryThenDoPostPawnSetup") == 0) return DispatchTag::PostPawnSetup;
+	if (strcmp(name, "Function TgGame.TgPlayerController.GetPlayerViewPoint") == 0)  return DispatchTag::GetPlayerViewPoint;
 
 	return DispatchTag::Unknown;
 }
@@ -253,6 +256,42 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		CallOriginal(Object, edx, Function, Params, Result);
 		break;
 
+	case DispatchTag::GetPlayerViewPoint: {
+		// Sync c_nCameraYawOffset / c_nCameraPitchOffset from Controller.Rotation
+		// before the UC body runs.
+		//
+		// Why: TgPlayerController.GetPlayerViewPoint dispatches to native
+		// CalcCameraView (0x109692c0 -> FUN_10967d30). The pawn-view-target
+		// branch outputs POVRotation = Controller.Rotation ONLY when the PC's
+		// state is PlayerWalking or PlayerHackingBot. For any other state
+		// (PlayerJetting, PlayerFlying, PlayerHanging, ...) it falls through
+		// to a branch that writes:
+		//   POVRotation.Yaw   = this->c_nCameraYawOffset    (offset 0x7B0)
+		//   POVRotation.Pitch = this->c_nCameraPitchOffset  (offset 0x7B4)
+		//
+		// Those offsets are normally refreshed by `state PlayerJetting.PlayerMove`
+		// and `.UpdateRotation` via `PlayerInput.aTurn`/`aLookUp` — but
+		// PlayerInput is client-side; on the dedicated server they stay
+		// frozen at whatever AcknowledgePossession seeded (Pawn.Rotation.Yaw
+		// at first possession, ~0 for pitch). Result: while the jetpack is
+		// firing, GetBaseAimRotation reads a stale POVRotation, the
+		// reticle trace points the wrong way, and projectiles spawn with
+		// the wrong rotation regardless of where the player is aiming.
+		//
+		// Fix: keep these offsets sync'd with the controller's actual
+		// rotation right before any code path that consumes them. We do it
+		// here (rather than per-Tick) so the cost is only paid when somebody
+		// actually reads the view point, and the sync is fresh against the
+		// most-recent ServerMove update.
+		ATgPlayerController* PC = (ATgPlayerController*)Object;
+		if (PC) {
+			PC->c_nCameraYawOffset   = PC->Rotation.Yaw;
+			PC->c_nCameraPitchOffset = PC->Rotation.Pitch;
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	}
+
 	case DispatchTag::TgGameLogin:
 		// GameInfo.Login (called via super.Login from TgGame.Login) takes the
 		// spectator branch when ChangeTeam returns false (TgGame.ChangeTeam
@@ -294,6 +333,14 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// so the Timer never fires and BotDied is never called.
 		// Fix: call TgBotFactory__BotDied @ 0x10a8cbf0 directly here,
 		// mirroring what TgAIController.PawnDied() would do.
+		//
+		// Kill attribution (m_DeathZoomInfo population + ClientAddKilled RPC)
+		// lives in TgEffect__TrackStats — it fires inside the damage callstack
+		// with direct access to InstigatorPawn, before the state's `Begin:`
+		// latent block ships m_DeathZoomInfo to the client on the next Tick.
+		// We can't do it here because m_LastDamager is never populated:
+		// UpdateDamagers has no UC callers and the binary native that
+		// originally drove it was stripped.
 		ATgPawn* Pawn = (ATgPawn*)Object;
 		if (Pawn->Controller && !Pawn->Controller->bIsPlayer && !Pawn->r_bIsHenchman) {
 			ATgAIController* AIC = (ATgAIController*)Pawn->Controller;
@@ -308,6 +355,155 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		break;
 	}
 
+	case DispatchTag::PostPawnSetup: {
+		Logger::Log("flying", "WaitForInventoryThenDoPostPawnSetup called on %s\n",
+			Object ? Object->GetFullName() : "<null>");
+		// Hook target: `Function TgGame.TgPawn.WaitForInventoryThenDoPostPawnSetup`.
+		//
+		// We do NOT hook `PostPawnSetup` directly — UC subclass overrides call
+		// `super.PostPawnSetup()` which compiles to `EX_FinalFunction` (direct
+		// dispatch, bypasses ProcessEvent). The base-class hook never fires
+		// for flying-class subclasses that override PostPawnSetup. The outer
+		// WaitForInventoryThenDoPostPawnSetup, by contrast, is called from C++
+		// via the SDK ProcessEvent wrapper at SpawnBotById time and re-entered
+		// from the engine's SetTimer dispatch — both paths route through
+		// ProcessEvent, so this hook fires reliably.
+		//
+		// UC body (TgPawn.uc:6690):
+		//   simulated function WaitForInventoryThenDoPostPawnSetup() {
+		//       if (inventory_ready)  PostPawnSetup();   // sets PHYS_Falling
+		//       else                  SetTimer(0.1, 'WaitFor...');
+		//   }
+		//
+		// The function polls recursively until inventory is ready. We apply
+		// the physics fix after every iteration — idempotent for non-firing
+		// iterations, corrects the SetPhysics(2) clobber on the firing one.
+		// The fix has to live here because the recovery paths the original
+		// game relied on (subclass SetMovementPhysics override, the stripped
+		// InitializeHoverBot native, the Pawn::PossessedBy non-vehicle branch)
+		// are all gone in this build.
+		CallOriginal(Object, edx, Function, Params, Result);
+
+		ATgPawn* Pawn = (ATgPawn*)Object;
+		const char* className = Pawn->Class ? Pawn->Class->GetFullName() : nullptr;
+
+		// Diagnostic snapshot: dump everything we know about the bot's
+		// transform/visual state. Uses typed SDK accessors — earlier raw
+		// offsets were wrong (bot_id off m_pAmBot was bogus 567 for every
+		// bot, cylinder offsets 0x158/0x154 are pre-UE3 layout, mesh ptr
+		// read worked but returned default). Read directly via the typed
+		// field names so we get the real values.
+		{
+			int botIdLog = Pawn->r_nProfileId;  // set by SpawnBotById to bot_id
+			float cylH = -1.0f, cylR = -1.0f;
+			if (Pawn->CylinderComponent) {
+				cylH = Pawn->CylinderComponent->CollisionHeight;
+				cylR = Pawn->CylinderComponent->CollisionRadius;
+			}
+			float meshTransX = 999.0f, meshTransY = 999.0f, meshTransZ = 999.0f;
+			float meshScale = -1.0f;
+			if (Pawn->Mesh) {
+				meshTransX = Pawn->Mesh->Translation.X;
+				meshTransY = Pawn->Mesh->Translation.Y;
+				meshTransZ = Pawn->Mesh->Translation.Z;
+				meshScale  = Pawn->Mesh->Scale;
+			}
+			Logger::Log("flying",
+				"BotPose: botId=%d class=%s Location=(%.1f,%.1f,%.1f) DrawScale=%.3f "
+				"CylinderR=%.1f CylinderH=%.1f Mesh.Translation=(%.1f,%.1f,%.1f) MeshComp.Scale=%.3f "
+				"m_fMeshScale=%.3f m_fBaseTranslationOffset=%.1f m_fCrouchTranslationOffset=%.1f "
+				"Physics=%d\n",
+				botIdLog,
+				className ? className : "<no-class>",
+				Pawn->Location.X, Pawn->Location.Y, Pawn->Location.Z,
+				Pawn->DrawScale,
+				cylR, cylH,
+				meshTransX, meshTransY, meshTransZ,
+				meshScale,
+				Pawn->m_fMeshScale,
+				Pawn->m_fBaseTranslationOffset,
+				Pawn->m_fCrouchTranslationOffset,
+				(int)Pawn->Physics);
+		}
+
+		// Flying-class detection: pawn class strstr (catches all UC classes
+		// whose `SetMovementPhysics` override would call `SetPhysics(4)`).
+		const bool flyingClass = className &&
+			(strstr(className, "TgPawn_Hover")           ||
+			 strstr(className, "TgPawn_FlyingBoss")      ||
+			 strstr(className, "TgPawn_AttackTransport") ||
+			 strstr(className, "TgPawn_ColonyEye") ||
+			 strstr(className, "TgPawn_NewWasp"));
+
+		// Per-bot whitelist for ground-class pawns mounting a flying mesh.
+		// See reference_bot_vehicle_possess_skips_setphysics.md for rationale.
+		// Read bot_id off `m_pAmBot.Dummy + 0x1C` — set by SpawnBotById before
+		// WaitForInventoryThenDoPostPawnSetup schedules this event.
+		bool flyingBotId = false;
+		void* BotConfig = Pawn->m_pAmBot.Dummy;
+		if (BotConfig) {
+			const int botId = *(int*)((char*)BotConfig + 0x1C);
+			flyingBotId = (botId == 1107 || botId == 1657);
+		}
+
+		// Clear `bDriving` (APawn +0x3D0 bit 0x01, CPF_Net) on every bot
+		// regardless of class. `AIController->Possess(Bot, 0, /*vehicleTransition=*/1)`
+		// in SpawnBotById sets it true via the engine's vehicle-mode possession
+		// path — that puts the pawn into "driver pose" anim blending (sitting/
+		// hunched in a cockpit), which renders as a crouched mesh while the
+		// collision cylinder stays full size. UC never references bDriving, so
+		// it's pure engine territory; clearing it directly lets the bot's
+		// normal stand/walk anim play. Matches the user's empirical
+		// observation that bots appear crouched until possessed (crewing
+		// toggles driver state via r_ControlPawn back-refs).
+		//
+		// Also clear bDriverIsVisible (bit 0x02) for sanity — the standalone
+		// bot isn't a passenger of anything.
+		unsigned int& driverBits = *(unsigned int*)((char*)Pawn + 0x3D0);
+		driverBits &= ~0x00000003u;
+		Pawn->bNetDirty = 1;
+		Pawn->bForceNetUpdate = 1;
+
+		if (flyingClass || flyingBotId) {
+			// Stack 1 — Engine physics mode: PHYS_Flying.
+			Pawn->Physics = 4;
+
+			// Stack 2 — Engine gating bits at APawn +0x1EC.
+			// In UE3 physFlying, if `bCanFly` is false the engine immediately
+			// transitions back to physFalling. CDO defaults set it true on
+			// every flying class, but force it here in case spawn path or
+			// PostPawnSetup ever loses it. Clear `bSimulateGravity` so the
+			// engine's gravity integrator doesn't accelerate the pawn down.
+			//   bit 0x00002000 = bCanFly
+			//   bit 0x00040000 = bSimulateGravity (clear)
+			//   bit 0x00000800 = bCanWalk          (leave alone — most flying
+			//                    classes can still walk if they touch ground)
+			unsigned int& engineBits = *(unsigned int*)((char*)Pawn + 0x1EC);
+			engineBits |= 0x00002000u;
+			engineBits &= ~0x00040000u;
+
+			// Stack 3 — game-custom SoftZ gravity (TgPawn +0x3D8 bit 0x40000000).
+			// All three flying classes (Hover, FlyingBoss, ColonyEye) override
+			// `m_bAffectedBySoftZ=false` in their UC defaultproperties — that's
+			// the game's reinvented vertical-pull system. If the CDO override
+			// isn't honored at instance time (we've seen this with other
+			// CDO-based defaults), the flying bot inherits TgPawn's parent
+			// default of `true` and SoftZ pulls it down regardless of Physics
+			// mode. Force-clear here.
+			unsigned int& tgBits = *(unsigned int*)((char*)Pawn + 0x3D8);
+			tgBits &= ~0x40000000u;
+
+			Pawn->bNetDirty = 1;
+			Pawn->bForceNetUpdate = 1;
+			if (Logger::IsChannelEnabled("flying")) {
+				Logger::Log("flying",
+					"PostPawnSetup: applied PHYS_Flying + bCanFly + clear SoftZ for %s (class=%s)\n",
+					Pawn->GetFullName(), className ? className : "<no-class>");
+			}
+		}
+		break;
+	}
+
 	case DispatchTag::DeviceFiringEndState: {
 		CallOriginal(Object, edx, Function, Params, Result);
 		ATgDevice* Device = (ATgDevice*)Object;
@@ -316,6 +512,193 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			SetPawnProperty(Pawn, 59, 0.0f);  // clear TGPID_FLIGHT_ACCELERATION
 			Pawn->bNetDirty = 1;
 			Pawn->bForceNetUpdate = 1;
+		}
+		break;
+	}
+
+	case DispatchTag::ServerStartFire: {
+		// Diagnostic: capture every gate `TgDevice.CanDeviceFireNow` reads,
+		// then run CallOriginal and check whether the device's state actually
+		// transitioned to DeviceBuildup (=gate passed) or stayed in Active
+		// (=gate failed). Goal: pinpoint why server rejects in-hand-weapon
+		// fire while client accepted it (firing-while-jetpacking → no
+		// projectile / no hitscan damage on server, client renders the shot).
+		//
+		// AVOID SDK `eventXxx` wrappers that return `bool` — the generated
+		// SDK code returns `Parms.ReturnValue` where ReturnValue is a
+		// 1-bit bitfield in a stack-allocated Parms struct. UC's UnrealVM
+		// writes the bit, but reads sometimes pick up stack garbage instead
+		// (observed: `knockedDown=1 dying=1` simultaneously impossible,
+		// `IsFiring=0` on a device whose state is DeviceFiring). Use direct
+		// memory reads + state-name strcmp instead.
+		//
+		// Channel: "fire_gate" (in control-server.json).
+		bool wantLog = Logger::IsChannelEnabled("fire_gate");
+		const char* stateBefore = nullptr;
+		if (wantLog) {
+			ATgDevice* Device = (ATgDevice*)Object;
+			if (Device) {
+				ATgPawn*  Pawn = (ATgPawn*)Device->Instigator;
+				AWeapon*  Wpn  = Pawn ? Pawn->Weapon : nullptr;
+				int       fm   = (int)Device->CurrentFireMode;
+				UTgDeviceFire* FireMode =
+					(fm >= 0 && fm < Device->m_FireMode.Count)
+						? Device->m_FireMode.Data[fm] : nullptr;
+				stateBefore = Device->GetStateName().GetName();
+
+				// Read GIsNonCombat directly (the SDK wrapper for IsNonCombat
+				// is unreliable). We force it to 0 in combat at engine init,
+				// but still want to surface it for diagnosis.
+				int isNonCombat = *(int*)0x119A01C5;
+
+				Logger::Log("fire_gate",
+					"[ServerStartFire] device=%p devId=%d type=%d offHand=%d handDev=%d "
+					"usesDeploy=%d stealthDev=%d fm=%d/%d stateBefore=%s\n",
+					Device,
+					Device->r_nDeviceId, Device->m_nDeviceType,
+					(int)Device->m_bIsOffHand, (int)Device->m_bHandDevice,
+					(int)Device->m_bUsesDeployMode, (int)Device->r_bIsStealthDevice,
+					fm, Device->m_FireMode.Count,
+					stateBefore ? stateBefore : "<null>");
+
+				if (Pawn) {
+					const char* pawnState = Pawn->GetStateName().GetName();
+
+					// Aim-rotation source-of-truth dump. The projectile spawn
+					// rotation = `Rotator(Vector(GetAdjustedAim(StartTrace)))`,
+					// which routes through `TgPawn.GetBaseAimRotation` →
+					// `PC.GetPlayerViewPoint`. So Pawn.Rotation, Controller
+					// Rotation, AND GetPlayerViewPoint output are the three
+					// candidate sources of the wrong yaw observed during
+					// flight (projectile spawned with rot=(0, 32760, 0) =
+					// fixed -X direction, vs ground rot=(-460, -13936, 0)).
+					AController* Ctl = Pawn->Controller;
+					FVector  pvLoc  = {0,0,0};
+					FRotator pvRot  = {0,0,0};
+					if (Ctl) {
+						Ctl->eventGetPlayerViewPoint(&pvLoc, &pvRot);
+					}
+
+					Logger::Log("fire_gate",
+						"  pawn=%p physics=%d weapon=%p (self==weapon? %d) controller=%p\n"
+						"  flags: GIsNonCombat=%d isHacking=%d isDecoy=%d "
+						"binoculars=%d offhandCooldownNet=%d offhandCooldownLocal=%d\n"
+						"  flags: disableAllDevices=%d disableAction=%d aimingMode=%d\n"
+						"  state=%s  power=%.2f\n"
+						"  pawn.Rotation     =(p=%d, y=%d, r=%d)\n"
+						"  ctrl.Rotation     =(p=%d, y=%d, r=%d)\n"
+						"  PlayerViewPoint   =(p=%d, y=%d, r=%d) at loc=(%.1f, %.1f, %.1f)\n",
+						Pawn, (int)Pawn->Physics, Wpn, (int)(Wpn == (AWeapon*)Device), Ctl,
+						isNonCombat, (int)Pawn->r_bIsHacking, (int)Pawn->r_bIsDecoy,
+						(int)Pawn->r_bUsingBinoculars, (int)Pawn->r_bInGlobalOffhandCooldown,
+						(int)Pawn->bInGlobalOffhandCooldownClient,
+						(int)Pawn->r_bDisableAllDevices, (int)Pawn->c_bDisableAction,
+						(int)Pawn->r_bAimingMode,
+						pawnState ? pawnState : "<null>",
+						Pawn->r_fCurrentPowerPool,
+						Pawn->Rotation.Pitch, Pawn->Rotation.Yaw, Pawn->Rotation.Roll,
+						Ctl ? Ctl->Rotation.Pitch : 0,
+						Ctl ? Ctl->Rotation.Yaw   : 0,
+						Ctl ? Ctl->Rotation.Roll  : 0,
+						pvRot.Pitch, pvRot.Yaw, pvRot.Roll,
+						pvLoc.X, pvLoc.Y, pvLoc.Z);
+				}
+
+				if (FireMode) {
+					// `eventAmountCurrentlyOffOfTargetAccuracy` returns float
+					// (not bool) so its SDK wrapper IS reliable. The gate at
+					// TgDevice.uc:968 fails if this is > 0.0001 while
+					// m_bRequireAimMode is set.
+					float accOff = Device->eventAmountCurrentlyOffOfTargetAccuracy(Device->CurrentFireMode);
+					Logger::Log("fire_gate",
+						"  firemode: fireType=%d cont=%d restrictInCombat=%d "
+						"requireAimMode=%d restrictFireFlags=0x%x restrictPhysFlags=0x%x "
+						"attackRate=%.3f accuracyOff=%.4f\n",
+						(int)FireMode->m_nFireType,
+						(int)FireMode->m_bContinuousFire,
+						(int)FireMode->m_bRestrictInCombat,
+						(int)FireMode->m_bRequireAimMode,
+						FireMode->m_nRestrictFiringFlags,
+						FireMode->m_nRestrictPhysicsFlags,
+						FireMode->GetAttackRate(),
+						accOff);
+				}
+
+				if (Pawn) {
+					// Jetpack-slot dump. Compare state via strcmp instead of
+					// the broken `eventIsFiring()` SDK call. UC's DeviceFiring
+					// state override returns IsFiring=true, but the SDK
+					// wrapper returns garbage.
+					ATgDevice* JP = nullptr;
+					for (int i = 0; i < 15; ++i) {
+						ATgDevice* d = Pawn->m_EquippedDevices[i];
+						if (d && d->m_nDeviceType == 806) { JP = d; break; }
+					}
+					if (JP) {
+						const char* jpState = JP->GetStateName().GetName();
+						bool jpFiring = jpState && (strcmp(jpState, "DeviceFiring") == 0 ||
+						                            strcmp(jpState, "DeviceBuildup") == 0);
+						Logger::Log("fire_gate",
+							"  jetpack: dev=%p state=%s offHand=%d handDev=%d devType=%d "
+							"isFiring(stateName)=%d isPawnWeapon=%d\n",
+							JP, jpState ? jpState : "<null>",
+							(int)JP->m_bIsOffHand, (int)JP->m_bHandDevice, JP->m_nDeviceType,
+							(int)jpFiring,
+							(int)(Pawn->Weapon == (AWeapon*)JP));
+					} else {
+						Logger::Log("fire_gate", "  jetpack: <no TGDT_TRAVEL device equipped>\n");
+					}
+				}
+			}
+		}
+
+		CallOriginal(Object, edx, Function, Params, Result);
+
+		// Did the gate pass? StartFire's success path is `GotoState('DeviceBuildup')`
+		// (TgDevice.uc:1411). If the device's state is now DeviceBuildup or
+		// DeviceFiring, the gate passed; if it's still in its pre-call state
+		// (typically 'Active'), CanDeviceFireNow returned false. This is the
+		// ground-truth verdict — beats any SDK wrapper call.
+		if (wantLog) {
+			ATgDevice* Device = (ATgDevice*)Object;
+			if (Device) {
+				const char* stateAfter = Device->GetStateName().GetName();
+				bool passed = stateAfter && (strcmp(stateAfter, "DeviceBuildup") == 0 ||
+				                             strcmp(stateAfter, "DeviceFiring") == 0);
+				Logger::Log("fire_gate",
+					"  verdict: stateBefore=%s -> stateAfter=%s  GATE %s\n",
+					stateBefore ? stateBefore : "<null>",
+					stateAfter ? stateAfter : "<null>",
+					passed ? "PASSED (fire dispatched)" : "FAILED (no fire)");
+
+				// Aim-rotation cache dump — POST-CallOriginal so we see the
+				// value computed during THIS fire's ProjectileFire chain.
+				// `TgPawn.GetBaseAimRotation` (TgPawn.uc:7892) caches its
+				// result into `m_CachedBaseAimRotation` at offset 0x15D4 of
+				// TgPawn (per SDK header). The cache is per-tick, so reading
+				// it now gives this shot's computed aim. Compare against
+				// ctrl.Rotation / PlayerViewPoint logged earlier — if they
+				// differ, the shooting-reticle branch at TgPawn.uc:7889
+				// (OutRotation = Rotator(HitLocation - WeaponLoc)) is what
+				// overrode the rotation. The c_bUsesShootingReticle flag
+				// from the cached camera-values struct tells us whether
+				// that branch is even being taken; it lives at offset 0x1574
+				// of TgPawn, with c_bUsesShootingReticle being bit 0x01 of
+				// the first dword.
+				ATgPawn* Pawn = (ATgPawn*)Device->Instigator;
+				if (Pawn) {
+					FRotator& cachedAim = *(FRotator*)((char*)Pawn + 0x15D4);
+					unsigned int camFlags = *(unsigned int*)((char*)Pawn + 0x1574);
+					bool usesReticle = (camFlags & 0x1) != 0;
+					Logger::Log("fire_gate",
+						"  cached aim @ TgPawn+0x15D4 = (p=%d, y=%d, r=%d)  "
+						"c_bUsesShootingReticle=%d\n\n",
+						cachedAim.Pitch, cachedAim.Yaw, cachedAim.Roll,
+						(int)usesReticle);
+				} else {
+					Logger::Log("fire_gate", "\n");
+				}
+			}
 		}
 		break;
 	}
@@ -349,90 +732,47 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 
 	case DispatchTag::TgEffectRemove:
 		// Symmetric counterpart to the SetEffectRep-driven apply
-		// (`TgEffectManager__SetEffectRep.cpp`). Pulls the originally-
-		// applied amount out of `effect->m_fCurrent` (which our apply
-		// hook stored as PERCENT for calc 68/69) and reverses the buff
-		// entry, mirroring `TgEffectBuff.uc:202`. We rely on our
-		// reimplemented `TgEffectGroup__RemoveEffects` to dispatch
-		// `eventRemove` via ProcessEvent — that path IS visible to this
-		// hook (whereas the apply path runs invisibly, see
-		// ApplyBuffEffect.hpp for the full diagnosis).
+		// (`TgEffectManager__SetEffectRep.cpp`): reverses the buff registry
+		// entry for class-157 effects, mirroring `TgEffectBuff.uc:202`.
 		//
-		// Original outer guard was Params && IsBuff — when either fails we
-		// fall through to the catch-all (log + CallOriginal) just as the
-		// prior else-if chain did.
+		// The hook is ADDITIVE — buff-route Remove runs ALONGSIDE base UC
+		// `TgEffect.Remove` (CallOriginal via DoCatchAll), not instead of it.
+		// Apply is already additive: UC `TgEffect.ApplyEffect` runs via UC
+		// dispatch, then `SetEffectRep`'s hook fires `ApplyBuffEffectFromHook`
+		// on top. Remove must mirror that structure or we'd silently leak
+		// any side-effect that base `TgEffect.Remove` is responsible for.
+		//
+		// Concrete leak that motivated the fix: iMINIGUN's prop-338 root
+		// (egId 9350) is a class-80 effect whose UC Remove special-cases
+		// `if (m_nPropertyId == 338) ApplyToProperty(Target, 49, 10000, true)`
+		// to undo the prop-49 GroundSpeed clamp at TgEffect.uc:529-533. When
+		// `BuffEffectRegistry::IsBuff()` false-positives on a pointer-reuse
+		// collision (which it can — see ApplyBuffEffect.hpp), the prior
+		// if/else here SKIPPED CallOriginal entirely and the player stayed
+		// rooted forever. Additive removal makes the false positive benign:
+		// UC Remove undoes the real prop modification, buff-route Remove
+		// undoes the spurious registry entry.
+		//
+		// For LEGITIMATE class-157 effects, running UC `TgEffect.Remove`
+		// additionally is also safe — class-157 buffs target modifier props
+		// (113 Accuracy, 65 Effect Damage Modifier, …) the pawn doesn't carry
+		// in `s_Properties`, so `ApplyToProperty(bRemove=true)` is a silent
+		// no-op there. Same reasoning that motivated the buff-route hook in
+		// the first place.
 		if (Params && BuffEffectRegistry::IsBuff((UTgEffect*)Object)) {
 			auto* parms = (UTgEffect_eventRemove_Parms*)Params;
 			ApplyBuffEffectFromHook((UTgEffect*)Object, parms->Target, /*bRemove=*/true);
-		} else {
-			DoCatchAll();
 		}
+		DoCatchAll();
 		break;
 
-	case DispatchTag::CheckEffectBuffModifier:
-		// CheckEffectBuffModifier is a UC native that the binary STRIPPED.
-		// UC's TgEffect.ApplyEffect:115 and TgEffectDamage:131 call it to
-		// scale fProratedAmount by the instigator's m_EffectBuffInfo
-		// damage-modifier entries (prop 65). Without this, damage buffs
-		// from Techro/Sensor stations and rolled mods that target prop 65
-		// silently no-op even though the entry is correctly placed in
-		// the buff registry.
-		//
-		// HOOK DOES NOT FIRE FOR UC CALLERS. UC bytecode dispatches
-		// natives via inline VM (ProcessInternal → UFunction.Func), not
-		// via UObject::ProcessEvent. This branch only catches SDK-wrapper
-		// callers. The UC-call path is patched by the TgPawn.TakeDamage
-		// hook below, which scales the integer Damage parm before UC's
-		// TakeDamage body subtracts it from health — see that branch for
-		// the working implementation. Kept here for the SDK-wrapper case.
-		//
-		// Original outer guard was Params != null. When Params is null we
-		// fall through to the catch-all (log + CallOriginal), matching the
-		// prior else-if chain.
-		if (Params) {
-			auto* parms = (UTgEffect_execCheckEffectBuffModifier_Parms*)Params;
-			UTgEffect* effect = (UTgEffect*)Object;
-			UTgEffectGroup* g = effect ? effect->m_EffectGroup : nullptr;
-			AActor* instigator = g ? g->m_Instigator : nullptr;
-			if (instigator && parms->NewValue != 0.0f) {
-				const char* className = instigator->Class ? instigator->Class->GetFullName() : nullptr;
-				if (className && strstr(className, "TgPawn") != nullptr) {
-					ATgPawn* pawn = (ATgPawn*)instigator;
-					typedef void(__fastcall* GetBuffedPropertyFn)(
-						ATgPawn*, void*, unsigned char,
-						int, int, int, int, int, float, float*, void*);
-					static const GetBuffedPropertyFn GetBuffedPropertyNative =
-						(GetBuffedPropertyFn)0x109d7ff0;
-					float out = parms->NewValue;
-					// Per-device buff scoping: the effect's m_EffectGroup
-					// carries m_nSourceDeviceInstId from UC InitInstance
-					// (the firing device's r_nDeviceInstanceId). Passing
-					// it filters the buff registry to that device's
-					// rolled mods + wildcards (skills) — preventing
-					// cross-device damage-mod stacking.
-					GetBuffedPropertyNative(
-						pawn, /*edx=*/nullptr,
-						/*eRequestContext=*/4,
-						/*nPropId=*/65,                   // TGPID_DAMAGE_MODIFIER
-						/*nReqCategoryCode=*/0,
-						/*nReqSkillId=*/0,
-						/*nReqDeviceInstId=*/g ? g->m_nSourceDeviceInstId : 0,
-						/*bUsePotencyModifier=*/0,
-						/*fBaseValue=*/parms->NewValue,
-						/*fBuffedValue=*/&out,
-						/*Effect=*/effect);
-					if (out > 0.0f && out != parms->NewValue) {
-						Logger::Log("effects",
-							"[CHECK-BUFF-MOD] effect=%p propId=%d  base=%.3f -> buffed=%.3f  pawn=%p\n",
-							effect, effect->m_nPropertyId, parms->NewValue, out, pawn);
-						parms->NewValue = out;
-					}
-				}
-			}
-		} else {
-			DoCatchAll();
-		}
-		break;
+	// Note: `Function TgGame.TgEffect.CheckEffectBuffModifier` previously had
+	// a PE-time guard here that did SDK-caller damage-mod scaling. With the
+	// native fully reimplemented at 0x10a6f270 (see
+	// `TgEffect__CheckEffectBuffModifier`), both UC bytecode and SDK callers
+	// reach the same native body — keeping a PE hook here would double-apply.
+	// Removed; SDK callers now follow the default catch-all path which
+	// CallOriginal's down to the native.
 
 	// RefireCheckTimer's side effect ran above; it has no specific main
 	// handler, so it falls into the catch-all (log + CallOriginal) — same

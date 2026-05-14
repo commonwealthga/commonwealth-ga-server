@@ -5,6 +5,11 @@
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/Shared/HexUtils.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/ChangeTeam/ChangeTeam.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/SpawnBot/SpawnBot.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.hpp"
+#include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+#include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
 
 // ---------------------------------------------------------------------------
 // Static member definitions
@@ -363,6 +368,110 @@ void IpcClient::DrainInbound() {
             ack["success"]      = true;
             ack["pawn_id"]      = 0;
             IpcClient::Send(ack.dump());
+        } else if (type == IpcProtocol::MSG_PLAYER_ACTION) {
+            std::string guid   = j.value("session_guid", "");
+            std::string action = j.value("action", "");
+
+            Logger::Log("chat-command",
+                "[ChatCmd][DLL] inbound PLAYER_ACTION guid=%s action=%s\n",
+                guid.c_str(), action.c_str());
+
+            if (action == "change_team") {
+                std::string target_str;
+                if (j.contains("args") && j["args"].is_object()) {
+                    target_str = j["args"].value("target", "");
+                }
+
+                using TgPlayerActions::ChangeTeamCmd::Target;
+                Target target;
+                if (target_str == "toggle") {
+                    target = Target::Toggle;
+                } else if (target_str == "attackers") {
+                    target = Target::Attackers;
+                } else if (target_str == "defenders") {
+                    target = Target::Defenders;
+                } else {
+                    Logger::Log("chat-command",
+                        "[ChatCmd][DLL] change_team guid=%s: invalid target '%s'; dropping\n",
+                        guid.c_str(), target_str.c_str());
+                    continue;
+                }
+
+                TgPlayerActions::ChangeTeamCmd::Execute(guid, target);
+            } else if (action == "spawn_bot") {
+                int bot_id = 0;
+                std::string team_str;
+                if (j.contains("args") && j["args"].is_object()) {
+                    bot_id   = j["args"].value("bot_id", 0);
+                    team_str = j["args"].value("team", "");
+                }
+
+                if (bot_id <= 0) {
+                    Logger::Log("chat-command",
+                        "[ChatCmd][DLL] spawn_bot guid=%s: invalid bot_id=%d; dropping\n",
+                        guid.c_str(), bot_id);
+                    continue;
+                }
+
+                using TgPlayerActions::SpawnBotCmd::Team;
+                Team team;
+                if (team_str == "attackers") {
+                    team = Team::Attackers;
+                } else if (team_str == "defenders") {
+                    team = Team::Defenders;
+                } else {
+                    Logger::Log("chat-command",
+                        "[ChatCmd][DLL] spawn_bot guid=%s: invalid team '%s'; dropping\n",
+                        guid.c_str(), team_str.c_str());
+                    continue;
+                }
+
+                TgPlayerActions::SpawnBotCmd::Execute(guid, bot_id, team);
+            } else if (action == "possess") {
+                TgPlayerActions::PossessCmd::ExecutePossess(guid);
+            } else if (action == "unpossess") {
+                TgPlayerActions::PossessCmd::ExecuteUnpossess(guid);
+            } else {
+                Logger::Log("chat-command",
+                    "[ChatCmd][DLL] PLAYER_ACTION guid=%s: unknown action '%s'; dropping\n",
+                    guid.c_str(), action.c_str());
+            }
+        } else if (type == IpcProtocol::MSG_PLAYER_LEAVE) {
+            // Forwarded by the control server when the client sends
+            // PLAYER_LEAVE_GAME (0x0200) — the user clicked Disconnect in the
+            // in-game menu. The UDP UNetConnection isn't reaped automatically
+            // (close-notify only sets a flag; UNetConnection::Tick timeout is
+            // 30s), so we drive UNetConnection::CleanUp by hand on the
+            // connection that matches the session_guid. Cleanup removes the
+            // entry from GClientConnectionsData, removes from
+            // NetDriver->ClientConnections, closes all channels and destroys
+            // the attached PlayerController via the engine's CleanUpActor.
+            std::string guid = j.value("session_guid", "");
+            if (guid.empty()) {
+                Logger::Log("ipc", "[IPC] PLAYER_LEAVE: missing session_guid; dropping\n");
+                continue;
+            }
+
+            int matches = 0;
+            // Snapshot the matching connection pointers — NetConnection__Cleanup
+            // erases entries from GClientConnectionsData, so iterating the map
+            // and deleting concurrently would invalidate iterators.
+            std::vector<UNetConnection*> to_cleanup;
+            for (auto& kv : GClientConnectionsData) {
+                if (kv.second.SessionGuid == guid) {
+                    to_cleanup.push_back((UNetConnection*)kv.first);
+                }
+            }
+
+            for (UNetConnection* Connection : to_cleanup) {
+                Logger::Log("ipc", "[IPC] PLAYER_LEAVE: cleaning up connection 0x%p for guid=%s\n",
+                    Connection, guid.c_str());
+                NetConnection__Cleanup::Call(Connection);
+                matches++;
+            }
+
+            Logger::Log("ipc", "[IPC] PLAYER_LEAVE guid=%s: cleaned up %d connection(s)\n",
+                guid.c_str(), matches);
         } else {
             Logger::Log("ipc", "[IPC] Unknown message type: %s\n", type.c_str());
         }

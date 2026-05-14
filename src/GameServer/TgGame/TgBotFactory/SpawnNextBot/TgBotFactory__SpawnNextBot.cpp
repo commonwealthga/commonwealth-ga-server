@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgBotFactory/SpawnNextBot/TgBotFactory__SpawnNextBot.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
+#include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotBehaviorMarshal/CAmBot__LoadBotBehaviorMarshal.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
@@ -76,6 +77,28 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void
 			SpawnLocation.Y = BotStart->Location.Y;
 			SpawnLocation.Z = BotStart->Location.Z;
 
+			// Lift Z by halfHeight + 5uu floor buffer. Same pattern SpawnPet and
+			// SpawnDeployable use — APawn.Location is at the cylinder CENTER,
+			// and NavigationPoints (BotStart) are placed at ground level by
+			// the level designer. Without this lift, the bot's cylinder center
+			// sits at ground; cylinder extends halfHeight below ground. For
+			// meshes whose model pivot is at the CENTER (not the feet — common
+			// for big bosses, hovers, drones), the lower half of the mesh
+			// renders below the ground plane → "sunken into terrain" look.
+			// Bots with crouchable leg rigs (Shrike) mask this by bending
+			// knees, which reads as the bot being permanently crouched.
+			//
+			// halfHeight comes from asm_data_set_assembly_meshes.collision_height
+			// via the bot's body_asm_id — same source SetCollisionSize uses, so
+			// the lift matches the cylinder size we apply in SpawnBotById.
+			{
+				float radius = 0.f, halfHeight = 0.f;
+				TgGame__SpawnBotById::GetBotCollisionCylinder(randomSpawnEntry.EnemyBotId, &radius, &halfHeight);
+				if (halfHeight > 0.0f) {
+					SpawnLocation.Z += halfHeight + 5.0f;
+				}
+			}
+
 
 			ATgPawn* Bot = (ATgPawn*)Game->SpawnBotById(
 				randomSpawnEntry.EnemyBotId,
@@ -93,6 +116,12 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void
 			m_lastSpawnedBot[BotFactory->m_nMapObjectId] = Bot;
 
 			ATgAIController* AIController = (ATgAIController*)Bot->Controller;
+			// IMPORTANT: do NOT clear AIController->bIsPlayer. Earlier we did
+			// this to filter ClientAddKilled targets, but bIsPlayer is also
+			// used by turret target acquisition + AI threat lists as a
+			// "valid combatant" gate — clearing it broke turrets targeting
+			// bots. Use class-name strstr "PlayerController" for the
+			// real-player check instead.
 			for (int j = 0; j < BotFactory->PatrolPath.Num(); j++) {
 				AIController->m_PatrolPath.Add(BotFactory->PatrolPath.Data[j]);
 			}

@@ -1,12 +1,21 @@
 #include "src/GameServer/TgGame/TgPawn/TrackKill/TgPawn__TrackKill.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include <cstring>
 
 // Called on the VICTIM pawn from the native kill pipeline.
 // Killer is the pawn that killed this pawn.
-// Credits the killer with a kill in r_Scores[STYPE_KILLS].
+//
+// Credits one of two counters on the killer's PRI depending on victim type:
+//   - Player victim → r_Scores[STYPE_KILLS]      (index 1)
+//   - Bot victim    → r_Scores[STYPE_KILLS_BOT]  (index 10)
+//
+// Pet credit: if Killer is owned (r_Owner != null), the owning player's PRI
+// gets the credit instead of the pet's own PRI. Mirrors the UC pet-kill
+// branches in TgPawn.Died.
+//
 // Checks victim's m_LastDamager/m_SecondToLastDamager for assist credit.
-// m_LastDamager is set by UpdateDamagers which is called from the damage pipeline,
-// so it's always recent (only set during active combat on this pawn).
+// m_LastDamager is set by UpdateDamagers which is called from the damage
+// pipeline, so it's always recent (only set during active combat on this pawn).
 void __fastcall TgPawn__TrackKill::Call(ATgPawn* Pawn, void* edx, ATgPawn* Killer) {
 	LogCallBegin();
 	CallOriginal(Pawn, edx, Killer);
@@ -16,10 +25,25 @@ void __fastcall TgPawn__TrackKill::Call(ATgPawn* Pawn, void* edx, ATgPawn* Kille
 		return;
 	}
 
-	// Credit the killer with a kill
-	ATgRepInfo_Player* KillerPRI = (ATgRepInfo_Player*)Killer->PlayerReplicationInfo;
+	// Resolve pet → owner so the player gets credit for their pet's kill.
+	ATgPawn* CreditPawn = Killer;
+	if (Killer->r_Owner != nullptr) {
+		CreditPawn = Killer->r_Owner;
+	}
+
+	// Choose counter by victim type. `Controller->bIsPlayer` is unreliable
+	// in this build (AI bots default it to true; clearing it breaks turret
+	// targeting). Use class-name strstr — same pattern as SendCombatMessage.
+	bool victimWasPlayer = false;
+	if (Pawn->Controller && Pawn->Controller->Class) {
+		const char* clsName = Pawn->Controller->Class->GetFullName();
+		victimWasPlayer = clsName && strstr(clsName, "PlayerController") != nullptr;
+	}
+	const int  scoreIndex = victimWasPlayer ? 1 : 10;  // KILLS vs KILLS_BOT
+
+	ATgRepInfo_Player* KillerPRI = (ATgRepInfo_Player*)CreditPawn->PlayerReplicationInfo;
 	if (KillerPRI != nullptr) {
-		KillerPRI->r_Scores[1]++;  // STYPE_KILLS
+		KillerPRI->r_Scores[scoreIndex]++;
 		KillerPRI->bNetDirty = 1;
 		KillerPRI->bForceNetUpdate = 1;
 	}
