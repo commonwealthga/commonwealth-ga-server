@@ -16,6 +16,13 @@
 #include "src/GameServer/Engine/MapDataDumper/Writers/TgDeployableFactory.hpp"
 #include "src/GameServer/Engine/MapDataDumper/Writers/TgDestructibleFactory.hpp"
 #include "src/GameServer/Engine/MapDataDumper/Writers/TgHexItemFactory.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgMissionObjective.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgMissionObjective_Bot.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgMissionObjective_Kismet.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgMissionObjective_Proximity.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgBaseObjective_CTFBot.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgBaseObjective_KOTH.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgMissionObjective_Escort.hpp"
 // === END WRITER INCLUDES ===
 
 using namespace MapDumpWriters;
@@ -123,6 +130,43 @@ void WriteByClass(sqlite3* db, AActor* actor, const std::string& mapName) {
 	else if (cls == "TgActorFactory") {
 		int id = static_cast<ATgActorFactory*>(actor)->m_nMapObjectId;
 		WriteTgActorFactory(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgMissionObjective_Bot") {
+		int id = static_cast<ATgMissionObjective*>(actor)->m_nMapObjectId;
+		WriteTgMissionObjective    (db, actor, mapName, cls, id);
+		WriteTgMissionObjective_Bot(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgBaseObjective_CTFBot") {
+		int id = static_cast<ATgMissionObjective*>(actor)->m_nMapObjectId;
+		WriteTgMissionObjective    (db, actor, mapName, cls, id);
+		WriteTgMissionObjective_Bot(db, actor, mapName, cls, id);
+		WriteTgBaseObjective_CTFBot(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgMissionObjective_Kismet") {
+		int id = static_cast<ATgMissionObjective*>(actor)->m_nMapObjectId;
+		WriteTgMissionObjective       (db, actor, mapName, cls, id);
+		WriteTgMissionObjective_Kismet(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgMissionObjective_Proximity") {
+		int id = static_cast<ATgMissionObjective*>(actor)->m_nMapObjectId;
+		WriteTgMissionObjective          (db, actor, mapName, cls, id);
+		WriteTgMissionObjective_Proximity(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgBaseObjective_KOTH") {
+		int id = static_cast<ATgMissionObjective*>(actor)->m_nMapObjectId;
+		WriteTgMissionObjective          (db, actor, mapName, cls, id);
+		WriteTgMissionObjective_Proximity(db, actor, mapName, cls, id);
+		WriteTgBaseObjective_KOTH        (db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgMissionObjective_Escort") {
+		int id = static_cast<ATgMissionObjective*>(actor)->m_nMapObjectId;
+		WriteTgMissionObjective          (db, actor, mapName, cls, id);
+		WriteTgMissionObjective_Proximity(db, actor, mapName, cls, id);
+		WriteTgMissionObjective_Escort   (db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgMissionObjective") {
+		int id = static_cast<ATgMissionObjective*>(actor)->m_nMapObjectId;
+		WriteTgMissionObjective(db, actor, mapName, cls, id);
 	}
 	// === END DISPATCH BRANCHES ===
 }

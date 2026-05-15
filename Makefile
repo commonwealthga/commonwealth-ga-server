@@ -31,6 +31,13 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgDeployableFactory.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgDestructibleFactory.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgHexItemFactory.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgMissionObjective.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgMissionObjective_Bot.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgMissionObjective_Kismet.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgMissionObjective_Proximity.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgBaseObjective_CTFBot.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgBaseObjective_KOTH.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgMissionObjective_Escort.cpp \
 			  $(SRC_DIR)/GameServer/Engine/SeqActNullGuard/SeqActNullGuard.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Tick/Actor__Tick.cpp \
