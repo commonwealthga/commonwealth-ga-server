@@ -46,6 +46,15 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgFlagCaptureVolume.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgHelpAlertVolume.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgMissionListVolume.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgNavigationPoint.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgBotStart.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgActionPoint.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgAlarmPoint.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgCoverPoint.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgDefensePoint.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgHoldSpot.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgNavigationPointSpawnable.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgPointOfInterest.cpp \
 			  $(SRC_DIR)/GameServer/Engine/SeqActNullGuard/SeqActNullGuard.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Tick/Actor__Tick.cpp \

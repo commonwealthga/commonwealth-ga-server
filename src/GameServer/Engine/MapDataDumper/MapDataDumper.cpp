@@ -31,6 +31,15 @@
 #include "src/GameServer/Engine/MapDataDumper/Writers/TgFlagCaptureVolume.hpp"
 #include "src/GameServer/Engine/MapDataDumper/Writers/TgHelpAlertVolume.hpp"
 #include "src/GameServer/Engine/MapDataDumper/Writers/TgMissionListVolume.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgNavigationPoint.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgBotStart.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgActionPoint.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgAlarmPoint.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgCoverPoint.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgDefensePoint.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgHoldSpot.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgNavigationPointSpawnable.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgPointOfInterest.hpp"
 // === END WRITER INCLUDES ===
 
 using namespace MapDumpWriters;
@@ -208,6 +217,51 @@ void WriteByClass(sqlite3* db, AActor* actor, const std::string& mapName) {
 	else if (cls == "TgMissionListVolume") {
 		int id = static_cast<ATgMissionListVolume*>(actor)->m_nMapObjectId;
 		WriteTgMissionListVolume(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgBotStart") {
+		int id = static_cast<ATgNavigationPoint*>(actor)->m_nMapObjectId;
+		WriteTgNavigationPoint(db, actor, mapName, cls, id);
+		WriteTgBotStart       (db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgActionPoint") {
+		int id = static_cast<ATgNavigationPoint*>(actor)->m_nMapObjectId;
+		WriteTgNavigationPoint(db, actor, mapName, cls, id);
+		WriteTgActionPoint    (db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgAlarmPoint") {
+		int id = static_cast<ATgNavigationPoint*>(actor)->m_nMapObjectId;
+		WriteTgNavigationPoint(db, actor, mapName, cls, id);
+		WriteTgAlarmPoint     (db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgCoverPoint") {
+		int id = static_cast<ATgNavigationPoint*>(actor)->m_nMapObjectId;
+		WriteTgNavigationPoint(db, actor, mapName, cls, id);
+		WriteTgCoverPoint     (db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgDefensePoint") {
+		int id = static_cast<ATgNavigationPoint*>(actor)->m_nMapObjectId;
+		WriteTgNavigationPoint(db, actor, mapName, cls, id);
+		WriteTgDefensePoint   (db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgHoldSpot") {
+		int id = static_cast<ATgNavigationPoint*>(actor)->m_nMapObjectId;
+		WriteTgNavigationPoint(db, actor, mapName, cls, id);
+		WriteTgDefensePoint   (db, actor, mapName, cls, id);
+		WriteTgHoldSpot       (db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgNavigationPointSpawnable") {
+		int id = static_cast<ATgNavigationPoint*>(actor)->m_nMapObjectId;
+		WriteTgNavigationPoint         (db, actor, mapName, cls, id);
+		WriteTgNavigationPointSpawnable(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgPointOfInterest") {
+		int id = static_cast<ATgNavigationPoint*>(actor)->m_nMapObjectId;
+		WriteTgNavigationPoint(db, actor, mapName, cls, id);
+		WriteTgPointOfInterest(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgNavigationPoint") {
+		int id = static_cast<ATgNavigationPoint*>(actor)->m_nMapObjectId;
+		WriteTgNavigationPoint(db, actor, mapName, cls, id);
 	}
 	// === END DISPATCH BRANCHES ===
 }
