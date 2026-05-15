@@ -40,6 +40,7 @@
 #include "src/GameServer/Engine/MapDataDumper/Writers/TgHoldSpot.hpp"
 #include "src/GameServer/Engine/MapDataDumper/Writers/TgNavigationPointSpawnable.hpp"
 #include "src/GameServer/Engine/MapDataDumper/Writers/TgPointOfInterest.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgTeleporter.hpp"
 // === END WRITER INCLUDES ===
 
 using namespace MapDumpWriters;
@@ -262,6 +263,10 @@ void WriteByClass(sqlite3* db, AActor* actor, const std::string& mapName) {
 	else if (cls == "TgNavigationPoint") {
 		int id = static_cast<ATgNavigationPoint*>(actor)->m_nMapObjectId;
 		WriteTgNavigationPoint(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgTeleporter") {
+		int id = static_cast<ATgTeleporter*>(actor)->m_nMapObjectId;
+		WriteTgTeleporter(db, actor, mapName, cls, id);
 	}
 	// === END DISPATCH BRANCHES ===
 }

@@ -55,6 +55,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgHoldSpot.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgNavigationPointSpawnable.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgPointOfInterest.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgTeleporter.cpp \
 			  $(SRC_DIR)/GameServer/Engine/SeqActNullGuard/SeqActNullGuard.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Tick/Actor__Tick.cpp \
