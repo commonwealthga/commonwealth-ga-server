@@ -22,6 +22,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/World/BeginPlay/World__BeginPlay.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/MapDataDumper.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/WriterCommon.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgBotFactoryLocationList.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgBotFactoryPatrolPath.cpp \
 			  $(SRC_DIR)/GameServer/Engine/SeqActNullGuard/SeqActNullGuard.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Tick/Actor__Tick.cpp \
