@@ -3059,7 +3059,31 @@ void Database::Init() {
 		Logger::Log("db", "v33: created 34 map_* tables for raw map dump data\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 33", nullptr, nullptr, &err);
+	if (version < 34) {
+		// v34: map_object_config — single EAV table for runtime overrides on top
+		// of the raw map_* tables. Each row supplies a value for one column on
+		// one map_object_id. variant_group/variant_id allow random variant
+		// selection at registry init: rows sharing (map_object_id, variant_group)
+		// compete, weighted by `weight`; one variant_id is picked per group and
+		// all of its rows applied. Static overrides leave variant_group NULL.
+		const char* kV34_map_object_config =
+			"CREATE TABLE map_object_config ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  map_object_id INTEGER NOT NULL,"
+			"  column_name TEXT NOT NULL,"
+			"  value TEXT NOT NULL,"
+			"  variant_group TEXT,"
+			"  variant_id TEXT,"
+			"  weight REAL NOT NULL DEFAULT 1.0"
+			");"
+			"CREATE INDEX idx_map_object_config_map_object_id "
+			"  ON map_object_config(map_object_id);";
+		result = sqlite3_exec(db, kV34_map_object_config, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v34 (map_object_config): %s\n", err); return; }
+		Logger::Log("db", "v34: created map_object_config (EAV overrides on map_* tables)\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 34", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
