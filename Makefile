@@ -24,6 +24,13 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/WriterCommon.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgBotFactoryLocationList.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgBotFactoryPatrolPath.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgActorFactory.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgBotFactory.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgBotFactorySpawnable.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgBeaconFactory.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgDeployableFactory.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgDestructibleFactory.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgHexItemFactory.cpp \
 			  $(SRC_DIR)/GameServer/Engine/SeqActNullGuard/SeqActNullGuard.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Tick/Actor__Tick.cpp \

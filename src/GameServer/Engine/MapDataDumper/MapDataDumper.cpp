@@ -9,6 +9,13 @@
 
 // Writer headers are appended below as each per-hierarchy task lands them.
 // === BEGIN WRITER INCLUDES ===
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgActorFactory.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgBotFactory.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgBotFactorySpawnable.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgBeaconFactory.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgDeployableFactory.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgDestructibleFactory.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgHexItemFactory.hpp"
 // === END WRITER INCLUDES ===
 
 using namespace MapDumpWriters;
@@ -82,9 +89,42 @@ void WriteByClass(sqlite3* db, AActor* actor, const std::string& mapName) {
 	// Until they land, every actor falls through and is silently ignored.
 
 	// === BEGIN DISPATCH BRANCHES ===
+	if (cls == "TgBotFactory") {
+		int id = static_cast<ATgActorFactory*>(actor)->m_nMapObjectId;
+		WriteTgActorFactory(db, actor, mapName, cls, id);
+		WriteTgBotFactory  (db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgBotFactorySpawnable") {
+		int id = static_cast<ATgActorFactory*>(actor)->m_nMapObjectId;
+		WriteTgActorFactory       (db, actor, mapName, cls, id);
+		WriteTgBotFactory         (db, actor, mapName, cls, id);
+		WriteTgBotFactorySpawnable(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgBeaconFactory") {
+		int id = static_cast<ATgActorFactory*>(actor)->m_nMapObjectId;
+		WriteTgActorFactory (db, actor, mapName, cls, id);
+		WriteTgBeaconFactory(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgDeployableFactory") {
+		int id = static_cast<ATgActorFactory*>(actor)->m_nMapObjectId;
+		WriteTgActorFactory     (db, actor, mapName, cls, id);
+		WriteTgDeployableFactory(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgDestructibleFactory") {
+		int id = static_cast<ATgActorFactory*>(actor)->m_nMapObjectId;
+		WriteTgActorFactory       (db, actor, mapName, cls, id);
+		WriteTgDestructibleFactory(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgHexItemFactory") {
+		int id = static_cast<ATgActorFactory*>(actor)->m_nMapObjectId;
+		WriteTgActorFactory  (db, actor, mapName, cls, id);
+		WriteTgHexItemFactory(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgActorFactory") {
+		int id = static_cast<ATgActorFactory*>(actor)->m_nMapObjectId;
+		WriteTgActorFactory(db, actor, mapName, cls, id);
+	}
 	// === END DISPATCH BRANCHES ===
-
-	(void)db;  // silence unused-param until first branch lands
 }
 
 }  // namespace
