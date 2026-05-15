@@ -20,6 +20,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
 			  $(SRC_DIR)/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.cpp \
 			  $(SRC_DIR)/GameServer/Engine/World/BeginPlay/World__BeginPlay.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/MapDataDumper.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/WriterCommon.cpp \
 			  $(SRC_DIR)/GameServer/Engine/SeqActNullGuard/SeqActNullGuard.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Tick/Actor__Tick.cpp \
@@ -84,6 +86,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/ChangeTeam/ChangeTeam.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/SpawnBot/SpawnBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.cpp \
@@ -111,6 +114,9 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/UpdateDeployModeStatus/TgDevice__UpdateDeployModeStatus.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/CalcFireSocketIndexMax/TgDevice__CalcFireSocketIndexMax.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDevice/GetFireSocketName/TgDevice__GetFireSocketName.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn/GetWeaponStartTraceLocationFromSocketOffsetInfo/TgPawn__GetWeaponStartTraceLocationFromSocketOffsetInfo.cpp \
+			  $(SRC_DIR)/Database/SocketCycle/SocketCycle.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RosterWalker.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RefIter.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.cpp \
