@@ -40,6 +40,12 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgMissionObjective_Escort.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgStartPoint.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgTeamPlayerStart.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgOmegaVolume.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgModifyPawnPropertiesVolume.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgDeviceVolume.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgFlagCaptureVolume.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgHelpAlertVolume.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgMissionListVolume.cpp \
 			  $(SRC_DIR)/GameServer/Engine/SeqActNullGuard/SeqActNullGuard.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Tick/Actor__Tick.cpp \

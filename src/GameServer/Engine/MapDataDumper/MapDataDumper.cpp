@@ -25,6 +25,12 @@
 #include "src/GameServer/Engine/MapDataDumper/Writers/TgMissionObjective_Escort.hpp"
 #include "src/GameServer/Engine/MapDataDumper/Writers/TgStartPoint.hpp"
 #include "src/GameServer/Engine/MapDataDumper/Writers/TgTeamPlayerStart.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgOmegaVolume.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgModifyPawnPropertiesVolume.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgDeviceVolume.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgFlagCaptureVolume.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgHelpAlertVolume.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgMissionListVolume.hpp"
 // === END WRITER INCLUDES ===
 
 using namespace MapDumpWriters;
@@ -178,6 +184,30 @@ void WriteByClass(sqlite3* db, AActor* actor, const std::string& mapName) {
 	else if (cls == "TgStartPoint") {
 		int id = static_cast<ATgStartPoint*>(actor)->m_nMapObjectId;
 		WriteTgStartPoint(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgOmegaVolume") {
+		int id = static_cast<ATgOmegaVolume*>(actor)->m_nMapObjectId;
+		WriteTgOmegaVolume(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgModifyPawnPropertiesVolume") {
+		int id = static_cast<ATgModifyPawnPropertiesVolume*>(actor)->m_nMapObjectId;
+		WriteTgModifyPawnPropertiesVolume(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgDeviceVolume") {
+		int id = static_cast<ATgDeviceVolume*>(actor)->m_nMapObjectId;
+		WriteTgDeviceVolume(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgFlagCaptureVolume") {
+		int id = static_cast<ATgFlagCaptureVolume*>(actor)->m_nMapObjectId;
+		WriteTgFlagCaptureVolume(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgHelpAlertVolume") {
+		int id = static_cast<ATgHelpAlertVolume*>(actor)->m_nMapObjectId;
+		WriteTgHelpAlertVolume(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgMissionListVolume") {
+		int id = static_cast<ATgMissionListVolume*>(actor)->m_nMapObjectId;
+		WriteTgMissionListVolume(db, actor, mapName, cls, id);
 	}
 	// === END DISPATCH BRANCHES ===
 }
