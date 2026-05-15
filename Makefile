@@ -38,6 +38,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgBaseObjective_CTFBot.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgBaseObjective_KOTH.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgMissionObjective_Escort.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgStartPoint.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgTeamPlayerStart.cpp \
 			  $(SRC_DIR)/GameServer/Engine/SeqActNullGuard/SeqActNullGuard.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Tick/Actor__Tick.cpp \

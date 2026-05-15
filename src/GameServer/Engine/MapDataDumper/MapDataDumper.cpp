@@ -23,6 +23,8 @@
 #include "src/GameServer/Engine/MapDataDumper/Writers/TgBaseObjective_CTFBot.hpp"
 #include "src/GameServer/Engine/MapDataDumper/Writers/TgBaseObjective_KOTH.hpp"
 #include "src/GameServer/Engine/MapDataDumper/Writers/TgMissionObjective_Escort.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgStartPoint.hpp"
+#include "src/GameServer/Engine/MapDataDumper/Writers/TgTeamPlayerStart.hpp"
 // === END WRITER INCLUDES ===
 
 using namespace MapDumpWriters;
@@ -167,6 +169,15 @@ void WriteByClass(sqlite3* db, AActor* actor, const std::string& mapName) {
 	else if (cls == "TgMissionObjective") {
 		int id = static_cast<ATgMissionObjective*>(actor)->m_nMapObjectId;
 		WriteTgMissionObjective(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgTeamPlayerStart") {
+		int id = static_cast<ATgStartPoint*>(actor)->m_nMapObjectId;
+		WriteTgStartPoint     (db, actor, mapName, cls, id);
+		WriteTgTeamPlayerStart(db, actor, mapName, cls, id);
+	}
+	else if (cls == "TgStartPoint") {
+		int id = static_cast<ATgStartPoint*>(actor)->m_nMapObjectId;
+		WriteTgStartPoint(db, actor, mapName, cls, id);
 	}
 	// === END DISPATCH BRANCHES ===
 }
