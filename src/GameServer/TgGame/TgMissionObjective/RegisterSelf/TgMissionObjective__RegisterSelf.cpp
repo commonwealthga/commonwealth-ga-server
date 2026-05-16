@@ -45,6 +45,17 @@ void __fastcall TgMissionObjective__RegisterSelf::Call(ATgMissionObjective* Obje
 
 		Proxy->SetOwner(Objective);
 
+		// Positionally chain the collision proxy to the objective via SetBase.
+		// SetOwner alone is just a logical link (used for Owner.Touch forwarding
+		// in TgCollisionProxy.uc) — it does NOT make the proxy follow the
+		// objective when the objective moves. Escort objectives later call
+		// SetBase(r_AttachedActor) on themselves in TgMissionObjective_Escort
+		// PostBeginPlay, so the chain becomes proxy → objective → payload and
+		// the proxy's collision cylinder tracks the moving payload. For static
+		// objectives (Proximity / KOTH) this is harmless — the base just never
+		// moves.
+		Proxy->SetBase(Objective, FVector(0, 0, 0), nullptr, FName());
+
 		// Set cylinder dimensions from the objective's proximity settings
 		// float radius = (float)ProxObj->m_fProximityRadius * 10.f;
 		// float height = ProxObj->m_fProximityHeight * 10.f;

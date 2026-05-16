@@ -8,6 +8,7 @@
 #include "src/GameServer/TgGame/TgPlayerActions/ChangeTeam/ChangeTeam.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/SpawnBot/SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
 
@@ -431,6 +432,12 @@ void IpcClient::DrainInbound() {
                 TgPlayerActions::PossessCmd::ExecutePossess(guid);
             } else if (action == "unpossess") {
                 TgPlayerActions::PossessCmd::ExecuteUnpossess(guid);
+            } else if (action == "topdown") {
+                float lift_z = 0.0f;
+                if (j.contains("args") && j["args"].is_object()) {
+                    lift_z = j["args"].value("lift_z", 0.0f);
+                }
+                TgPlayerActions::TopDownCmd::Execute(guid, lift_z);
             } else {
                 Logger::Log("chat-command",
                     "[ChatCmd][DLL] PLAYER_ACTION guid=%s: unknown action '%s'; dropping\n",

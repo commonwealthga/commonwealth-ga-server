@@ -14,6 +14,9 @@ void __fastcall TgGame__UnlockObjective::Call(ATgGame* Game, void* edx, int nPri
 		return;
 	}
 
+	Game->s_nPrevPriority = Game->s_nCurrentPriority;
+	Game->s_nCurrentPriority = nPriority;
+
 	for (int i = 0; i < GRI->m_MissionObjectives.Count; i++) {
 		ATgMissionObjective* Obj = GRI->m_MissionObjectives.Data[i];
 		if (Obj != nullptr && Obj->nPriority == nPriority) {

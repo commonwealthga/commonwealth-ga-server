@@ -3083,7 +3083,96 @@ void Database::Init() {
 		Logger::Log("db", "v34: created map_object_config (EAV overrides on map_* tables)\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 34", nullptr, nullptr, &err);
+	if (version < 35) {
+		// v35: first round of map_object_config overrides — task force / team
+		// assignments for actor factories (s_n_task_force / s_n_team_number)
+		// and team-player-start spawn points (m_n_task_force). Exported from
+		// the map planner.
+		const char* kV35_overrides =
+			"INSERT INTO map_object_config (map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"(13723, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(13723, 's_n_task_force', '1', NULL, NULL, 1),"
+			"(13722, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(13722, 's_n_task_force', '2', NULL, NULL, 1),"
+			"(13721, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(13721, 's_n_task_force', '1', NULL, NULL, 1),"
+			"(13720, 's_n_task_force', '1', NULL, NULL, 1),"
+			"(13720, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(7947, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(7947, 's_n_task_force', '2', NULL, NULL, 1),"
+			"(7946, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(7946, 's_n_task_force', '2', NULL, NULL, 1),"
+			"(7943, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(7943, 's_n_task_force', '2', NULL, NULL, 1),"
+			"(7942, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(7942, 's_n_task_force', '2', NULL, NULL, 1),"
+			"(7941, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(7941, 's_n_task_force', '1', NULL, NULL, 1),"
+			"(7940, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(7940, 's_n_task_force', '1', NULL, NULL, 1),"
+			"(7945, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(7945, 's_n_task_force', '2', NULL, NULL, 1),"
+			"(7944, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(7944, 's_n_task_force', '2', NULL, NULL, 1),"
+			"(7939, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(7939, 's_n_task_force', '1', NULL, NULL, 1),"
+			"(7938, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(7938, 's_n_task_force', '1', NULL, NULL, 1),"
+			"(7937, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(7937, 's_n_task_force', '1', NULL, NULL, 1),"
+			"(7936, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(7936, 's_n_task_force', '1', NULL, NULL, 1),"
+			"(13719, 'm_n_task_force', '1', NULL, NULL, 1),"
+			"(7933, 'm_n_task_force', '1', NULL, NULL, 1),"
+			"(7934, 'm_n_task_force', '2', NULL, NULL, 1),"
+			"(7935, 'm_n_task_force', '2', NULL, NULL, 1),"
+			"(7932, 'm_n_task_force', '1', NULL, NULL, 1),"
+			"(13718, 'm_n_task_force', '1', NULL, NULL, 1),"
+			"(7499, 'm_n_task_force', '2', NULL, NULL, 1),"
+			"(7931, 'm_n_task_force', '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV35_overrides, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v35 (map_object_config seed): %s\n", err); return; }
+		Logger::Log("db", "v35: seeded 40 map_object_config rows (task force / team assignments)\n");
+	}
+
+	if (version < 36) {
+		// v36: second round of map_object_config overrides — task force / team
+		// assignments for actor factories and team-player-start spawn points on
+		// another map (3P_Him_Arena_P / Breach). Same shape as v35.
+		const char* kV36_overrides =
+			"INSERT INTO map_object_config (map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"(13555, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"(13554, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"(13582, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(13582, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(13581, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(13581, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(13580, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(13580, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(13579, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(13579, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(13578, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(13578, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(13577, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(13577, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(13570, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(13570, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(13569, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(13569, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(13568, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(13568, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(13566, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(13566, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(13564, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(13564, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(13565, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(13565, 's_n_task_force',  '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV36_overrides, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v36 (map_object_config seed): %s\n", err); return; }
+		Logger::Log("db", "v36: seeded 27 map_object_config rows (task force / team assignments)\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 36", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

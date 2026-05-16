@@ -3169,7 +3169,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgMissionObjective_Kismet
 		|| cls == Class_TgGame_TgMissionObjective_Proximity
 	) {
-		if (actor->Role == 3) {
+		if (actor->Role == 3 && !actor->bNetInitial) {
 			DO_REP(ATgMissionObjective, r_ObjectiveAssignment, ObjectProperty_TgGame_TgMissionObjective_r_ObjectiveAssignment);
 			DO_REP(ATgMissionObjective, r_bHasBeenCapturedOnce, BoolProperty_TgGame_TgMissionObjective_r_bHasBeenCapturedOnce);
 			DO_REP(ATgMissionObjective, r_bIsActive, BoolProperty_TgGame_TgMissionObjective_r_bIsActive);

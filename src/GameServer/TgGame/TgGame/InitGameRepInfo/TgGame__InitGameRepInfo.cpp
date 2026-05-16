@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
+#include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Config/Config.hpp"
@@ -70,6 +71,26 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		gamerep->TimeLimit = Game->TimeLimit;
 		gamerep->RemainingTime = Game->TimeLimit;
 
+		// If objectives weren't self-registered via AddToList/AddObjectivePointToList,
+		// use cached actors to add them manually.
+		if (gamerep->m_MissionObjectives.Count == 0) {
+
+			Logger::Log(GetLogChannel(), "GRI->m_MissionObjectives is empty, populating manually\n");
+
+			using AddObjectivePointToList_t = void(__fastcall*)(ATgRepInfo_Game*, void*, ATgMissionObjective*);
+			auto AddObjectivePointToList = reinterpret_cast<AddObjectivePointToList_t>(0x109f0580);
+
+			ActorCache::CacheMapActors();
+
+			for (ATgMissionObjective* Objective : ActorCache::MissionObjectives) {
+				AddObjectivePointToList(gamerep, nullptr, Objective);
+				if (Logger::IsChannelEnabled(GetLogChannel())) {
+					Logger::Log(GetLogChannel(), "Added objective %s to GRI->m_MissionObjectives\n", ((UObject*)Objective)->GetFullName());
+				}
+			}
+		}
+
+
 		char* GameClassName = Game->Class->GetFullName();
 
 		if (strcmp(GameClassName, "Class TgGame.TgGame_Defense") == 0) {
@@ -118,6 +139,13 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nRoundNumber = 1;
 			gamerep->r_nMaxRoundNumber = 5;
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+
+			// PointRotation UC default is 30s between rounds; the announcer
+			// banner + countdown chain wants ~25s to feel snappy. Must be set
+			// before TgGame_Arena.RoundInProgress::BeginState runs (which is
+			// where `SetTimer(s_nObjectiveUnlockDelay, false, 'ObjectiveUnlock')`
+			// fires). InitGameRepInfo runs before PostBeginPlay, so we're early.
+			((ATgGame_Arena*)Game)->s_nObjectiveUnlockDelay = 25;
 		}
 
 		if (strcmp(GameClassName, "Class TgGame.TgGame_Mission") == 0) {
@@ -240,7 +268,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nSecsToAutoReleaseAttackers = 1;// Game->m_nSecsToAutoReleaseAttackers;
 			gamerep->r_nSecsToAutoReleaseDefenders = 1;//Game->m_nSecsToAutoReleaseDefenders;
 			gamerep->r_nReleaseDelay = 1;
-			gamerep->r_nPointsToWin = 3;
+			gamerep->r_nPointsToWin = 800;  // also set by TgGame_Ticket::LoadGameConfig
 			gamerep->r_nRoundNumber = 1;
 			gamerep->r_nMaxRoundNumber = 3;
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;

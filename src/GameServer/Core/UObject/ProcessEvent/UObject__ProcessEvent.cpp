@@ -3,6 +3,8 @@
 #include "src/GameServer/TgGame/BuffEffectRegistry/BuffEffectRegistry.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.hpp"
+#include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+#include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <math.h>
 #include <unordered_map>
@@ -107,6 +109,7 @@ enum class DispatchTag : uint8_t {
 	EarlyOut,                     // pass-through: just CallOriginal
 	RefireCheckTimer,             // independent stealth-refresh side effect, then catch-all
 	TgGameLogin,                  // CallOriginal then clear PRI spectator flags
+	TgGamePostLogin,              // Pre-seed PRI.r_TaskForce, then CallOriginal
 	DyingBeginState,              // CallOriginal then BotDied
 	DeviceFiringEndState,         // CallOriginal then jetpack-flag clear
 	ServerStopFire,               // CallOriginal then RemoveEffectGroupsByCategory(stealth)
@@ -168,6 +171,7 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	// Specific handlers.
 	if (strcmp(name, "Function TgDevice.DeviceFiring.RefireCheckTimer") == 0)        return DispatchTag::RefireCheckTimer;
 	if (strcmp(name, "Function TgGame.TgGame.Login") == 0)                           return DispatchTag::TgGameLogin;
+	if (strcmp(name, "Function TgGame.TgGame.PostLogin") == 0)                       return DispatchTag::TgGamePostLogin;
 	if (strcmp(name, "Function TgPawn.Dying.BeginState") == 0)                       return DispatchTag::DyingBeginState;
 	if (strcmp(name, "Function TgDevice.DeviceFiring.EndState") == 0)                return DispatchTag::DeviceFiringEndState;
 	if (strcmp(name, "Function TgGame.TgDevice.ServerStopFire") == 0)                return DispatchTag::ServerStopFire;
@@ -322,8 +326,52 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 				PC->PlayerReplicationInfo->bIsSpectator   = 0;
 				PC->PlayerReplicationInfo->bOutOfLives    = 0;
 			}
+			// r_TaskForce seeding lives in the TgGamePostLogin case below
+			// rather than here. At Login-return time the engine has not yet
+			// wired NewPC->Player to the InPlayer connection (verified
+			// empirically — PC->Player reads as 0x00000000 in this intercept),
+			// so we cannot resolve the player's task_force from
+			// GClientConnectionsData via PC->Player. The engine assigns
+			// PC->Player between Login returning and PostLogin being called,
+			// so PostLogin (which then runs super.PostLogin → RestartPlayer
+			// → FindPlayerStart) is the right window for the seed.
 		}
 		break;
+
+	case DispatchTag::TgGamePostLogin: {
+		// Parms layout (AGameInfo_eventPostLogin_Parms / ATgGame_eventPostLogin_Parms):
+		//   0x00 NewPlayer (APlayerController*)
+		//
+		// Seed PRI.r_TaskForce BEFORE super.PostLogin (called from the UC
+		// body of TgGame.PostLogin) triggers RestartPlayer → FindPlayerStart.
+		// Without this seed the picker reads playerTaskForce=0, fails every
+		// team filter, and lands the player in the wrong spawn room.
+		// SpawnPlayerCharacter writes the same field later
+		// (TgGame__SpawnPlayerCharacter.cpp:295) but by then the spawn point
+		// has already been chosen, so the wrong-room result persists until
+		// the player dies and respawns.
+		if (Params) {
+			APlayerController* NewPlayer = *(APlayerController**)Params;
+			if (NewPlayer && NewPlayer->PlayerReplicationInfo && NewPlayer->Player) {
+				ATgRepInfo_Player* repInfo = (ATgRepInfo_Player*)NewPlayer->PlayerReplicationInfo;
+				int32_t connectionIndex = (int32_t)((UNetConnection*)NewPlayer->Player);
+				int tf = GClientConnectionsData[connectionIndex].PlayerInfo.task_force;
+				ATgRepInfo_TaskForce* taskforce = (tf == 1) ? GTeamsData.Attackers
+				                                  : (tf == 2 ? GTeamsData.Defenders : nullptr);
+				Logger::Log("spawn",
+					"TgGame.PostLogin intercept: conn=%d task_force=%d prevTF=%p newTF=%p\n",
+					connectionIndex, tf, (void*)repInfo->r_TaskForce, (void*)taskforce);
+				if (taskforce != nullptr) {
+					repInfo->r_TaskForce = taskforce;
+					repInfo->Team = taskforce;
+					repInfo->bNetDirty = 1;
+					repInfo->bForceNetUpdate = 1;
+				}
+			}
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	}
 
 	case DispatchTag::DyingBeginState: {
 		CallOriginal(Object, edx, Function, Params, Result);

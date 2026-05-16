@@ -206,4 +206,11 @@ bool Config::GetClearLogs() {
 	return val == L"1" || val == L"true";
 }
 
+bool Config::GetDumpMapData() {
+	ParsedOptions options = CommandLineParser::ParseCommandLine();
+	std::wstring val = options.switches[L"dumpmapdata"];
+	if (val.empty()) return false;
+	return val == L"1" || val == L"true";
+}
+
 

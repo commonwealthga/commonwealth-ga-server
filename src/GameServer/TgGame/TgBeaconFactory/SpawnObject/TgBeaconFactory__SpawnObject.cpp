@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
+#include "src/GameServer/Engine/MapObjectConfig/MapObjectConfig.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -35,6 +36,19 @@ void TgBeaconFactory__SpawnObject::RunSpawn(ATgBeaconFactory* BeaconFactory) {
 	Logger::Log("debug", "MINE TgBeaconFactory::SpawnObject START\n");
 	// LogToFile("C:\\mylog.txt", "MINE TgBeaconFactory::SpawnObject START");
 	// PreloadClasses();
+
+	// Apply MapObjectConfig overrides BEFORE the downstream code reads
+	// BeaconFactory->s_nTaskForce / s_nTeamNumber. Inherited from
+	// TgActorFactory; native LoadObjectConfig on TgBeaconFactory is also a
+	// stripped stub so these fields default to 0 without intervention.
+	if (BeaconFactory != nullptr) {
+		const int mid = BeaconFactory->m_nMapObjectId;
+		BeaconFactory->s_nTaskForce  = (unsigned char)MapObjectConfig::GetInt(mid, "s_n_task_force",  BeaconFactory->s_nTaskForce);
+		BeaconFactory->s_nTeamNumber =                MapObjectConfig::GetInt(mid, "s_n_team_number", BeaconFactory->s_nTeamNumber);
+		Logger::Log("config",
+			"TgBeaconFactory::SpawnObject — map_object_id=%d s_n_task_force=%d s_n_team_number=%d\n",
+			mid, (int)BeaconFactory->s_nTaskForce, BeaconFactory->s_nTeamNumber);
+	}
 
 	UClass* TgDeployBeaconClass = ClassPreloader::GetTgDeployBeaconClass();
 	UClass* TgDeployBeaconEntranceClass = ClassPreloader::GetTgDeployBeaconEntranceClass();

@@ -1,4 +1,7 @@
 #include "src/GameServer/TgGame/TgGame_PointRotation/CalcNextObjective/TgGame_PointRotation__CalcNextObjective.hpp"
+#include "src/GameServer/Combat/MissionAlerts/MissionAlerts.hpp"
+#include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
+#include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Picks a random objective from GRI->m_MissionObjectives, excluding m_PreviousObjective.
@@ -46,6 +49,16 @@ void __fastcall TgGame_PointRotation__CalcNextObjective::Call(ATgGame_PointRotat
 	GRI->r_Objectives[0] = Game->m_NextObjective;
 	for (int i = 1; i < 0x4B; i++) {
 		GRI->r_Objectives[i] = nullptr;
+	}
+
+	// Plant the next-activation timestamp for MissionAlerts' countdown poller.
+	// PointRotation's RoundInProgress::BeginState (UC) calls CalcNextObjective
+	// and immediately sets `SetTimer(s_nObjectiveUnlockDelay, false, 'ObjectiveUnlock')`,
+	// so the unlock will fire that many seconds from now.
+	AWorldInfo* WI = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
+	if (WI != nullptr && Game->s_nObjectiveUnlockDelay > 0) {
+		float scheduledAt = WI->TimeSeconds + (float)Game->s_nObjectiveUnlockDelay;
+		MissionAlerts::NotifyNextObjectiveScheduled((void*)Game, scheduledAt);
 	}
 
 	LogCallEnd();

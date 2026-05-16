@@ -30,4 +30,14 @@ void __fastcall TgDeviceFire__InitializeProjectile::Call(UTgDeviceFire* DeviceFi
 		Projectile->bNetDirty = 1;
 		Projectile->bForceNetUpdate = 1;
 	}
+
+	// NOTE: previously also rewrote Projectile->Location to the firing
+	// shoulder for Boss Shrike. That was a band-aid — the projectile got
+	// the right spawn point but the AI's aim direction (computed from body
+	// center) still pointed parallel to "body→target", causing every shot
+	// to miss to the side by the shoulder offset. The correct fix lives in
+	// TgPawn__GetWeaponStartTraceLocationFromSocketOffsetInfo: by making
+	// UC's GetWeaponStartTraceLocation return the shoulder, the AI's lead
+	// prediction (GetAdjustedAim) recomputes from the shoulder and the
+	// projectile spawns there with correct aim. No patch needed here.
 }

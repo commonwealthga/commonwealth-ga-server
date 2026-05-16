@@ -1,41 +1,72 @@
 #include "src/GameServer/TgGame/TgDevice/CalcFireSocketIndexMax/TgDevice__CalcFireSocketIndexMax.hpp"
+#include "src/Database/SocketCycle/SocketCycle.hpp"
+#include "src/Utils/Logger/Logger.hpp"
 
-// One-time-resolved FName index for "ShotOrigin". UE3 FNames are interned
-// in a global table; the same string always resolves to the same Index.
-// We cache to avoid re-running FName lookup every UpdateIndex call.
-static int s_ShotOriginNameIdx = -1;
+// One-shot diagnostic: dump Pawn->Mesh state for every pawn whose
+// CalcFireSocketIndexMax we override (i.e. bots with multi-socket cycles
+// in our DB cache). We need to know whether Pawn->Mesh is null
+// server-side or if it's actually live (with Sockets loaded). The
+// answer decides whether we can call GetSocketWorldLocationAndRotation
+// directly from C++ vs. needing an entirely different data path
+// (UPK extraction / GObjObjects walk).
+//
+// Channel: "socketdiag". Dedup per pawn pointer so each bot logs once.
+static std::unordered_set<uintptr_t> s_meshLoggedPawns;
 
 void __fastcall TgDevice__CalcFireSocketIndexMax::Call(ATgDevice* Device, void* edx) {
     CallOriginal(Device, edx);
 
-    // Cheap exits first.
     if (!Device) return;
-    if (Device->m_nSocketMax > 1) return;  // original lookup succeeded — leave it alone
+    if (Device->m_nSocketMax > 1) return;  // original lookup succeeded — don't override
 
     APawn* Instigator = Device->Instigator;
     if (!Instigator) return;
 
-    // m_TgSocketOffsetInfo lives at TgPawn+0x1268. The SDK declares it on
-    // ATgPawn_Character — same offset on any TgPawn that owns one.
-    UTgSocketOffsetInfo* info = *(UTgSocketOffsetInfo**)((char*)Instigator + 0x1268);
-    if (!info) return;
-
-    // Lazy-init the "ShotOrigin" name index. Skipping Number comparison: any
-    // numbered duplicates ("ShotOrigin_0", "ShotOrigin_1" with the same base
-    // name) would also be valid socket entries we want to count.
-    if (s_ShotOriginNameIdx < 0) {
-        s_ShotOriginNameIdx = FName("ShotOrigin").Index;
-    }
-
-    int count = 0;
-    for (int i = 0; i < info->m_SocketOffsets.Count; i++) {
-        FSocketOffsetInfo& entry = info->m_SocketOffsets.Data[i];
-        if (entry.SocketName.Index == s_ShotOriginNameIdx) {
-            count++;
-        }
-    }
+    int count = SocketCycle::LookupOriginSocketCount(
+        reinterpret_cast<ATgPawn*>(Instigator),
+        (int)Device->r_eEquippedAt);
 
     if (count > 1) {
         Device->m_nSocketMax = count;
+
+        // ── Diagnostic (one-shot per pawn) ─────────────────────────────
+        if (Logger::IsChannelEnabled("socketdiag")) {
+            uintptr_t key = (uintptr_t)Instigator;
+            if (s_meshLoggedPawns.insert(key).second) {
+                const char* pawnName = Instigator->GetFullName();
+                void* mesh = (void*)Instigator->Mesh;
+                void* skel = mesh ? (void*)Instigator->Mesh->SkeletalMesh : nullptr;
+                int   socketsCount = skel ? Instigator->Mesh->SkeletalMesh->Sockets.Count : -1;
+                const char* skelName = skel
+                    ? Instigator->Mesh->SkeletalMesh->GetFullName()
+                    : "(null)";
+                Logger::Log("socketdiag",
+                    "[MeshState] pawn=%s slot=%d sMax=%d\n"
+                    "  Pawn->Mesh=%p  Mesh->SkeletalMesh=%p  SkeletalMesh=%s\n"
+                    "  Sockets.Count=%d (-1 means SkeletalMesh is null)\n",
+                    pawnName ? pawnName : "(null)",
+                    (int)Device->r_eEquippedAt,
+                    Device->m_nSocketMax,
+                    mesh, skel, skelName,
+                    socketsCount);
+
+                // If sockets exist, also dump the first few names so we
+                // can confirm they really say "WSO_Origin_NN" at runtime
+                // (per the user's UPK inspection).
+                if (skel && socketsCount > 0) {
+                    int n = socketsCount < 8 ? socketsCount : 8;
+                    auto& arr = Instigator->Mesh->SkeletalMesh->Sockets;
+                    for (int i = 0; i < n; i++) {
+                        USkeletalMeshSocket* sock = arr.Data[i];
+                        if (!sock) continue;
+                        const char* sockName = sock->GetFullName();
+                        Logger::Log("socketdiag",
+                            "  Socket[%d]=%s\n",
+                            i, sockName ? sockName : "(null)");
+                    }
+                }
+            }
+        }
+        // ── end diagnostic ─────────────────────────────────────────────
     }
 }

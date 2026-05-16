@@ -147,6 +147,24 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
+    if (cmd_name == "-topdown") {
+        // -topdown            -> toggle, default lift
+        // -topdown <lift_z>   -> toggle, explicit lift in world units (cm)
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        TopDownArgs args;
+        if (!rest.empty()) {
+            try {
+                args.lift_z = std::stof(rest);
+            } catch (...) {
+                // Bad arg — silent reject (suppress_broadcast stays true).
+                return out;
+            }
+        }
+        out.topdown = args;
+        return out;
+    }
+
     // Other "-" text — pass through to broadcast as ordinary chat.
     return out;
 }
@@ -208,5 +226,20 @@ static void DispatchSimpleAction(const std::string& action_name, const std::stri
 
 void DispatchPossess(const std::string& session_guid)   { DispatchSimpleAction("possess",   session_guid); }
 void DispatchUnpossess(const std::string& session_guid) { DispatchSimpleAction("unpossess", session_guid); }
+
+void DispatchTopDown(const TopDownArgs& args, const std::string& session_guid) {
+    if (session_guid.empty()) {
+        Logger::Log("chat-command", "[ChatCmd] DispatchTopDown dropped: empty session_guid\n");
+        return;
+    }
+    nlohmann::json payload;
+    payload["type"]         = IpcProtocol::MSG_PLAYER_ACTION;
+    payload["session_guid"] = session_guid;
+    payload["action"]       = "topdown";
+    payload["args"]         = { {"lift_z", args.lift_z} };
+    Logger::Log("chat-command", "[ChatCmd] /topdown guid=%s lift_z=%.0f -> dispatch\n",
+        session_guid.c_str(), args.lift_z);
+    (void)TcpSession::DeliverPlayerAction(session_guid, payload);
+}
 
 } // namespace ChatCommand

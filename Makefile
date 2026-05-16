@@ -56,6 +56,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgNavigationPointSpawnable.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgPointOfInterest.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgTeleporter.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapObjectConfig/MapObjectConfig.cpp \
 			  $(SRC_DIR)/GameServer/Engine/SeqActNullGuard/SeqActNullGuard.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Tick/Actor__Tick.cpp \
@@ -111,6 +112,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SetObjectivesOvertimeNotify/TgGame__SetObjectivesOvertimeNotify.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/GetFinalObjectivesList/TgGame__GetFinalObjectivesList.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective/SetObjectiveActive/TgMissionObjective__SetObjectiveActive.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective/LoadObjectConfig/TgMissionObjective__LoadObjectConfig.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective/UpdateMatineeNodeStatus/TgMissionObjective__UpdateMatineeNodeStatus.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.cpp \
@@ -130,6 +133,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Constants/DeviceIds.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepListV2.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgTeamPlayerStart/LoadObjectConfig/TgTeamPlayerStart__LoadObjectConfig.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgTeamPlayerStart/GetRating/TgTeamPlayerStart__GetRating.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/SpawnBot/TgBotFactory__SpawnBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/SpawnNextBot/TgBotFactory__SpawnNextBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/SpawnWave/TgBotFactory__SpawnWave.cpp \
@@ -193,6 +198,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/ApplyInventoryEquipEffects/TgDevice__ApplyInventoryEquipEffects.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/ClearInstigatorEquippedDevices/TgDevice__ClearInstigatorEquippedDevices.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/PopulateInstigatorEquippedDevices/TgDevice__PopulateInstigatorEquippedDevices.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDevice_Morale/SendMoraleBoostMessage/TgDevice_Morale__SendMoraleBoostMessage.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/ApplyBuffEffect.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/DeployableOriginRegistry.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/DeviceCategorySkill.cpp \
@@ -271,6 +277,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackCompleteKillInfo/TgPawn__TrackCompleteKillInfo.cpp \
 			  $(SRC_DIR)/GameServer/Combat/SendCombatMessage/SendCombatMessage.cpp \
 			  $(SRC_DIR)/GameServer/Combat/SendKillAlert/SendKillAlert.cpp \
+			  $(SRC_DIR)/GameServer/Combat/MissionAlerts/SendAlert.cpp \
+			  $(SRC_DIR)/GameServer/Combat/MissionAlerts/MissionAlerts.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Character/SendCombatMessage/TgPawn_Character__SendCombatMessage.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackDamagedBot/TgPawn__TrackDamagedBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackDamagedPlayer/TgPawn__TrackDamagedPlayer.cpp \

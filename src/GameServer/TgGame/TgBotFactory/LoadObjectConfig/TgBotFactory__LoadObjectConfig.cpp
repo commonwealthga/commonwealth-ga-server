@@ -7,6 +7,9 @@
 std::map<int, BotFactoryConfig> TgBotFactory__LoadObjectConfig::m_botFactoryConfigs;
 std::map<int, ATgBotFactory*> TgBotFactory__LoadObjectConfig::m_loadedBotFactories;
 std::map<int, int> TgBotFactory__LoadObjectConfig::m_missionObjectiveBotToBotFactoryId;
+std::map<int, int> TgBotFactory__LoadObjectConfig::m_missionObjectiveBotToBotId;
+std::map<int, int> TgBotFactory__LoadObjectConfig::m_missionObjectiveBotToSpawnTableId;
+std::map<int, int> TgBotFactory__LoadObjectConfig::m_missionObjectiveBotToTaskForce;
 std::map<int, std::vector<BotDeviceEntry>> TgBotFactory__LoadObjectConfig::m_botDevices;
 std::map<int, int> TgBotFactory__LoadObjectConfig::m_botDefaultSlots;
 bool TgBotFactory__LoadObjectConfig::bConfigLoaded = false;
@@ -52,6 +55,39 @@ void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, 
 
 			if (objectiveBotMapObjectId > 0) {
 				m_missionObjectiveBotToBotFactoryId[objectiveBotMapObjectId] = mapObjectId;
+			}
+		}
+
+		// Fallback resolution for objectives that don't wire through a factory:
+		// pull bot_id and spawn_table_id off obj_mission_objective_bots so
+		// SpawnObjectiveBot can directly spawn (bot_id) or weighted-pick from
+		// a spawn table (spawn_table_id). Columns added in migration v30.
+		{
+			std::vector<std::map<std::string, std::string>> obj_rows;
+			result = sqlite3_exec(db,
+				"SELECT map_object_id, "
+				"       COALESCE(bot_factory_id, 0)    AS bot_factory_id, "
+				"       COALESCE(bot_id, 0)            AS bot_id, "
+				"       COALESCE(spawn_table_id, 0)    AS spawn_table_id, "
+				"       COALESCE(task_force_number, 0) AS task_force_number "
+				"FROM obj_mission_objective_bots",
+				Database::Callback, &obj_rows, &err);
+			if (result != SQLITE_OK) {
+				Logger::Log("db", "Failed to select obj_mission_objective_bots fallback fields: %s\n", err);
+				sqlite3_free(err);
+				err = nullptr;
+			} else {
+				for (auto& row : obj_rows) {
+					int objId = std::stoi(row["map_object_id"]);
+					int facId = std::stoi(row["bot_factory_id"]);
+					int botId = std::stoi(row["bot_id"]);
+					int tblId = std::stoi(row["spawn_table_id"]);
+					int tf    = std::stoi(row["task_force_number"]);
+					if (facId > 0) m_missionObjectiveBotToBotFactoryId[objId] = facId;
+					if (botId > 0) m_missionObjectiveBotToBotId[objId]        = botId;
+					if (tblId > 0) m_missionObjectiveBotToSpawnTableId[objId] = tblId;
+					if (tf    > 0) m_missionObjectiveBotToTaskForce[objId]    = tf;
+				}
 			}
 		}
 

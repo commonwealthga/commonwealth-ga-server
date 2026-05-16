@@ -32,7 +32,17 @@ class TgBotFactory__LoadObjectConfig : public HookBase<
 public:
 	static std::map<int, ATgBotFactory*> m_loadedBotFactories;
 	static std::map<int, BotFactoryConfig> m_botFactoryConfigs;
+	// Primary: objective map_object_id -> bot_factory_id (legacy resolution).
 	static std::map<int, int> m_missionObjectiveBotToBotFactoryId;
+	// Fallbacks consulted by SpawnObjectiveBot in this order when no factory
+	// is wired: spawn this exact bot id, or pick one weighted entry from
+	// asm_data_set_bot_spawn_tables (lowest spawn_group at our difficulty).
+	static std::map<int, int> m_missionObjectiveBotToBotId;
+	static std::map<int, int> m_missionObjectiveBotToSpawnTableId;
+	// Task force number for objective-spawned bots (1=Attackers, 2=Defenders).
+	// Only consulted by tiers 2/3 (bot_id / spawn_table_id fallbacks). The
+	// factory path inherits task force from the factory's own s_nTaskForce.
+	static std::map<int, int> m_missionObjectiveBotToTaskForce;
 	static std::map<int, std::vector<BotDeviceEntry>> m_botDevices;  // bot_id -> devices
 	static std::map<int, int> m_botDefaultSlots;                     // bot_id -> default_slot_value_id
 	static bool bConfigLoaded;

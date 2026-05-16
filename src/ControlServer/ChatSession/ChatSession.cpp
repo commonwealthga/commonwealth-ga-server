@@ -104,6 +104,9 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         if (parsed.recognized && parsed.unpossess) {
             ChatCommand::DispatchUnpossess(session_guid_);
         }
+        if (parsed.recognized && parsed.topdown) {
+            ChatCommand::DispatchTopDown(*parsed.topdown, session_guid_);
+        }
         if (parsed.suppress_broadcast) {
             // Recognized command (valid or invalid arg) — do not broadcast.
             return;

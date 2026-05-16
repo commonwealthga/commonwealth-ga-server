@@ -57,6 +57,8 @@
 #include "src/GameServer/TgGame/TgGame/SetObjectivesOvertimeNotify/TgGame__SetObjectivesOvertimeNotify.hpp"
 #include "src/GameServer/TgGame/TgGame/GetFinalObjectivesList/TgGame__GetFinalObjectivesList.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective/SetObjectiveActive/TgMissionObjective__SetObjectiveActive.hpp"
+#include "src/GameServer/TgGame/TgMissionObjective/LoadObjectConfig/TgMissionObjective__LoadObjectConfig.hpp"
+#include "src/GameServer/TgGame/TgMissionObjective/UpdateMatineeNodeStatus/TgMissionObjective__UpdateMatineeNodeStatus.hpp"
 #include "src/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.hpp"
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.hpp"
@@ -72,6 +74,8 @@
 #include "src/GameServer/Engine/Actor/Tick/Actor__Tick.hpp"
 #include "src/GameServer/Engine/GameEngine/Tick/GameEngine__Tick.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
+#include "src/GameServer/TgGame/TgTeamPlayerStart/LoadObjectConfig/TgTeamPlayerStart__LoadObjectConfig.hpp"
+#include "src/GameServer/TgGame/TgTeamPlayerStart/GetRating/TgTeamPlayerStart__GetRating.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/SpawnBot/TgBotFactory__SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/SpawnNextBot/TgBotFactory__SpawnNextBot.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/SpawnWave/TgBotFactory__SpawnWave.hpp"
@@ -89,6 +93,9 @@
 #include "src/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.hpp"
 #include "src/GameServer/TgGame/TgDevice/UpdateDeployModeStatus/TgDevice__UpdateDeployModeStatus.hpp"
 #include "src/GameServer/TgGame/TgDevice/CalcFireSocketIndexMax/TgDevice__CalcFireSocketIndexMax.hpp"
+#include "src/GameServer/TgGame/TgDevice/GetFireSocketName/TgDevice__GetFireSocketName.hpp"
+#include "src/GameServer/TgGame/TgPawn/GetWeaponStartTraceLocationFromSocketOffsetInfo/TgPawn__GetWeaponStartTraceLocationFromSocketOffsetInfo.hpp"
+#include "src/Database/SocketCycle/SocketCycle.hpp"
 #include "src/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RosterWalker.hpp"
 #include "src/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RefIter.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
@@ -133,6 +140,7 @@
 #include "src/GameServer/TgGame/TgDevice/ApplyInventoryEquipEffects/TgDevice__ApplyInventoryEquipEffects.hpp"
 #include "src/GameServer/TgGame/TgDevice/ClearInstigatorEquippedDevices/TgDevice__ClearInstigatorEquippedDevices.hpp"
 #include "src/GameServer/TgGame/TgDevice/PopulateInstigatorEquippedDevices/TgDevice__PopulateInstigatorEquippedDevices.hpp"
+#include "src/GameServer/TgGame/TgDevice_Morale/SendMoraleBoostMessage/TgDevice_Morale__SendMoraleBoostMessage.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/GetSkillBasedEffectGroup/TgEffectManager__GetSkillBasedEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/IsStrongest/TgEffectManager__IsStrongest.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/ProcessReactiveSkillBasedEffectGroup/TgEffectManager__ProcessReactiveSkillBasedEffectGroup.hpp"
@@ -313,6 +321,7 @@
 unsigned long ModuleThread( void* ) {
 
 	Database::Init();
+	SocketCycle::Init();
 
 	::DetourTransactionBegin();
 	::DetourUpdateThread(::GetCurrentThread());
@@ -389,6 +398,8 @@ unsigned long ModuleThread( void* ) {
 	TgGame_PointRotation__CalcNextObjective::Install();
 	TgGame_PointRotation__UnlockObjective::Install();
 	TgMissionObjective__SetObjectiveActive::Install();
+	TgMissionObjective__LoadObjectConfig::Install();
+	TgMissionObjective__UpdateMatineeNodeStatus::Install();
 	TgGame__CheckRandomObjectives::Install();
 	TgGame__UnlockObjective::Install();
 	TgGame__LockoutObjectives::Install();
@@ -406,6 +417,8 @@ unsigned long ModuleThread( void* ) {
 	TgInventoryManager__NonPersistAddDevice::Install();
 	TgInventoryManager__NonPersistRemoveDevice::Install();
 	TgBotFactory__LoadObjectConfig::Install();
+	TgTeamPlayerStart__LoadObjectConfig::Install();
+	TgTeamPlayerStart__GetRating::Install();
 	// TgBotFactory__SpawnBot::Install();
 	TgBotFactory__SpawnNextBot::Install();
 	TgBotFactory__SpawnWave::Install();
@@ -434,6 +447,8 @@ unsigned long ModuleThread( void* ) {
 
 	TgDevice__UpdateDeployModeStatus::Install();
 	TgDevice__CalcFireSocketIndexMax::Install();
+	TgDevice__GetFireSocketName::Install();
+	TgPawn__GetWeaponStartTraceLocationFromSocketOffsetInfo::Install();
 	TgPawn__RosterWalker::Install();
 	TgPawn__RefIter::Install();
 	TgProj_Deployable__SpawnDeployable::Install();
@@ -454,6 +469,7 @@ unsigned long ModuleThread( void* ) {
 	TgDevice__ApplyInventoryEquipEffects::Install();
 	TgDevice__ClearInstigatorEquippedDevices::Install();
 	TgDevice__PopulateInstigatorEquippedDevices::Install();
+	TgDevice_Morale__SendMoraleBoostMessage::Install();
 	TgEffectGroup__CloneEffectGroup::Install();
 	TgEffectGroup__RemoveEffects::Install();
 	TgEffect__TrackStats::Install();
@@ -681,6 +697,12 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
             // reference; uncomment them only for one-off in-source overrides.
             for (const auto& ch : Config::GetEnabledChannels())      Logger::EnabledChannels.push_back(ch);
             for (const auto& ch : Config::GetEnabledCrashChannels()) Logger::EnabledCrashChannels.push_back(ch);
+            // -dumpmapdata=1 implies the "mapdump" channel — auto-enable so
+            // the dump actually lands on disk without the caller also having
+            // to pass -enabledchannels=mapdump.
+            if (Config::GetDumpMapData()) {
+                Logger::EnabledChannels.push_back("mapdump");
+            }
             // Optional: truncate every enabled channel's log file at boot so
             // repeated test runs start from a clean slate. Off by default;
             // turn on with -clearlogs=1 in the launcher invocation.

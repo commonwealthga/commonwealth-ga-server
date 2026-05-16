@@ -25,5 +25,12 @@ public:
 	// where stale entries from prior runs hide the new ones we care about.
 	// Switch: -clearlogs=1. Default: false.
 	static bool GetClearLogs();
+	// When true, World::BeginPlay walks the global object array and writes a
+	// human-readable dump of every map-placed actor we care about (player
+	// starts, bot starts, factories, mission objectives, beacon factories)
+	// to the "mapdump" log channel. One-shot data-mining aid; fire the
+	// server manually without the control server to drive it.
+	// Switch: -dumpmapdata=1. Default: false.
+	static bool GetDumpMapData();
 };
 

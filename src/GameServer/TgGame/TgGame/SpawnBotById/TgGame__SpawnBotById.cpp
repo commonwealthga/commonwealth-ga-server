@@ -14,6 +14,7 @@
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/Database/Database.hpp"
+#include "src/Database/SocketCycle/SocketCycle.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 std::map<int, int> TgGame__SpawnBotById::m_spawnedBotIds;
@@ -402,6 +403,18 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 
 	m_spawnedBotIds[(int)Bot] = nBotId;
 
+	// Activate the dedi-server branch in TgPawn_Boss/Turret/Hover/Robot/Siege
+	// .GetWeaponStartTraceLocation by giving the pawn a non-null
+	// m_TgSocketOffsetInfo. UC only checks `!= none` (verified across all
+	// 6 UC accesses); our hook on GetWeaponStartTraceLocationFromSocketOffsetInfo
+	// fully replaces the native that would deref the field. Self-pointer is
+	// safe — the only 4 binary refs at offset 0x1268 have all been audited.
+	// Currently scoped to Boss Shrike (body_asm_id 794); broaden when adding
+	// more multi-cannon bots.
+	if (SocketCycle::GetBodyAsmId(Bot) == 794) {
+		Bot->m_TgSocketOffsetInfo = reinterpret_cast<UTgSocketOffsetInfo*>(Bot);
+	}
+
 	if (pOwnerPawn != nullptr) {
 		AIController->SetOwner(pOwnerPawn);
 	} else {
@@ -599,7 +612,7 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	}
 
 	Bot->ApplyPawnSetup();
-	Bot->WaitForInventoryThenDoPostPawnSetup();
+	// Bot->WaitForInventoryThenDoPostPawnSetup();
 	Bot->InvManager->Instigator = Bot;
 
 	// BotConfig was already resolved and assigned to AIController->m_pBot.Dummy
@@ -708,6 +721,19 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// AIController->m_pBot.Dummy was set up-top before bot Spawn — see the
 	// IsCrewable race comment in the AIController-spawn block.
 	TgAIController__InitBehavior::CallOriginal(AIController, edx, BotConfig, pFactory);
+
+	// Anchor the AIController to the spawn pose. m_vSpawnLocation (0x5F4) is
+	// consumed by behavior-tree actions whose destination_type=238 ("SPAWN
+	// LOCATION") — e.g. Boss Think-Tank action 11267 "GO TO - SPAWN LOCATION"
+	// in behavior 676. Without this write the field defaults to zero and the
+	// bot can't anchor itself or recall its origin after chasing. The original
+	// game's Kismet spawn flow set this implicitly; we have to do it by hand
+	// since most of our spawn paths (objective tier 2/3, /spawnbot, factories
+	// without designer-set state) skip the Kismet code that wrote it.
+	// m_rSpawnDirection (0x600) is the matching facing — used by anchored
+	// behaviors that want the bot to return to its original orientation too.
+	AIController->m_vSpawnLocation  = vLocation;
+	AIController->m_rSpawnDirection = rRotation;
 
 	BotRepInfo->bNetDirty = 1;
 	BotRepInfo->bSkipActorPropertyReplication = 0;

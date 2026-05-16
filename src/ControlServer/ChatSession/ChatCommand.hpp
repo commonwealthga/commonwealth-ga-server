@@ -21,6 +21,11 @@ struct SpawnBotArgs {
     SpawnBotTeam team = SpawnBotTeam::Attackers;
 };
 
+struct TopDownArgs {
+    // World-units to lift the pawn by; 0 means "use the DLL-side default".
+    float lift_z = 0.0f;
+};
+
 struct ParseResult {
     // True if the message was a /-prefixed slash command attempt that we own
     // (currently: "-changeteam", "-spawnbot", "-possess", "-unpossess"). False
@@ -34,6 +39,7 @@ struct ParseResult {
     // Only populated when recognized AND the args parsed cleanly.
     std::optional<ChangeTeamTarget> change_team;
     std::optional<SpawnBotArgs>     spawn_bot;
+    std::optional<TopDownArgs>      topdown;
 
     // No-arg toggles. Flag is set when recognized + parsed cleanly.
     bool possess   = false;
@@ -58,5 +64,9 @@ void DispatchSpawnBot(const SpawnBotArgs& args, const std::string& session_guid)
 // Send -possess and -unpossess to the game DLL. Same delivery path.
 void DispatchPossess(const std::string& session_guid);
 void DispatchUnpossess(const std::string& session_guid);
+
+// Send -topdown to the game DLL. Toggles top-down view in the DLL — repeated
+// invocations alternate enter/restore. lift_z=0 means "use the DLL default".
+void DispatchTopDown(const TopDownArgs& args, const std::string& session_guid);
 
 } // namespace ChatCommand

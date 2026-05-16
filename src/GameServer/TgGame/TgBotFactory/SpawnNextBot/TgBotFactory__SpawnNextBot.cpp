@@ -68,9 +68,32 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void
 				BotFactory->s_nCurLocationIndex = 0;
 			}
 
-			Logger::Log("tgbotfactory", " Spawning bot %d %s at X=%d,Y=%d,Z=%d", randomSpawnEntry.EnemyBotId, randomSpawnEntry.ReferenceName.c_str(), BotFactory->LocationList.Data[BotFactory->s_nCurLocationIndex]->Location.X, BotFactory->LocationList.Data[BotFactory->s_nCurLocationIndex]->Location.Y, BotFactory->LocationList.Data[BotFactory->s_nCurLocationIndex]->Location.Z);
-
+			// Defensive: some factories (e.g. SDColony03's Kismet-driven
+			// spawners) report Num()>0 but have a null Data pointer or null
+			// individual entries — original game populated LocationList at
+			// runtime via Kismet, we don't. Without these guards we crash
+			// at ANavigationPoint->Location (offset 0x54..0x5C from null).
+			if (BotFactory->LocationList.Data == nullptr ||
+			    BotFactory->s_nCurLocationIndex >= BotFactory->LocationList.Num()) {
+				Logger::Log("tgbotfactory",
+					"  SpawnNextBot: LocationList Data=null or idx OOB for factory %d "
+					"(num=%d idx=%d) — skipping spawn\n",
+					BotFactory->m_nMapObjectId,
+					BotFactory->LocationList.Num(),
+					BotFactory->s_nCurLocationIndex);
+				continue;
+			}
 			ANavigationPoint* BotStart = BotFactory->LocationList.Data[BotFactory->s_nCurLocationIndex];
+			if (BotStart == nullptr) {
+				Logger::Log("tgbotfactory",
+					"  SpawnNextBot: LocationList[%d] is null for factory %d — skipping spawn\n",
+					BotFactory->s_nCurLocationIndex, BotFactory->m_nMapObjectId);
+				continue;
+			}
+
+			Logger::Log("tgbotfactory", " Spawning bot %d %s at X=%d,Y=%d,Z=%d",
+				randomSpawnEntry.EnemyBotId, randomSpawnEntry.ReferenceName.c_str(),
+				BotStart->Location.X, BotStart->Location.Y, BotStart->Location.Z);
 
 			FVector SpawnLocation;
 			SpawnLocation.X = BotStart->Location.X;
@@ -115,6 +138,13 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void
 
 			m_lastSpawnedBot[BotFactory->m_nMapObjectId] = Bot;
 
+			if (Bot == nullptr || Bot->Controller == nullptr) {
+				Logger::Log("tgbotfactory",
+					"  SpawnNextBot: SpawnBotById returned null pawn/controller "
+					"for bot_id=%d (factory %d) — skipping post-spawn wiring\n",
+					randomSpawnEntry.EnemyBotId, BotFactory->m_nMapObjectId);
+				continue;
+			}
 			ATgAIController* AIController = (ATgAIController*)Bot->Controller;
 			// IMPORTANT: do NOT clear AIController->bIsPlayer. Earlier we did
 			// this to filter ClientAddKilled targets, but bIsPlayer is also
@@ -125,8 +155,27 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void
 			for (int j = 0; j < BotFactory->PatrolPath.Num(); j++) {
 				AIController->m_PatrolPath.Add(BotFactory->PatrolPath.Data[j]);
 			}
+			// Single-point fallback so the bot can stay in `state Patrol`
+			// rather than slipping into `state Wander` (TgAIController.uc
+			// line 3903 — PickDestination picks arbitrary nav points and
+			// walks into walls). GetNextPatrolPoint returns m_PatrolPath[0]
+			// when Length is small, so feeding it BotStart turns the patrol
+			// loop into "stand at spawn point". Same effect as the original
+			// Kismet flow on factories without a designer-placed patrol
+			// route. Bots whose factory DOES have a patrol route are
+			// unaffected — the fallback only fires when the route is empty.
+			if (AIController->m_PatrolPath.Num() == 0 && BotStart != nullptr) {
+				AIController->m_PatrolPath.Add(BotStart);
+			}
 
 			ATgRepInfo_Player* BotRep = (ATgRepInfo_Player*)Bot->PlayerReplicationInfo;
+			if (BotRep == nullptr) {
+				Logger::Log("tgbotfactory",
+					"  SpawnNextBot: bot_id=%d (factory %d) has no PlayerReplicationInfo — "
+					"skipping team / replication wiring\n",
+					randomSpawnEntry.EnemyBotId, BotFactory->m_nMapObjectId);
+				continue;
+			}
 
 			if (BotFactory->s_nTaskForce == 1) {
 				Logger::Log("tgbotfactory", " as Attacker\n");
