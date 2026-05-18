@@ -3,6 +3,8 @@
 #include "src/GameServer/TgGame/BuffEffectRegistry/BuffEffectRegistry.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.hpp"
+#include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
+#include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -84,6 +86,45 @@ static void RefreshStealthEffectTimers(ATgPawn* Pawn) {
 	}
 }
 
+// Carrier-loss cleanup. Called when a beacon-carrying pawn dies or its
+// controlling PlayerController is destroyed (disconnect). For each team
+// manager whose `r_BeaconHolder` matches this pawn's PRI, remove the
+// pickup device (id 1918) from the carrier's slot 11 and re-trigger
+// CheckBeacon — the native walks all PRIs, finds no IsCarryingBeacon
+// holder, and re-spawns at the team's original-priority factory.
+//
+// Safe to invoke for any pawn — bails fast when no manager matches.
+static void DropCarriedBeaconIfAny(ATgPawn* Pawn) {
+	if (!Pawn || !Pawn->PlayerReplicationInfo) return;
+	ATgRepInfo_Player* pri = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+
+	ATgTeamBeaconManager* managers[2] = {
+		(GTeamsData.Attackers ? GTeamsData.Attackers->r_BeaconManager : nullptr),
+		(GTeamsData.Defenders ? GTeamsData.Defenders->r_BeaconManager : nullptr),
+	};
+	for (ATgTeamBeaconManager* mgr : managers) {
+		if (!mgr || mgr->r_BeaconHolder != pri) continue;
+
+		Logger::Log("beacon",
+			"DropCarriedBeaconIfAny: pawn=0x%p pri=0x%p was carrier for mgr=0x%p — clearing slot 11 + CheckBeacon\n",
+			Pawn, pri, mgr);
+
+		// Inventory device removal first — UC TgDevice.uc:677 invokes
+		// CheckBeacon on inventory change, but we follow up with an explicit
+		// call to guarantee the respawn fires even if the inventory hook
+		// path doesn't trigger during the Dying / Destroyed teardown.
+		ATgInventoryManager* invMgr = (ATgInventoryManager*)Pawn->InvManager;
+		if (invMgr) {
+			TgInventoryManager__NonPersistRemoveDevice::Call(invMgr, nullptr, 11);
+		}
+
+		// Whether or not the inventory remove succeeded, we still need
+		// CheckBeacon to re-evaluate. bAttemptRespawn=true so it spawns
+		// at the original-priority factory if nobody else is carrying.
+		BeaconSdk::CheckBeacon(mgr, true);
+	}
+}
+
 // (Former NativeApplyEffect / NativeRemoveEffect / ComputeEffectDelta helpers
 // were removed — see the commented-out TgEffect.ApplyEffect/Remove branches
 // in Call() below for the reasoning. UC owns the apply/remove math now; we
@@ -117,6 +158,11 @@ enum class DispatchTag : uint8_t {
 	PostPawnSetup,                // CallOriginal (sets PHYS_Falling) then restore PHYS_Flying for flying bots
 	ServerStartFire,              // Diagnostic: log every CanDeviceFireNow gate before CallOriginal
 	GetPlayerViewPoint,           // Pre-sync c_nCameraYawOffset / c_nCameraPitchOffset from ctrl.Rotation
+	BeaconPickUpDeployable,       // Diagnostic: log gate values before CallOriginal + return after
+	PawnPickupNearestDeployable,  // Diagnostic: log TouchingActors walk + which deployable was picked
+	BeaconEntranceHasExit,        // Post-call: override return to false when r_Beacon->m_bIsDeployed=0
+	PlayerControllerDestroyed,    // Pre-call: drop carried beacon if any, then CheckBeacon respawn
+	ServerPickupPutdownDeployableTag, // Diagnostic: log RPC entry to confirm key press reaches server
 };
 
 // First-sight classification: walks the strcmp ladder once per unique
@@ -179,6 +225,11 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	if (strcmp(name, "Function TgGame.TgEffect.Remove") == 0)                        return DispatchTag::TgEffectRemove;
 	if (strcmp(name, "Function TgGame.TgPawn.WaitForInventoryThenDoPostPawnSetup") == 0) return DispatchTag::PostPawnSetup;
 	if (strcmp(name, "Function TgGame.TgPlayerController.GetPlayerViewPoint") == 0)  return DispatchTag::GetPlayerViewPoint;
+	if (strcmp(name, "Function TgGame.TgDeploy_Beacon.PickUpDeployable") == 0)        return DispatchTag::BeaconPickUpDeployable;
+	if (strcmp(name, "Function TgGame.TgPawn.PickupNearestDeployable") == 0)         return DispatchTag::PawnPickupNearestDeployable;
+	if (strcmp(name, "Function TgGame.TgDeploy_BeaconEntrance.HasExit") == 0)        return DispatchTag::BeaconEntranceHasExit;
+	if (strcmp(name, "Function Engine.PlayerController.Destroyed") == 0)             return DispatchTag::PlayerControllerDestroyed;
+	if (strcmp(name, "Function TgGame.TgPlayerController.ServerPickupPutdownDeployable") == 0) return DispatchTag::ServerPickupPutdownDeployableTag;
 
 	return DispatchTag::Unknown;
 }
@@ -374,6 +425,13 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 	}
 
 	case DispatchTag::DyingBeginState: {
+		// Beacon carrier-loss BEFORE CallOriginal so the inventory remove
+		// runs while the pawn still owns its InvManager. The original UC
+		// chain doesn't touch the beacon-carry slot directly; without this
+		// the pawn dies, IsCarryingBeacon stays true until the corpse is
+		// fully destroyed, and the team's beacon never respawns.
+		DropCarriedBeaconIfAny((ATgPawn*)Object);
+
 		CallOriginal(Object, edx, Function, Params, Result);
 		// UScript TgPawn.Dying.BeginState only calls PawnDied for bIsPlayer==true.
 		// For AI bots the Timer would normally call Controller.Destroy() → PawnDied,
@@ -560,6 +618,83 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			SetPawnProperty(Pawn, 59, 0.0f);  // clear TGPID_FLIGHT_ACCELERATION
 			Pawn->bNetDirty = 1;
 			Pawn->bForceNetUpdate = 1;
+		}
+
+		// Beacon deploy cleanup. UC TgDevice.uc:2877 fires ConsumeDevice when
+		// r_bConsumedOnUse is set, but ConsumeDevice's RemoveConsumableFromOwnerInventory
+		// native only does HUD sync — it doesn't actually remove the device from
+		// the pawn's inventory.  The original Deploy native presumably did that
+		// work; ours just spawns the deployable.  Without inventory cleanup the
+		// beacon would linger in m_EquippedDevices[11] and the control-server's
+		// device-bar slot would never clear.
+		//
+		// Calling NonPersistRemoveDevice HERE — after CallOriginal — is crucial:
+		// CallOriginal runs the client-side `if (m_bUsesDeployMode &&
+		// Instigator.Weapon == self) ChangeToPreviousWeapon()` (TgDevice.uc:2871)
+		// while Pawn->Weapon is still the beacon.  Only after that do we clear
+		// the slot, so the race that drove the weapon to melee is gone.
+		//
+		// Gate ONLY on m_bIsBeaconPlacing — r_bConsumedOnUse is a consumables
+		// concept (different device category we don't have implemented yet) and
+		// isn't reliably set on beacon devices.  TgInventoryManager.NonPersistAddDevice
+		// sets m_bIsBeaconPlacing=1 explicitly when nEquipPoint==11, so any
+		// device firing DeviceFiring.EndState with that bit set is a
+		// carry-beacon and should be removed from inventory after the deploy.
+		{
+			uint32_t devFlags = *(uint32_t*)((char*)Device + 0x22C);
+			bool bIsBeaconPlacing = (devFlags & 0x10000u) != 0;
+			int nEquipPoint = (int)Device->r_eEquippedAt;
+			Logger::Log("beacon",
+				"DeviceFiring.EndState: device=0x%p devId=%d invId=%d slot=%d "
+				"devFlags=0x%08x m_bIsBeaconPlacing=%d instigator=0x%p\n",
+				Device, Device->r_nDeviceId, Device->r_nInventoryId, nEquipPoint,
+				devFlags, (int)bIsBeaconPlacing, Device->Instigator);
+			if (bIsBeaconPlacing && Device->Instigator) {
+				ATgPawn* Pawn = (ATgPawn*)Device->Instigator;
+				ATgInventoryManager* InvMgr = (ATgInventoryManager*)Pawn->InvManager;
+				if (InvMgr && nEquipPoint >= 1 && nEquipPoint <= 24) {
+					// Two cases:
+					//   A. Device is the CURRENT slot occupant (1st deploy): normal
+					//      cleanup — NonPersistRemoveDevice clears the slot + IPC.
+					//   B. Device is an ORPHAN from a prior cleanup whose state
+					//      machine fired EndState late (2nd+ deploy): slot 11 now
+					//      holds a different (NEW) device. We can't just clean the
+					//      slot because we'd kill the NEW beacon. Instead, drop
+					//      the orphan's m_bIsBeaconPlacing bit + sever its
+					//      Instigator so any further state-machine ticks no-op,
+					//      AND re-issue cleanup for whatever beacon currently
+					//      occupies the slot (NEW), since that's the one the
+					//      player just deployed.
+					ATgDevice* slotDev = Pawn->m_EquippedDevices[nEquipPoint];
+					if (slotDev == Device) {
+						Logger::Log("beacon",
+							"DeviceFiring.EndState: post-deploy cleanup pawn=0x%p device=0x%p slot=%d (current occupant)\n",
+							Pawn, Device, nEquipPoint);
+						TgInventoryManager__NonPersistRemoveDevice::Call(InvMgr, nullptr, nEquipPoint);
+					} else {
+						uint32_t slotFlags = slotDev ? *(uint32_t*)((char*)slotDev + 0x22C) : 0u;
+						bool slotIsBeacon = slotDev && (slotFlags & 0x10000u) != 0;
+						Logger::Log("beacon",
+							"DeviceFiring.EndState: orphan EndState fired — slot=%d holds 0x%p (beacon=%d). "
+							"Detaching orphan + cleaning slot occupant.\n",
+							nEquipPoint, slotDev, (int)slotIsBeacon);
+						// Detach orphan so its state machine can't side-effect
+						// further: clear m_bIsBeaconPlacing (so this gate stops
+						// firing for it), null its Instigator (so any future
+						// state-scoped UC code that touches Instigator no-ops),
+						// and reset r_eEquippedAt so any future lookups don't
+						// route back to slot 11.
+						*(uint32_t*)((char*)Device + 0x22C) &= ~0x10000u;
+						Device->Instigator   = nullptr;
+						Device->r_eEquippedAt = 0;
+						// Clean the NEW beacon currently in the slot — that's
+						// the one the player actually just deployed.
+						if (slotIsBeacon) {
+							TgInventoryManager__NonPersistRemoveDevice::Call(InvMgr, nullptr, nEquipPoint);
+						}
+					}
+				}
+			}
 		}
 		break;
 	}
@@ -821,6 +956,195 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 	// reach the same native body — keeping a PE hook here would double-apply.
 	// Removed; SDK callers now follow the default catch-all path which
 	// CallOriginal's down to the native.
+
+	case DispatchTag::PawnPickupNearestDeployable: {
+		// Diagnostic: dump pawn->Touching contents so we can see whether the
+		// beacon is even in the touching set. If it's not, the pickup chain
+		// stops here (UC iterates `TouchingActors(TgDeployable, deployable)`).
+		ATgPawn* Pawn = (ATgPawn*)Object;
+		Logger::Log("beacon", "PickupNearestDeployable: ENTER pawn=0x%p\n", Pawn);
+		if (Pawn) {
+			// Touching is an AActor TArray at offset 0x100 on AActor (per SDK).
+			struct ArrPtr { AActor** Data; int Count; int Max; };
+			ArrPtr* touching = reinterpret_cast<ArrPtr*>((char*)Pawn + 0x100);
+			Logger::Log("beacon",
+				"PickupNearestDeployable: pawn=0x%p Touching.Count=%d Touching.Data=%p\n",
+				Pawn, touching->Count, touching->Data);
+			for (int i = 0; i < touching->Count; ++i) {
+				AActor* other = touching->Data[i];
+				if (!other) continue;
+				const char* clsName = (other->Class ? other->Class->GetFullName() : "<null>");
+				bool isDep = clsName && strstr(clsName, "TgDeploy") != nullptr;
+				Logger::Log("beacon",
+					"  Touching[%d] = 0x%p class=%s%s\n",
+					i, other, clsName ? clsName : "<null>",
+					isDep ? " <- candidate" : "");
+				if (isDep) {
+					ATgDeployable* dep = (ATgDeployable*)other;
+					Logger::Log("beacon",
+						"    deployableId=%d m_nPickupDeviceId=%d s_bWasPickedUp=%d "
+						"m_bPickupOnlyOnce=%d m_bInDestroyedState=%d r_DRI=0x%p\n",
+						dep->r_nDeployableId, dep->m_nPickupDeviceId,
+						(int)dep->s_bWasPickedUp, (int)dep->m_bPickupOnlyOnce,
+						(int)dep->m_bInDestroyedState, dep->r_DRI);
+				}
+			}
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		// Log the return value (Parms layout: ATgPawn_eventPickupNearestDeployable_Parms
+		// has just a bool ReturnValue at offset 0x0)
+		if (Params) {
+			bool ret = (*(uint32_t*)Params & 1u) != 0;
+			Logger::Log("beacon", "PickupNearestDeployable: EXIT returned %s\n", ret ? "true" : "false");
+		}
+		break;
+	}
+
+	case DispatchTag::BeaconPickUpDeployable: {
+		// Diagnostic: log every gate value before the UC body runs so we
+		// know exactly which check is blocking pickup.
+		ATgDeploy_Beacon* beacon = (ATgDeploy_Beacon*)Object;
+		ATgPawn* pReceiver = nullptr;
+		if (Params) {
+			pReceiver = *(ATgPawn**)Params;
+		}
+		Logger::Log("beacon", "PickUpDeployable: ENTER beacon=0x%p pReceiver=0x%p\n", beacon, pReceiver);
+		if (beacon) {
+			ATgRepInfo_Deployable* dri = beacon->r_DRI;
+			ATgRepInfo_Player* recvPri = pReceiver ? (ATgRepInfo_Player*)pReceiver->PlayerReplicationInfo : nullptr;
+			ATgRepInfo_TaskForce* recvTf = recvPri ? recvPri->r_TaskForce : nullptr;
+
+			bool canBePickedUp = (beacon->m_nPickupDeviceId > 0)
+				&& !beacon->s_bWasPickedUp
+				&& beacon->m_bPickupOnlyOnce;
+
+			Logger::Log("beacon",
+				"PickUpDeployable[entry]: beacon=0x%p pReceiver=0x%p\n"
+				"  m_nPickupDeviceId=%d s_bWasPickedUp=%d m_bPickupOnlyOnce=%d -> CanBePickedUp=%s\n"
+				"  m_bInDestroyedState=%d\n"
+				"  beacon.r_DRI=0x%p instigatorInfo=0x%p tfInfo=0x%p bOwnedByTf=%d\n"
+				"  receiver.PRI=0x%p receiver.PRI.r_TaskForce=0x%p\n",
+				beacon, pReceiver,
+				beacon->m_nPickupDeviceId, (int)beacon->s_bWasPickedUp, (int)beacon->m_bPickupOnlyOnce,
+				canBePickedUp ? "TRUE" : "FALSE",
+				(int)beacon->m_bInDestroyedState,
+				dri, dri ? dri->r_InstigatorInfo : nullptr, dri ? dri->r_TaskforceInfo : nullptr,
+				dri ? (int)dri->r_bOwnedByTaskforce : -1,
+				recvPri, recvTf);
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		if (Params) {
+			bool ret = (*(uint32_t*)((char*)Params + 4) & 1u) != 0;
+			Logger::Log("beacon", "PickUpDeployable: EXIT returned %s\n", ret ? "true" : "false");
+		}
+		break;
+	}
+
+	case DispatchTag::ServerPickupPutdownDeployableTag: {
+		// Pickup-key RPC. Run the UC body first — its TouchingActors walk in
+		// `PickupNearestDeployable` handles factory beacons (which were in
+		// the world long enough for the player to walk into their cylinder)
+		// and any other deployable the player has physically entered.
+		CallOriginal(Object, edx, Function, Params, Result);
+
+		// Spawn-while-overlapping fallback. UE3 fires `Touch` on collision
+		// ENTRY — a beacon spawned around a stationary pawn never registers
+		// in the pawn's Touching list, so UC's PickupNearestDeployable can't
+		// find it even with the pawn standing on top of it. Check the team's
+		// registered beacon by distance and pick it up manually if eligible.
+		//
+		// Skip when UC already did the pickup (it set s_bWasPickedUp on the
+		// world beacon or cleared mgr->r_Beacon via DestroyIt/UnRegister) —
+		// the gates below catch both cases.
+		APlayerController* PC = (APlayerController*)Object;
+		ATgPawn* Pawn = PC ? (ATgPawn*)PC->Pawn : nullptr;
+		if (!Pawn || !Pawn->PlayerReplicationInfo) break;
+		ATgRepInfo_Player* pri = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+		if (!pri->r_TaskForce || !pri->r_TaskForce->r_BeaconManager) break;
+		ATgTeamBeaconManager* mgr = pri->r_TaskForce->r_BeaconManager;
+		ATgDeploy_Beacon* beacon = mgr->r_Beacon;
+		if (!beacon) break;
+		if (beacon->m_bInDestroyedState) break;
+		if (beacon->s_bWasPickedUp) break;
+		if (beacon->m_nPickupDeviceId <= 0) break;
+		if (!beacon->m_bPickupOnlyOnce) break;
+		// Pickup during the Deploy phase is allowed — the entrance teleport
+		// still gates on m_bIsDeployed via the BeaconEntranceHasExit hook,
+		// so picking up mid-deploy correctly cancels both the deploy and the
+		// (not-yet-active) entrance link.
+
+		// Proximity: 64uu XY radius covers a player standing on or next to a
+		// beacon (beacon CollisionCylinder radius is ~34uu in DB, player
+		// cylinder ~18uu, so combined ~52uu — round up to 64 for headroom).
+		// Z difference up to 80uu allowed so the player can be jumping over
+		// it and still trigger pickup.
+		float dx = Pawn->Location.X - beacon->Location.X;
+		float dy = Pawn->Location.Y - beacon->Location.Y;
+		float dz = Pawn->Location.Z - beacon->Location.Z;
+		float xyDistSq = dx*dx + dy*dy;
+		if (xyDistSq > 64.f * 64.f) break;
+		if (dz < -80.f || dz > 80.f) break;
+
+		// Manual dispatch of UC PickUpDeployable. ProcessEvent re-enters our
+		// dispatcher → BeaconPickUpDeployable case logs entry/exit. UC body
+		// handles inventory add + DestroyIt + UnRegister.
+		Logger::Log("beacon",
+			"ServerPickupPutdown: fallback firing for beacon=0x%p dist=%.0fuu (UC TouchingActors missed it)\n",
+			beacon, sqrtf(xyDistSq));
+		const bool picked = beacon->PickUpDeployable(Pawn);
+		Logger::Log("beacon",
+			"  fallback PickUpDeployable returned %s\n", picked ? "true" : "false");
+		break;
+	}
+
+	case DispatchTag::PlayerControllerDestroyed: {
+		// Disconnect cleanup: if this controller's pawn was carrying a beacon
+		// for one of the team managers, drop it and respawn at the team's
+		// original-priority factory. Pre-CallOriginal so the pawn / InvManager
+		// chain is still wired when we issue the inventory remove.
+		APlayerController* PC = (APlayerController*)Object;
+		if (PC && PC->Pawn) {
+			DropCarriedBeaconIfAny((ATgPawn*)PC->Pawn);
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	}
+
+	case DispatchTag::BeaconEntranceHasExit: {
+		// UC HasExit (TgDeploy_BeaconEntrance.uc:122) returns
+		// `beaconManager.GetBeacon() != none` — i.e. true the moment
+		// `r_Beacon` is non-null, regardless of deploy phase. UC's
+		// `Deploy.BeginState` calls `RegisterBeacon(self, false)` which sets
+		// `r_Beacon` before the deploy animation completes, so without this
+		// gate the entrance teleport unlocks the instant a player throws a
+		// beacon — well before its visible deploy timer runs out.
+		//
+		// Gate the result on `r_Beacon->m_bIsDeployed` (flipped to 1 by UC
+		// `TgDeployable::DeployComplete` after `r_fTimeToDeploySecs` elapses,
+		// AND for factory-spawned beacons by `WireDeployableOwnership` at
+		// spawn time — those keep their immediate-active behavior).
+		//
+		// Parms layout: ATgDeploy_BeaconEntrance_eventHasExit_Parms has just
+		// `bool ReturnValue` at offset 0 (bitfield :1).
+		CallOriginal(Object, edx, Function, Params, Result);
+		if (!Params) break;
+		uint32_t* retPtr = (uint32_t*)Params;
+		const bool ret = (*retPtr & 1u) != 0;
+		if (!ret) break;  // already false, nothing to gate
+		ATgDeploy_BeaconEntrance* entrance = (ATgDeploy_BeaconEntrance*)Object;
+		if (!entrance || !entrance->r_DRI) break;
+		// Resolve the entrance's team manager via its DRI. Factory-spawned
+		// entrances get r_TaskforceInfo set by WireDeployableOwnership in
+		// TgBeaconFactory::SpawnObject; that points at the team's tfri whose
+		// r_BeaconManager owns the matching exit beacon.
+		ATgRepInfo_TaskForce* tfri = entrance->r_DRI->r_TaskforceInfo;
+		ATgTeamBeaconManager* mgr = tfri ? tfri->r_BeaconManager : nullptr;
+		if (!mgr || !mgr->r_Beacon) break;
+		if (!mgr->r_Beacon->m_bIsDeployed) {
+			*retPtr = 0;  // clear the bool — entrance stays inactive
+		}
+		break;
+	}
 
 	// RefireCheckTimer's side effect ran above; it has no specific main
 	// handler, so it falls into the catch-all (log + CallOriginal) — same

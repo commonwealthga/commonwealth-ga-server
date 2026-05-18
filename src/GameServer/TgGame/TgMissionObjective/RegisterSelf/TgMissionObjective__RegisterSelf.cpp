@@ -61,8 +61,8 @@ void __fastcall TgMissionObjective__RegisterSelf::Call(ATgMissionObjective* Obje
 		// float height = ProxObj->m_fProximityHeight * 10.f;
 		// if (radius <= 0.0f) radius = 512.0f;
 		// if (height <= 0.0f) height = 256.0f;
-		float radius = 200.0f;
-		float height = 50.0f;
+		float radius = 250.0f;
+		float height = 200.0f;
 
 		UCylinderComponent* Cylinder = (UCylinderComponent*)Proxy->CollisionComponent;
 		if (Cylinder != nullptr) {

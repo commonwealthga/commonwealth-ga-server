@@ -2,20 +2,23 @@
 #include "src/Utils/Logger/Logger.hpp"
 #include <cstring>
 
-// Called on the VICTIM pawn from the native kill pipeline.
-// Killer is the pawn that killed this pawn.
+// Called on the VICTIM pawn from the kill pipeline (TgEffect::TrackStats
+// invokes us when Victim->Health hits 0). Killer is the pawn that landed the
+// killing blow.
 //
-// Credits one of two counters on the killer's PRI depending on victim type:
-//   - Player victim → r_Scores[STYPE_KILLS]      (index 1)
-//   - Bot victim    → r_Scores[STYPE_KILLS_BOT]  (index 10)
+// Kill counter (always credited):
+//   - Player victim → CreditPawn.r_Scores[STYPE_KILLS]      (index 1)
+//   - Bot victim    → CreditPawn.r_Scores[STYPE_KILLS_BOT]  (index 10)
+// CreditPawn is Killer, resolved one level to r_Owner if Killer is a pet so
+// the deploying player gets the credit instead of the pet's own PRI.
 //
-// Pet credit: if Killer is owned (r_Owner != null), the owning player's PRI
-// gets the credit instead of the pet's own PRI. Mirrors the UC pet-kill
-// branches in TgPawn.Died.
-//
-// Checks victim's m_LastDamager/m_SecondToLastDamager for assist credit.
-// m_LastDamager is set by UpdateDamagers which is called from the damage
-// pipeline, so it's always recent (only set during active combat on this pawn).
+// Assist policy (per user spec): assists are credited only when the VICTIM
+// is human, and only to human assisters. The killer can be anyone — if you
+// heal an enemy bot that goes on to kill a human, you assisted that kill;
+// if you heal a human teammate whose turret kills someone, you assisted
+// that kill too. The only thing that matters is that a real player died,
+// because bot deaths aren't scoreboard-meaningful and don't deserve
+// assist points.
 void __fastcall TgPawn__TrackKill::Call(ATgPawn* Pawn, void* edx, ATgPawn* Killer) {
 	LogCallBegin();
 	CallOriginal(Pawn, edx, Killer);
@@ -25,21 +28,23 @@ void __fastcall TgPawn__TrackKill::Call(ATgPawn* Pawn, void* edx, ATgPawn* Kille
 		return;
 	}
 
-	// Resolve pet → owner so the player gets credit for their pet's kill.
+	// "Has client connection" — class-name strstr per
+	// `feedback_bIsPlayer_unreliable`. AI bot controllers default
+	// bIsPlayer=true on this build so we can't gate on that flag.
+	auto IsRealPlayer = [](AController* ctrl) -> bool {
+		if (!ctrl || !ctrl->Class) return false;
+		const char* name = ctrl->Class->GetFullName();
+		return name && strstr(name, "PlayerController") != nullptr;
+	};
+
+	// Pet → owner resolution for credit recipient.
 	ATgPawn* CreditPawn = Killer;
 	if (Killer->r_Owner != nullptr) {
 		CreditPawn = Killer->r_Owner;
 	}
 
-	// Choose counter by victim type. `Controller->bIsPlayer` is unreliable
-	// in this build (AI bots default it to true; clearing it breaks turret
-	// targeting). Use class-name strstr — same pattern as SendCombatMessage.
-	bool victimWasPlayer = false;
-	if (Pawn->Controller && Pawn->Controller->Class) {
-		const char* clsName = Pawn->Controller->Class->GetFullName();
-		victimWasPlayer = clsName && strstr(clsName, "PlayerController") != nullptr;
-	}
-	const int  scoreIndex = victimWasPlayer ? 1 : 10;  // KILLS vs KILLS_BOT
+	const bool victimWasHuman = IsRealPlayer(Pawn->Controller);
+	const int  scoreIndex     = victimWasHuman ? 1 : 10;  // STYPE_KILLS vs STYPE_KILLS_BOT
 
 	ATgRepInfo_Player* KillerPRI = (ATgRepInfo_Player*)CreditPawn->PlayerReplicationInfo;
 	if (KillerPRI != nullptr) {
@@ -48,20 +53,31 @@ void __fastcall TgPawn__TrackKill::Call(ATgPawn* Pawn, void* edx, ATgPawn* Kille
 		KillerPRI->bForceNetUpdate = 1;
 	}
 
-	// Check for assists from two sources:
-	// 1. Players who damaged the victim (m_LastDamager/m_SecondToLastDamager on victim)
-	// 2. Players who healed the killer (m_LastHealer on killer) — healing assist
+	// Assists: only when a real player died. Killer's human-ness doesn't
+	// matter — a bot killing a player can still produce human assists.
+	if (!victimWasHuman) {
+		LogCallEnd();
+		return;
+	}
+
+	// Two assist sources:
+	// 1. Players who damaged the victim recently (m_LastDamager / m_SecondToLastDamager;
+	//    rotated each damage event by TgEffect::TrackStats).
+	// 2. Player who last healed the killer (CreditPawn->m_LastHealer).
 	ATgPawn* assistCandidates[3] = {
 		Pawn->m_LastDamager,
 		Pawn->m_SecondToLastDamager,
-		Killer->m_LastHealer
+		CreditPawn->m_LastHealer
 	};
 
 	for (int i = 0; i < 3; i++) {
 		ATgPawn* candidate = assistCandidates[i];
-		if (candidate == nullptr || candidate == Killer || candidate == Pawn) continue;
+		if (candidate == nullptr || candidate == CreditPawn || candidate == Pawn) continue;
 
-		// Deduplicate: skip if same as an earlier candidate we already credited
+		// Only credit human assisters.
+		if (!IsRealPlayer(candidate->Controller)) continue;
+
+		// Deduplicate against earlier candidates we already credited.
 		bool duplicate = false;
 		for (int j = 0; j < i; j++) {
 			if (assistCandidates[j] == candidate) { duplicate = true; break; }

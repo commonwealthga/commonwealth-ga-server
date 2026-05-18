@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgPawn_Character/ReapplyCharacterSkillTree/TgPawn_Character__ReapplyCharacterSkillTree.hpp"
+#include "src/GameServer/Armor/Armor.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/BuildEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgPawn/ApplyBuff/TgPawn__ApplyBuff.hpp"
 #include "src/GameServer/TgGame/BuffEffectRegistry/ModifierProps.hpp"
@@ -500,6 +501,11 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 			pid, prop->m_fRaw, prop->m_fBase);
 		SetPawnProperty((ATgPawn*)Pawn, pid, prop->m_fRaw);
 	}
+
+	// Phase-1 armor: apply hardcoded default armor set after skills so the
+	// armor delta layers on top of the skill-modified HEALTH_MAX. Armor
+	// tracks its own reversal deltas so respawns don't double-stack.
+	Armor::ApplyDefaultArmor((ATgPawn*)Pawn);
 
 	// Post-apply property dump — log every UTgProperty in the pawn's
 	// s_Properties that a skill effect should have touched. If m_fRaw ==

@@ -102,6 +102,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/FinalizeRoundScore/TgGame_Arena__FinalizeRoundScore.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/FinalizeGameScore/TgGame_Arena__FinalizeGameScore.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/AdjustBeaconForwardSpawn/TgGame_Arena__AdjustBeaconForwardSpawn.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_PointRotation/CalcNextObjective/TgGame_PointRotation__CalcNextObjective.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_PointRotation/UnlockObjective/TgGame_PointRotation__UnlockObjective.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/CheckRandomObjectives/TgGame__CheckRandomObjectives.cpp \
@@ -112,6 +113,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SetObjectivesOvertimeNotify/TgGame__SetObjectivesOvertimeNotify.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/GetFinalObjectivesList/TgGame__GetFinalObjectivesList.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective/SetObjectiveActive/TgMissionObjective__SetObjectiveActive.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective/SetObjectivePending/TgMissionObjective__SetObjectivePending.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective/LoadObjectConfig/TgMissionObjective__LoadObjectConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective/UpdateMatineeNodeStatus/TgMissionObjective__UpdateMatineeNodeStatus.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.cpp \
@@ -126,12 +128,15 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.cpp \
 			  $(SRC_DIR)/GameServer/Inventory/Inventory.cpp \
+			  $(SRC_DIR)/GameServer/Armor/Armor.cpp \
 			  $(SRC_DIR)/GameServer/Constants/DeviceIds.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepListV2.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgActorFactory/LoadObjectConfig/TgActorFactory__LoadObjectConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamPlayerStart/LoadObjectConfig/TgTeamPlayerStart__LoadObjectConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamPlayerStart/GetRating/TgTeamPlayerStart__GetRating.cpp \
@@ -165,6 +170,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveAllEffectGroups/TgEffectManager__RemoveAllEffectGroups.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective_Bot/SpawnObjectiveBot/TgMissionObjective_Bot__SpawnObjectiveBot.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective_Proximity/ScoreObjectiveProgress/TgMissionObjective_Proximity__ScoreObjectiveProgress.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/SendMapRandomSMSettingsMarshal/CGameClient__SendMapRandomSMSettingsMarshal.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.cpp \
@@ -190,6 +196,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/SpawnBotId/TgBotFactory__SpawnBotId.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/UseSpawnTable/TgBotFactory__UseSpawnTable.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/AddProperty/TgDeployable__AddProperty.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/GetTaskForce/TgDeployable__GetTaskForce.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/InitializeDefaultProps/TgDeployable__InitializeDefaultProps.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/NotifyGroupChanged/TgDeployable__NotifyGroupChanged.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/SetProperty/TgDeployable__SetProperty.cpp \
@@ -217,7 +224,6 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/SetEffectRep/TgEffectManager__SetEffectRep.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/SubmitMitigationDamage/TgEffectManager__SubmitMitigationDamage.cpp \
-			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/AdjustBeaconForwardSpawn/TgGame_Arena__AdjustBeaconForwardSpawn.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Control/CalcAttackerReviveTime/TgGame_Control__CalcAttackerReviveTime.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Control/CalcDefenderReviveTime/TgGame_Control__CalcDefenderReviveTime.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Control/SendCountdownRemainingMessages/TgGame_Control__SendCountdownRemainingMessages.cpp \
@@ -531,6 +537,7 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/Constants/DeviceIds.cpp \
 	$(CS_SRC_DIR)/Config/ControlServerConfig.cpp \
 	$(CS_SRC_DIR)/Database/Database.cpp \
+	$(CS_SRC_DIR)/MapGameInfo/MapGameInfo.cpp \
 	$(CS_SRC_DIR)/Loadouts/ClassLoadouts.cpp \
 	$(CS_SRC_DIR)/Loadouts/ModResolver.cpp \
 	$(CS_SRC_DIR)/PlayerSessionStore/PlayerSessionStore.cpp \

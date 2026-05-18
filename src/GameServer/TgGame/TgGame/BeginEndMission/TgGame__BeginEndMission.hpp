@@ -13,3 +13,8 @@ public:
 		return m_original(Game, edx, bClearNextMapGame, endMissionCamera, fDelayOverride);
 	};
 };
+
+// Shared implementation — the TgGame_Ticket subclass native is also a stub
+// and reuses the same flow (set winner, broadcast win-state, fire UC
+// AllPlayersEndGame, arm FinishEndMission timer).
+void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera);

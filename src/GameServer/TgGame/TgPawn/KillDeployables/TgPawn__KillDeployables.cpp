@@ -31,6 +31,20 @@ void __fastcall TgPawn__KillDeployables::Call(ATgPawn* Pawn, void* edx, unsigned
 		ATgDeployable* dep = Pawn->s_SelfDeployableList.Data[i];
 		if (!dep) continue;
 
+		// Beacons (deployable_id 36) are TEAM resources owned by
+		// TgTeamBeaconManager, not personal deployables. Their lifecycle is
+		// driven by CheckBeacon / RegisterBeacon / UnRegisterBeacon and
+		// must NOT be tied to the deployer's pawn lifetime — a player who
+		// throws a beacon and then dies (or is fully destroyed via the
+		// KillAllOwnedPets event that fires bAll=1) should leave the beacon
+		// standing for their team.
+		if (dep->r_nDeployableId == 36) {
+			Logger::Log("debug",
+				"  [KillDeployables] skip beacon [%d] 0x%p (team resource — managed by BeaconManager)\n",
+				i, dep);
+			continue;
+		}
+
 		const bool shouldDestroy = bAll || dep->m_bDestroyOnOwnerDeathFlag;
 		if (!shouldDestroy) {
 			Logger::Log("debug",

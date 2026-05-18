@@ -1,11 +1,14 @@
 #include "src/GameServer/Engine/MapObjectConfig/MapObjectConfig.hpp"
+#include "src/Config/Config.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/pch.hpp"
 
 #include <cstdlib>
 #include <ctime>
+#include <set>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -15,7 +18,8 @@ namespace {
 std::unordered_map<int, std::unordered_map<std::string, std::string>> g_overrides;
 
 // Raw row as loaded from `map_object_config`. variantGroup/variantId empty
-// strings denote NULL columns; weight defaults to 1.0 in SQL.
+// strings denote NULL columns; weight defaults to 1.0 in SQL. mapName empty
+// = NULL = applies to every map (legacy / global row).
 struct ConfigRow {
 	int         mapObjectId;
 	std::string columnName;
@@ -23,6 +27,7 @@ struct ConfigRow {
 	std::string variantGroup;  // "" if NULL = always applied
 	std::string variantId;     // "" if NULL — paired with variantGroup ""
 	float       weight;
+	std::string mapName;       // "" if NULL = global (applies to every map)
 };
 
 // Variant bucket: rows sharing the same (mapObjectId, variantGroup, variantId).
@@ -63,15 +68,23 @@ void MapObjectConfig::Init() {
 		return;
 	}
 
+	// map_object_id isn't unique across maps, so scope the load to the
+	// current map (rows where map_name = current) plus the legacy / global
+	// rows (map_name IS NULL). Per-cell precedence is resolved below.
+	const std::string currentMap = Config::GetMapNameChar();
+
 	sqlite3_stmt* stmt = nullptr;
 	const char* kSql =
 		"SELECT map_object_id, column_name, value, "
-		"       COALESCE(variant_group, ''), COALESCE(variant_id, ''), weight "
-		"FROM map_object_config";
+		"       COALESCE(variant_group, ''), COALESCE(variant_id, ''), weight, "
+		"       COALESCE(map_name, '') "
+		"FROM map_object_config "
+		"WHERE map_name IS NULL OR map_name = ?";
 	if (sqlite3_prepare_v2(db, kSql, -1, &stmt, nullptr) != SQLITE_OK) {
 		Logger::Log("config", "MapObjectConfig::Init prepare failed: %s\n", sqlite3_errmsg(db));
 		return;
 	}
+	sqlite3_bind_text(stmt, 1, currentMap.c_str(), -1, SQLITE_TRANSIENT);
 
 	std::vector<ConfigRow> allRows;
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -82,9 +95,32 @@ void MapObjectConfig::Init() {
 		r.variantGroup = SafeText             (stmt, 3);
 		r.variantId    = SafeText             (stmt, 4);
 		r.weight       = static_cast<float>(sqlite3_column_double(stmt, 5));
+		r.mapName      = SafeText             (stmt, 6);
 		allRows.push_back(std::move(r));
 	}
 	sqlite3_finalize(stmt);
+
+	// Per-cell precedence: if any row for (mapObjectId, columnName) is
+	// map-specific, drop the global (NULL-map) rows for that cell. Done at
+	// cell granularity so static/variant promotion works uniformly — a
+	// map-specific override fully replaces the global definition.
+	std::set<std::pair<int, std::string>> cellsWithMapSpecific;
+	for (const auto& r : allRows) {
+		if (!r.mapName.empty()) {
+			cellsWithMapSpecific.insert({r.mapObjectId, r.columnName});
+		}
+	}
+	int droppedGlobalRows = 0;
+	std::vector<ConfigRow> filteredRows;
+	filteredRows.reserve(allRows.size());
+	for (auto& r : allRows) {
+		if (r.mapName.empty() &&
+		    cellsWithMapSpecific.count({r.mapObjectId, r.columnName}) > 0) {
+			droppedGlobalRows++;
+			continue;
+		}
+		filteredRows.push_back(std::move(r));
+	}
 
 	// Static rows go straight into the registry. Variant rows are bucketed by
 	// (mapObjectId, variantGroup, variantId); after all rows are scanned we
@@ -94,7 +130,7 @@ void MapObjectConfig::Init() {
 		GroupKeyHash> groups;
 
 	int staticCount = 0;
-	for (const auto& r : allRows) {
+	for (const auto& r : filteredRows) {
 		if (r.variantGroup.empty()) {
 			g_overrides[r.mapObjectId][r.columnName] = r.value;
 			staticCount++;
@@ -136,8 +172,10 @@ void MapObjectConfig::Init() {
 	}
 
 	Logger::Log("config",
-		"MapObjectConfig::Init — loaded %d static + %d variant overrides across %zu objects\n",
-		staticCount, variantCount, g_overrides.size());
+		"MapObjectConfig::Init — map='%s', loaded %d static + %d variant overrides "
+		"across %zu objects (dropped %d global rows shadowed by map-specific)\n",
+		currentMap.c_str(), staticCount, variantCount, g_overrides.size(),
+		droppedGlobalRows);
 }
 
 bool MapObjectConfig::Has(int mapObjectId, const char* column) {

@@ -10,6 +10,7 @@
 #include "src/GameServer/TgGame/TgPawn/SyncPawnHealth/SyncPawnHealth.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
+#include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
@@ -160,6 +161,99 @@ void TgGame__SpawnBotById::GiveDeviceById(
 		// UpdateClientDevices detects: device->r_nDeviceInstanceId (nInventoryId) ≠ r_EquipDeviceInfo[slot] (0)
 		// → updates r_EquipDeviceInfo from device, fires equip handler + ProcessEvent → client device bar update.
 		Pawn->UpdateClientDevices(0, 0);
+
+		// Carrier-visual (the floating ring of symbols) for beacon pickup:
+		// device 1918's equip-effect group 5716 has target_fx_id=525 but ZERO
+		// rows in asm_data_set_effects, so our existing
+		// Inventory::ApplyDeviceEquipEffects (which only walks effects and
+		// mutates s_Properties) does nothing for it. The visual side comes
+		// from UC's `ApplyEquipEffects` event, which calls
+		// `Pawn.ProcessEffect(m_EquipEffect, false, Pawn)` → spawns a
+		// TgEffectGroup actor on the pawn → replicates target_fx_id to the
+		// client → the ring of symbols renders.
+		//
+		// For this to work `Device->m_EquipEffect` must be populated, which
+		// is `ApplyDeviceSetup`'s job (it reads the device's equip-effect
+		// group ref from asm.dat and instantiates the TgEffectGroup
+		// template). CreateEquipDevice does NOT call ApplyDeviceSetup, so
+		// we invoke it explicitly here.
+		//
+		// Gated on deviceId == 1918 to keep blast radius narrow — other
+		// devices going through this function (bot loadouts) already work
+		// via the existing property-mutation path, and triggering
+		// eventApplyEquipEffects for them would double-apply any prop
+		// changes (the proper TgEffectManager path AND our direct s_Properties
+		// writes). If we later prove other devices need the visual too, we
+		// remove the gate and drop Inventory::ApplyDeviceEquipEffects.
+		//
+		// ApplyDeviceSetup is a native — its SDK wrapper has the
+		// `pFn->FunctionFlags |= ~0x400` corruption bug (see BeaconSdkSafe).
+		// We bypass it with a manual save/force-FUNC_Native/restore ProcessEvent.
+		if (deviceId == 1918) {
+			static UFunction* pFnApplyDeviceSetup = nullptr;
+			if (pFnApplyDeviceSetup == nullptr) {
+				pFnApplyDeviceSetup = (UFunction*)ObjectCache::Find(
+					"Function TgGame.TgDevice.ApplyDeviceSetup");
+			}
+			if (pFnApplyDeviceSetup) {
+				const uint32_t origFlags = pFnApplyDeviceSetup->FunctionFlags;
+				pFnApplyDeviceSetup->FunctionFlags = origFlags | 0x400;
+				struct { uint32_t ReturnValue; } parms = { 0 };
+				Device->ProcessEvent(pFnApplyDeviceSetup, &parms, nullptr);
+				pFnApplyDeviceSetup->FunctionFlags = origFlags;
+				// Diagnose ProcessEffect's visual gate: requires
+				// (lifetime>0 OR m_bIsManaged) AND (m_bHasVisual AND bEffectApplied).
+				// Force-set m_bIsManaged + m_bHasVisual on the template — the
+				// native ApplyDeviceSetup reads asm.dat but does NOT set these
+				// flags for equip-effect groups (effect_group_type=261). Same
+				// idiom our BuildEffectGroup uses for fire-mode templates
+				// (reference_effect_system.md).
+				if (Device->m_EquipEffect != nullptr) {
+					UTgEffectGroup* eg = Device->m_EquipEffect;
+					uint32_t pre = *(uint32_t*)((char*)eg + 0x74);
+					*(uint32_t*)((char*)eg + 0x74) = pre | 0x01u | 0x80u;  // m_bIsManaged + m_bHasVisual
+					uint32_t post = *(uint32_t*)((char*)eg + 0x74);
+					Logger::Log("debug",
+						"  ApplyDeviceSetup ret=%u  m_EquipEffect=0x%p egId=%d lifetime=%.2f applType=%d cat=%d fxApplied=%d flags74 pre=0x%08x post=0x%08x\n",
+						parms.ReturnValue, eg, eg->m_nEffectGroupId, eg->m_fLifeTime,
+						eg->m_nApplicationType, eg->m_nCategoryCode, eg->m_nFxAppliedId,
+						pre, post);
+				} else {
+					Logger::Log("debug",
+						"  ApplyDeviceSetup ret=%u  m_EquipEffect=NULL\n", parms.ReturnValue);
+				}
+			}
+			// ApplyEquipEffects has three gates:
+			// (1) !m_bEquipEffectsApplied  (2) !m_bEffectsOnlyInHand || Instigator.Weapon==self  (3) m_EquipEffect != none
+			// (2) is dangerous: Pawn->Weapon doesn't switch to the beacon until
+			// the client requests SetCurrentWeapon — server-side it stays as the
+			// prior weapon. If m_bEffectsOnlyInHand is true on device 1918, our
+			// manual call would skip ProcessEffect.
+			//
+			// Force m_bEffectsOnlyInHand=0 on this specific device to guarantee
+			// gate (2) passes regardless of Weapon state.
+			{
+				uint32_t devFlags = *(uint32_t*)((char*)Device + 0x22C);
+				int bEquipEffectsApplied = (devFlags & 0x4) != 0;
+				int bEffectsOnlyInHand   = (devFlags & 0x100) != 0;
+				void* pawnWeapon = *(void**)((char*)Pawn + 0x3A0);
+				// Clear m_bEffectsOnlyInHand (bit 0x100) so gate (2) passes.
+				*(uint32_t*)((char*)Device + 0x22C) = devFlags & ~0x100u;
+				void* effMgr = Pawn->r_EffectManager;
+				Logger::Log("debug",
+					"  pre-ApplyEquipEffects: Device->Instigator=0x%p Pawn->Weapon=0x%p (==Device:%d) bEffectsOnlyInHand=%d->0 bEquipEffectsApplied=%d CurrentFireMode=%d Pawn->r_EffectManager=0x%p\n",
+					Device->Instigator, pawnWeapon, (int)(pawnWeapon == Device),
+					bEffectsOnlyInHand, bEquipEffectsApplied,
+					(int)Device->CurrentFireMode, effMgr);
+			}
+			// eventApplyEquipEffects is a UC event — SDK wrapper is safe.
+			// Guarded internally by m_bEquipEffectsApplied so a re-call is a no-op.
+			Device->eventApplyEquipEffects();
+			Logger::Log("debug",
+				"  post-ApplyEquipEffects: devFlags+0x22C=0x%08x  (m_bEquipEffectsApplied=%d)\n",
+				*(uint32_t*)((char*)Device + 0x22C),
+				(int)((*(uint32_t*)((char*)Device + 0x22C) & 0x4) != 0));
+		}
 
 		Pawn->bNetDirty = 1;
 		Pawn->bForceNetUpdate = 1;

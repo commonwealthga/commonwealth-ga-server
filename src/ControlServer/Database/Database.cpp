@@ -676,6 +676,33 @@ void Database::Init() {
 			// Expected on second+ boot — log at debug level rather than error.
 			sqlite3_free(err);
 		}
+
+		// Continuous-queue support: instances optionally carry the queue_id
+		// they were spawned for, can point at a predecessor (DRAFTING state =
+		// READY-but-waiting for predecessor's BeginEndMission), and stamp the
+		// time the parent's BeginEndMission native fired so GSC_CHANGE_INSTANCE
+		// can decide between routing home vs continuing to the successor.
+		// All three ALTERs are idempotent — second-boot "duplicate column"
+		// errors are swallowed.
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_instances ADD COLUMN queue_id INTEGER DEFAULT NULL;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) sqlite3_free(err);
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_instances ADD COLUMN predecessor_instance_id INTEGER DEFAULT NULL;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) sqlite3_free(err);
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_instances ADD COLUMN end_mission_at INTEGER DEFAULT NULL;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) sqlite3_free(err);
+		// Lookup successor-by-parent for MarkMissionEnded promotion.
+		result = sqlite3_exec(db,
+			"CREATE INDEX IF NOT EXISTS idx_ga_instances_predecessor "
+			"ON ga_instances(predecessor_instance_id) "
+			"WHERE predecessor_instance_id IS NOT NULL;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) sqlite3_free(err);
 	}
 
 	// Floor-only version write. The game-server DLL bumps `version_info.version`

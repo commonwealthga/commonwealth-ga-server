@@ -103,7 +103,7 @@ def main():
         print(f"No map_* rows for map '{args.map}'", file=sys.stderr)
         sys.exit(1)
 
-    overrides = load_overrides(cur, list(objects.keys()))
+    overrides = load_overrides(cur, list(objects.keys()), args.map)
     location_lists = load_location_lists(cur, args.map)
 
     conn.close()
@@ -156,6 +156,7 @@ def discover_map_schema(cur):
         "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'map_%' "
         "AND name NOT LIKE '%_location_list' AND name NOT LIKE '%_patrol_path' "
         "AND name != 'map_object_config' "
+        "AND name != 'map_game_info' "
         "ORDER BY name"
     )
     tables = [r[0] for r in cur.fetchall()]
@@ -243,23 +244,40 @@ def build_column_directory(objects_list, schema):
     return directory
 
 
-def load_overrides(cur, map_object_ids):
-    """All map_object_config rows for the given map_object_ids. Empty list if
-    the table doesn't exist yet (v34 not applied) — page still works, just
-    starts with no overrides loaded."""
+def load_overrides(cur, map_object_ids, map_name):
+    """map_object_config rows scoped to this map: rows tagged with map_name,
+    plus legacy global rows (map_name IS NULL). Rows tagged with a *different*
+    map are excluded — they belong to a different planner session and would
+    only clutter the UI.
+
+    Empty list if the table doesn't exist yet (v34 not applied) — page still
+    works, just starts with no overrides loaded. If v34 exists but v46 has
+    not been applied yet (no map_name column), fall back to the unscoped
+    query so older DBs keep working.
+    """
     if not map_object_ids:
         return []
     qmarks = ','.join('?' for _ in map_object_ids)
     try:
         cur.execute(f"""
             SELECT id, map_object_id, column_name, value,
-                   variant_group, variant_id, weight
+                   variant_group, variant_id, weight, map_name
             FROM map_object_config
             WHERE map_object_id IN ({qmarks})
+              AND (map_name IS NULL OR map_name = ?)
             ORDER BY map_object_id, column_name, variant_group, variant_id, id
-        """, list(map_object_ids))
+        """, list(map_object_ids) + [map_name])
         return [dict(r) for r in cur.fetchall()]
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as e:
+        if 'no such column: map_name' in str(e):
+            cur.execute(f"""
+                SELECT id, map_object_id, column_name, value,
+                       variant_group, variant_id, weight
+                FROM map_object_config
+                WHERE map_object_id IN ({qmarks})
+                ORDER BY map_object_id, column_name, variant_group, variant_id, id
+            """, list(map_object_ids))
+            return [dict(r, map_name=None) for r in cur.fetchall()]
         return []
 
 
@@ -515,9 +533,12 @@ function newKey() { return 'new:' + (nextNewKey++); }
 
 function addRow(mid, column, value, variantGroup, variantId, weight) {
   const k = newKey();
+  // New rows default to map-scoped (map_name = current map). Loaded rows
+  // keep whatever map_name they had in the DB (may be null = global).
   const row = { key: k, map_object_id: mid, column_name: column,
                 value: String(value), variant_group: variantGroup,
-                variant_id: variantId, weight: weight ?? 1.0 };
+                variant_id: variantId, weight: weight ?? 1.0,
+                map_name: DATA.map_name };
   CURRENT.set(k, row);
   return row;
 }
@@ -830,7 +851,8 @@ function rowsEqual(a, b) {
       && String(a.value) === String(b.value)
       && (a.variant_group ?? null) === (b.variant_group ?? null)
       && (a.variant_id    ?? null) === (b.variant_id    ?? null)
-      && Number(a.weight) === Number(b.weight);
+      && Number(a.weight) === Number(b.weight)
+      && (a.map_name      ?? null) === (b.map_name      ?? null);
 }
 
 // ============================================================
@@ -1084,22 +1106,47 @@ function generateSql() {
   for (const r of CURRENT.values()) {
     const orig = ORIGINAL.get(r.key);
     if (!orig) {
-      // New row
-      inserts.push(`  (${r.map_object_id}, ${sqlQuote(r.column_name)}, ${sqlQuote(r.value)}, ` +
+      // Pure new row — INSERT.
+      inserts.push(`  (${sqlNull(r.map_name)}, ${r.map_object_id}, ${sqlQuote(r.column_name)}, ${sqlQuote(r.value)}, ` +
                    `${sqlNull(r.variant_group)}, ${sqlNull(r.variant_id)}, ${Number(r.weight) || 1.0})`);
     } else if (!rowsEqual(r, orig)) {
-      updates.push(
-        `UPDATE map_object_config SET ` +
-        `value = ${sqlQuote(r.value)}, ` +
-        `variant_group = ${sqlNull(r.variant_group)}, ` +
-        `variant_id = ${sqlNull(r.variant_id)}, ` +
-        `weight = ${Number(r.weight) || 1.0} ` +
-        `WHERE id = ${r.id};`
-      );
+      // Edit to an existing row. If the loaded original is a GLOBAL row
+      // (map_name IS NULL), it potentially applies to OTHER maps that
+      // share this map_object_id — modifying it in place would silently
+      // bleed our edit into them. Emit an INSERT tagged with the current
+      // map_name instead; the v46 precedence rules then shadow the global
+      // row for this map only, leaving the global row untouched for any
+      // other map that still relies on it.
+      if (orig.map_name == null || orig.map_name === '') {
+        inserts.push(`  (${sqlQuote(DATA.map_name)}, ${r.map_object_id}, ${sqlQuote(r.column_name)}, ${sqlQuote(r.value)}, ` +
+                     `${sqlNull(r.variant_group)}, ${sqlNull(r.variant_id)}, ${Number(r.weight) || 1.0})`);
+      } else {
+        // Loaded as a row already scoped to this map — safe to UPDATE in place.
+        updates.push(
+          `UPDATE map_object_config SET ` +
+          `map_name = ${sqlNull(r.map_name)}, ` +
+          `value = ${sqlQuote(r.value)}, ` +
+          `variant_group = ${sqlNull(r.variant_group)}, ` +
+          `variant_id = ${sqlNull(r.variant_id)}, ` +
+          `weight = ${Number(r.weight) || 1.0} ` +
+          `WHERE id = ${r.id};`
+        );
+      }
     }
   }
   for (const k of ORIGINAL.keys()) {
-    if (!CURRENT.has(k)) deletes.push(`DELETE FROM map_object_config WHERE id = ${ORIGINAL.get(k).id};`);
+    if (!CURRENT.has(k)) {
+      // Same caveat as edits above: deleting a GLOBAL row would remove
+      // it for every map that shares this map_object_id. Skip with a
+      // comment so the user can decide manually whether to delete the
+      // global row, or shadow it with an empty-value INSERT.
+      const o = ORIGINAL.get(k);
+      if (o.map_name == null || o.map_name === '') {
+        deletes.push(`-- skipped DELETE id=${o.id} (global map_name IS NULL — applies to other maps; remove by hand if intended)`);
+      } else {
+        deletes.push(`DELETE FROM map_object_config WHERE id = ${o.id};`);
+      }
+    }
   }
 
   const lines = [];
@@ -1118,7 +1165,7 @@ function generateSql() {
   if (inserts.length) {
     lines.push('');
     lines.push(`-- ${inserts.length} new override${inserts.length === 1 ? '' : 's'}`);
-    lines.push('INSERT INTO map_object_config (map_object_id, column_name, value, variant_group, variant_id, weight) VALUES');
+    lines.push('INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES');
     lines.push(inserts.join(',\n') + ';');
   }
   if (deletes.length + updates.length + inserts.length === 0) {

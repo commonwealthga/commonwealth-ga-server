@@ -14,7 +14,7 @@ struct InstanceInfo {
     int64_t     id           = 0;
     std::string map_name;
     std::string game_mode;
-    std::string state;          // "STARTING" | "READY" | "DRAINING" | "STOPPED"
+    std::string state;          // "STARTING" | "DRAFTING" | "READY" | "DRAINING" | "STOPPED"
     int         pid           = 0;
     uint16_t    udp_port      = 0;
     std::string ip_address    = "127.0.0.1";
@@ -24,6 +24,11 @@ struct InstanceInfo {
     int64_t     instance_id   = 0;  // unique ID assigned at spawn time (rowid)
     bool        is_home_map   = false; // true if spawned for home map
     int         max_players   = 0;  // filled by INSTANCE_READY
+
+    // Continuous-queue plumbing (NULL/0 for everything else).
+    uint32_t    queue_id                  = 0;  // 0 = not from a matchmade queue
+    int64_t     predecessor_instance_id   = 0;  // 0 = not a successor
+    int64_t     end_mission_at            = 0;  // 0 = BeginEndMission not yet fired
 };
 
 class InstanceRegistry {
@@ -43,8 +48,14 @@ public:
     static void SeedHomeMapInstance(const std::string& map_name, uint16_t udp_port);
 
     // Insert a STARTING instance. Returns the SQLite rowid (used as instance_id).
+    // queue_id=0 → not from a matchmade queue (home map, ad-hoc instance).
+    // predecessor_instance_id=0 → not a successor. When non-zero, MarkReady
+    // will transition the row to DRAFTING (instead of READY) until
+    // MarkMissionEnded(predecessor) promotes it.
     static int64_t InsertStarting(const std::string& map_name, const std::string& game_mode,
-                                   uint16_t udp_port, int pid, bool is_home_map);
+                                   uint16_t udp_port, int pid, bool is_home_map,
+                                   uint32_t queue_id = 0,
+                                   int64_t predecessor_instance_id = 0);
 
     // Store the real PID after the process has been spawned.
     static void UpdatePid(int64_t instance_id, int pid);
@@ -82,6 +93,22 @@ public:
     // on orphaned wine processes (winedevice.exe ignores SIGTERM).
     static std::vector<InstanceInfo> GetAllRunningInstances();
     static void SetLastEmptyAtIfEmpty(int64_t instance_id);
+
+    // Continuous-queue helpers ----------------------------------------------
+
+    // Stamp end_mission_at=now on the parent row AND promote any DRAFTING
+    // successor (matching predecessor_instance_id) to READY in the same
+    // transaction. Returns the successor's instance_id (or 0 if none / not
+    // DRAFTING). Idempotent on the parent stamp.
+    static int64_t MarkMissionEnded(int64_t parent_instance_id);
+
+    // Orphan fallback: if `parent_instance_id` died (IPC disconnect / crash)
+    // before it called MarkMissionEnded, unlock its successor so the
+    // matchmaker can use it normally. Returns successor instance_id or 0.
+    static int64_t PromoteSuccessor(int64_t parent_instance_id);
+
+    // Lookup the (non-STOPPED) successor of a parent, or nullopt.
+    static std::optional<InstanceInfo> GetSuccessor(int64_t parent_instance_id);
 
 private:
     static std::mutex mutex_;

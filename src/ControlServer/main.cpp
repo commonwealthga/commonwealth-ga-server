@@ -1,6 +1,7 @@
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/Config/ControlServerConfig.hpp"
 #include "src/ControlServer/Database/Database.hpp"
+#include "src/ControlServer/MapGameInfo/MapGameInfo.hpp"
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/InstanceSpawner/InstanceSpawner.hpp"
@@ -86,6 +87,12 @@ int main(int argc, char* argv[]) {
     Database::SetDbPath(cfg.db_path);
     Database::Init();
 
+    // Preload the map_game_info registry from the shared DB. Safe to call
+    // even if the table doesn't exist yet (control server may start before
+    // any game-server has applied schema v51) — lookups just miss and
+    // send_go_play_to_instance falls back to its hardcoded HQ defaults.
+    MapGameInfo::Init();
+
     // Initialize session store
     PlayerSessionStore::Init();
 
@@ -110,16 +117,90 @@ int main(int argc, char* argv[]) {
     // Initialize matchmaking
     MatchmakingService::Init();
 
-    // Register queues
-	MatchmakingService::RegisterQueue(1, std::make_unique<SimpleSpecOpsMatchRule>());
-	MatchmakingService::RegisterQueue(2, std::make_unique<SimplePvPMatchRule>());
+    // Register queues. Each queue carries a map_pool — every fresh spawn
+    // (initial match-pop OR pre-warmed successor) picks one entry at random,
+    // so a queue can rotate maps/modes without code changes. Add entries
+    // here to expand a queue's rotation. Single-entry pools effectively
+    // disable randomization.
+    //
+    // PvP (2) also opts into continue_in_queue: the post-mission "End
+    // Mission" button routes survivors into the queue's pre-warmed successor
+    // instead of home.
+    {
+        QueueOptions specops_opts;
+        specops_opts.map_pool = {
+            { "1P_CPLab05_P", "TgGame.TgGame_Mission" },
+        };
+        MatchmakingService::RegisterQueue(1, std::make_unique<SimpleSpecOpsMatchRule>(),
+                                          std::move(specops_opts));
 
-    // Provide running instance info to matchmaking rules
-    MatchmakingService::SetInstanceProvider([]() -> std::vector<RunningInstance> {
-        // For now, return empty — rules that need instance info will
-        // query InstanceRegistry directly in their own implementations later.
-        // This is the hook point for that data.
-        return {};
+        QueueOptions pvp_opts;
+        pvp_opts.continue_in_queue = false;
+        pvp_opts.map_pool = {
+            { "Rot_Redistribution05", "TgGame.TgGame_PointRotation" },
+            { "Rot_Redistribution04", "TgGame.TgGame_PointRotation" },
+            { "Rot_Redistribution03", "TgGame.TgGame_PointRotation" },
+            { "Rot_Trafalgar_P", "TgGame.TgGame_PointRotation" },
+            { "Rot_BlackwaterLoch_P", "TgGame.TgGame_PointRotation" },
+            // { "HEX_AVA_2pt_Theft_Lab1", "TgGame.TgGame_Escort" },
+            { "Push_Toxicity", "TgGame.TgGame_Escort" }, // done
+            { "push_Ravine_P", "TgGame.TgGame_Escort" }, // done
+            { "Push_Dust_P", "TgGame.TgGame_Escort" }, // done
+            // { "SeaSide_Ticket_P", "TgGame.TgGame_Ticket" },
+            { "3P_Him_Arena_P", "TgGame.TgGame_Mission" }, // done
+            { "Climate_Control_P", "TgGame.TgGame_Mission" }, // done
+            { "3P_Climate_Control3_P", "TgGame.TgGame_Mission" }, // done
+            { "3P_VolcanoAssault_P", "TgGame.TgGame_Mission" }, // done
+            { "Ice_GorgeA01_v2", "TgGame.TgGame_Mission" }, // done
+
+			{"Ticket_Datafarm_P",      "TgGame.TgGame_Ticket"},
+			{"Ticket_Datafarm2",       "TgGame.TgGame_Ticket"},
+			{"Ticket_Datafarm3",       "TgGame.TgGame_Ticket"},
+			{"SeaSide_Ticket_P",       "TgGame.TgGame_Ticket"},
+			{"SeaSide_Ticket2_P",      "TgGame.TgGame_Ticket"},
+			{"SeaSide_Ticket3",        "TgGame.TgGame_Ticket"},
+            {"Ticket_Volcano_P",       "TgGame.TgGame_Ticket"},
+
+			// Rot_Redistribution03 // done
+			// Rot_Redistribution04 // done
+			// Rot_Redistribution05 // done
+			// Rot_Trafalgar_P // done
+			// Rot_BlackwaterLoch_P // done
+
+			// HEX_AVA_Push_Factory1_P // done
+			// push_Ravine_P // done
+			// Push_Dust_P // done
+
+			// Climate_Control_P // done
+			// 3P_Climate_Control3_P done
+			// 3P_VolcanoAssault_P // done
+			// Ice_GorgeA01_v2 // done
+        };
+        MatchmakingService::RegisterQueue(2, std::make_unique<SimplePvPMatchRule>(),
+                                          std::move(pvp_opts));
+    }
+
+    // Provide queue-scoped running-instance info to matchmaking rules. Rules
+    // iterate this list to find a seat-available instance regardless of map —
+    // because pool-randomized queues can have instances on different maps,
+    // map equality is no longer the join criterion. Filter is done in-memory
+    // (small N — only READY mission instances live).
+    MatchmakingService::SetInstanceProvider([](uint32_t queue_id) -> std::vector<RunningInstance> {
+        auto all = InstanceRegistry::GetReadyMissionInstances();
+        std::vector<RunningInstance> filtered;
+        filtered.reserve(all.size());
+        for (const auto& inst : all) {
+            if (inst.queue_id != queue_id) continue;
+            RunningInstance ri;
+            ri.instance_id  = inst.instance_id;
+            ri.map_name     = inst.map_name;
+            ri.game_mode    = inst.game_mode;
+            ri.player_count = inst.player_count;
+            ri.max_players  = inst.max_players;
+            ri.queue_id     = inst.queue_id;
+            filtered.push_back(std::move(ri));
+        }
+        return filtered;
     });
 
     // Handle match pop: spawn instance or route to existing one
@@ -149,7 +230,8 @@ int main(int argc, char* argv[]) {
             }
 
             int64_t instance_id = InstanceRegistry::InsertStarting(
-                result.map_name, result.game_mode, *port, 0, /*is_home_map=*/false);
+                result.map_name, result.game_mode, *port, 0, /*is_home_map=*/false,
+                /*queue_id=*/queue_id);
 
             pid_t pid = InstanceSpawner::Spawn(
                 cfg, result.map_name, result.game_mode, *port, instance_id);
@@ -177,6 +259,65 @@ int main(int argc, char* argv[]) {
             MatchmakingService::AddPendingMatch(instance_id, std::move(pending));
         }
     );
+
+    // Successor spawner — invoked from IpcServer's MSG_REQUEST_SUCCESSOR
+    // handler after dedupe. Picks a fresh (map, game_mode) at random from
+    // the parent's queue's map_pool, so successors don't necessarily
+    // inherit the parent's map — that's the whole point of pool-based
+    // randomization. Binds the new row via predecessor_instance_id so
+    // MarkReady lands it in DRAFTING (not READY); MSG_MISSION_ENDED on the
+    // parent promotes DRAFTING → READY.
+    IpcServer::SetSuccessorSpawner([&cfg](int64_t parent_instance_id) {
+        auto parent = InstanceRegistry::GetInstanceById(parent_instance_id);
+        if (!parent) {
+            Logger::Log("main", "[SuccessorSpawner] parent_instance_id=%lld not found — aborting\n",
+                (long long)parent_instance_id);
+            return;
+        }
+        if (parent->queue_id == 0) {
+            Logger::Log("main", "[SuccessorSpawner] parent_instance_id=%lld has no queue_id — refusing to spawn (continuation requires a queue context)\n",
+                (long long)parent_instance_id);
+            return;
+        }
+        // The DLL fires MSG_REQUEST_SUCCESSOR from any mission whose mode/score
+        // condition trips — it doesn't know whether its queue is opted into
+        // continuation. Gate here so non-continuing queues (e.g. SpecOps)
+        // don't burn a slot on a successor nobody will ever join.
+        if (!MatchmakingService::GetQueueOptions(parent->queue_id).continue_in_queue) {
+            Logger::Log("main", "[SuccessorSpawner] Queue %u is not continue_in_queue — dropping successor request for parent=%lld\n",
+                parent->queue_id, (long long)parent_instance_id);
+            return;
+        }
+        auto picked = MatchmakingService::PickRandomMapPoolEntry(parent->queue_id);
+        if (!picked) {
+            Logger::Log("main", "[SuccessorSpawner] Queue %u has no map_pool configured — refusing successor for parent=%lld\n",
+                parent->queue_id, (long long)parent_instance_id);
+            return;
+        }
+        auto port = InstanceRegistry::AllocatePort(cfg.udp_port_range.lo, cfg.udp_port_range.hi);
+        if (!port) {
+            Logger::Log("main", "[SuccessorSpawner] No UDP ports available for successor of %lld\n",
+                (long long)parent_instance_id);
+            return;
+        }
+        int64_t instance_id = InstanceRegistry::InsertStarting(
+            picked->map_name, picked->game_mode, *port, 0, /*is_home_map=*/false,
+            /*queue_id=*/parent->queue_id,
+            /*predecessor_instance_id=*/parent_instance_id);
+        pid_t pid = InstanceSpawner::Spawn(
+            cfg, picked->map_name, picked->game_mode, *port, instance_id);
+        if (pid < 0) {
+            Logger::Log("main", "[SuccessorSpawner] Failed to spawn successor for parent=%lld\n",
+                (long long)parent_instance_id);
+            InstanceRegistry::MarkStopped(instance_id);
+            return;
+        }
+        InstanceRegistry::UpdatePid(instance_id, pid);
+        Logger::Log("main", "[SuccessorSpawner] Spawned successor %lld (pid=%d port=%d map=%s mode=%s) for parent=%lld queue=%u — will land in DRAFTING on INSTANCE_READY\n",
+            (long long)instance_id, (int)pid, (int)*port,
+            picked->map_name.c_str(), picked->game_mode.c_str(),
+            (long long)parent_instance_id, parent->queue_id);
+    });
 
     // Home map spawns on demand when the first player selects a character.
     TcpSession::SetHomeMapSpawner([&cfg]() {

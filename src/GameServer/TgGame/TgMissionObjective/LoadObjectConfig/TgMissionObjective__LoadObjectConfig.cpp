@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgMissionObjective/LoadObjectConfig/TgMissionObjective__LoadObjectConfig.hpp"
 #include "src/GameServer/Engine/MapObjectConfig/MapObjectConfig.hpp"
+#include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 void __fastcall TgMissionObjective__LoadObjectConfig::Call(ATgMissionObjective* Obj, void* edx) {
@@ -8,6 +9,7 @@ void __fastcall TgMissionObjective__LoadObjectConfig::Call(ATgMissionObjective* 
 
 	const int mid = Obj->m_nMapObjectId;
 
+
 	const unsigned char prevStatus = Obj->r_eStatus;
 	Obj->r_eStatus = (unsigned char)MapObjectConfig::GetInt(mid, "r_e_status", Obj->r_eStatus);
 
@@ -15,5 +17,13 @@ void __fastcall TgMissionObjective__LoadObjectConfig::Call(ATgMissionObjective* 
 		Logger::Log("config",
 			"TgMissionObjective::LoadObjectConfig — map_object_id=%d r_e_status %d -> %d\n",
 			mid, (int)prevStatus, (int)Obj->r_eStatus);
+	}
+
+	std::string map = Config::GetMapNameChar();
+	if (map == "Rot_Redistribution03"
+		|| map == "Rot_Redistribution05"
+		|| map == "Rot_Redistribution04") {
+		Obj->r_bUsePendingState = 1;
+		Obj->r_bIsPending = 0;
 	}
 }

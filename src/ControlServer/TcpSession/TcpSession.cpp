@@ -1,5 +1,6 @@
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/Database/Database.hpp"
+#include "src/ControlServer/MapGameInfo/MapGameInfo.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 
 // ---------------------------------------------------------------------------
@@ -14,6 +15,15 @@ uint16_t    TcpSession::s_chat_port_ = 9001;
 
 void TcpSession::SetHomeMapSpawner(std::function<void()> cb) {
     on_need_home_map_ = std::move(cb);
+}
+
+void TcpSession::EnsureHomeMapWarm(const char* reason) {
+    if (!on_need_home_map_) return;
+    auto home = InstanceRegistry::GetHomeInstance();
+    if (home) return;  // STARTING or READY already exists; spawner would no-op.
+    Logger::Log("tcp", "[TcpSession] EnsureHomeMapWarm: spawning on demand (%s)\n",
+        reason ? reason : "unspecified");
+    on_need_home_map_();
 }
 
 void TcpSession::SetNetworkConfig(const std::string& host, uint16_t chat_port) {
@@ -72,15 +82,6 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         // SendCharacterSkillMarshal RPC (when supported) can trigger another
         // push if the data becomes stale.
         session->send_player_skills_response();
-
-        // Request RandomSM actor names from game instance.
-        int64_t instance_id = j.value("instance_id", (int64_t)0);
-        if (instance_id != 0) {
-            nlohmann::json req;
-            req["type"]         = IpcProtocol::MSG_GET_RANDOMSM;
-            req["session_guid"] = session_guid;
-            IpcServer::SendToInstance(instance_id, req.dump());
-        }
     }
     else if (subtype == "beacon_pickup") {
         int pawn_id            = j.value("pawn_id", 0);
@@ -254,29 +255,6 @@ bool TcpSession::DeliverPlayerAction(const std::string& session_guid, const nloh
     return ok;
 }
 
-// ---------------------------------------------------------------------------
-// DeliverRandomSMResult -- route RANDOMSM_RESULT to the correct TcpSession
-// ---------------------------------------------------------------------------
-
-void TcpSession::DeliverRandomSMResult(const std::string& guid, std::vector<std::string> names) {
-    std::shared_ptr<TcpSession> session;
-    {
-        std::lock_guard<std::mutex> lock(sessions_mutex_);
-        auto it = g_sessions_.find(guid);
-        if (it == g_sessions_.end()) {
-            Logger::Log("ipc", "[TcpSession] DeliverRandomSMResult: no session guid=%s\n",
-                guid.c_str());
-            return;
-        }
-        session = it->second.lock();
-        if (!session) {
-            g_sessions_.erase(it);
-            return;
-        }
-    }
-    session->send_map_randomsm_settings_response(std::move(names));
-}
-
 void TcpSession::initiate_player_register_and_go_play() {
     // Build PLAYER_REGISTER JSON with full character state.
     auto session = PlayerSessionStore::GetByGuid(session_guid_);
@@ -386,6 +364,107 @@ void TcpSession::initiate_player_register_and_go_play() {
 }
 
 
+void TcpSession::initiate_player_register_for_target(const InstanceInfo& target, int task_force) {
+    auto session = PlayerSessionStore::GetByGuid(session_guid_);
+    if (!session) {
+        Logger::Log("tcp", "[TcpSession] Cannot send PLAYER_REGISTER (target): session %s not found\n",
+            session_guid_.c_str());
+        return;
+    }
+
+    nlohmann::json reg;
+    reg["type"]         = IpcProtocol::MSG_PLAYER_REGISTER;
+    reg["session_guid"] = session_guid_;
+    reg["profile_id"]   = selected_profile_id_;
+    reg["player_name"]  = player_name;
+    reg["user_id"]      = user_id_;
+    reg["character_id"] = selected_character_id_;
+    reg["task_force"]   = task_force;
+
+    auto charInfo = PlayerSessionStore::GetCharacterById(selected_character_id_);
+    if (charInfo) {
+        reg["head_asm_id"]          = charInfo->head_asm_id;
+        reg["gender_type_value_id"] = charInfo->gender_type_value_id;
+        reg["morph_data"]           = HexUtils::hex_encode(charInfo->morph_data);
+    } else {
+        reg["head_asm_id"]          = 0;
+        reg["gender_type_value_id"] = 0;
+        reg["morph_data"]           = "";
+    }
+
+    {
+        nlohmann::json skillsArr = nlohmann::json::array();
+        for (const auto& s : PlayerSessionStore::GetSkillsForCharacter(selected_character_id_)) {
+            nlohmann::json row;
+            row["skill_group_id"] = s.skill_group_id;
+            row["skill_id"]       = s.skill_id;
+            row["points"]         = s.points;
+            skillsArr.push_back(row);
+        }
+        reg["skills"] = skillsArr;
+        reg["last_respec_at"] = PlayerSessionStore::GetLastRespecAt(selected_character_id_);
+    }
+
+    int64_t target_instance_id = target.instance_id;
+    std::string target_map = target.map_name;
+
+    // ACK timer — same 60s budget as the home path.
+    auto self(shared_from_this());
+    pending_ack_timer_ = std::make_shared<asio::steady_timer>(io_ctx_);
+    pending_ack_timer_->expires_after(std::chrono::seconds(60));
+    auto timer = pending_ack_timer_;
+
+    IpcServer::RegisterPendingAck(session_guid_,
+        [this, self, timer, target_instance_id, target_map, task_force](bool success, int pawn_id) {
+            timer->cancel();
+            if (success) {
+                Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK (target) success for %s instance=%lld pawn_id=%d\n",
+                    session_guid_.c_str(), (long long)target_instance_id, pawn_id);
+                // Bind player to the successor instance and dispatch GSC_GO_PLAY.
+                assigned_instance_id_ = target_instance_id;
+                InstanceRegistry::InsertInstancePlayer(
+                    target_instance_id, session_guid_, selected_character_id_, task_force);
+                auto fresh = InstanceRegistry::GetInstanceById(target_instance_id);
+                if (fresh && fresh->state == "READY") {
+                    send_go_play_to_instance(*fresh, task_force);
+                } else {
+                    Logger::Log("tcp", "[TcpSession] Successor instance %lld no longer READY (state=%s) — falling back to home\n",
+                        (long long)target_instance_id, fresh ? fresh->state.c_str() : "<missing>");
+                    assigned_instance_id_ = 0;
+                    wait_for_home_map_then_register(120);
+                }
+            } else {
+                // ACK failure usually means "no seat" (successor full, or game
+                // server rejected for some other reason). Fall back to home so
+                // the player still ends up somewhere.
+                Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK (target) failed for %s instance=%lld — falling back to home\n",
+                    session_guid_.c_str(), (long long)target_instance_id);
+                assigned_instance_id_ = 0;
+                wait_for_home_map_then_register(120);
+            }
+        });
+
+    if (!IpcServer::SendToInstance(target_instance_id, reg.dump())) {
+        Logger::Log("tcp", "[TcpSession] No IPC session for successor %lld — falling back to home for %s\n",
+            (long long)target_instance_id, session_guid_.c_str());
+        pending_ack_timer_->cancel();
+        IpcServer::ClearPendingAck(session_guid_);
+        pending_ack_timer_.reset();
+        wait_for_home_map_then_register(120);
+        return;
+    }
+
+    pending_ack_timer_->async_wait([this, self, timer, target_instance_id](std::error_code ec) {
+        if (!ec) {
+            Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK (target) timeout for %s instance=%lld — falling back to home\n",
+                session_guid_.c_str(), (long long)target_instance_id);
+            IpcServer::ClearPendingAck(session_guid_);
+            wait_for_home_map_then_register(120);
+        }
+    });
+}
+
+
 void TcpSession::wait_for_home_map_then_register(int remaining_seconds) {
     if (remaining_seconds <= 0) {
         Logger::Log("tcp", "[TcpSession] Home map instance not ready (timeout): %s\n",
@@ -458,14 +537,7 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 
 			// Preemptively ensure a home map instance is starting so it's
 			// likely READY by the time the player selects a character.
-			if (on_need_home_map_) {
-				auto home = InstanceRegistry::GetHomeInstance();
-				if (!home) {
-					Logger::Log("tcp", "[TcpSession] Pre-spawning home map instance for %s\n",
-						session_guid_.c_str());
-					on_need_home_map_();
-				}
-			}
+			EnsureHomeMapWarm("login pre-spawn");
 
 			send_login_response();
 			break;
@@ -554,6 +626,109 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			assigned_instance_id_      = 0;
 			pending_match_instance_id_ = 0;
 			pending_match_game_mode_.clear();
+			break;
+		}
+		case GA_U::GSC_CHANGE_INSTANCE: {
+			// Sent when the player clicks "End Mission" on the post-match
+			// screen OR opens the in-mission escape menu and chooses Exit.
+			// Same packet, two scenarios — distinguished by whether the
+			// parent's BeginEndMission has fired (end_mission_at IS NOT NULL).
+			//
+			// Decision matrix:
+			//   parent.end_mission_at IS NULL    → in-mission exit, always home
+			//   ... NOT NULL, queue.continue=0   → end-mission button, home (vanilla)
+			//   ... NOT NULL, queue.continue=1   → end-mission button, try successor
+			//                                       — if no successor or full → home fallback
+			PacketView pkt(data + 6, length - 6);
+			uint32_t targetMapGameId  = pkt.Read4B(GA_T::MAP_GAME_ID).value_or(0);
+			uint32_t targetInstanceId = pkt.Read4B(GA_T::MAP_INSTANCE_ID).value_or(0);
+
+			Logger::Log("tcp", "[%s] Received: GSC_CHANGE_INSTANCE [0x%04X] guid=%s mapGameId=%u instanceId=%u (from=%lld)\n",
+				Logger::GetTime(), packet_type, session_guid_.c_str(),
+				targetMapGameId, targetInstanceId, (long long)assigned_instance_id_);
+
+			if (targetMapGameId != 0 || targetInstanceId != 0) {
+				Logger::Log("tcp", "[TcpSession] GSC_CHANGE_INSTANCE: targeted switch not implemented (mapGameId=%u instanceId=%u) — ignoring\n",
+					targetMapGameId, targetInstanceId);
+				break;
+			}
+
+			// Snapshot the parent before we tear down the seat — we need
+			// its end_mission_at + queue_id to decide where to route.
+			int64_t parent_instance_id = assigned_instance_id_;
+			std::optional<InstanceInfo> parent;
+			if (parent_instance_id != 0) {
+				parent = InstanceRegistry::GetInstanceById(parent_instance_id);
+			}
+
+			// Decide BEFORE teardown whether we should attempt to route to a
+			// successor. We need to know if (a) parent had ended, (b) the
+			// queue opts into continue, and (c) a READY successor exists.
+			std::optional<InstanceInfo> successor;
+			bool tryContinue = false;
+			if (parent && parent->end_mission_at != 0 && parent->queue_id != 0) {
+				auto opts = MatchmakingService::GetQueueOptions(parent->queue_id);
+				if (opts.continue_in_queue) {
+					successor = InstanceRegistry::GetSuccessor(parent_instance_id);
+					if (successor && successor->state == "READY") {
+						// Cheap seat-availability pre-check — final word comes
+						// from the PLAYER_REGISTER ACK, which falls back to
+						// home on failure.
+						bool hasSeat = (successor->max_players == 0)
+						            || (successor->player_count < successor->max_players);
+						if (hasSeat) {
+							tryContinue = true;
+						} else {
+							Logger::Log("tcp", "[TcpSession] Successor %lld for parent=%lld is full (%d/%d) — routing home instead\n",
+								(long long)successor->instance_id, (long long)parent_instance_id,
+								successor->player_count, successor->max_players);
+						}
+					} else {
+						Logger::Log("tcp", "[TcpSession] No READY successor for parent=%lld (got %s) — routing home instead\n",
+							(long long)parent_instance_id,
+							successor ? successor->state.c_str() : "<none>");
+					}
+				}
+			}
+
+			// NB: do NOT send MSG_PLAYER_LEAVE here, even though that would
+			// tear the mission-side connection down immediately. PLAYER_LEAVE
+			// → NetConnection__Cleanup → engine UNetConnection::Cleanup
+			// crashes mid-mission with a null deref at GlobalAgenda.exe+0x4283,
+			// because the connection is still fully live (live PlayerController,
+			// Pawn, channel array, AI/objective references). The Disconnect
+			// path doesn't crash because the client tears down its UDP socket
+			// first so the engine has already quiesced the connection by the
+			// time we ask it to clean up.
+			//
+			// Letting the engine's 30s ConnectionTimeout reap the parent
+			// connection naturally avoids the crash. The trade-off is purely
+			// cosmetic: the departed player remains visible in the parent's
+			// scoreboard / r_PRIArray for ~30s. The new home (or successor)
+			// PLAYER_REGISTER is a separate instance with its own NetDriver,
+			// so nothing races.
+			//
+			// TODO(crash-debug): find what's null inside CallOriginal at
+			// NetConnection__Cleanup.cpp:84 when called on a live connection,
+			// then re-enable an immediate teardown here.
+			assigned_instance_id_      = 0;
+			pending_match_instance_id_ = 0;
+			pending_match_game_mode_.clear();
+
+			if (tryContinue) {
+				Logger::Log("tcp", "[TcpSession] Continue-in-queue: routing %s to successor %lld of parent=%lld (queue=%u)\n",
+					session_guid_.c_str(), (long long)successor->instance_id,
+					(long long)parent_instance_id, parent->queue_id);
+				// task_force defaults to 1 for now — the matchmaker doesn't
+				// yet rebalance survivors between teams on continuation.
+				initiate_player_register_for_target(*successor, /*task_force=*/1);
+				break;
+			}
+
+			// Wait for a READY home map instance, then PLAYER_REGISTER → GSC_GO_PLAY.
+			// Identical entry point GSC_SELECT_CHARACTER uses; spawns on demand
+			// if no home is starting yet (e.g. instance was shut down for idle).
+			wait_for_home_map_then_register(120);
 			break;
 		}
 		case GA_U::ADD_PLAYER_CHARACTER: {
@@ -812,28 +987,11 @@ void TcpSession::send_match_accept_response() {
                 return;
             }
 
-            std::vector<uint8_t> response;
-
-            uint16_t packet_type = GA_U::GSC_GO_PLAY;
-            uint16_t item_count = 12;
-
-            append(response, packet_type & 0xFF, packet_type >> 8);
-            append(response, item_count & 0xFF, item_count >> 8);
-
-            WriteString(response, GA_T::PLAYER_NAME, player_name);
-            WriteIP(response, GA_T::HOST_NET_ADDR, inst->ip_address, inst->udp_port);
-            WriteNBytes(response, GA_T::SESSION_GUID, GuidHexToBytes(session_guid_));
-            WriteString(response, GA_T::MAP_FILENAME, inst->map_name);
-            WriteString(response, GA_T::PARAMETERS, "?Game=" + inst->game_mode);
-            Write4B(response, GA_T::FRIENDLY_NAME_MSG_ID, 22845);
-            Write4B(response, GA_T::MAP_GAME_ID, 0x050B);
-            Write4B(response, GA_T::MAP_INSTANCE_ID, static_cast<uint32_t>(inst->instance_id));
-            Write4B(response, GA_T::ENTRY_BACKGROUND_IMAGE_RES_ID, 5716);
-            Write4B(response, GA_T::TASK_FORCE, static_cast<uint32_t>(target_task_force));
-            WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
-            Write4B(response, GA_T::CLASS_MSG_ID, 22976);
-
-            send_response(response);
+            // Route through the single GSC_GO_PLAY builder so map_game_info
+            // resolution applies on this path too. The original duplicate
+            // had hardcoded HQ values (22845 / 0x050B / 5716) and was the
+            // reason MATCH_ACCEPT-driven launches still saw the fallback.
+            send_go_play_to_instance(*inst, target_task_force);
 
             pending_match_instance_id_ = 0;
             pending_match_game_mode_.clear();
@@ -1429,29 +1587,6 @@ void TcpSession::send_quest_abandon_response(int nQuestId) {
 	send_response(response);
 }
 
-void TcpSession::send_map_randomsm_settings_response(std::vector<std::string> names)
-{
-	// Phase 10: populate names from IPC GAME_EVENT data.
-	// For Phase 7, send an empty DATA_SET.
-	std::vector<uint8_t> response;
-
-	uint16_t packet_type = GA_U::MAP_RANDOMSM_SETTINGS;
-	uint16_t item_count = 1;
-
-	append(response, packet_type & 0xFF, packet_type >> 8);
-	append(response, item_count & 0xFF, item_count >> 8);
-
-	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
-	append(response, static_cast<uint8_t>(names.size() & 0xFF), static_cast<uint8_t>(names.size() >> 8));
-
-	for (auto& name : names) {
-		append(response, 0x01, 0x00);  // inner item count
-		WriteString(response, GA_T::NAME, name);
-	}
-
-	send_response(response);
-}
-
 void TcpSession::send_get_loot_table_items_by_id_filtered_response()
 {
 	std::vector<uint8_t> response;
@@ -1809,7 +1944,11 @@ void TcpSession::send_go_play_response()
 		Logger::Log("tcp", "[TcpSession] No READY home map instance for go_play\n");
 		return;
 	}
+	send_go_play_to_instance(*instance, /*task_force=*/1);
+}
 
+void TcpSession::send_go_play_to_instance(const InstanceInfo& target, int task_force)
+{
 	std::vector<uint8_t> response;
 
 	uint16_t packet_type = GA_U::GSC_GO_PLAY;
@@ -1818,21 +1957,41 @@ void TcpSession::send_go_play_response()
 	append(response, packet_type & 0xFF, packet_type >> 8);
 	append(response, item_count & 0xFF, item_count >> 8);
 
+	// Resolve map metadata from the preloaded map_game_info registry. Falls
+	// back to the legacy hardcoded HQ values if the map isn't in the table
+	// (NULL map_name rows, manually-added maps, etc.) — preserves the old
+	// behavior for any unseeded map.
+	uint32_t friendly_name_msg_id          = 22845;   // Commonwealth HQ (legacy fallback)
+	uint32_t map_game_id                   = 0x050B;  // legacy fallback
+	uint32_t entry_background_image_res_id = 5716;    // legacy fallback
+	if (auto info = MapGameInfo::LookupByName(target.map_name)) {
+		friendly_name_msg_id          = info->friendly_name_msg_id;
+		map_game_id                   = info->map_game_id;
+		entry_background_image_res_id = info->entry_background_image_res_id;
+	} else {
+		Logger::Log("tcp", "[TcpSession] send_go_play_to_instance: no map_game_info row "
+			"for map_name='%s'; falling back to HQ defaults\n", target.map_name.c_str());
+	}
+
 	WriteString(response, GA_T::PLAYER_NAME, player_name);
-	WriteIP(response, GA_T::HOST_NET_ADDR, instance->ip_address, instance->udp_port);
+	WriteIP(response, GA_T::HOST_NET_ADDR, target.ip_address, target.udp_port);
 	WriteNBytes(response, GA_T::SESSION_GUID, GuidHexToBytes(session_guid_));
-	WriteString(response, GA_T::MAP_FILENAME, instance->map_name);
-	WriteString(response, GA_T::PARAMETERS, "?Game=" + instance->game_mode);
-	Write4B(response, GA_T::FRIENDLY_NAME_MSG_ID, 22845);
-	Write4B(response, GA_T::MAP_GAME_ID, 0x050B);
-	Write4B(response, GA_T::MAP_INSTANCE_ID, static_cast<uint32_t>(instance->instance_id));
-	Write4B(response, GA_T::ENTRY_BACKGROUND_IMAGE_RES_ID, 5716);
-	Write4B(response, GA_T::TASK_FORCE, 0x1);
+	WriteString(response, GA_T::MAP_FILENAME, target.map_name);
+	WriteString(response, GA_T::PARAMETERS, "?Game=" + target.game_mode);
+	Write4B(response, GA_T::FRIENDLY_NAME_MSG_ID, friendly_name_msg_id);
+	Write4B(response, GA_T::MAP_GAME_ID, map_game_id);
+	Write4B(response, GA_T::MAP_INSTANCE_ID, static_cast<uint32_t>(target.instance_id));
+	Write4B(response, GA_T::ENTRY_BACKGROUND_IMAGE_RES_ID, entry_background_image_res_id);
+	Write4B(response, GA_T::TASK_FORCE, static_cast<uint32_t>(task_force));
 	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
 
 	Write4B(response, GA_T::CLASS_MSG_ID, 22976);
 
 	send_response(response);
+	Logger::Log("tcp", "[TcpSession] Sent GSC_GO_PLAY → instance=%lld map=%s game_id=%u name_msg=%u bg_res=%u tf=%d for %s\n",
+		(long long)target.instance_id, target.map_name.c_str(),
+		map_game_id, friendly_name_msg_id, entry_background_image_res_id,
+		task_force, session_guid_.c_str());
 }
 
 void TcpSession::send_instance_ready_response()

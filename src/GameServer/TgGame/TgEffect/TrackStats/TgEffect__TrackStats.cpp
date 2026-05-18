@@ -1,6 +1,18 @@
 #include "src/GameServer/TgGame/TgEffect/TrackStats/TgEffect__TrackStats.hpp"
 #include "src/GameServer/Combat/SendKillAlert/SendKillAlert.hpp"
+#include "src/GameServer/Combat/SendCombatMessage/SendCombatMessage.hpp"
+#include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
+#include "src/GameServer/Globals.hpp"
+#include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
+#include "src/GameServer/TgGame/TgPawn/TrackBotHealing/TgPawn__TrackBotHealing.hpp"
+#include "src/GameServer/TgGame/TgPawn/TrackDamagedBot/TgPawn__TrackDamagedBot.hpp"
+#include "src/GameServer/TgGame/TgPawn/TrackDamagedPlayer/TgPawn__TrackDamagedPlayer.hpp"
+#include "src/GameServer/TgGame/TgPawn/TrackDamageTaken/TgPawn__TrackDamageTaken.hpp"
+#include "src/GameServer/TgGame/TgPawn/TrackDefense/TgPawn__TrackDefense.hpp"
+#include "src/GameServer/TgGame/TgPawn/TrackHealing/TgPawn__TrackHealing.hpp"
+#include "src/GameServer/TgGame/TgPawn/TrackKill/TgPawn__TrackKill.hpp"
+#include "src/GameServer/TgGame/TgPawn/TrackKilledBot/TgPawn__TrackKilledBot.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <string>
 
@@ -223,17 +235,24 @@ void FireSaveDeathInfoForZoomCam(ATgPawn* Victim, ATgPawn* KillerForUC,
 //                                       we always set this in InitGameRepInfo)
 // Then add and clamp to [0, r_fRequiredMoralePoints].
 
-// Morale-points-per-damage-or-heal ratio. 1 morale per 4 HP delta. With the
-// default 100-required threshold, killing four full-HP 100-HP enemies fills the
-// bar; takes about as many full heals to charge. Tunable; eventually should
-// scale from prop 337 ("Boost Charge Rate") via the buff registry if any DB
-// effect ever lands there.
-static constexpr float kMoralePointsPerHealthDelta = 0.25f;
+// Morale fill rate calibrated from old-GA video evidence at baseline
+// (no skills/mods, default `r_fRequiredMoralePoints = 100` per Inventory.cpp:462):
+//   27000 total damage dealt fills a full bar.
+//   32000 total healing done fills a full bar.
+//
+// The per-magnitude rate is therefore FIXED (not threshold-scaled). Skill or
+// mod effects that adjust `r_fRequiredMoralePoints` (e.g. reduce it from 100
+// to 80) leave the per-magnitude credit unchanged but lower the threshold, so
+// the bar fills with proportionally less damage/healing — which is the correct
+// natural scaling behaviour. If a future "Boost Charge Rate" buff (prop 337)
+// becomes wirable, multiply the per-magnitude rate by that buff factor here.
+static constexpr float kMoralePointsPerDamage = 100.0f / 27000.0f;  // ~0.003704
+static constexpr float kMoralePointsPerHeal   = 100.0f / 32000.0f;  // ~0.003125
 
 void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
                                            ATgPawn* Instigator, AActor* Target, FImpactInfoBytes Impact,
                                            float fDamage, int iTargetDeviceModeId,
-                                           unsigned long bIsEnemy, float /*fMissingHealth*/) {
+                                           unsigned long bIsEnemy, float fMissingHealth) {
 	if (Instigator == nullptr) return;
 	if (Target     == nullptr) return;
 
@@ -241,12 +260,104 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 	//   damage path: fDamage = +fHealthChange (post-clamp HP drop)
 	//   heal path:   fDamage = -fProratedAmount (negated by caller)
 	// Self-effects don't credit (a player healing themselves with their own
-	// adrenaline gun, or eating splash from their own grenade).
+	// adrenaline gun, or eating splash from their own grenade). Two shapes:
+	//   1. Direct: Instigator == Target.
+	//   2. Indirect: Instigator is an owned deployable/pet (turret, medical
+	//      station, sensor self-buff, etc.) acting on its deployer — i.e.
+	//      Instigator->r_Owner == Target. Without this gate, parking on your
+	//      own medical station would farm STYPE_HEALING + morale points.
 	if (Target == reinterpret_cast<AActor*>(Instigator)) return;
+	if (Instigator->r_Owner != nullptr &&
+	    Target == reinterpret_cast<AActor*>(Instigator->r_Owner)) return;
 
 	const bool isHeal = (fDamage < 0.0f);
 	const float magnitude = isHeal ? -fDamage : fDamage;
 	if (magnitude <= 0.0f) return;
+
+	// ===== Target classification (used by credit decisions below) =====
+	// Class-name strstr per `feedback_bIsPlayer_unreliable` / `reference_sdk_staticclass_misalignment`.
+	// Forcefield first so the "TgDeploy" generic check doesn't shadow it.
+	const char* targetClassName = (Target->Class && Target->Class->GetFullName())
+		? Target->Class->GetFullName() : "";
+	const bool     targetIsForceField = (strstr(targetClassName, "TgDeploy_ForceField") != nullptr);
+	const bool     targetIsDeployable = (strstr(targetClassName, "TgDeploy")            != nullptr);
+	const bool     targetIsPawn       = (strstr(targetClassName, "TgPawn")              != nullptr);
+	ATgPawn*       targetPawn         = targetIsPawn       ? (ATgPawn*)Target       : nullptr;
+	ATgDeployable* targetDeployable   = targetIsDeployable ? (ATgDeployable*)Target : nullptr;
+
+	// Ownership: heal/morale credit exclusion for self-stewardship.
+	//   Pet pawn: r_Owner points to the deploying pawn.
+	//   Deployable: engine field Instigator points to the deploying pawn.
+	bool targetIsOwnedByInstigator = false;
+	if (targetIsPawn && targetPawn->r_Owner == Instigator) {
+		targetIsOwnedByInstigator = true;
+	} else if (targetIsDeployable &&
+	           (AActor*)targetDeployable->Instigator == (AActor*)Instigator) {
+		targetIsOwnedByInstigator = true;
+	}
+
+	// "Has client connection" predicate — reused below.
+	auto IsRealPlayer = [](AController* ctrl) -> bool {
+		if (!ctrl || !ctrl->Class) return false;
+		const char* name = ctrl->Class->GetFullName();
+		return name && strstr(name, "PlayerController") != nullptr;
+	};
+
+	// Resolve pet → owner for scoreboard credit (kills/damage/heal credit a
+	// player, never a pet bot's own PRI). TrackKill does its own resolution
+	// internally; we only need this for the non-TrackKill paths.
+	ATgPawn* damageCreditPawn = Instigator;
+	if (Instigator->r_Owner != nullptr) damageCreditPawn = Instigator->r_Owner;
+
+	// ===== Rolling damager history for assist credit =====
+	// UC's UpdateDamagers native is stripped (no UC caller). Without
+	// rotation, m_SecondToLastDamager stays null forever and TrackKill can
+	// only credit healing assists — never damage assists. Shift the
+	// history on every damage event so previous damagers are still in the
+	// list when the killing blow lands.
+	//
+	// Resolve to the player (pet → owner, detonator → controller) so the
+	// assist credits a real human, not the pet bot.
+	if (!isHeal && targetIsPawn && magnitude > 0.0f) {
+		ATgPawn* damagerForHistory = Instigator;
+		if (damagerForHistory->Class && damagerForHistory->Class->GetFullName() &&
+		    strstr(damagerForHistory->Class->GetFullName(), "TgPawn_Detonator") != nullptr &&
+		    damagerForHistory->r_ControlPawn != nullptr) {
+			damagerForHistory = damagerForHistory->r_ControlPawn;
+		}
+		if (damagerForHistory->r_Owner != nullptr) {
+			damagerForHistory = damagerForHistory->r_Owner;
+		}
+		// Self-damage and consecutive same-damager hits don't shift —
+		// otherwise a single sustained hose would clobber m_SecondToLastDamager
+		// with its own pawn over and over.
+		if (damagerForHistory != targetPawn &&
+		    damagerForHistory != targetPawn->m_LastDamager) {
+			targetPawn->m_SecondToLastDamager = targetPawn->m_LastDamager;
+			targetPawn->m_LastDamager        = damagerForHistory;
+		}
+	}
+
+	// ===== STYPE_DAMAGETAKEN — credit before the team-damage early-return =====
+	// User spec: "absorbed = total damage taken post-mitigation / (1+death
+	// count)". Total includes team-damage; client derives the absorbed
+	// column from STYPE_DAMAGETAKEN. Deployables don't carry their own
+	// scoreboard so we only credit pawn victims.
+	if (!isHeal && targetIsPawn) {
+		TgPawn__TrackDamageTaken::Call(targetPawn, nullptr, (int)magnitude);
+	}
+
+	// ===== STYPE_DEFENSE (forcefield branch) — credit before the team-damage early-return =====
+	// User spec: defense = damage absorbed by owned forcefield-type
+	// deployables. Forcefield takes the hit so its owner gets credit for
+	// the damage that didn't reach nearby teammates. Personal-shield branch
+	// lives in TgEffectManager::SubmitMitigationDamage (per-shield-tick
+	// callback). Enemy damage only — we don't credit team damage to your
+	// own forcefield.
+	if (!isHeal && bIsEnemy && targetIsForceField && targetDeployable->Instigator) {
+		ATgPawn* deployer = (ATgPawn*)targetDeployable->Instigator;
+		TgPawn__TrackDefense::Call(deployer, nullptr, 0, (int)magnitude);
+	}
 
 	// ===== Kill attribution =====
 	//
@@ -273,12 +384,8 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 	// Health <= 0. Heals and damage to deployables don't trigger a kill
 	// pipeline; non-fatal damage doesn't fire a death zoom.
 	if (!isHeal) {
-		ATgPawn* Victim = nullptr;
-		if (Target->Class && Target->Class->GetFullName() &&
-		    strstr(Target->Class->GetFullName(), "TgPawn") != nullptr) {
-			Victim = (ATgPawn*)Target;
-		}
-		if (Victim != nullptr && Victim->Health <= 0) {
+		if (targetPawn != nullptr && targetPawn->Health <= 0) {
+			ATgPawn* Victim = targetPawn;
 			// Detonator unwrap: a TgPawn_Detonator (timed bomb, etc.) carries
 			// the firing pawn in r_ControlPawn. Mirrors the UC body of
 			// SaveDeathInfoForZoomCam.
@@ -300,11 +407,10 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 				isPetKill   = true;
 			}
 
-			// Side effect: keep m_LastDamager fresh for any other consumer
-			// (assist logic in TrackKill reads it). UpdateDamagers native is
-			// stripped + has no UC callers, so this is the only thing
-			// keeping it populated.
-			Victim->m_LastDamager = DamagerPawn;
+			// m_LastDamager / m_SecondToLastDamager were already updated by
+			// the damager-history rotation above (runs on every damage
+			// event), so they hold the killing damager + the previous one
+			// at this point. No additional write here.
 
 			// The killer's weapon id drives the "Killed by [X] with [Y]"
 			// m_KilledByWeapon label on the release dialog. Source it from
@@ -347,17 +453,19 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 			//      CGameClient+0xf0) the local AddKillAlert uses via
 			//      vtable[0x734], just reached over the wire. Drives the
 			//      center-screen toast + sound effect.
-			// "Has client connection" check — `Controller->bIsPlayer` is
-			// unreliable in this build (AI bots set it to true; clearing it
-			// at spawn broke turret target acquisition). Class-name strstr
-			// is the established pattern (same as SendCombatMessage hook).
-			auto IsRealPlayer = [](AController* ctrl) -> bool {
-				if (!ctrl || !ctrl->Class) return false;
-				const char* name = ctrl->Class->GetFullName();
-				return name && strstr(name, "PlayerController") != nullptr;
-			};
-
 			ATgPawn* CreditPawn = isPetKill ? KillerOwner : DamagerPawn;
+
+			// STYPE_KILLS / STYPE_KILLS_BOT / STYPE_ASSISTS — only enemy
+			// kills count toward the scoreboard. TrackKill on the victim
+			// handles pet→owner resolution, picks the right kill counter
+			// (player vs bot) by victim Controller class, and credits any
+			// assisters from m_LastDamager / m_SecondToLastDamager /
+			// killer.m_LastHealer with dedup. Calling it here is the only
+			// path: TrackKill's native has no UC caller in our build.
+			if (bIsEnemy) {
+				TgPawn__TrackKill::Call(Victim, nullptr, DamagerPawn);
+			}
+
 			if (CreditPawn != nullptr && CreditPawn != Victim &&
 			    IsRealPlayer(CreditPawn->Controller) &&
 			    Victim->PlayerReplicationInfo != nullptr) {
@@ -436,14 +544,88 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 				}
 			}
 		}
+
+		// Deployable-destroyed credit. Mirrors the pawn-kill path: enemy
+		// deployable down → owner's STYPE_KILLS_BOT++ (per user spec,
+		// destroying enemy deployables counts the same as a bot kill). No
+		// assists.
+		//
+		// Edge case (accepted): a DOT can land another tick on the
+		// already-destroyed deployable before the engine reaps it. We do
+		// not track a "credited" flag — would-be double-credit is rare.
+		if (bIsEnemy && targetIsDeployable && targetDeployable->r_nHealth <= 0 &&
+		    magnitude > 0.0f) {
+			TgPawn__TrackKilledBot::Call(damageCreditPawn, nullptr, 0);
+
+			// Beacon destroy carries an additional bonus on top of the
+			// bot-kill credit: +3000 STYPE_OBJS for the destroyer and a
+			// center-screen "@@player_name@@ destroyed the enemy beacon!"
+			// alert broadcast to every player on the destroyer's task
+			// force (including the destroyer themselves). Numbers and
+			// 5s alert duration per user spec.
+			if (strstr(targetClassName, "TgDeploy_Beacon") != nullptr &&
+			    damageCreditPawn->PlayerReplicationInfo != nullptr) {
+				ATgRepInfo_Player* attackerPRI =
+					(ATgRepInfo_Player*)damageCreditPawn->PlayerReplicationInfo;
+				attackerPRI->r_Scores[9] += 3000;  // STYPE_OBJS
+				attackerPRI->bNetDirty = 1;
+				attackerPRI->bForceNetUpdate = 1;
+				SendCombatMessage::Call(damageCreditPawn, /*Source=*/nullptr,
+				                        /*Target=*/damageCreditPawn, 3000,
+				                        SendCombatMessage::Type::OBJ_POINTS);
+
+				// Attacker-team alert. Defender-team "your beacon was
+				// destroyed!" lives separately on the client side
+				// (TgTeamBeaconManager::BeaconDestroyedClient fires when
+				// r_BeaconDestroyed replicates) and is not in scope here.
+				// MSG_ID 0x653D template: "@@player_name@@ destroyed the
+				// enemy beacon!" — fills PLAYER_NAME slot only.
+				if (attackerPRI->r_TaskForce != nullptr) {
+					SendAlert::BroadcastToTaskforce(
+						attackerPRI->r_TaskForce,
+						/*msgId*/                0x653D,
+						/*priority=APT_High*/    2,
+						/*type=ATT_Beneficial*/  1,
+						/*duration*/             5.0f,
+						/*name*/                 nullptr,
+						/*playerName=destroyer*/ attackerPRI->PlayerName.Data);
+				}
+
+				if (Logger::IsChannelEnabled("stats")) {
+					Logger::Log("stats",
+						"[ObjPoints] beacon destroyed by %s (+3000 obj, team alert)\n",
+						damageCreditPawn->GetName());
+				}
+			}
+		}
 	} else {
 		// Heal path — also runs through TrackStats. Populate m_LastHealer on
 		// the heal target so future kill events can credit a healing assist.
 		// UpdateHealer native is stripped + has no UC callers, so this is
 		// the only thing that keeps the field fresh.
-		if (Target->Class && Target->Class->GetFullName() &&
-		    strstr(Target->Class->GetFullName(), "TgPawn") != nullptr) {
-			((ATgPawn*)Target)->m_LastHealer = Instigator;
+		if (targetPawn != nullptr) {
+			targetPawn->m_LastHealer = Instigator;
+		}
+
+		// STYPE_HEALING credit — credit Instigator (or owner if pet) for
+		// heal/repair done to others. Skip self-heal (already filtered at
+		// the top) and own pets/deployables (per user spec: repairing your
+		// own gear doesn't count). TrackHealing for player heal targets,
+		// TrackBotHealing for everything else.
+		if (!targetIsOwnedByInstigator) {
+			if (targetIsPawn) {
+				const bool victimIsBot = !IsRealPlayer(targetPawn->Controller);
+				if (victimIsBot) {
+					TgPawn__TrackBotHealing::Call(damageCreditPawn, nullptr,
+						0, magnitude, fMissingHealth, 0);
+				} else {
+					TgPawn__TrackHealing::Call(damageCreditPawn, nullptr,
+						0, magnitude, fMissingHealth, 0);
+				}
+			} else if (targetIsDeployable) {
+				TgPawn__TrackBotHealing::Call(damageCreditPawn, nullptr,
+					0, magnitude, fMissingHealth, 0);
+			}
 		}
 	}
 	// ===== end kill attribution =====
@@ -458,6 +640,110 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 				Instigator, Target, fDamage);
 		}
 		return;
+	}
+
+	// STYPE_DAMAGE credit — only enemy damage counts (team damage already
+	// returned above). Covers damage to players, AI bots, and deployables.
+	// TrackDamagedPlayer for human-controlled victims, TrackDamagedBot for
+	// AI bots and deployables (TrackDamagedBot's body ignores its
+	// TargetPawn arg, so passing nullptr for the deployable case is safe).
+	if (!isHeal) {
+		if (targetIsPawn) {
+			const bool victimIsBot = !IsRealPlayer(targetPawn->Controller);
+			if (victimIsBot) {
+				TgPawn__TrackDamagedBot::Call(damageCreditPawn, nullptr,
+					targetPawn, 0, (int)magnitude);
+			} else {
+				TgPawn__TrackDamagedPlayer::Call(damageCreditPawn, nullptr,
+					targetPawn, 0, (int)magnitude);
+			}
+		} else if (targetIsDeployable) {
+			TgPawn__TrackDamagedBot::Call(damageCreditPawn, nullptr,
+				nullptr, 0, (int)magnitude);
+		}
+	}
+
+	// ===== STYPE_OBJS damage-near-owned-point =====
+	// Per user spec: 1 dmg = 1 obj pt when EITHER the attacker OR the victim
+	// is inside a proximity-objective's collision proxy that is currently
+	// owned by the attacker's task force, AND the victim is a human player.
+	// Bot/deployable/shield/forcefield victims don't count. Attacker may be
+	// anything (turret, pet, player) — credit goes to damageCreditPawn,
+	// which is pet→owner resolved.
+	//
+	// The single TgCollisionProxy per objective is reused as both "on point"
+	// and "near point" — there's no separate wider fight-zone array in UC
+	// (the engineered "near point" was native-side and stripped). The proxy
+	// radius set per-level is generous enough that this is acceptable in
+	// practice; if it turns out too restrictive we can layer a distance
+	// check on Obj->Location.
+	//
+	// Break on first match — don't double-credit if both attacker and victim
+	// happen to stand inside two different owned proxies simultaneously.
+	if (!isHeal && targetIsPawn && IsRealPlayer(targetPawn->Controller) &&
+	    magnitude > 0.0f && damageCreditPawn->PlayerReplicationInfo != nullptr) {
+		ATgRepInfo_Player* attackerPRI =
+			(ATgRepInfo_Player*)damageCreditPawn->PlayerReplicationInfo;
+		if (attackerPRI->r_TaskForce != nullptr) {
+			const int attackerTeam = (int)attackerPRI->r_TaskForce->r_nTaskForce;
+
+			// Ticket mode (TgGame_Ticket): map-default ownership is bogus —
+			// points start "owned" by defender but are functionally neutral
+			// until first real capture. Other modes (defense / control etc.):
+			// the defender genuinely owns from t=0 and deserves credit for
+			// fighting on their initially-owned point. So the
+			// `r_bHasBeenCapturedOnce` gate only applies in Ticket mode.
+			ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
+			const char* gameClass = (Game && Game->Class)
+				? Game->Class->GetFullName() : nullptr;
+			const bool ticketMode = gameClass &&
+				strstr(gameClass, "TgGame_Ticket") != nullptr;
+
+			for (ATgMissionObjective* Obj : ActorCache::MissionObjectives) {
+				if (!Obj || !Obj->r_bIsActive) continue;
+				// Ticket-only: skip pre-capture neutral state. In other modes,
+				// trust the map-seeded ownership immediately.
+				if (ticketMode && !Obj->r_bHasBeenCapturedOnce) continue;
+				// Owned by attacker's team only (r_nOwnerTaskForce is the
+				// current owner; flips when captured).
+				if (Obj->r_nOwnerTaskForce != attackerTeam) continue;
+				// Must have a collision proxy — covers TgMissionObjective_Proximity
+				// and its subclasses (e.g. TgMissionObjective_Escort). Check by
+				// class name; the proxy field offset is the same across the
+				// Proximity hierarchy but undefined on plain TgMissionObjective.
+				const char* ocname = Obj->Class ? Obj->Class->GetFullName() : nullptr;
+				if (!ocname) continue;
+				if (strstr(ocname, "TgMissionObjective_Proximity") == nullptr &&
+				    strstr(ocname, "TgMissionObjective_Escort")    == nullptr) continue;
+				ATgMissionObjective_Proximity* PObj =
+					(ATgMissionObjective_Proximity*)Obj;
+				if (!PObj->s_CollisionProxy) continue;
+
+				bool inProxy = false;
+				for (int i = 0; i < PObj->s_CollisionProxy->m_NearByPlayers.Count; i++) {
+					ATgPawn* P = PObj->s_CollisionProxy->m_NearByPlayers.Data[i];
+					if (P == damageCreditPawn || P == Instigator || P == targetPawn) {
+						inProxy = true;
+						break;
+					}
+				}
+				if (!inProxy) continue;
+
+				attackerPRI->r_Scores[9] += (int)magnitude;  // STYPE_OBJS
+				attackerPRI->bNetDirty = 1;
+				SendCombatMessage::Call(damageCreditPawn, /*Source=*/nullptr,
+				                        /*Target=*/damageCreditPawn, (int)magnitude,
+				                        SendCombatMessage::Type::OBJ_POINTS);
+
+				if (Logger::IsChannelEnabled("stats")) {
+					Logger::Log("stats",
+						"[ObjPoints] dmg-near-pt: %s +%d obj (objId=%d, victim=%s)\n",
+						damageCreditPawn->GetName(), (int)magnitude,
+						Obj->nObjectiveId, targetPawn->GetName());
+				}
+				break;
+			}
+		}
 	}
 
 	// Block morale credit when the damage source traces back to a morale
@@ -546,19 +832,33 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 		}
 	}
 
+	// Don't credit morale for healing your own pets/deployables. Same
+	// rationale as the STYPE_HEALING exclusion above: a tech parking on
+	// their own dropped Heal Beacon would otherwise rack up infinite
+	// morale via repair ticks against their own gear. Self-heal (Target ==
+	// Instigator) is already filtered at the top.
+	if (isHeal && targetIsOwnedByInstigator) return;
+
+	// Morale credit always lands on the human deployer, never on a pet/turret.
+	// damageCreditPawn was already resolved to Instigator->r_Owner upstream
+	// for the pet case; reuse it for ALL morale gates + writes. Previously
+	// gated on Instigator directly, which made turret damage no-op because
+	// turrets carry no morale device (r_nMoraleDeviceSlot < 0).
+	ATgPawn* moraleRecipient = damageCreditPawn;
+
 	// Pawn must have a morale device equipped (otherwise nothing to charge).
-	if (Instigator->r_nMoraleDeviceSlot < 0) return;
+	if (moraleRecipient->r_nMoraleDeviceSlot < 0) return;
 
 	// r_bAllowAddMoralePoints — UC clears it during the morale device's
 	// DeviceFiring state to prevent re-charging mid-fire. SDK declares this as
 	// a 1-bit field at offset 0x3D8 with mask 0x10000000; read raw to side-step
 	// SDK bitfield-pack risk.
-	const uint32_t allowBits = *(uint32_t*)((char*)Instigator + 0x3D8);
+	const uint32_t allowBits = *(uint32_t*)((char*)moraleRecipient + 0x3D8);
 	if ((allowBits & 0x10000000u) == 0) return;
 
-	const float points    = magnitude * kMoralePointsPerHealthDelta;
-	const float before    = Instigator->m_fCurrentMoralePoints;
-	const float threshold = Instigator->r_fRequiredMoralePoints;
+	const float before    = moraleRecipient->m_fCurrentMoralePoints;
+	const float threshold = moraleRecipient->r_fRequiredMoralePoints;
+	const float points    = magnitude * (isHeal ? kMoralePointsPerHeal : kMoralePointsPerDamage);
 	float after = before + points;
 	if (after < 0.0f)            after = 0.0f;
 	else if (after > threshold)  after = threshold;
@@ -568,18 +868,18 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 		// replicated field r_fCurrentServerMoralePoints is what the client's
 		// repnotify copies back into its local m_fCurrentMoralePoints and the
 		// morale-bar UI reads from. Write both.
-		Instigator->m_fCurrentMoralePoints      = after;
-		Instigator->r_fCurrentServerMoralePoints = after;
-		Instigator->bForceNetUpdate = 1;
-		Instigator->bNetDirty       = 1;
+		moraleRecipient->m_fCurrentMoralePoints      = after;
+		moraleRecipient->r_fCurrentServerMoralePoints = after;
+		moraleRecipient->bForceNetUpdate = 1;
+		moraleRecipient->bNetDirty       = 1;
 	}
 
 	if (Logger::IsChannelEnabled("morale")) {
 		Logger::Log("morale",
-			"[TrackStats] %s: instigator=0x%p target=0x%p mag=%.2f points=%.2f  morale %.2f -> %.2f / %.2f  targetDevMode=%d\n",
+			"[TrackStats] %s: instigator=0x%p recipient=0x%p target=0x%p mag=%.2f points=%.2f  morale %.2f -> %.2f / %.2f  targetDevMode=%d\n",
 			isHeal ? "heal" : "dmg",
-			Instigator, Target, magnitude, points,
-			before, after, Instigator->r_fRequiredMoralePoints,
+			Instigator, moraleRecipient, Target, magnitude, points,
+			before, after, moraleRecipient->r_fRequiredMoralePoints,
 			iTargetDeviceModeId);
 	}
 }

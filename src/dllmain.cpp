@@ -57,6 +57,7 @@
 #include "src/GameServer/TgGame/TgGame/SetObjectivesOvertimeNotify/TgGame__SetObjectivesOvertimeNotify.hpp"
 #include "src/GameServer/TgGame/TgGame/GetFinalObjectivesList/TgGame__GetFinalObjectivesList.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective/SetObjectiveActive/TgMissionObjective__SetObjectiveActive.hpp"
+#include "src/GameServer/TgGame/TgMissionObjective/SetObjectivePending/TgMissionObjective__SetObjectivePending.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective/LoadObjectConfig/TgMissionObjective__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective/UpdateMatineeNodeStatus/TgMissionObjective__UpdateMatineeNodeStatus.hpp"
 #include "src/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.hpp"
@@ -73,6 +74,7 @@
 #include "src/GameServer/Engine/Actor/Spawn/Actor__Spawn.hpp"
 #include "src/GameServer/Engine/Actor/Tick/Actor__Tick.hpp"
 #include "src/GameServer/Engine/GameEngine/Tick/GameEngine__Tick.hpp"
+#include "src/GameServer/TgGame/TgActorFactory/LoadObjectConfig/TgActorFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgTeamPlayerStart/LoadObjectConfig/TgTeamPlayerStart__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgTeamPlayerStart/GetRating/TgTeamPlayerStart__GetRating.hpp"
@@ -104,6 +106,7 @@
 #include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.hpp"
 #include "src/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective_Bot/SpawnObjectiveBot/TgMissionObjective_Bot__SpawnObjectiveBot.hpp"
+#include "src/GameServer/TgGame/TgMissionObjective_Proximity/ScoreObjectiveProgress/TgMissionObjective_Proximity__ScoreObjectiveProgress.hpp"
 #include "src/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.hpp"
 #include "src/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.hpp"
 #include "src/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.hpp"
@@ -132,6 +135,7 @@
 #include "src/GameServer/TgGame/TgBotFactory/SpawnBotId/TgBotFactory__SpawnBotId.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/UseSpawnTable/TgBotFactory__UseSpawnTable.hpp"
 #include "src/GameServer/TgGame/TgDeployable/AddProperty/TgDeployable__AddProperty.hpp"
+#include "src/GameServer/TgGame/TgDeployable/GetTaskForce/TgDeployable__GetTaskForce.hpp"
 #include "src/GameServer/TgGame/TgDeployable/InitializeDefaultProps/TgDeployable__InitializeDefaultProps.hpp"
 #include "src/GameServer/TgGame/TgDeployable/NotifyGroupChanged/TgDeployable__NotifyGroupChanged.hpp"
 #include "src/GameServer/TgGame/TgDeployable/SetProperty/TgDeployable__SetProperty.hpp"
@@ -155,7 +159,6 @@
 #include "src/GameServer/TgGame/TgEffect/CheckEffectBuffModifier/TgEffect__CheckEffectBuffModifier.hpp"
 #include "src/GameServer/TgGame/TgEffect/CheckEffectThreatModifier/TgEffect__CheckEffectThreatModifier.hpp"
 #include "src/GameServer/TgGame/TgEffect/CheckOwnerPetBuff/TgEffect__CheckOwnerPetBuff.hpp"
-#include "src/GameServer/TgGame/TgGame_Arena/AdjustBeaconForwardSpawn/TgGame_Arena__AdjustBeaconForwardSpawn.hpp"
 #include "src/GameServer/TgGame/TgGame_Control/CalcAttackerReviveTime/TgGame_Control__CalcAttackerReviveTime.hpp"
 #include "src/GameServer/TgGame/TgGame_Control/CalcDefenderReviveTime/TgGame_Control__CalcDefenderReviveTime.hpp"
 #include "src/GameServer/TgGame/TgGame_Control/SendCountdownRemainingMessages/TgGame_Control__SendCountdownRemainingMessages.hpp"
@@ -174,6 +177,7 @@
 #include "src/GameServer/TgGame/TgGame_Ticket/LoadGameConfig/TgGame_Ticket__LoadGameConfig.hpp"
 #include "src/GameServer/TgGame/TgGame_Ticket/TickTicketsCalculation/TgGame_Ticket__TickTicketsCalculation.hpp"
 #include "src/GameServer/TgGame/TgGame_Ticket/UpdateGameWinState/TgGame_Ticket__UpdateGameWinState.hpp"
+#include "src/GameServer/TgGame/TgGame_Arena/AdjustBeaconForwardSpawn/TgGame_Arena__AdjustBeaconForwardSpawn.hpp"
 #include "src/GameServer/TgGame/TgGame/AdjustBeaconForwardSpawn/TgGame__AdjustBeaconForwardSpawn.hpp"
 #include "src/GameServer/TgGame/TgGame/BeginEndMission/TgGame__BeginEndMission.hpp"
 #include "src/GameServer/TgGame/TgGame/CalcAttackerReviveTime/TgGame__CalcAttackerReviveTime.hpp"
@@ -398,6 +402,7 @@ unsigned long ModuleThread( void* ) {
 	TgGame_PointRotation__CalcNextObjective::Install();
 	TgGame_PointRotation__UnlockObjective::Install();
 	TgMissionObjective__SetObjectiveActive::Install();
+	TgMissionObjective__SetObjectivePending::Install();
 	TgMissionObjective__LoadObjectConfig::Install();
 	TgMissionObjective__UpdateMatineeNodeStatus::Install();
 	TgGame__CheckRandomObjectives::Install();
@@ -416,6 +421,7 @@ unsigned long ModuleThread( void* ) {
 	TgBeaconFactory__SpawnObject::Install();
 	TgInventoryManager__NonPersistAddDevice::Install();
 	TgInventoryManager__NonPersistRemoveDevice::Install();
+	TgActorFactory__LoadObjectConfig::Install();
 	TgBotFactory__LoadObjectConfig::Install();
 	TgTeamPlayerStart__LoadObjectConfig::Install();
 	TgTeamPlayerStart__GetRating::Install();
@@ -453,6 +459,7 @@ unsigned long ModuleThread( void* ) {
 	TgPawn__RefIter::Install();
 	TgProj_Deployable__SpawnDeployable::Install();
 	TgMissionObjective_Bot__SpawnObjectiveBot::Install();
+	TgMissionObjective_Proximity__ScoreObjectiveProgress::Install();
 
 	TgAssemblyMisc__LoadAssetRefs::Install();
 	Core__LoadObject::Install();
@@ -463,6 +470,7 @@ unsigned long ModuleThread( void* ) {
 	TgBotFactory__SpawnBotId::Install();
 	TgBotFactory__UseSpawnTable::Install();
 	TgDeployable__AddProperty::Install();
+	TgDeployable__GetTaskForce::Install();
 	TgDeployable__InitializeDefaultProps::Install();
 	TgDeployable__NotifyGroupChanged::Install();
 	TgDeployable__SetProperty::Install();
@@ -484,7 +492,6 @@ unsigned long ModuleThread( void* ) {
 	TgEffectManager__RemoveEffectGroupsByCategory::Install();
 	TgEffectManager__SetEffectRep::Install();
 	TgEffectManager__SubmitMitigationDamage::Install();
-	TgGame_Arena__AdjustBeaconForwardSpawn::Install();
 	TgGame_Control__CalcAttackerReviveTime::Install();
 	TgGame_Control__CalcDefenderReviveTime::Install();
 	TgGame_Control__SendCountdownRemainingMessages::Install();
@@ -504,6 +511,7 @@ unsigned long ModuleThread( void* ) {
 	TgGame_Ticket__TickTicketsCalculation::Install();
 	TgGame_Ticket__UpdateGameWinState::Install();
 	TgGame__AdjustBeaconForwardSpawn::Install();
+	TgGame_Arena__AdjustBeaconForwardSpawn::Install();
 	TgGame__BeginEndMission::Install();
 	TgGame__CalcAttackerReviveTime::Install();
 	TgGame__CalcAwardMedal::Install();

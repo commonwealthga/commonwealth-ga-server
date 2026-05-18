@@ -272,24 +272,11 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	newcontroller->ResetForceViewTarget();
 	Logger::Log("aim-trace", "NEW VIEWTARGET = 0x%p\n", newcontroller->ViewTarget);
 
-	// Pre-spawned beacon deferral (team colors).
-	//
-	// Beacons placed on the map get their SpawnObject fired at server startup,
-	// BEFORE any client exists.  Their DRI replicated-object refs (notably
-	// r_TaskforceInfo) serialize by NetGUID; those NetGUIDs aren't in any
-	// client's table yet, so on the first-connect initial replication they
-	// resolve to null PERMANENTLY (re-dirtying the field post-connect didn't
-	// cause the client's RecalculateMaterial to pick up the corrected state
-	// — the material chose enemy on first render and stuck).
-	//
-	// The fix is to skip the SpawnObject body entirely when no client exists,
-	// stash the factory pointer, and replay the spawns here on first connect.
-	// Manual (runtime) beacon deploys already go through the correct flow
-	// because clients are around when they fire; this alignment fixes the
-	// pre-spawned case by putting them on the same post-connect path.
-	if (!TgBeaconFactory__SpawnObject::s_firstPlayerConnected) {
-		TgBeaconFactory__SpawnObject::FlushPendingSpawns();
-	}
+	// (Removed: pre-spawned beacon deferral. The new SpawnObject + GetTaskForce
+	// reimplementation lets the UC state machine register beacons through their
+	// natural lifecycle once the TgRepInfo_TaskForce / BeaconManager chain is
+	// up — no NetGUID race because the exit beacon is now spawned on demand by
+	// CheckBeacon -> SpawnNewBeaconForTeam, not pre-spawned at PostBeginPlay.)
 
 	//newcontroller->ResetForceViewTarget(); // fix for pawn relevancy - they otherwise don't show up until a player dies and respawns, because the game things view isn't moving
 
@@ -342,44 +329,6 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	// First player: wire up BeaconManagers (RegisterBeacon sets r_BeaconStatus so entrance activates).
 	if (!bFirstPlayerSpawned) {
 		bFirstPlayerSpawned = true;
-
-		// Re-assert the beacon exit's DRI team state after RegisterBeacon runs.
-		// RegisterBeacon is FUNC_Native and internally calls TgRepInfo_Deployable::SetTaskForce,
-		// which per reference_deployable_team_colors.md zeros r_InstigatorInfo — leaving the
-		// DRI half-broken and making the exit render as enemy on every client (matches the
-		// observed symptom of entrance=correct / exit=wrong, since only exits go through this).
-		auto reassertBeaconDri = [](ATgDeploy_Beacon* beacon, ATgRepInfo_TaskForce* tf) {
-			if (!beacon || !beacon->r_DRI || !tf) return;
-			beacon->r_DRI->r_bOwnedByTaskforce = 1;
-			beacon->r_DRI->r_TaskforceInfo     = tf;
-			beacon->r_DRI->bNetDirty           = 1;
-			beacon->r_DRI->bForceNetUpdate     = 1;
-			Logger::Log("team_colors",
-				"[PostRegister re-assert] beacon=0x%p dri=0x%p tf=0x%p\n",
-				beacon, beacon->r_DRI, tf);
-		};
-
-		if (GTeamsData.BeaconAttackers && GTeamsData.Attackers->r_BeaconManager->r_Beacon == nullptr) {
-			GTeamsData.Attackers->r_BeaconManager->r_Beacon    = GTeamsData.BeaconAttackers;
-			GTeamsData.Attackers->r_BeaconManager->r_TaskForce = GTeamsData.Attackers;
-			GTeamsData.Attackers->r_BeaconManager->bNetDirty      = 1;
-			GTeamsData.Attackers->r_BeaconManager->bForceNetUpdate = 1;
-			GTeamsData.Attackers->r_BeaconManager->bNetInitial     = 1;
-			GTeamsData.Attackers->r_BeaconManager->bAlwaysRelevant = 1;
-			GTeamsData.Attackers->r_BeaconManager->RegisterBeacon(GTeamsData.BeaconAttackers, 1);
-			reassertBeaconDri(GTeamsData.BeaconAttackers, GTeamsData.Attackers);
-		}
-
-		if (GTeamsData.BeaconDefenders && GTeamsData.Defenders->r_BeaconManager->r_Beacon == nullptr) {
-			GTeamsData.Defenders->r_BeaconManager->r_Beacon    = GTeamsData.BeaconDefenders;
-			GTeamsData.Defenders->r_BeaconManager->r_TaskForce = GTeamsData.Defenders;
-			GTeamsData.Defenders->r_BeaconManager->bNetDirty      = 1;
-			GTeamsData.Defenders->r_BeaconManager->bForceNetUpdate = 1;
-			GTeamsData.Defenders->r_BeaconManager->bNetInitial     = 1;
-			GTeamsData.Defenders->r_BeaconManager->bAlwaysRelevant = 1;
-			GTeamsData.Defenders->r_BeaconManager->RegisterBeacon(GTeamsData.BeaconDefenders, 1);
-			reassertBeaconDri(GTeamsData.BeaconDefenders, GTeamsData.Defenders);
-		}
 
 		game->m_fGameMissionTime = 15 * 60;
 		game->m_eTimerState = 0;

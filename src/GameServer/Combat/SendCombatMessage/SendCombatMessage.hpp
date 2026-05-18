@@ -21,6 +21,13 @@ public:
 		KILL   = 0x2AD4,  // 10964 — killing blow
 		HEAL   = 0x2AD5,  // 10965 — health heal (TgEffectHeal)
 		SHIELD_HEAL = 0x3E89, // 16009 — shield heal
+		// Blue ^N^ floating-number popup over the recipient pawn for
+		// objective-points credit. The RX handler at CGameClient::OnCombatMessage
+		// (0x10919020) maps event type 0x59F4 → popup msgId 0xA490
+		// ("^@@int_value@@^" — caret-wrapped integer, blue style 3) and
+		// chat-log msgId 0x59F4 ("You gained @@INT_VALUE@@ objective points.").
+		// nValueHealth carries the int value into both templates.
+		OBJ_POINTS  = 0x59F4,
 	};
 
 	// RecipientPawn: whose client receives the packet (number shows on their screen).

@@ -3172,7 +3172,687 @@ void Database::Init() {
 		Logger::Log("db", "v36: seeded 27 map_object_config rows (task force / team assignments)\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 36", nullptr, nullptr, &err);
+	if (version < 37) {
+		// v37: map_object_config overrides — m_n_priority bumps for objective/
+		// player-start map objects (forces them to the top of priority-ordered
+		// selection).
+		const char* kV37_overrides =
+			"INSERT INTO map_object_config (map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"(7938, 'm_n_priority', '999', NULL, NULL, 1),"
+			"(7939, 'm_n_priority', '999', NULL, NULL, 1),"
+			"(7932, 'm_n_priority', '999', NULL, NULL, 1),"
+			"(7941,  'm_n_priority', '999', NULL, NULL, 1),"
+			"(7940,  'm_n_priority', '999', NULL, NULL, 1),"
+			"(7933,  'm_n_priority', '999', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV37_overrides, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v37 (map_object_config seed): %s\n", err); return; }
+		Logger::Log("db", "v37: seeded 6 map_object_config rows (m_n_priority bumps)\n");
+	}
+
+	if (version < 38) {
+		// v38: map_object_config overrides — task force / team assignments for
+		// actor factories (s_n_task_force / s_n_team_number) and team-player-
+		// start spawn points (m_n_task_force) on another map. Same shape as
+		// v35/v36. Exported from the map planner.
+		const char* kV38_overrides =
+			"INSERT INTO map_object_config (map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"(10683, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"(10715, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(10715, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(10714, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(10714, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(10770, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(10770, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(10771, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(10771, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(10684, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"(10718, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(10718, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(10716, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(10716, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(10687, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"(10685, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"(10711, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(10711, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(10710, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(10710, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(10708, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(10708, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(10709, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(10709, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(10688, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"(10689, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"(10707, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(10707, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(10706, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(10706, 's_n_team_number', '2', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV38_overrides, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v38 (map_object_config seed): %s\n", err); return; }
+		Logger::Log("db", "v38: seeded 30 map_object_config rows (task force / team assignments)\n");
+	}
+
+	if (version < 39) {
+		// v39: map_object_config overrides — task force / team assignments for
+		// actor factories (s_n_task_force / s_n_team_number) and team-player-
+		// start spawn points (m_n_task_force) on another map. Same shape as
+		// v35/v36/v38. Exported from the map planner.
+		const char* kV39_overrides =
+			"INSERT INTO map_object_config (map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"(11311, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(11311, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(11310, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(11310, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(11289, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"(11318, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"(11317, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(11317, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(11316, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(11316, 's_n_team_number', '2', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV39_overrides, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v39 (map_object_config seed): %s\n", err); return; }
+		Logger::Log("db", "v39: seeded 10 map_object_config rows (task force / team assignments)\n");
+	}
+
+	if (version < 40) {
+		// v40: map_object_config overrides — task force / team assignments for
+		// another map (player-start m_n_task_force + actor-factory s_n_task_force /
+		// s_n_team_number). Same shape as v35/v36/v38/v39. Exported from the
+		// map planner.
+		const char* kV40_overrides =
+			"INSERT INTO map_object_config (map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"(11032, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"(13223, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(13223, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(13224, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(13224, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(13221, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(13221, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(13222, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(13222, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(11036, 'm_n_task_force',  '2', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV40_overrides, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v40 (map_object_config seed): %s\n", err); return; }
+		Logger::Log("db", "v40: seeded 10 map_object_config rows (task force / team assignments)\n");
+	}
+
+	if (version < 41) {
+		// v41: map_object_config overrides — task force / team assignments for
+		// yet another map (player-start m_n_task_force + actor-factory
+		// s_n_task_force / s_n_team_number). Same shape as v40. Exported from
+		// the map planner.
+		const char* kV41_overrides =
+			"INSERT INTO map_object_config (map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"(13137, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"(13138, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(13138, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(13139, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(13139, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(13134, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(13134, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(13135, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(13135, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(13075, 'm_n_task_force',  '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV41_overrides, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v41 (map_object_config seed): %s\n", err); return; }
+		Logger::Log("db", "v41: seeded 10 map_object_config rows (task force / team assignments)\n");
+	}
+
+	if (version < 42) {
+		// v42: map_object_config overrides — task force / team assignments for
+		// another map with three attacker spawn clusters and three defender
+		// clusters (player-start m_n_task_force + actor-factory s_n_task_force /
+		// s_n_team_number). Same shape as v40/v41. Exported from the map planner.
+		const char* kV42_overrides =
+			"INSERT INTO map_object_config (map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"(11548, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(11548, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(11549, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(11549, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(11550, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"(12295, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(12295, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(12296, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(12296, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(12294, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"(12299, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(12299, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(12298, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(12298, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(12297, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"(12302, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(12302, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(12301, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(12301, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(12305, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(12305, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(12304, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(12304, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(11552, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(11552, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(11553, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(11553, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(11551, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"(12303, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"(12300, 'm_n_task_force',  '2', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV42_overrides, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v42 (map_object_config seed): %s\n", err); return; }
+		Logger::Log("db", "v42: seeded 30 map_object_config rows (task force / team assignments)\n");
+	}
+
+	if (version < 43) {
+		// v43: map_object_config overrides — task force / team assignments for
+		// another map (player-start m_n_task_force + actor-factory s_n_task_force /
+		// s_n_team_number). Same shape as v40/v41/v42. Exported from the map planner.
+		const char* kV43_overrides =
+			"INSERT INTO map_object_config (map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"(8589, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"(8598, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"(8590, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(8590, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(8600, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(8600, 's_n_team_number', '2', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV43_overrides, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v43 (map_object_config seed): %s\n", err); return; }
+		Logger::Log("db", "v43: seeded 6 map_object_config rows (task force / team assignments)\n");
+	}
+
+	if (version < 44) {
+		// v44: map_object_config overrides — task force / team assignments for
+		// another map (player-start m_n_task_force + actor-factory s_n_task_force /
+		// s_n_team_number). Same shape as v43. Exported from the map planner.
+		const char* kV44_overrides =
+			"INSERT INTO map_object_config (map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"(8589, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"(8591, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(8591, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(8590, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(8590, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(8600, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(8600, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(8599, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(8599, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(8598, 'm_n_task_force',  '2', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV44_overrides, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v44 (map_object_config seed): %s\n", err); return; }
+		Logger::Log("db", "v44: seeded 10 map_object_config rows (task force / team assignments)\n");
+	}
+
+	if (version < 45) {
+		// v45: map_object_config overrides — task force / team assignments for
+		// another map with multiple defender spawn clusters (player-start
+		// m_n_task_force + actor-factory s_n_task_force / s_n_team_number).
+		// Same shape as v43/v44. Exported from the map planner.
+		const char* kV45_overrides =
+			"INSERT INTO map_object_config (map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"(11955, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"(11956, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"(12111, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"(12112, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"(11954, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(11954, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(11953, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"(11953, 's_n_team_number', '1', NULL, NULL, 1),"
+			"(11957, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(11957, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(11958, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(11958, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(11962, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(11962, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(11963, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(11963, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(11964, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(11964, 's_n_team_number', '2', NULL, NULL, 1),"
+			"(11965, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"(11965, 's_n_team_number', '2', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV45_overrides, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v45 (map_object_config seed): %s\n", err); return; }
+		Logger::Log("db", "v45: seeded 20 map_object_config rows (task force / team assignments)\n");
+	}
+
+	if (version < 46) {
+		// v46: scope map_object_config to a specific map. map_object_id turns
+		// out NOT to be unique across maps, so the EAV table needs a map_name
+		// discriminator. Column is nullable — a NULL row applies to every map
+		// (legacy / global). MapObjectConfig::Init prefers rows where
+		// (map_name, map_object_id) match the current map and only falls back
+		// to NULL-map rows for the same map_object_id when no map-specific
+		// row exists. ALTER appends the column to the end; that's fine, the
+		// in-memory registry doesn't care about column order.
+		const char* kV46_add_map_name =
+			"ALTER TABLE map_object_config ADD COLUMN map_name TEXT;"
+			"CREATE INDEX IF NOT EXISTS idx_map_object_config_map_name "
+			"  ON map_object_config(map_name, map_object_id);";
+		result = sqlite3_exec(db, kV46_add_map_name, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v46 (add map_name column): %s\n", err); return; }
+		Logger::Log("db", "v46: added map_name column to map_object_config (nullable, scoped lookups)\n");
+	}
+
+	if (version < 47) {
+		// v47: first wave of MAP-SCOPED overrides — Ice_GorgeA01_v2 (30 rows)
+		// and 3P_VolcanoAssault_P (30 rows). The planner export for
+		// 3P_VolcanoAssault_P originally included an `UPDATE … WHERE id = 163`
+		// targeting (11551, 'm_n_task_force') = '2' from v42 (intended for a
+		// different map); now expressed as a proper map-scoped INSERT so the
+		// global row stays put and v46 precedence shadows it on
+		// 3P_VolcanoAssault_P only.
+		const char* kV47_ice_gorge =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('Ice_GorgeA01_v2', 7438, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7472, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7930, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7953, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7958, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7952, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7962, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7962, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7961, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7961, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7960, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7960, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7959, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7959, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7957, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7957, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7956, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7956, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7955, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7955, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7954, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7954, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7951, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7951, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7950, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7950, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7949, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7949, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7948, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Ice_GorgeA01_v2', 7948, 's_n_task_force',  '2', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV47_ice_gorge, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v47 (Ice_GorgeA01_v2 seed): %s\n", err); return; }
+
+		const char* kV47_volcano =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('3P_VolcanoAssault_P', 13627, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13627, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13600, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13600, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13594, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13594, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13591, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13591, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13590, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13590, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13588, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13588, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13587, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13587, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13586, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13586, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13584, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13584, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13585, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13585, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13558, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13558, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13557, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13557, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13599, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13598, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13612, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13596, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"('3P_VolcanoAssault_P', 13595, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			// Originally `UPDATE ... WHERE id = 163` (= the v42 global row for
+			// (11551, m_n_task_force)='2'). Re-expressed as a map-scoped INSERT
+			// so the v42 row keeps applying to its own map and v46 precedence
+			// shadows it with '1' on 3P_VolcanoAssault_P only.
+			"('3P_VolcanoAssault_P', 11551, 'm_n_task_force',  '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV47_volcano, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v47 (3P_VolcanoAssault_P seed): %s\n", err); return; }
+
+		Logger::Log("db", "v47: seeded 30 map_object_config rows for Ice_GorgeA01_v2 + 30 for 3P_VolcanoAssault_P\n");
+	}
+
+	if (version < 48) {
+		// v48: 3P_Climate_Control3_P — task force / team assignments for
+		// actor-factory (s_n_task_force / s_n_team_number) and team-player-
+		// start (m_n_task_force) spawn points, plus one m_n_priority bump
+		// on objective 11573. All map-scoped (map_name set) per v46 rules.
+		// Exported from the map planner.
+		const char* kV48_climate =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('3P_Climate_Control3_P', 11568, 's_n_team_number', '1',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11568, 's_n_task_force',  '1',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11586, 's_n_team_number', '2',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11586, 's_n_task_force',  '2',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11585, 's_n_team_number', '2',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11585, 's_n_task_force',  '2',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11582, 's_n_team_number', '2',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11582, 's_n_task_force',  '2',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11581, 's_n_team_number', '2',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11581, 's_n_task_force',  '2',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11579, 's_n_team_number', '2',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11579, 's_n_task_force',  '2',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11577, 's_n_team_number', '2',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11577, 's_n_task_force',  '2',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11574, 's_n_team_number', '1',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11574, 's_n_task_force',  '1',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11573, 'm_n_priority',    '999', NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11572, 's_n_task_force',  '1',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11572, 's_n_team_number', '1',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11569, 's_n_team_number', '1',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11569, 's_n_task_force',  '1',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11570, 's_n_task_force',  '1',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11570, 's_n_team_number', '1',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11571, 's_n_task_force',  '1',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11571, 's_n_team_number', '1',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11564, 'm_n_task_force',  '2',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11563, 'm_n_task_force',  '2',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11562, 'm_n_task_force',  '1',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11559, 'm_n_task_force',  '1',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11566, 'm_n_task_force',  '2',   NULL, NULL, 1),"
+			"('3P_Climate_Control3_P', 11556, 'm_n_task_force',  '1',   NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV48_climate, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v48 (3P_Climate_Control3_P seed): %s\n", err); return; }
+		Logger::Log("db", "v48: seeded 31 map_object_config rows for 3P_Climate_Control3_P\n");
+	}
+
+	if (version < 49) {
+		// v49: Push_Dust_P — task force / team assignments for actor-factory
+		// (s_n_task_force / s_n_team_number) and team-player-start
+		// (m_n_task_force) spawn points. All map-scoped per v46 rules.
+		// Exported from the map planner.
+		const char* kV49_push_dust =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('Push_Dust_P', 13774, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_Dust_P', 13774, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_Dust_P', 13773, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_Dust_P', 13773, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_Dust_P', 13772, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_Dust_P', 13772, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_Dust_P', 13771, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_Dust_P', 13771, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_Dust_P', 13770, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_Dust_P', 13770, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_Dust_P', 13769, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_Dust_P', 13769, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_Dust_P', 13767, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_Dust_P', 13767, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_Dust_P', 13768, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_Dust_P', 13768, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_Dust_P', 13766, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_Dust_P', 13766, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_Dust_P', 13765, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_Dust_P', 13765, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_Dust_P', 13764, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_Dust_P', 13764, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_Dust_P', 13763, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_Dust_P', 13763, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_Dust_P', 13759, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_Dust_P', 13758, 'm_n_task_force',  '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV49_push_dust, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v49 (Push_Dust_P seed): %s\n", err); return; }
+		Logger::Log("db", "v49: seeded 26 map_object_config rows for Push_Dust_P\n");
+	}
+
+	if (version < 50) {
+		// v50: Push_IceFloe_P — task force / team assignments for actor-factory
+		// (s_n_task_force / s_n_team_number) and team-player-start
+		// (m_n_task_force) spawn points. All map-scoped per v46 rules.
+		// Exported from the map planner.
+		const char* kV50_ice_floe =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('Push_IceFloe_P', 5648, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8131, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8131, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8132, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8132, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8136, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8136, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8137, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8137, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8135, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8135, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8133, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8133, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8129, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8129, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8130, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8130, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8125, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8125, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8123, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8123, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8124, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8124, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8126, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8126, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8140, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8139, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8128, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 5646, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe_P', 8127, 'm_n_task_force',  '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV50_ice_floe, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v50 (Push_IceFloe_P seed): %s\n", err); return; }
+		Logger::Log("db", "v50: seeded 30 map_object_config rows for Push_IceFloe_P\n");
+	}
+
+	if (version < 51) {
+		// v51: map_game_info — manual lookup table that closes the gap between
+		// the wire-protocol map_game_id and the five fields the GO_PLAY-family
+		// messages need: map_name (the .upk filename), game_class (the UC
+		// game-mode class), gameplay_type_value_id, friendly_name_msg_id,
+		// entry_background_image_res_id.
+		//
+		// The (map_game_id, friendly_name_msg_id) pairs below are AUTHORITATIVE
+		// — extracted from the original server's DATA_SET_MAP_CONFIGS (0x0170)
+		// packet captured during a real login session. All 30 PvP playable maps
+		// are represented. The other 66 production map_game_ids (lobbies,
+		// quest maps, training, etc.) are not in this packet and not seeded.
+		//
+		// gameplay_type_value_id is inferred from the friendly-name prefix per
+		// asm_data_set_valid_values group 171:
+		//   1544 BREACH, 1545 CONTROL, 1546 ACQUISITION, 1547 PAYLOAD,
+		//   1548 SCRAMBLE. The four 4v4 "Arena" maps are guessed as 1569
+		//   (PVP- Arena) — verify when wiring up the first arena match.
+		//
+		// map_name and game_class come from the project owner's manual mapping.
+		// Notes:
+		//   - ACQUISITION maps (Hart Station / The Crossroads / Kimerial Point)
+		//     use TgGame_DualCTF; filenames are PLACEHOLDERS (CTR_DuelStrike*)
+		//     to be corrected by hand.
+		//   - Six of the seven CONTROL maps got PLACEHOLDER filenames
+		//     (SeaSide_Ticket*/Ticket_Datafarm*) because the original maps
+		//     looked alike and the project owner planned to correct them by
+		//     hand; only Magmarock (Ticket_Volcano_P) is confirmed.
+		//
+		// entry_background_image_res_id is now seeded inline from a hand-curated
+		// pass over asm_data_set_resources WHERE res_type_value_id = 664. The
+		// naming convention varies: some maps use HUD_MissionLoads.PvP.<name>,
+		// most use HUD_MissionLoads.loading_<theme><N>, arenas use
+		// control_4v4_*/ticket_4v4_*. Each value below was matched by friendly
+		// name + numeric suffix; medium-confidence rows are flagged so they're
+		// easy to spot. Two ACQUISITION maps share the same res_id because the
+		// DB only has two dualstrike-themed loading screens for three maps.
+		const char* kV51_schema =
+			"CREATE TABLE IF NOT EXISTS map_game_info ("
+			"  map_game_id                   INTEGER PRIMARY KEY,"
+			"  map_name                      TEXT,"
+			"  game_class                    TEXT,"
+			"  gameplay_type_value_id        INTEGER,"
+			"  friendly_name_msg_id          INTEGER NOT NULL,"
+			"  entry_background_image_res_id INTEGER"
+			");"
+			"CREATE INDEX IF NOT EXISTS idx_map_game_info_map_name "
+			"  ON map_game_info(map_name);";
+		result = sqlite3_exec(db, kV51_schema, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v51 (map_game_info schema): %s\n", err); return; }
+
+		const char* kV51_seed =
+			"INSERT INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			// Arena / 4v4 (4 maps) — 1569 PVP- Arena (best guess)
+			"(1131, 'Ticket_HimLab_4v4',      'TgGame.TgGame_PointRotation', 1569, 43925, 6027),"  // HM-44 ARENA              -> control_4v4_him_loading
+			"(1171, 'Ticket_Silo_4v4_P',      'TgGame.TgGame_PointRotation', 1569, 50819, 6028),"  // Z13-R SILO ARENA         -> control_4v4_silo_loading
+			"(1369, 'Ticket_Osprey_4v4_P',    'TgGame.TgGame_PointRotation', 1569, 52695, 6166),"  // X1 Osprey Arena          -> ticket_4v4_osprey_loading
+			"(1439, 'MissileComplex_4v4_P',   'TgGame.TgGame_Mission',       1569, 64636, 7373),"  // Triumph 9 Missile        -> PvP.2P_4v4MissileComplex
+			// ACQUISITION (3 maps) — 1546 PVP - Aquisition Merc (TgGame_DualCTF)
+			// PLACEHOLDER filenames; only 2 dualstrike res_ids exist so Hart and Kimerial share.
+			"(1287, 'CTR_DuelStrike_P',       'TgGame.TgGame_DualCTF',       1546, 35942, 5146),"  // Hart Station   (placeholder) -> loading_dualstrike_a
+			"(1112, 'CTR_DuelStrike2_P',      'TgGame.TgGame_DualCTF',       1546, 34477, 5713),"  // The Crossroads (placeholder) -> loading_dualstrike2
+			"(1304, 'CTR_DuelStrike3_P',      'TgGame.TgGame_DualCTF',       1546, 36824, 5146),"  // Kimerial Point (placeholder) -> loading_dualstrike_a (shared, no 3rd)
+			// PAYLOAD (5 maps) — 1547 PVP- Payload Merc (TgGame_Escort)
+			"( 795, 'Push_IceFloe_P',         'TgGame.TgGame_Escort',        1547, 33843, 4959),"  // Ice Floe         -> loading_icefloe_01
+			"(1272, 'Push_IceFloe3_P',        'TgGame.TgGame_Escort',        1547, 34206, 5712),"  // Tundra           -> loading_icefloe3
+			"(1445, 'Push_Dust_P',            'TgGame.TgGame_Escort',        1547, 64890, 7411),"  // Haulin' Acid     -> PvP.Haulin_Acid_P
+			"(1245, 'push_Ravine_P',          'TgGame.TgGame_Escort',        1547, 33851, 4976),"  // Ravine           -> loading_ravine_a
+			"(1417, 'Push_Toxicity',          'TgGame.TgGame_Escort',        1547, 60144, 7346),"  // Toxicity         -> PvP.Push_Toxicity
+			// SCRAMBLE (5 maps) — 1548 PVP- Scramble Merc (TgGame_PointRotation)
+			// Rot_Redistribution{03,04,05} -> loading_redistribution{1,2,3} is a monotonic guess; verify.
+			"(1373, 'Rot_BlackwaterLoch_P',   'TgGame.TgGame_PointRotation', 1548, 55501, 7508),"  // Blackwater Loch  -> PvP.Blackwater_Loading
+			"(1205, 'Rot_Redistribution04',   'TgGame.TgGame_PointRotation', 1548, 36025, 5714),"  // Redistribution   -> loading_redistribution1 (guess)
+			"(1291, 'Rot_Redistribution05',   'TgGame.TgGame_PointRotation', 1548, 36021, 5716),"  // Tetra Pier       -> loading_redistribution3 (guess)
+			"(1307, 'Rot_Redistribution03',   'TgGame.TgGame_PointRotation', 1548, 37050, 5715),"  // Stockpile        -> loading_redistribution2 (guess)
+			"(1372, 'Rot_Trafalgar_P',        'TgGame.TgGame_PointRotation', 1548, 52820, 7507),"  // CNS Trafalgar    -> PvP.Trafalgar_Loading
+			// BREACH (6 maps) — 1544 PVP- Breach Merc (TgGame_Mission)
+			"(1303, '3P_Beachhead3_P',        'TgGame.TgGame_Mission',       1544, 36815, 5461),"  // Beachhead        -> loading_beachhead3_a
+			"(1227, 'Climate_Control_P',      'TgGame.TgGame_Mission',       1544, 33849, 5709),"  // Climate Control  -> loading_climatecontrol1
+			"(1295, '3P_Climate_Control3_P',  'TgGame.TgGame_Mission',       1544, 40458, 5710),"  // Silent Thunder   -> loading_climatecontrol3
+			"(1438, '3P_Him_Arena_P',         'TgGame.TgGame_Mission',       1544, 64339, 7348),"  // Himalayan Point  -> PvP.3P_Him_Arena
+			"(1308, 'Ice_GorgeA01_v2',        'TgGame.TgGame_Mission',       1544, 37052, 5711),"  // Ice Gorge        -> loading_icegorge1
+			"(1419, '3P_VolcanoAssault_P',    'TgGame.TgGame_Mission',       1544, 60172, 7347),"  // Volcano Assault  -> PvP.3P_VolcanoAssault_P
+			// CONTROL (7 maps) — 1545 PVP- Control Merc (TgGame_Ticket)
+			// Map_name PLACEHOLDERS; res_ids are best-guess by friendly-name<->theme match.
+			"(1224, 'Ticket_Datafarm_P',      'TgGame.TgGame_Ticket',        1545, 33847, 5706),"  // Data Farm        (placeholder) -> loading_datafarm1
+			"(1243, 'Ticket_Datafarm2',       'TgGame.TgGame_Ticket',        1545, 33848, 5707),"  // Sun Spot         (placeholder) -> loading_datafarm2
+			"(1270, 'Ticket_Datafarm3',       'TgGame.TgGame_Ticket',        1545, 34189, 5708),"  // Harvest          (placeholder) -> loading_datafarm3
+			"( 963, 'SeaSide_Ticket_P',       'TgGame.TgGame_Ticket',        1545, 33844, 5703),"  // Seaside          (placeholder) -> loading_seaside1
+			"(1241, 'SeaSide_Ticket2_P',      'TgGame.TgGame_Ticket',        1545, 33845, 5704),"  // Azores Complex   (placeholder) -> loading_seaside2
+			"(1246, 'SeaSide_Ticket3',        'TgGame.TgGame_Ticket',        1545, 33846, 5705),"  // Brine Complex    (placeholder) -> loading_seaside3
+			"(1450, 'Ticket_Volcano_P',       'TgGame.TgGame_Ticket',        1545, 65001, 7605);"; // Magmarock         -> PvP.Ticket_Volcano
+		result = sqlite3_exec(db, kV51_seed, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v51 (map_game_info seed): %s\n", err); return; }
+		Logger::Log("db", "v51: created map_game_info + seeded 30 PvP map_game_ids "
+		                  "(4 Arena, 3 Acquisition, 5 Payload, 5 Scramble, 6 Breach, 7 Control)\n");
+	}
+
+	if (version < 52) {
+		// v52: map_object_config overrides — task force / team assignments for
+		// the seven Control (TgGame_Ticket) maps. Same shape as v47/v48/v49/v50.
+		// All map-scoped per v46 rules. The three Datafarm and three SeaSide
+		// variants share map_object_ids within their theme (e.g. 11548 appears
+		// on all three Datafarm maps with the same value); v46 precedence
+		// correctly resolves per-map. Note: Ticket_Volcano_P/13612 collides
+		// with v47's 3P_VolcanoAssault_P/13612 (different value), which is the
+		// exact case map-scoping was designed for.
+		const char* kV52_datafarm1 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('Ticket_Datafarm_P', 11548, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ticket_Datafarm_P', 11548, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Ticket_Datafarm_P', 11549, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ticket_Datafarm_P', 11549, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Ticket_Datafarm_P', 11550, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ticket_Datafarm_P', 11551, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ticket_Datafarm_P', 11552, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ticket_Datafarm_P', 11552, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Ticket_Datafarm_P', 11553, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ticket_Datafarm_P', 11553, 's_n_team_number', '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV52_datafarm1, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v52 (Ticket_Datafarm_P seed): %s\n", err); return; }
+
+		const char* kV52_datafarm2 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('Ticket_Datafarm2', 11548, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ticket_Datafarm2', 11548, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Ticket_Datafarm2', 11549, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ticket_Datafarm2', 11549, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Ticket_Datafarm2', 11550, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ticket_Datafarm2', 11551, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ticket_Datafarm2', 11552, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ticket_Datafarm2', 11552, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Ticket_Datafarm2', 11553, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ticket_Datafarm2', 11553, 's_n_team_number', '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV52_datafarm2, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v52 (Ticket_Datafarm2 seed): %s\n", err); return; }
+
+		const char* kV52_datafarm3 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('Ticket_Datafarm3', 11548, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ticket_Datafarm3', 11548, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Ticket_Datafarm3', 11549, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ticket_Datafarm3', 11549, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Ticket_Datafarm3', 11550, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ticket_Datafarm3', 11551, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ticket_Datafarm3', 11552, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ticket_Datafarm3', 11552, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Ticket_Datafarm3', 11553, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ticket_Datafarm3', 11553, 's_n_team_number', '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV52_datafarm3, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v52 (Ticket_Datafarm3 seed): %s\n", err); return; }
+
+		const char* kV52_seaside1 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('SeaSide_Ticket_P', 9076, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('SeaSide_Ticket_P', 9076, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('SeaSide_Ticket_P', 9075, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('SeaSide_Ticket_P', 9075, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('SeaSide_Ticket_P', 9074, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('SeaSide_Ticket_P', 9074, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('SeaSide_Ticket_P', 9073, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('SeaSide_Ticket_P', 9073, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('SeaSide_Ticket_P', 8207, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('SeaSide_Ticket_P', 8208, 'm_n_task_force',  '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV52_seaside1, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v52 (SeaSide_Ticket_P seed): %s\n", err); return; }
+
+		const char* kV52_seaside2 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('SeaSide_Ticket2_P', 9076, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('SeaSide_Ticket2_P', 9076, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('SeaSide_Ticket2_P', 9075, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('SeaSide_Ticket2_P', 9075, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('SeaSide_Ticket2_P', 9074, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('SeaSide_Ticket2_P', 9074, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('SeaSide_Ticket2_P', 9073, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('SeaSide_Ticket2_P', 9073, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('SeaSide_Ticket2_P', 8208, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"('SeaSide_Ticket2_P', 8207, 'm_n_task_force',  '2', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV52_seaside2, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v52 (SeaSide_Ticket2_P seed): %s\n", err); return; }
+
+		const char* kV52_seaside3 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('SeaSide_Ticket3', 9076, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('SeaSide_Ticket3', 9076, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('SeaSide_Ticket3', 9075, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('SeaSide_Ticket3', 9075, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('SeaSide_Ticket3', 9074, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('SeaSide_Ticket3', 9074, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('SeaSide_Ticket3', 9073, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('SeaSide_Ticket3', 9073, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('SeaSide_Ticket3', 8208, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"('SeaSide_Ticket3', 8207, 'm_n_task_force',  '2', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV52_seaside3, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v52 (SeaSide_Ticket3 seed): %s\n", err); return; }
+
+		const char* kV52_volcano =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('Ticket_Volcano_P', 13864, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Ticket_Volcano_P', 13864, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ticket_Volcano_P', 13865, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Ticket_Volcano_P', 13865, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Ticket_Volcano_P', 13821, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ticket_Volcano_P', 13821, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Ticket_Volcano_P', 13820, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ticket_Volcano_P', 13820, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Ticket_Volcano_P', 13612, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('Ticket_Volcano_P', 13863, 'm_n_task_force',  '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV52_volcano, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v52 (Ticket_Volcano_P seed): %s\n", err); return; }
+
+		Logger::Log("db", "v52: seeded 70 map_object_config rows across 7 Control maps "
+		                  "(3 Datafarm + 3 SeaSide + Volcano)\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 52", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

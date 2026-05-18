@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/ApplyPlayerModsToDeployable.hpp"
 #include "src/GameServer/TgGame/BuffEffectRegistry/DeployableOriginRegistry.hpp"
+#include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
@@ -1187,47 +1188,117 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 			? "YES — UC Deploy state will tick"
 			: "NO  — UC Deploy state will instant-complete (anim length = 0)");
 
-	// For beacons specifically: register with the TgTeamBeaconManager so
-	// GetBeacon() returns non-null → BeaconEntrance::HasExit() returns true →
-	// teleport fires; and r_BeaconStatus replicates for client UI. This block
-	// is gated strictly on beacon-class membership now, not on "specialised
-	// class exists" — Sensors/ForceFields/etc. no longer corrupt r_Beacon.
 	if (bIsBeacon) {
+		// Player-deploy path. The factory-spawn path (TgBeaconFactory::SpawnObject)
+		// handles its own DRI wiring + immediate-DEPLOYED state; this branch is
+		// only for beacons thrown by a player via TgDeviceFire.Deploy.
+		//
+		// Native RegisterBeacon @ 0x109F1ED0 does the heavy lifting:
+		//   * mgr->r_Beacon       = beacon
+		//   * mgr->r_BeaconInfo   = beacon->r_DRI (cast to TgRepInfo_Beacon)
+		//   * r_BeaconInfo->r_vLoc        = beacon->Location  (HUD compass)
+		//   * r_BeaconInfo->r_bDeployed   = bDeployed param   (HUD marker)
+		//   * r_BeaconInfo->r_TaskforceInfo = mgr->r_TaskForce
+		//   * Calls CheckBeacon(true) internally, which (when beacon is good and
+		//     r_DRI->r_InstigatorInfo is non-null) sets mgr->r_BeaconHolder =
+		//     r_InstigatorInfo — that's what drives the HUD's deployer-name
+		//     display for deployed beacons.
+		//
+		// So we MUST set r_DRI->r_InstigatorInfo (and team fields) BEFORE
+		// RegisterBeacon — otherwise CheckBeacon fires with a null instigator
+		// and r_BeaconHolder stays empty. We pass bDeployed=false so the
+		// DEPLOYING state holds the entrance gate closed until UC's deploy
+		// timer completes; UC's Deploy.EndState then re-registers with
+		// bDeployed=true.
 		ATgTeamBeaconManager* beaconMgr = pawnrep ? pawnrep->r_TaskForce->r_BeaconManager : nullptr;
 		if (beaconMgr) {
-			// Invalidate any previously deployed beacon so the old pointer doesn't linger.
+			// Kill the previously-active world beacon for this team (if any).
+			// UC's Destroyed → UnRegisterBeacon will clear mgr->r_Beacon, so
+			// our RegisterBeacon below installs cleanly.
 			if (beaconMgr->r_Beacon && beaconMgr->r_Beacon != (ATgDeploy_Beacon*)Deployable) {
-				beaconMgr->r_Beacon->m_bInDestroyedState = 1;
+				beaconMgr->r_Beacon->eventDestroyIt(0);
 			}
 
-			// Set s_DeployFactory before calling RegisterBeacon so CheckBeacon passes inside it.
-			if (beaconMgr->s_BeaconFactoryList.Num() > 0) {
-				Deployable->s_DeployFactory = (ATgActorFactory*)beaconMgr->s_BeaconFactoryList.Data[0];
-			} else {
-				Logger::Log(GetLogChannel(), "SpawnDeployableActor: WARNING no TgBeaconFactory in level\n");
+			// Intentionally leave s_DeployFactory == null for player-deployed
+			// beacons. CheckBeacon's good-beacon branch picks r_BeaconStatus
+			// from factory->s_bAutoSpawn — all map factories have AutoSpawn=1
+			// (TgActorFactory defaultprops), which forces status=5 (AT_SPAWN)
+			// — a status the HUD switch (TgUIPrimaryHUD_BeaconStatus
+			// ::TickPrimaryHUDElement @ 0x114d8580) has no case for, so
+			// neither location arrow nor deployer name renders.
+			//
+			// Null s_DeployFactory trips CheckBeacon's "bad-beacon" branch
+			// (s_DeployFactory==null is one of its bail conditions). With
+			// LoadInventoryBeacon==0 (player consumed the deploy device) and
+			// r_Beacon set (we just registered) → r_BeaconStatus=2 (DEPLOYING)
+			// → HUD case 2 fires both direction (r_vLoc valid + r_bDeployed=0)
+			// AND name (r_BeaconHolder set). The bottom of CheckBeacon still
+			// runs `r_BeaconHolder = r_DRI->r_InstigatorInfo` in this branch.
+			//
+			// ABFS handles the null-s_DeployFactory case explicitly (treats
+			// the beacon as forward-deployed and destroys on tier change).
+
+			// Wire DRI ownership BEFORE RegisterBeacon — see comment block
+			// above for why. SetTaskForce native zeros r_InstigatorInfo (see
+			// reference_deployable_team_colors.md) so we write directly.
+			if (Deployable->r_DRI && beaconMgr->r_TaskForce) {
+				Deployable->r_DRI->r_bOwnedByTaskforce = 1;
+				Deployable->r_DRI->r_TaskforceInfo     = beaconMgr->r_TaskForce;
+				Deployable->r_DRI->r_InstigatorInfo    = pawnrep;
+			}
+			Deployable->r_bInitialIsEnemy = 0;
+
+			// RegisterBeacon writes r_vLoc / r_bDeployed / r_TaskforceInfo on
+			// the DRI and fires CheckBeacon to populate r_BeaconHolder.
+			// bDeployed=false so r_bDeployed stays 0 (DEPLOYING) — UC's
+			// DeployComplete will flip m_bIsDeployed=1 later and re-register
+			// with bDeployed=true via state machinery. Without false here the
+			// entrance HasExit gate (which checks r_Beacon->m_bIsDeployed)
+			// would unlock immediately on throw instead of after the deploy
+			// timer completes.
+			BeaconSdk::RegisterBeacon(beaconMgr, (ATgDeploy_Beacon*)Deployable, false);
+
+			// RegisterBeacon's writes don't auto-set bNetDirty on the DRI,
+			// so the rep tick would skip r_vLoc updates without this.
+			if (Deployable->r_DRI) {
+				Deployable->r_DRI->bNetDirty       = 1;
+				Deployable->r_DRI->bForceNetUpdate = 1;
+			}
+			beaconMgr->bNetDirty        = 1;
+			beaconMgr->bForceNetUpdate  = 1;
+			Deployable->bNetDirty       = 1;
+			Deployable->bForceNetUpdate = 1;
+
+			Logger::Log("beacon",
+				"SpawnDeployableActor[beacon]: dep=0x%p s_DeployFactory=0x%p mgr=0x%p "
+				"mgr->r_Beacon=0x%p mgr->r_BeaconInfo=0x%p mgr->r_BeaconHolder=0x%p deployer=0x%p\n",
+				Deployable, Deployable->s_DeployFactory, beaconMgr,
+				beaconMgr->r_Beacon, beaconMgr->r_BeaconInfo, beaconMgr->r_BeaconHolder, pawnrep);
+
+			// Tear down the carrier visual on the deployer. The carry-beacon
+			// device (id 1918) lives at slot 11 of the pawn; SpawnBotById
+			// applied m_EquipEffect to spawn the floating-rings form. Now that
+			// the beacon is in the world, we no longer carry it — symmetric
+			// RemoveEquipEffects clears the SetEffectRep slot so the form
+			// disappears on clients. UC's eventual inventory clear (via the
+			// CheckBeacon → bPersistsInInventory chain) is async/asymmetric
+			// and doesn't fire NonPersistRemoveDevice, so we own the cleanup.
+			if (pawn) {
+				ATgDevice* carryDev = pawn->m_EquippedDevices[11];
+				if (carryDev && carryDev->r_nDeviceId == 1918) {
+					uint32_t devFlags = *(uint32_t*)((char*)carryDev + 0x22C);
+					int bEquipEffectsApplied = (devFlags & 0x4) != 0;
+					Logger::Log("beacon",
+						"SpawnDeployableActor[beacon]: tearing down carrier visual on pawn=0x%p slot=11 device=0x%p m_bEquipEffectsApplied=%d\n",
+						pawn, carryDev, bEquipEffectsApplied);
+					carryDev->RemoveEquipEffects();
+				}
 			}
 
-			Deployable->m_bInDestroyedState = 0;
-			beaconMgr->r_Beacon       = (ATgDeploy_Beacon*)Deployable;
-			beaconMgr->r_BeaconHolder = nullptr;
-			beaconMgr->bNetDirty      = 1;
-			beaconMgr->bForceNetUpdate = 1;
-
-			beaconMgr->RegisterBeacon((ATgDeploy_Beacon*)Deployable, 1);
-
-			// r_DRI team-ownership already wired above (general path applies
-			// r_bOwnedByTaskforce=1 + SetTaskForce + r_bInitialIsEnemy=1 for
-			// every deployable). RegisterBeacon may have mutated DRI state —
-			// force another net update pass so the updated beacon-manager
-			// fields replicate alongside.
-			Deployable->bNetDirty          = 1;
-			Deployable->bForceNetUpdate    = 1;
-
-			Logger::Log(GetLogChannel(),
-				"SpawnDeployableActor: registered beacon 0x%p with BeaconManager 0x%p, factory=0x%p, status=%d\n",
-				Deployable, beaconMgr, Deployable->s_DeployFactory, (int)beaconMgr->r_BeaconStatus);
 		} else {
-			Logger::Log(GetLogChannel(), "SpawnDeployableActor: WARNING no BeaconManager for taskForce\n");
+			Logger::Log("beacon",
+				"SpawnDeployableActor[beacon]: WARNING no BeaconManager for pawn 0x%p — skipping registration\n",
+				pawn);
 		}
 	}
 

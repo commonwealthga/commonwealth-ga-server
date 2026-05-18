@@ -21,6 +21,19 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 	Logger::Log("effects",
 		"[REMOVE-GROUP] called with egId=%d cat=%d ptr=%p  s_AppliedEffectGroups has %d entries\n",
 		inEgId, inCat, (void*)EffectGroup, listCount);
+	if (inEgId == 5716) {
+		Logger::Log("debug",
+			"  [RemoveEffectGroup egId=5716] ENTER manager=0x%p inPtr=0x%p s_Applied count=%d\n",
+			Manager, (void*)EffectGroup, listCount);
+		for (int i = 0; i < listCount; i++) {
+			UTgEffectGroup* g = Manager->s_AppliedEffectGroups.Data[i];
+			if (g && g->m_nEffectGroupId == 5716) {
+				Logger::Log("debug",
+					"  [RemoveEffectGroup egId=5716]   applied[%d]=0x%p slot=%d\n",
+					i, (void*)g, g->s_ManagedEffectListIndex);
+			}
+		}
+	}
 
 	// Find the group in s_AppliedEffectGroups.
 	//
@@ -56,6 +69,10 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 				Logger::Log("effects", "[REMOVE-GROUP]     [%d] egId=%d cat=%d ptr=%p\n",
 					i, a ? a->m_nEffectGroupId : -1, a ? a->m_nCategoryCode : -1, (void*)a);
 			}
+		}
+		if (inEgId == 5716) {
+			Logger::Log("debug",
+				"  [RemoveEffectGroup egId=5716] NO MATCH — clone never landed in s_AppliedEffectGroups\n");
 		}
 		return false;
 	}
@@ -122,6 +139,11 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 
 	// 3. Free the HUD slot so the buff icon clears on the client.
 	int slot = applied->s_ManagedEffectListIndex;
+	if (inEgId == 5716) {
+		Logger::Log("debug",
+			"  [RemoveEffectGroup egId=5716] cleared slot=%d (s_ManagedEffectListIndex on clone) — manager=0x%p\n",
+			slot, Manager);
+	}
 	if (slot >= 0 && slot < 0x10) {
 		Manager->r_ManagedEffectList[slot].nEffectGroupID     = 0;
 		Manager->r_ManagedEffectList[slot].byNumStacks        = 0;

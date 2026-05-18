@@ -83,6 +83,16 @@ private:
                 std::lock_guard<std::mutex> lock(sessions_mutex_);
                 g_sessions.erase(instance_id_);
             }
+            // Orphan safety net: if this instance had a DRAFTING successor
+            // that was waiting for MSG_MISSION_ENDED, the parent just died
+            // without firing it. Promote the successor so the matchmaker
+            // can use it as a normal queue match (instead of leaving it
+            // stuck in DRAFTING forever).
+            int64_t promoted = InstanceRegistry::PromoteSuccessor(instance_id_);
+            if (promoted != 0) {
+                Logger::Log("ipc", "[IpcServer] Instance %lld died — orphan-promoted successor %lld DRAFTING→READY\n",
+                    (long long)instance_id_, (long long)promoted);
+            }
             InstanceRegistry::MarkStopped(instance_id_);
             Logger::Log("ipc", "[IpcServer] Instance %lld disconnected, marked STOPPED\n",
                 (long long)instance_id_);
@@ -174,20 +184,6 @@ private:
             }
             TcpSession::DeliverGameEvent(guid, j);
         }
-        else if (type == IpcProtocol::MSG_RANDOMSM_RESULT) {
-            std::string guid = j.value("session_guid", "");
-            Logger::Log("ipc", "[IpcServer] RANDOMSM_RESULT for guid=%s\n", guid.c_str());
-            if (guid.empty()) return;
-
-            std::vector<std::string> names;
-            if (j.contains("names") && j["names"].is_array()) {
-                for (auto& n : j["names"]) {
-                    if (n.is_string()) names.push_back(n.get<std::string>());
-                }
-            }
-
-            TcpSession::DeliverRandomSMResult(guid, std::move(names));
-        }
         else if (type == IpcProtocol::MSG_PLAYER_JOINED) {
             int64_t inst_id    = j.value("instance_id", (int64_t)0);
             std::string guid   = j.value("session_guid", "");
@@ -207,6 +203,43 @@ private:
             int64_t inst_id = j.value("instance_id", (int64_t)0);
             Logger::Log("ipc", "[IpcServer] INSTANCE_EMPTY: instance=%lld\n", (long long)inst_id);
             InstanceRegistry::SetLastEmptyAtIfEmpty(inst_id);
+        }
+        else if (type == IpcProtocol::MSG_NEED_HOME_MAP) {
+            // Mission instance ended a round and is warning us players are about
+            // to click "End Mission" → they'll send GSC_CHANGE_INSTANCE{0,0}
+            // expecting an immediate route back to home. Pre-spawn now so the
+            // home instance is READY by the time that TCP packet lands.
+            Logger::Log("ipc", "[IpcServer] NEED_HOME_MAP from instance=%lld\n",
+                (long long)instance_id_);
+            TcpSession::EnsureHomeMapWarm("MSG_NEED_HOME_MAP");
+        }
+        else if (type == IpcProtocol::MSG_MISSION_ENDED) {
+            // BeginEndMission fired on the mission instance. Stamp end_mission_at
+            // on the parent row AND promote any DRAFTING successor to READY in
+            // one DB transaction. After this, GSC_CHANGE_INSTANCE{0,0} from any
+            // player still in this mission consults the parent's end_mission_at
+            // + queue's continue_in_queue config to decide between home vs the
+            // successor instance.
+            int64_t inst_id = j.value("instance_id", (int64_t)0);
+            if (inst_id == 0) inst_id = instance_id_;  // fallback to validated id
+            int64_t successor = InstanceRegistry::MarkMissionEnded(inst_id);
+            Logger::Log("ipc", "[IpcServer] MISSION_ENDED: parent=%lld successor=%lld\n",
+                (long long)inst_id, (long long)successor);
+        }
+        else if (type == IpcProtocol::MSG_REQUEST_SUCCESSOR) {
+            // Pre-warm trigger: spawn a successor instance bound to this parent
+            // via predecessor_instance_id. Dedupe against any existing non-
+            // STOPPED successor (DRAFTING, READY, or STARTING — covers in-
+            // flight spawns from a previous duplicate request).
+            int64_t parent_id = j.value("instance_id", (int64_t)0);
+            if (parent_id == 0) parent_id = instance_id_;
+            auto existing = InstanceRegistry::GetSuccessor(parent_id);
+            if (existing) {
+                Logger::Log("ipc", "[IpcServer] REQUEST_SUCCESSOR parent=%lld → already has successor %lld state=%s (dedupe, no spawn)\n",
+                    (long long)parent_id, (long long)existing->instance_id, existing->state.c_str());
+            } else {
+                IpcServer::TriggerSuccessor(parent_id);
+            }
         }
         else {
             Logger::Log("ipc", "[IpcServer] Unknown message type: %s\n", type.c_str());
@@ -282,6 +315,22 @@ std::map<int64_t, std::weak_ptr<IpcSession>> IpcSession::g_sessions;
 
 std::mutex IpcServer::ack_mutex_;
 std::map<std::string, std::function<void(bool, int)>> IpcServer::pending_acks_;
+IpcServer::SuccessorSpawner IpcServer::successor_spawner_;
+
+void IpcServer::SetSuccessorSpawner(SuccessorSpawner cb) {
+    successor_spawner_ = std::move(cb);
+}
+
+void IpcServer::TriggerSuccessor(int64_t parent_instance_id) {
+    if (successor_spawner_) {
+        Logger::Log("ipc", "[IpcServer] REQUEST_SUCCESSOR parent=%lld → invoking spawner\n",
+            (long long)parent_instance_id);
+        successor_spawner_(parent_instance_id);
+    } else {
+        Logger::Log("ipc", "[IpcServer] REQUEST_SUCCESSOR parent=%lld but no spawner registered — dropped\n",
+            (long long)parent_instance_id);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // IpcServer -- accepts game instance connections on the IPC port

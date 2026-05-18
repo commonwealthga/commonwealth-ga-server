@@ -46,9 +46,6 @@ public:
     // Dispatch a GAME_EVENT JSON payload to the TcpSession identified by session_guid.
     static void DeliverGameEvent(const std::string& session_guid, const nlohmann::json& j);
 
-    // Deliver a RANDOMSM_RESULT (list of actor names) to the TcpSession identified by guid.
-    static void DeliverRandomSMResult(const std::string& guid, std::vector<std::string> names);
-
     // Deliver a MATCH_INVITATION to this session (called from matchmaking callback).
     static void DeliverMatchInvitation(const std::string& session_guid, int64_t instance_id, const std::string& game_mode, int task_force);
 
@@ -94,6 +91,13 @@ private:
 public:
     static void SetHomeMapSpawner(std::function<void()> cb);
     static void SetNetworkConfig(const std::string& host, uint16_t chat_port);
+
+    // Fire the home-map spawner callback IF no home instance currently exists.
+    // Safe to call multiple times — `GetHomeInstance()` returns any non-STOPPED
+    // home instance (STARTING or READY), so back-to-back calls won't double-
+    // spawn. Used by login, end-of-mission warm-up (MSG_NEED_HOME_MAP IPC),
+    // and the GSC_CHANGE_INSTANCE return-to-home handler.
+    static void EnsureHomeMapWarm(const char* reason);
 private:
 
     // Set when a READY home map instance is found for this player.
@@ -307,7 +311,12 @@ private:
     // then calls initiate_player_register_and_go_play().
     void wait_for_home_map_then_register(int remaining_seconds);
 
-    void send_map_randomsm_settings_response(std::vector<std::string> names);
+    // Continue-in-queue routing. Sends PLAYER_REGISTER to the given target
+    // mission instance with task_force assignment; on ACK success replies
+    // with GSC_GO_PLAY pointing at that instance. On ACK failure (e.g. the
+    // successor was already full), falls back to the standard home-routing
+    // path so the player still ends up somewhere sensible.
+    void initiate_player_register_for_target(const struct InstanceInfo& target, int task_force);
 
     void send_get_loot_table_items_by_id_filtered_response();
 
@@ -365,6 +374,11 @@ private:
     void send_marshal_channel_response();
 
     void send_go_play_response();
+
+    // Variant that targets an arbitrary mission instance (used by the
+    // continue-in-queue successor flow). task_force selects the team
+    // assignment baked into the GSC_GO_PLAY payload.
+    void send_go_play_to_instance(const struct InstanceInfo& target, int task_force);
 
     void send_instance_ready_response();
 

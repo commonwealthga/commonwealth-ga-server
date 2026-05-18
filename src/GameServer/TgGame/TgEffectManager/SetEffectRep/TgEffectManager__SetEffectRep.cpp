@@ -61,6 +61,23 @@ int __fastcall TgEffectManager__SetEffectRep::Call(ATgEffectManager* Manager, vo
 		? -1
 		: CallOriginal(Manager, edx, nEffectGroupID, fTime, bIsBuff, nHealthChange);
 
+	if (nEffectGroupID == 5716) {
+		Logger::Log("debug",
+			"  [SetEffectRep egId=5716] manager=0x%p fTime=%.2f bIsBuff=%d hpΔ=%d -> slot=%d (suppress=%d)\n",
+			Manager, fTime, (int)(bIsBuff ? 1 : 0), nHealthChange, ret, (int)suppressManaged);
+		if (Manager) {
+			for (int i = 0; i < 0x10; i++) {
+				int eg = Manager->r_ManagedEffectList[i].nEffectGroupID;
+				if (eg == 5716 || (ret >= 0 && i == ret)) {
+					Logger::Log("debug",
+						"  [SetEffectRep egId=5716]   slot[%d] egId=%d byNumStacks=%u fTimeRem=%.2f\n",
+						i, eg, (unsigned)Manager->r_ManagedEffectList[i].byNumStacks,
+						Manager->r_ManagedEffectList[i].fInitTimeRemaining);
+				}
+			}
+		}
+	}
+
 	if (effectsLog) {
 		Logger::Log("effects",
 			"[SET-REP] egId=%d fTime=%.3f bIsBuff=%d nHpΔ=%d -> ret=%d (branch=%s)\n",
@@ -111,7 +128,15 @@ int __fastcall TgEffectManager__SetEffectRep::Call(ATgEffectManager* Manager, vo
 	// managed-slot path above; we skipped CallOriginal entirely, so we need
 	// to do the queue push ourselves to keep impact sound/FX (the user-visible
 	// part of cross-pawn instant hits that we DO want).
-	if (Manager && fTime == 0.0f && (ret >= 0 || suppressManaged)) {
+	// Suppress queue push for the beacon equip-effect (egId 5716). Queue
+	// pushes spawn transient TgEffectForms on the client per push; for FX 525
+	// (the carrier ring) the particle loops indefinitely, so the queue-spawned
+	// form never tears down even after we clear the managed-list slot at
+	// RemoveEffectGroup time. Managed-list slot alone is enough for the
+	// sustained pickup visual since only one apply ever happens (no per-tick
+	// replay needed), and clearing the slot replicates the teardown.
+	const bool isBeaconEquipEffect = (nEffectGroupID == 5716);
+	if (Manager && fTime == 0.0f && (ret >= 0 || suppressManaged) && !isBeaconEquipEffect) {
 		int qIdx = Manager->r_nNextQueueIndex;
 		if (qIdx >= 0 && qIdx < 0x20) {
 			Manager->r_EventQueue[qIdx].nEffectGroupID = nEffectGroupID;
@@ -126,6 +151,10 @@ int __fastcall TgEffectManager__SetEffectRep::Call(ATgEffectManager* Manager, vo
 					Manager->r_nNextQueueIndex);
 			}
 		}
+	}
+	if (isBeaconEquipEffect) {
+		Logger::Log("debug",
+			"  [SetEffectRep egId=5716] queue-push SUPPRESSED (managed-list slot=%d carries the visual)\n", ret);
 	}
 
 	// Buff-routing for class-157 (TgEffectBuff) effects. The class is

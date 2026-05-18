@@ -72,6 +72,16 @@ void __fastcall TgEffectManager__SubmitMitigationDamage::Call(
 		pawn->r_nShieldHealthRemaining = shield->m_nHealthMitigated;
 		pawn->bNetDirty = 1;
 		pawn->bForceNetUpdate = 1;
+
+		// STYPE_DEFENSE credit — the personal-shield branch of the user's
+		// "defense" definition (damage absorbed by personal shields). The
+		// forcefield-deployable branch lives in TrackStats. PRI may be null
+		// briefly during pawn teardown; skip rather than crash.
+		ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
+		if (PRI != nullptr) {
+			PRI->r_Scores[7] += nDamage;  // STYPE_DEFENSE
+			PRI->bNetDirty = 1;
+		}
 	}
 
 	Logger::Log("effects",

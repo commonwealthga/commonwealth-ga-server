@@ -22,6 +22,14 @@ public:
     // Send -- game-thread API. Enqueues a JSON message for async send on the ASIO thread.
     static void Send(const std::string& json_msg);
 
+    // Send-side helper for MSG_REQUEST_SUCCESSOR. Fire from the pre-warm
+    // trigger (e.g. when the game-mode signals "round is about to end" —
+    // mid-overtime, score-threshold-crossed, final-objective-50%-captured,
+    // whatever's right for that mode). Control server dedupes against
+    // existing DRAFTING/READY successors of this instance, so spamming is
+    // safe. Idempotent.
+    static void SendRequestSuccessor();
+
     // DrainInbound -- game-thread API. Called from Actor__Tick each tick.
     // Processes all queued inbound messages received since the last call.
     static void DrainInbound();

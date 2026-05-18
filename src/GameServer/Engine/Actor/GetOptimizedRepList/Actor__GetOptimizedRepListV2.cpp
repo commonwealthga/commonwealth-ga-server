@@ -2570,6 +2570,24 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(AInventory, InvManager, ObjectProperty_Engine_Inventory_InvManager);
 			DO_REP(AInventory, Inventory, ObjectProperty_Engine_Inventory_Inventory);
 		}
+		// Identity fields — must reach NON-owner clients so they can render
+		// the carrier mesh on other players' pawns (e.g. the beacon in slot
+		// 11). Without these, the device actor arrives with r_nDeviceId=0,
+		// r_eEquippedAt=0 on remote clients, and the client-side rigging
+		// that pairs the device to the pawn's c_DeviceForm has nothing to
+		// match against — the carrier visual silently fails. Replicate to
+		// everyone (no bNetOwner gate).
+		if ((actor->Role == 3) && actor->bNetDirty) {
+			DO_REP(ATgDevice, r_nDeviceId, IntProperty_TgGame_TgDevice_r_nDeviceId);
+			DO_REP(ATgDevice, r_nDeviceInstanceId, IntProperty_TgGame_TgDevice_r_nDeviceInstanceId);
+			DO_REP(ATgDevice, r_nQualityValueId, IntProperty_TgGame_TgDevice_r_nQualityValueId);
+			DO_REP(ATgDevice, r_eEquippedAt, ByteProperty_TgGame_TgDevice_r_eEquippedAt);
+			DO_REP(ATgDevice, r_nInventoryId, IntProperty_TgGame_TgDevice_r_nInventoryId);
+			DO_REP(ATgDevice, r_bConsumedOnDeath, BoolProperty_TgGame_TgDevice_r_bConsumedOnDeath);
+			DO_REP(ATgDevice, r_bConsumedOnUse, BoolProperty_TgGame_TgDevice_r_bConsumedOnUse);
+			DO_REP(ATgDevice, r_bIsStealthDevice, BoolProperty_TgGame_TgDevice_r_bIsStealthDevice);
+			DO_REP(ATgDevice, CurrentFireMode, ByteProperty_TgGame_TgDevice_CurrentFireMode);
+		}
 	}
 	if (
 		cls == Class_Engine_InventoryManager
@@ -3175,6 +3193,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgMissionObjective, r_bIsActive, BoolProperty_TgGame_TgMissionObjective_r_bIsActive);
 			DO_REP(ATgMissionObjective, r_bIsLocked, BoolProperty_TgGame_TgMissionObjective_r_bIsLocked);
 			DO_REP(ATgMissionObjective, r_bIsPending, BoolProperty_TgGame_TgMissionObjective_r_bIsPending);
+			DO_REP(ATgMissionObjective, r_bUsePendingState, BoolProperty_TgGame_TgMissionObjective_r_bUsePendingState);
 			DO_REP(ATgMissionObjective, r_eOwningCoalition, ByteProperty_TgGame_TgMissionObjective_r_eOwningCoalition);
 			DO_REP(ATgMissionObjective, r_eStatus, ByteProperty_TgGame_TgMissionObjective_r_eStatus);
 			DO_REP(ATgMissionObjective, r_fCurrCaptureTime, FloatProperty_TgGame_TgMissionObjective_r_fCurrCaptureTime);
@@ -3185,8 +3204,9 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgMissionObjective, nObjectiveId, IntProperty_TgGame_TgMissionObjective_nObjectiveId);
 			DO_REP(ATgMissionObjective, nPriority, IntProperty_TgGame_TgMissionObjective_nPriority);
 			DO_REP(ATgMissionObjective, r_OpenWorldPlayerDefaultRole, ByteProperty_TgGame_TgMissionObjective_r_OpenWorldPlayerDefaultRole);
-			DO_REP(ATgMissionObjective, r_bUsePendingState, BoolProperty_TgGame_TgMissionObjective_r_bUsePendingState);
 			DO_REP(ATgMissionObjective, r_eDefaultCoalition, ByteProperty_TgGame_TgMissionObjective_r_eDefaultCoalition);
+			DO_REP(ATgMissionObjective, r_bUsePendingState, BoolProperty_TgGame_TgMissionObjective_r_bUsePendingState);
+			DO_REP(ATgMissionObjective, r_bIsPending, BoolProperty_TgGame_TgMissionObjective_r_bIsPending);
 		}
 	}
 	if (

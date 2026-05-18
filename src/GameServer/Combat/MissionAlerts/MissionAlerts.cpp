@@ -3,6 +3,7 @@
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/IpcClient/IpcClient.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <unordered_map>
 #include <cstring>
@@ -78,6 +79,13 @@ struct PerGameState {
 	bool  firedAct10 = false;
 	bool  firedAct5  = false;
 	bool  firedActivated = false;
+
+	// Successor pre-warm — one-shot per mission. Once the trigger condition
+	// has fired we've already asked the control server to spin up the next
+	// instance; further ticks are no-ops until the per-Game state map is
+	// reset (Reset() / process exit). Sharing the same s_state map as the
+	// announcer alerts keeps the throttle + class-discriminator code reuse.
+	bool firedSuccessor = false;
 
 	// Throttle: only run Tick() at most once per second of WorldInfo time
 	float lastTickedAt = -1.0f;
@@ -295,6 +303,96 @@ static void PollPointRotationCycle(ATgGame* Game, PerGameState& st) {
 	}
 }
 
+// Successor pre-warm trigger. Per-mission one-shot: when ANY trigger condition
+// matches, fires MSG_REQUEST_SUCCESSOR over IPC so the control server can spin
+// up a DRAFTING successor instance ahead of the current mission ending.
+// Conditions (verified per `tig --message` from the user):
+//   - All modes: <=60s remaining on the mission timer (universal fallback)
+//   - TgGame_PointRotation: any taskforce's r_nCurrentPointCount >= 2
+//   - TgGame_Escort:        attackers (tf=1) have captured >= 2 objectives
+//   - TgGame_Mission:       attackers (tf=1) have captured >= total - 1
+//                           (i.e. "all but one" — works on 2pt + 3pt maps)
+//   - TgGame_Ticket:        either side's r_nCurrentPointCount >= 90% of
+//                           r_nPointsToWin (same threshold the existing
+//                           "90 percent control" announcer uses)
+//
+// The control server checks the parent instance's queue config and refuses
+// the spawn if the queue isn't opted into continue_in_queue, so it's safe
+// to fire from any mode/queue without the DLL having to know which queue
+// it was spawned for.
+static void PollSuccessorTrigger(ATgGame* Game, ATgRepInfo_Game* GRI, PerGameState& st) {
+	if (st.firedSuccessor) return;
+
+	bool fire = false;
+	const char* reason = nullptr;
+
+	// 1) Universal — mission phase only, within last 60s of regulation time.
+	//    Overtime (state 3) is intentionally excluded because the mission has
+	//    already overrun and we don't have a clean "remaining" to measure.
+	if ((int)Game->m_eTimerState == 2) {
+		AWorldInfo* WI = GetWorldInfoSafe();
+		if (WI != nullptr) {
+			const float remaining = (Game->s_fMissionTimerStartedAt + Game->m_fGameMissionTime) - WI->TimeSeconds;
+			if (remaining > 0.0f && remaining <= 60.0f) {
+				fire = true; reason = "1min-remaining";
+			}
+		}
+	}
+
+	// 2) Mode-specific score/capture triggers. ClassNameContains uses strstr
+	//    on the class object's FullName; since TgGame_Mission / _Escort /
+	//    _Ticket / _PointRotation are pairwise non-substrings of each other,
+	//    these branches don't false-match between subclasses.
+	if (!fire) {
+		if (ClassNameContains((UObject*)Game, "TgGame_PointRotation")) {
+			const int att = (GTeamsData.Attackers != nullptr) ? GTeamsData.Attackers->r_nCurrentPointCount : 0;
+			const int def = (GTeamsData.Defenders != nullptr) ? GTeamsData.Defenders->r_nCurrentPointCount : 0;
+			if (att >= 2 || def >= 2) {
+				fire = true;
+				reason = (att >= 2 && def >= 2) ? "PointRotation both ≥2"
+				       : (att >= 2)             ? "PointRotation att ≥2"
+				                                : "PointRotation def ≥2";
+			}
+		}
+		else if (ClassNameContains((UObject*)Game, "TgGame_Ticket")) {
+			const int target = GRI->r_nPointsToWin;
+			if (target > 0 && GTeamsData.Attackers != nullptr && GTeamsData.Defenders != nullptr) {
+				const int threshold = (target * 9) / 10;  // 90%, integer math
+				const int att = GTeamsData.Attackers->r_nCurrentPointCount;
+				const int def = GTeamsData.Defenders->r_nCurrentPointCount;
+				if (att >= threshold || def >= threshold) {
+					fire = true;
+					reason = (att >= threshold) ? "Ticket att ≥90%" : "Ticket def ≥90%";
+				}
+			}
+		}
+		else if (ClassNameContains((UObject*)Game, "TgGame_Escort")) {
+			if (CountCapturedFor(GRI, 1) >= 2) {
+				fire = true; reason = "Escort att captured ≥2";
+			}
+		}
+		else if (ClassNameContains((UObject*)Game, "TgGame_Mission")) {
+			// Total = count of objectives in the list. The "all but one"
+			// rule needs at least 2 objectives to be meaningful (otherwise
+			// captured >= total - 1 trips at first capture).
+			const int total = GRI->m_MissionObjectives.Count;
+			if (total >= 2) {
+				const int atk = CountCapturedFor(GRI, 1);
+				if (atk >= total - 1) {
+					fire = true; reason = "Mission att all-but-one";
+				}
+			}
+		}
+	}
+
+	if (fire) {
+		st.firedSuccessor = true;
+		Logger::Log("successor", "Pre-warm trigger fired (%s) — sending REQUEST_SUCCESSOR\n",
+			reason ? reason : "?");
+		IpcClient::SendRequestSuccessor();
+	}
+}
+
 // =============================================================================
 // Public entry points
 // =============================================================================
@@ -325,6 +423,13 @@ void MissionAlerts::Tick() {
 		PollPointRotationLead(Game, GRI, st);
 		PollPointRotationCycle(Game, st);
 	}
+
+	// Cross-mode: evaluates universal time-remaining + per-mode capture/score
+	// conditions for the continue-in-queue pre-warm. Does its own class
+	// discrimination (covers Mission and Escort too, which the announcer
+	// pollers above don't), and gates on a per-mission latch so the IPC
+	// fires at most once.
+	PollSuccessorTrigger(Game, GRI, st);
 }
 
 void MissionAlerts::NotifyNextObjectiveScheduled(void* Game, float scheduledAtWorldTime) {

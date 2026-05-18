@@ -33,12 +33,35 @@ constexpr const char* MSG_INSTANCE_HELLO_ACK = "INSTANCE_HELLO_ACK";
 constexpr const char* MSG_INSTANCE_READY     = "INSTANCE_READY";
 
 constexpr const char* MSG_GAME_EVENT      = "GAME_EVENT";
-constexpr const char* MSG_GET_RANDOMSM    = "GET_RANDOMSM";
-constexpr const char* MSG_RANDOMSM_RESULT = "RANDOMSM_RESULT";
 
 constexpr const char* MSG_PLAYER_JOINED  = "PLAYER_JOINED";
 constexpr const char* MSG_PLAYER_LEFT    = "PLAYER_LEFT";
 constexpr const char* MSG_INSTANCE_EMPTY = "INSTANCE_EMPTY";
+
+// Sent by a mission instance at end-of-mission to ask the control server to
+// pre-warm a home map instance. The control server reuses the same on-demand
+// spawn callback the login flow uses; this just front-runs it so the home
+// map is READY by the time the player clicks "End Mission" (which fires
+// GSC_CHANGE_INSTANCE{0,0} → control server routes them home).
+constexpr const char* MSG_NEED_HOME_MAP = "NEED_HOME_MAP";
+
+// Sent by a mission instance from inside BeginEndMission. Tells the control
+// server (a) stamp end_mission_at on the ga_instances row, and (b) flip any
+// DRAFTING successor instance for this parent to READY. After this fires,
+// GSC_CHANGE_INSTANCE{0,0} from any player in this mission consults the
+// stamped end_mission_at + the queue's continue_in_queue config to decide
+// whether to route them home or to the successor.
+//   { "type": "MISSION_ENDED", "instance_id": <int64> }
+constexpr const char* MSG_MISSION_ENDED = "MISSION_ENDED";
+
+// Sent by a mission instance at the game-mode-specific pre-warm trigger
+// (e.g. when one team passes the 50% threshold, or a 60s-remaining alert
+// fires — exact trigger TBD per game mode). Asks the control server to
+// spawn a successor instance for the same queue and bind it to this
+// mission via predecessor_instance_id. Idempotent — control server dedupes
+// against existing DRAFTING/READY successors of the same parent.
+//   { "type": "REQUEST_SUCCESSOR", "instance_id": <int64> }
+constexpr const char* MSG_REQUEST_SUCCESSOR = "REQUEST_SUCCESSOR";
 
 constexpr const char* MSG_PLAYER_ACTION = "PLAYER_ACTION";
 

@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame_PointRotation/UnlockObjective/TgGame_PointRotation__UnlockObjective.hpp"
+#include "src/GameServer/TgGame/TgMissionObjective/SetObjectivePending/TgMissionObjective__SetObjectivePending.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Called by TgGame_Arena::RoundInProgress::ObjectiveUnlock() with nPriority=1 after the 30s delay.
@@ -21,6 +22,12 @@ void __fastcall TgGame_PointRotation__UnlockObjective::Call(ATgGame_PointRotatio
 	if (Logger::IsChannelEnabled(GetLogChannel())) {
 		Logger::Log(GetLogChannel(), "Unlocking objective %s (class: %s)\n", Obj->GetFullName(), className);
 	}
+	// Clear the "pending" smoke FX before the unlock fires. Has to happen
+	// BEFORE eventUnlockObjective so the client sees pending=false roughly
+	// in the same window as r_bIsLocked=false, avoiding a visible flash of
+	// smoke on an already-active objective.
+	TgMissionObjective__SetObjectivePending::Call(Obj, nullptr, 0);
+
 	Obj->eventUnlockObjective(1);
 
 	// eventUpdateObjectiveStatus must dispatch to the actual class's UFunction.
@@ -54,6 +61,7 @@ void __fastcall TgGame_PointRotation__UnlockObjective::Call(ATgGame_PointRotatio
 		(flagsB0 >> 8) & 1     // bForceNetUpdate bit 0x100
 	);
 
+	// Beacon system: priority change goes through TgGame.AdjustBeaconForwardSpawn.
 	LogCallEnd();
 }
 

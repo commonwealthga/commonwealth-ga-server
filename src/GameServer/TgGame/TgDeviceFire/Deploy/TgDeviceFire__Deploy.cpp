@@ -1,6 +1,5 @@
 #include "src/GameServer/TgGame/TgDeviceFire/Deploy/TgDeviceFire__Deploy.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
-#include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // FUN_10a1b7e0: aim-trace to find placement position for instant deployables.
@@ -77,29 +76,61 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 		pawn, deployableId, spawnLoc, spawnNorm, device, pThis);
 
 	if (Deployable) {
-		// Only consume the spawning device for beacons. Stations, turrets,
-		// sensors, force fields, mines etc. are re-usable — consuming them on
-		// every deploy bricks the device-bar slot for the rest of the match.
+		// IMPORTANT: do NOT touch the firing device here.
 		//
-		// The original game uses UTgDevice::r_bConsumedOnUse to gate this,
-		// which is set either by device AssemblyDat flags the stripped native
-		// would read, or by TgDeployable.PickUpDeployable when the player
-		// picks up a previously deployed object. Our server populates neither.
-		// Class-based gating is a stand-in until the r_bConsumedOnUse pipe is
-		// wired.
-		bool bConsume = TgProj_Deployable__SpawnDeployable::IsBeaconDeployable(Deployable);
-
-		if (Logger::IsChannelEnabled(GetLogChannel())) {
-			Logger::Log(GetLogChannel(),
-				"TgDeviceFire::Deploy: consume-on-deploy=%d (class=%s)\n",
-				(int)bConsume,
-				Deployable->Class ? Deployable->Class->GetFullName() : "<null>");
-		}
-
-		if (bConsume) {
-			ATgInventoryManager* invMgr = (ATgInventoryManager*)pawn->InvManager;
-			int nEquipPoint = (int)device->r_eEquippedAt;
-			TgInventoryManager__NonPersistRemoveDevice::Call(invMgr, nullptr, nEquipPoint);
-		}
+		// The official client's TgDevice.uc:2871-2874 (DeviceFiring.EndState)
+		// fires the post-deploy weapon switch CLIENT-SIDE:
+		//
+		//     simulated function EndState(name NextStateName) {
+		//         ...
+		//         if (Role < ROLE_Authority) {
+		//             if (m_bUsesDeployMode && Instigator.Weapon == self) {
+		//                 TgPlayerController(...).ChangeToPreviousWeapon();
+		//             }
+		//         }
+		//         if (r_bConsumedOnUse) { ConsumeDevice(); }
+		//         ...
+		//     }
+		//
+		// The `Instigator.Weapon == self` check is the load-bearing piece —
+		// the client switches to the previous weapon ONLY if the beacon is
+		// still the equipped weapon when EndState fires.
+		//
+		// Any server-side `eventSetActiveWeapon(prevDev)` we do here races
+		// the natural state-machine timing: our ClientSetCurrentWeapon RPC
+		// arrives at the owning client BEFORE its DeviceFiring → Active
+		// transition (driven by RefireCheckTimer at GetRefireTime() seconds
+		// after FireAmmunition fires). Pawn->Weapon becomes prevDev on the
+		// client, so when EndState fires the `Instigator.Weapon == self`
+		// gate is false and the natural ChangeToPreviousWeapon never runs.
+		//
+		// We also used to clear m_EquippedDevices[11]/r_EquipDeviceInfo[11]
+		// and send beacon_remove IPC immediately. That destroys the beacon
+		// device on the client before EndState fires (via SEND_INVENTORY
+		// state=2 from the control server), which has the same effect:
+		// `Instigator.Weapon == self` becomes false because Pawn->Weapon
+		// was already nulled by the device destruction.
+		//
+		// Correct flow:
+		//   1. Spawn the deployable (above)
+		//   2. UC FireAmmunition's refire timer fires (deploy_time later)
+		//   3. RefireCheckTimer → GotoState('Active') → EndState fires on
+		//      both server and client
+		//   4. CLIENT EndState: m_bUsesDeployMode && Instigator.Weapon ==
+		//      beacon → ChangeToPreviousWeapon → SetActiveWeapon(prev, 0)
+		//      → local switch + ServerSetCurrentWeapon RPC
+		//   5. EndState on both: r_bConsumedOnUse → ConsumeDevice (UC) →
+		//      RemoveConsumableFromOwnerInventory (native) → PC.CheckPendingDevice
+		//      (HUD sync). UC TgDeploy_Beacon.PickUpDeployable:138 sets
+		//      r_bConsumedOnUse=true on the picked-up beacon, so the
+		//      consume branch is enabled.
+		//
+		// Inventory cleanup (NonPersistRemoveDevice + beacon_remove IPC) runs
+		// from the DeviceFiring.EndState ProcessEvent intercept in
+		// UObject__ProcessEvent.cpp — that's AFTER CallOriginal runs the
+		// client's ChangeToPreviousWeapon, so the beacon stays as Pawn->Weapon
+		// long enough for the natural weapon-switch path to fire. See the
+		// `DispatchTag::DeviceFiringEndState` case for the cleanup gate.
+		(void)Deployable;
 	}
 }

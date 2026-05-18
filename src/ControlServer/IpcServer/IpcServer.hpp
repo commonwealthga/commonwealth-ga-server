@@ -24,11 +24,30 @@ public:
     // Called from IpcSession (same TU) when PLAYER_REGISTER_ACK arrives.
     static void DeliverAck(const std::string& session_guid, bool success, int pawn_id);
 
+    // Successor spawn callback (set once at startup from main.cpp). Invoked
+    // by the MSG_REQUEST_SUCCESSOR handler with the parent instance_id;
+    // closure is responsible for reading parent's map/mode/queue from
+    // InstanceRegistry, allocating a UDP port, calling InsertStarting with
+    // predecessor_instance_id set, and spawning the game process. The
+    // handler dedupes against existing DRAFTING/READY successors before
+    // invoking the callback, so this only fires when an actual spawn is
+    // needed.
+    using SuccessorSpawner = std::function<void(int64_t parent_instance_id)>;
+    static void SetSuccessorSpawner(SuccessorSpawner cb);
+
+    // Invoked from the IPC dispatcher (IpcSession::dispatch in the same TU)
+    // after the REQUEST_SUCCESSOR dedupe check decides we actually need a
+    // fresh spawn. Internally checks whether a spawner has been registered
+    // and logs either the invocation or the dropped request. Exists so
+    // IpcSession doesn't need access to the private successor_spawner_.
+    static void TriggerSuccessor(int64_t parent_instance_id);
+
 private:
     void do_accept();
 
     static std::mutex ack_mutex_;
     static std::map<std::string, std::function<void(bool, int)>> pending_acks_;
+    static SuccessorSpawner successor_spawner_;
 
     asio::io_context& io_;
     asio::ip::tcp::acceptor acceptor_;
