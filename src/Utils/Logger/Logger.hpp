@@ -36,6 +36,14 @@ public:
 	// entries on top of stale ones. Crash-only channels are left alone (they
 	// only ever land in the in-memory ring, never on disk during normal ops).
 	static void ClearEnabledChannelFiles();
+	// Ensure the LogDir exists on disk (CreateDirectoryA, idempotent). Must
+	// be called once at DLL init after `Logger::LogDir = Config::GetLogDir()`
+	// and before any logging or ClearEnabledChannelFiles. fopen("a") does NOT
+	// auto-create parent directories, so if the spawner-supplied
+	// `<base>\<instance_id>` subdir doesn't exist yet, every channel write
+	// would silently fail. Only handles the leaf; parents (e.g. "C:") must
+	// already exist.
+	static void EnsureLogDirExists();
 	static inline const char* GetTime() {
 		auto now = std::chrono::system_clock::now();
 		std::time_t now_time_t = std::chrono::system_clock::to_time_t(now);

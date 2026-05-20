@@ -760,6 +760,18 @@ std::vector<InstanceInfo> InstanceRegistry::GetReadyMissionInstances() {
     if (!db) return results;
 
     sqlite3_stmt* stmt = nullptr;
+    // `end_mission_at IS NULL` excludes instances whose mission has already
+    // wrapped. After MSG_MISSION_ENDED the parent row is still state='READY'
+    // (deliberately, so stragglers clicking "End Mission" can still consult
+    // it for the home-vs-successor routing decision in TcpSession's
+    // GSC_CHANGE_INSTANCE handler), but its mission is over and we must NOT
+    // route fresh queue-pop players into it. For continue_in_queue=true
+    // queues, MarkMissionEnded already promoted the DRAFTING successor to
+    // READY in the same transaction — that row has end_mission_at=NULL so
+    // it appears here as the queue's only candidate, exactly what we want.
+    // For continue_in_queue=false queues there's no successor at all, so
+    // the matchmaker sees no instance for this queue and falls through to
+    // the "spawn new" branch — which is the requested behavior.
     int rc = sqlite3_prepare_v2(db,
         "SELECT id, map_name, state, pid, udp_port, ip_address, player_count, "
         "       started_at, COALESCE(sealed_at, 0), "
@@ -767,7 +779,7 @@ std::vector<InstanceInfo> InstanceRegistry::GetReadyMissionInstances() {
         "       COALESCE(game_mode, ''), "
         "       COALESCE(queue_id, 0), COALESCE(predecessor_instance_id, 0), COALESCE(end_mission_at, 0) "
         "FROM ga_instances "
-        "WHERE state = 'READY' AND is_home_map = 0",
+        "WHERE state = 'READY' AND is_home_map = 0 AND end_mission_at IS NULL",
         -1, &stmt, nullptr);
     if (rc != SQLITE_OK || !stmt) return results;
 

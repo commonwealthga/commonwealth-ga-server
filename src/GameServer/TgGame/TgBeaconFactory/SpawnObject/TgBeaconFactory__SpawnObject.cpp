@@ -59,6 +59,26 @@ static void WireDeployableOwnership(ATgDeployable* dep, ATgBeaconFactory* factor
 void __fastcall* TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, void* /*edx*/) {
 	if (!factory) return nullptr;
 
+	// End-mission respawn gate. UC `AllPlayersEndGame` calls
+	// `foreach DynamicActors(TgDeployable) Deploy.Destroy()` on every deployable
+	// at game-over. Each destroyed beacon's `TgDeploy_Beacon.Destroyed` calls
+	// the intact native `UnRegisterBeacon`, which internally fires
+	// `PopulateBeaconFactoryList → Spawn(TgBeaconFactory) → factory.PostBeginPlay
+	// → factory.SpawnObject` to materialize a replacement. UE3's
+	// `foreach DynamicActors` iterates by index and picks up actors spawned
+	// during iteration, so the new beacon is found and destroyed too — infinite
+	// loop. The respawn pipeline is in a native we don't own, so we break the
+	// cycle at the only node we DO own: this hook. Returning nullptr from
+	// SpawnObject leaves the (empty, harmless) replacement factory but skips
+	// the actual beacon creation, draining AllPlayersEndGame's foreach.
+	ATgGame* game = (ATgGame*)Globals::Get().GGameInfo;
+	if (game && game->bGameEnded) {
+		Logger::Log("beacon",
+			"SpawnObject suppressed — bGameEnded=1, end-mission cleanup in progress (factory=0x%p)\n",
+			factory);
+		return nullptr;
+	}
+
 	ATgRepInfo_TaskForce* tf = ResolveTaskForce((int)factory->s_nTaskForce);
 
 	// Priority gate. TgGame.s_nCurrentPriority is the active tier; factories
@@ -68,7 +88,6 @@ void __fastcall* TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, v
 	// PostBeginPlay auto-spawn path and the SpawnNewBeaconForTeam-driven
 	// respawn path; AdjustBeaconForwardSpawn drives object lifecycle when
 	// the active tier advances.
-	ATgGame* game = (ATgGame*)Globals::Get().GGameInfo;
 	const int currentPriority = game ? game->s_nCurrentPriority : 0;
 	const bool priorityOk =
 		factory->m_nPriority <= 0 || factory->m_nPriority == currentPriority;

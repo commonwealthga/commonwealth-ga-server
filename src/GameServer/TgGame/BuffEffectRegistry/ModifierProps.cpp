@@ -133,23 +133,39 @@ const BuffDeviceMapping kBuffDeviceModMap[] = {
 	{ 284, { 283, -1 } },
 	// Pet LifeSpan Modifier → 354
 	{ 355, { 354, -1 } },
-	// Required Points to Fire (self-passthrough; the binary's BUFF_DEVICE
-	// expansion of input 339 emits 339 itself plus 385 — i.e. a buff
-	// registered under propId 339 directly affects the deployable's prop 339).
-	{ 339, { 339, -1 } },
+	// Health Max Deployables modifier → deployable HEALTH_MAX (304).
+	//
+	// Binary's BUFF_DEVICE expansion of input 339 emits {339, 385}, i.e.
+	// a player-side buff registered under propId 339 (plus Output Mod 385)
+	// scales the deployable's max HP. But deployables never carry prop 339
+	// in s_Properties — HP comes from `asm_data_set_deployables.health` and
+	// is seeded onto props 51 (HEALTH) and 304 (HEALTH_MAX) by
+	// TgDeployable__InitializeDefaultProps; no deployable in the DB has
+	// prop 339 in `device_mode_properties` either. Redirecting the buff to
+	// prop 304 lands it on a real slot, and TgDeployable__SetProperty's
+	// case for 304 mirrors to `r_DRI->r_nHealthMaximum` so the client HP
+	// bar follows. ApplyPlayerModsToDeployable handles the SetProperty
+	// dispatch + current-HP sync on top of the m_fRaw write.
+	//
+	// User-facing skill: Robotics "Station Buff" (skill 795, effect group
+	// 16767) — `+10%` to prop 339 via class-157 TgEffectBuff. Before this
+	// redirect, FindDeployableProp(339) returned null and the buff was
+	// silently dropped.
+	{ 339, { 304, -1 } },
 	// Required Morale Points Modifier → Required Points to Fire
 	// (binary's BUFF_DEVICE input 318 emits 357 + 385).
 	{ 357, { 318, -1 } },
 	// Heal Output Modifier — appears as a SECONDARY output in BUFF_DEVICE
 	// expansions of prop 339 and prop 318. So a player's prop-385 buff
 	// (gained from heal-boosting skills) scales the deployable's
-	// HP-Max-Deployables AND Required-Points-to-Fire.
+	// HP-Max-Deployables (redirected to 304, see note on the 339 entry)
+	// AND Required-Points-to-Fire (318).
 	//
 	// This is the "healer ecosystem" pattern: skills that boost heal output
 	// also boost the survivability of the healing stations the player
 	// deploys, AND reduce their morale-point cost. Mirrors the binary
 	// faithfully — semantically odd-looking but engine-correct.
-	{ 385, { 339, 318, -1 } },
+	{ 385, { 304, 318, -1 } },
 };
 
 const int kBuffDeviceModMapCount =

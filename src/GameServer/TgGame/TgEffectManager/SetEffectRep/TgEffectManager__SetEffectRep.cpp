@@ -45,10 +45,12 @@ int __fastcall TgEffectManager__SetEffectRep::Call(ATgEffectManager* Manager, vo
 	// and UC writes `s_ManagedEffectListIndex = -1` — our Remove paths then
 	// correctly skip slot-zeroing for this group.
 	bool suppressManaged = false;
+	UTgEffectGroup* applyingClone = nullptr;
 	if (Manager && fTime == 0.0f && Manager->r_Owner) {
 		for (int i = Manager->s_AppliedEffectGroups.Count - 1; i >= 0; --i) {
 			UTgEffectGroup* g = Manager->s_AppliedEffectGroups.Data[i];
 			if (g && g->m_nEffectGroupId == nEffectGroupID) {
+				applyingClone = g;
 				if (g->m_Target && g->m_Instigator && g->m_Target != g->m_Instigator) {
 					suppressManaged = true;
 				}
@@ -136,7 +138,22 @@ int __fastcall TgEffectManager__SetEffectRep::Call(ATgEffectManager* Manager, vo
 	// sustained pickup visual since only one apply ever happens (no per-tick
 	// replay needed), and clearing the slot replicates the teardown.
 	const bool isBeaconEquipEffect = (nEffectGroupID == 5716);
-	if (Manager && fTime == 0.0f && (ret >= 0 || suppressManaged) && !isBeaconEquipEffect) {
+	// Suppress queue push for sustained Stealth-category (621) groups. UC's
+	// case-156 ("Newest Wins") application logic remove-and-readds on every
+	// continuous-fire pulse (e.g. Spring Stealth refire @ 0.5s while held),
+	// which without this guard fires a fresh queue push per pulse. Each push
+	// spawns a transient TgEffectForm on the client with the FX's full
+	// material transition (e.g. fx_id=240 transition_sec=2.0), and the
+	// per-pulse cadence restarts that transition over and over for the first
+	// 1-2s of fire — visible to the player as the stealth fade-in flickering
+	// and then settling once they're fully stealthed. Same shape on release.
+	// The managed-list slot alone carries the sustained icon; the stealth
+	// material is driven by r_bIsStealthed / r_nApplyStealth replication on
+	// the pawn, not by per-pulse TgEffectForm spawns.
+	const bool isSustainedStealth =
+		(applyingClone && applyingClone->m_nCategoryCode == 621);
+	if (Manager && fTime == 0.0f && (ret >= 0 || suppressManaged)
+	    && !isBeaconEquipEffect && !isSustainedStealth) {
 		int qIdx = Manager->r_nNextQueueIndex;
 		if (qIdx >= 0 && qIdx < 0x20) {
 			Manager->r_EventQueue[qIdx].nEffectGroupID = nEffectGroupID;
@@ -155,6 +172,11 @@ int __fastcall TgEffectManager__SetEffectRep::Call(ATgEffectManager* Manager, vo
 	if (isBeaconEquipEffect) {
 		Logger::Log("debug",
 			"  [SetEffectRep egId=5716] queue-push SUPPRESSED (managed-list slot=%d carries the visual)\n", ret);
+	}
+	if (isSustainedStealth && effectsLog) {
+		Logger::Log("effects",
+			"[SET-REP]   queue-push SUPPRESSED egId=%d cat=621 (sustained stealth; FX driven by r_bIsStealthed)\n",
+			nEffectGroupID);
 	}
 
 	// Buff-routing for class-157 (TgEffectBuff) effects. The class is

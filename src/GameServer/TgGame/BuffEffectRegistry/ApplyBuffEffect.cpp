@@ -146,30 +146,53 @@ void ApplyBuffEffectFromHook(UTgEffect* effect, AActor* target, bool bRemove) {
 
 	float fProratedAmount;
 	if (!bRemove) {
-		if (g->m_fLifeTime > 0.0f && g->m_fApplyInterval > 0.0f && bUseOnInterval) {
-			fProratedAmount = effect->m_fBase / (g->m_fLifeTime / g->m_fApplyInterval);
-		} else {
-			fProratedAmount = effect->m_fBase;
+		// **Use m_fCurrent, not m_fBase.** UC's `TgEffect.ApplyEffect` runs
+		// BEFORE SetEffectRep (our entry into ApplyBuffEffectFromHook on the
+		// apply path), and along the way it calls `CheckEffectBuffModifier`
+		// which scales the value by any buff-on-buff modifiers (e.g. Repair
+		// Overcharge skill 613, prop 361 +10% on prop-65 buffs from the
+		// FRA's right-click). UC then writes the post-scaling result to
+		// `m_fCurrent` (TgEffect.uc:116). Reading `m_fBase` here loses that
+		// scaling — the FRA's +40% buff registered as +40% on the turret
+		// instead of the expected +44% (1.4× damage instead of 1.44×).
+		//
+		// `m_fCurrent` is also already prorated (UC applies the
+		// `m_fBase / (m_fLifeTime / m_fApplyInterval)` math for aoi effects
+		// itself), so we don't need to re-do that here. Fall back to
+		// `m_fBase` only when UC apparently didn't run apply (m_fCurrent
+		// still 0) — e.g. ProtectionModifier blocked the apply chain, or
+		// we're on a different non-SetEffectRep entry path.
+		float amt = effect->m_fCurrent;
+		if (amt == 0.0f) {
+			if (g->m_fLifeTime > 0.0f && g->m_fApplyInterval > 0.0f && bUseOnInterval) {
+				amt = effect->m_fBase / (g->m_fLifeTime / g->m_fApplyInterval);
+			} else {
+				amt = effect->m_fBase;
+			}
 		}
+		fProratedAmount = amt;
 		// BuildEffectGroup stores class-157 percent base as fraction (0.30 for
 		// +30%); buff formula wants percent (30.0). Same reversal as
 		// ReapplyCharacterSkillTree.cpp:339.
 		if (isPercent) fProratedAmount *= 100.0f;
 	} else {
-		// On remove use the amount we recorded on apply (already in percent
-		// form for percent calcs, since we wrote it that way). Note: the
-		// native apply path also writes m_fCurrent (in FRACTION for class-157
-		// percent), but we OVERWROTE that with PERCENT in our apply hook —
-		// so by the time UC's eventRemove fires (and we read m_fCurrent
-		// here), it's the PERCENT value our apply hook stored.
-		fProratedAmount = effect->m_fCurrent;
-		if (fProratedAmount == 0.0f) {
+		// On remove: re-derive from m_fCurrent the same way apply did, instead
+		// of relying on a stored value. Apply path no longer overwrites
+		// m_fCurrent (see comment block below the ApplyBuff call), so by the
+		// time UC's eventRemove fires (and we read m_fCurrent here) it's still
+		// UC's fraction form — same as it was at apply time.
+		float amt = effect->m_fCurrent;
+		if (amt == 0.0f) {
 			// Apply path was skipped (e.g. ProtectionModifier zeroed lifetime,
 			// Strongest-Wins displaced before our slot got populated). Nothing
 			// to reverse — mirrors the m_fCurrent==0 guard in
 			// reference_phantom_clone_skipped_apply.md.
 			return;
 		}
+		fProratedAmount = amt;
+		// Same percent-conversion the apply path did so the buff registry's
+		// remove subtracts the same magnitude the apply added.
+		if (isPercent) fProratedAmount *= 100.0f;
 	}
 
 	FBuffHeader header{};
@@ -183,35 +206,42 @@ void ApplyBuffEffectFromHook(UTgEffect* effect, AActor* target, bool bRemove) {
 	TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, header, calc, fProratedAmount,
 	                        /*bRemove=*/(unsigned long)(bRemove ? 1 : 0), srcType);
 
-	// **Apply path only**: stash the (potentially percent-converted) value so
-	// the matching Remove can pass the same number to ApplyBuff. For class-157
-	// (TgEffectBuff) we OVERRIDE what UC would otherwise write, switching the
-	// stored value from fraction (0.30) to percent (30) — UC's TgEffect base
-	// ApplyEffect later runs `m_fCurrent = fProratedAmount` (TgEffect.uc:116)
-	// in fraction form, so without our override the Remove would subtract the
-	// wrong magnitude.
+	// **Do NOT touch effect->m_fCurrent at all.** UC's TgEffect.ApplyEffect
+	// writes m_fCurrent = fProratedAmount in fraction form (e.g. 0.5 for +50%
+	// PERC_INCREASE) at TgEffect.uc:116. UC's event Remove later reads that
+	// same m_fCurrent at TgEffect.uc:615 and feeds it into ApplyToProperty,
+	// which for PERC_INCREASE computes `m_fRaw - (m_fBase * m_fCurrent)` —
+	// expecting the fraction. We must not poison that.
 	//
-	// **Do NOT zero m_fCurrent in the Remove path.** Earlier shape did
-	// `effect->m_fCurrent = 0.0f` here; that races with UC's `event Remove`,
-	// which is dispatched AFTER our intercept and reads m_fCurrent inside
-	// `ApplyToProperty(Target, m_nPropertyId, m_fCurrent, true)`
-	// (TgEffect.uc:615). Pre-zeroing made UC compute
-	// `NewValue = m_fRaw - 0 = m_fRaw` — a silent no-op that left the
-	// property's m_fRaw permanently elevated by the apply's delta. UC sets
-	// `m_fCurrent = 0` ITSELF on TgEffect.uc:616 after the ApplyToProperty
-	// call, so leaving it alone here is correct.
+	// Earlier shape OVERWROTE m_fCurrent here with the percent-form value
+	// (0.5 → 50) so the matching Remove could read the same number back. That
+	// works for genuine class-157 (TgEffectBuff) effects whose Remove goes
+	// through the buff registry — but class-157 is STRIPPED on this binary,
+	// so every effect with DB class_res_id=157 instantiates as a plain
+	// TgEffect at runtime and inherits the base UC eventRemove that DOES
+	// read m_fCurrent into ApplyToProperty. Any false-positive
+	// BuffEffectRegistry::IsBuff hit on a class-80 PERC effect then made UC
+	// remove `m_fBase * 50 = 24000` instead of `m_fBase * 0.5 = 240`,
+	// catastrophically driving the prop's m_fRaw negative.
 	//
-	// Concrete failure (2026-05-14): Crescent jetpack fire effect (egId 26175,
-	// class TgEffect, prop 70 +115 AirSpeed) was getting buff-routed via a
-	// false-positive in BuffEffectRegistry::IsBuff (stale clone pointer
-	// reused by allocator). Each fire pulse: APPLY +115 → m_fRaw 600→715,
-	// REMOVE no-op → m_fRaw stays 715 → next APPLY +115 → m_fRaw 715→830 →
-	// permanent compounding +115 per pulse over a session. Removing the
-	// pre-zero here lets UC's Remove subtract the correct delta even when
-	// the false-positive routes us through this hook.
-	if (!bRemove) {
-		effect->m_fCurrent = fProratedAmount;
-	}
+	// Concrete failure (2026-05-19): stealth-while-jetpacking. Stealth's
+	// +50% AirSpeed (effect 12893, class_res_id=80, egId 9315) was routed
+	// here via false-positive IsBuff. Override poisoned m_fCurrent to 50.
+	// On the next remove UC computed `720 - (480 * 50) = -23280`, clamped
+	// Pawn.AirSpeed to zero, and the jetpack lost all thrust for the rest
+	// of the session.
+	//
+	// Fix: the remove path scales-on-read identically to apply (the
+	// `if (isPercent) fProratedAmount *= 100` above), so the buff registry
+	// sees matching magnitudes on both sides without us mutating UC's
+	// m_fCurrent. UC keeps its untouched fraction; we derive our percent
+	// locally each time.
+	//
+	// Also: do NOT pre-zero m_fCurrent. UC sets it to 0 ITSELF on
+	// TgEffect.uc:616 after the ApplyToProperty call. Pre-zeroing would
+	// race UC's Remove and make `m_fRaw - m_fBase * 0 = m_fRaw` (no-op),
+	// leaving m_fRaw permanently elevated by the apply's delta. The
+	// 2026-05-14 Crescent jetpack fix learned this.
 
 	Logger::Log("effects",
 		"[BUFF-ROUTE] effect=%p egId=%d propId=%d catCode=%d skillId=%d devInst=%d "

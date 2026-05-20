@@ -13,8 +13,11 @@
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Globals.hpp"
 #include <algorithm>
+#include <set>
 #include <string>
+#include <cstring>
 
 // ---------------------------------------------------------------------------
 // Static member initialization
@@ -53,6 +56,53 @@ int Inventory::GetEffectGroupId(int deviceId) {
 		case 2906: return 9071;   // specialty (used in medic bot config)
 		default:   return 0;      // REST, morale, unknown
 	}
+}
+
+// Cache of device_ids whose firemodes carry a cat=621 (Stealth) effect group.
+// Used at equip time to set `r_bIsStealthDevice=1`, which gates several UC
+// behaviors that distinguish stealth devices from regular weapons:
+//   - `TgDevice.CanFireWhileHanging` returns true → device can fire (and
+//     keep sustaining its cat-621 group via continuous-fire refire) while
+//     the pawn is in PlayerHanging state. Without this, grabbing a ledge
+//     trips `CanDeviceFireNow`'s `IsInState('PlayerHanging') && !CanFireWhileHanging()`
+//     gate (TgDevice.uc:913), the RefireCheckTimer's else-branch
+//     `GotoState('Active')` fires, DeviceFiring.EndState runs
+//     `RemoveEffectType(263)`, and the active stealth effect group is torn
+//     down. Same gate also blocks press-stealth-to-activate while hanging.
+//   - `CanFireWhileDoingRoutineTasks` (TgDevice.uc:716) returns true,
+//     letting stealth persist through hacking/rest/etc.
+//   - Carry-blockers at TgDevice.uc:880/891 disallow firing stealth while
+//     carrying a beacon or pickup flag — these are gameplay rules,
+//     intentional.
+//
+// The asm.dat loader that normally populates this flag is one of the
+// stripped natives, so we set it ourselves here.
+static const std::set<int>& GetStealthDeviceIds() {
+	static std::set<int> cache;
+	static bool initialized = false;
+	if (!initialized) {
+		initialized = true;
+		sqlite3* db = Database::GetConnection();
+		if (db) {
+			sqlite3_stmt* stmt = nullptr;
+			if (sqlite3_prepare_v2(db,
+				"SELECT DISTINCT dmeg.device_id "
+				"FROM asm_data_set_device_mode_effect_groups dmeg "
+				"JOIN asm_data_set_effect_groups eg "
+				"  ON eg.effect_group_id = dmeg.effect_group_id "
+				"WHERE eg.category_value_id = 621",
+				-1, &stmt, nullptr) == SQLITE_OK) {
+				while (sqlite3_step(stmt) == SQLITE_ROW) {
+					cache.insert(sqlite3_column_int(stmt, 0));
+				}
+				sqlite3_finalize(stmt);
+			}
+			Logger::Log("inventory",
+				"GetStealthDeviceIds: cached %d device_ids with cat=621 effect groups\n",
+				(int)cache.size());
+		}
+	}
+	return cache;
 }
 
 // ---------------------------------------------------------------------------
@@ -205,6 +255,34 @@ void Inventory::ApplyRolledModEffects(ATgPawn* Pawn, int deviceId, int deviceIns
 	if (Pawn == nullptr) return;
 	if (effectGroupIds.empty()) return;
 
+	// Idempotent re-equip: if this device's mods are already in the pawn's
+	// buff registry, skip. ApplyBuff does additive slot writes (*slot += delta)
+	// — if the same device's invId is re-equipped (e.g., respawn re-running
+	// EquipItem with the same persistent inventoryId), each rolled-mod
+	// registration would compound the existing entry instead of restoring it.
+	// Concrete evidence: 2026-05-19 test session showed an Output Mod entry's
+	// fPercentModifier accumulated to ~31316% after enough respawn cycles,
+	// blowing prop 318's GetBuffedProperty result to 31416 and breaking the
+	// morale-required-points threshold.
+	//
+	// Walking `m_EffectBuffInfo` for entries scoped to this invId catches the
+	// re-equip case without requiring us to track applied-mod sets externally.
+	// devInst-scoped entries only ever come from this function and (later)
+	// matching unequip cleanup; wildcards (devInst=0) and other-device-scoped
+	// entries are correctly ignored.
+	if (Pawn->m_EffectBuffInfo.Data != nullptr) {
+		const int n = Pawn->m_EffectBuffInfo.Num();
+		for (int i = 0; i < n; ++i) {
+			if (Pawn->m_EffectBuffInfo.Data[i].BuffHeader.nReqDeviceInstId == deviceInstanceId) {
+				Logger::Log("inventory",
+					"ApplyRolledModEffects: invId=%d already registered (entry idx=%d, prop=%d) — skipping re-apply\n",
+					deviceInstanceId, i,
+					Pawn->m_EffectBuffInfo.Data[i].BuffHeader.nPropId);
+				return;
+			}
+		}
+	}
+
 	sqlite3* db = Database::GetConnection();
 	if (db == nullptr) return;
 
@@ -347,6 +425,33 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 	// --- Assign unique inventory ID ---
 	int invId = (inventoryId > 0) ? inventoryId : NextId();
 
+	// --- No-op short-circuit ---
+	// If the requested invId is already the device at this slot, do nothing.
+	// Without this guard, the equip-screen handler's "re-equip every non-zero
+	// slot on Apply" pass would, for unchanged slots, create a SECOND
+	// ATgDevice actor carrying the same r_nDeviceInstanceId (CreateEquipDevice
+	// finds the fresh InvObj we just inserted via PrepopulateInventoryId,
+	// sees its s_Device==null, skips the destroy branch, and falls through to
+	// AssemblyDatManager::CreateDevice). Two devices with the same instId
+	// silently desync the client's FUN_10a14a50 binding scan. Symptom:
+	// jetpack stops pausing power regen after Apply (server's
+	// GetDeviceByEqPoint(5) returns the new idle device while client/state
+	// machine operates on the leaked old one) — verified 2026-05-20.
+	//
+	// Also kills the s_Properties stacking: ApplyDeviceEquipEffects below
+	// writes directly to prop->m_fRaw with no idempotency; without this
+	// short-circuit each Apply press re-adds the device's lifetime=0 equip
+	// baseline (HUMAN BASE ATTRIBUTES → +30 protection becomes +60, +90, …).
+	if (slot >= 1 && slot <= 24) {
+		ATgDevice* existing = Pawn->m_EquippedDevices[slot];
+		if (existing != nullptr && existing->r_nDeviceInstanceId == invId) {
+			Logger::Log("inventory",
+				"Equip: pawn=0x%p slot=%d invId=%d already equipped — short-circuiting\n",
+				Pawn, slot, invId);
+			return existing;
+		}
+	}
+
 	// --- Resolve slot value ID ---
 	int slotValueId = GA::SlotValueId(slot);
 	if (slotValueId == 0) {
@@ -452,6 +557,17 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 		Pawn->r_nRestDeviceSlot = slot;
 	}
 
+	// --- Stealth device flag ---
+	// DB-driven; see GetStealthDeviceIds() header for the gameplay reasoning.
+	// Replicated (CPF_Net) so the gate evaluates correctly on the owning
+	// client too (UC `CanFireWhileHanging` runs simulated, both sides).
+	if (GetStealthDeviceIds().count(deviceId) > 0) {
+		Device->r_bIsStealthDevice = 1;
+		Logger::Log("inventory",
+			"Equip: device=%d marked r_bIsStealthDevice=1 (cat=621 firemode)\n",
+			deviceId);
+	}
+
 	// --- Morale device auto-config ---
 	if (GetDeviceType(slot) == GA_G::TGDT_MORALE) {
 		Pawn->r_nMoraleDeviceSlot = slot;
@@ -536,7 +652,9 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 	}
 
 	// --- Track in per-pawn map ---
-	s_equipped[Pawn].push_back({deviceId, slot, qualityValueId, invId, GetEffectGroupId(deviceId)});
+	// `mods` is stashed on the entry so Unequip() can subtract the exact
+	// same rolled-mod buff entries it added, without re-querying the DB.
+	s_equipped[Pawn].push_back({deviceId, slot, qualityValueId, invId, GetEffectGroupId(deviceId), mods});
 
 	// --- Update pawnId -> vector* lookup ---
 	int pawnId = Pawn->r_nPawnId;
@@ -583,6 +701,253 @@ const std::vector<EquippedEntry>& Inventory::GetEquippedByPawnId(int pawnId) {
 	auto it = s_equippedByPawnId.find(pawnId);
 	if (it != s_equippedByPawnId.end() && it->second != nullptr) return *(it->second);
 	return s_empty;
+}
+
+// ---------------------------------------------------------------------------
+// RemoveDeviceEquipEffects — inverse of ApplyDeviceEquipEffects.
+//
+// Walks the same lifetime=0 effect groups attached to the device and applies
+// the SIGN-FLIPPED delta to each pawn property's m_fRaw. Calc-method semantics
+// follow TgEffect.uc:448 (apply, bRemove=1):
+//   67 ADD             → newRaw = curRaw - base               (undo +base)
+//   70 SUBTRACT        → newRaw = curRaw + base               (undo -base)
+//   68 PERC_INCREASE   → newRaw = curRaw - (propBase * base)  (undo +%)
+//   69 PERC_DECREASE   → newRaw = curRaw + (propBase * base)  (undo -%)
+//
+// Same DB query, same DISTINCT (double-row capture artifact), same direct
+// m_fRaw write rationale as the Apply side (see Apply header for the
+// SetProperty-vtable-skipping explanation).
+// ---------------------------------------------------------------------------
+static void RemoveDeviceEquipEffects_impl(ATgPawn* Pawn, int deviceId) {
+	if (Pawn == nullptr || Pawn->s_Properties.Data == nullptr) return;
+
+	sqlite3* db = Database::GetConnection();
+	if (db == nullptr) return;
+
+	static const char* kSql =
+		"SELECT DISTINCT e.prop_id, e.base_value, e.calc_method_value_id "
+		"FROM asm_data_set_device_effect_groups deg "
+		"JOIN asm_data_set_effect_groups eg ON eg.effect_group_id = deg.effect_group_id "
+		"JOIN asm_data_set_effects e ON e.effect_group_id = deg.effect_group_id "
+		"WHERE deg.device_id = ? AND eg.lifetime_sec = 0";
+
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db, kSql, -1, &stmt, nullptr) != SQLITE_OK) {
+		Logger::Log("inventory", "RemoveDeviceEquipEffects: prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int(stmt, 1, deviceId);
+
+	int reverted = 0;
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		int   propId     = sqlite3_column_int   (stmt, 0);
+		float baseValue  = (float)sqlite3_column_double(stmt, 1);
+		int   calcMethod = sqlite3_column_int   (stmt, 2);
+
+		UTgProperty* prop = nullptr;
+		for (int i = 0; i < Pawn->s_Properties.Num(); ++i) {
+			UTgProperty* p = Pawn->s_Properties.Data[i];
+			if (p && p->m_nPropertyId == propId) { prop = p; break; }
+		}
+		if (prop == nullptr) continue;
+
+		const float curRaw   = prop->m_fRaw;
+		const float propBase = prop->m_fBase;
+		float newRaw;
+		switch (calcMethod) {
+			case 67: newRaw = curRaw - baseValue;              break;  // undo Apply's +base
+			case 70: newRaw = curRaw + baseValue;              break;  // undo Apply's -base
+			case 68: newRaw = curRaw - (propBase * baseValue); break;  // undo Apply's +%
+			case 69: newRaw = curRaw + (propBase * baseValue); break;  // undo Apply's -%
+			default: continue;
+		}
+		prop->m_fRaw = newRaw;
+		Logger::Log("inventory",
+			"RemoveDeviceEquipEffects: pawn=0x%p device=%d propId=%d cm=%d base=%.2f  m_fRaw %.2f -> %.2f\n",
+			Pawn, deviceId, propId, calcMethod, baseValue, curRaw, newRaw);
+		++reverted;
+	}
+	sqlite3_finalize(stmt);
+
+	if (reverted > 0) {
+		Logger::Log("inventory", "RemoveDeviceEquipEffects: pawn=0x%p device=%d reverted=%d\n",
+			Pawn, deviceId, reverted);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// RemoveRolledModEffects — inverse of ApplyRolledModEffects.
+//
+// Same DB query, same per-mod-instance iteration (each rolled mod is a
+// separate stacking instance — N copies of a +15% AOE Radius mod registered
+// as N ApplyBuff calls, must remove N times). Calls ApplyBuff with
+// bRemove=1 so the matching buff entry's slot is subtracted by the same
+// delta. The (propId, catCode, skillId, devInst) tuple in BuffFilter is the
+// match key inside GetBuffIndex, so registering with bAddIfNotExists=0 (set
+// implicitly when bRemove=1) and the device-instance-scoped header lands on
+// the exact entries Apply created.
+//
+// Output Mod (prop 385) was routed to srcType=OTHER on the Apply side —
+// mirror that here so we hit the same fPercentModifier slot.
+// ---------------------------------------------------------------------------
+static void RemoveRolledModEffects_impl(ATgPawn* Pawn, int deviceId, int deviceInstanceId, const std::vector<int>& effectGroupIds) {
+	if (Pawn == nullptr) return;
+	if (effectGroupIds.empty()) return;
+
+	sqlite3* db = Database::GetConnection();
+	if (db == nullptr) return;
+
+	std::vector<int> uniqueIds(effectGroupIds.begin(), effectGroupIds.end());
+	std::sort(uniqueIds.begin(), uniqueIds.end());
+	uniqueIds.erase(std::unique(uniqueIds.begin(), uniqueIds.end()), uniqueIds.end());
+
+	std::string sql =
+		"SELECT e.effect_group_id, e.prop_id, e.base_value, e.calc_method_value_id "
+		"FROM asm_data_set_effects e "
+		"WHERE e.effect_group_id IN (SELECT effect_group_id FROM asm_data_set_effect_groups WHERE lifetime_sec = 0) "
+		"  AND e.effect_group_id IN (";
+	for (size_t i = 0; i < uniqueIds.size(); ++i) {
+		if (i) sql += ',';
+		sql += std::to_string(uniqueIds[i]);
+	}
+	sql += ')';
+
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+		Logger::Log("inventory", "RemoveRolledModEffects: prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+
+	struct EffectRow { int propId; float baseValue; int calcMethod; };
+	std::map<int, std::vector<EffectRow>> effectsByEgid;
+
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		int   egid       = sqlite3_column_int   (stmt, 0);
+		int   propId     = sqlite3_column_int   (stmt, 1);
+		float baseValue  = (float)sqlite3_column_double(stmt, 2);
+		int   calcMethod = sqlite3_column_int   (stmt, 3);
+		if (calcMethod < 67 || calcMethod > 70) continue;
+		effectsByEgid[egid].push_back({ propId, baseValue, calcMethod });
+	}
+	sqlite3_finalize(stmt);
+
+	int removed = 0;
+	for (int egid : effectGroupIds) {
+		auto it = effectsByEgid.find(egid);
+		if (it == effectsByEgid.end()) continue;
+		for (const EffectRow& r : it->second) {
+			FBuffHeader header{};
+			header.nPropId          = r.propId;
+			header.nReqCategoryCode = 0;
+			header.nReqSkillId      = 0;
+			header.nReqDeviceInstId = deviceInstanceId;
+
+			const unsigned char srcType =
+				(r.propId == 385) ? /*OTHER*/4 : /*ITEM*/1;
+
+			TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, header, r.calcMethod, r.baseValue,
+			                        /*bRemove=*/1, srcType);
+			++removed;
+		}
+	}
+
+	if (removed > 0) {
+		Logger::Log("inventory", "RemoveRolledModEffects: pawn=0x%p device=%d devInst=%d removed=%d\n",
+			Pawn, deviceId, deviceInstanceId, removed);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Inventory::Unequip — teardown counterpart to Equip.
+//
+// Order mirrors Equip in reverse:
+//   1. Subtract rolled-mod buff entries (ApplyBuff bRemove=1).
+//   2. Subtract device equip-effect baselines (RemoveDeviceEquipEffects).
+//   3. Drop the engine-side slot pointer + PRI replication record so the
+//      client sees the slot empty.
+//   4. Clear the invObj's back-pointer to the device, then remove the
+//      invObj from the inventory TMap via the binary's
+//      TgInventoryManager::RemoveInventoryObjectById helper (0x10a16190).
+//   5. UWorld::DestroyActor on the device actor (mirrors what
+//      CreateEquipDevice does for its own swap-in-same-slot path).
+//   6. Drop the entry from s_equipped tracking.
+//
+// r_ItemCount is INTENTIONALLY not touched here. The equip-screen handler's
+// trailing DB-count override (see ServerAcceptNewProfileFromEquipScreen
+// "InvManager.IsValid r_ItemCount" block) resets it to the bag-pool total
+// once the whole equip pass is done, so we'd just be racing the override.
+// ---------------------------------------------------------------------------
+void Inventory::Unequip(ATgPawn* Pawn, int slot) {
+	if (Pawn == nullptr || slot < 1 || slot > 24) return;
+	if (Pawn->InvManager == nullptr) return;
+
+	ATgDevice* device = Pawn->m_EquippedDevices[slot];
+	if (device == nullptr) return;
+
+	const int invId    = device->r_nDeviceInstanceId;
+	const int deviceId = device->r_nDeviceId;
+
+	// Pull the matching s_equipped entry (need its mods to reverse buffs).
+	std::vector<int> mods;
+	auto it = s_equipped.find(Pawn);
+	if (it != s_equipped.end()) {
+		auto& vec = it->second;
+		for (auto e = vec.begin(); e != vec.end(); ) {
+			if (e->slot == slot && e->inventoryId == invId) {
+				mods = e->mods;
+				e = vec.erase(e);
+			} else {
+				++e;
+			}
+		}
+	}
+
+	Logger::Log("inventory", "Unequip: pawn=0x%p slot=%d deviceId=%d invId=%d mods=%zu\n",
+		Pawn, slot, deviceId, invId, mods.size());
+
+	// 1. Reverse rolled-mod buffs (must precede the device destroy — the
+	//    ApplyBuff path mirrors to the client RPC which expects a live
+	//    Instigator chain).
+	RemoveRolledModEffects_impl(Pawn, deviceId, invId, mods);
+
+	// 2. Reverse equip-effect baselines on s_Properties.
+	RemoveDeviceEquipEffects_impl(Pawn, deviceId);
+
+	// 3. Drop the engine slot pointer + PRI replication record.
+	Pawn->m_EquippedDevices[slot] = nullptr;
+	ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+	if (PRI != nullptr) {
+		std::memset(&PRI->r_EquipDeviceInfo[slot], 0, sizeof(FEquipDeviceInfo));
+		PRI->bNetDirty = 1;
+		PRI->bForceNetUpdate = 1;
+	}
+	// Mirror the pawn-dirty bit pattern NonPersistRemoveDevice uses.
+	*(unsigned int*)((char*)Pawn + 0xB0) |= 0x100;
+	*(unsigned int*)((char*)Pawn + 0xAC) |= 0x100000;
+
+	// 4. Clear the invObj's device back-ref, then yank it from the map.
+	//    FUN_10a12f10(invObj, 0) zeroes invObj+0xb0 (s_Device) and +0xb4
+	//    (cached r_nDeviceInstanceId for the client's recovery scan), and
+	//    fires invObj->vtable[0x49] (some notify). FUN_10a16190 is
+	//    TgInventoryManager::RemoveInventoryObjectById — locates the slot
+	//    in m_InventoryMap by invId and removes it.
+	if (device->s_InventoryObject != nullptr) {
+		typedef void (__fastcall* ClearInvObjDeviceFn)(void* /*invObj*/, void* /*edx*/, int /*devicePtrOrZero*/);
+		static const ClearInvObjDeviceFn ClearInvObjDevice = (ClearInvObjDeviceFn)0x10a12f10;
+		ClearInvObjDevice(device->s_InventoryObject, nullptr, 0);
+	}
+	typedef unsigned int (__fastcall* RemoveInvObjFn)(void* /*invMgr*/, void* /*edx*/, unsigned int /*invId*/);
+	static const RemoveInvObjFn RemoveInvObj = (RemoveInvObjFn)0x10a16190;
+	RemoveInvObj(Pawn->InvManager, nullptr, (unsigned int)invId);
+
+	// 5. Destroy the actor. UWorld::DestroyActor with (bNetForce=0,
+	//    bShouldModifyLevel=1) matches what TgPawn::CreateEquipDevice does
+	//    when it swaps in a different invId at the same slot.
+	typedef int (__fastcall* DestroyActorFn)(void* /*world*/, void* /*edx*/, void* /*actor*/, int /*bNetForce*/, int /*bShouldModifyLevel*/);
+	static const DestroyActorFn DestroyActorNative = (DestroyActorFn)0x10cbc0a0;
+	if (Globals::Get().GWorld != nullptr) {
+		DestroyActorNative(Globals::Get().GWorld, nullptr, device, 0, 1);
+	}
 }
 
 // ---------------------------------------------------------------------------

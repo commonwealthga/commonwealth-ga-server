@@ -117,6 +117,17 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
     if (j.contains("pin_wineserver"))     cfg.pin_wineserver     = j["pin_wineserver"].get<bool>();
     if (j.contains("per_slot_prefix"))    cfg.per_slot_prefix    = j["per_slot_prefix"].get<bool>();
 
+    if (j.contains("use_docker"))         cfg.use_docker         = j["use_docker"].get<bool>();
+    if (j.contains("docker_image"))       cfg.docker_image       = j["docker_image"].get<std::string>();
+    if (j.contains("docker_memory"))      cfg.docker_memory      = j["docker_memory"].get<std::string>();
+    if (j.contains("docker_debug"))       cfg.docker_debug       = j["docker_debug"].get<bool>();
+    if (j.contains("wine_install_dir"))   cfg.wine_install_dir   = j["wine_install_dir"].get<std::string>();
+    if (j.contains("docker_extra_mounts") && j["docker_extra_mounts"].is_array()) {
+        for (const auto& item : j["docker_extra_mounts"]) {
+            if (item.is_string()) cfg.docker_extra_mounts.push_back(item.get<std::string>());
+        }
+    }
+
     Logger::Log("config", "[ControlServerConfig] Loaded config from '%s'\n", path.c_str());
     return cfg;
 }

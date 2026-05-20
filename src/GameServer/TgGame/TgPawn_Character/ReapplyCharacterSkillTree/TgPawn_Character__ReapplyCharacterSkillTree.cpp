@@ -8,6 +8,7 @@
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include <cmath>
 #include <set>
 #include <map>
 
@@ -19,10 +20,31 @@
 
 // Per-pawn record of what each Reapply pass wrote so a subsequent respec
 // (or respawn — Reapply runs on every spawn) can REVERSE it before applying
-// the new allocation. Keyed by pawn pointer → (propId → cumulative delta
-// m_fRaw received from the direct-apply path). Ticker-based skill effects
-// track themselves via s_AppliedEffectGroups and get removed separately.
-static std::map<ATgPawn_Character*, std::map<int, float>> g_appliedSkillDeltas;
+// the new allocation. Keyed by pawn pointer → (propId → SkillDeltaRec):
+//   delta         — cumulative delta we added to m_fRaw last pass
+//   postApplyRaw  — m_fRaw immediately after our final write last pass
+//
+// On the next pass we only subtract delta if `prop->m_fRaw == postApplyRaw`.
+// Any mismatch (instance reload reset s_Properties to base, another system
+// touched the prop in between, …) means our delta is no longer in raw —
+// reverting would push raw below baseline. In that case we SKIP the revert
+// and let the new pass apply on top of whatever raw is now.
+//
+// Mirrors the same pattern in src/GameServer/Armor/Armor.cpp; was the root
+// cause there of "armor doesn't reapply on return-from-mission, ending up
+// with less HP". Skill deltas have the same shape and the same bug.
+//
+// Ticker-based skill effects track themselves via s_AppliedEffectGroups and
+// get removed separately.
+struct SkillDeltaRec {
+	float delta;
+	float postApplyRaw;
+};
+static std::map<ATgPawn_Character*, std::map<int, SkillDeltaRec>> g_appliedSkillDeltas;
+
+static bool SkillRawMatches(float current, float remembered) {
+	return std::fabs(current - remembered) < 0.001f;
+}
 
 // Parallel record for the IsModifierProp() routing branch — these entries
 // land in m_EffectBuffInfo via TgPawn__ApplyBuff, NOT in s_Properties, so
@@ -88,41 +110,57 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 		"[Reapply] pawn=%p mgr=%p mgr->r_Owner=%p (expect ==pawn for effects to apply)\n",
 		(void*)Pawn, (void*)mgr, (void*)mgr->r_Owner);
 
-	// --- RESPEC REVERSAL PASS ---
-	// 1. Direct-apply deltas from last Reapply: subtract from m_fRaw and
-	//    re-fan-out so replicated/cached stats follow.
-	// 2. Ticker-based skill clones in s_AppliedEffectGroups: call
-	//    ProcessEffect(bRemove=true) so UC's LifeOver/timer cleanup runs and
-	//    the clone's property modifications get reversed.
+	// Shared across revert + apply phases so the final fanout pass at the end
+	// covers every prop either layer touched. Moved up from the apply block
+	// when armor was split into Revert/Apply so the revert phase can also
+	// contribute to it.
+	std::set<int> touchedPropIds;
+
+	// =============================================================
+	// PHASE 1 — REVERT (LIFO of apply order: skills first, armor last)
+	// =============================================================
+	//
+	// Why LIFO: apply order is `armor → skills` (gear first, then training on
+	// top). Reverting in reverse undoes each layer at the raw value it was
+	// applied to, keeping every snapshot check valid. Before this restructure
+	// armor revert lived INSIDE ApplyDefaultArmor and ran AFTER skill apply
+	// had already shifted raw — its snapshot mismatched, the revert was
+	// skipped, the new armor delta stacked on top of the old one. Same
+	// failure on skill revert side. Toggling the skill UI re-saved without
+	// changes → both layers re-stacked → HP grew unbounded.
 	{
 		auto& prev = g_appliedSkillDeltas[Pawn];
-		std::set<int> reversedProps;
 		for (auto& kv : prev) {
 			int pid = kv.first;
-			float delta = kv.second;
+			const SkillDeltaRec& rec = kv.second;
 			UTgProperty* prop = nullptr;
 			for (int i = 0; i < Pawn->s_Properties.Count; i++) {
 				UTgProperty* p = Pawn->s_Properties.Data[i];
 				if (p && p->m_nPropertyId == pid) { prop = p; break; }
 			}
 			if (!prop) continue;
-			prop->m_fRaw -= delta;
-			reversedProps.insert(pid);
-			Logger::Log("skills",
-				"[Reapply/respec] reverse propId=%d delta=%.3f -> raw=%.3f\n",
-				pid, delta, prop->m_fRaw);
+
+			const float rawBefore = prop->m_fRaw;
+			if (SkillRawMatches(rawBefore, rec.postApplyRaw)) {
+				// Our previous delta is still in m_fRaw — safe to reverse.
+				prop->m_fRaw -= rec.delta;
+				Logger::Log("skills",
+					"[Reapply/respec] reverse propId=%d delta=%.3f -> raw=%.3f\n",
+					pid, rec.delta, prop->m_fRaw);
+			} else {
+				// Raw was reset between calls (instance reload / mission
+				// return) or something else mutated it. Don't subtract a
+				// delta that isn't there.
+				Logger::Log("skills",
+					"[Reapply/respec] reverse-skipped propId=%d raw=%.3f != postApply=%.3f (delta %.3f), treating as reset\n",
+					pid, rawBefore, rec.postApplyRaw, rec.delta);
+			}
+			touchedPropIds.insert(pid);
 		}
 		prev.clear();
-
-		// Fan out the reversals so replicated stats follow back down.
-		for (int pid : reversedProps) {
-			UTgProperty* prop = nullptr;
-			for (int i = 0; i < Pawn->s_Properties.Count; i++) {
-				UTgProperty* p = Pawn->s_Properties.Data[i];
-				if (p && p->m_nPropertyId == pid) { prop = p; break; }
-			}
-			if (prop) SetPawnProperty((ATgPawn*)Pawn, pid, prop->m_fRaw);
-		}
+		// (Per-revert fanout removed — Phase 3's combined fanout handles every
+		// touched prop, so we don't replicate intermediate values that armor
+		// apply / skill apply will overwrite this same call.)
 
 		// Reverse buff-registry entries written by the previous Reapply via the
 		// IsModifierProp() branch. Skip-this-step is what causes the unlimited-
@@ -164,38 +202,56 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 		}
 	}
 
+	// Armor revert AFTER skill revert: LIFO matches the apply order below.
+	// Snapshots are still valid because nothing else has touched raw since
+	// the skill revert above and armor was the last layer to apply last time.
+	Armor::RevertDefaultArmor((ATgPawn*)Pawn);
+	touchedPropIds.insert(304);  // HEALTH_MAX — armor always touches it if propHP exists
+
 	// Always clear first — ReapplyCharacterSkillTree is called on spawn AND
 	// after respec. Stale entries from a previous build have to go even if we
 	// end up applying none (e.g. a respec to zero points).
 	mgr->ClearSkillBasedEffectGroups();
 
-	auto it = GPawnSessions.find((ATgPawn*)Pawn);
-	if (it == GPawnSessions.end()) {
-		Logger::Log("skills", "[Reapply] pawn=%p has no session mapping\n", Pawn);
-		LogCallEnd();
-		return;
-	}
+	// =============================================================
+	// PHASE 2 — APPLY (armor first, skills on top)
+	// =============================================================
+	//
+	// Order matters for snapshot bookkeeping consistency with Phase 1. Apply
+	// armor before any session-lookup bail so even a respec-to-zero or a
+	// "no PlayerInfo" path still ends up wearing armor — without this, those
+	// branches used to bail early and leave the player with bare base HP
+	// after a respec.
+	Armor::ApplyDefaultArmor((ATgPawn*)Pawn);
+	touchedPropIds.insert(304);  // idempotent with the revert-side insert
 
-	PlayerInfo* info = PlayerRegistry::GetByGuidPtr(it->second);
-	if (!info) {
-		Logger::Log("skills", "[Reapply] no PlayerInfo for guid=%s\n", it->second.c_str());
-		LogCallEnd();
-		return;
-	}
+	// Skill apply runs only when we have a real allocation. Wrapped in
+	// do-while(false) so any missing-precondition path breaks out cleanly
+	// and still hits the combined fanout below.
+	do {
+		auto it = GPawnSessions.find((ATgPawn*)Pawn);
+		if (it == GPawnSessions.end()) {
+			Logger::Log("skills", "[Reapply] pawn=%p has no session mapping — armor-only\n", Pawn);
+			break;
+		}
 
-	if (info->skills.empty()) {
-		Logger::Log("skills", "[Reapply] charId=%lld has no skill allocation\n",
-			(long long)info->selected_character_id);
-		LogCallEnd();
-		return;
-	}
+		PlayerInfo* info = PlayerRegistry::GetByGuidPtr(it->second);
+		if (!info) {
+			Logger::Log("skills", "[Reapply] no PlayerInfo for guid=%s — armor-only\n", it->second.c_str());
+			break;
+		}
 
-	sqlite3* db = Database::GetConnection();
-	if (!db) {
-		Logger::Log("skills", "[Reapply] db unavailable\n");
-		LogCallEnd();
-		return;
-	}
+		if (info->skills.empty()) {
+			Logger::Log("skills", "[Reapply] charId=%lld has no skill allocation — armor-only\n",
+				(long long)info->selected_character_id);
+			break;
+		}
+
+		sqlite3* db = Database::GetConnection();
+		if (!db) {
+			Logger::Log("skills", "[Reapply] db unavailable — armor-only\n");
+			break;
+		}
 
 	// Multi-row skills are NOT a "ranks per point" structure — each row gates
 	// on `asm_data_set_effect_groups.required_skill_id` to a specific device
@@ -224,13 +280,12 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 		"WHERE seg.skill_group_id = ? AND seg.skill_id = ?",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
-		Logger::Log("skills", "[Reapply] prepare failed: %s\n", sqlite3_errmsg(db));
-		LogCallEnd();
-		return;
+		Logger::Log("skills", "[Reapply] prepare failed: %s — armor-only\n", sqlite3_errmsg(db));
+		break;
 	}
 
 	int appliedGroups = 0;
-	std::set<int> touchedPropIds;
+	// (touchedPropIds declared at function scope above so it spans both phases.)
 
 	Logger::Log("skills", "[Reapply] info->skills contents (%d entries):\n", (int)info->skills.size());
 	for (const SkillAllocation& s : info->skills) {
@@ -457,7 +512,16 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 					prop->m_fRaw += delta;
 					effect->m_fCurrent = delta;
 					touchedPropIds.insert(applyPid);
-					g_appliedSkillDeltas[Pawn][applyPid] += delta;
+					// Accumulate delta for next-pass reversal and snapshot the
+					// current m_fRaw as the "we wrote this" marker. Updated on
+					// every write — the final value reflects all writes this
+					// pass to the same propId. Fan-out below doesn't mutate
+					// m_fRaw (SetProperty/ApplyProperty fan into r_fMaxHealth
+					// etc. but leave m_fRaw alone), so this snapshot stays
+					// accurate until the next Reapply.
+					auto& rec = g_appliedSkillDeltas[Pawn][applyPid];
+					rec.delta       += delta;
+					rec.postApplyRaw = prop->m_fRaw;
 
 					if (applyPid != pid) {
 						Logger::Log("skills",
@@ -479,12 +543,19 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 		"[Reapply] charId=%lld skills=%d appliedGroups=%d touchedProps=%d\n",
 		(long long)info->selected_character_id, (int)info->skills.size(),
 		appliedGroups, (int)touchedPropIds.size());
+	} while (false);
+	// (end of do-while skill-apply scope. Breaks above land here so the
+	// combined fanout below always runs, even on the armor-only paths.)
 
-	// Fan-out: for every property a skill effect touched, call SetProperty
-	// with the current m_fRaw so the native ApplyProperty fans the value
-	// into the pawn's replicated/cached fields (r_fMaxHealth, power pool
-	// max, etc.). Without this, effects live only in UTgProperty.m_fRaw —
-	// stat screens and replicated client state never see the change.
+	// =============================================================
+	// PHASE 3 — combined fanout
+	// =============================================================
+	//
+	// Single SetProperty pass over every prop touched by revert OR apply
+	// (skill direct deltas + armor's HEALTH_MAX entry). ApplyProperty fans
+	// the value into r_fMaxHealth and the other cached/replicated HP storage
+	// sites so the client sees the final m_fRaw, not the intermediates that
+	// would have been visible if armor and skill each fanned out separately.
 	for (int pid : touchedPropIds) {
 		UTgProperty* prop = nullptr;
 		for (int i = 0; i < Pawn->s_Properties.Count; i++) {
@@ -501,11 +572,6 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 			pid, prop->m_fRaw, prop->m_fBase);
 		SetPawnProperty((ATgPawn*)Pawn, pid, prop->m_fRaw);
 	}
-
-	// Phase-1 armor: apply hardcoded default armor set after skills so the
-	// armor delta layers on top of the skill-modified HEALTH_MAX. Armor
-	// tracks its own reversal deltas so respawns don't double-stack.
-	Armor::ApplyDefaultArmor((ATgPawn*)Pawn);
 
 	// Post-apply property dump — log every UTgProperty in the pawn's
 	// s_Properties that a skill effect should have touched. If m_fRaw ==

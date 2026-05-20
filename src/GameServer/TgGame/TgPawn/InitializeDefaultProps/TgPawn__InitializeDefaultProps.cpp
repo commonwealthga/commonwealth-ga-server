@@ -188,12 +188,23 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 		// InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH_MAX,              1000000,    1000000,    0, 1000000);
 	}
 
-	// Air speed — used by PlayerJetting state for lateral movement (TgPlayerController.uc)
-	// Engine APawn default AirSpeed = 600.0f. Max raised to 5000 so PERC
-	// stacking (stealth's +300%, plus skill/device modifiers) isn't clamped
-	// back to 600 at ApplyProperty time — the engine field needs room to
-	// actually receive the buffed value.
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_AIR_SPEED,               600.0f, 600.0f, 0, 5000.0f);
+	// Air speed — used by PlayerJetting state for lateral movement
+	// (TgPlayerController.uc:6344 — `newAccel = Normal(...) * Pawn.AirSpeed / 2`).
+	//
+	// Read whatever the engine/UC CDO has already populated and register that
+	// as the base. Engine.Pawn default is 600 but TgPawn overrides to 480
+	// (TgPawn.uc:10539), and several flying-bot subclasses override further
+	// (TgPawn_Hover/FlyingBoss/AttackTransport/ColonyEye = 800, TgPawn_NewWasp
+	// = 3200). Hardcoding any single value here clobbers all those subclass
+	// defaults — same trap the JumpZ block below documents. Use the CDO value
+	// when > 0, fall back to TgPawn's UC default 480 otherwise.
+	//
+	// Max raised to a large multiple of base so PERC stacking (stealth's
+	// +300%, plus skill/device modifiers) isn't clamped at the base value
+	// during ApplyProperty fanout — the engine field needs room to receive
+	// the buffed value.
+	float airSpeed = Pawn->AirSpeed > 0.0f ? Pawn->AirSpeed : 480.0f;
+	InitializeProperty(Pawn, GA_PROPERTY::TGPID_AIR_SPEED, airSpeed, airSpeed, 0, airSpeed * 10.0f);
 
 	// JumpZ (prop 50): must be in s_Properties so SetProperty(50) can resolve
 	// through our GetProperty hook and propagate to the APawn::JumpZ engine

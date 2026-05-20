@@ -36,17 +36,42 @@ void ChatSession::do_read() {
     auto self(shared_from_this());
     socket_.async_read_some(asio::buffer(read_buf_),
         [this, self](std::error_code ec, std::size_t len) {
-            if (!ec) {
-                handle_packet(read_buf_.data(), len);
-                do_read();
-            } else {
+            if (ec) {
                 // Purge expired entries on disconnect
                 g_chat_sessions.erase(
                     std::remove_if(g_chat_sessions.begin(), g_chat_sessions.end(),
                         [](const std::weak_ptr<ChatSession>& w) { return w.expired(); }),
                     g_chat_sessions.end());
                 Logger::Log("chat", "[Chat] Client disconnected, sessions=%zu\n", g_chat_sessions.size());
+                return;
             }
+
+            // Frame the byte stream into discrete packets using the wire's
+            // own 2-byte length prefix. Layout per packet:
+            //   [2B payload_len][2B packet_type][2B item_count][TLV...]
+            // where payload_len is the byte count of everything AFTER the
+            // prefix itself (matches how broadcast() builds the chunk).
+            // Without this loop, coalesced packets (two messages arriving in
+            // one read) had only the first processed, and split packets
+            // (one message split across reads) were forwarded as garbage —
+            // which is why same-host testing worked but remote clients
+            // silently lost each other's messages.
+            accumulator_.insert(accumulator_.end(),
+                                read_buf_.data(), read_buf_.data() + len);
+
+            while (accumulator_.size() >= 2) {
+                const uint16_t payload_len =
+                    static_cast<uint16_t>(accumulator_[0]) |
+                    (static_cast<uint16_t>(accumulator_[1]) << 8);
+                const size_t total = static_cast<size_t>(2) + payload_len;
+                if (accumulator_.size() < total) break;  // partial packet, await more
+
+                handle_packet(accumulator_.data(), total);
+                accumulator_.erase(accumulator_.begin(),
+                                   accumulator_.begin() + total);
+            }
+
+            do_read();
         });
 }
 

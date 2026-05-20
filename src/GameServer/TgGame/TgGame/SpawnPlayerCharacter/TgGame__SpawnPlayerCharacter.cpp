@@ -14,6 +14,7 @@
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+#include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/Utils/CommandLineParser/CommandLineParser.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Database/Database.hpp"
@@ -382,14 +383,31 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: profileId=%d, skillGroupSetId=%d, botId=%d, characterId=%d, hp=%d\n",
 	    classConfig.profileId, classConfig.skillGroupSetId, profileId, newpawn->s_nCharacterId, hp);
 
-	// Read equipped devices from DB — single source of truth shared with control server
+	// Read equipped devices from DB.
+	//
+	// Schema since v53: ga_character_devices is a thin (character_id,
+	// inventory_id, equipped_slot) join row; the actual device descriptor
+	// (device_id / quality / mods / oc) lives in the account-scoped
+	// ga_players_inventory pool, keyed by inventory_id. JOIN here so the
+	// in-engine equip path keeps getting the same (device, slot, mods)
+	// tuples it did before, just sourced from two tables instead of one.
+	//
+	// Also auto-attach the profile's class device (slot 14, the rest /
+	// HUMAN BASE ATTRIBUTES) from asm_data_set_bots_data_set_bot_devices
+	// — that one is not player-equippable so it lives outside the
+	// inventory pool and gets re-applied unconditionally on every spawn.
 	{
 		int64_t charId = (int64_t)newpawn->s_nCharacterId;
 		sqlite3* db = Database::GetConnection();
+
+		// (1) Player-chosen equipped gear.
 		sqlite3_stmt* stmt = nullptr;
 		int rc = sqlite3_prepare_v2(db,
-			"SELECT device_id, equip_slot, quality, inventory_id, mod_effect_group_ids "
-			"FROM ga_character_devices WHERE character_id = ? ORDER BY equip_slot",
+			"SELECT i.device_id, d.equipped_slot, i.quality, i.id, i.mod_effect_group_ids "
+			"FROM ga_character_devices d "
+			"JOIN ga_players_inventory i ON i.id = d.inventory_id "
+			"WHERE d.character_id = ? "
+			"ORDER BY d.equipped_slot",
 			-1, &stmt, nullptr);
 		if (rc == SQLITE_OK && stmt) {
 			sqlite3_bind_int64(stmt, 1, charId);
@@ -419,10 +437,68 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 			}
 			sqlite3_finalize(stmt);
 		} else {
-			Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: failed to query ga_character_devices for charId=%lld: %s\n",
+			Logger::Log(GetLogChannel(),
+				"SpawnPlayerCharacter: failed to query ga_character_devices for charId=%lld: %s\n",
 				charId, sqlite3_errmsg(db));
 		}
+
+		// Class device (slot 14 / HUMAN BASE ATTRIBUTES) used to be attached
+		// here via a synthetic invId outside the inventory pool. That
+		// corrupted the inventory TMap on disconnect cleanup (three
+		// FMallocWindows::Free crash conditions detected). It's now a regular
+		// inventory row: SeedInventoryFromLoadouts adds it to
+		// ga_players_inventory, the opening-loadout pass equips it in slot 14
+		// on character creation, and SaveEquippedDevices pins it to slot 14
+		// on every equip save. So the JOIN query above just returns it like
+		// any other equipped device — no special handling needed here.
+
 		Inventory::Finalize(newpawn);
+
+		// r_ItemCount (ATgInventoryManager+0x1e8, CPF_Net) MUST equal the count
+		// of non-null entries in m_InventoryMap on the client, otherwise
+		// ATgInventoryManager::IsValid() @ 0x10a163f0 returns false. That gates
+		// UTgUIAgentProfile_Equip::FixupWidgets's call to FUN_11416a20 — the
+		// function that binds invObj → slot widget. Result of mismatch: equip
+		// screen renders all slot widgets blank even though m_EquippedDevices
+		// is populated and the device bar works.
+		//
+		// Inventory::Equip increments r_ItemCount by 1 per equipped device,
+		// but send_inventory_response on the control server also ships the
+		// account-scoped bag pool. The client adds every record to its
+		// m_InventoryMap, so its count = equipped + bag. We need r_ItemCount
+		// to match the same total. Query the DB for the full pool size.
+		{
+			sqlite3_stmt* who = nullptr;
+			int rc = sqlite3_prepare_v2(db,
+				"SELECT user_id, profile_id FROM ga_characters WHERE id = ?",
+				-1, &who, nullptr);
+			if (rc == SQLITE_OK && who) {
+				sqlite3_bind_int64(who, 1, charId);
+				if (sqlite3_step(who) == SQLITE_ROW) {
+					int64_t  user_id    = sqlite3_column_int64(who, 0);
+					int      profile_id = sqlite3_column_int  (who, 1);
+
+					sqlite3_stmt* cnt = nullptr;
+					rc = sqlite3_prepare_v2(db,
+						"SELECT COUNT(*) FROM ga_players_inventory "
+						"WHERE user_id = ? AND (profile_id = 0 OR profile_id = ?)",
+						-1, &cnt, nullptr);
+					if (rc == SQLITE_OK && cnt) {
+						sqlite3_bind_int64(cnt, 1, user_id);
+						sqlite3_bind_int  (cnt, 2, profile_id);
+						if (sqlite3_step(cnt) == SQLITE_ROW) {
+							const int total = sqlite3_column_int(cnt, 0);
+							((ATgInventoryManager*)newpawn->InvManager)->r_ItemCount = total;
+							Logger::Log(GetLogChannel(),
+								"SpawnPlayerCharacter: InvManager->r_ItemCount=%d (pool total, IsValid gate)\n",
+								total);
+						}
+						sqlite3_finalize(cnt);
+					}
+				}
+				sqlite3_finalize(who);
+			}
+		}
 	}
 
 	// Force a post-spawn transform refresh. TgGame.RestartPlayer's bHadPawn
@@ -437,13 +513,37 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newpawn->SetLocation(SpawnLocation);
 	newpawn->SetRotation(PlayerController->Rotation);
 
-	// NOTE: we do NOT call ReapplyCharacterSkillTree here — GPawnSessions is
-	// only populated later in MarshalChannel__NotifyControlMessage::
-	// HandlePlayerConnected, and our Reapply hook looks up the pawn's session
-	// guid there to resolve PlayerInfo.skills. Calling it at this stage logs
-	// "pawn has no session mapping" and silently no-ops. The hook is invoked
-	// from HandlePlayerConnected instead (right after GPawnSessions[pawn] is
-	// set), so the skill data is reachable.
+	// Update GPawnSessions and reapply skills. SpawnPlayerCharacter fires both
+	// on INITIAL connect AND on RESPAWN — but HandlePlayerConnected (which used
+	// to be the only Reapply call site) only fires on initial connect, so
+	// without doing it here, skill-based effect groups like Fast Regeneration
+	// (skill 902, +80HP/2s passive heal-over-time) die with the previous pawn
+	// and never re-attach to the respawn pawn.
+	//
+	// On initial connect SessionGuid might not be set yet (PLAYER_REGISTER
+	// IPC arrives async). In that case skip — HandlePlayerConnected:303 will
+	// do the mapping + Reapply once SessionGuid lands. On respawn SessionGuid
+	// is already populated from the original connection.
+	const std::string& session_guid = GClientConnectionsData[ConnectionIndex].SessionGuid;
+	if (!session_guid.empty()) {
+		// Drop any stale mapping from this player's previous pawn (death
+		// cycle). GPawnSessions is keyed by pawn pointer — the dead pawn is
+		// still in the map but no longer relevant. NetConnection::Cleanup
+		// erases it on disconnect, but respawn doesn't trigger that path.
+		for (auto it = GPawnSessions.begin(); it != GPawnSessions.end(); ) {
+			if (it->second == session_guid && it->first != (ATgPawn*)newpawn) {
+				it = GPawnSessions.erase(it);
+			} else {
+				++it;
+			}
+		}
+		GPawnSessions[(ATgPawn*)newpawn] = session_guid;
+
+		Logger::Log(GetLogChannel(),
+			"SpawnPlayerCharacter: bound newpawn=%p to session=%s; calling ReapplyCharacterSkillTree\n",
+			newpawn, session_guid.c_str());
+		newpawn->ReapplyCharacterSkillTree();
+	}
 
 	LogCallEnd();
 

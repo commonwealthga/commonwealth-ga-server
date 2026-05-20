@@ -344,8 +344,17 @@ void __fastcall TgDeployable__InitializeDefaultProps::Call(ATgDeployable* Deploy
 	// already populated below, and any GetProperty-based damage calc can
 	// read the slot from s_Properties.  Taken from asm_data_set_deployables.
 	// health (a top-level column, not in device_mode_properties).
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_HEALTH,     health, health, 0, health);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_HEALTH_MAX, health, health, 0, health);
+	//
+	// m_fMaximum raised to 10× base so layered buff scaling (Output Mod +70%
+	// IP, Station Buff / Repair Power Reduction / Repair Increase +10% each
+	// SP — `1500 × 1.7 × 1.3 = 3315` for a fully-specced Medical Station)
+	// has headroom. With m_fMaximum=health, ApplyPlayerModsToDeployable's
+	// `final = base × (1+IP/100) × (1+SP/100)` was pinned by the clamp at
+	// the post-formula min/max gate back to `health`, silently nullifying
+	// every HP_MAX buff. Same pattern as TgPawn__InitializeDefaultProps
+	// raising HEALTH/HEALTH_MAX to 10× for the same reason on the player side.
+	InitializeProperty(Deployable, GA_PROPERTY::TGPID_HEALTH,     health, health, 0, health * 10.0f);
+	InitializeProperty(Deployable, GA_PROPERTY::TGPID_HEALTH_MAX, health, health, 0, health * 10.0f);
 
 	// TGPID_DEPLOY_RATE_MODIFIER (278) — identity 1.0. This one IS in the
 	// native ApplyProperty switch (maps to r_fDeployRate +0x27C). Repair

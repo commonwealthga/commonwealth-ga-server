@@ -2,6 +2,7 @@
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 bool TgGame__LoadGameConfig::bRandomSMSettingsLoaded = false;
@@ -35,6 +36,11 @@ void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	Game->m_bIsTutorialMap = 0;
 
 	Game->TimeLimit = 15 * 60;
+
+	std::string map_name = Config::GetMapNameChar();
+	if (map_name == "Dome3_VR_Arena_P") {
+		Game->TimeLimit = -1;
+	}
 
 	LoadCommonGameConfig(Game);
 

@@ -10,6 +10,10 @@ struct EquippedEntry {
 	int quality;       // qualityValueId (0 = none)
 	int inventoryId;   // unique ID assigned by Inventory
 	int effectGroupId; // hardcoded effect group ID for inventory marshals
+	// Rolled mod effect_group_ids — the same list passed into Equip()'s
+	// `mods` arg. Stashed here so Unequip() can subtract the exact same
+	// rolled-mod buff entries it added, without a DB roundtrip.
+	std::vector<int> mods;
 };
 
 class Inventory {
@@ -43,6 +47,22 @@ public:
 
 	// Clear tracking for a pawn (call on pawn death/destroy).
 	static void ClearTracking(ATgPawn* Pawn);
+
+	// Unequip a slot: reverse the rolled-mod buffs, reverse the device's
+	// permanent equip-effect baselines, drop the engine-side replication
+	// (m_EquippedDevices + PRI.r_EquipDeviceInfo), remove the invObj from
+	// the inventory map, and destroy the ATgDevice actor.
+	//
+	// Required because the equip path on this binary is one-way (Equip
+	// always creates a NEW invObj + ATgDevice actor) — without a matching
+	// teardown, switching gear leaks the old device actor (two actors with
+	// the same r_nDeviceInstanceId desync the client's device binding) AND
+	// re-applies effects on top of the existing ones (every Apply press
+	// re-adds the device's lifetime=0 equip baseline; e.g. HUMAN BASE
+	// ATTRIBUTES's +30 physical protection stacks to +60, +90, …).
+	//
+	// Safe to call on an empty slot (no-op).
+	static void Unequip(ATgPawn* Pawn, int slot);
 
 	// Apply the device's permanent (lifetime_sec=0) equip-effect groups to the
 	// pawn's properties. Reimplements what UC `ApplyEquipEffects` would do if

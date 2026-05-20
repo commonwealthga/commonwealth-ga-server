@@ -109,18 +109,47 @@ void ApplyPlayerModsToDeployable::Apply(ATgPawn* pawn, ATgDeployable* deployable
 
 	if (totalModified > 0) {
 		// SetProperty fan-out: ATgDeployable::ApplyProperty (slot 251 @ 0x10a1ade0)
-		// only mirrors props 8 and 278 to engine fields. For the others we just
-		// updated m_fRaw directly above; if a prop is also engine-mirrored
-		// (proximity radius), call SetProperty so the mirror fans out too.
+		// only mirrors props 8 and 278 to engine fields natively. For the others
+		// we just updated m_fRaw directly above; if a prop is also engine- or
+		// DRI-mirrored, call SetProperty so the mirror fans out too.
+		//
+		// Covered here:
+		//   8   — proximity radius (native ApplyProperty → s_fProximityRadius +
+		//         r_fClientProximityRadius with ×16 conversion)
+		//   278 — deploy rate (native ApplyProperty → r_fDeployRate)
+		//   304 — HEALTH_MAX (our `TgDeployable__SetProperty` mirror writes
+		//         r_DRI->r_nHealthMaximum and clamps current HP down if it
+		//         exceeds the new max). Without this fan-out, Robotics
+		//         "Station Buff" (skill 795, +10% prop 339 → redirected to
+		//         prop 304 by kBuffDeviceModMap) would update m_fRaw but the
+		//         client HP bar would stay at the original max.
 		// Safe because SetProperty's linear scan finds the entry we just mutated.
+		bool hpMaxBuffed = false;
 		for (int m = 0; m < kNumMaps; ++m) {
 			const ModifierProps::BuffDeviceMapping& mm = ModifierProps::kBuffDeviceModMap[m];
 			for (int t = 0; t < 5 && mm.targets[t] >= 0; ++t) {
 				int propId = mm.targets[t];
-				if (propId == 8 || propId == 278) {
+				if (propId == 8 || propId == 278 || propId == 304) {
 					UTgProperty* prop = FindDeployableProp(deployable, propId);
-					if (prop) deployable->SetProperty(propId, prop->m_fRaw);
+					if (prop) {
+						deployable->SetProperty(propId, prop->m_fRaw);
+						if (propId == 304) hpMaxBuffed = true;
+					}
 				}
+			}
+		}
+
+		// HP_MAX was buffed → top up current HP to the new max. Deployables
+		// spawn at full HP, but TgDeployable__SetProperty case 304 only clamps
+		// current HP downward (newMax < r_nHealth path). For a 1500 → 1650
+		// buff, r_nHealth stays at 1500 and the deployable spawns at
+		// 1500/1650. SetProperty(51, newMax) writes r_nHealth +
+		// r_DRI->r_nHealthCurrent and runs UpdateHealth so any UC hook sees
+		// the post-buff value.
+		if (hpMaxBuffed) {
+			UTgProperty* hpMax = FindDeployableProp(deployable, 304);
+			if (hpMax && hpMax->m_fRaw > 0.0f) {
+				deployable->SetProperty(/*TGPID_HEALTH=*/51, hpMax->m_fRaw);
 			}
 		}
 

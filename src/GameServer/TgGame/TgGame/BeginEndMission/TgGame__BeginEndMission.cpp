@@ -80,6 +80,30 @@ void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera) {
 		(void*)(GRI ? GRI->r_Winner : nullptr),
 		(void*)endMissionCamera);
 
+	// Engine-level "match is over" flags. Two purposes:
+	//  - bGameEnded gates UC GameInfo::StartHumans/StartBots so pawns don't
+	//    keep getting auto-respawned for the duration of the end-mission
+	//    screen. Without this, every PC death/dropped-pawn re-enters the
+	//    spawn pipeline.
+	//  - bMatchIsOver is replicated (V2 rep list entry already wired at
+	//    Actor__GetOptimizedRepListV2.cpp:2529) → client repnotify fires
+	//    `ReplicatedEvent('bMatchIsOver')` (GameReplicationInfo.uc:107)
+	//    which winds down client-side HUD/audio.
+	//  - bStopCountDown freezes the HUD mission timer cosmetically.
+	//
+	// NOTE: we deliberately do NOT mirror stock `TgGame::EndGame` (TgGame.uc:744)
+	// which calls `GotoState('GameOver')`. That state's `Timer()` eventually
+	// calls `RestartGame()` → `ServerTravel`, which would kill the end-mission
+	// screen and leave the instance prematurely. Our FinishEndMission timer is
+	// the only thing that should drive the next phase.
+	Game->bGameEnded = 1;
+	if (GRI) {
+		GRI->bMatchIsOver       = 1;
+		GRI->bStopCountDown     = 1;
+		GRI->bNetDirty          = 1;
+		GRI->bForceNetUpdate    = 1;
+	}
+
 	BroadcastGameWinState(Game, winState);
 
 	// Tell the control server to warm up a home map instance now — the

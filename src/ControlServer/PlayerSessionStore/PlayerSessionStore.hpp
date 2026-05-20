@@ -28,13 +28,26 @@ struct CharacterInfo {
 
 struct DeviceRow {
     int              device_id;
-    int              equip_slot;
-    int              slot_value_id;
+    int              equip_slot;       // engine equip point 1..24 (from ga_character_devices.equipped_slot)
+    int              slot_value_id;    // canonical SVID for this slot — derived from equip_slot at read time
     int              quality;
-    int              inventory_id;
-    int              effect_group_id;  // legacy single-egid (still written for back-compat); unused on read
+    int              inventory_id;     // = ga_players_inventory.id (new source of truth)
+    int              effect_group_id;  // legacy single-egid (kept zero — wire reader stays untouched)
     std::vector<int> mods;             // rolled-mod effect_group_ids (one entry → one [...] letter on client)
     bool             oc;               // pick an Overclocked-named blueprint when sending BLUEPRINT_ID
+};
+
+// Inventory record (account-scoped, profile-filtered). Lives in
+// ga_players_inventory; same fields the SEND_INVENTORY pipe needs plus the
+// allowed-slots whitelist for equip validation.
+struct InventoryRow {
+    int              inventory_id;     // = ga_players_inventory.id
+    int              profile_id;       // 0 = shared across classes
+    int              device_id;
+    int              quality;
+    std::vector<int> mods;             // mod_effect_group_ids CSV exploded
+    bool             oc;
+    std::vector<int> allowed_slots;    // slot_value_ids the item may occupy (1 for most, 3 for offhand)
 };
 
 struct SkillRow {
@@ -60,16 +73,49 @@ public:
     static std::optional<CharacterInfo> GetCharacterById(int64_t id);
     static void SetSelectedCharacter(const std::string& guid, int64_t char_id, uint32_t profile_id);
 
-    // Wipes ga_character_devices for this character and re-inserts rows from
-    // Loadouts::GetLoadout(profile_id). MUST be called before the game DLL's
-    // SpawnPlayerCharacter reads the table — i.e. at character-SELECT time,
-    // not later — otherwise the in-engine pawn keys devices by stale
-    // inventory_ids while the client gets the resynced ones.
-    static void ResyncCharacterDevicesFromLoadout(int64_t character_id, uint32_t profile_id);
+    // Walk every profile's ClassLoadouts entry and INSERT any (user_id,
+    // profile_id, device_id, mods_csv, quality, oc) tuple that doesn't
+    // already exist in ga_players_inventory. Idempotent — existing rows are
+    // never touched, so a player keeps their `inventory_id`s stable across
+    // logins and we get incremental seeding for free (new ClassLoadouts
+    // entries propagate to existing players on their next login).
+    //
+    // Skips slot_value_id == SVID_CLASS_DEVICE (502): the class device is
+    // not player-equippable, it's auto-attached at spawn by SpawnPlayerCharacter
+    // via asm_data_set_bots_data_set_bot_devices.
+    //
+    // Also seeds an opening loadout in ga_character_devices for every character
+    // owned by this user whose equipped-devices row count is zero. Without
+    // this, brand-new characters spawn naked. The opening loadout points at
+    // the inventory rows we just inserted for the character's profile, picking
+    // the canonical (single) allowed slot for each.
+    static void SeedInventoryFromLoadouts(int64_t user_id);
 
-    // Returns whatever is currently in ga_character_devices for this character.
-    // No side-effects; the resync is gated to character-SELECT (above).
+    // Returns everything in this user's account-scoped inventory pool that's
+    // visible to a character on `profile_id`. Includes shared items
+    // (profile_id=0) plus class-specific items. Used by SEND_INVENTORY to
+    // render the unequipped pool in the equip screen.
+    static std::vector<InventoryRow> GetInventoryForUser(int64_t user_id, uint32_t profile_id);
+
+    // Returns the equipped devices for this character — JOIN of
+    // ga_character_devices and ga_players_inventory. Has the same DeviceRow
+    // shape SEND_INVENTORY consumes today; equip_slot is taken from the
+    // character_devices row, the rest from the inventory row.
     static std::vector<DeviceRow> GetDevicesForCharacter(int64_t character_id);
+
+    // Validates and persists an equip-screen save. `slot_to_inventory` is the
+    // client's SlotIndices[] decoded into (equip_point → inventory_id) for the
+    // non-zero entries only. Returns true and replaces ga_character_devices
+    // rows in one transaction when EVERY mapping passes:
+    //   - inventory_id exists in ga_players_inventory AND user_id matches
+    //   - inventory.profile_id is 0 OR equals current profile_id
+    //   - the equip_point's canonical slot_value_id is in inventory.allowed_slots
+    // On any failure, the whole save is rejected (no partial writes) and the
+    // reason is logged. Callers should then re-send SEND_INVENTORY to resync
+    // the client's view to what's actually persisted.
+    static bool SaveEquippedDevices(int64_t character_id, int64_t user_id,
+                                    uint32_t profile_id,
+                                    const std::map<int, int>& slot_to_inventory);
 
     // UNUSED — kept for reference. Returns the union of every static effect
     // group attached to a device in asm.dat (equip + per-fire-mode). We used

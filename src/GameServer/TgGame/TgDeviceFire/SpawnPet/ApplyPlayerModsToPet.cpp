@@ -150,7 +150,26 @@ static const PetMapping kPetMap[] = {
 	{ 381, 114, -1, BRIDGE_BUFF   },
 	{ 382, 352, -1, BRIDGE_BUFF   },
 	{ 383, 113, -1, BRIDGE_BUFF   },
-	{ 366, 304, 51, BRIDGE_DIRECT },
+	// HP_MAX (304) only — NOT also 51. The binary's
+	// TgPawn::ApplyProperty(304, newMax) self-calls SetProperty(51, newMax)
+	// to keep Health in sync with the new ceiling (per decompilation of
+	// 0x109cc7d0). Listing 51 as a secondary direct target re-reads
+	// prop 51's now-already-scaled m_fRaw and applies the buff a second
+	// time, producing Health values that overshoot the new max (e.g.
+	// 1320 × 1.3 × 1.3 = 2230 instead of 1716 after the +30% skill pass;
+	// then × 1.7 × 1.7 = 4958 instead of 2917 after the +70% Output Mod
+	// pass). Cosmetic on the server (heal cap reads r_nHealthMaximum =
+	// correctly buffed value), but ugly on the wire — the client briefly
+	// sees Health > Max until first damage tick clamps it.
+	{ 366, 304, -1, BRIDGE_DIRECT },
+	// Output Mod (prop 385) — every device carries an innate +70% (or +75%
+	// overclocked) Output Mod entry on the player's buff registry. The
+	// inventory card surfaces the pet's HP as `base × 1.7`, implying the
+	// engine intends Output Mod to scale pet max HP the same way it scales
+	// deployable HP (kBuffDeviceModMap routes 385 → deployable's 304). The
+	// pet path didn't have the equivalent entry, so the rocket-turret's
+	// real max stayed at the bot's base hit_points (1320 → expected 2244).
+	{ 385, 304, -1, BRIDGE_DIRECT },
 	{ 355, 354, -1, BRIDGE_DIRECT },
 };
 
@@ -163,6 +182,33 @@ void ApplyPlayerModsToPet::Apply(ATgPawn* deployingPawn, ATgPawn* petPawn, int s
 			"ApplyPlayerModsToPet: pawn=0x%p pet=0x%p — no buff entries on deployer, skipping\n",
 			deployingPawn, petPawn);
 		return;
+	}
+
+	// Diagnostic dump of all matching player-side entries the bridge would see.
+	// If pet HP scaling isn't visible in-game, the first thing to verify is
+	// whether the relevant entries exist on the deployer at the moment the
+	// pet spawns. Spotting "no entry for prop 366" here when Robotics has
+	// 4 HP-buffing skills allocated points at a Reapply timing bug upstream
+	// (skills sync arriving after first Reapply, etc.).
+	Logger::Log("pet_spawn",
+		"ApplyPlayerModsToPet: pawn=0x%p pet=0x%p devInst=%d  m_EffectBuffInfo.Count=%d\n",
+		deployingPawn, petPawn, sourceDeviceInstId,
+		deployingPawn->m_EffectBuffInfo.Num());
+	for (int i = 0; i < deployingPawn->m_EffectBuffInfo.Num(); ++i) {
+		const FBuffInfo& e = deployingPawn->m_EffectBuffInfo.Data[i];
+		// Only dump entries the pet bridge can consume (HP/lifespan/damage/range/etc.).
+		const int p = e.BuffHeader.nPropId;
+		if (p != 366 && p != 385 && p != 350 && p != 355 &&
+		    p != 381 && p != 382 && p != 383)
+			continue;
+		Logger::Log("pet_spawn",
+			"  [%d] prop=%d cat=%d skill=%d devInst=%d  IP=%.2f IM=%.2f SP=%.2f SM=%.2f LP=%.2f LM=%.2f GP=%.2f GM=%.2f\n",
+			i, p, e.BuffHeader.nReqCategoryCode, e.BuffHeader.nReqSkillId,
+			e.BuffHeader.nReqDeviceInstId,
+			e.fItemPercentModifier, e.fItemModifier,
+			e.fSkillPercentModifier, e.fSkillModifier,
+			e.fSelfPercentModifier, e.fSelfModifier,
+			e.fPercentModifier, e.fModifier);
 	}
 
 	int touched = 0;
@@ -205,6 +251,29 @@ void ApplyPlayerModsToPet::Apply(ATgPawn* deployingPawn, ATgPawn* petPawn, int s
 				// Fan out via SetProperty so engine fields (r_nMaxHealth,
 				// r_nHealth, etc.) mirror.
 				petPawn->SetProperty(targetPropId, prop->m_fRaw);
+
+				// For HP_MAX (304), sync the PRI for HUD readers. The binary's
+				// SetProperty(304) → ApplyProperty(304) (decompiled @
+				// 0x109cc7d0) already writes r_nHealthMaximum at +0x43C and
+				// self-calls SetProperty(51, newMax) to lift current Health to
+				// the new ceiling — so no defensive write to r_nHealthMaximum
+				// or Health is needed. But TgRepInfo_Player's
+				// r_nHealthMaximum / r_nHealthCurrent (what HUD HP-bar code
+				// reads) aren't part of the SetProperty fanout — UC's
+				// TgPawn::UpdateHealth normally drives that broadcast, and on
+				// pet spawn the path isn't necessarily traversed. Mirror it
+				// explicitly so the client HP bar lands on the buffed max.
+				if (targetPropId == 304 && petPawn->PlayerReplicationInfo) {
+					ATgRepInfo_Player* pri =
+						(ATgRepInfo_Player*)petPawn->PlayerReplicationInfo;
+					pri->r_nHealthMaximum = petPawn->r_nHealthMaximum;
+					pri->r_nHealthCurrent = petPawn->Health;
+					pri->bNetDirty        = 1;
+					pri->bForceNetUpdate  = 1;
+					Logger::Log("pet_spawn",
+						"  [pet-direct/304] r_nHealthMaximum=%d Health=%d (PRI synced)\n",
+						petPawn->r_nHealthMaximum, petPawn->Health);
+				}
 
 				// PetLifespan special: UC's TGPID_PET_LIFESPAN constant (354)
 				// has no UC-side reader — the spawned bot's auto-destroy

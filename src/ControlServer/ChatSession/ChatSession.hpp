@@ -23,7 +23,13 @@ public:
 
 private:
     asio::ip::tcp::socket socket_;
+    // Scratch buffer for one async_read_some call. TCP is a byte stream, so a
+    // single read can return a partial packet, exactly one packet, or several
+    // packets concatenated — appended into `accumulator_` and drained from
+    // there in do_read(). On loopback small payloads happen to arrive 1:1, so
+    // the unframed code worked locally but broke between remote clients.
     std::vector<uint8_t> read_buf_;
+    std::vector<uint8_t> accumulator_;
     std::deque<std::vector<uint8_t>> write_queue_;
     std::string player_name_;
     std::string session_guid_;

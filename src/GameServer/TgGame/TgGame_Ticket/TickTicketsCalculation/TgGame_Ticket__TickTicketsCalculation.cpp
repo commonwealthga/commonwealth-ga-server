@@ -50,6 +50,16 @@ void __fastcall TgGame_Ticket__TickTicketsCalculation::Call(ATgGame_Ticket* Game
 		return;
 	}
 
+	// Don't award during end-mission either. BeginEndMissionImpl sets
+	// bGameEnded; UC ClearTimer would be cleaner but the SetTimer was armed
+	// in UC PostBeginPlay with no UC handle we can reach from here. This gate
+	// also covers the case where the threshold was crossed by another path
+	// (e.g. our UpdateGameWinState fire) — tickets shouldn't keep climbing
+	// while the end-mission screen is showing.
+	if (Game->bGameEnded) {
+		return;
+	}
+
 	const float tickDelay = (Game->m_fTicketTickDelay > 0.0f) ? Game->m_fTicketTickDelay : 1.0f;
 
 	int sumAtt = 0, sumDef = 0;

@@ -18,8 +18,22 @@ namespace Armor {
 // Tracks deltas per pawn so subsequent calls (every respawn calls Reapply
 // which calls this) reverse + reapply cleanly. Safe to call repeatedly.
 //
-// No-op for bots / non-player pawns (Controller class name strstr check).
+// Two-phase API. ReapplyCharacterSkillTree calls them in this order:
+//   1. Armor::RevertDefaultArmor — undoes last apply's deltas FIRST, while
+//      raw still matches the snapshot (no skill writes have shifted it yet).
+//   2. Skill revert + skill apply (existing RCST code).
+//   3. Armor::ApplyDefaultArmor — apply-only; records fresh snapshots.
+//
+// Splitting revert from apply is what makes snapshot checks compose across
+// layers. If revert+apply both lived in ApplyDefaultArmor (as before), the
+// skill apply between them would shift raw, the armor revert would mismatch
+// its snapshot, and both armor + skill deltas would silently re-stack on
+// every call — producing the unbounded HP creep observed when toggling the
+// skill UI or respeccing.
+//
+// No-op for bots / non-player pawns (PRI + r_bIsBot check).
 // No-op if the pawn's s_Properties array is unpopulated.
+void RevertDefaultArmor(ATgPawn* Pawn);
 void ApplyDefaultArmor(ATgPawn* Pawn);
 
 }  // namespace Armor

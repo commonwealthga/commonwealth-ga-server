@@ -700,6 +700,11 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
 		case DLL_PROCESS_ATTACH:
             DisableThreadLibraryCalls(hinstDLL);
             Logger::LogDir = Config::GetLogDir();
+            // InstanceSpawner appends `\<instance_id>` to the base log_dir so
+            // co-located instances don't clobber each other's <channel>.txt
+            // files. fopen("a") doesn't auto-create parents, so make the leaf
+            // exist before ClearEnabledChannelFiles or any first write hits.
+            Logger::EnsureLogDirExists();
             // Channel allowlists come from control-server.json. The commented
             // push_back lines below in ModuleThread are kept as a known-channel
             // reference; uncomment them only for one-off in-source overrides.

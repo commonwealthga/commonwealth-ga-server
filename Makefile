@@ -206,6 +206,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/ClearInstigatorEquippedDevices/TgDevice__ClearInstigatorEquippedDevices.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/PopulateInstigatorEquippedDevices/TgDevice__PopulateInstigatorEquippedDevices.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice_Morale/SendMoraleBoostMessage/TgDevice_Morale__SendMoraleBoostMessage.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/Morale/MoraleCredit.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/ApplyBuffEffect.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/DeployableOriginRegistry.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/DeviceCategorySkill.cpp \

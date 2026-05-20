@@ -100,4 +100,48 @@ void __fastcall TgPawn__ApplyBuff::Call(ATgPawn* Pawn, void* /*edx*/, FBuffHeade
 	// SDK wrapper for ClientSendBuff is safe to use — single 0x30 FBuffInfo
 	// parm with no bitfields, so the wrapper's memcpy delivers it intact.
 	Pawn->eventClientSendBuff(entry);
+
+	// Server-side mirror of the buff-change notification. The original UC
+	// only fires `OnDeviceBuffChange` from inside the `ClientSendBuff` RPC
+	// body, which by definition only runs on the owning client. But several
+	// pieces of state that `OnDeviceBuffChange → SetTargetAutoLock` recompute
+	// are read SERVER-SIDE — most importantly `TgDevice::m_bAutoLock` (the
+	// flag that `TgDeviceFire::CalcInstantFire` checks to substitute the
+	// locked target for the trace endpoint on heal beams like BioFeedback,
+	// Nanite Enhancement/Restoration, and any other "soft-lock" weapon).
+	//
+	// `m_bAutoLock` has no `CPF_Net` flag (SDK confirms it's at TgDevice
+	// +0x22C bit 0x40, plain bitfield) — it's a local mirror of a buff-
+	// registry query (prop 200 AutoLockAngle, filtered by device's
+	// m_nSkillId), recomputed independently on each side. Without firing
+	// `OnDeviceBuffChange` on the server, the server's `m_bAutoLock` stays
+	// false, `CalcInstantFire` takes the raw-trace branch, and the heal
+	// only registers when the player is aimed directly at the teammate —
+	// even though the client visualizes a locked target and shows the heal
+	// beam playing. Visuals work, server-side hit doesn't.
+	//
+	// The original native `TgPawn::ApplyBuff` (stripped @ 0x109bf7b0) almost
+	// certainly fired `OnDeviceBuffChange` locally on top of the
+	// `ClientSendBuff` RPC: `OnDeviceBuffChange` is declared `simulated
+	// event` and `SetTargetAutoLock` is `simulated function` — the
+	// "intended to run on both sides" annotations only make sense if the
+	// dispatch point was bidirectional, and inside the native is the only
+	// bidirectional entry that naturally exists. Mirror that here.
+	//
+	// OnDeviceBuffChange's body is small (one SetTargetAutoLock call plus a
+	// client-only HUD refresh that the if-NetMode-Client gate skips on
+	// server). SetTargetAutoLock is one buff-registry GetBuffInfo lookup,
+	// so the per-ApplyBuff cost is bounded. No-op for buffs that don't
+	// touch prop 200, but cleaner to always call (mirrors the native) than
+	// to special-case the propId here.
+	Pawn->eventOnDeviceBuffChange();
+
+	// Note: we intentionally do NOT refresh r_fRequiredMoralePoints here.
+	// `GetRequiredMoralePoints @ 0x10a19910` routes through
+	// `GetBuffedProperty(BUFF_DEVICE, 318)`, whose expansion `{357, 385}`
+	// folds the player's Output Mod (+70%) into the threshold formula and
+	// blows it up to 31000+ once mod kits register their prop-385 entries.
+	// The retail design keeps r_fRequiredMoralePoints at 100 — Output Mod
+	// participation in morale lives in `MoraleCredit::Award`'s gain-rate
+	// multiplier, not in the threshold. Tested 2026-05-19.
 }

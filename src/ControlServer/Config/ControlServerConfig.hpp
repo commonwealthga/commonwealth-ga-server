@@ -69,6 +69,31 @@ struct ControlServerConfig {
     bool        wine_debug         = false;  // --wine-debug CLI flag: uses winedbg --command cont
     bool        clear_logs         = false;  // truncate per-channel files at boot for repeated tests
 
+    // ---- Docker spawn mode -------------------------------------------------
+    // When use_docker is true, InstanceSpawner::Spawn execs `docker run`
+    // around the xvfb-run/wine invocation instead of running it directly.
+    // The wineprefix, game install, wine binary, control-server CWD, and
+    // crash dir all bind-mount from the host at the same paths they have
+    // on the host — no path translation, the inner argv is identical to
+    // bare-metal mode.
+    bool        use_docker         = false;
+    std::string docker_image       = "ga-server:latest";
+    // Memory cap per instance (docker --memory syntax: "2g", "512m", "0" = unlimited).
+    std::string docker_memory      = "2g";
+    // Root of the host wine install (e.g. ".../lutris-GE-Proton8-7-x86_64").
+    // Bind-mounted RO into the container so cfg.wine_binary works as-is.
+    // If empty, falls back to dirname(dirname(cfg.wine_binary)).
+    std::string wine_install_dir;
+    // Extra bind mounts, each "host_path[:container_path][:ro]". If
+    // container_path is omitted it defaults to host_path (mirror layout).
+    // Use this for anything the auto-mounts don't cover (e.g. host wine
+    // runtime trees referenced by symlinks inside the prefix).
+    std::vector<std::string> docker_extra_mounts;
+    // When true, drops `--rm`, names the container `ga-inst-<instance_id>`,
+    // and stops swallowing docker-client stdio. Inspect a failing spawn
+    // with `docker logs ga-inst-<instance_id>` and `docker ps -a`.
+    bool        docker_debug       = false;
+
     // Load config from JSON file at path. Returns defaults if file is absent or invalid.
     static ControlServerConfig Load(const std::string& path);
 };

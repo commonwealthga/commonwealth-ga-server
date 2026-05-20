@@ -185,6 +185,15 @@ void Logger::Log(const char* Channel, const char* Format, ...) {
 	LeaveCriticalSection(&g_log_cs);
 }
 
+void Logger::EnsureLogDirExists() {
+	// Idempotent: CreateDirectoryA returns false with GetLastError()=
+	// ERROR_ALREADY_EXISTS when the dir is already there — fine, ignore.
+	// Wine translates the Win32 path (e.g. "C:\12345") to its host fs
+	// equivalent inside the active WINEPREFIX. Only creates the leaf;
+	// the parent ("C:" by default) is guaranteed to exist already.
+	CreateDirectoryA(LogDir.c_str(), nullptr);
+}
+
 void Logger::ClearEnabledChannelFiles() {
 	if (!g_log_cs_init) {
 		InitializeCriticalSection(&g_log_cs);

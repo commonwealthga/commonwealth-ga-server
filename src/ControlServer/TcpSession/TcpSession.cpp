@@ -2,6 +2,8 @@
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/MapGameInfo/MapGameInfo.hpp"
 #include "src/Shared/IpcProtocol.hpp"
+#include <set>
+#include <map>
 
 // ---------------------------------------------------------------------------
 // TcpSession static member definitions
@@ -188,6 +190,46 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         // per-device stat displays drop the previously-buffed numbers.
         if (pawn_id != 0 && character_id != 0) {
             session->send_inventory_response(pawn_id, character_id);
+        }
+    }
+    else if (subtype == "equip_save") {
+        // Client's equip-screen save (RPC ServerAcceptNewProfileFromEquipScreen).
+        // Payload shape:
+        //   character_id, pawn_id, loadout_profile (1 today — loadout slots
+        //   1..5 are a future-scope feature, we ignore the value for now),
+        //   slot_to_inventory: { "equip_point": inventory_id, ... }
+        // Validation + persistence lives in PlayerSessionStore.
+        const int64_t character_id    = j.value("character_id", (int64_t)0);
+        const int     pawn_id         = j.value("pawn_id", 0);
+        const int     loadout_profile = j.value("loadout_profile", 1);
+        std::map<int, int> slot_to_inventory;
+        if (j.contains("slot_to_inventory") && j["slot_to_inventory"].is_object()) {
+            for (auto it = j["slot_to_inventory"].begin(); it != j["slot_to_inventory"].end(); ++it) {
+                const int equip_point  = std::atoi(it.key().c_str());
+                const int inventory_id = it.value().get<int>();
+                if (equip_point > 0 && inventory_id > 0) {
+                    slot_to_inventory[equip_point] = inventory_id;
+                }
+            }
+        }
+        Logger::Log("ipc",
+            "[TcpSession] DeliverGameEvent: equip_save char=%lld pawnId=%d loadout=%d entries=%zu guid=%s\n",
+            (long long)character_id, pawn_id, loadout_profile, slot_to_inventory.size(),
+            session_guid.c_str());
+
+        if (character_id != 0) {
+            const bool ok = PlayerSessionStore::SaveEquippedDevices(
+                character_id, session->user_id_, session->selected_profile_id_, slot_to_inventory);
+            if (!ok) {
+                Logger::Log("ipc",
+                    "[TcpSession] equip_save REJECTED — DB state unchanged; client will resync from existing\n");
+            }
+            // Push the authoritative equipped set back regardless of
+            // accept/reject — accept = client sees its save; reject = client's
+            // optimistic UI gets corrected to what's actually persisted.
+            if (pawn_id != 0) {
+                session->send_inventory_response(pawn_id, character_id);
+            }
         }
     }
     else if (subtype == "quest") {
@@ -576,12 +618,16 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 					selected_character_id_ = charInfo->id;
 					selected_profile_id_   = charInfo->profile_id;
 					PlayerSessionStore::SetSelectedCharacter(session_guid_, charInfo->id, charInfo->profile_id);
-					// Reseed ga_character_devices from ClassLoadouts.cpp BEFORE
-					// PLAYER_REGISTER fires the game-DLL spawn flow. The DLL's
-					// SpawnPlayerCharacter reads the same table to build in-engine
-					// devices; resyncing here guarantees both sides see identical
-					// (device_id, slot, inventory_id, mods) tuples.
-					PlayerSessionStore::ResyncCharacterDevicesFromLoadout(charInfo->id, charInfo->profile_id);
+					// Top up this user's account-scoped inventory pool from
+					// ClassLoadouts.cpp. Idempotent — existing inventory rows
+					// keep their stable `inventory_id`. Brand-new characters
+					// with no ga_character_devices rows also receive an opening
+					// equipped loadout in the same call. Stable IDs are what
+					// make the equip screen safe between sessions; the previous
+					// per-character resync wiped+rewrote on every select, which
+					// would now also wipe any equip choices the player made
+					// last session.
+					PlayerSessionStore::SeedInventoryFromLoadouts(charInfo->user_id);
 					Logger::Log("tcp", "[%s] GSC_SELECT_CHARACTER: selected charId=%lld profile=%u\n",
 						Logger::GetTime(), selected_character_id_, selected_profile_id_);
 				} else {
@@ -1316,14 +1362,58 @@ void TcpSession::send_character_inventory_response(int nPawnId) {
 
 void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 	auto devices = PlayerSessionStore::GetDevicesForCharacter(character_id);
-	if (devices.empty()) {
-		Logger::Log("tcp", "[TCP] send_inventory_response: no devices for charId=%lld pawnId=%d\n",
-			character_id, nPawnId);
+
+	// Ships TWO blocks of records over SEND_INVENTORY (0x0182):
+	//   1. Currently-equipped devices for `character_id`, with
+	//      LOCATION_VALUE_ID=369 (EQUIPPED), DEVICE_ID=<inv_id> (= the
+	//      backing pawn device's instance id), EQUIPPED_SLOT_VALUE_ID=<svid>,
+	//      ACTIVE_FLAG=T.
+	//   2. The rest of the account-scoped inventory pool visible to this
+	//      character's class profile, with LOCATION_VALUE_ID=370 (ON_HAND),
+	//      DEVICE_ID=0, EQUIPPED_SLOT_VALUE_ID=0, ACTIVE_FLAG=F.
+	//
+	// The DEVICE_ID field is the gate that decides whether the client tries
+	// to bind this inventory record to a live actor on the pawn. The receiver
+	// path (CGameClient::SendInventory @ 0x109ddb40) at the bottom of its
+	// per-record loop scans the inventory manager's item array and runs
+	//
+	//     if (FUN_10a12f80(item) > 0 && FUN_10a14a50(item) == 0)
+	//         debugf("Resubmitting an inventory item that could not find its device");
+	//
+	// FUN_10a12f80 is literally `return *(item + 0xb4);` and the value at
+	// +0xb4 is written by FUN_10a12f90 from the marshal DEVICE_ID (0x0206).
+	// FUN_10a14a50 iterates all actors and matches *(actor + 0x220) ==
+	// *(item + 0xb4). For bag items there's no backing actor, so we send
+	// DEVICE_ID=0 → +0xb4=0 → the gate skips the item entirely.
+	//
+	// LOCATION_VALUE_ID (marshal 0x0310) defaults to 0x172 (= 370 = ON_HAND)
+	// on the client side when omitted or zero — see FUN_10a12340. The 369
+	// constant in the equipped block above is the semantic mark; the actual
+	// don't-resubmit knob is DEVICE_ID.
+	//
+	// Earlier attempt that triggered the every-frame resubmit loop sent the
+	// bag pool with LOCATION_VALUE_ID=369 and DEVICE_ID=<inv_id>, which made
+	// the client believe each bag item was currently equipped — the recovery
+	// scan then resubmitted them all back to the server forever.
+
+	const auto charInfo = PlayerSessionStore::GetCharacterById(character_id);
+	if (!charInfo) {
+		Logger::Log("tcp",
+			"[TCP] send_inventory_response: GetCharacterById(%lld) returned null — skipping\n",
+			character_id);
 		return;
 	}
+	const int64_t user_id    = charInfo->user_id;
+	const uint32_t profile   = charInfo->profile_id;
 
-	Logger::Log("tcp", "[TCP] send_inventory_response: %d devices for charId=%lld pawnId=%d (one packet per device)\n",
-		(int)devices.size(), character_id, nPawnId);
+	if (devices.empty()) {
+		Logger::Log("tcp", "[TCP] send_inventory_response: no equipped devices for charId=%lld pawnId=%d (will still ship bag pool)\n",
+			character_id, nPawnId);
+	}
+
+	Logger::Log("tcp",
+		"[TCP] send_inventory_response: charId=%lld pawnId=%d equipped=%d (one packet per item)\n",
+		character_id, nPawnId, (int)devices.size());
 
 	// One SEND_INVENTORY message per device. Bundling everything into a single
 	// DATA_SET worked for small loadouts but exceeded the client's per-packet
@@ -1400,17 +1490,95 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 			Write4B(response, GA_T::EFFECT_GROUP_ID, egid);
 		}
 
+		// Ship one DATA_SET_CHARACTER_PROFILES row per build profile (1..5)
+		// with the same EQUIPPED_SLOT_VALUE_ID. Each row populates one of the
+		// five `invObj+0x68..+0x78` slot-table entries on the client. The
+		// equip-screen UI reads this table directly (not through the
+		// `r_nItemProfileId`-gated path), and unless every profile entry is
+		// non-zero it treats the item as unequipped — slots render blank.
+		// 5 rows × 4 fields × 4 bytes ≈ 80 extra bytes per item, well under
+		// the per-message cap. See inventory-tcp-protocol.md "Concrete fixes
+		// for the inconsistent loadout bug" #2.
 		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
-		append(response, 0x01, 0x00);
-
+		append(response, 0x05, 0x00);
+		for (int profileId = 1; profileId <= 5; ++profileId) {
 			append(response, 0x04, 0x00);
 			Write4B(response, GA_T::CHARACTER_ID, 0);
 			Write4B(response, GA_T::INVENTORY_ID, d.inventory_id);
-			Write4B(response, GA_T::PROFILE_ID, 0x1);
+			Write4B(response, GA_T::PROFILE_ID, (uint32_t)profileId);
 			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, d.slot_value_id);
+		}
 
 		send_response(response);
 	}
+
+	// --- Bag pool: account-scoped inventory rows not currently equipped on
+	// this character. Wire format mirrors the equipped block above except
+	// LOCATION_VALUE_ID=370, DEVICE_ID=0, EQUIPPED_SLOT_VALUE_ID=0, and
+	// ACTIVE_FLAG=F. See the top-of-function comment for the gate analysis.
+	std::set<int> equipped_inv_ids;
+	for (const auto& d : devices) equipped_inv_ids.insert(d.inventory_id);
+
+	const auto bag = PlayerSessionStore::GetInventoryForUser(user_id, profile);
+	int bag_shipped = 0;
+	for (const auto& row : bag) {
+		if (equipped_inv_ids.count(row.inventory_id)) continue;
+
+		std::vector<uint8_t> response;
+
+		append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
+		append(response, 0x02, 0x00);   // PAWN_ID + DATA_SET
+
+		Write4B(response, GA_T::PAWN_ID, nPawnId);
+
+		append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+		append(response, 0x01, 0x00);
+
+		append(response, 0x0E, 0x00);   // 14 fields per record (same as equipped)
+
+		const int blueprintId = row.mods.empty()
+			? 0
+			: PlayerSessionStore::GetBlueprintIdForDevice(row.device_id, row.oc);
+
+		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1);
+		Write4B(response, GA_T::ITEM_ID, row.device_id);
+		Write4B(response, GA_T::INVENTORY_ID, row.inventory_id);
+		Write4B(response, GA_T::BLUEPRINT_ID, blueprintId);
+		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, row.quality);
+		Write4B(response, GA_T::DURABILITY, 100);
+		WriteDouble(response, GA_T::ACQUIRE_DATETIME, 1700000000.0);
+		WriteString(response, GA_T::BOUND_FLAG, "T");
+		Write4B(response, GA_T::LOCATION_VALUE_ID, 370);   // ON_HAND
+		Write4B(response, GA_T::INSTANCE_COUNT, 0x1);
+		WriteString(response, GA_T::ACTIVE_FLAG, "F");     // not actively in use
+		Write4B(response, GA_T::DEVICE_ID, 0);             // no backing pawn device → recovery scan skips
+
+		std::vector<int> effectGroups = row.mods;
+		if (effectGroups.empty()) effectGroups.push_back(0);
+
+		append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
+		append(response, (uint8_t)(effectGroups.size() & 0xFF), (uint8_t)(effectGroups.size() >> 8));
+		for (int egid : effectGroups) {
+			append(response, 0x02, 0x00);
+			Write4B(response, GA_T::INVENTORY_ID, row.inventory_id);
+			Write4B(response, GA_T::EFFECT_GROUP_ID, egid);
+		}
+
+		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
+		append(response, 0x01, 0x00);
+			append(response, 0x04, 0x00);
+			Write4B(response, GA_T::CHARACTER_ID, 0);
+			Write4B(response, GA_T::INVENTORY_ID, row.inventory_id);
+			Write4B(response, GA_T::PROFILE_ID, 0x1);
+			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 0);
+
+		send_response(response);
+		++bag_shipped;
+	}
+
+	Logger::Log("tcp",
+		"[TCP] send_inventory_response: charId=%lld pawnId=%d bag=%d (LOCATION=370, DEVICE_ID=0)\n",
+		character_id, nPawnId, bag_shipped);
 }
 
 void TcpSession::send_loadout_inventory_response(int nPawnId, const std::vector<LoadoutItem>& items) {

@@ -901,15 +901,15 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// passes a template, so scope-out, rest-end, etc. all work
 		// natively without any bracket.
 		CallOriginal(Object, edx, Function, Params, Result);
-		ATgDevice* Device = (ATgDevice*)Object;
-		if (Device && Device->Instigator && HasStealthEffectGroup(Device)) {
-			ATgPawn* Pawn = (ATgPawn*)Device->Instigator;
-			ATgEffectManager* Mgr = Pawn->r_EffectManager;
-			if (Mgr) {
-				TgEffectManager__RemoveEffectGroupsByCategory::Call(
-					Mgr, nullptr, /*nCategoryCode=*/621, /*nQuantity=*/99);
-			}
-		}
+		// ATgDevice* Device = (ATgDevice*)Object;
+		// if (Device && Device->Instigator && HasStealthEffectGroup(Device)) {
+		// 	ATgPawn* Pawn = (ATgPawn*)Device->Instigator;
+		// 	ATgEffectManager* Mgr = Pawn->r_EffectManager;
+		// 	if (Mgr) {
+		// 		TgEffectManager__RemoveEffectGroupsByCategory::Call(
+		// 			Mgr, nullptr, /*nCategoryCode=*/621, /*nQuantity=*/99);
+		// 	}
+		// }
 		break;
 	}
 

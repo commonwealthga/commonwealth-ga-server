@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgEffect/CheckOwnerPetBuff/TgEffect__CheckOwnerPetBuff.hpp"
+#include "src/GameServer/TgGame/BuffEffectRegistry/DeviceCategorySkill.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 #include <cstring>
@@ -69,13 +70,32 @@ void __fastcall TgEffect__CheckOwnerPetBuff::Call(UTgEffect* effect, void* /*edx
 	// match against entries stored with devInst=0) when missing.
 	const int spawnerDevInst = petPawn->s_nSpawnerDeviceInstId;
 
+	// **Device-class skill scoping:** the query MUST pass the spawning
+	// device's classifying skill id (`m_nSkillId`, sourced from
+	// `asm_data_set_items.skill_id` where `item_id == device_id` via
+	// `DeviceCategorySkill::Lookup`). Skills like Heavy Artillery (845)
+	// gate their prop-350 effect on `required_skill_id=514` (Turrets) so
+	// only firing entities whose device-class is 514 pick it up. With
+	// `nReqSkillId=0`, the binary's GetBuffIndex match rule
+	// (FUN_109cd890: stored>0 must equal query) filtered every
+	// device-class-gated skill out of the pet-damage formula. Concrete
+	// failure: Rocket Turret (bot 723 spawned by device 2095 → item 2095
+	// has skill_id=514) was getting Super Engineer's wildcard +5% but
+	// missing Heavy Artillery's class-514 +5% (1000 × 1.21 × 1.05 ×
+	// 1.70 = 2160 actual vs 1000 × 1.21 × 1.10 × 1.70 = 2263 expected).
+	// Generalizes to every multi-row pet-buff skill: Robotics Rifle
+	// Damage (req=486), Drone-class effects (req=384), Stations (283),
+	// Repair (308), etc. — same data path, same fix.
+	const int spawnerSkillId =
+		DeviceCategorySkill::LookupByInstanceId(ownerPawn, spawnerDevInst);
+
 	float buffedValue = fCurrAmount;
 	GetBuffedPropertyNative(
 		ownerPawn, /*edx=*/nullptr,
 		/*eRequestContext=*/4,         // BUFF_OTHER → expansion {350, 385} for prop 350
 		/*nPropId=*/nPropertyId,
 		/*nReqCategoryCode=*/g->m_nCategoryCode,
-		/*nReqSkillId=*/0,
+		/*nReqSkillId=*/spawnerSkillId,
 		/*nReqDeviceInstId=*/spawnerDevInst,
 		/*bUsePotencyModifier=*/0,
 		/*fBaseValue=*/fCurrAmount,
@@ -86,8 +106,8 @@ void __fastcall TgEffect__CheckOwnerPetBuff::Call(UTgEffect* effect, void* /*edx
 
 	if (buffedValue != fCurrAmount && Logger::IsChannelEnabled("effects")) {
 		Logger::Log("effects",
-			"[OWNER-PET-BUFF] effect=%p propId=%d  %.3f -> %.3f  pet=%p owner=%p egId=%d spawnerDevInst=%d\n",
+			"[OWNER-PET-BUFF] effect=%p propId=%d  %.3f -> %.3f  pet=%p owner=%p egId=%d spawnerDevInst=%d spawnerSkillId=%d\n",
 			effect, nPropertyId, fCurrAmount, buffedValue,
-			petPawn, ownerPawn, g->m_nEffectGroupId, spawnerDevInst);
+			petPawn, ownerPawn, g->m_nEffectGroupId, spawnerDevInst, spawnerSkillId);
 	}
 }

@@ -3852,7 +3852,66 @@ void Database::Init() {
 		                  "(3 Datafarm + 3 SeaSide + Volcano)\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 52", nullptr, nullptr, &err);
+	if (version < 53) {
+		// v53: account-scoped inventory + simplified equipped-devices mapping.
+		//
+		// BEFORE: ga_character_devices held the full item record (device_id,
+		// quality, mods, oc) per character — items were re-seeded on every
+		// character select from ClassLoadouts.cpp. Inventory was effectively
+		// just "what's currently equipped" with no notion of unequipped items
+		// to choose from.
+		//
+		// AFTER:
+		//  - ga_players_inventory: ACCOUNT-scoped (user_id) item pool. Each
+		//    item knows its profile_id (0=shared, else medic/recon/etc) and
+		//    `allowed_slots` (CSV of slot_value_ids — usually one, but offhand
+		//    devices list all three of 203/204/385). This is the new source of
+		//    truth for `inventory_id` (the primary key).
+		//  - ga_character_devices: thin join row pointing into the inventory
+		//    pool — only carries the equip slot. UNIQUE(character_id,
+		//    equipped_slot) prevents two items competing for the same slot.
+		//    (When we add loadout-profile support later, the unique key gets
+		//    `loadout_profile` mixed in and we hardcode 1 in the interim.)
+		//
+		// Wipe of the old ga_character_devices is expected — the row shape is
+		// different and the seed will repopulate inventory + equipment from
+		// ClassLoadouts.cpp on next login. SQLite has no "DROP COLUMN" in this
+		// build, so we drop+recreate.
+		const char* kV53_inventory =
+			"CREATE TABLE IF NOT EXISTS ga_players_inventory ("
+			"  id                   INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  user_id              INTEGER NOT NULL REFERENCES ga_users(id),"
+			"  profile_id           INTEGER NOT NULL DEFAULT 0,"
+			"  device_id            INTEGER NOT NULL,"
+			"  quality              INTEGER NOT NULL DEFAULT 0,"
+			"  mod_effect_group_ids TEXT    NOT NULL DEFAULT '',"
+			"  oc                   INTEGER NOT NULL DEFAULT 0,"
+			"  allowed_slots        TEXT    NOT NULL,"
+			"  created_at           INTEGER NOT NULL DEFAULT (strftime('%s','now'))"
+			");"
+			"CREATE INDEX IF NOT EXISTS idx_ga_players_inventory_user "
+			"  ON ga_players_inventory(user_id, profile_id);";
+		result = sqlite3_exec(db, kV53_inventory, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v53 (ga_players_inventory): %s\n", err); sqlite3_free(err); return; }
+
+		const char* kV53_devices_rebuild =
+			"DROP TABLE IF EXISTS ga_character_devices;"
+			"CREATE TABLE ga_character_devices ("
+			"  id            INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  character_id  INTEGER NOT NULL REFERENCES ga_characters(id),"
+			"  inventory_id  INTEGER NOT NULL REFERENCES ga_players_inventory(id),"
+			"  equipped_slot INTEGER NOT NULL,"
+			"  UNIQUE(character_id, equipped_slot)"
+			");"
+			"CREATE INDEX IF NOT EXISTS idx_ga_character_devices_char "
+			"  ON ga_character_devices(character_id);";
+		result = sqlite3_exec(db, kV53_devices_rebuild, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v53 (ga_character_devices rebuild): %s\n", err); sqlite3_free(err); return; }
+
+		Logger::Log("db", "v53: account-scoped ga_players_inventory + simplified ga_character_devices (DROP+CREATE)\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 53", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

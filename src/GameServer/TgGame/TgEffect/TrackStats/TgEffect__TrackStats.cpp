@@ -13,6 +13,7 @@
 #include "src/GameServer/TgGame/TgPawn/TrackHealing/TgPawn__TrackHealing.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackKill/TgPawn__TrackKill.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackKilledBot/TgPawn__TrackKilledBot.hpp"
+#include "src/GameServer/TgGame/Morale/MoraleCredit.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <string>
 
@@ -219,36 +220,12 @@ void FireSaveDeathInfoForZoomCam(ATgPawn* Victim, ATgPawn* KillerForUC,
 
 }  // namespace
 
-// We do NOT call the binary's TgPawn::AddMoralePoints @ 0x109d2f00. Its
-// validation chain begins with `FUN_109422b0(DAT_ASSEMBLY_MANAGER, nDeviceModeID)`
-// then unconditionally dereferences `[result + 0xC]`. With the original asm
-// data this presumably always resolved (likely a sentinel entry for id=0 plus
-// real entries for every fire-mode id), but in our environment it returns
-// null for arbitrary target-fire-mode ids passed from TgEffectDamage, so the
-// dereference at 0x109d2f4e access-violates on first damage event. We inline
-// the surviving gates instead.
-//
-// Pawn-side gates we replicate (matches the asm at 0x109d2f6d..0x109d2f8c):
-//   - test [esi+0x3D8], 0x10000000   → r_bAllowAddMoralePoints set
-//   - cmp  [esi+0x1520], -1          → r_nMoraleDeviceSlot >= 0
-//   - test [edi+0x264],  0x200       → GRI->r_bAllowBuildMorale set (skipped;
-//                                       we always set this in InitGameRepInfo)
-// Then add and clamp to [0, r_fRequiredMoralePoints].
-
-// Morale fill rate calibrated from old-GA video evidence at baseline
-// (no skills/mods, default `r_fRequiredMoralePoints = 100` per Inventory.cpp:462):
-//   27000 total damage dealt fills a full bar.
-//   32000 total healing done fills a full bar.
-//
-// The per-magnitude rate is therefore FIXED (not threshold-scaled). Skill or
-// mod effects that adjust `r_fRequiredMoralePoints` (e.g. reduce it from 100
-// to 80) leave the per-magnitude credit unchanged but lower the threshold, so
-// the bar fills with proportionally less damage/healing — which is the correct
-// natural scaling behaviour. If a future "Boost Charge Rate" buff (prop 337)
-// becomes wirable, multiply the per-magnitude rate by that buff factor here.
-static constexpr float kMoralePointsPerDamage = 100.0f / 27000.0f;  // ~0.003704
-static constexpr float kMoralePointsPerHeal   = 100.0f / 32000.0f;  // ~0.003125
-
+// Stats dispatcher only. Morale credit (rate, Output Mod scaling, anti-feedback
+// filter, accumulator math, replicated mirror) lives in MoraleCredit::Award —
+// invoked at the end of this function. Per the binary's AddMoralePoints native
+// decompile + the data audit (2026-05-19), morale gain has no DB-driven rate
+// property; constants are calibrated from old-GA playtest evidence and live
+// in the MoraleCredit module.
 void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
                                            ATgPawn* Instigator, AActor* Target, FImpactInfoBytes Impact,
                                            float fDamage, int iTargetDeviceModeId,
@@ -746,140 +723,21 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 		}
 	}
 
-	// Block morale credit when the damage source traces back to a morale
-	// device. UC's TgDevice_Morale.DeviceFiring.BeginState already calls
-	// SetAllowAddMoralePoints(false) (which our `r_bAllowAddMoralePoints` gate
-	// below honors), but that flag is reset on DeviceFiring.EndState — typically
-	// 1–2 seconds after the morale fires the animation. Bombs spawned by the
-	// morale device (Shatter Bomb deployable, etc.) detonate seconds later,
-	// AFTER DeviceFiring has ended and the flag is back to true. Their
-	// explosion damage would otherwise credit morale → instant ultimate refill
-	// → infinite loop.
-	//
-	// Trace chain (handles both direct morale-fire and bomb-spawned-by-morale):
-	//   Impact.DeviceModeReference (UTgDeviceFire* @ FImpactInfo+0x54)
-	//     → fireMode.m_Owner (AActor* @ UTgDeviceFire+0x3C)
-	//       Case A — TgDevice_Morale directly (e.g. melee/hitscan morale device):
-	//         skip.
-	//       Case B — TgDeployable (bomb): chase .r_Owner (ATgDevice* @ +0x2AC)
-	//             to the source device; if that's a TgDevice_Morale, skip.
-	//
-	// Class-name strstr per `reference_sdk_staticclass_misalignment` — IsA() is
-	// unreliable on this server build.
-	//
-	// We previously copied each GetFullName() into std::string to dodge the
-	// shared-buffer clobber when both names cohabit a log line. That's only
-	// needed when we actually log; for the gate decision itself, evaluating
-	// each name+strstr in sequence is allocation-free and immune to clobber
-	// (we don't keep the pointer around after strstr).
-	{
-		UObject* deviceModeRef = (UObject*)Impact.dw[0x54 / 4];
-		UTgDeviceFire* fireMode  = (UTgDeviceFire*)deviceModeRef;
-		AActor*        fireOwner = fireMode ? fireMode->m_Owner : nullptr;
-		ATgDevice*     sourceDevice = nullptr;
-
-		bool ownerIsDeployable = false;
-		bool ownerIsMorale     = false;
-		if (fireOwner && fireOwner->Class) {
-			const char* oc = fireOwner->Class->GetFullName();
-			if (oc) {
-				ownerIsMorale     = (strstr(oc, "TgDevice_Morale") != nullptr);
-				ownerIsDeployable = (strstr(oc, "TgDeploy")        != nullptr);
-			}
-		}
-
-		bool srcIsMorale = false;
-		if (ownerIsDeployable) {
-			sourceDevice = ((ATgDeployable*)fireOwner)->r_Owner;
-			if (sourceDevice && sourceDevice->Class) {
-				const char* sc = sourceDevice->Class->GetFullName();
-				if (sc) srcIsMorale = (strstr(sc, "TgDevice_Morale") != nullptr);
-			}
-		}
-
-		if (ownerIsMorale || srcIsMorale) {
-			if (Logger::IsChannelEnabled("morale")) {
-				// Re-evaluate the names into std::strings just for the log so
-				// the two GetFullName() pointers don't share a buffer in the
-				// same printf line.
-				std::string oc = (fireOwner && fireOwner->Class && fireOwner->Class->GetFullName())
-				                   ? fireOwner->Class->GetFullName() : std::string("<null>");
-				std::string sc = (sourceDevice && sourceDevice->Class && sourceDevice->Class->GetFullName())
-				                   ? sourceDevice->Class->GetFullName() : std::string("<n/a>");
-				Logger::Log("morale",
-					"[TrackStats] morale-device source (no credit): instigator=0x%p target=0x%p "
-					"fireOwner.class=%s sourceDevice.class=%s fDamage=%.2f\n",
-					Instigator, Target, oc.c_str(), sc.c_str(), fDamage);
-			}
-			return;
-		}
-
-		// Diagnostic: record the source attribution we DID see, so when the
-		// chain breaks we can tell whether DeviceModeReference was null,
-		// fireMode.m_Owner was null, or r_Owner on the deployable was missing.
-		if (Logger::IsChannelEnabled("morale")) {
-			std::string oc = (fireOwner && fireOwner->Class && fireOwner->Class->GetFullName())
-			                   ? fireOwner->Class->GetFullName() : std::string("<null>");
-			std::string sc = (sourceDevice && sourceDevice->Class && sourceDevice->Class->GetFullName())
-			                   ? sourceDevice->Class->GetFullName() : std::string("<n/a>");
-			Logger::Log("morale",
-				"[TrackStats] credit-eligible: instigator=0x%p target=0x%p "
-				"deviceModeRef=%p fireOwner=%p ownerClass=%s srcDevice=%p srcClass=%s fDamage=%.2f\n",
-				Instigator, Target,
-				(void*)deviceModeRef, (void*)fireOwner, oc.c_str(),
-				(void*)sourceDevice, sc.c_str(),
-				fDamage);
-		}
-	}
-
-	// Don't credit morale for healing your own pets/deployables. Same
-	// rationale as the STYPE_HEALING exclusion above: a tech parking on
-	// their own dropped Heal Beacon would otherwise rack up infinite
-	// morale via repair ticks against their own gear. Self-heal (Target ==
-	// Instigator) is already filtered at the top.
+	// Skip morale credit when healing your own pets/deployables. A tech parked
+	// on their own Heal Beacon would otherwise rack up infinite morale via
+	// repair ticks against their own gear. Self-heal (Target == Instigator) is
+	// already filtered at the top of this function.
 	if (isHeal && targetIsOwnedByInstigator) return;
 
-	// Morale credit always lands on the human deployer, never on a pet/turret.
-	// damageCreditPawn was already resolved to Instigator->r_Owner upstream
-	// for the pet case; reuse it for ALL morale gates + writes. Previously
-	// gated on Instigator directly, which made turret damage no-op because
-	// turrets carry no morale device (r_nMoraleDeviceSlot < 0).
-	ATgPawn* moraleRecipient = damageCreditPawn;
-
-	// Pawn must have a morale device equipped (otherwise nothing to charge).
-	if (moraleRecipient->r_nMoraleDeviceSlot < 0) return;
-
-	// r_bAllowAddMoralePoints — UC clears it during the morale device's
-	// DeviceFiring state to prevent re-charging mid-fire. SDK declares this as
-	// a 1-bit field at offset 0x3D8 with mask 0x10000000; read raw to side-step
-	// SDK bitfield-pack risk.
-	const uint32_t allowBits = *(uint32_t*)((char*)moraleRecipient + 0x3D8);
-	if ((allowBits & 0x10000000u) == 0) return;
-
-	const float before    = moraleRecipient->m_fCurrentMoralePoints;
-	const float threshold = moraleRecipient->r_fRequiredMoralePoints;
-	const float points    = magnitude * (isHeal ? kMoralePointsPerHeal : kMoralePointsPerDamage);
-	float after = before + points;
-	if (after < 0.0f)            after = 0.0f;
-	else if (after > threshold)  after = threshold;
-
-	if (after != before) {
-		// m_fCurrentMoralePoints is the server-canonical accumulator; the
-		// replicated field r_fCurrentServerMoralePoints is what the client's
-		// repnotify copies back into its local m_fCurrentMoralePoints and the
-		// morale-bar UI reads from. Write both.
-		moraleRecipient->m_fCurrentMoralePoints      = after;
-		moraleRecipient->r_fCurrentServerMoralePoints = after;
-		moraleRecipient->bForceNetUpdate = 1;
-		moraleRecipient->bNetDirty       = 1;
-	}
-
-	if (Logger::IsChannelEnabled("morale")) {
-		Logger::Log("morale",
-			"[TrackStats] %s: instigator=0x%p recipient=0x%p target=0x%p mag=%.2f points=%.2f  morale %.2f -> %.2f / %.2f  targetDevMode=%d\n",
-			isHeal ? "heal" : "dmg",
-			Instigator, moraleRecipient, Target, magnitude, points,
-			before, after, moraleRecipient->r_fRequiredMoralePoints,
-			iTargetDeviceModeId);
-	}
+	// All other morale-system concerns (anti-feedback for morale-device
+	// sources, recipient-side gates, Output Mod scaling, accumulator math,
+	// replicated mirror write) live in MoraleCredit::Award. The damage
+	// source's morale-device classification is DB-driven via the source's
+	// `iTargetDeviceModeId` — the parent device's `slot_used_value_id == 476`
+	// flag ("Morale Device" category) is what the binary's intact
+	// AddMoralePoints native at 0x109d2f00 checks. Catches both direct
+	// morale-fire damage AND bomb-spawned-by-morale (Shatter Bomb etc.)
+	// because retail registers both under the same category.
+	MoraleCredit::Award(damageCreditPawn, magnitude, isHeal,
+	                    fMissingHealth, iTargetDeviceModeId);
 }

@@ -367,11 +367,11 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 	// refire resets the LifeDone timer's elapsed counter and re-replicates
 	// the full time remaining. On fire-release, ServerStopFire explicitly
 	// clears category=621 for immediate HUD teardown.
-	if (g->m_nCategoryCode == 621 && g->m_fLifeTime == 0.0f) {
-		g->m_fLifeTime = 1.0f;
-		Logger::Log("effects",
-			"[BUILD] egId=%d promoted stealth lifetime 0 -> 1s (HUD icon)\n", egId);
-	}
+	// if (g->m_nCategoryCode == 621 && g->m_fLifeTime == 0.0f) {
+	// 	g->m_fLifeTime = 1.0f;
+	// 	Logger::Log("effects",
+	// 		"[BUILD] egId=%d promoted stealth lifetime 0 -> 1s (HUD icon)\n", egId);
+	// }
 
 	// m_bHasVisual (bit 0x80 @ +0x74) — necessary-but-not-sufficient gate for
 	// `SetEffectRep` / `RefreshEffectRep` in `TgEffectManager.ProcessEffect`
@@ -398,7 +398,28 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 	// push so impact FX/sound plays.
 	{
 		unsigned int& gflags = *(unsigned int*)((char*)g + 0x74);
-		if (iconId > 0 || targetFxId > 0 || fxDisplayGroup > 0) {
+		// Bit 0x80 = m_bHasVisual — UC's TgEffectManager.ProcessEffect only
+		// calls `SetEffectRep` for groups where this is set. SetEffectRep is
+		// where our class-157 (TgEffectBuff) routing fires `ApplyBuffEffectFromHook`
+		// on apply, so a group with zero visual assets AND a class-157 effect
+		// (e.g. Focused Repair Arm's +40% damage buff egId 9136 — icon_id=0,
+		// target_fx_id=0, fx_display_group=0, but prop 65 +40% via class-157)
+		// would otherwise silently fail to register the buff on the target.
+		// UC's base `TgEffect.ApplyEffect` still runs and sets `m_fCurrent`,
+		// but its `ApplyToProperty → SetProperty` write silently no-ops because
+		// the target pawn doesn't carry modifier prop 65 in `s_Properties`.
+		// Force-set the visual bit when ANY effect in the group is flagged in
+		// the buff registry — this guarantees SetEffectRep fires and our
+		// buff-routing path lands the entry in `m_EffectBuffInfo`. Side effect
+		// is benign: with icon_id=0 + target_fx_id=0 + fx_display_group=0 the
+		// client has nothing to render, so SetEffectRep's queue/slot writes
+		// produce no visible artifact.
+		bool hasBuffEffect = false;
+		for (int i = 0; i < g->m_Effects.Count; ++i) {
+			UTgEffect* e = g->m_Effects.Data[i];
+			if (e && BuffEffectRegistry::IsBuff(e)) { hasBuffEffect = true; break; }
+		}
+		if (iconId > 0 || targetFxId > 0 || fxDisplayGroup > 0 || hasBuffEffect) {
 			gflags |= 0x80;
 		} else {
 			gflags &= ~0x80u;
