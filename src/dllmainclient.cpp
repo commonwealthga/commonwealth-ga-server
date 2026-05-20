@@ -9,11 +9,11 @@
 unsigned long ModuleThread( void* ) {
 	::DetourTransactionBegin();
 	::DetourUpdateThread(::GetCurrentThread());
-	Logger::EnabledChannels.push_back("stealth");
-	Logger::EnabledChannels.push_back("hook_calltree");
-	Logger::EnabledChannels.push_back("replicated_event");
-	Logger::EnabledChannels.push_back("heal_tick");
-	Logger::EnabledChannels.push_back("team_colors");
+	Logger::EnableChannel("stealth");
+	Logger::EnableChannel("hook_calltree");
+	Logger::EnableChannel("replicated_event");
+	Logger::EnableChannel("heal_tick");
+	Logger::EnableChannel("team_colors");
 
 	UObject__ProcessEvent::Install();
 	TgDeployable__NotifyGroupChanged::Install();

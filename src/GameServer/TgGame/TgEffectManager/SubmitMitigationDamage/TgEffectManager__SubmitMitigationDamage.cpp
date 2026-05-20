@@ -1,7 +1,7 @@
 #include "src/GameServer/TgGame/TgEffectManager/SubmitMitigationDamage/TgEffectManager__SubmitMitigationDamage.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroup/TgEffectManager__RemoveEffectGroup.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
-#include <string.h>
 
 // Reimplements the stripped UC native
 //   `native function SubmitMitigationDamage(int nProtectionType, int nDamage)`
@@ -46,9 +46,11 @@ void __fastcall TgEffectManager__SubmitMitigationDamage::Call(
 		if (matches) { shield = g; break; }
 	}
 	if (!shield) {
-		Logger::Log("effects",
-			"[SHIELD-MIT] mgr=%p prop=%d dmg=%d  no matching shield in applied list (%d entries)\n",
-			(void*)Manager, nProtectionType, nDamage, Manager->s_AppliedEffectGroups.Count);
+		if (Logger::IsChannelEnabled("effects")) {
+			Logger::Log("effects",
+				"[SHIELD-MIT] mgr=%p prop=%d dmg=%d  no matching shield in applied list (%d entries)\n",
+				(void*)Manager, nProtectionType, nDamage, Manager->s_AppliedEffectGroups.Count);
+		}
 		return;
 	}
 
@@ -61,12 +63,14 @@ void __fastcall TgEffectManager__SubmitMitigationDamage::Call(
 	// TgDeployable can also receive shielding (TgEffectGroup.uc:777-781) but
 	// has no equivalent replicated bar; the per-deployable HUD comes from
 	// r_nHealth on the deployable itself.
+	//
+	// `ObjectClassCache::GetClassName` is O(1) after the first call per UClass*
+	// — it caches the GetFullName() result keyed by class pointer, so a busy
+	// damage path doesn't pay GetFullName per absorbed hit. The cached string
+	// is stable storage; the `.compare` is a fast prefix check.
 	AActor* owner = Manager->r_Owner;
-	bool ownerIsPawn = false;
-	if (owner && owner->Class) {
-		const char* cn = owner->Class->GetFullName();
-		ownerIsPawn = (cn && strncmp(cn, "Class TgGame.TgPawn", 19) == 0);
-	}
+	const bool ownerIsPawn = owner &&
+		(ObjectClassCache::GetClassName(owner).compare(0, 19, "Class TgGame.TgPawn") == 0);
 	if (ownerIsPawn) {
 		ATgPawn* pawn = (ATgPawn*)owner;
 		pawn->r_nShieldHealthRemaining = shield->m_nHealthMitigated;
@@ -84,10 +88,12 @@ void __fastcall TgEffectManager__SubmitMitigationDamage::Call(
 		}
 	}
 
-	Logger::Log("effects",
-		"[SHIELD-MIT] mgr=%p egId=%d prop=%d dmg=%d  m_nHealthMitigated %d -> %d\n",
-		(void*)Manager, shield->m_nEffectGroupId, nProtectionType, nDamage,
-		before, shield->m_nHealthMitigated);
+	if (Logger::IsChannelEnabled("effects")) {
+		Logger::Log("effects",
+			"[SHIELD-MIT] mgr=%p egId=%d prop=%d dmg=%d  m_nHealthMitigated %d -> %d\n",
+			(void*)Manager, shield->m_nEffectGroupId, nProtectionType, nDamage,
+			before, shield->m_nHealthMitigated);
+	}
 
 	// Shield-break: pool drained, drop the effect group. Our reimplemented
 	// RemoveEffectGroup reverses any modifiers the group's effects installed
@@ -95,9 +101,11 @@ void __fastcall TgEffectManager__SubmitMitigationDamage::Call(
 	// unmitigated), cancels the LifeDone timer, frees the HUD slot, and
 	// swap-removes from s_AppliedEffectGroups.
 	if (shield->m_nHealthMitigated <= 0) {
-		Logger::Log("effects",
-			"[SHIELD-MIT] mgr=%p egId=%d shield broken — removing group\n",
-			(void*)Manager, shield->m_nEffectGroupId);
+		if (Logger::IsChannelEnabled("effects")) {
+			Logger::Log("effects",
+				"[SHIELD-MIT] mgr=%p egId=%d shield broken — removing group\n",
+				(void*)Manager, shield->m_nEffectGroupId);
+		}
 		TgEffectManager__RemoveEffectGroup::Call(Manager, nullptr, shield);
 
 		// Clear the published bar so the client HUD's shield indicator

@@ -24,8 +24,24 @@ static void SetPawnProperty(ATgPawn* Pawn, int nPropertyId, float fNewValue) {
 // Forces lazy population of s_EffectGroupList if empty — first activation
 // has the list empty until UC's fire path triggers GetEffectGroup. Calling
 // our hook with sentinel nType=-1 fills it as a side effect.
+//
+// Memoized per-ATgDevice* via `s_stealthDeviceCache`. RefireCheckTimer fires
+// while the trigger is held (every 50-100 ms), and before memoization this
+// walked m_FireMode + s_EffectGroupList on every tick. The fire-mode roster
+// and per-mode effect-group list are immutable for a device's lifetime, so
+// after the first call the answer is stable. Cache holds only `true` entries
+// to keep the lazy-population branch live on first call (entries fall through
+// to the full walk until s_EffectGroupList has been populated and a 621
+// category is detected). False results aren't cached — they're cheap to
+// recompute and a future fire mode add (we don't currently do this, but
+// defensive) would still take effect.
+static std::unordered_map<ATgDevice*, bool> s_stealthDeviceCache;
+
 static bool HasStealthEffectGroup(ATgDevice* Device) {
 	if (!Device) return false;
+	auto it = s_stealthDeviceCache.find(Device);
+	if (it != s_stealthDeviceCache.end()) return it->second;
+
 	for (int m = 0; m < Device->m_FireMode.Count; m++) {
 		UTgDeviceFire* fireMode = Device->m_FireMode.Data[m];
 		if (!fireMode) continue;
@@ -35,7 +51,10 @@ static bool HasStealthEffectGroup(ATgDevice* Device) {
 		}
 		for (int i = 0; i < fireMode->s_EffectGroupList.Count; i++) {
 			UTgEffectGroup* eg = fireMode->s_EffectGroupList.Data[i];
-			if (eg && eg->m_nCategoryCode == 621) return true;
+			if (eg && eg->m_nCategoryCode == 621) {
+				s_stealthDeviceCache[Device] = true;
+				return true;
+			}
 		}
 	}
 	return false;
@@ -298,9 +317,9 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			std::string n  = Function->GetFullName();
 			std::string on = Object->GetFullName();
 			Logger::Log(GetLogChannel(), "├─ %s [%s]\n", n.c_str(), on.c_str());
-			Logger::ChannelIndents[GetLogChannel()]++;
+			Logger::IndentChannel(GetLogChannel(), +1);
 			CallOriginal(Object, edx, Function, Params, Result);
-			Logger::ChannelIndents[GetLogChannel()]--;
+			Logger::IndentChannel(GetLogChannel(), -1);
 		} else {
 			CallOriginal(Object, edx, Function, Params, Result);
 		}

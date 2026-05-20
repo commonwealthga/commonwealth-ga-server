@@ -15,6 +15,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.cpp \
 			  $(SRC_DIR)/GameServer/Core/FMallocWindows/Free/FMallocWindows__Free.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ObjectCache/ObjectCache.cpp \
+			  $(SRC_DIR)/GameServer/Utils/ObjectClassCache/ObjectClassCache.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ClassPreloader/ClassPreloader.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ActorCache/ActorCache.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
@@ -166,7 +167,6 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/ApplyPlayerModsToDeployable.cpp \
-			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/ApplyDamage/TgEffectManager__ApplyDamage.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveAllEffectGroups/TgEffectManager__RemoveAllEffectGroups.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective_Bot/SpawnObjectiveBot/TgMissionObjective_Bot__SpawnObjectiveBot.cpp \
@@ -210,6 +210,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/ApplyBuffEffect.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/DeployableOriginRegistry.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/DeviceCategorySkill.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/EffectDisplacementMarker.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/ModifierProps.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.cpp \
@@ -330,6 +331,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SetDyeItemId/TgPawn__SetDyeItemId.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SetJetpackTrailId/TgPawn__SetJetpackTrailId.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SpawnLoot/TgPawn__SpawnLoot.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDroppedItem/ApplyItemSetup/TgDroppedItem__ApplyItemSetup.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDroppedItem/GetEffectGroup/TgDroppedItem__GetEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/StatsCleanup/TgPawn__StatsCleanup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackBoost/TgPawn__TrackBoost.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackBuff/TgPawn__TrackBuff.cpp \

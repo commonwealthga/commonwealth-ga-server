@@ -61,6 +61,9 @@ void __fastcall NetConnection__Cleanup::Call(UNetConnection* Connection) {
 	}
 
 	GClientConnectionsData.erase(ConnectionId);
+	if (remote_ip_be != 0 || remote_port_be != 0) {
+		GConnectionByAddr.erase(MakeRemoteAddrKey(remote_ip_be, remote_port_be));
+	}
 
 	// Block late in-flight UDP packets from this source addr from being
 	// accepted as a brand-new connection in UdpNetDriver::TickDispatch. Cap is

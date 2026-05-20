@@ -64,13 +64,14 @@ int Lookup(int deviceId) {
 
 int LookupByInstanceId(ATgPawn* pawn, int deviceInstanceId) {
 	if (!pawn || deviceInstanceId == 0) return 0;
-	const auto& equipped = Inventory::GetEquipped(pawn);
-	for (const EquippedEntry& e : equipped) {
-		if (e.inventoryId == deviceInstanceId) {
-			return Lookup(e.deviceId);
-		}
-	}
-	return 0;
+	// O(1) invId -> deviceId via the side cache in Inventory. Previously
+	// linearly scanned every equipped entry on every damage/heal application;
+	// the cache is maintained by Equip/Unequip/ClearTracking. `pawn` is kept
+	// in the signature for API compatibility — the side cache is keyed only
+	// on invId (invIds are globally unique).
+	(void)pawn;
+	int deviceId = Inventory::GetDeviceIdByInvId(deviceInstanceId);
+	return (deviceId != 0) ? Lookup(deviceId) : 0;
 }
 
 }  // namespace DeviceCategorySkill

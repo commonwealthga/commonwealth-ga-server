@@ -50,9 +50,38 @@ int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* No
 		return 0;
 	}
 
-	int RecvSize = 0x20000000;
-	int SendSize = 0x20000000;
+	// UDP socket buffer request.
+	//
+	// 1 MB each way. Sized to absorb ~4 seconds of full-rate game traffic at
+	// 16-player scale (peak ~240 KB/s outbound) without dropping packets during
+	// a GC pause or a brief network hiccup, while staying well clear of the
+	// bufferbloat tail that begins around 4+ MB (where the kernel queues so
+	// many packets that they go stale before we drain them — worse than
+	// dropping, because clients trigger position corrections on data they
+	// already extrapolated past).
+	//
+	// UE3 stock asks for 128 KB on the server (TcpNetDriver.cpp:554, "0x20000")
+	// which is tight; one GC pause can fill it. We pick 8× that.
+	//
+	// IMPORTANT: this is a REQUEST. The kernel silently clamps to
+	// `net.core.rmem_max` / `wmem_max`. On a default Debian/Ubuntu install
+	// those are ~208 KB and the request gets clamped down. To actually get
+	// 1 MB, bump the kernel limits on the host:
+	//     echo "net.core.rmem_max = 4194304" > /etc/sysctl.d/99-ga-server.conf
+	//     echo "net.core.wmem_max = 4194304" >> /etc/sysctl.d/99-ga-server.conf
+	//     sysctl --system
+	// Container note: docker spawn uses `--network=host`, so the host's
+	// sysctls apply directly to our setsockopt. Dockerfile needs no change.
+	//
+	// The actual granted size is read back via getsockopt and logged below;
+	// check the "init" channel after a server start to see what the kernel
+	// actually gave us vs what we asked for.
+	int RecvSize = 0x100000; // 1 MB
+	int SendSize = 0x100000; // 1 MB
 	int SizeSize = sizeof(int);
+
+	const int reqRecv = RecvSize;
+	const int reqSend = SendSize;
 
 	bool bSetRecvSizeOk = setsockopt(Socket,SOL_SOCKET,SO_RCVBUF,(char*)&RecvSize,sizeof(int)) == 0;
 	getsockopt(Socket,SOL_SOCKET,SO_RCVBUF,(char*)&RecvSize, &SizeSize);
@@ -60,8 +89,6 @@ int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* No
 	bool bSetSendSizeOk = setsockopt(Socket,SOL_SOCKET,SO_SNDBUF,(char*)&SendSize,sizeof(int)) == 0;
 	getsockopt(Socket,SOL_SOCKET,SO_SNDBUF,(char*)&SendSize, &SizeSize);
 
-	// debugf( NAME_Init, TEXT("%s: Socket queue %i / %i"), SOCKET_API, RecvSize, SendSize );
-	// LogToFile("C:\\mylog.txt", "[UdpNetDriver::InitListen] Socket queue %i / %i", RecvSize, SendSize);
 
 	sockaddr_in addr = *(sockaddr_in*)((char*)NetDriver + 0x148);
     addr.sin_family = AF_INET;

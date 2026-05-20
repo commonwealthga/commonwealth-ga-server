@@ -49,7 +49,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	ATgPawn_Character* newpawn = (ATgPawn_Character*)Game->Spawn(ClassPreloader::GetTgPawnCharacterClass(), PlayerController, FName(), SpawnLocation, PlayerController->Rotation, nullptr, 1);
 	// nPendingBotId cleared inside InitializeDefaultProps::Call
 
-	newpawn->r_nPawnId = 998;
+	// r_nPawnId is assigned by UC TgPawn.PostBeginPlay via TgGame.GetNextPawnId()
+	// during Spawn() — per-TgGame-instance monotonic counter. Don't override.
 	ATgRepInfo_Player* newrepplayer = reinterpret_cast<ATgRepInfo_Player*>(PlayerController->PlayerReplicationInfo);
 
 	PlayerController->Pawn = newpawn;

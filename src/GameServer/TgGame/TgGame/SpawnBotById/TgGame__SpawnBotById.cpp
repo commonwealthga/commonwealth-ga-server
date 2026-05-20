@@ -523,19 +523,9 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	Bot->PlayerReplicationInfo->Role = 3;
 	AIController->Role = 3;
 
-	// Give every spawned bot a unique, non-zero r_nPawnId. The client uses
-	// pawn->r_nPawnId (offset 0x3E8) as the routing key for several
-	// per-pawn messages — notably SEND_INVENTORY (opcode 0x182), where
-	// FUN_10913760 matches the incoming PAWN_ID against the local
-	// controller's pawn (or its r_ControlPawn fallback). With every bot
-	// defaulting to 0, multiple bots share an ID and the dispatcher's
-	// "pick the local pawn" routing is ambiguous if anything ever runs
-	// against a bot. Players use 998 (hardcoded in SpawnPlayerCharacter);
-	// reserve >=10000 for bots so the ranges never collide.
-	{
-		static int s_nextBotPawnId = 10000;
-		Bot->r_nPawnId = s_nextBotPawnId++;
-	}
+	// r_nPawnId is assigned by UC TgPawn.PostBeginPlay via TgGame.GetNextPawnId()
+	// during Spawn() — per-TgGame-instance monotonic counter shared by players
+	// and bots. Don't override.
 
 	Bot->r_EffectManager->r_Owner = Bot;
 	Bot->r_EffectManager->SetOwner(Bot);

@@ -1,17 +1,33 @@
 #include "src/Utils/Logger/Logger.hpp"
 
-std::map<std::string, int> Logger::ChannelIndents;
-std::vector<std::string> Logger::EnabledChannels;
+std::string Logger::LogDir = "C:";
 
-bool Logger::IsChannelEnabled(const char* Channel) {
+bool Logger::IsChannelEnabled(const char* /*channel*/) {
 	// NullLogger never emits anything — always tell callers the channel is
 	// off so they skip building expensive log args.
 	return false;
 }
 
-void Logger::Log(const char* Channel, const char* Format, ...) {
+void Logger::Log(const char* /*channel*/, const char* /*format*/, ...) {
 }
 
-void Logger::DumpMemory(const char* Channel, void* Address, int Size, int NegativeSize) {
+void Logger::IndentChannel(const char* /*channel*/, int /*delta*/) {
 }
 
+void Logger::EnableChannel(const std::string& /*name*/) {
+}
+
+void Logger::EnableCrashChannel(const std::string& /*name*/) {
+}
+
+void Logger::DumpMemory(const char* /*channel*/, void* /*address*/, int /*size*/, int /*negativeSize*/) {
+}
+
+void Logger::DumpCrashBuffer(void* /*fileHandle*/) {
+}
+
+void Logger::EnsureLogDirExists() {
+}
+
+void Logger::ClearEnabledChannelFiles() {
+}

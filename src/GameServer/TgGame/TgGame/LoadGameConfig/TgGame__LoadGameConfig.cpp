@@ -38,9 +38,9 @@ void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	Game->TimeLimit = 15 * 60;
 
 	std::string map_name = Config::GetMapNameChar();
-	if (map_name == "Dome3_VR_Arena_P") {
-		Game->TimeLimit = -1;
-	}
+	// if (map_name == "Dome3_VR_Arena_P") {
+	// 	Game->TimeLimit = -1;
+	// }
 
 	LoadCommonGameConfig(Game);
 

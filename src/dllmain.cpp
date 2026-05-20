@@ -101,7 +101,6 @@
 #include "src/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RosterWalker.hpp"
 #include "src/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RefIter.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
-#include "src/GameServer/TgGame/TgEffectManager/ApplyDamage/TgEffectManager__ApplyDamage.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffectGroups/TgEffectManager__RemoveAllEffectGroups.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.hpp"
 #include "src/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.hpp"
@@ -139,6 +138,8 @@
 #include "src/GameServer/TgGame/TgDeployable/InitializeDefaultProps/TgDeployable__InitializeDefaultProps.hpp"
 #include "src/GameServer/TgGame/TgDeployable/NotifyGroupChanged/TgDeployable__NotifyGroupChanged.hpp"
 #include "src/GameServer/TgGame/TgDeployable/SetProperty/TgDeployable__SetProperty.hpp"
+#include "src/GameServer/TgGame/TgDroppedItem/ApplyItemSetup/TgDroppedItem__ApplyItemSetup.hpp"
+#include "src/GameServer/TgGame/TgDroppedItem/GetEffectGroup/TgDroppedItem__GetEffectGroup.hpp"
 #include "src/GameServer/TgAssemblyMisc/LoadAssetRefs/TgAssemblyMisc__LoadAssetRefs.hpp"
 #include "src/GameServer/Core/LoadObject/Core__LoadObject.hpp"
 #include "src/GameServer/TgGame/TgDevice/ApplyInventoryEquipEffects/TgDevice__ApplyInventoryEquipEffects.hpp"
@@ -447,7 +448,6 @@ unsigned long ModuleThread( void* ) {
 	// TgDeviceFire__CheckTeamPassThrough::Install();
 	// TgDeviceFire__IsValidTarget::Install();
 	// TgDevice__HasMinimumPowerPool::Install();
-	// TgEffectManager__ApplyDamage::Install();
 	TgEffectManager__RemoveAllEffectGroups::Install();
 	TgEffectManager__RemoveAllEffects::Install();
 
@@ -594,6 +594,8 @@ unsigned long ModuleThread( void* ) {
 	TgPawn__SetDyeItemId::Install();
 	TgPawn__SetJetpackTrailId::Install();
 	TgPawn__SpawnLoot::Install();
+	TgDroppedItem__ApplyItemSetup::Install();
+	TgDroppedItem__GetEffectGroup::Install();
 	TgPawn__StatsCleanup::Install();
 	TgPawn__TrackBoost::Install();
 	TgPawn__TrackBuff::Install();
@@ -708,13 +710,13 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
             // Channel allowlists come from control-server.json. The commented
             // push_back lines below in ModuleThread are kept as a known-channel
             // reference; uncomment them only for one-off in-source overrides.
-            for (const auto& ch : Config::GetEnabledChannels())      Logger::EnabledChannels.push_back(ch);
-            for (const auto& ch : Config::GetEnabledCrashChannels()) Logger::EnabledCrashChannels.push_back(ch);
+            for (const auto& ch : Config::GetEnabledChannels())      Logger::EnableChannel(ch);
+            for (const auto& ch : Config::GetEnabledCrashChannels()) Logger::EnableCrashChannel(ch);
             // -dumpmapdata=1 implies the "mapdump" channel — auto-enable so
             // the dump actually lands on disk without the caller also having
             // to pass -enabledchannels=mapdump.
             if (Config::GetDumpMapData()) {
-                Logger::EnabledChannels.push_back("mapdump");
+                Logger::EnableChannel("mapdump");
             }
             // Optional: truncate every enabled channel's log file at boot so
             // repeated test runs start from a clean slate. Off by default;

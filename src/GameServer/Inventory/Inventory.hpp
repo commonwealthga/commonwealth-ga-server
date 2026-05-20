@@ -3,6 +3,7 @@
 #include "src/pch.hpp"
 #include <vector>
 #include <map>
+#include <unordered_map>
 
 struct EquippedEntry {
 	int deviceId;
@@ -41,6 +42,13 @@ public:
 	// Query equipped devices by pawn ID (for inventory marshals that only have pawnId).
 	// Returns const ref to the vector (empty vector if pawnId not tracked).
 	static const std::vector<EquippedEntry>& GetEquippedByPawnId(int pawnId);
+
+	// O(1) inventory-id → device-id lookup. Replaces the per-call linear scan
+	// over GetEquipped(pawn) that DeviceCategorySkill::LookupByInstanceId used
+	// to do on every damage/heal effect application. Returns 0 if `invId`
+	// isn't tracked (e.g. not equipped, or never registered through Equip).
+	// Maintained in lockstep with `s_equipped` by Equip/Unequip/ClearTracking.
+	static int GetDeviceIdByInvId(int invId);
 
 	// Advance and return the next unique inventory ID. Single source of truth.
 	static int NextId();
@@ -96,6 +104,7 @@ private:
 	static int s_nextInventoryId;  // starts at 10000
 	static std::map<ATgPawn*, std::vector<EquippedEntry>> s_equipped;
 	static std::map<int, std::vector<EquippedEntry>*> s_equippedByPawnId;  // pawnId -> ptr into s_equipped
+	static std::unordered_map<int, int> s_deviceByInvId;  // invId -> deviceId (see GetDeviceIdByInvId)
 	static std::vector<EquippedEntry> s_empty;  // returned by GetEquipped when pawn not found
 
 	// Auto-detect device metadata from equip slot

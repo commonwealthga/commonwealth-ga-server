@@ -34,6 +34,7 @@
 int Inventory::s_nextInventoryId = 1000000;
 std::map<ATgPawn*, std::vector<EquippedEntry>> Inventory::s_equipped;
 std::map<int, std::vector<EquippedEntry>*> Inventory::s_equippedByPawnId;
+std::unordered_map<int, int> Inventory::s_deviceByInvId;
 std::vector<EquippedEntry> Inventory::s_empty;
 
 // ---------------------------------------------------------------------------
@@ -660,6 +661,12 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 	int pawnId = Pawn->r_nPawnId;
 	s_equippedByPawnId[pawnId] = &s_equipped[Pawn];
 
+	// --- Invariant: invId -> deviceId O(1) lookup ---
+	// Replaces the per-call linear scan in DeviceCategorySkill::LookupByInstanceId.
+	// Overwrites any prior entry for the same invId (same-invId re-equip flows
+	// through Equip's short-circuit so this only fires for a new device).
+	s_deviceByInvId[invId] = deviceId;
+
 	Logger::Log("inventory", "Equip: pawn=0x%p device=%d slot=%d quality=%d invId=%d -> device=0x%p\n",
 		Pawn, deviceId, slot, qualityValueId, invId, Device);
 	return Device;
@@ -901,6 +908,7 @@ void Inventory::Unequip(ATgPawn* Pawn, int slot) {
 			}
 		}
 	}
+	s_deviceByInvId.erase(invId);
 
 	Logger::Log("inventory", "Unequip: pawn=0x%p slot=%d deviceId=%d invId=%d mods=%zu\n",
 		Pawn, slot, deviceId, invId, mods.size());
@@ -954,6 +962,17 @@ void Inventory::Unequip(ATgPawn* Pawn, int slot) {
 // Inventory::ClearTracking — remove pawn from tracking maps
 // ---------------------------------------------------------------------------
 void Inventory::ClearTracking(ATgPawn* Pawn) {
+	// Drop every invId this pawn carries from the side-map first, while the
+	// pawn's vector is still alive to iterate.
+	{
+		auto pIt = s_equipped.find(Pawn);
+		if (pIt != s_equipped.end()) {
+			for (const EquippedEntry& e : pIt->second) {
+				s_deviceByInvId.erase(e.inventoryId);
+			}
+		}
+	}
+
 	// Remove from pawnId lookup first (pointer into s_equipped, must erase before s_equipped)
 	auto* vec = &s_equipped[Pawn];
 	for (auto it = s_equippedByPawnId.begin(); it != s_equippedByPawnId.end(); ) {
@@ -964,4 +983,9 @@ void Inventory::ClearTracking(ATgPawn* Pawn) {
 		}
 	}
 	s_equipped.erase(Pawn);
+}
+
+int Inventory::GetDeviceIdByInvId(int invId) {
+	auto it = s_deviceByInvId.find(invId);
+	return (it != s_deviceByInvId.end()) ? it->second : 0;
 }

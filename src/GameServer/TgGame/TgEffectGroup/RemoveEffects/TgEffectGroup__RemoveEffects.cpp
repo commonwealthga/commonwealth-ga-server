@@ -2,8 +2,6 @@
 #include "src/GameServer/TgGame/BuffEffectRegistry/BuffEffectRegistry.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
-#include <cstring>
-
 // Walks m_Effects and ProcessEvents the UC `Remove` event on each one.
 // SDK's UTgEffect::eventRemove builds the parm struct (Target +
 // bResetToFollow:1) and ProcessEvents into the UC function — `TgEffect.Remove`
@@ -18,15 +16,16 @@
 void __fastcall TgEffectGroup__RemoveEffects::Call(UTgEffectGroup* eg, void* /*edx*/, AActor* Target, unsigned long bResetToFollow) {
 	if (!eg) return;
 
-	Logger::Log("effects",
-		"[REMOVE-EFFECTS] eg=%p (egId=%d) target=%p  effects=%d bReset=%d\n",
-		(void*)eg, eg->m_nEffectGroupId, (void*)Target, eg->m_Effects.Count, (int)bResetToFollow);
+	const bool effectsLog = Logger::IsChannelEnabled("effects");
+	if (effectsLog) {
+		Logger::Log("effects",
+			"[REMOVE-EFFECTS] eg=%p (egId=%d) target=%p  effects=%d bReset=%d\n",
+			(void*)eg, eg->m_nEffectGroupId, (void*)Target, eg->m_Effects.Count, (int)bResetToFollow);
+	}
 
 	for (int i = 0; i < eg->m_Effects.Count; ++i) {
 		UTgEffect* effect = eg->m_Effects.Data[i];
 		if (!effect) continue;
-
-		unsigned int eflags = *(unsigned int*)((char*)effect + 0x48);
 
 		// Skip Remove if Apply never ran. m_fCurrent is set by ApplyEffect as
 		// its first statement (TgEffect.uc:116), so 0 here means the Apply was
@@ -41,65 +40,27 @@ void __fastcall TgEffectGroup__RemoveEffects::Call(UTgEffectGroup* eg, void* /*e
 		// protection, then on the next EMP its RemoveAllEffectGroups path
 		// undid the cat=378 stun the new fire had just applied.
 		if (effect->m_fCurrent == 0.0f) {
-			Logger::Log("effects",
-				"[REMOVE-EFFECTS]   [%d] effect=%p propId=%d calc=%d m_fCurrent=0 m_bRemovable=%d -> SKIP (Apply never ran)\n",
-				i, (void*)effect,
-				effect->m_nPropertyId, effect->m_nCalcMethodCode,
-				(eflags & 0x02) ? 1 : 0);
+			if (effectsLog) {
+				unsigned int eflags = *(unsigned int*)((char*)effect + 0x48);
+				Logger::Log("effects",
+					"[REMOVE-EFFECTS]   [%d] effect=%p propId=%d calc=%d m_fCurrent=0 m_bRemovable=%d -> SKIP (Apply never ran)\n",
+					i, (void*)effect,
+					effect->m_nPropertyId, effect->m_nCalcMethodCode,
+					(eflags & 0x02) ? 1 : 0);
+			}
 			continue;
 		}
 
-		Logger::Log("effects",
-			"[REMOVE-EFFECTS]   [%d] effect=%p propId=%d calc=%d m_fCurrent=%.3f m_bRemovable=%d -> eventRemove\n",
-			i, (void*)effect,
-			effect->m_nPropertyId, effect->m_nCalcMethodCode,
-			effect->m_fCurrent, (eflags & 0x02) ? 1 : 0);
-
-		// AirSpeed/FlightAccel diagnostic: log the m_fRaw/Pawn.AirSpeed/
-		// Pawn.r_FlightAcceleration triple immediately before AND after the
-		// eventRemove fires, when the effect targets prop 70 or 59. SetProperty
-		// hook will also emit a [SET-PROP] line for the inner write — these
-		// REMOVE-CTX bookends let us see the eventRemove's net effect with
-		// the egId/effect-ptr context that [SET-PROP] alone lacks.
-		const bool track = (effect->m_nPropertyId == 70 || effect->m_nPropertyId == 59);
-		ATgPawn* pawnTarget = nullptr;
-		float    rawBefore = -99999.0f, airBefore = -99999.0f, faBefore = -99999.0f;
-		if (track && Target) {
-			const char* tname = Target->Class ? Target->Class->GetFullName() : nullptr;
-			if (tname && strstr(tname, "TgPawn") != nullptr) {
-				pawnTarget = (ATgPawn*)Target;
-				if (pawnTarget->s_Properties.Data) {
-					for (int j = 0; j < pawnTarget->s_Properties.Num(); ++j) {
-						UTgProperty* p = pawnTarget->s_Properties.Data[j];
-						if (p && p->m_nPropertyId == effect->m_nPropertyId) { rawBefore = p->m_fRaw; break; }
-					}
-				}
-				airBefore = pawnTarget->AirSpeed;
-				faBefore  = pawnTarget->r_FlightAcceleration;
-				Logger::Log("effects",
-					"[REMOVE-CTX] PRE  egId=%d eff=%p prop=%d  m_fRaw=%.4f Pawn.AirSpeed=%.3f Pawn.r_FlightAccel=%.4f\n",
-					eg->m_nEffectGroupId, (void*)effect, effect->m_nPropertyId,
-					rawBefore, airBefore, faBefore);
-			}
+		if (effectsLog) {
+			unsigned int eflags = *(unsigned int*)((char*)effect + 0x48);
+			Logger::Log("effects",
+				"[REMOVE-EFFECTS]   [%d] effect=%p propId=%d calc=%d m_fCurrent=%.3f m_bRemovable=%d -> eventRemove\n",
+				i, (void*)effect,
+				effect->m_nPropertyId, effect->m_nCalcMethodCode,
+				effect->m_fCurrent, (eflags & 0x02) ? 1 : 0);
 		}
 
 		effect->eventRemove(Target, bResetToFollow);
-
-		if (track && pawnTarget) {
-			float rawAfter = -99999.0f;
-			if (pawnTarget->s_Properties.Data) {
-				for (int j = 0; j < pawnTarget->s_Properties.Num(); ++j) {
-					UTgProperty* p = pawnTarget->s_Properties.Data[j];
-					if (p && p->m_nPropertyId == effect->m_nPropertyId) { rawAfter = p->m_fRaw; break; }
-				}
-			}
-			Logger::Log("effects",
-				"[REMOVE-CTX] POST egId=%d eff=%p prop=%d  m_fRaw=%.4f (Δ%+.4f)  Pawn.AirSpeed=%.3f (Δ%+.3f)  Pawn.r_FlightAccel=%.4f (Δ%+.4f)\n",
-				eg->m_nEffectGroupId, (void*)effect, effect->m_nPropertyId,
-				rawAfter, rawAfter - rawBefore,
-				pawnTarget->AirSpeed, pawnTarget->AirSpeed - airBefore,
-				pawnTarget->r_FlightAcceleration, pawnTarget->r_FlightAcceleration - faBefore);
-		}
 
 		// Stale-pointer cleanup. CLONE effects (not template effects) get
 		// marked into BuffEffectRegistry by CloneEffectGroup; without a

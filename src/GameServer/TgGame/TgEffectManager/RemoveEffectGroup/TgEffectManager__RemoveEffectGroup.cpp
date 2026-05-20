@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroup/TgEffectManager__RemoveEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/ProcessReactiveSkillBasedEffectGroup/TgEffectManager__ProcessReactiveSkillBasedEffectGroup.hpp"
+#include "src/GameServer/TgGame/BuffEffectRegistry/EffectDisplacementMarker.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // UTgEffectManager::RemoveEffectGroup — original is empty stub @ 0x10a6ef10.
@@ -16,12 +17,15 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 	if (!Manager || !EffectGroup) return false;
 
 	int inEgId = EffectGroup->m_nEffectGroupId;
-	int inCat  = EffectGroup->m_nCategoryCode;
-	int listCount = Manager->s_AppliedEffectGroups.Count;
-	Logger::Log("effects",
-		"[REMOVE-GROUP] called with egId=%d cat=%d ptr=%p  s_AppliedEffectGroups has %d entries\n",
-		inEgId, inCat, (void*)EffectGroup, listCount);
-	if (inEgId == 5716) {
+	const bool effectsLog = Logger::IsChannelEnabled("effects");
+	const bool debugLog   = (inEgId == 5716) && Logger::IsChannelEnabled("debug");
+	if (effectsLog) {
+		Logger::Log("effects",
+			"[REMOVE-GROUP] called with egId=%d cat=%d ptr=%p  s_AppliedEffectGroups has %d entries\n",
+			inEgId, EffectGroup->m_nCategoryCode, (void*)EffectGroup, Manager->s_AppliedEffectGroups.Count);
+	}
+	if (debugLog) {
+		int listCount = Manager->s_AppliedEffectGroups.Count;
 		Logger::Log("debug",
 			"  [RemoveEffectGroup egId=5716] ENTER manager=0x%p inPtr=0x%p s_Applied count=%d\n",
 			Manager, (void*)EffectGroup, listCount);
@@ -61,7 +65,7 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 		}
 	}
 	if (idx < 0) {
-		if (Logger::IsChannelEnabled("effects")) {
+		if (effectsLog) {
 			Logger::Log("effects",
 				"[REMOVE-GROUP]   NO MATCH for egId=%d — bailing out. Current list:\n", inEgId);
 			for (int i = 0; i < Manager->s_AppliedEffectGroups.Count; i++) {
@@ -70,16 +74,18 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 					i, a ? a->m_nEffectGroupId : -1, a ? a->m_nCategoryCode : -1, (void*)a);
 			}
 		}
-		if (inEgId == 5716) {
+		if (debugLog) {
 			Logger::Log("debug",
 				"  [RemoveEffectGroup egId=5716] NO MATCH — clone never landed in s_AppliedEffectGroups\n");
 		}
 		return false;
 	}
-	Logger::Log("effects",
-		"[REMOVE-GROUP]   matched applied clone at idx=%d  (ptr=%p egId=%d)\n",
-		idx, (void*)Manager->s_AppliedEffectGroups.Data[idx],
-		Manager->s_AppliedEffectGroups.Data[idx]->m_nEffectGroupId);
+	if (effectsLog) {
+		Logger::Log("effects",
+			"[REMOVE-GROUP]   matched applied clone at idx=%d  (ptr=%p egId=%d)\n",
+			idx, (void*)Manager->s_AppliedEffectGroups.Data[idx],
+			Manager->s_AppliedEffectGroups.Data[idx]->m_nEffectGroupId);
+	}
 
 	// Work against the applied instance from here on — timer TimerObj, HUD slot
 	// index, m_Target all live on the clone, not the template.
@@ -108,10 +114,12 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 	//    Prefer the group's own m_Target; fall back to r_Owner if InitInstance
 	//    never wired it.
 	AActor* target = applied->m_Target ? applied->m_Target : Manager->r_Owner;
-	Logger::Log("effects",
-		"[REMOVE-GROUP]   target=%p  effects=%d  lifetime=%.2f  reverseModifiers=%s\n",
-		(void*)target, applied->m_Effects.Count, applied->m_fLifeTime,
-		target ? "yes" : "no (no target)");
+	if (effectsLog) {
+		Logger::Log("effects",
+			"[REMOVE-GROUP]   target=%p  effects=%d  lifetime=%.2f  reverseModifiers=%s\n",
+			(void*)target, applied->m_Effects.Count, applied->m_fLifeTime,
+			target ? "yes" : "no (no target)");
+	}
 	if (target) {
 		// Direct call into our impl — `CallOriginal` would route to the empty
 		// 0x10a6f3d0 stub even after Install().
@@ -139,7 +147,7 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 
 	// 3. Free the HUD slot so the buff icon clears on the client.
 	int slot = applied->s_ManagedEffectListIndex;
-	if (inEgId == 5716) {
+	if (debugLog) {
 		Logger::Log("debug",
 			"  [RemoveEffectGroup egId=5716] cleared slot=%d (s_ManagedEffectListIndex on clone) — manager=0x%p\n",
 			slot, Manager);
@@ -154,9 +162,20 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 
 	// 4. Swap-remove from s_AppliedEffectGroups.
 	int removedCategory = applied->m_nCategoryCode;
+	int removedEgId     = applied->m_nEffectGroupId;
 	int last = Manager->s_AppliedEffectGroups.Count - 1;
 	Manager->s_AppliedEffectGroups.Data[idx] = Manager->s_AppliedEffectGroups.Data[last];
 	Manager->s_AppliedEffectGroups.Count--;
+
+	// 5. Mark the removed egId so the immediately-following SetEffectRep
+	//    (called by UC's ProcessEffect / GetStackingEffectGroup for the
+	//    replacement clone) knows this is a re-emission rather than a first-
+	//    time apply. Without this, the slot-zero in step 3 plus Branch B's
+	//    re-allocation happen in the same server frame → engine coalesces the
+	//    intra-frame writes → client doesn't see the slot transition → the
+	//    fresh TgEffectForm never spawns and the per-tick FX is silent. See
+	//    EffectDisplacementMarker.hpp for full rationale.
+	EffectDisplacementMarker::Mark(Manager, removedEgId);
 
 	// 5. If we just removed the LAST group of this category, fire the reactive
 	//    skill OFF dispatch — mirrors UC `TgEffectManager.ProcessEffect:272-275`'s

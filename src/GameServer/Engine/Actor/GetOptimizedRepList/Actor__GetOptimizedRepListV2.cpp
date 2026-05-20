@@ -428,8 +428,6 @@ static UClass* Class_TgGame_TgVolumePathNode = nullptr;
 static UClass* Class_TgGame_TgWaterVolume = nullptr;
 static UClass* Class_TgGame_TgWindManager = nullptr;
 
-// Backing storage for the unified initial-rep flag (see DO_REP in Macros.hpp).
-std::unordered_set<AActor*> g_RepListInitialDoneActors;
 UProperty* ObjectProperty_Engine_Actor_Base = nullptr;
 UProperty* ByteProperty_Engine_Actor_Physics = nullptr;
 UProperty* StructProperty_Engine_Actor_Velocity = nullptr;
@@ -1916,500 +1914,27 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 	// Class-identity dispatch: pointer compare against pre-resolved UClass* values
 	// (see declarations above + ResolveRepListProperties). Replaces strcmp(GetFullName).
 	UClass* cls = actor->Class;
-	// Captured once per call; consumed by every DO_REP / DO_REP_ARRAY in this function.
-	// True the first time the rep list ever sees this actor, false thereafter.
-	const bool isInitialRep = (g_RepListInitialDoneActors.find(actor) == g_RepListInitialDoneActors.end());
-	if (
-		cls == Class_Engine_Actor
-
-		|| cls == Class_Engine_WorldInfo
-
-		|| cls == Class_Engine_Vehicle
-		|| cls == Class_Engine_SVehicle
-		|| cls == Class_Engine_Teleporter
-		|| cls == Class_Engine_RB_RadialImpulseActor
-		|| cls == Class_Engine_RB_RadialForceActor
-		|| cls == Class_Engine_RB_LineImpulseActor
-		|| cls == Class_Engine_RB_CylindricalForceActor
-		|| cls == Class_Engine_PostProcessVolume
-
-		|| cls == Class_Engine_TeamInfo
-		|| cls == Class_Engine_GameReplicationInfo
-		|| cls == Class_Engine_PlayerReplicationInfo
-		|| cls == Class_Engine_PlayerController
-		|| cls == Class_Engine_PickupFactory
-		|| cls == Class_Engine_PhysXEmitterSpawnable
-		|| cls == Class_Engine_NxForceField
-		|| cls == Class_Engine_MatineeActor
-		|| cls == Class_Engine_Light
-		|| cls == Class_Engine_LensFlareSource
-		|| cls == Class_Engine_KAsset
-		|| cls == Class_Engine_KActor
-		|| cls == Class_Engine_InventoryManager
-		|| cls == Class_Engine_Inventory
-		|| cls == Class_Engine_HeightFog
-		|| cls == Class_Engine_FogVolumeDensityInfo
-		|| cls == Class_Engine_FluidInfluenceActor
-		|| cls == Class_Engine_EmitterSpawnable
-		|| cls == Class_Engine_Emitter
-		|| cls == Class_Engine_DroppedPickup
-		|| cls == Class_Engine_CrowdReplicationActor
-		|| cls == Class_Engine_CrowdAttractor
-		|| cls == Class_Engine_Controller
-		|| cls == Class_Engine_CameraActor
-		|| cls == Class_Engine_AmbientSoundSimpleToggleable
-
-		|| cls == Class_Engine_DynamicSMActor
-		|| cls == Class_TgGame_TgDynamicSMActor
-		|| cls == Class_TgGame_TgObjectiveAttachActor
-		|| cls == Class_TgGame_TgInterpActor
-		|| cls == Class_TgGame_TgHexLandMarkActor
-		|| cls == Class_TgGame_TgFracturedStaticMeshActor
-		|| cls == Class_TgGame_TgDynamicDestructible
-
-
-		|| cls == Class_TgGame_TgFlagCaptureVolume
-
-		|| cls == Class_TgGame_TgEmitter
-
-		|| cls == Class_TgGame_TgStaticMeshActor
-
-		|| cls == Class_TgGame_TgRandomSMActor
-		|| cls == Class_TgGame_TgRandomSMManager
-
-		|| cls == Class_TgGame_TgEffectManager
-
-		|| cls == Class_TgGame_TgInventoryManager
-
-		|| cls == Class_TgGame_TgDroppedItem
-
-		|| cls == Class_TgGame_TgChestActor
-
-		|| cls == Class_TgGame_TgDevice
-		|| cls == Class_TgGame_TgDevice_Grenade
-		|| cls == Class_TgGame_TgDevice_HitPulse
-		|| cls == Class_TgGame_TgDevice_Morale
-		|| cls == Class_TgGame_TgDevice_NewMelee
-		|| cls == Class_TgGame_TgDevice_MeleeDualWield
-		|| cls == Class_TgGame_TgDevice_NewRange
-
-		|| cls == Class_TgGame_TgDeployable
-		|| cls == Class_TgGame_TgDeploy_Beacon
-		|| cls == Class_TgGame_TgDeploy_BeaconEntrance
-		|| cls == Class_TgGame_TgDeploy_DestructibleCover
-
-		|| cls == Class_TgGame_TgMissionObjective
-		|| cls == Class_TgGame_TgMissionObjective_Bot
-		|| cls == Class_TgGame_TgMissionObjective_Escort
-		|| cls == Class_TgGame_TgMissionObjective_Proximity
-
-		|| cls == Class_Engine_Pawn
-		|| cls == Class_TgGame_TgPawn
-		|| cls == Class_TgGame_TgPawn_AVCompositeWalker
-		|| cls == Class_TgGame_TgPawn_Ambush
-		|| cls == Class_TgGame_TgPawn_AndroidMinion
-		|| cls == Class_TgGame_TgPawn_AttackTransport
-		|| cls == Class_TgGame_TgPawn_Boss
-		|| cls == Class_TgGame_TgPawn_Boss_Destroyer
-		|| cls == Class_TgGame_TgPawn_Brawler
-		|| cls == Class_TgGame_TgPawn_CTR
-		|| cls == Class_TgGame_TgPawn_Character
-		|| cls == Class_TgGame_TgPawn_ColonyEye
-		|| cls == Class_TgGame_TgPawn_Destructible
-		|| cls == Class_TgGame_TgPawn_Detonator
-		|| cls == Class_TgGame_TgPawn_Dismantler
-		|| cls == Class_TgGame_TgPawn_DuneCommander
-		|| cls == Class_TgGame_TgPawn_Elite_Alchemist
-		|| cls == Class_TgGame_TgPawn_Elite_Assassin
-		|| cls == Class_TgGame_TgPawn_EscortRobot
-		|| cls == Class_TgGame_TgPawn_FlyingBoss
-		|| cls == Class_TgGame_TgPawn_GroundPetA
-		|| cls == Class_TgGame_TgPawn_Guardian
-		|| cls == Class_TgGame_TgPawn_Hover
-		|| cls == Class_TgGame_TgPawn_HoverShieldSphere
-		|| cls == Class_TgGame_TgPawn_Hunter
-		|| cls == Class_TgGame_TgPawn_Inquisitor
-		|| cls == Class_TgGame_TgPawn_Interact_NPC
-		|| cls == Class_TgGame_TgPawn_Iris
-		|| cls == Class_TgGame_TgPawn_Juggernaut
-		|| cls == Class_TgGame_TgPawn_Marauder
-		|| cls == Class_TgGame_TgPawn_NPC
-		|| cls == Class_TgGame_TgPawn_NewWasp
-		|| cls == Class_TgGame_TgPawn_Raptor
-		|| cls == Class_TgGame_TgPawn_Reaper
-		|| cls == Class_TgGame_TgPawn_RecursiveSpawner
-		|| cls == Class_TgGame_TgPawn_Remote
-		|| cls == Class_TgGame_TgPawn_Robot
-		|| cls == Class_TgGame_TgPawn_Scanner
-		|| cls == Class_TgGame_TgPawn_ScannerRecursive
-		|| cls == Class_TgGame_TgPawn_Siege
-		|| cls == Class_TgGame_TgPawn_SiegeBarrage
-		|| cls == Class_TgGame_TgPawn_SiegeHover
-		|| cls == Class_TgGame_TgPawn_SiegeRapidFire
-		|| cls == Class_TgGame_TgPawn_Sniper
-		|| cls == Class_TgGame_TgPawn_SonoranCommander
-		|| cls == Class_TgGame_TgPawn_SupportForeman
-		|| cls == Class_TgGame_TgPawn_Switchblade
-		|| cls == Class_TgGame_TgPawn_Tentacle
-		|| cls == Class_TgGame_TgPawn_ThinkTank
-		|| cls == Class_TgGame_TgPawn_TreadRobot
-		|| cls == Class_TgGame_TgPawn_Turret
-		|| cls == Class_TgGame_TgPawn_TurretAVAFlak
-		|| cls == Class_TgGame_TgPawn_TurretAVARocket
-		|| cls == Class_TgGame_TgPawn_TurretFlak
-		|| cls == Class_TgGame_TgPawn_TurretFlame
-		|| cls == Class_TgGame_TgPawn_TurretPlasma
-		|| cls == Class_TgGame_TgPawn_UberWalker
-		|| cls == Class_TgGame_TgPawn_Vanguard
-		|| cls == Class_TgGame_TgPawn_VanityPet
-		|| cls == Class_TgGame_TgPawn_Vulcan
-		|| cls == Class_TgGame_TgPawn_Warlord
-		|| cls == Class_TgGame_TgPawn_WaspSpawner
-		|| cls == Class_TgGame_TgPawn_Widow
-		
-		|| cls == Class_TgGame_TgObjectiveAssignment
-
-		|| cls == Class_TgGame_TgRepInfo_Deployable
-		|| cls == Class_TgGame_TgRepInfo_Beacon
-
-		|| cls == Class_TgGame_TgRepInfo_Game
-		|| cls == Class_TgGame_TgRepInfo_GameOpenWorld
-
-		|| cls == Class_TgGame_TgRepInfo_Player
-		|| cls == Class_TgGame_TgRepInfo_TaskForce
-
-		|| cls == Class_Engine_KAsset
-
-		|| cls == Class_Engine_StaticMeshActor
-
-		|| cls == Class_Engine_Projectile
-		|| cls == Class_TgGame_TgProjectile
-		|| cls == Class_TgGame_TgProj_Teleporter
-		|| cls == Class_TgGame_TgProj_StraightTeleporter
-		|| cls == Class_TgGame_TgProj_Rocket
-		|| cls == Class_TgGame_TgProj_Net
-		|| cls == Class_TgGame_TgProj_Mortar
-		|| cls == Class_TgGame_TgProj_Missile
-		|| cls == Class_TgGame_TgProj_Grenade
-		|| cls == Class_TgGame_TgProj_Grapple
-		|| cls == Class_TgGame_TgProj_FreeGrenade
-		|| cls == Class_TgGame_TgProj_Deployable
-		|| cls == Class_TgGame_TgProj_Bounce
-		|| cls == Class_TgGame_TgProj_Bot
-
-		|| cls == Class_TgGame_TgDoorMarker
-		|| cls == Class_TgGame_TgDoor
-
-
-		|| cls == Class_Engine_SkeletalMeshActor
-		|| cls == Class_TgGame_TgSkeletalMeshActorGenericUIPreview
-		|| cls == Class_TgGame_TgSkeletalMeshActorNPC
-		|| cls == Class_TgGame_TgSkeletalMeshActorNPCVendor
-		|| cls == Class_TgGame_TgSkeletalMeshActorSpawnable
-		|| cls == Class_TgGame_TgSkeletalMeshActor_CharacterBuilder
-		|| cls == Class_TgGame_TgSkeletalMeshActor_CharacterBuilderSpawnable
-		|| cls == Class_TgGame_TgSkeletalMeshActor_Composite
-		|| cls == Class_TgGame_TgSkeletalMeshActor_EquipScreen
-		|| cls == Class_TgGame_TgSkeletalMeshActor_MeleePreVis
-		|| cls == Class_TgGame_TgSkeletalMeshActor
-
-		|| cls == Class_TgGame_TgSkydiveTarget
-
-		|| cls == Class_TgGame_TgSkydivingVolume
-
-		|| cls == Class_TgGame_TgTeamBeaconManager
-
-		|| cls == Class_TgGame_TgTimerManager
-		
-		|| cls == Class_TgGame_TgLevelCamera
-
-		|| cls == Class_TgGame_TgKismetTestActor
-
-		|| cls == Class_Engine_AIController
-		|| cls == Class_Engine_Admin
-		|| cls == Class_Engine_DebugCameraController
-		|| cls == Class_Engine_DynamicCameraActor
-		|| cls == Class_Engine_AnimatedCamera
-		|| cls == Class_Engine_EmitterCameraLensEffectBase
-		|| cls == Class_Engine_EmitterPool
-		|| cls == Class_Engine_FogVolumeConeDensityInfo
-		|| cls == Class_Engine_FogVolumeConstantDensityInfo
-		|| cls == Class_Engine_FogVolumeLinearHalfspaceDensityInfo
-		|| cls == Class_Engine_FogVolumeSphericalDensityInfo
-		|| cls == Class_Engine_DynamicSMActor_Spawnable
-		|| cls == Class_Engine_InterpActor
-		|| cls == Class_Engine_KActorSpawnable
-		|| cls == Class_Engine_KAssetSpawnable
-		|| cls == Class_Engine_Scout
-		|| cls == Class_Engine_DirectionalLight
-		|| cls == Class_Engine_DirectionalLightToggleable
-		|| cls == Class_Engine_PointLight
-		|| cls == Class_Engine_PointLightMovable
-		|| cls == Class_Engine_PointLightToggleable
-		|| cls == Class_Engine_SkyLight
-		|| cls == Class_Engine_SkyLightToggleable
-		|| cls == Class_Engine_SpotLight
-		|| cls == Class_Engine_SpotLightMovable
-		|| cls == Class_Engine_SpotLightToggleable
-		|| cls == Class_Engine_StaticLightCollectionActor
-		|| cls == Class_Engine_NxCylindricalForceField
-		|| cls == Class_Engine_NxCylindricalForceFieldCapsule
-		|| cls == Class_Engine_NxForceFieldGeneric
-		|| cls == Class_Engine_NxForceFieldRadial
-		|| cls == Class_Engine_NxForceFieldTornado
-		|| cls == Class_Engine_NxGenericForceField
-		|| cls == Class_Engine_NxGenericForceFieldBox
-		|| cls == Class_Engine_NxGenericForceFieldCapsule
-		|| cls == Class_Engine_NxRadialCustomForceField
-		|| cls == Class_Engine_NxRadialForceField
-		|| cls == Class_Engine_NxTornadoAngularForceField
-		|| cls == Class_Engine_NxTornadoAngularForceFieldCapsule
-		|| cls == Class_Engine_NxTornadoForceField
-		|| cls == Class_Engine_NxTornadoForceFieldCapsule
-		|| cls == Class_Engine_Admin
-		|| cls == Class_Engine_SkeletalMeshActorBasedOnExtremeContent
-		|| cls == Class_Engine_SkeletalMeshActorMAT
-		|| cls == Class_Engine_SkeletalMeshActorMATSpawnable
-		|| cls == Class_Engine_SkeletalMeshActorSpawnable
-		|| cls == Class_Engine_Weapon
-		|| cls == Class_GameFramework_GameAIController
-		|| cls == Class_GameFramework_GamePawn
-		|| cls == Class_GameFramework_GamePlayerController
-		|| cls == Class_GameFramework_GameProjectile
-		|| cls == Class_GameFramework_GameVehicle
-		|| cls == Class_GameFramework_GameWeapon
-		|| cls == Class_TgGame_TgAIController
-		|| cls == Class_TgGame_TgBaseObjective_CTFBot
-		|| cls == Class_TgGame_TgBaseObjective_KOTH
-		|| cls == Class_TgGame_TgMissionObjective_Kismet
-		|| cls == Class_TgGame_TgDeploy_Artillery
-		|| cls == Class_TgGame_TgDeploy_ForceField
-		|| cls == Class_TgGame_TgDeploy_Sensor
-		|| cls == Class_TgGame_TgDeploy_SweepSensor
-		|| cls == Class_TgGame_TgDebugCameraController
-		|| cls == Class_TgGame_TgEmitterSpawnable
-		|| cls == Class_TgGame_TgEmitterCrashlanding
-		|| cls == Class_TgGame_TgInterpolatingCameraActor
-		|| cls == Class_TgGame_TgTeleporter
-		|| cls == Class_TgGame_TgPostProcessVolume
-		|| cls == Class_TgGame_TgPickupFactory
-		|| cls == Class_TgGame_TgPickupFactory_Item
-		|| cls == Class_TgGame_TgKActorSpawnable
-		|| cls == Class_TgGame_TgKAssetSpawnable
-		|| cls == Class_TgGame_TgKAsset_ClientSideSim
-		|| cls == Class_TgGame_TgNavRouteIndicator
-		|| cls == Class_TgGame_TgCharacterBuilderLight
-		|| cls == Class_Engine_AccessControl
-		|| cls == Class_Engine_AmbientSound
-		|| cls == Class_Engine_AmbientSoundMovable
-		|| cls == Class_Engine_AmbientSoundNonLoop
-		|| cls == Class_Engine_AmbientSoundSimple
-		|| cls == Class_Engine_AutoLadder
-		|| cls == Class_Engine_BlockingVolume
-		|| cls == Class_Engine_BroadcastHandler
-		|| cls == Class_Engine_Brush
-		|| cls == Class_Engine_Camera
-		|| cls == Class_Engine_ClipMarker
-		|| cls == Class_Engine_ColorScaleVolume
-		|| cls == Class_Engine_CoverGroup
-		|| cls == Class_Engine_CoverLink
-		|| cls == Class_Engine_CoverReplicator
-		|| cls == Class_Engine_CoverSlotMarker
-		|| cls == Class_Engine_CrowdAgent
-		|| cls == Class_Engine_CullDistanceVolume
-		|| cls == Class_Engine_DebugCameraHUD
-		|| cls == Class_Engine_DecalActor
-		|| cls == Class_Engine_DecalActorBase
-		|| cls == Class_Engine_DecalActorMovable
-		|| cls == Class_Engine_DecalManager
-		|| cls == Class_Engine_DefaultPhysicsVolume
-		|| cls == Class_Engine_DoorMarker
-		|| cls == Class_Engine_DynamicAnchor
-		|| cls == Class_Engine_DynamicBlockingVolume
-		|| cls == Class_Engine_DynamicPhysicsVolume
-		|| cls == Class_Engine_DynamicTriggerVolume
-		|| cls == Class_Engine_FileLog
-		|| cls == Class_Engine_FileWriter
-		|| cls == Class_Engine_FluidSurfaceActor
-		|| cls == Class_Engine_FluidSurfaceActorMovable
-		|| cls == Class_Engine_FoliageFactory
-		|| cls == Class_Engine_FractureManager
-		|| cls == Class_Engine_FracturedStaticMeshActor
-		|| cls == Class_Engine_FracturedStaticMeshPart
-		|| cls == Class_Engine_GameInfo
-		|| cls == Class_Engine_GravityVolume
-		|| cls == Class_Engine_HUD
-		|| cls == Class_Engine_Info
-		|| cls == Class_Engine_InternetInfo
-		|| cls == Class_Engine_Keypoint
-		|| cls == Class_Engine_Ladder
-		|| cls == Class_Engine_LadderVolume
-		|| cls == Class_Engine_LevelStreamingVolume
-		|| cls == Class_Engine_LiftCenter
-		|| cls == Class_Engine_LiftExit
-		|| cls == Class_Engine_LightVolume
-		|| cls == Class_Engine_MantleMarker
-		|| cls == Class_Engine_MaterialInstanceActor
-		|| cls == Class_Engine_Mutator
-		|| cls == Class_Engine_NavigationPoint
-		|| cls == Class_Engine_Note
-		|| cls == Class_Engine_NxGenericForceFieldBrush
-		|| cls == Class_Engine_Objective
-		|| cls == Class_Engine_PathBlockingVolume
-		|| cls == Class_Engine_PathNode
-		|| cls == Class_Engine_PathNode_Dynamic
-		|| cls == Class_Engine_PhysXDestructibleActor
-		|| cls == Class_Engine_PhysXDestructiblePart
-		|| cls == Class_Engine_PhysicsVolume
-		|| cls == Class_Engine_PlayerStart
-		|| cls == Class_Engine_PolyMarker
-		|| cls == Class_Engine_PortalMarker
-		|| cls == Class_Engine_PortalTeleporter
-		|| cls == Class_Engine_PortalVolume
-		|| cls == Class_Engine_PotentialClimbWatcher
-		|| cls == Class_Engine_PrefabInstance
-		|| cls == Class_Engine_RB_BSJointActor
-		|| cls == Class_Engine_RB_ConstraintActor
-		|| cls == Class_Engine_RB_ConstraintActorSpawnable
-		|| cls == Class_Engine_RB_ForceFieldExcludeVolume
-		|| cls == Class_Engine_RB_HingeActor
-		|| cls == Class_Engine_RB_PrismaticActor
-		|| cls == Class_Engine_RB_PulleyJointActor
-		|| cls == Class_Engine_RB_Thruster
-		|| cls == Class_Engine_ReplicationInfo
-		|| cls == Class_Engine_ReverbVolume
-		|| cls == Class_Engine_Route
-		|| cls == Class_Engine_SceneCapture2DActor
-		|| cls == Class_Engine_SceneCaptureActor
-		|| cls == Class_Engine_SceneCaptureCubeMapActor
-		|| cls == Class_Engine_SceneCapturePortalActor
-		|| cls == Class_Engine_SceneCaptureReflectActor
-		|| cls == Class_Engine_ScoreBoard
-		|| cls == Class_Engine_SpeedTreeActor
-		|| cls == Class_Engine_StaticMeshActorBase
-		|| cls == Class_Engine_StaticMeshActorBasedOnExtremeContent
-		|| cls == Class_Engine_StaticMeshCollectionActor
-		|| cls == Class_Engine_TargetPoint
-		|| cls == Class_Engine_Terrain
-		|| cls == Class_Engine_Trigger
-		|| cls == Class_Engine_TriggerStreamingLevel
-		|| cls == Class_Engine_TriggerVolume
-		|| cls == Class_Engine_Trigger_Dynamic
-		|| cls == Class_Engine_Trigger_LOS
-		|| cls == Class_Engine_TriggeredPath
-		|| cls == Class_Engine_Volume
-		|| cls == Class_Engine_VolumePathNode
-		|| cls == Class_Engine_VolumeTimer
-		|| cls == Class_Engine_WaterVolume
-		|| cls == Class_Engine_WindDirectionalSource
-		|| cls == Class_Engine_ZoneInfo
-		|| cls == Class_GameFramework_GameExplosionActor
-		|| cls == Class_GameFramework_GameHUD
-		|| cls == Class_TgGame_TgActionPoint
-		|| cls == Class_TgGame_TgActorFactory
-		|| cls == Class_TgGame_TgAlarmPoint
-		|| cls == Class_TgGame_TgAnnouncer
-		|| cls == Class_TgGame_TgBeaconFactory
-		|| cls == Class_TgGame_TgBotEncounterVolume
-		|| cls == Class_TgGame_TgBotFactory
-		|| cls == Class_TgGame_TgBotFactorySpawnable
-		|| cls == Class_TgGame_TgBotStart
-		|| cls == Class_TgGame_TgCollisionProxy
-		|| cls == Class_TgGame_TgCollisionProxy_Vortex
-		|| cls == Class_TgGame_TgCoverPoint
-		|| cls == Class_TgGame_TgDecalActor_Logo
-		|| cls == Class_TgGame_TgDefensePoint
-		|| cls == Class_TgGame_TgDeployableFactory
-		|| cls == Class_TgGame_TgDestructibleFactory
-		|| cls == Class_TgGame_TgDeviceVolume
-		|| cls == Class_TgGame_TgDeviceVolumeInfo
-		|| cls == Class_TgGame_TgDummyActor
-		|| cls == Class_TgGame_TgElevatingVolume
-		|| cls == Class_TgGame_TgGame
-		|| cls == Class_TgGame_TgGame_Arena
-		|| cls == Class_TgGame_TgGame_CTF
-		|| cls == Class_TgGame_TgGame_City
-		|| cls == Class_TgGame_TgGame_Control
-		|| cls == Class_TgGame_TgGame_Defense
-		|| cls == Class_TgGame_TgGame_DualCTF
-		|| cls == Class_TgGame_TgGame_Escort
-		|| cls == Class_TgGame_TgGame_Mission
-		|| cls == Class_TgGame_TgGame_OpenWorld
-		|| cls == Class_TgGame_TgGame_OpenWorldPVE
-		|| cls == Class_TgGame_TgGame_OpenWorldPVP
-		|| cls == Class_TgGame_TgGame_PointRotation
-		|| cls == Class_TgGame_TgGame_Ticket
-		|| cls == Class_TgGame_TgHUD
-		|| cls == Class_TgGame_TgHeightFog
-		|| cls == Class_TgGame_TgHelpAlertVolume
-		|| cls == Class_TgGame_TgHexItemFactory
-		|| cls == Class_TgGame_TgHitDisplayActor
-		|| cls == Class_TgGame_TgHoldSpot
-		|| cls == Class_TgGame_TgMeshAssembly
-		|| cls == Class_TgGame_TgMiniMapActor
-		|| cls == Class_TgGame_TgMissionListVolume
-		|| cls == Class_TgGame_TgModifyPawnPropertiesVolume
-		|| cls == Class_TgGame_TgMorphFX
-		|| cls == Class_TgGame_TgNavigationPoint
-		|| cls == Class_TgGame_TgNavigationPointSpawnable
-		|| cls == Class_TgGame_TgNewsStand
-		|| cls == Class_TgGame_TgOmegaVolume
-		|| cls == Class_TgGame_TgPhysAnimTestActor
-		|| cls == Class_TgGame_TgPlayerController
-		|| cls == Class_TgGame_TgPlayerCountVolume
-		|| cls == Class_TgGame_TgPointOfInterest
-		|| cls == Class_TgGame_TgQueuedAnnouncement
-		|| cls == Class_TgGame_TgReferenceArray
-		|| cls == Class_TgGame_TgScoreboard
-		|| cls == Class_TgGame_TgSoundInsulationVolume
-		|| cls == Class_TgGame_TgStartPoint
-		|| cls == Class_TgGame_TgStartpointPortalNetwork
-		|| cls == Class_TgGame_TgStaticMeshActor_Logo
-		|| cls == Class_TgGame_TgTeamBlocker
-		|| cls == Class_TgGame_TgTeamMarker
-		|| cls == Class_TgGame_TgTeamPlayerStart
-		|| cls == Class_TgGame_TgTeamScoreboard
-		|| cls == Class_TgGame_TgTeleportPlayerVolume
-		|| cls == Class_TgGame_TgTrigger_Instance
-		|| cls == Class_TgGame_TgTrigger_Use
-		|| cls == Class_TgGame_TgVolumePathNode
-		|| cls == Class_TgGame_TgWaterVolume
-		|| cls == Class_TgGame_TgWindManager
-	) {
-		if (actor->RemoteRole == 1) {
-			if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && actor->RemoteRole == 1) {
-				DO_REP(AActor, Base, ObjectProperty_Engine_Actor_Base);
-			}
-			if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->bReplicateMovement) && (actor->RemoteRole == 1) && actor->bNetInitial || actor->bUpdateSimulatedPosition) {
-				DO_REP(AActor, Physics, ByteProperty_Engine_Actor_Physics);
-				DO_REP(AActor, Velocity, StructProperty_Engine_Actor_Velocity);
-			}
-			if ((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) {
-				DO_REP(AActor, RemoteRole, ByteProperty_Engine_Actor_RemoteRole);
-				DO_REP(AActor, Role, ByteProperty_Engine_Actor_Role);
-				DO_REP(AActor, bNetOwner, BoolProperty_Engine_Actor_bNetOwner);
-				DO_REP(AActor, bTearOff, BoolProperty_Engine_Actor_bTearOff);
-			}
-			if (((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) {
-				DO_REP(AActor, DrawScale, FloatProperty_Engine_Actor_DrawScale);
-				DO_REP(AActor, ReplicatedCollisionType, ByteProperty_Engine_Actor_ReplicatedCollisionType);
-				DO_REP(AActor, bCollideActors, BoolProperty_Engine_Actor_bCollideActors);
-				DO_REP(AActor, bCollideWorld, BoolProperty_Engine_Actor_bCollideWorld);
-			}
-			if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bCollideActors || actor->bCollideWorld) {
-				DO_REP(AActor, bBlockActors, BoolProperty_Engine_Actor_bBlockActors);
-				DO_REP(AActor, bProjTarget, BoolProperty_Engine_Actor_bProjTarget);
-			}
-			if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bReplicateInstigator) {
-				DO_REP(AActor, Instigator, ObjectProperty_Engine_Actor_Instigator);
-			}
-			if (((actor->bNetOwner && !actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) {
-				DO_REP(AActor, Owner, ObjectProperty_Engine_Actor_Owner);
-			}
-		}
-	}
+	// Hoisted per-call flags. These are referenced 100+ times across the dispatch
+	// (Role 111x as ==3, bNetDirty 43x, bNetInitial 37x, bNetOwner 15x). The compiler
+	// can't CSE through pointer indirection so reading them through `actor->` over and
+	// over generates redundant loads. None of these mutate during Call().
+	const bool isAuthority = (actor->Role == 3);
+	const bool bNetDirty   = actor->bNetDirty;
+	const bool bNetInitial = actor->bNetInitial;
+	const bool bNetOwner   = actor->bNetOwner;
+	// Base AActor block deleted — the engine's `AActor::GetOptimizedRepList` at
+	// 0x10C5F870 (hooked here; runs first via CallOriginal) emits the full base
+	// property set: bHardAttach, Location, Base, Rotation, RelativeLocation,
+	// RelativeRotation, Physics, Velocity, DrawScale, bHidden,
+	// ReplicatedCollisionType, bCollideActors, bCollideWorld, bProjTarget,
+	// bBlockActors, Owner, Instigator, Role, RemoteRole, bNetOwner, bTearOff —
+	// with the correct UE3 gating (see UnActor.cpp:292). The hand-rolled overlay
+	// that used to live here was a strict subset, missing bHardAttach / Location
+	// / Rotation / Relative* / bHidden, and had an operator-precedence bug on the
+	// Physics/Velocity gate. Letting CallOriginal own the base pass removes ~15
+	// redundant DO_REPs per actor per tick and the largest `||` chain in the file.
 	if (cls == Class_Engine_AmbientSoundSimpleToggleable) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(AAmbientSoundSimpleToggleable, bCurrentlyPlaying, BoolProperty_Engine_AmbientSoundSimpleToggleable_bCurrentlyPlaying);
 		}
 	}
@@ -2419,7 +1944,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgInterpolatingCameraActor
 		|| cls == Class_TgGame_TgLevelCamera
 	) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ACameraActor, AspectRatio, FloatProperty_Engine_CameraActor_AspectRatio);
 			DO_REP(ACameraActor, FOVAngle, FloatProperty_Engine_CameraActor_FOVAngle);
 		}
@@ -2436,7 +1961,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgDebugCameraController
 		|| cls == Class_TgGame_TgPlayerController
 	) {
-		if (actor->bNetDirty && actor->Role == 3) {
+		if (bNetDirty && isAuthority) {
 			DO_REP(AController, Pawn, ObjectProperty_Engine_Controller_Pawn);
 			DO_REP(AController, PlayerReplicationInfo, ObjectProperty_Engine_Controller_PlayerReplicationInfo);
 		}
@@ -2447,14 +1972,14 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (cls == Class_Engine_CrowdReplicationActor) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ACrowdReplicationActor, DestroyAllCount, IntProperty_Engine_CrowdReplicationActor_DestroyAllCount);
 			DO_REP(ACrowdReplicationActor, Spawner, ObjectProperty_Engine_CrowdReplicationActor_Spawner);
 			DO_REP(ACrowdReplicationActor, bSpawningActive, BoolProperty_Engine_CrowdReplicationActor_bSpawningActive);
 		}
 	}
 	if (cls == Class_Engine_DroppedPickup) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ADroppedPickup, InventoryClass, ClassProperty_Engine_DroppedPickup_InventoryClass);
 			DO_REP(ADroppedPickup, bFadeOut, BoolProperty_Engine_DroppedPickup_bFadeOut);
 		}
@@ -2473,7 +1998,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgKismetTestActor
 		|| cls == Class_TgGame_TgObjectiveAttachActor
 	) {
-		if (actor->bNetDirty || actor->bNetInitial) {
+		if (bNetDirty || bNetInitial) {
 			DO_REP(ADynamicSMActor, ReplicatedMaterial, ObjectProperty_Engine_DynamicSMActor_ReplicatedMaterial);
 			DO_REP(ADynamicSMActor, ReplicatedMesh, ObjectProperty_Engine_DynamicSMActor_ReplicatedMesh);
 			DO_REP(ADynamicSMActor, ReplicatedMeshRotation, StructProperty_Engine_DynamicSMActor_ReplicatedMeshRotation);
@@ -2496,12 +2021,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (cls == Class_Engine_EmitterSpawnable) {
-		if (actor->bNetInitial) {
+		if (bNetInitial) {
 			DO_REP(AEmitterSpawnable, ParticleTemplate, ObjectProperty_Engine_EmitterSpawnable_ParticleTemplate);
 		}
 	}
 	if (cls == Class_Engine_FluidInfluenceActor) {
-		if (actor->bNetDirty) {
+		if (bNetDirty) {
 			DO_REP(AFluidInfluenceActor, bActive, BoolProperty_Engine_FluidInfluenceActor_bActive);
 			DO_REP(AFluidInfluenceActor, bToggled, BoolProperty_Engine_FluidInfluenceActor_bToggled);
 		}
@@ -2513,7 +2038,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_Engine_FogVolumeLinearHalfspaceDensityInfo
 		|| cls == Class_Engine_FogVolumeSphericalDensityInfo
 	) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(AFogVolumeDensityInfo, bEnabled, BoolProperty_Engine_FogVolumeDensityInfo_bEnabled);
 		}
 	}
@@ -2522,17 +2047,17 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgRepInfo_Game
 		|| cls == Class_TgGame_TgRepInfo_GameOpenWorld
 	) {
-		if (actor->bNetDirty && actor->Role == 3) {
+		if (bNetDirty && isAuthority) {
 			DO_REP(AGameReplicationInfo, MatchID, IntProperty_Engine_GameReplicationInfo_MatchID);
 			DO_REP(AGameReplicationInfo, Winner, ObjectProperty_Engine_GameReplicationInfo_Winner);
 			DO_REP(AGameReplicationInfo, bMatchHasBegun, BoolProperty_Engine_GameReplicationInfo_bMatchHasBegun);
 			DO_REP(AGameReplicationInfo, bMatchIsOver, BoolProperty_Engine_GameReplicationInfo_bMatchIsOver);
 			DO_REP(AGameReplicationInfo, bStopCountDown, BoolProperty_Engine_GameReplicationInfo_bStopCountDown);
 		}
-		if ((!actor->bNetInitial && actor->bNetDirty) && actor->Role == 3) {
+		if ((!bNetInitial && bNetDirty) && isAuthority) {
 			DO_REP(AGameReplicationInfo, RemainingMinute, IntProperty_Engine_GameReplicationInfo_RemainingMinute);
 		}
-		if (actor->bNetInitial && actor->Role == 3) {
+		if (bNetInitial && isAuthority) {
 			DO_REP(AGameReplicationInfo, AdminEmail, StrProperty_Engine_GameReplicationInfo_AdminEmail);
 			DO_REP(AGameReplicationInfo, AdminName, StrProperty_Engine_GameReplicationInfo_AdminName);
 			DO_REP(AGameReplicationInfo, ElapsedTime, IntProperty_Engine_GameReplicationInfo_ElapsedTime);
@@ -2550,7 +2075,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (cls == Class_Engine_HeightFog) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(AHeightFog, bEnabled, BoolProperty_Engine_HeightFog_bEnabled);
 		}
 	}
@@ -2566,7 +2091,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgDevice_NewMelee
 		|| cls == Class_TgGame_TgDevice_NewRange
 	) {
-		if (((actor->Role == 3) && actor->bNetDirty) && actor->bNetOwner) {
+		if (((isAuthority) && bNetDirty) && bNetOwner) {
 			DO_REP(AInventory, InvManager, ObjectProperty_Engine_Inventory_InvManager);
 			DO_REP(AInventory, Inventory, ObjectProperty_Engine_Inventory_Inventory);
 		}
@@ -2577,7 +2102,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		// that pairs the device to the pawn's c_DeviceForm has nothing to
 		// match against — the carrier visual silently fails. Replicate to
 		// everyone (no bNetOwner gate).
-		if ((actor->Role == 3) && actor->bNetDirty) {
+		if ((isAuthority) && bNetDirty) {
 			DO_REP(ATgDevice, r_nDeviceId, IntProperty_TgGame_TgDevice_r_nDeviceId);
 			DO_REP(ATgDevice, r_nDeviceInstanceId, IntProperty_TgGame_TgDevice_r_nDeviceInstanceId);
 			DO_REP(ATgDevice, r_nQualityValueId, IntProperty_TgGame_TgDevice_r_nQualityValueId);
@@ -2593,7 +2118,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		cls == Class_Engine_InventoryManager
 		|| cls == Class_TgGame_TgInventoryManager
 	) {
-		if ((((!actor->bSkipActorPropertyReplication || actor->bNetInitial) && actor->Role == 3) && actor->bNetDirty) && actor->bNetOwner) {
+		if ((((!actor->bSkipActorPropertyReplication || bNetInitial) && isAuthority) && bNetDirty) && bNetOwner) {
 			DO_REP(AInventoryManager, InventoryChain, ObjectProperty_Engine_InventoryManager_InventoryChain);
 		}
 	}
@@ -2602,10 +2127,10 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_Engine_KActorSpawnable
 		|| cls == Class_TgGame_TgKActorSpawnable
 	) {
-		if (!((AKActor*)actor)->bNeedsRBStateReplication && actor->Role == 3) {
+		if (!((AKActor*)actor)->bNeedsRBStateReplication && isAuthority) {
 			DO_REP(AKActor, RBState, StructProperty_Engine_KActor_RBState);
 		}
-		if (actor->bNetInitial && actor->Role == 3) {
+		if (bNetInitial && isAuthority) {
 			DO_REP(AKActor, ReplicatedDrawScale3D, StructProperty_Engine_KActor_ReplicatedDrawScale3D);
 			DO_REP(AKActor, bWakeOnLevelStart, BoolProperty_Engine_KActor_bWakeOnLevelStart);
 		}
@@ -2616,7 +2141,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgKAssetSpawnable
 		|| cls == Class_TgGame_TgKAsset_ClientSideSim
 	) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(AKAsset, ReplicatedMesh, ObjectProperty_Engine_KAsset_ReplicatedMesh);
 			DO_REP(AKAsset, ReplicatedPhysAsset, ObjectProperty_Engine_KAsset_ReplicatedPhysAsset);
 		}
@@ -2641,15 +2166,15 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_Engine_StaticLightCollectionActor
 		|| cls == Class_TgGame_TgCharacterBuilderLight
 	) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ALight, bEnabled, BoolProperty_Engine_Light_bEnabled);
 		}
 	}
 	if (cls == Class_Engine_MatineeActor) {
-		if (actor->bNetInitial && actor->Role == 3) {
+		if (bNetInitial && isAuthority) {
 			DO_REP(AMatineeActor, InterpAction, ObjectProperty_Engine_MatineeActor_InterpAction);
 		}
-		if (actor->bNetDirty && actor->Role == 3) {
+		if (bNetDirty && isAuthority) {
 			DO_REP(AMatineeActor, PlayRate, FloatProperty_Engine_MatineeActor_PlayRate);
 			DO_REP(AMatineeActor, Position, FloatProperty_Engine_MatineeActor_Position);
 			DO_REP(AMatineeActor, bIsPlaying, BoolProperty_Engine_MatineeActor_bIsPlaying);
@@ -2674,7 +2199,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_Engine_NxTornadoForceField
 		|| cls == Class_Engine_NxTornadoForceFieldCapsule
 	) {
-		if (actor->bNetDirty) {
+		if (bNetDirty) {
 			DO_REP(ANxForceField, bForceActive, BoolProperty_Engine_NxForceField_bForceActive);
 		}
 	}
@@ -2751,7 +2276,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_GameFramework_GamePawn
 		|| cls == Class_GameFramework_GameVehicle
 	) {
-		if (actor->bNetDirty && actor->Role == 3) {
+		if (bNetDirty && isAuthority) {
 			DO_REP(APawn, DrivenVehicle, ObjectProperty_Engine_Pawn_DrivenVehicle);
 			DO_REP(APawn, FlashLocation, StructProperty_Engine_Pawn_FlashLocation);
 			DO_REP(APawn, Health, IntProperty_Engine_Pawn_Health);
@@ -2761,7 +2286,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(APawn, bIsWalking, BoolProperty_Engine_Pawn_bIsWalking);
 			DO_REP(APawn, bSimulateGravity, BoolProperty_Engine_Pawn_bSimulateGravity);
 		}
-		if ((actor->bNetDirty && actor->bNetOwner) && actor->Role == 3) {
+		if ((bNetDirty && bNetOwner) && isAuthority) {
 			DO_REP(APawn, AccelRate, FloatProperty_Engine_Pawn_AccelRate);
 			DO_REP(APawn, AirControl, FloatProperty_Engine_Pawn_AirControl);
 			DO_REP(APawn, AirSpeed, FloatProperty_Engine_Pawn_AirSpeed);
@@ -2771,20 +2296,20 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(APawn, JumpZ, FloatProperty_Engine_Pawn_JumpZ);
 			DO_REP(APawn, WaterSpeed, FloatProperty_Engine_Pawn_WaterSpeed);
 		}
-		if ((actor->bNetDirty && !actor->bNetOwner || FALSE) && actor->Role == 3) {
+		if ((bNetDirty && !bNetOwner || FALSE) && isAuthority) {
 			DO_REP(APawn, FiringMode, ByteProperty_Engine_Pawn_FiringMode);
 			DO_REP(APawn, FlashCount, ByteProperty_Engine_Pawn_FlashCount);
 			DO_REP(APawn, bIsCrouched, BoolProperty_Engine_Pawn_bIsCrouched);
 		}
-		if ((actor->bTearOff && actor->bNetDirty) && actor->Role == 3) {
+		if ((actor->bTearOff && bNetDirty) && isAuthority) {
 			DO_REP(APawn, TearOffMomentum, StructProperty_Engine_Pawn_TearOffMomentum);
 		}
-		if ((!actor->bNetOwner || FALSE) && actor->Role == 3) {
+		if ((!bNetOwner || FALSE) && isAuthority) {
 			DO_REP(APawn, RemoteViewPitch, ByteProperty_Engine_Pawn_RemoteViewPitch);
 		}
 	}
 	if (cls == Class_Engine_PhysXEmitterSpawnable) {
-		if (actor->bNetInitial) {
+		if (bNetInitial) {
 			DO_REP(APhysXEmitterSpawnable, ParticleTemplate, ObjectProperty_Engine_PhysXEmitterSpawnable_ParticleTemplate);
 		}
 	}
@@ -2793,10 +2318,10 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgPickupFactory
 		|| cls == Class_TgGame_TgPickupFactory_Item
 	) {
-		if (actor->bNetDirty && actor->Role == 3) {
+		if (bNetDirty && isAuthority) {
 			DO_REP(APickupFactory, bPickupHidden, BoolProperty_Engine_PickupFactory_bPickupHidden);
 		}
-		if (actor->bNetInitial && actor->Role == 3) {
+		if (bNetInitial && isAuthority) {
 			DO_REP(APickupFactory, InventoryType, ClassProperty_Engine_PickupFactory_InventoryType);
 		}
 	}
@@ -2808,7 +2333,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgDebugCameraController
 		|| cls == Class_TgGame_TgPlayerController
 	) {
-		if (((actor->bNetOwner && actor->Role == 3) && ((APlayerController*)actor)->ViewTarget != ((APlayerController*)actor)->Pawn) && ((APlayerController*)actor)->ViewTarget != NULL) {
+		if (((bNetOwner && isAuthority) && ((APlayerController*)actor)->ViewTarget != ((APlayerController*)actor)->Pawn) && ((APlayerController*)actor)->ViewTarget != NULL) {
 			DO_REP(APlayerController, TargetEyeHeight, FloatProperty_Engine_PlayerController_TargetEyeHeight);
 			DO_REP(APlayerController, TargetViewRotation, StructProperty_Engine_PlayerController_TargetViewRotation);
 		}
@@ -2817,7 +2342,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		cls == Class_Engine_PlayerReplicationInfo
 		|| cls == Class_TgGame_TgRepInfo_Player
 	) {
-		if (actor->bNetDirty && actor->Role == 3) {
+		if (bNetDirty && isAuthority) {
 			DO_REP(APlayerReplicationInfo, Deaths, FloatProperty_Engine_PlayerReplicationInfo_Deaths);
 			DO_REP(APlayerReplicationInfo, PlayerAlias, StrProperty_Engine_PlayerReplicationInfo_PlayerAlias);
 			DO_REP(APlayerReplicationInfo, PlayerLocationHint, ObjectProperty_Engine_PlayerReplicationInfo_PlayerLocationHint);
@@ -2836,12 +2361,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(APlayerReplicationInfo, bReadyToPlay, BoolProperty_Engine_PlayerReplicationInfo_bReadyToPlay);
 			DO_REP(APlayerReplicationInfo, bWaitingPlayer, BoolProperty_Engine_PlayerReplicationInfo_bWaitingPlayer);
 		}
-		if ((actor->bNetDirty && actor->Role == 3) && !actor->bNetOwner) {
+		if ((bNetDirty && isAuthority) && !bNetOwner) {
 			DO_REP(APlayerReplicationInfo, PacketLoss, ByteProperty_Engine_PlayerReplicationInfo_PacketLoss);
 			DO_REP(APlayerReplicationInfo, Ping, ByteProperty_Engine_PlayerReplicationInfo_Ping);
 			DO_REP(APlayerReplicationInfo, SplitscreenIndex, IntProperty_Engine_PlayerReplicationInfo_SplitscreenIndex);
 		}
-		if (actor->bNetInitial && actor->Role == 3) {
+		if (bNetInitial && isAuthority) {
 			DO_REP(APlayerReplicationInfo, PlayerID, IntProperty_Engine_PlayerReplicationInfo_PlayerID);
 			DO_REP(APlayerReplicationInfo, bBot, BoolProperty_Engine_PlayerReplicationInfo_bBot);
 			DO_REP(APlayerReplicationInfo, bIsInactive, BoolProperty_Engine_PlayerReplicationInfo_bIsInactive);
@@ -2851,7 +2376,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		cls == Class_Engine_PostProcessVolume
 		|| cls == Class_TgGame_TgPostProcessVolume
 	) {
-		if (actor->bNetDirty) {
+		if (bNetDirty) {
 			DO_REP(APostProcessVolume, bEnabled, BoolProperty_Engine_PostProcessVolume_bEnabled);
 		}
 	}
@@ -2872,28 +2397,28 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgProj_Bounce
 		|| cls == Class_TgGame_TgProj_Bot
 	) {
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 			DO_REP(AProjectile, MaxSpeed, FloatProperty_Engine_Projectile_MaxSpeed);
 			DO_REP(AProjectile, Speed, FloatProperty_Engine_Projectile_Speed);
 		}
 	}
 	if (cls == Class_Engine_RB_CylindricalForceActor) {
-		if (actor->bNetDirty) {
+		if (bNetDirty) {
 			DO_REP(ARB_CylindricalForceActor, bForceActive, BoolProperty_Engine_RB_CylindricalForceActor_bForceActive);
 		}
 	}
 	if (cls == Class_Engine_RB_LineImpulseActor) {
-		if (actor->bNetDirty) {
+		if (bNetDirty) {
 			DO_REP(ARB_LineImpulseActor, ImpulseCount, ByteProperty_Engine_RB_LineImpulseActor_ImpulseCount);
 		}
 	}
 	if (cls == Class_Engine_RB_RadialForceActor) {
-		if (actor->bNetDirty) {
+		if (bNetDirty) {
 			DO_REP(ARB_RadialForceActor, bForceActive, BoolProperty_Engine_RB_RadialForceActor_bForceActive);
 		}
 	}
 	if (cls == Class_Engine_RB_RadialImpulseActor) {
-		if (actor->bNetDirty) {
+		if (bNetDirty) {
 			DO_REP(ARB_RadialImpulseActor, ImpulseCount, ByteProperty_Engine_RB_RadialImpulseActor_ImpulseCount);
 		}
 	}
@@ -2924,7 +2449,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgSkeletalMeshActor_MeleePreVis
 		|| cls == Class_TgGame_TgSkeletalMeshActor
 	) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ASkeletalMeshActor, ReplicatedMaterial, ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMaterial);
 			DO_REP(ASkeletalMeshActor, ReplicatedMesh, ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMesh);
 		}
@@ -2933,10 +2458,10 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		cls == Class_Engine_TeamInfo
 		|| cls == Class_TgGame_TgRepInfo_TaskForce
 	) {
-		if (actor->bNetDirty && actor->Role == 3) {
+		if (bNetDirty && isAuthority) {
 			DO_REP(ATeamInfo, Score, FloatProperty_Engine_TeamInfo_Score);
 		}
-		if (actor->bNetInitial && actor->Role == 3) {
+		if (bNetInitial && isAuthority) {
 			DO_REP(ATeamInfo, TeamIndex, IntProperty_Engine_TeamInfo_TeamIndex);
 			DO_REP(ATeamInfo, TeamName, StrProperty_Engine_TeamInfo_TeamName);
 		}
@@ -2945,11 +2470,11 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		cls == Class_Engine_Teleporter
 		|| cls == Class_TgGame_TgTeleporter
 	) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATeleporter, URL, StrProperty_Engine_Teleporter_URL);
 			DO_REP(ATeleporter, bEnabled, BoolProperty_Engine_Teleporter_bEnabled);
 		}
-		if (actor->bNetInitial && actor->Role == 3) {
+		if (bNetInitial && isAuthority) {
 			DO_REP(ATeleporter, TargetVelocity, StructProperty_Engine_Teleporter_TargetVelocity);
 			DO_REP(ATeleporter, bChangesVelocity, BoolProperty_Engine_Teleporter_bChangesVelocity);
 			DO_REP(ATeleporter, bChangesYaw, BoolProperty_Engine_Teleporter_bChangesYaw);
@@ -2963,15 +2488,15 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_Engine_SVehicle
 		|| cls == Class_GameFramework_GameVehicle
 	) {
-		if (actor->bNetDirty && actor->Role == 3) {
+		if (bNetDirty && isAuthority) {
 			DO_REP(AVehicle, bDriving, BoolProperty_Engine_Vehicle_bDriving);
 		}
-		if ((actor->bNetDirty && (actor->bNetOwner || ((AVehicle*)actor)->Driver == NULL) || !((AVehicle*)actor)->Driver->bHidden) && actor->Role == 3) {
+		if ((bNetDirty && (bNetOwner || ((AVehicle*)actor)->Driver == NULL) || !((AVehicle*)actor)->Driver->bHidden) && isAuthority) {
 			DO_REP(AVehicle, Driver, ObjectProperty_Engine_Vehicle_Driver);
 		}
 	}
 	if (cls == Class_Engine_WorldInfo) {
-		if (actor->bNetDirty && actor->Role == 3) {
+		if (bNetDirty && isAuthority) {
 			DO_REP(AWorldInfo, Pauser, ObjectProperty_Engine_WorldInfo_Pauser);
 			DO_REP(AWorldInfo, ReplicatedMusicTrack, StructProperty_Engine_WorldInfo_ReplicatedMusicTrack);
 			DO_REP(AWorldInfo, TimeDilation, FloatProperty_Engine_WorldInfo_TimeDilation);
@@ -2980,22 +2505,22 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (cls == Class_TgGame_TgChestActor) {
-		if ((actor->Role == 3) && actor->bNetDirty) {
+		if ((isAuthority) && bNetDirty) {
 			DO_REP(ATgChestActor, r_eChestState, ByteProperty_TgGame_TgChestActor_r_eChestState);
 		}
 	}
 	if (cls == Class_TgGame_TgDeploy_BeaconEntrance) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgDeploy_BeaconEntrance, r_bActive, BoolProperty_TgGame_TgDeploy_BeaconEntrance_r_bActive);
 		}
 	}
 	if (cls == Class_TgGame_TgDeploy_DestructibleCover) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgDeploy_DestructibleCover, r_bHasFired, BoolProperty_TgGame_TgDeploy_DestructibleCover_r_bHasFired);
 		}
 	}
 	if (cls == Class_TgGame_TgDeploy_Sensor) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgDeploy_Sensor, r_nSensorAudioWarning, IntProperty_TgGame_TgDeploy_Sensor_r_nSensorAudioWarning);
 			DO_REP(ATgDeploy_Sensor, r_nTouchedPlayerCount, IntProperty_TgGame_TgDeploy_Sensor_r_nTouchedPlayerCount);
 		}
@@ -3009,7 +2534,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgDeploy_Sensor
 		|| cls == Class_TgGame_TgDeploy_SweepSensor
 	) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgDeployable, r_bDelayDeployed, BoolProperty_TgGame_TgDeployable_r_bDelayDeployed);
 			DO_REP(ATgDeployable, r_nReplicateDestroyIt, IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt);
 			// Regen gap — UC TgDeployable.uc 116-120 "Role==Authority" block.
@@ -3026,7 +2551,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgDeployable, r_nHealth, IntProperty_TgGame_TgDeployable_r_nHealth);
 			DO_REP(ATgDeployable, r_vFlashLocation, StructProperty_TgGame_TgDeployable_r_vFlashLocation);
 		}
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgDeployable, r_DRI, ObjectProperty_TgGame_TgDeployable_r_DRI);
 			DO_REP(ATgDeployable, r_bInitialIsEnemy, BoolProperty_TgGame_TgDeployable_r_bInitialIsEnemy);
 			DO_REP(ATgDeployable, r_bTakeDamage, BoolProperty_TgGame_TgDeployable_r_bTakeDamage);
@@ -3036,7 +2561,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgDeployable, r_nPhysicalType, IntProperty_TgGame_TgDeployable_r_nPhysicalType);
 			DO_REP(ATgDeployable, r_nTickingTime, IntProperty_TgGame_TgDeployable_r_nTickingTime);
 		}
-		if ((actor->Role == 3) && actor->bNetOwner) {
+		if ((isAuthority) && bNetOwner) {
 			DO_REP(ATgDeployable, r_Owner, ObjectProperty_TgGame_TgDeployable_r_Owner);
 			DO_REP(ATgDeployable, r_nOwnerFireMode, IntProperty_TgGame_TgDeployable_r_nOwnerFireMode);
 		}
@@ -3050,18 +2575,18 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgDevice_MeleeDualWield
 		|| cls == Class_TgGame_TgDevice_NewRange
 	) {
-		if (((actor->Role == 3) && actor->bNetDirty) && actor->bNetOwner) {
+		if (((isAuthority) && bNetDirty) && bNetOwner) {
 			DO_REP(AInventory, InvManager, ObjectProperty_Engine_Inventory_InvManager);
 			DO_REP(AInventory, Inventory, ObjectProperty_Engine_Inventory_Inventory);
 		}
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgDevice, CurrentFireMode, ByteProperty_TgGame_TgDevice_CurrentFireMode);
 			DO_REP(ATgDevice, r_bIsStealthDevice, BoolProperty_TgGame_TgDevice_r_bIsStealthDevice);
 			DO_REP(ATgDevice, r_eEquippedAt, ByteProperty_TgGame_TgDevice_r_eEquippedAt);
 			DO_REP(ATgDevice, r_nInventoryId, IntProperty_TgGame_TgDevice_r_nInventoryId);
 			DO_REP(ATgDevice, r_nMeleeComboSeed, IntProperty_TgGame_TgDevice_r_nMeleeComboSeed);
 		}
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgDevice, r_bConsumedOnDeath, BoolProperty_TgGame_TgDevice_r_bConsumedOnDeath);
 			DO_REP(ATgDevice, r_bConsumedOnUse, BoolProperty_TgGame_TgDevice_r_bConsumedOnUse);
 			DO_REP(ATgDevice, r_nDeviceId, IntProperty_TgGame_TgDevice_r_nDeviceId);
@@ -3070,27 +2595,27 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (cls == Class_TgGame_TgDevice_Morale) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgDevice_Morale, r_bIsActivelyFiring, BoolProperty_TgGame_TgDevice_Morale_r_bIsActivelyFiring);
 		}
 	}
 	if (cls == Class_TgGame_TgDoor) {
-		if ((actor->Role == 3) && actor->bNetDirty) {
+		if ((isAuthority) && bNetDirty) {
 			DO_REP(ATgDoor, r_bOpen, BoolProperty_TgGame_TgDoor_r_bOpen);
 		}
 	}
 	if (cls == Class_TgGame_TgDoorMarker) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgDoorMarker, r_eStatus, ByteProperty_TgGame_TgDoorMarker_r_eStatus);
 		}
 	}
 	if (cls == Class_TgGame_TgDroppedItem) {
-		if ((actor->Role == 3) && actor->bNetDirty) {
+		if ((isAuthority) && bNetDirty) {
 			DO_REP(ATgDroppedItem, r_nItemId, IntProperty_TgGame_TgDroppedItem_r_nItemId);
 		}
 	}
 	if (cls == Class_TgGame_TgDynamicDestructible) {
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgDynamicDestructible, r_nDestructibleId, IntProperty_TgGame_TgDynamicDestructible_r_nDestructibleId);
 			DO_REP(ATgDynamicDestructible, r_pFactory, ObjectProperty_TgGame_TgDynamicDestructible_r_pFactory);
 		}
@@ -3100,7 +2625,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgDynamicDestructible
 		|| cls == Class_TgGame_TgObjectiveAttachActor
 	) {
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgDynamicSMActor, m_sAssembly, StrProperty_TgGame_TgDynamicSMActor_m_sAssembly);
 		}
 	}
@@ -3110,15 +2635,15 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgObjectiveAttachActor
 	) {
 
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgDynamicSMActor, r_EffectManager, ObjectProperty_TgGame_TgDynamicSMActor_r_EffectManager);
 		}
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgDynamicSMActor, r_nHealth, IntProperty_TgGame_TgDynamicSMActor_r_nHealth);
 		}
 	}
 	if (cls == Class_TgGame_TgEffectManager) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP_ARRAY(0x20, ATgEffectManager, r_EventQueue, StructProperty_TgGame_TgEffectManager_r_EventQueue);
 			DO_REP_ARRAY(0x10, ATgEffectManager, r_ManagedEffectList, StructProperty_TgGame_TgEffectManager_r_ManagedEffectList);
 			DO_REP(ATgEffectManager, r_Owner, ObjectProperty_TgGame_TgEffectManager_r_Owner);
@@ -3128,22 +2653,22 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (cls == Class_TgGame_TgEmitter) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgEmitter, BoneName, NameProperty_TgGame_TgEmitter_BoneName);
 		}
 	}
 	if (cls == Class_TgGame_TgFlagCaptureVolume) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgFlagCaptureVolume, r_eCoalition, ByteProperty_TgGame_TgFlagCaptureVolume_r_eCoalition);
 			DO_REP(ATgFlagCaptureVolume, r_nTaskForce, ByteProperty_TgGame_TgFlagCaptureVolume_r_nTaskForce);
 		}
 	}
 	if (cls == Class_TgGame_TgFracturedStaticMeshActor) {
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgFracturedStaticMeshActor, r_EffectManager, ObjectProperty_TgGame_TgFracturedStaticMeshActor_r_EffectManager);
 			DO_REP(ATgFracturedStaticMeshActor, r_TakeHitNotifier, IntProperty_TgGame_TgFracturedStaticMeshActor_r_TakeHitNotifier);
 		}
-		if (actor->bNetDirty && actor->Role == 3) {
+		if (bNetDirty && isAuthority) {
 			DO_REP(ATgFracturedStaticMeshActor, r_DamageRadius, FloatProperty_TgGame_TgFracturedStaticMeshActor_r_DamageRadius);
 			DO_REP(ATgFracturedStaticMeshActor, r_HitDamageType, ClassProperty_TgGame_TgFracturedStaticMeshActor_r_HitDamageType);
 			DO_REP(ATgFracturedStaticMeshActor, r_HitInfo, StructProperty_TgGame_TgFracturedStaticMeshActor_r_HitInfo);
@@ -3152,29 +2677,29 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (cls == Class_TgGame_TgHexLandMarkActor) {
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgHexLandMarkActor, r_nMeshAsmId, IntProperty_TgGame_TgHexLandMarkActor_r_nMeshAsmId);
 		}
 	}
 	if (cls == Class_TgGame_TgInterpActor) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgInterpActor, r_sCurrState, StrProperty_TgGame_TgInterpActor_r_sCurrState);
 		}
 	}
 	if (cls == Class_TgGame_TgInventoryManager) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgInventoryManager, r_ItemCount, IntProperty_TgGame_TgInventoryManager_r_ItemCount);
 		}
 	}
 	if (cls == Class_TgGame_TgKismetTestActor) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgKismetTestActor, r_nCurrentTest, IntProperty_TgGame_TgKismetTestActor_r_nCurrentTest);
 			DO_REP(ATgKismetTestActor, r_nFailCount, IntProperty_TgGame_TgKismetTestActor_r_nFailCount);
 			DO_REP(ATgKismetTestActor, r_nPassCount, IntProperty_TgGame_TgKismetTestActor_r_nPassCount);
 		}
 	}
 	if (cls == Class_TgGame_TgLevelCamera) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgLevelCamera, r_bEnabled, BoolProperty_TgGame_TgLevelCamera_r_bEnabled);
 		}
 	}
@@ -3187,7 +2712,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgMissionObjective_Kismet
 		|| cls == Class_TgGame_TgMissionObjective_Proximity
 	) {
-		if (actor->Role == 3 && !actor->bNetInitial) {
+		if (isAuthority && !bNetInitial) {
 			DO_REP(ATgMissionObjective, r_ObjectiveAssignment, ObjectProperty_TgGame_TgMissionObjective_r_ObjectiveAssignment);
 			DO_REP(ATgMissionObjective, r_bHasBeenCapturedOnce, BoolProperty_TgGame_TgMissionObjective_r_bHasBeenCapturedOnce);
 			DO_REP(ATgMissionObjective, r_bIsActive, BoolProperty_TgGame_TgMissionObjective_r_bIsActive);
@@ -3200,7 +2725,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgMissionObjective, r_fLastCompletedTime, FloatProperty_TgGame_TgMissionObjective_r_fLastCompletedTime);
 			DO_REP(ATgMissionObjective, r_nOwnerTaskForce, IntProperty_TgGame_TgMissionObjective_r_nOwnerTaskForce);
 		}
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgMissionObjective, nObjectiveId, IntProperty_TgGame_TgMissionObjective_nObjectiveId);
 			DO_REP(ATgMissionObjective, nPriority, IntProperty_TgGame_TgMissionObjective_nPriority);
 			DO_REP(ATgMissionObjective, r_OpenWorldPlayerDefaultRole, ByteProperty_TgGame_TgMissionObjective_r_OpenWorldPlayerDefaultRole);
@@ -3213,13 +2738,13 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		cls == Class_TgGame_TgMissionObjective_Bot
 		|| cls == Class_TgGame_TgBaseObjective_CTFBot
 	) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgMissionObjective_Bot, r_ObjectiveBot, ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBot);
 			DO_REP(ATgMissionObjective_Bot, r_ObjectiveBotInfo, ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBotInfo);
 		}
 	}
 	if (cls == Class_TgGame_TgMissionObjective_Escort) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgMissionObjective_Escort, r_AttachedActor, ObjectProperty_TgGame_TgMissionObjective_Escort_r_AttachedActor);
 		}
 	}
@@ -3228,12 +2753,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgBaseObjective_KOTH
 		|| cls == Class_TgGame_TgMissionObjective_Escort
 	) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgMissionObjective_Proximity, r_fCaptureRate, FloatProperty_TgGame_TgMissionObjective_Proximity_r_fCaptureRate);
 		}
 	}
 	if (cls == Class_TgGame_TgObjectiveAssignment) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgObjectiveAssignment, r_AssignedObjective, ObjectProperty_TgGame_TgObjectiveAssignment_r_AssignedObjective);
 			DO_REP(ATgObjectiveAssignment, r_Attackers, ObjectProperty_TgGame_TgObjectiveAssignment_r_Attackers);
 			DO_REP(ATgObjectiveAssignment, r_Bots, ObjectProperty_TgGame_TgObjectiveAssignment_r_Bots);
@@ -3305,7 +2830,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgPawn_WaspSpawner
 		|| cls == Class_TgGame_TgPawn_Widow
 	) {
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgPawn, r_bIsBot, BoolProperty_TgGame_TgPawn_r_bIsBot);
 			DO_REP(ATgPawn, r_bIsHenchman, BoolProperty_TgGame_TgPawn_r_bIsHenchman);
 			DO_REP(ATgPawn, r_bNeedPlaySpawnFx, BoolProperty_TgGame_TgPawn_r_bNeedPlaySpawnFx);
@@ -3326,7 +2851,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn, r_nProfileTypeValueId, IntProperty_TgGame_TgPawn_r_nProfileTypeValueId);
 			DO_REP(ATgPawn, r_nSoundGroupId, IntProperty_TgGame_TgPawn_r_nSoundGroupId);
 		}
-		if ((actor->Role == 3)/* && !actor->bNetOwner*/) {
+		if ((isAuthority)/* && !bNetOwner*/) {
 			DO_REP(ATgPawn, r_bInitialIsEnemy, BoolProperty_TgGame_TgPawn_r_bInitialIsEnemy);
 			DO_REP(ATgPawn, r_bMadeSound, ByteProperty_TgGame_TgPawn_r_bMadeSound);
 			DO_REP(ATgPawn, r_eDesiredInHand, ByteProperty_TgGame_TgPawn_r_eDesiredInHand);
@@ -3334,7 +2859,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn, r_nReplicateHit, IntProperty_TgGame_TgPawn_r_nReplicateHit);
 			DO_REP_ARRAY(25, ATgPawn, r_EquipDeviceInfo, StructProperty_TgGame_TgPawn_r_EquipDeviceInfo);
 		}
-		if ((actor->Role == 3)/* && actor->bNetOwner*/) {
+		if ((isAuthority)/* && bNetOwner*/) {
 			DO_REP(ATgPawn, r_ControlPawn, ObjectProperty_TgGame_TgPawn_r_ControlPawn);
 			DO_REP(ATgPawn, r_CurrentOmegaVolume, ObjectProperty_TgGame_TgPawn_r_CurrentOmegaVolume);
 			DO_REP(ATgPawn, r_CurrentSubzoneBilboardVol, ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneBilboardVol);
@@ -3369,7 +2894,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn, r_nToken, IntProperty_TgGame_TgPawn_r_nToken);
 			DO_REP(ATgPawn, r_nXp, IntProperty_TgGame_TgPawn_r_nXp);
 		}
-		if ((actor->Role == 3) && actor->bNetDirty) {
+		if ((isAuthority) && bNetDirty) {
 			DO_REP_ARRAY(0x20, ATgPawn, r_nFlashEvent, IntProperty_TgGame_TgPawn_r_nFlashEvent);
 			DO_REP_ARRAY(0x20, ATgPawn, r_nFlashFireInfo, IntProperty_TgGame_TgPawn_r_nFlashFireInfo);
 			DO_REP(ATgPawn, r_nFlashQueIndex, IntProperty_TgGame_TgPawn_r_nFlashQueIndex);
@@ -3464,17 +2989,17 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		cls == Class_TgGame_TgPawn_Ambush
 		|| cls == Class_TgGame_TgPawn_Tentacle
 	) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgPawn_Ambush, r_bIsDeployed, BoolProperty_TgGame_TgPawn_Ambush_r_bIsDeployed);
 		}
 	}
 	if (cls == Class_TgGame_TgPawn_AttackTransport) {
-		if ((actor->Role == 3) && actor->bNetDirty) {
+		if ((isAuthority) && bNetDirty) {
 			DO_REP(ATgPawn_AttackTransport, r_DeathType, ByteProperty_TgGame_TgPawn_AttackTransport_r_DeathType);
 		}
 	}
 	if (cls == Class_TgGame_TgPawn_CTR) {
-		if ((actor->Role == 3) && actor->bNetDirty || actor->bNetInitial) {
+		if ((isAuthority) && bNetDirty || bNetInitial) {
 			DO_REP(ATgPawn_CTR, r_CustomCharacterAssembly, StructProperty_TgGame_TgPawn_CTR_r_CustomCharacterAssembly);
 			DO_REP(ATgPawn_CTR, r_PilotPawn, ObjectProperty_TgGame_TgPawn_CTR_r_PilotPawn);
 			DO_REP(ATgPawn_CTR, r_nMaxMorphIndexSentFromServer, IntProperty_TgGame_TgPawn_CTR_r_nMaxMorphIndexSentFromServer);
@@ -3521,7 +3046,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 	) {
 
 
-		if ((actor->Role == 3) && actor->bNetDirty || actor->bNetInitial) {
+		if ((isAuthority) && bNetDirty || bNetInitial) {
 			DO_REP(ATgPawn_Character, r_CustomCharacterAssembly, StructProperty_TgGame_TgPawn_Character_r_CustomCharacterAssembly);
 			DO_REP(ATgPawn_Character, r_eAttachedMesh, ByteProperty_TgGame_TgPawn_Character_r_eAttachedMesh);
 			DO_REP(ATgPawn_Character, r_nBoostTimeRemaining, IntProperty_TgGame_TgPawn_Character_r_nBoostTimeRemaining);
@@ -3531,7 +3056,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn_Character, r_nMaxMorphIndexSentFromServer, IntProperty_TgGame_TgPawn_Character_r_nMaxMorphIndexSentFromServer);
 			DO_REP_ARRAY(0xFF, ATgPawn_Character, r_nMorphSettings, IntProperty_TgGame_TgPawn_Character_r_nMorphSettings);
 		}
-		if (((actor->Role == 3) && actor->bNetOwner) && actor->bNetInitial || actor->bNetDirty) {
+		if (((isAuthority) && bNetOwner) && bNetInitial || bNetDirty) {
 			DO_REP(ATgPawn_Character, r_CurrentVanityPet, ObjectProperty_TgGame_TgPawn_Character_r_CurrentVanityPet);
 			DO_REP(ATgPawn_Character, r_WallJumpUpperLineCheckOffset, FloatProperty_TgGame_TgPawn_Character_r_WallJumpUpperLineCheckOffset);
 			DO_REP(ATgPawn_Character, r_WallJumpZ, FloatProperty_TgGame_TgPawn_Character_r_WallJumpZ);
@@ -3541,17 +3066,17 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (cls == Class_TgGame_TgPawn_DuneCommander) {
-		if ((actor->Role == 3) && actor->bNetDirty || actor->bNetInitial) {
+		if ((isAuthority) && bNetDirty || bNetInitial) {
 			DO_REP(ATgPawn_DuneCommander, r_bDoCrashLanding, BoolProperty_TgGame_TgPawn_DuneCommander_r_bDoCrashLanding);
 		}
 	}
 	if (cls == Class_TgGame_TgPawn_Iris) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgPawn_Iris, r_nStartNewScan, ByteProperty_TgGame_TgPawn_Iris_r_nStartNewScan);
 		}
 	}
 	if (cls == Class_TgGame_TgPawn_Reaper) {
-		if ((actor->Role == 3) && actor->bNetDirty) {
+		if ((isAuthority) && bNetDirty) {
 			DO_REP(ATgPawn_Reaper, r_fBatteryPct, FloatProperty_TgGame_TgPawn_Reaper_r_fBatteryPct);
 		}
 	}
@@ -3561,7 +3086,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgPawn_SiegeHover
 		|| cls == Class_TgGame_TgPawn_SiegeRapidFire
 	) {
-		if ((actor->Role == 3) && actor->bNetDirty) {
+		if ((isAuthority) && bNetDirty) {
 			DO_REP(ATgPawn_Siege, r_AccelDirection, ByteProperty_TgGame_TgPawn_Siege_r_AccelDirection);
 		}
 	}
@@ -3573,23 +3098,23 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgPawn_TurretFlame
 		|| cls == Class_TgGame_TgPawn_TurretPlasma
 	) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgPawn_Turret, r_bIsDeployed, BoolProperty_TgGame_TgPawn_Turret_r_bIsDeployed);
 			DO_REP(ATgPawn_Turret, r_fInitDeployTime, FloatProperty_TgGame_TgPawn_Turret_r_fInitDeployTime);
 			DO_REP(ATgPawn_Turret, r_fTimeToDeploySecs, FloatProperty_TgGame_TgPawn_Turret_r_fTimeToDeploySecs);
 		}
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgPawn_Turret, r_fCurrentDeployTime, FloatProperty_TgGame_TgPawn_Turret_r_fCurrentDeployTime);
 			DO_REP(ATgPawn_Turret, r_fDeployMaxHealthPCT, FloatProperty_TgGame_TgPawn_Turret_r_fDeployMaxHealthPCT);
 		}
 	}
 	if (cls == Class_TgGame_TgPawn_VanityPet) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgPawn_VanityPet, r_nSpawningItemId, IntProperty_TgGame_TgPawn_VanityPet_r_nSpawningItemId);
 		}
 	}
 	if (cls == Class_TgGame_TgPlayerController) {
-		if ((actor->Role == 3) && actor->bNetOwner) {
+		if ((isAuthority) && bNetOwner) {
 			DO_REP(ATgPlayerController, r_WatchOtherPlayer, ByteProperty_TgGame_TgPlayerController_r_WatchOtherPlayer);
 			// DO_REP(ATgPlayerController, r_bEDDebugEffects, BoolProperty_TgGame_TgPlayerController_r_bEDDebugEffects);
 			DO_REP(ATgPlayerController, r_bGMInvisible, BoolProperty_TgGame_TgPlayerController_r_bGMInvisible);
@@ -3599,21 +3124,21 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (cls == Class_TgGame_TgProj_Grapple) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgProj_Grapple, r_vTargetLocation, StructProperty_TgGame_TgProj_Grapple_r_vTargetLocation);
 		}
 	}
 	if (cls == Class_TgGame_TgProj_Missile) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgProj_Missile, r_aSeeking, ObjectProperty_TgGame_TgProj_Missile_r_aSeeking);
 			DO_REP(ATgProj_Missile, r_vTargetWorldLocation, StructProperty_TgGame_TgProj_Missile_r_vTargetWorldLocation);
 		}
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgProj_Missile, r_nNumBounces, IntProperty_TgGame_TgProj_Missile_r_nNumBounces);
 		}
 	}
 	if (cls == Class_TgGame_TgProj_Rocket) {
-		if (actor->bNetInitial && actor->Role == 3) {
+		if (bNetInitial && isAuthority) {
 			DO_REP(ATgProj_Rocket, FlockIndex, ByteProperty_TgGame_TgProj_Rocket_FlockIndex);
 			DO_REP(ATgProj_Rocket, bCurl, BoolProperty_TgGame_TgProj_Rocket_bCurl);
 		}
@@ -3633,7 +3158,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		|| cls == Class_TgGame_TgProj_Bounce
 		|| cls == Class_TgGame_TgProj_Bot
 	) {
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgProjectile, r_Owner, ObjectProperty_TgGame_TgProjectile_r_Owner);
 			DO_REP(ATgProjectile, r_fAccelRate, FloatProperty_TgGame_TgProjectile_r_fAccelRate);
 			DO_REP(ATgProjectile, r_fDuration, FloatProperty_TgGame_TgProjectile_r_fDuration);
@@ -3644,11 +3169,11 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (cls == Class_TgGame_TgRepInfo_Beacon) {
-		if (actor->bNetDirty && actor->Role == 3) {
+		if (bNetDirty && isAuthority) {
 			DO_REP(ATgRepInfo_Beacon, r_bDeployed, BoolProperty_TgGame_TgRepInfo_Beacon_r_bDeployed);
 			DO_REP(ATgRepInfo_Beacon, r_vLoc, StructProperty_TgGame_TgRepInfo_Beacon_r_vLoc);
 		}
-		if (actor->bNetInitial && actor->Role == 3) {
+		if (bNetInitial && isAuthority) {
 			DO_REP(ATgRepInfo_Beacon, r_nName, StrProperty_TgGame_TgRepInfo_Beacon_r_nName);
 		}
 	}
@@ -3665,15 +3190,15 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		// Logger::Log("heal_tick",
 		// 	"[V2 DRI rep] dri=0x%p class=%s  Role=%d  bNetInitial=%d  bNetDirty=%d\n",
 		// 	actor, cls->GetFullName(),
-		// 	(int)actor->Role, (int)actor->bNetInitial, (int)actor->bNetDirty);
+		// 	(int)actor->Role, (int)bNetInitial, (int)bNetDirty);
 
-		if (actor->bNetDirty && actor->Role == 3) {
+		if (bNetDirty && isAuthority) {
 			DO_REP(ATgRepInfo_Deployable, r_InstigatorInfo, ObjectProperty_TgGame_TgRepInfo_Deployable_r_InstigatorInfo);
 			DO_REP(ATgRepInfo_Deployable, r_TaskforceInfo, ObjectProperty_TgGame_TgRepInfo_Deployable_r_TaskforceInfo);
 			DO_REP(ATgRepInfo_Deployable, r_bOwnedByTaskforce, BoolProperty_TgGame_TgRepInfo_Deployable_r_bOwnedByTaskforce);
 			DO_REP(ATgRepInfo_Deployable, r_nHealthCurrent, IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthCurrent);
 		}
-		if (actor->bNetInitial && actor->Role == 3) {
+		if (bNetInitial && isAuthority) {
 			DO_REP(ATgRepInfo_Deployable, r_fDeployMaxHealthPCT, FloatProperty_TgGame_TgRepInfo_Deployable_r_fDeployMaxHealthPCT);
 			DO_REP(ATgRepInfo_Deployable, r_nDeployableId, IntProperty_TgGame_TgRepInfo_Deployable_r_nDeployableId);
 			DO_REP(ATgRepInfo_Deployable, r_nHealthMaximum, IntProperty_TgGame_TgRepInfo_Deployable_r_nHealthMaximum);
@@ -3685,7 +3210,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		cls == Class_TgGame_TgRepInfo_Game
 		|| cls == Class_TgGame_TgRepInfo_GameOpenWorld
 	) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgRepInfo_Game, r_MiniMapInfo, StructProperty_TgGame_TgRepInfo_Game_r_MiniMapInfo);
 			DO_REP(ATgRepInfo_Game, r_bActiveCombat, BoolProperty_TgGame_TgRepInfo_Game_r_bActiveCombat);
 			DO_REP(ATgRepInfo_Game, r_bAllowBuildMorale, BoolProperty_TgGame_TgRepInfo_Game_r_bAllowBuildMorale);
@@ -3708,7 +3233,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 
 			DO_REP_ARRAY(0x4B, ATgRepInfo_Game, r_Objectives, ObjectProperty_TgGame_TgRepInfo_Game_r_Objectives); // moved from bNetInitial
 		}
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgRepInfo_Game, r_GameType, ByteProperty_TgGame_TgRepInfo_Game_r_GameType);
 			DO_REP(ATgRepInfo_Game, r_MapLogoResIds, StructProperty_TgGame_TgRepInfo_Game_r_MapLogoResIds);
 			DO_REP(ATgRepInfo_Game, r_bIsArena, BoolProperty_TgGame_TgRepInfo_Game_r_bIsArena);
@@ -3726,12 +3251,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (cls == Class_TgGame_TgRepInfo_GameOpenWorld) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP_ARRAY(0x3, ATgRepInfo_GameOpenWorld, r_GameTickets, IntProperty_TgGame_TgRepInfo_GameOpenWorld_r_GameTickets);
 		}
 	}
 	if (cls == Class_TgGame_TgRepInfo_Player) {
-		if (actor->bNetDirty && actor->Role == 3) {
+		if (bNetDirty && isAuthority) {
 			DO_REP(ATgRepInfo_Player, r_ApproxLocation, StructProperty_TgGame_TgRepInfo_Player_r_ApproxLocation);
 			DO_REP(ATgRepInfo_Player, r_CustomCharacterAssembly, StructProperty_TgGame_TgRepInfo_Player_r_CustomCharacterAssembly);
 			DO_REP_ARRAY(25, ATgRepInfo_Player, r_EquipDeviceInfo, StructProperty_TgGame_TgRepInfo_Player_r_EquipDeviceInfo);
@@ -3751,14 +3276,14 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgRepInfo_Player, r_sAllianceName, StrProperty_TgGame_TgRepInfo_Player_r_sAllianceName);
 			DO_REP(ATgRepInfo_Player, r_sOrigPlayerName, StrProperty_TgGame_TgRepInfo_Player_r_sOrigPlayerName);
 		}
-		if (actor->bNetOwner && actor->Role == 3) {
+		if (bNetOwner && isAuthority) {
 			DO_REP_ARRAY(0x9, ATgRepInfo_Player, r_DeviceStats, StructProperty_TgGame_TgRepInfo_Player_r_DeviceStats);
 		}
 	}
 	if (
 		cls == Class_TgGame_TgRepInfo_TaskForce
 	) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgRepInfo_TaskForce, r_BeaconManager, ObjectProperty_TgGame_TgRepInfo_TaskForce_r_BeaconManager);
 			DO_REP(ATgRepInfo_TaskForce, r_CurrActiveObjective, ObjectProperty_TgGame_TgRepInfo_TaskForce_r_CurrActiveObjective);
 			DO_REP(ATgRepInfo_TaskForce, r_ObjectiveAssignment, ObjectProperty_TgGame_TgRepInfo_TaskForce_r_ObjectiveAssignment);
@@ -3770,18 +3295,18 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgRepInfo_TaskForce, r_nNumDeaths, IntProperty_TgGame_TgRepInfo_TaskForce_r_nNumDeaths);
 
 		}
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgRepInfo_TaskForce, r_nTaskForce, ByteProperty_TgGame_TgRepInfo_TaskForce_r_nTaskForce);
 			DO_REP(ATgRepInfo_TaskForce, r_nTeamId, IntProperty_TgGame_TgRepInfo_TaskForce_r_nTeamId);
 		}
 	}
 	if (cls == Class_TgGame_TgSkydiveTarget) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgSkydiveTarget, m_LandRadius, FloatProperty_TgGame_TgSkydiveTarget_m_LandRadius);
 		}
 	}
 	if (cls == Class_TgGame_TgSkydivingVolume) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgSkydivingVolume, r_PawnGravityModifier, FloatProperty_TgGame_TgSkydivingVolume_r_PawnGravityModifier);
 			DO_REP(ATgSkydivingVolume, r_PawnLaunchForce, FloatProperty_TgGame_TgSkydivingVolume_r_PawnLaunchForce);
 			DO_REP(ATgSkydivingVolume, r_PawnUpForce, FloatProperty_TgGame_TgSkydivingVolume_r_PawnUpForce);
@@ -3789,7 +3314,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 	if (cls == Class_TgGame_TgTeamBeaconManager) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP(ATgTeamBeaconManager, r_Beacon, ObjectProperty_TgGame_TgTeamBeaconManager_r_Beacon);
 			DO_REP(ATgTeamBeaconManager, r_BeaconDestroyed, IntProperty_TgGame_TgTeamBeaconManager_r_BeaconDestroyed);
 			DO_REP(ATgTeamBeaconManager, r_BeaconHolder, ObjectProperty_TgGame_TgTeamBeaconManager_r_BeaconHolder);
@@ -3798,11 +3323,11 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 
 			DO_REP(ATgTeamBeaconManager, r_TaskForce, ObjectProperty_TgGame_TgTeamBeaconManager_r_TaskForce);
 		}
-		if ((actor->Role == 3) && actor->bNetInitial) {
+		if ((isAuthority) && bNetInitial) {
 		}
 	}
 	if (cls == Class_TgGame_TgTimerManager) {
-		if (actor->Role == 3) {
+		if (isAuthority) {
 			DO_REP_ARRAY(0x20, ATgTimerManager, r_byEventQue, ByteProperty_TgGame_TgTimerManager_r_byEventQue);
 			DO_REP(ATgTimerManager, r_byEventQueIndex, ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex);
 			DO_REP_ARRAY(0x20, ATgTimerManager, r_fRemaining, FloatProperty_TgGame_TgTimerManager_r_fRemaining);
@@ -3810,10 +3335,6 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		}
 	}
 
-	// Mark the actor as having had its initial replication pass; subsequent calls
-	// will see isInitialRep == false. Performed once at end-of-call (vs the original
-	// per-property-on-first-DO_REP fan-out into 511 separate maps).
-	if (isInitialRep) g_RepListInitialDoneActors.insert(actor);
 	return param_3;
 }
 

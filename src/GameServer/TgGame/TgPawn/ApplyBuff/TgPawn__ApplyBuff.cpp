@@ -51,17 +51,57 @@ void __fastcall TgPawn__ApplyBuff::Call(ATgPawn* Pawn, void* /*edx*/, FBuffHeade
 	if (!Pawn) return;
 
 	// Find existing matching entry, or append a fresh one when not removing.
-	// Direct native call (see typedef above) — bypasses the broken SDK wrapper
-	// that left the start index as uninitialized stack garbage.
-	int index = 0;
-	GetBuffIndexNative(Pawn, /*edx=*/nullptr,
-	                   BuffFilter.nPropId, BuffFilter.nReqCategoryCode,
-	                   BuffFilter.nReqSkillId, BuffFilter.nReqDeviceInstId,
-	                   /*bAddIfNotExists=*/(bRemove ? 0 : 1),
-	                   &index);
-	if (index < 0) return;
-	if (Pawn->m_EffectBuffInfo.Data == nullptr) return;
-	if (index >= Pawn->m_EffectBuffInfo.Num()) return;
+	//
+	// Apply path (bRemove=0): the binary's GetBuffIndex with bAddIfNotExists=1
+	// uses EXACT match (every BuffHeader field must equal) and appends a fresh
+	// entry on miss. That's exactly what we want, so call the native directly.
+	// (Note: we cannot use the SDK wrapper `Pawn->GetBuffIndex` — its stub at
+	// TgGame_functions.cpp:44095 forgets to copy *nIndex into the parms struct,
+	// so the native sees uninitialized stack garbage as the loop start index.)
+	//
+	// Reverse path (bRemove=1): the binary's GetBuffIndex with bAddIfNotExists=0
+	// uses WILDCARD match — stored=0 in any BuffHeader field is treated as a
+	// wildcard that matches any non-zero query for that field. This semantic is
+	// correct for the FILTER pass in GetBuffedProperty (where wildcards mean
+	// "applies to all queries"), but WRONG for the REVERSE pass where we need
+	// to find the specific entry we appended on apply. Concrete failure: if
+	// apply registers two entries against the same propId — one with skillId=0
+	// (wildcard) and one with skillId=308 (device-gated) — the reverse for the
+	// skillId=308 entry wildcard-matches the skillId=0 entry FIRST in the
+	// linear scan, debits the wrong slot, and the slot that should have been
+	// debited drifts upward over time. Observed as the medstation heal losing
+	// exactly 10% per Reapply cycle, with the missing amount accumulating in
+	// the device-gated slot that never matches the heal query at fire time.
+	//
+	// Fix: do an exact-match scan ourselves for the reverse path. m_EffectBuffInfo
+	// is typically 30-50 entries and only the Reapply path (respawn / respec /
+	// connect) reverses, so the cost is negligible.
+	int index = -1;
+	if (bRemove) {
+		if (Pawn->m_EffectBuffInfo.Data == nullptr) return;
+		const int n = Pawn->m_EffectBuffInfo.Num();
+		for (int i = 0; i < n; ++i) {
+			const FBuffHeader& h = Pawn->m_EffectBuffInfo.Data[i].BuffHeader;
+			if (h.nPropId          == BuffFilter.nPropId          &&
+			    h.nReqCategoryCode == BuffFilter.nReqCategoryCode &&
+			    h.nReqSkillId      == BuffFilter.nReqSkillId      &&
+			    h.nReqDeviceInstId == BuffFilter.nReqDeviceInstId) {
+				index = i;
+				break;
+			}
+		}
+		if (index < 0) return;  // entry already gone — nothing to reverse
+	} else {
+		index = 0;
+		GetBuffIndexNative(Pawn, /*edx=*/nullptr,
+		                   BuffFilter.nPropId, BuffFilter.nReqCategoryCode,
+		                   BuffFilter.nReqSkillId, BuffFilter.nReqDeviceInstId,
+		                   /*bAddIfNotExists=*/1,
+		                   &index);
+		if (index < 0) return;
+		if (Pawn->m_EffectBuffInfo.Data == nullptr) return;
+		if (index >= Pawn->m_EffectBuffInfo.Num()) return;
+	}
 
 	FBuffInfo& entry = Pawn->m_EffectBuffInfo.Data[index];
 

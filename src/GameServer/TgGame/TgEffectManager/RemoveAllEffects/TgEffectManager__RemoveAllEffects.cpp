@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
+#include "src/GameServer/TgGame/BuffEffectRegistry/BuffEffectRegistry.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Removes all effects from this effect manager.
@@ -54,36 +55,69 @@ void __fastcall TgEffectManager__RemoveAllEffects::Call(ATgEffectManager* pThis,
 			continue;
 		}
 
-		// 1. Reverse property modifiers — gate matches RemoveAllEffectGroups
-		//    (aoi-flag check, not lifetime). Regen tickers (aoi=1, e.g.
-		//    power-station +HP/tick) stay committed: each tick's apply was
-		//    meant as a one-shot resource and reversing on death would un-give
-		//    it. One-shot held buffs (aoi=0, e.g. jetpack-fire +45 AirSpeed,
-		//    iMINIGUN right-click root via prop 338 → prop 49 m_fRaw -= 10000,
-		//    scope -GroundSpeed) MUST be reversed — they're paired with an
-		//    explicit remove that the death path replaces.
+		// 1. Reverse property modifiers — PER-EFFECT classification, not per-
+		//    group. The previous coarse gate (skip the whole group if ANY
+		//    effect has aoi=1) was wrong for mixed-aoi groups: the REST device
+		//    EG 2654 (cat=772, life=10s, itvl=1s) bundles ONE aoi=1 heal-over-
+		//    time tick (prop 211 Missing Health +10%) with SEVEN aoi=0 penalty
+		//    effects (prop 49 GroundSpeed -50%, prop 244 PowerPoolRechargeRate
+		//    -3%, four protection -100s, prop 65 EffectDamageModifier -50%).
+		//    The single aoi=1 tripped the classifier and the seven aoi=0
+		//    penalties stayed permanently applied on the pawn's s_Properties.
+		//    Same shape affects the cat=303 Poison DoT family (aoi=1 damage
+		//    tick + aoi=0 sibling debuff like slow/blind) and any other
+		//    "regen-ticker with side effects" pattern.
 		//
-		//    Previous gate was `m_fLifeTime > 0.0f`, which skipped reversal
-		//    for ALL lifetime=0 clones. That worked for power-station regen
-		//    (aoi=1, leave alone) but left jetpack/root/scope-style buffs
-		//    stuck on the revived pawn: the UC death flow schedules a
-		//    deferred `RemoveAllEffects` timer, but `Dying.EndState`
-		//    `ClearTimer('RemoveAllEffects')` + `ReapplyLoadoutEffects()`
-		//    runs when the player revives instead — and our
-		//    `TgPawn_Character::ReapplyLoadoutEffects` reimpl calls back
-		//    into us to do this cleanup. With the old gate the cleanup was
-		//    a no-op for lifetime=0 buffs → root stayed applied through
-		//    revive, AirSpeed compounded across revive cycles.
-		bool isRegenTicker = false;
-		for (int e = 0; e < applied->m_Effects.Count; ++e) {
-			UTgEffect* eff = applied->m_Effects.Data[e];
-			if (!eff) continue;
-			unsigned int eflags = *(unsigned int*)((char*)eff + 0x48);
-			if (eflags & 0x01) { isRegenTicker = true; break; }
-		}
+		//    Per-effect logic:
+		//      • aoi=1: tick-style contribution that's already committed as a
+		//        one-shot resource gift. Reversing on death would un-give it.
+		//      • aoi=0: temporary modifier paired with an explicit remove that
+		//        the death path is replacing. MUST be reversed (jetpack-fire
+		//        +AirSpeed, iMINIGUN root, scope -GroundSpeed, REST penalties).
+		//
+		//    Station-aura group-level skip survives below as a separate gate —
+		//    stations are PURE aoi=0 (e.g. medstation EG 6026 only effect has
+		//    aoi=0) but their applies are one-shot resource gifts via lifetime=0
+		//    + interval=0 + type=264 + external re-fire. Per-effect classification
+		//    alone wouldn't catch that, so we keep the pattern-based group skip.
 		AActor* target = applied->m_Target ? applied->m_Target : pThis->r_Owner;
-		if (target && !isRegenTicker) {
-			TgEffectGroup__RemoveEffects::Call(applied, nullptr, target, 0);
+
+		// Station-aura group-level skip: pure aoi=0 but lifetime=0 + interval=0
+		// + type=264 means the per-tick re-fire from the source deployable owns
+		// the lifecycle. Don't reverse anything for these — the gift sticks.
+		bool isStationAuraPattern =
+			(applied->m_nType == 264 &&
+			 applied->m_fLifeTime    == 0.0f &&
+			 applied->m_fApplyInterval == 0.0f);
+
+		if (target && !isStationAuraPattern) {
+			// Per-effect reversal. Inline rather than calling
+			// TgEffectGroup__RemoveEffects so we can filter aoi=1 effects
+			// while still using the same m_fCurrent==0 phantom-clone guard
+			// and BuffEffectRegistry::Forget cleanup that helper does.
+			const bool effectsLog = Logger::IsChannelEnabled("effects");
+			for (int e = 0; e < applied->m_Effects.Count; ++e) {
+				UTgEffect* eff = applied->m_Effects.Data[e];
+				if (!eff) continue;
+				unsigned int eflags = *(unsigned int*)((char*)eff + 0x48);
+				if (eflags & 0x01) {
+					// aoi=1: tick-gift already committed, skip reversal.
+					if (effectsLog) {
+						Logger::Log("effects",
+							"[REMOVE-ALL-EFFECTS]   [%d/eff%d] propId=%d aoi=1 -> SKIP (tick gift)\n",
+							i, e, eff->m_nPropertyId);
+					}
+					continue;
+				}
+				if (eff->m_fCurrent == 0.0f) {
+					// Apply never ran (phantom clone path). UC `event Remove`
+					// has unconditional branches for several propIds that
+					// would clobber unrelated state if we let them run.
+					continue;
+				}
+				eff->eventRemove(target, 0);
+				BuffEffectRegistry::Forget(eff);
+			}
 		}
 
 		// 2. Cancel any timers (ApplyInterval, LifeDone) this group armed.

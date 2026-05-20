@@ -24,7 +24,13 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 	// Logger::Log("debug", "MINE UdpNetDriver__TickDispatch START\n");
 	NetDriver__TickDispatch::CallOriginal(NetDriver, edx, DeltaTime);
 
-	TARRAY_INIT(NetDriver, ClientConnections, UNetConnection*, 0x44, 128); // todo: move this elsewhere for performance
+	// One-shot: allocate the ClientConnections TArray storage if the engine
+	// left Data=nullptr/Max=0 (it does — the array starts fully nulled). After
+	// the first call the `*DataPtr == nullptr` check fails and the macro is
+	// just 3 pointer derefs + 1 compare per frame, so moving it out of the hot
+	// path wouldn't measurably help. Leave it here, scoped to where the array
+	// is actually used.
+	TARRAY_INIT(NetDriver, ClientConnections, UNetConnection*, 0x44, 128);
 
 	void* socketInstance = *(void**)((char*)NetDriver + 0x14C);
 	SOCKET Socket = *(SOCKET*)((char*)socketInstance + 0x08);
@@ -59,20 +65,16 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 
 		UNetConnection* Connection = nullptr;
 
-		if (NetDriver->ClientConnections.Num() > 0) {
-			for (int i = NetDriver->ClientConnections.Num() - 1; i >= 0; i--) {
-				UNetConnection* ClientConnection = NetDriver->ClientConnections.Data[i];
-				int32_t ClientConnectionIndex = (int32_t)ClientConnection;
-
-				auto ccIt = GClientConnectionsData.find(ClientConnectionIndex);
-				if (ccIt != GClientConnectionsData.end()) {
-					sockaddr_in ClientRemoteAddr = ccIt->second.RemoteAddr;
-
-					if (ClientRemoteAddr.sin_addr.s_addr == from.sin_addr.s_addr && ClientRemoteAddr.sin_port == from.sin_port) {
-						Connection = ClientConnection;
-						// LogToFile("C:\\tickdispatch.txt", "[UdpNetDriver::TickDispatch] Found existing client connection");
-					}
-				}
+		// O(1) addr→connection lookup. The previous implementation linearly
+		// scanned NetDriver->ClientConnections and did a `GClientConnectionsData.find`
+		// per iteration (no early break) — at 16+ players that becomes thousands
+		// of redundant tree walks per second on the inbound packet path. The
+		// side map is kept in sync at insert (below) and erase (NetConnection__Cleanup).
+		{
+			const uint64_t key = MakeRemoteAddrKey(from.sin_addr.s_addr, from.sin_port);
+			auto it = GConnectionByAddr.find(key);
+			if (it != GConnectionByAddr.end()) {
+				Connection = it->second;
 			}
 		}
 
@@ -168,6 +170,7 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 			NetConnection__InitOut::CallOriginal(Connection);
 
 			GClientConnectionsData.insert(std::pair<int32_t, ClientConnectionData>((int32_t)Connection, ConnectionData));
+			GConnectionByAddr[MakeRemoteAddrKey(from.sin_addr.s_addr, from.sin_port)] = Connection;
 			/* \- UNetConnection::InitConnection END */
 
 			void* Notify = *(void**)((char*)NetDriver + 0x54);

@@ -249,9 +249,8 @@ void ExecutePossess(const std::string& guid) {
     // local PC.Pawn's r_nPawnId (or its r_ControlPawn fallback). After the
     // controller swap the client's PC.Pawn is the bot, so sending PAWN_ID =
     // bot->r_nPawnId routes the loadout into the bot's InvManager directly.
-    // (SpawnBotById assigns every bot a unique non-zero r_nPawnId from a
-    // counter starting at 10000, so we never collide with the player's
-    // hardcoded 998 or with other bots.)
+    // (UC TgPawn.PostBeginPlay assigns each pawn a unique per-instance id via
+    // TgGame.GetNextPawnId(), so players and bots never collide within a map.)
     const int player_pawn_id = (int)PlayerPawn->r_nPawnId;
     const int bot_pawn_id    = (int)target->r_nPawnId;
 

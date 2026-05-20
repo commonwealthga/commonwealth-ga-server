@@ -60,8 +60,9 @@ struct ControlServerConfig {
     std::string db_path            = "server.db";
     std::string crash_dir          = "Z:\\home\\zax\\games\\crashes";
     std::string log_dir            = "C:";
-    // Logger channel allowlists. Names map 1:1 to Logger::EnabledChannels and
-    // Logger::EnabledCrashChannels — file logging vs. crash-ring recording.
+    // Logger channel allowlists. The DLL's Logger::EnableChannel and
+    // EnableCrashChannel are called once per entry at DLL init — file
+    // logging vs. crash-ring recording.
     // Channel names must not contain commas (the wire format joins on ',').
     std::vector<std::string> enabled_channels;
     std::vector<std::string> enabled_crash_channels;

@@ -5,24 +5,19 @@
 #include "src/Utils/Logger/Logger.hpp"
 
 void NetConnection__LowLevelSend::Call(UNetConnection* Connection, void* edx, void* Buffer, int Size) {
-	// Logger::Log("debug", "MINE NetConnection__LowLevelSend START\n");
-	int32_t ClientConnectionIndex = (int32_t)Connection;
+	// Called per outbound UDP packet. Keep it tight — no heap allocations,
+	// no by-value struct copies. The previous version did
+	// `ClientConnectionData ConnectionData = GClientConnectionsData[...]`,
+	// which copied the entire struct (FURL, multiple std::string members,
+	// PlayerInfo's strings + skills vector) and forced ~10 heap alloc/free
+	// pairs per packet. Under Wine that adds up fast; combined with O(N)
+	// scans on the inbound side it's the leading suspect for replication
+	// jitter (manifested as client teleporting on the player side).
+	auto it = GClientConnectionsData.find((int32_t)Connection);
+	if (it == GClientConnectionsData.end()) return;
+	if (it->second.bClosed) return;
 
-	if (GClientConnectionsData.find(ClientConnectionIndex) != GClientConnectionsData.end()) {
-		ClientConnectionData ConnectionData = GClientConnectionsData[ClientConnectionIndex];
-		void* SocketInstance = ConnectionData.SocketInstance;
-		SOCKET Socket = *(SOCKET*)((char*)SocketInstance + 0x08);
-		sockaddr_in ClientRemoteAddr = ConnectionData.RemoteAddr;
-
-		// log contents of the buffer
-		// Logger::Log("wtf", "\n\n[UNetConnection::LowLevelSend] Buffer contents:\n");
-		//
-		// for (int i = 0; i < Size; i++) {
-		// 	Logger::Log("wtf", "%02X ", ((unsigned char*)Buffer)[i]);
-		// }
-
-		int bytesSent = sendto(Socket, (const char*)Buffer, Size, 0, (sockaddr*)&ClientRemoteAddr, sizeof(ClientRemoteAddr));
-		// LogToFile("C:\\lowlevelsend.txt", "[UNetConnection::LowLevelSend] Bytes sent: %d", bytesSent);
-	}
-	// Logger::Log("debug", "MINE NetConnection__LowLevelSend END\n");
+	SOCKET Socket = *(SOCKET*)((char*)it->second.SocketInstance + 0x08);
+	sendto(Socket, (const char*)Buffer, Size, 0,
+	       (sockaddr*)&it->second.RemoteAddr, sizeof(sockaddr_in));
 }
