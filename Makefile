@@ -14,6 +14,8 @@ SOURCE_FILES= \
 			  \
 			  $(SRC_DIR)/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.cpp \
 			  $(SRC_DIR)/GameServer/Core/FMallocWindows/Free/FMallocWindows__Free.cpp \
+			  $(SRC_DIR)/GameServer/Core/FMallocWindows/Malloc/FMallocWindows__Malloc.cpp \
+			  $(SRC_DIR)/GameServer/Core/FMallocWindows/Realloc/FMallocWindows__Realloc.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ObjectCache/ObjectCache.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ObjectClassCache/ObjectClassCache.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ClassPreloader/ClassPreloader.cpp \

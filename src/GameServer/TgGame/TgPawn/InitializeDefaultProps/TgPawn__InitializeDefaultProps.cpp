@@ -36,23 +36,10 @@ UTgProperty* TgPawn__InitializeDefaultProps::InitializeProperty(ATgPawn* Pawn, i
 	Property->m_fMinimum = fMinimum;
 	Property->m_fMaximum = fMaximum;
 
-	UTgProperty*** PropertiesDataPtrPtr = (UTgProperty***)((char*)Pawn + 0x3F4);
-	int* PropertiesCountPtr = (int*)((char*)Pawn + 0x3F8);
-	int* PropertiesMaxPtr   = (int*)((char*)Pawn + 0x3FC);
-
-	// Initialize if not allocated yet
-	if (*PropertiesDataPtrPtr == nullptr)
-	{
-		*PropertiesDataPtrPtr = (UTgProperty**)malloc(sizeof(UTgProperty*) * 512);
-		memset(*PropertiesDataPtrPtr, 0, sizeof(UTgProperty*) * 512);
-		*PropertiesCountPtr = 0;
-		*PropertiesMaxPtr = 512;
-	}
-
-	// Add the property
-	int Count = *PropertiesCountPtr;
-	(*PropertiesDataPtrPtr)[Count] = Property;
-	*PropertiesCountPtr = Count + 1;
+	// TArray::Add routes through GAllocator::Realloc, matching whatever the
+	// engine eventually frees the buffer with.
+	int Count = Pawn->s_Properties.Count;
+	Pawn->s_Properties.Add(Property);
 
 	// Register (propId → s_Properties index) in the TMap at pawn+0x400 — the
 	// `s_PropertyIndx` MapProperty (UE3 TMap<int,int>, 0x3C bytes wide). The

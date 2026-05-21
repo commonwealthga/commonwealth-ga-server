@@ -2,12 +2,8 @@
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
 #include "src/SDK/SdkHeaders.h"
 #include "src/Utils/Logger/Logger.hpp"
-#include "src/Utils/Macros.hpp"
 
 void __fastcall TgGame__RegisterForWaveRevive::Call(ATgGame *Game, void *edx, AController *Controller) {
-	TARRAY_INIT(Game, AttackerReviveList, AController*, 0x418, 32);
-	TARRAY_INIT(Game, DefenderReviveList, AController*, 0x424, 32);
-
 	// Reject non-player controllers. TgAIController.uc:4570 unconditionally
 	// registers any henchman-flagged bot for wave revive, but our reimpl of
 	// ReviveAttackersTimer assumes everything on the list is an
@@ -42,13 +38,13 @@ void __fastcall TgGame__RegisterForWaveRevive::Call(ATgGame *Game, void *edx, AC
 	bool isAttacker = RepInfo->r_TaskForce->IsAttacker();
 
 	if (isAttacker) {
-		TARRAY_ADD(AttackerReviveList, Controller);
+		Game->s_AttackerReviveList.Add(Controller);
 		Logger::Log("revive", "RegisterForWaveRevive: %s -> AttackerList (count=%d)\n",
-			Controller->GetName(), *AttackerReviveListCountPtr);
+			Controller->GetName(), Game->s_AttackerReviveList.Count);
 	} else {
-		TARRAY_ADD(DefenderReviveList, Controller);
+		Game->s_DefenderReviveList.Add(Controller);
 		Logger::Log("revive", "RegisterForWaveRevive: %s -> DefenderList (count=%d)\n",
-			Controller->GetName(), *DefenderReviveListCountPtr);
+			Controller->GetName(), Game->s_DefenderReviveList.Count);
 	}
 
 	// Ensure wave revive timers are running. Some game modes (e.g. TgGame_Arena)

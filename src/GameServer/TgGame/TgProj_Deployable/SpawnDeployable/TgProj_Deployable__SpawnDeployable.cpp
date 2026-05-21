@@ -7,7 +7,6 @@
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
-#include "src/Utils/Macros.hpp"
 
 namespace {
 // Binary entry point for `AActor::SetCollisionFromCollisionType`.  Reads
@@ -469,55 +468,32 @@ void TgProj_Deployable__SpawnDeployable::RegisterDeployableInGRI(ATgDeployable* 
 	if (!worldInfo || !worldInfo->GRI) return;
 	ATgRepInfo_Game* gri = (ATgRepInfo_Game*)worldInfo->GRI;
 
-	// TARRAY_INIT preallocates a 255-slot libc-malloc'd buffer ONLY when
-	// the engine left Data == null (the usual state for UC's `var init array`
-	// declaration — nothing in UC writes m_Deployables, and the only would-be
-	// populator is a stripped binary native). Subsequent TARRAY_ADD calls
-	// write within the preallocated bounds without ever realloc'ing — so we
-	// never mix libc/engine allocators.
-	//
-	// The previous attempt used the SDK's TArray::Add which does
-	// `realloc(Data, ...)` on every grow. With Data==null on first call that
-	// degenerates to malloc, but the bNetDirty flag we set immediately after
-	// triggered the engine's replication tick to walk the array — and
-	// something in that path crashed badly enough to take out the crash
-	// reporter too. Sticking with the macro pattern for safety.
-	TARRAY_INIT(gri, m_Deployables, ATgDeployable*, 0x2B4, 255);
-
 	// Compact in place: drop nulls and already-destroyed entries before the
-	// append, so the global list reflects only live deployables. Stays
-	// within the preallocated buffer; never grows.
+	// append, so the global list reflects only live deployables. TArray::Add
+	// now routes through GAllocator::Realloc (matches the engine's allocator),
+	// so we can grow naturally instead of relying on a fixed preallocated cap
+	// — the previous libc-malloc + 255-slot-cap pattern was a workaround for
+	// the cross-allocator bug that's since been fixed at the SDK level.
 	int liveCount = 0;
-	for (int read = 0; read < *m_DeployablesCountPtr; ++read) {
-		ATgDeployable* d = (*m_DeployablesDataPtr)[read];
+	for (int read = 0; read < gri->m_Deployables.Count; ++read) {
+		ATgDeployable* d = gri->m_Deployables.Data[read];
 		if (!d) continue;
 		if (d->m_bInDestroyedState) continue;
 		if (d->bDeleteMe) continue;
 		if (d == dep) continue;  // dedupe — defensive against double-register
-		(*m_DeployablesDataPtr)[liveCount++] = d;
+		gri->m_Deployables.Data[liveCount++] = d;
 	}
-	*m_DeployablesCountPtr = liveCount;
+	gri->m_Deployables.Count = liveCount;
 
-	// Bail out if the buffer is somehow full — better to skip the registration
-	// than overflow the preallocated slab.
-	if (liveCount >= *m_DeployablesMaxPtr) {
-		Logger::Log(GetLogChannel(),
-			"[GRI.m_Deployables] buffer full (%d/%d) — skipping append\n",
-			liveCount, *m_DeployablesMaxPtr);
-		return;
-	}
-
-	TARRAY_ADD(m_Deployables, dep);
+	gri->m_Deployables.Add(dep);
 
 	// Deliberately NOT setting gri->bNetDirty / bForceNetUpdate here. The
 	// optimized rep list walks the array by content-equality each tick, so
-	// changes propagate naturally. Forcing dirty in the previous attempt
-	// appeared to be what surfaced the heap corruption as a downstream
-	// replication-tick fault.
+	// changes propagate naturally.
 
 	Logger::Log(GetLogChannel(),
 		"[GRI.m_Deployables] registered 0x%p deployableId=%d  list count=%d\n",
-		dep, dep->r_nDeployableId, *m_DeployablesCountPtr);
+		dep, dep->r_nDeployableId, gri->m_Deployables.Count);
 }
 
 bool TgProj_Deployable__SpawnDeployable::IsTimerBombDeployableId(int nDeployableId) {
@@ -893,15 +869,13 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 		}
 	}
 
-	TARRAY_INIT(pawn, s_SelfDeployableList, ATgDeployable*, 0x1514, 255);
-
 	// Per-device deploy limit (TGPID_MAX_DEPLOYABLES_OUT, prop 154 in DB).
 	// Walks pawn->s_SelfDeployableList, drops dead entries, and destroys the
 	// oldest matching deployables when adding a new one would exceed the
 	// configured limit. No-op when the firing fire mode has no prop-154 row.
 	EnforceDeployableLimit(pawn, sourceDevice, sourceFireMode);
 
-	TARRAY_ADD(s_SelfDeployableList, Deployable);
+	pawn->s_SelfDeployableList.Add(Deployable);
 
 	// r_nDeployableId MUST be set before ApplyDeployableSetup/InitializeDefaultProps —
 	// the native ApplyDeployableSetup uses it to look up the cfg; our

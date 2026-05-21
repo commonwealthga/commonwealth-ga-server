@@ -1,24 +1,14 @@
 #pragma once
 
-#define TARRAY_INIT(basename, arrayname, datatype, offset, max) \
-    datatype** arrayname##DataPtr = (datatype**)((char*)basename + offset); \
-    int* arrayname##CountPtr = (int*)((char*)basename + offset + 0x4); \
-    int* arrayname##MaxPtr   = (int*)((char*)basename + offset + 0x8); \
-    \
-    if (*arrayname##DataPtr == nullptr) \
-    { \
-        *arrayname##DataPtr = (datatype*)malloc(sizeof(datatype) * max); \
-        memset(*arrayname##DataPtr, 0, sizeof(datatype) * max); \
-        *arrayname##CountPtr = 0; \
-        *arrayname##MaxPtr = max; \
-    }
-
-#define TARRAY_ADD(arrayname, varname) \
-    { \
-        int Count = *arrayname##CountPtr; \
-        (*arrayname##DataPtr)[Count] = varname; \
-        *arrayname##CountPtr = Count + 1; \
-    }
+// (Former TARRAY_INIT / TARRAY_ADD macros removed — they libc-malloc'd into
+//  UProperty TArray fields and survived only because their host UObjects were
+//  long-lived. Now that `src/SDK/SdkHeaders.h::TArray::Add` routes through
+//  GAllocator::Realloc, just use the SDK field directly:
+//      Game->s_AttackerReviveList.Add(Controller);
+//      BotFactory->m_SpawnQueue.Add(entry);
+//      NetDriver->ClientConnections.Add(Connection);
+//  Fall back to a raw `(TArray<T>*)((char*)base + offset)` cast only when the
+//  SDK header doesn't expose the field.)
 
 // DO_REP / DO_REP_ARRAY mirror UE3's DOREP / DOREPARRAY in UnNet.h:173-202.
 //

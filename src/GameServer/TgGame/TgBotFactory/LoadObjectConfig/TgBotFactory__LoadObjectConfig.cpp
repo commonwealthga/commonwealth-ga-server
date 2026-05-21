@@ -2,7 +2,6 @@
 #include "src/Database/Database.hpp"
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
-#include "src/Utils/Macros.hpp"
 
 std::map<int, BotFactoryConfig> TgBotFactory__LoadObjectConfig::m_botFactoryConfigs;
 std::map<int, ATgBotFactory*> TgBotFactory__LoadObjectConfig::m_loadedBotFactories;
@@ -260,9 +259,6 @@ void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, 
 	BotFactory->nSpawnTableId = m_botFactoryConfigs[BotFactory->m_nMapObjectId].BotSpawnTableId;
 	BotFactory->s_nTaskForce = m_botFactoryConfigs[BotFactory->m_nMapObjectId].TaskForceNumber;
 
-	TARRAY_INIT(BotFactory, m_SpawnQueue, FSpawnQueueEntry, 0x240, 128);
-	TARRAY_INIT(BotFactory, m_SpawnGroups, FSpawnGroupDetail, 0x250, 128);
-
 	for (auto& spawnGroup : m_botFactoryConfigs[BotFactory->m_nMapObjectId].SpawnTables) {
 		int spawnGroupNumber = spawnGroup.first;
 		for (auto& spawnEntry : spawnGroup.second) {
@@ -272,7 +268,7 @@ void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, 
 			entry.bRespawn = 0;
 			entry.fSpawnTime = 0.0f;
 
-			TARRAY_ADD(m_SpawnQueue, entry);
+			BotFactory->m_SpawnQueue.Add(entry);
 		}
 	}
 

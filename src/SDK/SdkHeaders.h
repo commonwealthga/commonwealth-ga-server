@@ -4,6 +4,8 @@
 #include <string>
 #include <math.h>
 
+#include "src/GameServer/Core/FMallocWindows/GAllocator.hpp"
+
 /*
 #############################################################################################
 # Global Agenda (1.5.1.5) SDK
@@ -66,23 +68,30 @@ public:
 		return this->Data[ i ]; 
 	}; 
 
-	void Add ( T InputData ) 
-	{ 
-		if (Data == nullptr) {
-			Data = (T*)malloc(sizeof(T) * 1);
-		} else {
-			Data = (T*) realloc ( Data, sizeof ( T ) * ( Count + 1 ) ); 
-		}
-		Data[ Count++ ] = InputData; 
-		Max = Count; 
-	}; 
+	void Add ( T InputData )
+	{
+		// Route through UE3's allocator (`GAllocatorInstance` @ 0x134237e8),
+		// NOT libc malloc/realloc. UProperty TArray fields on UObjects get
+		// freed by the engine via vtable[3] (Free) on GAllocatorInstance
+		// during UObject destruction — a libc-malloc'd Data pointer there
+		// hits a NULL pool-table bucket in FMallocWindows::Free and crashes.
+		// Same hazard the project already documents for FString::Data in
+		// MarshalChannel__NotifyControlMessage.cpp, SpawnPlayerCharacter.cpp,
+		// and TgEffect__TrackStats.cpp ("Mixing allocators corrupts the
+		// C++ heap"). GAllocator::Realloc handles the Data==NULL case (its
+		// vtable Realloc delegates to Malloc).
+		Data = (T*) GAllocator::Realloc ( Data, sizeof ( T ) * ( Count + 1 ) );
+		Data[ Count++ ] = InputData;
+		Max = Count;
+	};
 
-	void Clear() 
-	{ 
-		free ( Data ); 
-		Count = Max = 0; 
-	}; 
-}; 
+	void Clear()
+	{
+		GAllocator::Free ( Data );
+		Data = nullptr;
+		Count = Max = 0;
+	};
+};
 
 struct FNameEntry 
 { 

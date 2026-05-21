@@ -4,7 +4,6 @@
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
-#include "src/Utils/Macros.hpp"
 
 #include <unordered_set>
 
@@ -283,8 +282,6 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 		if (rc == SQLITE_OK) {
 			sqlite3_bind_int(stmt, 1, egId);
 
-			TARRAY_INIT(g, effects, UTgEffect*, 0x60, 64)
-
 			while (sqlite3_step(stmt) == SQLITE_ROW) {
 				int classResId = sqlite3_column_int(stmt, 0);
 				UClass* effectClass = GetEffectClassById(classResId);
@@ -349,7 +346,7 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 					BuffEffectRegistry::Mark(e);
 				}
 
-				TARRAY_ADD(effects, e)
+				g->m_Effects.Add(e);
 			}
 			sqlite3_finalize(stmt);
 		}
@@ -527,8 +524,6 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 			else if (fmAttackType == 170)                       eAttackType = 1; // TGAT_Melee
 			else if (fmAttackType == 85 || fmAttackType == 177) eAttackType = 2; // TGAT_Range
 
-			TARRAY_INIT(pThis, egList, UTgEffectGroup*, 0x48, 8)
-
 			for (int** pp = begin; pp != end; pp++) {
 				int egId   = (*pp)[0];
 				int egType = (*pp)[1];
@@ -536,7 +531,7 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 				if (g) {
 					g->m_nDamageType = fmDamageType;
 					g->m_eAttackType = eAttackType;
-					TARRAY_ADD(egList, g)
+					pThis->s_EffectGroupList.Add(g);
 					// Associate this template with the fire-mode that owns
 					// it. CloneEffectGroup uses this to recover the firing
 					// entity (deployable) when UC's `InitInstance` leaves

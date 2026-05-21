@@ -21,20 +21,12 @@ UTgProperty* TgDeployable__InitializeDefaultProps::InitializeProperty(
 {
 	if (!Deployable) return nullptr;
 
-	// Allocate s_Properties storage on first use. 128 slots is comfortably over
-	// what the deploy path populates (HP, HP_MAX, DeployRate, + any fire-mode
-	// property descriptors pushed by ApplyDeployableSetup).
-	if (Deployable->s_Properties.Data == nullptr) {
-		Deployable->s_Properties.Data = (UTgProperty**)malloc(sizeof(UTgProperty*) * 128);
-		memset(Deployable->s_Properties.Data, 0, sizeof(UTgProperty*) * 128);
-		Deployable->s_Properties.Count = 0;
-		Deployable->s_Properties.Max   = 128;
-	}
-
 	// Idempotent upsert — if the prop is already in s_Properties, update its
 	// fields in place instead of adding a duplicate slot.  Lets callers seed
 	// defaults and then override from DB rows without creating double entries
 	// that SetProperty/GetProperty's linear scan would read inconsistently.
+	// TArray::Add now routes through GAllocator::Realloc so the engine's
+	// eventual UProperty cleanup frees Data through the matching allocator.
 	UTgProperty* Property = nullptr;
 	for (int i = 0; i < Deployable->s_Properties.Count; ++i) {
 		UTgProperty* p = Deployable->s_Properties.Data[i];
@@ -46,9 +38,7 @@ UTgProperty* TgDeployable__InitializeDefaultProps::InitializeProperty(
 	if (!Property) {
 		Property = (UTgProperty*)TgProperty__ConstructTgProperty::CallOriginal(
 			ClassPreloader::GetTgPropertyClass(), -1, 0, 0, 0, 0, 0, 0, 0);
-		int idx = Deployable->s_Properties.Count;
-		Deployable->s_Properties.Data[idx] = Property;
-		Deployable->s_Properties.Count     = idx + 1;
+		Deployable->s_Properties.Add(Property);
 	}
 
 	Property->m_nPropertyId = nPropertyId;

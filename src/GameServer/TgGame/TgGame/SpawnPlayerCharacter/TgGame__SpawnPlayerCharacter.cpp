@@ -19,7 +19,6 @@
 #include "src/GameServer/Globals.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
-#include "src/Utils/Macros.hpp"
 
 bool TgGame__SpawnPlayerCharacter::bEnemyGearSpawned = true;  // now handled in SpawnBotById
 
@@ -352,19 +351,16 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newplayerteamentry.bLeader = 0;
 	newplayerteamentry.pPrep = newrepplayer;
 
-	TARRAY_INIT(attackers, TeamPlayersAttackers, FTGTEAM_ENTRY, 0x214, 32);
-	TARRAY_INIT(defenders, TeamPlayersDefenders, FTGTEAM_ENTRY, 0x214, 32);
-
 	{
 		int tf = GClientConnectionsData[ConnectionIndex].PlayerInfo.task_force;
 		if (tf == 1) {
-			TARRAY_ADD(TeamPlayersAttackers, newplayerteamentry);
+			attackers->m_TeamPlayers.Add(newplayerteamentry);
 		} else {
-			TARRAY_ADD(TeamPlayersDefenders, newplayerteamentry);
+			defenders->m_TeamPlayers.Add(newplayerteamentry);
 		}
 	}
 
-	// TARRAY_ADD shallow-copies the struct (memcpy-style).  The TArray copy
+	// TArray::Add shallow-copies the struct (memcpy-style).  The TArray copy
 	// now owns the FString Data pointers.  Null them in the local so
 	// ~FString doesn't delete[] memory that UE3 will later appFree.
 	newplayerteamentry.fsName.Data = nullptr;

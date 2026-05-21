@@ -13,4 +13,3 @@ public:
 		m_original(Malloc, edx, Ptr);
 	}
 };
-

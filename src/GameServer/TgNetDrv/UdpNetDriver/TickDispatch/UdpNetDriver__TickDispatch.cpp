@@ -8,7 +8,6 @@
 #include "src/GameServer/IpDrv/NetConnection/LowLevelGetRemoteAddress/NetConnection__LowLevelGetRemoteAddress.hpp"
 #include "src/GameServer/Engine/World/NotifyAcceptedConnection/World__NotifyAcceptedConnection.hpp"
 #include "src/GameServer/IpDrv/NetConnection/ReceivedRawPacket/NetConnection__ReceivedRawPacket.hpp"
-#include "src/Utils/Macros.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/RecentlyClosedAddrs/RecentlyClosedAddrs.hpp"
@@ -26,13 +25,10 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 	// Logger::Log("debug", "MINE UdpNetDriver__TickDispatch START\n");
 	NetDriver__TickDispatch::CallOriginal(NetDriver, edx, DeltaTime);
 
-	// One-shot: allocate the ClientConnections TArray storage if the engine
-	// left Data=nullptr/Max=0 (it does — the array starts fully nulled). After
-	// the first call the `*DataPtr == nullptr` check fails and the macro is
-	// just 3 pointer derefs + 1 compare per frame, so moving it out of the hot
-	// path wouldn't measurably help. Leave it here, scoped to where the array
-	// is actually used.
-	TARRAY_INIT(NetDriver, ClientConnections, UNetConnection*, 0x44, 128);
+	// Engine leaves NetDriver->ClientConnections with Data=nullptr/Max=0 at
+	// startup; TArray::Add now routes through GAllocator::Realloc, so the
+	// first Add allocates and subsequent ones grow naturally — no preallocated
+	// fixed cap, allocator matches the engine's eventual Free.
 
 	void* socketInstance = *(void**)((char*)NetDriver + 0x14C);
 	SOCKET Socket = *(SOCKET*)((char*)socketInstance + 0x08);
@@ -249,7 +245,7 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 
 			Logger::Log("debug", "notify accepted connection called\n");
 
-			TARRAY_ADD(ClientConnections, Connection); 
+			NetDriver->ClientConnections.Add(Connection);
 		}
 
 		if (Connection) {
