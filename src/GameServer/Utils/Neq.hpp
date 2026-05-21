@@ -270,12 +270,35 @@ bool NEQ(FString& A,FString& B,void* Map,void* Channel) {
 	return A!=B;
 }
 bool NEQ(FVehicleState& A,FVehicleState& B,void* Map,void* Channel) {
-	return 1;
+	// return 1;
+	return A.RBState != B.RBState
+	|| A.ServerBrake != B.ServerBrake
+	|| A.ServerGas != B.ServerGas
+	|| A.ServerSteering != B.ServerSteering
+	|| A.ServerRise != B.ServerRise
+	|| A.bServerHandbrake != B.bServerHandbrake
+	|| A.ServerView != B.ServerView;
 }
 bool NEQ(FRigidBodyState& A,FRigidBodyState& B,void* Map,void* Channel)
 {
-	return 1;
-	// return ((A.Position - B.Position).SizeSquared() > 0.4f || (A.Quaternion - B.Quaternion).SizeSquared() > 0.001f || A.bNewData != B.bNewData);
+	if (A.bNewData != B.bNewData) {
+		return 1;
+	}
+	// return 1;
+
+		// return X*X + Y*Y;
+	FVector vPositionDiff = A.Position - B.Position;
+	float fPositionSizeSquared = vPositionDiff.X * vPositionDiff.X + vPositionDiff.Y * vPositionDiff.Y + vPositionDiff.Z * vPositionDiff.Z;
+
+	FQuat qQuatDiff;
+	qQuatDiff.X = A.Quaternion.X - B.Quaternion.X;
+	qQuatDiff.Y = A.Quaternion.Y - B.Quaternion.Y;
+	qQuatDiff.Z = A.Quaternion.Z - B.Quaternion.Z;
+	qQuatDiff.W = A.Quaternion.W - B.Quaternion.W;
+	float fQuatSizeSquared = qQuatDiff.X * qQuatDiff.X + qQuatDiff.Y * qQuatDiff.Y + qQuatDiff.Z * qQuatDiff.Z + qQuatDiff.W * qQuatDiff.W;
+
+
+	return (fPositionSizeSquared > 0.4f || fQuatSizeSquared > 0.001f);
 }
 bool NEQ(FDeviceStatInfo& A,FDeviceStatInfo& B,void* Map,void* Channel) {
 	return A.Stats[0] != B.Stats[0] || A.Stats[1] != B.Stats[1] || A.Stats[2] != B.Stats[2] || A.Stats[3] != B.Stats[3]

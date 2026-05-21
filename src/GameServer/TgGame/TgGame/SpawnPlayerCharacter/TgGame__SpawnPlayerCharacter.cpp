@@ -231,6 +231,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	newpawn->PlayerReplicationInfo = PlayerController->PlayerReplicationInfo;
 
+	newpawn->NetPriority        = 10.0f;
+	newpawn->NetUpdateFrequency = 10.0f;
 	newpawn->bNetInitial = 1;
 	newpawn->bNetDirty = 1;
 	newpawn->bForceNetUpdate = 1;

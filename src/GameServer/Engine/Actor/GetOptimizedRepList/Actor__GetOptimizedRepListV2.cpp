@@ -2,6 +2,7 @@
 #include "src/Utils/Macros.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
+#include <cstdint>
 
 bool Actor__GetOptimizedRepList::bRepListCached = false;
 
@@ -955,6 +956,549 @@ UProperty* ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex = nullptr;
 UProperty* FloatProperty_TgGame_TgTimerManager_r_fRemaining = nullptr;
 UProperty* FloatProperty_TgGame_TgTimerManager_r_fStartTime = nullptr;
 
+// =====================================================================
+// Bitmask dispatch — replaces the 90 top-of-block `if (cls == A || ...)`
+// chains with a single hash lookup + per-block bit tests. Populated once
+// at first call to ResolveRepListProperties from the static table below.
+// =====================================================================
+struct RepListBits { uint64_t lo; uint64_t hi; };
+static std::unordered_map<UClass*, RepListBits> g_classDispatch;
+
+// =====================================================================
+// Per-block index constants. One per top-of-block dispatch gate in Call().
+// Bit position = constant value; word = position >> 6.
+// =====================================================================
+static constexpr int BIDX_Engine_AmbientSoundSimpleToggleable = 0;
+static constexpr int BIDX_Engine_CameraActor = 1;
+static constexpr int BIDX_Engine_Controller = 2;
+static constexpr int BIDX_Engine_CrowdAttractor = 3;
+static constexpr int BIDX_Engine_CrowdReplicationActor = 4;
+static constexpr int BIDX_Engine_DroppedPickup = 5;
+static constexpr int BIDX_Engine_DynamicSMActor = 6;
+static constexpr int BIDX_Engine_Emitter = 7;
+static constexpr int BIDX_Engine_EmitterSpawnable = 8;
+static constexpr int BIDX_Engine_FluidInfluenceActor = 9;
+static constexpr int BIDX_Engine_FogVolumeDensityInfo = 10;
+static constexpr int BIDX_Engine_GameReplicationInfo = 11;
+static constexpr int BIDX_Engine_HeightFog = 12;
+static constexpr int BIDX_Engine_Inventory = 13;
+static constexpr int BIDX_Engine_InventoryManager = 14;
+static constexpr int BIDX_Engine_KActor = 15;
+static constexpr int BIDX_Engine_KAsset = 16;
+static constexpr int BIDX_Engine_LensFlareSource = 17;
+static constexpr int BIDX_Engine_Light = 18;
+static constexpr int BIDX_Engine_MatineeActor = 19;
+static constexpr int BIDX_Engine_NxForceField = 20;
+static constexpr int BIDX_Engine_Pawn = 21;
+static constexpr int BIDX_Engine_PhysXEmitterSpawnable = 22;
+static constexpr int BIDX_Engine_PickupFactory = 23;
+static constexpr int BIDX_Engine_PlayerController = 24;
+static constexpr int BIDX_Engine_PlayerReplicationInfo = 25;
+static constexpr int BIDX_Engine_PostProcessVolume = 26;
+static constexpr int BIDX_Engine_Projectile = 27;
+static constexpr int BIDX_Engine_RB_CylindricalForceActor = 28;
+static constexpr int BIDX_Engine_RB_LineImpulseActor = 29;
+static constexpr int BIDX_Engine_RB_RadialForceActor = 30;
+static constexpr int BIDX_Engine_RB_RadialImpulseActor = 31;
+static constexpr int BIDX_Engine_SVehicle = 32;
+static constexpr int BIDX_Engine_SkeletalMeshActor = 33;
+static constexpr int BIDX_Engine_TeamInfo = 34;
+static constexpr int BIDX_Engine_Teleporter = 35;
+static constexpr int BIDX_Engine_Vehicle = 36;
+static constexpr int BIDX_Engine_WorldInfo = 37;
+static constexpr int BIDX_TgGame_TgChestActor = 38;
+static constexpr int BIDX_TgGame_TgDeploy_BeaconEntrance = 39;
+static constexpr int BIDX_TgGame_TgDeploy_DestructibleCover = 40;
+static constexpr int BIDX_TgGame_TgDeploy_Sensor = 41;
+static constexpr int BIDX_TgGame_TgDevice = 42;
+static constexpr int BIDX_TgGame_TgDevice_Morale = 43;
+static constexpr int BIDX_TgGame_TgDoor = 44;
+static constexpr int BIDX_TgGame_TgDoorMarker = 45;
+static constexpr int BIDX_TgGame_TgDroppedItem = 46;
+static constexpr int BIDX_TgGame_TgDynamicDestructible = 47;
+static constexpr int BIDX_TgGame_TgDynamicSMActor = 48;
+static constexpr int BIDX_TgGame_TgDynamicSMActor_2 = 49;
+static constexpr int BIDX_TgGame_TgEffectManager = 50;
+static constexpr int BIDX_TgGame_TgEmitter = 51;
+static constexpr int BIDX_TgGame_TgFlagCaptureVolume = 52;
+static constexpr int BIDX_TgGame_TgFracturedStaticMeshActor = 53;
+static constexpr int BIDX_TgGame_TgHexLandMarkActor = 54;
+static constexpr int BIDX_TgGame_TgInterpActor = 55;
+static constexpr int BIDX_TgGame_TgInventoryManager = 56;
+static constexpr int BIDX_TgGame_TgKismetTestActor = 57;
+static constexpr int BIDX_TgGame_TgLevelCamera = 58;
+static constexpr int BIDX_TgGame_TgMissionObjective = 59;
+static constexpr int BIDX_TgGame_TgMissionObjective_Bot = 60;
+static constexpr int BIDX_TgGame_TgMissionObjective_Escort = 61;
+static constexpr int BIDX_TgGame_TgMissionObjective_Proximity = 62;
+static constexpr int BIDX_TgGame_TgObjectiveAssignment = 63;
+static constexpr int BIDX_TgGame_TgPawn = 64;
+static constexpr int BIDX_TgGame_TgPawn_Ambush = 65;
+static constexpr int BIDX_TgGame_TgPawn_AttackTransport = 66;
+static constexpr int BIDX_TgGame_TgPawn_CTR = 67;
+static constexpr int BIDX_TgGame_TgPawn_Character = 68;
+static constexpr int BIDX_TgGame_TgPawn_DuneCommander = 69;
+static constexpr int BIDX_TgGame_TgPawn_Iris = 70;
+static constexpr int BIDX_TgGame_TgPawn_Reaper = 71;
+static constexpr int BIDX_TgGame_TgPawn_Siege = 72;
+static constexpr int BIDX_TgGame_TgPawn_Turret = 73;
+static constexpr int BIDX_TgGame_TgPawn_VanityPet = 74;
+static constexpr int BIDX_TgGame_TgPlayerController = 75;
+static constexpr int BIDX_TgGame_TgProj_Grapple = 76;
+static constexpr int BIDX_TgGame_TgProj_Missile = 77;
+static constexpr int BIDX_TgGame_TgProj_Rocket = 78;
+static constexpr int BIDX_TgGame_TgProjectile = 79;
+static constexpr int BIDX_TgGame_TgRepInfo_Beacon = 80;
+static constexpr int BIDX_TgGame_TgRepInfo_Deployable = 81;
+static constexpr int BIDX_TgGame_TgRepInfo_Game = 82;
+static constexpr int BIDX_TgGame_TgRepInfo_GameOpenWorld = 83;
+static constexpr int BIDX_TgGame_TgRepInfo_Player = 84;
+static constexpr int BIDX_TgGame_TgRepInfo_TaskForce = 85;
+static constexpr int BIDX_TgGame_TgSkydiveTarget = 86;
+static constexpr int BIDX_TgGame_TgSkydivingVolume = 87;
+static constexpr int BIDX_TgGame_TgTeamBeaconManager = 88;
+static constexpr int BIDX_TgGame_TgTimerManager = 89;
+static constexpr int BIDX_TgGame_TgDeployable = 90;
+
+struct BlockClassEntry { int blockIdx; UClass** classPP; };
+static const BlockClassEntry g_blockClassTable[] = {
+    { BIDX_Engine_AmbientSoundSimpleToggleable, &Class_Engine_AmbientSoundSimpleToggleable },
+    { BIDX_Engine_CameraActor, &Class_Engine_CameraActor },
+    { BIDX_Engine_CameraActor, &Class_Engine_DynamicCameraActor },
+    { BIDX_Engine_CameraActor, &Class_TgGame_TgInterpolatingCameraActor },
+    { BIDX_Engine_CameraActor, &Class_TgGame_TgLevelCamera },
+    { BIDX_Engine_Controller, &Class_Engine_Controller },
+    { BIDX_Engine_Controller, &Class_Engine_AIController },
+    { BIDX_Engine_Controller, &Class_Engine_Admin },
+    { BIDX_Engine_Controller, &Class_Engine_DebugCameraController },
+    { BIDX_Engine_Controller, &Class_Engine_PlayerController },
+    { BIDX_Engine_Controller, &Class_GameFramework_GameAIController },
+    { BIDX_Engine_Controller, &Class_GameFramework_GamePlayerController },
+    { BIDX_Engine_Controller, &Class_TgGame_TgAIController },
+    { BIDX_Engine_Controller, &Class_TgGame_TgDebugCameraController },
+    { BIDX_Engine_Controller, &Class_TgGame_TgPlayerController },
+    { BIDX_Engine_CrowdAttractor, &Class_Engine_CrowdAttractor },
+    { BIDX_Engine_CrowdReplicationActor, &Class_Engine_CrowdReplicationActor },
+    { BIDX_Engine_DroppedPickup, &Class_Engine_DroppedPickup },
+    { BIDX_Engine_DynamicSMActor, &Class_Engine_DynamicSMActor },
+    { BIDX_Engine_DynamicSMActor, &Class_Engine_DynamicSMActor_Spawnable },
+    { BIDX_Engine_DynamicSMActor, &Class_Engine_InterpActor },
+    { BIDX_Engine_DynamicSMActor, &Class_Engine_KActor },
+    { BIDX_Engine_DynamicSMActor, &Class_Engine_KActorSpawnable },
+    { BIDX_Engine_DynamicSMActor, &Class_TgGame_TgDoor },
+    { BIDX_Engine_DynamicSMActor, &Class_TgGame_TgDynamicDestructible },
+    { BIDX_Engine_DynamicSMActor, &Class_TgGame_TgDynamicSMActor },
+    { BIDX_Engine_DynamicSMActor, &Class_TgGame_TgInterpActor },
+    { BIDX_Engine_DynamicSMActor, &Class_TgGame_TgKActorSpawnable },
+    { BIDX_Engine_DynamicSMActor, &Class_TgGame_TgKismetTestActor },
+    { BIDX_Engine_DynamicSMActor, &Class_TgGame_TgObjectiveAttachActor },
+    { BIDX_Engine_Emitter, &Class_Engine_Emitter },
+    { BIDX_Engine_Emitter, &Class_Engine_EmitterCameraLensEffectBase },
+    { BIDX_Engine_Emitter, &Class_Engine_EmitterSpawnable },
+    { BIDX_Engine_Emitter, &Class_Engine_PhysXEmitterSpawnable },
+    { BIDX_Engine_Emitter, &Class_TgGame_TgEmitter },
+    { BIDX_Engine_Emitter, &Class_TgGame_TgEmitterCrashlanding },
+    { BIDX_Engine_Emitter, &Class_TgGame_TgEmitterSpawnable },
+    { BIDX_Engine_EmitterSpawnable, &Class_Engine_EmitterSpawnable },
+    { BIDX_Engine_FluidInfluenceActor, &Class_Engine_FluidInfluenceActor },
+    { BIDX_Engine_FogVolumeDensityInfo, &Class_Engine_FogVolumeDensityInfo },
+    { BIDX_Engine_FogVolumeDensityInfo, &Class_Engine_FogVolumeConeDensityInfo },
+    { BIDX_Engine_FogVolumeDensityInfo, &Class_Engine_FogVolumeConstantDensityInfo },
+    { BIDX_Engine_FogVolumeDensityInfo, &Class_Engine_FogVolumeLinearHalfspaceDensityInfo },
+    { BIDX_Engine_FogVolumeDensityInfo, &Class_Engine_FogVolumeSphericalDensityInfo },
+    { BIDX_Engine_GameReplicationInfo, &Class_Engine_GameReplicationInfo },
+    { BIDX_Engine_GameReplicationInfo, &Class_TgGame_TgRepInfo_Game },
+    { BIDX_Engine_GameReplicationInfo, &Class_TgGame_TgRepInfo_GameOpenWorld },
+    { BIDX_Engine_HeightFog, &Class_Engine_HeightFog },
+    { BIDX_Engine_Inventory, &Class_Engine_Inventory },
+    { BIDX_Engine_Inventory, &Class_Engine_Weapon },
+    { BIDX_Engine_Inventory, &Class_GameFramework_GameWeapon },
+    { BIDX_Engine_Inventory, &Class_TgGame_TgDevice },
+    { BIDX_Engine_Inventory, &Class_TgGame_TgDevice_Grenade },
+    { BIDX_Engine_Inventory, &Class_TgGame_TgDevice_HitPulse },
+    { BIDX_Engine_Inventory, &Class_TgGame_TgDevice_MeleeDualWield },
+    { BIDX_Engine_Inventory, &Class_TgGame_TgDevice_Morale },
+    { BIDX_Engine_Inventory, &Class_TgGame_TgDevice_NewMelee },
+    { BIDX_Engine_Inventory, &Class_TgGame_TgDevice_NewRange },
+    { BIDX_Engine_InventoryManager, &Class_Engine_InventoryManager },
+    { BIDX_Engine_InventoryManager, &Class_TgGame_TgInventoryManager },
+    { BIDX_Engine_KActor, &Class_Engine_KActor },
+    { BIDX_Engine_KActor, &Class_Engine_KActorSpawnable },
+    { BIDX_Engine_KActor, &Class_TgGame_TgKActorSpawnable },
+    { BIDX_Engine_KAsset, &Class_Engine_KAsset },
+    { BIDX_Engine_KAsset, &Class_Engine_KAssetSpawnable },
+    { BIDX_Engine_KAsset, &Class_TgGame_TgKAssetSpawnable },
+    { BIDX_Engine_KAsset, &Class_TgGame_TgKAsset_ClientSideSim },
+    { BIDX_Engine_LensFlareSource, &Class_Engine_LensFlareSource },
+    { BIDX_Engine_Light, &Class_Engine_Light },
+    { BIDX_Engine_Light, &Class_Engine_DirectionalLight },
+    { BIDX_Engine_Light, &Class_Engine_DirectionalLightToggleable },
+    { BIDX_Engine_Light, &Class_Engine_PointLight },
+    { BIDX_Engine_Light, &Class_Engine_PointLightMovable },
+    { BIDX_Engine_Light, &Class_Engine_PointLightToggleable },
+    { BIDX_Engine_Light, &Class_Engine_SkyLight },
+    { BIDX_Engine_Light, &Class_Engine_SkyLightToggleable },
+    { BIDX_Engine_Light, &Class_Engine_SpotLight },
+    { BIDX_Engine_Light, &Class_Engine_SpotLightMovable },
+    { BIDX_Engine_Light, &Class_Engine_SpotLightToggleable },
+    { BIDX_Engine_Light, &Class_Engine_StaticLightCollectionActor },
+    { BIDX_Engine_Light, &Class_TgGame_TgCharacterBuilderLight },
+    { BIDX_Engine_MatineeActor, &Class_Engine_MatineeActor },
+    { BIDX_Engine_NxForceField, &Class_Engine_NxForceField },
+    { BIDX_Engine_NxForceField, &Class_Engine_NxCylindricalForceField },
+    { BIDX_Engine_NxForceField, &Class_Engine_NxCylindricalForceFieldCapsule },
+    { BIDX_Engine_NxForceField, &Class_Engine_NxForceFieldGeneric },
+    { BIDX_Engine_NxForceField, &Class_Engine_NxForceFieldRadial },
+    { BIDX_Engine_NxForceField, &Class_Engine_NxForceFieldTornado },
+    { BIDX_Engine_NxForceField, &Class_Engine_NxGenericForceField },
+    { BIDX_Engine_NxForceField, &Class_Engine_NxGenericForceFieldBox },
+    { BIDX_Engine_NxForceField, &Class_Engine_NxGenericForceFieldCapsule },
+    { BIDX_Engine_NxForceField, &Class_Engine_NxRadialCustomForceField },
+    { BIDX_Engine_NxForceField, &Class_Engine_NxRadialForceField },
+    { BIDX_Engine_NxForceField, &Class_Engine_NxTornadoAngularForceField },
+    { BIDX_Engine_NxForceField, &Class_Engine_NxTornadoAngularForceFieldCapsule },
+    { BIDX_Engine_NxForceField, &Class_Engine_NxTornadoForceField },
+    { BIDX_Engine_NxForceField, &Class_Engine_NxTornadoForceFieldCapsule },
+    { BIDX_Engine_Pawn, &Class_Engine_Pawn },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_AVCompositeWalker },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Ambush },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_AndroidMinion },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_AttackTransport },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Boss },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Boss_Destroyer },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Brawler },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_CTR },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Character },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_ColonyEye },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Destructible },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Detonator },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Dismantler },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_DuneCommander },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Elite_Alchemist },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Elite_Assassin },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_EscortRobot },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_FlyingBoss },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_GroundPetA },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Guardian },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Hover },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_HoverShieldSphere },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Hunter },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Inquisitor },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Interact_NPC },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Iris },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Juggernaut },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Marauder },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_NPC },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_NewWasp },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Raptor },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Reaper },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_RecursiveSpawner },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Remote },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Robot },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Scanner },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_ScannerRecursive },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Siege },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_SiegeBarrage },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_SiegeHover },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_SiegeRapidFire },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Sniper },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_SonoranCommander },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_SupportForeman },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Switchblade },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Tentacle },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_ThinkTank },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_TreadRobot },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Turret },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_TurretAVAFlak },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_TurretAVARocket },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_TurretFlak },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_TurretFlame },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_TurretPlasma },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_UberWalker },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Vanguard },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_VanityPet },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Vulcan },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Warlord },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_WaspSpawner },
+    { BIDX_Engine_Pawn, &Class_TgGame_TgPawn_Widow },
+    { BIDX_Engine_Pawn, &Class_Engine_Scout },
+    { BIDX_Engine_Pawn, &Class_Engine_Vehicle },
+    { BIDX_Engine_Pawn, &Class_Engine_SVehicle },
+    { BIDX_Engine_Pawn, &Class_GameFramework_GamePawn },
+    { BIDX_Engine_Pawn, &Class_GameFramework_GameVehicle },
+    { BIDX_Engine_PhysXEmitterSpawnable, &Class_Engine_PhysXEmitterSpawnable },
+    { BIDX_Engine_PickupFactory, &Class_Engine_PickupFactory },
+    { BIDX_Engine_PickupFactory, &Class_TgGame_TgPickupFactory },
+    { BIDX_Engine_PickupFactory, &Class_TgGame_TgPickupFactory_Item },
+    { BIDX_Engine_PlayerController, &Class_Engine_PlayerController },
+    { BIDX_Engine_PlayerController, &Class_Engine_Admin },
+    { BIDX_Engine_PlayerController, &Class_Engine_DebugCameraController },
+    { BIDX_Engine_PlayerController, &Class_GameFramework_GamePlayerController },
+    { BIDX_Engine_PlayerController, &Class_TgGame_TgDebugCameraController },
+    { BIDX_Engine_PlayerController, &Class_TgGame_TgPlayerController },
+    { BIDX_Engine_PlayerReplicationInfo, &Class_Engine_PlayerReplicationInfo },
+    { BIDX_Engine_PlayerReplicationInfo, &Class_TgGame_TgRepInfo_Player },
+    { BIDX_Engine_PostProcessVolume, &Class_Engine_PostProcessVolume },
+    { BIDX_Engine_PostProcessVolume, &Class_TgGame_TgPostProcessVolume },
+    { BIDX_Engine_Projectile, &Class_Engine_Projectile },
+    { BIDX_Engine_Projectile, &Class_GameFramework_GameProjectile },
+    { BIDX_Engine_Projectile, &Class_TgGame_TgProjectile },
+    { BIDX_Engine_Projectile, &Class_TgGame_TgProj_Teleporter },
+    { BIDX_Engine_Projectile, &Class_TgGame_TgProj_StraightTeleporter },
+    { BIDX_Engine_Projectile, &Class_TgGame_TgProj_Rocket },
+    { BIDX_Engine_Projectile, &Class_TgGame_TgProj_Net },
+    { BIDX_Engine_Projectile, &Class_TgGame_TgProj_Mortar },
+    { BIDX_Engine_Projectile, &Class_TgGame_TgProj_Missile },
+    { BIDX_Engine_Projectile, &Class_TgGame_TgProj_Grenade },
+    { BIDX_Engine_Projectile, &Class_TgGame_TgProj_Grapple },
+    { BIDX_Engine_Projectile, &Class_TgGame_TgProj_FreeGrenade },
+    { BIDX_Engine_Projectile, &Class_TgGame_TgProj_Deployable },
+    { BIDX_Engine_Projectile, &Class_TgGame_TgProj_Bounce },
+    { BIDX_Engine_Projectile, &Class_TgGame_TgProj_Bot },
+    { BIDX_Engine_RB_CylindricalForceActor, &Class_Engine_RB_CylindricalForceActor },
+    { BIDX_Engine_RB_LineImpulseActor, &Class_Engine_RB_LineImpulseActor },
+    { BIDX_Engine_RB_RadialForceActor, &Class_Engine_RB_RadialForceActor },
+    { BIDX_Engine_RB_RadialImpulseActor, &Class_Engine_RB_RadialImpulseActor },
+    { BIDX_Engine_SVehicle, &Class_Engine_SVehicle },
+    { BIDX_Engine_SVehicle, &Class_GameFramework_GameVehicle },
+    { BIDX_Engine_SkeletalMeshActor, &Class_Engine_SkeletalMeshActor },
+    { BIDX_Engine_SkeletalMeshActor, &Class_Engine_SkeletalMeshActorBasedOnExtremeContent },
+    { BIDX_Engine_SkeletalMeshActor, &Class_Engine_SkeletalMeshActorMAT },
+    { BIDX_Engine_SkeletalMeshActor, &Class_Engine_SkeletalMeshActorMATSpawnable },
+    { BIDX_Engine_SkeletalMeshActor, &Class_Engine_SkeletalMeshActorSpawnable },
+    { BIDX_Engine_SkeletalMeshActor, &Class_TgGame_TgNavRouteIndicator },
+    { BIDX_Engine_SkeletalMeshActor, &Class_TgGame_TgSkeletalMeshActorGenericUIPreview },
+    { BIDX_Engine_SkeletalMeshActor, &Class_TgGame_TgSkeletalMeshActorNPC },
+    { BIDX_Engine_SkeletalMeshActor, &Class_TgGame_TgSkeletalMeshActorNPCVendor },
+    { BIDX_Engine_SkeletalMeshActor, &Class_TgGame_TgSkeletalMeshActorSpawnable },
+    { BIDX_Engine_SkeletalMeshActor, &Class_TgGame_TgSkeletalMeshActor_CharacterBuilder },
+    { BIDX_Engine_SkeletalMeshActor, &Class_TgGame_TgSkeletalMeshActor_CharacterBuilderSpawnable },
+    { BIDX_Engine_SkeletalMeshActor, &Class_TgGame_TgSkeletalMeshActor_Composite },
+    { BIDX_Engine_SkeletalMeshActor, &Class_TgGame_TgSkeletalMeshActor_EquipScreen },
+    { BIDX_Engine_SkeletalMeshActor, &Class_TgGame_TgSkeletalMeshActor_MeleePreVis },
+    { BIDX_Engine_SkeletalMeshActor, &Class_TgGame_TgSkeletalMeshActor },
+    { BIDX_Engine_TeamInfo, &Class_Engine_TeamInfo },
+    { BIDX_Engine_TeamInfo, &Class_TgGame_TgRepInfo_TaskForce },
+    { BIDX_Engine_Teleporter, &Class_Engine_Teleporter },
+    { BIDX_Engine_Teleporter, &Class_TgGame_TgTeleporter },
+    { BIDX_Engine_Vehicle, &Class_Engine_Vehicle },
+    { BIDX_Engine_Vehicle, &Class_Engine_SVehicle },
+    { BIDX_Engine_Vehicle, &Class_GameFramework_GameVehicle },
+    { BIDX_Engine_WorldInfo, &Class_Engine_WorldInfo },
+    { BIDX_TgGame_TgChestActor, &Class_TgGame_TgChestActor },
+    { BIDX_TgGame_TgDeploy_BeaconEntrance, &Class_TgGame_TgDeploy_BeaconEntrance },
+    { BIDX_TgGame_TgDeploy_DestructibleCover, &Class_TgGame_TgDeploy_DestructibleCover },
+    { BIDX_TgGame_TgDeploy_Sensor, &Class_TgGame_TgDeploy_Sensor },
+    { BIDX_TgGame_TgDevice, &Class_TgGame_TgDevice },
+    { BIDX_TgGame_TgDevice, &Class_TgGame_TgDevice_Grenade },
+    { BIDX_TgGame_TgDevice, &Class_TgGame_TgDevice_HitPulse },
+    { BIDX_TgGame_TgDevice, &Class_TgGame_TgDevice_Morale },
+    { BIDX_TgGame_TgDevice, &Class_TgGame_TgDevice_NewMelee },
+    { BIDX_TgGame_TgDevice, &Class_TgGame_TgDevice_MeleeDualWield },
+    { BIDX_TgGame_TgDevice, &Class_TgGame_TgDevice_NewRange },
+    { BIDX_TgGame_TgDevice_Morale, &Class_TgGame_TgDevice_Morale },
+    { BIDX_TgGame_TgDoor, &Class_TgGame_TgDoor },
+    { BIDX_TgGame_TgDoorMarker, &Class_TgGame_TgDoorMarker },
+    { BIDX_TgGame_TgDroppedItem, &Class_TgGame_TgDroppedItem },
+    { BIDX_TgGame_TgDynamicDestructible, &Class_TgGame_TgDynamicDestructible },
+    { BIDX_TgGame_TgDynamicSMActor, &Class_TgGame_TgDynamicSMActor },
+    { BIDX_TgGame_TgDynamicSMActor, &Class_TgGame_TgDynamicDestructible },
+    { BIDX_TgGame_TgDynamicSMActor, &Class_TgGame_TgObjectiveAttachActor },
+    { BIDX_TgGame_TgDynamicSMActor_2, &Class_TgGame_TgDynamicSMActor },
+    { BIDX_TgGame_TgDynamicSMActor_2, &Class_TgGame_TgDynamicDestructible },
+    { BIDX_TgGame_TgDynamicSMActor_2, &Class_TgGame_TgObjectiveAttachActor },
+    { BIDX_TgGame_TgEffectManager, &Class_TgGame_TgEffectManager },
+    { BIDX_TgGame_TgEmitter, &Class_TgGame_TgEmitter },
+    { BIDX_TgGame_TgFlagCaptureVolume, &Class_TgGame_TgFlagCaptureVolume },
+    { BIDX_TgGame_TgFracturedStaticMeshActor, &Class_TgGame_TgFracturedStaticMeshActor },
+    { BIDX_TgGame_TgHexLandMarkActor, &Class_TgGame_TgHexLandMarkActor },
+    { BIDX_TgGame_TgInterpActor, &Class_TgGame_TgInterpActor },
+    { BIDX_TgGame_TgInventoryManager, &Class_TgGame_TgInventoryManager },
+    { BIDX_TgGame_TgKismetTestActor, &Class_TgGame_TgKismetTestActor },
+    { BIDX_TgGame_TgLevelCamera, &Class_TgGame_TgLevelCamera },
+    { BIDX_TgGame_TgMissionObjective, &Class_TgGame_TgMissionObjective },
+    { BIDX_TgGame_TgMissionObjective, &Class_TgGame_TgBaseObjective_CTFBot },
+    { BIDX_TgGame_TgMissionObjective, &Class_TgGame_TgBaseObjective_KOTH },
+    { BIDX_TgGame_TgMissionObjective, &Class_TgGame_TgMissionObjective_Bot },
+    { BIDX_TgGame_TgMissionObjective, &Class_TgGame_TgMissionObjective_Escort },
+    { BIDX_TgGame_TgMissionObjective, &Class_TgGame_TgMissionObjective_Kismet },
+    { BIDX_TgGame_TgMissionObjective, &Class_TgGame_TgMissionObjective_Proximity },
+    { BIDX_TgGame_TgMissionObjective_Bot, &Class_TgGame_TgMissionObjective_Bot },
+    { BIDX_TgGame_TgMissionObjective_Bot, &Class_TgGame_TgBaseObjective_CTFBot },
+    { BIDX_TgGame_TgMissionObjective_Escort, &Class_TgGame_TgMissionObjective_Escort },
+    { BIDX_TgGame_TgMissionObjective_Proximity, &Class_TgGame_TgMissionObjective_Proximity },
+    { BIDX_TgGame_TgMissionObjective_Proximity, &Class_TgGame_TgBaseObjective_KOTH },
+    { BIDX_TgGame_TgMissionObjective_Proximity, &Class_TgGame_TgMissionObjective_Escort },
+    { BIDX_TgGame_TgObjectiveAssignment, &Class_TgGame_TgObjectiveAssignment },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_AVCompositeWalker },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Ambush },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_AndroidMinion },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_AttackTransport },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Boss },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Boss_Destroyer },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Brawler },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_CTR },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Character },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_ColonyEye },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Destructible },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Detonator },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Dismantler },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_DuneCommander },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Elite_Alchemist },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Elite_Assassin },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_EscortRobot },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_FlyingBoss },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_GroundPetA },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Guardian },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Hover },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_HoverShieldSphere },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Hunter },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Inquisitor },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Interact_NPC },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Iris },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Juggernaut },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Marauder },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_NPC },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_NewWasp },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Raptor },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Reaper },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_RecursiveSpawner },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Remote },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Robot },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Scanner },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_ScannerRecursive },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Siege },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_SiegeBarrage },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_SiegeHover },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_SiegeRapidFire },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Sniper },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_SonoranCommander },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_SupportForeman },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Switchblade },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Tentacle },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_ThinkTank },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_TreadRobot },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Turret },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_TurretAVAFlak },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_TurretAVARocket },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_TurretFlak },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_TurretFlame },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_TurretPlasma },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_UberWalker },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Vanguard },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_VanityPet },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Vulcan },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Warlord },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_WaspSpawner },
+    { BIDX_TgGame_TgPawn, &Class_TgGame_TgPawn_Widow },
+    { BIDX_TgGame_TgPawn_Ambush, &Class_TgGame_TgPawn_Ambush },
+    { BIDX_TgGame_TgPawn_Ambush, &Class_TgGame_TgPawn_Tentacle },
+    { BIDX_TgGame_TgPawn_AttackTransport, &Class_TgGame_TgPawn_AttackTransport },
+    { BIDX_TgGame_TgPawn_CTR, &Class_TgGame_TgPawn_CTR },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Character },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_AndroidMinion },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Boss },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Boss_Destroyer },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Brawler },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_CTR },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_ColonyEye },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Dismantler },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_DuneCommander },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Elite_Alchemist },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Elite_Assassin },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_FlyingBoss },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Guardian },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Hunter },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Inquisitor },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Interact_NPC },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Juggernaut },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Marauder },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_NPC },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Raptor },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Reaper },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_RecursiveSpawner },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Sniper },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_SonoranCommander },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Switchblade },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_ThinkTank },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Turret },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_TurretAVAFlak },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_TurretAVARocket },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_TurretFlak },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_TurretFlame },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_TurretPlasma },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_UberWalker },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Vanguard },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Vulcan },
+    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Warlord },
+    { BIDX_TgGame_TgPawn_DuneCommander, &Class_TgGame_TgPawn_DuneCommander },
+    { BIDX_TgGame_TgPawn_Iris, &Class_TgGame_TgPawn_Iris },
+    { BIDX_TgGame_TgPawn_Reaper, &Class_TgGame_TgPawn_Reaper },
+    { BIDX_TgGame_TgPawn_Siege, &Class_TgGame_TgPawn_Siege },
+    { BIDX_TgGame_TgPawn_Siege, &Class_TgGame_TgPawn_SiegeBarrage },
+    { BIDX_TgGame_TgPawn_Siege, &Class_TgGame_TgPawn_SiegeHover },
+    { BIDX_TgGame_TgPawn_Siege, &Class_TgGame_TgPawn_SiegeRapidFire },
+    { BIDX_TgGame_TgPawn_Turret, &Class_TgGame_TgPawn_Turret },
+    { BIDX_TgGame_TgPawn_Turret, &Class_TgGame_TgPawn_TurretAVAFlak },
+    { BIDX_TgGame_TgPawn_Turret, &Class_TgGame_TgPawn_TurretAVARocket },
+    { BIDX_TgGame_TgPawn_Turret, &Class_TgGame_TgPawn_TurretFlak },
+    { BIDX_TgGame_TgPawn_Turret, &Class_TgGame_TgPawn_TurretFlame },
+    { BIDX_TgGame_TgPawn_Turret, &Class_TgGame_TgPawn_TurretPlasma },
+    { BIDX_TgGame_TgPawn_VanityPet, &Class_TgGame_TgPawn_VanityPet },
+    { BIDX_TgGame_TgPlayerController, &Class_TgGame_TgPlayerController },
+    { BIDX_TgGame_TgProj_Grapple, &Class_TgGame_TgProj_Grapple },
+    { BIDX_TgGame_TgProj_Missile, &Class_TgGame_TgProj_Missile },
+    { BIDX_TgGame_TgProj_Rocket, &Class_TgGame_TgProj_Rocket },
+    { BIDX_TgGame_TgProjectile, &Class_TgGame_TgProjectile },
+    { BIDX_TgGame_TgProjectile, &Class_TgGame_TgProj_Teleporter },
+    { BIDX_TgGame_TgProjectile, &Class_TgGame_TgProj_StraightTeleporter },
+    { BIDX_TgGame_TgProjectile, &Class_TgGame_TgProj_Rocket },
+    { BIDX_TgGame_TgProjectile, &Class_TgGame_TgProj_Net },
+    { BIDX_TgGame_TgProjectile, &Class_TgGame_TgProj_Mortar },
+    { BIDX_TgGame_TgProjectile, &Class_TgGame_TgProj_Missile },
+    { BIDX_TgGame_TgProjectile, &Class_TgGame_TgProj_Grenade },
+    { BIDX_TgGame_TgProjectile, &Class_TgGame_TgProj_Grapple },
+    { BIDX_TgGame_TgProjectile, &Class_TgGame_TgProj_FreeGrenade },
+    { BIDX_TgGame_TgProjectile, &Class_TgGame_TgProj_Deployable },
+    { BIDX_TgGame_TgProjectile, &Class_TgGame_TgProj_Bounce },
+    { BIDX_TgGame_TgProjectile, &Class_TgGame_TgProj_Bot },
+    { BIDX_TgGame_TgRepInfo_Beacon, &Class_TgGame_TgRepInfo_Beacon },
+    { BIDX_TgGame_TgRepInfo_Deployable, &Class_TgGame_TgRepInfo_Deployable },
+    { BIDX_TgGame_TgRepInfo_Deployable, &Class_TgGame_TgRepInfo_Beacon },
+    { BIDX_TgGame_TgRepInfo_Game, &Class_TgGame_TgRepInfo_Game },
+    { BIDX_TgGame_TgRepInfo_Game, &Class_TgGame_TgRepInfo_GameOpenWorld },
+    { BIDX_TgGame_TgRepInfo_GameOpenWorld, &Class_TgGame_TgRepInfo_GameOpenWorld },
+    { BIDX_TgGame_TgRepInfo_Player, &Class_TgGame_TgRepInfo_Player },
+    { BIDX_TgGame_TgRepInfo_TaskForce, &Class_TgGame_TgRepInfo_TaskForce },
+    { BIDX_TgGame_TgSkydiveTarget, &Class_TgGame_TgSkydiveTarget },
+    { BIDX_TgGame_TgSkydivingVolume, &Class_TgGame_TgSkydivingVolume },
+    { BIDX_TgGame_TgTeamBeaconManager, &Class_TgGame_TgTeamBeaconManager },
+    { BIDX_TgGame_TgTimerManager, &Class_TgGame_TgTimerManager },
+    { BIDX_TgGame_TgDeployable, &Class_TgGame_TgDeployable },
+    { BIDX_TgGame_TgDeployable, &Class_TgGame_TgDeploy_Artillery },
+    { BIDX_TgGame_TgDeployable, &Class_TgGame_TgDeploy_Beacon },
+    { BIDX_TgGame_TgDeployable, &Class_TgGame_TgDeploy_BeaconEntrance },
+    { BIDX_TgGame_TgDeployable, &Class_TgGame_TgDeploy_DestructibleCover },
+    { BIDX_TgGame_TgDeployable, &Class_TgGame_TgDeploy_ForceField },
+    { BIDX_TgGame_TgDeployable, &Class_TgGame_TgDeploy_Sensor },
+    { BIDX_TgGame_TgDeployable, &Class_TgGame_TgDeploy_SweepSensor },
+};
+
+
+static void BuildRepDispatchMap() {
+    g_classDispatch.clear();
+    for (size_t i = 0; i < sizeof(g_blockClassTable)/sizeof(g_blockClassTable[0]); ++i) {
+        UClass* cls = *g_blockClassTable[i].classPP;
+        if (!cls) continue;
+        int idx = g_blockClassTable[i].blockIdx;
+        auto& bits = g_classDispatch[cls];
+        if (idx < 64) bits.lo |= (1ull << idx);
+        else          bits.hi |= (1ull << (idx - 64));
+    }
+}
+
 
 static void ResolveRepListProperties() {
 	ObjectProperty_Engine_Actor_Base = (UProperty*)ClassPreloader::GetObject("ObjectProperty Engine.Actor.Base");
@@ -1898,6 +2442,11 @@ static void ResolveRepListProperties() {
 	Class_TgGame_TgVolumePathNode = (UClass*)ClassPreloader::GetObject("Class TgGame.TgVolumePathNode");
 	Class_TgGame_TgWaterVolume = (UClass*)ClassPreloader::GetObject("Class TgGame.TgWaterVolume");
 	Class_TgGame_TgWindManager = (UClass*)ClassPreloader::GetObject("Class TgGame.TgWindManager");
+
+	// Build the per-class bitmask after all Class_* statics are resolved. Order
+	// matters — BuildRepDispatchMap reads *g_blockClassTable[i].classPP which
+	// requires those slots to be populated first.
+	BuildRepDispatchMap();
 }
 
 
@@ -1911,9 +2460,20 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 	AActor* actor = (AActor*)thisxx;
 	AActor* recent = (AActor*)param_1;
 	int repindex = 0;
-	// Class-identity dispatch: pointer compare against pre-resolved UClass* values
-	// (see declarations above + ResolveRepListProperties). Replaces strcmp(GetFullName).
+	// Class-identity dispatch: one hash lookup → 128-bit bitmask → per-block bit
+	// test. Replaces 90 top-of-block `if (cls == A || cls == B || …)` chains that
+	// summed to 500+ pointer compares worst-case per actor per tick.
 	UClass* cls = actor->Class;
+	RepListBits bits;
+	{
+		auto it = g_classDispatch.find(cls);
+		if (it != g_classDispatch.end()) {
+			bits = it->second;
+		} else {
+			bits.lo = 0;
+			bits.hi = 0;
+		}
+	}
 	// Hoisted per-call flags. These are referenced 100+ times across the dispatch
 	// (Role 111x as ==3, bNetDirty 43x, bNetInitial 37x, bNetOwner 15x). The compiler
 	// can't CSE through pointer indirection so reading them through `actor->` over and
@@ -1933,71 +2493,42 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 	// / Rotation / Relative* / bHidden, and had an operator-precedence bug on the
 	// Physics/Velocity gate. Letting CallOriginal own the base pass removes ~15
 	// redundant DO_REPs per actor per tick and the largest `||` chain in the file.
-	if (cls == Class_Engine_AmbientSoundSimpleToggleable) {
+	if (bits.lo & (1ull << 0)) {  // BIDX_Engine_AmbientSoundSimpleToggleable
 		if (isAuthority) {
 			DO_REP(AAmbientSoundSimpleToggleable, bCurrentlyPlaying, BoolProperty_Engine_AmbientSoundSimpleToggleable_bCurrentlyPlaying);
 		}
 	}
-	if (
-		cls == Class_Engine_CameraActor
-		|| cls == Class_Engine_DynamicCameraActor
-		|| cls == Class_TgGame_TgInterpolatingCameraActor
-		|| cls == Class_TgGame_TgLevelCamera
-	) {
+	if (bits.lo & (1ull << 1)) {  // BIDX_Engine_CameraActor
 		if (isAuthority) {
 			DO_REP(ACameraActor, AspectRatio, FloatProperty_Engine_CameraActor_AspectRatio);
 			DO_REP(ACameraActor, FOVAngle, FloatProperty_Engine_CameraActor_FOVAngle);
 		}
 	}
-	if (
-		cls == Class_Engine_Controller
-		|| cls == Class_Engine_AIController
-		|| cls == Class_Engine_Admin
-		|| cls == Class_Engine_DebugCameraController
-		|| cls == Class_Engine_PlayerController
-		|| cls == Class_GameFramework_GameAIController
-		|| cls == Class_GameFramework_GamePlayerController
-		|| cls == Class_TgGame_TgAIController
-		|| cls == Class_TgGame_TgDebugCameraController
-		|| cls == Class_TgGame_TgPlayerController
-	) {
+	if (bits.lo & (1ull << 2)) {  // BIDX_Engine_Controller
 		if (bNetDirty && isAuthority) {
 			DO_REP(AController, Pawn, ObjectProperty_Engine_Controller_Pawn);
 			DO_REP(AController, PlayerReplicationInfo, ObjectProperty_Engine_Controller_PlayerReplicationInfo);
 		}
 	}
-	if (cls == Class_Engine_CrowdAttractor) {
+	if (bits.lo & (1ull << 3)) {  // BIDX_Engine_CrowdAttractor
 		if (actor->bNoDelete) {
 			DO_REP(ACrowdAttractor, bAttractorEnabled, BoolProperty_Engine_CrowdAttractor_bAttractorEnabled);
 		}
 	}
-	if (cls == Class_Engine_CrowdReplicationActor) {
+	if (bits.lo & (1ull << 4)) {  // BIDX_Engine_CrowdReplicationActor
 		if (isAuthority) {
 			DO_REP(ACrowdReplicationActor, DestroyAllCount, IntProperty_Engine_CrowdReplicationActor_DestroyAllCount);
 			DO_REP(ACrowdReplicationActor, Spawner, ObjectProperty_Engine_CrowdReplicationActor_Spawner);
 			DO_REP(ACrowdReplicationActor, bSpawningActive, BoolProperty_Engine_CrowdReplicationActor_bSpawningActive);
 		}
 	}
-	if (cls == Class_Engine_DroppedPickup) {
+	if (bits.lo & (1ull << 5)) {  // BIDX_Engine_DroppedPickup
 		if (isAuthority) {
 			DO_REP(ADroppedPickup, InventoryClass, ClassProperty_Engine_DroppedPickup_InventoryClass);
 			DO_REP(ADroppedPickup, bFadeOut, BoolProperty_Engine_DroppedPickup_bFadeOut);
 		}
 	}
-	if (
-		cls == Class_Engine_DynamicSMActor
-		|| cls == Class_Engine_DynamicSMActor_Spawnable
-		|| cls == Class_Engine_InterpActor
-		|| cls == Class_Engine_KActor
-		|| cls == Class_Engine_KActorSpawnable
-		|| cls == Class_TgGame_TgDoor
-		|| cls == Class_TgGame_TgDynamicDestructible
-		|| cls == Class_TgGame_TgDynamicSMActor
-		|| cls == Class_TgGame_TgInterpActor
-		|| cls == Class_TgGame_TgKActorSpawnable
-		|| cls == Class_TgGame_TgKismetTestActor
-		|| cls == Class_TgGame_TgObjectiveAttachActor
-	) {
+	if (bits.lo & (1ull << 6)) {  // BIDX_Engine_DynamicSMActor
 		if (bNetDirty || bNetInitial) {
 			DO_REP(ADynamicSMActor, ReplicatedMaterial, ObjectProperty_Engine_DynamicSMActor_ReplicatedMaterial);
 			DO_REP(ADynamicSMActor, ReplicatedMesh, ObjectProperty_Engine_DynamicSMActor_ReplicatedMesh);
@@ -2007,46 +2538,28 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ADynamicSMActor, bForceStaticDecals, BoolProperty_Engine_DynamicSMActor_bForceStaticDecals);
 		}
 	}
-	if (
-		cls == Class_Engine_Emitter
-		|| cls == Class_Engine_EmitterCameraLensEffectBase
-		|| cls == Class_Engine_EmitterSpawnable
-		|| cls == Class_Engine_PhysXEmitterSpawnable
-		|| cls == Class_TgGame_TgEmitter
-		|| cls == Class_TgGame_TgEmitterCrashlanding
-		|| cls == Class_TgGame_TgEmitterSpawnable
-	) {
+	if (bits.lo & (1ull << 7)) {  // BIDX_Engine_Emitter
 		if (actor->bNoDelete) {
 			DO_REP(AEmitter, bCurrentlyActive, BoolProperty_Engine_Emitter_bCurrentlyActive);
 		}
 	}
-	if (cls == Class_Engine_EmitterSpawnable) {
+	if (bits.lo & (1ull << 8)) {  // BIDX_Engine_EmitterSpawnable
 		if (bNetInitial) {
 			DO_REP(AEmitterSpawnable, ParticleTemplate, ObjectProperty_Engine_EmitterSpawnable_ParticleTemplate);
 		}
 	}
-	if (cls == Class_Engine_FluidInfluenceActor) {
+	if (bits.lo & (1ull << 9)) {  // BIDX_Engine_FluidInfluenceActor
 		if (bNetDirty) {
 			DO_REP(AFluidInfluenceActor, bActive, BoolProperty_Engine_FluidInfluenceActor_bActive);
 			DO_REP(AFluidInfluenceActor, bToggled, BoolProperty_Engine_FluidInfluenceActor_bToggled);
 		}
 	}
-	if (
-		cls == Class_Engine_FogVolumeDensityInfo
-		|| cls == Class_Engine_FogVolumeConeDensityInfo
-		|| cls == Class_Engine_FogVolumeConstantDensityInfo
-		|| cls == Class_Engine_FogVolumeLinearHalfspaceDensityInfo
-		|| cls == Class_Engine_FogVolumeSphericalDensityInfo
-	) {
+	if (bits.lo & (1ull << 10)) {  // BIDX_Engine_FogVolumeDensityInfo
 		if (isAuthority) {
 			DO_REP(AFogVolumeDensityInfo, bEnabled, BoolProperty_Engine_FogVolumeDensityInfo_bEnabled);
 		}
 	}
-	if (
-		cls == Class_Engine_GameReplicationInfo
-		|| cls == Class_TgGame_TgRepInfo_Game
-		|| cls == Class_TgGame_TgRepInfo_GameOpenWorld
-	) {
+	if (bits.lo & (1ull << 11)) {  // BIDX_Engine_GameReplicationInfo
 		if (bNetDirty && isAuthority) {
 			DO_REP(AGameReplicationInfo, MatchID, IntProperty_Engine_GameReplicationInfo_MatchID);
 			DO_REP(AGameReplicationInfo, Winner, ObjectProperty_Engine_GameReplicationInfo_Winner);
@@ -2074,23 +2587,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(AGameReplicationInfo, bTrackStats, BoolProperty_Engine_GameReplicationInfo_bTrackStats);
 		}
 	}
-	if (cls == Class_Engine_HeightFog) {
+	if (bits.lo & (1ull << 12)) {  // BIDX_Engine_HeightFog
 		if (isAuthority) {
 			DO_REP(AHeightFog, bEnabled, BoolProperty_Engine_HeightFog_bEnabled);
 		}
 	}
-	if (
-		cls == Class_Engine_Inventory
-		|| cls == Class_Engine_Weapon
-		|| cls == Class_GameFramework_GameWeapon
-		|| cls == Class_TgGame_TgDevice
-		|| cls == Class_TgGame_TgDevice_Grenade
-		|| cls == Class_TgGame_TgDevice_HitPulse
-		|| cls == Class_TgGame_TgDevice_MeleeDualWield
-		|| cls == Class_TgGame_TgDevice_Morale
-		|| cls == Class_TgGame_TgDevice_NewMelee
-		|| cls == Class_TgGame_TgDevice_NewRange
-	) {
+	if (bits.lo & (1ull << 13)) {  // BIDX_Engine_Inventory
 		if (((isAuthority) && bNetDirty) && bNetOwner) {
 			DO_REP(AInventory, InvManager, ObjectProperty_Engine_Inventory_InvManager);
 			DO_REP(AInventory, Inventory, ObjectProperty_Engine_Inventory_Inventory);
@@ -2114,19 +2616,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgDevice, CurrentFireMode, ByteProperty_TgGame_TgDevice_CurrentFireMode);
 		}
 	}
-	if (
-		cls == Class_Engine_InventoryManager
-		|| cls == Class_TgGame_TgInventoryManager
-	) {
+	if (bits.lo & (1ull << 14)) {  // BIDX_Engine_InventoryManager
 		if ((((!actor->bSkipActorPropertyReplication || bNetInitial) && isAuthority) && bNetDirty) && bNetOwner) {
 			DO_REP(AInventoryManager, InventoryChain, ObjectProperty_Engine_InventoryManager_InventoryChain);
 		}
 	}
-	if (
-		cls == Class_Engine_KActor
-		|| cls == Class_Engine_KActorSpawnable
-		|| cls == Class_TgGame_TgKActorSpawnable
-	) {
+	if (bits.lo & (1ull << 15)) {  // BIDX_Engine_KActor
 		if (!((AKActor*)actor)->bNeedsRBStateReplication && isAuthority) {
 			DO_REP(AKActor, RBState, StructProperty_Engine_KActor_RBState);
 		}
@@ -2135,42 +2630,23 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(AKActor, bWakeOnLevelStart, BoolProperty_Engine_KActor_bWakeOnLevelStart);
 		}
 	}
-	if (
-		cls == Class_Engine_KAsset
-		|| cls == Class_Engine_KAssetSpawnable
-		|| cls == Class_TgGame_TgKAssetSpawnable
-		|| cls == Class_TgGame_TgKAsset_ClientSideSim
-	) {
+	if (bits.lo & (1ull << 16)) {  // BIDX_Engine_KAsset
 		if (isAuthority) {
 			DO_REP(AKAsset, ReplicatedMesh, ObjectProperty_Engine_KAsset_ReplicatedMesh);
 			DO_REP(AKAsset, ReplicatedPhysAsset, ObjectProperty_Engine_KAsset_ReplicatedPhysAsset);
 		}
 	}
-	if (cls == Class_Engine_LensFlareSource) {
+	if (bits.lo & (1ull << 17)) {  // BIDX_Engine_LensFlareSource
 		if (actor->bNoDelete) {
 			DO_REP(ALensFlareSource, bCurrentlyActive, BoolProperty_Engine_LensFlareSource_bCurrentlyActive);
 		}
 	}
-	if (
-		cls == Class_Engine_Light
-		|| cls == Class_Engine_DirectionalLight
-		|| cls == Class_Engine_DirectionalLightToggleable
-		|| cls == Class_Engine_PointLight
-		|| cls == Class_Engine_PointLightMovable
-		|| cls == Class_Engine_PointLightToggleable
-		|| cls == Class_Engine_SkyLight
-		|| cls == Class_Engine_SkyLightToggleable
-		|| cls == Class_Engine_SpotLight
-		|| cls == Class_Engine_SpotLightMovable
-		|| cls == Class_Engine_SpotLightToggleable
-		|| cls == Class_Engine_StaticLightCollectionActor
-		|| cls == Class_TgGame_TgCharacterBuilderLight
-	) {
+	if (bits.lo & (1ull << 18)) {  // BIDX_Engine_Light
 		if (isAuthority) {
 			DO_REP(ALight, bEnabled, BoolProperty_Engine_Light_bEnabled);
 		}
 	}
-	if (cls == Class_Engine_MatineeActor) {
+	if (bits.lo & (1ull << 19)) {  // BIDX_Engine_MatineeActor
 		if (bNetInitial && isAuthority) {
 			DO_REP(AMatineeActor, InterpAction, ObjectProperty_Engine_MatineeActor_InterpAction);
 		}
@@ -2182,23 +2658,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(AMatineeActor, bReversePlayback, BoolProperty_Engine_MatineeActor_bReversePlayback);
 		}
 	}
-	if (
-		cls == Class_Engine_NxForceField
-		|| cls == Class_Engine_NxCylindricalForceField
-		|| cls == Class_Engine_NxCylindricalForceFieldCapsule
-		|| cls == Class_Engine_NxForceFieldGeneric
-		|| cls == Class_Engine_NxForceFieldRadial
-		|| cls == Class_Engine_NxForceFieldTornado
-		|| cls == Class_Engine_NxGenericForceField
-		|| cls == Class_Engine_NxGenericForceFieldBox
-		|| cls == Class_Engine_NxGenericForceFieldCapsule
-		|| cls == Class_Engine_NxRadialCustomForceField
-		|| cls == Class_Engine_NxRadialForceField
-		|| cls == Class_Engine_NxTornadoAngularForceField
-		|| cls == Class_Engine_NxTornadoAngularForceFieldCapsule
-		|| cls == Class_Engine_NxTornadoForceField
-		|| cls == Class_Engine_NxTornadoForceFieldCapsule
-	) {
+	if (bits.lo & (1ull << 20)) {  // BIDX_Engine_NxForceField
 		if (bNetDirty) {
 			DO_REP(ANxForceField, bForceActive, BoolProperty_Engine_NxForceField_bForceActive);
 		}
@@ -2206,76 +2666,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 
 
 
-	if (
-		cls == Class_Engine_Pawn
-		|| cls == Class_TgGame_TgPawn
-		|| cls == Class_TgGame_TgPawn_AVCompositeWalker
-		|| cls == Class_TgGame_TgPawn_Ambush
-		|| cls == Class_TgGame_TgPawn_AndroidMinion
-		|| cls == Class_TgGame_TgPawn_AttackTransport
-		|| cls == Class_TgGame_TgPawn_Boss
-		|| cls == Class_TgGame_TgPawn_Boss_Destroyer
-		|| cls == Class_TgGame_TgPawn_Brawler
-		|| cls == Class_TgGame_TgPawn_CTR
-		|| cls == Class_TgGame_TgPawn_Character
-		|| cls == Class_TgGame_TgPawn_ColonyEye
-		|| cls == Class_TgGame_TgPawn_Destructible
-		|| cls == Class_TgGame_TgPawn_Detonator
-		|| cls == Class_TgGame_TgPawn_Dismantler
-		|| cls == Class_TgGame_TgPawn_DuneCommander
-		|| cls == Class_TgGame_TgPawn_Elite_Alchemist
-		|| cls == Class_TgGame_TgPawn_Elite_Assassin
-		|| cls == Class_TgGame_TgPawn_EscortRobot
-		|| cls == Class_TgGame_TgPawn_FlyingBoss
-		|| cls == Class_TgGame_TgPawn_GroundPetA
-		|| cls == Class_TgGame_TgPawn_Guardian
-		|| cls == Class_TgGame_TgPawn_Hover
-		|| cls == Class_TgGame_TgPawn_HoverShieldSphere
-		|| cls == Class_TgGame_TgPawn_Hunter
-		|| cls == Class_TgGame_TgPawn_Inquisitor
-		|| cls == Class_TgGame_TgPawn_Interact_NPC
-		|| cls == Class_TgGame_TgPawn_Iris
-		|| cls == Class_TgGame_TgPawn_Juggernaut
-		|| cls == Class_TgGame_TgPawn_Marauder
-		|| cls == Class_TgGame_TgPawn_NPC
-		|| cls == Class_TgGame_TgPawn_NewWasp
-		|| cls == Class_TgGame_TgPawn_Raptor
-		|| cls == Class_TgGame_TgPawn_Reaper
-		|| cls == Class_TgGame_TgPawn_RecursiveSpawner
-		|| cls == Class_TgGame_TgPawn_Remote
-		|| cls == Class_TgGame_TgPawn_Robot
-		|| cls == Class_TgGame_TgPawn_Scanner
-		|| cls == Class_TgGame_TgPawn_ScannerRecursive
-		|| cls == Class_TgGame_TgPawn_Siege
-		|| cls == Class_TgGame_TgPawn_SiegeBarrage
-		|| cls == Class_TgGame_TgPawn_SiegeHover
-		|| cls == Class_TgGame_TgPawn_SiegeRapidFire
-		|| cls == Class_TgGame_TgPawn_Sniper
-		|| cls == Class_TgGame_TgPawn_SonoranCommander
-		|| cls == Class_TgGame_TgPawn_SupportForeman
-		|| cls == Class_TgGame_TgPawn_Switchblade
-		|| cls == Class_TgGame_TgPawn_Tentacle
-		|| cls == Class_TgGame_TgPawn_ThinkTank
-		|| cls == Class_TgGame_TgPawn_TreadRobot
-		|| cls == Class_TgGame_TgPawn_Turret
-		|| cls == Class_TgGame_TgPawn_TurretAVAFlak
-		|| cls == Class_TgGame_TgPawn_TurretAVARocket
-		|| cls == Class_TgGame_TgPawn_TurretFlak
-		|| cls == Class_TgGame_TgPawn_TurretFlame
-		|| cls == Class_TgGame_TgPawn_TurretPlasma
-		|| cls == Class_TgGame_TgPawn_UberWalker
-		|| cls == Class_TgGame_TgPawn_Vanguard
-		|| cls == Class_TgGame_TgPawn_VanityPet
-		|| cls == Class_TgGame_TgPawn_Vulcan
-		|| cls == Class_TgGame_TgPawn_Warlord
-		|| cls == Class_TgGame_TgPawn_WaspSpawner
-		|| cls == Class_TgGame_TgPawn_Widow
-		|| cls == Class_Engine_Scout
-		|| cls == Class_Engine_Vehicle
-		|| cls == Class_Engine_SVehicle
-		|| cls == Class_GameFramework_GamePawn
-		|| cls == Class_GameFramework_GameVehicle
-	) {
+	if (bits.lo & (1ull << 21)) {  // BIDX_Engine_Pawn
 		if (bNetDirty && isAuthority) {
 			DO_REP(APawn, DrivenVehicle, ObjectProperty_Engine_Pawn_DrivenVehicle);
 			DO_REP(APawn, FlashLocation, StructProperty_Engine_Pawn_FlashLocation);
@@ -2286,7 +2677,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(APawn, bIsWalking, BoolProperty_Engine_Pawn_bIsWalking);
 			DO_REP(APawn, bSimulateGravity, BoolProperty_Engine_Pawn_bSimulateGravity);
 		}
-		if ((bNetDirty && bNetOwner) && isAuthority) {
+		if (((bNetDirty || bNetInitial) && bNetOwner) && isAuthority) {
 			DO_REP(APawn, AccelRate, FloatProperty_Engine_Pawn_AccelRate);
 			DO_REP(APawn, AirControl, FloatProperty_Engine_Pawn_AirControl);
 			DO_REP(APawn, AirSpeed, FloatProperty_Engine_Pawn_AirSpeed);
@@ -2308,16 +2699,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(APawn, RemoteViewPitch, ByteProperty_Engine_Pawn_RemoteViewPitch);
 		}
 	}
-	if (cls == Class_Engine_PhysXEmitterSpawnable) {
+	if (bits.lo & (1ull << 22)) {  // BIDX_Engine_PhysXEmitterSpawnable
 		if (bNetInitial) {
 			DO_REP(APhysXEmitterSpawnable, ParticleTemplate, ObjectProperty_Engine_PhysXEmitterSpawnable_ParticleTemplate);
 		}
 	}
-	if (
-		cls == Class_Engine_PickupFactory
-		|| cls == Class_TgGame_TgPickupFactory
-		|| cls == Class_TgGame_TgPickupFactory_Item
-	) {
+	if (bits.lo & (1ull << 23)) {  // BIDX_Engine_PickupFactory
 		if (bNetDirty && isAuthority) {
 			DO_REP(APickupFactory, bPickupHidden, BoolProperty_Engine_PickupFactory_bPickupHidden);
 		}
@@ -2325,23 +2712,13 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(APickupFactory, InventoryType, ClassProperty_Engine_PickupFactory_InventoryType);
 		}
 	}
-	if (
-		cls == Class_Engine_PlayerController
-		|| cls == Class_Engine_Admin
-		|| cls == Class_Engine_DebugCameraController
-		|| cls == Class_GameFramework_GamePlayerController
-		|| cls == Class_TgGame_TgDebugCameraController
-		|| cls == Class_TgGame_TgPlayerController
-	) {
+	if (bits.lo & (1ull << 24)) {  // BIDX_Engine_PlayerController
 		if (((bNetOwner && isAuthority) && ((APlayerController*)actor)->ViewTarget != ((APlayerController*)actor)->Pawn) && ((APlayerController*)actor)->ViewTarget != NULL) {
 			DO_REP(APlayerController, TargetEyeHeight, FloatProperty_Engine_PlayerController_TargetEyeHeight);
 			DO_REP(APlayerController, TargetViewRotation, StructProperty_Engine_PlayerController_TargetViewRotation);
 		}
 	}
-	if (
-		cls == Class_Engine_PlayerReplicationInfo
-		|| cls == Class_TgGame_TgRepInfo_Player
-	) {
+	if (bits.lo & (1ull << 25)) {  // BIDX_Engine_PlayerReplicationInfo
 		if (bNetDirty && isAuthority) {
 			DO_REP(APlayerReplicationInfo, Deaths, FloatProperty_Engine_PlayerReplicationInfo_Deaths);
 			DO_REP(APlayerReplicationInfo, PlayerAlias, StrProperty_Engine_PlayerReplicationInfo_PlayerAlias);
@@ -2372,92 +2749,50 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(APlayerReplicationInfo, bIsInactive, BoolProperty_Engine_PlayerReplicationInfo_bIsInactive);
 		}
 	}
-	if (
-		cls == Class_Engine_PostProcessVolume
-		|| cls == Class_TgGame_TgPostProcessVolume
-	) {
+	if (bits.lo & (1ull << 26)) {  // BIDX_Engine_PostProcessVolume
 		if (bNetDirty) {
 			DO_REP(APostProcessVolume, bEnabled, BoolProperty_Engine_PostProcessVolume_bEnabled);
 		}
 	}
-	if (
-		cls == Class_Engine_Projectile
-		|| cls == Class_GameFramework_GameProjectile
-		|| cls == Class_TgGame_TgProjectile
-		|| cls == Class_TgGame_TgProj_Teleporter
-		|| cls == Class_TgGame_TgProj_StraightTeleporter
-		|| cls == Class_TgGame_TgProj_Rocket
-		|| cls == Class_TgGame_TgProj_Net
-		|| cls == Class_TgGame_TgProj_Mortar
-		|| cls == Class_TgGame_TgProj_Missile
-		|| cls == Class_TgGame_TgProj_Grenade
-		|| cls == Class_TgGame_TgProj_Grapple
-		|| cls == Class_TgGame_TgProj_FreeGrenade
-		|| cls == Class_TgGame_TgProj_Deployable
-		|| cls == Class_TgGame_TgProj_Bounce
-		|| cls == Class_TgGame_TgProj_Bot
-	) {
+	if (bits.lo & (1ull << 27)) {  // BIDX_Engine_Projectile
 		if ((isAuthority) && bNetInitial) {
 			DO_REP(AProjectile, MaxSpeed, FloatProperty_Engine_Projectile_MaxSpeed);
 			DO_REP(AProjectile, Speed, FloatProperty_Engine_Projectile_Speed);
 		}
 	}
-	if (cls == Class_Engine_RB_CylindricalForceActor) {
+	if (bits.lo & (1ull << 28)) {  // BIDX_Engine_RB_CylindricalForceActor
 		if (bNetDirty) {
 			DO_REP(ARB_CylindricalForceActor, bForceActive, BoolProperty_Engine_RB_CylindricalForceActor_bForceActive);
 		}
 	}
-	if (cls == Class_Engine_RB_LineImpulseActor) {
+	if (bits.lo & (1ull << 29)) {  // BIDX_Engine_RB_LineImpulseActor
 		if (bNetDirty) {
 			DO_REP(ARB_LineImpulseActor, ImpulseCount, ByteProperty_Engine_RB_LineImpulseActor_ImpulseCount);
 		}
 	}
-	if (cls == Class_Engine_RB_RadialForceActor) {
+	if (bits.lo & (1ull << 30)) {  // BIDX_Engine_RB_RadialForceActor
 		if (bNetDirty) {
 			DO_REP(ARB_RadialForceActor, bForceActive, BoolProperty_Engine_RB_RadialForceActor_bForceActive);
 		}
 	}
-	if (cls == Class_Engine_RB_RadialImpulseActor) {
+	if (bits.lo & (1ull << 31)) {  // BIDX_Engine_RB_RadialImpulseActor
 		if (bNetDirty) {
 			DO_REP(ARB_RadialImpulseActor, ImpulseCount, ByteProperty_Engine_RB_RadialImpulseActor_ImpulseCount);
 		}
 	}
-	if (
-		cls == Class_Engine_SVehicle
-		|| cls == Class_GameFramework_GameVehicle
-	) {
+	if (bits.lo & (1ull << 32)) {  // BIDX_Engine_SVehicle
 		if (actor->Physics == 10) {
 			DO_REP(ASVehicle, MaxSpeed, FloatProperty_Engine_SVehicle_MaxSpeed);
 			DO_REP(ASVehicle, VState, StructProperty_Engine_SVehicle_VState);
 		}
 	}
-	if (
-		cls == Class_Engine_SkeletalMeshActor
-		|| cls == Class_Engine_SkeletalMeshActorBasedOnExtremeContent
-		|| cls == Class_Engine_SkeletalMeshActorMAT
-		|| cls == Class_Engine_SkeletalMeshActorMATSpawnable
-		|| cls == Class_Engine_SkeletalMeshActorSpawnable
-		|| cls == Class_TgGame_TgNavRouteIndicator
-		|| cls == Class_TgGame_TgSkeletalMeshActorGenericUIPreview
-		|| cls == Class_TgGame_TgSkeletalMeshActorNPC
-		|| cls == Class_TgGame_TgSkeletalMeshActorNPCVendor
-		|| cls == Class_TgGame_TgSkeletalMeshActorSpawnable
-		|| cls == Class_TgGame_TgSkeletalMeshActor_CharacterBuilder
-		|| cls == Class_TgGame_TgSkeletalMeshActor_CharacterBuilderSpawnable
-		|| cls == Class_TgGame_TgSkeletalMeshActor_Composite
-		|| cls == Class_TgGame_TgSkeletalMeshActor_EquipScreen
-		|| cls == Class_TgGame_TgSkeletalMeshActor_MeleePreVis
-		|| cls == Class_TgGame_TgSkeletalMeshActor
-	) {
+	if (bits.lo & (1ull << 33)) {  // BIDX_Engine_SkeletalMeshActor
 		if (isAuthority) {
 			DO_REP(ASkeletalMeshActor, ReplicatedMaterial, ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMaterial);
 			DO_REP(ASkeletalMeshActor, ReplicatedMesh, ObjectProperty_Engine_SkeletalMeshActor_ReplicatedMesh);
 		}
 	}
-	if (
-		cls == Class_Engine_TeamInfo
-		|| cls == Class_TgGame_TgRepInfo_TaskForce
-	) {
+	if (bits.lo & (1ull << 34)) {  // BIDX_Engine_TeamInfo
 		if (bNetDirty && isAuthority) {
 			DO_REP(ATeamInfo, Score, FloatProperty_Engine_TeamInfo_Score);
 		}
@@ -2466,10 +2801,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATeamInfo, TeamName, StrProperty_Engine_TeamInfo_TeamName);
 		}
 	}
-	if (
-		cls == Class_Engine_Teleporter
-		|| cls == Class_TgGame_TgTeleporter
-	) {
+	if (bits.lo & (1ull << 35)) {  // BIDX_Engine_Teleporter
 		if (isAuthority) {
 			DO_REP(ATeleporter, URL, StrProperty_Engine_Teleporter_URL);
 			DO_REP(ATeleporter, bEnabled, BoolProperty_Engine_Teleporter_bEnabled);
@@ -2483,11 +2815,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATeleporter, bReversesZ, BoolProperty_Engine_Teleporter_bReversesZ);
 		}
 	}
-	if (
-		cls == Class_Engine_Vehicle
-		|| cls == Class_Engine_SVehicle
-		|| cls == Class_GameFramework_GameVehicle
-	) {
+	if (bits.lo & (1ull << 36)) {  // BIDX_Engine_Vehicle
 		if (bNetDirty && isAuthority) {
 			DO_REP(AVehicle, bDriving, BoolProperty_Engine_Vehicle_bDriving);
 		}
@@ -2495,7 +2823,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(AVehicle, Driver, ObjectProperty_Engine_Vehicle_Driver);
 		}
 	}
-	if (cls == Class_Engine_WorldInfo) {
+	if (bits.lo & (1ull << 37)) {  // BIDX_Engine_WorldInfo
 		if (bNetDirty && isAuthority) {
 			DO_REP(AWorldInfo, Pauser, ObjectProperty_Engine_WorldInfo_Pauser);
 			DO_REP(AWorldInfo, ReplicatedMusicTrack, StructProperty_Engine_WorldInfo_ReplicatedMusicTrack);
@@ -2504,36 +2832,28 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(AWorldInfo, bHighPriorityLoading, BoolProperty_Engine_WorldInfo_bHighPriorityLoading);
 		}
 	}
-	if (cls == Class_TgGame_TgChestActor) {
+	if (bits.lo & (1ull << 38)) {  // BIDX_TgGame_TgChestActor
 		if ((isAuthority) && bNetDirty) {
 			DO_REP(ATgChestActor, r_eChestState, ByteProperty_TgGame_TgChestActor_r_eChestState);
 		}
 	}
-	if (cls == Class_TgGame_TgDeploy_BeaconEntrance) {
+	if (bits.lo & (1ull << 39)) {  // BIDX_TgGame_TgDeploy_BeaconEntrance
 		if (isAuthority) {
 			DO_REP(ATgDeploy_BeaconEntrance, r_bActive, BoolProperty_TgGame_TgDeploy_BeaconEntrance_r_bActive);
 		}
 	}
-	if (cls == Class_TgGame_TgDeploy_DestructibleCover) {
+	if (bits.lo & (1ull << 40)) {  // BIDX_TgGame_TgDeploy_DestructibleCover
 		if (isAuthority) {
 			DO_REP(ATgDeploy_DestructibleCover, r_bHasFired, BoolProperty_TgGame_TgDeploy_DestructibleCover_r_bHasFired);
 		}
 	}
-	if (cls == Class_TgGame_TgDeploy_Sensor) {
+	if (bits.lo & (1ull << 41)) {  // BIDX_TgGame_TgDeploy_Sensor
 		if (isAuthority) {
 			DO_REP(ATgDeploy_Sensor, r_nSensorAudioWarning, IntProperty_TgGame_TgDeploy_Sensor_r_nSensorAudioWarning);
 			DO_REP(ATgDeploy_Sensor, r_nTouchedPlayerCount, IntProperty_TgGame_TgDeploy_Sensor_r_nTouchedPlayerCount);
 		}
 	}
-	if (cls == Class_TgGame_TgDeployable
-		|| cls == Class_TgGame_TgDeploy_Artillery
-		|| cls == Class_TgGame_TgDeploy_Beacon
-		|| cls == Class_TgGame_TgDeploy_BeaconEntrance
-		|| cls == Class_TgGame_TgDeploy_DestructibleCover
-		|| cls == Class_TgGame_TgDeploy_ForceField
-		|| cls == Class_TgGame_TgDeploy_Sensor
-		|| cls == Class_TgGame_TgDeploy_SweepSensor
-	) {
+	if (bits.hi & (1ull << 26)) {  // BIDX_TgGame_TgDeployable
 		if (isAuthority) {
 			DO_REP(ATgDeployable, r_bDelayDeployed, BoolProperty_TgGame_TgDeployable_r_bDelayDeployed);
 			DO_REP(ATgDeployable, r_nReplicateDestroyIt, IntProperty_TgGame_TgDeployable_r_nReplicateDestroyIt);
@@ -2566,15 +2886,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgDeployable, r_nOwnerFireMode, IntProperty_TgGame_TgDeployable_r_nOwnerFireMode);
 		}
 	}
-	if (
-		cls == Class_TgGame_TgDevice
-		|| cls == Class_TgGame_TgDevice_Grenade
-		|| cls == Class_TgGame_TgDevice_HitPulse
-		|| cls == Class_TgGame_TgDevice_Morale
-		|| cls == Class_TgGame_TgDevice_NewMelee
-		|| cls == Class_TgGame_TgDevice_MeleeDualWield
-		|| cls == Class_TgGame_TgDevice_NewRange
-	) {
+	if (bits.lo & (1ull << 42)) {  // BIDX_TgGame_TgDevice
 		if (((isAuthority) && bNetDirty) && bNetOwner) {
 			DO_REP(AInventory, InvManager, ObjectProperty_Engine_Inventory_InvManager);
 			DO_REP(AInventory, Inventory, ObjectProperty_Engine_Inventory_Inventory);
@@ -2594,46 +2906,38 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgDevice, r_nQualityValueId, IntProperty_TgGame_TgDevice_r_nQualityValueId);
 		}
 	}
-	if (cls == Class_TgGame_TgDevice_Morale) {
+	if (bits.lo & (1ull << 43)) {  // BIDX_TgGame_TgDevice_Morale
 		if (isAuthority) {
 			DO_REP(ATgDevice_Morale, r_bIsActivelyFiring, BoolProperty_TgGame_TgDevice_Morale_r_bIsActivelyFiring);
 		}
 	}
-	if (cls == Class_TgGame_TgDoor) {
+	if (bits.lo & (1ull << 44)) {  // BIDX_TgGame_TgDoor
 		if ((isAuthority) && bNetDirty) {
 			DO_REP(ATgDoor, r_bOpen, BoolProperty_TgGame_TgDoor_r_bOpen);
 		}
 	}
-	if (cls == Class_TgGame_TgDoorMarker) {
+	if (bits.lo & (1ull << 45)) {  // BIDX_TgGame_TgDoorMarker
 		if (isAuthority) {
 			DO_REP(ATgDoorMarker, r_eStatus, ByteProperty_TgGame_TgDoorMarker_r_eStatus);
 		}
 	}
-	if (cls == Class_TgGame_TgDroppedItem) {
+	if (bits.lo & (1ull << 46)) {  // BIDX_TgGame_TgDroppedItem
 		if ((isAuthority) && bNetDirty) {
 			DO_REP(ATgDroppedItem, r_nItemId, IntProperty_TgGame_TgDroppedItem_r_nItemId);
 		}
 	}
-	if (cls == Class_TgGame_TgDynamicDestructible) {
+	if (bits.lo & (1ull << 47)) {  // BIDX_TgGame_TgDynamicDestructible
 		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgDynamicDestructible, r_nDestructibleId, IntProperty_TgGame_TgDynamicDestructible_r_nDestructibleId);
 			DO_REP(ATgDynamicDestructible, r_pFactory, ObjectProperty_TgGame_TgDynamicDestructible_r_pFactory);
 		}
 	}
-	if (
-		cls == Class_TgGame_TgDynamicSMActor
-		|| cls == Class_TgGame_TgDynamicDestructible
-		|| cls == Class_TgGame_TgObjectiveAttachActor
-	) {
+	if (bits.lo & (1ull << 48)) {  // BIDX_TgGame_TgDynamicSMActor
 		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgDynamicSMActor, m_sAssembly, StrProperty_TgGame_TgDynamicSMActor_m_sAssembly);
 		}
 	}
-	if (
-		cls == Class_TgGame_TgDynamicSMActor
-		|| cls == Class_TgGame_TgDynamicDestructible
-		|| cls == Class_TgGame_TgObjectiveAttachActor
-	) {
+	if (bits.lo & (1ull << 49)) {  // BIDX_TgGame_TgDynamicSMActor_2
 
 		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgDynamicSMActor, r_EffectManager, ObjectProperty_TgGame_TgDynamicSMActor_r_EffectManager);
@@ -2642,7 +2946,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgDynamicSMActor, r_nHealth, IntProperty_TgGame_TgDynamicSMActor_r_nHealth);
 		}
 	}
-	if (cls == Class_TgGame_TgEffectManager) {
+	if (bits.lo & (1ull << 50)) {  // BIDX_TgGame_TgEffectManager
 		if (isAuthority) {
 			DO_REP_ARRAY(0x20, ATgEffectManager, r_EventQueue, StructProperty_TgGame_TgEffectManager_r_EventQueue);
 			DO_REP_ARRAY(0x10, ATgEffectManager, r_ManagedEffectList, StructProperty_TgGame_TgEffectManager_r_ManagedEffectList);
@@ -2652,18 +2956,18 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgEffectManager, r_nNextQueueIndex, IntProperty_TgGame_TgEffectManager_r_nNextQueueIndex);
 		}
 	}
-	if (cls == Class_TgGame_TgEmitter) {
+	if (bits.lo & (1ull << 51)) {  // BIDX_TgGame_TgEmitter
 		if (isAuthority) {
 			DO_REP(ATgEmitter, BoneName, NameProperty_TgGame_TgEmitter_BoneName);
 		}
 	}
-	if (cls == Class_TgGame_TgFlagCaptureVolume) {
+	if (bits.lo & (1ull << 52)) {  // BIDX_TgGame_TgFlagCaptureVolume
 		if (isAuthority) {
 			DO_REP(ATgFlagCaptureVolume, r_eCoalition, ByteProperty_TgGame_TgFlagCaptureVolume_r_eCoalition);
 			DO_REP(ATgFlagCaptureVolume, r_nTaskForce, ByteProperty_TgGame_TgFlagCaptureVolume_r_nTaskForce);
 		}
 	}
-	if (cls == Class_TgGame_TgFracturedStaticMeshActor) {
+	if (bits.lo & (1ull << 53)) {  // BIDX_TgGame_TgFracturedStaticMeshActor
 		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgFracturedStaticMeshActor, r_EffectManager, ObjectProperty_TgGame_TgFracturedStaticMeshActor_r_EffectManager);
 			DO_REP(ATgFracturedStaticMeshActor, r_TakeHitNotifier, IntProperty_TgGame_TgFracturedStaticMeshActor_r_TakeHitNotifier);
@@ -2676,42 +2980,34 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgFracturedStaticMeshActor, r_vTakeHitMomentum, StructProperty_TgGame_TgFracturedStaticMeshActor_r_vTakeHitMomentum);
 		}
 	}
-	if (cls == Class_TgGame_TgHexLandMarkActor) {
+	if (bits.lo & (1ull << 54)) {  // BIDX_TgGame_TgHexLandMarkActor
 		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgHexLandMarkActor, r_nMeshAsmId, IntProperty_TgGame_TgHexLandMarkActor_r_nMeshAsmId);
 		}
 	}
-	if (cls == Class_TgGame_TgInterpActor) {
+	if (bits.lo & (1ull << 55)) {  // BIDX_TgGame_TgInterpActor
 		if (isAuthority) {
 			DO_REP(ATgInterpActor, r_sCurrState, StrProperty_TgGame_TgInterpActor_r_sCurrState);
 		}
 	}
-	if (cls == Class_TgGame_TgInventoryManager) {
+	if (bits.lo & (1ull << 56)) {  // BIDX_TgGame_TgInventoryManager
 		if (isAuthority) {
 			DO_REP(ATgInventoryManager, r_ItemCount, IntProperty_TgGame_TgInventoryManager_r_ItemCount);
 		}
 	}
-	if (cls == Class_TgGame_TgKismetTestActor) {
+	if (bits.lo & (1ull << 57)) {  // BIDX_TgGame_TgKismetTestActor
 		if (isAuthority) {
 			DO_REP(ATgKismetTestActor, r_nCurrentTest, IntProperty_TgGame_TgKismetTestActor_r_nCurrentTest);
 			DO_REP(ATgKismetTestActor, r_nFailCount, IntProperty_TgGame_TgKismetTestActor_r_nFailCount);
 			DO_REP(ATgKismetTestActor, r_nPassCount, IntProperty_TgGame_TgKismetTestActor_r_nPassCount);
 		}
 	}
-	if (cls == Class_TgGame_TgLevelCamera) {
+	if (bits.lo & (1ull << 58)) {  // BIDX_TgGame_TgLevelCamera
 		if (isAuthority) {
 			DO_REP(ATgLevelCamera, r_bEnabled, BoolProperty_TgGame_TgLevelCamera_r_bEnabled);
 		}
 	}
-	if (
-		cls == Class_TgGame_TgMissionObjective
-		|| cls == Class_TgGame_TgBaseObjective_CTFBot
-		|| cls == Class_TgGame_TgBaseObjective_KOTH
-		|| cls == Class_TgGame_TgMissionObjective_Bot
-		|| cls == Class_TgGame_TgMissionObjective_Escort
-		|| cls == Class_TgGame_TgMissionObjective_Kismet
-		|| cls == Class_TgGame_TgMissionObjective_Proximity
-	) {
+	if (bits.lo & (1ull << 59)) {  // BIDX_TgGame_TgMissionObjective
 		if (isAuthority && !bNetInitial) {
 			DO_REP(ATgMissionObjective, r_ObjectiveAssignment, ObjectProperty_TgGame_TgMissionObjective_r_ObjectiveAssignment);
 			DO_REP(ATgMissionObjective, r_bHasBeenCapturedOnce, BoolProperty_TgGame_TgMissionObjective_r_bHasBeenCapturedOnce);
@@ -2734,30 +3030,23 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgMissionObjective, r_bIsPending, BoolProperty_TgGame_TgMissionObjective_r_bIsPending);
 		}
 	}
-	if (
-		cls == Class_TgGame_TgMissionObjective_Bot
-		|| cls == Class_TgGame_TgBaseObjective_CTFBot
-	) {
+	if (bits.lo & (1ull << 60)) {  // BIDX_TgGame_TgMissionObjective_Bot
 		if (isAuthority) {
 			DO_REP(ATgMissionObjective_Bot, r_ObjectiveBot, ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBot);
 			DO_REP(ATgMissionObjective_Bot, r_ObjectiveBotInfo, ObjectProperty_TgGame_TgMissionObjective_Bot_r_ObjectiveBotInfo);
 		}
 	}
-	if (cls == Class_TgGame_TgMissionObjective_Escort) {
+	if (bits.lo & (1ull << 61)) {  // BIDX_TgGame_TgMissionObjective_Escort
 		if (isAuthority) {
 			DO_REP(ATgMissionObjective_Escort, r_AttachedActor, ObjectProperty_TgGame_TgMissionObjective_Escort_r_AttachedActor);
 		}
 	}
-	if (
-		cls == Class_TgGame_TgMissionObjective_Proximity
-		|| cls == Class_TgGame_TgBaseObjective_KOTH
-		|| cls == Class_TgGame_TgMissionObjective_Escort
-	) {
+	if (bits.lo & (1ull << 62)) {  // BIDX_TgGame_TgMissionObjective_Proximity
 		if (isAuthority) {
 			DO_REP(ATgMissionObjective_Proximity, r_fCaptureRate, FloatProperty_TgGame_TgMissionObjective_Proximity_r_fCaptureRate);
 		}
 	}
-	if (cls == Class_TgGame_TgObjectiveAssignment) {
+	if (bits.lo & (1ull << 63)) {  // BIDX_TgGame_TgObjectiveAssignment
 		if (isAuthority) {
 			DO_REP(ATgObjectiveAssignment, r_AssignedObjective, ObjectProperty_TgGame_TgObjectiveAssignment_r_AssignedObjective);
 			DO_REP(ATgObjectiveAssignment, r_Attackers, ObjectProperty_TgGame_TgObjectiveAssignment_r_Attackers);
@@ -2766,81 +3055,11 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgObjectiveAssignment, r_eState, ByteProperty_TgGame_TgObjectiveAssignment_r_eState);
 		}
 	}
-	if (
-		cls == Class_TgGame_TgPawn
-		|| cls == Class_TgGame_TgPawn_AVCompositeWalker
-		|| cls == Class_TgGame_TgPawn_Ambush
-		|| cls == Class_TgGame_TgPawn_AndroidMinion
-		|| cls == Class_TgGame_TgPawn_AttackTransport
-		|| cls == Class_TgGame_TgPawn_Boss
-		|| cls == Class_TgGame_TgPawn_Boss_Destroyer
-		|| cls == Class_TgGame_TgPawn_Brawler
-		|| cls == Class_TgGame_TgPawn_CTR
-		|| cls == Class_TgGame_TgPawn_Character
-		|| cls == Class_TgGame_TgPawn_ColonyEye
-		|| cls == Class_TgGame_TgPawn_Destructible
-		|| cls == Class_TgGame_TgPawn_Detonator
-		|| cls == Class_TgGame_TgPawn_Dismantler
-		|| cls == Class_TgGame_TgPawn_DuneCommander
-		|| cls == Class_TgGame_TgPawn_Elite_Alchemist
-		|| cls == Class_TgGame_TgPawn_Elite_Assassin
-		|| cls == Class_TgGame_TgPawn_EscortRobot
-		|| cls == Class_TgGame_TgPawn_FlyingBoss
-		|| cls == Class_TgGame_TgPawn_GroundPetA
-		|| cls == Class_TgGame_TgPawn_Guardian
-		|| cls == Class_TgGame_TgPawn_Hover
-		|| cls == Class_TgGame_TgPawn_HoverShieldSphere
-		|| cls == Class_TgGame_TgPawn_Hunter
-		|| cls == Class_TgGame_TgPawn_Inquisitor
-		|| cls == Class_TgGame_TgPawn_Interact_NPC
-		|| cls == Class_TgGame_TgPawn_Iris
-		|| cls == Class_TgGame_TgPawn_Juggernaut
-		|| cls == Class_TgGame_TgPawn_Marauder
-		|| cls == Class_TgGame_TgPawn_NPC
-		|| cls == Class_TgGame_TgPawn_NewWasp
-		|| cls == Class_TgGame_TgPawn_Raptor
-		|| cls == Class_TgGame_TgPawn_Reaper
-		|| cls == Class_TgGame_TgPawn_RecursiveSpawner
-		|| cls == Class_TgGame_TgPawn_Remote
-		|| cls == Class_TgGame_TgPawn_Robot
-		|| cls == Class_TgGame_TgPawn_Scanner
-		|| cls == Class_TgGame_TgPawn_ScannerRecursive
-		|| cls == Class_TgGame_TgPawn_Siege
-		|| cls == Class_TgGame_TgPawn_SiegeBarrage
-		|| cls == Class_TgGame_TgPawn_SiegeHover
-		|| cls == Class_TgGame_TgPawn_SiegeRapidFire
-		|| cls == Class_TgGame_TgPawn_Sniper
-		|| cls == Class_TgGame_TgPawn_SonoranCommander
-		|| cls == Class_TgGame_TgPawn_SupportForeman
-		|| cls == Class_TgGame_TgPawn_Switchblade
-		|| cls == Class_TgGame_TgPawn_Tentacle
-		|| cls == Class_TgGame_TgPawn_ThinkTank
-		|| cls == Class_TgGame_TgPawn_TreadRobot
-		|| cls == Class_TgGame_TgPawn_Turret
-		|| cls == Class_TgGame_TgPawn_TurretAVAFlak
-		|| cls == Class_TgGame_TgPawn_TurretAVARocket
-		|| cls == Class_TgGame_TgPawn_TurretFlak
-		|| cls == Class_TgGame_TgPawn_TurretFlame
-		|| cls == Class_TgGame_TgPawn_TurretPlasma
-		|| cls == Class_TgGame_TgPawn_UberWalker
-		|| cls == Class_TgGame_TgPawn_Vanguard
-		|| cls == Class_TgGame_TgPawn_VanityPet
-		|| cls == Class_TgGame_TgPawn_Vulcan
-		|| cls == Class_TgGame_TgPawn_Warlord
-		|| cls == Class_TgGame_TgPawn_WaspSpawner
-		|| cls == Class_TgGame_TgPawn_Widow
-	) {
+	if (bits.hi & (1ull << 0)) {  // BIDX_TgGame_TgPawn
 		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgPawn, r_bIsBot, BoolProperty_TgGame_TgPawn_r_bIsBot);
 			DO_REP(ATgPawn, r_bIsHenchman, BoolProperty_TgGame_TgPawn_r_bIsHenchman);
 			DO_REP(ATgPawn, r_bNeedPlaySpawnFx, BoolProperty_TgGame_TgPawn_r_bNeedPlaySpawnFx);
-			// r_fMakeVisibleIncreased intentionally NOT here — it's a runtime
-			// delta pulse (server→client) for stealth reveal-on-hit etc., so it
-			// belongs in the bNetDirty delta block below alongside
-			// r_fMakeVisibleFadeRate / r_fStealthTransitionTime. Leaving it in
-			// the initial-only block meant the field replicated exactly once
-			// (on channel open) and never again, so reveal pulses were silently
-			// dropped after the first hit.
 			DO_REP(ATgPawn, r_nAllianceId, IntProperty_TgGame_TgPawn_r_nAllianceId);
 			DO_REP(ATgPawn, r_nBodyMeshAsmId, IntProperty_TgGame_TgPawn_r_nBodyMeshAsmId);
 			DO_REP(ATgPawn, r_nBotRankValueId, IntProperty_TgGame_TgPawn_r_nBotRankValueId);
@@ -2859,7 +3078,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn, r_nReplicateHit, IntProperty_TgGame_TgPawn_r_nReplicateHit);
 			DO_REP_ARRAY(25, ATgPawn, r_EquipDeviceInfo, StructProperty_TgGame_TgPawn_r_EquipDeviceInfo);
 		}
-		if ((isAuthority)/* && bNetOwner*/) {
+		if ((isAuthority) && bNetOwner) {
 			DO_REP(ATgPawn, r_ControlPawn, ObjectProperty_TgGame_TgPawn_r_ControlPawn);
 			DO_REP(ATgPawn, r_CurrentOmegaVolume, ObjectProperty_TgGame_TgPawn_r_CurrentOmegaVolume);
 			DO_REP(ATgPawn, r_CurrentSubzoneBilboardVol, ObjectProperty_TgGame_TgPawn_r_CurrentSubzoneBilboardVol);
@@ -2893,8 +3112,9 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn, r_nRestDeviceSlot, IntProperty_TgGame_TgPawn_r_nRestDeviceSlot);
 			DO_REP(ATgPawn, r_nToken, IntProperty_TgGame_TgPawn_r_nToken);
 			DO_REP(ATgPawn, r_nXp, IntProperty_TgGame_TgPawn_r_nXp);
+			DO_REP(ATgPawn, r_FlightAcceleration, FloatProperty_TgGame_TgPawn_r_FlightAcceleration);
 		}
-		if ((isAuthority) && bNetDirty) {
+		if ((isAuthority)/* && bNetDirty*/) {
 			DO_REP_ARRAY(0x20, ATgPawn, r_nFlashEvent, IntProperty_TgGame_TgPawn_r_nFlashEvent);
 			DO_REP_ARRAY(0x20, ATgPawn, r_nFlashFireInfo, IntProperty_TgGame_TgPawn_r_nFlashFireInfo);
 			DO_REP(ATgPawn, r_nFlashQueIndex, IntProperty_TgGame_TgPawn_r_nFlashQueIndex);
@@ -2905,7 +3125,6 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 
 			DO_REP(ATgPawn, r_DistanceToPushback, FloatProperty_TgGame_TgPawn_r_DistanceToPushback);
 			DO_REP(ATgPawn, r_EffectManager, ObjectProperty_TgGame_TgPawn_r_EffectManager);
-			DO_REP(ATgPawn, r_FlightAcceleration, FloatProperty_TgGame_TgPawn_r_FlightAcceleration);
 			DO_REP(ATgPawn, r_HangingRotation, StructProperty_TgGame_TgPawn_r_HangingRotation);
 			DO_REP(ATgPawn, r_Owner, ObjectProperty_TgGame_TgPawn_r_Owner);
 			DO_REP(ATgPawn, r_Pet, ObjectProperty_TgGame_TgPawn_r_Pet);
@@ -2985,20 +3204,17 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 
 		// DO_REP_ARRAY(25, ATgPawn, r_EquipDeviceInfo, StructProperty_TgGame_TgPawn_r_EquipDeviceInfo); // todo: investigate why it only works here
 	}
-	if (
-		cls == Class_TgGame_TgPawn_Ambush
-		|| cls == Class_TgGame_TgPawn_Tentacle
-	) {
+	if (bits.hi & (1ull << 1)) {  // BIDX_TgGame_TgPawn_Ambush
 		if (isAuthority) {
 			DO_REP(ATgPawn_Ambush, r_bIsDeployed, BoolProperty_TgGame_TgPawn_Ambush_r_bIsDeployed);
 		}
 	}
-	if (cls == Class_TgGame_TgPawn_AttackTransport) {
+	if (bits.hi & (1ull << 2)) {  // BIDX_TgGame_TgPawn_AttackTransport
 		if ((isAuthority) && bNetDirty) {
 			DO_REP(ATgPawn_AttackTransport, r_DeathType, ByteProperty_TgGame_TgPawn_AttackTransport_r_DeathType);
 		}
 	}
-	if (cls == Class_TgGame_TgPawn_CTR) {
+	if (bits.hi & (1ull << 3)) {  // BIDX_TgGame_TgPawn_CTR
 		if ((isAuthority) && bNetDirty || bNetInitial) {
 			DO_REP(ATgPawn_CTR, r_CustomCharacterAssembly, StructProperty_TgGame_TgPawn_CTR_r_CustomCharacterAssembly);
 			DO_REP(ATgPawn_CTR, r_PilotPawn, ObjectProperty_TgGame_TgPawn_CTR_r_PilotPawn);
@@ -3006,47 +3222,10 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP_ARRAY(0xFF, ATgPawn_CTR, r_nMorphSettings, IntProperty_TgGame_TgPawn_CTR_r_nMorphSettings);
 		}
 	}
-	if (
-		cls == Class_TgGame_TgPawn_Character
-		|| cls == Class_TgGame_TgPawn_AndroidMinion
-		|| cls == Class_TgGame_TgPawn_Boss
-		|| cls == Class_TgGame_TgPawn_Boss_Destroyer
-		|| cls == Class_TgGame_TgPawn_Brawler
-		|| cls == Class_TgGame_TgPawn_CTR
-		|| cls == Class_TgGame_TgPawn_ColonyEye
-		|| cls == Class_TgGame_TgPawn_Dismantler
-		|| cls == Class_TgGame_TgPawn_DuneCommander
-		|| cls == Class_TgGame_TgPawn_Elite_Alchemist
-		|| cls == Class_TgGame_TgPawn_Elite_Assassin
-		|| cls == Class_TgGame_TgPawn_FlyingBoss
-		|| cls == Class_TgGame_TgPawn_Guardian
-		|| cls == Class_TgGame_TgPawn_Hunter
-		|| cls == Class_TgGame_TgPawn_Inquisitor
-		|| cls == Class_TgGame_TgPawn_Interact_NPC
-		|| cls == Class_TgGame_TgPawn_Juggernaut
-		|| cls == Class_TgGame_TgPawn_Marauder
-		|| cls == Class_TgGame_TgPawn_NPC
-		|| cls == Class_TgGame_TgPawn_Raptor
-		|| cls == Class_TgGame_TgPawn_Reaper
-		|| cls == Class_TgGame_TgPawn_RecursiveSpawner
-		|| cls == Class_TgGame_TgPawn_Sniper
-		|| cls == Class_TgGame_TgPawn_SonoranCommander
-		|| cls == Class_TgGame_TgPawn_Switchblade
-		|| cls == Class_TgGame_TgPawn_ThinkTank
-		|| cls == Class_TgGame_TgPawn_Turret
-		|| cls == Class_TgGame_TgPawn_TurretAVAFlak
-		|| cls == Class_TgGame_TgPawn_TurretAVARocket
-		|| cls == Class_TgGame_TgPawn_TurretFlak
-		|| cls == Class_TgGame_TgPawn_TurretFlame
-		|| cls == Class_TgGame_TgPawn_TurretPlasma
-		|| cls == Class_TgGame_TgPawn_UberWalker
-		|| cls == Class_TgGame_TgPawn_Vanguard
-		|| cls == Class_TgGame_TgPawn_Vulcan
-		|| cls == Class_TgGame_TgPawn_Warlord
-	) {
+	if (bits.hi & (1ull << 4)) {  // BIDX_TgGame_TgPawn_Character
 
 
-		if ((isAuthority) && bNetDirty || bNetInitial) {
+		if ((isAuthority) && (bNetDirty || bNetInitial)) {
 			DO_REP(ATgPawn_Character, r_CustomCharacterAssembly, StructProperty_TgGame_TgPawn_Character_r_CustomCharacterAssembly);
 			DO_REP(ATgPawn_Character, r_eAttachedMesh, ByteProperty_TgGame_TgPawn_Character_r_eAttachedMesh);
 			DO_REP(ATgPawn_Character, r_nBoostTimeRemaining, IntProperty_TgGame_TgPawn_Character_r_nBoostTimeRemaining);
@@ -3056,7 +3235,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn_Character, r_nMaxMorphIndexSentFromServer, IntProperty_TgGame_TgPawn_Character_r_nMaxMorphIndexSentFromServer);
 			DO_REP_ARRAY(0xFF, ATgPawn_Character, r_nMorphSettings, IntProperty_TgGame_TgPawn_Character_r_nMorphSettings);
 		}
-		if (((isAuthority) && bNetOwner) && bNetInitial || bNetDirty) {
+		if (((isAuthority) && bNetOwner) && (bNetInitial || bNetDirty)) {
 			DO_REP(ATgPawn_Character, r_CurrentVanityPet, ObjectProperty_TgGame_TgPawn_Character_r_CurrentVanityPet);
 			DO_REP(ATgPawn_Character, r_WallJumpUpperLineCheckOffset, FloatProperty_TgGame_TgPawn_Character_r_WallJumpUpperLineCheckOffset);
 			DO_REP(ATgPawn_Character, r_WallJumpZ, FloatProperty_TgGame_TgPawn_Character_r_WallJumpZ);
@@ -3065,39 +3244,27 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn_Character, r_nSkillGroupSetId, IntProperty_TgGame_TgPawn_Character_r_nSkillGroupSetId);
 		}
 	}
-	if (cls == Class_TgGame_TgPawn_DuneCommander) {
+	if (bits.hi & (1ull << 5)) {  // BIDX_TgGame_TgPawn_DuneCommander
 		if ((isAuthority) && bNetDirty || bNetInitial) {
 			DO_REP(ATgPawn_DuneCommander, r_bDoCrashLanding, BoolProperty_TgGame_TgPawn_DuneCommander_r_bDoCrashLanding);
 		}
 	}
-	if (cls == Class_TgGame_TgPawn_Iris) {
+	if (bits.hi & (1ull << 6)) {  // BIDX_TgGame_TgPawn_Iris
 		if (isAuthority) {
 			DO_REP(ATgPawn_Iris, r_nStartNewScan, ByteProperty_TgGame_TgPawn_Iris_r_nStartNewScan);
 		}
 	}
-	if (cls == Class_TgGame_TgPawn_Reaper) {
+	if (bits.hi & (1ull << 7)) {  // BIDX_TgGame_TgPawn_Reaper
 		if ((isAuthority) && bNetDirty) {
 			DO_REP(ATgPawn_Reaper, r_fBatteryPct, FloatProperty_TgGame_TgPawn_Reaper_r_fBatteryPct);
 		}
 	}
-	if (
-		cls == Class_TgGame_TgPawn_Siege
-		|| cls == Class_TgGame_TgPawn_SiegeBarrage
-		|| cls == Class_TgGame_TgPawn_SiegeHover
-		|| cls == Class_TgGame_TgPawn_SiegeRapidFire
-	) {
+	if (bits.hi & (1ull << 8)) {  // BIDX_TgGame_TgPawn_Siege
 		if ((isAuthority) && bNetDirty) {
 			DO_REP(ATgPawn_Siege, r_AccelDirection, ByteProperty_TgGame_TgPawn_Siege_r_AccelDirection);
 		}
 	}
-	if (
-		cls == Class_TgGame_TgPawn_Turret
-		|| cls == Class_TgGame_TgPawn_TurretAVAFlak
-		|| cls == Class_TgGame_TgPawn_TurretAVARocket
-		|| cls == Class_TgGame_TgPawn_TurretFlak
-		|| cls == Class_TgGame_TgPawn_TurretFlame
-		|| cls == Class_TgGame_TgPawn_TurretPlasma
-	) {
+	if (bits.hi & (1ull << 9)) {  // BIDX_TgGame_TgPawn_Turret
 		if (isAuthority) {
 			DO_REP(ATgPawn_Turret, r_bIsDeployed, BoolProperty_TgGame_TgPawn_Turret_r_bIsDeployed);
 			DO_REP(ATgPawn_Turret, r_fInitDeployTime, FloatProperty_TgGame_TgPawn_Turret_r_fInitDeployTime);
@@ -3108,12 +3275,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn_Turret, r_fDeployMaxHealthPCT, FloatProperty_TgGame_TgPawn_Turret_r_fDeployMaxHealthPCT);
 		}
 	}
-	if (cls == Class_TgGame_TgPawn_VanityPet) {
+	if (bits.hi & (1ull << 10)) {  // BIDX_TgGame_TgPawn_VanityPet
 		if (isAuthority) {
 			DO_REP(ATgPawn_VanityPet, r_nSpawningItemId, IntProperty_TgGame_TgPawn_VanityPet_r_nSpawningItemId);
 		}
 	}
-	if (cls == Class_TgGame_TgPlayerController) {
+	if (bits.hi & (1ull << 11)) {  // BIDX_TgGame_TgPlayerController
 		if ((isAuthority) && bNetOwner) {
 			DO_REP(ATgPlayerController, r_WatchOtherPlayer, ByteProperty_TgGame_TgPlayerController_r_WatchOtherPlayer);
 			// DO_REP(ATgPlayerController, r_bEDDebugEffects, BoolProperty_TgGame_TgPlayerController_r_bEDDebugEffects);
@@ -3123,12 +3290,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPlayerController, r_bRove, BoolProperty_TgGame_TgPlayerController_r_bRove);
 		}
 	}
-	if (cls == Class_TgGame_TgProj_Grapple) {
+	if (bits.hi & (1ull << 12)) {  // BIDX_TgGame_TgProj_Grapple
 		if (isAuthority) {
 			DO_REP(ATgProj_Grapple, r_vTargetLocation, StructProperty_TgGame_TgProj_Grapple_r_vTargetLocation);
 		}
 	}
-	if (cls == Class_TgGame_TgProj_Missile) {
+	if (bits.hi & (1ull << 13)) {  // BIDX_TgGame_TgProj_Missile
 		if (isAuthority) {
 			DO_REP(ATgProj_Missile, r_aSeeking, ObjectProperty_TgGame_TgProj_Missile_r_aSeeking);
 			DO_REP(ATgProj_Missile, r_vTargetWorldLocation, StructProperty_TgGame_TgProj_Missile_r_vTargetWorldLocation);
@@ -3137,27 +3304,13 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgProj_Missile, r_nNumBounces, IntProperty_TgGame_TgProj_Missile_r_nNumBounces);
 		}
 	}
-	if (cls == Class_TgGame_TgProj_Rocket) {
+	if (bits.hi & (1ull << 14)) {  // BIDX_TgGame_TgProj_Rocket
 		if (bNetInitial && isAuthority) {
 			DO_REP(ATgProj_Rocket, FlockIndex, ByteProperty_TgGame_TgProj_Rocket_FlockIndex);
 			DO_REP(ATgProj_Rocket, bCurl, BoolProperty_TgGame_TgProj_Rocket_bCurl);
 		}
 	}
-	if (
-		cls == Class_TgGame_TgProjectile
-		|| cls == Class_TgGame_TgProj_Teleporter
-		|| cls == Class_TgGame_TgProj_StraightTeleporter
-		|| cls == Class_TgGame_TgProj_Rocket
-		|| cls == Class_TgGame_TgProj_Net
-		|| cls == Class_TgGame_TgProj_Mortar
-		|| cls == Class_TgGame_TgProj_Missile
-		|| cls == Class_TgGame_TgProj_Grenade
-		|| cls == Class_TgGame_TgProj_Grapple
-		|| cls == Class_TgGame_TgProj_FreeGrenade
-		|| cls == Class_TgGame_TgProj_Deployable
-		|| cls == Class_TgGame_TgProj_Bounce
-		|| cls == Class_TgGame_TgProj_Bot
-	) {
+	if (bits.hi & (1ull << 15)) {  // BIDX_TgGame_TgProjectile
 		if ((isAuthority) && bNetInitial) {
 			DO_REP(ATgProjectile, r_Owner, ObjectProperty_TgGame_TgProjectile_r_Owner);
 			DO_REP(ATgProjectile, r_fAccelRate, FloatProperty_TgGame_TgProjectile_r_fAccelRate);
@@ -3168,7 +3321,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgProjectile, r_vSpawnLocation, StructProperty_TgGame_TgProjectile_r_vSpawnLocation);
 		}
 	}
-	if (cls == Class_TgGame_TgRepInfo_Beacon) {
+	if (bits.hi & (1ull << 16)) {  // BIDX_TgGame_TgRepInfo_Beacon
 		if (bNetDirty && isAuthority) {
 			DO_REP(ATgRepInfo_Beacon, r_bDeployed, BoolProperty_TgGame_TgRepInfo_Beacon_r_bDeployed);
 			DO_REP(ATgRepInfo_Beacon, r_vLoc, StructProperty_TgGame_TgRepInfo_Beacon_r_vLoc);
@@ -3177,10 +3330,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgRepInfo_Beacon, r_nName, StrProperty_TgGame_TgRepInfo_Beacon_r_nName);
 		}
 	}
-	if (
-		cls == Class_TgGame_TgRepInfo_Deployable
-		|| cls == Class_TgGame_TgRepInfo_Beacon
-	) {
+	if (bits.hi & (1ull << 17)) {  // BIDX_TgGame_TgRepInfo_Deployable
 		// DIAG: DRI replication isn't reaching the client — no ReplicatedEvent
 		// for r_TaskforceInfo / r_InstigatorInfo / r_bOwnedByTaskforce / etc.
 		// ever fires client-side (verified in replicated_event.txt).  If this
@@ -3206,10 +3356,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgRepInfo_Deployable, r_DeployableOwner, ObjectProperty_TgGame_TgRepInfo_Deployable_r_DeployableOwner);
 		}
 	}
-	if (
-		cls == Class_TgGame_TgRepInfo_Game
-		|| cls == Class_TgGame_TgRepInfo_GameOpenWorld
-	) {
+	if (bits.hi & (1ull << 18)) {  // BIDX_TgGame_TgRepInfo_Game
 		if (isAuthority) {
 			DO_REP(ATgRepInfo_Game, r_MiniMapInfo, StructProperty_TgGame_TgRepInfo_Game_r_MiniMapInfo);
 			DO_REP(ATgRepInfo_Game, r_bActiveCombat, BoolProperty_TgGame_TgRepInfo_Game_r_bActiveCombat);
@@ -3250,12 +3397,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgRepInfo_Game, r_nMissionTimerState, ByteProperty_TgGame_TgRepInfo_Game_r_nMissionTimerState);
 		}
 	}
-	if (cls == Class_TgGame_TgRepInfo_GameOpenWorld) {
+	if (bits.hi & (1ull << 19)) {  // BIDX_TgGame_TgRepInfo_GameOpenWorld
 		if (isAuthority) {
 			DO_REP_ARRAY(0x3, ATgRepInfo_GameOpenWorld, r_GameTickets, IntProperty_TgGame_TgRepInfo_GameOpenWorld_r_GameTickets);
 		}
 	}
-	if (cls == Class_TgGame_TgRepInfo_Player) {
+	if (bits.hi & (1ull << 20)) {  // BIDX_TgGame_TgRepInfo_Player
 		if (bNetDirty && isAuthority) {
 			DO_REP(ATgRepInfo_Player, r_ApproxLocation, StructProperty_TgGame_TgRepInfo_Player_r_ApproxLocation);
 			DO_REP(ATgRepInfo_Player, r_CustomCharacterAssembly, StructProperty_TgGame_TgRepInfo_Player_r_CustomCharacterAssembly);
@@ -3280,9 +3427,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP_ARRAY(0x9, ATgRepInfo_Player, r_DeviceStats, StructProperty_TgGame_TgRepInfo_Player_r_DeviceStats);
 		}
 	}
-	if (
-		cls == Class_TgGame_TgRepInfo_TaskForce
-	) {
+	if (bits.hi & (1ull << 21)) {  // BIDX_TgGame_TgRepInfo_TaskForce
 		if (isAuthority) {
 			DO_REP(ATgRepInfo_TaskForce, r_BeaconManager, ObjectProperty_TgGame_TgRepInfo_TaskForce_r_BeaconManager);
 			DO_REP(ATgRepInfo_TaskForce, r_CurrActiveObjective, ObjectProperty_TgGame_TgRepInfo_TaskForce_r_CurrActiveObjective);
@@ -3300,12 +3445,12 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgRepInfo_TaskForce, r_nTeamId, IntProperty_TgGame_TgRepInfo_TaskForce_r_nTeamId);
 		}
 	}
-	if (cls == Class_TgGame_TgSkydiveTarget) {
+	if (bits.hi & (1ull << 22)) {  // BIDX_TgGame_TgSkydiveTarget
 		if (isAuthority) {
 			DO_REP(ATgSkydiveTarget, m_LandRadius, FloatProperty_TgGame_TgSkydiveTarget_m_LandRadius);
 		}
 	}
-	if (cls == Class_TgGame_TgSkydivingVolume) {
+	if (bits.hi & (1ull << 23)) {  // BIDX_TgGame_TgSkydivingVolume
 		if (isAuthority) {
 			DO_REP(ATgSkydivingVolume, r_PawnGravityModifier, FloatProperty_TgGame_TgSkydivingVolume_r_PawnGravityModifier);
 			DO_REP(ATgSkydivingVolume, r_PawnLaunchForce, FloatProperty_TgGame_TgSkydivingVolume_r_PawnLaunchForce);
@@ -3313,7 +3458,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgSkydivingVolume, r_SkydiveTarget, ObjectProperty_TgGame_TgSkydivingVolume_r_SkydiveTarget);
 		}
 	}
-	if (cls == Class_TgGame_TgTeamBeaconManager) {
+	if (bits.hi & (1ull << 24)) {  // BIDX_TgGame_TgTeamBeaconManager
 		if (isAuthority) {
 			DO_REP(ATgTeamBeaconManager, r_Beacon, ObjectProperty_TgGame_TgTeamBeaconManager_r_Beacon);
 			DO_REP(ATgTeamBeaconManager, r_BeaconDestroyed, IntProperty_TgGame_TgTeamBeaconManager_r_BeaconDestroyed);
@@ -3326,7 +3471,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 		if ((isAuthority) && bNetInitial) {
 		}
 	}
-	if (cls == Class_TgGame_TgTimerManager) {
+	if (bits.hi & (1ull << 25)) {  // BIDX_TgGame_TgTimerManager
 		if (isAuthority) {
 			DO_REP_ARRAY(0x20, ATgTimerManager, r_byEventQue, ByteProperty_TgGame_TgTimerManager_r_byEventQue);
 			DO_REP(ATgTimerManager, r_byEventQueIndex, ByteProperty_TgGame_TgTimerManager_r_byEventQueIndex);

@@ -278,7 +278,10 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 					aic->m_rFixedDirection  = spawnRot;
 					aic->m_rSpawnDirection  = spawnRot;
 					aic->m_vSpawnLocation   = PetPawn->Location;
+					aic->bReplicateMovement = 1;
 				}
+				PetPawn->Rotation.Pitch = 50;
+				PetPawn->bReplicateMovement = 1;
 				PetPawn->bNetDirty       = 1;
 				PetPawn->bForceNetUpdate = 1;
 				Logger::Log("pet_spawn",

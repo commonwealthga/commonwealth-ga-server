@@ -3911,7 +3911,49 @@ void Database::Init() {
 		Logger::Log("db", "v53: account-scoped ga_players_inventory + simplified ga_character_devices (DROP+CREATE)\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 53", nullptr, nullptr, &err);
+	if (version < 54) {
+		// v54: Push_IceFloe3_P — task force / team assignments for actor-factory
+		// (s_n_task_force / s_n_team_number) and team-player-start
+		// (m_n_task_force) spawn points. Same shape as v50 (Push_IceFloe_P).
+		// Exported from the map planner.
+		const char* kV54_ice_floe3 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('Push_IceFloe3_P',  5646, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe3_P',  8126, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe3_P',  8126, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_IceFloe3_P',  8124, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe3_P',  8124, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_IceFloe3_P',  8125, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe3_P',  8125, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_IceFloe3_P',  8123, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe3_P',  8123, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_IceFloe3_P',  8133, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe3_P',  8133, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_IceFloe3_P',  8135, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_IceFloe3_P',  8135, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe3_P', 12078, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe3_P', 12078, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_IceFloe3_P', 12079, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe3_P', 12079, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('Push_IceFloe3_P', 12004, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe3_P', 12004, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_IceFloe3_P', 12006, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe3_P', 12006, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_IceFloe3_P', 12100, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe3_P', 12100, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_IceFloe3_P', 12101, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('Push_IceFloe3_P', 12101, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe3_P',  8127, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			"('Push_IceFloe3_P', 12099, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe3_P',  5648, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe3_P',  8140, 'm_n_task_force',  '2', NULL, NULL, 1),"
+			"('Push_IceFloe3_P', 12077, 'm_n_task_force',  '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV54_ice_floe3, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v54 (Push_IceFloe3_P seed): %s\n", err); return; }
+		Logger::Log("db", "v54: seeded 30 map_object_config rows for Push_IceFloe3_P\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 54", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

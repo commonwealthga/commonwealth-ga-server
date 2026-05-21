@@ -3,6 +3,11 @@
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Misc/CMarshal/GetString/CMarshal__GetString.hpp"
 #include "src/GameServer/Misc/CMarshal/GetGuid/CMarshal__GetGuid.hpp"
+#include "src/GameServer/Misc/CMarshal/SetWcharT/CMarshal__SetWcharT.hpp"
+#include "src/GameServer/Misc/CMarshal/Destroy/CMarshal__Destroy.hpp"
+#include "src/GameServer/Misc/CMarshalObject/Create/CMarshalObject__Create.hpp"
+#include "src/GameServer/IpDrv/ClientConnection/SendMarshal/ClientConnection__SendMarshal.hpp"
+#include "src/GameServer/IpDrv/NetConnection/FlushNet/NetConnection__FlushNet.hpp"
 #include "src/GameServer/Engine/World/WelcomePlayer/World__WelcomePlayer.hpp"
 #include "src/GameServer/Engine/PackageMap/Compute/PackageMap__Compute.hpp"
 #include "src/GameServer/Engine/FURL/Constructor/FURL__Constructor.hpp"
@@ -26,27 +31,50 @@
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
+#include "src/GameServer/Constants/TcpTypes.h"
+#include "src/GameServer/Constants/TcpFunctions.h"
 #include "src/Utils/Logger/Logger.hpp"
+#include <algorithm>
 
+
+// Build a marshal-channel control message and send it. Mirrors the wire format
+// that triggers our own NotifyControlMessage on the receive side: opcode 0x019B
+// + wchar_t string in field 0x4FF. The dispatcher at 0x109f9970 routes
+// opcode=0x019B marshals to NotifyControlMessage on both ends, so the same
+// shape we receive is the shape we send.
+void MarshalChannel__NotifyControlMessage::SendControlMessage(UNetConnection* Connection, const wchar_t* text) {
+	if (!Connection || !text) return;
+	if ((uintptr_t)Connection < 0x10000) return;
+
+	uint8_t MarshalStorage[0x80] = {0};
+	void* Marshal = MarshalStorage;
+	CMarshalObject__Create::CallOriginal(Marshal);
+	*(void**)Marshal = CMarshalObject__Create::CMarshal_vftable;
+	*(uint16_t*)((uint8_t*)Marshal + 0x26) = GA_U::MARSHAL_CHANNEL;  // 0x019B
+
+	CMarshal__SetWcharT::CallOriginal(Marshal, nullptr, GA_T::TEXT_VALUE, (wchar_t*)text);
+
+	ClientConnection__SendMarshal::CallOriginal(Connection, nullptr, Marshal);
+	NetConnection__FlushNet::CallOriginal(Connection);
+	CMarshal__Destroy::CallOriginal(Marshal);
+}
 
 void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel, void* edx, UNetConnection* Connection, void* InBunch) {
 	LogCallBegin();
 
-	int param_1 = 0x4FF;
-	wchar_t* local_410 = new wchar_t[512];
-	int result = CMarshal__GetString::CallOriginal(InBunch, edx, param_1, local_410);
+	wchar_t local_410[512] = {0};
+	CMarshal__GetString::CallOriginal(InBunch, edx, GA_T::TEXT_VALUE, local_410);
 
-	
 	char tmp[1024];
 	wcstombs(tmp, local_410, sizeof(tmp));
 	tmp[sizeof(tmp)-1] = '\0';
 
-	// Logger::Log("wtf", "\n\n[MarshalChannel__NotifyControlMessage]: %s\n", tmp);
-
-	Logger::Log(GetLogChannel(), "Message: %s\n", tmp);
+	// TEMPORARY: log every incoming control message in full while we lock down
+	// the handshake. Remove (or quiet down) once HELLO/CHALLENGE/NETSPEED/LOGIN
+	// parsing has settled.
+	Logger::Log("handshake", "[handshake] in: '%s' (conn=%p)\n", tmp, (void*)Connection);
 
 	if (strncmp(tmp, "HELLO", 5) == 0) {
-
 		UUID* guid = new UUID();
 		memset(guid, 0, sizeof(UUID));
 		CMarshal__GetGuid::CallOriginal(InBunch, edx, 0x473, guid);
@@ -54,18 +82,49 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 		Logger::DumpMemory("session_guid", (void*)guid, 0x10, 0);
 
 		std::string session_guid = SessionGuidToHex(guid);
-
 		GClientConnectionsData[(int)Connection].SessionGuid = session_guid;
-		Logger::Log(GetLogChannel(), "[MarshalChannel__NotifyControlMessage] HELLO: session_guid=%s\n", session_guid.c_str());
+		Logger::Log(GetLogChannel(), "[handshake] HELLO: session_guid=%s\n", session_guid.c_str());
 
-		*(uint32_t*)((char*)Connection + 0xF4) = 4869; // set Connection->NegotiatedVersion
+		*(uint32_t*)((char*)Connection + 0xF4) = 4869; // Connection->NegotiatedVersion
+
+		// Respond with CHALLENGE. The challenge value isn't validated server-side
+		// (vanilla UE3 has gamespy hash logic gated on WITH_GAMESPY; ours doesn't),
+		// so any value will do — the important thing is that the client receives
+		// a CHALLENGE and then responds with NETSPEED + LOGIN. UE3 uses appCycles()
+		// formatted as 8 hex digits.
+		uint32_t challenge_val = (uint32_t)GetTickCount() ^ (uint32_t)(uintptr_t)Connection;
+		wchar_t challenge_msg[64];
+		swprintf(challenge_msg, 64, L"CHALLENGE VER=4869 CHALLENGE=%08X", challenge_val);
+		SendControlMessage(Connection, challenge_msg);
+
+		// PackageMap__Compute + WelcomePlayer moved to LOGIN — that's the UE3
+		// order (UnWorld.cpp:4961 calls WelcomePlayer only after NMT_Login
+		// validates).
+
+	} else if (strncmp(tmp, "NETSPEED", 8) == 0) {
+		// Wire format: "NETSPEED <int>" — bare trailing integer, no field tag.
+		// Clamp into UE3's [1800, MaxClientRate] range (UnController.cpp:440,
+		// UnWorld.cpp:4836).
+		int rate = 0;
+		const wchar_t* q = local_410 + 8; // past "NETSPEED"
+		while (*q && (*q == L' ' || *q == L'\t')) q++;
+		if (*q) rate = wcstol(q, nullptr, 10);
+
+		UNetDriver* Driver = *(UNetDriver**)((char*)Connection + 0x70);
+		int MaxRate = Driver ? Driver->MaxClientRate : 50000;
+		int clamped = std::max(1800, std::min(rate > 0 ? rate : MaxRate, MaxRate));
+		Connection->CurrentNetSpeed = clamped;
+		Logger::Log(GetLogChannel(), "[handshake] NETSPEED: requested=%d clamped=%d (MaxClientRate=%d)\n",
+			rate, clamped, MaxRate);
+
+	} else if (strncmp(tmp, "LOGIN", 5) == 0) {
+		// Equivalent of UnWorld.cpp:4917 NMT_Login handling: server now welcomes
+		// the client into the level. The forced-export GUID fix runs inside
+		// NetConnection__SendPackageMap which fires from WelcomePlayer.
+		Logger::Log(GetLogChannel(), "[handshake] LOGIN: payload='%s'\n", tmp);
 
 		void* PackageMap = *(void**)((char*)Connection + 0xBC);
 		PackageMap__Compute::CallOriginal(PackageMap);
-
-		// GUID fix for forced exports now runs inside the SendPackageMap hook
-		// (NetConnection__SendPackageMap), where the list is already populated.
-
 		World__WelcomePlayer::CallOriginal((UWorld*)Globals::Get().GWorld, edx, Connection, L"");
 
 	} else if (strncmp(tmp, "HAVE", 4) == 0) {
@@ -191,6 +250,11 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 		if (newcontrollerptr) {
 			MarshalChannel__NotifyControlMessage::HandlePlayerConnected(Connection, newcontrollerptr, session_guid, player_name_from_registry);
 		}
+	} else {
+		// TEMPORARY: any keyword not recognized above gets a loud log so we can
+		// discover the actual wire format the client uses for NETSPEED / LOGIN
+		// (current parsers above are best-guesses based on UE3 conventions).
+		Logger::Log("handshake", "[handshake] UNKNOWN keyword: '%s'\n", tmp);
 	}
 
 	LogCallEnd();

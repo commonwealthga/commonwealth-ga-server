@@ -21,6 +21,8 @@ bool UdpNetDriver__TickDispatch::bNetConnectionVTableHooked = false;
 
 void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void* edx, float DeltaTime) {
 
+	Logger::Log(GetLogChannel(), "[UdpNetDriver::TickDispatch] START\n");
+
 	// Logger::Log("debug", "MINE UdpNetDriver__TickDispatch START\n");
 	NetDriver__TickDispatch::CallOriginal(NetDriver, edx, DeltaTime);
 
@@ -75,6 +77,7 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 			auto it = GConnectionByAddr.find(key);
 			if (it != GConnectionByAddr.end()) {
 				Connection = it->second;
+				Logger::Log(GetLogChannel(), "[UdpNetDriver::TickDispatch] Found existing connection\n");
 			}
 		}
 
@@ -91,6 +94,7 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 		}
 
 		if (!Connection) {
+			Logger::Log(GetLogChannel(), "[UdpNetDriver::TickDispatch] Client connection not found, creating new one\n");
 
 			// Reject phantom-connection births: if this packet's source addr
 			// matches a UNetConnection we just tore down, the packet is almost
@@ -114,13 +118,19 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 			// LogToFile("C:\\mylog.txt", "[UdpNetDriver::TickDispatch] flags: %d", CachedNetConnectionFlagsB);
 
 			if (!UdpNetDriver__TickDispatch::NetConnectionClass) {
+				Logger::Log(GetLogChannel(), "[UdpNetDriver::TickDispatch] NetConnectionClass not patched yet, searching for it...\n");
 				UdpNetDriver__TickDispatch::NetConnectionClass = ClassPreloader::GetClass("Class Engine.NetConnection");
 				if (UdpNetDriver__TickDispatch::NetConnectionClass) {
+					Logger::Log(GetLogChannel(), "[UdpNetDriver::TickDispatch] NetConnectionClass found, patching...\n");
 					UdpNetDriver__TickDispatch::NetConnectionClass->ClassFlags &= ~0x00000001; // remove CLASS_Abstract flag
 
 					// patch the global class pointer to trick the engine into accepting our class
 					void** ClientConnectionClass = Globals::Get().ClientConnectionClass;
 					*ClientConnectionClass = UdpNetDriver__TickDispatch::NetConnectionClass;
+					Logger::Log(GetLogChannel(), "[UdpNetDriver::TickDispatch] NetConnectionClass patched to ClientConnectionClass\n");
+				} else {
+					Logger::Log(GetLogChannel(), "[UdpNetDriver::TickDispatch] NetConnectionClass not found, bailing out.\n");
+					return;
 				}
 			}
 
@@ -143,20 +153,46 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 			/* /- UNetConnection::InitConnection START */
 
 			// *(FURL*)((char*)Connection + 0x6C) = url; // set Connection->URL
-			void* Something = (void*)((char*)Connection + 0x70);
 			*(uint32_t*)((char*)Connection + 0x74) = 3; // set Connection->State
-			*(uint32_t*)((char*)Connection + 0xCC) = 512; // set Connection->MaxPacket = 512 (apparently that's what's in the disassembly)
-			*(uint32_t*)((char*)Connection + 0xD0) = 0; // set Connection->Overhead = 0 (apparently that's what's in the disassembly)
+			*(uint32_t*)((char*)Connection + 0xCC) = 512; // Connection->MaxPacket = 512  (matches binary's UNetConnection::InitConnection @ 0x10c1e600)
+			*(uint32_t*)((char*)Connection + 0xD0) = 0;   // Connection->PacketOverhead = 0  (matches binary; this game's UE3 fork dropped the SLIP_HEADER_SIZE default)
 
-			*(uint32_t*)((char*)Connection + 0x4F94) = *(uint32_t*)((char*)Something + 0x134);
-			*(uint32_t*)((char*)Connection + 0x4F98) = *(uint32_t*)((char*)Something + 0x138);
-			*(uint32_t*)((char*)Connection + 0x4F9C) = *(uint32_t*)((char*)Something + 0x13C);
-			*(uint32_t*)((char*)Connection + 0x4FA0) = *(uint32_t*)((char*)Something + 0x140);
-			*(uint32_t*)((char*)Connection + 0x4FA4) = *(uint32_t*)((char*)Something + 0x144);
-			
-			*(void**)((char*)Connection + 0x70) = (void*)NetDriver; // set Connection->Driver:
+			*(void**)((char*)Connection + 0x70) = (void*)NetDriver; // Connection->Driver — must be set BEFORE the Driver→Connection copy below
 
-			Connection->CurrentNetSpeed = 26000000; // todo: get this from the client
+			// Driver→Connection state copy. Binary at 0x10c1e600 does:
+			//     iVar4 = param_1[0x1c];                           // Connection->Driver
+			//     param_1[0x13e5] = *(uint32_t*)(iVar4 + 0x134);   // Connection[+0x4F94] = Driver[+0x134]
+			//     param_1[0x13e6] = *(uint32_t*)(iVar4 + 0x138);
+			//     param_1[0x13e7] = *(uint32_t*)(iVar4 + 0x13c);
+			//     param_1[0x13e8] = *(uint32_t*)(iVar4 + 0x140);
+			//     param_1[0x13e9] = *(uint32_t*)(iVar4 + 0x144);
+			// What lives at NetDriver +0x134..+0x144 is unknown territory (SDK
+			// has it as UnknownData02[0x18] at +0x130 — undecoded). But the
+			// engine copies these per-Driver dwords into every fresh Connection,
+			// so they're presumably init-critical state the Connection inherits.
+			// The previous version of this block read from `(Connection+0x70)+0x134`
+			// — i.e. addressing inside Connection's own memory instead of
+			// dereferencing the Driver pointer — and did the copy BEFORE the
+			// Driver pointer at +0x70 was written. End result: five dwords of
+			// garbage were being shoved into Connection's deep fields on every
+			// new connection. Fixed to copy from NetDriver as the binary does.
+			*(uint32_t*)((char*)Connection + 0x4F94) = *(uint32_t*)((char*)NetDriver + 0x134);
+			*(uint32_t*)((char*)Connection + 0x4F98) = *(uint32_t*)((char*)NetDriver + 0x138);
+			*(uint32_t*)((char*)Connection + 0x4F9C) = *(uint32_t*)((char*)NetDriver + 0x13C);
+			*(uint32_t*)((char*)Connection + 0x4FA0) = *(uint32_t*)((char*)NetDriver + 0x140);
+			*(uint32_t*)((char*)Connection + 0x4FA4) = *(uint32_t*)((char*)NetDriver + 0x144);
+
+			// Initial value used only until the client's NMT_Netspeed-equivalent
+			// arrives during the handshake (see MarshalChannel__NotifyControlMessage,
+			// NETSPEED branch). Seeded to MaxClientRate so that if NETSPEED never
+			// shows up we still have a sensible per-connection budget instead of
+			// disabling the throttle entirely (the old 26 MB/s hack made
+			// IsNetReady() always return true → replication loop never deferred →
+			// flood across the link → tail drops → choppy remote movement).
+			{
+				UNetDriver* Drv = (UNetDriver*)NetDriver;
+				Connection->CurrentNetSpeed = Drv ? Drv->MaxClientRate : 50000;
+			}
 
 			UObject* PackageMap = (UObject*)PackageMapLevel__Create::CallOriginal(0xC4, Connection, 0, 0, 0, 0);
 			PackageMapLevel__Initialize::CallOriginal(PackageMap);

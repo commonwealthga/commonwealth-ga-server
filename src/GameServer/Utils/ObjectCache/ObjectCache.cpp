@@ -37,14 +37,28 @@ void ObjectCache::ScanForward(const char* targetFullName) {
 UObject* ObjectCache::Find(const char* fullName) {
 	// Check cache first
 	auto it = ByFullName.find(fullName);
-	if (it != ByFullName.end()) return it->second;
+	if (it != ByFullName.end()) {
+		// Root the cached object so GC never collects it out from under us.
+		// Everything we Find() ends up in long-lived static caches across the
+		// codebase (Actor__GetOptimizedRepListV2 has 419 UClass*, plus every
+		// ClassPreloader::Get* helper, plus all the per-hook statics). If GC
+		// reclaims the target while we hold the pointer, subsequent derefs
+		// crash with garbage at the cached address. RF_RootSet = 0x4000 in
+		// this build's UE3 fork (confirmed in TgEffectGroup__CloneEffectGroup
+		// where we already set this bit on cloned groups).
+		if (it->second) it->second->ObjectFlags.A |= 0x4000;
+		return it->second;
+	}
 
 	// Cache miss -- scan forward
 	if (LastIndex < UObject::GObjObjects()->Count) {
 		ScanForward(fullName);
 
 		it = ByFullName.find(fullName);
-		if (it != ByFullName.end()) return it->second;
+		if (it != ByFullName.end()) {
+			if (it->second) it->second->ObjectFlags.A |= 0x4000;
+			return it->second;
+		}
 	}
 
 	return nullptr;

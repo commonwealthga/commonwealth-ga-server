@@ -49,6 +49,13 @@ public:
 	static void HandlePlayerConnected(UNetConnection* Connection, ATgPlayerController* Controller,
 		const std::string& session_guid, const std::string& player_name);
 
+	// Build a marshal-channel control message and send it to the client. The
+	// payload travels as opcode 0x019B (GA_U::MARSHAL_CHANNEL) with the wchar_t
+	// text in field 0x04FF (GA_T::TEXT_VALUE). On the client side this is
+	// routed to UNetPendingLevel::NotifyControlMessage (0x109fb0b0) which
+	// switches on the leading keyword ("CHALLENGE", "WELCOME", "FAILURE", ...).
+	static void SendControlMessage(UNetConnection* Connection, const wchar_t* text);
+
 	// Fix forced-export GUIDs in the package map to match standalone .upk disk GUIDs.
 	static void FixForcedExportGuids(void* PackageMap);
 

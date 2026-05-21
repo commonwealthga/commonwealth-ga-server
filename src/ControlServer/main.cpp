@@ -142,11 +142,14 @@ int main(int argc, char* argv[]) {
             { "Rot_Redistribution03", "TgGame.TgGame_PointRotation" },
             { "Rot_Trafalgar_P", "TgGame.TgGame_PointRotation" },
             { "Rot_BlackwaterLoch_P", "TgGame.TgGame_PointRotation" },
+
             // { "HEX_AVA_2pt_Theft_Lab1", "TgGame.TgGame_Escort" },
+
             { "Push_Toxicity", "TgGame.TgGame_Escort" }, // done
             { "push_Ravine_P", "TgGame.TgGame_Escort" }, // done
-            { "Push_Dust_P", "TgGame.TgGame_Escort" }, // done
-            // { "SeaSide_Ticket_P", "TgGame.TgGame_Ticket" },
+            { "Push_Dust_P", "TgGame.TgGame_Escort" }, // crashes?
+            { "Push_IceFloe3_P", "TgGame.TgGame_Escort" }, // done
+
             { "3P_Him_Arena_P", "TgGame.TgGame_Mission" }, // done
             { "Climate_Control_P", "TgGame.TgGame_Mission" }, // done
             { "3P_Climate_Control3_P", "TgGame.TgGame_Mission" }, // done

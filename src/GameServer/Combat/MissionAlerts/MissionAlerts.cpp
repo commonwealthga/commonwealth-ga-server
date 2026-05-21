@@ -3,6 +3,7 @@
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/Config/Config.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <unordered_map>
@@ -155,6 +156,25 @@ static void PollMissionTimer(ATgGame* Game, ATgRepInfo_Game* GRI, PerGameState& 
 		st.firedT60 = true;
 		fire(MSG_60S_REMAINING, ATT_IMPORTANT);
 		Logger::Log("announcer", "MissionTimer: 60s alert (remaining=%.1f)\n", remaining);
+
+		// Infinite-loop maps: the engine's match-end is gated by a UC
+		// SetTimer('MissionTimer', m_fGameMissionTime, false) armed at match start
+		// in MissionTimerStart(). Just rewriting m_fGameMissionTime /
+		// s_fMissionTimerStartedAt is cosmetic — the pending one-shot timer still
+		// fires at its original time. Re-arm it via the same UC path
+		// MissionTimerStart() uses. Effective behaviour: a "60 seconds remaining"
+		// announcement every ~14 minutes, followed by 15 fresh minutes.
+		if (Config::GetMapNameChar() == "Dome3_VR_Arena_P") {
+			Game->s_fMissionTimerStartedAt = now;
+			Game->m_fGameMissionTime       = 15.0f * 60.0f;
+			Game->m_fPausedAtTime          = 0.0f;
+			Game->eventSetMissionTime(15.0f * 60.0f);  // sets m_fMissionTime
+			Game->eventMissionTimerStart();            // ClearTimer + SetTimer + HUD notify
+			st.firedT60 = false;  // re-arm for the next cycle
+			st.firedT30 = false;
+			st.firedT10 = false;
+			Logger::Log("announcer", "MissionTimer: Dome3_VR_Arena_P — timer reset to 15min after 60s alert\n");
+		}
 	}
 	if (!st.firedT30 && remaining <= 30.5f) {
 		st.firedT30 = true;

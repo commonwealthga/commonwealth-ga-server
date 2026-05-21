@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
+#include "src/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -38,9 +39,21 @@ void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	Game->TimeLimit = 15 * 60;
 
 	std::string map_name = Config::GetMapNameChar();
-	// if (map_name == "Dome3_VR_Arena_P") {
-	// 	Game->TimeLimit = -1;
-	// }
+
+	if (map_name == "Dome3_VR_Arena_P") {
+		// Auto-resetting "infinite" mission timer. PollMissionTimer re-arms
+		// 'MissionTimer' via eventMissionTimerStart() right after the 60s
+		// alert fires. These fields keep that cycle robust:
+		//   - explicit 15-min cycle length
+		//   - no overtime transition (state 2 -> 3) if our reset is a tick late
+		Game->m_fGameMissionTime  = 15.0f * 60.0f;
+		Game->m_bAllowOvertime    = 0;
+		Game->m_fGameOvertimeTime = 0.0f;
+	}
+
+	if (map_name == "Push_Dust_P") {
+		// UObject__CollectGarbage::bDisableGarbageCollection = true;
+	}
 
 	LoadCommonGameConfig(Game);
 

@@ -138,9 +138,9 @@ void TgGame__SpawnBotById::GiveDeviceById(
 		// of Possess so that ClientWeaponSet's `Instigator != None` check
 		// passes. Pre-replicating at spawn makes this deterministic.
 		Device->Role        = 3;
-		Device->RemoteRole  = 1;
-		Device->bNetInitial = 1;
-		Device->bNetDirty   = 1;
+		Device->RemoteRole  = 0;
+		// Device->bNetInitial = 1;
+		// Device->bNetDirty   = 1;
 		Device->bSkipActorPropertyReplication = 0;
 		Device->bOnlyDirtyReplication = 0;
 		Device->bHidden = 1;

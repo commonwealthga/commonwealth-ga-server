@@ -7,4 +7,3 @@ void __cdecl UObject__CollectGarbage::Call(void* param_1, uint32_t param_2, void
 		CallOriginal(param_1, param_2, param_3);
 	}
 }
-

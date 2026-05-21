@@ -43,6 +43,8 @@ AActor* __fastcall Actor__Spawn::Call(UWorld* pThis, void* edx, UClass* Class, u
 			ret->bNetDirty = 1;
 			ret->NetUpdateFrequency = 5;
 			ret->NetPriority = 10;
+		} else {
+			
 		}
 	} else if (debugLog) {
 		Logger::Log("debug", "MINE SpawnActor END Failed to spawn\n");
