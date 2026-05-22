@@ -3953,6 +3953,7 @@ void Database::Init() {
 		Logger::Log("db", "v54: seeded 30 map_object_config rows for Push_IceFloe3_P\n");
 	}
 
+
 	if (version < 55) {
 		// v55: HEX_AVA_2pt_Theft_Factory1_P — task force / team assignments for
 		// two actor factories (8600 → TF2, 8590 → TF1) and one team-player-start
@@ -3969,7 +3970,65 @@ void Database::Init() {
 		Logger::Log("db", "v55: seeded 5 map_object_config rows for HEX_AVA_2pt_Theft_Factory1_P\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 55", nullptr, nullptr, &err);
+	if (version < 56) {
+		const char* kV56_missile_complex_4v4 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			" ('MissileComplex_4v4_P', 5646, 'm_n_task_force', '1', NULL, NULL, 1),    "
+			" ('MissileComplex_4v4_P', 13748, 's_n_task_force', '1', NULL, NULL, 1),   "
+			" ('MissileComplex_4v4_P', 13748, 's_n_team_number', '1', NULL, NULL, 1),  "
+			" ('MissileComplex_4v4_P', 13746, 's_n_task_force', '1', NULL, NULL, 1),   "
+			" ('MissileComplex_4v4_P', 13746, 's_n_team_number', '1', NULL, NULL, 1),  "
+			" ('MissileComplex_4v4_P', 7820, 'm_n_task_force', '2', NULL, NULL, 1),    "
+			" ('MissileComplex_4v4_P', 7818, 's_n_team_number', '2', NULL, NULL, 1),   "
+			" ('MissileComplex_4v4_P', 7818, 's_n_task_force', '2', NULL, NULL, 1),    "
+			" ('MissileComplex_4v4_P', 7819, 's_n_task_force', '2', NULL, NULL, 1),    "
+			" ('MissileComplex_4v4_P', 7819, 's_n_team_number', '2', NULL, NULL, 1),   "
+			" ('MissileComplex_4v4_P', 5648, 'm_n_task_force', '2', NULL, NULL, 1),    "
+			" ('MissileComplex_4v4_P', 7828, 's_n_team_number', '2', NULL, NULL, 1),   "
+			" ('MissileComplex_4v4_P', 7828, 's_n_task_force', '2', NULL, NULL, 1),    "
+			" ('MissileComplex_4v4_P', 7827, 's_n_team_number', '2', NULL, NULL, 1),   "
+			" ('MissileComplex_4v4_P', 7827, 's_n_task_force', '2', NULL, NULL, 1),    "
+			" ('MissileComplex_4v4_P', 13747, 's_n_team_number', '1', NULL, NULL, 1),  "
+			" ('MissileComplex_4v4_P', 13747, 's_n_task_force', '1', NULL, NULL, 1),   "
+			" ('MissileComplex_4v4_P', 7814, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('MissileComplex_4v4_P', 7814, 's_n_team_number', '1', NULL, NULL, 1);   ";
+
+		result = sqlite3_exec(db, kV56_missile_complex_4v4, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v56 (kV56_missile_complex_4v4 seed): %s\n", err); return; }
+		Logger::Log("db", "v56: seeded map_object_config for MissileComplex_4v4_P\n");
+	}
+
+	if (version < 57) {
+		const char* kV57_ticket_himlab_4v4 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('Ticket_HimLab_4v4', 10723, 'm_n_task_force', '2', NULL, NULL, 1),"
+			"('Ticket_HimLab_4v4', 10659, 'm_n_task_force', '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV57_ticket_himlab_4v4, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v57 (Ticket_HimLab_4v4 seed): %s\n", err); return; }
+		Logger::Log("db", "v57: seeded map_object_config for Ticket_HimLab_4v4\n");
+	}
+
+
+	if (version < 58) {
+		const char* kV58_seed =
+			"INSERT INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"(100001, '3P_Beachhead_P',      'TgGame.TgGame_Mission', 1544, 36260, 5339),"  // surfside
+			"(100002, '3P_Beachhead2_P',      'TgGame.TgGame_Mission', 1544, 36565, 5389);";  // atoll
+		result = sqlite3_exec(db, kV58_seed, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v58 (map_game_info seed): %s\n", err); return; }
+		Logger::Log("db", "v58: seeded map_game_ids\n");
+	}
+
+	if (version < 59) {
+		const char* kV59_seed =
+			"INSERT INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"(100003, 'CTR_Recursive_P',      'TgGame.TgGame_Mission', 1546, 65824, 6064);";  // surfside
+		result = sqlite3_exec(db, kV59_seed, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v59 (map_game_info seed): %s\n", err); return; }
+		Logger::Log("db", "v59: seeded map_game_ids\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 59", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

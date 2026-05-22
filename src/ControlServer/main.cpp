@@ -134,6 +134,11 @@ int main(int argc, char* argv[]) {
         MatchmakingService::RegisterQueue(1, std::make_unique<SimpleSpecOpsMatchRule>(),
                                           std::move(specops_opts));
 
+
+// maps that need to be downloaded by the client to work:
+// 3P_Beachhead2_P // atoll
+// 3P_Beachhead_P
+
         QueueOptions pvp_opts;
         pvp_opts.continue_in_queue = false;
         pvp_opts.map_pool = {
@@ -142,6 +147,9 @@ int main(int argc, char* argv[]) {
             { "Rot_Redistribution03", "TgGame.TgGame_PointRotation" },
             { "Rot_Trafalgar_P", "TgGame.TgGame_PointRotation" },
             { "Rot_BlackwaterLoch_P", "TgGame.TgGame_PointRotation" },
+            { "Ticket_Silo_4v4_P", "TgGame.TgGame_PointRotation" },
+            { "Ticket_Osprey_4v4_P", "TgGame.TgGame_PointRotation" },
+            { "Ticket_HimLab_4v4", "TgGame.TgGame_PointRotation" },
 
             { "Push_Toxicity", "TgGame.TgGame_Escort" },
             { "push_Ravine_P", "TgGame.TgGame_Escort" },
@@ -159,6 +167,7 @@ int main(int argc, char* argv[]) {
             { "3P_VolcanoAssault_P", "TgGame.TgGame_Mission" },
             { "Ice_GorgeA01_v2", "TgGame.TgGame_Mission" },
             { "3P_Beachhead3_P", "TgGame.TgGame_Mission" },
+            { "MissileComplex_4v4_P", "TgGame.TgGame_Mission" },
 
 			{"Ticket_Datafarm_P",      "TgGame.TgGame_Ticket"},
 			{"Ticket_Datafarm2",       "TgGame.TgGame_Ticket"},
@@ -171,7 +180,6 @@ int main(int argc, char* argv[]) {
         MatchmakingService::RegisterQueue(2, std::make_unique<SimplePvPMatchRule>(),
                                           std::move(pvp_opts));
     }
-
     // Provide queue-scoped running-instance info to matchmaking rules. Rules
     // iterate this list to find a seat-available instance regardless of map —
     // because pool-randomized queues can have instances on different maps,
