@@ -23,19 +23,26 @@ A built DLL is available for download [in the releases](https://github.com/commo
 - [x] refactor code
 - [x] figure out game modes/difficulty modifiers (same map can be played on High/Max/Ultra-max/Double-agent)
 - [x] allow multiple clients on one server
-- [ ] *(in progress)* spawn a player-controlled character with hardcoded settings (gear, skills, level etc.)
-- [ ] *(in progress)* start a match and play it to the end, with bots and enemy AI working
+- [x] spawn a player-controlled character with hardcoded settings (gear, skills, level etc.)
+- [x] start a match and play it to the end, with bots and enemy AI working
 
 **Phase 3 "make it right"** (2026)
-- [ ] get a public server up and running 24/7
-- [ ] implement important parts of TCP server and database (enable changing gear, skills, cosmetics etc.)
-- [ ] move hardcoded stuff to a database
-- [ ] implement server orchestration (matchmaking, home map etc.)
-
-**Phase 4 "make it fast"** (???)
-- [ ] continue fixing bugs and performance issues
-- [ ] continue implementing less important gameplay features
-- [ ] modding
+- [x] get a public server up and running 24/7 - [join our discord to learn more](https://discord.gg/CqACf4qArk)
+- [x] implement server orchestration (matchmaking, home map etc.)
+- [ ] registrations and auth
+- [ ] *(in progress)* implement important parts of TCP server and database (enable changing gear, skills, cosmetics etc.)
+- [ ] *(in progress)* implement chat
+- [ ] *(in progress)* make all devices work properly
+- [ ] *(in progress)* make all skills work properly
+- [x] implement merc
+- [ ] *(in progress)* implement umax
+- [ ] implement double agent
+- [ ] implement raids
+- [ ] implement open world and quests
+- [ ] implement mission rewards and item drops
+- [ ] implement vendors
+- [ ] implement crafting
+- [ ] website, stats, leaderboards
 
 ## Useful links
 
