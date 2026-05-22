@@ -1,27 +1,51 @@
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.hpp"
-#include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
-#include "src/GameServer/Constants/GameTypes.h"
+#include "src/GameServer/Constants/EquipSlot.hpp"
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
+#include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "lib/nlohmann/json.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
-ATgDevice* __fastcall TgInventoryManager__NonPersistAddDevice::Call(ATgInventoryManager* InventoryManager, void* edx, int nDeviceId, int nEquipPoint) {
-	Logger::Log("debug", "MINE TgInventoryManager::NonPersistAddDevice START - deviceId=%d equipPoint=%d\n", nDeviceId, nEquipPoint);
+// Beacon pickup path — invoked from UC `PickUpDeployable` after the deployable
+// returns its pickup_device_id. We mint a fresh non-persist inventory entry
+// and equip it on the picker.
+//
+// We use Inventory::Equip (the canonical player-equip path) rather than the
+// older `TgGame__SpawnBotById::GiveDeviceById` helper. That helper sets
+// `RemoteRole=0` (server-only — a perf optimization for bot loadouts that
+// was kept in the helper but updated everywhere else). For a player pawn
+// that breaks the client: the device actor never replicates, the client
+// receives SEND_INVENTORY with the new invId but its NetGUID/actor scan
+// finds no matching ATgDevice, and the inventory recovery path loops
+// emitting "Resubmitting an inventory item that could not find its device".
+//
+// Inventory::Equip sets the standard player-device replication shape
+// (RemoteRole=1, bNetInitial=1, bNetDirty=1) and registers the entry in
+// `s_equipped` / `s_deviceByInvId` so the matching Unequip in
+// NonPersistRemoveDevice can tear it down cleanly on consume.
+//
+// Beacon invIds come from `Inventory::NextId()` (monotonic from 1,000,000+) —
+// well outside the player-loadout range (10001..10025), and distinct across
+// every carrier so two players (or both teams) holding beacons can't collide.
+// Nothing here writes to the DB — the entry lives only as long as the match.
+ATgDevice* __fastcall TgInventoryManager__NonPersistAddDevice::Call(
+	ATgInventoryManager* InventoryManager, void* edx,
+	int nDeviceId, int nEquipPoint)
+{
+	if (!InventoryManager) return nullptr;
+	if (nEquipPoint < 1 || nEquipPoint > 24) return nullptr;
 
 	ATgPawn* ownerpawn = (ATgPawn*)InventoryManager->Owner;
 	if (!ownerpawn || !ownerpawn->PlayerReplicationInfo) return nullptr;
 
 	// Diagnostic — pickup-mechanism investigation (research REPORT §3.1).
 	// Medical station has pickup_device_id=0 in DB so walk-up pickup should
-	// be refused, but players report the station becoming pickupable. One
-	// candidate: the client sends this add-device RPC for the station's
-	// offhand device id and we grant it here unconditionally. Log the
-	// current task-force beacon's pickup id so we can compare against the
-	// requested device id — if they differ, we're granting a non-beacon
-	// device from a client request, which is the bug.
+	// be refused, but players reported the station becoming pickupable.
+	// Logged here so if the requested deviceId mismatches the current team
+	// beacon's pickup_device_id we can spot a non-beacon pickup leaking
+	// through.
 	ATgRepInfo_Player* diagPR = (ATgRepInfo_Player*)ownerpawn->PlayerReplicationInfo;
 	int diagBeaconPickupId = -1;
 	if (diagPR && diagPR->r_TaskForce && diagPR->r_TaskForce->r_BeaconManager &&
@@ -32,122 +56,94 @@ ATgDevice* __fastcall TgInventoryManager__NonPersistAddDevice::Call(ATgInventory
 		"NonPersistAddDevice[diag]: requested deviceId=%d  current beacon pickup_device_id=%d  match=%d\n",
 		nDeviceId, diagBeaconPickupId, (int)(nDeviceId == diagBeaconPickupId));
 
-	// Reverse map: equip point → slot value ID (matches BotGetEquipPointBySlot in SpawnBotById)
-	static const int kEquipPointToSlotValueId[25] = {
-		0,    // 0 = EQP_NONE
-		221,  // 1
-		198,  // 2
-		200,  // 3
-		199,  // 4
-		201,  // 5
-		202,  // 6
-		203,  // 7
-		204,  // 8
-		385,  // 9
-		386,  // 10
-		499,  // 11  ← beacon pickup lands here (GetPickupEquipPoint returns 11)
-		500,  // 12
-		501,  // 13
-		502,  // 14
-		823,  // 15
-		996,  // 16
-		997,  // 17
-		998,  // 18
-		999,  // 19
-		1000, // 20
-		1001, // 21
-		1002, // 22
-		1003, // 23
-		1004, // 24
-	};
-	int slotValueId = (nEquipPoint >= 1 && nEquipPoint <= 24) ? kEquipPointToSlotValueId[nEquipPoint] : 0;
-
-	// Each pickup gets a fresh monotonic id. The old hardcoded `999` dates
-	// back to the very first inventory-less implementation; it survived this
-	// long because deploy→pickup→deploy cycles didn't actually clean up the
-	// prior beacon's inventory entry (so reusing the same id "looked" right
-	// to the client). With proper cleanup wired via the DeviceFiring.EndState
-	// hook (beacon_remove IPC sent on every deploy), each cycle is now:
-	//   pickup  → SEND_INVENTORY state=1 with NEW invId → client adds entry
-	//   deploy  → SEND_INVENTORY state=2 with that invId → client removes it
-	//   pickup  → SEND_INVENTORY state=1 with another NEW invId → ...
-	// Reusing 999 across cycles also meant two beacon-carrier devices
-	// coexisting in memory with the SAME r_nInventoryId, which made
-	// id-based lookups in the binary (GetDeviceByInstanceId, etc.) ambiguous
-	// and was the leading suspect for the orphan-device-fires-EndState
-	// behavior observed during multi-deploy testing.
-	int nInventoryId = Inventory::NextId();
-
-	// Diagnostics: state before GiveDeviceById
-	void* controller = *(void**)((char*)ownerpawn + 0x1D8);
-	void* invManager = *(void**)((char*)ownerpawn + 0x39C);
-	int instanceIdBefore = ownerpawn->r_EquipDeviceInfo[nEquipPoint].nDeviceInstanceId;
-	Logger::Log("debug", "  Controller=0x%p InvManager=0x%p r_EquipDeviceInfo[%d].instanceId BEFORE=%d\n",
-		controller, invManager, nEquipPoint, instanceIdBefore);
-
-	// isHandDevice=0: do NOT force-switch the player's active hand to the
-	// beacon on pickup. The client initiates weapon switches via its own
-	// input → ServerSetCurrentWeapon RPC; us writing r_eDesiredInHand
-	// from the server (which `isHandDevice=1` causes in GiveDeviceById)
-	// is an unrequested server-initiated switch that has no clean teardown
-	// when the beacon is deployed — the slot becomes empty and the client
-	// falls through to melee. Matching the original game: pick up the
-	// beacon, your current weapon stays equipped, you tap the beacon
-	// hotkey to switch when you want to place it.
-	TgGame__SpawnBotById::GiveDeviceById(
-		ownerpawn,
-		(ATgRepInfo_Player*)ownerpawn->PlayerReplicationInfo,
-		nDeviceId,
-		slotValueId,
-		nEquipPoint,
-		1162,                    // qualityValueId (default)
-		0,                       // isOffHand
-		0,                       // isHandDevice — don't auto-switch on pickup
-		GA_G::TGDT_PLAYER_SENSOR,// deviceType (beacon/sensor slot)
-		nInventoryId
-	);
-
-	// Diagnostics: state after GiveDeviceById
-	ATgDevice* device = ownerpawn->m_EquippedDevices[nEquipPoint];
-	int instanceIdAfter = ownerpawn->r_EquipDeviceInfo[nEquipPoint].nDeviceInstanceId;
-	int deviceInstanceId = device ? device->r_nDeviceInstanceId : -1;
-	Logger::Log("debug", "  r_EquipDeviceInfo[%d].instanceId AFTER=%d  device->r_nDeviceInstanceId=%d  nInventoryId=%d\n",
-		nEquipPoint, instanceIdAfter, deviceInstanceId, nInventoryId);
-
-	// Force m_bIsBeaconPlacing=1 on every device created via the pickup slot
-	// (slot 11). The official binary's AssemblyDatManager::CreateDevice reads
-	// this from asm.dat; our path doesn't set it, so the bit stays 0 and:
-	//   (a) NonPersistRemoveDevice's IsABeaconPlacingDevice gate skips the
-	//       beacon_remove IPC — control server never clears the device bar
-	//       slot for the deployed beacon.
-	//   (b) UC TgDevice.ConsumeDevice (TgDevice.uc:667) skips the
-	//       beaconManager.CheckBeacon() branch — beacon manager state stale
-	//       after consume.
-	// Setting the bit here mirrors what the original native would have done.
-	if (device != nullptr && nEquipPoint == 11) {
-		*(uint32_t*)((char*)device + 0x22C) |= 0x10000u;  // m_bIsBeaconPlacing
+	// quality 1162 mirrors what the prior GiveDeviceById path hardcoded
+	// (the equip-screen default for "no quality").
+	const int invId = Inventory::NextId();
+	ATgDevice* device = Inventory::Equip(ownerpawn, nDeviceId, nEquipPoint,
+		/*quality=*/1162, invId, /*mods=*/{});
+	if (device == nullptr) {
+		Logger::Log("beacon",
+			"NonPersistAddDevice: Inventory::Equip returned null pawn=0x%p devId=%d slot=%d\n",
+			ownerpawn, nDeviceId, nEquipPoint);
+		return nullptr;
 	}
 
-	// Carrier-visual investigation: dump both Pawn and PRI r_EquipDeviceInfo
-	// slot, plus the device's m_bIsBeaconPlacing flag (TgDevice+0x22C bit
-	// 0x10000) which IsCarryingBeacon@0x109BE2D0 ultimately gates on.
-	ATgRepInfo_Player* pri = diagPR;
-	const int pawnDid = ownerpawn->r_EquipDeviceInfo[nEquipPoint].nDeviceId;
-	const int pawnIid = ownerpawn->r_EquipDeviceInfo[nEquipPoint].nDeviceInstanceId;
-	const int priDid  = pri ? pri->r_EquipDeviceInfo[nEquipPoint].nDeviceId         : -2;
-	const int priIid  = pri ? pri->r_EquipDeviceInfo[nEquipPoint].nDeviceInstanceId : -2;
-	uint32_t devFlags = device ? *(uint32_t*)((char*)device + 0x22C) : 0u;
-	const int isBeaconPlacing = (device && (devFlags & 0x10000u) != 0) ? 1 : 0;
-	Logger::Log("debug",
-		"  carrier-visual diag: slot=%d  Pawn.eqi={did=%d,iid=%d}  PRI.eqi={did=%d,iid=%d}  device=0x%p m_bIsBeaconPlacing=%d\n",
-		nEquipPoint, pawnDid, pawnIid, priDid, priIid, device, isBeaconPlacing);
-	// If instanceIdAfter == nInventoryId: UpdateClientDevices fired and detected mismatch (good)
-	// If instanceIdAfter == 0:            UpdateClientDevices did NOT fire (guard condition failed)
-	// If instanceIdAfter == instanceIdBefore and != 0: slot was already occupied
+	// m_bIsBeaconPlacing — the binary's asm.dat → CreateDevice path normally
+	// reads this from data; CreateEquipDevice doesn't. Set it ourselves on
+	// the beacon slot so:
+	//   (a) NonPersistRemoveDevice's IsABeaconPlacingDevice gate fires
+	//       the beacon_remove IPC on consume,
+	//   (b) UC TgDevice.ConsumeDevice (TgDevice.uc:667) runs the
+	//       beaconManager.CheckBeacon() branch.
+	if (nEquipPoint == 11) {
+		*(uint32_t*)((char*)device + 0x22C) |= 0x10000u;
+	}
 
-	// Send GAME_EVENT beacon_pickup IPC so the control server updates the client's device bar.
+	// Carrier-visual (floating ring of symbols around the beacon-holder).
+	// Device 1918's equip-effect group 5716 has target_fx_id=525 but ZERO
+	// rows in asm_data_set_effects, so Inventory::ApplyDeviceEquipEffects
+	// (which only walks effects and mutates s_Properties) does nothing for
+	// it. The visual side comes from UC `ApplyEquipEffects` → `Pawn.ProcessEffect(
+	// m_EquipEffect, false, Pawn)` → spawns a TgEffectGroup actor → replicates
+	// target_fx_id=525 → client renders the ring.
+	//
+	// For that chain to fire we need three things CreateEquipDevice doesn't
+	// do on its own:
+	//   1. Device->m_EquipEffect populated  → call native ApplyDeviceSetup
+	//      (it reads the equip-effect group ref from asm.dat and instantiates
+	//      the TgEffectGroup template).
+	//   2. The template's m_bIsManaged + m_bHasVisual flags set — the native
+	//      doesn't set them for effect_group_type=261 (equip-effect category).
+	//      ProcessEffect's visual gate requires both.
+	//   3. m_bEffectsOnlyInHand cleared on the device — server-side
+	//      Pawn->Weapon doesn't switch to the beacon until the client requests
+	//      SetCurrentWeapon, so gate (2) of ApplyEquipEffects would reject.
+	//
+	// Gated on deviceId == 1918: other devices flowing through this function
+	// already work via direct s_Properties writes, and triggering the proper
+	// UC path for them would double-apply prop changes.
+	//
+	// ApplyDeviceSetup is a native — the SDK wrapper trips the
+	// `FunctionFlags |= ~0x400` corruption bug, so we ProcessEvent it with a
+	// manual save/force-FUNC_Native/restore.
+	if (nDeviceId == 1918) {
+		static UFunction* pFnApplyDeviceSetup = nullptr;
+		if (pFnApplyDeviceSetup == nullptr) {
+			pFnApplyDeviceSetup = (UFunction*)ObjectCache::Find(
+				"Function TgGame.TgDevice.ApplyDeviceSetup");
+		}
+		if (pFnApplyDeviceSetup) {
+			const uint32_t origFlags = pFnApplyDeviceSetup->FunctionFlags;
+			pFnApplyDeviceSetup->FunctionFlags = origFlags | 0x400;
+			struct { uint32_t ReturnValue; } parms = { 0 };
+			device->ProcessEvent(pFnApplyDeviceSetup, &parms, nullptr);
+			pFnApplyDeviceSetup->FunctionFlags = origFlags;
+
+			if (device->m_EquipEffect != nullptr) {
+				// m_bIsManaged | m_bHasVisual on the effect group template.
+				*(uint32_t*)((char*)device->m_EquipEffect + 0x74) |= 0x01u | 0x80u;
+			}
+		}
+		// Clear m_bEffectsOnlyInHand so ApplyEquipEffects's in-hand gate
+		// passes regardless of Pawn->Weapon.
+		*(uint32_t*)((char*)device + 0x22C) &= ~0x100u;
+
+		// eventApplyEquipEffects is a UC event — SDK wrapper is safe.
+		// Internally guarded by m_bEquipEffectsApplied so re-calls are no-ops.
+		device->eventApplyEquipEffects();
+	}
+
+	// Drives UpdateClientDevices + sets pawn/PRI dirty bits — same wrap-up
+	// as the loadout-equip path.
+	Inventory::Finalize(ownerpawn);
+
+	// Tell the control server to push SEND_INVENTORY (state=1) so the
+	// client's device bar shows the new beacon slot. The actor itself
+	// replicates via UE3 actor channels because Inventory::Equip wires it
+	// for replication.
 	auto sessIt = GPawnSessions.find(ownerpawn);
 	if (sessIt != GPawnSessions.end()) {
+		const int slotValueId = GA::SlotValueId(nEquipPoint);
 		nlohmann::json ev;
 		ev["type"]                = IpcProtocol::MSG_GAME_EVENT;
 		ev["subtype"]             = "beacon_pickup";
@@ -155,25 +151,17 @@ ATgDevice* __fastcall TgInventoryManager__NonPersistAddDevice::Call(ATgInventory
 		ev["session_guid"]        = sessIt->second;
 		ev["pawn_id"]             = (int)ownerpawn->r_nPawnId;
 		ev["device_id"]           = nDeviceId;
-		ev["inventory_id"]        = nInventoryId;
+		ev["inventory_id"]        = invId;
 		ev["equip_slot_value_id"] = slotValueId;
 		IpcClient::Send(ev.dump());
-		Logger::Log("debug", "  Sent GAME_EVENT beacon_pickup for session %s (pawnId=%d deviceId=%d invId=%d slot=%d)\n",
-			sessIt->second.c_str(), (int)ownerpawn->r_nPawnId, nDeviceId, nInventoryId, slotValueId);
+		Logger::Log("beacon",
+			"NonPersistAddDevice: equipped pawn=%d device=%d slot=%d invId=%d (slotValueId=%d)\n",
+			(int)ownerpawn->r_nPawnId, nDeviceId, nEquipPoint, invId, slotValueId);
 	} else {
-		Logger::Log("debug", "  WARNING: no session found for pawn 0x%p — beacon_pickup IPC not sent\n", ownerpawn);
+		Logger::Log("beacon",
+			"NonPersistAddDevice: WARNING no session for pawn 0x%p — beacon_pickup IPC not sent\n",
+			ownerpawn);
 	}
 
-	// Beacon pickup is handled entirely by the UC chain now that
-	// TgDeployable::GetTaskForce is reimplemented (was a `return 0;` stub):
-	//   UC PickUpDeployable -> NonPersistAddDevice (this fn) -> caller sets
-	//   s_bWasPickedUp -> DestroyIt -> TgDeploy_Beacon.DestroyIt ->
-	//   GetTaskForce().GetBeaconManager().UnRegisterBeacon(self)
-	// UnRegisterBeacon (intact native @ 0x109ee6f0) clears mgr->r_Beacon
-	// and mgr->r_BeaconInfo, which makes GetBeacon() return null and the
-	// BeaconEntrance HasExit() check flip to false.
-
-	Logger::Log("debug", "MINE TgInventoryManager::NonPersistAddDevice END - device=0x%p\n", device);
 	return device;
 }
-

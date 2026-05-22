@@ -143,18 +143,22 @@ int main(int argc, char* argv[]) {
             { "Rot_Trafalgar_P", "TgGame.TgGame_PointRotation" },
             { "Rot_BlackwaterLoch_P", "TgGame.TgGame_PointRotation" },
 
-            // { "HEX_AVA_2pt_Theft_Lab1", "TgGame.TgGame_Escort" },
+            { "Push_Toxicity", "TgGame.TgGame_Escort" },
+            { "push_Ravine_P", "TgGame.TgGame_Escort" },
+            { "Push_Dust_P", "TgGame.TgGame_Escort" },
+            { "Push_IceFloe3_P", "TgGame.TgGame_Escort" },
+            { "Push_IceFloe_P", "TgGame.TgGame_Escort" },
+            { "HEX_AVA_Push_Lab1_P", "TgGame.TgGame_Escort" },
+            { "HEX_AVA_Push_Factory1_P", "TgGame.TgGame_Escort" },
+            { "HEX_AVA_2pt_Theft_Lab1", "TgGame.TgGame_Escort" },
+            { "HEX_AVA_2pt_Theft_Factory1_P", "TgGame.TgGame_Escort" },
 
-            { "Push_Toxicity", "TgGame.TgGame_Escort" }, // done
-            { "push_Ravine_P", "TgGame.TgGame_Escort" }, // done
-            { "Push_Dust_P", "TgGame.TgGame_Escort" }, // crashes?
-            { "Push_IceFloe3_P", "TgGame.TgGame_Escort" }, // done
-
-            { "3P_Him_Arena_P", "TgGame.TgGame_Mission" }, // done
-            { "Climate_Control_P", "TgGame.TgGame_Mission" }, // done
-            { "3P_Climate_Control3_P", "TgGame.TgGame_Mission" }, // done
-            { "3P_VolcanoAssault_P", "TgGame.TgGame_Mission" }, // done
-            { "Ice_GorgeA01_v2", "TgGame.TgGame_Mission" }, // done
+            { "3P_Him_Arena_P", "TgGame.TgGame_Mission" },
+            { "Climate_Control_P", "TgGame.TgGame_Mission" },
+            { "3P_Climate_Control3_P", "TgGame.TgGame_Mission" },
+            { "3P_VolcanoAssault_P", "TgGame.TgGame_Mission" },
+            { "Ice_GorgeA01_v2", "TgGame.TgGame_Mission" },
+            { "3P_Beachhead3_P", "TgGame.TgGame_Mission" },
 
 			{"Ticket_Datafarm_P",      "TgGame.TgGame_Ticket"},
 			{"Ticket_Datafarm2",       "TgGame.TgGame_Ticket"},
@@ -162,22 +166,7 @@ int main(int argc, char* argv[]) {
 			{"SeaSide_Ticket_P",       "TgGame.TgGame_Ticket"},
 			{"SeaSide_Ticket2_P",      "TgGame.TgGame_Ticket"},
 			{"SeaSide_Ticket3",        "TgGame.TgGame_Ticket"},
-            {"Ticket_Volcano_P",       "TgGame.TgGame_Ticket"},
-
-			// Rot_Redistribution03 // done
-			// Rot_Redistribution04 // done
-			// Rot_Redistribution05 // done
-			// Rot_Trafalgar_P // done
-			// Rot_BlackwaterLoch_P // done
-
-			// HEX_AVA_Push_Factory1_P // done
-			// push_Ravine_P // done
-			// Push_Dust_P // done
-
-			// Climate_Control_P // done
-			// 3P_Climate_Control3_P done
-			// 3P_VolcanoAssault_P // done
-			// Ice_GorgeA01_v2 // done
+			{"Ticket_Volcano_P",       "TgGame.TgGame_Ticket"},
         };
         MatchmakingService::RegisterQueue(2, std::make_unique<SimplePvPMatchRule>(),
                                           std::move(pvp_opts));

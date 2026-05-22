@@ -1,10 +1,16 @@
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
+#include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "lib/nlohmann/json.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
+// Paired teardown for NonPersistAddDevice. We use Inventory::Unequip so the
+// teardown shape matches the equip side (s_equipped / s_deviceByInvId entry,
+// invObj in the inventory TMap, device actor, replication info). The old
+// shape only nulled m_EquippedDevices[slot] and decremented r_ItemCount,
+// leaking the rest on every pickup→deploy cycle.
 void __fastcall TgInventoryManager__NonPersistRemoveDevice::Call(
 	ATgInventoryManager* InventoryManager, void* edx, int nEquipPoint)
 {
@@ -20,38 +26,45 @@ void __fastcall TgInventoryManager__NonPersistRemoveDevice::Call(
 		return;
 	}
 
-	int nInventoryId = device->r_nInventoryId;
-	int nDeviceId    = device->r_nDeviceId;
+	// Capture identity + beacon-status BEFORE Unequip — it destroys the
+	// actor, so `device` is dangling after the call.
+	const int nInventoryId = device->r_nInventoryId;
+	const int nDeviceId    = device->r_nDeviceId;
+	using IsBeaconFn = int(__fastcall*)(ATgDevice*, void*);
+	const bool bIsBeacon = ((IsBeaconFn)0x10a19a40)(device, nullptr) != 0;
 
-	Logger::Log(GetLogChannel(), "NonPersistRemoveDevice: slot=%d deviceId=%d invId=%d\n",
-		nEquipPoint, nDeviceId, nInventoryId);
+	Logger::Log(GetLogChannel(),
+		"NonPersistRemoveDevice: slot=%d deviceId=%d invId=%d isBeacon=%d\n",
+		nEquipPoint, nDeviceId, nInventoryId, (int)bIsBeacon);
 
-	// Null the equip slot. UpdateClientDevices sees null device + stale r_EquipDeviceInfo
-	// → clears it and fires the client equip-update handler (replicates via UE3 networking).
-	pawn->m_EquippedDevices[nEquipPoint] = nullptr;
+	// Full teardown: nulls m_EquippedDevices[slot], zeros PRI's
+	// r_EquipDeviceInfo[slot] + dirties replication, removes the invObj from
+	// the inventory TMap via TgInventoryManager::RemoveInventoryObjectById
+	// (0x10a16190), DestroyActor on the device, drops s_equipped /
+	// s_deviceByInvId tracking, and reverses any rolled-mod / equip-effect
+	// baselines we'd registered at Equip time (beacon has neither, so those
+	// are no-ops here).
+	Inventory::Unequip(pawn, nEquipPoint);
 
-	// Mark pawn dirty so the replication system picks up the change.
-	*(unsigned int*)((char*)pawn + 0xB0) |= 0x100;
-	*(unsigned int*)((char*)pawn + 0xAC) |= 0x100000;
+	// Drives the equip-update handler on the engine side: with
+	// m_EquippedDevices[slot] now null but the pawn's r_EquipDeviceInfo[slot]
+	// still holding stale data, UpdateClientDevices zeros that entry and
+	// fires vtable[0x4dc] to notify the client. (Inventory::Unequip only
+	// touches the PRI's array — UpdateClientDevices handles the pawn's.)
+	pawn->UpdateClientDevices(0, 0);
 
-	// Drive the equip-update handler: clears r_EquipDeviceInfo and calls virtual 0x4DC.
-	using UpdateFn = void(__fastcall*)(ATgPawn*, void*, int, int);
-	((UpdateFn)0x109c9a80)(pawn, nullptr, 0, 0);
-
-	// Decrement r_ItemCount to stay in sync with m_InventoryMap entry count.
+	// Unequip intentionally leaves r_ItemCount alone — on the equip-screen
+	// path a trailing handler resets it from the DB pool, so any write here
+	// would race. That trailing handler doesn't run on the consume path, so
+	// decrement explicitly to stay in sync with the m_InventoryMap entry
+	// count.
 	if (InventoryManager->r_ItemCount > 0)
 		InventoryManager->r_ItemCount--;
 
-	// Send GAME_EVENT beacon_remove IPC so the control server clears the
-	// client's device bar slot. Only for beacon-placing devices though —
-	// calling this from the consume path of a medical station / turret /
-	// sensor removal would wrongly clear an in-use device bar slot on the
-	// control server. IsABeaconPlacingDevice is a real native @ 0x10a19a40
-	// that returns device+0x22E bit0 (m_bIsOffHand) — currently always false
-	// on our server since we don't set that bit, but kept here so once
-	// loadout wiring populates the bit the IPC fires again.
-	using IsBeaconFn = int(__fastcall*)(ATgDevice*, void*);
-	bool bIsBeacon = ((IsBeaconFn)0x10a19a40)(device, nullptr) != 0;
+	// Tell the control server to push SEND_INVENTORY (state=2) so the
+	// client clears the device-bar slot. Gate on IsABeaconPlacingDevice so
+	// consume of a non-beacon-placing device (medical station offhand etc.)
+	// doesn't wrongly clear a real device-bar slot.
 	if (bIsBeacon) {
 		auto sessIt = GPawnSessions.find(pawn);
 		if (sessIt != GPawnSessions.end()) {
@@ -63,13 +76,12 @@ void __fastcall TgInventoryManager__NonPersistRemoveDevice::Call(
 			ev["pawn_id"]      = (int)pawn->r_nPawnId;
 			ev["inventory_id"] = nInventoryId;
 			IpcClient::Send(ev.dump());
-			Logger::Log(GetLogChannel(), "NonPersistRemoveDevice: Sent GAME_EVENT beacon_remove for session %s\n",
+			Logger::Log(GetLogChannel(),
+				"NonPersistRemoveDevice: Sent GAME_EVENT beacon_remove for session %s\n",
 				sessIt->second.c_str());
 		} else {
-			Logger::Log(GetLogChannel(), "NonPersistRemoveDevice: WARNING no session for pawn 0x%p\n", pawn);
+			Logger::Log(GetLogChannel(),
+				"NonPersistRemoveDevice: WARNING no session for pawn 0x%p\n", pawn);
 		}
-	} else {
-		Logger::Log(GetLogChannel(),
-			"NonPersistRemoveDevice: skipping beacon_remove IPC (device is not a beacon-placing device)\n");
 	}
 }

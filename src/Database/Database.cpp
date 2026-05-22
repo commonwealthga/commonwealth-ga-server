@@ -3953,7 +3953,23 @@ void Database::Init() {
 		Logger::Log("db", "v54: seeded 30 map_object_config rows for Push_IceFloe3_P\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 54", nullptr, nullptr, &err);
+	if (version < 55) {
+		// v55: HEX_AVA_2pt_Theft_Factory1_P — task force / team assignments for
+		// two actor factories (8600 → TF2, 8590 → TF1) and one team-player-start
+		// (13074 → TF2). Same shape as v54.
+		const char* kV55_hex_ava_2pt_theft_factory1 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('HEX_AVA_2pt_Theft_Factory1_P',  8600, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('HEX_AVA_2pt_Theft_Factory1_P',  8600, 's_n_task_force',  '2', NULL, NULL, 1),"
+			"('HEX_AVA_2pt_Theft_Factory1_P',  8590, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('HEX_AVA_2pt_Theft_Factory1_P',  8590, 's_n_task_force',  '1', NULL, NULL, 1),"
+			"('HEX_AVA_2pt_Theft_Factory1_P', 13074, 'm_n_task_force',  '2', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV55_hex_ava_2pt_theft_factory1, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v55 (HEX_AVA_2pt_Theft_Factory1_P seed): %s\n", err); return; }
+		Logger::Log("db", "v55: seeded 5 map_object_config rows for HEX_AVA_2pt_Theft_Factory1_P\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 55", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

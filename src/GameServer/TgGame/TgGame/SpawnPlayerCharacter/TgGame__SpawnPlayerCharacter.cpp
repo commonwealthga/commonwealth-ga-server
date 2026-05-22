@@ -343,9 +343,35 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	ATgRepInfo_TaskForce* attackers = GTeamsData.Attackers;
 	ATgRepInfo_TaskForce* defenders = GTeamsData.Defenders;
 
+	// Allocate the FString::Data fields via GAllocator (not via the SDK
+	// FString constructor, which would use `new wchar_t[]` from the MinGW
+	// C++ runtime heap). The engine's `SetTeam` → `RemovePRI` walks
+	// m_TeamPlayers when teams shuffle (e.g. on `-changeteam`) and
+	// appFrees these Data pointers via FMallocWindows::Free; a `new[]`
+	// pointer there hits a null pool-bucket and crashes
+	// (write-at-0 at 0x1090b4dc, EAX=0).
+	//
+	// We bypass the FString class instead of changing it because making
+	// ~FString / operator= GAllocator-aware caused immediate double-frees
+	// across the broader SDK (auto-generated parm structs memcpy FString
+	// fields, producing shared-Data shallow copies that all destruct).
+	// Touching just this one handoff site keeps the blast radius minimal.
+	auto allocFStringData = [](FString& fs, const wchar_t* src) {
+		if (src == nullptr) {
+			fs.Data = nullptr;
+			fs.Count = fs.Max = 0;
+			return;
+		}
+		const int len = (int)wcslen(src) + 1;
+		fs.Data = (wchar_t*)GAllocator::Malloc(len * sizeof(wchar_t));
+		fs.Count = fs.Max = len;
+		wcscpy(fs.Data, src);
+	};
+
 	FTGTEAM_ENTRY newplayerteamentry;
-	newplayerteamentry.fsName = FString(GClientConnectionsData[(int32_t)((UNetConnection*)PlayerController->Player)].PlayerInfo.player_name_w.data());
-	newplayerteamentry.fsMapName = FString(L"Tetra Pier");
+	allocFStringData(newplayerteamentry.fsName,
+		GClientConnectionsData[(int32_t)((UNetConnection*)PlayerController->Player)].PlayerInfo.player_name_w.data());
+	allocFStringData(newplayerteamentry.fsMapName, L"Tetra Pier");
 	newplayerteamentry.nHealth = hp;
 	newplayerteamentry.nMaxHealth = hp;
 	newplayerteamentry.bLeader = 0;
@@ -360,9 +386,11 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		}
 	}
 
-	// TArray::Add shallow-copies the struct (memcpy-style).  The TArray copy
-	// now owns the FString Data pointers.  Null them in the local so
-	// ~FString doesn't delete[] memory that UE3 will later appFree.
+	// TArray::Add shallow-copies the struct (memcpy-style). The TArray
+	// copy now owns the FString Data pointers. Null the local so
+	// ~FString (which uses delete[]) doesn't try to free a GAllocator
+	// buffer at end of scope. The engine appFrees the entry's copy via
+	// its own m_TeamPlayers teardown.
 	newplayerteamentry.fsName.Data = nullptr;
 	newplayerteamentry.fsName.Count = newplayerteamentry.fsName.Max = 0;
 	newplayerteamentry.fsMapName.Data = nullptr;
