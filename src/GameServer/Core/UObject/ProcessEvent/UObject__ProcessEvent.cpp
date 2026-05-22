@@ -1,6 +1,4 @@
 #include "src/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.hpp"
-#include "src/GameServer/TgGame/BuffEffectRegistry/ApplyBuffEffect.hpp"
-#include "src/GameServer/TgGame/BuffEffectRegistry/BuffEffectRegistry.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
@@ -173,7 +171,7 @@ enum class DispatchTag : uint8_t {
 	DyingBeginState,              // CallOriginal then BotDied
 	DeviceFiringEndState,         // CallOriginal then jetpack-flag clear
 	ServerStopFire,               // CallOriginal then RemoveEffectGroupsByCategory(stealth)
-	TgEffectRemove,               // (guarded) ApplyBuffEffectFromHook in lieu of original
+	TgEffectRemove,               // DoCatchAll — TgEffectBuff.Remove now reverses buffs canonically
 	PostPawnSetup,                // CallOriginal (sets PHYS_Falling) then restore PHYS_Flying for flying bots
 	ServerStartFire,              // Diagnostic: log every CanDeviceFireNow gate before CallOriginal
 	GetPlayerViewPoint,           // Pre-sync c_nCameraYawOffset / c_nCameraPitchOffset from ctrl.Rotation
@@ -632,12 +630,6 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 	case DispatchTag::DeviceFiringEndState: {
 		CallOriginal(Object, edx, Function, Params, Result);
 		ATgDevice* Device = (ATgDevice*)Object;
-		if (Device->IsOffhandJetpack() && Device->Instigator) {
-			ATgPawn* Pawn = (ATgPawn*)Device->Instigator;
-			SetPawnProperty(Pawn, 59, 0.0f);  // clear TGPID_FLIGHT_ACCELERATION
-			Pawn->bNetDirty = 1;
-			Pawn->bForceNetUpdate = 1;
-		}
 
 		// Beacon deploy cleanup. UC TgDevice.uc:2877 fires ConsumeDevice when
 		// r_bConsumedOnUse is set, but ConsumeDevice's RemoveConsumableFromOwnerInventory
@@ -933,38 +925,9 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 	}
 
 	case DispatchTag::TgEffectRemove:
-		// Symmetric counterpart to the SetEffectRep-driven apply
-		// (`TgEffectManager__SetEffectRep.cpp`): reverses the buff registry
-		// entry for class-157 effects, mirroring `TgEffectBuff.uc:202`.
-		//
-		// The hook is ADDITIVE — buff-route Remove runs ALONGSIDE base UC
-		// `TgEffect.Remove` (CallOriginal via DoCatchAll), not instead of it.
-		// Apply is already additive: UC `TgEffect.ApplyEffect` runs via UC
-		// dispatch, then `SetEffectRep`'s hook fires `ApplyBuffEffectFromHook`
-		// on top. Remove must mirror that structure or we'd silently leak
-		// any side-effect that base `TgEffect.Remove` is responsible for.
-		//
-		// Concrete leak that motivated the fix: iMINIGUN's prop-338 root
-		// (egId 9350) is a class-80 effect whose UC Remove special-cases
-		// `if (m_nPropertyId == 338) ApplyToProperty(Target, 49, 10000, true)`
-		// to undo the prop-49 GroundSpeed clamp at TgEffect.uc:529-533. When
-		// `BuffEffectRegistry::IsBuff()` false-positives on a pointer-reuse
-		// collision (which it can — see ApplyBuffEffect.hpp), the prior
-		// if/else here SKIPPED CallOriginal entirely and the player stayed
-		// rooted forever. Additive removal makes the false positive benign:
-		// UC Remove undoes the real prop modification, buff-route Remove
-		// undoes the spurious registry entry.
-		//
-		// For LEGITIMATE class-157 effects, running UC `TgEffect.Remove`
-		// additionally is also safe — class-157 buffs target modifier props
-		// (113 Accuracy, 65 Effect Damage Modifier, …) the pawn doesn't carry
-		// in `s_Properties`, so `ApplyToProperty(bRemove=true)` is a silent
-		// no-op there. Same reasoning that motivated the buff-route hook in
-		// the first place.
-		if (Params && BuffEffectRegistry::IsBuff((UTgEffect*)Object)) {
-			auto* parms = (UTgEffect_eventRemove_Parms*)Params;
-			ApplyBuffEffectFromHook((UTgEffect*)Object, parms->Target, /*bRemove=*/true);
-		}
+		// Passthrough. Correct own-class dispatch is done by RemoveEffects /
+		// DispatchEffectRemove (the SDK eventRemove wrapper resolves only the
+		// base TgEffect.Remove, so buffs are dispatched explicitly there).
 		DoCatchAll();
 		break;
 

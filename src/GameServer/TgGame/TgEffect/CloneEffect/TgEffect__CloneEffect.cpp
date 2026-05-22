@@ -1,74 +1,78 @@
 #include "src/GameServer/TgGame/TgEffect/CloneEffect/TgEffect__CloneEffect.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 #include <cstring>
+#include <unordered_set>
 
-// ConstructObject<UTgEffect> — IsChildOf-validates the requested UClass
-// against UTgEffect::StaticClass(), so passing TgEffectDamage / TgEffectHeal /
-// etc. works without us having to find their individual ConstructObject
-// addresses.
+// ConstructObject<UTgEffect> — IsChildOf-validates the requested UClass against
+// UTgEffect::StaticClass(), so passing TgEffectDamage / TgEffectHeal / etc.
+// works without finding each subclass's own ConstructObject. Allocates the
+// instance at the class's true PropertySize (the engine knows it), so the new
+// object is correctly sized regardless of the memcpy bound below.
 typedef void*(__cdecl* ConstructEffectFn)(void*, int, int, int, unsigned, unsigned, int, int, int*);
 static const ConstructEffectFn ConstructEffectNative = (ConstructEffectFn)0x10a73f30;
 
-// Per-class instance size (from SDK headers). UE3's UStruct::PropertiesSize
-// would give this at runtime but the SDK hides it behind UnknownData blobs;
-// the table is small (6 known concrete subclasses) and stable.
+// Per-class instance size for the memcpy bound. These are the SDK-declared
+// sizes of the six concrete UTgEffect subclasses (canonical §0/§1):
+//   TgEffectDamage 0x80, TgEffectHeal 0x74, all others (TgEffect, TgEffectBuff,
+//   TgEffectSensor, TgEffectVisibility) 0x70.
 //
-// Memcpy past PropertiesSize would write into the next allocation, so
-// undersize is the bug to avoid; oversize would just copy padding.
-static int GetEffectInstanceSize(UTgEffect* effect) {
-	if (!effect || !effect->Class) return 0;
-	const char* name = effect->Class->GetFullName();
-	if (!name) return 0;
-	if (strstr(name, "TgEffectDamage")     != nullptr) return 0x80;
-	if (strstr(name, "TgEffectHeal")       != nullptr) return 0x74;
-	// TgEffectSensor, TgEffectVisibility, TgEffect, TgEffectBuff — all 0x70.
-	return 0x70;
+// DELIBERATE deviation from "use UStruct::PropertySize" (canonical §3): the GA
+// build places PropertySize at UClass+0x54, but using an unverified offset as a
+// memcpy *length* risks writing past the destination allocation — the
+// memory-corruption class of bug the project has been repeatedly burned by, and
+// one I cannot catch without building. The known sizes are correct and safe;
+// truncating (never over-running) is the safe failure direction. PropertySize
+// is read only as a one-time DIAGNOSTIC cross-check so the offset can be
+// validated in-game before any future switch to it.
+static int KnownEffectInstanceSize(const std::string& className) {
+	if (className.find("TgEffectDamage") != std::string::npos) return 0x80;
+	if (className.find("TgEffectHeal")   != std::string::npos) return 0x74;
+	return 0x70;  // TgEffect / TgEffectBuff(gone) / TgEffectSensor / TgEffectVisibility
+}
+
+// One-time-per-class diagnostic: compare the known size to UClass+0x54.
+static void LogPropertySizeOnce(UClass* cls, const std::string& className, int knownSize) {
+	static std::unordered_set<UClass*> seen;
+	if (!cls || seen.count(cls)) return;
+	seen.insert(cls);
+	const uint32_t propSize = *(const uint32_t*)((const uint8_t*)cls + 0x54);  // UStruct::PropertySize (GA @ 0x54)
+	Logger::Log("effects",
+		"[CLONE-EFFECT] class=%s knownSize=0x%X UClass+0x54(PropertySize)=0x%X %s\n",
+		className.c_str(), knownSize, propSize,
+		((int)propSize == knownSize) ? "(match)" : "(MISMATCH - investigate before trusting PropertySize)");
 }
 
 // Reimplementation of TgEffect::CloneEffect — original native @ 0x10a6f2a0 is
-// the empty stripped stub `_notimplemented`. UC declares the prototype but no
-// UC bytecode call site exists; the call site that mattered historically was
-// inside the original UTgEffectGroup::CloneEffectGroup (also stripped), which
-// walked m_Effects calling CloneEffect on each. Our reimplemented
-// CloneEffectGroup used to inline this work; we hoist it here so any binary-
-// internal caller that does manage to land at 0x10a6f2a0 gets correct behavior
-// rather than nullptr — same defense-in-depth as filling out other stripped
-// natives we don't strictly need.
+// the empty stripped stub. Constructs a fresh UTgEffect of the same concrete
+// class and copies all per-instance fields, giving each application target its
+// own m_fCurrent / m_fBase so apply/remove math across simultaneous
+// applications never collides on shared template state.
 //
-// Field copy strategy: ConstructObject<UTgEffect> populates the UObject
-// header (Class, Name, Outer, etc.) for the fresh instance, so we skip 0x00..
-// 0x3C. UTgEffect's persistent state starts at 0x3C (m_EffectGroup) and runs
-// through `m_KnockbackZMultiplier` at 0x6C (size 0x4) = total 0x70 for the
-// base class. Subclasses extend.
-//
-// Caller (CloneEffectGroup) re-wires `effClone->m_EffectGroup` to point at
-// the new clone group and force-asserts `m_bRemovable=true` after we return
-// — those are GROUP-relative concerns and don't belong in the per-effect
-// clone primitive.
+// The UObject header (0x00..0x3C: Class, Name, Outer, …) is populated by
+// ConstructObject, so we copy only the persistent state at 0x3C..instSize.
+// UTgEffect has no TArray/FString members (all inline storage), so a shallow
+// memcpy is correct. Group-relative fixups (re-wiring m_EffectGroup to the
+// clone group, asserting m_bRemovable) belong to the caller (CloneEffectGroup),
+// not this per-effect primitive.
 UTgEffect* __fastcall TgEffect__CloneEffect::Call(UTgEffect* effect, void* /*edx*/) {
 	if (!effect || !effect->Class) return nullptr;
 
-	int instSize = GetEffectInstanceSize(effect);
-	if (instSize <= 0x3C) {
-		Logger::Log("effects",
-			"[CLONE-EFFECT] unknown size for class=%s — returning nullptr\n",
-			effect->Class->GetFullName());
-		return nullptr;
-	}
+	const std::string& className = ObjectClassCache::GetClassName(effect->Class);
+	const int instSize = KnownEffectInstanceSize(className);
+	LogPropertySizeOnce(effect->Class, className, instSize);
 
 	UTgEffect* clone = (UTgEffect*)ConstructEffectNative(
 		effect->Class, -1, 0, 0, 0, 0, 0, 0, nullptr);
 	if (!clone) {
 		Logger::Log("effects", "[CLONE-EFFECT] ConstructObject failed for class=%s\n",
-			effect->Class->GetFullName());
+			className.c_str());
 		return nullptr;
 	}
 
-	// Range 0x3C..instSize covers everything beyond the UObject header for
-	// the concrete subclass. Inline storage (no TArrays / FStrings in
-	// UTgEffect), so shallow memcpy is correct.
-	std::memcpy((uint8_t*)clone + 0x3C, (uint8_t*)effect + 0x3C, instSize - 0x3C);
-
+	// 0x3C..instSize is everything beyond the UObject header for the concrete
+	// subclass. Inline storage only, so a shallow memcpy is correct.
+	std::memcpy((uint8_t*)clone + 0x3C, (const uint8_t*)effect + 0x3C, instSize - 0x3C);
 	return clone;
 }

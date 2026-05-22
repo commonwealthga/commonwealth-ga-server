@@ -358,6 +358,11 @@ unsigned long ModuleThread( void* ) {
 
 	// low-level engine functions
 	GameEngine__Init::Install();
+	// Widen the ULinkerLoad export filter so the server also loads
+	// client-flagged exports (GIsClient=0 otherwise drops them — e.g.
+	// TgEffectBuff). Must be installed before any game package loads; this
+	// transaction commits before GameEngine__Init::Call runs LoadStartupPackages.
+	// LinkerLoad__Ctor::Install();
 	// UObject__CollectGarbage::bDisableGarbageCollection = true;
 	UObject__CollectGarbage::Install();
 	UObject__ProcessEvent::Install();
@@ -439,7 +444,12 @@ unsigned long ModuleThread( void* ) {
 	TgGame__MissionTimeRemaining::Install();
 	TgGame__SendMissionTimerEvent::Install();
 	TgDeviceFire__GetEffectGroup::Install();
-	TgDeviceFire__GetPropertyValueById::Install();
+	// TgDeviceFire__GetPropertyValueById hook DISABLED — native (intact) is now
+	// authoritative. Its only job was a pawn-s_Properties fallback for bot
+	// weapons whose fire-mode m_Properties were never built; bots now build
+	// m_Properties via ApplyDeviceSetup (SpawnBotById::BuildDeviceFireProperties),
+	// so the fallback is redundant. Files staged for deletion pending a clean
+	// playtest. See .planning/effect-buff-property-rebuild-PROGRESS.md.
 	TgDeviceFire__ApplyFireModeSetup::Install();
 	TgDeviceFire__InitializeProjectile::Install();
 	TgDeviceFire__CustomFire::Install();

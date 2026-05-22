@@ -1,45 +1,31 @@
 #include "src/GameServer/TgGame/TgEffect/CheckOwnerPetBuff/TgEffect__CheckOwnerPetBuff.hpp"
-#include "src/GameServer/TgGame/BuffEffectRegistry/DeviceCategorySkill.hpp"
+#include "src/GameServer/TgGame/_effect_core/DeviceLookup.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
-#include <cstring>
+// Reimplementation of TgEffect::CheckOwnerPetBuff — stripped stub at 0x10a6f290.
+// Scales a pet/turret's outgoing value by its OWNER pawn's buff registry, so an
+// engineer's turret/drone inherits the owner's device mods + class skills.
+// See .planning/effect-buff-property-canonical.md §2/§4 (Q3).
+//
+// Clean-room rebuild: device class-skill resolved via the canonical
+// DeviceLookup (scan the owner's equipped devices) — NO DeviceCategorySkill
+// side-map; class checks via ObjectClassCache, not IsA()/GetFullName().
+//
+// Chain: effect's group instigator (the firing pet) → r_Owner (the spawning
+// pawn) → query owner's GetBuffedProperty scoped to the spawning device.
+//
+// Device scoping is load-bearing: rolled pet-damage mods (prop 350) and the
+// ModResolver Output Mod (385) are stored against the spawning device's
+// instance id; the spawning device's class-skill id (m_nSkillId) gates
+// device-class skills (Heavy Artillery req 514, Robotics req 486, …). The pet
+// carries the spawning device instance in s_nSpawnerDeviceInstId (+0x1070, set
+// by SpawnBotById/SpawnPet); context 4 (BUFF_OTHER) expands prop 350 → {350,385}.
 
-// Same GetBuffedProperty binding as the CheckEffectBuffModifier impl.
 typedef void(__fastcall* GetBuffedPropertyFn)(
-	ATgPawn*, void*,
-	unsigned char, int, int, int, int, int,
-	float, float*, void*);
-static const GetBuffedPropertyFn GetBuffedPropertyNative =
-	(GetBuffedPropertyFn)0x109d7ff0;
+	ATgPawn*, void*, unsigned char, int, int, int, int, int, float, float*, void*);
+static const GetBuffedPropertyFn GetBuffedPropertyNative = (GetBuffedPropertyFn)0x109d7ff0;
 
-// Reimplementation of TgEffect::CheckOwnerPetBuff — stripped stub at
-// 0x10a6f290.
-//
-// Lookup chain:
-//   1. effect->m_EffectGroup->m_Instigator → the firing actor.
-//   2. If the firing actor is a pawn AND has r_Owner set, treat it as a pet
-//      whose damage we want owner-side scaling for. r_Owner points to the
-//      deploying / spawning pawn (per reference_henchman_pet_r_owner_for_isenemy).
-//   3. Query owner pawn's GetBuffedProperty(BUFF_OTHER, nPropertyId, ...) →
-//      writes scaled amount back to *fNewAmount.
-//
-// **Device-instance scoping:** the query MUST pass the SPAWNING device's
-// invId (the player's Personal Turret / Pet Deployable item, e.g. invId
-// 10009), not 0. Rolled mods on the spawning device are stored against
-// `nReqDeviceInstId = device's invId` (per `Inventory::ApplyRolledModEffects`),
-// and the binary's GetBuffIndex search treats `entry.devInst > 0` as
-// "must equal query exactly". Querying with devInst=0 was missing every
-// rolled prop-350 pet-damage mod AND the ModResolver-prepended Output Mod
-// (prop 385) — concrete failure: Rocket Turret 1000 base × 1.40 actual
-// instead of 1000 × ~1.70+ from Output Mod alone (2026-05-14 audit).
-//
-// The pet pawn carries `s_nSpawnerDeviceInstId` (offset 0x1070) — set by
-// SpawnBotById/SpawnPet at deploy time — that points back to the owner's
-// spawning device. Use it here.
-//
-// For non-pet instigators (player firing their own weapon, deployable firing
-// without a pet middleman), r_Owner is null and we leave fNewAmount at its
-// passed-in value.
 void __fastcall TgEffect__CheckOwnerPetBuff::Call(UTgEffect* effect, void* /*edx*/,
                                                   int nPropertyId, float fCurrAmount,
                                                   float* fNewAmount) {
@@ -51,48 +37,23 @@ void __fastcall TgEffect__CheckOwnerPetBuff::Call(UTgEffect* effect, void* /*edx
 	if (!g) return;
 
 	AActor* inst = g->m_Instigator;
-	if (!inst || !inst->Class) return;
-	const char* cn = inst->Class->GetFullName();
-	if (!cn || strstr(cn, "TgPawn") == nullptr) return;
-	ATgPawn* petPawn = (ATgPawn*)inst;
+	if (!inst || !ObjectClassCache::ClassNameContains(inst, "TgPawn")) return;
+	ATgPawn* petPawn = static_cast<ATgPawn*>(inst);
 
-	// r_Owner: ATgPawn* on this pawn pointing at the owning pawn. SDK header
-	// at TgGame_classes.h:13109 — `class ATgPawn* r_Owner;` at offset 0x106C
-	// (CPF_Net). Player-spawned pets / henchmen carry it; AI bots without an
-	// owner have it null.
+	// r_Owner (+0x106C): the owning pawn for player-spawned pets / henchmen;
+	// null for owner-less AI bots (nothing to scale by).
 	ATgPawn* ownerPawn = petPawn->r_Owner;
-	if (!ownerPawn || !ownerPawn->Class) return;
-	const char* on = ownerPawn->Class->GetFullName();
-	if (!on || strstr(on, "TgPawn") == nullptr) return;
+	if (!ownerPawn || !ObjectClassCache::ClassNameContains(ownerPawn, "TgPawn")) return;
 
-	// Spawning-device invId on the pet (offset 0x1070, populated by
-	// SpawnBotById / SpawnPet at deploy time). Falls back to 0 (wildcard
-	// match against entries stored with devInst=0) when missing.
+	// Spawning-device instance on the pet (+0x1070), and its class-skill id from
+	// the owner's equipped devices (canonical, replaces DeviceCategorySkill).
 	const int spawnerDevInst = petPawn->s_nSpawnerDeviceInstId;
-
-	// **Device-class skill scoping:** the query MUST pass the spawning
-	// device's classifying skill id (`m_nSkillId`, sourced from
-	// `asm_data_set_items.skill_id` where `item_id == device_id` via
-	// `DeviceCategorySkill::Lookup`). Skills like Heavy Artillery (845)
-	// gate their prop-350 effect on `required_skill_id=514` (Turrets) so
-	// only firing entities whose device-class is 514 pick it up. With
-	// `nReqSkillId=0`, the binary's GetBuffIndex match rule
-	// (FUN_109cd890: stored>0 must equal query) filtered every
-	// device-class-gated skill out of the pet-damage formula. Concrete
-	// failure: Rocket Turret (bot 723 spawned by device 2095 → item 2095
-	// has skill_id=514) was getting Super Engineer's wildcard +5% but
-	// missing Heavy Artillery's class-514 +5% (1000 × 1.21 × 1.05 ×
-	// 1.70 = 2160 actual vs 1000 × 1.21 × 1.10 × 1.70 = 2263 expected).
-	// Generalizes to every multi-row pet-buff skill: Robotics Rifle
-	// Damage (req=486), Drone-class effects (req=384), Stations (283),
-	// Repair (308), etc. — same data path, same fix.
-	const int spawnerSkillId =
-		DeviceCategorySkill::LookupByInstanceId(ownerPawn, spawnerDevInst);
+	const int spawnerSkillId = DeviceLookup::SkillIdForDevice(ownerPawn, spawnerDevInst);
 
 	float buffedValue = fCurrAmount;
 	GetBuffedPropertyNative(
 		ownerPawn, /*edx=*/nullptr,
-		/*eRequestContext=*/4,         // BUFF_OTHER → expansion {350, 385} for prop 350
+		/*eRequestContext=*/4,          // BUFF_OTHER → {350, 385} for pet-damage prop 350
 		/*nPropId=*/nPropertyId,
 		/*nReqCategoryCode=*/g->m_nCategoryCode,
 		/*nReqSkillId=*/spawnerSkillId,

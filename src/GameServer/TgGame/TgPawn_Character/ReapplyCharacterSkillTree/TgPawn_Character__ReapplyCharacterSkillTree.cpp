@@ -1,73 +1,22 @@
 #include "src/GameServer/TgGame/TgPawn_Character/ReapplyCharacterSkillTree/TgPawn_Character__ReapplyCharacterSkillTree.hpp"
 #include "src/GameServer/Armor/Armor.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/BuildEffectGroup.hpp"
-#include "src/GameServer/TgGame/TgPawn/ApplyBuff/TgPawn__ApplyBuff.hpp"
-#include "src/GameServer/TgGame/BuffEffectRegistry/ModifierProps.hpp"
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
-#include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
-#include <cmath>
 #include <set>
-#include <map>
 
-// Modifier-prop classification (was a local IsModifierProp here) lives in
-// `src/GameServer/TgGame/BuffEffectRegistry/ModifierProps.hpp` so it can be
-// shared with ApplyPlayerModsToDeployable's kBuffDeviceModMap. Both tables
-// derive from the same source of truth (the binary's ConvertPropToPropList
-// @ 0x109e5220). Use ModifierProps::IsModifierProp(pid) at call sites below.
-
-// Per-pawn record of what each Reapply pass wrote so a subsequent respec
-// (or respawn — Reapply runs on every spawn) can REVERSE it before applying
-// the new allocation. Keyed by pawn pointer → (propId → SkillDeltaRec):
-//   delta         — cumulative delta we added to m_fRaw last pass
-//   postApplyRaw  — m_fRaw immediately after our final write last pass
-//
-// On the next pass we only subtract delta if `prop->m_fRaw == postApplyRaw`.
-// Any mismatch (instance reload reset s_Properties to base, another system
-// touched the prop in between, …) means our delta is no longer in raw —
-// reverting would push raw below baseline. In that case we SKIP the revert
-// and let the new pass apply on top of whatever raw is now.
-//
-// Mirrors the same pattern in src/GameServer/Armor/Armor.cpp; was the root
-// cause there of "armor doesn't reapply on return-from-mission, ending up
-// with less HP". Skill deltas have the same shape and the same bug.
-//
-// Ticker-based skill effects track themselves via s_AppliedEffectGroups and
-// get removed separately.
-struct SkillDeltaRec {
-	float delta;
-	float postApplyRaw;
-};
-static std::map<ATgPawn_Character*, std::map<int, SkillDeltaRec>> g_appliedSkillDeltas;
-
-static bool SkillRawMatches(float current, float remembered) {
-	return std::fabs(current - remembered) < 0.001f;
-}
-
-// Parallel record for the IsModifierProp() routing branch — these entries
-// land in m_EffectBuffInfo via TgPawn__ApplyBuff, NOT in s_Properties, so
-// the deltas-map above doesn't see them. Without an explicit reversal,
-// every Reapply call re-adds the same buff-registry delta on top of the
-// previous one. Power-cost (-30%) example: after 4 respawns fSkillPercent
-// reaches -120 → GetShotPowerCost's `<=0` guard clamps cost to 0 →
-// unlimited power. Damage and accuracy skills had the same bug but the
-// over-stacking is less visible there.
-//
-// Each entry stores the args we'd pass to ApplyBuff with `bRemove=1` to
-// undo it. propId/calc/amount/src must match the apply call exactly so
-// GetBuffIndex finds the same entry and applies the inverse delta.
-struct AppliedBuffRecord {
-	int   propId;
-	int   calc;        // 67/68/69/70 — same as the apply
-	float amount;      // amount we passed to ApplyBuff
-	int   src;         // BUFF_SOURCE_TYPE_*
-	int   devInst;     // header.nReqDeviceInstId at apply time (0 for skills)
-	int   reqSkillId;  // effect_group.required_skill_id (0=wildcard)
-	int   reqCatCode;  // effect_group.required_category_value_id (0=wildcard)
-};
-static std::map<ATgPawn_Character*, std::vector<AppliedBuffRecord>> g_appliedSkillBuffs;
+// REBUILD (2026-05-22): the two per-pawn reversal manifests — g_appliedSkillDeltas
+// (direct m_fRaw writes) and g_appliedSkillBuffs (buff-registry entries) — are
+// GONE. Every type-261 skill effect now applies through the canonical
+// ProcessEffect path and is retained in s_AppliedEffectGroups (lifetime>0 or
+// m_bIsManaged), so reversal on respawn/respec is ProcessEffect(bRemove) over the
+// retained m_bSkillEffect clones — no out-of-band tracking. Unblocked by: real
+// TgEffectBuff now loads (so class-157 modifier buffs route canonically),
+// ApplyBuff does the 412→304 eager HEALTH_MAX recompute, and invisible skill
+// groups no longer force m_bHasVisual (so SetEffectRep claims no HUD slot for
+// them — the old reason this path avoided ProcessEffect).
 
 // TgPawn::SetProperty @ 0x109bf420 — (pawn, propId, fNewValue). Writes
 // UTgProperty.m_fRaw then dispatches ApplyProperty (vtable[0x8f4]) which is
@@ -78,6 +27,30 @@ static std::map<ATgPawn_Character*, std::vector<AppliedBuffRecord>> g_appliedSki
 // pawn's replicated stats never change.
 static void SetPawnProperty(ATgPawn* Pawn, int nPropertyId, float fNewValue) {
 	((void(__fastcall*)(ATgPawn*, void*, int, float))0x109bf420)(Pawn, nullptr, nPropertyId, fNewValue);
+}
+
+// Effects-channel max-HP snapshot. Dumps prop-304's registry-derived m_fRaw and
+// its eager-cached engine field r_nHealthMaximum (ATgPawn+0x43c, written by
+// ApplyProperty(304)) plus the applied-group count. Called at the begin /
+// post-revert / end boundaries so an "add +maxHP skill, then unspec" test shows
+// in ONE channel whether HEALTH_MAX returns to base — and how many applied
+// groups linger after the revert pass. If raw/r_nHealthMaximum stay elevated
+// after unspec while appliedGroups doesn't drop, the skill clones aren't being
+// reverted; if appliedGroups drops but the value stays high, the registry leak
+// is downstream of the clone removal.
+static void LogMaxHpSnapshot(ATgPawn* Pawn, const char* phase) {
+	if (!Pawn || !Logger::IsChannelEnabled("effects")) return;
+	float raw = 0.0f, base = 0.0f; bool found = false;
+	for (int i = 0; i < Pawn->s_Properties.Count; i++) {
+		UTgProperty* p = Pawn->s_Properties.Data[i];
+		if (p && p->m_nPropertyId == 304) { raw = p->m_fRaw; base = p->m_fBase; found = true; break; }
+	}
+	const int healthMax = *(int*)((char*)Pawn + 0x43c);
+	const int appliedGroups =
+		Pawn->r_EffectManager ? Pawn->r_EffectManager->s_AppliedEffectGroups.Count : -1;
+	Logger::Log("effects",
+		"[MAXHP/RCST %s] pawn=%p prop304%s raw=%.2f base=%.2f  r_nHealthMaximum=%d  appliedGroups=%d\n",
+		phase, (void*)Pawn, found ? "" : "(MISSING)", raw, base, healthMax, appliedGroups);
 }
 
 // UTgPawn_Character::ReapplyCharacterSkillTree — the binary has a stripped
@@ -110,6 +83,8 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 		"[Reapply] pawn=%p mgr=%p mgr->r_Owner=%p (expect ==pawn for effects to apply)\n",
 		(void*)Pawn, (void*)mgr, (void*)mgr->r_Owner);
 
+	LogMaxHpSnapshot((ATgPawn*)Pawn, "begin");
+
 	// Shared across revert + apply phases so the final fanout pass at the end
 	// covers every prop either layer touched. Moved up from the apply block
 	// when armor was split into Revert/Apply so the revert phase can also
@@ -129,64 +104,18 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 	// failure on skill revert side. Toggling the skill UI re-saved without
 	// changes → both layers re-stacked → HP grew unbounded.
 	{
-		auto& prev = g_appliedSkillDeltas[Pawn];
-		for (auto& kv : prev) {
-			int pid = kv.first;
-			const SkillDeltaRec& rec = kv.second;
-			UTgProperty* prop = nullptr;
-			for (int i = 0; i < Pawn->s_Properties.Count; i++) {
-				UTgProperty* p = Pawn->s_Properties.Data[i];
-				if (p && p->m_nPropertyId == pid) { prop = p; break; }
-			}
-			if (!prop) continue;
-
-			const float rawBefore = prop->m_fRaw;
-			if (SkillRawMatches(rawBefore, rec.postApplyRaw)) {
-				// Our previous delta is still in m_fRaw — safe to reverse.
-				prop->m_fRaw -= rec.delta;
-				Logger::Log("skills",
-					"[Reapply/respec] reverse propId=%d delta=%.3f -> raw=%.3f\n",
-					pid, rec.delta, prop->m_fRaw);
-			} else {
-				// Raw was reset between calls (instance reload / mission
-				// return) or something else mutated it. Don't subtract a
-				// delta that isn't there.
-				Logger::Log("skills",
-					"[Reapply/respec] reverse-skipped propId=%d raw=%.3f != postApply=%.3f (delta %.3f), treating as reset\n",
-					pid, rawBefore, rec.postApplyRaw, rec.delta);
-			}
-			touchedPropIds.insert(pid);
-		}
-		prev.clear();
-		// (Per-revert fanout removed — Phase 3's combined fanout handles every
-		// touched prop, so we don't replicate intermediate values that armor
-		// apply / skill apply will overwrite this same call.)
-
-		// Reverse buff-registry entries written by the previous Reapply via the
-		// IsModifierProp() branch. Skip-this-step is what causes the unlimited-
-		// power bug after a few respawns: each Reapply added another -30 to
-		// fSkillPercent for prop 242 without reversing the prior entry.
-		auto bufIt = g_appliedSkillBuffs.find(Pawn);
-		if (bufIt != g_appliedSkillBuffs.end()) {
-			for (const AppliedBuffRecord& r : bufIt->second) {
-				FBuffHeader header{};
-				header.nPropId          = r.propId;
-				header.nReqCategoryCode = r.reqCatCode;
-				header.nReqSkillId      = r.reqSkillId;
-				header.nReqDeviceInstId = r.devInst;
-				TgPawn__ApplyBuff::Call((ATgPawn*)Pawn, /*edx=*/nullptr,
-					header, r.calc, r.amount,
-					/*bRemove=*/1,
-					(unsigned char)r.src);
-				Logger::Log("skills",
-					"[Reapply/respec] reverse buff propId=%d calc=%d amt=%.3f src=%d devInst=%d skillId=%d cat=%d\n",
-					r.propId, r.calc, r.amount, r.src, r.devInst, r.reqSkillId, r.reqCatCode);
-			}
-			bufIt->second.clear();
-		}
+		// Reversal of the previous pass's skill effects is the m_bSkillEffect
+		// clone removal below: ProcessEffect(bRemove) reverses each retained
+		// clone's effects (TgEffect.Remove / TgEffectBuff.Remove → ApplyBuff
+		// reverse + the 412→304 recompute). The old g_appliedSkillDeltas /
+		// g_appliedSkillBuffs manifests are gone — every skill effect now applies
+		// via ProcessEffect and is retained in s_AppliedEffectGroups (lifetime>0
+		// or m_bIsManaged), so there is nothing to track or reverse out-of-band.
 
 		// Remove any s_AppliedEffectGroups clones tagged m_bSkillEffect.
 		// Iterate in reverse because ProcessEffect(bRemove) mutates the list.
+		int skillClonesReverted = 0;
+		const int appliedBefore = mgr->s_AppliedEffectGroups.Count;
 		for (int i = mgr->s_AppliedEffectGroups.Count - 1; i >= 0; i--) {
 			UTgEffectGroup* ag = mgr->s_AppliedEffectGroups.Data[i];
 			if (!ag) continue;
@@ -195,10 +124,21 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 				Logger::Log("skills",
 					"[Reapply/respec] remove ticker skill clone egId=%d\n",
 					ag->m_nEffectGroupId);
+				if (Logger::IsChannelEnabled("effects")) {
+					Logger::Log("effects",
+						"[MAXHP/RCST revert-clone] egId=%d gflags=0x%X effects=%d\n",
+						ag->m_nEffectGroupId, gflags, ag->m_Effects.Count);
+				}
+				skillClonesReverted++;
 				FImpactInfo impact{};
 				mgr->eventProcessEffect(ag, /*bRemove=*/1, /*Buffers=*/nullptr,
 					/*aInstigator=*/(AActor*)Pawn, impact);
 			}
+		}
+		if (Logger::IsChannelEnabled("effects")) {
+			Logger::Log("effects",
+				"[MAXHP/RCST phase1] appliedGroups %d -> %d, skill clones reverted=%d\n",
+				appliedBefore, mgr->s_AppliedEffectGroups.Count, skillClonesReverted);
 		}
 	}
 
@@ -207,6 +147,8 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 	// the skill revert above and armor was the last layer to apply last time.
 	Armor::RevertDefaultArmor((ATgPawn*)Pawn);
 	touchedPropIds.insert(304);  // HEALTH_MAX — armor always touches it if propHP exists
+
+	LogMaxHpSnapshot((ATgPawn*)Pawn, "post-revert");
 
 	// Always clear first — ReapplyCharacterSkillTree is called on spawn AND
 	// after respec. Stale entries from a previous build have to go even if we
@@ -304,7 +246,8 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 		while (sqlite3_step(stmt) == SQLITE_ROW) {
 			int egId         = sqlite3_column_int(stmt, 0);
 			int egType       = sqlite3_column_int(stmt, 1);
-			int reqSkillId   = sqlite3_column_int(stmt, 2);  // 0 = wildcard, >0 = device-class gate
+			// (required_skill_id is read by BuildEffectGroup into m_nRequiredSkillId;
+			// the canonical ApplyBuff path reads it off the group, so no local copy.)
 
 			UTgEffectGroup* group = BuildEffectGroup(egId, egType);
 			if (!group) {
@@ -345,193 +288,27 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 				continue;
 			}
 
-			// Branch on effect shape (within type 261):
-			//   * Ticking / timed effects (apply_interval_sec > 0 OR
-			//     lifetime_sec > 0) MUST go through ProcessEffect — it's
-			//     what schedules the LifeOver timer and the per-tick apply
-			//     (e.g. "regen +X HP every 2s" skill). Without ProcessEffect
-			//     no tick ever fires.
-			//   * Pure stat modifiers (lifetime=0 AND interval=0) write
-			//     m_fRaw once and are done. Routing them through
-			//     ProcessEffect is harmful — the resulting clone in
-			//     s_AppliedEffectGroups grabs a HUD slot via SetEffectRep
-			//     and with 10+ skills pushes real device/buff icons off
-			//     the bar. Apply these directly instead.
-			bool needsTicker = (group->m_fLifeTime > 0.0f)
-			                || (group->m_fApplyInterval > 0.0f);
-			if (needsTicker) {
+			// Canonical apply: EVERY type-261 skill group goes through
+			// ProcessEffect → clone → ApplyEffects → each effect's virtual
+			// ApplyEffect. Modifier buffs route via TgEffectBuff.ApplyEffect →
+			// ApplyBuff (incl. %max-health on prop 412, folded into HEALTH_MAX by
+			// ApplyBuff's 412→304 GetBuffedProperty recompute); direct stat effects
+			// via base TgEffect.ApplyEffect → ApplyToProperty. m_bSkillEffect was
+			// set above so GetBuffType buckets buffs into the SKILL layer.
+			//
+			// No direct-apply branch, no delta maps: reversal is the m_bSkillEffect
+			// clone removal in Phase 1. Pure stat-mod (lifetime=0/interval=0) groups
+			// are retained too — BuildEffectGroup sets m_bIsManaged for lifetime<=0,
+			// so ProcessEffect keeps the clone in s_AppliedEffectGroups. They no
+			// longer flood the HUD: invisible skill groups (icon_id=0) don't set
+			// m_bHasVisual, so SetEffectRep claims no managed slot for them.
+			{
 				FImpactInfo impact{};
 				mgr->eventProcessEffect(group, /*bRemove=*/0, /*Buffers=*/nullptr,
 					/*aInstigator=*/(AActor*)Pawn, impact);
-				// ProcessEffect did the property writes via
-				// ApplyEventBasedEffects. Record touched props for fan-out.
 				for (int i = 0; i < group->m_Effects.Count; i++) {
 					if (group->m_Effects.Data[i])
 						touchedPropIds.insert(group->m_Effects.Data[i]->m_nPropertyId);
-				}
-			} else {
-				// Direct apply. Calc methods (asm_data_set_valid_values):
-				//   67 Add (+), 70 Subtract (-),
-				//   68 Increase (+%), 69 Decrease (-%).
-				// %-variants take a fraction of the property's m_fBase —
-				// matches UC's TgEffect.ApplyToProperty math.
-				for (int i = 0; i < group->m_Effects.Count; i++) {
-					UTgEffect* effect = group->m_Effects.Data[i];
-					if (!effect) continue;
-					int pid  = effect->m_nPropertyId;
-					int calc = effect->m_nCalcMethodCode;
-					float amt = effect->m_fBase;
-
-					// Modifier-prop branch: skill effects targeting modifier
-					// propIds (AOE Radius Modifier=352, Damage Modifier=113,
-					// etc.) need to land in the pawn's m_EffectBuffInfo so the
-					// formula path consulted by GetPropertyValueById /
-					// GetBuffedProperty / ApplyPlayerModsToDeployable picks
-					// them up. Writing to pawn->s_Properties[modifier_pid]
-					// silently no-ops because (a) the prop isn't in
-					// s_Properties (we don't init modifier props) and
-					// (b) even if it were, m_fBase=0 makes PERC math collapse.
-					//
-					// Route through ApplyBuff with BUFF_SOURCE_TYPE_SKILL=0
-					// so the entry lands in the fSkill* slots — separate from
-					// rolled mods (fItem*), so they STACK in the formula:
-					//   v1 = base * (1+IP/100) + IM        // mods
-					//   v2 = v1   * (1+SP/100) + SM        // skills layered on top
-					if (ModifierProps::IsModifierProp(pid)) {
-						// BuildEffectGroup already normalized class-157
-						// percent values to fractions (0.15 for +15%). The
-						// binary's formula expects PERCENT (15.0 for +15%) in
-						// the buff registry. Reverse the fraction back to
-						// percent for buff registry storage.
-						float buffAmount = (calc == 68 || calc == 69) ? (amt * 100.0f) : amt;
-
-						// Tag the buff entry with two gating fields:
-						//
-						//  1. `nReqSkillId = effect_group.required_skill_id`
-						//     filters by firing-DEVICE class. Multi-row skills
-						//     like Jetpack Power gate each row on a specific
-						//     jetpack-variant skillId (358..361); the
-						//     equipping device's m_nSkillId is what the binary
-						//     passes at query time.
-						//
-						//  2. `nReqCategoryCode = effect.property_value_id`
-						//     filters by firing-EFFECT category. Station
-						//     Buff has one effect-group with three prop-376
-						//     effects, each carrying a different
-						//     property_value_id (1324 Station Healing /
-						//     1326 Station Damage / 1327 Station Protection).
-						//     Without this filter all three would collapse
-						//     into one slot — when a Medical Station heals,
-						//     all 3 effects (+20+50+20) would stack to +90%
-						//     instead of the intended +20% (Station Healing
-						//     only).
-						//
-						//  At fire time, CloneEffectGroup [EFFECT-BUFF] /
-						//  [DAMAGE-BUFF] passes `clone->m_nCategoryCode`
-						//  (= the firing effect_group's category_value_id,
-						//  e.g. 1324 for medical-station heal effect_group
-						//  6026) — so only the matching tagged entry fires.
-						//
-						//  Both fields use the binary's match rule (stored>0
-						//  must equal query; stored=0 wildcard accept any).
-						FBuffHeader header{};
-						header.nPropId          = pid;
-						header.nReqCategoryCode = effect->m_nPropertyValueId;
-						header.nReqSkillId      = reqSkillId;
-						header.nReqDeviceInstId = 0;
-
-						TgPawn__ApplyBuff::Call((ATgPawn*)Pawn, /*edx=*/nullptr,
-							header, calc, buffAmount,
-							/*bRemove=*/0,
-							/*buffSourceType=BUFF_SOURCE_TYPE_SKILL=*/0);
-
-						// Record so the next Reapply (respawn / respec) reverses
-						// this exact entry. Without this, fSkillPercent stacks
-						// every respawn. The reverse call must pass the same
-						// skillId/catCode so GetBuffIndex finds the same slot.
-						g_appliedSkillBuffs[Pawn].push_back(
-							AppliedBuffRecord{ pid, calc, buffAmount,
-							                   /*src=SKILL=*/0, /*devInst=*/0,
-							                   reqSkillId, effect->m_nPropertyValueId });
-
-						Logger::Log("skills",
-							"[Reapply/effect] egId=%d propId=%d calc=%d amt=%.3f → ApplyBuff(SKILL slot, modifier prop)\n",
-							group->m_nEffectGroupId, pid, calc, amt);
-						continue;
-					}
-
-					// Many skill effects target _MODIFIER propIds instead
-					// of the base stat (e.g. +10% HEALTH_MAX is stored as
-					// propId=412 HEALTH_MAX_MODIFIER). These modifier props
-					// aren't in InitializeDefaultProps, and even if they
-					// were their m_fBase is 0 so calc=68 yields delta=0.
-					// Redirect to the base prop so the calc math uses the
-					// real m_fBase (1300 for HEALTH_MAX) and m_fRaw lands
-					// on the stat that ApplyProperty fans out.
-					// Modifier-prop redirect for the rare cases where no
-					// GetBuffedProperty caller consults the registry entry (so
-					// putting the buff there would be a no-op). Each entry here
-					// is a workaround for missing engine plumbing — drop it
-					// once the corresponding effect-time scaling lands.
-					int applyPid = pid;
-					switch (pid) {
-						// HEALTH_MAX_MODIFIER → HEALTH_MAX. No caller consults
-						// GetBuffedProperty(BUFF_PAWN, 304) today, so the +%
-						// has to be baked into HEALTH_MAX directly.
-						case 412: applyPid = 304; break;
-						// (prop 66 GROUNDSPEED_MODIFIER used to redirect to 49
-						// here — removed because IsModifierProp now routes it
-						// through ApplyBuff and CloneEffectGroup's [EFFECT-BUFF]
-						// block scales prop 49 effects via the registry.)
-						default: break;
-					}
-
-					UTgProperty* prop = nullptr;
-					for (int j = 0; j < Pawn->s_Properties.Count; j++) {
-						UTgProperty* p = Pawn->s_Properties.Data[j];
-						if (p && p->m_nPropertyId == applyPid) { prop = p; break; }
-					}
-					if (!prop) continue;
-
-					// BuildEffectGroup normalizes class-157 percent values to
-					// fractions at load time, so by here m_fBase is always a
-					// fraction for calc=68/69 regardless of source class.
-					float delta = 0.0f;
-					switch (calc) {
-						case 67: delta =  amt;                   break;
-						case 70: delta = -amt;                   break;
-						case 68: delta =  prop->m_fBase * amt;   break;
-						case 69: delta = -prop->m_fBase * amt;   break;
-						default:
-							Logger::Log("skills",
-								"[Reapply/effect] egId=%d propId=%d unknown calc=%d — skipped\n",
-								group->m_nEffectGroupId, pid, calc);
-							continue;
-					}
-
-					prop->m_fRaw += delta;
-					effect->m_fCurrent = delta;
-					touchedPropIds.insert(applyPid);
-					// Accumulate delta for next-pass reversal and snapshot the
-					// current m_fRaw as the "we wrote this" marker. Updated on
-					// every write — the final value reflects all writes this
-					// pass to the same propId. Fan-out below doesn't mutate
-					// m_fRaw (SetProperty/ApplyProperty fan into r_fMaxHealth
-					// etc. but leave m_fRaw alone), so this snapshot stays
-					// accurate until the next Reapply.
-					auto& rec = g_appliedSkillDeltas[Pawn][applyPid];
-					rec.delta       += delta;
-					rec.postApplyRaw = prop->m_fRaw;
-
-					if (applyPid != pid) {
-						Logger::Log("skills",
-							"[Reapply/effect] egId=%d propId=%d->applyPid=%d calc=%d amt=%.3f delta=%.3f -> raw=%.3f (direct,redirect)\n",
-							group->m_nEffectGroupId, pid, applyPid, calc, amt, delta, prop->m_fRaw);
-					} else {
-						Logger::Log("skills",
-							"[Reapply/effect] egId=%d propId=%d calc=%d amt=%.3f delta=%.3f -> raw=%.3f (direct)\n",
-							group->m_nEffectGroupId, pid, calc, amt, delta, prop->m_fRaw);
-					}
 				}
 			}
 			appliedGroups++;
@@ -600,6 +377,8 @@ void __fastcall TgPawn_Character__ReapplyCharacterSkillTree::Call(ATgPawn_Charac
 			}
 		}
 	}
+
+	LogMaxHpSnapshot((ATgPawn*)Pawn, "end");
 
 	LogCallEnd();
 }

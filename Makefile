@@ -19,6 +19,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Utils/ObjectCache/ObjectCache.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ObjectClassCache/ObjectClassCache.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ClassPreloader/ClassPreloader.cpp \
+			  $(SRC_DIR)/GameServer/Utils/EngineLoad/EngineLoad.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ActorCache/ActorCache.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
 			  $(SRC_DIR)/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.cpp \
@@ -209,10 +210,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/PopulateInstigatorEquippedDevices/TgDevice__PopulateInstigatorEquippedDevices.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice_Morale/SendMoraleBoostMessage/TgDevice_Morale__SendMoraleBoostMessage.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/Morale/MoraleCredit.cpp \
-			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/ApplyBuffEffect.cpp \
-			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/DeployableOriginRegistry.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/DeviceCategorySkill.cpp \
-			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/EffectDisplacementMarker.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/ModifierProps.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.cpp \

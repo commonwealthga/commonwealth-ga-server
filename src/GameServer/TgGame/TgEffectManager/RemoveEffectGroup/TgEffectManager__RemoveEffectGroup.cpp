@@ -1,135 +1,72 @@
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroup/TgEffectManager__RemoveEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/ProcessReactiveSkillBasedEffectGroup/TgEffectManager__ProcessReactiveSkillBasedEffectGroup.hpp"
-#include "src/GameServer/TgGame/BuffEffectRegistry/EffectDisplacementMarker.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
-// UTgEffectManager::RemoveEffectGroup — original is empty stub @ 0x10a6ef10.
+// TgEffectManager::RemoveEffectGroup — original is the empty stub @ 0x10a6ef10.
+// UC: `native function bool RemoveEffectGroup(TgEffectGroup eg);` Called by
+// LifeOver (LifeDone timer), ProcessEffect(bRemove=true), and the stack/replace
+// paths. Without it, expired effects stay in s_AppliedEffectGroups with their
+// HUD slot + ApplyInterval timer still live.
 //
-// UC declaration: native function bool RemoveEffectGroup(TgEffectGroup eg);
-// Called by TgEffectManager.LifeOver (when LifeDone timer fires), by
-// ProcessEffect when bRemove=true, and by the stack/replace paths in
-// GetNewEffectGroupByApp. Without this, expired effects stay in
-// s_AppliedEffectGroups and their HUD slot + ApplyInterval timer keep firing.
-//
-// Same cleanup as RemoveEffectGroupsByCategory, but for a single group.
+// Clean-room rebuild:
+//   * Slot/form teardown is delegated to the INTACT, refcount-aware
+//     `ClearEffectRep(nEffectId, nManagedListIndex)` (0x10a6f030) instead of
+//     manually zeroing r_ManagedEffectList — the manual zero ignored
+//     c_byCounterList refcounts and could wipe a slot still shared by another
+//     group. ClearEffectRep is the counterpart the original native used.
+//   * The EffectDisplacementMarker is GONE — SetEffectRep is now the intact
+//     native and re-emission/same-frame realloc is handled by its own
+//     queue/managed reconciliation (canonical Q4), so there is nothing to mark.
+
+// Intact native counterpart to SetEffectRep.
+typedef void(__fastcall* ClearEffectRepFn)(ATgEffectManager*, void*, int /*nEffectId*/, int /*nManagedListIndex*/);
+static const ClearEffectRepFn ClearEffectRepNative = (ClearEffectRepFn)0x10a6f030;
+
 bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manager, void* /*edx*/, UTgEffectGroup* EffectGroup) {
 	if (!Manager || !EffectGroup) return false;
 
-	int inEgId = EffectGroup->m_nEffectGroupId;
-	const bool effectsLog = Logger::IsChannelEnabled("effects");
-	const bool debugLog   = (inEgId == 5716) && Logger::IsChannelEnabled("debug");
-	if (effectsLog) {
-		Logger::Log("effects",
-			"[REMOVE-GROUP] called with egId=%d cat=%d ptr=%p  s_AppliedEffectGroups has %d entries\n",
-			inEgId, EffectGroup->m_nCategoryCode, (void*)EffectGroup, Manager->s_AppliedEffectGroups.Count);
-	}
-	if (debugLog) {
-		int listCount = Manager->s_AppliedEffectGroups.Count;
-		Logger::Log("debug",
-			"  [RemoveEffectGroup egId=5716] ENTER manager=0x%p inPtr=0x%p s_Applied count=%d\n",
-			Manager, (void*)EffectGroup, listCount);
-		for (int i = 0; i < listCount; i++) {
-			UTgEffectGroup* g = Manager->s_AppliedEffectGroups.Data[i];
-			if (g && g->m_nEffectGroupId == 5716) {
-				Logger::Log("debug",
-					"  [RemoveEffectGroup egId=5716]   applied[%d]=0x%p slot=%d\n",
-					i, (void*)g, g->s_ManagedEffectListIndex);
-			}
-		}
-	}
+	const int inEgId = EffectGroup->m_nEffectGroupId;
 
-	// Find the group in s_AppliedEffectGroups.
-	//
-	// UC's ProcessEffect(bRemove=true) calls RemoveEffectGroup with the
-	// *template* pointer that came in via SubmitEffect, but s_AppliedEffectGroups
-	// stores *clones* produced by GetClonedEffectGroup (clone shares template's
-	// m_nEffectGroupId but is a distinct object). A pointer-identity match fails
-	// in this case and the remove silently no-ops — that's the scope-in
-	// compounding bug: ApplyEffects keeps stacking m_fRaw on every apply
-	// because the paired remove never finds its clone.
-	//
-	// Primary match: pointer identity (caller passed the clone directly, e.g.
-	// our RemoveEffectGroupsByCategory, or UC LifeOver timer).
-	// Fallback match: same m_nEffectGroupId (caller passed the template —
-	// UC's ProcessEffect and RemoveEffectType do this).
+	// Find the group in s_AppliedEffectGroups. UC's ProcessEffect(bRemove=true)
+	// passes the *template* pointer, but the list stores *clones* (same
+	// m_nEffectGroupId, distinct object). Primary match: pointer identity
+	// (LifeOver timer / our category remover pass the clone). Fallback: same
+	// m_nEffectGroupId (template path) — without it, scope-in compounds because
+	// the paired remove never finds its clone.
 	int idx = -1;
 	for (int i = 0; i < Manager->s_AppliedEffectGroups.Count; i++) {
 		if (Manager->s_AppliedEffectGroups.Data[i] == EffectGroup) { idx = i; break; }
 	}
 	if (idx < 0) {
-		int egId = EffectGroup->m_nEffectGroupId;
 		for (int i = 0; i < Manager->s_AppliedEffectGroups.Count; i++) {
-			UTgEffectGroup* applied = Manager->s_AppliedEffectGroups.Data[i];
-			if (applied && applied->m_nEffectGroupId == egId) { idx = i; break; }
+			UTgEffectGroup* a = Manager->s_AppliedEffectGroups.Data[i];
+			if (a && a->m_nEffectGroupId == inEgId) { idx = i; break; }
 		}
 	}
 	if (idx < 0) {
-		if (effectsLog) {
-			Logger::Log("effects",
-				"[REMOVE-GROUP]   NO MATCH for egId=%d — bailing out. Current list:\n", inEgId);
-			for (int i = 0; i < Manager->s_AppliedEffectGroups.Count; i++) {
-				UTgEffectGroup* a = Manager->s_AppliedEffectGroups.Data[i];
-				Logger::Log("effects", "[REMOVE-GROUP]     [%d] egId=%d cat=%d ptr=%p\n",
-					i, a ? a->m_nEffectGroupId : -1, a ? a->m_nCategoryCode : -1, (void*)a);
-			}
-		}
-		if (debugLog) {
-			Logger::Log("debug",
-				"  [RemoveEffectGroup egId=5716] NO MATCH — clone never landed in s_AppliedEffectGroups\n");
+		if (Logger::IsChannelEnabled("effects")) {
+			Logger::Log("effects", "[REMOVE-GROUP] no match for egId=%d — bail\n", inEgId);
 		}
 		return false;
 	}
-	if (effectsLog) {
-		Logger::Log("effects",
-			"[REMOVE-GROUP]   matched applied clone at idx=%d  (ptr=%p egId=%d)\n",
-			idx, (void*)Manager->s_AppliedEffectGroups.Data[idx],
-			Manager->s_AppliedEffectGroups.Data[idx]->m_nEffectGroupId);
-	}
 
-	// Work against the applied instance from here on — timer TimerObj, HUD slot
-	// index, m_Target all live on the clone, not the template.
+	// Work against the applied clone — timers, HUD slot, m_Target live on it.
 	UTgEffectGroup* applied = Manager->s_AppliedEffectGroups.Data[idx];
 
-	// 0. Reverse every modifier the group's effects installed (movement speed,
-	//    damage protection, etc.). Reversal is unconditional here — the
-	//    `m_fCurrent == 0` skip inside `TgEffectGroup__RemoveEffects` already
-	//    protects effects whose Apply was gated out (phantom clones, see
-	//    reference_phantom_clone_skipped_apply.md), so we don't need a
-	//    lifetime guard.
-	//
-	//    Earlier (2026-05-07) this had a `m_fLifeTime > 0` gate copied from
-	//    `RemoveAllEffectGroups` to fix the power-station +10/tick case, where
-	//    Strongest-displacement was reversing a permanent regen apply on every
-	//    re-emission. **That gate belongs in RemoveAllEffectGroups (the
-	//    displacement caller) only.** RemoveEffectGroup is also the explicit
-	//    remove path used by UC `RemoveEffectType` → `ProcessEffect(bRemove=true)`
-	//    (scope-out, jetpack-stop, fire-release) AND the Newest-Wins
-	//    per-fire-pulse displacement; for both of those the caller's intent is
-	//    "reverse this clone." The mis-placed gate broke them: scope-in
-	//    repeatedly drove ground speed to zero (~-57.8/cycle), jetpack repeated
-	//    use compounded air speed upward (~+115/cycle). Confirmed via SET-PROP
-	//    diagnostic.
-	//
-	//    Prefer the group's own m_Target; fall back to r_Owner if InitInstance
-	//    never wired it.
+	// 0. Reverse every modifier the group's effects installed. Unconditional —
+	//    the m_fCurrent==0 skip inside RemoveEffects already protects phantom
+	//    clones (Apply gated out). The old m_fLifeTime>0 gate belonged only to
+	//    the displacement caller (RemoveAllEffectGroups), not this explicit path.
+	//    Direct ::Call — CallOriginal would hit the empty 0x10a6f3d0 stub.
 	AActor* target = applied->m_Target ? applied->m_Target : Manager->r_Owner;
-	if (effectsLog) {
-		Logger::Log("effects",
-			"[REMOVE-GROUP]   target=%p  effects=%d  lifetime=%.2f  reverseModifiers=%s\n",
-			(void*)target, applied->m_Effects.Count, applied->m_fLifeTime,
-			target ? "yes" : "no (no target)");
-	}
 	if (target) {
-		// Direct call into our impl — `CallOriginal` would route to the empty
-		// 0x10a6f3d0 stub even after Install().
 		TgEffectGroup__RemoveEffects::Call(applied, nullptr, target, 0);
 	}
 
-	// 1. Cancel any timers (ApplyInterval, LifeDone) this group armed on the
-	//    effect manager. Timer layout on AActor (from AActor::ClearTimer):
-	//      AActor+0xA0 Timers.Data, AActor+0xA4 Timers.Count, entries 0x1C bytes,
-	//      +0x0C flags dword (zero to cancel), +0x14 TimerObject.
+	// 1. Cancel any timers (ApplyInterval / LifeDone) this group armed.
+	//    AActor+0xA0 Timers.Data, +0xA4 Count; entries 0x1C bytes, +0x0C flags
+	//    (zero to cancel), +0x14 TimerObject.
 	unsigned char* actor = (unsigned char*)Manager;
 	unsigned int timerCount = *(unsigned int*)(actor + 0xA4);
 	unsigned char* timerData = *(unsigned char**)(actor + 0xA0);
@@ -140,52 +77,28 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 		}
 	}
 
-	// 2. Invulnerability refcount: category 862 is invuln; decrement on removal.
+	// 2. Invulnerability refcount: category 862 is invuln.
 	if (applied->m_nCategoryCode == 862 && Manager->r_nInvulnerableCount > 0) {
 		Manager->r_nInvulnerableCount--;
 	}
 
-	// 3. Free the HUD slot so the buff icon clears on the client.
-	int slot = applied->s_ManagedEffectListIndex;
-	if (debugLog) {
-		Logger::Log("debug",
-			"  [RemoveEffectGroup egId=5716] cleared slot=%d (s_ManagedEffectListIndex on clone) — manager=0x%p\n",
-			slot, Manager);
-	}
-	if (slot >= 0 && slot < 0x10) {
-		Manager->r_ManagedEffectList[slot].nEffectGroupID     = 0;
-		Manager->r_ManagedEffectList[slot].byNumStacks        = 0;
-		Manager->r_ManagedEffectList[slot].fInitTimeRemaining = 0.0f;
-		Manager->r_ManagedEffectList[slot].nExtraInfo         = 0;
-		Manager->m_fTimeRemaining[slot]                       = 0.0f;
-	}
+	// 3. Release the HUD slot via the intact refcount-aware native (clears the
+	//    slot at refcount 0; next UpdateManagedEffectForms tick tears down the
+	//    orphaned form). slot may be -1 (never got a slot) — the native then
+	//    searches by egId and no-ops if absent.
+	const int slot = applied->s_ManagedEffectListIndex;
+	ClearEffectRepNative(Manager, nullptr, inEgId, slot);
 
 	// 4. Swap-remove from s_AppliedEffectGroups.
-	int removedCategory = applied->m_nCategoryCode;
-	int removedEgId     = applied->m_nEffectGroupId;
-	int last = Manager->s_AppliedEffectGroups.Count - 1;
+	const int removedCategory = applied->m_nCategoryCode;
+	const int last = Manager->s_AppliedEffectGroups.Count - 1;
 	Manager->s_AppliedEffectGroups.Data[idx] = Manager->s_AppliedEffectGroups.Data[last];
 	Manager->s_AppliedEffectGroups.Count--;
 
-	// 5. Mark the removed egId so the immediately-following SetEffectRep
-	//    (called by UC's ProcessEffect / GetStackingEffectGroup for the
-	//    replacement clone) knows this is a re-emission rather than a first-
-	//    time apply. Without this, the slot-zero in step 3 plus Branch B's
-	//    re-allocation happen in the same server frame → engine coalesces the
-	//    intra-frame writes → client doesn't see the slot transition → the
-	//    fresh TgEffectForm never spawns and the per-tick FX is silent. See
-	//    EffectDisplacementMarker.hpp for full rationale.
-	EffectDisplacementMarker::Mark(Manager, removedEgId);
-
-	// 5. If we just removed the LAST group of this category, fire the reactive
-	//    skill OFF dispatch — mirrors UC `TgEffectManager.ProcessEffect:272-275`'s
-	//    `!bCategoryExisted` apply branch. Reactive skills (e.g. Aegis Armament,
-	//    +25% Protection-Physical while any shield is active) flip on when the
-	//    first group of their required category arrives and off when the last
-	//    leaves. The displacement-style remove path (RemoveAllEffectGroups,
-	//    called from GetNewEffectGroupByApp before applying a replacement of
-	//    the same category) intentionally skips this — the category is about to
-	//    be re-populated, the reactive should stay on across the swap.
+	// 5. If that was the last group of this category, fire the reactive-skill OFF
+	//    dispatch (mirrors UC ProcessEffect:272-275 !bCategoryExisted). The
+	//    displacement remover (RemoveAllEffectGroups) intentionally skips this —
+	//    the category is about to be re-populated across the swap.
 	bool stillHasCategory = false;
 	for (int i = 0; i < Manager->s_AppliedEffectGroups.Count; i++) {
 		UTgEffectGroup* g = Manager->s_AppliedEffectGroups.Data[i];
@@ -197,5 +110,9 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 	}
 
 	Manager->bNetDirty = 1;
+	if (Logger::IsChannelEnabled("effects")) {
+		Logger::Log("effects", "[REMOVE-GROUP] removed egId=%d cat=%d slot=%d\n",
+			inEgId, removedCategory, slot);
+	}
 	return true;
 }

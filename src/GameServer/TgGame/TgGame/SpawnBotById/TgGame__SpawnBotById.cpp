@@ -34,6 +34,45 @@ static inline int BotGetEquipPointBySlot(int slotUsedValueId) {
 	}
 }
 
+// Build a device's per-fire-mode m_Properties (accuracy / range / damage-radius
+// / cooldown / …) by running the intact native TgDevice::ApplyDeviceSetup
+// (binary 0x10a1dab0). It looks up the asm device row by Device->r_nDeviceId
+// (+0x21C), then InstantiateDeviceFire (0x10a26500) constructs each
+// UTgDeviceFire and FUN_10a1f3b0 fills its m_Properties + every m_n<X>Index
+// cache from asm_data_set_device_mode_properties.
+//
+// Player-equipped devices get this for free from the native equip lifecycle,
+// but bots are created server-side via CreateEquipDevice, which bypasses it —
+// leaving m_Properties empty, so UTgDeviceFire::GetPropertyValueById returned 0
+// and only worked via a fallback that read pawn-default stats. Running it here
+// gives bot weapons their real per-weapon stats and lets the native property
+// pipeline resolve without that fallback. See
+// .planning/effect-buff-property-rebuild-PROGRESS.md ("RESOLVED LEAD").
+//
+// ApplyDeviceSetup only builds m_Properties and instantiates the m_EquipEffect
+// TEMPLATE; it does NOT apply the equip-effect buff group (that is the separate
+// eventApplyEquipEffects), so this does not double-apply
+// Inventory::ApplyDeviceEquipEffects.
+//
+// The SDK ApplyDeviceSetup wrapper trips the `FunctionFlags |= ~0x400`
+// corruption bug, so we ProcessEvent the UFunction with a manual
+// save / force-FUNC_Native / restore (same idiom as the beacon path below).
+static int BuildDeviceFireProperties(ATgDevice* Device) {
+	if (Device == nullptr) return -1;
+	static UFunction* pFnApplyDeviceSetup = nullptr;
+	if (pFnApplyDeviceSetup == nullptr) {
+		pFnApplyDeviceSetup = (UFunction*)ObjectCache::Find(
+			"Function TgGame.TgDevice.ApplyDeviceSetup");
+	}
+	if (pFnApplyDeviceSetup == nullptr) return -1;
+	const uint32_t origFlags = pFnApplyDeviceSetup->FunctionFlags;
+	pFnApplyDeviceSetup->FunctionFlags = origFlags | 0x400;
+	struct { uint32_t ReturnValue; } parms = { 0 };
+	Device->ProcessEvent(pFnApplyDeviceSetup, &parms, nullptr);
+	pFnApplyDeviceSetup->FunctionFlags = origFlags;
+	return (int)parms.ReturnValue;
+}
+
 void TgGame__SpawnBotById::GiveDeviceById(
 	ATgPawn* Pawn,
 	ATgRepInfo_Player* PlayerReplicationInfo,
@@ -106,6 +145,14 @@ void TgGame__SpawnBotById::GiveDeviceById(
 		Device->m_nDeviceType = deviceType;
 		Device->r_nDeviceId = deviceId;
 		Device->r_nQualityValueId = qualityValueId;
+
+		// Build the device's fire-mode m_Properties via the native
+		// ApplyDeviceSetup (see BuildDeviceFireProperties). Device 1918 already
+		// runs ApplyDeviceSetup inside its beacon-equip-effect block below, so
+		// skip it here to avoid rebuilding the fire-mode array twice.
+		if (deviceId != 1918) {
+			BuildDeviceFireProperties(Device);
+		}
 
 		FEquipDeviceInfo EquipDeviceInfo;
 		EquipDeviceInfo.nDeviceId = deviceId;
@@ -337,6 +384,15 @@ void TgGame__SpawnBotById::GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Pla
 			// Instigator must be set so TgDeviceFire uses Instigator.GetAimStart() for
 			// projectile spawn location.
 			Device->Instigator = (APawn*)Bot;
+
+			// Build the device's fire-mode m_Properties via the native
+			// ApplyDeviceSetup so this bot's weapon resolves real per-weapon
+			// stats (accuracy/range/…) through the native property pipeline,
+			// instead of the empty-m_Properties → pawn-default fallback. The
+			// asm lookup keys on r_nDeviceId, which CreateEquipDevice does not
+			// reliably set here, so set it first. See BuildDeviceFireProperties.
+			Device->r_nDeviceId = deviceId;
+			BuildDeviceFireProperties(Device);
 			// Replicate the device actor to all clients. The original perf
 			// optimization set RemoteRole=0 because "bot weapon visuals come
 			// from r_EquipDeviceInfo on the pawn/PRI, not the device actor."

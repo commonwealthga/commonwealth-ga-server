@@ -76,7 +76,7 @@ static bool IsTgDeployable(UObject* obj) {
 // applying the layered Item/Skill/Self/Generic formula from m_EffectBuffInfo.
 // Rolled mods are populated by Inventory::ApplyRolledModEffects → our
 // reimplemented TgPawn::ApplyBuff; runtime auras (e.g. Techro buff station →
-// friendly accuracy) by ApplyBuffEffectFromHook in the SetEffectRep hook.
+// friendly accuracy) by the canonical TgEffectBuff.ApplyEffect → ApplyBuff path.
 //
 // In our environment the cached path almost never runs — TgDevice::
 // ApplyInventoryEquipEffects is stripped, so m_nXxxIndex caches stay -1 and

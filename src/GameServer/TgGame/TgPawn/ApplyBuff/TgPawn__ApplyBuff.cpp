@@ -18,6 +18,67 @@ typedef void (__fastcall* GetBuffIndexNativeFn)(
 	int /*bAddIfNotExists*/, int* /*startIdx_inout*/);
 static const GetBuffIndexNativeFn GetBuffIndexNative = (GetBuffIndexNativeFn)0x109cd890;
 
+// TgPawn::GetBuffedProperty — intact native @ 0x109d7ff0 (flat-arg convention,
+// per TgEffect__CheckEffectBuffModifier.cpp). Runs ConvertPropToPropList(ctx)
+// expansion + the 3-layer CheckBuffInfoList formula over m_EffectBuffInfo.
+typedef void(__fastcall* GetBuffedPropertyFn)(
+	ATgPawn*, void* /*edx*/,
+	unsigned char /*eRequestContext*/, int /*nPropId*/,
+	int /*nReqCategoryCode*/, int /*nReqSkillId*/, int /*nReqDeviceInstId*/,
+	int /*bUsePotencyModifier*/, float /*fBaseValue*/, float* /*fBuffedValue*/,
+	void* /*Effect*/);
+static const GetBuffedPropertyFn GetBuffedPropertyNative = (GetBuffedPropertyFn)0x109d7ff0;
+
+// TgPawn::ApplyProperty — intact native @ 0x109cc7d0 (this, UTgProperty*). Reads
+// the property's m_fRaw and fans it out to the cached/replicated engine field
+// (e.g. r_nHealthMaximum @ +0x43c for HEALTH_MAX).
+typedef void(__fastcall* ApplyPropertyFn)(ATgPawn*, void* /*edx*/, UTgProperty*);
+static const ApplyPropertyFn ApplyPropertyNative = (ApplyPropertyFn)0x109cc7d0;
+
+// Eager-cached base-stat recompute. Most buffed stats are LIVE-read — the engine
+// calls GetBuffedProperty at use time (e.g. UTgDeviceFire::GetPropertyValueById
+// for Range/Accuracy), so a registry change is picked up automatically. But a
+// few base stats are EAGER-cached: ApplyProperty writes a concrete engine field
+// from the property's m_fRaw, and the gameplay code reads that field, never the
+// registry. HEALTH_MAX is the canonical case — ApplyProperty(304) (verified at
+// 0x109cc7d0) copies m_fRaw into r_nHealthMaximum with no buff query, and a
+// "+%max health" skill registers under prop 412 (HEALTH_MAX_MODIFIER), which
+// ConvertPropToPropList(ITEM,304) expands to {412,390} (verified at 0x109e5220).
+// So after a 412 buff changes, fold it back into 304: recompute m_fRaw from the
+// registry, then ApplyProperty to update the cached field. Character-wide stat →
+// ungated query (cat/skill/devInst = 0 matches the ungated skill entries).
+static void RecomputeEagerBaseProp(ATgPawn* Pawn, int basePropId) {
+	if (!Pawn || Pawn->s_Properties.Data == nullptr) return;
+	UTgProperty* prop = nullptr;
+	for (int i = 0; i < Pawn->s_Properties.Count; ++i) {
+		UTgProperty* p = Pawn->s_Properties.Data[i];
+		if (p && p->m_nPropertyId == basePropId) { prop = p; break; }
+	}
+	if (!prop) return;
+
+	const float before = prop->m_fRaw;
+	float buffed = prop->m_fBase;
+	GetBuffedPropertyNative(Pawn, /*edx=*/nullptr,
+		/*eRequestContext=ITEM*/1, basePropId,
+		/*nReqCategoryCode=*/0, /*nReqSkillId=*/0, /*nReqDeviceInstId=*/0,
+		/*bUsePotencyModifier=*/0, /*fBaseValue=*/prop->m_fBase,
+		/*&fBuffedValue=*/&buffed, /*Effect=*/nullptr);
+
+	prop->m_fRaw = buffed;
+	ApplyPropertyNative(Pawn, /*edx=*/nullptr, prop);
+
+	if (Logger::IsChannelEnabled("effects")) {
+		// r_nHealthMaximum @ ATgPawn+0x43c — the eager-cached field ApplyProperty(304)
+		// writes from m_fRaw (verified by decompiling 0x109cc7d0). This is the value
+		// the game actually uses for the player's max HP; logging it next to the
+		// registry-derived m_fRaw shows whether the cache tracks the buff state.
+		const int healthMax = (basePropId == 304) ? *(int*)((char*)Pawn + 0x43c) : 0;
+		Logger::Log("effects",
+			"[MAXHP/recompute] pawn=%p baseProp=%d m_fBase=%.2f raw %.2f -> %.2f  r_nHealthMaximum=%d\n",
+			(void*)Pawn, basePropId, prop->m_fBase, before, buffed, healthMax);
+	}
+}
+
 // Reimplementation of TgPawn::ApplyBuff (UC native; binary stub @ 0x109bf7b0
 // is empty so the buff registry never gets populated by the original code).
 //
@@ -127,6 +188,24 @@ void __fastcall TgPawn__ApplyBuff::Call(ATgPawn* Pawn, void* /*edx*/, FBuffHeade
 			"ApplyBuff: pawn=0x%p prop=%d cm=%d amount=%.2f src=%u remove=%lu  slot %.2f -> %.2f  (entry idx=%d)\n",
 			Pawn, BuffFilter.nPropId, nCalcMethodCode, fAmount, (unsigned)buffSourceType, bRemove,
 			prev, *slot, index);
+
+		// MAX-HP diagnostic: trace every registry mutation that feeds HEALTH_MAX
+		// (304 base, 412 modifier, 390 mod) on the single "effects" channel so an
+		// add-then-unspec test shows whether each apply has a matching reverse and
+		// whether the 412/390 slots return to zero. Dump all four percent layers
+		// of the shared entry — armor lands in itemP, skills in skillP.
+		if ((BuffFilter.nPropId == 412 || BuffFilter.nPropId == 390 || BuffFilter.nPropId == 304
+		     || BuffFilter.nPropId == 256 || BuffFilter.nPropId == 214 || BuffFilter.nPropId == 232)
+		    && Logger::IsChannelEnabled("effects")) {
+			Logger::Log("effects",
+				"[MAXHP/ApplyBuff] pawn=%p prop=%d cm=%d amt=%.2f src=%u remove=%lu  "
+				"hdr{cat=%d skill=%d dev=%d} slot %.2f->%.2f  entry[idx=%d] itemP=%.2f skillP=%.2f selfP=%.2f genP=%.2f\n",
+				(void*)Pawn, BuffFilter.nPropId, nCalcMethodCode, fAmount, (unsigned)buffSourceType, bRemove,
+				BuffFilter.nReqCategoryCode, BuffFilter.nReqSkillId, BuffFilter.nReqDeviceInstId,
+				prev, *slot, index,
+				entry.fItemPercentModifier, entry.fSkillPercentModifier,
+				entry.fSelfPercentModifier, entry.fPercentModifier);
+		}
 	}
 
 	// Mirror the entry to the owning client. UC's TgPawn::ApplyBuff (stripped
@@ -175,6 +254,53 @@ void __fastcall TgPawn__ApplyBuff::Call(ATgPawn* Pawn, void* /*edx*/, FBuffHeade
 	// touch prop 200, but cleaner to always call (mirrors the native) than
 	// to special-case the propId here.
 	Pawn->eventOnDeviceBuffChange();
+
+	// Canonical entry-removal-at-zero (.planning/effect-buff-property-canonical.md
+	// §4 Q5): when a reverse brings EVERY modifier on this entry to ~0, drop the
+	// entry from m_EffectBuffInfo so a clear-then-reapply leaves the registry
+	// byte-identical to before the apply. This is the contract that lets the
+	// skill / loadout reapply path run with NO external delta-tracking — without
+	// it, reversed entries linger and the producers needed g_appliedSkillDeltas /
+	// AppliedBuffRecord to compensate. The client was just sent the zeroed entry
+	// above, so its contribution is already cleared. Only check on the reverse
+	// path; an entry is shared across source-types (skill+item on one filter), so
+	// require ALL eight modifiers to be ~0 before removing. Float residual after
+	// +X then -X is < 1e-5; 1e-3 is a safe "is zero" threshold.
+	if (bRemove) {
+		const FBuffInfo& e2 = Pawn->m_EffectBuffInfo.Data[index];
+		auto nz = [](float v) { return v < -1e-3f || v > 1e-3f; };
+		const bool anyNonZero =
+			nz(e2.fSkillPercentModifier) || nz(e2.fSkillModifier) ||
+			nz(e2.fItemPercentModifier)  || nz(e2.fItemModifier)  ||
+			nz(e2.fSelfPercentModifier)  || nz(e2.fSelfModifier)  ||
+			nz(e2.fPercentModifier)      || nz(e2.fModifier);
+		if (!anyNonZero) {
+			const int last = Pawn->m_EffectBuffInfo.Num() - 1;
+			if (index != last) {
+				Pawn->m_EffectBuffInfo.Data[index] = Pawn->m_EffectBuffInfo.Data[last];
+			}
+			Pawn->m_EffectBuffInfo.Count--;
+		}
+	}
+
+	// Fold a HEALTH_MAX_MODIFIER (412) buff back into the eager-cached
+	// r_nHealthMaximum. Fires on apply AND remove (after the registry reflects
+	// the final state above) so max health tracks the buff symmetrically. This
+	// replaces ReapplyCharacterSkillTree's old 412→304 direct-m_fRaw-write
+	// workaround with the canonical registry path.
+	//
+	// BOTH modifier props that feed HEALTH_MAX must trigger the recompute.
+	// ConvertPropToPropList(ITEM,304) = {412, 390} (verified at 0x109e5220):
+	// 412 (HEALTH_MAX_MODIFIER) is what skills use; 390 (HEALTH_MOD) is what
+	// blueprint mods use (verified in asm_data_set_effects — prop-390 class-157
+	// +10% rolls are 100% blueprint mods). Previously only 412 fired, so a rolled
+	// +%maxHP mod changed the registry but never refreshed r_nHealthMaximum until
+	// some unrelated 412 change happened to recompute — silently under-applying
+	// mod maxHP.
+	if (BuffFilter.nPropId == 412 /* HEALTH_MAX_MODIFIER */ ||
+	    BuffFilter.nPropId == 390 /* HEALTH_MOD (blueprint maxHP rolls) */) {
+		RecomputeEagerBaseProp(Pawn, 304 /* HEALTH_MAX */);
+	}
 
 	// Note: we intentionally do NOT refresh r_fRequiredMoralePoints here.
 	// `GetRequiredMoralePoints @ 0x10a19910` routes through

@@ -1,5 +1,6 @@
 // Logger channel: "armor"
 #include "src/GameServer/Armor/Armor.hpp"
+#include "src/GameServer/TgGame/TgPawn/ApplyBuff/TgPawn__ApplyBuff.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <cmath>
 #include <cstring>
@@ -117,8 +118,21 @@ void Armor::RevertDefaultArmor(ATgPawn* Pawn) {
 	if (!Pawn || Pawn->s_Properties.Data == nullptr) return;
 	if (!IsHumanPlayer(Pawn)) return;  // silent for bots — Apply logs the skip
 
+	// Reverse the HEALTH_MAX_MODIFIER (412) ITEM buff registered on apply. Mirror
+	// the apply magnitude; ApplyBuff's exact-match reverse + entry-removal-at-zero
+	// keeps the registry clean, and its 412→304 recompute lowers r_nHealthMaximum.
+	// Safe no-op on the first-ever pass (no matching entry to reverse).
+	{
+		const float pct = (kTotalPieces * kCorePerc
+		                   + kPiecesN * kModsPerPiece * kNPerc) * 100.0f;
+		FBuffHeader h{};
+		h.nPropId = kPropHealthMaxModif;  // 412
+		TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, h, /*calc=68 +%*/68, pct,
+			/*bRemove=*/1, /*BUFF_SOURCE_TYPE_ITEM=*/1);
+	}
+
 	auto recIt = Records().find(Pawn);
-	if (recIt == Records().end()) return;  // first-ever apply: nothing to revert
+	if (recIt == Records().end()) return;  // first-ever apply: nothing else to revert
 	auto& records = recIt->second;
 
 	for (auto& kv : records) {
@@ -175,19 +189,27 @@ void Armor::ApplyDefaultArmor(ATgPawn* Pawn) {
 			(void*)Pawn, propId, newDelta, prop->m_fRaw);
 	};
 
-	// HEALTH_MAX. Both [n] mods (prop 412) and the implicit Core mods (prop
-	// 390) have no engine consumer, so both redirect to prop 304. Compute
-	// delta from m_fBase so we recover correct buff size even if raw was
-	// reset between calls.
-	UTgProperty* propHP = FindProp(Pawn, kPropHealthMax);
-	if (propHP) {
-		const float baseHP = propHP->m_fBase;
-		const float corePerc = kTotalPieces * kCorePerc;
-		const float nPerc    = kPiecesN * kModsPerPiece * kNPerc;
-		const float deltaHP  = baseHP * (corePerc + nPerc);
-		applyTo(kPropHealthMax, deltaHP);
-	} else {
-		Logger::Log("armor", "[Armor/apply] pawn=%p propId=304 missing — HP buff skipped\n", (void*)Pawn);
+	// HEALTH_MAX: register the implicit +10%/piece (+[n] mods) as a
+	// HEALTH_MAX_MODIFIER (prop 412) ITEM buff — NOT a direct m_fRaw write.
+	// This matches how real armor works (each of the 7 equippable pieces is a
+	// class-157 TgEffectBuff on prop 412, calc 68 +%, base_value 10.0 — verified
+	// in asm_data_set_effects: exactly 7 such effects) and is the only form that
+	// composes correctly with the Health skill: ATgPawn::ApplyBuff folds every
+	// 412 entry into r_nHealthMaximum via the 3-layer GetBuffedProperty formula
+	// (item layer × skill layer = base × 1.79 × (1+skill%)), instead of a flat
+	// additive sum that fights the registry. Magnitude is placeholder until
+	// equippable armor lands; the item-layer percents sum, so one +79% entry is
+	// equivalent to the 7 core + 18 [n]-mod entries. Prop 390 (Core mod) folds
+	// into the same 304 expansion {412,390}, so no separate handling needed.
+	{
+		const float pct = (kTotalPieces * kCorePerc
+		                   + kPiecesN * kModsPerPiece * kNPerc) * 100.0f;  // → 79.0 (percent form)
+		FBuffHeader h{};
+		h.nPropId = kPropHealthMaxModif;  // 412
+		TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, h, /*calc=68 +%*/68, pct,
+			/*bRemove=*/0, /*BUFF_SOURCE_TYPE_ITEM=*/1);
+		Logger::Log("armor",
+			"[Armor/apply] pawn=%p HEALTH_MAX +%.1f%% via ApplyBuff(412, ITEM)\n", (void*)Pawn, pct);
 	}
 
 	// Ranged Protection (prop 218, calc-method 67 ADD on raw).

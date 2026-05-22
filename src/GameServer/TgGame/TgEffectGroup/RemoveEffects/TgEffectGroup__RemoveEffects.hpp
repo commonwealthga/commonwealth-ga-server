@@ -22,6 +22,11 @@
 //
 // __thiscall: ECX = this (UTgEffectGroup*). bResetToFollow is `:1` bitfield in
 // the UC parm struct but the exec stub passes it as a regular dword.
+// Reverse ONE effect via its actual-class Remove. Buff/Sensor/Visibility
+// override Remove; SDK eventRemove only resolves the base, so dispatch by class.
+// Shared so RemoveEffects and RemoveAllEffects can't bypass the override.
+void DispatchEffectRemove(UTgEffect* effect, AActor* Target, unsigned long bResetToFollow);
+
 class TgEffectGroup__RemoveEffects : public HookBase<
 	void(__fastcall*)(UTgEffectGroup*, void*, AActor*, unsigned long),
 	0x10a6f3d0,

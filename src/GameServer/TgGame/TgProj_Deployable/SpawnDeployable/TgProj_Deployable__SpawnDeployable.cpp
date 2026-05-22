@@ -1,6 +1,5 @@
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/ApplyPlayerModsToDeployable.hpp"
-#include "src/GameServer/TgGame/BuffEffectRegistry/DeployableOriginRegistry.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
@@ -1381,10 +1380,28 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// by ApplyDeployableSetup further up); stamping at the early r_Owner-set
 	// site found m_FireMode=null and silently skipped.
 	if (sourceDevice) {
-		// `m_FireSkillId` (offset 0x22C) → covers UC's dep branch via
-		// `GetFireDeviceSkillId`. The s_SpawnerDeviceMode chain we already
-		// set above gives `GetSpawnerDeviceInstanceId` the right answer.
+		// Re-assert s_SpawnerDeviceMode HERE: ApplyDeployableSetup (run after the
+		// early :692 set) re-inits the deployable's fire config and clears it, so
+		// GetSpawnerDeviceInstanceId — which walks s_SpawnerDeviceMode->m_Owner->
+		// r_nDeviceInstanceId — was resolving 0 at heal-fire time (station heal
+		// scaled by wildcard skills only, not the device's Output Mod). Proven by
+		// the [deploy-origin] log: spawnerMode=NULL while sourceDevice invId=74.
+		// m_FireSkillId (0x22C) covers UC's dep-branch GetFireDeviceSkillId.
+		if (sourceFireMode) Deployable->s_SpawnerDeviceMode = sourceFireMode;
 		Deployable->m_FireSkillId = sourceDevice->m_nSkillId;
+
+		// Diagnostic for the station-heal devInst=0 bug: shows whether the
+		// deploy device carries a real invId/skill and whether the
+		// s_SpawnerDeviceMode->m_Owner chain (what GetSpawnerDeviceInstanceId
+		// walks) actually points back at it.
+		Logger::Log("effects",
+			"[deploy-origin] deployable=%p sourceDevice=%p invId=%d skill=%d  spawnerMode=%p mode->m_Owner=%p (==sourceDevice? %d)\n",
+			(void*)Deployable, (void*)sourceDevice,
+			sourceDevice->r_nDeviceInstanceId, sourceDevice->m_nSkillId,
+			(void*)Deployable->s_SpawnerDeviceMode,
+			(void*)(Deployable->s_SpawnerDeviceMode ? Deployable->s_SpawnerDeviceMode->m_Owner : nullptr),
+			(int)(Deployable->s_SpawnerDeviceMode &&
+			      Deployable->s_SpawnerDeviceMode->m_Owner == (AActor*)sourceDevice));
 
 		// Internal-device case: if m_FireMode's owner is a TgDevice (the
 		// deployable's stub heal/damage device, not the deployable itself),
@@ -1398,37 +1415,30 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 				ATgDevice* internalDev = (ATgDevice*)fireOwner;
 				internalDev->r_nDeviceInstanceId = sourceDevice->r_nDeviceInstanceId;
 				internalDev->m_nSkillId          = sourceDevice->m_nSkillId;
-				Logger::Log("deployable",
+				Logger::Log("effects",
 					"[fire-owner-stamp] deployable=0x%p  internalDev=0x%p (class=%s)  "
 					"r_nDeviceInstanceId=%d m_nSkillId=%d (from sourceDevice 0x%p)\n",
 					Deployable, internalDev, foClass,
 					sourceDevice->r_nDeviceInstanceId, sourceDevice->m_nSkillId,
 					sourceDevice);
 			} else {
-				Logger::Log("deployable",
+				Logger::Log("effects",
 					"[fire-owner-stamp] deployable=0x%p  fire owner is %s — skipping device stamp "
 					"(dep branch handled via m_FireSkillId + s_SpawnerDeviceMode)\n",
 					Deployable, foClass ? foClass : "<null>");
 			}
 		} else {
-			Logger::Log("deployable",
+			Logger::Log("effects",
 				"[fire-owner-stamp] deployable=0x%p  m_FireMode=%p m_Owner=%p — no fire-mode owner to stamp\n",
 				Deployable, (void*)Deployable->m_FireMode,
 				(void*)(Deployable->m_FireMode ? Deployable->m_FireMode->m_Owner : nullptr));
 		}
 	}
 
-	// Track the spawning device on the deployable so the deployable's
-	// fire-time effect-clone path can use the deploy device's instId+skillId
-	// instead of the deployable's internal fire-mode device. Without this,
-	// a medical station's heal-fire CloneEffectGroup queries with the
-	// station's internal device instId — none of the player's mods or
-	// multi-row skills (which are tagged with the player's deploy-device
-	// instId/skillId) match, so heal output is unmodified.
-	DeployableOriginRegistry::Register(
-		Deployable,
-		sourceDevice ? sourceDevice->r_nDeviceInstanceId : 0,
-		sourceDevice ? sourceDevice->m_nSkillId            : 0);
+	// (Spawning-device origin side-map removed: OriginResolver recovers the
+	// deploy device's instId/skillId at apply time by walking the deployable's
+	// s_SpawnerDeviceMode -> device, so no registration is needed here. The
+	// deployable's s_SpawnerDeviceMode is wired during fire-mode setup above.)
 
 	// Bomb diagnostic: after all setup is done, dump bomb-specific replicated
 	// state (tick time, destroy flags, mesh, fire mode, life span).  If bombs

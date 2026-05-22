@@ -1,6 +1,4 @@
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
-#include "src/GameServer/TgGame/BuffEffectRegistry/BuffEffectRegistry.hpp"
-#include "src/GameServer/TgGame/BuffEffectRegistry/DeployableOriginRegistry.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -154,29 +152,28 @@ static UClass* GetEffectClassById(int classResId) {
 		case 181: name = "Class TgGame.TgEffectDamage";     break;
 		case 692: name = "Class TgGame.TgEffectHeal";       break;
 		case  89: name = "Class TgGame.TgEffectVisibility"; break;
-		// case 157: name = "Class TgGame.TgEffectBuff";       break;
-		case 157: name = "Class TgGame.TgEffect";       break;
+		case 157: name = "Class TgGame.TgEffectBuff";       break;
 		case 244: name = "Class TgGame.TgEffectSensor";     break;
 		case  80:
 		default:  name = "Class TgGame.TgEffect";           break;
 	}
 	UClass* c = ClassPreloader::GetClass(name);
-	// if (!c) c = FindClassByFullName(name);
 
-	// TgEffectBuff is not registered in this build's GObjObjects (verified by
-	// a full-scan miss while base TgEffect, TgEffectDamage, TgEffectHeal,
-	// TgEffectSensor, TgEffectVisibility all exist). The class is referenced
-	// only by its properties/functions — no UClass instance to construct
-	// from. Since TgEffectBuff only adds `m_BuffSourceType` (one byte) on
-	// top of UTgEffect and our apply path doesn't use it, fall back to the
-	// base TgEffect class so the effect still gets created and its property-
-	// modifier math runs.
-	// if (!c && classResId == 157) {
-	// 	c = ClassPreloader::GetClass("Class TgGame.TgEffect");
-	// 	if (!c) c = FindClassByFullName("Class TgGame.TgEffect");
-	// 	Logger::Log("effects",
-	// 		"[BUILD] class_res_id=157 TgEffectBuff not found — falling back to TgEffect\n");
-	// }
+	// TgEffectBuff (class_res_id 157) is force-loaded at startup
+	// (GameEngine__Init::Call → EngineLoad::PreloadClass("TgGame.TgEffectBuff")).
+	// UE3 creates package exports lazily and nothing else on the server
+	// references it, so without that preload it is absent from GObjObjects.
+	// Allocating it as the real class makes the recovered UC do the canonical
+	// buff routing: UTgEffectGroup.ApplyEffects → TgEffectBuff.ApplyEffect →
+	// ApplyBuff → ATgPawn::ApplyBuff. If the preload somehow didn't run,
+	// degrade gracefully to base TgEffect (rather than a null-class crash) —
+	// its only addition is the recomputed-each-apply m_BuffSourceType.
+	if (!c && classResId == 157) {
+		Logger::Log("effects",
+			"[BUILD] class_res_id=157 TgEffectBuff not resident (preload missing?) "
+			"— falling back to base TgEffect\n");
+		c = ClassPreloader::GetClass("Class TgGame.TgEffect");
+	}
 	return c;
 }
 
@@ -302,15 +299,14 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 
 				float baseValue = (float)sqlite3_column_double(stmt, 2);
 				int   calcCode  = sqlite3_column_int(stmt, 5);
-				// Class-157 (TgEffectBuff) stores %-modifier amounts in
-				// PERCENT (10.0 = 10%), while class-80 (TgEffect) stores them
-				// in FRACTION (0.1 = 10%). Normalize to fraction at build
-				// time so downstream code can treat base_value uniformly.
-				// Only applies to calc codes 68 (+%) and 69 (-%); additive
-				// codes 67/70 are absolute values regardless of class.
-				if (classResId == 157 && (calcCode == 68 || calcCode == 69)) {
-					baseValue /= 100.0f;
-				}
+				// NOTE: class-157 (TgEffectBuff) %-modifier amounts are stored in
+				// the DB in PERCENT form (10.0 = 10%) and the canonical buff path
+				// wants exactly that — TgEffectBuff.ApplyBuff passes m_fBase
+				// straight to ATgPawn::ApplyBuff, and CheckBuffInfoList applies
+				// P=0.01. So we keep base_value verbatim. (The old ÷100→fraction
+				// normalization existed only because class-157 used to be
+				// instantiated as base TgEffect and routed through ApplyToProperty,
+				// which a now-deleted SetEffectRep side-channel then ×100'd back.)
 
 				e->m_EffectGroup      = g;
 				e->m_nPropertyId      = sqlite3_column_int   (stmt, 1);
@@ -333,18 +329,23 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 				unsigned int& eflags = *(unsigned int*)((char*)e + 0x48);
 				if (sqlite3_column_int(stmt, 7)) eflags |= 0x01; else eflags &= ~0x01;
 
-				// Class-157 effects (TgEffectBuff) need to apply via Pawn.ApplyBuff
-				// rather than TgEffect.ApplyToProperty — the latter writes to
-				// `target->s_Properties[propId]->m_fRaw` which silently no-ops for
-				// modifier props (113, 65, 352, …) the pawn doesn't carry there.
-				// TgEffectBuff itself is stripped from this binary so we constructed
-				// `e` as base TgEffect above; flag it in the side-set so
-				// `UObject__ProcessEvent` recognises it at apply/remove time and
-				// routes through `TgPawn__ApplyBuff::Call` instead. Mirrors
-				// `unrealscript/TgGame/Classes/TgEffectBuff.uc:121-200`.
-				if (classResId == 157) {
-					BuffEffectRegistry::Mark(e);
-				}
+				// Instant Hit-family output (type 264 Hit / 505 Hit Situational,
+				// lifetime<=0) is a committed one-shot heal/damage — NOT removable.
+				// Base TgEffect.Remove would ApplyToProperty(51, m_fCurrent, remove)
+				// and un-heal/un-damage on any group teardown (death cleanup,
+				// strongest-replace). Clearing m_bRemovable routes apply through the
+				// non-removable ApplyEffects path and, with m_bIsManaged cleared below,
+				// leaves the group unstored so SetEffectRep takes its queue branch →
+				// a fresh per-tick FX burst (matches the old type-264/505 fTime=0
+				// transient behavior). Hold-to-sustain lifetime=0 groups are types
+				// 266/261/283, not 264/505, so they keep CDO m_bRemovable=true.
+				if ((egType == 264 || egType == 505) && g->m_fLifeTime <= 0.0f)
+					eflags &= ~0x02u; // m_bRemovable = false
+
+				// class_res_id 157 → the effect was constructed as a real
+				// TgEffectBuff (see GetEffectClassById); its ApplyEffect/Remove
+				// route to ATgPawn::ApplyBuff canonically via UC virtual dispatch.
+				// No per-effect tagging needed here.
 
 				g->m_Effects.Add(e);
 			}
@@ -396,27 +397,20 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 	{
 		unsigned int& gflags = *(unsigned int*)((char*)g + 0x74);
 		// Bit 0x80 = m_bHasVisual — UC's TgEffectManager.ProcessEffect only
-		// calls `SetEffectRep` for groups where this is set. SetEffectRep is
-		// where our class-157 (TgEffectBuff) routing fires `ApplyBuffEffectFromHook`
-		// on apply, so a group with zero visual assets AND a class-157 effect
-		// (e.g. Focused Repair Arm's +40% damage buff egId 9136 — icon_id=0,
-		// target_fx_id=0, fx_display_group=0, but prop 65 +40% via class-157)
-		// would otherwise silently fail to register the buff on the target.
-		// UC's base `TgEffect.ApplyEffect` still runs and sets `m_fCurrent`,
-		// but its `ApplyToProperty → SetProperty` write silently no-ops because
-		// the target pawn doesn't carry modifier prop 65 in `s_Properties`.
-		// Force-set the visual bit when ANY effect in the group is flagged in
-		// the buff registry — this guarantees SetEffectRep fires and our
-		// buff-routing path lands the entry in `m_EffectBuffInfo`. Side effect
-		// is benign: with icon_id=0 + target_fx_id=0 + fx_display_group=0 the
-		// client has nothing to render, so SetEffectRep's queue/slot writes
-		// produce no visible artifact.
-		bool hasBuffEffect = false;
-		for (int i = 0; i < g->m_Effects.Count; ++i) {
-			UTgEffect* e = g->m_Effects.Data[i];
-			if (e && BuffEffectRegistry::IsBuff(e)) { hasBuffEffect = true; break; }
-		}
-		if (iconId > 0 || targetFxId > 0 || fxDisplayGroup > 0 || hasBuffEffect) {
+		// calls `SetEffectRep` for groups where this is set. SetEffectRep is the
+		// client-notification primitive for ANY effect visual: HUD-icon slot
+		// (Branch B) or transient FX/sound queue (Branch A). "Has visual" is
+		// driven purely by the DB visual-resource ids — icon_id (HUD strip),
+		// target_fx_id (particle/audio), fx_display_group_res_id (grouped FX).
+		//
+		// Buff registration NO LONGER depends on this: class-157 effects are now
+		// real TgEffectBuff instances whose ApplyEffect routes to ApplyBuff inside
+		// UTgEffectGroup.ApplyEffects (independent of SetEffectRep). So an
+		// invisible buff (icon_id=0 etc., e.g. Focused Repair Arm's +40% damage
+		// egId 9136) correctly gets NO HUD slot while still registering its buff —
+		// the canonical behavior. (The old `anyClass157` force existed only to
+		// make SetEffectRep fire for the now-deleted buff side-channel.)
+		if (iconId > 0 || targetFxId > 0 || fxDisplayGroup > 0) {
 			gflags |= 0x80;
 		} else {
 			gflags &= ~0x80u;
@@ -455,10 +449,17 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 	// the binary's criterion restores the original behavior.
 	{
 		unsigned int& gflags = *(unsigned int*)((char*)g + 0x74);
-		if (g->m_fLifeTime <= 0.0f) {
+		// Instant Hit-family (264/505) is transient one-shot output: never retained.
+		// Leaving it unstored makes the intact SetEffectRep take its queue branch
+		// (GetEffectGroup==null → -1) → a fresh per-tick FX burst on the target,
+		// instead of refreshing a persistent managed slot (which only animates once).
+		// lifetime<=0 hold-to-sustain (scope/stealth/rest) + buffs stay managed so
+		// their reverse path works; lifetime>0 is reaped by LifeDone.
+		const bool instantHit = (g->m_nType == 264 || g->m_nType == 505);
+		if (g->m_fLifeTime <= 0.0f && !instantHit) {
 			gflags |= 0x01; // m_bIsManaged = true
 		} else {
-			gflags &= ~0x01u; // m_bIsManaged = false (lifetime expires via LifeDone)
+			gflags &= ~0x01u; // m_bIsManaged = false
 		}
 	}
 
@@ -532,14 +533,10 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 					g->m_nDamageType = fmDamageType;
 					g->m_eAttackType = eAttackType;
 					pThis->s_EffectGroupList.Add(g);
-					// Associate this template with the fire-mode that owns
-					// it. CloneEffectGroup uses this to recover the firing
-					// entity (deployable) when UC's `InitInstance` leaves
-					// `m_nSourceDeviceInstId == 0` — happens for
-					// deployable-fired effects whose Impact has no
-					// DeviceModeReference. Set-once per template (lazy
-					// init), so no race between simultaneous deployers.
-					DeployableOriginRegistry::NoteTemplateOwner(g, pThis);
+					// (Template→fire-mode side-map removed: OriginResolver now
+					// recovers the firing deployable at apply time by walking
+					// the effect group's m_Instigator -> s_SpawnerDeviceMode ->
+					// device, so no per-template note is needed.)
 				}
 			}
 		}
