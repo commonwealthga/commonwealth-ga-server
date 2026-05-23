@@ -134,21 +134,25 @@ void Execute(const std::string& session_guid, int bot_id, Team team) {
     }
 
     // Mirror SpawnNextBot's post-spawn replication kick.
-    Bot->Role = 3;
-    Bot->RemoteRole = 1;
-    Bot->bNetDirty = 1;
-    Bot->bNetInitial = 1;
-    Bot->bForceNetUpdate = 1;
-    Bot->bSkipActorPropertyReplication = 0;
-
-    if (BotRep) {
-        BotRep->Role = 3;
-        BotRep->RemoteRole = 1;
-        BotRep->bNetDirty = 1;
-        BotRep->bNetInitial = 1;
-        BotRep->bForceNetUpdate = 1;
-        BotRep->bSkipActorPropertyReplication = 0;
-    }
+		//   Bot->Role = 3;
+		//   Bot->RemoteRole = 1;
+		//   // Bot->bNetDirty = 1;
+		//   Bot->bNetInitial = 1;
+		//   // Bot->bForceNetUpdate = 1;
+		//   Bot->bSkipActorPropertyReplication = 0;
+		//
+		//   if (BotRep) {
+		//       BotRep->Role = 3;
+		//       BotRep->RemoteRole = 1;
+		//       // BotRep->bNetDirty = 1;
+		//       BotRep->bNetInitial = 1;
+		//       // BotRep->bForceNetUpdate = 1;
+		//       BotRep->bSkipActorPropertyReplication = 0;
+		//
+		// BotRep->bReplicateMovement = 0;
+		// BotRep->bReplicateInstigator = 0;
+		// BotRep->bReplicateRigidBodyLocation = 0;
+		//   }
 
     // Post-spawn state snapshot. If the bot disappears immediately after this
     // line returns (KillZ, AI cleanup, replication issue, etc.), this snapshot

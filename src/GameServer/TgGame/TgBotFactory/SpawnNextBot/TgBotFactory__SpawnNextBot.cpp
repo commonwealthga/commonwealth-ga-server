@@ -196,21 +196,21 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory *BotFactory, void
 			// Calling CreateEquipDevice here with a different invId would destroy the devices
 			// SpawnBotById just set up (CreateEquipDevice destroys the existing device when invId mismatches).
 
-			Bot->Role = 3;
-			Bot->RemoteRole = 1;
-			Bot->bNetDirty = 1;
-			Bot->bNetInitial = 1;
-			Bot->bForceNetUpdate = 1;
-			Bot->bSkipActorPropertyReplication = 0;
-			// Bot->bAlwaysRelevant = 1;
-
-			BotRep->Role = 3;
-			BotRep->RemoteRole = 1;
-			BotRep->bNetDirty = 1;
-			BotRep->bNetInitial = 1;
-			BotRep->bForceNetUpdate = 1;
-			BotRep->bSkipActorPropertyReplication = 0;
-			// BotRep->bAlwaysRelevant = 1;
+			// Bot->Role = 3;
+			// Bot->RemoteRole = 1;
+			// // Bot->bNetDirty = 1;
+			// Bot->bNetInitial = 1;
+			// Bot->bForceNetUpdate = 1;
+			// Bot->bSkipActorPropertyReplication = 0;
+			// // Bot->bAlwaysRelevant = 1;
+			//
+			// BotRep->Role = 3;
+			// BotRep->RemoteRole = 1;
+			// // BotRep->bNetDirty = 1;
+			// BotRep->bNetInitial = 1;
+			// BotRep->bForceNetUpdate = 1;
+			// BotRep->bSkipActorPropertyReplication = 0;
+			// // BotRep->bAlwaysRelevant = 1;
 
 		}
 	}

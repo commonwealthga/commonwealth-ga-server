@@ -93,6 +93,13 @@ private:
                 Logger::Log("ipc", "[IpcServer] Instance %lld died — orphan-promoted successor %lld DRAFTING→READY\n",
                     (long long)instance_id_, (long long)promoted);
             }
+            // If a pending match still exists for this instance, the instance
+            // died before delivering INSTANCE_READY (crash during startup).
+            // Cancel the match and unstick the players — without this they
+            // get coalesced into the dead instance on every subsequent queue
+            // join and never receive a MATCH_INVITATION.
+            MatchmakingService::DiscardPendingMatchForDeadInstance(
+                instance_id_, "instance disconnected before INSTANCE_READY");
             InstanceRegistry::MarkStopped(instance_id_);
             Logger::Log("ipc", "[IpcServer] Instance %lld disconnected, marked STOPPED\n",
                 (long long)instance_id_);

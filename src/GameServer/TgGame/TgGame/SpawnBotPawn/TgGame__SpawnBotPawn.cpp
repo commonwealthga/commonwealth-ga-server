@@ -26,15 +26,15 @@ ATgPawn* __fastcall TgGame__SpawnBotPawn::Call(ATgGame* Game, void* edx, ATgAICo
 	// pTgAI->RemoteRole = 2;
 	// pTgAI->bNetInitial = 1;
 
-	newpawn->r_nReplicateDying = 0;
+	// newpawn->r_nReplicateDying = 0;
 
 	newpawn->PlayerReplicationInfo = pTgAI->PlayerReplicationInfo;
 
-	newpawn->bNetInitial = 1;
-	newpawn->bNetDirty = 1;
-	newpawn->bForceNetUpdate = 1;
-	newpawn->bSkipActorPropertyReplication = 0;
-	newpawn->bOnlyDirtyReplication = 0;
+	// newpawn->bNetInitial = 1;
+	// newpawn->bNetDirty = 1;
+	// newpawn->bForceNetUpdate = 1;
+	// newpawn->bSkipActorPropertyReplication = 0;
+	// newpawn->bOnlyDirtyReplication = 0;
 	// newpawn->bReplicateMovement = 0;
 
 	// newpawn->Role = 3;
@@ -68,7 +68,7 @@ ATgPawn* __fastcall TgGame__SpawnBotPawn::Call(ATgGame* Game, void* edx, ATgAICo
 	// InitializeDefaultProps used fallbacks. Force the canonical 1300 across
 	// all 7 storage locations now that PRI is wired.
 	SyncPawnHealth::Apply((ATgPawn*)newpawn, 1300, 1300);
-	newrepplayer->r_nCharacterId = newpawn->s_nCharacterId;
+	// newrepplayer->r_nCharacterId = newpawn->s_nCharacterId;
 	newrepplayer->r_nLevel = 50;
 	// newrepplayer->r_sOrigPlayerName = FString(L"Zaxik");
 	newrepplayer->r_PawnOwner = newpawn;
@@ -81,11 +81,11 @@ ATgPawn* __fastcall TgGame__SpawnBotPawn::Call(ATgGame* Game, void* edx, ATgAICo
 	newrepplayer->SetTeam(GTeamsData.Attackers);
 	// newrepplayer->SetPlayerTeam(GTeamsData.Attackers);
 	// newrepplayer->Team = GTeamsData.Attackers;
-	newrepplayer->bNetDirty = 1;
-	newrepplayer->bForceNetUpdate = 1;
-	newrepplayer->bSkipActorPropertyReplication = 0;
-	newrepplayer->bOnlyDirtyReplication = 0;
-	newrepplayer->bNetInitial = 1;
+	// newrepplayer->bNetDirty = 1;
+	// newrepplayer->bForceNetUpdate = 1;
+	// newrepplayer->bSkipActorPropertyReplication = 0;
+	// newrepplayer->bOnlyDirtyReplication = 0;
+	// newrepplayer->bNetInitial = 1;
 
 	// ATgRepInfo_TaskForce* attackers = GTeamsData.Attackers;
 	// ATgRepInfo_TaskForce* defenders = GTeamsData.Defenders;

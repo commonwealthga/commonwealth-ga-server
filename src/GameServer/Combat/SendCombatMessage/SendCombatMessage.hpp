@@ -3,38 +3,37 @@
 #include "src/pch.hpp"
 #include <cstdint>
 
-// Emits a COMBAT_MESSAGE (TCP opcode 0x9F) to a single client.
-// The client-side handler (CGameClient::OnCombatMessage @ 0x10919020) resolves
-// actors from sign-encoded IDs (positive = PlayerId on ATgRepInfo_Player+0x204,
-// negative = DeployableId on ATgRepInfo_Deployable+0x1DC), then calls
-// ATgPawn::AddDamageInfo (vtable[0x8D8]) on the victim pawn, causing the
-// floating number to appear above that pawn on the recipient's screen.
+// Emits a COMBAT_MESSAGE (TCP opcode 0x9F) to a recipient pawn.
 //
-// See reference_combat_message_packet.md for the full wire format and
-// dispatch table.
+// Builds a single-record marshal and dispatches it through the recipient
+// pawn's vtable slot 0x266 — the same slot the engine's own combat-message
+// emitter (TgPawn_Character::SendCombatMessage @ 0x109dd9c0) uses at the
+// end of its accumulator flush. That slot is a stripped `return;` stub in
+// this build; we hook it via TgPawn_Character__SendMarshal to provide the
+// missing UClientConnection::SendMarshal + FlushNet send.
+//
+// Used by call sites that need to emit combat messages outside the natural
+// UC effect-damage chain: objective-point popups, mission progress, deploy-
+// able heal/damage broadcasts, etc. UC-triggered events go through the
+// engine emitter on their own and land in the same hook.
 class SendCombatMessage {
 public:
-	// Event IDs cross-referenced from UC: TgEffectDamage.uc:57 / TgEffectHeal.uc:208.
-	// These are the exact codes the original game dispatches for each case.
 	enum class Type : uint16_t {
-		DAMAGE = 0x2AD3,  // 10963 — regular damage, target still alive (TgEffectDamage)
-		KILL   = 0x2AD4,  // 10964 — killing blow
-		HEAL   = 0x2AD5,  // 10965 — health heal (TgEffectHeal)
-		SHIELD_HEAL = 0x3E89, // 16009 — shield heal
+		DAMAGE      = 0x2AD3,
+		KILL        = 0x2AD4,
+		HEAL        = 0x2AD5,
+		SHIELD_HEAL = 0x3E89,
 		// Blue ^N^ floating-number popup over the recipient pawn for
-		// objective-points credit. The RX handler at CGameClient::OnCombatMessage
-		// (0x10919020) maps event type 0x59F4 → popup msgId 0xA490
-		// ("^@@int_value@@^" — caret-wrapped integer, blue style 3) and
-		// chat-log msgId 0x59F4 ("You gained @@INT_VALUE@@ objective points.").
-		// nValueHealth carries the int value into both templates.
+		// objective-points credit. nValueHealth carries the int value into
+		// both the popup template and the chat-log template.
 		OBJ_POINTS  = 0x59F4,
 	};
 
-	// RecipientPawn: whose client receives the packet (number shows on their screen).
+	// RecipientPawn: whose client receives the packet (number renders on their screen).
 	// SourcePawn:    attacker/healer (may be null → environmental/unknown source).
-	// TargetPawn:    whose pawn the number floats above (required, must have replicated PRI).
-	// Amount:        positive integer shown in the number.
-	// No-ops silently if recipient has no remote connection (AI/bot pawn).
+	// TargetPawn:    whose pawn the number floats above (must have a replicated PRI).
+	// Amount:        positive integer shown in the popup.
+	// No-ops silently if recipient isn't player-controlled.
 	static void Call(
 		ATgPawn* RecipientPawn,
 		ATgPawn* SourcePawn,
@@ -42,13 +41,11 @@ public:
 		int Amount,
 		Type MessageType);
 
-	// Direct raw-ID variant. Sends to the given connection with the exact
-	// record the game's own emitter would have sent. Used when hooking
-	// TgPawn_Character::SendCombatMessage where the IDs are already computed
-	// (sign-encoded per the wire format: positive = PlayerId, negative =
-	// DeployableId). No pawn lookup — caller supplies the wire record as-is.
+	// Direct raw-ID variant for callers that already have wire IDs (e.g.
+	// deployable broadcast, replicated property mirror). Same dispatch path
+	// as Call — just skips the pawn→ID resolution.
 	static void CallRaw(
-		UNetConnection* Connection,
+		ATgPawn* RecipientPawn,
 		uint16_t nEventType,
 		int16_t nIdAttacker,
 		int16_t nIdAssist,

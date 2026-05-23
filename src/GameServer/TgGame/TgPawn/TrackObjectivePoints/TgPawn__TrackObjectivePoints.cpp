@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgPawn/TrackObjectivePoints/TgPawn__TrackObjectivePoints.hpp"
 #include "src/GameServer/Combat/SendCombatMessage/SendCombatMessage.hpp"
+#include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Credits objective points to a pawn's scoreboard and shows the blue ^N^
@@ -21,8 +22,14 @@ void __fastcall TgPawn__TrackObjectivePoints::Call(ATgPawn* Pawn, void* edx, int
 			PRI->r_Scores[9] += nPoints;  // STYPE_OBJS
 			PRI->bNetDirty = 1;
 		}
-		SendCombatMessage::Call(Pawn, /*Source=*/nullptr, /*Target=*/Pawn,
-		                        nPoints, SendCombatMessage::Type::OBJ_POINTS);
+
+		ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
+		if (Game != nullptr) {
+			Game->eventSendCombatMessage(0x59F4, nullptr, Pawn, nPoints, 0);
+		}
+
+		// SendCombatMessage::Call(Pawn, /*Source=*/nullptr, /*Target=*/Pawn,
+		//                         nPoints, SendCombatMessage::Type::OBJ_POINTS);
 	}
 
 	LogCallEnd();

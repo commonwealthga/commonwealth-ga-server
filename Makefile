@@ -21,6 +21,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Utils/ClassPreloader/ClassPreloader.cpp \
 			  $(SRC_DIR)/GameServer/Utils/EngineLoad/EngineLoad.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ActorCache/ActorCache.cpp \
+			  $(SRC_DIR)/GameServer/Replication/ReplicationDefaults/ReplicationDefaults.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
 			  $(SRC_DIR)/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.cpp \
 			  $(SRC_DIR)/GameServer/Engine/World/BeginPlay/World__BeginPlay.cpp \
@@ -278,6 +279,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Character/SpawnVanityPet/TgPawn_Character__SpawnVanityPet.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Character/UpdateDurability/TgPawn_Character__UpdateDurability.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Character/VanityPetDestroyed/TgPawn_Character__VanityPetDestroyed.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Character/SendMarshal/TgPawn_Character__SendMarshal.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/AddProperty/TgPawn__AddProperty.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/AddDamageInfo/TgPawn__AddDamageInfo.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/ApplyBuff/TgPawn__ApplyBuff.cpp \
@@ -287,7 +289,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Combat/SendKillAlert/SendKillAlert.cpp \
 			  $(SRC_DIR)/GameServer/Combat/MissionAlerts/SendAlert.cpp \
 			  $(SRC_DIR)/GameServer/Combat/MissionAlerts/MissionAlerts.cpp \
-			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Character/SendCombatMessage/TgPawn_Character__SendCombatMessage.cpp \
+			  $(SRC_DIR)/GameServer/Combat/CombatMessageFlusher/CombatMessageFlusher.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackDamagedBot/TgPawn__TrackDamagedBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackDamagedPlayer/TgPawn__TrackDamagedPlayer.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackHealing/TgPawn__TrackHealing.cpp \
@@ -552,7 +554,11 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/InstanceRegistry/InstanceRegistry.cpp \
 	$(CS_SRC_DIR)/InstanceSpawner/InstanceSpawner.cpp \
 	$(CS_SRC_DIR)/QuestStore/QuestStore.cpp \
-	$(CS_SRC_DIR)/MatchmakingService/MatchmakingService.cpp
+	$(CS_SRC_DIR)/MatchmakingService/MatchmakingService.cpp \
+    $(CS_SRC_DIR)/MatchmakingService/TicketInfoEncoder.cpp \
+    $(CS_SRC_DIR)/MatchmakingService/RuleFactory.cpp \
+    $(CS_SRC_DIR)/MatchmakingService/RuntimeStats.cpp \
+    $(CS_SRC_DIR)/MatchmakingService/Rules/DataDrivenMatchRule.cpp
 
 CS_SOURCES=$(CS_CPP_SOURCES)
 

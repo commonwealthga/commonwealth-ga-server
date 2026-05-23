@@ -100,30 +100,30 @@ void ApplyTaskForceToBot(ATgPawn* Bot, int taskForce) {
 void StampObjectiveAndReplicate(ATgMissionObjective_Bot* ObjectiveBot, ATgPawn* Bot) {
 	if (!Bot) return;
 	ObjectiveBot->Role               = 3;
-	ObjectiveBot->RemoteRole         = 1;
+	// ObjectiveBot->RemoteRole         = 1;
 	ObjectiveBot->r_ObjectiveBot     = Bot;
 	ObjectiveBot->r_ObjectiveBotInfo = (ATgRepInfo_Player*)Bot->PlayerReplicationInfo;
 	ObjectiveBot->r_bIsActive        = 1;
 	ObjectiveBot->r_eStatus          = 3;
-	ObjectiveBot->bNetDirty          = 1;
-	ObjectiveBot->bNetInitial        = 1;
-	ObjectiveBot->bForceNetUpdate    = 1;
-	ObjectiveBot->bSkipActorPropertyReplication = 0;
+	// ObjectiveBot->bNetDirty          = 1;
+	// ObjectiveBot->bNetInitial        = 1;
+	// ObjectiveBot->bForceNetUpdate    = 1;
+	// ObjectiveBot->bSkipActorPropertyReplication = 0;
 
-	Bot->Role            = 3;
-	Bot->RemoteRole      = 1;
-	Bot->bNetDirty       = 1;
-	Bot->bNetInitial     = 1;
-	Bot->bForceNetUpdate = 1;
-	Bot->bSkipActorPropertyReplication = 0;
+	// Bot->Role            = 3;
+	// Bot->RemoteRole      = 1;
+	// Bot->bNetDirty       = 1;
+	// Bot->bNetInitial     = 1;
+	// Bot->bForceNetUpdate = 1;
+	// Bot->bSkipActorPropertyReplication = 0;
 
-	ATgRepInfo_Player* BotRep = (ATgRepInfo_Player*)Bot->PlayerReplicationInfo;
-	if (BotRep) {
-		BotRep->bNetDirty       = 1;
-		BotRep->bNetInitial     = 1;
-		BotRep->bForceNetUpdate = 1;
-		BotRep->bSkipActorPropertyReplication = 0;
-	}
+	// ATgRepInfo_Player* BotRep = (ATgRepInfo_Player*)Bot->PlayerReplicationInfo;
+	// if (BotRep) {
+	// 	BotRep->bNetDirty       = 1;
+	// 	BotRep->bNetInitial     = 1;
+	// 	BotRep->bForceNetUpdate = 1;
+	// 	BotRep->bSkipActorPropertyReplication = 0;
+	// }
 }
 
 } // namespace

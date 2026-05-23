@@ -2,41 +2,71 @@
 #include "src/GameServer/Misc/CMarshal/SetBinBlob/CMarshal__SetBinBlob.hpp"
 #include "src/GameServer/Misc/CMarshal/Destroy/CMarshal__Destroy.hpp"
 #include "src/GameServer/Misc/CMarshalObject/Create/CMarshalObject__Create.hpp"
-#include "src/GameServer/IpDrv/ClientConnection/SendMarshal/ClientConnection__SendMarshal.hpp"
-#include "src/GameServer/IpDrv/NetConnection/FlushNet/NetConnection__FlushNet.hpp"
 #include <cstring>
 
-// Wire format — CMarshal key 0x71 (BIN_BLOB):
-//   u8 N=1, u8 M=1,
-//   record: { u16 eventType, s16 attacker, s16 assist, s16 victim, s16 health, s16 shield },
-//   index:  u8 0
+// ─── Wire format (CMarshal key 0x71 BIN_BLOB, one record per marshal) ────────
+//   u8 numRecords (1), u8 numIndices (1)
+//   CombatRecord (12 bytes)
+//   u8 recordIdx (0)
+//
+// Dispatch: pawn->vtable[0x266](marshal). That slot is the engine's per-
+// pawn marshal-send native at 0x109c1000 — a stripped `return;` stub on its
+// own, but hooked by TgPawn_Character__SendMarshal to route through
+// UClientConnection::SendMarshal + FlushNet. Going through the vtable rather
+// than calling the hook's CallOriginal directly means UC-triggered combat
+// messages (which use the engine's accumulator at 0x109dd9c0 and dispatch
+// through the same slot) and our wrapper calls share one and only one send
+// implementation.
+// ─────────────────────────────────────────────────────────────────────────────
+
+namespace {
+
 #pragma pack(push, 1)
-struct CombatMessagePayload {
-	uint8_t  numRecords;
-	uint8_t  numIndices;
+struct CombatRecord {
 	uint16_t nEventType;
 	int16_t  nIdAttacker;
 	int16_t  nIdAssist;
 	int16_t  nIdVictim;
 	int16_t  nValueHealth;
 	int16_t  nValueShield;
-	uint8_t  index;
 };
 #pragma pack(pop)
-static_assert(sizeof(CombatMessagePayload) == 15, "CombatMessagePayload must be exactly 15 bytes");
+static_assert(sizeof(CombatRecord) == 12, "CombatRecord must be exactly 12 bytes");
 
-// Core packet construction + send. Shared by both Call variants.
-static void EmitPacket(UNetConnection* Connection, const CombatMessagePayload& payload) {
+// Pawn vtable slot for the per-pawn marshal-send native. Offset 0x998 in
+// the engine emitter's decompile (`*pawn + 0x998`), / 4 = 0x266 in
+// pointer-sized slots.
+constexpr int kPawnSendMarshalVtableSlot = 0x266;
+
+typedef void (__thiscall *PawnSendMarshalFn)(void* this_pawn, void* marshal);
+
+static void SendMarshalToPawn(ATgPawn* Pawn, void* Marshal) {
+	auto** vtable = *(void***)Pawn;
+	auto fn = (PawnSendMarshalFn)vtable[kPawnSendMarshalVtableSlot];
+	fn(Pawn, Marshal);
+}
+
+static void EmitRecord(ATgPawn* Pawn, const CombatRecord& rec) {
+	uint8_t payload[2 + sizeof(CombatRecord) + 1];
+	uint8_t* p = payload;
+	*p++ = 1;  // numRecords
+	*p++ = 1;  // numIndices
+	memcpy(p, &rec, sizeof(CombatRecord));
+	p += sizeof(CombatRecord);
+	*p++ = 0;  // index of the one record
+	const size_t payloadSize = (size_t)(p - payload);
+
 	uint8_t MarshalStorage[0x80] = {0};
 	void* Marshal = MarshalStorage;
 	CMarshalObject__Create::CallOriginal(Marshal);
 	*(void**)Marshal = CMarshalObject__Create::CMarshal_vftable;
 	*(uint16_t*)((uint8_t*)Marshal + 0x26) = 0x9F;
-	CMarshal__SetBinBlob::CallOriginal(Marshal, nullptr, 0x71, &payload, sizeof(payload));
-	ClientConnection__SendMarshal::CallOriginal(Connection, nullptr, Marshal);
-	NetConnection__FlushNet::CallOriginal(Connection);
+	CMarshal__SetBinBlob::CallOriginal(Marshal, nullptr, 0x71, payload, payloadSize);
+	SendMarshalToPawn(Pawn, Marshal);
 	CMarshal__Destroy::CallOriginal(Marshal);
 }
+
+}  // anonymous namespace
 
 void SendCombatMessage::Call(
 	ATgPawn* RecipientPawn,
@@ -47,41 +77,25 @@ void SendCombatMessage::Call(
 {
 	if (!RecipientPawn || !TargetPawn || Amount <= 0) return;
 
-	// Robust bot filter — see TgPawn_Character__SendCombatMessage.cpp for why
-	// bIsPlayer isn't trustworthy in this build. Class-name match + pointer
-	// sanity-check on Connection.
-	if (!RecipientPawn->Controller || !RecipientPawn->Controller->Class) return;
-	const char* controllerClass = RecipientPawn->Controller->Class->GetFullName();
-	if (!controllerClass || !strstr(controllerClass, "PlayerController")) return;
-	APlayerController* PC = (APlayerController*)RecipientPawn->Controller;
-	UNetConnection* Connection = (UNetConnection*)PC->Player;
-	if (!Connection || (uintptr_t)Connection < 0x10000) return;
-
+	// Player-only filter happens in the hook on 0x109c1000 — we can dispatch
+	// blindly here. PRI on the target is required to resolve victim ID.
 	APlayerReplicationInfo* TargetPRI = TargetPawn->PlayerReplicationInfo;
 	if (!TargetPRI) return;
-	int16_t TargetId = (int16_t)TargetPRI->PlayerID;
 
-	int16_t SourceId = 0;
-	if (SourcePawn && SourcePawn->PlayerReplicationInfo) {
-		SourceId = (int16_t)SourcePawn->PlayerReplicationInfo->PlayerID;
-	}
+	CombatRecord rec;
+	rec.nEventType   = (uint16_t)MessageType;
+	rec.nIdAttacker  = (SourcePawn && SourcePawn->PlayerReplicationInfo)
+		? (int16_t)SourcePawn->PlayerReplicationInfo->PlayerID : 0;
+	rec.nIdAssist    = 0;
+	rec.nIdVictim    = (int16_t)TargetPRI->PlayerID;
+	rec.nValueHealth = (int16_t)Amount;
+	rec.nValueShield = 0;
 
-	CombatMessagePayload payload;
-	payload.numRecords   = 1;
-	payload.numIndices   = 1;
-	payload.nEventType   = (uint16_t)MessageType;
-	payload.nIdAttacker  = SourceId;
-	payload.nIdAssist    = 0;
-	payload.nIdVictim    = TargetId;
-	payload.nValueHealth = (int16_t)Amount;
-	payload.nValueShield = 0;
-	payload.index        = 0;
-
-	EmitPacket(Connection, payload);
+	EmitRecord(RecipientPawn, rec);
 }
 
 void SendCombatMessage::CallRaw(
-	UNetConnection* Connection,
+	ATgPawn* RecipientPawn,
 	uint16_t nEventType,
 	int16_t nIdAttacker,
 	int16_t nIdAssist,
@@ -89,18 +103,15 @@ void SendCombatMessage::CallRaw(
 	int16_t nValueHealth,
 	int16_t nValueShield)
 {
-	if (!Connection) return;
+	if (!RecipientPawn) return;
 
-	CombatMessagePayload payload;
-	payload.numRecords   = 1;
-	payload.numIndices   = 1;
-	payload.nEventType   = nEventType;
-	payload.nIdAttacker  = nIdAttacker;
-	payload.nIdAssist    = nIdAssist;
-	payload.nIdVictim    = nIdVictim;
-	payload.nValueHealth = nValueHealth;
-	payload.nValueShield = nValueShield;
-	payload.index        = 0;
+	CombatRecord rec;
+	rec.nEventType   = nEventType;
+	rec.nIdAttacker  = nIdAttacker;
+	rec.nIdAssist    = nIdAssist;
+	rec.nIdVictim    = nIdVictim;
+	rec.nValueHealth = nValueHealth;
+	rec.nValueShield = nValueShield;
 
-	EmitPacket(Connection, payload);
+	EmitRecord(RecipientPawn, rec);
 }

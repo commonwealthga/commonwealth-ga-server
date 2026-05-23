@@ -547,9 +547,14 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 				attackerPRI->r_Scores[9] += 3000;  // STYPE_OBJS
 				attackerPRI->bNetDirty = 1;
 				attackerPRI->bForceNetUpdate = 1;
-				SendCombatMessage::Call(damageCreditPawn, /*Source=*/nullptr,
-				                        /*Target=*/damageCreditPawn, 3000,
-				                        SendCombatMessage::Type::OBJ_POINTS);
+
+				ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
+				if (Game != nullptr) {
+					Game->eventSendCombatMessage(0x59F4, nullptr, damageCreditPawn, 3000, 0);
+				// SendCombatMessage::Call(damageCreditPawn, /*Source=*/nullptr,
+				//                         /*Target=*/damageCreditPawn, 3000,
+				//                         SendCombatMessage::Type::OBJ_POINTS);
+				}
 
 				// Attacker-team alert. Defender-team "your beacon was
 				// destroyed!" lives separately on the client side
@@ -708,9 +713,14 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 
 				attackerPRI->r_Scores[9] += (int)magnitude;  // STYPE_OBJS
 				attackerPRI->bNetDirty = 1;
-				SendCombatMessage::Call(damageCreditPawn, /*Source=*/nullptr,
-				                        /*Target=*/damageCreditPawn, (int)magnitude,
-				                        SendCombatMessage::Type::OBJ_POINTS);
+
+				ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
+				if (Game != nullptr) {
+					Game->eventSendCombatMessage(0x59F4, nullptr, damageCreditPawn, (int)magnitude, 0);
+				// SendCombatMessage::Call(damageCreditPawn, /*Source=*/nullptr,
+				//                         /*Target=*/damageCreditPawn, (int)magnitude,
+				//                         SendCombatMessage::Type::OBJ_POINTS);
+				}
 
 				if (Logger::IsChannelEnabled("stats")) {
 					Logger::Log("stats",

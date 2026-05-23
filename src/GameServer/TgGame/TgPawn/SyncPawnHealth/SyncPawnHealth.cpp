@@ -2,6 +2,7 @@
 #include "src/GameServer/Constants/TgProperties.h"
 
 void SyncPawnHealth::Apply(ATgPawn* pawn, int hp, int maxHp) {
+	return;
 	if (!pawn) return;
 
 	const float fHp    = (float)hp;

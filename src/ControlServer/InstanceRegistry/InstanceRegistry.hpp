@@ -78,12 +78,24 @@ public:
     // Clear all non-STOPPED instances (startup recovery).
     static void ClearStaleInstances();
 
+    // profile_id is the class the player was queued as (PROFILE_ASSAULT etc.,
+    // or 0 if unknown — non-matchmade joins / home map). Drives the per-class
+    // breakdown shown on GET_TICKET_INFO queue cards.
     static void InsertInstancePlayer(int64_t instance_id, const std::string& session_guid,
-                                     int64_t character_id, int task_force);
+                                     int64_t character_id, int task_force,
+                                     uint32_t profile_id = 0);
     static void MarkInstancePlayerLeft(int64_t instance_id, const std::string& session_guid);
     static void MarkAllInstancePlayersLeft(int64_t instance_id);
     static std::pair<int, int> GetTeamCounts(int64_t instance_id);
     static int GetActivePlayerCount(int64_t instance_id);
+
+    // Queue-scoped active counters consumed by RuntimeStats for the
+    // GET_TICKET_INFO PLAYER_COUNT / INSTANCE_COUNT / DATA_SET_PROFILE_COUNTS
+    // fields. "Active" = ga_instances.state != 'STOPPED'.
+    static int GetActiveInstanceCountForQueue(uint32_t queue_id);
+    static int GetActivePlayerCountForQueue(uint32_t queue_id);
+    struct ActiveProfileCounts { uint32_t assault, medic, recon, robotics; };
+    static ActiveProfileCounts GetActiveProfileCountsForQueue(uint32_t queue_id);
     static std::vector<InstanceInfo> GetReadyMissionInstances();
     static std::optional<InstanceInfo> GetHomeInstance();
     static std::vector<InstanceInfo> GetIdleInstances(int timeout_seconds);

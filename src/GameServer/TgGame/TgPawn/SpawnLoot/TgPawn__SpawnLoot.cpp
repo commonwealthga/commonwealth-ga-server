@@ -85,8 +85,8 @@ void __fastcall TgPawn__SpawnLoot::Call(ATgPawn* Pawn, void* /*edx*/, ATgRepInfo
 	// client, which calls ApplyItemSetup (our hook → mesh + lifespan + populated
 	// s_EffectGroupList) and GotoState('Pickup').
 	drop->r_nItemId    = kDeathDropItemId;
-	drop->bNetInitial  = 1;
-	drop->bNetDirty    = 1;
+	// drop->bNetInitial  = 1;
+	// drop->bNetDirty    = 1;
 
 	// Mirror the same path on the SERVER. UC's ReplicatedEvent only fires
 	// client-side, but the GiveTo loop (which restores health/power) runs

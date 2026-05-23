@@ -607,10 +607,17 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 	Device->Instigator = (APawn*)Pawn;
 	Device->Role = 3;
 	Device->RemoteRole = 1;
-	Device->bNetInitial = 1;
-	Device->bNetDirty = 1;
-	Device->bSkipActorPropertyReplication = 0;
-	Device->bOnlyDirtyReplication = 0;
+	// Device->bNetInitial = 1;
+	// Device->NetPriority = 0.5;
+	// Device->NetUpdateFrequency = 1;
+	// Device->bForceNetUpdate = 1;
+	// Device->bNetDirty = 1;
+	// Device->bSkipActorPropertyReplication = 0;
+	// Device->bOnlyDirtyReplication = 0;
+	// Device->bReplicateMovement = 0;
+	// // Device->bReplicateInstigator = 0;
+	// Device->bReplicateRigidBodyLocation = 0;
+	// Device->bOnlyRelevantToOwner = 1;
 
 	// Inventory.uc defaults: bHidden=true, bReplicateMovement=false. TgDevice
 	// inherits both. We DELIBERATELY do NOT override bReplicateMovement here

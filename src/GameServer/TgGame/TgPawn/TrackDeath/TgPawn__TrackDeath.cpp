@@ -11,7 +11,7 @@ void __fastcall TgPawn__TrackDeath::Call(ATgPawn* Pawn, void* edx) {
 	if (PRI != nullptr) {
 		PRI->r_Scores[8]++;  // STYPE_DEATHS
 		PRI->bNetDirty = 1;
-		PRI->bForceNetUpdate = 1;
+		// PRI->bForceNetUpdate = 1;
 	}
 
 	LogCallEnd();

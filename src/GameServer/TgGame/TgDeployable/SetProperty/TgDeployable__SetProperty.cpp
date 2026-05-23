@@ -17,13 +17,21 @@ static void BroadcastDeployableCombatMessage(
 	int16_t sourceId, int16_t victimId, int16_t amount,
 	SendCombatMessage::Type msgType)
 {
+	return;
 	UWorld* World = (UWorld*)Globals::Get().GWorld;
 	if (!World || !World->NetDriver) return;
+	// Fan out by walking the per-client PlayerController's Pawn — the marshal
+	// has to ride the engine's native per-pawn send path (vtable[0x266]) and
+	// each client's own pawn is the receiver that delivers the bunch.
 	for (int i = 0; i < World->NetDriver->ClientConnections.Num(); ++i) {
 		UNetConnection* Conn = World->NetDriver->ClientConnections.Data[i];
 		if (!Conn || (uintptr_t)Conn < 0x10000) continue;
+		APlayerController* PC = Conn->Actor;
+		if (!PC || !PC->Pawn) continue;
+		ATgPawn* recipPawn = (ATgPawn*)PC->Pawn;
+
 		SendCombatMessage::CallRaw(
-			Conn,
+			recipPawn,
 			(uint16_t)msgType,
 			sourceId,
 			/*nIdAssist=*/0,

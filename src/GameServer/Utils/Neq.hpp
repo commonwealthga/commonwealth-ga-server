@@ -267,7 +267,11 @@ bool NEQ(FPlane& A,FPlane& B,void* Map,void* Channel) {
 		((int*)&A)[2]!=((int*)&B)[2] || ((int*)&A)[3]!=((int*)&B)[3];
 }
 bool NEQ(FString& A,FString& B,void* Map,void* Channel) {
-	return A!=B;
+	const int aLen = (A.Data && A.Count > 0) ? A.Count : 0;
+	const int bLen = (B.Data && B.Count > 0) ? B.Count : 0;
+	if (aLen != bLen) return true;
+	if (aLen == 0)    return false;       // both empty → equal
+	return wmemcmp(A.Data, B.Data, aLen) != 0;
 }
 bool NEQ(FVehicleState& A,FVehicleState& B,void* Map,void* Channel) {
 	// return 1;

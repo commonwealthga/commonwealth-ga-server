@@ -44,6 +44,10 @@ struct ParseResult {
     // No-arg toggles. Flag is set when recognized + parsed cleanly.
     bool possess   = false;
     bool unpossess = false;
+
+    // -reload-queues — re-read ga_queues + ga_queue_map_pool. Handled
+    // entirely on the control server; no PLAYER_ACTION IPC dispatched.
+    bool reload_queues = false;
 };
 
 // Parse a chat MESSAGE string. Trims leading/trailing whitespace, recognises

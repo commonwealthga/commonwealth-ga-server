@@ -324,31 +324,37 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		defenders->eventPostInit();
 		attackers->eventPostInit();
 
-		defenders->bNetInitial = 1;
-		defenders->bNetDirty = 1;
-		defenders->bForceNetUpdate = 1;
-		defenders->bOnlyDirtyReplication = 0;
-		defenders->bSkipActorPropertyReplication = 0;
-		defenders->bReplicateMovement = 0;
-		defenders->bReplicateRigidBodyLocation = 0;
-		defenders->bReplicateInstigator = 0;
+		// defenders->NetPriority = 1;
+		// defenders->NetUpdateFrequency = 0.5;
+		// defenders->bNetInitial = 1;
+		// defenders->bNetDirty = 1;
+		// defenders->bForceNetUpdate = 1;
+		// defenders->bOnlyDirtyReplication = 0;
+		// defenders->bSkipActorPropertyReplication = 0;
+		// defenders->bReplicateMovement = 0;
+		// defenders->bReplicateRigidBodyLocation = 0;
+		// defenders->bReplicateInstigator = 0;
+		//
+		// attackers->NetPriority = 1;
+		// attackers->NetUpdateFrequency = 0.5;
+		// attackers->bNetInitial = 1;
+		// // attackers->bNetDirty = 1;
+		// // attackers->bForceNetUpdate = 1;
+		// attackers->bOnlyDirtyReplication = 0;
+		// attackers->bSkipActorPropertyReplication = 0;
+		// attackers->bReplicateMovement = 0;
+		// attackers->bReplicateRigidBodyLocation = 0;
+		// attackers->bReplicateInstigator = 0;
 
-		attackers->bNetInitial = 1;
-		attackers->bNetDirty = 1;
-		attackers->bForceNetUpdate = 1;
-		attackers->bOnlyDirtyReplication = 0;
-		attackers->bSkipActorPropertyReplication = 0;
-		attackers->bReplicateMovement = 0;
-		attackers->bReplicateRigidBodyLocation = 0;
-		attackers->bReplicateInstigator = 0;
-
-		gamerep->bNetInitial = 1;
-		gamerep->bNetDirty = 1;
-		gamerep->bForceNetUpdate = 1;
-		gamerep->bOnlyDirtyReplication = 0;
-		gamerep->bSkipActorPropertyReplication = 0;
-		gamerep->bReplicateMovement = 0;
-		gamerep->bReplicateRigidBodyLocation = 0;
+		// gamerep->bNetInitial = 1;
+		// gamerep->bNetDirty = 1;
+		// gamerep->bForceNetUpdate = 1;
+		// gamerep->bOnlyDirtyReplication = 0;
+		// gamerep->bSkipActorPropertyReplication = 0;
+		// gamerep->bReplicateMovement = 0;
+		// gamerep->bReplicateRigidBodyLocation = 0;
+		// gamerep->NetPriority = 5;
+		// gamerep->NetUpdateFrequency = 5;
 
 		// gamerep->r_nMissionTimerState
 		// gamerep->bReplicateInstigator = 0;

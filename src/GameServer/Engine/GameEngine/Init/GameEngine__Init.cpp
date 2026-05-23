@@ -3,6 +3,7 @@
 #include "src/GameServer/Misc/AssemblyDatManager/LoadAssemblyDat/AssemblyDatManager__LoadAssemblyDat.hpp"
 #include "src/GameServer/Engine/LaunchEngineLoop/LoadStartupPackages/LoadStartupPackages.hpp"
 #include "src/GameServer/Utils/EngineLoad/EngineLoad.hpp"
+#include "src/GameServer/Replication/ReplicationDefaults/ReplicationDefaults.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 void GameEngine__Init::FixGlobals() {
@@ -39,6 +40,12 @@ void GameEngine__Init::Call(void* GameEngine) {
 	// canonical buff-routing effect class — load + root it here so it's resident
 	// before any effect is constructed.
 	EngineLoad::PreloadClass("TgGame.TgEffectBuff");
+
+	// Patch replication-related fields on CDOs of replicable actor classes.
+	// CDOs now exist (LoadStartupPackages ran above) and no world has spawned
+	// yet (CallOriginal below kicks off the engine init that ultimately
+	// spawns GameInfo / GRI / Pawns), so values land in time for every spawn.
+	ReplicationDefaults::Apply();
 
 	GameEngine__Init::CallOriginal(GameEngine);
 

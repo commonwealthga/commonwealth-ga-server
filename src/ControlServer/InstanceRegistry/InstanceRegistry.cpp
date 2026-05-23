@@ -592,7 +592,8 @@ void InstanceRegistry::ClearStaleInstances() {
 }
 
 void InstanceRegistry::InsertInstancePlayer(int64_t instance_id, const std::string& session_guid,
-                                            int64_t character_id, int task_force) {
+                                            int64_t character_id, int task_force,
+                                            uint32_t profile_id) {
     std::lock_guard<std::mutex> lock(mutex_);
     sqlite3* db = Database::GetConnection();
     if (!db) return;
@@ -600,8 +601,8 @@ void InstanceRegistry::InsertInstancePlayer(int64_t instance_id, const std::stri
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db,
         "INSERT OR REPLACE INTO ga_instance_players "
-        "(instance_id, session_guid, character_id, task_force_number, joined_at, left_at) "
-        "VALUES (?, ?, ?, ?, strftime('%s','now'), NULL)",
+        "(instance_id, session_guid, character_id, task_force_number, profile_id, joined_at, left_at) "
+        "VALUES (?, ?, ?, ?, ?, strftime('%s','now'), NULL)",
         -1, &stmt, nullptr);
     if (rc != SQLITE_OK || !stmt) {
         Logger::Log("db", "[InstanceRegistry] InsertInstancePlayer prepare failed: %s\n",
@@ -613,6 +614,11 @@ void InstanceRegistry::InsertInstancePlayer(int64_t instance_id, const std::stri
     sqlite3_bind_text(stmt, 2, session_guid.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int64(stmt, 3, character_id);
     sqlite3_bind_int(stmt, 4, task_force);
+    if (profile_id == 0) {
+        sqlite3_bind_null(stmt, 5);
+    } else {
+        sqlite3_bind_int(stmt, 5, (int)profile_id);
+    }
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -634,8 +640,8 @@ void InstanceRegistry::InsertInstancePlayer(int64_t instance_id, const std::stri
     sqlite3_exec(db, sql, nullptr, nullptr, &err);
     if (err) { sqlite3_free(err); }
 
-    Logger::Log("db", "[InstanceRegistry] InsertInstancePlayer: instance=%lld guid=%s tf=%d\n",
-        (long long)instance_id, session_guid.c_str(), task_force);
+    Logger::Log("db", "[InstanceRegistry] InsertInstancePlayer: instance=%lld guid=%s tf=%d profile=%u\n",
+        (long long)instance_id, session_guid.c_str(), task_force, profile_id);
 }
 
 void InstanceRegistry::MarkInstancePlayerLeft(int64_t instance_id, const std::string& session_guid) {
@@ -977,4 +983,82 @@ void InstanceRegistry::SetLastEmptyAtIfEmpty(int64_t instance_id) {
     char* err = nullptr;
     sqlite3_exec(db, sql, nullptr, nullptr, &err);
     if (err) { sqlite3_free(err); }
+}
+
+// ---------------------------------------------------------------------------
+// Queue-scoped live counters (RuntimeStats consumers)
+// ---------------------------------------------------------------------------
+
+int InstanceRegistry::GetActiveInstanceCountForQueue(uint32_t queue_id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    if (!db) return 0;
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db,
+            "SELECT COUNT(*) FROM ga_instances "
+            "WHERE queue_id = ? AND state != 'STOPPED'",
+            -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+        return 0;
+    }
+    sqlite3_bind_int(stmt, 1, (int)queue_id);
+    int n = 0;
+    if (sqlite3_step(stmt) == SQLITE_ROW) n = sqlite3_column_int(stmt, 0);
+    sqlite3_finalize(stmt);
+    return n;
+}
+
+int InstanceRegistry::GetActivePlayerCountForQueue(uint32_t queue_id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    if (!db) return 0;
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db,
+            "SELECT COUNT(*) FROM ga_instance_players ip "
+            "JOIN ga_instances i ON i.instance_id = ip.instance_id "
+            "WHERE i.queue_id = ? AND i.state != 'STOPPED' AND ip.left_at IS NULL",
+            -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+        return 0;
+    }
+    sqlite3_bind_int(stmt, 1, (int)queue_id);
+    int n = 0;
+    if (sqlite3_step(stmt) == SQLITE_ROW) n = sqlite3_column_int(stmt, 0);
+    sqlite3_finalize(stmt);
+    return n;
+}
+
+InstanceRegistry::ActiveProfileCounts
+InstanceRegistry::GetActiveProfileCountsForQueue(uint32_t queue_id) {
+    ActiveProfileCounts out{0, 0, 0, 0};
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    if (!db) return out;
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db,
+            "SELECT ip.profile_id, COUNT(*) FROM ga_instance_players ip "
+            "JOIN ga_instances i ON i.instance_id = ip.instance_id "
+            "WHERE i.queue_id = ? AND i.state != 'STOPPED' AND ip.left_at IS NULL "
+            "  AND ip.profile_id IS NOT NULL "
+            "GROUP BY ip.profile_id",
+            -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+        return out;
+    }
+    sqlite3_bind_int(stmt, 1, (int)queue_id);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        const uint32_t pid = (uint32_t)sqlite3_column_int(stmt, 0);
+        const uint32_t cnt = (uint32_t)sqlite3_column_int(stmt, 1);
+        switch (pid) {
+            case 680: out.assault  = cnt; break;  // PROFILE_ASSAULT  = 0x2A8
+            case 567: out.medic    = cnt; break;  // PROFILE_MEDIC    = 0x237
+            case 681: out.recon    = cnt; break;  // PROFILE_RECON    = 0x2A9
+            case 679: out.robotics = cnt; break;  // PROFILE_ROBOTICS = 0x2A7
+            default: break;
+        }
+    }
+    sqlite3_finalize(stmt);
+    return out;
 }

@@ -42,8 +42,8 @@ static void WireDeployableOwnership(ATgDeployable* dep, ATgBeaconFactory* factor
 	dep->Role                  = 3;
 	dep->RemoteRole            = 1;
 	dep->bNetInitial           = 1;
-	dep->bNetDirty             = 1;
-	dep->bForceNetUpdate       = 1;
+	// dep->bNetDirty             = 1;
+	// dep->bForceNetUpdate       = 1;
 
 	dep->eventInitReplicationInfo();
 
@@ -51,7 +51,7 @@ static void WireDeployableOwnership(ATgDeployable* dep, ATgBeaconFactory* factor
 		dep->r_DRI->r_bOwnedByTaskforce = 1;
 		dep->r_DRI->r_TaskforceInfo     = tf;
 		dep->r_DRI->bNetDirty           = 1;
-		dep->r_DRI->bForceNetUpdate     = 1;
+		// dep->r_DRI->bForceNetUpdate     = 1;
 	}
 	dep->r_bInitialIsEnemy = 0;
 }

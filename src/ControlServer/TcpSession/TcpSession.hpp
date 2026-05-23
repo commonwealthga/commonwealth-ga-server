@@ -53,6 +53,13 @@ public:
     // Returns true if dispatched, false if the session is unknown or the player is not assigned to an instance.
     static bool DeliverPlayerAction(const std::string& session_guid, const nlohmann::json& payload);
 
+    // Clear the per-session queue + pending-match state on the named session.
+    // Called when a matchmade instance dies before delivering MATCH_INVITATION
+    // (spawn failure or pre-READY crash) — without this the session stays
+    // wedged with current_match_queue_id_ != 0 and the next GET_TICKET_INFO
+    // shows the player as still queued. Silent if guid is unknown.
+    static void DeliverMatchCancelled(const std::string& session_guid, const char* reason);
+
 private:
     // ── Static registry members ──────────────────────────────────────────────
     static std::mutex sessions_mutex_;

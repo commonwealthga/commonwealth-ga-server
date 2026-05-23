@@ -703,6 +703,162 @@ void Database::Init() {
 			"WHERE predecessor_instance_id IS NOT NULL;",
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) sqlite3_free(err);
+
+		// ga_instance_players.profile_id — populated by InsertInstancePlayer
+		// from TcpSession::selected_profile_id_. Drives DATA_SET_PROFILE_COUNTS
+		// in GET_TICKET_INFO so the queue cards show class breakdowns of
+		// players currently in-mission for that queue.
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_instance_players ADD COLUMN profile_id INTEGER DEFAULT NULL;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) sqlite3_free(err);
+
+		// ga_queues — data-driven queue definitions. Each row maps to a
+		// MATCH_QUEUE_ID; the schema carries both matchmaking behaviour
+		// (rule_class + taskforce_policy + continue_in_queue) and the
+		// GET_TICKET_INFO wire fields the client uses to render the card.
+		// rule_class NULL = DataDrivenMatchRule (the generic one parameterised
+		// by taskforce_policy). enabled=0 hides the row from the client.
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_queues ("
+			"  queue_id                INTEGER PRIMARY KEY,"
+			"  name                    TEXT    NOT NULL,"
+			"  rule_class              TEXT             DEFAULT NULL,"
+			"  taskforce_policy        TEXT    NOT NULL DEFAULT 'pinned_1' "
+			"                          CHECK (taskforce_policy IN ('pinned_1','pinned_2','balanced')),"
+			"  continue_in_queue       INTEGER NOT NULL DEFAULT 0,"
+			"  enabled                 INTEGER NOT NULL DEFAULT 1,"
+			"  queue_type_value_id     INTEGER NOT NULL DEFAULT 0,"
+			"  status_msg_id           INTEGER NOT NULL DEFAULT 0,"
+			"  name_msg_id             INTEGER NOT NULL DEFAULT 0,"
+			"  desc_msg_id             INTEGER NOT NULL DEFAULT 0,"
+			"  icon_id                 INTEGER NOT NULL DEFAULT 0,"
+			"  max_players_per_side    INTEGER NOT NULL DEFAULT 1,"
+			"  min_players_per_team    INTEGER NOT NULL DEFAULT 1,"
+			"  max_players_per_team    INTEGER NOT NULL DEFAULT 1,"
+			"  level_min               INTEGER NOT NULL DEFAULT 1,"
+			"  level_max               INTEGER NOT NULL DEFAULT 200,"
+			"  tab                     INTEGER NOT NULL DEFAULT 0,"
+			"  map_x                   REAL    NOT NULL DEFAULT 0.0,"
+			"  map_y                   REAL    NOT NULL DEFAULT 0.0,"
+			"  map_active_flag         INTEGER NOT NULL DEFAULT 1,"
+			"  map_icon_texture_res_id INTEGER NOT NULL DEFAULT 0,"
+			"  video_res_id            INTEGER NOT NULL DEFAULT 0,"
+			"  location_value_id       INTEGER NOT NULL DEFAULT 0,"
+			"  double_agent_flag       INTEGER NOT NULL DEFAULT 0,"
+			"  sys_site_id             INTEGER NOT NULL DEFAULT 0,"
+			"  sort_order              INTEGER NOT NULL DEFAULT 0,"
+			"  bonus_queue_flag        INTEGER NOT NULL DEFAULT 0,"
+			"  difficulty_value_id     INTEGER NOT NULL DEFAULT 0,"
+			"  access_flags            INTEGER NOT NULL DEFAULT 0,"
+			"  active_flag             INTEGER NOT NULL DEFAULT 1,"
+			"  locked_flag             INTEGER NOT NULL DEFAULT 0,"
+			"  remaining_seconds       INTEGER          DEFAULT NULL"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_queues table: %s\n", err);
+			sqlite3_free(err);
+		}
+
+		// ga_queue_map_pool — weighted (map_name, game_mode) entries the
+		// matchmaker picks from when a queue spawns a fresh instance. weight
+		// is 1-based; weight=1 across all rows is uniform random. Disable an
+		// entry without losing it via enabled=0.
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_queue_map_pool ("
+			"  queue_id  INTEGER NOT NULL REFERENCES ga_queues(queue_id) ON DELETE CASCADE,"
+			"  map_name  TEXT    NOT NULL,"
+			"  game_mode TEXT    NOT NULL,"
+			"  weight    INTEGER NOT NULL DEFAULT 1,"
+			"  enabled   INTEGER NOT NULL DEFAULT 1,"
+			"  PRIMARY KEY (queue_id, map_name, game_mode)"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_queue_map_pool table: %s\n", err);
+			sqlite3_free(err);
+		}
+
+		// Seed the two known queues mirroring the pre-DB hardcoded config in
+		// main.cpp. INSERT OR IGNORE preserves any operator edits across boots.
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_queues "
+			"(queue_id, name, taskforce_policy, continue_in_queue, "
+			" queue_type_value_id, name_msg_id, desc_msg_id, icon_id, "
+			" max_players_per_side, min_players_per_team, max_players_per_team, "
+			" level_min, level_max, tab, map_x, map_y, map_active_flag, "
+			" map_icon_texture_res_id, location_value_id, double_agent_flag, "
+			" bonus_queue_flag, difficulty_value_id, active_flag, locked_flag) VALUES"
+			" (1, 'specops',  'pinned_1', 0,"
+			"  0x3fd, 0xd8a9, 0xd8a8, 0x219,"
+			"  10, 1, 10, 5, 200, 0x1bb, 6.0, 0.0, 1, 0x1406, 0x5c5, 1, 0, 0x5bf, 1, 0),"
+			" (2, 'pvp',      'balanced', 0,"
+			"  0x3fe, 0xa200, 0xa1ff, 0x214,"
+			"  10, 1, 3,  5, 200, 0x1,   1.0, 0.0, 1, 0x1406, 0,     1, 0, 0,     1, 0);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed ga_queues: %s\n", err);
+			sqlite3_free(err);
+		}
+
+		// PvP queue 2 needs video_res_id=0x171a (the Mercenary preview video).
+		// Defaulted to 0 above; explicit update keeps the seed line readable.
+		result = sqlite3_exec(db,
+			"UPDATE ga_queues SET video_res_id = 0x171a "
+			"WHERE queue_id = 2 AND video_res_id = 0;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) sqlite3_free(err);
+
+		// Seed map pools — same lists as the old hardcoded blocks in main.cpp.
+		// Single statement per queue, INSERT OR IGNORE for idempotency.
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_queue_map_pool (queue_id, map_name, game_mode) VALUES"
+			" (1, '1P_CPLab05_P', 'TgGame.TgGame_Mission'),"
+			" (1, '1P_CPLab03', 'TgGame.TgGame_Mission');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed ga_queue_map_pool (specops): %s\n", err);
+			sqlite3_free(err);
+		}
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_queue_map_pool (queue_id, map_name, game_mode) VALUES"
+			" (2, 'Rot_Redistribution05',     'TgGame.TgGame_PointRotation'),"
+			" (2, 'Rot_Redistribution04',     'TgGame.TgGame_PointRotation'),"
+			" (2, 'Rot_Redistribution03',     'TgGame.TgGame_PointRotation'),"
+			" (2, 'Rot_Trafalgar_P',          'TgGame.TgGame_PointRotation'),"
+			" (2, 'Rot_BlackwaterLoch_P',     'TgGame.TgGame_PointRotation'),"
+			" (2, 'Ticket_Silo_4v4_P',        'TgGame.TgGame_PointRotation'),"
+			" (2, 'Ticket_Osprey_4v4_P',      'TgGame.TgGame_PointRotation'),"
+			" (2, 'Ticket_HimLab_4v4',        'TgGame.TgGame_PointRotation'),"
+			" (2, 'Push_Toxicity',            'TgGame.TgGame_Escort'),"
+			" (2, 'push_Ravine_P',            'TgGame.TgGame_Escort'),"
+			" (2, 'Push_Dust_P',              'TgGame.TgGame_Escort'),"
+			" (2, 'Push_IceFloe3_P',          'TgGame.TgGame_Escort'),"
+			" (2, 'Push_IceFloe_P',           'TgGame.TgGame_Escort'),"
+			" (2, 'HEX_AVA_Push_Lab1_P',      'TgGame.TgGame_Escort'),"
+			" (2, 'HEX_AVA_Push_Factory1_P',  'TgGame.TgGame_Escort'),"
+			" (2, 'HEX_AVA_2pt_Theft_Lab1',   'TgGame.TgGame_Escort'),"
+			" (2, 'HEX_AVA_2pt_Theft_Factory1_P', 'TgGame.TgGame_Escort'),"
+			" (2, '3P_Him_Arena_P',           'TgGame.TgGame_Mission'),"
+			" (2, 'Climate_Control_P',        'TgGame.TgGame_Mission'),"
+			" (2, '3P_Climate_Control3_P',    'TgGame.TgGame_Mission'),"
+			" (2, '3P_VolcanoAssault_P',      'TgGame.TgGame_Mission'),"
+			" (2, 'Ice_GorgeA01_v2',          'TgGame.TgGame_Mission'),"
+			" (2, '3P_Beachhead3_P',          'TgGame.TgGame_Mission'),"
+			" (2, 'MissileComplex_4v4_P',     'TgGame.TgGame_Mission'),"
+			" (2, 'Ticket_Datafarm_P',        'TgGame.TgGame_Ticket'),"
+			" (2, 'Ticket_Datafarm2',         'TgGame.TgGame_Ticket'),"
+			" (2, 'Ticket_Datafarm3',         'TgGame.TgGame_Ticket'),"
+			" (2, 'SeaSide_Ticket_P',         'TgGame.TgGame_Ticket'),"
+			" (2, 'SeaSide_Ticket2_P',        'TgGame.TgGame_Ticket'),"
+			" (2, 'SeaSide_Ticket3',          'TgGame.TgGame_Ticket'),"
+			" (2, 'Ticket_Volcano_P',         'TgGame.TgGame_Ticket');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed ga_queue_map_pool (pvp): %s\n", err);
+			sqlite3_free(err);
+		}
 	}
 
 	// Floor-only version write. The game-server DLL bumps `version_info.version`

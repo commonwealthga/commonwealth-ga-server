@@ -220,7 +220,7 @@
 #include "src/GameServer/TgGame/TgPawn/TrackCompleteKillInfo/TgPawn__TrackCompleteKillInfo.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackDamagedBot/TgPawn__TrackDamagedBot.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackDamagedPlayer/TgPawn__TrackDamagedPlayer.hpp"
-#include "src/GameServer/TgGame/TgPawn_Character/SendCombatMessage/TgPawn_Character__SendCombatMessage.hpp"
+#include "src/GameServer/TgGame/TgPawn_Character/SendMarshal/TgPawn_Character__SendMarshal.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackHealing/TgPawn__TrackHealing.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackHit/TgPawn__TrackHit.hpp"
 #include "src/GameServer/TgGame/TgPawn/TickMakeVisibleCalculation/TgPawn__TickMakeVisibleCalculation.hpp"
@@ -555,6 +555,7 @@ unsigned long ModuleThread( void* ) {
 	TgPawn_Character__SpawnVanityPet::Install();
 	TgPawn_Character__UpdateDurability::Install();
 	TgPawn_Character__VanityPetDestroyed::Install();
+	TgPawn_Character__SendMarshal::Install();
 	TgPawn__AddProperty::Install();
 	TgPawn__AddDamageInfo::Install();
 	TgPawn__ApplyBuff::Install();
@@ -562,7 +563,6 @@ unsigned long ModuleThread( void* ) {
 	TgPawn__TrackCompleteKillInfo::Install();
 	TgPawn__TrackDamagedBot::Install();
 	TgPawn__TrackDamagedPlayer::Install();
-	TgPawn_Character__SendCombatMessage::Install();
 	TgPawn__TrackHealing::Install();
 	TgPawn__TrackHit::Install();
 	TgPawn__TickMakeVisibleCalculation::Install();

@@ -147,6 +147,14 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
+    if (cmd_name == "-reload-queues") {
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        // No args; trailing junk silently ignored (recognized + suppressed).
+        if (rest.empty()) out.reload_queues = true;
+        return out;
+    }
+
     if (cmd_name == "-topdown") {
         // -topdown            -> toggle, default lift
         // -topdown <lift_z>   -> toggle, explicit lift in world units (cm)

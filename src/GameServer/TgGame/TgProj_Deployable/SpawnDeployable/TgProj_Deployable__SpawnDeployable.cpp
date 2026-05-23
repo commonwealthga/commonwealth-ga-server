@@ -745,50 +745,50 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 		// r_TaskforceInfo), and force a full initial replication by restoring
 		// bNetInitial so the engine sends all CPF_Net properties in the next
 		// pass regardless of which specific bits are set.
-		*(unsigned int*)((char*)dri + 0xAC) |= 0x100000;  // r_TaskforceInfo dirty
-		dri->bNetInitial    = 1;
-		dri->bNetDirty      = 1;
-		dri->bForceNetUpdate = 1;
+		// *(unsigned int*)((char*)dri + 0xAC) |= 0x100000;  // r_TaskforceInfo dirty
+		// dri->bNetInitial    = 1;
+		// dri->bNetDirty      = 1;
+		// dri->bForceNetUpdate = 1;
 
-		// DRI rep-order fix — root cause of the lingering "enemy colors" bug.
-		//
-		// On the client, `dri.r_DeployableOwner` is an ObjectProperty that
-		// points back to the deployable.  UE3 resolves ObjectProperty NetGUIDs
-		// at serialization time: if the referenced actor hasn't been
-		// replicated to the client yet, the reference serializes as null and
-		// NEVER retries (the engine only re-sends a property when its value
-		// changes, and the server-side pointer isn't changing).
-		//
-		// ReplicationInfo's default NetPriority (3.0) is HIGHER than
-		// TgDeployable's (1.4), so the engine picks the DRI first in the
-		// per-tick relevance queue.  Result: DRI's first bunch (which carries
-		// r_DeployableOwner) is sent BEFORE the deployable has a channel →
-		// r_DeployableOwner lands null on the client → `c_bReceivedOwner`
-		// stays false → the DRI's own ReplicatedEvent handlers for
-		// r_TaskforceInfo / r_bOwnedByTaskforce never call
-		// `r_DeployableOwner.NotifyGroupChanged()`, so the material is never
-		// recalculated once those fields finally arrive.  The initial
-		// fallback (r_bInitialIsEnemy=1 → enemy) becomes permanent.
-		//
-		// Lowering DRI NetPriority below the deployable's forces the engine
-		// to replicate the deployable first; its NetGUID is cached on the
-		// client, and when the DRI's r_DeployableOwner is serialized a tick
-		// later it resolves correctly → `c_bReceivedOwner` flips true →
-		// subsequent r_TaskforceInfo / r_bOwnedByTaskforce repnotifies fire
-		// NotifyGroupChanged → RecalculateMaterial runs with the correct
-		// friendship answer.
-		//
-		// Value 1.0 comfortably beneath TgDeployable's 1.4 without starving
-		// the DRI for bandwidth (NetUpdateFrequency kept at 30 Hz so it
-		// still catches up within a frame of the deployable).
-		dri->NetUpdateFrequency = 30.0f;
-		dri->NetPriority        = 1.0f;   // < TgDeployable.NetPriority=1.4
-		dri->bAlwaysRelevant    = 1;
-		dri->bTearOff           = 0;
-		dri->bOnlyDirtyReplication = 0;
-		dri->bSkipActorPropertyReplication = 0;
-		dri->Role               = 3;   // ROLE_Authority
-		dri->RemoteRole         = 1;   // ROLE_SimulatedProxy
+		// // DRI rep-order fix — root cause of the lingering "enemy colors" bug.
+		// //
+		// // On the client, `dri.r_DeployableOwner` is an ObjectProperty that
+		// // points back to the deployable.  UE3 resolves ObjectProperty NetGUIDs
+		// // at serialization time: if the referenced actor hasn't been
+		// // replicated to the client yet, the reference serializes as null and
+		// // NEVER retries (the engine only re-sends a property when its value
+		// // changes, and the server-side pointer isn't changing).
+		// //
+		// // ReplicationInfo's default NetPriority (3.0) is HIGHER than
+		// // TgDeployable's (1.4), so the engine picks the DRI first in the
+		// // per-tick relevance queue.  Result: DRI's first bunch (which carries
+		// // r_DeployableOwner) is sent BEFORE the deployable has a channel →
+		// // r_DeployableOwner lands null on the client → `c_bReceivedOwner`
+		// // stays false → the DRI's own ReplicatedEvent handlers for
+		// // r_TaskforceInfo / r_bOwnedByTaskforce never call
+		// // `r_DeployableOwner.NotifyGroupChanged()`, so the material is never
+		// // recalculated once those fields finally arrive.  The initial
+		// // fallback (r_bInitialIsEnemy=1 → enemy) becomes permanent.
+		// //
+		// // Lowering DRI NetPriority below the deployable's forces the engine
+		// // to replicate the deployable first; its NetGUID is cached on the
+		// // client, and when the DRI's r_DeployableOwner is serialized a tick
+		// // later it resolves correctly → `c_bReceivedOwner` flips true →
+		// // subsequent r_TaskforceInfo / r_bOwnedByTaskforce repnotifies fire
+		// // NotifyGroupChanged → RecalculateMaterial runs with the correct
+		// // friendship answer.
+		// //
+		// // Value 1.0 comfortably beneath TgDeployable's 1.4 without starving
+		// // the DRI for bandwidth (NetUpdateFrequency kept at 30 Hz so it
+		// // still catches up within a frame of the deployable).
+		// dri->NetUpdateFrequency = 5.0f;
+		// dri->NetPriority        = 1.0f;   // < TgDeployable.NetPriority=1.4
+		// dri->bAlwaysRelevant    = 0;
+		// dri->bTearOff           = 0;
+		// dri->bOnlyDirtyReplication = 0;
+		// dri->bSkipActorPropertyReplication = 0;
+		// dri->Role               = 3;   // ROLE_Authority
+		// dri->RemoteRole         = 1;   // ROLE_SimulatedProxy
 
 		// HUD healthbar diagnostic: dump (a) DRI's r_InstigatorInfo (should ==
 		// pawnrep), and (b) the post-deploy state of pawnrep->m_DRIArray —
@@ -893,12 +893,12 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	Deployable->s_bIsActivated     = 1;
 	Deployable->m_bIsDeployed      = 0;
 	Deployable->r_nPhysicalType    = 861; // TgPawn.TG_PHYSICALITY_MECHANICAL
-	Deployable->bOnlyDirtyReplication = 0;
-	Deployable->Role               = 3;
-	Deployable->RemoteRole         = 1;
-	Deployable->bNetInitial        = 1;
-	Deployable->bNetDirty          = 1;
-	Deployable->bForceNetUpdate    = 1;
+	// Deployable->bOnlyDirtyReplication = 0;
+	// Deployable->Role               = 3;
+	// Deployable->RemoteRole         = 1;
+	// Deployable->bNetInitial        = 1;
+	// Deployable->bNetDirty          = 1;
+	// Deployable->bForceNetUpdate    = 1;
 	Deployable->bAlwaysRelevant    = 1;
 
 	// TgDeployable does NOT auto-spawn its r_EffectManager (unlike TgPawn,
@@ -962,8 +962,14 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 		Deployable->r_EffectManager->Base       = (AActor*)Deployable;
 		Deployable->r_EffectManager->Role       = 3;
 		Deployable->r_EffectManager->RemoteRole = 1;
-		Deployable->r_EffectManager->bNetInitial = 1;
-		Deployable->r_EffectManager->bNetDirty   = 1;
+		// Deployable->r_EffectManager->bNetInitial = 1;
+		// // Deployable->r_EffectManager->bNetDirty   = 1;
+		// Deployable->r_EffectManager->NetPriority = 0.5;
+		// Deployable->r_EffectManager->NetUpdateFrequency = 10;
+		//
+		// Deployable->r_EffectManager->bReplicateMovement = 0;
+		// Deployable->r_EffectManager->bReplicateInstigator = 0;
+		// Deployable->r_EffectManager->bReplicateRigidBodyLocation = 0;
 	}
 
 	// Phase 2: drive the native setup chain. ApplyDeployableSetup looks up the

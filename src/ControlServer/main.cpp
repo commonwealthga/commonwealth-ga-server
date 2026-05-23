@@ -11,8 +11,6 @@
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
-#include "src/ControlServer/MatchmakingService/Rules/SimplePvPMatchRule.hpp"
-#include "src/ControlServer/MatchmakingService/Rules/SimpleSpecOpsMatchRule.hpp"
 #include <asio.hpp>
 #include <thread>
 #include <cstdlib>
@@ -114,72 +112,16 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Initialize matchmaking
-    MatchmakingService::Init();
-
-    // Register queues. Each queue carries a map_pool — every fresh spawn
-    // (initial match-pop OR pre-warmed successor) picks one entry at random,
-    // so a queue can rotate maps/modes without code changes. Add entries
-    // here to expand a queue's rotation. Single-entry pools effectively
-    // disable randomization.
+    // Initialize matchmaking. Init() reads ga_queues + ga_queue_map_pool from
+    // the shared DB and constructs one MatchmakingService::Queue per enabled
+    // row via RuleFactory. Edit queues without rebuilding by changing those
+    // tables — see Database.cpp migrations + the `-reload-queues` chat command
+    // for hot-reload semantics.
     //
-    // PvP (2) also opts into continue_in_queue: the post-mission "End
-    // Mission" button routes survivors into the queue's pre-warmed successor
-    // instead of home.
-    {
-        QueueOptions specops_opts;
-        specops_opts.map_pool = {
-            { "1P_CPLab05_P", "TgGame.TgGame_Mission" },
-        };
-        MatchmakingService::RegisterQueue(1, std::make_unique<SimpleSpecOpsMatchRule>(),
-                                          std::move(specops_opts));
-
-
-// maps that need to be downloaded by the client to work:
-// 3P_Beachhead2_P // atoll
-// 3P_Beachhead_P
-
-        QueueOptions pvp_opts;
-        pvp_opts.continue_in_queue = false;
-        pvp_opts.map_pool = {
-            { "Rot_Redistribution05", "TgGame.TgGame_PointRotation" },
-            { "Rot_Redistribution04", "TgGame.TgGame_PointRotation" },
-            { "Rot_Redistribution03", "TgGame.TgGame_PointRotation" },
-            { "Rot_Trafalgar_P", "TgGame.TgGame_PointRotation" },
-            { "Rot_BlackwaterLoch_P", "TgGame.TgGame_PointRotation" },
-            { "Ticket_Silo_4v4_P", "TgGame.TgGame_PointRotation" },
-            { "Ticket_Osprey_4v4_P", "TgGame.TgGame_PointRotation" },
-            { "Ticket_HimLab_4v4", "TgGame.TgGame_PointRotation" },
-
-            { "Push_Toxicity", "TgGame.TgGame_Escort" },
-            { "push_Ravine_P", "TgGame.TgGame_Escort" },
-            { "Push_Dust_P", "TgGame.TgGame_Escort" },
-            { "Push_IceFloe3_P", "TgGame.TgGame_Escort" },
-            { "Push_IceFloe_P", "TgGame.TgGame_Escort" },
-            { "HEX_AVA_Push_Lab1_P", "TgGame.TgGame_Escort" },
-            { "HEX_AVA_Push_Factory1_P", "TgGame.TgGame_Escort" },
-            { "HEX_AVA_2pt_Theft_Lab1", "TgGame.TgGame_Escort" },
-            { "HEX_AVA_2pt_Theft_Factory1_P", "TgGame.TgGame_Escort" },
-
-            { "3P_Him_Arena_P", "TgGame.TgGame_Mission" },
-            { "Climate_Control_P", "TgGame.TgGame_Mission" },
-            { "3P_Climate_Control3_P", "TgGame.TgGame_Mission" },
-            { "3P_VolcanoAssault_P", "TgGame.TgGame_Mission" },
-            { "Ice_GorgeA01_v2", "TgGame.TgGame_Mission" },
-            { "3P_Beachhead3_P", "TgGame.TgGame_Mission" },
-            { "MissileComplex_4v4_P", "TgGame.TgGame_Mission" },
-
-			{"Ticket_Datafarm_P",      "TgGame.TgGame_Ticket"},
-			{"Ticket_Datafarm2",       "TgGame.TgGame_Ticket"},
-			{"Ticket_Datafarm3",       "TgGame.TgGame_Ticket"},
-			{"SeaSide_Ticket_P",       "TgGame.TgGame_Ticket"},
-			{"SeaSide_Ticket2_P",      "TgGame.TgGame_Ticket"},
-			{"SeaSide_Ticket3",        "TgGame.TgGame_Ticket"},
-			{"Ticket_Volcano_P",       "TgGame.TgGame_Ticket"},
-        };
-        MatchmakingService::RegisterQueue(2, std::make_unique<SimplePvPMatchRule>(),
-                                          std::move(pvp_opts));
-    }
+    // Map pool note: maps that need to be downloaded by the client to work
+    // (e.g. 3P_Beachhead2_P, 3P_Beachhead_P) belong in ga_queue_map_pool with
+    // enabled=0 until the client downloads them.
+    MatchmakingService::Init();
     // Provide queue-scoped running-instance info to matchmaking rules. Rules
     // iterate this list to find a seat-available instance regardless of map —
     // because pool-randomized queues can have instances on different maps,
@@ -233,12 +175,29 @@ int main(int argc, char* argv[]) {
                 result.map_name, result.game_mode, *port, 0, /*is_home_map=*/false,
                 /*queue_id=*/queue_id);
 
+            // Register pending match BEFORE Spawn so the unwind path on a
+            // spawn-failure (and the symmetric IPC-disconnect-before-READY
+            // path in IpcServer) can call DiscardPendingMatchForDeadInstance
+            // to unstick the matched players. Without this, a process that
+            // fails to fork leaves its session_guids out of queue.players
+            // with no way back.
+            PendingMatch pending;
+            pending.instance_id = instance_id;
+            pending.queue_id = queue_id;
+            pending.game_mode = result.game_mode;
+            pending.session_guids = std::move(result.session_guids);
+            pending.task_force_assignments = std::move(result.task_force_assignments);
+            pending.profile_ids = std::move(result.profile_ids);
+            MatchmakingService::AddPendingMatch(instance_id, std::move(pending));
+
             pid_t pid = InstanceSpawner::Spawn(
                 cfg, result.map_name, result.game_mode, *port, instance_id);
 
             if (pid < 0) {
                 Logger::Log("matchmaking",
                     "[Matchmaking] Failed to spawn instance for queue %u\n", queue_id);
+                MatchmakingService::DiscardPendingMatchForDeadInstance(
+                    instance_id, "InstanceSpawner::Spawn returned -1");
                 InstanceRegistry::MarkStopped(instance_id);
                 return;
             }
@@ -248,15 +207,6 @@ int main(int argc, char* argv[]) {
             Logger::Log("matchmaking",
                 "[Matchmaking] Spawned instance %lld (pid=%d port=%d) for queue %u\n",
                 (long long)instance_id, (int)pid, (int)*port, queue_id);
-
-            // Store pending match — will be consumed when INSTANCE_READY arrives
-            PendingMatch pending;
-            pending.instance_id = instance_id;
-            pending.queue_id = queue_id;
-            pending.game_mode = result.game_mode;
-            pending.session_guids = std::move(result.session_guids);
-            pending.task_force_assignments = std::move(result.task_force_assignments);
-            MatchmakingService::AddPendingMatch(instance_id, std::move(pending));
         }
     );
 
@@ -283,7 +233,7 @@ int main(int argc, char* argv[]) {
         // condition trips — it doesn't know whether its queue is opted into
         // continuation. Gate here so non-continuing queues (e.g. SpecOps)
         // don't burn a slot on a successor nobody will ever join.
-        if (!MatchmakingService::GetQueueOptions(parent->queue_id).continue_in_queue) {
+        if (!MatchmakingService::GetContinueInQueue(parent->queue_id)) {
             Logger::Log("main", "[SuccessorSpawner] Queue %u is not continue_in_queue — dropping successor request for parent=%lld\n",
                 parent->queue_id, (long long)parent_instance_id);
             return;

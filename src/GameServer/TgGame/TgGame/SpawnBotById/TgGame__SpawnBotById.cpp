@@ -184,13 +184,19 @@ void TgGame__SpawnBotById::GiveDeviceById(
 		// NetGUID be registered on the client's connection at the moment
 		// of Possess so that ClientWeaponSet's `Instigator != None` check
 		// passes. Pre-replicating at spawn makes this deterministic.
-		Device->Role        = 3;
-		Device->RemoteRole  = 0;
+		// Device->Role        = 3;
+		// Device->RemoteRole  = 0;
 		// Device->bNetInitial = 1;
+		// Device->NetPriority = 0.5;
+		// Device->NetUpdateFrequency = 1;
 		// Device->bNetDirty   = 1;
-		Device->bSkipActorPropertyReplication = 0;
-		Device->bOnlyDirtyReplication = 0;
-		Device->bHidden = 1;
+		// Device->bSkipActorPropertyReplication = 0;
+		// Device->bOnlyDirtyReplication = 0;
+		// Device->bReplicateMovement = 0;
+		// Device->bReplicateInstigator = 0;
+		// Device->bReplicateRigidBodyLocation = 0;
+		// Device->bOnlyRelevantToOwner = 1;
+		// Device->bHidden = 1;
 		// Inherit Inventory.uc defaults bReplicateMovement=false — see
 		// `Inventory::Equip` for the rationale (don't replicate the device's
 		// stale spawn-time transform; visible mesh is c_DeviceForm).
@@ -406,12 +412,19 @@ void TgGame__SpawnBotById::GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Pla
 			// -possess after the first works, because by then the device's
 			// NetGUID has been registered). Enabling replication at spawn
 			// pays the cost up-front but makes possession deterministic.
-			Device->Role        = 3;
-			Device->RemoteRole  = 1;
-			Device->bNetInitial = 1;
-			Device->bNetDirty   = 1;
-			Device->bSkipActorPropertyReplication = 0;
-			Device->SetOwner((AActor*)Bot);
+			Device->Role = 3;
+			// Device->RemoteRole = 0;
+			// Device->bNetInitial = 1;
+			// Device->NetPriority = 0.5;
+			// Device->NetUpdateFrequency = 1;
+			// Device->bNetDirty = 1;
+			// Device->bSkipActorPropertyReplication = 0;
+			// Device->bOnlyDirtyReplication = 0;
+			// Device->bReplicateMovement = 0;
+			// Device->bReplicateInstigator = 0;
+			// Device->bReplicateRigidBodyLocation = 0;
+			// Device->bOnlyRelevantToOwner = 0;
+			// Device->SetOwner((AActor*)Bot);
 			BotRepInfo->r_EquipDeviceInfo[equipPoint].nDeviceId = deviceId;
 			BotRepInfo->r_EquipDeviceInfo[equipPoint].nDeviceInstanceId = invId;
 			BotRepInfo->r_EquipDeviceInfo[equipPoint].nQualityValueId = qualityValueId;
@@ -445,9 +458,9 @@ void TgGame__SpawnBotById::GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Pla
 
 	Bot->UpdateClientDevices(0, 0);
 	Bot->bNetDirty = 1;
-	Bot->bForceNetUpdate = 1;
-	BotRepInfo->bNetDirty = 1;
-	BotRepInfo->bForceNetUpdate = 1;
+	// Bot->bForceNetUpdate = 1;
+	// BotRepInfo->bNetDirty = 1;
+	// BotRepInfo->bForceNetUpdate = 1;
 }
 
 
@@ -681,8 +694,8 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 			// — null PRI on first frame → both sides resolve to null →
 			// returns "enemy". Once GUID resolution catches up, repnotify on
 			// r_TaskForce fires, NotifyTeamChanged → RecalculateMaterial(true).
-			BotRepInfo->NetPriority        = 8.0f;
-			BotRepInfo->NetUpdateFrequency = 10.0f;
+			BotRepInfo->NetPriority        = 5.0f;
+			BotRepInfo->NetUpdateFrequency = 5.0f;
 			BotRepInfo->bNetDirty       = 1;
 			BotRepInfo->bForceNetUpdate = 1;
 		}
@@ -812,6 +825,7 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// pending want flag next tick and would re-crouch otherwise.
 	*(unsigned int*)((char*)Bot + 0x1EC) &= ~0x0Cu;  // clear bits 0x04 (bWantsToCrouch) + 0x08 (bIsCrouched)
 
+
 	// s_nCharacterId is defined on ATgPawn_Character (offset 0x162C). Non-
 	// Character bots (TgPawn_Hover, TgPawn_Robot, TgPawn_VanityPet, ...) reuse
 	// that offset for subclass fields. In particular TgPawn_Hover has a
@@ -830,7 +844,7 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		 strstr(pawnClassName, "TgPawn_SonoranCommander") ||
 		 strstr(pawnClassName, "TgPawn_Turret"));
 	if (isCharacter) {
-		Bot->s_nCharacterId = *(int*)((char*)BotConfig + 0x5C); // BOT_TYPE_VALUE_ID
+//		Bot->s_nCharacterId = *(int*)((char*)BotConfig + 0x5C); // BOT_TYPE_VALUE_ID
 		// Character-subclass replicated fields. Same offset-collision caveat
 		// as s_nCharacterId — only safe to write when the actual class is
 		// Character-descended.
@@ -844,7 +858,7 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// (engine fields, ATgPawn replicated max, property descriptors, PRI).
 	const int botHp = *(int*)((char*)BotConfig + 0x74);
 	SyncPawnHealth::Apply(Bot, botHp, botHp);
-	BotRepInfo->r_nCharacterId    = *(int*)((char*)BotConfig + 0x5C);
+	//BotRepInfo->r_nCharacterId    = *(int*)((char*)BotConfig + 0x5C);
 
 	if (pFactory == nullptr) {
 		ActorCache::CacheMapActors();
@@ -875,20 +889,41 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	AIController->m_vSpawnLocation  = vLocation;
 	AIController->m_rSpawnDirection = rRotation;
 
-	BotRepInfo->bNetDirty = 1;
-	BotRepInfo->bSkipActorPropertyReplication = 0;
-	BotRepInfo->bOnlyDirtyReplication = 0;
-	BotRepInfo->bNetInitial = 1;
+	// BotRepInfo->bNetDirty = 1;
+	// BotRepInfo->bSkipActorPropertyReplication = 0;
+	// BotRepInfo->bOnlyDirtyReplication = 0;
+	// BotRepInfo->bNetInitial = 1;
+	// BotRepInfo->NetPriority = 5;
+	// BotRepInfo->NetUpdateFrequency = 5;
+	// BotRepInfo->bAlwaysRelevant = 0;
 
+	// Bot->r_EffectManager->RemoteRole = 1;
+	// Bot->r_EffectManager->bNetInitial = 1;
+	// Bot->r_EffectManager->bNetDirty = 1;
+
+	Bot->r_EffectManager->r_Owner    = (AActor*)Bot;
+	Bot->r_EffectManager->SetOwner((AActor*)Bot);
+	Bot->r_EffectManager->Base       = (AActor*)Bot;
+	Bot->r_EffectManager->Role       = 3;
 	Bot->r_EffectManager->RemoteRole = 1;
-	Bot->r_EffectManager->bNetInitial = 1;
-	Bot->r_EffectManager->bNetDirty = 1;
+	// Bot->r_EffectManager->bNetInitial = 1;
+	// Deployable->r_EffectManager->bNetDirty   = 1;
+	// Bot->r_EffectManager->NetPriority = 0.5;
+	// Bot->r_EffectManager->NetUpdateFrequency = 10;
 
-	Bot->bNetInitial = 1;
-	Bot->bNetDirty = 1;
-	Bot->bReplicateMovement = 1;
-	Bot->RemoteRole = 1;
-	Bot->bSkipActorPropertyReplication = 0;
+	// Bot->r_EffectManager->bReplicateMovement = 0;
+	// Bot->r_EffectManager->bReplicateInstigator = 0;
+	// Bot->r_EffectManager->bReplicateRigidBodyLocation = 0;
+	// Bot->r_EffectManager->bOnlyRelevantToOwner = 0;
+
+
+	// Bot->bNetInitial = 1;
+	// // Bot->bNetDirty = 1;
+	// Bot->bReplicateMovement = 1;
+	// Bot->RemoteRole = 1;
+	// Bot->bSkipActorPropertyReplication = 0;
+	// Bot->NetPriority = 10;
+	// Bot->NetUpdateFrequency = 10;
 
 	GiveDevicesFromBotConfig(Bot, BotRepInfo, nBotId);
 

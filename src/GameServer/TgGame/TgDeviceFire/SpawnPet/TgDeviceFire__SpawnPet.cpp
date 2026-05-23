@@ -140,20 +140,20 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 		PetRep->SetTeam(PawnRep->r_TaskForce);
 		PetPawn->NotifyTeamChanged();
 
-		PetPawn->Role = 3;
-		PetPawn->RemoteRole = 1;
-		PetPawn->bNetDirty = 1;
-		PetPawn->bNetInitial = 1;
-		PetPawn->bForceNetUpdate = 1;
-		PetPawn->bSkipActorPropertyReplication = 0;
-		// PetPawn->bAlwaysRelevant = 1;
-
-		PetRep->Role = 3;
-		PetRep->RemoteRole = 1;
-		PetRep->bNetDirty = 1;
-		PetRep->bNetInitial = 1;
-		PetRep->bForceNetUpdate = 1;
-		PetRep->bSkipActorPropertyReplication = 0;
+		// PetPawn->Role = 3;
+		// PetPawn->RemoteRole = 1;
+		// // PetPawn->bNetDirty = 1;
+		// PetPawn->bNetInitial = 1;
+		// // PetPawn->bForceNetUpdate = 1;
+		// PetPawn->bSkipActorPropertyReplication = 0;
+		// // PetPawn->bAlwaysRelevant = 1;
+		//
+		// PetRep->Role = 3;
+		// PetRep->RemoteRole = 1;
+		// // PetRep->bNetDirty = 1;
+		// PetRep->bNetInitial = 1;
+		// // PetRep->bForceNetUpdate = 1;
+		// PetRep->bSkipActorPropertyReplication = 0;
 		// PetRep->bAlwaysRelevant = 1;
 
 		// Kick off the deploy animation+state sequence on TgPawn_Turret pets.

@@ -38,11 +38,11 @@ AActor* __fastcall Actor__Spawn::Call(UWorld* pThis, void* edx, UClass* Class, u
 		// the NetDriver's relevancy window and never replicate to clients.
 		const char* cn = ret->Class->GetFullName();
 		if (strstr(cn, "TgProj_") || strstr(cn, "TgProjectile") || strstr(cn, "Engine.Projectile")) {
-			ret->bForceNetUpdate = 1;
-			ret->bNetInitial = 1;
-			ret->bNetDirty = 1;
-			ret->NetUpdateFrequency = 5;
-			ret->NetPriority = 10;
+			// ret->bForceNetUpdate = 1;
+			// ret->bNetInitial = 1;
+			// // ret->bNetDirty = 1;
+			// ret->NetUpdateFrequency = 1;
+			// ret->NetPriority = 5;
 		} else {
 			
 		}

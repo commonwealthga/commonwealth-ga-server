@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgMissionObjective_Proximity/ScoreObjectiveProgress/TgMissionObjective_Proximity__ScoreObjectiveProgress.hpp"
 #include "src/GameServer/Combat/SendCombatMessage/SendCombatMessage.hpp"
+#include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <cstring>
 #include <unordered_map>
@@ -107,8 +108,14 @@ void __fastcall TgMissionObjective_Proximity__ScoreObjectiveProgress::Call(
 		while (accum[PRI] >= (float)kPopupBatch) {
 			PRI->r_Scores[9] += kPopupBatch;  // STYPE_OBJS
 			PRI->bNetDirty   = 1;
-			SendCombatMessage::Call(P, /*Source=*/nullptr, /*Target=*/P,
-			                        kPopupBatch, SendCombatMessage::Type::OBJ_POINTS);
+
+			ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
+			if (Game != nullptr) {
+				Game->eventSendCombatMessage(0x59F4, nullptr, P, kPopupBatch, 0);
+
+			// SendCombatMessage::Call(P, /*Source=*/nullptr, /*Target=*/P,
+			//                         kPopupBatch, SendCombatMessage::Type::OBJ_POINTS);
+			}
 			accum[PRI] -= (float)kPopupBatch;
 
 			Logger::Log("stats",

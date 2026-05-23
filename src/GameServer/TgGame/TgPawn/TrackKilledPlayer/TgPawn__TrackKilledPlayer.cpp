@@ -19,7 +19,7 @@ void __fastcall TgPawn__TrackKilledPlayer::Call(ATgPawn* Pawn, void* edx, int nD
 	if (PRI != nullptr) {
 		PRI->r_Scores[1]++;  // STYPE_KILLS
 		PRI->bNetDirty = 1;
-		PRI->bForceNetUpdate = 1;
+		// PRI->bForceNetUpdate = 1;
 	}
 
 	LogCallEnd();

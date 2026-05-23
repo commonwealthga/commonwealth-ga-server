@@ -1,5 +1,6 @@
 #include "src/ControlServer/ChatSession/ChatSession.hpp"
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
+#include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 
 // All chat sessions — safe without mutex since io_context runs single-threaded.
 static std::vector<std::weak_ptr<ChatSession>> g_chat_sessions;
@@ -131,6 +132,11 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         }
         if (parsed.recognized && parsed.topdown) {
             ChatCommand::DispatchTopDown(*parsed.topdown, session_guid_);
+        }
+        if (parsed.recognized && parsed.reload_queues) {
+            Logger::Log("chat-command", "[ChatCmd] -reload-queues from guid=%s -> MatchmakingService::ReloadQueues\n",
+                session_guid_.c_str());
+            MatchmakingService::ReloadQueues();
         }
         if (parsed.suppress_broadcast) {
             // Recognized command (valid or invalid arg) — do not broadcast.

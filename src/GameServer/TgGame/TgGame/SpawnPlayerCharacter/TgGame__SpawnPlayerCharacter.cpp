@@ -222,20 +222,21 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	// PlayerController->Role = 3;
 	// PlayerController->RemoteRole = 2;
-	PlayerController->bNetInitial = 1;
-	PlayerController->bNetDirty = 1;
-	PlayerController->bForceNetUpdate = 1;
-	PlayerController->bReplicateMovement = 1;
-
+	// PlayerController->bNetInitial = 1;
+	// PlayerController->bNetDirty = 1;
+	// PlayerController->bForceNetUpdate = 1;
+	// PlayerController->bReplicateMovement = 1;
+	// PlayerController->NetPriority        = 2.0f;
+	// PlayerController->NetUpdateFrequency = 10.0f;
 
 	newpawn->PlayerReplicationInfo = PlayerController->PlayerReplicationInfo;
 
-	newpawn->NetPriority        = 10.0f;
-	newpawn->NetUpdateFrequency = 10.0f;
-	newpawn->bNetInitial = 1;
-	newpawn->bNetDirty = 1;
-	newpawn->bForceNetUpdate = 1;
-	newpawn->bReplicateMovement = 1;
+	// newpawn->NetPriority        = 10.0f;
+	// newpawn->NetUpdateFrequency = 10.0f;
+	// newpawn->bNetInitial = 1;
+	// newpawn->bNetDirty = 1;
+	// newpawn->bForceNetUpdate = 1;
+	// newpawn->bReplicateMovement = 1;
 
 
 	// newrepplayer->Team = defenders;
@@ -310,11 +311,13 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// newrepplayer->SetTeam(GTeamsData.Defenders);
 	// newrepplayer->SetPlayerTeam(GTeamsData.Attackers);
 	// newrepplayer->Team = GTeamsData.Attackers;
-	newrepplayer->bNetDirty = 1;
-	newrepplayer->bForceNetUpdate = 1;
-	newrepplayer->bSkipActorPropertyReplication = 0;
-	newrepplayer->bOnlyDirtyReplication = 0;
-	newrepplayer->bNetInitial = 1;
+	// newrepplayer->bNetDirty = 1;
+	// newrepplayer->bForceNetUpdate = 1;
+	// newrepplayer->bSkipActorPropertyReplication = 0;
+	// newrepplayer->bOnlyDirtyReplication = 0;
+	// newrepplayer->bNetInitial = 1;
+	// newrepplayer->NetPriority        = 5.0f;
+	// newrepplayer->NetUpdateFrequency = 5.0f;
 
 	// if (PlayerController->myHUD != nullptr) {
 	// 	PlayerController->myHUD->Destroy();

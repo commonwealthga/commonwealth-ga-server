@@ -50,7 +50,7 @@ void __fastcall TgPawn__TrackKill::Call(ATgPawn* Pawn, void* edx, ATgPawn* Kille
 	if (KillerPRI != nullptr) {
 		KillerPRI->r_Scores[scoreIndex]++;
 		KillerPRI->bNetDirty = 1;
-		KillerPRI->bForceNetUpdate = 1;
+		// KillerPRI->bForceNetUpdate = 1;
 	}
 
 	// Assists: only when a real player died. Killer's human-ness doesn't
@@ -89,7 +89,7 @@ void __fastcall TgPawn__TrackKill::Call(ATgPawn* Pawn, void* edx, ATgPawn* Kille
 
 		candidatePRI->r_Scores[2]++;  // STYPE_ASSISTS
 		candidatePRI->bNetDirty = 1;
-		candidatePRI->bForceNetUpdate = 1;
+		// candidatePRI->bForceNetUpdate = 1;
 
 		if (Logger::IsChannelEnabled("stats")) {
 			Logger::Log("stats", "Assist credited to %s for kill on %s (%s)\n",
