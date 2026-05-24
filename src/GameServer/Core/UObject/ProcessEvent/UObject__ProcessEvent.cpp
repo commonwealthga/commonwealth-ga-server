@@ -5,6 +5,7 @@
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <math.h>
 #include <unordered_map>
@@ -180,15 +181,148 @@ enum class DispatchTag : uint8_t {
 	BeaconEntranceHasExit,        // Post-call: override return to false when r_Beacon->m_bIsDeployed=0
 	PlayerControllerDestroyed,    // Pre-call: drop carried beacon if any, then CheckBeacon respawn
 	ServerPickupPutdownDeployableTag, // Diagnostic: log RPC entry to confirm key press reaches server
+	// GameTimerDiagnostic,          // Diagnostic-only: before/after snapshots around original timer/match flow
 };
+
+static bool IsGameTimerDiagnosticFunction(const char* name) {
+	if (!name) return false;
+
+	if (strcmp(name, "Function TgGame.TgGame.StartGameTimer") == 0 ||
+	    strcmp(name, "Function TgGame.TgGame_Arena.StartGameTimer") == 0 ||
+	    strcmp(name, "Function TgGame.TgGame.MissionTimer") == 0 ||
+	    strcmp(name, "Function TgGame.TgGame_Arena.MissionTimer") == 0 ||
+	    strcmp(name, "Function TgGame.TgGame.ChangeTimerState") == 0 ||
+	    strcmp(name, "Function TgGame.TgGame.SetMissionTime") == 0 ||
+	    strcmp(name, "Function TgGame.TgGame.MissionTimerStart") == 0 ||
+	    strcmp(name, "Function TgGame.TgGame.MissionTimerStop") == 0 ||
+	    strcmp(name, "Function TgGame.TgGame.SendMissionTimerEvent") == 0 ||
+	    strcmp(name, "Function TgGame.TgGame.SendMissionTimerNotify") == 0 ||
+	    strcmp(name, "Function TgGame.TgGame_Arena.GameStarted") == 0 ||
+	    strcmp(name, "Function TgGame.TgGame_Arena.PreRoundFinished") == 0 ||
+	    strcmp(name, "Function TgGame.TgGame_Arena.NextRoundStart") == 0 ||
+	    strcmp(name, "Function TgGame.TgGame_Defense.RoundTimer") == 0) {
+		return true;
+	}
+
+	if (strstr(name, ".PreRound.BeginState") ||
+	    strstr(name, ".RoundInProgress.BeginState") ||
+	    strstr(name, ".PostRound.BeginState") ||
+	    strstr(name, ".GameRunning.BeginState")) {
+		return true;
+	}
+
+	return false;
+}
+
+static void LogGameTimerSnapshot(const char* phase, UObject* Object, UFunction* Function) {
+	if (!Logger::IsChannelEnabled("gametimer")) return;
+
+	std::string functionName = Function ? Function->GetFullName() : "<null-function>";
+	std::string objectName = Object ? Object->GetFullName() : "<null-object>";
+	std::string objectClass = (Object && Object->Class) ? Object->Class->GetFullName() : "<null-class>";
+
+	ATgGame* Game = nullptr;
+	if (Object && objectClass.find("TgGame") != std::string::npos) {
+		Game = (ATgGame*)Object;
+	} else if (Globals::Get().GGameInfo) {
+		Game = (ATgGame*)Globals::Get().GGameInfo;
+	}
+
+	if (!Game) {
+		Logger::Log("gametimer",
+			"[%s] %s obj=%s class=%s game=<null>\n",
+			phase, functionName.c_str(), objectName.c_str(), objectClass.c_str());
+		return;
+	}
+
+	std::string gameName = ((UObject*)Game)->GetFullName();
+	std::string gameClass = Game->Class ? Game->Class->GetFullName() : "<null-game-class>";
+	std::string stateName = Game->GetStateName().GetName();
+
+	ATgRepInfo_Game* GRI = Game->GameReplicationInfo
+		? (ATgRepInfo_Game*)Game->GameReplicationInfo
+		: nullptr;
+
+	Logger::Log("gametimer",
+		"[%s] %s obj=%s objClass=%s game=%s gameClass=%s state=%s "
+		"wait=%d delayed=%d ended=%d timerState=%d pausedState=%d shouldWait=%d allowOT=%d winState=%d gameType=%d "
+		"mission=%.2f gameMission=%.2f overtime=%.2f startedAt=%.2f worldTime=%.2f "
+		"GRI{ptr=%p matchOver=%d round=%d/%d mtState=%d mtChange=%d rem=%.2f cTime=%.2f cSecs=%.2f remaining=%d limit=%d flags raid=%d mission=%d arena=%d match=%d overtime=%d}\n",
+		phase,
+		functionName.c_str(),
+		objectName.c_str(),
+		objectClass.c_str(),
+		gameName.c_str(),
+		gameClass.c_str(),
+		stateName.c_str(),
+		(int)Game->bWaitingToStartMatch,
+		(int)Game->bDelayedStart,
+		(int)Game->bGameEnded,
+		(int)Game->m_eTimerState,
+		(int)Game->m_eTimerStatePaused,
+		(int)Game->m_bShouldWait,
+		(int)Game->m_bAllowOvertime,
+		(int)Game->m_GameWinState,
+		(int)Game->m_GameType,
+		Game->m_fMissionTime,
+		Game->m_fGameMissionTime,
+		Game->m_fGameOvertimeTime,
+		Game->s_fMissionTimerStartedAt,
+		Game->WorldInfo ? Game->WorldInfo->TimeSeconds : -1.0f,
+		GRI,
+		GRI ? (int)GRI->bMatchIsOver : -1,
+		GRI ? GRI->r_nRoundNumber : -1,
+		GRI ? GRI->r_nMaxRoundNumber : -1,
+		GRI ? (int)GRI->r_nMissionTimerState : -1,
+		GRI ? GRI->r_nMissionTimerStateChange : -1,
+		GRI ? GRI->r_fMissionRemainingTime : -1.0f,
+		GRI ? GRI->c_fMissionTime : -1.0f,
+		GRI ? GRI->c_fMissionTimeSeconds : -1.0f,
+		GRI ? GRI->RemainingTime : -1,
+		GRI ? GRI->TimeLimit : -1,
+		GRI ? (int)GRI->r_bIsRaid : -1,
+		GRI ? (int)GRI->r_bIsMission : -1,
+		GRI ? (int)GRI->r_bIsArena : -1,
+		GRI ? (int)GRI->r_bIsMatch : -1,
+		GRI ? (int)GRI->r_bInOverTime : -1);
+
+	if (gameClass.find("TgGame_Arena") != std::string::npos ||
+	    gameClass.find("TgGame_Defense") != std::string::npos ||
+	    gameClass.find("TgGame_CTF") != std::string::npos ||
+	    gameClass.find("TgGame_PointRotation") != std::string::npos) {
+		ATgGame_Arena* Arena = (ATgGame_Arena*)Game;
+		Logger::Log("gametimer",
+			"[%s]   ArenaFields round=%d betweenDelay=%d setup=%d objectiveUnlock=%d resetPlayfield=%d resetPlayers=%d displayEnd=%d\n",
+			phase,
+			Arena->s_nRoundNumber,
+			Arena->s_nBetweenRoundDelay,
+			Arena->s_nRoundSetupTime,
+			Arena->s_nObjectiveUnlockDelay,
+			(int)Arena->s_bResetPlayfieldBetweenRounds,
+			(int)Arena->s_bResetPlayersBetweenRounds,
+			(int)Arena->s_bDisplayEndRoundScreen);
+	}
+
+	if (gameClass.find("TgGame_Defense") != std::string::npos) {
+		ATgGame_Defense* Defense = (ATgGame_Defense*)Game;
+		Logger::Log("gametimer",
+			"[%s]   DefenseFields maxRound=%d roundDuration=%.2f waveSpawners=%d\n",
+			phase,
+			Defense->s_nMaxRoundNumber,
+			Defense->s_fRoundDuration,
+			Defense->s_WaveSpawnerList.Count);
+	}
+}
 
 // First-sight classification: walks the strcmp ladder once per unique
 // UFunction. Returns the matching DispatchTag (or Unknown for the catch-all
 // path). Order kept matching the historical hand-written branches so the
 // behavior of any function name not listed here is unchanged.
 static DispatchTag ClassifyFunction(UFunction* fn) {
-	const char* name = fn->GetFullName();
-	if (!name) return DispatchTag::Unknown;
+	const char* rawName = fn->GetFullName();
+	if (!rawName) return DispatchTag::Unknown;
+	const std::string nameString = rawName;
+	const char* name = nameString.c_str();
 
 	// Hottest set first: per-tick / per-move noise that we want to pass straight through.
 	if (   strcmp(name, "Function Engine.Actor.Tick") == 0
@@ -247,6 +381,7 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	if (strcmp(name, "Function TgGame.TgDeploy_BeaconEntrance.HasExit") == 0)        return DispatchTag::BeaconEntranceHasExit;
 	if (strcmp(name, "Function Engine.PlayerController.Destroyed") == 0)             return DispatchTag::PlayerControllerDestroyed;
 	if (strcmp(name, "Function TgGame.TgPlayerController.ServerPickupPutdownDeployable") == 0) return DispatchTag::ServerPickupPutdownDeployableTag;
+	// if (IsGameTimerDiagnosticFunction(name)) return DispatchTag::GameTimerDiagnostic;
 
 	return DispatchTag::Unknown;
 }
@@ -327,6 +462,12 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 	case DispatchTag::EarlyOut:
 		CallOriginal(Object, edx, Function, Params, Result);
 		break;
+
+	// case DispatchTag::GameTimerDiagnostic:
+	// 	LogGameTimerSnapshot("before", Object, Function);
+	// 	CallOriginal(Object, edx, Function, Params, Result);
+	// 	LogGameTimerSnapshot("after", Object, Function);
+	// 	break;
 
 	case DispatchTag::GetPlayerViewPoint: {
 		// Sync c_nCameraYawOffset / c_nCameraPitchOffset from Controller.Rotation
@@ -563,7 +704,7 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// Read bot_id off `m_pAmBot.Dummy + 0x1C` — set by SpawnBotById before
 		// WaitForInventoryThenDoPostPawnSetup schedules this event.
 		bool flyingBotId = false;
-		void* BotConfig = Pawn->m_pAmBot.Dummy;
+		void* BotConfig = (void*)Pawn->m_pAmBot.Dummy;
 		if (BotConfig) {
 			const int botId = *(int*)((char*)BotConfig + 0x1C);
 			flyingBotId = (botId == 1107 || botId == 1657);
@@ -1138,5 +1279,3 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		break;
 	}
 }
-
-

@@ -10,6 +10,28 @@ void __fastcall TgGame__SendMissionTimerEvent::Call(ATgGame *Game, void *edx, in
 	LogCallBegin();
 
 	Logger::Log(GetLogChannel(), "nEventId: %d\n", nEventId);
+	if (Logger::IsChannelEnabled("gametimer")) {
+		const std::string gameName = ((UObject*)Game)->GetFullName();
+		const std::string gameClass = Game->Class ? Game->Class->GetFullName() : "<null-class>";
+		const std::string stateName = Game->GetStateName().GetName();
+		ATgRepInfo_Game* GRI = Game->GameReplicationInfo ? (ATgRepInfo_Game*)Game->GameReplicationInfo : nullptr;
+		Logger::Log("gametimer",
+			"SendMissionTimerEvent(%d): game=%s class=%s state=%s timerState=%d mission=%.2f gameMission=%.2f "
+			"GRI{round=%d/%d mtState=%d rem=%.2f remaining=%d limit=%d}\n",
+			nEventId,
+			gameName.c_str(),
+			gameClass.c_str(),
+			stateName.c_str(),
+			(int)Game->m_eTimerState,
+			Game->m_fMissionTime,
+			Game->m_fGameMissionTime,
+			GRI ? GRI->r_nRoundNumber : -1,
+			GRI ? GRI->r_nMaxRoundNumber : -1,
+			GRI ? (int)GRI->r_nMissionTimerState : -1,
+			GRI ? GRI->r_fMissionRemainingTime : -1.0f,
+			GRI ? GRI->RemainingTime : -1,
+			GRI ? GRI->TimeLimit : -1);
+	}
 
 	TArray<USequenceObject*> Events;
 	TArray<int> Indices;
@@ -48,6 +70,7 @@ void __fastcall TgGame__SendMissionTimerEvent::Call(ATgGame *Game, void *edx, in
 		Event->CheckActivate(Game, Game, 0, 0, Indices);
 	}
 
+	Logger::Log("gametimer", "SendMissionTimerEvent(%d): activated %d MissionTimer sequence events\n", nEventId, Events.Num());
+
 	LogCallEnd();
 }
-

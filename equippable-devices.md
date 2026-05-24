@@ -203,6 +203,52 @@
 | 7482 | zz Jetpack Trail Troll Test | Advanced jetpack\|Enhanced acceleration and airspeed\|Allows shooting while flying. |
 | 7507 | zzJump Boots | Increases jump height\|Allows in-air Double Jump |
 
+## Deployer Devices (cross-slot)
+
+Devices whose `device_mode.deployable_id` is non-zero — firing them spawns an
+`ATgDeployable`. Useful for `ClassLoadouts.cpp`: these can sit in any off-hand
+slot regardless of their `slot_used_value_id` category. Precedent: Techro Buff
+Station (6143, `slot_used=672`) is equipped as `SVID_OFFHAND3` in the Robotics
+loadout.
+
+**Off-Hand (slot_used = 390)** — already canonically off-hand.
+
+| device_id | deployable_id | deployable name   | HP   |
+|----------:|--------------:|-------------------|-----:|
+| 2051      | 76            | Force Field       | 2370 |
+| 2066      | 61            | Medical Station   | 1500 |
+| 2326      | 85            | Sensor            | 1500 |
+| 4076      | 128           | Power Station     | 1500 |
+| 6538      | 212           | Jockey's Field    | 3120 |
+
+**BOT_Other (slot_used = 672)** — categorized as bot but structurally
+equip-compatible; Techro Buff Station proves the pattern works.
+
+| device_id | deployable_id | deployable name             | HP    |
+|----------:|--------------:|-----------------------------|------:|
+| 4892      | 153           | Medical Hub I               | 6000  |
+| 4893      | 154           | Medical Hub II              | 7000  |
+| 4894      | 155           | Medical Hub III             | 8000  |
+| 4896      | 157           | Power Hub I                 | 6000  |
+| 4897      | 158           | Power Hub II                | 7000  |
+| 4898      | 159           | Power Hub III               | 8000  |
+| 4900      | 161           | EMP Field Generator I       | 5000  |
+| 4949      | 189           | Sensor Suite I              | 9000  |
+| 6143      | 209           | Techro Buff Station         | 3000  |
+| 6263      | 210           | Dweller EMP Field Generator | 1500  |
+
+**Other slots** — included for completeness, less obvious as player off-hand.
+
+| device_id | slot_used | deployable_id | deployable name           | HP   |
+|----------:|----------:|--------------:|---------------------------|-----:|
+| 2886      | 476       | 22            | Force Field - Dome Morale | 2500 |
+| 6287      | 1482      | 40            | Mini Force Field          | 1500 |
+| 6773      | 1583      | 215           | HackNSlash Deployable     | 1000 |
+
+The `* AVA BOMB` / `* FACILITY FORCEWALL` / `zAvA *` / `* Deployable Sensor`
+entries are dev/test variants and omitted here — see the raw BOT_Other section
+below if you need them.
+
 ## BOT_Other (179)
 
 | ID | Name | Description |

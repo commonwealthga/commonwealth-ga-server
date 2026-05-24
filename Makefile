@@ -112,6 +112,9 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_PointRotation/UnlockObjective/TgGame_PointRotation__UnlockObjective.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/CheckRandomObjectives/TgGame__CheckRandomObjectives.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/UnlockObjective/TgGame__UnlockObjective.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame/ActivateAlarm/TgGame__ActivateAlarm.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Scanner/DidSensorBeamDetectEnemy/TgPawn_Scanner__DidSensorBeamDetectEnemy.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Scanner/DoAlarm/TgPawn_Scanner__DoAlarm.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/LockoutObjectives/TgGame__LockoutObjectives.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/IsFinalObjective/TgGame__IsFinalObjective.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SetObjectivesInactive/TgGame__SetObjectivesInactive.cpp \
@@ -173,6 +176,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/ApplyPlayerModsToDeployable.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveAllEffectGroups/TgEffectManager__RemoveAllEffectGroups.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective_Bot/LoadObjectConfig/TgMissionObjective_Bot__LoadObjectConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective_Bot/SpawnObjectiveBot/TgMissionObjective_Bot__SpawnObjectiveBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective_Proximity/ScoreObjectiveProgress/TgMissionObjective_Proximity__ScoreObjectiveProgress.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.cpp \

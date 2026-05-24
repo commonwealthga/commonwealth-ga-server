@@ -15,12 +15,12 @@
 //     MatchmakingService fills it from the queue's weighted map_pool.
 class DataDrivenMatchRule : public MatchRule {
 public:
-    explicit DataDrivenMatchRule(const QueueConfig* cfg) : cfg_(cfg) {}
+    explicit DataDrivenMatchRule(const QueueConfig* cfg) : cfg_(cfg ? *cfg : QueueConfig{}) {}
 
     std::optional<MatchResult> Evaluate(
         const std::vector<QueuedPlayer>& players,
         const std::vector<RunningInstance>& instances) override;
 
 private:
-    const QueueConfig* cfg_;  // borrowed; owned by MatchmakingService::Queue
+    QueueConfig cfg_;
 };

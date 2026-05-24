@@ -11,7 +11,7 @@ void __fastcall TgGame_Defense__FinalizeRoundScore::Call(ATgGame_Defense* Game, 
 		Winner->bNetDirty = 1;
 		Winner->bForceNetUpdate = 1;
 
-		Logger::Log("defense", "FinalizeRoundScore: winner taskForce=%d, points=%d\n",
+		Logger::Log("gametimer", "FinalizeRoundScore: winner taskForce=%d, points=%d\n",
 			Winner->r_nTaskForce, Winner->r_nCurrentPointCount);
 	}
 

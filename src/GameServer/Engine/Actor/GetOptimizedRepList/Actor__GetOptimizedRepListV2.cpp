@@ -3,6 +3,7 @@
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include <cstdint>
+#include <unordered_map>
 
 bool Actor__GetOptimizedRepList::bRepListCached = false;
 
@@ -910,6 +911,75 @@ UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nAutoKickTimeout = nullptr;
 UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nPointsToWin = nullptr;
 UProperty* IntProperty_TgGame_TgRepInfo_Game_r_nVictoryBonusLives = nullptr;
 UProperty* IntProperty_TgGame_TgRepInfo_GameOpenWorld_r_GameTickets = nullptr;
+
+struct GameTimerRepLogState {
+	int round = -999999;
+	int maxRound = -999999;
+	int mtState = -999999;
+	int mtChange = -999999;
+	float rem = -999999.0f;
+};
+
+static std::unordered_map<ATgRepInfo_Game*, GameTimerRepLogState> s_GameTimerRepLogState;
+
+static void LogGameTimerRepDecision(ATgRepInfo_Game* Actor, ATgRepInfo_Game* Recent, int* param_4, int param_5) {
+	if (!Logger::IsChannelEnabled("gametimer") || !Actor || !Recent) return;
+
+	const bool initialOpen = (*(int *)(param_5 + 0x4c) == -1);
+	const bool roundChanged = NEQ(Actor->r_nRoundNumber, Recent->r_nRoundNumber, (void*)param_4, (void*)param_5);
+	const bool maxRoundChanged = NEQ(Actor->r_nMaxRoundNumber, Recent->r_nMaxRoundNumber, (void*)param_4, (void*)param_5);
+	const bool mtStateChanged = NEQ(Actor->r_nMissionTimerState, Recent->r_nMissionTimerState, (void*)param_4, (void*)param_5);
+	const bool mtChangeChanged = NEQ(Actor->r_nMissionTimerStateChange, Recent->r_nMissionTimerStateChange, (void*)param_4, (void*)param_5);
+	const bool remChanged = NEQ(Actor->r_fMissionRemainingTime, Recent->r_fMissionRemainingTime, (void*)param_4, (void*)param_5);
+
+	GameTimerRepLogState& last = s_GameTimerRepLogState[Actor];
+	const bool valueChangedSinceLastLog =
+		last.round != Actor->r_nRoundNumber ||
+		last.maxRound != Actor->r_nMaxRoundNumber ||
+		last.mtState != (int)Actor->r_nMissionTimerState ||
+		last.mtChange != Actor->r_nMissionTimerStateChange ||
+		last.rem != Actor->r_fMissionRemainingTime;
+
+	if (!initialOpen && !roundChanged && !maxRoundChanged && !mtStateChanged && !mtChangeChanged && !remChanged && !valueChangedSinceLastLog) {
+		return;
+	}
+
+	last.round = Actor->r_nRoundNumber;
+	last.maxRound = Actor->r_nMaxRoundNumber;
+	last.mtState = (int)Actor->r_nMissionTimerState;
+	last.mtChange = Actor->r_nMissionTimerStateChange;
+	last.rem = Actor->r_fMissionRemainingTime;
+
+	Logger::Log("gametimer",
+		"[RepList:TgRepInfo_Game] actor=%p recent=%p open=%d dirty=%d force=%d netInitial=%d "
+		"current{round=%d/%d mtState=%d mtChange=%d rem=%.2f serverTime=%.2f} "
+		"recent{round=%d/%d mtState=%d mtChange=%d rem=%.2f serverTime=%.2f} "
+		"emit{round=%d maxRound=%d mtState=%d mtChange=%d rem=%d}\n",
+		Actor,
+		Recent,
+		(int)initialOpen,
+		(int)Actor->bNetDirty,
+		(int)Actor->bForceNetUpdate,
+		(int)Actor->bNetInitial,
+		Actor->r_nRoundNumber,
+		Actor->r_nMaxRoundNumber,
+		(int)Actor->r_nMissionTimerState,
+		Actor->r_nMissionTimerStateChange,
+		Actor->r_fMissionRemainingTime,
+		Actor->r_fServerTimeLastUpdate,
+		Recent->r_nRoundNumber,
+		Recent->r_nMaxRoundNumber,
+		(int)Recent->r_nMissionTimerState,
+		Recent->r_nMissionTimerStateChange,
+		Recent->r_fMissionRemainingTime,
+		Recent->r_fServerTimeLastUpdate,
+		(int)roundChanged,
+		(int)maxRoundChanged,
+		(int)mtStateChanged,
+		(int)mtChangeChanged,
+		(int)remChanged);
+}
+
 UProperty* StructProperty_TgGame_TgRepInfo_Player_r_ApproxLocation = nullptr;
 UProperty* StructProperty_TgGame_TgRepInfo_Player_r_CustomCharacterAssembly = nullptr;
 UProperty* StructProperty_TgGame_TgRepInfo_Player_r_EquipDeviceInfo = nullptr;
@@ -3358,6 +3428,7 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 	}
 	if (bits.hi & (1ull << 18)) {  // BIDX_TgGame_TgRepInfo_Game
 		if (isAuthority) {
+			LogGameTimerRepDecision((ATgRepInfo_Game*)actor, (ATgRepInfo_Game*)recent, param_4, param_5);
 			DO_REP(ATgRepInfo_Game, r_MiniMapInfo, StructProperty_TgGame_TgRepInfo_Game_r_MiniMapInfo);
 			DO_REP(ATgRepInfo_Game, r_bActiveCombat, BoolProperty_TgGame_TgRepInfo_Game_r_bActiveCombat);
 			DO_REP(ATgRepInfo_Game, r_bAllowBuildMorale, BoolProperty_TgGame_TgRepInfo_Game_r_bAllowBuildMorale);
@@ -3482,4 +3553,3 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 
 	return param_3;
 }
-

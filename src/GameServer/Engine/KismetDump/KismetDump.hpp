@@ -1,5 +1,6 @@
 #pragma once
 #include "src/pch.hpp"
+#include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Walk all USequenceOp instances in GObjObjects and log them to the "kismet" channel.
@@ -9,10 +10,10 @@ inline void DumpKismetSequence() {
 	TArray<UObject*>* objs = UObject::GObjObjects();
 	if (!objs) return;
 
-	UClass* seqOpClass     = USequenceOp::StaticClass();
-	UClass* seqClass       = USequence::StaticClass();
-	UClass* remEvtActClass = USeqAct_ActivateRemoteEvent::StaticClass();
-	UClass* remEvtEvClass  = USeqEvent_RemoteEvent::StaticClass();
+	UClass* seqOpClass     = ClassPreloader::GetClass("Class Engine.SequenceOp");
+	UClass* seqClass       = ClassPreloader::GetClass("Class Engine.Sequence");
+	UClass* remEvtActClass = ClassPreloader::GetClass("Class Engine.SeqAct_ActivateRemoteEvent");
+	UClass* remEvtEvClass  = ClassPreloader::GetClass("Class Engine.SeqEvent_RemoteEvent");
 	if (!seqOpClass) return;
 
 	Logger::Log("kismet", "=== KISMET SEQUENCE DUMP ===\n");
@@ -23,8 +24,8 @@ inline void DumpKismetSequence() {
 		if (obj->IsA(seqClass)) continue; // skip containers
 
 		USequenceOp* op = (USequenceOp*)obj;
-		const char* className = obj->Class ? obj->Class->GetFullName() : "?";
-		const char* opName    = obj->GetFullName();
+		std::string className = obj->Class ? obj->Class->GetFullName() : "?";
+		std::string opName    = obj->GetFullName();
 
 		// For remote-event ops, include the event name
 		char extraInfo[128] = "";
@@ -55,13 +56,15 @@ inline void DumpKismetSequence() {
 			for (int k = 0; k < outLink.Links.Count && pos < (int)sizeof(connections) - 2; k++) {
 				USequenceOp* target = outLink.Links.Data[k].LinkedOp;
 				if (!target) continue;
+
+				std::string targetName = target->GetFullName();
 				int written = snprintf(connections + pos, sizeof(connections) - pos,
-					" [%s]->%s", descBuf, target->GetFullName());
+					" [%s]->%s", descBuf, targetName.c_str());
 				if (written > 0) pos += written;
 			}
 		}
 
-		Logger::Log("kismet", "  %s%s  |class| %s%s\n", opName, extraInfo, className, connections);
+		Logger::Log("kismet", "  %s%s  |class| %s%s\n\n", opName.c_str(), extraInfo, className.c_str(), connections);
 	}
 
 	Logger::Log("kismet", "=== END KISMET DUMP ===\n");

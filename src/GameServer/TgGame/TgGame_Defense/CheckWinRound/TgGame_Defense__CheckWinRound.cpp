@@ -2,10 +2,9 @@
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
-// Defense CheckWinRound: checks if all objectives have been captured by attackers
-// (status 8 = attacker captured). In Defense/Raid mode, the round ends when all
-// objectives are taken. Defenders "win" a round if the round timer expires with
-// objectives still standing (handled by the Arena state machine timer, not here).
+// Defense CheckWinRound:
+// - attackers win a round by capturing all active objectives
+// - defenders win a timed round when its RoundTimer has expired
 //
 // r_eStatus values: 7 = defender captured/held, 8 = attacker captured/destroyed
 bool __fastcall TgGame_Defense__CheckWinRound::Call(ATgGame_Defense* Game, void* edx, ATgRepInfo_TaskForce** Winner) {
@@ -38,7 +37,19 @@ bool __fastcall TgGame_Defense__CheckWinRound::Call(ATgGame_Defense* Game, void*
 	if (bHasActiveObjective && bAllCapturedByAttacker) {
 		// Attackers captured everything — attackers win the round
 		*Winner = GTeamsData.Attackers;
-		Logger::Log("defense", "CheckWinRound: all objectives captured, attacker wins\n");
+		Logger::Log("gametimer", "CheckWinRound: all objectives captured, attacker wins\n");
+		LogCallEnd();
+		return true;
+	}
+
+	const float roundDuration = (Game->s_nRoundNumber >= Game->s_nMaxRoundNumber)
+		? 0.0f
+		: Game->s_fRoundDuration;
+	if (roundDuration > 0.0f && !Game->IsTimerActive(FName("RoundTimer"), nullptr)) {
+		*Winner = GTeamsData.Defenders;
+		Logger::Log("gametimer",
+			"CheckWinRound: timed round expired, defenders win round=%d duration=%.2f\n",
+			Game->s_nRoundNumber, roundDuration);
 		LogCallEnd();
 		return true;
 	}

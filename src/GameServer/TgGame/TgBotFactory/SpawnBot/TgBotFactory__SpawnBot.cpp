@@ -5,6 +5,7 @@
 #include "src/Utils/Logger/Logger.hpp"
 
 void __fastcall TgBotFactory__SpawnBot::Call(ATgBotFactory* BotFactory, void* edx) {
+	Logger::Log("tgbotfactory", "SpawnBot %d\n", BotFactory->m_nMapObjectId);
 	ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
 
 	ATgPawn* Bot = (ATgPawn*)Game->SpawnBotById(

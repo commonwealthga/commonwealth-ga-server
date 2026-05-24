@@ -1,396 +1,269 @@
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
+#include "src/GameServer/TgGame/TgActorFactory/LoadObjectConfig/TgActorFactory__LoadObjectConfig.hpp"
+#include "src/GameServer/Engine/MapObjectConfig/MapObjectConfig.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
-std::map<int, BotFactoryConfig> TgBotFactory__LoadObjectConfig::m_botFactoryConfigs;
-std::map<int, ATgBotFactory*> TgBotFactory__LoadObjectConfig::m_loadedBotFactories;
-std::map<int, int> TgBotFactory__LoadObjectConfig::m_missionObjectiveBotToBotFactoryId;
-std::map<int, int> TgBotFactory__LoadObjectConfig::m_missionObjectiveBotToBotId;
-std::map<int, int> TgBotFactory__LoadObjectConfig::m_missionObjectiveBotToSpawnTableId;
-std::map<int, int> TgBotFactory__LoadObjectConfig::m_missionObjectiveBotToTaskForce;
-std::map<int, std::vector<BotDeviceEntry>> TgBotFactory__LoadObjectConfig::m_botDevices;
-std::map<int, int> TgBotFactory__LoadObjectConfig::m_botDefaultSlots;
-bool TgBotFactory__LoadObjectConfig::bConfigLoaded = false;
+#include <cstdlib>
+#include <ctime>
+#include <map>
+#include <vector>
 
-void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory *BotFactory, void *edx) {
-	Logger::Log("tgbotfactory", "[%s] %s LoadObjectConfig mapObjectId=%d\n", Logger::GetTime(), BotFactory->GetName(), BotFactory->m_nMapObjectId);
-	// return;
+namespace {
 
-	m_loadedBotFactories[BotFactory->m_nMapObjectId] = BotFactory;
+// Preloaded cache, populated once per process (or whenever difficulty
+// changes). [bot_spawn_table_id][spawn_group] -> rows at that difficulty.
+// Anonymous namespace = private to this TU; callers go through
+// CreateRandomSpawnQueue / PickBotFromSpawnTableGroup, not the cache directly.
+std::map<int, std::map<int, std::vector<SpawnTableEntry>>> g_spawnTables;
+int g_loadedDifficultyValueId = -1;
 
-	if (!bConfigLoaded) {
-		sqlite3* db = Database::GetConnection();
+void EnsureSpawnTablesLoaded() {
+	const int difficulty = Config::GetDifficultyValueId();
+	if (g_loadedDifficultyValueId == difficulty && !g_spawnTables.empty()) return;
+	g_spawnTables.clear();
+	g_loadedDifficultyValueId = difficulty;
 
-		char* err = nullptr;
-		int result = 0;
-
-		std::vector<std::map<std::string, std::string>> factories_data;
-		result = sqlite3_exec(db, "SELECT \
-				f.map_object_id AS map_object_id, \
-				COALESCE(m.bot_spawn_table_id, f.bot_spawn_table_id) AS bot_spawn_table_id, \
-				f.task_force_number AS task_force_number, \
-				COALESCE(ob.map_object_id, 0) AS objective_bot_map_object_id \
-			FROM obj_bot_factories f \
-			LEFT JOIN obj_mission_objective_bots ob ON ob.bot_factory_id = f.map_object_id \
-			LEFT JOIN obj_bot_factories m ON m.map_object_id = f.map_object_id AND m.mutator_number = 1 \
-			WHERE f.mutator_number = 0", Database::Callback, &factories_data, &err);
-				
-		if (result != SQLITE_OK) {
-			Logger::Log("db", "Failed to select obj_bot_factories: %s\n", err);
-			return;
-		}
-
-		for (auto row : factories_data) {
-			int mapObjectId = std::stoi(row["map_object_id"]);
-			int botSpawnTableId = std::stoi(row["bot_spawn_table_id"]);
-			int taskForceNumber = std::stoi(row["task_force_number"]);
-			int objectiveBotMapObjectId = std::stoi(row["objective_bot_map_object_id"]);
-
-			m_botFactoryConfigs[mapObjectId].MapObjectId = mapObjectId;
-			m_botFactoryConfigs[mapObjectId].BotSpawnTableId = botSpawnTableId;
-			m_botFactoryConfigs[mapObjectId].TaskForceNumber = taskForceNumber;
-			m_botFactoryConfigs[mapObjectId].ObjectiveBotMapObjectId = objectiveBotMapObjectId;
-
-			if (objectiveBotMapObjectId > 0) {
-				m_missionObjectiveBotToBotFactoryId[objectiveBotMapObjectId] = mapObjectId;
-			}
-		}
-
-		// Fallback resolution for objectives that don't wire through a factory:
-		// pull bot_id and spawn_table_id off obj_mission_objective_bots so
-		// SpawnObjectiveBot can directly spawn (bot_id) or weighted-pick from
-		// a spawn table (spawn_table_id). Columns added in migration v30.
-		{
-			std::vector<std::map<std::string, std::string>> obj_rows;
-			result = sqlite3_exec(db,
-				"SELECT map_object_id, "
-				"       COALESCE(bot_factory_id, 0)    AS bot_factory_id, "
-				"       COALESCE(bot_id, 0)            AS bot_id, "
-				"       COALESCE(spawn_table_id, 0)    AS spawn_table_id, "
-				"       COALESCE(task_force_number, 0) AS task_force_number "
-				"FROM obj_mission_objective_bots",
-				Database::Callback, &obj_rows, &err);
-			if (result != SQLITE_OK) {
-				Logger::Log("db", "Failed to select obj_mission_objective_bots fallback fields: %s\n", err);
-				sqlite3_free(err);
-				err = nullptr;
-			} else {
-				for (auto& row : obj_rows) {
-					int objId = std::stoi(row["map_object_id"]);
-					int facId = std::stoi(row["bot_factory_id"]);
-					int botId = std::stoi(row["bot_id"]);
-					int tblId = std::stoi(row["spawn_table_id"]);
-					int tf    = std::stoi(row["task_force_number"]);
-					if (facId > 0) m_missionObjectiveBotToBotFactoryId[objId] = facId;
-					if (botId > 0) m_missionObjectiveBotToBotId[objId]        = botId;
-					if (tblId > 0) m_missionObjectiveBotToSpawnTableId[objId] = tblId;
-					if (tf    > 0) m_missionObjectiveBotToTaskForce[objId]    = tf;
-				}
-			}
-		}
-
-		int nDifficultyValueId = Config::GetDifficultyValueId();
-		std::vector<std::map<std::string, std::string>> spawn_tables_data;
-
-		sqlite3_stmt* stmt = nullptr;
-		int rc = sqlite3_prepare_v2(db,
-			"SELECT \
-				bot_spawn_table_id, \
-				spawn_group, \
-				enemy_bot_id, \
-				bot_count, \
-				spawn_chance, \
-				reference_name \
-			FROM asm_data_set_bot_spawn_tables \
-			LEFT JOIN asm_data_set_bots ON asm_data_set_bot_spawn_tables.enemy_bot_id = asm_data_set_bots.bot_id \
-			WHERE difficulty_value_id = ?" ,
-			-1, &stmt, nullptr);
-		if (rc != SQLITE_OK || !stmt) {
-			Logger::Log("db", "[TgBotFactory] GetSpawnTableEntry prepare failed: %s\n", sqlite3_errmsg(db));
-			return;
-		}
-		sqlite3_bind_int(stmt, 1, nDifficultyValueId);
-
-		std::map<int, std::map<int, std::vector<SpawnTableEntry>>> spawnTables;
-		while (sqlite3_step(stmt) == SQLITE_ROW) {
-			int botSpawnTableId = std::stoi(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)));
-			int spawnGroup = std::stoi(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)));
-			int enemyBotId = std::stoi(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2)));
-			int botCount = std::stoi(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3)));
-			float spawnChance = std::stof(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4)));
-			std::string referenceName = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
-
-			spawnTables[botSpawnTableId][spawnGroup].push_back(SpawnTableEntry{
-				botSpawnTableId,
-				spawnGroup,
-				enemyBotId,
-				botCount,
-				spawnChance,
-				referenceName
-			});
-		}
-		sqlite3_finalize(stmt);
-
-
-		// result = sqlite3_exec(db, " \
-		// 	SELECT \
-		// 		bot_spawn_table_id, \
-		// 		spawn_group, \
-		// 		enemy_bot_id, \
-		// 		bot_count, \
-		// 		spawn_chance, \
-		// 		reference_name \
-		// 	FROM asm_data_set_bot_spawn_tables \
-		// 	LEFT JOIN asm_data_set_bots ON asm_data_set_bot_spawn_tables.enemy_bot_id = asm_data_set_bots.bot_id \
-		// 	WHERE difficulty_value_id = 1471; \
-		// 	", Database::Callback, &spawn_tables_data, &err);
-		// if (result != SQLITE_OK) {
-		// 	Logger::Log("db", "Failed to select asm_data_set_bot_spawn_tables: %s\n", err);
-		// 	return;
-		// }
-		//
-		// std::map<int, std::map<int, std::vector<SpawnTableEntry>>> spawnTables;
-		//
-		// for (auto row : spawn_tables_data) {
-		// 	int botSpawnTableId = std::stoi(row["bot_spawn_table_id"]);
-		// 	int spawnGroup = std::stoi(row["spawn_group"]);
-		// 	int enemyBotId = std::stoi(row["enemy_bot_id"]);
-		// 	int botCount = std::stoi(row["bot_count"]);
-		// 	float spawnChance = std::stof(row["spawn_chance"]);
-		// 	std::string referenceName = row["reference_name"];
-		//
-		// 	// SpawnGroups[spawnGroup].push_back(SpawnTableEntry{
-		// 	// 	botSpawnTableId,
-		// 	// 	spawnGroup,
-		// 	// 	enemyBotId,
-		// 	// 	botCount,
-		// 	// 	spawnChance,
-		// 	// 	referenceName
-		// 	// });
-		//
-		// 	spawnTables[botSpawnTableId][spawnGroup].push_back(SpawnTableEntry{
-		// 		botSpawnTableId,
-		// 		spawnGroup,
-		// 		enemyBotId,
-		// 		botCount,
-		// 		spawnChance,
-		// 		referenceName
-		// 	});
-		// }
-
-		for (auto& botFactoryConfig : m_botFactoryConfigs) {
-			int mapObjectId = botFactoryConfig.first;
-
-			for (auto& spawnTable : spawnTables) {
-				if (spawnTable.first != botFactoryConfig.second.BotSpawnTableId) {
-					continue;
-				}
-				for (auto& spawnGroup : spawnTable.second) {
-					std::vector<SpawnTableEntry> spawnTableWeighted;
-					for (auto& spawnEntry : spawnGroup.second) {
-						for (int i = 0; i < spawnEntry.SpawnChance * 100; i++) {
-							Logger::Log("tgbotfactory", " Adding spawn entry %d to spawn table %d, group %d\n", spawnEntry.EnemyBotId, spawnEntry.SpawnTableId, spawnEntry.SpawnGroup);
-							spawnTableWeighted.push_back(spawnEntry);
-						}
-					}
-
-					srand(time(NULL));
-
-					if (spawnTableWeighted.size() == 0) {
-						Logger::Log("tgbotfactory", " Weighted spawn table is empty\n");
-						continue;
-					}
-
-					SpawnTableEntry randomSpawnEntry = spawnTableWeighted[rand() % spawnTableWeighted.size()];
-
-					Logger::Log("tgbotfactory", " Selected spawn entry %d to spawn table %d\n", randomSpawnEntry.EnemyBotId, randomSpawnEntry.SpawnTableId);
-
-					m_botFactoryConfigs[mapObjectId].SpawnTables[spawnGroup.first].push_back(SpawnTableEntry{
-						randomSpawnEntry.SpawnTableId,
-						randomSpawnEntry.SpawnGroup,
-						randomSpawnEntry.EnemyBotId,
-						randomSpawnEntry.BotCount,
-						randomSpawnEntry.SpawnChance,
-						randomSpawnEntry.ReferenceName
-					});
-				}
-			}
-		}
-
-		// Load bot devices (distinct to avoid duplicates in the table)
-		std::vector<std::map<std::string, std::string>> bot_devices_data;
-		result = sqlite3_exec(db,
-			"SELECT DISTINCT bd.bot_id, bd.device_id, bd.slot_used_value_id, b.default_slot_value_id \
-			 FROM asm_data_set_bots_data_set_bot_devices bd \
-			 LEFT JOIN asm_data_set_bots b ON b.bot_id = bd.bot_id;",
-			Database::Callback, &bot_devices_data, &err);
-		if (result != SQLITE_OK) {
-			Logger::Log("db", "Failed to select bot devices: %s\n", err);
-		} else {
-			for (auto& row : bot_devices_data) {
-				int botId = std::stoi(row["bot_id"]);
-				int deviceId = std::stoi(row["device_id"]);
-				int slotUsedValueId = std::stoi(row["slot_used_value_id"]);
-				int defaultSlotValueId = std::stoi(row["default_slot_value_id"]);
-				m_botDevices[botId].push_back({ deviceId, slotUsedValueId });
-				m_botDefaultSlots[botId] = defaultSlotValueId;
-			}
-		}
-
-		bConfigLoaded = true;
-	}
-
-	if (!m_botFactoryConfigs[BotFactory->m_nMapObjectId].BotSpawnTableId) {
-		Logger::Log("tgbotfactory", "No spawn table found for map object id %d\n", BotFactory->m_nMapObjectId);
+	sqlite3* db = Database::GetConnection();
+	if (!db) {
+		Logger::Log("tgbotfactory", "  EnsureSpawnTablesLoaded: no DB connection\n");
 		return;
 	}
 
-	Logger::Log("tgbotfactory", "Loaded spawn table %d for map object id %d\n", m_botFactoryConfigs[BotFactory->m_nMapObjectId].BotSpawnTableId, BotFactory->m_nMapObjectId);
-
-	// only auto-spawn non-objective bots
-	if (m_botFactoryConfigs[BotFactory->m_nMapObjectId].ObjectiveBotMapObjectId > 0) {
-		BotFactory->bAutoSpawn = 0;
-		BotFactory->nPriority = 1;
-	} else {
-		BotFactory->bAutoSpawn = 1;
-		BotFactory->nPriority = 0;
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT bot_spawn_table_id, spawn_group, enemy_bot_id, bot_count, "
+		"       spawn_chance, COALESCE(reference_name, '') "
+		"FROM asm_data_set_bot_spawn_tables "
+		"LEFT JOIN asm_data_set_bots "
+		"       ON asm_data_set_bot_spawn_tables.enemy_bot_id = asm_data_set_bots.bot_id "
+		"WHERE difficulty_value_id = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("tgbotfactory",
+			"  EnsureSpawnTablesLoaded prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
 	}
-	BotFactory->nSpawnTableId = m_botFactoryConfigs[BotFactory->m_nMapObjectId].BotSpawnTableId;
-	BotFactory->s_nTaskForce = m_botFactoryConfigs[BotFactory->m_nMapObjectId].TaskForceNumber;
+	sqlite3_bind_int(stmt, 1, difficulty);
 
-	for (auto& spawnGroup : m_botFactoryConfigs[BotFactory->m_nMapObjectId].SpawnTables) {
-		int spawnGroupNumber = spawnGroup.first;
-		for (auto& spawnEntry : spawnGroup.second) {
-			FSpawnQueueEntry entry;
-			entry.nGroupNumber = spawnGroupNumber;
-			entry.nSpawnTableId = BotFactory->nSpawnTableId;
-			entry.bRespawn = 0;
-			entry.fSpawnTime = 0.0f;
+	int rowCount = 0;
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		const int tableId = sqlite3_column_int(stmt, 0);
+		const int group   = sqlite3_column_int(stmt, 1);
+		const int botId   = sqlite3_column_int(stmt, 2);
+		const int count   = sqlite3_column_int(stmt, 3);
+		const float chance = static_cast<float>(sqlite3_column_double(stmt, 4));
+		const unsigned char* refNameRaw = sqlite3_column_text(stmt, 5);
+		const std::string refName(refNameRaw ? reinterpret_cast<const char*>(refNameRaw) : "");
 
-			BotFactory->m_SpawnQueue.Add(entry);
-		}
+		g_spawnTables[tableId][group].push_back(SpawnTableEntry{
+			tableId, group, botId, count, chance, refName
+		});
+		rowCount++;
 	}
+	sqlite3_finalize(stmt);
 
-//
-// 12712, 29, 2 standard
-// 12708, 29, 2 initial T1 
-// 12710, 58, 2 standard T3
-// 12711, 29, 2 standard
-// 12714, 34, 2 support
-// 12713, 34, 2 support T2
-// 12709, 28, 2 standard T2
-//
-// 12728 alarm bots
-// 12729 alarm bots
-// 12730 alarm bots
-// 12724 alarm bots
-// 12732 alarm bots
-// 12733 alarm bots
-// 12734 alarm bots
-// 12735 alarm bots
-// 12744 alarm bots bossroom
-// 12738 alarm bots bossroom
-// 12736 alarm bots
-// 12740 alarm bots bossroom
-// 12741 alarm bots bossroom
-// 12739 alarm bots bossroom
-// 12698 ?
-// 12737 alarm bots
-// 12731 alarm bots
-// 12727 alarm bots
-
-
-// TgBotFactory   13639 = wasps wave 1
-// TgBotFactory_1 13632 = Spider - wave1 - fac11
-// TgBotFactory_2 13629 = minion wave 1
-// TgBotFactory_3 13638 = ticks wave 1
-// TgBotFactory_4 13647 = guardian = bot_id 1461
-// TgBotFactory_5 13630 = ticks wave 1
-// TgBotFactory_6 13634 = ticks wave 1
-// TgBotFactory_7 13633 = minion wave 1
-// TgBotFactory_8 13637 = ticks wave 1
-// TgBotFactory_9 13635 ?
-// TgBotFactory_10 13636 = minion wave 1
-// TgBotFactory_11 13640 = ticks wave 1
-
-	// TARRAY_INIT(NetDriver, ClientConnections, UNetConnection*, 0x44, 128); // todo: move this elsewhere for performance
-
-
-
-	
-	// 147 = wasps
-	// 86 = spider
-	// 99 = minion
-	// 148 = ticks
-	// 87 = guardian
-	// 102 = unknown
-	// 149 = juggernaut
-	// 166 = dome guards
-	
-
-// TgBotFactory_51 13849 = DOME GUARDS
-// TgBotFactory_52 13846 = DOME GUARDS
-// TgBotFactory_53 13847 = DOME GUARDS
-// TgBotFactory_54 13848 = DOME GUARDS
-	
-	// 87 = guardian
-
-	
-// TgBotFactory   13639 = wasps wave 1
-// TgBotFactory_1 13632 = Spider - wave1 - fac11
-// TgBotFactory_2 13629 = minion wave 1
-// TgBotFactory_3 13638 = ticks wave 1
-// TgBotFactory_4 13647 = guardian = bot_id 1461
-// TgBotFactory_5 13630 = ticks wave 1
-// TgBotFactory_6 13634 = ticks wave 1
-// TgBotFactory_7 13633 = minion wave 1
-// TgBotFactory_8 13637 = ticks wave 1
-// TgBotFactory_9 13635 ?
-// TgBotFactory_10 13636 = minion wave 1
-// TgBotFactory_11 13640 = ticks wave 1
-// TgBotFactory_12 13642 = spider
-// TgBotFactory_13 13641 = minions
-// TgBotFactory_14 13810 ?
-// TgBotFactory_15 13645 = minions
-// TgBotFactory_16 13644 = spider
-// TgBotFactory_17 13646 = minions
-// TgBotFactory_18 13664 = minions
-// TgBotFactory_19 13648 = minions
-// TgBotFactory_20 13650 = ticks
-// TgBotFactory_21 13704 = spider
-// TgBotFactory_22 13652 = ticks
-// TgBotFactory_23 13651 = minion
-// TgBotFactory_24 13694 ?
-// TgBotFactory_25 13659 ?
-// TgBotFactory_26 13661 = spider
-// TgBotFactory_27 13655 = minion
-// TgBotFactory_28 13656 = minion
-// TgBotFactory_29 13657 = guardian
-// TgBotFactory_30 13660 = minion
-// TgBotFactory_31 13809 = dummy bot factory
-// TgBotFactory_32 13654 = minion
-// TgBotFactory_33 13692 = wasps
-// TgBotFactory_34 13708 = spider
-// TgBotFactory_35 13643 = ticks wave 1
-// TgBotFactory_36 13709 ?
-// TgBotFactory_37 13673 = juggernaut
-// TgBotFactory_38 13805 ?
-// TgBotFactory_39 13691 = guardian
-// TgBotFactory_40 13658 = guardian
-// TgBotFactory_41 13703 = juggernaut
-// TgBotFactory_42 13662 = juggernaut
-// TgBotFactory_43 13649 = minion
-// TgBotFactory_44 13665 ?
-// TgBotFactory_45 13802 ?
-// TgBotFactory_46 13804 ?
-// TgBotFactory_47 13803 ?
-// TgBotFactory_48 13700 ?
-// TgBotFactory_49 13806 ?
-// TgBotFactory_50 13653 = juggernaut
-// TgBotFactory_51 13849 = DOME GUARDS
-// TgBotFactory_52 13846 = DOME GUARDS
-// TgBotFactory_53 13847 = DOME GUARDS
-// TgBotFactory_54 13848 = DOME GUARDS
+	Logger::Log("tgbotfactory",
+		"  EnsureSpawnTablesLoaded: %d rows across %zu tables at difficulty=%d\n",
+		rowCount, g_spawnTables.size(), difficulty);
 }
 
+// Seed once per process; rand() is fine for spawn randomisation.
+void EnsureRandSeeded() {
+	static bool seeded = false;
+	if (!seeded) { srand(static_cast<unsigned>(time(nullptr))); seeded = true; }
+}
+
+// Apply MapObjectConfig overrides for every config-shaped field declared on
+// ATgBotFactory (NOT the parent class — those are handled by
+// TgActorFactory__LoadObjectConfig via CallOriginal).
+void ApplyFactoryFieldOverrides(ATgBotFactory* f) {
+	const int mid = f->m_nMapObjectId;
+
+	Logger::Log("tgbotfactory", "ApplyFactoryFieldOverrides mapObjectId=%d, nSpawnTableId=%d", mid, f->nSpawnTableId);
+
+	f->s_nTaskForce  = (unsigned char)MapObjectConfig::GetInt(
+		mid, "s_n_task_force", f->s_nTaskForce);
+	f->s_nTeamNumber = MapObjectConfig::GetInt(
+		mid, "s_n_team_number", f->s_nTeamNumber);
+
+	// Spawn-table id — headline knob. Everything else is meaningless without it.
+	f->nSpawnTableId = MapObjectConfig::GetInt(mid, "n_spawn_table_id", f->nSpawnTableId);
+
+	Logger::Log("tgbotfactory", "override n_spawn_table_id=%d\n", f->nSpawnTableId);
+
+	// Booleans (1-bit bitfields in SDK; cast through bool to avoid signed
+	// truncation surprises).
+	f->bAutoSpawn                = (bool)MapObjectConfig::GetInt(mid, "b_auto_spawn",                  f->bAutoSpawn);
+	f->bRespawn                  = (bool)MapObjectConfig::GetInt(mid, "b_respawn",                     f->bRespawn);
+	f->bBulkSpawn                = (bool)MapObjectConfig::GetInt(mid, "b_bulk_spawn",                  f->bBulkSpawn);
+	f->bAlwaysPatrol             = (bool)MapObjectConfig::GetInt(mid, "b_always_patrol",               f->bAlwaysPatrol);
+	f->bSpawnOnAlarm             = (bool)MapObjectConfig::GetInt(mid, "b_spawn_on_alarm",              f->bSpawnOnAlarm);
+	f->bPatrolLoop               = (bool)MapObjectConfig::GetInt(mid, "b_patrol_loop",                 f->bPatrolLoop);
+	f->m_bIgnoreCollisionOnSpawn = (bool)MapObjectConfig::GetInt(mid, "m_b_ignore_collision_on_spawn", f->m_bIgnoreCollisionOnSpawn);
+
+	// Counters
+	f->nBotCount      = MapObjectConfig::GetInt(mid, "n_bot_count",       f->nBotCount);
+	f->nActiveCount   = MapObjectConfig::GetInt(mid, "n_active_count",    f->nActiveCount);
+	f->nGlobalAlarmId = MapObjectConfig::GetInt(mid, "n_global_alarm_id", f->nGlobalAlarmId);
+
+	// Priority (game phase, NOT spawn priority — TgGame.s_nCurrentPriority is
+	// the global state; this is which phase this factory belongs to)
+	f->nPriority     = MapObjectConfig::GetInt(mid, "n_priority",      f->nPriority);
+	f->nPrevPriority = MapObjectConfig::GetInt(mid, "n_prev_priority", f->nPrevPriority);
+
+	// Timings / multipliers
+	f->fSpawnDelay   = MapObjectConfig::GetFloat(mid, "f_spawn_delay",   f->fSpawnDelay);
+	f->fRespawnDelay = MapObjectConfig::GetFloat(mid, "f_respawn_delay", f->fRespawnDelay);
+	f->fBalance      = MapObjectConfig::GetFloat(mid, "f_balance",      f->fBalance);
+
+	// Selection mode enums (eBotSelection: 0=BS_RANDOM, 1=BS_SEQUENTIAL)
+	f->LocationSelection = (unsigned char)MapObjectConfig::GetInt(mid, "location_selection", f->LocationSelection);
+	f->TypeSelection     = (unsigned char)MapObjectConfig::GetInt(mid, "type_selection",     f->TypeSelection);
+}
+
+// Populate the actor's m_SpawnGroups one entry per distinct group present in
+// the configured spawn table. Native consumers (the intact BotDied at
+// 0x10a8cbf0; SpawnNextBot regardless) read nCurrentCount + nMaxCount from
+// this.
+//
+// At this point we haven't yet weighted-picked which row each group will
+// use, so we can't know the target roster size — leave nMinCount/nMaxCount
+// at 0 (= no per-group cap). SpawnNextBot writes them when it processes
+// each group for the first time, setting both to the picked row's bot_count
+// so BotDied + respawn refill back up to that level.
+//
+// nActiveCount remains the factory-wide hard cap, independent of per-group.
+//
+// m_SpawnGroups order is the same as the queue order (both come from the
+// same std::map iteration), so m_SpawnGroups[i] corresponds to the group at
+// m_SpawnQueue[i] — SpawnNextBot relies on this alignment.
+void PopulateSpawnGroups(ATgBotFactory* f) {
+	f->m_SpawnGroups.Clear();
+
+	auto tableIt = g_spawnTables.find(f->nSpawnTableId);
+	if (tableIt == g_spawnTables.end()) {
+		Logger::Log("tgbotfactory",
+			"  PopulateSpawnGroups: no rows for spawn_table_id=%d at current difficulty\n",
+			f->nSpawnTableId);
+		return;
+	}
+
+	const int respawnSecs = static_cast<int>(f->fRespawnDelay > 0.0f ? f->fRespawnDelay : 0.0f);
+
+	for (const auto& groupKV : tableIt->second) {
+		(void)groupKV;
+		FSpawnGroupDetail gd;
+		gd.nMinCount       = 0;   // set by SpawnNextBot on first pick
+		gd.nMaxCount       = 0;   // 0 = no per-group cap until first pick
+		gd.nCurrentCount   = 0;
+		gd.nRespawnSeconds = respawnSecs;
+		f->m_SpawnGroups.Add(gd);
+	}
+}
+
+}  // namespace
+
+int TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(int nSpawnTableId, int nSpawnGroup, int* outBotCount) {
+	EnsureSpawnTablesLoaded();
+	EnsureRandSeeded();
+
+	if (outBotCount) *outBotCount = 1;
+
+	auto tableIt = g_spawnTables.find(nSpawnTableId);
+	if (tableIt == g_spawnTables.end()) return 0;
+	auto groupIt = tableIt->second.find(nSpawnGroup);
+	if (groupIt == tableIt->second.end() || groupIt->second.empty()) return 0;
+
+	// Weight each row by spawn_chance, but remember the row index so we can
+	// recover the picked row's bot_count after the random pick.
+	std::vector<int> weightedIdx;
+	for (size_t i = 0; i < groupIt->second.size(); ++i) {
+		const int slots = static_cast<int>(groupIt->second[i].SpawnChance * 100.0f);
+		for (int j = 0; j < slots; ++j) weightedIdx.push_back(static_cast<int>(i));
+	}
+	if (weightedIdx.empty()) {
+		Logger::Log("tgbotfactory",
+			"  PickBotFromSpawnTableGroup: table=%d group=%d has rows but all "
+			"spawn_chance rounded to zero\n", nSpawnTableId, nSpawnGroup);
+		return 0;
+	}
+	const SpawnTableEntry& picked = groupIt->second[weightedIdx[rand() % weightedIdx.size()]];
+	if (outBotCount) *outBotCount = picked.BotCount > 0 ? picked.BotCount : 1;
+	return picked.EnemyBotId;
+}
+
+std::vector<FSpawnQueueEntry> TgBotFactory__LoadObjectConfig::CreateRandomSpawnQueue(int nSpawnTableId) {
+	EnsureSpawnTablesLoaded();
+
+	std::vector<FSpawnQueueEntry> result;
+	auto tableIt = g_spawnTables.find(nSpawnTableId);
+	if (tableIt == g_spawnTables.end()) {
+		Logger::Log("tgbotfactory",
+			"  CreateRandomSpawnQueue: no rows for spawn_table_id=%d at current difficulty\n",
+			nSpawnTableId);
+		return result;
+	}
+
+	// One queue entry per distinct group. Bot id is NOT chosen here — picked
+	// fresh per spawn via PickBotFromSpawnTableGroup so consecutive spawns
+	// from the same group can roll different bots from the weighted pool.
+	for (const auto& groupKV : tableIt->second) {
+		const int spawnGroup = groupKV.first;
+		FSpawnQueueEntry entry;
+		entry.nGroupNumber  = spawnGroup;
+		entry.fSpawnTime    = 0.0f;
+		entry.bRespawn      = 0;
+		entry.nSpawnTableId = nSpawnTableId;
+		result.push_back(entry);
+	}
+
+	Logger::Log("tgbotfactory",
+		"  CreateRandomSpawnQueue: built %zu entries for spawn_table_id=%d\n",
+		result.size(), nSpawnTableId);
+	return result;
+}
+
+void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory* BotFactory, void* edx) {
+	if (BotFactory == nullptr) return;
+	const int mid = BotFactory->m_nMapObjectId;
+
+	// TgBotFactory.LoadObjectConfig native is a STUB — CallOriginal here is a
+	// no-op. Invoke the parent (TgActorFactory) hook directly so its
+	// s_n_task_force / s_n_team_number / m_n_priority overrides land before
+	// we layer the bot-factory-specific knobs on top.
+	TgActorFactory__LoadObjectConfig::Call((ATgActorFactory*)BotFactory, edx);
+
+	Logger::Log("tgbotfactory",
+		"[%s] %s LoadObjectConfig mapObjectId=%d\n",
+		Logger::GetTime(), BotFactory->GetName(), mid);
+
+	ApplyFactoryFieldOverrides(BotFactory);
+
+	if (BotFactory->nSpawnTableId <= 0) {
+		Logger::Log("tgbotfactory",
+			"  mapObjectId=%d: no n_spawn_table_id configured — empty queue, no bots\n", mid);
+		BotFactory->m_SpawnQueue.Clear();
+		BotFactory->m_SpawnGroups.Clear();
+		return;
+	}
+
+	// Build queue (one entry per group) and per-group state. Native consumers
+	// (SpawnNextBot, the intact BotDied at 0x10a8cbf0) read both off the
+	// actor directly — no side maps.
+	BotFactory->m_SpawnQueue.Clear();
+	const auto queue = CreateRandomSpawnQueue(BotFactory->nSpawnTableId);
+	for (const auto& e : queue) BotFactory->m_SpawnQueue.Add(e);
+	PopulateSpawnGroups(BotFactory);
+
+	Logger::Log("tgbotfactory",
+		"  mapObjectId=%d: spawn_table=%d  groups=%d  queueEntries=%d  "
+		"autoSpawn=%d nPriority=%d taskForce=%d nActiveCount=%d nBotCount=%d "
+		"locSel=%d typeSel=%d\n",
+		mid, BotFactory->nSpawnTableId,
+		BotFactory->m_SpawnGroups.Num(), BotFactory->m_SpawnQueue.Num(),
+		(int)BotFactory->bAutoSpawn, BotFactory->nPriority, BotFactory->s_nTaskForce,
+		BotFactory->nActiveCount, BotFactory->nBotCount,
+		(int)BotFactory->LocationSelection, (int)BotFactory->TypeSelection);
+}

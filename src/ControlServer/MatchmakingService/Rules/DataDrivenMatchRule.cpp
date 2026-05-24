@@ -35,7 +35,7 @@ std::optional<MatchResult> DataDrivenMatchRule::Evaluate(
     const std::vector<QueuedPlayer>& players,
     const std::vector<RunningInstance>& instances)
 {
-    if (players.empty() || !cfg_) return std::nullopt;
+    if (players.empty()) return std::nullopt;
 
     // First READY instance in this queue (provider already filtered by
     // queue_id). Behaviour matches the original Simple* rules: no seat
@@ -47,12 +47,12 @@ std::optional<MatchResult> DataDrivenMatchRule::Evaluate(
         result.existing_instance_id = inst.instance_id;
 
         int t1 = 0, t2 = 0;
-        if (cfg_->taskforce_policy == TaskforcePolicy::Balanced) {
+        if (cfg_.taskforce_policy == TaskforcePolicy::Balanced) {
             auto counts = InstanceRegistry::GetTeamCounts(inst.instance_id);
             t1 = counts.first;
             t2 = counts.second;
         }
-        AssignTaskForces(*cfg_, players, t1, t2, result);
+        AssignTaskForces(cfg_, players, t1, t2, result);
         return result;
     }
 
@@ -60,6 +60,6 @@ std::optional<MatchResult> DataDrivenMatchRule::Evaluate(
     // fills them via PickRandomMapPoolEntry. Balanced seeds team counts
     // at 0/0 since the instance hasn't started yet.
     MatchResult result;
-    AssignTaskForces(*cfg_, players, 0, 0, result);
+    AssignTaskForces(cfg_, players, 0, 0, result);
     return result;
 }

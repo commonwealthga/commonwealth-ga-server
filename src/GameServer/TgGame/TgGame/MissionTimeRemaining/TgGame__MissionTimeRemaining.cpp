@@ -78,6 +78,21 @@ float __fastcall TgGame__MissionTimeRemaining::Call(ATgGame *Game, void *edx) {
 	} else if (state == 3) {
 		// Overtime
 		remaining = (Game->s_fMissionTimerStartedAt + Game->m_fGameMissionTime + Game->m_fGameOvertimeTime) - now;
+	} else if (state == 5) {
+		// Paused timer: the UC pause path stores the remaining time here.
+		remaining = Game->m_fPausedAtTime;
+	} else if (state == 6) {
+		// Custom timers, used by Arena/Defense round setup and round timers,
+		// do not derive from s_fMissionTimerStartedAt + m_fGameMissionTime.
+		// MissionTimerStart() arms the actual one-shot timer using m_fMissionTime,
+		// so ask the actor timer manager for the authoritative remaining value.
+		remaining = Game->GetRemainingTimeForTimer(FName("MissionTimer"), nullptr);
+		if (remaining < 0.0f) {
+			ATgRepInfo_Game* GRI = (ATgRepInfo_Game*)Game->GameReplicationInfo;
+			remaining = (GRI != nullptr && GRI->r_nMissionTimerState == 1)
+				? Game->m_fMissionTime
+				: 0.0f;
+		}
 	}
 
 	// Check timer-based Kismet alerts (fires at 60s, 30s, 10s etc. as placed in map)
@@ -85,4 +100,3 @@ float __fastcall TgGame__MissionTimeRemaining::Call(ATgGame *Game, void *edx) {
 
 	return remaining;
 }
-

@@ -3,6 +3,7 @@
 
 void __fastcall TgBotFactory__SpawnBotAdjusted::Call(ATgBotFactory* Factory, void* edx, int nBotId, float fAdjustment) {
 	LogCallBegin();
+	Logger::Log("tgbotfactory", "SpawnBotAdjusted: %d, %f\n", nBotId, fAdjustment);
 	CallOriginal(Factory, edx, nBotId, fAdjustment);
 	LogCallEnd();
 }

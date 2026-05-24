@@ -85,15 +85,46 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			for (ATgMissionObjective* Objective : ActorCache::MissionObjectives) {
 				AddObjectivePointToList(gamerep, nullptr, Objective);
 				if (Logger::IsChannelEnabled(GetLogChannel())) {
-					Logger::Log(GetLogChannel(), "Added objective %s to GRI->m_MissionObjectives\n", ((UObject*)Objective)->GetFullName());
+					const std::string objectiveName = ((UObject*)Objective)->GetFullName();
+					Logger::Log(GetLogChannel(), "Added objective %s to GRI->m_MissionObjectives\n", objectiveName.c_str());
 				}
 			}
 		}
 
 
-		char* GameClassName = Game->Class->GetFullName();
+		const std::string GameClassName = Game->Class->GetFullName();
+		if (Logger::IsChannelEnabled("gametimer")) {
+			const std::string gameName = ((UObject*)Game)->GetFullName();
+			const std::string stateName = Game->GetStateName().GetName();
+			Logger::Log("gametimer",
+				"[InitGameRepInfo:pre-class-config] game=%s class=%s state=%s wait=%d delayed=%d ended=%d "
+				"timerState=%d mission=%.2f gameMission=%.2f overtime=%.2f startedAt=%.2f "
+				"GRI{round=%d/%d mtState=%d mtChange=%d rem=%.2f remaining=%d limit=%d flags raid=%d mission=%d arena=%d match=%d}\n",
+				gameName.c_str(),
+				GameClassName.c_str(),
+				stateName.c_str(),
+				(int)Game->bWaitingToStartMatch,
+				(int)Game->bDelayedStart,
+				(int)Game->bGameEnded,
+				(int)Game->m_eTimerState,
+				Game->m_fMissionTime,
+				Game->m_fGameMissionTime,
+				Game->m_fGameOvertimeTime,
+				Game->s_fMissionTimerStartedAt,
+				gamerep->r_nRoundNumber,
+				gamerep->r_nMaxRoundNumber,
+				(int)gamerep->r_nMissionTimerState,
+				gamerep->r_nMissionTimerStateChange,
+				gamerep->r_fMissionRemainingTime,
+				gamerep->RemainingTime,
+				gamerep->TimeLimit,
+				(int)gamerep->r_bIsRaid,
+				(int)gamerep->r_bIsMission,
+				(int)gamerep->r_bIsArena,
+				(int)gamerep->r_bIsMatch);
+		}
 
-		if (strcmp(GameClassName, "Class TgGame.TgGame_Defense") == 0) {
+		if (GameClassName == "Class TgGame.TgGame_Defense") {
 			gamerep->r_bIsRaid = 1;
 			gamerep->r_bIsMission = 1;
 			gamerep->r_bIsPVP = 0;
@@ -112,12 +143,71 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nSecsToAutoReleaseDefenders = 1;//Game->m_nSecsToAutoReleaseDefenders;
 			gamerep->r_nReleaseDelay = 1;
 			gamerep->r_nPointsToWin = 3;
-			gamerep->r_nRoundNumber = 1;
+			gamerep->r_nRoundNumber = 0;
 			gamerep->r_nMaxRoundNumber = 5;
+
+			ATgGame_Defense* GameDef = (ATgGame_Defense*)Game;
+
+			Game->m_fGameMissionTime = 0;
+			Game->m_fMissionTime = 0;
+			Game->m_fGameOvertimeTime = 0;
+			Game->m_bAllowOvertime = 0;
+			Game->m_bShouldWait = 0;
+
+			// Game->TimeLimit = 210;
+
+			GameDef->s_nMaxRoundNumber = 5;
+			GameDef->s_nRoundSetupTime = 0;
+			GameDef->s_nBetweenRoundDelay = 30;
+			GameDef->s_nRoundNumber = 0;
+			GameDef->s_fRoundDuration = 210; // 3 minutes 30 seconds
+			GameDef->m_fGameMissionTime = 0;
+
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+			gamerep->TimeLimit = Game->m_fMissionTime;
+			gamerep->RemainingTime = Game->m_fMissionTime;
+
+			if (Logger::IsChannelEnabled("gametimer")) {
+				const std::string gameName = ((UObject*)Game)->GetFullName();
+				const std::string stateName = Game->GetStateName().GetName();
+				Logger::Log("gametimer",
+					"[InitGameRepInfo:defense-config] game=%s class=%s state=%s wait=%d delayed=%d ended=%d "
+					"timerState=%d mission=%.2f gameMission=%.2f overtime=%.2f startedAt=%.2f "
+					"Arena{round=%d setup=%d between=%d objectiveUnlock=%d} Defense{maxRound=%d duration=%.2f} "
+					"GRI{round=%d/%d mtState=%d mtChange=%d rem=%.2f remaining=%d limit=%d flags raid=%d mission=%d arena=%d match=%d defenseAlarm=%d}\n",
+					gameName.c_str(),
+					GameClassName.c_str(),
+					stateName.c_str(),
+					(int)Game->bWaitingToStartMatch,
+					(int)Game->bDelayedStart,
+					(int)Game->bGameEnded,
+					(int)Game->m_eTimerState,
+					Game->m_fMissionTime,
+					Game->m_fGameMissionTime,
+					Game->m_fGameOvertimeTime,
+					Game->s_fMissionTimerStartedAt,
+					GameDef->s_nRoundNumber,
+					GameDef->s_nRoundSetupTime,
+					GameDef->s_nBetweenRoundDelay,
+					GameDef->s_nObjectiveUnlockDelay,
+					GameDef->s_nMaxRoundNumber,
+					GameDef->s_fRoundDuration,
+					gamerep->r_nRoundNumber,
+					gamerep->r_nMaxRoundNumber,
+					(int)gamerep->r_nMissionTimerState,
+					gamerep->r_nMissionTimerStateChange,
+					gamerep->r_fMissionRemainingTime,
+					gamerep->RemainingTime,
+					gamerep->TimeLimit,
+					(int)gamerep->r_bIsRaid,
+					(int)gamerep->r_bIsMission,
+					(int)gamerep->r_bIsArena,
+					(int)gamerep->r_bIsMatch,
+					(int)gamerep->r_bDefenseAlarm);
+			}
 		}
 
-		if (strcmp(GameClassName, "Class TgGame.TgGame_PointRotation") == 0) {
+		if (GameClassName == "Class TgGame.TgGame_PointRotation") {
 			gamerep->r_bIsRaid = 0;
 			gamerep->r_bIsMission = 1;
 			gamerep->r_bIsPVP = 1;
@@ -148,7 +238,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			((ATgGame_Arena*)Game)->s_nObjectiveUnlockDelay = 25;
 		}
 
-		if (strcmp(GameClassName, "Class TgGame.TgGame_Mission") == 0) {
+		if (GameClassName == "Class TgGame.TgGame_Mission") {
 			gamerep->r_bIsRaid = 0;
 			gamerep->r_bIsMission = 1;
 			gamerep->r_bIsPVP = 1;
@@ -178,7 +268,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			}
 		}
 
-		if (strcmp(GameClassName, "Class TgGame.TgGame_City") == 0) {
+		if (GameClassName == "Class TgGame.TgGame_City") {
 			gamerep->r_bIsRaid = 0;
 			gamerep->r_bIsMission = 0;
 			gamerep->r_bIsPVP = 0;
@@ -202,7 +292,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
 		}
 
-		if (strcmp(GameClassName, "Class TgGame.TgGame_OpenWorldPVE") == 0) {
+		if (GameClassName == "Class TgGame.TgGame_OpenWorldPVE") {
 			gamerep->r_bIsRaid = 0;
 			gamerep->r_bIsMission = 0;
 			gamerep->r_bIsPVP = 0;
@@ -226,7 +316,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
 		}
 
-		if (strcmp(GameClassName, "Class TgGame.TgGame_Escort") == 0) {
+		if (GameClassName == "Class TgGame.TgGame_Escort") {
 			gamerep->r_bIsRaid = 0;
 			gamerep->r_bIsMission = 1;
 			gamerep->r_bIsPVP = 1;
@@ -250,7 +340,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
 		}
 
-		if (strcmp(GameClassName, "Class TgGame.TgGame_Ticket") == 0) {
+		if (GameClassName == "Class TgGame.TgGame_Ticket") {
 			gamerep->r_bIsRaid = 0;
 			gamerep->r_bIsMission = 1;
 			gamerep->r_bIsPVP = 1;
@@ -274,7 +364,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
 		}
 
-		if (strcmp(GameClassName, "Class TgGame.TgGame_DualCTF") == 0) {
+		if (GameClassName == "Class TgGame.TgGame_DualCTF") {
 			gamerep->r_bIsRaid = 0;
 			gamerep->r_bIsMission = 1;
 			gamerep->r_bIsPVP = 1;
@@ -363,4 +453,3 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 
 	LogCallEnd();
 }
-

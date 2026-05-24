@@ -1086,6 +1086,9 @@ void TcpSession::send_match_accept_response() {
 }
 
 void TcpSession::send_get_ticket_info_response() {
+
+	const auto queues = MatchmakingService::GetEnabledQueueConfigs();
+
 	std::vector<uint8_t> response;
 
 	const uint16_t packet_type = GA_U::GET_TICKET_INFO;
@@ -1097,11 +1100,6 @@ void TcpSession::send_get_ticket_info_response() {
 	Write1B(response, GA_T::TEAM_LEADER_FLAG, 0x1);
 	Write4B(response, GA_T::CURRENT_MATCH_QUEUE_ID, current_match_queue_id_);
 
-	// DATA_SET of queue cards. Rows come from ga_queues (enabled=1, sorted
-	// by sort_order then queue_id); live counts are joined in by RuntimeStats
-	// and the wire encoding lives in TicketInfoEncoder. See FUN_10927190 in
-	// the client binary for the reader.
-	const auto queues = MatchmakingService::GetEnabledQueueConfigs();
 	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
 	append(response, (uint8_t)(queues.size() & 0xFF), (uint8_t)(queues.size() >> 8));
 

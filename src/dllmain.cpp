@@ -51,6 +51,9 @@
 #include "src/GameServer/TgGame/TgGame_PointRotation/UnlockObjective/TgGame_PointRotation__UnlockObjective.hpp"
 #include "src/GameServer/TgGame/TgGame/CheckRandomObjectives/TgGame__CheckRandomObjectives.hpp"
 #include "src/GameServer/TgGame/TgGame/UnlockObjective/TgGame__UnlockObjective.hpp"
+#include "src/GameServer/TgGame/TgGame/ActivateAlarm/TgGame__ActivateAlarm.hpp"
+#include "src/GameServer/TgGame/TgPawn_Scanner/DidSensorBeamDetectEnemy/TgPawn_Scanner__DidSensorBeamDetectEnemy.hpp"
+#include "src/GameServer/TgGame/TgPawn_Scanner/DoAlarm/TgPawn_Scanner__DoAlarm.hpp"
 #include "src/GameServer/TgGame/TgGame/LockoutObjectives/TgGame__LockoutObjectives.hpp"
 #include "src/GameServer/TgGame/TgGame/IsFinalObjective/TgGame__IsFinalObjective.hpp"
 #include "src/GameServer/TgGame/TgGame/SetObjectivesInactive/TgGame__SetObjectivesInactive.hpp"
@@ -105,6 +108,7 @@
 #include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.hpp"
 #include "src/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective_Bot/SpawnObjectiveBot/TgMissionObjective_Bot__SpawnObjectiveBot.hpp"
+#include "src/GameServer/TgGame/TgMissionObjective_Bot/LoadObjectConfig/TgMissionObjective_Bot__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective_Proximity/ScoreObjectiveProgress/TgMissionObjective_Proximity__ScoreObjectiveProgress.hpp"
 #include "src/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.hpp"
 #include "src/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.hpp"
@@ -413,6 +417,9 @@ unsigned long ModuleThread( void* ) {
 	TgMissionObjective__UpdateMatineeNodeStatus::Install();
 	TgGame__CheckRandomObjectives::Install();
 	TgGame__UnlockObjective::Install();
+	TgGame__ActivateAlarm::Install();
+	TgPawn_Scanner__DidSensorBeamDetectEnemy::Install();
+	TgPawn_Scanner__DoAlarm::Install();
 	TgGame__LockoutObjectives::Install();
 	TgGame__IsFinalObjective::Install();
 	TgGame__SetObjectivesInactive::Install();
@@ -468,6 +475,7 @@ unsigned long ModuleThread( void* ) {
 	TgPawn__RosterWalker::Install();
 	TgPawn__RefIter::Install();
 	TgProj_Deployable__SpawnDeployable::Install();
+	TgMissionObjective_Bot__LoadObjectConfig::Install();
 	TgMissionObjective_Bot__SpawnObjectiveBot::Install();
 	TgMissionObjective_Proximity__ScoreObjectiveProgress::Install();
 

@@ -272,6 +272,36 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	ATgGame* game = reinterpret_cast<ATgGame*>(gameinfoptr);
 	ATgRepInfo_Game* gamerep = reinterpret_cast<ATgRepInfo_Game*>(game->GameReplicationInfo);
 
+	if (Logger::IsChannelEnabled("gametimer")) {
+		const std::string gameName = ((UObject*)game)->GetFullName();
+		const std::string gameClass = game->Class ? game->Class->GetFullName() : "<null-class>";
+		const std::string stateName = game->GetStateName().GetName();
+		Logger::Log("gametimer",
+			"[NotifyControlMessage:HandlePlayerConnected] firstPlayerSpawned=%d game=%s class=%s state=%s "
+			"wait=%d delayed=%d ended=%d timerState=%d mission=%.2f gameMission=%.2f overtime=%.2f startedAt=%.2f "
+			"GRI{ptr=%p round=%d/%d mtState=%d mtChange=%d rem=%.2f remaining=%d limit=%d matchOver=%d}\n",
+			(int)bFirstPlayerSpawned,
+			gameName.c_str(),
+			gameClass.c_str(),
+			stateName.c_str(),
+			(int)game->bWaitingToStartMatch,
+			(int)game->bDelayedStart,
+			(int)game->bGameEnded,
+			(int)game->m_eTimerState,
+			game->m_fMissionTime,
+			game->m_fGameMissionTime,
+			game->m_fGameOvertimeTime,
+			game->s_fMissionTimerStartedAt,
+			gamerep,
+			gamerep ? gamerep->r_nRoundNumber : -1,
+			gamerep ? gamerep->r_nMaxRoundNumber : -1,
+			gamerep ? (int)gamerep->r_nMissionTimerState : -1,
+			gamerep ? gamerep->r_nMissionTimerStateChange : -1,
+			gamerep ? gamerep->r_fMissionRemainingTime : -1.0f,
+			gamerep ? gamerep->RemainingTime : -1,
+			gamerep ? gamerep->TimeLimit : -1,
+			gamerep ? (int)gamerep->bMatchIsOver : -1);
+	}
 
 	// for (int i = 0; i < UObject::GObjObjects()->Count; i++) {
 	// 	if (UObject::GObjObjects()->Data[i]) {
@@ -394,14 +424,26 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	if (!bFirstPlayerSpawned) {
 		bFirstPlayerSpawned = true;
 
-		game->m_fGameMissionTime = 15 * 60;
-		game->m_eTimerState = 0;
-		game->StartGameTimer();
+		AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
 
+		if (Logger::IsChannelEnabled("gametimer")) {
+			const std::string gameName = ((UObject*)game)->GetFullName();
+			const std::string stateName = game->GetStateName().GetName();
+			Logger::Log("gametimer",
+				"[NotifyControlMessage:first-player-events:before] game=%s state=%s timerState=%d "
+				"mission=%.2f gameMission=%.2f round=%d/%d mtState=%d\n",
+				gameName.c_str(),
+				stateName.c_str(),
+				(int)game->m_eTimerState,
+				game->m_fMissionTime,
+				game->m_fGameMissionTime,
+				gamerep ? gamerep->r_nRoundNumber : -1,
+				gamerep ? gamerep->r_nMaxRoundNumber : -1,
+				gamerep ? (int)gamerep->r_nMissionTimerState : -1);
+		}
 
 		TArray<USequenceObject*> Events;
 		TArray<int> Indices;
-		AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
 		// AWorldInfo* WorldInfo = (AWorldInfo*)Globals::Get().GWorldInfo;
 
 		WorldInfo->GetGameSequence()->FindSeqObjectsByClass(
@@ -426,6 +468,24 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 		for (int i = 0; i < Events2.Num(); i++) {
 			UTgSeqEvent_LevelFadedIn* Event = (UTgSeqEvent_LevelFadedIn*)Events2.Data[i];
 			Event->CheckActivate(game, game, 0, 0, Indices2);
+		}
+
+		if (Logger::IsChannelEnabled("gametimer")) {
+			const std::string gameName = ((UObject*)game)->GetFullName();
+			const std::string stateName = game->GetStateName().GetName();
+			Logger::Log("gametimer",
+				"[NotifyControlMessage:first-player-events:after] game=%s state=%s timerState=%d "
+				"mission=%.2f gameMission=%.2f round=%d/%d mtState=%d levelLoadedEvents=%d levelFadedEvents=%d\n",
+				gameName.c_str(),
+				stateName.c_str(),
+				(int)game->m_eTimerState,
+				game->m_fMissionTime,
+				game->m_fGameMissionTime,
+				gamerep ? gamerep->r_nRoundNumber : -1,
+				gamerep ? gamerep->r_nMaxRoundNumber : -1,
+				gamerep ? (int)gamerep->r_nMissionTimerState : -1,
+				Events.Num(),
+				Events2.Num());
 		}
 	}
 
@@ -761,4 +821,3 @@ void MarshalChannel__NotifyControlMessage::FixForcedExportGuids(void* PackageMap
 		Logger::Log("packagemap", "[PackageMap] Fixed %d forced-export package(s)\n", fixed);
 	}
 }
-

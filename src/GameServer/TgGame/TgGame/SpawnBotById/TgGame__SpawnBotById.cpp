@@ -481,6 +481,10 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	Logger::Log("pet_spawn", "SpawnBotById: nBotId=%d ignoreCollision=%d loc=(%.1f,%.1f,%.1f)\n",
 		nBotId, (int)bIgnoreCollision, vLocation.X, vLocation.Y, vLocation.Z);
 
+	if (pFactory != nullptr && (pFactory->nPriority == 0 || pFactory->nPriority != Game->s_nCurrentPriority)) {
+		return nullptr;
+	}
+
 	AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
 
 	ATgAIController* AIController = (ATgAIController*)Game->Spawn(
@@ -656,48 +660,48 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		if (BotRepInfo && OwnerPRI) {
 			BotRepInfo->r_MasterPrep = OwnerPRI;
 			BotRepInfo->r_nProfileId = nBotId;
-
-			// NOTE: We previously also assigned `Team` and `r_TaskForce` here
-			// to fix the team-color flicker on the deployer's first frame.
-			// That broke the device-bar healthbar — setting r_TaskForce makes
-			// `TgRepInfo_Player::CheckMembership` (0x109f0030) run its second
-			// branch (the r_TaskForce-change path) which does additional
-			// bookkeeping that appears to interfere with the m_PRIArray
-			// membership the FIRST branch establishes. Setting `Team`
-			// triggers stock UE3 APlayerReplicationInfo::SetTeam which
-			// calls AddToTeam/RemoveFromTeam on the TaskForce. Combined,
-			// the BotPRI ends up not in the deployer's m_PRIArray after
-			// the dust settles → HUD's FindSpawnedPet finds nothing → no
-			// healthbar. Leaving these unset; team color will resolve via
-			// r_MasterPrep → CheckMembership chain (with the brief flicker).
-
-			// Two-knob fix for the team-color flicker on the deployer's client:
 			//
-			// (1) NetPriority bump (8.0 vs TgPawn's 4.0) so within a single
-			// relevance pass BotRepInfo's bunch is serialized before the bot
-			// pawn's. The bot pawn carries a NetGUID reference to its PRI;
-			// we want the PRI's actor channel open on the client first so the
-			// reference resolves immediately instead of hitting the deferred
-			// NetGUID resolution path (which takes ~1 second to settle).
+			// // NOTE: We previously also assigned `Team` and `r_TaskForce` here
+			// // to fix the team-color flicker on the deployer's first frame.
+			// // That broke the device-bar healthbar — setting r_TaskForce makes
+			// // `TgRepInfo_Player::CheckMembership` (0x109f0030) run its second
+			// // branch (the r_TaskForce-change path) which does additional
+			// // bookkeeping that appears to interfere with the m_PRIArray
+			// // membership the FIRST branch establishes. Setting `Team`
+			// // triggers stock UE3 APlayerReplicationInfo::SetTeam which
+			// // calls AddToTeam/RemoveFromTeam on the TaskForce. Combined,
+			// // the BotPRI ends up not in the deployer's m_PRIArray after
+			// // the dust settles → HUD's FindSpawnedPet finds nothing → no
+			// // healthbar. Leaving these unset; team color will resolve via
+			// // r_MasterPrep → CheckMembership chain (with the brief flicker).
 			//
-			// (2) NetUpdateFrequency bump (10.0 vs APlayerReplicationInfo's
-			// default 1.0). PRI's default 1Hz cadence means after the initial
-			// replication, the engine doesn't re-consider the PRI for ~1
-			// second — exactly the flicker duration. The bot pawn replicates
-			// at 100Hz the whole time. Bumping the PRI frequency lets the
-			// engine re-replicate the BotRepInfo / re-resolve its NetGUID on
-			// the client within a few frames if anything was pending.
-			//
-			// Trace: TgRepInfo_Game::CheckIsEnemy (0x109ee170) compares
-			// taskforce bytes from GRI::GetTaskForceFor(actor) (0x109f1fa0).
-			// For a bot pawn the only path is `pawn->GetPRI()->r_TaskForce`
-			// — null PRI on first frame → both sides resolve to null →
-			// returns "enemy". Once GUID resolution catches up, repnotify on
-			// r_TaskForce fires, NotifyTeamChanged → RecalculateMaterial(true).
-			BotRepInfo->NetPriority        = 5.0f;
-			BotRepInfo->NetUpdateFrequency = 5.0f;
-			BotRepInfo->bNetDirty       = 1;
-			BotRepInfo->bForceNetUpdate = 1;
+			// // Two-knob fix for the team-color flicker on the deployer's client:
+			// //
+			// // (1) NetPriority bump (8.0 vs TgPawn's 4.0) so within a single
+			// // relevance pass BotRepInfo's bunch is serialized before the bot
+			// // pawn's. The bot pawn carries a NetGUID reference to its PRI;
+			// // we want the PRI's actor channel open on the client first so the
+			// // reference resolves immediately instead of hitting the deferred
+			// // NetGUID resolution path (which takes ~1 second to settle).
+			// //
+			// // (2) NetUpdateFrequency bump (10.0 vs APlayerReplicationInfo's
+			// // default 1.0). PRI's default 1Hz cadence means after the initial
+			// // replication, the engine doesn't re-consider the PRI for ~1
+			// // second — exactly the flicker duration. The bot pawn replicates
+			// // at 100Hz the whole time. Bumping the PRI frequency lets the
+			// // engine re-replicate the BotRepInfo / re-resolve its NetGUID on
+			// // the client within a few frames if anything was pending.
+			// //
+			// // Trace: TgRepInfo_Game::CheckIsEnemy (0x109ee170) compares
+			// // taskforce bytes from GRI::GetTaskForceFor(actor) (0x109f1fa0).
+			// // For a bot pawn the only path is `pawn->GetPRI()->r_TaskForce`
+			// // — null PRI on first frame → both sides resolve to null →
+			// // returns "enemy". Once GUID resolution catches up, repnotify on
+			// // r_TaskForce fires, NotifyTeamChanged → RecalculateMaterial(true).
+			// BotRepInfo->NetPriority        = 5.0f;
+			// BotRepInfo->NetUpdateFrequency = 5.0f;
+			// BotRepInfo->bNetDirty       = 1;
+			// BotRepInfo->bForceNetUpdate = 1;
 		}
 
 		// Per-category pet limit: 1 turret + 1 drone allowed simultaneously,
@@ -857,7 +861,7 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// PRI is wired by this point — fan HP across all 7 storage locations
 	// (engine fields, ATgPawn replicated max, property descriptors, PRI).
 	const int botHp = *(int*)((char*)BotConfig + 0x74);
-	SyncPawnHealth::Apply(Bot, botHp, botHp);
+	// SyncPawnHealth::Apply(Bot, botHp, botHp);
 	//BotRepInfo->r_nCharacterId    = *(int*)((char*)BotConfig + 0x5C);
 
 	if (pFactory == nullptr) {
@@ -869,6 +873,15 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	} else if (Logger::IsChannelEnabled("debug")) {
 		Logger::Log("debug", "TgBotFactory passed: %s\n", pFactory->GetFullName());
 	}
+
+	if (pFactory != nullptr && BotRepInfo != nullptr) {
+		const int team = (pFactory->s_nTaskForce == 1) ? GTeamsData.Attackers : GTeamsData.Defenders;
+		BotRepInfo->r_TaskForce = team;
+		BotRepInfo->Team        = team;
+		BotRepInfo->SetTeam(team);
+		Bot->NotifyTeamChanged();
+	}
+
 
 	// AIController->m_nSquadRole = 1404;
 

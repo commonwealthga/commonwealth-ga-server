@@ -4028,7 +4028,546 @@ void Database::Init() {
 		Logger::Log("db", "v59: seeded map_game_ids\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 59", nullptr, nullptr, &err);
+	if (version < 60) {
+		// v60: 1P_CPFactory01_P — task force / team assignments for actor
+		// factories + team-player-starts, plus spawn-table bindings
+		// (n_spawn_table_id / n_default_spawn_table_id) for the 18 bot
+		// factories on this map. 76 rows total, all map-scoped per v46.
+		// Exported from the map planner 2026-05-23T09:38:38.995Z.
+		// First map authored against the post-refactor TgBotFactory hooks
+		// that consume n_spawn_table_id from MapObjectConfig directly.
+		const char* kV60_cpfactory01 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('1P_CPFactory01_P', 11717, 'm_n_task_force', '1', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 11716, 's_n_task_force', '1', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 11716, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12286, 's_n_task_force', '1', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12286, 's_n_team_number', '1', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12316, 'm_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12289, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12289, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12287, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12287, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 11664, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 11664, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 11663, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 11663, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12283, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12283, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12274, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12274, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12273, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12273, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12272, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12272, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12271, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12271, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12270, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12270, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12275, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12275, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12282, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12282, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12276, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12276, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12269, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12269, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12280, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12280, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12267, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12267, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12266, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12266, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12265, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12265, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12264, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12264, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12263, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12263, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12278, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12278, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12277, 's_n_task_force', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12277, 's_n_team_number', '2', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12276, 'n_default_spawn_table_id', '29', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12276, 'n_spawn_table_id', '29', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12282, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12282, 'n_spawn_table_id', '28', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12275, 'n_default_spawn_table_id', '40', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12275, 'n_spawn_table_id', '40', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12270, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12270, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12271, 'n_spawn_table_id', '51', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12271, 'n_default_spawn_table_id', '51', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12272, 'n_spawn_table_id', '51', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12272, 'n_default_spawn_table_id', '51', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12273, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12273, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12274, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12274, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12283, 'n_default_spawn_table_id', '59', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12283, 'n_spawn_table_id', '59', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 11663, 'n_spawn_table_id', '28', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 11663, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 11664, 'n_spawn_table_id', '40', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 11664, 'n_default_spawn_table_id', '40', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12287, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12287, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12289, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12289, 'n_spawn_table_id', '33', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV60_cpfactory01, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v60 (1P_CPFactory01_P seed): %s\n", err); return; }
+		Logger::Log("db", "v60: seeded 76 map_object_config rows for 1P_CPFactory01_P\n");
+	}
+
+	if (version < 61) {
+		// v61: 1P_CPFactory01_P — fill in spawn_table_id for the 9 factories
+		// that v60 didn't cover (12263–12269, 12277, 12278, 12280). Without
+		// these the corresponding factories silently spawn nothing because
+		// LoadObjectConfig bails on `nSpawnTableId <= 0`.
+		const char* kV61_cpfactory01_more =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('1P_CPFactory01_P', 12277, 'n_spawn_table_id',         '28', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12277, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12278, 'n_spawn_table_id',         '28', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12278, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12263, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12263, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12264, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12264, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12265, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12265, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12266, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12266, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12267, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12267, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12280, 'n_default_spawn_table_id', '46', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12280, 'n_spawn_table_id',         '46', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12269, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"('1P_CPFactory01_P', 12269, 'n_default_spawn_table_id', '33', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV61_cpfactory01_more, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v61 (1P_CPFactory01_P fill-in seed): %s\n", err); return; }
+		Logger::Log("db", "v61: seeded 18 map_object_config rows for 1P_CPFactory01_P (fill-in factories)\n");
+	}
+
+	if (version < 62) {
+		// v62: 1P_CPLab05_P — port factory configuration from legacy
+		// obj_bot_factories (mutator_number=0 rows) into map_object_config.
+		// 25 TgBotFactory actors, all defenders (task_force=2). User-validated
+		// map for testing the refactored BotFactory hooks against known-good
+		// behaviour.
+		const char* kV62_cplab05 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"('1P_CPLab05_P', 12698, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12698, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12698, 'n_spawn_table_id',         '41',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12698, 'n_default_spawn_table_id', '41',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12708, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12708, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12708, 'n_spawn_table_id',         '29',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12708, 'n_default_spawn_table_id', '29',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12709, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12709, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12709, 'n_spawn_table_id',         '28',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12709, 'n_default_spawn_table_id', '28',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12710, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12710, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12710, 'n_spawn_table_id',         '58',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12710, 'n_default_spawn_table_id', '58',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12711, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12711, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12711, 'n_spawn_table_id',         '29',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12711, 'n_default_spawn_table_id', '29',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12712, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12712, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12712, 'n_spawn_table_id',         '29',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12712, 'n_default_spawn_table_id', '29',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12713, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12713, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12713, 'n_spawn_table_id',         '34',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12713, 'n_default_spawn_table_id', '34',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12714, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12714, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12714, 'n_spawn_table_id',         '34',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12714, 'n_default_spawn_table_id', '34',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12724, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12724, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12724, 'n_spawn_table_id',         '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12724, 'n_default_spawn_table_id', '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12727, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12727, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12727, 'n_spawn_table_id',         '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12727, 'n_default_spawn_table_id', '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12728, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12728, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12728, 'n_spawn_table_id',         '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12728, 'n_default_spawn_table_id', '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12729, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12729, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12729, 'n_spawn_table_id',         '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12729, 'n_default_spawn_table_id', '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12730, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12730, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12730, 'n_spawn_table_id',         '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12730, 'n_default_spawn_table_id', '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12731, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12731, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12731, 'n_spawn_table_id',         '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12731, 'n_default_spawn_table_id', '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12732, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12732, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12732, 'n_spawn_table_id',         '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12732, 'n_default_spawn_table_id', '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12733, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12733, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12733, 'n_spawn_table_id',         '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12733, 'n_default_spawn_table_id', '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12734, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12734, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12734, 'n_spawn_table_id',         '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12734, 'n_default_spawn_table_id', '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12735, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12735, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12735, 'n_spawn_table_id',         '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12735, 'n_default_spawn_table_id', '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12736, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12736, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12736, 'n_spawn_table_id',         '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12736, 'n_default_spawn_table_id', '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12737, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12737, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12737, 'n_spawn_table_id',         '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12737, 'n_default_spawn_table_id', '33',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12738, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12738, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12738, 'n_spawn_table_id',         '59',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12738, 'n_default_spawn_table_id', '59',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12739, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12739, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12739, 'n_spawn_table_id',         '59',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12739, 'n_default_spawn_table_id', '59',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12740, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12740, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12740, 'n_spawn_table_id',         '59',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12740, 'n_default_spawn_table_id', '59',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12741, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12741, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12741, 'n_spawn_table_id',         '46',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12741, 'n_default_spawn_table_id', '46',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12744, 's_n_task_force',           '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12744, 's_n_team_number',          '2',   NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12744, 'n_spawn_table_id',         '59',  NULL, NULL, 1),"
+			"('1P_CPLab05_P', 12744, 'n_default_spawn_table_id', '59',  NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV62_cplab05, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v62 (1P_CPLab05_P seed): %s\n", err); return; }
+		Logger::Log("db", "v62: seeded 100 map_object_config rows for 1P_CPLab05_P (25 factories)\n");
+	}
+
+	if (version < 63) {
+		const char* kV63_ddr =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			" ('Raid_DomeCityDefense_P', 13849, 's_n_task_force', '2', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13849, 's_n_team_number', '2', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13849, 'n_spawn_table_id', '166', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13849, 'n_default_spawn_table_id', '166', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13848, 's_n_task_force', '2', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13848, 's_n_team_number', '2', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13848, 'n_spawn_table_id', '166', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13848, 'n_default_spawn_table_id', '166', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13847, 's_n_task_force', '2', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13847, 's_n_team_number', '2', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13847, 'n_spawn_table_id', '166', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13847, 'n_default_spawn_table_id', '166', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13846, 's_n_task_force', '2', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13846, 's_n_team_number', '2', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13846, 'n_spawn_table_id', '166', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13846, 'n_default_spawn_table_id', '166', NULL, NULL, 1),    "
+
+
+			" ('Raid_DomeCityDefense_P', 13809, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13809, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13809, 'n_spawn_table_id', '102', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13809, 'n_default_spawn_table_id', '102', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13809, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13809, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13809, 'n_spawn_table_id', '102', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13809, 'n_default_spawn_table_id', '102', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13806, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13806, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13806, 'n_spawn_table_id', '102', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13806, 'n_default_spawn_table_id', '102', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13805, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13805, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13805, 'n_spawn_table_id', '102', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13805, 'n_default_spawn_table_id', '102', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13804, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13804, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13804, 'n_spawn_table_id', '102', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13804, 'n_default_spawn_table_id', '102', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13803, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13803, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13803, 'n_spawn_table_id', '102', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13803, 'n_default_spawn_table_id', '102', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13810, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13810, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13810, 'n_spawn_table_id', '102', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13810, 'n_default_spawn_table_id', '102', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13802, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13802, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13802, 'n_spawn_table_id', '102', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13802, 'n_default_spawn_table_id', '102', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13709, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13709, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13709, 'n_spawn_table_id', '102', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13709, 'n_default_spawn_table_id', '102', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13708, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13708, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13708, 'n_spawn_table_id', '86', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13708, 'n_default_spawn_table_id', '86', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13704, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13704, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13704, 'n_spawn_table_id', '86', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13704, 'n_default_spawn_table_id', '86', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13703, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13703, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13703, 'n_spawn_table_id', '149', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13703, 'n_default_spawn_table_id', '149', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13700, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13700, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13700, 'n_spawn_table_id', '102', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13700, 'n_default_spawn_table_id', '102', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13694, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13694, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13694, 'n_spawn_table_id', '102', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13694, 'n_default_spawn_table_id', '102', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13692, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13692, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13692, 'n_spawn_table_id', '147', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13692, 'n_default_spawn_table_id', '147', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13691, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13691, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13691, 'n_spawn_table_id', '87', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13691, 'n_default_spawn_table_id', '87', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13673, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13673, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13673, 'n_spawn_table_id', '149', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13673, 'n_default_spawn_table_id', '149', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13650, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13650, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13650, 'n_spawn_table_id', '148', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13650, 'n_default_spawn_table_id', '148', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13665, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13665, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13665, 'n_spawn_table_id', '102', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13665, 'n_default_spawn_table_id', '102', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13664, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13664, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13664, 'n_spawn_table_id', '99', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13664, 'n_default_spawn_table_id', '99', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13662, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13662, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13662, 'n_spawn_table_id', '149', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13662, 'n_default_spawn_table_id', '149', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13661, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13661, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13661, 'n_spawn_table_id', '86', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13661, 'n_default_spawn_table_id', '86', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13660, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13660, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13660, 'n_spawn_table_id', '99', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13660, 'n_default_spawn_table_id', '99', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13659, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13659, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13659, 'n_spawn_table_id', '102', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13659, 'n_default_spawn_table_id', '102', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13657, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13657, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13657, 'n_spawn_table_id', '87', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13657, 'n_default_spawn_table_id', '87', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13656, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13656, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13656, 'n_spawn_table_id', '99', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13656, 'n_default_spawn_table_id', '99', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13655, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13655, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13655, 'n_spawn_table_id', '99', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13655, 'n_default_spawn_table_id', '99', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13654, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13654, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13654, 'n_spawn_table_id', '99', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13654, 'n_default_spawn_table_id', '99', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13653, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13653, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13653, 'n_spawn_table_id', '149', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13653, 'n_default_spawn_table_id', '149', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13658, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13658, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13658, 'n_spawn_table_id', '87', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13658, 'n_default_spawn_table_id', '87', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13652, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13652, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13652, 'n_spawn_table_id', '148', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13652, 'n_default_spawn_table_id', '148', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13651, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13651, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13651, 'n_spawn_table_id', '99', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13651, 'n_default_spawn_table_id', '99', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13649, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13649, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13649, 'n_spawn_table_id', '99', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13649, 'n_default_spawn_table_id', '99', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13648, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13648, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13648, 'n_spawn_table_id', '99', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13648, 'n_default_spawn_table_id', '99', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13647, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13647, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13647, 'n_spawn_table_id', '87', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13647, 'n_default_spawn_table_id', '87', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13646, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13646, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13646, 'n_spawn_table_id', '99', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13646, 'n_default_spawn_table_id', '99', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13644, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13644, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13644, 'n_spawn_table_id', '86', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13644, 'n_default_spawn_table_id', '86', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13645, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13645, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13645, 'n_spawn_table_id', '99', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13645, 'n_default_spawn_table_id', '99', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13643, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13643, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13643, 'n_spawn_table_id', '148', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13643, 'n_default_spawn_table_id', '148', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13642, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13642, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13642, 'n_spawn_table_id', '86', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13642, 'n_default_spawn_table_id', '86', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13641, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13641, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13641, 'n_spawn_table_id', '99', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13641, 'n_default_spawn_table_id', '99', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13640, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13640, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13640, 'n_spawn_table_id', '148', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13640, 'n_default_spawn_table_id', '148', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13639, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13639, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13639, 'n_spawn_table_id', '147', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13639, 'n_default_spawn_table_id', '147', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13637, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13637, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13637, 'n_spawn_table_id', '148', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13637, 'n_default_spawn_table_id', '148', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13636, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13636, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13636, 'n_spawn_table_id', '99', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13636, 'n_default_spawn_table_id', '99', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13635, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13635, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13635, 'n_spawn_table_id', '102', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13635, 'n_default_spawn_table_id', '102', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13634, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13634, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13634, 'n_spawn_table_id', '148', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13634, 'n_default_spawn_table_id', '148', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13633, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13633, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13633, 'n_spawn_table_id', '99', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13633, 'n_default_spawn_table_id', '99', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13629, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13629, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13629, 'n_spawn_table_id', '99', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13629, 'n_default_spawn_table_id', '99', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13638, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13638, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13638, 'n_spawn_table_id', '148', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13638, 'n_default_spawn_table_id', '148', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13630, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13630, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13630, 'n_spawn_table_id', '148', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13630, 'n_default_spawn_table_id', '148', NULL, NULL, 1),    "
+
+			" ('Raid_DomeCityDefense_P', 13632, 's_n_task_force', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13632, 's_n_team_number', '1', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13632, 'n_spawn_table_id', '86', NULL, NULL, 1),    "
+			" ('Raid_DomeCityDefense_P', 13632, 'n_default_spawn_table_id', '86', NULL, NULL, 1);    ";
+
+		result = sqlite3_exec(db, kV63_ddr, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
+
+		const char* q1 = "INSERT INTO ga_queues ( name, taskforce_policy, continue_in_queue, enabled, queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, max_players_per_side, min_players_per_team, max_players_per_team, level_min, level_max, tab, map_x, map_y, map_active_flag, map_icon_texture_res_id, video_res_id, location_value_id, double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, difficulty_value_id, access_flags, active_flag, locked_flag) VALUES ( 'ddr', 'pinned_2', 0, 1, 1454, 0, 62550, 64938, 1714, 10, 1, 10, 5, 50, 231, 0, 0, 1, 5126, 0, 0, 1, 0, 0, 1, 1471, 0, 1, 0);";
+		result = sqlite3_exec(db, q1, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
+
+		const char* q2  = "INSERT INTO ga_queue_map_pool (queue_id, map_name, game_mode, weight, enabled) VALUES (3, 'Raid_DomeCityDefense_P', 'TgGame.TgGame_Defense', 1, 1);";
+		result = sqlite3_exec(db, q2, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
+
+		const char* q3 = "INSERT INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES (100004, 'Raid_DomeCityDefense_P', 'TgGame.TgGame_Defense', 1550, 60534, 7420);";
+		result = sqlite3_exec(db, q3, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
+	}
+	if (version < 64) {
+
+		const char* q4 = "INSERT INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES (100005, 'Dome3_VR_Arena_P', 'TgGame.TgGame_Mission', 1542, 22845, 4901);";
+		result = sqlite3_exec(db, q4, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
+
+		Logger::Log("db", "v63: seeded map_object_config for ddr\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 64", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

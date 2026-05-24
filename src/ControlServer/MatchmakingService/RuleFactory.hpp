@@ -9,8 +9,7 @@
 // currently ship. Add a case here for any genuinely custom future rule.
 class RuleFactory {
 public:
-    // The returned rule holds a borrowed pointer to `cfg`; the caller (the
-    // Queue inside MatchmakingService) must keep that QueueConfig alive for
-    // the rule's lifetime.
+    // The returned rule snapshots the config it needs, so callers may move
+    // Queue storage after construction.
     static std::unique_ptr<MatchRule> Create(const QueueConfig* cfg);
 };

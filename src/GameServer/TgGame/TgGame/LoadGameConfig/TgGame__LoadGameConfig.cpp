@@ -28,7 +28,31 @@ AvA theft = TgGame_Escort
 
 void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	LogCallBegin();
-	Game->bWaitingToStartMatch = 0;
+	if (Logger::IsChannelEnabled("gametimer")) {
+		const std::string gameName = ((UObject*)Game)->GetFullName();
+		const std::string gameClass = Game->Class ? Game->Class->GetFullName() : "<null-class>";
+		const std::string stateName = Game->GetStateName().GetName();
+		Logger::Log("gametimer",
+			"[LoadGameConfig:before] game=%s class=%s state=%s wait=%d delayed=%d ended=%d "
+			"timerState=%d mission=%.2f gameMission=%.2f overtime=%.2f startedAt=%.2f timeLimit=%d\n",
+			gameName.c_str(),
+			gameClass.c_str(),
+			stateName.c_str(),
+			(int)Game->bWaitingToStartMatch,
+			(int)Game->bDelayedStart,
+			(int)Game->bGameEnded,
+			(int)Game->m_eTimerState,
+			Game->m_fMissionTime,
+			Game->m_fGameMissionTime,
+			Game->m_fGameOvertimeTime,
+			Game->s_fMissionTimerStartedAt,
+			Game->TimeLimit);
+	}
+	// Keep the stock GameInfo.PostLogin path alive:
+	// bWaitingToStartMatch && !bDelayedStart makes super.PostLogin call
+	// StartMatch(), and TgGame.StartMatch enters GameRunning before
+	// TgGame.PostLogin calls StartGameTimer().
+	Game->bWaitingToStartMatch = 1;
 
 	Game->s_UseCustomReviveTimer = 0;
 	Game->m_nSecsToAutoRelease = 15;
@@ -36,7 +60,7 @@ void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	Game->m_nSecsToAutoReleaseDefenders = 15;
 	Game->m_bIsTutorialMap = 0;
 
-	Game->TimeLimit = 15 * 60;
+	// Game->TimeLimit = 15 * 60;
 
 	std::string map_name = Config::GetMapNameChar();
 
@@ -56,6 +80,28 @@ void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	}
 
 	LoadCommonGameConfig(Game);
+
+	if (Logger::IsChannelEnabled("gametimer")) {
+		const std::string gameName = ((UObject*)Game)->GetFullName();
+		const std::string gameClass = Game->Class ? Game->Class->GetFullName() : "<null-class>";
+		const std::string stateName = Game->GetStateName().GetName();
+		Logger::Log("gametimer",
+			"[LoadGameConfig:after] game=%s class=%s state=%s wait=%d delayed=%d ended=%d "
+			"timerState=%d mission=%.2f gameMission=%.2f overtime=%.2f startedAt=%.2f timeLimit=%d map=%s\n",
+			gameName.c_str(),
+			gameClass.c_str(),
+			stateName.c_str(),
+			(int)Game->bWaitingToStartMatch,
+			(int)Game->bDelayedStart,
+			(int)Game->bGameEnded,
+			(int)Game->m_eTimerState,
+			Game->m_fMissionTime,
+			Game->m_fGameMissionTime,
+			Game->m_fGameOvertimeTime,
+			Game->s_fMissionTimerStartedAt,
+			Game->TimeLimit,
+			map_name.c_str());
+	}
 
 	LogCallEnd();
 }
@@ -209,4 +255,3 @@ void TgGame__LoadGameConfig::LoadCommonGameConfig(ATgGame* Game) {
 		m_randomSMSettings = settings;
 	}
 }
-

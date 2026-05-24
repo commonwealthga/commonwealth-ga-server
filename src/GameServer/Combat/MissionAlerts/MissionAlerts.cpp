@@ -139,6 +139,8 @@ static int CountCapturedFor(ATgRepInfo_Game* GRI, int tf) {
 // "60 / 30 / 10 seconds remaining" — every mission, only during Mission Phase
 // (m_eTimerState == 2). Setup (1) and Overtime (3) are excluded.
 static void PollMissionTimer(ATgGame* Game, ATgRepInfo_Game* GRI, PerGameState& st) {
+	if (Game->m_bShouldWait == 1) return;
+
 	AWorldInfo* WI = GetWorldInfoSafe();
 	if (WI == nullptr) return;
 	if ((int)Game->m_eTimerState != 2) return;
@@ -341,7 +343,7 @@ static void PollPointRotationCycle(ATgGame* Game, PerGameState& st) {
 // to fire from any mode/queue without the DLL having to know which queue
 // it was spawned for.
 static void PollSuccessorTrigger(ATgGame* Game, ATgRepInfo_Game* GRI, PerGameState& st) {
-	if (st.firedSuccessor) return;
+	if (Game->m_bShouldWait == 1 || st.firedSuccessor) return;
 
 	bool fire = false;
 	const char* reason = nullptr;
