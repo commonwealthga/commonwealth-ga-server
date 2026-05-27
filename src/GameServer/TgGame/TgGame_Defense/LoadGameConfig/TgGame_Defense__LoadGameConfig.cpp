@@ -7,7 +7,7 @@
 void __fastcall TgGame_Defense__LoadGameConfig::Call(ATgGame_Defense* Game, void* edx) {
 	LogCallBegin();
 
-	TgGame__LoadGameConfig::Call(Game, edx);
+	// TgGame__LoadGameConfig::Call(Game, edx);
 	Game->m_GameType = 11; // GT_DEFENSE
 	// Game->s_bSecuringMode = 1;
 

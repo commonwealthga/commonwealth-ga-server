@@ -4,7 +4,7 @@
 #include "src/GameServer/TgGame/TgInventoryObject_Device/ConstructInventoryObject/TgInventoryObject_Device__ConstructInventoryObject.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/PrepopulateInventoryId/TgInventoryManager__PrepopulateInventoryId.hpp"
 #include "src/GameServer/TgGame/TgPawn/ApplyBuff/TgPawn__ApplyBuff.hpp"
-#include "src/GameServer/TgGame/BuffEffectRegistry/DeviceCategorySkill.hpp"
+#include "src/GameServer/TgGame/_effect_core/DeviceCategorySkill.hpp"
 #include "src/GameServer/Misc/CAmItem/LoadItemMarshal/CAmItem__LoadItemMarshal.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Constants/EquipSlot.hpp"
@@ -147,19 +147,32 @@ bool Inventory::IsHandDevice(int slot) {
 // Inventory::ApplyDeviceEquipEffects — DB-driven reimplementation of the
 // stripped asm.dat equip-effect path (UC ApplyEquipEffects → m_EquipEffect →
 // ProcessEffect). Applies every permanent (lifetime_sec=0) effect attached to
-// the device's equip-effect groups directly to the pawn's properties.
+// the device's equip-effect groups.
 //
-// Calc-method semantics follow TgEffect.uc:448 (apply, !bRemove):
+// Two-class dispatch on `class_res_id`:
+//   * class 157 (TgEffectBuff) — register in the source pawn's buff registry
+//     via ApplyBuff, so the canonical GetBuffedProperty 3-layer formula picks
+//     it up during damage/heal compute (e.g. Auto Cannon's -20% mechanical
+//     damage modifier: prop 388, calc 69 PERC_DECREASE, base 20). Direct
+//     m_fRaw write is wrong here — prop 388 isn't an additive stat, it's a
+//     ConvertPropToPropList expansion that only takes effect through the
+//     buff registry → CheckEffectBuffModifier path.
+//   * class 80 (TgEffect) and others — direct m_fRaw write on s_Properties
+//     (the existing baseline path). This is correct for HUMAN BASE ATTRIBUTES
+//     +30 physical protection style effects that mutate the target's own stat.
+//
+// Calc-method semantics for the direct path follow TgEffect.uc:448
+// (apply, !bRemove):
 //   67 ADD             newRaw = curRaw + base
 //   70 SUBTRACT        newRaw = curRaw - base
 //   68 PERC_INCREASE   newRaw = curRaw + (propBase * base)
 //   69 PERC_DECREASE   newRaw = curRaw - (propBase * base)
 //   119 NA / other     no-op
 //
-// IMPORTANT — we mutate prop->m_fRaw DIRECTLY rather than calling
+// IMPORTANT — direct-path mutates prop->m_fRaw DIRECTLY rather than calling
 // Pawn->SetProperty(). The native SetProperty (0x109bf420) does its property
 // lookup through vtable[0x4F0] which uses the TMap at pawn+0x400; that map
-// is never populated for properties added by our InitializeProperty path
+// is never populated for properties added by our AddProperty path
 // (only the s_Properties array gets the entry). So SetProperty silently
 // no-ops for protection / vision / etc. Same workaround SyncPawnHealth uses
 // for HP. Direct write is correct here because every consumer reads
@@ -179,7 +192,7 @@ void Inventory::ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId) {
 	if (db == nullptr) return;
 
 	static const char* kSql =
-		"SELECT DISTINCT e.prop_id, e.base_value, e.calc_method_value_id "
+		"SELECT DISTINCT e.prop_id, e.base_value, e.calc_method_value_id, e.class_res_id "
 		"FROM asm_data_set_device_effect_groups deg "
 		"JOIN asm_data_set_effect_groups eg ON eg.effect_group_id = deg.effect_group_id "
 		"JOIN asm_data_set_effects e ON e.effect_group_id = deg.effect_group_id "
@@ -192,11 +205,32 @@ void Inventory::ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId) {
 	}
 	sqlite3_bind_int(stmt, 1, deviceId);
 
-	int applied = 0, skipped = 0;
+	int applied = 0, skipped = 0, buffed = 0;
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		int   propId     = sqlite3_column_int   (stmt, 0);
 		float baseValue  = (float)sqlite3_column_double(stmt, 1);
 		int   calcMethod = sqlite3_column_int   (stmt, 2);
+		int   classResId = sqlite3_column_int   (stmt, 3);
+
+		// class 157 TgEffectBuff → register in source pawn's buff registry.
+		// devInst=0 (wildcard) so it applies to every outgoing
+		// damage/heal/etc. effect from this pawn — equip effects scope to the
+		// pawn, not to one weapon's damage. ITEM srcType matches the rolled-mod
+		// convention and lands the entry in BuffFormula's ITEM layer.
+		if (classResId == 157) {
+			FBuffHeader header{};
+			header.nPropId          = propId;
+			header.nReqCategoryCode = 0;
+			header.nReqSkillId      = 0;
+			header.nReqDeviceInstId = 0;
+			TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, header, calcMethod, baseValue,
+			                        /*bRemove=*/0, /*ITEM=*/1);
+			Logger::Log("inventory",
+				"ApplyDeviceEquipEffects: pawn=0x%p device=%d propId=%d cm=%d base=%.2f class=157 -> ApplyBuff\n",
+				Pawn, deviceId, propId, calcMethod, baseValue);
+			++buffed;
+			continue;
+		}
 
 		UTgProperty* prop = nullptr;
 		for (int i = 0; i < Pawn->s_Properties.Num(); ++i) {
@@ -228,9 +262,9 @@ void Inventory::ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId) {
 	}
 	sqlite3_finalize(stmt);
 
-	if (applied > 0 || skipped > 0) {
-		Logger::Log("inventory", "ApplyDeviceEquipEffects: pawn=0x%p device=%d applied=%d skipped=%d\n",
-			Pawn, deviceId, applied, skipped);
+	if (applied > 0 || skipped > 0 || buffed > 0) {
+		Logger::Log("inventory", "ApplyDeviceEquipEffects: pawn=0x%p device=%d applied=%d buffed=%d skipped=%d\n",
+			Pawn, deviceId, applied, buffed, skipped);
 	}
 }
 
@@ -669,7 +703,6 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 	s_equippedByPawnId[pawnId] = &s_equipped[Pawn];
 
 	// --- Invariant: invId -> deviceId O(1) lookup ---
-	// Replaces the per-call linear scan in DeviceCategorySkill::LookupByInstanceId.
 	// Overwrites any prior entry for the same invId (same-invId re-equip flows
 	// through Equip's short-circuit so this only fires for a new device).
 	s_deviceByInvId[invId] = deviceId;
@@ -720,13 +753,16 @@ const std::vector<EquippedEntry>& Inventory::GetEquippedByPawnId(int pawnId) {
 // ---------------------------------------------------------------------------
 // RemoveDeviceEquipEffects — inverse of ApplyDeviceEquipEffects.
 //
-// Walks the same lifetime=0 effect groups attached to the device and applies
-// the SIGN-FLIPPED delta to each pawn property's m_fRaw. Calc-method semantics
-// follow TgEffect.uc:448 (apply, bRemove=1):
-//   67 ADD             → newRaw = curRaw - base               (undo +base)
-//   70 SUBTRACT        → newRaw = curRaw + base               (undo -base)
-//   68 PERC_INCREASE   → newRaw = curRaw - (propBase * base)  (undo +%)
-//   69 PERC_DECREASE   → newRaw = curRaw + (propBase * base)  (undo -%)
+// Walks the same lifetime=0 effect groups attached to the device. Two-class
+// dispatch (must mirror Apply exactly):
+//   * class 157 → ApplyBuff with bRemove=1, same (propId, devInst=0) header
+//     so the registry's exact-match reverse subtracts the same delta.
+//   * class 80 / other → direct m_fRaw write with the SIGN-FLIPPED delta.
+//     Calc-method semantics follow TgEffect.uc:448 (apply, bRemove=1):
+//       67 ADD             → newRaw = curRaw - base               (undo +base)
+//       70 SUBTRACT        → newRaw = curRaw + base               (undo -base)
+//       68 PERC_INCREASE   → newRaw = curRaw - (propBase * base)  (undo +%)
+//       69 PERC_DECREASE   → newRaw = curRaw + (propBase * base)  (undo -%)
 //
 // Same DB query, same DISTINCT (double-row capture artifact), same direct
 // m_fRaw write rationale as the Apply side (see Apply header for the
@@ -739,7 +775,7 @@ static void RemoveDeviceEquipEffects_impl(ATgPawn* Pawn, int deviceId) {
 	if (db == nullptr) return;
 
 	static const char* kSql =
-		"SELECT DISTINCT e.prop_id, e.base_value, e.calc_method_value_id "
+		"SELECT DISTINCT e.prop_id, e.base_value, e.calc_method_value_id, e.class_res_id "
 		"FROM asm_data_set_device_effect_groups deg "
 		"JOIN asm_data_set_effect_groups eg ON eg.effect_group_id = deg.effect_group_id "
 		"JOIN asm_data_set_effects e ON e.effect_group_id = deg.effect_group_id "
@@ -752,11 +788,29 @@ static void RemoveDeviceEquipEffects_impl(ATgPawn* Pawn, int deviceId) {
 	}
 	sqlite3_bind_int(stmt, 1, deviceId);
 
-	int reverted = 0;
+	int reverted = 0, debuffed = 0;
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		int   propId     = sqlite3_column_int   (stmt, 0);
 		float baseValue  = (float)sqlite3_column_double(stmt, 1);
 		int   calcMethod = sqlite3_column_int   (stmt, 2);
+		int   classResId = sqlite3_column_int   (stmt, 3);
+
+		// class 157 — registry reverse via ApplyBuff(bRemove=1). Header MUST
+		// match the Apply side exactly so the entry-lookup hits the same slot.
+		if (classResId == 157) {
+			FBuffHeader header{};
+			header.nPropId          = propId;
+			header.nReqCategoryCode = 0;
+			header.nReqSkillId      = 0;
+			header.nReqDeviceInstId = 0;
+			TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, header, calcMethod, baseValue,
+			                        /*bRemove=*/1, /*ITEM=*/1);
+			Logger::Log("inventory",
+				"RemoveDeviceEquipEffects: pawn=0x%p device=%d propId=%d cm=%d base=%.2f class=157 -> ApplyBuff(remove)\n",
+				Pawn, deviceId, propId, calcMethod, baseValue);
+			++debuffed;
+			continue;
+		}
 
 		UTgProperty* prop = nullptr;
 		for (int i = 0; i < Pawn->s_Properties.Num(); ++i) {
@@ -783,9 +837,9 @@ static void RemoveDeviceEquipEffects_impl(ATgPawn* Pawn, int deviceId) {
 	}
 	sqlite3_finalize(stmt);
 
-	if (reverted > 0) {
-		Logger::Log("inventory", "RemoveDeviceEquipEffects: pawn=0x%p device=%d reverted=%d\n",
-			Pawn, deviceId, reverted);
+	if (reverted > 0 || debuffed > 0) {
+		Logger::Log("inventory", "RemoveDeviceEquipEffects: pawn=0x%p device=%d reverted=%d debuffed=%d\n",
+			Pawn, deviceId, reverted, debuffed);
 	}
 }
 

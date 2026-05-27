@@ -215,7 +215,8 @@ void InstanceRegistry::MarkReady(int64_t instance_id, int max_players) {
         "               AND p.state != 'STOPPED' "
         "           ) "
         "      THEN 'DRAFTING' ELSE 'READY' END, "
-        "    max_players=?, last_empty_at=strftime('%s','now') "
+        "    max_players=CASE WHEN max_players > 0 THEN max_players ELSE ? END, "
+        "    last_empty_at=strftime('%s','now') "
         "WHERE instance_id=? AND state='STARTING'",
         -1, &stmt, nullptr);
     if (rc != SQLITE_OK || !stmt) {
@@ -392,6 +393,35 @@ std::optional<InstanceInfo> InstanceRegistry::GetSuccessor(int64_t parent_instan
     }
     sqlite3_finalize(stmt);
     return result;
+}
+
+void InstanceRegistry::SetMaxPlayers(int64_t instance_id, int max_players) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    if (!db) return;
+
+    sqlite3_stmt* stmt = nullptr;
+    int rc = sqlite3_prepare_v2(db,
+        "UPDATE ga_instances SET max_players=? WHERE instance_id=?",
+        -1, &stmt, nullptr);
+    if (rc != SQLITE_OK || !stmt) {
+        Logger::Log("db", "[InstanceRegistry] SetMaxPlayers prepare failed: %s\n",
+            sqlite3_errmsg(db));
+        return;
+    }
+
+    sqlite3_bind_int(stmt, 1, max_players);
+    sqlite3_bind_int64(stmt, 2, instance_id);
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    if (rc != SQLITE_DONE) {
+        Logger::Log("db", "[InstanceRegistry] SetMaxPlayers failed: %s\n",
+            sqlite3_errmsg(db));
+        return;
+    }
+
+    Logger::Log("db", "[InstanceRegistry] SetMaxPlayers: instance_id=%lld max_players=%d\n",
+        (long long)instance_id, max_players);
 }
 
 std::optional<InstanceInfo> InstanceRegistry::GetReadyHomeInstance() {
@@ -642,6 +672,39 @@ void InstanceRegistry::InsertInstancePlayer(int64_t instance_id, const std::stri
 
     Logger::Log("db", "[InstanceRegistry] InsertInstancePlayer: instance=%lld guid=%s tf=%d profile=%u\n",
         (long long)instance_id, session_guid.c_str(), task_force, profile_id);
+}
+
+void InstanceRegistry::UpdateInstancePlayerTaskForce(int64_t instance_id, const std::string& session_guid,
+                                                     int task_force) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    if (!db) return;
+
+    sqlite3_stmt* stmt = nullptr;
+    int rc = sqlite3_prepare_v2(db,
+        "UPDATE ga_instance_players SET task_force_number = ? "
+        "WHERE instance_id = ? AND session_guid = ? AND left_at IS NULL",
+        -1, &stmt, nullptr);
+    if (rc != SQLITE_OK || !stmt) {
+        Logger::Log("db", "[InstanceRegistry] UpdateInstancePlayerTaskForce prepare failed: %s\n",
+            sqlite3_errmsg(db));
+        return;
+    }
+
+    sqlite3_bind_int(stmt, 1, task_force);
+    sqlite3_bind_int64(stmt, 2, instance_id);
+    sqlite3_bind_text(stmt, 3, session_guid.c_str(), -1, SQLITE_TRANSIENT);
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE) {
+        Logger::Log("db", "[InstanceRegistry] UpdateInstancePlayerTaskForce failed: %s\n",
+            sqlite3_errmsg(db));
+        return;
+    }
+
+    Logger::Log("db", "[InstanceRegistry] UpdateInstancePlayerTaskForce: instance=%lld guid=%s tf=%d changed=%d\n",
+        (long long)instance_id, session_guid.c_str(), task_force, sqlite3_changes(db));
 }
 
 void InstanceRegistry::MarkInstancePlayerLeft(int64_t instance_id, const std::string& session_guid) {

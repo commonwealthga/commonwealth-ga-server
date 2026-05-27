@@ -53,6 +53,16 @@ public:
     // Returns true if dispatched, false if the session is unknown or the player is not assigned to an instance.
     static bool DeliverPlayerAction(const std::string& session_guid, const nlohmann::json& payload);
 
+    // Admin dashboard move/team-change helper. Same-instance moves use the existing
+    // in-instance change_team action; cross-instance moves reuse PLAYER_REGISTER +
+    // GO_PLAY routing.
+    static bool AdminMovePlayerToInstance(const std::string& session_guid,
+                                          int64_t target_instance_id,
+                                          int target_task_force,
+                                          int64_t source_instance_id,
+                                          int source_task_force,
+                                          std::string& message);
+
     // Clear the per-session queue + pending-match state on the named session.
     // Called when a matchmade instance dies before delivering MATCH_INVITATION
     // (spawn failure or pre-READY crash) — without this the session stays

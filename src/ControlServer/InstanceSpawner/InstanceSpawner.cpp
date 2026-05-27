@@ -7,8 +7,10 @@
 
 #include "src/ControlServer/InstanceSpawner/InstanceSpawner.hpp"
 #include "src/ControlServer/Logger.hpp"
+#include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include <unistd.h>
 #include <sys/stat.h>
+#include <signal.h>
 #include <cstring>
 #include <cerrno>
 #include <vector>
@@ -18,9 +20,37 @@
 #include <atomic>
 #include <cstdint>
 #include <algorithm>
+#include <thread>
 #if defined(__linux__)
 #include <sched.h>
 #endif
+
+void InstanceSpawner::StopInstanceProcess(const InstanceInfo& inst,
+                                          const char* reason,
+                                          int grace_seconds) {
+    if (inst.pid <= 0) {
+        Logger::Log("spawner",
+            "[InstanceSpawner] StopInstanceProcess: instance=%lld has no pid (reason=%s)\n",
+            (long long)inst.instance_id, reason ? reason : "unspecified");
+        return;
+    }
+
+    Logger::Log("spawner",
+        "[InstanceSpawner] StopInstanceProcess: SIGTERM pgid=%d instance=%lld map=%s reason=%s\n",
+        inst.pid, (long long)inst.instance_id, inst.map_name.c_str(),
+        reason ? reason : "unspecified");
+    kill(-inst.pid, SIGTERM);
+
+    std::thread([pid = inst.pid, iid = inst.instance_id, grace_seconds]() {
+        sleep(grace_seconds > 0 ? grace_seconds : 1);
+        if (kill(-pid, 0) == 0) {
+            Logger::Log("spawner",
+                "[InstanceSpawner] StopInstanceProcess: SIGKILL pgid=%d instance=%lld\n",
+                pid, (long long)iid);
+            kill(-pid, SIGKILL);
+        }
+    }).detach();
+}
 
 int InstanceSpawner::SlotCount(const ControlServerConfig& cfg) {
     if (cfg.game_cpu_range.lo < 0 || cfg.game_cpu_range.hi < cfg.game_cpu_range.lo) return 0;

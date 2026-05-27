@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame_Ticket/LoadGameConfig/TgGame_Ticket__LoadGameConfig.hpp"
+#include "src/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // TgGame_Ticket LoadGameConfig is stripped on this binary.
@@ -16,6 +17,12 @@ void __fastcall TgGame_Ticket__LoadGameConfig::Call(ATgGame_Ticket* Game, void* 
 	Game->m_bTeamsTied         = 1;
 	Game->m_bTicketCountReached = 0;
 	Game->m_nTfControlledLast  = 0;
+
+	TgGame__LoadGameConfig::LoadCommonGameConfig(Game);
+
+	Game->m_fGameMissionTime = 15 * 60.0f;   // 15 minute mission
+	Game->m_fGameOvertimeTime = 4 * 60.0f;  // up to 4 minutes overtime
+	Game->m_bAllowOvertime = 1;
 
 	ATgRepInfo_Game* GRI = reinterpret_cast<ATgRepInfo_Game*>(Game->GameReplicationInfo);
 	if (GRI != nullptr) {

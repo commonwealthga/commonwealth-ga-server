@@ -1,7 +1,6 @@
 #include "src/GameServer/TgGame/TgDeployable/InitializeDefaultProps/TgDeployable__InitializeDefaultProps.hpp"
-#include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
-#include "src/GameServer/TgGame/TgProperty/ConstructTgProperty/TgProperty__ConstructTgProperty.hpp"
 #include "src/GameServer/Constants/TgProperties.h"
+#include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -15,54 +14,14 @@ struct DeployableDefaults {
 std::unordered_map<int, DeployableDefaults> g_deployableDefaultsCache;
 }
 
-UTgProperty* TgDeployable__InitializeDefaultProps::InitializeProperty(
-	ATgDeployable* Deployable, int nPropertyId,
-	float fBase, float fRaw, float fMinimum, float fMaximum)
-{
-	if (!Deployable) return nullptr;
-
-	// Idempotent upsert — if the prop is already in s_Properties, update its
-	// fields in place instead of adding a duplicate slot.  Lets callers seed
-	// defaults and then override from DB rows without creating double entries
-	// that SetProperty/GetProperty's linear scan would read inconsistently.
-	// TArray::Add now routes through GAllocator::Realloc so the engine's
-	// eventual UProperty cleanup frees Data through the matching allocator.
-	UTgProperty* Property = nullptr;
-	for (int i = 0; i < Deployable->s_Properties.Count; ++i) {
-		UTgProperty* p = Deployable->s_Properties.Data[i];
-		if (p && p->m_nPropertyId == nPropertyId) {
-			Property = p;
-			break;
-		}
-	}
-	if (!Property) {
-		Property = (UTgProperty*)TgProperty__ConstructTgProperty::CallOriginal(
-			ClassPreloader::GetTgPropertyClass(), -1, 0, 0, 0, 0, 0, 0, 0);
-		Deployable->s_Properties.Add(Property);
-	}
-
-	Property->m_nPropertyId = nPropertyId;
-	Property->m_fBase       = fBase;
-	Property->m_fRaw        = fRaw;
-	Property->m_fMinimum    = fMinimum;
-	Property->m_fMaximum    = fMaximum;
-
-	// SetProperty is a real native at 0x10a1c940 — scans s_Properties for the
-	// id, writes the new value, then dispatches ApplyProperty (vtable slot 251)
-	// which pushes the value into any engine-side mirror (r_nHealth for HP).
-	Deployable->SetProperty(nPropertyId, fRaw);
-
-	return Property;
-}
-
 // Load the deployable's device-mode properties from the DB and push each row
-// into s_Properties via InitializeProperty.  Matches what the game's asm.dat
+// into s_Properties via AddProperty.  Matches what the game's asm.dat
 // loader (FUN_109a7d20 in the client binary) does for device modes: one
 // TgProperty slot per row with {prop_id, base, base-as-raw, min, max}.
 //
 // Called from Call() AFTER the identity-default block so DB values overwrite
 // the zeroed protections / identity deploy-rate / proximity defaults — the
-// upsert in InitializeProperty guarantees we mutate existing slots rather
+// upsert in AddProperty guarantees we mutate existing slots rather
 // than duplicating them.
 //
 // Covers deployables the user deploys (medstation pulse rate, sweep-sensor
@@ -109,7 +68,7 @@ static void SeedPropertiesFromDeviceModeDb(ATgDeployable* Deployable, int deploy
 		}
 		sqlite3_stmt* stmt = nullptr;
 		// Join deployables → device_mode_properties.  A deployable with multiple
-		// modes contributes each mode's props; InitializeProperty upserts by
+		// modes contributes each mode's props; AddProperty upserts by
 		// prop_id so multi-mode duplicates collapse automatically onto a single
 		// slot (last row wins — benign since same-prop repeats in asm.dat share
 		// the same base/min/max across modes in practice).
@@ -147,32 +106,69 @@ static void SeedPropertiesFromDeviceModeDb(ATgDeployable* Deployable, int deploy
 
 	const std::vector<CachedProp>& rows = it->second;
 
+	// Hoist out of the loop — deployableId is loop-invariant and IsTimerBomb
+	// is cached, so reading it once just avoids a hash-map lookup per row.
+	const bool isBomb = DeployableClassify::IsTimerBomb(deployableId);
+
 	std::string seedDetails;
 	for (const CachedProp& r : rows) {
 		// Native FUN_109a7d20 copies base → raw at +0x44, so match that.
-		TgDeployable__InitializeDefaultProps::InitializeProperty(
-			Deployable, r.propId, r.base, /*raw=*/r.base, r.minV, r.maxV);
+		Deployable->AddProperty(
+			r.propId, r.base, /*raw=*/r.base, r.minV, r.maxV);
 
 		// Mirror known SDK fields that ATgDeployable::ApplyProperty DOESN'T
-		// handle (only props 8 + 278 fan out natively — everything else below
-		// would otherwise stay at zero even after the s_Properties slot is
-		// populated).  Without this the state machine stalls: UC's
-		// Active.BeginState gates the StartFire timer on `s_fActivationTime > 0`
-		// (see TgDeployable.uc:1999).  A medstation with prop 7 = 1.0 would
-		// otherwise sit in Active forever because s_fActivationTime stays 0.
+		// handle (only props 8 + 278 fan out natively — everything else would
+		// otherwise stay at zero even after the s_Properties slot is populated).
 		//
-		// prop 7   → s_fActivationTime    : post-deploy delay before first fire
+		// Without this the state machine stalls: UC's Active.BeginState gates
+		// the StartFire timer on `s_fActivationTime > 0` (TgDeployable.uc:1999).
+		// A medstation with prop 7 = 1.0 would otherwise sit in Active forever
+		// because s_fActivationTime stays 0.
+		//
+		// All-deployables mirrors:
+		//   prop 7   → s_fActivationTime  : post-deploy delay before first fire
 		//                                   (bombs: fuse length; stations: 1s warmup)
-		// prop 150 → s_fPersistTime       : total uptime before auto-expiry
+		//   prop 150 → s_fPersistTime     : total uptime before auto-expiry
 		//                                   (medstation: 10000; beacons: 0 = forever)
 		//
-		// Bombs also write these explicitly in SpawnDeployableActor's
-		// timer-bomb block with different derivation (dedicated DB lookup on
-		// prop 6 for radius + prop 7 for activation) — the write here is
-		// idempotent with that path; bombs just get the value set twice.
+		// Bombs-only mirrors (gated by DeployableClassify::IsTimerBomb so that
+		// stations carrying prop 6 / prop 7 don't get spurious HUD UI):
+		//   prop 6   → r_fClientProximityRadius (×16 ft→uu)  : HUD "you're in
+		//                                   the danger zone" warning radius.
+		//                                   Mines get this from prop 8 via the
+		//                                   native ApplyProperty; bombs carry
+		//                                   no prop 8, so prop 6 is the only
+		//                                   source. WRITTEN ONLY TO THE CLIENT
+		//                                   FIELD — never `s_fProximityRadius`,
+		//                                   which is the server-side "this is
+		//                                   a mine" discriminator in
+		//                                   Active.BeginState (writing it on
+		//                                   a bomb routes the bomb into the
+		//                                   mine LifeSpan path → never fires).
+		//   prop 7   → r_nTickingTime       : replicated countdown the bomb HUD
+		//                                   draws (and gates
+		//                                   CheckLocalPlayerWithinProximity on
+		//                                   at TgDeployable.uc:1122).
+		//
+		// These same mirrors fire again on every BUFFED SetProperty call from
+		// ScaleTargetProperties — see TgDeployable__SetProperty.cpp. That's
+		// what folds in Short Fuses / Wide Blast skill modifiers.
 		switch (r.propId) {
-			case 7:   Deployable->s_fActivationTime = r.base; break;
-			case 150: Deployable->s_fPersistTime    = r.base; break;
+			case GA_PROPERTY::TGPID_REMOTE_ACTIVATION_TIME:
+				Deployable->s_fActivationTime = r.base;
+				if (isBomb) {
+					Deployable->r_nTickingTime      = (int)r.base;
+					Deployable->c_fStartTickingTime = 0.0f;
+				}
+				break;
+			case GA_PROPERTY::TGPID_PERSIST_TIME:
+				Deployable->s_fPersistTime = r.base;
+				break;
+			case GA_PROPERTY::TGPID_DAMAGE_RADIUS:
+				if (isBomb) {
+					Deployable->r_fClientProximityRadius = r.base * 16.0f;  // ft→uu
+				}
+				break;
 		}
 
 		char line[96];
@@ -293,7 +289,7 @@ void __fastcall TgDeployable__InitializeDefaultProps::Call(ATgDeployable* Deploy
 	int deployableId = Deployable->r_nDeployableId;
 
 	// Defaults used when DB row is missing or health unpopulated.
-	float health = 100.0f;
+	float health = 0.0f;
 
 	auto it = g_deployableDefaultsCache.find(deployableId);
 	if (it == g_deployableDefaultsCache.end()) {
@@ -343,20 +339,20 @@ void __fastcall TgDeployable__InitializeDefaultProps::Call(ATgDeployable* Deploy
 	// the post-formula min/max gate back to `health`, silently nullifying
 	// every HP_MAX buff. Same pattern as TgPawn__InitializeDefaultProps
 	// raising HEALTH/HEALTH_MAX to 10× for the same reason on the player side.
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_HEALTH,     health, health, 0, health * 10.0f);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_HEALTH_MAX, health, health, 0, health * 10.0f);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_HEALTH,     health, health, 0, health * 10.0f);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_HEALTH_MAX, health, health, 0, health * 10.0f);
 
 	// TGPID_DEPLOY_RATE_MODIFIER (278) — identity 1.0. This one IS in the
 	// native ApplyProperty switch (maps to r_fDeployRate +0x27C). Repair
 	// arms add +4.5 for 1s via effect-system Hit on prop 278; UC TickDeploy
 	// multiplies DeltaSeconds by r_fDeployRate each tick.
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_DEPLOY_RATE_MODIFIER, 1.0f, 1.0f, 0, 100.0f);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_DEPLOY_RATE_MODIFIER, 1.0f, 1.0f, 0, 100.0f);
 
 	// TGPID_PROXIMITY_DISTANCE (8) — the other prop ATgDeployable::ApplyProperty
 	// handles (maps to s_fProximityRadius / r_fClientProximityRadius with ×16
 	// conversion). Identity 0.0 means no proximity; sensors/mines override via
 	// their equip-effect or device-mode properties.
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROXIMITY_DISTANCE, 0.0f, 0.0f, 0, 1000.0f);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROXIMITY_DISTANCE, 0.0f, 0.0f, 0, 1000.0f);
 
 	// Protection properties — must exist in s_Properties so that damage
 	// calculation (TgEffectManager::ApplyDamage or similar) can resolve
@@ -368,30 +364,30 @@ void __fastcall TgDeployable__InitializeDefaultProps::Call(ATgDeployable* Deploy
 	// ATgDeployable::ApplyProperty does NOT engine-mirror these prop IDs —
 	// that's OK because damage calc reads via GetProperty, not a cached
 	// field. Identity default 0 so they only matter when buffed.
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_PHYSICAL,  0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_ENERGY,    0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_THERMAL,   0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_SLOW,      0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_POISON,    0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_DISEASE,   0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_STUN,      0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_SLEEP,     0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_KNOCKBACK, 0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_EMP_STUN,  0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_IGNITE,    0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_BIO,       0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_EMP_BURN,  0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_BLEED,     0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_MELEE,     0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_RANGED,    0, 0, 0, 10000);
-	InitializeProperty(Deployable, GA_PROPERTY::TGPID_PROTECTION_AOE,       0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_PHYSICAL,  0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_ENERGY,    0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_THERMAL,   0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_SLOW,      0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_POISON,    0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_DISEASE,   0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_STUN,      0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_SLEEP,     0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_KNOCKBACK, 0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_EMP_STUN,  0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_IGNITE,    0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_BIO,       0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_EMP_BURN,  0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_BLEED,     0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_MELEE,     0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_RANGED,    0, 0, 0, 10000);
+	Deployable->AddProperty( GA_PROPERTY::TGPID_PROTECTION_AOE,       0, 0, 0, 10000);
 
 	// DB-driven device-mode props (range, fire-time, persist-time, damage-
 	// radius, specific protection values, sweep-sensor geometry, etc.) — the
 	// asm.dat loader's equivalent of pushing TgProperty slots onto the fire
 	// mode.  Runs AFTER the identity defaults so DB values overwrite the
 	// zeroed protections / identity deploy-rate / proximity where a row
-	// exists.  Upsert in InitializeProperty guarantees no duplicate slots.
+	// exists.  Upsert in AddProperty guarantees no duplicate slots.
 	SeedPropertiesFromDeviceModeDb(Deployable, deployableId);
 
 	// Permanent equip-effects (lifetime_sec=0) from asm_data_set_device_effect_groups.

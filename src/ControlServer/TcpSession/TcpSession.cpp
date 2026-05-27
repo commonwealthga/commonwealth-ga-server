@@ -299,6 +299,90 @@ bool TcpSession::DeliverPlayerAction(const std::string& session_guid, const nloh
     return ok;
 }
 
+bool TcpSession::AdminMovePlayerToInstance(const std::string& session_guid,
+                                           int64_t target_instance_id,
+                                           int target_task_force,
+                                           int64_t source_instance_id,
+                                           int source_task_force,
+                                           std::string& message) {
+    if (target_instance_id == 0) {
+        message = "missing target_instance_id";
+        return false;
+    }
+    if (target_task_force != 1 && target_task_force != 2) {
+        message = "target_task_force must be 1 or 2";
+        return false;
+    }
+
+    std::shared_ptr<TcpSession> session;
+    {
+        std::lock_guard<std::mutex> lock(sessions_mutex_);
+        auto it = g_sessions_.find(session_guid);
+        if (it == g_sessions_.end()) {
+            message = "player session not found";
+            return false;
+        }
+        session = it->second.lock();
+        if (!session) {
+            g_sessions_.erase(it);
+            message = "player session expired";
+            return false;
+        }
+    }
+
+    auto target = InstanceRegistry::GetInstanceById(target_instance_id);
+    if (!target) {
+        message = "target instance not found";
+        return false;
+    }
+    if (target->state != "READY") {
+        message = "target instance is not READY";
+        return false;
+    }
+
+    int64_t current_instance_id = session->assigned_instance_id_;
+    if (current_instance_id == 0 && source_instance_id != 0) {
+        current_instance_id = source_instance_id;
+    }
+
+    if (current_instance_id == target_instance_id) {
+        if (source_task_force == target_task_force) {
+            message = "already on requested side";
+            return true;
+        }
+
+        nlohmann::json action;
+        action["type"] = IpcProtocol::MSG_PLAYER_ACTION;
+        action["session_guid"] = session_guid;
+        action["action"] = "change_team";
+        action["args"] = {
+            {"target", target_task_force == 1 ? "attackers" : "defenders"}
+        };
+
+        bool ok = IpcServer::SendToInstance(current_instance_id, action.dump());
+        if (!ok) {
+            message = "failed to send change_team action";
+            return false;
+        }
+
+        InstanceRegistry::UpdateInstancePlayerTaskForce(current_instance_id, session_guid,
+            target_task_force);
+        message = "team change requested";
+        return true;
+    }
+
+    if (current_instance_id != 0) {
+        InstanceRegistry::MarkInstancePlayerLeft(current_instance_id, session_guid);
+    }
+
+    Logger::Log("tcp", "[TcpSession] Admin move player %s from instance=%lld to instance=%lld tf=%d\n",
+        session_guid.c_str(), (long long)current_instance_id, (long long)target_instance_id,
+        target_task_force);
+    session->initiate_player_register_for_target(*target, target_task_force);
+    message = "instance move requested";
+    return true;
+}
+
 void TcpSession::initiate_player_register_and_go_play() {
     // Build PLAYER_REGISTER JSON with full character state.
     auto session = PlayerSessionStore::GetByGuid(session_guid_);

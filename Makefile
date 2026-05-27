@@ -154,7 +154,6 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/ResetQueue/TgBotFactory__ResetQueue.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.cpp \
-			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/GetPropertyValueById/TgDeviceFire__GetPropertyValueById.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/ApplyFireModeSetup/TgDeviceFire__ApplyFireModeSetup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/InitializeProjectile/TgDeviceFire__InitializeProjectile.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/CustomFire/TgDeviceFire__CustomFire.cpp \
@@ -215,8 +214,10 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/PopulateInstigatorEquippedDevices/TgDevice__PopulateInstigatorEquippedDevices.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice_Morale/SendMoraleBoostMessage/TgDevice_Morale__SendMoraleBoostMessage.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/Morale/MoraleCredit.cpp \
-			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/DeviceCategorySkill.cpp \
-			  $(SRC_DIR)/GameServer/TgGame/BuffEffectRegistry/ModifierProps.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/_effect_core/DeviceCategorySkill.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/_effect_core/ScaleTargetProperties.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/_deployable_classify/DeployableClassify.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/_surface_rotation/SurfaceRotation.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffect/TrackStats/TgEffect__TrackStats.cpp \

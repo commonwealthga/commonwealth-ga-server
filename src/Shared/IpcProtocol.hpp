@@ -33,6 +33,8 @@ constexpr const char* MSG_INSTANCE_HELLO_ACK = "INSTANCE_HELLO_ACK";
 constexpr const char* MSG_INSTANCE_READY     = "INSTANCE_READY";
 
 constexpr const char* MSG_GAME_EVENT      = "GAME_EVENT";
+constexpr const char* MSG_ADMIN_ACTION    = "ADMIN_ACTION";
+constexpr const char* MSG_ADMIN_ACTION_ACK = "ADMIN_ACTION_ACK";
 
 constexpr const char* MSG_PLAYER_JOINED  = "PLAYER_JOINED";
 constexpr const char* MSG_PLAYER_LEFT    = "PLAYER_LEFT";

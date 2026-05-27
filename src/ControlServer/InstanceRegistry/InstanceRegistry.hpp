@@ -62,6 +62,7 @@ public:
 
     // Transition STARTING -> READY when INSTANCE_READY IPC arrives.
     static void MarkReady(int64_t instance_id, int max_players);
+    static void SetMaxPlayers(int64_t instance_id, int max_players);
 
     // Find first READY instance with is_home_map=1.
     static std::optional<InstanceInfo> GetReadyHomeInstance();
@@ -84,6 +85,8 @@ public:
     static void InsertInstancePlayer(int64_t instance_id, const std::string& session_guid,
                                      int64_t character_id, int task_force,
                                      uint32_t profile_id = 0);
+    static void UpdateInstancePlayerTaskForce(int64_t instance_id, const std::string& session_guid,
+                                             int task_force);
     static void MarkInstancePlayerLeft(int64_t instance_id, const std::string& session_guid);
     static void MarkAllInstancePlayersLeft(int64_t instance_id);
     static std::pair<int, int> GetTeamCounts(int64_t instance_id);

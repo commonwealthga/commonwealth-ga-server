@@ -60,7 +60,12 @@ void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	Game->m_nSecsToAutoReleaseDefenders = 15;
 	Game->m_bIsTutorialMap = 0;
 
-	// Game->TimeLimit = 15 * 60;
+	Game->m_fGameMissionTime = 15 * 60.0f;   // 15 minute mission
+	Game->m_fGameOvertimeTime = 4 * 60.0f;  // up to 4 minutes overtime
+	Game->m_bAllowOvertime = 1;
+	Game->m_eTimerState = 0;
+
+	Game->TimeLimit = 15 * 60;
 
 	std::string map_name = Config::GetMapNameChar();
 

@@ -2,6 +2,7 @@
 #include "src/GameServer/Combat/SendCombatMessage/SendCombatMessage.hpp"
 #include "src/GameServer/Constants/TgProperties.h"
 #include "src/GameServer/Globals.hpp"
+#include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Broadcast a COMBAT_MESSAGE (0x9F) to every connected client. Each client's
@@ -103,18 +104,114 @@ void __fastcall TgDeployable__SetProperty::Call(ATgDeployable* D, void* edx, int
 			break;
 		}
 
-		// Both 304 (TGPID_HEALTH_MAX, the pawn variant) and 339
+		// Prop 6 (DAMAGE_RADIUS) → r_fClientProximityRadius for timer bombs.
+		//
+		// The HUD "you are in a bomb's danger zone" warning gates on
+		// `r_fClientProximityRadius > 0` (UC `CheckLocalPlayerWithinProximity`,
+		// TgDeployable.uc:1110, line 1127 specifically). For MINES, that field
+		// is populated by the native ApplyProperty's prop-8 mirror (×16 ft→uu);
+		// for BOMBS — which carry no prop 8 on their device-mode rows, only
+		// prop 6 (damage radius) — the field would otherwise stay 0 and the
+		// HUD warning never appears.
+		//
+		// CRITICAL: we mirror prop 6 ONLY to r_fClientProximityRadius, NEVER to
+		// s_fProximityRadius. The latter is the server-side "this is a mine"
+		// discriminator in UC's Active.BeginState (TgDeployable.uc:1992) —
+		// writing it on a bomb routes Active into the mine LifeSpan path and
+		// the bomb expires without firing StartFire. See the FIELD DICHOTOMY
+		// comment in TgProj_Deployable__SpawnDeployable.cpp for the full
+		// rationale.
+		//
+		// IsTimerBomb gate keeps stations / turrets / mines untouched here —
+		// their prop 6 (turret AoE) drives weapon-fire damage radius via
+		// CalcInstantFire, not the HUD warning. Mirror runs both at spawn
+		// (after InitializeDefaultProps seeds prop 6's base) AND on every
+		// buffed write from ScaleTargetProperties (Wide Blast / AOE_RADIUS_
+		// MODIFIER skill expansion of prop 6 via ConvertPropToPropList).
+		case GA_PROPERTY::TGPID_DAMAGE_RADIUS: {
+			if (DeployableClassify::IsTimerBomb(D->r_nDeployableId)) {
+				const float radiusUU = fValue * 16.0f;  // ft→uu, matches native ApplyProperty(prop 8)
+				D->r_fClientProximityRadius = radiusUU;
+				D->bNetDirty        = 1;
+				D->bForceNetUpdate  = 1;
+				Logger::Log("inventory",
+					"[SetProperty mirror] deployable=0x%p id=%d  DAMAGE_RADIUS %.2fft -> r_fClientProximityRadius=%.2fuu (bomb HUD)\n",
+					D, D->r_nDeployableId, fValue, radiusUU);
+			}
+			break;
+		}
+
+		// Prop 7 (REMOTE_ACTIVATION_TIME) → s_fActivationTime always; plus
+		// r_nTickingTime for timer bombs.
+		//
+		// The native ApplyProperty drops every prop except 8 / 278 on the floor;
+		// our InitializeDefaultProps seeds s_fActivationTime once at spawn from
+		// prop 7's base value, but every subsequent SetProperty(7, …) — most
+		// notably the buffed write from ScaleTargetProperties (which folds e.g.
+		// Short Fuses' -10% prop 349 REMOTE_TIME_MODIFIER via
+		// GetBuffedProperty(BUFF_DEVICE, 7)) — silently drops because there's
+		// no mirror. Result: UC `Active.BeginState` reads the stale unbuffed
+		// s_fActivationTime → SetTimer fires at the base time → the player's
+		// remote-time skill never takes effect. Mirror here so the buffed
+		// value propagates.
+		//
+		// `r_nTickingTime` (replicated int seconds) drives the bomb's HUD
+		// countdown via UC `CheckLocalPlayerWithinProximity` (early-returns at
+		// `r_nTickingTime == 0`) and the "X seconds left" counter at
+		// TgDeployable.uc:1518. UC never sets this field; the native that
+		// would populate it from asm-data is stripped. Bombs only — mines
+		// have no countdown HUD.
+		case GA_PROPERTY::TGPID_REMOTE_ACTIVATION_TIME: {
+			D->s_fActivationTime = fValue;
+			D->bNetDirty        = 1;
+			D->bForceNetUpdate  = 1;
+
+			const bool isBomb = DeployableClassify::IsTimerBomb(D->r_nDeployableId);
+			if (isBomb) {
+				D->r_nTickingTime      = (int)fValue;
+				D->c_fStartTickingTime = 0.0f;  // client repnotify will stamp WorldInfo.TimeSeconds
+			}
+
+			Logger::Log("inventory",
+				"[SetProperty mirror] deployable=0x%p id=%d  REMOTE_ACTIVATION_TIME -> s_fActivationTime=%.3fs%s\n",
+				D, D->r_nDeployableId, fValue,
+				isBomb ? " (+r_nTickingTime for bomb HUD)" : "");
+			break;
+		}
+
+		// Prop 150 (PERSIST_TIME) → s_fPersistTime. Same mirror rationale as
+		// prop 7: InitializeDefaultProps seeds it from the base, but any
+		// buffed SetProperty(150, …) wouldn't otherwise reach the field UC
+		// reads in Active.BeginState.
+		case GA_PROPERTY::TGPID_PERSIST_TIME: {
+			D->s_fPersistTime  = fValue;
+			D->bNetDirty       = 1;
+			D->bForceNetUpdate = 1;
+			Logger::Log("inventory",
+				"[SetProperty mirror] deployable=0x%p id=%d  PERSIST_TIME -> s_fPersistTime=%.3fs\n",
+				D, D->r_nDeployableId, fValue);
+			break;
+		}
+
+		// Both 304 (TGPID_HEALTH_MAX, the pawn-side variant) and 339
 		// (TGPID_HEALTH_MAX_DEPLOYABLES, the deployable-specific variant) land
-		// here.  Either flavour ends up writing the same DRI field; the
-		// duplicate handling is intentional so whichever effect-group rolls a
-		// max-HP buff actually moves the bar regardless of which property id
-		// the DB row chose.
+		// here. Either flavour writes the same DRI field; the duplicate
+		// handling is intentional so whichever effect-group rolls a max-HP
+		// buff actually moves the bar regardless of which property id the DB
+		// row chose.
 		case GA_PROPERTY::TGPID_HEALTH_MAX:
 		case GA_PROPERTY::TGPID_HEALTH_MAX_DEPLOYABLES: {
 			int newMax = (int)fValue;
 			if (newMax < 1) newMax = 1;
 
+			// Read current HP from the replicated mirror — InitializeDefault-
+			// Props seeds `r_DRI->r_nHealthCurrent` at spawn, but the actor's
+			// own `r_nHealth` can remain at the CDO default (typically 0)
+			// until UC's damage path writes it. Using r_DRI gives the
+			// canonical current HP for the full-vs-damaged check below.
 			int oldMax = D->r_DRI ? D->r_DRI->r_nHealthMaximum : 0;
+			int curHp  = D->r_DRI ? D->r_DRI->r_nHealthCurrent : D->r_nHealth;
+
 			if (D->r_DRI) {
 				D->r_DRI->r_nHealthMaximum = newMax;
 				D->r_DRI->bNetDirty        = 1;
@@ -123,16 +220,38 @@ void __fastcall TgDeployable__SetProperty::Call(ATgDeployable* D, void* edx, int
 			D->bNetDirty        = 1;
 			D->bForceNetUpdate  = 1;
 
-			// Re-clamp current HP against the new ceiling.
-			if (D->r_nHealth > newMax) {
-				D->r_nHealth = newMax;
-				if (D->r_DRI) D->r_DRI->r_nHealthCurrent = newMax;
-				D->UpdateHealth(newMax);
+			// Resolve where current HP should end up after the cap change:
+			//
+			//   • At-full (curHp == oldMax) → stay at full at the new cap.
+			//     This is the standard "max-HP buff while at full → stay
+			//     full" semantic AND the spawn-time fix: ScaleTargetProps
+			//     applies HP_MAX buffs right after InitializeDefaultProps
+			//     seeds current to base, so curHp == oldMax holds and we
+			//     scale current up. Without this a freshly-spawned force
+			//     field reads ~45% HP (its initial 1500 against the buffed
+			//     3315 cap when Station Buff + Output Mod compound).
+			//
+			//   • Damaged (curHp > newMax after a debuff) → clamp down to
+			//     the new ceiling — preserves the prior clamp behavior.
+			//
+			//   • Damaged & still below new cap → leave current alone;
+			//     only the ceiling moves.
+			int newCur = curHp;
+			if (oldMax > 0 && curHp == oldMax) {
+				newCur = newMax;
+			} else if (curHp > newMax) {
+				newCur = newMax;
+			}
+
+			if (newCur != curHp || D->r_nHealth != newCur) {
+				D->r_nHealth = newCur;
+				if (D->r_DRI) D->r_DRI->r_nHealthCurrent = newCur;
+				D->UpdateHealth(newCur);
 			}
 
 			Logger::Log("heal_tick",
-				"[SetProperty mirror] deployable=0x%p id=%d  prop=%d (HEALTH_MAX) %d -> %d\n",
-				D, D->r_nDeployableId, nPropId, oldMax, newMax);
+				"[SetProperty mirror] deployable=0x%p id=%d  prop=%d (HEALTH_MAX) %d -> %d  cur %d -> %d\n",
+				D, D->r_nDeployableId, nPropId, oldMax, newMax, curHp, newCur);
 			break;
 		}
 

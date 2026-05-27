@@ -9,9 +9,9 @@
 // inherit stuns / debuffs / speed modifiers it was carrying at death.
 //
 // Clean-room rebuild: slot teardown delegated to the intact refcount-aware
-// ClearEffectRep (0x10a6f030); no BuffEffectRegistry::Forget (stateless routing,
-// nothing to forget). The per-effect aoi gate and station-aura group skip are
-// preserved — they are the correctness core.
+// ClearEffectRep (0x10a6f030). Stateless routing — nothing to forget. The
+// per-effect aoi gate and station-aura group skip are preserved — they are
+// the correctness core.
 
 typedef void(__fastcall* ClearEffectRepFn)(ATgEffectManager*, void*, int, int);
 static const ClearEffectRepFn ClearEffectRepNative = (ClearEffectRepFn)0x10a6f030;

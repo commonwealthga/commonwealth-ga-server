@@ -12,6 +12,30 @@
 #include <string>
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 
+namespace {
+
+bool IsPrivateOrLocalAddress(const asio::ip::address& address) {
+    if (address.is_loopback()) return true;
+    if (address.is_v4()) {
+        const auto bytes = address.to_v4().to_bytes();
+        const uint8_t a = bytes[0];
+        const uint8_t b = bytes[1];
+        if (a == 10) return true;
+        if (a == 172 && b >= 16 && b <= 31) return true;
+        if (a == 192 && b == 168) return true;
+        if (a == 169 && b == 254) return true;
+        return false;
+    }
+    if (address.is_v6()) {
+        const auto bytes = address.to_v6().to_bytes();
+        if ((bytes[0] & 0xfe) == 0xfc) return true;  // fc00::/7
+        if (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80) return true;  // fe80::/10
+    }
+    return false;
+}
+
+} // namespace
+
 // ---------------------------------------------------------------------------
 // IpcSession -- handles a single game instance connection (server side)
 // ---------------------------------------------------------------------------
@@ -146,6 +170,9 @@ private:
             Logger::Log("ipc", "[IpcServer] INSTANCE_HELLO_ACK sent to instance_id=%lld\n",
                 (long long)inst_id);
         }
+        else if (type == IpcProtocol::MSG_ADMIN_ACTION) {
+            handle_admin_action(j);
+        }
         else if (type == IpcProtocol::MSG_INSTANCE_READY) {
             int64_t inst_id    = j.value("instance_id", (int64_t)0);
             int max_players    = j.value("max_players", 0);
@@ -253,6 +280,51 @@ private:
         }
     }
 
+    void handle_admin_action(const nlohmann::json& j) {
+        nlohmann::json ack;
+        ack["type"] = IpcProtocol::MSG_ADMIN_ACTION_ACK;
+        ack["subtype"] = j.value("subtype", "");
+        ack["success"] = false;
+
+        asio::error_code ep_ec;
+        auto remote = socket_.remote_endpoint(ep_ec);
+        if (ep_ec || !IsPrivateOrLocalAddress(remote.address())) {
+            Logger::Log("ipc", "[IpcServer] ADMIN_ACTION rejected: non-local/private source\n");
+            ack["message"] = "admin actions are only accepted from local/private networks";
+            send(ack.dump());
+            return;
+        }
+
+        if (IpcServer::admin_token_.empty()) {
+            Logger::Log("ipc", "[IpcServer] ADMIN_ACTION rejected: admin_token not configured\n");
+            ack["message"] = "admin actions are disabled";
+            send(ack.dump());
+            return;
+        }
+
+        std::string token = j.value("token", "");
+        if (token != IpcServer::admin_token_) {
+            Logger::Log("ipc", "[IpcServer] ADMIN_ACTION rejected: bad token from %s\n",
+                ep_ec ? "unknown" : remote.address().to_string().c_str());
+            ack["message"] = "invalid admin token";
+            send(ack.dump());
+            return;
+        }
+
+        if (!IpcServer::admin_action_handler_) {
+            ack["message"] = "admin action handler is not configured";
+            send(ack.dump());
+            return;
+        }
+
+        std::string message;
+        const std::string subtype = j.value("subtype", "");
+        const bool ok = IpcServer::admin_action_handler_(subtype, j, message);
+        ack["success"] = ok;
+        ack["message"] = message;
+        send(ack.dump());
+    }
+
     // ── Write pipeline (write_in_progress chain) ─────────────────────────────
 
     void send(const std::string& json_msg) {
@@ -323,6 +395,8 @@ std::map<int64_t, std::weak_ptr<IpcSession>> IpcSession::g_sessions;
 std::mutex IpcServer::ack_mutex_;
 std::map<std::string, std::function<void(bool, int)>> IpcServer::pending_acks_;
 IpcServer::SuccessorSpawner IpcServer::successor_spawner_;
+std::string IpcServer::admin_token_;
+IpcServer::AdminActionHandler IpcServer::admin_action_handler_;
 
 void IpcServer::SetSuccessorSpawner(SuccessorSpawner cb) {
     successor_spawner_ = std::move(cb);
@@ -337,6 +411,14 @@ void IpcServer::TriggerSuccessor(int64_t parent_instance_id) {
         Logger::Log("ipc", "[IpcServer] REQUEST_SUCCESSOR parent=%lld but no spawner registered — dropped\n",
             (long long)parent_instance_id);
     }
+}
+
+void IpcServer::SetAdminToken(std::string token) {
+    admin_token_ = std::move(token);
+}
+
+void IpcServer::SetAdminActionHandler(AdminActionHandler cb) {
+    admin_action_handler_ = std::move(cb);
 }
 
 // ---------------------------------------------------------------------------

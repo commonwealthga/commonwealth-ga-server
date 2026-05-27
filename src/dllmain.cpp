@@ -87,7 +87,6 @@
 #include "src/GameServer/TgGame/TgBotFactory/ResetQueue/TgBotFactory__ResetQueue.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
-#include "src/GameServer/TgGame/TgDeviceFire/GetPropertyValueById/TgDeviceFire__GetPropertyValueById.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/ApplyFireModeSetup/TgDeviceFire__ApplyFireModeSetup.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/InitializeProjectile/TgDeviceFire__InitializeProjectile.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/CustomFire/TgDeviceFire__CustomFire.hpp"
@@ -427,7 +426,7 @@ unsigned long ModuleThread( void* ) {
 	TgGame__GetFinalObjectivesList::Install();
 	TgPawn__InitializeDefaultProps::Install();
 	TgPawn__GetProperty::Install();
-	TgPawn__SetProperty::Install();
+	// TgPawn__SetProperty::Install();
 	TgPawn__SetTaskForceNumber::Install();
 	// TgPawn__SwapAttachedDeviceMaterials::Install();
 	TgTeamBeaconManager__SpawnNewBeaconForTeam::Install();
@@ -451,13 +450,7 @@ unsigned long ModuleThread( void* ) {
 	TgGame__MissionTimeRemaining::Install();
 	TgGame__SendMissionTimerEvent::Install();
 	TgDeviceFire__GetEffectGroup::Install();
-	// TgDeviceFire__GetPropertyValueById hook DISABLED — native (intact) is now
-	// authoritative. Its only job was a pawn-s_Properties fallback for bot
-	// weapons whose fire-mode m_Properties were never built; bots now build
-	// m_Properties via ApplyDeviceSetup (SpawnBotById::BuildDeviceFireProperties),
-	// so the fallback is redundant. Files staged for deletion pending a clean
-	// playtest. See .planning/effect-buff-property-rebuild-PROGRESS.md.
-	TgDeviceFire__ApplyFireModeSetup::Install();
+	// TgDeviceFire__ApplyFireModeSetup::Install();
 	TgDeviceFire__InitializeProjectile::Install();
 	TgDeviceFire__CustomFire::Install();
 	TgDeviceFire__Deploy::Install();

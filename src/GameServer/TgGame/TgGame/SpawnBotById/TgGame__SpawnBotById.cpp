@@ -582,11 +582,11 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		Bot->m_TgSocketOffsetInfo = reinterpret_cast<UTgSocketOffsetInfo*>(Bot);
 	}
 
-	if (pOwnerPawn != nullptr) {
-		AIController->SetOwner(pOwnerPawn);
-	} else {
+	// if (pOwnerPawn != nullptr) {
+	// 	AIController->SetOwner(pOwnerPawn);
+	// } else {
 		AIController->SetOwner(WorldInfo);
-	}
+	// }
 
 	Bot->r_bIsBot = 1;
 	AIController->Pawn = Bot;
@@ -609,17 +609,17 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	BotRepInfo->r_PawnOwner = Bot;
 	BotRepInfo->r_ApproxLocation = Bot->Location;
 
-	if (pOwnerPawn != nullptr) {
-		BotRepInfo->SetOwner(pOwnerPawn);
-	} else {
+	// if (pOwnerPawn != nullptr) {
+	// 	BotRepInfo->SetOwner(pOwnerPawn);
+	// } else {
 		BotRepInfo->SetOwner(WorldInfo);
-	}
+	// }
 
-	if (pOwnerPawn != nullptr) {
-		Bot->SetOwner(pOwnerPawn);
-	} else {
+	// if (pOwnerPawn != nullptr) {
+	// 	Bot->SetOwner(pOwnerPawn);
+	// } else {
 		Bot->SetOwner(BotRepInfo);
-	}
+	// }
 
 	if (pOwnerPawn != nullptr) {
 		Bot->r_Owner = pOwnerPawn;

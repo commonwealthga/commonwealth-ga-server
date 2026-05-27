@@ -56,6 +56,7 @@ struct ControlServerConfig {
     uint16_t    tcp_port           = 9000;
     uint16_t    chat_port          = 9001;
     uint16_t    ipc_port           = 9010;
+    std::string admin_token;
     int         startup_timeout_seconds = 120;
     std::string db_path            = "server.db";
     std::string crash_dir          = "Z:\\home\\zax\\games\\crashes";

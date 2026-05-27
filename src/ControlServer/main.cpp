@@ -18,6 +18,7 @@
 #include <string>
 #include <csignal>
 #include <functional>
+#include <algorithm>
 
 // ---------------------------------------------------------------------------
 // Signal handling for clean shutdown
@@ -29,6 +30,147 @@ static void on_signal(int /*sig*/) {
     if (g_io) {
         g_io->stop();
     }
+}
+
+static bool UpdateQueueFlag(uint32_t queue_id, const std::string& field, bool value, std::string& message) {
+    if (field != "enabled" && field != "continue_in_queue") {
+        message = "invalid queue field";
+        return false;
+    }
+
+    sqlite3* db = Database::GetConnection();
+    if (!db) {
+        message = "database is not open";
+        return false;
+    }
+
+    std::string sql = "UPDATE ga_queues SET " + field + " = ? WHERE queue_id = ?";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+        message = sqlite3_errmsg(db);
+        return false;
+    }
+
+    sqlite3_bind_int(stmt, 1, value ? 1 : 0);
+    sqlite3_bind_int(stmt, 2, (int)queue_id);
+    int rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE) {
+        message = sqlite3_errmsg(db);
+        return false;
+    }
+    if (sqlite3_changes(db) == 0) {
+        message = "queue not found";
+        return false;
+    }
+
+    MatchmakingService::ReloadQueues();
+    message = "queue updated and reloaded";
+    return true;
+}
+
+static bool UpdateQueueMap(uint32_t queue_id, const std::string& map_name,
+                           const std::string& game_mode, const nlohmann::json& payload,
+                           std::string& message) {
+    if (map_name.empty() || game_mode.empty()) {
+        message = "missing map_name or game_mode";
+        return false;
+    }
+
+    bool has_enabled = payload.contains("enabled") && payload["enabled"].is_boolean();
+    bool has_weight = payload.contains("weight") && payload["weight"].is_number_integer();
+    if (!has_enabled && !has_weight) {
+        message = "missing enabled or weight";
+        return false;
+    }
+
+    sqlite3* db = Database::GetConnection();
+    if (!db) {
+        message = "database is not open";
+        return false;
+    }
+
+    std::string sql = "UPDATE ga_queue_map_pool SET ";
+    if (has_enabled && has_weight) {
+        sql += "enabled = ?, weight = ?";
+    } else if (has_enabled) {
+        sql += "enabled = ?";
+    } else {
+        sql += "weight = ?";
+    }
+    sql += " WHERE queue_id = ? AND map_name = ? AND game_mode = ?";
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+        message = sqlite3_errmsg(db);
+        return false;
+    }
+
+    int col = 1;
+    if (has_enabled) {
+        sqlite3_bind_int(stmt, col++, payload.value("enabled", false) ? 1 : 0);
+    }
+    if (has_weight) {
+        int weight = std::max(1, payload.value("weight", 1));
+        sqlite3_bind_int(stmt, col++, weight);
+    }
+    sqlite3_bind_int(stmt, col++, (int)queue_id);
+    sqlite3_bind_text(stmt, col++, map_name.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, col++, game_mode.c_str(), -1, SQLITE_TRANSIENT);
+
+    int rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE) {
+        message = sqlite3_errmsg(db);
+        return false;
+    }
+    if (sqlite3_changes(db) == 0) {
+        message = "queue map not found";
+        return false;
+    }
+
+    MatchmakingService::ReloadQueues();
+    message = "queue map updated and queues reloaded";
+    return true;
+}
+
+static bool SpawnAdminInstance(const ControlServerConfig& cfg, const std::string& map_name,
+                               const std::string& game_mode, int max_players,
+                               std::string& message) {
+    if (map_name.empty() || game_mode.empty()) {
+        message = "missing map_name or game_mode";
+        return false;
+    }
+    if (max_players <= 0 || max_players > 1000) {
+        message = "max_players must be between 1 and 1000";
+        return false;
+    }
+
+    auto port = InstanceRegistry::AllocatePort(cfg.udp_port_range.lo, cfg.udp_port_range.hi);
+    if (!port) {
+        message = "no UDP ports available";
+        return false;
+    }
+
+    int64_t instance_id = InstanceRegistry::InsertStarting(
+        map_name, game_mode, *port, 0, /*is_home_map=*/false);
+    InstanceRegistry::SetMaxPlayers(instance_id, max_players);
+
+    pid_t pid = InstanceSpawner::Spawn(cfg, map_name, game_mode, *port, instance_id);
+    if (pid < 0) {
+        InstanceRegistry::MarkStopped(instance_id);
+        message = "InstanceSpawner::Spawn failed";
+        return false;
+    }
+
+    InstanceRegistry::UpdatePid(instance_id, pid);
+    Logger::Log("main", "Admin action: created instance %lld pid=%d port=%d map=%s mode=%s max_players=%d\n",
+        (long long)instance_id, (int)pid, (int)*port, map_name.c_str(), game_mode.c_str(),
+        max_players);
+    message = "instance created: " + std::to_string(instance_id);
+    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -313,6 +455,125 @@ int main(int argc, char* argv[]) {
 
     // Bind IPC server (game instance connections)
     IpcServer ipc_server(io, cfg.ipc_port);
+    IpcServer::SetAdminToken(cfg.admin_token);
+    IpcServer::SetAdminActionHandler([&cfg](const std::string& subtype,
+                                            const nlohmann::json& payload,
+                                            std::string& message) -> bool {
+        if (subtype == "stop-instance") {
+            int64_t instance_id = payload.value("instance_id", (int64_t)0);
+            if (instance_id == 0) {
+                message = "missing instance_id";
+                return false;
+            }
+
+            auto inst = InstanceRegistry::GetInstanceById(instance_id);
+            if (!inst) {
+                message = "instance not found";
+                return false;
+            }
+            if (inst->state == "STOPPED") {
+                message = "instance is already stopped";
+                return false;
+            }
+
+            Logger::Log("main", "Admin action: stopping instance %lld (pid=%d, map=%s)\n",
+                (long long)inst->instance_id, inst->pid, inst->map_name.c_str());
+            InstanceSpawner::StopInstanceProcess(*inst, "admin stop-instance");
+            InstanceRegistry::MarkStopped(inst->instance_id);
+            message = "instance stop requested";
+            return true;
+        }
+
+        if (subtype == "move-players") {
+            int64_t target_instance_id = payload.value("target_instance_id", (int64_t)0);
+            int target_task_force = payload.value("target_task_force", 0);
+            const auto players = payload.value("players", nlohmann::json::array());
+            if (target_instance_id == 0) {
+                message = "missing target_instance_id";
+                return false;
+            }
+            if (target_task_force != 1 && target_task_force != 2) {
+                message = "target_task_force must be 1 or 2";
+                return false;
+            }
+            if (!players.is_array() || players.empty()) {
+                message = "missing players";
+                return false;
+            }
+
+            int requested = 0;
+            int skipped = 0;
+            int failed = 0;
+            for (const auto& player : players) {
+                std::string guid = player.value("session_guid", "");
+                if (guid.empty()) {
+                    ++skipped;
+                    continue;
+                }
+                int64_t source_instance_id = player.value("source_instance_id", (int64_t)0);
+                int source_task_force = player.value("source_task_force", 0);
+                std::string player_message;
+                if (TcpSession::AdminMovePlayerToInstance(guid, target_instance_id,
+                        target_task_force, source_instance_id, source_task_force,
+                        player_message)) {
+                    ++requested;
+                } else {
+                    ++failed;
+                    Logger::Log("main", "Admin move-players failed for %s: %s\n",
+                        guid.c_str(), player_message.c_str());
+                }
+            }
+
+            message = "move requested=" + std::to_string(requested)
+                + " failed=" + std::to_string(failed)
+                + " skipped=" + std::to_string(skipped);
+            return requested > 0 && failed == 0;
+        }
+
+        if (subtype == "reload-queues") {
+            MatchmakingService::ReloadQueues();
+            message = "queues reloaded";
+            return true;
+        }
+
+        if (subtype == "update-queue") {
+            uint32_t queue_id = payload.value("queue_id", 0u);
+            std::string field = payload.value("field", "");
+            if (queue_id == 0) {
+                message = "missing queue_id";
+                return false;
+            }
+            if (!payload.contains("value") || !payload["value"].is_boolean()) {
+                message = "missing boolean value";
+                return false;
+            }
+            return UpdateQueueFlag(queue_id, field, payload.value("value", false), message);
+        }
+
+        if (subtype == "update-queue-map") {
+            uint32_t queue_id = payload.value("queue_id", 0u);
+            if (queue_id == 0) {
+                message = "missing queue_id";
+                return false;
+            }
+            return UpdateQueueMap(queue_id,
+                payload.value("map_name", std::string()),
+                payload.value("game_mode", std::string()),
+                payload,
+                message);
+        }
+
+        if (subtype == "create-instance") {
+            return SpawnAdminInstance(cfg,
+                payload.value("map_name", std::string()),
+                payload.value("game_mode", std::string()),
+                payload.value("max_players", 0),
+                message);
+        }
+
+        message = "unknown admin action subtype";
+        return false;
+    });
 
     // Periodic idle instance cleanup (every 60 seconds, kills instances empty for 5+ minutes)
     auto idle_timer = std::make_shared<asio::steady_timer>(io);
@@ -326,18 +587,7 @@ int main(int argc, char* argv[]) {
             for (const auto& inst : idle) {
                 Logger::Log("main", "Idle cleanup: killing instance %lld (pid=%d, map=%s) — empty for 5+ minutes\n",
                     (long long)inst.instance_id, inst.pid, inst.map_name.c_str());
-                if (inst.pid > 0) {
-                    // Kill the entire process group (xvfb-run + wine + game).
-                    // SIGTERM first for graceful shutdown, then SIGKILL to ensure cleanup.
-                    kill(-inst.pid, SIGTERM);
-                    // Give it a moment then force-kill if still alive.
-                    std::thread([pid = inst.pid]() {
-                        sleep(3);
-                        if (kill(-pid, 0) == 0) {
-                            kill(-pid, SIGKILL);
-                        }
-                    }).detach();
-                }
+                InstanceSpawner::StopInstanceProcess(inst, "idle cleanup");
                 InstanceRegistry::MarkStopped(inst.instance_id);
             }
 

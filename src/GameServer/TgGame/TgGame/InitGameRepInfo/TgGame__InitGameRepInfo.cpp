@@ -67,7 +67,15 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		gamerep->r_nPointsToWin = 3;
 		gamerep->r_nRoundNumber = 1;
 		gamerep->r_nMaxRoundNumber = 5;
+
+
+		Game->m_fGameMissionTime = 15 * 60.0f;   // 15 minute mission
+		Game->m_fGameOvertimeTime = 4 * 60.0f;  // up to 4 minutes overtime
+		Game->m_bAllowOvertime = 1;
+		Game->m_eTimerState = 0;
+		Game->TimeLimit = 15 * 60;
 		gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+
 		gamerep->TimeLimit = Game->TimeLimit;
 		gamerep->RemainingTime = Game->TimeLimit;
 
@@ -229,6 +237,9 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nRoundNumber = 1;
 			gamerep->r_nMaxRoundNumber = 5;
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+			gamerep->TimeLimit = Game->m_fMissionTime;
+			gamerep->RemainingTime = Game->m_fMissionTime;
+			Game->TimeLimit = 15 * 60;
 
 			// PointRotation UC default is 30s between rounds; the announcer
 			// banner + countdown chain wants ~25s to feel snappy. Must be set
@@ -258,8 +269,11 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nReleaseDelay = 1;
 			gamerep->r_nPointsToWin = 3;
 			gamerep->r_nRoundNumber = 1;
-			gamerep->r_nMaxRoundNumber = 5;
+			// gamerep->r_nMaxRoundNumber = 5;
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+			gamerep->TimeLimit = Game->m_fMissionTime;
+			gamerep->RemainingTime = Game->m_fMissionTime;
+			Game->TimeLimit = 15 * 60;
 
 			std::string MapName = Config::GetMapNameChar();
 			if (MapName == "Inception_ALL" || MapName == "Inception_3_TEMP" || MapName == "Adrenaline_P" || MapName == "Skylark_P" || MapName == "AgencyZero_P") {
@@ -338,6 +352,9 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nRoundNumber = 1;
 			gamerep->r_nMaxRoundNumber = 3;
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+			gamerep->TimeLimit = Game->m_fMissionTime;
+			gamerep->RemainingTime = Game->m_fMissionTime;
+			Game->TimeLimit = 15 * 60;
 		}
 
 		if (GameClassName == "Class TgGame.TgGame_Ticket") {
@@ -362,6 +379,9 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nRoundNumber = 1;
 			gamerep->r_nMaxRoundNumber = 3;
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+			gamerep->TimeLimit = Game->m_fMissionTime;
+			gamerep->RemainingTime = Game->m_fMissionTime;
+			Game->TimeLimit = 15 * 60;
 		}
 
 		if (GameClassName == "Class TgGame.TgGame_DualCTF") {
@@ -386,6 +406,9 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nRoundNumber = 1;
 			gamerep->r_nMaxRoundNumber = 3;
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+			gamerep->TimeLimit = Game->m_fMissionTime;
+			gamerep->RemainingTime = Game->m_fMissionTime;
+			Game->TimeLimit = 15 * 60;
 		}
 
 

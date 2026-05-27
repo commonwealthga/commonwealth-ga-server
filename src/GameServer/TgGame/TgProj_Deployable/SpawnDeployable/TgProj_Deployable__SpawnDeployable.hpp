@@ -50,43 +50,14 @@ public:
 	// the solid force-field volume instead of passing through it.
 	static bool IsForceFieldDeployableId(int nDeployableId);
 
-	// True iff the deployable's mesh is a Force Field DOME (sphere) rather than
-	// a wall slab. Dome shields (currently just deployable_id 22, the Robotics
-	// class "Dome Shield Boost") should spawn CENTERED on the deploying pawn,
-	// not at an aim-traced ground point — they're "engulf-me" bubbles, not
-	// placed structures. They also must NOT receive the +halfHeight ground lift
-	// SpawnDeployableActor applies for trace-based placements; the pawn's own
-	// cylinder-center Location is the desired sphere center. Discriminator:
-	// asm_data_set_assembly_meshes.name LIKE 'DEV_ForceField_Dome_%' joined via
-	// asm_data_set_deployables.asm_id. Cached per deployable_id.
-	static bool IsDomeShieldDeployableId(int nDeployableId);
-
-	// True if the deployable is a "timer bomb" — explodes after a fixed delay
-	// when the player deploys it (EMP Bomb, Shatter Bomb, Fire Bomb, etc).
-	// Discriminator: asm_data_set_deployables.show_countdown_timer_flag=1
-	// (deliberately NOT deployable_type_value_id=666 — that value covers
-	// everything from mines to sensors to force fields).
-	// Cached per deployable_id.  Mines/grenades/stations return false.
-	static bool IsTimerBombDeployableId(int nDeployableId);
-
-	// Resolve timer-bomb activation time + damage radius from the device's
-	// mode properties (TGPID_REMOTE_ACTIVATION_TIME=7, TGPID_DAMAGE_RADIUS=6).
-	// Damage radius is stored in game-world feet; we return raw UU so callers
-	// can write directly to s_fProximityRadius / r_fClientProximityRadius
-	// (×16 conversion baked in here to match what ATgDeployable::ApplyProperty
-	// would do for prop 8 on proximity mines).
-	// Falls back to (3.0s, 320uu) when the DB lookup misses.
-	// Cached per deployable_id.
-	static void GetTimerBombParams(int nDeployableId,
-		float* outActivationSecs, float* outDamageRadiusUU);
-
 	// Resolve `Time To Deploy (secs)` for a deployable from prop 279 on its
 	// thrower device-mode (asm_data_set_devices_data_set_device_modes joined
 	// to asm_data_set_device_mode_properties on prop_id=279). Stations/turrets
-	// have explicit per-rank values (5–15s); bombs / mines / force fields lack
-	// the prop and fall back to 0.1s so they "deploy" effectively instantly.
-	// Without this, every deployable inherits m_fDefaultDeployAnimLength via
-	// UC's Deploy.BeginState fallback — close to identical across types.
+	// have explicit per-rank values (5–15s); bombs / mines / force fields
+	// lack the prop and return 0 — callers must skip the
+	// `r_fTimeToDeploySecs = ...` assignment in that case so UC's
+	// Deploy.BeginState runs its `ExtractDeployTimeFromMyAnimation` fallback
+	// (gives mines a real arming window instead of an instant deploy).
 	// Cached per deployable_id.
 	static float GetDeployTimeSecs(int nDeployableId);
 
@@ -112,12 +83,33 @@ public:
 	// rolled mods (if any) stay scoped to their own device.
 	static float ApplyDeployTimeBuff(class ATgPawn* pawn, float baseSecs, int deviceInstId);
 
-	// True iff asm_data_set_deployables.health > 0 for this deployable_id.
-	// HP-zero deployables (Shatter Bomb, EMP Bomb, etc) are pre-explosion
-	// timer bombs and most mines — they should NOT take damage and should
-	// NOT be hitscan-targetable by enemies. Stations/turrets/destructibles
-	// all carry positive HP and remain damageable. Cached per deployable_id.
-	static bool IsDestructibleDeployableId(int nDeployableId);
+	// Prop 150 PERSIST_TIME on the THROWING device-mode (the player's item).
+	// Returns 0 when the row is missing. Caller (TgDeviceFire::Deploy /
+	// SpawnDeployableActor) applies this as a fallback / override on
+	// Deployable->s_fPersistTime when InitializeDefaultProps' internal-device
+	// seed didn't pick anything up. DB convention is inconsistent — stations
+	// carry prop 150 on the deployable's internal device (handled by the
+	// seed), force fields / mines / bombs carry it on the THROWER device-mode
+	// (handled by this helper). Cached per device_mode_id.
+	static float GetThrowerPersistTime(int device_mode_id);
+
+	// Prop 354 TGPID_PET_LIFESPAN on the spawn-pet device-mode. Drone-spawning
+	// modes carry 10-20s typical; turrets typically lack this row (live until
+	// killed). Returns 0 when missing. Caller (SpawnPet) writes the result
+	// directly to the spawned bot's LifeSpan. Cached per device_mode_id.
+	static float GetPetLifeSpanSecs(int device_mode_id);
+
+	// Scale a base pet-lifespan value by the deploying pawn's buff registry.
+	// `GetPetLifeSpanSecs` reads prop 354 raw from the DB, bypassing the buff
+	// system — so skills targeting prop 355 ("Pet Lifespan Modifier", the
+	// BUFF_DEVICE expansion of 354 emitted by ConvertPropToPropList srcType=3
+	// case 354) never reach the spawn path without this hook. Examples:
+	// Drones skills 631/797/798 (+10/15/20%), Infiltration skill 837 (+30%).
+	// Calls GetBuffedProperty with SKILL context — same call shape as
+	// ApplyDeployTimeBuff. Pass-through when the pawn has no relevant buff.
+	// `deviceInstId` filters the buff registry to entries scoped to the
+	// drone-spawning device plus wildcards.
+	static float ApplyPetLifeSpanBuff(class ATgPawn* pawn, float baseSecs, int deviceInstId);
 
 	// Resolve TGPID_MAX_DEPLOYABLES_OUT (prop 154) for a fire-mode. Returns
 	// the configured limit (1 for stations / force fields / sensors, 2-3 for
@@ -133,16 +125,27 @@ public:
 	// EnforceDeployableLimit so the count reflects only live deployables.
 	static void CompactDeployableList(ATgPawn* pawn);
 
-	// Enforce the per-fire-mode limit (prop 154) before adding a new
-	// deployable. Counts existing entries in `pawn->s_SelfDeployableList`
-	// whose `r_Owner == sourceDevice` (the "same device" rule that lets a
-	// player keep e.g. one medical station AND one power station, but not
-	// two of either). When count >= limit, calls `eventDestroyIt(false)` on
-	// the oldest matching entries until count < limit. The destroyed entries
-	// stay in the list — they're filtered out next time CompactDeployableList
-	// runs (next spawn) or wiped wholesale by KillDeployables on owner death.
-	// No-op when sourceDevice is null or limit <= 0 (unlimited).
-	static void EnforceDeployableLimit(ATgPawn* pawn, ATgDevice* sourceDevice, UTgDeviceFire* sourceFireMode);
+	// Enforce the per-fire-mode limit (prop 154) for a freshly-spawned
+	// deployable `newDep`. Walks the GLOBAL `GRI.m_Deployables` (survives
+	// pawn death + respawn — `pawn->s_SelfDeployableList` was per-pawn and
+	// reset to empty on respawn, letting players bypass the limit by dying
+	// between deployments). Matches by:
+	//   - owner PRI identity (`dep->r_DRI->r_InstigatorInfo == pawn->GetPRI()`).
+	//     The PRI lives on the PlayerController and persists across pawn
+	//     deaths, so the player's deployables stay attributed to them even
+	//     after respawn.
+	//   - same `r_nDeployableId` (so different deployable types each get
+	//     their own independent count — one medical station + one power
+	//     station coexist; a 2nd of either kills the prior of that kind).
+	//   - `dep != newDep` (the just-spawned actor is already in
+	//     `gri->m_Deployables` because `RegisterDeployableInGRI` ran earlier
+	//     in the spawn pipeline — skipping it prevents the limit logic from
+	//     killing the very deployable that just triggered it).
+	// When the live count would exceed the limit, calls
+	// `eventDestroyIt(false)` on the oldest matching prior entries until the
+	// (pre-existing + 1 new) total equals the limit. No-op when the firing
+	// fire mode has no prop-154 row or the pawn has no PRI.
+	static void EnforceDeployableLimit(ATgPawn* pawn, ATgDeployable* newDep, UTgDeviceFire* sourceFireMode);
 
 	// Append `dep` to the global `GRI.m_Deployables` list (TgRepInfo_Game's
 	// world-wide deployable registry, replicated to every client). UC's

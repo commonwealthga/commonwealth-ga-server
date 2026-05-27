@@ -3,6 +3,7 @@
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/SpawnPet/ApplyPlayerModsToPet.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
 #include "src/GameServer/Engine/World/GetGameInfo/World__GetGameInfo.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -99,9 +100,15 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 	// that face a direction the player wasn't looking at.  Zero out pitch/roll
 	// so the turret stands upright.
 	FRotator spawnRot = pawn->Controller ? pawn->Controller->Rotation : pawn->Rotation;
-	spawnRot.Pitch = 0;
-	spawnRot.Roll  = 0;
-	ATgPawn* PetPawn = (ATgPawn*)game->SpawnBotById(petId, spawnLocation, spawnRot, true, nullptr, true, pawn, false, pThis, 0.0f);
+
+    FRotator rot;
+    rot.Pitch = 0;
+    rot.Yaw   = spawnRot.Yaw;
+    rot.Roll  = 0;
+
+	ATgPawn* PetPawn = TgGame__SpawnBotById::Call(game, nullptr, petId, spawnLocation, spawnRot, false, nullptr, true, pawn, false, pThis, 0.0f);
+	// ATgPawn* PetPawn = (ATgPawn*)game->SpawnBotById(petId, spawnLocation, spawnRot, false, nullptr, true, pawn, false, pThis, 0.0f);
+
 	if (!PetPawn) {
 		Logger::Log("pet_spawn",
 			"TgDeviceFire::SpawnPet: SpawnBotById returned null for petId=%d at (%.1f,%.1f,%.1f) — spawn rejected (collision? out-of-world?)\n",
@@ -122,7 +129,7 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 				PetPawn->Controller ? PetPawn->Controller->Rotation.Yaw   : 0,
 				PetPawn->Controller ? PetPawn->Controller->Rotation.Roll  : 0);
 		}
-		PetPawn->r_bInitialIsEnemy = 0;
+		// PetPawn->r_bInitialIsEnemy = 0;
 
 		// Bridge the deploying player's pet-related buff registry to the pet's
 		// own s_Properties so player skills (Drone Damage / Pet Range / etc.)
@@ -130,8 +137,7 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 		// PET's m_EffectBuffInfo at fire time, not the player's, so without
 		// this baking step those skills silently no-op. Mirrors
 		// ApplyPlayerModsToDeployable's design for deployables.
-		ApplyPlayerModsToPet::Apply(pawn, PetPawn,
-		                            device ? device->r_nDeviceInstanceId : 0);
+		ApplyPlayerModsToPet::Apply(pawn, PetPawn, device ? device->r_nDeviceInstanceId : 0);
 
 		ATgRepInfo_Player* PetRep = (ATgRepInfo_Player*)PetPawn->PlayerReplicationInfo;
 		ATgRepInfo_Player* PawnRep = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
@@ -139,6 +145,45 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 		PetRep->Team = PawnRep->Team;
 		PetRep->SetTeam(PawnRep->r_TaskForce);
 		PetPawn->NotifyTeamChanged();
+
+		// Pet auto-despawn timer. Prop 354 TGPID_PET_LIFESPAN on the spawn-pet
+		// device-mode (drones 10-20s typical; turrets generally lack the row →
+		// no time limit, the limit-enforcement system replaces them instead).
+		//
+		// We schedule a one-shot timer firing UC's `Suicide` event rather than
+		// writing `PetPawn->LifeSpan` directly — raw `LifeSpan` expiry calls
+		// the engine's bare `Destroy()` with NO FX (silent vanish). `Suicide`
+		// runs TakeDamage(Health, DmgType_Suicided) → Died → PlayDying →
+		// PlayDyingEffects → `Mesh.FxActivateIndependant('PawnDied', …)`, the
+		// same combat-death FX route the engine uses for regular kills.
+		//
+		// (Why not `Despawn`? `Despawn` sets r_eDeathReason=1 which routes
+		// PlayDyingEffects to the `'Despawned'` FX group instead — that group
+		// is for kismet-driven cleanup and isn't authored on most drone
+		// meshes, so calling Despawn produced a silent vanish. `Suicide` →
+		// `'PawnDied'` is authored on every bot mesh.)
+		if (pThis) {
+			// Raw DB read of prop 354 (PET_LIFESPAN) on the spawn-pet
+			// device-mode, then scaled by the deploying pawn's prop-355
+			// (PET_LIFESPAN_MODIFIER) buff registry — same pattern as the
+			// deploy-time chain a few lines down. Without the buff scale,
+			// skills like Drones 631/797/798 and Infiltration 837 silently
+			// no-op against the lifespan.
+			const float baseLifeSpan =
+				TgProj_Deployable__SpawnDeployable::GetPetLifeSpanSecs(pThis->m_nId);
+			const float petLifeSpan =
+				TgProj_Deployable__SpawnDeployable::ApplyPetLifeSpanBuff(
+					pawn, baseLifeSpan,
+					device ? device->r_nDeviceInstanceId : 0);
+			if (petLifeSpan > 0.0f) {
+				Actor__SetTimer::SetTimer(PetPawn, petLifeSpan,
+					/*bLoop=*/false, FName("Suicide"), nullptr);
+				Logger::Log("pet_spawn",
+					"TgDeviceFire::SpawnPet: lifespan set petPawn=0x%p botId=%d mode=%d "
+					"-> SetTimer(base=%.2fs buffed=%.2fs, 'Suicide') for natural-expire death FX\n",
+					PetPawn, petId, pThis->m_nId, baseLifeSpan, petLifeSpan);
+			}
+		}
 
 		// PetPawn->Role = 3;
 		// PetPawn->RemoteRole = 1;
@@ -192,15 +237,15 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 				turret->r_fTimeToDeploySecs  = petDeploySecs;
 				turret->r_fCurrentDeployTime = 0.0f;
 				turret->r_bIsDeployed        = 0;
-				turret->r_nPhysicalType = 861;
-				turret->r_bIsBot = 1;
-				turret->s_bInvisibleToPets = 0;
-				turret->s_bCanSeePets = 1;
-				turret->r_bIsHacked = 0;
-				turret->r_bIsHacking = 0;
-				turret->r_bIsDecoy = 0;
-				turret->m_bIsInvisibleToAI = 0;
-				turret->s_bIsCrewable = 0;
+				// turret->r_nPhysicalType = 861;
+				// turret->r_bIsBot = 1;
+				// turret->s_bInvisibleToPets = 0;
+				// turret->s_bCanSeePets = 1;
+				// turret->r_bIsHacked = 0;
+				// turret->r_bIsHacking = 0;
+				// turret->r_bIsDecoy = 0;
+				// turret->m_bIsInvisibleToAI = 0;
+				// turret->s_bIsCrewable = 0;
 
 
 				// Henchman + r_Owner is what TgAIController::IsEnemy uses to decide
@@ -218,8 +263,8 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 				// RegisterForWaveRevive/Revive*Timer (see
 				// reference_wave_revive_henchman_collision.md). Re-enabled here so
 				// enemy AI correctly engages player-deployed turrets.
-				turret->r_bIsHenchman = 1;
-				turret->r_Owner = pawn;
+				// turret->r_bIsHenchman = 1;
+				// turret->r_Owner = pawn;
 
 				// Drive deploy via the canonical posture transition (1=HIBERNATE/
 				// stowed → 0=DEFAULT/deployed) instead of calling StartDeploy()
@@ -234,9 +279,9 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 				//
 				// Step 1: mark stowed. r_ePosture replicates so clients lock in the
 				// stowed pose as the blend source.
-				turret->r_ePosture = 1;  // TG_POSTURE_HIBERNATE
-				turret->bNetDirty            = 1;
-				turret->bForceNetUpdate      = 1;
+				// turret->r_ePosture = 1;  // TG_POSTURE_HIBERNATE
+				// turret->bNetDirty            = 1;
+				// turret->bForceNetUpdate      = 1;
 
 				// Step 2: transition to deployed. SetPosture handles the 1→0 path
 				// (super-call into TgPawn::SetPosture replicates r_ePosture, then
@@ -273,17 +318,17 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 				if (PetPawn->Controller) {
 					ATgAIController* aic = (ATgAIController*)PetPawn->Controller;
 					aic->Rotation           = spawnRot;
-					aic->Focus              = nullptr;
+					// aic->Focus              = nullptr;
 					aic->DesiredRotation    = spawnRot;
 					aic->m_rFixedDirection  = spawnRot;
 					aic->m_rSpawnDirection  = spawnRot;
 					aic->m_vSpawnLocation   = PetPawn->Location;
-					aic->bReplicateMovement = 1;
+					// aic->bReplicateMovement = 1;
 				}
-				PetPawn->Rotation.Pitch = 50;
-				PetPawn->bReplicateMovement = 1;
-				PetPawn->bNetDirty       = 1;
-				PetPawn->bForceNetUpdate = 1;
+				// PetPawn->Rotation.Pitch = 50;
+				// PetPawn->bReplicateMovement = 1;
+				// PetPawn->bNetDirty       = 1;
+				// PetPawn->bForceNetUpdate = 1;
 				Logger::Log("pet_spawn",
 					"TgDeviceFire::SpawnPet: rotation locked to (%d,%d,%d) "
 					"(pawn + AI m_rFixedDirection/m_rSpawnDirection)\n",

@@ -6,6 +6,7 @@
 #include <string>
 #include <memory>
 #include <cstdint>
+#include "lib/nlohmann/json.hpp"
 
 class IpcServer {
 public:
@@ -42,12 +43,22 @@ public:
     // IpcSession doesn't need access to the private successor_spawner_.
     static void TriggerSuccessor(int64_t parent_instance_id);
 
+    using AdminActionHandler = std::function<bool(const std::string& subtype,
+                                                  const nlohmann::json& payload,
+                                                  std::string& message)>;
+    static void SetAdminToken(std::string token);
+    static void SetAdminActionHandler(AdminActionHandler cb);
+
 private:
+    friend class IpcSession;
+
     void do_accept();
 
     static std::mutex ack_mutex_;
     static std::map<std::string, std::function<void(bool, int)>> pending_acks_;
     static SuccessorSpawner successor_spawner_;
+    static std::string admin_token_;
+    static AdminActionHandler admin_action_handler_;
 
     asio::io_context& io_;
     asio::ip::tcp::acceptor acceptor_;

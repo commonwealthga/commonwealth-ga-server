@@ -1,11 +1,10 @@
-#include "src/GameServer/TgGame/BuffEffectRegistry/DeviceCategorySkill.hpp"
+#include "src/GameServer/TgGame/_effect_core/DeviceCategorySkill.hpp"
 
 #include <map>
 
 #include "sqlite3.h"
 
 #include "src/Database/Database.hpp"
-#include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 namespace DeviceCategorySkill {
@@ -60,18 +59,6 @@ int Lookup(int deviceId) {
 	if (!g_inited) { DoInit(); g_inited = true; }
 	auto it = g_deviceToSkill.find(deviceId);
 	return (it != g_deviceToSkill.end()) ? it->second : 0;
-}
-
-int LookupByInstanceId(ATgPawn* pawn, int deviceInstanceId) {
-	if (!pawn || deviceInstanceId == 0) return 0;
-	// O(1) invId -> deviceId via the side cache in Inventory. Previously
-	// linearly scanned every equipped entry on every damage/heal application;
-	// the cache is maintained by Equip/Unequip/ClearTracking. `pawn` is kept
-	// in the signature for API compatibility — the side cache is keyed only
-	// on invId (invIds are globally unique).
-	(void)pawn;
-	int deviceId = Inventory::GetDeviceIdByInvId(deviceInstanceId);
-	return (deviceId != 0) ? Lookup(deviceId) : 0;
 }
 
 }  // namespace DeviceCategorySkill

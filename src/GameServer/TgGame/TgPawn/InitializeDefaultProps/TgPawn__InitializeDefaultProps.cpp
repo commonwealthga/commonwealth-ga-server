@@ -1,9 +1,6 @@
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
-#include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
-#include "src/GameServer/TgGame/TgProperty/ConstructTgProperty/TgProperty__ConstructTgProperty.hpp"
 #include "src/GameServer/Core/TMap/Allocate/TMap__Allocate.hpp"
-#include "src/GameServer/Core/TMap/Set/TMap__Set.hpp"
 #include "src/GameServer/Constants/TgProperties.h"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -24,42 +21,6 @@ struct BotDefaults {
 // without hitting SQLite. The DB rows are static reference data (loaded from
 // assembly.dat at startup), so once cached they don't need invalidation.
 std::unordered_map<int, BotDefaults> g_botDefaultsCache;
-}
-
-UTgProperty* TgPawn__InitializeDefaultProps::InitializeProperty(ATgPawn* Pawn, int nPropertyId, float fBase, float fRaw, float fMinimum, float fMaximum) {
-	UTgProperty* Property = (UTgProperty*)TgProperty__ConstructTgProperty::CallOriginal(
-		ClassPreloader::GetTgPropertyClass(), -1, 0, 0,0,0,0,0,0);
-
-	Property->m_nPropertyId = nPropertyId;
-	Property->m_fBase = fBase;
-	Property->m_fRaw = fRaw;
-	Property->m_fMinimum = fMinimum;
-	Property->m_fMaximum = fMaximum;
-
-	// TArray::Add routes through GAllocator::Realloc, matching whatever the
-	// engine eventually frees the buffer with.
-	int Count = Pawn->s_Properties.Count;
-	Pawn->s_Properties.Add(Property);
-
-	// Register (propId → s_Properties index) in the TMap at pawn+0x400 — the
-	// `s_PropertyIndx` MapProperty (UE3 TMap<int,int>, 0x3C bytes wide). The
-	// binary's `TgPawn::SetProperty` (0x109bf420) does its lookup via
-	// vtable[0x4F0], which under the hood calls `FUN_10b52ba0` to query this
-	// exact TMap. Without an entry here, SetProperty silently no-ops (the
-	// linear-scan fallback in our `TgPawn__GetProperty` hook only catches
-	// callers that route through that vtable slot — direct binary callers of
-	// `FUN_10b52ba0` skip it entirely and saw an empty map). Populating the
-	// TMap fixes both call paths at once. Concrete failure: power station
-	// effect group 13270 fires `ApplyToProperty(target, 243, +10)` →
-	// `SetProperty(target, 243, ...)` which silently no-op'd; the player's
-	// `r_fCurrentPowerPool` never moved.
-	TMap_Set::Call((void*)((char*)Pawn + 0x400),
-		(unsigned int)nPropertyId,
-		(unsigned int)Count);
-
-	Pawn->SetProperty(nPropertyId, fRaw);
-
-	return Property;
 }
 
 void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
@@ -94,11 +55,11 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 				if (sqlite3_step(stmt) == SQLITE_ROW) {
 					if (sqlite3_column_type(stmt, 0) != SQLITE_NULL && sqlite3_column_int(stmt, 0) > 0)
 						d.hitPoints    = (float)sqlite3_column_int(stmt, 0);
-					if (sqlite3_column_type(stmt, 1) != SQLITE_NULL && sqlite3_column_double(stmt, 1) > 0.0)
+					// if (sqlite3_column_type(stmt, 1) != SQLITE_NULL && sqlite3_column_double(stmt, 1) > 0.0)
 						d.speed        = (float)sqlite3_column_double(stmt, 1) * 16.0f;
-					if (sqlite3_column_type(stmt, 2) != SQLITE_NULL && sqlite3_column_int(stmt, 2) > 0)
+					// if (sqlite3_column_type(stmt, 2) != SQLITE_NULL && sqlite3_column_int(stmt, 2) > 0)
 						d.powerPool    = (float)sqlite3_column_int(stmt, 2);
-					if (sqlite3_column_type(stmt, 3) != SQLITE_NULL && sqlite3_column_double(stmt, 3) > 0.0)
+					// if (sqlite3_column_type(stmt, 3) != SQLITE_NULL && sqlite3_column_double(stmt, 3) > 0.0)
 						d.rechargeRate = (float)sqlite3_column_double(stmt, 3);
 					if (sqlite3_column_type(stmt, 4) != SQLITE_NULL && sqlite3_column_double(stmt, 4) > 0.0)
 						d.accuracy     = (float)sqlite3_column_double(stmt, 4);
@@ -121,7 +82,7 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	}
 
 	// DIAG: per-respawn buff investigation. Log the values feeding
-	// InitializeProperty and the post-init engine power-regen field. If the
+	// AddProperty and the post-init engine power-regen field. If the
 	// engine field reads back higher than `rechargeRate` we know a property
 	// already existed (duplicate) or something wrote it after our SetProperty.
 	Logger::Log("debug",
@@ -141,8 +102,8 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// TGPID_HEALTH_MAX (304)'s fanout. With 51 first, the clamp ceiling is 0
 	// → m_fRaw is forced to 0, and any subsequent additive heal effect adds
 	// to 0 instead of the spawn HP. Same trap below for POWERPOOL/_MAX.
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH_MAX,              hitPoints,    hitPoints,    0, hitPoints * 10.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH,                  hitPoints,    hitPoints,    0, hitPoints * 10.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_HEALTH_MAX,              hitPoints,    hitPoints,    0, hitPoints * 10.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_HEALTH,                  hitPoints,    hitPoints,    0, hitPoints * 10.0f);
 	// TGPID_GROUND_SPEED (49): the rest device applies PERC_DECREASE here.
 	// Was previously disabled because UC's Remove math leaks per apply/remove
 	// cycle (passes effBase instead of propBase*effBase), so repeated rest
@@ -152,28 +113,28 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// overwrites UC's leaked value with the baseline on ServerStopFire, so
 	// it's safe to re-register. Without this line, any effect modifying
 	// prop 49 silently no-ops (SetProperty needs the prop in s_Properties).
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_GROUND_SPEED,            speed,        speed,        0, 10000);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_GROUND_SPEED,            speed,        speed,        0, 10000);
 	// Same clamp trap as HP above — POWERPOOL_MAX (255) skill buffs like the
 	// +40% Power Pool tree node were being computed into UTgProperty.m_fRaw
 	// (verified 100 -> 140) but clipped back to 100 at fan-out because
 	// m_fMaximum was set to `powerPool`. Raise the ceiling.
 	// MAX before CURRENT (see HEALTH note above) — TGPID_POWERPOOL fanout
 	// clamps to r_fMaxPowerPool which is written by TGPID_POWERPOOL_MAX.
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_MAX,           powerPool,    powerPool,    0, powerPool * 10.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL,               powerPool,    powerPool,    0, powerPool * 10.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_RECHARGE_RATE, rechargeRate, rechargeRate, 0, 1000);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_COST,          0, 0, 0, 0);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_POWERPOOL_MIN_COST,      0, 0, 0, 0);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_FLIGHT_ACCELERATION,     0, 0, 0, 1000);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_ACCURACY,                accuracy,     accuracy,     0, 1);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_POWERPOOL_MAX,           powerPool,    powerPool,    0, powerPool * 10.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_POWERPOOL,               powerPool,    powerPool,    0, powerPool * 10.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_POWERPOOL_RECHARGE_RATE, rechargeRate, rechargeRate, 0, 1000);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_POWERPOOL_COST,          0, 0, 0, 0);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_POWERPOOL_MIN_COST,      0, 0, 0, 0);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_FLIGHT_ACCELERATION,     0, 0, 0, 1000);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_ACCURACY,                accuracy,     accuracy,     0, 1);
 
 	// Vision range — TgPawn.uc sets SightRadius from this on dedicated server (GetProperty(152))
-	if (nBotId != 680 && nBotId != 681 && nBotId != 679 && nBotId != 567) {
-		InitializeProperty(Pawn, GA_PROPERTY::TGPID_CHARACTER_VISION_RANGE,  sightRange,   sightRange,   0, 10000);
-	} else {
-		// InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH,                  1000000,    1000000,    0, 1000000);
-		// InitializeProperty(Pawn, GA_PROPERTY::TGPID_HEALTH_MAX,              1000000,    1000000,    0, 1000000);
-	}
+	// if (nBotId != 680 && nBotId != 681 && nBotId != 679 && nBotId != 567) {
+		Pawn->AddProperty( GA_PROPERTY::TGPID_CHARACTER_VISION_RANGE,  sightRange,   sightRange,   0, 10000);
+	// } else {
+	// 	// Pawn->AddProperty(GA_PROPERTY::TGPID_HEALTH,                  1000000,    1000000,    0, 1000000);
+	// 	// Pawn->AddProperty(GA_PROPERTY::TGPID_HEALTH_MAX,              1000000,    1000000,    0, 1000000);
+	// }
 
 	// Air speed — used by PlayerJetting state for lateral movement
 	// (TgPlayerController.uc:6344 — `newAccel = Normal(...) * Pawn.AirSpeed / 2`).
@@ -191,7 +152,7 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// during ApplyProperty fanout — the engine field needs room to receive
 	// the buffed value.
 	float airSpeed = Pawn->AirSpeed > 0.0f ? Pawn->AirSpeed : 480.0f;
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_AIR_SPEED, airSpeed, airSpeed, 0, airSpeed * 10.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_AIR_SPEED, airSpeed, airSpeed, 0, airSpeed * 10.0f);
 
 	// JumpZ (prop 50): must be in s_Properties so SetProperty(50) can resolve
 	// through our GetProperty hook and propagate to the APawn::JumpZ engine
@@ -201,14 +162,14 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// that default and makes ambient jumps feel wrong. So read whatever the
 	// engine/UC has already populated and register that as the base — which
 	// makes the init a no-op for APawn::JumpZ (the SetProperty call inside
-	// InitializeProperty writes the same value back) and gives stealth a valid
+	// AddProperty writes the same value back) and gives stealth a valid
 	// baseline to add to / subtract from.
 	float jumpZ = Pawn->JumpZ > 0.0f ? Pawn->JumpZ : 420.0f;  // APawn default fallback
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_JUMPZ, jumpZ, jumpZ, 0, 5000);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_JUMPZ, jumpZ, jumpZ, 0, 5000);
 
 	// Gravity Z modifier — replicated at ATgPawn+0x117C. Default 1.0 = normal gravity.
 	// Applied in TgPawn physics; 0 would mean no gravity.
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_GRAVITYZ_MODIFIER,       1.0f, 1.0f, 0, 100.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_GRAVITYZ_MODIFIER,       1.0f, 1.0f, 0, 100.0f);
 
 	// Deploy rate (prop 278) — `r_fDeployRate` lives at ATgPawn+0x1034 and is
 	// what `TgPawn_Turret.uc:TickDeploy` multiplies DeltaSeconds by each tick:
@@ -219,28 +180,28 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// SetProperty finds nothing and the write silently no-ops, leaving turret
 	// deploy rate locked at 1.0 even while a teammate is repairing it.
 	// Identity 1.0 matches APawn's r_fDeployRate UC default.
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_DEPLOY_RATE_MODIFIER,    1.0f, 1.0f, 0, 100.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_DEPLOY_RATE_MODIFIER,    1.0f, 1.0f, 0, 100.0f);
 
 	// Falling damage modifier — server-only at ATgPawn+0x1180.
 	// TakeFallingDamage (TgPawn.uc:2784) multiplies fall damage by this value.
 	// Returns early if <= 0.0, so it MUST be initialized to a positive value.
 	// 1.0 = normal fall damage; 0 = disabled; >1 = amplified.
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_FALLING_DAMAGE_MODIFIER, 1.0f, 1.0f, 0, 100.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_FALLING_DAMAGE_MODIFIER, 1.0f, 1.0f, 0, 100.0f);
 
 	// TGPID_STEALTH_TYPE_CODE (341): UScript class default is r_nStealthTypeCode=1037 (TG_STEALTH_GENERAL).
 	// SetProperty(341, 0) overrides that → r_nStealthTypeCode = 0 = no stealth active.
 	// Stealth effects will set it to a non-zero value ID (e.g. 1037) when they activate.
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_STEALTH_TYPE_CODE, 0, 0, 0, 10000);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_STEALTH_TYPE_CODE, 0, 0, 0, 10000);
 
 	// Stealth transition time modifier — identity default = 1.0
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_STEALTH_TRANSTIME_MODIFIER, 1.0f, 1.0f, 0, 1000);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_STEALTH_TRANSTIME_MODIFIER, 1.0f, 1.0f, 0, 1000);
 
 	// MakeVisible Fade Rate — UC's stealth-end logic reads this to decide how
 	// fast the player fades back to visible after firing/taking damage.
 	// Skill `Stealth Restealth` (581) does +50% via class-80 TgEffect calc=68;
 	// without the prop in s_Properties the direct-apply silently no-ops.
 	// Identity default 1.0 so the +% scaling lands as a real delta.
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_MAKEVISIBLE_FADE_RATE, 1.0f, 1.0f, 0, 100.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_MAKEVISIBLE_FADE_RATE, 1.0f, 1.0f, 0, 100.0f);
 
 	// Protection properties — CalcProtection in TgEffectGroup calls GetProperty(nProtectionType).
 	// If the property is absent, SetProperty from damage resistance effects silently does nothing.
@@ -249,23 +210,23 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// ATTRIBUTES", slot 14/Rest) via permanent equip-effect group 3575 — applied by
 	// Inventory::ApplyDeviceEquipEffects after CreateEquipDevice, since the asm.dat
 	// loader that sets device->m_EquipEffect is one of the stripped natives.
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_PHYSICAL,     0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_ENERGY,       0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_THERMAL,      0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_SLOW,         0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_POISON,       0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_DISEASE,      0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_STUN,         0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_SLEEP,        0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_KNOCKBACK,    0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_EMP_STUN,     0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_IGNITE,       0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_BIO,          0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_EMP_BURN,     0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_BLEED,        0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_MELEE,        0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_RANGED,       0, 0, 0, 1000.0f);
-	InitializeProperty(Pawn, GA_PROPERTY::TGPID_PROTECTION_AOE,          0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_PHYSICAL,     0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_ENERGY,       0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_THERMAL,      0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_SLOW,         0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_POISON,       0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_DISEASE,      0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_STUN,         0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_SLEEP,        0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_KNOCKBACK,    0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_EMP_STUN,     0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_IGNITE,       0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_BIO,          0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_EMP_BURN,     0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_BLEED,        0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_MELEE,        0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_RANGED,       0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_AOE,          0, 0, 0, 1000.0f);
 
 	// DIAG: per-respawn buff investigation — read back the engine power-regen
 	// field after all SetProperty calls. If higher than `rechargeRate`, the

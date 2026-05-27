@@ -43,10 +43,8 @@ public:
 	// Returns const ref to the vector (empty vector if pawnId not tracked).
 	static const std::vector<EquippedEntry>& GetEquippedByPawnId(int pawnId);
 
-	// O(1) inventory-id → device-id lookup. Replaces the per-call linear scan
-	// over GetEquipped(pawn) that DeviceCategorySkill::LookupByInstanceId used
-	// to do on every damage/heal effect application. Returns 0 if `invId`
-	// isn't tracked (e.g. not equipped, or never registered through Equip).
+	// O(1) inventory-id → device-id lookup. Returns 0 if `invId` isn't
+	// tracked (e.g. not equipped, or never registered through Equip).
 	// Maintained in lockstep with `s_equipped` by Equip/Unequip/ClearTracking.
 	static int GetDeviceIdByInvId(int invId);
 

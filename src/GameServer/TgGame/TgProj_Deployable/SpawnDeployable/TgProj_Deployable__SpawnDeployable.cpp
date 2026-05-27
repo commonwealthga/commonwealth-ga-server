@@ -1,11 +1,18 @@
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
+#include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
+#include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
+#include "src/GameServer/Globals.hpp"
+#include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
+#include "src/GameServer/TgGame/_effect_core/DeviceLookup.hpp"
+#include "src/GameServer/TgGame/_surface_rotation/SurfaceRotation.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/ApplyPlayerModsToDeployable.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
-#include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+
+#include <cmath>  // std::cos/std::sin for facing-vector synthesis
 
 namespace {
 // Binary entry point for `AActor::SetCollisionFromCollisionType`.  Reads
@@ -140,118 +147,53 @@ bool TgProj_Deployable__SpawnDeployable::IsForceFieldDeployableId(int nDeployabl
 	return strstr(clsName, "TgDeploy_ForceField") != nullptr;
 }
 
-bool TgProj_Deployable__SpawnDeployable::IsDomeShieldDeployableId(int nDeployableId) {
-	static std::unordered_map<int, bool> s_cache;
-	auto it = s_cache.find(nDeployableId);
-	if (it != s_cache.end()) return it->second;
-
-	bool isDome = false;
-	sqlite3* db = Database::GetConnection();
-	if (db) {
-		sqlite3_stmt* stmt = nullptr;
-		// Mesh-name prefix is the cleanest discriminator: `DEV_ForceField_Dome_*`
-		// is reserved for the dome shield meshes (957 Large, 956 Medium, 955
-		// Small) and never appears on wall meshes (`DEV_ForceField_Wall_*`).
-		// Attack type and target type don't separate dome from wall — they both
-		// use 342/214/0.
-		int rc = sqlite3_prepare_v2(db,
-			"SELECT 1 FROM asm_data_set_deployables d "
-			"JOIN asm_data_set_assembly_meshes am ON am.asm_id = d.asm_id "
-			"WHERE d.deployable_id = ? AND am.name LIKE 'DEV_ForceField_Dome%' "
-			"LIMIT 1",
-			-1, &stmt, nullptr);
-		if (rc == SQLITE_OK) {
-			sqlite3_bind_int(stmt, 1, nDeployableId);
-			isDome = (sqlite3_step(stmt) == SQLITE_ROW);
-			sqlite3_finalize(stmt);
-		}
-	}
-
-	s_cache[nDeployableId] = isDome;
-	return isDome;
-}
-
-void TgProj_Deployable__SpawnDeployable::GetTimerBombParams(
-	int nDeployableId, float* outActivationSecs, float* outDamageRadiusUU)
-{
-	// Defaults when DB row is missing or prop not populated. Picked to match
-	// the old hardcode (~EMP-bomb class values) so an unknown/corrupt bomb
-	// still explodes with *some* radius rather than 0.
-	constexpr float kDefaultActivation  = 3.0f;
-	constexpr float kDefaultRadiusUU    = 320.0f;  // 20 ft × 16 uu/ft
-	// DB stores DAMAGE_RADIUS in the same feet convention as PROXIMITY_DISTANCE;
-	// ATgDeployable::ApplyProperty for prop 8 multiplies by 16 before writing
-	// s_fProximityRadius — replicate that here so our server-side write lands
-	// in the same units the client's proximity display consumes.
-	constexpr float kFeetToUU = 16.0f;
-
-	struct BombParams { float activation; float radius; };
-	static std::unordered_map<int, BombParams> s_cache;
-	auto it = s_cache.find(nDeployableId);
-	if (it != s_cache.end()) {
-		*outActivationSecs  = it->second.activation;
-		*outDamageRadiusUU  = it->second.radius;
-		return;
-	}
-
-	float activation = kDefaultActivation;
-	float radiusUU   = kDefaultRadiusUU;
-	sqlite3* db = Database::GetConnection();
-	if (db) {
-		// Join deployables → device_mode_properties to pull both props in one
-		// round-trip.  GROUP BY prop_id collapses multi-mode devices — bombs
-		// only have one mode anyway, but the bomb's device is sometimes shared
-		// with a pickup/variant row; prefer the first seen value.
-		sqlite3_stmt* stmt = nullptr;
-		if (sqlite3_prepare_v2(db,
-			"SELECT p.prop_id, MIN(p.base_value) "
-			"FROM asm_data_set_deployables d "
-			"JOIN asm_data_set_device_mode_properties p ON d.device_id = p.device_id "
-			"WHERE d.deployable_id = ? AND p.prop_id IN (6, 7) "
-			"GROUP BY p.prop_id;",
-			-1, &stmt, nullptr) == SQLITE_OK) {
-			sqlite3_bind_int(stmt, 1, nDeployableId);
-			while (sqlite3_step(stmt) == SQLITE_ROW) {
-				int propId = sqlite3_column_int(stmt, 0);
-				float val  = (float)sqlite3_column_double(stmt, 1);
-				if (propId == 7 && val > 0.0f) activation = val;           // REMOTE_ACTIVATION_TIME (secs)
-				if (propId == 6 && val > 0.0f) radiusUU   = val * kFeetToUU; // DAMAGE_RADIUS (feet → uu)
-			}
-			sqlite3_finalize(stmt);
-		}
-	}
-
-	s_cache[nDeployableId] = { activation, radiusUU };
-	*outActivationSecs  = activation;
-	*outDamageRadiusUU  = radiusUU;
-}
-
 float TgProj_Deployable__SpawnDeployable::GetDeployTimeSecs(int nDeployableId) {
-	// Stations/turrets: explicit prop 279 (5–15s). Bombs/mines/force fields:
-	// fall back to 0.1s so UC's Deploy.BeginState completes effectively at
-	// once — matches AVA Bomb's explicit 0.1s in the DB. Without an explicit
-	// override, UC reads m_fDefaultDeployAnimLength which is similar across
-	// all deployables and drowns out the per-type tuning.
-	constexpr float kDefaultDeployTimeSecs = 0.1f;
+	// Return prop 279 ("Time To Deploy (secs)") from the thrower device-mode
+	// if defined, else 0.  Stations/turrets have it explicitly (5–15s) and
+	// the caller will honour that via `r_fTimeToDeploySecs = ...`.  For
+	// everything else (bombs, mines, force fields, etc.) we leave it at 0
+	// so UC's `Deploy.BeginState` runs its canonical fallback path:
+	// `if (r_fTimeToDeploySecs == 0) r_fTimeToDeploySecs =
+	// ExtractDeployTimeFromMyAnimation();` — which gives mines a real
+	// arming animation length instead of effectively-instant.
+	//
+	// Previously this returned 0.1s as a "deploy effectively at once" fudge
+	// for non-prop-279 deployables, which incorrectly made mines arm
+	// instantly. Bombs don't need the fudge — UC's Active.BeginState fires
+	// SetTimer('StartFire', s_fActivationTime) after Deploy completes; the
+	// deploy time is just the visual arming window, which feels right at
+	// the asset's animation length.
 
 	static std::unordered_map<int, float> s_cache;
 	auto it = s_cache.find(nDeployableId);
 	if (it != s_cache.end()) return it->second;
 
-	float secs = kDefaultDeployTimeSecs;
+	float secs = 0.0f;
 	sqlite3* db = Database::GetConnection();
 	if (db) {
 		// Prop 279 lives on the *thrower* device-mode (the player's deploy
-		// action), looked up by deployable_id via the m2m table. MIN() collapses
-		// duplicates that come from a thrower device with multiple modes
-		// targeting the same deployable.
+		// action). Two paths from thrower-mode → deployable:
+		//   (a) direct: m.deployable_id == ? — used for instant-deploy
+		//       variants like Mini-Nuke (deployable_id 145).
+		//   (b) via projectile: m.device_projectile_id → asm_data_set_projectiles
+		//       .spawn_deployable_id == ? — the path bombs, mines, drones,
+		//       and most other throwables take. The m2m row stores
+		//       deployable_id=0 for these because the thrower fires a
+		//       TgProj_Deployable, which spawns the deployable on impact.
+		// MIN() collapses duplicates from multi-mode throwers / multi-rank
+		// item variants. Without the LEFT JOIN through projectiles, mines
+		// (4s), bombs (0.001s), and drones (1s) silently fall through to
+		// the 0 return.
 		sqlite3_stmt* stmt = nullptr;
 		if (sqlite3_prepare_v2(db,
 			"SELECT MIN(p.base_value) "
 			"FROM asm_data_set_devices_data_set_device_modes m "
 			"JOIN asm_data_set_device_mode_properties p "
 			"  ON p.device_id = m.device_id AND p.device_mode_id = m.device_mode_id "
-			"WHERE m.deployable_id = ? AND p.prop_id = 279;",
+			"LEFT JOIN asm_data_set_projectiles proj "
+			"  ON proj.device_projectile_id = m.device_projectile_id "
+			"WHERE p.prop_id = 279 "
+			"  AND (m.deployable_id = ?1 OR proj.spawn_deployable_id = ?1);",
 			-1, &stmt, nullptr) == SQLITE_OK) {
 			sqlite3_bind_int(stmt, 1, nDeployableId);
 			if (sqlite3_step(stmt) == SQLITE_ROW &&
@@ -302,64 +244,236 @@ float TgProj_Deployable__SpawnDeployable::GetPetDeployTimeSecs(int nBotId) {
 	return secs;
 }
 
+float TgProj_Deployable__SpawnDeployable::GetThrowerPersistTime(int device_mode_id) {
+	// Prop 150 PERSIST_TIME on the THROWING device-mode (the player's
+	// equippable item that fires the deploy action). Convention is inconsistent
+	// across deployable types in the DB:
+	//   - Stations (medstation, etc.): prop 150 lives on the deployable's
+	//     INTERNAL device — SeedPropertiesFromDeviceModeDb picks it up via
+	//     `asm_data_set_deployables.device_id`. Typical value 10000s
+	//     (effectively forever).
+	//   - Force fields / mines / many bombs: prop 150 lives on the THROWER
+	//     device-mode (the player's item). SeedPropertiesFromDeviceModeDb
+	//     misses it because the throwing device != the deployable's internal
+	//     device. Without this helper, force fields end up with
+	//     s_fPersistTime=0 → UC's Active.BeginState never sets LifeSpan →
+	//     force fields live forever until manually replaced.
+	// Caller applies this in addition to the internal-device seed; non-zero
+	// thrower-side value overrides. Cached per device_mode_id.
+	static std::unordered_map<int, float> s_cache;
+	auto it = s_cache.find(device_mode_id);
+	if (it != s_cache.end()) return it->second;
+
+	float secs = 0.0f;
+	sqlite3* db = Database::GetConnection();
+	if (db) {
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+			"SELECT base_value FROM asm_data_set_device_mode_properties "
+			"WHERE device_mode_id = ? AND prop_id = 150 LIMIT 1;",
+			-1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int(stmt, 1, device_mode_id);
+			if (sqlite3_step(stmt) == SQLITE_ROW &&
+				sqlite3_column_type(stmt, 0) != SQLITE_NULL) {
+				const float v = (float)sqlite3_column_double(stmt, 0);
+				if (v > 0.0f) secs = v;
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+	s_cache[device_mode_id] = secs;
+	return secs;
+}
+
+float TgProj_Deployable__SpawnDeployable::GetPetLifeSpanSecs(int device_mode_id) {
+	// Prop 354 TGPID_PET_LIFESPAN on the spawn-pet device-mode. Set in DB on
+	// drone-spawning device modes (10-20s typical). Returns 0 when missing,
+	// meaning "no time limit; pet stays alive until killed or owner death."
+	// Cached per device_mode_id.
+	static std::unordered_map<int, float> s_cache;
+	auto it = s_cache.find(device_mode_id);
+	if (it != s_cache.end()) return it->second;
+
+	float secs = 0.0f;
+	sqlite3* db = Database::GetConnection();
+	if (db) {
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+			"SELECT base_value FROM asm_data_set_device_mode_properties "
+			"WHERE device_mode_id = ? AND prop_id = 354 LIMIT 1;",
+			-1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int(stmt, 1, device_mode_id);
+			if (sqlite3_step(stmt) == SQLITE_ROW &&
+				sqlite3_column_type(stmt, 0) != SQLITE_NULL) {
+				const float v = (float)sqlite3_column_double(stmt, 0);
+				if (v > 0.0f) secs = v;
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+	s_cache[device_mode_id] = secs;
+	return secs;
+}
+
 float TgProj_Deployable__SpawnDeployable::ApplyDeployTimeBuff(ATgPawn* pawn, float baseSecs, int deviceInstId) {
 	if (!pawn || baseSecs <= 0.0f) return baseSecs;
 
 	// GetBuffedProperty (TgPawn vtable[0x55C], FUN_109d7ff0). Direct call rather
 	// than SDK wrapper for the same reason TgPawn__ApplyBuff calls GetBuffIndex
-	// directly: avoid the wrapper's parm-struct shenanigans. Signature mirrors
-	// the one used in CloneEffectGroup's [DAMAGE-BUFF] / [EFFECT-BUFF] blocks.
+	// directly: avoid the wrapper's parm-struct shenanigans. Signature matches
+	// the typedef in TgPawn__ApplyBuff.cpp and TgEffect__CheckEffectBuffModifier.cpp.
 	typedef void(__fastcall* GetBuffedPropertyFn)(
 		ATgPawn*, void*, unsigned char,
 		int, int, int, int, int, float, float*, void*);
 	static const GetBuffedPropertyFn GetBuffedPropertyNative =
 		(GetBuffedPropertyFn)0x109d7ff0;
 
+	// ConvertPropToPropList srcType=3 (SKILL) case 279 emits {391} — see
+	// decompiled/TgGame/ATgPawn/ATgPawn__ConvertPropToPropList.cpp line 324.
+	// So Short Fuses (Engineer skill 851 -20%, Robotics skill 612 -15%, etc.)
+	// — every prop-391 PET_DEPLOY_TIME_MODIFIER skill — folds in here.
+	//
+	// Filter alignment with the rest of the engine's buff query convention
+	// (the same one ScaleTargetProperties and TgEffect__CheckEffectBuffModifier
+	// use). The native GetBuffIndex match rule rejects a query field of 0 when
+	// the stored entry's field is non-zero, so we must resolve the deploying
+	// device's class-skill id BEFORE querying — otherwise skills like
+	// Infiltration's Short Fuses (skill 828, registers with nReqSkillId=328
+	// scoped to its device class) wouldn't match a skill=0 query even though
+	// the effect group emits prop 391.
+	//   - nReqCategoryCode = -1   : wildcard (matches the canonical pattern
+	//                               documented in DeviceLookup.hpp — category
+	//                               lives on the effect group, not the device,
+	//                               so we never filter on it for prop reads).
+	//   - nReqSkillId      = deviceSkillId : the deploying device's
+	//                               m_nSkillId, so skill-scoped buffs whose
+	//                               required_skill_id matches the device fold
+	//                               in. Wildcard-stored entries (skill 851,
+	//                               required_skill_id=0) still match because
+	//                               stored=0 is a wildcard against any query.
+	//   - nReqDeviceInstId = deviceInstId : per-device rolled-mod scope.
+	const int deviceSkillId = DeviceLookup::SkillIdForDevice(pawn, deviceInstId);
+
 	float buffedSecs = baseSecs;
 	GetBuffedPropertyNative(
 		pawn, /*edx=*/nullptr,
-		/*eRequestContext=*/3,        // BUFF_DEVICE — fire-mode prop reads
+		/*eRequestContext=*/3,        // SKILL — ConvertPropToPropList srcType
 		/*nPropId=*/279,              // Time To Deploy (secs)
-		/*nReqCategoryCode=*/0,
-		/*nReqSkillId=*/0,
+		/*nReqCategoryCode=*/-1,
+		/*nReqSkillId=*/deviceSkillId,
 		/*nReqDeviceInstId=*/deviceInstId,
 		/*bUsePotencyModifier=*/0,
 		/*fBaseValue=*/baseSecs,
 		/*fBuffedValue=*/&buffedSecs,
 		/*Effect=*/nullptr);
 
-	if (buffedSecs != baseSecs) {
-		Logger::Log("inventory",
-			"[DEPLOY-TIME] pawn=%p prop279  base=%.3fs -> buffed=%.3fs (×%.3f)\n",
-			(void*)pawn, baseSecs, buffedSecs,
-			(baseSecs > 0.0f) ? buffedSecs / baseSecs : 1.0f);
+	// Log every call so we can diagnose "buff isn't reducing deploy time"
+	// failures. The previous "log only when buffedSecs != baseSecs" gate
+	// silently hid the case where the buff isn't registered at all.
+	Logger::Log("inventory",
+		"[DEPLOY-TIME] pawn=%p devInst=%d devSkill=%d  base=%.3fs -> buffed=%.3fs  (delta=%.3fs, ×%.3f)%s\n",
+		(void*)pawn, deviceInstId, deviceSkillId, baseSecs, buffedSecs,
+		buffedSecs - baseSecs,
+		(baseSecs > 0.0f) ? buffedSecs / baseSecs : 1.0f,
+		(buffedSecs == baseSecs) ? "  [no prop391 buff matched]" : "");
+
+	// If we got a base-only result, dump matching prop-391 registry entries so
+	// the user can see whether the skill clone landed at all. The most common
+	// failure mode: a "Short Fuses" skill the user trained registers under a
+	// different prop id (skill 815 has only prop 349, not 391) OR registers
+	// with non-zero nReqSkillId / nReqDeviceInstId that the wildcard match
+	// for our query rejects. The dump answers both in one log line.
+	if (buffedSecs == baseSecs && pawn->m_EffectBuffInfo.Data) {
+		int prop391Count = 0;
+		for (int i = 0; i < pawn->m_EffectBuffInfo.Num(); ++i) {
+			const FBuffInfo& e = pawn->m_EffectBuffInfo.Data[i];
+			if (e.BuffHeader.nPropId == 391) {
+				++prop391Count;
+				Logger::Log("inventory",
+					"[DEPLOY-TIME]   registry[%d] prop=391  hdr{cat=%d skill=%d devInst=%d}"
+					"  slots: itemP=%.2f skillP=%.2f selfP=%.2f genP=%.2f / itemAbs=%.2f skillAbs=%.2f selfAbs=%.2f genAbs=%.2f\n",
+					i,
+					e.BuffHeader.nReqCategoryCode, e.BuffHeader.nReqSkillId, e.BuffHeader.nReqDeviceInstId,
+					e.fItemPercentModifier, e.fSkillPercentModifier,
+					e.fSelfPercentModifier, e.fPercentModifier,
+					e.fItemModifier,        e.fSkillModifier,
+					e.fSelfModifier,        e.fModifier);
+			}
+		}
+		if (prop391Count == 0) {
+			Logger::Log("inventory",
+				"[DEPLOY-TIME]   registry has 0 prop391 entries — the Short Fuses skill "
+				"either isn't trained, isn't a prop-391 skill (e.g. skill 815 has only "
+				"prop 349 REMOTE_TIME_MODIFIER, not 391 PET_DEPLOY_TIME_MODIFIER), or "
+				"its skill clone failed to land via ReapplyCharacterSkillTree.\n");
+		}
 	}
 	return buffedSecs;
 }
 
-bool TgProj_Deployable__SpawnDeployable::IsDestructibleDeployableId(int nDeployableId) {
-	// Cache: 0 = HP=0 (indestructible), 1 = HP>0 (destructible).
-	static std::unordered_map<int, int> s_cache;
-	auto it = s_cache.find(nDeployableId);
-	if (it != s_cache.end()) return it->second == 1;
+float TgProj_Deployable__SpawnDeployable::ApplyPetLifeSpanBuff(ATgPawn* pawn, float baseSecs, int deviceInstId) {
+	if (!pawn || baseSecs <= 0.0f) return baseSecs;
 
-	int destructible = 1;  // assume HP>0 if DB lookup misses
-	sqlite3* db = Database::GetConnection();
-	if (db) {
-		sqlite3_stmt* stmt = nullptr;
-		if (sqlite3_prepare_v2(db,
-			"SELECT health FROM asm_data_set_deployables WHERE deployable_id = ? LIMIT 1;",
-			-1, &stmt, nullptr) == SQLITE_OK) {
-			sqlite3_bind_int(stmt, 1, nDeployableId);
-			if (sqlite3_step(stmt) == SQLITE_ROW) {
-				const int hp = sqlite3_column_int(stmt, 0);
-				destructible = (hp > 0) ? 1 : 0;
+	typedef void(__fastcall* GetBuffedPropertyFn)(
+		ATgPawn*, void*, unsigned char,
+		int, int, int, int, int, float, float*, void*);
+	static const GetBuffedPropertyFn GetBuffedPropertyNative =
+		(GetBuffedPropertyFn)0x109d7ff0;
+
+	// ConvertPropToPropList srcType=3 (SKILL) case 354 emits {355} — see
+	// decompiled/TgGame/ATgPawn/ATgPawn__ConvertPropToPropList.cpp line 338.
+	// Drones skills 631/797/798 (+10/15/20%) + Infiltration skill 837 (+30%)
+	// all register prop 355 PET_LIFESPAN_MODIFIER and fold in here.
+	//
+	// Filter alignment mirrors ApplyDeployTimeBuff — see that function's
+	// comments for the rationale on nReqSkillId / nReqDeviceInstId.
+	const int deviceSkillId = DeviceLookup::SkillIdForDevice(pawn, deviceInstId);
+
+	float buffedSecs = baseSecs;
+	GetBuffedPropertyNative(
+		pawn, /*edx=*/nullptr,
+		/*eRequestContext=*/3,        // SKILL
+		/*nPropId=*/354,              // Pet Lifespan
+		/*nReqCategoryCode=*/-1,
+		/*nReqSkillId=*/deviceSkillId,
+		/*nReqDeviceInstId=*/deviceInstId,
+		/*bUsePotencyModifier=*/0,
+		/*fBaseValue=*/baseSecs,
+		/*fBuffedValue=*/&buffedSecs,
+		/*Effect=*/nullptr);
+
+	Logger::Log("inventory",
+		"[PET-LIFESPAN] pawn=%p devInst=%d devSkill=%d  base=%.3fs -> buffed=%.3fs  (delta=%.3fs, ×%.3f)%s\n",
+		(void*)pawn, deviceInstId, deviceSkillId, baseSecs, buffedSecs,
+		buffedSecs - baseSecs,
+		(baseSecs > 0.0f) ? buffedSecs / baseSecs : 1.0f,
+		(buffedSecs == baseSecs) ? "  [no prop355 buff matched]" : "");
+
+	if (buffedSecs == baseSecs && pawn->m_EffectBuffInfo.Data) {
+		int prop355Count = 0;
+		for (int i = 0; i < pawn->m_EffectBuffInfo.Num(); ++i) {
+			const FBuffInfo& e = pawn->m_EffectBuffInfo.Data[i];
+			if (e.BuffHeader.nPropId == 355) {
+				++prop355Count;
+				Logger::Log("inventory",
+					"[PET-LIFESPAN]   registry[%d] prop=355  hdr{cat=%d skill=%d devInst=%d}"
+					"  slots: itemP=%.2f skillP=%.2f selfP=%.2f genP=%.2f / itemAbs=%.2f skillAbs=%.2f selfAbs=%.2f genAbs=%.2f\n",
+					i,
+					e.BuffHeader.nReqCategoryCode, e.BuffHeader.nReqSkillId, e.BuffHeader.nReqDeviceInstId,
+					e.fItemPercentModifier, e.fSkillPercentModifier,
+					e.fSelfPercentModifier, e.fPercentModifier,
+					e.fItemModifier,        e.fSkillModifier,
+					e.fSelfModifier,        e.fModifier);
 			}
-			sqlite3_finalize(stmt);
+		}
+		if (prop355Count == 0) {
+			Logger::Log("inventory",
+				"[PET-LIFESPAN]   registry has 0 prop355 entries — the skill "
+				"either isn't trained, or its skill clone failed to land via "
+				"ReapplyCharacterSkillTree.\n");
 		}
 	}
-	s_cache[nDeployableId] = destructible;
-	return destructible == 1;
+	return buffedSecs;
 }
 
 int TgProj_Deployable__SpawnDeployable::GetMaxDeployablesOut(int device_mode_id) {
@@ -410,41 +524,65 @@ void TgProj_Deployable__SpawnDeployable::CompactDeployableList(ATgPawn* pawn) {
 }
 
 void TgProj_Deployable__SpawnDeployable::EnforceDeployableLimit(
-	ATgPawn* pawn, ATgDevice* sourceDevice, UTgDeviceFire* sourceFireMode)
+	ATgPawn* pawn, ATgDeployable* newDep, UTgDeviceFire* sourceFireMode)
 {
-	if (!pawn || !sourceDevice || !sourceFireMode) return;
+	if (!pawn || !newDep || !sourceFireMode) return;
 
 	const int device_mode_id = sourceFireMode->m_nId;
 	const int limit = GetMaxDeployablesOut(device_mode_id);
 	if (limit <= 0) return;  // no DB row → no limit
 
-	CompactDeployableList(pawn);
+	const int newDeployableId = newDep->r_nDeployableId;
 
-	auto& arr = pawn->s_SelfDeployableList;
+	// Match by owner PRI (persists across pawn death; the per-pawn
+	// `s_SelfDeployableList` does NOT — it's a fresh empty TArray on the
+	// respawned pawn instance, so the prior implementation let players bypass
+	// the deploy limit by dying between deployments). PRI lives on the
+	// PlayerController and survives the whole session.
+	ATgRepInfo_Player* pawnrep = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
+	if (!pawnrep) return;
 
-	// Count live deployables sharing the same source device. "Same device"
-	// matches the user-observable rule: deploying a second medical station
-	// destroys the first, but a medical station + power station coexist
-	// (different devices, separate counts). Match by pointer identity since
-	// each player has at most one device of each kind equipped.
+	AWorldInfo* worldInfo = World__GetWorldInfo::CallOriginal(
+		(UWorld*)Globals::Get().GWorld, nullptr, 0);
+	if (!worldInfo || !worldInfo->GRI) return;
+	ATgRepInfo_Game* gri = (ATgRepInfo_Game*)worldInfo->GRI;
+
+	// Walk the GLOBAL deployable list. Match an entry as "this player's prior
+	// deployable of the same type" if its DRI's instigator PRI equals the
+	// firing pawn's PRI AND its deployable_id matches the one we just spawned.
+	// CRITICAL: skip `newDep` itself — RegisterDeployableInGRI already added
+	// it to gri->m_Deployables earlier in the spawn pipeline, so naively
+	// matching by (PRI, deployableId) finds the just-spawned actor among the
+	// "existing" ones. Without the dep!=newDep guard, deploying with limit=1
+	// counted old=1+new=1 → killed BOTH → new deployable despawned instantly
+	// (regression caught 2026-05-27).
 	auto matches = [&](ATgDeployable* d) -> bool {
-		return d && d->r_Owner == sourceDevice;
+		if (!d) return false;
+		if (d == newDep) return false;
+		if (d->bDeleteMe) return false;
+		if (d->m_bInDestroyedState) return false;
+		if (d->r_nDeployableId != newDeployableId) return false;
+		if (!d->r_DRI) return false;
+		return d->r_DRI->r_InstigatorInfo == pawnrep;
 	};
 
-	int liveCount = 0;
-	for (int i = 0; i < arr.Count; ++i) if (matches(arr.Data[i])) ++liveCount;
+	int priorCount = 0;
+	for (int i = 0; i < gri->m_Deployables.Count; ++i)
+		if (matches(gri->m_Deployables.Data[i])) ++priorCount;
 
-	// Already at or above limit → destroy the oldest (lowest-index) matching
-	// entries until adding the new one will leave us at exactly `limit`.
-	int toKill = (liveCount + 1) - limit;
+	// `priorCount` excludes newDep. Total after this spawn is priorCount + 1.
+	// Destroy the oldest (lowest-index → earliest registered) priors until
+	// that total equals `limit`.
+	int toKill = (priorCount + 1) - limit;
 	if (toKill <= 0) return;
 
 	Logger::Log(GetLogChannel(),
-		"[DeployableLimit] pawn=0x%p device=0x%p mode_id=%d limit=%d live=%d killing oldest %d\n",
-		pawn, sourceDevice, device_mode_id, limit, liveCount, toKill);
+		"[DeployableLimit] pawn=0x%p pawnPRI=0x%p mode_id=%d deployableId=%d "
+		"limit=%d prior=%d killing oldest %d\n",
+		pawn, pawnrep, device_mode_id, newDeployableId, limit, priorCount, toKill);
 
-	for (int i = 0; i < arr.Count && toKill > 0; ++i) {
-		ATgDeployable* dep = arr.Data[i];
+	for (int i = 0; i < gri->m_Deployables.Count && toKill > 0; ++i) {
+		ATgDeployable* dep = gri->m_Deployables.Data[i];
 		if (!matches(dep)) continue;
 
 		Logger::Log(GetLogChannel(),
@@ -495,32 +633,6 @@ void TgProj_Deployable__SpawnDeployable::RegisterDeployableInGRI(ATgDeployable* 
 		dep, dep->r_nDeployableId, gri->m_Deployables.Count);
 }
 
-bool TgProj_Deployable__SpawnDeployable::IsTimerBombDeployableId(int nDeployableId) {
-	// Cache keyed by id (positive for bomb, zero for non-bomb). Use a sentinel
-	// in the existing cylinder cache? No — separate map to avoid ambiguity.
-	static std::unordered_map<int, int> s_cache;  // value: 0 = non-bomb, 1 = bomb, -1 = uninit
-	auto it = s_cache.find(nDeployableId);
-	if (it != s_cache.end()) return it->second == 1;
-
-	int bombFlag = 0;
-	sqlite3* db = Database::GetConnection();
-	if (db) {
-		sqlite3_stmt* stmt = nullptr;
-		if (sqlite3_prepare_v2(db,
-			"SELECT show_countdown_timer_flag FROM asm_data_set_deployables "
-			"WHERE deployable_id = ? LIMIT 1;",
-			-1, &stmt, nullptr) == SQLITE_OK) {
-			sqlite3_bind_int(stmt, 1, nDeployableId);
-			if (sqlite3_step(stmt) == SQLITE_ROW) {
-				bombFlag = sqlite3_column_int(stmt, 0);
-			}
-			sqlite3_finalize(stmt);
-		}
-	}
-	s_cache[nDeployableId] = bombFlag;
-	return bombFlag == 1;
-}
-
 bool TgProj_Deployable__SpawnDeployable::IsBeaconDeployable(ATgDeployable* Deployable) {
 	if (!Deployable || !Deployable->Class) return false;
 	const char* fn = Deployable->Class->GetFullName();
@@ -541,6 +653,22 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	ATgDevice* sourceDevice, UTgDeviceFire* sourceFireMode)
 {
 	if (!pawn) return nullptr;
+
+	// Sanitise vNormal: if a caller passes (0,0,0) (no surface contact
+	// available — e.g. mid-air projectile detonation) or a non-unit vector,
+	// normalize / fall back to world +Z so the lift and the rotation math both
+	// behave sensibly. Length check uses squared magnitude to avoid the sqrt
+	// when the input is already in the [0.5, 2.0] range typical of trace
+	// normals.
+	{
+		const float n2 = vNormal.X * vNormal.X + vNormal.Y * vNormal.Y + vNormal.Z * vNormal.Z;
+		if (n2 < 0.25f) {
+			vNormal.X = 0.f; vNormal.Y = 0.f; vNormal.Z = 1.f;
+		} else if (n2 < 0.9801f || n2 > 1.0201f) {  // outside [0.99, 1.01]
+			const float inv = 1.0f / std::sqrt(n2);
+			vNormal.X *= inv; vNormal.Y *= inv; vNormal.Z *= inv;
+		}
+	}
 
 	// Resolve UC class via DB lookup on asm_data_set_deployables.class_res_id.
 	// Previously we reinterpreted cfg+0x10 as a wchar_t* class-name pointer and
@@ -576,9 +704,35 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// them. The lift exists for trace-based placements where `vLocation` is a
 	// ground contact point and the actor's cylinder center needs to clear the
 	// terrain.
-	const bool isDomeShield = IsDomeShieldDeployableId(deployableId);
-	if (!isDomeShield) {
-		vLocation.Z += cylHalfHeight + 5.0f;
+	//
+	// For surface-impact placements (projectile-landed bombs/mines, instant-
+	// trace deployables on slopes), lift along the surface NORMAL — not world
+	// Z. On flat floor (normal ≈ +Z) this degrades to the original `Z += …`
+	// behavior; on walls/ceilings it pushes the cylinder center off the
+	// surface in the right direction so the mesh doesn't half-bury into the
+	// wall. Caller passes a sanitised normal (≈ +Z for "no surface").
+	// Self-spawning deployables (require_los_flag=0 in their device-mode row)
+	// arrive with `vLocation` typically at `pawn->Location` (cylinder center).
+	// Pre-v20 this used a mesh-name `DEV_ForceField_Dome%` LIKE match; the
+	// DB flag now generalises the behavior to any future self-spawning
+	// deployable without code changes.
+	//
+	// Two adjustments vs the standard placement lift:
+	//   1. SKIP the +halfHeight normal lift — the dome's actor.Location should
+	//      sit at the pawn's feet, not pushed further along a surface normal.
+	//   2. DROP Z by the pawn's collision half-height — `pawn->Location` is
+	//      the cylinder CENTER (waist-height in UE3), so without this drop
+	//      the sphere sits ~46uu too high (visible top half clipping head-
+	//      level, bottom hanging in mid-air). Matches the pre-refactor
+	//      dome behavior the user established 2026-05-14.
+	const bool selfSpawn = DeployableClassify::DeploysOnSelf(deployableId);
+	if (!selfSpawn) {
+		const float offset = cylHalfHeight + 5.0f;
+		vLocation.X += vNormal.X * offset;
+		vLocation.Y += vNormal.Y * offset;
+		vLocation.Z += vNormal.Z * offset;
+	} else if (pawn->CylinderComponent) {
+		vLocation.Z -= pawn->CylinderComponent->CollisionHeight;
 	}
 
 	Logger::Log(GetLogChannel(),
@@ -598,24 +752,56 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 		return nullptr;
 	}
 
-	// Deployable facing: use the CONTROLLER's rotation (view/aim direction), not
-	// the Pawn's body rotation.  Pawn->Rotation lags or snaps in 3rd-person movement
-	// (body turns with movement, not with aim); Controller->Rotation tracks the
-	// player's actual look direction at spawn time.  Zero out pitch/roll so deployables
-	// (turrets in particular) stand upright on the ground.
-	FRotator spawnRot = pawn->Controller ? pawn->Controller->Rotation : pawn->Rotation;
-	spawnRot.Pitch = 0;
-	spawnRot.Roll  = 0;
+	// Deployable rotation: align the local +Z axis with the surface normal so
+	// projectile-stuck bombs/mines (and slope-deployed stations) sit flush on
+	// the surface they hit. On flat ground (normal ≈ +Z) this reduces to a
+	// pure-yaw rotation matching the player's facing — i.e. the prior
+	// "controller rotation, pitch/roll zeroed" behavior for floor placements.
+	//
+	// Why use the surface normal unconditionally (no per-class gate):
+	//   - Sticky bombs / mines fly through SpawnDeployable (the projectile
+	//     impact path) and need to adhere to walls/ceilings.
+	//   - Stations deployed onto sloped ground via the same path should also
+	//     follow the slope rather than tilt awkwardly into the world.
+	//   - The threshold below preserves the legacy yaw-only behavior for the
+	//     common floor case, so turret-style upright deploys still feel right.
+	//
+	// Player facing reference: Controller->Rotation tracks aim direction (Pawn-
+	// >Rotation lags in 3rd-person). Convert to a UC `Vector(Rotation)` so the
+	// projection onto the surface plane uses the player's actual look direction
+	// including pitch.
+	const FRotator pawnRot = pawn->Controller ? pawn->Controller->Rotation
+	                                          : pawn->Rotation;
+	constexpr float kPi = 3.14159265358979f;
+	const float pYaw   = pawnRot.Yaw   * (kPi / 32768.0f);
+	const float pPitch = pawnRot.Pitch * (kPi / 32768.0f);
+	const float cp = std::cos(pPitch);
+	const FVector facing = {
+		cp * std::cos(pYaw),
+		cp * std::sin(pYaw),
+		std::sin(pPitch)
+	};
 
+	FRotator spawnRot = SurfaceRotation::FromSurfaceNormal(vNormal, facing);
+
+	Logger::Log(GetLogChannel(),
+		"SpawnDeployableActor: deployableId=%d normal=(%.3f,%.3f,%.3f) "
+		"facing=(%.3f,%.3f,%.3f) rot=(P=%d Y=%d R=%d)\n",
+		deployableId, vNormal.X, vNormal.Y, vNormal.Z,
+		facing.X, facing.Y, facing.Z,
+		spawnRot.Pitch, spawnRot.Yaw, spawnRot.Roll);
+
+	AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
 	ATgDeployable* Deployable = (ATgDeployable*)pawn->Spawn(
 		cls,
-		pawn,
+		WorldInfo,
 		FName(),
 		vLocation,
 		spawnRot,
 		nullptr,
 		1
 	);
+
 
 	if (!Deployable) {
 		Logger::Log(GetLogChannel(), "SpawnDeployableActor: Spawn returned null\n");
@@ -652,6 +838,7 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 			Deployable->m_TargetComponent->SetCylinderSize(cylRadius, cylHalfHeight);
 		}
 	}
+	Deployable->AdjustMeshToGround();
 
 	// Instigator propagation fix — matches the projectile pattern
 	// (reference_projectile_instigator_propagation.md).  UE3's standard
@@ -670,12 +857,14 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// replication of this field is already wired — we just need it non-null
 	// on the server side.  Owner was set via the Spawn parameter; belt-and-
 	// braces re-check it here too.
-	APawn* spawnedInstigator = Deployable->Instigator;
-	AActor* spawnedOwner     = Deployable->Owner;
-	if (!Deployable->Instigator) Deployable->Instigator = pawn;
-	if (!Deployable->Owner)      Deployable->Owner      = pawn;
-	Deployable->bNetDirty        = 1;
-	Deployable->bForceNetUpdate  = 1;
+	// APawn* spawnedInstigator = Deployable->Instigator;
+	// AActor* spawnedOwner     = Deployable->Owner;
+	// if (!Deployable->Instigator) Deployable->Instigator = pawn;
+	// if (!Deployable->Owner)      Deployable->Owner      = pawn;
+	// Deployable->bNetDirty        = 1;
+	// Deployable->bForceNetUpdate  = 1;
+
+	Deployable->Instigator = pawn;
 
 	// Source-device attribution. UC SpawnDeployable native sets these via
 	// TgDeployable::DeployedBy / DeployedByFireMode; without them, downstream
@@ -694,10 +883,10 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// (Identity stamping moved to end-of-function — m_FireMode isn't
 	// initialized at this point; needs to run after all deploy setup.)
 
-	Logger::Log("team_colors",
-		"[Instigator-fix] deployable=0x%p  Spawn returned Instigator=%p Owner=%p  → patched to Instigator=%p Owner=%p  (pawn=%p)\n",
-		Deployable, spawnedInstigator, spawnedOwner,
-		Deployable->Instigator, Deployable->Owner, pawn);
+	// Logger::Log("team_colors",
+	// 	"[Instigator-fix] deployable=0x%p  Spawn returned Instigator=%p Owner=%p  → patched to Instigator=%p Owner=%p  (pawn=%p)\n",
+	// 	Deployable, spawnedInstigator, spawnedOwner,
+	// 	Deployable->Instigator, Deployable->Owner, pawn);
 
 	ATgRepInfo_Player* pawnrep = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
 
@@ -824,7 +1013,7 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// DRI path catches up, which is acceptable until the deeper bug is
 	// fixed.  Don't change this back without confirming the DRI-driven
 	// material swap actually works client-side.
-	Deployable->r_bInitialIsEnemy = 0;
+	// Deployable->r_bInitialIsEnemy = 0;
 
 	// Read-back diag: confirm the team-ownership fix actually landed on the
 	// server and the DRI is in a replicate-able state. If r_bOwnedByTaskforce
@@ -869,10 +1058,11 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	}
 
 	// Per-device deploy limit (TGPID_MAX_DEPLOYABLES_OUT, prop 154 in DB).
-	// Walks pawn->s_SelfDeployableList, drops dead entries, and destroys the
-	// oldest matching deployables when adding a new one would exceed the
-	// configured limit. No-op when the firing fire mode has no prop-154 row.
-	EnforceDeployableLimit(pawn, sourceDevice, sourceFireMode);
+	// Walks GRI.m_Deployables (survives pawn death) and destroys the oldest
+	// entries owned by this player's PRI sharing the same deployable_id when
+	// adding the new one would exceed the configured limit. No-op when the
+	// firing fire mode has no prop-154 row or the pawn has no PRI.
+	EnforceDeployableLimit(pawn, Deployable, sourceFireMode);
 
 	pawn->s_SelfDeployableList.Add(Deployable);
 
@@ -888,7 +1078,7 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// HP=0 → indestructible bomb/mine. Pairs with the collision gate further
 	// down (we keep the cylinder in COLLIDE_BlockAllButWeapons so hitscan
 	// passes through but movement still blocks).
-	const bool destructible = IsDestructibleDeployableId(deployableId);
+	const bool destructible = DeployableClassify::IsDestructible(deployableId);
 	Deployable->r_bTakeDamage      = destructible ? 1 : 0;
 	Deployable->s_bIsActivated     = 1;
 	Deployable->m_bIsDeployed      = 0;
@@ -1042,17 +1232,18 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// proximity/explosion logic continues working since that's a UC-driven
 	// timer, not a hit response. Stations/turrets need the revert below for
 	// repair-arm beams and weapon damage to land.
-	if (destructible) {
-		*(unsigned char*)((char*)Deployable + 0x93) = 0; // CollisionType = COLLIDE_CustomDefault
-		*(unsigned char*)((char*)Deployable + 0x94) = 0; // ReplicatedCollisionType
-		*(uint32_t*)((char*)Deployable + 0xAC) |= 0x100000; // bNetDirty
-		SetCollisionFromCollisionType(Deployable);
-	} else {
-		Logger::Log("deploy_phase",
-			"[invuln-deployable] deployableId=%d  HP=0 in DB — leaving CollisionType=COLLIDE_BlockAllButWeapons "
-			"(hitscan passes through, movement still blocks); r_bTakeDamage=0\n",
-			deployableId);
-	}
+
+	// if (destructible) {
+	// 	*(unsigned char*)((char*)Deployable + 0x93) = 0; // CollisionType = COLLIDE_CustomDefault
+	// 	*(unsigned char*)((char*)Deployable + 0x94) = 0; // ReplicatedCollisionType
+	// 	*(uint32_t*)((char*)Deployable + 0xAC) |= 0x100000; // bNetDirty
+	// 	SetCollisionFromCollisionType(Deployable);
+	// } else {
+	// 	Logger::Log("deploy_phase",
+	// 		"[invuln-deployable] deployableId=%d  HP=0 in DB — leaving CollisionType=COLLIDE_BlockAllButWeapons "
+	// 		"(hitscan passes through, movement still blocks); r_bTakeDamage=0\n",
+	// 		deployableId);
+	// }
 
 	// Diagnostic: confirm the post-revert flag state.  Should show
 	// cylFlags with bit 7 (BlockZeroExtent) set.
@@ -1088,6 +1279,32 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// call even though UC PostBeginPlay already invoked it during Spawn() —
 	// the hook early-returns when s_Properties is already populated.
 	Deployable->InitializeDefaultProps();
+
+	// Thrower-side PERSIST_TIME → auto-despawn timer.
+	//
+	// DB convention: prop 150 on the THROWER device-mode (force fields /
+	// mines / bombs). InitializeDefaultProps' internal-device seed misses
+	// those; we read from the thrower here.
+	//
+	// Schedule a one-shot timer that fires UC's `DestroyIt` event rather
+	// than writing `s_fPersistTime` — UC's `Active.BeginState` reads
+	// `s_fPersistTime` and would set `LifeSpan = s_fPersistTime`, and raw
+	// LifeSpan expiry calls `Destroy()` directly with NO FX (silent
+	// despawn). `DestroyIt` runs the full destruction sequence:
+	// FxActivateIndependant('Destroyed', ...) client-side, mesh swap to
+	// destroyed variant, repnotify carries to clients. See
+	// TgDeployable.uc:1049-1100.
+	if (sourceFireMode) {
+		const float throwerPersist = GetThrowerPersistTime(sourceFireMode->m_nId);
+		if (throwerPersist > 0.0f) {
+			Actor__SetTimer::SetTimer(Deployable, throwerPersist,
+				/*bLoop=*/false, FName("DestroyIt"), nullptr);
+			Logger::Log(GetLogChannel(),
+				"[lifetime] deployable=0x%p id=%d  thrower-mode=%d -> "
+				"SetTimer(%.2fs, 'DestroyIt') for natural-expire FX path\n",
+				Deployable, deployableId, sourceFireMode->m_nId, throwerPersist);
+		}
+	}
 
 	// Phase 4: fire the passive equip effect (e.g. station protections) if
 	// ApplyDeployableSetup wired one. UC eventApplyEquipEffects runs
@@ -1281,84 +1498,70 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 		}
 	}
 
-	// Timer-bomb pragmatic wiring: the real bomb pipeline would set
-	// s_fActivationTime / s_fPersistTime / r_nTickingTime via native config
-	// driven by asm data, then let UC's Active state transition through
-	// DeviceBuildup → DeviceFiring → FireAmmunitionDeployable for the
-	// explosion.  None of that happens on our server because (a) the source
-	// data for activation time isn't populated in the DB rows we've found, and
-	// (b) UC state machine bytecode on bomb spawn isn't reliably driven.
+	// Per-deployable deploy time. UC's `Deploy.BeginState` (TgDeployable.uc:1862)
+	// first reads `r_fTimeToDeploySecs`; only when 0 does it fall back to
+	// `ExtractDeployTimeFromMyAnimation()`. Stations / turrets carry an explicit
+	// prop 279 value (5–15s) which `GetDeployTimeSecs` returns; `ApplyDeployTimeBuff`
+	// folds in any Pet Deploy Time Modifier (prop 391) — Short Fuses' -20%,
+	// Repair Arm Speed's -15%, etc. — by going through the canonical
+	// `GetBuffedProperty(BUFF_DEVICE, 279, base)` chain.
 	//
-	// Minimum viable fix: hardcode a 3-second countdown, set the replicated
-	// fields so the client shows the ticking HUD and renders the bomb, then
-	// SetTimer('StartFire') to let UC's state machine take the explosion path
-	// after the delay.  If that UC chain doesn't fire an effect server-side,
-	// we iterate — but first we see whether it does.
+	// For deployables WITHOUT a prop 279 row (force fields), `GetDeployTimeSecs`
+	// returns 0 and we leave `r_fTimeToDeploySecs=0` so UC's anim-length fallback
+	// takes effect.
 	//
-	// Per-deployable deploy time. UC's Deploy.BeginState reads
-	// r_fTimeToDeploySecs first; only when 0 does it fall back to the deploy
-	// anim length (which is similar across all assets and was making every
-	// deployable feel uniform). Stations/turrets get explicit 5–15s from
-	// prop 279; bombs/mines/forcefields get 0.1s so they "deploy" instantly.
+	// Bombs are a special case: their prop 279 is 0.001s (effectively instant),
+	// which lets `Deploy.BeginState` enter the "anim-driven Path A" branch
+	// (FxActivateGroup('Deploying',0) + at-least-one Tick → DeployComplete →
+	// Active). But 0.001s collapses to zero after a single Tick of any DT, so
+	// the FX dispatch + state replication can fail to round-trip to the client.
+	// Apply a 0.1s floor for bombs so the server-side Deploy state holds long
+	// enough for the dispatched FX + state transition to land cleanly. The
+	// `IsTimerBomb` gate keeps the floor off mines / force fields where the
+	// anim-length fallback is the desired behaviour.
 	{
-		float deploySecs = ApplyDeployTimeBuff(pawn, GetDeployTimeSecs(deployableId),
-		                                       sourceDevice ? sourceDevice->r_nDeviceInstanceId : 0);
-		Deployable->r_fTimeToDeploySecs = deploySecs;
-		Deployable->bNetDirty           = 1;
-		Deployable->bForceNetUpdate     = 1;
-		Logger::Log("bomb",
-			"[deploy time] deployableId=%d  r_fTimeToDeploySecs=%.3fs (DB+buff)\n",
-			deployableId, deploySecs);
+		float baseSecs = GetDeployTimeSecs(deployableId);
+		if (baseSecs > 0.0f) {
+			float deploySecs = ApplyDeployTimeBuff(pawn, baseSecs,
+				sourceDevice ? sourceDevice->r_nDeviceInstanceId : 0);
+			Deployable->r_fTimeToDeploySecs = deploySecs;
+			Deployable->bNetDirty           = 1;
+			Deployable->bForceNetUpdate     = 1;
+			Logger::Log("deploy_phase",
+				"[deploy time] deployableId=%d  r_fTimeToDeploySecs=%.3fs (prop279+buff)\n",
+				deployableId, deploySecs);
+		} else {
+			Logger::Log("deploy_phase",
+				"[deploy time] deployableId=%d  no prop279 — leaving r_fTimeToDeploySecs=0 "
+				"so UC reads ExtractDeployTimeFromMyAnimation\n",
+				deployableId);
+		}
+		if (DeployableClassify::IsTimerBomb(deployableId) &&
+		    Deployable->r_fTimeToDeploySecs < 0.1f) {
+			Deployable->r_fTimeToDeploySecs = 0.1f;
+			Logger::Log("deploy_phase",
+				"[deploy time] deployableId=%d  bomb-floor applied r_fTimeToDeploySecs=0.100s\n",
+				deployableId);
+		}
 	}
 
-	// Discriminator: show_countdown_timer_flag=1 in asm_data_set_deployables.
-	// Covers EMP Bomb, Shatter Bomb, Fire Bomb, Venom Bomb, Graviton Bomb.
-	// Excludes mines (trigger on proximity), stations, beacons, deconstructor.
-	if (IsTimerBombDeployableId(deployableId)) {
-		// Pull per-bomb params from asm_data_set_device_mode_properties via the
-		// deployable's device (show_countdown_timer_flag=1 in deployables, then
-		// prop 7 = REMOTE_ACTIVATION_TIME, prop 6 = DAMAGE_RADIUS in feet).
-		// Most bombs land at (3s, 20ft = 320uu); Shatter Bomb 5s/40ft; AVA
-		// bomb 10s/125ft.  Earlier hardcode was (3s, 384uu), which was close
-		// for EMP-class bombs only.
-		float activationSecs = 0.f, radiusUU = 0.f;
-		GetTimerBombParams(deployableId, &activationSecs, &radiusUU);
-
-		Deployable->r_nTickingTime        = (int)activationSecs;
-		Deployable->c_fStartTickingTime   = 0.0f;     // client repnotify sets this from WorldInfo.TimeSeconds
-		Deployable->s_fActivationTime     = activationSecs;
-		// Proximity radius — prop 8 (TGPID_PROXIMITY_DISTANCE) is the one field
-		// ApplyProperty mirrors to engine storage; GetTimerBombParams already
-		// baked the ×16 feet→uu scale so this is raw UU.
-		Deployable->s_fProximityRadius       = radiusUU;
-		Deployable->r_fClientProximityRadius = radiusUU;
-
-		Deployable->bNetDirty       = 1;
-		Deployable->bForceNetUpdate = 1;
-
-		// SetTimer('StartFire', activationSecs, non-looping) — UC's StartFire
-		// transitions to DeviceBuildup → DeviceFiring where
-		// m_FireMode.ApplyEffectType(self, 263) applies the explosion to actors
-		// in radius.  If UC ApplyEffectType runs on server (likely, since it's
-		// marked ROLE_Authority), the explosion damages victims.  Route through
-		// Actor__SetTimer (rather than the SDK wrapper) so the FName packing
-		// matches what the native expects — SDK bitfield/FName ABI has been
-		// unreliable in this binary.
-		Actor__SetTimer::SetTimer(Deployable, activationSecs, false, FName("StartFire"), nullptr);
-
-		Logger::Log("bomb",
-			"[bomb armed] deployableId=%d  activationTime=%.2fs  radius=%.0fuu (DB-driven)\n"
-			"             SetTimer('StartFire', %.2fs) scheduled\n",
-			deployableId, activationSecs, radiusUU, activationSecs);
-	}
-
-	// Phase 5: apply the placing pawn's rolled-mod buffs to the deployable's
-	// s_Properties AND the timer-bomb engine mirrors (s_fProximityRadius,
-	// r_fClientProximityRadius). Runs AFTER the timer-bomb block above so we
-	// can scale the just-set proximity radius (which the client warning HUD
-	// reads) in addition to the s_Properties[6] value (which the server-side
-	// damage AoE reads via GetDamageRadius). Handles both the visual-warning
-	// path AND the actual-damage path in one shot. See ApplyPlayerModsToDeployable.cpp.
+	// Phase 5 — buffed prop pass.
+	//
+	// Walks deployable->s_Properties, for each slot calls GetBuffedProperty on
+	// the deploying pawn (folding the pawn's m_EffectBuffInfo against the
+	// per-prop ConvertPropToPropList expansion), then writes back via
+	// SetProperty(propId, buffed). SetProperty fans the value out:
+	//   - native ApplyProperty mirrors prop 8 → s_fProximityRadius /
+	//     r_fClientProximityRadius (×16 ft→uu), prop 278 → r_fDeployRate
+	//   - our TgDeployable__SetProperty hook mirrors the props the native
+	//     drops on the floor:
+	//       prop 6   → r_fClientProximityRadius (×16, bombs only) — HUD danger
+	//                  zone, picks up Wide Blast (prop 352) AOE_RADIUS_MODIFIER
+	//       prop 7   → s_fActivationTime (all)  + r_nTickingTime (bombs only),
+	//                  picks up Short Fuses (prop 349) REMOTE_TIME_MODIFIER
+	//       prop 150 → s_fPersistTime
+	//       prop 51 / 304 / 339 → HP / max-HP handlers
+	//
 	// `sourceDevice->r_nDeviceInstanceId` filters the pawn's buff registry to
 	// THIS deploying device's mods + wildcards (skills). Without it, every
 	// other equipped weapon's mods would also fold into the deployable's
@@ -1366,6 +1569,35 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// by ~7×). Pass 0 if no source device — only wildcard entries fold in.
 	ApplyPlayerModsToDeployable::Apply(pawn, Deployable,
 	                                   sourceDevice ? sourceDevice->r_nDeviceInstanceId : 0);
+
+	// CRITICAL — the FIELD DICHOTOMY: there are two distinct proximity-radius
+	// fields and they MUST NOT both be set on a bomb.
+	//
+	//   `s_fProximityRadius`        — server-only. UC's Active.BeginState
+	//                                 (TgDeployable.uc:1992) uses it as the
+	//                                 "this is a MINE" discriminator:
+	//                                   > 0   → LifeSpan = s_fActivationTime
+	//                                           (mine lifespan, no StartFire)
+	//                                   else  → SetTimer(activation, 'StartFire')
+	//                                           (bomb fuse path)
+	//                                 Mines populate this via prop 8 + native
+	//                                 ApplyProperty (×16 ft→uu).
+	//
+	//   `r_fClientProximityRadius`  — replicated. UC's client-side
+	//                                 CheckLocalPlayerWithinProximity
+	//                                 (TgDeployable.uc:1110) reads it to draw
+	//                                 the HUD "you are in the bomb's danger
+	//                                 zone" warning. Set non-zero for BOTH
+	//                                 mines (prop 8 ×16) AND bombs (prop 6 ×16).
+	//
+	// Writing s_fProximityRadius > 0 on a bomb regressed bombs into the mine
+	// state path: LifeSpan expired without ever firing → bombs disappeared
+	// without exploding. The TgDeployable__SetProperty hook now mirrors prop 6
+	// to r_fClientProximityRadius ONLY (no s_fProximityRadius write) when the
+	// deployable is a bomb, preserving the state discriminator.
+	//
+	// The only piece UC's natural pipeline still can't drive is the
+	// `r_fTimeToDeploySecs` floor — see the next block.
 
 	// Stamp deployable + internal fire-mode owner with the deploy device's
 	// identity so UC's `TgEffectGroup.InitInstance` (TgEffectGroup.uc:121-141)

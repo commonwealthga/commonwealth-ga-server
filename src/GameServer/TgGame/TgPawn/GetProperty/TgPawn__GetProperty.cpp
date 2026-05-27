@@ -5,11 +5,12 @@
 // Original native @ 0x109dd2e0 uses the TMap at pawn+0x400 (propId → s_Properties
 // index) for O(1) lookup, then indexes into s_Properties (pawn+0x3F4).
 //
-// Historical context: this hook used to do a linear scan because our
-// InitializeProperty didn't maintain the TMap, so the native returned null
-// for any property we added. That gap is closed (memory: reference_pawn_property_tmap.md
-// — fixed 2026-05-07 in InitializeProperty via TMap_Set::Call). The TMap is
-// now reliable, so we delegate straight back to the native and pay zero hook
+// Historical context: this hook used to do a linear scan because our seed
+// path didn't maintain the TMap, so the native returned null for any
+// property we added. That gap is closed (memory: reference_pawn_property_tmap.md
+// — fixed 2026-05-07 via TMap_Set::Call; the registration now lives in
+// TgPawn__AddProperty alongside the property construction itself). The TMap
+// is reliable, so we delegate straight back to the native and pay zero hook
 // overhead. The hook stays installed so future modifications have a place to
 // land without re-plumbing call sites.
 //

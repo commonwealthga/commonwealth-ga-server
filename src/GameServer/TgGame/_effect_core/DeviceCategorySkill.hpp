@@ -24,17 +24,13 @@
 // aren't player-controlled). Wildcard means "no constraint" on the
 // query side — consistent with how skill-source entries with
 // required_skill_id=0 stay universal.
-class ATgPawn;
-
+//
+// Sole live caller is `Inventory.cpp:Equip` (stamps Device->m_nSkillId at
+// equip time). Sibling `DeviceLookup` (instance-id → skill via equipped-
+// devices scan) covers the apply-time path.
 namespace DeviceCategorySkill {
-	// Direct lookup by device id.
-	int Lookup(int deviceId);
 
-	// Convenience: given a pawn and a device-instance id (`m_nSourceDeviceInstId`
-	// on a cloned effect group), walks the pawn's tracked equipped devices to
-	// find the matching deviceId, then returns its category skillId. Returns
-	// 0 (wildcard) when the instId isn't tracked or has no skill mapping.
-	// Used by CloneEffectGroup [DAMAGE-BUFF] / [EFFECT-BUFF] where the clone
-	// only carries the instId, not the deviceId.
-	int LookupByInstanceId(ATgPawn* pawn, int deviceInstanceId);
-}
+// Direct lookup by device id (asm_data_set_items.skill_id where item_id == device_id).
+int Lookup(int deviceId);
+
+}  // namespace DeviceCategorySkill
