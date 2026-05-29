@@ -121,9 +121,12 @@ void __fastcall* TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, v
 		}
 
 		FVector spawnLoc = factory->Location;
-		float r = 0.f, halfH = 0.f;
+		float r = 0.f, halfH = 0.f, liftH = 0.f;
 		TgProj_Deployable__SpawnDeployable::GetDeployableCollisionCylinder(48, &r, &halfH);
-		spawnLoc.Z += halfH + 5.0f;
+		TgProj_Deployable__SpawnDeployable::GetDeployableSpawnZLift(48, &liftH);
+		// Lift uses the legacy raw*0.5 value, NOT the scaled cylinder halfHeight
+		// — see GetDeployableSpawnZLift. The two diverge on scale≠1 deployables.
+		spawnLoc.Z += liftH + 5.0f;
 
 		ATgDeploy_BeaconEntrance* entrance = (ATgDeploy_BeaconEntrance*)factory->Spawn(
 			cls, factory, FName(), spawnLoc, factory->Rotation, nullptr, 1);
@@ -163,9 +166,12 @@ void __fastcall* TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, v
 	}
 
 	FVector spawnLoc = factory->Location;
-	float r = 0.f, halfH = 0.f;
+	float r = 0.f, halfH = 0.f, liftH = 0.f;
 	TgProj_Deployable__SpawnDeployable::GetDeployableCollisionCylinder(36, &r, &halfH);
-	spawnLoc.Z += halfH + 5.0f;
+	TgProj_Deployable__SpawnDeployable::GetDeployableSpawnZLift(36, &liftH);
+	// Lift uses the legacy raw*0.5 value, NOT the scaled cylinder halfHeight
+	// — see GetDeployableSpawnZLift. The two diverge on scale≠1 deployables.
+	spawnLoc.Z += liftH + 5.0f;
 
 	ATgDeploy_Beacon* beacon = (ATgDeploy_Beacon*)factory->Spawn(
 		cls, factory, FName(), spawnLoc, factory->Rotation, nullptr, 1);

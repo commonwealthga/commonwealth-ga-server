@@ -5,6 +5,7 @@
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackBotHealing/TgPawn__TrackBotHealing.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackDamagedBot/TgPawn__TrackDamagedBot.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackDamagedPlayer/TgPawn__TrackDamagedPlayer.hpp"
@@ -189,10 +190,10 @@ int ResolveDeviceIdFromFireMode(UObject* deviceModeRef) {
 	if (!deviceModeRef) return 0;
 	UTgDeviceFire* fireMode = (UTgDeviceFire*)deviceModeRef;
 	AActor* owner = fireMode->m_Owner;
-	if (!owner || !owner->Class || !owner->Class->GetFullName()) return 0;
-	// Class-name strstr per reference_sdk_staticclass_misalignment — IsA is
-	// unreliable on this server build.
-	if (strstr(owner->Class->GetFullName(), "TgDevice") == nullptr) return 0;
+	if (!owner) return 0;
+	// Class-name substring per reference_sdk_staticclass_misalignment — IsA is
+	// unreliable on this server build. Cached lookup, no per-call alloc.
+	if (!ObjectClassCache::ClassNameContains(owner->Class, "TgDevice")) return 0;
 	return ((ATgDevice*)owner)->r_nDeviceId;
 }
 
@@ -252,13 +253,13 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 	if (magnitude <= 0.0f) return;
 
 	// ===== Target classification (used by credit decisions below) =====
-	// Class-name strstr per `feedback_bIsPlayer_unreliable` / `reference_sdk_staticclass_misalignment`.
+	// Class-name substring per `feedback_bIsPlayer_unreliable` / `reference_sdk_staticclass_misalignment`.
 	// Forcefield first so the "TgDeploy" generic check doesn't shadow it.
-	const char* targetClassName = (Target->Class && Target->Class->GetFullName())
-		? Target->Class->GetFullName() : "";
-	const bool     targetIsForceField = (strstr(targetClassName, "TgDeploy_ForceField") != nullptr);
-	const bool     targetIsDeployable = (strstr(targetClassName, "TgDeploy")            != nullptr);
-	const bool     targetIsPawn       = (strstr(targetClassName, "TgPawn")              != nullptr);
+	// Single cache lookup, three string::find calls on the cached name.
+	const std::string& targetClassName = ObjectClassCache::GetClassName(Target);
+	const bool     targetIsForceField = (targetClassName.find("TgDeploy_ForceField") != std::string::npos);
+	const bool     targetIsDeployable = (targetClassName.find("TgDeploy")            != std::string::npos);
+	const bool     targetIsPawn       = (targetClassName.find("TgPawn")              != std::string::npos);
 	ATgPawn*       targetPawn         = targetIsPawn       ? (ATgPawn*)Target       : nullptr;
 	ATgDeployable* targetDeployable   = targetIsDeployable ? (ATgDeployable*)Target : nullptr;
 
@@ -275,9 +276,8 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 
 	// "Has client connection" predicate — reused below.
 	auto IsRealPlayer = [](AController* ctrl) -> bool {
-		if (!ctrl || !ctrl->Class) return false;
-		const char* name = ctrl->Class->GetFullName();
-		return name && strstr(name, "PlayerController") != nullptr;
+		if (!ctrl) return false;
+		return ObjectClassCache::ClassNameContains(ctrl->Class, "PlayerController");
 	};
 
 	// Resolve pet → owner for scoreboard credit (kills/damage/heal credit a
@@ -297,8 +297,7 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 	// assist credits a real human, not the pet bot.
 	if (!isHeal && targetIsPawn && magnitude > 0.0f) {
 		ATgPawn* damagerForHistory = Instigator;
-		if (damagerForHistory->Class && damagerForHistory->Class->GetFullName() &&
-		    strstr(damagerForHistory->Class->GetFullName(), "TgPawn_Detonator") != nullptr &&
+		if (ObjectClassCache::ClassNameContains(damagerForHistory->Class, "TgPawn_Detonator") &&
 		    damagerForHistory->r_ControlPawn != nullptr) {
 			damagerForHistory = damagerForHistory->r_ControlPawn;
 		}
@@ -367,8 +366,7 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 			// the firing pawn in r_ControlPawn. Mirrors the UC body of
 			// SaveDeathInfoForZoomCam.
 			ATgPawn* DamagerPawn = Instigator;
-			if (DamagerPawn->Class && DamagerPawn->Class->GetFullName() &&
-			    strstr(DamagerPawn->Class->GetFullName(), "TgPawn_Detonator") != nullptr &&
+			if (ObjectClassCache::ClassNameContains(DamagerPawn->Class, "TgPawn_Detonator") &&
 			    DamagerPawn->r_ControlPawn != nullptr) {
 				DamagerPawn = DamagerPawn->r_ControlPawn;
 			}
@@ -540,7 +538,7 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 			// alert broadcast to every player on the destroyer's task
 			// force (including the destroyer themselves). Numbers and
 			// 5s alert duration per user spec.
-			if (strstr(targetClassName, "TgDeploy_Beacon") != nullptr &&
+			if (targetClassName.find("TgDeploy_Beacon") != std::string::npos &&
 			    damageCreditPawn->PlayerReplicationInfo != nullptr) {
 				ATgRepInfo_Player* attackerPRI =
 					(ATgRepInfo_Player*)damageCreditPawn->PlayerReplicationInfo;
@@ -676,10 +674,8 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 			// fighting on their initially-owned point. So the
 			// `r_bHasBeenCapturedOnce` gate only applies in Ticket mode.
 			ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
-			const char* gameClass = (Game && Game->Class)
-				? Game->Class->GetFullName() : nullptr;
-			const bool ticketMode = gameClass &&
-				strstr(gameClass, "TgGame_Ticket") != nullptr;
+			const bool ticketMode = Game &&
+				ObjectClassCache::ClassNameContains(Game->Class, "TgGame_Ticket");
 
 			for (ATgMissionObjective* Obj : ActorCache::MissionObjectives) {
 				if (!Obj || !Obj->r_bIsActive) continue;
@@ -693,10 +689,9 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 				// and its subclasses (e.g. TgMissionObjective_Escort). Check by
 				// class name; the proxy field offset is the same across the
 				// Proximity hierarchy but undefined on plain TgMissionObjective.
-				const char* ocname = Obj->Class ? Obj->Class->GetFullName() : nullptr;
-				if (!ocname) continue;
-				if (strstr(ocname, "TgMissionObjective_Proximity") == nullptr &&
-				    strstr(ocname, "TgMissionObjective_Escort")    == nullptr) continue;
+				const std::string& ocname = ObjectClassCache::GetClassName(Obj->Class);
+				if (ocname.find("TgMissionObjective_Proximity") == std::string::npos &&
+				    ocname.find("TgMissionObjective_Escort")    == std::string::npos) continue;
 				ATgMissionObjective_Proximity* PObj =
 					(ATgMissionObjective_Proximity*)Obj;
 				if (!PObj->s_CollisionProxy) continue;

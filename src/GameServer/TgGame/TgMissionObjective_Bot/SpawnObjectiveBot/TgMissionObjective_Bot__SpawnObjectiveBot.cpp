@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgMissionObjective_Bot/SpawnObjectiveBot/TgMissionObjective_Bot__SpawnObjectiveBot.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
+#include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -11,6 +12,11 @@ ATgPawn* SpawnBotAtLocation(ATgGame* Game, int botId, FVector loc, FRotator rot)
 	float radius = 0.0f, halfHeight = 0.0f;
 	TgGame__SpawnBotById::GetBotCollisionCylinder(botId, &radius, &halfHeight);
 	if (halfHeight > 0.0f) loc.Z += halfHeight + 5.0f;
+	// Bosses / escort targets spawn without a TgBotFactory but still want
+	// the same per-bot BBM × per-difficulty HP+damage scaling as the rest of
+	// the enemy roster. Raise the flag explicitly here; SpawnBotById would
+	// not raise it for a null factory pointer.
+	TgPawn__InitializeDefaultProps::bPendingEnemyScaling = true;
 	return (ATgPawn*)Game->SpawnBotById(
 		botId, loc, rot,
 		/*bKillController=*/   false,

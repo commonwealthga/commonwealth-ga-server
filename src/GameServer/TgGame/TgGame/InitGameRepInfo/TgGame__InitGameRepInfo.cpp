@@ -164,6 +164,32 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 
 			// Game->TimeLimit = 210;
 
+
+// function float GetSetupTime()
+// {
+//     // End:0x3B
+//     if(TgRepInfo_Game(GameReplicationInfo).IsPvEMission())
+//     {
+//         // End:0x32
+//         if(int(m_GameType) == int(11))
+//         {
+//             return 30.0000000;
+//         }
+//         return 15.0000000;        
+//     }
+//     else
+//     {
+//         // End:0x4E
+//         if(IsTerritory())
+//         {
+//             return 120.0000000;
+//         }
+//     }
+//     return 60.0000000;
+//     //return ReturnValue;    
+// }
+
+
 			GameDef->s_nMaxRoundNumber = 5;
 			GameDef->s_nRoundSetupTime = 0;
 			GameDef->s_nBetweenRoundDelay = 30;
@@ -252,7 +278,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		if (GameClassName == "Class TgGame.TgGame_Mission") {
 			gamerep->r_bIsRaid = 0;
 			gamerep->r_bIsMission = 1;
-			gamerep->r_bIsPVP = 1;
+			gamerep->r_bIsPVP = 0;
 			gamerep->r_bIsTraining = 0;
 			gamerep->r_bIsTutorialMap = 0;
 			gamerep->r_bIsArena = 0;

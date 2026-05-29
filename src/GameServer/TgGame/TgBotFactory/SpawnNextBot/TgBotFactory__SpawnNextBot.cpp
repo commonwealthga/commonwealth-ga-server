@@ -83,7 +83,19 @@ bool AnyGroupNeedsMore(ATgBotFactory* f) {
 }
 
 // Factory-wide cap. Per-group cap is implicit in GroupNeedsMore.
+//
+// Exception: alarm-eligible factories (`bSpawnOnAlarm=true`) are NOT
+// subject to the nActiveCount cap. These factories are typically configured
+// as patrol posts with `nActiveCount=1` (one normal guard), but when an
+// alarm fires they're expected to spawn the FULL responder group defined
+// in the spawn table — 5, 8, 12 bots depending on the group's bot_count.
+// With the cap applied, the first responder fills the slot and the chain
+// dies → "spawn 1 instead of 6" behavior. The group-level counts in
+// `m_SpawnGroups` (seeded from `asm_data_set_bot_spawn_tables.bot_count`
+// during the first SpawnNextBot pass) are the authoritative limit for
+// alarm-spawned waves.
 bool RespectsFactoryCap(ATgBotFactory* f) {
+	if (f->bSpawnOnAlarm) return true;
 	if (f->nActiveCount > 0 && f->nCurrentCount >= f->nActiveCount) {
 		Logger::Log("tgbotfactory",
 			"  factory %d at active cap (%d/%d) — stopping spawn chain\n",
@@ -213,6 +225,30 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 	} else {
 
 		ATgAIController* AIController = (ATgAIController*)Bot->Controller;
+
+		// Mark alarm-responder bots so the AI behavior tree knows they're
+		// alarm-spawned. UC `TgBotFactory.SetTarget(target, bAlarmBot=true)`
+		// is the canonical setter, but it's only called for already-spawned
+		// bots being re-targeted by kismet — for the ActivateAlarm spawn
+		// path, the responder bot is created HERE and nothing else fills in
+		// the flag. EvaluateTest case 0x20 reads `(m_FlagsAt3A0>>14)&1` —
+		// the IS_ALARM_BOT (test 1159) gate on "CANCEL ALARM-BOT STATUS"
+		// actions (action_type 1190 / 1272) — so without this the
+		// stand-down behaviors never know they apply.
+		//
+		// Discriminator: bSpawnOnAlarm=true factories never auto-spawn at
+		// PostBeginPlay (UC TgBotFactory.uc:135 guards on `!bSpawnOnAlarm`),
+		// so any SpawnNextBot call on such a factory is from an external
+		// trigger — almost always ActivateAlarm. May slightly over-mark in
+		// rare kismet-driven encounter cases; harmless because the stand-
+		// down gates still require no-enemy-sighted / time-since-spawn etc.
+		if (BotFactory->bSpawnOnAlarm) {
+			AIController->m_bAlarmBot = 1;
+			Logger::Log("alarm",
+				"  marked spawned bot=%d (factory=%d) as alarm responder "
+				"(m_bAlarmBot=1)\n", botId, mid);
+		}
+
 		if (BotFactory->bAlwaysPatrol) {
 			for (int j = 0; j < BotFactory->PatrolPath.Num(); j++) {
 				AIController->m_PatrolPath.Add(BotFactory->PatrolPath.Data[j]);

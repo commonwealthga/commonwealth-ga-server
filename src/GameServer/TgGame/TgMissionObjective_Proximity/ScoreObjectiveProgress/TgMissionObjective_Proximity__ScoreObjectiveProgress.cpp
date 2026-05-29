@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgMissionObjective_Proximity/ScoreObjectiveProgress/TgMissionObjective_Proximity__ScoreObjectiveProgress.hpp"
 #include "src/GameServer/Combat/SendCombatMessage/SendCombatMessage.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <cstring>
 #include <unordered_map>
@@ -68,20 +69,22 @@ void __fastcall TgMissionObjective_Proximity__ScoreObjectiveProgress::Call(
 
 	for (int i = 0; i < nNearby; i++) {
 		ATgPawn* P = Proxy->m_NearByPlayers.Data[i];
-		if (!P || !P->Controller || !P->Controller->Class) {
-			Logger::Log("stats", "[SOP]  [%d] skip: missing P/Controller/Class\n", i);
+		if (!P || !P->Controller) {
+			Logger::Log("stats", "[SOP]  [%d] skip: missing P/Controller\n", i);
 			continue;
 		}
 
-		const char* ctrlClass = P->Controller->Class->GetFullName();
-		const bool isHuman = ctrlClass && strstr(ctrlClass, "PlayerController");
+		// Per-pawn-per-tick on contested objectives — cached lookup avoids
+		// the per-call GetFullName + alloc on every scoring tick.
+		const std::string& ctrlClass = ObjectClassCache::GetClassName(P->Controller->Class);
+		const bool isHuman = ctrlClass.find("PlayerController") != std::string::npos;
 
 		ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)P->PlayerReplicationInfo;
 		const int pawnTF = (PRI && PRI->r_TaskForce) ? (int)PRI->r_TaskForce->r_nTaskForce : -1;
 
 		Logger::Log("stats",
 			"[SOP]  [%d] pawn=%s ctrl=%s isHuman=%d PRI=%p pawnTF=%d profileId=%d\n",
-			i, P->GetName(), ctrlClass ? ctrlClass : "<null>",
+			i, P->GetName(), ctrlClass.c_str(),
 			(int)isHuman, (void*)PRI, pawnTF, P->r_nProfileId);
 
 		if (!isHuman) continue;

@@ -14,65 +14,141 @@ public:
 	// bot_id → fully-qualified UClass name; filled from DB on first miss.
 	static inline std::unordered_map<int, std::string> m_dbClassCache;
 
-	// bot_id → (radius, halfHeight) for pawn spawn placement.
-	static inline std::unordered_map<int, std::pair<float, float>> m_dbCylinderCache;
+	// Per-bot collision data pulled from asm_data_set_assembly_meshes via
+	// asm_data_set_bots.body_asm_id. Cached so we don't hit SQLite on every
+	// spawn / posture change. Mirrors what the native SetCollisionFromMesh
+	// (0x109be6d0) writes onto the pawn — verbatim from Ghidra:
+	//   primary cylinder (CollisionCylinder.SetCylinderSize):
+	//     asm.+0x98 = collision_height (half-extent)
+	//     asm.+0x9c = collision_radius
+	//   m_fStandingHeight/Radius: same as primary (used by UnCrouch restore)
+	//   CrouchHeight  ← asm.+0xa4 (crouch_height)
+	//   CrouchRadius  ← asm.+0x9c (reuses collision_radius)
+	//   m_fTargetCylinderHeight/Radius ← asm.+0xa8 / +0xac (hit_collision_*)
+	// The primary cylinder is INTENTIONALLY tall for hover-style bots (Support
+	// Scanner: collision_h=70 → 140uu cylinder bottom-on-ground keeps the
+	// chassis 70uu above ground; falls naturally off edges, resumes apparent
+	// hover when cylinder bottom touches ground again). hit_collision_* is a
+	// SEPARATE field for the AI-aim TargetCylinder (m_TargetComponent), NOT
+	// for the primary cylinder — they coexist on Scanner asm (70×35 primary,
+	// 30×30 target) precisely because the primary IS the height-illusion leg
+	// and the target is the tight body the AI aims at.
+	struct BotCollisionData {
+		float collision_radius;       // primary cylinder radius (= CrouchRadius, StandingRadius)
+		float collision_halfHeight;   // primary cylinder half-height (= StandingHeight)
+		float crouch_height;          // 0 if not set
+		float hit_collision_height;   // 0 if not set; → m_fTargetCylinderHeight
+		float hit_collision_radius;   // 0 if not set; → m_fTargetCylinderRadius
+	};
+	static inline std::unordered_map<int, BotCollisionData> m_dbCollisionCache;
 
-	// Resolve the bot's collision cylinder from the DB (asm_data_set_bots
-	// joined to asm_data_set_assembly_meshes via body_asm_id). Falls back to
-	// the UC default on TgPawn.CollisionCylinder (Height=46, Radius=25) —
-	// every pawn subclass including TgPawn_Turret inherits this when the
-	// mesh row doesn't override. Cached per bot_id.
-	static void GetBotCollisionCylinder(int nBotId, float* outRadius, float* outHalfHeight) {
-		// UC default: TgPawn.CollisionCylinder (Height=46, Radius=25),
-		// inherited by TgPawn_Character → TgPawn_Turret unchanged.
-		constexpr float kUCDefaultRadius     = 25.0f;
-		constexpr float kUCDefaultHalfHeight = 46.0f;
+	// DB lookup + cache; returns const ref to the cached row. UC default on
+	// TgPawn.CollisionCylinder (Height=46, Radius=25) is the fallback when
+	// no asm row is found — every pawn subclass inherits this unchanged.
+	static const BotCollisionData& GetBotCollisionData(int nBotId) {
+		auto it = m_dbCollisionCache.find(nBotId);
+		if (it != m_dbCollisionCache.end()) return it->second;
 
-		auto it = m_dbCylinderCache.find(nBotId);
-		if (it != m_dbCylinderCache.end()) {
-			*outRadius     = it->second.first;
-			*outHalfHeight = it->second.second;
-			return;
-		}
+		BotCollisionData data{};
+		data.collision_radius     = 25.0f;   // TgPawn.uc:10554
+		data.collision_halfHeight = 46.0f;   // TgPawn.uc:10553
+		data.crouch_height        = 0.0f;
+		data.hit_collision_height = 0.0f;
+		data.hit_collision_radius = 0.0f;
 
-		float radius     = kUCDefaultRadius;
-		float halfHeight = kUCDefaultHalfHeight;
 		sqlite3* db = Database::GetConnection();
 		if (db) {
 			sqlite3_stmt* stmt = nullptr;
 			if (sqlite3_prepare_v2(db,
-				"SELECT am.collision_radius, am.collision_height "
+				"SELECT am.collision_radius, am.collision_height, "
+				"       am.crouch_height, "
+				"       am.hit_collision_radius, am.hit_collision_height "
 				"FROM asm_data_set_bots b "
 				"JOIN asm_data_set_assembly_meshes am ON b.body_asm_id = am.asm_id "
 				"WHERE b.bot_id = ? LIMIT 1;",
 				-1, &stmt, nullptr) == SQLITE_OK) {
 				sqlite3_bind_int(stmt, 1, nBotId);
 				if (sqlite3_step(stmt) == SQLITE_ROW) {
-					float dbRadius = (float)sqlite3_column_double(stmt, 0);
-					float dbHeight = (float)sqlite3_column_double(stmt, 1);
-					// asm_data_set_assembly_meshes.collision_height stores the
-					// HALF-height directly, matching UE3's UCylinderComponent
-					// convention (CollisionHeight = half). Verified by sanity:
-					// human (asm 2562) = 46 → full = 92 UU ≈ 1.84m (realistic),
-					// Shrike (asm 794) = 117 → full = 234 UU (boss-sized).
-					// Treating these as full and halving gave 23/58.5 — too
-					// short, so gravity rests the bot's cylinder bottom too low,
-					// and with the client's Mesh.Translation.Z stuck at 0
-					// (ApplyPawnSetup never fires for AI bots client-side) the
-					// mesh pivot ends up at cylinder center, sinking the body
-					// halfMeshHeight below ground. With the proper half-height,
-					// the cylinder bottom sits at ground level naturally and
-					// the mesh-at-center renders at the right vertical position.
-					if (dbRadius > 0.0f) radius     = dbRadius;
-					if (dbHeight > 0.0f) halfHeight = dbHeight;
+					const float dbCR  = (float)sqlite3_column_double(stmt, 0);
+					const float dbCH  = (float)sqlite3_column_double(stmt, 1);
+					const float dbXH  = (float)sqlite3_column_double(stmt, 2);  // crouch_height
+					const float dbHR  = (float)sqlite3_column_double(stmt, 3);  // hit_collision_radius
+					const float dbHH  = (float)sqlite3_column_double(stmt, 4);  // hit_collision_height
+
+					// asm collision_height is HALF-height (UCylinderComponent
+					// convention — the native SetCollisionFromMesh passes the
+					// asm value straight into UCylinderComponent.CollisionHeight
+					// at +0x1c8 with no scaling). Sanity check: human asm 2562
+					// = 46 → full 92uu = standard UE3 character.
+					if (dbCR > 0.0f) data.collision_radius     = dbCR;
+					if (dbCH > 0.0f) data.collision_halfHeight = dbCH;
+					if (dbHH > 0.0f) data.hit_collision_height = dbHH;
+					if (dbHR > 0.0f) data.hit_collision_radius = dbHR;
+					if (dbXH > 0.0f) data.crouch_height        = dbXH;
 				}
 				sqlite3_finalize(stmt);
 			}
 		}
 
-		m_dbCylinderCache[nBotId] = { radius, halfHeight };
-		*outRadius     = radius;
-		*outHalfHeight = halfHeight;
+		auto [ins, _] = m_dbCollisionCache.emplace(nBotId, data);
+		return ins->second;
+	}
+
+	// Helper used by spawn-Z-lift callers (SpawnNextBot, SpawnObjectiveBot,
+	// SpawnPet, SpawnWave, PlayerActions::SpawnBot). Returns the primary
+	// cylinder dimensions — same as what ApplyBotCollisionData installs.
+	static void GetBotCollisionCylinder(int nBotId, float* outRadius, float* outHalfHeight) {
+		const BotCollisionData& d = GetBotCollisionData(nBotId);
+		*outRadius     = d.collision_radius;
+		*outHalfHeight = d.collision_halfHeight;
+	}
+
+	// Full apply — installs the cylinder and writes the auxiliary pawn fields
+	// the native SetCollisionFromMesh would have populated. Call from spawn
+	// paths after Spawn() returns; safe to call before or after ApplyPawnSetup
+	// (our r_nBodyMeshAsmId-set ordering makes the native a no-op in our flow,
+	// so we are the only writer).
+	static void ApplyBotCollisionData(ATgPawn* Bot, int nBotId) {
+		if (!Bot) return;
+		const BotCollisionData& d = GetBotCollisionData(nBotId);
+
+		// Primary cylinder — uses the RAW collision_* values. For Support
+		// Scanner this installs 35×70 (140uu full), making the cylinder act
+		// as a tall invisible "leg" — bottom on the ground, top at the visible
+		// chassis. That is what produces the "hover at fixed elevation" look
+		// while still letting gravity carry the bot off ledges.
+		if (d.collision_radius > 0.0f && d.collision_halfHeight > 0.0f) {
+			Bot->SetCollisionSize(d.collision_radius, d.collision_halfHeight);
+		}
+
+		// CrouchHeight/Radius — engine's Crouch()/UnCrouch() reads these to
+		// swap the cylinder when posture changes. Mirror the native: the
+		// crouch cylinder reuses collision_radius (no separate crouch_radius
+		// field exists in the asm row).
+		if (d.crouch_height > 0.0f) {
+			Bot->CrouchHeight = d.crouch_height;
+		}
+		if (d.collision_radius > 0.0f) {
+			Bot->CrouchRadius = d.collision_radius;
+		}
+
+		// m_fTargetCylinderHeight/Radius — dimensions of the SEPARATE AI-aim
+		// TargetCylinder component (m_TargetComponent). NOT the primary
+		// cylinder. Code that asks "how big is the pawn's tight hit body?"
+		// reads these.
+		if (d.hit_collision_height > 0.0f) {
+			Bot->m_fTargetCylinderHeight = d.hit_collision_height;
+		}
+		if (d.hit_collision_radius > 0.0f) {
+			Bot->m_fTargetCylinderRadius = d.hit_collision_radius;
+		}
+
+		// m_fStandingHeight/Radius hold the un-crouched cylinder values so
+		// UnCrouch() restores the same cylinder we installed.
+		Bot->m_fStandingHeight = (d.collision_halfHeight > 0.0f)
+			? d.collision_halfHeight : 46.0f;
+		Bot->m_fStandingRadius = (d.collision_radius > 0.0f)
+			? d.collision_radius : 25.0f;
 	}
 
 	// DB-backed resolver: joins asm_data_set_bots.pawn_class_res_id to

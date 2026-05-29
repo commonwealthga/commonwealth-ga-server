@@ -89,6 +89,11 @@ namespace {
 // every deploy. Stored as packed (radius, halfHeight) floats.
 struct CylinderDims { float radius; float halfHeight; };
 std::unordered_map<int, CylinderDims> g_deployableCylinderCache;
+
+// Separate cache for the legacy spawn-Z lift value (asm_height * 0.5, no
+// scale). Kept separate from g_deployableCylinderCache so the same DB row
+// services both queries without an extra round-trip.
+std::unordered_map<int, float> g_deployableLiftCache;
 }
 
 void TgProj_Deployable__SpawnDeployable::GetDeployableCollisionCylinder(
@@ -108,37 +113,79 @@ void TgProj_Deployable__SpawnDeployable::GetDeployableCollisionCylinder(
 		return;
 	}
 
-	float radius     = kUCDefaultRadius;
-	float halfHeight = kUCDefaultHalfHeight;
+	float radius      = kUCDefaultRadius;
+	float halfHeight  = kUCDefaultHalfHeight;
+	// Legacy lift uses raw collision_height * 0.5 with no scale multiplier —
+	// see GetDeployableSpawnZLift for why. Cached alongside the cylinder so a
+	// single DB query feeds both helpers.
+	float liftHalfH   = kUCDefaultHalfHeight * 0.5f;
 	sqlite3* db = Database::GetConnection();
 	if (db) {
 		sqlite3_stmt* stmt = nullptr;
 		if (sqlite3_prepare_v2(db,
-			"SELECT am.collision_radius, am.collision_height "
+			"SELECT am.collision_radius, am.collision_height, "
+			"       am.scale, am.scale_3d_x, am.scale_3d_z "
 			"FROM asm_data_set_deployables d "
 			"JOIN asm_data_set_assembly_meshes am ON d.asm_id = am.asm_id "
 			"WHERE d.deployable_id = ? LIMIT 1;",
 			-1, &stmt, nullptr) == SQLITE_OK) {
 			sqlite3_bind_int(stmt, 1, nDeployableId);
 			if (sqlite3_step(stmt) == SQLITE_ROW) {
-				float dbRadius = (float)sqlite3_column_double(stmt, 0);
-				float dbHeight = (float)sqlite3_column_double(stmt, 1);
-				// Only accept DB values when non-zero; zeros mean "no data"
-				// (mines/grenades/sweep-sensors) → stick with the UC default.
-				// DB stores FULL cylinder height while UE3/UC convention uses
-				// half-height for UCylinderComponent::CollisionHeight — the
-				// client does the same *0.5 when taking the mesh override (see
-				// DAT_1168bac0 = 0.5f in UpdateDeployModeStatus).
-				if (dbRadius > 0.0f) radius     = dbRadius;
-				if (dbHeight > 0.0f) halfHeight = dbHeight * 0.5f;
+				const float dbRadius = (float)sqlite3_column_double(stmt, 0);
+				const float dbHeight = (float)sqlite3_column_double(stmt, 1);
+				// Fall back to 1.0 when the row stores 0 (NULL-equivalent for
+				// these fields) so the multiply is a no-op.
+				const double rawScale = sqlite3_column_double(stmt, 2);
+				const double rawSX    = sqlite3_column_double(stmt, 3);
+				const double rawSZ    = sqlite3_column_double(stmt, 4);
+				const float scale  = (rawScale > 0.0) ? (float)rawScale : 1.0f;
+				const float scaleX = (rawSX    > 0.0) ? (float)rawSX    : 1.0f;
+				const float scaleZ = (rawSZ    > 0.0) ? (float)rawSZ    : 1.0f;
+
+				// CYLINDER install dims: SCALED. The binary's
+				// InitializeFromDeployableDat (0x10a243e0) writes RAW
+				// asm `collision_radius/collision_height` directly onto the
+				// primary CollisionCylinder with no scale applied — that's
+				// wrong on scale≠1 deployables (Deconstructor at scale=0.5
+				// gets a 2x-too-tall cylinder; Medical at scale=2.2 gets a
+				// 2x-too-short cylinder). Caller re-applies these scaled
+				// values via SetCollisionSize after ApplyDeployableSetup, on
+				// both the primary cylinder AND m_TargetComponent.
+				//
+				// Per-axis scale_3d_* multiplies on top of uniform `scale`;
+				// height uses scale_3d_z, radius uses scale_3d_x (cylinders
+				// are circular in XY, so we tie radius to X — Y is identical).
+				// 0 in any of these is treated as 1.0 (no scaling) to match
+				// "field unset" semantics, not "cylinder collapses to nothing".
+				if (dbRadius > 0.0f) radius     = dbRadius * scale * scaleX;
+				if (dbHeight > 0.0f) halfHeight = dbHeight * scale * scaleZ;
+				if (dbHeight > 0.0f) liftHalfH  = dbHeight * 0.5f;
 			}
 			sqlite3_finalize(stmt);
 		}
 	}
 
 	g_deployableCylinderCache[nDeployableId] = { radius, halfHeight };
+	g_deployableLiftCache[nDeployableId]     = liftHalfH;
 	*outRadius     = radius;
 	*outHalfHeight = halfHeight;
+}
+
+void TgProj_Deployable__SpawnDeployable::GetDeployableSpawnZLift(
+	int nDeployableId, float* outLiftHalfHeight)
+{
+	auto it = g_deployableLiftCache.find(nDeployableId);
+	if (it != g_deployableLiftCache.end()) {
+		*outLiftHalfHeight = it->second;
+		return;
+	}
+	// Trigger the cylinder query, which populates both caches.
+	float r = 0.f, h = 0.f;
+	GetDeployableCollisionCylinder(nDeployableId, &r, &h);
+	auto it2 = g_deployableLiftCache.find(nDeployableId);
+	*outLiftHalfHeight = (it2 != g_deployableLiftCache.end())
+		? it2->second
+		: 5.0f;  // TgDeployable.CollisionCylinder CDO halfHeight * 0.5
 }
 
 bool TgProj_Deployable__SpawnDeployable::IsForceFieldDeployableId(int nDeployableId) {
@@ -696,6 +743,8 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// target).
 	float cylRadius = 0.f, cylHalfHeight = 0.f;
 	GetDeployableCollisionCylinder(deployableId, &cylRadius, &cylHalfHeight);
+	float liftHalfHeight = 0.f;
+	GetDeployableSpawnZLift(deployableId, &liftHalfHeight);
 
 	// Dome shield bubbles spawn CENTERED on the pawn — `vLocation` from the
 	// caller already IS `pawn->Location` (cylinder center, roughly waist-
@@ -727,7 +776,13 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	//      dome behavior the user established 2026-05-14.
 	const bool selfSpawn = DeployableClassify::DeploysOnSelf(deployableId);
 	if (!selfSpawn) {
-		const float offset = cylHalfHeight + 5.0f;
+		// Lift uses the LEGACY raw*0.5 value (NOT the scaled cylinder halfHeight).
+		// The two diverged when scale handling was added — the old formula was
+		// what every pre-scale-fix lift assumed, and the visible ground-snap was
+		// calibrated to it (stations would sit on the floor). Reverting to it
+		// here keeps the visible position unchanged while still letting the
+		// cylinder install use the correctly-scaled dims.
+		const float offset = liftHalfHeight + 5.0f;
 		vLocation.X += vNormal.X * offset;
 		vLocation.Y += vNormal.Y * offset;
 		vLocation.Z += vNormal.Z * offset;
@@ -819,25 +874,20 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// kept to preserve the "set before ApplyDeployableSetup" invariant.)
 	Deployable->r_nDeployableId = deployableId;
 
-	// Cylinder resize.
+	// CollisionCylinder resize is deferred to AFTER ApplyDeployableSetup.
 	//
-	// The UC CDO sets CollisionRadius=12 / CollisionHeight=10, which is tiny
-	// relative to the visible mesh (per `asm_data_set_assembly_meshes`:
-	// medstation 28×10, power station 18×12). Resize to the per-deployable
-	// dimensions so the cylinder matches the visible footprint — the cfg
-	// values were already pulled into `cylRadius`/`cylHalfHeight` above.
+	// The native `InitializeFromDeployableDat` (0x10a243e0, invoked via
+	// `ApplyDeployableSetup` → vtable slot 250) calls AActor::SetCollisionSize
+	// with RAW asm `+0x9c` / `+0x98` (collision_radius / collision_height) —
+	// no scale multiplier applied. That unconditionally overwrites any pre-
+	// write we do here, leaving Deconstructor (scale=0.5) with a 26×40
+	// cylinder instead of the visually-correct 13×20. The `UpdateTargetCylinder`
+	// (vt[+0x39C]) that runs immediately after copies the primary cylinder's
+	// post-write size onto `m_TargetComponent`, so both cylinders end up
+	// stuck at the unscaled values.
 	//
-	// `AActor::SetCollisionSize` is the canonical entry point: it updates
-	// CollisionRadius + CollisionHeight on the primary CollisionComponent and
-	// schedules a deferred reattach. Mirror to `m_TargetComponent` (the AI
-	// aim cylinder) so the two stay in sync — the actor wrapper only
-	// resizes CollisionComponent.
-	if (cylRadius > 0.0f && cylHalfHeight > 0.0f) {
-		Deployable->SetCollisionSize(cylRadius, cylHalfHeight);
-		if (Deployable->m_TargetComponent) {
-			Deployable->m_TargetComponent->SetCylinderSize(cylRadius, cylHalfHeight);
-		}
-	}
+	// Both cylinders are re-sized to the scaled values in the post-
+	// `ApplyDeployableSetup` block further down.
 	Deployable->AdjustMeshToGround();
 
 	// Instigator propagation fix — matches the projectile pattern
@@ -1182,6 +1232,27 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// + deferred InitializeDefaultProps + effect-manager owner wiring); the
 	// hooks stay registered in case it re-surfaces.
 	Deployable->ApplyDeployableSetup();
+
+	// Re-size BOTH cylinders with the SCALED dims, in this order:
+	//   1) primary `CollisionComponent` via AActor::SetCollisionSize
+	//   2) `m_TargetComponent` via UCylinderComponent::SetCylinderSize
+	//
+	// `ApplyDeployableSetup` → `InitializeFromDeployableDat` (0x10a243e0) just
+	// installed RAW asm `collision_radius/collision_height` on the primary
+	// cylinder (no scale applied), then `UpdateTargetCylinder` (0x10a1c570)
+	// copied those raw values onto `m_TargetComponent`. On scale=1 deployables
+	// (Power Station, mines, bombs) both cylinders match the asm and this
+	// block is a no-op; on scale≠1 deployables (Deconstructor 0.5, Medical
+	// Station 2.2, Mine 1.3) the cylinders end up the wrong size — too tall
+	// for the Deconstructor (40uu half vs 20uu scaled), too short for the
+	// Medical Station. Writing the scaled values here keeps both cylinders
+	// consistent with the visible mesh footprint.
+	if (cylRadius > 0.0f && cylHalfHeight > 0.0f) {
+		Deployable->SetCollisionSize(cylRadius, cylHalfHeight);
+		if (Deployable->m_TargetComponent) {
+			Deployable->m_TargetComponent->SetCylinderSize(cylRadius, cylHalfHeight);
+		}
+	}
 
 	// Restore CollisionType to COLLIDE_CustomDefault and re-derive the
 	// CollisionComponent flags from the class CDO.

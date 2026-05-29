@@ -86,6 +86,7 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 		}
 
 		float cylRadius = 0.f, cylHalfHeight = 0.f;
+		float liftHalfHeight = 0.f;
 		if (!bIsForceField && !bSelfSpawn) {
 			// `spawnNormal` is passed to the trace as an out param, but field
 			// testing (2026-05-27) showed it gets garbage written into it
@@ -98,6 +99,7 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 			FVector spawnNormal   = { 0.f, 0.f, 1.f };
 
 			TgProj_Deployable__SpawnDeployable::GetDeployableCollisionCylinder(deployableId, &cylRadius, &cylHalfHeight);
+			TgProj_Deployable__SpawnDeployable::GetDeployableSpawnZLift(deployableId, &liftHalfHeight);
 			if (cylRadius > 0.0f && cylHalfHeight > 0.0f) {
 
 				FVector ext = { cylRadius, cylRadius, cylHalfHeight };
@@ -105,7 +107,10 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 				void* hit = ((PlaceFn)FN_PLACEMENT_TRACE)(
 					&ext.X, (int*)pawn, &spawnLocation.X, &spawnNormal.X, 1, 0);
 				if (hit) {
-					spawnLocation.Z += cylHalfHeight + 5.0f;
+					// Lift uses the legacy raw*0.5 value (see
+					// GetDeployableSpawnZLift). The cylinder install below uses
+					// the scaled half-height — they're intentionally different.
+					spawnLocation.Z += liftHalfHeight + 5.0f;
 				}
 
 			}
@@ -121,7 +126,10 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 			1
 		);
 
-		Deployable->SetCollisionSize(cylRadius, cylHalfHeight * 2);
+		// cylHalfHeight is now the SCALED half-extent (UE3 convention), so it
+		// goes straight into SetCollisionSize. The previous `* 2` was a vestige
+		// of the old `* 0.5` halving inside GetDeployableCollisionCylinder.
+		Deployable->SetCollisionSize(cylRadius, cylHalfHeight);
 		if (Deployable->m_TargetComponent) {
 			Deployable->m_TargetComponent->SetCylinderSize(cylRadius, cylHalfHeight);
 		}

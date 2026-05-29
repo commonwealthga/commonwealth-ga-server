@@ -67,6 +67,13 @@ void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 
 	Game->TimeLimit = 15 * 60;
 
+	// Engine-side GameInfo.GameDifficulty (float, UE3 default 1.0). Read by
+	// UC at TgPawn_Character.uc:754 (wall-jump noise gate, fires only when
+	// > 2.0) and TgInventoryManager.uc:125 (weapon-switch noise volume scales
+	// linearly). Map the active difficulty_value_id to the 1.0–3.0 range so
+	// AI hearing actually responds to the Ultra-Max tier.
+	Game->GameDifficulty = Config::GetDifficultyScalar();
+
 	std::string map_name = Config::GetMapNameChar();
 
 	if (map_name == "Dome3_VR_Arena_P") {

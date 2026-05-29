@@ -45,6 +45,18 @@ public:
 	// Height=10, Radius=12. Cached per deployable_id.
 	static void GetDeployableCollisionCylinder(int nDeployableId, float* outRadius, float* outHalfHeight);
 
+	// Resolve the spawn-Z lift HALF-height for ground-snap placement. Uses the
+	// LEGACY convention (`asm_height * 0.5`, no scale), which is what every
+	// pre-scale-fix lift call site assumed. The match is empirical: stations
+	// deployed at the right visible height under the old formula. Cylinder
+	// install (`GetDeployableCollisionCylinder`) and spawn placement diverged
+	// when the OLD `* 0.5` was replaced with `* scale * scale_3d_z` — that
+	// raised actor.Location.Z by a scale-dependent amount on flat ground while
+	// the mesh's anchor position didn't move, so stations visibly floated.
+	// Keeping the lift on the legacy formula restores ground-snap. Cached per
+	// deployable_id.
+	static void GetDeployableSpawnZLift(int nDeployableId, float* outLiftHalfHeight);
+
 	// True if the deployable_id resolves to TgDeploy_ForceField (or a subclass).
 	// Used to set the ffCheck flag on the placement trace so the trace respects
 	// the solid force-field volume instead of passing through it.

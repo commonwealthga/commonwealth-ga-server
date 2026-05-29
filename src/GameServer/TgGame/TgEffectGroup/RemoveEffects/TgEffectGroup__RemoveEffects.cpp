@@ -1,7 +1,6 @@
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
-
-#include <string>
 
 // TgEffectGroup::RemoveEffects — reimplements stripped stub @ 0x10a6f3d0.
 // Reverse each effect via its OWN-class Remove. The SDK eventRemove wrapper
@@ -9,16 +8,15 @@
 // re-resolution, so a TgEffectBuff would run the base no-op instead of its
 // ApplyBuff(remove) override — the bug that made buffs (e.g. +%maxHP) leak.
 void DispatchEffectRemove(UTgEffect* effect, AActor* Target, unsigned long bResetToFollow) {
-	const char* rawCls = effect->Class ? effect->Class->GetFullName() : nullptr;
-	const std::string cls(rawCls ? rawCls : "<null>");
-	if (cls.find("TgEffectBuff") != std::string::npos)
-		((UTgEffectBuff*)effect)->Remove(Target, bResetToFollow);
-	else if (cls.find("TgEffectSensor") != std::string::npos)
-		((UTgEffectSensor*)effect)->Remove(Target, bResetToFollow);
-	else if (cls.find("TgEffectVisibility") != std::string::npos)
-		((UTgEffectVisibility*)effect)->Remove(Target, bResetToFollow);
-	else
-		effect->eventRemove(Target, bResetToFollow);
+	// Per-class name cache — fires in the per-effect remove loop on every
+	// teardown (life-timer expiry / death / dispel / stack-replace), so the
+	// previous per-call GetFullName + std::string allocation showed up as
+	// random spikes during heavy gameplay. ClassNameContains is one
+	// UClass*-keyed hash lookup + string::find against the cached name.
+	if      (ObjectClassCache::ClassNameContains(effect->Class, "TgEffectBuff"))       ((UTgEffectBuff*)effect)->Remove(Target, bResetToFollow);
+	else if (ObjectClassCache::ClassNameContains(effect->Class, "TgEffectSensor"))     ((UTgEffectSensor*)effect)->Remove(Target, bResetToFollow);
+	else if (ObjectClassCache::ClassNameContains(effect->Class, "TgEffectVisibility")) ((UTgEffectVisibility*)effect)->Remove(Target, bResetToFollow);
+	else                                                                               effect->eventRemove(Target, bResetToFollow);
 }
 
 void __fastcall TgEffectGroup__RemoveEffects::Call(UTgEffectGroup* eg, void* /*edx*/, AActor* Target, unsigned long bResetToFollow) {

@@ -19,6 +19,67 @@ namespace {
 std::map<int, std::map<int, std::vector<SpawnTableEntry>>> g_spawnTables;
 int g_loadedDifficultyValueId = -1;
 
+// Medium Security (valid_value group 116). Of 211 distinct spawn tables in
+// asm_data_set_bot_spawn_tables, only 41 ship rows at Ultra-Max Security
+// (1471) — 136 of the 170 missing tables exist exclusively at 1029. Use 1029
+// as the per-table fallback so PVE maps work at difficulties the boss/factory
+// roster was never authored for, without polluting the verbatim asm_* data.
+const int kFallbackDifficultyValueId = 1029;
+
+// Load one difficulty pass into g_spawnTables. If skipExisting is true, rows
+// whose bot_spawn_table_id is already present in the cache are dropped (used
+// by the Medium-Security fallback pass so we don't overwrite the primary
+// difficulty's roster). Returns the number of rows actually inserted and,
+// via outTablesAdded, the number of new bot_spawn_table_ids introduced.
+int LoadSpawnTableRows(sqlite3* db, int difficulty, bool skipExisting,
+                       int* outTablesAdded) {
+	if (outTablesAdded) *outTablesAdded = 0;
+
+	sqlite3_stmt* stmt = nullptr;
+	// COALESCE(bbm,1.0) > 0 — asm_data_set_bots.bot_balance_multiplier=0 is the
+	// "never spawn this bot" sentinel (player pets, decoys, turrets, intentional
+	// boss skips like Vulcan); orphan rows where the LEFT JOIN misses keep the
+	// row by defaulting to 1.0.
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT bot_spawn_table_id, spawn_group, enemy_bot_id, bot_count, "
+		"       spawn_chance, COALESCE(reference_name, '') "
+		"FROM asm_data_set_bot_spawn_tables "
+		"LEFT JOIN asm_data_set_bots "
+		"       ON asm_data_set_bot_spawn_tables.enemy_bot_id = asm_data_set_bots.bot_id "
+		"WHERE difficulty_value_id = ? "
+		"  AND COALESCE(asm_data_set_bots.bot_balance_multiplier, 1.0) > 0",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("tgbotfactory",
+			"  LoadSpawnTableRows prepare failed (difficulty=%d): %s\n",
+			difficulty, sqlite3_errmsg(db));
+		return 0;
+	}
+	sqlite3_bind_int(stmt, 1, difficulty);
+
+	int rowsInserted = 0;
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		const int tableId = sqlite3_column_int(stmt, 0);
+		if (skipExisting && g_spawnTables.find(tableId) != g_spawnTables.end()) continue;
+		const int group   = sqlite3_column_int(stmt, 1);
+		const int botId   = sqlite3_column_int(stmt, 2);
+		const int count   = sqlite3_column_int(stmt, 3);
+		const float chance = static_cast<float>(sqlite3_column_double(stmt, 4));
+		const unsigned char* refNameRaw = sqlite3_column_text(stmt, 5);
+		const std::string refName(refNameRaw ? reinterpret_cast<const char*>(refNameRaw) : "");
+
+		auto& groupMap = g_spawnTables[tableId];
+		const bool isNewTable = groupMap.empty();
+		groupMap[group].push_back(SpawnTableEntry{
+			tableId, group, botId, count, chance, refName
+		});
+		rowsInserted++;
+		if (isNewTable && outTablesAdded) (*outTablesAdded)++;
+	}
+	sqlite3_finalize(stmt);
+	return rowsInserted;
+}
+
 void EnsureSpawnTablesLoaded() {
 	const int difficulty = Config::GetDifficultyValueId();
 	if (g_loadedDifficultyValueId == difficulty && !g_spawnTables.empty()) return;
@@ -31,42 +92,25 @@ void EnsureSpawnTablesLoaded() {
 		return;
 	}
 
-	sqlite3_stmt* stmt = nullptr;
-	int rc = sqlite3_prepare_v2(db,
-		"SELECT bot_spawn_table_id, spawn_group, enemy_bot_id, bot_count, "
-		"       spawn_chance, COALESCE(reference_name, '') "
-		"FROM asm_data_set_bot_spawn_tables "
-		"LEFT JOIN asm_data_set_bots "
-		"       ON asm_data_set_bot_spawn_tables.enemy_bot_id = asm_data_set_bots.bot_id "
-		"WHERE difficulty_value_id = ?",
-		-1, &stmt, nullptr);
-	if (rc != SQLITE_OK || !stmt) {
-		Logger::Log("tgbotfactory",
-			"  EnsureSpawnTablesLoaded prepare failed: %s\n", sqlite3_errmsg(db));
-		return;
-	}
-	sqlite3_bind_int(stmt, 1, difficulty);
+	int primaryTables = 0;
+	const int primaryRows = LoadSpawnTableRows(db, difficulty,
+	                                           /*skipExisting=*/false,
+	                                           &primaryTables);
 
-	int rowCount = 0;
-	while (sqlite3_step(stmt) == SQLITE_ROW) {
-		const int tableId = sqlite3_column_int(stmt, 0);
-		const int group   = sqlite3_column_int(stmt, 1);
-		const int botId   = sqlite3_column_int(stmt, 2);
-		const int count   = sqlite3_column_int(stmt, 3);
-		const float chance = static_cast<float>(sqlite3_column_double(stmt, 4));
-		const unsigned char* refNameRaw = sqlite3_column_text(stmt, 5);
-		const std::string refName(refNameRaw ? reinterpret_cast<const char*>(refNameRaw) : "");
-
-		g_spawnTables[tableId][group].push_back(SpawnTableEntry{
-			tableId, group, botId, count, chance, refName
-		});
-		rowCount++;
+	int fallbackTables = 0;
+	int fallbackRows = 0;
+	if (difficulty != kFallbackDifficultyValueId) {
+		fallbackRows = LoadSpawnTableRows(db, kFallbackDifficultyValueId,
+		                                  /*skipExisting=*/true,
+		                                  &fallbackTables);
 	}
-	sqlite3_finalize(stmt);
 
 	Logger::Log("tgbotfactory",
-		"  EnsureSpawnTablesLoaded: %d rows across %zu tables at difficulty=%d\n",
-		rowCount, g_spawnTables.size(), difficulty);
+		"  EnsureSpawnTablesLoaded: difficulty=%d primary=%d rows / %d tables, "
+		"fallback(%d)=%d rows / %d tables, total tables=%zu\n",
+		difficulty, primaryRows, primaryTables,
+		kFallbackDifficultyValueId, fallbackRows, fallbackTables,
+		g_spawnTables.size());
 }
 
 // Seed once per process; rand() is fine for spawn randomisation.

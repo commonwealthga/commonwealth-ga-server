@@ -1,7 +1,7 @@
 #include "src/GameServer/TgGame/TgEffectManager/ProcessReactiveSkillBasedEffectGroup/TgEffectManager__ProcessReactiveSkillBasedEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
-#include <string.h>
 
 // Reimplements stripped UC native
 //   `native function ProcessReactiveSkillBasedEffectGroup(int nCategory, bool bRemove)`
@@ -80,13 +80,12 @@ void __fastcall TgEffectManager__ProcessReactiveSkillBasedEffectGroup::Call(
 	if (!Manager) return;
 
 	AActor* owner = Manager->r_Owner;
-	if (!owner || !owner->Class) return;
-	const char* cn = owner->Class->GetFullName();
-	if (!cn || strncmp(cn, "Class TgGame.TgPawn", 19) != 0) {
-		// TgDeployable can also have an effect manager but doesn't carry skill
-		// allocations; reactive dispatch is a no-op for it.
-		return;
-	}
+	if (!owner) return;
+	// TgDeployable can also have an effect manager but doesn't carry skill
+	// allocations; reactive dispatch is a no-op for it. Cached class name
+	// keeps this off the per-call alloc path.
+	const std::string& cn = ObjectClassCache::GetClassName(owner->Class);
+	if (cn.compare(0, 19, "Class TgGame.TgPawn") != 0) return;
 	ATgPawn* pawn = (ATgPawn*)owner;
 
 	int matched = 0;

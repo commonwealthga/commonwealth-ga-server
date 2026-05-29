@@ -164,7 +164,7 @@ inline const RepDefault kTgPawnTurretFamily {
 // bSkipActorPropertyReplication=true inherited from Info is overridden).
 inline const RepDefault kHudInfo {
 	.NetPriority = 5.0f,
-	.NetUpdateFrequency = 10.0f,
+	.NetUpdateFrequency = 2.0f,
 	.bAlwaysRelevant = true,
 	.bReplicateMovement = false,
 	.bOnlyDirtyReplication = false,

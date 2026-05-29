@@ -1,4 +1,5 @@
 #include "src/Config/Config.hpp"
+#include "src/GameServer/Constants/GameTypes.h"
 #include "src/Utils/CommandLineParser/CommandLineParser.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -119,6 +120,22 @@ int Config::GetDifficultyValueId() {
 	}
 
 	return 1471;
+}
+
+float Config::GetDifficultyScalar() {
+	switch (GetDifficultyValueId()) {
+		case GA_G::DIFFICULTY_VALUE_ID_LOW_SECURITY:
+		case GA_G::DIFFICULTY_VALUE_ID_NOVICE:               return 1.0f;
+		case GA_G::DIFFICULTY_VALUE_ID_MEDIUM_SECURITY:
+		case GA_G::DIFFICULTY_VALUE_ID_ADEPT:                return 1.25f;
+		case GA_G::DIFFICULTY_VALUE_ID_HIGH_SECURITY:
+		case GA_G::DIFFICULTY_VALUE_ID_DOUBLE_AGENT:
+		case GA_G::DIFFICULTY_VALUE_ID_ADVANCED:             return 1.50f;
+		case GA_G::DIFFICULTY_VALUE_ID_MAXIMUM_SECURITY:
+		case GA_G::DIFFICULTY_VALUE_ID_EXPERT:               return 1.75f;
+		case GA_G::DIFFICULTY_VALUE_ID_ULTRA_MAX_SECURITY:   return 2.0f;
+		default:                                             return 1.0f;
+	}
 }
 
 uint16_t Config::GetIpcPort() {

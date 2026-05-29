@@ -548,6 +548,15 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		pawnClassName, (void*)pawnClass, (void*)AIController);
 
 	TgPawn__InitializeDefaultProps::nPendingBotId = nBotId;
+	// Raise the enemy-scaling flag only if the caller actually passed a
+	// non-null factory (captured BEFORE the null-fallback at the
+	// ActorCache::BotFactory line further down). We do NOT clobber to false
+	// on a null pFactory: SpawnObjectiveBot raises this flag explicitly
+	// before calling us (bosses have no factory but still want scaling), and
+	// blanket-clearing here would defeat that.
+	if (pFactory != nullptr) {
+		TgPawn__InitializeDefaultProps::bPendingEnemyScaling = true;
+	}
 	ATgPawn_Character* Bot = (ATgPawn_Character*)Game->Spawn(
 		pawnClass,
 		AIController->PlayerReplicationInfo,
@@ -563,6 +572,7 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		Logger::Log("pet_spawn", "SpawnBotById: Bot spawn FAILED — pawnClass='%s' (%p)  loc=(%.1f,%.1f,%.1f)\n",
 			pawnClassName, (void*)pawnClass, vLocation.X, vLocation.Y, vLocation.Z);
 		TgPawn__InitializeDefaultProps::nPendingBotId = 0;
+		TgPawn__InitializeDefaultProps::bPendingEnemyScaling = false;
 		return nullptr;
 	}
 
@@ -747,26 +757,20 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// `WaitForInventoryThenDoPostPawnSetup` timer, AFTER SpawnBotById returns.
 	// The hook applies the right physics after that call completes.
 
-	// Apply DB-derived collision cylinder size — the base TgPawn CDO has
-	// CollisionHeight=46, CollisionRadius=25 (TgPawn.uc:10552-10554) which is
-	// way smaller than the visible mesh for most bots (e.g. Boss Shrike
-	// asm_data_set_assembly_meshes row gives 65×117). Without this, weapons
-	// "miss" when hitting the edges of the visible body. `GetBotCollisionCylinder`
-	// already pulls the right values from
-	// asm_data_set_assembly_meshes.{collision_radius, collision_height} (via
-	// asm_data_set_bots.body_asm_id join); we just have to actually apply
-	// them. SetCollisionSize dispatches via ProcessEvent → engine native; same
-	// path the deployable fix uses successfully.
-	{
-		float cylRadius = 0.0f, cylHalfHeight = 0.0f;
-		GetBotCollisionCylinder(nBotId, &cylRadius, &cylHalfHeight);
-		if (cylRadius > 0.0f && cylHalfHeight > 0.0f) {
-			Bot->SetCollisionSize(cylRadius, cylHalfHeight);
-			Logger::Log("pet_spawn",
-				"SpawnBotById: nBotId=%d SetCollisionSize(radius=%.1f, halfHeight=%.1f)\n",
-				nBotId, cylRadius, cylHalfHeight);
-		}
-	}
+	// Apply DB-derived collision cylinder + auxiliary pawn fields.
+	//
+	// Replaces what the native SetCollisionFromMesh (0x109be6d0) would have
+	// done — but our spawn ordering (r_nBodyMeshAsmId is set further down,
+	// after ApplyPawnSetup) means the native fires with id=0 and no-ops, so
+	// we are the de-facto cylinder writer. ApplyBotCollisionData does the
+	// full setup the native would have: cylinder size (preferring the
+	// designer's tighter `hit_collision_*` when set — fixes hover bots like
+	// Support Scanner whose collision_* would put the cylinder hanging below
+	// the chassis), APawn.CrouchHeight/Radius for engine crouch handling,
+	// m_fStandingHeight/Radius for UnCrouch restoration, and
+	// m_fTargetCylinderHeight/Radius which other natives consume as the
+	// "tight hit body" dimensions.
+	TgGame__SpawnBotById::ApplyBotCollisionData(Bot, nBotId);
 
 	Bot->ApplyPawnSetup();
 	// Bot->WaitForInventoryThenDoPostPawnSetup();

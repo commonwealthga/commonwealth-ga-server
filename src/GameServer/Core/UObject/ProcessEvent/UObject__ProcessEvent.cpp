@@ -690,13 +690,18 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 				(int)Pawn->Physics);
 		}
 
-		// Flying-class detection: pawn class strstr (catches all UC classes
-		// whose `SetMovementPhysics` override would call `SetPhysics(4)`).
+		// Flying-class detection: pawn class strstr — only classes whose UC
+		// `SetMovementPhysics` override actually calls `SetPhysics(4)`. Scanner
+		// is NOT one of these: it extends `TgPawn_Robot`, not `TgPawn_Hover`,
+		// inherits the default PHYS_Walking, and uses a tall primary cylinder
+		// (35×70 → 140uu) to LOOK like it's hovering while the cylinder bottom
+		// rests on the ground. Adding it here put the chassis into PHYS_Flying
+		// and broke that ground-anchored illusion.
 		const bool flyingClass = className &&
 			(strstr(className, "TgPawn_Hover")           ||
 			 strstr(className, "TgPawn_FlyingBoss")      ||
 			 strstr(className, "TgPawn_AttackTransport") ||
-			 strstr(className, "TgPawn_ColonyEye") ||
+			 strstr(className, "TgPawn_ColonyEye")       ||
 			 strstr(className, "TgPawn_NewWasp"));
 
 		// Per-bot whitelist for ground-class pawns mounting a flying mesh.

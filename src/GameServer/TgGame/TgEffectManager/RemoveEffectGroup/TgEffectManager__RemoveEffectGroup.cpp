@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroup/TgEffectManager__RemoveEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/ProcessReactiveSkillBasedEffectGroup/TgEffectManager__ProcessReactiveSkillBasedEffectGroup.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // TgEffectManager::RemoveEffectGroup — original is the empty stub @ 0x10a6ef10.
@@ -62,6 +63,30 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 	AActor* target = applied->m_Target ? applied->m_Target : Manager->r_Owner;
 	if (target) {
 		TgEffectGroup__RemoveEffects::Call(applied, nullptr, target, 0);
+	}
+
+	// 0a. Reverse ApplyPosture (TgEffectGroup.uc:418). The apply path
+	//    (TgEffectManager.uc:313) calls EffectGroup.ApplyPosture() which
+	//    writes r_ePosture on the pawn AND sets m_nPostureOverride on the AI
+	//    controller (the override then clamps every future SetPosture call to
+	//    the stun pose — TgAIController.uc:2495). UC has no reverse path:
+	//    TgEffect.Remove for stun-props (166/167/187) only flips
+	//    r_eCurrentStunType + un-pauses the AI; nothing resets r_ePosture or
+	//    m_nPostureOverride. Result without this block: bot's AI recovers
+	//    behaviorally but the replicated posture sticks at STUNNED (5) /
+	//    CRITICALFAILURE (11) / BLOCKSTUN (24) forever, so the client
+	//    renders the stunned pose indefinitely. Mirror ApplyPosture's two
+	//    writes: clear m_nPostureOverride first (so the SetPosture call
+	//    isn't re-clamped), then SetPosture(0 = DEFAULT). Skip m_nPosture==31
+	//    (TG_POSTURE_NONE — the "no posture change" sentinel, matches
+	//    ApplyPosture's early-return).
+	if (target && applied->m_nPosture != 0 && applied->m_nPosture != 31) {
+		ATgPawn* posturePawn = (ATgPawn*)target;
+		AController* ctrl = posturePawn->Controller;
+		if (ctrl && ObjectClassCache::ClassNameContains(ctrl->Class, "TgAIController")) {
+			((ATgAIController*)ctrl)->m_nPostureOverride = 0;
+		}
+		posturePawn->eventSetPosture(0, 1.0f, 0);
 	}
 
 	// 1. Cancel any timers (ApplyInterval / LifeDone) this group armed.

@@ -3,9 +3,11 @@
 #include "src/GameServer/Core/TMap/Allocate/TMap__Allocate.hpp"
 #include "src/GameServer/Constants/TgProperties.h"
 #include "src/Database/Database.hpp"
+#include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 int TgPawn__InitializeDefaultProps::nPendingBotId = 0;
+bool TgPawn__InitializeDefaultProps::bPendingEnemyScaling = false;
 
 namespace {
 struct BotDefaults {
@@ -15,6 +17,13 @@ struct BotDefaults {
 	float rechargeRate;
 	float accuracy;
 	float sightRange;
+	// Per-bot stat scale from asm_data_set_bots.bot_balance_multiplier.
+	// Designer-applied multi-difficulty stat tag — most bots = 1.0, elite/boss
+	// Colony tier = 1.1–1.7, two test sentinels = 10.0. BBM=0 is filtered out
+	// upstream in EnsureSpawnTablesLoaded (= "don't spawn at all"), so a 0
+	// reaching this struct only happens for non-factory spawns (deployables,
+	// pets) where we fall back to no multiplier.
+	float balanceMultiplier;
 };
 // Per-bot defaults cache. Populated lazily on the first InitializeDefaultProps
 // call for a given bot_id; subsequent spawns of the same bot reuse the row
@@ -40,15 +49,17 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	float accuracy     = 1.0f;
 	float sightRange   = 800.0f;
 
+	float balanceMultiplier = 1.0f;
+
 	if (nPendingBotId != 0) {
 		auto it = g_botDefaultsCache.find(nPendingBotId);
 		if (it == g_botDefaultsCache.end()) {
 			// First spawn of this bot — query the DB row and cache it.
-			BotDefaults d{ hitPoints, speed, powerPool, rechargeRate, accuracy, sightRange };
+			BotDefaults d{ hitPoints, speed, powerPool, rechargeRate, accuracy, sightRange, balanceMultiplier };
 			sqlite3* db = Database::GetConnection();
 			sqlite3_stmt* stmt;
 			if (sqlite3_prepare_v2(db,
-				"SELECT hit_points, default_speed, default_power_pool, power_pool_regen_per_sec, accuracy_override, default_sensor_range "
+				"SELECT hit_points, default_speed, default_power_pool, power_pool_regen_per_sec, accuracy_override, default_sensor_range, bot_balance_multiplier "
 				"FROM asm_data_set_bots WHERE bot_id = ? LIMIT 1",
 				-1, &stmt, nullptr) == SQLITE_OK) {
 				sqlite3_bind_int(stmt, 1, nPendingBotId);
@@ -65,20 +76,46 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 						d.accuracy     = (float)sqlite3_column_double(stmt, 4);
 					if (sqlite3_column_type(stmt, 5) != SQLITE_NULL && sqlite3_column_double(stmt, 5) > 0.0)
 						d.sightRange   = (float)sqlite3_column_double(stmt, 5);
+					if (sqlite3_column_type(stmt, 6) != SQLITE_NULL)
+						d.balanceMultiplier = (float)sqlite3_column_double(stmt, 6);
 				}
 				sqlite3_finalize(stmt);
 			}
 			it = g_botDefaultsCache.emplace(nPendingBotId, d).first;
 		}
 		const BotDefaults& d = it->second;
-		hitPoints    = d.hitPoints;
-		speed        = d.speed;
-		powerPool    = d.powerPool;
-		rechargeRate = d.rechargeRate;
-		accuracy     = d.accuracy;
-		sightRange   = d.sightRange;
+		hitPoints         = d.hitPoints;
+		speed             = d.speed;
+		powerPool         = d.powerPool;
+		rechargeRate      = d.rechargeRate;
+		accuracy          = d.accuracy;
+		sightRange        = d.sightRange;
+		balanceMultiplier = d.balanceMultiplier;
 		nBotId = nPendingBotId;
 		nPendingBotId = 0;
+	}
+
+	// Gate enemy difficulty scaling on the bPendingEnemyScaling signal that
+	// SpawnBotById (with non-null factory) or SpawnObjectiveBot raises right
+	// before invoking the spawn. Players (SpawnPlayerCharacter sets
+	// nPendingBotId too but never raises this flag), player-side pets/decoys/
+	// turrets, deployables, and anything else that reaches this hook without
+	// raising the flag stay at raw stats.
+	const bool scaleAsEnemy = bPendingEnemyScaling;
+	bPendingEnemyScaling = false;
+
+	// Combined stat scale = per-bot BBM × per-difficulty scalar.
+	// BBM=0 is the "never spawn" sentinel — already filtered upstream from
+	// the enemy bot-factory pipeline, so we only reach this branch with BBM=0
+	// for non-factory spawns. BBM>0: multiply HP and seed outgoing damage
+	// modifier (prop 65). Power pool is intentionally not scaled. At Ultra-Max
+	// (scalar 3.0), a plain BBM=1.0 enemy ends up at 3× HP and +200% damage;
+	// an elite BBM=1.7 Colony Soldier ends up at 5.1× HP and +410% damage.
+	const float combinedMultiplier = (scaleAsEnemy && balanceMultiplier > 0.0f)
+		? balanceMultiplier * Config::GetDifficultyScalar()
+		: 1.0f;
+	if (combinedMultiplier != 1.0f) {
+		hitPoints *= combinedMultiplier;
 	}
 
 	// DIAG: per-respawn buff investigation. Log the values feeding
@@ -127,6 +164,22 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	Pawn->AddProperty( GA_PROPERTY::TGPID_POWERPOOL_MIN_COST,      0, 0, 0, 0);
 	Pawn->AddProperty( GA_PROPERTY::TGPID_FLIGHT_ACCELERATION,     0, 0, 0, 1000);
 	Pawn->AddProperty( GA_PROPERTY::TGPID_ACCURACY,                accuracy,     accuracy,     0, 1);
+
+	// Outgoing-damage scale from combined BBM × difficulty.
+	//
+	// Going via AddProperty(TGPID_DAMAGE_MODIFIER / prop 65) does nothing —
+	// ATgPawn::ApplyProperty has no case for 65 (default branch: no field
+	// write), and no UC code reads s_Properties[65] during damage calc. The
+	// real damage-multiplier consumer is TgEffectDamage.uc:120:
+	//     fProratedAmount *= InstigatorPawn.s_fDamageAdjustment;
+	// (also TgEffectHeal.uc:71 — heals scale too, which is what we want for
+	// elite healer/medic bots). The float defaults to 1.0 in TgPawn.uc and is
+	// never written by anything else, so a direct write here is the canonical
+	// init-time knob. Skip when combined == 1.0 (no-op — players and
+	// non-factory spawns land here so their output stays vanilla).
+	if (combinedMultiplier != 1.0f) {
+		Pawn->s_fDamageAdjustment = combinedMultiplier;
+	}
 
 	// Vision range — TgPawn.uc sets SightRadius from this on dedicated server (GetProperty(152))
 	// if (nBotId != 680 && nBotId != 681 && nBotId != 679 && nBotId != 567) {
