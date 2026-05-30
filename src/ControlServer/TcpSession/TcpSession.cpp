@@ -1,5 +1,6 @@
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/Database/Database.hpp"
+#include "src/ControlServer/Loadouts/ArmorLoadouts.hpp"
 #include "src/ControlServer/MapGameInfo/MapGameInfo.hpp"
 #include "src/ControlServer/MatchmakingService/TicketInfoEncoder.hpp"
 #include "src/ControlServer/MatchmakingService/RuntimeStats.hpp"
@@ -199,7 +200,18 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         // Payload shape:
         //   character_id, pawn_id, loadout_profile (1 today — loadout slots
         //   1..5 are a future-scope feature, we ignore the value for now),
-        //   slot_to_inventory: { "equip_point": inventory_id, ... }
+        //   slot_to_inventory: { "equip_point": inventory_id, ... }  -- the
+        //                        client's FTGEQUIP_SLOTS_STRUCT.SlotIndices[]
+        //                        for engine equip-points 1..24 (weapons +
+        //                        cosmetics).
+        //   misc_items:         { "index": inventory_id, ... }  -- the
+        //                        client's FTGEQUIP_SLOTS_STRUCT.MiscItems[],
+        //                        which (hypothesis) carries armor equip
+        //                        changes keyed by group-126 sort_order.
+        //                        Indexing scheme is the open question for
+        //                        Phase 4 swap-armor; this log line + the
+        //                        per-entry breakdown above are what we use
+        //                        to decode it from real packet data.
         // Validation + persistence lives in PlayerSessionStore.
         const int64_t character_id    = j.value("character_id", (int64_t)0);
         const int     pawn_id         = j.value("pawn_id", 0);
@@ -214,17 +226,36 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
                 }
             }
         }
-        Logger::Log("ipc",
-            "[TcpSession] DeliverGameEvent: equip_save char=%lld pawnId=%d loadout=%d entries=%zu guid=%s\n",
-            (long long)character_id, pawn_id, loadout_profile, slot_to_inventory.size(),
-            session_guid.c_str());
+        std::map<int, int> misc_items;
+        if (j.contains("misc_items") && j["misc_items"].is_object()) {
+            for (auto it = j["misc_items"].begin(); it != j["misc_items"].end(); ++it) {
+                const int idx          = std::atoi(it.key().c_str());
+                const int inventory_id = it.value().get<int>();
+                if (inventory_id > 0) {
+                    misc_items[idx] = inventory_id;
+                }
+            }
+        }
+        Logger::Log("armor",
+            "[equip_save] char=%lld pawnId=%d loadout=%d slots=%zu misc=%zu guid=%s\n",
+            (long long)character_id, pawn_id, loadout_profile,
+            slot_to_inventory.size(), misc_items.size(), session_guid.c_str());
+        for (const auto& kv : slot_to_inventory) {
+            Logger::Log("armor",
+                "[equip_save]   SlotIndices[%d] = inv_id %d\n", kv.first, kv.second);
+        }
+        for (const auto& kv : misc_items) {
+            Logger::Log("armor",
+                "[equip_save]   MiscItems[%d]   = inv_id %d\n", kv.first, kv.second);
+        }
 
         if (character_id != 0) {
             const bool ok = PlayerSessionStore::SaveEquippedDevices(
-                character_id, session->user_id_, session->selected_profile_id_, slot_to_inventory);
+                character_id, session->user_id_, session->selected_profile_id_,
+                slot_to_inventory, misc_items);
             if (!ok) {
-                Logger::Log("ipc",
-                    "[TcpSession] equip_save REJECTED — DB state unchanged; client will resync from existing\n");
+                Logger::Log("armor",
+                    "[equip_save] REJECTED — DB state unchanged; client will resync from existing\n");
             }
             // Push the authoritative equipped set back regardless of
             // accept/reject — accept = client sees its save; reject = client's
@@ -1512,12 +1543,31 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 		// device. Items with no mods send 0 (no fake blueprint, no suffix).
 		// When d.oc is set, picks a blueprint with override_name_msg_id != 0
 		// so the client renders the "OC" name suffix.
-		const int blueprintId = d.mods.empty()
-			? 0
-			: PlayerSessionStore::GetBlueprintIdForDevice(d.device_id, d.oc);
+		//
+		// v76: cosmetic rows (item_id > 0, device_id = 0) marshal as their
+		// item_id and ship DEVICE_ID=0 so the client's FUN_10a12f80 recovery
+		// scan doesn't try to bind them to a live actor (cosmetics have no
+		// ATgDevice). BLUEPRINT_ID stays 0 for cosmetics (no rolled mods).
+		//
+		// Armor rows have the same shape as cosmetics (item_id > 0,
+		// device_id = 0, no backing actor) but DO carry mods — so they need
+		// a non-zero BLUEPRINT_ID to make the client's FUN_10a13820
+		// mod-application path apply the rolled effects. Discriminator: armor
+		// has mods, cosmetics don't. Universal blueprint works because the
+		// client only nullity-checks the resolved blueprint pointer — the
+		// rendered `[…]` letters come from each effect's `prop.ui_code`, not
+		// from blueprint metadata.
+		const bool itemRow       = d.item_id > 0;
+		const bool isArmor       = itemRow && !d.mods.empty();
+		const int marshalItemId  = itemRow ? d.item_id : d.device_id;
+		const int marshalDeviceField = itemRow ? 0 : d.inventory_id;
+		const int blueprintId    =
+			isArmor                    ? ArmorLoadouts::kUniversalArmorBlueprintId :
+			(itemRow || d.mods.empty()) ? 0
+			                            : PlayerSessionStore::GetBlueprintIdForDevice(d.device_id, d.oc);
 
 		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1);
-		Write4B(response, GA_T::ITEM_ID, d.device_id);
+		Write4B(response, GA_T::ITEM_ID, marshalItemId);
 		Write4B(response, GA_T::INVENTORY_ID, d.inventory_id);
 		Write4B(response, GA_T::BLUEPRINT_ID, blueprintId);
 		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, d.quality);
@@ -1527,7 +1577,7 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 		Write4B(response, GA_T::LOCATION_VALUE_ID, 369);
 		Write4B(response, GA_T::INSTANCE_COUNT, 0x1);
 		WriteString(response, GA_T::ACTIVE_FLAG, "T");
-		Write4B(response, GA_T::DEVICE_ID, d.inventory_id);
+		Write4B(response, GA_T::DEVICE_ID, marshalDeviceField);
 
 		// DATA_SET_INVENTORY_STATE carries a list of {INVENTORY_ID, EFFECT_GROUP_ID}
 		// pairs. Client FUN_10a13820 @ 0x10a13820 appends every row whose
@@ -1607,12 +1657,17 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 
 		append(response, 0x0E, 0x00);   // 14 fields per record (same as equipped)
 
-		const int blueprintId = row.mods.empty()
-			? 0
-			: PlayerSessionStore::GetBlueprintIdForDevice(row.device_id, row.oc);
+		// v76: cosmetic dispatch + armor extension (see equipped-loop comment).
+		const bool   rowIsItem     = row.item_id > 0;
+		const bool   rowIsArmor    = rowIsItem && !row.mods.empty();
+		const int    marshalItemId = rowIsItem ? row.item_id : row.device_id;
+		const int    blueprintId   =
+			rowIsArmor                    ? ArmorLoadouts::kUniversalArmorBlueprintId :
+			(rowIsItem || row.mods.empty()) ? 0
+			                                : PlayerSessionStore::GetBlueprintIdForDevice(row.device_id, row.oc);
 
 		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1);
-		Write4B(response, GA_T::ITEM_ID, row.device_id);
+		Write4B(response, GA_T::ITEM_ID, marshalItemId);
 		Write4B(response, GA_T::INVENTORY_ID, row.inventory_id);
 		Write4B(response, GA_T::BLUEPRINT_ID, blueprintId);
 		Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, row.quality);

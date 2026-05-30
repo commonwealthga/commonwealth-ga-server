@@ -243,7 +243,15 @@ uint8_t __fastcall CGameClient__MarshalReceived::Call(void* GameClient, void* ed
 							// SeqAct_Interp is latent (derives from USeqAct_Latent) but safe to
 							// force-activate — it just starts a matinee and doesn't fire async
 							// outputs that need an instigator pawn in variable links.
-							bool bIsInterp = Op->IsA(ClassPreloader::GetClass("Class Engine.SeqAct_Interp"));
+							// IsA is unreliable on this build — match by class-name string instead.
+							bool bIsInterp = false;
+							if (Op->Class) {
+								const char* ocRaw = Op->Class->GetFullName();
+								if (ocRaw) {
+									const std::string ocName = ocRaw;
+									bIsInterp = ocName.find("SeqAct_Interp") != std::string::npos;
+								}
+							}
 							if (bLatent && !bIsInterp) {
 								Logger::Log(GetLogChannel(), "Skipping latent op %s\n", Op->GetFullName());
 								continue;

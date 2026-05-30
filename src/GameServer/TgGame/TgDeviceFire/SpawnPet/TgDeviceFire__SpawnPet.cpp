@@ -37,10 +37,15 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 	int petId = *(int*)(pFireModeSetup + 0x2C);
 
 	if (Logger::IsChannelEnabled(GetLogChannel())) {
+		// GetFullName shared static buffer — second call clobbers first.
+		const char* devRaw = device ? device->GetFullName() : nullptr;
+		std::string devName = devRaw ? devRaw : "<null>";
+		const char* pawnRaw = pawn ? pawn->GetFullName() : nullptr;
+		std::string pawnName = pawnRaw ? pawnRaw : "null";
 		Logger::Log(GetLogChannel(), "TgDeviceFire::SpawnPet: bPet=%d device=%s pawn=%s petId=%d\n",
 			(int)bPet,
-			device->GetFullName(),
-			pawn ? pawn->GetFullName() : "null",
+			devName.c_str(),
+			pawnName.c_str(),
 			petId);
 	}
 

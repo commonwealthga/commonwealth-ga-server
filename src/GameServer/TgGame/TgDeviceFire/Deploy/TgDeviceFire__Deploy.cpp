@@ -39,7 +39,15 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 	//if (device->c_bDeployModeStatus != 3) { //DMS_OK
 
 		const char* clsName = TgProj_Deployable__SpawnDeployable::GetDeployableClassName(deployableId);
+		if (!clsName) {
+			Logger::Log("inventory", "[deploy] no class name for deployableId=%d, aborting\n", deployableId);
+			return;
+		}
 		UClass* cls = ClassPreloader::GetClass(clsName);
+		if (!cls) {
+			Logger::Log("inventory", "[deploy] class %s not preloaded, aborting deployableId=%d\n", clsName, deployableId);
+			return;
+		}
 		bool bIsBeacon = (strcmp(clsName, "Class TgGame.TgDeploy_Beacon") == 0);
 		bool bIsForceField = (strcmp(clsName, "Class TgGame.TgDeploy_ForceField") == 0);
 
@@ -125,6 +133,10 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 			nullptr,
 			1
 		);
+		if (!Deployable) {
+			Logger::Log("inventory", "[deploy] Spawn returned null for %s (deployableId=%d), aborting\n", clsName, deployableId);
+			return;
+		}
 
 		// cylHalfHeight is now the SCALED half-extent (UE3 convention), so it
 		// goes straight into SetCollisionSize. The previous `* 2` was a vestige
@@ -208,9 +220,13 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 					nullptr,            // ActorTemplate
 					1                   // bNoCollisionFail
 				);
-				Deployable->r_EffectManager->r_Owner    = (AActor*)Deployable;
-				Deployable->r_EffectManager->SetOwner((AActor*)Deployable);
-				Deployable->r_EffectManager->Base       = (AActor*)Deployable;
+				// Spawn can return null (rare — OOM, collision-fail edge cases);
+				// guard before the wire-up writes.
+				if (Deployable->r_EffectManager) {
+					Deployable->r_EffectManager->r_Owner    = (AActor*)Deployable;
+					Deployable->r_EffectManager->SetOwner((AActor*)Deployable);
+					Deployable->r_EffectManager->Base       = (AActor*)Deployable;
+				}
 			}
 		}
 

@@ -403,12 +403,20 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 
 			if (Logger::IsChannelEnabled("kills")) {
 				ATgPawn* logCreditPawn = isPetKill ? KillerOwner : DamagerPawn;
+				// GetName/GetFullName share a static buffer — copy each name
+				// before format-printing or all %s args alias the last call.
+				const char* vRaw = Victim->GetName();
+				std::string vName = vRaw ? vRaw : "<null>";
+				const char* iRaw = Instigator->GetName();
+				std::string iName = iRaw ? iRaw : "<null>";
+				const char* dRaw = DamagerPawn->GetName();
+				std::string dName = dRaw ? dRaw : "<null>";
 				Logger::Log("kills",
 					"[TrackStats] kill: victim=%s instigator=%s damager=%s isPet=%d killerDevId=%d "
 					"victim.Controller.bIsPlayer=%d creditPawn.Controller.bIsPlayer=%d\n",
-					Victim->GetName(),
-					Instigator->GetName(),
-					DamagerPawn->GetName(),
+					vName.c_str(),
+					iName.c_str(),
+					dName.c_str(),
 					(int)isPetKill,
 					killerDeviceId,
 					Victim->Controller ? (int)Victim->Controller->bIsPlayer : -1,
@@ -718,10 +726,14 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 				}
 
 				if (Logger::IsChannelEnabled("stats")) {
+					const char* cRaw = damageCreditPawn->GetName();
+					std::string cName = cRaw ? cRaw : "<null>";
+					const char* tRaw = targetPawn->GetName();
+					std::string tName = tRaw ? tRaw : "<null>";
 					Logger::Log("stats",
 						"[ObjPoints] dmg-near-pt: %s +%d obj (objId=%d, victim=%s)\n",
-						damageCreditPawn->GetName(), (int)magnitude,
-						Obj->nObjectiveId, targetPawn->GetName());
+						cName.c_str(), (int)magnitude,
+						Obj->nObjectiveId, tName.c_str());
 				}
 				break;
 			}

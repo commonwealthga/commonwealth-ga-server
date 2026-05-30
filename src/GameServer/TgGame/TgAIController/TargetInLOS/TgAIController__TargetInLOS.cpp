@@ -21,7 +21,8 @@ int __fastcall TgAIController__TargetInLOS::Call(ATgAIController* aic, void* edx
 	if (!aic) return result;
 
 	ATgPawn* pawn = aic->Pawn ? (ATgPawn*)aic->Pawn : nullptr;
-	bool isBot = (pawn && pawn->r_bIsBot);
+	if (!pawn) return result;
+	bool isBot = pawn->r_bIsBot;
 
 	int& n = s_callCount[(int)aic];
 	n++;
@@ -35,15 +36,20 @@ int __fastcall TgAIController__TargetInLOS::Call(ATgAIController* aic, void* edx
 	static GetTargetPawnFn nativeGetTargetPawn = (GetTargetPawnFn)0x10a80d00;
 	ATgPawn* target = nativeGetTargetPawn(aic, nullptr);
 
-	const char* pawnName   = pawn->GetFullName();
-	const char* targetName = target ? target->GetFullName() : "(null)";
+	// GetFullName returns into a shared static buffer — copy both names
+	// into std::string before format-printing or the second call clobbers
+	// the first's pointer.
+	const char* pawnRaw = pawn->GetFullName();
+	std::string pawnName = pawnRaw ? pawnRaw : "<null>";
+	const char* targetRaw = target ? target->GetFullName() : nullptr;
+	std::string targetName = targetRaw ? targetRaw : "(null)";
 
 	Logger::Log("turret_los",
 		"[TargetInLOS] aic=%p pawn=%s pawnLoc=(%.0f,%.0f,%.0f) "
 		"target=%s targetLoc=(%.0f,%.0f,%.0f) result=%d (1=visible 0=blocked) call#=%d\n",
 		(void*)aic,
-		pawnName, pawn->Location.X, pawn->Location.Y, pawn->Location.Z,
-		targetName,
+		pawnName.c_str(), pawn->Location.X, pawn->Location.Y, pawn->Location.Z,
+		targetName.c_str(),
 		target ? target->Location.X : 0.0f,
 		target ? target->Location.Y : 0.0f,
 		target ? target->Location.Z : 0.0f,

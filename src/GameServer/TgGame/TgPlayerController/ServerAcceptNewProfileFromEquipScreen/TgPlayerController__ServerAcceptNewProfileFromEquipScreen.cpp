@@ -1,7 +1,9 @@
 #include "src/GameServer/TgGame/TgPlayerController/ServerAcceptNewProfileFromEquipScreen/TgPlayerController__ServerAcceptNewProfileFromEquipScreen.hpp"
+#include "src/GameServer/Armor/Armor.hpp"
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
+#include "src/GameServer/Cosmetics/CosmeticEquip.hpp"
 #include "src/Database/Database.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
@@ -36,24 +38,43 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 {
 	LogCallBegin();
 
-	Logger::Log(GetLogChannel(), "nProfileId (loadout): %d\n", nProfileId);
+	Logger::Log(GetLogChannel(), "equip-save: nProfileId(loadout)=%d\n", nProfileId);
 
 // 	int SlotIndices[ 0x19 ];   // 0x0000 (0x0064) — inventory_id per equip point
-// 	int MiscItems  [ 0x19 ];   // 0x0064 (0x0064) — observed all-zero
+// 	int MiscItems  [ 0x19 ];   // 0x0064 (0x0064) — armor / Misc tab inventory ids
+//                                                  (indexing scheme TBD via this log)
 
-	nlohmann::json slotMap = nlohmann::json::object();
-	int populated = 0;
+	// Compact dump: one line per non-zero entry from either array, plus a
+	// final "(all zero entries omitted)" footer if either was sparse. Lets
+	// us correlate `MiscItems[N] = <armor invId>` to which armor slot the
+	// client dragged when the user does an Armor-tab Apply — that's the
+	// data we need to wire up swap-variant handling.
+	nlohmann::json slotMap  = nlohmann::json::object();
+	nlohmann::json miscMap  = nlohmann::json::object();
+	int slotPopulated = 0;
+	int miscPopulated = 0;
 	for (int i = 0; i < 0x19; i++) {
-		Logger::Log(GetLogChannel(), "SlotIndices[%d]: %d\n", i, DeviceArray.SlotIndices[i]);
-		Logger::Log(GetLogChannel(), "MiscItems[%d]: %d\n", i, DeviceArray.MiscItems[i]);
-		if (DeviceArray.SlotIndices[i] > 0) {
+		const int s = DeviceArray.SlotIndices[i];
+		const int m = DeviceArray.MiscItems[i];
+		if (s != 0 || m != 0) {
+			Logger::Log(GetLogChannel(),
+				"equip-save: [%2d] SlotIndices=%d MiscItems=%d\n", i, s, m);
+		}
+		if (s > 0) {
 			// JSON object key is the equip-point as a string ("1".."24");
 			// the value is the inventory_id. The control-server handler
 			// (TcpSession.cpp `equip_save` branch) parses it back with atoi.
-			slotMap[std::to_string(i)] = DeviceArray.SlotIndices[i];
-			++populated;
+			slotMap[std::to_string(i)] = s;
+			++slotPopulated;
+		}
+		if (m > 0) {
+			miscMap[std::to_string(i)] = m;
+			++miscPopulated;
 		}
 	}
+	Logger::Log(GetLogChannel(),
+		"equip-save: SlotIndices populated=%d, MiscItems populated=%d\n",
+		slotPopulated, miscPopulated);
 
 	// Resolve session + character. PlayerController->Pawn may be null if the
 	// equip screen was opened from lobby with no live pawn — log and bail in
@@ -61,8 +82,8 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 	ATgPawn* Pawn = (ATgPawn*)PlayerController->Pawn;
 	if (!Pawn) {
 		Logger::Log(GetLogChannel(),
-			"equip-save: PlayerController->Pawn=null — nothing to forward (populated=%d)\n",
-			populated);
+			"equip-save: PlayerController->Pawn=null — nothing to forward (slots=%d misc=%d)\n",
+			slotPopulated, miscPopulated);
 		LogCallEnd();
 		return;
 	}
@@ -77,6 +98,7 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 
 	PlayerInfo* info = PlayerRegistry::GetByGuidPtr(it->second);
 	const int64_t character_id = info ? info->selected_character_id : 0;
+	const int64_t user_id      = info ? info->user_id : 0;
 
 	// Engine-side re-equip. The original `ServerAcceptNewProfileFromEquipScreen`
 	// native at 0x10963040 is stripped (decompile is just `return;`), so without
@@ -86,6 +108,64 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 	// for the new equipped invIds and emits a SEND_INVENTORY resubmit every
 	// frame.
 	sqlite3* db = Database::GetConnection();
+
+	// Resolve every non-zero slot's inventory row up front. The pre-pass
+	// needs to know whether the new invId is a gameplay device (deviceId > 0)
+	// or a cosmetic (itemId > 0, deviceId == 0) to decide whether to unequip
+	// the current engine-side device at that slot.
+	//
+	// Per-slot facts cached for the equip loop below.
+	struct SlotResolution {
+		int  newInvId   = 0;
+		int  deviceId   = 0;
+		int  quality    = 0;
+		int  itemId     = 0;
+		std::vector<int> mods;
+		bool isCosmetic = false;  // deviceId == 0 && itemId > 0
+	};
+	SlotResolution resolved[0x19];
+	{
+		sqlite3_stmt* stmt = nullptr;
+		// v76: also pull item_id and gate by user_id so the player can't
+		// equip another account's inventory by guessing inv_ids.
+		const int rc = sqlite3_prepare_v2(db,
+			"SELECT device_id, quality, mod_effect_group_ids, item_id "
+			"FROM ga_players_inventory WHERE id = ? AND user_id = ?",
+			-1, &stmt, nullptr);
+		if (rc == SQLITE_OK && stmt) {
+			for (int slot = 1; slot < 0x19; ++slot) {
+				const int invId = DeviceArray.SlotIndices[slot];
+				if (invId <= 0) continue;
+				sqlite3_reset(stmt);
+				sqlite3_clear_bindings(stmt);
+				sqlite3_bind_int  (stmt, 1, invId);
+				sqlite3_bind_int64(stmt, 2, user_id);
+				if (sqlite3_step(stmt) != SQLITE_ROW) continue;
+
+				SlotResolution& r = resolved[slot];
+				r.newInvId = invId;
+				r.deviceId = sqlite3_column_int(stmt, 0);
+				r.quality  = sqlite3_column_int(stmt, 1);
+				r.itemId   = sqlite3_column_int(stmt, 3);
+				r.isCosmetic = (r.deviceId == 0 && r.itemId > 0);
+
+				const char* csv = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+				if (csv && *csv) {
+					const char* p = csv;
+					while (*p) {
+						while (*p == ',' || *p == ' ') ++p;
+						if (!*p) break;
+						char* end = nullptr;
+						long v = std::strtol(p, &end, 10);
+						if (end == p) break;
+						r.mods.push_back((int)v);
+						p = end;
+					}
+				}
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
 
 	// Pre-pass: Unequip anything that's being SWAPPED for a different invId.
 	// Without this, `Inventory::Equip` would create a second ATgDevice actor
@@ -103,49 +183,40 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 	// this build doesn't expose a clear-slot action, and the slot-14 rest
 	// device is invisible to the screen so the client may legitimately omit
 	// it. Skipping zero entries keeps that device safe.
+	//
+	// Cosmetic items (deviceId == 0): they don't occupy m_EquippedDevices,
+	// the engine-side write is just a r_CustomCharacterAssembly field.
+	// Unequipping at slot 6/12 when the client sent a cosmetic at that slot
+	// would tear out the gameplay suit/helmet — content-aware gate skips that.
+	// Dyes (16-20) and jetpack trail (21) are also always cosmetic and
+	// previously fell through this skip — the resolved.isCosmetic gate
+	// subsumes the old slot-number whitelist.
 	for (int slot = 1; slot < 0x19; ++slot) {
-		const int newInvId = DeviceArray.SlotIndices[slot];
-		if (newInvId <= 0) continue;
+		const SlotResolution& r = resolved[slot];
+		if (r.newInvId <= 0) continue;
+		if (r.isCosmetic)    continue;  // no engine device to unequip for this slot
 		ATgDevice* cur = Pawn->m_EquippedDevices[slot];
 		if (cur == nullptr) continue;
-		if (cur->r_nDeviceInstanceId == newInvId) continue;  // same item, leave alone (Equip will short-circuit)
+		if (cur->r_nDeviceInstanceId == r.newInvId) continue;  // same item, leave alone (Equip will short-circuit)
 		Inventory::Unequip(Pawn, slot);
 	}
 
 
 	int equipped_now = 0;
 	for (int slot = 1; slot < 0x19; ++slot) {
-		const int invId = DeviceArray.SlotIndices[slot];
-		if (invId <= 0) continue;
+		const SlotResolution& r = resolved[slot];
+		if (r.newInvId <= 0) continue;
 
-		sqlite3_stmt* stmt = nullptr;
-		int rc = sqlite3_prepare_v2(db,
-			"SELECT device_id, quality, mod_effect_group_ids "
-			"FROM ga_players_inventory WHERE id = ?",
-			-1, &stmt, nullptr);
-		if (rc != SQLITE_OK || !stmt) continue;
-		sqlite3_bind_int(stmt, 1, invId);
-		if (sqlite3_step(stmt) == SQLITE_ROW) {
-			const int deviceId = sqlite3_column_int(stmt, 0);
-			const int quality  = sqlite3_column_int(stmt, 1);
-			std::vector<int> mods;
-			const char* csv = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
-			if (csv && *csv) {
-				const char* p = csv;
-				while (*p) {
-					while (*p == ',' || *p == ' ') ++p;
-					if (!*p) break;
-					char* end = nullptr;
-					long v = std::strtol(p, &end, 10);
-					if (end == p) break;
-					mods.push_back((int)v);
-					p = end;
-				}
-			}
-			Inventory::Equip(Pawn, deviceId, slot, quality, invId, mods);
+		if (r.deviceId > 0) {
+			Inventory::Equip(Pawn, r.deviceId, slot, r.quality, r.newInvId, r.mods);
 			++equipped_now;
+		} else if (r.itemId > 0) {
+			// Cosmetic path. ApplyToPawn writes the right
+			// r_CustomCharacterAssembly field + persists at the remapped DB
+			// slot (cosmetic suit→22, cosmetic helmet→23) so it doesn't
+			// collide with the gameplay device row at slot 6/12.
+			CosmeticEquip::ApplyToPawn(Pawn, character_id, slot, r.newInvId, r.itemId);
 		}
-		sqlite3_finalize(stmt);
 	}
 	if (equipped_now > 0) {
 		Inventory::Finalize(Pawn);
@@ -187,6 +258,76 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 		}
 	}
 
+	// Armor runtime refresh. The client's Armor-tab equip selections arrive in
+	// FTGEQUIP_SLOTS_STRUCT.MiscItems[] (index → slot_value_id = idx + 1128,
+	// group-129 SVID space; see ArmorSlot in EquipSlot.hpp). The control-server
+	// will persist these via SaveEquippedDevices's misc_items pass once we IPC,
+	// but that doesn't refresh the pawn's runtime buffs — Armor.cpp only
+	// queries ga_character_devices during ReapplyCharacterSkillTree (i.e. at
+	// next spawn). To make the new variant's bonuses take effect immediately,
+	// we write the same DELETE+INSERT here (local sqlite handle sees the same
+	// server.db file as the control-server) and then call Armor::Revert+Apply
+	// on this pawn. The control-server's later write is idempotent.
+	//
+	// Empty misc_items → no armor changes (player only swapped weapons or
+	// cosmetics), so we leave the existing armor untouched. Matches the
+	// gating in SaveEquippedDevices.
+	if (character_id != 0) {
+		bool anyArmorMisc = false;
+		for (int i = 0; i < 0x19; ++i) {
+			if (DeviceArray.MiscItems[i] > 0) { anyArmorMisc = true; break; }
+		}
+
+		if (anyArmorMisc) {
+			sqlite3_stmt* delA = nullptr;
+			if (sqlite3_prepare_v2(db,
+			    "DELETE FROM ga_character_devices "
+			    "WHERE character_id = ? "
+			    "  AND equipped_slot IN (1130, 1132, 1133, 1136, 1139, 1142, 1143)",
+			    -1, &delA, nullptr) == SQLITE_OK) {
+				sqlite3_bind_int64(delA, 1, character_id);
+				sqlite3_step(delA);
+				sqlite3_finalize(delA);
+			}
+
+			sqlite3_stmt* insA = nullptr;
+			if (sqlite3_prepare_v2(db,
+			    "INSERT INTO ga_character_devices (character_id, inventory_id, equipped_slot) "
+			    "VALUES (?, ?, ?)",
+			    -1, &insA, nullptr) == SQLITE_OK) {
+				int wroteArmor = 0;
+				for (int i = 0; i < 0x19; ++i) {
+					const int invId = DeviceArray.MiscItems[i];
+					if (invId <= 0) continue;
+					const int armorSvid = i + 1128;
+					// Only the 7 visible armor slots; Core/Implant/Title indices
+					// are ignored (they're not exposed by the shipped UI).
+					if (armorSvid != 1130 && armorSvid != 1132 && armorSvid != 1133 &&
+					    armorSvid != 1136 && armorSvid != 1139 && armorSvid != 1142 &&
+					    armorSvid != 1143) {
+						continue;
+					}
+					sqlite3_reset(insA);
+					sqlite3_clear_bindings(insA);
+					sqlite3_bind_int64(insA, 1, character_id);
+					sqlite3_bind_int  (insA, 2, invId);
+					sqlite3_bind_int  (insA, 3, armorSvid);
+					if (sqlite3_step(insA) == SQLITE_DONE) ++wroteArmor;
+				}
+				sqlite3_finalize(insA);
+				Logger::Log(GetLogChannel(),
+					"equip-save: armor local-DB updated, %d slot(s); refreshing buffs\n", wroteArmor);
+			}
+
+			// Reverse the previous armor's buff entries (recorded per-pawn in
+			// Armor.cpp's Records() map) then re-query the DB and apply the
+			// new ones. This is exactly what RCST does at spawn — same API,
+			// just fired at runtime instead of waiting for next spawn.
+			Armor::RevertDefaultArmor(Pawn);
+			Armor::ApplyDefaultArmor(Pawn);
+		}
+	}
+
 	nlohmann::json ev;
 	ev["type"]              = IpcProtocol::MSG_GAME_EVENT;
 	ev["subtype"]           = "equip_save";
@@ -196,11 +337,12 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 	ev["character_id"]      = character_id;
 	ev["loadout_profile"]   = nProfileId;
 	ev["slot_to_inventory"] = std::move(slotMap);
+	ev["misc_items"]        = std::move(miscMap);  // armor / unknown-Misc-tab data
 	IpcClient::Send(ev.dump());
 
 	Logger::Log(GetLogChannel(),
-		"equip-save: forwarded loadout=%d populated=%d/24 pawn=%p guid=%s\n",
-		nProfileId, populated, (void*)Pawn, it->second.c_str());
+		"equip-save: forwarded loadout=%d slots=%d/24 misc=%d/25 pawn=%p guid=%s\n",
+		nProfileId, slotPopulated, miscPopulated, (void*)Pawn, it->second.c_str());
 
 	LogCallEnd();
 }

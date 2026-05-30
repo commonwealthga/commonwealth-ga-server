@@ -31,7 +31,24 @@ void __fastcall TgEffectGroup__RemoveEffects::Call(UTgEffectGroup* eg, void* /*e
 
 	for (int i = 0; i < eg->m_Effects.Count; ++i) {
 		UTgEffect* effect = eg->m_Effects.Data[i];
-		if (!effect) continue;
+		// Two-tier validity check: null AND "small int that snuck in." Live
+		// crash signature (May 28-29): effect=0x35d (=861, the
+		// TG_PHYSICALITY_MECHANICAL constant our deployable code writes into
+		// r_nPhysicalType). Some upstream path is depositing this value into
+		// the m_Effects array — likely a stride/offset bug in the new
+		// pets/deployables code touching adjacent UObject* fields. The plain
+		// `!effect` check passes 861 through; first deref (`effect->Class` at
+		// +0x34) then faults at 0x391. Until the corruption source is found,
+		// reject anything below the user-mode NULL guard region (first 64KB).
+		if (!effect || reinterpret_cast<uintptr_t>(effect) < 0x10000u) {
+			if (effect) {
+				Logger::Log("effects",
+					"[REMOVE-EFFECTS] eg=%p egId=%d effect[%d]=%p — small-int "
+					"value, skipping (likely corrupted m_Effects entry)\n",
+					(void*)eg, eg->m_nEffectGroupId, i, (void*)effect);
+			}
+			continue;
+		}
 
 		// Phantom-clone guard: m_fCurrent is set by ApplyEffect as its first
 		// statement (TgEffect.uc:116), so 0 here means Apply was gated out

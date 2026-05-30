@@ -59,9 +59,13 @@ ATgRepInfo_TaskForce* __fastcall TgRepInfo_Game__GetTaskForceFor::Call(
 	// SDK StaticClass() is unreliable on this binary
 	// (reference_sdk_staticclass_misalignment.md).  Covers TgDeployable, all
 	// TgDeploy_* subclasses.
-	const char* clsName = target->Class->GetFullName();
-	if (!clsName) return nullptr;
-	if (strstr(clsName, "TgDeploy") == nullptr) return nullptr;
+	// Copy to std::string immediately — GetFullName returns into a shared
+	// static buffer that subsequent GetFullName calls (including the one in
+	// the Logger::Log below) clobber.
+	const char* clsRaw = target->Class->GetFullName();
+	if (!clsRaw) return nullptr;
+	std::string clsName = clsRaw;
+	if (clsName.find("TgDeploy") == std::string::npos) return nullptr;
 
 	// Walk Instigator → PlayerReplicationInfo → r_TaskForce.  All three are
 	// CPF_Net and verified as replicating reliably on the client (Instigator
@@ -73,10 +77,13 @@ ATgRepInfo_TaskForce* __fastcall TgRepInfo_Game__GetTaskForceFor::Call(
 	if (!pri) return nullptr;
 	ATgRepInfo_TaskForce* tf = pri->r_TaskForce;
 
+	const char* instRaw = inst->GetFullName();
+	std::string instName = instRaw ? instRaw : "<null>";
+
 	Logger::Log("team_colors",
 		"[GetTaskForceFor fallback] target=%s  Instigator=%s  PRI=0x%p  tf=0x%p\n",
-		clsName,
-		inst->GetFullName() ? inst->GetFullName() : "<null>",
+		clsName.c_str(),
+		instName.c_str(),
 		pri, tf);
 
 	return tf;  // nullptr if r_TaskForce hasn't replicated yet — native fallback

@@ -66,6 +66,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Tick/Actor__Tick.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Tick/GameEngine__Tick.cpp \
+			  $(SRC_DIR)/GameServer/Engine/AutoReporter/GetLocalPlayerId/AutoReporter__GetLocalPlayerId.cpp \
 			  $(SRC_DIR)/GameServer/Engine/LaunchEngineLoop/ConstructCommandletObject/ConstructCommandletObject.cpp \
 			  $(SRC_DIR)/GameServer/Engine/ServerCommandlet/Main/ServerCommandlet__Main.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/SpawnServerActors/GameEngine__SpawnServerActors.cpp \
@@ -141,6 +142,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.cpp \
 			  $(SRC_DIR)/GameServer/Inventory/Inventory.cpp \
+			  $(SRC_DIR)/GameServer/Cosmetics/CosmeticEquip.cpp \
 			  $(SRC_DIR)/GameServer/Armor/Armor.cpp \
 			  $(SRC_DIR)/GameServer/Constants/DeviceIds.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepListV2.cpp \
@@ -550,6 +552,7 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/Database/Database.cpp \
 	$(CS_SRC_DIR)/MapGameInfo/MapGameInfo.cpp \
 	$(CS_SRC_DIR)/Loadouts/ClassLoadouts.cpp \
+	$(CS_SRC_DIR)/Loadouts/CosmeticLoadouts.cpp \
 	$(CS_SRC_DIR)/Loadouts/ModResolver.cpp \
 	$(CS_SRC_DIR)/PlayerSessionStore/PlayerSessionStore.cpp \
 	$(CS_SRC_DIR)/TcpSession/TcpSession.cpp \

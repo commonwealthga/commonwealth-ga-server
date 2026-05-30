@@ -77,6 +77,7 @@
 #include "src/GameServer/Engine/Actor/Spawn/Actor__Spawn.hpp"
 #include "src/GameServer/Engine/Actor/Tick/Actor__Tick.hpp"
 #include "src/GameServer/Engine/GameEngine/Tick/GameEngine__Tick.hpp"
+#include "src/GameServer/Engine/AutoReporter/GetLocalPlayerId/AutoReporter__GetLocalPlayerId.hpp"
 #include "src/GameServer/TgGame/TgActorFactory/LoadObjectConfig/TgActorFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgTeamPlayerStart/LoadObjectConfig/TgTeamPlayerStart__LoadObjectConfig.hpp"
@@ -392,6 +393,7 @@ unsigned long ModuleThread( void* ) {
 	Actor__Spawn::Install();
 	Actor__Tick::Install();
 	GameEngine__Tick::Install();
+	AutoReporter__GetLocalPlayerId::Install();
 
 	// game functions
 	TgPlayerController__IsReadyForStart::Install();

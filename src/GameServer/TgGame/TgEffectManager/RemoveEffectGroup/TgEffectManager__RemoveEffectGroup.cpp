@@ -42,7 +42,11 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 	if (idx < 0) {
 		for (int i = 0; i < Manager->s_AppliedEffectGroups.Count; i++) {
 			UTgEffectGroup* a = Manager->s_AppliedEffectGroups.Data[i];
-			if (a && a->m_nEffectGroupId == inEgId) { idx = i; break; }
+			// Treat small-int entries as "not the match" so the fallback
+			// fingerprint match doesn't deref garbage. See the comment in
+			// TgEffectGroup__RemoveEffects.cpp for the corruption pattern.
+			if (a && reinterpret_cast<uintptr_t>(a) >= 0x10000u &&
+			    a->m_nEffectGroupId == inEgId) { idx = i; break; }
 		}
 	}
 	if (idx < 0) {
@@ -54,6 +58,13 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 
 	// Work against the applied clone — timers, HUD slot, m_Target live on it.
 	UTgEffectGroup* applied = Manager->s_AppliedEffectGroups.Data[idx];
+	if (!applied || reinterpret_cast<uintptr_t>(applied) < 0x10000u) {
+		Logger::Log("effects",
+			"[REMOVE-GROUP] mgr=%p s_AppliedEffectGroups[%d]=%p — small-int "
+			"value, aborting (likely corrupted entry)\n",
+			(void*)Manager, idx, (void*)applied);
+		return false;
+	}
 
 	// 0. Reverse every modifier the group's effects installed. Unconditional —
 	//    the m_fCurrent==0 skip inside RemoveEffects already protects phantom

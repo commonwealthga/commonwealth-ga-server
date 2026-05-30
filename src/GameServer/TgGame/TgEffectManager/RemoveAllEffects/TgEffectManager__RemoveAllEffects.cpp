@@ -36,7 +36,18 @@ void __fastcall TgEffectManager__RemoveAllEffects::Call(ATgEffectManager* pThis,
 	// Reverse iteration so swap-removes don't skip entries.
 	for (int i = pThis->s_AppliedEffectGroups.Count - 1; i >= 0; --i) {
 		UTgEffectGroup* applied = pThis->s_AppliedEffectGroups.Data[i];
-		if (applied == nullptr) continue;
+		// See "small-int" comment in TgEffectGroup__RemoveEffects.cpp — bare
+		// null check misses corruption like 0x35d (=861 TG_PHYSICALITY_MECHANICAL)
+		// that has been showing up in m_Effects/s_AppliedEffectGroups slots.
+		if (applied == nullptr || reinterpret_cast<uintptr_t>(applied) < 0x10000u) {
+			if (applied) {
+				Logger::Log("effects",
+					"[REMOVE-ALL-EFFECTS] mgr=%p s_AppliedEffectGroups[%d]=%p — "
+					"small-int value, skipping (likely corrupted entry)\n",
+					(void*)pThis, i, (void*)applied);
+			}
+			continue;
+		}
 		if (isExcluded(applied->m_nCategoryCode)) continue;
 
 		AActor* target = applied->m_Target ? applied->m_Target : pThis->r_Owner;
@@ -55,7 +66,16 @@ void __fastcall TgEffectManager__RemoveAllEffects::Call(ATgEffectManager* pThis,
 			// group gate left the aoi=0 penalties stuck on s_Properties forever.
 			for (int e = 0; e < applied->m_Effects.Count; ++e) {
 				UTgEffect* eff = applied->m_Effects.Data[e];
-				if (!eff) continue;
+				// Filter out null AND small-int corruption (see RemoveEffects comment).
+				if (!eff || reinterpret_cast<uintptr_t>(eff) < 0x10000u) {
+					if (eff) {
+						Logger::Log("effects",
+							"[REMOVE-ALL-EFFECTS] mgr=%p applied egId=%d effect[%d]=%p — "
+							"small-int value, skipping\n",
+							(void*)pThis, applied->m_nEffectGroupId, e, (void*)eff);
+					}
+					continue;
+				}
 				const unsigned int eflags = *(unsigned int*)((char*)eff + 0x48);
 				if (eflags & 0x01) continue;        // aoi=1: tick-gift, skip reversal
 				if (eff->m_fCurrent == 0.0f) continue;  // phantom clone: Apply never ran

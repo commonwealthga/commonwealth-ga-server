@@ -21,23 +21,31 @@ void __fastcall TgGame__ReviveAttackersTimer::Call(ATgGame *Game, void *edx) {
 			// bot/turret context and crashes. RegisterForWaveRevive already
 			// filters these out, but if some other code path ever pushes an
 			// AIController onto the list this guard catches it.
+			// Cache the class name once — same buffer is used by every
+			// GetName/GetFullName call so we must copy before any second call.
+			const char* clsRaw = Controller->Class ? Controller->Class->GetFullName() : nullptr;
+			std::string clsName = clsRaw ? clsRaw : "NULL";
 			if (Controller->Class == nullptr ||
-			    strstr(Controller->Class->GetFullName(), "PlayerController") == nullptr) {
+			    clsName.find("PlayerController") == std::string::npos) {
+				const char* ctrlRaw = Controller->GetName();
+				std::string ctrlName = ctrlRaw ? ctrlRaw : "NULL";
 				Logger::Log("revive",
 					"  skipping[%d] %s (class=%s) — not a PlayerController\n",
-					i, Controller->GetName(),
-					Controller->Class ? Controller->Class->GetFullName() : "NULL");
+					i, ctrlName.c_str(), clsName.c_str());
 				continue;
 			}
 
 			ATgPlayerController* PC = (ATgPlayerController*)Controller;
 			if (Logger::IsChannelEnabled("revive")) {
+				const char* pcRaw = PC->GetName();
+				std::string pcName = pcRaw ? pcRaw : "NULL";
+				const char* pawnRaw = PC->Pawn ? PC->Pawn->GetName() : nullptr;
+				std::string pawnName = pawnRaw ? pawnRaw : "NULL";
 				Logger::Log("revive", "  Reviving attacker[%d] %s pawn=%s\n",
-					i, PC->GetName(),
-					PC->Pawn ? PC->Pawn->GetName() : "NULL");
+					i, pcName.c_str(), pawnName.c_str());
 
 				if (PC->Pawn == nullptr) {
-					Logger::Log("revive", "  WARNING: %s has NULL Pawn, eventRevive will likely fail\n", PC->GetName());
+					Logger::Log("revive", "  WARNING: %s has NULL Pawn, eventRevive will likely fail\n", pcName.c_str());
 				}
 			}
 
@@ -45,7 +53,7 @@ void __fastcall TgGame__ReviveAttackersTimer::Call(ATgGame *Game, void *edx) {
 		}
 
 		// Reset count to 0 instead of Clear() to avoid freeing the malloc'd buffer.
-		*(int*)((char*)Game + 0x41C) = 0;  // s_AttackerReviveList.Count = 0
+		Game->s_AttackerReviveList.Count = 0;
 	}
 
 	// Re-arm repeating timer for the next wave

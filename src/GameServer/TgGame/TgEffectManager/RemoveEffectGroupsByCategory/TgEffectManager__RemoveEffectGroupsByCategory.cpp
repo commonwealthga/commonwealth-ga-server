@@ -22,7 +22,16 @@ bool __fastcall TgEffectManager__RemoveEffectGroupsByCategory::Call(ATgEffectMan
 	// Reverse iteration so swap-deletes don't disturb earlier indices.
 	for (int i = Manager->s_AppliedEffectGroups.Count - 1; i >= 0 && removed < nQuantity; i--) {
 		UTgEffectGroup* group = Manager->s_AppliedEffectGroups.Data[i];
-		if (!group) continue;
+		// Null OR small-int corruption (see TgEffectGroup__RemoveEffects.cpp).
+		if (!group || reinterpret_cast<uintptr_t>(group) < 0x10000u) {
+			if (group) {
+				Logger::Log("effects",
+					"[REMOVE-BY-CAT] mgr=%p s_AppliedEffectGroups[%d]=%p — "
+					"small-int value, skipping\n",
+					(void*)Manager, i, (void*)group);
+			}
+			continue;
+		}
 		if (group->m_nCategoryCode != nCategoryCode) continue;
 
 		// 0. Reverse modifiers the group installed (else they stay clamped forever).

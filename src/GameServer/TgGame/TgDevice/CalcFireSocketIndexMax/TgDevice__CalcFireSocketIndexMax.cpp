@@ -33,21 +33,25 @@ void __fastcall TgDevice__CalcFireSocketIndexMax::Call(ATgDevice* Device, void* 
         if (Logger::IsChannelEnabled("socketdiag")) {
             uintptr_t key = (uintptr_t)Instigator;
             if (s_meshLoggedPawns.insert(key).second) {
-                const char* pawnName = Instigator->GetFullName();
+                // Copy both names to std::string immediately — GetFullName
+                // shares a static buffer; the second call clobbers the first.
+                const char* pawnRaw = Instigator->GetFullName();
+                std::string pawnName = pawnRaw ? pawnRaw : "(null)";
                 void* mesh = (void*)Instigator->Mesh;
                 void* skel = mesh ? (void*)Instigator->Mesh->SkeletalMesh : nullptr;
                 int   socketsCount = skel ? Instigator->Mesh->SkeletalMesh->Sockets.Count : -1;
-                const char* skelName = skel
+                const char* skelRaw = skel
                     ? Instigator->Mesh->SkeletalMesh->GetFullName()
-                    : "(null)";
+                    : nullptr;
+                std::string skelName = skelRaw ? skelRaw : "(null)";
                 Logger::Log("socketdiag",
                     "[MeshState] pawn=%s slot=%d sMax=%d\n"
                     "  Pawn->Mesh=%p  Mesh->SkeletalMesh=%p  SkeletalMesh=%s\n"
                     "  Sockets.Count=%d (-1 means SkeletalMesh is null)\n",
-                    pawnName ? pawnName : "(null)",
+                    pawnName.c_str(),
                     (int)Device->r_eEquippedAt,
                     Device->m_nSocketMax,
-                    mesh, skel, skelName,
+                    mesh, skel, skelName.c_str(),
                     socketsCount);
 
                 // If sockets exist, also dump the first few names so we

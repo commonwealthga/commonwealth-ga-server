@@ -34,7 +34,16 @@ void __fastcall TgEffectManager__RemoveAllEffectGroups::Call(ATgEffectManager* p
 
 	for (int i = pThis->s_AppliedEffectGroups.Count - 1; i >= 0; i--) {
 		UTgEffectGroup* applied = pThis->s_AppliedEffectGroups.Data[i];
-		if (applied == nullptr) continue;
+		// Null OR small-int corruption (see TgEffectGroup__RemoveEffects.cpp).
+		if (applied == nullptr || reinterpret_cast<uintptr_t>(applied) < 0x10000u) {
+			if (applied) {
+				Logger::Log("effects",
+					"[REMOVE-ALL-GROUPS] mgr=%p s_AppliedEffectGroups[%d]=%p — "
+					"small-int value, skipping\n",
+					(void*)pThis, i, (void*)applied);
+			}
+			continue;
+		}
 
 		const bool matches = isLocal
 			? (applied->m_nEffectGroupId == nEffectGroupId)
@@ -56,7 +65,8 @@ void __fastcall TgEffectManager__RemoveAllEffectGroups::Call(ATgEffectManager* p
 		bool isRegenTicker = false;
 		for (int e = 0; e < applied->m_Effects.Count; ++e) {
 			UTgEffect* eff = applied->m_Effects.Data[e];
-			if (eff && (*(unsigned int*)((char*)eff + 0x48) & 0x01)) { isRegenTicker = true; break; }
+			if (!eff || reinterpret_cast<uintptr_t>(eff) < 0x10000u) continue;
+			if (*(unsigned int*)((char*)eff + 0x48) & 0x01) { isRegenTicker = true; break; }
 		}
 		if (!isRegenTicker
 			&& applied->m_nType == 264

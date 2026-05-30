@@ -45,6 +45,50 @@ namespace EquipSlot {
 } // namespace EquipSlot
 
 // ---------------------------------------------------------------------------
+// ArmorSlot — armor enhancement slots, identified by group-129 SVID. These
+// are stored as `ga_character_devices.equipped_slot` and sent on the wire
+// as EQUIPPED_SLOT_VALUE_ID. The client's Armor tab decodes equipped armor
+// via FTGEQUIP_SLOTS_STRUCT.MiscItems[i] where i = SVID - 1128 (verified
+// empirically against an equip-save packet capture 2026-05-30).
+//
+// Group 129's nominal label set has 5 body parts × {Armor, Core, Implant}
+// = 15 slots + Title; the shipped UI ships only 7 visible slots and
+// repurposes two of the Core/Implant slots:
+//   SVID 1132 (would be "Head Implant") → repurposed as Hands (MiscItems[4])
+//   SVID 1143 (would be "Feet Core")    → repurposed as Shoulders (MiscItems[15])
+// The other 5 use the natural "<Body Part> Armor" SVIDs from group 129.
+//
+// Distinct from group-126 item_subtype_value_id (1107/1109/...) which is
+// the ITEM-side discriminator on `asm_data_set_items.item_subtype_value_id`.
+// Subtype ↔ slot mapping is canonical-but-implicit:
+//   1107 Head Armor    → 1130
+//   1109 Hand Armor    → 1132 (repurposed)
+//   1110 Chest Armor   → 1133
+//   1113 Arm Armor     → 1136
+//   1116 Leg Armor     → 1139
+//   1119 Feet Armor    → 1142
+//   1120 Shoulder Armor→ 1143 (repurposed)
+// ---------------------------------------------------------------------------
+namespace ArmorSlot {
+
+constexpr int Head     = 1130;  // group 129 sort 1 "Head Armor"          MiscItems[2]
+constexpr int Hands    = 1132;  // group 129 sort 3 (repurposed)          MiscItems[4]
+constexpr int Chest    = 1133;  // group 129 sort 4 "Chest Armor"         MiscItems[5]
+constexpr int Arms     = 1136;  // group 129 sort 7 "Arms Armor"          MiscItems[8]
+constexpr int Legs     = 1139;  // group 129 sort 10 "Legs Armor"         MiscItems[11]
+constexpr int Feet     = 1142;  // group 129 sort 13 "Feet Armor"         MiscItems[14]
+constexpr int Shoulder = 1143;  // group 129 sort 14 (repurposed)         MiscItems[15]
+
+constexpr int All[7]   = { Head, Shoulder, Chest, Arms, Hands, Legs, Feet };
+
+// MiscItems[] index ↔ slot_value_id helpers.
+// SVID = MiscItems index + 1128.
+constexpr int MiscItemsIndexForSlot(int slot_value_id) { return slot_value_id - 1128; }
+constexpr int SlotForMiscItemsIndex(int idx)           { return idx + 1128; }
+
+} // namespace ArmorSlot
+
+// ---------------------------------------------------------------------------
 // SlotValueId(equipPoint) — returns the inventory slot value ID for a given
 // equip point.  Mirrors the mapping in FUN_109a1320 (native binary).
 // Returns 0 for unknown equip points.

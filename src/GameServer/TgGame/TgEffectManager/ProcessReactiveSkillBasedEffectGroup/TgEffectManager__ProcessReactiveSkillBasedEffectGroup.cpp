@@ -80,7 +80,19 @@ void __fastcall TgEffectManager__ProcessReactiveSkillBasedEffectGroup::Call(
 	if (!Manager) return;
 
 	AActor* owner = Manager->r_Owner;
-	if (!owner) return;
+	// Two-tier validity: null OR small-int corruption. owner->Class reads at
+	// offset 0x34; if owner=0x35d (the observed crash value, =861
+	// TG_PHYSICALITY_MECHANICAL) we'd fault at 0x391. Some upstream path is
+	// depositing physical-type constants into UObject* fields — guard until
+	// it's tracked down. See TgEffectGroup__RemoveEffects.cpp for context.
+	if (!owner || reinterpret_cast<uintptr_t>(owner) < 0x10000u) {
+		if (owner) {
+			Logger::Log("skills",
+				"[REACTIVE] mgr=%p r_Owner=%p — small-int value, aborting\n",
+				(void*)Manager, (void*)owner);
+		}
+		return;
+	}
 	// TgDeployable can also have an effect manager but doesn't carry skill
 	// allocations; reactive dispatch is a no-op for it. Cached class name
 	// keeps this off the per-call alloc path.
@@ -91,7 +103,15 @@ void __fastcall TgEffectManager__ProcessReactiveSkillBasedEffectGroup::Call(
 	int matched = 0;
 	for (int i = 0; i < Manager->s_SkillBasedEffectGroups.Count; i++) {
 		UTgEffectGroup* g = Manager->s_SkillBasedEffectGroups.Data[i];
-		if (!g) continue;
+		if (!g || reinterpret_cast<uintptr_t>(g) < 0x10000u) {
+			if (g) {
+				Logger::Log("skills",
+					"[REACTIVE] mgr=%p s_SkillBasedEffectGroups[%d]=%p — "
+					"small-int value, skipping\n",
+					(void*)Manager, i, (void*)g);
+			}
+			continue;
+		}
 		if (g->m_nReqCategoryCode != nCategory) continue;
 
 		// Guard against future reactive skills with non-trivial lifecycle.
@@ -112,7 +132,15 @@ void __fastcall TgEffectManager__ProcessReactiveSkillBasedEffectGroup::Call(
 
 		for (int j = 0; j < g->m_Effects.Count; j++) {
 			UTgEffect* e = g->m_Effects.Data[j];
-			if (!e) continue;
+			if (!e || reinterpret_cast<uintptr_t>(e) < 0x10000u) {
+				if (e) {
+					Logger::Log("skills",
+						"[REACTIVE] mgr=%p egId=%d effect[%d]=%p — small-int "
+						"value, skipping\n",
+						(void*)Manager, g->m_nEffectGroupId, j, (void*)e);
+				}
+				continue;
+			}
 			ApplyOrReverseStatMod(pawn, e->m_nPropertyId, e->m_nCalcMethodCode,
 			                      e->m_fBase, bRemove != 0);
 		}

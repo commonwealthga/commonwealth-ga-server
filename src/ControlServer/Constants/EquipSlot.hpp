@@ -45,6 +45,46 @@ namespace EquipSlot {
 } // namespace EquipSlot
 
 // ---------------------------------------------------------------------------
+// ArmorSlot — armor enhancement slots, identified by group-129 SVID.
+// See src/GameServer/Constants/EquipSlot.hpp for the full decode of
+// MiscItems[] indexing, group-126 ↔ group-129 ↔ MiscItems mapping, and
+// which two slots are repurposed (Hands ← Head Implant, Shoulders ← Feet
+// Core). Empirically verified 2026-05-30.
+// ---------------------------------------------------------------------------
+namespace ArmorSlot {
+
+constexpr int Head     = 1130;  // MiscItems[2]
+constexpr int Hands    = 1132;  // MiscItems[4]  (repurposed)
+constexpr int Chest    = 1133;  // MiscItems[5]
+constexpr int Arms     = 1136;  // MiscItems[8]
+constexpr int Legs     = 1139;  // MiscItems[11]
+constexpr int Feet     = 1142;  // MiscItems[14]
+constexpr int Shoulder = 1143;  // MiscItems[15] (repurposed)
+
+constexpr int All[7]   = { Head, Shoulder, Chest, Arms, Hands, Legs, Feet };
+
+constexpr int MiscItemsIndexForSlot(int slot_value_id) { return slot_value_id - 1128; }
+constexpr int SlotForMiscItemsIndex(int idx)           { return idx + 1128; }
+
+// Group-126 item_subtype_value_id ↔ group-129 slot_value_id translation.
+// Used by SaveEquippedDevices's misc_items pass to validate the inventory
+// row's subtype matches the slot the client targeted.
+constexpr int SlotForSubtype(int subtype_value_id) {
+    switch (subtype_value_id) {
+        case 1107: return Head;       // Head Armor
+        case 1109: return Hands;      // Hand Armor
+        case 1110: return Chest;      // Chest Armor
+        case 1113: return Arms;       // Arm Armor
+        case 1116: return Legs;       // Leg Armor
+        case 1119: return Feet;       // Feet Armor
+        case 1120: return Shoulder;   // Shoulder Armor
+        default:   return 0;
+    }
+}
+
+} // namespace ArmorSlot
+
+// ---------------------------------------------------------------------------
 // SlotValueId(equipPoint) — returns the inventory slot value ID for a given
 // equip point.  Mirrors the mapping in FUN_109a1320 (native binary).
 // Returns 0 for unknown equip points.

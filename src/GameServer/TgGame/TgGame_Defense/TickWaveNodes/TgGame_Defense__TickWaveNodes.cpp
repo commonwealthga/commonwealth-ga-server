@@ -23,7 +23,6 @@ void __fastcall TgGame_Defense__TickWaveNodes::Call(ATgGame_Defense* Game, void*
 		return;
 	}
 
-	UClass* BotFactoryClass = ClassPreloader::GetClass("Class TgGame.TgBotFactory");
 	const float Now = WorldInfo->TimeSeconds;
 	int activatedNodes = 0;
 	int kickedFactories = 0;
@@ -44,12 +43,22 @@ void __fastcall TgGame_Defense__TickWaveNodes::Call(ATgGame_Defense* Game, void*
 		// int nRandomFactory = rand() % Spawner->Targets.Num();
 		// UObject* Target = Spawner->Targets.Data[nRandomFactory];
 
+		// Skip the whole pick loop if this spawner has no targets — otherwise
+		// `rand() % Spawner->Targets.Num()` below is an integer divide-by-zero.
+		const int targetCount = Spawner->Targets.Num();
+		if (targetCount <= 0) continue;
 		float percent = Game->NumPlayers / 10;
-		int nMaxTargets = std::max(1, int(percent * Spawner->Targets.Num()));
+		int nMaxTargets = std::max(1, int(percent * targetCount));
 		for (int j = 0; j < nMaxTargets; j++) {
-			UObject* Target = Spawner->Targets.Data[rand() % Spawner->Targets.Num()];
-			if (Target == nullptr) continue;
-			if (BotFactoryClass != nullptr && !Target->IsA(BotFactoryClass)) continue;
+			UObject* Target = Spawner->Targets.Data[rand() % targetCount];
+			if (Target == nullptr || Target->Class == nullptr) continue;
+			// IsA is unreliable on this build (feedback_no_isa_use_classname_strstr.md);
+			// match by class-name string instead. "TgBotFactory" prefix catches
+			// the class and any subclasses (e.g. TgBotFactory_*).
+			const char* tcRaw = Target->Class->GetFullName();
+			if (!tcRaw) continue;
+			const std::string tcName = tcRaw;
+			if (tcName.find("TgBotFactory") == std::string::npos) continue;
 
 			ATgBotFactory* Factory = (ATgBotFactory*)Target;
 			// Factory->SpawnWave(rand() % 10 + 3);

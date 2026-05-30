@@ -14,16 +14,20 @@ AActor* __fastcall Actor__Spawn::Call(UWorld* pThis, void* edx, UClass* Class, u
 	// Sample the requested-class name ONCE before the call when we might need
 	// it for fire_gate diagnostics (Spawn failure leaves us with ret==null and
 	// no way to recover the class). Cheap when fire_gate channel is off.
+	// Must be std::string — GetFullName returns into a shared static buffer
+	// that CallOriginal (engine internals call GetFullName all over) will
+	// clobber before line ~70 reads `requestedClassName`.
 	const bool fireGateLog = Logger::IsChannelEnabled("fire_gate");
-	const char* requestedClassName = nullptr;
+	std::string requestedClassName;
 	bool isProjectileSpawn = false;
 	if (fireGateLog && Class) {
-		requestedClassName = Class->GetFullName();
-		if (requestedClassName) {
+		const char* raw = Class->GetFullName();
+		if (raw) {
+			requestedClassName = raw;
 			isProjectileSpawn =
-				strstr(requestedClassName, "TgProj_")     != nullptr ||
-				strstr(requestedClassName, "TgProjectile") != nullptr ||
-				strstr(requestedClassName, "Engine.Projectile") != nullptr;
+				requestedClassName.find("TgProj_")          != std::string::npos ||
+				requestedClassName.find("TgProjectile")     != std::string::npos ||
+				requestedClassName.find("Engine.Projectile") != std::string::npos;
 		}
 	}
 
@@ -36,8 +40,9 @@ AActor* __fastcall Actor__Spawn::Call(UWorld* pThis, void* edx, UClass* Class, u
 
 		// Projectiles are fast-moving and short-lived. Without bAlwaysRelevant they can miss
 		// the NetDriver's relevancy window and never replicate to clients.
-		const char* cn = ret->Class->GetFullName();
-		if (strstr(cn, "TgProj_") || strstr(cn, "TgProjectile") || strstr(cn, "Engine.Projectile")) {
+		const char* cnRaw = ret->Class ? ret->Class->GetFullName() : nullptr;
+		std::string cn = cnRaw ? cnRaw : "";
+		if (cn.find("TgProj_") != std::string::npos || cn.find("TgProjectile") != std::string::npos || cn.find("Engine.Projectile") != std::string::npos) {
 			// ret->bForceNetUpdate = 1;
 			// ret->bNetInitial = 1;
 			// // ret->bNetDirty = 1;
@@ -65,13 +70,13 @@ AActor* __fastcall Actor__Spawn::Call(UWorld* pThis, void* edx, UClass* Class, u
 			Logger::Log("fire_gate",
 				"[Spawn-projectile] OK  class=%s -> %p  loc=(%.1f, %.1f, %.1f) rot=(p=%d, y=%d, r=%d) "
 				"bNoCollisionFail=%d bNoFail=%d owner=%p template=%p\n",
-				requestedClassName, ret, lx, ly, lz, rp, ry, rr,
+				requestedClassName.c_str(), ret, lx, ly, lz, rp, ry, rr,
 				(int)bNoCollisionFail, (int)bNoFail, Owner, Template);
 		} else {
 			Logger::Log("fire_gate",
 				"[Spawn-projectile] FAIL class=%s -> NULL  loc=(%.1f, %.1f, %.1f) rot=(p=%d, y=%d, r=%d) "
 				"bNoCollisionFail=%d bNoFail=%d owner=%p template=%p\n",
-				requestedClassName, lx, ly, lz, rp, ry, rr,
+				requestedClassName.c_str(), lx, ly, lz, rp, ry, rr,
 				(int)bNoCollisionFail, (int)bNoFail, Owner, Template);
 		}
 	}

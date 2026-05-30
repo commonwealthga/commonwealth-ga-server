@@ -45,7 +45,7 @@ static void LogMaxHpSnapshot(ATgPawn* Pawn, const char* phase) {
 		UTgProperty* p = Pawn->s_Properties.Data[i];
 		if (p && p->m_nPropertyId == 304) { raw = p->m_fRaw; base = p->m_fBase; found = true; break; }
 	}
-	const int healthMax = *(int*)((char*)Pawn + 0x43c);
+	const int healthMax = Pawn->r_nHealthMaximum;
 	const int appliedGroups =
 		Pawn->r_EffectManager ? Pawn->r_EffectManager->s_AppliedEffectGroups.Count : -1;
 	Logger::Log("effects",

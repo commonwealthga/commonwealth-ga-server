@@ -1,225 +1,334 @@
 // Logger channel: "armor"
 #include "src/GameServer/Armor/Armor.hpp"
 #include "src/GameServer/TgGame/TgPawn/ApplyBuff/TgPawn__ApplyBuff.hpp"
+#include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
-#include <cmath>
-#include <cstring>
+#include <algorithm>
+#include <cstdlib>
 #include <map>
-
-// TgPawn::SetProperty @ 0x109bf420 — writes UTgProperty.m_fRaw then runs
-// ApplyProperty (vtable[0x8f4]) which fans the value into r_fMaxHealth and the
-// other 6-ish HP storage sites (see reference_pawn_health_sync). The actual
-// SetProperty call is now performed by ReapplyCharacterSkillTree's combined
-// fanout pass at the very end — both armor and skills land in m_fRaw before
-// the client gets the replicated update, so the client sees the final value
-// rather than the post-armor / post-skill intermediates.
-static void SetPawnProperty(ATgPawn* Pawn, int nPropertyId, float fNewValue) {
-	((void(__fastcall*)(ATgPawn*, void*, int, float))0x109bf420)(Pawn, nullptr, nPropertyId, fNewValue);
-}
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace {
 
-// Per-property bookkeeping for a pawn's last ApplyDefaultArmor pass.
-//   delta            — the value we added to m_fRaw last time
-//   postApplyRaw     — what m_fRaw read as IMMEDIATELY after we wrote it
+// What we ApplyBuff'd for a given armor piece this RCST cycle. Tracked
+// per-pawn → per-armor-row so Revert can mirror with bRemove=1 next pass.
 //
-// On RevertDefaultArmor we only subtract `delta` if `prop->m_fRaw ==
-// postApplyRaw`. Any mismatch (instance reload reset s_Properties to base,
-// another buff added in between, GC clobber, …) tells us our delta is no
-// longer in the raw value — reverting would push it below baseline. Skip
-// the revert and let the next apply land fresh on top of whatever raw is.
-//
-// IMPORTANT: composition with other layers (e.g. skills) only works if the
-// revert pass happens BEFORE any other layer mutates raw. Earlier we had
-// revert+apply both inside ApplyDefaultArmor, called AFTER skill apply had
-// shifted raw — the snapshot check failed, both layers silently re-stacked,
-// and HP grew unbounded with every skill UI save / respec.
-//
-// The new contract: caller runs all reverts first (LIFO of apply order),
-// then all applies (armor → skills per the orchestration in
-// ReapplyCharacterSkillTree). RCST does one combined SetProperty fanout at
-// the end.
-struct PerProp {
-	float delta;
-	float postApplyRaw;
+// Multiple appliedEntries per piece because:
+//   - 1 base +10% Health Max
+//   - up to 6 mod entries (one per egid in the mod CSV; duplicate egids
+//     produce duplicate AppliedEntry rows — exactly what we want for
+//     stacking, mirroring how Inventory::ApplyRolledModEffects works)
+struct AppliedEntry {
+    int   propId;
+    int   calcMethod;
+    float amount;
+    int   deviceInstId;  // = the armor's ga_players_inventory.id (used as buff devInst)
 };
 
-std::map<ATgPawn*, std::map<int, PerProp>>& Records() {
-	static std::map<ATgPawn*, std::map<int, PerProp>> g;
-	return g;
+// Per-pawn list of every ApplyBuff call we made during the most recent
+// ApplyDefaultArmor pass. Revert iterates this in reverse and ApplyBuffs
+// each one with bRemove=1.
+std::map<ATgPawn*, std::vector<AppliedEntry>>& Records() {
+    static std::map<ATgPawn*, std::vector<AppliedEntry>> g;
+    return g;
 }
-
-// Property ids consumed by armor.
-constexpr int kPropHealthMax        = 304;  // base stat for max HP
-constexpr int kPropHealthMaxModif   = 412;  // [n] mod — redirected to 304
-constexpr int kPropHealthMod        = 390;  // Core mod — redirected to 304
-constexpr int kPropProtectionRanged = 218;  // [r] mod — direct add
-
-// Hardcoded loadout. Values picked to feel like a fully-modded epic set in
-// classic GA tuning. Tune these constants and recompile to rebalance.
-//
-// Health Max stacking shape:
-//   3 pieces × 6 [n] mods = 18 entries, each +N_PERC of base HP.
-//   7 pieces × 1 Core mod =  7 entries, each +CORE_PERC of base HP.
-//   Total HP multiplier ≈ 1 + (18·N_PERC + 7·CORE_PERC).
-//   With defaults below: 1 + (18·0.005 + 7·0.10) = 1 + 0.79 = 1.79x base.
-//
-// Ranged Protection stacking shape:
-//   4 pieces × 6 [r] mods = 24 entries, each +R_FLAT to prop 218 raw.
-//   ~99.5% of devices have attack_rating=100, so UC CalcProtection's
-//   fPercProtection = nProt/nDevRating treats raw 218 as percentage points.
-//   24·0.5 = 12 → 12% Ranged mitigation layer (composes multiplicatively
-//   with any other protection-layer entries; algebraically identical to
-//   the classic spreadsheet's D5/D6 formula).
-constexpr float kCorePerc = 0.10f;   // each piece's implicit +10% MaxHP
-constexpr float kNPerc    = 0.005f;  // each [n] mod = +0.5% MaxHP
-constexpr float kRFlat    = 0.5f;    // each [r] mod = +0.5 raw Ranged-Protection (= +0.5 pt)
-
-constexpr int kPiecesR    = 4;
-constexpr int kPiecesN    = 3;
-constexpr int kModsPerPiece = 6;
-constexpr int kTotalPieces  = 7;
 
 // Identify a player pawn without depending on Pawn->Controller being wired.
-// SpawnPlayerCharacter sets PRI before calling ReapplyCharacterSkillTree, but
-// the engine wires Controller→Pawn asynchronously via Possess() afterward.
-// On return-from-mission the controller can be null at our call site, which
-// made the previous Controller-based check return false → armor was silently
-// skipped. r_bIsBot is CPF_Net + always set at bot spawn time, and PRI is
-// always present for both bots and players, so "has PRI AND is not bot" is
-// the reliable signal.
+// On respawn / mission travel the controller is wired asynchronously via
+// Possess() AFTER RCST runs; a controller-based check returned false there
+// and armor was silently skipped. PRI + r_bIsBot is reliable: PRI is always
+// present for bots and players; r_bIsBot is CPF_Net + always set at bot
+// spawn.
 bool IsHumanPlayer(ATgPawn* Pawn) {
-	if (!Pawn) return false;
-	if (!Pawn->PlayerReplicationInfo) return false;
-	if (Pawn->r_bIsBot) return false;
-	return true;
+    if (!Pawn) return false;
+    if (!Pawn->PlayerReplicationInfo) return false;
+    if (Pawn->r_bIsBot) return false;
+    return true;
 }
 
-UTgProperty* FindProp(ATgPawn* Pawn, int propId) {
-	for (int i = 0; i < Pawn->s_Properties.Count; ++i) {
-		UTgProperty* p = Pawn->s_Properties.Data[i];
-		if (p && p->m_nPropertyId == propId) return p;
-	}
-	return nullptr;
+// Parse a comma-separated egid list into a vector. Empty/whitespace tokens
+// are skipped. Anything non-numeric ends parsing early (treating it as
+// corruption rather than silently dropping). Returns the list in input
+// order — order matters here, because every egid in the CSV is one stacking
+// instance (six identical egids = six ApplyBuff calls).
+std::vector<int> ParseEgidCsv(const char* csv) {
+    std::vector<int> out;
+    if (!csv) return out;
+    const char* p = csv;
+    while (*p) {
+        while (*p == ',' || *p == ' ') ++p;
+        if (!*p) break;
+        char* end = nullptr;
+        long v = std::strtol(p, &end, 10);
+        if (end == p) break;
+        out.push_back((int)v);
+        p = end;
+    }
+    return out;
 }
 
-// Float-tolerant equality. The post-apply raw value we record and the raw
-// value we read back next time should be bit-identical (no math happens to
-// it between our writes if nothing else touches the property), but a small
-// epsilon guards against FPU rounding noise if the engine re-loads the
-// float via a value that round-trips through a double.
-bool RawMatches(float current, float remembered) {
-	return std::fabs(current - remembered) < 0.001f;
+// Resolve every effect row for the given egids in one DB roundtrip. Returns
+// a map from egid → list of (propId, calcMethod, baseValue), filtered to
+// the calc methods our ApplyBuff implements (67/68/69/70) and to permanent
+// (lifetime_sec=0) effects only.
+//
+// The lifetime gate is via a subquery (not a JOIN) because
+// asm_data_set_effect_groups has duplicate rows per effect_group_id in this
+// build's asm.dat capture — a JOIN doubles every effect, inflating buff
+// magnitudes 2×. Same shape as Inventory::ApplyRolledModEffects.
+struct EffectRow { int propId; float baseValue; int calcMethod; };
+
+std::map<int, std::vector<EffectRow>>
+LookupEffectRows(const std::vector<int>& egids) {
+    std::map<int, std::vector<EffectRow>> out;
+    if (egids.empty()) return out;
+    sqlite3* db = Database::GetConnection();
+    if (!db) return out;
+
+    std::vector<int> uniq = egids;
+    std::sort(uniq.begin(), uniq.end());
+    uniq.erase(std::unique(uniq.begin(), uniq.end()), uniq.end());
+
+    std::string sql =
+        "SELECT e.effect_group_id, e.prop_id, e.base_value, e.calc_method_value_id "
+        "FROM asm_data_set_effects e "
+        "WHERE e.effect_group_id IN (SELECT effect_group_id FROM asm_data_set_effect_groups WHERE lifetime_sec = 0) "
+        "  AND e.effect_group_id IN (";
+    for (size_t i = 0; i < uniq.size(); ++i) {
+        if (i) sql += ',';
+        sql += std::to_string(uniq[i]);
+    }
+    sql += ')';
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        Logger::Log("armor", "LookupEffectRows: prepare failed: %s\n", sqlite3_errmsg(db));
+        return out;
+    }
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        const int   egid       = sqlite3_column_int   (stmt, 0);
+        const int   propId     = sqlite3_column_int   (stmt, 1);
+        const float baseValue  = (float)sqlite3_column_double(stmt, 2);
+        const int   calcMethod = sqlite3_column_int   (stmt, 3);
+        if (calcMethod < 67 || calcMethod > 70) continue;
+        out[egid].push_back({ propId, baseValue, calcMethod });
+    }
+    sqlite3_finalize(stmt);
+    return out;
+}
+
+// Apply one ApplyBuff and record what we did.
+void ApplyAndRecord(ATgPawn* Pawn,
+                    std::vector<AppliedEntry>& records,
+                    int propId, int calcMethod, float amount, int devInst) {
+    FBuffHeader h{};
+    h.nPropId          = propId;
+    h.nReqCategoryCode = 0;
+    h.nReqSkillId      = 0;
+    h.nReqDeviceInstId = devInst;
+
+    TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, h, calcMethod, amount,
+                            /*bRemove=*/0, /*BUFF_SOURCE_TYPE_ITEM=*/1);
+    records.push_back({ propId, calcMethod, amount, devInst });
+}
+
+// What we're about to apply, expressed as one row per equipped armor piece.
+struct EquippedPiece {
+    int  inventoryId;           // ga_players_inventory.id (used as buff devInst)
+    int  equippedSlot;          // group-126 SVID (1107/1120/...) — logging only
+    std::string modEgidsCsv;
+};
+
+// Walk ga_character_devices joined to ga_players_inventory and return one
+// EquippedPiece per equipped armor row for the character. Only rows whose
+// equipped_slot matches one of the 7 group-126 armor SVIDs are returned —
+// the same query would otherwise pick up cosmetic and gameplay-device rows
+// for the same character.
+std::vector<EquippedPiece> FetchEquippedArmor(int64_t character_id) {
+    std::vector<EquippedPiece> out;
+    sqlite3* db = Database::GetConnection();
+    if (!db) return out;
+
+    // The 7 group-129 armor SVIDs (see EquipSlot.hpp ArmorSlot::All[]).
+    // Hardcoding the literal here keeps Armor.cpp from having to drag the
+    // EquipSlot.hpp dependency just for one IN-clause; the values are
+    // stable (DB-canonical) and small.
+    //   1130 Head, 1132 Hands (repurposed), 1133 Chest, 1136 Arms,
+    //   1139 Legs, 1142 Feet, 1143 Shoulder (repurposed)
+    // See ArmorSlot constants in EquipSlot.hpp for the full decode of
+    // MiscItems[] indexing.
+    const char* sql =
+        "SELECT cd.inventory_id, cd.equipped_slot, pi.mod_effect_group_ids "
+        "FROM ga_character_devices cd "
+        "JOIN ga_players_inventory pi ON pi.id = cd.inventory_id "
+        "WHERE cd.character_id = ? "
+        "  AND cd.equipped_slot IN (1130, 1132, 1133, 1136, 1139, 1142, 1143)";
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        Logger::Log("armor", "FetchEquippedArmor: prepare failed: %s\n", sqlite3_errmsg(db));
+        return out;
+    }
+    sqlite3_bind_int64(stmt, 1, character_id);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        EquippedPiece p;
+        p.inventoryId   = sqlite3_column_int(stmt, 0);
+        p.equippedSlot  = sqlite3_column_int(stmt, 1);
+        const char* csv = (const char*)sqlite3_column_text(stmt, 2);
+        if (csv) p.modEgidsCsv = csv;
+        out.push_back(std::move(p));
+    }
+    sqlite3_finalize(stmt);
+    return out;
 }
 
 }  // namespace
 
 void Armor::RevertDefaultArmor(ATgPawn* Pawn) {
-	if (!Pawn || Pawn->s_Properties.Data == nullptr) return;
-	if (!IsHumanPlayer(Pawn)) return;  // silent for bots — Apply logs the skip
+    if (!Pawn) return;
+    if (!IsHumanPlayer(Pawn)) return;  // silent for bots — Apply logs the skip
 
-	// Reverse the HEALTH_MAX_MODIFIER (412) ITEM buff registered on apply. Mirror
-	// the apply magnitude; ApplyBuff's exact-match reverse + entry-removal-at-zero
-	// keeps the registry clean, and its 412→304 recompute lowers r_nHealthMaximum.
-	// Safe no-op on the first-ever pass (no matching entry to reverse).
-	{
-		const float pct = (kTotalPieces * kCorePerc
-		                   + kPiecesN * kModsPerPiece * kNPerc) * 100.0f;
-		FBuffHeader h{};
-		h.nPropId = kPropHealthMaxModif;  // 412
-		TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, h, /*calc=68 +%*/68, pct,
-			/*bRemove=*/1, /*BUFF_SOURCE_TYPE_ITEM=*/1);
-	}
+    auto it = Records().find(Pawn);
+    if (it == Records().end()) {
+        // First-ever pass on this pawn: nothing to reverse. Apply will
+        // populate the record map; next RCST cycle's Revert will run.
+        return;
+    }
+    auto& records = it->second;
 
-	auto recIt = Records().find(Pawn);
-	if (recIt == Records().end()) return;  // first-ever apply: nothing else to revert
-	auto& records = recIt->second;
-
-	for (auto& kv : records) {
-		const int propId = kv.first;
-		const PerProp& prev = kv.second;
-		UTgProperty* prop = FindProp(Pawn, propId);
-		if (!prop) continue;
-
-		const float rawBefore = prop->m_fRaw;
-		if (RawMatches(rawBefore, prev.postApplyRaw)) {
-			prop->m_fRaw -= prev.delta;
-			Logger::Log("armor",
-				"[Armor/revert] pawn=%p propId=%d removed %.3f -> raw=%.3f\n",
-				(void*)Pawn, propId, prev.delta, prop->m_fRaw);
-		} else {
-			// Raw no longer matches what we left — instance reload, mission
-			// travel, or a layer we don't track touched it. Don't subtract a
-			// delta that isn't there.
-			Logger::Log("armor",
-				"[Armor/revert-skipped] pawn=%p propId=%d raw=%.3f != postApply=%.3f (delta %.3f), "
-				"treating as reset\n",
-				(void*)Pawn, propId, rawBefore, prev.postApplyRaw, prev.delta);
-		}
-	}
-	records.clear();
+    // Mirror the apply order LIFO. ApplyBuff's reverse path is exact-match
+    // additive subtraction (header tuple + same calc/amount → subtract),
+    // and entries that hit zero get removed from m_EffectBuffInfo. Equal
+    // and opposite to apply, so the registry returns to its pre-apply
+    // state regardless of any other layers added in between as long as
+    // those layers don't share our exact (propId, devInst) key.
+    int reverted = 0;
+    for (auto rit = records.rbegin(); rit != records.rend(); ++rit) {
+        const AppliedEntry& e = *rit;
+        FBuffHeader h{};
+        h.nPropId          = e.propId;
+        h.nReqCategoryCode = 0;
+        h.nReqSkillId      = 0;
+        h.nReqDeviceInstId = e.deviceInstId;
+        TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, h, e.calcMethod, e.amount,
+                                /*bRemove=*/1, /*BUFF_SOURCE_TYPE_ITEM=*/1);
+        ++reverted;
+    }
+    Logger::Log("armor",
+        "[Armor/revert] pawn=%p reverted=%d buff entries\n",
+        (void*)Pawn, reverted);
+    records.clear();
 }
 
 void Armor::ApplyDefaultArmor(ATgPawn* Pawn) {
-	if (!Pawn || Pawn->s_Properties.Data == nullptr) return;
-	if (!IsHumanPlayer(Pawn)) {
-		Logger::Log("armor",
-			"[Armor] skipped pawn=%p (not a human player: PRI=%p r_bIsBot=%d)\n",
-			(void*)Pawn,
-			(void*)(Pawn ? Pawn->PlayerReplicationInfo : nullptr),
-			(int)(Pawn ? Pawn->r_bIsBot : 0));
-		return;
-	}
+    if (!Pawn) return;
+    if (!IsHumanPlayer(Pawn)) {
+        Logger::Log("armor",
+            "[Armor] skipped pawn=%p (not a human player: PRI=%p r_bIsBot=%d)\n",
+            (void*)Pawn,
+            (void*)Pawn->PlayerReplicationInfo,
+            (int)Pawn->r_bIsBot);
+        return;
+    }
 
-	auto& records = Records()[Pawn];
+    // s_nCharacterId is set in SpawnPlayerCharacter:206 BEFORE the pawn's
+    // ReapplyCharacterSkillTree call at line 577, so it's reliably populated
+    // here. Cast to ATgPawn_Character* because s_nCharacterId lives on the
+    // derived class, not the ATgPawn base — IsHumanPlayer above guarantees
+    // a player pawn (the only subclass with this field populated).
+    // Falling back to 0 means no equipped armor → no buffs applied → empty
+    // record map → harmless no-op on revert next cycle.
+    const int64_t character_id =
+        (int64_t)((ATgPawn_Character*)Pawn)->s_nCharacterId;
+    if (character_id == 0) {
+        Logger::Log("armor",
+            "[Armor] pawn=%p has s_nCharacterId=0 — skipping (no equipped armor)\n",
+            (void*)Pawn);
+        return;
+    }
 
-	auto applyTo = [&](int propId, float newDelta) {
-		UTgProperty* prop = FindProp(Pawn, propId);
-		if (!prop) {
-			Logger::Log("armor",
-				"[Armor/apply] pawn=%p propId=%d missing in s_Properties — skipped\n",
-				(void*)Pawn, propId);
-			return;
-		}
+    const std::vector<EquippedPiece> equipped = FetchEquippedArmor(character_id);
+    if (equipped.empty()) {
+        Logger::Log("armor",
+            "[Armor] pawn=%p char=%lld has no equipped armor rows — bare stats\n",
+            (void*)Pawn, (long long)character_id);
+        return;
+    }
 
-		prop->m_fRaw += newDelta;
-		records[propId] = { newDelta, prop->m_fRaw };
-		Logger::Log("armor",
-			"[Armor/apply] pawn=%p propId=%d +%.3f -> raw=%.3f\n",
-			(void*)Pawn, propId, newDelta, prop->m_fRaw);
-	};
+    // Collect every egid across every piece in one batch so the effects
+    // lookup is a single DB roundtrip rather than 7.
+    std::vector<int> allEgids;
+    std::vector<std::vector<int>> egidsPerPiece(equipped.size());
+    for (size_t pi = 0; pi < equipped.size(); ++pi) {
+        egidsPerPiece[pi] = ParseEgidCsv(equipped[pi].modEgidsCsv.c_str());
+        allEgids.insert(allEgids.end(), egidsPerPiece[pi].begin(), egidsPerPiece[pi].end());
+    }
 
-	// HEALTH_MAX: register the implicit +10%/piece (+[n] mods) as a
-	// HEALTH_MAX_MODIFIER (prop 412) ITEM buff — NOT a direct m_fRaw write.
-	// This matches how real armor works (each of the 7 equippable pieces is a
-	// class-157 TgEffectBuff on prop 412, calc 68 +%, base_value 10.0 — verified
-	// in asm_data_set_effects: exactly 7 such effects) and is the only form that
-	// composes correctly with the Health skill: ATgPawn::ApplyBuff folds every
-	// 412 entry into r_nHealthMaximum via the 3-layer GetBuffedProperty formula
-	// (item layer × skill layer = base × 1.79 × (1+skill%)), instead of a flat
-	// additive sum that fights the registry. Magnitude is placeholder until
-	// equippable armor lands; the item-layer percents sum, so one +79% entry is
-	// equivalent to the 7 core + 18 [n]-mod entries. Prop 390 (Core mod) folds
-	// into the same 304 expansion {412,390}, so no separate handling needed.
-	{
-		const float pct = (kTotalPieces * kCorePerc
-		                   + kPiecesN * kModsPerPiece * kNPerc) * 100.0f;  // → 79.0 (percent form)
-		FBuffHeader h{};
-		h.nPropId = kPropHealthMaxModif;  // 412
-		TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, h, /*calc=68 +%*/68, pct,
-			/*bRemove=*/0, /*BUFF_SOURCE_TYPE_ITEM=*/1);
-		Logger::Log("armor",
-			"[Armor/apply] pawn=%p HEALTH_MAX +%.1f%% via ApplyBuff(412, ITEM)\n", (void*)Pawn, pct);
-	}
+    const auto effectsByEgid = LookupEffectRows(allEgids);
 
-	// Ranged Protection (prop 218, calc-method 67 ADD on raw).
-	const float deltaR = kPiecesR * kModsPerPiece * kRFlat;
-	applyTo(kPropProtectionRanged, deltaR);
+    auto& records = Records()[Pawn];
+    records.clear();
+    records.reserve(equipped.size() * 7);  // ~1 base + ~6 mods per piece
 
-	// Fanout is handled by RCST's combined SetProperty pass at the end of
-	// ReapplyCharacterSkillTree (skill applies land in m_fRaw AFTER us under
-	// the new apply order: armor → skills). RCST adds HEALTH_MAX to its
-	// touched set unconditionally after this call so the replicated cap
-	// (r_fMaxHealth + cached fields) still gets refreshed. 218 stays raw-only
-	// — CalcProtection reads m_fRaw directly with no fan-out needed.
+    int modApplied = 0;
+    for (size_t pi = 0; pi < equipped.size(); ++pi) {
+        const EquippedPiece& piece = equipped[pi];
+
+        // Per-egid effect fanout. Duplicates in egidsPerPiece produce
+        // duplicate ApplyBuff calls — exactly what we want for stacking
+        // (a `[rrrrrr]` piece = 6× ApplyBuff(218, …, 0.5)).
+        //
+        // The CSV starts with the slot's baseline egid (the +10% Health
+        // Mod prop-390 effect from the blueprint's Common-tier mod slot,
+        // prepended by SeedArmor) followed by the 6 rolled-mod egids
+        // from the chosen variant. No hardcoded ApplyBuff(412, 10%) any
+        // more — the +10% baseline is now data-driven through this
+        // same loop, sourced from `asm_data_set_blueprint_mod_effect_groups`
+        // → `asm_data_set_effects` like any other rolled mod.
+        //
+        // devInst = 0 (wildcard) — armor's stat effects (MaxHP, protection
+        // 217/218/219) are GLOBAL player stats with no device context.
+        // GetBuffedProperty queries them with devInst = 0; the registry
+        // match rule (FUN_109cd890) ignores wildcards-vs-scoped mismatches
+        // by only matching `stored devInst > 0` against the query devInst.
+        // Scoping armor buffs by inventory_id (as rolled WEAPON mods do)
+        // would hide them from the global MaxHP / protection recompute,
+        // and the +10% per piece would silently never land. Verified via
+        // 1300→1300 (base, should be 2210) regression on 2026-05-30 with
+        // per-piece scoping. Skills register with devInst = 0 for the
+        // same reason — see Inventory::ApplyRolledModEffects comments.
+        for (int egid : egidsPerPiece[pi]) {
+            auto fit = effectsByEgid.find(egid);
+            if (fit == effectsByEgid.end()) continue;
+            for (const EffectRow& r : fit->second) {
+                ApplyAndRecord(Pawn, records,
+                               r.propId, r.calcMethod, r.baseValue,
+                               /*devInst=*/0);
+                ++modApplied;
+            }
+        }
+
+        Logger::Log("armor",
+            "[Armor/apply] pawn=%p slot=%d invId=%d mods=%zu (CSV=\"%s\")\n",
+            (void*)Pawn, piece.equippedSlot, piece.inventoryId,
+            egidsPerPiece[pi].size(),
+            piece.modEgidsCsv.c_str());
+    }
+
+    Logger::Log("armor",
+        "[Armor/apply] pawn=%p char=%lld pieces=%zu mod+%d total=%zu records\n",
+        (void*)Pawn, (long long)character_id, equipped.size(),
+        modApplied, records.size());
+
+    // Fanout (SetProperty → ApplyProperty → r_nHealthMaximum etc.) is
+    // handled by RCST's combined SetProperty pass at the end of
+    // ReapplyCharacterSkillTree. RCST already inserts HEALTH_MAX (304)
+    // into its touchedPropIds set unconditionally after this call, so
+    // the replicated cap (r_fMaxHealth + cached fields) gets refreshed
+    // regardless of which props we touched. Protection props (217/218/
+    // 219) stay raw-only — CalcProtection reads m_fRaw directly via
+    // GetBuffedProperty with no fan-out needed.
 }

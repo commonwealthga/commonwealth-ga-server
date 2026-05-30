@@ -9,7 +9,16 @@ ATgPawn* __fastcall TgGame__SpawnBotPawn::Call(ATgGame* Game, void* edx, ATgAICo
 
 	Logger::Log("debug", "MINE TgGame__SpawnBotPawn START\n");
 
+	if (!pTgAI) {
+		Logger::Log("debug", "MINE TgGame__SpawnBotPawn: null pTgAI, aborting\n");
+		return nullptr;
+	}
+
 	ATgPawn_Character* newpawn = (ATgPawn_Character*)Game->Spawn(ClassPreloader::GetTgPawnCharacterClass(), pTgAI, FName(), vLocation, rRotation, nullptr, 1);
+	if (!newpawn) {
+		Logger::Log("debug", "MINE TgGame__SpawnBotPawn: Spawn returned null, aborting\n");
+		return nullptr;
+	}
 
 	pTgAI->Pawn = newpawn;
 	newpawn->Controller = pTgAI;

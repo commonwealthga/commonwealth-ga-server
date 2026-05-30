@@ -92,8 +92,13 @@ void __fastcall TgPawn__TrackKill::Call(ATgPawn* Pawn, void* edx, ATgPawn* Kille
 		// candidatePRI->bForceNetUpdate = 1;
 
 		if (Logger::IsChannelEnabled("stats")) {
+			// GetName shared static buffer — second call clobbers first.
+			const char* cRaw = candidate->GetName();
+			std::string cName = cRaw ? cRaw : "<null>";
+			const char* pRaw = Pawn->GetName();
+			std::string pName = pRaw ? pRaw : "<null>";
 			Logger::Log("stats", "Assist credited to %s for kill on %s (%s)\n",
-				candidate->GetName(), Pawn->GetName(),
+				cName.c_str(), pName.c_str(),
 				(i < 2) ? "damage" : "healing");
 		}
 	}

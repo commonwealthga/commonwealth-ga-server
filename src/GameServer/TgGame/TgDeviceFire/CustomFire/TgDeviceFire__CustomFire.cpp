@@ -18,11 +18,15 @@ void __fastcall TgDeviceFire__CustomFire::Call(UTgDeviceFire* pThis, void* edx) 
 	// never fires for bombs and we know to look elsewhere.
 	ATgDevice* device = (ATgDevice*)pThis->m_Owner;
 	if (Logger::IsChannelEnabled("bomb")) {
+		// GetFullName shared static buffer — second call clobbers first.
+		const char* devRaw = device ? device->GetFullName() : nullptr;
+		std::string devName = devRaw ? devRaw : "<null>";
+		const char* fmRaw = pThis->Class ? pThis->Class->GetFullName() : nullptr;
+		std::string fmName = fmRaw ? fmRaw : "<null>";
 		Logger::Log("bomb",
 			"[CustomFire entry] attackType=%d  fireType=%d  device=%s  fireMode.class=%s\n",
 			attackType, (int)pThis->m_nFireType,
-			device ? (device->GetFullName()) : "<null>",
-			pThis->Class ? pThis->Class->GetFullName() : "<null>");
+			devName.c_str(), fmName.c_str());
 	}
 
 	switch (attackType) {

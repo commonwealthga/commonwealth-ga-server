@@ -606,14 +606,25 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// UpdateDamagers has no UC callers and the binary native that
 		// originally drove it was stripped.
 		ATgPawn* Pawn = (ATgPawn*)Object;
-		if (Pawn->Controller && !Pawn->Controller->bIsPlayer && !Pawn->r_bIsHenchman) {
-			ATgAIController* AIC = (ATgAIController*)Pawn->Controller;
-			if (AIC->m_pFactory) {
-				if (Logger::IsChannelEnabled(GetLogChannel())) {
-					Logger::Log(GetLogChannel(), "Dying.BeginState: calling BotDied on factory for %s\n", Pawn->GetFullName());
+		// bIsPlayer is unreliable in this build — AI bots default bIsPlayer=true
+		// (it's a "valid combatant" gate, not "has client connection"). Use a
+		// class-name check, per feedback_bIsPlayer_unreliable.md. The intent
+		// here is: this pawn is an AI bot (not a player, not a henchman).
+		if (Pawn->Controller && Pawn->Controller->Class && !Pawn->r_bIsHenchman) {
+			const char* ctrlRaw = Pawn->Controller->Class->GetFullName();
+			const std::string ctrlClass = ctrlRaw ? ctrlRaw : "";
+			const bool isPlayerCtrl = ctrlClass.find("PlayerController") != std::string::npos;
+			if (!isPlayerCtrl) {
+				ATgAIController* AIC = (ATgAIController*)Pawn->Controller;
+				if (AIC->m_pFactory) {
+					if (Logger::IsChannelEnabled(GetLogChannel())) {
+						const char* pnRaw = Pawn->GetFullName();
+						const std::string pnName = pnRaw ? pnRaw : "<null>";
+						Logger::Log(GetLogChannel(), "Dying.BeginState: calling BotDied on factory for %s\n", pnName.c_str());
+					}
+					((void(__thiscall*)(ATgBotFactory*, ATgPawn*, ATgAIController*))0x10a8cbf0)(AIC->m_pFactory, Pawn, AIC);
+					AIC->m_pFactory = nullptr;
 				}
-				((void(__thiscall*)(ATgBotFactory*, ATgPawn*, ATgAIController*))0x10a8cbf0)(AIC->m_pFactory, Pawn, AIC);
-				AIC->m_pFactory = nullptr;
 			}
 		}
 		break;

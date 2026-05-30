@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
+#include "src/GameServer/Cosmetics/CosmeticEquip.hpp"
 #include "src/GameServer/Constants/EquipSlot.hpp"
 #include "src/GameServer/Constants/DeviceIds.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/PrepopulateInventoryId/TgInventoryManager__PrepopulateInventoryId.hpp"
@@ -194,27 +195,13 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newpawn->Role       = 3;  // ROLE_Authority
 	newpawn->RemoteRole = 1;  // ROLE_SimulatedProxy
 
-	newpawn->r_nBodyMeshAsmId = 1225;//0x5cc;
-	newpawn->r_CustomCharacterAssembly.SuitMeshId = 1225;
-	newpawn->r_CustomCharacterAssembly.HeadMeshId = GA_G::HEAD_ASM_ID_TROLL;
-	newpawn->r_CustomCharacterAssembly.HairMeshId = 1974;
-	newpawn->r_CustomCharacterAssembly.HelmetMeshId = -1;
-	newpawn->r_CustomCharacterAssembly.SkinToneParameterId = 0;
-	newpawn->r_CustomCharacterAssembly.SkinRaceParameterId = 0;
-	newpawn->r_CustomCharacterAssembly.EyeColorParameterId = 0;
-	newpawn->r_CustomCharacterAssembly.bBald = false;
-	newpawn->r_CustomCharacterAssembly.bHideHelmet = false;
-	newpawn->r_CustomCharacterAssembly.bValidCustomAssembly = true;
-	newpawn->r_CustomCharacterAssembly.bHalfHelmet = false;
-	newpawn->r_CustomCharacterAssembly.nGenderTypeId = GA_G::GENDER_TYPE_ID_MALE;
-	newpawn->r_CustomCharacterAssembly.HeadFlairId = -1;
-	newpawn->r_CustomCharacterAssembly.SuitFlairId = -1;
-	newpawn->r_CustomCharacterAssembly.JetpackTrailId = 7638;
-	newpawn->r_CustomCharacterAssembly.DyeList[0] = GA_G::DYE_ID_NONE_MORE_BLACK;
-	newpawn->r_CustomCharacterAssembly.DyeList[1] = GA_G::DYE_ID_NONE_MORE_BLACK;
-	newpawn->r_CustomCharacterAssembly.DyeList[2] = GA_G::DYE_ID_NONE_MORE_BLACK;
-	newpawn->r_CustomCharacterAssembly.DyeList[3] = GA_G::DYE_ID_NONE_MORE_BLACK;
-	newpawn->r_CustomCharacterAssembly.DyeList[4] = GA_G::DYE_ID_NONE_MORE_BLACK;
+	// r_nBodyMeshAsmId + r_CustomCharacterAssembly are owned by
+	// CosmeticEquip::LoadFromDB (called below, before the device equip loop).
+	// It writes the baseline assembly, overlays the character's saved
+	// cosmetics, and aligns r_nBodyMeshAsmId with the resolved SuitMeshId so
+	// downstream readers (ReplicatedEvent for r_nBodyMeshAsmId,
+	// SetCollisionFromMesh, GetBodyMeshId) see consistent state from the
+	// initial replication bunch onward.
 	newpawn->r_nSkillGroupSetId = classConfig.skillGroupSetId;
 	newpawn->s_nCharacterId = (int)GClientConnectionsData[ConnectionIndex].PlayerInfo.selected_character_id;
 
@@ -241,26 +228,9 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	// newrepplayer->Team = defenders;
 	newrepplayer->bAdmin = 1;
-	newrepplayer->r_CustomCharacterAssembly.SuitMeshId = 1225;
-	newrepplayer->r_CustomCharacterAssembly.HeadMeshId = GA_G::HEAD_ASM_ID_TROLL;
-	newrepplayer->r_CustomCharacterAssembly.HairMeshId = 1974;
-	newrepplayer->r_CustomCharacterAssembly.HelmetMeshId = -1;
-	newrepplayer->r_CustomCharacterAssembly.SkinToneParameterId = 0;
-	newrepplayer->r_CustomCharacterAssembly.SkinRaceParameterId = 0;
-	newrepplayer->r_CustomCharacterAssembly.EyeColorParameterId = 0;
-	newrepplayer->r_CustomCharacterAssembly.bBald = false;
-	newrepplayer->r_CustomCharacterAssembly.bHideHelmet = false;
-	newrepplayer->r_CustomCharacterAssembly.bValidCustomAssembly = true;
-	newrepplayer->r_CustomCharacterAssembly.bHalfHelmet = false;
-	newrepplayer->r_CustomCharacterAssembly.nGenderTypeId = GA_G::GENDER_TYPE_ID_MALE;
-	newrepplayer->r_CustomCharacterAssembly.HeadFlairId = -1;
-	newrepplayer->r_CustomCharacterAssembly.SuitFlairId = -1;
-	newrepplayer->r_CustomCharacterAssembly.JetpackTrailId = 7638;
-	newrepplayer->r_CustomCharacterAssembly.DyeList[0] = GA_G::DYE_ID_NONE_MORE_BLACK;
-	newrepplayer->r_CustomCharacterAssembly.DyeList[1] = GA_G::DYE_ID_NONE_MORE_BLACK;
-	newrepplayer->r_CustomCharacterAssembly.DyeList[2] = GA_G::DYE_ID_NONE_MORE_BLACK;
-	newrepplayer->r_CustomCharacterAssembly.DyeList[3] = GA_G::DYE_ID_NONE_MORE_BLACK;
-	newrepplayer->r_CustomCharacterAssembly.DyeList[4] = GA_G::DYE_ID_NONE_MORE_BLACK;
+	// PRI's r_CustomCharacterAssembly is also written by CosmeticEquip::LoadFromDB
+	// (it mirrors every assembly field from the pawn so the client's
+	// UpdateCharacterAssetRefs preload sees the final cosmetic state).
 	newrepplayer->r_nProfileId = classConfig.profileId;
 	// PRI is now wired to newpawn — fan HP across all 7 storage locations
 	// (engine fields + property descriptors + PRI replicated fields).
@@ -430,13 +400,42 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		int64_t charId = (int64_t)newpawn->s_nCharacterId;
 		sqlite3* db = Database::GetConnection();
 
+		// (0) Cosmetic assembly first — BEFORE the device equip loop and
+		// BEFORE Inventory::Finalize. Why ordering matters:
+		//
+		// Inventory::Finalize sets bForceNetUpdate=1 + calls UpdateClientDevices
+		// which, in this engine, drives the pawn's initial-replication bunch
+		// out to the client. Any r_CustomCharacterAssembly writes done AFTER
+		// that arrive as a later diff — the client first builds the body mesh
+		// from the pre-cosmetic SuitMeshId, attaches Mace and Shield (and any
+		// other left-hand-anchored device visuals) to THAT skeleton's bones,
+		// THEN OnCustomAssemblyChanged fires and rebuilds the mesh with the
+		// cosmetic flair, leaving the attached shield bound to stale bone
+		// transforms. Symptom: Mace and Shield's right-click shield rendered
+		// rotated ~90° CCW on first spawn, "fixed" only by swapping suit +
+		// melee (which forces a fresh attachment against the final mesh).
+		//
+		// Writing the assembly BEFORE the device loop ensures the initial
+		// bunch carries the FINAL flair state. Client builds the body mesh
+		// once with the cosmetic, then Mace and Shield attaches to the right
+		// skeleton from the start.
+		//
+		// LoadFromDB filters by i.item_id > 0 so it only touches cosmetic
+		// rows (suit flair / helmet flair / dyes / jetpack trail). The
+		// gameplay device equip loop below filters by i.device_id > 0 so
+		// the two passes never overlap.
+		CosmeticEquip::LoadFromDB(newpawn, charId);
+
 		// (1) Player-chosen equipped gear.
+		// v76: filter to device rows only (i.device_id > 0). Cosmetic rows
+		// (item_id > 0, device_id = 0) were already replayed by the
+		// LoadFromDB call above; they don't go through Inventory::Equip.
 		sqlite3_stmt* stmt = nullptr;
 		int rc = sqlite3_prepare_v2(db,
 			"SELECT i.device_id, d.equipped_slot, i.quality, i.id, i.mod_effect_group_ids "
 			"FROM ga_character_devices d "
 			"JOIN ga_players_inventory i ON i.id = d.inventory_id "
-			"WHERE d.character_id = ? "
+			"WHERE d.character_id = ? AND i.device_id > 0 "
 			"ORDER BY d.equipped_slot",
 			-1, &stmt, nullptr);
 		if (rc == SQLITE_OK && stmt) {
@@ -483,6 +482,9 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		// any other equipped device — no special handling needed here.
 
 		Inventory::Finalize(newpawn);
+
+		// Cosmetic assembly was applied BEFORE the device loop above; see the
+		// (0) comment up there for why the order matters.
 
 		// r_ItemCount (ATgInventoryManager+0x1e8, CPF_Net) MUST equal the count
 		// of non-null entries in m_InventoryMap on the client, otherwise

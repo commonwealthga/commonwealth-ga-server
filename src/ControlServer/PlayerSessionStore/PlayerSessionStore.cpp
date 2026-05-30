@@ -1,8 +1,11 @@
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/Database/Database.hpp"
+#include "src/ControlServer/Loadouts/ArmorLoadouts.hpp"
 #include "src/ControlServer/Loadouts/ClassLoadouts.hpp"
+#include "src/ControlServer/Loadouts/CosmeticLoadouts.hpp"
 #include "src/ControlServer/Loadouts/ModResolver.hpp"
 #include "src/ControlServer/Logger.hpp"
+#include "src/Shared/CosmeticSlots.hpp"
 #include "sqlite3.h"
 #include <cstdio>
 #include <cstdlib>
@@ -422,6 +425,23 @@ static int EquipPointToSvid(int point) {
 	return (point >= 1 && point <= 24) ? table[point] : 0;
 }
 
+// True when `equipped_slot` is one of the 7 group-129 armor SVIDs. Armor
+// rows store the SVID directly in `ga_character_devices.equipped_slot`
+// (no engine-equip-point indirection — armor doesn't bind to ES1..ES24),
+// so `slot_value_id` on the DeviceRow is the same value the column already
+// holds. See src/GameServer/Constants/EquipSlot.hpp ArmorSlot namespace
+// for the full decode (MiscItems[] index = SVID - 1128).
+static bool IsArmorSvid(int equipped_slot) {
+	switch (equipped_slot) {
+		case 1130: /*Head*/     case 1132: /*Hands*/     case 1133: /*Chest*/
+		case 1136: /*Arms*/     case 1139: /*Legs*/      case 1142: /*Feet*/
+		case 1143: /*Shoulder*/
+			return true;
+		default:
+			return false;
+	}
+}
+
 // CSV list of slot_value_ids an inventory item may occupy. Offhand devices
 // (engine points 7/8/9) are interchangeable — let the player put a grenade
 // in any of the three offhand slots. Everything else is single-slot.
@@ -452,6 +472,16 @@ static std::vector<int> CsvToInts(const char* csv) {
 void PlayerSessionStore::SeedInventoryFromLoadouts(int64_t user_id) {
 	sqlite3* db = Database::GetConnection();
 	if (!db) return;
+
+	// v76: seed cosmetic ownership (idempotent) before the device pass.
+	// Cosmetic rows have item_id > 0 and are scoped out of the device
+	// delete pass below via the `AND item_id = 0` clause.
+	SeedCosmetics(user_id);
+
+	// Armor seed — same shape as SeedCosmetics. Armor rows also have
+	// item_id > 0 so they're scoped out of the device delete pass below by
+	// the same `AND item_id = 0` clause; no separate guard needed.
+	SeedArmor(user_id);
 
 	// Build the "what should exist" set up front. Keyed by
 	// (profile_id, device_id, mods_csv, quality, oc) — same tuple the insert
@@ -494,9 +524,13 @@ void PlayerSessionStore::SeedInventoryFromLoadouts(int64_t user_id) {
 	int deletedDevRows = 0;
 	{
 		sqlite3_stmt* listStmt = nullptr;
+		// v76: scope the delete pass to device rows (item_id = 0). Cosmetic
+		// rows (item_id > 0) live in the same table now but aren't driven by
+		// ClassLoadouts.cpp — they're managed by SeedCosmetics. Without this
+		// gate the delete pass would nuke every cosmetic on every login.
 		if (sqlite3_prepare_v2(db,
 		    "SELECT id, profile_id, device_id, mod_effect_group_ids, quality, oc "
-		    "FROM ga_players_inventory WHERE user_id = ?",
+		    "FROM ga_players_inventory WHERE user_id = ? AND item_id = 0",
 		    -1, &listStmt, nullptr) == SQLITE_OK) {
 			sqlite3_bind_int64(listStmt, 1, user_id);
 			std::vector<int> toDelete;
@@ -724,6 +758,353 @@ void PlayerSessionStore::SeedInventoryFromLoadouts(int64_t user_id) {
 	Logger::Log("db",
 		"[PlayerSessionStore] Seed: user=%lld inventory+=%d inventory-=%d device-rows-cleared=%d characters opened with loadout=%d slot14-pinned=%d\n",
 		user_id, inserted, deletedInvRows, deletedDevRows, equippedCharacters, pinnedSlot14);
+
+	// v76: fill empty cosmetic slots on every character (idempotent per
+	// the INSERT OR IGNORE in SeedCharacterCosmeticDefaults). Unlike the
+	// device seed above, this runs for every character regardless of
+	// whether the character has device equips — cosmetics have their own
+	// equip slots (6/12/16-21) that exist independently of device slots.
+	{
+		sqlite3_stmt* allCharsStmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+		    "SELECT id, profile_id FROM ga_characters WHERE user_id = ?",
+		    -1, &allCharsStmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(allCharsStmt, 1, user_id);
+			std::vector<std::pair<int64_t, uint32_t>> chars;
+			while (sqlite3_step(allCharsStmt) == SQLITE_ROW) {
+				chars.emplace_back(sqlite3_column_int64(allCharsStmt, 0),
+				                   (uint32_t)sqlite3_column_int(allCharsStmt, 1));
+			}
+			sqlite3_finalize(allCharsStmt);
+			for (const auto& [cid, pid] : chars) {
+				SeedCharacterCosmeticDefaults(cid, pid);
+				SeedCharacterArmorDefaults(cid);
+			}
+		}
+	}
+}
+
+void PlayerSessionStore::SeedCosmetics(int64_t user_id) {
+	// No lock: matches SeedInventoryFromLoadouts's pattern. Callers that hold
+	// mutex_ (e.g. InsertCharacter → SeedInventoryFromLoadouts) would deadlock
+	// on a recursive acquire since mutex_ is non-recursive.
+	sqlite3* db = Database::GetConnection();
+	if (!db) return;
+
+	// Pass 1: helmets (1006), helmet flairs (1007), suits (1008), trails (1612)
+	// One row each. profile_id derived from skill_id (per-class appearance
+	// skills are 425-432 and 496-497; everything else falls to shared 0).
+	//
+	// CRITICAL: store i.item_id (the game-logical id), NOT i.id (the row
+	// PK). The wire ITEM_ID field and the engine natives (HeadFlairId etc.)
+	// both expect the game item_id. Storing the PK leads to cosmetics
+	// rendering as random unrelated items on the client (v76 seed bug,
+	// cleaned up by v77).
+	const char* kSeedHelmsSuitsTrails =
+		"INSERT OR IGNORE INTO ga_players_inventory"
+		"  (user_id, profile_id, device_id, quality, mod_effect_group_ids, oc, allowed_slots, item_id, stock_n) "
+		"SELECT ?, "
+		"       CASE i.skill_id "
+		"         WHEN 427 THEN 680 WHEN 428 THEN 680 "  // Assault Suits / Helmets
+		"         WHEN 431 THEN 567 WHEN 432 THEN 567 "  // Medic
+		"         WHEN 425 THEN 679 WHEN 426 THEN 679 "  // Robotics
+		"         WHEN 497 THEN 681 WHEN 496 THEN 681 "  // Recon
+		"         ELSE 0 "
+		"       END, "
+		"       0, 0, '', 0, "
+		"       CASE "
+		"         WHEN i.item_subtype_value_id IN (1006, 1007) THEN '500' "      // ES12 Helmet
+		"         WHEN i.item_subtype_value_id = 1008          THEN '202' "      // ES6  Suit
+		"         WHEN i.item_type_value_id    = 1612          THEN '1001' "     // ES21 Trail
+		"       END, "
+		"       i.item_id, 0 "
+		"FROM asm_data_set_items i "
+		"WHERE i.item_type_value_id = 1612 "
+		"   OR (i.item_type_value_id = 950 AND i.item_subtype_value_id IN (1006, 1007, 1008))";
+	{
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db, kSeedHelmsSuitsTrails, -1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(stmt, 1, user_id);
+			sqlite3_step(stmt);
+			sqlite3_finalize(stmt);
+		} else {
+			Logger::Log("cosmetic-seed",
+				"SeedCosmetics: prepare(helmets/suits/trails) failed: %s\n",
+				sqlite3_errmsg(db));
+		}
+	}
+
+	// Pass 2: dyes (1020) — 5 stock copies each. allowed_slots lists all 5
+	// dye slots so any copy can be equipped to any dye slot. Uses i.item_id
+	// (game id), not i.id (row PK) — same reason as Pass 1.
+	const char* kSeedDyes =
+		"INSERT OR IGNORE INTO ga_players_inventory"
+		"  (user_id, profile_id, device_id, quality, mod_effect_group_ids, oc, allowed_slots, item_id, stock_n) "
+		"SELECT ?, 0, 0, 0, '', 0, '996,997,998,999,1000', i.item_id, n.n "
+		"FROM asm_data_set_items i "
+		"CROSS JOIN (SELECT 0 AS n UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4) n "
+		"WHERE i.item_type_value_id = 1020";
+	{
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db, kSeedDyes, -1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(stmt, 1, user_id);
+			sqlite3_step(stmt);
+			sqlite3_finalize(stmt);
+		} else {
+			Logger::Log("cosmetic-seed", "SeedCosmetics: prepare(dyes) failed: %s\n",
+				sqlite3_errmsg(db));
+		}
+	}
+
+	Logger::Log("cosmetic-seed", "SeedCosmetics: user=%lld done\n", (long long)user_id);
+}
+
+void PlayerSessionStore::SeedCharacterCosmeticDefaults(int64_t character_id, uint32_t profile_id) {
+	// No lock: same rationale as SeedCosmetics — caller may already hold mutex_.
+	sqlite3* db = Database::GetConnection();
+	if (!db) return;
+
+	const auto& defaults = CosmeticLoadouts::GetDefaultsForProfile(profile_id);
+
+	int64_t user_id = 0;
+	{
+		sqlite3_stmt* s = nullptr;
+		if (sqlite3_prepare_v2(db,
+		        "SELECT user_id FROM ga_characters WHERE id = ?",
+		        -1, &s, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(s, 1, character_id);
+			if (sqlite3_step(s) == SQLITE_ROW) {
+				user_id = sqlite3_column_int64(s, 0);
+			}
+			sqlite3_finalize(s);
+		}
+	}
+	if (user_id == 0) {
+		Logger::Log("cosmetic-seed",
+			"SeedCharacterCosmeticDefaults: no user for char=%lld\n",
+			(long long)character_id);
+		return;
+	}
+
+	// Cosmetic suit/helmet defaults seed at the DB-internal slots (22/23) so
+	// they don't collide with the gameplay suit/helmet device rows at slot
+	// 6/12 from SeedInventoryFromLoadouts. Dyes and jetpack trail keep their
+	// engine slots — they don't collide with anything.
+	struct Slot { int db_slot; int item_id; };
+	const Slot slots[] = {
+		{ CosmeticSlots::kCosmeticHelmetDbSlot, defaults.helmet_item_id   },
+		{ CosmeticSlots::kCosmeticSuitDbSlot,   defaults.suit_item_id     },
+		{ 16, defaults.dye_primary      },
+		{ 17, defaults.dye_secondary    },
+		{ 18, defaults.dye_emissive     },
+		{ 19, defaults.dye_weapon_pri   },
+		{ 20, defaults.dye_weapon_emi   },
+		{ 21, defaults.jetpack_trail    },
+	};
+
+	const char* kFindInv =
+		"SELECT id FROM ga_players_inventory "
+		"WHERE user_id = ? AND item_id = ? "
+		"ORDER BY stock_n ASC LIMIT 1";
+	const char* kInsertEquip =
+		"INSERT OR IGNORE INTO ga_character_devices (character_id, inventory_id, equipped_slot) "
+		"VALUES (?, ?, ?)";
+
+	for (const auto& sl : slots) {
+		if (sl.item_id == 0) continue;
+
+		int invId = 0;
+		sqlite3_stmt* selStmt = nullptr;
+		if (sqlite3_prepare_v2(db, kFindInv, -1, &selStmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(selStmt, 1, user_id);
+			sqlite3_bind_int  (selStmt, 2, sl.item_id);
+			if (sqlite3_step(selStmt) == SQLITE_ROW) {
+				invId = sqlite3_column_int(selStmt, 0);
+			}
+			sqlite3_finalize(selStmt);
+		}
+		if (invId == 0) {
+			Logger::Log("cosmetic-seed",
+				"SeedCharacterCosmeticDefaults: no inv row for char=%lld user=%lld item=%d (db_slot %d)\n",
+				(long long)character_id, (long long)user_id, sl.item_id, sl.db_slot);
+			continue;
+		}
+
+		sqlite3_stmt* insStmt = nullptr;
+		if (sqlite3_prepare_v2(db, kInsertEquip, -1, &insStmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(insStmt, 1, character_id);
+			sqlite3_bind_int  (insStmt, 2, invId);
+			sqlite3_bind_int  (insStmt, 3, sl.db_slot);
+			sqlite3_step(insStmt);
+			sqlite3_finalize(insStmt);
+		}
+	}
+
+	Logger::Log("cosmetic-seed",
+		"SeedCharacterCosmeticDefaults: char=%lld profile=%u done\n",
+		(long long)character_id, profile_id);
+}
+
+void PlayerSessionStore::SeedArmor(int64_t user_id) {
+	// No lock: matches SeedCosmetics's pattern. Callers may already hold mutex_.
+	sqlite3* db = Database::GetConnection();
+	if (!db) return;
+
+	// 7 slots × 5 variants = 35 rows. stock_n is the variant index (0..4) so
+	// the existing UNIQUE(user_id, item_id, stock_n) index gives us natural
+	// idempotency with no extra dedupe logic.
+	//
+	// Per-row fixed fields:
+	//   user_id        — bound
+	//   profile_id     — 0 (armor is shared across class profiles — every
+	//                       class wears the same armor pool)
+	//   device_id      — 0 (armor pieces have no backing device; the
+	//                       Inventory marshal's cosmetic-style path applies)
+	//   quality        — 1162 (Q_EPIC; tier color in the client UI)
+	//   mod_effect_group_ids — variant CSV from ArmorLoadouts::kVariants
+	//   oc             — 0
+	//   allowed_slots  — the slot's group-126 SVID as a decimal string
+	//                    (e.g. "1107" for Head). Lets a future swap UI
+	//                    refuse cross-slot equips at validate time.
+	//   item_id        — slot's base item_id from ArmorLoadouts::kSlots
+	//   stock_n        — variant index
+	sqlite3_stmt* stmt = nullptr;
+	const char* kSeed =
+		"INSERT OR IGNORE INTO ga_players_inventory"
+		"  (user_id, profile_id, device_id, quality, mod_effect_group_ids, oc, allowed_slots, item_id, stock_n) "
+		"VALUES (?, 0, 0, 1162, ?, 0, ?, ?, ?)";
+	if (sqlite3_prepare_v2(db, kSeed, -1, &stmt, nullptr) != SQLITE_OK) {
+		Logger::Log("armor-seed", "SeedArmor: prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+
+	int inserted = 0;
+	for (int si = 0; si < ArmorLoadouts::kSlotCount; ++si) {
+		const auto& slot = ArmorLoadouts::kSlots[si];
+		const std::string allowed = std::to_string(slot.slot_value_id);
+		for (int vi = 0; vi < ArmorLoadouts::kVariantCount; ++vi) {
+			const auto& variant = ArmorLoadouts::kVariants[vi];
+			// Prepend the slot's baseline +10% Health Mod egid to the variant's
+			// rolled-mod CSV. Two effects in one step:
+			//   1) The wire's DATA_SET_INVENTORY_STATE will list this egid, so
+			//      the client's item tooltip renders the +10% Health Mod line.
+			//   2) Armor.cpp's per-egid ApplyBuff fanout naturally picks up
+			//      the prop-390 base-10 effect from this egid and folds it
+			//      into MaxHP (no hardcoded ApplyBuff(412,...) needed any more).
+			// Order within the CSV doesn't affect math — every egid is one
+			// stacking instance. The base egid's prop (390) has no ui_code so
+			// it doesn't render a letter, leaving the visible suffix as
+			// `[rrrrrr]` / `[nnnnnn]` / `[bbbbbb]` / `[mmmmmm]` / `[rrrnnn]`.
+			std::string csv = std::to_string(slot.base_effect_egid);
+			csv += ',';
+			csv += variant.mods_csv;
+
+			sqlite3_reset(stmt);
+			sqlite3_clear_bindings(stmt);
+			sqlite3_bind_int64(stmt, 1, user_id);
+			sqlite3_bind_text (stmt, 2, csv.c_str(),      -1, SQLITE_TRANSIENT);
+			sqlite3_bind_text (stmt, 3, allowed.c_str(),  -1, SQLITE_TRANSIENT);
+			sqlite3_bind_int  (stmt, 4, slot.base_item_id);
+			sqlite3_bind_int  (stmt, 5, vi);  // stock_n = variant index
+			if (sqlite3_step(stmt) == SQLITE_DONE && sqlite3_changes(db) > 0) {
+				++inserted;
+			}
+		}
+	}
+	sqlite3_finalize(stmt);
+
+	Logger::Log("armor-seed",
+		"SeedArmor: user=%lld inserted=%d (of %d possible — rest already present)\n",
+		(long long)user_id, inserted, ArmorLoadouts::kSlotCount * ArmorLoadouts::kVariantCount);
+}
+
+void PlayerSessionStore::SeedCharacterArmorDefaults(int64_t character_id) {
+	// No lock: same rationale as SeedCharacterCosmeticDefaults.
+	sqlite3* db = Database::GetConnection();
+	if (!db) return;
+
+	// Resolve user_id from character — needed to find the right inventory rows.
+	int64_t user_id = 0;
+	{
+		sqlite3_stmt* s = nullptr;
+		if (sqlite3_prepare_v2(db,
+		        "SELECT user_id FROM ga_characters WHERE id = ?",
+		        -1, &s, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(s, 1, character_id);
+			if (sqlite3_step(s) == SQLITE_ROW) {
+				user_id = sqlite3_column_int64(s, 0);
+			}
+			sqlite3_finalize(s);
+		}
+	}
+	if (user_id == 0) {
+		Logger::Log("armor-seed",
+			"SeedCharacterArmorDefaults: no user for char=%lld\n",
+			(long long)character_id);
+		return;
+	}
+
+	// For each armor slot, find the inventory row for the default variant
+	// (matched by item_id + stock_n) and INSERT OR IGNORE into
+	// ga_character_devices. The UNIQUE(character_id, equipped_slot) index
+	// makes this idempotent — players who've moved armor away from the
+	// default keep their selection on every login.
+	const char* kFindInv =
+		"SELECT id FROM ga_players_inventory "
+		"WHERE user_id = ? AND item_id = ? AND stock_n = ?";
+	const char* kInsertEquip =
+		"INSERT OR IGNORE INTO ga_character_devices (character_id, inventory_id, equipped_slot) "
+		"VALUES (?, ?, ?)";
+
+	sqlite3_stmt* selStmt = nullptr;
+	sqlite3_stmt* insStmt = nullptr;
+	if (sqlite3_prepare_v2(db, kFindInv,     -1, &selStmt, nullptr) != SQLITE_OK ||
+	    sqlite3_prepare_v2(db, kInsertEquip, -1, &insStmt, nullptr) != SQLITE_OK) {
+		Logger::Log("armor-seed",
+			"SeedCharacterArmorDefaults: prepare failed: %s\n",
+			sqlite3_errmsg(db));
+		if (selStmt) sqlite3_finalize(selStmt);
+		if (insStmt) sqlite3_finalize(insStmt);
+		return;
+	}
+
+	int equipped = 0;
+	const int defaultStockN = ArmorLoadouts::kDefaultVariantIndex;
+	for (int si = 0; si < ArmorLoadouts::kSlotCount; ++si) {
+		const auto& slot = ArmorLoadouts::kSlots[si];
+
+		sqlite3_reset(selStmt);
+		sqlite3_clear_bindings(selStmt);
+		sqlite3_bind_int64(selStmt, 1, user_id);
+		sqlite3_bind_int  (selStmt, 2, slot.base_item_id);
+		sqlite3_bind_int  (selStmt, 3, defaultStockN);
+		int invId = 0;
+		if (sqlite3_step(selStmt) == SQLITE_ROW) {
+			invId = sqlite3_column_int(selStmt, 0);
+		}
+		if (invId == 0) {
+			Logger::Log("armor-seed",
+				"SeedCharacterArmorDefaults: no inv row for char=%lld user=%lld slot=%s item=%d variant=%d — SeedArmor must run first\n",
+				(long long)character_id, (long long)user_id,
+				slot.name, slot.base_item_id, defaultStockN);
+			continue;
+		}
+
+		sqlite3_reset(insStmt);
+		sqlite3_clear_bindings(insStmt);
+		sqlite3_bind_int64(insStmt, 1, character_id);
+		sqlite3_bind_int  (insStmt, 2, invId);
+		sqlite3_bind_int  (insStmt, 3, slot.slot_value_id);
+		if (sqlite3_step(insStmt) == SQLITE_DONE && sqlite3_changes(db) > 0) {
+			++equipped;
+		}
+	}
+	sqlite3_finalize(selStmt);
+	sqlite3_finalize(insStmt);
+
+	Logger::Log("armor-seed",
+		"SeedCharacterArmorDefaults: char=%lld newly equipped=%d (of %d slots — rest already had a piece)\n",
+		(long long)character_id, equipped, ArmorLoadouts::kSlotCount);
 }
 
 std::vector<InventoryRow> PlayerSessionStore::GetInventoryForUser(int64_t user_id, uint32_t profile_id) {
@@ -734,7 +1115,7 @@ std::vector<InventoryRow> PlayerSessionStore::GetInventoryForUser(int64_t user_i
 
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
-		"SELECT id, profile_id, device_id, quality, mod_effect_group_ids, oc, allowed_slots "
+		"SELECT id, profile_id, device_id, quality, mod_effect_group_ids, oc, allowed_slots, item_id, stock_n "
 		"FROM ga_players_inventory "
 		"WHERE user_id = ? AND (profile_id = 0 OR profile_id = ?) "
 		"ORDER BY id",
@@ -755,6 +1136,8 @@ std::vector<InventoryRow> PlayerSessionStore::GetInventoryForUser(int64_t user_i
 		row.mods          = CsvToMods((const char*)sqlite3_column_text(stmt, 4));
 		row.oc            = sqlite3_column_int(stmt, 5) != 0;
 		row.allowed_slots = CsvToInts((const char*)sqlite3_column_text(stmt, 6));
+		row.item_id       = sqlite3_column_int(stmt, 7);
+		row.stock_n       = sqlite3_column_int(stmt, 8);
 		result.push_back(row);
 	}
 	sqlite3_finalize(stmt);
@@ -773,7 +1156,7 @@ std::vector<DeviceRow> PlayerSessionStore::GetDevicesForCharacter(int64_t charac
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
 		"SELECT d.equipped_slot, i.id, i.device_id, i.quality, "
-		"       i.mod_effect_group_ids, i.oc "
+		"       i.mod_effect_group_ids, i.oc, i.item_id "
 		"FROM ga_character_devices d "
 		"JOIN ga_players_inventory i ON i.id = d.inventory_id "
 		"WHERE d.character_id = ? "
@@ -793,7 +1176,21 @@ std::vector<DeviceRow> PlayerSessionStore::GetDevicesForCharacter(int64_t charac
 		row.quality         = sqlite3_column_int(stmt, 3);
 		row.mods            = CsvToMods((const char*)sqlite3_column_text(stmt, 4));
 		row.oc              = sqlite3_column_int(stmt, 5) != 0;
-		row.slot_value_id   = EquipPointToSvid(row.equip_slot);
+		row.item_id         = sqlite3_column_int(stmt, 6);
+		// SVID is computed from the LOGICAL engine slot. Cosmetic suit/helmet
+		// rows are stored at DB slot 22/23 internally (see CosmeticSlots.hpp),
+		// but on the wire the client expects them at their engine slot's SVID
+		// (202 for ES6 Suit, 500 for ES12 Helmet) — otherwise the equip-screen
+		// UI can't bind them to the right slot widget.
+		//
+		// Armor (group-126 SVIDs 1107/1109/1110/1113/1116/1119/1120) bypasses
+		// the engine-equip-point remap entirely — the DB column already holds
+		// the wire SVID. EquipPointToSvid only knows ES1..ES24; armor SVIDs
+		// would fall through to 0 and the client would see every armor piece
+		// as unequipped.
+		row.slot_value_id   = IsArmorSvid(row.equip_slot)
+			? row.equip_slot
+			: EquipPointToSvid(CosmeticSlots::EngineSlotFor(row.equip_slot));
 		row.effect_group_id = 0;  // legacy column — unused by readers, kept for struct layout
 		result.push_back(row);
 	}
@@ -803,7 +1200,8 @@ std::vector<DeviceRow> PlayerSessionStore::GetDevicesForCharacter(int64_t charac
 
 bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_id,
                                               uint32_t profile_id,
-                                              const std::map<int, int>& slot_to_inventory) {
+                                              const std::map<int, int>& slot_to_inventory,
+                                              const std::map<int, int>& misc_items) {
 	sqlite3* db = Database::GetConnection();
 	if (!db) return false;
 
@@ -836,12 +1234,12 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 			if (sqlite3_step(clsStmt) == SQLITE_ROW) {
 				const int class_inv_id = sqlite3_column_int(clsStmt, 0);
 				save_map[14] = class_inv_id;  // overwrites whatever the client sent
-				Logger::Log("db",
-					"[PlayerSessionStore] Save: pinning slot 14 to class-device inventory_id=%d (user=%lld profile=%u)\n",
+				Logger::Log("armor",
+					"[Save] pinning slot 14 to class-device inventory_id=%d (user=%lld profile=%u)\n",
 					class_inv_id, user_id, profile_id);
 			} else {
-				Logger::Log("db",
-					"[PlayerSessionStore] Save WARNING: no class device in inventory for user=%lld profile=%u — slot 14 will be empty\n",
+				Logger::Log("armor",
+					"[Save] WARNING: no class device in inventory for user=%lld profile=%u — slot 14 will be empty\n",
 					user_id, profile_id);
 			}
 			sqlite3_finalize(clsStmt);
@@ -851,13 +1249,24 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 	// Validate every (equip_point, inventory_id) BEFORE we mutate. The whole
 	// save either lands or doesn't — partial writes would desync the client
 	// from server in confusing ways.
+	//
+	// Also resolve each inventory row's cosmetic subtype so the insert pass
+	// below can remap engine slot → DB slot for cosmetic suit/helmet (see
+	// src/Shared/CosmeticSlots.hpp for the rationale).
 	sqlite3_stmt* vstmt = nullptr;
 	if (sqlite3_prepare_v2(db,
-	    "SELECT user_id, profile_id, allowed_slots FROM ga_players_inventory WHERE id = ?",
+	    "SELECT pi.user_id, pi.profile_id, pi.allowed_slots, pi.device_id, pi.item_id, "
+	    "       COALESCE(ai.item_subtype_value_id, 0) "
+	    "FROM ga_players_inventory pi "
+	    "LEFT JOIN asm_data_set_items ai ON ai.item_id = pi.item_id "
+	    "WHERE pi.id = ?",
 	    -1, &vstmt, nullptr) != SQLITE_OK) {
-		Logger::Log("db", "[PlayerSessionStore] Save validate prepare failed: %s\n", sqlite3_errmsg(db));
+		Logger::Log("armor", "[Save] validate prepare failed: %s\n", sqlite3_errmsg(db));
 		return false;
 	}
+
+	// Capture per-row subtype to compute db_slot at insert time.
+	std::map<int, int> inv_subtype;  // inventory_id → item_subtype_value_id (0 for non-cosmetic)
 
 	for (const auto& kv : save_map) {
 		const int equip_point = kv.first;
@@ -866,8 +1275,8 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 		sqlite3_clear_bindings(vstmt);
 		sqlite3_bind_int(vstmt, 1, inventory_id);
 		if (sqlite3_step(vstmt) != SQLITE_ROW) {
-			Logger::Log("db",
-				"[PlayerSessionStore] Save REJECT char=%lld: inventory_id=%d not found\n",
+			Logger::Log("armor",
+				"[Save] REJECT char=%lld: inventory_id=%d not found\n",
 				character_id, inventory_id);
 			sqlite3_finalize(vstmt);
 			return false;
@@ -875,16 +1284,19 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 		const int64_t inv_user    = sqlite3_column_int64(vstmt, 0);
 		const int     inv_profile = sqlite3_column_int(vstmt, 1);
 		const std::vector<int> allowed = CsvToInts((const char*)sqlite3_column_text(vstmt, 2));
+		const int     inv_device  = sqlite3_column_int(vstmt, 3);
+		const int     inv_itemId  = sqlite3_column_int(vstmt, 4);
+		const int     inv_subt    = sqlite3_column_int(vstmt, 5);
 		if (inv_user != user_id) {
-			Logger::Log("db",
-				"[PlayerSessionStore] Save REJECT char=%lld: inventory_id=%d owned by user %lld, not %lld\n",
+			Logger::Log("armor",
+				"[Save] REJECT char=%lld: inventory_id=%d owned by user %lld, not %lld\n",
 				character_id, inventory_id, inv_user, user_id);
 			sqlite3_finalize(vstmt);
 			return false;
 		}
 		if (inv_profile != 0 && inv_profile != (int)profile_id) {
-			Logger::Log("db",
-				"[PlayerSessionStore] Save REJECT char=%lld: inventory_id=%d profile=%d, char profile=%u\n",
+			Logger::Log("armor",
+				"[Save] REJECT char=%lld: inventory_id=%d profile=%d, char profile=%u\n",
 				character_id, inventory_id, inv_profile, profile_id);
 			sqlite3_finalize(vstmt);
 			return false;
@@ -893,23 +1305,43 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 		bool slotAllowed = false;
 		for (int s : allowed) { if (s == target_svid) { slotAllowed = true; break; } }
 		if (!slotAllowed) {
-			Logger::Log("db",
-				"[PlayerSessionStore] Save REJECT char=%lld: inventory_id=%d svid=%d not in allowed_slots\n",
+			Logger::Log("armor",
+				"[Save] REJECT char=%lld: inventory_id=%d svid=%d not in allowed_slots\n",
 				character_id, inventory_id, target_svid);
 			sqlite3_finalize(vstmt);
 			return false;
 		}
+		// Stash subtype for cosmetic rows (deviceId=0, itemId>0). Non-cosmetic
+		// rows get subtype 0 so DbSlotFor passes through.
+		inv_subtype[inventory_id] = (inv_device == 0 && inv_itemId > 0) ? inv_subt : 0;
 	}
 	sqlite3_finalize(vstmt);
 
 	// All validation passed. Replace ga_character_devices for this character
 	// in a single transaction.
+	//
+	// IMPORTANT: the DELETE is full-character. Any cosmetic rows whose engine
+	// slot wasn't in this IPC payload would normally vanish here — but the
+	// equip-screen client appears to ship the full current loadout (both gear
+	// and appearance) on every Apply, so the rebuild covers them. The remap
+	// in the INSERT pass ensures cosmetic suit/helmet land at DB slot 22/23,
+	// leaving DB slot 6/12 free for the gameplay suit/helmet rows the client
+	// also shipped.
 	char* err = nullptr;
 	sqlite3_exec(db, "BEGIN", nullptr, nullptr, &err);
 
+	// Scope the DELETE to slots the client's SlotIndices[] actually controls
+	// (engine equip-points 1–24 + cosmetic DB-slots 22/23). Armor slots
+	// (group-129 SVIDs 1130/1132/1133/1136/1139/1142/1143) move through the
+	// equip screen's separate Armor tab via FTGEQUIP_SLOTS_STRUCT.MiscItems[]
+	// and are handled by the misc_items pass below. Without this gate, the
+	// SlotIndices INSERT pass would clobber armor on every weapon/cosmetic
+	// Apply because the client never includes armor in SlotIndices.
 	sqlite3_stmt* del = nullptr;
 	if (sqlite3_prepare_v2(db,
-	    "DELETE FROM ga_character_devices WHERE character_id = ?",
+	    "DELETE FROM ga_character_devices "
+	    "WHERE character_id = ? "
+	    "  AND equipped_slot NOT IN (1130, 1132, 1133, 1136, 1139, 1142, 1143)",
 	    -1, &del, nullptr) != SQLITE_OK) {
 		sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, &err);
 		return false;
@@ -927,19 +1359,81 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 		return false;
 	}
 	for (const auto& kv : save_map) {
+		const int engine_slot = kv.first;
+		const int inv_id      = kv.second;
+		const int subtype     = inv_subtype[inv_id];
+		const int db_slot     = CosmeticSlots::DbSlotFor(engine_slot, subtype);
 		sqlite3_reset(ins);
 		sqlite3_clear_bindings(ins);
 		sqlite3_bind_int64(ins, 1, character_id);
-		sqlite3_bind_int(ins,   2, kv.second);
-		sqlite3_bind_int(ins,   3, kv.first);
+		sqlite3_bind_int(ins,   2, inv_id);
+		sqlite3_bind_int(ins,   3, db_slot);
 		sqlite3_step(ins);
 	}
 	sqlite3_finalize(ins);
 
+	// Armor pass — FTGEQUIP_SLOTS_STRUCT.MiscItems[] carries the Armor tab's
+	// equip selections, keyed by `index = slot_value_id - 1128` (group-129
+	// SVID space, see ArmorSlot in EquipSlot.hpp). The client always ships
+	// the FULL armor state on Apply (a slot the user unequipped reads as 0),
+	// so we wipe all 7 armor rows for the character first and then INSERT
+	// every non-zero misc_items entry. Skipped entirely when misc_items is
+	// empty — that's the "client didn't touch armor" case (e.g. weapon-only
+	// Apply), and we keep the existing armor untouched.
+	int armorEquipped = 0;
+	if (!misc_items.empty()) {
+		sqlite3_stmt* delArmor = nullptr;
+		if (sqlite3_prepare_v2(db,
+		    "DELETE FROM ga_character_devices "
+		    "WHERE character_id = ? "
+		    "  AND equipped_slot IN (1130, 1132, 1133, 1136, 1139, 1142, 1143)",
+		    -1, &delArmor, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(delArmor, 1, character_id);
+			sqlite3_step(delArmor);
+			sqlite3_finalize(delArmor);
+		}
+
+		sqlite3_stmt* insArmor = nullptr;
+		if (sqlite3_prepare_v2(db,
+		    "INSERT INTO ga_character_devices (character_id, inventory_id, equipped_slot) "
+		    "VALUES (?, ?, ?)",
+		    -1, &insArmor, nullptr) == SQLITE_OK) {
+			for (const auto& kv : misc_items) {
+				const int misc_index = kv.first;
+				const int inv_id     = kv.second;
+				const int armor_svid = misc_index + 1128;  // index → group-129 SVID
+				// Only accept indices that correspond to one of the 7 visible
+				// armor slots. Anything else (Core/Implant/Title slots in the
+				// 16-slot underlying group-129 structure) is ignored — the
+				// shipped UI doesn't expose them.
+				if (armor_svid != 1130 && armor_svid != 1132 && armor_svid != 1133 &&
+				    armor_svid != 1136 && armor_svid != 1139 && armor_svid != 1142 &&
+				    armor_svid != 1143) {
+					Logger::Log("armor",
+						"[Save] armor: ignoring MiscItems[%d]=inv_id %d (not a visible armor slot)\n",
+						misc_index, inv_id);
+					continue;
+				}
+				sqlite3_reset(insArmor);
+				sqlite3_clear_bindings(insArmor);
+				sqlite3_bind_int64(insArmor, 1, character_id);
+				sqlite3_bind_int  (insArmor, 2, inv_id);
+				sqlite3_bind_int  (insArmor, 3, armor_svid);
+				if (sqlite3_step(insArmor) == SQLITE_DONE) {
+					++armorEquipped;
+					Logger::Log("armor",
+						"[Save] armor: MiscItems[%d] inv_id %d → equipped_slot %d\n",
+						misc_index, inv_id, armor_svid);
+				}
+			}
+			sqlite3_finalize(insArmor);
+		}
+	}
+
 	sqlite3_exec(db, "COMMIT", nullptr, nullptr, &err);
-	Logger::Log("db",
-		"[PlayerSessionStore] Save OK char=%lld user=%lld profile=%u entries=%zu (incl. pinned slot 14)\n",
-		character_id, user_id, profile_id, save_map.size());
+	Logger::Log("armor",
+		"[Save] OK char=%lld user=%lld profile=%u entries=%zu armor=%d\n",
+		character_id, user_id, profile_id, save_map.size(), armorEquipped);
 	return true;
 }
 

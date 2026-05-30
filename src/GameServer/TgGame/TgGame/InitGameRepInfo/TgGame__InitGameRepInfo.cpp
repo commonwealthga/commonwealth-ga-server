@@ -442,6 +442,10 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 
 		ATgRepInfo_TaskForce* attackers = (ATgRepInfo_TaskForce*)gamerep->Spawn(ClassPreloader::GetTgRepInfoTaskForceClass(), gamerep, FName(), FVector(0, 0, 0), FRotator(0, 0, 0), nullptr, 1);
 		ATgRepInfo_TaskForce* defenders = (ATgRepInfo_TaskForce*)gamerep->Spawn(ClassPreloader::GetTgRepInfoTaskForceClass(), gamerep, FName(), FVector(0, 0, 0), FRotator(0, 0, 0), nullptr, 1);
+		if (!attackers || !defenders) {
+			Logger::Log("debug", "InitGameRepInfo: failed to Spawn task forces (attackers=%p defenders=%p) — class not preloaded?\n", attackers, defenders);
+			return;
+		}
 
 		GTeamsData.Attackers = attackers;
 		GTeamsData.Defenders = defenders;

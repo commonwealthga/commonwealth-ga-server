@@ -5109,7 +5109,163 @@ void Database::Init() {
 		Logger::Log("db", "v75: retargeted friendly_name_msg_id for 6 specops maps to facility-name strings\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 75", nullptr, nullptr, &err);
+	if (version < 76) {
+		// v76: unify cosmetics into ga_players_inventory.
+		//
+		// Cosmetics are item-only (ref_device_id = 0 in asm_data_set_items) —
+		// they don't instantiate an ATgDevice actor; their state lives on the
+		// pawn's r_CustomCharacterAssembly struct. We extend the existing
+		// device pool with `item_id` (asm_data_set_items.id) and `stock_n`
+		// (which copy — dyes get 5 copies so the same color can fill all 5
+		// dye slots simultaneously) so cosmetics share the same inventory_id
+		// space as devices. Dispatch in equip / marshal code keys off
+		// `item_id > 0` vs `device_id > 0`.
+		//
+		// Partial unique index makes the cosmetic seed idempotent without
+		// constraining device rows (which can legitimately repeat).
+		const char* kV76 =
+			"ALTER TABLE ga_players_inventory ADD COLUMN item_id INTEGER NOT NULL DEFAULT 0;"
+			"ALTER TABLE ga_players_inventory ADD COLUMN stock_n INTEGER NOT NULL DEFAULT 0;"
+			"CREATE UNIQUE INDEX IF NOT EXISTS idx_ga_players_inventory_cosmetic_uniq "
+			"  ON ga_players_inventory(user_id, item_id, stock_n) WHERE item_id > 0;"
+			"CREATE INDEX IF NOT EXISTS idx_ga_players_inventory_item "
+			"  ON ga_players_inventory(user_id, item_id);";
+		result = sqlite3_exec(db, kV76, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed v76 (cosmetics columns): %s\n", err);
+			sqlite3_free(err);
+			return;
+		}
+		Logger::Log("db", "v76: ga_players_inventory now carries item_id + stock_n for cosmetics\n");
+	}
+
+	if (version < 77) {
+		// v77: wipe v76's mis-seeded cosmetic rows.
+		//
+		// The v76 seed inserted asm_data_set_items.id (the row PK) into
+		// ga_players_inventory.item_id, but the wire protocol + engine
+		// natives (HeadFlairId / SetDyeItemId / etc.) expect
+		// asm_data_set_items.item_id (the game-logical id). Effect: cosmetics
+		// rendered as random unrelated items on the client (e.g. a Tier5 dye
+		// whose .id=3500 marshaled as ITEM_ID=3500 → client looked up 3500
+		// in its asm.dat and found "Medic Jetpack"). Worse, the count
+		// mismatch caused IsValid to fail and ALL equip-screen widgets to
+		// render blank.
+		//
+		// Cleanup wipes the cosmetic equips (so the joined inventory_ids
+		// don't dangle when the inventory rows are deleted), then wipes the
+		// cosmetic inventory rows. Next login re-runs SeedCosmetics with
+		// the corrected SQL (uses i.item_id, not i.id).
+		const char* kV77 =
+			"DELETE FROM ga_character_devices "
+			"  WHERE inventory_id IN (SELECT id FROM ga_players_inventory WHERE item_id > 0);"
+			"DELETE FROM ga_players_inventory WHERE item_id > 0;";
+		result = sqlite3_exec(db, kV77, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed v77 (cosmetic cleanup): %s\n", err);
+			sqlite3_free(err);
+			return;
+		}
+		Logger::Log("db", "v77: cleared mis-seeded cosmetic rows; next login will reseed correctly\n");
+	}
+
+	if (version < 78) {
+		// v78: relocate cosmetic suit/helmet rows off the gameplay device slots.
+		//
+		// Cosmetic suit (asm_data_set_items.item_subtype_value_id=1008) and
+		// the gameplay suit (a device, slot_used_value_id=394) both target
+		// engine ES6. UNIQUE(character_id, equipped_slot) on
+		// ga_character_devices made one silently overwrite the other on every
+		// equip Apply — most visibly, equipping a cosmetic suit wiped the
+		// gameplay suit row, so on reconnect the spawn-time device load
+		// (filtered by i.device_id > 0) found nothing for slot 6 and the
+		// character respawned without their gameplay suit. Same story at ES12
+		// for cosmetic helmet/flair (1006/1007) vs gameplay helmet.
+		//
+		// Fix at the storage layer: move cosmetic-suit rows to DB slot 22
+		// (engine ES22 Unused) and cosmetic-helmet rows to DB slot 23
+		// (engine ES23 Unused). The wire protocol still presents them at
+		// their logical engine slot — the remap lives in CosmeticSlots.hpp.
+		//
+		// Two passes:
+		//   1. Relocate any existing cosmetic-suit/helmet rows.
+		//   2. For any character whose gameplay-suit slot 6 is now empty
+		//      (because the cosmetic clobbered it before this migration ran)
+		//      OR whose gameplay-helmet slot 12 is empty, pin a default
+		//      gameplay device from inventory. Without this the user's
+		//      gameplay suit/helmet stays gone until they manually re-equip.
+		//
+		// SQLite caveat: an UPDATE that moves a row to a slot already taken
+		// by another row of the same character would hit UNIQUE — but slots
+		// 22/23 were never used before v78, so no conflict.
+		const char* kV78a =
+			"UPDATE ga_character_devices SET equipped_slot = 22 "
+			"WHERE equipped_slot = 6 AND inventory_id IN ("
+			"  SELECT pi.id FROM ga_players_inventory pi "
+			"  JOIN asm_data_set_items ai ON ai.item_id = pi.item_id "
+			"  WHERE pi.item_id > 0 AND ai.item_subtype_value_id = 1008"
+			");"
+			"UPDATE ga_character_devices SET equipped_slot = 23 "
+			"WHERE equipped_slot = 12 AND inventory_id IN ("
+			"  SELECT pi.id FROM ga_players_inventory pi "
+			"  JOIN asm_data_set_items ai ON ai.item_id = pi.item_id "
+			"  WHERE pi.item_id > 0 AND ai.item_subtype_value_id IN (1006, 1007)"
+			");";
+		result = sqlite3_exec(db, kV78a, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed v78a (cosmetic slot relocation): %s\n", err);
+			sqlite3_free(err);
+			return;
+		}
+
+		// Pin a gameplay suit / helmet at slot 6 / 12 for any character that
+		// has equipped gear (at least one row) but is now missing those
+		// gameplay slots. Mirrors the slot-14 pin pattern in
+		// SeedInventoryFromLoadouts. The inventory lookup picks the first
+		// available device row whose allowed_slots matches the target SVID
+		// (202 for ES6 Suit, 500 for ES12 Helmet) for the character's
+		// profile, preferring profile-specific over shared.
+		const char* kV78b =
+			"INSERT OR IGNORE INTO ga_character_devices (character_id, inventory_id, equipped_slot) "
+			"SELECT c.id, "
+			"       (SELECT i.id FROM ga_players_inventory i "
+			"        WHERE i.user_id = c.user_id "
+			"          AND (i.profile_id = 0 OR i.profile_id = c.profile_id) "
+			"          AND i.device_id > 0 "
+			"          AND i.allowed_slots = '202' "
+			"        ORDER BY i.profile_id DESC LIMIT 1), "
+			"       6 "
+			"FROM ga_characters c "
+			"WHERE EXISTS (SELECT 1 FROM ga_character_devices d WHERE d.character_id = c.id) "
+			"  AND NOT EXISTS ("
+			"    SELECT 1 FROM ga_character_devices d "
+			"    WHERE d.character_id = c.id AND d.equipped_slot = 6"
+			"  );"
+			"INSERT OR IGNORE INTO ga_character_devices (character_id, inventory_id, equipped_slot) "
+			"SELECT c.id, "
+			"       (SELECT i.id FROM ga_players_inventory i "
+			"        WHERE i.user_id = c.user_id "
+			"          AND (i.profile_id = 0 OR i.profile_id = c.profile_id) "
+			"          AND i.device_id > 0 "
+			"          AND i.allowed_slots = '500' "
+			"        ORDER BY i.profile_id DESC LIMIT 1), "
+			"       12 "
+			"FROM ga_characters c "
+			"WHERE EXISTS (SELECT 1 FROM ga_character_devices d WHERE d.character_id = c.id) "
+			"  AND NOT EXISTS ("
+			"    SELECT 1 FROM ga_character_devices d "
+			"    WHERE d.character_id = c.id AND d.equipped_slot = 12"
+			"  );";
+		result = sqlite3_exec(db, kV78b, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed v78b (gameplay suit/helmet repin): %s\n", err);
+			sqlite3_free(err);
+			return;
+		}
+		Logger::Log("db", "v78: relocated cosmetic suit/helmet to DB slots 22/23 + repinned missing gameplay suit/helmet\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 78", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

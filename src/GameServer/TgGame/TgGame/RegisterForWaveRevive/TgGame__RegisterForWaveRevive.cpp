@@ -16,13 +16,18 @@ void __fastcall TgGame__RegisterForWaveRevive::Call(ATgGame *Game, void *edx, AC
 	// [TgPawn_Turret]). Player-deployed turrets/pets aren't supposed to be
 	// wave-revived in the original game anyway — pickups + redeploys handle
 	// that lifecycle.
+	// Copy class name to std::string immediately — same shared buffer is used
+	// by both GetFullName and GetName so the second call clobbers the first.
+	const char* clsRaw = (Controller && Controller->Class) ? Controller->Class->GetFullName() : nullptr;
+	std::string clsName = clsRaw ? clsRaw : "NULL";
 	if (Controller == nullptr || Controller->Class == nullptr ||
-	    strstr(Controller->Class->GetFullName(), "PlayerController") == nullptr) {
+	    clsName.find("PlayerController") == std::string::npos) {
 		if (Logger::IsChannelEnabled("revive")) {
+			const char* ctrlRaw = Controller ? Controller->GetName() : nullptr;
+			std::string ctrlName = ctrlRaw ? ctrlRaw : "NULL";
 			Logger::Log("revive",
 				"RegisterForWaveRevive: rejecting non-PlayerController %s (class=%s) — wave revive is player-only\n",
-				Controller ? Controller->GetName() : "NULL",
-				(Controller && Controller->Class) ? Controller->Class->GetFullName() : "NULL");
+				ctrlName.c_str(), clsName.c_str());
 		}
 		return;
 	}

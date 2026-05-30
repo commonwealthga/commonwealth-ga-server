@@ -35,6 +35,10 @@ struct DeviceRow {
     int              effect_group_id;  // legacy single-egid (kept zero — wire reader stays untouched)
     std::vector<int> mods;             // rolled-mod effect_group_ids (one entry → one [...] letter on client)
     bool             oc;               // pick an Overclocked-named blueprint when sending BLUEPRINT_ID
+    // v76 cosmetics: non-zero when the equipped row points at a cosmetic
+    // item (asm_data_set_items.id) rather than a device. device_id is 0 in
+    // that case. SEND_INVENTORY marshaling dispatches on this.
+    int              item_id = 0;
 };
 
 // Inventory record (account-scoped, profile-filtered). Lives in
@@ -48,6 +52,12 @@ struct InventoryRow {
     std::vector<int> mods;             // mod_effect_group_ids CSV exploded
     bool             oc;
     std::vector<int> allowed_slots;    // slot_value_ids the item may occupy (1 for most, 3 for offhand)
+    // v76 cosmetics: when this row is a cosmetic, item_id holds the
+    // asm_data_set_items.id and device_id is 0. stock_n is which copy
+    // (0 for everything except dyes; dyes have stock_n 0..4 so the same
+    // color can be equipped to all 5 dye slots simultaneously).
+    int              item_id = 0;
+    int              stock_n = 0;
 };
 
 struct SkillRow {
@@ -91,6 +101,35 @@ public:
     // the canonical (single) allowed slot for each.
     static void SeedInventoryFromLoadouts(int64_t user_id);
 
+    // v76 cosmetic seed. Idempotent — runs every login. Inserts one row per
+    // owned cosmetic (helmet/flair/suit/trail) and five rows per dye (so the
+    // same dye can be set across all 5 dye slots simultaneously).
+    // Helmets/suits get profile_id = class id via asm_data_set_items.skill_id
+    // mapping; flairs/dyes/trails get profile_id = 0 (shared).
+    //
+    // Safe to call multiple times per user — the partial unique index
+    // idx_ga_players_inventory_cosmetic_uniq dedupes.
+    static void SeedCosmetics(int64_t user_id);
+
+    // v76 per-character "fill empty cosmetic slots" seed. INSERT OR IGNORE
+    // against ga_character_devices using CosmeticLoadouts defaults for the
+    // character's profile. Existing player choices win; only consulted for
+    // slots the character hasn't yet customized. Safe to call per login.
+    static void SeedCharacterCosmeticDefaults(int64_t character_id, uint32_t profile_id);
+
+    // Armor seed. Inserts 35 armor inventory rows per user — 7 group-126
+    // slots × 5 mod variants (see ArmorLoadouts.hpp). Idempotent via the
+    // existing (user_id, item_id, stock_n) unique index. Armor pieces are
+    // shared across all class profiles (profile_id = 0), so seeding doesn't
+    // need to know which classes the user has rolled.
+    static void SeedArmor(int64_t user_id);
+
+    // Per-character armor equip default. INSERT OR IGNORE against
+    // ga_character_devices for the 7 armor slots — picks the variant at
+    // ArmorLoadouts::kDefaultVariantIndex ([rrrrrr] by default) for each
+    // slot. Existing player choices win. Safe to call per login.
+    static void SeedCharacterArmorDefaults(int64_t character_id);
+
     // Returns everything in this user's account-scoped inventory pool that's
     // visible to a character on `profile_id`. Includes shared items
     // (profile_id=0) plus class-specific items. Used by SEND_INVENTORY to
@@ -113,9 +152,18 @@ public:
     // On any failure, the whole save is rejected (no partial writes) and the
     // reason is logged. Callers should then re-send SEND_INVENTORY to resync
     // the client's view to what's actually persisted.
+    // `slot_to_inventory` = client's FTGEQUIP_SLOTS_STRUCT.SlotIndices[]
+    //                       (engine equip-points 1..24 for weapons + cosmetics).
+    // `misc_items`         = client's FTGEQUIP_SLOTS_STRUCT.MiscItems[]
+    //                       (armor slots, indexed such that slot_value_id =
+    //                       index + 1128 → group-129 SVID). Empty if the
+    //                       client didn't change armor. See ArmorSlot
+    //                       constants in src/GameServer/Constants/EquipSlot.hpp
+    //                       for the index↔SVID decode.
     static bool SaveEquippedDevices(int64_t character_id, int64_t user_id,
                                     uint32_t profile_id,
-                                    const std::map<int, int>& slot_to_inventory);
+                                    const std::map<int, int>& slot_to_inventory,
+                                    const std::map<int, int>& misc_items);
 
     // UNUSED — kept for reference. Returns the union of every static effect
     // group attached to a device in asm.dat (equip + per-fire-mode). We used

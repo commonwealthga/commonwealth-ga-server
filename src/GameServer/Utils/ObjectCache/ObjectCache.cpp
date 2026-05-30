@@ -15,14 +15,17 @@ void ObjectCache::ScanForward(const char* targetFullName) {
 		if (!obj) continue;
 
 		char* fullName = obj->GetFullName();
+		if (!fullName) continue;
 		std::string fullNameStr(fullName);
 
 		ByFullName[fullNameStr] = obj;
 
 		// Also index by class name (skip Default__ objects for instance queries)
-		if (strstr(fullName, "Default__") == nullptr) {
+		if (strstr(fullName, "Default__") == nullptr && obj->Class) {
 			char* className = obj->Class->GetFullName();
-			ByClassName[std::string(className)].push_back(obj);
+			if (className) {
+				ByClassName[std::string(className)].push_back(obj);
+			}
 		}
 
 		if (targetFullName && fullNameStr == targetFullName) {
