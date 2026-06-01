@@ -20,10 +20,22 @@ public:
 	//     actually passed — fallback-resolved factories don't count).
 	//   - TgMissionObjective_Bot__SpawnObjectiveBot (bosses / escort targets;
 	//     no factory exists, but they still want the same HP+damage scaling).
+	//   - The -spawnfriend / -spawnenemy chat command (always — chat-spawned
+	//     bots are dev-test and want to opt in to BBM × difficulty scaling
+	//     regardless of team).
 	// Player respawn, deployable pets, decoys, and any other spawn path that
 	// doesn't set this stays at the default false → InitializeDefaultProps
 	// leaves stats raw for them.
 	static bool bPendingEnemyScaling;
+
+	// Per-spawn override for the difficulty scalar term. 0.0 = "use map
+	// default" (Config::GetDifficultyScalar()). Set + consumed alongside
+	// bPendingEnemyScaling — currently the only writer is the
+	// -spawnfriend / -spawnenemy chat command, where the user picks an
+	// explicit difficulty token (low/medium/high/max/umax). Cleared on
+	// every InitializeDefaultProps invocation, even if scaling was gated
+	// off, so a leftover value can't leak into a later factory spawn.
+	static float nPendingDifficultyScalarOverride;
 
 	static void __fastcall* Call(ATgPawn* Pawn, void* edx);
 	static inline void __fastcall* CallOriginal(ATgPawn* Pawn, void* edx) {

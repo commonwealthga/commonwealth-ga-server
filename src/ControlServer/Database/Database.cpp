@@ -20,12 +20,19 @@ sqlite3* Database::GetConnection() {
 		sqlite3_exec(connection, "PRAGMA journal_mode=WAL;", nullptr, nullptr, nullptr);
 		sqlite3_exec(connection, "PRAGMA busy_timeout=5000;", nullptr, nullptr, nullptr);
 		sqlite3_exec(connection, "PRAGMA synchronous=NORMAL;", nullptr, nullptr, nullptr);
+		// Cap WAL post-checkpoint size to 64 MiB — without this, the file is
+		// only ever reset to the start, never shrunk, so its size monotonically
+		// grows to the historical high-water mark (the 301 MB prod symptom).
+		sqlite3_exec(connection, "PRAGMA journal_size_limit=67108864;", nullptr, nullptr, nullptr);
 	}
 
 	return Database::connection;
 }
 
 void Database::CloseConnection() {
+	if (Database::connection != nullptr) {
+		sqlite3_exec(Database::connection, "PRAGMA wal_checkpoint(TRUNCATE);", nullptr, nullptr, nullptr);
+	}
 	sqlite3_close(Database::connection);
 	Database::connection = nullptr;
 }
@@ -675,6 +682,38 @@ void Database::Init() {
 		if (result != SQLITE_OK) {
 			// Expected on second+ boot — log at debug level rather than error.
 			sqlite3_free(err);
+		}
+
+		// hair_asm_id / skin_mat_param_id / eye_mat_param_id — mirror of v81
+		// in the game-DLL migration ladder. Added here so the control server
+		// can SELECT these columns at first-boot before any game-DLL
+		// instance has had a chance to run its own migrations. Both sides
+		// run the same idempotent ALTER; whoever wins the race adds the
+		// column, the other no-ops. DEFAULT 0 = bald (engine treats hair
+		// asm 0 as "no hair", the only crash-safe fallback for legacy chars).
+		const char* kAppearanceAlters[] = {
+			"ALTER TABLE ga_characters ADD COLUMN hair_asm_id        INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_characters ADD COLUMN skin_mat_param_id  INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_characters ADD COLUMN eye_mat_param_id   INTEGER NOT NULL DEFAULT 0;",
+		};
+		for (const char* sql : kAppearanceAlters) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				sqlite3_free(err); err = nullptr;
+			}
+		}
+
+		// Backfill any hair_asm_id IN (0, 403) rows to 1974 ("NewHair15").
+		//
+		// Both 0 (the original v81 default) and 403 (the v82 attempt at
+		// "Bald") were wrong: 0 is a non-existent asm, and 403 is in the
+		// character-builder mesh category (type 596), not the in-game
+		// pawn hair category (type 850) the engine looks up at spawn.
+		// Asm 1974 is what SpawnBotPawn uses on every bot and is
+		// confirmed to load cleanly at gameplay time. Idempotent.
+		if (sqlite3_exec(db,
+		        "UPDATE ga_characters SET hair_asm_id = 1974 WHERE hair_asm_id IN (0, 403);",
+		        nullptr, nullptr, &err) != SQLITE_OK) {
+			if (err) { sqlite3_free(err); err = nullptr; }
 		}
 
 		// Continuous-queue support: instances optionally carry the queue_id

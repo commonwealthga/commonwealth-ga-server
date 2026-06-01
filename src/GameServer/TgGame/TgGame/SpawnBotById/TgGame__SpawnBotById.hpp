@@ -121,6 +121,33 @@ public:
 			Bot->SetCollisionSize(d.collision_radius, d.collision_halfHeight);
 		}
 
+		// BaseEyeHeight lift — when the UC class default leaves the eye INSIDE
+		// the collision cylinder (BaseEyeHeight < collision_halfHeight), the
+		// LOS trace inside `TgPawn::CanSeeActor` / `TgAIController::TargetInLOS`
+		// originates from `(Pawn.X, Pawn.Y, Pawn.Z + BaseEyeHeight)` — i.e. at
+		// the cylinder's X/Y center, Z below the cylinder top. A trace from
+		// that origin to a close-range side-target clips the turret's OWN
+		// cylinder wall on exit and the trace fails to reach the target,
+		// silently narrowing the apparent vision arc at close range while
+		// still working at long range (where the same off-axis angle has a
+		// shallow exit and clears the cylinder).
+		//
+		// Personal Turret is the worst case: UC default BaseEyeHeight=10,
+		// asm collision_height=26 (half-height) → eye sits 16uu below the
+		// cylinder top, deep inside the body. Lifting to halfHeight+1 puts
+		// the trace origin just above the cylinder top so horizontal traces
+		// to targets never re-enter the self-cylinder.
+		//
+		// Data-driven via collision_halfHeight; only fires when the current
+		// value is too low. For TgPawn_Character bots (UC default 38, half=46)
+		// this bumps eye from 38 → 47 — a minor 9uu shift that keeps the eye
+		// just above the head. The trace-arithmetic fix is the same regardless
+		// of class.
+		if (d.collision_halfHeight > 0.0f && Bot->BaseEyeHeight < d.collision_halfHeight) {
+			Bot->BaseEyeHeight = d.collision_halfHeight + 1.0f;
+			Bot->EyeHeight     = Bot->BaseEyeHeight;
+		}
+
 		// CrouchHeight/Radius — engine's Crouch()/UnCrouch() reads these to
 		// swap the cylinder when posture changes. Mirror the native: the
 		// crouch cylinder reuses collision_radius (no separate crouch_radius

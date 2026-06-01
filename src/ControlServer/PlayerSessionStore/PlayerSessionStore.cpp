@@ -19,6 +19,36 @@ std::mutex PlayerSessionStore::mutex_;
 std::map<std::string, SessionInfo> PlayerSessionStore::by_guid_;
 std::map<std::string, SessionInfo> PlayerSessionStore::by_ip_;
 
+// asm_data_set_items.item_id values that crash the client on equip (or on
+// nearby-player render). Cosmetic-seeding filters them out, and the per-login
+// PurgeBlacklistedItems pass strips them from existing inventories + equip
+// rows. Add new ids as they are identified.
+static constexpr int kBlacklistedItemIds[] = {
+	// 7231,  // Flair - Dweller Specs: crash on equip and on nearby player render
+};
+
+// Builds " NOT IN (id, id, …)" for splicing into the seed SQL. Returns
+// empty string if the blacklist is empty so the caller's WHERE clause stays
+// well-formed in that degenerate case.
+static std::string BlacklistNotInClause() {
+	constexpr size_t n = sizeof(kBlacklistedItemIds) / sizeof(kBlacklistedItemIds[0]);
+	if (n == 0) return "";
+	std::string s = " NOT IN (";
+	for (size_t i = 0; i < n; ++i) {
+		if (i) s += ",";
+		s += std::to_string(kBlacklistedItemIds[i]);
+	}
+	s += ")";
+	return s;
+}
+
+static bool IsBlacklistedItemId(int item_id) {
+	for (int id : kBlacklistedItemIds) {
+		if (id == item_id) return true;
+	}
+	return false;
+}
+
 void PlayerSessionStore::Init() {
 	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();
@@ -29,6 +59,68 @@ void PlayerSessionStore::Init() {
 		sqlite3_free(err);
 	} else {
 		Logger::Log("db", "[PlayerSessionStore] Cleared stale player sessions\n");
+	}
+
+	// === Loadout profiles migration ===
+	// Adds item_profile_id partition key to ga_character_devices and
+	// ga_character_skills; ga_characters gains current_item_profile_id.
+	// Idempotent — gated on whether the new ga_characters column exists.
+	{
+		bool needs_migration = true;
+		{
+			sqlite3_stmt* st = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT 1 FROM pragma_table_info('ga_characters') "
+					"WHERE name = 'current_item_profile_id'",
+					-1, &st, nullptr) == SQLITE_OK) {
+				if (sqlite3_step(st) == SQLITE_ROW) needs_migration = false;
+				sqlite3_finalize(st);
+			}
+		}
+		if (needs_migration) {
+			Logger::Log("db", "[Init] Applying loadout-profiles migration\n");
+			const char* sqls[] = {
+				"ALTER TABLE ga_characters ADD COLUMN current_item_profile_id INTEGER NOT NULL DEFAULT 1",
+
+				"CREATE TABLE ga_character_devices_v2 ("
+				" id              INTEGER PRIMARY KEY AUTOINCREMENT,"
+				" character_id    INTEGER NOT NULL REFERENCES ga_characters(id),"
+				" item_profile_id INTEGER NOT NULL,"
+				" inventory_id    INTEGER NOT NULL REFERENCES ga_players_inventory(id),"
+				" equipped_slot   INTEGER NOT NULL,"
+				" UNIQUE(character_id, item_profile_id, equipped_slot)"
+				")",
+				"INSERT INTO ga_character_devices_v2 (character_id, item_profile_id, inventory_id, equipped_slot)"
+				" SELECT character_id, 1, inventory_id, equipped_slot FROM ga_character_devices",
+				"DROP TABLE ga_character_devices",
+				"ALTER TABLE ga_character_devices_v2 RENAME TO ga_character_devices",
+				"CREATE INDEX idx_ga_character_devices_char ON ga_character_devices(character_id)",
+
+				"CREATE TABLE ga_character_skills_v2 ("
+				" id              INTEGER PRIMARY KEY AUTOINCREMENT,"
+				" character_id    INTEGER NOT NULL REFERENCES ga_characters(id),"
+				" item_profile_id INTEGER NOT NULL,"
+				" skill_group_id  INTEGER NOT NULL,"
+				" skill_id        INTEGER NOT NULL,"
+				" points          INTEGER NOT NULL DEFAULT 0,"
+				" UNIQUE(character_id, item_profile_id, skill_group_id, skill_id)"
+				")",
+				"INSERT INTO ga_character_skills_v2 (character_id, item_profile_id, skill_group_id, skill_id, points)"
+				" SELECT character_id, 1, skill_group_id, skill_id, points FROM ga_character_skills",
+				"DROP TABLE ga_character_skills",
+				"ALTER TABLE ga_character_skills_v2 RENAME TO ga_character_skills",
+				"CREATE INDEX idx_ga_character_skills_char ON ga_character_skills(character_id)",
+			};
+			char* merr = nullptr;
+			for (const char* sql : sqls) {
+				if (sqlite3_exec(db, sql, nullptr, nullptr, &merr) != SQLITE_OK) {
+					Logger::Log("db", "[Init] Migration step failed: %s -- SQL: %s\n",
+						merr ? merr : "(no msg)", sql);
+					if (merr) { sqlite3_free(merr); merr = nullptr; }
+				}
+			}
+			Logger::Log("db", "[Init] Loadout-profiles migration complete\n");
+		}
 	}
 
 	by_guid_.clear();
@@ -146,14 +238,19 @@ int64_t PlayerSessionStore::UpsertUser(const std::string& username) {
 
 int64_t PlayerSessionStore::InsertCharacter(int64_t user_id, uint32_t profile_id,
                                              uint32_t head_asm_id, uint32_t gender_type_value_id,
-                                             const std::vector<uint8_t>& morph_data) {
+                                             const std::vector<uint8_t>& morph_data,
+                                             uint32_t hair_asm_id,
+                                             uint32_t skin_mat_param_id,
+                                             uint32_t eye_mat_param_id) {
 	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();
 
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
-		"INSERT INTO ga_characters (user_id, profile_id, head_asm_id, gender_type_value_id, morph_data) "
-		"VALUES (?, ?, ?, ?, ?)",
+		"INSERT INTO ga_characters "
+		"  (user_id, profile_id, head_asm_id, gender_type_value_id, morph_data, "
+		"   hair_asm_id, skin_mat_param_id, eye_mat_param_id) "
+		"VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
 		Logger::Log("db", "[PlayerSessionStore] InsertCharacter prepare failed: %s\n", sqlite3_errmsg(db));
@@ -167,14 +264,23 @@ int64_t PlayerSessionStore::InsertCharacter(int64_t user_id, uint32_t profile_id
 		sqlite3_bind_blob(stmt, 5, morph_data.data(), static_cast<int>(morph_data.size()), SQLITE_TRANSIENT);
 	else
 		sqlite3_bind_null(stmt, 5);
+	sqlite3_bind_int(stmt,   6, static_cast<int>(hair_asm_id));
+	sqlite3_bind_int(stmt,   7, static_cast<int>(skin_mat_param_id));
+	sqlite3_bind_int(stmt,   8, static_cast<int>(eye_mat_param_id));
 	sqlite3_step(stmt);
 	sqlite3_finalize(stmt);
 
 	int64_t newId = sqlite3_last_insert_rowid(db);
 	// Seed (or top up) this user's account-scoped inventory pool — both for
-	// this profile and any already-existing siblings. Also drops an opening
-	// equipped loadout into ga_character_devices for the brand-new character.
+	// this profile and any already-existing siblings. ga_character_devices is
+	// otherwise left empty; the player equips from the bag via the equip
+	// screen.
 	SeedInventoryFromLoadouts(user_id);
+	// HUMAN BASE ATTRIBUTES (slot 14) is the one exception — the player can't
+	// equip it, so we pin it across all 5 loadout profiles before they ever
+	// load in. Without this, fresh characters hit the resubmit loop on the
+	// REST device until disconnect+reconnect.
+	PinClassDeviceSlot14(newId);
 	return newId;
 }
 
@@ -185,7 +291,8 @@ std::vector<CharacterInfo> PlayerSessionStore::GetCharactersByUserId(int64_t use
 
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
-		"SELECT id, profile_id, head_asm_id, gender_type_value_id, morph_data "
+		"SELECT id, profile_id, head_asm_id, gender_type_value_id, morph_data, "
+		"       hair_asm_id, skin_mat_param_id, eye_mat_param_id "
 		"FROM ga_characters WHERE user_id = ?",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
@@ -206,6 +313,9 @@ std::vector<CharacterInfo> PlayerSessionStore::GetCharactersByUserId(int64_t use
 		if (blob && bytes > 0)
 			c.morph_data.assign(static_cast<const uint8_t*>(blob),
 			                    static_cast<const uint8_t*>(blob) + bytes);
+		c.hair_asm_id          = static_cast<uint32_t>(sqlite3_column_int(stmt, 5));
+		c.skin_mat_param_id    = static_cast<uint32_t>(sqlite3_column_int(stmt, 6));
+		c.eye_mat_param_id     = static_cast<uint32_t>(sqlite3_column_int(stmt, 7));
 		result.push_back(std::move(c));
 	}
 	sqlite3_finalize(stmt);
@@ -218,7 +328,8 @@ std::optional<CharacterInfo> PlayerSessionStore::GetCharacterById(int64_t id) {
 
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
-		"SELECT id, user_id, profile_id, head_asm_id, gender_type_value_id, morph_data "
+		"SELECT id, user_id, profile_id, head_asm_id, gender_type_value_id, morph_data, "
+		"       hair_asm_id, skin_mat_param_id, eye_mat_param_id "
 		"FROM ga_characters WHERE id = ?",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
@@ -240,6 +351,9 @@ std::optional<CharacterInfo> PlayerSessionStore::GetCharacterById(int64_t id) {
 		if (blob && bytes > 0)
 			c.morph_data.assign(static_cast<const uint8_t*>(blob),
 			                    static_cast<const uint8_t*>(blob) + bytes);
+		c.hair_asm_id          = static_cast<uint32_t>(sqlite3_column_int(stmt, 6));
+		c.skin_mat_param_id    = static_cast<uint32_t>(sqlite3_column_int(stmt, 7));
+		c.eye_mat_param_id     = static_cast<uint32_t>(sqlite3_column_int(stmt, 8));
 		result = std::move(c);
 	}
 	sqlite3_finalize(stmt);
@@ -641,147 +755,15 @@ void PlayerSessionStore::SeedInventoryFromLoadouts(int64_t user_id) {
 	sqlite3_finalize(selStmt);
 	sqlite3_finalize(insStmt);
 
-	// (2) For every character on this user that has ZERO rows in
-	//     ga_character_devices, drop in an opening loadout pulled from this
-	//     user's ga_players_inventory for that character's profile. The
-	//     "no rows" gate keeps user equip choices sticky across logins.
-	sqlite3_stmt* charsStmt = nullptr;
-	rc = sqlite3_prepare_v2(db,
-		"SELECT c.id, c.profile_id "
-		"FROM ga_characters c "
-		"WHERE c.user_id = ? AND NOT EXISTS ("
-		"  SELECT 1 FROM ga_character_devices d WHERE d.character_id = c.id"
-		")",
-		-1, &charsStmt, nullptr);
-	if (rc != SQLITE_OK || !charsStmt) {
-		Logger::Log("db", "[PlayerSessionStore] Seed chars prepare failed: %s\n", sqlite3_errmsg(db));
-		Logger::Log("db",
-			"[PlayerSessionStore] Seed: user=%lld inventory+=%d inventory-=%d device-rows-cleared=%d\n",
-			user_id, inserted, deletedInvRows, deletedDevRows);
-		return;
-	}
-	sqlite3_bind_int64(charsStmt, 1, user_id);
-
-	int equippedCharacters = 0;
-	while (sqlite3_step(charsStmt) == SQLITE_ROW) {
-		const int64_t  char_id    = sqlite3_column_int64(charsStmt, 0);
-		const uint32_t profile_id = (uint32_t)sqlite3_column_int(charsStmt, 1);
-		const auto& loadout = Loadouts::GetLoadout(profile_id);
-		if (loadout.empty()) continue;
-
-		// Map (device_id, mods_csv, quality, oc) → inventory_id for this
-		// profile, so we can pick the inventory rows the seed just inserted.
-		sqlite3_stmt* invStmt = nullptr;
-		if (sqlite3_prepare_v2(db,
-		    "SELECT id, device_id, mod_effect_group_ids, quality, oc "
-		    "FROM ga_players_inventory "
-		    "WHERE user_id = ? AND profile_id = ?",
-		    -1, &invStmt, nullptr) != SQLITE_OK) continue;
-		sqlite3_bind_int64(invStmt, 1, user_id);
-		sqlite3_bind_int(invStmt,   2, (int)profile_id);
-
-		std::map<std::tuple<int, std::string, int, int>, int> invIndex;
-		while (sqlite3_step(invStmt) == SQLITE_ROW) {
-			int id        = sqlite3_column_int(invStmt, 0);
-			int dev       = sqlite3_column_int(invStmt, 1);
-			const char* m = (const char*)sqlite3_column_text(invStmt, 2);
-			int q         = sqlite3_column_int(invStmt, 3);
-			int oc        = sqlite3_column_int(invStmt, 4);
-			invIndex[{ dev, std::string(m ? m : ""), q, oc }] = id;
-		}
-		sqlite3_finalize(invStmt);
-
-		sqlite3_stmt* insDev = nullptr;
-		if (sqlite3_prepare_v2(db,
-		    "INSERT OR IGNORE INTO ga_character_devices "
-		    "(character_id, inventory_id, equipped_slot) VALUES (?, ?, ?)",
-		    -1, &insDev, nullptr) != SQLITE_OK) continue;
-
-		for (const Loadouts::GearSlot& g : loadout) {
-			const std::string modsCsv = ModsToCsv(ModResolver::Resolve(g.device_id, g.quality, g.mods));
-			auto it = invIndex.find({ g.device_id, modsCsv, g.quality, g.mods.oc ? 1 : 0 });
-			if (it == invIndex.end()) continue;  // shouldn't happen — we just inserted these
-			sqlite3_reset(insDev);
-			sqlite3_clear_bindings(insDev);
-			sqlite3_bind_int64(insDev, 1, char_id);
-			sqlite3_bind_int(insDev,   2, it->second);
-			sqlite3_bind_int(insDev,   3, g.equip_slot);
-			sqlite3_step(insDev);
-		}
-		sqlite3_finalize(insDev);
-		++equippedCharacters;
-	}
-	sqlite3_finalize(charsStmt);
-
-	// (3) Pin slot 14 (CLASS_DEVICE) for every character that has equipped
-	//     gear but no slot-14 row yet. This is the migration safety net for
-	//     existing characters that ran with the old synthetic-invId path —
-	//     their ga_character_devices has 5-8 rows but nothing in slot 14.
-	//     New characters got slot 14 from the opening-loadout pass above; the
-	//     equip-screen save also pins slot 14 via SaveEquippedDevices. This
-	//     pass covers the "previously equipped, never re-saved since the
-	//     synthetic-invId fix" gap.
-	//
-	//     If a character's profile has no class device candidate in
-	//     ga_players_inventory the subquery yields NULL → INSERT fails the
-	//     inventory_id NOT NULL constraint → OR IGNORE swallows it silently.
-	int pinnedSlot14 = 0;
-	{
-		sqlite3_stmt* pinStmt = nullptr;
-		const char* pinSql =
-			"INSERT OR IGNORE INTO ga_character_devices (character_id, inventory_id, equipped_slot) "
-			"SELECT c.id, "
-			"       (SELECT i.id FROM ga_players_inventory i "
-			"        WHERE i.user_id = c.user_id "
-			"          AND (i.profile_id = 0 OR i.profile_id = c.profile_id) "
-			"          AND i.allowed_slots = '502' "
-			"        ORDER BY i.profile_id DESC LIMIT 1), "
-			"       14 "
-			"FROM ga_characters c "
-			"WHERE c.user_id = ? "
-			"  AND NOT EXISTS ("
-			"    SELECT 1 FROM ga_character_devices d "
-			"    WHERE d.character_id = c.id AND d.equipped_slot = 14"
-			"  )";
-		if (sqlite3_prepare_v2(db, pinSql, -1, &pinStmt, nullptr) == SQLITE_OK) {
-			sqlite3_bind_int64(pinStmt, 1, user_id);
-			sqlite3_step(pinStmt);
-			pinnedSlot14 = sqlite3_changes(db);
-			sqlite3_finalize(pinStmt);
-		} else {
-			Logger::Log("db",
-				"[PlayerSessionStore] Seed slot-14 pin prepare failed: %s\n",
-				sqlite3_errmsg(db));
-		}
-	}
+	// Per-character opening-loadout / slot-14 pin / cosmetic-default /
+	// armor-default seeding REMOVED. Empty ga_character_devices means
+	// nothing equipped on the character — period. The player equips from
+	// the bag via the equip screen. ga_players_inventory pool is still
+	// seeded above so items exist to equip from.
 
 	Logger::Log("db",
-		"[PlayerSessionStore] Seed: user=%lld inventory+=%d inventory-=%d device-rows-cleared=%d characters opened with loadout=%d slot14-pinned=%d\n",
-		user_id, inserted, deletedInvRows, deletedDevRows, equippedCharacters, pinnedSlot14);
-
-	// v76: fill empty cosmetic slots on every character (idempotent per
-	// the INSERT OR IGNORE in SeedCharacterCosmeticDefaults). Unlike the
-	// device seed above, this runs for every character regardless of
-	// whether the character has device equips — cosmetics have their own
-	// equip slots (6/12/16-21) that exist independently of device slots.
-	{
-		sqlite3_stmt* allCharsStmt = nullptr;
-		if (sqlite3_prepare_v2(db,
-		    "SELECT id, profile_id FROM ga_characters WHERE user_id = ?",
-		    -1, &allCharsStmt, nullptr) == SQLITE_OK) {
-			sqlite3_bind_int64(allCharsStmt, 1, user_id);
-			std::vector<std::pair<int64_t, uint32_t>> chars;
-			while (sqlite3_step(allCharsStmt) == SQLITE_ROW) {
-				chars.emplace_back(sqlite3_column_int64(allCharsStmt, 0),
-				                   (uint32_t)sqlite3_column_int(allCharsStmt, 1));
-			}
-			sqlite3_finalize(allCharsStmt);
-			for (const auto& [cid, pid] : chars) {
-				SeedCharacterCosmeticDefaults(cid, pid);
-				SeedCharacterArmorDefaults(cid);
-			}
-		}
-	}
+		"[PlayerSessionStore] Seed: user=%lld inventory+=%d inventory-=%d device-rows-cleared=%d\n",
+		user_id, inserted, deletedInvRows, deletedDevRows);
 }
 
 void PlayerSessionStore::SeedCosmetics(int64_t user_id) {
@@ -800,7 +782,7 @@ void PlayerSessionStore::SeedCosmetics(int64_t user_id) {
 	// both expect the game item_id. Storing the PK leads to cosmetics
 	// rendering as random unrelated items on the client (v76 seed bug,
 	// cleaned up by v77).
-	const char* kSeedHelmsSuitsTrails =
+	const std::string kSeedHelmsSuitsTrails =
 		"INSERT OR IGNORE INTO ga_players_inventory"
 		"  (user_id, profile_id, device_id, quality, mod_effect_group_ids, oc, allowed_slots, item_id, stock_n) "
 		"SELECT ?, "
@@ -819,11 +801,13 @@ void PlayerSessionStore::SeedCosmetics(int64_t user_id) {
 		"       END, "
 		"       i.item_id, 0 "
 		"FROM asm_data_set_items i "
-		"WHERE i.item_type_value_id = 1612 "
-		"   OR (i.item_type_value_id = 950 AND i.item_subtype_value_id IN (1006, 1007, 1008))";
+		"WHERE (i.item_type_value_id = 1612 "
+		"   OR (i.item_type_value_id = 950 AND i.item_subtype_value_id IN (1006, 1007, 1008)))"
+		+ (BlacklistNotInClause().empty() ? std::string()
+		                                  : " AND i.item_id" + BlacklistNotInClause());
 	{
 		sqlite3_stmt* stmt = nullptr;
-		if (sqlite3_prepare_v2(db, kSeedHelmsSuitsTrails, -1, &stmt, nullptr) == SQLITE_OK) {
+		if (sqlite3_prepare_v2(db, kSeedHelmsSuitsTrails.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
 			sqlite3_bind_int64(stmt, 1, user_id);
 			sqlite3_step(stmt);
 			sqlite3_finalize(stmt);
@@ -837,16 +821,18 @@ void PlayerSessionStore::SeedCosmetics(int64_t user_id) {
 	// Pass 2: dyes (1020) — 5 stock copies each. allowed_slots lists all 5
 	// dye slots so any copy can be equipped to any dye slot. Uses i.item_id
 	// (game id), not i.id (row PK) — same reason as Pass 1.
-	const char* kSeedDyes =
+	const std::string kSeedDyes =
 		"INSERT OR IGNORE INTO ga_players_inventory"
 		"  (user_id, profile_id, device_id, quality, mod_effect_group_ids, oc, allowed_slots, item_id, stock_n) "
 		"SELECT ?, 0, 0, 0, '', 0, '996,997,998,999,1000', i.item_id, n.n "
 		"FROM asm_data_set_items i "
 		"CROSS JOIN (SELECT 0 AS n UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4) n "
-		"WHERE i.item_type_value_id = 1020";
+		"WHERE i.item_type_value_id = 1020"
+		+ (BlacklistNotInClause().empty() ? std::string()
+		                                  : " AND i.item_id" + BlacklistNotInClause());
 	{
 		sqlite3_stmt* stmt = nullptr;
-		if (sqlite3_prepare_v2(db, kSeedDyes, -1, &stmt, nullptr) == SQLITE_OK) {
+		if (sqlite3_prepare_v2(db, kSeedDyes.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
 			sqlite3_bind_int64(stmt, 1, user_id);
 			sqlite3_step(stmt);
 			sqlite3_finalize(stmt);
@@ -906,12 +892,24 @@ void PlayerSessionStore::SeedCharacterCosmeticDefaults(int64_t character_id, uin
 		"SELECT id FROM ga_players_inventory "
 		"WHERE user_id = ? AND item_id = ? "
 		"ORDER BY stock_n ASC LIMIT 1";
+	// item_profile_id is NOT NULL on ga_character_devices — see the
+	// migration; omitting it silently fails the row. Cosmetic defaults
+	// land in profile 1; CosmeticEquip::LoadFromDB doesn't filter by
+	// profile so this is safe (the per-profile equip-save's DELETE only
+	// touches non-armor rows for that profile, so other profiles'
+	// cosmetic rows simply accumulate as the user equips them).
 	const char* kInsertEquip =
-		"INSERT OR IGNORE INTO ga_character_devices (character_id, inventory_id, equipped_slot) "
-		"VALUES (?, ?, ?)";
+		"INSERT OR IGNORE INTO ga_character_devices (character_id, item_profile_id, inventory_id, equipped_slot) "
+		"VALUES (?, 1, ?, ?)";
 
 	for (const auto& sl : slots) {
 		if (sl.item_id == 0) continue;
+		if (IsBlacklistedItemId(sl.item_id)) {
+			Logger::Log("blacklist",
+				"SeedCharacterCosmeticDefaults: skipping blacklisted default item=%d (char=%lld db_slot=%d)\n",
+				sl.item_id, (long long)character_id, sl.db_slot);
+			continue;
+		}
 
 		int invId = 0;
 		sqlite3_stmt* selStmt = nullptr;
@@ -943,6 +941,105 @@ void PlayerSessionStore::SeedCharacterCosmeticDefaults(int64_t character_id, uin
 	Logger::Log("cosmetic-seed",
 		"SeedCharacterCosmeticDefaults: char=%lld profile=%u done\n",
 		(long long)character_id, profile_id);
+}
+
+void PlayerSessionStore::PurgeBlacklistedItems(int64_t user_id) {
+	// No lock: matches the other seed helpers — callers (TcpSession login path)
+	// don't hold mutex_, and the DB writes are protected by SQLite's own
+	// concurrency.
+	constexpr size_t kBlacklistSize =
+		sizeof(kBlacklistedItemIds) / sizeof(kBlacklistedItemIds[0]);
+	if (kBlacklistSize == 0) return;
+
+	sqlite3* db = Database::GetConnection();
+	if (!db) return;
+
+	const std::string in_clause = BlacklistNotInClause();
+	// Convert " NOT IN (…)" → " IN (…)" by slicing off the leading " NOT".
+	const std::string in_only = in_clause.substr(4);
+
+	// Pre-pass: enumerate what will be deleted so we can log per-row context.
+	{
+		const std::string sql =
+			"SELECT cd.character_id, inv.item_id, cd.equipped_slot, cd.item_profile_id "
+			"FROM ga_character_devices cd "
+			"JOIN ga_players_inventory inv ON inv.id = cd.inventory_id "
+			"WHERE inv.user_id = ? AND inv.item_id" + in_only;
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(stmt, 1, user_id);
+			while (sqlite3_step(stmt) == SQLITE_ROW) {
+				int64_t cid  = sqlite3_column_int64(stmt, 0);
+				int     iid  = sqlite3_column_int  (stmt, 1);
+				int     slot = sqlite3_column_int  (stmt, 2);
+				int     pid  = sqlite3_column_int  (stmt, 3);
+				Logger::Log("blacklist",
+					"purging equipped char=%lld profile=%d slot=%d item_id=%d\n",
+					(long long)cid, pid, slot, iid);
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+
+	// Transaction so the equip-row purge and the inventory-row purge can't
+	// observe a half-applied state.
+	char* err = nullptr;
+	sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, &err);
+	if (err) { sqlite3_free(err); err = nullptr; }
+
+	int equipped_rows = 0;
+	int inventory_rows = 0;
+
+	// Step 1: unequip — drop any ga_character_devices row whose inventory_id
+	// points at a blacklisted item owned by this user. Has to come first
+	// (before the inventory DELETE) because the subquery joins through
+	// ga_players_inventory.
+	{
+		const std::string sql =
+			"DELETE FROM ga_character_devices "
+			"WHERE inventory_id IN ("
+			"  SELECT id FROM ga_players_inventory "
+			"  WHERE user_id = ? AND item_id" + in_only +
+			")";
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(stmt, 1, user_id);
+			if (sqlite3_step(stmt) == SQLITE_DONE) {
+				equipped_rows = sqlite3_changes(db);
+			}
+			sqlite3_finalize(stmt);
+		} else {
+			Logger::Log("blacklist", "PurgeBlacklistedItems: prepare(equip-del) failed: %s\n",
+				sqlite3_errmsg(db));
+		}
+	}
+
+	// Step 2: remove from inventory.
+	{
+		const std::string sql =
+			"DELETE FROM ga_players_inventory "
+			"WHERE user_id = ? AND item_id" + in_only;
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(stmt, 1, user_id);
+			if (sqlite3_step(stmt) == SQLITE_DONE) {
+				inventory_rows = sqlite3_changes(db);
+			}
+			sqlite3_finalize(stmt);
+		} else {
+			Logger::Log("blacklist", "PurgeBlacklistedItems: prepare(inv-del) failed: %s\n",
+				sqlite3_errmsg(db));
+		}
+	}
+
+	sqlite3_exec(db, "COMMIT", nullptr, nullptr, &err);
+	if (err) { sqlite3_free(err); err = nullptr; }
+
+	if (equipped_rows > 0 || inventory_rows > 0) {
+		Logger::Log("blacklist",
+			"PurgeBlacklistedItems: user=%lld unequipped=%d inventory_removed=%d\n",
+			(long long)user_id, equipped_rows, inventory_rows);
+	}
 }
 
 void PlayerSessionStore::SeedArmor(int64_t user_id) {
@@ -1052,9 +1149,13 @@ void PlayerSessionStore::SeedCharacterArmorDefaults(int64_t character_id) {
 	const char* kFindInv =
 		"SELECT id FROM ga_players_inventory "
 		"WHERE user_id = ? AND item_id = ? AND stock_n = ?";
+	// item_profile_id is NOT NULL — armor defaults land in profile 1.
+	// Armor::FetchEquippedArmor filters by item_profile_id at runtime, and
+	// SaveEquippedDevices's armor pass is profile-scoped, so each profile
+	// gets its own armor rows the first time the player saves into it.
 	const char* kInsertEquip =
-		"INSERT OR IGNORE INTO ga_character_devices (character_id, inventory_id, equipped_slot) "
-		"VALUES (?, ?, ?)";
+		"INSERT OR IGNORE INTO ga_character_devices (character_id, item_profile_id, inventory_id, equipped_slot) "
+		"VALUES (?, 1, ?, ?)";
 
 	sqlite3_stmt* selStmt = nullptr;
 	sqlite3_stmt* insStmt = nullptr;
@@ -1107,6 +1208,96 @@ void PlayerSessionStore::SeedCharacterArmorDefaults(int64_t character_id) {
 		(long long)character_id, equipped, ArmorLoadouts::kSlotCount);
 }
 
+void PlayerSessionStore::PinClassDeviceSlot14(int64_t character_id) {
+	// No lock: same rationale as SeedCharacterArmorDefaults — callers
+	// (InsertCharacter, GSC_SELECT_CHARACTER) may already hold mutex_.
+	sqlite3* db = Database::GetConnection();
+	if (!db) return;
+
+	// Resolve user_id + class profile_id from character — needed to find the
+	// class device inventory row, which is profile-scoped (Medic/Robotics/etc).
+	int64_t user_id = 0;
+	uint32_t profile_id = 0;
+	{
+		sqlite3_stmt* s = nullptr;
+		if (sqlite3_prepare_v2(db,
+		        "SELECT user_id, profile_id FROM ga_characters WHERE id = ?",
+		        -1, &s, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(s, 1, character_id);
+			if (sqlite3_step(s) == SQLITE_ROW) {
+				user_id    = sqlite3_column_int64(s, 0);
+				profile_id = static_cast<uint32_t>(sqlite3_column_int(s, 1));
+			}
+			sqlite3_finalize(s);
+		}
+	}
+	if (user_id == 0) {
+		Logger::Log("db",
+			"[PlayerSessionStore] PinClassDeviceSlot14: no user for char=%lld\n",
+			(long long)character_id);
+		return;
+	}
+
+	// Find the class device inventory_id. allowed_slots='502' is unique to
+	// the class device — same query as SaveEquippedDevices's pin path.
+	int class_inv_id = 0;
+	{
+		sqlite3_stmt* s = nullptr;
+		if (sqlite3_prepare_v2(db,
+		        "SELECT id FROM ga_players_inventory "
+		        "WHERE user_id = ? AND (profile_id = 0 OR profile_id = ?) "
+		        "  AND allowed_slots = '502' "
+		        "ORDER BY profile_id DESC "  // prefer profile-specific over shared
+		        "LIMIT 1",
+		        -1, &s, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(s, 1, user_id);
+			sqlite3_bind_int  (s, 2, (int)profile_id);
+			if (sqlite3_step(s) == SQLITE_ROW) {
+				class_inv_id = sqlite3_column_int(s, 0);
+			}
+			sqlite3_finalize(s);
+		}
+	}
+	if (class_inv_id == 0) {
+		Logger::Log("db",
+			"[PlayerSessionStore] PinClassDeviceSlot14: no class device in inventory for char=%lld user=%lld profile=%u\n",
+			(long long)character_id, (long long)user_id, profile_id);
+		return;
+	}
+
+	// Pin slot 14 across all 5 loadout profiles. INSERT OR IGNORE is keyed on
+	// (character_id, item_profile_id, equipped_slot) via
+	// idx_ga_character_devices_uniq, so any profile that already has a row
+	// (player-modified or previously pinned) is left untouched.
+	sqlite3_stmt* ins = nullptr;
+	if (sqlite3_prepare_v2(db,
+	        "INSERT OR IGNORE INTO ga_character_devices "
+	        "(character_id, item_profile_id, inventory_id, equipped_slot) "
+	        "VALUES (?, ?, ?, 14)",
+	        -1, &ins, nullptr) != SQLITE_OK) {
+		Logger::Log("db",
+			"[PlayerSessionStore] PinClassDeviceSlot14: prepare failed: %s\n",
+			sqlite3_errmsg(db));
+		return;
+	}
+	int pinned = 0;
+	for (int item_profile_id = 1; item_profile_id <= 5; ++item_profile_id) {
+		sqlite3_reset(ins);
+		sqlite3_clear_bindings(ins);
+		sqlite3_bind_int64(ins, 1, character_id);
+		sqlite3_bind_int  (ins, 2, item_profile_id);
+		sqlite3_bind_int  (ins, 3, class_inv_id);
+		if (sqlite3_step(ins) == SQLITE_DONE && sqlite3_changes(db) > 0) {
+			++pinned;
+		}
+	}
+	sqlite3_finalize(ins);
+
+	Logger::Log("db",
+		"[PlayerSessionStore] PinClassDeviceSlot14: char=%lld inv=%d newly-pinned=%d (of 5 profiles — rest already had slot 14)\n",
+		(long long)character_id, class_inv_id, pinned);
+}
+
 std::vector<InventoryRow> PlayerSessionStore::GetInventoryForUser(int64_t user_id, uint32_t profile_id) {
 	std::lock_guard<std::mutex> lock(mutex_);
 	std::vector<InventoryRow> result;
@@ -1144,7 +1335,8 @@ std::vector<InventoryRow> PlayerSessionStore::GetInventoryForUser(int64_t user_i
 	return result;
 }
 
-std::vector<DeviceRow> PlayerSessionStore::GetDevicesForCharacter(int64_t character_id) {
+std::vector<DeviceRow> PlayerSessionStore::GetDevicesForCharacter(int64_t character_id,
+                                                                  int item_profile_id) {
 	std::lock_guard<std::mutex> lock(mutex_);
 	std::vector<DeviceRow> result;
 	sqlite3* db = Database::GetConnection();
@@ -1153,13 +1345,14 @@ std::vector<DeviceRow> PlayerSessionStore::GetDevicesForCharacter(int64_t charac
 	// JOIN: device descriptor comes from the inventory pool; the per-character
 	// row contributes just the equipped slot. SVID is derived from the slot
 	// rather than stored (it's a function of equip_point, not of the item).
+	// Profile-scoped: only returns rows for the active loadout slot.
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
 		"SELECT d.equipped_slot, i.id, i.device_id, i.quality, "
 		"       i.mod_effect_group_ids, i.oc, i.item_id "
 		"FROM ga_character_devices d "
 		"JOIN ga_players_inventory i ON i.id = d.inventory_id "
-		"WHERE d.character_id = ? "
+		"WHERE d.character_id = ? AND d.item_profile_id = ? "
 		"ORDER BY d.equipped_slot",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
@@ -1167,6 +1360,7 @@ std::vector<DeviceRow> PlayerSessionStore::GetDevicesForCharacter(int64_t charac
 		return result;
 	}
 	sqlite3_bind_int64(stmt, 1, character_id);
+	sqlite3_bind_int  (stmt, 2, item_profile_id);
 
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		DeviceRow row;
@@ -1200,8 +1394,15 @@ std::vector<DeviceRow> PlayerSessionStore::GetDevicesForCharacter(int64_t charac
 
 bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_id,
                                               uint32_t profile_id,
+                                              int item_profile_id,
                                               const std::map<int, int>& slot_to_inventory,
                                               const std::map<int, int>& misc_items) {
+	if (item_profile_id < 1 || item_profile_id > 5) {
+		Logger::Log("armor",
+			"[Save] REJECT char=%lld: item_profile_id=%d out of range [1..5]\n",
+			character_id, item_profile_id);
+		return false;
+	}
 	sqlite3* db = Database::GetConnection();
 	if (!db) return false;
 
@@ -1340,20 +1541,22 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 	sqlite3_stmt* del = nullptr;
 	if (sqlite3_prepare_v2(db,
 	    "DELETE FROM ga_character_devices "
-	    "WHERE character_id = ? "
+	    "WHERE character_id = ? AND item_profile_id = ? "
 	    "  AND equipped_slot NOT IN (1130, 1132, 1133, 1136, 1139, 1142, 1143)",
 	    -1, &del, nullptr) != SQLITE_OK) {
 		sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, &err);
 		return false;
 	}
 	sqlite3_bind_int64(del, 1, character_id);
+	sqlite3_bind_int  (del, 2, item_profile_id);
 	sqlite3_step(del);
 	sqlite3_finalize(del);
 
 	sqlite3_stmt* ins = nullptr;
 	if (sqlite3_prepare_v2(db,
-	    "INSERT INTO ga_character_devices (character_id, inventory_id, equipped_slot) "
-	    "VALUES (?, ?, ?)",
+	    "INSERT INTO ga_character_devices "
+	    "(character_id, item_profile_id, inventory_id, equipped_slot) "
+	    "VALUES (?, ?, ?, ?)",
 	    -1, &ins, nullptr) != SQLITE_OK) {
 		sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, &err);
 		return false;
@@ -1366,8 +1569,9 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 		sqlite3_reset(ins);
 		sqlite3_clear_bindings(ins);
 		sqlite3_bind_int64(ins, 1, character_id);
-		sqlite3_bind_int(ins,   2, inv_id);
-		sqlite3_bind_int(ins,   3, db_slot);
+		sqlite3_bind_int  (ins, 2, item_profile_id);
+		sqlite3_bind_int  (ins, 3, inv_id);
+		sqlite3_bind_int  (ins, 4, db_slot);
 		sqlite3_step(ins);
 	}
 	sqlite3_finalize(ins);
@@ -1385,18 +1589,20 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 		sqlite3_stmt* delArmor = nullptr;
 		if (sqlite3_prepare_v2(db,
 		    "DELETE FROM ga_character_devices "
-		    "WHERE character_id = ? "
+		    "WHERE character_id = ? AND item_profile_id = ? "
 		    "  AND equipped_slot IN (1130, 1132, 1133, 1136, 1139, 1142, 1143)",
 		    -1, &delArmor, nullptr) == SQLITE_OK) {
 			sqlite3_bind_int64(delArmor, 1, character_id);
+			sqlite3_bind_int  (delArmor, 2, item_profile_id);
 			sqlite3_step(delArmor);
 			sqlite3_finalize(delArmor);
 		}
 
 		sqlite3_stmt* insArmor = nullptr;
 		if (sqlite3_prepare_v2(db,
-		    "INSERT INTO ga_character_devices (character_id, inventory_id, equipped_slot) "
-		    "VALUES (?, ?, ?)",
+		    "INSERT INTO ga_character_devices "
+		    "(character_id, item_profile_id, inventory_id, equipped_slot) "
+		    "VALUES (?, ?, ?, ?)",
 		    -1, &insArmor, nullptr) == SQLITE_OK) {
 			for (const auto& kv : misc_items) {
 				const int misc_index = kv.first;
@@ -1417,8 +1623,9 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 				sqlite3_reset(insArmor);
 				sqlite3_clear_bindings(insArmor);
 				sqlite3_bind_int64(insArmor, 1, character_id);
-				sqlite3_bind_int  (insArmor, 2, inv_id);
-				sqlite3_bind_int  (insArmor, 3, armor_svid);
+				sqlite3_bind_int  (insArmor, 2, item_profile_id);
+				sqlite3_bind_int  (insArmor, 3, inv_id);
+				sqlite3_bind_int  (insArmor, 4, armor_svid);
 				if (sqlite3_step(insArmor) == SQLITE_DONE) {
 					++armorEquipped;
 					Logger::Log("armor",
@@ -1432,12 +1639,13 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 
 	sqlite3_exec(db, "COMMIT", nullptr, nullptr, &err);
 	Logger::Log("armor",
-		"[Save] OK char=%lld user=%lld profile=%u entries=%zu armor=%d\n",
-		character_id, user_id, profile_id, save_map.size(), armorEquipped);
+		"[Save] OK char=%lld user=%lld profile=%u itemProf=%d entries=%zu armor=%d\n",
+		character_id, user_id, profile_id, item_profile_id, save_map.size(), armorEquipped);
 	return true;
 }
 
-std::vector<SkillRow> PlayerSessionStore::GetSkillsForCharacter(int64_t character_id) {
+std::vector<SkillRow> PlayerSessionStore::GetSkillsForCharacter(int64_t character_id,
+                                                                int item_profile_id) {
 	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();
 	std::vector<SkillRow> result;
@@ -1445,7 +1653,8 @@ std::vector<SkillRow> PlayerSessionStore::GetSkillsForCharacter(int64_t characte
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
 		"SELECT skill_group_id, skill_id, points "
-		"FROM ga_character_skills WHERE character_id = ? AND points > 0 "
+		"FROM ga_character_skills "
+		"WHERE character_id = ? AND item_profile_id = ? AND points > 0 "
 		"ORDER BY skill_group_id, skill_id",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
@@ -1453,19 +1662,54 @@ std::vector<SkillRow> PlayerSessionStore::GetSkillsForCharacter(int64_t characte
 		return result;
 	}
 	sqlite3_bind_int64(stmt, 1, character_id);
+	sqlite3_bind_int  (stmt, 2, item_profile_id);
 
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		SkillRow row;
 		row.skill_group_id = sqlite3_column_int(stmt, 0);
 		row.skill_id       = sqlite3_column_int(stmt, 1);
 		row.points         = sqlite3_column_int(stmt, 2);
+		row.item_profile_id = item_profile_id;  // caller-known
 		result.push_back(row);
 	}
 	sqlite3_finalize(stmt);
 	return result;
 }
 
-void PlayerSessionStore::SetSkillsForCharacter(int64_t character_id, const std::vector<SkillRow>& skills) {
+std::vector<SkillRow> PlayerSessionStore::GetAllSkillsForCharacter(int64_t character_id) {
+	std::lock_guard<std::mutex> lock(mutex_);
+	sqlite3* db = Database::GetConnection();
+	std::vector<SkillRow> result;
+	if (!db) return result;
+
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT skill_group_id, skill_id, points, item_profile_id "
+		"FROM ga_character_skills "
+		"WHERE character_id = ? AND points > 0 "
+		"ORDER BY item_profile_id, skill_group_id, skill_id",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[PlayerSessionStore] GetAllSkillsForCharacter prepare failed: %s\n",
+			sqlite3_errmsg(db));
+		return result;
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		SkillRow row;
+		row.skill_group_id  = sqlite3_column_int(stmt, 0);
+		row.skill_id        = sqlite3_column_int(stmt, 1);
+		row.points          = sqlite3_column_int(stmt, 2);
+		row.item_profile_id = sqlite3_column_int(stmt, 3);
+		result.push_back(row);
+	}
+	sqlite3_finalize(stmt);
+	return result;
+}
+
+void PlayerSessionStore::SetSkillsForCharacter(int64_t character_id, int item_profile_id,
+                                               const std::vector<SkillRow>& skills) {
 	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();
 
@@ -1477,25 +1721,31 @@ void PlayerSessionStore::SetSkillsForCharacter(int64_t character_id, const std::
 	}
 
 	sqlite3_stmt* del = nullptr;
-	sqlite3_prepare_v2(db, "DELETE FROM ga_character_skills WHERE character_id = ?", -1, &del, nullptr);
+	sqlite3_prepare_v2(db,
+		"DELETE FROM ga_character_skills "
+		"WHERE character_id = ? AND item_profile_id = ?",
+		-1, &del, nullptr);
 	if (del) {
 		sqlite3_bind_int64(del, 1, character_id);
+		sqlite3_bind_int  (del, 2, item_profile_id);
 		sqlite3_step(del);
 		sqlite3_finalize(del);
 	}
 
 	sqlite3_stmt* ins = nullptr;
 	sqlite3_prepare_v2(db,
-		"INSERT INTO ga_character_skills (character_id, skill_group_id, skill_id, points) "
-		"VALUES (?, ?, ?, ?)",
+		"INSERT INTO ga_character_skills "
+		"(character_id, item_profile_id, skill_group_id, skill_id, points) "
+		"VALUES (?, ?, ?, ?, ?)",
 		-1, &ins, nullptr);
 	if (ins) {
 		for (const auto& s : skills) {
 			if (s.points <= 0) continue;  // skip zero rows — not worth persisting
 			sqlite3_bind_int64(ins, 1, character_id);
-			sqlite3_bind_int(ins, 2, s.skill_group_id);
-			sqlite3_bind_int(ins, 3, s.skill_id);
-			sqlite3_bind_int(ins, 4, s.points);
+			sqlite3_bind_int  (ins, 2, item_profile_id);
+			sqlite3_bind_int  (ins, 3, s.skill_group_id);
+			sqlite3_bind_int  (ins, 4, s.skill_id);
+			sqlite3_bind_int  (ins, 5, s.points);
 			sqlite3_step(ins);
 			sqlite3_reset(ins);
 		}
@@ -1519,12 +1769,77 @@ void PlayerSessionStore::SetSkillsForCharacter(int64_t character_id, const std::
 		return;
 	}
 
-	Logger::Log("db", "[PlayerSessionStore] Saved %d skill rows for character %lld\n",
-		(int)skills.size(), (long long)character_id);
+	Logger::Log("db", "[PlayerSessionStore] Saved %d skill rows for character %lld itemProf=%d\n",
+		(int)skills.size(), (long long)character_id, item_profile_id);
 }
 
-void PlayerSessionStore::ClearSkillsForCharacter(int64_t character_id) {
-	SetSkillsForCharacter(character_id, {});
+void PlayerSessionStore::ClearSkillsForCharacter(int64_t character_id, int item_profile_id) {
+	SetSkillsForCharacter(character_id, item_profile_id, {});
+}
+
+int PlayerSessionStore::GetCurrentItemProfile(int64_t character_id) {
+	std::lock_guard<std::mutex> lock(mutex_);
+	sqlite3* db = Database::GetConnection();
+	int v = 1;
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT current_item_profile_id FROM ga_characters WHERE id = ?",
+			-1, &st, nullptr) == SQLITE_OK) {
+		sqlite3_bind_int64(st, 1, character_id);
+		if (sqlite3_step(st) == SQLITE_ROW) v = sqlite3_column_int(st, 0);
+		sqlite3_finalize(st);
+	}
+	if (v < 1 || v > 5) v = 1;
+	return v;
+}
+
+void PlayerSessionStore::SetCurrentItemProfile(int64_t character_id, int item_profile_id) {
+	if (item_profile_id < 1 || item_profile_id > 5) return;
+	std::lock_guard<std::mutex> lock(mutex_);
+	sqlite3* db = Database::GetConnection();
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"UPDATE ga_characters SET current_item_profile_id = ? WHERE id = ?",
+			-1, &st, nullptr) == SQLITE_OK) {
+		sqlite3_bind_int  (st, 1, item_profile_id);
+		sqlite3_bind_int64(st, 2, character_id);
+		sqlite3_step(st);
+		sqlite3_finalize(st);
+	}
+	Logger::Log("loadout", "[SetCurrentItemProfile] char=%lld -> %d\n",
+		(long long)character_id, item_profile_id);
+}
+
+std::map<int, std::array<int,6>>
+PlayerSessionStore::GetPerProfileSlotMap(int64_t character_id) {
+	std::lock_guard<std::mutex> lock(mutex_);
+	std::map<int, std::array<int,6>> out;
+	sqlite3* db = Database::GetConnection();
+	if (!db) return out;
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT inventory_id, item_profile_id, equipped_slot "
+			"FROM ga_character_devices WHERE character_id = ?",
+			-1, &st, nullptr) != SQLITE_OK) {
+		return out;
+	}
+	sqlite3_bind_int64(st, 1, character_id);
+	while (sqlite3_step(st) == SQLITE_ROW) {
+		const int invId   = sqlite3_column_int(st, 0);
+		const int profile = sqlite3_column_int(st, 1);
+		const int raw     = sqlite3_column_int(st, 2);
+		if (profile < 1 || profile > 5) continue;
+		// Resolve to client-facing slot_value_id. Armor SVIDs pass through;
+		// engine equip-points 1..24 go through the cosmetic-remap-aware
+		// path (same translation GetDevicesForCharacter does at row time).
+		const int svid = IsArmorSvid(raw)
+			? raw
+			: EquipPointToSvid(CosmeticSlots::EngineSlotFor(raw));
+		auto& arr = out[invId];
+		if (arr[profile] == 0) arr[profile] = svid;  // first wins; UNIQUE prevents dupes
+	}
+	sqlite3_finalize(st);
+	return out;
 }
 
 int64_t PlayerSessionStore::GetLastRespecAt(int64_t character_id) {

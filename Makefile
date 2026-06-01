@@ -133,6 +133,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SetTaskForceNumber/TgPawn__SetTaskForceNumber.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/ChangeTeam/ChangeTeam.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/SpawnBot/SpawnBot.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/Deploy/Deploy.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.cpp \

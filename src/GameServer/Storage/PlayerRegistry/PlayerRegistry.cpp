@@ -186,7 +186,8 @@ std::vector<CharacterInfo> PlayerRegistry::GetCharactersByUserId(int64_t user_id
 
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
-		"SELECT id, profile_id, head_asm_id, gender_type_value_id, morph_data "
+		"SELECT id, profile_id, head_asm_id, gender_type_value_id, morph_data, "
+		"       hair_asm_id, skin_mat_param_id, eye_mat_param_id "
 		"FROM ga_characters WHERE user_id = ?",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
@@ -207,6 +208,9 @@ std::vector<CharacterInfo> PlayerRegistry::GetCharactersByUserId(int64_t user_id
 		if (blob && bytes > 0)
 			c.morph_data.assign(static_cast<const uint8_t*>(blob),
 			                    static_cast<const uint8_t*>(blob) + bytes);
+		c.hair_asm_id         = static_cast<uint32_t>(sqlite3_column_int(stmt, 5));
+		c.skin_mat_param_id   = static_cast<uint32_t>(sqlite3_column_int(stmt, 6));
+		c.eye_mat_param_id    = static_cast<uint32_t>(sqlite3_column_int(stmt, 7));
 		result.push_back(std::move(c));
 	}
 	sqlite3_finalize(stmt);
@@ -219,7 +223,8 @@ std::optional<CharacterInfo> PlayerRegistry::GetCharacterById(int64_t id) {
 
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
-		"SELECT id, user_id, profile_id, head_asm_id, gender_type_value_id, morph_data "
+		"SELECT id, user_id, profile_id, head_asm_id, gender_type_value_id, morph_data, "
+		"       hair_asm_id, skin_mat_param_id, eye_mat_param_id "
 		"FROM ga_characters WHERE id = ?",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
@@ -241,6 +246,9 @@ std::optional<CharacterInfo> PlayerRegistry::GetCharacterById(int64_t id) {
 		if (blob && bytes > 0)
 			c.morph_data.assign(static_cast<const uint8_t*>(blob),
 			                    static_cast<const uint8_t*>(blob) + bytes);
+		c.hair_asm_id          = static_cast<uint32_t>(sqlite3_column_int(stmt, 6));
+		c.skin_mat_param_id    = static_cast<uint32_t>(sqlite3_column_int(stmt, 7));
+		c.eye_mat_param_id     = static_cast<uint32_t>(sqlite3_column_int(stmt, 8));
 		result = std::move(c);
 	}
 	sqlite3_finalize(stmt);
@@ -256,5 +264,48 @@ void PlayerRegistry::SetSelectedCharacter(const std::string& session_guid, int64
 		by_ip_[it->second.ip_address].selected_character_id = char_id;
 		by_ip_[it->second.ip_address].selected_profile_id   = profile_id;
 	}
+}
+
+int PlayerRegistry::RefreshSkillsForProfile(const std::string& session_guid,
+                                            int item_profile_id) {
+	if (item_profile_id < 1 || item_profile_id > 5) return 0;
+	CsGuard lock(cs_);
+	auto it = by_guid_.find(session_guid);
+	if (it == by_guid_.end()) return 0;
+	PlayerInfo& info = it->second;
+	info.skills.clear();
+
+	sqlite3* db = Database::GetConnection();
+	if (!db) return 0;
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT skill_group_id, skill_id, points "
+			"FROM ga_character_skills "
+			"WHERE character_id = ? AND item_profile_id = ? AND points > 0",
+			-1, &st, nullptr) != SQLITE_OK) {
+		Logger::Log("loadout",
+			"[RefreshSkillsForProfile] prepare failed: %s\n", sqlite3_errmsg(db));
+		return 0;
+	}
+	sqlite3_bind_int64(st, 1, info.selected_character_id);
+	sqlite3_bind_int  (st, 2, item_profile_id);
+	int n = 0;
+	while (sqlite3_step(st) == SQLITE_ROW) {
+		SkillAllocation a;
+		a.skill_group_id = sqlite3_column_int(st, 0);
+		a.skill_id       = sqlite3_column_int(st, 1);
+		a.points         = sqlite3_column_int(st, 2);
+		info.skills.push_back(a);
+		++n;
+	}
+	sqlite3_finalize(st);
+
+	// Mirror to by_ip_ for any consumers reading from there.
+	by_ip_[info.ip_address].skills = info.skills;
+
+	Logger::Log("loadout",
+		"[RefreshSkillsForProfile] guid=%s char=%lld itemProf=%d loaded=%d skill rows\n",
+		session_guid.c_str(), (long long)info.selected_character_id, item_profile_id, n);
+	return n;
 }
 

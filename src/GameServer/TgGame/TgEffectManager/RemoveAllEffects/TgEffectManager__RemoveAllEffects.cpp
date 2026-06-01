@@ -1,6 +1,9 @@
 #include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
+#include "src/GameServer/TgGame/TgEffectManager/ProcessReactiveSkillBasedEffectGroup/TgEffectManager__ProcessReactiveSkillBasedEffectGroup.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include <set>
 
 // TgEffectManager::RemoveAllEffects — reimplements the stripped stub @ 0x10a6ef00.
 // Walks every applied group, reverses property modifiers, tears down timers,
@@ -32,6 +35,22 @@ void __fastcall TgEffectManager__RemoveAllEffects::Call(ATgEffectManager* pThis,
 
 	Logger::Log("effects", "[REMOVE-ALL-EFFECTS] mgr=%p applied=%d excludes=%d\n",
 		(void*)pThis, pThis->s_AppliedEffectGroups.Count, excl ? excl->Count : 0);
+
+	// Track each category whose group(s) we tear down so we can fire the
+	// reactive-skill OFF dispatch once per category at the end. Without this,
+	// reactive skills like Aegis Armament (skill 913 / EG 26696, m_nReqCategory=770
+	// = PERSONAL_SHIELD, +25 Protection-Physical while a shield is active) keep
+	// their stat-mod committed past death because nothing reverses the m_fRaw
+	// delta applied at shield-on. Symptom: voluntary death with a Range/AoE
+	// Shield active → respawn → permanent +25% physical resist until the player
+	// disconnects. RemoveEffectGroup handles this correctly in its own path
+	// (last-of-category check + ProcessReactiveSkillBasedEffectGroup(cat, true));
+	// we mirror that here for the bulk death-cleanup.
+	//
+	// Also tracks whether any health>0 (shield) group was torn down so we can
+	// zero the replicated shield-bar fields (see end-of-function block).
+	std::set<int> removedCategories;
+	bool removedShield = false;
 
 	// Reverse iteration so swap-removes don't skip entries.
 	for (int i = pThis->s_AppliedEffectGroups.Count - 1; i >= 0; --i) {
@@ -101,10 +120,50 @@ void __fastcall TgEffectManager__RemoveAllEffects::Call(ATgEffectManager* pThis,
 		// Release the rep slot via the intact refcount-aware native.
 		ClearEffectRepNative(pThis, nullptr, applied->m_nEffectGroupId, applied->s_ManagedEffectListIndex);
 
+		// Record category + shield-ness BEFORE the swap-remove (post-swap the
+		// pointer at this slot belongs to a different group).
+		if (applied->m_nCategoryCode > 0) removedCategories.insert(applied->m_nCategoryCode);
+		if (applied->m_nHealth > 0) removedShield = true;
+
 		// Swap-remove from s_AppliedEffectGroups.
 		pThis->s_AppliedEffectGroups.Data[i] =
 			pThis->s_AppliedEffectGroups.Data[pThis->s_AppliedEffectGroups.Count - 1];
 		pThis->s_AppliedEffectGroups.Count--;
+	}
+
+	// Fire reactive-OFF dispatch for every category that's now empty. Mirrors
+	// RemoveEffectGroup's last-of-category check, batched. The recompute after
+	// the swap-remove loop above is necessary because mid-loop the array is in
+	// flux; an excluded group (303 DeathFade, 719) of the same category would
+	// otherwise be missed as a survivor.
+	for (int cat : removedCategories) {
+		bool stillHasCategory = false;
+		for (int i = 0; i < pThis->s_AppliedEffectGroups.Count; i++) {
+			UTgEffectGroup* g = pThis->s_AppliedEffectGroups.Data[i];
+			if (g && reinterpret_cast<uintptr_t>(g) >= 0x10000u &&
+			    g->m_nCategoryCode == cat) { stillHasCategory = true; break; }
+		}
+		if (!stillHasCategory) {
+			TgEffectManager__ProcessReactiveSkillBasedEffectGroup::Call(
+				pThis, nullptr, cat, 1u);
+		}
+	}
+
+	// Zero the published shield-bar so enemies stop seeing the healthbar on a
+	// dead/respawning pawn. UC's apply path (TgEffectManager.uc:241-245)
+	// unconditionally overwrites these on the next shield, so this cleanup is
+	// purely the "last shield removed" cleanup the UC code never wrote.
+	// Skip for non-pawn owners (TgDeployable has no such fields).
+	if (removedShield && pThis->r_Owner != nullptr &&
+	    reinterpret_cast<uintptr_t>(pThis->r_Owner) >= 0x10000u) {
+		const std::string& cn = ObjectClassCache::GetClassName(pThis->r_Owner->Class);
+		if (cn.compare(0, 19, "Class TgGame.TgPawn") == 0) {
+			ATgPawn* pawn = (ATgPawn*)pThis->r_Owner;
+			pawn->r_nShieldHealthMax = 0;
+			pawn->r_nShieldHealthRemaining = 0;
+			pawn->bNetDirty = 1;
+			pawn->bForceNetUpdate = 1;
+		}
 	}
 
 	pThis->bNetDirty = 1;

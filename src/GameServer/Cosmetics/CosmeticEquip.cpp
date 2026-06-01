@@ -7,6 +7,10 @@
 
 namespace CosmeticEquip {
 
+// Forward declaration — definition further down. Used by LoadFromDB to dump
+// the struct after each cosmetic ApplyOnly write.
+static void SpawnAsmSnapshot(const char* where, void* obj, const FCustomCharacterAssembly& a);
+
 // Engine equip point → EDyeSlots enum value
 // (TgObject.uc:173 — Primary=0, Secondary=1, Emissive=2, WeaponColor=3,
 // WeaponEmissive=4). Anything outside the 5 dye slots returns -1.
@@ -94,6 +98,9 @@ static bool ApplyOnly(ATgPawn* Pawn, int slot, int itemId) {
 
 	int itype = 0, isub = 0;
 	LookupItemTypeAndSubtype(itemId, itype, isub);
+	Logger::Log("spawn-asm",
+		"ApplyOnly: slot=%d itemId=%d -> itype=%d isub=%d\n",
+		slot, itemId, itype, isub);
 
 	if (isub == 1006 || isub == 1007) {
 		// Helmet (1006 base) OR Helmet Flair (1007) → HeadFlairId.
@@ -193,7 +200,27 @@ static bool ApplyOnly(ATgPawn* Pawn, int slot, int itemId) {
 	Logger::Log("cosmetic-equip",
 		"ApplyOnly: unrecognized item type=%d subtype=%d for itemId %d\n",
 		itype, isub, itemId);
+	Logger::Log("spawn-asm",
+		"ApplyOnly: UNRECOGNIZED itype=%d isub=%d itemId=%d slot=%d (no write)\n",
+		itype, isub, itemId, slot);
 	return false;
+}
+
+// One-line struct snapshot for diagnostic timeline. Defined here so it lives
+// in the same TU as ApplyOnly; SpawnPlayerCharacter.cpp has its own copy with
+// the same format.
+static void SpawnAsmSnapshot(const char* where, void* obj, const FCustomCharacterAssembly& a) {
+	Logger::Log("spawn-asm",
+		"%s obj=%p Suit=%d Head=%d Hair=%d Helmet=%d Skin=%d SkinRace=%d Eye=%d "
+		"bBald=%d bHideHelmet=%d bValid=%d bHalfHelmet=%d Gender=%d "
+		"HeadFlair=%d SuitFlair=%d Trail=%d Dye=[%d,%d,%d,%d,%d]\n",
+		where, obj,
+		a.SuitMeshId, a.HeadMeshId, a.HairMeshId, a.HelmetMeshId,
+		a.SkinToneParameterId, a.SkinRaceParameterId, a.EyeColorParameterId,
+		(int)a.bBald, (int)a.bHideHelmet, (int)a.bValidCustomAssembly, (int)a.bHalfHelmet,
+		a.nGenderTypeId,
+		a.HeadFlairId, a.SuitFlairId, a.JetpackTrailId,
+		a.DyeList[0], a.DyeList[1], a.DyeList[2], a.DyeList[3], a.DyeList[4]);
 }
 
 bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int slot, int invId, int itemId) {
@@ -218,9 +245,13 @@ bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int slot, int invId, int i
 	sqlite3* db = Database::GetConnection();
 	if (!db) return false;
 	sqlite3_stmt* stmt = nullptr;
+	// item_profile_id is NOT NULL on ga_character_devices (post-loadout
+	// migration). LoadFromDB is profile-agnostic — pin cosmetics to
+	// profile 1 so they show on every profile. The per-profile save
+	// path's DELETE+INSERT covers its own cosmetic rows independently.
 	if (sqlite3_prepare_v2(db,
 	        "INSERT OR REPLACE INTO ga_character_devices "
-	        "  (character_id, inventory_id, equipped_slot) VALUES (?, ?, ?)",
+	        "  (character_id, item_profile_id, inventory_id, equipped_slot) VALUES (?, 1, ?, ?)",
 	        -1, &stmt, nullptr) == SQLITE_OK) {
 		sqlite3_bind_int64(stmt, 1, character_id);
 		sqlite3_bind_int  (stmt, 2, invId);
@@ -304,18 +335,23 @@ void LoadFromDB(ATgPawn* Pawn, int64_t character_id) {
 			}
 		}
 	}
-	// Hair pairs with gender. Class default for male is HairMeshId=1757
-	// (TgPawn_Character.uc:1097); female GetDefaultAssembly leaves it 0.
-	// Hair isn't a column on ga_characters in the current schema, so it's
-	// gender-derived here; can be promoted to per-character later if/when
-	// hair selection ships.
-	const int hairMesh = (genderId == 852 /* female */) ? 0 : 1757;
+	// Hair pairs with gender. Both branches now use 1757 (NewHair1) — the
+	// male class default that was already in use. The original code wrote
+	// 0 for female, which crashes the client at 0x109d1f5b on the hair-
+	// component deref through 0xCCCCCCCC. This is the MINIMAL change off
+	// the pre-session baseline. Earlier attempts in this session widened
+	// the SELECT and added a SpawnPlayerCharacter pre-Fill — both regressed
+	// the inventory pipeline and have been reverted.
+	const int hairMesh = 1757;
 
 	// (1) Initialize the baseline assembly. Owning this here (instead of in
 	// SpawnPlayerCharacter) keeps the cosmetic state machine in one place and
 	// removes the placeholder-then-overwrite dance that left r_nBodyMeshAsmId
 	// pointing at the Medic Acolyte skeleton (1225) while SuitMeshId pointed
 	// at the cosmetic skeleton (e.g. 1586 for Commonwealth Technician).
+	Logger::Log("spawn-asm",
+		"LoadFromDB baseline: head=%d hair=%d gender=%d\n",
+		headMesh, hairMesh, genderId);
 	WriteBaselineAssembly(charPawn->r_CustomCharacterAssembly, headMesh, hairMesh, genderId);
 	if (PRI) WriteBaselineAssembly(PRI->r_CustomCharacterAssembly, headMesh, hairMesh, genderId);
 
@@ -335,7 +371,12 @@ void LoadFromDB(ATgPawn* Pawn, int64_t character_id) {
 			while (sqlite3_step(stmt) == SQLITE_ROW) {
 				const int slot   = sqlite3_column_int(stmt, 0);
 				const int itemId = sqlite3_column_int(stmt, 1);
+				Logger::Log("spawn-asm",
+					"LoadFromDB row: char=%lld slot=%d itemId=%d -> ApplyOnly\n",
+					(long long)character_id, slot, itemId);
 				if (ApplyOnly(Pawn, slot, itemId)) ++applied;
+				SpawnAsmSnapshot("[post-ApplyOnly pawn]", Pawn,
+					((ATgPawn_Character*)Pawn)->r_CustomCharacterAssembly);
 			}
 			sqlite3_finalize(stmt);
 		} else {
@@ -398,6 +439,66 @@ void LoadFromDB(ATgPawn* Pawn, int64_t character_id) {
 		charPawn->r_CustomCharacterAssembly.HelmetMeshId,
 		charPawn->r_CustomCharacterAssembly.HeadFlairId,
 		charPawn->r_CustomCharacterAssembly.JetpackTrailId);
+}
+
+void ClearUnsetSlots(ATgPawn* Pawn, const std::set<int>& equippedEngineSlots) {
+	if (!Pawn) return;
+	auto* charPawn = (ATgPawn_Character*)Pawn;
+	auto* PRI      = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+
+	auto has = [&](int slot) { return equippedEngineSlots.count(slot) > 0; };
+	int cleared = 0;
+
+	// Helmet (engine slot 12) — clears HeadFlairId (and HelmetMeshId falls
+	// back to whatever the gameplay helmet/CDO has, so we don't touch it).
+	if (!has(12)) {
+		if (charPawn->r_CustomCharacterAssembly.HeadFlairId != -1) {
+			charPawn->r_CustomCharacterAssembly.HeadFlairId = -1;
+			if (PRI) PRI->r_CustomCharacterAssembly.HeadFlairId = -1;
+			++cleared;
+		}
+	}
+	// Suit flair (engine slot 6) — clears SuitFlairId; leave SuitMeshId as
+	// the gameplay suit's mesh writes it (cosmetic clear shouldn't make the
+	// player invisible).
+	if (!has(6)) {
+		if (charPawn->r_CustomCharacterAssembly.SuitFlairId != -1) {
+			charPawn->r_CustomCharacterAssembly.SuitFlairId = -1;
+			if (PRI) PRI->r_CustomCharacterAssembly.SuitFlairId = -1;
+			++cleared;
+		}
+	}
+	// Dyes (engine slots 16-20 → DyeList[0..4]).
+	for (int slot = 16; slot <= 20; ++slot) {
+		const int eSlot = slot - 16;
+		if (!has(slot)) {
+			if (charPawn->r_CustomCharacterAssembly.DyeList[eSlot] != GA_G::DYE_ID_NONE_MORE_BLACK) {
+				charPawn->r_CustomCharacterAssembly.DyeList[eSlot] = GA_G::DYE_ID_NONE_MORE_BLACK;
+				if (PRI) PRI->r_CustomCharacterAssembly.DyeList[eSlot] = GA_G::DYE_ID_NONE_MORE_BLACK;
+				++cleared;
+			}
+		}
+	}
+	// Jetpack trail (engine slot 21).
+	if (!has(21)) {
+		if (charPawn->r_CustomCharacterAssembly.JetpackTrailId != 7638) {
+			charPawn->r_CustomCharacterAssembly.JetpackTrailId = 7638;
+			if (PRI) PRI->r_CustomCharacterAssembly.JetpackTrailId = 7638;
+			++cleared;
+		}
+	}
+
+	if (cleared > 0) {
+		Pawn->bNetDirty       = 1;
+		Pawn->bForceNetUpdate = 1;
+		if (PRI) {
+			PRI->bNetDirty       = 1;
+			PRI->bForceNetUpdate = 1;
+		}
+		Logger::Log("loadout",
+			"[ClearUnsetSlots] reset %d cosmetic field(s) to CDO defaults (equipped slots=%d)\n",
+			cleared, (int)equippedEngineSlots.size());
+	}
 }
 
 }  // namespace CosmeticEquip

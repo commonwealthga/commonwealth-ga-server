@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <set>
 
 class ATgPawn;
 
@@ -26,5 +27,16 @@ bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int slot, int invId, int i
 // (those rows already exist). Pawn comes up wearing the player's
 // last-saved appearance.
 void LoadFromDB(ATgPawn* Pawn, int64_t character_id);
+
+// Reset r_CustomCharacterAssembly fields whose engine equip-points are
+// NOT present in `equippedEngineSlots` to their CDO defaults. Used by the
+// loadout-profile switch hook: when the new profile has nothing in a
+// cosmetic slot (helmet, suit flair, dye N, trail), the previous
+// profile's visual must drop. `equippedEngineSlots` should contain the
+// engine equip-points the new profile DID populate; everything else gets
+// reset to CDO defaults (HeadFlairId=-1, SuitFlairId=-1,
+// JetpackTrailId=7638, DyeList[i]=DYE_ID_NONE_MORE_BLACK). Mirrors
+// writes to PRI and bumps bNetDirty so the client repaints.
+void ClearUnsetSlots(ATgPawn* Pawn, const std::set<int>& equippedEngineSlots);
 
 }  // namespace CosmeticEquip

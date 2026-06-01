@@ -38,12 +38,29 @@ const char* TargetName(ChangeTeamTarget t) {
     return "?";
 }
 
-const char* SpawnBotTeamName(SpawnBotTeam t) {
+const char* SpawnTargetTeamName(SpawnTargetTeam t) {
     switch (t) {
-        case SpawnBotTeam::Attackers: return "attackers";
-        case SpawnBotTeam::Defenders: return "defenders";
+        case SpawnTargetTeam::Friend: return "friend";
+        case SpawnTargetTeam::Enemy:  return "enemy";
     }
     return "?";
+}
+
+// Difficulty token → scalar. Mirrors Config::GetDifficultyScalar() values:
+//   low     = 1.00  (DIFFICULTY_VALUE_ID_LOW_SECURITY / NOVICE)
+//   medium  = 1.25  (MEDIUM_SECURITY / ADEPT)
+//   high    = 1.50  (HIGH_SECURITY / DOUBLE_AGENT / ADVANCED)
+//   max     = 1.75  (MAXIMUM_SECURITY / EXPERT)
+//   umax    = 2.00  (ULTRA_MAX_SECURITY)
+// Returns 0.0 for unknown tokens (caller treats this as "not a difficulty
+// token at all" — could be the bot_id then).
+float DifficultyScalarFromToken(const std::string& tok_lower) {
+    if (tok_lower == "low")    return 1.00f;
+    if (tok_lower == "medium") return 1.25f;
+    if (tok_lower == "high")   return 1.50f;
+    if (tok_lower == "max")    return 1.75f;
+    if (tok_lower == "umax")   return 2.00f;
+    return 0.0f;
 }
 
 // Split a trimmed string on ASCII whitespace runs.
@@ -108,28 +125,58 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
-    if (cmd_name == "-spawnbot") {
-        // -spawnbot <bot_id> <attackers|defenders>
+    if (cmd_name == "-spawnfriend" || cmd_name == "-spawnenemy") {
+        // -spawnfriend [low|medium|high|max|umax] <bot_id>
+        // -spawnenemy  [low|medium|high|max|umax] <bot_id>
+        // Difficulty token is optional; bare form falls back to the map's
+        // current difficulty in the DLL (scalar=0 sentinel).
         out.recognized = true;
         out.suppress_broadcast = true;
 
         std::vector<std::string> tokens = SplitWs(rest);
-        if (tokens.size() != 2) return out;
+        if (tokens.empty() || tokens.size() > 2) return out;
 
-        std::optional<int> bot_id = ParseInt(tokens[0]);
-        if (!bot_id || *bot_id <= 0) return out;
+        SpawnTargetArgs args;
+        args.team = (cmd_name == "-spawnfriend")
+                        ? SpawnTargetTeam::Friend
+                        : SpawnTargetTeam::Enemy;
 
-        std::string team_lower = LowerAscii(tokens[1]);
-        SpawnBotArgs args;
-        args.bot_id = *bot_id;
-        if (team_lower == "attackers") {
-            args.team = SpawnBotTeam::Attackers;
-        } else if (team_lower == "defenders") {
-            args.team = SpawnBotTeam::Defenders;
+        std::optional<int> bot_id;
+        if (tokens.size() == 1) {
+            // Just <bot_id> — leave difficulty at 0 (use map default).
+            bot_id = ParseInt(tokens[0]);
         } else {
-            return out;
+            // <difficulty> <bot_id>
+            const float scalar = DifficultyScalarFromToken(LowerAscii(tokens[0]));
+            if (scalar == 0.0f) return out;  // unknown difficulty token
+            args.difficulty_scalar = scalar;
+            bot_id = ParseInt(tokens[1]);
         }
-        out.spawn_bot = args;
+        if (!bot_id || *bot_id <= 0) return out;
+        args.bot_id = *bot_id;
+
+        out.spawn_target = args;
+        return out;
+    }
+
+    if (cmd_name == "-deployfriend" || cmd_name == "-deployenemy") {
+        // -deployfriend <deployable_id>
+        // -deployenemy  <deployable_id>
+        out.recognized = true;
+        out.suppress_broadcast = true;
+
+        std::vector<std::string> tokens = SplitWs(rest);
+        if (tokens.size() != 1) return out;
+
+        std::optional<int> dep_id = ParseInt(tokens[0]);
+        if (!dep_id || *dep_id <= 0) return out;
+
+        DeployTargetArgs args;
+        args.deployable_id = *dep_id;
+        args.team = (cmd_name == "-deployfriend")
+                        ? SpawnTargetTeam::Friend
+                        : SpawnTargetTeam::Enemy;
+        out.deploy_target = args;
         return out;
     }
 
@@ -196,23 +243,48 @@ void DispatchChangeTeam(ChangeTeamTarget target, const std::string& session_guid
     // Return value ignored: silent on failure per spec; DeliverPlayerAction logs internally.
 }
 
-void DispatchSpawnBot(const SpawnBotArgs& args, const std::string& session_guid) {
+void DispatchDeployTarget(const DeployTargetArgs& args, const std::string& session_guid) {
     if (session_guid.empty()) {
-        Logger::Log("chat-command", "[ChatCmd] DispatchSpawnBot dropped: empty session_guid\n");
+        Logger::Log("chat-command", "[ChatCmd] DispatchDeployTarget dropped: empty session_guid\n");
         return;
     }
 
     nlohmann::json payload;
     payload["type"]         = IpcProtocol::MSG_PLAYER_ACTION;
     payload["session_guid"] = session_guid;
-    payload["action"]       = "spawn_bot";
+    payload["action"]       = "deploy_target";
     payload["args"]         = {
-        {"bot_id", args.bot_id},
-        {"team",   SpawnBotTeamName(args.team)},
+        {"deployable_id", args.deployable_id},
+        {"team",          SpawnTargetTeamName(args.team)},
     };
 
-    Logger::Log("chat-command", "[ChatCmd] /spawnbot guid=%s bot_id=%d team=%s -> dispatch\n",
-        session_guid.c_str(), args.bot_id, SpawnBotTeamName(args.team));
+    Logger::Log("chat-command",
+        "[ChatCmd] /deploy%s guid=%s deployable_id=%d -> dispatch\n",
+        SpawnTargetTeamName(args.team), session_guid.c_str(), args.deployable_id);
+
+    (void)TcpSession::DeliverPlayerAction(session_guid, payload);
+}
+
+void DispatchSpawnTarget(const SpawnTargetArgs& args, const std::string& session_guid) {
+    if (session_guid.empty()) {
+        Logger::Log("chat-command", "[ChatCmd] DispatchSpawnTarget dropped: empty session_guid\n");
+        return;
+    }
+
+    nlohmann::json payload;
+    payload["type"]         = IpcProtocol::MSG_PLAYER_ACTION;
+    payload["session_guid"] = session_guid;
+    payload["action"]       = "spawn_target";
+    payload["args"]         = {
+        {"bot_id",            args.bot_id},
+        {"team",              SpawnTargetTeamName(args.team)},
+        {"difficulty_scalar", args.difficulty_scalar},
+    };
+
+    Logger::Log("chat-command",
+        "[ChatCmd] /spawn%s guid=%s bot_id=%d scalar=%.2f -> dispatch\n",
+        SpawnTargetTeamName(args.team), session_guid.c_str(),
+        args.bot_id, args.difficulty_scalar);
 
     (void)TcpSession::DeliverPlayerAction(session_guid, payload);
 }

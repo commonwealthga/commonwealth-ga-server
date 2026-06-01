@@ -146,7 +146,7 @@ struct EquippedPiece {
 // equipped_slot matches one of the 7 group-126 armor SVIDs are returned —
 // the same query would otherwise pick up cosmetic and gameplay-device rows
 // for the same character.
-std::vector<EquippedPiece> FetchEquippedArmor(int64_t character_id) {
+std::vector<EquippedPiece> FetchEquippedArmor(int64_t character_id, int item_profile_id) {
     std::vector<EquippedPiece> out;
     sqlite3* db = Database::GetConnection();
     if (!db) return out;
@@ -159,11 +159,12 @@ std::vector<EquippedPiece> FetchEquippedArmor(int64_t character_id) {
     //   1139 Legs, 1142 Feet, 1143 Shoulder (repurposed)
     // See ArmorSlot constants in EquipSlot.hpp for the full decode of
     // MiscItems[] indexing.
+    // Profile-scoped: only returns armor rows for the active loadout slot.
     const char* sql =
         "SELECT cd.inventory_id, cd.equipped_slot, pi.mod_effect_group_ids "
         "FROM ga_character_devices cd "
         "JOIN ga_players_inventory pi ON pi.id = cd.inventory_id "
-        "WHERE cd.character_id = ? "
+        "WHERE cd.character_id = ? AND cd.item_profile_id = ? "
         "  AND cd.equipped_slot IN (1130, 1132, 1133, 1136, 1139, 1142, 1143)";
 
     sqlite3_stmt* stmt = nullptr;
@@ -172,6 +173,7 @@ std::vector<EquippedPiece> FetchEquippedArmor(int64_t character_id) {
         return out;
     }
     sqlite3_bind_int64(stmt, 1, character_id);
+    sqlite3_bind_int  (stmt, 2, item_profile_id);
 
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         EquippedPiece p;
@@ -250,11 +252,18 @@ void Armor::ApplyDefaultArmor(ATgPawn* Pawn) {
         return;
     }
 
-    const std::vector<EquippedPiece> equipped = FetchEquippedArmor(character_id);
+    // Active loadout slot. SpawnPlayerCharacter + ServerLoadItemProfile both
+    // set r_nItemProfileId BEFORE calling RCST (which calls this), so the
+    // pawn field is the source of truth at apply time.
+    int item_profile_id = ((ATgPawn_Character*)Pawn)->r_nItemProfileId;
+    if (item_profile_id < 1 || item_profile_id > 5) item_profile_id = 1;
+
+    const std::vector<EquippedPiece> equipped =
+        FetchEquippedArmor(character_id, item_profile_id);
     if (equipped.empty()) {
         Logger::Log("armor",
-            "[Armor] pawn=%p char=%lld has no equipped armor rows — bare stats\n",
-            (void*)Pawn, (long long)character_id);
+            "[Armor] pawn=%p char=%lld itemProf=%d has no equipped armor rows — bare stats\n",
+            (void*)Pawn, (long long)character_id, item_profile_id);
         return;
     }
 

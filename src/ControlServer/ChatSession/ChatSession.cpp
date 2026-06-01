@@ -121,8 +121,11 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         if (parsed.recognized && parsed.change_team) {
             ChatCommand::DispatchChangeTeam(*parsed.change_team, session_guid_);
         }
-        if (parsed.recognized && parsed.spawn_bot) {
-            ChatCommand::DispatchSpawnBot(*parsed.spawn_bot, session_guid_);
+        if (parsed.recognized && parsed.spawn_target) {
+            ChatCommand::DispatchSpawnTarget(*parsed.spawn_target, session_guid_);
+        }
+        if (parsed.recognized && parsed.deploy_target) {
+            ChatCommand::DispatchDeployTarget(*parsed.deploy_target, session_guid_);
         }
         if (parsed.recognized && parsed.possess) {
             ChatCommand::DispatchPossess(session_guid_);

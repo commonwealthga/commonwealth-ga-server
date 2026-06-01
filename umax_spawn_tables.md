@@ -1,5 +1,85 @@
 # Spawn Tables (difficulty_value_id = 1471)
 
+umax:
+28 - normal spawns
+29 - first spawn
+33 - responders, assassins, helot
+34 - scanner, guardian, widow
+40,45 - scanner, foreman, recluse, widow
+46 - boss initial adds
+51 - responders, assassin
+58 - normal spawns + guardian
+59 - boss alarm adds
+66 - normal spawns + recluse
+
+85 - colony group spawn
+86 hunter spider
+87 guardian
+98 drone + wasp
+99 colony big group + sand spider
+100 colony big group + sentry + guardian + scorpion
+101 scorpion + repair drone + soldier
+102 drones + soldiers
+103 drones + soldiers + repair drone
+147 wasps + wasps mk2
+148 ant + ticks
+149 juggernaut
+151 dismantler
+167 drones + soldiers + ant + sand spider + repair drone
+168 sentry + guardian|scorpion|spider
+169 wasps + repair drones
+170 3x guardian
+171 scorpion
+173 control panel
+
+
+
+
+
+
+med:
+63 - iris scanner
+69 - soldier + bruiser
+71 sand spider + guardian
+72 hunter spider + guardian
+73 hunter spider or guardian
+74 hunter spider + guardian + tick
+75 dune commander + tick
+78,90 legion soldier + kanar tribesman
+79 normal spawns kanar + legion
+80 sniper
+81 tribesman
+82 bruiser
+84 champion
+85 colony drone + mk2 + ant
+86 hunter spider
+87 guardian
+88 dune commander
+98 drone + wasp
+99 drone + soldier + sand spider + wasp
+104 overseer
+105 legion templar
+120,173 control panel
+149,152 juggernaut
+151 dismantler
+153 armored soldier + drone
+163 tick incubator
+165 repair drone
+170 guardian
+171 scorpion
+181 overlord
+188 wasp incubator
+192,230 wasp mk2
+198 feeler
+224,227,229 colony eye
+
+
+
+
+
+
+
+
 ## Table 28
 | group | bot id | bot | count | chance |
 |---:|---:|:---|---:|---:|

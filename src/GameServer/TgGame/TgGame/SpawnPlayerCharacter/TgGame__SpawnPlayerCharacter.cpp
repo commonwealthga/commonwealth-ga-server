@@ -16,12 +16,34 @@
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
+#include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/Utils/CommandLineParser/CommandLineParser.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 bool TgGame__SpawnPlayerCharacter::bEnemyGearSpawned = true;  // now handled in SpawnBotById
+
+// Single-line dump of all 17 FCustomCharacterAssembly ints + bitflags.
+// Diagnostic-only — caller passes a `where` tag so a sequence of snapshots
+// shows the timeline of writes across the spawn pipeline. Lives in this
+// translation unit (rather than a header) because it's not used by anyone
+// else and we want to keep the snapshot format consistent here.
+static void LogAssemblySnapshot(const char* where, void* obj, const FCustomCharacterAssembly& a) {
+	Logger::Log("spawn-asm",
+		"%s obj=%p Suit=%d Head=%d Hair=%d Helmet=%d "
+		"Skin=%d SkinRace=%d Eye=%d "
+		"bBald=%d bHideHelmet=%d bValid=%d bHalfHelmet=%d Gender=%d "
+		"HeadFlair=%d SuitFlair=%d Trail=%d "
+		"Dye=[%d,%d,%d,%d,%d]\n",
+		where, obj,
+		a.SuitMeshId, a.HeadMeshId, a.HairMeshId, a.HelmetMeshId,
+		a.SkinToneParameterId, a.SkinRaceParameterId, a.EyeColorParameterId,
+		(int)a.bBald, (int)a.bHideHelmet, (int)a.bValidCustomAssembly, (int)a.bHalfHelmet,
+		a.nGenderTypeId,
+		a.HeadFlairId, a.SuitFlairId, a.JetpackTrailId,
+		a.DyeList[0], a.DyeList[1], a.DyeList[2], a.DyeList[3], a.DyeList[4]);
+}
 
 ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, void* edx, ATgPlayerController* PlayerController, FVector SpawnLocation) {
 
@@ -30,6 +52,11 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	int32_t ConnectionIndex = (int32_t)((UNetConnection*)PlayerController->Player);
 
 	Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: connection=%d\n", ConnectionIndex);
+	Logger::Log("spawn-asm",
+		"=== SpawnPlayerCharacter ENTRY conn=%d charId=%lld profileId=%u ===\n",
+		ConnectionIndex,
+		(long long)GClientConnectionsData[ConnectionIndex].PlayerInfo.selected_character_id,
+		GClientConnectionsData[ConnectionIndex].PlayerInfo.selected_profile_id);
 
 	// Read the player's selected class from connection data.
 	uint32_t profileId = GClientConnectionsData[ConnectionIndex].PlayerInfo.selected_profile_id;
@@ -52,6 +79,21 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// r_nPawnId is assigned by UC TgPawn.PostBeginPlay via TgGame.GetNextPawnId()
 	// during Spawn() — per-TgGame-instance monotonic counter. Don't override.
 	ATgRepInfo_Player* newrepplayer = reinterpret_cast<ATgRepInfo_Player*>(PlayerController->PlayerReplicationInfo);
+
+	// SpawnPlayerCharacter no longer pre-fills r_CustomCharacterAssembly or
+	// s_OrigCustomCharacterAssembly. CosmeticEquip::LoadFromDB owns the
+	// baseline write (via WriteBaselineAssembly) and already addresses the
+	// hair=0 → crash bug by hardcoding hairMesh=1757 for both genders. An
+	// earlier pre-Fill block in this slot wrote to s_Orig — a server-only
+	// field whose CDO default has bValidCustomAssembly=false — and overlapped
+	// the post-spawn inventory pipeline in a way that regressed device-bar
+	// display. Snapshots stay so the spawn-asm channel still narrates state.
+	const int64_t characterId = GClientConnectionsData[ConnectionIndex].PlayerInfo.selected_character_id;
+	Logger::Log("spawn-asm", "post-Spawn newpawn=%p newrepplayer=%p charId=%lld\n",
+		newpawn, newrepplayer, (long long)characterId);
+	LogAssemblySnapshot("[post-Spawn pawn]", newpawn, newpawn->r_CustomCharacterAssembly);
+	LogAssemblySnapshot("[post-Spawn Orig]", newpawn, newpawn->s_OrigCustomCharacterAssembly);
+	LogAssemblySnapshot("[post-Spawn PRI ]", newrepplayer, newrepplayer->r_CustomCharacterAssembly);
 
 	PlayerController->Pawn = newpawn;
 	newpawn->Controller = PlayerController;
@@ -400,6 +442,32 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		int64_t charId = (int64_t)newpawn->s_nCharacterId;
 		sqlite3* db = Database::GetConnection();
 
+		// Active loadout slot from PlayerInfo (populated by PLAYER_REGISTER
+		// IPC). Drives both the ga_character_devices query below and the
+		// pawn's r_nItemProfileId so RCST's PHASE 2 ApplyDefaultArmor reads
+		// the right armor rows.
+		int item_profile_id = 1;
+		{
+			const std::string& guid = GClientConnectionsData[ConnectionIndex].SessionGuid;
+			if (!guid.empty()) {
+				PlayerInfo* info = PlayerRegistry::GetByGuidPtr(guid);
+				if (info && info->current_item_profile_id >= 1 && info->current_item_profile_id <= 5) {
+					item_profile_id = info->current_item_profile_id;
+				}
+			}
+		}
+		((ATgPawn_Character*)newpawn)->r_nItemProfileId = item_profile_id;
+		// Owned-profile count — CDO default is 1 (retail gated 2..5 behind a
+		// vendor purchase). Private-server policy: every character has all 5
+		// unlocked from the start. Field is CPF_Net so the client's
+		// TgUIAgentProfile button bar (m_ProfileButtonArray[5]) lights up
+		// without any further plumbing; the engine native's nId<=Nbr gate in
+		// ServerLoadItemProfile also passes.
+		((ATgPawn_Character*)newpawn)->r_nItemProfileNbr = 5;
+		Logger::Log(GetLogChannel(),
+			"SpawnPlayerCharacter: itemProfileId=%d nbr=5 for charId=%lld\n",
+			item_profile_id, charId);
+
 		// (0) Cosmetic assembly first — BEFORE the device equip loop and
 		// BEFORE Inventory::Finalize. Why ordering matters:
 		//
@@ -424,7 +492,15 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		// rows (suit flair / helmet flair / dyes / jetpack trail). The
 		// gameplay device equip loop below filters by i.device_id > 0 so
 		// the two passes never overlap.
+		Logger::Log("spawn-asm", "pre-LoadFromDB snapshots (charId=%lld):\n", (long long)charId);
+		LogAssemblySnapshot("[pre-LoadFromDB pawn]", newpawn, newpawn->r_CustomCharacterAssembly);
 		CosmeticEquip::LoadFromDB(newpawn, charId);
+		Logger::Log("spawn-asm", "post-LoadFromDB snapshots:\n");
+		LogAssemblySnapshot("[post-LoadFromDB pawn]", newpawn, newpawn->r_CustomCharacterAssembly);
+		{
+			ATgRepInfo_Player* pri = (ATgRepInfo_Player*)newpawn->PlayerReplicationInfo;
+			if (pri) LogAssemblySnapshot("[post-LoadFromDB PRI ]", pri, pri->r_CustomCharacterAssembly);
+		}
 
 		// (1) Player-chosen equipped gear.
 		// v76: filter to device rows only (i.device_id > 0). Cosmetic rows
@@ -435,11 +511,12 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 			"SELECT i.device_id, d.equipped_slot, i.quality, i.id, i.mod_effect_group_ids "
 			"FROM ga_character_devices d "
 			"JOIN ga_players_inventory i ON i.id = d.inventory_id "
-			"WHERE d.character_id = ? AND i.device_id > 0 "
+			"WHERE d.character_id = ? AND d.item_profile_id = ? AND i.device_id > 0 "
 			"ORDER BY d.equipped_slot",
 			-1, &stmt, nullptr);
 		if (rc == SQLITE_OK && stmt) {
 			sqlite3_bind_int64(stmt, 1, charId);
+			sqlite3_bind_int  (stmt, 2, item_profile_id);
 			while (sqlite3_step(stmt) == SQLITE_ROW) {
 				int deviceId    = sqlite3_column_int(stmt, 0);
 				int slot        = sqlite3_column_int(stmt, 1);
@@ -471,15 +548,9 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 				charId, sqlite3_errmsg(db));
 		}
 
-		// Class device (slot 14 / HUMAN BASE ATTRIBUTES) used to be attached
-		// here via a synthetic invId outside the inventory pool. That
-		// corrupted the inventory TMap on disconnect cleanup (three
-		// FMallocWindows::Free crash conditions detected). It's now a regular
-		// inventory row: SeedInventoryFromLoadouts adds it to
-		// ga_players_inventory, the opening-loadout pass equips it in slot 14
-		// on character creation, and SaveEquippedDevices pins it to slot 14
-		// on every equip save. So the JOIN query above just returns it like
-		// any other equipped device — no special handling needed here.
+		// Class-device slot-14 fallback REMOVED. ga_character_devices is now
+		// the single source of truth for equipped state — if the player
+		// hasn't equipped slot 14, nothing is equipped there.
 
 		Inventory::Finalize(newpawn);
 
@@ -545,6 +616,24 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newpawn->SetLocation(SpawnLocation);
 	newpawn->SetRotation(PlayerController->Rotation);
 
+	// scope-zoom investigation baseline — snapshot the aim-mode fields right
+	// after spawn so the log captures what the FIRST initial-replication bunch
+	// will ship to the client. If r_bAimingMode is TRUE here, the client's
+	// repnotify fires OnAimingModeChange immediately, the next-tick
+	// ManageZoomingClientSide kicks ClientZoomIn before the user has even
+	// right-clicked, and the lerp completes invisibly — which would
+	// EXACTLY match the symptom ("scope snaps instant, even first time").
+	Logger::Log("scope",
+		"[SPAWN] pawn=%p r_bAimingMode=%d r_bIsInSnipeScope=%d r_bUsingBinoculars=%d "
+		"r_nBodyMeshAsmId=%d charId=%d connIdx=%d\n",
+		(void*)newpawn,
+		(int)newpawn->r_bAimingMode,
+		(int)newpawn->r_bIsInSnipeScope,
+		(int)newpawn->r_bUsingBinoculars,
+		newpawn->r_nBodyMeshAsmId,
+		(int)newpawn->s_nCharacterId,
+		ConnectionIndex);
+
 	// Update GPawnSessions and reapply skills. SpawnPlayerCharacter fires both
 	// on INITIAL connect AND on RESPAWN — but HandlePlayerConnected (which used
 	// to be the only Reapply call site) only fires on initial connect, so
@@ -577,6 +666,13 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		newpawn->ReapplyCharacterSkillTree();
 	}
 
+	Logger::Log("spawn-asm", "=== SpawnPlayerCharacter EXIT final snapshots ===\n");
+	LogAssemblySnapshot("[EXIT pawn]", newpawn, newpawn->r_CustomCharacterAssembly);
+	LogAssemblySnapshot("[EXIT Orig]", newpawn, newpawn->s_OrigCustomCharacterAssembly);
+	{
+		ATgRepInfo_Player* pri = (ATgRepInfo_Player*)newpawn->PlayerReplicationInfo;
+		if (pri) LogAssemblySnapshot("[EXIT PRI ]", pri, pri->r_CustomCharacterAssembly);
+	}
 	LogCallEnd();
 
 	return newpawn;

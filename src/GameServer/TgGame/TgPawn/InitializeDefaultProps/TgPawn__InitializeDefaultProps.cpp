@@ -5,9 +5,11 @@
 #include "src/Database/Database.hpp"
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include <cmath>
 
 int TgPawn__InitializeDefaultProps::nPendingBotId = 0;
 bool TgPawn__InitializeDefaultProps::bPendingEnemyScaling = false;
+float TgPawn__InitializeDefaultProps::nPendingDifficultyScalarOverride = 0.0f;
 
 namespace {
 struct BotDefaults {
@@ -24,6 +26,11 @@ struct BotDefaults {
 	// reaching this struct only happens for non-factory spawns (deployables,
 	// pets) where we fall back to no multiplier.
 	float balanceMultiplier;
+	// asm_data_set_bots.fixed_fov_degrees — total vision arc in degrees that
+	// the AI controller uses for SeePlayer / target acquisition. Personal
+	// Turret = 180, Auto Cannon = 90, Plasma Turret = 180, Flame/Objective
+	// Turret = 360. 0 = "use UC default" (TgPawn.uc:10535 sets 0.5 → 120° arc).
+	int fixedFovDegrees;
 };
 // Per-bot defaults cache. Populated lazily on the first InitializeDefaultProps
 // call for a given bot_id; subsequent spawns of the same bot reuse the row
@@ -50,16 +57,17 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	float sightRange   = 800.0f;
 
 	float balanceMultiplier = 1.0f;
+	int   fixedFovDegrees   = 0; // 0 = leave UC default (0.5 → 120° arc)
 
 	if (nPendingBotId != 0) {
 		auto it = g_botDefaultsCache.find(nPendingBotId);
 		if (it == g_botDefaultsCache.end()) {
 			// First spawn of this bot — query the DB row and cache it.
-			BotDefaults d{ hitPoints, speed, powerPool, rechargeRate, accuracy, sightRange, balanceMultiplier };
+			BotDefaults d{ hitPoints, speed, powerPool, rechargeRate, accuracy, sightRange, balanceMultiplier, fixedFovDegrees };
 			sqlite3* db = Database::GetConnection();
 			sqlite3_stmt* stmt;
 			if (sqlite3_prepare_v2(db,
-				"SELECT hit_points, default_speed, default_power_pool, power_pool_regen_per_sec, accuracy_override, default_sensor_range, bot_balance_multiplier "
+				"SELECT hit_points, default_speed, default_power_pool, power_pool_regen_per_sec, accuracy_override, default_sensor_range, bot_balance_multiplier, fixed_fov_degrees "
 				"FROM asm_data_set_bots WHERE bot_id = ? LIMIT 1",
 				-1, &stmt, nullptr) == SQLITE_OK) {
 				sqlite3_bind_int(stmt, 1, nPendingBotId);
@@ -78,6 +86,8 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 						d.sightRange   = (float)sqlite3_column_double(stmt, 5);
 					if (sqlite3_column_type(stmt, 6) != SQLITE_NULL)
 						d.balanceMultiplier = (float)sqlite3_column_double(stmt, 6);
+					if (sqlite3_column_type(stmt, 7) != SQLITE_NULL && sqlite3_column_int(stmt, 7) > 0)
+						d.fixedFovDegrees = sqlite3_column_int(stmt, 7);
 				}
 				sqlite3_finalize(stmt);
 			}
@@ -91,6 +101,7 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 		accuracy          = d.accuracy;
 		sightRange        = d.sightRange;
 		balanceMultiplier = d.balanceMultiplier;
+		fixedFovDegrees   = d.fixedFovDegrees;
 		nBotId = nPendingBotId;
 		nPendingBotId = 0;
 	}
@@ -104,6 +115,16 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	const bool scaleAsEnemy = bPendingEnemyScaling;
 	bPendingEnemyScaling = false;
 
+	// Per-spawn scalar override (-spawnfriend/-spawnenemy chat command). 0 =
+	// "use map default" (Config::GetDifficultyScalar). Consume + clear here
+	// even if scaling is gated off, so a leftover from a chat spawn that
+	// somehow skipped the gate can't leak into a later factory spawn.
+	const float scalarOverride = nPendingDifficultyScalarOverride;
+	nPendingDifficultyScalarOverride = 0.0f;
+	const float difficultyScalar = scalarOverride > 0.0f
+		? scalarOverride
+		: Config::GetDifficultyScalar();
+
 	// Combined stat scale = per-bot BBM × per-difficulty scalar.
 	// BBM=0 is the "never spawn" sentinel — already filtered upstream from
 	// the enemy bot-factory pipeline, so we only reach this branch with BBM=0
@@ -112,7 +133,7 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// (scalar 3.0), a plain BBM=1.0 enemy ends up at 3× HP and +200% damage;
 	// an elite BBM=1.7 Colony Soldier ends up at 5.1× HP and +410% damage.
 	const float combinedMultiplier = (scaleAsEnemy && balanceMultiplier > 0.0f)
-		? balanceMultiplier * Config::GetDifficultyScalar()
+		? balanceMultiplier * difficultyScalar
 		: 1.0f;
 	if (combinedMultiplier != 1.0f) {
 		hitPoints *= combinedMultiplier;
@@ -281,15 +302,33 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_RANGED,       0, 0, 0, 1000.0f);
 	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_AOE,          0, 0, 0, 1000.0f);
 
+	// Vision arc — APawn::PeripheralVision (offset 0x0228) is the cosine of
+	// the half-arc the AI uses for SeePlayer / target acquisition. UC default
+	// from TgPawn.uc:10535 is 0.5 (= 120° total arc) which is too narrow for
+	// turrets that should see ±90° (Personal/Plasma, fixed_fov_degrees=180)
+	// and totally wrong for 360° turrets (Flame/Objective/Base).
+	//
+	// Formula matches UC's ApplyScannerSettingsToPawn (TgPawn.uc:7290):
+	//     PeripheralVision = cos(fov_degrees * PI / 360)
+	// so 360 → cos(180°) = -1.0 (see in all directions), 180 → 0.0,
+	// 90 → ≈0.707, 45 → ≈0.924.
+	//
+	// Only write when fixedFovDegrees > 0 (DB value present) — pawns without
+	// a bot row (players, deployables) keep the UC default.
+	if (fixedFovDegrees > 0) {
+		Pawn->PeripheralVision = std::cos((float)fixedFovDegrees * 3.14159265f / 360.0f);
+	}
+
 	// DIAG: per-respawn buff investigation — read back the engine power-regen
 	// field after all SetProperty calls. If higher than `rechargeRate`, the
 	// pre/post values diverging on subsequent spawns tells us where the
 	// stacking comes from.
 	Logger::Log("debug",
-	    "[InitDefaults] pawn=0x%p sProps.Count(post)=%d s_fPowerPoolRechargeRate(post)=%.2f r_fMaxPowerPool=%.2f\n",
+	    "[InitDefaults] pawn=0x%p sProps.Count(post)=%d s_fPowerPoolRechargeRate(post)=%.2f r_fMaxPowerPool=%.2f fov=%d PeripheralVision=%.3f\n",
 	    Pawn,
 	    Pawn->s_Properties.Data ? Pawn->s_Properties.Num() : -1,
-	    Pawn->s_fPowerPoolRechargeRate, Pawn->r_fMaxPowerPool);
+	    Pawn->s_fPowerPoolRechargeRate, Pawn->r_fMaxPowerPool,
+	    fixedFovDegrees, Pawn->PeripheralVision);
 
 	LogCallEnd();
 }

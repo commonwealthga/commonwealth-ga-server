@@ -7,6 +7,7 @@
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/ChangeTeam/ChangeTeam.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/SpawnBot/SpawnBot.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/Deploy/Deploy.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
@@ -297,13 +298,16 @@ void IpcClient::DrainInbound() {
             // the DLL's own sqlite DB (inserted at character creation via old flow).
 
             PlayerInfo info;
-            info.session_guid          = guid;
-            info.player_name           = pname;
-            info.ip_address            = "";  // Not known yet; set by JOIN when UDP connects
-            info.user_id               = uid;
-            info.selected_character_id = char_id;
-            info.selected_profile_id   = profile_id;
-            info.task_force            = task_force;
+            info.session_guid             = guid;
+            info.player_name              = pname;
+            info.ip_address               = "";  // Not known yet; set by JOIN when UDP connects
+            info.user_id                  = uid;
+            info.selected_character_id    = char_id;
+            info.selected_profile_id      = profile_id;
+            info.task_force               = task_force;
+            info.current_item_profile_id  = j.value("current_item_profile_id", 1);
+            if (info.current_item_profile_id < 1 || info.current_item_profile_id > 5)
+                info.current_item_profile_id = 1;
 
             // Convert player_name to wide string for UE3 APIs.
             info.player_name_w = std::wstring(pname.begin(), pname.end());
@@ -324,8 +328,10 @@ void IpcClient::DrainInbound() {
 
             PlayerRegistry::Register(info);
 
-            Logger::Log("ipc", "[IPC] PLAYER_REGISTER: guid=%s profile=%u char=%lld user=%lld tf=%d skills=%d\n",
-                guid.c_str(), profile_id, char_id, uid, task_force, (int)info.skills.size());
+            Logger::Log("ipc",
+                "[IPC] PLAYER_REGISTER: guid=%s profile=%u itemProf=%d char=%lld user=%lld tf=%d skills=%d\n",
+                guid.c_str(), profile_id, info.current_item_profile_id,
+                char_id, uid, task_force, (int)info.skills.size());
 
             // Send ACK back to control server.
             // pawn_id is 0 at registration time (pawn not yet spawned -- spawns at JOIN).
@@ -365,35 +371,66 @@ void IpcClient::DrainInbound() {
                 }
 
                 TgPlayerActions::ChangeTeamCmd::Execute(guid, target);
-            } else if (action == "spawn_bot") {
+            } else if (action == "spawn_target") {
                 int bot_id = 0;
                 std::string team_str;
+                float difficulty_scalar = 0.0f;
                 if (j.contains("args") && j["args"].is_object()) {
-                    bot_id   = j["args"].value("bot_id", 0);
-                    team_str = j["args"].value("team", "");
+                    bot_id            = j["args"].value("bot_id", 0);
+                    team_str          = j["args"].value("team", "");
+                    difficulty_scalar = j["args"].value("difficulty_scalar", 0.0f);
                 }
 
                 if (bot_id <= 0) {
                     Logger::Log("chat-command",
-                        "[ChatCmd][DLL] spawn_bot guid=%s: invalid bot_id=%d; dropping\n",
+                        "[ChatCmd][DLL] spawn_target guid=%s: invalid bot_id=%d; dropping\n",
                         guid.c_str(), bot_id);
                     continue;
                 }
 
                 using TgPlayerActions::SpawnBotCmd::Team;
                 Team team;
-                if (team_str == "attackers") {
-                    team = Team::Attackers;
-                } else if (team_str == "defenders") {
-                    team = Team::Defenders;
+                if (team_str == "friend") {
+                    team = Team::Friend;
+                } else if (team_str == "enemy") {
+                    team = Team::Enemy;
                 } else {
                     Logger::Log("chat-command",
-                        "[ChatCmd][DLL] spawn_bot guid=%s: invalid team '%s'; dropping\n",
+                        "[ChatCmd][DLL] spawn_target guid=%s: invalid team '%s'; dropping\n",
                         guid.c_str(), team_str.c_str());
                     continue;
                 }
 
-                TgPlayerActions::SpawnBotCmd::Execute(guid, bot_id, team);
+                TgPlayerActions::SpawnBotCmd::Execute(guid, bot_id, team, difficulty_scalar);
+            } else if (action == "deploy_target") {
+                int deployable_id = 0;
+                std::string team_str;
+                if (j.contains("args") && j["args"].is_object()) {
+                    deployable_id = j["args"].value("deployable_id", 0);
+                    team_str      = j["args"].value("team", "");
+                }
+
+                if (deployable_id <= 0) {
+                    Logger::Log("chat-command",
+                        "[ChatCmd][DLL] deploy_target guid=%s: invalid deployable_id=%d; dropping\n",
+                        guid.c_str(), deployable_id);
+                    continue;
+                }
+
+                using TgPlayerActions::DeployCmd::Team;
+                Team team;
+                if (team_str == "friend") {
+                    team = Team::Friend;
+                } else if (team_str == "enemy") {
+                    team = Team::Enemy;
+                } else {
+                    Logger::Log("chat-command",
+                        "[ChatCmd][DLL] deploy_target guid=%s: invalid team '%s'; dropping\n",
+                        guid.c_str(), team_str.c_str());
+                    continue;
+                }
+
+                TgPlayerActions::DeployCmd::Execute(guid, deployable_id, team);
             } else if (action == "possess") {
                 TgPlayerActions::PossessCmd::ExecutePossess(guid);
             } else if (action == "unpossess") {

@@ -339,6 +339,17 @@ private:
 
     void send_inventory_response(int nPawnId, int64_t character_id);
 
+    // Bulk STATE=2 delete pass for every inventory row the user owns. The
+    // device-bar widget binds to per-profile slot data inside the client's
+    // m_InventoryMap entries (DATA_SET_CHARACTER_PROFILES rows). On profile
+    // switch, sending updated rows isn't enough — the client's record-merge
+    // logic appears to accumulate rather than replace the per-profile entries,
+    // leaving stale "equipped in profile N" data that the bar still renders.
+    // Wiping each entry before send_inventory_response re-adds it forces a
+    // fresh rebuild — same shape as the disconnect/reconnect flow that the
+    // user already confirmed fixes the symptom.
+    void send_inventory_clear(int nPawnId, int64_t character_id);
+
     // Identical wire format to send_inventory_response but pulls the records
     // from an in-memory list (no DB lookup). Used by the -possess chat command
     // to display the bot's loadout in the player's inventory UI.
@@ -350,7 +361,7 @@ private:
     };
     void send_loadout_inventory_response(int nPawnId, const std::vector<LoadoutItem>& items);
 
-    void send_beacon_pickup_response(int nPawnId, int nDeviceId, int nInventoryId, int nEquipSlotValueId);
+    void send_beacon_pickup_response(int nPawnId, int nDeviceId, int nInventoryId, int nEquipSlotValueId, int nItemProfileId);
     void send_beacon_remove_response(int nPawnId, int nInventoryId);
     void send_quest_accept_response(int nQuestId);
     void send_quest_complete_response(int nQuestId);

@@ -144,6 +144,14 @@ ATgDevice* __fastcall TgInventoryManager__NonPersistAddDevice::Call(
 	auto sessIt = GPawnSessions.find(ownerpawn);
 	if (sessIt != GPawnSessions.end()) {
 		const int slotValueId = GA::SlotValueId(nEquipPoint);
+		// Active loadout profile (1..5) — `r_nItemProfileId` on ATgPawn_Character
+		// at +0x1634. The control server's send_beacon_pickup_response uses this
+		// to mark the EQUIPPED_SLOT_VALUE_ID row for the right profile in
+		// DATA_SET_CHARACTER_PROFILES. Without it the client's invObj slot
+		// table only gets populated for profile 1 and the device bar misses
+		// the beacon on any other active profile.
+		int itemProfileId = ((ATgPawn_Character*)ownerpawn)->r_nItemProfileId;
+		if (itemProfileId < 1 || itemProfileId > 5) itemProfileId = 1;
 		nlohmann::json ev;
 		ev["type"]                = IpcProtocol::MSG_GAME_EVENT;
 		ev["subtype"]             = "beacon_pickup";
@@ -153,10 +161,11 @@ ATgDevice* __fastcall TgInventoryManager__NonPersistAddDevice::Call(
 		ev["device_id"]           = nDeviceId;
 		ev["inventory_id"]        = invId;
 		ev["equip_slot_value_id"] = slotValueId;
+		ev["item_profile_id"]     = itemProfileId;
 		IpcClient::Send(ev.dump());
 		Logger::Log("beacon",
-			"NonPersistAddDevice: equipped pawn=%d device=%d slot=%d invId=%d (slotValueId=%d)\n",
-			(int)ownerpawn->r_nPawnId, nDeviceId, nEquipPoint, invId, slotValueId);
+			"NonPersistAddDevice: equipped pawn=%d device=%d slot=%d invId=%d (slotValueId=%d profile=%d)\n",
+			(int)ownerpawn->r_nPawnId, nDeviceId, nEquipPoint, invId, slotValueId, itemProfileId);
 	} else {
 		Logger::Log("beacon",
 			"NonPersistAddDevice: WARNING no session for pawn 0x%p — beacon_pickup IPC not sent\n",

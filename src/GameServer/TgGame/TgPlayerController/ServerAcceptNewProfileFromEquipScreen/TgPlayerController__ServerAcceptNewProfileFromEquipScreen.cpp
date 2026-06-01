@@ -279,21 +279,26 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 		}
 
 		if (anyArmorMisc) {
+			// Profile-scoped: this RPC names its target loadout via nProfileId.
+			// Only that profile's armor rows are replaced — other profiles
+			// keep their armor untouched.
 			sqlite3_stmt* delA = nullptr;
 			if (sqlite3_prepare_v2(db,
 			    "DELETE FROM ga_character_devices "
-			    "WHERE character_id = ? "
+			    "WHERE character_id = ? AND item_profile_id = ? "
 			    "  AND equipped_slot IN (1130, 1132, 1133, 1136, 1139, 1142, 1143)",
 			    -1, &delA, nullptr) == SQLITE_OK) {
 				sqlite3_bind_int64(delA, 1, character_id);
+				sqlite3_bind_int  (delA, 2, nProfileId);
 				sqlite3_step(delA);
 				sqlite3_finalize(delA);
 			}
 
 			sqlite3_stmt* insA = nullptr;
 			if (sqlite3_prepare_v2(db,
-			    "INSERT INTO ga_character_devices (character_id, inventory_id, equipped_slot) "
-			    "VALUES (?, ?, ?)",
+			    "INSERT INTO ga_character_devices "
+			    "(character_id, item_profile_id, inventory_id, equipped_slot) "
+			    "VALUES (?, ?, ?, ?)",
 			    -1, &insA, nullptr) == SQLITE_OK) {
 				int wroteArmor = 0;
 				for (int i = 0; i < 0x19; ++i) {
@@ -310,13 +315,15 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 					sqlite3_reset(insA);
 					sqlite3_clear_bindings(insA);
 					sqlite3_bind_int64(insA, 1, character_id);
-					sqlite3_bind_int  (insA, 2, invId);
-					sqlite3_bind_int  (insA, 3, armorSvid);
+					sqlite3_bind_int  (insA, 2, nProfileId);
+					sqlite3_bind_int  (insA, 3, invId);
+					sqlite3_bind_int  (insA, 4, armorSvid);
 					if (sqlite3_step(insA) == SQLITE_DONE) ++wroteArmor;
 				}
 				sqlite3_finalize(insA);
 				Logger::Log(GetLogChannel(),
-					"equip-save: armor local-DB updated, %d slot(s); refreshing buffs\n", wroteArmor);
+					"equip-save: armor local-DB updated itemProf=%d, %d slot(s); refreshing buffs\n",
+					nProfileId, wroteArmor);
 			}
 
 			// Reverse the previous armor's buff entries (recorded per-pawn in

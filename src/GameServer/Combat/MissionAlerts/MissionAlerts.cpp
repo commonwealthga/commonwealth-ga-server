@@ -50,7 +50,10 @@ static constexpr unsigned char ATT_DETRIMENTAL = 2;
 static constexpr unsigned char ATT_IMPORTANT   = 3;
 
 // Rotation banner is shown this many seconds before the next activation.
-static constexpr float ROTATION_BANNER_LEAD_SECS = 20.0f;
+// Paired with s_nObjectiveUnlockDelay=20 (InitGameRepInfo) → banner fires at
+// t=3 after round restart, then 15/10/5 countdowns at t=5/10/15, activation
+// at t=20. Adjust both together to keep the "3-second pre-roll" feel.
+static constexpr float ROTATION_BANNER_LEAD_SECS = 17.0f;
 
 // =============================================================================
 // Per-Game state

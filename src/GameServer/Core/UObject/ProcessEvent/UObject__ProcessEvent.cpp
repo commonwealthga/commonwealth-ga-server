@@ -406,10 +406,106 @@ static DispatchTag GetDispatchTag(UFunction* fn) {
 	return tag;
 }
 
+// "scope" channel investigation — smooth scope-zoom transition broke into an
+// instant snap somewhere around 2026-05-29/30. The smooth-zoom path is
+// entirely client-side (Pawn.Tick → ManageZoomingClientSide → ClientZoomIn →
+// TickZoom lerp), but the SERVER drives r_bAimingMode + applies type-266 aim
+// effect group + may write replicated fields the client camera reads. This
+// instrumentation captures every server-side UC call that touches the aim
+// path AND every direct write to scope-relevant replicated fields, all on
+// ONE dedicated "scope" channel so the user can hand back a single
+// continuous timeline.
+//
+// Cache: first call for any UFunction pays a name lookup + substring check;
+// subsequent calls are O(1) hash lookup. UFunction pointers are stable.
+static std::unordered_map<UFunction*, bool> s_ScopeRelatedCache;
+
+static bool IsScopeRelated(UFunction* fn) {
+	auto it = s_ScopeRelatedCache.find(fn);
+	if (it != s_ScopeRelatedCache.end()) return it->second;
+	const char* raw = fn->GetFullName();
+	const std::string name = raw ? raw : "";
+	const bool match =
+		name.find("ServerUpdateAimingMode")     != std::string::npos ||
+		name.find("ServerUpdateSnipeScopeMode") != std::string::npos ||
+		name.find("ApplyAimEffects")            != std::string::npos ||
+		name.find("RemoveAimEffects")           != std::string::npos ||
+		name.find("EnterAimingMode")            != std::string::npos ||
+		name.find("ExitAimingMode")             != std::string::npos ||
+		name.find("OnAimingModeChange")         != std::string::npos ||
+		name.find("ServerSetBinoculars")        != std::string::npos ||
+		name.find("ManageZoomingClientSide")    != std::string::npos ||
+		name.find("ClientZoomIn")               != std::string::npos ||
+		name.find("ClientZoomOut")              != std::string::npos ||
+		name.find("TickZoom")                   != std::string::npos ||
+		name.find("AdjustFOVAngle")             != std::string::npos ||
+		name.find("ReplicatedEvent")            != std::string::npos ||
+		name.find("PostNetReceive")             != std::string::npos ||
+		name.find("ApplyPawnSetup")             != std::string::npos ||
+		name.find("WaitForInventoryThenDoPostPawnSetup") != std::string::npos;
+	s_ScopeRelatedCache.emplace(fn, match);
+	return match;
+}
+
+// Resolve a TgPawn pointer from the ProcessEvent Object for state logging.
+// Object could be the pawn itself, a TgDevice (Instigator is the pawn), or
+// a TgPlayerController (Pawn member). Returns null if we can't find one.
+static ATgPawn* ResolvePawnForScopeLog(UObject* Object) {
+	if (!Object) return nullptr;
+	const char* clsRaw = Object->Class ? Object->Class->GetFullName() : nullptr;
+	if (!clsRaw) return nullptr;
+	const std::string clsName = clsRaw;
+	if (clsName.find("TgPawn") != std::string::npos) {
+		return (ATgPawn*)Object;
+	}
+	if (clsName.find("TgDevice") != std::string::npos) {
+		ATgDevice* dev = (ATgDevice*)Object;
+		return (ATgPawn*)dev->Instigator;
+	}
+	if (clsName.find("PlayerController") != std::string::npos) {
+		APlayerController* pc = (APlayerController*)Object;
+		return (ATgPawn*)pc->Pawn;
+	}
+	return nullptr;
+}
+
+// Per-call snapshot for the scope channel. Captures the field state of
+// interest BEFORE the UC body runs; the caller emits a paired AFTER log.
+static void LogScopeCall(const char* phase, UObject* Object, UFunction* Function) {
+	const char* fnRaw  = Function->GetFullName();
+	const std::string fnName = fnRaw ? fnRaw : "<null-fn>";
+	const char* objRaw = Object->GetFullName();
+	const std::string objName = objRaw ? objRaw : "<null-obj>";
+
+	ATgPawn* pawn = ResolvePawnForScopeLog(Object);
+	if (pawn) {
+		ATgDevice* wpn = (ATgDevice*)pawn->Weapon;
+		const char* wpnRaw = wpn && wpn->Class ? wpn->Class->GetFullName() : nullptr;
+		const std::string wpnName = wpnRaw ? wpnRaw : "<no-weapon>";
+		Logger::Log("scope",
+			"[%s] %s on %s  r_bAimingMode=%d r_bIsInSnipeScope=%d r_bUsingBinoculars=%d "
+			"weapon=%s r_nBodyMeshAsmId=%d\n",
+			phase, fnName.c_str(), objName.c_str(),
+			(int)pawn->r_bAimingMode, (int)pawn->r_bIsInSnipeScope,
+			(int)pawn->r_bUsingBinoculars,
+			wpnName.c_str(), pawn->r_nBodyMeshAsmId);
+	} else {
+		Logger::Log("scope", "[%s] %s on %s  (no resolvable pawn)\n",
+			phase, fnName.c_str(), objName.c_str());
+	}
+}
+
 void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunction* Function, void* Params, void* Result) {
 	if (!Object || !Function) return;
 
 	const DispatchTag tag = GetDispatchTag(Function);
+
+	// Scope-zoom investigation: log BEFORE every scope-related UC call.
+	// AFTER is logged after the switch dispatch completes (see end of fn).
+	// Gated on channel-enabled so production cost is one hash lookup + one
+	// branch. See the IsScopeRelated comment block for context.
+	const bool scopeLog = Logger::IsChannelEnabled("scope") && IsScopeRelated(Function);
+	if (scopeLog) LogScopeCall("BEFORE", Object, Function);
 
 	// Per-fire-tick refresh for hold-to-sustain stealth. Independent of the
 	// main dispatch — fires alongside whatever the catch-all does for this
@@ -1294,4 +1390,6 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		DoCatchAll();
 		break;
 	}
+
+	if (scopeLog) LogScopeCall("AFTER ", Object, Function);
 }

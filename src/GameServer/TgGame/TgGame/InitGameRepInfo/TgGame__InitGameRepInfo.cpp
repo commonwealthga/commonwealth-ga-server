@@ -53,7 +53,11 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		gamerep->r_bIsTraining = 0;
 		gamerep->r_bIsTutorialMap = 0;
 		gamerep->r_bIsArena = 0;
-		gamerep->r_bIsMatch = 0;
+		// r_bIsMatch = 1 by default — gates the HUD team-panel left-side
+		// teammate list (TgUIPrimaryHUD_TeamPanel TickPrimaryHUDElement walks
+		// LocalPRI->r_TaskForce->m_TeamPlayers iff (GRI+0x264 >> 6) & 1 is set,
+		// i.e. r_bIsMatch. Open-world / city modes below explicitly clear it.
+		gamerep->r_bIsMatch = 1;
 		gamerep->r_bIsTerritoryMap = 0;
 		gamerep->r_bIsOpenWorld = 0;
 		gamerep->r_bAllowBuildMorale = 1;
@@ -267,12 +271,14 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->RemainingTime = Game->m_fMissionTime;
 			Game->TimeLimit = 15 * 60;
 
-			// PointRotation UC default is 30s between rounds; the announcer
-			// banner + countdown chain wants ~25s to feel snappy. Must be set
+			// PointRotation UC default is 30s between rounds; we shorten to 20s
+			// to match the original feel. Pairs with ROTATION_BANNER_LEAD_SECS=17
+			// in MissionAlerts.cpp so "Point Changing" fires at t=3, then
+			// 15/10/5 countdowns at t=5/10/15, activation at t=20. Must be set
 			// before TgGame_Arena.RoundInProgress::BeginState runs (which is
 			// where `SetTimer(s_nObjectiveUnlockDelay, false, 'ObjectiveUnlock')`
 			// fires). InitGameRepInfo runs before PostBeginPlay, so we're early.
-			((ATgGame_Arena*)Game)->s_nObjectiveUnlockDelay = 25;
+			((ATgGame_Arena*)Game)->s_nObjectiveUnlockDelay = 20;
 		}
 
 		if (GameClassName == "Class TgGame.TgGame_Mission") {
@@ -282,7 +288,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_bIsTraining = 0;
 			gamerep->r_bIsTutorialMap = 0;
 			gamerep->r_bIsArena = 0;
-			gamerep->r_bIsMatch = 0;
+			gamerep->r_bIsMatch = 1;  // enables HUD team-panel teammate list
 			gamerep->r_bIsTerritoryMap = 0;
 			gamerep->r_bIsOpenWorld = 0;
 			gamerep->r_bAllowBuildMorale = 1;

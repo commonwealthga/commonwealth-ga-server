@@ -11,12 +11,25 @@ sqlite3* Database::GetConnection() {
 			Logger::Log("db", "Failed to open database: %s", sqlite3_errmsg(connection));
 			return nullptr;
 		}
+		// journal_mode is persistent in the DB header (set by the control-server
+		// open) — re-asserting it is cheap and makes the intent explicit. The
+		// other three pragmas are per-connection: every game-DLL connection has
+		// to set them itself. journal_size_limit is the one that actually shrinks
+		// the WAL after each autocheckpoint — without it the file grows to its
+		// historical high-water mark and never comes back down.
+		sqlite3_exec(connection, "PRAGMA journal_mode=WAL;", nullptr, nullptr, nullptr);
+		sqlite3_exec(connection, "PRAGMA busy_timeout=5000;", nullptr, nullptr, nullptr);
+		sqlite3_exec(connection, "PRAGMA synchronous=NORMAL;", nullptr, nullptr, nullptr);
+		sqlite3_exec(connection, "PRAGMA journal_size_limit=67108864;", nullptr, nullptr, nullptr);
 	}
-	
+
 	return Database::connection;
 }
 
 void Database::CloseConnection() {
+	if (Database::connection != nullptr) {
+		sqlite3_exec(Database::connection, "PRAGMA wal_checkpoint(TRUNCATE);", nullptr, nullptr, nullptr);
+	}
 	sqlite3_close(Database::connection);
 	Database::connection = nullptr;
 }
@@ -5265,7 +5278,215 @@ void Database::Init() {
 		Logger::Log("db", "v78: relocated cosmetic suit/helmet to DB slots 22/23 + repinned missing gameplay suit/helmet\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 78", nullptr, nullptr, &err);
+	if (version < 79) {
+		// v79: Loadout profiles. Adds item_profile_id (1..5) partition key to
+		// ga_character_devices + ga_character_skills, plus current_item_profile_id
+		// on ga_characters for active-slot persistence. Existing rows land in
+		// slot 1; slots 2-5 are absence of rows. See
+		// docs/superpowers/specs/2026-05-30-loadout-profiles-design.md for the
+		// full design.
+		//
+		// Idempotent guard: only runs if current_item_profile_id is missing from
+		// ga_characters. Tracks 3 sub-steps individually so each tolerates a
+		// retry safely.
+		bool needs = true;
+		{
+			sqlite3_stmt* st = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT 1 FROM pragma_table_info('ga_characters') "
+					"WHERE name = 'current_item_profile_id'",
+					-1, &st, nullptr) == SQLITE_OK) {
+				if (sqlite3_step(st) == SQLITE_ROW) needs = false;
+				sqlite3_finalize(st);
+			}
+		}
+		if (needs) {
+			const char* sqls[] = {
+				"ALTER TABLE ga_characters ADD COLUMN current_item_profile_id INTEGER NOT NULL DEFAULT 1",
+
+				"CREATE TABLE ga_character_devices_v2 ("
+				" id              INTEGER PRIMARY KEY AUTOINCREMENT,"
+				" character_id    INTEGER NOT NULL REFERENCES ga_characters(id),"
+				" item_profile_id INTEGER NOT NULL,"
+				" inventory_id    INTEGER NOT NULL REFERENCES ga_players_inventory(id),"
+				" equipped_slot   INTEGER NOT NULL,"
+				" UNIQUE(character_id, item_profile_id, equipped_slot)"
+				")",
+				"INSERT INTO ga_character_devices_v2 (character_id, item_profile_id, inventory_id, equipped_slot)"
+				" SELECT character_id, 1, inventory_id, equipped_slot FROM ga_character_devices",
+				"DROP TABLE ga_character_devices",
+				"ALTER TABLE ga_character_devices_v2 RENAME TO ga_character_devices",
+				"CREATE INDEX idx_ga_character_devices_char ON ga_character_devices(character_id)",
+
+				"CREATE TABLE ga_character_skills_v2 ("
+				" id              INTEGER PRIMARY KEY AUTOINCREMENT,"
+				" character_id    INTEGER NOT NULL REFERENCES ga_characters(id),"
+				" item_profile_id INTEGER NOT NULL,"
+				" skill_group_id  INTEGER NOT NULL,"
+				" skill_id        INTEGER NOT NULL,"
+				" points          INTEGER NOT NULL DEFAULT 0,"
+				" UNIQUE(character_id, item_profile_id, skill_group_id, skill_id)"
+				")",
+				"INSERT INTO ga_character_skills_v2 (character_id, item_profile_id, skill_group_id, skill_id, points)"
+				" SELECT character_id, 1, skill_group_id, skill_id, points FROM ga_character_skills",
+				"DROP TABLE ga_character_skills",
+				"ALTER TABLE ga_character_skills_v2 RENAME TO ga_character_skills",
+				"CREATE INDEX idx_ga_character_skills_char ON ga_character_skills(character_id)",
+			};
+			for (const char* sql : sqls) {
+				if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+					Logger::Log("db", "v79 step failed: %s -- SQL: %s\n",
+						err ? err : "(no msg)", sql);
+					if (err) { sqlite3_free(err); err = nullptr; }
+				}
+			}
+			Logger::Log("db", "v79: loadout profiles partition key added\n");
+		}
+	}
+
+	if (version < 80) {
+		// v80: deduplicate ga_character_devices. A historical
+		// cosmetic-apply path lacked INSERT OR REPLACE and accumulated
+		// thousands of duplicate rows for the same (character_id,
+		// item_profile_id, equipped_slot) on long-running DBs (51k+
+		// observed). The v79 UNIQUE constraint did NOT fix this
+		// retroactively because the v79 INSERT-from-old-table step ran
+		// the migration even when individual statements aborted on
+		// constraint violation, leaving the new table with whatever
+		// rows landed first — but later runtime INSERTs from the old
+		// cosmetic path STILL violated the constraint silently if
+		// they used a conflict resolution that bypasses UNIQUE
+		// (e.g. an unconstrained sqlite_master view from a partial
+		// rename).
+		//
+		// Cleanup keeps the row with the smallest `id` for each
+		// unique slot and drops the rest. The smallest-id row is the
+		// oldest insert, which mirrors what the UNIQUE constraint
+		// would have preserved had it been enforced from the start.
+		// Same treatment for ga_character_skills for symmetry —
+		// hasn't been observed to dupe but the same code shape
+		// applies.
+		const char* dedupSqls[] = {
+			"DELETE FROM ga_character_devices WHERE id NOT IN ("
+			"  SELECT MIN(id) FROM ga_character_devices "
+			"  GROUP BY character_id, item_profile_id, equipped_slot)",
+			"DELETE FROM ga_character_skills WHERE id NOT IN ("
+			"  SELECT MIN(id) FROM ga_character_skills "
+			"  GROUP BY character_id, item_profile_id, skill_group_id, skill_id)",
+		};
+		int totalDevicesBefore = 0, totalSkillsBefore = 0;
+		{
+			sqlite3_stmt* st = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT COUNT(*) FROM ga_character_devices", -1, &st, nullptr) == SQLITE_OK) {
+				if (sqlite3_step(st) == SQLITE_ROW) totalDevicesBefore = sqlite3_column_int(st, 0);
+				sqlite3_finalize(st);
+			}
+			if (sqlite3_prepare_v2(db,
+					"SELECT COUNT(*) FROM ga_character_skills", -1, &st, nullptr) == SQLITE_OK) {
+				if (sqlite3_step(st) == SQLITE_ROW) totalSkillsBefore = sqlite3_column_int(st, 0);
+				sqlite3_finalize(st);
+			}
+		}
+		for (const char* sql : dedupSqls) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "v80 dedup step failed: %s -- SQL: %s\n",
+					err ? err : "(no msg)", sql);
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+		int totalDevicesAfter = 0, totalSkillsAfter = 0;
+		{
+			sqlite3_stmt* st = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT COUNT(*) FROM ga_character_devices", -1, &st, nullptr) == SQLITE_OK) {
+				if (sqlite3_step(st) == SQLITE_ROW) totalDevicesAfter = sqlite3_column_int(st, 0);
+				sqlite3_finalize(st);
+			}
+			if (sqlite3_prepare_v2(db,
+					"SELECT COUNT(*) FROM ga_character_skills", -1, &st, nullptr) == SQLITE_OK) {
+				if (sqlite3_step(st) == SQLITE_ROW) totalSkillsAfter = sqlite3_column_int(st, 0);
+				sqlite3_finalize(st);
+			}
+		}
+		Logger::Log("db",
+			"v80: dedup ga_character_devices %d -> %d (removed %d), ga_character_skills %d -> %d (removed %d)\n",
+			totalDevicesBefore, totalDevicesAfter, totalDevicesBefore - totalDevicesAfter,
+			totalSkillsBefore, totalSkillsAfter, totalSkillsBefore - totalSkillsAfter);
+	}
+
+	if (version < 81) {
+		// v81: persist the three appearance fields the character-create UI
+		// collects (CharacterInfoStruct.nHairAsmId / nSkinMatParamId /
+		// nEyeMatParamId in TgDataInterface.uc). Previously thrown away by
+		// ADD_PLAYER_CHARACTER; ship-back was hardcoded to HAIR_ASM_ID=0x85D
+		// in send_character_list_response, which is incompatible with most
+		// non-default heads and crashes the client's pawn-asm-attach pipeline
+		// (FUN_109d1860, ~0x109d1f5b GPF through a 0xCCCCCCCC pointer).
+		//
+		// DEFAULT 0 is the deliberate safe fallback: hair_asm_id=0 means
+		// "no hair" in the engine, which is the only value guaranteed not
+		// to crash regardless of head/gender. Existing characters get 0
+		// and render bald until they next re-enter the head menu.
+		//
+		// ALTERs are idempotent — swallow duplicate-column error on re-boot.
+		const char* alters[] = {
+			"ALTER TABLE ga_characters ADD COLUMN hair_asm_id        INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_characters ADD COLUMN skin_mat_param_id  INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_characters ADD COLUMN eye_mat_param_id   INTEGER NOT NULL DEFAULT 0;",
+		};
+		for (const char* sql : alters) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+		Logger::Log("db", "v81: added ga_characters.{hair_asm_id, skin_mat_param_id, eye_mat_param_id}\n");
+	}
+
+	if (version < 82) {
+		// v82: backfill hair_asm_id=0 → 403 (PC_CHARBUILD_Bald).
+		// SUPERSEDED by v83 — asm 403 is `asm_mesh_type_value_id=596`,
+		// the *character-builder UI* hair category, NOT the in-game
+		// pawn hair category (type 850). The in-game pawn-asm-attach
+		// pipeline asks the asset manager specifically for a type-850
+		// hair; asm 403 isn't reachable from that lookup path, so the
+		// asset manager still returns garbage and the client still
+		// crashes at 0x109d1f5b. Left in for migration ordering.
+		result = sqlite3_exec(db,
+			"UPDATE ga_characters SET hair_asm_id = 403 WHERE hair_asm_id = 0;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+	}
+
+	if (version < 83) {
+		// v83: backfill hair_asm_id to a proven-loadable type-850 hair.
+		//
+		// 1974 = "NewHair15" (asm_mesh_type_value_id=850, mesh_res_id=4844)
+		// is the same asm SpawnBotPawn sets on every bot's
+		// r_CustomCharacterAssembly.HairMeshId — confirmed to load at
+		// gameplay time without crashing.
+		//
+		// Replaces BOTH the original 0 sentinel and the misguided v82
+		// fallback (403 / PC_CHARBUILD_Bald — wrong mesh-type category;
+		// it's only loaded in the character-builder map and isn't
+		// reachable from the in-game pawn-attach path).
+		//
+		// Idempotent — re-running finds no rows to update.
+		result = sqlite3_exec(db,
+			"UPDATE ga_characters SET hair_asm_id = 1974 WHERE hair_asm_id IN (0, 403);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v83 hair backfill failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db", "v83: backfilled %d ga_characters rows hair_asm_id (0|403) -> 1974 (NewHair15, type-850)\n",
+				sqlite3_changes(db));
+		}
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 83", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

@@ -7,6 +7,7 @@
 #include "src/Shared/IpcProtocol.hpp"
 #include <set>
 #include <map>
+#include <array>
 
 // ---------------------------------------------------------------------------
 // TcpSession static member definitions
@@ -93,9 +94,10 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         int device_id          = j.value("device_id", 0);
         int inventory_id       = j.value("inventory_id", 0);
         int equip_slot_value_id = j.value("equip_slot_value_id", 0);
-        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: beacon_pickup pawn=%d dev=%d inv=%d slot=%d\n",
-            pawn_id, device_id, inventory_id, equip_slot_value_id);
-        session->send_beacon_pickup_response(pawn_id, device_id, inventory_id, equip_slot_value_id);
+        int item_profile_id    = j.value("item_profile_id", 1);
+        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: beacon_pickup pawn=%d dev=%d inv=%d slot=%d profile=%d\n",
+            pawn_id, device_id, inventory_id, equip_slot_value_id, item_profile_id);
+        session->send_beacon_pickup_response(pawn_id, device_id, inventory_id, equip_slot_value_id, item_profile_id);
     }
     else if (subtype == "beacon_remove") {
         int pawn_id      = j.value("pawn_id", 0);
@@ -165,7 +167,8 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
             (long long)character_id, pawn_id, (int)skills.size(), session_guid.c_str(),
             skills.empty() ? " (empty -> treated as REQUEST, not persisting)" : "");
         if (character_id != 0 && !skills.empty()) {
-            PlayerSessionStore::SetSkillsForCharacter(character_id, skills);
+            PlayerSessionStore::SetSkillsForCharacter(
+                character_id, (int)session->item_profile_id_, skills);
         }
         // Echo current DB state so the UI's inbound 0x00A0 handler has
         // authoritative data whether this was a save or a request.
@@ -185,7 +188,8 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         Logger::Log("ipc", "[TcpSession] DeliverGameEvent: skill_respec char=%lld pawnId=%d\n",
             (long long)character_id, pawn_id);
         if (character_id != 0) {
-            PlayerSessionStore::ClearSkillsForCharacter(character_id);
+            PlayerSessionStore::ClearSkillsForCharacter(
+                character_id, (int)session->item_profile_id_);
         }
         // Echo the zeroed allocation to the client so the UI matches.
         session->send_player_skills_response();
@@ -252,6 +256,7 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         if (character_id != 0) {
             const bool ok = PlayerSessionStore::SaveEquippedDevices(
                 character_id, session->user_id_, session->selected_profile_id_,
+                loadout_profile,
                 slot_to_inventory, misc_items);
             if (!ok) {
                 Logger::Log("armor",
@@ -263,6 +268,51 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
             if (pawn_id != 0) {
                 session->send_inventory_response(pawn_id, character_id);
             }
+        }
+    }
+    else if (subtype == "profile_switch") {
+        // Game-server has finished its atomic switch (revert + apply + IPC).
+        // Control-server's job: persist new active profile, sync TcpSession
+        // mirror, push refreshed inventory + skills so the client UI sees
+        // the new build's stats and allocations.
+        //
+        // KNOWN ISSUE (unresolved): the skill-tree / device-bar widgets
+        // re-render against the OLD r_nItemProfileId when this handler's TCP
+        // marshals reach the client before the game-server's UDP property
+        // rep. Symptom: skill widget shows previous profile's allocation,
+        // device bar shows previous profile's icons. Close + reopen the
+        // agent-profile screen for a correct render. Investigated via the
+        // FUN_113a18a0 / FUN_11422d70 / FUN_1141f750 chain — the lookup
+        // filters skills by `pawn+0x1634` (r_nItemProfileId) at render time,
+        // and our timing fixes (eventClientResetEquipScreen on the same UDP
+        // channel + brief sleep here) didn't reliably win the race. The
+        // official Hi-Rez server was single-process so this race never
+        // existed; closing the gap from a split architecture needs a deeper
+        // trace of the client's rep-arrival ordering than we currently have.
+
+        const int64_t character_id    = j.value("character_id", (int64_t)0);
+        const int     pawn_id         = j.value("pawn_id", 0);
+        const int     item_profile_id = j.value("item_profile_id", 1);
+        Logger::Log("loadout",
+            "[TcpSession] profile_switch char=%lld pawnId=%d itemProf=%d guid=%s\n",
+            (long long)character_id, pawn_id, item_profile_id, session_guid.c_str());
+
+        if (character_id != 0 && item_profile_id >= 1 && item_profile_id <= 5) {
+            PlayerSessionStore::SetCurrentItemProfile(character_id, item_profile_id);
+            session->item_profile_id_ = item_profile_id;
+
+            if (pawn_id != 0) {
+                // Clear-then-re-add so the client's m_InventoryMap entries get
+                // fully rebuilt instead of merge-updated. The bar widget binds
+                // to the per-profile slot data inside those entries; without
+                // the wipe, stale "equipped in profile N" rows survive and
+                // the bar keeps rendering old icons on full → empty switches.
+                // Cheap (~12 bytes/record, batched) and mirrors the proven
+                // disconnect+reconnect refresh shape.
+                session->send_inventory_clear(pawn_id, character_id);
+                session->send_inventory_response(pawn_id, character_id);
+            }
+            session->send_player_skills_response();
         }
     }
     else if (subtype == "quest") {
@@ -449,8 +499,13 @@ void TcpSession::initiate_player_register_and_go_play() {
     // trip. Saves (inbound 0xA0) persist to the same DB, so the next spawn or
     // PLAYER_REGISTER sees fresh rows.
     {
+        const int item_profile_id =
+            PlayerSessionStore::GetCurrentItemProfile(selected_character_id_);
+        this->item_profile_id_ = item_profile_id;
+        reg["current_item_profile_id"] = item_profile_id;
         nlohmann::json skillsArr = nlohmann::json::array();
-        for (const auto& s : PlayerSessionStore::GetSkillsForCharacter(selected_character_id_)) {
+        for (const auto& s : PlayerSessionStore::GetSkillsForCharacter(
+                 selected_character_id_, item_profile_id)) {
             nlohmann::json row;
             row["skill_group_id"] = s.skill_group_id;
             row["skill_id"]       = s.skill_id;
@@ -553,8 +608,13 @@ void TcpSession::initiate_player_register_for_target(const InstanceInfo& target,
     }
 
     {
+        const int item_profile_id =
+            PlayerSessionStore::GetCurrentItemProfile(selected_character_id_);
+        this->item_profile_id_ = item_profile_id;
+        reg["current_item_profile_id"] = item_profile_id;
         nlohmann::json skillsArr = nlohmann::json::array();
-        for (const auto& s : PlayerSessionStore::GetSkillsForCharacter(selected_character_id_)) {
+        for (const auto& s : PlayerSessionStore::GetSkillsForCharacter(
+                 selected_character_id_, item_profile_id)) {
             nlohmann::json row;
             row["skill_group_id"] = s.skill_group_id;
             row["skill_id"]       = s.skill_id;
@@ -684,6 +744,12 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			ip_address_ = socket_.remote_endpoint().address().to_string() + ":" + std::to_string(socket_.remote_endpoint().port());
 			user_id_ = PlayerSessionStore::UpsertUser(player_name);
 
+			// Strip any inventory rows / equip references for items the
+			// operator has marked as crash-on-equip in ga_item_blacklist.
+			// Runs before send_login_response so the client never sees the
+			// bad item in any subsequent SEND_INVENTORY / character data.
+			PlayerSessionStore::PurgeBlacklistedItems(user_id_);
+
 			{
 				SessionInfo info;
 				info.session_guid = session_guid_;
@@ -747,6 +813,13 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 					// would now also wipe any equip choices the player made
 					// last session.
 					PlayerSessionStore::SeedInventoryFromLoadouts(charInfo->user_id);
+					// HUMAN BASE ATTRIBUTES (slot 14) is server-pinned — the
+					// player can't equip it via the UI, so the row must exist
+					// in ga_character_devices before SEND_INVENTORY ships or
+					// the client hits the resubmit loop on the REST device.
+					// INSERT OR IGNORE per loadout profile — defensive against
+					// existing characters whose slot 14 was never written.
+					PlayerSessionStore::PinClassDeviceSlot14(selected_character_id_);
 					Logger::Log("tcp", "[%s] GSC_SELECT_CHARACTER: selected charId=%lld profile=%u\n",
 						Logger::GetTime(), selected_character_id_, selected_profile_id_);
 				} else {
@@ -903,6 +976,21 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			uint32_t profileId          = pkt.Read4B(GA_T::PROFILE_ID).value_or(GA_G::PROFILE_ID_ASSAULT);
 			uint32_t headAsmId          = pkt.Read4B(GA_T::HEAD_ASM_ID).value_or(1605);
 			uint32_t genderTypeId       = pkt.Read4B(GA_T::GENDER_TYPE_VALUE_ID).value_or(853);
+			// CharacterInfoStruct also carries hair / skin / eye selections
+			// from the head menu (TgDataInterface.uc + TgLoginHUD.uc:128).
+			// Previously discarded → server hardcoded HAIR_ASM_ID=0x85D in
+			// the character-list response, which is incompatible with most
+			// non-default heads and crashes the client during pawn-asm
+			// attach. Persist what the player actually picked.
+			// 1974 = NewHair15 (asm_mesh_type_value_id=850, the in-game
+			// pawn hair category) — same asm SpawnBotPawn sets on bots.
+			// Asm 0 doesn't exist; asm 403 PC_CHARBUILD_Bald is in the
+			// character-builder UI category (type 596) and isn't
+			// loadable from the in-game pawn-attach pipeline — both
+			// crash the client at 0x109d1f5b.
+			uint32_t hairAsmId          = pkt.Read4B(GA_T::HAIR_ASM_ID).value_or(1974);
+			uint32_t skinMatParamId     = pkt.Read4B(GA_T::SKIN_MATERIAL_PARAMETER_ID).value_or(0);
+			uint32_t eyeMatParamId      = pkt.Read4B(GA_T::EYE_MATERIAL_PARAMETER_ID).value_or(0);
 
 			// DWORDS payload: 4B length prefix + raw morph bytes — strip prefix before storing.
 			std::vector<uint8_t> morphBlob;
@@ -910,11 +998,15 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			if (dwordsRaw && dwordsRaw->size() > 4)
 				morphBlob.assign(dwordsRaw->begin() + 4, dwordsRaw->end());
 
-			selected_character_id_ = PlayerSessionStore::InsertCharacter(user_id_, profileId, headAsmId, genderTypeId, morphBlob);
+			selected_character_id_ = PlayerSessionStore::InsertCharacter(
+				user_id_, profileId, headAsmId, genderTypeId, morphBlob,
+				hairAsmId, skinMatParamId, eyeMatParamId);
 			selected_profile_id_   = profileId;
 
-			Logger::Log("tcp", "[%s] ADD_PLAYER_CHARACTER: profile=%u head=%u gender=%u morphBytes=%u charId=%lld\n",
-				Logger::GetTime(), profileId, headAsmId, genderTypeId, (unsigned)morphBlob.size(), selected_character_id_);
+			Logger::Log("tcp", "[%s] ADD_PLAYER_CHARACTER: profile=%u head=%u gender=%u hair=%u skin=%u eye=%u morphBytes=%u charId=%lld\n",
+				Logger::GetTime(), profileId, headAsmId, genderTypeId,
+				hairAsmId, skinMatParamId, eyeMatParamId,
+				(unsigned)morphBlob.size(), selected_character_id_);
 
 			send_add_player_character_response();
 			// Both tutorial and normal paths use wait-for-READY then PLAYER_REGISTER flow.
@@ -990,7 +1082,8 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			Logger::Log("tcp", "[TCP] SEND_PLAYER_SKILLS: charId=%lld parsed %d skill rows\n",
 				(long long)selected_character_id_, (int)skills.size());
 
-			PlayerSessionStore::SetSkillsForCharacter(selected_character_id_, skills);
+			PlayerSessionStore::SetSkillsForCharacter(
+				selected_character_id_, (int)item_profile_id_, skills);
 
 			// Echo back so the UI updates; also refreshes LAST_RESPEC_DATETIME client-side.
 			send_player_skills_response();
@@ -1114,8 +1207,13 @@ void TcpSession::send_match_accept_response() {
     // Mirror the skill-tree embedding from initiate_player_register_and_go_play
     // so a match-accept spawn gets the same skill effects as a home-map spawn.
     {
+        const int item_profile_id =
+            PlayerSessionStore::GetCurrentItemProfile(selected_character_id_);
+        this->item_profile_id_ = item_profile_id;
+        reg["current_item_profile_id"] = item_profile_id;
         nlohmann::json skillsArr = nlohmann::json::array();
-        for (const auto& s : PlayerSessionStore::GetSkillsForCharacter(selected_character_id_)) {
+        for (const auto& s : PlayerSessionStore::GetSkillsForCharacter(
+                 selected_character_id_, item_profile_id)) {
             nlohmann::json row;
             row["skill_group_id"] = s.skill_group_id;
             row["skill_id"]       = s.skill_id;
@@ -1463,7 +1561,10 @@ void TcpSession::send_character_inventory_response(int nPawnId) {
 }
 
 void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
-	auto devices = PlayerSessionStore::GetDevicesForCharacter(character_id);
+	// `item_profile_id_` tracks the active loadout slot — drives which rows
+	// land in the equipped pass (the rest go to the bag pass).
+	auto devices = PlayerSessionStore::GetDevicesForCharacter(
+		character_id, (int)item_profile_id_);
 
 	// Ships TWO blocks of records over SEND_INVENTORY (0x0182):
 	//   1. Currently-equipped devices for `character_id`, with
@@ -1612,14 +1713,15 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 		}
 
 		// Ship one DATA_SET_CHARACTER_PROFILES row per build profile (1..5)
-		// with the same EQUIPPED_SLOT_VALUE_ID. Each row populates one of the
+		// with the SAME EQUIPPED_SLOT_VALUE_ID. Each row populates one of the
 		// five `invObj+0x68..+0x78` slot-table entries on the client. The
-		// equip-screen UI reads this table directly (not through the
-		// `r_nItemProfileId`-gated path), and unless every profile entry is
-		// non-zero it treats the item as unequipped — slots render blank.
+		// equip-screen UI's FixupWidgets path requires EVERY profile entry to
+		// be non-zero — if ANY profile has 0, the client treats the item as
+		// unequipped and renders the slot widget blank for ALL profiles
+		// (including the active one). See
+		// reference_equip_screen_is_valid_gate.md.
 		// 5 rows × 4 fields × 4 bytes ≈ 80 extra bytes per item, well under
-		// the per-message cap. See inventory-tcp-protocol.md "Concrete fixes
-		// for the inconsistent loadout bug" #2.
+		// the per-message cap.
 		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
 		append(response, 0x05, 0x00);
 		for (int profileId = 1; profileId <= 5; ++profileId) {
@@ -1690,6 +1792,11 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 			Write4B(response, GA_T::EFFECT_GROUP_ID, egid);
 		}
 
+		// Bag pool item: single row with EQUIPPED_SLOT_VALUE_ID=0 (matches
+		// pre-loadout-profile baseline). The FixupWidgets gate cares about
+		// the equipped-pass shape; for bag items we just need to populate
+		// invObj+0x68 with 0 so the slot table doesn't accidentally bind
+		// the item to any widget.
 		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
 		append(response, 0x01, 0x00);
 			append(response, 0x04, 0x00);
@@ -1705,6 +1812,44 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 	Logger::Log("tcp",
 		"[TCP] send_inventory_response: charId=%lld pawnId=%d bag=%d (LOCATION=370, DEVICE_ID=0)\n",
 		character_id, nPawnId, bag_shipped);
+}
+
+void TcpSession::send_inventory_clear(int nPawnId, int64_t character_id) {
+	// Resolve user + class profile so we hit the same pool send_inventory_response does.
+	const auto charInfo = PlayerSessionStore::GetCharacterById(character_id);
+	if (!charInfo) return;
+	const auto bag = PlayerSessionStore::GetInventoryForUser(charInfo->user_id, charInfo->profile_id);
+	if (bag.empty()) return;
+
+	// One STATE=2 record per invId, packed in chunks. The per-record body is
+	// tiny (2 fields = 12 bytes) but the client's ~1450-byte per-message cap
+	// (see send_inventory_response comment) still applies. ~80 records/msg
+	// leaves comfortable headroom for the DATA_SET wrapping and TCP framing.
+	constexpr size_t kRecordsPerMessage = 80;
+
+	int cleared = 0;
+	for (size_t offset = 0; offset < bag.size(); offset += kRecordsPerMessage) {
+		const size_t end = std::min(offset + kRecordsPerMessage, bag.size());
+		const size_t count = end - offset;
+
+		std::vector<uint8_t> response;
+		append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
+		append(response, 0x02, 0x00);   // PAWN_ID + DATA_SET
+		Write4B(response, GA_T::PAWN_ID, nPawnId);
+		append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+		append(response, (uint8_t)(count & 0xFF), (uint8_t)(count >> 8));
+		for (size_t i = offset; i < end; ++i) {
+			append(response, 0x02, 0x00);  // 2 fields per record
+			Write4B(response, GA_T::INV_REPLICATION_STATE, 0x2);  // delete
+			Write4B(response, GA_T::INVENTORY_ID, bag[i].inventory_id);
+			++cleared;
+		}
+		send_response(response);
+	}
+
+	Logger::Log("tcp",
+		"[TCP] send_inventory_clear: charId=%lld pawnId=%d wiped=%d entries (STATE=2 delete pass)\n",
+		character_id, nPawnId, cleared);
 }
 
 void TcpSession::send_loadout_inventory_response(int nPawnId, const std::vector<LoadoutItem>& items) {
@@ -1765,7 +1910,7 @@ void TcpSession::send_loadout_inventory_response(int nPawnId, const std::vector<
     }
 }
 
-void TcpSession::send_beacon_pickup_response(int nPawnId, int nDeviceId, int nInventoryId, int nEquipSlotValueId) {
+void TcpSession::send_beacon_pickup_response(int nPawnId, int nDeviceId, int nInventoryId, int nEquipSlotValueId, int nItemProfileId) {
 	std::vector<uint8_t> response;
 
 	uint16_t packet_type = GA_U::SEND_INVENTORY;
@@ -1800,13 +1945,21 @@ void TcpSession::send_beacon_pickup_response(int nPawnId, int nDeviceId, int nIn
 			Write4B(response, GA_T::INVENTORY_ID, nInventoryId);
 			Write4B(response, GA_T::EFFECT_GROUP_ID, 0);
 
+		// One row per profile (1..5) with the SAME EQUIPPED_SLOT_VALUE_ID —
+		// the FixupWidgets gate (see send_inventory_response) requires all 5
+		// non-zero or the slot widget renders blank. A picked-up beacon is
+		// bound to the PAWN, not to a loadout profile — same SVID on every
+		// profile is the desired pawn-scoped behavior anyway.
+		(void)nItemProfileId;  // no longer needed — kept in signature for the IPC carry
 		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
-		append(response, 0x01, 0x00);
-			append(response, 0x04, 0x00);
-			Write4B(response, GA_T::CHARACTER_ID, 0);
-			Write4B(response, GA_T::INVENTORY_ID, nInventoryId);
-			Write4B(response, GA_T::PROFILE_ID, 0x1);
-			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, nEquipSlotValueId);
+		append(response, 0x05, 0x00);
+			for (int p = 1; p <= 5; ++p) {
+				append(response, 0x04, 0x00);
+				Write4B(response, GA_T::CHARACTER_ID, 0);
+				Write4B(response, GA_T::INVENTORY_ID, nInventoryId);
+				Write4B(response, GA_T::PROFILE_ID, (uint32_t)p);
+				Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, (uint32_t)nEquipSlotValueId);
+			}
 
 	send_response(response);
 }
@@ -1922,10 +2075,16 @@ void TcpSession::send_player_skills_response()
 	std::vector<uint8_t> response;
 
 	// Authoritative skill allocation for the currently-selected character.
+	// Ship EVERY profile's rows (each tagged with its own profile_id) so the
+	// client's skill-tree widget can re-filter against r_nItemProfileId after
+	// a profile switch without needing a fresh SEND_PLAYER_SKILLS. r_nItemProfileId
+	// has no UC repnotify, so on switch the widget receives no callback —
+	// previously the active-only ship meant the widget saw 0 rows for the new
+	// profile until a close+reopen rebuilt its bindings.
 	std::vector<SkillRow> skills;
 	double respecUnix = 1.0;
 	if (selected_character_id_ != 0) {
-		skills = PlayerSessionStore::GetSkillsForCharacter(selected_character_id_);
+		skills = PlayerSessionStore::GetAllSkillsForCharacter(selected_character_id_);
 		int64_t t = PlayerSessionStore::GetLastRespecAt(selected_character_id_);
 		if (t > 0) respecUnix = (double)t;
 	}
@@ -1949,16 +2108,16 @@ void TcpSession::send_player_skills_response()
 		// Client's receive-side lookup (FUN_1141f750) matches rows on THREE
 		// keys: SKILL_GROUP_ID, SKILL_ID, and PROFILE_ID — matched against
 		// character+0x1634 = r_nItemProfileId (NOT the class profile id).
-		// Item profiles aren't implemented yet, so hardcode 0 to match the
-		// default; revisit when multi-profile item sets come online.
+		// Each row carries its OWN item_profile_id from the DB so all five
+		// loadouts ship in one packet; the widget filters by active profile.
 		append(response, 0x04, 0x00);
 		Write4B(response, GA_T::SKILL_GROUP_ID,   (uint32_t)s.skill_group_id);
 		Write4B(response, GA_T::SKILL_ID,         (uint32_t)s.skill_id);
-		Write4B(response, GA_T::PROFILE_ID,       (uint32_t)item_profile_id_);
+		Write4B(response, GA_T::PROFILE_ID,       (uint32_t)s.item_profile_id);
 		Write4B(response, GA_T::POINTS_ALLOCATED, (uint32_t)s.points);
 	}
 
-	Logger::Log("tcp", "[TCP] SEND_PLAYER_SKILLS: sent %d skills for charId=%lld item_profile_id=%d\n",
+	Logger::Log("tcp", "[TCP] SEND_PLAYER_SKILLS: sent %d skills (all profiles) for charId=%lld active=%d\n",
 		(int)skills.size(), (long long)selected_character_id_, (int)item_profile_id_);
 
 	send_response(response);

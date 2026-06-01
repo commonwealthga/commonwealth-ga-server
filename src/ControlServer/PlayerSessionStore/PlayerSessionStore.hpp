@@ -3,6 +3,7 @@
 #include <string>
 #include <optional>
 #include <map>
+#include <array>
 #include <vector>
 #include <cstdint>
 #include <mutex>
@@ -24,6 +25,19 @@ struct CharacterInfo {
     uint32_t head_asm_id = 0;
     uint32_t gender_type_value_id = 0;
     std::vector<uint8_t> morph_data;
+    // Appearance fields the head-menu collects but pre-v81 used to throw
+    // away. Skin/eye material parameter ids are stored for completeness;
+    // not yet emitted in GSC_CHARACTER_LIST (the lobby card protocol only
+    // ships hair) — kept available for future spawn-time application.
+    //
+    // hair_asm_id default 1974 = "NewHair15" (asm_mesh_type_value_id=850),
+    // the in-game pawn hair category — same asm SpawnBotPawn sets on bots.
+    // 0 crashes (no such asm). 403 PC_CHARBUILD_Bald also crashes at
+    // gameplay time (type 596, character-builder UI only, not loaded by
+    // the in-game asm-attach pipeline).
+    uint32_t hair_asm_id = 1974;
+    uint32_t skin_mat_param_id = 0;
+    uint32_t eye_mat_param_id = 0;
 };
 
 struct DeviceRow {
@@ -64,6 +78,9 @@ struct SkillRow {
     int skill_group_id;
     int skill_id;
     int points;
+    int item_profile_id = 0;  // populated by GetAllSkillsForCharacter; 0 from
+                              // the single-profile GetSkillsForCharacter (caller
+                              // already knows the profile in that path).
 };
 
 class PlayerSessionStore {
@@ -78,7 +95,10 @@ public:
     static int64_t UpsertUser(const std::string& username);
     static int64_t InsertCharacter(int64_t user_id, uint32_t profile_id,
                                    uint32_t head_asm_id, uint32_t gender_type_value_id,
-                                   const std::vector<uint8_t>& morph_data);
+                                   const std::vector<uint8_t>& morph_data,
+                                   uint32_t hair_asm_id = 1974,  // NewHair15 / type-850 (0 and 403 both crash at gameplay time)
+                                   uint32_t skin_mat_param_id = 0,
+                                   uint32_t eye_mat_param_id = 0);
     static std::vector<CharacterInfo> GetCharactersByUserId(int64_t user_id);
     static std::optional<CharacterInfo> GetCharacterById(int64_t id);
     static void SetSelectedCharacter(const std::string& guid, int64_t char_id, uint32_t profile_id);
@@ -130,6 +150,22 @@ public:
     // slot. Existing player choices win. Safe to call per login.
     static void SeedCharacterArmorDefaults(int64_t character_id);
 
+    // Slot 14 (CLASS_DEVICE / HUMAN BASE ATTRIBUTES) is server-pinned across
+    // all 5 loadout profiles. The client UI hides the slot and the player
+    // can't equip or replace it, so the row MUST exist in
+    // ga_character_devices before the first SEND_INVENTORY or the client
+    // hits the resubmit loop on the REST device until the next session.
+    // INSERT OR IGNORE per profile (1..5) so player-modified rows are never
+    // touched. Safe to call per login.
+    static void PinClassDeviceSlot14(int64_t character_id);
+
+    // Remove every ga_players_inventory row owned by this user whose item_id
+    // is in ga_item_blacklist, along with any ga_character_devices rows that
+    // reference those inventory rows. Runs once per GSC_USER_LOGIN after
+    // UpsertUser. Idempotent. Logs each purged (character_id, item_id, slot)
+    // tuple on the "blacklist" channel.
+    static void PurgeBlacklistedItems(int64_t user_id);
+
     // Returns everything in this user's account-scoped inventory pool that's
     // visible to a character on `profile_id`. Includes shared items
     // (profile_id=0) plus class-specific items. Used by SEND_INVENTORY to
@@ -140,7 +176,26 @@ public:
     // ga_character_devices and ga_players_inventory. Has the same DeviceRow
     // shape SEND_INVENTORY consumes today; equip_slot is taken from the
     // character_devices row, the rest from the inventory row.
-    static std::vector<DeviceRow> GetDevicesForCharacter(int64_t character_id);
+    // Profile-scoped: returns rows for (character_id, item_profile_id) only.
+    // Passes the active loadout slot (1..5). For full per-profile slot data
+    // see GetPerProfileSlotMap.
+    static std::vector<DeviceRow> GetDevicesForCharacter(int64_t character_id,
+                                                        int item_profile_id);
+
+    // Per-profile slot map. Returns { inventory_id ->
+    // [_, slot_in_p1, slot_in_p2, ..., slot_in_p5] } where slot_in_pN is 0
+    // if the item isn't equipped in profile N. The stored value is the raw
+    // equipped_slot (engine equip-point 1..24 for devices, group-129 SVID
+    // 1130..1143 for armor) — caller resolves to slot_value_id via
+    // EquipPointToSvid/IsArmorSvid. Used by send_inventory_response to ship
+    // correct DATA_SET_CHARACTER_PROFILES rows per item.
+    static std::map<int, std::array<int,6>>
+        GetPerProfileSlotMap(int64_t character_id);
+
+    // Active loadout slot (1..5) for a character. DEFAULT 1 if missing or
+    // out of range. Persisted in ga_characters.current_item_profile_id.
+    static int  GetCurrentItemProfile(int64_t character_id);
+    static void SetCurrentItemProfile(int64_t character_id, int item_profile_id);
 
     // Validates and persists an equip-screen save. `slot_to_inventory` is the
     // client's SlotIndices[] decoded into (equip_point → inventory_id) for the
@@ -160,8 +215,12 @@ public:
     //                       client didn't change armor. See ArmorSlot
     //                       constants in src/GameServer/Constants/EquipSlot.hpp
     //                       for the index↔SVID decode.
+    // `item_profile_id` is the loadout slot (1..5) being saved into; ONLY
+    // rows in that slot are replaced. Other profiles' equipped state is
+    // untouched.
     static bool SaveEquippedDevices(int64_t character_id, int64_t user_id,
                                     uint32_t profile_id,
+                                    int item_profile_id,
                                     const std::map<int, int>& slot_to_inventory,
                                     const std::map<int, int>& misc_items);
 
@@ -188,13 +247,23 @@ public:
     // variant exists for the device. Result is cached per (device_id, oc).
     static int GetBlueprintIdForDevice(int device_id, bool oc = false);
 
-    // Skill tree allocations — ga_character_skills.
-    static std::vector<SkillRow> GetSkillsForCharacter(int64_t character_id);
-    // Replaces the full allocation in one transaction. `last_respec_at` on
-    // ga_characters is bumped to now.
-    static void SetSkillsForCharacter(int64_t character_id, const std::vector<SkillRow>& skills);
-    // Clears every row for this character and bumps last_respec_at.
-    static void ClearSkillsForCharacter(int64_t character_id);
+    // Skill tree allocations — ga_character_skills. Profile-scoped.
+    static std::vector<SkillRow> GetSkillsForCharacter(int64_t character_id,
+                                                     int item_profile_id);
+    // Returns every profile's skill rows in one shot, each tagged with its
+    // item_profile_id. Used by SEND_PLAYER_SKILLS to ship a full picture so
+    // the client's skill-tree widget can re-filter on r_nItemProfileId change
+    // without needing a fresh server push (r_nItemProfileId has no UC
+    // repnotify, so no client-side refresh callback fires on switch — the
+    // widget blanks until close+reopen if it can only see active-profile
+    // rows).
+    static std::vector<SkillRow> GetAllSkillsForCharacter(int64_t character_id);
+    // Replaces ONE profile's allocation in a transaction. `last_respec_at`
+    // on ga_characters is bumped (per-character, not per-profile).
+    static void SetSkillsForCharacter(int64_t character_id, int item_profile_id,
+                                     const std::vector<SkillRow>& skills);
+    // Clears one profile's rows and bumps last_respec_at.
+    static void ClearSkillsForCharacter(int64_t character_id, int item_profile_id);
     // Epoch seconds of the last save/respec, 0 if never set.
     static int64_t GetLastRespecAt(int64_t character_id);
 

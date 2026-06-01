@@ -6,6 +6,7 @@
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
+#include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 namespace TgPlayerActions::SpawnBotCmd {
@@ -23,8 +24,8 @@ ATgPawn_Character* FindPawnBySessionGuid(const std::string& guid) {
 
 const char* TeamName(Team t) {
     switch (t) {
-        case Team::Attackers: return "attackers";
-        case Team::Defenders: return "defenders";
+        case Team::Friend: return "friend";
+        case Team::Enemy:  return "enemy";
     }
     return "?";
 }
@@ -45,13 +46,34 @@ constexpr float kSpawnFloorBufferUU = 5.0f;
 
 } // namespace
 
-void Execute(const std::string& session_guid, int bot_id, Team team) {
+void Execute(const std::string& session_guid, int bot_id, Team team,
+             float difficulty_scalar_override) {
     ATgPawn_Character* Pawn = FindPawnBySessionGuid(session_guid);
     if (!Pawn) {
         Logger::Log("chat-command",
-            "[ChatCmd][DLL] /spawnbot: no pawn for guid=%s; dropping\n",
-            session_guid.c_str());
+            "[ChatCmd][DLL] /spawn%s: no pawn for guid=%s; dropping\n",
+            TeamName(team), session_guid.c_str());
         return;
+    }
+
+    // Resolve Friend/Enemy against the requesting player's current task force.
+    // Without a PRI we can't tell who's on what side; bail rather than guess.
+    ATgRepInfo_Player* PlayerRep = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+    ATgRepInfo_TaskForce* playerTf =
+        PlayerRep ? (ATgRepInfo_TaskForce*)PlayerRep->Team : nullptr;
+    if (!playerTf) {
+        Logger::Log("chat-command",
+            "[ChatCmd][DLL] /spawn%s guid=%s: player has no task force; dropping\n",
+            TeamName(team), session_guid.c_str());
+        return;
+    }
+    ATgRepInfo_TaskForce* targetTf;
+    if (team == Team::Friend) {
+        targetTf = playerTf;
+    } else {
+        targetTf = (playerTf == GTeamsData.Attackers)
+                       ? GTeamsData.Defenders
+                       : GTeamsData.Attackers;
     }
 
     // Use the controller's yaw when present (this is what the player is
@@ -85,15 +107,24 @@ void Execute(const std::string& session_guid, int bot_id, Team team) {
     ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
     if (!Game) {
         Logger::Log("chat-command",
-            "[ChatCmd][DLL] /spawnbot guid=%s: GGameInfo null; dropping\n",
-            session_guid.c_str());
+            "[ChatCmd][DLL] /spawn%s guid=%s: GGameInfo null; dropping\n",
+            TeamName(team), session_guid.c_str());
         return;
     }
 
     Logger::Log("chat-command",
-        "[ChatCmd][DLL] /spawnbot guid=%s bot_id=%d team=%s loc=(%.1f,%.1f,%.1f) yaw=%d\n",
-        session_guid.c_str(), bot_id, TeamName(team),
+        "[ChatCmd][DLL] /spawn%s guid=%s bot_id=%d scalar_override=%.2f loc=(%.1f,%.1f,%.1f) yaw=%d\n",
+        TeamName(team), session_guid.c_str(), bot_id, difficulty_scalar_override,
         loc.X, loc.Y, loc.Z, yaw);
+
+    // Difficulty scaling: always apply, regardless of friend/enemy. Set the
+    // per-spawn scalar override (0 = "use map default") and raise the gate
+    // that InitializeDefaultProps checks — both fields are consumed and
+    // cleared by the very next InitializeDefaultProps call, so this can't
+    // leak into an adjacent non-chat spawn.
+    TgPawn__InitializeDefaultProps::nPendingDifficultyScalarOverride =
+        difficulty_scalar_override;
+    TgPawn__InitializeDefaultProps::bPendingEnemyScaling = true;
 
     // bIgnoreCollision=true so a tight spot in front of the player doesn't
     // veto the spawn. pFactory=nullptr -> SpawnBotById falls back to
@@ -115,8 +146,8 @@ void Execute(const std::string& session_guid, int bot_id, Team team) {
 
     if (!Bot) {
         Logger::Log("chat-command",
-            "[ChatCmd][DLL] /spawnbot guid=%s bot_id=%d: SpawnBotById returned null\n",
-            session_guid.c_str(), bot_id);
+            "[ChatCmd][DLL] /spawn%s guid=%s bot_id=%d: SpawnBotById returned null\n",
+            TeamName(team), session_guid.c_str(), bot_id);
         return;
     }
 
@@ -125,11 +156,9 @@ void Execute(const std::string& session_guid, int bot_id, Team team) {
     // to "enemy of everyone" / inconsistent state.
     ATgRepInfo_Player* BotRep = (ATgRepInfo_Player*)Bot->PlayerReplicationInfo;
     if (BotRep) {
-        ATgRepInfo_TaskForce* tf =
-            (team == Team::Attackers) ? GTeamsData.Attackers : GTeamsData.Defenders;
-        BotRep->r_TaskForce = tf;
-        BotRep->Team        = tf;
-        BotRep->SetTeam(tf);
+        BotRep->r_TaskForce = targetTf;
+        BotRep->Team        = targetTf;
+        BotRep->SetTeam(targetTf);
         Bot->NotifyTeamChanged();
     }
 
@@ -159,15 +188,15 @@ void Execute(const std::string& session_guid, int bot_id, Team team) {
     // is the last record of its in-world state. If Health is 0 or bDeleteMe is
     // 1 here, the bot was born dead — investigate SpawnBotById/InitBehavior.
     Logger::Log("chat-command",
-        "[ChatCmd][DLL] /spawnbot snapshot: bot=%p bDeleteMe=%d Role=%d "
-        "RemoteRole=%d Health=%d Loc=(%.1f,%.1f,%.1f) BotRep=%p team=%s\n",
-        (void*)Bot, (int)Bot->bDeleteMe, (int)Bot->Role, (int)Bot->RemoteRole,
-        Bot->Health, Bot->Location.X, Bot->Location.Y, Bot->Location.Z,
-        (void*)BotRep, TeamName(team));
+        "[ChatCmd][DLL] /spawn%s snapshot: bot=%p bDeleteMe=%d Role=%d "
+        "RemoteRole=%d Health=%d Loc=(%.1f,%.1f,%.1f) BotRep=%p\n",
+        TeamName(team), (void*)Bot, (int)Bot->bDeleteMe, (int)Bot->Role,
+        (int)Bot->RemoteRole, Bot->Health,
+        Bot->Location.X, Bot->Location.Y, Bot->Location.Z, (void*)BotRep);
 
     Logger::Log("chat-command",
-        "[ChatCmd][DLL] /spawnbot guid=%s: bot=%p (botId=%d) team=%s spawned\n",
-        session_guid.c_str(), (void*)Bot, bot_id, TeamName(team));
+        "[ChatCmd][DLL] /spawn%s guid=%s: bot=%p (botId=%d) spawned\n",
+        TeamName(team), session_guid.c_str(), (void*)Bot, bot_id);
 }
 
 } // namespace TgPlayerActions::SpawnBotCmd
