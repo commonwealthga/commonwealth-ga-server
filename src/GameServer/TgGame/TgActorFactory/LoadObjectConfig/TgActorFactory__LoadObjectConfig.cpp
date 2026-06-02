@@ -19,5 +19,7 @@ void __fastcall TgActorFactory__LoadObjectConfig::Call(ATgActorFactory* Factory,
 			mid, "s_n_task_force", factory->s_nTaskForce);
 		factory->s_nTeamNumber = MapObjectConfig::GetInt(
 			mid, "s_n_team_number", factory->s_nTeamNumber);
+		factory->s_bAutoSpawn = (bool)MapObjectConfig::GetInt(
+			mid, "s_b_auto_spawn", factory->s_bAutoSpawn);
 	}
 }

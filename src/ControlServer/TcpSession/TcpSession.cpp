@@ -1324,7 +1324,7 @@ void TcpSession::send_get_ticket_info_response() {
 
 	// ─── Reference templates for queue rows we haven't added yet. ────────────
 	// Kept for documentation while implementing new queue types — copy the
-	// magic numbers you need and seed them into ga_queues / ga_queue_map_pool.
+	// magic numbers you need and seed them into ga_queues / ga_map_pool_entries.
 	// Compiled out; the active encode path is TicketInfoEncoder above.
 #if 0
 		// MATCH_QUEUE_ID 5 — Low security (commonwealth missions, tier 1)

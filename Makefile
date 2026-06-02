@@ -62,6 +62,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgPointOfInterest.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgTeleporter.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapObjectConfig/MapObjectConfig.cpp \
+			  $(SRC_DIR)/GameServer/Engine/MapGameInfo/MapGameInfo.cpp \
 			  $(SRC_DIR)/GameServer/Engine/SeqActNullGuard/SeqActNullGuard.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Tick/Actor__Tick.cpp \
@@ -127,6 +128,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective/UpdateMatineeNodeStatus/TgMissionObjective__UpdateMatineeNodeStatus.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SetPhase/TgPawn__SetPhase.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SetProperty/TgPawn__SetProperty.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SyncPawnHealth/SyncPawnHealth.cpp \
@@ -156,6 +158,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/SpawnWave/TgBotFactory__SpawnWave.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/ResetQueue/TgBotFactory__ResetQueue.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/ApplyFireModeSetup/TgDeviceFire__ApplyFireModeSetup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/InitializeProjectile/TgDeviceFire__InitializeProjectile.cpp \
@@ -179,8 +182,10 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveAllEffectGroups/TgEffectManager__RemoveAllEffectGroups.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective_Bot/LoadObjectConfig/TgMissionObjective_Bot__LoadObjectConfig.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective_Bot/SetObjectiveActive/TgMissionObjective_Bot__SetObjectiveActive.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective_Bot/SpawnObjectiveBot/TgMissionObjective_Bot__SpawnObjectiveBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective_Proximity/ScoreObjectiveProgress/TgMissionObjective_Proximity__ScoreObjectiveProgress.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerCountVolume/Update/TgPlayerCountVolume__Update.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/SendMapRandomSMSettingsMarshal/CGameClient__SendMapRandomSMSettingsMarshal.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.cpp \

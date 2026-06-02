@@ -70,9 +70,9 @@ static bool UpdateQueueFlag(uint32_t queue_id, const std::string& field, bool va
     return true;
 }
 
-static bool UpdateQueueMap(uint32_t queue_id, const std::string& map_name,
-                           const std::string& game_mode, const nlohmann::json& payload,
-                           std::string& message) {
+static bool UpdatePoolEntry(uint32_t map_pool_id, const std::string& map_name,
+                            const std::string& game_mode, const nlohmann::json& payload,
+                            std::string& message) {
     if (map_name.empty() || game_mode.empty()) {
         message = "missing map_name or game_mode";
         return false;
@@ -91,7 +91,7 @@ static bool UpdateQueueMap(uint32_t queue_id, const std::string& map_name,
         return false;
     }
 
-    std::string sql = "UPDATE ga_queue_map_pool SET ";
+    std::string sql = "UPDATE ga_map_pool_entries SET ";
     if (has_enabled && has_weight) {
         sql += "enabled = ?, weight = ?";
     } else if (has_enabled) {
@@ -99,7 +99,7 @@ static bool UpdateQueueMap(uint32_t queue_id, const std::string& map_name,
     } else {
         sql += "weight = ?";
     }
-    sql += " WHERE queue_id = ? AND map_name = ? AND game_mode = ?";
+    sql += " WHERE map_pool_id = ? AND map_name = ? AND game_mode = ?";
 
     sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
@@ -115,7 +115,7 @@ static bool UpdateQueueMap(uint32_t queue_id, const std::string& map_name,
         int weight = std::max(1, payload.value("weight", 1));
         sqlite3_bind_int(stmt, col++, weight);
     }
-    sqlite3_bind_int(stmt, col++, (int)queue_id);
+    sqlite3_bind_int(stmt, col++, (int)map_pool_id);
     sqlite3_bind_text(stmt, col++, map_name.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, col++, game_mode.c_str(), -1, SQLITE_TRANSIENT);
 
@@ -127,12 +127,12 @@ static bool UpdateQueueMap(uint32_t queue_id, const std::string& map_name,
         return false;
     }
     if (sqlite3_changes(db) == 0) {
-        message = "queue map not found";
+        message = "pool entry not found";
         return false;
     }
 
     MatchmakingService::ReloadQueues();
-    message = "queue map updated and queues reloaded";
+    message = "pool entry updated and queues reloaded";
     return true;
 }
 
@@ -254,14 +254,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Initialize matchmaking. Init() reads ga_queues + ga_queue_map_pool from
+    // Initialize matchmaking. Init() reads ga_queues + ga_map_pool_entries from
     // the shared DB and constructs one MatchmakingService::Queue per enabled
     // row via RuleFactory. Edit queues without rebuilding by changing those
     // tables — see Database.cpp migrations + the `-reload-queues` chat command
     // for hot-reload semantics.
     //
     // Map pool note: maps that need to be downloaded by the client to work
-    // (e.g. 3P_Beachhead2_P, 3P_Beachhead_P) belong in ga_queue_map_pool with
+    // (e.g. 3P_Beachhead2_P, 3P_Beachhead_P) belong in ga_map_pool_entries with
     // enabled=0 until the client downloads them.
     MatchmakingService::Init();
     // Provide queue-scoped running-instance info to matchmaking rules. Rules
@@ -332,8 +332,16 @@ int main(int argc, char* argv[]) {
             pending.profile_ids = std::move(result.profile_ids);
             MatchmakingService::AddPendingMatch(instance_id, std::move(pending));
 
+            // Look up queue's configured difficulty so the instance runs
+            // at the queue's tier instead of the DLL's map-name heuristic.
+            uint32_t queue_difficulty = 0;
+            if (auto qcfg = MatchmakingService::GetQueueConfig(queue_id)) {
+                queue_difficulty = qcfg->difficulty_value_id;
+            }
+
             pid_t pid = InstanceSpawner::Spawn(
-                cfg, result.map_name, result.game_mode, *port, instance_id);
+                cfg, result.map_name, result.game_mode, *port, instance_id,
+                queue_difficulty);
 
             if (pid < 0) {
                 Logger::Log("matchmaking",
@@ -396,8 +404,14 @@ int main(int argc, char* argv[]) {
             picked->map_name, picked->game_mode, *port, 0, /*is_home_map=*/false,
             /*queue_id=*/parent->queue_id,
             /*predecessor_instance_id=*/parent_instance_id);
+        // Successor inherits parent queue's difficulty_value_id.
+        uint32_t queue_difficulty = 0;
+        if (auto qcfg = MatchmakingService::GetQueueConfig(parent->queue_id)) {
+            queue_difficulty = qcfg->difficulty_value_id;
+        }
         pid_t pid = InstanceSpawner::Spawn(
-            cfg, picked->map_name, picked->game_mode, *port, instance_id);
+            cfg, picked->map_name, picked->game_mode, *port, instance_id,
+            queue_difficulty);
         if (pid < 0) {
             Logger::Log("main", "[SuccessorSpawner] Failed to spawn successor for parent=%lld\n",
                 (long long)parent_instance_id);
@@ -550,13 +564,13 @@ int main(int argc, char* argv[]) {
             return UpdateQueueFlag(queue_id, field, payload.value("value", false), message);
         }
 
-        if (subtype == "update-queue-map") {
-            uint32_t queue_id = payload.value("queue_id", 0u);
-            if (queue_id == 0) {
-                message = "missing queue_id";
+        if (subtype == "update-pool-entry") {
+            uint32_t map_pool_id = payload.value("map_pool_id", 0u);
+            if (map_pool_id == 0) {
+                message = "missing map_pool_id";
                 return false;
             }
-            return UpdateQueueMap(queue_id,
+            return UpdatePoolEntry(map_pool_id,
                 payload.value("map_name", std::string()),
                 payload.value("game_mode", std::string()),
                 payload,

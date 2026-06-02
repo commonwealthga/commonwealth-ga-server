@@ -1,0 +1,36 @@
+#include "src/GameServer/Engine/MapGameInfo/MapGameInfo.hpp"
+#include "src/Database/Database.hpp"
+#include "src/Utils/Logger/Logger.hpp"
+#include "src/pch.hpp"
+
+std::optional<MapGameInfoRow> MapGameInfo::LookupByName(const std::string& mapName) {
+	if (mapName.empty()) return std::nullopt;
+
+	sqlite3* db = Database::GetConnection();
+	if (!db) return std::nullopt;
+
+	sqlite3_stmt* stmt = nullptr;
+	const char* kSql =
+		"SELECT mission_time_secs, is_pvp, overtime_secs, allow_overtime "
+		"FROM map_game_info "
+		"WHERE map_name = ? COLLATE NOCASE LIMIT 1";
+	if (sqlite3_prepare_v2(db, kSql, -1, &stmt, nullptr) != SQLITE_OK) {
+		// Pre-v95/v97 DB (column missing). Treat as "no override" so callers
+		// fall back to their hardcoded defaults — same behavior as before.
+		Logger::Log("config", "MapGameInfo::LookupByName prepare failed: %s\n", sqlite3_errmsg(db));
+		return std::nullopt;
+	}
+	sqlite3_bind_text(stmt, 1, mapName.c_str(), -1, SQLITE_TRANSIENT);
+
+	std::optional<MapGameInfoRow> out;
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		MapGameInfoRow r;
+		r.mission_time_secs = sqlite3_column_int(stmt, 0);
+		r.is_pvp            = sqlite3_column_int(stmt, 1) != 0;
+		r.overtime_secs     = sqlite3_column_int(stmt, 2);
+		r.allow_overtime    = sqlite3_column_int(stmt, 3) != 0;
+		out = r;
+	}
+	sqlite3_finalize(stmt);
+	return out;
+}

@@ -1,5 +1,7 @@
 #include "src/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.hpp"
+#include "src/GameServer/Engine/MapGameInfo/MapGameInfo.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
+#include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.hpp"
 #include "src/GameServer/Globals.hpp"
@@ -60,12 +62,24 @@ void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	Game->m_nSecsToAutoReleaseDefenders = 15;
 	Game->m_bIsTutorialMap = 0;
 
-	Game->m_fGameMissionTime = 15 * 60.0f;   // 15 minute mission
-	Game->m_fGameOvertimeTime = 4 * 60.0f;  // up to 4 minutes overtime
-	Game->m_bAllowOvertime = 1;
+	// Mission time + overtime are per-map via map_game_info (v95/v97). Falls
+	// back to the historical 15-min mission / 4-min overtime / allowed default
+	// if no row exists for the current map.
+	std::string map_name = Config::GetMapNameChar();
+	int  missionTimeSecs = 15 * 60;
+	int  overtimeSecs    = 4 * 60;
+	bool allowOvertime   = true;
+	if (auto row = MapGameInfo::LookupByName(map_name)) {
+		missionTimeSecs = row->mission_time_secs;
+		overtimeSecs    = row->overtime_secs;
+		allowOvertime   = row->allow_overtime;
+	}
+	Game->m_fGameMissionTime  = static_cast<float>(missionTimeSecs);
+	Game->m_fGameOvertimeTime = static_cast<float>(overtimeSecs);
+	Game->m_bAllowOvertime    = allowOvertime ? 1 : 0;
 	Game->m_eTimerState = 0;
 
-	Game->TimeLimit = 15 * 60;
+	Game->TimeLimit = missionTimeSecs;
 
 	// Engine-side GameInfo.GameDifficulty (float, UE3 default 1.0). Read by
 	// UC at TgPawn_Character.uc:754 (wall-jump noise gate, fires only when
@@ -74,15 +88,12 @@ void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	// AI hearing actually responds to the Ultra-Max tier.
 	Game->GameDifficulty = Config::GetDifficultyScalar();
 
-	std::string map_name = Config::GetMapNameChar();
-
 	if (map_name == "Dome3_VR_Arena_P") {
 		// Auto-resetting "infinite" mission timer. PollMissionTimer re-arms
 		// 'MissionTimer' via eventMissionTimerStart() right after the 60s
-		// alert fires. These fields keep that cycle robust:
-		//   - explicit 15-min cycle length
-		//   - no overtime transition (state 2 -> 3) if our reset is a tick late
-		Game->m_fGameMissionTime  = 15.0f * 60.0f;
+		// alert fires. Disable overtime so the state machine never tries the
+		// 2->3 transition if our reset is a tick late. Cycle length comes from
+		// map_game_info.mission_time_secs above.
 		Game->m_bAllowOvertime    = 0;
 		Game->m_fGameOvertimeTime = 0.0f;
 	}
@@ -92,6 +103,20 @@ void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	}
 
 	LoadCommonGameConfig(Game);
+
+	// Hard-code PlayerCountTarget=1 on every TgPlayerCountVolume in the map so
+	// the threshold fires on the first qualifying touch. Placeholder until a
+	// dynamic resolver (e.g. scale with online player count) lands. Volumes
+	// are cached lazily by ActorCache on first call — calling here ensures the
+	// world is scanned before any volume Touch can fire its native Update hook.
+	ActorCache::CacheMapActors();
+	for (ATgPlayerCountVolume* v : ActorCache::PlayerCountVolumes) {
+		if (!v) continue;
+		v->PlayerCountTarget = 1;
+	}
+	Logger::Log("playercount",
+		"LoadGameConfig: forced PlayerCountTarget=1 on %d TgPlayerCountVolume(s)\n",
+		(int)ActorCache::PlayerCountVolumes.size());
 
 	if (Logger::IsChannelEnabled("gametimer")) {
 		const std::string gameName = ((UObject*)Game)->GetFullName();

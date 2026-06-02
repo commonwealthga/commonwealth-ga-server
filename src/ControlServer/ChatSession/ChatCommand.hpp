@@ -64,7 +64,7 @@ struct ParseResult {
     bool possess   = false;
     bool unpossess = false;
 
-    // -reload-queues — re-read ga_queues + ga_queue_map_pool. Handled
+    // -reload-queues — re-read ga_queues + ga_map_pool_entries. Handled
     // entirely on the control server; no PLAYER_ACTION IPC dispatched.
     bool reload_queues = false;
 };

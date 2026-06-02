@@ -92,6 +92,7 @@ enum class TaskforcePolicy : uint8_t {
 
 struct QueueConfig {
     uint32_t queue_id = 0;
+    uint32_t map_pool_id = 0;                         // 0 = no pool assigned
     std::string name;                                 // log/debug only
     std::string rule_class;                           // empty => DataDriven
     TaskforcePolicy taskforce_policy = TaskforcePolicy::Pinned1;
@@ -143,7 +144,7 @@ public:
 
     static void Init();
 
-    // Wipe and re-load every queue from ga_queues + ga_queue_map_pool.
+    // Wipe and re-load every queue from ga_queues + ga_map_pool_entries.
     // Preserves the player list of any queue whose queue_id still exists in
     // the DB after reload; drops players from removed queues with a log
     // entry. Pending matches keep their cached task_force_assignments and

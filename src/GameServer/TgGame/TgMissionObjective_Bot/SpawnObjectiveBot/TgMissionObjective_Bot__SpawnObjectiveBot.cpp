@@ -44,7 +44,16 @@ void StampObjective(ATgMissionObjective_Bot* Obj, ATgPawn* Bot, int taskForce) {
 	Obj->Role               = 3;
 	Obj->r_ObjectiveBot     = Bot;
 	Obj->r_ObjectiveBotInfo = (ATgRepInfo_Player*)Bot->PlayerReplicationInfo;
-	Obj->r_bIsActive        = 1;
+	// Activation (bEnabled + r_bIsActive) is handled canonically by
+	// TgGame::PostBeginPlay → UnlockObjective(1) → eventUnlockObjective(1)
+	// → SetObjectiveActive(true), which now resolves to our
+	// TgMissionObjective_Bot__SetObjectiveActive hook (the subclass native
+	// at 0x10a797c0 is a stub that would otherwise no-op the canonical path
+	// and leave bEnabled=0 → UpdateObjectiveStatus gate blocks every status
+	// flip → boss death never propagates to BeginEndMission). Order is
+	// safe: actor PostBeginPlay runs first (boss spawned here), then game
+	// PostBeginPlay fires UnlockObjective(1) — the bot is already stamped
+	// by the time activation flips the flags.
 	if (taskForce == 2){
 		Obj->r_eStatus = 7;
 		GTeamsData.Attackers->r_CurrActiveObjective = Obj;
@@ -52,7 +61,6 @@ void StampObjective(ATgMissionObjective_Bot* Obj, ATgPawn* Bot, int taskForce) {
 		Obj->r_eStatus = 8;
 		GTeamsData.Defenders->r_CurrActiveObjective = Obj;
 	}
-	// Obj->r_eStatus          = 7; //3;
 }
 
 }  // namespace

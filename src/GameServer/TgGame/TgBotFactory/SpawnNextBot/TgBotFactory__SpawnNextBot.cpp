@@ -16,8 +16,11 @@ namespace {
 // Jitter radius (UE units) applied to each spawn's XY around the picked
 // NavigationPoint. Keeps grouped bots from stacking exactly on top of each
 // other (which the engine treats as collision when m_bIgnoreCollisionOnSpawn
-// is false — bots get despawned immediately).
-constexpr float kSpawnJitterRadius = 200.0f;
+// is false — bots get despawned immediately). Tuned down from 200 because
+// 200 was wide enough to clip bots into adjacent walls on tight maps; the
+// first bot in each group anchors at the nav point exactly (see below) so
+// only subsequent bots in the same group need to be spread apart.
+constexpr float kSpawnJitterRadius = 120.0f;
 
 // Lower bound for fSpawnDelay when scheduling the next spawn. UC PostBeginPlay
 // clamps fSpawnDelay to >= 0.2 already, but we belt-and-suspenders it here so
@@ -196,14 +199,20 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 
 	// Build spawn location: nav point + cylinder lift + XY jitter so bots
 	// don't stack and instantly despawn from collision overlap when
-	// m_bIgnoreCollisionOnSpawn is off.
+	// m_bIgnoreCollisionOnSpawn is off. The FIRST bot of each group lands on
+	// the nav point exactly (no jitter) — level designers hand-placed the
+	// nav point inside playable space, so the anchor spawn is guaranteed
+	// in-bounds. Only subsequent bots in the same group jitter to avoid
+	// stacking on the anchor. Single-bot groups (the common case) therefore
+	// never jitter at all.
 	FVector loc = BotStart->Location;
 	{
 		float radius = 0.0f, halfHeight = 0.0f;
 		TgGame__SpawnBotById::GetBotCollisionCylinder(botId, &radius, &halfHeight);
 		if (halfHeight > 0.0f) loc.Z += halfHeight + 5.0f;
 	}
-	ApplyXYJitter(loc);
+	const bool jittered = (gd.nCurrentCount > 0);
+	if (jittered) ApplyXYJitter(loc);
 
 	ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
 	ATgPawn* Bot = (ATgPawn*)Game->SpawnBotById(
@@ -287,9 +296,9 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 		gd.nCurrentCount          += 1;
 
 		Logger::Log("tgbotfactory",
-			"  spawned bot=%d at loc[%d] (jittered) for factory=%d  group=%d "
+			"  spawned bot=%d at loc[%d] (%s) for factory=%d  group=%d "
 			"(%d/%d in group)  current=%d/%d  totalSpawns=%d\n",
-			botId, lIdx, mid, entry->nGroupNumber,
+			botId, lIdx, jittered ? "jittered" : "anchored", mid, entry->nGroupNumber,
 			gd.nCurrentCount, gd.nMaxCount,
 			BotFactory->nCurrentCount, BotFactory->nActiveCount,
 			BotFactory->nTotalSpawns);

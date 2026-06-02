@@ -13,11 +13,15 @@ class InstanceSpawner {
 public:
     // Spawn a UE3 game instance via fork/exec with Wine.
     // Returns child PID on success, -1 on failure.
+    // difficulty_value_id: pass the queue's value to override the DLL's
+    // map-name-based default; 0 = no override (DLL falls back to its
+    // hardcoded heuristic).
     static pid_t Spawn(const ControlServerConfig& cfg,
                        const std::string& map_name,
                        const std::string& game_mode,
                        uint16_t udp_port,
-                       int64_t instance_id);
+                       int64_t instance_id,
+                       uint32_t difficulty_value_id = 0);
 
     // Terminate the process group for an already-spawned game instance.
     // Sends SIGTERM immediately, then SIGKILL after grace_seconds if the

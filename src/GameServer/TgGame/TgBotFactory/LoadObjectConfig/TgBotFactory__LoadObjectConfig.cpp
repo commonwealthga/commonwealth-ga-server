@@ -19,18 +19,58 @@ namespace {
 std::map<int, std::map<int, std::vector<SpawnTableEntry>>> g_spawnTables;
 int g_loadedDifficultyValueId = -1;
 
-// Medium Security (valid_value group 116). Of 211 distinct spawn tables in
-// asm_data_set_bot_spawn_tables, only 41 ship rows at Ultra-Max Security
-// (1471) — 136 of the 170 missing tables exist exclusively at 1029. Use 1029
-// as the per-table fallback so PVE maps work at difficulties the boss/factory
-// roster was never authored for, without polluting the verbatim asm_* data.
-const int kFallbackDifficultyValueId = 1029;
+// Build the cascade order: every difficulty in valid_value_group 116 with
+// sort_order <= primary's sort_order, walked from primary down to Novice.
+// Skip-existing semantics mean each tier only fills in spawn-table ids the
+// higher tiers didn't ship. Returns the primary tier first, then descending.
+//
+// Group 116 ladder (sort_order : value_id):
+//   1=Novice 1467, 2=Low Security 1028, 3=Adept 1468, 4=Medium Security 1029,
+//   5=Advanced 1469, 6=High Security 1030, 7=Expert 1470,
+//   8=Maximum Security 1259, 9=Ultra-Max Security 1471, 10=Double Agent 1260.
+// Double Agent (1260) sits above 1471; the cascade is strictly "<= current",
+// so 1260 never participates unless it's the primary.
+std::vector<int> GetDifficultyCascade(sqlite3* db, int primaryDifficulty) {
+	std::vector<int> cascade;
+
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT value_id FROM asm_data_set_valid_values "
+		"WHERE valid_value_group_id = 116 "
+		"  AND sort_order <= (SELECT sort_order FROM asm_data_set_valid_values "
+		"                     WHERE valid_value_group_id = 116 AND value_id = ?) "
+		"ORDER BY sort_order DESC",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("tgbotfactory",
+			"  GetDifficultyCascade prepare failed: %s — falling back to primary only\n",
+			sqlite3_errmsg(db));
+		cascade.push_back(primaryDifficulty);
+		return cascade;
+	}
+	sqlite3_bind_int(stmt, 1, primaryDifficulty);
+
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		cascade.push_back(sqlite3_column_int(stmt, 0));
+	}
+	sqlite3_finalize(stmt);
+
+	// Defensive: if the lookup returned nothing (e.g. primary isn't in group
+	// 116), at least try the primary directly so we don't degrade to "no
+	// spawn tables at all".
+	if (cascade.empty()) cascade.push_back(primaryDifficulty);
+	return cascade;
+}
 
 // Load one difficulty pass into g_spawnTables. If skipExisting is true, rows
-// whose bot_spawn_table_id is already present in the cache are dropped (used
-// by the Medium-Security fallback pass so we don't overwrite the primary
-// difficulty's roster). Returns the number of rows actually inserted and,
-// via outTablesAdded, the number of new bot_spawn_table_ids introduced.
+// whose bot_spawn_table_id is already present in the cache are dropped (so
+// each cascade tier only fills the gaps left by the tiers above it). Returns
+// the number of rows actually inserted and, via outTablesAdded, the number of
+// new bot_spawn_table_ids introduced.
+//
+// Sources both asm_data_set_bot_spawn_tables (verbatim game data, read-only)
+// and mod_data_set_bot_spawn_tables (our custom additions) via UNION ALL.
+// Rows from either table participate equally in the cascade.
 int LoadSpawnTableRows(sqlite3* db, int difficulty, bool skipExisting,
                        int* outTablesAdded) {
 	if (outTablesAdded) *outTablesAdded = 0;
@@ -41,13 +81,20 @@ int LoadSpawnTableRows(sqlite3* db, int difficulty, bool skipExisting,
 	// boss skips like Vulcan); orphan rows where the LEFT JOIN misses keep the
 	// row by defaulting to 1.0.
 	int rc = sqlite3_prepare_v2(db,
-		"SELECT bot_spawn_table_id, spawn_group, enemy_bot_id, bot_count, "
-		"       spawn_chance, COALESCE(reference_name, '') "
-		"FROM asm_data_set_bot_spawn_tables "
-		"LEFT JOIN asm_data_set_bots "
-		"       ON asm_data_set_bot_spawn_tables.enemy_bot_id = asm_data_set_bots.bot_id "
-		"WHERE difficulty_value_id = ? "
-		"  AND COALESCE(asm_data_set_bots.bot_balance_multiplier, 1.0) > 0",
+		"SELECT u.bot_spawn_table_id, u.spawn_group, u.enemy_bot_id, u.bot_count, "
+		"       u.spawn_chance, COALESCE(b.reference_name, '') "
+		"FROM ( "
+		"  SELECT bot_spawn_table_id, difficulty_value_id, spawn_group, "
+		"         enemy_bot_id, bot_count, spawn_chance "
+		"  FROM asm_data_set_bot_spawn_tables "
+		"  UNION ALL "
+		"  SELECT bot_spawn_table_id, difficulty_value_id, spawn_group, "
+		"         enemy_bot_id, bot_count, spawn_chance "
+		"  FROM mod_data_set_bot_spawn_tables "
+		") AS u "
+		"LEFT JOIN asm_data_set_bots b ON u.enemy_bot_id = b.bot_id "
+		"WHERE u.difficulty_value_id = ? "
+		"  AND COALESCE(b.bot_balance_multiplier, 1.0) > 0",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
 		Logger::Log("tgbotfactory",
@@ -92,25 +139,22 @@ void EnsureSpawnTablesLoaded() {
 		return;
 	}
 
-	int primaryTables = 0;
-	const int primaryRows = LoadSpawnTableRows(db, difficulty,
-	                                           /*skipExisting=*/false,
-	                                           &primaryTables);
-
-	int fallbackTables = 0;
-	int fallbackRows = 0;
-	if (difficulty != kFallbackDifficultyValueId) {
-		fallbackRows = LoadSpawnTableRows(db, kFallbackDifficultyValueId,
-		                                  /*skipExisting=*/true,
-		                                  &fallbackTables);
+	const std::vector<int> cascade = GetDifficultyCascade(db, difficulty);
+	for (size_t i = 0; i < cascade.size(); ++i) {
+		const int tier = cascade[i];
+		const bool isPrimary = (i == 0);
+		int tablesAdded = 0;
+		const int rows = LoadSpawnTableRows(db, tier,
+		                                    /*skipExisting=*/!isPrimary,
+		                                    &tablesAdded);
+		Logger::Log("tgbotfactory",
+			"  cascade tier %zu difficulty=%d -> %d rows / %d new tables%s\n",
+			i, tier, rows, tablesAdded, isPrimary ? " (primary)" : "");
 	}
 
 	Logger::Log("tgbotfactory",
-		"  EnsureSpawnTablesLoaded: difficulty=%d primary=%d rows / %d tables, "
-		"fallback(%d)=%d rows / %d tables, total tables=%zu\n",
-		difficulty, primaryRows, primaryTables,
-		kFallbackDifficultyValueId, fallbackRows, fallbackTables,
-		g_spawnTables.size());
+		"  EnsureSpawnTablesLoaded: difficulty=%d cascade depth=%zu total tables=%zu\n",
+		difficulty, cascade.size(), g_spawnTables.size());
 }
 
 // Seed once per process; rand() is fine for spawn randomisation.

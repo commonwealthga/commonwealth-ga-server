@@ -73,11 +73,37 @@ float __fastcall TgGame__MissionTimeRemaining::Call(ATgGame *Game, void *edx) {
 		// Setup phase
 		remaining = Game->s_fMissionTimerStartedAt - now;
 	} else if (state == 2) {
-		// Mission phase
-		remaining = (Game->s_fMissionTimerStartedAt + Game->m_fGameMissionTime) - now;
+		// Mission phase — prefer the engine's `MissionTimer` SetTimer state as
+		// the source of truth. UC's MissionTimerStart / MissionTimeIncrement /
+		// MissionTimerPause / MissionTimerStop / TgSeqAct_SetMissionTime all
+		// mutate the timer via SetTimer('MissionTimer'); the
+		// `s_fMissionTimerStartedAt + m_fGameMissionTime` formula only sees the
+		// initial configuration, so any extension (e.g. boss-room
+		// SoundInsulationVolume calling MissionTimerBossIncrement → +210s up to
+		// 240s) flashed correctly for one tick — UC writes
+		// r_fMissionRemainingTime directly in SendMissionTimerNotify — then got
+		// overwritten by the next KeepClientsInSync 5s later when this function
+		// returned the stale formula value. Same pattern state 6 already uses.
+		remaining = Game->GetRemainingTimeForTimer(FName("MissionTimer"), nullptr);
+		if (remaining < 0.0f) {
+			// Engine timer not armed (e.g. between MissionTimerStop and a re-
+			// start, or paused → state would be 5 normally). Fall back to the
+			// static formula so we still report something sensible.
+			remaining = (Game->s_fMissionTimerStartedAt + Game->m_fGameMissionTime) - now;
+		}
 	} else if (state == 3) {
-		// Overtime
-		remaining = (Game->s_fMissionTimerStartedAt + Game->m_fGameMissionTime + Game->m_fGameOvertimeTime) - now;
+		// Overtime. Same engine-timer-first logic as state 2 — `MissionTimer`
+		// is re-armed when entering overtime (TgGame.uc:998 SetMissionTime +
+		// MissionTimerStart) and on any MissionTimeIncrement during overtime,
+		// so GetRemainingTimeForTimer is the single source of truth. The
+		// stale s_fMissionTimerStartedAt + m_fGameMissionTime + m_fGameOvertimeTime
+		// formula goes NEGATIVE as soon as regulation included any extension
+		// (capture, boss-room) because those bump the engine timer past the
+		// start+mission baseline — produces the "OT: -2:-43" HUD readout.
+		remaining = Game->GetRemainingTimeForTimer(FName("MissionTimer"), nullptr);
+		if (remaining < 0.0f) {
+			remaining = (Game->s_fMissionTimerStartedAt + Game->m_fGameMissionTime + Game->m_fGameOvertimeTime) - now;
+		}
 	} else if (state == 5) {
 		// Paused timer: the UC pause path stores the remaining time here.
 		remaining = Game->m_fPausedAtTime;

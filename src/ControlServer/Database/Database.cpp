@@ -800,24 +800,47 @@ void Database::Init() {
 			sqlite3_free(err);
 		}
 
-		// ga_queue_map_pool — weighted (map_name, game_mode) entries the
-		// matchmaker picks from when a queue spawns a fresh instance. weight
-		// is 1-based; weight=1 across all rows is uniform random. Disable an
-		// entry without losing it via enabled=0.
+		// ga_map_pools — pool of (map, game_mode) entries shared by N queues.
+		// Each ga_queues row carries a nullable map_pool_id pointing here.
+		// Same shape as the old ga_queue_map_pool but keyed by pool, so
+		// difficulty variants of the same content can reuse one curated list.
 		result = sqlite3_exec(db,
-			"CREATE TABLE IF NOT EXISTS ga_queue_map_pool ("
-			"  queue_id  INTEGER NOT NULL REFERENCES ga_queues(queue_id) ON DELETE CASCADE,"
-			"  map_name  TEXT    NOT NULL,"
-			"  game_mode TEXT    NOT NULL,"
-			"  weight    INTEGER NOT NULL DEFAULT 1,"
-			"  enabled   INTEGER NOT NULL DEFAULT 1,"
-			"  PRIMARY KEY (queue_id, map_name, game_mode)"
+			"CREATE TABLE IF NOT EXISTS ga_map_pools ("
+			"  map_pool_id INTEGER PRIMARY KEY,"
+			"  name        TEXT NOT NULL UNIQUE"
 			");",
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
-			Logger::Log("db", "Failed to create ga_queue_map_pool table: %s\n", err);
+			Logger::Log("db", "Failed to create ga_map_pools table: %s\n", err);
 			sqlite3_free(err);
 		}
+
+		// Seed pool ids 1/2/3 — anchors for the backfill UPDATE below.
+		// Pool 3 ('ddr') was historically seeded only inside the gated v63
+		// block in src/Database/Database.cpp, so existing DBs already past
+		// v63 ended up with ga_map_pool_entries rows for map_pool_id=3 but
+		// no matching ga_map_pools row. INSERT OR IGNORE adopts the orphan
+		// idempotently. Map pool names stay 'specops' / 'pvp' / 'ddr' even
+		// though their queues display as 'umax' / 'merc' / 'ddr' — pool
+		// names are operator-facing only.
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_map_pools (map_pool_id, name) VALUES"
+			" (1, 'specops'),"
+			" (2, 'pvp'),"
+			" (3, 'ddr');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed ga_map_pools: %s\n", err);
+			sqlite3_free(err);
+		}
+
+		// Add ga_queues.map_pool_id (nullable). ALTER ADD COLUMN fails once
+		// the column exists — swallow that error so the migration is
+		// idempotent.
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_queues ADD COLUMN map_pool_id INTEGER DEFAULT NULL;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) sqlite3_free(err);
 
 		// Seed the two known queues mirroring the pre-DB hardcoded config in
 		// main.cpp. INSERT OR IGNORE preserves any operator edits across boots.
@@ -829,10 +852,10 @@ void Database::Init() {
 			" level_min, level_max, tab, map_x, map_y, map_active_flag, "
 			" map_icon_texture_res_id, location_value_id, double_agent_flag, "
 			" bonus_queue_flag, difficulty_value_id, active_flag, locked_flag) VALUES"
-			" (1, 'specops',  'pinned_1', 0,"
+			" (1, 'umax',     'pinned_1', 0,"
 			"  0x3fd, 0xd8a9, 0xd8a8, 0x219,"
 			"  10, 1, 10, 5, 200, 0x1bb, 6.0, 0.0, 1, 0x1406, 0x5c5, 1, 0, 0x5bf, 1, 0),"
-			" (2, 'pvp',      'balanced', 0,"
+			" (2, 'merc',     'balanced', 0,"
 			"  0x3fe, 0xa200, 0xa1ff, 0x214,"
 			"  10, 1, 3,  5, 200, 0x1,   1.0, 0.0, 1, 0x1406, 0,     1, 0, 0,     1, 0);",
 			nullptr, nullptr, &err);
@@ -840,6 +863,64 @@ void Database::Init() {
 			Logger::Log("db", "Failed to seed ga_queues: %s\n", err);
 			sqlite3_free(err);
 		}
+
+		// Backfill ga_queues.map_pool_id from queue_id. The seeded queues
+		// (1/2) match the seeded pools above. No-op after first boot.
+		result = sqlite3_exec(db,
+			"UPDATE ga_queues SET map_pool_id = queue_id WHERE map_pool_id IS NULL;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) sqlite3_free(err);
+
+		// Rename the seeded queues to their canonical names. Map pool names
+		// stay 'specops' / 'pvp' on purpose — these are queue-display names,
+		// not pool names. Gated on the old name so operator renames stick.
+		result = sqlite3_exec(db,
+			"UPDATE ga_queues SET name = 'umax' WHERE queue_id = 1 AND name = 'specops';",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) sqlite3_free(err);
+		result = sqlite3_exec(db,
+			"UPDATE ga_queues SET name = 'merc' WHERE queue_id = 2 AND name = 'pvp';",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) sqlite3_free(err);
+
+		// Seed the medium / high / max difficulty queues. Identical to umax
+		// (queue 1) except name, name_msg_id, desc_msg_id, difficulty_value_id,
+		// sort_order. All share map_pool_id=1 (the specops pool) so they
+		// pull from the same map list. sort_order: medium=1, high=2, max=3,
+		// umax=4 (UPDATE below). queue_ids 4/5/6 — 3 is already taken by ddr.
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_queues "
+			"(queue_id, name, taskforce_policy, continue_in_queue, "
+			" queue_type_value_id, name_msg_id, desc_msg_id, icon_id, "
+			" max_players_per_side, min_players_per_team, max_players_per_team, "
+			" level_min, level_max, tab, map_x, map_y, map_active_flag, "
+			" map_icon_texture_res_id, location_value_id, double_agent_flag, "
+			" bonus_queue_flag, difficulty_value_id, active_flag, locked_flag, "
+			" sort_order, map_pool_id) VALUES"
+			" (4, 'medium', 'pinned_1', 0,"
+			"  0x3fd, 27673, 41459, 0x219,"
+			"  10, 1, 10, 5, 200, 0x1bb, 6.0, 0.0, 1, 0x1406, 0x5c5, 1, 0, 1029, 1, 0,"
+			"  1, 1),"
+			" (5, 'high',   'pinned_1', 0,"
+			"  0x3fd, 27674, 55458, 0x219,"
+			"  10, 1, 10, 5, 200, 0x1bb, 6.0, 0.0, 1, 0x1406, 0x5c5, 1, 0, 1030, 1, 0,"
+			"  2, 1),"
+			" (6, 'max',    'pinned_1', 0,"
+			"  0x3fd, 34212, 55460, 0x219,"
+			"  10, 1, 10, 5, 200, 0x1bb, 6.0, 0.0, 1, 0x1406, 0x5c5, 1, 0, 1259, 1, 0,"
+			"  3, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed medium/high/max difficulty queues: %s\n", err);
+			sqlite3_free(err);
+		}
+
+		// Bump umax to 4th place behind the new difficulty queues. Gated on
+		// sort_order=0 so operator edits stick across boots.
+		result = sqlite3_exec(db,
+			"UPDATE ga_queues SET sort_order = 4 WHERE queue_id = 1 AND sort_order = 0;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) sqlite3_free(err);
 
 		// PvP queue 2 needs video_res_id=0x171a (the Mercenary preview video).
 		// Defaulted to 0 above; explicit update keeps the seed line readable.
@@ -849,19 +930,79 @@ void Database::Init() {
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) sqlite3_free(err);
 
-		// Seed map pools — same lists as the old hardcoded blocks in main.cpp.
-		// Single statement per queue, INSERT OR IGNORE for idempotency.
+		// ga_map_pool_entries — replaces ga_queue_map_pool. Same columns
+		// minus queue_id, plus the map_pool_id key. PRIMARY KEY now
+		// (map_pool_id, map_name, game_mode) so the same map can appear in
+		// many pools.
 		result = sqlite3_exec(db,
-			"INSERT OR IGNORE INTO ga_queue_map_pool (queue_id, map_name, game_mode) VALUES"
+			"CREATE TABLE IF NOT EXISTS ga_map_pool_entries ("
+			"  map_pool_id INTEGER NOT NULL REFERENCES ga_map_pools(map_pool_id) ON DELETE CASCADE,"
+			"  map_name    TEXT    NOT NULL,"
+			"  game_mode   TEXT    NOT NULL,"
+			"  weight      INTEGER NOT NULL DEFAULT 1,"
+			"  enabled     INTEGER NOT NULL DEFAULT 1,"
+			"  PRIMARY KEY (map_pool_id, map_name, game_mode)"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_map_pool_entries table: %s\n", err);
+			sqlite3_free(err);
+		}
+
+		// One-shot migration from the old ga_queue_map_pool. Probe
+		// sqlite_master; if the legacy table still exists, copy its rows
+		// over with queue_id ↦ map_pool_id (matches the backfill above
+		// where queue_id == map_pool_id for the seeded queues), then drop
+		// it. On subsequent boots this block is a no-op because the legacy
+		// table is gone.
+		{
+			bool legacy_exists = false;
+			sqlite3_stmt* probe = nullptr;
+			if (sqlite3_prepare_v2(db,
+			        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ga_queue_map_pool'",
+			        -1, &probe, nullptr) == SQLITE_OK && probe) {
+				if (sqlite3_step(probe) == SQLITE_ROW) legacy_exists = true;
+				sqlite3_finalize(probe);
+			}
+			if (legacy_exists) {
+				result = sqlite3_exec(db,
+					"INSERT OR IGNORE INTO ga_map_pool_entries "
+					"  (map_pool_id, map_name, game_mode, weight, enabled) "
+					"SELECT queue_id, map_name, game_mode, weight, enabled "
+					"FROM ga_queue_map_pool;",
+					nullptr, nullptr, &err);
+				if (result != SQLITE_OK) {
+					Logger::Log("db", "Failed to copy ga_queue_map_pool -> ga_map_pool_entries: %s\n", err);
+					sqlite3_free(err);
+				}
+				result = sqlite3_exec(db,
+					"DROP TABLE ga_queue_map_pool;",
+					nullptr, nullptr, &err);
+				if (result != SQLITE_OK) {
+					Logger::Log("db", "Failed to drop legacy ga_queue_map_pool: %s\n", err);
+					sqlite3_free(err);
+				} else {
+					Logger::Log("db", "Migrated ga_queue_map_pool -> ga_map_pool_entries and dropped legacy table\n");
+				}
+			}
+		}
+
+		// Seed map pool entries — same lists as the old hardcoded blocks,
+		// now keyed by map_pool_id (1=specops, 2=pvp matching the seeded
+		// queues). INSERT OR IGNORE keeps operator edits intact across
+		// boots and is harmless after the one-shot copy populated these
+		// same rows.
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
 			" (1, '1P_CPLab05_P', 'TgGame.TgGame_Mission'),"
 			" (1, '1P_CPLab03', 'TgGame.TgGame_Mission');",
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
-			Logger::Log("db", "Failed to seed ga_queue_map_pool (specops): %s\n", err);
+			Logger::Log("db", "Failed to seed ga_map_pool_entries (specops): %s\n", err);
 			sqlite3_free(err);
 		}
 		result = sqlite3_exec(db,
-			"INSERT OR IGNORE INTO ga_queue_map_pool (queue_id, map_name, game_mode) VALUES"
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
 			" (2, 'Rot_Redistribution05',     'TgGame.TgGame_PointRotation'),"
 			" (2, 'Rot_Redistribution04',     'TgGame.TgGame_PointRotation'),"
 			" (2, 'Rot_Redistribution03',     'TgGame.TgGame_PointRotation'),"
@@ -895,7 +1036,7 @@ void Database::Init() {
 			" (2, 'Ticket_Volcano_P',         'TgGame.TgGame_Ticket');",
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
-			Logger::Log("db", "Failed to seed ga_queue_map_pool (pvp): %s\n", err);
+			Logger::Log("db", "Failed to seed ga_map_pool_entries (pvp): %s\n", err);
 			sqlite3_free(err);
 		}
 	}

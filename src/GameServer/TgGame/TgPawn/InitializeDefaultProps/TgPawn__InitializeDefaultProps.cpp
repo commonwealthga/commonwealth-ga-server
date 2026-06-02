@@ -198,8 +198,12 @@ void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) 
 	// never written by anything else, so a direct write here is the canonical
 	// init-time knob. Skip when combined == 1.0 (no-op — players and
 	// non-factory spawns land here so their output stays vanilla).
+	//
+	// Trim of 1/1.15: playtest at Ultra-Max showed enemy damage running ~15%
+	// higher than the design target while HP scaling felt correct. Apply the
+	// trim only on the damage path; HP keeps `combinedMultiplier` raw above.
 	if (combinedMultiplier != 1.0f) {
-		Pawn->s_fDamageAdjustment = combinedMultiplier;
+		Pawn->s_fDamageAdjustment = combinedMultiplier / 1.15f;
 	}
 
 	// Vision range — TgPawn.uc sets SightRadius from this on dedicated server (GetProperty(152))

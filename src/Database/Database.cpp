@@ -4559,11 +4559,17 @@ void Database::Init() {
 		result = sqlite3_exec(db, kV63_ddr, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
 
-		const char* q1 = "INSERT INTO ga_queues ( name, taskforce_policy, continue_in_queue, enabled, queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, max_players_per_side, min_players_per_team, max_players_per_team, level_min, level_max, tab, map_x, map_y, map_active_flag, map_icon_texture_res_id, video_res_id, location_value_id, double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, difficulty_value_id, access_flags, active_flag, locked_flag) VALUES ( 'ddr', 'pinned_2', 0, 1, 1454, 0, 62550, 64938, 1714, 10, 1, 10, 5, 50, 231, 0, 0, 1, 5126, 0, 0, 1, 0, 0, 1, 1471, 0, 1, 0);";
+		// Seed the matching map pool for the ddr queue (post-pool-inversion).
+		// queue_id 3 is assumed for ddr (specops=1, pvp=2 already seeded).
+		const char* q_pool = "INSERT OR IGNORE INTO ga_map_pools (map_pool_id, name) VALUES (3, 'ddr');";
+		result = sqlite3_exec(db, q_pool, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63 (ddr map pool): %s\n", err); return; }
+
+		const char* q1 = "INSERT INTO ga_queues ( name, taskforce_policy, continue_in_queue, enabled, queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, max_players_per_side, min_players_per_team, max_players_per_team, level_min, level_max, tab, map_x, map_y, map_active_flag, map_icon_texture_res_id, video_res_id, location_value_id, double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, difficulty_value_id, access_flags, active_flag, locked_flag, map_pool_id) VALUES ( 'ddr', 'pinned_2', 0, 1, 1454, 0, 62550, 64938, 1714, 10, 1, 10, 5, 50, 231, 0, 0, 1, 5126, 0, 0, 1, 0, 0, 1, 1471, 0, 1, 0, 3);";
 		result = sqlite3_exec(db, q1, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
 
-		const char* q2  = "INSERT INTO ga_queue_map_pool (queue_id, map_name, game_mode, weight, enabled) VALUES (3, 'Raid_DomeCityDefense_P', 'TgGame.TgGame_Defense', 1, 1);";
+		const char* q2  = "INSERT INTO ga_map_pool_entries (map_pool_id, map_name, game_mode, weight, enabled) VALUES (3, 'Raid_DomeCityDefense_P', 'TgGame.TgGame_Defense', 1, 1);";
 		result = sqlite3_exec(db, q2, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
 
@@ -4621,10 +4627,10 @@ void Database::Init() {
 		result = sqlite3_exec(db, kV65_cpmine05, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v65 (map_object_config cpmine05): %s\n", err); return; }
 
-		// Add the map to the specops queue (queue_id=1 — seeded in
+		// Add the map to the specops pool (map_pool_id=1 — seeded in
 		// ControlServer/Database/Database.cpp alongside 1P_CPLab05_P / 1P_CPLab03).
 		const char* kV65_specops_pool =
-			"INSERT OR IGNORE INTO ga_queue_map_pool (queue_id, map_name, game_mode) VALUES"
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
 			" (1, '1P_CPMine05_P', 'TgGame.TgGame_Mission');";
 		result = sqlite3_exec(db, kV65_specops_pool, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v65 (specops pool): %s\n", err); return; }
@@ -4787,9 +4793,9 @@ void Database::Init() {
 		result = sqlite3_exec(db, kV68_cpmine04, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v68 (map_object_config cpmine04): %s\n", err); return; }
 
-		// Add the map to the specops queue (queue_id=1 — see v65 for context).
+		// Add the map to the specops pool (map_pool_id=1 — see v65 for context).
 		const char* kV68_specops_pool =
-			"INSERT OR IGNORE INTO ga_queue_map_pool (queue_id, map_name, game_mode) VALUES"
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
 			" (1, '1P_CPMine04_P', 'TgGame.TgGame_Mission');";
 		result = sqlite3_exec(db, kV68_specops_pool, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v68 (specops pool): %s\n", err); return; }
@@ -4798,9 +4804,9 @@ void Database::Init() {
 	}
 	if (version < 69) {
 		// 1P_CPFactory01_P was already pre-configured (map_object_config seeded
-		// back in v60) but never added to the specops queue pool. Add it now.
+		// back in v60) but never added to the specops pool. Add it now.
 		const char* kV69_specops_pool =
-			"INSERT OR IGNORE INTO ga_queue_map_pool (queue_id, map_name, game_mode) VALUES"
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
 			" (1, '1P_CPFactory01_P', 'TgGame.TgGame_Mission');";
 		result = sqlite3_exec(db, kV69_specops_pool, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v69 (specops pool): %s\n", err); return; }
@@ -5019,9 +5025,9 @@ void Database::Init() {
 		result = sqlite3_exec(db, kV72_cpfactory05, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v72 (map_object_config cpfactory05): %s\n", err); return; }
 
-		// Add the map to the specops queue (queue_id=1 — see v65 for context).
+		// Add the map to the specops pool (map_pool_id=1 — see v65 for context).
 		const char* kV72_specops_pool =
-			"INSERT OR IGNORE INTO ga_queue_map_pool (queue_id, map_name, game_mode) VALUES"
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
 			" (1, '1P_CPFactory05_P', 'TgGame.TgGame_Mission');";
 		result = sqlite3_exec(db, kV72_specops_pool, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v72 (specops pool): %s\n", err); return; }
@@ -5091,9 +5097,9 @@ void Database::Init() {
 		result = sqlite3_exec(db, kV74_sdcolony01, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v74 (map_object_config sdcolony01): %s\n", err); return; }
 
-		// Add the map to the specops queue (queue_id=1 — see v65 for context).
+		// Add the map to the specops pool (map_pool_id=1 — see v65 for context).
 		const char* kV74_specops_pool =
-			"INSERT OR IGNORE INTO ga_queue_map_pool (queue_id, map_name, game_mode) VALUES"
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
 			" (1, '1P_SDColony01_P', 'TgGame.TgGame_Mission');";
 		result = sqlite3_exec(db, kV74_specops_pool, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v74 (specops pool): %s\n", err); return; }
@@ -5486,7 +5492,837 @@ void Database::Init() {
 		}
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 83", nullptr, nullptr, &err);
+	if (version < 84) {
+		// v84: wire up TgDeviceVolume placements on 1P_CPFactory01_P.
+		//
+		// The map binary has 10 placed TgDeviceVolume actors but their
+		// EditConst fields (s_n_device_id / s_n_team_number / s_n_task_force)
+		// aren't carried through the .umap → SQL import — they land here as 0,
+		// which `TgDeviceVolume::setupDevice` treats as "no device wired"
+		// (bails before allocating a fire mode). Override per placement via
+		// `map_object_config`, which is what `MapObjectConfig::Init` reads
+		// at PostBeginPlay time. Identified via the map_object_id values on
+		// `map_tg_device_volume` rows for this map.
+		//
+		// 8990 (Dropship/T1)  -> 2801 Invulnerable (Friend and Self), team/tf 1
+		// 12259/12260 (T2 Transfer), 12317/12646/12696/12697 (objective hazards)
+		//                       -> 7029 Magma Burn (Fire-typed, All target), team/tf 2
+		// 12754                -> 5448 KillEffect / Grinder (instant-kill Enemy), team/tf 2
+		//
+		// One-shot insert — the version gate keeps this from re-running on
+		// existing DBs at v84+. Fresh DBs already include the rows via the
+		// asm capture, so the insert is harmless there too.
+		const char* kInsert =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('1P_CPFactory01_P',  8990, 's_n_task_force',  '1',    NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P',  8990, 's_n_team_number', '1',    NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P',  8990, 's_n_device_id',   '2801', NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12259, 's_n_device_id',   '7029', NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12259, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12259, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12260, 's_n_device_id',   '7029', NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12260, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12260, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12317, 's_n_device_id',   '7029', NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12317, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12317, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12646, 's_n_device_id',   '7029', NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12646, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12646, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12696, 's_n_device_id',   '7029', NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12696, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12696, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12697, 's_n_device_id',   '7029', NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12697, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12697, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12754, 's_n_device_id',   '5448', NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12754, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12754, 's_n_task_force',  '2',    NULL, NULL, 1);";
+		result = sqlite3_exec(db, kInsert, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v84 device-volume config insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db", "v84: seeded %d map_object_config rows for 1P_CPFactory01_P TgDeviceVolume placements\n",
+				sqlite3_changes(db));
+		}
+	}
+
+	if (version < 85) {
+		// v85: wire up TgDeviceVolume placements on 1P_CPFactory05_P.
+		//
+		// Same shape as v84 (CPFactory01) — overrides s_n_device_id /
+		// s_n_team_number / s_n_task_force per placement so
+		// MapObjectConfig drives setupDevice on map load. Hazard names
+		// resolved via asm_data_set_items.name_msg_id (see
+		// device_volumes.md):
+		//
+		//  8990                       -> 2801 Invulnerable / dev sandbox, team/tf 1
+		//                                 (dropship area, friendly bubble)
+		//  12569, 12570               -> 2238 Crusher, team/tf 2
+		//  12562, 12563               -> 5448 Grinder, team/tf 2
+		//  12554, 12564..12567        -> 5449 Ventilation Fan, team/tf 2
+		//
+		// 12569's s_n_team_number was sent as empty string — normalized
+		// to '2' to match every other 12xxx placement (the empty form
+		// would parse to 0 in MapObjectConfig::GetInt and break team
+		// resolution).
+		//
+		// One-shot insert — version gate keeps this from re-running.
+		const char* kInsert =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('1P_CPFactory05_P',  8990, 's_n_task_force',  '1',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P',  8990, 's_n_team_number', '1',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P',  8990, 's_n_device_id',   '2801', NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12554, 's_n_device_id',   '5449', NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12554, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12554, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12562, 's_n_device_id',   '5448', NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12562, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12562, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12563, 's_n_device_id',   '5448', NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12563, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12563, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12564, 's_n_device_id',   '5449', NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12564, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12564, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12565, 's_n_device_id',   '5449', NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12565, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12565, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12566, 's_n_device_id',   '5449', NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12566, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12566, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12567, 's_n_device_id',   '5449', NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12567, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12567, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12569, 's_n_device_id',   '2238', NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12569, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12569, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12570, 's_n_device_id',   '2238', NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12570, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12570, 's_n_task_force',  '2',    NULL, NULL, 1);";
+		result = sqlite3_exec(db, kInsert, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v85 device-volume config insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db", "v85: seeded %d map_object_config rows for 1P_CPFactory05_P TgDeviceVolume placements\n",
+				sqlite3_changes(db));
+		}
+	}
+
+	if (version < 86) {
+		// v86: wire up TgDeviceVolume placements on 1P_CPLab05_P.
+		//
+		//  8990   -> 2801 Invulnerable / dev sandbox, team/tf 1 (dropship)
+		//  12720  -> 5299 Poison Gas (Biological-gated), team/tf 2
+		//  12721  -> 4976 Toxic Waste, team/tf 2
+		//
+		// One-shot insert — version gate keeps this from re-running.
+		const char* kInsert =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('1P_CPLab05_P',  8990, 's_n_task_force',  '1',    NULL, NULL, 1),"
+			"  ('1P_CPLab05_P',  8990, 's_n_team_number', '1',    NULL, NULL, 1),"
+			"  ('1P_CPLab05_P',  8990, 's_n_device_id',   '2801', NULL, NULL, 1),"
+			"  ('1P_CPLab05_P', 12720, 's_n_device_id',   '5299', NULL, NULL, 1),"
+			"  ('1P_CPLab05_P', 12720, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPLab05_P', 12720, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPLab05_P', 12721, 's_n_device_id',   '4976', NULL, NULL, 1),"
+			"  ('1P_CPLab05_P', 12721, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPLab05_P', 12721, 's_n_task_force',  '2',    NULL, NULL, 1);";
+		result = sqlite3_exec(db, kInsert, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v86 device-volume config insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db", "v86: seeded %d map_object_config rows for 1P_CPLab05_P TgDeviceVolume placements\n",
+				sqlite3_changes(db));
+		}
+	}
+
+	if (version < 87) {
+		// v87: wire up TgDeviceVolume placements on 1P_CPMine04_P.
+		//
+		//  12513  -> 2801 Invulnerable / dev sandbox, team/tf 1
+		//            (dropship; map_object_id is 12513 here, not 8990 as
+		//            on the CPFactory / CPLab maps)
+		//  12453  -> 7029 Lava (Fire-typed Magma Burn), team/tf 2
+		//
+		// One-shot insert — version gate keeps this from re-running.
+		const char* kInsert =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('1P_CPMine04_P', 12453, 's_n_device_id',   '7029', NULL, NULL, 1),"
+			"  ('1P_CPMine04_P', 12453, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine04_P', 12453, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine04_P', 12513, 's_n_device_id',   '2801', NULL, NULL, 1),"
+			"  ('1P_CPMine04_P', 12513, 's_n_team_number', '1',    NULL, NULL, 1),"
+			"  ('1P_CPMine04_P', 12513, 's_n_task_force',  '1',    NULL, NULL, 1);";
+		result = sqlite3_exec(db, kInsert, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v87 device-volume config insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db", "v87: seeded %d map_object_config rows for 1P_CPMine04_P TgDeviceVolume placements\n",
+				sqlite3_changes(db));
+		}
+	}
+
+	if (version < 88) {
+		// v88: wire up TgDeviceVolume placements on 1P_CPMine05_P.
+		//
+		//  12513  -> 2801 Invulnerable / dev sandbox, team/tf 1
+		//            (dropship; map_object_id 12513 like CPMine04)
+		//  12572  -> 7029 Lava (Fire-typed Magma Burn), team/tf 2
+		//
+		// One-shot insert — version gate keeps this from re-running.
+		const char* kInsert =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('1P_CPMine05_P', 12513, 's_n_device_id',   '2801', NULL, NULL, 1),"
+			"  ('1P_CPMine05_P', 12513, 's_n_team_number', '1',    NULL, NULL, 1),"
+			"  ('1P_CPMine05_P', 12513, 's_n_task_force',  '1',    NULL, NULL, 1),"
+			"  ('1P_CPMine05_P', 12572, 's_n_device_id',   '7029', NULL, NULL, 1),"
+			"  ('1P_CPMine05_P', 12572, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine05_P', 12572, 's_n_task_force',  '2',    NULL, NULL, 1);";
+		result = sqlite3_exec(db, kInsert, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v88 device-volume config insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db", "v88: seeded %d map_object_config rows for 1P_CPMine05_P TgDeviceVolume placements\n",
+				sqlite3_changes(db));
+		}
+	}
+
+	if (version < 89) {
+		// v89: wire up TgDeviceVolume placements on 1P_CPLab03.
+		//
+		// Note: map_name has no `_P` suffix on this one (unlike all prior
+		// migrations in this series). Match exactly what was imported.
+		//
+		//  12482  -> 2801 Invulnerable / dev sandbox, team/tf 1 (dropship)
+		//  12483  -> 5450 High Voltage (KillEffect Enemy), team/tf 2
+		//
+		// One-shot insert — version gate keeps this from re-running.
+		const char* kInsert =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('1P_CPLab03', 12482, 's_n_device_id',   '2801', NULL, NULL, 1),"
+			"  ('1P_CPLab03', 12482, 's_n_team_number', '1',    NULL, NULL, 1),"
+			"  ('1P_CPLab03', 12482, 's_n_task_force',  '1',    NULL, NULL, 1),"
+			"  ('1P_CPLab03', 12483, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			"  ('1P_CPLab03', 12483, 's_n_team_number', '2',    NULL, NULL, 1),"
+			"  ('1P_CPLab03', 12483, 's_n_task_force',  '2',    NULL, NULL, 1);";
+		result = sqlite3_exec(db, kInsert, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v89 device-volume config insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db", "v89: seeded %d map_object_config rows for 1P_CPLab03 TgDeviceVolume placements\n",
+				sqlite3_changes(db));
+		}
+	}
+
+	if (version < 90) {
+		// v90: introduce `mod_data_set_bot_spawn_tables` — same schema as the
+		// read-only `asm_data_set_bot_spawn_tables`, but writable for our own
+		// custom spawn-table authoring. TgBotFactory__LoadObjectConfig reads
+		// the UNION of both tables, so every row inserted here participates in
+		// the difficulty cascade alongside the asm_* rows.
+		//
+		// Convention: asm_* prefix = verbatim from the game files, treat as
+		// read-only; mod_* prefix = our additions.
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS mod_data_set_bot_spawn_tables ( "
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT, "
+			"  bot_spawn_table_id INTEGER, "
+			"  difficulty_value_id INTEGER, "
+			"  player_profile_id INTEGER, "
+			"  spawn_group INTEGER, "
+			"  enemy_bot_id INTEGER, "
+			"  bot_count INTEGER, "
+			"  spawn_chance FLOAT, "
+			"  team_size INTEGER, "
+			"  multiple_class_flag INTEGER, "
+			"  bot_balance_multiplier FLOAT, "
+			"  spawn_group_min INTEGER, "
+			"  spawn_group_max INTEGER, "
+			"  spawn_group_respawn_sec INTEGER "
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v90 create mod_data_set_bot_spawn_tables failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+
+		// Seed custom spawn tables at difficulty 1467 (Novice, lowest tier on
+		// valid_value group 116). The cascade walks tiers ≤ primary by
+		// sort_order descending, so a row authored at the lowest tier is the
+		// very last fallback — proves the multi-tier cascade is doing real
+		// work at any current difficulty. High ids (>=10000) keep custom
+		// tables visually distinct from the 1–252 range used by the original
+		// asm_ data.
+		//   10000 — 4x Sector Worker (1305), 100% chance
+		//   10001 — 1x Elite Helot (1321),  100% chance
+		result = sqlite3_exec(db,
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"VALUES "
+			"  (10000, 1467, 0, 1, 1305, 4, 1.0, 0, 0, 1.0, 0, 0, 0), "
+			"  (10001, 1467, 0, 1, 1321, 1, 1.0, 0, 0, 1.0, 0, 0, 0);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v90 seed mod spawn tables failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db", "v90: seeded mod_data_set_bot_spawn_tables ids 10000 (4x Sector Worker) + 10001 (1x Elite Helot) @ Novice\n");
+		}
+	}
+
+	if (version < 91) {
+		// v91: wire up 1P_CPLab01_P — TgDeviceVolume placements, factory
+		// task_force / team_number / spawn_table assignments, plus two
+		// bindings to the custom mod_ spawn tables seeded in v90
+		// (12745/12746/12751/12752 → 10000 = 4x Sector Worker;
+		//  12761 → 10001 = 1x Elite Helot). Map added to specops pool below.
+		const char* kV91_cplab01 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('1P_CPLab01_P', 12749, 'm_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11531, 'm_n_task_force', '1', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12762, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12762, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12762, 's_n_device_id', '2238', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12089, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12089, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12089, 's_n_device_id', '2801', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11514, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11514, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11515, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11515, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11518, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11518, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11519, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11519, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11520, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11520, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11521, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11521, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11530, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11530, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11633, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11633, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12326, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12326, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12327, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12327, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12325, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12325, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12332, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12332, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12334, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12334, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12335, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12335, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12336, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12336, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12337, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12337, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12338, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12338, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12339, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12339, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12743, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12743, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12745, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12745, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12746, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12746, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12748, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12748, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12286, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12286, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12751, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12751, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12752, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12752, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12755, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12755, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12756, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12756, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12757, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12757, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12761, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12761, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12758, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12758, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12759, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12759, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12760, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12760, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11514, 'n_spawn_table_id', '29', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11514, 'n_default_spawn_table_id', '29', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11515, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11515, 'n_spawn_table_id', '28', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11518, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11518, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11519, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11519, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11520, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11520, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11521, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11521, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11633, 'n_spawn_table_id', '34', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 11633, 'n_default_spawn_table_id', '34', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12326, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12326, 'n_spawn_table_id', '28', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12327, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12327, 'n_spawn_table_id', '28', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12325, 'n_spawn_table_id', '34', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12325, 'n_default_spawn_table_id', '34', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12332, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12332, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12334, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12334, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12335, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12335, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12336, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12336, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12337, 'n_spawn_table_id', '59', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12337, 'n_default_spawn_table_id', '59', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12338, 'n_default_spawn_table_id', '59', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12338, 'n_spawn_table_id', '59', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12339, 'n_default_spawn_table_id', '59', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12339, 'n_spawn_table_id', '59', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12743, 'n_spawn_table_id', '28', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12743, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12755, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12755, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12756, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12756, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12757, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12757, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12758, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12758, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12759, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12759, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12760, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12760, 'n_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12745, 'n_spawn_table_id', '10000', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12745, 'n_default_spawn_table_id', '10000', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12746, 'n_default_spawn_table_id', '10000', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12746, 'n_spawn_table_id', '10000', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12751, 'n_default_spawn_table_id', '10000', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12751, 'n_spawn_table_id', '10000', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12752, 'n_default_spawn_table_id', '10000', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12752, 'n_spawn_table_id', '10000', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12761, 'n_spawn_table_id', '10001', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12761, 'n_default_spawn_table_id', '10001', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV91_cplab01, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v91 map_object_config insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+
+		// Add map to specops pool (map_pool_id=1 — see v65 for context).
+		const char* kV91_specops_pool =
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
+			" (1, '1P_CPLab01_P', 'TgGame.TgGame_Mission');";
+		result = sqlite3_exec(db, kV91_specops_pool, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v91 specops pool insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db", "v91: seeded map_object_config + specops pool entry for 1P_CPLab01_P\n");
+		}
+	}
+
+	if (version < 92) {
+		// v92: register 1P_CPLab01_P in map_game_info so it shows up in the
+		// mission selection UI. Companion to v91 (which wired up factories
+		// + added the map to the specops pool).
+		//   entry_background_image_res_id = 6516
+		//     -> asm_data_set_resources row "HUD_MissionLoads.PvE_CP.1P_CPLab01_P",
+		//        matching the 6511/6515/6518/6520/6524/6525 family used by the
+		//        other 1P_CP* PvE-CP missions.
+		const char* kV92_mapgameinfo =
+			"INSERT OR IGNORE INTO map_game_info "
+			"  (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) "
+			"VALUES (1302, '1P_CPLab01_P', 'TgGame.TgGame_Mission', 1553, 40683, 6516);";
+		result = sqlite3_exec(db, kV92_mapgameinfo, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v92 map_game_info insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db", "v92: registered 1P_CPLab01_P in map_game_info (map_game_id=1302, bg=6516)\n");
+		}
+	}
+
+	if (version < 93) {
+		// v93: disable s_b_auto_spawn on two 1P_CPLab01_P map objects
+		// (11530, 12286) — both are TgMissionObjective_Bot placements that
+		// must wait for kismet rather than auto-spawning on PostBeginPlay.
+		const char* kV93_cplab01_autospawn =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('1P_CPLab01_P', 11530, 's_b_auto_spawn', '1', NULL, NULL, 1),"
+			"  ('1P_CPLab01_P', 12286, 's_b_auto_spawn', '0', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV93_cplab01_autospawn, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v93 1P_CPLab01_P autospawn insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db", "v93: disabled s_b_auto_spawn on 1P_CPLab01_P objects 11530, 12286\n");
+		}
+	}
+
+	if (version < 94) {
+		// v94: priority + auto-spawn tweaks across six PvE-CP maps. Bumps
+		// objective-related map objects to priority 1 so they advance out of
+		// the boot phase, and disables auto-spawn on a few bot factories that
+		// should wait for kismet rather than spawning at PostBeginPlay.
+		const char* kV94_cplab03 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('1P_CPLab03', 12541, 's_b_auto_spawn', '0', NULL, NULL, 1),"
+			"  ('1P_CPLab03', 12480, 'm_n_priority',   '1', NULL, NULL, 1),"
+			"  ('1P_CPLab03', 12541, 'm_n_priority',   '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV94_cplab03, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v94 cplab03 insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+
+		const char* kV94_cpmine05 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('1P_CPMine05_P', 12512, 'm_n_priority',   '1', NULL, NULL, 1),"
+			"  ('1P_CPMine05_P', 12581, 'm_n_priority',   '1', NULL, NULL, 1),"
+			"  ('1P_CPMine05_P', 12581, 's_b_auto_spawn', '0', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV94_cpmine05, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v94 cpmine05 insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+
+		const char* kV94_cpfactory05 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('1P_CPFactory05_P', 12286, 's_b_auto_spawn', '0', NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 12286, 'm_n_priority',   '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory05_P', 11716, 'm_n_priority',   '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV94_cpfactory05, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v94 cpfactory05 insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+
+		const char* kV94_cpmine04 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('1P_CPMine04_P', 12512, 'm_n_priority',   '1', NULL, NULL, 1),"
+			"  ('1P_CPMine04_P', 12542, 'm_n_priority',   '1', NULL, NULL, 1),"
+			"  ('1P_CPMine04_P', 12542, 's_b_auto_spawn', '0', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV94_cpmine04, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v94 cpmine04 insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+
+		const char* kV94_cplab05 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('1P_CPLab05_P', 11716, 'm_n_priority',   '1', NULL, NULL, 1),"
+			"  ('1P_CPLab05_P', 12286, 'm_n_priority',   '1', NULL, NULL, 1),"
+			"  ('1P_CPLab05_P', 12286, 's_n_team_number','1', NULL, NULL, 1),"
+			"  ('1P_CPLab05_P', 12286, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('1P_CPLab05_P', 11716, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('1P_CPLab05_P', 11716, 's_n_team_number','1', NULL, NULL, 1),"
+			"  ('1P_CPLab05_P', 12286, 's_b_auto_spawn', '0', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV94_cplab05, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v94 cplab05 insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+
+		const char* kV94_cpfactory01 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('1P_CPFactory01_P', 11716, 'm_n_priority',   '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12286, 'm_n_priority',   '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory01_P', 12286, 's_b_auto_spawn', '0', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV94_cpfactory01, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v94 cpfactory01 insert failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db", "v94: priority + auto-spawn tweaks applied across 6 PvE-CP maps\n");
+		}
+	}
+
+	if (version < 95) {
+		// v95: per-map mission time + PvP flag on map_game_info. Replaces the
+		// hardcoded `15 * 60` mission time and the class-driven r_bIsPVP fallout
+		// in LoadGameConfig / InitGameRepInfo with a DB-driven override that
+		// lets two maps of the same TgGame class differ. Concretely: TgGame_Mission
+		// covers both PvP merc Breach (3P_Beachhead_P, gameplay_type 1544) and
+		// PvE specops (1P_CPFactory01_P, gameplay_type 1553) — class-based
+		// resolution can't distinguish them.
+		//
+		// Defaults match what the C++ used to hardcode: 900s (15 min) and 0 (PvE).
+		// Both consumers fall back to class-based defaults when a map is absent
+		// from map_game_info, so unseeded maps keep their old behavior.
+		const char* kV95_schema =
+			"ALTER TABLE map_game_info ADD COLUMN mission_time_secs INTEGER NOT NULL DEFAULT 900;"
+			"ALTER TABLE map_game_info ADD COLUMN is_pvp            INTEGER NOT NULL DEFAULT 0;";
+		result = sqlite3_exec(db, kV95_schema, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v95 schema failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+
+		// gameplay_type_value_id taxonomy (asm_data_set_valid_values group 171):
+		//   1543-1548 = PVP- {Any,Breach,Control,Aquisition,Payload,Scramble} Merc
+		//   1569-1572 = PVP- {Arena, Arena 4v4, Arena 10v10, Warzone}
+		// Everything else (PVE-* / bare PVP test / AVA / NULL) stays is_pvp=0.
+		const char* kV95_seed =
+			"UPDATE map_game_info SET is_pvp = 1 "
+			"WHERE gameplay_type_value_id IN (1543,1544,1545,1546,1547,1548,1569,1570,1571,1572);";
+		result = sqlite3_exec(db, kV95_seed, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v95 is_pvp seed failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db", "v95: added mission_time_secs+is_pvp to map_game_info; flagged PvP merc+arena maps\n");
+		}
+	}
+
+	if (version < 96) {
+		// v96: shorten mission time to 7 minutes for 14 PvP maps (6 Breach,
+		// 1 Arena/4v4, 5 Payload, 2 Climate Control). Default stays 15 minutes
+		// for everything else.
+		const char* kV96_seed =
+			"UPDATE map_game_info SET mission_time_secs = 420 "
+			"WHERE map_name IN ("
+			"  'Climate_Control_P',"
+			"  '3P_Climate_Control3_P',"
+			"  '3P_Beachhead3_P',"
+			"  'Ice_GorgeA01_v2',"
+			"  '3P_VolcanoAssault_P',"
+			"  '3P_Him_Arena_P',"
+			"  'MissileComplex_4v4_P',"
+			"  '3P_Beachhead_P',"
+			"  '3P_Beachhead2_P',"
+			"  'Push_IceFloe_P',"
+			"  'push_Ravine_P',"
+			"  'Push_IceFloe3_P',"
+			"  'Push_Toxicity',"
+			"  'Push_Dust_P'"
+			");";
+		result = sqlite3_exec(db, kV96_seed, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v96 7-minute mission-time seed failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db", "v96: set mission_time_secs=420 on 14 short-format PvP maps\n");
+		}
+	}
+
+	if (version < 97) {
+		// v97: per-map overtime config on map_game_info. Replaces the hardcoded
+		// `m_fGameOvertimeTime = 4*60; m_bAllowOvertime = 1` in LoadGameConfig /
+		// InitGameRepInfo with DB-driven values.
+		//
+		// Defaults are 0/false ("no overtime") so that any seeded map omitted
+		// from the explicit lists below ends up without overtime — matches the
+		// rule "everything else no overtime allowed". Unseeded maps (no row in
+		// map_game_info) still fall back to the legacy hardcoded behavior
+		// (4 min / allowed) inside the C++ consumers, preserving the prior
+		// instruction to keep fallback semantics intact.
+		const char* kV97_schema =
+			"ALTER TABLE map_game_info ADD COLUMN overtime_secs  INTEGER NOT NULL DEFAULT 0;"
+			"ALTER TABLE map_game_info ADD COLUMN allow_overtime INTEGER NOT NULL DEFAULT 0;";
+		result = sqlite3_exec(db, kV97_schema, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v97 schema failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+
+		// (1) Same 14 maps that v96 set to 7-min missions also get 3-min
+		//     overtime + overtime allowed.
+		const char* kV97_listed =
+			"UPDATE map_game_info SET overtime_secs = 180, allow_overtime = 1 "
+			"WHERE map_name IN ("
+			"  'Climate_Control_P',"
+			"  '3P_Climate_Control3_P',"
+			"  '3P_Beachhead3_P',"
+			"  'Ice_GorgeA01_v2',"
+			"  '3P_VolcanoAssault_P',"
+			"  '3P_Him_Arena_P',"
+			"  'MissileComplex_4v4_P',"
+			"  '3P_Beachhead_P',"
+			"  '3P_Beachhead2_P',"
+			"  'Push_IceFloe_P',"
+			"  'push_Ravine_P',"
+			"  'Push_IceFloe3_P',"
+			"  'Push_Toxicity',"
+			"  'Push_Dust_P'"
+			");";
+		result = sqlite3_exec(db, kV97_listed, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v97 listed-maps overtime seed failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+
+		// (2) All PointRotation maps (Scramble + 4v4 Arena rotation) also get
+		//     3-min overtime + allowed. No overlap with the 14-list — the
+		//     listed maps are all Mission/Escort. Driven off game_class so any
+		//     future PointRotation seed inherits the rule without revisiting
+		//     this migration.
+		const char* kV97_pointrotation =
+			"UPDATE map_game_info SET overtime_secs = 180, allow_overtime = 1 "
+			"WHERE game_class = 'TgGame.TgGame_PointRotation';";
+		result = sqlite3_exec(db, kV97_pointrotation, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "v97 pointrotation overtime seed failed: %s\n", err ? err : "(no msg)");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db", "v97: added overtime_secs+allow_overtime; enabled 3-min overtime on 14 listed + all PointRotation maps\n");
+		}
+	}
+
+	if (version < 98) {
+		// map_planner output for 1P_CPFactory02_P (2026-06-02). Same bundled
+		// shape as v68/v70/v72/v74: bot-factory + objective task_force/team_number
+		// pairs, spawn_table_id / default_spawn_table_id per factory, the
+		// specops pool entry, and the map_game_info row.
+		const char* kV98_cpfactory02 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			" ('1P_CPFactory02_P', 12340, 's_n_team_number',          '1',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12340, 's_n_task_force',           '1',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12322, 'm_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11717, 'm_n_task_force',           '1',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 8990,  's_n_team_number',          '1',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 8990,  's_n_task_force',           '1',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12319, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12319, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12320, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12320, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12321, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12321, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12428, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12428, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12427, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12427, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11670, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11670, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11671, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11671, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11672, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11672, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11673, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11673, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11674, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11674, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11675, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11675, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11676, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11676, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11677, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11677, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11678, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11678, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11679, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11679, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11692, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11692, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11806, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11806, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11808, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11808, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11895, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11895, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11918, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11918, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12104, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12104, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12105, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12105, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12109, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12109, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12110, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12110, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12258, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12258, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12318, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12318, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12324, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12324, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11716, 'm_n_priority',             '1',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12340, 'm_n_priority',             '1',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12340, 's_b_auto_spawn',           '0',  NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11670, 'n_spawn_table_id',         '28', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11670, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11671, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11671, 'n_spawn_table_id',         '28', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11672, 'n_spawn_table_id',         '46', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11672, 'n_default_spawn_table_id', '46', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11673, 'n_spawn_table_id',         '28', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11673, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11674, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11674, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11675, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11675, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11676, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11676, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11677, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11677, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11678, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11678, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11679, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11679, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11692, 'n_default_spawn_table_id', '34', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11692, 'n_spawn_table_id',         '34', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11806, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11806, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11808, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11808, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11895, 'n_default_spawn_table_id', '59', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11895, 'n_spawn_table_id',         '59', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11918, 'n_default_spawn_table_id', '59', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 11918, 'n_spawn_table_id',         '59', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12104, 'n_default_spawn_table_id', '29', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12104, 'n_spawn_table_id',         '29', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12105, 'n_default_spawn_table_id', '34', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12105, 'n_spawn_table_id',         '34', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12109, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12109, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12110, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12110, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12258, 'n_default_spawn_table_id', '59', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12258, 'n_spawn_table_id',         '59', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12318, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12318, 'n_spawn_table_id',         '28', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12324, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12324, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 8990,  's_n_device_id',            '2801', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12427, 's_n_device_id',            '2238', NULL, NULL, 1),"
+			" ('1P_CPFactory02_P', 12428, 's_n_device_id',            '2238', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV98_cpfactory02, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v98 (map_object_config cpfactory02): %s\n", err); return; }
+
+		// Add the map to the specops pool (map_pool_id=1 — see v65 for context).
+		const char* kV98_specops_pool =
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
+			" (1, '1P_CPFactory02_P', 'TgGame.TgGame_Mission');";
+		result = sqlite3_exec(db, kV98_specops_pool, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v98 (specops pool): %s\n", err); return; }
+
+		// map_game_info row so the loading screen + friendly name resolve.
+		// friendly_name_msg_id 36545 = "Android Assembly Plant"
+		// entry_background_image_res_id 6512 = HUD_MissionLoads.PvE_CP.1P_CPFactory02_P
+		const char* kV98_map_game_info =
+			"INSERT OR IGNORE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES"
+			" (1300, '1P_CPFactory02_P', 'TgGame.TgGame_Mission', 1553, 36545, 6512);";
+		result = sqlite3_exec(db, kV98_map_game_info, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v98 (map_game_info): %s\n", err); return; }
+
+		Logger::Log("db", "v98: seeded map_object_config + specops pool + map_game_info for 1P_CPFactory02_P\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 98", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

@@ -65,6 +65,7 @@
 #include "src/GameServer/TgGame/TgMissionObjective/UpdateMatineeNodeStatus/TgMissionObjective__UpdateMatineeNodeStatus.hpp"
 #include "src/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.hpp"
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
+#include "src/GameServer/TgGame/TgPawn/SetPhase/TgPawn__SetPhase.hpp"
 #include "src/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.hpp"
 #include "src/GameServer/TgGame/TgPawn/SetProperty/TgPawn__SetProperty.hpp"
 #include "src/GameServer/TgGame/TgPawn/SetTaskForceNumber/TgPawn__SetTaskForceNumber.hpp"
@@ -87,6 +88,7 @@
 #include "src/GameServer/TgGame/TgBotFactory/SpawnWave/TgBotFactory__SpawnWave.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/ResetQueue/TgBotFactory__ResetQueue.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.hpp"
+#include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/ApplyFireModeSetup/TgDeviceFire__ApplyFireModeSetup.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/InitializeProjectile/TgDeviceFire__InitializeProjectile.hpp"
@@ -107,7 +109,9 @@
 #include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffectGroups/TgEffectManager__RemoveAllEffectGroups.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.hpp"
 #include "src/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.hpp"
+#include "src/GameServer/TgGame/TgMissionObjective_Bot/SetObjectiveActive/TgMissionObjective_Bot__SetObjectiveActive.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective_Bot/SpawnObjectiveBot/TgMissionObjective_Bot__SpawnObjectiveBot.hpp"
+#include "src/GameServer/TgGame/TgPlayerCountVolume/Update/TgPlayerCountVolume__Update.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective_Bot/LoadObjectConfig/TgMissionObjective_Bot__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective_Proximity/ScoreObjectiveProgress/TgMissionObjective_Proximity__ScoreObjectiveProgress.hpp"
 #include "src/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.hpp"
@@ -427,6 +431,7 @@ unsigned long ModuleThread( void* ) {
 	TgGame__SetObjectivesOvertimeNotify::Install();
 	TgGame__GetFinalObjectivesList::Install();
 	TgPawn__InitializeDefaultProps::Install();
+	TgPawn__SetPhase::Install();
 	TgPawn__GetProperty::Install();
 	// TgPawn__SetProperty::Install();
 	TgPawn__SetTaskForceNumber::Install();
@@ -445,6 +450,7 @@ unsigned long ModuleThread( void* ) {
 	TgBotFactory__ResetQueue::Install();
 	TgGame__SpawnBot::Install();
 	TgGame__SpawnBotById::Install();
+	TgDeviceVolume_setupDevice::Install();
 	TgGame__RegisterForWaveRevive::Install();
 	TgGame__GetReviveTimeRemaining::Install();
 	TgGame__ReviveAttackersTimer::Install();
@@ -471,8 +477,10 @@ unsigned long ModuleThread( void* ) {
 	TgPawn__RefIter::Install();
 	TgProj_Deployable__SpawnDeployable::Install();
 	TgMissionObjective_Bot__LoadObjectConfig::Install();
+	TgMissionObjective_Bot__SetObjectiveActive::Install();
 	TgMissionObjective_Bot__SpawnObjectiveBot::Install();
 	TgMissionObjective_Proximity__ScoreObjectiveProgress::Install();
+	TgPlayerCountVolume__Update::Install();
 
 	TgAssemblyMisc__LoadAssetRefs::Install();
 	Core__LoadObject::Install();

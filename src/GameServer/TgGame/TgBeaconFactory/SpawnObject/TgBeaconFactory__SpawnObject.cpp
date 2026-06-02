@@ -79,6 +79,10 @@ void __fastcall* TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, v
 		return nullptr;
 	}
 
+	if (!factory->s_bAutoSpawn) {
+		return nullptr;
+	}
+
 	ATgRepInfo_TaskForce* tf = ResolveTaskForce((int)factory->s_nTaskForce);
 
 	// Priority gate. TgGame.s_nCurrentPriority is the active tier; factories

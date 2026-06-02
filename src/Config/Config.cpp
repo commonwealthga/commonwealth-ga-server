@@ -113,12 +113,27 @@ std::string Config::GetMapParamsChar() {
 }
 
 int Config::GetDifficultyValueId() {
+	// -difficulty=<value_id> from the control-server spawn (sourced from
+	// ga_queues.difficulty_value_id). Takes precedence over the map-name
+	// heuristic below. Empty/missing -> fall through.
+	ParsedOptions options = CommandLineParser::ParseCommandLine();
+	std::wstring val = options.switches[L"difficulty"];
+	if (!val.empty()) {
+		try {
+			int parsed = std::stoi(CommandLineParser::WideToUtf8(val));
+			if (parsed > 0) return parsed;
+		} catch (...) {
+			// Bad value — fall through to the heuristic. Don't crash the
+			// instance over a malformed CLI flag.
+		}
+	}
 
 	std::string MapName = GetMapNameChar();
 	if (MapName == "Inception_ALL" || MapName == "Inception_3_TEMP" || MapName == "Adrenaline_P" || MapName == "Skylark_P" || MapName == "AgencyZero_P") {
 		return 1028;
 	}
-
+	// return 1030;
+	// return 1028;
 	return 1471;
 }
 

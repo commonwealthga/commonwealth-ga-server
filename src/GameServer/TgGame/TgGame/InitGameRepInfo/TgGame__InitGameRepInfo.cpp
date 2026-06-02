@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame/InitGameRepInfo/TgGame__InitGameRepInfo.hpp"
+#include "src/GameServer/Engine/MapGameInfo/MapGameInfo.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
@@ -44,6 +45,18 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 
 		DebugWindow::RefreshOptions();
 
+		// Per-map overrides (v95/v97). When map_game_info has a row for the
+		// current map: mission_time_secs replaces the legacy `15 * 60` baked
+		// into every per-class block; overtime_secs + allow_overtime replace
+		// the legacy 4-min/allowed default; is_pvp overrides the class-derived
+		// r_bIsPVP AFTER all class blocks run. Maps absent from map_game_info
+		// fall back to the historical hardcoded behavior.
+		const std::string mapName = Config::GetMapNameChar();
+		const auto mapRow = MapGameInfo::LookupByName(mapName);
+		const int  missionTimeSecs = mapRow ? mapRow->mission_time_secs : 15 * 60;
+		const int  overtimeSecs    = mapRow ? mapRow->overtime_secs     : 4 * 60;
+		const bool allowOvertime   = mapRow ? mapRow->allow_overtime    : true;
+
 		gamerep->GameClass = Game->Class;
 		gamerep->r_GameType = Game->m_GameType;
 
@@ -73,11 +86,11 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		gamerep->r_nMaxRoundNumber = 5;
 
 
-		Game->m_fGameMissionTime = 15 * 60.0f;   // 15 minute mission
-		Game->m_fGameOvertimeTime = 4 * 60.0f;  // up to 4 minutes overtime
-		Game->m_bAllowOvertime = 1;
+		Game->m_fGameMissionTime  = static_cast<float>(missionTimeSecs);
+		Game->m_fGameOvertimeTime = static_cast<float>(overtimeSecs);
+		Game->m_bAllowOvertime    = allowOvertime ? 1 : 0;
 		Game->m_eTimerState = 0;
-		Game->TimeLimit = 15 * 60;
+		Game->TimeLimit = missionTimeSecs;
 		gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
 
 		gamerep->TimeLimit = Game->TimeLimit;
@@ -269,7 +282,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
 			gamerep->TimeLimit = Game->m_fMissionTime;
 			gamerep->RemainingTime = Game->m_fMissionTime;
-			Game->TimeLimit = 15 * 60;
+			Game->TimeLimit = missionTimeSecs;
 
 			// PointRotation UC default is 30s between rounds; we shorten to 20s
 			// to match the original feel. Pairs with ROTATION_BANNER_LEAD_SECS=17
@@ -305,10 +318,9 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
 			gamerep->TimeLimit = Game->m_fMissionTime;
 			gamerep->RemainingTime = Game->m_fMissionTime;
-			Game->TimeLimit = 15 * 60;
+			Game->TimeLimit = missionTimeSecs;
 
-			std::string MapName = Config::GetMapNameChar();
-			if (MapName == "Inception_ALL" || MapName == "Inception_3_TEMP" || MapName == "Adrenaline_P" || MapName == "Skylark_P" || MapName == "AgencyZero_P") {
+			if (mapName == "Inception_ALL" || mapName == "Inception_3_TEMP" || mapName == "Adrenaline_P" || mapName == "Skylark_P" || mapName == "AgencyZero_P") {
 				gamerep->r_bIsTutorialMap = 1;
 				gamerep->r_bIsPVP = 0;
 			}
@@ -386,7 +398,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
 			gamerep->TimeLimit = Game->m_fMissionTime;
 			gamerep->RemainingTime = Game->m_fMissionTime;
-			Game->TimeLimit = 15 * 60;
+			Game->TimeLimit = missionTimeSecs;
 		}
 
 		if (GameClassName == "Class TgGame.TgGame_Ticket") {
@@ -413,7 +425,7 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
 			gamerep->TimeLimit = Game->m_fMissionTime;
 			gamerep->RemainingTime = Game->m_fMissionTime;
-			Game->TimeLimit = 15 * 60;
+			Game->TimeLimit = missionTimeSecs;
 		}
 
 		if (GameClassName == "Class TgGame.TgGame_DualCTF") {
@@ -440,9 +452,17 @@ void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
 			gamerep->TimeLimit = Game->m_fMissionTime;
 			gamerep->RemainingTime = Game->m_fMissionTime;
-			Game->TimeLimit = 15 * 60;
+			Game->TimeLimit = missionTimeSecs;
 		}
 
+		// Per-map PvP override (v95). map_game_info.is_pvp wins over the
+		// class-derived default set in the per-class blocks above. The tutorial
+		// special-case inside TgGame_Mission already forced r_bIsPVP=0 for
+		// Inception / Adrenaline / Skylark / AgencyZero — preserve that by
+		// only applying the DB override when the map isn't a tutorial.
+		if (mapRow && !gamerep->r_bIsTutorialMap) {
+			gamerep->r_bIsPVP = mapRow->is_pvp ? 1 : 0;
+		}
 
 		// PreloadClasses();
 

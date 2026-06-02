@@ -120,6 +120,35 @@ static bool ClassNameContains(UObject* Obj, const char* needle) {
 	return name && strstr(name, needle) != nullptr;
 }
 
+// Authoritative "remaining seconds until MissionTimer fires." Mirrors the
+// engine-timer-first logic in TgGame__MissionTimeRemaining: the static
+// s_fMissionTimerStartedAt + m_fGameMissionTime formula only reflects the
+// INITIAL configuration, so anything that extends the timer mid-mission
+// (TgMissionObjective.uc:703 MissionTimeIncrement on capture; TgGame.uc:1198
+// MissionTimerBossIncrement on boss-room entry; TgSeqAct_SetMissionTime
+// kismet) re-arms the engine's `MissionTimer` SetTimer but does NOT touch
+// those two fields. The formula then reports the OLD endsAt and our
+// threshold-crossing alerts fire too early. Asking the engine timer for the
+// real remaining value is the single source of truth that all mutators
+// already update through.
+//
+// State 2 = active mission phase. Setup (1) / overtime (3) / paused (5) are
+// handled by their own pollers (or not at all) and would need different
+// timer names anyway — keep this helper scoped to state 2.
+static float ComputeRealMissionRemaining(ATgGame* Game) {
+	if ((int)Game->m_eTimerState != 2) return -1.0f;
+	float remaining = Game->GetRemainingTimeForTimer(FName("MissionTimer"), nullptr);
+	if (remaining < 0.0f) {
+		// Engine timer not currently armed (brief window between
+		// MissionTimerStop and re-start). Fall back to the static formula
+		// so we still report something sensible.
+		AWorldInfo* WI = GetWorldInfoSafe();
+		if (WI == nullptr) return -1.0f;
+		remaining = (Game->s_fMissionTimerStartedAt + Game->m_fGameMissionTime) - WI->TimeSeconds;
+	}
+	return remaining;
+}
+
 // Counts how many objectives in m_MissionObjectives are captured by `tf`.
 // Gated on r_bHasBeenCapturedOnce so the map-default owner isn't counted
 // before any real capture.
@@ -142,16 +171,33 @@ static int CountCapturedFor(ATgRepInfo_Game* GRI, int tf) {
 // "60 / 30 / 10 seconds remaining" — every mission, only during Mission Phase
 // (m_eTimerState == 2). Setup (1) and Overtime (3) are excluded.
 static void PollMissionTimer(ATgGame* Game, ATgRepInfo_Game* GRI, PerGameState& st) {
-	if (Game->m_bShouldWait == 1) return;
+	// NOTE: do NOT gate on `Game->m_bShouldWait`. That flag is set true while a
+	// capture point is contested (TgMissionObjective.uc:658) or while the
+	// score is tied (TgGame_PointRotation.uc:168) — i.e. precisely the moments
+	// the player most needs the 60/30/10 warning. The state==2 check below
+	// already restricts us to the mission phase; m_bShouldWait gating here
+	// was the root cause of "10 seconds remaining never fired" when the
+	// player was sitting on the objective at the end of regulation.
 
 	AWorldInfo* WI = GetWorldInfoSafe();
 	if (WI == nullptr) return;
 	if ((int)Game->m_eTimerState != 2) return;
 
 	const float now = WI->TimeSeconds;
-	const float endsAt = Game->s_fMissionTimerStartedAt + Game->m_fGameMissionTime;
-	const float remaining = endsAt - now;
-	if (remaining <= 0.0f || remaining > 90.0f) return;
+	const float remaining = ComputeRealMissionRemaining(Game);
+	if (remaining <= 0.0f) return;
+
+	// Timer-extension latch reset. When MissionTimeIncrement / BossIncrement /
+	// the SetMissionTime kismet action re-arm MissionTimer, the real remaining
+	// jumps UP. Each latch clears as soon as remaining is unambiguously above
+	// its threshold (+1s grace covers throttle jitter without missing tight
+	// extensions — e.g. a capture-reset that lands remaining at 11s still
+	// re-arms the 10s alert).
+	if (remaining > 61.0f) st.firedT60 = false;
+	if (remaining > 31.0f) st.firedT30 = false;
+	if (remaining > 11.0f) st.firedT10 = false;
+
+	if (remaining > 90.0f) return;
 
 	auto fire = [&](int msgId, unsigned char type) {
 		SendAlert::Broadcast(msgId, APT_HIGH, type, /*duration=*/3.0f);
@@ -354,13 +400,15 @@ static void PollSuccessorTrigger(ATgGame* Game, ATgRepInfo_Game* GRI, PerGameSta
 	// 1) Universal — mission phase only, within last 60s of regulation time.
 	//    Overtime (state 3) is intentionally excluded because the mission has
 	//    already overrun and we don't have a clean "remaining" to measure.
-	if ((int)Game->m_eTimerState == 2) {
-		AWorldInfo* WI = GetWorldInfoSafe();
-		if (WI != nullptr) {
-			const float remaining = (Game->s_fMissionTimerStartedAt + Game->m_fGameMissionTime) - WI->TimeSeconds;
-			if (remaining > 0.0f && remaining <= 60.0f) {
-				fire = true; reason = "1min-remaining";
-			}
+	//    Real engine-timer remaining: extensions (capture / boss-room /
+	//    SetMissionTime kismet) re-arm MissionTimer but don't touch the
+	//    s_fMissionTimerStartedAt + m_fGameMissionTime fields, so the static
+	//    formula would fire the pre-warm at the original 1-min mark even
+	//    after the timer was bumped up.
+	{
+		const float remaining = ComputeRealMissionRemaining(Game);
+		if (remaining > 0.0f && remaining <= 60.0f) {
+			fire = true; reason = "1min-remaining";
 		}
 	}
 

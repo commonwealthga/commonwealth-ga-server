@@ -112,7 +112,8 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
                               const std::string& map_name,
                               const std::string& game_mode,
                               uint16_t udp_port,
-                              int64_t instance_id) {
+                              int64_t instance_id,
+                              uint32_t difficulty_value_id) {
     // Round-robin counter for CPU pinning. Persists across calls so each
     // spawn lands on the next slot in the configured range. Lifetime is
     // the control-server process; reset on restart, which is fine.
@@ -234,6 +235,13 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         };
         std::string enabled_channels_arg       = "-enabledchannels="      + join_csv(cfg.enabled_channels);
         std::string enabled_crash_channels_arg = "-enabledcrashchannels=" + join_csv(cfg.enabled_crash_channels);
+        // -difficulty=<value_id> — when non-zero, overrides the DLL's
+        // map-name-based Config::GetDifficultyValueId() heuristic. Queue
+        // rows in ga_queues seed this from their difficulty_value_id field
+        // (0 = no preference; DLL keeps its existing default).
+        std::string difficulty_arg = (difficulty_value_id != 0)
+            ? ("-difficulty=" + std::to_string(difficulty_value_id))
+            : std::string();
 
         // --wine-debug: use winedbg instead of wine, with "--command cont" to auto-resume
         std::string wine_bin = cfg.wine_debug ? cfg.wine_binary + "dbg" : cfg.wine_binary;
@@ -259,6 +267,9 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
             enabled_channels_arg.c_str(), enabled_crash_channels_arg.c_str(),
         }) {
             inner_argv.push_back(a);
+        }
+        if (!difficulty_arg.empty()) {
+            inner_argv.push_back(difficulty_arg.c_str());
         }
 
         // ---- Bare-metal exec path: same as before.

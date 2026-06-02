@@ -38,7 +38,7 @@ static TaskforcePolicy ParseTaskforcePolicy(const std::string& s) {
     return TaskforcePolicy::Pinned1;
 }
 
-// Pull every row in ga_queues + ga_queue_map_pool into in-memory QueueConfigs.
+// Pull every row in ga_queues + ga_map_pool_entries into in-memory QueueConfigs.
 // Disabled queues are still loaded so GetQueueConfig works; only
 // GetEnabledQueueConfigs filters them out for the ticket-info wire.
 static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
@@ -48,7 +48,7 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
 
     sqlite3_stmt* stmt = nullptr;
     const char* sql =
-        "SELECT queue_id, name, rule_class, taskforce_policy, continue_in_queue, enabled,"
+        "SELECT queue_id, map_pool_id, name, rule_class, taskforce_policy, continue_in_queue, enabled,"
         "       queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id,"
         "       max_players_per_side, min_players_per_team, max_players_per_team,"
         "       level_min, level_max, tab, map_x, map_y, map_active_flag,"
@@ -66,6 +66,10 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
         QueueConfig c;
         int col = 0;
         c.queue_id = (uint32_t)sqlite3_column_int(stmt, col++);
+        c.map_pool_id = (sqlite3_column_type(stmt, col) == SQLITE_NULL)
+                        ? 0u
+                        : (uint32_t)sqlite3_column_int(stmt, col);
+        col++;
         if (auto* p = sqlite3_column_text(stmt, col++)) c.name = (const char*)p;
         if (sqlite3_column_type(stmt, col) != SQLITE_NULL) {
             c.rule_class = (const char*)sqlite3_column_text(stmt, col);
@@ -110,14 +114,16 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
     sqlite3_finalize(stmt);
 
     // Pool join. One pass per queue keeps the SQL trivial; pool sizes are
-    // small (typically <40 entries).
+    // small (typically <40 entries). Queues with map_pool_id=0 (unassigned)
+    // load with an empty map_pool and matchmaker skips them on spawn.
     for (auto& c : out) {
+        if (c.map_pool_id == 0) continue;
         sqlite3_stmt* ps = nullptr;
         const char* psql =
-            "SELECT map_name, game_mode, weight FROM ga_queue_map_pool "
-            "WHERE queue_id = ? AND enabled = 1";
+            "SELECT map_name, game_mode, weight FROM ga_map_pool_entries "
+            "WHERE map_pool_id = ? AND enabled = 1";
         if (sqlite3_prepare_v2(db, psql, -1, &ps, nullptr) != SQLITE_OK || !ps) continue;
-        sqlite3_bind_int(ps, 1, (int)c.queue_id);
+        sqlite3_bind_int(ps, 1, (int)c.map_pool_id);
         while (sqlite3_step(ps) == SQLITE_ROW) {
             MapModeEntry m;
             if (auto* p = sqlite3_column_text(ps, 0)) m.map_name  = (const char*)p;
@@ -142,9 +148,10 @@ void MatchmakingService::Init() {
         const uint32_t qid = cfg.queue_id;
         queues_[qid] = BuildQueue(std::move(cfg));
         Logger::Log("matchmaking",
-            "[Matchmaking] Loaded queue %u '%s' (rule=%s pool_size=%zu)\n",
+            "[Matchmaking] Loaded queue %u '%s' (rule=%s pool_id=%u pool_size=%zu)\n",
             qid, queues_[qid].config.name.c_str(),
             queues_[qid].config.rule_class.empty() ? "DataDriven" : queues_[qid].config.rule_class.c_str(),
+            queues_[qid].config.map_pool_id,
             queues_[qid].config.map_pool.size());
     }
 }

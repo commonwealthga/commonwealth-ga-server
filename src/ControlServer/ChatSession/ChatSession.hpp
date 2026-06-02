@@ -33,6 +33,12 @@ private:
     std::deque<std::vector<uint8_t>> write_queue_;
     std::string player_name_;
     std::string session_guid_;
+    // Single-shot lifecycle guard. Set by TearDown(); checked in every async
+    // callback so a session that's already been torn down (e.g. by a write
+    // error) is inert if a stale callback fires later. Without this the read
+    // and write error paths could double-remove from g_chat_sessions or
+    // double-broadcast the leave announcement.
+    bool closed_ = false;
 
     template<typename... Bytes>
     void append(std::vector<uint8_t>& buffer, Bytes&&... bytes) {
@@ -55,4 +61,10 @@ private:
     void do_write();
     void handle_packet(const uint8_t* data, size_t length);
     void broadcast(const uint8_t* data, size_t length);
+
+    // Single tear-down path. Idempotent via `closed_`. On entry, optionally
+    // broadcasts a "<player> has left the chat" system message if the session
+    // was handshaken, then clears the write queue, closes the socket, and
+    // removes self from g_chat_sessions so further broadcasts skip it.
+    void TearDown(const char* reason);
 };

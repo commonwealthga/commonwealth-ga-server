@@ -6,6 +6,7 @@ bool ActorCache::bCached = false;
 std::vector<ATgTeamPlayerStart*> ActorCache::PlayerStarts;
 std::vector<ATgMissionObjective*> ActorCache::MissionObjectives;
 std::vector<ATgRandomSMActor*> ActorCache::RandomSMActors;
+std::vector<ATgPlayerCountVolume*> ActorCache::PlayerCountVolumes;
 ATgBotFactory* ActorCache::BotFactory = nullptr;
 
 void ActorCache::CacheMapActors() {
@@ -30,6 +31,11 @@ void ActorCache::CacheMapActors() {
 		BotFactory = (ATgBotFactory*)factories[0];
 	}
 
-	Logger::Log("debug", "ActorCache: %d PlayerStarts, %d MissionObjectives, %d RandomSMActors, BotFactory=%p\n",
-		(int)PlayerStarts.size(), (int)MissionObjectives.size(), (int)RandomSMActors.size(), BotFactory);
+	for (UObject* obj : ObjectCache::FindAllByClass("Class TgGame.TgPlayerCountVolume")) {
+		PlayerCountVolumes.push_back((ATgPlayerCountVolume*)obj);
+	}
+
+	Logger::Log("debug", "ActorCache: %d PlayerStarts, %d MissionObjectives, %d RandomSMActors, %d PlayerCountVolumes, BotFactory=%p\n",
+		(int)PlayerStarts.size(), (int)MissionObjectives.size(), (int)RandomSMActors.size(),
+		(int)PlayerCountVolumes.size(), BotFactory);
 }

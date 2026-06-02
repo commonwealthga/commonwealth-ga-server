@@ -10,7 +10,7 @@ class TgDeviceVolume_setupDevice : public HookBase<
 public:
 	static bool __fastcall Call(ATgDeviceVolume* Volume, void* edx);
 	static inline bool __fastcall CallOriginal(ATgDeviceVolume* Volume, void* edx) {
-		m_original(Volume, edx);
+		return m_original(Volume, edx);
 	};
 };
 
