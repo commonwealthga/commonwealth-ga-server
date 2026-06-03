@@ -94,6 +94,13 @@ uint32_t ResolveClassMsgId(uint32_t profile_id, uint32_t fallback, const char* c
     return class_msg_id;
 }
 
+uint32_t ResolveHomeMapGameId() {
+    if (auto info = MapGameInfo::LookupByName("Dome3_VR_Arena_P")) {
+        return info->map_game_id;
+    }
+    return 100005;
+}
+
 }  // namespace
 
 void TcpSession::SetHomeMapSpawner(std::function<void()> cb) {
@@ -2380,7 +2387,7 @@ void TcpSession::send_add_player_character_response()
 
 	Write4B(response, GA_T::CLASS_MSG_ID,
 		ResolveClassMsgId(selected_profile_id_, 22976, "ADD_PLAYER_CHARACTER"));
-	Write4B(response, GA_T::HOME_MAP_GAME_ID, 0x050B);
+	Write4B(response, GA_T::HOME_MAP_GAME_ID, ResolveHomeMapGameId());
 
 	send_response(response);
 }
@@ -2397,7 +2404,7 @@ void TcpSession::send_select_character_response()
 
 	// Write4B(response, GA_T::CALLER_ID, 0x0);
 	Write4B(response, GA_T::ERROR_CODE, 0x0);
-	Write4B(response, GA_T::HOME_MAP_GAME_ID, 0x050B);
+	Write4B(response, GA_T::HOME_MAP_GAME_ID, ResolveHomeMapGameId());
 	Write4B(response, GA_T::TASK_FORCE, 0x1);
 	Write4B(response, GA_T::CHARACTER_ID, static_cast<uint32_t>(selected_character_id_));
 	const uint32_t profile_id = selected_profile_id_ != 0 ? selected_profile_id_ : GA_G::PROFILE_ID_ASSAULT;
