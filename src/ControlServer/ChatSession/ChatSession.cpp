@@ -2,9 +2,13 @@
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 
+#include <algorithm>
+#include <chrono>
+#ifndef _WIN32
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <cerrno>
+#endif
 
 // All chat sessions — safe without mutex since io_context runs single-threaded.
 // Pruned lazily (broadcast() drops expired weak_ptrs before iterating) and
@@ -28,6 +32,9 @@ constexpr uint32_t kSystemChannelId = 4;
 // session is torn down instead of letting memory grow unbounded.
 constexpr size_t kMaxWriteQueueDepth = 256;
 
+constexpr int kBindRetryMaxAttempts = 50;
+constexpr std::chrono::milliseconds kBindRetryDelay{100};
+
 // Tune Linux TCP keepalive so a half-broken peer (NAT drop, dead wifi,
 // powered-off router) is detected in ~2 minutes instead of the default
 // ~2 hours. Without this, a write that succeeds into the local kernel buffer
@@ -41,6 +48,11 @@ void EnableTcpKeepAlive(asio::ip::tcp::socket& sock) {
         Logger::Log("chat", "[Chat] set keep_alive failed: %s\n", ec.message().c_str());
         return;
     }
+#ifdef _WIN32
+    // Windows keepalive timing is configured through WSAIoctl(SIO_KEEPALIVE_VALS).
+    // Keep the socket-level option here; timeout tuning belongs in a Win32-specific follow-up.
+    return;
+#else
     int fd = sock.native_handle();
     int idle = 60, intvl = 15, count = 4;
     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,  &idle,  sizeof(idle))  < 0 ||
@@ -48,6 +60,7 @@ void EnableTcpKeepAlive(asio::ip::tcp::socket& sock) {
         setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,   &count, sizeof(count)) < 0) {
         Logger::Log("chat", "[Chat] TCP_KEEPIDLE/INTVL/CNT tuning failed (errno=%d)\n", errno);
     }
+#endif
 }
 
 // Drop expired weak_ptr entries from g_chat_sessions. Called lazily from
@@ -125,7 +138,9 @@ void BroadcastSystemMessage(const std::string& message_text,
 } // anonymous namespace
 
 ChatSession::ChatSession(asio::ip::tcp::socket socket)
-    : socket_(std::move(socket)), read_buf_(4096) {
+    : socket_(std::move(socket)),
+      bind_retry_timer_(socket_.get_executor()),
+      read_buf_(4096) {
     socket_.set_option(asio::ip::tcp::no_delay(true));
     EnableTcpKeepAlive(socket_);
 }
@@ -134,6 +149,47 @@ void ChatSession::start() {
     g_chat_sessions.push_back(shared_from_this());
     Logger::Log("chat", "[Chat] Client connected, sessions=%zu\n", g_chat_sessions.size());
     do_read();
+}
+
+void ChatSession::AnnounceJoinIfNeeded() {
+    if (announced_join_ || player_name_.empty()) return;
+    announced_join_ = true;
+    BroadcastSystemMessage(
+        "*** " + player_name_ + " has joined the chat ***",
+        kSystemChannelId,
+        /*exclude=*/nullptr);
+}
+
+bool ChatSession::BindPlayerFromRegistry(const char* reason) {
+    if (closed_ || session_guid_.empty()) return false;
+
+    auto info = PlayerSessionStore::GetByGuid(session_guid_);
+    if (!info) return false;
+
+    player_name_ = info->player_name;
+    bind_retry_timer_.cancel();
+    Logger::Log("chat", "[Chat] %s bound player='%s' guid=%s\n",
+        reason ? reason : "bind", player_name_.c_str(), session_guid_.c_str());
+    AnnounceJoinIfNeeded();
+    return true;
+}
+
+void ChatSession::ScheduleBindRetry() {
+    if (closed_ || session_guid_.empty() || !player_name_.empty()) return;
+    if (bind_retry_attempts_ >= kBindRetryMaxAttempts) {
+        Logger::Log("chat", "[Chat] bind retry exhausted guid=%s attempts=%d\n",
+            session_guid_.c_str(), bind_retry_attempts_);
+        return;
+    }
+
+    ++bind_retry_attempts_;
+    auto self(shared_from_this());
+    bind_retry_timer_.expires_after(kBindRetryDelay);
+    bind_retry_timer_.async_wait([this, self](std::error_code ec) {
+        if (closed_ || ec) return;
+        if (BindPlayerFromRegistry("retry")) return;
+        ScheduleBindRetry();
+    });
 }
 
 void ChatSession::deliver(const std::vector<uint8_t>& msg) {
@@ -242,18 +298,10 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
                     oss << std::hex << std::setw(2) << std::setfill('0') << (int)data[8 + i];
                 std::string guid_hex = oss.str();
                 session_guid_ = guid_hex;
-                auto info = PlayerSessionStore::GetByGuid(guid_hex);
-                if (info) {
-                    player_name_ = info->player_name;
-                    Logger::Log("chat", "[Chat] Handshake from '%s' (guid=%s)\n",
-                        player_name_.c_str(), guid_hex.c_str());
-                    // Announce arrival to everyone (including this player).
-                    BroadcastSystemMessage(
-                        "*** " + player_name_ + " has joined the chat ***",
-                        kSystemChannelId,
-                        /*exclude=*/nullptr);
-                } else {
+                bind_retry_attempts_ = 0;
+                if (!BindPlayerFromRegistry("handshake")) {
                     Logger::Log("chat", "[Chat] Handshake received, guid=%s not found in registry\n", guid_hex.c_str());
+                    ScheduleBindRetry();
                 }
             } else {
                 Logger::Log("chat", "[Chat] Handshake received (guid too short)\n");
@@ -266,11 +314,12 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
     // for any reason, retry the lookup so the broadcaster shows a real name
     // instead of "" on the next message. Cheap, single map lookup.
     if (player_name_.empty() && !session_guid_.empty()) {
-        if (auto info = PlayerSessionStore::GetByGuid(session_guid_)) {
-            player_name_ = info->player_name;
-            Logger::Log("chat", "[Chat] late-bound player_name='%s' for guid=%s\n",
-                player_name_.c_str(), session_guid_.c_str());
-        }
+        BindPlayerFromRegistry("message");
+    }
+    if (player_name_.empty()) {
+        Logger::Log("chat", "[Chat] dropping unbound message guid=%s\n",
+            session_guid_.c_str());
+        return;
     }
 
     // Peek at MESSAGE before broadcasting so we can intercept slash commands.
@@ -367,6 +416,7 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
 void ChatSession::TearDown(const char* reason) {
     if (closed_) return;
     closed_ = true;
+    bind_retry_timer_.cancel();
 
     Logger::Log("chat",
         "[Chat] tearing down player='%s' guid=%s reason=%s queue=%zu sessions_before=%zu\n",
@@ -378,7 +428,7 @@ void ChatSession::TearDown(const char* reason) {
     // departing session itself — its socket is about to close, deliver()
     // would short-circuit anyway because closed_=true. Done BEFORE the
     // socket close so the broadcast loop still sees a clean state.
-    if (!player_name_.empty()) {
+    if (announced_join_ && !player_name_.empty()) {
         BroadcastSystemMessage(
             "*** " + player_name_ + " has left the chat ***",
             kSystemChannelId,

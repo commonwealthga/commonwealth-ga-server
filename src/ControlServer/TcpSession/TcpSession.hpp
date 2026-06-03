@@ -77,6 +77,7 @@ private:
     asio::ip::tcp::socket socket_;
     asio::io_context& io_ctx_;
     std::vector<uint8_t> data_;
+    std::vector<uint8_t> rx_buffer_;
 
     std::string player_name;
     std::string session_guid_;
@@ -299,7 +300,21 @@ private:
             asio::buffer(data_),
             [this, self](std::error_code ec, std::size_t length) {
                 if (!ec) {
-                    handle_packet(data_.data(), length);
+                    rx_buffer_.insert(rx_buffer_.end(), data_.begin(), data_.begin() + length);
+                    while (rx_buffer_.size() >= 2) {
+                        const uint16_t frame_len = static_cast<uint16_t>(
+                            rx_buffer_[0] | (rx_buffer_[1] << 8));
+                        if (frame_len == 0) {
+                            rx_buffer_.erase(rx_buffer_.begin(), rx_buffer_.begin() + 2);
+                            continue;
+                        }
+                        const size_t total_len = static_cast<size_t>(frame_len) + 2;
+                        if (rx_buffer_.size() < total_len) {
+                            break;
+                        }
+                        handle_packet(rx_buffer_.data(), total_len);
+                        rx_buffer_.erase(rx_buffer_.begin(), rx_buffer_.begin() + total_len);
+                    }
                     do_read();
                 } else {
                     // Cancel any pending ACK wait timer.
@@ -416,6 +431,9 @@ private:
     void send_character_list_response_mock();
 
     void send_character_list_queue_response();
+
+    void send_login_response_for(const std::string& response_player_name,
+                                 const std::string& response_session_guid);
 
     void send_login_response();
 

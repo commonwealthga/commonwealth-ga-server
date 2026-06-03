@@ -1,8 +1,7 @@
 #include "src/GameServer/TgGame/TgPawn/SyncPawnHealth/SyncPawnHealth.hpp"
 #include "src/GameServer/Constants/TgProperties.h"
 
-void SyncPawnHealth::Apply(ATgPawn* pawn, int hp, int maxHp) {
-	return;
+void SyncPawnHealth::Apply(ATgPawn* pawn, int hp, int maxHp, bool notifyClient) {
 	if (!pawn) return;
 
 	const float fHp    = (float)hp;
@@ -34,11 +33,16 @@ void SyncPawnHealth::Apply(ATgPawn* pawn, int hp, int maxHp) {
 		}
 	}
 
-	// (6)(7) PRI fan-out via the same UC event ApplyProperty would have
-	// dispatched. Skips silently when PRI isn't wired yet (early in spawn).
+	// (6)(7) PRI fan-out. Spawn uses this before the PRI/pawn ownership graph
+	// is fully stable, so UpdateHealth is opt-in for post-spawn heal paths.
 	ATgRepInfo_Player* pri = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
 	if (pri) {
-		pri->eventUpdateHealth(hp, maxHp);
+		pri->r_nHealthCurrent = hp;
+		pri->r_nHealthMaximum = maxHp;
+		pri->bNetDirty = 1;
+		if (notifyClient) {
+			pri->eventUpdateHealth(hp, maxHp);
+		}
 	}
 
 	pawn->bNetDirty = 1;

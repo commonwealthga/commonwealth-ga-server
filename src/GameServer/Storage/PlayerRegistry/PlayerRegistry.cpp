@@ -6,6 +6,7 @@
 
 std::map<std::string, PlayerInfo> PlayerRegistry::by_guid_;
 std::map<std::string, PlayerInfo> PlayerRegistry::by_ip_;
+uint64_t PlayerRegistry::next_generation_ = 1;
 CRITICAL_SECTION PlayerRegistry::cs_;
 bool PlayerRegistry::cs_initialized_ = false;
 
@@ -16,13 +17,23 @@ struct CsGuard {
 	~CsGuard() { LeaveCriticalSection(&cs); }
 };
 
-void PlayerRegistry::Init() {
+void PlayerRegistry::EnsureInitialized() {
 	if (!cs_initialized_) {
 		InitializeCriticalSection(&cs_);
 		cs_initialized_ = true;
 	}
+}
+
+void PlayerRegistry::Init() {
+	EnsureInitialized();
 	CsGuard lock(cs_);
 	sqlite3* db = Database::GetConnection();
+	if (!db) {
+		Logger::Log("db", "[PlayerRegistry] Init skipped: no DB connection\n");
+		by_guid_.clear();
+		by_ip_.clear();
+		return;
+	}
 	char* err = nullptr;
 	int rc = sqlite3_exec(db, "DELETE FROM ga_players", nullptr, nullptr, &err);
 	if (rc != SQLITE_OK) {
@@ -33,11 +44,27 @@ void PlayerRegistry::Init() {
 	}
 
 	by_guid_.clear();
+	by_ip_.clear();
 }
 
 void PlayerRegistry::Register(const PlayerInfo& info) {
+	EnsureInitialized();
+	Logger::Log("db",
+		"[PlayerRegistry] Register begin name=%s guid=%s user=%lld char=%lld profile=%u\n",
+		info.player_name.c_str(), info.session_guid.c_str(),
+		(long long)info.user_id, (long long)info.selected_character_id,
+		info.selected_profile_id);
 	CsGuard lock(cs_);
+	PlayerInfo stored = info;
+	stored.register_generation = next_generation_++;
+
 	sqlite3* db = Database::GetConnection();
+	if (!db) {
+		Logger::Log("db", "[PlayerRegistry] Register: no DB connection, keeping memory registry only\n");
+		by_guid_[stored.session_guid] = stored;
+		if (!stored.ip_address.empty()) by_ip_[stored.ip_address] = stored;
+		return;
+	}
 
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
@@ -48,11 +75,11 @@ void PlayerRegistry::Register(const PlayerInfo& info) {
 	if (rc != SQLITE_OK || !stmt) {
 		Logger::Log("db", "[PlayerRegistry] Failed to prepare register: %s\n", sqlite3_errmsg(db));
 	} else {
-		sqlite3_bind_text(stmt,  1, info.session_guid.c_str(), -1, SQLITE_TRANSIENT);
-		sqlite3_bind_text(stmt,  2, info.player_name.c_str(),  -1, SQLITE_TRANSIENT);
-		sqlite3_bind_text(stmt,  3, info.ip_address.c_str(),   -1, SQLITE_TRANSIENT);
-		if (info.user_id != 0)
-			sqlite3_bind_int64(stmt, 4, info.user_id);
+		sqlite3_bind_text(stmt,  1, stored.session_guid.c_str(), -1, SQLITE_TRANSIENT);
+		sqlite3_bind_text(stmt,  2, stored.player_name.c_str(),  -1, SQLITE_TRANSIENT);
+		sqlite3_bind_text(stmt,  3, stored.ip_address.c_str(),   -1, SQLITE_TRANSIENT);
+		if (stored.user_id != 0)
+			sqlite3_bind_int64(stmt, 4, stored.user_id);
 		else
 			sqlite3_bind_null(stmt, 4);
 		rc = sqlite3_step(stmt);
@@ -60,19 +87,50 @@ void PlayerRegistry::Register(const PlayerInfo& info) {
 		if (rc != SQLITE_DONE)
 			Logger::Log("db", "[PlayerRegistry] Failed to register player: %s\n", sqlite3_errmsg(db));
 	}
+	Logger::Log("db", "[PlayerRegistry] Register DB step done guid=%s rc=%d\n",
+		info.session_guid.c_str(), rc);
 
 	{
-		by_guid_[info.session_guid] = info;
-		by_ip_[info.ip_address] = info;
+		by_guid_[stored.session_guid] = stored;
+		if (!stored.ip_address.empty()) by_ip_[stored.ip_address] = stored;
 	}
+	Logger::Log("db", "[PlayerRegistry] Register memory step done guid=%s\n",
+		stored.session_guid.c_str());
 
-	Logger::Log("db", "[PlayerRegistry] Registered player '%s' guid=%s ip=%s\n",
-		info.player_name.c_str(), info.session_guid.c_str(), info.ip_address.c_str());
+	Logger::Log("db", "[PlayerRegistry] Registered player '%s' guid=%s ip=%s generation=%llu\n",
+		stored.player_name.c_str(), stored.session_guid.c_str(), stored.ip_address.c_str(),
+		(unsigned long long)stored.register_generation);
 }
 
 void PlayerRegistry::Unregister(const std::string& session_guid) {
+	EnsureInitialized();
+	UnregisterIfGeneration(session_guid, 0);
+}
+
+bool PlayerRegistry::UnregisterIfGeneration(const std::string& session_guid,
+                                            uint64_t register_generation) {
+	EnsureInitialized();
 	CsGuard lock(cs_);
+	auto it_current = by_guid_.find(session_guid);
+	if (register_generation != 0 &&
+	    (it_current == by_guid_.end() ||
+	     it_current->second.register_generation != register_generation)) {
+		Logger::Log("db",
+			"[PlayerRegistry] Skip stale unregister guid=%s generation=%llu current=%llu\n",
+			session_guid.c_str(), (unsigned long long)register_generation,
+			(unsigned long long)(it_current == by_guid_.end()
+				? 0 : it_current->second.register_generation));
+		return false;
+	}
+
 	sqlite3* db = Database::GetConnection();
+	if (!db) {
+		if (it_current != by_guid_.end() && !it_current->second.ip_address.empty()) {
+			by_ip_.erase(it_current->second.ip_address);
+		}
+		by_guid_.erase(session_guid);
+		return true;
+	}
 
 	char sql[256];
 	snprintf(sql, sizeof(sql),
@@ -95,10 +153,13 @@ void PlayerRegistry::Unregister(const std::string& session_guid) {
 		by_guid_.erase(session_guid);
 	}
 
-	Logger::Log("db", "[PlayerRegistry] Unregistered player guid=%s\n", session_guid.c_str());
+	Logger::Log("db", "[PlayerRegistry] Unregistered player guid=%s generation=%llu\n",
+		session_guid.c_str(), (unsigned long long)register_generation);
+	return true;
 }
 
 std::optional<PlayerInfo> PlayerRegistry::GetByGuid(const std::string& guid) {
+	EnsureInitialized();
 	CsGuard lock(cs_);
 	auto it = by_guid_.find(guid);
 	if (it != by_guid_.end()) return it->second;
@@ -106,6 +167,7 @@ std::optional<PlayerInfo> PlayerRegistry::GetByGuid(const std::string& guid) {
 }
 
 PlayerInfo* PlayerRegistry::GetByGuidPtr(const std::string& guid) {
+	EnsureInitialized();
 	CsGuard lock(cs_);
 	auto it = by_guid_.find(guid);
 	if (it != by_guid_.end()) return &it->second;
@@ -113,6 +175,7 @@ PlayerInfo* PlayerRegistry::GetByGuidPtr(const std::string& guid) {
 }
 
 std::optional<PlayerInfo> PlayerRegistry::GetByIp(const std::string& ip) {
+	EnsureInitialized();
 	CsGuard lock(cs_);
 	auto it = by_ip_.find(ip);
 	if (it != by_ip_.end()) return it->second;
@@ -120,8 +183,10 @@ std::optional<PlayerInfo> PlayerRegistry::GetByIp(const std::string& ip) {
 }
 
 int64_t PlayerRegistry::UpsertUser(const std::string& username) {
+	EnsureInitialized();
 	CsGuard lock(cs_);
 	sqlite3* db = Database::GetConnection();
+	if (!db) return 0;
 
 	// Insert if not present (ignore on conflict keeps existing row).
 	sqlite3_stmt* stmt = nullptr;
@@ -153,8 +218,10 @@ int64_t PlayerRegistry::UpsertUser(const std::string& username) {
 int64_t PlayerRegistry::InsertCharacter(int64_t user_id, uint32_t profile_id,
                                         uint32_t head_asm_id, uint32_t gender_type_value_id,
                                         const std::vector<uint8_t>& morph_data) {
+	EnsureInitialized();
 	CsGuard lock(cs_);
 	sqlite3* db = Database::GetConnection();
+	if (!db) return 0;
 
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
@@ -180,9 +247,11 @@ int64_t PlayerRegistry::InsertCharacter(int64_t user_id, uint32_t profile_id,
 }
 
 std::vector<CharacterInfo> PlayerRegistry::GetCharactersByUserId(int64_t user_id) {
+	EnsureInitialized();
 	CsGuard lock(cs_);
 	sqlite3* db = Database::GetConnection();
 	std::vector<CharacterInfo> result;
+	if (!db) return result;
 
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
@@ -218,8 +287,10 @@ std::vector<CharacterInfo> PlayerRegistry::GetCharactersByUserId(int64_t user_id
 }
 
 std::optional<CharacterInfo> PlayerRegistry::GetCharacterById(int64_t id) {
+	EnsureInitialized();
 	CsGuard lock(cs_);
 	sqlite3* db = Database::GetConnection();
+	if (!db) return std::nullopt;
 
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
@@ -256,18 +327,22 @@ std::optional<CharacterInfo> PlayerRegistry::GetCharacterById(int64_t id) {
 }
 
 void PlayerRegistry::SetSelectedCharacter(const std::string& session_guid, int64_t char_id, uint32_t profile_id) {
+	EnsureInitialized();
 	CsGuard lock(cs_);
 	auto it = by_guid_.find(session_guid);
 	if (it != by_guid_.end()) {
 		it->second.selected_character_id = char_id;
 		it->second.selected_profile_id   = profile_id;
-		by_ip_[it->second.ip_address].selected_character_id = char_id;
-		by_ip_[it->second.ip_address].selected_profile_id   = profile_id;
+		if (!it->second.ip_address.empty()) {
+			by_ip_[it->second.ip_address].selected_character_id = char_id;
+			by_ip_[it->second.ip_address].selected_profile_id   = profile_id;
+		}
 	}
 }
 
 int PlayerRegistry::RefreshSkillsForProfile(const std::string& session_guid,
                                             int item_profile_id) {
+	EnsureInitialized();
 	if (item_profile_id < 1 || item_profile_id > 5) return 0;
 	CsGuard lock(cs_);
 	auto it = by_guid_.find(session_guid);
@@ -301,7 +376,7 @@ int PlayerRegistry::RefreshSkillsForProfile(const std::string& session_guid,
 	sqlite3_finalize(st);
 
 	// Mirror to by_ip_ for any consumers reading from there.
-	by_ip_[info.ip_address].skills = info.skills;
+	if (!info.ip_address.empty()) by_ip_[info.ip_address].skills = info.skills;
 
 	Logger::Log("loadout",
 		"[RefreshSkillsForProfile] guid=%s char=%lld itemProf=%d loaded=%d skill rows\n",

@@ -1,18 +1,15 @@
 #include "src/GameServer/TgNetDrv/UdpNetDriver/InitListen/UdpNetDriver__InitListen.hpp"
-#include "src/GameServer/IpDrv/SocketWin/CreateDGramSocket/SocketWin__CreateDGramSocket.hpp"
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+
+#include <cstdlib>
 
 int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* Notify, FURL* Url, FString* Error) {
 	Logger::Log("debug", "MINE UdpNetDriver__InitListen START\n");
 
-	// pServerUrl = Url;
-
-	int result = UdpNetDriver__InitListen::CallOriginal(NetDriver, Notify, Url, Error);
-	if (!result) {
-		// Log("Super::InitListen failed");
-		return 0;
-	}
+	// The Steam runtime has no standalone TgNetDrv package. The original
+	// InitListen tries to load NetConnectionClassName and crashes on null.
+	NetDriver->Notify = Notify;
 
 	// UE3 stock defaults are 15000 B/s per client (LAN-era values). UE3
 	// clamps each connection's CurrentNetSpeed to NetDriver->MaxClientRate
@@ -27,26 +24,39 @@ int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* No
 	NetDriver->MaxInternetClientRate = 50000;
 
 	void* SocketInstance = nullptr;
-	*(void**)((char*)NetDriver + 0x14C) = SocketInstance = SocketWin__CreateDGramSocket::CallOriginal();
+	Logger::Log("debug", "[UdpNetDriver::InitListen] creating hook-owned datagram socket\n");
+	SocketInstance = std::calloc(1, 0x20);
+	Logger::Log("debug", "[UdpNetDriver::InitListen] socket instance=%p\n", SocketInstance);
 
 	if (SocketInstance == nullptr) {
-		// LogToFile("C:\\mylog.txt", "[UdpNetDriver::InitListen] CreateDGramSocket failed: %d", WSAGetLastError());
+		Logger::Log("debug", "[UdpNetDriver::InitListen] socket holder allocation failed\n");
 		return 0;
 	}
 
-	SOCKET Socket = *(SOCKET*)((char*)SocketInstance + 0x08);
+	SOCKET Socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (Socket == INVALID_SOCKET) {
+		Logger::Log("debug", "[UdpNetDriver::InitListen] socket failed: %d\n", WSAGetLastError());
+		std::free(SocketInstance);
+		return 0;
+	}
+
+	*(SOCKET*)((char*)SocketInstance + 0x08) = Socket;
+	*(void**)((char*)NetDriver + 0x14C) = SocketInstance;
+	Logger::Log("debug", "[UdpNetDriver::InitListen] socket handle=%llu\n", (unsigned long long)Socket);
 
 	bool bAllowBroadcast = true;
+	Logger::Log("debug", "[UdpNetDriver::InitListen] set SO_BROADCAST\n");
 	int setBroadcastResult = setsockopt(Socket,SOL_SOCKET,SO_BROADCAST,(char*)&bAllowBroadcast,sizeof(bool));
 	if (setBroadcastResult != 0) {
-		// LogToFile("C:\\mylog.txt", "[UdpNetDriver::InitListen] setsockopt SO_BROADCAST failed: %d", WSAGetLastError());
+		Logger::Log("debug", "[UdpNetDriver::InitListen] setsockopt SO_BROADCAST failed: %d\n", WSAGetLastError());
 		return 0;
 	}
 
 	bool bAllowReuse = true;
+	Logger::Log("debug", "[UdpNetDriver::InitListen] set SO_REUSEADDR\n");
 	int setReuseResult = setsockopt(Socket,SOL_SOCKET,SO_REUSEADDR,(char*)&bAllowReuse,sizeof(bool));
 	if (setReuseResult != 0) {
-		// LogToFile("C:\\mylog.txt", "[UdpNetDriver::InitListen] setsockopt SO_REUSEADDR failed: %d", WSAGetLastError());
+		Logger::Log("debug", "[UdpNetDriver::InitListen] setsockopt SO_REUSEADDR failed: %d\n", WSAGetLastError());
 		return 0;
 	}
 
@@ -83,9 +93,11 @@ int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* No
 	const int reqRecv = RecvSize;
 	const int reqSend = SendSize;
 
+	Logger::Log("debug", "[UdpNetDriver::InitListen] set SO_RCVBUF\n");
 	bool bSetRecvSizeOk = setsockopt(Socket,SOL_SOCKET,SO_RCVBUF,(char*)&RecvSize,sizeof(int)) == 0;
 	getsockopt(Socket,SOL_SOCKET,SO_RCVBUF,(char*)&RecvSize, &SizeSize);
 
+	Logger::Log("debug", "[UdpNetDriver::InitListen] set SO_SNDBUF\n");
 	bool bSetSendSizeOk = setsockopt(Socket,SOL_SOCKET,SO_SNDBUF,(char*)&SendSize,sizeof(int)) == 0;
 	getsockopt(Socket,SOL_SOCKET,SO_SNDBUF,(char*)&SendSize, &SizeSize);
 
@@ -95,16 +107,18 @@ int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* No
     addr.sin_addr.s_addr = htonl(INADDR_ANY);  // Or inet_addr("0.0.0.0")
     addr.sin_port = htons(Config::GetPort());
 
+	Logger::Log("debug", "[UdpNetDriver::InitListen] bind port=%d\n", Config::GetPort());
 	int bindResult = bind(Socket, (sockaddr*)&addr, sizeof(addr));
 	if (bindResult != 0) {
-		// LogToFile("C:\\mylog.txt", "[UdpNetDriver::InitListen] bind failed: %d", WSAGetLastError());
+		Logger::Log("debug", "[UdpNetDriver::InitListen] bind failed: %d\n", WSAGetLastError());
 		return 0;
 	}
 
 	u_long bAllowNonBlocking = 1;
+	Logger::Log("debug", "[UdpNetDriver::InitListen] set nonblocking\n");
 	int setNonBlockingResult = ioctlsocket(Socket,FIONBIO,&bAllowNonBlocking);
 	if (setNonBlockingResult != 0) {
-		// LogToFile("C:\\mylog.txt", "[UdpNetDriver::InitListen] setNonBlocking failed: %d", WSAGetLastError());
+		Logger::Log("debug", "[UdpNetDriver::InitListen] setNonBlocking failed: %d\n", WSAGetLastError());
 		return 0;
 	}
 

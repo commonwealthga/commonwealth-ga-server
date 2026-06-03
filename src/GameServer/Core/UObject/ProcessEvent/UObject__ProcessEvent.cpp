@@ -1,14 +1,20 @@
 #include "src/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.hpp"
+#include "src/GameServer/Combat/SendCombatMessage/SendCombatMessage.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
+#include "src/GameServer/TgGame/TgEffectManager/SetEffectRep/TgEffectManager__SetEffectRep.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.hpp"
 #include "src/GameServer/TgGame/TgGame/BeginEndMission/TgGame__BeginEndMission.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
+#include "src/GameServer/TgGame/TgPawn/SyncPawnHealth/SyncPawnHealth.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
+#include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/Config/Config.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <math.h>
+#include <string>
 #include <unordered_map>
 
 // TgPawn__SetProperty @ 0x109bf420 — __thiscall(pawn, nPropertyId, fNewValue)
@@ -167,6 +173,18 @@ static void DropCarriedBeaconIfAny(ATgPawn* Pawn) {
 enum class DispatchTag : uint8_t {
 	Unknown = 0,                  // catch-all (log + CallOriginal)
 	EarlyOut,                     // pass-through: just CallOriginal
+	ServerMove,                   // Ping diagnostic: sampled move timestamp, otherwise pass-through
+	OldServerMove,                // Ping diagnostic: sampled old move timestamp, otherwise pass-through
+	DualServerMove,               // Ping diagnostic: sampled dual move timestamp, otherwise pass-through
+	TgShortServerMove,            // Ping diagnostic: GA compact move wrapper, otherwise pass-through
+	TgRMServerMove,               // Ping diagnostic: GA reliable move wrapper, otherwise pass-through
+	ServerUpdatePing,             // Ping diagnostic: client-reported ping, otherwise pass-through
+	ClientAckGoodMove,            // Ping diagnostic: sampled server ACK timestamp, otherwise pass-through
+	ClientAdjustPosition,         // Ping diagnostic: sampled server movement correction, otherwise pass-through
+	ShortClientAdjustPosition,    // Ping diagnostic: sampled server movement correction, otherwise pass-through
+	VeryShortClientAdjustPosition,// Ping diagnostic: sampled server movement correction, otherwise pass-through
+	LongClientAdjustPosition,     // Ping diagnostic: sampled server movement correction, otherwise pass-through
+	SendClientAdjustment,         // Ping diagnostic: server ACK/correction source for client UpdatePing
 	RefireCheckTimer,             // independent stealth-refresh side effect, then catch-all
 	TgGameLogin,                  // CallOriginal then clear PRI spectator flags
 	TgGamePostLogin,              // Pre-seed PRI.r_TaskForce, then CallOriginal
@@ -174,6 +192,8 @@ enum class DispatchTag : uint8_t {
 	DeviceFiringEndState,         // CallOriginal then jetpack-flag clear
 	ServerStopFire,               // CallOriginal then RemoveEffectGroupsByCategory(stealth)
 	TgEffectRemove,               // DoCatchAll — TgEffectBuff.Remove now reverses buffs canonically
+	PawnHealDamage,               // CallOriginal then mirror Engine Pawn/Actor Health into Tg/PRI health
+	TgDeviceVolumeApplyHit,       // Dome VR heal pad fallback when device effect leaves health unchanged
 	PostPawnSetup,                // CallOriginal (sets PHYS_Falling) then restore PHYS_Flying for flying bots
 	ServerStartFire,              // Diagnostic: log every CanDeviceFireNow gate before CallOriginal
 	GetPlayerViewPoint,           // Pre-sync c_nCameraYawOffset / c_nCameraPitchOffset from ctrl.Rotation
@@ -213,6 +233,274 @@ static bool IsGameTimerDiagnosticFunction(const char* name) {
 	}
 
 	return false;
+}
+
+struct PingPawnContext {
+	int characterId = -1;
+	int itemProfileId = -1;
+	int profileId = -1;
+	int profileType = -1;
+	int skillGroupSetId = -1;
+	int deviceActors = -1;
+	int replicatedDevices = -1;
+};
+
+static PingPawnContext GetPingPawnContext(APawn* pawn) {
+	PingPawnContext ctx;
+	if (!pawn) return ctx;
+
+	std::string pawnClass = pawn->Class ? pawn->Class->GetFullName() : "";
+	if (pawnClass.find("TgPawn") == std::string::npos) return ctx;
+
+	ATgPawn* tgPawn = (ATgPawn*)pawn;
+	ctx.profileId = tgPawn->r_nProfileId;
+	ctx.profileType = tgPawn->r_nProfileTypeValueId;
+	ctx.deviceActors = 0;
+	ctx.replicatedDevices = 0;
+	for (int i = 0; i < 0x19; i++) {
+		if (tgPawn->m_EquippedDevices[i]) ctx.deviceActors++;
+		if (tgPawn->r_EquipDeviceInfo[i].nDeviceId != 0 ||
+		    tgPawn->r_EquipDeviceInfo[i].nDeviceInstanceId != 0) {
+			ctx.replicatedDevices++;
+		}
+	}
+
+	if (pawnClass.find("TgPawn_Character") != std::string::npos) {
+		ATgPawn_Character* characterPawn = (ATgPawn_Character*)pawn;
+		ctx.characterId = characterPawn->s_nCharacterId;
+		ctx.itemProfileId = characterPawn->r_nItemProfileId;
+		ctx.skillGroupSetId = characterPawn->r_nSkillGroupSetId;
+	}
+	return ctx;
+}
+
+static void LogMovePingSample(
+	const char* rpcName,
+	APlayerController* pc,
+	float timestamp,
+	unsigned char flags,
+	const FVector* clientLoc = nullptr) {
+	if (!Logger::IsChannelEnabled("ping") || !pc) return;
+
+	struct MovePingSampleState {
+		std::unordered_map<std::string, float> lastTimestampByRpc;
+	};
+	static std::unordered_map<APlayerController*, MovePingSampleState> s_movePingSamples;
+
+	MovePingSampleState& state = s_movePingSamples[pc];
+	const std::string rpcKey = rpcName ? rpcName : "";
+	auto inserted = state.lastTimestampByRpc.emplace(rpcKey, -1000.0f);
+	float& lastTimestamp = inserted.first->second;
+	if ((timestamp - lastTimestamp) < 1.0f) return;
+	lastTimestamp = timestamp;
+
+	APlayerReplicationInfo* pri = pc->PlayerReplicationInfo;
+	APawn* pawn = pc->Pawn;
+	const char* pcState = pc->GetStateName().GetName();
+	const char* pawnState = pawn ? pawn->GetStateName().GetName() : nullptr;
+	const float exactPing = pri ? pri->ExactPing : -1.0f;
+	const int ping = pri ? pri->Ping : -1;
+	PingPawnContext ctx = GetPingPawnContext(pawn);
+
+	if (clientLoc) {
+		Logger::Log("ping",
+			"[%s] pc=%p ts=%.3f flags=0x%02x priPing=%d exact=%.4f pcState=%s pawn=%p pawnState=%s phys=%d char=%d itemProf=%d profile=%d profileType=%d skillGroup=%d devActors=%d repDevices=%d loc=(%.1f, %.1f, %.1f)\n",
+			rpcName, pc, timestamp, (unsigned int)flags, ping, exactPing,
+			pcState ? pcState : "<null>",
+			pawn, pawnState ? pawnState : "<null>", pawn ? (int)pawn->Physics : -1,
+			ctx.characterId, ctx.itemProfileId, ctx.profileId, ctx.profileType, ctx.skillGroupSetId, ctx.deviceActors, ctx.replicatedDevices,
+			clientLoc->X, clientLoc->Y, clientLoc->Z);
+	} else {
+		Logger::Log("ping",
+			"[%s] pc=%p ts=%.3f flags=0x%02x priPing=%d exact=%.4f pcState=%s pawn=%p pawnState=%s phys=%d char=%d itemProf=%d profile=%d profileType=%d skillGroup=%d devActors=%d repDevices=%d\n",
+			rpcName, pc, timestamp, (unsigned int)flags, ping, exactPing,
+			pcState ? pcState : "<null>",
+			pawn, pawnState ? pawnState : "<null>", pawn ? (int)pawn->Physics : -1,
+			ctx.characterId, ctx.itemProfileId, ctx.profileId, ctx.profileType, ctx.skillGroupSetId, ctx.deviceActors, ctx.replicatedDevices);
+	}
+}
+
+static void ApplyDomeVrHealPadFallback(APlayerController* pc, const FVector* clientLoc, float timestamp) {
+	if (!pc || !pc->Pawn) return;
+	if (Config::GetMapNameChar() != "Dome3_VR_Arena_P") return;
+
+	ATgPawn* pawn = (ATgPawn*)pc->Pawn;
+	const FVector loc = clientLoc ? *clientLoc : pawn->Location;
+
+	// Current Dome VR map data does not fire the original heal-pad trigger.
+	// Use the actual placed TgDeviceVolume_0 location until that path is restored.
+	const float dx = loc.X - (-150.8f);
+	const float dy = loc.Y - (-507.1f);
+	const float dz = loc.Z - 349.0f;
+	const float dist2 = dx * dx + dy * dy;
+
+	int maxHp = pawn->HealthMax;
+	if (pawn->r_nHealthMaximum > maxHp) maxHp = pawn->r_nHealthMaximum;
+	if (maxHp <= 0 || pawn->Health <= 0 || pawn->Health >= maxHp) return;
+
+	static std::unordered_map<ATgPawn*, float> s_lastDiagTime;
+	float& lastDiag = s_lastDiagTime[pawn];
+	if (Logger::IsChannelEnabled("device-volume") &&
+	    (timestamp <= 0.0f || (timestamp - lastDiag) >= 1.0f)) {
+		lastDiag = timestamp > 0.0f ? timestamp : pc->CurrentTimeStamp;
+		Logger::Log("device-volume",
+			"[DomeHealPad] sample pawn=0x%p clientLoc=(%.1f, %.1f, %.1f) pawnLoc=(%.1f, %.1f, %.1f) dist2=%.1f dz=%.1f hp=%d/%d\n",
+			pawn,
+			loc.X, loc.Y, loc.Z,
+			pawn->Location.X, pawn->Location.Y, pawn->Location.Z,
+			dist2, dz, pawn->Health, maxHp);
+	}
+
+	if (dist2 > (300.0f * 300.0f) || fabsf(dz) > 220.0f) return;
+
+	const int beforeHp = pawn->Health;
+	ATgDeviceVolume* healVolume = DomeVrHealPad::GetRegisteredVolume();
+	if (healVolume && healVolume->s_DeviceFireMode && healVolume->s_nDeviceId == 2064) {
+		float cooldown = healVolume->s_DeviceFireMode->GetRefireTime();
+		if (cooldown < 1.0f) cooldown = 1.0f;
+		if (cooldown > 5.0f) cooldown = 5.0f;
+
+		static std::unordered_map<ATgPawn*, float> s_lastHealTime;
+		float& last = s_lastHealTime[pawn];
+		const float now = timestamp > 0.0f ? timestamp : pc->CurrentTimeStamp;
+		if (now > 0.0f && (now - last) < cooldown) return;
+		last = now;
+
+		healVolume->ApplyHit((AActor*)pawn);
+		if (pawn->Health > beforeHp) {
+			int afterMaxHp = pawn->HealthMax;
+			if (pawn->r_nHealthMaximum > afterMaxHp) afterMaxHp = pawn->r_nHealthMaximum;
+			SyncPawnHealth::Apply(pawn, pawn->Health, afterMaxHp, true);
+			Logger::Log("device-volume",
+				"[DomeHealPad] volume ApplyHit healed pawn=0x%p volume=0x%p loc=(%.1f, %.1f, %.1f) hp=%d/%d\n",
+				pawn, healVolume, loc.X, loc.Y, loc.Z, pawn->Health, afterMaxHp);
+			return;
+		}
+		Logger::Log("device-volume",
+			"[DomeHealPad] volume ApplyHit made no HP change pawn=0x%p volume=0x%p hp=%d/%d\n",
+			pawn, healVolume, pawn->Health, maxHp);
+		int hp = beforeHp + 154;
+		if (hp > maxHp) hp = maxHp;
+		const int healed = hp - beforeHp;
+		if (healed <= 0) return;
+		SyncPawnHealth::Apply(pawn, hp, maxHp, true);
+		SendCombatMessage::Call(pawn, pawn, pawn, healed, SendCombatMessage::Type::HEAL);
+		if (pawn->r_EffectManager) {
+			TgEffectManager__SetEffectRep::CallOriginal(
+				pawn->r_EffectManager, nullptr, 6026, 0.0f, 0, beforeHp - hp);
+		}
+		Logger::Log("device-volume",
+			"[DomeHealPad] station fallback healed pawn=0x%p volume=0x%p loc=(%.1f, %.1f, %.1f) hp=%d/%d amount=%d\n",
+			pawn, healVolume, loc.X, loc.Y, loc.Z, hp, maxHp, healed);
+		return;
+	}
+
+	static std::unordered_map<ATgPawn*, float> s_lastDirectHealTime;
+	float& last = s_lastDirectHealTime[pawn];
+	if (timestamp > 0.0f && (timestamp - last) < 1.0f) return;
+	last = timestamp > 0.0f ? timestamp : pc->CurrentTimeStamp;
+
+	int hp = beforeHp + 154;
+	if (hp > maxHp) hp = maxHp;
+	const int healed = hp - beforeHp;
+	SyncPawnHealth::Apply(pawn, hp, maxHp, true);
+	SendCombatMessage::Call(pawn, pawn, pawn, healed, SendCombatMessage::Type::HEAL);
+	if (pawn->r_EffectManager) {
+		TgEffectManager__SetEffectRep::CallOriginal(
+			pawn->r_EffectManager, nullptr, 6026, 0.0f, 0, beforeHp - hp);
+	}
+	Logger::Log("device-volume",
+		"[DomeHealPad] direct fallback healed pawn=0x%p loc=(%.1f, %.1f, %.1f) hp=%d/%d amount=%d\n",
+		pawn, loc.X, loc.Y, loc.Z, hp, maxHp, healed);
+}
+
+static void LogServerUpdatePing(APlayerController* pc, int newPing, const char* phase) {
+	if (!Logger::IsChannelEnabled("ping") || !pc) return;
+	APlayerReplicationInfo* pri = pc->PlayerReplicationInfo;
+	PingPawnContext ctx = GetPingPawnContext(pc->Pawn);
+	Logger::Log("ping",
+		"[ServerUpdatePing:%s] pc=%p new=%d priPing=%d exact=%.4f state=%s pawn=%p pawnState=%s phys=%d char=%d itemProf=%d profile=%d profileType=%d skillGroup=%d devActors=%d repDevices=%d\n",
+		phase, pc, newPing,
+		pri ? (int)pri->Ping : -1,
+		pri ? pri->ExactPing : -1.0f,
+		pc->GetStateName().GetName() ? pc->GetStateName().GetName() : "<null>",
+		pc->Pawn,
+		pc->Pawn && pc->Pawn->GetStateName().GetName() ? pc->Pawn->GetStateName().GetName() : "<null>",
+		pc->Pawn ? (int)pc->Pawn->Physics : -1,
+		ctx.characterId, ctx.itemProfileId, ctx.profileId, ctx.profileType, ctx.skillGroupSetId, ctx.deviceActors, ctx.replicatedDevices);
+}
+
+static void LogClientMoveAckSample(
+	const char* rpcName,
+	APlayerController* pc,
+	int bucket,
+	float timestamp,
+	int newPhysics,
+	const FVector* newLoc = nullptr) {
+	if (!Logger::IsChannelEnabled("ping") || !pc) return;
+
+	struct ClientMoveAckSampleState {
+		float lastTimestamp[5] = { -1000.0f, -1000.0f, -1000.0f, -1000.0f, -1000.0f };
+	};
+	static std::unordered_map<APlayerController*, ClientMoveAckSampleState> s_clientMoveAckSamples;
+
+	if (bucket < 0 || bucket >= 5) return;
+	ClientMoveAckSampleState& state = s_clientMoveAckSamples[pc];
+	if ((timestamp - state.lastTimestamp[bucket]) < 1.0f) return;
+	state.lastTimestamp[bucket] = timestamp;
+
+	APlayerReplicationInfo* pri = pc->PlayerReplicationInfo;
+	APawn* pawn = pc->Pawn;
+	const char* pcState = pc->GetStateName().GetName();
+	const char* pawnState = pawn ? pawn->GetStateName().GetName() : nullptr;
+	const float exactPing = pri ? pri->ExactPing : -1.0f;
+	const int ping = pri ? pri->Ping : -1;
+	PingPawnContext ctx = GetPingPawnContext(pawn);
+
+	if (newLoc) {
+		Logger::Log("ping",
+			"[%s] pc=%p ackTs=%.3f newPhys=%d priPing=%d exact=%.4f pcState=%s pawn=%p pawnState=%s phys=%d char=%d itemProf=%d profile=%d profileType=%d skillGroup=%d devActors=%d repDevices=%d loc=(%.1f, %.1f, %.1f)\n",
+			rpcName, pc, timestamp, newPhysics, ping, exactPing,
+			pcState ? pcState : "<null>",
+			pawn, pawnState ? pawnState : "<null>", pawn ? (int)pawn->Physics : -1,
+			ctx.characterId, ctx.itemProfileId, ctx.profileId, ctx.profileType, ctx.skillGroupSetId, ctx.deviceActors, ctx.replicatedDevices,
+			newLoc->X, newLoc->Y, newLoc->Z);
+	} else {
+		Logger::Log("ping",
+			"[%s] pc=%p ackTs=%.3f newPhys=%d priPing=%d exact=%.4f pcState=%s pawn=%p pawnState=%s phys=%d char=%d itemProf=%d profile=%d profileType=%d skillGroup=%d devActors=%d repDevices=%d\n",
+			rpcName, pc, timestamp, newPhysics, ping, exactPing,
+			pcState ? pcState : "<null>",
+			pawn, pawnState ? pawnState : "<null>", pawn ? (int)pawn->Physics : -1,
+			ctx.characterId, ctx.itemProfileId, ctx.profileId, ctx.profileType, ctx.skillGroupSetId, ctx.deviceActors, ctx.replicatedDevices);
+	}
+}
+
+static void LogSendClientAdjustmentSample(const char* phase, APlayerController* pc) {
+	if (!Logger::IsChannelEnabled("ping") || !pc) return;
+
+	FClientAdjustment& adj = pc->PendingAdjustment;
+	APlayerReplicationInfo* pri = pc->PlayerReplicationInfo;
+	APawn* pawn = pc->Pawn;
+	PingPawnContext ctx = GetPingPawnContext(pawn);
+
+	Logger::Log("ping",
+		"[SendClientAdjustment:%s] pc=%p adjTs=%.3f ack=%d adjPhys=%d priPing=%d exact=%.4f currentTs=%.3f lastUpdate=%.3f pcState=%s pawn=%p pawnState=%s phys=%d char=%d itemProf=%d profile=%d profileType=%d skillGroup=%d devActors=%d repDevices=%d adjLoc=(%.1f, %.1f, %.1f) adjVel=(%.1f, %.1f, %.1f)\n",
+		phase,
+		pc,
+		adj.TimeStamp,
+		(int)adj.bAckGoodMove,
+		(int)adj.newPhysics,
+		pri ? (int)pri->Ping : -1,
+		pri ? pri->ExactPing : -1.0f,
+		pc->CurrentTimeStamp,
+		pc->LastUpdateTime,
+		pc->GetStateName().GetName() ? pc->GetStateName().GetName() : "<null>",
+		pawn,
+		pawn && pawn->GetStateName().GetName() ? pawn->GetStateName().GetName() : "<null>",
+		pawn ? (int)pawn->Physics : -1,
+		ctx.characterId, ctx.itemProfileId, ctx.profileId, ctx.profileType, ctx.skillGroupSetId, ctx.deviceActors, ctx.replicatedDevices,
+		adj.NewLoc.X, adj.NewLoc.Y, adj.NewLoc.Z,
+		adj.NewVel.X, adj.NewVel.Y, adj.NewVel.Z);
 }
 
 static void LogGameTimerSnapshot(const char* phase, UObject* Object, UFunction* Function) {
@@ -326,15 +614,25 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	const char* name = nameString.c_str();
 
 	// Hottest set first: per-tick / per-move noise that we want to pass straight through.
+	if (strcmp(name, "Function Engine.PlayerController.ServerMove") == 0)      return DispatchTag::ServerMove;
+	if (strcmp(name, "Function Engine.PlayerController.OldServerMove") == 0)   return DispatchTag::OldServerMove;
+	if (strcmp(name, "Function Engine.PlayerController.DualServerMove") == 0)  return DispatchTag::DualServerMove;
+	if (strcmp(name, "Function TgGame.TgPlayerController.ShortServerMove") == 0) return DispatchTag::TgShortServerMove;
+	if (strcmp(name, "Function TgGame.TgPlayerController.RMServerMove") == 0) return DispatchTag::TgRMServerMove;
+	if (strcmp(name, "Function Engine.PlayerController.ServerUpdatePing") == 0) return DispatchTag::ServerUpdatePing;
+	if (strcmp(name, "Function Engine.PlayerController.ClientAckGoodMove") == 0) return DispatchTag::ClientAckGoodMove;
+	if (strcmp(name, "Function Engine.PlayerController.ClientAdjustPosition") == 0) return DispatchTag::ClientAdjustPosition;
+	if (strcmp(name, "Function Engine.PlayerController.ShortClientAdjustPosition") == 0) return DispatchTag::ShortClientAdjustPosition;
+	if (strcmp(name, "Function Engine.PlayerController.VeryShortClientAdjustPosition") == 0) return DispatchTag::VeryShortClientAdjustPosition;
+	if (strcmp(name, "Function Engine.PlayerController.LongClientAdjustPosition") == 0) return DispatchTag::LongClientAdjustPosition;
+	if (strcmp(name, "Function Engine.PlayerController.SendClientAdjustment") == 0) return DispatchTag::SendClientAdjustment;
+
 	if (   strcmp(name, "Function Engine.Actor.Tick") == 0
 		|| strcmp(name, "Function Engine.GameInfoDataProvider.ProviderInstanceBound") == 0
 		|| strcmp(name, "Function TgGame.TgPawn.ShouldRechargePowerPool") == 0
 		|| strcmp(name, "Function TgGame.TgPawn_Character.Tick") == 0
 		|| strcmp(name, "Function TgGame.TgDeployable.Tick") == 0
-		|| strcmp(name, "Function Engine.PlayerController.SendClientAdjustment") == 0
 		|| strcmp(name, "Function TgGame.TgMissionObjective_Proximity.Tick") == 0
-		|| strcmp(name, "Function Engine.PlayerController.ServerMove") == 0
-		|| strcmp(name, "Function Engine.PlayerController.OldServerMove") == 0
 		|| strcmp(name, "Function TgGame.TgMissionObjective.IsLocalPlayerAttacker") == 0
 		|| strcmp(name, "Function TgGame.TgProperty.Copy") == 0
 		|| strcmp(name, "Function TgGame.TgDeploy_BeaconEntrance.Touch") == 0
@@ -375,6 +673,9 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	if (strcmp(name, "Function TgGame.TgDevice.ServerStopFire") == 0)                return DispatchTag::ServerStopFire;
 	if (strcmp(name, "Function TgGame.TgDevice.ServerStartFire") == 0)               return DispatchTag::ServerStartFire;
 	if (strcmp(name, "Function TgGame.TgEffect.Remove") == 0)                        return DispatchTag::TgEffectRemove;
+	if (strcmp(name, "Function Engine.Pawn.HealDamage") == 0 ||
+	    strcmp(name, "Function Engine.Actor.HealDamage") == 0)                       return DispatchTag::PawnHealDamage;
+	if (strcmp(name, "Function TgGame.TgDeviceVolume.ApplyHit") == 0)                return DispatchTag::TgDeviceVolumeApplyHit;
 	if (strcmp(name, "Function TgGame.TgPawn.WaitForInventoryThenDoPostPawnSetup") == 0) return DispatchTag::PostPawnSetup;
 	if (strcmp(name, "Function TgGame.TgPlayerController.GetPlayerViewPoint") == 0)  return DispatchTag::GetPlayerViewPoint;
 	if (strcmp(name, "Function TgGame.TgDeploy_Beacon.PickUpDeployable") == 0)        return DispatchTag::BeaconPickUpDeployable;
@@ -559,6 +860,151 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 	case DispatchTag::EarlyOut:
 		CallOriginal(Object, edx, Function, Params, Result);
 		break;
+
+	case DispatchTag::ServerMove: {
+		float ts = 0.0f;
+		FVector* loc = nullptr;
+		if (Logger::IsChannelEnabled("ping") && Params) {
+			ts = *(float*)((char*)Params + 0x00);
+			loc = (FVector*)((char*)Params + 0x10);
+			unsigned char flags = *(unsigned char*)((char*)Params + 0x1C);
+			LogMovePingSample("ServerMove", (APlayerController*)Object, ts, flags, loc);
+		} else if (Params) {
+			ts = *(float*)((char*)Params + 0x00);
+			loc = (FVector*)((char*)Params + 0x10);
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		ApplyDomeVrHealPadFallback((APlayerController*)Object, loc, ts);
+		break;
+	}
+
+	case DispatchTag::OldServerMove: {
+		if (Logger::IsChannelEnabled("ping") && Params) {
+			float ts = *(float*)((char*)Params + 0x00);
+			unsigned char flags = *(unsigned char*)((char*)Params + 0x07);
+			LogMovePingSample("OldServerMove", (APlayerController*)Object, ts, flags);
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	}
+
+	case DispatchTag::DualServerMove: {
+		float ts = 0.0f;
+		FVector* loc = nullptr;
+		if (Logger::IsChannelEnabled("ping") && Params) {
+			ts = *(float*)((char*)Params + 0x18);
+			loc = (FVector*)((char*)Params + 0x28);
+			unsigned char flags = *(unsigned char*)((char*)Params + 0x34);
+			LogMovePingSample("DualServerMove", (APlayerController*)Object, ts, flags, loc);
+		} else if (Params) {
+			ts = *(float*)((char*)Params + 0x18);
+			loc = (FVector*)((char*)Params + 0x28);
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		ApplyDomeVrHealPadFallback((APlayerController*)Object, loc, ts);
+		break;
+	}
+
+	case DispatchTag::TgShortServerMove: {
+		float ts = 0.0f;
+		FVector* loc = nullptr;
+		if (Logger::IsChannelEnabled("ping") && Params) {
+			ts = *(float*)((char*)Params + 0x00);
+			loc = (FVector*)((char*)Params + 0x04);
+			unsigned char flags = *(unsigned char*)((char*)Params + 0x10);
+			LogMovePingSample("TgShortServerMove", (APlayerController*)Object, ts, flags, loc);
+		} else if (Params) {
+			ts = *(float*)((char*)Params + 0x00);
+			loc = (FVector*)((char*)Params + 0x04);
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		ApplyDomeVrHealPadFallback((APlayerController*)Object, loc, ts);
+		break;
+	}
+
+	case DispatchTag::TgRMServerMove: {
+		float ts = 0.0f;
+		FVector* loc = nullptr;
+		if (Logger::IsChannelEnabled("ping") && Params) {
+			ts = *(float*)((char*)Params + 0x00);
+			loc = (FVector*)((char*)Params + 0x10);
+			unsigned char flags = *(unsigned char*)((char*)Params + 0x1C);
+			LogMovePingSample("TgRMServerMove", (APlayerController*)Object, ts, flags, loc);
+		} else if (Params) {
+			ts = *(float*)((char*)Params + 0x00);
+			loc = (FVector*)((char*)Params + 0x10);
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		ApplyDomeVrHealPadFallback((APlayerController*)Object, loc, ts);
+		break;
+	}
+
+	case DispatchTag::ServerUpdatePing: {
+		int newPing = Params ? *(int*)((char*)Params + 0x00) : -1;
+		LogServerUpdatePing((APlayerController*)Object, newPing, "before");
+		CallOriginal(Object, edx, Function, Params, Result);
+		LogServerUpdatePing((APlayerController*)Object, newPing, "after");
+		break;
+	}
+
+	case DispatchTag::ClientAckGoodMove: {
+		if (Logger::IsChannelEnabled("ping") && Params) {
+			float ts = *(float*)((char*)Params + 0x00);
+			LogClientMoveAckSample("ClientAckGoodMove", (APlayerController*)Object, 0, ts, -1);
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	}
+
+	case DispatchTag::ClientAdjustPosition: {
+		if (Logger::IsChannelEnabled("ping") && Params) {
+			float ts = *(float*)((char*)Params + 0x00);
+			unsigned char phys = *(unsigned char*)((char*)Params + 0x0C);
+			FVector loc = { *(float*)((char*)Params + 0x10), *(float*)((char*)Params + 0x14), *(float*)((char*)Params + 0x18) };
+			LogClientMoveAckSample("ClientAdjustPosition", (APlayerController*)Object, 1, ts, (int)phys, &loc);
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	}
+
+	case DispatchTag::ShortClientAdjustPosition: {
+		if (Logger::IsChannelEnabled("ping") && Params) {
+			float ts = *(float*)((char*)Params + 0x00);
+			unsigned char phys = *(unsigned char*)((char*)Params + 0x0C);
+			FVector loc = { *(float*)((char*)Params + 0x10), *(float*)((char*)Params + 0x14), *(float*)((char*)Params + 0x18) };
+			LogClientMoveAckSample("ShortClientAdjustPosition", (APlayerController*)Object, 2, ts, (int)phys, &loc);
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	}
+
+	case DispatchTag::VeryShortClientAdjustPosition: {
+		if (Logger::IsChannelEnabled("ping") && Params) {
+			float ts = *(float*)((char*)Params + 0x00);
+			FVector loc = { *(float*)((char*)Params + 0x04), *(float*)((char*)Params + 0x08), *(float*)((char*)Params + 0x0C) };
+			LogClientMoveAckSample("VeryShortClientAdjustPosition", (APlayerController*)Object, 3, ts, -1, &loc);
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	}
+
+	case DispatchTag::LongClientAdjustPosition: {
+		if (Logger::IsChannelEnabled("ping") && Params) {
+			float ts = *(float*)((char*)Params + 0x00);
+			unsigned char phys = *(unsigned char*)((char*)Params + 0x0C);
+			FVector loc = { *(float*)((char*)Params + 0x10), *(float*)((char*)Params + 0x14), *(float*)((char*)Params + 0x18) };
+			LogClientMoveAckSample("LongClientAdjustPosition", (APlayerController*)Object, 4, ts, (int)phys, &loc);
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	}
+
+	case DispatchTag::SendClientAdjustment: {
+		LogSendClientAdjustmentSample("before", (APlayerController*)Object);
+		CallOriginal(Object, edx, Function, Params, Result);
+		LogSendClientAdjustmentSample("after", (APlayerController*)Object);
+		break;
+	}
 
 	// case DispatchTag::GameTimerDiagnostic:
 	// 	LogGameTimerSnapshot("before", Object, Function);
@@ -1184,6 +1630,49 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// base TgEffect.Remove, so buffs are dispatched explicitly there).
 		DoCatchAll();
 		break;
+
+	case DispatchTag::PawnHealDamage: {
+		CallOriginal(Object, edx, Function, Params, Result);
+		ATgPawn* Pawn = ResolvePawnForScopeLog(Object);
+		if (Pawn != nullptr) {
+			int maxHp = Pawn->HealthMax;
+			if (Pawn->r_nHealthMaximum > maxHp) maxHp = Pawn->r_nHealthMaximum;
+			if (maxHp > 0 && Pawn->Health > 0) {
+				int hp = Pawn->Health;
+				if (hp > maxHp) hp = maxHp;
+				SyncPawnHealth::Apply(Pawn, hp, maxHp, true);
+			}
+		}
+		break;
+	}
+
+	case DispatchTag::TgDeviceVolumeApplyHit: {
+		ATgDeviceVolume* Volume = (ATgDeviceVolume*)Object;
+		struct ApplyHitParms { AActor* Target; };
+		AActor* Target = Params ? ((ApplyHitParms*)Params)->Target : nullptr;
+		ATgPawn* Pawn = ResolvePawnForScopeLog((UObject*)Target);
+		const int beforeHp = Pawn ? Pawn->Health : 0;
+
+		CallOriginal(Object, edx, Function, Params, Result);
+
+		if (Volume && Pawn &&
+		    Config::GetMapNameChar() == "Dome3_VR_Arena_P" &&
+		    Volume->s_nDeviceId == 2064 &&
+		    Volume != DomeVrHealPad::GetRegisteredVolume() &&
+		    Pawn->Health == beforeHp) {
+			int maxHp = Pawn->HealthMax;
+			if (Pawn->r_nHealthMaximum > maxHp) maxHp = Pawn->r_nHealthMaximum;
+			if (maxHp > 0 && Pawn->Health > 0 && Pawn->Health < maxHp) {
+				int hp = Pawn->Health + 200;
+				if (hp > maxHp) hp = maxHp;
+				SyncPawnHealth::Apply(Pawn, hp, maxHp, true);
+				Logger::Log("device-volume",
+					"[ApplyHit] Dome VR fallback healed pawn=0x%p volume=0x%p hp=%d/%d\n",
+					Pawn, Volume, hp, maxHp);
+			}
+		}
+		break;
+	}
 
 	// Note: `Function TgGame.TgEffect.CheckEffectBuffModifier` previously had
 	// a PE-time guard here that did SDK-caller damage-mod scaling. With the

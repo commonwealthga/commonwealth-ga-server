@@ -23,7 +23,7 @@
 // our SpawnObject hook handles the actual spawn + RegisterBeacon for exit
 // factories when the manager already exists.
 
-void __fastcall* TgTeamBeaconManager__SpawnNewBeaconForTeam::Call(
+void __fastcall TgTeamBeaconManager__SpawnNewBeaconForTeam::Call(
 	ATgTeamBeaconManager* mgr, void* /*edx*/)
 {
 	if (!mgr) return nullptr;

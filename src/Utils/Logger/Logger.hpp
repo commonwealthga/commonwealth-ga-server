@@ -56,8 +56,7 @@ public:
 	// and before any logging or ClearEnabledChannelFiles. fopen("a") does NOT
 	// auto-create parent directories, so if the spawner-supplied
 	// `<base>\<instance_id>` subdir doesn't exist yet, every channel write
-	// would silently fail. Only handles the leaf; parents (e.g. "C:") must
-	// already exist.
+	// would silently fail.
 	static void EnsureLogDirExists();
 
 	// Truncate every <LogDir>/<channel>.txt for each currently-file-enabled

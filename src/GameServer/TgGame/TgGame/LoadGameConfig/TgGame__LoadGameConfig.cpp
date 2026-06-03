@@ -28,7 +28,7 @@ AvA theft = TgGame_Escort
 
 */
 
-void __fastcall* TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
+void __fastcall TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	LogCallBegin();
 	if (Logger::IsChannelEnabled("gametimer")) {
 		const std::string gameName = ((UObject*)Game)->GetFullName();

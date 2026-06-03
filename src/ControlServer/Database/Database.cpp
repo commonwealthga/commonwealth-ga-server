@@ -219,7 +219,7 @@ void Database::Init() {
 				(12711, 29, 2, 0), \
 				(12714, 34, 2, 0), \
 				(12713, 34, 2, 0), \
-				(12709, 28, 2, 0); \
+				(12709, 28, 2, 0), \
 				(12698, 41, 2, 0); \
 			", nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
@@ -1113,7 +1113,10 @@ void Database::Init() {
 					"  active_flag             INTEGER NOT NULL DEFAULT 1,"
 					"  locked_flag             INTEGER NOT NULL DEFAULT 0,"
 					"  remaining_seconds       INTEGER          DEFAULT NULL,"
-					"  map_pool_id             INTEGER          DEFAULT NULL"
+					"  map_pool_id             INTEGER          DEFAULT NULL,"
+					"  min_players_to_pop      INTEGER NOT NULL DEFAULT 1,"
+					"  max_players_per_instance INTEGER NOT NULL DEFAULT 0,"
+					"  pop_delay_seconds       REAL    NOT NULL DEFAULT 0.0"
 					")",
 					"INSERT INTO ga_queues_v2 SELECT * FROM ga_queues",
 					"DROP TABLE ga_queues",
@@ -1153,6 +1156,91 @@ void Database::Init() {
 		}
 	}
 
+	{
+		const char* kControlGameplaySchema =
+			"CREATE TABLE IF NOT EXISTS asm_data_set_properties ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  prop_id INTEGER,"
+			"  name TEXT,"
+			"  prop_type_value_id INTEGER,"
+			"  prop_uom_value_id INTEGER,"
+			"  ui_name_msg_id INTEGER,"
+			"  ui_code TEXT"
+			");"
+			"CREATE TABLE IF NOT EXISTS asm_data_set_blueprint_mod_effect_groups ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  blueprint_mod_id INTEGER,"
+			"  effect_group_id INTEGER,"
+			"  make_chance REAL"
+			");"
+			"CREATE TABLE IF NOT EXISTS asm_data_set_blueprint_item_mods ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  blueprint_id INTEGER,"
+			"  blueprint_mod_id INTEGER,"
+			"  name_msg_id INTEGER,"
+			"  quality_value_id INTEGER,"
+			"  icon_id INTEGER"
+			");"
+			"CREATE TABLE IF NOT EXISTS asm_data_set_blueprints ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  blueprint_id INTEGER,"
+			"  created_item_id INTEGER,"
+			"  generation_value_id INTEGER,"
+			"  durability INTEGER,"
+			"  quantity INTEGER,"
+			"  loot_table_group_id INTEGER,"
+			"  override_name_msg_id INTEGER,"
+			"  destroy_on_use_flag INTEGER"
+			");"
+			"CREATE TABLE IF NOT EXISTS ga_players_inventory ("
+			"  id                   INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  user_id              INTEGER NOT NULL REFERENCES ga_users(id),"
+			"  profile_id           INTEGER NOT NULL DEFAULT 0,"
+			"  device_id            INTEGER NOT NULL DEFAULT 0,"
+			"  quality              INTEGER NOT NULL DEFAULT 0,"
+			"  mod_effect_group_ids TEXT    NOT NULL DEFAULT '',"
+			"  oc                   INTEGER NOT NULL DEFAULT 0,"
+			"  allowed_slots        TEXT    NOT NULL DEFAULT '',"
+			"  created_at           INTEGER NOT NULL DEFAULT (strftime('%s','now')),"
+			"  item_id              INTEGER NOT NULL DEFAULT 0,"
+			"  stock_n              INTEGER NOT NULL DEFAULT 0"
+			");"
+			"CREATE TABLE IF NOT EXISTS ga_character_devices ("
+			"  id              INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  character_id    INTEGER NOT NULL REFERENCES ga_characters(id),"
+			"  item_profile_id INTEGER NOT NULL,"
+			"  inventory_id    INTEGER NOT NULL REFERENCES ga_players_inventory(id),"
+			"  equipped_slot   INTEGER NOT NULL,"
+			"  UNIQUE(character_id, item_profile_id, equipped_slot)"
+			");"
+			"CREATE INDEX IF NOT EXISTS idx_ga_players_inventory_user "
+			"  ON ga_players_inventory(user_id, profile_id);"
+			"CREATE UNIQUE INDEX IF NOT EXISTS idx_ga_players_inventory_cosmetic_uniq "
+			"  ON ga_players_inventory(user_id, item_id, stock_n) WHERE item_id > 0;"
+			"CREATE INDEX IF NOT EXISTS idx_ga_players_inventory_item "
+			"  ON ga_players_inventory(user_id, item_id);"
+			"CREATE INDEX IF NOT EXISTS idx_ga_character_devices_char "
+			"  ON ga_character_devices(character_id);";
+		result = sqlite3_exec(db, kControlGameplaySchema, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to ensure control gameplay schema: %s\n", err);
+			sqlite3_free(err);
+			err = nullptr;
+			return;
+		}
+
+		const char* kInventoryColumnAlters[] = {
+			"ALTER TABLE ga_players_inventory ADD COLUMN item_id INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_players_inventory ADD COLUMN stock_n INTEGER NOT NULL DEFAULT 0;",
+		};
+		for (const char* sql : kInventoryColumnAlters) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				sqlite3_free(err);
+				err = nullptr;
+			}
+		}
+	}
+
 	// Floor-only version write. The game-server DLL bumps `version_info.version`
 	// past 19 (currently to 24) — an unconditional UPDATE here would silently
 	// downgrade the counter, causing the DLL's `version < 21` block to re-fire
@@ -1167,6 +1255,19 @@ void Database::Init() {
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
+	}
+
+	sqlite3_free(err);
+	err = nullptr;
+	result = sqlite3_exec(db,
+		"UPDATE map_game_info "
+		"SET entry_background_image_res_id = 4985 "
+		"WHERE map_game_id = 100005 "
+		"   OR map_name IN ('Dome3_VR_Arena_P', 'Dome3_VR_Arena_P_reserved')",
+		nullptr, nullptr, &err);
+	if (result != SQLITE_OK) {
+		sqlite3_free(err);
+		err = nullptr;
 	}
 
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.

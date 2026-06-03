@@ -97,8 +97,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	PlayerController->Pawn = newpawn;
 	newpawn->Controller = PlayerController;
-
-	PlayerController->eventPossess(PlayerController->Pawn, 0, 0);
+	// RestartPlayer owns Possess after this returns; doing it here runs before
+	// cosmetics, inventory, PRI/team state, and effect ownership are ready.
 
 	// NOTE: don't call ClientSetCinematicMode here — we're still inside
 	// PostLogin → RestartPlayer → SpawnDefaultPawnFor, i.e. BEFORE
@@ -211,6 +211,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// (Engine APawn::HealthMax isn't written by SetProperty(304)).
 	int hp = newpawn->r_nHealthMaximum;
 	newpawn->r_nProfileId = classConfig.profileId;
+	newpawn->r_nProfileTypeValueId = classConfig.classTypeValueId;
 	newpawn->r_bDisableAllDevices = 0;
 	newpawn->r_bEnableEquip = 1;
 	newpawn->r_bEnableSkills = 1;
@@ -422,8 +423,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	// OLD: TgGame__SpawnBotById::GiveDevicesFromBotConfig(newpawn, newrepplayer, PLAYER_BOT_ID);
 
-	Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: profileId=%d, skillGroupSetId=%d, botId=%d, characterId=%d, hp=%d\n",
-	    classConfig.profileId, classConfig.skillGroupSetId, profileId, newpawn->s_nCharacterId, hp);
+	Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: profileId=%d, profileType=%d, skillGroupSetId=%d, botId=%d, characterId=%d, hp=%d\n",
+	    classConfig.profileId, classConfig.classTypeValueId, classConfig.skillGroupSetId, profileId, newpawn->s_nCharacterId, hp);
 
 	// Read equipped devices from DB.
 	//
@@ -467,6 +468,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		Logger::Log(GetLogChannel(),
 			"SpawnPlayerCharacter: itemProfileId=%d nbr=5 for charId=%lld\n",
 			item_profile_id, charId);
+		int equippedDeviceActors = 0;
 
 		// (0) Cosmetic assembly first — BEFORE the device equip loop and
 		// BEFORE Inventory::Finalize. Why ordering matters:
@@ -539,7 +541,44 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 					}
 				}
 
-				Inventory::Equip(newpawn, deviceId, slot, quality, inventoryId, mods);
+				Logger::Log("debug",
+					"SpawnPlayerCharacter: equip row char=%lld profile=%d slot=%d device=%d inv=%d quality=%d mods=%zu\n",
+					charId, item_profile_id, slot, deviceId, inventoryId, quality, mods.size());
+				const bool hiddenRestDevice =
+					(slot == 14 && deviceId == GA::DeviceId::RestDevice);
+				if (hiddenRestDevice) {
+					// R self-heal uses this hidden slot; bind the actor but
+					// skip startup UpdateClientDevices, which crashes here.
+					ATgDevice* restDevice = Inventory::Equip(newpawn, deviceId, slot, quality, inventoryId, mods);
+					if (restDevice != nullptr) {
+						if (newrepplayer != nullptr) {
+							newpawn->r_EquipDeviceInfo[slot] = newrepplayer->r_EquipDeviceInfo[slot];
+						}
+						restDevice->bNetDirty = 1;
+						restDevice->bForceNetUpdate = 1;
+						newpawn->bNetDirty = 1;
+						newpawn->bForceNetUpdate = 1;
+						if (newrepplayer != nullptr) {
+							newrepplayer->bNetDirty = 1;
+							newrepplayer->bForceNetUpdate = 1;
+						}
+						Logger::Log("debug",
+							"SpawnPlayerCharacter: bound hidden rest device slot=14 char=%lld inv=%d without startup refresh\n",
+							charId, inventoryId);
+					} else {
+						Logger::Log("debug",
+							"SpawnPlayerCharacter: failed to bind hidden rest device slot=14 char=%lld inv=%d\n",
+							charId, inventoryId);
+					}
+					continue;
+				}
+				ATgDevice* equipped = Inventory::Equip(newpawn, deviceId, slot, quality, inventoryId, mods);
+				if (equipped != nullptr) {
+					++equippedDeviceActors;
+					Logger::Log("debug",
+						"SpawnPlayerCharacter: equipped slot=%d device=%d inv=%d\n",
+						slot, deviceId, inventoryId);
+				}
 			}
 			sqlite3_finalize(stmt);
 		} else {
@@ -552,7 +591,20 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		// the single source of truth for equipped state — if the player
 		// hasn't equipped slot 14, nothing is equipped there.
 
-		Inventory::Finalize(newpawn);
+		if (equippedDeviceActors > 0) {
+			Logger::Log("debug",
+				"SpawnPlayerCharacter: deferring UpdateClientDevices for %d startup device actor(s)\n",
+				equippedDeviceActors);
+			newpawn->bNetDirty = 1;
+			newpawn->bForceNetUpdate = 1;
+			if (newrepplayer != nullptr) {
+				newrepplayer->bNetDirty = 1;
+				newrepplayer->bForceNetUpdate = 1;
+			}
+		} else {
+			Logger::Log("debug",
+				"SpawnPlayerCharacter: no equipped device actors; skipping UpdateClientDevices finalize\n");
+		}
 
 		// Cosmetic assembly was applied BEFORE the device loop above; see the
 		// (0) comment up there for why the order matters.

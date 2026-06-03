@@ -1,6 +1,7 @@
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
+#include "src/ControlServer/InstanceSpawner/InstanceSpawner.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/Shared/IpcFraming.hpp"
@@ -238,6 +239,14 @@ private:
             int64_t inst_id = j.value("instance_id", (int64_t)0);
             Logger::Log("ipc", "[IpcServer] INSTANCE_EMPTY: instance=%lld\n", (long long)inst_id);
             InstanceRegistry::SetLastEmptyAtIfEmpty(inst_id);
+            auto inst = InstanceRegistry::GetInstanceById(inst_id);
+            if (inst && inst->is_home_map && inst->state != "STOPPED") {
+                Logger::Log("ipc",
+                    "[IpcServer] INSTANCE_EMPTY: retiring empty home instance=%lld\n",
+                    (long long)inst_id);
+                InstanceSpawner::StopInstanceProcess(*inst, "empty home instance", 1);
+                InstanceRegistry::MarkStopped(inst_id);
+            }
         }
         else if (type == IpcProtocol::MSG_NEED_HOME_MAP) {
             // Mission instance ended a round and is warning us players are about
@@ -469,13 +478,35 @@ void IpcServer::SetAdminActionHandler(AdminActionHandler cb) {
 // ---------------------------------------------------------------------------
 
 IpcServer::IpcServer(asio::io_context& io, uint16_t port)
-    : io_(io), acceptor_(io, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)) {
+    : io_(io) {
+    asio::error_code ec;
+    acceptor_ = std::make_unique<asio::ip::tcp::acceptor>(io.get_executor());
+    asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), port);
+    acceptor_->open(endpoint.protocol(), ec);
+    if (ec) {
+        Logger::Log("ipc", "[IpcServer] Open failed on port %d: %s\n", port, ec.message().c_str());
+        return;
+    }
+    acceptor_->bind(endpoint, ec);
+    if (ec) {
+        Logger::Log("ipc", "[IpcServer] Bind failed on port %d: %s\n", port, ec.message().c_str());
+        acceptor_->close();
+        return;
+    }
+    acceptor_->listen(asio::socket_base::max_listen_connections, ec);
+    if (ec) {
+        Logger::Log("ipc", "[IpcServer] Listen failed on port %d: %s\n", port, ec.message().c_str());
+        acceptor_->close();
+        return;
+    }
+    listening_ = true;
     Logger::Log("ipc", "[IpcServer] Listening on port %d\n", port);
     do_accept();
 }
 
 void IpcServer::do_accept() {
-    acceptor_.async_accept([this](std::error_code ec, asio::ip::tcp::socket sock) {
+    if (!acceptor_) return;
+    acceptor_->async_accept([this](std::error_code ec, asio::ip::tcp::socket sock) {
         if (!ec) {
             Logger::Log("ipc", "[IpcServer] Game instance connected from %s\n",
                 sock.remote_endpoint().address().to_string().c_str());
@@ -483,7 +514,7 @@ void IpcServer::do_accept() {
             // Sessions are not tracked in g_sessions until INSTANCE_HELLO validates them.
             session->start();
         }
-        do_accept();
+        if (listening_) do_accept();
     });
 }
 

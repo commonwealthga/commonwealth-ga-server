@@ -3,6 +3,14 @@
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/pch.hpp"
 
+namespace {
+
+std::string ReservedMapName(const std::string& mapName) {
+	return mapName + "_reserved";
+}
+
+}
+
 std::optional<MapGameInfoRow> MapGameInfo::LookupByName(const std::string& mapName) {
 	if (mapName.empty()) return std::nullopt;
 
@@ -13,7 +21,7 @@ std::optional<MapGameInfoRow> MapGameInfo::LookupByName(const std::string& mapNa
 	const char* kSql =
 		"SELECT mission_time_secs, is_pvp, overtime_secs, allow_overtime "
 		"FROM map_game_info "
-		"WHERE map_name = ? COLLATE NOCASE LIMIT 1";
+		"WHERE map_name = ? COLLATE NOCASE OR map_name = ? COLLATE NOCASE LIMIT 1";
 	if (sqlite3_prepare_v2(db, kSql, -1, &stmt, nullptr) != SQLITE_OK) {
 		// Pre-v95/v97 DB (column missing). Treat as "no override" so callers
 		// fall back to their hardcoded defaults — same behavior as before.
@@ -21,6 +29,8 @@ std::optional<MapGameInfoRow> MapGameInfo::LookupByName(const std::string& mapNa
 		return std::nullopt;
 	}
 	sqlite3_bind_text(stmt, 1, mapName.c_str(), -1, SQLITE_TRANSIENT);
+	const std::string reservedMapName = ReservedMapName(mapName);
+	sqlite3_bind_text(stmt, 2, reservedMapName.c_str(), -1, SQLITE_TRANSIENT);
 
 	std::optional<MapGameInfoRow> out;
 	if (sqlite3_step(stmt) == SQLITE_ROW) {

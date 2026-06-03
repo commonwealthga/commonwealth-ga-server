@@ -37,8 +37,8 @@ public:
 	// off, so a leftover value can't leak into a later factory spawn.
 	static float nPendingDifficultyScalarOverride;
 
-	static void __fastcall* Call(ATgPawn* Pawn, void* edx);
-	static inline void __fastcall* CallOriginal(ATgPawn* Pawn, void* edx) {
+	static void __fastcall Call(ATgPawn* Pawn, void* edx);
+	static inline void __fastcall CallOriginal(ATgPawn* Pawn, void* edx) {
 		m_original(Pawn, edx);
 	};
 };

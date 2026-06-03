@@ -23,6 +23,7 @@ public:
 
 private:
     asio::ip::tcp::socket socket_;
+    asio::steady_timer bind_retry_timer_;
     // Scratch buffer for one async_read_some call. TCP is a byte stream, so a
     // single read can return a partial packet, exactly one packet, or several
     // packets concatenated — appended into `accumulator_` and drained from
@@ -33,6 +34,8 @@ private:
     std::deque<std::vector<uint8_t>> write_queue_;
     std::string player_name_;
     std::string session_guid_;
+    int bind_retry_attempts_ = 0;
+    bool announced_join_ = false;
     // Single-shot lifecycle guard. Set by TearDown(); checked in every async
     // callback so a session that's already been torn down (e.g. by a write
     // error) is inert if a stale callback fires later. Without this the read
@@ -61,6 +64,9 @@ private:
     void do_write();
     void handle_packet(const uint8_t* data, size_t length);
     void broadcast(const uint8_t* data, size_t length);
+    bool BindPlayerFromRegistry(const char* reason);
+    void ScheduleBindRetry();
+    void AnnounceJoinIfNeeded();
 
     // Single tear-down path. Idempotent via `closed_`. On entry, optionally
     // broadcasts a "<player> has left the chat" system message if the session

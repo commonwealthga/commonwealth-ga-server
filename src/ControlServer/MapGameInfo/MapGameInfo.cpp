@@ -14,6 +14,15 @@ std::string LowerCopy(const std::string& s) {
     return out;
 }
 
+std::string StripReservedSuffix(std::string s) {
+    constexpr const char* kSuffix = "_reserved";
+    const size_t suffixLen = 9;
+    if (s.size() >= suffixLen && s.compare(s.size() - suffixLen, suffixLen, kSuffix) == 0) {
+        s.resize(s.size() - suffixLen);
+    }
+    return s;
+}
+
 // Keyed by lowercased map_name for case-insensitive lookup.
 std::unordered_map<std::string, MapGameRecord> g_byMapName;
 
@@ -65,7 +74,9 @@ void MapGameInfo::Init() {
             skippedNoName++;
             continue;
         }
-        g_byMapName.emplace(LowerCopy(r.map_name), std::move(r));
+        const std::string key = LowerCopy(r.map_name);
+        g_byMapName.emplace(key, r);
+        g_byMapName.emplace(StripReservedSuffix(key), r);
         loadedRows++;
     }
     sqlite3_finalize(stmt);

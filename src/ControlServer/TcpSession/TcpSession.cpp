@@ -1,5 +1,6 @@
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/Database/Database.hpp"
+#include "src/ControlServer/Constants/DeviceIds.hpp"
 #include "src/ControlServer/Loadouts/ArmorLoadouts.hpp"
 #include "src/ControlServer/MapGameInfo/MapGameInfo.hpp"
 #include "src/ControlServer/MatchmakingService/TicketInfoEncoder.hpp"
@@ -9,6 +10,7 @@
 #include <set>
 #include <map>
 #include <array>
+#include <cctype>
 
 // ---------------------------------------------------------------------------
 // TcpSession static member definitions
@@ -19,6 +21,80 @@ std::map<std::string, std::weak_ptr<TcpSession>> TcpSession::g_sessions_;
 std::function<void()> TcpSession::on_need_home_map_;
 std::string TcpSession::s_host_ = "127.0.0.1";
 uint16_t    TcpSession::s_chat_port_ = 9001;
+
+namespace {
+
+uint32_t FallbackClassMsgId(uint32_t profile_id) {
+    switch (profile_id) {
+        case GA_G::PROFILE_ID_ROBOTIC: return 15447;
+        case GA_G::PROFILE_ID_ASSAULT: return 15448;
+        case GA_G::PROFILE_ID_RECON:   return 15449;
+        case GA_G::PROFILE_ID_MEDIC:   return 15450;
+        default:                       return 22976;
+    }
+}
+
+std::string TrimAsciiWhitespace(const std::string& s) {
+    size_t first = 0;
+    while (first < s.size() && std::isspace(static_cast<unsigned char>(s[first]))) {
+        ++first;
+    }
+    size_t last = s.size();
+    while (last > first && std::isspace(static_cast<unsigned char>(s[last - 1]))) {
+        --last;
+    }
+    return s.substr(first, last - first);
+}
+
+bool EqualsIgnoreAsciiCase(const std::string& a, const char* b) {
+    size_t i = 0;
+    for (; i < a.size() && b[i] != '\0'; ++i) {
+        const unsigned char ca = static_cast<unsigned char>(a[i]);
+        const unsigned char cb = static_cast<unsigned char>(b[i]);
+        if (std::tolower(ca) != std::tolower(cb)) return false;
+    }
+    return i == a.size() && b[i] == '\0';
+}
+
+uint32_t ResolveClassMsgId(uint32_t profile_id, uint32_t fallback, const char* context) {
+    const uint32_t profile_fallback = FallbackClassMsgId(profile_id);
+    const uint32_t resolved_fallback =
+        (profile_fallback != 22976 || fallback == 0) ? profile_fallback : fallback;
+    sqlite3* db = Database::GetConnection();
+    if (!db) {
+        Logger::Log("tcp", "[TcpSession] %s: no DB for class_msg profile=%u, fallback=%u\n",
+            context ? context : "class_msg", profile_id, resolved_fallback);
+        return resolved_fallback;
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+    const int rc = sqlite3_prepare_v2(db,
+        "SELECT COALESCE(name_msg_id, 0) FROM asm_data_set_bots WHERE bot_id = ? LIMIT 1",
+        -1, &stmt, nullptr);
+    if (rc != SQLITE_OK || !stmt) {
+        Logger::Log("tcp", "[TcpSession] %s: class_msg prepare failed profile=%u fallback=%u err=%s\n",
+            context ? context : "class_msg", profile_id, resolved_fallback, sqlite3_errmsg(db));
+        if (stmt) sqlite3_finalize(stmt);
+        return resolved_fallback;
+    }
+
+    sqlite3_bind_int(stmt, 1, static_cast<int>(profile_id));
+    uint32_t class_msg_id = 0;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        class_msg_id = static_cast<uint32_t>(sqlite3_column_int(stmt, 0));
+    }
+    sqlite3_finalize(stmt);
+
+    if (class_msg_id == 0) {
+        Logger::Log("tcp", "[TcpSession] %s: no class_msg row for profile=%u, fallback=%u\n",
+            context ? context : "class_msg", profile_id, resolved_fallback);
+        return resolved_fallback;
+    }
+
+    return class_msg_id;
+}
+
+}  // namespace
 
 void TcpSession::SetHomeMapSpawner(std::function<void()> cb) {
     on_need_home_map_ = std::move(cb);
@@ -80,9 +156,13 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
     if (subtype == "spawn") {
         int pawn_id = j.value("pawn_id", 0);
         session->item_profile_id_ = j.value("item_profile_id", 0);
-        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: spawn pawn_id=%d item_profile_id=%d guid=%s\n",
-            pawn_id, (int)session->item_profile_id_, session_guid.c_str());
-        session->send_inventory_response(pawn_id, session->selected_character_id_);
+        const int64_t character_id = session->selected_character_id_;
+        Logger::Log("ipc", "[TcpSession] DeliverGameEvent: spawn pawn_id=%d item_profile_id=%d char=%lld guid=%s\n",
+            pawn_id, (int)session->item_profile_id_, (long long)character_id, session_guid.c_str());
+        if (pawn_id != 0 && character_id != 0) {
+            session->send_inventory_clear(pawn_id, character_id);
+        }
+        session->send_inventory_response(pawn_id, character_id);
         // Push the character's skill-tree allocation so the in-game skill UI
         // renders the saved state. Client caches the response; opening the
         // skill screen then doesn't require a server round-trip. A later
@@ -158,30 +238,19 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
                     skills.push_back(r);
             }
         }
-        // Opcode 0x00A0 is used bidirectionally: the client also sends it
-        // with an empty DATA_SET_CHARACTER_SKILLS array to REQUEST the
-        // server's current state (observed on skill-UI reopen). Treat an
-        // empty inbound as a request — don't wipe the DB. Real respec goes
-        // through the separate skill_respec IPC subtype.
         Logger::Log("ipc",
-            "[TcpSession] DeliverGameEvent: skill_save char=%lld pawnId=%d rows=%d guid=%s%s\n",
-            (long long)character_id, pawn_id, (int)skills.size(), session_guid.c_str(),
-            skills.empty() ? " (empty -> treated as REQUEST, not persisting)" : "");
-        if (character_id != 0 && !skills.empty()) {
+            "[TcpSession] DeliverGameEvent: skill_save char=%lld pawnId=%d rows=%d guid=%s\n",
+            (long long)character_id, pawn_id, (int)skills.size(), session_guid.c_str());
+        if (character_id != 0) {
             PlayerSessionStore::SetSkillsForCharacter(
                 character_id, (int)session->item_profile_id_, skills);
         }
         // Echo current DB state so the UI's inbound 0x00A0 handler has
         // authoritative data whether this was a save or a request.
         session->send_player_skills_response();
-        // After a skill change, also push SEND_INVENTORY so the client's
-        // per-device stat panels re-render against the new buff state.
-        // Only when pawn_id is provided (game-server-forwarded path) AND
-        // this was a real save (skills non-empty) — a request-shaped empty
-        // marshal shouldn't trigger a redundant inventory blast.
-        if (pawn_id != 0 && !skills.empty() && character_id != 0) {
-            session->send_inventory_response(pawn_id, character_id);
-        }
+		// Avoid a full SEND_INVENTORY blast here. Skill saves can happen while
+		// the profile UI is open and the bag pool is 1000+ entries; repeatedly
+		// rebuilding it tanks the client. Equipment changes own inventory sync.
     }
     else if (subtype == "skill_respec") {
         int64_t character_id = j.value("character_id", (int64_t)0);
@@ -194,11 +263,8 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         }
         // Echo the zeroed allocation to the client so the UI matches.
         session->send_player_skills_response();
-        // Trainer respec wipes everything → also re-send inventory so
-        // per-device stat displays drop the previously-buffed numbers.
-        if (pawn_id != 0 && character_id != 0) {
-            session->send_inventory_response(pawn_id, character_id);
-        }
+		// Do not resend inventory for respec; skill response is authoritative
+		// and equipment changes have their own inventory sync.
     }
     else if (subtype == "equip_save") {
         // Client's equip-screen save (RPC ServerAcceptNewProfileFromEquipScreen).
@@ -263,14 +329,15 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
                 Logger::Log("armor",
                     "[equip_save] REJECTED — DB state unchanged; client will resync from existing\n");
             }
-            // Push the authoritative equipped set back regardless of
-            // accept/reject — accept = client sees its save; reject = client's
-            // optimistic UI gets corrected to what's actually persisted.
-            if (pawn_id != 0) {
-                session->send_inventory_response(pawn_id, character_id);
-            }
-        }
-    }
+			// Push the authoritative equipped set back regardless of
+			// accept/reject — accept = client sees its save; reject = client's
+			// optimistic UI gets corrected to what's actually persisted.
+			if (pawn_id != 0) {
+				session->send_inventory_clear(pawn_id, character_id);
+				session->send_inventory_response(pawn_id, character_id);
+			}
+		}
+	}
     else if (subtype == "profile_switch") {
         // Game-server has finished its atomic switch (revert + apply + IPC).
         // Control-server's job: persist new active profile, sync TcpSession
@@ -739,10 +806,68 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 		case GA_U::GSC_USER_LOGIN: {
 
 			PacketView pkt(data + 6, length - 6);
-			player_name = pkt.ReadString(GA_T::USER_NAME).value_or("unknown");
+			auto read_login_name = [&pkt](uint16_t type) -> std::string {
+				auto field = pkt.ReadString(type);
+				return field ? TrimAsciiWhitespace(*field) : std::string();
+			};
+			std::string requested_user_name = read_login_name(GA_T::USER_NAME);
+			const char* login_field_name = "USER_NAME";
+			if (requested_user_name.empty()) {
+				requested_user_name = read_login_name(GA_T::PLAYER_NAME);
+				login_field_name = "PLAYER_NAME";
+			}
+			if (requested_user_name.empty()) {
+				requested_user_name = read_login_name(GA_T::DATABASE_LOGIN);
+				login_field_name = "DATABASE_LOGIN";
+			}
+			if (requested_user_name.empty()) {
+				requested_user_name = read_login_name(GA_T::HOST_LOGIN);
+				login_field_name = "HOST_LOGIN";
+			}
+			if (requested_user_name.empty()) {
+				requested_user_name = read_login_name(GA_T::HOST_SQL_LOGIN);
+				login_field_name = "HOST_SQL_LOGIN";
+			}
+			const bool has_user_name = !requested_user_name.empty();
+			ip_address_ = socket_.remote_endpoint().address().to_string() + ":" + std::to_string(socket_.remote_endpoint().port());
+
+			if (!has_user_name) {
+				Logger::Log("tcp",
+					"[%s] GSC_USER_LOGIN pre-login frame with no account fields; transient response only ip=%s item_count=%u len=%zu\n",
+					Logger::GetTime(), ip_address_.c_str(), item_count, length);
+				send_login_response_for("", GenerateSessionGuid());
+				break;
+			}
+			if (EqualsIgnoreAsciiCase(requested_user_name, "unknown")) {
+				Logger::Log("tcp",
+					"[%s] GSC_USER_LOGIN reserved username rejected ip=%s\n",
+					Logger::GetTime(), ip_address_.c_str());
+				break;
+			}
+
+			if (!session_guid_.empty()) {
+				Logger::Log("tcp",
+					"[%s] GSC_USER_LOGIN replacing prior session guid=%s name=%s\n",
+					Logger::GetTime(), session_guid_.c_str(), player_name.c_str());
+				MatchmakingService::RemovePlayer(session_guid_);
+				UnregisterSession(session_guid_);
+				IpcServer::ClearPendingAck(session_guid_);
+				PlayerSessionStore::Unregister(session_guid_);
+				session_guid_.clear();
+				user_id_ = 0;
+				selected_character_id_ = 0;
+				selected_profile_id_ = 0;
+				item_profile_id_ = 0;
+				assigned_instance_id_ = 0;
+				current_match_queue_id_ = 0;
+				pending_match_instance_id_ = 0;
+				pending_match_game_mode_.clear();
+				pending_match_task_force_ = 1;
+			}
+
+			player_name = requested_user_name;
 			session_guid_ = GenerateSessionGuid();
 			RegisterSession(session_guid_, shared_from_this());
-			ip_address_ = socket_.remote_endpoint().address().to_string() + ":" + std::to_string(socket_.remote_endpoint().port());
 			user_id_ = PlayerSessionStore::UpsertUser(player_name);
 
 			// Strip any inventory rows / equip references for items the
@@ -760,8 +885,8 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				PlayerSessionStore::Register(info);
 			}
 
-			Logger::Log("tcp", "[%s] Received: GSC_USER_LOGIN [0x%04X], name: %s guid: %s ip: %s\n",
-			   Logger::GetTime(), packet_type, player_name.c_str(), session_guid_.c_str(), ip_address_.c_str());
+			Logger::Log("tcp", "[%s] Received: GSC_USER_LOGIN [0x%04X], name: %s field=%s guid: %s ip: %s\n",
+			   Logger::GetTime(), packet_type, player_name.c_str(), login_field_name, session_guid_.c_str(), ip_address_.c_str());
 
 			// Preemptively ensure a home map instance is starting so it's
 			// likely READY by the time the player selects a character.
@@ -806,13 +931,9 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 					PlayerSessionStore::SetSelectedCharacter(session_guid_, charInfo->id, charInfo->profile_id);
 					// Top up this user's account-scoped inventory pool from
 					// ClassLoadouts.cpp. Idempotent — existing inventory rows
-					// keep their stable `inventory_id`. Brand-new characters
-					// with no ga_character_devices rows also receive an opening
-					// equipped loadout in the same call. Stable IDs are what
-					// make the equip screen safe between sessions; the previous
-					// per-character resync wiped+rewrote on every select, which
-					// would now also wipe any equip choices the player made
-					// last session.
+					// keep their stable `inventory_id`. Gameplay devices stay
+					// bag-only until the player equips them; stable IDs make the
+					// equip screen safe between sessions.
 					PlayerSessionStore::SeedInventoryFromLoadouts(charInfo->user_id);
 					// HUMAN BASE ATTRIBUTES (slot 14) is server-pinned — the
 					// player can't equip it via the UI, so the row must exist
@@ -1038,7 +1159,14 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			selected_character_id_ = PlayerSessionStore::InsertCharacter(
 				user_id_, profileId, headAsmId, genderTypeId, morphBlob,
 				hairAsmId, skinMatParamId, eyeMatParamId);
+			if (selected_character_id_ == 0) {
+				selected_profile_id_ = 0;
+				Logger::Log("tcp", "[%s] ADD_PLAYER_CHARACTER failed: profile=%u user=%lld -- not registering player\n",
+					Logger::GetTime(), profileId, (long long)user_id_);
+				break;
+			}
 			selected_profile_id_   = profileId;
+			PlayerSessionStore::SetSelectedCharacter(session_guid_, selected_character_id_, selected_profile_id_);
 
 			Logger::Log("tcp", "[%s] ADD_PLAYER_CHARACTER: profile=%u head=%u gender=%u hair=%u skin=%u eye=%u morphBytes=%u charId=%lld\n",
 				Logger::GetTime(), profileId, headAsmId, genderTypeId,
@@ -1703,6 +1831,9 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 		// client only nullity-checks the resolved blueprint pointer — the
 		// rendered `[…]` letters come from each effect's `prop.ui_code`, not
 		// from blueprint metadata.
+		//
+		// Slot 14 RestDevice is not cosmetic. R self-heal needs DEVICE_ID to
+		// point at the live ATgDevice inventory id; sending 0 makes R no-op.
 		const bool itemRow       = d.item_id > 0;
 		const bool isArmor       = itemRow && !d.mods.empty();
 		const int marshalItemId  = itemRow ? d.item_id : d.device_id;
@@ -1802,7 +1933,7 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 		append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
 		append(response, 0x01, 0x00);
 
-		append(response, 0x0E, 0x00);   // 14 fields per record (same as equipped)
+		append(response, 0x0D, 0x00);   // 13 fields per bag record
 
 		// v76: cosmetic dispatch + armor extension (see equipped-loop comment).
 		const bool   rowIsItem     = row.item_id > 0;
@@ -1836,19 +1967,6 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 			Write4B(response, GA_T::INVENTORY_ID, row.inventory_id);
 			Write4B(response, GA_T::EFFECT_GROUP_ID, egid);
 		}
-
-		// Bag pool item: single row with EQUIPPED_SLOT_VALUE_ID=0 (matches
-		// pre-loadout-profile baseline). The FixupWidgets gate cares about
-		// the equipped-pass shape; for bag items we just need to populate
-		// invObj+0x68 with 0 so the slot table doesn't accidentally bind
-		// the item to any widget.
-		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
-		append(response, 0x01, 0x00);
-			append(response, 0x04, 0x00);
-			Write4B(response, GA_T::CHARACTER_ID, 0);
-			Write4B(response, GA_T::INVENTORY_ID, row.inventory_id);
-			Write4B(response, GA_T::PROFILE_ID, 0x1);
-			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, 0);
 
 		send_response(response);
 		++bag_shipped;
@@ -2250,7 +2368,7 @@ void TcpSession::send_add_player_character_response()
 	std::vector<uint8_t> response;
 
 	uint16_t packet_type = GA_U::ADD_PLAYER_CHARACTER;
-	uint16_t item_count = 5;
+	uint16_t item_count = 6;
 
 	append(response, packet_type & 0xFF, packet_type >> 8);
 	append(response, item_count & 0xFF, item_count >> 8);
@@ -2258,8 +2376,10 @@ void TcpSession::send_add_player_character_response()
 	WriteString(response, GA_T::PLAYER_NAME, player_name);
 	Write4B(response, GA_T::CHARACTER_ID, static_cast<uint32_t>(selected_character_id_));
 	Write4B(response, GA_T::PROFILE_ID, selected_profile_id_);
+	Write4B(response, GA_T::CLASS_TYPE_VALUE_ID, GetClassConfig(selected_profile_id_).classTypeValueId);
 
-	Write4B(response, GA_T::CLASS_MSG_ID, 0x022976);
+	Write4B(response, GA_T::CLASS_MSG_ID,
+		ResolveClassMsgId(selected_profile_id_, 22976, "ADD_PLAYER_CHARACTER"));
 	Write4B(response, GA_T::HOME_MAP_GAME_ID, 0x050B);
 
 	send_response(response);
@@ -2270,7 +2390,7 @@ void TcpSession::send_select_character_response()
 	std::vector<uint8_t> response;
 
 	uint16_t packet_type = GA_U::GSC_SELECT_CHARACTER;
-	uint16_t item_count = 9;
+	uint16_t item_count = 10;
 
 	append(response, packet_type & 0xFF, packet_type >> 8);
 	append(response, item_count & 0xFF, item_count >> 8);
@@ -2280,8 +2400,11 @@ void TcpSession::send_select_character_response()
 	Write4B(response, GA_T::HOME_MAP_GAME_ID, 0x050B);
 	Write4B(response, GA_T::TASK_FORCE, 0x1);
 	Write4B(response, GA_T::CHARACTER_ID, static_cast<uint32_t>(selected_character_id_));
-	Write4B(response, GA_T::PROFILE_ID, selected_profile_id_ != 0 ? selected_profile_id_ : GA_G::PROFILE_ID_ASSAULT);
-	WriteString(response, GA_T::CLASS_MSG_ID, "22976");
+	const uint32_t profile_id = selected_profile_id_ != 0 ? selected_profile_id_ : GA_G::PROFILE_ID_ASSAULT;
+	Write4B(response, GA_T::PROFILE_ID, profile_id);
+	Write4B(response, GA_T::CLASS_TYPE_VALUE_ID, GetClassConfig(profile_id).classTypeValueId);
+	WriteString(response, GA_T::CLASS_MSG_ID,
+		std::to_string(ResolveClassMsgId(profile_id, 22976, "GSC_SELECT_CHARACTER")));
 
 	WriteString(response, GA_T::PLAYER_NAME, player_name);
 	WriteNBytes(response, GA_T::SESSION_GUID, GuidHexToBytes(session_guid_));
@@ -2450,7 +2573,7 @@ void TcpSession::send_go_play_to_instance(const InstanceInfo& target, int task_f
 	std::vector<uint8_t> response;
 
 	uint16_t packet_type = GA_U::GSC_GO_PLAY;
-	uint16_t item_count = 12;
+	uint16_t item_count = 13;
 
 	append(response, packet_type & 0xFF, packet_type >> 8);
 	append(response, item_count & 0xFF, item_count >> 8);
@@ -2483,13 +2606,17 @@ void TcpSession::send_go_play_to_instance(const InstanceInfo& target, int task_f
 	Write4B(response, GA_T::TASK_FORCE, static_cast<uint32_t>(task_force));
 	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
 
-	Write4B(response, GA_T::CLASS_MSG_ID, 22976);
+	const uint32_t profile_id = selected_profile_id_ != 0 ? selected_profile_id_ : GA_G::PROFILE_ID_ASSAULT;
+	const auto& class_config = GetClassConfig(profile_id);
+	const uint32_t class_msg_id = ResolveClassMsgId(profile_id, 22976, "GSC_GO_PLAY");
+	Write4B(response, GA_T::CLASS_TYPE_VALUE_ID, class_config.classTypeValueId);
+	Write4B(response, GA_T::CLASS_MSG_ID, class_msg_id);
 
 	send_response(response);
-	Logger::Log("tcp", "[TcpSession] Sent GSC_GO_PLAY → instance=%lld map=%s game_id=%u name_msg=%u bg_res=%u tf=%d for %s\n",
+	Logger::Log("tcp", "[TcpSession] Sent GSC_GO_PLAY → instance=%lld map=%s game_id=%u name_msg=%u bg_res=%u class_type=%u class_msg=%u tf=%d for %s\n",
 		(long long)target.instance_id, target.map_name.c_str(),
 		map_game_id, friendly_name_msg_id, entry_background_image_res_id,
-		task_force, session_guid_.c_str());
+		class_config.classTypeValueId, class_msg_id, task_force, session_guid_.c_str());
 }
 
 void TcpSession::send_instance_ready_response()
@@ -2528,12 +2655,13 @@ void TcpSession::send_character_list_response()
 	                 static_cast<uint8_t>(characters.size() >> 8));
 
 	for (const auto& c : characters) {
-		append(response, 0x0B, 0x00);  // inner item count = 11
+		append(response, 0x0C, 0x00);  // inner item count = 12
 		Write4B(response, GA_T::CHARACTER_ID,           static_cast<uint32_t>(c.id));
 		Write4B(response, GA_T::CHARACTER_LEVEL,        0x32);
 		Write4B(response, GA_T::CURRENT_LEVEL,          0x32);
 		Write4B(response, GA_T::FORCED_CHARACTER_LEVEL, 0x32);
 		Write4B(response, GA_T::PROFILE_ID,             c.profile_id);
+		Write4B(response, GA_T::CLASS_TYPE_VALUE_ID,    GetClassConfig(c.profile_id).classTypeValueId);
 		Write4B(response, GA_T::HEAD_ASM_ID,            c.head_asm_id);
 		Write4B(response, GA_T::HAIR_ASM_ID,            0x85D);
 		Write4B(response, GA_T::GENDER_TYPE_VALUE_ID,   c.gender_type_value_id);
@@ -2565,12 +2693,13 @@ void TcpSession::send_character_list_response_mock()
 	append(response, 0x04, 0x00);        // count elements
 
 	// ASSAULT
-	append(response, 0x0B, 0x00);  // inner item count
+	append(response, 0x0C, 0x00);  // inner item count
 	Write4B(response, GA_T::CHARACTER_ID, 0x2AC950);
 	Write4B(response, GA_T::CHARACTER_LEVEL, 0x32);
 	Write4B(response, GA_T::CURRENT_LEVEL, 0x32);
 	Write4B(response, GA_T::FORCED_CHARACTER_LEVEL, 0x32);
 	Write4B(response, GA_T::PROFILE_ID, GA_G::PROFILE_ID_ASSAULT);
+	Write4B(response, GA_T::CLASS_TYPE_VALUE_ID, GetClassConfig(GA_G::PROFILE_ID_ASSAULT).classTypeValueId);
 	Write4B(response, GA_T::HEAD_ASM_ID, GA_G::HEAD_ASM_ID_TROLL);
 	Write4B(response, GA_T::HAIR_ASM_ID, 0x85D);
 	Write4B(response, GA_T::GENDER_TYPE_VALUE_ID, 0x355);
@@ -2579,12 +2708,13 @@ void TcpSession::send_character_list_response_mock()
 	Write4B(response, GA_T::SKILL_GROUP_SET_ID, GA_G::SKILL_GROUP_SET_ID_ASSAULT);
 
 	// MEDIC
-	append(response, 0x0B, 0x00);  // inner item count
+	append(response, 0x0C, 0x00);  // inner item count
 	Write4B(response, GA_T::CHARACTER_ID, 0x0000f69c);
 	Write4B(response, GA_T::CHARACTER_LEVEL, 0x32);
 	Write4B(response, GA_T::CURRENT_LEVEL, 0x32);
 	Write4B(response, GA_T::FORCED_CHARACTER_LEVEL, 0x32);
 	Write4B(response, GA_T::PROFILE_ID, GA_G::PROFILE_ID_MEDIC);
+	Write4B(response, GA_T::CLASS_TYPE_VALUE_ID, GetClassConfig(GA_G::PROFILE_ID_MEDIC).classTypeValueId);
 	Write4B(response, GA_T::HEAD_ASM_ID, GA_G::HEAD_ASM_ID_TROLL);
 	Write4B(response, GA_T::HAIR_ASM_ID, 0x85D);
 	Write4B(response, GA_T::GENDER_TYPE_VALUE_ID, 0x355);
@@ -2593,12 +2723,13 @@ void TcpSession::send_character_list_response_mock()
 	Write4B(response, GA_T::SKILL_GROUP_SET_ID, GA_G::SKILL_GROUP_SET_ID_MEDIC);
 
 	// RECON
-	append(response, 0x0B, 0x00);  // inner item count
+	append(response, 0x0C, 0x00);  // inner item count
 	Write4B(response, GA_T::CHARACTER_ID, 0x2AC950);
 	Write4B(response, GA_T::CHARACTER_LEVEL, 0x32);
 	Write4B(response, GA_T::CURRENT_LEVEL, 0x32);
 	Write4B(response, GA_T::FORCED_CHARACTER_LEVEL, 0x32);
 	Write4B(response, GA_T::PROFILE_ID, GA_G::PROFILE_ID_RECON);
+	Write4B(response, GA_T::CLASS_TYPE_VALUE_ID, GetClassConfig(GA_G::PROFILE_ID_RECON).classTypeValueId);
 	Write4B(response, GA_T::HEAD_ASM_ID, GA_G::HEAD_ASM_ID_TROLL);
 	Write4B(response, GA_T::HAIR_ASM_ID, 0x85D);
 	Write4B(response, GA_T::GENDER_TYPE_VALUE_ID, 0x355);
@@ -2607,12 +2738,13 @@ void TcpSession::send_character_list_response_mock()
 	Write4B(response, GA_T::SKILL_GROUP_SET_ID, GA_G::SKILL_GROUP_SET_ID_RECON);
 
 	// ROBO
-	append(response, 0x0B, 0x00);  // inner item count
+	append(response, 0x0C, 0x00);  // inner item count
 	Write4B(response, GA_T::CHARACTER_ID, 0x2AC950);
 	Write4B(response, GA_T::CHARACTER_LEVEL, 0x32);
 	Write4B(response, GA_T::CURRENT_LEVEL, 0x32);
 	Write4B(response, GA_T::FORCED_CHARACTER_LEVEL, 0x32);
 	Write4B(response, GA_T::PROFILE_ID, GA_G::PROFILE_ID_ROBOTIC);
+	Write4B(response, GA_T::CLASS_TYPE_VALUE_ID, GetClassConfig(GA_G::PROFILE_ID_ROBOTIC).classTypeValueId);
 	Write4B(response, GA_T::HEAD_ASM_ID, GA_G::HEAD_ASM_ID_TROLL);
 	Write4B(response, GA_T::HAIR_ASM_ID, 0x85D);
 	Write4B(response, GA_T::GENDER_TYPE_VALUE_ID, 0x355);
@@ -2644,7 +2776,8 @@ void TcpSession::send_character_list_queue_response()
 }
 
 
-void TcpSession::send_login_response()
+void TcpSession::send_login_response_for(const std::string& response_player_name,
+                                         const std::string& response_session_guid)
 {
 	std::vector<uint8_t> response;
 
@@ -2655,12 +2788,12 @@ void TcpSession::send_login_response()
 	append(response, item_count & 0xFF, item_count >> 8);
 
 	Write1B(response,     GA_T::SUCCESS, 1);
-	WriteNBytes(response, GA_T::SESSION_GUID, GuidHexToBytes(session_guid_));
+	WriteNBytes(response, GA_T::SESSION_GUID, GuidHexToBytes(response_session_guid));
 	Write4B(response,     GA_T::GAME_BITS, 0x0000000F);
 	Write2B(response,     GA_T::NET_ACCESS_FLAGS, 0xF3F8);
 	Write4B(response,     GA_T::AFK_TIMEOUT_SEC, 0x00000384);
 	WriteNBytes(response, GA_T::DISPLAY_EULA_FLAG, {0x01, 0x00, 0x6E});
-	WriteString(response, GA_T::PLAYER_NAME, player_name.c_str());
+	WriteString(response, GA_T::PLAYER_NAME, response_player_name.c_str());
 
 	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
 	append(response, 0x01, 0x00);        // count elements
@@ -2677,4 +2810,9 @@ void TcpSession::send_login_response()
 	Write4B(response, GA_T::FRIENDLY_NAME_MSG_ID, 0x0000AB95);
 
 	send_response(response);
+}
+
+void TcpSession::send_login_response()
+{
+	send_login_response_for(player_name, session_guid_);
 }
