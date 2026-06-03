@@ -752,6 +752,22 @@ void Database::Init() {
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) sqlite3_free(err);
 
+		// Queue-pop controls (min_players_to_pop / max_players_per_instance /
+		// pop_delay_seconds) and per-map sizing (min_players / max_players).
+		// All idempotent — second-boot duplicate-column errors are swallowed.
+		const char* kQueuePopAlters[] = {
+			"ALTER TABLE ga_queues ADD COLUMN min_players_to_pop       INTEGER NOT NULL DEFAULT 1;",
+			"ALTER TABLE ga_queues ADD COLUMN max_players_per_instance INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_queues ADD COLUMN pop_delay_seconds        REAL    NOT NULL DEFAULT 0.0;",
+			"ALTER TABLE ga_map_pool_entries ADD COLUMN min_players INTEGER DEFAULT NULL;",
+			"ALTER TABLE ga_map_pool_entries ADD COLUMN max_players INTEGER DEFAULT NULL;",
+		};
+		for (const char* sql : kQueuePopAlters) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				sqlite3_free(err); err = nullptr;
+			}
+		}
+
 		// ga_queues — data-driven queue definitions. Each row maps to a
 		// MATCH_QUEUE_ID; the schema carries both matchmaking behaviour
 		// (rule_class + taskforce_policy + continue_in_queue) and the
@@ -763,8 +779,7 @@ void Database::Init() {
 			"  queue_id                INTEGER PRIMARY KEY,"
 			"  name                    TEXT    NOT NULL,"
 			"  rule_class              TEXT             DEFAULT NULL,"
-			"  taskforce_policy        TEXT    NOT NULL DEFAULT 'pinned_1' "
-			"                          CHECK (taskforce_policy IN ('pinned_1','pinned_2','balanced')),"
+			"  taskforce_policy        TEXT    NOT NULL DEFAULT 'pinned_1',"
 			"  continue_in_queue       INTEGER NOT NULL DEFAULT 0,"
 			"  enabled                 INTEGER NOT NULL DEFAULT 1,"
 			"  queue_type_value_id     INTEGER NOT NULL DEFAULT 0,"
@@ -792,7 +807,10 @@ void Database::Init() {
 			"  access_flags            INTEGER NOT NULL DEFAULT 0,"
 			"  active_flag             INTEGER NOT NULL DEFAULT 1,"
 			"  locked_flag             INTEGER NOT NULL DEFAULT 0,"
-			"  remaining_seconds       INTEGER          DEFAULT NULL"
+			"  remaining_seconds       INTEGER          DEFAULT NULL,"
+			"  min_players_to_pop      INTEGER NOT NULL DEFAULT 1,"
+			"  max_players_per_instance INTEGER NOT NULL DEFAULT 0,"
+			"  pop_delay_seconds       REAL    NOT NULL DEFAULT 0.0"
 			");",
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
@@ -941,6 +959,8 @@ void Database::Init() {
 			"  game_mode   TEXT    NOT NULL,"
 			"  weight      INTEGER NOT NULL DEFAULT 1,"
 			"  enabled     INTEGER NOT NULL DEFAULT 1,"
+			"  min_players INTEGER          DEFAULT NULL,"
+			"  max_players INTEGER          DEFAULT NULL,"
 			"  PRIMARY KEY (map_pool_id, map_name, game_mode)"
 			");",
 			nullptr, nullptr, &err);
@@ -1038,6 +1058,98 @@ void Database::Init() {
 		if (result != SQLITE_OK) {
 			Logger::Log("db", "Failed to seed ga_map_pool_entries (pvp): %s\n", err);
 			sqlite3_free(err);
+		}
+
+		// Drop the CHECK constraint on ga_queues.taskforce_policy. The C++
+		// ParseTaskforcePolicy already validates with a graceful pinned_1
+		// fallback on unknown, so the DB constraint just forces a schema
+		// migration for every new policy value (e.g. 'balanced_pvp' below
+		// would otherwise be rejected by the original constraint that only
+		// allowed pinned_1/pinned_2/balanced). Idempotent: substring-match
+		// on sqlite_master.sql guards the rebuild.
+		{
+			bool needs_rebuild = false;
+			sqlite3_stmt* st = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT 1 FROM sqlite_master WHERE type='table' AND name='ga_queues' "
+					"AND sql LIKE '%CHECK (taskforce_policy%'",
+					-1, &st, nullptr) == SQLITE_OK) {
+				if (sqlite3_step(st) == SQLITE_ROW) needs_rebuild = true;
+				sqlite3_finalize(st);
+			}
+			if (needs_rebuild) {
+				const char* sqls[] = {
+					"BEGIN TRANSACTION",
+					"CREATE TABLE ga_queues_v2 ("
+					"  queue_id                INTEGER PRIMARY KEY,"
+					"  name                    TEXT    NOT NULL,"
+					"  rule_class              TEXT             DEFAULT NULL,"
+					"  taskforce_policy        TEXT    NOT NULL DEFAULT 'pinned_1',"
+					"  continue_in_queue       INTEGER NOT NULL DEFAULT 0,"
+					"  enabled                 INTEGER NOT NULL DEFAULT 1,"
+					"  queue_type_value_id     INTEGER NOT NULL DEFAULT 0,"
+					"  status_msg_id           INTEGER NOT NULL DEFAULT 0,"
+					"  name_msg_id             INTEGER NOT NULL DEFAULT 0,"
+					"  desc_msg_id             INTEGER NOT NULL DEFAULT 0,"
+					"  icon_id                 INTEGER NOT NULL DEFAULT 0,"
+					"  max_players_per_side    INTEGER NOT NULL DEFAULT 1,"
+					"  min_players_per_team    INTEGER NOT NULL DEFAULT 1,"
+					"  max_players_per_team    INTEGER NOT NULL DEFAULT 1,"
+					"  level_min               INTEGER NOT NULL DEFAULT 1,"
+					"  level_max               INTEGER NOT NULL DEFAULT 200,"
+					"  tab                     INTEGER NOT NULL DEFAULT 0,"
+					"  map_x                   REAL    NOT NULL DEFAULT 0.0,"
+					"  map_y                   REAL    NOT NULL DEFAULT 0.0,"
+					"  map_active_flag         INTEGER NOT NULL DEFAULT 1,"
+					"  map_icon_texture_res_id INTEGER NOT NULL DEFAULT 0,"
+					"  video_res_id            INTEGER NOT NULL DEFAULT 0,"
+					"  location_value_id       INTEGER NOT NULL DEFAULT 0,"
+					"  double_agent_flag       INTEGER NOT NULL DEFAULT 0,"
+					"  sys_site_id             INTEGER NOT NULL DEFAULT 0,"
+					"  sort_order              INTEGER NOT NULL DEFAULT 0,"
+					"  bonus_queue_flag        INTEGER NOT NULL DEFAULT 0,"
+					"  difficulty_value_id     INTEGER NOT NULL DEFAULT 0,"
+					"  access_flags            INTEGER NOT NULL DEFAULT 0,"
+					"  active_flag             INTEGER NOT NULL DEFAULT 1,"
+					"  locked_flag             INTEGER NOT NULL DEFAULT 0,"
+					"  remaining_seconds       INTEGER          DEFAULT NULL,"
+					"  map_pool_id             INTEGER          DEFAULT NULL"
+					")",
+					"INSERT INTO ga_queues_v2 SELECT * FROM ga_queues",
+					"DROP TABLE ga_queues",
+					"ALTER TABLE ga_queues_v2 RENAME TO ga_queues",
+					"COMMIT",
+				};
+				bool ok = true;
+				for (const char* sql : sqls) {
+					if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+						Logger::Log("db", "ga_queues CHECK-drop step failed: %s -- SQL: %s\n",
+							err ? err : "?", sql);
+						if (err) { sqlite3_free(err); err = nullptr; }
+						sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+						ok = false;
+						break;
+					}
+				}
+				if (ok) {
+					Logger::Log("db", "[Migration] ga_queues CHECK constraint on taskforce_policy dropped\n");
+				}
+			}
+		}
+
+		// Switch the 'merc' queue to the class-aware balanced_pvp policy.
+		// Idempotent — the WHERE filter prevents a second-boot UPDATE from
+		// touching the row again. Runs after the CHECK-drop above so the
+		// new value is accepted.
+		result = sqlite3_exec(db,
+			"UPDATE ga_queues SET taskforce_policy='balanced_pvp' "
+			"WHERE name='merc' AND taskforce_policy != 'balanced_pvp'",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to set merc queue to balanced_pvp: %s\n", err ? err : "?");
+			if (err) sqlite3_free(err);
+		} else if (sqlite3_changes(db) > 0) {
+			Logger::Log("db", "[Migration] merc queue taskforce_policy -> balanced_pvp\n");
 		}
 	}
 

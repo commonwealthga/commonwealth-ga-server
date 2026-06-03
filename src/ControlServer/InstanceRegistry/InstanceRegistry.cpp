@@ -1,6 +1,7 @@
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/Logger.hpp"
+#include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 #include "sqlite3.h"
 #include <set>
 
@@ -566,6 +567,11 @@ void InstanceRegistry::MarkStopped(int64_t instance_id) {
             if (perr) { sqlite3_free(perr); }
         }
     }
+
+    // Evict any pre-assigned team entries for this instance — they're
+    // dead weight now that the instance is gone. MatchmakingService does
+    // not acquire InstanceRegistry::mutex_ so no recursive-lock risk.
+    MatchmakingService::DropPreAssignedTeams(instance_id);
 }
 
 std::optional<uint16_t> InstanceRegistry::AllocatePort(uint16_t lo, uint16_t hi) {
@@ -705,6 +711,64 @@ void InstanceRegistry::UpdateInstancePlayerTaskForce(int64_t instance_id, const 
 
     Logger::Log("db", "[InstanceRegistry] UpdateInstancePlayerTaskForce: instance=%lld guid=%s tf=%d changed=%d\n",
         (long long)instance_id, session_guid.c_str(), task_force, sqlite3_changes(db));
+}
+
+std::optional<std::pair<int64_t, int>>
+InstanceRegistry::GetInstancePlayerTaskForce(const std::string& session_guid) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    if (!db) return std::nullopt;
+
+    sqlite3_stmt* stmt = nullptr;
+    const char* sql =
+        "SELECT instance_id, task_force_number FROM ga_instance_players "
+        "WHERE session_guid = ? AND left_at IS NULL "
+        "LIMIT 1";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+        Logger::Log("db", "[InstanceRegistry] GetInstancePlayerTaskForce prepare failed: %s\n",
+            sqlite3_errmsg(db));
+        return std::nullopt;
+    }
+    sqlite3_bind_text(stmt, 1, session_guid.c_str(), -1, SQLITE_TRANSIENT);
+
+    std::optional<std::pair<int64_t, int>> out;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        int64_t inst_id = sqlite3_column_int64(stmt, 0);
+        int     tf      = sqlite3_column_int(stmt, 1);
+        out = std::make_pair(inst_id, tf);
+    }
+    sqlite3_finalize(stmt);
+    return out;
+}
+
+std::vector<InstanceRegistry::ActivePlayerRow>
+InstanceRegistry::GetActivePlayersForInstance(int64_t instance_id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<ActivePlayerRow> out;
+    sqlite3* db = Database::GetConnection();
+    if (!db) return out;
+
+    sqlite3_stmt* stmt = nullptr;
+    const char* sql =
+        "SELECT session_guid, profile_id, task_force_number "
+        "FROM ga_instance_players "
+        "WHERE instance_id = ? AND left_at IS NULL";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+        Logger::Log("db", "[InstanceRegistry] GetActivePlayersForInstance prepare failed: %s\n",
+            sqlite3_errmsg(db));
+        return out;
+    }
+    sqlite3_bind_int64(stmt, 1, instance_id);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        ActivePlayerRow row;
+        if (auto* p = sqlite3_column_text(stmt, 0)) row.guid = (const char*)p;
+        row.profile_id = (uint32_t)sqlite3_column_int(stmt, 1);
+        row.task_force = sqlite3_column_int(stmt, 2);
+        out.push_back(std::move(row));
+    }
+    sqlite3_finalize(stmt);
+    return out;
 }
 
 void InstanceRegistry::MarkInstancePlayerLeft(int64_t instance_id, const std::string& session_guid) {

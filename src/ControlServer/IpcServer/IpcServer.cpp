@@ -11,6 +11,7 @@
 #include <deque>
 #include <string>
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
+#include "src/ControlServer/MatchmakingService/RoleWeightedSplit.hpp"
 
 namespace {
 
@@ -259,6 +260,48 @@ private:
             int64_t successor = InstanceRegistry::MarkMissionEnded(inst_id);
             Logger::Log("ipc", "[IpcServer] MISSION_ENDED: parent=%lld successor=%lld\n",
                 (long long)inst_id, (long long)successor);
+
+            // Populate pre-assigned teams for the successor so each
+            // survivor's GSC_CHANGE_INSTANCE arrival lands them on a
+            // policy-chosen team rather than the legacy hardcoded TF1.
+            // Only meaningful for balanced policies (pinned queues route
+            // 100% to one side anyway).
+            if (successor != 0) {
+                auto parent_info = InstanceRegistry::GetInstanceById(inst_id);
+                if (parent_info && parent_info->queue_id != 0) {
+                    auto queue_cfg = MatchmakingService::GetQueueConfig(parent_info->queue_id);
+                    const bool is_balanced =
+                        queue_cfg && (queue_cfg->taskforce_policy == TaskforcePolicy::Balanced
+                                   || queue_cfg->taskforce_policy == TaskforcePolicy::BalancedPvp);
+                    if (is_balanced) {
+                        auto roster = InstanceRegistry::GetActivePlayersForInstance(inst_id);
+                        std::vector<RoleWeightedSplit::PlayerSlot> slots;
+                        slots.reserve(roster.size());
+                        for (const auto& r : roster) {
+                            slots.push_back({r.guid, r.profile_id});
+                        }
+                        auto assignment = RoleWeightedSplit::ComputeBatchAssignment(
+                            slots, RoleWeightedSplit::TeamState{},
+                            RoleWeightedSplit::TeamState{});
+                        for (const auto& [guid, tf] : assignment) {
+                            MatchmakingService::SetPreAssignedTeam(successor, guid, tf);
+                        }
+                        Logger::Log("matchmaking",
+                            "[IpcServer] MISSION_ENDED pre-assigned %zu player(s) to successor=%lld policy=%s\n",
+                            assignment.size(), (long long)successor,
+                            queue_cfg->taskforce_policy == TaskforcePolicy::BalancedPvp
+                                ? "balanced_pvp" : "balanced");
+                    } else {
+                        Logger::Log("matchmaking",
+                            "[IpcServer] MISSION_ENDED parent=%lld policy not balanced — skipping pre-assignment\n",
+                            (long long)inst_id);
+                    }
+                } else {
+                    Logger::Log("matchmaking",
+                        "[IpcServer] MISSION_ENDED parent=%lld has no queue_id — skipping pre-assignment\n",
+                        (long long)inst_id);
+                }
+            }
         }
         else if (type == IpcProtocol::MSG_REQUEST_SUCCESSOR) {
             // Pre-warm trigger: spawn a successor instance bound to this parent

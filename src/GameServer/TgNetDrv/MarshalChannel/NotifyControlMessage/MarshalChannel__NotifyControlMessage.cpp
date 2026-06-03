@@ -111,7 +111,8 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 		if (*q) rate = wcstol(q, nullptr, 10);
 
 		UNetDriver* Driver = *(UNetDriver**)((char*)Connection + 0x70);
-		int MaxRate = Driver ? Driver->MaxClientRate : 50000;
+		// int MaxRate = Driver ? Driver->MaxClientRate : 50000;
+		int MaxRate = 200000;
 		int clamped = std::max(1800, std::min(rate > 0 ? rate : MaxRate, MaxRate));
 		Connection->CurrentNetSpeed = clamped;
 		Logger::Log(GetLogChannel(), "[handshake] NETSPEED: requested=%d clamped=%d (MaxClientRate=%d)\n",

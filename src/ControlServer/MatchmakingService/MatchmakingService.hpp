@@ -1,5 +1,7 @@
 #pragma once
 
+#include <asio.hpp>
+
 #include <string>
 #include <vector>
 #include <optional>
@@ -47,6 +49,8 @@ struct PendingMatch {
                                                                   // GetQueuedProfileCounts so popped-
                                                                   // but-not-yet-registered players still
                                                                   // show on the queue card.
+    uint32_t cap = 0;  // 0 = unlimited; otherwise hard ceiling on session_guids.size()
+                       // — coalesce search skips when reached, append loop breaks.
 };
 
 // ---------------------------------------------------------------------------
@@ -69,6 +73,8 @@ struct MapModeEntry {
     std::string map_name;
     std::string game_mode;
     int weight = 1;
+    std::optional<int> min_players;  // NULL in DB → unbounded below
+    std::optional<int> max_players;  // NULL in DB → unbounded above
 };
 
 // Legacy alias kept for callers outside MatchmakingService that just want
@@ -85,9 +91,10 @@ struct MapModeSpec {
 // ---------------------------------------------------------------------------
 
 enum class TaskforcePolicy : uint8_t {
-    Pinned1,   // everyone -> TF 1 (SpecOps / Solo coop)
-    Pinned2,   // everyone -> TF 2 (Defense)
-    Balanced,  // place each player on the smaller of {team1, team2}
+    Pinned1,      // everyone -> TF 1 (SpecOps / Solo coop)
+    Pinned2,      // everyone -> TF 2 (Defense)
+    Balanced,     // place each player on the smaller of {team1, team2}
+    BalancedPvp,  // class-aware role-weighted variant; see RoleWeightedSplit
 };
 
 struct QueueConfig {
@@ -127,6 +134,11 @@ struct QueueConfig {
     bool locked_flag = false;
     std::optional<uint32_t> remaining_seconds;  // nullopt -> field omitted
 
+    // Queue-pop controls. Defaults preserve pre-feature behavior.
+    uint32_t min_players_to_pop       = 1;
+    uint32_t max_players_per_instance = 0;   // 0 = unlimited
+    float    pop_delay_seconds        = 0.0f;
+
     std::vector<MapModeEntry> map_pool;
 };
 
@@ -158,8 +170,31 @@ public:
     static void SetMatchPopCallback(MatchPopCallback cb);
     static void SetInstanceProvider(InstanceProvider provider);
 
+    // asio io_context used to schedule pop-delay timers. Must be set
+    // during init before any AddPlayer call that could trigger a
+    // pop_delay_seconds > 0 wait. Stored as a raw pointer because the
+    // io_context outlives MatchmakingService — main() owns both.
+    static void SetIoContext(asio::io_context* io);
+
     static void AddPendingMatch(int64_t instance_id, PendingMatch match);
     static std::optional<PendingMatch> ConsumePendingMatch(int64_t instance_id);
+
+    // Pre-decided team assignments for players expected to land in a
+    // specific (already-running) instance. Populated by callers that
+    // know a player's destination team ahead of the player physically
+    // arriving — currently only the MISSION_ENDED handler for the
+    // continue_in_queue successor flow, but the keyed-by-instance_id
+    // shape is intentionally generic so future "queue waits for
+    // players" mechanics can reuse it.
+    //
+    // SetPreAssignedTeam writes; ConsumePreAssignedTeam reads-and-
+    // removes a single entry; DropPreAssignedTeams clears every entry
+    // for a dead instance (called from InstanceRegistry::MarkStopped).
+    static void SetPreAssignedTeam(int64_t instance_id,
+                                   const std::string& guid, int tf);
+    static std::optional<int>
+        ConsumePreAssignedTeam(int64_t instance_id, const std::string& guid);
+    static void DropPreAssignedTeams(int64_t instance_id);
 
     // Cancel a pending match because its backing instance died before becoming
     // useful (spawn failure, or crash before INSTANCE_READY). Erases the
@@ -190,25 +225,61 @@ public:
     struct QueuedProfileCounts { uint32_t assault, medic, recon, robotics; };
     static QueuedProfileCounts GetQueuedProfileCounts(uint32_t queue_id);
 
-    // Random pick from a queue's map_pool, weighted by MapModeEntry.weight.
-    // Returns nullopt if the queue is unknown or its pool is empty (matches
-    // legacy nullopt-means-misconfig behaviour). Used by TryPop on "spawn
-    // new" and by the SuccessorSpawner closure in main.cpp on pre-warm.
-    static std::optional<MapModeSpec> PickRandomMapPoolEntry(uint32_t queue_id);
+    // Live countdown in whole seconds (ceiling) until this queue's active
+    // pop-delay timer fires. Returns nullopt when the queue has no active
+    // delay (or has already passed its fires_at, meaning the timer is
+    // about to be processed). Consumed by TicketInfoEncoder to repurpose
+    // the existing REMAINING_SECONDS wire field as a live pop-delay
+    // surface on the GET_TICKET_INFO queue cards.
+    static std::optional<uint32_t>
+        GetDelayedPopRemainingSeconds(uint32_t queue_id);
+
+    // Random pick from a queue's map_pool filtered by player count.
+    // Prefers entries whose [min_players, max_players] window (NULL =
+    // unbounded on that side) contains `count`. Weighted random among the
+    // strict subset; if empty, nearest-fit by window distance with
+    // weighted random among ties. Returns nullopt only if the queue is
+    // unknown or its pool is empty. Used by TryPop on "spawn new" and by
+    // the SuccessorSpawner closure in main.cpp on pre-warm.
+    static std::optional<MapModeSpec>
+        PickRandomMapPoolEntryForCount(uint32_t queue_id, int count);
 
 private:
+    // Per-queue wait state for pop_delay_seconds. Lives on Queue. The
+    // timer is shared so async_wait completion handlers can keep it alive
+    // long enough to safely cancel even after the queue's Queue struct is
+    // destroyed (the handler checks for queue+timer identity before firing).
+    struct DelayedPop {
+        float next_duration = 0.0f;  // halves on each reset (floor 0.5s)
+        std::shared_ptr<asio::steady_timer> timer;
+        std::chrono::steady_clock::time_point fires_at;
+    };
+
     struct Queue {
         QueueConfig config;
         std::unique_ptr<MatchRule> rule;
         std::vector<QueuedPlayer> players;
+        std::optional<DelayedPop> delayed_pop;  // nullopt = no active wait
     };
 
     static std::unordered_map<uint32_t, Queue> queues_;
     static MatchPopCallback on_match_pop_;
     static InstanceProvider instance_provider_;
     static std::unordered_map<int64_t, PendingMatch> pending_matches_;
+    static std::unordered_map<int64_t,
+                              std::unordered_map<std::string, int>>
+        pre_assigned_teams_;
+    static asio::io_context* io_ctx_;
 
-    static void TryPop(uint32_t queue_id);
+    static void TryPop(uint32_t queue_id, bool delay_elapsed = false);
+
+    // Called from AddPlayer / RemovePlayer when the queue currently has
+    // an active delayed_pop. Halves next_duration (floor 0.5s) and re-
+    // arms the timer; OR cancels the wait entirely if the join/leave
+    // dropped the queue below min_players_to_pop.
+    static void MaybeResetDelayedPop(Queue& q,
+                                      const char* trigger,
+                                      const std::string& guid);
 
     // Internal: build a Queue (config + rule via factory) from a config row.
     // Caller is responsible for inserting the result into queues_.

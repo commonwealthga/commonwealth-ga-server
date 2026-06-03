@@ -32,17 +32,59 @@ static void on_signal(int /*sig*/) {
     }
 }
 
-static bool UpdateQueueFlag(uint32_t queue_id, const std::string& field, bool value, std::string& message) {
-    if (field != "enabled" && field != "continue_in_queue") {
+static bool UpdateQueueField(uint32_t queue_id, const std::string& field,
+                              const nlohmann::json& value, std::string& message) {
+    // Whitelist: each field has its own type + range gate. Anything not
+    // listed here is rejected.
+    enum class Kind { Bool, Uint, NonNegUint, NonNegFloat };
+    struct FieldSpec { const char* name; Kind kind; };
+    static const FieldSpec kSpecs[] = {
+        { "enabled",                  Kind::Bool        },
+        { "continue_in_queue",        Kind::Bool        },
+        { "min_players_to_pop",       Kind::Uint        },  // >= 1
+        { "max_players_per_instance", Kind::NonNegUint  },  // >= 0
+        { "pop_delay_seconds",        Kind::NonNegFloat },  // >= 0
+    };
+
+    const FieldSpec* spec = nullptr;
+    for (const auto& s : kSpecs) if (field == s.name) { spec = &s; break; }
+    if (!spec) {
         message = "invalid queue field";
         return false;
     }
 
-    sqlite3* db = Database::GetConnection();
-    if (!db) {
-        message = "database is not open";
-        return false;
+    int    bind_int    = 0;
+    double bind_double = 0.0;
+    bool   is_double   = false;
+    switch (spec->kind) {
+        case Kind::Bool:
+            if (!value.is_boolean()) { message = "value must be boolean"; return false; }
+            bind_int = value.get<bool>() ? 1 : 0;
+            break;
+        case Kind::Uint: {
+            if (!value.is_number_integer()) { message = "value must be integer"; return false; }
+            int64_t v = value.get<int64_t>();
+            if (v < 1) { message = std::string(spec->name) + " must be >= 1"; return false; }
+            bind_int = (int)v;
+            break;
+        }
+        case Kind::NonNegUint: {
+            if (!value.is_number_integer()) { message = "value must be integer"; return false; }
+            int64_t v = value.get<int64_t>();
+            if (v < 0) { message = std::string(spec->name) + " must be >= 0"; return false; }
+            bind_int = (int)v;
+            break;
+        }
+        case Kind::NonNegFloat:
+            if (!value.is_number()) { message = "value must be number"; return false; }
+            bind_double = value.get<double>();
+            if (bind_double < 0.0) { message = std::string(spec->name) + " must be >= 0"; return false; }
+            is_double = true;
+            break;
     }
+
+    sqlite3* db = Database::GetConnection();
+    if (!db) { message = "database is not open"; return false; }
 
     std::string sql = "UPDATE ga_queues SET " + field + " = ? WHERE queue_id = ?";
     sqlite3_stmt* stmt = nullptr;
@@ -50,19 +92,24 @@ static bool UpdateQueueFlag(uint32_t queue_id, const std::string& field, bool va
         message = sqlite3_errmsg(db);
         return false;
     }
-
-    sqlite3_bind_int(stmt, 1, value ? 1 : 0);
+    if (is_double) sqlite3_bind_double(stmt, 1, bind_double);
+    else           sqlite3_bind_int(stmt, 1, bind_int);
     sqlite3_bind_int(stmt, 2, (int)queue_id);
+
     int rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
-    if (rc != SQLITE_DONE) {
-        message = sqlite3_errmsg(db);
-        return false;
-    }
-    if (sqlite3_changes(db) == 0) {
-        message = "queue not found";
-        return false;
+    if (rc != SQLITE_DONE) { message = sqlite3_errmsg(db); return false; }
+    if (sqlite3_changes(db) == 0) { message = "queue not found"; return false; }
+
+    if (is_double) {
+        Logger::Log("matchmaking",
+            "[Matchmaking] Admin update queue=%u field=%s value=%.2f → reloading\n",
+            queue_id, field.c_str(), bind_double);
+    } else {
+        Logger::Log("matchmaking",
+            "[Matchmaking] Admin update queue=%u field=%s value=%d → reloading\n",
+            queue_id, field.c_str(), bind_int);
     }
 
     MatchmakingService::ReloadQueues();
@@ -78,26 +125,60 @@ static bool UpdatePoolEntry(uint32_t map_pool_id, const std::string& map_name,
         return false;
     }
 
-    bool has_enabled = payload.contains("enabled") && payload["enabled"].is_boolean();
-    bool has_weight = payload.contains("weight") && payload["weight"].is_number_integer();
-    if (!has_enabled && !has_weight) {
-        message = "missing enabled or weight";
-        return false;
-    }
-
     sqlite3* db = Database::GetConnection();
     if (!db) {
         message = "database is not open";
         return false;
     }
 
+    // Dynamic SET-clause builder: each entry is a SQL fragment + a bind
+    // closure. Avoids the combinatorial explosion of optional-field
+    // permutations. "= NULL" fragments use a no-op bind closure.
+    struct SetClause {
+        std::string sql_fragment;
+        std::function<void(sqlite3_stmt*, int)> bind;
+    };
+    std::vector<SetClause> clauses;
+
+    if (payload.contains("enabled") && payload["enabled"].is_boolean()) {
+        const bool v = payload["enabled"].get<bool>();
+        clauses.push_back({ "enabled = ?",
+            [v](sqlite3_stmt* s, int i){ sqlite3_bind_int(s, i, v ? 1 : 0); } });
+    }
+    if (payload.contains("weight") && payload["weight"].is_number_integer()) {
+        const int w = std::max(1, payload["weight"].get<int>());
+        clauses.push_back({ "weight = ?",
+            [w](sqlite3_stmt* s, int i){ sqlite3_bind_int(s, i, w); } });
+    }
+    // min_players / max_players: empty payload-value is impossible (caller
+    // wouldn't include the key); null OR 0 → SQL NULL; positive integer
+    // → that value; anything else rejected.
+    for (const char* col : { "min_players", "max_players" }) {
+        if (!payload.contains(col)) continue;
+        const auto& v = payload[col];
+        bool to_null = v.is_null() || (v.is_number_integer() && v.get<int>() == 0);
+        if (to_null) {
+            clauses.push_back({ std::string(col) + " = NULL",
+                [](sqlite3_stmt*, int){} });
+        } else if (v.is_number_integer() && v.get<int>() > 0) {
+            const int n = v.get<int>();
+            clauses.push_back({ std::string(col) + " = ?",
+                [n](sqlite3_stmt* s, int i){ sqlite3_bind_int(s, i, n); } });
+        } else {
+            message = std::string(col) + " must be a non-negative integer or null";
+            return false;
+        }
+    }
+
+    if (clauses.empty()) {
+        message = "no editable fields in payload";
+        return false;
+    }
+
     std::string sql = "UPDATE ga_map_pool_entries SET ";
-    if (has_enabled && has_weight) {
-        sql += "enabled = ?, weight = ?";
-    } else if (has_enabled) {
-        sql += "enabled = ?";
-    } else {
-        sql += "weight = ?";
+    for (size_t i = 0; i < clauses.size(); ++i) {
+        if (i > 0) sql += ", ";
+        sql += clauses[i].sql_fragment;
     }
     sql += " WHERE map_pool_id = ? AND map_name = ? AND game_mode = ?";
 
@@ -108,12 +189,9 @@ static bool UpdatePoolEntry(uint32_t map_pool_id, const std::string& map_name,
     }
 
     int col = 1;
-    if (has_enabled) {
-        sqlite3_bind_int(stmt, col++, payload.value("enabled", false) ? 1 : 0);
-    }
-    if (has_weight) {
-        int weight = std::max(1, payload.value("weight", 1));
-        sqlite3_bind_int(stmt, col++, weight);
+    for (const auto& c : clauses) {
+        c.bind(stmt, col);  // no-op for "= NULL" fragments
+        if (c.sql_fragment.find('?') != std::string::npos) col++;
     }
     sqlite3_bind_int(stmt, col++, (int)map_pool_id);
     sqlite3_bind_text(stmt, col++, map_name.c_str(), -1, SQLITE_TRANSIENT);
@@ -122,14 +200,33 @@ static bool UpdatePoolEntry(uint32_t map_pool_id, const std::string& map_name,
     int rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
-    if (rc != SQLITE_DONE) {
-        message = sqlite3_errmsg(db);
-        return false;
+    if (rc != SQLITE_DONE) { message = sqlite3_errmsg(db); return false; }
+    if (sqlite3_changes(db) == 0) { message = "pool entry not found"; return false; }
+
+    // Summary log: what was set, comma-joined.
+    std::string summary;
+    if (payload.contains("enabled") && payload["enabled"].is_boolean()) {
+        if (!summary.empty()) summary += ",";
+        summary += std::string("enabled=") + (payload["enabled"].get<bool>() ? "1" : "0");
     }
-    if (sqlite3_changes(db) == 0) {
-        message = "pool entry not found";
-        return false;
+    if (payload.contains("weight") && payload["weight"].is_number_integer()) {
+        if (!summary.empty()) summary += ",";
+        summary += "weight=" + std::to_string(std::max(1, payload["weight"].get<int>()));
     }
+    for (const char* k : { "min_players", "max_players" }) {
+        if (!payload.contains(k)) continue;
+        const auto& v = payload[k];
+        if (!summary.empty()) summary += ",";
+        summary += std::string(k) + "=";
+        if (v.is_null() || (v.is_number_integer() && v.get<int>() == 0)) {
+            summary += "NULL";
+        } else {
+            summary += std::to_string(v.get<int>());
+        }
+    }
+    Logger::Log("matchmaking",
+        "[Matchmaking] Admin update pool_entry=%u:%s:%s set=%s → reloading\n",
+        map_pool_id, map_name.c_str(), game_mode.c_str(), summary.c_str());
 
     MatchmakingService::ReloadQueues();
     message = "pool entry updated and queues reloaded";
@@ -330,6 +427,9 @@ int main(int argc, char* argv[]) {
             pending.session_guids = std::move(result.session_guids);
             pending.task_force_assignments = std::move(result.task_force_assignments);
             pending.profile_ids = std::move(result.profile_ids);
+            if (auto qcfg = MatchmakingService::GetQueueConfig(queue_id)) {
+                pending.cap = qcfg->max_players_per_instance;
+            }
             MatchmakingService::AddPendingMatch(instance_id, std::move(pending));
 
             // Look up queue's configured difficulty so the instance runs
@@ -388,7 +488,10 @@ int main(int argc, char* argv[]) {
                 parent->queue_id, (long long)parent_instance_id);
             return;
         }
-        auto picked = MatchmakingService::PickRandomMapPoolEntry(parent->queue_id);
+        const int parent_count =
+            (int)InstanceRegistry::GetActivePlayersForInstance(parent_instance_id).size();
+        auto picked = MatchmakingService::PickRandomMapPoolEntryForCount(
+            parent->queue_id, parent_count);
         if (!picked) {
             Logger::Log("main", "[SuccessorSpawner] Queue %u has no map_pool configured — refusing successor for parent=%lld\n",
                 parent->queue_id, (long long)parent_instance_id);
@@ -460,6 +563,11 @@ int main(int argc, char* argv[]) {
     // Create ASIO io_context and register signal handler reference
     asio::io_context io;
     g_io = &io;
+
+    // Hand the io_context to MatchmakingService so it can schedule
+    // pop-delay timers. Must happen BEFORE any TCP/chat listener starts
+    // (those can trigger AddPlayer which may start a delay timer).
+    MatchmakingService::SetIoContext(&io);
 
     // Bind TCP listener (GA client connections)
     TcpListener listener(io, cfg.tcp_port);
@@ -557,11 +665,11 @@ int main(int argc, char* argv[]) {
                 message = "missing queue_id";
                 return false;
             }
-            if (!payload.contains("value") || !payload["value"].is_boolean()) {
-                message = "missing boolean value";
+            if (!payload.contains("value")) {
+                message = "missing value";
                 return false;
             }
-            return UpdateQueueFlag(queue_id, field, payload.value("value", false), message);
+            return UpdateQueueField(queue_id, field, payload["value"], message);
         }
 
         if (subtype == "update-pool-entry") {

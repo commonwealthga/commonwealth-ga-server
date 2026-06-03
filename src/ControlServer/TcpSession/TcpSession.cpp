@@ -4,6 +4,7 @@
 #include "src/ControlServer/MapGameInfo/MapGameInfo.hpp"
 #include "src/ControlServer/MatchmakingService/TicketInfoEncoder.hpp"
 #include "src/ControlServer/MatchmakingService/RuntimeStats.hpp"
+#include "src/ControlServer/MatchmakingService/RoleWeightedSplit.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include <set>
 #include <map>
@@ -953,12 +954,48 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			pending_match_game_mode_.clear();
 
 			if (tryContinue) {
-				Logger::Log("tcp", "[TcpSession] Continue-in-queue: routing %s to successor %lld of parent=%lld (queue=%u)\n",
+				int tf = 1;
+				auto cached = MatchmakingService::ConsumePreAssignedTeam(
+					successor->instance_id, session_guid_);
+				if (cached) {
+					tf = *cached;
+					Logger::Log("tcp",
+						"[TcpSession] Continue-in-queue: pre-assigned tf=%d for %s on successor=%lld\n",
+						tf, session_guid_.c_str(), (long long)successor->instance_id);
+				} else {
+					// Cache miss — single-player placement per policy.
+					auto queue_cfg = MatchmakingService::GetQueueConfig(parent->queue_id);
+					if (queue_cfg) {
+						switch (queue_cfg->taskforce_policy) {
+							case TaskforcePolicy::Pinned1: tf = 1; break;
+							case TaskforcePolicy::Pinned2: tf = 2; break;
+							case TaskforcePolicy::Balanced: {
+								auto counts = InstanceRegistry::GetTeamCounts(successor->instance_id);
+								tf = (counts.first <= counts.second) ? 1 : 2;
+								break;
+							}
+							case TaskforcePolicy::BalancedPvp: {
+								auto roster = InstanceRegistry::GetActivePlayersForInstance(successor->instance_id);
+								RoleWeightedSplit::TeamState t1, t2;
+								for (const auto& r : roster) {
+									const float v = RoleWeightedSplit::HealValue(r.profile_id, r.task_force);
+									if (r.task_force == 1) { t1.heal_score += v; t1.size += 1; }
+									else                   { t2.heal_score += v; t2.size += 1; }
+								}
+								tf = RoleWeightedSplit::PlaceSingle(selected_profile_id_, t1, t2);
+								break;
+							}
+						}
+					}
+					Logger::Log("tcp",
+						"[TcpSession] Continue-in-queue: cache miss for %s on successor=%lld — policy fallback tf=%d\n",
+						session_guid_.c_str(), (long long)successor->instance_id, tf);
+				}
+
+				Logger::Log("tcp", "[TcpSession] Continue-in-queue: routing %s to successor %lld of parent=%lld (queue=%u) tf=%d\n",
 					session_guid_.c_str(), (long long)successor->instance_id,
-					(long long)parent_instance_id, parent->queue_id);
-				// task_force defaults to 1 for now — the matchmaker doesn't
-				// yet rebalance survivors between teams on continuation.
-				initiate_player_register_for_target(*successor, /*task_force=*/1);
+					(long long)parent_instance_id, parent->queue_id, tf);
+				initiate_player_register_for_target(*successor, tf);
 				break;
 			}
 
@@ -1009,6 +1046,14 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				(unsigned)morphBlob.size(), selected_character_id_);
 
 			send_add_player_character_response();
+			// Pair the ADD with an implicit SELECT so the client opens its
+			// chat connection. CGameClient__HandleSelectCharacterResponseInternal
+			// is the only response handler in the binary that reads CHAT_NET_ADDR
+			// and sends the SESSION_GUID handshake — without this, new-player
+			// chat sockets never open. selected_character_id_/profile_id_ are
+			// already set from InsertCharacter above, so the response auto-
+			// targets the freshly-created character.
+			send_select_character_response();
 			// Both tutorial and normal paths use wait-for-READY then PLAYER_REGISTER flow.
 			wait_for_home_map_then_register(120);  // 120 second timeout
 			break;

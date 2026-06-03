@@ -87,6 +87,26 @@ public:
                                      uint32_t profile_id = 0);
     static void UpdateInstancePlayerTaskForce(int64_t instance_id, const std::string& session_guid,
                                              int task_force);
+
+    // Look up the (instance_id, task_force_number) of the player's
+    // currently-active ga_instance_players row, or nullopt if not in any
+    // non-stopped instance. Used by ChatCommand::DispatchChangeTeam so the
+    // control server can resolve -changeteam locally.
+    static std::optional<std::pair<int64_t, int>>
+        GetInstancePlayerTaskForce(const std::string& session_guid);
+
+    // Per-instance roster of players who haven't left yet. Returned in
+    // (guid, profile_id, task_force) tuples so the caller can compute
+    // per-team heal scores without a second query. Used by
+    // IpcServer::MSG_MISSION_ENDED and DataDrivenMatchRule for the
+    // BalancedPvp join-existing seed.
+    struct ActivePlayerRow {
+        std::string guid;
+        uint32_t    profile_id;
+        int         task_force;
+    };
+    static std::vector<ActivePlayerRow>
+        GetActivePlayersForInstance(int64_t instance_id);
     static void MarkInstancePlayerLeft(int64_t instance_id, const std::string& session_guid);
     static void MarkAllInstancePlayersLeft(int64_t instance_id);
     static std::pair<int, int> GetTeamCounts(int64_t instance_id);

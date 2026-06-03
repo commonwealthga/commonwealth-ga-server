@@ -572,6 +572,7 @@ CS_CPP_SOURCES= \
     $(CS_SRC_DIR)/MatchmakingService/TicketInfoEncoder.cpp \
     $(CS_SRC_DIR)/MatchmakingService/RuleFactory.cpp \
     $(CS_SRC_DIR)/MatchmakingService/RuntimeStats.cpp \
+    $(CS_SRC_DIR)/MatchmakingService/RoleWeightedSplit.cpp \
     $(CS_SRC_DIR)/MatchmakingService/Rules/DataDrivenMatchRule.cpp
 
 CS_SOURCES=$(CS_CPP_SOURCES)

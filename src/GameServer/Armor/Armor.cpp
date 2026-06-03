@@ -12,19 +12,31 @@
 
 namespace {
 
-// What we ApplyBuff'd for a given armor piece this RCST cycle. Tracked
-// per-pawn → per-armor-row so Revert can mirror with bRemove=1 next pass.
+// What we applied for a given armor piece this RCST cycle. Tracked per-pawn
+// so Revert can mirror with the exact inverse next pass.
 //
-// Multiple appliedEntries per piece because:
-//   - 1 base +10% Health Max
+// classResId selects the apply/revert path:
+//   * 157 (TgEffectBuff) — buff registry via ApplyBuff. Only path that hits
+//     ConvertPropToPropList(ITEM,304)={412,390} and refreshes
+//     r_nHealthMaximum via RecomputeEagerBaseProp (used by Padding 412 and
+//     the baseline +10% Health Mod 390 entry).
+//   * 80 (TgEffect) / other — direct prop->m_fRaw write only, no engine
+//     fan-out. Required for Protection-Melee/Ranged/AOE (217/218/219)
+//     because CalcProtection (TgEffectGroup.uc:745) reads prop.m_fRaw
+//     directly. Matches the TgDeployable equip-effect pattern in
+//     TgDeployable__InitializeDefaultProps.cpp:200 — same shape, known good.
+//
+// Multiple AppliedEntry rows per piece because:
+//   - 1 base +10% Health Mod (slot's blueprint baseline egid)
 //   - up to 6 mod entries (one per egid in the mod CSV; duplicate egids
-//     produce duplicate AppliedEntry rows — exactly what we want for
-//     stacking, mirroring how Inventory::ApplyRolledModEffects works)
+//     produce duplicate rows — exactly what we want for stacking,
+//     mirroring how Inventory::ApplyRolledModEffects works)
 struct AppliedEntry {
     int   propId;
     int   calcMethod;
     float amount;
     int   deviceInstId;  // = the armor's ga_players_inventory.id (used as buff devInst)
+    int   classResId;    // 157 → ApplyBuff; else → direct m_fRaw write
 };
 
 // Per-pawn list of every ApplyBuff call we made during the most recent
@@ -78,7 +90,7 @@ std::vector<int> ParseEgidCsv(const char* csv) {
 // asm_data_set_effect_groups has duplicate rows per effect_group_id in this
 // build's asm.dat capture — a JOIN doubles every effect, inflating buff
 // magnitudes 2×. Same shape as Inventory::ApplyRolledModEffects.
-struct EffectRow { int propId; float baseValue; int calcMethod; };
+struct EffectRow { int propId; float baseValue; int calcMethod; int classResId; };
 
 std::map<int, std::vector<EffectRow>>
 LookupEffectRows(const std::vector<int>& egids) {
@@ -92,7 +104,7 @@ LookupEffectRows(const std::vector<int>& egids) {
     uniq.erase(std::unique(uniq.begin(), uniq.end()), uniq.end());
 
     std::string sql =
-        "SELECT e.effect_group_id, e.prop_id, e.base_value, e.calc_method_value_id "
+        "SELECT e.effect_group_id, e.prop_id, e.base_value, e.calc_method_value_id, e.class_res_id "
         "FROM asm_data_set_effects e "
         "WHERE e.effect_group_id IN (SELECT effect_group_id FROM asm_data_set_effect_groups WHERE lifetime_sec = 0) "
         "  AND e.effect_group_id IN (";
@@ -112,26 +124,84 @@ LookupEffectRows(const std::vector<int>& egids) {
         const int   propId     = sqlite3_column_int   (stmt, 1);
         const float baseValue  = (float)sqlite3_column_double(stmt, 2);
         const int   calcMethod = sqlite3_column_int   (stmt, 3);
+        const int   classResId = sqlite3_column_int   (stmt, 4);
         if (calcMethod < 67 || calcMethod > 70) continue;
-        out[egid].push_back({ propId, baseValue, calcMethod });
+        out[egid].push_back({ propId, baseValue, calcMethod, classResId });
     }
     sqlite3_finalize(stmt);
     return out;
 }
 
-// Apply one ApplyBuff and record what we did.
+// Find a property in Pawn->s_Properties by propId. Linear scan — fine, array
+// is < 50 entries and runs once per RCST cycle.
+UTgProperty* FindProperty(ATgPawn* Pawn, int propId) {
+    if (!Pawn || !Pawn->s_Properties.Data) return nullptr;
+    for (int i = 0; i < Pawn->s_Properties.Count; ++i) {
+        UTgProperty* p = Pawn->s_Properties.Data[i];
+        if (p && p->m_nPropertyId == propId) return p;
+    }
+    return nullptr;
+}
+
+// Compute the m_fRaw delta a class-80 (TgEffect) row would apply. Mirrors
+// the calc-method semantics in TgDeployable's ApplyDeviceEquipEffects and
+// Inventory::ApplyDeviceEquipEffects:
+//   67 ADD              +base
+//   70 SUBTRACT         -base
+//   68 PERC_INCREASE    +propBase*base
+//   69 PERC_DECREASE    -propBase*base
+// Returns 0 for unsupported calc — caller skips.
+float ComputeRawDelta(int calcMethod, float baseValue, float propBase) {
+    switch (calcMethod) {
+        case 67: return  baseValue;
+        case 70: return -baseValue;
+        case 68: return  propBase * baseValue;
+        case 69: return -propBase * baseValue;
+        default: return 0.0f;
+    }
+}
+
+// Apply one effect row and record what we did. Two-class dispatch:
+//   * class 157 (TgEffectBuff) → buff registry via ApplyBuff. Only path
+//     that triggers ConvertPropToPropList(ITEM,304)={412,390} expansion +
+//     RecomputeEagerBaseProp(304) for r_nHealthMaximum fan-out. Used by
+//     Padding (412) and the slot baseline (390).
+//   * class 80 (TgEffect) / other → direct prop->m_fRaw write only.
+//     Required for Protection-Melee/Ranged/AOE (217/218/219) because
+//     CalcProtection (TgEffectGroup.uc:745) reads prop.m_fRaw directly,
+//     bypassing the buff registry. NO ApplyProperty call — matches the
+//     TgDeployable equip-effect helper (working pattern, see
+//     TgDeployable__InitializeDefaultProps.cpp:200 + its comment block
+//     about skipping SetProperty fan-out).
 void ApplyAndRecord(ATgPawn* Pawn,
                     std::vector<AppliedEntry>& records,
-                    int propId, int calcMethod, float amount, int devInst) {
-    FBuffHeader h{};
-    h.nPropId          = propId;
-    h.nReqCategoryCode = 0;
-    h.nReqSkillId      = 0;
-    h.nReqDeviceInstId = devInst;
-
-    TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, h, calcMethod, amount,
-                            /*bRemove=*/0, /*BUFF_SOURCE_TYPE_ITEM=*/1);
-    records.push_back({ propId, calcMethod, amount, devInst });
+                    int propId, int calcMethod, float amount, int devInst,
+                    int classResId) {
+    if (classResId == 157) {
+        FBuffHeader h{};
+        h.nPropId          = propId;
+        h.nReqCategoryCode = 0;
+        h.nReqSkillId      = 0;
+        h.nReqDeviceInstId = devInst;
+        TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, h, calcMethod, amount,
+                                /*bRemove=*/0, /*BUFF_SOURCE_TYPE_ITEM=*/1);
+    } else {
+        UTgProperty* prop = FindProperty(Pawn, propId);
+        if (!prop) {
+            Logger::Log("armor",
+                "[Armor/apply] pawn=%p prop=%d not in s_Properties — skipped (class=%d)\n",
+                (void*)Pawn, propId, classResId);
+            return;
+        }
+        const float delta = ComputeRawDelta(calcMethod, amount, prop->m_fBase);
+        if (delta == 0.0f) return;
+        const float before = prop->m_fRaw;
+        prop->m_fRaw = before + delta;
+        Logger::Log("armor",
+            "[Armor/apply] pawn=%p prop=%d cm=%d base=%.2f class=%d  m_fRaw %.2f -> %.2f\n",
+            (void*)Pawn, propId, calcMethod, amount, classResId, before, prop->m_fRaw);
+    }
+    records.push_back({ propId, calcMethod, amount, devInst, classResId });
 }
 
 // What we're about to apply, expressed as one row per equipped armor piece.
@@ -201,22 +271,32 @@ void Armor::RevertDefaultArmor(ATgPawn* Pawn) {
     }
     auto& records = it->second;
 
-    // Mirror the apply order LIFO. ApplyBuff's reverse path is exact-match
-    // additive subtraction (header tuple + same calc/amount → subtract),
-    // and entries that hit zero get removed from m_EffectBuffInfo. Equal
-    // and opposite to apply, so the registry returns to its pre-apply
-    // state regardless of any other layers added in between as long as
-    // those layers don't share our exact (propId, devInst) key.
+    // Mirror the apply order LIFO with the same two-class dispatch.
+    //   class 157 → ApplyBuff(bRemove=1) — exact-match additive subtraction
+    //     (header tuple + same calc/amount → subtract); entries that hit
+    //     zero get removed from m_EffectBuffInfo. Equal-and-opposite to
+    //     apply, so the registry returns to its pre-apply state regardless
+    //     of any other layers added in between as long as those layers
+    //     don't share our exact (propId, devInst) key.
+    //   else → direct m_fRaw subtract of the same delta Apply added.
     int reverted = 0;
     for (auto rit = records.rbegin(); rit != records.rend(); ++rit) {
         const AppliedEntry& e = *rit;
-        FBuffHeader h{};
-        h.nPropId          = e.propId;
-        h.nReqCategoryCode = 0;
-        h.nReqSkillId      = 0;
-        h.nReqDeviceInstId = e.deviceInstId;
-        TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, h, e.calcMethod, e.amount,
-                                /*bRemove=*/1, /*BUFF_SOURCE_TYPE_ITEM=*/1);
+        if (e.classResId == 157) {
+            FBuffHeader h{};
+            h.nPropId          = e.propId;
+            h.nReqCategoryCode = 0;
+            h.nReqSkillId      = 0;
+            h.nReqDeviceInstId = e.deviceInstId;
+            TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, h, e.calcMethod, e.amount,
+                                    /*bRemove=*/1, /*BUFF_SOURCE_TYPE_ITEM=*/1);
+        } else {
+            UTgProperty* prop = FindProperty(Pawn, e.propId);
+            if (!prop) continue;
+            const float delta = ComputeRawDelta(e.calcMethod, e.amount, prop->m_fBase);
+            if (delta == 0.0f) continue;
+            prop->m_fRaw -= delta;
+        }
         ++reverted;
     }
     Logger::Log("armor",
@@ -315,7 +395,7 @@ void Armor::ApplyDefaultArmor(ATgPawn* Pawn) {
             for (const EffectRow& r : fit->second) {
                 ApplyAndRecord(Pawn, records,
                                r.propId, r.calcMethod, r.baseValue,
-                               /*devInst=*/0);
+                               /*devInst=*/0, r.classResId);
                 ++modApplied;
             }
         }
@@ -338,6 +418,7 @@ void Armor::ApplyDefaultArmor(ATgPawn* Pawn) {
     // into its touchedPropIds set unconditionally after this call, so
     // the replicated cap (r_fMaxHealth + cached fields) gets refreshed
     // regardless of which props we touched. Protection props (217/218/
-    // 219) stay raw-only — CalcProtection reads m_fRaw directly via
-    // GetBuffedProperty with no fan-out needed.
+    // 219) stay raw-only — CalcProtection (TgEffectGroup.uc:745) reads
+    // prop.m_fRaw directly, so the direct-write class-80 branch above
+    // is sufficient with no engine fan-out needed.
 }

@@ -143,6 +143,19 @@ bool Inventory::IsHandDevice(int slot) {
 		|| slot == GA::EquipSlot::Specialty;
 }
 
+// TgPawn::ApplyProperty — intact native @ 0x109cc7d0 (this, UTgProperty*). Reads
+// the property's m_fRaw and fans it out to the engine-cached field (e.g.
+// r_fPowerPoolMax @ Pawn+0x10a0 for POWERPOOL_MAX 255, r_nHealthMaximum @
+// Pawn+0x43c for HEALTH_MAX 304). Called after a direct m_fRaw write so the
+// gameplay/HUD consumers — which read the cached field, NOT m_fRaw — see the
+// equip-effect's contribution. Without this, prop-255 equip effects (Targeting
+// System +20% Power Pool Max) silently leave the player's actual max power at
+// base. For props the engine doesn't case-handle (e.g. prop 388 protection),
+// ApplyProperty's default branch is just a bNetDirty + OnPropertyChanged
+// ProcessEvent — safe.
+typedef void(__fastcall* InventoryApplyPropertyFn)(ATgPawn*, void* /*edx*/, UTgProperty*);
+static const InventoryApplyPropertyFn InventoryApplyPropertyNative = (InventoryApplyPropertyFn)0x109cc7d0;
+
 // ---------------------------------------------------------------------------
 // Inventory::ApplyDeviceEquipEffects — DB-driven reimplementation of the
 // stripped asm.dat equip-effect path (UC ApplyEquipEffects → m_EquipEffect →
@@ -255,6 +268,24 @@ void Inventory::ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId) {
 			default: continue;
 		}
 		prop->m_fRaw = newRaw;
+		// Fan m_fRaw out to the engine-cached field ONLY for props where the
+		// consumer reads the cached field instead of m_fRaw. Currently scoped
+		// to POWERPOOL_MAX (255) — the Targeting System equip effect that
+		// drove the original need for this call.
+		//
+		// PREVIOUSLY this was unconditional, which fired ApplyProperty for
+		// every class-80 equip effect — including the prop 155/156/157
+		// protection effects on bot devices invoked from GiveDevicesFromBotConfig's
+		// sqlite3_step loop. ApplyProperty's tail OnPropertyApplied ProcessEvent
+		// dispatch re-entered the engine deeply enough to torch the outer
+		// stmt pointer (page-fault crash at sqlite3_step with stmt=0x404b8000).
+		// Restrict to the props we actually need; other engine-cached props
+		// (304 HealthMax, 49 GroundSpeed, 50 JumpZ, …) are written by the
+		// regular SetProperty path used in skill/armor flows, not by raw
+		// device equip effects, so they're already covered.
+		if (propId == 255 /* POWERPOOL_MAX */) {
+			InventoryApplyPropertyNative(Pawn, /*edx=*/nullptr, prop);
+		}
 		Logger::Log("inventory",
 			"ApplyDeviceEquipEffects: pawn=0x%p device=%d propId=%d cm=%d base=%.2f  m_fRaw %.2f -> %.2f\n",
 			Pawn, deviceId, propId, calcMethod, baseValue, curRaw, newRaw);
@@ -830,6 +861,11 @@ static void RemoveDeviceEquipEffects_impl(ATgPawn* Pawn, int deviceId) {
 			default: continue;
 		}
 		prop->m_fRaw = newRaw;
+		// Mirror Apply's narrow scope: only fan out POWERPOOL_MAX. See the
+		// matching block in ApplyDeviceEquipEffects for why this is gated.
+		if (propId == 255 /* POWERPOOL_MAX */) {
+			InventoryApplyPropertyNative(Pawn, /*edx=*/nullptr, prop);
+		}
 		Logger::Log("inventory",
 			"RemoveDeviceEquipEffects: pawn=0x%p device=%d propId=%d cm=%d base=%.2f  m_fRaw %.2f -> %.2f\n",
 			Pawn, deviceId, propId, calcMethod, baseValue, curRaw, newRaw);

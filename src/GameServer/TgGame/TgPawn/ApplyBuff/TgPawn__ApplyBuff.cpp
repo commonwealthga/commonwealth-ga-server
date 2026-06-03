@@ -35,6 +35,13 @@ static const GetBuffedPropertyFn GetBuffedPropertyNative = (GetBuffedPropertyFn)
 typedef void(__fastcall* ApplyPropertyFn)(ATgPawn*, void* /*edx*/, UTgProperty*);
 static const ApplyPropertyFn ApplyPropertyNative = (ApplyPropertyFn)0x109cc7d0;
 
+// TgPawn::SetProperty — intact native @ 0x109bf420 (this, int propId, float).
+// Writes m_fRaw on the matching s_Properties entry then calls ApplyProperty
+// to fan out. Used here to undo ApplyProperty(304)'s auto-bump of current HP
+// on device-fire-sourced max-HP buffs (see body for rationale).
+typedef void(__fastcall* SetPropertyFn)(ATgPawn*, void* /*edx*/, int /*propId*/, float /*value*/);
+static const SetPropertyFn SetPropertyNative = (SetPropertyFn)0x109bf420;
+
 // Eager-cached base-stat recompute. Most buffed stats are LIVE-read — the engine
 // calls GetBuffedProperty at use time (e.g. UTgDeviceFire::GetPropertyValueById
 // for Range/Accuracy), so a registry change is picked up automatically. But a
@@ -297,9 +304,44 @@ void __fastcall TgPawn__ApplyBuff::Call(ATgPawn* Pawn, void* /*edx*/, FBuffHeade
 	// +%maxHP mod changed the registry but never refreshed r_nHealthMaximum until
 	// some unrelated 412 change happened to recompute — silently under-applying
 	// mod maxHP.
+	//
+	// Source-type gating: ApplyProperty(304) unconditionally calls
+	// SetProperty(51, new_max) when Health > 0 (verified at 0x109cc7d0, case
+	// 0x130). For armor/skill paths (src 0 SKILL, 1 ITEM) that auto-heal-to-
+	// new-max is intentional engine behavior — equipping armor while damaged
+	// heals to the new ceiling, and respeccing into a +%maxHP skill node does
+	// the same. For device-fire paths (src 3 SELF, 4 OTHER) the buff came via
+	// TgEffectBuff.ApplyEffect on a Hit/Aim/Fire effect (canonical case:
+	// Adrenaline Gun's +400 temp max HP on hit). Those should follow engine
+	// HEALTH_MAX_TEMP (prop 306) semantics: raise capacity, NEVER auto-bump
+	// current HP. Without this gate, Adrenaline Gun's +400 max HP buff fully
+	// heals the target before the +200 instant heal even matters — observed
+	// as "the initial heal fully heals."
+	//
+	// Snapshot-and-restore is cleaner than reimplementing the PRI fan-out:
+	// reuse the existing recompute, then explicitly undo only the heal-up
+	// half. Clamp-down (new_max < old current HP) is preserved because in
+	// that case hpAfter < hpBefore, so the > check skips. Dead pawns are
+	// already skipped by ApplyProperty's `Health > 0` gate — hpAfter == 0
+	// == hpBefore, no undo.
 	if (BuffFilter.nPropId == 412 /* HEALTH_MAX_MODIFIER */ ||
 	    BuffFilter.nPropId == 390 /* HEALTH_MOD (blueprint maxHP rolls) */) {
+		const bool deviceFire = (buffSourceType >= 3);  // SELF (3) or OTHER (4)
+		const int hpBefore = deviceFire ? *(int*)((char*)Pawn + 0x2c4) : 0;
+
 		RecomputeEagerBaseProp(Pawn, 304 /* HEALTH_MAX */);
+
+		if (deviceFire) {
+			const int hpAfter = *(int*)((char*)Pawn + 0x2c4);
+			if (hpAfter > hpBefore) {
+				SetPropertyNative(Pawn, /*edx=*/nullptr, 51 /* HEALTH */, (float)hpBefore);
+				if (Logger::IsChannelEnabled("effects")) {
+					Logger::Log("effects",
+						"[MAXHP/no-heal] pawn=%p src=%u undid auto-bump: %d -> %d (restored to %d)\n",
+						(void*)Pawn, (unsigned)buffSourceType, hpBefore, hpAfter, hpBefore);
+				}
+			}
+		}
 	}
 
 	// Note: we intentionally do NOT refresh r_fRequiredMoralePoints here.

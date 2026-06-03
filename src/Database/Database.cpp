@@ -6321,8 +6321,17 @@ void Database::Init() {
 
 		Logger::Log("db", "v98: seeded map_object_config + specops pool + map_game_info for 1P_CPFactory02_P\n");
 	}
+	if (version < 99) {
+		const char* kV99_1v1_queue =
+			"INSERT INTO ga_queues (name, taskforce_policy, continue_in_queue, enabled, queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, max_players_per_side, min_players_per_team, max_players_per_team, level_min, level_max, tab, map_x, map_y, map_active_flag, map_icon_texture_res_id, video_res_id, location_value_id, double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, difficulty_value_id, access_flags, active_flag, locked_flag, map_pool_id, min_players_to_pop, max_players_per_instance, pop_delay_seconds) VALUES "
+			"('1v1', 'balanced_pvp', 0, 1, 1421, 0, 22671, 22671, 532, 1, 1, 1, 5, 50, 443, 6, 0, 1, 5126, 0, 1477, 1, 0, 1, 0, 0, 0, 1, 0, 2, 2, 2, 0);";
+		result = sqlite3_exec(db, kV99_1v1_queue, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v99 (1v1 queue): %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 98", nullptr, nullptr, &err);
+		Logger::Log("db", "v99: seeded 1v1 queue\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 99", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

@@ -76,8 +76,14 @@ void TicketInfoEncoder::EncodeRecord(
     uint16_t actual_count = 27;
     const bool has_status_msg = cfg.status_msg_id != 0;
     const bool has_access     = cfg.access_flags != 0;
-    const bool has_remaining  = cfg.remaining_seconds.has_value()
-                                && *cfg.remaining_seconds != 0;
+    // Live pop-delay countdown takes precedence over the DB
+    // remaining_seconds (which was originally a timed-queue config).
+    // Repurposes the wire field so players see the active wait on the
+    // queue card during pop_delay_seconds windows.
+    auto live_remaining = MatchmakingService::GetDelayedPopRemainingSeconds(cfg.queue_id);
+    const bool has_db_remaining = cfg.remaining_seconds.has_value()
+                                  && *cfg.remaining_seconds != 0;
+    const bool has_remaining  = live_remaining.has_value() || has_db_remaining;
     if (has_status_msg) actual_count++;
     if (has_access)     actual_count++;
     if (has_remaining)  actual_count++;
@@ -113,7 +119,11 @@ void TicketInfoEncoder::EncodeRecord(
     if (has_access)    W8B(out, GA_T::ACCESS_FLAGS, cfg.access_flags);
     W4B(out, GA_T::DIFFICULTY_VALUE_ID,     cfg.difficulty_value_id);
     WFlag3(out, GA_T::ACTIVE_FLAG,          cfg.active_flag);
-    if (has_remaining) W4B(out, GA_T::REMAINING_SECONDS, *cfg.remaining_seconds);
+    if (has_remaining) {
+        const uint32_t v = live_remaining.has_value() ? *live_remaining
+                                                      : *cfg.remaining_seconds;
+        W4B(out, GA_T::REMAINING_SECONDS, v);
+    }
 
     // DATA_SET_PROFILE_COUNTS — per-class breakdown (queued + in-mission).
     // Each non-zero class contributes one inner record {PLAYER_PROFILE_ID,

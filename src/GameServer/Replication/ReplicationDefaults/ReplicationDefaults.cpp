@@ -200,6 +200,7 @@ inline const RepDefault kDeployableFamily {
 inline const RepDefault kProjectileFamily {
 	.NetPriority = 2.5f,
 	.NetUpdateFrequency = 1.0f,
+	.bAlwaysRelevant = true,
 	.bNetTemporary = true,
 	.bReplicateInstigator = true,
 };

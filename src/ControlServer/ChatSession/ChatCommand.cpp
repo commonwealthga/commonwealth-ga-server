@@ -7,6 +7,7 @@
 
 #include "lib/nlohmann/json.hpp"
 
+#include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/Shared/IpcProtocol.hpp"
@@ -230,17 +231,54 @@ void DispatchChangeTeam(ChangeTeamTarget target, const std::string& session_guid
         return;
     }
 
+    // Resolve current (instance, tf) from the control-server DB. If the
+    // player isn't in any active instance, the DLL would drop the action
+    // anyway (no pawn) — skip with a log.
+    auto lookup = InstanceRegistry::GetInstancePlayerTaskForce(session_guid);
+    if (!lookup) {
+        Logger::Log("chat-command",
+            "[ChatCmd] /changeteam guid=%s: no active ga_instance_players row — dropping\n",
+            session_guid.c_str());
+        return;
+    }
+    const int64_t instance_id = lookup->first;
+    const int     old_tf      = lookup->second;
+
+    int new_tf = old_tf;
+    switch (target) {
+        case ChangeTeamTarget::Toggle:    new_tf = (old_tf == 1) ? 2 : 1; break;
+        case ChangeTeamTarget::Attackers: new_tf = 1; break;
+        case ChangeTeamTarget::Defenders: new_tf = 2; break;
+    }
+    if (new_tf == old_tf) {
+        Logger::Log("chat-command",
+            "[ChatCmd] /changeteam guid=%s target=%s: already on tf=%d — no-op\n",
+            session_guid.c_str(), TargetName(target), old_tf);
+        return;
+    }
+
+    // Update the DB BEFORE dispatching IPC. asio io_context is single-
+    // threaded, so a subsequent matchmaker decision can't interleave here.
+    InstanceRegistry::UpdateInstancePlayerTaskForce(instance_id,
+                                                    session_guid, new_tf);
+
+    // Dispatch with the EXPLICIT side — never "toggle" — so the DLL
+    // doesn't re-resolve from the pawn's PRI (would race if anything
+    // re-spawned the pawn between dispatch and receipt).
+    const char* explicit_target = (new_tf == 1) ? "attackers" : "defenders";
+
     nlohmann::json payload;
     payload["type"]         = IpcProtocol::MSG_PLAYER_ACTION;
     payload["session_guid"] = session_guid;
     payload["action"]       = "change_team";
-    payload["args"]         = { {"target", TargetName(target)} };
+    payload["args"]         = { {"target", explicit_target} };
 
-    Logger::Log("chat-command", "[ChatCmd] /changeteam guid=%s target=%s -> dispatch\n",
-        session_guid.c_str(), TargetName(target));
+    Logger::Log("chat-command",
+        "[ChatCmd] /changeteam guid=%s target=%s -> tf %d->%d on instance=%lld\n",
+        session_guid.c_str(), TargetName(target),
+        old_tf, new_tf, (long long)instance_id);
 
     (void)TcpSession::DeliverPlayerAction(session_guid, payload);
-    // Return value ignored: silent on failure per spec; DeliverPlayerAction logs internally.
 }
 
 void DispatchDeployTarget(const DeployTargetArgs& args, const std::string& session_guid) {
