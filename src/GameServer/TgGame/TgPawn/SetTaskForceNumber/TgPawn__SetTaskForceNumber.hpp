@@ -8,8 +8,8 @@ class TgPawn__SetTaskForceNumber : public HookBase<
 	0x109bf910,
 	TgPawn__SetTaskForceNumber> {
 public:
-	static void __fastcall* Call(ATgPawn* Pawn, void* edx, int TaskForceNumber);
-	static inline void __fastcall* CallOriginal(ATgPawn* Pawn, void* edx, int TaskForceNumber) {
+	static void __fastcall Call(ATgPawn* Pawn, void* edx, int TaskForceNumber);
+	static inline void __fastcall CallOriginal(ATgPawn* Pawn, void* edx, int TaskForceNumber) {
 		m_original(Pawn, edx, TaskForceNumber);
 	}
 };

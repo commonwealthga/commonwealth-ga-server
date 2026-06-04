@@ -219,7 +219,7 @@ void Database::Init() {
 				(12711, 29, 2, 0), \
 				(12714, 34, 2, 0), \
 				(12713, 34, 2, 0), \
-				(12709, 28, 2, 0); \
+				(12709, 28, 2, 0), \
 				(12698, 41, 2, 0); \
 			", nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
@@ -860,6 +860,116 @@ void Database::Init() {
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) sqlite3_free(err);
 
+		// Adopt old auto-id DDR seed rows into canonical queue_id=3, then
+		// remove only exact legacy-seed duplicates. Deliberate extra DDR
+		// variants with different queue config must survive.
+		const char* kDdrQueueRepair[] = {
+			"UPDATE ga_queues SET queue_id = 3 "
+			"WHERE queue_id = (SELECT MIN(queue_id) FROM ga_queues WHERE name = 'ddr' "
+			"AND COALESCE(rule_class, '') = '' AND taskforce_policy = 'pinned_2' "
+			"AND continue_in_queue = 0 AND enabled = 1 AND queue_type_value_id = 1454 "
+			"AND status_msg_id = 0 AND name_msg_id = 62550 AND desc_msg_id = 64938 "
+			"AND icon_id = 1714 AND max_players_per_side = 10 AND min_players_per_team = 1 "
+			"AND max_players_per_team = 10 AND level_min = 5 AND level_max = 50 "
+			"AND tab = 231 AND map_x = 0.0 AND map_y = 0.0 AND map_active_flag = 1 "
+			"AND map_icon_texture_res_id = 5126 AND video_res_id = 0 "
+			"AND location_value_id = 0 AND double_agent_flag = 1 AND sys_site_id = 0 "
+			"AND sort_order = 0 AND bonus_queue_flag = 1 AND difficulty_value_id = 1471 "
+			"AND access_flags = 0 AND active_flag = 1 AND locked_flag = 0 "
+			"AND COALESCE(map_pool_id, 0) = 3 AND min_players_to_pop = 1 "
+			"AND max_players_per_instance = 0 AND pop_delay_seconds = 0.0) "
+			"AND NOT EXISTS (SELECT 1 FROM ga_queues WHERE queue_id = 3);",
+			"DELETE FROM ga_queues WHERE name = 'ddr' "
+			"AND COALESCE(rule_class, '') = '' AND taskforce_policy = 'pinned_2' "
+			"AND continue_in_queue = 0 AND enabled = 1 AND queue_type_value_id = 1454 "
+			"AND status_msg_id = 0 AND name_msg_id = 62550 AND desc_msg_id = 64938 "
+			"AND icon_id = 1714 AND max_players_per_side = 10 AND min_players_per_team = 1 "
+			"AND max_players_per_team = 10 AND level_min = 5 AND level_max = 50 "
+			"AND tab = 231 AND map_x = 0.0 AND map_y = 0.0 AND map_active_flag = 1 "
+			"AND map_icon_texture_res_id = 5126 AND video_res_id = 0 "
+			"AND location_value_id = 0 AND double_agent_flag = 1 AND sys_site_id = 0 "
+			"AND sort_order = 0 AND bonus_queue_flag = 1 AND difficulty_value_id = 1471 "
+			"AND access_flags = 0 AND active_flag = 1 AND locked_flag = 0 "
+			"AND COALESCE(map_pool_id, 0) = 3 AND min_players_to_pop = 1 "
+			"AND max_players_per_instance = 0 AND pop_delay_seconds = 0.0 "
+			"AND queue_id <> COALESCE((SELECT queue_id FROM ga_queues WHERE queue_id = 3 "
+			"AND name = 'ddr' AND COALESCE(rule_class, '') = '' AND taskforce_policy = 'pinned_2' "
+			"AND continue_in_queue = 0 AND enabled = 1 AND queue_type_value_id = 1454 "
+			"AND status_msg_id = 0 AND name_msg_id = 62550 AND desc_msg_id = 64938 "
+			"AND icon_id = 1714 AND max_players_per_side = 10 AND min_players_per_team = 1 "
+			"AND max_players_per_team = 10 AND level_min = 5 AND level_max = 50 "
+			"AND tab = 231 AND map_x = 0.0 AND map_y = 0.0 AND map_active_flag = 1 "
+			"AND map_icon_texture_res_id = 5126 AND video_res_id = 0 "
+			"AND location_value_id = 0 AND double_agent_flag = 1 AND sys_site_id = 0 "
+			"AND sort_order = 0 AND bonus_queue_flag = 1 AND difficulty_value_id = 1471 "
+			"AND access_flags = 0 AND active_flag = 1 AND locked_flag = 0 "
+			"AND COALESCE(map_pool_id, 0) = 3 AND min_players_to_pop = 1 "
+			"AND max_players_per_instance = 0 AND pop_delay_seconds = 0.0), "
+			"(SELECT MIN(queue_id) FROM ga_queues WHERE name = 'ddr' "
+			"AND COALESCE(rule_class, '') = '' AND taskforce_policy = 'pinned_2' "
+			"AND continue_in_queue = 0 AND enabled = 1 AND queue_type_value_id = 1454 "
+			"AND status_msg_id = 0 AND name_msg_id = 62550 AND desc_msg_id = 64938 "
+			"AND icon_id = 1714 AND max_players_per_side = 10 AND min_players_per_team = 1 "
+			"AND max_players_per_team = 10 AND level_min = 5 AND level_max = 50 "
+			"AND tab = 231 AND map_x = 0.0 AND map_y = 0.0 AND map_active_flag = 1 "
+			"AND map_icon_texture_res_id = 5126 AND video_res_id = 0 "
+			"AND location_value_id = 0 AND double_agent_flag = 1 AND sys_site_id = 0 "
+			"AND sort_order = 0 AND bonus_queue_flag = 1 AND difficulty_value_id = 1471 "
+			"AND access_flags = 0 AND active_flag = 1 AND locked_flag = 0 "
+			"AND COALESCE(map_pool_id, 0) = 3 AND min_players_to_pop = 1 "
+			"AND max_players_per_instance = 0 AND pop_delay_seconds = 0.0));",
+			"INSERT OR IGNORE INTO ga_queues "
+			"(queue_id, name, taskforce_policy, continue_in_queue, enabled, "
+			" queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, "
+			" max_players_per_side, min_players_per_team, max_players_per_team, "
+			" level_min, level_max, tab, map_x, map_y, map_active_flag, "
+			" map_icon_texture_res_id, video_res_id, location_value_id, "
+			" double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, "
+			" difficulty_value_id, access_flags, active_flag, locked_flag, "
+			" map_pool_id, min_players_to_pop, max_players_per_instance, pop_delay_seconds) VALUES"
+			" (3, 'ddr', 'pinned_2', 0, 1,"
+			"  1454, 0, 62550, 64938, 1714,"
+			"  10, 1, 10, 5, 50, 231, 0.0, 0.0, 1,"
+			"  5126, 0, 0, 1, 0, 0, 1,"
+			"  1471, 0, 1, 0, 3, 1, 0, 0.0);",
+		};
+		for (const char* sql : kDdrQueueRepair) {
+			result = sqlite3_exec(db, sql, nullptr, nullptr, &err);
+			if (result != SQLITE_OK) {
+				Logger::Log("db", "Failed DDR queue repair: %s\n", err);
+				sqlite3_free(err); err = nullptr;
+			}
+		}
+
+		// Remove exact duplicate DDR map-object overrides created by the same
+		// retry loop. Keep one copy per value so existing data still applies.
+		{
+			bool map_object_config_exists = false;
+			sqlite3_stmt* probe = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT 1 FROM sqlite_master WHERE type='table' AND name='map_object_config'",
+					-1, &probe, nullptr) == SQLITE_OK && probe) {
+				map_object_config_exists = sqlite3_step(probe) == SQLITE_ROW;
+				sqlite3_finalize(probe);
+			}
+			if (map_object_config_exists) {
+				result = sqlite3_exec(db,
+					"DELETE FROM map_object_config "
+					"WHERE map_name = 'Raid_DomeCityDefense_P' "
+					"AND id NOT IN ("
+					"  SELECT MIN(id) FROM map_object_config "
+					"  WHERE map_name = 'Raid_DomeCityDefense_P' "
+					"  GROUP BY map_name, map_object_id, column_name, value, "
+					"           COALESCE(variant_group, ''), COALESCE(variant_id, ''), weight"
+					");",
+					nullptr, nullptr, &err);
+				if (result != SQLITE_OK) {
+					Logger::Log("db", "Failed DDR map_object_config dedupe: %s\n", err);
+					sqlite3_free(err);
+				}
+			}
+		}
+
 		// Seed the two known queues mirroring the pre-DB hardcoded config in
 		// main.cpp. INSERT OR IGNORE preserves any operator edits across boots.
 		result = sqlite3_exec(db,
@@ -1059,6 +1169,14 @@ void Database::Init() {
 			Logger::Log("db", "Failed to seed ga_map_pool_entries (pvp): %s\n", err);
 			sqlite3_free(err);
 		}
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode, weight, enabled) VALUES"
+			" (3, 'Raid_DomeCityDefense_P', 'TgGame.TgGame_Defense', 1, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed ga_map_pool_entries (ddr): %s\n", err);
+			sqlite3_free(err);
+		}
 
 		// Drop the CHECK constraint on ga_queues.taskforce_policy. The C++
 		// ParseTaskforcePolicy already validates with a graceful pinned_1
@@ -1113,7 +1231,10 @@ void Database::Init() {
 					"  active_flag             INTEGER NOT NULL DEFAULT 1,"
 					"  locked_flag             INTEGER NOT NULL DEFAULT 0,"
 					"  remaining_seconds       INTEGER          DEFAULT NULL,"
-					"  map_pool_id             INTEGER          DEFAULT NULL"
+					"  map_pool_id             INTEGER          DEFAULT NULL,"
+					"  min_players_to_pop      INTEGER NOT NULL DEFAULT 1,"
+					"  max_players_per_instance INTEGER NOT NULL DEFAULT 0,"
+					"  pop_delay_seconds       REAL    NOT NULL DEFAULT 0.0"
 					")",
 					"INSERT INTO ga_queues_v2 SELECT * FROM ga_queues",
 					"DROP TABLE ga_queues",
@@ -1153,6 +1274,91 @@ void Database::Init() {
 		}
 	}
 
+	{
+		const char* kControlGameplaySchema =
+			"CREATE TABLE IF NOT EXISTS asm_data_set_properties ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  prop_id INTEGER,"
+			"  name TEXT,"
+			"  prop_type_value_id INTEGER,"
+			"  prop_uom_value_id INTEGER,"
+			"  ui_name_msg_id INTEGER,"
+			"  ui_code TEXT"
+			");"
+			"CREATE TABLE IF NOT EXISTS asm_data_set_blueprint_mod_effect_groups ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  blueprint_mod_id INTEGER,"
+			"  effect_group_id INTEGER,"
+			"  make_chance REAL"
+			");"
+			"CREATE TABLE IF NOT EXISTS asm_data_set_blueprint_item_mods ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  blueprint_id INTEGER,"
+			"  blueprint_mod_id INTEGER,"
+			"  name_msg_id INTEGER,"
+			"  quality_value_id INTEGER,"
+			"  icon_id INTEGER"
+			");"
+			"CREATE TABLE IF NOT EXISTS asm_data_set_blueprints ("
+			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  blueprint_id INTEGER,"
+			"  created_item_id INTEGER,"
+			"  generation_value_id INTEGER,"
+			"  durability INTEGER,"
+			"  quantity INTEGER,"
+			"  loot_table_group_id INTEGER,"
+			"  override_name_msg_id INTEGER,"
+			"  destroy_on_use_flag INTEGER"
+			");"
+			"CREATE TABLE IF NOT EXISTS ga_players_inventory ("
+			"  id                   INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  user_id              INTEGER NOT NULL REFERENCES ga_users(id),"
+			"  profile_id           INTEGER NOT NULL DEFAULT 0,"
+			"  device_id            INTEGER NOT NULL DEFAULT 0,"
+			"  quality              INTEGER NOT NULL DEFAULT 0,"
+			"  mod_effect_group_ids TEXT    NOT NULL DEFAULT '',"
+			"  oc                   INTEGER NOT NULL DEFAULT 0,"
+			"  allowed_slots        TEXT    NOT NULL DEFAULT '',"
+			"  created_at           INTEGER NOT NULL DEFAULT (strftime('%s','now')),"
+			"  item_id              INTEGER NOT NULL DEFAULT 0,"
+			"  stock_n              INTEGER NOT NULL DEFAULT 0"
+			");"
+			"CREATE TABLE IF NOT EXISTS ga_character_devices ("
+			"  id              INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  character_id    INTEGER NOT NULL REFERENCES ga_characters(id),"
+			"  item_profile_id INTEGER NOT NULL,"
+			"  inventory_id    INTEGER NOT NULL REFERENCES ga_players_inventory(id),"
+			"  equipped_slot   INTEGER NOT NULL,"
+			"  UNIQUE(character_id, item_profile_id, equipped_slot)"
+			");"
+			"CREATE INDEX IF NOT EXISTS idx_ga_players_inventory_user "
+			"  ON ga_players_inventory(user_id, profile_id);"
+			"CREATE UNIQUE INDEX IF NOT EXISTS idx_ga_players_inventory_cosmetic_uniq "
+			"  ON ga_players_inventory(user_id, item_id, stock_n) WHERE item_id > 0;"
+			"CREATE INDEX IF NOT EXISTS idx_ga_players_inventory_item "
+			"  ON ga_players_inventory(user_id, item_id);"
+			"CREATE INDEX IF NOT EXISTS idx_ga_character_devices_char "
+			"  ON ga_character_devices(character_id);";
+		result = sqlite3_exec(db, kControlGameplaySchema, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to ensure control gameplay schema: %s\n", err);
+			sqlite3_free(err);
+			err = nullptr;
+			return;
+		}
+
+		const char* kInventoryColumnAlters[] = {
+			"ALTER TABLE ga_players_inventory ADD COLUMN item_id INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_players_inventory ADD COLUMN stock_n INTEGER NOT NULL DEFAULT 0;",
+		};
+		for (const char* sql : kInventoryColumnAlters) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				sqlite3_free(err);
+				err = nullptr;
+			}
+		}
+	}
+
 	// Floor-only version write. The game-server DLL bumps `version_info.version`
 	// past 19 (currently to 24) — an unconditional UPDATE here would silently
 	// downgrade the counter, causing the DLL's `version < 21` block to re-fire
@@ -1167,6 +1373,19 @@ void Database::Init() {
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
+	}
+
+	sqlite3_free(err);
+	err = nullptr;
+	result = sqlite3_exec(db,
+		"UPDATE map_game_info "
+		"SET entry_background_image_res_id = 4985 "
+		"WHERE map_game_id = 100005 "
+		"   OR map_name IN ('Dome3_VR_Arena_P', 'Dome3_VR_Arena_P_reserved')",
+		nullptr, nullptr, &err);
+	if (result != SQLITE_OK) {
+		sqlite3_free(err);
+		err = nullptr;
 	}
 
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.

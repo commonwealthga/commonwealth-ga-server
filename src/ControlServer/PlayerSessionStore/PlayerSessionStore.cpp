@@ -14,6 +14,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <cctype>
 
 std::mutex PlayerSessionStore::mutex_;
 std::map<std::string, SessionInfo> PlayerSessionStore::by_guid_;
@@ -49,6 +50,33 @@ static bool IsBlacklistedItemId(int item_id) {
 	return false;
 }
 
+static bool EqualsIgnoreAsciiCase(const std::string& a, const std::string& b) {
+	if (a.size() != b.size()) return false;
+	for (size_t i = 0; i < a.size(); ++i) {
+		const auto ca = static_cast<unsigned char>(a[i]);
+		const auto cb = static_cast<unsigned char>(b[i]);
+		if (std::tolower(ca) != std::tolower(cb)) return false;
+	}
+	return true;
+}
+
+static bool TableColumnExists(sqlite3* db, const char* table, const char* column) {
+	std::string sql = "SELECT 1 FROM pragma_table_info('";
+	sql += table;
+	sql += "') WHERE name = ?";
+
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db, sql.c_str(), -1, &st, nullptr) != SQLITE_OK || !st) {
+		if (st) sqlite3_finalize(st);
+		return false;
+	}
+
+	sqlite3_bind_text(st, 1, column, -1, SQLITE_TRANSIENT);
+	const bool found = sqlite3_step(st) == SQLITE_ROW;
+	sqlite3_finalize(st);
+	return found;
+}
+
 void PlayerSessionStore::Init() {
 	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();
@@ -61,27 +89,71 @@ void PlayerSessionStore::Init() {
 		Logger::Log("db", "[PlayerSessionStore] Cleared stale player sessions\n");
 	}
 
+	rc = sqlite3_exec(db,
+		"DELETE FROM ga_character_devices "
+		"WHERE character_id IN ("
+		"  SELECT c.id FROM ga_characters c "
+		"  JOIN ga_users u ON u.id = c.user_id "
+		"  WHERE u.username = 'unknown'"
+		");"
+		"DELETE FROM ga_character_skills "
+		"WHERE character_id IN ("
+		"  SELECT c.id FROM ga_characters c "
+		"  JOIN ga_users u ON u.id = c.user_id "
+		"  WHERE u.username = 'unknown'"
+		");"
+		"DELETE FROM ga_character_quests "
+		"WHERE character_id IN ("
+		"  SELECT c.id FROM ga_characters c "
+		"  JOIN ga_users u ON u.id = c.user_id "
+		"  WHERE u.username = 'unknown'"
+		");"
+		"DELETE FROM ga_characters "
+		"WHERE user_id IN (SELECT id FROM ga_users WHERE username = 'unknown');"
+		"DELETE FROM ga_players_inventory "
+		"WHERE user_id IN (SELECT id FROM ga_users WHERE username = 'unknown');"
+		"DELETE FROM ga_players WHERE player_name = 'unknown' OR user_id IN ("
+		"  SELECT id FROM ga_users WHERE username = 'unknown'"
+		");"
+		"DELETE FROM ga_users WHERE username = 'unknown';",
+		nullptr, nullptr, &err);
+	if (rc != SQLITE_OK) {
+		Logger::Log("db", "[PlayerSessionStore] Failed to clear unknown user data: %s\n", err);
+		sqlite3_free(err);
+		err = nullptr;
+	} else {
+		Logger::Log("db", "[PlayerSessionStore] Cleared unknown user data\n");
+	}
+
 	// === Loadout profiles migration ===
-	// Adds item_profile_id partition key to ga_character_devices and
-	// ga_character_skills; ga_characters gains current_item_profile_id.
-	// Idempotent — gated on whether the new ga_characters column exists.
+	// Each table is checked independently. Some DBs already have
+	// ga_characters.current_item_profile_id but still carry the old
+	// ga_character_devices shape, so one global guard is not enough.
 	{
-		bool needs_migration = true;
-		{
-			sqlite3_stmt* st = nullptr;
-			if (sqlite3_prepare_v2(db,
-					"SELECT 1 FROM pragma_table_info('ga_characters') "
-					"WHERE name = 'current_item_profile_id'",
-					-1, &st, nullptr) == SQLITE_OK) {
-				if (sqlite3_step(st) == SQLITE_ROW) needs_migration = false;
-				sqlite3_finalize(st);
+		if (!TableColumnExists(db, "ga_characters", "current_item_profile_id")) {
+			if (sqlite3_exec(db,
+					"ALTER TABLE ga_characters ADD COLUMN current_item_profile_id INTEGER NOT NULL DEFAULT 1",
+					nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Init] current_item_profile_id migration failed: %s\n",
+					err ? err : "(no msg)");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			} else {
+				Logger::Log("db", "[Init] Added ga_characters.current_item_profile_id\n");
 			}
 		}
-		if (needs_migration) {
-			Logger::Log("db", "[Init] Applying loadout-profiles migration\n");
-			const char* sqls[] = {
-				"ALTER TABLE ga_characters ADD COLUMN current_item_profile_id INTEGER NOT NULL DEFAULT 1",
 
+		const bool devices_need_migration =
+			!TableColumnExists(db, "ga_character_devices", "item_profile_id") ||
+			!TableColumnExists(db, "ga_character_devices", "equipped_slot");
+		if (devices_need_migration) {
+			Logger::Log("db", "[Init] Rebuilding ga_character_devices for loadout profiles\n");
+			const bool has_equipped_slot = TableColumnExists(db, "ga_character_devices", "equipped_slot");
+			const bool has_equip_slot = TableColumnExists(db, "ga_character_devices", "equip_slot");
+			const bool has_inventory_id = TableColumnExists(db, "ga_character_devices", "inventory_id");
+			const char* slot_column = has_equipped_slot ? "equipped_slot" : (has_equip_slot ? "equip_slot" : nullptr);
+
+			std::vector<std::string> sqls = {
+				"DROP TABLE IF EXISTS ga_character_devices_v2",
 				"CREATE TABLE ga_character_devices_v2 ("
 				" id              INTEGER PRIMARY KEY AUTOINCREMENT,"
 				" character_id    INTEGER NOT NULL REFERENCES ga_characters(id),"
@@ -90,12 +162,36 @@ void PlayerSessionStore::Init() {
 				" equipped_slot   INTEGER NOT NULL,"
 				" UNIQUE(character_id, item_profile_id, equipped_slot)"
 				")",
-				"INSERT INTO ga_character_devices_v2 (character_id, item_profile_id, inventory_id, equipped_slot)"
-				" SELECT character_id, 1, inventory_id, equipped_slot FROM ga_character_devices",
-				"DROP TABLE ga_character_devices",
-				"ALTER TABLE ga_character_devices_v2 RENAME TO ga_character_devices",
-				"CREATE INDEX idx_ga_character_devices_char ON ga_character_devices(character_id)",
+			};
+			if (slot_column && has_inventory_id) {
+				std::string copy_devices =
+					"INSERT INTO ga_character_devices_v2 (character_id, item_profile_id, inventory_id, equipped_slot)"
+					" SELECT character_id, 1, inventory_id, ";
+				copy_devices += slot_column;
+				copy_devices += " FROM ga_character_devices";
+				sqls.push_back(copy_devices);
+			} else {
+				Logger::Log("db", "[Init] ga_character_devices has no copyable slot/inventory columns; rebuilding empty\n");
+			}
+			sqls.push_back("DROP TABLE IF EXISTS ga_character_devices");
+			sqls.push_back("ALTER TABLE ga_character_devices_v2 RENAME TO ga_character_devices");
+			sqls.push_back("CREATE INDEX IF NOT EXISTS idx_ga_character_devices_char ON ga_character_devices(character_id)");
 
+			char* merr = nullptr;
+			for (const auto& sql : sqls) {
+				if (sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &merr) != SQLITE_OK) {
+					Logger::Log("db", "[Init] Device migration step failed: %s -- SQL: %s\n",
+						merr ? merr : "(no msg)", sql.c_str());
+					if (merr) { sqlite3_free(merr); merr = nullptr; }
+				}
+			}
+			Logger::Log("db", "[Init] ga_character_devices loadout-profile rebuild complete\n");
+		}
+
+		if (!TableColumnExists(db, "ga_character_skills", "item_profile_id")) {
+			Logger::Log("db", "[Init] Rebuilding ga_character_skills for loadout profiles\n");
+			std::vector<std::string> sqls = {
+				"DROP TABLE IF EXISTS ga_character_skills_v2",
 				"CREATE TABLE ga_character_skills_v2 ("
 				" id              INTEGER PRIMARY KEY AUTOINCREMENT,"
 				" character_id    INTEGER NOT NULL REFERENCES ga_characters(id),"
@@ -109,21 +205,22 @@ void PlayerSessionStore::Init() {
 				" SELECT character_id, 1, skill_group_id, skill_id, points FROM ga_character_skills",
 				"DROP TABLE ga_character_skills",
 				"ALTER TABLE ga_character_skills_v2 RENAME TO ga_character_skills",
-				"CREATE INDEX idx_ga_character_skills_char ON ga_character_skills(character_id)",
+				"CREATE INDEX IF NOT EXISTS idx_ga_character_skills_char ON ga_character_skills(character_id)",
 			};
 			char* merr = nullptr;
-			for (const char* sql : sqls) {
-				if (sqlite3_exec(db, sql, nullptr, nullptr, &merr) != SQLITE_OK) {
-					Logger::Log("db", "[Init] Migration step failed: %s -- SQL: %s\n",
-						merr ? merr : "(no msg)", sql);
+			for (const auto& sql : sqls) {
+				if (sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &merr) != SQLITE_OK) {
+					Logger::Log("db", "[Init] Skill migration step failed: %s -- SQL: %s\n",
+						merr ? merr : "(no msg)", sql.c_str());
 					if (merr) { sqlite3_free(merr); merr = nullptr; }
 				}
 			}
-			Logger::Log("db", "[Init] Loadout-profiles migration complete\n");
+			Logger::Log("db", "[Init] ga_character_skills loadout-profile rebuild complete\n");
 		}
 	}
 
 	by_guid_.clear();
+	by_ip_.clear();
 }
 
 void PlayerSessionStore::Register(const SessionInfo& info) {
@@ -202,6 +299,16 @@ std::optional<SessionInfo> PlayerSessionStore::GetByIp(const std::string& ip) {
 	std::lock_guard<std::mutex> lock(mutex_);
 	auto it = by_ip_.find(ip);
 	if (it != by_ip_.end()) return it->second;
+	return std::nullopt;
+}
+
+std::optional<SessionInfo> PlayerSessionStore::GetByPlayerName(const std::string& player_name) {
+	std::lock_guard<std::mutex> lock(mutex_);
+	for (const auto& kv : by_guid_) {
+		if (EqualsIgnoreAsciiCase(kv.second.player_name, player_name)) {
+			return kv.second;
+		}
+	}
 	return std::nullopt;
 }
 

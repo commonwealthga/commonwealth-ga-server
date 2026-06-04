@@ -11,6 +11,7 @@
 class IpcServer {
 public:
     IpcServer(asio::io_context& io, uint16_t port);
+    bool IsListening() const { return listening_; }
 
     // Pending ACK management (called from TcpSession on ASIO thread)
     static void RegisterPendingAck(const std::string& session_guid,
@@ -61,5 +62,6 @@ private:
     static AdminActionHandler admin_action_handler_;
 
     asio::io_context& io_;
-    asio::ip::tcp::acceptor acceptor_;
+    std::unique_ptr<asio::ip::tcp::acceptor> acceptor_;
+    bool listening_ = false;
 };

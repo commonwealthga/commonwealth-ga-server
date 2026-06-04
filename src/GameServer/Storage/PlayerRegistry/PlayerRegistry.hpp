@@ -32,6 +32,7 @@ struct PlayerInfo {
 	// Scoped to current_item_profile_id (the active loadout's skills).
 	std::vector<SkillAllocation> skills;
 	int64_t last_respec_at = 0;
+	uint64_t register_generation = 0;
 };
 
 struct CharacterInfo {
@@ -58,6 +59,8 @@ public:
 	static void Init();
 	static void Register(const PlayerInfo& info);
 	static void Unregister(const std::string& session_guid);
+	static bool UnregisterIfGeneration(const std::string& session_guid,
+	                                   uint64_t register_generation);
 	static std::optional<PlayerInfo> GetByGuid(const std::string& guid);
 	static std::optional<PlayerInfo> GetByIp(const std::string& ip);
 	// Returns a stable pointer into the registry map (valid until Unregister is called).
@@ -89,8 +92,10 @@ public:
 	                                   int item_profile_id);
 
 private:
+	static void EnsureInitialized();
 	static std::map<std::string, PlayerInfo> by_guid_;
 	static std::map<std::string, PlayerInfo> by_ip_;
+	static uint64_t next_generation_;
 	static CRITICAL_SECTION cs_;
 	static bool cs_initialized_;
 };

@@ -8,15 +8,23 @@
 #include "src/ControlServer/InstanceSpawner/InstanceSpawner.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#else
 #include <unistd.h>
 #include <sys/stat.h>
 #include <signal.h>
+#endif
 #include <cstring>
 #include <cerrno>
 #include <vector>
 #include <string>
 #include <cstdio>
 #include <cstdlib>
+#include <cctype>
 #include <atomic>
 #include <cstdint>
 #include <algorithm>
@@ -24,6 +32,84 @@
 #if defined(__linux__)
 #include <sched.h>
 #endif
+
+#ifdef _WIN32
+namespace {
+
+std::string QuoteWindowsArg(const std::string& arg) {
+    if (arg.empty() || arg.find_first_of(" \t\n\v\"") != std::string::npos) {
+        std::string out = "\"";
+        int backslashes = 0;
+        for (char ch : arg) {
+            if (ch == '\\') {
+                ++backslashes;
+            } else if (ch == '"') {
+                out.append(backslashes * 2 + 1, '\\');
+                out.push_back('"');
+                backslashes = 0;
+            } else {
+                out.append(backslashes, '\\');
+                backslashes = 0;
+                out.push_back(ch);
+            }
+        }
+        out.append(backslashes * 2, '\\');
+        out.push_back('"');
+        return out;
+    }
+    return arg;
+}
+
+std::string JoinWindowsCommandLine(const std::vector<std::string>& args) {
+    std::string out;
+    for (size_t i = 0; i < args.size(); ++i) {
+        if (i) out.push_back(' ');
+        out += QuoteWindowsArg(args[i]);
+    }
+    return out;
+}
+
+std::string DirnameWindows(const std::string& path) {
+    const size_t pos = path.find_last_of("\\/");
+    if (pos == std::string::npos) return {};
+    return path.substr(0, pos);
+}
+
+}  // namespace
+#endif
+
+namespace {
+
+bool IsAbsolutePath(const std::string& path) {
+    if (path.empty()) return false;
+#ifdef _WIN32
+    if (path.size() >= 3 && std::isalpha(static_cast<unsigned char>(path[0])) &&
+        path[1] == ':' && (path[2] == '\\' || path[2] == '/')) {
+        return true;
+    }
+    return path.size() >= 2 &&
+           (path[0] == '\\' || path[0] == '/') &&
+           (path[1] == '\\' || path[1] == '/');
+#else
+    return path[0] == '/';
+#endif
+}
+
+std::string AbsolutePathFromCwd(const std::string& path) {
+    if (IsAbsolutePath(path)) return path;
+#ifdef _WIN32
+    char buffer[MAX_PATH];
+    DWORD len = GetFullPathNameA(path.c_str(), static_cast<DWORD>(sizeof(buffer)), buffer, nullptr);
+    if (len > 0 && len < sizeof(buffer)) return buffer;
+    return path;
+#else
+    char cwdbuf[4096];
+    if (!getcwd(cwdbuf, sizeof(cwdbuf))) return path;
+    return std::string(cwdbuf) + "/" + path;
+#endif
+}
+
+}  // namespace
 
 void InstanceSpawner::StopInstanceProcess(const InstanceInfo& inst,
                                           const char* reason,
@@ -35,6 +121,31 @@ void InstanceSpawner::StopInstanceProcess(const InstanceInfo& inst,
         return;
     }
 
+#ifdef _WIN32
+    Logger::Log("spawner",
+        "[InstanceSpawner] StopInstanceProcess: TerminateProcess pid=%d instance=%lld map=%s reason=%s\n",
+        inst.pid, (long long)inst.instance_id, inst.map_name.c_str(),
+        reason ? reason : "unspecified");
+
+    HANDLE process = OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE, FALSE,
+        static_cast<DWORD>(inst.pid));
+    if (!process) {
+        Logger::Log("spawner",
+            "[InstanceSpawner] StopInstanceProcess: OpenProcess pid=%d failed gle=%lu\n",
+            inst.pid, GetLastError());
+        return;
+    }
+
+    if (!TerminateProcess(process, 0)) {
+        Logger::Log("spawner",
+            "[InstanceSpawner] StopInstanceProcess: TerminateProcess pid=%d failed gle=%lu\n",
+            inst.pid, GetLastError());
+    } else {
+        const DWORD wait_ms = static_cast<DWORD>((grace_seconds > 0 ? grace_seconds : 1) * 1000);
+        WaitForSingleObject(process, wait_ms);
+    }
+    CloseHandle(process);
+#else
     Logger::Log("spawner",
         "[InstanceSpawner] StopInstanceProcess: SIGTERM pgid=%d instance=%lld map=%s reason=%s\n",
         inst.pid, (long long)inst.instance_id, inst.map_name.c_str(),
@@ -50,6 +161,7 @@ void InstanceSpawner::StopInstanceProcess(const InstanceInfo& inst,
             kill(-pid, SIGKILL);
         }
     }).detach();
+#endif
 }
 
 int InstanceSpawner::SlotCount(const ControlServerConfig& cfg) {
@@ -67,6 +179,11 @@ std::string InstanceSpawner::SlotPrefixPath(const ControlServerConfig& cfg, int 
 
 bool InstanceSpawner::EnsureSlotPrefixes(const ControlServerConfig& cfg) {
     if (!cfg.per_slot_prefix) return true;
+#ifdef _WIN32
+    Logger::Log("spawner",
+        "[InstanceSpawner] per_slot_prefix ignored on Windows native runtime\n");
+    return true;
+#else
     if (cfg.game_cpu_range.lo < 0 || cfg.game_cpu_range.hi < cfg.game_cpu_range.lo) {
         Logger::Log("spawner",
             "[InstanceSpawner] per_slot_prefix=true but game_cpu_range disabled — using base prefix\n");
@@ -106,6 +223,7 @@ bool InstanceSpawner::EnsureSlotPrefixes(const ControlServerConfig& cfg) {
         Logger::Log("spawner", "[InstanceSpawner]   slot %d: ready\n", s);
     }
     return true;
+#endif
 }
 
 pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
@@ -146,6 +264,121 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
             ? SlotPrefixPath(cfg, slot_idx)
             : cfg.wine_prefix;
 
+#ifdef _WIN32
+    if (cfg.use_docker) {
+        Logger::Log("spawner",
+            "[InstanceSpawner] Docker spawn mode is not supported on Windows native runtime\n");
+        return -1;
+    }
+
+    const std::string game_binary_path = AbsolutePathFromCwd(cfg.game_binary);
+    const std::string map_arg     = map_name + "?Game=" + game_mode;
+    const std::string host_arg    = "-host=" + cfg.host;
+    const std::string hostdns_arg = "-hostdns=" + cfg.hostdns;
+    const std::string port_arg    = "-port=" + std::to_string(udp_port);
+    const std::string ipc_port_arg  = "-ipcport=" + std::to_string(cfg.ipc_port);
+    const std::string inst_id_arg   = "-instanceid=" + std::to_string(instance_id);
+    const std::string dbpath_arg    = "-dbpath=" + AbsolutePathFromCwd(cfg.db_path);
+    const std::string gamepath_arg  = "-gamepath=" + game_binary_path;
+    const std::string fixguids_arg  = std::string("-fixpackageguids=") + (cfg.fix_package_guids ? "1" : "0");
+    const std::string clearlogs_arg = std::string("-clearlogs=")       + (cfg.clear_logs        ? "1" : "0");
+    const std::string crashdir_arg  = "-crashdir=" + AbsolutePathFromCwd(cfg.crash_dir);
+    const std::string logdir_arg    = "-logdir=" + AbsolutePathFromCwd(cfg.log_dir) + "\\" + std::to_string(instance_id);
+
+    auto join_csv = [](const std::vector<std::string>& v) {
+        std::string out;
+        for (size_t i = 0; i < v.size(); ++i) {
+            if (i) out += ',';
+            out += v[i];
+        }
+        return out;
+    };
+    const std::string enabled_channels_arg       = "-enabledchannels="      + join_csv(cfg.enabled_channels);
+    const std::string enabled_crash_channels_arg = "-enabledcrashchannels=" + join_csv(cfg.enabled_crash_channels);
+    const std::string difficulty_arg = (difficulty_value_id != 0)
+        ? ("-difficulty=" + std::to_string(difficulty_value_id))
+        : std::string();
+
+    std::vector<std::string> args = {
+        game_binary_path,
+        "server",
+        map_arg,
+        "-nolog", "-noconsole", "-unattended",
+        host_arg, hostdns_arg, port_arg,
+        "-seekfreeloading", "-tcp=300", "-nullrhi",
+        ipc_port_arg, inst_id_arg, dbpath_arg, gamepath_arg,
+        fixguids_arg, clearlogs_arg, crashdir_arg, logdir_arg,
+        enabled_channels_arg, enabled_crash_channels_arg,
+    };
+    if (!difficulty_arg.empty()) args.push_back(difficulty_arg);
+
+    std::string command_line = JoinWindowsCommandLine(args);
+    std::string work_dir = DirnameWindows(game_binary_path);
+
+    const bool hide_game_console = !cfg.show_game_console;
+    HANDLE nul_in = INVALID_HANDLE_VALUE;
+    HANDLE nul_out = INVALID_HANDLE_VALUE;
+    if (hide_game_console) {
+        SECURITY_ATTRIBUTES inherit_sa{};
+        inherit_sa.nLength = sizeof(inherit_sa);
+        inherit_sa.bInheritHandle = TRUE;
+
+        nul_in = CreateFileA(
+            "NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+            &inherit_sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        nul_out = CreateFileA(
+            "NUL", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+            &inherit_sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    }
+    const bool redirect_stdio = hide_game_console &&
+        nul_in != INVALID_HANDLE_VALUE && nul_out != INVALID_HANDLE_VALUE;
+
+    STARTUPINFOA si{};
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = hide_game_console ? SW_HIDE : SW_SHOW;
+    if (redirect_stdio) {
+        si.dwFlags |= STARTF_USESTDHANDLES;
+        si.hStdInput = nul_in;
+        si.hStdOutput = nul_out;
+        si.hStdError = nul_out;
+    }
+    PROCESS_INFORMATION pi{};
+    BOOL ok = CreateProcessA(
+        nullptr,
+        command_line.data(),
+        nullptr,
+        nullptr,
+        redirect_stdio ? TRUE : FALSE,
+        CREATE_NEW_PROCESS_GROUP | (hide_game_console ? CREATE_NO_WINDOW : CREATE_NEW_CONSOLE),
+        nullptr,
+        work_dir.empty() ? nullptr : work_dir.c_str(),
+        &si,
+        &pi);
+
+    if (nul_in != INVALID_HANDLE_VALUE) CloseHandle(nul_in);
+    if (nul_out != INVALID_HANDLE_VALUE) CloseHandle(nul_out);
+
+    if (!ok) {
+        Logger::Log("spawner",
+            "[InstanceSpawner] CreateProcess failed gle=%lu exe='%s' map=%s\n",
+            GetLastError(), game_binary_path.c_str(), map_name.c_str());
+        return -1;
+    }
+
+    const DWORD child_pid = pi.dwProcessId;
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+
+    Logger::Log("spawner",
+        "[InstanceSpawner] Spawned (windows-native) instance_id=%lld pid=%lu port=%d map=%s console=%s\n",
+        (long long)instance_id, (unsigned long)child_pid, (int)udp_port, map_name.c_str(),
+        hide_game_console ? "hidden" : "visible");
+    (void)wine_prefix;
+    (void)affinity_core_start;
+    (void)affinity_core_end;
+    return static_cast<pid_t>(child_pid);
+#else
     pid_t pid = fork();
 
     if (pid < 0) {
@@ -211,6 +444,7 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         std::string port_arg    = "-port=" + std::to_string(udp_port);
         std::string ipc_port_arg  = "-ipcport=" + std::to_string(cfg.ipc_port);
         std::string inst_id_arg   = "-instanceid=" + std::to_string(instance_id);
+        std::string dbpath_arg    = "-dbpath=" + AbsolutePathFromCwd(cfg.db_path);
         std::string gamepath_arg  = "-gamepath=" + cfg.game_binary;
         std::string fixguids_arg  = std::string("-fixpackageguids=") + (cfg.fix_package_guids ? "1" : "0");
         std::string clearlogs_arg = std::string("-clearlogs=")       + (cfg.clear_logs        ? "1" : "0");
@@ -261,7 +495,7 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
             "-nolog", "-noconsole", "-unattended",
             host_arg.c_str(), hostdns_arg.c_str(), port_arg.c_str(),
             "-seekfreeloading", "-tcp=300", "-nullrhi",
-            ipc_port_arg.c_str(), inst_id_arg.c_str(), gamepath_arg.c_str(),
+            ipc_port_arg.c_str(), inst_id_arg.c_str(), dbpath_arg.c_str(), gamepath_arg.c_str(),
             fixguids_arg.c_str(), clearlogs_arg.c_str(),
             crashdir_arg.c_str(), logdir_arg.c_str(),
             enabled_channels_arg.c_str(), enabled_crash_channels_arg.c_str(),
@@ -497,4 +731,5 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
 #endif
 
     return pid;
+#endif
 }

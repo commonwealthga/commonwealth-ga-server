@@ -19,6 +19,12 @@
 #include <csignal>
 #include <functional>
 #include <algorithm>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 
 // ---------------------------------------------------------------------------
 // Signal handling for clean shutdown
@@ -275,6 +281,11 @@ static bool SpawnAdminInstance(const ControlServerConfig& cfg, const std::string
 // ---------------------------------------------------------------------------
 
 int main(int argc, char* argv[]) {
+#ifdef _WIN32
+    SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+    SetConsoleOutputCP(CP_UTF8);
+#endif
+
     std::string config_path = "control-server.json";
     bool wine_debug = false;
 
@@ -316,7 +327,9 @@ int main(int argc, char* argv[]) {
     // Signal handlers for clean shutdown
     std::signal(SIGINT,  on_signal);
     std::signal(SIGTERM, on_signal);
+#ifndef _WIN32
     std::signal(SIGCHLD, SIG_IGN);  // Auto-reap child zombies (Linux)
+#endif
 
     Logger::Log("main", "Control server v0.0.9 starting...\n");
 
@@ -339,6 +352,7 @@ int main(int argc, char* argv[]) {
 
     // Set network config for TcpSession responses (external IP + chat port)
     TcpSession::SetNetworkConfig(cfg.host, cfg.chat_port);
+    TcpSession::SetLoginPolicy(cfg.allow_duplicate_account_logins);
 
     // Clear stale instances from any previous (crashed) run
     InstanceRegistry::ClearStaleInstances();
@@ -569,14 +583,30 @@ int main(int argc, char* argv[]) {
     // (those can trigger AddPlayer which may start a delay timer).
     MatchmakingService::SetIoContext(&io);
 
+    Logger::Log("main", "Binding TCP listener on port %d\n", (int)cfg.tcp_port);
     // Bind TCP listener (GA client connections)
     TcpListener listener(io, cfg.tcp_port);
+    if (!listener.IsListening()) {
+        Logger::Log("main", "TCP listener failed; aborting startup\n");
+        return 1;
+    }
 
+    Logger::Log("main", "Binding chat listener on port %d\n", (int)cfg.chat_port);
     // Bind chat listener (GA chat connections — separate port)
     ChatListener chat_listener(io, cfg.chat_port);
+    if (!chat_listener.IsListening()) {
+        Logger::Log("main", "Chat listener failed; aborting startup\n");
+        return 1;
+    }
 
+    Logger::Log("main", "Binding IPC listener on port %d\n", (int)cfg.ipc_port);
     // Bind IPC server (game instance connections)
     IpcServer ipc_server(io, cfg.ipc_port);
+    if (!ipc_server.IsListening()) {
+        Logger::Log("main", "IPC listener failed; aborting startup\n");
+        return 1;
+    }
+    Logger::Log("main", "All listeners bound\n");
     IpcServer::SetAdminToken(cfg.admin_token);
     IpcServer::SetAdminActionHandler([&cfg](const std::string& subtype,
                                             const nlohmann::json& payload,
@@ -727,32 +757,14 @@ int main(int argc, char* argv[]) {
 
     Logger::Log("main", "Control server shutting down — terminating spawned instances.\n");
 
-    // Kill every spawned game-instance process group BEFORE we exit so
-    // they don't get orphaned into the systemd cgroup. winedevice.exe
-    // ignores SIGTERM (it's a Wine-internal helper that doesn't react
-    // to Unix signals the way native processes do), and systemd's
-    // `KillMode=control-group` would then sit in stop-sigterm for
-    // TimeoutStopSec (typically 90s) before escalating to SIGKILL.
-    // We do SIGTERM-then-wait-then-SIGKILL on each pgid, mirroring the
-    // idle-cleanup path. Negative pid = kill the process group, which
-    // catches xvfb-run + Xvfb + wine + winedevice + the game binary.
+    // Stop every spawned game-instance before exit. InstanceSpawner owns
+    // platform-specific process teardown: Linux uses process groups; Windows
+    // terminates the tracked child process handle by PID.
     {
         auto running = InstanceRegistry::GetAllRunningInstances();
         Logger::Log("main", "  %zu running instance(s) to terminate\n", running.size());
         for (const auto& inst : running) {
-            if (inst.pid > 0) {
-                Logger::Log("main", "  SIGTERM pgid=%d (instance_id=%lld map=%s)\n",
-                    inst.pid, (long long)inst.instance_id, inst.map_name.c_str());
-                kill(-inst.pid, SIGTERM);
-            }
-        }
-        // Brief grace period for clean shutdown, then SIGKILL stragglers.
-        sleep(2);
-        for (const auto& inst : running) {
-            if (inst.pid > 0 && kill(-inst.pid, 0) == 0) {
-                Logger::Log("main", "  SIGKILL pgid=%d (didn't exit on SIGTERM)\n", inst.pid);
-                kill(-inst.pid, SIGKILL);
-            }
+            InstanceSpawner::StopInstanceProcess(inst, "control-server shutdown", 2);
             InstanceRegistry::MarkStopped(inst.instance_id);
         }
     }

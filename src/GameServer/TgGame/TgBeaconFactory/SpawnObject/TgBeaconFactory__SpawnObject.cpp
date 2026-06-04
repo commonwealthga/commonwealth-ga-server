@@ -56,7 +56,7 @@ static void WireDeployableOwnership(ATgDeployable* dep, ATgBeaconFactory* factor
 	dep->r_bInitialIsEnemy = 0;
 }
 
-void __fastcall* TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, void* /*edx*/) {
+void __fastcall TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, void* /*edx*/) {
 	if (!factory) return nullptr;
 
 	// End-mission respawn gate. UC `AllPlayersEndGame` calls

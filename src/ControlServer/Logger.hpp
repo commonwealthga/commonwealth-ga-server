@@ -56,6 +56,7 @@ public:
         va_end(args);
 
         fprintf(stderr, "[%s] [%s] %s", GetTime(), Channel, buf);
+        fflush(stderr);
     }
 };
 

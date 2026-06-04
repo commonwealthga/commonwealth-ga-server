@@ -2,7 +2,7 @@
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
-void __fastcall* TgPawn__SetTaskForceNumber::Call(ATgPawn* Pawn, void* edx, int TaskForceNumber) {
+void __fastcall TgPawn__SetTaskForceNumber::Call(ATgPawn* Pawn, void* edx, int TaskForceNumber) {
 	ATgRepInfo_Player* repinfo = reinterpret_cast<ATgRepInfo_Player*>(Pawn->PlayerReplicationInfo);
 	ATgRepInfo_TaskForce* taskforce = GTeamsData.Attackers;
 	if (TaskForceNumber != 1) {

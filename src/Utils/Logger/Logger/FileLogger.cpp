@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <unordered_map>
+#include <vector>
 
 std::string Logger::LogDir = "C:";
 
@@ -85,6 +86,50 @@ ChannelState* GetState(const char* channel) {
 
 	LeaveCriticalSection(&g_log_cs);
 	return &state;
+}
+
+bool IsPathSeparator(char ch) {
+	return ch == '\\' || ch == '/';
+}
+
+bool IsDriveOnlyPath(const std::string& path) {
+	return path.size() == 2 && path[1] == ':';
+}
+
+void CreateDirectoryIfNeeded(const std::string& path) {
+	if (path.empty()) return;
+	if (IsDriveOnlyPath(path)) return;
+
+	if (CreateDirectoryA(path.c_str(), nullptr)) return;
+
+	const DWORD err = GetLastError();
+	if (err == ERROR_ALREADY_EXISTS) return;
+}
+
+void CreateDirectoryTree(const std::string& path) {
+	if (path.empty()) return;
+
+	size_t start = 0;
+	if (path.size() >= 2 && path[1] == ':') {
+		start = 2;
+	}
+	while (start < path.size() && IsPathSeparator(path[start])) {
+		++start;
+	}
+
+	for (size_t i = start; i <= path.size(); ++i) {
+		if (i < path.size() && !IsPathSeparator(path[i])) continue;
+
+		std::string part = path.substr(0, i);
+		while (!part.empty() && IsPathSeparator(part.back())) {
+			part.pop_back();
+		}
+		CreateDirectoryIfNeeded(part);
+
+		while (i + 1 < path.size() && IsPathSeparator(path[i + 1])) {
+			++i;
+		}
+	}
 }
 
 }  // namespace
@@ -262,12 +307,7 @@ void Logger::Log(const char* channel, const char* format, ...) {
 }
 
 void Logger::EnsureLogDirExists() {
-	// Idempotent: CreateDirectoryA returns false with GetLastError()=
-	// ERROR_ALREADY_EXISTS when the dir is already there — fine, ignore.
-	// Wine translates the Win32 path (e.g. "C:\12345") to its host fs
-	// equivalent inside the active WINEPREFIX. Only creates the leaf;
-	// the parent ("C:" by default) is guaranteed to exist already.
-	CreateDirectoryA(LogDir.c_str(), nullptr);
+	CreateDirectoryTree(LogDir);
 }
 
 void Logger::ClearEnabledChannelFiles() {

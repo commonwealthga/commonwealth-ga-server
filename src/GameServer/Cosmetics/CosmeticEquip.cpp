@@ -72,6 +72,45 @@ static int LookupMeshAsmIdForCosmetic(int itemId, int genderTypeId) {
 	return asmId;
 }
 
+struct ClassVisualFallback {
+	int suit_item_id;
+};
+
+static ClassVisualFallback GetClassVisualFallback(uint32_t profileId) {
+	switch (profileId) {
+		case 567: return {3139};  // Medic Acolyte
+		case 679: return {4770};  // Robotics Operative
+		case 680: return {3160};  // Assault Heavy
+		case 681: return {3196};  // Recon Wraith
+		default:  return {3160};
+	}
+}
+
+static constexpr int kNoCosmeticItemId = 0;
+
+static void ApplyClassVisualFallback(ATgPawn* Pawn, uint32_t profileId) {
+	if (!Pawn) return;
+	auto* charPawn = (ATgPawn_Character*)Pawn;
+	auto* PRI      = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+	const int gender = charPawn->r_CustomCharacterAssembly.nGenderTypeId;
+	const ClassVisualFallback fallback = GetClassVisualFallback(profileId);
+
+	if (charPawn->r_CustomCharacterAssembly.SuitMeshId <= 0) {
+		int meshAsm = LookupMeshAsmIdForCosmetic(fallback.suit_item_id, gender);
+		if (meshAsm <= 0) meshAsm = 1225;
+		charPawn->r_CustomCharacterAssembly.SuitMeshId = meshAsm;
+		if (PRI) PRI->r_CustomCharacterAssembly.SuitMeshId = meshAsm;
+		Logger::Log("cosmetic-equip",
+			"LoadFromDB: class visual suit fallback profile=%u item=%d mesh=%d\n",
+			profileId, fallback.suit_item_id, meshAsm);
+	}
+
+	if (charPawn->r_CustomCharacterAssembly.HeadFlairId <= 0) {
+		charPawn->r_CustomCharacterAssembly.HelmetMeshId = -1;
+		if (PRI) PRI->r_CustomCharacterAssembly.HelmetMeshId = -1;
+	}
+}
+
 // Core pawn-state write. Doesn't touch the DB.
 // Used by both ApplyToPawn (which then persists) and LoadFromDB (which
 // reads from DB and replays without re-persisting).
@@ -87,7 +126,7 @@ static int LookupMeshAsmIdForCosmetic(int itemId, int genderTypeId) {
 // TgRepInfo_Player.uc:303 which preloads the mesh/material/particle assets
 // the cosmetic refers to. Without the PRI mirror, the client preloads the
 // "no flair" asset set (initial spawn values: SuitFlairId=-1, HeadFlairId=-1,
-// JetpackTrailId=7638, DyeList=BLACK), then later receives the pawn's
+// JetpackTrailId=0, DyeList=0), then later receives the pawn's
 // assembly diff which references unpreloaded assets and triggers an on-demand
 // load whose timing window is what causes the Mace and Shield right-click
 // shield to bind to stale skeleton bones.
@@ -297,12 +336,12 @@ static void WriteBaselineAssembly(FCustomCharacterAssembly& a,
 	a.nGenderTypeId         = genderId;
 	a.HeadFlairId           = -1;
 	a.SuitFlairId           = -1;
-	a.JetpackTrailId        = 7638;
-	a.DyeList[0]            = GA_G::DYE_ID_NONE_MORE_BLACK;
-	a.DyeList[1]            = GA_G::DYE_ID_NONE_MORE_BLACK;
-	a.DyeList[2]            = GA_G::DYE_ID_NONE_MORE_BLACK;
-	a.DyeList[3]            = GA_G::DYE_ID_NONE_MORE_BLACK;
-	a.DyeList[4]            = GA_G::DYE_ID_NONE_MORE_BLACK;
+	a.JetpackTrailId        = kNoCosmeticItemId;
+	a.DyeList[0]            = kNoCosmeticItemId;
+	a.DyeList[1]            = kNoCosmeticItemId;
+	a.DyeList[2]            = kNoCosmeticItemId;
+	a.DyeList[3]            = kNoCosmeticItemId;
+	a.DyeList[4]            = kNoCosmeticItemId;
 }
 
 void LoadFromDB(ATgPawn* Pawn, int64_t character_id) {
@@ -316,20 +355,23 @@ void LoadFromDB(ATgPawn* Pawn, int64_t character_id) {
 	// GetDefaultAssembly) are used as the fallback when the row is missing.
 	int headMesh = 1605;                          // male class default
 	int genderId = GA_G::GENDER_TYPE_ID_MALE;     // 853
+	uint32_t profileId = 680;                     // Assault class default
 	{
 		sqlite3* db = Database::GetConnection();
 		if (db) {
 			sqlite3_stmt* stmt = nullptr;
 			if (sqlite3_prepare_v2(db,
-				"SELECT head_asm_id, gender_type_value_id "
+				"SELECT head_asm_id, gender_type_value_id, profile_id "
 				"FROM ga_characters WHERE id = ?",
 				-1, &stmt, nullptr) == SQLITE_OK) {
 				sqlite3_bind_int64(stmt, 1, character_id);
 				if (sqlite3_step(stmt) == SQLITE_ROW) {
 					const int h = sqlite3_column_int(stmt, 0);
 					const int g = sqlite3_column_int(stmt, 1);
+					const int p = sqlite3_column_int(stmt, 2);
 					if (h > 0) headMesh = h;
 					if (g > 0) genderId = g;
+					if (p > 0) profileId = (uint32_t)p;
 				}
 				sqlite3_finalize(stmt);
 			}
@@ -406,9 +448,11 @@ void LoadFromDB(ATgPawn* Pawn, int64_t character_id) {
 	// stayed at 1225 while the assembly SuitMeshId moved to 1586 — divergent
 	// state across replicated fields that downstream code reads independently.
 	//
-	// New behavior: take the resolved SuitMeshId from the cosmetic overlay.
-	// If the character has no cosmetic suit row (uninitialized account), fall
-	// back to 1225 as before so behavior matches the previous default.
+	// New behavior: take the resolved SuitMeshId from the cosmetic overlay, or
+	// derive a non-persisted class visual mesh when the character has no suit
+	// cosmetic row. The fallback does not write flair ids or helmet mesh, so
+	// fresh accounts do not start with user cosmetics equipped.
+	ApplyClassVisualFallback(Pawn, profileId);
 	int resolvedSuitMesh = charPawn->r_CustomCharacterAssembly.SuitMeshId;
 	if (resolvedSuitMesh <= 0) {
 		resolvedSuitMesh = 1225;
@@ -416,6 +460,7 @@ void LoadFromDB(ATgPawn* Pawn, int64_t character_id) {
 		if (PRI) PRI->r_CustomCharacterAssembly.SuitMeshId = resolvedSuitMesh;
 	}
 	Pawn->r_nBodyMeshAsmId = resolvedSuitMesh;
+	Pawn->SetCollisionFromMesh(resolvedSuitMesh);
 
 	// (4) Force-include both pawn and PRI in the next net update so their
 	// mirrored r_CustomCharacterAssembly fields land in the initial bunch
@@ -449,21 +494,24 @@ void ClearUnsetSlots(ATgPawn* Pawn, const std::set<int>& equippedEngineSlots) {
 	auto has = [&](int slot) { return equippedEngineSlots.count(slot) > 0; };
 	int cleared = 0;
 
-	// Helmet (engine slot 12) — clears HeadFlairId (and HelmetMeshId falls
-	// back to whatever the gameplay helmet/CDO has, so we don't touch it).
+	// Helmet (engine slot 12).
 	if (!has(12)) {
-		if (charPawn->r_CustomCharacterAssembly.HeadFlairId != -1) {
+		if (charPawn->r_CustomCharacterAssembly.HeadFlairId != -1 ||
+		    charPawn->r_CustomCharacterAssembly.HelmetMeshId != -1) {
 			charPawn->r_CustomCharacterAssembly.HeadFlairId = -1;
-			if (PRI) PRI->r_CustomCharacterAssembly.HeadFlairId = -1;
+			charPawn->r_CustomCharacterAssembly.HelmetMeshId = -1;
+			if (PRI) {
+				PRI->r_CustomCharacterAssembly.HeadFlairId = -1;
+				PRI->r_CustomCharacterAssembly.HelmetMeshId = -1;
+			}
 			++cleared;
 		}
 	}
-	// Suit flair (engine slot 6) — clears SuitFlairId; leave SuitMeshId as
-	// the gameplay suit's mesh writes it (cosmetic clear shouldn't make the
-	// player invisible).
+	// Suit flair (engine slot 6).
 	if (!has(6)) {
 		if (charPawn->r_CustomCharacterAssembly.SuitFlairId != -1) {
 			charPawn->r_CustomCharacterAssembly.SuitFlairId = -1;
+			charPawn->r_CustomCharacterAssembly.SuitMeshId = -1;
 			if (PRI) PRI->r_CustomCharacterAssembly.SuitFlairId = -1;
 			++cleared;
 		}
@@ -472,23 +520,29 @@ void ClearUnsetSlots(ATgPawn* Pawn, const std::set<int>& equippedEngineSlots) {
 	for (int slot = 16; slot <= 20; ++slot) {
 		const int eSlot = slot - 16;
 		if (!has(slot)) {
-			if (charPawn->r_CustomCharacterAssembly.DyeList[eSlot] != GA_G::DYE_ID_NONE_MORE_BLACK) {
-				charPawn->r_CustomCharacterAssembly.DyeList[eSlot] = GA_G::DYE_ID_NONE_MORE_BLACK;
-				if (PRI) PRI->r_CustomCharacterAssembly.DyeList[eSlot] = GA_G::DYE_ID_NONE_MORE_BLACK;
+			if (charPawn->r_CustomCharacterAssembly.DyeList[eSlot] != kNoCosmeticItemId) {
+				charPawn->r_CustomCharacterAssembly.DyeList[eSlot] = kNoCosmeticItemId;
+				if (PRI) PRI->r_CustomCharacterAssembly.DyeList[eSlot] = kNoCosmeticItemId;
 				++cleared;
 			}
 		}
 	}
 	// Jetpack trail (engine slot 21).
 	if (!has(21)) {
-		if (charPawn->r_CustomCharacterAssembly.JetpackTrailId != 7638) {
-			charPawn->r_CustomCharacterAssembly.JetpackTrailId = 7638;
-			if (PRI) PRI->r_CustomCharacterAssembly.JetpackTrailId = 7638;
+		if (charPawn->r_CustomCharacterAssembly.JetpackTrailId != kNoCosmeticItemId) {
+			charPawn->r_CustomCharacterAssembly.JetpackTrailId = kNoCosmeticItemId;
+			if (PRI) PRI->r_CustomCharacterAssembly.JetpackTrailId = kNoCosmeticItemId;
 			++cleared;
 		}
 	}
 
 	if (cleared > 0) {
+		ApplyClassVisualFallback(Pawn, charPawn->r_nProfileId);
+		Pawn->r_nBodyMeshAsmId = charPawn->r_CustomCharacterAssembly.SuitMeshId;
+		if (PRI) PRI->r_CustomCharacterAssembly.SuitMeshId = charPawn->r_CustomCharacterAssembly.SuitMeshId;
+		if (Pawn->r_nBodyMeshAsmId > 0) {
+			Pawn->SetCollisionFromMesh(Pawn->r_nBodyMeshAsmId);
+		}
 		Pawn->bNetDirty       = 1;
 		Pawn->bForceNetUpdate = 1;
 		if (PRI) {

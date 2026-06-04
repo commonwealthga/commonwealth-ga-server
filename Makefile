@@ -482,18 +482,26 @@ VERSION_CPP_CLIENT_SRC=$(LIB_DIR)/detours/modules.cpp \
 				$(SDK_CPP_SRC) \
 				$(SOURCE_FILES_CLIENT)
 
+VERSION_PROXY_SRC=$(SRC_DIR)/Proxy/VersionProxy.cpp
+DINPUT8_PROXY_SRC=$(SRC_DIR)/Proxy/DInput8Proxy.cpp
+
 # Object file mapping
 # VERSION_OBJS=$(VERSION_CPP_SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 
 VERSION_CPP_OBJS := $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(VERSION_CPP_SRC))
-VERSION_OBJS := $(VERSION_CPP_OBJS) $(OBJ_DIR)/lib/sqlite3/sqlite3.o
-VERSION_CLIENT_OBJS := $(patsubst %.cpp,$(OBJ_DIR)/client/%.o,$(VERSION_CPP_CLIENT_SRC))
+VERSION_OBJS := $(VERSION_CPP_OBJS) $(OBJ_DIR)/lib/sqlite3/sqlite3.o $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(VERSION_PROXY_SRC))
+VERSION_CLIENT_OBJS := $(patsubst %.cpp,$(OBJ_DIR)/client/%.o,$(VERSION_CPP_CLIENT_SRC)) $(patsubst %.cpp,$(OBJ_DIR)/client/%.o,$(VERSION_PROXY_SRC))
+DINPUT8_OBJS := $(VERSION_OBJS) $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(DINPUT8_PROXY_SRC))
 
+ifeq ($(PRINT_VERSION_OBJS),1)
 $(info VERSION_CPP_SRC = $(VERSION_CPP_SRC))
 $(info VERSION_OBJS    = $(VERSION_OBJS))
+endif
 
 VERSION_DEF=$(DATA_DIR)/version.def
+DINPUT8_DEF=$(DATA_DIR)/dinput8.def
 VERSION_OUT=$(OUT_DIR)/version.dll
+DINPUT8_OUT=$(OUT_DIR)/dinput8.dll
 VERSION_CLIENT_OUT=$(OUT_CLIENT_DIR)/version.dll
 
 obj/pch.hpp.gch: src/pch.hpp
@@ -523,14 +531,20 @@ $(OBJ_DIR)/lib/sqlite3/sqlite3.o: lib/sqlite3/sqlite3.c
 	i686-w64-mingw32-gcc -O2 -I./lib/sqlite3 -c $< -o $@
 
 # Default target
-all: $(VERSION_OUT) $(VERSION_CLIENT_OUT)
+all: $(VERSION_OUT) $(DINPUT8_OUT) $(VERSION_CLIENT_OUT)
 
 # Build version.dll
 $(VERSION_OUT): $(VERSION_OBJS) $(VERSION_DEF)
-	$(CC) $(CFLAGS) -o $@ $(VERSION_OBJS) $(VERSION_DEF) $(LDFLAGS)
+	$(file >$@.rsp,$(VERSION_OBJS) $(VERSION_DEF))
+	$(CC) $(CFLAGS) -o $@ @$@.rsp $(LDFLAGS)
+
+$(DINPUT8_OUT): $(DINPUT8_OBJS) $(DINPUT8_DEF)
+	$(file >$@.rsp,$(DINPUT8_OBJS) $(DINPUT8_DEF))
+	$(CC) $(CFLAGS) -o $@ @$@.rsp $(LDFLAGS)
 
 $(VERSION_CLIENT_OUT): $(VERSION_CLIENT_OBJS) $(VERSION_DEF)
-	$(CC) $(CFLAGS) -o $@ $(VERSION_CLIENT_OBJS) $(VERSION_DEF) $(LDFLAGS)
+	$(file >$@.rsp,$(VERSION_CLIENT_OBJS) $(VERSION_DEF))
+	$(CC) $(CFLAGS) -o $@ @$@.rsp $(LDFLAGS)
 
 # Pull in header-dependency rules emitted by -MMD.  Each .o has a sibling .d
 # file listing the headers its .cpp included; when a header's mtime is newer
@@ -541,13 +555,13 @@ DEPS := $(VERSION_OBJS:.o=.d) $(VERSION_CLIENT_OBJS:.o=.d)
 
 # Clean
 clean:
-	rm -rf $(OBJ_DIR) $(OBJ_CLIENT_DIR) $(OUT_DIR) $(OUT_CLIENT_DIR)
+	rm -rf $(OBJ_DIR) $(OBJ_CLIENT_DIR) $(OUT_DIR) $(OUT_CLIENT_DIR) $(VERSION_OUT).rsp $(DINPUT8_OUT).rsp $(VERSION_CLIENT_OUT).rsp
 
 cleanserver:
-	rm -rf $(OBJ_DIR) $(OUT_DIR)/version.dll
+	rm -rf $(OBJ_DIR) $(OUT_DIR)/version.dll $(OUT_DIR)/dinput8.dll $(VERSION_OUT).rsp $(DINPUT8_OUT).rsp
 
 cleanclient:
-	rm -rf $(OBJ_CLIENT_DIR) $(OUT_CLIENT_DIR)
+	rm -rf $(OBJ_CLIENT_DIR) $(OUT_CLIENT_DIR) $(VERSION_CLIENT_OUT).rsp
 
 # ── Control Server ──────────────────────────────────────────────────────────
 CS_SRC_DIR=src/ControlServer
@@ -578,9 +592,11 @@ CS_CPP_SOURCES= \
 CS_SOURCES=$(CS_CPP_SOURCES)
 
 CS_CXXFLAGS=-std=c++17 -pthread -I. -I./lib/asio-1.34.2/include -I./lib/sqlite3 -DASIO_STANDALONE -O2 -Wall
+# MinGW builds crash in Asio socket service construction with -O1/-O2.
+CS_CXXFLAGS_WIN=$(filter-out -O2,$(CS_CXXFLAGS)) -O0 -D_WIN32_WINNT=0x0601
 CS_CFLAGS_SQLITE=-O2 -I./lib/sqlite3
 CS_LDFLAGS_LINUX=-lpthread -ldl
-CS_LDFLAGS_WIN=-lws2_32 -static
+CS_LDFLAGS_WIN=-lws2_32 -lmswsock -static
 
 CS_OUT_LINUX=out/control-server
 CS_OUT_WIN=out/control-server.exe
@@ -597,7 +613,7 @@ control-server-linux: $(CS_CPP_SOURCES) $(CS_SQLITE_OBJ_LINUX)
 	g++ $(CS_CXXFLAGS) -o $(CS_OUT_LINUX) $(CS_CPP_SOURCES) $(CS_SQLITE_OBJ_LINUX) $(CS_LDFLAGS_LINUX)
 
 control-server-win: $(CS_CPP_SOURCES) $(CS_SQLITE_OBJ_WIN)
-	x86_64-w64-mingw32-g++ $(CS_CXXFLAGS) -o $(CS_OUT_WIN) $(CS_CPP_SOURCES) $(CS_SQLITE_OBJ_WIN) $(CS_LDFLAGS_WIN)
+	x86_64-w64-mingw32-g++ $(CS_CXXFLAGS_WIN) -o $(CS_OUT_WIN) $(CS_CPP_SOURCES) $(CS_SQLITE_OBJ_WIN) $(CS_LDFLAGS_WIN)
 
 control-server: control-server-linux control-server-win
 

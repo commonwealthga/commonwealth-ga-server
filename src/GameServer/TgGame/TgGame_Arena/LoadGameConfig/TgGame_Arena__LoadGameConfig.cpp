@@ -2,7 +2,7 @@
 #include "src/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
-void __fastcall* TgGame_Arena__LoadGameConfig::Call(ATgGame_Arena* Game, void* edx) {
+void __fastcall TgGame_Arena__LoadGameConfig::Call(ATgGame_Arena* Game, void* edx) {
 	LogCallBegin();
 
 	Game->m_nSecsToAutoRelease = 15;
