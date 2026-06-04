@@ -10,12 +10,14 @@ int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* No
 
 	const bool native_windows = Config::GetNativeWindowsRuntime();
 	if (native_windows) {
-		// Native Steam runtime has no standalone TgNetDrv package. The
-		// original InitListen tries to load NetConnectionClassName and
-		// crashes on null, so native Windows owns socket setup below.
+		// Native Windows cannot safely call the original InitListen. It crashes
+		// before returning at GlobalAgenda.exe+0x6ea97 while resolving
+		// TgNetDrv.UClientConnection, so Windows owns socket setup here. Keep
+		// Linux/Wine on CallOriginal below; their TgNetDrv path is valid.
+		Logger::Log("debug", "[UdpNetDriver::InitListen] native Windows socket path\n");
 		NetDriver->Notify = Notify;
 	} else {
-		int result = UdpNetDriver__InitListen::CallOriginal(NetDriver, Notify, Url, Error);
+		const int result = UdpNetDriver__InitListen::CallOriginal(NetDriver, Notify, Url, Error);
 		if (!result) {
 			Logger::Log("debug", "[UdpNetDriver::InitListen] CallOriginal failed\n");
 			return 0;
