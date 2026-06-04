@@ -38,7 +38,9 @@ Channels are toggled in `control-server.json` under the logging section. NEVER e
 
 ## Log file locations
 
-Each enabled channel writes to its own file. Locations vary by environment, but the pattern is `<wineprefix>/drive_c/<channel>.txt`. The human knows where their prefix is — when you need to refer to a log location in a question, say "the `<channel>` log" and let the human paste from wherever they keep it.
+Each enabled channel writes its own file at `<Logger::LogDir>/<channel>.txt`. `LogDir` defaults to `"C:"` (resolves to `<wineprefix>/drive_c/<channel>.txt` under Wine), but can be overridden per instance via `Config::GetLogDir()` — e.g. to isolate logs across parallel server instances under a per-instance subdir.
+
+Dev environments differ. Don't assume `~/Games/...` or any specific path. Refer to the file as "the `<channel>` log" in questions and let the human paste from wherever they keep it.
 
 For listen-server / dedicated-server: only the server-side log is reliable. The human typically does NOT run with a client-side DLL injected, so client log files are stale leftovers from prior sessions. Don't trust client logs unless the human explicitly confirms the client DLL is loaded for the repro.
 
@@ -77,7 +79,3 @@ Cheap-arg sites can call `Logger::Log` directly — it gates internally.
 ## Crash-only channels
 
 For very high-volume diagnostic flows where even file I/O is too slow, use `Logger::EnableCrashChannel(name)`. Output is recorded into an in-memory ring buffer and only flushed by the crash handler — zero disk I/O during normal operation. A channel can be in both the file-enabled and crash-enabled lists.
-
-## Log directory
-
-Per-channel files land at `<Logger::LogDir>/<channel>.txt`. `LogDir` defaults to `"C:"` (which resolves to `<wineprefix>/drive_c/<channel>.txt` under Wine). The human can override via `Config::GetLogDir()` and per-instance subdirs, but for "where do I find the log file" purposes, ask the human and let them paste the path.
