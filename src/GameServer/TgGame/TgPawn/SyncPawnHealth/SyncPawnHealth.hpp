@@ -15,8 +15,8 @@
 //   3. ATgPawn::r_nHealthMaximum (0x43C) — Tg replicated max HP
 //   4. UTgProperty[51 HEALTH].m_fRaw / m_fMaximum
 //   5. UTgProperty[304 HEALTH_MAX].m_fRaw / m_fMaximum
-//   6. ATgRepInfo_Player::r_nHealthCurrent — via UC UpdateHealth event (if PRI wired)
-//   7. ATgRepInfo_Player::r_nHealthMaximum — via UC UpdateHealth event (if PRI wired)
+//   6. ATgRepInfo_Player::r_nHealthCurrent — direct replicated write when PRI is wired
+//   7. ATgRepInfo_Player::r_nHealthMaximum — direct replicated write when PRI is wired
 namespace SyncPawnHealth {
-	void Apply(ATgPawn* pawn, int hp, int maxHp);
+	void Apply(ATgPawn* pawn, int hp, int maxHp, bool notifyClient = false);
 }

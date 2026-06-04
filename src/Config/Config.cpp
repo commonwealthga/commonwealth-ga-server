@@ -155,13 +155,16 @@ float Config::GetDifficultyScalar() {
 
 uint16_t Config::GetIpcPort() {
 	ParsedOptions options = CommandLineParser::ParseCommandLine();
-	std::wstring port = options.switches[L"ipcport"].empty()
-	                  ? L"9010" : options.switches[L"ipcport"];
+	std::wstring port = options.switches[L"ipc_port"];
+	if (port.empty()) port = options.switches[L"ipcport"];
+	if (port.empty()) port = L"9010";
 	return static_cast<uint16_t>(std::stoi(CommandLineParser::WideToUtf8(port)));
 }
 
 std::string Config::GetIpcHost() {
 	ParsedOptions options = CommandLineParser::ParseCommandLine();
+	if (!options.switches[L"ipc_host"].empty())
+		return CommandLineParser::WideToUtf8(options.switches[L"ipc_host"]);
 	if (!options.switches[L"ipchost"].empty())
 		return CommandLineParser::WideToUtf8(options.switches[L"ipchost"]);
 	return "127.0.0.1";
@@ -172,6 +175,15 @@ int64_t Config::GetInstanceId() {
 	std::wstring val = options.switches[L"instanceid"];
 	if (val.empty()) return 0;
 	return static_cast<int64_t>(std::stoll(CommandLineParser::WideToUtf8(val)));
+}
+
+std::string Config::GetDbPath() {
+	ParsedOptions options = CommandLineParser::ParseCommandLine();
+	if (!options.switches[L"dbpath"].empty())
+		return CommandLineParser::WideToUtf8(options.switches[L"dbpath"]);
+	if (!options.switches[L"db_path"].empty())
+		return CommandLineParser::WideToUtf8(options.switches[L"db_path"]);
+	return "server.db";
 }
 
 std::string Config::GetGamePath() {

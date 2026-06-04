@@ -1,4 +1,5 @@
 #include "src/Database/Database.hpp"
+#include "src/Config/Config.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -6,11 +7,13 @@ sqlite3* Database::connection = nullptr;
 
 sqlite3* Database::GetConnection() {
 	if (Database::connection == nullptr) {
-		int result = sqlite3_open("server.db", &connection);
+		const std::string db_path = Config::GetDbPath();
+		int result = sqlite3_open(db_path.c_str(), &connection);
 		if (result != SQLITE_OK) {
-			Logger::Log("db", "Failed to open database: %s", sqlite3_errmsg(connection));
+			Logger::Log("db", "Failed to open database '%s': %s", db_path.c_str(), sqlite3_errmsg(connection));
 			return nullptr;
 		}
+		Logger::Log("db", "Opened database '%s'\n", db_path.c_str());
 		// journal_mode is persistent in the DB header (set by the control-server
 		// open) — re-asserting it is cheap and makes the intent explicit. The
 		// other three pragmas are per-connection: every game-DLL connection has
@@ -49,8 +52,30 @@ int Database::Callback(void* data, int argc, char** argv, char** azColName) {
 	return 0;
 }
 
+static bool TableColumnExists(sqlite3* db, const char* table, const char* column) {
+	std::string sql = "SELECT 1 FROM pragma_table_info('";
+	sql += table;
+	sql += "') WHERE name = ?";
+
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db, sql.c_str(), -1, &st, nullptr) != SQLITE_OK || !st) {
+		if (st) sqlite3_finalize(st);
+		return false;
+	}
+
+	sqlite3_bind_text(st, 1, column, -1, SQLITE_TRANSIENT);
+	const bool found = sqlite3_step(st) == SQLITE_ROW;
+	sqlite3_finalize(st);
+	return found;
+}
+
 void Database::Init() {
 	sqlite3* db = GetConnection();
+	if (!db) {
+		Logger::Log("db", "Database::Init skipped: no DB connection\n");
+		PlayerRegistry::Init();
+		return;
+	}
 
 	char* err = nullptr;
 	int result = 0;
@@ -81,6 +106,237 @@ void Database::Init() {
 	} else {
 		version = std::stoi(data[0]["version"]);
 	}
+
+	auto exec_ignore_error = [&](const char* sql) {
+		char* local_err = nullptr;
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &local_err) != SQLITE_OK) {
+			sqlite3_free(local_err);
+		}
+	};
+
+	auto exec_required = [&](const char* label, const char* sql) -> bool {
+		char* local_err = nullptr;
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &local_err) != SQLITE_OK) {
+			Logger::Log("db", "Failed schema floor (%s): %s\n", label, local_err ? local_err : "");
+			sqlite3_free(local_err);
+			return false;
+		}
+		return true;
+	};
+
+	const char* kSharedGameplaySchemaFloor =
+		"CREATE TABLE IF NOT EXISTS asm_data_set_properties ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"  prop_id INTEGER,"
+		"  name TEXT,"
+		"  prop_type_value_id INTEGER,"
+		"  prop_uom_value_id INTEGER,"
+		"  ui_name_msg_id INTEGER,"
+		"  ui_code TEXT"
+		");"
+		"CREATE TABLE IF NOT EXISTS asm_data_set_device_effect_groups ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"  device_id INTEGER,"
+		"  effect_group_id INTEGER"
+		");"
+		"CREATE TABLE IF NOT EXISTS asm_data_set_device_mode_effect_groups ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"  device_id INTEGER,"
+		"  device_mode_id INTEGER,"
+		"  effect_group_id INTEGER,"
+		"  effect_group_type_value_id INTEGER"
+		");"
+		"CREATE TABLE IF NOT EXISTS asm_data_set_device_mode_properties ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"  device_id INTEGER,"
+		"  device_mode_id INTEGER,"
+		"  prop_id INTEGER,"
+		"  base_value REAL,"
+		"  min_value REAL,"
+		"  max_value REAL"
+		");"
+		"CREATE TABLE IF NOT EXISTS asm_data_set_device_anim_set_groups ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"  device_id INTEGER,"
+		"  gender_type_value_id INTEGER,"
+		"  anim_set_dest_type_value_id INTEGER,"
+		"  anim_set_res_id INTEGER"
+		");"
+		"CREATE TABLE IF NOT EXISTS asm_data_set_item_effect_groups ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"  item_id INTEGER,"
+		"  effect_group_id INTEGER,"
+		"  effect_group_type_value_id INTEGER"
+		");"
+		"CREATE TABLE IF NOT EXISTS asm_data_set_item_props ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"  item_id INTEGER,"
+		"  prop_id INTEGER,"
+		"  value REAL"
+		");"
+		"CREATE TABLE IF NOT EXISTS asm_data_set_item_mesh_asm_groups ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"  item_id INTEGER,"
+		"  gender_type_value_id INTEGER,"
+		"  item_mesh_asm_type_value_id INTEGER,"
+		"  quality_value_id INTEGER,"
+		"  asm_id INTEGER"
+		");"
+		"CREATE TABLE IF NOT EXISTS asm_data_set_prices ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"  item_id INTEGER,"
+		"  price INTEGER,"
+		"  currency_type_value_id INTEGER"
+		");"
+		"CREATE TABLE IF NOT EXISTS asm_data_set_devices_data_set_device_modes ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"  device_id INTEGER,"
+		"  device_mode_id INTEGER,"
+		"  name_msg_id INTEGER,"
+		"  name_msg_translated TEXT,"
+		"  class_res_id INTEGER,"
+		"  damage_class_res_id INTEGER,"
+		"  device_projectile_id INTEGER,"
+		"  deployable_id INTEGER,"
+		"  bot_id INTEGER,"
+		"  impact_fx_group_id INTEGER,"
+		"  damage_type_value_id INTEGER,"
+		"  offhand_anim_res_id INTEGER,"
+		"  target_type_value_id INTEGER,"
+		"  target_type_affect_value_id INTEGER,"
+		"  attack_type_value_id INTEGER,"
+		"  remote_type_value_id INTEGER,"
+		"  camera_type_value_id INTEGER,"
+		"  reticule_res_id INTEGER,"
+		"  scope_material_res_id INTEGER,"
+		"  scale_fire_anim_flag INTEGER,"
+		"  interrupt_fire_anim_on_refire_flag INTEGER,"
+		"  require_los_flag INTEGER,"
+		"  continuous_fire_flag INTEGER,"
+		"  restrict_in_combat_flag INTEGER,"
+		"  require_aimmode_flag INTEGER,"
+		"  do_not_pause_ai_flag INTEGER,"
+		"  restrict_firing_flags INTEGER,"
+		"  restrict_physics_firing_flags INTEGER,"
+		"  return_to_idle_anim_secs REAL,"
+		"  icon_id INTEGER,"
+		"  attack_rating INTEGER,"
+		"  fire_mode_sequence INTEGER"
+		");"
+		"CREATE TABLE IF NOT EXISTS asm_data_set_projectiles ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"  device_projectile_id INTEGER,"
+		"  class_res_id INTEGER,"
+		"  asm_id INTEGER,"
+		"  explosion_fx_id INTEGER,"
+		"  impact_fx_group_id INTEGER,"
+		"  toss_z REAL,"
+		"  acceleration_rate REAL,"
+		"  draw_scale REAL,"
+		"  max_nbr_of_bounces INTEGER,"
+		"  spawn_item_id INTEGER,"
+		"  spawn_bot_id INTEGER,"
+		"  spawn_deployable_id INTEGER,"
+		"  delay_track_secs REAL,"
+		"  rotation_follows_velocity_flag INTEGER,"
+		"  stick_to_wall_flag INTEGER,"
+		"  track_target_flag INTEGER,"
+		"  track_to_world_pos_flag INTEGER,"
+		"  aim_from_socket_flag INTEGER"
+		");"
+		"CREATE TABLE IF NOT EXISTS asm_data_set_deployables ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"  deployable_id INTEGER,"
+		"  class_res_id INTEGER,"
+		"  name_msg_id INTEGER,"
+		"  name_msg_translated TEXT,"
+		"  desc_msg_id INTEGER,"
+		"  desc_msg_translated TEXT,"
+		"  deployable_type_value_id INTEGER,"
+		"  asm_id INTEGER,"
+		"  health INTEGER,"
+		"  device_id INTEGER,"
+		"  death_fx_id INTEGER,"
+		"  pickup_device_id INTEGER,"
+		"  use_device_chance REAL,"
+		"  vulnerable_to_attack_flags INTEGER,"
+		"  loot_table_id INTEGER,"
+		"  physical_type_value_id INTEGER,"
+		"  artillery_target_type_value_id INTEGER,"
+		"  destroy_on_owner_death_flag INTEGER,"
+		"  delay_deploy_flag INTEGER,"
+		"  require_ammo_to_live_flag INTEGER,"
+		"  show_countdown_timer_flag INTEGER"
+		");"
+		"CREATE TABLE IF NOT EXISTS asm_data_set_deployables_visibility_configs ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"  deployable_id INTEGER,"
+		"  visibility_config_id INTEGER,"
+		"  child_deployable_id INTEGER,"
+		"  proximity_distance REAL"
+		");"
+		"CREATE TABLE IF NOT EXISTS asm_data_set_assembly_meshes ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"  asm_id INTEGER,"
+		"  name TEXT,"
+		"  mesh_res_id INTEGER,"
+		"  anim_tree_res_id INTEGER,"
+		"  physics_asset_res_id INTEGER,"
+		"  socket_res_id INTEGER,"
+		"  aim_offset_profile_res_id INTEGER,"
+		"  socket_offset_info_res_id INTEGER,"
+		"  asm_mesh_type_value_id INTEGER,"
+		"  scale REAL,"
+		"  cull_distance REAL,"
+		"  scale_3d_x REAL,"
+		"  scale_3d_y REAL,"
+		"  scale_3d_z REAL,"
+		"  translation_x REAL,"
+		"  translation_y REAL,"
+		"  translation_z REAL,"
+		"  rotation_pitch REAL,"
+		"  rotation_yaw REAL,"
+		"  rotation_roll REAL,"
+		"  collision_radius REAL,"
+		"  collision_height REAL,"
+		"  overlay_material_res_id INTEGER"
+		");";
+	if (!exec_required("shared gameplay tables", kSharedGameplaySchemaFloor)) return;
+
+	const char* kDeviceModeColumnFloors[] = {
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN class_res_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN damage_class_res_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN device_projectile_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN deployable_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN bot_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN impact_fx_group_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN damage_type_value_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN offhand_anim_res_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN target_type_value_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN target_type_affect_value_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN attack_type_value_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN remote_type_value_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN camera_type_value_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN reticule_res_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN scope_material_res_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN scale_fire_anim_flag INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN interrupt_fire_anim_on_refire_flag INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN require_los_flag INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN continuous_fire_flag INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN restrict_in_combat_flag INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN require_aimmode_flag INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN do_not_pause_ai_flag INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN restrict_firing_flags INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN restrict_physics_firing_flags INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN return_to_idle_anim_secs REAL;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN icon_id INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN attack_rating INTEGER;",
+		"ALTER TABLE asm_data_set_devices_data_set_device_modes ADD COLUMN fire_mode_sequence INTEGER;",
+	};
+	for (const char* sql : kDeviceModeColumnFloors) {
+		exec_ignore_error(sql);
+	}
+	exec_ignore_error("ALTER TABLE asm_data_set_impact_fx ADD COLUMN flag_0x1d9 INTEGER;");
 
 	if (version < 1) {
 		result = sqlite3_exec(db,
@@ -836,7 +1092,8 @@ void Database::Init() {
 			"  sound_res_id INTEGER,"
 			"  particle_res_id INTEGER,"
 			"  fx_id INTEGER,"
-			"  decal_random_rotation_flag INTEGER"
+			"  decal_random_rotation_flag INTEGER,"
+			"  flag_0x1d9 INTEGER"
 			");"
 
 			"CREATE TABLE IF NOT EXISTS asm_data_set_sound_cues ("
@@ -2335,7 +2592,7 @@ void Database::Init() {
 		// then class-specific scalar columns.
 
 		const char* kV33_team_player_start =
-			"CREATE TABLE map_tg_team_player_start ("
+			"CREATE TABLE IF NOT EXISTS map_tg_team_player_start ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2350,13 +2607,13 @@ void Database::Init() {
 			"  n_prev_priority INTEGER,"
 			"  m_n_min_level INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_team_player_start_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_team_player_start_map_object_id "
 			"  ON map_tg_team_player_start(map_object_id);";
 		result = sqlite3_exec(db, kV33_team_player_start, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (team_player_start): %s\n", err); return; }
 
 		const char* kV33_start_point =
-			"CREATE TABLE map_tg_start_point ("
+			"CREATE TABLE IF NOT EXISTS map_tg_start_point ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2374,13 +2631,13 @@ void Database::Init() {
 			"  m_f_decrease_rate REAL,"
 			"  availability_quest_group_id INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_start_point_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_start_point_map_object_id "
 			"  ON map_tg_start_point(map_object_id);";
 		result = sqlite3_exec(db, kV33_start_point, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (start_point): %s\n", err); return; }
 
 		const char* kV33_mission_objective =
-			"CREATE TABLE map_tg_mission_objective ("
+			"CREATE TABLE IF NOT EXISTS map_tg_mission_objective ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2448,13 +2705,13 @@ void Database::Init() {
 			"  s_n_previous_priority INTEGER,"
 			"  s_n_current_spawn_order INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_mission_objective_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_mission_objective_map_object_id "
 			"  ON map_tg_mission_objective(map_object_id);";
 		result = sqlite3_exec(db, kV33_mission_objective, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (mission_objective): %s\n", err); return; }
 
 		const char* kV33_mission_objective_bot =
-			"CREATE TABLE map_tg_mission_objective_bot ("
+			"CREATE TABLE IF NOT EXISTS map_tg_mission_objective_bot ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2470,13 +2727,13 @@ void Database::Init() {
 			"  f_balance REAL,"
 			"  n_global_alarm_id INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_mission_objective_bot_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_mission_objective_bot_map_object_id "
 			"  ON map_tg_mission_objective_bot(map_object_id);";
 		result = sqlite3_exec(db, kV33_mission_objective_bot, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (mission_objective_bot): %s\n", err); return; }
 
 		const char* kV33_mission_objective_kismet =
-			"CREATE TABLE map_tg_mission_objective_kismet ("
+			"CREATE TABLE IF NOT EXISTS map_tg_mission_objective_kismet ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2486,13 +2743,13 @@ void Database::Init() {
 			"  location_x REAL, location_y REAL, location_z REAL,"
 			"  rotation_pitch INTEGER, rotation_yaw INTEGER, rotation_roll INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_mission_objective_kismet_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_mission_objective_kismet_map_object_id "
 			"  ON map_tg_mission_objective_kismet(map_object_id);";
 		result = sqlite3_exec(db, kV33_mission_objective_kismet, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (mission_objective_kismet): %s\n", err); return; }
 
 		const char* kV33_mission_objective_proximity =
-			"CREATE TABLE map_tg_mission_objective_proximity ("
+			"CREATE TABLE IF NOT EXISTS map_tg_mission_objective_proximity ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2509,13 +2766,13 @@ void Database::Init() {
 			"  r_f_capture_rate REAL,"
 			"  m_f_overtime_accel_rate REAL"
 			");"
-			"CREATE INDEX idx_map_tg_mission_objective_proximity_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_mission_objective_proximity_map_object_id "
 			"  ON map_tg_mission_objective_proximity(map_object_id);";
 		result = sqlite3_exec(db, kV33_mission_objective_proximity, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (mission_objective_proximity): %s\n", err); return; }
 
 		const char* kV33_base_objective_ctf_bot =
-			"CREATE TABLE map_tg_base_objective_ctf_bot ("
+			"CREATE TABLE IF NOT EXISTS map_tg_base_objective_ctf_bot ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2529,13 +2786,13 @@ void Database::Init() {
 			"  m_b_spawn_unaligned_bot INTEGER,"
 			"  m_b_capture_on_death INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_base_objective_ctf_bot_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_base_objective_ctf_bot_map_object_id "
 			"  ON map_tg_base_objective_ctf_bot(map_object_id);";
 		result = sqlite3_exec(db, kV33_base_objective_ctf_bot, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (base_objective_ctf_bot): %s\n", err); return; }
 
 		const char* kV33_base_objective_koth =
-			"CREATE TABLE map_tg_base_objective_koth ("
+			"CREATE TABLE IF NOT EXISTS map_tg_base_objective_koth ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2546,13 +2803,13 @@ void Database::Init() {
 			"  rotation_pitch INTEGER, rotation_yaw INTEGER, rotation_roll INTEGER,"
 			"  c_f_prev_client_capt_time REAL"
 			");"
-			"CREATE INDEX idx_map_tg_base_objective_koth_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_base_objective_koth_map_object_id "
 			"  ON map_tg_base_objective_koth(map_object_id);";
 		result = sqlite3_exec(db, kV33_base_objective_koth, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (base_objective_koth): %s\n", err); return; }
 
 		const char* kV33_mission_objective_escort =
-			"CREATE TABLE map_tg_mission_objective_escort ("
+			"CREATE TABLE IF NOT EXISTS map_tg_mission_objective_escort ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2562,13 +2819,13 @@ void Database::Init() {
 			"  location_x REAL, location_y REAL, location_z REAL,"
 			"  rotation_pitch INTEGER, rotation_yaw INTEGER, rotation_roll INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_mission_objective_escort_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_mission_objective_escort_map_object_id "
 			"  ON map_tg_mission_objective_escort(map_object_id);";
 		result = sqlite3_exec(db, kV33_mission_objective_escort, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (mission_objective_escort): %s\n", err); return; }
 
 		const char* kV33_omega_volume =
-			"CREATE TABLE map_tg_omega_volume ("
+			"CREATE TABLE IF NOT EXISTS map_tg_omega_volume ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2588,13 +2845,13 @@ void Database::Init() {
 			"  m_b_auto_kick_if_idle INTEGER,"
 			"  m_e_visual_cue INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_omega_volume_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_omega_volume_map_object_id "
 			"  ON map_tg_omega_volume(map_object_id);";
 		result = sqlite3_exec(db, kV33_omega_volume, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (omega_volume): %s\n", err); return; }
 
 		const char* kV33_modify_pawn_properties_volume =
-			"CREATE TABLE map_tg_modify_pawn_properties_volume ("
+			"CREATE TABLE IF NOT EXISTS map_tg_modify_pawn_properties_volume ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2614,13 +2871,13 @@ void Database::Init() {
 			"  m_v_onew_way_roll INTEGER,"
 			"  s_n_loot_table_id INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_modify_pawn_properties_volume_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_modify_pawn_properties_volume_map_object_id "
 			"  ON map_tg_modify_pawn_properties_volume(map_object_id);";
 		result = sqlite3_exec(db, kV33_modify_pawn_properties_volume, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (modify_pawn_properties_volume): %s\n", err); return; }
 
 		const char* kV33_device_volume =
-			"CREATE TABLE map_tg_device_volume ("
+			"CREATE TABLE IF NOT EXISTS map_tg_device_volume ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2635,13 +2892,13 @@ void Database::Init() {
 			"  s_n_team_number INTEGER,"
 			"  s_n_task_force INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_device_volume_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_device_volume_map_object_id "
 			"  ON map_tg_device_volume(map_object_id);";
 		result = sqlite3_exec(db, kV33_device_volume, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (device_volume): %s\n", err); return; }
 
 		const char* kV33_flag_capture_volume =
-			"CREATE TABLE map_tg_flag_capture_volume ("
+			"CREATE TABLE IF NOT EXISTS map_tg_flag_capture_volume ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2653,13 +2910,13 @@ void Database::Init() {
 			"  r_n_task_force INTEGER,"
 			"  r_e_coalition INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_flag_capture_volume_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_flag_capture_volume_map_object_id "
 			"  ON map_tg_flag_capture_volume(map_object_id);";
 		result = sqlite3_exec(db, kV33_flag_capture_volume, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (flag_capture_volume): %s\n", err); return; }
 
 		const char* kV33_help_alert_volume =
-			"CREATE TABLE map_tg_help_alert_volume ("
+			"CREATE TABLE IF NOT EXISTS map_tg_help_alert_volume ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2670,13 +2927,13 @@ void Database::Init() {
 			"  rotation_pitch INTEGER, rotation_yaw INTEGER, rotation_roll INTEGER,"
 			"  m_n_help_id INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_help_alert_volume_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_help_alert_volume_map_object_id "
 			"  ON map_tg_help_alert_volume(map_object_id);";
 		result = sqlite3_exec(db, kV33_help_alert_volume, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (help_alert_volume): %s\n", err); return; }
 
 		const char* kV33_mission_list_volume =
-			"CREATE TABLE map_tg_mission_list_volume ("
+			"CREATE TABLE IF NOT EXISTS map_tg_mission_list_volume ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2688,13 +2945,13 @@ void Database::Init() {
 			"  s_n_queue_table_id INTEGER,"
 			"  s_n_queue_table_msg_id INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_mission_list_volume_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_mission_list_volume_map_object_id "
 			"  ON map_tg_mission_list_volume(map_object_id);";
 		result = sqlite3_exec(db, kV33_mission_list_volume, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (mission_list_volume): %s\n", err); return; }
 
 		const char* kV33_actor_factory =
-			"CREATE TABLE map_tg_actor_factory ("
+			"CREATE TABLE IF NOT EXISTS map_tg_actor_factory ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2714,13 +2971,13 @@ void Database::Init() {
 			"  s_n_name_id INTEGER,"
 			"  s_n_cur_list_index INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_actor_factory_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_actor_factory_map_object_id "
 			"  ON map_tg_actor_factory(map_object_id);";
 		result = sqlite3_exec(db, kV33_actor_factory, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (actor_factory): %s\n", err); return; }
 
 		const char* kV33_bot_factory =
-			"CREATE TABLE map_tg_bot_factory ("
+			"CREATE TABLE IF NOT EXISTS map_tg_bot_factory ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2756,13 +3013,13 @@ void Database::Init() {
 			"  f_respawn_delay REAL,"
 			"  m_n_spawn_order INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_bot_factory_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_bot_factory_map_object_id "
 			"  ON map_tg_bot_factory(map_object_id);";
 		result = sqlite3_exec(db, kV33_bot_factory, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (bot_factory): %s\n", err); return; }
 
 		const char* kV33_bot_factory_spawnable =
-			"CREATE TABLE map_tg_bot_factory_spawnable ("
+			"CREATE TABLE IF NOT EXISTS map_tg_bot_factory_spawnable ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2772,13 +3029,13 @@ void Database::Init() {
 			"  location_x REAL, location_y REAL, location_z REAL,"
 			"  rotation_pitch INTEGER, rotation_yaw INTEGER, rotation_roll INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_bot_factory_spawnable_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_bot_factory_spawnable_map_object_id "
 			"  ON map_tg_bot_factory_spawnable(map_object_id);";
 		result = sqlite3_exec(db, kV33_bot_factory_spawnable, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (bot_factory_spawnable): %s\n", err); return; }
 
 		const char* kV33_beacon_factory =
-			"CREATE TABLE map_tg_beacon_factory ("
+			"CREATE TABLE IF NOT EXISTS map_tg_beacon_factory ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2792,13 +3049,13 @@ void Database::Init() {
 			"  m_b_beacon_exit INTEGER,"
 			"  m_b_is_fallback INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_beacon_factory_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_beacon_factory_map_object_id "
 			"  ON map_tg_beacon_factory(map_object_id);";
 		result = sqlite3_exec(db, kV33_beacon_factory, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (beacon_factory): %s\n", err); return; }
 
 		const char* kV33_deployable_factory =
-			"CREATE TABLE map_tg_deployable_factory ("
+			"CREATE TABLE IF NOT EXISTS map_tg_deployable_factory ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2811,13 +3068,13 @@ void Database::Init() {
 			"  s_f_last_spawn_time REAL,"
 			"  s_b_spawn_once INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_deployable_factory_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_deployable_factory_map_object_id "
 			"  ON map_tg_deployable_factory(map_object_id);";
 		result = sqlite3_exec(db, kV33_deployable_factory, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (deployable_factory): %s\n", err); return; }
 
 		const char* kV33_destructible_factory =
-			"CREATE TABLE map_tg_destructible_factory ("
+			"CREATE TABLE IF NOT EXISTS map_tg_destructible_factory ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2827,13 +3084,13 @@ void Database::Init() {
 			"  location_x REAL, location_y REAL, location_z REAL,"
 			"  rotation_pitch INTEGER, rotation_yaw INTEGER, rotation_roll INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_destructible_factory_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_destructible_factory_map_object_id "
 			"  ON map_tg_destructible_factory(map_object_id);";
 		result = sqlite3_exec(db, kV33_destructible_factory, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (destructible_factory): %s\n", err); return; }
 
 		const char* kV33_hex_item_factory =
-			"CREATE TABLE map_tg_hex_item_factory ("
+			"CREATE TABLE IF NOT EXISTS map_tg_hex_item_factory ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2844,13 +3101,13 @@ void Database::Init() {
 			"  rotation_pitch INTEGER, rotation_yaw INTEGER, rotation_roll INTEGER,"
 			"  s_b_needs_spawn INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_hex_item_factory_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_hex_item_factory_map_object_id "
 			"  ON map_tg_hex_item_factory(map_object_id);";
 		result = sqlite3_exec(db, kV33_hex_item_factory, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (hex_item_factory): %s\n", err); return; }
 
 		const char* kV33_navigation_point =
-			"CREATE TABLE map_tg_navigation_point ("
+			"CREATE TABLE IF NOT EXISTS map_tg_navigation_point ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2860,13 +3117,13 @@ void Database::Init() {
 			"  location_x REAL, location_y REAL, location_z REAL,"
 			"  rotation_pitch INTEGER, rotation_yaw INTEGER, rotation_roll INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_navigation_point_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_navigation_point_map_object_id "
 			"  ON map_tg_navigation_point(map_object_id);";
 		result = sqlite3_exec(db, kV33_navigation_point, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (navigation_point): %s\n", err); return; }
 
 		const char* kV33_bot_start =
-			"CREATE TABLE map_tg_bot_start ("
+			"CREATE TABLE IF NOT EXISTS map_tg_bot_start ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2876,13 +3133,13 @@ void Database::Init() {
 			"  location_x REAL, location_y REAL, location_z REAL,"
 			"  rotation_pitch INTEGER, rotation_yaw INTEGER, rotation_roll INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_bot_start_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_bot_start_map_object_id "
 			"  ON map_tg_bot_start(map_object_id);";
 		result = sqlite3_exec(db, kV33_bot_start, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (bot_start): %s\n", err); return; }
 
 		const char* kV33_action_point =
-			"CREATE TABLE map_tg_action_point ("
+			"CREATE TABLE IF NOT EXISTS map_tg_action_point ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2896,13 +3153,13 @@ void Database::Init() {
 			"  n_task_force INTEGER,"
 			"  b_use_rotation INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_action_point_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_action_point_map_object_id "
 			"  ON map_tg_action_point(map_object_id);";
 		result = sqlite3_exec(db, kV33_action_point, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (action_point): %s\n", err); return; }
 
 		const char* kV33_alarm_point =
-			"CREATE TABLE map_tg_alarm_point ("
+			"CREATE TABLE IF NOT EXISTS map_tg_alarm_point ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2912,13 +3169,13 @@ void Database::Init() {
 			"  location_x REAL, location_y REAL, location_z REAL,"
 			"  rotation_pitch INTEGER, rotation_yaw INTEGER, rotation_roll INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_alarm_point_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_alarm_point_map_object_id "
 			"  ON map_tg_alarm_point(map_object_id);";
 		result = sqlite3_exec(db, kV33_alarm_point, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (alarm_point): %s\n", err); return; }
 
 		const char* kV33_cover_point =
-			"CREATE TABLE map_tg_cover_point ("
+			"CREATE TABLE IF NOT EXISTS map_tg_cover_point ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2935,13 +3192,13 @@ void Database::Init() {
 			"  m_v_lean_right_x REAL, m_v_lean_right_y REAL, m_v_lean_right_z REAL,"
 			"  m_v_pop_up_x REAL, m_v_pop_up_y REAL, m_v_pop_up_z REAL"
 			");"
-			"CREATE INDEX idx_map_tg_cover_point_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_cover_point_map_object_id "
 			"  ON map_tg_cover_point(map_object_id);";
 		result = sqlite3_exec(db, kV33_cover_point, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (cover_point): %s\n", err); return; }
 
 		const char* kV33_defense_point =
-			"CREATE TABLE map_tg_defense_point ("
+			"CREATE TABLE IF NOT EXISTS map_tg_defense_point ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2959,13 +3216,13 @@ void Database::Init() {
 			"  priority INTEGER,"
 			"  num_checked REAL"
 			");"
-			"CREATE INDEX idx_map_tg_defense_point_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_defense_point_map_object_id "
 			"  ON map_tg_defense_point(map_object_id);";
 		result = sqlite3_exec(db, kV33_defense_point, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (defense_point): %s\n", err); return; }
 
 		const char* kV33_hold_spot =
-			"CREATE TABLE map_tg_hold_spot ("
+			"CREATE TABLE IF NOT EXISTS map_tg_hold_spot ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2975,13 +3232,13 @@ void Database::Init() {
 			"  location_x REAL, location_y REAL, location_z REAL,"
 			"  rotation_pitch INTEGER, rotation_yaw INTEGER, rotation_roll INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_hold_spot_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_hold_spot_map_object_id "
 			"  ON map_tg_hold_spot(map_object_id);";
 		result = sqlite3_exec(db, kV33_hold_spot, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (hold_spot): %s\n", err); return; }
 
 		const char* kV33_navigation_point_spawnable =
-			"CREATE TABLE map_tg_navigation_point_spawnable ("
+			"CREATE TABLE IF NOT EXISTS map_tg_navigation_point_spawnable ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -2991,13 +3248,13 @@ void Database::Init() {
 			"  location_x REAL, location_y REAL, location_z REAL,"
 			"  rotation_pitch INTEGER, rotation_yaw INTEGER, rotation_roll INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_navigation_point_spawnable_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_navigation_point_spawnable_map_object_id "
 			"  ON map_tg_navigation_point_spawnable(map_object_id);";
 		result = sqlite3_exec(db, kV33_navigation_point_spawnable, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (navigation_point_spawnable): %s\n", err); return; }
 
 		const char* kV33_point_of_interest =
-			"CREATE TABLE map_tg_point_of_interest ("
+			"CREATE TABLE IF NOT EXISTS map_tg_point_of_interest ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -3011,13 +3268,13 @@ void Database::Init() {
 			"  m_quest_radius_uu REAL,"
 			"  m_b_show_when_quest_complete INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_point_of_interest_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_point_of_interest_map_object_id "
 			"  ON map_tg_point_of_interest(map_object_id);";
 		result = sqlite3_exec(db, kV33_point_of_interest, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (point_of_interest): %s\n", err); return; }
 
 		const char* kV33_teleporter =
-			"CREATE TABLE map_tg_teleporter ("
+			"CREATE TABLE IF NOT EXISTS map_tg_teleporter ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER,"
@@ -3036,13 +3293,13 @@ void Database::Init() {
 			"  m_n_start_group INTEGER,"
 			"  m_n_task_force INTEGER"
 			");"
-			"CREATE INDEX idx_map_tg_teleporter_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_teleporter_map_object_id "
 			"  ON map_tg_teleporter(map_object_id);";
 		result = sqlite3_exec(db, kV33_teleporter, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (teleporter): %s\n", err); return; }
 
 		const char* kV33_bot_factory_location_list =
-			"CREATE TABLE map_tg_bot_factory_location_list ("
+			"CREATE TABLE IF NOT EXISTS map_tg_bot_factory_location_list ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER NOT NULL,"
@@ -3050,13 +3307,13 @@ void Database::Init() {
 			"  location_x REAL, location_y REAL, location_z REAL,"
 			"  nav_point_tag TEXT"
 			");"
-			"CREATE INDEX idx_map_tg_bot_factory_location_list_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_bot_factory_location_list_map_object_id "
 			"  ON map_tg_bot_factory_location_list(map_object_id);";
 		result = sqlite3_exec(db, kV33_bot_factory_location_list, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (bot_factory_location_list): %s\n", err); return; }
 
 		const char* kV33_bot_factory_patrol_path =
-			"CREATE TABLE map_tg_bot_factory_patrol_path ("
+			"CREATE TABLE IF NOT EXISTS map_tg_bot_factory_patrol_path ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_name TEXT NOT NULL,"
 			"  map_object_id INTEGER NOT NULL,"
@@ -3064,7 +3321,7 @@ void Database::Init() {
 			"  location_x REAL, location_y REAL, location_z REAL,"
 			"  nav_point_tag TEXT"
 			");"
-			"CREATE INDEX idx_map_tg_bot_factory_patrol_path_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_tg_bot_factory_patrol_path_map_object_id "
 			"  ON map_tg_bot_factory_patrol_path(map_object_id);";
 		result = sqlite3_exec(db, kV33_bot_factory_patrol_path, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v33 (bot_factory_patrol_path): %s\n", err); return; }
@@ -3080,7 +3337,7 @@ void Database::Init() {
 		// compete, weighted by `weight`; one variant_id is picked per group and
 		// all of its rows applied. Static overrides leave variant_group NULL.
 		const char* kV34_map_object_config =
-			"CREATE TABLE map_object_config ("
+			"CREATE TABLE IF NOT EXISTS map_object_config ("
 			"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			"  map_object_id INTEGER NOT NULL,"
 			"  column_name TEXT NOT NULL,"
@@ -3089,7 +3346,7 @@ void Database::Init() {
 			"  variant_id TEXT,"
 			"  weight REAL NOT NULL DEFAULT 1.0"
 			");"
-			"CREATE INDEX idx_map_object_config_map_object_id "
+			"CREATE INDEX IF NOT EXISTS idx_map_object_config_map_object_id "
 			"  ON map_object_config(map_object_id);";
 		result = sqlite3_exec(db, kV34_map_object_config, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v34 (map_object_config): %s\n", err); return; }
@@ -3431,13 +3688,18 @@ void Database::Init() {
 		// to NULL-map rows for the same map_object_id when no map-specific
 		// row exists. ALTER appends the column to the end; that's fine, the
 		// in-memory registry doesn't care about column order.
-		const char* kV46_add_map_name =
-			"ALTER TABLE map_object_config ADD COLUMN map_name TEXT;"
+		if (!TableColumnExists(db, "map_object_config", "map_name")) {
+			result = sqlite3_exec(db, "ALTER TABLE map_object_config ADD COLUMN map_name TEXT;", nullptr, nullptr, &err);
+			if (result != SQLITE_OK) { Logger::Log("db", "Failed v46 (add map_name column): %s\n", err); return; }
+			Logger::Log("db", "v46: added map_name column to map_object_config (nullable, scoped lookups)\n");
+		} else {
+			Logger::Log("db", "v46: map_name column already present on map_object_config\n");
+		}
+		result = sqlite3_exec(db,
 			"CREATE INDEX IF NOT EXISTS idx_map_object_config_map_name "
-			"  ON map_object_config(map_name, map_object_id);";
-		result = sqlite3_exec(db, kV46_add_map_name, nullptr, nullptr, &err);
-		if (result != SQLITE_OK) { Logger::Log("db", "Failed v46 (add map_name column): %s\n", err); return; }
-		Logger::Log("db", "v46: added map_name column to map_object_config (nullable, scoped lookups)\n");
+			"ON map_object_config(map_name, map_object_id);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v46 (map_name index): %s\n", err); return; }
 	}
 
 	if (version < 47) {
@@ -3701,7 +3963,7 @@ void Database::Init() {
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v51 (map_game_info schema): %s\n", err); return; }
 
 		const char* kV51_seed =
-			"INSERT INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
 			// Arena / 4v4 (4 maps) — 1569 PVP- Arena (best guess)
 			"(1131, 'Ticket_HimLab_4v4',      'TgGame.TgGame_PointRotation', 1569, 43925, 6027),"  // HM-44 ARENA              -> control_4v4_him_loading
 			"(1171, 'Ticket_Silo_4v4_P',      'TgGame.TgGame_PointRotation', 1569, 50819, 6028),"  // Z13-R SILO ARENA         -> control_4v4_silo_loading
@@ -3907,21 +4169,37 @@ void Database::Init() {
 		result = sqlite3_exec(db, kV53_inventory, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v53 (ga_players_inventory): %s\n", err); sqlite3_free(err); return; }
 
-		const char* kV53_devices_rebuild =
-			"DROP TABLE IF EXISTS ga_character_devices;"
-			"CREATE TABLE ga_character_devices ("
-			"  id            INTEGER PRIMARY KEY AUTOINCREMENT,"
-			"  character_id  INTEGER NOT NULL REFERENCES ga_characters(id),"
-			"  inventory_id  INTEGER NOT NULL REFERENCES ga_players_inventory(id),"
-			"  equipped_slot INTEGER NOT NULL,"
-			"  UNIQUE(character_id, equipped_slot)"
-			");"
-			"CREATE INDEX IF NOT EXISTS idx_ga_character_devices_char "
-			"  ON ga_character_devices(character_id);";
-		result = sqlite3_exec(db, kV53_devices_rebuild, nullptr, nullptr, &err);
-		if (result != SQLITE_OK) { Logger::Log("db", "Failed v53 (ga_character_devices rebuild): %s\n", err); sqlite3_free(err); return; }
-
-		Logger::Log("db", "v53: account-scoped ga_players_inventory + simplified ga_character_devices (DROP+CREATE)\n");
+		const bool devices_modern =
+			TableColumnExists(db, "ga_character_devices", "item_profile_id") &&
+			TableColumnExists(db, "ga_character_devices", "equipped_slot");
+		if (devices_modern) {
+			result = sqlite3_exec(db,
+				"CREATE INDEX IF NOT EXISTS idx_ga_character_devices_char "
+				"ON ga_character_devices(character_id);",
+				nullptr, nullptr, &err);
+			if (result != SQLITE_OK) { Logger::Log("db", "Failed v53 (ga_character_devices index): %s\n", err); sqlite3_free(err); return; }
+			Logger::Log("db", "v53: ga_character_devices already modern; preserved player equipment\n");
+		} else {
+			const char* kV53_devices_rebuild =
+				"DROP TABLE IF EXISTS ga_character_devices_v2;"
+				"CREATE TABLE ga_character_devices_v2 ("
+				"  id              INTEGER PRIMARY KEY AUTOINCREMENT,"
+				"  character_id    INTEGER NOT NULL REFERENCES ga_characters(id),"
+				"  item_profile_id INTEGER NOT NULL,"
+				"  inventory_id    INTEGER NOT NULL REFERENCES ga_players_inventory(id),"
+				"  equipped_slot   INTEGER NOT NULL,"
+				"  UNIQUE(character_id, item_profile_id, equipped_slot)"
+				");"
+				"INSERT INTO ga_character_devices_v2 (character_id, item_profile_id, inventory_id, equipped_slot)"
+				" SELECT character_id, 1, inventory_id, equipped_slot FROM ga_character_devices;"
+				"DROP TABLE IF EXISTS ga_character_devices;"
+				"ALTER TABLE ga_character_devices_v2 RENAME TO ga_character_devices;"
+				"CREATE INDEX IF NOT EXISTS idx_ga_character_devices_char "
+				"  ON ga_character_devices(character_id);";
+			result = sqlite3_exec(db, kV53_devices_rebuild, nullptr, nullptr, &err);
+			if (result != SQLITE_OK) { Logger::Log("db", "Failed v53 (ga_character_devices modern rebuild): %s\n", err); sqlite3_free(err); return; }
+			Logger::Log("db", "v53: rebuilt ga_character_devices to modern profile-aware schema\n");
+		}
 	}
 
 	if (version < 54) {
@@ -4024,7 +4302,7 @@ void Database::Init() {
 
 	if (version < 58) {
 		const char* kV58_seed =
-			"INSERT INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
 			"(100001, '3P_Beachhead_P',      'TgGame.TgGame_Mission', 1544, 36260, 5339),"  // surfside
 			"(100002, '3P_Beachhead2_P',      'TgGame.TgGame_Mission', 1544, 36565, 5389);";  // atoll
 		result = sqlite3_exec(db, kV58_seed, nullptr, nullptr, &err);
@@ -4034,7 +4312,7 @@ void Database::Init() {
 
 	if (version < 59) {
 		const char* kV59_seed =
-			"INSERT INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
 			"(100003, 'CTR_Recursive_P',      'TgGame.TgGame_Mission', 1546, 65824, 6064);";  // surfside
 		result = sqlite3_exec(db, kV59_seed, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v59 (map_game_info seed): %s\n", err); return; }
@@ -4556,8 +4834,29 @@ void Database::Init() {
 			" ('Raid_DomeCityDefense_P', 13632, 'n_spawn_table_id', '86', NULL, NULL, 1),    "
 			" ('Raid_DomeCityDefense_P', 13632, 'n_default_spawn_table_id', '86', NULL, NULL, 1);    ";
 
-		result = sqlite3_exec(db, kV63_ddr, nullptr, nullptr, &err);
-		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
+		bool has_ddr_map_config = false;
+		sqlite3_stmt* ddr_probe = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"SELECT 1 FROM map_object_config WHERE map_name = 'Raid_DomeCityDefense_P' LIMIT 1",
+				-1, &ddr_probe, nullptr) == SQLITE_OK && ddr_probe) {
+			has_ddr_map_config = sqlite3_step(ddr_probe) == SQLITE_ROW;
+			sqlite3_finalize(ddr_probe);
+		}
+		if (!has_ddr_map_config) {
+			result = sqlite3_exec(db, kV63_ddr, nullptr, nullptr, &err);
+			if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
+		}
+		result = sqlite3_exec(db,
+			"DELETE FROM map_object_config "
+			"WHERE map_name = 'Raid_DomeCityDefense_P' "
+			"AND id NOT IN ("
+			"  SELECT MIN(id) FROM map_object_config "
+			"  WHERE map_name = 'Raid_DomeCityDefense_P' "
+			"  GROUP BY map_name, map_object_id, column_name, value, "
+			"           COALESCE(variant_group, ''), COALESCE(variant_id, ''), weight"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63 (ddr map_object_config dedupe): %s\n", err); return; }
 
 		// Seed the matching map pool for the ddr queue (post-pool-inversion).
 		// queue_id 3 is assumed for ddr (specops=1, pvp=2 already seeded).
@@ -4565,21 +4864,73 @@ void Database::Init() {
 		result = sqlite3_exec(db, q_pool, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63 (ddr map pool): %s\n", err); return; }
 
-		const char* q1 = "INSERT INTO ga_queues ( name, taskforce_policy, continue_in_queue, enabled, queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, max_players_per_side, min_players_per_team, max_players_per_team, level_min, level_max, tab, map_x, map_y, map_active_flag, map_icon_texture_res_id, video_res_id, location_value_id, double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, difficulty_value_id, access_flags, active_flag, locked_flag, map_pool_id) VALUES ( 'ddr', 'pinned_2', 0, 1, 1454, 0, 62550, 64938, 1714, 10, 1, 10, 5, 50, 231, 0, 0, 1, 5126, 0, 0, 1, 0, 0, 1, 1471, 0, 1, 0, 3);";
+		const char* q1 =
+			"UPDATE ga_queues SET queue_id = 3 "
+			"WHERE queue_id = (SELECT MIN(queue_id) FROM ga_queues WHERE name = 'ddr' "
+			"AND COALESCE(rule_class, '') = '' AND taskforce_policy = 'pinned_2' "
+			"AND continue_in_queue = 0 AND enabled = 1 AND queue_type_value_id = 1454 "
+			"AND status_msg_id = 0 AND name_msg_id = 62550 AND desc_msg_id = 64938 "
+			"AND icon_id = 1714 AND max_players_per_side = 10 AND min_players_per_team = 1 "
+			"AND max_players_per_team = 10 AND level_min = 5 AND level_max = 50 "
+			"AND tab = 231 AND map_x = 0 AND map_y = 0 AND map_active_flag = 1 "
+			"AND map_icon_texture_res_id = 5126 AND video_res_id = 0 "
+			"AND location_value_id = 0 AND double_agent_flag = 1 AND sys_site_id = 0 "
+			"AND sort_order = 0 AND bonus_queue_flag = 1 AND difficulty_value_id = 1471 "
+			"AND access_flags = 0 AND active_flag = 1 AND locked_flag = 0 "
+			"AND COALESCE(map_pool_id, 0) = 3) "
+			"AND NOT EXISTS (SELECT 1 FROM ga_queues WHERE queue_id = 3);"
+			"DELETE FROM ga_queues WHERE name = 'ddr' "
+			"AND COALESCE(rule_class, '') = '' AND taskforce_policy = 'pinned_2' "
+			"AND continue_in_queue = 0 AND enabled = 1 AND queue_type_value_id = 1454 "
+			"AND status_msg_id = 0 AND name_msg_id = 62550 AND desc_msg_id = 64938 "
+			"AND icon_id = 1714 AND max_players_per_side = 10 AND min_players_per_team = 1 "
+			"AND max_players_per_team = 10 AND level_min = 5 AND level_max = 50 "
+			"AND tab = 231 AND map_x = 0 AND map_y = 0 AND map_active_flag = 1 "
+			"AND map_icon_texture_res_id = 5126 AND video_res_id = 0 "
+			"AND location_value_id = 0 AND double_agent_flag = 1 AND sys_site_id = 0 "
+			"AND sort_order = 0 AND bonus_queue_flag = 1 AND difficulty_value_id = 1471 "
+			"AND access_flags = 0 AND active_flag = 1 AND locked_flag = 0 "
+			"AND COALESCE(map_pool_id, 0) = 3 "
+			"AND queue_id <> COALESCE((SELECT queue_id FROM ga_queues WHERE queue_id = 3 "
+			"AND name = 'ddr' AND COALESCE(rule_class, '') = '' AND taskforce_policy = 'pinned_2' "
+			"AND continue_in_queue = 0 AND enabled = 1 AND queue_type_value_id = 1454 "
+			"AND status_msg_id = 0 AND name_msg_id = 62550 AND desc_msg_id = 64938 "
+			"AND icon_id = 1714 AND max_players_per_side = 10 AND min_players_per_team = 1 "
+			"AND max_players_per_team = 10 AND level_min = 5 AND level_max = 50 "
+			"AND tab = 231 AND map_x = 0 AND map_y = 0 AND map_active_flag = 1 "
+			"AND map_icon_texture_res_id = 5126 AND video_res_id = 0 "
+			"AND location_value_id = 0 AND double_agent_flag = 1 AND sys_site_id = 0 "
+			"AND sort_order = 0 AND bonus_queue_flag = 1 AND difficulty_value_id = 1471 "
+			"AND access_flags = 0 AND active_flag = 1 AND locked_flag = 0 "
+			"AND COALESCE(map_pool_id, 0) = 3), "
+			"(SELECT MIN(queue_id) FROM ga_queues WHERE name = 'ddr' "
+			"AND COALESCE(rule_class, '') = '' AND taskforce_policy = 'pinned_2' "
+			"AND continue_in_queue = 0 AND enabled = 1 AND queue_type_value_id = 1454 "
+			"AND status_msg_id = 0 AND name_msg_id = 62550 AND desc_msg_id = 64938 "
+			"AND icon_id = 1714 AND max_players_per_side = 10 AND min_players_per_team = 1 "
+			"AND max_players_per_team = 10 AND level_min = 5 AND level_max = 50 "
+			"AND tab = 231 AND map_x = 0 AND map_y = 0 AND map_active_flag = 1 "
+			"AND map_icon_texture_res_id = 5126 AND video_res_id = 0 "
+			"AND location_value_id = 0 AND double_agent_flag = 1 AND sys_site_id = 0 "
+			"AND sort_order = 0 AND bonus_queue_flag = 1 AND difficulty_value_id = 1471 "
+			"AND access_flags = 0 AND active_flag = 1 AND locked_flag = 0 "
+			"AND COALESCE(map_pool_id, 0) = 3));"
+			"INSERT OR IGNORE INTO ga_queues (queue_id, name, taskforce_policy, continue_in_queue, enabled, queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, max_players_per_side, min_players_per_team, max_players_per_team, level_min, level_max, tab, map_x, map_y, map_active_flag, map_icon_texture_res_id, video_res_id, location_value_id, double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, difficulty_value_id, access_flags, active_flag, locked_flag, map_pool_id) VALUES (3, 'ddr', 'pinned_2', 0, 1, 1454, 0, 62550, 64938, 1714, 10, 1, 10, 5, 50, 231, 0, 0, 1, 5126, 0, 0, 1, 0, 0, 1, 1471, 0, 1, 0, 3);"
+			"";
 		result = sqlite3_exec(db, q1, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
 
-		const char* q2  = "INSERT INTO ga_map_pool_entries (map_pool_id, map_name, game_mode, weight, enabled) VALUES (3, 'Raid_DomeCityDefense_P', 'TgGame.TgGame_Defense', 1, 1);";
+		const char* q2  = "INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode, weight, enabled) VALUES (3, 'Raid_DomeCityDefense_P', 'TgGame.TgGame_Defense', 1, 1);";
 		result = sqlite3_exec(db, q2, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
 
-		const char* q3 = "INSERT INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES (100004, 'Raid_DomeCityDefense_P', 'TgGame.TgGame_Defense', 1550, 60534, 7420);";
+		const char* q3 = "INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES (100004, 'Raid_DomeCityDefense_P', 'TgGame.TgGame_Defense', 1550, 60534, 7420);";
 		result = sqlite3_exec(db, q3, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
 	}
 	if (version < 64) {
 
-		const char* q4 = "INSERT INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES (100005, 'Dome3_VR_Arena_P', 'TgGame.TgGame_Mission', 1542, 22845, 4901);";
+		const char* q4 = "INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES (100005, 'Dome3_VR_Arena_P', 'TgGame.TgGame_Mission', 1542, 22845, 4901);";
 		result = sqlite3_exec(db, q4, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
 
@@ -5046,7 +5397,7 @@ void Database::Init() {
 		// entry_background_image_res_id is the dedicated HUD_MissionLoads.PvE_CP
 		// loading screen res_id (one per map).
 		const char* kV73_specops_map_game_info =
-			"INSERT INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
 			"(1296, '1P_CPFactory01_P', 'TgGame.TgGame_Mission', 1553, 36871, 6511),"  // 1P_CPFactory01 -> HUD_MissionLoads.PvE_CP.1P_CPFactory01_P
 			"(1319, '1P_CPLab03',       'TgGame.TgGame_Mission', 1553, 38027, 6518),"  // 1P_CPLab03     -> HUD_MissionLoads.PvE_CP.1P_CPLab03_P
 			"(1322, '1P_CPMine04_P',    'TgGame.TgGame_Mission', 1553, 38153, 6524),"  // 1P_CPMine04    -> HUD_MissionLoads.PvE_CP.1P_CPMine04_P
@@ -6323,15 +6674,31 @@ void Database::Init() {
 	}
 	if (version < 99) {
 		const char* kV99_1v1_queue =
-			"INSERT INTO ga_queues (name, taskforce_policy, continue_in_queue, enabled, queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, max_players_per_side, min_players_per_team, max_players_per_team, level_min, level_max, tab, map_x, map_y, map_active_flag, map_icon_texture_res_id, video_res_id, location_value_id, double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, difficulty_value_id, access_flags, active_flag, locked_flag, map_pool_id, min_players_to_pop, max_players_per_instance, pop_delay_seconds) VALUES "
-			"('1v1', 'balanced_pvp', 0, 1, 1421, 0, 22671, 22671, 532, 1, 1, 1, 5, 50, 443, 6, 0, 1, 5126, 0, 1477, 1, 0, 1, 0, 0, 0, 1, 0, 2, 2, 2, 0);";
+			"UPDATE ga_queues SET queue_id = 7 "
+			"WHERE queue_id = (SELECT MIN(queue_id) FROM ga_queues WHERE name = '1v1') "
+			"AND NOT EXISTS (SELECT 1 FROM ga_queues WHERE queue_id = 7);"
+			"DELETE FROM ga_queues WHERE name = '1v1' AND queue_id <> 7;"
+			"INSERT OR IGNORE INTO ga_queues (queue_id, name, taskforce_policy, continue_in_queue, enabled, queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, max_players_per_side, min_players_per_team, max_players_per_team, level_min, level_max, tab, map_x, map_y, map_active_flag, map_icon_texture_res_id, video_res_id, location_value_id, double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, difficulty_value_id, access_flags, active_flag, locked_flag, map_pool_id, min_players_to_pop, max_players_per_instance, pop_delay_seconds) VALUES "
+			"(7, '1v1', 'balanced_pvp', 0, 1, 1421, 0, 22671, 22671, 532, 1, 1, 1, 5, 50, 443, 6, 0, 1, 5126, 0, 1477, 1, 0, 1, 0, 0, 0, 1, 0, 2, 2, 2, 0);"
+			"UPDATE ga_queues SET name = '1v1', taskforce_policy = 'balanced_pvp', continue_in_queue = 0, enabled = 1, queue_type_value_id = 1421, status_msg_id = 0, name_msg_id = 22671, desc_msg_id = 22671, icon_id = 532, max_players_per_side = 1, min_players_per_team = 1, max_players_per_team = 1, level_min = 5, level_max = 50, tab = 443, map_x = 6, map_y = 0, map_active_flag = 1, map_icon_texture_res_id = 5126, video_res_id = 0, location_value_id = 1477, double_agent_flag = 1, sys_site_id = 0, sort_order = 1, bonus_queue_flag = 0, difficulty_value_id = 0, access_flags = 0, active_flag = 1, locked_flag = 0, map_pool_id = 2, min_players_to_pop = 2, max_players_per_instance = 2, pop_delay_seconds = 0 WHERE queue_id = 7 AND name = '1v1';";
 		result = sqlite3_exec(db, kV99_1v1_queue, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v99 (1v1 queue): %s\n", err); return; }
 
 		Logger::Log("db", "v99: seeded 1v1 queue\n");
 	}
+	if (version < 100) {
+		const char* kV100_vr_loading_screen =
+			"UPDATE map_game_info "
+			"SET entry_background_image_res_id = 4985 "
+			"WHERE map_game_id = 100005 "
+			"   OR map_name IN ('Dome3_VR_Arena_P', 'Dome3_VR_Arena_P_reserved');";
+		result = sqlite3_exec(db, kV100_vr_loading_screen, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v100 (VR loading screen): %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 99", nullptr, nullptr, &err);
+		Logger::Log("db", "v100: retargeted Virtual Arena loading screen\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 100", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

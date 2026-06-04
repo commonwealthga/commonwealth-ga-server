@@ -1,8 +1,23 @@
 #include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
+#include "src/Config/Config.hpp"
 #include "src/GameServer/Engine/MapObjectConfig/MapObjectConfig.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+
+namespace {
+	ATgDeviceVolume* g_domeVrHealPadVolume = nullptr;
+
+	bool IsDomeVrHealPadVolume(ATgDeviceVolume* Volume) {
+		if (!Volume) return false;
+		if (Config::GetMapNameChar() != "Dome3_VR_Arena_P") return false;
+		return Volume->m_nMapObjectId == 11041;
+	}
+}
+
+ATgDeviceVolume* DomeVrHealPad::GetRegisteredVolume() {
+	return g_domeVrHealPadVolume;
+}
 
 // TgDeviceVolume::setupDevice — stripped native (0x109aeec0, decompiles to
 // `return 1;`). Reimplemented from the UC contract in TgDeviceVolume.uc.
@@ -54,15 +69,31 @@ static int InvokeApplyDeviceSetup(ATgDevice* Device) {
 	return (int)parms.ReturnValue;
 }
 
+static void ApplyDomeVrHealingFallback(ATgDeviceVolume* Volume) {
+	if (!Volume || Volume->s_nDeviceId != 0) return;
+	if (Config::GetMapNameChar() != "Dome3_VR_Arena_P") return;
+	if (!IsDomeVrHealPadVolume(Volume)) return;
+
+	// The VR map package has TgDeviceVolume actors, but current DB captures no
+	// Dome rows, so the editconst device id arrives as 0 and the heal pad never
+	// arms. Device 2064 is the standard Medical Station pulse: instant heal
+	// text plus target_fx_id=432, without morale boost timing or HUD icon state.
+	Volume->s_nDeviceId = 2064;
+	Volume->s_nTeamNumber = 0;
+	Volume->s_nTaskForce = 0;
+}
+
 bool __fastcall TgDeviceVolume_setupDevice::Call(ATgDeviceVolume* Volume, void* edx) {
 	Volume->s_nDeviceId   = MapObjectConfig::GetInt(Volume->m_nMapObjectId, "s_n_device_id",   Volume->s_nDeviceId);
 	Volume->s_nTeamNumber = MapObjectConfig::GetInt(Volume->m_nMapObjectId, "s_n_team_number", Volume->s_nTeamNumber);
 	Volume->s_nTaskForce  = MapObjectConfig::GetInt(Volume->m_nMapObjectId, "s_n_task_force",  Volume->s_nTaskForce);
+	ApplyDomeVrHealingFallback(Volume);
 
 	Logger::Log("device-volume",
-		"[setupDevice] enter volume=0x%p mapObj=%d deviceId=%d team=%d tf=%d\n",
+		"[setupDevice] enter volume=0x%p mapObj=%d deviceId=%d team=%d tf=%d loc=(%.1f, %.1f, %.1f)\n",
 		Volume, Volume->m_nMapObjectId, Volume->s_nDeviceId,
-		Volume->s_nTeamNumber, (int)Volume->s_nTaskForce);
+		Volume->s_nTeamNumber, (int)Volume->s_nTaskForce,
+		Volume->Location.X, Volume->Location.Y, Volume->Location.Z);
 
 	if (Volume->s_nDeviceId == 0) {
 		Logger::Log("device-volume",
@@ -112,6 +143,12 @@ bool __fastcall TgDeviceVolume_setupDevice::Call(ATgDeviceVolume* Volume, void* 
 	}
 
 	Volume->s_DeviceFireMode = Device->m_FireMode.Data[0];
+	if (IsDomeVrHealPadVolume(Volume)) {
+		g_domeVrHealPadVolume = Volume;
+		Logger::Log("device-volume",
+			"[setupDevice] registered Dome VR heal pad volume=0x%p fireMode=0x%p\n",
+			Volume, Volume->s_DeviceFireMode);
+	}
 
 	Logger::Log("device-volume",
 		"[setupDevice] OK volume=0x%p deviceId=%d -> fireMode=0x%p (refire=%.2fs)\n",

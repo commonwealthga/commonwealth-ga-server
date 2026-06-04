@@ -1,6 +1,7 @@
 #include "src/ControlServer/Config/ControlServerConfig.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "lib/nlohmann/json.hpp"
+#include <cstdlib>
 #include <fstream>
 #include <sstream>
 
@@ -47,6 +48,13 @@ void StripTrailingCommas(std::string& s) {
         pending_comma = std::string::npos;
     }
 }
+
+bool EnvFlagEnabled(const char* value) {
+    if (!value) return false;
+    const std::string v(value);
+    return v == "1" || v == "true" || v == "TRUE" ||
+           v == "yes" || v == "YES" || v == "on" || v == "ON";
+}
 } // namespace
 
 ControlServerConfig ControlServerConfig::Load(const std::string& path) {
@@ -91,6 +99,9 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
     if (j.contains("log_dir"))            cfg.log_dir            = j["log_dir"].get<std::string>();
     if (j.contains("fix_package_guids"))  cfg.fix_package_guids  = j["fix_package_guids"].get<bool>();
     if (j.contains("clear_logs"))         cfg.clear_logs         = j["clear_logs"].get<bool>();
+    if (j.contains("show_game_console"))  cfg.show_game_console  = j["show_game_console"].get<bool>();
+    if (j.contains("allow_duplicate_account_logins"))
+        cfg.allow_duplicate_account_logins = j["allow_duplicate_account_logins"].get<bool>();
 
     if (j.contains("enabled_channels") && j["enabled_channels"].is_array()) {
         for (const auto& item : j["enabled_channels"]) {
@@ -127,6 +138,10 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
         for (const auto& item : j["docker_extra_mounts"]) {
             if (item.is_string()) cfg.docker_extra_mounts.push_back(item.get<std::string>());
         }
+    }
+
+    if (const char* show_game_console = std::getenv("GA_SHOW_GAME_CONSOLE")) {
+        cfg.show_game_console = EnvFlagEnabled(show_game_console);
     }
 
     Logger::Log("config", "[ControlServerConfig] Loaded config from '%s'\n", path.c_str());

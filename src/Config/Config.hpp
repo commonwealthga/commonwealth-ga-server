@@ -19,6 +19,7 @@ public:
 	static uint16_t GetIpcPort();
 	static std::string GetIpcHost();
 	static int64_t GetInstanceId();
+	static std::string GetDbPath();
 	static std::string GetGamePath();
 	static bool GetFixPackageGuids();
 	static std::string GetCrashDir();

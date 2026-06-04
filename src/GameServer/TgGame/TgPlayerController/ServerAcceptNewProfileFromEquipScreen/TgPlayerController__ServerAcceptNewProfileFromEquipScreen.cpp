@@ -10,6 +10,7 @@
 #include "src/Utils/Logger/Logger.hpp"
 #include "lib/nlohmann/json.hpp"
 #include <cstdlib>
+#include <set>
 
 // Reliable-server RPC fired by the client's equip-screen "Apply" button.
 //
@@ -203,6 +204,7 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 
 
 	int equipped_now = 0;
+	std::set<int> equippedCosmeticEngineSlots;
 	for (int slot = 1; slot < 0x19; ++slot) {
 		const SlotResolution& r = resolved[slot];
 		if (r.newInvId <= 0) continue;
@@ -216,8 +218,10 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 			// slot (cosmetic suit→22, cosmetic helmet→23) so it doesn't
 			// collide with the gameplay device row at slot 6/12.
 			CosmeticEquip::ApplyToPawn(Pawn, character_id, slot, r.newInvId, r.itemId);
+			equippedCosmeticEngineSlots.insert(slot);
 		}
 	}
+	CosmeticEquip::ClearUnsetSlots(Pawn, equippedCosmeticEngineSlots);
 	if (equipped_now > 0) {
 		Inventory::Finalize(Pawn);
 		Logger::Log(GetLogChannel(), "equip-save: engine-side equipped %d new device(s)\n", equipped_now);

@@ -27,8 +27,8 @@ struct ControlServerConfig {
     std::string host               = "77.237.240.162";
     std::string hostdns            = "77.237.240.162";
     std::string dll_overrides      = "version=n,b";
-    std::string home_map_name      = "Rot_Redistribution05";
-    std::string home_map_game_mode = "TgGame.TgGame";
+    std::string home_map_name      = "Dome3_VR_Arena_P";
+    std::string home_map_game_mode = "TgGame.TgGame_Mission";
     PortRange   udp_port_range     = {9002, 9020};
     // Cores for game-instance affinity. Spawned instances round-robin
     // across [lo..hi] inclusive; once exhausted, wraps. {-1, -1} disables.
@@ -70,6 +70,8 @@ struct ControlServerConfig {
     bool        fix_package_guids  = true;
     bool        wine_debug         = false;  // --wine-debug CLI flag: uses winedbg --command cont
     bool        clear_logs         = false;  // truncate per-channel files at boot for repeated tests
+    bool        show_game_console  = false;  // Windows native debug: show spawned game commandlet consoles
+    bool        allow_duplicate_account_logins = false;
 
     // ---- Docker spawn mode -------------------------------------------------
     // When use_docker is true, InstanceSpawner::Spawn execs `docker run`

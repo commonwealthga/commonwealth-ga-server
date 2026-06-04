@@ -331,7 +331,7 @@
 #include "src/GameServer/TgGame/TgPlayerController/ShouldAutoKick/TgPlayerController__ShouldAutoKick.hpp"
 
 
-unsigned long ModuleThread( void* ) {
+DWORD WINAPI ModuleThread(LPVOID) {
 
 	Database::Init();
 	SocketCycle::Init();
@@ -714,6 +714,7 @@ unsigned long ModuleThread( void* ) {
 	const LONG detourResult = ::DetourTransactionCommit();
 
 	IpcClient::Init(Config::GetIpcHost(), Config::GetIpcPort(), Config::GetInstanceId());
+	return 0;
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
@@ -746,7 +747,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
                 Logger::ClearEnabledChannelFiles();
             }
             CrashHandler::Init(Config::GetCrashDir());
-			CreateThread( 0, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(ModuleThread), 0, 0, 0 );
+			CreateThread(0, 0, ModuleThread, 0, 0, 0);
 			
 			// DebugWindow::WindowTitle = "SERVER";
 			// CreateThread( 0, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(DebugWindow::ModuleThread), 0, 0, 0 );

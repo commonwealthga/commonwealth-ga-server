@@ -8,7 +8,7 @@
 #include "src/Utils/DebugWindow/DebugWindow.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
-void __fastcall* TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
+void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 	LogCallBegin();
 	// LogToFile("C:\\mylog.txt", "MINE TgGame::InitGameRepInfo START");
 

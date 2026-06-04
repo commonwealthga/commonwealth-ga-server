@@ -90,6 +90,7 @@ public:
     static void Unregister(const std::string& guid);
     static std::optional<SessionInfo> GetByGuid(const std::string& guid);
     static std::optional<SessionInfo> GetByIp(const std::string& ip);
+    static std::optional<SessionInfo> GetByPlayerName(const std::string& player_name);
     static SessionInfo* GetByGuidPtr(const std::string& guid);
 
     static int64_t UpsertUser(const std::string& username);
@@ -114,11 +115,8 @@ public:
     // not player-equippable, it's auto-attached at spawn by SpawnPlayerCharacter
     // via asm_data_set_bots_data_set_bot_devices.
     //
-    // Also seeds an opening loadout in ga_character_devices for every character
-    // owned by this user whose equipped-devices row count is zero. Without
-    // this, brand-new characters spawn naked. The opening loadout points at
-    // the inventory rows we just inserted for the character's profile, picking
-    // the canonical (single) allowed slot for each.
+    // Does not equip normal gameplay devices. Those stay in the bag until the
+    // player equips them; hidden class state is pinned separately.
     static void SeedInventoryFromLoadouts(int64_t user_id);
 
     // v76 cosmetic seed. Idempotent — runs every login. Inserts one row per

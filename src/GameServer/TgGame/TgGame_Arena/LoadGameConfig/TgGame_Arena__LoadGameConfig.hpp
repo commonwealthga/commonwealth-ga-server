@@ -8,8 +8,8 @@ class TgGame_Arena__LoadGameConfig : public HookBase<
 	0x10AD9DA0,
 	TgGame_Arena__LoadGameConfig> {
 public:
-	static void __fastcall* Call(ATgGame_Arena* Game, void* edx);
-	static inline void __fastcall* CallOriginal(ATgGame_Arena* Game, void* edx) {
+	static void __fastcall Call(ATgGame_Arena* Game, void* edx);
+	static inline void __fastcall CallOriginal(ATgGame_Arena* Game, void* edx) {
 		LogCallOriginalBegin();
 		m_original(Game, edx);
 		LogCallOriginalEnd();

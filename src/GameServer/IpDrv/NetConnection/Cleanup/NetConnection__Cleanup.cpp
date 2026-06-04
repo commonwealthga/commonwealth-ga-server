@@ -20,6 +20,7 @@ void __fastcall NetConnection__Cleanup::Call(UNetConnection* Connection) {
 	ATgPawn_Character* pawn = nullptr;
 	uint32_t remote_ip_be   = 0;
 	uint16_t remote_port_be = 0;
+	uint64_t register_generation = 0;
 	{
 		auto it = GClientConnectionsData.find(ConnectionId);
 		if (it != GClientConnectionsData.end()) {
@@ -27,6 +28,7 @@ void __fastcall NetConnection__Cleanup::Call(UNetConnection* Connection) {
 			pawn            = it->second.Pawn;
 			remote_ip_be    = it->second.RemoteAddr.sin_addr.s_addr;
 			remote_port_be  = it->second.RemoteAddr.sin_port;
+			register_generation = it->second.PlayerInfo.register_generation;
 		} else {
 			// Already cleaned up (caller-side erased by hand, or this is a
 			// second reap pass on a connection we've already torn down). Skip
@@ -48,7 +50,24 @@ void __fastcall NetConnection__Cleanup::Call(UNetConnection* Connection) {
 		left["session_guid"] = session_guid;
 		IpcClient::Send(left.dump());
 
-		PlayerRegistry::Unregister(session_guid);
+		bool has_other_connection = false;
+		for (const auto& kv : GClientConnectionsData) {
+			if (kv.first != ConnectionId && kv.second.SessionGuid == session_guid) {
+				has_other_connection = true;
+				break;
+			}
+		}
+		if (has_other_connection) {
+			Logger::Log(GetLogChannel(),
+				"NetConnection__Cleanup: keeping registry for guid=%s; another connection is active\n",
+				session_guid.c_str());
+		} else if (register_generation == 0) {
+			Logger::Log(GetLogChannel(),
+				"NetConnection__Cleanup: keeping registry for guid=%s; connection never bound PLAYER_REGISTER\n",
+				session_guid.c_str());
+		} else {
+			PlayerRegistry::UnregisterIfGeneration(session_guid, register_generation);
+		}
 	}
 
 	// Drop the reverse pawn->session mapping. NonPersistAddDevice /

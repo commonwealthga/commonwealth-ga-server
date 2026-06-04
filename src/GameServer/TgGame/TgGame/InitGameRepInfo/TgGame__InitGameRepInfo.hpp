@@ -8,8 +8,8 @@ class TgGame__InitGameRepInfo : public HookBase<
 	0x10AD9B80,
 	TgGame__InitGameRepInfo> {
 public:
-	static void __fastcall* Call(ATgGame* Game, void* edx);
-	static inline void __fastcall* CallOriginal(ATgGame* Game, void* edx) {
+	static void __fastcall Call(ATgGame* Game, void* edx);
+	static inline void __fastcall CallOriginal(ATgGame* Game, void* edx) {
 		LogCallOriginalBegin();
 		m_original(Game, edx);
 		LogCallOriginalEnd();

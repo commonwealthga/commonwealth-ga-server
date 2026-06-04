@@ -10,6 +10,7 @@
 
 struct ClassConfig {
     uint32_t profileId;
+    uint32_t classTypeValueId;
     uint32_t skillGroupSetId;
     // Device IDs for Phase 5 equipment loading
     int meleeDeviceId;
@@ -26,7 +27,7 @@ inline const ClassConfig& GetClassConfig(uint32_t profileId) {
     static const ClassConfig configs[] = {
         // Assault — profileId=680
         {
-            680, 19,
+            680, 943, 19,
             GA::DeviceId::Assault::ImpactHammer,
             GA::DeviceId::Assault::RhinoSMG,
             GA::DeviceId::Assault::InfernoXCannon,
@@ -38,7 +39,7 @@ inline const ClassConfig& GetClassConfig(uint32_t profileId) {
         },
         // Medic — profileId=567
         {
-            567, 11,
+            567, 941, 11,
             GA::DeviceId::Medic::LifeStealer,
             GA::DeviceId::Medic::Agonizer,
             GA::DeviceId::Medic::AdrenalineGun,
@@ -50,7 +51,7 @@ inline const ClassConfig& GetClassConfig(uint32_t profileId) {
         },
         // Recon — profileId=681
         {
-            681, 17,
+            681, 942, 17,
             GA::DeviceId::Recon::DualDaggers,
             GA::DeviceId::Recon::Ballista,
             GA::DeviceId::Recon::SpringStealth,
@@ -62,7 +63,7 @@ inline const ClassConfig& GetClassConfig(uint32_t profileId) {
         },
         // Robotic — profileId=679
         {
-            679, 18,
+            679, 944, 18,
             GA::DeviceId::Robotic::MaceAndShield,
             GA::DeviceId::Robotic::ColonyEnergyRifle,
             GA::DeviceId::Robotic::FocusedRepairArm,

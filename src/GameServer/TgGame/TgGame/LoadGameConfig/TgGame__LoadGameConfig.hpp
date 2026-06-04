@@ -10,8 +10,8 @@ class TgGame__LoadGameConfig : public HookBase<
 public:
 	static bool bRandomSMSettingsLoaded;
 	static std::vector<std::string> m_randomSMSettings;
-	static void __fastcall* Call(ATgGame* Game, void* edx);
-	static inline void __fastcall* CallOriginal(ATgGame* Game, void* edx) {
+	static void __fastcall Call(ATgGame* Game, void* edx);
+	static inline void __fastcall CallOriginal(ATgGame* Game, void* edx) {
 		LogCallOriginalBegin();
 		m_original(Game, edx);
 		LogCallOriginalEnd();

@@ -39,7 +39,7 @@ struct BotDefaults {
 std::unordered_map<int, BotDefaults> g_botDefaultsCache;
 }
 
-void __fastcall* TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
+void __fastcall TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	LogCallBegin();
 
 	if ((char*)Pawn + 0x400 == nullptr) {
