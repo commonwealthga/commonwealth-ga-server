@@ -45,6 +45,109 @@ static void LogAssemblySnapshot(const char* where, void* obj, const FCustomChara
 		a.DyeList[0], a.DyeList[1], a.DyeList[2], a.DyeList[3], a.DyeList[4]);
 }
 
+static bool AddTouchingIfMissing(AActor* Actor, AActor* Other) {
+	if (!Actor || !Other) return false;
+	for (int i = 0; i < Actor->Touching.Count; ++i) {
+		if (Actor->Touching.Data[i] == Other) return false;
+	}
+	Actor->Touching.Add(Other);
+	return true;
+}
+
+static bool RepairSpawnVolumeTouch(ATgPawn_Character* Pawn, AVolume* Volume, const char* Kind, int MapObjectId) {
+	if (!Pawn || !Volume) return false;
+	if (!Volume->Encompasses((AActor*)Pawn)) return false;
+
+	bool addedPawnSide = AddTouchingIfMissing((AActor*)Pawn, (AActor*)Volume);
+	bool addedVolumeSide = AddTouchingIfMissing((AActor*)Volume, (AActor*)Pawn);
+	if (addedPawnSide || addedVolumeSide) {
+		Logger::Log("spawn",
+			"SpawnPlayerCharacter: repaired %s overlap pawn=%p volume=%p mapObjectId=%d pawnTouching=%d volumeTouching=%d\n",
+			Kind, Pawn, Volume, MapObjectId,
+			(int)addedPawnSide, (int)addedVolumeSide);
+	}
+	return addedPawnSide || addedVolumeSide;
+}
+
+static std::vector<UObject*> FindAllObjectsByExactClass(const char* ClassFullName) {
+	std::vector<UObject*> result;
+	TArray<UObject*>* objects = UObject::GObjObjects();
+	if (!objects || !ClassFullName) return result;
+
+	for (int i = 0; i < objects->Count; ++i) {
+		UObject* obj = objects->Data[i];
+		if (!obj || !obj->Class) continue;
+
+		const char* objectName = obj->GetFullName();
+		if (!objectName || strstr(objectName, "Default__") != nullptr) continue;
+
+		const char* className = obj->Class->GetFullName();
+		if (!className || strcmp(className, ClassFullName) != 0) continue;
+
+		result.push_back(obj);
+	}
+
+	return result;
+}
+
+static void RepairSpawnVolumeState(ATgPawn_Character* Pawn) {
+	if (!Pawn) return;
+
+	bool repairedModify = false;
+	bool repairedOmega = false;
+	bool recalcModify = false;
+	bool recalcOmega = false;
+	int modifyVolumes = 0;
+	int omegaVolumes = 0;
+	int modifyOverlaps = 0;
+	int omegaOverlaps = 0;
+
+	for (UObject* obj : FindAllObjectsByExactClass("Class TgGame.TgModifyPawnPropertiesVolume")) {
+		auto* volume = static_cast<ATgModifyPawnPropertiesVolume*>(obj);
+		++modifyVolumes;
+		if (volume && ((AVolume*)volume)->Encompasses((AActor*)Pawn)) {
+			++modifyOverlaps;
+			recalcModify = true;
+			repairedModify |= RepairSpawnVolumeTouch(
+				Pawn, (AVolume*)volume,
+				"TgModifyPawnPropertiesVolume", volume->m_nMapObjectId);
+		}
+	}
+	for (UObject* obj : FindAllObjectsByExactClass("Class TgGame.TgOmegaVolume")) {
+		auto* volume = static_cast<ATgOmegaVolume*>(obj);
+		++omegaVolumes;
+		if (volume && ((AVolume*)volume)->Encompasses((AActor*)Pawn)) {
+			++omegaOverlaps;
+			recalcOmega = true;
+			repairedOmega |= RepairSpawnVolumeTouch(
+				Pawn, (AVolume*)volume,
+				"TgOmegaVolume", volume->m_nMapObjectId);
+		}
+	}
+
+	if (recalcModify) {
+		Pawn->eventModifyPawnPropertiesVolumeChanged();
+	}
+	if (recalcOmega) {
+		Pawn->eventOmegaVolumePropertiesChanged();
+	}
+	if (recalcModify || recalcOmega) {
+		Pawn->bNetDirty = 1;
+		Pawn->bForceNetUpdate = 1;
+		Logger::Log("spawn",
+			"SpawnPlayerCharacter: volume state refreshed pawn=%p disableAllDevices=%d enableEquip=%d enableSkills=%d currentOmega=%p\n",
+			Pawn, (int)Pawn->r_bDisableAllDevices, (int)Pawn->r_bEnableEquip,
+			(int)Pawn->r_bEnableSkills, Pawn->r_CurrentOmegaVolume);
+	}
+	Logger::Log("spawn",
+		"SpawnPlayerCharacter: volume scan pawn=%p loc=(%.1f,%.1f,%.1f) modify=%d/%d omega=%d/%d recalcModify=%d recalcOmega=%d repairedModify=%d repairedOmega=%d disableAllDevices=%d enableSkills=%d\n",
+		Pawn, Pawn->Location.X, Pawn->Location.Y, Pawn->Location.Z,
+		modifyOverlaps, modifyVolumes, omegaOverlaps, omegaVolumes,
+		(int)recalcModify, (int)recalcOmega,
+		(int)repairedModify, (int)repairedOmega,
+		(int)Pawn->r_bDisableAllDevices, (int)Pawn->r_bEnableSkills);
+}
+
 ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, void* edx, ATgPlayerController* PlayerController, FVector SpawnLocation) {
 
 	LogCallBegin();
@@ -669,6 +772,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// Location/Rotation. Mirrors the respawn fix-up so first spawn matches.
 	newpawn->SetLocation(SpawnLocation);
 	newpawn->SetRotation(PlayerController->Rotation);
+	RepairSpawnVolumeState(newpawn);
 
 	// scope-zoom investigation baseline — snapshot the aim-mode fields right
 	// after spawn so the log captures what the FIRST initial-replication bunch
