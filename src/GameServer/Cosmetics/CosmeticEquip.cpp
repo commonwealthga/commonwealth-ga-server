@@ -72,73 +72,14 @@ static int LookupMeshAsmIdForCosmetic(int itemId, int genderTypeId) {
 	return asmId;
 }
 
-struct MeshCollisionData {
-	float radius;
-	float halfHeight;
-	float crouchHeight;
-	float hitHeight;
-	float hitRadius;
-};
-
-static const MeshCollisionData& LookupMeshCollisionData(int meshAsmId) {
-	static std::unordered_map<int, MeshCollisionData> cache;
-	auto it = cache.find(meshAsmId);
-	if (it != cache.end()) return it->second;
-
-	MeshCollisionData data{25.0f, 46.0f, 0.0f, 0.0f, 0.0f};
-	sqlite3* db = Database::GetConnection();
-	if (db) {
-		sqlite3_stmt* stmt = nullptr;
-		if (sqlite3_prepare_v2(db,
-			"SELECT collision_radius, collision_height, crouch_height, "
-			"       hit_collision_height, hit_collision_radius "
-			"FROM asm_data_set_assembly_meshes "
-			"WHERE asm_id = ? LIMIT 1",
-			-1, &stmt, nullptr) == SQLITE_OK) {
-			sqlite3_bind_int(stmt, 1, meshAsmId);
-			if (sqlite3_step(stmt) == SQLITE_ROW) {
-				const float radius      = (float)sqlite3_column_double(stmt, 0);
-				const float halfHeight  = (float)sqlite3_column_double(stmt, 1);
-				const float crouch      = (float)sqlite3_column_double(stmt, 2);
-				const float hitHeight   = (float)sqlite3_column_double(stmt, 3);
-				const float hitRadius   = (float)sqlite3_column_double(stmt, 4);
-				if (radius > 0.0f) data.radius = radius;
-				if (halfHeight > 0.0f) data.halfHeight = halfHeight;
-				if (crouch > 0.0f) data.crouchHeight = crouch;
-				if (hitHeight > 0.0f) data.hitHeight = hitHeight;
-				if (hitRadius > 0.0f) data.hitRadius = hitRadius;
-			}
-			sqlite3_finalize(stmt);
-		}
-	}
-
-	auto [inserted, _] = cache.emplace(meshAsmId, data);
-	return inserted->second;
-}
-
-static void ApplyMeshCollisionData(ATgPawn* Pawn, int meshAsmId) {
+static void RefreshNativeMeshSetup(ATgPawn* Pawn, int meshAsmId) {
 	if (!Pawn || meshAsmId <= 0) return;
-	const MeshCollisionData& data = LookupMeshCollisionData(meshAsmId);
-	if (data.radius > 0.0f && data.halfHeight > 0.0f) {
-		Pawn->SetCollisionSize(data.radius, data.halfHeight);
-	}
-	if (data.crouchHeight > 0.0f) {
-		Pawn->CrouchHeight = data.crouchHeight;
-	}
-	if (data.radius > 0.0f) {
-		Pawn->CrouchRadius = data.radius;
-	}
-	if (data.hitHeight > 0.0f) {
-		Pawn->m_fTargetCylinderHeight = data.hitHeight;
-	}
-	if (data.hitRadius > 0.0f) {
-		Pawn->m_fTargetCylinderRadius = data.hitRadius;
-	}
-	Pawn->m_fStandingHeight = data.halfHeight;
-	Pawn->m_fStandingRadius = data.radius;
+	auto* charPawn = (ATgPawn_Character*)Pawn;
+	const bool setupOk = charPawn->ApplyPawnSetup();
+	Pawn->SetCollisionFromMesh(meshAsmId);
 	Logger::Log("cosmetic-equip",
-		"LoadFromDB: mesh collision asm=%d radius=%.2f halfHeight=%.2f\n",
-		meshAsmId, data.radius, data.halfHeight);
+		"LoadFromDB: refreshed native mesh setup asm=%d setup=%d\n",
+		meshAsmId, (int)setupOk);
 }
 
 struct ClassVisualFallback {
@@ -529,7 +470,7 @@ void LoadFromDB(ATgPawn* Pawn, int64_t character_id) {
 		if (PRI) PRI->r_CustomCharacterAssembly.SuitMeshId = resolvedSuitMesh;
 	}
 	Pawn->r_nBodyMeshAsmId = resolvedSuitMesh;
-	ApplyMeshCollisionData(Pawn, resolvedSuitMesh);
+	RefreshNativeMeshSetup(Pawn, resolvedSuitMesh);
 
 	// (4) Force-include both pawn and PRI in the next net update so their
 	// mirrored r_CustomCharacterAssembly fields land in the initial bunch
