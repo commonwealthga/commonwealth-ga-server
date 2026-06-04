@@ -9,14 +9,16 @@ set "OUT_DIR=%REPO%\out"
 set "MSYS_ROOT=C:\msys64"
 set "MSYS_BASH=%MSYS_ROOT%\usr\bin\bash.exe"
 set "SERVER_CONFIG=%OUT_DIR%\control-server.json"
+set "SERVER_DB=%OUT_DIR%\server.db"
+set "SOURCE_DB=%OUT_DIR%\original_server.db"
 set "SERVER_HOOK_DLL=%OUT_DIR%\dinput8.dll"
 set "RUNTIME_BIN=%OUT_DIR%\client\Binaries"
 set "RUNTIME_HOOK_DLL=%RUNTIME_BIN%\dinput8.dll"
 set "STALE_RUNTIME_VERSION=%RUNTIME_BIN%\version.dll"
 set "STALE_RUNTIME_DINPUT8_ORIG=%RUNTIME_BIN%\dinput8_orig.dll"
-set "TEST_DB=%OUT_DIR%\original-server-test.db"
-set "SOURCE_DB=%OUT_DIR%\original_server.db"
 
+call :ensure_server_db
+if errorlevel 1 goto done
 call :ensure_config
 call :ensure_client_runtime
 if errorlevel 1 goto done
@@ -27,6 +29,11 @@ echo Global Agenda Private Server
 echo.
 echo Repo: %REPO%
 echo Config: %SERVER_CONFIG%
+if exist "%SERVER_DB%" (
+    echo Server DB: %SERVER_DB%
+) else (
+    echo Server DB: missing - %SERVER_DB%
+)
 if exist "%MSYS_BASH%" (
     echo Build tools: %MSYS_ROOT%
 ) else (
@@ -58,14 +65,23 @@ if "%choice%"=="3" call :run_server_visible & goto menu
 if "%choice%"=="4" goto done
 goto menu
 
+:ensure_server_db
+if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
+if exist "%SERVER_DB%" exit /b 0
+if exist "%SOURCE_DB%" (
+    echo Creating server DB from:
+    echo %SOURCE_DB%
+    copy /Y "%SOURCE_DB%" "%SERVER_DB%" >nul
+    exit /b %ERRORLEVEL%
+)
+echo No server DB found under:
+echo %SERVER_DB%
+echo The control server will create one on first startup.
+exit /b 0
+
 :ensure_config
 if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
-if not exist "%TEST_DB%" (
-    if exist "%SOURCE_DB%" (
-        copy /Y "%SOURCE_DB%" "%TEST_DB%" >nul
-    )
-)
-if exist "%SERVER_CONFIG%" exit /b 0
+if exist "%SERVER_CONFIG%" goto ensure_config_db_path
 echo Creating default Windows config:
 echo %SERVER_CONFIG%
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
@@ -77,13 +93,22 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "wine_debug = $false; fix_package_guids = $false; " ^
   "udp_port_range = [ordered]@{ lo = 9002; hi = 9020 }; " ^
   "tcp_port = 9000; chat_port = 9001; ipc_port = 9011; " ^
-  "admin_token = ''; db_path = 'out/original-server-test.db'; " ^
+  "admin_token = ''; db_path = $env:SERVER_DB; " ^
   "crash_dir = 'out/crashes'; log_dir = 'out/logs'; " ^
   "enabled_channels = [object[]]@(); enabled_crash_channels = [object[]]@(); " ^
   "clear_logs = $true; show_game_console = $false; allow_duplicate_account_logins = $false; " ^
   "use_docker = $false; docker_debug = $false; docker_image = 'ga-server:latest'; docker_memory = '0'; " ^
   "docker_extra_mounts = [object[]]@(); dll_overrides = ''; cores_per_instance = 1; per_slot_prefix = $false " ^
   "}; $json = $cfg | ConvertTo-Json -Depth 20; [IO.File]::WriteAllText($env:SERVER_CONFIG, $json + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))"
+if errorlevel 1 exit /b %ERRORLEVEL%
+
+:ensure_config_db_path
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$ErrorActionPreference = 'Stop'; " ^
+  "$cfg = Get-Content -LiteralPath $env:SERVER_CONFIG -Raw | ConvertFrom-Json; " ^
+  "if ($cfg.PSObject.Properties.Name -contains 'db_path') { $cfg.db_path = $env:SERVER_DB } else { $cfg | Add-Member -NotePropertyName db_path -NotePropertyValue $env:SERVER_DB }; " ^
+  "$json = $cfg | ConvertTo-Json -Depth 20; " ^
+  "[IO.File]::WriteAllText($env:SERVER_CONFIG, $json + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))"
 exit /b %ERRORLEVEL%
 
 :ensure_client_runtime
@@ -262,6 +287,8 @@ if not exist "%SERVER_CONFIG%" (
     call :ensure_config
     if errorlevel 1 exit /b 1
 )
+call :ensure_server_db
+if errorlevel 1 exit /b 1
 call :kill_stale_server_instances
 if errorlevel 1 exit /b 1
 cd /d "%REPO%"
