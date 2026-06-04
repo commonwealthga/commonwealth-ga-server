@@ -225,6 +225,8 @@ pause
 exit /b 0
 
 :build_and_update
+call :kill_stale_server_instances
+if errorlevel 1 exit /b 1
 call :msys_make "control-server-win all"
 if errorlevel 1 exit /b 1
 call :copy_server_dll
@@ -249,6 +251,8 @@ if not exist "%RUNTIME_BIN%\GlobalAgenda.exe" (
     pause
     exit /b 1
 )
+call :kill_stale_server_instances
+if errorlevel 1 exit /b 1
 copy /Y "%SERVER_HOOK_DLL%" "%RUNTIME_HOOK_DLL%" >nul
 if errorlevel 1 (
     echo Failed to copy server hook DLL.
