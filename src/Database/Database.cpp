@@ -4834,8 +4834,29 @@ void Database::Init() {
 			" ('Raid_DomeCityDefense_P', 13632, 'n_spawn_table_id', '86', NULL, NULL, 1),    "
 			" ('Raid_DomeCityDefense_P', 13632, 'n_default_spawn_table_id', '86', NULL, NULL, 1);    ";
 
-		result = sqlite3_exec(db, kV63_ddr, nullptr, nullptr, &err);
-		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
+		bool has_ddr_map_config = false;
+		sqlite3_stmt* ddr_probe = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"SELECT 1 FROM map_object_config WHERE map_name = 'Raid_DomeCityDefense_P' LIMIT 1",
+				-1, &ddr_probe, nullptr) == SQLITE_OK && ddr_probe) {
+			has_ddr_map_config = sqlite3_step(ddr_probe) == SQLITE_ROW;
+			sqlite3_finalize(ddr_probe);
+		}
+		if (!has_ddr_map_config) {
+			result = sqlite3_exec(db, kV63_ddr, nullptr, nullptr, &err);
+			if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
+		}
+		result = sqlite3_exec(db,
+			"DELETE FROM map_object_config "
+			"WHERE map_name = 'Raid_DomeCityDefense_P' "
+			"AND id NOT IN ("
+			"  SELECT MIN(id) FROM map_object_config "
+			"  WHERE map_name = 'Raid_DomeCityDefense_P' "
+			"  GROUP BY map_name, map_object_id, column_name, value, "
+			"           COALESCE(variant_group, ''), COALESCE(variant_id, ''), weight"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63 (ddr map_object_config dedupe): %s\n", err); return; }
 
 		// Seed the matching map pool for the ddr queue (post-pool-inversion).
 		// queue_id 3 is assumed for ddr (specops=1, pvp=2 already seeded).
@@ -4843,11 +4864,63 @@ void Database::Init() {
 		result = sqlite3_exec(db, q_pool, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63 (ddr map pool): %s\n", err); return; }
 
-		const char* q1 = "INSERT INTO ga_queues ( name, taskforce_policy, continue_in_queue, enabled, queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, max_players_per_side, min_players_per_team, max_players_per_team, level_min, level_max, tab, map_x, map_y, map_active_flag, map_icon_texture_res_id, video_res_id, location_value_id, double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, difficulty_value_id, access_flags, active_flag, locked_flag, map_pool_id) VALUES ( 'ddr', 'pinned_2', 0, 1, 1454, 0, 62550, 64938, 1714, 10, 1, 10, 5, 50, 231, 0, 0, 1, 5126, 0, 0, 1, 0, 0, 1, 1471, 0, 1, 0, 3);";
+		const char* q1 =
+			"UPDATE ga_queues SET queue_id = 3 "
+			"WHERE queue_id = (SELECT MIN(queue_id) FROM ga_queues WHERE name = 'ddr' "
+			"AND COALESCE(rule_class, '') = '' AND taskforce_policy = 'pinned_2' "
+			"AND continue_in_queue = 0 AND enabled = 1 AND queue_type_value_id = 1454 "
+			"AND status_msg_id = 0 AND name_msg_id = 62550 AND desc_msg_id = 64938 "
+			"AND icon_id = 1714 AND max_players_per_side = 10 AND min_players_per_team = 1 "
+			"AND max_players_per_team = 10 AND level_min = 5 AND level_max = 50 "
+			"AND tab = 231 AND map_x = 0 AND map_y = 0 AND map_active_flag = 1 "
+			"AND map_icon_texture_res_id = 5126 AND video_res_id = 0 "
+			"AND location_value_id = 0 AND double_agent_flag = 1 AND sys_site_id = 0 "
+			"AND sort_order = 0 AND bonus_queue_flag = 1 AND difficulty_value_id = 1471 "
+			"AND access_flags = 0 AND active_flag = 1 AND locked_flag = 0 "
+			"AND COALESCE(map_pool_id, 0) = 3) "
+			"AND NOT EXISTS (SELECT 1 FROM ga_queues WHERE queue_id = 3);"
+			"DELETE FROM ga_queues WHERE name = 'ddr' "
+			"AND COALESCE(rule_class, '') = '' AND taskforce_policy = 'pinned_2' "
+			"AND continue_in_queue = 0 AND enabled = 1 AND queue_type_value_id = 1454 "
+			"AND status_msg_id = 0 AND name_msg_id = 62550 AND desc_msg_id = 64938 "
+			"AND icon_id = 1714 AND max_players_per_side = 10 AND min_players_per_team = 1 "
+			"AND max_players_per_team = 10 AND level_min = 5 AND level_max = 50 "
+			"AND tab = 231 AND map_x = 0 AND map_y = 0 AND map_active_flag = 1 "
+			"AND map_icon_texture_res_id = 5126 AND video_res_id = 0 "
+			"AND location_value_id = 0 AND double_agent_flag = 1 AND sys_site_id = 0 "
+			"AND sort_order = 0 AND bonus_queue_flag = 1 AND difficulty_value_id = 1471 "
+			"AND access_flags = 0 AND active_flag = 1 AND locked_flag = 0 "
+			"AND COALESCE(map_pool_id, 0) = 3 "
+			"AND queue_id <> COALESCE((SELECT queue_id FROM ga_queues WHERE queue_id = 3 "
+			"AND name = 'ddr' AND COALESCE(rule_class, '') = '' AND taskforce_policy = 'pinned_2' "
+			"AND continue_in_queue = 0 AND enabled = 1 AND queue_type_value_id = 1454 "
+			"AND status_msg_id = 0 AND name_msg_id = 62550 AND desc_msg_id = 64938 "
+			"AND icon_id = 1714 AND max_players_per_side = 10 AND min_players_per_team = 1 "
+			"AND max_players_per_team = 10 AND level_min = 5 AND level_max = 50 "
+			"AND tab = 231 AND map_x = 0 AND map_y = 0 AND map_active_flag = 1 "
+			"AND map_icon_texture_res_id = 5126 AND video_res_id = 0 "
+			"AND location_value_id = 0 AND double_agent_flag = 1 AND sys_site_id = 0 "
+			"AND sort_order = 0 AND bonus_queue_flag = 1 AND difficulty_value_id = 1471 "
+			"AND access_flags = 0 AND active_flag = 1 AND locked_flag = 0 "
+			"AND COALESCE(map_pool_id, 0) = 3), "
+			"(SELECT MIN(queue_id) FROM ga_queues WHERE name = 'ddr' "
+			"AND COALESCE(rule_class, '') = '' AND taskforce_policy = 'pinned_2' "
+			"AND continue_in_queue = 0 AND enabled = 1 AND queue_type_value_id = 1454 "
+			"AND status_msg_id = 0 AND name_msg_id = 62550 AND desc_msg_id = 64938 "
+			"AND icon_id = 1714 AND max_players_per_side = 10 AND min_players_per_team = 1 "
+			"AND max_players_per_team = 10 AND level_min = 5 AND level_max = 50 "
+			"AND tab = 231 AND map_x = 0 AND map_y = 0 AND map_active_flag = 1 "
+			"AND map_icon_texture_res_id = 5126 AND video_res_id = 0 "
+			"AND location_value_id = 0 AND double_agent_flag = 1 AND sys_site_id = 0 "
+			"AND sort_order = 0 AND bonus_queue_flag = 1 AND difficulty_value_id = 1471 "
+			"AND access_flags = 0 AND active_flag = 1 AND locked_flag = 0 "
+			"AND COALESCE(map_pool_id, 0) = 3));"
+			"INSERT OR IGNORE INTO ga_queues (queue_id, name, taskforce_policy, continue_in_queue, enabled, queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, max_players_per_side, min_players_per_team, max_players_per_team, level_min, level_max, tab, map_x, map_y, map_active_flag, map_icon_texture_res_id, video_res_id, location_value_id, double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, difficulty_value_id, access_flags, active_flag, locked_flag, map_pool_id) VALUES (3, 'ddr', 'pinned_2', 0, 1, 1454, 0, 62550, 64938, 1714, 10, 1, 10, 5, 50, 231, 0, 0, 1, 5126, 0, 0, 1, 0, 0, 1, 1471, 0, 1, 0, 3);"
+			"";
 		result = sqlite3_exec(db, q1, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
 
-		const char* q2  = "INSERT INTO ga_map_pool_entries (map_pool_id, map_name, game_mode, weight, enabled) VALUES (3, 'Raid_DomeCityDefense_P', 'TgGame.TgGame_Defense', 1, 1);";
+		const char* q2  = "INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode, weight, enabled) VALUES (3, 'Raid_DomeCityDefense_P', 'TgGame.TgGame_Defense', 1, 1);";
 		result = sqlite3_exec(db, q2, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v63: %s\n", err); return; }
 
@@ -6601,8 +6674,13 @@ void Database::Init() {
 	}
 	if (version < 99) {
 		const char* kV99_1v1_queue =
-			"INSERT INTO ga_queues (name, taskforce_policy, continue_in_queue, enabled, queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, max_players_per_side, min_players_per_team, max_players_per_team, level_min, level_max, tab, map_x, map_y, map_active_flag, map_icon_texture_res_id, video_res_id, location_value_id, double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, difficulty_value_id, access_flags, active_flag, locked_flag, map_pool_id, min_players_to_pop, max_players_per_instance, pop_delay_seconds) VALUES "
-			"('1v1', 'balanced_pvp', 0, 1, 1421, 0, 22671, 22671, 532, 1, 1, 1, 5, 50, 443, 6, 0, 1, 5126, 0, 1477, 1, 0, 1, 0, 0, 0, 1, 0, 2, 2, 2, 0);";
+			"UPDATE ga_queues SET queue_id = 7 "
+			"WHERE queue_id = (SELECT MIN(queue_id) FROM ga_queues WHERE name = '1v1') "
+			"AND NOT EXISTS (SELECT 1 FROM ga_queues WHERE queue_id = 7);"
+			"DELETE FROM ga_queues WHERE name = '1v1' AND queue_id <> 7;"
+			"INSERT OR IGNORE INTO ga_queues (queue_id, name, taskforce_policy, continue_in_queue, enabled, queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, max_players_per_side, min_players_per_team, max_players_per_team, level_min, level_max, tab, map_x, map_y, map_active_flag, map_icon_texture_res_id, video_res_id, location_value_id, double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, difficulty_value_id, access_flags, active_flag, locked_flag, map_pool_id, min_players_to_pop, max_players_per_instance, pop_delay_seconds) VALUES "
+			"(7, '1v1', 'balanced_pvp', 0, 1, 1421, 0, 22671, 22671, 532, 1, 1, 1, 5, 50, 443, 6, 0, 1, 5126, 0, 1477, 1, 0, 1, 0, 0, 0, 1, 0, 2, 2, 2, 0);"
+			"UPDATE ga_queues SET name = '1v1', taskforce_policy = 'balanced_pvp', continue_in_queue = 0, enabled = 1, queue_type_value_id = 1421, status_msg_id = 0, name_msg_id = 22671, desc_msg_id = 22671, icon_id = 532, max_players_per_side = 1, min_players_per_team = 1, max_players_per_team = 1, level_min = 5, level_max = 50, tab = 443, map_x = 6, map_y = 0, map_active_flag = 1, map_icon_texture_res_id = 5126, video_res_id = 0, location_value_id = 1477, double_agent_flag = 1, sys_site_id = 0, sort_order = 1, bonus_queue_flag = 0, difficulty_value_id = 0, access_flags = 0, active_flag = 1, locked_flag = 0, map_pool_id = 2, min_players_to_pop = 2, max_players_per_instance = 2, pop_delay_seconds = 0 WHERE queue_id = 7 AND name = '1v1';";
 		result = sqlite3_exec(db, kV99_1v1_queue, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { Logger::Log("db", "Failed v99 (1v1 queue): %s\n", err); return; }
 
