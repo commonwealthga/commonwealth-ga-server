@@ -226,7 +226,9 @@ private:
             int task_force     = j.value("task_force", 1);
             Logger::Log("ipc", "[IpcServer] PLAYER_JOINED: instance=%lld guid=%s tf=%d\n",
                 (long long)inst_id, guid.c_str(), task_force);
-            // Player already inserted at ACK time, but PLAYER_JOINED confirms the actual task_force.
+            if (inst_id != 0 && !guid.empty()) {
+                InstanceRegistry::UpdateInstancePlayerTaskForce(inst_id, guid, task_force);
+            }
         }
         else if (type == IpcProtocol::MSG_PLAYER_LEFT) {
             int64_t inst_id    = j.value("instance_id", (int64_t)0);

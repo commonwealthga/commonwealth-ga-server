@@ -352,6 +352,7 @@ int main(int argc, char* argv[]) {
 
     // Set network config for TcpSession responses (external IP + chat port)
     TcpSession::SetNetworkConfig(cfg.host, cfg.chat_port);
+    TcpSession::SetLoginPolicy(cfg.allow_duplicate_account_logins);
 
     // Clear stale instances from any previous (crashed) run
     InstanceRegistry::ClearStaleInstances();

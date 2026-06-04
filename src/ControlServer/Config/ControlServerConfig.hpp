@@ -71,6 +71,7 @@ struct ControlServerConfig {
     bool        wine_debug         = false;  // --wine-debug CLI flag: uses winedbg --command cont
     bool        clear_logs         = false;  // truncate per-channel files at boot for repeated tests
     bool        show_game_console  = false;  // Windows native debug: show spawned game commandlet consoles
+    bool        allow_duplicate_account_logins = false;
 
     // ---- Docker spawn mode -------------------------------------------------
     // When use_docker is true, InstanceSpawner::Spawn execs `docker run`

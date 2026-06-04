@@ -80,7 +80,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "admin_token = ''; db_path = 'out/original-server-test.db'; " ^
   "crash_dir = 'out/crashes'; log_dir = 'out/logs'; " ^
   "enabled_channels = [object[]]@(); enabled_crash_channels = [object[]]@(); " ^
-  "clear_logs = $true; show_game_console = $false; " ^
+  "clear_logs = $true; show_game_console = $false; allow_duplicate_account_logins = $false; " ^
   "use_docker = $false; docker_debug = $false; docker_image = 'ga-server:latest'; docker_memory = '0'; " ^
   "docker_extra_mounts = [object[]]@(); dll_overrides = ''; cores_per_instance = 1; per_slot_prefix = $false " ^
   "}; $json = $cfg | ConvertTo-Json -Depth 20; [IO.File]::WriteAllText($env:SERVER_CONFIG, $json + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))"
@@ -262,6 +262,8 @@ if not exist "%SERVER_CONFIG%" (
     call :ensure_config
     if errorlevel 1 exit /b 1
 )
+call :kill_stale_server_instances
+if errorlevel 1 exit /b 1
 cd /d "%REPO%"
 echo Starting control server. Press Ctrl+C to stop.
 if "%GA_SHOW_GAME_CONSOLE%"=="1" (
@@ -274,6 +276,20 @@ echo.
 echo.
 echo Control server exited.
 pause
+exit /b 0
+
+:kill_stale_server_instances
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$ErrorActionPreference = 'Stop'; " ^
+  "$runtimeBin = (Resolve-Path -LiteralPath $env:RUNTIME_BIN).Path.TrimEnd('\'); " ^
+  "$targetExe = (Join-Path $runtimeBin 'GlobalAgenda.exe').ToLowerInvariant(); " ^
+  "$procs = Get-Process -Name GlobalAgenda -ErrorAction SilentlyContinue | Where-Object { $_.Path -and ($_.Path.ToLowerInvariant() -eq $targetExe) }; " ^
+  "foreach ($p in $procs) { Write-Host ('Stopping stale server game instance PID ' + $p.Id + ': ' + $p.Path); Stop-Process -Id $p.Id -Force; }"
+if errorlevel 1 (
+    echo Failed to check or stop stale server game instances.
+    pause
+    exit /b 1
+)
 exit /b 0
 
 :done

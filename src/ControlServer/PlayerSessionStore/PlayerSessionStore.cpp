@@ -14,6 +14,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <cctype>
 
 std::mutex PlayerSessionStore::mutex_;
 std::map<std::string, SessionInfo> PlayerSessionStore::by_guid_;
@@ -47,6 +48,16 @@ static bool IsBlacklistedItemId(int item_id) {
 		if (id == item_id) return true;
 	}
 	return false;
+}
+
+static bool EqualsIgnoreAsciiCase(const std::string& a, const std::string& b) {
+	if (a.size() != b.size()) return false;
+	for (size_t i = 0; i < a.size(); ++i) {
+		const auto ca = static_cast<unsigned char>(a[i]);
+		const auto cb = static_cast<unsigned char>(b[i]);
+		if (std::tolower(ca) != std::tolower(cb)) return false;
+	}
+	return true;
 }
 
 static bool TableColumnExists(sqlite3* db, const char* table, const char* column) {
@@ -209,6 +220,7 @@ void PlayerSessionStore::Init() {
 	}
 
 	by_guid_.clear();
+	by_ip_.clear();
 }
 
 void PlayerSessionStore::Register(const SessionInfo& info) {
@@ -287,6 +299,16 @@ std::optional<SessionInfo> PlayerSessionStore::GetByIp(const std::string& ip) {
 	std::lock_guard<std::mutex> lock(mutex_);
 	auto it = by_ip_.find(ip);
 	if (it != by_ip_.end()) return it->second;
+	return std::nullopt;
+}
+
+std::optional<SessionInfo> PlayerSessionStore::GetByPlayerName(const std::string& player_name) {
+	std::lock_guard<std::mutex> lock(mutex_);
+	for (const auto& kv : by_guid_) {
+		if (EqualsIgnoreAsciiCase(kv.second.player_name, player_name)) {
+			return kv.second;
+		}
+	}
 	return std::nullopt;
 }
 

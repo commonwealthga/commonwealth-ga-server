@@ -90,6 +90,7 @@ public:
     static void Unregister(const std::string& guid);
     static std::optional<SessionInfo> GetByGuid(const std::string& guid);
     static std::optional<SessionInfo> GetByIp(const std::string& ip);
+    static std::optional<SessionInfo> GetByPlayerName(const std::string& player_name);
     static SessionInfo* GetByGuidPtr(const std::string& guid);
 
     static int64_t UpsertUser(const std::string& username);

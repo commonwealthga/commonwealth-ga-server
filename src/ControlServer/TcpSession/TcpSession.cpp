@@ -11,6 +11,7 @@
 #include <map>
 #include <array>
 #include <cctype>
+#include <mutex>
 
 // ---------------------------------------------------------------------------
 // TcpSession static member definitions
@@ -21,8 +22,41 @@ std::map<std::string, std::weak_ptr<TcpSession>> TcpSession::g_sessions_;
 std::function<void()> TcpSession::on_need_home_map_;
 std::string TcpSession::s_host_ = "127.0.0.1";
 uint16_t    TcpSession::s_chat_port_ = 9001;
+bool        TcpSession::s_allow_duplicate_account_logins_ = false;
 
 namespace {
+
+constexpr auto kFailedLoginCooldown = std::chrono::seconds(5);
+std::mutex g_failed_login_cooldown_mutex;
+std::map<std::string, std::chrono::steady_clock::time_point> g_failed_login_cooldowns;
+
+bool IsLoginIpCoolingDown(const std::string& remote_ip) {
+    if (remote_ip.empty()) {
+        return false;
+    }
+
+    const auto now = std::chrono::steady_clock::now();
+    std::lock_guard<std::mutex> lock(g_failed_login_cooldown_mutex);
+    auto it = g_failed_login_cooldowns.find(remote_ip);
+    if (it == g_failed_login_cooldowns.end()) {
+        return false;
+    }
+    if (it->second <= now) {
+        g_failed_login_cooldowns.erase(it);
+        return false;
+    }
+    return true;
+}
+
+void MarkFailedLoginIp(const std::string& remote_ip) {
+    if (remote_ip.empty()) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(g_failed_login_cooldown_mutex);
+    g_failed_login_cooldowns[remote_ip] =
+        std::chrono::steady_clock::now() + kFailedLoginCooldown;
+}
 
 uint32_t FallbackClassMsgId(uint32_t profile_id) {
     switch (profile_id) {
@@ -101,6 +135,46 @@ uint32_t ResolveHomeMapGameId() {
     return 100005;
 }
 
+int ChooseVrHomeTaskForce(const InstanceInfo& home_instance,
+                          uint32_t joining_profile_id,
+                          const std::string& joining_session_guid) {
+    if (home_instance.map_name != "Dome3_VR_Arena_P") {
+        return 1;
+    }
+
+    struct TeamComposition {
+        int players = 0;
+        int same_class = 0;
+    };
+
+    TeamComposition team1;
+    TeamComposition team2;
+    for (const auto& row : InstanceRegistry::GetActivePlayersForInstance(home_instance.instance_id)) {
+        if (row.guid == joining_session_guid) {
+            continue;
+        }
+
+        TeamComposition& team = (row.task_force == 2) ? team2 : team1;
+        team.players += 1;
+        if (joining_profile_id != 0 && row.profile_id == joining_profile_id) {
+            team.same_class += 1;
+        }
+    }
+
+    int task_force = 1;
+    if (team2.players < team1.players) {
+        task_force = 2;
+    } else if (team1.players == team2.players && team2.same_class < team1.same_class) {
+        task_force = 2;
+    }
+
+    Logger::Log("tcp",
+        "[TcpSession] VR join team balance: instance=%lld profile=%u team1=(players=%d class=%d) team2=(players=%d class=%d) -> tf=%d\n",
+        (long long)home_instance.instance_id, joining_profile_id,
+        team1.players, team1.same_class, team2.players, team2.same_class, task_force);
+    return task_force;
+}
+
 }  // namespace
 
 void TcpSession::SetHomeMapSpawner(std::function<void()> cb) {
@@ -119,6 +193,10 @@ void TcpSession::EnsureHomeMapWarm(const char* reason) {
 void TcpSession::SetNetworkConfig(const std::string& host, uint16_t chat_port) {
     s_host_ = host;
     s_chat_port_ = chat_port;
+}
+
+void TcpSession::SetLoginPolicy(bool allow_duplicate_account_logins) {
+    s_allow_duplicate_account_logins_ = allow_duplicate_account_logins;
 }
 
 // ---------------------------------------------------------------------------
@@ -548,6 +626,17 @@ void TcpSession::initiate_player_register_and_go_play() {
         return;
     }
 
+    auto home_instance = InstanceRegistry::GetReadyHomeInstance();
+    if (!home_instance) {
+        Logger::Log("tcp", "[TcpSession] No READY home map instance -- cannot send PLAYER_REGISTER for %s\n",
+            session_guid_.c_str());
+        return;
+    }
+
+    const int task_force =
+        ChooseVrHomeTaskForce(*home_instance, selected_profile_id_, session_guid_);
+    home_task_force_ = task_force;
+
     nlohmann::json reg;
     reg["type"]         = IpcProtocol::MSG_PLAYER_REGISTER;
     reg["session_guid"] = session_guid_;
@@ -555,7 +644,7 @@ void TcpSession::initiate_player_register_and_go_play() {
     reg["player_name"]  = player_name;
     reg["user_id"]      = user_id_;
     reg["character_id"] = selected_character_id_;
-    reg["task_force"]   = 1;  // Hardcoded per user decision; matchmaking decides later
+    reg["task_force"]   = task_force;
 
     // Fetch character for morph_data, head_asm_id, gender_type_value_id
     auto charInfo = PlayerSessionStore::GetCharacterById(selected_character_id_);
@@ -599,16 +688,17 @@ void TcpSession::initiate_player_register_and_go_play() {
     // Register callback for when ACK arrives.
     auto timer = pending_ack_timer_;  // capture by value
     IpcServer::RegisterPendingAck(session_guid_,
-        [this, self, timer](bool success, int pawn_id) {
+        [this, self, timer, home_instance_id = home_instance->instance_id, task_force](
+            bool success, int pawn_id) {
             timer->cancel();
             if (success) {
                 Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK success for %s pawn_id=%d\n",
                     session_guid_.c_str(), pawn_id);
                 // Track player in home map instance
                 auto home = InstanceRegistry::GetReadyHomeInstance();
-                if (home) {
+                if (home && home->instance_id == home_instance_id) {
                     InstanceRegistry::InsertInstancePlayer(
-                        home->instance_id, session_guid_, selected_character_id_, 1,
+                        home->instance_id, session_guid_, selected_character_id_, task_force,
                         selected_profile_id_);
                 }
                 send_go_play_response();
@@ -618,17 +708,6 @@ void TcpSession::initiate_player_register_and_go_play() {
                 // Silent: do not send go_play, do not send error to client
             }
         });
-
-    // Look up the home map instance to route PLAYER_REGISTER to the correct session.
-    auto home_instance = InstanceRegistry::GetReadyHomeInstance();
-    if (!home_instance) {
-        Logger::Log("tcp", "[TcpSession] No READY home map instance -- cannot send PLAYER_REGISTER for %s\n",
-            session_guid_.c_str());
-        pending_ack_timer_->cancel();
-        IpcServer::ClearPendingAck(session_guid_);
-        pending_ack_timer_.reset();
-        return;
-    }
 
     // Send PLAYER_REGISTER to game instance.
     if (!IpcServer::SendToInstance(home_instance->instance_id, reg.dump())) {
@@ -811,6 +890,22 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 
 	switch (packet_type) {
 		case GA_U::GSC_USER_LOGIN: {
+			std::error_code endpoint_ec;
+			auto remote_endpoint = socket_.remote_endpoint(endpoint_ec);
+			std::string remote_ip;
+			if (!endpoint_ec) {
+				remote_ip = remote_endpoint.address().to_string();
+				ip_address_ = remote_ip + ":" + std::to_string(remote_endpoint.port());
+			} else {
+				ip_address_ = "<unknown>";
+			}
+
+			if (IsLoginIpCoolingDown(remote_ip)) {
+				Logger::Log("tcp",
+					"[%s] GSC_USER_LOGIN ignored during failed-login cooldown ip=%s\n",
+					Logger::GetTime(), remote_ip.c_str());
+				break;
+			}
 
 			PacketView pkt(data + 6, length - 6);
 			auto read_login_name = [&pkt](uint16_t type) -> std::string {
@@ -836,7 +931,6 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				login_field_name = "HOST_SQL_LOGIN";
 			}
 			const bool has_user_name = !requested_user_name.empty();
-			ip_address_ = socket_.remote_endpoint().address().to_string() + ":" + std::to_string(socket_.remote_endpoint().port());
 
 			if (!has_user_name) {
 				Logger::Log("tcp",
@@ -849,6 +943,8 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				Logger::Log("tcp",
 					"[%s] GSC_USER_LOGIN reserved username rejected ip=%s\n",
 					Logger::GetTime(), ip_address_.c_str());
+				MarkFailedLoginIp(remote_ip);
+				close_after_login_rejection();
 				break;
 			}
 
@@ -870,6 +966,20 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				pending_match_instance_id_ = 0;
 				pending_match_game_mode_.clear();
 				pending_match_task_force_ = 1;
+			}
+
+			if (!s_allow_duplicate_account_logins_) {
+				auto existing = PlayerSessionStore::GetByPlayerName(requested_user_name);
+				if (existing) {
+					Logger::Log("tcp",
+						"[%s] GSC_USER_LOGIN duplicate account rejected name=%s existing_guid=%s existing_ip=%s new_ip=%s\n",
+						Logger::GetTime(), requested_user_name.c_str(),
+						existing->session_guid.c_str(), existing->ip_address.c_str(), ip_address_.c_str());
+					MarkFailedLoginIp(remote_ip);
+					send_login_rejected_response("This account is already logged in.");
+					close_after_login_rejection();
+					break;
+				}
 			}
 
 			player_name = requested_user_name;
@@ -2572,7 +2682,7 @@ void TcpSession::send_go_play_response()
 		Logger::Log("tcp", "[TcpSession] No READY home map instance for go_play\n");
 		return;
 	}
-	send_go_play_to_instance(*instance, /*task_force=*/1);
+	send_go_play_to_instance(*instance, home_task_force_);
 }
 
 void TcpSession::send_go_play_to_instance(const InstanceInfo& target, int task_force)
@@ -2784,17 +2894,19 @@ void TcpSession::send_character_list_queue_response()
 
 
 void TcpSession::send_login_response_for(const std::string& response_player_name,
-                                         const std::string& response_session_guid)
+                                         const std::string& response_session_guid,
+                                         bool success,
+                                         const char* error_text)
 {
 	std::vector<uint8_t> response;
 
 	uint16_t packet_type = GA_U::GSC_USER_LOGIN_RESPONSE;
-	uint16_t item_count = 9;
+	uint16_t item_count = error_text ? 12 : 9;
 
 	append(response, packet_type & 0xFF, packet_type >> 8);
 	append(response, item_count & 0xFF, item_count >> 8);
 
-	Write1B(response,     GA_T::SUCCESS, 1);
+	Write1B(response,     GA_T::SUCCESS, success ? 1 : 0);
 	WriteNBytes(response, GA_T::SESSION_GUID, GuidHexToBytes(response_session_guid));
 	Write4B(response,     GA_T::GAME_BITS, 0x0000000F);
 	Write2B(response,     GA_T::NET_ACCESS_FLAGS, 0xF3F8);
@@ -2816,7 +2928,18 @@ void TcpSession::send_login_response_for(const std::string& response_player_name
 	Write4B(response, GA_T::MAP_GAME_ID, 0x0000046B);
 	Write4B(response, GA_T::FRIENDLY_NAME_MSG_ID, 0x0000AB95);
 
+	if (error_text) {
+		Write4B(response, GA_T::ERROR_CODE, 1);
+		WriteString(response, GA_T::ERROR_TEXT, error_text);
+		WriteString(response, GA_T::ERROR_DESC, error_text);
+	}
+
 	send_response(response);
+}
+
+void TcpSession::send_login_rejected_response(const char* error_text)
+{
+	send_login_response_for("", "00000000000000000000000000000000", false, error_text);
 }
 
 void TcpSession::send_login_response()

@@ -106,9 +106,11 @@ private:
     // Network config: external IP and chat port, set once from main.
     static std::string s_host_;
     static uint16_t    s_chat_port_;
+    static bool        s_allow_duplicate_account_logins_;
 public:
     static void SetHomeMapSpawner(std::function<void()> cb);
     static void SetNetworkConfig(const std::string& host, uint16_t chat_port);
+    static void SetLoginPolicy(bool allow_duplicate_account_logins);
 
     // Fire the home-map spawner callback IF no home instance currently exists.
     // Safe to call multiple times — `GetHomeInstance()` returns any non-STOPPED
@@ -120,6 +122,7 @@ private:
 
     // Set when a READY home map instance is found for this player.
     int64_t assigned_instance_id_ = 0;
+    int home_task_force_ = 1;
 
     template<typename... Bytes>
     void append(std::vector<uint8_t>& buffer, Bytes&&... bytes) {
@@ -294,6 +297,12 @@ private:
         }
     }
 
+    void close_after_login_rejection() {
+        std::error_code ignored;
+        socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ignored);
+        socket_.close(ignored);
+    }
+
     void do_read() {
         auto self(shared_from_this());
         socket_.async_read_some(
@@ -433,7 +442,11 @@ private:
     void send_character_list_queue_response();
 
     void send_login_response_for(const std::string& response_player_name,
-                                 const std::string& response_session_guid);
+                                 const std::string& response_session_guid,
+                                 bool success = true,
+                                 const char* error_text = nullptr);
+
+    void send_login_rejected_response(const char* error_text = nullptr);
 
     void send_login_response();
 

@@ -100,6 +100,8 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
     if (j.contains("fix_package_guids"))  cfg.fix_package_guids  = j["fix_package_guids"].get<bool>();
     if (j.contains("clear_logs"))         cfg.clear_logs         = j["clear_logs"].get<bool>();
     if (j.contains("show_game_console"))  cfg.show_game_console  = j["show_game_console"].get<bool>();
+    if (j.contains("allow_duplicate_account_logins"))
+        cfg.allow_duplicate_account_logins = j["allow_duplicate_account_logins"].get<bool>();
 
     if (j.contains("enabled_channels") && j["enabled_channels"].is_array()) {
         for (const auto& item : j["enabled_channels"]) {

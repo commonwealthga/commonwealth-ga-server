@@ -309,9 +309,11 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	{
 		int tf = GClientConnectionsData[ConnectionIndex].PlayerInfo.task_force;
 		ATgRepInfo_TaskForce* taskforce = (tf == 1) ? GTeamsData.Attackers : GTeamsData.Defenders;
-		newrepplayer->r_TaskForce = taskforce;
-		newrepplayer->Team = taskforce;
+		if (newrepplayer->Team == nullptr) {
+			newrepplayer->Team = (tf == 1) ? GTeamsData.Defenders : GTeamsData.Attackers;
+		}
 		newrepplayer->SetTeam(taskforce);
+		newrepplayer->r_TaskForce = taskforce;
 		newpawn->NotifyTeamChanged();
 		Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: assigned to task_force=%d\n", tf);
 	}
