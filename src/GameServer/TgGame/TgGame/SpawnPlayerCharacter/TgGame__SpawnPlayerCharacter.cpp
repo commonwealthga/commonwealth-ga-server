@@ -178,8 +178,15 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	PlayerController->Pawn = newpawn;
 	newpawn->Controller = PlayerController;
-	// RestartPlayer owns Possess after this returns; doing it here runs before
-	// cosmetics, inventory, PRI/team state, and effect ownership are ready.
+	// Possess is deferred to the end of this function (after inventory /
+	// cosmetics / PRI / RCST run) — see the explicit eventPossess call before
+	// the EXIT snapshot block. Relying on engine RestartPlayer to call Possess
+	// after SpawnDefaultPawnFor returns left a window where the pawn's first
+	// replication bunch shipped before `Pawn->Owner = Controller` was set,
+	// dropping owner-only props (GroundSpeed / AirSpeed / AccelRate / JumpZ)
+	// from the initial bundle and leaving the client predicting at UC class
+	// defaults while the server validated with InitializeDefaultProps values
+	// — visible as warping under load.
 
 	// NOTE: don't call ClientSetCinematicMode here — we're still inside
 	// PostLogin → RestartPlayer → SpawnDefaultPawnFor, i.e. BEFORE
@@ -788,6 +795,14 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 			newpawn, session_guid.c_str());
 		newpawn->ReapplyCharacterSkillTree();
 	}
+
+	// Possess now — everything the UC-side Possess / PossessedBy chain might
+	// want to read (Inventory, cosmetics, PRI, team, skill-applied effects)
+	// is in place. PossessedBy sets `Pawn->Owner = Controller`, which is what
+	// the engine's net-owner walk needs to flip `bNetOwner` to true so the
+	// next replication bunch includes the owner-only movement props. Run it
+	// before the engine's RestartPlayer fallback so we control the ordering.
+	PlayerController->eventPossess(PlayerController->Pawn, 0, 0);
 
 	Logger::Log("spawn-asm", "=== SpawnPlayerCharacter EXIT final snapshots ===\n");
 	LogAssemblySnapshot("[EXIT pawn]", newpawn, newpawn->r_CustomCharacterAssembly);

@@ -4,13 +4,11 @@
 #include "src/GameServer/TgGame/TgGame/BeginEndMission/TgGame__BeginEndMission.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
-#include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/Config/Config.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
-#include <math.h>
 #include <string>
 #include <unordered_map>
 
@@ -312,84 +310,6 @@ static void LogMovePingSample(
 			pcState ? pcState : "<null>",
 			pawn, pawnState ? pawnState : "<null>", pawn ? (int)pawn->Physics : -1,
 			ctx.characterId, ctx.itemProfileId, ctx.profileId, ctx.profileType, ctx.skillGroupSetId, ctx.deviceActors, ctx.replicatedDevices);
-	}
-}
-
-static void ApplyDomeVrHealPadFallback(APlayerController* pc, const FVector* clientLoc, float timestamp) {
-	if (!pc || !pc->Pawn) return;
-	if (Config::GetMapNameChar() != "Dome3_VR_Arena_P") return;
-
-	ATgPawn* pawn = (ATgPawn*)pc->Pawn;
-	const FVector loc = clientLoc ? *clientLoc : pawn->Location;
-
-	// Current Dome VR map data does not fire the original heal-pad trigger.
-	// Use the actual placed TgDeviceVolume_0 location until that path is restored.
-	const float dx = loc.X - (-150.8f);
-	const float dy = loc.Y - (-507.1f);
-	const float dz = loc.Z - 349.0f;
-	const float dist2 = dx * dx + dy * dy;
-
-	int maxHp = pawn->HealthMax;
-	if (pawn->r_nHealthMaximum > maxHp) maxHp = pawn->r_nHealthMaximum;
-	if (maxHp <= 0 || pawn->Health <= 0 || pawn->Health >= maxHp) return;
-
-	static std::unordered_map<ATgPawn*, float> s_lastDiagTime;
-	float& lastDiag = s_lastDiagTime[pawn];
-	if (Logger::IsChannelEnabled("device-volume") &&
-	    (timestamp <= 0.0f || (timestamp - lastDiag) >= 1.0f)) {
-		lastDiag = timestamp > 0.0f ? timestamp : pc->CurrentTimeStamp;
-		Logger::Log("device-volume",
-			"[DomeHealPad] sample pawn=0x%p clientLoc=(%.1f, %.1f, %.1f) pawnLoc=(%.1f, %.1f, %.1f) dist2=%.1f dz=%.1f hp=%d/%d\n",
-			pawn,
-			loc.X, loc.Y, loc.Z,
-			pawn->Location.X, pawn->Location.Y, pawn->Location.Z,
-			dist2, dz, pawn->Health, maxHp);
-	}
-
-	if (dist2 > (300.0f * 300.0f) || fabsf(dz) > 220.0f) return;
-
-	ATgDeviceVolume* healVolume = DomeVrHealPad::GetRegisteredVolume();
-	if (!healVolume || !healVolume->s_DeviceFireMode || healVolume->s_nDeviceId == 0) {
-		// No registered heal-pad volume → setupDevice never wired the actor
-		// (DB map_object_config row missing, or volume never spawned). Don't
-		// synthesize a heal: fix the wiring at its source.
-		return;
-	}
-
-	float cooldown = healVolume->s_DeviceFireMode->GetRefireTime();
-	if (cooldown < 1.0f) cooldown = 1.0f;
-	if (cooldown > 5.0f) cooldown = 5.0f;
-
-	static std::unordered_map<ATgPawn*, float> s_lastHealTime;
-	float& last = s_lastHealTime[pawn];
-	const float now = timestamp > 0.0f ? timestamp : pc->CurrentTimeStamp;
-	if (now > 0.0f && (now - last) < cooldown) return;
-	last = now;
-
-	// Fire the volume's device through the engine's effect pipeline.
-	// ApplyHit reads the device's m_EffectGroups and runs each through
-	// ProcessEffect → ApplyEffect → ApplyToProperty / ApplyBuff. For a
-	// heal effect (TgEffectHeal, class_res_id=692) that lands on prop 51
-	// HEALTH via the buff-correct ApplyProperty fan-out, which writes
-	// pawn->Health + r_nHealthCurrent + PRI fields + replicates the diff
-	// without touching prop 304's m_fBase. SetEffectRep / combat message
-	// also fire as natural side-effects of ProcessEffect.
-	//
-	// Do NOT manually arithmetic +154 or call SyncPawnHealth after this.
-	// SyncPawnHealth is a SPAWN-TIME fan-out that writes prop-descriptor
-	// m_fBase fields from the maxHp argument — runtime callers pass the
-	// buffed maxHp (resolved via r_nHealthMaximum) which corrupts the
-	// unbuffed baseline. Every subsequent ApplyBuff recompute then reads
-	// the polluted base, and the next profile-switch's RCST reapplies
-	// armor/skill buffs on top of it. Observed cascade: heal pad → max
-	// HP +base+buffs → switch profile → +(base+buffs)+new_buffs → next
-	// cycle compounds further (~2400 → 10000+ over a few iterations).
-	const int beforeHp = pawn->Health;
-	healVolume->ApplyHit((AActor*)pawn);
-	if (Logger::IsChannelEnabled("device-volume")) {
-		Logger::Log("device-volume",
-			"[DomeHealPad] ApplyHit pawn=0x%p volume=0x%p loc=(%.1f, %.1f, %.1f) hp=%d->%d max=%d\n",
-			pawn, healVolume, loc.X, loc.Y, loc.Z, beforeHp, pawn->Health, maxHp);
 	}
 }
 
@@ -838,19 +758,13 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		break;
 
 	case DispatchTag::ServerMove: {
-		float ts = 0.0f;
-		FVector* loc = nullptr;
 		if (Logger::IsChannelEnabled("ping") && Params) {
-			ts = *(float*)((char*)Params + 0x00);
-			loc = (FVector*)((char*)Params + 0x10);
+			float ts = *(float*)((char*)Params + 0x00);
+			FVector* loc = (FVector*)((char*)Params + 0x10);
 			unsigned char flags = *(unsigned char*)((char*)Params + 0x1C);
 			LogMovePingSample("ServerMove", (APlayerController*)Object, ts, flags, loc);
-		} else if (Params) {
-			ts = *(float*)((char*)Params + 0x00);
-			loc = (FVector*)((char*)Params + 0x10);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
-		ApplyDomeVrHealPadFallback((APlayerController*)Object, loc, ts);
 		break;
 	}
 
@@ -865,53 +779,35 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 	}
 
 	case DispatchTag::DualServerMove: {
-		float ts = 0.0f;
-		FVector* loc = nullptr;
 		if (Logger::IsChannelEnabled("ping") && Params) {
-			ts = *(float*)((char*)Params + 0x18);
-			loc = (FVector*)((char*)Params + 0x28);
+			float ts = *(float*)((char*)Params + 0x18);
+			FVector* loc = (FVector*)((char*)Params + 0x28);
 			unsigned char flags = *(unsigned char*)((char*)Params + 0x34);
 			LogMovePingSample("DualServerMove", (APlayerController*)Object, ts, flags, loc);
-		} else if (Params) {
-			ts = *(float*)((char*)Params + 0x18);
-			loc = (FVector*)((char*)Params + 0x28);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
-		ApplyDomeVrHealPadFallback((APlayerController*)Object, loc, ts);
 		break;
 	}
 
 	case DispatchTag::TgShortServerMove: {
-		float ts = 0.0f;
-		FVector* loc = nullptr;
 		if (Logger::IsChannelEnabled("ping") && Params) {
-			ts = *(float*)((char*)Params + 0x00);
-			loc = (FVector*)((char*)Params + 0x04);
+			float ts = *(float*)((char*)Params + 0x00);
+			FVector* loc = (FVector*)((char*)Params + 0x04);
 			unsigned char flags = *(unsigned char*)((char*)Params + 0x10);
 			LogMovePingSample("TgShortServerMove", (APlayerController*)Object, ts, flags, loc);
-		} else if (Params) {
-			ts = *(float*)((char*)Params + 0x00);
-			loc = (FVector*)((char*)Params + 0x04);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
-		ApplyDomeVrHealPadFallback((APlayerController*)Object, loc, ts);
 		break;
 	}
 
 	case DispatchTag::TgRMServerMove: {
-		float ts = 0.0f;
-		FVector* loc = nullptr;
 		if (Logger::IsChannelEnabled("ping") && Params) {
-			ts = *(float*)((char*)Params + 0x00);
-			loc = (FVector*)((char*)Params + 0x10);
+			float ts = *(float*)((char*)Params + 0x00);
+			FVector* loc = (FVector*)((char*)Params + 0x10);
 			unsigned char flags = *(unsigned char*)((char*)Params + 0x1C);
 			LogMovePingSample("TgRMServerMove", (APlayerController*)Object, ts, flags, loc);
-		} else if (Params) {
-			ts = *(float*)((char*)Params + 0x00);
-			loc = (FVector*)((char*)Params + 0x10);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
-		ApplyDomeVrHealPadFallback((APlayerController*)Object, loc, ts);
 		break;
 	}
 

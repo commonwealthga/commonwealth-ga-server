@@ -6719,8 +6719,25 @@ void Database::Init() {
 
 		Logger::Log("db", "v101: seeded VR heal pad device override (Dome3_VR_Arena_P/11041)\n");
 	}
+	if (version < 102) {
+		// v102: switch the VR heal pad device from 2064 (Medical Station, +154
+		// instant heal with morale side-effects) to 5134 (ER-2 Heal — single-
+		// mode device, flat +100 instant heal, target_type=213 Friend-and-Self,
+		// no FX, no HUD icon). 5134's first mode is exactly the +100 effect, so
+		// TgDeviceVolume::setupDevice's m_FireMode[0] pick lands on it cleanly.
+		const char* kV102_vr_heal_pad =
+			"UPDATE map_object_config "
+			"SET value = '5134' "
+			"WHERE map_name = 'Dome3_VR_Arena_P' "
+			"  AND map_object_id = 11041 "
+			"  AND column_name = 's_n_device_id';";
+		result = sqlite3_exec(db, kV102_vr_heal_pad, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v102 (VR heal pad retarget): %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 101", nullptr, nullptr, &err);
+		Logger::Log("db", "v102: retargeted VR heal pad to device 5134 (ER-2 Heal, +100 flat)\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 102", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
