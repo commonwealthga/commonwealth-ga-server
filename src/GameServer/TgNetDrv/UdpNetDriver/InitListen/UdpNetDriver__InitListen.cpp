@@ -3,13 +3,23 @@
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
+#include <cstdlib>
+
 int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* Notify, FURL* Url, FString* Error) {
 	Logger::Log("debug", "MINE UdpNetDriver__InitListen START\n");
 
-	int result = UdpNetDriver__InitListen::CallOriginal(NetDriver, Notify, Url, Error);
-	if (!result) {
-		Logger::Log("debug", "[UdpNetDriver::InitListen] CallOriginal failed\n");
-		return 0;
+	const bool native_windows = Config::GetNativeWindowsRuntime();
+	if (native_windows) {
+		// Native Steam runtime has no standalone TgNetDrv package. The
+		// original InitListen tries to load NetConnectionClassName and
+		// crashes on null, so native Windows owns socket setup below.
+		NetDriver->Notify = Notify;
+	} else {
+		int result = UdpNetDriver__InitListen::CallOriginal(NetDriver, Notify, Url, Error);
+		if (!result) {
+			Logger::Log("debug", "[UdpNetDriver::InitListen] CallOriginal failed\n");
+			return 0;
+		}
 	}
 
 	// UE3 stock defaults are 15000 B/s per client (LAN-era values). UE3
@@ -25,14 +35,37 @@ int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* No
 	NetDriver->MaxInternetClientRate = 50000;
 
 	void* SocketInstance = nullptr;
-	*(void**)((char*)NetDriver + 0x14C) = SocketInstance = SocketWin__CreateDGramSocket::CallOriginal();
+	SOCKET Socket = INVALID_SOCKET;
 
-	if (SocketInstance == nullptr) {
-		Logger::Log("debug", "[UdpNetDriver::InitListen] CreateDGramSocket failed\n");
-		return 0;
+	if (native_windows) {
+		Logger::Log("debug", "[UdpNetDriver::InitListen] creating native hook-owned datagram socket\n");
+		SocketInstance = std::calloc(1, 0x20);
+		Logger::Log("debug", "[UdpNetDriver::InitListen] socket instance=%p\n", SocketInstance);
+
+		if (SocketInstance == nullptr) {
+			Logger::Log("debug", "[UdpNetDriver::InitListen] socket holder allocation failed\n");
+			return 0;
+		}
+
+		Socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+		if (Socket == INVALID_SOCKET) {
+			Logger::Log("debug", "[UdpNetDriver::InitListen] socket failed: %d\n", WSAGetLastError());
+			std::free(SocketInstance);
+			return 0;
+		}
+
+		*(SOCKET*)((char*)SocketInstance + 0x08) = Socket;
+		*(void**)((char*)NetDriver + 0x14C) = SocketInstance;
+	} else {
+		*(void**)((char*)NetDriver + 0x14C) = SocketInstance = SocketWin__CreateDGramSocket::CallOriginal();
+		if (SocketInstance == nullptr) {
+			Logger::Log("debug", "[UdpNetDriver::InitListen] CreateDGramSocket failed\n");
+			return 0;
+		}
+		Socket = *(SOCKET*)((char*)SocketInstance + 0x08);
 	}
 
-	SOCKET Socket = *(SOCKET*)((char*)SocketInstance + 0x08);
+	Logger::Log("debug", "[UdpNetDriver::InitListen] socket handle=%llu\n", (unsigned long long)Socket);
 
 	bool bAllowBroadcast = true;
 	Logger::Log("debug", "[UdpNetDriver::InitListen] set SO_BROADCAST\n");

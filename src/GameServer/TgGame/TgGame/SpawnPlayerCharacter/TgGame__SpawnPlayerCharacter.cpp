@@ -733,17 +733,10 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		}
 	}
 
-	// Force a post-spawn transform refresh. TgGame.RestartPlayer's bHadPawn
-	// branch (TgGame.uc:558-559) does this on every respawn but NOT on the
-	// first spawn — and without it, server-side hitscan traces fire from a
-	// position that tracks the player but is angularly displaced, making
-	// aiming nearly impossible until the player dies and respawns.
-	// SetLocation/SetRotation force ConditionalUpdateComponents on the pawn,
-	// which re-resolves component-relative transforms (collision cylinder,
-	// skeletal mesh, attached weapon meshes) against the now-correct
-	// Location/Rotation. Mirrors the respawn fix-up so first spawn matches.
-	newpawn->SetLocation(SpawnLocation);
-	newpawn->SetRotation(PlayerController->Rotation);
+	// Refresh against the pawn's actual spawned transform. The native
+	// vLocation argument can be unavailable on some hook paths after Spawn().
+	newpawn->SetLocation(newpawn->Location);
+	newpawn->SetRotation(PlayerController ? PlayerController->Rotation : newpawn->Rotation);
 	RepairSpawnVolumeState(newpawn);
 
 	// scope-zoom investigation baseline — snapshot the aim-mode fields right

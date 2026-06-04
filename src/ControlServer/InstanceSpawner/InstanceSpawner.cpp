@@ -284,6 +284,7 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
     const std::string clearlogs_arg = std::string("-clearlogs=")       + (cfg.clear_logs        ? "1" : "0");
     const std::string crashdir_arg  = "-crashdir=" + AbsolutePathFromCwd(cfg.crash_dir);
     const std::string logdir_arg    = "-logdir=" + AbsolutePathFromCwd(cfg.log_dir) + "\\" + std::to_string(instance_id);
+    const std::string nativewindows_arg = "-nativewindows=1";
 
     auto join_csv = [](const std::vector<std::string>& v) {
         std::string out;
@@ -308,7 +309,7 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         "-seekfreeloading", "-tcp=300", "-nullrhi",
         ipc_port_arg, inst_id_arg, dbpath_arg, gamepath_arg,
         fixguids_arg, clearlogs_arg, crashdir_arg, logdir_arg,
-        enabled_channels_arg, enabled_crash_channels_arg,
+        enabled_channels_arg, enabled_crash_channels_arg, nativewindows_arg,
     };
     if (!difficulty_arg.empty()) args.push_back(difficulty_arg);
 
