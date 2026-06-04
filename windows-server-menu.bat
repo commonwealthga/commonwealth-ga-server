@@ -281,10 +281,16 @@ exit /b 0
 :kill_stale_server_instances
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$ErrorActionPreference = 'Stop'; " ^
-  "$runtimeBin = (Resolve-Path -LiteralPath $env:RUNTIME_BIN).Path.TrimEnd('\'); " ^
-  "$targetExe = (Join-Path $runtimeBin 'GlobalAgenda.exe').ToLowerInvariant(); " ^
-  "$procs = Get-Process -Name GlobalAgenda -ErrorAction SilentlyContinue | Where-Object { $_.Path -and ($_.Path.ToLowerInvariant() -eq $targetExe) }; " ^
-  "foreach ($p in $procs) { Write-Host ('Stopping stale server game instance PID ' + $p.Id + ': ' + $p.Path); Stop-Process -Id $p.Id -Force; }"
+  "if (-not (Test-Path -LiteralPath $env:RUNTIME_BIN)) { exit 0 }; " ^
+  "$targetExe = [IO.Path]::GetFullPath((Join-Path $env:RUNTIME_BIN 'GlobalAgenda.exe')); " ^
+  "$filter = 'Name = ''GlobalAgenda.exe'''; " ^
+  "$find = { Get-CimInstance Win32_Process -Filter $filter -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -and ([IO.Path]::GetFullPath($_.ExecutablePath) -ieq $targetExe) } }; " ^
+  "$procs = @(& $find); " ^
+  "foreach ($p in $procs) { Write-Host ('Stopping stale server game instance PID ' + $p.ProcessId + ': ' + $p.ExecutablePath); Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue; } " ^
+  "Start-Sleep -Milliseconds 300; " ^
+  "$remaining = @(& $find); " ^
+  "if ($remaining.Count -gt 0) { foreach ($p in $remaining) { Write-Host ('Still running server game instance PID ' + $p.ProcessId + ': ' + $p.ExecutablePath); }; exit 1 }; " ^
+  "exit 0"
 if errorlevel 1 (
     echo Failed to check or stop stale server game instances.
     pause
