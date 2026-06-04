@@ -674,20 +674,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		// the single source of truth for equipped state — if the player
 		// hasn't equipped slot 14, nothing is equipped there.
 
-		if (equippedDeviceActors > 0) {
-			Logger::Log("debug",
-				"SpawnPlayerCharacter: deferring UpdateClientDevices for %d startup device actor(s)\n",
-				equippedDeviceActors);
-			newpawn->bNetDirty = 1;
-			newpawn->bForceNetUpdate = 1;
-			if (newrepplayer != nullptr) {
-				newrepplayer->bNetDirty = 1;
-				newrepplayer->bForceNetUpdate = 1;
-			}
-		} else {
-			Logger::Log("debug",
-				"SpawnPlayerCharacter: no equipped device actors; skipping UpdateClientDevices finalize\n");
-		}
+		Inventory::Finalize(newpawn);
 
 		// Cosmetic assembly was applied BEFORE the device loop above; see the
 		// (0) comment up there for why the order matters.

@@ -80,6 +80,14 @@ std::string TrimAsciiWhitespace(const std::string& s) {
     return s.substr(first, last - first);
 }
 
+bool IsPrintableAsciiUsername(const std::string& s) {
+    if (s.empty()) return false;
+    for (unsigned char c : s) {
+        if (c < 0x20 || c > 0x7E) return false;
+    }
+    return true;
+}
+
 bool EqualsIgnoreAsciiCase(const std::string& a, const char* b) {
     size_t i = 0;
     for (; i < a.size() && b[i] != '\0'; ++i) {
@@ -944,6 +952,22 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 					"[%s] GSC_USER_LOGIN reserved username rejected ip=%s\n",
 					Logger::GetTime(), ip_address_.c_str());
 				MarkFailedLoginIp(remote_ip);
+				close_after_login_rejection();
+				break;
+			}
+			if (!IsPrintableAsciiUsername(requested_user_name)) {
+				std::string hex_dump;
+				hex_dump.reserve(requested_user_name.size() * 2);
+				static const char kHex[] = "0123456789ABCDEF";
+				for (unsigned char c : requested_user_name) {
+					hex_dump.push_back(kHex[c >> 4]);
+					hex_dump.push_back(kHex[c & 0x0F]);
+				}
+				Logger::Log("tcp",
+					"[%s] GSC_USER_LOGIN invalid characters in account name rejected ip=%s hex=%s\n",
+					Logger::GetTime(), ip_address_.c_str(), hex_dump.c_str());
+				MarkFailedLoginIp(remote_ip);
+				send_login_rejected_response("Invalid characters in account name.");
 				close_after_login_rejection();
 				break;
 			}

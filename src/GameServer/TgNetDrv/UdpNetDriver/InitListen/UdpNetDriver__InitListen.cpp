@@ -1,15 +1,16 @@
 #include "src/GameServer/TgNetDrv/UdpNetDriver/InitListen/UdpNetDriver__InitListen.hpp"
+#include "src/GameServer/IpDrv/SocketWin/CreateDGramSocket/SocketWin__CreateDGramSocket.hpp"
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
-
-#include <cstdlib>
 
 int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* Notify, FURL* Url, FString* Error) {
 	Logger::Log("debug", "MINE UdpNetDriver__InitListen START\n");
 
-	// The Steam runtime has no standalone TgNetDrv package. The original
-	// InitListen tries to load NetConnectionClassName and crashes on null.
-	NetDriver->Notify = Notify;
+	int result = UdpNetDriver__InitListen::CallOriginal(NetDriver, Notify, Url, Error);
+	if (!result) {
+		Logger::Log("debug", "[UdpNetDriver::InitListen] CallOriginal failed\n");
+		return 0;
+	}
 
 	// UE3 stock defaults are 15000 B/s per client (LAN-era values). UE3
 	// clamps each connection's CurrentNetSpeed to NetDriver->MaxClientRate
@@ -24,25 +25,14 @@ int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* No
 	NetDriver->MaxInternetClientRate = 50000;
 
 	void* SocketInstance = nullptr;
-	Logger::Log("debug", "[UdpNetDriver::InitListen] creating hook-owned datagram socket\n");
-	SocketInstance = std::calloc(1, 0x20);
-	Logger::Log("debug", "[UdpNetDriver::InitListen] socket instance=%p\n", SocketInstance);
+	*(void**)((char*)NetDriver + 0x14C) = SocketInstance = SocketWin__CreateDGramSocket::CallOriginal();
 
 	if (SocketInstance == nullptr) {
-		Logger::Log("debug", "[UdpNetDriver::InitListen] socket holder allocation failed\n");
+		Logger::Log("debug", "[UdpNetDriver::InitListen] CreateDGramSocket failed\n");
 		return 0;
 	}
 
-	SOCKET Socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (Socket == INVALID_SOCKET) {
-		Logger::Log("debug", "[UdpNetDriver::InitListen] socket failed: %d\n", WSAGetLastError());
-		std::free(SocketInstance);
-		return 0;
-	}
-
-	*(SOCKET*)((char*)SocketInstance + 0x08) = Socket;
-	*(void**)((char*)NetDriver + 0x14C) = SocketInstance;
-	Logger::Log("debug", "[UdpNetDriver::InitListen] socket handle=%llu\n", (unsigned long long)Socket);
+	SOCKET Socket = *(SOCKET*)((char*)SocketInstance + 0x08);
 
 	bool bAllowBroadcast = true;
 	Logger::Log("debug", "[UdpNetDriver::InitListen] set SO_BROADCAST\n");

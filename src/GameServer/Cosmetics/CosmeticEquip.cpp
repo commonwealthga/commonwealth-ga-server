@@ -460,7 +460,6 @@ void LoadFromDB(ATgPawn* Pawn, int64_t character_id) {
 		if (PRI) PRI->r_CustomCharacterAssembly.SuitMeshId = resolvedSuitMesh;
 	}
 	Pawn->r_nBodyMeshAsmId = resolvedSuitMesh;
-	Pawn->SetCollisionFromMesh(resolvedSuitMesh);
 
 	// (4) Force-include both pawn and PRI in the next net update so their
 	// mirrored r_CustomCharacterAssembly fields land in the initial bunch
@@ -540,9 +539,6 @@ void ClearUnsetSlots(ATgPawn* Pawn, const std::set<int>& equippedEngineSlots) {
 		ApplyClassVisualFallback(Pawn, charPawn->r_nProfileId);
 		Pawn->r_nBodyMeshAsmId = charPawn->r_CustomCharacterAssembly.SuitMeshId;
 		if (PRI) PRI->r_CustomCharacterAssembly.SuitMeshId = charPawn->r_CustomCharacterAssembly.SuitMeshId;
-		if (Pawn->r_nBodyMeshAsmId > 0) {
-			Pawn->SetCollisionFromMesh(Pawn->r_nBodyMeshAsmId);
-		}
 		Pawn->bNetDirty       = 1;
 		Pawn->bForceNetUpdate = 1;
 		if (PRI) {
