@@ -1170,6 +1170,14 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			if (parent_instance_id != 0) {
 				parent = InstanceRegistry::GetInstanceById(parent_instance_id);
 			}
+			if (parent && parent->is_home_map && parent->state == "READY") {
+				const int task_force = home_task_force_ != 0 ? home_task_force_ : 1;
+				Logger::Log("tcp",
+					"[TcpSession] GSC_CHANGE_INSTANCE: same-home rejoin via register/go_play instance=%lld tf=%d for %s\n",
+					(long long)parent_instance_id, task_force, session_guid_.c_str());
+				initiate_player_register_for_target(*parent, task_force);
+				break;
+			}
 
 			// Decide BEFORE teardown whether we should attempt to route to a
 			// successor. We need to know if (a) parent had ended, (b) the
