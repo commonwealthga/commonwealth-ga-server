@@ -14,6 +14,16 @@ public:
             Logger::Log("tcp", "[TcpListener] Open failed on port %d: %s\n", port, ec.message().c_str());
             return;
         }
+        // Restore the implicit SO_REUSEADDR that asio's single-arg-endpoint
+        // acceptor ctor used to set. Without it, restarting while a client
+        // socket lingers in TIME_WAIT makes bind() fail with EADDRINUSE for
+        // up to 60s.
+        acceptor_.set_option(asio::socket_base::reuse_address(true), ec);
+        if (ec) {
+            Logger::Log("tcp", "[TcpListener] set_option(reuse_address) failed on port %d: %s\n", port, ec.message().c_str());
+            acceptor_.close();
+            return;
+        }
         acceptor_.bind(endpoint, ec);
         if (ec) {
             Logger::Log("tcp", "[TcpListener] Bind failed on port %d: %s\n", port, ec.message().c_str());
