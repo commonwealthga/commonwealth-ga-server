@@ -1,7 +1,6 @@
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
-#include "src/ControlServer/InstanceSpawner/InstanceSpawner.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/Shared/IpcFraming.hpp"
@@ -240,15 +239,16 @@ private:
         else if (type == IpcProtocol::MSG_INSTANCE_EMPTY) {
             int64_t inst_id = j.value("instance_id", (int64_t)0);
             Logger::Log("ipc", "[IpcServer] INSTANCE_EMPTY: instance=%lld\n", (long long)inst_id);
+            // Just stamp last_empty_at. The periodic idle-cleanup loop in
+            // main.cpp calls InstanceRegistry::GetIdleInstances(300), whose
+            // SQL already implements the policy we want: home map stays warm
+            // while any mission instance is in STARTING/READY (so players
+            // bouncing between missions and home see no respawn delay), and
+            // only gets reclaimed after 5 minutes of true server idleness.
+            // Tearing the home down here would defeat that — a player leaving
+            // home to pick a mission, or briefly disconnecting to swap chars,
+            // would always eat the home-instance boot delay on the way back.
             InstanceRegistry::SetLastEmptyAtIfEmpty(inst_id);
-            auto inst = InstanceRegistry::GetInstanceById(inst_id);
-            if (inst && inst->is_home_map && inst->state != "STOPPED") {
-                Logger::Log("ipc",
-                    "[IpcServer] INSTANCE_EMPTY: retiring empty home instance=%lld\n",
-                    (long long)inst_id);
-                InstanceSpawner::StopInstanceProcess(*inst, "empty home instance", 1);
-                InstanceRegistry::MarkStopped(inst_id);
-            }
         }
         else if (type == IpcProtocol::MSG_NEED_HOME_MAP) {
             // Mission instance ended a round and is warning us players are about

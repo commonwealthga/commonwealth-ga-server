@@ -18,6 +18,11 @@ public:
 	// TgPlayerCountVolume__Update hook replaces it and reads/writes the
 	// Players array + PlayerCountTarget on each cached entry.
 	static std::vector<ATgPlayerCountVolume*> PlayerCountVolumes;
+	// Safe-zone / Omega volumes are baked into maps and never change post-load.
+	// SpawnPlayerCharacter walks these to repair Touching overlaps on respawn
+	// (engine Touched events don't fire from SetLocation teleports).
+	static std::vector<ATgModifyPawnPropertiesVolume*> ModifyPawnPropertiesVolumes;
+	static std::vector<ATgOmegaVolume*> OmegaVolumes;
 	static ATgBotFactory* BotFactory;
 
 	static void CacheMapActors();

@@ -11,6 +11,7 @@
 #include "src/GameServer/Core/TMap/Allocate/TMap__Allocate.hpp"
 #include "src/GameServer/Misc/AssemblyDatManager/CreateDevice/AssemblyDatManager__CreateDevice.hpp"
 #include "src/GameServer/Misc/CAmItem/LoadItemMarshal/CAmItem__LoadItemMarshal.hpp"
+#include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
@@ -69,42 +70,21 @@ static bool RepairSpawnVolumeTouch(ATgPawn_Character* Pawn, AVolume* Volume, con
 	return addedPawnSide || addedVolumeSide;
 }
 
-static std::vector<UObject*> FindAllObjectsByExactClass(const char* ClassFullName) {
-	std::vector<UObject*> result;
-	TArray<UObject*>* objects = UObject::GObjObjects();
-	if (!objects || !ClassFullName) return result;
-
-	for (int i = 0; i < objects->Count; ++i) {
-		UObject* obj = objects->Data[i];
-		if (!obj || !obj->Class) continue;
-
-		const char* objectName = obj->GetFullName();
-		if (!objectName || strstr(objectName, "Default__") != nullptr) continue;
-
-		const char* className = obj->Class->GetFullName();
-		if (!className || strcmp(className, ClassFullName) != 0) continue;
-
-		result.push_back(obj);
-	}
-
-	return result;
-}
-
 static void RepairSpawnVolumeState(ATgPawn_Character* Pawn) {
 	if (!Pawn) return;
+
+	ActorCache::CacheMapActors();
 
 	bool repairedModify = false;
 	bool repairedOmega = false;
 	bool recalcModify = false;
 	bool recalcOmega = false;
-	int modifyVolumes = 0;
-	int omegaVolumes = 0;
 	int modifyOverlaps = 0;
 	int omegaOverlaps = 0;
+	const int modifyVolumes = (int)ActorCache::ModifyPawnPropertiesVolumes.size();
+	const int omegaVolumes  = (int)ActorCache::OmegaVolumes.size();
 
-	for (UObject* obj : FindAllObjectsByExactClass("Class TgGame.TgModifyPawnPropertiesVolume")) {
-		auto* volume = static_cast<ATgModifyPawnPropertiesVolume*>(obj);
-		++modifyVolumes;
+	for (ATgModifyPawnPropertiesVolume* volume : ActorCache::ModifyPawnPropertiesVolumes) {
 		if (volume && ((AVolume*)volume)->Encompasses((AActor*)Pawn)) {
 			++modifyOverlaps;
 			recalcModify = true;
@@ -113,9 +93,7 @@ static void RepairSpawnVolumeState(ATgPawn_Character* Pawn) {
 				"TgModifyPawnPropertiesVolume", volume->m_nMapObjectId);
 		}
 	}
-	for (UObject* obj : FindAllObjectsByExactClass("Class TgGame.TgOmegaVolume")) {
-		auto* volume = static_cast<ATgOmegaVolume*>(obj);
-		++omegaVolumes;
+	for (ATgOmegaVolume* volume : ActorCache::OmegaVolumes) {
 		if (volume && ((AVolume*)volume)->Encompasses((AActor*)Pawn)) {
 			++omegaOverlaps;
 			recalcOmega = true;

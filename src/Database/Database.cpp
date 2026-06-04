@@ -6697,8 +6697,30 @@ void Database::Init() {
 
 		Logger::Log("db", "v100: retargeted Virtual Arena loading screen\n");
 	}
+	if (version < 101) {
+		// v101: arm the VR home-map heal pad via map_object_config instead of
+		// the hardcoded fallback in TgDeviceVolume::setupDevice. The map ships
+		// the TgDeviceVolume actor (m_nMapObjectId=11041) with editconst
+		// s_nDeviceId=0, so the pad never armed. 2064 is the Medical Station
+		// pulse (instant heal, target_fx_id=432). Idempotent: INSERT only if
+		// no matching row exists yet.
+		const char* kV101_vr_heal_pad =
+			"INSERT INTO map_object_config "
+			"  (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'Dome3_VR_Arena_P', 11041, 's_n_device_id', '2064', NULL, NULL, 1 "
+			"WHERE NOT EXISTS ("
+			"  SELECT 1 FROM map_object_config "
+			"  WHERE map_name = 'Dome3_VR_Arena_P' "
+			"    AND map_object_id = 11041 "
+			"    AND column_name = 's_n_device_id'"
+			");";
+		result = sqlite3_exec(db, kV101_vr_heal_pad, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v101 (VR heal pad): %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 100", nullptr, nullptr, &err);
+		Logger::Log("db", "v101: seeded VR heal pad device override (Dome3_VR_Arena_P/11041)\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 101", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

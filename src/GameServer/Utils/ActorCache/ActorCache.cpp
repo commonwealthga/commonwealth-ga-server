@@ -7,6 +7,8 @@ std::vector<ATgTeamPlayerStart*> ActorCache::PlayerStarts;
 std::vector<ATgMissionObjective*> ActorCache::MissionObjectives;
 std::vector<ATgRandomSMActor*> ActorCache::RandomSMActors;
 std::vector<ATgPlayerCountVolume*> ActorCache::PlayerCountVolumes;
+std::vector<ATgModifyPawnPropertiesVolume*> ActorCache::ModifyPawnPropertiesVolumes;
+std::vector<ATgOmegaVolume*> ActorCache::OmegaVolumes;
 ATgBotFactory* ActorCache::BotFactory = nullptr;
 
 void ActorCache::CacheMapActors() {
@@ -35,7 +37,19 @@ void ActorCache::CacheMapActors() {
 		PlayerCountVolumes.push_back((ATgPlayerCountVolume*)obj);
 	}
 
-	Logger::Log("debug", "ActorCache: %d PlayerStarts, %d MissionObjectives, %d RandomSMActors, %d PlayerCountVolumes, BotFactory=%p\n",
+	for (UObject* obj : ObjectCache::FindAllByClass("Class TgGame.TgModifyPawnPropertiesVolume")) {
+		ModifyPawnPropertiesVolumes.push_back((ATgModifyPawnPropertiesVolume*)obj);
+	}
+
+	for (UObject* obj : ObjectCache::FindAllByClass("Class TgGame.TgOmegaVolume")) {
+		OmegaVolumes.push_back((ATgOmegaVolume*)obj);
+	}
+
+	Logger::Log("debug",
+		"ActorCache: %d PlayerStarts, %d MissionObjectives, %d RandomSMActors, %d PlayerCountVolumes, "
+		"%d ModifyPawnPropertiesVolumes, %d OmegaVolumes, BotFactory=%p\n",
 		(int)PlayerStarts.size(), (int)MissionObjectives.size(), (int)RandomSMActors.size(),
-		(int)PlayerCountVolumes.size(), BotFactory);
+		(int)PlayerCountVolumes.size(),
+		(int)ModifyPawnPropertiesVolumes.size(), (int)OmegaVolumes.size(),
+		BotFactory);
 }
