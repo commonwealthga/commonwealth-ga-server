@@ -96,6 +96,8 @@ private:
     int64_t pending_match_instance_id_ = 0;
     std::string pending_match_game_mode_;
     int pending_match_task_force_ = 1;
+    uint64_t next_register_token_ = 1;
+    uint64_t active_register_token_ = 0;
 
     // ACK-wait timer for PLAYER_REGISTER flow. Cancelled on ACK arrival or disconnect.
     std::shared_ptr<asio::steady_timer> pending_ack_timer_;

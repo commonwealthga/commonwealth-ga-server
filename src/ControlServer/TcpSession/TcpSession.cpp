@@ -644,10 +644,13 @@ void TcpSession::initiate_player_register_and_go_play() {
     const int task_force =
         ChooseVrHomeTaskForce(*home_instance, selected_profile_id_, session_guid_);
     home_task_force_ = task_force;
+    const uint64_t register_token = next_register_token_++;
+    active_register_token_ = register_token;
 
     nlohmann::json reg;
     reg["type"]         = IpcProtocol::MSG_PLAYER_REGISTER;
     reg["session_guid"] = session_guid_;
+    reg["register_token"] = register_token;
     reg["profile_id"]   = selected_profile_id_;
     reg["player_name"]  = player_name;
     reg["user_id"]      = user_id_;
@@ -752,6 +755,9 @@ void TcpSession::initiate_player_register_for_target(const InstanceInfo& target,
     nlohmann::json reg;
     reg["type"]         = IpcProtocol::MSG_PLAYER_REGISTER;
     reg["session_guid"] = session_guid_;
+    const uint64_t register_token = next_register_token_++;
+    active_register_token_ = register_token;
+    reg["register_token"] = register_token;
     reg["profile_id"]   = selected_profile_id_;
     reg["player_name"]  = player_name;
     reg["user_id"]      = user_id_;
@@ -1117,14 +1123,17 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				nlohmann::json leave;
 				leave["type"]         = IpcProtocol::MSG_PLAYER_LEAVE;
 				leave["session_guid"] = session_guid_;
+				leave["register_token"] = active_register_token_;
 				bool ok = IpcServer::SendToInstance(assigned_instance_id_, leave.dump());
-				Logger::Log("tcp", "[TcpSession] PLAYER_LEAVE dispatched guid=%s instance=%lld send=%d\n",
-					session_guid_.c_str(), (long long)assigned_instance_id_, (int)ok);
+				Logger::Log("tcp", "[TcpSession] PLAYER_LEAVE dispatched guid=%s instance=%lld token=%llu send=%d\n",
+					session_guid_.c_str(), (long long)assigned_instance_id_,
+					(unsigned long long)active_register_token_, (int)ok);
 			}
 
 			// Drop the instance assignment so a subsequent SELECT_CHARACTER goes
 			// through wait_for_home_map_then_register again from a clean slate.
 			assigned_instance_id_      = 0;
+			active_register_token_     = 0;
 			pending_match_instance_id_ = 0;
 			pending_match_game_mode_.clear();
 			break;
