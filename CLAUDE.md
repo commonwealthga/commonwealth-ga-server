@@ -70,7 +70,7 @@ These have been learned the hard way over hundreds of sessions. Re-deriving why 
 - **DB lives at `<repo-root>/server.db`** (a SQLite file). NOT at `data/server.db` — that's a different file. Use the sqlite3 CLI to read schema/data; never trust stale dumps.
 - **Don't trust SDK `StaticClass()`** — the generated indices misalign with the binary's `GObjObjects`. Use `ClassPreloader::GetClass("Class Pkg.Name")`.
 - **SDK `eventXxx()` wrappers resolve the BASE class.** Calling `effect->eventRemove()` from C++ runs `TgEffect.Remove`, not the `TgEffectBuff` override. Dispatch by actual class when polymorphism matters.
-- **TArray:** use `TARRAY_INIT` / `TARRAY_ADD` macros from `src/Utils/Macros.hpp`. Never `libc free/realloc` on `.Data`. The SDK exposes `Clear()`, `Add()`, `Num()`, `operator()(i)`. There is no `Empty()`.
+- **TArray:** use the SDK `TArray<T>` methods directly. `Add()`, `Clear()`, and the default ctor all route through `GAllocator`, and `Add()` handles an uninitialized (`Data==NULL`, `Count=Max=0`) array correctly. You don't need an init macro — just call `Add` on the field. There is no `Empty()`; use `Clear()`. Never `libc free/realloc` on `.Data` — UE3's allocator owns it.
 - **FString:** do NOT modify the class. At handoff sites, allocate `fs.Data` via `GAllocator::Malloc` + manual field write, then null `Data` before scope exit.
 
 ## Repo orientation

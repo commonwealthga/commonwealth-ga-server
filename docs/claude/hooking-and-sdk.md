@@ -115,17 +115,27 @@ Rules:
 - At handoff sites, allocate `fs.Data` via `GAllocator::Malloc`, write the field manually, and null `Data` before scope exit so the SDK destructor doesn't free what `GAllocator` owns.
 - Crash signature: write-at-0 at `0x1090b4dc`, EAX=0 — that's the FString destructor stomping freed memory.
 
-### TArray<T>: `Clear()` not `Empty()`
+### TArray<T> — use SDK methods directly
 
 The SDK `TArray<T>` exposes:
-- `Clear()` — frees `.Data` via `GAllocator`
-- `Add(elem)` — Realloc via `GAllocator`
-- `Num()` — element count
-- `operator()(i)` — index
 
-There is no `Empty()`. Never call `libc free` / `realloc` on `.Data` — allocator mixing.
+- `Add(elem)` — Realloc via `GAllocator`. Handles an uninitialized array (`Data==NULL`, `Count=Max=0`) — the underlying `GAllocator::Realloc` Data-from-NULL delegates to Malloc.
+- `Clear()` — frees `.Data` via `GAllocator::Free`, resets all three fields.
+- `Num()` — element count.
+- `operator()(i)` — index.
 
-Use the `TARRAY_INIT` / `TARRAY_ADD` macros from `src/Utils/Macros.hpp` for hot paths. They do direct malloc with no game function calls. Game `TArray` grow functions have unknown calling conventions and crash.
+There is no `Empty()`. Use `Clear()`.
+
+Just call the SDK methods on the field directly — even when the array is uninitialized:
+
+```cpp
+Game->s_AttackerReviveList.Add(Controller);
+BotFactory->m_SpawnQueue.Add(entry);
+```
+
+There used to be `TARRAY_INIT` / `TARRAY_ADD` macros in `src/Utils/Macros.hpp` — they're gone. They libc-malloc'd into UProperty TArray fields, which only survived because their host UObjects were long-lived. Don't bring them back. Never call `libc free` / `realloc` on `.Data` — UE3's allocator owns it, and UObject destruction frees `Data` via `GAllocator`'s vtable.
+
+If the SDK header doesn't expose a TArray field you need to mutate, fall back to a raw cast: `(TArray<T>*)((char*)base + offset)`. The methods work the same.
 
 ### SDK bitfield params bug
 
