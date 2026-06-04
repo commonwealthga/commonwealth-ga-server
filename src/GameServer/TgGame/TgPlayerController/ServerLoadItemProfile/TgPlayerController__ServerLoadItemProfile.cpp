@@ -1,6 +1,5 @@
 #include "src/GameServer/TgGame/TgPlayerController/ServerLoadItemProfile/TgPlayerController__ServerLoadItemProfile.hpp"
 #include "src/GameServer/Armor/Armor.hpp"
-#include "src/GameServer/Cosmetics/CosmeticEquip.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
@@ -12,22 +11,20 @@
 #include "lib/nlohmann/json.hpp"
 #include "lib/sqlite3/sqlite3.h"
 #include <cstdlib>
-#include <set>
 
 // Reliable-server RPC fired when the player clicks a loadout-slot button
 // (1..5) anywhere in the UI. Atomic switch:
 //   1. unequip current profile's devices (RCST's PHASE 1 still sees the
 //      old applied state and reverses it on the next call)
 //   2. flip Pawn->r_nItemProfileId + refresh info->skills from DB
-//   3. equip target profile's devices (gameplay + cosmetics)
+//   3. equip target profile's gameplay devices (cosmetics are character-
+//      scoped and unaffected by profile switches — see step 3 comment)
 //   4. RCST PHASE 1 reverts old armor/skills, PHASE 2 applies new armor
 //      (FetchEquippedArmor scoped by new r_nItemProfileId) + new skills
 //      (from refreshed info->skills)
-//   5. CosmeticEquip::ClearUnsetSlots zeros r_CustomCharacterAssembly
-//      fields for slots the new profile didn't populate
-//   6. IPC the control-server so it persists current_item_profile_id and
+//   5. IPC the control-server so it persists current_item_profile_id and
 //      re-ships SEND_INVENTORY + SEND_PLAYER_SKILLS to the client
-//   7. CallOriginal runs the engine native (which may update
+//   6. CallOriginal runs the engine native (which may update
 //      r_nItemProfileNbr / fire UC follow-ups we don't model)
 //
 // Designed for anywhere-anytime invocation including mid-combat. Hostile
@@ -131,11 +128,12 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
     info->current_item_profile_id = nId;
     PlayerRegistry::RefreshSkillsForProfile(guid, nId);
 
-    // ── Step 3: Equip new profile's devices + cosmetics ──────────────────
+    // ── Step 3: Equip new profile's gameplay devices ─────────────────────
+    // Cosmetics are intentionally NOT touched here — see the comment inside
+    // the equip loop. They're character-scoped and stay on the pawn across
+    // profile switches.
     sqlite3* db = Database::GetConnection();
-    std::set<int> equippedCosmeticEngineSlots;
     int gameplay_equipped = 0;
-    int cosmetic_equipped = 0;
     if (db) {
         sqlite3_stmt* st = nullptr;
         // GROUP BY equipped_slot defends against duplicate ga_character_devices
@@ -202,18 +200,15 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
                         "[ServerLoadItemProfile] equip-loop post: slot=%d devId=%d (Equip returned)\n",
                         slot, devId);
                     ++gameplay_equipped;
-                } else if (itemId > 0 && slot >= 1 && slot < 0x19) {
-                    Logger::Log("loadout",
-                        "[ServerLoadItemProfile] equip-loop pre:  slot=%d itemId=%d invId=%d → CosmeticEquip\n",
-                        slot, itemId, invId);
-                    // Cosmetic row: r_CustomCharacterAssembly field write.
-                    CosmeticEquip::ApplyToPawn((ATgPawn*)Pawn, character_id, slot, invId, itemId);
-                    Logger::Log("loadout",
-                        "[ServerLoadItemProfile] equip-loop post: slot=%d itemId=%d (ApplyToPawn returned)\n",
-                        slot, itemId);
-                    equippedCosmeticEngineSlots.insert(slot);
-                    ++cosmetic_equipped;
                 }
+                // Cosmetic rows (devId=0) are intentionally NOT re-applied here.
+                // Cosmetics are character-scoped, not loadout-scoped: ApplyToPawn
+                // persists every cosmetic write with item_profile_id=1 (see the
+                // comment block on that INSERT). The pawn's r_CustomCharacterAssembly
+                // is already populated from spawn-time LoadFromDB and survives
+                // a profile switch unchanged. ServerAcceptNewProfileFromEquipScreen
+                // (the equip-screen "Apply" path) is the only RPC that should
+                // mutate cosmetics on a live pawn.
             }
             sqlite3_finalize(st);
         }
@@ -224,8 +219,8 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
     Logger::Log("loadout",
         "[ServerLoadItemProfile] post-Finalize done\n");
     Logger::Log("loadout",
-        "[ServerLoadItemProfile] equipped new profile %d: %d gameplay, %d cosmetic\n",
-        nId, gameplay_equipped, cosmetic_equipped);
+        "[ServerLoadItemProfile] equipped new profile %d: %d gameplay device(s); cosmetics unchanged (character-scoped)\n",
+        nId, gameplay_equipped);
 
     // ── Step 3b: Reset InvManager.r_ItemCount to the DB pool size ────────
     // Inventory::Equip blindly ++'s r_ItemCount on every call (gameplay devices
@@ -268,10 +263,7 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
     // ── Step 4: RCST does the armor + skill revert+apply atomically ──────
     TgPawn_Character__ReapplyCharacterSkillTree::Call(Pawn, nullptr);
 
-    // ── Step 5: Drop cosmetic fields the new profile didn't populate ─────
-    CosmeticEquip::ClearUnsetSlots((ATgPawn*)Pawn, equippedCosmeticEngineSlots);
-
-    // ── Step 6: ClientResetEquipScreen — refresh the open agent-profile UI
+    // ── Step 5: ClientResetEquipScreen — refresh the open agent-profile UI
     //
     // ROOT-CAUSE FIX for the lag-by-one symptom:
     //   1. Client widget reads r_nItemProfileId at RENDER time (via FUN_1141f750
@@ -317,7 +309,7 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
             "[ServerLoadItemProfile] Controller->Player=null — skipping ClientResetEquipScreen RPC\n");
     }
 
-    // ── Step 6b: IPC the control-server to persist + push refreshed packets
+    // ── Step 5b: IPC the control-server to persist + push refreshed packets
     {
         nlohmann::json ev;
         ev["type"]            = IpcProtocol::MSG_GAME_EVENT;
@@ -330,7 +322,7 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
         IpcClient::Send(ev.dump());
     }
 
-    // ── Step 7: Run the engine native after our work (may update Nbr etc.)
+    // ── Step 6: Run the engine native after our work (may update Nbr etc.)
     CallOriginal(Controller, edx, nId);
 
     Logger::Log("loadout",
