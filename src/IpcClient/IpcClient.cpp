@@ -9,6 +9,7 @@
 #include "src/GameServer/TgGame/TgPlayerActions/SpawnBot/SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/Deploy/Deploy.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/ReturnHomeArea/ReturnHomeArea.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
@@ -443,6 +444,8 @@ void IpcClient::DrainInbound() {
                     lift_z = j["args"].value("lift_z", 0.0f);
                 }
                 TgPlayerActions::TopDownCmd::Execute(guid, lift_z);
+            } else if (action == "return_home_area") {
+                TgPlayerActions::ReturnHomeAreaCmd::Execute(guid);
             } else {
                 Logger::Log("chat-command",
                     "[ChatCmd][DLL] PLAYER_ACTION guid=%s: unknown action '%s'; dropping\n",

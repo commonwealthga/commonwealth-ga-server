@@ -1171,11 +1171,25 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				parent = InstanceRegistry::GetInstanceById(parent_instance_id);
 			}
 			if (parent && parent->is_home_map && parent->state == "READY") {
-				const int task_force = home_task_force_ != 0 ? home_task_force_ : 1;
+				pending_match_instance_id_ = 0;
+				pending_match_game_mode_.clear();
+
+				if (parent->map_name == "Dome3_VR_Arena_P") {
+					nlohmann::json action;
+					action["type"] = IpcProtocol::MSG_PLAYER_ACTION;
+					action["session_guid"] = session_guid_;
+					action["action"] = "return_home_area";
+
+					bool ok = IpcServer::SendToInstance(parent_instance_id, action.dump());
+					Logger::Log("tcp",
+						"[TcpSession] GSC_CHANGE_INSTANCE: same-home VR return action instance=%lld send=%d for %s\n",
+						(long long)parent_instance_id, (int)ok, session_guid_.c_str());
+					break;
+				}
+
 				Logger::Log("tcp",
-					"[TcpSession] GSC_CHANGE_INSTANCE: same-home rejoin via register/go_play instance=%lld tf=%d for %s\n",
-					(long long)parent_instance_id, task_force, session_guid_.c_str());
-				initiate_player_register_for_target(*parent, task_force);
+					"[TcpSession] GSC_CHANGE_INSTANCE: home map %s has no same-home return handler; keeping connection for %s\n",
+					parent->map_name.c_str(), session_guid_.c_str());
 				break;
 			}
 
