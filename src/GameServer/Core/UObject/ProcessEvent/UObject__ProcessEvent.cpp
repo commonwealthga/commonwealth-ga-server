@@ -1,11 +1,8 @@
 #include "src/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.hpp"
-#include "src/GameServer/Combat/SendCombatMessage/SendCombatMessage.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
-#include "src/GameServer/TgGame/TgEffectManager/SetEffectRep/TgEffectManager__SetEffectRep.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.hpp"
 #include "src/GameServer/TgGame/TgGame/BeginEndMission/TgGame__BeginEndMission.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
-#include "src/GameServer/TgGame/TgPawn/SyncPawnHealth/SyncPawnHealth.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 #include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
@@ -192,8 +189,6 @@ enum class DispatchTag : uint8_t {
 	DeviceFiringEndState,         // CallOriginal then jetpack-flag clear
 	ServerStopFire,               // CallOriginal then RemoveEffectGroupsByCategory(stealth)
 	TgEffectRemove,               // DoCatchAll — TgEffectBuff.Remove now reverses buffs canonically
-	PawnHealDamage,               // CallOriginal then mirror Engine Pawn/Actor Health into Tg/PRI health
-	TgDeviceVolumeApplyHit,       // Dome VR heal pad fallback when device effect leaves health unchanged
 	PostPawnSetup,                // CallOriginal (sets PHYS_Falling) then restore PHYS_Flying for flying bots
 	ServerStartFire,              // Diagnostic: log every CanDeviceFireNow gate before CallOriginal
 	GetPlayerViewPoint,           // Pre-sync c_nCameraYawOffset / c_nCameraPitchOffset from ctrl.Rotation
@@ -353,65 +348,49 @@ static void ApplyDomeVrHealPadFallback(APlayerController* pc, const FVector* cli
 
 	if (dist2 > (300.0f * 300.0f) || fabsf(dz) > 220.0f) return;
 
-	const int beforeHp = pawn->Health;
 	ATgDeviceVolume* healVolume = DomeVrHealPad::GetRegisteredVolume();
-	if (healVolume && healVolume->s_DeviceFireMode && healVolume->s_nDeviceId == 2064) {
-		float cooldown = healVolume->s_DeviceFireMode->GetRefireTime();
-		if (cooldown < 1.0f) cooldown = 1.0f;
-		if (cooldown > 5.0f) cooldown = 5.0f;
-
-		static std::unordered_map<ATgPawn*, float> s_lastHealTime;
-		float& last = s_lastHealTime[pawn];
-		const float now = timestamp > 0.0f ? timestamp : pc->CurrentTimeStamp;
-		if (now > 0.0f && (now - last) < cooldown) return;
-		last = now;
-
-		healVolume->ApplyHit((AActor*)pawn);
-		if (pawn->Health > beforeHp) {
-			int afterMaxHp = pawn->HealthMax;
-			if (pawn->r_nHealthMaximum > afterMaxHp) afterMaxHp = pawn->r_nHealthMaximum;
-			SyncPawnHealth::Apply(pawn, pawn->Health, afterMaxHp, true);
-			Logger::Log("device-volume",
-				"[DomeHealPad] volume ApplyHit healed pawn=0x%p volume=0x%p loc=(%.1f, %.1f, %.1f) hp=%d/%d\n",
-				pawn, healVolume, loc.X, loc.Y, loc.Z, pawn->Health, afterMaxHp);
-			return;
-		}
-		Logger::Log("device-volume",
-			"[DomeHealPad] volume ApplyHit made no HP change pawn=0x%p volume=0x%p hp=%d/%d\n",
-			pawn, healVolume, pawn->Health, maxHp);
-		int hp = beforeHp + 154;
-		if (hp > maxHp) hp = maxHp;
-		const int healed = hp - beforeHp;
-		if (healed <= 0) return;
-		SyncPawnHealth::Apply(pawn, hp, maxHp, true);
-		SendCombatMessage::Call(pawn, pawn, pawn, healed, SendCombatMessage::Type::HEAL);
-		if (pawn->r_EffectManager) {
-			TgEffectManager__SetEffectRep::CallOriginal(
-				pawn->r_EffectManager, nullptr, 6026, 0.0f, 0, beforeHp - hp);
-		}
-		Logger::Log("device-volume",
-			"[DomeHealPad] station fallback healed pawn=0x%p volume=0x%p loc=(%.1f, %.1f, %.1f) hp=%d/%d amount=%d\n",
-			pawn, healVolume, loc.X, loc.Y, loc.Z, hp, maxHp, healed);
+	if (!healVolume || !healVolume->s_DeviceFireMode || healVolume->s_nDeviceId == 0) {
+		// No registered heal-pad volume → setupDevice never wired the actor
+		// (DB map_object_config row missing, or volume never spawned). Don't
+		// synthesize a heal: fix the wiring at its source.
 		return;
 	}
 
-	static std::unordered_map<ATgPawn*, float> s_lastDirectHealTime;
-	float& last = s_lastDirectHealTime[pawn];
-	if (timestamp > 0.0f && (timestamp - last) < 1.0f) return;
-	last = timestamp > 0.0f ? timestamp : pc->CurrentTimeStamp;
+	float cooldown = healVolume->s_DeviceFireMode->GetRefireTime();
+	if (cooldown < 1.0f) cooldown = 1.0f;
+	if (cooldown > 5.0f) cooldown = 5.0f;
 
-	int hp = beforeHp + 154;
-	if (hp > maxHp) hp = maxHp;
-	const int healed = hp - beforeHp;
-	SyncPawnHealth::Apply(pawn, hp, maxHp, true);
-	SendCombatMessage::Call(pawn, pawn, pawn, healed, SendCombatMessage::Type::HEAL);
-	if (pawn->r_EffectManager) {
-		TgEffectManager__SetEffectRep::CallOriginal(
-			pawn->r_EffectManager, nullptr, 6026, 0.0f, 0, beforeHp - hp);
+	static std::unordered_map<ATgPawn*, float> s_lastHealTime;
+	float& last = s_lastHealTime[pawn];
+	const float now = timestamp > 0.0f ? timestamp : pc->CurrentTimeStamp;
+	if (now > 0.0f && (now - last) < cooldown) return;
+	last = now;
+
+	// Fire the volume's device through the engine's effect pipeline.
+	// ApplyHit reads the device's m_EffectGroups and runs each through
+	// ProcessEffect → ApplyEffect → ApplyToProperty / ApplyBuff. For a
+	// heal effect (TgEffectHeal, class_res_id=692) that lands on prop 51
+	// HEALTH via the buff-correct ApplyProperty fan-out, which writes
+	// pawn->Health + r_nHealthCurrent + PRI fields + replicates the diff
+	// without touching prop 304's m_fBase. SetEffectRep / combat message
+	// also fire as natural side-effects of ProcessEffect.
+	//
+	// Do NOT manually arithmetic +154 or call SyncPawnHealth after this.
+	// SyncPawnHealth is a SPAWN-TIME fan-out that writes prop-descriptor
+	// m_fBase fields from the maxHp argument — runtime callers pass the
+	// buffed maxHp (resolved via r_nHealthMaximum) which corrupts the
+	// unbuffed baseline. Every subsequent ApplyBuff recompute then reads
+	// the polluted base, and the next profile-switch's RCST reapplies
+	// armor/skill buffs on top of it. Observed cascade: heal pad → max
+	// HP +base+buffs → switch profile → +(base+buffs)+new_buffs → next
+	// cycle compounds further (~2400 → 10000+ over a few iterations).
+	const int beforeHp = pawn->Health;
+	healVolume->ApplyHit((AActor*)pawn);
+	if (Logger::IsChannelEnabled("device-volume")) {
+		Logger::Log("device-volume",
+			"[DomeHealPad] ApplyHit pawn=0x%p volume=0x%p loc=(%.1f, %.1f, %.1f) hp=%d->%d max=%d\n",
+			pawn, healVolume, loc.X, loc.Y, loc.Z, beforeHp, pawn->Health, maxHp);
 	}
-	Logger::Log("device-volume",
-		"[DomeHealPad] direct fallback healed pawn=0x%p loc=(%.1f, %.1f, %.1f) hp=%d/%d amount=%d\n",
-		pawn, loc.X, loc.Y, loc.Z, hp, maxHp, healed);
 }
 
 static void LogServerUpdatePing(APlayerController* pc, int newPing, const char* phase) {
@@ -673,9 +652,6 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	if (strcmp(name, "Function TgGame.TgDevice.ServerStopFire") == 0)                return DispatchTag::ServerStopFire;
 	if (strcmp(name, "Function TgGame.TgDevice.ServerStartFire") == 0)               return DispatchTag::ServerStartFire;
 	if (strcmp(name, "Function TgGame.TgEffect.Remove") == 0)                        return DispatchTag::TgEffectRemove;
-	if (strcmp(name, "Function Engine.Pawn.HealDamage") == 0 ||
-	    strcmp(name, "Function Engine.Actor.HealDamage") == 0)                       return DispatchTag::PawnHealDamage;
-	if (strcmp(name, "Function TgGame.TgDeviceVolume.ApplyHit") == 0)                return DispatchTag::TgDeviceVolumeApplyHit;
 	if (strcmp(name, "Function TgGame.TgPawn.WaitForInventoryThenDoPostPawnSetup") == 0) return DispatchTag::PostPawnSetup;
 	if (strcmp(name, "Function TgGame.TgPlayerController.GetPlayerViewPoint") == 0)  return DispatchTag::GetPlayerViewPoint;
 	if (strcmp(name, "Function TgGame.TgDeploy_Beacon.PickUpDeployable") == 0)        return DispatchTag::BeaconPickUpDeployable;
@@ -1630,49 +1606,6 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// base TgEffect.Remove, so buffs are dispatched explicitly there).
 		DoCatchAll();
 		break;
-
-	case DispatchTag::PawnHealDamage: {
-		CallOriginal(Object, edx, Function, Params, Result);
-		ATgPawn* Pawn = ResolvePawnForScopeLog(Object);
-		if (Pawn != nullptr) {
-			int maxHp = Pawn->HealthMax;
-			if (Pawn->r_nHealthMaximum > maxHp) maxHp = Pawn->r_nHealthMaximum;
-			if (maxHp > 0 && Pawn->Health > 0) {
-				int hp = Pawn->Health;
-				if (hp > maxHp) hp = maxHp;
-				SyncPawnHealth::Apply(Pawn, hp, maxHp, true);
-			}
-		}
-		break;
-	}
-
-	case DispatchTag::TgDeviceVolumeApplyHit: {
-		ATgDeviceVolume* Volume = (ATgDeviceVolume*)Object;
-		struct ApplyHitParms { AActor* Target; };
-		AActor* Target = Params ? ((ApplyHitParms*)Params)->Target : nullptr;
-		ATgPawn* Pawn = ResolvePawnForScopeLog((UObject*)Target);
-		const int beforeHp = Pawn ? Pawn->Health : 0;
-
-		CallOriginal(Object, edx, Function, Params, Result);
-
-		if (Volume && Pawn &&
-		    Config::GetMapNameChar() == "Dome3_VR_Arena_P" &&
-		    Volume->s_nDeviceId == 2064 &&
-		    Volume != DomeVrHealPad::GetRegisteredVolume() &&
-		    Pawn->Health == beforeHp) {
-			int maxHp = Pawn->HealthMax;
-			if (Pawn->r_nHealthMaximum > maxHp) maxHp = Pawn->r_nHealthMaximum;
-			if (maxHp > 0 && Pawn->Health > 0 && Pawn->Health < maxHp) {
-				int hp = Pawn->Health + 200;
-				if (hp > maxHp) hp = maxHp;
-				SyncPawnHealth::Apply(Pawn, hp, maxHp, true);
-				Logger::Log("device-volume",
-					"[ApplyHit] Dome VR fallback healed pawn=0x%p volume=0x%p hp=%d/%d\n",
-					Pawn, Volume, hp, maxHp);
-			}
-		}
-		break;
-	}
 
 	// Note: `Function TgGame.TgEffect.CheckEffectBuffModifier` previously had
 	// a PE-time guard here that did SDK-caller damage-mod scaling. With the
