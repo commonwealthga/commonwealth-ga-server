@@ -603,20 +603,43 @@ CS_OUT_WIN=out/control-server.exe
 CS_SQLITE_OBJ_LINUX=out/sqlite3_cs_linux.o
 CS_SQLITE_OBJ_WIN=out/sqlite3_cs_win.o
 
+# Per-cpp .o files so -jN actually parallelizes the control-server build.
+# The previous single-g++-invocation form compiled sources serially regardless
+# of make's job slots, and was the bottleneck of `make all control-server`.
+CS_OBJ_DIR_LINUX=obj/cs-linux
+CS_OBJ_DIR_WIN=obj/cs-win
+CS_OBJS_LINUX := $(patsubst %.cpp,$(CS_OBJ_DIR_LINUX)/%.o,$(CS_CPP_SOURCES))
+CS_OBJS_WIN := $(patsubst %.cpp,$(CS_OBJ_DIR_WIN)/%.o,$(CS_CPP_SOURCES))
+
+$(CS_OBJ_DIR_LINUX)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	g++ $(CS_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
+
+$(CS_OBJ_DIR_WIN)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	x86_64-w64-mingw32-g++ $(CS_CXXFLAGS_WIN) $(DEPFLAGS) -c $< -o $@
+
 $(CS_SQLITE_OBJ_LINUX): lib/sqlite3/sqlite3.c
 	gcc $(CS_CFLAGS_SQLITE) -c lib/sqlite3/sqlite3.c -o $(CS_SQLITE_OBJ_LINUX)
 
 $(CS_SQLITE_OBJ_WIN): lib/sqlite3/sqlite3.c
 	x86_64-w64-mingw32-gcc $(CS_CFLAGS_SQLITE) -c lib/sqlite3/sqlite3.c -o $(CS_SQLITE_OBJ_WIN)
 
-control-server-linux: $(CS_CPP_SOURCES) $(CS_SQLITE_OBJ_LINUX)
-	g++ $(CS_CXXFLAGS) -o $(CS_OUT_LINUX) $(CS_CPP_SOURCES) $(CS_SQLITE_OBJ_LINUX) $(CS_LDFLAGS_LINUX)
+control-server-linux: $(CS_OUT_LINUX)
+control-server-win: $(CS_OUT_WIN)
 
-control-server-win: $(CS_CPP_SOURCES) $(CS_SQLITE_OBJ_WIN)
-	x86_64-w64-mingw32-g++ $(CS_CXXFLAGS_WIN) -o $(CS_OUT_WIN) $(CS_CPP_SOURCES) $(CS_SQLITE_OBJ_WIN) $(CS_LDFLAGS_WIN)
+$(CS_OUT_LINUX): $(CS_OBJS_LINUX) $(CS_SQLITE_OBJ_LINUX)
+	g++ $(CS_CXXFLAGS) -o $@ $(CS_OBJS_LINUX) $(CS_SQLITE_OBJ_LINUX) $(CS_LDFLAGS_LINUX)
+
+$(CS_OUT_WIN): $(CS_OBJS_WIN) $(CS_SQLITE_OBJ_WIN)
+	x86_64-w64-mingw32-g++ $(CS_CXXFLAGS_WIN) -o $@ $(CS_OBJS_WIN) $(CS_SQLITE_OBJ_WIN) $(CS_LDFLAGS_WIN)
 
 control-server: control-server-linux control-server-win
 
+CS_DEPS := $(CS_OBJS_LINUX:.o=.d) $(CS_OBJS_WIN:.o=.d)
+-include $(CS_DEPS)
+
 cleancs:
+	rm -rf $(CS_OBJ_DIR_LINUX) $(CS_OBJ_DIR_WIN)
 	rm -f $(CS_OUT_LINUX) $(CS_OUT_WIN) $(CS_SQLITE_OBJ_LINUX) $(CS_SQLITE_OBJ_WIN)
 

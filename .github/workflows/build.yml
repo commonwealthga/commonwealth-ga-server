@@ -23,11 +23,45 @@ jobs:
       # x86_64-w64-mingw32-g++ (control-server.exe). Linux control-server
       # uses the system g++ (preinstalled on ubuntu-latest).
       - name: Install Dependencies
-        run: sudo apt-get update && sudo apt-get install -y mingw-w64
+        run: sudo apt-get update && sudo apt-get install -y mingw-w64 ccache
 
+      - name: Configure ccache
+        run: |
+          # Ubuntu's ccache package ships /usr/lib/ccache symlinks for
+          # gcc/g++ but not for the mingw cross-compilers we use. Add them
+          # so DLL + control-server-win compiles also go through ccache.
+          for tool in i686-w64-mingw32-g++ i686-w64-mingw32-gcc \
+                      x86_64-w64-mingw32-g++ x86_64-w64-mingw32-gcc; do
+            sudo ln -sf $(which ccache) /usr/lib/ccache/$tool
+          done
+          # Prepending /usr/lib/ccache to PATH makes every compiler the
+          # Makefile invokes route through ccache transparently — no
+          # Makefile changes needed.
+          echo "/usr/lib/ccache" >> $GITHUB_PATH
+          echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
+          # PCH sloppiness so the precompiled obj/pch.hpp.gch doesn't
+          # invalidate every cached object on each run.
+          echo "CCACHE_SLOPPINESS=pch_defines,time_macros,include_file_mtime,include_file_ctime" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=500M" >> $GITHUB_ENV
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ${{ runner.os }}-ccache-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-
+
+      # -j$(nproc) is explicit so parallelism doesn't depend on the
+      # Makefile's MAKEFLAGS being honored at the top level.
       - name: Build DLLs and Control Server
-        run: make all control-server
+        run: make -j$(nproc) all control-server
         continue-on-error: false
+
+      - name: ccache stats
+        if: always()
+        run: ccache -s
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
