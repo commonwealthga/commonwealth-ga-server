@@ -72,6 +72,69 @@ static int LookupMeshAsmIdForCosmetic(int itemId, int genderTypeId) {
 	return asmId;
 }
 
+struct MeshCollisionData {
+	float radius;
+	float halfHeight;
+	float crouchHeight;
+	float hitHeight;
+	float hitRadius;
+};
+
+static const MeshCollisionData& LookupMeshCollisionData(int meshAsmId) {
+	static std::unordered_map<int, MeshCollisionData> cache;
+	auto it = cache.find(meshAsmId);
+	if (it != cache.end()) return it->second;
+
+	MeshCollisionData data{25.0f, 46.0f, 0.0f, 0.0f, 0.0f};
+	sqlite3* db = Database::GetConnection();
+	if (db) {
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+			"SELECT collision_radius, collision_height, crouch_height, "
+			"       hit_collision_height, hit_collision_radius "
+			"FROM asm_data_set_assembly_meshes "
+			"WHERE asm_id = ? LIMIT 1",
+			-1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int(stmt, 1, meshAsmId);
+			if (sqlite3_step(stmt) == SQLITE_ROW) {
+				const float radius     = (float)sqlite3_column_double(stmt, 0);
+				const float halfHeight = (float)sqlite3_column_double(stmt, 1);
+				const float crouch     = (float)sqlite3_column_double(stmt, 2);
+				const float hitHeight  = (float)sqlite3_column_double(stmt, 3);
+				const float hitRadius  = (float)sqlite3_column_double(stmt, 4);
+				if (radius > 0.0f) data.radius = radius;
+				if (halfHeight > 0.0f) data.halfHeight = halfHeight;
+				if (crouch > 0.0f) data.crouchHeight = crouch;
+				if (hitHeight > 0.0f) data.hitHeight = hitHeight;
+				if (hitRadius > 0.0f) data.hitRadius = hitRadius;
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+
+	auto [inserted, _] = cache.emplace(meshAsmId, data);
+	return inserted->second;
+}
+
+static void ApplyMeshCollisionData(ATgPawn* Pawn, int meshAsmId) {
+	if (!Pawn || meshAsmId <= 0) return;
+	const MeshCollisionData& data = LookupMeshCollisionData(meshAsmId);
+
+	if (data.radius > 0.0f && data.halfHeight > 0.0f) {
+		Pawn->SetCollisionSize(data.radius, data.halfHeight);
+	}
+	if (data.crouchHeight > 0.0f) Pawn->CrouchHeight = data.crouchHeight;
+	if (data.radius > 0.0f) Pawn->CrouchRadius = data.radius;
+	if (data.hitHeight > 0.0f) Pawn->m_fTargetCylinderHeight = data.hitHeight;
+	if (data.hitRadius > 0.0f) Pawn->m_fTargetCylinderRadius = data.hitRadius;
+
+	Pawn->m_fStandingHeight = data.halfHeight;
+	Pawn->m_fStandingRadius = data.radius;
+	Logger::Log("cosmetic-equip",
+		"LoadFromDB: mesh collision asm=%d radius=%.2f halfHeight=%.2f\n",
+		meshAsmId, data.radius, data.halfHeight);
+}
+
 struct ClassVisualFallback {
 	int suit_item_id;
 };
@@ -135,6 +198,15 @@ static bool ApplyOnly(ATgPawn* Pawn, int slot, int itemId) {
 	auto* charPawn = (ATgPawn_Character*)Pawn;
 	auto* PRI      = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
 
+	auto markDirty = [&]() {
+		Pawn->bNetDirty       = 1;
+		Pawn->bForceNetUpdate = 1;
+		if (PRI) {
+			PRI->bNetDirty       = 1;
+			PRI->bForceNetUpdate = 1;
+		}
+	};
+
 	int itype = 0, isub = 0;
 	LookupItemTypeAndSubtype(itemId, itype, isub);
 	Logger::Log("spawn-asm",
@@ -159,7 +231,7 @@ static bool ApplyOnly(ATgPawn* Pawn, int slot, int itemId) {
 			charPawn->r_CustomCharacterAssembly.HelmetMeshId = meshAsm;
 			if (PRI) PRI->r_CustomCharacterAssembly.HelmetMeshId = meshAsm;
 		}
-		if (PRI) PRI->bNetDirty = 1;
+		markDirty();
 		Logger::Log("cosmetic-equip",
 			"ApplyOnly: HeadFlairId=%d HelmetMeshId=%d (subtype %d) slot %d (pawn+PRI)\n",
 			itemId, meshAsm, isub, slot);
@@ -189,7 +261,7 @@ static bool ApplyOnly(ATgPawn* Pawn, int slot, int itemId) {
 			charPawn->r_CustomCharacterAssembly.SuitMeshId = meshAsm;
 			if (PRI) PRI->r_CustomCharacterAssembly.SuitMeshId = meshAsm;
 		}
-		if (PRI) PRI->bNetDirty = 1;
+		markDirty();
 		Logger::Log("cosmetic-equip",
 			"ApplyOnly: SuitFlairId=%d SuitMeshId=%d slot %d (pawn+PRI)\n",
 			itemId, meshAsm, slot);
@@ -213,8 +285,8 @@ static bool ApplyOnly(ATgPawn* Pawn, int slot, int itemId) {
 		charPawn->r_CustomCharacterAssembly.DyeList[eSlot] = itemId;
 		if (PRI) {
 			PRI->r_CustomCharacterAssembly.DyeList[eSlot] = itemId;
-			PRI->bNetDirty = 1;
 		}
+		markDirty();
 		Logger::Log("cosmetic-equip",
 			"ApplyOnly: DyeList[%d]=%d slot %d (pawn+PRI, direct write)\n",
 			eSlot, itemId, slot);
@@ -228,8 +300,8 @@ static bool ApplyOnly(ATgPawn* Pawn, int slot, int itemId) {
 		charPawn->r_CustomCharacterAssembly.JetpackTrailId = itemId;
 		if (PRI) {
 			PRI->r_CustomCharacterAssembly.JetpackTrailId = itemId;
-			PRI->bNetDirty = 1;
 		}
+		markDirty();
 		Logger::Log("cosmetic-equip",
 			"ApplyOnly: JetpackTrailId=%d slot %d (pawn+PRI)\n",
 			itemId, slot);
@@ -262,7 +334,21 @@ static void SpawnAsmSnapshot(const char* where, void* obj, const FCustomCharacte
 		a.DyeList[0], a.DyeList[1], a.DyeList[2], a.DyeList[3], a.DyeList[4]);
 }
 
-bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int slot, int invId, int itemId) {
+static int NormalizeItemProfileId(ATgPawn* Pawn, int item_profile_id) {
+	if (item_profile_id >= 1 && item_profile_id <= 5) return item_profile_id;
+	if (Pawn) {
+		auto* charPawn = (ATgPawn_Character*)Pawn;
+		if (charPawn->r_nItemProfileId >= 1 && charPawn->r_nItemProfileId <= 5) {
+			return charPawn->r_nItemProfileId;
+		}
+	}
+	return 1;
+}
+
+bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int item_profile_id,
+                 int slot, int invId, int itemId) {
+	item_profile_id = NormalizeItemProfileId(Pawn, item_profile_id);
+
 	// Resolve subtype up front so we can both pick the DB slot AND have it
 	// available when ApplyOnly looks itself up. Cheap second query duplicates
 	// what ApplyOnly does internally; keeping ApplyOnly self-contained matters
@@ -272,29 +358,25 @@ bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int slot, int invId, int i
 
 	// `slot` arriving from the client is the engine equip point (e.g. 6 for
 	// suit, 12 for helmet). For cosmetic suit/helmet we MUST persist at the
-	// remapped DB slot — otherwise INSERT OR REPLACE collides with the
-	// gameplay suit/helmet device row at the same UNIQUE(character_id, slot)
-	// key and silently overwrites it.
+	// remapped DB slot, otherwise cosmetic suit/helmet rows collide with
+	// gameplay suit/helmet rows in the same profile.
 	const int dbSlot = CosmeticSlots::DbSlotFor(slot, isub);
 
 	if (!ApplyOnly(Pawn, dbSlot, itemId)) return false;
 
-	// Persist: INSERT OR REPLACE keyed by (character_id, dbSlot). Cosmetic
-	// suit/helmet live at slot 22/23; dyes and trail at their engine slot.
+	// Persist profile-scoped cosmetics. Suit/helmet use DB slots 22/23;
+	// dyes and trail keep their engine slot.
 	sqlite3* db = Database::GetConnection();
 	if (!db) return false;
 	sqlite3_stmt* stmt = nullptr;
-	// item_profile_id is NOT NULL on ga_character_devices (post-loadout
-	// migration). LoadFromDB is profile-agnostic — pin cosmetics to
-	// profile 1 so they show on every profile. The per-profile save
-	// path's DELETE+INSERT covers its own cosmetic rows independently.
 	if (sqlite3_prepare_v2(db,
 	        "INSERT OR REPLACE INTO ga_character_devices "
-	        "  (character_id, item_profile_id, inventory_id, equipped_slot) VALUES (?, 1, ?, ?)",
+	        "  (character_id, item_profile_id, inventory_id, equipped_slot) VALUES (?, ?, ?, ?)",
 	        -1, &stmt, nullptr) == SQLITE_OK) {
 		sqlite3_bind_int64(stmt, 1, character_id);
-		sqlite3_bind_int  (stmt, 2, invId);
-		sqlite3_bind_int  (stmt, 3, dbSlot);
+		sqlite3_bind_int  (stmt, 2, item_profile_id);
+		sqlite3_bind_int  (stmt, 3, invId);
+		sqlite3_bind_int  (stmt, 4, dbSlot);
 		sqlite3_step(stmt);
 		sqlite3_finalize(stmt);
 	} else {
@@ -303,8 +385,8 @@ bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int slot, int invId, int i
 		return false;
 	}
 	Logger::Log("cosmetic-equip",
-		"ApplyToPawn: char=%lld engineSlot=%d dbSlot=%d invId=%d itemId=%d (type=%d sub=%d) persisted\n",
-		(long long)character_id, slot, dbSlot, invId, itemId, itype, isub);
+		"ApplyToPawn: char=%lld itemProf=%d engineSlot=%d dbSlot=%d invId=%d itemId=%d (type=%d sub=%d) persisted\n",
+		(long long)character_id, item_profile_id, slot, dbSlot, invId, itemId, itype, isub);
 	return true;
 }
 
@@ -344,10 +426,11 @@ static void WriteBaselineAssembly(FCustomCharacterAssembly& a,
 	a.DyeList[4]            = kNoCosmeticItemId;
 }
 
-void LoadFromDB(ATgPawn* Pawn, int64_t character_id) {
+void LoadFromDB(ATgPawn* Pawn, int64_t character_id, int item_profile_id) {
 	if (!Pawn) return;
 	auto* charPawn = (ATgPawn_Character*)Pawn;
 	auto* PRI      = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+	item_profile_id = NormalizeItemProfileId(Pawn, item_profile_id);
 
 	// (0) Pull head_asm_id + gender from ga_characters. These are character
 	// state (picked at character creation), not cosmetic-equip state. Engine
@@ -392,8 +475,8 @@ void LoadFromDB(ATgPawn* Pawn, int64_t character_id) {
 	// pointing at the Medic Acolyte skeleton (1225) while SuitMeshId pointed
 	// at the cosmetic skeleton (e.g. 1586 for Commonwealth Technician).
 	Logger::Log("spawn-asm",
-		"LoadFromDB baseline: head=%d hair=%d gender=%d\n",
-		headMesh, hairMesh, genderId);
+		"LoadFromDB baseline: char=%lld itemProf=%d head=%d hair=%d gender=%d\n",
+		(long long)character_id, item_profile_id, headMesh, hairMesh, genderId);
 	WriteBaselineAssembly(charPawn->r_CustomCharacterAssembly, headMesh, hairMesh, genderId);
 	if (PRI) WriteBaselineAssembly(PRI->r_CustomCharacterAssembly, headMesh, hairMesh, genderId);
 
@@ -406,16 +489,17 @@ void LoadFromDB(ATgPawn* Pawn, int64_t character_id) {
 			"SELECT d.equipped_slot, i.item_id "
 			"FROM ga_character_devices d "
 			"JOIN ga_players_inventory i ON i.id = d.inventory_id "
-			"WHERE d.character_id = ? AND i.item_id > 0",
+			"WHERE d.character_id = ? AND d.item_profile_id = ? AND i.item_id > 0",
 			-1, &stmt, nullptr);
 		if (rc == SQLITE_OK) {
 			sqlite3_bind_int64(stmt, 1, character_id);
+			sqlite3_bind_int  (stmt, 2, item_profile_id);
 			while (sqlite3_step(stmt) == SQLITE_ROW) {
 				const int slot   = sqlite3_column_int(stmt, 0);
 				const int itemId = sqlite3_column_int(stmt, 1);
 				Logger::Log("spawn-asm",
-					"LoadFromDB row: char=%lld slot=%d itemId=%d -> ApplyOnly\n",
-					(long long)character_id, slot, itemId);
+					"LoadFromDB row: char=%lld itemProf=%d slot=%d itemId=%d -> ApplyOnly\n",
+					(long long)character_id, item_profile_id, slot, itemId);
 				if (ApplyOnly(Pawn, slot, itemId)) ++applied;
 				SpawnAsmSnapshot("[post-ApplyOnly pawn]", Pawn,
 					((ATgPawn_Character*)Pawn)->r_CustomCharacterAssembly);
@@ -427,31 +511,9 @@ void LoadFromDB(ATgPawn* Pawn, int64_t character_id) {
 		}
 	}
 
-	// (3) Align r_nBodyMeshAsmId with the resolved SuitMeshId.
-	//
-	// r_nBodyMeshAsmId is a CPF_Net field on ATgPawn (+0x3E0, separate from
-	// r_CustomCharacterAssembly) that the engine reads at multiple points:
-	//
-	//   - TgPawn.uc:2646 — SetCollisionFromMesh(r_nBodyMeshAsmId) in
-	//     PostBeginPlay (sizes the collision cylinder).
-	//   - TgPawn.uc:5789 — client ReplicatedEvent for 'r_nBodyMeshAsmId' fires
-	//     ApplyPawnSetup + m_bInitialized=false + WaitForInventoryThenDoPostPawnSetup
-	//     on change, i.e. a full mesh+device rebuild.
-	//   - TgPawn_Character.uc:369 — GetBodyMeshId() returns
-	//     GetSuitMeshIdToUse() for custom characters but falls back to
-	//     r_nBodyMeshAsmId otherwise; some engine call paths (asset preload,
-	//     anim set lookup) may consult the pawn-level field directly rather
-	//     than the per-builder m_Assembly.SuitMeshId.
-	//
-	// Old behavior wrote 1225 here (Medic Acolyte) unconditionally, so for a
-	// Robotics player wearing Commonwealth Technician the pawn-level asm
-	// stayed at 1225 while the assembly SuitMeshId moved to 1586 — divergent
-	// state across replicated fields that downstream code reads independently.
-	//
-	// New behavior: take the resolved SuitMeshId from the cosmetic overlay, or
-	// derive a non-persisted class visual mesh when the character has no suit
-	// cosmetic row. The fallback does not write flair ids or helmet mesh, so
-	// fresh accounts do not start with user cosmetics equipped.
+	// (3) Size the server collision cylinder from the resolved visual mesh.
+	// Do not write r_nBodyMeshAsmId or call ApplyPawnSetup here: both paths
+	// re-enter native pawn setup and crashed later loadout-profile switches.
 	ApplyClassVisualFallback(Pawn, profileId);
 	int resolvedSuitMesh = charPawn->r_CustomCharacterAssembly.SuitMeshId;
 	if (resolvedSuitMesh <= 0) {
@@ -459,7 +521,12 @@ void LoadFromDB(ATgPawn* Pawn, int64_t character_id) {
 		charPawn->r_CustomCharacterAssembly.SuitMeshId = resolvedSuitMesh;
 		if (PRI) PRI->r_CustomCharacterAssembly.SuitMeshId = resolvedSuitMesh;
 	}
-	Pawn->r_nBodyMeshAsmId = resolvedSuitMesh;
+	ApplyMeshCollisionData(Pawn, resolvedSuitMesh);
+	if (PRI) {
+		// The pawn is authoritative; clear-only profile switches must not
+		// leave PRI dye/trail fields from the previous profile.
+		PRI->r_CustomCharacterAssembly = charPawn->r_CustomCharacterAssembly;
+	}
 
 	// (4) Force-include both pawn and PRI in the next net update so their
 	// mirrored r_CustomCharacterAssembly fields land in the initial bunch
@@ -474,15 +541,21 @@ void LoadFromDB(ATgPawn* Pawn, int64_t character_id) {
 	}
 
 	Logger::Log("cosmetic-equip",
-		"LoadFromDB: char=%lld applied %d cosmetic(s); r_nBodyMeshAsmId=%d "
-		"SuitMeshId=%d SuitFlairId=%d HelmetMeshId=%d HeadFlairId=%d JetpackTrailId=%d\n",
-		(long long)character_id, applied,
+		"LoadFromDB: char=%lld itemProf=%d applied %d cosmetic(s); r_nBodyMeshAsmId=%d "
+		"SuitMeshId=%d SuitFlairId=%d HelmetMeshId=%d HeadFlairId=%d JetpackTrailId=%d "
+		"Dye=[%d,%d,%d,%d,%d]\n",
+		(long long)character_id, item_profile_id, applied,
 		Pawn->r_nBodyMeshAsmId,
 		charPawn->r_CustomCharacterAssembly.SuitMeshId,
 		charPawn->r_CustomCharacterAssembly.SuitFlairId,
 		charPawn->r_CustomCharacterAssembly.HelmetMeshId,
 		charPawn->r_CustomCharacterAssembly.HeadFlairId,
-		charPawn->r_CustomCharacterAssembly.JetpackTrailId);
+		charPawn->r_CustomCharacterAssembly.JetpackTrailId,
+		charPawn->r_CustomCharacterAssembly.DyeList[0],
+		charPawn->r_CustomCharacterAssembly.DyeList[1],
+		charPawn->r_CustomCharacterAssembly.DyeList[2],
+		charPawn->r_CustomCharacterAssembly.DyeList[3],
+		charPawn->r_CustomCharacterAssembly.DyeList[4]);
 }
 
 void ClearUnsetSlots(ATgPawn* Pawn, const std::set<int>& equippedEngineSlots) {
@@ -537,8 +610,8 @@ void ClearUnsetSlots(ATgPawn* Pawn, const std::set<int>& equippedEngineSlots) {
 
 	if (cleared > 0) {
 		ApplyClassVisualFallback(Pawn, charPawn->r_nProfileId);
-		Pawn->r_nBodyMeshAsmId = charPawn->r_CustomCharacterAssembly.SuitMeshId;
-		if (PRI) PRI->r_CustomCharacterAssembly.SuitMeshId = charPawn->r_CustomCharacterAssembly.SuitMeshId;
+		ApplyMeshCollisionData(Pawn, charPawn->r_CustomCharacterAssembly.SuitMeshId);
+		if (PRI) PRI->r_CustomCharacterAssembly = charPawn->r_CustomCharacterAssembly;
 		Pawn->bNetDirty       = 1;
 		Pawn->bForceNetUpdate = 1;
 		if (PRI) {
@@ -546,7 +619,7 @@ void ClearUnsetSlots(ATgPawn* Pawn, const std::set<int>& equippedEngineSlots) {
 			PRI->bForceNetUpdate = 1;
 		}
 		Logger::Log("loadout",
-			"[ClearUnsetSlots] reset %d cosmetic field(s) to CDO defaults (equipped slots=%d)\n",
+			"[ClearUnsetSlots] reset %d cosmetic field(s) to profile defaults (equipped slots=%d)\n",
 			cleared, (int)equippedEngineSlots.size());
 	}
 }

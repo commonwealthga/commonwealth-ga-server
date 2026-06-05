@@ -9,6 +9,7 @@
 #include "src/GameServer/TgGame/TgPlayerActions/SpawnBot/SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/Deploy/Deploy.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/ReturnHomeArea/ReturnHomeArea.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
@@ -293,6 +294,7 @@ void IpcClient::DrainInbound() {
             int64_t char_id         = j.value("character_id", (int64_t)0);
             uint32_t profile_id     = j.value("profile_id", (uint32_t)0);
             int task_force          = j.value("task_force", 1);
+            uint64_t register_token = j.value("register_token", uint64_t{0});
             // head_asm_id, gender_type_value_id, morph_data available in payload but not stored
             // in PlayerInfo at registration time -- SpawnPlayerCharacter reads morph_data from
             // the DLL's own sqlite DB (inserted at character creation via old flow).
@@ -308,6 +310,7 @@ void IpcClient::DrainInbound() {
             info.current_item_profile_id  = j.value("current_item_profile_id", 1);
             if (info.current_item_profile_id < 1 || info.current_item_profile_id > 5)
                 info.current_item_profile_id = 1;
+            info.control_register_token = register_token;
 
             // Convert player_name to wide string for UE3 APIs.
             info.player_name_w = std::wstring(pname.begin(), pname.end());
@@ -441,6 +444,24 @@ void IpcClient::DrainInbound() {
                     lift_z = j["args"].value("lift_z", 0.0f);
                 }
                 TgPlayerActions::TopDownCmd::Execute(guid, lift_z);
+            } else if (action == "return_home_area") {
+                TgPlayerActions::ReturnHomeAreaCmd::Execute(guid);
+            } else if (action == "refresh_profile_ui") {
+                int refreshed = 0;
+                for (auto& kv : GClientConnectionsData) {
+                    ClientConnectionData& data = kv.second;
+                    if (data.SessionGuid != guid || data.Pawn == nullptr) continue;
+
+                    ATgPlayerController* controller =
+                        (ATgPlayerController*)data.Pawn->Controller;
+                    if (controller == nullptr || controller->Player == nullptr) continue;
+
+                    controller->eventClientResetEquipScreen();
+                    ++refreshed;
+                }
+                Logger::Log("loadout",
+                    "[IPC] refresh_profile_ui guid=%s refreshed=%d\n",
+                    guid.c_str(), refreshed);
             } else {
                 Logger::Log("chat-command",
                     "[ChatCmd][DLL] PLAYER_ACTION guid=%s: unknown action '%s'; dropping\n",
@@ -457,6 +478,7 @@ void IpcClient::DrainInbound() {
             // NetDriver->ClientConnections, closes all channels and destroys
             // the attached PlayerController via the engine's CleanUpActor.
             std::string guid = j.value("session_guid", "");
+            uint64_t expected_token = j.value("register_token", uint64_t{0});
             if (guid.empty()) {
                 Logger::Log("ipc", "[IPC] PLAYER_LEAVE: missing session_guid; dropping\n");
                 continue;
@@ -469,6 +491,15 @@ void IpcClient::DrainInbound() {
             std::vector<UNetConnection*> to_cleanup;
             for (auto& kv : GClientConnectionsData) {
                 if (kv.second.SessionGuid == guid) {
+                    if (expected_token != 0 &&
+                        kv.second.PlayerInfo.control_register_token != expected_token) {
+                        Logger::Log("ipc",
+                            "[IPC] PLAYER_LEAVE: stale token guid=%s expected=%llu current=%llu; skipping connection 0x%p\n",
+                            guid.c_str(), (unsigned long long)expected_token,
+                            (unsigned long long)kv.second.PlayerInfo.control_register_token,
+                            (UNetConnection*)kv.first);
+                        continue;
+                    }
                     to_cleanup.push_back((UNetConnection*)kv.first);
                 }
             }
@@ -480,8 +511,8 @@ void IpcClient::DrainInbound() {
                 matches++;
             }
 
-            Logger::Log("ipc", "[IPC] PLAYER_LEAVE guid=%s: cleaned up %d connection(s)\n",
-                guid.c_str(), matches);
+            Logger::Log("ipc", "[IPC] PLAYER_LEAVE guid=%s token=%llu: cleaned up %d connection(s)\n",
+                guid.c_str(), (unsigned long long)expected_token, matches);
         } else {
             Logger::Log("ipc", "[IPC] Unknown message type: %s\n", type.c_str());
         }

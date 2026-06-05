@@ -970,6 +970,8 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// body of TgGame.PostLogin) triggers RestartPlayer → FindPlayerStart.
 		// Without this seed the picker reads playerTaskForce=0, fails every
 		// team filter, and lands the player in the wrong spawn room.
+		// Do not pre-write PRI.Team here: native SetTeam compares that field
+		// later, and a pre-write can skip AddPRI or crash duplicate VR joins.
 		// SpawnPlayerCharacter writes the same field later
 		// (TgGame__SpawnPlayerCharacter.cpp:295) but by then the spawn point
 		// has already been chosen, so the wrong-room result persists until
@@ -987,7 +989,6 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 					connectionIndex, tf, (void*)repInfo->r_TaskForce, (void*)taskforce);
 				if (taskforce != nullptr) {
 					repInfo->r_TaskForce = taskforce;
-					repInfo->Team = taskforce;
 					repInfo->bNetDirty = 1;
 					repInfo->bForceNetUpdate = 1;
 				}

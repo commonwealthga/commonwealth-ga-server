@@ -32,6 +32,7 @@ struct PlayerInfo {
 	// Scoped to current_item_profile_id (the active loadout's skills).
 	std::vector<SkillAllocation> skills;
 	int64_t last_respec_at = 0;
+	uint64_t control_register_token = 0;
 	uint64_t register_generation = 0;
 };
 

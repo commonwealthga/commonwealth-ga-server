@@ -197,6 +197,7 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.selected_profile_id  = info->selected_profile_id;
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.selected_character_id = info->selected_character_id;
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.task_force = info->task_force;
+			GClientConnectionsData[(int32_t)Connection].PlayerInfo.control_register_token = info->control_register_token;
 			GClientConnectionsData[(int32_t)Connection].pPlayerInfo = PlayerRegistry::GetByGuidPtr(session_guid);
 			Logger::Log(GetLogChannel(), "JOIN: identified player '%s' (guid=%s, profile=%u, connection=%d)\n",
 				info->player_name.c_str(), session_guid.c_str(), info->selected_profile_id, (int32_t)Connection);

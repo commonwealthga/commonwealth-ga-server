@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgPlayerController/ServerLoadItemProfile/TgPlayerController__ServerLoadItemProfile.hpp"
 #include "src/GameServer/Armor/Armor.hpp"
+#include "src/GameServer/Cosmetics/CosmeticEquip.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
@@ -12,13 +13,63 @@
 #include "lib/sqlite3/sqlite3.h"
 #include <cstdlib>
 
+static int LookupGameplayInvIdForSlot(sqlite3* db, int64_t character_id, int item_profile_id, int slot) {
+    if (!db) return 0;
+    sqlite3_stmt* st = nullptr;
+    int invId = 0;
+    if (sqlite3_prepare_v2(db,
+        "SELECT MIN(pi.id) "
+        "FROM ga_character_devices cd "
+        "JOIN ga_players_inventory pi ON pi.id = cd.inventory_id "
+        "WHERE cd.character_id = ? AND cd.item_profile_id = ? "
+        "  AND cd.equipped_slot = ? AND pi.device_id > 0",
+        -1, &st, nullptr) == SQLITE_OK && st) {
+        sqlite3_bind_int64(st, 1, character_id);
+        sqlite3_bind_int  (st, 2, item_profile_id);
+        sqlite3_bind_int  (st, 3, slot);
+        if (sqlite3_step(st) == SQLITE_ROW) {
+            invId = sqlite3_column_int(st, 0);
+        }
+        sqlite3_finalize(st);
+    }
+    return invId;
+}
+
+static void SyncEquipDeviceInfoForProfileSwitch(ATgPawn_Character* Pawn) {
+    if (!Pawn) return;
+
+    ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+    for (int slot = 1; slot < 0x19; ++slot) {
+        FEquipDeviceInfo eqInfo{};
+        ATgDevice* device = Pawn->m_EquippedDevices[slot];
+        if (device != nullptr) {
+            eqInfo.nDeviceId = device->r_nDeviceId;
+            eqInfo.nDeviceInstanceId = device->r_nDeviceInstanceId;
+            eqInfo.nQualityValueId = device->r_nQualityValueId;
+            device->bNetDirty = 1;
+            device->bForceNetUpdate = 1;
+        }
+
+        Pawn->r_EquipDeviceInfo[slot] = eqInfo;
+        if (PRI != nullptr) {
+            PRI->r_EquipDeviceInfo[slot] = eqInfo;
+        }
+    }
+
+    Pawn->bNetDirty = 1;
+    Pawn->bForceNetUpdate = 1;
+    if (PRI != nullptr) {
+        PRI->bNetDirty = 1;
+        PRI->bForceNetUpdate = 1;
+    }
+}
+
 // Reliable-server RPC fired when the player clicks a loadout-slot button
 // (1..5) anywhere in the UI. Atomic switch:
 //   1. unequip current profile's devices (RCST's PHASE 1 still sees the
 //      old applied state and reverses it on the next call)
 //   2. flip Pawn->r_nItemProfileId + refresh info->skills from DB
-//   3. equip target profile's gameplay devices (cosmetics are character-
-//      scoped and unaffected by profile switches — see step 3 comment)
+//   3. equip target profile's gameplay devices + reload profile cosmetics
 //   4. RCST PHASE 1 reverts old armor/skills, PHASE 2 applies new armor
 //      (FetchEquippedArmor scoped by new r_nItemProfileId) + new skills
 //      (from refreshed info->skills)
@@ -77,6 +128,8 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
         "[ServerLoadItemProfile] switch %d -> %d char=%lld guid=%s\n",
         oldProfile, nId, (long long)character_id, guid.c_str());
 
+    sqlite3* db = Database::GetConnection();
+
     // ── Step 1: Tear down current-profile device equipment ────────────────
     // Inventory::Unequip is idempotent on already-cleared slots; we walk all
     // engine equip points (1..24) to cover every weapon/utility/cosmetic.
@@ -116,6 +169,11 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
         const bool bIsBeacon = ((IsBeaconFn)0x10a19a40)(slotDev, nullptr) != 0;
         if (bIsBeacon) continue;  // beacon survives profile switch
 
+        const int targetInvId = LookupGameplayInvIdForSlot(db, character_id, nId, slot);
+        if (targetInvId > 0 && slotDev->r_nDeviceInstanceId == targetInvId) {
+            continue;
+        }
+
         Inventory::Unequip((ATgPawn*)Pawn, slot);
         ++teardown_count;
     }
@@ -129,11 +187,8 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
     PlayerRegistry::RefreshSkillsForProfile(guid, nId);
 
     // ── Step 3: Equip new profile's gameplay devices ─────────────────────
-    // Cosmetics are intentionally NOT touched here — see the comment inside
-    // the equip loop. They're character-scoped and stay on the pawn across
-    // profile switches.
-    sqlite3* db = Database::GetConnection();
     int gameplay_equipped = 0;
+    int gameplay_reused = 0;
     if (db) {
         sqlite3_stmt* st = nullptr;
         // GROUP BY equipped_slot defends against duplicate ga_character_devices
@@ -192,6 +247,14 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
                 }
 
                 if (devId > 0 && slot >= 1 && slot < 0x19) {
+                    ATgDevice* current = Pawn->m_EquippedDevices[slot];
+                    if (current != nullptr && current->r_nDeviceInstanceId == invId) {
+                        ++gameplay_reused;
+                        Logger::Log("loadout",
+                            "[ServerLoadItemProfile] equip-loop reuse: slot=%d devId=%d invId=%d\n",
+                            slot, devId, invId);
+                        continue;
+                    }
                     Logger::Log("loadout",
                         "[ServerLoadItemProfile] equip-loop pre:  slot=%d devId=%d invId=%d quality=%d mods=%zu pawn=%p invMgr=%p\n",
                         slot, devId, invId, quality, mods.size(), Pawn, Pawn->InvManager);
@@ -201,26 +264,25 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
                         slot, devId);
                     ++gameplay_equipped;
                 }
-                // Cosmetic rows (devId=0) are intentionally NOT re-applied here.
-                // Cosmetics are character-scoped, not loadout-scoped: ApplyToPawn
-                // persists every cosmetic write with item_profile_id=1 (see the
-                // comment block on that INSERT). The pawn's r_CustomCharacterAssembly
-                // is already populated from spawn-time LoadFromDB and survives
-                // a profile switch unchanged. ServerAcceptNewProfileFromEquipScreen
-                // (the equip-screen "Apply" path) is the only RPC that should
-                // mutate cosmetics on a live pawn.
             }
             sqlite3_finalize(st);
         }
     }
+
+    CosmeticEquip::LoadFromDB((ATgPawn*)Pawn, character_id, nId);
+
     Logger::Log("loadout",
-        "[ServerLoadItemProfile] pre-Finalize: pawn=%p invMgr=%p\n", Pawn, Pawn->InvManager);
-    Inventory::Finalize((ATgPawn*)Pawn);
+        "[ServerLoadItemProfile] pre-Finalize: pawn=%p invMgr=%p changed=%d reused=%d\n",
+        Pawn, Pawn->InvManager, teardown_count + gameplay_equipped, gameplay_reused);
+    // Native UpdateClientDevices crashes after live profile swaps; sync the
+    // replicated fields it owns without entering that path.
+    SyncEquipDeviceInfoForProfileSwitch(Pawn);
     Logger::Log("loadout",
-        "[ServerLoadItemProfile] post-Finalize done\n");
+        "[ServerLoadItemProfile] synced equip info without Finalize; changed=%d reused=%d\n",
+        teardown_count + gameplay_equipped, gameplay_reused);
     Logger::Log("loadout",
-        "[ServerLoadItemProfile] equipped new profile %d: %d gameplay device(s); cosmetics unchanged (character-scoped)\n",
-        nId, gameplay_equipped);
+        "[ServerLoadItemProfile] equipped new profile %d: %d gameplay device(s), reused=%d; cosmetics reloaded\n",
+        nId, gameplay_equipped, gameplay_reused);
 
     // ── Step 3b: Reset InvManager.r_ItemCount to the DB pool size ────────
     // Inventory::Equip blindly ++'s r_ItemCount on every call (gameplay devices
@@ -263,53 +325,17 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
     // ── Step 4: RCST does the armor + skill revert+apply atomically ──────
     TgPawn_Character__ReapplyCharacterSkillTree::Call(Pawn, nullptr);
 
-    // ── Step 5: ClientResetEquipScreen — refresh the open agent-profile UI
-    //
-    // ROOT-CAUSE FIX for the lag-by-one symptom:
-    //   1. Client widget reads r_nItemProfileId at RENDER time (via FUN_1141f750
-    //      lookup against pawn+0x1634)
-    //   2. Our server-side r_nItemProfileId write is replicated over UDP
-    //   3. Without an explicit refresh trigger, the open skill/equip widgets
-    //      only re-render on click events. The click handler reads the OLD
-    //      r_nItemProfileId because it runs BEFORE the server's reply has
-    //      replicated back. Each subsequent click shows the PREVIOUS click's
-    //      profile (one-step lag), and the TCP-arriving SEND_PLAYER_SKILLS
-    //      can race AHEAD of the UDP r_nItemProfileId rep — so even on a
-    //      forced refresh the widget reads stale state.
-    //
-    //   ClientResetEquipScreen is a `reliable client simulated event` (see
-    //   TgPlayerController.uc:991). It rides the SAME UDP channel as the
-    //   r_nItemProfileId property replication — UE3 guarantees in-order
-    //   delivery on a per-channel basis, so by the time the client's UC sets
-    //   `c_bServerRequestsEquipScreenUpdate=true` the r_nItemProfileId rep
-    //   has already arrived and the pawn field is up-to-date. The next
-    //   widget refresh (driven by the flag check in TgUIAgentProfile's tick)
-    //   reads the NEW r_nItemProfileId → displays new profile's skills /
-    //   equip / device-bar state immediately.
-    //
-    // Fired AFTER all pawn state changes so the NetDriver's next ServerTickClients
-    // bundles the queued RPC with the freshly-dirty property updates
-    // (r_nItemProfileId, InvManager fields, etc.) into the same outgoing packet,
-    // properties first. Do NOT FlushNet here — flushing now ships the RPC
-    // alone, ahead of the property updates that haven't yet been serialized,
-    // and the client widget reads stale r_nItemProfileId during the refresh.
-    //
-    // Player-null guard: reliable-client RPC marshal dereferences the
-    // NetConnection's Channel state. If the client disconnected between
-    // queuing this RPC arrival and our hook running, Controller->Player can
-    // be null and the marshal path crashes inside FString::operator*()
-    // (exe+0x4283) while formatting the function/channel name. We have a
-    // valid pawn + character_id so the rest of the switch already committed
-    // server-side; skipping the client refresh on a disconnected player is
-    // safe — there's no UI to update.
-    if (Controller->Player != nullptr) {
-        Controller->eventClientResetEquipScreen();
-    } else {
-        Logger::Log("loadout",
-            "[ServerLoadItemProfile] Controller->Player=null — skipping ClientResetEquipScreen RPC\n");
-    }
+    // ── Step 5: Run native before the control-server UI refresh packet.
+    // Native owns client profile button state; refreshing earlier races it.
+    Logger::Log("loadout",
+        "[ServerLoadItemProfile] pre-CallOriginal\n");
+    CallOriginal(Controller, edx, nId);
+    Logger::Log("loadout",
+        "[ServerLoadItemProfile] post-CallOriginal\n");
 
-    // ── Step 5b: IPC the control-server to persist + push refreshed packets
+    // The control server sends ClientResetEquipScreen after its TCP refresh.
+    // Firing it here can rebuild the open skill UI before new rows arrive.
+    // ── Step 6: IPC the control-server to persist + push refreshed packets
     {
         nlohmann::json ev;
         ev["type"]            = IpcProtocol::MSG_GAME_EVENT;
@@ -321,9 +347,6 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
         ev["item_profile_id"] = nId;
         IpcClient::Send(ev.dump());
     }
-
-    // ── Step 6: Run the engine native after our work (may update Nbr etc.)
-    CallOriginal(Controller, edx, nId);
 
     Logger::Log("loadout",
         "[ServerLoadItemProfile] switch complete %d -> %d\n", oldProfile, nId);

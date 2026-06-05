@@ -183,6 +183,22 @@ int ChooseVrHomeTaskForce(const InstanceInfo& home_instance,
     return task_force;
 }
 
+bool SendProfileUiRefresh(int64_t instance_id, const std::string& session_guid, const char* reason) {
+    if (instance_id == 0) {
+        return false;
+    }
+
+    nlohmann::json action;
+    action["type"] = IpcProtocol::MSG_PLAYER_ACTION;
+    action["session_guid"] = session_guid;
+    action["action"] = "refresh_profile_ui";
+    const bool ok = IpcServer::SendToInstance(instance_id, action.dump());
+    Logger::Log("loadout",
+        "[TcpSession] profile_switch refresh_profile_ui %s instance=%lld send=%d guid=%s\n",
+        reason ? reason : "unknown", (long long)instance_id, (int)ok, session_guid.c_str());
+    return ok;
+}
+
 }  // namespace
 
 void TcpSession::SetHomeMapSpawner(std::function<void()> cb) {
@@ -436,22 +452,8 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         // Control-server's job: persist new active profile, sync TcpSession
         // mirror, push refreshed inventory + skills so the client UI sees
         // the new build's stats and allocations.
-        //
-        // KNOWN ISSUE (unresolved): the skill-tree / device-bar widgets
-        // re-render against the OLD r_nItemProfileId when this handler's TCP
-        // marshals reach the client before the game-server's UDP property
-        // rep. Symptom: skill widget shows previous profile's allocation,
-        // device bar shows previous profile's icons. Close + reopen the
-        // agent-profile screen for a correct render. Investigated via the
-        // FUN_113a18a0 / FUN_11422d70 / FUN_1141f750 chain — the lookup
-        // filters skills by `pawn+0x1634` (r_nItemProfileId) at render time,
-        // and our timing fixes (eventClientResetEquipScreen on the same UDP
-        // channel + brief sleep here) didn't reliably win the race. The
-        // official Hi-Rez server was single-process so this race never
-        // existed; closing the gap from a split architecture needs a deeper
-        // trace of the client's rep-arrival ordering than we currently have.
-
         const int64_t character_id    = j.value("character_id", (int64_t)0);
+        const int64_t instance_id      = j.value("instance_id", (int64_t)0);
         const int     pawn_id         = j.value("pawn_id", 0);
         const int     item_profile_id = j.value("item_profile_id", 1);
         Logger::Log("loadout",
@@ -474,6 +476,26 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
                 session->send_inventory_response(pawn_id, character_id);
             }
             session->send_player_skills_response();
+
+            if (instance_id != 0) {
+                SendProfileUiRefresh(instance_id, session_guid, "immediate");
+
+                auto timer = std::make_shared<asio::steady_timer>(session->io_ctx_);
+                std::weak_ptr<TcpSession> weak_session = session;
+                timer->expires_after(std::chrono::milliseconds(250));
+                timer->async_wait([timer, weak_session, instance_id, session_guid, item_profile_id](std::error_code ec) {
+                    if (ec) {
+                        return;
+                    }
+                    auto s = weak_session.lock();
+                    if (!s) {
+                        return;
+                    }
+                    s->item_profile_id_ = item_profile_id;
+                    s->send_player_skills_response();
+                    SendProfileUiRefresh(instance_id, session_guid, "delayed");
+                });
+            }
         }
     }
     else if (subtype == "quest") {
@@ -644,10 +666,13 @@ void TcpSession::initiate_player_register_and_go_play() {
     const int task_force =
         ChooseVrHomeTaskForce(*home_instance, selected_profile_id_, session_guid_);
     home_task_force_ = task_force;
+    const uint64_t register_token = next_register_token_++;
+    active_register_token_ = register_token;
 
     nlohmann::json reg;
     reg["type"]         = IpcProtocol::MSG_PLAYER_REGISTER;
     reg["session_guid"] = session_guid_;
+    reg["register_token"] = register_token;
     reg["profile_id"]   = selected_profile_id_;
     reg["player_name"]  = player_name;
     reg["user_id"]      = user_id_;
@@ -752,6 +777,9 @@ void TcpSession::initiate_player_register_for_target(const InstanceInfo& target,
     nlohmann::json reg;
     reg["type"]         = IpcProtocol::MSG_PLAYER_REGISTER;
     reg["session_guid"] = session_guid_;
+    const uint64_t register_token = next_register_token_++;
+    active_register_token_ = register_token;
+    reg["register_token"] = register_token;
     reg["profile_id"]   = selected_profile_id_;
     reg["player_name"]  = player_name;
     reg["user_id"]      = user_id_;
@@ -1117,14 +1145,17 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				nlohmann::json leave;
 				leave["type"]         = IpcProtocol::MSG_PLAYER_LEAVE;
 				leave["session_guid"] = session_guid_;
+				leave["register_token"] = active_register_token_;
 				bool ok = IpcServer::SendToInstance(assigned_instance_id_, leave.dump());
-				Logger::Log("tcp", "[TcpSession] PLAYER_LEAVE dispatched guid=%s instance=%lld send=%d\n",
-					session_guid_.c_str(), (long long)assigned_instance_id_, (int)ok);
+				Logger::Log("tcp", "[TcpSession] PLAYER_LEAVE dispatched guid=%s instance=%lld token=%llu send=%d\n",
+					session_guid_.c_str(), (long long)assigned_instance_id_,
+					(unsigned long long)active_register_token_, (int)ok);
 			}
 
 			// Drop the instance assignment so a subsequent SELECT_CHARACTER goes
 			// through wait_for_home_map_then_register again from a clean slate.
 			assigned_instance_id_      = 0;
+			active_register_token_     = 0;
 			pending_match_instance_id_ = 0;
 			pending_match_game_mode_.clear();
 			break;
@@ -1160,6 +1191,28 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			std::optional<InstanceInfo> parent;
 			if (parent_instance_id != 0) {
 				parent = InstanceRegistry::GetInstanceById(parent_instance_id);
+			}
+			if (parent && parent->is_home_map && parent->state == "READY") {
+				pending_match_instance_id_ = 0;
+				pending_match_game_mode_.clear();
+
+				if (parent->map_name == "Dome3_VR_Arena_P") {
+					nlohmann::json action;
+					action["type"] = IpcProtocol::MSG_PLAYER_ACTION;
+					action["session_guid"] = session_guid_;
+					action["action"] = "return_home_area";
+
+					bool ok = IpcServer::SendToInstance(parent_instance_id, action.dump());
+					Logger::Log("tcp",
+						"[TcpSession] GSC_CHANGE_INSTANCE: same-home VR return action instance=%lld send=%d for %s\n",
+						(long long)parent_instance_id, (int)ok, session_guid_.c_str());
+					break;
+				}
+
+				Logger::Log("tcp",
+					"[TcpSession] GSC_CHANGE_INSTANCE: home map %s has no same-home return handler; keeping connection for %s\n",
+					parent->map_name.c_str(), session_guid_.c_str());
+				break;
 			}
 
 			// Decide BEFORE teardown whether we should attempt to route to a

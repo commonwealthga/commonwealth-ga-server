@@ -257,4 +257,11 @@ bool Config::GetDumpMapData() {
 	return val == L"1" || val == L"true";
 }
 
+bool Config::GetNativeWindowsRuntime() {
+	ParsedOptions options = CommandLineParser::ParseCommandLine();
+	std::wstring val = options.switches[L"nativewindows"];
+	if (val.empty()) return false;
+	return val == L"1" || val == L"true";
+}
+
 

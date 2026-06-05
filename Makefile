@@ -137,6 +137,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/SpawnBot/SpawnBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/Deploy/Deploy.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/ReturnHomeArea/ReturnHomeArea.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.cpp \
@@ -416,6 +417,7 @@ SOURCE_FILES_CLIENT= \
 			  $(SRC_DIR)/Utils/Logger/Logger/FileLogger.cpp \
 			  $(SRC_DIR)/Utils/DebugWindow/DebugWindow.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ObjectCache/ObjectCache.cpp \
+			  $(SRC_DIR)/GameServer/Utils/ObjectClassCache/ObjectClassCache.cpp \
 			  $(SRC_DIR)/Database/AsmDataCapture/AsmDataCapture_client_stub.cpp \
 			  $(SRC_DIR)/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent_client.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceivedClient.cpp \
