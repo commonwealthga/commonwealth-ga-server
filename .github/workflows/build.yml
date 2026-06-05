@@ -19,18 +19,23 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # mingw-w64 provides both i686-w64-mingw32-g++ (DLLs) and
+      # x86_64-w64-mingw32-g++ (control-server.exe). Linux control-server
+      # uses the system g++ (preinstalled on ubuntu-latest).
       - name: Install Dependencies
         run: sudo apt-get update && sudo apt-get install -y mingw-w64
-      # ln -s /usr/lib/x86_64-linux-gnu/libsqlite3.a /usr/i686-w64-mingw32/lib/libsqlite3.a
-      # ln -s /usr/lib/x86_64-linux-gnu/libsqlite3.so /usr/i686-w64-mingw32/lib/libsqlite3.so
 
-      - name: Build
-        run: make all
+      - name: Build DLLs and Control Server
+        run: make all control-server
         continue-on-error: false
 
-      - name: Upload Artifact
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: version.dll
-          path: out/version.dll
-
+          name: binaries
+          path: |
+            out/version.dll
+            out/dinput8.dll
+            out/control-server
+            out/control-server.exe
+          if-no-files-found: error

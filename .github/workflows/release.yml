@@ -18,18 +18,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # v6 supports the new GitHub artifacts API (v4 upload-artifact format).
       - name: Download build artifacts from latest successful build
-        uses: dawidd6/action-download-artifact@v3
+        uses: dawidd6/action-download-artifact@v6
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           workflow: build.yml
           branch: ${{ github.event.release.target_commitish }}
-          name: version.dll
+          name: binaries
           path: out/
 
-      - name: Install GitHub CLI
-        run: sudo apt-get install -y gh
-
-      - name: Upload DLL to Release
-        run: gh release upload "${{ github.event.release.tag_name }}" out/version.dll --clobber
-
+      - name: Upload binaries to Release
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            out/version.dll \
+            out/dinput8.dll \
+            out/control-server \
+            out/control-server.exe \
+            --clobber
