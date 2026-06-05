@@ -441,8 +441,11 @@ int main(int argc, char* argv[]) {
             pending.session_guids = std::move(result.session_guids);
             pending.task_force_assignments = std::move(result.task_force_assignments);
             pending.profile_ids = std::move(result.profile_ids);
+            // Honour rule-supplied cap_override (e.g. DoubleAgentRule seals
+            // each match at its roster size). Falls back to the queue-wide
+            // cap when the rule didn't override.
             if (auto qcfg = MatchmakingService::GetQueueConfig(queue_id)) {
-                pending.cap = qcfg->max_players_per_instance;
+                pending.cap = result.cap_override.value_or(qcfg->max_players_per_instance);
             }
             MatchmakingService::AddPendingMatch(instance_id, std::move(pending));
 

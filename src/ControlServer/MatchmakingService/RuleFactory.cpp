@@ -1,5 +1,6 @@
 #include "src/ControlServer/MatchmakingService/RuleFactory.hpp"
 #include "src/ControlServer/MatchmakingService/Rules/DataDrivenMatchRule.hpp"
+#include "src/ControlServer/MatchmakingService/Rules/DoubleAgentRule.hpp"
 #include "src/ControlServer/Logger.hpp"
 
 std::unique_ptr<MatchRule> RuleFactory::Create(const QueueConfig* cfg) {
@@ -9,6 +10,11 @@ std::unique_ptr<MatchRule> RuleFactory::Create(const QueueConfig* cfg) {
     // common case) and for the explicit "DataDriven" string.
     if (cfg->rule_class.empty() || cfg->rule_class == "DataDriven") {
         return std::make_unique<DataDrivenMatchRule>(cfg);
+    }
+
+    // Double Agent: asymmetric coop, shape-table driven, late-join lockout.
+    if (cfg->rule_class == "DoubleAgent") {
+        return std::make_unique<DoubleAgentRule>(cfg);
     }
 
     // Unknown rule_class — fall back to DataDriven with a loud log so a

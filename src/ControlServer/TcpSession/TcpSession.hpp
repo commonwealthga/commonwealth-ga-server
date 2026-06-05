@@ -271,22 +271,68 @@ private:
     }
 
     void send_response(std::vector<uint8_t>& buffer) {
+        // Wire framing:
+        //   payload <= 1456 bytes:  [2B length][payload]  (single frame)
+        //   payload >  1456 bytes:  N-1 chunks of [2B 0x0000][1456 bytes]
+        //                           followed by 1 final chunk of
+        //                           [2B last_chunk_size][last_chunk_bytes]
+        //
+        // The 0x0000 prefix tells the client "this is a continuation chunk,
+        // accumulate". A non-zero length prefix tells the client "this is
+        // the final chunk of size N, marshal is complete after these bytes".
+        constexpr size_t kChunkPayload = 1456;
+
         std::vector<uint8_t> response;
 
-        size_t max_chunk_size = 1450;
-        size_t offset = 0;
+        if (buffer.size() <= kChunkPayload) {
+            response.reserve(buffer.size() + 2);
+            const uint16_t length_prefix = static_cast<uint16_t>(buffer.size());
+            response.push_back(static_cast<uint8_t>(length_prefix & 0xFF));
+            response.push_back(static_cast<uint8_t>(length_prefix >> 8));
+            response.insert(response.end(), buffer.begin(), buffer.end());
+        } else {
+            const size_t total = buffer.size();
+            // Continuation chunks: each [2B 0x0000][kChunkPayload bytes].
+            // The final chunk is whatever remains (1..kChunkPayload bytes),
+            // prefixed with its byte count instead of 0x0000.
+            const size_t n_full_chunks   = total / kChunkPayload;
+            const size_t final_chunk_len = total - n_full_chunks * kChunkPayload;
 
-        while (offset < buffer.size()) {
-            size_t remaining = buffer.size() - offset;
-            size_t chunk_size = std::min(remaining, max_chunk_size);
+            // If `total` is an exact multiple of kChunkPayload, the last full
+            // chunk becomes the "final" one carrying its length instead of
+            // 0x0000. Otherwise the leftover bytes are the final chunk.
+            size_t continuation_chunks = n_full_chunks;
+            size_t last_chunk_size     = final_chunk_len;
+            if (final_chunk_len == 0) {
+                continuation_chunks -= 1;
+                last_chunk_size = kChunkPayload;
+            }
 
-            uint16_t length_prefix = static_cast<uint16_t>(chunk_size);
-            response.push_back(length_prefix & 0xFF);
-            response.push_back(length_prefix >> 8);
+            response.reserve(total + 2 * (continuation_chunks + 1));
+            size_t pos = 0;
+            for (size_t i = 0; i < continuation_chunks; ++i) {
+                response.push_back(0x00);
+                response.push_back(0x00);
+                response.insert(response.end(),
+                                buffer.begin() + pos,
+                                buffer.begin() + pos + kChunkPayload);
+                pos += kChunkPayload;
+            }
+            // Final chunk with length prefix.
+            const uint16_t last_len = static_cast<uint16_t>(last_chunk_size);
+            response.push_back(static_cast<uint8_t>(last_len & 0xFF));
+            response.push_back(static_cast<uint8_t>(last_len >> 8));
+            response.insert(response.end(),
+                            buffer.begin() + pos,
+                            buffer.end());
 
-            response.insert(response.end(), buffer.begin() + offset, buffer.begin() + offset + chunk_size);
-
-            offset += chunk_size;
+            const uint16_t op = (buffer.size() >= 2)
+                ? static_cast<uint16_t>(buffer[0] | (buffer[1] << 8))
+                : 0;
+            Logger::Log("tcp",
+                "[TCP] send_response chunked: opcode=0x%04X payload=%zu wire=%zu (%zu cont chunks + final=%zu)\n",
+                op, buffer.size(), response.size(),
+                continuation_chunks, last_chunk_size);
         }
 
         std::error_code ec;

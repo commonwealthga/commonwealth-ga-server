@@ -37,6 +37,14 @@ struct MatchResult {
     std::optional<int64_t> existing_instance_id;  // if set, skip spawn
     std::unordered_map<std::string, int> task_force_assignments;  // session_guid -> task_force
     std::unordered_map<std::string, uint32_t> profile_ids;        // session_guid -> profile_id (ASSAULT etc.)
+
+    // When set, overrides QueueConfig::max_players_per_instance for the
+    // resulting PendingMatch.cap. Used by rules that want to seal a
+    // pending match against further coalesce regardless of the queue's
+    // nominal cap (e.g. DoubleAgentRule sets this to the popped roster
+    // size at pop time — late joiners then bounce off the coalesce
+    // size>=cap check). nullopt -> main.cpp falls back to queue config.
+    std::optional<uint32_t> cap_override;
 };
 
 struct PendingMatch {
@@ -97,6 +105,15 @@ enum class TaskforcePolicy : uint8_t {
     BalancedPvp,  // class-aware role-weighted variant; see RoleWeightedSplit
 };
 
+// Per-queue pop-delay wait shape. Governs MaybeResetDelayedPop's re-arm
+// behaviour while the delay timer is running. Cancel-on-below-min is
+// independent of this enum and always fires.
+enum class PopDelayPolicy : uint8_t {
+    HalveOnJoin,   // existing: next_duration halves on each join, floor 0.5s
+    Fixed,         // timer set once; ignores joins (cancels only on leave below min)
+    ResetOnJoin,   // every join re-arms timer to cfg.pop_delay_seconds
+};
+
 struct QueueConfig {
     uint32_t queue_id = 0;
     uint32_t map_pool_id = 0;                         // 0 = no pool assigned
@@ -129,6 +146,12 @@ struct QueueConfig {
     uint32_t sort_order = 0;
     bool bonus_queue_flag = false;
     uint32_t difficulty_value_id = 0;
+    // Wire-only override consumed by TicketInfoEncoder when set. NULL =>
+    // fall back to difficulty_value_id. Lets queues share a real-world
+    // difficulty (used for matchmaking + instance spawn) but show under a
+    // different UI grouping on the client. Set on DA queues so they don't
+    // mangle into the SpecOps difficulty rows.
+    std::optional<uint32_t> marshal_difficulty_value_id;
     uint64_t access_flags = 0;
     bool active_flag = true;
     bool locked_flag = false;
@@ -138,6 +161,17 @@ struct QueueConfig {
     uint32_t min_players_to_pop       = 1;
     uint32_t max_players_per_instance = 0;   // 0 = unlimited
     float    pop_delay_seconds        = 0.0f;
+
+    // Pop-delay re-arm policy (governs MaybeResetDelayedPop when a
+    // player joins/leaves while the delay timer is running).
+    PopDelayPolicy pop_delay_policy = PopDelayPolicy::HalveOnJoin;
+
+    // When true and queue.players.size() crosses max_players_per_instance,
+    // AddPlayer cancels any running delay timer and pops immediately.
+    // Independent of pop_delay_policy. Defaults to true: a benign
+    // behavioural diff for queues that had max>0 + a running delay timer
+    // — no reason to keep waiting once the lobby is full.
+    bool instant_pop_when_full = true;
 
     std::vector<MapModeEntry> map_pool;
 };

@@ -768,6 +768,34 @@ void Database::Init() {
 			}
 		}
 
+		// Pop-delay policy (halve_on_join / fixed / reset_on_join) and
+		// cap-instant-pop short-circuit. Idempotent — same duplicate-column
+		// swallow pattern. instant_pop_when_full defaults to 1, which is a
+		// minor behavioural diff for existing queues: any queue that hits
+		// its cap during a running delay now pops immediately instead of
+		// waiting out the remaining timer.
+		const char* kDelayPolicyAlters[] = {
+			"ALTER TABLE ga_queues ADD COLUMN pop_delay_policy      TEXT    NOT NULL DEFAULT 'halve_on_join';",
+			"ALTER TABLE ga_queues ADD COLUMN instant_pop_when_full INTEGER NOT NULL DEFAULT 1;",
+		};
+		for (const char* sql : kDelayPolicyAlters) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				sqlite3_free(err); err = nullptr;
+			}
+		}
+
+		// Wire-only difficulty override. Decouples the value advertised on
+		// the GET_TICKET_INFO queue card (used by the client to GROUP cards
+		// by tier) from the actual difficulty_value_id used by spawn /
+		// matchmaking. NULL => fall back to difficulty_value_id (existing
+		// behaviour). Used so Double Agent queues can share difficulty
+		// progression with SpecOps but appear under a distinct UI group.
+		const char* kMarshalDifficultyAlter =
+			"ALTER TABLE ga_queues ADD COLUMN marshal_difficulty_value_id INTEGER DEFAULT NULL;";
+		if (sqlite3_exec(db, kMarshalDifficultyAlter, nullptr, nullptr, &err) != SQLITE_OK) {
+			sqlite3_free(err); err = nullptr;
+		}
+
 		// ga_queues — data-driven queue definitions. Each row maps to a
 		// MATCH_QUEUE_ID; the schema carries both matchmaking behaviour
 		// (rule_class + taskforce_policy + continue_in_queue) and the
@@ -810,7 +838,10 @@ void Database::Init() {
 			"  remaining_seconds       INTEGER          DEFAULT NULL,"
 			"  min_players_to_pop      INTEGER NOT NULL DEFAULT 1,"
 			"  max_players_per_instance INTEGER NOT NULL DEFAULT 0,"
-			"  pop_delay_seconds       REAL    NOT NULL DEFAULT 0.0"
+			"  pop_delay_seconds       REAL    NOT NULL DEFAULT 0.0,"
+			"  pop_delay_policy        TEXT    NOT NULL DEFAULT 'halve_on_join',"
+			"  instant_pop_when_full   INTEGER NOT NULL DEFAULT 1,"
+			"  marshal_difficulty_value_id INTEGER          DEFAULT NULL"
 			");",
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
@@ -1050,6 +1081,65 @@ void Database::Init() {
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) sqlite3_free(err);
 
+		// Seed the three Double Agent queues. Asymmetric coop with random
+		// side assignment per the rule's hardcoded shape table (1v1 .. 6v4).
+		// rule_class='DoubleAgent' routes through RuleFactory; the
+		// taskforce_policy column is ignored by that rule. Three difficulty
+		// tiers (high / max / umax) sharing all wire fields except
+		// difficulty_value_id, location_value_id, name. queue_ids 8/9/10,
+		// sort_orders 5/6/7 placing them after umax (queue 1, sort 4) in
+		// the queue_type_value_id=1021 (SpecOps progression) group.
+		// map_pool_id=1 — shares the specops pool with the
+		// medium/high/max/umax difficulty queues (operator can curate a
+		// DA-only pool later by editing each row's map_pool_id).
+		// Location values: 1483=Sonoran Desert, 1478=Mining Province,
+		// 1477=Commonwealth Prime (sourced from TcpSession's legacy
+		// hardcoded ticket-info hexes at 0x5cb/0x5c6/0x5c5).
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_queues "
+			"(queue_id, name, rule_class, taskforce_policy, continue_in_queue, enabled, "
+			" queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, "
+			" max_players_per_side, min_players_per_team, max_players_per_team, "
+			" level_min, level_max, tab, map_x, map_y, map_active_flag, "
+			" map_icon_texture_res_id, video_res_id, location_value_id, double_agent_flag, "
+			" sys_site_id, sort_order, bonus_queue_flag, difficulty_value_id, access_flags, "
+			" active_flag, locked_flag, map_pool_id, "
+			" min_players_to_pop, max_players_per_instance, pop_delay_seconds, "
+			" pop_delay_policy, instant_pop_when_full, "
+			" marshal_difficulty_value_id) VALUES "
+			"(8, 'double_agent_high', 'DoubleAgent', 'pinned_1', 0, 1, "
+			" 1021, 0, 34213, 27674, 537, "
+			" 6, 1, 6, "
+			" 5, 50, 443, 6.0, 0.0, 1, "
+			" 5126, 0, 1483, 1, "
+			" 0, 5, 0, 1030, 0, "
+			" 1, 0, 1, "
+			" 2, 10, 15.0, "
+			" 'reset_on_join', 1, 1260), "
+			"(9, 'double_agent_max', 'DoubleAgent', 'pinned_1', 0, 1, "
+			" 1021, 0, 34213, 34212, 537, "
+			" 6, 1, 6, "
+			" 5, 50, 443, 6.0, 0.0, 1, "
+			" 5126, 0, 1478, 1, "
+			" 0, 6, 0, 1259, 0, "
+			" 1, 0, 1, "
+			" 2, 10, 15.0, "
+			" 'reset_on_join', 1, 1260), "
+			"(10, 'double_agent_umax', 'DoubleAgent', 'pinned_1', 0, 1, "
+			" 1021, 0, 34213, 55465, 537, "
+			" 6, 1, 6, "
+			" 5, 50, 443, 6.0, 0.0, 1, "
+			" 5126, 0, 1477, 1, "
+			" 0, 7, 0, 1471, 0, "
+			" 1, 0, 1, "
+			" 2, 10, 15.0, "
+			" 'reset_on_join', 1, 1260);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed double_agent queues: %s\n", err);
+			sqlite3_free(err);
+		}
+
 		// PvP queue 2 needs video_res_id=0x171a (the Mercenary preview video).
 		// Defaulted to 0 above; explicit update keeps the seed line readable.
 		result = sqlite3_exec(db,
@@ -1234,7 +1324,10 @@ void Database::Init() {
 					"  map_pool_id             INTEGER          DEFAULT NULL,"
 					"  min_players_to_pop      INTEGER NOT NULL DEFAULT 1,"
 					"  max_players_per_instance INTEGER NOT NULL DEFAULT 0,"
-					"  pop_delay_seconds       REAL    NOT NULL DEFAULT 0.0"
+					"  pop_delay_seconds       REAL    NOT NULL DEFAULT 0.0,"
+					"  pop_delay_policy        TEXT    NOT NULL DEFAULT 'halve_on_join',"
+					"  instant_pop_when_full   INTEGER NOT NULL DEFAULT 1,"
+					"  marshal_difficulty_value_id INTEGER          DEFAULT NULL"
 					")",
 					"INSERT INTO ga_queues_v2 SELECT * FROM ga_queues",
 					"DROP TABLE ga_queues",

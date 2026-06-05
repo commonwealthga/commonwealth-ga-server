@@ -117,7 +117,12 @@ void TicketInfoEncoder::EncodeRecord(
     W4B(out, GA_T::SORT_ORDER,              cfg.sort_order);
     WBonusQueueFlag(out, GA_T::BONUS_QUEUE_FLAG, cfg.bonus_queue_flag);
     if (has_access)    W8B(out, GA_T::ACCESS_FLAGS, cfg.access_flags);
-    W4B(out, GA_T::DIFFICULTY_VALUE_ID,     cfg.difficulty_value_id);
+    // marshal_difficulty_value_id overrides the wire-side difficulty for UI
+    // grouping (NULL => fall back to the real difficulty_value_id used by
+    // matchmaking + spawn). DA queues set this so they group separately
+    // from SpecOps despite sharing the same difficulty tier internally.
+    W4B(out, GA_T::DIFFICULTY_VALUE_ID,
+        cfg.marshal_difficulty_value_id.value_or(cfg.difficulty_value_id));
     WFlag3(out, GA_T::ACTIVE_FLAG,          cfg.active_flag);
     if (has_remaining) {
         const uint32_t v = live_remaining.has_value() ? *live_remaining

@@ -1928,53 +1928,65 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 			character_id, nPawnId);
 	}
 
+	// Bag pool first (we need its size to write the outer DATA_SET count
+	// before any record bodies). Filter out anything already covered by the
+	// equipped pass — same item shipped twice would be a wasted record.
+	std::set<int> equipped_inv_ids;
+	for (const auto& d : devices) equipped_inv_ids.insert(d.inventory_id);
+	const auto bag_all = PlayerSessionStore::GetInventoryForUser(user_id, profile);
+	std::vector<InventoryRow> bag;
+	bag.reserve(bag_all.size());
+	for (const auto& row : bag_all) {
+		if (equipped_inv_ids.count(row.inventory_id)) continue;
+		bag.push_back(row);
+	}
+
+	const size_t equipped_count = devices.size();
+	const size_t bag_count      = bag.size();
+	const size_t total_records  = equipped_count + bag_count;
+
 	Logger::Log("tcp",
-		"[TCP] send_inventory_response: charId=%lld pawnId=%d equipped=%d (one packet per item)\n",
-		character_id, nPawnId, (int)devices.size());
+		"[TCP] send_inventory_response: charId=%lld pawnId=%d equipped=%zu bag=%zu (bundled into one SEND_INVENTORY)\n",
+		character_id, nPawnId, equipped_count, bag_count);
 
-	// One SEND_INVENTORY message per device. Bundling everything into a single
-	// DATA_SET worked for small loadouts but exceeded the client's per-packet
-	// receive cap (~1450 bytes) on heavily-modded loadouts — items past the cap
-	// silently dropped. The parser accumulates records into m_InventoryMap
-	// across messages, so per-device messages are equivalent semantically and
-	// each is comfortably small (~150-200 bytes worst case with 6 mods).
+	if (total_records == 0) return;
+
+	std::vector<uint8_t> response;
+
+	append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
+	append(response, 0x02, 0x00);   // 2 top-level fields: PAWN_ID + DATA_SET
+
+	Write4B(response, GA_T::PAWN_ID, nPawnId);
+
+	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+	append(response, (uint8_t)(total_records & 0xFF), (uint8_t)(total_records >> 8));
+
+	// --- Equipped block. 14 fields per record (12 scalars + 2 nested data_sets).
+	//
+	// nBlueprintId gates m_pAmBlueprint on the client (FUN_10a12740 sets it
+	// from this field). The mod-letter [...] suffix is rendered only when
+	// m_pAmBlueprint is non-null, so for any item carrying rolled mods we
+	// must send a real blueprint_id whose created_item_id matches this
+	// device. Items with no mods send 0 (no fake blueprint, no suffix).
+	// When d.oc is set, picks a blueprint with override_name_msg_id != 0
+	// so the client renders the "OC" name suffix.
+	//
+	// v76: cosmetic rows (item_id > 0, device_id = 0) marshal as their
+	// item_id and ship DEVICE_ID=0 so the client's FUN_10a12f80 recovery
+	// scan doesn't try to bind them to a live actor (cosmetics have no
+	// ATgDevice). BLUEPRINT_ID stays 0 for cosmetics (no rolled mods).
+	//
+	// Armor rows have the same shape as cosmetics (item_id > 0, device_id =
+	// 0, no backing actor) but DO carry mods — so they need a non-zero
+	// BLUEPRINT_ID to make the client's FUN_10a13820 mod-application path
+	// apply the rolled effects. Discriminator: armor has mods, cosmetics
+	// don't. Universal blueprint works because the client only nullity-
+	// checks the resolved blueprint pointer — the rendered `[…]` letters
+	// come from each effect's `prop.ui_code`, not from blueprint metadata.
+	//
+	// Slot 14 RestDevice is not cosmetic. R self-heal needs DEVICE_ID to
+	// point at the live ATgDevice inventory id; sending 0 makes R no-op.
 	for (const auto& d : devices) {
-		std::vector<uint8_t> response;
-
-		append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
-		append(response, 0x02, 0x00);   // 2 top-level fields: PAWN_ID + DATA_SET
-
-		Write4B(response, GA_T::PAWN_ID, nPawnId);
-
-		append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
-		append(response, 0x01, 0x00);   // 1 item in DATA_SET
-
-		append(response, 0x0E, 0x00);   // 14 fields in this record
-
-		// nBlueprintId gates m_pAmBlueprint on the client (FUN_10a12740 sets it
-		// from this field). The mod-letter [...] suffix is rendered only when
-		// m_pAmBlueprint is non-null, so for any item carrying rolled mods we
-		// must send a real blueprint_id whose created_item_id matches this
-		// device. Items with no mods send 0 (no fake blueprint, no suffix).
-		// When d.oc is set, picks a blueprint with override_name_msg_id != 0
-		// so the client renders the "OC" name suffix.
-		//
-		// v76: cosmetic rows (item_id > 0, device_id = 0) marshal as their
-		// item_id and ship DEVICE_ID=0 so the client's FUN_10a12f80 recovery
-		// scan doesn't try to bind them to a live actor (cosmetics have no
-		// ATgDevice). BLUEPRINT_ID stays 0 for cosmetics (no rolled mods).
-		//
-		// Armor rows have the same shape as cosmetics (item_id > 0,
-		// device_id = 0, no backing actor) but DO carry mods — so they need
-		// a non-zero BLUEPRINT_ID to make the client's FUN_10a13820
-		// mod-application path apply the rolled effects. Discriminator: armor
-		// has mods, cosmetics don't. Universal blueprint works because the
-		// client only nullity-checks the resolved blueprint pointer — the
-		// rendered `[…]` letters come from each effect's `prop.ui_code`, not
-		// from blueprint metadata.
-		//
-		// Slot 14 RestDevice is not cosmetic. R self-heal needs DEVICE_ID to
-		// point at the live ATgDevice inventory id; sending 0 makes R no-op.
 		const bool itemRow       = d.item_id > 0;
 		const bool isArmor       = itemRow && !d.mods.empty();
 		const int marshalItemId  = itemRow ? d.item_id : d.device_id;
@@ -1983,6 +1995,8 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 			isArmor                    ? ArmorLoadouts::kUniversalArmorBlueprintId :
 			(itemRow || d.mods.empty()) ? 0
 			                            : PlayerSessionStore::GetBlueprintIdForDevice(d.device_id, d.oc);
+
+		append(response, 0x0E, 0x00);   // 14 fields
 
 		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1);
 		Write4B(response, GA_T::ITEM_ID, marshalItemId);
@@ -1997,27 +2011,13 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 		WriteString(response, GA_T::ACTIVE_FLAG, "T");
 		Write4B(response, GA_T::DEVICE_ID, marshalDeviceField);
 
-		// DATA_SET_INVENTORY_STATE carries a list of {INVENTORY_ID, EFFECT_GROUP_ID}
-		// pairs. Client FUN_10a13820 @ 0x10a13820 appends every row whose
-		// INVENTORY_ID matches this item's inv_id into the inventory object's
-		// effect-group list (m_nStateEffectGroupIdArray), which drives the
-		// [...] letter suffix in the UI (one letter per row, derived from each
-		// effect's property.ui_code).
-		//
-		// Send ONLY rolled mods here. The device's built-in equip effects
-		// (asm_data_set_device_effect_groups) and built-in fire-mode effects
-		// (asm_data_set_device_mode_effect_groups) are NOT replicated through
-		// this pipe — the client already has them from its own asm.dat (via
-		// Device.m_EquipEffect + m_pFireModeSetup native data). Mixing them in
-		// here leaks built-in props into the suffix (e.g. a built-in +25% Mech
-		// Damage equip-effect with ui_code='m' would render as a stray 'm'
-		// alongside the rolled-mod letters).
-		//
-		// Server-side: built-in equip effects are applied by
-		// Inventory::ApplyDeviceEquipEffects (direct s_Properties writes), and
-		// TgDeviceFire::GetEffectGroup reads m_pFireModeSetup+0x98 directly —
-		// neither path consults m_nStateEffectGroupIdArray, so dropping built-in
-		// effects from this blob has no gameplay side-effects.
+		// DATA_SET_INVENTORY_STATE: {INVENTORY_ID, EFFECT_GROUP_ID} pairs for
+		// rolled mods only. Client FUN_10a13820 @ 0x10a13820 appends matching
+		// rows into the inventory object's effect-group list, driving the
+		// `[...]` suffix in the UI. Built-in equip / fire-mode effects are
+		// NOT shipped here — they come from the client's own asm.dat (via
+		// Device.m_EquipEffect / m_pFireModeSetup). Mixing them in leaks
+		// built-in props into the suffix.
 		std::vector<int> effectGroups = d.mods;
 		if (effectGroups.empty()) effectGroups.push_back(0); // preserve 1-row shape
 
@@ -2029,16 +2029,12 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 			Write4B(response, GA_T::EFFECT_GROUP_ID, egid);
 		}
 
-		// Ship one DATA_SET_CHARACTER_PROFILES row per build profile (1..5)
-		// with the SAME EQUIPPED_SLOT_VALUE_ID. Each row populates one of the
-		// five `invObj+0x68..+0x78` slot-table entries on the client. The
-		// equip-screen UI's FixupWidgets path requires EVERY profile entry to
-		// be non-zero — if ANY profile has 0, the client treats the item as
-		// unequipped and renders the slot widget blank for ALL profiles
-		// (including the active one). See
-		// reference_equip_screen_is_valid_gate.md.
-		// 5 rows × 4 fields × 4 bytes ≈ 80 extra bytes per item, well under
-		// the per-message cap.
+		// DATA_SET_CHARACTER_PROFILES: one row per build profile (1..5) with
+		// the same EQUIPPED_SLOT_VALUE_ID. Each row populates one of the five
+		// `invObj+0x68..+0x78` slot-table entries on the client. The equip-
+		// screen UI's FixupWidgets path requires EVERY profile entry to be
+		// non-zero — if ANY profile has 0, the slot renders blank for all
+		// profiles (see reference_equip_screen_is_valid_gate.md).
 		append(response, GA_T::DATA_SET_CHARACTER_PROFILES & 0xFF, GA_T::DATA_SET_CHARACTER_PROFILES >> 8);
 		append(response, 0x05, 0x00);
 		for (int profileId = 1; profileId <= 5; ++profileId) {
@@ -2048,35 +2044,14 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 			Write4B(response, GA_T::PROFILE_ID, (uint32_t)profileId);
 			Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, d.slot_value_id);
 		}
-
-		send_response(response);
 	}
 
-	// --- Bag pool: account-scoped inventory rows not currently equipped on
-	// this character. Wire format mirrors the equipped block above except
-	// LOCATION_VALUE_ID=370, DEVICE_ID=0, EQUIPPED_SLOT_VALUE_ID=0, and
-	// ACTIVE_FLAG=F. See the top-of-function comment for the gate analysis.
-	std::set<int> equipped_inv_ids;
-	for (const auto& d : devices) equipped_inv_ids.insert(d.inventory_id);
-
-	const auto bag = PlayerSessionStore::GetInventoryForUser(user_id, profile);
-	int bag_shipped = 0;
+	// --- Bag block. 13 fields per record (12 scalars + 1 nested data_set —
+	// no DATA_SET_CHARACTER_PROFILES because bag items aren't bound to a
+	// slot). LOCATION_VALUE_ID=370 (ON_HAND), DEVICE_ID=0, ACTIVE_FLAG=F.
+	// See top-of-function comment for why DEVICE_ID=0 is the don't-resubmit
+	// gate.
 	for (const auto& row : bag) {
-		if (equipped_inv_ids.count(row.inventory_id)) continue;
-
-		std::vector<uint8_t> response;
-
-		append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
-		append(response, 0x02, 0x00);   // PAWN_ID + DATA_SET
-
-		Write4B(response, GA_T::PAWN_ID, nPawnId);
-
-		append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
-		append(response, 0x01, 0x00);
-
-		append(response, 0x0D, 0x00);   // 13 fields per bag record
-
-		// v76: cosmetic dispatch + armor extension (see equipped-loop comment).
 		const bool   rowIsItem     = row.item_id > 0;
 		const bool   rowIsArmor    = rowIsItem && !row.mods.empty();
 		const int    marshalItemId = rowIsItem ? row.item_id : row.device_id;
@@ -2084,6 +2059,8 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 			rowIsArmor                    ? ArmorLoadouts::kUniversalArmorBlueprintId :
 			(rowIsItem || row.mods.empty()) ? 0
 			                                : PlayerSessionStore::GetBlueprintIdForDevice(row.device_id, row.oc);
+
+		append(response, 0x0D, 0x00);   // 13 fields
 
 		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1);
 		Write4B(response, GA_T::ITEM_ID, marshalItemId);
@@ -2095,8 +2072,8 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 		WriteString(response, GA_T::BOUND_FLAG, "T");
 		Write4B(response, GA_T::LOCATION_VALUE_ID, 370);   // ON_HAND
 		Write4B(response, GA_T::INSTANCE_COUNT, 0x1);
-		WriteString(response, GA_T::ACTIVE_FLAG, "F");     // not actively in use
-		Write4B(response, GA_T::DEVICE_ID, 0);             // no backing pawn device → recovery scan skips
+		WriteString(response, GA_T::ACTIVE_FLAG, "F");
+		Write4B(response, GA_T::DEVICE_ID, 0);
 
 		std::vector<int> effectGroups = row.mods;
 		if (effectGroups.empty()) effectGroups.push_back(0);
@@ -2108,14 +2085,9 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 			Write4B(response, GA_T::INVENTORY_ID, row.inventory_id);
 			Write4B(response, GA_T::EFFECT_GROUP_ID, egid);
 		}
-
-		send_response(response);
-		++bag_shipped;
 	}
 
-	Logger::Log("tcp",
-		"[TCP] send_inventory_response: charId=%lld pawnId=%d bag=%d (LOCATION=370, DEVICE_ID=0)\n",
-		character_id, nPawnId, bag_shipped);
+	send_response(response);
 }
 
 void TcpSession::send_inventory_clear(int nPawnId, int64_t character_id) {
@@ -2125,35 +2097,29 @@ void TcpSession::send_inventory_clear(int nPawnId, int64_t character_id) {
 	const auto bag = PlayerSessionStore::GetInventoryForUser(charInfo->user_id, charInfo->profile_id);
 	if (bag.empty()) return;
 
-	// One STATE=2 record per invId, packed in chunks. The per-record body is
-	// tiny (2 fields = 12 bytes) but the client's ~1450-byte per-message cap
-	// (see send_inventory_response comment) still applies. ~80 records/msg
-	// leaves comfortable headroom for the DATA_SET wrapping and TCP framing.
-	constexpr size_t kRecordsPerMessage = 80;
+	// One STATE=2 record per invId, all bundled in a single SEND_INVENTORY.
+	// Per-record body is tiny (2 fields = 12 bytes) so the bundled payload
+	// for a fully-stocked account fits well under any reasonable cap; the
+	// chunked-marker framing in send_response handles overflow if it ever
+	// matters.
+	const size_t count = bag.size();
 
-	int cleared = 0;
-	for (size_t offset = 0; offset < bag.size(); offset += kRecordsPerMessage) {
-		const size_t end = std::min(offset + kRecordsPerMessage, bag.size());
-		const size_t count = end - offset;
-
-		std::vector<uint8_t> response;
-		append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
-		append(response, 0x02, 0x00);   // PAWN_ID + DATA_SET
-		Write4B(response, GA_T::PAWN_ID, nPawnId);
-		append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
-		append(response, (uint8_t)(count & 0xFF), (uint8_t)(count >> 8));
-		for (size_t i = offset; i < end; ++i) {
-			append(response, 0x02, 0x00);  // 2 fields per record
-			Write4B(response, GA_T::INV_REPLICATION_STATE, 0x2);  // delete
-			Write4B(response, GA_T::INVENTORY_ID, bag[i].inventory_id);
-			++cleared;
-		}
-		send_response(response);
+	std::vector<uint8_t> response;
+	append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
+	append(response, 0x02, 0x00);   // PAWN_ID + DATA_SET
+	Write4B(response, GA_T::PAWN_ID, nPawnId);
+	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+	append(response, (uint8_t)(count & 0xFF), (uint8_t)(count >> 8));
+	for (const auto& row : bag) {
+		append(response, 0x02, 0x00);  // 2 fields per record
+		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x2);  // delete
+		Write4B(response, GA_T::INVENTORY_ID, row.inventory_id);
 	}
+	send_response(response);
 
 	Logger::Log("tcp",
-		"[TCP] send_inventory_clear: charId=%lld pawnId=%d wiped=%d entries (STATE=2 delete pass)\n",
-		character_id, nPawnId, cleared);
+		"[TCP] send_inventory_clear: charId=%lld pawnId=%d wiped=%zu entries (STATE=2 delete pass)\n",
+		character_id, nPawnId, count);
 }
 
 void TcpSession::send_loadout_inventory_response(int nPawnId, const std::vector<LoadoutItem>& items) {
@@ -2162,25 +2128,25 @@ void TcpSession::send_loadout_inventory_response(int nPawnId, const std::vector<
         return;
     }
     Logger::Log("tcp",
-        "[TCP] send_loadout_inventory_response: %d items for pawnId=%d (one packet per item)\n",
-        (int)items.size(), nPawnId);
+        "[TCP] send_loadout_inventory_response: %zu items for pawnId=%d (bundled into one SEND_INVENTORY)\n",
+        items.size(), nPawnId);
 
     // Same per-record wire format as send_inventory_response, minus the DB
     // lookup. BLUEPRINT_ID is 0 (no rolled mods on bot devices, so no [...]
     // suffix needed). DATA_SET_INVENTORY_STATE carries a single placeholder
     // row with EFFECT_GROUP_ID=0 to preserve the 1-row shape — harmless when
     // BLUEPRINT_ID=0 (parser skips mod application).
+    std::vector<uint8_t> response;
+
+    append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
+    append(response, 0x02, 0x00);   // 2 top-level fields: PAWN_ID + DATA_SET
+
+    Write4B(response, GA_T::PAWN_ID, nPawnId);
+
+    append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+    append(response, (uint8_t)(items.size() & 0xFF), (uint8_t)(items.size() >> 8));
+
     for (const auto& d : items) {
-        std::vector<uint8_t> response;
-
-        append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
-        append(response, 0x02, 0x00);   // 2 top-level fields: PAWN_ID + DATA_SET
-
-        Write4B(response, GA_T::PAWN_ID, nPawnId);
-
-        append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
-        append(response, 0x01, 0x00);   // 1 item per DATA_SET
-
         append(response, 0x0E, 0x00);   // 14 fields per record
 
         Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1);
@@ -2209,9 +2175,9 @@ void TcpSession::send_loadout_inventory_response(int nPawnId, const std::vector<
         Write4B(response, GA_T::INVENTORY_ID, d.inventory_id);
         Write4B(response, GA_T::PROFILE_ID, 0x1);
         Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, d.slot_value_id);
-
-        send_response(response);
     }
+
+    send_response(response);
 }
 
 void TcpSession::send_beacon_pickup_response(int nPawnId, int nDeviceId, int nInventoryId, int nEquipSlotValueId, int nItemProfileId) {

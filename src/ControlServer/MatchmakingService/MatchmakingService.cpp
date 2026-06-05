@@ -43,6 +43,17 @@ static TaskforcePolicy ParseTaskforcePolicy(const std::string& s) {
     return TaskforcePolicy::Pinned1;
 }
 
+static PopDelayPolicy ParsePopDelayPolicy(const char* raw) {
+    if (!raw) return PopDelayPolicy::HalveOnJoin;
+    const std::string s = raw;
+    if (s == "halve_on_join") return PopDelayPolicy::HalveOnJoin;
+    if (s == "fixed")         return PopDelayPolicy::Fixed;
+    if (s == "reset_on_join") return PopDelayPolicy::ResetOnJoin;
+    Logger::Log("matchmaking",
+        "[Matchmaking] Unknown pop_delay_policy '%s' — defaulting to halve_on_join\n", s.c_str());
+    return PopDelayPolicy::HalveOnJoin;
+}
+
 // Pull every row in ga_queues + ga_map_pool_entries into in-memory QueueConfigs.
 // Disabled queues are still loaded so GetQueueConfig works; only
 // GetEnabledQueueConfigs filters them out for the ticket-info wire.
@@ -60,7 +71,9 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
         "       map_icon_texture_res_id, video_res_id, location_value_id, double_agent_flag,"
         "       sys_site_id, sort_order, bonus_queue_flag, difficulty_value_id,"
         "       access_flags, active_flag, locked_flag, remaining_seconds,"
-        "       min_players_to_pop, max_players_per_instance, pop_delay_seconds "
+        "       min_players_to_pop, max_players_per_instance, pop_delay_seconds,"
+        "       pop_delay_policy, instant_pop_when_full,"
+        "       marshal_difficulty_value_id "
         "FROM ga_queues ORDER BY sort_order, queue_id";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
         Logger::Log("matchmaking", "[Matchmaking] LoadQueueConfigs prepare failed: %s\n",
@@ -124,6 +137,13 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
         }
         c.max_players_per_instance = (uint32_t)sqlite3_column_int(stmt, col++);
         c.pop_delay_seconds        = (float)sqlite3_column_double(stmt, col++);
+        c.pop_delay_policy = ParsePopDelayPolicy(
+            reinterpret_cast<const char*>(sqlite3_column_text(stmt, col++)));
+        c.instant_pop_when_full = sqlite3_column_int(stmt, col++) != 0;
+        if (sqlite3_column_type(stmt, col) != SQLITE_NULL) {
+            c.marshal_difficulty_value_id = (uint32_t)sqlite3_column_int(stmt, col);
+        }
+        col++;
         out.push_back(std::move(c));
     }
     sqlite3_finalize(stmt);
@@ -435,9 +455,30 @@ void MatchmakingService::AddPlayer(uint32_t queue_id, const QueuedPlayer& player
     Logger::Log("matchmaking", "[Matchmaking] Player %s joined queue %u (%zu players)\n",
         player.session_guid.c_str(), queue_id, it->second.players.size());
 
+    // Cap-reached instant-pop: if this AddPlayer crossed
+    // max_players_per_instance, cancel any running delay timer and pop
+    // immediately. Independent of pop_delay_policy — instant_pop_when_full
+    // is its own knob. Bypasses MaybeResetDelayedPop / normal TryPop.
+    if (it->second.config.instant_pop_when_full
+            && it->second.config.max_players_per_instance > 0
+            && it->second.players.size() >= it->second.config.max_players_per_instance) {
+        Logger::Log("queue-pop",
+            "[Matchmaking] InstantPop queue=%u (size=%zu >= max=%u) — "
+            "cancelling delay timer if any\n",
+            queue_id,
+            it->second.players.size(),
+            it->second.config.max_players_per_instance);
+        if (it->second.delayed_pop) {
+            if (it->second.delayed_pop->timer) it->second.delayed_pop->timer->cancel();
+            it->second.delayed_pop.reset();
+        }
+        TryPop(queue_id, /*delay_elapsed=*/true);
+        return;
+    }
+
     if (it->second.delayed_pop) {
-        // Active wait: halve+reset directly. TryPop will re-enter via the
-        // timer's completion handler with delay_elapsed=true.
+        // Active wait: policy-driven re-arm directly. TryPop re-enters via
+        // the timer's completion handler with delay_elapsed=true.
         MaybeResetDelayedPop(it->second, "join", player.session_guid);
     } else {
         TryPop(queue_id);
@@ -575,18 +616,42 @@ void MatchmakingService::MaybeResetDelayedPop(Queue& q,
                                               const std::string& guid) {
     if (!q.delayed_pop) return;
 
-    // Drop below min_players → cancel the wait entirely.
+    // Cancel-on-below-min is policy-independent: a queue that fell below
+    // its floor has structurally no business holding a timer regardless
+    // of the configured wait shape.
     if (q.players.size() < q.config.min_players_to_pop) {
         if (q.delayed_pop->timer) q.delayed_pop->timer->cancel();
         Logger::Log("queue-pop",
-            "[Matchmaking] DelayedPop cancelled queue=%u reason=below_min (players=%zu < min=%u)\n",
-            q.config.queue_id, q.players.size(), q.config.min_players_to_pop);
+            "[Matchmaking] DelayedPop cancelled queue=%u reason=below_min (players=%zu < min=%u) trigger=%s guid=%s\n",
+            q.config.queue_id, q.players.size(), q.config.min_players_to_pop,
+            trigger, guid.c_str());
         q.delayed_pop.reset();
         return;
     }
 
+    // Re-arm decision is policy-driven. Both Fixed and ResetOnJoin only
+    // re-arm on `trigger="join"`; leaves above min are no-ops under every
+    // policy (matches HalveOnJoin's historical behaviour).
     const float prev = q.delayed_pop->next_duration;
-    const float next = std::max(0.5f, prev * 0.5f);
+    float next = prev;
+    const char* policy_name = "halve_on_join";
+    const bool is_join = (std::string(trigger) == "join");
+    switch (q.config.pop_delay_policy) {
+        case PopDelayPolicy::HalveOnJoin:
+            policy_name = "halve_on_join";
+            if (!is_join) return;
+            next = std::max(0.5f, prev * 0.5f);
+            break;
+        case PopDelayPolicy::Fixed:
+            // Never re-arm. Timer keeps running on its original schedule.
+            return;
+        case PopDelayPolicy::ResetOnJoin:
+            policy_name = "reset_on_join";
+            if (!is_join) return;
+            next = q.config.pop_delay_seconds;
+            break;
+    }
+
     q.delayed_pop->next_duration = next;
 
     const auto next_ms = std::chrono::milliseconds((int64_t)(next * 1000.0f));
@@ -608,8 +673,9 @@ void MatchmakingService::MaybeResetDelayedPop(Queue& q,
     });
 
     Logger::Log("queue-pop",
-        "[Matchmaking] DelayedPop reset queue=%u prev=%.2fs new=%.2fs players=%zu trigger=%s guid=%s\n",
-        q.config.queue_id, prev, next, q.players.size(), trigger, guid.c_str());
+        "[Matchmaking] DelayedPop reset queue=%u prev=%.2fs new=%.2fs players=%zu trigger=%s policy=%s guid=%s\n",
+        q.config.queue_id, prev, next, q.players.size(),
+        trigger, policy_name, guid.c_str());
 }
 
 void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
