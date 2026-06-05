@@ -38,5 +38,9 @@ public:
 	// server manually without the control server to drive it.
 	// Switch: -dumpmapdata=1. Default: false.
 	static bool GetDumpMapData();
+	// True only for the native Windows control-server spawn path. The game
+	// DLL is still a Windows binary under Wine, so _WIN32 cannot distinguish
+	// host runtime.
+	static bool GetNativeWindowsRuntime();
 };
 

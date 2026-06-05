@@ -137,6 +137,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/SpawnBot/SpawnBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/Deploy/Deploy.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/ReturnHomeArea/ReturnHomeArea.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.cpp \

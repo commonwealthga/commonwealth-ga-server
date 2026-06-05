@@ -19,23 +19,24 @@ namespace CosmeticEquip {
 //
 // Persists the equip via INSERT OR REPLACE into ga_character_devices.
 // Returns true on success.
-bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int slot, int invId, int itemId);
+bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int item_profile_id,
+                 int slot, int invId, int itemId);
 
-// On pawn spawn, replay all rows from ga_character_devices whose joined
-// inventory row is a cosmetic (item_id > 0) for this character, applying
+// On pawn spawn/profile switch, replay rows from ga_character_devices whose
+// joined inventory row is a cosmetic (item_id > 0) for the active profile, applying
 // each via the same dispatch as ApplyToPawn but WITHOUT re-persisting
 // (those rows already exist). Pawn comes up wearing the player's
-// last-saved appearance.
-void LoadFromDB(ATgPawn* Pawn, int64_t character_id);
+// last-saved appearance for that profile.
+void LoadFromDB(ATgPawn* Pawn, int64_t character_id, int item_profile_id);
 
 // Reset r_CustomCharacterAssembly fields whose engine equip-points are
-// NOT present in `equippedEngineSlots` to their CDO defaults. Used by the
+// NOT present in `equippedEngineSlots` to profile defaults. Used by the
 // loadout-profile switch hook: when the new profile has nothing in a
 // cosmetic slot (helmet, suit flair, dye N, trail), the previous
 // profile's visual must drop. `equippedEngineSlots` should contain the
 // engine equip-points the new profile DID populate; everything else gets
-// reset to CDO defaults (HeadFlairId=-1, SuitFlairId=-1,
-// HelmetMeshId=-1, JetpackTrailId=0, DyeList[i]=0). Mirrors
+// reset (HeadFlairId=-1, SuitFlairId=-1, HelmetMeshId=-1,
+// JetpackTrailId=0, DyeList[i]=0). Mirrors
 // writes to PRI and bumps bNetDirty so the client repaints.
 void ClearUnsetSlots(ATgPawn* Pawn, const std::set<int>& equippedEngineSlots);
 

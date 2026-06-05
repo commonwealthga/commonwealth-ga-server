@@ -999,12 +999,8 @@ void PlayerSessionStore::SeedCharacterCosmeticDefaults(int64_t character_id, uin
 		"SELECT id FROM ga_players_inventory "
 		"WHERE user_id = ? AND item_id = ? "
 		"ORDER BY stock_n ASC LIMIT 1";
-	// item_profile_id is NOT NULL on ga_character_devices — see the
-	// migration; omitting it silently fails the row. Cosmetic defaults
-	// land in profile 1; CosmeticEquip::LoadFromDB doesn't filter by
-	// profile so this is safe (the per-profile equip-save's DELETE only
-	// touches non-armor rows for that profile, so other profiles'
-	// cosmetic rows simply accumulate as the user equips them).
+	// Defaults land only in profile 1. Other profiles stay visually blank
+	// until the player explicitly saves cosmetics there.
 	const char* kInsertEquip =
 		"INSERT OR IGNORE INTO ga_character_devices (character_id, item_profile_id, inventory_id, equipped_slot) "
 		"VALUES (?, 1, ?, ?)";

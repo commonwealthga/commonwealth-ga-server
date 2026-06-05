@@ -326,13 +326,9 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newpawn->Role       = 3;  // ROLE_Authority
 	newpawn->RemoteRole = 1;  // ROLE_SimulatedProxy
 
-	// r_nBodyMeshAsmId + r_CustomCharacterAssembly are owned by
-	// CosmeticEquip::LoadFromDB (called below, before the device equip loop).
-	// It writes the baseline assembly, overlays the character's saved
-	// cosmetics, and aligns r_nBodyMeshAsmId with the resolved SuitMeshId so
-	// downstream readers (ReplicatedEvent for r_nBodyMeshAsmId,
-	// SetCollisionFromMesh, GetBodyMeshId) see consistent state from the
-	// initial replication bunch onward.
+	// CosmeticEquip::LoadFromDB owns r_CustomCharacterAssembly and the local
+	// collision cylinder. It deliberately leaves r_nBodyMeshAsmId untouched:
+	// replicating that field re-enters native pawn setup and breaks loadouts.
 	newpawn->r_nSkillGroupSetId = classConfig.skillGroupSetId;
 	newpawn->s_nCharacterId = (int)GClientConnectionsData[ConnectionIndex].PlayerInfo.selected_character_id;
 
@@ -586,7 +582,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		// the two passes never overlap.
 		Logger::Log("spawn-asm", "pre-LoadFromDB snapshots (charId=%lld):\n", (long long)charId);
 		LogAssemblySnapshot("[pre-LoadFromDB pawn]", newpawn, newpawn->r_CustomCharacterAssembly);
-		CosmeticEquip::LoadFromDB(newpawn, charId);
+		CosmeticEquip::LoadFromDB(newpawn, charId, item_profile_id);
 		Logger::Log("spawn-asm", "post-LoadFromDB snapshots:\n");
 		LogAssemblySnapshot("[post-LoadFromDB pawn]", newpawn, newpawn->r_CustomCharacterAssembly);
 		{
@@ -733,17 +729,10 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		}
 	}
 
-	// Force a post-spawn transform refresh. TgGame.RestartPlayer's bHadPawn
-	// branch (TgGame.uc:558-559) does this on every respawn but NOT on the
-	// first spawn — and without it, server-side hitscan traces fire from a
-	// position that tracks the player but is angularly displaced, making
-	// aiming nearly impossible until the player dies and respawns.
-	// SetLocation/SetRotation force ConditionalUpdateComponents on the pawn,
-	// which re-resolves component-relative transforms (collision cylinder,
-	// skeletal mesh, attached weapon meshes) against the now-correct
-	// Location/Rotation. Mirrors the respawn fix-up so first spawn matches.
-	newpawn->SetLocation(SpawnLocation);
-	newpawn->SetRotation(PlayerController->Rotation);
+	// Refresh against the pawn's actual spawned transform. The native
+	// vLocation argument can be unavailable on some hook paths after Spawn().
+	newpawn->SetLocation(newpawn->Location);
+	newpawn->SetRotation(PlayerController ? PlayerController->Rotation : newpawn->Rotation);
 	RepairSpawnVolumeState(newpawn);
 
 	// scope-zoom investigation baseline — snapshot the aim-mode fields right
