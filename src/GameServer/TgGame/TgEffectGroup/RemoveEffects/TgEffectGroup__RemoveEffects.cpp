@@ -13,10 +13,10 @@ void DispatchEffectRemove(UTgEffect* effect, AActor* Target, unsigned long bRese
 	// previous per-call GetFullName + std::string allocation showed up as
 	// random spikes during heavy gameplay. ClassNameContains is one
 	// UClass*-keyed hash lookup + string::find against the cached name.
-	if      (ObjectClassCache::ClassNameContains(effect->Class, "TgEffectBuff"))       ((UTgEffectBuff*)effect)->Remove(Target, bResetToFollow);
-	else if (ObjectClassCache::ClassNameContains(effect->Class, "TgEffectSensor"))     ((UTgEffectSensor*)effect)->Remove(Target, bResetToFollow);
-	else if (ObjectClassCache::ClassNameContains(effect->Class, "TgEffectVisibility")) ((UTgEffectVisibility*)effect)->Remove(Target, bResetToFollow);
-	else                                                                               effect->eventRemove(Target, bResetToFollow);
+	if      (ObjectClassCache::ClassNameContains(effect, "TgEffectBuff"))       ((UTgEffectBuff*)effect)->Remove(Target, bResetToFollow);
+	else if (ObjectClassCache::ClassNameContains(effect, "TgEffectSensor"))     ((UTgEffectSensor*)effect)->Remove(Target, bResetToFollow);
+	else if (ObjectClassCache::ClassNameContains(effect, "TgEffectVisibility")) ((UTgEffectVisibility*)effect)->Remove(Target, bResetToFollow);
+	else                                                                        effect->eventRemove(Target, bResetToFollow);
 }
 
 void __fastcall TgEffectGroup__RemoveEffects::Call(UTgEffectGroup* eg, void* /*edx*/, AActor* Target, unsigned long bResetToFollow) {

@@ -3,6 +3,7 @@
 #include "src/GameServer/Constants/EquipSlot.hpp"
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "lib/nlohmann/json.hpp"
@@ -37,8 +38,12 @@ ATgDevice* __fastcall TgInventoryManager__NonPersistAddDevice::Call(
 	if (!InventoryManager) return nullptr;
 	if (nEquipPoint < 1 || nEquipPoint > 24) return nullptr;
 
-	ATgPawn* ownerpawn = (ATgPawn*)InventoryManager->Owner;
-	if (!ownerpawn || !ownerpawn->PlayerReplicationInfo) return nullptr;
+	// Owner is engine AActor* (polymorphic). Gate the cast — a non-pawn would
+	// read its own non-pawn field at the Pawn::PlayerReplicationInfo offset.
+	AActor* owner = InventoryManager->Owner;
+	if (!ObjectClassCache::ClassNameContains(owner, "TgPawn")) return nullptr;
+	ATgPawn* ownerpawn = (ATgPawn*)owner;
+	if (!ownerpawn->PlayerReplicationInfo) return nullptr;
 
 	// Diagnostic — pickup-mechanism investigation (research REPORT §3.1).
 	// Medical station has pickup_device_id=0 in DB so walk-up pickup should
@@ -150,8 +155,14 @@ ATgDevice* __fastcall TgInventoryManager__NonPersistAddDevice::Call(
 		// DATA_SET_CHARACTER_PROFILES. Without it the client's invObj slot
 		// table only gets populated for profile 1 and the device bar misses
 		// the beacon on any other active profile.
-		int itemProfileId = ((ATgPawn_Character*)ownerpawn)->r_nItemProfileId;
-		if (itemProfileId < 1 || itemProfileId > 5) itemProfileId = 1;
+		// r_nItemProfileId only exists on TgPawn_Character at +0x1634; reading
+		// at that offset on a bare TgPawn (bot) returns a garbage int. Gate
+		// the cast so non-Character pawns fall back to profile 1.
+		int itemProfileId = 1;
+		if (ObjectClassCache::ClassNameContains(ownerpawn, "TgPawn_Character")) {
+			itemProfileId = ((ATgPawn_Character*)ownerpawn)->r_nItemProfileId;
+			if (itemProfileId < 1 || itemProfileId > 5) itemProfileId = 1;
+		}
 		nlohmann::json ev;
 		ev["type"]                = IpcProtocol::MSG_GAME_EVENT;
 		ev["subtype"]             = "beacon_pickup";

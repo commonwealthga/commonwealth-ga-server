@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgDeployable/IsFriendlyWithLocalPawn/TgDeployable__IsFriendlyWithLocalPawn.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Native "get local pawn" at 0x1096ebf0 — returns APawn* for the current
@@ -17,10 +18,8 @@ unsigned int __fastcall TgDeployable__IsFriendlyWithLocalPawn::Call(
 {
 	unsigned int orig = CallOriginal(deployable, edx);
 
-	if (deployable && deployable->Class) {
-		const char* cn = deployable->Class->GetFullName();
-		if (cn && strstr(cn, "TgDeploy") != nullptr) {
-			static std::unordered_map<ATgDeployable*, int> s_cnt;
+	if (ObjectClassCache::ClassNameContains(deployable, "TgDeploy")) {
+		static std::unordered_map<ATgDeployable*, int> s_cnt;
 			int& cnt = s_cnt[deployable];
 			if ((cnt++ % 300) == 0) {
 				APawn* localPawn = GetLocalPawn ? GetLocalPawn() : nullptr;
@@ -48,7 +47,6 @@ unsigned int __fastcall TgDeployable__IsFriendlyWithLocalPawn::Call(
 					dri, driTf,
 					(depTf && localTf && depTf == localTf) ? "YES (should be friendly)" : "NO",
 					(driTf && localTf && driTf == localTf) ? "YES (should be friendly)" : "NO");
-			}
 		}
 	}
 	return orig;

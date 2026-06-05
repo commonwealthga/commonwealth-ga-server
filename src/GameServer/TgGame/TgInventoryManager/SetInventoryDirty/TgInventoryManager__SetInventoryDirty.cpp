@@ -4,6 +4,7 @@
 
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -33,8 +34,11 @@ void __fastcall TgInventoryManager__SetInventoryDirty::Call(ATgInventoryManager*
 
 	if (!Manager) return;
 
-	ATgPawn* Pawn = (ATgPawn*)Manager->Owner;
-	if (!Pawn) return;
+	// Owner is engine AActor* (polymorphic). Gate the cast so a stale/non-pawn
+	// Owner doesn't get its non-pawn fields read as Pawn->PlayerReplicationInfo.
+	AActor* owner = Manager->Owner;
+	if (!ObjectClassCache::ClassNameContains(owner, "TgPawn")) return;
+	ATgPawn* Pawn = (ATgPawn*)owner;
 
 	// Match this Pawn against any active session. Iterating is cheap — fewer
 	// than a dozen entries in practice — and we don't need a separate index.

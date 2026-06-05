@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "lib/nlohmann/json.hpp"
@@ -17,8 +18,12 @@ void __fastcall TgInventoryManager__NonPersistRemoveDevice::Call(
 	if (!InventoryManager) return;
 	if (nEquipPoint < 1 || nEquipPoint > 24) return;
 
-	ATgPawn* pawn = (ATgPawn*)InventoryManager->Owner;
-	if (!pawn) return;
+	// Owner is engine AActor* (polymorphic). InventoryManager is only ever
+	// spawned by a TgPawn in practice, but gate the cast to avoid reading
+	// pawn-specific offsets on a non-pawn if Owner is stale/wrong.
+	AActor* owner = InventoryManager->Owner;
+	if (!ObjectClassCache::ClassNameContains(owner, "TgPawn")) return;
+	ATgPawn* pawn = (ATgPawn*)owner;
 
 	ATgDevice* device = pawn->m_EquippedDevices[nEquipPoint];
 	if (!device) {
