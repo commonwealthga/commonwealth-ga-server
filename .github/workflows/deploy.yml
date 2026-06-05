@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag to deploy (leave empty or "latest" for most recent)'
+        description: 'Tag to deploy. Aliases: latest, previous, previous-N (e.g. previous-2 = 2 releases back)'
         required: false
         type: string
         default: 'latest'
@@ -31,14 +31,43 @@ jobs:
     steps:
       - name: Resolve release tag
         id: resolve
+        env:
+          REPO: ${{ github.repository }}
+          INPUT: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
-          TAG="${{ inputs.release_tag }}"
-          if [ -z "$TAG" ] || [ "$TAG" = "latest" ]; then
-            TAG=$(gh release view --json tagName -q .tagName -R "${{ github.repository }}")
-            echo "Resolved 'latest' → $TAG"
-          fi
-          if ! gh release view "$TAG" -R "${{ github.repository }}" > /dev/null 2>&1; then
+          # Index in `gh release list` output: 0 = latest, 1 = previous, etc.
+          case "$INPUT" in
+            ""|latest)
+              TAG=$(gh release view --json tagName -q .tagName -R "$REPO")
+              echo "Resolved '${INPUT:-<empty>}' → $TAG"
+              ;;
+            previous)
+              TAG=$(gh release list --limit 2 --json tagName -q '.[1].tagName // ""' -R "$REPO")
+              if [ -z "$TAG" ]; then
+                echo "::error::Not enough releases for 'previous' (need at least 2)"
+                exit 1
+              fi
+              echo "Resolved 'previous' → $TAG"
+              ;;
+            previous-*)
+              N="${INPUT#previous-}"
+              if ! [[ "$N" =~ ^[0-9]+$ ]]; then
+                echo "::error::Invalid format: '$INPUT'. Use previous-N where N is a non-negative integer."
+                exit 1
+              fi
+              TAG=$(gh release list --limit $((N + 1)) --json tagName -q ".[$N].tagName // \"\"" -R "$REPO")
+              if [ -z "$TAG" ]; then
+                echo "::error::Not enough releases to go $N back (need at least $((N + 1)))"
+                exit 1
+              fi
+              echo "Resolved '$INPUT' → $TAG"
+              ;;
+            *)
+              TAG="$INPUT"
+              ;;
+          esac
+          if ! gh release view "$TAG" -R "$REPO" > /dev/null 2>&1; then
             echo "::error::Release '$TAG' not found"
             exit 1
           fi
