@@ -1,0 +1,141 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag to deploy (leave empty or "latest" for most recent)'
+        required: false
+        type: string
+        default: 'latest'
+      target:
+        description: 'What to deploy'
+        required: true
+        type: choice
+        options:
+          - both
+          - dll
+          - control-server
+        default: both
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Required reviewers on this environment gate the run — nothing executes
+    # until you click Approve in the UI.
+    environment: production
+
+    steps:
+      - name: Resolve release tag
+        id: resolve
+        run: |
+          set -euo pipefail
+          TAG="${{ inputs.release_tag }}"
+          if [ -z "$TAG" ] || [ "$TAG" = "latest" ]; then
+            TAG=$(gh release view --json tagName -q .tagName -R "${{ github.repository }}")
+            echo "Resolved 'latest' → $TAG"
+          fi
+          if ! gh release view "$TAG" -R "${{ github.repository }}" > /dev/null 2>&1; then
+            echo "::error::Release '$TAG' not found"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Deploying release: $TAG"
+
+      - name: Download release assets
+        run: |
+          set -euo pipefail
+          mkdir -p staging
+          cd staging
+          TARGET="${{ inputs.target }}"
+          TAG="${{ steps.resolve.outputs.tag }}"
+          if [ "$TARGET" = "dll" ] || [ "$TARGET" = "both" ]; then
+            gh release download "$TAG" -p version.dll -R "${{ github.repository }}"
+          fi
+          if [ "$TARGET" = "control-server" ] || [ "$TARGET" = "both" ]; then
+            gh release download "$TAG" -p control-server -R "${{ github.repository }}"
+            chmod +x control-server
+          fi
+          ls -la
+
+      - name: Setup SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          # One alias bundles host/port/user/key so the deploy steps stay
+          # tidy and don't have to juggle scp -P vs ssh -p, etc.
+          cat > ~/.ssh/config <<EOF
+          Host gadeploy
+            HostName ${{ secrets.DEPLOY_HOST }}
+            Port ${{ secrets.DEPLOY_PORT }}
+            User ${{ secrets.DEPLOY_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            UserKnownHostsFile ~/.ssh/known_hosts
+          EOF
+          chmod 600 ~/.ssh/config
+
+      - name: Deploy DLL
+        if: inputs.target == 'dll' || inputs.target == 'both'
+        env:
+          DLL_PATH: ${{ secrets.DLL_DEST_PATH }}
+        run: |
+          set -euo pipefail
+          # Atomic replace: scp to .new beside the live file, then mv over it.
+          # Same filesystem → mv is atomic, no half-written DLL ever visible.
+          scp staging/version.dll "gadeploy:${DLL_PATH}.new"
+          ssh gadeploy "mv -- '${DLL_PATH}.new' '${DLL_PATH}'"
+          echo "Deployed version.dll → ${DLL_PATH}"
+
+      - name: Deploy control-server
+        if: inputs.target == 'control-server' || inputs.target == 'both'
+        env:
+          CS_PATH: ${{ secrets.CS_DEST_PATH }}
+        run: |
+          set -euo pipefail
+          scp staging/control-server "gadeploy:${CS_PATH}.new"
+          ssh gadeploy bash -s -- "$CS_PATH" <<'REMOTE_SCRIPT'
+            set -euo pipefail
+            CS_PATH="$1"
+
+            echo "Stopping ga-control-server..."
+            sudo -n /usr/bin/systemctl stop ga-control-server
+
+            # Belt-and-suspenders: wait up to 30s for it to actually exit,
+            # then SIGKILL. Should be redundant once you set TimeoutStopSec
+            # on the unit, but harmless if the unit already shuts down clean.
+            for i in $(seq 1 30); do
+              /usr/bin/systemctl is-active --quiet ga-control-server || break
+              sleep 1
+            done
+
+            if /usr/bin/systemctl is-active --quiet ga-control-server; then
+              echo "Service didn't stop gracefully; sending SIGKILL"
+              sudo -n /usr/bin/systemctl kill --signal=SIGKILL ga-control-server
+              sleep 2
+            fi
+
+            echo "Swapping binary..."
+            mv -- "${CS_PATH}.new" "${CS_PATH}"
+            chmod +x "${CS_PATH}"
+
+            echo "Starting ga-control-server..."
+            sudo -n /usr/bin/systemctl start ga-control-server
+            sleep 2
+
+            /usr/bin/systemctl status ga-control-server --no-pager --lines=20 || true
+
+            if ! /usr/bin/systemctl is-active --quiet ga-control-server; then
+              echo "::error::ga-control-server failed to start after deploy"
+              exit 1
+            fi
+            echo "ga-control-server is active"
+          REMOTE_SCRIPT
+          echo "Deployed control-server → ${CS_PATH}"
