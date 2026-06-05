@@ -126,6 +126,62 @@ static void RepairSpawnVolumeState(ATgPawn_Character* Pawn) {
 		(int)Pawn->r_bDisableAllDevices, (int)Pawn->r_bEnableSkills);
 }
 
+static void FreeTeamEntryStrings(FTGTEAM_ENTRY& Entry) {
+	if (Entry.fsName.Data) {
+		GAllocator::Free(Entry.fsName.Data);
+		Entry.fsName.Data = nullptr;
+	}
+	Entry.fsName.Count = Entry.fsName.Max = 0;
+	if (Entry.fsMapName.Data) {
+		GAllocator::Free(Entry.fsMapName.Data);
+		Entry.fsMapName.Data = nullptr;
+	}
+	Entry.fsMapName.Count = Entry.fsMapName.Max = 0;
+}
+
+static int PruneTaskForceRoster(
+	ATgRepInfo_TaskForce* TaskForce,
+	const std::unordered_set<ATgRepInfo_Player*>& LivePris,
+	ATgRepInfo_Player* RemovePri) {
+	if (!TaskForce || !TaskForce->m_TeamPlayers.Data || TaskForce->m_TeamPlayers.Count <= 0) {
+		return 0;
+	}
+
+	int write = 0;
+	int removed = 0;
+	for (int read = 0; read < TaskForce->m_TeamPlayers.Count; ++read) {
+		FTGTEAM_ENTRY& entry = TaskForce->m_TeamPlayers.Data[read];
+		const bool removeCurrent = RemovePri && entry.pPrep == RemovePri;
+		const bool keep = entry.pPrep && !removeCurrent && LivePris.find(entry.pPrep) != LivePris.end();
+		if (keep) {
+			if (write != read) {
+				TaskForce->m_TeamPlayers.Data[write] = entry;
+			}
+			++write;
+		} else {
+			FreeTeamEntryStrings(entry);
+			++removed;
+		}
+	}
+	TaskForce->m_TeamPlayers.Count = write;
+	TaskForce->m_TeamPlayers.Max = write;
+	return removed;
+}
+
+static std::unordered_set<ATgRepInfo_Player*> BuildLivePriSet(ATgRepInfo_Player* CurrentPri) {
+	std::unordered_set<ATgRepInfo_Player*> live;
+	if (CurrentPri) {
+		live.insert(CurrentPri);
+	}
+	for (const auto& kv : GClientConnectionsData) {
+		ATgPawn_Character* pawn = kv.second.Pawn;
+		if (pawn && pawn->PlayerReplicationInfo) {
+			live.insert((ATgRepInfo_Player*)pawn->PlayerReplicationInfo);
+		}
+	}
+	return live;
+}
+
 ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, void* edx, ATgPlayerController* PlayerController, FVector SpawnLocation) {
 
 	LogCallBegin();
@@ -393,6 +449,15 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	{
 		int tf = GClientConnectionsData[ConnectionIndex].PlayerInfo.task_force;
 		ATgRepInfo_TaskForce* taskforce = (tf == 1) ? GTeamsData.Attackers : GTeamsData.Defenders;
+		// Warm-empty homes can retain manually-added roster entries after travel; SetTeam walks them.
+		std::unordered_set<ATgRepInfo_Player*> livePris = BuildLivePriSet(newrepplayer);
+		int prunedAttackers = PruneTaskForceRoster(GTeamsData.Attackers, livePris, newrepplayer);
+		int prunedDefenders = PruneTaskForceRoster(GTeamsData.Defenders, livePris, newrepplayer);
+		if (prunedAttackers || prunedDefenders) {
+			Logger::Log("spawn",
+				"SpawnPlayerCharacter: pruned taskforce roster before SetTeam attackers=%d defenders=%d pri=%p\n",
+				prunedAttackers, prunedDefenders, newrepplayer);
+		}
 		if (newrepplayer->Team == nullptr) {
 			newrepplayer->Team = (tf == 1) ? GTeamsData.Defenders : GTeamsData.Attackers;
 		}
@@ -481,6 +546,14 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	{
 		int tf = GClientConnectionsData[ConnectionIndex].PlayerInfo.task_force;
+		std::unordered_set<ATgRepInfo_Player*> livePris = BuildLivePriSet(newrepplayer);
+		int prunedAttackers = PruneTaskForceRoster(attackers, livePris, newrepplayer);
+		int prunedDefenders = PruneTaskForceRoster(defenders, livePris, newrepplayer);
+		if (prunedAttackers || prunedDefenders) {
+			Logger::Log("spawn",
+				"SpawnPlayerCharacter: removed duplicate taskforce roster entry attackers=%d defenders=%d pri=%p\n",
+				prunedAttackers, prunedDefenders, newrepplayer);
+		}
 		if (tf == 1) {
 			attackers->m_TeamPlayers.Add(newplayerteamentry);
 		} else {
