@@ -91,10 +91,14 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 	//    isn't re-clamped), then SetPosture(0 = DEFAULT). Skip m_nPosture==31
 	//    (TG_POSTURE_NONE — the "no posture change" sentinel, matches
 	//    ApplyPosture's early-return).
-	if (target && applied->m_nPosture != 0 && applied->m_nPosture != 31) {
+	// posture reverse only applies to pawns; m_Target is declared Actor in UC,
+	// so gate on the actual class — a stale/non-pawn target would otherwise
+	// read garbage at the APawn::Controller offset and crash on ctrl->Class.
+	if (target && applied->m_nPosture != 0 && applied->m_nPosture != 31 &&
+		ObjectClassCache::ClassNameContains(target, "TgPawn")) {
 		ATgPawn* posturePawn = (ATgPawn*)target;
 		AController* ctrl = posturePawn->Controller;
-		if (ctrl && ObjectClassCache::ClassNameContains(ctrl->Class, "TgAIController")) {
+		if (ObjectClassCache::ClassNameContains(ctrl, "TgAIController")) {
 			((ATgAIController*)ctrl)->m_nPostureOverride = 0;
 		}
 		posturePawn->eventSetPosture(0, 1.0f, 0);

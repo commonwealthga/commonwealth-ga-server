@@ -6736,8 +6736,150 @@ void Database::Init() {
 
 		Logger::Log("db", "v102: retargeted VR heal pad to device 5134 (ER-2 Heal, +100 flat)\n");
 	}
+	if (version < 103) {
+		// v103: PvE spawn-table + map-object fixes.
+		//   * Mobile-grinder spawn table 10002 (difficulty 1467 = Easy?, bot 1428)
+		//     for the Alumina Mine grinder objective points.
+		//   * Waste Management Center (1P_CPFactory05_P) defender-spawn instakill fix.
+		//   * Alumina Mine (1P_CPMine05_P) grinder objective points point at 10002.
+		//   * Weapon Manufacturing Plant (1P_CPFactory01_P) spawn-instakill + lava fix.
+		//   * Sector 20 (1P_CPLab01_P) beacon priority fix.
+		//   * Android Assembly Plant (1P_CPFactory02_P) beacon team/task-force fix.
+		// INSERTs guarded with NOT EXISTS on the natural key so the migration is
+		// idempotent across re-runs (matches the v101 pattern). UPDATEs by id are
+		// inherently idempotent.
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 102", nullptr, nullptr, &err);
+		const char* kV103_grinder_spawn_table =
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, "
+			"   spawn_group, enemy_bot_id, bot_count, "
+			"   spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, "
+			"   spawn_group_respawn_sec) "
+			"SELECT 10002, 1467, 0, 1, 1428, 1, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS ("
+			"  SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"  WHERE bot_spawn_table_id = 10002 "
+			"    AND difficulty_value_id = 1467 "
+			"    AND player_profile_id = 0 "
+			"    AND spawn_group = 1 "
+			"    AND enemy_bot_id = 1428"
+			");";
+		result = sqlite3_exec(db, kV103_grinder_spawn_table, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v103 (grinder spawn table): %s\n", err); return; }
+
+		const char* kV103_map_object_config_updates =
+			// Waste Management Center defender-spawn instakill fix.
+			"UPDATE map_object_config SET map_name = '1P_CPFactory05_P', value = '2801', variant_group = NULL, variant_id = NULL, weight = 1 WHERE id = 2117;"
+			// Alumina Mine grinder spawn points -> spawn table 10002.
+			"UPDATE map_object_config SET map_name = '1P_CPMine05_P', value = '10002', variant_group = NULL, variant_id = NULL, weight = 1 WHERE id = 1745;"
+			"UPDATE map_object_config SET map_name = '1P_CPMine05_P', value = '10002', variant_group = NULL, variant_id = NULL, weight = 1 WHERE id = 1744;"
+			"UPDATE map_object_config SET map_name = '1P_CPMine05_P', value = '10002', variant_group = NULL, variant_id = NULL, weight = 1 WHERE id = 1746;"
+			"UPDATE map_object_config SET map_name = '1P_CPMine05_P', value = '10002', variant_group = NULL, variant_id = NULL, weight = 1 WHERE id = 1747;"
+			// Weapon Manufacturing Plant spawn-instakill + lava fix.
+			"UPDATE map_object_config SET map_name = '1P_CPFactory01_P', value = '4662', variant_group = NULL, variant_id = NULL, weight = 1 WHERE id = 2093;"
+			"UPDATE map_object_config SET map_name = '1P_CPFactory01_P', value = '4662', variant_group = NULL, variant_id = NULL, weight = 1 WHERE id = 2096;"
+			"UPDATE map_object_config SET map_name = '1P_CPFactory01_P', value = '2801', variant_group = NULL, variant_id = NULL, weight = 1 WHERE id = 2099;"
+			"UPDATE map_object_config SET map_name = '1P_CPFactory01_P', value = '4662', variant_group = NULL, variant_id = NULL, weight = 1 WHERE id = 2102;"
+			"UPDATE map_object_config SET map_name = '1P_CPFactory01_P', value = '4662', variant_group = NULL, variant_id = NULL, weight = 1 WHERE id = 2105;"
+			"UPDATE map_object_config SET map_name = '1P_CPFactory01_P', value = '4662', variant_group = NULL, variant_id = NULL, weight = 1 WHERE id = 2108;";
+		result = sqlite3_exec(db, kV103_map_object_config_updates, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v103 (map_object_config updates): %s\n", err); return; }
+
+		// Sector 20 beacon priority fix.
+		const char* kV103_sector20_beacon =
+			"INSERT INTO map_object_config "
+			"  (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT '1P_CPLab01_P', 12286, 'm_n_priority', '1', NULL, NULL, 1 "
+			"WHERE NOT EXISTS ("
+			"  SELECT 1 FROM map_object_config "
+			"  WHERE map_name = '1P_CPLab01_P' "
+			"    AND map_object_id = 12286 "
+			"    AND column_name = 'm_n_priority'"
+			");";
+		result = sqlite3_exec(db, kV103_sector20_beacon, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v103 (sector20 beacon): %s\n", err); return; }
+
+		// Android Assembly Plant beacon team/task-force fix.
+		const char* kV103_android_beacon =
+			"INSERT INTO map_object_config "
+			"  (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT '1P_CPFactory02_P', 11716, 's_n_team_number', '1', NULL, NULL, 1 "
+			"WHERE NOT EXISTS ("
+			"  SELECT 1 FROM map_object_config "
+			"  WHERE map_name = '1P_CPFactory02_P' "
+			"    AND map_object_id = 11716 "
+			"    AND column_name = 's_n_team_number'"
+			");"
+			"INSERT INTO map_object_config "
+			"  (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT '1P_CPFactory02_P', 11716, 's_n_task_force', '1', NULL, NULL, 1 "
+			"WHERE NOT EXISTS ("
+			"  SELECT 1 FROM map_object_config "
+			"  WHERE map_name = '1P_CPFactory02_P' "
+			"    AND map_object_id = 11716 "
+			"    AND column_name = 's_n_task_force'"
+			");";
+		result = sqlite3_exec(db, kV103_android_beacon, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v103 (android beacon): %s\n", err); return; }
+
+		Logger::Log("db", "v103: applied PvE spawn-table + map-object config fixes\n");
+	}
+	if (version < 104) {
+		// v104: 1P_CPLab05_P beacon task-force assignments.
+		// Two map objects need m_n_task_force overrides (11717=TF1, 12772=TF2).
+		// Idempotent via NOT EXISTS on (map_name, map_object_id, column_name).
+		const char* kV104_lab05_beacons =
+			"INSERT INTO map_object_config "
+			"  (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT '1P_CPLab05_P', 11717, 'm_n_task_force', '1', NULL, NULL, 1 "
+			"WHERE NOT EXISTS ("
+			"  SELECT 1 FROM map_object_config "
+			"  WHERE map_name = '1P_CPLab05_P' "
+			"    AND map_object_id = 11717 "
+			"    AND column_name = 'm_n_task_force'"
+			");"
+			"INSERT INTO map_object_config "
+			"  (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT '1P_CPLab05_P', 12772, 'm_n_task_force', '2', NULL, NULL, 1 "
+			"WHERE NOT EXISTS ("
+			"  SELECT 1 FROM map_object_config "
+			"  WHERE map_name = '1P_CPLab05_P' "
+			"    AND map_object_id = 12772 "
+			"    AND column_name = 'm_n_task_force'"
+			");";
+		result = sqlite3_exec(db, kV104_lab05_beacons, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v104 (lab05 beacons): %s\n", err); return; }
+
+		Logger::Log("db", "v104: assigned 1P_CPLab05_P beacons to task forces (11717=TF1, 12772=TF2)\n");
+	}
+	if (version < 105) {
+		// v105: 1P_CPLab03 map-object fixes.
+		// Two existing rows retargeted to value '59' (UPDATE by id — idempotent),
+		// plus a new spawn-table override on map object 12485 (NOT EXISTS guard).
+		const char* kV105_lab03_updates =
+			"UPDATE map_object_config SET map_name = '1P_CPLab03', value = '59', variant_group = NULL, variant_id = NULL, weight = 1 WHERE id = 1955;"
+			"UPDATE map_object_config SET map_name = '1P_CPLab03', value = '59', variant_group = NULL, variant_id = NULL, weight = 1 WHERE id = 1956;";
+		result = sqlite3_exec(db, kV105_lab03_updates, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v105 (lab03 updates): %s\n", err); return; }
+
+		const char* kV105_lab03_spawn_table =
+			"INSERT INTO map_object_config "
+			"  (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT '1P_CPLab03', 12485, 's_n_spawn_table_id', '41', NULL, NULL, 1 "
+			"WHERE NOT EXISTS ("
+			"  SELECT 1 FROM map_object_config "
+			"  WHERE map_name = '1P_CPLab03' "
+			"    AND map_object_id = 12485 "
+			"    AND column_name = 's_n_spawn_table_id'"
+			");";
+		result = sqlite3_exec(db, kV105_lab03_spawn_table, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v105 (lab03 spawn table): %s\n", err); return; }
+
+		Logger::Log("db", "v105: applied 1P_CPLab03 map-object fixes\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 105", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

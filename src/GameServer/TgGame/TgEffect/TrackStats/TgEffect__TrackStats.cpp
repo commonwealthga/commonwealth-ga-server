@@ -193,7 +193,7 @@ int ResolveDeviceIdFromFireMode(UObject* deviceModeRef) {
 	if (!owner) return 0;
 	// Class-name substring per reference_sdk_staticclass_misalignment — IsA is
 	// unreliable on this server build. Cached lookup, no per-call alloc.
-	if (!ObjectClassCache::ClassNameContains(owner->Class, "TgDevice")) return 0;
+	if (!ObjectClassCache::ClassNameContains(owner, "TgDevice")) return 0;
 	return ((ATgDevice*)owner)->r_nDeviceId;
 }
 
@@ -277,7 +277,7 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 	// "Has client connection" predicate — reused below.
 	auto IsRealPlayer = [](AController* ctrl) -> bool {
 		if (!ctrl) return false;
-		return ObjectClassCache::ClassNameContains(ctrl->Class, "PlayerController");
+		return ObjectClassCache::ClassNameContains(ctrl, "PlayerController");
 	};
 
 	// Resolve pet → owner for scoreboard credit (kills/damage/heal credit a
@@ -297,7 +297,7 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 	// assist credits a real human, not the pet bot.
 	if (!isHeal && targetIsPawn && magnitude > 0.0f) {
 		ATgPawn* damagerForHistory = Instigator;
-		if (ObjectClassCache::ClassNameContains(damagerForHistory->Class, "TgPawn_Detonator") &&
+		if (ObjectClassCache::ClassNameContains(damagerForHistory, "TgPawn_Detonator") &&
 		    damagerForHistory->r_ControlPawn != nullptr) {
 			damagerForHistory = damagerForHistory->r_ControlPawn;
 		}
@@ -366,7 +366,7 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 			// the firing pawn in r_ControlPawn. Mirrors the UC body of
 			// SaveDeathInfoForZoomCam.
 			ATgPawn* DamagerPawn = Instigator;
-			if (ObjectClassCache::ClassNameContains(DamagerPawn->Class, "TgPawn_Detonator") &&
+			if (ObjectClassCache::ClassNameContains(DamagerPawn, "TgPawn_Detonator") &&
 			    DamagerPawn->r_ControlPawn != nullptr) {
 				DamagerPawn = DamagerPawn->r_ControlPawn;
 			}
@@ -682,8 +682,8 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 			// fighting on their initially-owned point. So the
 			// `r_bHasBeenCapturedOnce` gate only applies in Ticket mode.
 			ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
-			const bool ticketMode = Game &&
-				ObjectClassCache::ClassNameContains(Game->Class, "TgGame_Ticket");
+			const bool ticketMode =
+				ObjectClassCache::ClassNameContains(Game, "TgGame_Ticket");
 
 			for (ATgMissionObjective* Obj : ActorCache::MissionObjectives) {
 				if (!Obj || !Obj->r_bIsActive) continue;

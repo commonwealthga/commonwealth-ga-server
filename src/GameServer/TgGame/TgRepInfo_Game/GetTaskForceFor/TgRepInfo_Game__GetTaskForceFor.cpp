@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgRepInfo_Game/GetTaskForceFor/TgRepInfo_Game__GetTaskForceFor.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Channel: `team_colors` — matches the existing server-side diagnostic channel
@@ -17,7 +18,7 @@ ATgRepInfo_TaskForce* __fastcall TgRepInfo_Game__GetTaskForceFor::Call(
 		Logger::Log("team_colors",
 			"[GetTaskForceFor ENTRY] target=0x%p class=%s  (call #%d)\n",
 			target,
-			(target && target->Class) ? target->Class->GetFullName() : "<null>",
+			ObjectClassCache::GetClassName(target).c_str(),
 			s_entryCount);
 	}
 
@@ -26,10 +27,8 @@ ATgRepInfo_TaskForce* __fastcall TgRepInfo_Game__GetTaskForceFor::Call(
 	// Deployable-targeted calls: log what the native returned + DRI state so
 	// we can see whether the "original returned non-null" case gives us the
 	// correct task force or the wrong one.  Rate-limited per target.
-	if (target && target->Class) {
-		const char* targetClass = target->Class->GetFullName();
-		if (targetClass && strstr(targetClass, "TgDeploy") != nullptr) {
-			static std::unordered_map<AActor*, int> s_cnt;
+	if (ObjectClassCache::ClassNameContains(target, "TgDeploy")) {
+		static std::unordered_map<AActor*, int> s_cnt;
 			int& cnt = s_cnt[target];
 			if ((cnt++ % 120) == 0) {
 				ATgDeployable* dep = (ATgDeployable*)target;
@@ -47,25 +46,18 @@ ATgRepInfo_TaskForce* __fastcall TgRepInfo_Game__GetTaskForceFor::Call(
 					dri ? dri->r_InstigatorInfo : nullptr,
 					inst, instPri,
 					instPri ? instPri->r_TaskForce : nullptr);
-			}
 		}
 	}
 
 	if (orig) return orig;  // Native path worked — use that answer.
 
-	if (!target || !target->Class) return nullptr;
-
-	// Only re-route deployables.  Prefix match on the class full name because
-	// SDK StaticClass() is unreliable on this binary
-	// (reference_sdk_staticclass_misalignment.md).  Covers TgDeployable, all
-	// TgDeploy_* subclasses.
-	// Copy to std::string immediately — GetFullName returns into a shared
-	// static buffer that subsequent GetFullName calls (including the one in
-	// the Logger::Log below) clobber.
-	const char* clsRaw = target->Class->GetFullName();
-	if (!clsRaw) return nullptr;
-	std::string clsName = clsRaw;
-	if (clsName.find("TgDeploy") == std::string::npos) return nullptr;
+	// Only re-route deployables. Substring match on the cached class full name
+	// (SDK StaticClass() is unreliable on this binary —
+	// reference_sdk_staticclass_misalignment.md). Covers TgDeployable, all
+	// TgDeploy_* subclasses. ObjectClassCache guards against small-int/null
+	// target before the obj->Class deref.
+	if (!ObjectClassCache::ClassNameContains(target, "TgDeploy")) return nullptr;
+	const std::string& clsName = ObjectClassCache::GetClassName(target);
 
 	// Walk Instigator → PlayerReplicationInfo → r_TaskForce.  All three are
 	// CPF_Net and verified as replicating reliably on the client (Instigator
