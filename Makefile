@@ -416,6 +416,7 @@ SOURCE_FILES_CLIENT= \
 			  $(SRC_DIR)/Utils/Logger/Logger/FileLogger.cpp \
 			  $(SRC_DIR)/Utils/DebugWindow/DebugWindow.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ObjectCache/ObjectCache.cpp \
+			  $(SRC_DIR)/GameServer/Utils/ObjectClassCache/ObjectClassCache.cpp \
 			  $(SRC_DIR)/Database/AsmDataCapture/AsmDataCapture_client_stub.cpp \
 			  $(SRC_DIR)/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent_client.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceivedClient.cpp \

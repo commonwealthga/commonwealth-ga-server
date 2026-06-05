@@ -56,7 +56,7 @@ jobs:
       # -j$(nproc) is explicit so parallelism doesn't depend on the
       # Makefile's MAKEFLAGS being honored at the top level.
       - name: Build DLLs and Control Server
-        run: make -j$(nproc) all control-server
+        run: make -j$(nproc) out/version.dll out/dinput8.dll control-server
         continue-on-error: false
 
       - name: ccache stats
