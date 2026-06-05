@@ -2,7 +2,6 @@ out/
 obj/
 .cache/
 compile_commands.json
-ga-source/
 Memory/
 AGENTS.md
 
