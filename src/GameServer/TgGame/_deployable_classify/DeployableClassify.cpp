@@ -6,6 +6,31 @@
 
 namespace DeployableClassify {
 
+bool IsKnownDeployableId(int nDeployableId) {
+	if (nDeployableId <= 0) return false;
+
+	static std::unordered_map<int, int> s_cache;
+	auto it = s_cache.find(nDeployableId);
+	if (it != s_cache.end()) return it->second == 1;
+
+	int exists = 0;
+	sqlite3* db = Database::GetConnection();
+	if (!db) return false;
+
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+		"SELECT 1 FROM asm_data_set_deployables WHERE deployable_id = ? LIMIT 1;",
+		-1, &stmt, nullptr) == SQLITE_OK) {
+		sqlite3_bind_int(stmt, 1, nDeployableId);
+		if (sqlite3_step(stmt) == SQLITE_ROW) {
+			exists = 1;
+		}
+		sqlite3_finalize(stmt);
+	}
+	s_cache[nDeployableId] = exists;
+	return exists == 1;
+}
+
 bool IsTimerBomb(int nDeployableId) {
 	// 1 = bomb, 0 = non-bomb. Missing DB row treated as non-bomb.
 	static std::unordered_map<int, int> s_cache;

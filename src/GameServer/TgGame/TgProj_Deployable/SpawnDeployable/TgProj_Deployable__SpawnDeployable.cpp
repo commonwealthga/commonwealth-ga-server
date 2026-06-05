@@ -62,22 +62,32 @@ static const char* DeployableClassNameForResId(int class_res_id) {
 }
 
 const char* TgProj_Deployable__SpawnDeployable::GetDeployableClassName(int nDeployableId) {
+	if (nDeployableId <= 0) return nullptr;
+
 	auto it = g_deployableClassCache.find(nDeployableId);
 	if (it != g_deployableClassCache.end()) return it->second;
 
-	int class_res_id = 11; // Fallback → base TgDeployable.
+	bool found = false;
+	int class_res_id = 11; // Existing row with unknown class → base TgDeployable.
 	sqlite3* db = Database::GetConnection();
+	if (!db) return nullptr;
+
 	sqlite3_stmt* stmt;
 	if (sqlite3_prepare_v2(db,
 		"SELECT class_res_id FROM asm_data_set_deployables WHERE deployable_id = ? LIMIT 1",
 		-1, &stmt, nullptr) == SQLITE_OK) {
 		sqlite3_bind_int(stmt, 1, nDeployableId);
 		if (sqlite3_step(stmt) == SQLITE_ROW) {
+			found = true;
 			if (sqlite3_column_type(stmt, 0) != SQLITE_NULL) {
 				class_res_id = sqlite3_column_int(stmt, 0);
 			}
 		}
 		sqlite3_finalize(stmt);
+	}
+	if (!found) {
+		g_deployableClassCache[nDeployableId] = nullptr;
+		return nullptr;
 	}
 	const char* name = DeployableClassNameForResId(class_res_id);
 	g_deployableClassCache[nDeployableId] = name;
@@ -700,6 +710,12 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	ATgDevice* sourceDevice, UTgDeviceFire* sourceFireMode)
 {
 	if (!pawn) return nullptr;
+	if (!DeployableClassify::IsKnownDeployableId(deployableId)) {
+		Logger::Log(GetLogChannel(),
+			"SpawnDeployableActor: invalid deployableId=%d; dropping before ApplyDeployableSetup\n",
+			deployableId);
+		return nullptr;
+	}
 
 	// Sanitise vNormal: if a caller passes (0,0,0) (no surface contact
 	// available — e.g. mid-air projectile detonation) or a non-unit vector,
@@ -723,6 +739,12 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// small-int value `0x1797` dereferenced as wchar_t*). The DB has the
 	// authoritative mapping for all 184 deployable rows.
 	const char* clsName = GetDeployableClassName(deployableId);
+	if (!clsName) {
+		Logger::Log(GetLogChannel(),
+			"SpawnDeployableActor: deployableId=%d has no class row; dropping\n",
+			deployableId);
+		return nullptr;
+	}
 	UClass* cls = ClassPreloader::GetClass(clsName);
 	bool bIsBeacon = (strcmp(clsName, "Class TgGame.TgDeploy_Beacon") == 0);
 

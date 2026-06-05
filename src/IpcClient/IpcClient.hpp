@@ -30,6 +30,12 @@ public:
     // safe. Idempotent.
     static void SendRequestSuccessor();
 
+    // Report debug/chat command execution back to the control-server console.
+    static void SendChatCommandAudit(const std::string& session_guid,
+                                     const std::string& command,
+                                     const std::string& outcome,
+                                     const std::string& details = "");
+
     // DrainInbound -- game-thread API. Called from Actor__Tick each tick.
     // Processes all queued inbound messages received since the last call.
     static void DrainInbound();

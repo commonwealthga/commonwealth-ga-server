@@ -31,8 +31,8 @@ public:
 	// Resolve the UC class full-name for a given deployable_id via the
 	// asm_data_set_deployables.class_res_id column. Returns a literal C string
 	// like "Class TgGame.TgDeploy_Beacon" suitable for ClassPreloader::GetClass.
-	// Result is cached per deployable_id across calls. Unknown rows fall back
-	// to "Class TgGame.TgDeployable".
+	// Result is cached per deployable_id across calls. Unknown rows return
+	// null so invalid command/data IDs fail before ApplyDeployableSetup.
 	static const char* GetDeployableClassName(int nDeployableId);
 
 	// Resolve the placement collision cylinder (radius, halfHeight) for a

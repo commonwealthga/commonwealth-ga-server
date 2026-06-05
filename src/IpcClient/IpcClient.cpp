@@ -216,6 +216,25 @@ void IpcClient::SendRequestSuccessor() {
         (long long)instance_id_);
 }
 
+void IpcClient::SendChatCommandAudit(const std::string& session_guid,
+                                     const std::string& command,
+                                     const std::string& outcome,
+                                     const std::string& details) {
+    nlohmann::json ev;
+    ev["type"]         = IpcProtocol::MSG_GAME_EVENT;
+    ev["subtype"]      = "chat_command_audit";
+    ev["instance_id"]  = instance_id_;
+    ev["session_guid"] = session_guid;
+    ev["command"]      = command;
+    ev["outcome"]      = outcome;
+    ev["details"]      = details;
+
+    auto info = PlayerRegistry::GetByGuid(session_guid);
+    ev["player_name"] = info ? info->player_name : "";
+
+    Send(ev.dump());
+}
+
 // ---------------------------------------------------------------------------
 // kick_write -- posted to ASIO thread by Send()
 // ---------------------------------------------------------------------------
@@ -370,6 +389,8 @@ void IpcClient::DrainInbound() {
                     Logger::Log("chat-command",
                         "[ChatCmd][DLL] change_team guid=%s: invalid target '%s'; dropping\n",
                         guid.c_str(), target_str.c_str());
+                    SendChatCommandAudit(guid, "change_team", "ignored",
+                        "invalid target '" + target_str + "'");
                     continue;
                 }
 
@@ -388,6 +409,8 @@ void IpcClient::DrainInbound() {
                     Logger::Log("chat-command",
                         "[ChatCmd][DLL] spawn_target guid=%s: invalid bot_id=%d; dropping\n",
                         guid.c_str(), bot_id);
+                    SendChatCommandAudit(guid, "spawn_target", "ignored",
+                        "invalid bot_id=" + std::to_string(bot_id));
                     continue;
                 }
 
@@ -401,6 +424,8 @@ void IpcClient::DrainInbound() {
                     Logger::Log("chat-command",
                         "[ChatCmd][DLL] spawn_target guid=%s: invalid team '%s'; dropping\n",
                         guid.c_str(), team_str.c_str());
+                    SendChatCommandAudit(guid, "spawn_target", "ignored",
+                        "invalid team '" + team_str + "'");
                     continue;
                 }
 
@@ -417,6 +442,8 @@ void IpcClient::DrainInbound() {
                     Logger::Log("chat-command",
                         "[ChatCmd][DLL] deploy_target guid=%s: invalid deployable_id=%d; dropping\n",
                         guid.c_str(), deployable_id);
+                    SendChatCommandAudit(guid, "deploy_target", "ignored",
+                        "invalid deployable_id=" + std::to_string(deployable_id));
                     continue;
                 }
 
@@ -430,6 +457,8 @@ void IpcClient::DrainInbound() {
                     Logger::Log("chat-command",
                         "[ChatCmd][DLL] deploy_target guid=%s: invalid team '%s'; dropping\n",
                         guid.c_str(), team_str.c_str());
+                    SendChatCommandAudit(guid, "deploy_target", "ignored",
+                        "invalid team '" + team_str + "'");
                     continue;
                 }
 
@@ -466,6 +495,8 @@ void IpcClient::DrainInbound() {
                 Logger::Log("chat-command",
                     "[ChatCmd][DLL] PLAYER_ACTION guid=%s: unknown action '%s'; dropping\n",
                     guid.c_str(), action.c_str());
+                SendChatCommandAudit(guid, action.empty() ? "unknown" : action, "ignored",
+                    "unknown player action");
             }
         } else if (type == IpcProtocol::MSG_PLAYER_LEAVE) {
             // Forwarded by the control server when the client sends

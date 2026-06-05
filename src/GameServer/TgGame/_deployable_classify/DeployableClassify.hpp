@@ -16,6 +16,12 @@
 
 namespace DeployableClassify {
 
+	// True iff `asm_data_set_deployables` contains this deployable_id.
+	// Debug chat commands can pass arbitrary ids; missing rows must fail
+	// closed before native ApplyDeployableSetup looks up asm data and hard-
+	// fails the instance.
+	bool IsKnownDeployableId(int nDeployableId);
+
 	// True iff `asm_data_set_deployables.show_countdown_timer_flag == 1`.
 	// Timer bombs (Shatter / EMP / Fire / Venom / Graviton, plus the named
 	// special "* AVA BOMB" / "* Bomb ADDITIONAL DAMAGE") — anything that runs

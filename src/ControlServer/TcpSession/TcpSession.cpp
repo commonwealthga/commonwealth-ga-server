@@ -558,8 +558,10 @@ bool TcpSession::DeliverPlayerAction(const std::string& session_guid, const nloh
         return false;
     }
     bool ok = IpcServer::SendToInstance(session->assigned_instance_id_, payload.dump());
-    Logger::Log("chat-command", "[ChatCmd] DeliverPlayerAction: guid=%s instance=%lld send=%d\n",
-        session_guid.c_str(), (long long)session->assigned_instance_id_, (int)ok);
+    if (!ok) {
+        Logger::Log("chat-command", "[ChatCmd] DeliverPlayerAction: guid=%s instance=%lld send=0\n",
+            session_guid.c_str(), (long long)session->assigned_instance_id_);
+    }
     return ok;
 }
 

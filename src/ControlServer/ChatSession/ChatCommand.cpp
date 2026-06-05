@@ -237,7 +237,7 @@ void DispatchChangeTeam(ChangeTeamTarget target, const std::string& session_guid
     auto lookup = InstanceRegistry::GetInstancePlayerTaskForce(session_guid);
     if (!lookup) {
         Logger::Log("chat-command",
-            "[ChatCmd] /changeteam guid=%s: no active ga_instance_players row — dropping\n",
+            "[ChatCmd] guid=%s command=-changeteam outcome=ignored details=no_active_instance_player\n",
             session_guid.c_str());
         return;
     }
@@ -252,7 +252,7 @@ void DispatchChangeTeam(ChangeTeamTarget target, const std::string& session_guid
     }
     if (new_tf == old_tf) {
         Logger::Log("chat-command",
-            "[ChatCmd] /changeteam guid=%s target=%s: already on tf=%d — no-op\n",
+            "[ChatCmd] guid=%s command=-changeteam target=%s outcome=no-op details=already_on_tf_%d\n",
             session_guid.c_str(), TargetName(target), old_tf);
         return;
     }
@@ -273,12 +273,13 @@ void DispatchChangeTeam(ChangeTeamTarget target, const std::string& session_guid
     payload["action"]       = "change_team";
     payload["args"]         = { {"target", explicit_target} };
 
-    Logger::Log("chat-command",
-        "[ChatCmd] /changeteam guid=%s target=%s -> tf %d->%d on instance=%lld\n",
-        session_guid.c_str(), TargetName(target),
-        old_tf, new_tf, (long long)instance_id);
-
-    (void)TcpSession::DeliverPlayerAction(session_guid, payload);
+    const bool sent = TcpSession::DeliverPlayerAction(session_guid, payload);
+    if (!sent) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=-changeteam target=%s outcome=ignored details=dispatch_failed tf_%d_to_%d instance=%lld\n",
+            session_guid.c_str(), TargetName(target),
+            old_tf, new_tf, (long long)instance_id);
+    }
 }
 
 void DispatchDeployTarget(const DeployTargetArgs& args, const std::string& session_guid) {
@@ -296,11 +297,12 @@ void DispatchDeployTarget(const DeployTargetArgs& args, const std::string& sessi
         {"team",          SpawnTargetTeamName(args.team)},
     };
 
-    Logger::Log("chat-command",
-        "[ChatCmd] /deploy%s guid=%s deployable_id=%d -> dispatch\n",
-        SpawnTargetTeamName(args.team), session_guid.c_str(), args.deployable_id);
-
-    (void)TcpSession::DeliverPlayerAction(session_guid, payload);
+    const bool sent = TcpSession::DeliverPlayerAction(session_guid, payload);
+    if (!sent) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=-deploy%s deployable_id=%d outcome=ignored details=dispatch_failed\n",
+            session_guid.c_str(), SpawnTargetTeamName(args.team), args.deployable_id);
+    }
 }
 
 void DispatchSpawnTarget(const SpawnTargetArgs& args, const std::string& session_guid) {
@@ -319,12 +321,13 @@ void DispatchSpawnTarget(const SpawnTargetArgs& args, const std::string& session
         {"difficulty_scalar", args.difficulty_scalar},
     };
 
-    Logger::Log("chat-command",
-        "[ChatCmd] /spawn%s guid=%s bot_id=%d scalar=%.2f -> dispatch\n",
-        SpawnTargetTeamName(args.team), session_guid.c_str(),
-        args.bot_id, args.difficulty_scalar);
-
-    (void)TcpSession::DeliverPlayerAction(session_guid, payload);
+    const bool sent = TcpSession::DeliverPlayerAction(session_guid, payload);
+    if (!sent) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=-spawn%s bot_id=%d scalar=%.2f outcome=ignored details=dispatch_failed\n",
+            session_guid.c_str(), SpawnTargetTeamName(args.team),
+            args.bot_id, args.difficulty_scalar);
+    }
 }
 
 static void DispatchSimpleAction(const std::string& action_name, const std::string& session_guid) {
@@ -337,9 +340,12 @@ static void DispatchSimpleAction(const std::string& action_name, const std::stri
     payload["session_guid"] = session_guid;
     payload["action"]       = action_name;
     payload["args"]         = nlohmann::json::object();
-    Logger::Log("chat-command", "[ChatCmd] /%s guid=%s -> dispatch\n",
-        action_name.c_str(), session_guid.c_str());
-    (void)TcpSession::DeliverPlayerAction(session_guid, payload);
+    const bool sent = TcpSession::DeliverPlayerAction(session_guid, payload);
+    if (!sent) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=-%s outcome=ignored details=dispatch_failed\n",
+            session_guid.c_str(), action_name.c_str());
+    }
 }
 
 void DispatchPossess(const std::string& session_guid)   { DispatchSimpleAction("possess",   session_guid); }
@@ -355,9 +361,12 @@ void DispatchTopDown(const TopDownArgs& args, const std::string& session_guid) {
     payload["session_guid"] = session_guid;
     payload["action"]       = "topdown";
     payload["args"]         = { {"lift_z", args.lift_z} };
-    Logger::Log("chat-command", "[ChatCmd] /topdown guid=%s lift_z=%.0f -> dispatch\n",
-        session_guid.c_str(), args.lift_z);
-    (void)TcpSession::DeliverPlayerAction(session_guid, payload);
+    const bool sent = TcpSession::DeliverPlayerAction(session_guid, payload);
+    if (!sent) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=-topdown lift_z=%.0f outcome=ignored details=dispatch_failed\n",
+            session_guid.c_str(), args.lift_z);
+    }
 }
 
 } // namespace ChatCommand

@@ -211,6 +211,18 @@ private:
         else if (type == IpcProtocol::MSG_GAME_EVENT) {
             std::string subtype = j.value("subtype", "");
             std::string guid    = j.value("session_guid", "");
+            if (subtype == "chat_command_audit") {
+                const std::string player  = j.value("player_name", "");
+                const std::string command = j.value("command", "");
+                const std::string outcome = j.value("outcome", "");
+                const std::string details = j.value("details", "");
+                const int64_t inst_id     = j.value("instance_id", instance_id_);
+                Logger::Log("chat-command",
+                    "[ChatCmd] %s player='%s' guid=%s instance=%lld outcome=%s details=%s\n",
+                    command.c_str(), player.c_str(), guid.c_str(),
+                    (long long)inst_id, outcome.c_str(), details.c_str());
+                return;
+            }
             Logger::Log("ipc", "[IpcServer] GAME_EVENT subtype=%s guid=%s\n",
                 subtype.c_str(), guid.c_str());
             if (guid.empty()) {
