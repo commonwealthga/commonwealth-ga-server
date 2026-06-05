@@ -326,13 +326,9 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newpawn->Role       = 3;  // ROLE_Authority
 	newpawn->RemoteRole = 1;  // ROLE_SimulatedProxy
 
-	// r_nBodyMeshAsmId + r_CustomCharacterAssembly are owned by
-	// CosmeticEquip::LoadFromDB (called below, before the device equip loop).
-	// It writes the baseline assembly, overlays the character's saved
-	// cosmetics, and aligns r_nBodyMeshAsmId with the resolved SuitMeshId so
-	// downstream readers (ReplicatedEvent for r_nBodyMeshAsmId,
-	// SetCollisionFromMesh, GetBodyMeshId) see consistent state from the
-	// initial replication bunch onward.
+	// CosmeticEquip::LoadFromDB owns r_CustomCharacterAssembly and the local
+	// collision cylinder. It deliberately leaves r_nBodyMeshAsmId untouched:
+	// replicating that field re-enters native pawn setup and breaks loadouts.
 	newpawn->r_nSkillGroupSetId = classConfig.skillGroupSetId;
 	newpawn->s_nCharacterId = (int)GClientConnectionsData[ConnectionIndex].PlayerInfo.selected_character_id;
 
@@ -586,7 +582,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		// the two passes never overlap.
 		Logger::Log("spawn-asm", "pre-LoadFromDB snapshots (charId=%lld):\n", (long long)charId);
 		LogAssemblySnapshot("[pre-LoadFromDB pawn]", newpawn, newpawn->r_CustomCharacterAssembly);
-		CosmeticEquip::LoadFromDB(newpawn, charId);
+		CosmeticEquip::LoadFromDB(newpawn, charId, item_profile_id);
 		Logger::Log("spawn-asm", "post-LoadFromDB snapshots:\n");
 		LogAssemblySnapshot("[post-LoadFromDB pawn]", newpawn, newpawn->r_CustomCharacterAssembly);
 		{

@@ -446,6 +446,22 @@ void IpcClient::DrainInbound() {
                 TgPlayerActions::TopDownCmd::Execute(guid, lift_z);
             } else if (action == "return_home_area") {
                 TgPlayerActions::ReturnHomeAreaCmd::Execute(guid);
+            } else if (action == "refresh_profile_ui") {
+                int refreshed = 0;
+                for (auto& kv : GClientConnectionsData) {
+                    ClientConnectionData& data = kv.second;
+                    if (data.SessionGuid != guid || data.Pawn == nullptr) continue;
+
+                    ATgPlayerController* controller =
+                        (ATgPlayerController*)data.Pawn->Controller;
+                    if (controller == nullptr || controller->Player == nullptr) continue;
+
+                    controller->eventClientResetEquipScreen();
+                    ++refreshed;
+                }
+                Logger::Log("loadout",
+                    "[IPC] refresh_profile_ui guid=%s refreshed=%d\n",
+                    guid.c_str(), refreshed);
             } else {
                 Logger::Log("chat-command",
                     "[ChatCmd][DLL] PLAYER_ACTION guid=%s: unknown action '%s'; dropping\n",

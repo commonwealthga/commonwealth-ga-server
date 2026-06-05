@@ -183,6 +183,22 @@ int ChooseVrHomeTaskForce(const InstanceInfo& home_instance,
     return task_force;
 }
 
+bool SendProfileUiRefresh(int64_t instance_id, const std::string& session_guid, const char* reason) {
+    if (instance_id == 0) {
+        return false;
+    }
+
+    nlohmann::json action;
+    action["type"] = IpcProtocol::MSG_PLAYER_ACTION;
+    action["session_guid"] = session_guid;
+    action["action"] = "refresh_profile_ui";
+    const bool ok = IpcServer::SendToInstance(instance_id, action.dump());
+    Logger::Log("loadout",
+        "[TcpSession] profile_switch refresh_profile_ui %s instance=%lld send=%d guid=%s\n",
+        reason ? reason : "unknown", (long long)instance_id, (int)ok, session_guid.c_str());
+    return ok;
+}
+
 }  // namespace
 
 void TcpSession::SetHomeMapSpawner(std::function<void()> cb) {
@@ -436,22 +452,8 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         // Control-server's job: persist new active profile, sync TcpSession
         // mirror, push refreshed inventory + skills so the client UI sees
         // the new build's stats and allocations.
-        //
-        // KNOWN ISSUE (unresolved): the skill-tree / device-bar widgets
-        // re-render against the OLD r_nItemProfileId when this handler's TCP
-        // marshals reach the client before the game-server's UDP property
-        // rep. Symptom: skill widget shows previous profile's allocation,
-        // device bar shows previous profile's icons. Close + reopen the
-        // agent-profile screen for a correct render. Investigated via the
-        // FUN_113a18a0 / FUN_11422d70 / FUN_1141f750 chain — the lookup
-        // filters skills by `pawn+0x1634` (r_nItemProfileId) at render time,
-        // and our timing fixes (eventClientResetEquipScreen on the same UDP
-        // channel + brief sleep here) didn't reliably win the race. The
-        // official Hi-Rez server was single-process so this race never
-        // existed; closing the gap from a split architecture needs a deeper
-        // trace of the client's rep-arrival ordering than we currently have.
-
         const int64_t character_id    = j.value("character_id", (int64_t)0);
+        const int64_t instance_id      = j.value("instance_id", (int64_t)0);
         const int     pawn_id         = j.value("pawn_id", 0);
         const int     item_profile_id = j.value("item_profile_id", 1);
         Logger::Log("loadout",
@@ -474,6 +476,26 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
                 session->send_inventory_response(pawn_id, character_id);
             }
             session->send_player_skills_response();
+
+            if (instance_id != 0) {
+                SendProfileUiRefresh(instance_id, session_guid, "immediate");
+
+                auto timer = std::make_shared<asio::steady_timer>(session->io_ctx_);
+                std::weak_ptr<TcpSession> weak_session = session;
+                timer->expires_after(std::chrono::milliseconds(250));
+                timer->async_wait([timer, weak_session, instance_id, session_guid, item_profile_id](std::error_code ec) {
+                    if (ec) {
+                        return;
+                    }
+                    auto s = weak_session.lock();
+                    if (!s) {
+                        return;
+                    }
+                    s->item_profile_id_ = item_profile_id;
+                    s->send_player_skills_response();
+                    SendProfileUiRefresh(instance_id, session_guid, "delayed");
+                });
+            }
         }
     }
     else if (subtype == "quest") {
