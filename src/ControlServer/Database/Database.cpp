@@ -1472,7 +1472,7 @@ void Database::Init() {
 	err = nullptr;
 	result = sqlite3_exec(db,
 		"UPDATE map_game_info "
-		"SET entry_background_image_res_id = 4985 "
+		"SET entry_background_image_res_id = 4985, is_pvp = 1 "
 		"WHERE map_game_id = 100005 "
 		"   OR map_name IN ('Dome3_VR_Arena_P', 'Dome3_VR_Arena_P_reserved')",
 		nullptr, nullptr, &err);
