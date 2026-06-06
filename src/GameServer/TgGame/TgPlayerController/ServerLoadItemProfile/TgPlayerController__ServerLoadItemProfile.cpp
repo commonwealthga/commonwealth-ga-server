@@ -35,35 +35,6 @@ static int LookupGameplayInvIdForSlot(sqlite3* db, int64_t character_id, int ite
     return invId;
 }
 
-static void SyncEquipDeviceInfoForProfileSwitch(ATgPawn_Character* Pawn) {
-    if (!Pawn) return;
-
-    ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
-    for (int slot = 1; slot < 0x19; ++slot) {
-        FEquipDeviceInfo eqInfo{};
-        ATgDevice* device = Pawn->m_EquippedDevices[slot];
-        if (device != nullptr) {
-            eqInfo.nDeviceId = device->r_nDeviceId;
-            eqInfo.nDeviceInstanceId = device->r_nDeviceInstanceId;
-            eqInfo.nQualityValueId = device->r_nQualityValueId;
-            device->bNetDirty = 1;
-            device->bForceNetUpdate = 1;
-        }
-
-        Pawn->r_EquipDeviceInfo[slot] = eqInfo;
-        if (PRI != nullptr) {
-            PRI->r_EquipDeviceInfo[slot] = eqInfo;
-        }
-    }
-
-    Pawn->bNetDirty = 1;
-    Pawn->bForceNetUpdate = 1;
-    if (PRI != nullptr) {
-        PRI->bNetDirty = 1;
-        PRI->bForceNetUpdate = 1;
-    }
-}
-
 // Reliable-server RPC fired when the player clicks a loadout-slot button
 // (1..5) anywhere in the UI. Atomic switch:
 //   1. unequip current profile's devices (RCST's PHASE 1 still sees the
@@ -274,11 +245,11 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
     Logger::Log("loadout",
         "[ServerLoadItemProfile] pre-Finalize: pawn=%p invMgr=%p changed=%d reused=%d\n",
         Pawn, Pawn->InvManager, teardown_count + gameplay_equipped, gameplay_reused);
-    // Native UpdateClientDevices crashes after live profile swaps; sync the
-    // replicated fields it owns without entering that path.
-    SyncEquipDeviceInfoForProfileSwitch(Pawn);
+    // Use native UpdateClientDevices but skip the post-native dirty tail.
+    // Bare Finalize(Pawn) previously faulted before refresh_profile_ui could repaint.
+    Inventory::Finalize((ATgPawn*)Pawn, false);
     Logger::Log("loadout",
-        "[ServerLoadItemProfile] synced equip info without Finalize; changed=%d reused=%d\n",
+        "[ServerLoadItemProfile] post-Finalize done; changed=%d reused=%d\n",
         teardown_count + gameplay_equipped, gameplay_reused);
     Logger::Log("loadout",
         "[ServerLoadItemProfile] equipped new profile %d: %d gameplay device(s), reused=%d; cosmetics reloaded\n",

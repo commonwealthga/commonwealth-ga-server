@@ -183,7 +183,7 @@ int ChooseVrHomeTaskForce(const InstanceInfo& home_instance,
     return task_force;
 }
 
-bool SendProfileUiRefresh(int64_t instance_id, const std::string& session_guid, const char* reason) {
+bool SendProfileUiRefresh(int64_t instance_id, const std::string& session_guid, int item_profile_id, const char* reason) {
     if (instance_id == 0) {
         return false;
     }
@@ -192,10 +192,12 @@ bool SendProfileUiRefresh(int64_t instance_id, const std::string& session_guid, 
     action["type"] = IpcProtocol::MSG_PLAYER_ACTION;
     action["session_guid"] = session_guid;
     action["action"] = "refresh_profile_ui";
+    action["item_profile_id"] = item_profile_id;
+    action["phase"] = reason ? reason : "unknown";
     const bool ok = IpcServer::SendToInstance(instance_id, action.dump());
     Logger::Log("loadout",
-        "[TcpSession] profile_switch refresh_profile_ui %s instance=%lld send=%d guid=%s\n",
-        reason ? reason : "unknown", (long long)instance_id, (int)ok, session_guid.c_str());
+        "[TcpSession] profile_switch refresh_profile_ui %s instance=%lld send=%d guid=%s itemProf=%d\n",
+        reason ? reason : "unknown", (long long)instance_id, (int)ok, session_guid.c_str(), item_profile_id);
     return ok;
 }
 
@@ -478,7 +480,7 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
             session->send_player_skills_response();
 
             if (instance_id != 0) {
-                SendProfileUiRefresh(instance_id, session_guid, "immediate");
+                SendProfileUiRefresh(instance_id, session_guid, item_profile_id, "immediate");
 
                 auto timer = std::make_shared<asio::steady_timer>(session->io_ctx_);
                 std::weak_ptr<TcpSession> weak_session = session;
@@ -493,7 +495,7 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
                     }
                     s->item_profile_id_ = item_profile_id;
                     s->send_player_skills_response();
-                    SendProfileUiRefresh(instance_id, session_guid, "delayed");
+                    SendProfileUiRefresh(instance_id, session_guid, item_profile_id, "delayed");
                 });
             }
         }

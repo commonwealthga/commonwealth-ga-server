@@ -43,6 +43,111 @@ struct IpcCsGuard {
     ~IpcCsGuard() { LeaveCriticalSection(&cs); }
 };
 
+namespace {
+
+struct PendingProfileAssemblyPulse {
+    FCustomCharacterAssembly assembly;
+    int item_profile_id;
+};
+
+std::unordered_map<std::string, PendingProfileAssemblyPulse> g_pending_profile_assembly_pulses;
+
+void MarkProfileAssemblyDirty(ATgPawn_Character* pawn) {
+    if (pawn == nullptr) return;
+    pawn->bNetDirty = 1;
+    pawn->bForceNetUpdate = 1;
+
+    auto* pri = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
+    if (pri != nullptr) {
+        pri->bNetDirty = 1;
+        pri->bForceNetUpdate = 1;
+    }
+}
+
+void CopyAssemblyToPawnAndPri(ATgPawn_Character* pawn, const FCustomCharacterAssembly& assembly) {
+    if (pawn == nullptr) return;
+    pawn->r_CustomCharacterAssembly = assembly;
+
+    auto* pri = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
+    if (pri != nullptr) {
+        pri->r_CustomCharacterAssembly = assembly;
+    }
+
+    MarkProfileAssemblyDirty(pawn);
+}
+
+void LogProfileAssemblyPulse(const char* tag, const std::string& guid, ATgPawn_Character* pawn,
+                             const FCustomCharacterAssembly& assembly) {
+    Logger::Log("loadout",
+        "[IPC] profile_assembly_pulse %s guid=%s pawn=%p pawnId=%d itemProf=%d "
+        "head=%d helmet=%d suit=%d suitFlair=%d trail=%d dyes=%d,%d,%d,%d,%d\n",
+        tag,
+        guid.c_str(),
+        pawn,
+        pawn ? (int)pawn->r_nPawnId : 0,
+        pawn ? (int)pawn->r_nItemProfileId : 0,
+        assembly.HeadFlairId,
+        assembly.HelmetMeshId,
+        assembly.SuitMeshId,
+        assembly.SuitFlairId,
+        assembly.JetpackTrailId,
+        assembly.DyeList[0],
+        assembly.DyeList[1],
+        assembly.DyeList[2],
+        assembly.DyeList[3],
+        assembly.DyeList[4]);
+}
+
+void BeginProfileAssemblyPulse(ATgPawn_Character* pawn, const std::string& guid, int item_profile_id) {
+    if (pawn == nullptr) return;
+
+    const FCustomCharacterAssembly real = pawn->r_CustomCharacterAssembly;
+    g_pending_profile_assembly_pulses[guid] = PendingProfileAssemblyPulse{real, item_profile_id};
+
+    // Cheap workaround: we have not found a safe way to recreate the original
+    // live-pawn appearance refresh on profile switch. Force a replicated
+    // assembly diff, then restore it so same-instance jetpack dyes repaint.
+    FCustomCharacterAssembly pulse = real;
+    pulse.HeadFlairId = -1;
+    pulse.HelmetMeshId = -1;
+    pulse.SuitFlairId = -1;
+    pulse.JetpackTrailId = 0;
+    for (int i = 0; i < 5; ++i) {
+        pulse.DyeList[i] = 0;
+    }
+
+    CopyAssemblyToPawnAndPri(pawn, pulse);
+    LogProfileAssemblyPulse("begin", guid, pawn, pulse);
+}
+
+void FinishProfileAssemblyPulse(ATgPawn_Character* pawn, const std::string& guid, int item_profile_id) {
+    if (pawn == nullptr) return;
+
+    auto it = g_pending_profile_assembly_pulses.find(guid);
+    if (it == g_pending_profile_assembly_pulses.end()) {
+        Logger::Log("loadout",
+            "[IPC] profile_assembly_pulse finish guid=%s skipped: no pending pulse\n",
+            guid.c_str());
+        return;
+    }
+
+    const PendingProfileAssemblyPulse pending = it->second;
+    g_pending_profile_assembly_pulses.erase(it);
+
+    if (pending.item_profile_id != item_profile_id ||
+        (item_profile_id > 0 && pawn->r_nItemProfileId != item_profile_id)) {
+        Logger::Log("loadout",
+            "[IPC] profile_assembly_pulse finish guid=%s skipped: stale pulse pendingProf=%d msgProf=%d pawnProf=%d\n",
+            guid.c_str(), pending.item_profile_id, item_profile_id, (int)pawn->r_nItemProfileId);
+        return;
+    }
+
+    CopyAssemblyToPawnAndPri(pawn, pending.assembly);
+    LogProfileAssemblyPulse("finish", guid, pawn, pending.assembly);
+}
+
+}  // namespace
+
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
@@ -476,6 +581,8 @@ void IpcClient::DrainInbound() {
             } else if (action == "return_home_area") {
                 TgPlayerActions::ReturnHomeAreaCmd::Execute(guid);
             } else if (action == "refresh_profile_ui") {
+                const std::string phase = j.value("phase", "");
+                const int item_profile_id = j.value("item_profile_id", 0);
                 int refreshed = 0;
                 for (auto& kv : GClientConnectionsData) {
                     ClientConnectionData& data = kv.second;
@@ -486,11 +593,16 @@ void IpcClient::DrainInbound() {
                     if (controller == nullptr || controller->Player == nullptr) continue;
 
                     controller->eventClientResetEquipScreen();
+                    if (phase == "immediate") {
+                        BeginProfileAssemblyPulse(data.Pawn, guid, item_profile_id);
+                    } else if (phase == "delayed") {
+                        FinishProfileAssemblyPulse(data.Pawn, guid, item_profile_id);
+                    }
                     ++refreshed;
                 }
                 Logger::Log("loadout",
-                    "[IPC] refresh_profile_ui guid=%s refreshed=%d\n",
-                    guid.c_str(), refreshed);
+                    "[IPC] refresh_profile_ui guid=%s phase=%s itemProf=%d refreshed=%d\n",
+                    guid.c_str(), phase.c_str(), item_profile_id, refreshed);
             } else {
                 Logger::Log("chat-command",
                     "[ChatCmd][DLL] PLAYER_ACTION guid=%s: unknown action '%s'; dropping\n",
