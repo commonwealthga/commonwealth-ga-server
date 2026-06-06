@@ -89,6 +89,8 @@ static const std::vector<GearSlot> kRobotics = {
     { 5798,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true )}, // harken
     { 3523,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true )}, // rumbleblaster
     { 6897,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // techno blaster
+    { 4192,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true )}, // tempest
+
 
     { 2918,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("hhh", "hhh", true )}, // focused repair arm
     { 2046,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("hhh", "hhh", true )}, // ARC
