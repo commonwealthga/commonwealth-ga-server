@@ -6879,7 +6879,106 @@ void Database::Init() {
 		Logger::Log("db", "v105: applied 1P_CPLab03 map-object fixes\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 105", nullptr, nullptr, &err);
+	if (version < 106) {
+		// v106: seed 1P_CPLab02_P ("Remote Operations Control Center") as the
+		// next specops map. Same bundled shape as v68/v70/v72/v74:
+		// map_object_config (factory + objective task_force/team_number pairs,
+		// spawn_table_id / default_spawn_table_id per factory), specops pool
+		// entry, and a map_game_info row so the loading screen + friendly
+		// name resolve. friendly_name_msg_id 38898 = "Remote Operations
+		// Control Center" (asm_data_set_msg_translations). Background
+		// res_id 6517 = HUD_MissionLoads.PvE_CP.1P_CPLab02_P.
+		const char* kV106_lab02_map_objects =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('1P_CPLab02_P', 12227, 'm_n_task_force',           '1',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12190, 'm_n_priority',             '1',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12190, 's_n_task_force',           '1',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12190, 's_n_team_number',          '1',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12286, 's_b_auto_spawn',           '0',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12286, 's_n_team_number',          '1',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12286, 's_n_task_force',           '1',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12286, 'm_n_priority',             '1',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12390, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12390, 'n_spawn_table_id',         '29', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12390, 'n_default_spawn_table_id', '29', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12432, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12432, 'n_spawn_table_id',         '28', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12432, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12421, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12421, 'n_spawn_table_id',         '28', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12421, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12422, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12422, 'n_spawn_table_id',         '28', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12422, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12423, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12423, 'n_spawn_table_id',         '28', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12423, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12419, 'n_default_spawn_table_id', '46', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12419, 'n_spawn_table_id',         '46', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12419, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12413, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12413, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12413, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12414, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12414, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12414, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12420, 'n_default_spawn_table_id', '34', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12420, 'n_spawn_table_id',         '34', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12420, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12418, 'n_default_spawn_table_id', '59', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12418, 'n_spawn_table_id',         '59', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12418, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12415, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12415, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12415, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12416, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12416, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12416, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12417, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12417, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12417, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12444, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12444, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12444, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12448, 'n_default_spawn_table_id', '34', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12448, 'n_spawn_table_id',         '34', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12448, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12445, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12445, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12445, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12446, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12446, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12446, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12447, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12447, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12447, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12442, 'm_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPLab02_P', 12424, 's_n_spawn_table_id',       '41', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV106_lab02_map_objects, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v106 (map_object_config lab02): %s\n", err); return; }
+
+		// Add the map to the specops pool (map_pool_id=1 — see v65 for context).
+		const char* kV106_specops_pool =
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
+			" (1, '1P_CPLab02_P', 'TgGame.TgGame_Mission');";
+		result = sqlite3_exec(db, kV106_specops_pool, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v106 (specops pool): %s\n", err); return; }
+
+		// Seed map_game_info so the loading screen + friendly name resolve.
+		// map_game_id 1313 reserved for 1P_CPLab02_P. friendly_name_msg_id
+		// 38898 = "Remote Operations Control Center". Background res_id 6517
+		// = HUD_MissionLoads.PvE_CP.1P_CPLab02_P. Other fields match the
+		// shape established in v73.
+		const char* kV106_lab02_map_game_info =
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"(1313, '1P_CPLab02_P', 'TgGame.TgGame_Mission', 1553, 38898, 6517);";
+		result = sqlite3_exec(db, kV106_lab02_map_game_info, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v106 (map_game_info lab02): %s\n", err); return; }
+
+		Logger::Log("db", "v106: seeded 1P_CPLab02_P map-object config + specops pool entry + map_game_info\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 106", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

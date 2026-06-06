@@ -296,7 +296,7 @@ void __fastcall TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_DISEASE,      0, 0, 0, 1000.0f);
 	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_STUN,         0, 0, 0, 1000.0f);
 	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_SLEEP,        0, 0, 0, 1000.0f);
-	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_KNOCKBACK,    0, 0, 0, 1000.0f);
+	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_KNOCKBACK,    30.0f, 30.0f, 0, 1000.0f);
 	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_EMP_STUN,     0, 0, 0, 1000.0f);
 	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_IGNITE,       0, 0, 0, 1000.0f);
 	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_BIO,          0, 0, 0, 1000.0f);

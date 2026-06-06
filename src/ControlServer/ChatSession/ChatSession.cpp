@@ -36,11 +36,11 @@ constexpr int kBindRetryMaxAttempts = 50;
 constexpr std::chrono::milliseconds kBindRetryDelay{100};
 
 // Tune Linux TCP keepalive so a half-broken peer (NAT drop, dead wifi,
-// powered-off router) is detected in ~2 minutes instead of the default
-// ~2 hours. Without this, a write that succeeds into the local kernel buffer
-// but never reaches the client doesn't trip async_write's error callback for
-// a very long time — so a chat-bugged player stays bugged for a long time.
-// Combined sequence: 60s idle + 4 probes * 15s = 120s worst-case detection.
+// powered-off router) is detected in ~50s instead of the default ~2 hours.
+// Matches TcpSession::EnableKeepAlive so when a player hard-crashes, both
+// their control and chat sockets get reaped in the same window — avoids a
+// zombie chat session lingering after the gameplay socket is already gone.
+// Combined sequence: 20s idle + 3 probes * 10s = 50s worst-case detection.
 void EnableTcpKeepAlive(asio::ip::tcp::socket& sock) {
     std::error_code ec;
     sock.set_option(asio::socket_base::keep_alive(true), ec);
@@ -54,7 +54,7 @@ void EnableTcpKeepAlive(asio::ip::tcp::socket& sock) {
     return;
 #else
     int fd = sock.native_handle();
-    int idle = 60, intvl = 15, count = 4;
+    int idle = 20, intvl = 10, count = 3;
     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,  &idle,  sizeof(idle))  < 0 ||
         setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)) < 0 ||
         setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,   &count, sizeof(count)) < 0) {

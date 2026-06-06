@@ -353,6 +353,9 @@ int main(int argc, char* argv[]) {
     // Set network config for TcpSession responses (external IP + chat port)
     TcpSession::SetNetworkConfig(cfg.host, cfg.chat_port);
     TcpSession::SetLoginPolicy(cfg.allow_duplicate_account_logins);
+    TcpSession::SetModerationConfig(cfg.ban_spoof.mode,
+                                    cfg.ban_spoof.fallback_close_sec,
+                                    cfg.kick.fallback_close_sec);
 
     // Clear stale instances from any previous (crashed) run
     InstanceRegistry::ClearStaleInstances();
@@ -724,6 +727,107 @@ int main(int argc, char* argv[]) {
                 payload.value("game_mode", std::string()),
                 payload.value("max_players", 0),
                 message);
+        }
+
+        if (subtype == "ban") {
+            const std::string target = payload.value("target", std::string());
+            const std::string reason = payload.value("reason", std::string());
+            if (target != "account" && target != "ip" && target != "both") {
+                message = "target must be one of account|ip|both";
+                return false;
+            }
+            if (reason.empty()) {
+                message = "reason is required";
+                return false;
+            }
+            int64_t user_id = payload.value("user_id", (int64_t)0);
+            const std::string username = payload.value("username", std::string());
+            const std::string ip       = payload.value("ip",       std::string());
+
+            if (target == "account" || target == "both") {
+                if (user_id == 0 && !username.empty()) {
+                    user_id = Database::FindUserIdByUsername(username);
+                }
+                if (user_id == 0) {
+                    message = "account ban needs user_id or a known username";
+                    return false;
+                }
+            }
+            if (target == "ip" || target == "both") {
+                if (ip.empty()) {
+                    message = "ip ban needs ip";
+                    return false;
+                }
+            }
+
+            int kicked = 0;
+            if (target == "account" || target == "both") {
+                Database::InsertOrReplaceUserBan(user_id, reason);
+                Logger::Log("ban", "[ban] admin ban target=account user=%lld reason=\"%s\"\n",
+                    (long long)user_id, reason.c_str());
+                kicked += TcpSession::KickSessionsForUser(user_id);
+            }
+            if (target == "ip" || target == "both") {
+                Database::InsertOrReplaceIpBan(ip, reason);
+                Logger::Log("ban", "[ban] admin ban target=ip ip=%s reason=\"%s\"\n",
+                    ip.c_str(), reason.c_str());
+                kicked += TcpSession::KickSessionsForIp(ip);
+            }
+
+            message = "banned target=" + target + " kicked=" + std::to_string(kicked);
+            return true;
+        }
+
+        if (subtype == "unban") {
+            const std::string target = payload.value("target", std::string());
+            if (target != "account" && target != "ip") {
+                message = "target must be account or ip";
+                return false;
+            }
+            if (target == "account") {
+                int64_t user_id = payload.value("user_id", (int64_t)0);
+                if (user_id == 0) {
+                    const std::string username = payload.value("username", std::string());
+                    if (!username.empty()) user_id = Database::FindUserIdByUsername(username);
+                }
+                if (user_id == 0) {
+                    message = "account unban needs user_id or a known username";
+                    return false;
+                }
+                Database::LiftUserBan(user_id);
+                Logger::Log("ban", "[ban] admin unban target=account user=%lld\n", (long long)user_id);
+                message = "unbanned account user_id=" + std::to_string(user_id);
+                return true;
+            }
+            const std::string ip = payload.value("ip", std::string());
+            if (ip.empty()) {
+                message = "ip unban needs ip";
+                return false;
+            }
+            Database::LiftIpBan(ip);
+            Logger::Log("ban", "[ban] admin unban target=ip ip=%s\n", ip.c_str());
+            message = "unbanned ip=" + ip;
+            return true;
+        }
+
+        if (subtype == "list-online") {
+            // Snapshot of live TcpSessions for the dashboard "Online now" panel.
+            // The admin-action wire format only carries {ok, message}, so we
+            // stuff the JSON array into `message` as a string for the
+            // dashboard to parse on the Python side.
+            nlohmann::json arr = nlohmann::json::array();
+            TcpSession::ForEachLiveSession([&arr](const TcpSession::OnlineSnapshot& snap) {
+                arr.push_back({
+                    {"session_guid", snap.session_guid},
+                    {"user_id",      snap.user_id},
+                    {"username",     snap.username},
+                    {"ip",           snap.ip},
+                    {"instance_id",  snap.instance_id},
+                    {"login_at",     snap.login_at}
+                });
+            });
+            message = arr.dump();
+            return true;
         }
 
         message = "unknown admin action subtype";

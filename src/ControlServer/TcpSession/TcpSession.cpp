@@ -11,7 +11,14 @@
 #include <map>
 #include <array>
 #include <cctype>
+#include <cstdlib>
+#include <ctime>
 #include <mutex>
+#ifndef _WIN32
+#include <netinet/tcp.h>
+#include <sys/socket.h>
+#include <cerrno>
+#endif
 
 // ---------------------------------------------------------------------------
 // TcpSession static member definitions
@@ -23,6 +30,31 @@ std::function<void()> TcpSession::on_need_home_map_;
 std::string TcpSession::s_host_ = "127.0.0.1";
 uint16_t    TcpSession::s_chat_port_ = 9001;
 bool        TcpSession::s_allow_duplicate_account_logins_ = false;
+std::string TcpSession::s_ban_spoof_mode_                = "silent";
+int         TcpSession::s_ban_spoof_fallback_close_sec_  = 0;
+int         TcpSession::s_kick_fallback_close_sec_       = 30;
+
+// Tuned tighter than ChatSession's helper because this is the gating socket
+// for re-login: dead peers MUST be reaped fast or the next attempt hits the
+// "duplicate account" rejection. Detection ~50s: 20s idle + 3 probes * 10s.
+// Tolerates a ~20s network blip before probing starts; declared dead at 50s.
+void TcpSession::EnableKeepAlive() {
+    std::error_code ec;
+    socket_.set_option(asio::socket_base::keep_alive(true), ec);
+    if (ec) {
+        Logger::Log("tcp", "[TCP] set keep_alive failed: %s\n", ec.message().c_str());
+        return;
+    }
+#ifndef _WIN32
+    int fd = socket_.native_handle();
+    int idle = 20, intvl = 10, count = 3;
+    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,  &idle,  sizeof(idle))  < 0 ||
+        setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)) < 0 ||
+        setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,   &count, sizeof(count)) < 0) {
+        Logger::Log("tcp", "[TCP] TCP_KEEPIDLE/INTVL/CNT tuning failed (errno=%d)\n", errno);
+    }
+#endif
+}
 
 namespace {
 
@@ -223,6 +255,14 @@ void TcpSession::SetNetworkConfig(const std::string& host, uint16_t chat_port) {
 
 void TcpSession::SetLoginPolicy(bool allow_duplicate_account_logins) {
     s_allow_duplicate_account_logins_ = allow_duplicate_account_logins;
+}
+
+void TcpSession::SetModerationConfig(const std::string& ban_spoof_mode,
+                                     int ban_spoof_fallback_close_sec,
+                                     int kick_fallback_close_sec) {
+    s_ban_spoof_mode_               = ban_spoof_mode;
+    s_ban_spoof_fallback_close_sec_ = ban_spoof_fallback_close_sec;
+    s_kick_fallback_close_sec_      = kick_fallback_close_sec;
 }
 
 // ---------------------------------------------------------------------------
@@ -1099,6 +1139,16 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				break;
 			}
 
+			// IP ban check — runs BEFORE username parsing so banned-by-IP
+			// sources don't even get the transient pre-login response.
+			if (auto ip_ban = Database::FindActiveBanForIp(remote_ip)) {
+				Database::InsertSession(0, /*username yet unknown*/"", remote_ip, "banned");
+				Logger::Log("ban", "[ban] ip-match ip=%s reason=\"%s\" mode=%s\n",
+					remote_ip.c_str(), ip_ban->reason.c_str(), s_ban_spoof_mode_.c_str());
+				ApplyBanSpoof();
+				break;
+			}
+
 			PacketView pkt(data + 6, length - 6);
 			auto read_login_name = [&pkt](uint16_t type) -> std::string {
 				auto field = pkt.ReadString(type);
@@ -1135,6 +1185,7 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				Logger::Log("tcp",
 					"[%s] GSC_USER_LOGIN reserved username rejected ip=%s\n",
 					Logger::GetTime(), ip_address_.c_str());
+				Database::InsertSession(0, requested_user_name, remote_ip, "rejected");
 				MarkFailedLoginIp(remote_ip);
 				close_after_login_rejection();
 				break;
@@ -1150,6 +1201,7 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				Logger::Log("tcp",
 					"[%s] GSC_USER_LOGIN invalid characters in account name rejected ip=%s hex=%s\n",
 					Logger::GetTime(), ip_address_.c_str(), hex_dump.c_str());
+				Database::InsertSession(0, requested_user_name, remote_ip, "rejected");
 				MarkFailedLoginIp(remote_ip);
 				send_login_rejected_response("Invalid characters in account name.");
 				close_after_login_rejection();
@@ -1160,6 +1212,10 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				Logger::Log("tcp",
 					"[%s] GSC_USER_LOGIN replacing prior session guid=%s name=%s\n",
 					Logger::GetTime(), session_guid_.c_str(), player_name.c_str());
+				if (session_row_id_) {
+					Database::FinalizeSession(session_row_id_);
+					session_row_id_ = 0;
+				}
 				MatchmakingService::RemovePlayer(session_guid_);
 				UnregisterSession(session_guid_);
 				IpcServer::ClearPendingAck(session_guid_);
@@ -1183,6 +1239,7 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 						"[%s] GSC_USER_LOGIN duplicate account rejected name=%s existing_guid=%s existing_ip=%s new_ip=%s\n",
 						Logger::GetTime(), requested_user_name.c_str(),
 						existing->session_guid.c_str(), existing->ip_address.c_str(), ip_address_.c_str());
+					Database::InsertSession(0, requested_user_name, remote_ip, "rejected");
 					MarkFailedLoginIp(remote_ip);
 					send_login_rejected_response("This account is already logged in.");
 					close_after_login_rejection();
@@ -1191,9 +1248,24 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			}
 
 			player_name = requested_user_name;
+			const int64_t resolved_user_id = PlayerSessionStore::UpsertUser(player_name);
+
+			// Account ban check — runs after username validation/dedup so a
+			// banned user typing a different name doesn't accidentally match.
+			if (auto user_ban = Database::FindActiveBanForUser(resolved_user_id)) {
+				Database::InsertSession(resolved_user_id, player_name, remote_ip, "banned");
+				Logger::Log("ban", "[ban] user-match user_id=%lld name=%s ip=%s reason=\"%s\" mode=%s\n",
+					(long long)resolved_user_id, player_name.c_str(), remote_ip.c_str(),
+					user_ban->reason.c_str(), s_ban_spoof_mode_.c_str());
+				ApplyBanSpoof();
+				break;
+			}
+
 			session_guid_ = GenerateSessionGuid();
 			RegisterSession(session_guid_, shared_from_this());
-			user_id_ = PlayerSessionStore::UpsertUser(player_name);
+			user_id_ = resolved_user_id;
+			session_row_id_   = Database::InsertSession(user_id_, player_name, remote_ip, "ok");
+			session_login_at_ = (int64_t)std::time(nullptr);
 
 			// Strip any inventory rows / equip references for items the
 			// operator has marked as crash-on-equip in ga_item_blacklist.
@@ -3060,4 +3132,128 @@ void TcpSession::send_login_rejected_response(const char* error_text)
 void TcpSession::send_login_response()
 {
 	send_login_response_for(player_name, session_guid_);
+}
+
+// ===========================================================================
+// User moderation — login-bug spoof, live-kick, online snapshot.
+// ===========================================================================
+
+void TcpSession::ApplyBanSpoof() {
+	if (s_ban_spoof_mode_ == "garbage") {
+		std::vector<uint8_t> garbage(32);
+		for (auto& b : garbage) b = static_cast<uint8_t>(std::rand() & 0xFF);
+		std::error_code ec;
+		asio::write(socket_, asio::buffer(garbage), ec);
+		close_after_login_rejection();
+		return;
+	}
+	// "silent" (default): do nothing. The TcpSession sits idle in do_read.
+	// The client's own ~10s read timeout fires and surfaces "Unable to
+	// connect to server" — matches the historical login-bug surface.
+	if (s_ban_spoof_fallback_close_sec_ > 0) {
+		auto self = shared_from_this();
+		auto t = std::make_shared<asio::steady_timer>(io_ctx_);
+		t->expires_after(std::chrono::seconds(s_ban_spoof_fallback_close_sec_));
+		t->async_wait([self, t](std::error_code ec) {
+			if (!ec) self->close_after_login_rejection();
+		});
+	}
+}
+
+void TcpSession::send_kick_to_bogus_map() {
+	// Slim sibling of send_go_play_response() — same opcode + the minimum
+	// set of fields the client expects on a GO_PLAY frame, but the map
+	// name is one no client will resolve. Client tries to switch maps,
+	// fails, and falls into its local disconnect path (which closes the
+	// control TCP socket → existing do_read error branch sweeps the rest).
+	std::vector<uint8_t> response;
+
+	uint16_t packet_type = GA_U::GSC_GO_PLAY;
+	uint16_t item_count = 2;
+
+	append(response, packet_type & 0xFF, packet_type >> 8);
+	append(response, item_count & 0xFF, item_count >> 8);
+
+	WriteIP(response, GA_T::HOST_NET_ADDR, "999.999.999.999", 0);
+	WriteString(response, GA_T::MAP_FILENAME, "Login_FreeAgent");
+
+
+	send_response(response);
+
+	Logger::Log("ban", "[ban] kick guid=%s user_id=%lld name=%s ip=%s\n",
+		session_guid_.c_str(), (long long)user_id_,
+		player_name.c_str(), ip_address_.c_str());
+}
+
+void TcpSession::arm_kick_fallback_timer() {
+	if (s_kick_fallback_close_sec_ <= 0) return;
+	auto self = shared_from_this();
+	auto t = std::make_shared<asio::steady_timer>(io_ctx_);
+	t->expires_after(std::chrono::seconds(s_kick_fallback_close_sec_));
+	t->async_wait([self, t](std::error_code ec) {
+		if (!ec) self->close_after_login_rejection();
+	});
+}
+
+int TcpSession::KickSessionsForUser(int64_t user_id) {
+	if (user_id <= 0) return 0;
+	// Snapshot under lock — we'll mutate session state through
+	// MatchmakingService / write the socket outside the lock.
+	std::vector<std::shared_ptr<TcpSession>> targets;
+	{
+		std::lock_guard<std::mutex> lock(sessions_mutex_);
+		for (auto& [guid, weak] : g_sessions_) {
+			auto s = weak.lock();
+			if (s && s->user_id_ == user_id) targets.push_back(s);
+		}
+	}
+	for (auto& s : targets) {
+		MatchmakingService::RemovePlayer(s->session_guid_);
+		s->send_kick_to_bogus_map();
+		s->arm_kick_fallback_timer();
+	}
+	return (int)targets.size();
+}
+
+int TcpSession::KickSessionsForIp(const std::string& ip) {
+	if (ip.empty()) return 0;
+	std::vector<std::shared_ptr<TcpSession>> targets;
+	{
+		std::lock_guard<std::mutex> lock(sessions_mutex_);
+		for (auto& [guid, weak] : g_sessions_) {
+			auto s = weak.lock();
+			if (!s) continue;
+			// ip_address_ is "1.2.3.4:port" — match the host octet quad,
+			// not the port.
+			if (s->ip_address_.rfind(ip + ":", 0) == 0) targets.push_back(s);
+		}
+	}
+	for (auto& s : targets) {
+		MatchmakingService::RemovePlayer(s->session_guid_);
+		s->send_kick_to_bogus_map();
+		s->arm_kick_fallback_timer();
+	}
+	return (int)targets.size();
+}
+
+void TcpSession::ForEachLiveSession(const std::function<void(const OnlineSnapshot&)>& visit) {
+	std::vector<OnlineSnapshot> snaps;
+	{
+		std::lock_guard<std::mutex> lock(sessions_mutex_);
+		for (auto& [guid, weak] : g_sessions_) {
+			auto s = weak.lock();
+			if (!s) continue;
+			OnlineSnapshot snap;
+			snap.session_guid = s->session_guid_;
+			snap.user_id      = s->user_id_;
+			snap.username     = s->player_name;
+			const std::string& ipp = s->ip_address_;
+			auto colon = ipp.find(':');
+			snap.ip = (colon == std::string::npos) ? ipp : ipp.substr(0, colon);
+			snap.instance_id  = s->assigned_instance_id_;
+			snap.login_at     = s->session_login_at_;
+			snaps.push_back(std::move(snap));
+		}
+	}
+	for (const auto& s : snaps) visit(s);
 }

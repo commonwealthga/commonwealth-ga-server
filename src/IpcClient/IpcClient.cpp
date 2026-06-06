@@ -13,6 +13,27 @@
 #include "src/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
+#include "src/GameServer/Globals.hpp"
+
+namespace {
+
+// PvP gate for cheat-style chat actions. -spawnfriend/-spawnenemy, -deployfriend/
+// -deployenemy, -possess/-unpossess, -topdown are dev/test-facing and would let
+// one player grief the other in a PvP match. -changeteam is intentionally NOT
+// gated — it's the team-balance escape hatch.
+//
+// Returns false on any null in the chain: a missing GRI means "match not yet
+// initialized" (lobby / map transition), which is not a PvP context. r_bIsPVP
+// defaults to 0 in TgGame__InitGameRepInfo so this matches the engine default.
+bool CurrentMatchIsPVP() {
+    ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
+    if (!Game) return false;
+    ATgRepInfo_Game* GRI = (ATgRepInfo_Game*)Game->GameReplicationInfo;
+    if (!GRI) return false;
+    return GRI->r_bIsPVP != 0;
+}
+
+} // namespace
 
 // ---------------------------------------------------------------------------
 // Static member definitions
@@ -501,6 +522,12 @@ void IpcClient::DrainInbound() {
 
                 TgPlayerActions::ChangeTeamCmd::Execute(guid, target);
             } else if (action == "spawn_target") {
+                if (CurrentMatchIsPVP()) {
+                    Logger::Log("chat-command",
+                        "[ChatCmd][DLL] spawn_target guid=%s: blocked in PvP match; dropping\n",
+                        guid.c_str());
+                    continue;
+                }
                 int bot_id = 0;
                 std::string team_str;
                 float difficulty_scalar = 0.0f;
@@ -536,6 +563,12 @@ void IpcClient::DrainInbound() {
 
                 TgPlayerActions::SpawnBotCmd::Execute(guid, bot_id, team, difficulty_scalar);
             } else if (action == "deploy_target") {
+                if (CurrentMatchIsPVP()) {
+                    Logger::Log("chat-command",
+                        "[ChatCmd][DLL] deploy_target guid=%s: blocked in PvP match; dropping\n",
+                        guid.c_str());
+                    continue;
+                }
                 int deployable_id = 0;
                 std::string team_str;
                 if (j.contains("args") && j["args"].is_object()) {
@@ -569,10 +602,28 @@ void IpcClient::DrainInbound() {
 
                 TgPlayerActions::DeployCmd::Execute(guid, deployable_id, team);
             } else if (action == "possess") {
+                if (CurrentMatchIsPVP()) {
+                    Logger::Log("chat-command",
+                        "[ChatCmd][DLL] possess guid=%s: blocked in PvP match; dropping\n",
+                        guid.c_str());
+                    continue;
+                }
                 TgPlayerActions::PossessCmd::ExecutePossess(guid);
             } else if (action == "unpossess") {
+                if (CurrentMatchIsPVP()) {
+                    Logger::Log("chat-command",
+                        "[ChatCmd][DLL] unpossess guid=%s: blocked in PvP match; dropping\n",
+                        guid.c_str());
+                    continue;
+                }
                 TgPlayerActions::PossessCmd::ExecuteUnpossess(guid);
             } else if (action == "topdown") {
+                if (CurrentMatchIsPVP()) {
+                    Logger::Log("chat-command",
+                        "[ChatCmd][DLL] topdown guid=%s: blocked in PvP match; dropping\n",
+                        guid.c_str());
+                    continue;
+                }
                 float lift_z = 0.0f;
                 if (j.contains("args") && j["args"].is_object()) {
                     lift_z = j["args"].value("lift_z", 0.0f);
