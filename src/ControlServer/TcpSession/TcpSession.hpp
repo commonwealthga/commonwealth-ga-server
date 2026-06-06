@@ -106,6 +106,7 @@ private:
     // skills response packet (FUN_1141f750 matches rows by this). Surfaced
     // from game server via spawn/skill_save IPC; default 0 until known.
     int32_t  item_profile_id_       = 0;
+    uint64_t profile_refresh_token_ = 0;
 
 	uint32_t current_match_queue_id_ = 0;
 

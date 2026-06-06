@@ -69,6 +69,7 @@ namespace {
 struct PendingProfileAssemblyPulse {
     FCustomCharacterAssembly assembly;
     int item_profile_id;
+    uint64_t refresh_token;
 };
 
 std::unordered_map<std::string, PendingProfileAssemblyPulse> g_pending_profile_assembly_pulses;
@@ -98,15 +99,16 @@ void CopyAssemblyToPawnAndPri(ATgPawn_Character* pawn, const FCustomCharacterAss
 }
 
 void LogProfileAssemblyPulse(const char* tag, const std::string& guid, ATgPawn_Character* pawn,
-                             const FCustomCharacterAssembly& assembly) {
+                             const FCustomCharacterAssembly& assembly, uint64_t refresh_token) {
     Logger::Log("loadout",
-        "[IPC] profile_assembly_pulse %s guid=%s pawn=%p pawnId=%d itemProf=%d "
+        "[IPC] profile_assembly_pulse %s guid=%s pawn=%p pawnId=%d itemProf=%d token=%llu "
         "head=%d helmet=%d suit=%d suitFlair=%d trail=%d dyes=%d,%d,%d,%d,%d\n",
         tag,
         guid.c_str(),
         pawn,
         pawn ? (int)pawn->r_nPawnId : 0,
         pawn ? (int)pawn->r_nItemProfileId : 0,
+        (unsigned long long)refresh_token,
         assembly.HeadFlairId,
         assembly.HelmetMeshId,
         assembly.SuitMeshId,
@@ -119,11 +121,12 @@ void LogProfileAssemblyPulse(const char* tag, const std::string& guid, ATgPawn_C
         assembly.DyeList[4]);
 }
 
-void BeginProfileAssemblyPulse(ATgPawn_Character* pawn, const std::string& guid, int item_profile_id) {
+void BeginProfileAssemblyPulse(ATgPawn_Character* pawn, const std::string& guid, int item_profile_id,
+                               uint64_t refresh_token) {
     if (pawn == nullptr) return;
 
     const FCustomCharacterAssembly real = pawn->r_CustomCharacterAssembly;
-    g_pending_profile_assembly_pulses[guid] = PendingProfileAssemblyPulse{real, item_profile_id};
+    g_pending_profile_assembly_pulses[guid] = PendingProfileAssemblyPulse{real, item_profile_id, refresh_token};
 
     // Cheap workaround: we have not found a safe way to recreate the original
     // live-pawn appearance refresh on profile switch. Force a replicated
@@ -138,10 +141,11 @@ void BeginProfileAssemblyPulse(ATgPawn_Character* pawn, const std::string& guid,
     }
 
     CopyAssemblyToPawnAndPri(pawn, pulse);
-    LogProfileAssemblyPulse("begin", guid, pawn, pulse);
+    LogProfileAssemblyPulse("begin", guid, pawn, pulse, refresh_token);
 }
 
-void FinishProfileAssemblyPulse(ATgPawn_Character* pawn, const std::string& guid, int item_profile_id) {
+void FinishProfileAssemblyPulse(ATgPawn_Character* pawn, const std::string& guid, int item_profile_id,
+                                uint64_t refresh_token) {
     if (pawn == nullptr) return;
 
     auto it = g_pending_profile_assembly_pulses.find(guid);
@@ -153,18 +157,28 @@ void FinishProfileAssemblyPulse(ATgPawn_Character* pawn, const std::string& guid
     }
 
     const PendingProfileAssemblyPulse pending = it->second;
+    if (pending.refresh_token != refresh_token || pending.item_profile_id != item_profile_id) {
+        Logger::Log("loadout",
+            "[IPC] profile_assembly_pulse finish guid=%s skipped: stale pulse pendingProf=%d msgProf=%d pendingToken=%llu msgToken=%llu pawnProf=%d\n",
+            guid.c_str(), pending.item_profile_id, item_profile_id,
+            (unsigned long long)pending.refresh_token,
+            (unsigned long long)refresh_token,
+            (int)pawn->r_nItemProfileId);
+        return;
+    }
+
     g_pending_profile_assembly_pulses.erase(it);
 
-    if (pending.item_profile_id != item_profile_id ||
-        (item_profile_id > 0 && pawn->r_nItemProfileId != item_profile_id)) {
+    if (item_profile_id > 0 && pawn->r_nItemProfileId != item_profile_id) {
         Logger::Log("loadout",
-            "[IPC] profile_assembly_pulse finish guid=%s skipped: stale pulse pendingProf=%d msgProf=%d pawnProf=%d\n",
-            guid.c_str(), pending.item_profile_id, item_profile_id, (int)pawn->r_nItemProfileId);
+            "[IPC] profile_assembly_pulse finish guid=%s skipped: pawn profile changed msgProf=%d pawnProf=%d token=%llu\n",
+            guid.c_str(), item_profile_id, (int)pawn->r_nItemProfileId,
+            (unsigned long long)refresh_token);
         return;
     }
 
     CopyAssemblyToPawnAndPri(pawn, pending.assembly);
-    LogProfileAssemblyPulse("finish", guid, pawn, pending.assembly);
+    LogProfileAssemblyPulse("finish", guid, pawn, pending.assembly, refresh_token);
 }
 
 }  // namespace
@@ -634,6 +648,7 @@ void IpcClient::DrainInbound() {
             } else if (action == "refresh_profile_ui") {
                 const std::string phase = j.value("phase", "");
                 const int item_profile_id = j.value("item_profile_id", 0);
+                const uint64_t refresh_token = j.value("refresh_token", (uint64_t)0);
                 int refreshed = 0;
                 for (auto& kv : GClientConnectionsData) {
                     ClientConnectionData& data = kv.second;
@@ -645,15 +660,16 @@ void IpcClient::DrainInbound() {
 
                     controller->eventClientResetEquipScreen();
                     if (phase == "immediate") {
-                        BeginProfileAssemblyPulse(data.Pawn, guid, item_profile_id);
+                        BeginProfileAssemblyPulse(data.Pawn, guid, item_profile_id, refresh_token);
                     } else if (phase == "delayed") {
-                        FinishProfileAssemblyPulse(data.Pawn, guid, item_profile_id);
+                        FinishProfileAssemblyPulse(data.Pawn, guid, item_profile_id, refresh_token);
                     }
                     ++refreshed;
                 }
                 Logger::Log("loadout",
-                    "[IPC] refresh_profile_ui guid=%s phase=%s itemProf=%d refreshed=%d\n",
-                    guid.c_str(), phase.c_str(), item_profile_id, refreshed);
+                    "[IPC] refresh_profile_ui guid=%s phase=%s itemProf=%d token=%llu refreshed=%d\n",
+                    guid.c_str(), phase.c_str(), item_profile_id,
+                    (unsigned long long)refresh_token, refreshed);
             } else {
                 Logger::Log("chat-command",
                     "[ChatCmd][DLL] PLAYER_ACTION guid=%s: unknown action '%s'; dropping\n",
