@@ -22,6 +22,9 @@ namespace CosmeticEquip {
 bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int item_profile_id,
                  int slot, int invId, int itemId);
 
+// Clear one cosmetic slot from live assembly and profile storage.
+bool ClearSlot(ATgPawn* Pawn, int64_t character_id, int item_profile_id, int slot);
+
 // On pawn spawn/profile switch, replay rows from ga_character_devices whose
 // joined inventory row is a cosmetic (item_id > 0) for the active profile, applying
 // each via the same dispatch as ApplyToPawn but WITHOUT re-persisting

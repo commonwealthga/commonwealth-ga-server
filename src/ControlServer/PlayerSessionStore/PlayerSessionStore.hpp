@@ -197,8 +197,8 @@ public:
 
     // Validates and persists an equip-screen save. `slot_to_inventory` is the
     // client's SlotIndices[] decoded into (equip_point → inventory_id) for the
-    // non-zero entries only. Returns true and replaces ga_character_devices
-    // rows in one transaction when EVERY mapping passes:
+    // non-zero entries only. Returns true and updates the sent slots in one
+    // transaction when EVERY mapping passes:
     //   - inventory_id exists in ga_players_inventory AND user_id matches
     //   - inventory.profile_id is 0 OR equals current profile_id
     //   - the equip_point's canonical slot_value_id is in inventory.allowed_slots
@@ -213,9 +213,8 @@ public:
     //                       client didn't change armor. See ArmorSlot
     //                       constants in src/GameServer/Constants/EquipSlot.hpp
     //                       for the index↔SVID decode.
-    // `item_profile_id` is the loadout slot (1..5) being saved into; ONLY
-    // rows in that slot are replaced. Other profiles' equipped state is
-    // untouched.
+    // `item_profile_id` is the loadout slot (1..5) being saved into. Unsent
+    // slots are preserved because some cosmetic actions send partial payloads.
     static bool SaveEquippedDevices(int64_t character_id, int64_t user_id,
                                     uint32_t profile_id,
                                     int item_profile_id,

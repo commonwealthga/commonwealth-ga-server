@@ -12,6 +12,12 @@
 #include <cstdlib>
 #include <set>
 
+static constexpr int kDyeNoneItemId = 3524;
+
+static bool IsDyeNoneSlot(int itemId, int slot) {
+	return itemId == kDyeNoneItemId && slot >= 16 && slot <= 20;
+}
+
 // Reliable-server RPC fired by the client's equip-screen "Apply" button.
 //
 // `DeviceArray.SlotIndices[i]` carries the inventory_id (= ga_players_inventory.id)
@@ -126,6 +132,7 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 		int  itemId     = 0;
 		std::vector<int> mods;
 		bool isCosmetic = false;  // deviceId == 0 && itemId > 0
+		bool clearsCosmetic = false;
 	};
 	SlotResolution resolved[0x19];
 	{
@@ -152,6 +159,7 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 				r.quality  = sqlite3_column_int(stmt, 1);
 				r.itemId   = sqlite3_column_int(stmt, 3);
 				r.isCosmetic = (r.deviceId == 0 && r.itemId > 0);
+				r.clearsCosmetic = IsDyeNoneSlot(r.itemId, slot);
 
 				const char* csv = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
 				if (csv && *csv) {
@@ -224,6 +232,11 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 				++equipped_now;
 			}
 		} else if (r.itemId > 0) {
+			if (r.clearsCosmetic) {
+				CosmeticEquip::ClearSlot(Pawn, character_id, itemProfileId, slot);
+				touchedCosmetics = true;
+				continue;
+			}
 			// Cosmetic path. ApplyToPawn writes the right
 			// r_CustomCharacterAssembly field + persists at the remapped DB
 			// slot (cosmetic suit→22, cosmetic helmet→23) so it doesn't
@@ -234,7 +247,9 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 		}
 	}
 	if (touchedCosmetics) {
-		CosmeticEquip::ClearUnsetSlots(Pawn, equippedCosmeticEngineSlots);
+		Logger::Log(GetLogChannel(),
+			"equip-save: cosmetics touched; preserving unsent cosmetic slots (sent=%d)\n",
+			(int)equippedCosmeticEngineSlots.size());
 	} else {
 		Logger::Log(GetLogChannel(), "equip-save: cosmetics unchanged; skip ClearUnsetSlots\n");
 	}

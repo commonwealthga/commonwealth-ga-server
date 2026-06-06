@@ -390,6 +390,49 @@ bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int item_profile_id,
 	return true;
 }
 
+bool ClearSlot(ATgPawn* Pawn, int64_t character_id, int item_profile_id, int slot) {
+	if (!Pawn) return false;
+	item_profile_id = NormalizeItemProfileId(Pawn, item_profile_id);
+	if (slot < 16 || slot > 20) return false;
+
+	auto* charPawn = (ATgPawn_Character*)Pawn;
+	auto* PRI      = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+	charPawn->r_CustomCharacterAssembly.DyeList[slot - 16] = kNoCosmeticItemId;
+
+	sqlite3* db = Database::GetConnection();
+	if (db) {
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+		        "DELETE FROM ga_character_devices "
+		        "WHERE character_id = ? AND item_profile_id = ? AND equipped_slot = ?",
+		        -1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(stmt, 1, character_id);
+			sqlite3_bind_int  (stmt, 2, item_profile_id);
+			sqlite3_bind_int  (stmt, 3, slot);
+			sqlite3_step(stmt);
+			sqlite3_finalize(stmt);
+		} else {
+			Logger::Log("cosmetic-equip", "ClearSlot: prepare(delete) failed: %s\n",
+				sqlite3_errmsg(db));
+		}
+	}
+
+	ApplyClassVisualFallback(Pawn, charPawn->r_nProfileId);
+	ApplyMeshCollisionData(Pawn, charPawn->r_CustomCharacterAssembly.SuitMeshId);
+	if (PRI) PRI->r_CustomCharacterAssembly = charPawn->r_CustomCharacterAssembly;
+	Pawn->bNetDirty       = 1;
+	Pawn->bForceNetUpdate = 1;
+	if (PRI) {
+		PRI->bNetDirty       = 1;
+		PRI->bForceNetUpdate = 1;
+	}
+
+	Logger::Log("cosmetic-equip",
+		"ClearSlot: char=%lld itemProf=%d dyeSlot=%d\n",
+		(long long)character_id, item_profile_id, slot);
+	return true;
+}
+
 // Baseline assembly used as the starting point before overlaying DB cosmetics.
 // Mirrors what SpawnPlayerCharacter used to write inline, except SuitMeshId
 // starts at -1 instead of the 1225 Medic Acolyte placeholder — the cosmetic
