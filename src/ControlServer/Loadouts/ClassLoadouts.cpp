@@ -132,7 +132,7 @@ static const std::vector<GearSlot> kAssault = {
     { 1987,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", true)},  // imini
     { 2790,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("xxx", "ddd", false)},  // gammaburst
     { 1991,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", true)},  // headhunter
-    { 6896,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", false)},  // helot mini
+    // { 6896,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", false)},  // helot mini
     { 2914,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", true)},  // inferno
     { 5789,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", true)},  // longbow
     { 3695,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("xxx", "ddd", false)},  // magmalance
