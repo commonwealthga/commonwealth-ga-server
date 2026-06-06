@@ -1,5 +1,7 @@
 #include "src/GameServer/TgGame/TgMissionObjective/RegisterSelf/TgMissionObjective__RegisterSelf.hpp"
+#include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // RegisterSelf is called from TgMissionObjective.PostBeginPlay().
@@ -62,7 +64,9 @@ void __fastcall TgMissionObjective__RegisterSelf::Call(ATgMissionObjective* Obje
 		// if (radius <= 0.0f) radius = 512.0f;
 		// if (height <= 0.0f) height = 256.0f;
 		float radius = 250.0f;
-		float height = 200.0f;
+		UObject* Game = (UObject*)Globals::Get().GGameInfo;
+		bool bIsEscortGame = Game != nullptr && ObjectClassCache::ClassNameContains(Game, "TgGame_Escort");
+		float height = bIsEscortGame ? 200.0f : 70.0f;
 
 		UCylinderComponent* Cylinder = (UCylinderComponent*)Proxy->CollisionComponent;
 		if (Cylinder != nullptr) {
