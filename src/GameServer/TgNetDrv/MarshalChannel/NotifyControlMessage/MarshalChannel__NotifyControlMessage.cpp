@@ -344,29 +344,38 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 
 	// game->eventPostLogin(newcontroller);  // removed: now runs inside SpawnPlayActor naturally
 
-	// Activate the game HUD's gameplay flags. TgPlayerController overrides
-	// ClientSetCinematicMode: when bAffectsHUD is set and current bShowHUD
-	// doesn't match the requested state, it calls TgHUD.ToggleDrawAllHUD()
-	// which flips BOTH bShowHUD → true AND m_bDrawPawnHUD → true — which
-	// are the two flags DrawActorOverlays' inner gate requires.
-	//
-	// NOTE: the SDK wrapper APlayerController::ClientSetCinematicMode uses
-	// a C++ bitfield params struct (`unsigned long x : 1` at each 4-byte
-	// offset). C++ default packing puts all four bools in the SAME dword,
-	// but UC bytecode reads each bool as LOW BIT of a SEPARATE dword at
-	// offsets 0x0/0x4/0x8/0xC. The SDK wrapper therefore sends garbage
-	// params — bAffectsHUD arrives as 0 on the client and the inner if
-	// is skipped. We call ProcessEvent directly with a manually-laid-out
-	// params struct to work around this.
-	// {
-	// 	struct { uint32_t bInCinematicMode, bAffectsMovement, bAffectsTurning, bAffectsHUD; } parms = { 0, 0, 0, 1 };
-	// 	UFunction* pFn = (UFunction*)ObjectCache::Find("Function Engine.PlayerController.ClientSetCinematicMode");
-	// 	if (pFn) newcontroller->ProcessEvent(pFn, &parms, nullptr);
-	// }
-
 	Logger::Log("aim-trace", "RESETFORCEVIEWTARGET pawn = 0x%p\n", newcontroller->Pawn);
 	newcontroller->ResetForceViewTarget();
 	Logger::Log("aim-trace", "NEW VIEWTARGET = 0x%p\n", newcontroller->ViewTarget);
+
+	// Clear stale SpectatingMatch/cinematic visual state after real TgHUD_Game
+	// exists. TgPlayerController's overrides update HUD fade and m_bDrawPawnHUD.
+	{
+		struct ClearFadeParms {
+			uint32_t bEnableFading;
+			uint8_t fadeColor[4];
+			float fadeAlpha[2];
+			float fadeTime;
+		} clearFade = {};
+		struct CinematicParms {
+			uint32_t bInCinematicMode;
+			uint32_t bAffectsMovement;
+			uint32_t bAffectsTurning;
+			uint32_t bAffectsHUD;
+		} cinematic = { 0, 0, 0, 1 };
+
+		UFunction* fadeFn = (UFunction*)ObjectCache::Find("Function TgGame.TgPlayerController.ClientSetCameraFade");
+		UFunction* cinematicFn = (UFunction*)ObjectCache::Find("Function TgGame.TgPlayerController.ClientSetCinematicMode");
+		if (fadeFn) {
+			newcontroller->ProcessEvent(fadeFn, &clearFade, nullptr);
+		}
+		if (cinematicFn) {
+			newcontroller->ProcessEvent(cinematicFn, &cinematic, nullptr);
+		}
+		Logger::Log("spawn",
+			"HandlePlayerConnected: cleared client fade/cinematic hud fadeFn=%p cinematicFn=%p pawn=%p viewTarget=%p\n",
+			fadeFn, cinematicFn, newcontroller->Pawn, newcontroller->ViewTarget);
+	}
 
 	// (Removed: pre-spawned beacon deferral. The new SpawnObject + GetTaskForce
 	// reimplementation lets the UC state machine register beacons through their

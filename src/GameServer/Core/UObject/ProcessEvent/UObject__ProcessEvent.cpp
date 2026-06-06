@@ -183,6 +183,7 @@ enum class DispatchTag : uint8_t {
 	RefireCheckTimer,             // independent stealth-refresh side effect, then catch-all
 	TgGameLogin,                  // CallOriginal then clear PRI spectator flags
 	TgGamePostLogin,              // Pre-seed PRI.r_TaskForce, then CallOriginal
+	SpectateVisualState,          // Diagnostic for black-screen/fade/view-target join races
 	DyingBeginState,              // CallOriginal then BotDied
 	DeviceFiringEndState,         // CallOriginal then jetpack-flag clear
 	ServerStopFire,               // CallOriginal then RemoveEffectGroupsByCategory(stealth)
@@ -567,6 +568,15 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	if (strcmp(name, "Function TgDevice.DeviceFiring.RefireCheckTimer") == 0)        return DispatchTag::RefireCheckTimer;
 	if (strcmp(name, "Function TgGame.TgGame.Login") == 0)                           return DispatchTag::TgGameLogin;
 	if (strcmp(name, "Function TgGame.TgGame.PostLogin") == 0)                       return DispatchTag::TgGamePostLogin;
+	if (strcmp(name, "Function TgGame.TgPlayerController.ClientSetCameraFade") == 0 ||
+	    strcmp(name, "Function TgGame.TgPlayerController.ClientSetCinematicMode") == 0 ||
+	    strcmp(name, "Function TgGame.TgPlayerController.ServerSetViewTarget") == 0 ||
+	    strcmp(name, "Function Engine.PlayerController.ClientSetViewTarget") == 0 ||
+	    strcmp(name, "Function TgGame.TgPlayerController.ForwardToSpectatingMatch") == 0 ||
+	    strcmp(name, "Function TgGame.TgPlayerController.ClientForwardToSpectatingMatch") == 0 ||
+	    strcmp(name, "Function TgGame.TgPlayerController.SpectatingMatch.BeginState") == 0) {
+		return DispatchTag::SpectateVisualState;
+	}
 	if (strcmp(name, "Function TgPawn.Dying.BeginState") == 0)                       return DispatchTag::DyingBeginState;
 	if (strcmp(name, "Function TgDevice.DeviceFiring.EndState") == 0)                return DispatchTag::DeviceFiringEndState;
 	if (strcmp(name, "Function TgGame.TgDevice.ServerStopFire") == 0)                return DispatchTag::ServerStopFire;
@@ -993,6 +1003,53 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 					repInfo->bForceNetUpdate = 1;
 				}
 			}
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	}
+
+	case DispatchTag::SpectateVisualState: {
+		if (Logger::IsChannelEnabled("spawn")) {
+			std::string fnName = Function->GetFullName();
+			std::string objName = Object->GetFullName();
+			ATgPlayerController* pc = (ATgPlayerController*)Object;
+			APlayerReplicationInfo* pri = pc ? pc->PlayerReplicationInfo : nullptr;
+			AActor* paramActor = nullptr;
+			if (Params &&
+			    (fnName == "Function TgGame.TgPlayerController.ServerSetViewTarget" ||
+			     fnName == "Function Engine.PlayerController.ClientSetViewTarget")) {
+				paramActor = *(AActor**)Params;
+			}
+
+			int fadeEnable = -1;
+			float fadeAlphaX = 0.0f;
+			float fadeAlphaY = 0.0f;
+			float fadeTime = 0.0f;
+			if (Params && fnName == "Function TgGame.TgPlayerController.ClientSetCameraFade") {
+				fadeEnable = (int)(*(uint32_t*)((char*)Params + 0x00) & 1);
+				fadeAlphaX = *(float*)((char*)Params + 0x08);
+				fadeAlphaY = *(float*)((char*)Params + 0x0C);
+				fadeTime = *(float*)((char*)Params + 0x10);
+			}
+
+			int cinematic = -1;
+			int affectsHud = -1;
+			if (Params && fnName == "Function TgGame.TgPlayerController.ClientSetCinematicMode") {
+				cinematic = (int)(*(uint32_t*)((char*)Params + 0x00) & 1);
+				affectsHud = (int)(*(uint32_t*)((char*)Params + 0x0C) & 1);
+			}
+
+			Logger::Log("spawn",
+				"SpectateVisualState: fn=%s obj=%s pawn=%p viewTarget=%p paramActor=%p "
+				"onlySpec=%d isSpec=%d outOfLives=%d fade=%d alpha=(%.2f,%.2f) fadeTime=%.2f "
+				"cinematic=%d affectsHud=%d\n",
+				fnName.c_str(), objName.c_str(),
+				pc ? pc->Pawn : nullptr, pc ? pc->ViewTarget : nullptr, paramActor,
+				pri ? (int)pri->bOnlySpectator : -1,
+				pri ? (int)pri->bIsSpectator : -1,
+				pri ? (int)pri->bOutOfLives : -1,
+				fadeEnable, fadeAlphaX, fadeAlphaY, fadeTime,
+				cinematic, affectsHud);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
 		break;
