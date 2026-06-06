@@ -150,7 +150,16 @@ void __fastcall UdpNetDriver__TickDispatch::Call(UUdpNetDriver* NetDriver, void*
 
 			// *(FURL*)((char*)Connection + 0x6C) = url; // set Connection->URL
 			*(uint32_t*)((char*)Connection + 0x74) = 3; // set Connection->State
-			*(uint32_t*)((char*)Connection + 0xCC) = 512; // Connection->MaxPacket = 512  (matches binary's UNetConnection::InitConnection @ 0x10c1e600)
+			// Connection->MaxPacket. Binary InitConnection @ 0x10c1e600 sets this to
+			// 512, a 2008-era assumption. UDP MTU on modern paths is 1500 (1472 after
+			// IPv4+UDP headers); UE3 stock IpDrv uses 1024+. At 512 each FlushNet
+			// ships ≤ ~510 bytes payload, and PreSend's EnsurePacketRoom forces an
+			// inline FlushNet every time a single 500-byte UMarshalChannel bunch
+			// would overflow — one bunch per packet, lots of per-packet header
+			// overhead burned. 1400 is safely under MTU after IPv4 (20) + UDP (8)
+			// headers (=28 bytes overhead) and lets a single packet carry multiple
+			// marshal bunches OR a full actor-rep bunch + several small ones.
+			*(uint32_t*)((char*)Connection + 0xCC) = 1400;
 			*(uint32_t*)((char*)Connection + 0xD0) = 0;   // Connection->PacketOverhead = 0  (matches binary; this game's UE3 fork dropped the SLIP_HEADER_SIZE default)
 
 			*(void**)((char*)Connection + 0x70) = (void*)NetDriver; // Connection->Driver — must be set BEFORE the Driver→Connection copy below
