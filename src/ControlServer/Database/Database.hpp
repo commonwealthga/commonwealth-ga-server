@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <optional>
 #include <cstdint>
 
 class Database {
@@ -22,4 +23,57 @@ public:
     static void AcceptQuest(int64_t character_id, int quest_id);
     static void CompleteQuest(int64_t character_id, int quest_id);
     static void AbandonQuest(int64_t character_id, int quest_id);
+
+    // ---- User moderation: session history ----------------------------------
+    // outcome: "ok" (live or completed), "rejected" (validation failure),
+    // "banned" (ban triggered). Returns the row id, or 0 on failure.
+    static int64_t InsertSession(int64_t user_id_or_zero,
+                                 const std::string& username,
+                                 const std::string& ip,
+                                 const std::string& outcome);
+    // Sets logout_at = strftime('%s','now') on the given row.
+    static void FinalizeSession(int64_t session_row_id);
+
+    // ---- User moderation: bans ---------------------------------------------
+    struct ActiveBan {
+        int64_t     id        = 0;
+        std::string reason;
+        int64_t     banned_at = 0;
+    };
+    static std::optional<ActiveBan> FindActiveBanForUser(int64_t user_id);
+    static std::optional<ActiveBan> FindActiveBanForIp  (const std::string& ip);
+
+    static void InsertOrReplaceUserBan(int64_t user_id,       const std::string& reason);
+    static void InsertOrReplaceIpBan  (const std::string& ip, const std::string& reason);
+    static void LiftUserBan(int64_t user_id);
+    static void LiftIpBan  (const std::string& ip);
+
+    // ---- User moderation: dashboard read APIs ------------------------------
+    struct SessionRow {
+        int64_t                id       = 0;
+        int64_t                user_id  = 0;  // 0 = NULL in DB
+        std::string            username;
+        std::string            ip;
+        int64_t                login_at = 0;
+        std::optional<int64_t> logout_at;
+        std::string            outcome;
+    };
+    static std::vector<SessionRow> GetRecentSessionsDistinctByUser(int limit);
+    static std::vector<SessionRow> GetSessionsForUser(int64_t user_id, int limit);
+    static std::vector<SessionRow> GetSessionsForIp  (const std::string& ip, int limit);
+
+    struct ActiveBanRow {
+        int64_t     id              = 0;
+        int64_t     user_id_or_zero = 0;
+        std::string ip_or_empty;
+        std::string reason;
+        int64_t     banned_at       = 0;
+    };
+    static std::vector<ActiveBanRow> GetActiveUserBans();
+    static std::vector<ActiveBanRow> GetActiveIpBans();
+
+    // Username → user_id lookup (used by admin "ban" action when the
+    // dashboard sends a username rather than a numeric id). Returns 0 if
+    // the user does not exist.
+    static int64_t FindUserIdByUsername(const std::string& username);
 };

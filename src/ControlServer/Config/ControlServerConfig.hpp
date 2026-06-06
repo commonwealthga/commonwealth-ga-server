@@ -98,6 +98,27 @@ struct ControlServerConfig {
     // with `docker logs ga-inst-<instance_id>` and `docker ps -a`.
     bool        docker_debug       = false;
 
+    // ---- Moderation -------------------------------------------------------
+    // Login-bug spoof for banned logins. Default "silent" mimics the
+    // historical login bug — no response, no socket close; client times
+    // out after ~10s and surfaces "Unable to connect to server".
+    // "garbage" sends 32 random bytes then closes; fallback if "silent"
+    // ever produces a visibly different client surface.
+    // fallback_close_sec: 0 = never auto-close silent spoof; >0 = backstop.
+    struct BanSpoofConfig {
+        std::string mode               = "silent";
+        int         fallback_close_sec = 0;
+    };
+    BanSpoofConfig ban_spoof;
+
+    // Live-kick of an in-game banned player via bogus GSC_GO_PLAY. If the
+    // client hasn't dropped the TCP socket within fallback_close_sec, the
+    // server force-closes it as a safety backstop.
+    struct KickConfig {
+        int fallback_close_sec = 30;
+    };
+    KickConfig kick;
+
     // Load config from JSON file at path. Returns defaults if file is absent or invalid.
     static ControlServerConfig Load(const std::string& path);
 };

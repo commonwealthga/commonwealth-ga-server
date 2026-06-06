@@ -1481,6 +1481,79 @@ void Database::Init() {
 		err = nullptr;
 	}
 
+	// User-moderation tables (sessions, account bans, IP bans). UNCONDITIONAL +
+	// idempotent because the version counter is shared with the DLL and has
+	// already been bumped past any reasonable migration number — same
+	// rationale as the ga_character_skills block above.
+	{
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_user_sessions ("
+			"  id          INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  user_id     INTEGER,"
+			"  username    TEXT NOT NULL,"
+			"  ip          TEXT NOT NULL,"
+			"  login_at    INTEGER NOT NULL,"
+			"  logout_at   INTEGER,"
+			"  outcome     TEXT NOT NULL DEFAULT 'ok'"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_user_sessions table: %s\n", err);
+			sqlite3_free(err);
+			err = nullptr;
+		}
+
+		result = sqlite3_exec(db,
+			"CREATE INDEX IF NOT EXISTS idx_ga_user_sessions_user "
+			"ON ga_user_sessions(user_id, login_at DESC);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create idx_ga_user_sessions_user: %s\n", err);
+			sqlite3_free(err);
+			err = nullptr;
+		}
+
+		result = sqlite3_exec(db,
+			"CREATE INDEX IF NOT EXISTS idx_ga_user_sessions_ip "
+			"ON ga_user_sessions(ip, login_at DESC);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create idx_ga_user_sessions_ip: %s\n", err);
+			sqlite3_free(err);
+			err = nullptr;
+		}
+
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_user_bans ("
+			"  id          INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  user_id     INTEGER NOT NULL UNIQUE,"
+			"  reason      TEXT NOT NULL,"
+			"  banned_at   INTEGER NOT NULL,"
+			"  lifted_at   INTEGER"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_user_bans table: %s\n", err);
+			sqlite3_free(err);
+			err = nullptr;
+		}
+
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_ip_bans ("
+			"  id          INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  ip          TEXT NOT NULL UNIQUE,"
+			"  reason      TEXT NOT NULL,"
+			"  banned_at   INTEGER NOT NULL,"
+			"  lifted_at   INTEGER"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_ip_bans table: %s\n", err);
+			sqlite3_free(err);
+			err = nullptr;
+		}
+	}
+
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
 }
@@ -1557,4 +1630,340 @@ void Database::AbandonQuest(int64_t character_id, int quest_id) {
 	sqlite3_step(stmt);
 	sqlite3_finalize(stmt);
 	Logger::Log("db", "[Quest] Abandoned quest %d for character %lld\n", quest_id, character_id);
+}
+
+// ===========================================================================
+// User moderation — session history, bans, dashboard reads.
+// ===========================================================================
+
+int64_t Database::InsertSession(int64_t user_id_or_zero,
+                                const std::string& username,
+                                const std::string& ip,
+                                const std::string& outcome) {
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"INSERT INTO ga_user_sessions (user_id, username, ip, login_at, logout_at, outcome) "
+		"VALUES (?, ?, ?, strftime('%s','now'), "
+		"        CASE WHEN ? IN ('rejected','banned') THEN strftime('%s','now') ELSE NULL END, "
+		"        ?)",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Session] InsertSession prepare failed: %s\n", sqlite3_errmsg(db));
+		return 0;
+	}
+	if (user_id_or_zero > 0) {
+		sqlite3_bind_int64(stmt, 1, user_id_or_zero);
+	} else {
+		sqlite3_bind_null(stmt, 1);
+	}
+	sqlite3_bind_text(stmt, 2, username.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 3, ip.c_str(),       -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 4, outcome.c_str(),  -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 5, outcome.c_str(),  -1, SQLITE_TRANSIENT);
+	int step = sqlite3_step(stmt);
+	int64_t row_id = (step == SQLITE_DONE) ? sqlite3_last_insert_rowid(db) : 0;
+	sqlite3_finalize(stmt);
+	return row_id;
+}
+
+void Database::FinalizeSession(int64_t session_row_id) {
+	if (session_row_id <= 0) return;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"UPDATE ga_user_sessions SET logout_at = strftime('%s','now') "
+		"WHERE id = ? AND logout_at IS NULL",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Session] FinalizeSession prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int64(stmt, 1, session_row_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+}
+
+std::optional<Database::ActiveBan> Database::FindActiveBanForUser(int64_t user_id) {
+	if (user_id <= 0) return std::nullopt;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT id, reason, banned_at FROM ga_user_bans "
+		"WHERE user_id = ? AND lifted_at IS NULL LIMIT 1",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Ban] FindActiveBanForUser prepare failed: %s\n", sqlite3_errmsg(db));
+		return std::nullopt;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	std::optional<ActiveBan> out;
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		ActiveBan b;
+		b.id        = sqlite3_column_int64(stmt, 0);
+		const char* r = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+		if (r) b.reason = r;
+		b.banned_at = sqlite3_column_int64(stmt, 2);
+		out = std::move(b);
+	}
+	sqlite3_finalize(stmt);
+	return out;
+}
+
+std::optional<Database::ActiveBan> Database::FindActiveBanForIp(const std::string& ip) {
+	if (ip.empty()) return std::nullopt;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT id, reason, banned_at FROM ga_ip_bans "
+		"WHERE ip = ? AND lifted_at IS NULL LIMIT 1",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Ban] FindActiveBanForIp prepare failed: %s\n", sqlite3_errmsg(db));
+		return std::nullopt;
+	}
+	sqlite3_bind_text(stmt, 1, ip.c_str(), -1, SQLITE_TRANSIENT);
+	std::optional<ActiveBan> out;
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		ActiveBan b;
+		b.id        = sqlite3_column_int64(stmt, 0);
+		const char* r = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+		if (r) b.reason = r;
+		b.banned_at = sqlite3_column_int64(stmt, 2);
+		out = std::move(b);
+	}
+	sqlite3_finalize(stmt);
+	return out;
+}
+
+void Database::InsertOrReplaceUserBan(int64_t user_id, const std::string& reason) {
+	if (user_id <= 0) return;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	// Upsert: on re-ban of a lifted row, clear lifted_at and refresh
+	// reason+banned_at. Keeps one row per user.
+	int rc = sqlite3_prepare_v2(db,
+		"INSERT INTO ga_user_bans (user_id, reason, banned_at, lifted_at) "
+		"VALUES (?, ?, strftime('%s','now'), NULL) "
+		"ON CONFLICT(user_id) DO UPDATE SET "
+		"  reason = excluded.reason, banned_at = excluded.banned_at, lifted_at = NULL",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Ban] InsertOrReplaceUserBan prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_text (stmt, 2, reason.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+}
+
+void Database::InsertOrReplaceIpBan(const std::string& ip, const std::string& reason) {
+	if (ip.empty()) return;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"INSERT INTO ga_ip_bans (ip, reason, banned_at, lifted_at) "
+		"VALUES (?, ?, strftime('%s','now'), NULL) "
+		"ON CONFLICT(ip) DO UPDATE SET "
+		"  reason = excluded.reason, banned_at = excluded.banned_at, lifted_at = NULL",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Ban] InsertOrReplaceIpBan prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_text(stmt, 1, ip.c_str(),     -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 2, reason.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+}
+
+void Database::LiftUserBan(int64_t user_id) {
+	if (user_id <= 0) return;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"UPDATE ga_user_bans SET lifted_at = strftime('%s','now') "
+		"WHERE user_id = ? AND lifted_at IS NULL",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Ban] LiftUserBan prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+}
+
+void Database::LiftIpBan(const std::string& ip) {
+	if (ip.empty()) return;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"UPDATE ga_ip_bans SET lifted_at = strftime('%s','now') "
+		"WHERE ip = ? AND lifted_at IS NULL",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Ban] LiftIpBan prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_text(stmt, 1, ip.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+}
+
+namespace {
+	Database::SessionRow ScanSessionRow(sqlite3_stmt* stmt) {
+		Database::SessionRow r;
+		r.id = sqlite3_column_int64(stmt, 0);
+		if (sqlite3_column_type(stmt, 1) != SQLITE_NULL) {
+			r.user_id = sqlite3_column_int64(stmt, 1);
+		}
+		const char* u  = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+		if (u) r.username = u;
+		const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+		if (ip) r.ip = ip;
+		r.login_at = sqlite3_column_int64(stmt, 4);
+		if (sqlite3_column_type(stmt, 5) != SQLITE_NULL) {
+			r.logout_at = sqlite3_column_int64(stmt, 5);
+		}
+		const char* o = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
+		if (o) r.outcome = o;
+		return r;
+	}
+}
+
+std::vector<Database::SessionRow> Database::GetRecentSessionsDistinctByUser(int limit) {
+	std::vector<SessionRow> out;
+	if (limit <= 0) limit = 50;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	// Window-function dedup: latest row per (user_id, username) bucket.
+	// COALESCE(user_id,-id) keeps NULL-user rows distinct from each other.
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT id, user_id, username, ip, login_at, logout_at, outcome FROM ("
+		"  SELECT *, ROW_NUMBER() OVER ("
+		"    PARTITION BY COALESCE(user_id, -id), username ORDER BY login_at DESC"
+		"  ) AS rn FROM ga_user_sessions"
+		") WHERE rn = 1 ORDER BY login_at DESC LIMIT ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Session] GetRecentSessionsDistinctByUser prepare failed: %s\n", sqlite3_errmsg(db));
+		return out;
+	}
+	sqlite3_bind_int(stmt, 1, limit);
+	while (sqlite3_step(stmt) == SQLITE_ROW) out.push_back(ScanSessionRow(stmt));
+	sqlite3_finalize(stmt);
+	return out;
+}
+
+std::vector<Database::SessionRow> Database::GetSessionsForUser(int64_t user_id, int limit) {
+	std::vector<SessionRow> out;
+	if (user_id <= 0) return out;
+	if (limit <= 0) limit = 50;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT id, user_id, username, ip, login_at, logout_at, outcome "
+		"FROM ga_user_sessions WHERE user_id = ? ORDER BY login_at DESC LIMIT ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Session] GetSessionsForUser prepare failed: %s\n", sqlite3_errmsg(db));
+		return out;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_int  (stmt, 2, limit);
+	while (sqlite3_step(stmt) == SQLITE_ROW) out.push_back(ScanSessionRow(stmt));
+	sqlite3_finalize(stmt);
+	return out;
+}
+
+std::vector<Database::SessionRow> Database::GetSessionsForIp(const std::string& ip, int limit) {
+	std::vector<SessionRow> out;
+	if (ip.empty()) return out;
+	if (limit <= 0) limit = 50;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT id, user_id, username, ip, login_at, logout_at, outcome "
+		"FROM ga_user_sessions WHERE ip = ? ORDER BY login_at DESC LIMIT ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Session] GetSessionsForIp prepare failed: %s\n", sqlite3_errmsg(db));
+		return out;
+	}
+	sqlite3_bind_text(stmt, 1, ip.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int (stmt, 2, limit);
+	while (sqlite3_step(stmt) == SQLITE_ROW) out.push_back(ScanSessionRow(stmt));
+	sqlite3_finalize(stmt);
+	return out;
+}
+
+std::vector<Database::ActiveBanRow> Database::GetActiveUserBans() {
+	std::vector<ActiveBanRow> out;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT id, user_id, reason, banned_at FROM ga_user_bans "
+		"WHERE lifted_at IS NULL ORDER BY banned_at DESC",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Ban] GetActiveUserBans prepare failed: %s\n", sqlite3_errmsg(db));
+		return out;
+	}
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		ActiveBanRow r;
+		r.id              = sqlite3_column_int64(stmt, 0);
+		r.user_id_or_zero = sqlite3_column_int64(stmt, 1);
+		const char* reason = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+		if (reason) r.reason = reason;
+		r.banned_at       = sqlite3_column_int64(stmt, 3);
+		out.push_back(std::move(r));
+	}
+	sqlite3_finalize(stmt);
+	return out;
+}
+
+std::vector<Database::ActiveBanRow> Database::GetActiveIpBans() {
+	std::vector<ActiveBanRow> out;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT id, ip, reason, banned_at FROM ga_ip_bans "
+		"WHERE lifted_at IS NULL ORDER BY banned_at DESC",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Ban] GetActiveIpBans prepare failed: %s\n", sqlite3_errmsg(db));
+		return out;
+	}
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		ActiveBanRow r;
+		r.id        = sqlite3_column_int64(stmt, 0);
+		const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+		if (ip) r.ip_or_empty = ip;
+		const char* reason = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+		if (reason) r.reason = reason;
+		r.banned_at = sqlite3_column_int64(stmt, 3);
+		out.push_back(std::move(r));
+	}
+	sqlite3_finalize(stmt);
+	return out;
+}
+
+int64_t Database::FindUserIdByUsername(const std::string& username) {
+	if (username.empty()) return 0;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT id FROM ga_users WHERE username = ? LIMIT 1",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[User] FindUserIdByUsername prepare failed: %s\n", sqlite3_errmsg(db));
+		return 0;
+	}
+	sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_TRANSIENT);
+	int64_t id = 0;
+	if (sqlite3_step(stmt) == SQLITE_ROW) id = sqlite3_column_int64(stmt, 0);
+	sqlite3_finalize(stmt);
+	return id;
 }

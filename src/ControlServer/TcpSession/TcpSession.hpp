@@ -22,6 +22,7 @@
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
+#include "src/ControlServer/Database/Database.hpp"
 #include "src/Shared/HexUtils.hpp"
 #include "lib/nlohmann/json.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
@@ -107,10 +108,37 @@ private:
     static std::string s_host_;
     static uint16_t    s_chat_port_;
     static bool        s_allow_duplicate_account_logins_;
+
+    // Moderation knobs — pushed in from main.cpp at startup. Same static-setter
+    // pattern as s_allow_duplicate_account_logins_ / SetLoginPolicy above.
+    static std::string s_ban_spoof_mode_;                  // "silent" | "garbage"
+    static int         s_ban_spoof_fallback_close_sec_;    // 0 = never
+    static int         s_kick_fallback_close_sec_;         // 0 = never
 public:
     static void SetHomeMapSpawner(std::function<void()> cb);
     static void SetNetworkConfig(const std::string& host, uint16_t chat_port);
     static void SetLoginPolicy(bool allow_duplicate_account_logins);
+    static void SetModerationConfig(const std::string& ban_spoof_mode,
+                                    int ban_spoof_fallback_close_sec,
+                                    int kick_fallback_close_sec);
+
+    // Live-kick every TcpSession whose user_id / IP matches the predicate.
+    // Sends a bogus GSC_GO_PLAY pointing at a non-existent map; client tears
+    // down its current session trying to switch, fails, and disconnects on
+    // its own — the existing do_read error branch sweeps up.
+    static int KickSessionsForUser(int64_t user_id);
+    static int KickSessionsForIp  (const std::string& ip);
+
+    // Snapshot for the dashboard "Online now" panel.
+    struct OnlineSnapshot {
+        std::string session_guid;
+        int64_t     user_id     = 0;
+        std::string username;
+        std::string ip;           // host portion only ("1.2.3.4", no port)
+        int64_t     instance_id  = 0;
+        int64_t     login_at     = 0;  // unix seconds
+    };
+    static void ForEachLiveSession(const std::function<void(const OnlineSnapshot&)>& visit);
 
     // Fire the home-map spawner callback IF no home instance currently exists.
     // Safe to call multiple times — `GetHomeInstance()` returns any non-STOPPED
@@ -123,6 +151,28 @@ private:
     // Set when a READY home map instance is found for this player.
     int64_t assigned_instance_id_ = 0;
     int home_task_force_ = 1;
+
+    // Row id in ga_user_sessions for this connection. 0 until set by the
+    // GSC_USER_LOGIN handler; backfilled with logout_at when the socket
+    // drops in do_read's error branch.
+    int64_t session_row_id_   = 0;
+    // Unix seconds — set alongside the session-row insert. Reported in the
+    // ForEachLiveSession snapshot.
+    int64_t session_login_at_ = 0;
+
+    // Login-bug spoof: apply s_ban_spoof_mode_ to this session. Called from
+    // the GSC_USER_LOGIN handler after a ban row is matched.
+    void ApplyBanSpoof();
+
+    // Bogus GSC_GO_PLAY for the live-kick path. Frame is valid, map name
+    // is one no client will resolve — client falls into its local
+    // disconnect path and closes the socket.
+    void send_kick_to_bogus_map();
+
+    // Safety backstop for the live-kick: if the client hasn't closed the
+    // socket within s_kick_fallback_close_sec_ after the bogus GO_PLAY,
+    // force-close it from our side.
+    void arm_kick_fallback_timer();
 
     template<typename... Bytes>
     void append(std::vector<uint8_t>& buffer, Bytes&&... bytes) {
@@ -372,6 +422,10 @@ private:
                     }
                     do_read();
                 } else {
+                    if (session_row_id_) {
+                        Database::FinalizeSession(session_row_id_);
+                        session_row_id_ = 0;
+                    }
                     // Cancel any pending ACK wait timer.
                     if (pending_ack_timer_) {
                         pending_ack_timer_->cancel();

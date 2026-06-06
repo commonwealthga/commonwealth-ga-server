@@ -144,6 +144,22 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
         cfg.show_game_console = EnvFlagEnabled(show_game_console);
     }
 
+    if (j.contains("ban_spoof") && j["ban_spoof"].is_object()) {
+        const auto& bs = j["ban_spoof"];
+        if (bs.contains("mode") && bs["mode"].is_string()) {
+            cfg.ban_spoof.mode = bs["mode"].get<std::string>();
+        }
+        if (bs.contains("fallback_close_sec") && bs["fallback_close_sec"].is_number_integer()) {
+            cfg.ban_spoof.fallback_close_sec = bs["fallback_close_sec"].get<int>();
+        }
+    }
+    if (j.contains("kick") && j["kick"].is_object()) {
+        const auto& k = j["kick"];
+        if (k.contains("fallback_close_sec") && k["fallback_close_sec"].is_number_integer()) {
+            cfg.kick.fallback_close_sec = k["fallback_close_sec"].get<int>();
+        }
+    }
+
     Logger::Log("config", "[ControlServerConfig] Loaded config from '%s'\n", path.c_str());
     return cfg;
 }
