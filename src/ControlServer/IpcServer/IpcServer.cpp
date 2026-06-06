@@ -62,8 +62,15 @@ private:
             asio::transfer_exactly(4),
             [this, self](const asio::error_code& ec, std::size_t /*bytes*/) {
                 if (ec) {
-                    Logger::Log("ipc", "[IpcServer] Read header error: %s\n",
-                        ec.message().c_str());
+                    // EOF on header read is the normal close for short-lived
+                    // admin clients (e.g. dashboard /api/players/online poll)
+                    // that send one ADMIN_ACTION and disconnect. Validated
+                    // game-instance disconnects are still announced by
+                    // on_disconnect(). Only log non-EOF errors here.
+                    if (ec != asio::error::eof) {
+                        Logger::Log("ipc", "[IpcServer] Read header error: %s\n",
+                            ec.message().c_str());
+                    }
                     on_disconnect();
                     return;
                 }
@@ -88,8 +95,13 @@ private:
             asio::transfer_exactly(len),
             [this, self](const asio::error_code& ec, std::size_t /*bytes*/) {
                 if (ec) {
-                    Logger::Log("ipc", "[IpcServer] Read body error: %s\n",
-                        ec.message().c_str());
+                    // EOF mid-body is rare but harmless if a client tore the
+                    // socket down between header and body; symmetric with the
+                    // header-EOF suppression above.
+                    if (ec != asio::error::eof) {
+                        Logger::Log("ipc", "[IpcServer] Read body error: %s\n",
+                            ec.message().c_str());
+                    }
                     on_disconnect();
                     return;
                 }
@@ -520,8 +532,10 @@ void IpcServer::do_accept() {
     if (!acceptor_) return;
     acceptor_->async_accept([this](std::error_code ec, asio::ip::tcp::socket sock) {
         if (!ec) {
-            Logger::Log("ipc", "[IpcServer] Game instance connected from %s\n",
-                sock.remote_endpoint().address().to_string().c_str());
+            // Don't log the raw TCP accept. It fires for every dashboard
+            // admin poll (5s cadence from /api/players/online) and floods the
+            // log. Genuine game instances log themselves via INSTANCE_HELLO;
+            // admin actions log only on validation failure.
             auto session = std::make_shared<IpcSession>(std::move(sock));
             // Sessions are not tracked in g_sessions until INSTANCE_HELLO validates them.
             session->start();

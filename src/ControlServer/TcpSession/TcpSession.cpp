@@ -14,6 +14,11 @@
 #include <cstdlib>
 #include <ctime>
 #include <mutex>
+#ifndef _WIN32
+#include <netinet/tcp.h>
+#include <sys/socket.h>
+#include <cerrno>
+#endif
 
 // ---------------------------------------------------------------------------
 // TcpSession static member definitions
@@ -28,6 +33,28 @@ bool        TcpSession::s_allow_duplicate_account_logins_ = false;
 std::string TcpSession::s_ban_spoof_mode_                = "silent";
 int         TcpSession::s_ban_spoof_fallback_close_sec_  = 0;
 int         TcpSession::s_kick_fallback_close_sec_       = 30;
+
+// Tuned tighter than ChatSession's helper because this is the gating socket
+// for re-login: dead peers MUST be reaped fast or the next attempt hits the
+// "duplicate account" rejection. Detection ~50s: 20s idle + 3 probes * 10s.
+// Tolerates a ~20s network blip before probing starts; declared dead at 50s.
+void TcpSession::EnableKeepAlive() {
+    std::error_code ec;
+    socket_.set_option(asio::socket_base::keep_alive(true), ec);
+    if (ec) {
+        Logger::Log("tcp", "[TCP] set keep_alive failed: %s\n", ec.message().c_str());
+        return;
+    }
+#ifndef _WIN32
+    int fd = socket_.native_handle();
+    int idle = 20, intvl = 10, count = 3;
+    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,  &idle,  sizeof(idle))  < 0 ||
+        setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)) < 0 ||
+        setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,   &count, sizeof(count)) < 0) {
+        Logger::Log("tcp", "[TCP] TCP_KEEPIDLE/INTVL/CNT tuning failed (errno=%d)\n", errno);
+    }
+#endif
+}
 
 namespace {
 

@@ -36,8 +36,18 @@ public:
     }
 
     void start() {
+        EnableKeepAlive();
         do_read();
     }
+
+    // Enable SO_KEEPALIVE + tuned TCP_KEEPIDLE/INTVL/CNT on socket_. Without
+    // this, a client that vanishes without an RST (BSOD, force-kill, sleep,
+    // NAT drop) leaves do_read() blocked indefinitely -- so the matching
+    // PlayerSessionStore entry persists and the next login of the same name
+    // is rejected as "duplicate account." With keepalive, the OS times the
+    // dead peer out in ~50s and do_read's error branch runs the normal
+    // cleanup (Unregister, FinalizeSession, ClearPendingAck, etc.).
+    void EnableKeepAlive();
 
     // ── TcpSession registry (session_guid -> weak_ptr<TcpSession>) ───────────
 
