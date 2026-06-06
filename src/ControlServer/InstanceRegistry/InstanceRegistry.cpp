@@ -572,6 +572,7 @@ void InstanceRegistry::MarkStopped(int64_t instance_id) {
     // dead weight now that the instance is gone. MatchmakingService does
     // not acquire InstanceRegistry::mutex_ so no recursive-lock risk.
     MatchmakingService::DropPreAssignedTeams(instance_id);
+    MatchmakingService::DropReadyMatchReservations(instance_id);
 }
 
 std::optional<uint16_t> InstanceRegistry::AllocatePort(uint16_t lo, uint16_t hi) {

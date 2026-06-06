@@ -1666,6 +1666,7 @@ void TcpSession::DeliverMatchCancelled(const std::string& session_guid, const ch
     if (it == g_sessions_.end()) return;
     auto session = it->second.lock();
     if (!session) return;
+    MatchmakingService::RemoveReadyMatchReservation(session_guid, reason);
     Logger::Log("tcp", "[TcpSession] Match cancelled for guid=%s (reason: %s) — clearing queue/match state\n",
         session_guid.c_str(), reason ? reason : "unspecified");
     session->current_match_queue_id_       = 0;
@@ -1687,6 +1688,8 @@ void TcpSession::send_match_accept_response() {
     if (!instance || instance->state != "READY") {
         Logger::Log("tcp", "[TcpSession] MATCH_ACCEPT: instance %lld not ready\n",
             (long long)pending_match_instance_id_);
+        MatchmakingService::RemoveReadyMatchReservation(
+            pending_match_instance_id_, session_guid_, "match accept target not ready");
         pending_match_instance_id_ = 0;
         return;
     }
@@ -1741,6 +1744,8 @@ void TcpSession::send_match_accept_response() {
     if (!IpcServer::SendToInstance(target_instance_id, reg.dump())) {
         Logger::Log("tcp", "[TcpSession] No IPC session for instance %lld — cannot register player %s\n",
             (long long)target_instance_id, player_name.c_str());
+        MatchmakingService::RemoveReadyMatchReservation(
+            target_instance_id, session_guid_, "match accept target has no IPC session");
         pending_match_instance_id_ = 0;
         pending_match_game_mode_.clear();
         return;
@@ -1758,6 +1763,8 @@ void TcpSession::send_match_accept_response() {
             if (!success) {
                 Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK failed for %s on mission instance\n",
                     session_guid_.c_str());
+                MatchmakingService::RemoveReadyMatchReservation(
+                    target_instance_id, session_guid_, "player register ack failed");
                 pending_match_instance_id_ = 0;
                 pending_match_game_mode_.clear();
                 return;
@@ -1776,6 +1783,8 @@ void TcpSession::send_match_accept_response() {
             InstanceRegistry::InsertInstancePlayer(
                 target_instance_id, session_guid_, selected_character_id_, target_task_force,
                 selected_profile_id_);
+            MatchmakingService::RemoveReadyMatchReservation(
+                target_instance_id, session_guid_, "player registered in mission");
 
             auto inst = InstanceRegistry::GetInstanceById(target_instance_id);
             if (!inst || inst->state != "READY") {
@@ -1803,6 +1812,8 @@ void TcpSession::send_match_accept_response() {
             Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK timeout for %s on mission instance\n",
                 session_guid_.c_str());
             IpcServer::ClearPendingAck(session_guid_);
+            MatchmakingService::RemoveReadyMatchReservation(
+                pending_match_instance_id_, session_guid_, "player register ack timeout");
             pending_match_instance_id_ = 0;
             pending_match_game_mode_.clear();
         }

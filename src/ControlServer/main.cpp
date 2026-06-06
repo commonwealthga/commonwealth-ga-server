@@ -385,6 +385,10 @@ int main(int argc, char* argv[]) {
     // (small N — only READY mission instances live).
     MatchmakingService::SetInstanceProvider([](uint32_t queue_id) -> std::vector<RunningInstance> {
         auto all = InstanceRegistry::GetReadyMissionInstances();
+        auto qcfg = MatchmakingService::GetQueueConfig(queue_id);
+        const int queue_cap = qcfg
+            ? (int)MatchmakingService::GetQueueInstanceCap(*qcfg)
+            : 0;
         std::vector<RunningInstance> filtered;
         filtered.reserve(all.size());
         for (const auto& inst : all) {
@@ -394,10 +398,32 @@ int main(int argc, char* argv[]) {
             ri.map_name     = inst.map_name;
             ri.game_mode    = inst.game_mode;
             ri.player_count = inst.player_count;
-            ri.max_players  = inst.max_players;
+            ri.max_players  = queue_cap > 0 ? queue_cap : inst.max_players;
             ri.queue_id     = inst.queue_id;
             filtered.push_back(std::move(ri));
         }
+        for (auto& reserved : MatchmakingService::GetReservedReadyInstances(queue_id)) {
+            auto it = std::find_if(filtered.begin(), filtered.end(),
+                [&](const RunningInstance& ri) {
+                    return ri.instance_id == reserved.instance_id;
+                });
+            if (it == filtered.end()) {
+                filtered.push_back(std::move(reserved));
+            } else {
+                it->player_count = std::max(it->player_count, reserved.player_count);
+                it->max_players = reserved.max_players;
+                it->reserved_team1_size += reserved.reserved_team1_size;
+                it->reserved_team2_size += reserved.reserved_team2_size;
+                it->reserved_team1_heal_score += reserved.reserved_team1_heal_score;
+                it->reserved_team2_heal_score += reserved.reserved_team2_heal_score;
+            }
+        }
+        filtered.erase(
+            std::remove_if(filtered.begin(), filtered.end(),
+                [](const RunningInstance& ri) {
+                    return ri.max_players > 0 && ri.player_count >= ri.max_players;
+                }),
+            filtered.end());
         return filtered;
     });
 
@@ -409,6 +435,15 @@ int main(int argc, char* argv[]) {
                 Logger::Log("matchmaking",
                     "[Matchmaking] Routing %zu players to existing instance %lld\n",
                     result.session_guids.size(), (long long)*result.existing_instance_id);
+                uint32_t cap = 0;
+                if (auto qcfg = MatchmakingService::GetQueueConfig(queue_id)) {
+                    cap = result.cap_override.value_or(
+                        MatchmakingService::GetQueueInstanceCap(*qcfg));
+                }
+                MatchmakingService::TrackReadyMatchReservations(
+                    *result.existing_instance_id, queue_id, result.game_mode,
+                    result.session_guids, result.task_force_assignments,
+                    result.profile_ids, cap);
                 for (const auto& guid : result.session_guids) {
                     int tf = 1;
                     auto it = result.task_force_assignments.find(guid);
@@ -448,7 +483,8 @@ int main(int argc, char* argv[]) {
             // each match at its roster size). Falls back to the queue-wide
             // cap when the rule didn't override.
             if (auto qcfg = MatchmakingService::GetQueueConfig(queue_id)) {
-                pending.cap = result.cap_override.value_or(qcfg->max_players_per_instance);
+                pending.cap = result.cap_override.value_or(
+                    MatchmakingService::GetQueueInstanceCap(*qcfg));
             }
             MatchmakingService::AddPendingMatch(instance_id, std::move(pending));
 

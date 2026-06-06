@@ -4,6 +4,7 @@
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/Loadouts/ClassLoadouts.hpp"
 #include "src/ControlServer/Logger.hpp"
+#include "src/ControlServer/MatchmakingService/RoleWeightedSplit.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "sqlite3.h"
 #include <algorithm>
@@ -18,6 +19,7 @@ std::unordered_map<uint32_t, MatchmakingService::Queue> MatchmakingService::queu
 MatchmakingService::MatchPopCallback MatchmakingService::on_match_pop_;
 MatchmakingService::InstanceProvider MatchmakingService::instance_provider_;
 std::unordered_map<int64_t, PendingMatch> MatchmakingService::pending_matches_;
+std::unordered_map<int64_t, PendingMatch> MatchmakingService::ready_match_reservations_;
 std::unordered_map<int64_t, std::unordered_map<std::string, int>>
     MatchmakingService::pre_assigned_teams_;
 asio::io_context* MatchmakingService::io_ctx_ = nullptr;
@@ -31,6 +33,11 @@ asio::io_context* MatchmakingService::io_ctx_ = nullptr;
 static std::mt19937& MatchRng() {
     static std::mt19937 eng{std::random_device{}()};
     return eng;
+}
+
+static bool TracksReadyReservations(const QueueConfig& cfg) {
+    const bool data_driven = cfg.rule_class.empty() || cfg.rule_class == "DataDriven";
+    return data_driven;
 }
 
 static TaskforcePolicy ParseTaskforcePolicy(const std::string& s) {
@@ -182,6 +189,7 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
 void MatchmakingService::Init() {
     queues_.clear();
     pending_matches_.clear();
+    ready_match_reservations_.clear();
     pre_assigned_teams_.clear();
     on_match_pop_ = nullptr;
     instance_provider_ = nullptr;
@@ -296,6 +304,20 @@ std::optional<QueueConfig> MatchmakingService::GetQueueConfig(uint32_t queue_id)
     return it->second.config;
 }
 
+uint32_t MatchmakingService::GetQueueInstanceCap(
+    const QueueConfig& cfg,
+    uint32_t instance_max_players) {
+    if (cfg.max_players_per_instance > 0) return cfg.max_players_per_instance;
+    if (cfg.taskforce_policy == TaskforcePolicy::Balanced
+            || cfg.taskforce_policy == TaskforcePolicy::BalancedPvp) {
+        if (cfg.max_players_per_side > 0) return cfg.max_players_per_side * 2;
+        if (cfg.max_players_per_team > 0) return cfg.max_players_per_team * 2;
+    }
+    if (cfg.max_players_per_side > 0) return cfg.max_players_per_side;
+    if (cfg.max_players_per_team > 0) return cfg.max_players_per_team;
+    return instance_max_players;
+}
+
 MatchmakingService::QueuedProfileCounts
 MatchmakingService::GetQueuedProfileCounts(uint32_t queue_id) {
     QueuedProfileCounts counts{0, 0, 0, 0};
@@ -330,6 +352,10 @@ MatchmakingService::GetQueuedProfileCounts(uint32_t queue_id) {
     for (const auto& [iid, pm] : pending_matches_) {
         if (pm.queue_id != queue_id) continue;
         for (const auto& [guid, pid] : pm.profile_ids) tally(pid);
+    }
+    for (const auto& [iid, ready] : ready_match_reservations_) {
+        if (ready.queue_id != queue_id) continue;
+        for (const auto& [guid, pid] : ready.profile_ids) tally(pid);
     }
 
     return counts;
@@ -525,6 +551,10 @@ void MatchmakingService::RemovePlayer(const std::string& session_guid) {
             session_guid.c_str(), (long long)iid, pm.session_guids.size());
         break;  // a guid only ever exists in one pending entry
     }
+
+    // 3. ready_match_reservations_ — invitations already sent after
+    // INSTANCE_READY but not yet converted into ga_instance_players rows.
+    RemoveReadyMatchReservation(session_guid, "player removed from matchmaking");
 }
 
 // ---------------------------------------------------------------------------
@@ -543,6 +573,142 @@ std::optional<PendingMatch> MatchmakingService::ConsumePendingMatch(int64_t inst
     PendingMatch match = std::move(it->second);
     pending_matches_.erase(it);
     return match;
+}
+
+void MatchmakingService::TrackReadyMatchReservations(
+    int64_t instance_id,
+    uint32_t queue_id,
+    const std::string& game_mode,
+    const std::vector<std::string>& session_guids,
+    const std::unordered_map<std::string, int>& task_force_assignments,
+    const std::unordered_map<std::string, uint32_t>& profile_ids,
+    uint32_t cap) {
+    if (instance_id == 0 || session_guids.empty()) return;
+    auto qit = queues_.find(queue_id);
+    if (qit == queues_.end() || !TracksReadyReservations(qit->second.config)) return;
+
+    auto& ready = ready_match_reservations_[instance_id];
+    if (ready.instance_id == 0) {
+        ready.instance_id = instance_id;
+        ready.queue_id = queue_id;
+        ready.game_mode = game_mode;
+        ready.cap = cap;
+    }
+    if (ready.cap == 0 && cap != 0) ready.cap = cap;
+
+    size_t added = 0;
+    for (const auto& guid : session_guids) {
+        if (std::find(ready.session_guids.begin(), ready.session_guids.end(), guid)
+                != ready.session_guids.end()) {
+            continue;
+        }
+        ready.session_guids.push_back(guid);
+        auto tfit = task_force_assignments.find(guid);
+        ready.task_force_assignments[guid] =
+            (tfit != task_force_assignments.end()) ? tfit->second : 1;
+        auto pfit = profile_ids.find(guid);
+        ready.profile_ids[guid] =
+            (pfit != profile_ids.end()) ? pfit->second : 0;
+        added++;
+    }
+
+    if (added > 0) {
+        Logger::Log("matchmaking",
+            "[Matchmaking] Ready reservations: instance=%lld queue=%u added=%zu total=%zu cap=%u\n",
+            (long long)instance_id, queue_id, added, ready.session_guids.size(), ready.cap);
+    }
+}
+
+std::vector<RunningInstance> MatchmakingService::GetReservedReadyInstances(uint32_t queue_id) {
+    std::vector<RunningInstance> out;
+    auto qit = queues_.find(queue_id);
+    if (qit == queues_.end() || !TracksReadyReservations(qit->second.config)) return out;
+
+    // READY invites have no ga_instance_players row until MATCH_ACCEPT succeeds.
+    std::vector<int64_t> stale;
+    for (const auto& [iid, ready] : ready_match_reservations_) {
+        if (ready.queue_id != queue_id || ready.session_guids.empty()) continue;
+
+        auto inst = InstanceRegistry::GetInstanceById(iid);
+        if (!inst || inst->state != "READY" || inst->is_home_map || inst->end_mission_at != 0) {
+            stale.push_back(iid);
+            continue;
+        }
+
+        RunningInstance ri;
+        ri.instance_id  = inst->instance_id;
+        ri.map_name     = inst->map_name;
+        ri.game_mode    = inst->game_mode;
+        ri.player_count = inst->player_count + (int)ready.session_guids.size();
+        ri.max_players  = (int)GetQueueInstanceCap(qit->second.config, inst->max_players);
+        ri.queue_id     = inst->queue_id;
+        for (const auto& [guid, tf] : ready.task_force_assignments) {
+            uint32_t profile_id = 0;
+            auto pit = ready.profile_ids.find(guid);
+            if (pit != ready.profile_ids.end()) profile_id = pit->second;
+            if (tf == 2) {
+                ri.reserved_team2_size++;
+                ri.reserved_team2_heal_score += RoleWeightedSplit::HealValue(profile_id, 2);
+            } else {
+                ri.reserved_team1_size++;
+                ri.reserved_team1_heal_score += RoleWeightedSplit::HealValue(profile_id, 1);
+            }
+        }
+        out.push_back(std::move(ri));
+    }
+
+    for (int64_t iid : stale) {
+        DropReadyMatchReservations(iid);
+    }
+    return out;
+}
+
+void MatchmakingService::RemoveReadyMatchReservation(
+    int64_t instance_id,
+    const std::string& session_guid,
+    const char* reason) {
+    auto it = ready_match_reservations_.find(instance_id);
+    if (it == ready_match_reservations_.end()) return;
+
+    auto& ready = it->second;
+    auto sit = std::find(ready.session_guids.begin(), ready.session_guids.end(), session_guid);
+    if (sit == ready.session_guids.end()) return;
+
+    ready.session_guids.erase(sit);
+    ready.task_force_assignments.erase(session_guid);
+    ready.profile_ids.erase(session_guid);
+    Logger::Log("matchmaking",
+        "[Matchmaking] Ready reservation removed: instance=%lld guid=%s remaining=%zu reason=%s\n",
+        (long long)instance_id, session_guid.c_str(), ready.session_guids.size(),
+        reason ? reason : "unspecified");
+    if (ready.session_guids.empty()) {
+        ready_match_reservations_.erase(it);
+    }
+}
+
+void MatchmakingService::RemoveReadyMatchReservation(
+    const std::string& session_guid,
+    const char* reason) {
+    for (auto it = ready_match_reservations_.begin();
+            it != ready_match_reservations_.end(); ++it) {
+        auto sit = std::find(it->second.session_guids.begin(),
+            it->second.session_guids.end(), session_guid);
+        if (sit == it->second.session_guids.end()) continue;
+        RemoveReadyMatchReservation(it->first, session_guid, reason);
+        return;
+    }
+}
+
+void MatchmakingService::DropReadyMatchReservations(int64_t instance_id) {
+    auto it = ready_match_reservations_.find(instance_id);
+    if (it == ready_match_reservations_.end()) return;
+    size_t n = it->second.session_guids.size();
+    ready_match_reservations_.erase(it);
+    if (n > 0) {
+        Logger::Log("matchmaking",
+            "[Matchmaking] Ready reservations dropped: instance=%lld n=%zu\n",
+            (long long)instance_id, n);
+    }
 }
 
 void MatchmakingService::SetPreAssignedTeam(int64_t instance_id,
@@ -850,6 +1016,9 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
 
             // Do NOT call on_match_pop_ — the spawned instance already exists
             // and its MATCH_INVITATIONs will go out when INSTANCE_READY fires.
+            if (!queue.players.empty()) {
+                TryPop(queue_id, delay_elapsed);
+            }
             return;
         }
     }
@@ -868,5 +1037,8 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
 
     if (on_match_pop_) {
         on_match_pop_(queue_id, std::move(*result));
+    }
+    if (!queue.players.empty()) {
+        TryPop(queue_id, delay_elapsed);
     }
 }
