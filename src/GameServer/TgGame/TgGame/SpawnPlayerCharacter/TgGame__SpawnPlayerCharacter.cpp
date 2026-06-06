@@ -139,33 +139,75 @@ static void FreeTeamEntryStrings(FTGTEAM_ENTRY& Entry) {
 	Entry.fsMapName.Count = Entry.fsMapName.Max = 0;
 }
 
-static int PruneTaskForceRoster(
+static bool RebuildTaskForceRoster(
 	ATgRepInfo_TaskForce* TaskForce,
 	const std::unordered_set<ATgRepInfo_Player*>& LivePris,
-	ATgRepInfo_Player* RemovePri) {
-	if (!TaskForce || !TaskForce->m_TeamPlayers.Data || TaskForce->m_TeamPlayers.Count <= 0) {
-		return 0;
+	ATgRepInfo_Player* RemovePri,
+	const FTGTEAM_ENTRY* AppendEntry,
+	int* RemovedOut) {
+	if (RemovedOut) {
+		*RemovedOut = 0;
+	}
+	if (!TaskForce) {
+		return false;
+	}
+
+	FTGTEAM_ENTRY* oldData = TaskForce->m_TeamPlayers.Data;
+	const int oldCount = (oldData && TaskForce->m_TeamPlayers.Count > 0)
+		? TaskForce->m_TeamPlayers.Count
+		: 0;
+	int keepCount = 0;
+	for (int read = 0; read < oldCount; ++read) {
+		FTGTEAM_ENTRY& entry = oldData[read];
+		const bool removeCurrent = RemovePri && entry.pPrep == RemovePri;
+		const bool keep = entry.pPrep && !removeCurrent && LivePris.find(entry.pPrep) != LivePris.end();
+		if (keep) {
+			++keepCount;
+		}
+	}
+
+	const int newCount = keepCount + (AppendEntry ? 1 : 0);
+	FTGTEAM_ENTRY* newData = nullptr;
+	if (newCount > 0) {
+		newData = (FTGTEAM_ENTRY*)GAllocator::Malloc(sizeof(FTGTEAM_ENTRY) * newCount);
+		if (!newData) {
+			Logger::Log("spawn",
+				"SpawnPlayerCharacter: failed to allocate taskforce roster entries=%d\n",
+				newCount);
+			return false;
+		}
+		memset(newData, 0, sizeof(FTGTEAM_ENTRY) * newCount);
 	}
 
 	int write = 0;
 	int removed = 0;
-	for (int read = 0; read < TaskForce->m_TeamPlayers.Count; ++read) {
-		FTGTEAM_ENTRY& entry = TaskForce->m_TeamPlayers.Data[read];
+	for (int read = 0; read < oldCount; ++read) {
+		FTGTEAM_ENTRY& entry = oldData[read];
 		const bool removeCurrent = RemovePri && entry.pPrep == RemovePri;
 		const bool keep = entry.pPrep && !removeCurrent && LivePris.find(entry.pPrep) != LivePris.end();
 		if (keep) {
-			if (write != read) {
-				TaskForce->m_TeamPlayers.Data[write] = entry;
-			}
-			++write;
+			newData[write++] = entry;
 		} else {
 			FreeTeamEntryStrings(entry);
 			++removed;
 		}
 	}
+
+	if (AppendEntry) {
+		newData[write++] = *AppendEntry;
+	}
+
+	// Warm-home re-entry can leave stale team entries; rebuild avoids Realloc on a dirty roster buffer.
+	if (oldData) {
+		GAllocator::Free(oldData);
+	}
+	TaskForce->m_TeamPlayers.Data = newData;
 	TaskForce->m_TeamPlayers.Count = write;
 	TaskForce->m_TeamPlayers.Max = write;
-	return removed;
+	if (RemovedOut) {
+		*RemovedOut = removed;
+	}
+	return true;
 }
 
 static std::unordered_set<ATgRepInfo_Player*> BuildLivePriSet(ATgRepInfo_Player* CurrentPri) {
@@ -451,8 +493,10 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		ATgRepInfo_TaskForce* taskforce = (tf == 1) ? GTeamsData.Attackers : GTeamsData.Defenders;
 		// Warm-empty homes can retain manually-added roster entries after travel; SetTeam walks them.
 		std::unordered_set<ATgRepInfo_Player*> livePris = BuildLivePriSet(newrepplayer);
-		int prunedAttackers = PruneTaskForceRoster(GTeamsData.Attackers, livePris, newrepplayer);
-		int prunedDefenders = PruneTaskForceRoster(GTeamsData.Defenders, livePris, newrepplayer);
+		int prunedAttackers = 0;
+		int prunedDefenders = 0;
+		RebuildTaskForceRoster(GTeamsData.Attackers, livePris, newrepplayer, nullptr, &prunedAttackers);
+		RebuildTaskForceRoster(GTeamsData.Defenders, livePris, newrepplayer, nullptr, &prunedDefenders);
 		if (prunedAttackers || prunedDefenders) {
 			Logger::Log("spawn",
 				"SpawnPlayerCharacter: pruned taskforce roster before SetTeam attackers=%d defenders=%d pri=%p\n",
@@ -547,17 +591,23 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	{
 		int tf = GClientConnectionsData[ConnectionIndex].PlayerInfo.task_force;
 		std::unordered_set<ATgRepInfo_Player*> livePris = BuildLivePriSet(newrepplayer);
-		int prunedAttackers = PruneTaskForceRoster(attackers, livePris, newrepplayer);
-		int prunedDefenders = PruneTaskForceRoster(defenders, livePris, newrepplayer);
+		ATgRepInfo_TaskForce* targetTaskForce = (tf == 1) ? attackers : defenders;
+		int prunedAttackers = 0;
+		int prunedDefenders = 0;
+		RebuildTaskForceRoster(tf == 1 ? defenders : attackers, livePris, newrepplayer, nullptr,
+			tf == 1 ? &prunedDefenders : &prunedAttackers);
+		const bool transferred = RebuildTaskForceRoster(targetTaskForce, livePris, newrepplayer,
+			&newplayerteamentry, tf == 1 ? &prunedAttackers : &prunedDefenders);
 		if (prunedAttackers || prunedDefenders) {
 			Logger::Log("spawn",
 				"SpawnPlayerCharacter: removed duplicate taskforce roster entry attackers=%d defenders=%d pri=%p\n",
 				prunedAttackers, prunedDefenders, newrepplayer);
 		}
-		if (tf == 1) {
-			attackers->m_TeamPlayers.Add(newplayerteamentry);
-		} else {
-			defenders->m_TeamPlayers.Add(newplayerteamentry);
+		if (!transferred) {
+			FreeTeamEntryStrings(newplayerteamentry);
+			Logger::Log("spawn",
+				"SpawnPlayerCharacter: failed to append taskforce roster entry tf=%d pri=%p\n",
+				tf, newrepplayer);
 		}
 	}
 

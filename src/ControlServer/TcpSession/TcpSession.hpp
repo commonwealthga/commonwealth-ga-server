@@ -63,6 +63,12 @@ public:
                                           int source_task_force,
                                           std::string& message);
 
+    // Route a player out of an ended mission without forcing live
+    // NetConnection cleanup, which is crash-prone inside UE3.
+    static bool ForceMissionExit(const std::string& session_guid,
+                                 int64_t parent_instance_id,
+                                 const char* reason);
+
     // Clear the per-session queue + pending-match state on the named session.
     // Called when a matchmade instance dies before delivering MATCH_INVITATION
     // (spawn failure or pre-READY crash) — without this the session stays
@@ -399,6 +405,8 @@ private:
     // Polls for a READY home map instance every 2 seconds up to remaining_seconds,
     // then calls initiate_player_register_and_go_play().
     void wait_for_home_map_then_register(int remaining_seconds);
+
+    void route_from_mission_instance(int64_t parent_instance_id, const char* reason);
 
     // Continue-in-queue routing. Sends PLAYER_REGISTER to the given target
     // mission instance with task_force assignment; on ACK success replies

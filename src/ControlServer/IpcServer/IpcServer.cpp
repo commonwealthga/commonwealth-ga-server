@@ -1,10 +1,12 @@
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
+#include "src/ControlServer/InstanceSpawner/InstanceSpawner.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/Shared/IpcFraming.hpp"
 #include "lib/nlohmann/json.hpp"
+#include <chrono>
 #include <memory>
 #include <array>
 #include <vector>
@@ -33,6 +35,29 @@ bool IsPrivateOrLocalAddress(const asio::ip::address& address) {
         if (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80) return true;  // fe80::/10
     }
     return false;
+}
+
+bool StopNonHomeInstanceIfEmpty(int64_t instance_id, const char* reason) {
+    if (instance_id == 0) {
+        return false;
+    }
+
+    auto inst = InstanceRegistry::GetInstanceById(instance_id);
+    if (!inst || inst->is_home_map || inst->state == "STOPPED") {
+        return false;
+    }
+
+    const int active_players = InstanceRegistry::GetActivePlayerCount(instance_id);
+    if (active_players != 0) {
+        return false;
+    }
+
+    Logger::Log("ipc",
+        "[IpcServer] Stopping empty non-home instance=%lld reason=%s\n",
+        (long long)instance_id, reason ? reason : "unspecified");
+    InstanceSpawner::StopInstanceProcess(*inst, reason ? reason : "empty non-home instance");
+    InstanceRegistry::MarkStopped(instance_id);
+    return true;
 }
 
 } // namespace
@@ -247,20 +272,16 @@ private:
             Logger::Log("ipc", "[IpcServer] PLAYER_LEFT: instance=%lld guid=%s\n",
                 (long long)inst_id, guid.c_str());
             InstanceRegistry::MarkInstancePlayerLeft(inst_id, guid);
+            StopNonHomeInstanceIfEmpty(inst_id, "last player left");
         }
         else if (type == IpcProtocol::MSG_INSTANCE_EMPTY) {
             int64_t inst_id = j.value("instance_id", (int64_t)0);
             Logger::Log("ipc", "[IpcServer] INSTANCE_EMPTY: instance=%lld\n", (long long)inst_id);
-            // Just stamp last_empty_at. The periodic idle-cleanup loop in
-            // main.cpp calls InstanceRegistry::GetIdleInstances(300), whose
-            // SQL already implements the policy we want: home map stays warm
-            // while any mission instance is in STARTING/READY (so players
-            // bouncing between missions and home see no respawn delay), and
-            // only gets reclaimed after 5 minutes of true server idleness.
-            // Tearing the home down here would defeat that — a player leaving
-            // home to pick a mission, or briefly disconnecting to swap chars,
-            // would always eat the home-instance boot delay on the way back.
-            InstanceRegistry::SetLastEmptyAtIfEmpty(inst_id);
+            // Home stays warm for mission returns; non-home instances have no
+            // useful idle role once every player is gone.
+            if (!StopNonHomeInstanceIfEmpty(inst_id, "instance empty")) {
+                InstanceRegistry::SetLastEmptyAtIfEmpty(inst_id);
+            }
         }
         else if (type == IpcProtocol::MSG_NEED_HOME_MAP) {
             // Mission instance ended a round and is warning us players are about
@@ -325,6 +346,7 @@ private:
                         (long long)inst_id);
                 }
             }
+            schedule_mission_end_force_exit(inst_id);
         }
         else if (type == IpcProtocol::MSG_REQUEST_SUCCESSOR) {
             // Pre-warm trigger: spawn a successor instance bound to this parent
@@ -344,6 +366,39 @@ private:
         else {
             Logger::Log("ipc", "[IpcServer] Unknown message type: %s\n", type.c_str());
         }
+    }
+
+    void schedule_mission_end_force_exit(int64_t instance_id) {
+        if (instance_id == 0) {
+            return;
+        }
+
+        auto timer = std::make_shared<asio::steady_timer>(socket_.get_executor());
+        timer->expires_after(std::chrono::seconds(30));
+        Logger::Log("ipc",
+            "[IpcServer] MISSION_ENDED: force-exit timer armed parent=%lld delay=30s\n",
+            (long long)instance_id);
+        timer->async_wait([timer, instance_id](const asio::error_code& ec) {
+            if (ec) {
+                return;
+            }
+
+            auto inst = InstanceRegistry::GetInstanceById(instance_id);
+            if (!inst || inst->state == "STOPPED" || inst->is_home_map
+                || inst->end_mission_at == 0) {
+                return;
+            }
+
+            auto roster = InstanceRegistry::GetActivePlayersForInstance(instance_id);
+            Logger::Log("ipc",
+                "[IpcServer] MISSION_ENDED: force-exit firing parent=%lld players=%zu\n",
+                (long long)instance_id, roster.size());
+            for (const auto& row : roster) {
+                TcpSession::ForceMissionExit(row.guid, instance_id,
+                    "mission ended timeout");
+            }
+            StopNonHomeInstanceIfEmpty(instance_id, "mission ended force-exit");
+        });
     }
 
     void handle_admin_action(const nlohmann::json& j) {

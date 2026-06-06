@@ -902,9 +902,9 @@ std::vector<InstanceInfo> InstanceRegistry::GetReadyMissionInstances() {
     // queues, MarkMissionEnded already promoted the DRAFTING successor to
     // READY in the same transaction — that row has end_mission_at=NULL so
     // it appears here as the queue's only candidate, exactly what we want.
-    // For continue_in_queue=false queues there's no successor at all, so
-    // the matchmaker sees no instance for this queue and falls through to
-    // the "spawn new" branch — which is the requested behavior.
+    // Empty READY missions are also excluded. Even if they are between the
+    // last PLAYER_LEFT and shutdown, fresh players must not join an abandoned
+    // mid-game process and skip the normal setup flow.
     int rc = sqlite3_prepare_v2(db,
         "SELECT id, map_name, state, pid, udp_port, ip_address, player_count, "
         "       started_at, COALESCE(sealed_at, 0), "
@@ -912,7 +912,12 @@ std::vector<InstanceInfo> InstanceRegistry::GetReadyMissionInstances() {
         "       COALESCE(game_mode, ''), "
         "       COALESCE(queue_id, 0), COALESCE(predecessor_instance_id, 0), COALESCE(end_mission_at, 0) "
         "FROM ga_instances "
-        "WHERE state = 'READY' AND is_home_map = 0 AND end_mission_at IS NULL",
+        "WHERE state = 'READY' AND is_home_map = 0 AND end_mission_at IS NULL "
+        "  AND EXISTS ("
+        "        SELECT 1 FROM ga_instance_players ip "
+        "        WHERE ip.instance_id = ga_instances.instance_id "
+        "          AND ip.left_at IS NULL"
+        "      )",
         -1, &stmt, nullptr);
     if (rc != SQLITE_OK || !stmt) return results;
 
@@ -1123,8 +1128,11 @@ int InstanceRegistry::GetActiveInstanceCountForQueue(uint32_t queue_id) {
 
     sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(db,
-            "SELECT COUNT(*) FROM ga_instances "
-            "WHERE queue_id = ? AND state != 'STOPPED'",
+            "SELECT COUNT(DISTINCT i.instance_id) FROM ga_instances i "
+            "JOIN ga_instance_players ip ON ip.instance_id = i.instance_id "
+            "WHERE i.queue_id = ? AND i.state = 'READY' "
+            "  AND i.is_home_map = 0 AND i.end_mission_at IS NULL "
+            "  AND ip.left_at IS NULL",
             -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
         return 0;
     }
