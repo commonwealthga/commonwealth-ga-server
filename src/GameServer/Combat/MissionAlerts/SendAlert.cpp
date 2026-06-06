@@ -47,6 +47,31 @@ void SendAlert::Send(UNetConnection* Connection,
 	}
 
 	ClientConnection__SendMarshal::CallOriginal(Connection, nullptr, Marshal);
+
+	// Force-drain the marshal channel inline so this alert ships now instead
+	// of waiting for the next UNetConnection::Tick. Save + restore QueuedBytes
+	// verbatim (no delta accounting) — see TgPawn_Character__SendMarshal for
+	// the full why; short version: UChannel::IsReadyToSend calls IsNetReady
+	// with an indeterminate Saturate flag (no args), which sometimes
+	// clobbers our -1B fake bank with `QueuedBytes = -BunchBytes`. The
+	// delta would then be ≈ +1B and writing that back permanently exhausts
+	// the connection's budget, starving actor rep — the symptom is severe
+	// server-wide lag after the first such call.
+	{
+		void* MarshalChannel = *(void**)((char*)Connection + 0x4FB4);
+		if (MarshalChannel) {
+			volatile int32_t* QueuedBytesPtr =
+				(volatile int32_t*)((char*)Connection + 0x138);
+			constexpr int32_t kFakeBank = -1000000000;
+			const int32_t QbOriginal = *QueuedBytesPtr;
+			*QueuedBytesPtr = kFakeBank;
+			typedef void(__thiscall* TickFn)(void*);
+			TickFn Tick = (TickFn)((*(void***)MarshalChannel)[0x130 / 4]);
+			Tick(MarshalChannel);
+			*QueuedBytesPtr = QbOriginal;
+		}
+	}
+
 	NetConnection__FlushNet::CallOriginal(Connection);
 	CMarshal__Destroy::CallOriginal(Marshal);
 }
