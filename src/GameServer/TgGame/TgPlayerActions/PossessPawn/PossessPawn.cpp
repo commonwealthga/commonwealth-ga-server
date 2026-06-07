@@ -39,6 +39,11 @@ ATgPawn_Character* FindPawnBySessionGuid(const std::string& guid) {
     return nullptr;
 }
 
+void Audit(const std::string& guid, const char* command,
+           const std::string& outcome, const std::string& details) {
+    IpcClient::SendChatCommandAudit(guid, command, outcome, details);
+}
+
 constexpr float kPi          = 3.14159265358979323846f;
 constexpr float kRotToRad    = kPi / 32768.0f;   // UE3 rotator unit = 360/65536
 constexpr float kTraceDistUU = 10000.0f;          // 100m forward — generous
@@ -153,6 +158,7 @@ void ExecutePossess(const std::string& guid) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /possess guid=%s: already possessing — run -unpossess first\n",
             guid.c_str());
+        Audit(guid, "-possess", "ignored", "already possessing; run -unpossess first");
         return;
     }
 
@@ -160,6 +166,7 @@ void ExecutePossess(const std::string& guid) {
     if (!PlayerPawn || !PlayerPawn->Controller) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /possess guid=%s: no player pawn/controller\n", guid.c_str());
+        Audit(guid, "-possess", "ignored", "no player pawn/controller");
         return;
     }
 
@@ -170,6 +177,7 @@ void ExecutePossess(const std::string& guid) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /possess guid=%s: session controller isn't a PlayerController\n",
             guid.c_str());
+        Audit(guid, "-possess", "ignored", "session controller is not PlayerController");
         return;
     }
     ATgPlayerController* PC = (ATgPlayerController*)PlayerPawn->Controller;
@@ -198,6 +206,7 @@ void ExecutePossess(const std::string& guid) {
     if (!hit) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /possess guid=%s: trace hit nothing\n", guid.c_str());
+        Audit(guid, "-possess", "ignored", "trace hit nothing");
         return;
     }
 
@@ -209,6 +218,8 @@ void ExecutePossess(const std::string& guid) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /possess guid=%s: trace hit non-pawn '%s'\n",
             guid.c_str(), hitClassName);
+        Audit(guid, "-possess", "ignored",
+            std::string("trace hit non-pawn ") + hitClassName);
         return;
     }
     ATgPawn* target = (ATgPawn*)hit;
@@ -216,6 +227,7 @@ void ExecutePossess(const std::string& guid) {
     if (target == (ATgPawn*)PlayerPawn) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /possess guid=%s: trace hit self\n", guid.c_str());
+        Audit(guid, "-possess", "ignored", "trace hit self");
         return;
     }
 
@@ -223,6 +235,8 @@ void ExecutePossess(const std::string& guid) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /possess guid=%s: target '%s' has no controller\n",
             guid.c_str(), hitClassName);
+        Audit(guid, "-possess", "ignored",
+            std::string("target has no controller class=") + hitClassName);
         return;
     }
 
@@ -233,6 +247,8 @@ void ExecutePossess(const std::string& guid) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /possess guid=%s: target is a player ('%s'); only AI allowed\n",
             guid.c_str(), targetCtrlName);
+        Audit(guid, "-possess", "ignored",
+            std::string("target is player controller ") + targetCtrlName);
         return;
     }
     // Must be a TgAIController so re-attaching at -unpossess is sound.
@@ -240,6 +256,8 @@ void ExecutePossess(const std::string& guid) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /possess guid=%s: target controller '%s' isn't a TgAIController\n",
             guid.c_str(), targetCtrlName);
+        Audit(guid, "-possess", "ignored",
+            std::string("target controller is not TgAIController ") + targetCtrlName);
         return;
     }
     ATgAIController* AI = (ATgAIController*)target->Controller;
@@ -320,6 +338,9 @@ void ExecutePossess(const std::string& guid) {
     if (target->m_CurrentInHandDevice && target->InvManager) {
         target->eventSetActiveWeapon((AWeapon*)target->m_CurrentInHandDevice, 0, 1);
     }
+    Audit(guid, "-possess", "possessed",
+        std::string("class=") + hitClassName
+        + " pawn_id=" + std::to_string(bot_pawn_id));
 }
 
 void ExecuteUnpossess(const std::string& guid) {
@@ -328,6 +349,7 @@ void ExecuteUnpossess(const std::string& guid) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /unpossess guid=%s: not currently possessing\n",
             guid.c_str());
+        Audit(guid, "-unpossess", "ignored", "not currently possessing");
         return;
     }
     State st = it->second;
@@ -341,6 +363,7 @@ void ExecuteUnpossess(const std::string& guid) {
     if (!st.pc) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /unpossess guid=%s: stored PC is null — dropping\n", guid.c_str());
+        Audit(guid, "-unpossess", "ignored", "stored PC is null");
         return;
     }
 
@@ -373,6 +396,7 @@ void ExecuteUnpossess(const std::string& guid) {
     // and our hook handles player-side refresh through the DB-backed path.
     // Doing it manually here on top of the hook double-sends and was racing
     // against the natural engine flow.
+    Audit(guid, "-unpossess", "restored", "returned to player body");
 }
 
 // ---------------------------------------------------------------------------

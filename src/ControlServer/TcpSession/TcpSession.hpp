@@ -74,6 +74,12 @@ public:
                                           int source_task_force,
                                           std::string& message);
 
+    // Route a player out of an ended mission without forcing live
+    // NetConnection cleanup, which is crash-prone inside UE3.
+    static bool ForceMissionExit(const std::string& session_guid,
+                                 int64_t parent_instance_id,
+                                 const char* reason);
+
     // Clear the per-session queue + pending-match state on the named session.
     // Called when a matchmade instance dies before delivering MATCH_INVITATION
     // (spawn failure or pre-READY crash) — without this the session stays
@@ -100,6 +106,7 @@ private:
     // skills response packet (FUN_1141f750 matches rows by this). Surfaced
     // from game server via spawn/skill_save IPC; default 0 until known.
     int32_t  item_profile_id_       = 0;
+    uint64_t profile_refresh_token_ = 0;
 
 	uint32_t current_match_queue_id_ = 0;
 
@@ -107,6 +114,8 @@ private:
     int64_t pending_match_instance_id_ = 0;
     std::string pending_match_game_mode_;
     int pending_match_task_force_ = 1;
+    uint64_t next_register_token_ = 1;
+    uint64_t active_register_token_ = 0;
 
     // ACK-wait timer for PLAYER_REGISTER flow. Cancelled on ACK arrival or disconnect.
     std::shared_ptr<asio::steady_timer> pending_ack_timer_;
@@ -461,6 +470,8 @@ private:
     // Polls for a READY home map instance every 2 seconds up to remaining_seconds,
     // then calls initiate_player_register_and_go_play().
     void wait_for_home_map_then_register(int remaining_seconds);
+
+    void route_from_mission_instance(int64_t parent_instance_id, const char* reason);
 
     // Continue-in-queue routing. Sends PLAYER_REGISTER to the given target
     // mission instance with task_force assignment; on ACK success replies

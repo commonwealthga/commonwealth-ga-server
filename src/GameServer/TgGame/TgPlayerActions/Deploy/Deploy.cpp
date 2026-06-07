@@ -5,6 +5,7 @@
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/IpcClient/IpcClient.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
 #include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -30,6 +31,19 @@ const char* TeamName(Team t) {
     return "?";
 }
 
+const char* CommandName(Team t) {
+    switch (t) {
+        case Team::Friend: return "-deployfriend";
+        case Team::Enemy:  return "-deployenemy";
+    }
+    return "-deploy?";
+}
+
+void Audit(const std::string& guid, Team team,
+           const std::string& outcome, const std::string& details) {
+    IpcClient::SendChatCommandAudit(guid, CommandName(team), outcome, details);
+}
+
 constexpr float kPi = 3.14159265358979323846f;
 
 // Same forward-of-player distance SpawnBot uses — far enough that the
@@ -45,11 +59,23 @@ constexpr float kPlayerCDOHalfHeight = 46.0f;
 } // namespace
 
 void Execute(const std::string& session_guid, int deployable_id, Team team) {
+    if (!DeployableClassify::IsKnownDeployableId(deployable_id)) {
+        Logger::Log("chat-command",
+            "[ChatCmd][DLL] /deploy%s guid=%s deployable_id=%d is not a deployable; "
+            "use -spawnfriend/-spawnenemy for bot IDs; dropping\n",
+            TeamName(team), session_guid.c_str(), deployable_id);
+        Audit(session_guid, team, "ignored",
+            "not a deployable deployable_id=" + std::to_string(deployable_id)
+            + "; use spawn commands for bot IDs");
+        return;
+    }
+
     ATgPawn_Character* Pawn = FindPawnBySessionGuid(session_guid);
     if (!Pawn) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /deploy%s: no pawn for guid=%s; dropping\n",
             TeamName(team), session_guid.c_str());
+        Audit(session_guid, team, "ignored", "no player pawn");
         return;
     }
 
@@ -62,6 +88,7 @@ void Execute(const std::string& session_guid, int deployable_id, Team team) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /deploy%s guid=%s: player has no task force; dropping\n",
             TeamName(team), session_guid.c_str());
+        Audit(session_guid, team, "ignored", "player has no task force");
         return;
     }
     ATgRepInfo_TaskForce* targetTf;
@@ -119,6 +146,8 @@ void Execute(const std::string& session_guid, int deployable_id, Team team) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /deploy%s guid=%s deployable_id=%d: SpawnDeployableActor returned null\n",
             TeamName(team), session_guid.c_str(), deployable_id);
+        Audit(session_guid, team, "ignored",
+            "SpawnDeployableActor returned null deployable_id=" + std::to_string(deployable_id));
         return;
     }
 
@@ -148,6 +177,10 @@ void Execute(const std::string& session_guid, int deployable_id, Team team) {
         TeamName(team), session_guid.c_str(),
         (void*)Deployable, deployable_id,
         (int)targetTf->r_nTaskForce, Deployable->r_nHealth);
+    Audit(session_guid, team, "spawned",
+        "deployable_id=" + std::to_string(deployable_id)
+        + " tf=" + std::to_string((int)targetTf->r_nTaskForce)
+        + " health=" + std::to_string((int)Deployable->r_nHealth));
 }
 
 } // namespace TgPlayerActions::DeployCmd

@@ -20,6 +20,12 @@ std::mutex PlayerSessionStore::mutex_;
 std::map<std::string, SessionInfo> PlayerSessionStore::by_guid_;
 std::map<std::string, SessionInfo> PlayerSessionStore::by_ip_;
 
+static constexpr int kDyeNoneItemId = 3524;
+
+static bool IsDyeNoneSlot(int item_id, int engine_slot) {
+	return item_id == kDyeNoneItemId && engine_slot >= 16 && engine_slot <= 20;
+}
+
 // asm_data_set_items.item_id values that crash the client on equip (or on
 // nearby-player render). Cosmetic-seeding filters them out, and the per-login
 // PurgeBlacklistedItems pass strips them from existing inventories + equip
@@ -999,12 +1005,8 @@ void PlayerSessionStore::SeedCharacterCosmeticDefaults(int64_t character_id, uin
 		"SELECT id FROM ga_players_inventory "
 		"WHERE user_id = ? AND item_id = ? "
 		"ORDER BY stock_n ASC LIMIT 1";
-	// item_profile_id is NOT NULL on ga_character_devices — see the
-	// migration; omitting it silently fails the row. Cosmetic defaults
-	// land in profile 1; CosmeticEquip::LoadFromDB doesn't filter by
-	// profile so this is safe (the per-profile equip-save's DELETE only
-	// touches non-armor rows for that profile, so other profiles'
-	// cosmetic rows simply accumulate as the user equips them).
+	// Defaults land only in profile 1. Other profiles stay visually blank
+	// until the player explicitly saves cosmetics there.
 	const char* kInsertEquip =
 		"INSERT OR IGNORE INTO ga_character_devices (character_id, item_profile_id, inventory_id, equipped_slot) "
 		"VALUES (?, 1, ?, ?)";
@@ -1575,6 +1577,7 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 
 	// Capture per-row subtype to compute db_slot at insert time.
 	std::map<int, int> inv_subtype;  // inventory_id → item_subtype_value_id (0 for non-cosmetic)
+	std::set<int> clear_slots;
 
 	for (const auto& kv : save_map) {
 		const int equip_point = kv.first;
@@ -1622,41 +1625,38 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 		// Stash subtype for cosmetic rows (deviceId=0, itemId>0). Non-cosmetic
 		// rows get subtype 0 so DbSlotFor passes through.
 		inv_subtype[inventory_id] = (inv_device == 0 && inv_itemId > 0) ? inv_subt : 0;
+		if (inv_device == 0 && IsDyeNoneSlot(inv_itemId, equip_point)) {
+			clear_slots.insert(equip_point);
+		}
 	}
 	sqlite3_finalize(vstmt);
 
-	// All validation passed. Replace ga_character_devices for this character
-	// in a single transaction.
-	//
-	// IMPORTANT: the DELETE is full-character. Any cosmetic rows whose engine
-	// slot wasn't in this IPC payload would normally vanish here — but the
-	// equip-screen client appears to ship the full current loadout (both gear
-	// and appearance) on every Apply, so the rebuild covers them. The remap
-	// in the INSERT pass ensures cosmetic suit/helmet land at DB slot 22/23,
-	// leaving DB slot 6/12 free for the gameplay suit/helmet rows the client
-	// also shipped.
+	// All validation passed. Update only the slots in this payload. The equip
+	// UI can send gameplay slots plus the one cosmetic the player changed, so
+	// absent cosmetic slots are not reliable "clear" signals.
 	char* err = nullptr;
 	sqlite3_exec(db, "BEGIN", nullptr, nullptr, &err);
 
-	// Scope the DELETE to slots the client's SlotIndices[] actually controls
-	// (engine equip-points 1–24 + cosmetic DB-slots 22/23). Armor slots
-	// (group-129 SVIDs 1130/1132/1133/1136/1139/1142/1143) move through the
-	// equip screen's separate Armor tab via FTGEQUIP_SLOTS_STRUCT.MiscItems[]
-	// and are handled by the misc_items pass below. Without this gate, the
-	// SlotIndices INSERT pass would clobber armor on every weapon/cosmetic
-	// Apply because the client never includes armor in SlotIndices.
 	sqlite3_stmt* del = nullptr;
 	if (sqlite3_prepare_v2(db,
 	    "DELETE FROM ga_character_devices "
-	    "WHERE character_id = ? AND item_profile_id = ? "
-	    "  AND equipped_slot NOT IN (1130, 1132, 1133, 1136, 1139, 1142, 1143)",
+	    "WHERE character_id = ? AND item_profile_id = ? AND equipped_slot = ?",
 	    -1, &del, nullptr) != SQLITE_OK) {
 		sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, &err);
 		return false;
 	}
-	sqlite3_bind_int64(del, 1, character_id);
-	sqlite3_bind_int  (del, 2, item_profile_id);
-	sqlite3_step(del);
+	for (const auto& kv : save_map) {
+		const int engine_slot = kv.first;
+		const int inv_id      = kv.second;
+		const int subtype     = inv_subtype[inv_id];
+		const int db_slot     = CosmeticSlots::DbSlotFor(engine_slot, subtype);
+		sqlite3_reset(del);
+		sqlite3_clear_bindings(del);
+		sqlite3_bind_int64(del, 1, character_id);
+		sqlite3_bind_int  (del, 2, item_profile_id);
+		sqlite3_bind_int  (del, 3, db_slot);
+		sqlite3_step(del);
+	}
 	sqlite3_finalize(del);
 
 	sqlite3_stmt* ins = nullptr;
@@ -1673,6 +1673,12 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 		const int inv_id      = kv.second;
 		const int subtype     = inv_subtype[inv_id];
 		const int db_slot     = CosmeticSlots::DbSlotFor(engine_slot, subtype);
+		if (clear_slots.count(engine_slot) > 0) {
+			Logger::Log("armor",
+				"[Save] cosmetic clear: item %d cleared slot %d (dbSlot=%d)\n",
+				kDyeNoneItemId, engine_slot, db_slot);
+			continue;
+		}
 		sqlite3_reset(ins);
 		sqlite3_clear_bindings(ins);
 		sqlite3_bind_int64(ins, 1, character_id);

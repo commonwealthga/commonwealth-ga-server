@@ -9,6 +9,7 @@
 #include "src/GameServer/TgGame/TgPlayerActions/SpawnBot/SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/Deploy/Deploy.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/ReturnHomeArea/ReturnHomeArea.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
@@ -62,6 +63,125 @@ struct IpcCsGuard {
     IpcCsGuard(CRITICAL_SECTION& c) : cs(c) { EnterCriticalSection(&cs); }
     ~IpcCsGuard() { LeaveCriticalSection(&cs); }
 };
+
+namespace {
+
+struct PendingProfileAssemblyPulse {
+    FCustomCharacterAssembly assembly;
+    int item_profile_id;
+    uint64_t refresh_token;
+};
+
+std::unordered_map<std::string, PendingProfileAssemblyPulse> g_pending_profile_assembly_pulses;
+
+void MarkProfileAssemblyDirty(ATgPawn_Character* pawn) {
+    if (pawn == nullptr) return;
+    pawn->bNetDirty = 1;
+    pawn->bForceNetUpdate = 1;
+
+    auto* pri = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
+    if (pri != nullptr) {
+        pri->bNetDirty = 1;
+        pri->bForceNetUpdate = 1;
+    }
+}
+
+void CopyAssemblyToPawnAndPri(ATgPawn_Character* pawn, const FCustomCharacterAssembly& assembly) {
+    if (pawn == nullptr) return;
+    pawn->r_CustomCharacterAssembly = assembly;
+
+    auto* pri = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
+    if (pri != nullptr) {
+        pri->r_CustomCharacterAssembly = assembly;
+    }
+
+    MarkProfileAssemblyDirty(pawn);
+}
+
+void LogProfileAssemblyPulse(const char* tag, const std::string& guid, ATgPawn_Character* pawn,
+                             const FCustomCharacterAssembly& assembly, uint64_t refresh_token) {
+    Logger::Log("loadout",
+        "[IPC] profile_assembly_pulse %s guid=%s pawn=%p pawnId=%d itemProf=%d token=%llu "
+        "head=%d helmet=%d suit=%d suitFlair=%d trail=%d dyes=%d,%d,%d,%d,%d\n",
+        tag,
+        guid.c_str(),
+        pawn,
+        pawn ? (int)pawn->r_nPawnId : 0,
+        pawn ? (int)pawn->r_nItemProfileId : 0,
+        (unsigned long long)refresh_token,
+        assembly.HeadFlairId,
+        assembly.HelmetMeshId,
+        assembly.SuitMeshId,
+        assembly.SuitFlairId,
+        assembly.JetpackTrailId,
+        assembly.DyeList[0],
+        assembly.DyeList[1],
+        assembly.DyeList[2],
+        assembly.DyeList[3],
+        assembly.DyeList[4]);
+}
+
+void BeginProfileAssemblyPulse(ATgPawn_Character* pawn, const std::string& guid, int item_profile_id,
+                               uint64_t refresh_token) {
+    if (pawn == nullptr) return;
+
+    const FCustomCharacterAssembly real = pawn->r_CustomCharacterAssembly;
+    g_pending_profile_assembly_pulses[guid] = PendingProfileAssemblyPulse{real, item_profile_id, refresh_token};
+
+    // Cheap workaround: we have not found a safe way to recreate the original
+    // live-pawn appearance refresh on profile switch. Force a replicated
+    // assembly diff, then restore it so same-instance jetpack dyes repaint.
+    FCustomCharacterAssembly pulse = real;
+    pulse.HeadFlairId = -1;
+    pulse.HelmetMeshId = -1;
+    pulse.SuitFlairId = -1;
+    pulse.JetpackTrailId = 0;
+    for (int i = 0; i < 5; ++i) {
+        pulse.DyeList[i] = 0;
+    }
+
+    CopyAssemblyToPawnAndPri(pawn, pulse);
+    LogProfileAssemblyPulse("begin", guid, pawn, pulse, refresh_token);
+}
+
+void FinishProfileAssemblyPulse(ATgPawn_Character* pawn, const std::string& guid, int item_profile_id,
+                                uint64_t refresh_token) {
+    if (pawn == nullptr) return;
+
+    auto it = g_pending_profile_assembly_pulses.find(guid);
+    if (it == g_pending_profile_assembly_pulses.end()) {
+        Logger::Log("loadout",
+            "[IPC] profile_assembly_pulse finish guid=%s skipped: no pending pulse\n",
+            guid.c_str());
+        return;
+    }
+
+    const PendingProfileAssemblyPulse pending = it->second;
+    if (pending.refresh_token != refresh_token || pending.item_profile_id != item_profile_id) {
+        Logger::Log("loadout",
+            "[IPC] profile_assembly_pulse finish guid=%s skipped: stale pulse pendingProf=%d msgProf=%d pendingToken=%llu msgToken=%llu pawnProf=%d\n",
+            guid.c_str(), pending.item_profile_id, item_profile_id,
+            (unsigned long long)pending.refresh_token,
+            (unsigned long long)refresh_token,
+            (int)pawn->r_nItemProfileId);
+        return;
+    }
+
+    g_pending_profile_assembly_pulses.erase(it);
+
+    if (item_profile_id > 0 && pawn->r_nItemProfileId != item_profile_id) {
+        Logger::Log("loadout",
+            "[IPC] profile_assembly_pulse finish guid=%s skipped: pawn profile changed msgProf=%d pawnProf=%d token=%llu\n",
+            guid.c_str(), item_profile_id, (int)pawn->r_nItemProfileId,
+            (unsigned long long)refresh_token);
+        return;
+    }
+
+    CopyAssemblyToPawnAndPri(pawn, pending.assembly);
+    LogProfileAssemblyPulse("finish", guid, pawn, pending.assembly, refresh_token);
+}
+
+}  // namespace
 
 // ---------------------------------------------------------------------------
 // Init
@@ -236,6 +356,25 @@ void IpcClient::SendRequestSuccessor() {
         (long long)instance_id_);
 }
 
+void IpcClient::SendChatCommandAudit(const std::string& session_guid,
+                                     const std::string& command,
+                                     const std::string& outcome,
+                                     const std::string& details) {
+    nlohmann::json ev;
+    ev["type"]         = IpcProtocol::MSG_GAME_EVENT;
+    ev["subtype"]      = "chat_command_audit";
+    ev["instance_id"]  = instance_id_;
+    ev["session_guid"] = session_guid;
+    ev["command"]      = command;
+    ev["outcome"]      = outcome;
+    ev["details"]      = details;
+
+    auto info = PlayerRegistry::GetByGuid(session_guid);
+    ev["player_name"] = info ? info->player_name : "";
+
+    Send(ev.dump());
+}
+
 // ---------------------------------------------------------------------------
 // kick_write -- posted to ASIO thread by Send()
 // ---------------------------------------------------------------------------
@@ -314,6 +453,7 @@ void IpcClient::DrainInbound() {
             int64_t char_id         = j.value("character_id", (int64_t)0);
             uint32_t profile_id     = j.value("profile_id", (uint32_t)0);
             int task_force          = j.value("task_force", 1);
+            uint64_t register_token = j.value("register_token", uint64_t{0});
             // head_asm_id, gender_type_value_id, morph_data available in payload but not stored
             // in PlayerInfo at registration time -- SpawnPlayerCharacter reads morph_data from
             // the DLL's own sqlite DB (inserted at character creation via old flow).
@@ -329,6 +469,7 @@ void IpcClient::DrainInbound() {
             info.current_item_profile_id  = j.value("current_item_profile_id", 1);
             if (info.current_item_profile_id < 1 || info.current_item_profile_id > 5)
                 info.current_item_profile_id = 1;
+            info.control_register_token = register_token;
 
             // Convert player_name to wide string for UE3 APIs.
             info.player_name_w = std::wstring(pname.begin(), pname.end());
@@ -388,6 +529,8 @@ void IpcClient::DrainInbound() {
                     Logger::Log("chat-command",
                         "[ChatCmd][DLL] change_team guid=%s: invalid target '%s'; dropping\n",
                         guid.c_str(), target_str.c_str());
+                    SendChatCommandAudit(guid, "change_team", "ignored",
+                        "invalid target '" + target_str + "'");
                     continue;
                 }
 
@@ -412,6 +555,8 @@ void IpcClient::DrainInbound() {
                     Logger::Log("chat-command",
                         "[ChatCmd][DLL] spawn_target guid=%s: invalid bot_id=%d; dropping\n",
                         guid.c_str(), bot_id);
+                    SendChatCommandAudit(guid, "spawn_target", "ignored",
+                        "invalid bot_id=" + std::to_string(bot_id));
                     continue;
                 }
 
@@ -425,6 +570,8 @@ void IpcClient::DrainInbound() {
                     Logger::Log("chat-command",
                         "[ChatCmd][DLL] spawn_target guid=%s: invalid team '%s'; dropping\n",
                         guid.c_str(), team_str.c_str());
+                    SendChatCommandAudit(guid, "spawn_target", "ignored",
+                        "invalid team '" + team_str + "'");
                     continue;
                 }
 
@@ -447,6 +594,8 @@ void IpcClient::DrainInbound() {
                     Logger::Log("chat-command",
                         "[ChatCmd][DLL] deploy_target guid=%s: invalid deployable_id=%d; dropping\n",
                         guid.c_str(), deployable_id);
+                    SendChatCommandAudit(guid, "deploy_target", "ignored",
+                        "invalid deployable_id=" + std::to_string(deployable_id));
                     continue;
                 }
 
@@ -460,6 +609,8 @@ void IpcClient::DrainInbound() {
                     Logger::Log("chat-command",
                         "[ChatCmd][DLL] deploy_target guid=%s: invalid team '%s'; dropping\n",
                         guid.c_str(), team_str.c_str());
+                    SendChatCommandAudit(guid, "deploy_target", "ignored",
+                        "invalid team '" + team_str + "'");
                     continue;
                 }
 
@@ -492,10 +643,39 @@ void IpcClient::DrainInbound() {
                     lift_z = j["args"].value("lift_z", 0.0f);
                 }
                 TgPlayerActions::TopDownCmd::Execute(guid, lift_z);
+            } else if (action == "return_home_area") {
+                TgPlayerActions::ReturnHomeAreaCmd::Execute(guid);
+            } else if (action == "refresh_profile_ui") {
+                const std::string phase = j.value("phase", "");
+                const int item_profile_id = j.value("item_profile_id", 0);
+                const uint64_t refresh_token = j.value("refresh_token", (uint64_t)0);
+                int refreshed = 0;
+                for (auto& kv : GClientConnectionsData) {
+                    ClientConnectionData& data = kv.second;
+                    if (data.SessionGuid != guid || data.Pawn == nullptr) continue;
+
+                    ATgPlayerController* controller =
+                        (ATgPlayerController*)data.Pawn->Controller;
+                    if (controller == nullptr || controller->Player == nullptr) continue;
+
+                    controller->eventClientResetEquipScreen();
+                    if (phase == "immediate") {
+                        BeginProfileAssemblyPulse(data.Pawn, guid, item_profile_id, refresh_token);
+                    } else if (phase == "delayed") {
+                        FinishProfileAssemblyPulse(data.Pawn, guid, item_profile_id, refresh_token);
+                    }
+                    ++refreshed;
+                }
+                Logger::Log("loadout",
+                    "[IPC] refresh_profile_ui guid=%s phase=%s itemProf=%d token=%llu refreshed=%d\n",
+                    guid.c_str(), phase.c_str(), item_profile_id,
+                    (unsigned long long)refresh_token, refreshed);
             } else {
                 Logger::Log("chat-command",
                     "[ChatCmd][DLL] PLAYER_ACTION guid=%s: unknown action '%s'; dropping\n",
                     guid.c_str(), action.c_str());
+                SendChatCommandAudit(guid, action.empty() ? "unknown" : action, "ignored",
+                    "unknown player action");
             }
         } else if (type == IpcProtocol::MSG_PLAYER_LEAVE) {
             // Forwarded by the control server when the client sends
@@ -508,6 +688,7 @@ void IpcClient::DrainInbound() {
             // NetDriver->ClientConnections, closes all channels and destroys
             // the attached PlayerController via the engine's CleanUpActor.
             std::string guid = j.value("session_guid", "");
+            uint64_t expected_token = j.value("register_token", uint64_t{0});
             if (guid.empty()) {
                 Logger::Log("ipc", "[IPC] PLAYER_LEAVE: missing session_guid; dropping\n");
                 continue;
@@ -520,6 +701,15 @@ void IpcClient::DrainInbound() {
             std::vector<UNetConnection*> to_cleanup;
             for (auto& kv : GClientConnectionsData) {
                 if (kv.second.SessionGuid == guid) {
+                    if (expected_token != 0 &&
+                        kv.second.PlayerInfo.control_register_token != expected_token) {
+                        Logger::Log("ipc",
+                            "[IPC] PLAYER_LEAVE: stale token guid=%s expected=%llu current=%llu; skipping connection 0x%p\n",
+                            guid.c_str(), (unsigned long long)expected_token,
+                            (unsigned long long)kv.second.PlayerInfo.control_register_token,
+                            (UNetConnection*)kv.first);
+                        continue;
+                    }
                     to_cleanup.push_back((UNetConnection*)kv.first);
                 }
             }
@@ -531,8 +721,8 @@ void IpcClient::DrainInbound() {
                 matches++;
             }
 
-            Logger::Log("ipc", "[IPC] PLAYER_LEAVE guid=%s: cleaned up %d connection(s)\n",
-                guid.c_str(), matches);
+            Logger::Log("ipc", "[IPC] PLAYER_LEAVE guid=%s token=%llu: cleaned up %d connection(s)\n",
+                guid.c_str(), (unsigned long long)expected_token, matches);
         } else {
             Logger::Log("ipc", "[IPC] Unknown message type: %s\n", type.c_str());
         }

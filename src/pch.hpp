@@ -1,5 +1,9 @@
-#pragma once
+#ifndef COMMONWEALTH_GA_SERVER_PCH_HPP
+#define COMMONWEALTH_GA_SERVER_PCH_HPP
 
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <mswsock.h>
 #include <windows.h>
 // #include <stdio.h>
 // #include <time.h>
@@ -16,8 +20,6 @@
 #include <unordered_map>
 #include <vector>
 #include "lib/sqlite3/sqlite3.h"
-#include <mswsock.h>
-#include <ws2tcpip.h>
 #include <unistd.h>
 #define ASIO_DISABLE_IOCP
 #define ASIO_NO_WIN32_LEAN_AND_MEAN
@@ -29,3 +31,4 @@
 #include <map>
 #include "src/SDK/SdkHeaders.h"
 
+#endif // COMMONWEALTH_GA_SERVER_PCH_HPP

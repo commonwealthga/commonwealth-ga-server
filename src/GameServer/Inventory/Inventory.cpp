@@ -743,24 +743,29 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 	return Device;
 }
 
-// ---------------------------------------------------------------------------
-// Inventory::Finalize — trigger replication after all equips
-// ---------------------------------------------------------------------------
 void Inventory::Finalize(ATgPawn* Pawn) {
+	Finalize(Pawn, true);
+}
+
+void Inventory::Finalize(ATgPawn* Pawn, bool markNetDirty) {
 	if (Pawn == nullptr) return;
 
+	// markNetDirty=false is intentional for live profile switches. Full
+	// finalize previously faulted at GlobalAgenda.exe+0x6ea97 after UpdateClientDevices.
 	Pawn->UpdateClientDevices(0, 0);
-	Pawn->bNetDirty = 1;
-	Pawn->bForceNetUpdate = 1;
+	if (markNetDirty) {
+		Pawn->bNetDirty = 1;
+		Pawn->bForceNetUpdate = 1;
+	}
 
 	ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
-	if (PRI != nullptr) {
+	if (PRI != nullptr && markNetDirty) {
 		PRI->bNetDirty = 1;
 		PRI->bForceNetUpdate = 1;
 	}
 
-	Logger::Log("inventory", "Finalize: pawn=0x%p, %d devices tracked\n",
-		Pawn, (int)s_equipped[Pawn].size());
+	Logger::Log("inventory", "Finalize: pawn=0x%p, %d devices tracked markNetDirty=%d\n",
+		Pawn, (int)s_equipped[Pawn].size(), markNetDirty ? 1 : 0);
 }
 
 // ---------------------------------------------------------------------------

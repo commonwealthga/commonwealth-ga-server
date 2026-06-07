@@ -56,14 +56,23 @@ void __fastcall TgPawn__SetProperty::Call(ATgPawn* Pawn, void* edx, int Property
 	const float rawAfter        = findRaw();
 	const float airAfter        = Pawn->AirSpeed;
 	const float flightAccAfter  = Pawn->r_FlightAcceleration;
+	const bool movementRepChanged =
+		(PropertyId == 70 && airBefore != airAfter) ||
+		(PropertyId == 59 && flightAccBefore != flightAccAfter);
+	if (movementRepChanged) {
+		// AirSpeed and r_FlightAcceleration replicate through bNetDirty-gated blocks.
+		Pawn->bNetDirty = 1;
+		Pawn->bForceNetUpdate = 1;
+	}
 
 	const char* propName = (PropertyId == 70) ? "AirSpeed" : "FlightAccel";
 	Logger::Log("effects",
 		"[SET-PROP] pawn=%p prop=%d(%s) NewValue=%.4f  m_fRaw %.4f -> %.4f (Δ%+.4f)  "
-		"AirSpeed %.3f -> %.3f  r_FlightAccel %.4f -> %.4f  caller=%p\n",
+		"AirSpeed %.3f -> %.3f  r_FlightAccel %.4f -> %.4f  dirty=%d caller=%p\n",
 		(void*)Pawn, PropertyId, propName, NewValue,
 		rawBefore, rawAfter, rawAfter - rawBefore,
 		airBefore, airAfter,
 		flightAccBefore, flightAccAfter,
+		(int)movementRepChanged,
 		caller);
 }

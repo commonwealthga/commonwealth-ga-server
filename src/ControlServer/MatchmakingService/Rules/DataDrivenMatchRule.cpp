@@ -1,8 +1,14 @@
 #include "src/ControlServer/MatchmakingService/Rules/DataDrivenMatchRule.hpp"
 #include "src/ControlServer/MatchmakingService/RoleWeightedSplit.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
+#include <algorithm>
 
 namespace {
+
+std::vector<QueuedPlayer> FirstN(const std::vector<QueuedPlayer>& players, size_t count) {
+    count = std::min(count, players.size());
+    return std::vector<QueuedPlayer>(players.begin(), players.begin() + count);
+}
 
 // Legacy placement: greedy-by-size or pinned. Unchanged behavior for
 // Pinned1/Pinned2/Balanced. BalancedPvp is routed through the role-
@@ -74,6 +80,13 @@ std::optional<MatchResult> DataDrivenMatchRule::Evaluate(
     // Try to join the first READY instance for this queue (provider
     // already filtered by queue_id).
     for (const auto& inst : instances) {
+        if (inst.max_players > 0 && inst.player_count >= inst.max_players) continue;
+        const size_t seats = inst.max_players > 0
+            ? (size_t)std::max(0, inst.max_players - inst.player_count)
+            : players.size();
+        auto routed_players = FirstN(players, seats);
+        if (routed_players.empty()) continue;
+
         MatchResult result;
         result.map_name  = inst.map_name;
         result.game_mode = inst.game_mode;
@@ -81,26 +94,37 @@ std::optional<MatchResult> DataDrivenMatchRule::Evaluate(
 
         if (cfg_.taskforce_policy == TaskforcePolicy::BalancedPvp) {
             auto seeds = SeedFromInstance(inst.instance_id);
-            AssignTaskForcesBalancedPvp(players, seeds.first, seeds.second, result);
+            seeds.first.size += inst.reserved_team1_size;
+            seeds.first.heal_score += inst.reserved_team1_heal_score;
+            seeds.second.size += inst.reserved_team2_size;
+            seeds.second.heal_score += inst.reserved_team2_heal_score;
+            AssignTaskForcesBalancedPvp(routed_players, seeds.first, seeds.second, result);
         } else {
             int t1 = 0, t2 = 0;
             if (cfg_.taskforce_policy == TaskforcePolicy::Balanced) {
                 auto counts = InstanceRegistry::GetTeamCounts(inst.instance_id);
-                t1 = counts.first;
-                t2 = counts.second;
+                t1 = counts.first + inst.reserved_team1_size;
+                t2 = counts.second + inst.reserved_team2_size;
             }
-            AssignTaskForcesLegacy(cfg_, players, t1, t2, result);
+            AssignTaskForcesLegacy(cfg_, routed_players, t1, t2, result);
         }
         return result;
     }
 
     // No joinable instance — fresh spawn. Leave map/mode empty so
     // MatchmakingService fills them via PickRandomMapPoolEntryForCount.
+    size_t seats = players.size();
+    if (uint32_t cap = MatchmakingService::GetQueueInstanceCap(cfg_); cap > 0) {
+        seats = std::min(seats, (size_t)cap);
+    }
+    auto routed_players = FirstN(players, seats);
+    if (routed_players.empty()) return std::nullopt;
+
     MatchResult result;
     if (cfg_.taskforce_policy == TaskforcePolicy::BalancedPvp) {
-        AssignTaskForcesBalancedPvp(players, {}, {}, result);
+        AssignTaskForcesBalancedPvp(routed_players, {}, {}, result);
     } else {
-        AssignTaskForcesLegacy(cfg_, players, 0, 0, result);
+        AssignTaskForcesLegacy(cfg_, routed_players, 0, 0, result);
     }
     return result;
 }

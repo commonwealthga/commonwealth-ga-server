@@ -126,6 +126,104 @@ static void RepairSpawnVolumeState(ATgPawn_Character* Pawn) {
 		(int)Pawn->r_bDisableAllDevices, (int)Pawn->r_bEnableSkills);
 }
 
+static void FreeTeamEntryStrings(FTGTEAM_ENTRY& Entry) {
+	if (Entry.fsName.Data) {
+		GAllocator::Free(Entry.fsName.Data);
+		Entry.fsName.Data = nullptr;
+	}
+	Entry.fsName.Count = Entry.fsName.Max = 0;
+	if (Entry.fsMapName.Data) {
+		GAllocator::Free(Entry.fsMapName.Data);
+		Entry.fsMapName.Data = nullptr;
+	}
+	Entry.fsMapName.Count = Entry.fsMapName.Max = 0;
+}
+
+static bool RebuildTaskForceRoster(
+	ATgRepInfo_TaskForce* TaskForce,
+	const std::unordered_set<ATgRepInfo_Player*>& LivePris,
+	ATgRepInfo_Player* RemovePri,
+	const FTGTEAM_ENTRY* AppendEntry,
+	int* RemovedOut) {
+	if (RemovedOut) {
+		*RemovedOut = 0;
+	}
+	if (!TaskForce) {
+		return false;
+	}
+
+	FTGTEAM_ENTRY* oldData = TaskForce->m_TeamPlayers.Data;
+	const int oldCount = (oldData && TaskForce->m_TeamPlayers.Count > 0)
+		? TaskForce->m_TeamPlayers.Count
+		: 0;
+	int keepCount = 0;
+	for (int read = 0; read < oldCount; ++read) {
+		FTGTEAM_ENTRY& entry = oldData[read];
+		const bool removeCurrent = RemovePri && entry.pPrep == RemovePri;
+		const bool keep = entry.pPrep && !removeCurrent && LivePris.find(entry.pPrep) != LivePris.end();
+		if (keep) {
+			++keepCount;
+		}
+	}
+
+	const int newCount = keepCount + (AppendEntry ? 1 : 0);
+	FTGTEAM_ENTRY* newData = nullptr;
+	if (newCount > 0) {
+		newData = (FTGTEAM_ENTRY*)GAllocator::Malloc(sizeof(FTGTEAM_ENTRY) * newCount);
+		if (!newData) {
+			Logger::Log("spawn",
+				"SpawnPlayerCharacter: failed to allocate taskforce roster entries=%d\n",
+				newCount);
+			return false;
+		}
+		memset(newData, 0, sizeof(FTGTEAM_ENTRY) * newCount);
+	}
+
+	int write = 0;
+	int removed = 0;
+	for (int read = 0; read < oldCount; ++read) {
+		FTGTEAM_ENTRY& entry = oldData[read];
+		const bool removeCurrent = RemovePri && entry.pPrep == RemovePri;
+		const bool keep = entry.pPrep && !removeCurrent && LivePris.find(entry.pPrep) != LivePris.end();
+		if (keep) {
+			newData[write++] = entry;
+		} else {
+			FreeTeamEntryStrings(entry);
+			++removed;
+		}
+	}
+
+	if (AppendEntry) {
+		newData[write++] = *AppendEntry;
+	}
+
+	// Warm-home re-entry can leave stale team entries; rebuild avoids Realloc on a dirty roster buffer.
+	if (oldData) {
+		GAllocator::Free(oldData);
+	}
+	TaskForce->m_TeamPlayers.Data = newData;
+	TaskForce->m_TeamPlayers.Count = write;
+	TaskForce->m_TeamPlayers.Max = write;
+	if (RemovedOut) {
+		*RemovedOut = removed;
+	}
+	return true;
+}
+
+static std::unordered_set<ATgRepInfo_Player*> BuildLivePriSet(ATgRepInfo_Player* CurrentPri) {
+	std::unordered_set<ATgRepInfo_Player*> live;
+	if (CurrentPri) {
+		live.insert(CurrentPri);
+	}
+	for (const auto& kv : GClientConnectionsData) {
+		ATgPawn_Character* pawn = kv.second.Pawn;
+		if (pawn && pawn->PlayerReplicationInfo) {
+			live.insert((ATgRepInfo_Player*)pawn->PlayerReplicationInfo);
+		}
+	}
+	return live;
+}
+
 ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, void* edx, ATgPlayerController* PlayerController, FVector SpawnLocation) {
 
 	LogCallBegin();
@@ -326,13 +424,9 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newpawn->Role       = 3;  // ROLE_Authority
 	newpawn->RemoteRole = 1;  // ROLE_SimulatedProxy
 
-	// r_nBodyMeshAsmId + r_CustomCharacterAssembly are owned by
-	// CosmeticEquip::LoadFromDB (called below, before the device equip loop).
-	// It writes the baseline assembly, overlays the character's saved
-	// cosmetics, and aligns r_nBodyMeshAsmId with the resolved SuitMeshId so
-	// downstream readers (ReplicatedEvent for r_nBodyMeshAsmId,
-	// SetCollisionFromMesh, GetBodyMeshId) see consistent state from the
-	// initial replication bunch onward.
+	// CosmeticEquip::LoadFromDB owns r_CustomCharacterAssembly and the local
+	// collision cylinder. It deliberately leaves r_nBodyMeshAsmId untouched:
+	// replicating that field re-enters native pawn setup and breaks loadouts.
 	newpawn->r_nSkillGroupSetId = classConfig.skillGroupSetId;
 	newpawn->s_nCharacterId = (int)GClientConnectionsData[ConnectionIndex].PlayerInfo.selected_character_id;
 
@@ -397,6 +491,17 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	{
 		int tf = GClientConnectionsData[ConnectionIndex].PlayerInfo.task_force;
 		ATgRepInfo_TaskForce* taskforce = (tf == 1) ? GTeamsData.Attackers : GTeamsData.Defenders;
+		// Warm-empty homes can retain manually-added roster entries after travel; SetTeam walks them.
+		std::unordered_set<ATgRepInfo_Player*> livePris = BuildLivePriSet(newrepplayer);
+		int prunedAttackers = 0;
+		int prunedDefenders = 0;
+		RebuildTaskForceRoster(GTeamsData.Attackers, livePris, newrepplayer, nullptr, &prunedAttackers);
+		RebuildTaskForceRoster(GTeamsData.Defenders, livePris, newrepplayer, nullptr, &prunedDefenders);
+		if (prunedAttackers || prunedDefenders) {
+			Logger::Log("spawn",
+				"SpawnPlayerCharacter: pruned taskforce roster before SetTeam attackers=%d defenders=%d pri=%p\n",
+				prunedAttackers, prunedDefenders, newrepplayer);
+		}
 		if (newrepplayer->Team == nullptr) {
 			newrepplayer->Team = (tf == 1) ? GTeamsData.Defenders : GTeamsData.Attackers;
 		}
@@ -485,10 +590,24 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 	{
 		int tf = GClientConnectionsData[ConnectionIndex].PlayerInfo.task_force;
-		if (tf == 1) {
-			attackers->m_TeamPlayers.Add(newplayerteamentry);
-		} else {
-			defenders->m_TeamPlayers.Add(newplayerteamentry);
+		std::unordered_set<ATgRepInfo_Player*> livePris = BuildLivePriSet(newrepplayer);
+		ATgRepInfo_TaskForce* targetTaskForce = (tf == 1) ? attackers : defenders;
+		int prunedAttackers = 0;
+		int prunedDefenders = 0;
+		RebuildTaskForceRoster(tf == 1 ? defenders : attackers, livePris, newrepplayer, nullptr,
+			tf == 1 ? &prunedDefenders : &prunedAttackers);
+		const bool transferred = RebuildTaskForceRoster(targetTaskForce, livePris, newrepplayer,
+			&newplayerteamentry, tf == 1 ? &prunedAttackers : &prunedDefenders);
+		if (prunedAttackers || prunedDefenders) {
+			Logger::Log("spawn",
+				"SpawnPlayerCharacter: removed duplicate taskforce roster entry attackers=%d defenders=%d pri=%p\n",
+				prunedAttackers, prunedDefenders, newrepplayer);
+		}
+		if (!transferred) {
+			FreeTeamEntryStrings(newplayerteamentry);
+			Logger::Log("spawn",
+				"SpawnPlayerCharacter: failed to append taskforce roster entry tf=%d pri=%p\n",
+				tf, newrepplayer);
 		}
 	}
 
@@ -586,7 +705,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		// the two passes never overlap.
 		Logger::Log("spawn-asm", "pre-LoadFromDB snapshots (charId=%lld):\n", (long long)charId);
 		LogAssemblySnapshot("[pre-LoadFromDB pawn]", newpawn, newpawn->r_CustomCharacterAssembly);
-		CosmeticEquip::LoadFromDB(newpawn, charId);
+		CosmeticEquip::LoadFromDB(newpawn, charId, item_profile_id);
 		Logger::Log("spawn-asm", "post-LoadFromDB snapshots:\n");
 		LogAssemblySnapshot("[post-LoadFromDB pawn]", newpawn, newpawn->r_CustomCharacterAssembly);
 		{
@@ -733,17 +852,10 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		}
 	}
 
-	// Force a post-spawn transform refresh. TgGame.RestartPlayer's bHadPawn
-	// branch (TgGame.uc:558-559) does this on every respawn but NOT on the
-	// first spawn — and without it, server-side hitscan traces fire from a
-	// position that tracks the player but is angularly displaced, making
-	// aiming nearly impossible until the player dies and respawns.
-	// SetLocation/SetRotation force ConditionalUpdateComponents on the pawn,
-	// which re-resolves component-relative transforms (collision cylinder,
-	// skeletal mesh, attached weapon meshes) against the now-correct
-	// Location/Rotation. Mirrors the respawn fix-up so first spawn matches.
-	newpawn->SetLocation(SpawnLocation);
-	newpawn->SetRotation(PlayerController->Rotation);
+	// Refresh against the pawn's actual spawned transform. The native
+	// vLocation argument can be unavailable on some hook paths after Spawn().
+	newpawn->SetLocation(newpawn->Location);
+	newpawn->SetRotation(PlayerController ? PlayerController->Rotation : newpawn->Rotation);
 	RepairSpawnVolumeState(newpawn);
 
 	// scope-zoom investigation baseline — snapshot the aim-mode fields right

@@ -114,7 +114,8 @@ public:
 
     // Queue-scoped active counters consumed by RuntimeStats for the
     // GET_TICKET_INFO PLAYER_COUNT / INSTANCE_COUNT / DATA_SET_PROFILE_COUNTS
-    // fields. "Active" = ga_instances.state != 'STOPPED'.
+    // fields. Instance count uses not-ended mission rows; player/class counts
+    // include players already inside queue instances.
     static int GetActiveInstanceCountForQueue(uint32_t queue_id);
     static int GetActivePlayerCountForQueue(uint32_t queue_id);
     struct ActiveProfileCounts { uint32_t assault, medic, recon, robotics; };

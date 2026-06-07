@@ -4,6 +4,7 @@
 #include <map>
 
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+#include "src/IpcClient/IpcClient.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 namespace TgPlayerActions::TopDownCmd {
@@ -49,6 +50,11 @@ bool IsPlayerController(AController* c) {
     if (!c || !c->Class) return false;
     const char* full = c->Class->GetFullName();
     return full && std::strstr(full, "PlayerController");
+}
+
+void Audit(const std::string& guid,
+           const std::string& outcome, const std::string& details) {
+    IpcClient::SendChatCommandAudit(guid, "-topdown", outcome, details);
 }
 
 void ApplyTopDown(ATgPawn_Character* pawn, float lift_z) {
@@ -99,12 +105,14 @@ void Execute(const std::string& session_guid, float lift_z) {
     if (!pawn) {
         Logger::Log("chat-command",
             "[ChatCmd][TopDown] guid=%s: no pawn found\n", session_guid.c_str());
+        Audit(session_guid, "ignored", "no player pawn");
         return;
     }
     if (!IsPlayerController(pawn->Controller)) {
         Logger::Log("chat-command",
             "[ChatCmd][TopDown] guid=%s: session controller isn't a PlayerController\n",
             session_guid.c_str());
+        Audit(session_guid, "ignored", "session controller is not PlayerController");
         return;
     }
 
@@ -115,10 +123,12 @@ void Execute(const std::string& session_guid, float lift_z) {
             Restore(pawn, it->second);
             Logger::Log("chat-command",
                 "[ChatCmd][TopDown] guid=%s: restored\n", session_guid.c_str());
+            Audit(session_guid, "restored", "topdown off");
         } else {
             Logger::Log("chat-command",
                 "[ChatCmd][TopDown] guid=%s: pawn changed since snapshot — "
                 "discarding snapshot without restore\n", session_guid.c_str());
+            Audit(session_guid, "ignored", "pawn changed since snapshot");
         }
         g_snapshots.erase(it);
         return;
@@ -149,6 +159,9 @@ void Execute(const std::string& session_guid, float lift_z) {
     Logger::Log("chat-command",
         "[ChatCmd][TopDown] guid=%s: applied (lift_z=%.0f, target Z=%.0f)\n",
         session_guid.c_str(), dz, pawn->Location.Z);
+    Audit(session_guid, "activated",
+        "lift_z=" + std::to_string((int)dz)
+        + " target_z=" + std::to_string((int)pawn->Location.Z));
 }
 
 } // namespace TgPlayerActions::TopDownCmd

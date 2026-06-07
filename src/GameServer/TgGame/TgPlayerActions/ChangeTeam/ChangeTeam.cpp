@@ -2,6 +2,7 @@
 
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/IpcClient/IpcClient.hpp"
 #include "src/GameServer/TgGame/TgPawn/SetTaskForceNumber/TgPawn__SetTaskForceNumber.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -27,6 +28,11 @@ const char* TargetName(Target t) {
         case Target::Defenders: return "defenders";
     }
     return "?";
+}
+
+void Audit(const std::string& guid,
+           const std::string& outcome, const std::string& details) {
+    IpcClient::SendChatCommandAudit(guid, "-changeteam", outcome, details);
 }
 
 // Determine the current team number (1 = Attackers, 2 = Defenders).
@@ -55,6 +61,7 @@ void Execute(const std::string& session_guid, Target target) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /changeteam: no pawn for guid=%s; dropping\n",
             session_guid.c_str());
+        Audit(session_guid, "ignored", "no player pawn");
         return;
     }
 
@@ -63,6 +70,7 @@ void Execute(const std::string& session_guid, Target target) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /changeteam guid=%s: cannot resolve current team; dropping\n",
             session_guid.c_str());
+        Audit(session_guid, "ignored", "cannot resolve current team");
         return;
     }
 
@@ -77,6 +85,9 @@ void Execute(const std::string& session_guid, Target target) {
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /changeteam guid=%s target=%s: already on team %d; no-op\n",
             session_guid.c_str(), TargetName(target), current_team);
+        Audit(session_guid, "no-op",
+            std::string("already on team ") + std::to_string(current_team)
+            + " target=" + TargetName(target));
         return;
     }
 
@@ -97,6 +108,8 @@ void Execute(const std::string& session_guid, Target target) {
     Logger::Log("chat-command",
         "[ChatCmd][DLL] /changeteam guid=%s: SetTaskForceNumber + eventSuicide dispatched\n",
         session_guid.c_str());
+    Audit(session_guid, "activated",
+        "changed team " + std::to_string(current_team) + "->" + std::to_string(new_team));
 }
 
 } // namespace TgPlayerActions::ChangeTeamCmd

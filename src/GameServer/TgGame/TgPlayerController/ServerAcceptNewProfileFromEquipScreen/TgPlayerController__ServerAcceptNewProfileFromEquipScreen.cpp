@@ -12,6 +12,12 @@
 #include <cstdlib>
 #include <set>
 
+static constexpr int kDyeNoneItemId = 3524;
+
+static bool IsDyeNoneSlot(int itemId, int slot) {
+	return itemId == kDyeNoneItemId && slot >= 16 && slot <= 20;
+}
+
 // Reliable-server RPC fired by the client's equip-screen "Apply" button.
 //
 // `DeviceArray.SlotIndices[i]` carries the inventory_id (= ga_players_inventory.id)
@@ -19,10 +25,8 @@
 // equip points run 1..24); the client always sends index 0 as 0. Non-zero
 // entries are real inventory ids; zero means "leave this slot empty".
 //
-// `nProfileId` is the LOADOUT profile (1..5 — different gear/skill builds
-// per character). Only profile 1 is wired for now per scope; we log the
-// received value so when multi-loadout work starts we can confirm the client
-// payload matches expectations.
+// `nProfileId` is the loadout profile (1..5). Gear, armor, skills, and
+// cosmetics are all scoped to that active profile.
 //
 // `DeviceArray.MiscItems[i]` has been all-zero in every observed payload —
 // likely consumable/dye related. Logged but otherwise ignored until we have
@@ -100,6 +104,11 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 	PlayerInfo* info = PlayerRegistry::GetByGuidPtr(it->second);
 	const int64_t character_id = info ? info->selected_character_id : 0;
 	const int64_t user_id      = info ? info->user_id : 0;
+	int itemProfileId = nProfileId;
+	if (itemProfileId < 1 || itemProfileId > 5) {
+		itemProfileId = ((ATgPawn_Character*)Pawn)->r_nItemProfileId;
+		if (itemProfileId < 1 || itemProfileId > 5) itemProfileId = 1;
+	}
 
 	// Engine-side re-equip. The original `ServerAcceptNewProfileFromEquipScreen`
 	// native at 0x10963040 is stripped (decompile is just `return;`), so without
@@ -123,6 +132,7 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 		int  itemId     = 0;
 		std::vector<int> mods;
 		bool isCosmetic = false;  // deviceId == 0 && itemId > 0
+		bool clearsCosmetic = false;
 	};
 	SlotResolution resolved[0x19];
 	{
@@ -149,6 +159,7 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 				r.quality  = sqlite3_column_int(stmt, 1);
 				r.itemId   = sqlite3_column_int(stmt, 3);
 				r.isCosmetic = (r.deviceId == 0 && r.itemId > 0);
+				r.clearsCosmetic = IsDyeNoneSlot(r.itemId, slot);
 
 				const char* csv = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
 				if (csv && *csv) {
@@ -204,27 +215,50 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 
 
 	int equipped_now = 0;
+	int reused_now = 0;
+	bool touchedCosmetics = false;
 	std::set<int> equippedCosmeticEngineSlots;
 	for (int slot = 1; slot < 0x19; ++slot) {
 		const SlotResolution& r = resolved[slot];
 		if (r.newInvId <= 0) continue;
 
 		if (r.deviceId > 0) {
-			Inventory::Equip(Pawn, r.deviceId, slot, r.quality, r.newInvId, r.mods);
-			++equipped_now;
+			ATgDevice* cur = Pawn->m_EquippedDevices[slot];
+			if (cur != nullptr && cur->r_nDeviceInstanceId == r.newInvId) {
+				++reused_now;
+				continue;
+			}
+			if (Inventory::Equip(Pawn, r.deviceId, slot, r.quality, r.newInvId, r.mods) != nullptr) {
+				++equipped_now;
+			}
 		} else if (r.itemId > 0) {
+			if (r.clearsCosmetic) {
+				CosmeticEquip::ClearSlot(Pawn, character_id, itemProfileId, slot);
+				touchedCosmetics = true;
+				continue;
+			}
 			// Cosmetic path. ApplyToPawn writes the right
 			// r_CustomCharacterAssembly field + persists at the remapped DB
 			// slot (cosmetic suit→22, cosmetic helmet→23) so it doesn't
 			// collide with the gameplay device row at slot 6/12.
-			CosmeticEquip::ApplyToPawn(Pawn, character_id, slot, r.newInvId, r.itemId);
+			CosmeticEquip::ApplyToPawn(Pawn, character_id, itemProfileId, slot, r.newInvId, r.itemId);
 			equippedCosmeticEngineSlots.insert(slot);
+			touchedCosmetics = true;
 		}
 	}
-	CosmeticEquip::ClearUnsetSlots(Pawn, equippedCosmeticEngineSlots);
+	if (touchedCosmetics) {
+		Logger::Log(GetLogChannel(),
+			"equip-save: cosmetics touched; preserving unsent cosmetic slots (sent=%d)\n",
+			(int)equippedCosmeticEngineSlots.size());
+	} else {
+		Logger::Log(GetLogChannel(), "equip-save: cosmetics unchanged; skip ClearUnsetSlots\n");
+	}
 	if (equipped_now > 0) {
 		Inventory::Finalize(Pawn);
-		Logger::Log(GetLogChannel(), "equip-save: engine-side equipped %d new device(s)\n", equipped_now);
+		Logger::Log(GetLogChannel(), "equip-save: engine-side equipped %d new device(s), reused=%d\n",
+			equipped_now, reused_now);
+	} else {
+		Logger::Log(GetLogChannel(), "equip-save: no engine device changes, reused=%d\n", reused_now);
 	}
 
 	// Reset r_ItemCount to the full pool size (see SpawnPlayerCharacter

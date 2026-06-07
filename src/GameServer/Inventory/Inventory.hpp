@@ -34,6 +34,9 @@ public:
 	// Trigger replication after all equips are done.
 	// Calls UpdateClientDevices + sets bNetDirty/bForceNetUpdate on pawn and PRI.
 	static void Finalize(ATgPawn* Pawn);
+	// Live profile switches use markNetDirty=false: UpdateClientDevices is
+	// needed, but dirtying pawn/PRI afterward previously faulted before repaint IPC.
+	static void Finalize(ATgPawn* Pawn, bool markNetDirty);
 
 	// Query equipped devices for a pawn (for TcpSession inventory marshals).
 	// Returns const ref to the vector (empty vector if pawn not tracked).

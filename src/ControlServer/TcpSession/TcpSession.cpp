@@ -215,6 +215,27 @@ int ChooseVrHomeTaskForce(const InstanceInfo& home_instance,
     return task_force;
 }
 
+bool SendProfileUiRefresh(int64_t instance_id, const std::string& session_guid, int item_profile_id,
+                          uint64_t refresh_token, const char* reason) {
+    if (instance_id == 0) {
+        return false;
+    }
+
+    nlohmann::json action;
+    action["type"] = IpcProtocol::MSG_PLAYER_ACTION;
+    action["session_guid"] = session_guid;
+    action["action"] = "refresh_profile_ui";
+    action["item_profile_id"] = item_profile_id;
+    action["refresh_token"] = refresh_token;
+    action["phase"] = reason ? reason : "unknown";
+    const bool ok = IpcServer::SendToInstance(instance_id, action.dump());
+    Logger::Log("loadout",
+        "[TcpSession] profile_switch refresh_profile_ui %s instance=%lld send=%d guid=%s itemProf=%d token=%llu\n",
+        reason ? reason : "unknown", (long long)instance_id, (int)ok, session_guid.c_str(),
+        item_profile_id, (unsigned long long)refresh_token);
+    return ok;
+}
+
 }  // namespace
 
 void TcpSession::SetHomeMapSpawner(std::function<void()> cb) {
@@ -476,22 +497,8 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         // Control-server's job: persist new active profile, sync TcpSession
         // mirror, push refreshed inventory + skills so the client UI sees
         // the new build's stats and allocations.
-        //
-        // KNOWN ISSUE (unresolved): the skill-tree / device-bar widgets
-        // re-render against the OLD r_nItemProfileId when this handler's TCP
-        // marshals reach the client before the game-server's UDP property
-        // rep. Symptom: skill widget shows previous profile's allocation,
-        // device bar shows previous profile's icons. Close + reopen the
-        // agent-profile screen for a correct render. Investigated via the
-        // FUN_113a18a0 / FUN_11422d70 / FUN_1141f750 chain — the lookup
-        // filters skills by `pawn+0x1634` (r_nItemProfileId) at render time,
-        // and our timing fixes (eventClientResetEquipScreen on the same UDP
-        // channel + brief sleep here) didn't reliably win the race. The
-        // official Hi-Rez server was single-process so this race never
-        // existed; closing the gap from a split architecture needs a deeper
-        // trace of the client's rep-arrival ordering than we currently have.
-
         const int64_t character_id    = j.value("character_id", (int64_t)0);
+        const int64_t instance_id      = j.value("instance_id", (int64_t)0);
         const int     pawn_id         = j.value("pawn_id", 0);
         const int     item_profile_id = j.value("item_profile_id", 1);
         Logger::Log("loadout",
@@ -514,6 +521,36 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
                 session->send_inventory_response(pawn_id, character_id);
             }
             session->send_player_skills_response();
+
+            if (instance_id != 0) {
+                const uint64_t refresh_token = ++session->profile_refresh_token_;
+                SendProfileUiRefresh(instance_id, session_guid, item_profile_id, refresh_token, "immediate");
+
+                auto timer = std::make_shared<asio::steady_timer>(session->io_ctx_);
+                std::weak_ptr<TcpSession> weak_session = session;
+                // Keep the clear frame visible long enough to avoid client-side coalescing.
+                timer->expires_after(std::chrono::milliseconds(500));
+                timer->async_wait([timer, weak_session, instance_id, session_guid, item_profile_id, refresh_token](std::error_code ec) {
+                    if (ec) {
+                        return;
+                    }
+                    auto s = weak_session.lock();
+                    if (!s) {
+                        return;
+                    }
+                    if (s->profile_refresh_token_ != refresh_token) {
+                        Logger::Log("loadout",
+                            "[TcpSession] profile_switch delayed refresh skipped stale token=%llu current=%llu guid=%s itemProf=%d\n",
+                            (unsigned long long)refresh_token,
+                            (unsigned long long)s->profile_refresh_token_,
+                            session_guid.c_str(), item_profile_id);
+                        return;
+                    }
+                    s->item_profile_id_ = item_profile_id;
+                    s->send_player_skills_response();
+                    SendProfileUiRefresh(instance_id, session_guid, item_profile_id, refresh_token, "delayed");
+                });
+            }
         }
     }
     else if (subtype == "quest") {
@@ -576,8 +613,10 @@ bool TcpSession::DeliverPlayerAction(const std::string& session_guid, const nloh
         return false;
     }
     bool ok = IpcServer::SendToInstance(session->assigned_instance_id_, payload.dump());
-    Logger::Log("chat-command", "[ChatCmd] DeliverPlayerAction: guid=%s instance=%lld send=%d\n",
-        session_guid.c_str(), (long long)session->assigned_instance_id_, (int)ok);
+    if (!ok) {
+        Logger::Log("chat-command", "[ChatCmd] DeliverPlayerAction: guid=%s instance=%lld send=0\n",
+            session_guid.c_str(), (long long)session->assigned_instance_id_);
+    }
     return ok;
 }
 
@@ -665,6 +704,158 @@ bool TcpSession::AdminMovePlayerToInstance(const std::string& session_guid,
     return true;
 }
 
+bool TcpSession::ForceMissionExit(const std::string& session_guid,
+                                  int64_t parent_instance_id,
+                                  const char* reason) {
+    if (session_guid.empty() || parent_instance_id == 0) {
+        return false;
+    }
+
+    std::shared_ptr<TcpSession> session;
+    {
+        std::lock_guard<std::mutex> lock(sessions_mutex_);
+        auto it = g_sessions_.find(session_guid);
+        if (it == g_sessions_.end()) {
+            InstanceRegistry::MarkInstancePlayerLeft(parent_instance_id, session_guid);
+            Logger::Log("tcp",
+                "[TcpSession] ForceMissionExit: no TcpSession for guid=%s parent=%lld reason=%s\n",
+                session_guid.c_str(), (long long)parent_instance_id,
+                reason ? reason : "unspecified");
+            return false;
+        }
+        session = it->second.lock();
+        if (!session) {
+            g_sessions_.erase(it);
+            InstanceRegistry::MarkInstancePlayerLeft(parent_instance_id, session_guid);
+            Logger::Log("tcp",
+                "[TcpSession] ForceMissionExit: expired TcpSession for guid=%s parent=%lld reason=%s\n",
+                session_guid.c_str(), (long long)parent_instance_id,
+                reason ? reason : "unspecified");
+            return false;
+        }
+    }
+
+    if (session->assigned_instance_id_ != parent_instance_id) {
+        InstanceRegistry::MarkInstancePlayerLeft(parent_instance_id, session_guid);
+        Logger::Log("tcp",
+            "[TcpSession] ForceMissionExit: guid=%s already assigned instance=%lld parent=%lld reason=%s\n",
+            session_guid.c_str(), (long long)session->assigned_instance_id_,
+            (long long)parent_instance_id, reason ? reason : "unspecified");
+        return true;
+    }
+
+    session->route_from_mission_instance(parent_instance_id, reason);
+    return true;
+}
+
+void TcpSession::route_from_mission_instance(int64_t parent_instance_id,
+                                             const char* reason) {
+    std::optional<InstanceInfo> parent;
+    if (parent_instance_id != 0) {
+        parent = InstanceRegistry::GetInstanceById(parent_instance_id);
+    }
+    if (parent && parent->is_home_map) {
+        Logger::Log("tcp",
+            "[TcpSession] Mission exit ignored for home instance=%lld guid=%s reason=%s\n",
+            (long long)parent_instance_id, session_guid_.c_str(),
+            reason ? reason : "unspecified");
+        return;
+    }
+
+    std::optional<InstanceInfo> successor;
+    bool tryContinue = false;
+    if (parent && parent->end_mission_at != 0 && parent->queue_id != 0) {
+        if (MatchmakingService::GetContinueInQueue(parent->queue_id)) {
+            successor = InstanceRegistry::GetSuccessor(parent_instance_id);
+            if (successor && successor->state == "READY") {
+                const bool hasSeat = (successor->max_players == 0)
+                    || (successor->player_count < successor->max_players);
+                if (hasSeat) {
+                    tryContinue = true;
+                } else {
+                    Logger::Log("tcp",
+                        "[TcpSession] Successor %lld for parent=%lld is full (%d/%d) -- routing home instead\n",
+                        (long long)successor->instance_id,
+                        (long long)parent_instance_id,
+                        successor->player_count, successor->max_players);
+                }
+            } else {
+                Logger::Log("tcp",
+                    "[TcpSession] No READY successor for parent=%lld (got %s) -- routing home instead\n",
+                    (long long)parent_instance_id,
+                    successor ? successor->state.c_str() : "<none>");
+            }
+        }
+    }
+
+    if (parent_instance_id != 0 && !session_guid_.empty()) {
+        InstanceRegistry::MarkInstancePlayerLeft(parent_instance_id, session_guid_);
+    }
+
+    if (pending_ack_timer_) {
+        pending_ack_timer_->cancel();
+        pending_ack_timer_.reset();
+        IpcServer::ClearPendingAck(session_guid_);
+    }
+    assigned_instance_id_      = 0;
+    pending_match_instance_id_ = 0;
+    pending_match_game_mode_.clear();
+
+    if (tryContinue) {
+        int tf = 1;
+        auto cached = MatchmakingService::ConsumePreAssignedTeam(
+            successor->instance_id, session_guid_);
+        if (cached) {
+            tf = *cached;
+            Logger::Log("tcp",
+                "[TcpSession] Continue-in-queue: pre-assigned tf=%d for %s on successor=%lld\n",
+                tf, session_guid_.c_str(), (long long)successor->instance_id);
+        } else {
+            auto queue_cfg = MatchmakingService::GetQueueConfig(parent->queue_id);
+            if (queue_cfg) {
+                switch (queue_cfg->taskforce_policy) {
+                    case TaskforcePolicy::Pinned1: tf = 1; break;
+                    case TaskforcePolicy::Pinned2: tf = 2; break;
+                    case TaskforcePolicy::Balanced: {
+                        auto counts = InstanceRegistry::GetTeamCounts(successor->instance_id);
+                        tf = (counts.first <= counts.second) ? 1 : 2;
+                        break;
+                    }
+                    case TaskforcePolicy::BalancedPvp: {
+                        auto roster =
+                            InstanceRegistry::GetActivePlayersForInstance(successor->instance_id);
+                        RoleWeightedSplit::TeamState t1, t2;
+                        for (const auto& r : roster) {
+                            const float v = RoleWeightedSplit::HealValue(r.profile_id, r.task_force);
+                            if (r.task_force == 1) { t1.heal_score += v; t1.size += 1; }
+                            else                   { t2.heal_score += v; t2.size += 1; }
+                        }
+                        tf = RoleWeightedSplit::PlaceSingle(selected_profile_id_, t1, t2);
+                        break;
+                    }
+                }
+            }
+            Logger::Log("tcp",
+                "[TcpSession] Continue-in-queue: cache miss for %s on successor=%lld -- policy fallback tf=%d\n",
+                session_guid_.c_str(), (long long)successor->instance_id, tf);
+        }
+
+        Logger::Log("tcp",
+            "[TcpSession] Mission exit: routing %s to successor %lld of parent=%lld queue=%u tf=%d reason=%s\n",
+            session_guid_.c_str(), (long long)successor->instance_id,
+            (long long)parent_instance_id, parent->queue_id, tf,
+            reason ? reason : "unspecified");
+        initiate_player_register_for_target(*successor, tf);
+        return;
+    }
+
+    Logger::Log("tcp",
+        "[TcpSession] Mission exit: routing %s to home from parent=%lld reason=%s\n",
+        session_guid_.c_str(), (long long)parent_instance_id,
+        reason ? reason : "unspecified");
+    wait_for_home_map_then_register(120);
+}
+
 void TcpSession::initiate_player_register_and_go_play() {
     // Build PLAYER_REGISTER JSON with full character state.
     auto session = PlayerSessionStore::GetByGuid(session_guid_);
@@ -684,10 +875,13 @@ void TcpSession::initiate_player_register_and_go_play() {
     const int task_force =
         ChooseVrHomeTaskForce(*home_instance, selected_profile_id_, session_guid_);
     home_task_force_ = task_force;
+    const uint64_t register_token = next_register_token_++;
+    active_register_token_ = register_token;
 
     nlohmann::json reg;
     reg["type"]         = IpcProtocol::MSG_PLAYER_REGISTER;
     reg["session_guid"] = session_guid_;
+    reg["register_token"] = register_token;
     reg["profile_id"]   = selected_profile_id_;
     reg["player_name"]  = player_name;
     reg["user_id"]      = user_id_;
@@ -792,6 +986,9 @@ void TcpSession::initiate_player_register_for_target(const InstanceInfo& target,
     nlohmann::json reg;
     reg["type"]         = IpcProtocol::MSG_PLAYER_REGISTER;
     reg["session_guid"] = session_guid_;
+    const uint64_t register_token = next_register_token_++;
+    active_register_token_ = register_token;
+    reg["register_token"] = register_token;
     reg["profile_id"]   = selected_profile_id_;
     reg["player_name"]  = player_name;
     reg["user_id"]      = user_id_;
@@ -1189,14 +1386,17 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				nlohmann::json leave;
 				leave["type"]         = IpcProtocol::MSG_PLAYER_LEAVE;
 				leave["session_guid"] = session_guid_;
+				leave["register_token"] = active_register_token_;
 				bool ok = IpcServer::SendToInstance(assigned_instance_id_, leave.dump());
-				Logger::Log("tcp", "[TcpSession] PLAYER_LEAVE dispatched guid=%s instance=%lld send=%d\n",
-					session_guid_.c_str(), (long long)assigned_instance_id_, (int)ok);
+				Logger::Log("tcp", "[TcpSession] PLAYER_LEAVE dispatched guid=%s instance=%lld token=%llu send=%d\n",
+					session_guid_.c_str(), (long long)assigned_instance_id_,
+					(unsigned long long)active_register_token_, (int)ok);
 			}
 
 			// Drop the instance assignment so a subsequent SELECT_CHARACTER goes
 			// through wait_for_home_map_then_register again from a clean slate.
 			assigned_instance_id_      = 0;
+			active_register_token_     = 0;
 			pending_match_instance_id_ = 0;
 			pending_match_game_mode_.clear();
 			break;
@@ -1233,34 +1433,27 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			if (parent_instance_id != 0) {
 				parent = InstanceRegistry::GetInstanceById(parent_instance_id);
 			}
+			if (parent && parent->is_home_map && parent->state == "READY") {
+				pending_match_instance_id_ = 0;
+				pending_match_game_mode_.clear();
 
-			// Decide BEFORE teardown whether we should attempt to route to a
-			// successor. We need to know if (a) parent had ended, (b) the
-			// queue opts into continue, and (c) a READY successor exists.
-			std::optional<InstanceInfo> successor;
-			bool tryContinue = false;
-			if (parent && parent->end_mission_at != 0 && parent->queue_id != 0) {
-				if (MatchmakingService::GetContinueInQueue(parent->queue_id)) {
-					successor = InstanceRegistry::GetSuccessor(parent_instance_id);
-					if (successor && successor->state == "READY") {
-						// Cheap seat-availability pre-check — final word comes
-						// from the PLAYER_REGISTER ACK, which falls back to
-						// home on failure.
-						bool hasSeat = (successor->max_players == 0)
-						            || (successor->player_count < successor->max_players);
-						if (hasSeat) {
-							tryContinue = true;
-						} else {
-							Logger::Log("tcp", "[TcpSession] Successor %lld for parent=%lld is full (%d/%d) — routing home instead\n",
-								(long long)successor->instance_id, (long long)parent_instance_id,
-								successor->player_count, successor->max_players);
-						}
-					} else {
-						Logger::Log("tcp", "[TcpSession] No READY successor for parent=%lld (got %s) — routing home instead\n",
-							(long long)parent_instance_id,
-							successor ? successor->state.c_str() : "<none>");
-					}
+				if (parent->map_name == "Dome3_VR_Arena_P") {
+					nlohmann::json action;
+					action["type"] = IpcProtocol::MSG_PLAYER_ACTION;
+					action["session_guid"] = session_guid_;
+					action["action"] = "return_home_area";
+
+					bool ok = IpcServer::SendToInstance(parent_instance_id, action.dump());
+					Logger::Log("tcp",
+						"[TcpSession] GSC_CHANGE_INSTANCE: same-home VR return action instance=%lld send=%d for %s\n",
+						(long long)parent_instance_id, (int)ok, session_guid_.c_str());
+					break;
 				}
+
+				Logger::Log("tcp",
+					"[TcpSession] GSC_CHANGE_INSTANCE: home map %s has no same-home return handler; keeping connection for %s\n",
+					parent->map_name.c_str(), session_guid_.c_str());
+				break;
 			}
 
 			// NB: do NOT send MSG_PLAYER_LEAVE here, even though that would
@@ -1273,70 +1466,15 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			// first so the engine has already quiesced the connection by the
 			// time we ask it to clean up.
 			//
-			// Letting the engine's 30s ConnectionTimeout reap the parent
-			// connection naturally avoids the crash. The trade-off is purely
-			// cosmetic: the departed player remains visible in the parent's
-			// scoreboard / r_PRIArray for ~30s. The new home (or successor)
-			// PLAYER_REGISTER is a separate instance with its own NetDriver,
-			// so nothing races.
+			// We still mark the control-server roster row left before routing,
+			// so empty mission instances can be stopped without waiting for
+			// the old NetConnection timeout. We just avoid calling the unsafe
+			// in-engine cleanup path on a live connection.
 			//
 			// TODO(crash-debug): find what's null inside CallOriginal at
 			// NetConnection__Cleanup.cpp:84 when called on a live connection,
 			// then re-enable an immediate teardown here.
-			assigned_instance_id_      = 0;
-			pending_match_instance_id_ = 0;
-			pending_match_game_mode_.clear();
-
-			if (tryContinue) {
-				int tf = 1;
-				auto cached = MatchmakingService::ConsumePreAssignedTeam(
-					successor->instance_id, session_guid_);
-				if (cached) {
-					tf = *cached;
-					Logger::Log("tcp",
-						"[TcpSession] Continue-in-queue: pre-assigned tf=%d for %s on successor=%lld\n",
-						tf, session_guid_.c_str(), (long long)successor->instance_id);
-				} else {
-					// Cache miss — single-player placement per policy.
-					auto queue_cfg = MatchmakingService::GetQueueConfig(parent->queue_id);
-					if (queue_cfg) {
-						switch (queue_cfg->taskforce_policy) {
-							case TaskforcePolicy::Pinned1: tf = 1; break;
-							case TaskforcePolicy::Pinned2: tf = 2; break;
-							case TaskforcePolicy::Balanced: {
-								auto counts = InstanceRegistry::GetTeamCounts(successor->instance_id);
-								tf = (counts.first <= counts.second) ? 1 : 2;
-								break;
-							}
-							case TaskforcePolicy::BalancedPvp: {
-								auto roster = InstanceRegistry::GetActivePlayersForInstance(successor->instance_id);
-								RoleWeightedSplit::TeamState t1, t2;
-								for (const auto& r : roster) {
-									const float v = RoleWeightedSplit::HealValue(r.profile_id, r.task_force);
-									if (r.task_force == 1) { t1.heal_score += v; t1.size += 1; }
-									else                   { t2.heal_score += v; t2.size += 1; }
-								}
-								tf = RoleWeightedSplit::PlaceSingle(selected_profile_id_, t1, t2);
-								break;
-							}
-						}
-					}
-					Logger::Log("tcp",
-						"[TcpSession] Continue-in-queue: cache miss for %s on successor=%lld — policy fallback tf=%d\n",
-						session_guid_.c_str(), (long long)successor->instance_id, tf);
-				}
-
-				Logger::Log("tcp", "[TcpSession] Continue-in-queue: routing %s to successor %lld of parent=%lld (queue=%u) tf=%d\n",
-					session_guid_.c_str(), (long long)successor->instance_id,
-					(long long)parent_instance_id, parent->queue_id, tf);
-				initiate_player_register_for_target(*successor, tf);
-				break;
-			}
-
-			// Wait for a READY home map instance, then PLAYER_REGISTER → GSC_GO_PLAY.
-			// Identical entry point GSC_SELECT_CHARACTER uses; spawns on demand
-			// if no home is starting yet (e.g. instance was shut down for idle).
-			wait_for_home_map_then_register(120);
+			route_from_mission_instance(parent_instance_id, "client change-instance");
 			break;
 		}
 		case GA_U::ADD_PLAYER_CHARACTER: {
@@ -1541,6 +1679,7 @@ void TcpSession::DeliverMatchCancelled(const std::string& session_guid, const ch
     if (it == g_sessions_.end()) return;
     auto session = it->second.lock();
     if (!session) return;
+    MatchmakingService::RemoveReadyMatchReservation(session_guid, reason);
     Logger::Log("tcp", "[TcpSession] Match cancelled for guid=%s (reason: %s) — clearing queue/match state\n",
         session_guid.c_str(), reason ? reason : "unspecified");
     session->current_match_queue_id_       = 0;
@@ -1562,6 +1701,8 @@ void TcpSession::send_match_accept_response() {
     if (!instance || instance->state != "READY") {
         Logger::Log("tcp", "[TcpSession] MATCH_ACCEPT: instance %lld not ready\n",
             (long long)pending_match_instance_id_);
+        MatchmakingService::RemoveReadyMatchReservation(
+            pending_match_instance_id_, session_guid_, "match accept target not ready");
         pending_match_instance_id_ = 0;
         return;
     }
@@ -1616,6 +1757,8 @@ void TcpSession::send_match_accept_response() {
     if (!IpcServer::SendToInstance(target_instance_id, reg.dump())) {
         Logger::Log("tcp", "[TcpSession] No IPC session for instance %lld — cannot register player %s\n",
             (long long)target_instance_id, player_name.c_str());
+        MatchmakingService::RemoveReadyMatchReservation(
+            target_instance_id, session_guid_, "match accept target has no IPC session");
         pending_match_instance_id_ = 0;
         pending_match_game_mode_.clear();
         return;
@@ -1633,6 +1776,8 @@ void TcpSession::send_match_accept_response() {
             if (!success) {
                 Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK failed for %s on mission instance\n",
                     session_guid_.c_str());
+                MatchmakingService::RemoveReadyMatchReservation(
+                    target_instance_id, session_guid_, "player register ack failed");
                 pending_match_instance_id_ = 0;
                 pending_match_game_mode_.clear();
                 return;
@@ -1651,6 +1796,8 @@ void TcpSession::send_match_accept_response() {
             InstanceRegistry::InsertInstancePlayer(
                 target_instance_id, session_guid_, selected_character_id_, target_task_force,
                 selected_profile_id_);
+            MatchmakingService::RemoveReadyMatchReservation(
+                target_instance_id, session_guid_, "player registered in mission");
 
             auto inst = InstanceRegistry::GetInstanceById(target_instance_id);
             if (!inst || inst->state != "READY") {
@@ -1678,6 +1825,8 @@ void TcpSession::send_match_accept_response() {
             Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK timeout for %s on mission instance\n",
                 session_guid_.c_str());
             IpcServer::ClearPendingAck(session_guid_);
+            MatchmakingService::RemoveReadyMatchReservation(
+                pending_match_instance_id_, session_guid_, "player register ack timeout");
             pending_match_instance_id_ = 0;
             pending_match_game_mode_.clear();
         }

@@ -28,6 +28,10 @@ struct RunningInstance {
     int player_count;
     int max_players;
     uint32_t queue_id;
+    int reserved_team1_size = 0;
+    int reserved_team2_size = 0;
+    float reserved_team1_heal_score = 0.0f;
+    float reserved_team2_heal_score = 0.0f;
 };
 
 struct MatchResult {
@@ -212,6 +216,23 @@ public:
 
     static void AddPendingMatch(int64_t instance_id, PendingMatch match);
     static std::optional<PendingMatch> ConsumePendingMatch(int64_t instance_id);
+    static void TrackReadyMatchReservations(
+        int64_t instance_id,
+        uint32_t queue_id,
+        const std::string& game_mode,
+        const std::vector<std::string>& session_guids,
+        const std::unordered_map<std::string, int>& task_force_assignments,
+        const std::unordered_map<std::string, uint32_t>& profile_ids,
+        uint32_t cap);
+    static std::vector<RunningInstance> GetReservedReadyInstances(uint32_t queue_id);
+    static void RemoveReadyMatchReservation(
+        int64_t instance_id,
+        const std::string& session_guid,
+        const char* reason);
+    static void RemoveReadyMatchReservation(
+        const std::string& session_guid,
+        const char* reason);
+    static void DropReadyMatchReservations(int64_t instance_id);
 
     // Pre-decided team assignments for players expected to land in a
     // specific (already-running) instance. Populated by callers that
@@ -250,6 +271,9 @@ public:
     // Look up a single queue's config (any enabled-state). Returns nullopt
     // if the queue_id isn't registered.
     static std::optional<QueueConfig> GetQueueConfig(uint32_t queue_id);
+    static uint32_t GetQueueInstanceCap(
+        const QueueConfig& cfg,
+        uint32_t instance_max_players = 0);
 
     // Per-profile breakdown of players currently sitting in this queue
     // (waiting for a match-pop). Returns a 4-tuple in the order
@@ -300,6 +324,7 @@ private:
     static MatchPopCallback on_match_pop_;
     static InstanceProvider instance_provider_;
     static std::unordered_map<int64_t, PendingMatch> pending_matches_;
+    static std::unordered_map<int64_t, PendingMatch> ready_match_reservations_;
     static std::unordered_map<int64_t,
                               std::unordered_map<std::string, int>>
         pre_assigned_teams_;

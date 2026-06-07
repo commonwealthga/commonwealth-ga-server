@@ -135,6 +135,28 @@ void BroadcastSystemMessage(const std::string& message_text,
         channel, message_text.c_str(), delivered);
 }
 
+std::string SanitizeCommandForLog(std::string s) {
+    for (char& c : s) {
+        if (c == '\r' || c == '\n' || c == '\t') c = ' ';
+    }
+    constexpr size_t kMaxCommandLogBytes = 160;
+    if (s.size() > kMaxCommandLogBytes) {
+        s.resize(kMaxCommandLogBytes);
+        s += "...";
+    }
+    return s;
+}
+
+bool HasParsedCommandAction(const ChatCommand::ParseResult& parsed) {
+    return parsed.change_team.has_value()
+        || parsed.spawn_target.has_value()
+        || parsed.deploy_target.has_value()
+        || parsed.topdown.has_value()
+        || parsed.possess
+        || parsed.unpossess
+        || parsed.reload_queues;
+}
+
 } // anonymous namespace
 
 ChatSession::ChatSession(asio::ip::tcp::socket socket)
@@ -327,6 +349,14 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         PacketView pkt(data + 6, length - 6);
         std::string message_text = pkt.ReadString(GA_T::MESSAGE).value_or("");
         auto parsed = ChatCommand::TryParseChatCommand(message_text);
+        if (parsed.recognized) {
+            const std::string command_for_log = SanitizeCommandForLog(message_text);
+            if (!HasParsedCommandAction(parsed)) {
+                Logger::Log("chat-command",
+                    "[ChatCmd] player='%s' guid=%s command='%s' outcome=ignored details=invalid_args\n",
+                    player_name_.c_str(), session_guid_.c_str(), command_for_log.c_str());
+            }
+        }
         if (parsed.recognized && parsed.change_team) {
             ChatCommand::DispatchChangeTeam(*parsed.change_team, session_guid_);
         }
@@ -346,8 +376,9 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
             ChatCommand::DispatchTopDown(*parsed.topdown, session_guid_);
         }
         if (parsed.recognized && parsed.reload_queues) {
-            Logger::Log("chat-command", "[ChatCmd] -reload-queues from guid=%s -> MatchmakingService::ReloadQueues\n",
-                session_guid_.c_str());
+            Logger::Log("chat-command",
+                "[ChatCmd] -reload-queues player='%s' guid=%s outcome=activated details=MatchmakingService::ReloadQueues\n",
+                player_name_.c_str(), session_guid_.c_str());
             MatchmakingService::ReloadQueues();
         }
         if (parsed.suppress_broadcast) {

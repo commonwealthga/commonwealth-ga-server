@@ -5,6 +5,7 @@
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/IpcClient/IpcClient.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -30,6 +31,19 @@ const char* TeamName(Team t) {
     return "?";
 }
 
+const char* CommandName(Team t) {
+    switch (t) {
+        case Team::Friend: return "-spawnfriend";
+        case Team::Enemy:  return "-spawnenemy";
+    }
+    return "-spawn?";
+}
+
+void Audit(const std::string& guid, Team team,
+           const std::string& outcome, const std::string& details) {
+    IpcClient::SendChatCommandAudit(guid, CommandName(team), outcome, details);
+}
+
 // Pi as float; we don't pull in numbers because of MSVC defines.
 constexpr float kPi = 3.14159265358979323846f;
 
@@ -53,6 +67,7 @@ void Execute(const std::string& session_guid, int bot_id, Team team,
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /spawn%s: no pawn for guid=%s; dropping\n",
             TeamName(team), session_guid.c_str());
+        Audit(session_guid, team, "ignored", "no player pawn");
         return;
     }
 
@@ -65,6 +80,7 @@ void Execute(const std::string& session_guid, int bot_id, Team team,
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /spawn%s guid=%s: player has no task force; dropping\n",
             TeamName(team), session_guid.c_str());
+        Audit(session_guid, team, "ignored", "player has no task force");
         return;
     }
     ATgRepInfo_TaskForce* targetTf;
@@ -109,6 +125,7 @@ void Execute(const std::string& session_guid, int bot_id, Team team,
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /spawn%s guid=%s: GGameInfo null; dropping\n",
             TeamName(team), session_guid.c_str());
+        Audit(session_guid, team, "ignored", "GGameInfo null");
         return;
     }
 
@@ -148,6 +165,8 @@ void Execute(const std::string& session_guid, int bot_id, Team team,
         Logger::Log("chat-command",
             "[ChatCmd][DLL] /spawn%s guid=%s bot_id=%d: SpawnBotById returned null\n",
             TeamName(team), session_guid.c_str(), bot_id);
+        Audit(session_guid, team, "ignored",
+            "SpawnBotById returned null bot_id=" + std::to_string(bot_id));
         return;
     }
 
@@ -197,6 +216,10 @@ void Execute(const std::string& session_guid, int bot_id, Team team,
     Logger::Log("chat-command",
         "[ChatCmd][DLL] /spawn%s guid=%s: bot=%p (botId=%d) spawned\n",
         TeamName(team), session_guid.c_str(), (void*)Bot, bot_id);
+    Audit(session_guid, team, "spawned",
+        "bot_id=" + std::to_string(bot_id)
+        + " tf=" + std::to_string((int)targetTf->r_nTaskForce)
+        + " health=" + std::to_string((int)Bot->Health));
 }
 
 } // namespace TgPlayerActions::SpawnBotCmd
