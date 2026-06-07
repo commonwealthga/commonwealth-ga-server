@@ -27,6 +27,7 @@
 #include "src/GameServer/TgNetDrv/MarshalChannel/NotifyControlMessage/MarshalChannel__NotifyControlMessage.hpp"
 #include "src/GameServer/Engine/ActorChannel/ReceivedBunch/CanExecute/ActorChannel__ReceivedBunch__CanExecute.hpp"
 #include "src/GameServer/Engine/Channel/ReceivedSequencedBunch/Channel__ReceivedSequencedBunch.hpp"
+#include "src/GameServer/Engine/ActorChannel/ReplicateActor/ActorChannel__ReplicateActor.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/IsReadyForStart/TgPlayerController__IsReadyForStart.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/SetSoundMode/TgPlayerController__SetSoundMode.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/CanPlayerUseVolume/TgPlayerController__CanPlayerUseVolume.hpp"
@@ -393,6 +394,7 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	ActorChannel__ReceivedBunch__CanExecute::bLogEnabled = true;
 	ActorChannel__ReceivedBunch__CanExecute::Install();
 	Channel__ReceivedSequencedBunch::Install();
+	ActorChannel__ReplicateActor::Install();
 	Actor__GetOptimizedRepList::Install();
 	Actor__Spawn::Install();
 	Actor__Tick::Install();

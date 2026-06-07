@@ -86,6 +86,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgNetDrv/MarshalChannel/MarshalReceived/MarshalChannel__MarshalReceived.cpp \
 			  $(SRC_DIR)/GameServer/TgNetDrv/MarshalChannel/NotifyControlMessage/MarshalChannel__NotifyControlMessage.cpp \
 			  $(SRC_DIR)/GameServer/Engine/ActorChannel/ReceivedBunch/CanExecute/ActorChannel__ReceivedBunch__CanExecute.cpp \
+			  $(SRC_DIR)/GameServer/Engine/ActorChannel/ReplicateActor/ActorChannel__ReplicateActor.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Channel/ReceivedSequencedBunch/Channel__ReceivedSequencedBunch.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/IsReadyForStart/TgPlayerController__IsReadyForStart.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/SetSoundMode/TgPlayerController__SetSoundMode.cpp \
