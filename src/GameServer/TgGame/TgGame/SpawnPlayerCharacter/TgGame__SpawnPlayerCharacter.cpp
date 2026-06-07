@@ -424,6 +424,13 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newpawn->Role       = 3;  // ROLE_Authority
 	newpawn->RemoteRole = 1;  // ROLE_SimulatedProxy
 
+	// Pin human player pawns relevant to every connection so their actor channel
+	// never closes on RelevantTimeout — kills the re-spawn (bNetInitial) hitch
+	// when a player drops out of distance relevancy ("pop into existence" under
+	// PvP). Human-only path; bots (SpawnBotById) stay distance-relevant. Forces
+	// relevancy not priority — GetNetPriority still distance-weights far players.
+	newpawn->bAlwaysRelevant = 1;
+
 	// CosmeticEquip::LoadFromDB owns r_CustomCharacterAssembly and the local
 	// collision cylinder. It deliberately leaves r_nBodyMeshAsmId untouched:
 	// replicating that field re-enters native pawn setup and breaks loadouts.
