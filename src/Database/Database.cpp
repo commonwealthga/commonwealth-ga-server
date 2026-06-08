@@ -6978,7 +6978,129 @@ void Database::Init() {
 		Logger::Log("db", "v106: seeded 1P_CPLab02_P map-object config + specops pool entry + map_game_info\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 106", nullptr, nullptr, &err);
+	if (version < 107) {
+		// v107: seed 1P_CPMine02_P ("Mineral Extraction Site") as the next
+		// specops map. Same bundled shape as v106 (1P_CPLab02_P):
+		// map_object_config (factory + objective task_force/team_number pairs,
+		// spawn_table_id / default_spawn_table_id per factory, one s_n_device_id
+		// override), specops pool entry, and a map_game_info row so the loading
+		// screen + friendly name resolve. friendly_name_msg_id 37318 =
+		// "Mineral Extraction Site A-31" (follows the 1P_CPMine02 map-slug
+		// entry 37315 in the friendly-name family). Background res_id 6522 =
+		// HUD_MissionLoads.PvE_CP.1P_CPMine02_P.
+		const char* kV107_mine02_map_objects =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('1P_CPMine02_P', 12227, 'm_n_task_force',           '1',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12425, 'm_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12190, 'm_n_priority',             '1',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12190, 's_n_task_force',           '1',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12190, 's_n_team_number',          '1',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12340, 's_n_task_force',           '1',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12340, 's_n_team_number',          '1',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12340, 's_b_auto_spawn',           '0',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12197, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12197, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12197, 'n_spawn_table_id',         '29', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12197, 'n_default_spawn_table_id', '29', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12198, 'n_default_spawn_table_id', '40', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12198, 'n_spawn_table_id',         '40', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12198, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12198, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12199, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12199, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12199, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12199, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12200, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12200, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12200, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12200, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12364, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12364, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12364, 'n_spawn_table_id',         '28', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12364, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12365, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12365, 'n_spawn_table_id',         '28', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12365, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12365, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12366, 'n_default_spawn_table_id', '58', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12366, 'n_spawn_table_id',         '58', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12366, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12366, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12367, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12367, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12367, 'n_spawn_table_id',         '28', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12367, 'n_default_spawn_table_id', '28', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12363, 'n_default_spawn_table_id', '34', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12363, 'n_spawn_table_id',         '34', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12363, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12363, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12380, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12380, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12380, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12380, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12381, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12381, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12381, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12381, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12382, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12382, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12382, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12382, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12383, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12383, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12383, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12383, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12384, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12384, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12384, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12384, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12385, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12385, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12385, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12385, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12386, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12386, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12386, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12386, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12387, 'n_default_spawn_table_id', '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12387, 'n_spawn_table_id',         '33', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12387, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12387, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12388, 'n_default_spawn_table_id', '59', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12388, 'n_spawn_table_id',         '59', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12388, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 12388, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 13386, 'n_spawn_table_id',         '46', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 13386, 'n_default_spawn_table_id', '46', NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 13386, 's_n_task_force',           '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 13386, 's_n_team_number',          '2',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 8990,  's_n_team_number',          '1',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 8990,  's_n_task_force',           '1',  NULL, NULL, 1),"
+			"  ('1P_CPMine02_P', 8990,  's_n_device_id',            '2801', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV107_mine02_map_objects, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v107 (map_object_config mine02): %s\n", err); return; }
+
+		// Add the map to the specops pool (map_pool_id=1 — see v65 for context).
+		const char* kV107_specops_pool =
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
+			" (1, '1P_CPMine02_P', 'TgGame.TgGame_Mission');";
+		result = sqlite3_exec(db, kV107_specops_pool, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v107 (specops pool): %s\n", err); return; }
+
+		// Seed map_game_info so the loading screen + friendly name resolve.
+		// map_game_id 1312 reserved for 1P_CPMine02_P. friendly_name_msg_id
+		// 37318 = "Mineral Extraction Site A-31". Background res_id 6522 =
+		// HUD_MissionLoads.PvE_CP.1P_CPMine02_P.
+		const char* kV107_mine02_map_game_info =
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"(1312, '1P_CPMine02_P', 'TgGame.TgGame_Mission', 1553, 37318, 6522);";
+		result = sqlite3_exec(db, kV107_mine02_map_game_info, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v107 (map_game_info mine02): %s\n", err); return; }
+
+		Logger::Log("db", "v107: seeded 1P_CPMine02_P map-object config + specops pool entry + map_game_info\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 107", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
