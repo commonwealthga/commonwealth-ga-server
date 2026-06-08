@@ -63,8 +63,11 @@ SeedFromInstance(int64_t instance_id)
     auto roster = InstanceRegistry::GetActivePlayersForInstance(instance_id);
     for (const auto& r : roster) {
         const float v = RoleWeightedSplit::HealValue(r.profile_id, r.task_force);
-        if (r.task_force == 1) { s1.heal_score += v; s1.size += 1; }
-        else                   { s2.heal_score += v; s2.size += 1; }
+        if (r.task_force == 1) {
+            s1.heal_score += v; s1.size += 1; s1.class_counts[r.profile_id] += 1;
+        } else {
+            s2.heal_score += v; s2.size += 1; s2.class_counts[r.profile_id] += 1;
+        }
     }
     return {s1, s2};
 }

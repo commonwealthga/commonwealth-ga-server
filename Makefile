@@ -305,6 +305,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Combat/MissionAlerts/SendAlert.cpp \
 			  $(SRC_DIR)/GameServer/Combat/MissionAlerts/MissionAlerts.cpp \
 			  $(SRC_DIR)/GameServer/Combat/CombatMessageFlusher/CombatMessageFlusher.cpp \
+			  $(SRC_DIR)/GameServer/Matchmaking/SetupRebalanceTrigger/SetupRebalanceTrigger.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackDamagedBot/TgPawn__TrackDamagedBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackDamagedPlayer/TgPawn__TrackDamagedPlayer.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TrackHealing/TgPawn__TrackHealing.cpp \

@@ -14,6 +14,7 @@
 #include <string>
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 #include "src/ControlServer/MatchmakingService/RoleWeightedSplit.hpp"
+#include "src/ControlServer/ChatSession/ChatCommand.hpp"
 
 namespace {
 
@@ -377,6 +378,49 @@ private:
                     (long long)parent_id, (long long)existing->instance_id, existing->state.c_str());
             } else {
                 IpcServer::TriggerSuccessor(parent_id);
+            }
+        }
+        else if (type == IpcProtocol::MSG_REQUEST_REBALANCE) {
+            // ~5s before setup ends. Rebalance the live roster using the
+            // queue's taskforce policy, dispatching only the required moves.
+            int64_t inst_id = j.value("instance_id", (int64_t)0);
+            if (inst_id == 0) inst_id = instance_id_;
+
+            auto inst = InstanceRegistry::GetInstanceById(inst_id);
+            if (!inst || inst->queue_id == 0) {
+                Logger::Log("team-balance",
+                    "[IpcServer] REQUEST_REBALANCE inst=%lld has no queue — skipping\n",
+                    (long long)inst_id);
+            } else {
+                auto queue_cfg = MatchmakingService::GetQueueConfig(inst->queue_id);
+                const bool is_balanced =
+                    queue_cfg && (queue_cfg->taskforce_policy == TaskforcePolicy::Balanced
+                               || queue_cfg->taskforce_policy == TaskforcePolicy::BalancedPvp);
+                if (!is_balanced) {
+                    Logger::Log("team-balance",
+                        "[IpcServer] REQUEST_REBALANCE inst=%lld policy not balanced — skipping\n",
+                        (long long)inst_id);
+                } else {
+                    auto rows = InstanceRegistry::GetActivePlayersForInstance(inst_id);
+                    std::vector<RoleWeightedSplit::RosterEntry> roster;
+                    roster.reserve(rows.size());
+                    for (const auto& r : rows) {
+                        roster.push_back({r.guid, r.profile_id, r.task_force});
+                    }
+                    auto delta = RoleWeightedSplit::ComputeRebalanceDelta(roster);
+                    if (!RoleWeightedSplit::ShouldRebalance(roster, delta)) {
+                        Logger::Log("team-balance",
+                            "[IpcServer] REQUEST_REBALANCE inst=%lld balanced (players=%zu) — no moves\n",
+                            (long long)inst_id, roster.size());
+                    } else {
+                        Logger::Log("team-balance",
+                            "[IpcServer] REQUEST_REBALANCE inst=%lld moving %zu of %zu player(s)\n",
+                            (long long)inst_id, delta.size(), roster.size());
+                        for (const auto& m : delta) {
+                            ChatCommand::DispatchTeamMove(inst_id, m.first, m.second);
+                        }
+                    }
+                }
             }
         }
         else {

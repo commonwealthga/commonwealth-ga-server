@@ -65,6 +65,13 @@ constexpr const char* MSG_MISSION_ENDED = "MISSION_ENDED";
 //   { "type": "REQUEST_SUCCESSOR", "instance_id": <int64> }
 constexpr const char* MSG_REQUEST_SUCCESSOR = "REQUEST_SUCCESSOR";
 
+// Sent by a mission instance ~5s before the setup timer ends. Asks the control
+// server to rebalance the already-spawned roster using the queue's taskforce
+// policy and dispatch any required team moves back over PLAYER_ACTION. Control
+// server no-ops for non-balanced (pinned) queues. One-shot per setup phase.
+//   { "type": "REQUEST_REBALANCE", "instance_id": <int64> }
+constexpr const char* MSG_REQUEST_REBALANCE = "REQUEST_REBALANCE";
+
 constexpr const char* MSG_PLAYER_ACTION = "PLAYER_ACTION";
 
 // ---------------------------------------------------------------------------

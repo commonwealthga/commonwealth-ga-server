@@ -81,6 +81,13 @@ ParseResult TryParseChatCommand(const std::string& message_text);
 // to the user per design.
 void DispatchChangeTeam(ChangeTeamTarget target, const std::string& session_guid);
 
+// Apply a single team move to an already-active player: update the control DB
+// task_force, then dispatch an explicit change_team PLAYER_ACTION to the
+// player's DLL (which flips the pawn's TaskForce + suicides for respawn).
+// Shared by -changeteam and the matchmaking auto-rebalance. new_tf is 1
+// (attackers) or 2 (defenders).
+void DispatchTeamMove(int64_t instance_id, const std::string& session_guid, int new_tf);
+
 // Send the parsed -spawnfriend / -spawnenemy command to the game DLL via IPC.
 // Same delivery path as DispatchChangeTeam (PLAYER_ACTION over the per-session
 // DLL IPC). The DLL resolves Friend/Enemy against the requesting player's

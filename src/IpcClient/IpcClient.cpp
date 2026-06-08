@@ -356,6 +356,15 @@ void IpcClient::SendRequestSuccessor() {
         (long long)instance_id_);
 }
 
+void IpcClient::SendRequestRebalance() {
+    nlohmann::json msg;
+    msg["type"]        = IpcProtocol::MSG_REQUEST_REBALANCE;
+    msg["instance_id"] = instance_id_;
+    Send(msg.dump());
+    Logger::Log("team-balance", "[IPC] Sent REQUEST_REBALANCE: instance_id=%lld\n",
+        (long long)instance_id_);
+}
+
 void IpcClient::SendChatCommandAudit(const std::string& session_guid,
                                      const std::string& command,
                                      const std::string& outcome,

@@ -30,6 +30,12 @@ public:
     // safe. Idempotent.
     static void SendRequestSuccessor();
 
+    // Send-side helper for MSG_REQUEST_REBALANCE. Fire once per setup phase,
+    // ~5s before the setup timer ends. Control server resolves the queue
+    // policy and dispatches any team moves; safe to call for any mode (control
+    // server no-ops for pinned queues).
+    static void SendRequestRebalance();
+
     // Report debug/chat command execution back to the control-server console.
     static void SendChatCommandAudit(const std::string& session_guid,
                                      const std::string& command,

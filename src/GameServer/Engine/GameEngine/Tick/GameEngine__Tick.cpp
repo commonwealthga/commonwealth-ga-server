@@ -2,6 +2,7 @@
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/GameServer/Combat/MissionAlerts/MissionAlerts.hpp"
 #include "src/GameServer/Combat/CombatMessageFlusher/CombatMessageFlusher.hpp"
+#include "src/GameServer/Matchmaking/SetupRebalanceTrigger/SetupRebalanceTrigger.hpp"
 
 void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSeconds) {
 	IpcClient::DrainInbound();
@@ -11,5 +12,8 @@ void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSecon
 	// that the engine's 21-record / 101-index threshold (FUN_109f9bc0) would
 	// otherwise hold indefinitely for sparse damage events.
 	CombatMessageFlusher::Tick();
+	// Self-gates on mission timer SETUP state; fires one rebalance request 5s
+	// before setup ends.
+	SetupRebalanceTrigger::Tick();
 	CallOriginal(Engine, edx, DeltaSeconds);
 }
