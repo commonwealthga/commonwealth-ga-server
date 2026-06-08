@@ -1452,6 +1452,28 @@ void Database::Init() {
 		}
 	}
 
+	// Account auth + PvP-verification columns on ga_users. Added unconditionally
+	// (idempotent: duplicate-column errors are swallowed) rather than gated on a
+	// version bump, because the control server only floor-writes version_info to
+	// 19 — the DLL owns the counter — so a version-gated block here would never
+	// fire on an already-migrated DB. The control server is the process that
+	// reads/writes these at login + admin time, so it guarantees they exist.
+	//   password_verifier : SHA256 of the recovered RC4 keystream (NULL = not yet
+	//                       registered; captured on first login — trust-on-first-use).
+	//   registered_at     : unix epoch of first verified login (NULL until then).
+	//   verified_for_pvp  : operator-set flag, toggled from the dashboard.
+	const char* kUserAuthColumnAlters[] = {
+		"ALTER TABLE ga_users ADD COLUMN password_verifier BLOB;",
+		"ALTER TABLE ga_users ADD COLUMN registered_at INTEGER;",
+		"ALTER TABLE ga_users ADD COLUMN verified_for_pvp INTEGER NOT NULL DEFAULT 0;",
+	};
+	for (const char* sql : kUserAuthColumnAlters) {
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+			sqlite3_free(err);
+			err = nullptr;
+		}
+	}
+
 	// Floor-only version write. The game-server DLL bumps `version_info.version`
 	// past 19 (currently to 24) — an unconditional UPDATE here would silently
 	// downgrade the counter, causing the DLL's `version < 21` block to re-fire
@@ -1966,4 +1988,39 @@ int64_t Database::FindUserIdByUsername(const std::string& username) {
 	if (sqlite3_step(stmt) == SQLITE_ROW) id = sqlite3_column_int64(stmt, 0);
 	sqlite3_finalize(stmt);
 	return id;
+}
+
+bool Database::SetUserPvpVerification(int64_t user_id, bool verified) {
+	if (user_id <= 0) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"UPDATE ga_users SET verified_for_pvp = ? WHERE id = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[User] SetUserPvpVerification prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	sqlite3_bind_int(stmt, 1, verified ? 1 : 0);
+	sqlite3_bind_int64(stmt, 2, user_id);
+	const bool ok = sqlite3_step(stmt) == SQLITE_DONE;
+	sqlite3_finalize(stmt);
+	return ok;
+}
+
+bool Database::ClearUserVerifier(int64_t user_id) {
+	if (user_id <= 0) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"UPDATE ga_users SET password_verifier = NULL WHERE id = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[User] ClearUserVerifier prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	const bool ok = sqlite3_step(stmt) == SQLITE_DONE;
+	sqlite3_finalize(stmt);
+	return ok;
 }

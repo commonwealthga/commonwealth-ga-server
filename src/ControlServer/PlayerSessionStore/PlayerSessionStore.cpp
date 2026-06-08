@@ -349,6 +349,62 @@ int64_t PlayerSessionStore::UpsertUser(const std::string& username) {
 	return id;
 }
 
+PlayerSessionStore::UserAuth PlayerSessionStore::GetUserAuth(const std::string& username) {
+	std::lock_guard<std::mutex> lock(mutex_);
+	UserAuth out;
+	sqlite3* db = Database::GetConnection();
+	if (!db) return out;
+
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT id, password_verifier, registered_at FROM ga_users WHERE username = ? LIMIT 1",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[PlayerSessionStore] GetUserAuth prepare failed: %s\n", sqlite3_errmsg(db));
+		return out;
+	}
+	sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_TRANSIENT);
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		out.exists = true;
+		out.user_id = sqlite3_column_int64(stmt, 0);
+		const void* blob = sqlite3_column_blob(stmt, 1);
+		const int   blen = sqlite3_column_bytes(stmt, 1);
+		if (blob && blen > 0) {
+			const uint8_t* p = static_cast<const uint8_t*>(blob);
+			out.verifier.assign(p, p + blen);
+		}
+		out.registered_at = sqlite3_column_int64(stmt, 2);
+	}
+	sqlite3_finalize(stmt);
+	return out;
+}
+
+void PlayerSessionStore::SetUserVerifier(int64_t user_id,
+                                         const std::vector<uint8_t>& verifier,
+                                         int64_t now_epoch) {
+	if (user_id <= 0 || verifier.empty()) return;
+	std::lock_guard<std::mutex> lock(mutex_);
+	sqlite3* db = Database::GetConnection();
+	if (!db) return;
+
+	sqlite3_stmt* stmt = nullptr;
+	// COALESCE keeps the first registration timestamp once set.
+	int rc = sqlite3_prepare_v2(db,
+		"UPDATE ga_users SET password_verifier = ?, "
+		"registered_at = COALESCE(registered_at, ?) WHERE id = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[PlayerSessionStore] SetUserVerifier prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_blob(stmt, 1, verifier.data(), static_cast<int>(verifier.size()), SQLITE_TRANSIENT);
+	sqlite3_bind_int64(stmt, 2, now_epoch);
+	sqlite3_bind_int64(stmt, 3, user_id);
+	if (sqlite3_step(stmt) != SQLITE_DONE)
+		Logger::Log("db", "[PlayerSessionStore] SetUserVerifier update failed: %s\n", sqlite3_errmsg(db));
+	sqlite3_finalize(stmt);
+}
+
 int64_t PlayerSessionStore::InsertCharacter(int64_t user_id, uint32_t profile_id,
                                              uint32_t head_asm_id, uint32_t gender_type_value_id,
                                              const std::vector<uint8_t>& morph_data,

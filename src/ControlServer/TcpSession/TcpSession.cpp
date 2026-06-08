@@ -1,5 +1,6 @@
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/Database/Database.hpp"
+#include "src/ControlServer/Auth/LoginAuth.hpp"
 #include "src/ControlServer/Constants/DeviceIds.hpp"
 #include "src/ControlServer/Loadouts/ArmorLoadouts.hpp"
 #include "src/ControlServer/MapGameInfo/MapGameInfo.hpp"
@@ -30,6 +31,7 @@ std::function<void()> TcpSession::on_need_home_map_;
 std::string TcpSession::s_host_ = "127.0.0.1";
 uint16_t    TcpSession::s_chat_port_ = 9001;
 bool        TcpSession::s_allow_duplicate_account_logins_ = false;
+bool        TcpSession::s_require_password_verification_   = true;
 std::string TcpSession::s_ban_spoof_mode_                = "silent";
 int         TcpSession::s_ban_spoof_fallback_close_sec_  = 0;
 int         TcpSession::s_kick_fallback_close_sec_       = 30;
@@ -256,8 +258,10 @@ void TcpSession::SetNetworkConfig(const std::string& host, uint16_t chat_port) {
     s_chat_port_ = chat_port;
 }
 
-void TcpSession::SetLoginPolicy(bool allow_duplicate_account_logins) {
+void TcpSession::SetLoginPolicy(bool allow_duplicate_account_logins,
+                               bool require_password_verification) {
     s_allow_duplicate_account_logins_ = allow_duplicate_account_logins;
+    s_require_password_verification_  = require_password_verification;
 }
 
 void TcpSession::SetModerationConfig(const std::string& ban_spoof_mode,
@@ -1191,7 +1195,11 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				Logger::Log("tcp",
 					"[%s] GSC_USER_LOGIN pre-login frame with no account fields; transient response only ip=%s item_count=%u len=%zu\n",
 					Logger::GetTime(), ip_address_.c_str(), item_count, length);
-				send_login_response_for("", GenerateSessionGuid());
+				// Remember the issued nonce: the client encrypts its credential
+				// blob against it, and the next (credentialed) frame on this
+				// connection verifies against it.
+				pending_login_challenge_guid_ = GenerateSessionGuid();
+				send_login_response_for("", pending_login_challenge_guid_);
 				break;
 			}
 			if (EqualsIgnoreAsciiCase(requested_user_name, "unknown")) {
@@ -1260,8 +1268,77 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				}
 			}
 
+			// ---- Password verification (challenge-response) -------------------
+			// The client encrypted a credential blob against the SESSION_GUID
+			// nonce we issued in the pre-login frame. Recover the per-account
+			// verifier (SHA256 of the RC4 keystream) and compare. A brand-new
+			// account — or a legacy account with no verifier yet — registers it
+			// (trust-on-first-use). See
+			// .planning/2026-06-08-password-verification-design.md.
+			bool store_new_verifier = false;
+			std::vector<uint8_t> new_verifier;
+			if (s_require_password_verification_ &&
+			    (login_field_name == std::string("USER_NAME") ||
+			     login_field_name == std::string("PLAYER_NAME"))) {
+				const std::string challenge = pending_login_challenge_guid_;
+				pending_login_challenge_guid_.clear();  // one-shot: no replay
+
+				// DYNAMIC_UINT32_SIZE fields come back with a 4B length prefix;
+				// strip it to get the raw RC4 ciphertext (same as the DWORDS
+				// morph-blob handler in ADD_PLAYER_CHARACTER).
+				auto blobRaw = pkt.ReadNBytes(GA_T::BIN_BLOB);
+				std::vector<uint8_t> blob;
+				if (blobRaw && blobRaw->size() > 4)
+					blob.assign(blobRaw->begin() + 4, blobRaw->end());
+
+				std::vector<uint8_t> computed;
+				if (!blob.empty() && !challenge.empty())
+					computed = LoginAuth::ComputeVerifier(challenge, requested_user_name, blob);
+
+				PlayerSessionStore::UserAuth auth =
+					PlayerSessionStore::GetUserAuth(requested_user_name);
+
+				if (auth.exists && !auth.verifier.empty()) {
+					// Registered account — the blob MUST verify.
+					if (computed.empty() || computed != auth.verifier) {
+						Logger::Log("tcp",
+							"[%s] GSC_USER_LOGIN incorrect password name=%s ip=%s blob=%s challenge=%s\n",
+							Logger::GetTime(), requested_user_name.c_str(), ip_address_.c_str(),
+							blob.empty() ? "missing" : "present", challenge.empty() ? "missing" : "present");
+						Database::InsertSession(auth.user_id, requested_user_name, remote_ip, "rejected");
+						// Unlike bans (which stay silent so the player just sees a
+						// hang), a wrong password gets a real error the client can
+						// display. 18760 = the client's "incorrect password" msg id.
+						//
+						// Do NOT close the socket here and do NOT trip the failed-
+						// login IP cooldown: closing immediately after the write
+						// races the response into a TCP RST (the client never parses
+						// it → spinner hangs), and the cooldown would block the
+						// retry. Leaving the connection open lets the client show
+						// the error and re-attempt on the same socket, exactly like
+						// the normal success response path.
+						send_login_rejected_response("Incorrect password.", 18760);
+						break;
+					}
+				} else if (!computed.empty()) {
+					// New account, or legacy row with no verifier — capture it.
+					store_new_verifier = true;
+					new_verifier = std::move(computed);
+				}
+				// else: new/legacy account with no usable blob (non-standard
+				// login path) — allow through; there is nothing to verify yet.
+			}
+
 			player_name = requested_user_name;
 			const int64_t resolved_user_id = PlayerSessionStore::UpsertUser(player_name);
+
+			if (store_new_verifier) {
+				PlayerSessionStore::SetUserVerifier(resolved_user_id, new_verifier,
+				                                    (int64_t)std::time(nullptr));
+				Logger::Log("tcp",
+					"[%s] GSC_USER_LOGIN registered password verifier name=%s user_id=%lld\n",
+					Logger::GetTime(), player_name.c_str(), (long long)resolved_user_id);
+			}
 
 			// Account ban check — runs after username validation/dedup so a
 			// banned user typing a different name doesn't accidentally match.
@@ -3107,12 +3184,18 @@ void TcpSession::send_character_list_queue_response()
 void TcpSession::send_login_response_for(const std::string& response_player_name,
                                          const std::string& response_session_guid,
                                          bool success,
-                                         const char* error_text)
+                                         const char* error_text,
+                                         uint32_t error_msg_id)
 {
 	std::vector<uint8_t> response;
 
+	// MSG_ID is what the client actually displays on failure (FinishLogin's
+	// error path Translates it); ERROR_TEXT/DESC are not shown by the login menu.
+	const bool write_msg_id = error_text && error_msg_id != 0;
+
 	uint16_t packet_type = GA_U::GSC_USER_LOGIN_RESPONSE;
 	uint16_t item_count = error_text ? 12 : 9;
+	if (write_msg_id) item_count += 1;
 
 	append(response, packet_type & 0xFF, packet_type >> 8);
 	append(response, item_count & 0xFF, item_count >> 8);
@@ -3144,13 +3227,16 @@ void TcpSession::send_login_response_for(const std::string& response_player_name
 		WriteString(response, GA_T::ERROR_TEXT, error_text);
 		WriteString(response, GA_T::ERROR_DESC, error_text);
 	}
+	if (write_msg_id) {
+		Write4B(response, GA_T::MSG_ID, error_msg_id);
+	}
 
 	send_response(response);
 }
 
-void TcpSession::send_login_rejected_response(const char* error_text)
+void TcpSession::send_login_rejected_response(const char* error_text, uint32_t msg_id)
 {
-	send_login_response_for("", "00000000000000000000000000000000", false, error_text);
+	send_login_response_for("", "00000000000000000000000000000000", false, error_text, msg_id);
 }
 
 void TcpSession::send_login_response()

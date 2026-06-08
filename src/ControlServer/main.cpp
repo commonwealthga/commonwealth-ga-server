@@ -352,7 +352,8 @@ int main(int argc, char* argv[]) {
 
     // Set network config for TcpSession responses (external IP + chat port)
     TcpSession::SetNetworkConfig(cfg.host, cfg.chat_port);
-    TcpSession::SetLoginPolicy(cfg.allow_duplicate_account_logins);
+    TcpSession::SetLoginPolicy(cfg.allow_duplicate_account_logins,
+                               cfg.require_password_verification);
     TcpSession::SetModerationConfig(cfg.ban_spoof.mode,
                                     cfg.ban_spoof.fallback_close_sec,
                                     cfg.kick.fallback_close_sec);
@@ -843,6 +844,49 @@ int main(int argc, char* argv[]) {
             Database::LiftIpBan(ip);
             Logger::Log("ban", "[ban] admin unban target=ip ip=%s\n", ip.c_str());
             message = "unbanned ip=" + ip;
+            return true;
+        }
+
+        if (subtype == "pvp-toggle") {
+            int64_t user_id = payload.value("user_id", (int64_t)0);
+            if (user_id == 0) {
+                const std::string username = payload.value("username", std::string());
+                if (!username.empty()) user_id = Database::FindUserIdByUsername(username);
+            }
+            if (user_id == 0) {
+                message = "pvp-toggle needs user_id or a known username";
+                return false;
+            }
+            const bool verified = payload.value("verified", false);
+            if (!Database::SetUserPvpVerification(user_id, verified)) {
+                message = "failed to update verified_for_pvp";
+                return false;
+            }
+            Logger::Log("admin", "[admin] pvp-toggle user_id=%lld verified=%d\n",
+                (long long)user_id, verified ? 1 : 0);
+            message = std::string("verified_for_pvp set to ") + (verified ? "1" : "0") +
+                      " for user_id=" + std::to_string(user_id);
+            return true;
+        }
+
+        if (subtype == "reset-password") {
+            int64_t user_id = payload.value("user_id", (int64_t)0);
+            if (user_id == 0) {
+                const std::string username = payload.value("username", std::string());
+                if (!username.empty()) user_id = Database::FindUserIdByUsername(username);
+            }
+            if (user_id == 0) {
+                message = "reset-password needs user_id or a known username";
+                return false;
+            }
+            if (!Database::ClearUserVerifier(user_id)) {
+                message = "failed to clear password verifier";
+                return false;
+            }
+            Logger::Log("admin", "[admin] reset-password user_id=%lld (verifier cleared)\n",
+                (long long)user_id);
+            message = "password reset for user_id=" + std::to_string(user_id) +
+                      " (next login re-registers the password)";
             return true;
         }
 

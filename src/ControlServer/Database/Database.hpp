@@ -76,4 +76,15 @@ public:
     // dashboard sends a username rather than a numeric id). Returns 0 if
     // the user does not exist.
     static int64_t FindUserIdByUsername(const std::string& username);
+
+    // Set the operator "verified for PvP" flag on an account. Used by the
+    // dashboard "pvp-toggle" admin action. Returns false if the update failed.
+    static bool SetUserPvpVerification(int64_t user_id, bool verified);
+
+    // Clear an account's password verifier (set password_verifier = NULL) so
+    // the player's next login re-registers their password (trust-on-first-use).
+    // Used by the dashboard "reset-password" admin action for players locked
+    // out after typing a throwaway password on their first verified login.
+    // registered_at is left untouched. Returns false if the update failed.
+    static bool ClearUserVerifier(int64_t user_id);
 };

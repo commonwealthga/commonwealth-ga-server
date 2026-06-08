@@ -94,6 +94,25 @@ public:
     static SessionInfo* GetByGuidPtr(const std::string& guid);
 
     static int64_t UpsertUser(const std::string& username);
+
+    // Account auth state for the login password check. `exists` is false when
+    // the username has no ga_users row yet (first login). `verifier` is empty
+    // when the account hasn't registered a password yet (NULL column — legacy
+    // accounts, captured trust-on-first-use). See LoginAuth / TcpSession login.
+    struct UserAuth {
+        bool                 exists = false;
+        int64_t              user_id = 0;
+        std::vector<uint8_t> verifier;       // SHA256(keystream), 32 bytes, or empty
+        int64_t              registered_at = 0;
+    };
+    static UserAuth GetUserAuth(const std::string& username);
+
+    // Persist the password verifier captured on (first) login. Sets
+    // registered_at to `now_epoch` only if it was previously NULL/0, so the
+    // original registration timestamp is preserved across re-captures.
+    static void SetUserVerifier(int64_t user_id,
+                                const std::vector<uint8_t>& verifier,
+                                int64_t now_epoch);
     static int64_t InsertCharacter(int64_t user_id, uint32_t profile_id,
                                    uint32_t head_asm_id, uint32_t gender_type_value_id,
                                    const std::vector<uint8_t>& morph_data,

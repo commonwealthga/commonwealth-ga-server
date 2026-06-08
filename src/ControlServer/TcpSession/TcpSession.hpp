@@ -127,6 +127,7 @@ private:
     static std::string s_host_;
     static uint16_t    s_chat_port_;
     static bool        s_allow_duplicate_account_logins_;
+    static bool        s_require_password_verification_;
 
     // Moderation knobs — pushed in from main.cpp at startup. Same static-setter
     // pattern as s_allow_duplicate_account_logins_ / SetLoginPolicy above.
@@ -136,7 +137,8 @@ private:
 public:
     static void SetHomeMapSpawner(std::function<void()> cb);
     static void SetNetworkConfig(const std::string& host, uint16_t chat_port);
-    static void SetLoginPolicy(bool allow_duplicate_account_logins);
+    static void SetLoginPolicy(bool allow_duplicate_account_logins,
+                               bool require_password_verification = true);
     static void SetModerationConfig(const std::string& ban_spoof_mode,
                                     int ban_spoof_fallback_close_sec,
                                     int kick_fallback_close_sec);
@@ -178,6 +180,12 @@ private:
     // Unix seconds — set alongside the session-row insert. Reported in the
     // ForEachLiveSession snapshot.
     int64_t session_login_at_ = 0;
+
+    // The SESSION_GUID nonce we issued in the credential-less pre-login frame
+    // (32-char hex, as GenerateSessionGuid emits). The client encrypts the
+    // credential blob against this; the credentialed frame consumes it to
+    // verify. Cleared after one use so a stale nonce can't be replayed.
+    std::string pending_login_challenge_guid_;
 
     // Login-bug spoof: apply s_ban_spoof_mode_ to this session. Called from
     // the GSC_USER_LOGIN handler after a ban row is matched.
@@ -565,9 +573,20 @@ private:
     void send_login_response_for(const std::string& response_player_name,
                                  const std::string& response_session_guid,
                                  bool success = true,
-                                 const char* error_text = nullptr);
+                                 const char* error_text = nullptr,
+                                 uint32_t error_msg_id = 0);
 
-    void send_login_rejected_response(const char* error_text = nullptr);
+    // msg_id is the client localization id the login menu shows on failure.
+    // CGameClient::FinishLogin's error path reads MSG_ID (0x036E) and displays
+    // it; WITHOUT it the client shows nothing and the login form hangs on
+    // "logging in" until its own client-side timeout.
+    //
+    // Default 0 keeps that hang ON PURPOSE — banned players (and the other
+    // reject callers) should NOT get a clear error; we want them to think the
+    // server is just broken rather than learn they're banned. Only the
+    // incorrect-password path passes a real id (18760 = "incorrect password").
+    void send_login_rejected_response(const char* error_text = nullptr,
+                                      uint32_t msg_id = 0);
 
     void send_login_response();
 

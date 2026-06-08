@@ -102,6 +102,8 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
     if (j.contains("show_game_console"))  cfg.show_game_console  = j["show_game_console"].get<bool>();
     if (j.contains("allow_duplicate_account_logins"))
         cfg.allow_duplicate_account_logins = j["allow_duplicate_account_logins"].get<bool>();
+    if (j.contains("require_password_verification"))
+        cfg.require_password_verification = j["require_password_verification"].get<bool>();
 
     if (j.contains("enabled_channels") && j["enabled_channels"].is_array()) {
         for (const auto& item : j["enabled_channels"]) {
