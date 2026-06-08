@@ -32,8 +32,7 @@
 // for that id — so slot bindings, c_DeviceForm pointers, and cooldown timers
 // silently swapped between pawns during possession. Verified 2026-05-12.
 int Inventory::s_nextInventoryId = 1000000;
-std::map<ATgPawn*, std::vector<EquippedEntry>> Inventory::s_equipped;
-std::map<int, std::vector<EquippedEntry>*> Inventory::s_equippedByPawnId;
+std::map<int, std::vector<EquippedEntry>> Inventory::s_equipped;  // keyed by r_nPawnId
 std::unordered_map<int, int> Inventory::s_deviceByInvId;
 std::vector<EquippedEntry> Inventory::s_empty;
 
@@ -725,13 +724,13 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 	}
 
 	// --- Track in per-pawn map ---
-	// `mods` is stashed on the entry so Unequip() can subtract the exact
-	// same rolled-mod buff entries it added, without re-querying the DB.
-	s_equipped[Pawn].push_back({deviceId, slot, qualityValueId, invId, GetEffectGroupId(deviceId), mods});
-
-	// --- Update pawnId -> vector* lookup ---
-	int pawnId = Pawn->r_nPawnId;
-	s_equippedByPawnId[pawnId] = &s_equipped[Pawn];
+	// Keyed by r_nPawnId, NOT the raw pawn pointer (UE3 reuses freed actor
+	// addresses — a pointer key collides a fresh pawn with a dead pawn's
+	// stale entry). `mods` is stashed on the entry so Unequip() can subtract
+	// the exact same rolled-mod buff entries it added, without re-querying
+	// the DB.
+	const int pawnId = Pawn->r_nPawnId;
+	s_equipped[pawnId].push_back({deviceId, slot, qualityValueId, invId, GetEffectGroupId(deviceId), mods});
 
 	// --- Invariant: invId -> deviceId O(1) lookup ---
 	// Overwrites any prior entry for the same invId (same-invId re-equip flows
@@ -765,24 +764,23 @@ void Inventory::Finalize(ATgPawn* Pawn, bool markNetDirty) {
 	}
 
 	Logger::Log("inventory", "Finalize: pawn=0x%p, %d devices tracked markNetDirty=%d\n",
-		Pawn, (int)s_equipped[Pawn].size(), markNetDirty ? 1 : 0);
+		Pawn, (int)s_equipped[Pawn->r_nPawnId].size(), markNetDirty ? 1 : 0);
 }
 
 // ---------------------------------------------------------------------------
 // Inventory::GetEquipped — query tracked devices for a pawn
 // ---------------------------------------------------------------------------
 const std::vector<EquippedEntry>& Inventory::GetEquipped(ATgPawn* Pawn) {
-	auto it = s_equipped.find(Pawn);
-	if (it != s_equipped.end()) return it->second;
-	return s_empty;
+	if (Pawn == nullptr) return s_empty;
+	return GetEquippedByPawnId(Pawn->r_nPawnId);
 }
 
 // ---------------------------------------------------------------------------
 // Inventory::GetEquippedByPawnId — query tracked devices for a pawn by ID
 // ---------------------------------------------------------------------------
 const std::vector<EquippedEntry>& Inventory::GetEquippedByPawnId(int pawnId) {
-	auto it = s_equippedByPawnId.find(pawnId);
-	if (it != s_equippedByPawnId.end() && it->second != nullptr) return *(it->second);
+	auto it = s_equipped.find(pawnId);
+	if (it != s_equipped.end()) return it->second;
 	return s_empty;
 }
 
@@ -998,7 +996,7 @@ void Inventory::Unequip(ATgPawn* Pawn, int slot) {
 
 	// Pull the matching s_equipped entry (need its mods to reverse buffs).
 	std::vector<int> mods;
-	auto it = s_equipped.find(Pawn);
+	auto it = s_equipped.find(Pawn->r_nPawnId);
 	if (it != s_equipped.end()) {
 		auto& vec = it->second;
 		for (auto e = vec.begin(); e != vec.end(); ) {
@@ -1064,27 +1062,18 @@ void Inventory::Unequip(ATgPawn* Pawn, int slot) {
 // Inventory::ClearTracking — remove pawn from tracking maps
 // ---------------------------------------------------------------------------
 void Inventory::ClearTracking(ATgPawn* Pawn) {
-	// Drop every invId this pawn carries from the side-map first, while the
-	// pawn's vector is still alive to iterate.
-	{
-		auto pIt = s_equipped.find(Pawn);
-		if (pIt != s_equipped.end()) {
-			for (const EquippedEntry& e : pIt->second) {
-				s_deviceByInvId.erase(e.inventoryId);
-			}
-		}
-	}
+	if (Pawn == nullptr) return;
 
-	// Remove from pawnId lookup first (pointer into s_equipped, must erase before s_equipped)
-	auto* vec = &s_equipped[Pawn];
-	for (auto it = s_equippedByPawnId.begin(); it != s_equippedByPawnId.end(); ) {
-		if (it->second == vec) {
-			it = s_equippedByPawnId.erase(it);
-		} else {
-			++it;
+	// Drop every invId this pawn carries from the side-map, then drop the
+	// pawn's entry itself. Keyed by r_nPawnId now, so there is no pointer
+	// side-map to keep in lockstep.
+	auto pIt = s_equipped.find(Pawn->r_nPawnId);
+	if (pIt != s_equipped.end()) {
+		for (const EquippedEntry& e : pIt->second) {
+			s_deviceByInvId.erase(e.inventoryId);
 		}
+		s_equipped.erase(pIt);
 	}
-	s_equipped.erase(Pawn);
 }
 
 int Inventory::GetDeviceIdByInvId(int invId) {

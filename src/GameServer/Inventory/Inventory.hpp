@@ -103,8 +103,12 @@ public:
 
 private:
 	static int s_nextInventoryId;  // starts at 10000
-	static std::map<ATgPawn*, std::vector<EquippedEntry>> s_equipped;
-	static std::map<int, std::vector<EquippedEntry>*> s_equippedByPawnId;  // pawnId -> ptr into s_equipped
+	// Keyed by r_nPawnId, NOT the raw pawn pointer: UE3 reuses freed actor
+	// addresses, so a pointer key would collide a freshly-spawned pawn with a
+	// dead pawn's stale entry (wrong mods reversed on unequip / wrong inventory
+	// state). r_nPawnId is a monotonic per-spawn id (TgGame.GetNextPawnId via
+	// UC TgPawn.PostBeginPlay) — unique within an instance, never reused.
+	static std::map<int, std::vector<EquippedEntry>> s_equipped;  // pawnId -> entries
 	static std::unordered_map<int, int> s_deviceByInvId;  // invId -> deviceId (see GetDeviceIdByInvId)
 	static std::vector<EquippedEntry> s_empty;  // returned by GetEquipped when pawn not found
 

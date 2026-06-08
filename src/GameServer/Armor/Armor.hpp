@@ -40,4 +40,11 @@ namespace Armor {
 void RevertDefaultArmor(ATgPawn* Pawn);
 void ApplyDefaultArmor(ATgPawn* Pawn);
 
+// Drop the pawn's entry from the per-pawn record map. Call on pawn
+// destruction so the (now pawnId-keyed) map doesn't grow for the life of
+// the instance. Keyed by r_nPawnId, so this is purely memory hygiene —
+// correctness no longer depends on it (a dead pawnId can never collide with
+// a live one). No-op if the pawn was never tracked.
+void ClearRecords(ATgPawn* Pawn);
+
 }  // namespace Armor

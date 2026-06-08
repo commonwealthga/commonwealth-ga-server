@@ -4,6 +4,9 @@
 #include "src/GameServer/TgGame/TgGame/BeginEndMission/TgGame__BeginEndMission.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
+#include "src/GameServer/Armor/Armor.hpp"
+#include "src/GameServer/Inventory/Inventory.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/Config/Config.hpp"
@@ -195,6 +198,7 @@ enum class DispatchTag : uint8_t {
 	PawnPickupNearestDeployable,  // Diagnostic: log TouchingActors walk + which deployable was picked
 	BeaconEntranceHasExit,        // Post-call: override return to false when r_Beacon->m_bIsDeployed=0
 	PlayerControllerDestroyed,    // Pre-call: drop carried beacon if any, then CheckBeacon respawn
+	PawnDestroyed,                // Post-call: drop this pawn's pawnId-keyed Armor + Inventory tracking entries
 	ServerPickupPutdownDeployableTag, // Diagnostic: log RPC entry to confirm key press reaches server
 	// GameTimerDiagnostic,          // Diagnostic-only: before/after snapshots around original timer/match flow
 };
@@ -588,6 +592,12 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	if (strcmp(name, "Function TgGame.TgPawn.PickupNearestDeployable") == 0)         return DispatchTag::PawnPickupNearestDeployable;
 	if (strcmp(name, "Function TgGame.TgDeploy_BeaconEntrance.HasExit") == 0)        return DispatchTag::BeaconEntranceHasExit;
 	if (strcmp(name, "Function Engine.PlayerController.Destroyed") == 0)             return DispatchTag::PlayerControllerDestroyed;
+	// Base Pawn.Destroyed catches EVERY pawn (players + all bot subclasses) via
+	// the super.Destroyed() chain (TgPawn_*.Destroyed -> TgPawn.Destroyed ->
+	// super = Engine.Pawn.Destroyed; super calls route through ProcessEvent in
+	// this build, same as the PlayerController.Destroyed match above). One match
+	// covers every teardown path: death/respawn, disconnect, map travel.
+	if (strcmp(name, "Function Engine.Pawn.Destroyed") == 0)                         return DispatchTag::PawnDestroyed;
 	if (strcmp(name, "Function TgGame.TgPlayerController.ServerPickupPutdownDeployable") == 0) return DispatchTag::ServerPickupPutdownDeployableTag;
 	// if (IsGameTimerDiagnosticFunction(name)) return DispatchTag::GameTimerDiagnostic;
 
@@ -1719,6 +1729,28 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			DropCarriedBeaconIfAny((ATgPawn*)PC->Pawn);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	}
+
+	case DispatchTag::PawnDestroyed: {
+		// Drop this pawn's entries from our pawnId-keyed bookkeeping maps so
+		// they don't accumulate for the life of the instance. This fires via
+		// the super.Destroyed() chain for EVERY pawn — players and bots — on
+		// every teardown path (death/respawn, disconnect, map travel), which
+		// is why we clean here rather than at the player-only connect/respawn
+		// sites. Purely memory hygiene: the maps are pawnId-keyed, so a stale
+		// entry can never be mis-matched to a live pawn either way.
+		//
+		// Post-CallOriginal: the engine frees the actor only after the whole
+		// Destroyed chain returns, so the pawn is still valid here. Guard the
+		// cast with a class-name check — r_nPawnId lives on ATgPawn, not the
+		// base APawn, so reading it off a non-Tg pawn would be out-of-bounds.
+		CallOriginal(Object, edx, Function, Params, Result);
+		if (ObjectClassCache::ClassNameContains(Object, "TgPawn")) {
+			ATgPawn* Pawn = (ATgPawn*)Object;
+			Inventory::ClearTracking(Pawn);
+			Armor::ClearRecords(Pawn);
+		}
 		break;
 	}
 

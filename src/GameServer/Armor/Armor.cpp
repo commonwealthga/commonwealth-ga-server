@@ -42,8 +42,20 @@ struct AppliedEntry {
 // Per-pawn list of every ApplyBuff call we made during the most recent
 // ApplyDefaultArmor pass. Revert iterates this in reverse and ApplyBuffs
 // each one with bRemove=1.
-std::map<ATgPawn*, std::vector<AppliedEntry>>& Records() {
-    static std::map<ATgPawn*, std::vector<AppliedEntry>> g;
+//
+// Keyed by r_nPawnId, NOT the raw pawn pointer. UE3 reuses freed actor
+// addresses, so a pointer key collides a freshly-spawned pawn with a dead
+// pawn's stale entry: RevertDefaultArmor (which runs FIRST in RCST, before
+// Apply) would then reverse a previous pawn-life's armor deltas against the
+// new pawn's base protection props (217/218/219, direct m_fRaw writes),
+// driving them below base and zeroing protection — players took ~10-35% more
+// damage with the exact magnitude depending on whichever stale entry the
+// reused address happened to carry. r_nPawnId is a monotonic per-spawn id
+// assigned by TgGame.GetNextPawnId (UC TgPawn.PostBeginPlay), unique within
+// an instance and never reused, so a dead pawn's entry can never be found by
+// a live pawn.
+std::map<int, std::vector<AppliedEntry>>& Records() {
+    static std::map<int, std::vector<AppliedEntry>> g;
     return g;
 }
 
@@ -259,11 +271,16 @@ std::vector<EquippedPiece> FetchEquippedArmor(int64_t character_id, int item_pro
 
 }  // namespace
 
+void Armor::ClearRecords(ATgPawn* Pawn) {
+    if (!Pawn) return;
+    Records().erase(Pawn->r_nPawnId);
+}
+
 void Armor::RevertDefaultArmor(ATgPawn* Pawn) {
     if (!Pawn) return;
     if (!IsHumanPlayer(Pawn)) return;  // silent for bots — Apply logs the skip
 
-    auto it = Records().find(Pawn);
+    auto it = Records().find(Pawn->r_nPawnId);
     if (it == Records().end()) {
         // First-ever pass on this pawn: nothing to reverse. Apply will
         // populate the record map; next RCST cycle's Revert will run.
@@ -358,7 +375,7 @@ void Armor::ApplyDefaultArmor(ATgPawn* Pawn) {
 
     const auto effectsByEgid = LookupEffectRows(allEgids);
 
-    auto& records = Records()[Pawn];
+    auto& records = Records()[Pawn->r_nPawnId];
     records.clear();
     records.reserve(equipped.size() * 7);  // ~1 base + ~6 mods per piece
 
