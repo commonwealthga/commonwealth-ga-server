@@ -18,6 +18,8 @@
 struct QueuedPlayer {
     std::string session_guid;
     uint32_t profile_id;  // ASSAULT, MEDIC, etc.
+    int64_t user_id = 0;  // ga_users.id — resolved at join; 0 = unknown.
+                          // Drives the requires_pvp_verification gate in TryPop.
     std::chrono::steady_clock::time_point joined_at;
 };
 
@@ -176,6 +178,12 @@ struct QueueConfig {
     // behavioural diff for queues that had max>0 + a running delay timer
     // — no reason to keep waiting once the lobby is full.
     bool instant_pop_when_full = true;
+
+    // Operator gate. When true, only players whose account has
+    // ga_users.verified_for_pvp=1 are placed into matches from this queue.
+    // Unverified players still queue and count toward the per-class card —
+    // TryPop withholds them from the rule rather than rejecting the join.
+    bool requires_pvp_verification = false;
 
     std::vector<MapModeEntry> map_pool;
 };

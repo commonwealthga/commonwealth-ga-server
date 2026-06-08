@@ -796,6 +796,17 @@ void Database::Init() {
 			sqlite3_free(err); err = nullptr;
 		}
 
+		// Per-queue PvP-verification gate. When 1, the matchmaker only routes
+		// accounts with ga_users.verified_for_pvp=1 into matches from this
+		// queue; unverified players remain queued (and counted on the card)
+		// but are never placed. Operator-toggled from the dashboard. Idempotent
+		// — duplicate-column error swallowed on second boot.
+		const char* kPvpVerificationAlter =
+			"ALTER TABLE ga_queues ADD COLUMN requires_pvp_verification INTEGER NOT NULL DEFAULT 0;";
+		if (sqlite3_exec(db, kPvpVerificationAlter, nullptr, nullptr, &err) != SQLITE_OK) {
+			sqlite3_free(err); err = nullptr;
+		}
+
 		// ga_queues — data-driven queue definitions. Each row maps to a
 		// MATCH_QUEUE_ID; the schema carries both matchmaking behaviour
 		// (rule_class + taskforce_policy + continue_in_queue) and the
@@ -841,7 +852,11 @@ void Database::Init() {
 			"  pop_delay_seconds       REAL    NOT NULL DEFAULT 0.0,"
 			"  pop_delay_policy        TEXT    NOT NULL DEFAULT 'halve_on_join',"
 			"  instant_pop_when_full   INTEGER NOT NULL DEFAULT 1,"
-			"  marshal_difficulty_value_id INTEGER          DEFAULT NULL"
+			"  marshal_difficulty_value_id INTEGER          DEFAULT NULL,"
+			// Operator gate: when 1, only accounts with ga_users.verified_for_pvp=1
+			// are routed into matches from this queue. Unverified players still
+			// sit in the queue and count toward the per-class card.
+			"  requires_pvp_verification INTEGER NOT NULL DEFAULT 0"
 			");",
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
@@ -2006,6 +2021,24 @@ bool Database::SetUserPvpVerification(int64_t user_id, bool verified) {
 	const bool ok = sqlite3_step(stmt) == SQLITE_DONE;
 	sqlite3_finalize(stmt);
 	return ok;
+}
+
+bool Database::IsUserVerifiedForPvp(int64_t user_id) {
+	if (user_id <= 0) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT verified_for_pvp FROM ga_users WHERE id = ? LIMIT 1",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[User] IsUserVerifiedForPvp prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	bool verified = false;
+	if (sqlite3_step(stmt) == SQLITE_ROW) verified = sqlite3_column_int(stmt, 0) != 0;
+	sqlite3_finalize(stmt);
+	return verified;
 }
 
 bool Database::ClearUserVerifier(int64_t user_id) {

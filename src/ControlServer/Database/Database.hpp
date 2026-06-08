@@ -81,6 +81,11 @@ public:
     // dashboard "pvp-toggle" admin action. Returns false if the update failed.
     static bool SetUserPvpVerification(int64_t user_id, bool verified);
 
+    // Read an account's "verified for PvP" flag. Returns false for unknown /
+    // invalid user_id. Used by the matchmaker to withhold unverified players
+    // from queues flagged requires_pvp_verification.
+    static bool IsUserVerifiedForPvp(int64_t user_id);
+
     // Clear an account's password verifier (set password_verifier = NULL) so
     // the player's next login re-registers their password (trust-on-first-use).
     // Used by the dashboard "reset-password" admin action for players locked

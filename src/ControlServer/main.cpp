@@ -45,9 +45,10 @@ static bool UpdateQueueField(uint32_t queue_id, const std::string& field,
     enum class Kind { Bool, Uint, NonNegUint, NonNegFloat };
     struct FieldSpec { const char* name; Kind kind; };
     static const FieldSpec kSpecs[] = {
-        { "enabled",                  Kind::Bool        },
-        { "continue_in_queue",        Kind::Bool        },
-        { "min_players_to_pop",       Kind::Uint        },  // >= 1
+        { "enabled",                   Kind::Bool        },
+        { "continue_in_queue",         Kind::Bool        },
+        { "requires_pvp_verification", Kind::Bool        },
+        { "min_players_to_pop",        Kind::Uint        },  // >= 1
         { "max_players_per_instance", Kind::NonNegUint  },  // >= 0
         { "pop_delay_seconds",        Kind::NonNegFloat },  // >= 0
     };

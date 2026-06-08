@@ -80,7 +80,7 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
         "       access_flags, active_flag, locked_flag, remaining_seconds,"
         "       min_players_to_pop, max_players_per_instance, pop_delay_seconds,"
         "       pop_delay_policy, instant_pop_when_full,"
-        "       marshal_difficulty_value_id "
+        "       marshal_difficulty_value_id, requires_pvp_verification "
         "FROM ga_queues ORDER BY sort_order, queue_id";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
         Logger::Log("matchmaking", "[Matchmaking] LoadQueueConfigs prepare failed: %s\n",
@@ -151,6 +151,7 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
             c.marshal_difficulty_value_id = (uint32_t)sqlite3_column_int(stmt, col);
         }
         col++;
+        c.requires_pvp_verification = sqlite3_column_int(stmt, col++) != 0;
         out.push_back(std::move(c));
     }
     sqlite3_finalize(stmt);
@@ -851,6 +852,26 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
     auto& queue = it->second;
     if (!queue.rule || queue.players.empty()) return;
 
+    // PvP-verification gate. When this queue requires verification, players
+    // whose account is not verified_for_pvp stay in queue.players (so they
+    // keep counting toward the per-class queue card) but are withheld from
+    // the rule — they are never routed into a match. `consider` is the subset
+    // the matchmaker is allowed to place; everything downstream (rule eval,
+    // min_players_to_pop gate, removal-by-guid) operates on it. verified flag
+    // is read live so an operator toggling a queued player's verification
+    // takes effect on the next pop without a re-queue.
+    std::vector<QueuedPlayer> eligible_storage;
+    const std::vector<QueuedPlayer>* consider_ptr = &queue.players;
+    if (queue.config.requires_pvp_verification) {
+        eligible_storage.reserve(queue.players.size());
+        for (const auto& p : queue.players) {
+            if (Database::IsUserVerifiedForPvp(p.user_id)) eligible_storage.push_back(p);
+        }
+        consider_ptr = &eligible_storage;
+    }
+    const std::vector<QueuedPlayer>& consider = *consider_ptr;
+    if (consider.empty()) return;
+
     // Queue-scoped instance list — the provider filters by queue_id so rules
     // don't see (or accidentally route into) instances from other queues.
     std::vector<RunningInstance> instances;
@@ -858,18 +879,18 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
         instances = instance_provider_(queue_id);
     }
 
-    auto result = queue.rule->Evaluate(queue.players, instances);
+    auto result = queue.rule->Evaluate(consider, instances);
     if (!result) return;
 
     // Gate spawning new instances on min_players_to_pop. Does NOT apply
     // when the rule chose to join an existing READY instance — that
     // instance already met its threshold once.
     if (!result->existing_instance_id
-            && queue.players.size() < queue.config.min_players_to_pop) {
+            && consider.size() < queue.config.min_players_to_pop) {
         Logger::Log("queue-pop",
             "[Matchmaking] TryPop queue=%u below min_players_to_pop "
             "(have=%zu need=%u) — waiting for more joins\n",
-            queue_id, queue.players.size(), queue.config.min_players_to_pop);
+            queue_id, consider.size(), queue.config.min_players_to_pop);
         return;
     }
 

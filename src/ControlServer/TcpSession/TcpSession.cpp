@@ -1704,6 +1704,7 @@ void TcpSession::send_match_join_response(uint32_t matchQueueId, uint32_t matchF
     QueuedPlayer player;
     player.session_guid = session_guid_;
     player.profile_id = selected_profile_id_;
+    player.user_id = user_id_;  // drives the queue's requires_pvp_verification gate
     player.joined_at = std::chrono::steady_clock::now();
 
     MatchmakingService::AddPlayer(matchQueueId, player);
