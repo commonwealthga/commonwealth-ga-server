@@ -147,39 +147,39 @@ void FireClientAddKilled(ATgPlayerController* KillerPC, wchar_t* killedSrc,
 	killerNameCopy.Count = killerNameCopy.Max = 0;
 }
 
-// AssistAlert takes only KilledName + KillerName (no KillerWasPlayer).
-// Fired ON THE ASSISTER'S PC, so the assister sees "you assisted in killing X".
-void FireAddAssistAlert(ATgPlayerController* AssisterPC, wchar_t* killedSrc,
-                        wchar_t* killerSrc) {
-	if (!AssisterPC || !killedSrc) return;
-	static UFunction* pFn = nullptr;
-	if (!pFn) {
-		pFn = (UFunction*)ObjectCache::Find(
-			"Function TgGame.TgPlayerController.AddAssistAlert");
-	}
-	if (!pFn) return;
-
-	FString killedNameCopy(killedSrc);
-	FString killerNameCopy(killerSrc && killerSrc[0] ? killerSrc : (wchar_t*)L"");
-
-	ATgPlayerController_execAddAssistAlert_Parms parms = {};
-	memcpy(&parms.KilledName, &killedNameCopy, sizeof(FString));
-	memcpy(&parms.KillerName, &killerNameCopy, sizeof(FString));
+// Center-screen assist toast, fired ON THE ASSISTER'S PC so they see
+// "You assisted <killer> in defeating <victim>."
+//
+// Delivered via the SAME CHAT_MESSAGE (0x73) piggyback as the working kill
+// toast (SendKillAlert), NOT the native AddAssistAlert RPC. The native-RPC
+// route (DispatchAsClientRPC, as used by the dead FireAddKillAlert above)
+// never lights up the toast — the kill path abandoned it for this reason and
+// assists were left behind on it, which is why assist alerts never showed.
+//
+// MSG_ID 0x653E (asm_data_set_msg_translations):
+//   "You assisted @@player_name@@ in defeating @@name@@."
+//   @@player_name@@ = killer (PLAYER_NAME slot), @@name@@ = victim (NAME slot).
+// Priority APT_Normal (1) + Type ATT_Beneficial (1), 2.0s — matches kill toast.
+void SendAssistAlert(ATgPlayerController* AssisterPC, wchar_t* victimSrc,
+                     wchar_t* killerSrc) {
+	if (!AssisterPC || !victimSrc) return;
+	UNetConnection* Conn = (UNetConnection*)AssisterPC->Player;
+	if (!Conn || (uintptr_t)Conn < 0x10000) return;
 
 	if (Logger::IsChannelEnabled("kills")) {
 		Logger::Log("kills",
-			"[FireAddAssistAlert] PC=%s killed='%ls' killer='%ls' PC->Player=%p\n",
+			"[SendAssistAlert] PC=%s victim='%ls' killer='%ls' conn=%p\n",
 			AssisterPC->GetName(),
-			killedSrc, killerSrc && killerSrc[0] ? killerSrc : L"",
-			(void*)AssisterPC->Player);
+			victimSrc, killerSrc && killerSrc[0] ? killerSrc : L"",
+			(void*)Conn);
 	}
 
-	DispatchAsClientRPC(pFn, AssisterPC, &parms);
-
-	killedNameCopy.Data = nullptr;
-	killedNameCopy.Count = killedNameCopy.Max = 0;
-	killerNameCopy.Data = nullptr;
-	killerNameCopy.Count = killerNameCopy.Max = 0;
+	SendAlert::Send(Conn, /*msgId*/ 0x653E,
+	                /*priority=APT_Normal*/  1,
+	                /*type=ATT_Beneficial*/  1,
+	                /*duration*/             2.0f,
+	                /*name=victim*/          victimSrc,
+	                /*playerName=killer*/    killerSrc && killerSrc[0] ? killerSrc : nullptr);
 }
 
 // Resolve a fire-mode reference to the killer's device id. Mirrors
@@ -512,7 +512,7 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 						if (dup) continue;
 						if (!IsRealPlayer(assister->Controller)) continue;
 						ATgPlayerController* AssistPC = (ATgPlayerController*)assister->Controller;
-						FireAddAssistAlert(AssistPC, killedSrc, killerNameForAssist);
+						SendAssistAlert(AssistPC, killedSrc, killerNameForAssist);
 					}
 
 					// Healing assist — independent of damage. m_LastHealer is
@@ -522,7 +522,7 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 					if (healer && healer != Victim && healer != CreditPawn &&
 					    IsRealPlayer(healer->Controller)) {
 						ATgPlayerController* HealerPC = (ATgPlayerController*)healer->Controller;
-						FireAddAssistAlert(HealerPC, killedSrc, killerNameForAssist);
+						SendAssistAlert(HealerPC, killedSrc, killerNameForAssist);
 					}
 				}
 			}
