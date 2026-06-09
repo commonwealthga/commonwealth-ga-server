@@ -817,6 +817,33 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// Job1 bots get their actual non-zero starting posture.
 	Bot->r_ePosture = (unsigned char)(*(int*)((char*)BotConfig + 0xa4));
 
+	// Emplacement turrets (bot-factory / objective spawned, e.g. firing-range
+	// and guard turrets) spawn ALREADY deployed. r_bIsDeployed (0x1C54, CPF_Net)
+	// is normally false at spawn, so when a client first becomes relevant to the
+	// turret — which happens as the player approaches/LOS — UC
+	// OnWaitingForPawnDone -> SetDeployStateBasedOnPosture sees !r_bIsDeployed
+	// and runs StartDeploy(), playing the deploy animation right then ("turret
+	// deploys when I walk up"). Default posture is already Default(0)=deployed
+	// and these bots never hibernate (hibernate_on_idle_sec=0), so pre-seeding
+	// r_bIsDeployed=true makes both server and client take the "already up"
+	// branch (percentage=1.0, no StartDeploy). Initial replication carries the
+	// true value, so no bNetDirty needed.
+	//
+	// Gate on pOwnerPawn==nullptr: player-deployed turrets (TgDeviceFire::
+	// SpawnPet passes the owning player as pOwnerPawn and a non-zero
+	// fDeployAnimLength) MUST keep their deploy phase and are left untouched.
+	// (pFactory is unreliable here — it gets back-filled from ActorCache below
+	// when null, so it can't distinguish player deploys.)
+	//
+	// Also require r_ePosture==Default(0): a turret bot configured to start
+	// hibernating (posture 1) is meant to stay packed, and the client's
+	// SetDeployStateBasedOnPosture(posture 1) would force r_bIsDeployed back to
+	// false anyway — so only pre-deploy posture-0 (deployed) turrets.
+	if (pOwnerPawn == nullptr && Bot->r_ePosture == 0 && pawnClassName &&
+	    strstr(pawnClassName, "TgPawn_Turret") != nullptr) {
+		((ATgPawn_Turret*)Bot)->r_bIsDeployed = 1;
+	}
+
 	// Explicitly clear UE3 crouch state on the bot. APawn::bIsCrouched
 	// (offset 0x1EC bit 0x08, CPF_Net) replicates to non-owning clients via
 	// the V2 rep block's `bNetDirty && !bNetOwner` gate. If it's true at spawn,
@@ -905,6 +932,25 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// behaviors that want the bot to return to its original orientation too.
 	AIController->m_vSpawnLocation  = vLocation;
 	AIController->m_rSpawnDirection = rRotation;
+
+	// Emplacement turrets (no owner pawn — bot-factory / objective spawned)
+	// need their facing pinned across the FULL set of fields the AI idle
+	// rotation tick reads, or they snap to north regardless of spawn rotation.
+	// Possess() leaves m_rFixedDirection / DesiredRotation at (0,0,0) (world-X
+	// = north), and TgAIController's idle branch (uc:2080-2093) reasserts that
+	// every tick — so setting m_rSpawnDirection alone (above) isn't enough; the
+	// fixed-direction branch wins and faces north. This mirrors the
+	// post-spawn rotation pin already used for player-deployed turrets in
+	// TgDeviceFire::SpawnPet. Scoped to turrets so moving/patrolling bots keep
+	// free rotation. Player-deployed turrets keep their own pin (pOwnerPawn set).
+	if (pOwnerPawn == nullptr && pawnClassName &&
+	    strstr(pawnClassName, "TgPawn_Turret") != nullptr) {
+		Bot->Rotation                   = rRotation;
+		Bot->DesiredRotation            = rRotation;
+		AIController->Rotation          = rRotation;
+		AIController->DesiredRotation   = rRotation;
+		AIController->m_rFixedDirection = rRotation;
+	}
 
 	// BotRepInfo->bNetDirty = 1;
 	// BotRepInfo->bSkipActorPropertyReplication = 0;

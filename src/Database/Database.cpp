@@ -7416,7 +7416,25 @@ void Database::Init() {
 		Logger::Log("db", "v110: seeded 1P_CPLab04_P map-object config + bot spawn tables 10003-10005 + specops pool entry + map_game_info\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 110", nullptr, nullptr, &err);
+	if (version < 111) {
+		// v111: face the 1P_CPLab04_P firing-range turret factories 12588 and
+		// 12609 east. SpawnNextBot defaults a spawn to its TgBotStart nav
+		// point's yaw; those nav points are all yaw 0 (north), so without an
+		// override every emplacement faces north. `spawn_rotation_yaw` is the
+		// new per-factory override SpawnNextBot reads (UE3 yaw units, 0..65535).
+		// 16384 = +90 degrees (east, if north is +X). NOTE: if these come out
+		// facing WEST in playtest, flip to 49152 (-90 degrees).
+		const char* kV111_lab04_turret_rotation =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('1P_CPLab04_P', 12588, 'spawn_rotation_yaw', '16384', NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12609, 'spawn_rotation_yaw', '16384', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV111_lab04_turret_rotation, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v111 (lab04 turret rotation): %s\n", err); return; }
+
+		Logger::Log("db", "v111: set spawn_rotation_yaw=16384 (east) for 1P_CPLab04_P factories 12588, 12609\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 111", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

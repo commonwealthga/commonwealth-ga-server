@@ -2,6 +2,7 @@
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
+#include "src/GameServer/Engine/MapObjectConfig/MapObjectConfig.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -214,9 +215,20 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 	const bool jittered = (gd.nCurrentCount > 0);
 	if (jittered) ApplyXYJitter(loc);
 
+	// Spawn facing the nav point's rotation by default. Level designers leave
+	// most TgBotStart nav points at yaw 0 (north), so for factories whose
+	// spawns need a fixed facing — emplaced turrets, guards watching a lane —
+	// allow a per-factory `spawn_rotation_yaw` map_object_config override
+	// (UE3 yaw units, 0..65535). When present it replaces the nav point yaw;
+	// pitch/roll stay from the nav point.
+	FRotator spawnRot = BotStart->Rotation;
+	if (MapObjectConfig::Has(mid, "spawn_rotation_yaw")) {
+		spawnRot.Yaw = MapObjectConfig::GetInt(mid, "spawn_rotation_yaw", spawnRot.Yaw);
+	}
+
 	ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
 	ATgPawn* Bot = (ATgPawn*)Game->SpawnBotById(
-		botId, loc, BotStart->Rotation,
+		botId, loc, spawnRot,
 		/*bKillController=*/   false,
 		/*pFactory=*/          BotFactory,
 		/*bIgnoreCollision=*/  true,
