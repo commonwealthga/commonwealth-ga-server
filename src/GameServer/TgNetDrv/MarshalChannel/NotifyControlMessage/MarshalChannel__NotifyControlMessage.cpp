@@ -202,7 +202,32 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 			Logger::Log(GetLogChannel(), "JOIN: identified player '%s' (guid=%s, profile=%u, connection=%d)\n",
 				info->player_name.c_str(), session_guid.c_str(), info->selected_profile_id, (int32_t)Connection);
 		} else {
-			Logger::Log(GetLogChannel(), "JOIN: session guid %s not found in registry (direct connect? no PLAYER_REGISTER received)\n", session_guid.c_str());
+			// SECURITY GATE — single chokepoint for match authorization.
+			//
+			// PlayerRegistry is per-instance and only holds players the control
+			// server explicitly authorized for THIS instance (via MSG_PLAYER_REGISTER,
+			// sent only after the matchmaking gate — including the verified-PvP
+			// filter on the merc / double-agent queues — has passed). A miss here
+			// means the client reached us out-of-band: the UE3 console
+			// `open <ip>:<port>/<map>?game=<type>` direct-connect. Since this JOIN
+			// branch is the ONLY place a player pawn is spawned (SpawnPlayActor
+			// below), admitting an unregistered guid lets a player who was filtered
+			// out of matchmaking slip straight into the instance. Refuse instead.
+			Logger::Log("authgate",
+				"JOIN REJECTED: session guid '%s' not registered to this instance (conn=%p) — direct-connect attempt, refusing\n",
+				session_guid.c_str(), (void*)Connection);
+
+			// Best-effort tell the client, then drop the connection. Flipping State
+			// to USOCK_Closed (offset 0x74) makes the next UdpNetDriver::TickDispatch
+			// reap run NetConnection::CleanUp — the same mechanism Channel 0 close
+			// uses in Channel__ReceivedSequencedBunch. Do NOT call CleanUp inline;
+			// we're on the receive stack. Returning here skips SpawnPlayActor, so no
+			// pawn is ever created for an unauthorized connection.
+			SendControlMessage(Connection, L"FAILURE Not authorized for this match");
+			*(uint32_t*)((char*)Connection + 0x74) = 1; // USOCK_Closed
+
+			LogCallEnd();
+			return;
 		}
 
 
