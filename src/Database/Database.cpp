@@ -7225,7 +7225,28 @@ void Database::Init() {
 		Logger::Log("db", "v108: seeded 1P_CPMine01_P map-object config + specops pool entry + map_game_info\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 108", nullptr, nullptr, &err);
+	if (version < 109) {
+		// v109: playtest fixes to the v108 1P_CPMine01_P seed. Keyed on the
+		// natural (map_object_id, column_name) tuple rather than absolute row
+		// id so it resolves on any DB regardless of autoincrement sequence.
+		//   - object 12222: drop b_spawn_on_alarm; set spawn tables 40 -> 33.
+		//   - object 12456: s_b_auto_spawn 0 -> 1.
+		const char* kV109_mine01_fixes =
+			"DELETE FROM map_object_config "
+			"  WHERE map_name='1P_CPMine01_P' AND map_object_id=12222 AND column_name='b_spawn_on_alarm';"
+			"UPDATE map_object_config SET value='33', variant_group=NULL, variant_id=NULL, weight=1 "
+			"  WHERE map_name='1P_CPMine01_P' AND map_object_id=12222 AND column_name='n_default_spawn_table_id';"
+			"UPDATE map_object_config SET value='33', variant_group=NULL, variant_id=NULL, weight=1 "
+			"  WHERE map_name='1P_CPMine01_P' AND map_object_id=12222 AND column_name='n_spawn_table_id';"
+			"UPDATE map_object_config SET value='1', variant_group=NULL, variant_id=NULL, weight=1 "
+			"  WHERE map_name='1P_CPMine01_P' AND map_object_id=12456 AND column_name='s_b_auto_spawn';";
+		result = sqlite3_exec(db, kV109_mine01_fixes, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v109 (mine01 fixes): %s\n", err); return; }
+
+		Logger::Log("db", "v109: applied 1P_CPMine01_P playtest fixes (12222 spawn tables/alarm, 12456 auto_spawn)\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 109", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
