@@ -3,6 +3,7 @@
 #include "src/GameServer/Constants/TgProperties.h"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
+#include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Broadcast a COMBAT_MESSAGE (0x9F) to every connected client. Each client's
@@ -137,6 +138,44 @@ void __fastcall TgDeployable__SetProperty::Call(ATgDeployable* D, void* edx, int
 				Logger::Log("inventory",
 					"[SetProperty mirror] deployable=0x%p id=%d  DAMAGE_RADIUS %.2fft -> r_fClientProximityRadius=%.2fuu (bomb HUD)\n",
 					D, D->r_nDeployableId, fValue, radiusUU);
+			}
+			break;
+		}
+
+		// Prop 8 (PROXIMITY_DISTANCE) → arms a proximity mine: set
+		// s_fProximityRadius (opens the Touch fire-gate + mine LifeSpan branch)
+		// and spawn the s_CollisionProxy sensor whose cylinder is the trigger
+		// volume. Both stripped natives our spawn path never replaced. Only
+		// mines carry prop 8 (bombs use prop 6); fValue>0 skips the identity
+		// default. radius/height are feel-based knobs — tune to taste.
+		case GA_PROPERTY::TGPID_PROXIMITY_DISTANCE: {
+			if (fValue <= 0.0f) break;
+			const float radiusUU = fValue * 16.0f;  // ft→uu
+			const float heightUU = 80.0f;
+
+			D->s_fProximityRadius = radiusUU;
+			D->bNetDirty       = 1;
+			D->bForceNetUpdate = 1;
+
+			if (D->s_CollisionProxy == nullptr) {
+				// Same proxy spawn as TgMissionObjective__RegisterSelf.
+				ATgCollisionProxy* Proxy = (ATgCollisionProxy*)D->Spawn(
+					ClassPreloader::GetClass("Class TgGame.TgCollisionProxy"),
+					D, FName(), D->Location, D->Rotation, nullptr, 1);
+				if (Proxy) {
+					Proxy->SetOwner(D);
+					Proxy->SetBase(D, FVector(0, 0, 0), nullptr, FName());
+					UCylinderComponent* Cyl =
+						(UCylinderComponent*)Proxy->CollisionComponent;
+					if (Cyl) Cyl->SetCylinderSize(radiusUU, heightUU);
+					D->s_CollisionProxy = Proxy;
+				}
+				Logger::Log("mine_prox",
+					"[SetProperty] dep=0x%p id=%d  prox=%.2fft -> radius=%.0fuu proxy=0x%p\n",
+					D, D->r_nDeployableId, fValue, radiusUU, (void*)D->s_CollisionProxy);
+			} else if (D->s_CollisionProxy->CollisionComponent) {
+				((UCylinderComponent*)D->s_CollisionProxy->CollisionComponent)
+					->SetCylinderSize(radiusUU, heightUU);
 			}
 			break;
 		}
