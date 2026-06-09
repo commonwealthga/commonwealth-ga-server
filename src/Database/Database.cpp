@@ -7100,7 +7100,132 @@ void Database::Init() {
 		Logger::Log("db", "v107: seeded 1P_CPMine02_P map-object config + specops pool entry + map_game_info\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 107", nullptr, nullptr, &err);
+	if (version < 108) {
+		// v108: seed 1P_CPMine01_P ("Unobtanium Mine LV-426") as the next
+		// specops map. Same bundled shape as v107 (1P_CPMine02_P):
+		// map_object_config (factory + objective task_force/team_number pairs,
+		// spawn_table_id / default_spawn_table_id per factory, two s_n_device_id
+		// overrides), specops pool entry, and a map_game_info row so the loading
+		// screen + friendly name resolve. friendly_name_msg_id 36032 =
+		// "Unobtanium Mine LV-426". Background res_id 6521 =
+		// HUD_MissionLoads.PvE_CP.1P_CPMine01_P.
+		const char* kV108_mine01_map_objects =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('1P_CPMine01_P', 12227, 'm_n_task_force',           '1',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12450, 'm_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 8990,  's_n_device_id',            '2801', NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 8990,  's_n_team_number',          '1',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 8990,  's_n_task_force',           '1',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12457, 's_n_device_id',            '4662', NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12457, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12457, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12456, 's_n_team_number',          '1',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12456, 's_n_task_force',           '1',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12456, 'm_n_priority',             '1',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12456, 's_b_auto_spawn',           '0',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12455, 's_n_team_number',          '1',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12455, 's_n_task_force',           '1',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12455, 'm_n_priority',             '1',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12455, 's_b_auto_spawn',           '0',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12526, 'n_priority',               '1',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12195, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12195, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12195, 'n_default_spawn_table_id', '28',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12195, 'n_spawn_table_id',         '28',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12196, 'n_default_spawn_table_id', '28',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12196, 'n_spawn_table_id',         '28',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12196, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12196, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12197, 'n_default_spawn_table_id', '29',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12197, 'n_spawn_table_id',         '29',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12197, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12197, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12198, 'n_default_spawn_table_id', '40',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12198, 'n_spawn_table_id',         '40',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12198, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12198, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12205, 'n_default_spawn_table_id', '28',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12205, 'n_spawn_table_id',         '28',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12205, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12205, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12204, 'n_default_spawn_table_id', '28',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12204, 'n_spawn_table_id',         '28',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12204, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12204, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12225, 'n_spawn_table_id',         '59',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12225, 'n_default_spawn_table_id', '59',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12225, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12225, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12226, 'n_default_spawn_table_id', '59',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12226, 'n_spawn_table_id',         '59',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12226, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12226, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12199, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12199, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12199, 'n_spawn_table_id',         '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12199, 'n_default_spawn_table_id', '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12200, 'n_default_spawn_table_id', '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12200, 'n_spawn_table_id',         '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12200, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12200, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12201, 'n_default_spawn_table_id', '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12201, 'n_spawn_table_id',         '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12201, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12201, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12202, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12202, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12202, 'n_default_spawn_table_id', '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12202, 'n_spawn_table_id',         '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12203, 'n_default_spawn_table_id', '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12203, 'n_spawn_table_id',         '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12203, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12203, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12221, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12221, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12221, 'n_spawn_table_id',         '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12221, 'n_default_spawn_table_id', '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12222, 'n_default_spawn_table_id', '40',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12222, 'n_spawn_table_id',         '40',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12222, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12222, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12223, 'n_spawn_table_id',         '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12223, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12223, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12224, 'n_spawn_table_id',         '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12224, 'n_default_spawn_table_id', '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12224, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12224, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12526, 'n_default_spawn_table_id', '46',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12526, 'n_spawn_table_id',         '46',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12526, 's_n_task_force',           '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12526, 's_n_team_number',          '2',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12223, 'n_default_spawn_table_id', '33',   NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12222, 'b_spawn_on_alarm',         '0',    NULL, NULL, 1),"
+			"  ('1P_CPMine01_P', 12450, 'm_n_priority',             '1',    NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV108_mine01_map_objects, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v108 (map_object_config mine01): %s\n", err); return; }
+
+		// Add the map to the specops pool (map_pool_id=1 — see v65 for context).
+		const char* kV108_specops_pool =
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
+			" (1, '1P_CPMine01_P', 'TgGame.TgGame_Mission');";
+		result = sqlite3_exec(db, kV108_specops_pool, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v108 (specops pool): %s\n", err); return; }
+
+		// Seed map_game_info so the loading screen + friendly name resolve.
+		// map_game_id 1293 reserved for 1P_CPMine01_P (production_map_game_list).
+		// friendly_name_msg_id 36032 = "Unobtanium Mine LV-426". Background
+		// res_id 6521 = HUD_MissionLoads.PvE_CP.1P_CPMine01_P.
+		const char* kV108_mine01_map_game_info =
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"(1293, '1P_CPMine01_P', 'TgGame.TgGame_Mission', 1553, 36032, 6521);";
+		result = sqlite3_exec(db, kV108_mine01_map_game_info, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v108 (map_game_info mine01): %s\n", err); return; }
+
+		Logger::Log("db", "v108: seeded 1P_CPMine01_P map-object config + specops pool entry + map_game_info\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 108", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
