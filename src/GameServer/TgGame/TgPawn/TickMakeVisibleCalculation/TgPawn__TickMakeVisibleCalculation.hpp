@@ -20,4 +20,11 @@ class TgPawn__TickMakeVisibleCalculation : public HookBase<
 	TgPawn__TickMakeVisibleCalculation> {
 public:
 	static void __fastcall Call(ATgPawn* Pawn, void* edx, float DeltaTime);
+
+	// Open/refresh a make-visible reveal window of `durationSeconds` for the pawn
+	// with this r_nPawnId. While the window is open, Call() pins make-visible to
+	// full and force-streams r_fMakeVisibleIncreased so the stock client renders
+	// the reveal; when it lapses the client self-decays back to cloaked. Called by
+	// TgPawn__TrackDamageTaken on damage-to-stealthed; repeated calls take the max.
+	static void QueueRevealPulse(int pawnId, float durationSeconds);
 };

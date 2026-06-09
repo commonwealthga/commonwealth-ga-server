@@ -39,6 +39,17 @@
 		} \
 	}
 
+// Force-replicate every tick the value is non-zero, bypassing NEQ change-
+// detection. For client-folded accumulator fields (e.g. r_fMakeVisibleIncreased)
+// where change-detection would drop the stream.
+#define DO_REP_FORCED(actortype, propertyname, propertyfullname) \
+	{ \
+		if (propertyfullname != nullptr && ((actortype*)actor)->propertyname != 0) { \
+			repindex = (int)*(short *)((int)propertyfullname + 0x5e); \
+			*param_3++ = repindex; \
+		} \
+	}
+
 // UE3 DOREPARRAY semantics: per-element NEQ, only emit changed indices. The
 // CPF_Config + fresh-channel case force-emits every index.
 #define DO_REP_ARRAY(count, actortype, propertyname, propertyfullname) \

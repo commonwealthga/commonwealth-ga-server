@@ -437,6 +437,7 @@ SOURCE_FILES_CLIENT= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/NotifyGroupChanged/TgDeployable__NotifyGroupChanged.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgRepInfo_Game/GetTaskForceFor/TgRepInfo_Game__GetTaskForceFor.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/IsFriendlyWithLocalPawn/TgDeployable__IsFriendlyWithLocalPawn.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn/IsFriendlyWithLocalPawn/TgPawn__IsFriendlyWithLocalPawn.cpp \
 			  $(SRC_DIR)/dllmainclient.cpp
 
 

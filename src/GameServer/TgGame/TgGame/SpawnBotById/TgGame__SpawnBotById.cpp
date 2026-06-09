@@ -606,6 +606,20 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	Bot->PlayerReplicationInfo->Role = 3;
 	AIController->Role = 3;
 
+	// The client only caches c_LocalPC (used by IsFriendlyWithLocalPawn → stealth MIC
+	// friend/enemy color) in TgPawn.PostBeginPlay's SetLocalPlayer(), which is gated
+	// `if (int(Role) < int(ROLE_Authority))`. The client's Role == this server RemoteRole
+	// after the engine role-swap. If the bot's RemoteRole here is ROLE_Authority(3) (or anything
+	// >= Authority), the client sees Role>=Authority, SKIPS SetLocalPlayer, c_LocalPC stays null,
+	// and IsFriendlyWithLocalPawn short-circuits (branch 1) to "friendly" → friend stealth MIC on
+	// every cloak. A replicated pawn must be ROLE_SimulatedProxy(1) to remote clients — set it.
+	Logger::Log("stealth", "[botpri] pawn=%d Bot.RemoteRole(orig)=%d Bot.Role=%d PRI.RemoteRole(orig)=%d\n",
+		Bot->r_nPawnId, (int)Bot->RemoteRole, (int)Bot->Role,
+		(int)Bot->PlayerReplicationInfo->RemoteRole);
+	Bot->RemoteRole = 1;                             // ROLE_SimulatedProxy — lets client run SetLocalPlayer
+	Bot->PlayerReplicationInfo->RemoteRole     = 1;  // ROLE_SimulatedProxy
+	Bot->PlayerReplicationInfo->bAlwaysRelevant = 1;
+
 	// r_nPawnId is assigned by UC TgPawn.PostBeginPlay via TgGame.GetNextPawnId()
 	// during Spawn() — per-TgGame-instance monotonic counter shared by players
 	// and bots. Don't override.
