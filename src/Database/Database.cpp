@@ -7246,7 +7246,177 @@ void Database::Init() {
 		Logger::Log("db", "v109: applied 1P_CPMine01_P playtest fixes (12222 spawn tables/alarm, 12456 auto_spawn)\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 109", nullptr, nullptr, &err);
+	if (version < 110) {
+		// v110: seed 1P_CPLab04_P ("Advanced Weaponry Research Lab") as the next
+		// specops map. Same bundled shape as v107/v108: map_object_config
+		// (factory + objective task_force/team_number pairs, spawn_table_id /
+		// default_spawn_table_id per factory, two s_n_device_id overrides),
+		// specops pool entry, and a map_game_info row. friendly_name_msg_id
+		// 39168 = "Advanced Weaponry Research Lab". Background res_id 6519 =
+		// HUD_MissionLoads.PvE_CP.1P_CPLab04_P. map_game_id 1328 reserved via
+		// production_map_game_list. The 12588/12609/12610/12611/12612 factories
+		// reference three custom bot_spawn_table_ids (10003/10004/10005) seeded
+		// into mod_data_set_bot_spawn_tables below.
+		const char* kV110_lab04_map_objects =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('1P_CPLab04_P', 12616, 'm_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 11717, 'm_n_task_force',           '1',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 8990,  's_n_device_id',            '2801',  NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 8990,  's_n_task_force',           '1',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 8990,  's_n_team_number',          '1',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12590, 's_n_device_id',            '5079',  NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12590, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12590, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12541, 's_n_task_force',           '1',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12541, 's_n_team_number',          '1',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12541, 's_b_auto_spawn',           '0',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12541, 'm_n_priority',             '1',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 11716, 's_n_task_force',           '1',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 11716, 's_n_team_number',          '1',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 11716, 'm_n_priority',             '1',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12651, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12651, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12639, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12639, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12638, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12638, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12637, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12637, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12636, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12636, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12635, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12635, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12634, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12634, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12633, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12633, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12632, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12632, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12631, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12631, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12630, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12630, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12629, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12629, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12642, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12642, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12641, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12641, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12640, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12640, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12615, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12615, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12613, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12613, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12610, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12610, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12611, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12611, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12612, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12612, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12609, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12609, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12608, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12608, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12607, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12607, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12606, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12606, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12592, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12592, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12591, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12591, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12588, 's_n_task_force',           '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12588, 's_n_team_number',          '2',     NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12606, 'n_spawn_table_id',         '29',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12606, 'n_default_spawn_table_id', '29',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12607, 'n_default_spawn_table_id', '28',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12607, 'n_spawn_table_id',         '28',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12608, 'n_default_spawn_table_id', '28',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12608, 'n_spawn_table_id',         '28',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12613, 'n_spawn_table_id',         '28',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12613, 'n_default_spawn_table_id', '28',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12615, 'n_default_spawn_table_id', '28',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12615, 'n_spawn_table_id',         '28',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12640, 'n_default_spawn_table_id', '46',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12640, 'n_spawn_table_id',         '46',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12641, 'n_spawn_table_id',         '34',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12641, 'n_default_spawn_table_id', '34',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12642, 'n_spawn_table_id',         '34',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12642, 'n_default_spawn_table_id', '34',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12629, 'n_default_spawn_table_id', '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12629, 'n_spawn_table_id',         '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12630, 'n_default_spawn_table_id', '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12630, 'n_spawn_table_id',         '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12631, 'n_default_spawn_table_id', '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12631, 'n_spawn_table_id',         '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12632, 'n_default_spawn_table_id', '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12632, 'n_spawn_table_id',         '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12633, 'n_spawn_table_id',         '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12633, 'n_default_spawn_table_id', '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12634, 'n_default_spawn_table_id', '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12634, 'n_spawn_table_id',         '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12635, 'n_default_spawn_table_id', '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12635, 'n_spawn_table_id',         '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12636, 'n_default_spawn_table_id', '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12636, 'n_spawn_table_id',         '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12637, 'n_default_spawn_table_id', '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12637, 'n_spawn_table_id',         '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12638, 'n_default_spawn_table_id', '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12638, 'n_spawn_table_id',         '33',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12639, 'n_default_spawn_table_id', '59',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12639, 'n_spawn_table_id',         '59',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12651, 'n_spawn_table_id',         '34',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12651, 'n_default_spawn_table_id', '34',    NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12588, 'n_spawn_table_id',         '10003', NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12588, 'n_default_spawn_table_id', '10003', NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12609, 'n_default_spawn_table_id', '10004', NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12609, 'n_spawn_table_id',         '10004', NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12612, 'n_default_spawn_table_id', '10005', NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12612, 'n_spawn_table_id',         '10005', NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12611, 'n_spawn_table_id',         '10005', NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12611, 'n_default_spawn_table_id', '10005', NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12610, 'n_default_spawn_table_id', '10005', NULL, NULL, 1),"
+			"  ('1P_CPLab04_P', 12610, 'n_spawn_table_id',         '10005', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV110_lab04_map_objects, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v110 (map_object_config lab04): %s\n", err); return; }
+
+		// Three custom bot spawn tables referenced by the Lab04 firing-range
+		// factories (12588/12609/12610/12611/12612). Same column layout as the
+		// v90 seed; difficulty 1467, 1 bot, 100% spawn chance.
+		//   10003 — 1x bot 1439
+		//   10004 — 1x bot 1445
+		//   10005 — 1x bot 1438
+		const char* kV110_bot_spawn_tables =
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"VALUES "
+			"  (10003, 1467, 0, 1, 1439, 1, 1.0, 0, 0, 1.0, 0, 0, 0), "
+			"  (10004, 1467, 0, 1, 1445, 1, 1.0, 0, 0, 1.0, 0, 0, 0), "
+			"  (10005, 1467, 0, 1, 1438, 1, 1.0, 0, 0, 1.0, 0, 0, 0);";
+		result = sqlite3_exec(db, kV110_bot_spawn_tables, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v110 (bot_spawn_tables 10003-10005): %s\n", err); return; }
+
+		// Add the map to the specops pool (map_pool_id=1 — see v65 for context).
+		const char* kV110_specops_pool =
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
+			" (1, '1P_CPLab04_P', 'TgGame.TgGame_Mission');";
+		result = sqlite3_exec(db, kV110_specops_pool, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v110 (specops pool): %s\n", err); return; }
+
+		// Seed map_game_info so the loading screen + friendly name resolve.
+		const char* kV110_lab04_map_game_info =
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"(1328, '1P_CPLab04_P', 'TgGame.TgGame_Mission', 1553, 39168, 6519);";
+		result = sqlite3_exec(db, kV110_lab04_map_game_info, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v110 (map_game_info lab04): %s\n", err); return; }
+
+		Logger::Log("db", "v110: seeded 1P_CPLab04_P map-object config + bot spawn tables 10003-10005 + specops pool entry + map_game_info\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 110", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
