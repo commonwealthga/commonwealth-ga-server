@@ -516,6 +516,25 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		newrepplayer->r_TaskForce = taskforce;
 		newpawn->NotifyTeamChanged();
 		Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: assigned to task_force=%d\n", tf);
+
+		// Fix up r_bInitialIsEnemy on every live bot now that this player's task
+		// force is known (bots spawned before any human joined couldn't compute
+		// it); runs before the joining client's actor channels open, so the
+		// value rides each bot pawn's initial bunch.
+		AGameReplicationInfo* gri = Game->GameReplicationInfo;
+		if (gri && gri->PRIArray.Data) {
+			for (int i = 0; i < gri->PRIArray.Num(); i++) {
+				ATgRepInfo_Player* pri = (ATgRepInfo_Player*)gri->PRIArray(i);
+				if (!pri || !pri->bBot || !pri->r_PawnOwner || !pri->r_TaskForce) continue;
+				ATgPawn* botPawn = pri->r_PawnOwner;
+				if (botPawn->bDeleteMe) continue;
+				const unsigned long want = (pri->r_TaskForce != taskforce) ? 1 : 0;
+				if (botPawn->r_bInitialIsEnemy != want) {
+					botPawn->r_bInitialIsEnemy = want;
+					botPawn->bNetDirty = 1;
+				}
+			}
+		}
 	}
 
 	// newrepplayer->r_TaskForce = GTeamsData.Attackers;

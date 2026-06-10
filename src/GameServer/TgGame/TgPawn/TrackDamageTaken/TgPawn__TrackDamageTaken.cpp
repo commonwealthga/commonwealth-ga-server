@@ -1,8 +1,8 @@
 #include "src/GameServer/TgGame/TgPawn/TrackDamageTaken/TgPawn__TrackDamageTaken.hpp"
-#include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/TgGame/TgPawn/TickMakeVisibleCalculation/TgPawn__TickMakeVisibleCalculation.hpp"
 
-// Called on the VICTIM pawn when they take damage.
-// Accumulates damage taken in r_Scores[STYPE_DAMAGETAKEN].
+// Called on the VICTIM pawn when they take damage (native stripped in the binary).
+// Accumulates damage-taken score, and on a stealthed victim queues a ~1s reveal.
 void __fastcall TgPawn__TrackDamageTaken::Call(ATgPawn* Pawn, void* edx, int nDamage) {
 	LogCallBegin();
 	CallOriginal(Pawn, edx, nDamage);
@@ -14,25 +14,9 @@ void __fastcall TgPawn__TrackDamageTaken::Call(ATgPawn* Pawn, void* edx, int nDa
 			PRI->bNetDirty = 1;
 		}
 
-		// Stealth shimmer-on-damage. Bump server-side `m_fMakeVisibleCurrent`
-		// (pawn+0xEFC) — the actual visibility scalar that the binary uses
-		// for SetMeshScalarValue("MakeVisible", ...) on the mesh, and that
-		// TgPlayerController::CheckStealthedCharacter reads on the viewer
-		// to decide if this pawn is visible from their POV.
-		//
-		// Replication to clients is handled centrally in
-		// TgPawn__TickMakeVisibleCalculation — each server tick it computes
-		// the delta vs. last-replicated value, writes
-		// `r_fMakeVisibleIncreased` accordingly (the rep delta field that
-		// the client's NativeReplicatedEvent folds into its local copy).
-		// That means a damage event here just needs to mutate
-		// m_fMakeVisibleCurrent; the next tick picks up the delta.
-		//
-		// IsStealthActive equivalent: r_bIsStealthed bit set AND no active
-		// disablers (jetpack bumps r_nStealthDisabled).
-		if (Pawn->r_bIsStealthed && Pawn->r_nStealthDisabled == 0) {
-			Pawn->m_fMakeVisibleCurrent += 0.5f;
-			if (Pawn->m_fMakeVisibleCurrent > 1.0f) Pawn->m_fMakeVisibleCurrent = 1.0f;
+		// Reveal-on-damage: hold the stealth reveal for ~1s, then full stealth returns.
+		if (Pawn->r_bIsStealthed) {
+			TgPawn__TickMakeVisibleCalculation::QueueRevealPulse(Pawn->r_nPawnId, 1.0f);
 		}
 	}
 

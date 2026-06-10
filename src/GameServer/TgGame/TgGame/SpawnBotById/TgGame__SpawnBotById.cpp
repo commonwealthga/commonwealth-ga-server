@@ -9,6 +9,7 @@
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/GameServer/TgGame/TgPawn/SyncPawnHealth/SyncPawnHealth.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
@@ -606,6 +607,13 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	Bot->PlayerReplicationInfo->Role = 3;
 	AIController->Role = 3;
 
+	// RemoteRole must be ROLE_SimulatedProxy(1): the client's TgPawn.PostBeginPlay
+	// only runs SetLocalPlayer (caches c_LocalPC, needed by IsFriendlyWithLocalPawn)
+	// when its Role < ROLE_Authority, and client Role == our RemoteRole.
+	Bot->RemoteRole = 1;
+	Bot->PlayerReplicationInfo->RemoteRole      = 1;
+	Bot->PlayerReplicationInfo->bAlwaysRelevant = 1;
+
 	// r_nPawnId is assigned by UC TgPawn.PostBeginPlay via TgGame.GetNextPawnId()
 	// during Spawn() — per-TgGame-instance monotonic counter shared by players
 	// and bots. Don't override.
@@ -911,6 +919,20 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		BotRepInfo->Team        = team;
 		BotRepInfo->SetTeam(team);
 		Bot->NotifyTeamChanged();
+
+		// r_bInitialIsEnemy backs the client's friend/enemy fallback during the
+		// bot-PRI NetGUID window; the stealth MIC is baked from it at cloak time.
+		// Bots spawned before any player joined are fixed up in SpawnPlayerCharacter.
+		ATgRepInfo_TaskForce* botTf = (ATgRepInfo_TaskForce*)(intptr_t)team;
+		for (const auto& kv : GClientConnectionsData) {
+			ATgPawn_Character* hp = kv.second.Pawn;
+			ATgRepInfo_Player* hpri = hp ? (ATgRepInfo_Player*)hp->PlayerReplicationInfo : nullptr;
+			if (hpri && hpri->r_TaskForce) {
+				Bot->r_bInitialIsEnemy = (botTf != hpri->r_TaskForce) ? 1 : 0;
+				Bot->bNetDirty = 1;
+				break;
+			}
+		}
 	}
 
 

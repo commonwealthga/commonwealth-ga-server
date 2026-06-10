@@ -164,6 +164,7 @@
 #include "src/GameServer/TgGame/TgEffectManager/SubmitMitigationDamage/TgEffectManager__SubmitMitigationDamage.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
+#include "src/GameServer/TgGame/TgEffectSensor/GetSensorVisConfig/TgEffectSensor__GetSensorVisConfig.hpp"
 #include "src/GameServer/TgGame/TgEffect/TrackStats/TgEffect__TrackStats.hpp"
 #include "src/GameServer/TgGame/TgEffect/CloneEffect/TgEffect__CloneEffect.hpp"
 #include "src/GameServer/TgGame/TgEffect/CheckEffectBuffModifier/TgEffect__CheckEffectBuffModifier.hpp"
@@ -503,6 +504,7 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgDevice_Morale__SendMoraleBoostMessage::Install();
 	TgEffectGroup__CloneEffectGroup::Install();
 	TgEffectGroup__RemoveEffects::Install();
+	TgEffectSensor__GetSensorVisConfig::Install();
 	TgEffect__TrackStats::Install();
 	TgEffect__CloneEffect::Install();
 	TgEffect__CheckEffectBuffModifier::Install();

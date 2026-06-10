@@ -181,6 +181,10 @@ void Execute(const std::string& session_guid, int bot_id, Team team,
         Bot->NotifyTeamChanged();
     }
 
+    // r_bInitialIsEnemy backs the client's friend/enemy fallback before the
+    // bot's PRI resolves; UC never writes it (the native server did).
+    Bot->r_bInitialIsEnemy = (team == Team::Enemy) ? 1 : 0;
+
     // Mirror SpawnNextBot's post-spawn replication kick.
 		//   Bot->Role = 3;
 		//   Bot->RemoteRole = 1;

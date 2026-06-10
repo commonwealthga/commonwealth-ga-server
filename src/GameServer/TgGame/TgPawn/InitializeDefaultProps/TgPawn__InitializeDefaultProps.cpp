@@ -274,12 +274,13 @@ void __fastcall TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	// Stealth transition time modifier — identity default = 1.0
 	Pawn->AddProperty( GA_PROPERTY::TGPID_STEALTH_TRANSTIME_MODIFIER, 1.0f, 1.0f, 0, 1000);
 
-	// MakeVisible Fade Rate — UC's stealth-end logic reads this to decide how
-	// fast the player fades back to visible after firing/taking damage.
-	// Skill `Stealth Restealth` (581) does +50% via class-80 TgEffect calc=68;
-	// without the prop in s_Properties the direct-apply silently no-ops.
-	// Identity default 1.0 so the +% scaling lands as a real delta.
-	Pawn->AddProperty( GA_PROPERTY::TGPID_MAKEVISIBLE_FADE_RATE, 1.0f, 1.0f, 0, 100.0f);
+	// MakeVisible Fade Rate — client Tick decays m_fMakeVisibleCurrent by this
+	// rate per second (linear; m scale is 0..100, clamp DAT_11690c58=100).
+	// Replicated. Full reveal pins at 100 ⇒ 50/s = 2s back to full cloak
+	// (design target). Skill `Stealth Restealth` (581) does +50% via class-80
+	// TgEffect calc=68 ⇒ 75/s ⇒ ~1.3s; without the prop in s_Properties the
+	// direct-apply silently no-ops.
+	Pawn->AddProperty( GA_PROPERTY::TGPID_MAKEVISIBLE_FADE_RATE, 50.0f, 50.0f, 0, 1000.0f);
 
 	// Protection properties — CalcProtection in TgEffectGroup calls GetProperty(nProtectionType).
 	// If the property is absent, SetProperty from damage resistance effects silently does nothing.

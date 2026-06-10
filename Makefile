@@ -230,6 +230,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/_surface_rotation/SurfaceRotation.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgEffectSensor/GetSensorVisConfig/TgEffectSensor__GetSensorVisConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffect/TrackStats/TgEffect__TrackStats.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffect/CloneEffect/TgEffect__CloneEffect.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffect/CheckEffectBuffModifier/TgEffect__CheckEffectBuffModifier.cpp \

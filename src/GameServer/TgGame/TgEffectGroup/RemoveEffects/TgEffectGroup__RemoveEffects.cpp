@@ -57,7 +57,17 @@ void __fastcall TgEffectGroup__RemoveEffects::Call(UTgEffectGroup* eg, void* /*e
 		// branches mutate pawn state UNCONDITIONALLY (Stun(false), Unhacked,
 		// r_bResistTagging, ForceResetTaskForce, yaw-lock) — letting them fire
 		// would clobber state a *different* group's Apply set. Skip them.
-		if (effect->m_fCurrent == 0.0f) {
+		//
+		// EXEMPT TgEffectSensor / TgEffectVisibility: their ApplyEffect
+		// overrides never write m_fCurrent (they mutate pawn state directly),
+		// so the guard skipped their Remove forever — scanner vis configs
+		// persisted after Sensor Boost / Visual Scanner expired, and prop-141
+		// r_nStealthDisabled leaked. Their Removes are internally guarded
+		// (slot-keyed clear / `>0` decrement / idempotent SetProperty-0).
+		const bool guardExempt =
+			ObjectClassCache::ClassNameContains(effect, "TgEffectSensor") ||
+			ObjectClassCache::ClassNameContains(effect, "TgEffectVisibility");
+		if (!guardExempt && effect->m_fCurrent == 0.0f) {
 			continue;
 		}
 
