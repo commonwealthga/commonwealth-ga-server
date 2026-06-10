@@ -517,15 +517,12 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		newpawn->NotifyTeamChanged();
 		Logger::Log(GetLogChannel(), "SpawnPlayerCharacter: assigned to task_force=%d\n", tf);
 
-		// Fix up r_bInitialIsEnemy on every live bot now that this player's
-		// task force is known. Bots spawned before any human joined couldn't
-		// compute it (SpawnBotById); this runs before the joining client's
-		// world actor channels open, so the value rides each bot pawn's
-		// initial bunch — it backs the client's stealth-MIC friend/enemy
-		// fallback during the bot-PRI NetGUID resolution window.
+		// Fix up r_bInitialIsEnemy on every live bot now that this player's task
+		// force is known (bots spawned before any human joined couldn't compute
+		// it); runs before the joining client's actor channels open, so the
+		// value rides each bot pawn's initial bunch.
 		AGameReplicationInfo* gri = Game->GameReplicationInfo;
 		if (gri && gri->PRIArray.Data) {
-			int fixedUp = 0;
 			for (int i = 0; i < gri->PRIArray.Num(); i++) {
 				ATgRepInfo_Player* pri = (ATgRepInfo_Player*)gri->PRIArray(i);
 				if (!pri || !pri->bBot || !pri->r_PawnOwner || !pri->r_TaskForce) continue;
@@ -535,11 +532,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 				if (botPawn->r_bInitialIsEnemy != want) {
 					botPawn->r_bInitialIsEnemy = want;
 					botPawn->bNetDirty = 1;
-					fixedUp++;
 				}
 			}
-			Logger::Log("stealth", "[initenemy] join fixup: player tf=%d, %d bot pawns updated\n",
-				tf, fixedUp);
 		}
 	}
 

@@ -607,18 +607,11 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	Bot->PlayerReplicationInfo->Role = 3;
 	AIController->Role = 3;
 
-	// The client only caches c_LocalPC (used by IsFriendlyWithLocalPawn → stealth MIC
-	// friend/enemy color) in TgPawn.PostBeginPlay's SetLocalPlayer(), which is gated
-	// `if (int(Role) < int(ROLE_Authority))`. The client's Role == this server RemoteRole
-	// after the engine role-swap. If the bot's RemoteRole here is ROLE_Authority(3) (or anything
-	// >= Authority), the client sees Role>=Authority, SKIPS SetLocalPlayer, c_LocalPC stays null,
-	// and IsFriendlyWithLocalPawn short-circuits (branch 1) to "friendly" → friend stealth MIC on
-	// every cloak. A replicated pawn must be ROLE_SimulatedProxy(1) to remote clients — set it.
-	Logger::Log("stealth", "[botpri] pawn=%d Bot.RemoteRole(orig)=%d Bot.Role=%d PRI.RemoteRole(orig)=%d\n",
-		Bot->r_nPawnId, (int)Bot->RemoteRole, (int)Bot->Role,
-		(int)Bot->PlayerReplicationInfo->RemoteRole);
-	Bot->RemoteRole = 1;                             // ROLE_SimulatedProxy — lets client run SetLocalPlayer
-	Bot->PlayerReplicationInfo->RemoteRole     = 1;  // ROLE_SimulatedProxy
+	// RemoteRole must be ROLE_SimulatedProxy(1): the client's TgPawn.PostBeginPlay
+	// only runs SetLocalPlayer (caches c_LocalPC, needed by IsFriendlyWithLocalPawn)
+	// when its Role < ROLE_Authority, and client Role == our RemoteRole.
+	Bot->RemoteRole = 1;
+	Bot->PlayerReplicationInfo->RemoteRole      = 1;
 	Bot->PlayerReplicationInfo->bAlwaysRelevant = 1;
 
 	// r_nPawnId is assigned by UC TgPawn.PostBeginPlay via TgGame.GetNextPawnId()
@@ -927,13 +920,9 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		BotRepInfo->SetTeam(team);
 		Bot->NotifyTeamChanged();
 
-		// r_bInitialIsEnemy backs the client's IsFriendlyWithLocalPawn branch-3
-		// fallback during the ~1s bot-PRI NetGUID window after the pawn channel
-		// opens. A stealth bot cloaks inside that window and SwapMeshToStealthed
-		// bakes the friend-vs-enemy stealth MIC from this fallback for the whole
-		// cloak cycle — 0 = friend cloak shimmer on a hostile bot. Compare vs a
-		// connected human's task force; bots spawned before any player joined
-		// are fixed up in SpawnPlayerCharacter.
+		// r_bInitialIsEnemy backs the client's friend/enemy fallback during the
+		// bot-PRI NetGUID window; the stealth MIC is baked from it at cloak time.
+		// Bots spawned before any player joined are fixed up in SpawnPlayerCharacter.
 		ATgRepInfo_TaskForce* botTf = (ATgRepInfo_TaskForce*)(intptr_t)team;
 		for (const auto& kv : GClientConnectionsData) {
 			ATgPawn_Character* hp = kv.second.Pawn;

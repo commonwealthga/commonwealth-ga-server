@@ -181,21 +181,9 @@ void Execute(const std::string& session_guid, int bot_id, Team team,
         Bot->NotifyTeamChanged();
     }
 
-    // r_bInitialIsEnemy is the engine's friend/enemy answer for the window
-    // before the bot's PRI has resolved on the observing client. UC never
-    // writes it (the native server did); left at 0, IsFriendlyWithLocalPawn's
-    // branch-3 fallback returns !0 = friendly, so a stealthed enemy renders
-    // with the FRIEND stealth MIC on every cloak. We know the relationship
-    // here, so set it to its real value: Enemy=1 → branch-3 yields the enemy
-    // MIC; friend bots stay 0.
+    // r_bInitialIsEnemy backs the client's friend/enemy fallback before the
+    // bot's PRI resolves; UC never writes it (the native server did).
     Bot->r_bInitialIsEnemy = (team == Team::Enemy) ? 1 : 0;
-    // DIAGNOSTIC: the client only caches c_LocalPC (needed by IsFriendlyWithLocalPawn
-    // → stealth MIC color) in PostBeginPlay's SetLocalPlayer(), gated `Role < ROLE_Authority`.
-    // Client Role == server RemoteRole after the role-swap; if RemoteRole here is >= Authority(3)
-    // the client skips SetLocalPlayer → c_LocalPC null → branch-1 friendly MIC. Log the raw value.
-    Logger::Log("stealth", "[initenemy] bot=%d team=%s r_bInitialIsEnemy=%d targetTf=%d Role=%d RemoteRole=%d\n",
-        Bot->r_nPawnId, TeamName(team), (int)Bot->r_bInitialIsEnemy,
-        (int)targetTf->r_nTaskForce, (int)Bot->Role, (int)Bot->RemoteRole);
 
     // Mirror SpawnNextBot's post-spawn replication kick.
 		//   Bot->Role = 3;
