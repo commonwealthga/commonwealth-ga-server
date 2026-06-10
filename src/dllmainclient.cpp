@@ -6,6 +6,7 @@
 #include "src/GameServer/TgGame/TgRepInfo_Game/GetTaskForceFor/TgRepInfo_Game__GetTaskForceFor.hpp"
 #include "src/GameServer/TgGame/TgDeployable/IsFriendlyWithLocalPawn/TgDeployable__IsFriendlyWithLocalPawn.hpp"
 #include "src/GameServer/TgGame/TgPawn/IsFriendlyWithLocalPawn/TgPawn__IsFriendlyWithLocalPawn.hpp"
+#include "src/GameServer/TgGame/TgPawn/TickClientStealthDiag/TgPawn__TickClientStealthDiag.hpp"
 
 unsigned long ModuleThread( void* ) {
 	::DetourTransactionBegin();
@@ -27,6 +28,9 @@ unsigned long ModuleThread( void* ) {
 	// Stealth friend/enemy MIC diagnostic — logs which branch the pawn's
 	// IsFriendlyWithLocalPawn takes for a cloaked pawn (channel "stealth").
 	TgPawn__IsFriendlyWithLocalPawn::Install();
+	// Make-visible decay tracer — charts m / fadeRate / tickState per second
+	// for stealth-relevant pawns (channel "stealth").
+	TgPawn__TickClientStealthDiag::Install();
 
 	::DetourTransactionCommit();
 }

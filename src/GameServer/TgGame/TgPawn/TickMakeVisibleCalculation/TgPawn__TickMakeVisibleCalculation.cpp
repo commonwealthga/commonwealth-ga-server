@@ -16,12 +16,12 @@
 //     r_fMakeVisibleIncreased is bNetInitial-only. There is no stock damage->make-visible
 //     path, so a damage reveal must be driven by the server.
 //
-// REVEAL-ON-DAMAGE: a single pulse decays on the client in ~40ms (imperceptible), so we
-// HOLD the reveal for a window. Each tick in the window we pin r_fMakeVisibleIncreased to
-// 1.0 (DO_REP_FORCED ships it every tick; the client folds + re-pins its own m to full).
-// When the window ends we stop shipping and the client self-decays to 0 = fully cloaked.
-// No delta/last-sent tracking -> no stuck-reveal (the old streaming bug). Keyed by
-// r_nPawnId, not pointer, to survive UE3 address reuse.
+// REVEAL HOLD: while a reveal is active (damage window or sensor alert bit1) we stream
+// +10/tick; the engine's own tick clamp pins client m at 100 ("fully visible" — the
+// value the spectator-cheat branch uses). m's scale is 0..100, NOT 0..1. When the
+// reveal ends we stop shipping and the client self-decays 100 -> exactly 0 at
+// r_fMakeVisibleFadeRate (50/s default = 2s; Stealth Restealth +50% = ~1.3s).
+// Keyed by r_nPawnId, not pointer, to survive UE3 address reuse.
 
 static std::unordered_map<int, float> g_revealRemaining;  // seconds of reveal left, by r_nPawnId
 
@@ -33,24 +33,44 @@ void TgPawn__TickMakeVisibleCalculation::QueueRevealPulse(int pawnId, float dura
 void __fastcall TgPawn__TickMakeVisibleCalculation::Call(ATgPawn* Pawn, void* /*edx*/, float DeltaTime) {
 	if (!Pawn) return;
 
+	// Deploy-sensor partial reveal: while a sensor's short-range config row has
+	// this stealthed pawn (alert bit1 = "display stealthed in game" — same bit
+	// IsStealthedPlayerDisplayInGameBySensor @0x109bff70 checks), hold the
+	// reveal stream. UC clears the bit when the pawn leaves the radius. The
+	// retail lightup native path is dead data-side (no config carries the
+	// lightup action bit), so the alert bit is the canonical detection signal.
+	const bool sensorRevealed =
+		Pawn->r_bIsStealthed && (Pawn->r_nSensorAlertLevel & 2) != 0;
+
 	auto it = g_revealRemaining.find(Pawn->r_nPawnId);
-	if (it != g_revealRemaining.end() && it->second > 0.0f && Pawn->r_bIsStealthed) {
-		// Active reveal window (only while still cloaked): pin make-visible to full
-		// and force-stream it every tick. If the pawn un-stealths mid-window we fall
-		// through to the clear branch so no stale reveal leaks onto a re-stealth.
-		it->second -= DeltaTime;
-		Pawn->m_fMakeVisibleCurrent   = 1.0f;   // server copy: drops the IsStealthed gate (targetable while revealed)
-		Pawn->r_fMakeVisibleIncreased = 1.0f;   // DO_REP_FORCED ships each tick; client folds + re-pins to full
+	const bool windowActive =
+		it != g_revealRemaining.end() && it->second > 0.0f && Pawn->r_bIsStealthed;
+	if (windowActive || sensorRevealed) {
+		// Active reveal (timed window or live sensor detection, only while still
+		// cloaked): pin make-visible to full and force-stream it every tick. If
+		// the pawn un-stealths mid-reveal we fall through to the clear branch so
+		// no stale reveal leaks onto a re-stealth.
+		if (windowActive) it->second -= DeltaTime;
+		Pawn->m_fMakeVisibleCurrent = 100.0f;  // server copy: drops the IsStealthed gate (targetable while revealed)
+
+		// Clamp-pinned stream. The client fold (m += incr) is additive and only
+		// SAMPLED at the channel's delivery rate (~19/s observed vs 30 server
+		// ticks — per-tick writes overwrite each other), so level-holding
+		// schemes drift. Instead ship a fat constant: inflow (~19/s × 10)
+		// crushes decay (≤75/s) and the ENGINE's own tick clamp at 100
+		// (DAT_11690c58; the spectator-reveal value) pins m there — bounded,
+		// delivery-rate-insensitive. Wear-off after the reveal = 100/fadeRate.
+		Pawn->r_fMakeVisibleIncreased = 10.0f;  // DO_REP_FORCED ships while != 0
 		Pawn->bNetDirty = 1;
 		Pawn->bForceNetUpdate = 1;
-		// DIAGNOSTIC (channel "stealth"): throttled stream trace — shows reveal duration
-		// and the client decay knob (r_fMakeVisibleFadeRate) we suspect causes pulsing.
+		// DIAGNOSTIC (channel "stealth"): throttled stream trace.
 		static std::unordered_map<int, int> s_n;
 		int& n = s_n[Pawn->r_nPawnId];
 		if ((n++ % 15) == 0)
-			Logger::Log("stealth", "[stream] pawn=%d remain=%.3f incr=%.2f fadeRate=%.2f dt=%.4f\n",
-				Pawn->r_nPawnId, it->second, Pawn->r_fMakeVisibleIncreased, Pawn->r_fMakeVisibleFadeRate, DeltaTime);
-		if (it->second <= 0.0f) {
+			Logger::Log("stealth", "[stream] pawn=%d window=%.3f sensorBit=%d incr=%.1f fadeRate=%.2f dt=%.4f\n",
+				Pawn->r_nPawnId, windowActive ? it->second : 0.0f, (int)sensorRevealed,
+				Pawn->r_fMakeVisibleIncreased, Pawn->r_fMakeVisibleFadeRate, DeltaTime);
+		if (windowActive && it->second <= 0.0f) {
 			g_revealRemaining.erase(it);
 			Logger::Log("stealth", "[stream] pawn=%d window CLOSED\n", Pawn->r_nPawnId);
 		}
@@ -58,7 +78,7 @@ void __fastcall TgPawn__TickMakeVisibleCalculation::Call(ATgPawn* Pawn, void* /*
 	}
 
 	// No active reveal: restore the cloaked sentinel server-side and stop streaming
-	// (the client self-decays its own copy back to 0).
+	// (the client self-decays its own copy from ~1.0 to exactly 0 in 1/fadeRate s).
 	if (Pawn->m_fMakeVisibleCurrent != 0.0f || Pawn->r_fMakeVisibleIncreased != 0.0f) {
 		Pawn->m_fMakeVisibleCurrent   = 0.0f;
 		Pawn->r_fMakeVisibleIncreased = 0.0f;

@@ -268,6 +268,7 @@
 #include "src/GameServer/TgGame/TgPawn/ServerOnSetPlayerLevel/TgPawn__ServerOnSetPlayerLevel.hpp"
 #include "src/GameServer/TgGame/TgPawn/ServerOnSetPlayerMesh/TgPawn__ServerOnSetPlayerMesh.hpp"
 #include "src/GameServer/TgGame/TgPawn/SetDeploySensorDetectedStealthLightup/TgPawn__SetDeploySensorDetectedStealthLightup.hpp"
+#include "src/GameServer/TgGame/TgEffectSensor/GetSensorVisConfig/TgEffectSensor__GetSensorVisConfig.hpp"
 #include "src/GameServer/TgGame/TgPawn/SetDyeItemId/TgPawn__SetDyeItemId.hpp"
 #include "src/GameServer/TgGame/TgPawn/SetJetpackTrailId/TgPawn__SetJetpackTrailId.hpp"
 #include "src/GameServer/TgGame/TgPawn/SpawnLoot/TgPawn__SpawnLoot.hpp"
@@ -614,6 +615,7 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgPawn__ServerOnSetPlayerLevel::Install();
 	TgPawn__ServerOnSetPlayerMesh::Install();
 	TgPawn__SetDeploySensorDetectedStealthLightup::Install();
+	TgEffectSensor__GetSensorVisConfig::Install();
 	TgPawn__SetDyeItemId::Install();
 	TgPawn__SetJetpackTrailId::Install();
 	TgPawn__SpawnLoot::Install();

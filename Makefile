@@ -346,6 +346,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/ServerOnSetPlayerLevel/TgPawn__ServerOnSetPlayerLevel.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/ServerOnSetPlayerMesh/TgPawn__ServerOnSetPlayerMesh.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SetDeploySensorDetectedStealthLightup/TgPawn__SetDeploySensorDetectedStealthLightup.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgEffectSensor/GetSensorVisConfig/TgEffectSensor__GetSensorVisConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SetDyeItemId/TgPawn__SetDyeItemId.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SetJetpackTrailId/TgPawn__SetJetpackTrailId.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SpawnLoot/TgPawn__SpawnLoot.cpp \
@@ -438,6 +439,7 @@ SOURCE_FILES_CLIENT= \
 			  $(SRC_DIR)/GameServer/TgGame/TgRepInfo_Game/GetTaskForceFor/TgRepInfo_Game__GetTaskForceFor.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/IsFriendlyWithLocalPawn/TgDeployable__IsFriendlyWithLocalPawn.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/IsFriendlyWithLocalPawn/TgPawn__IsFriendlyWithLocalPawn.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn/TickClientStealthDiag/TgPawn__TickClientStealthDiag.cpp \
 			  $(SRC_DIR)/dllmainclient.cpp
 
 

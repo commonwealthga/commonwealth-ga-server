@@ -9,6 +9,7 @@
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/GameServer/TgGame/TgPawn/SyncPawnHealth/SyncPawnHealth.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
@@ -925,6 +926,24 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		BotRepInfo->Team        = team;
 		BotRepInfo->SetTeam(team);
 		Bot->NotifyTeamChanged();
+
+		// r_bInitialIsEnemy backs the client's IsFriendlyWithLocalPawn branch-3
+		// fallback during the ~1s bot-PRI NetGUID window after the pawn channel
+		// opens. A stealth bot cloaks inside that window and SwapMeshToStealthed
+		// bakes the friend-vs-enemy stealth MIC from this fallback for the whole
+		// cloak cycle — 0 = friend cloak shimmer on a hostile bot. Compare vs a
+		// connected human's task force; bots spawned before any player joined
+		// are fixed up in SpawnPlayerCharacter.
+		ATgRepInfo_TaskForce* botTf = (ATgRepInfo_TaskForce*)(intptr_t)team;
+		for (const auto& kv : GClientConnectionsData) {
+			ATgPawn_Character* hp = kv.second.Pawn;
+			ATgRepInfo_Player* hpri = hp ? (ATgRepInfo_Player*)hp->PlayerReplicationInfo : nullptr;
+			if (hpri && hpri->r_TaskForce) {
+				Bot->r_bInitialIsEnemy = (botTf != hpri->r_TaskForce) ? 1 : 0;
+				Bot->bNetDirty = 1;
+				break;
+			}
+		}
 	}
 
 

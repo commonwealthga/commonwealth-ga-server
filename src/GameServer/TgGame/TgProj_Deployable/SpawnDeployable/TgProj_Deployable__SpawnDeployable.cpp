@@ -1823,6 +1823,29 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 			(int)Deployable->r_bInitialIsEnemy, Deployable->r_DRI);
 	}
 
+	// DIAGNOSTIC (channel "stealth"): sensor detection config snapshot, taken
+	// after ApplyDeployableSetup AND the Phase-5 buffed prop pass. UC
+	// CheckPlayersWithInProximity needs m_fProximityDistance > 0 and populated
+	// m_DeploySensorConfig rows (with nActionFlag bit2 + nTriggerEventFlag bit0
+	// for the stealth lightup) — no UC writer exists for either, so a native
+	// must fill them. Zero [sensor] lines ever captured → verify here.
+	if (strstr(clsName, "Sensor")) {
+		ATgDeploy_Sensor* Sensor = (ATgDeploy_Sensor*)Deployable;
+		const int nCfg = Sensor->m_DeploySensorConfig.Data
+			? Sensor->m_DeploySensorConfig.Num() : 0;
+		Logger::Log("stealth",
+			"[sensorcfg] deployableId=%d class=%s proxDist=%.1f cfgRows=%d deployed=%d\n",
+			deployableId, clsName, Sensor->m_fProximityDistance, nCfg,
+			(int)Sensor->m_bIsDeployed);
+		for (int i = 0; i < nCfg; i++) {
+			const FDeploySensorConfig& C = Sensor->m_DeploySensorConfig(i);
+			Logger::Log("stealth",
+				"[sensorcfg]   row %d: proxDist=%.1f triggerFlag=0x%X actionFlag=0x%X (lightupGate=%s)\n",
+				i, C.fProximityDistance, C.nTriggerEventFlag, C.nActionFlag,
+				((C.nActionFlag & 4) == 4 && (C.nTriggerEventFlag & 1) == 1) ? "PASS" : "fail");
+		}
+	}
+
 	return Deployable;
 }
 
