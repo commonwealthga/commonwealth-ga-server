@@ -181,6 +181,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/ApplyPlayerModsToDeployable.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgProj_Bot/SpawnBot/TgProj_Bot__SpawnBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveAllEffectGroups/TgEffectManager__RemoveAllEffectGroups.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective_Bot/LoadObjectConfig/TgMissionObjective_Bot__LoadObjectConfig.cpp \

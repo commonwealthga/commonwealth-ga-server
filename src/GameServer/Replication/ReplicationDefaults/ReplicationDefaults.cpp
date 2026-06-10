@@ -408,18 +408,23 @@ static const std::vector<ClassConfig>& Configs() {
 		// ═══════════════════════════════════════════════════════════════════
 		{ "Projectile Engine.Default__Projectile",                           { &kProjectileFamily                                 } },
 		{ "TgProjectile TgGame.Default__TgProjectile",                       { &kProjectileFamily                                 } },
-		{ "TgProj_Bot TgGame.Default__TgProj_Bot",                           { &kProjectileFamily                                 } },
+		// kPersistent matches the UC default (TgProj_FreeGrenade sets
+		// bNetTemporary=false) — without it the thrown spider grenade got one
+		// replication window and never rendered client-side in flight.
+		{ "TgProj_Bot TgGame.Default__TgProj_Bot",                           { &kProjectileFamily, &kPersistent                   } },
 		{ "TgProj_Bounce TgGame.Default__TgProj_Bounce",                     { &kProjectileFamily, &kPersistent                   } },
 		{ "TgProj_Deployable TgGame.Default__TgProj_Deployable",             { &kProjectileFamily, &kPersistent, &kUpdateSimPos   } },
 		{ "TgProj_FreeGrenade TgGame.Default__TgProj_FreeGrenade",           { &kProjectileFamily, &kPersistent                   } },
-		{ "TgProj_Grapple TgGame.Default__TgProj_Grapple",                   { &kProjectileFamily                                 } },
+		// UC default is bNetTemporary=false (TgProj_Bounce defaultproperties).
+		{ "TgProj_Grapple TgGame.Default__TgProj_Grapple",                   { &kProjectileFamily, &kPersistent                   } },
 		{ "TgProj_Grenade TgGame.Default__TgProj_Grenade",                   { &kProjectileFamily, &kPersistent                   } },
 		{ "TgProj_Missile TgGame.Default__TgProj_Missile",                   { &kProjectileFamily, &kPersistent                   } },
 		{ "TgProj_Mortar TgGame.Default__TgProj_Mortar",                     { &kProjectileFamily, &kPersistent                   } },
 		{ "TgProj_Net TgGame.Default__TgProj_Net",                           { &kProjectileFamily                                 } },
 		{ "TgProj_Rocket TgGame.Default__TgProj_Rocket",                     { &kProjectileFamily                                 } },
-		{ "TgProj_StraightTeleporter TgGame.Default__TgProj_StraightTeleporter", { &kProjectileFamily                             } },
-		{ "TgProj_Teleporter TgGame.Default__TgProj_Teleporter",             { &kProjectileFamily                                 } },
+		// UC default is bNetTemporary=false (inherited from TgProj_FreeGrenade).
+		{ "TgProj_StraightTeleporter TgGame.Default__TgProj_StraightTeleporter", { &kProjectileFamily, &kPersistent               } },
+		{ "TgProj_Teleporter TgGame.Default__TgProj_Teleporter",             { &kProjectileFamily, &kPersistent                   } },
 
 		// ═══════════════════════════════════════════════════════════════════
 		// MISSION OBJECTIVES  (drive map kismet; clients need consistent view)

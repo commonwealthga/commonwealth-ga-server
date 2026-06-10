@@ -107,6 +107,7 @@
 #include "src/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RosterWalker.hpp"
 #include "src/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RefIter.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
+#include "src/GameServer/TgGame/TgProj_Bot/SpawnBot/TgProj_Bot__SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffectGroups/TgEffectManager__RemoveAllEffectGroups.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.hpp"
 #include "src/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.hpp"
@@ -479,6 +480,7 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgPawn__RosterWalker::Install();
 	TgPawn__RefIter::Install();
 	TgProj_Deployable__SpawnDeployable::Install();
+	TgProj_Bot__SpawnBot::Install();
 	TgMissionObjective_Bot__LoadObjectConfig::Install();
 	TgMissionObjective_Bot__SetObjectiveActive::Install();
 	TgMissionObjective_Bot__SpawnObjectiveBot::Install();

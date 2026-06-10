@@ -10,8 +10,10 @@
 #include "src/GameServer/TgGame/TgPawn/SyncPawnHealth/SyncPawnHealth.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+#include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
@@ -465,6 +467,40 @@ void TgGame__SpawnBotById::GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Pla
 }
 
 
+// Pack-pet limit (prop 154 MAX_PLACEABLE_ENTITIES_OUT > 1 on the spawning fire
+// mode, e.g. Spider Grenades = 3): suicide the oldest live pets spawned by the
+// same owner + fire mode until (live + new) fits the limit. Oldest = lowest
+// r_nPawnId (monotonic per-map counter), independent of list order.
+static void EnforceOwnedPetPackLimit(ATgPawn* pOwnerPawn, ATgPawn* newBot, int modeId, int limit) {
+	if (!pOwnerPawn || !newBot || !newBot->WorldInfo) return;
+
+	std::vector<ATgPawn*> priors;
+	for (AController* c = newBot->WorldInfo->ControllerList; c; c = c->NextController) {
+		ATgPawn* p = (ATgPawn*)c->Pawn;
+		if (!p || p == newBot || p->bDeleteMe) continue;
+		if (!ObjectClassCache::ClassNameContains(p, "TgPawn")) continue;
+		if (p->r_Owner != pOwnerPawn) continue;
+		if (p->s_nSpawnerDeviceModeId != modeId) continue;
+		if (p->Health <= 0) continue;
+		priors.push_back(p);
+	}
+
+	int toKill = (int)priors.size() + 1 - limit;
+	while (toKill-- > 0) {
+		int oldest = -1;
+		for (int i = 0; i < (int)priors.size(); ++i) {
+			if (priors[i] && (oldest < 0 || priors[i]->r_nPawnId < priors[oldest]->r_nPawnId))
+				oldest = i;
+		}
+		if (oldest < 0) break;
+		Logger::Log("pet_spawn",
+			"[PetPackLimit] mode=%d limit=%d live=%d suiciding oldest pet 0x%p pawnId=%d\n",
+			modeId, limit, (int)priors.size(), priors[oldest], priors[oldest]->r_nPawnId);
+		priors[oldest]->Suicide();
+		priors[oldest] = nullptr;
+	}
+}
+
 ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	ATgGame* Game,
 	void* edx,
@@ -600,6 +636,12 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// }
 
 	Bot->r_bIsBot = 1;
+	// The AI test evaluator's "Time Since Spawned" (test 1486) reads this; UC
+	// only stamps it on player spawn / revive / arena paths, so bot spawns must
+	// stamp it here. Left at 0, every time-since-spawn gate sees match-elapsed
+	// time — Spider Grenade detonators (behavior 349) skip their 3s wander
+	// window and run the ungated "No targets, detonate self" action instantly.
+	Bot->s_nSpawnTime = WorldInfo->TimeSeconds;
 	AIController->Pawn = Bot;
 	Bot->Controller = AIController;
 	Bot->PlayerReplicationInfo = AIController->PlayerReplicationInfo;
@@ -744,12 +786,22 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 			}
 			pOwnerPawn->s_Turret = (ATgPawn_Turret*)Bot;
 		} else {
-			ATgPawn* prior = pOwnerPawn->r_Pet;
-			if (prior && prior != Bot && !prior->bDeleteMe) {
-				Logger::Log("pet_spawn",
-					"[PetLimit] suiciding prior drone 0x%p (replaced by 0x%p)\n",
-					prior, Bot);
-				prior->Suicide();
+			// Pack pets (prop 154 > 1, e.g. Spider Grenades = 3) spawn several
+			// of the same kind — single-slot replacement would suicide each
+			// prior one as the next lands. Enforce the configured count instead.
+			const int packLimit = deviceFire
+				? TgProj_Deployable__SpawnDeployable::GetMaxDeployablesOut(deviceFire->m_nId)
+				: 0;
+			if (packLimit > 1) {
+				EnforceOwnedPetPackLimit(pOwnerPawn, Bot, deviceFire->m_nId, packLimit);
+			} else {
+				ATgPawn* prior = pOwnerPawn->r_Pet;
+				if (prior && prior != Bot && !prior->bDeleteMe) {
+					Logger::Log("pet_spawn",
+						"[PetLimit] suiciding prior drone 0x%p (replaced by 0x%p)\n",
+						prior, Bot);
+					prior->Suicide();
+				}
 			}
 			pOwnerPawn->r_Pet = Bot;
 		}

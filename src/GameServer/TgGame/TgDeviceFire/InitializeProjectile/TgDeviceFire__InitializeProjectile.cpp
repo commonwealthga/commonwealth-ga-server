@@ -1,4 +1,6 @@
 #include "src/GameServer/TgGame/TgDeviceFire/InitializeProjectile/TgDeviceFire__InitializeProjectile.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
+#include "src/Utils/Logger/Logger.hpp"
 
 void __fastcall TgDeviceFire__InitializeProjectile::Call(UTgDeviceFire* DeviceFire, void* /*edx*/, AActor* Projectile) {
 	// Run original first so per-mode asm.dat config gets applied.
@@ -40,4 +42,33 @@ void __fastcall TgDeviceFire__InitializeProjectile::Call(UTgDeviceFire* DeviceFi
 	// UC's GetWeaponStartTraceLocation return the shoulder, the AI's lead
 	// prediction (GetAdjustedAim) recomputes from the shoulder and the
 	// projectile spawns there with correct aim. No patch needed here.
+
+	// Projectile-state diagnostic at throw time (after the UC ProjectileFire
+	// field stamps + native InitFromFireMode). Spider grenades (TgProj_Bot) fly
+	// invisible on the client while mines / normal grenades render — dumping
+	// EVERY TgProj_* lets a single capture diff the working classes against the
+	// broken one (bNetTemporary anomaly, rep flags, ids).
+	if (Logger::IsChannelEnabled("pet_spawn") &&
+	    ObjectClassCache::ClassNameContains(Projectile, "TgProj")) {
+		ATgProjectile* proj = (ATgProjectile*)Projectile;
+		const std::string projCls(ObjectClassCache::GetClassName(Projectile));
+		Logger::Log("pet_spawn",
+			"[Proj init] class=%s proj=0x%p mode=%d  r_nProjectileId=%d r_nOwnerFireModeId=%d "
+			"s_OwnerFireMode=0x%p s_LastDefaultMode=0x%p r_Owner=0x%p s_nSpawnBotId=%d\n"
+			"               loc=(%.1f,%.1f,%.1f) vel=(%.1f,%.1f,%.1f) speed=%.1f physics=%d\n"
+			"               Role=%d RemoteRole=%d bNetTemporary=%d bUpdateSimulatedPosition=%d "
+			"bReplicateMovement=%d bHidden=%d LifeSpan=%.2f tossZ=%.1f Instigator=0x%p\n",
+			projCls.c_str(),
+			(void*)proj, DeviceFire->m_nId,
+			proj->r_nProjectileId, proj->r_nOwnerFireModeId,
+			(void*)proj->s_OwnerFireMode, (void*)proj->s_LastDefaultMode,
+			(void*)proj->r_Owner, proj->s_nSpawnBotId,
+			proj->Location.X, proj->Location.Y, proj->Location.Z,
+			proj->Velocity.X, proj->Velocity.Y, proj->Velocity.Z,
+			proj->Speed, (int)proj->Physics,
+			(int)proj->Role, (int)proj->RemoteRole,
+			(int)proj->bNetTemporary, (int)proj->bUpdateSimulatedPosition,
+			(int)proj->bReplicateMovement, (int)proj->bHidden,
+			proj->LifeSpan, proj->m_fTossZ, (void*)proj->Instigator);
+	}
 }

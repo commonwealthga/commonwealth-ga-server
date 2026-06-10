@@ -149,6 +149,9 @@ static const std::vector<GearSlot> kAssault = {
     { 2019,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ddd", "ddd", false) }, // incen
     { 5806,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ddx", "ddd", false) }, // overcharge
     { 3708,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ttt", "ccc", false) }, // perfect target
+    { 2163,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ddd", "ddd", true) }, // spider grenades
+
+
 
     { 2838, 10,  SVID_MORALE,       Q_EPIC, Mods::Letters("mmm", "", false) },  // prot boost
     { 5775, 10,  SVID_MORALE,       Q_EPIC, Mods::Letters("mmm", "ddd", false) },  // Super Smash Boost
