@@ -7433,8 +7433,62 @@ void Database::Init() {
 
 		Logger::Log("db", "v111: set spawn_rotation_yaw=16384 (east) for 1P_CPLab04_P factories 12588, 12609\n");
 	}
+	if (version < 112) {
+		// v112: b_respawn=0 for every configured MISSION bot factory. The map
+		// packages bake the class default (bRespawn=true), which is correct
+		// for open-world trickle/defense factories but wrong for missions —
+		// with the factory rewrite, the intact BotDied schedules an immediate
+		// replacement for every killed mob (mission tables have
+		// spawn_group_respawn_sec=0), making trash and alarm waves endless.
+		// Source the factory list from map_object_config itself (rows with an
+		// n_spawn_table_id config ARE the configured bot factories; map_*
+		// dumps only exist for a few maps). map_object_id is NOT unique
+		// across maps — match (map_object_id, map_name) pairs NULL-safely.
+		// Raid_DomeCityDefense_P is the only non-mission configured map and
+		// keeps the default (1).
+		const char* kV112_mission_no_respawn =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT DISTINCT s.map_name, s.map_object_id, 'b_respawn', '0', NULL, NULL, 1 "
+			"FROM map_object_config s "
+			"WHERE s.column_name = 'n_spawn_table_id' "
+			"  AND (s.map_name IS NULL OR s.map_name <> 'Raid_DomeCityDefense_P') "
+			"  AND NOT EXISTS (SELECT 1 FROM map_object_config e "
+			"                  WHERE e.map_object_id = s.map_object_id "
+			"                    AND e.column_name = 'b_respawn' "
+			"                    AND e.map_name IS s.map_name);";
+		result = sqlite3_exec(db, kV112_mission_no_respawn, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v112 (mission b_respawn): %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 111", nullptr, nullptr, &err);
+		Logger::Log("db", "v112: b_respawn=0 for all configured mission bot factories\n");
+	}
+	if (version < 113) {
+		// v113: defense-map factories ship DORMANT. With map defaults
+		// (bAutoSpawn=1, nPriority=0), UC PostBeginPlay auto-spawns all 55
+		// Raid factories' full rosters at map load (~hundreds of enemies),
+		// and b_respawn=1 makes every kill schedule an immediate replacement.
+		// Defense waves are driven solely by TgGame_Defense TickWaveNodes,
+		// which wakes a factory (bAutoSpawn=1) and rolls a fresh wave roster
+		// when its previous wave finished spawning. Same sourcing rules as
+		// v112 (configured factories = n_spawn_table_id rows; NULL-safe
+		// (map_object_id, map_name) pairs).
+		const char* kV113_defense_dormant =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT DISTINCT s.map_name, s.map_object_id, c.column_name, '0', NULL, NULL, 1 "
+			"FROM map_object_config s "
+			"JOIN (SELECT 'b_auto_spawn' AS column_name UNION ALL SELECT 'b_respawn') c "
+			"WHERE s.column_name = 'n_spawn_table_id' "
+			"  AND s.map_name = 'Raid_DomeCityDefense_P' "
+			"  AND NOT EXISTS (SELECT 1 FROM map_object_config e "
+			"                  WHERE e.map_object_id = s.map_object_id "
+			"                    AND e.column_name = c.column_name "
+			"                    AND e.map_name IS s.map_name);";
+		result = sqlite3_exec(db, kV113_defense_dormant, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v113 (defense dormant factories): %s\n", err); return; }
+
+		Logger::Log("db", "v113: b_auto_spawn=0 + b_respawn=0 for Raid_DomeCityDefense_P factories\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 113", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

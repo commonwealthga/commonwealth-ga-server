@@ -37,6 +37,11 @@ public:
 	// off, so a leftover value can't leak into a later factory spawn.
 	static float nPendingDifficultyScalarOverride;
 
+	// Per-factory designer stat knob (ATgBotFactory.fBalance, default 1.0) —
+	// multiplies into the enemy-scaling product. Set by SpawnBotById from the
+	// caller-passed factory; consumed + reset to 1.0 every invocation.
+	static float fPendingFactoryBalance;
+
 	static void __fastcall Call(ATgPawn* Pawn, void* edx);
 	static inline void __fastcall CallOriginal(ATgPawn* Pawn, void* edx) {
 		m_original(Pawn, edx);

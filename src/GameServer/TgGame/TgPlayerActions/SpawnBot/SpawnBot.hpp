@@ -23,9 +23,14 @@ enum class Team {
 // AND Enemy bots get BBM × scalar), since the chat command is intentionally
 // dev/test-facing and the user explicitly opted in.
 //
+// henchman (-spawnhenchman): Friend-team spawn additionally flagged
+// r_bIsHenchman with the requesting player set as its leader (the AI
+// controller's m_pOwner) — the behavior system's follow-owner / defend-owner
+// actions key off that pointer.
+//
 // MUST be called on the game thread (IpcClient::DrainInbound is invoked from
 // Actor::Tick, which satisfies this precondition).
 void Execute(const std::string& session_guid, int bot_id, Team team,
-             float difficulty_scalar_override);
+             float difficulty_scalar_override, bool henchman = false);
 
 } // namespace TgPlayerActions::SpawnBotCmd

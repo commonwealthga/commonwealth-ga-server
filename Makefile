@@ -118,6 +118,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/ActivateAlarm/TgGame__ActivateAlarm.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Scanner/DidSensorBeamDetectEnemy/TgPawn_Scanner__DidSensorBeamDetectEnemy.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Scanner/DoAlarm/TgPawn_Scanner__DoAlarm.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Scanner/EnemyDetectedTimer/TgPawn_Scanner__EnemyDetectedTimer.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/LockoutObjectives/TgGame__LockoutObjectives.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/IsFinalObjective/TgGame__IsFinalObjective.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SetObjectivesInactive/TgGame__SetObjectivesInactive.cpp \
@@ -323,6 +324,9 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDynamicSMActor/ForceNetRelevant/TgDynamicSMActor__ForceNetRelevant.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgAIController/TargetInLOS/TgAIController__TargetInLOS.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgAIController/CanBeRepaired/TgAIController__CanBeRepaired.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgAIController/SpawnPets/TgAIController__SpawnPets.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgAIController/RadioAlarm/TgAIController__RadioAlarm.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPawn_Scanner/UpdateSensorSweep/TgPawn_Scanner__UpdateSensorSweep.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/ApplyDye/TgPawn__ApplyDye.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/ApplyJetpackTrail/TgPawn__ApplyJetpackTrail.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/BeginStats/TgPawn__BeginStats.cpp \

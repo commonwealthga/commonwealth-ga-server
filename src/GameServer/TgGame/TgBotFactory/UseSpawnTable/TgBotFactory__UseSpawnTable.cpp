@@ -18,11 +18,8 @@ void __fastcall TgBotFactory__UseSpawnTable::Call(ATgBotFactory* BotFactory, voi
 		return;
 	}
 
-	// ResetQueue's override path is the rebuild we want. Pass current id so
-	// the "override != current" guard doesn't short-circuit — we want a full
-	// rebuild even if the id matches, because the caller is signalling "I
-	// changed the table externally, rebuild now."
-	const int currentTable = BotFactory->nSpawnTableId;
-	BotFactory->nSpawnTableId = 0;       // force the != check to fire
-	BotFactory->ResetQueue(currentTable);
+	// "The table changed externally — rebuild now." ResetQueue rebuilds
+	// unconditionally; pass the current id so a default-restore (ResetQueue 0
+	// → nDefaultSpawnTableId) doesn't undo the external change.
+	BotFactory->ResetQueue(BotFactory->nSpawnTableId);
 }

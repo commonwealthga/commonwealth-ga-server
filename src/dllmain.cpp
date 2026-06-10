@@ -55,6 +55,8 @@
 #include "src/GameServer/TgGame/TgGame/ActivateAlarm/TgGame__ActivateAlarm.hpp"
 #include "src/GameServer/TgGame/TgPawn_Scanner/DidSensorBeamDetectEnemy/TgPawn_Scanner__DidSensorBeamDetectEnemy.hpp"
 #include "src/GameServer/TgGame/TgPawn_Scanner/DoAlarm/TgPawn_Scanner__DoAlarm.hpp"
+#include "src/GameServer/TgGame/TgPawn_Scanner/EnemyDetectedTimer/TgPawn_Scanner__EnemyDetectedTimer.hpp"
+#include "src/GameServer/TgGame/TgPawn_Scanner/UpdateSensorSweep/TgPawn_Scanner__UpdateSensorSweep.hpp"
 #include "src/GameServer/TgGame/TgGame/LockoutObjectives/TgGame__LockoutObjectives.hpp"
 #include "src/GameServer/TgGame/TgGame/IsFinalObjective/TgGame__IsFinalObjective.hpp"
 #include "src/GameServer/TgGame/TgGame/SetObjectivesInactive/TgGame__SetObjectivesInactive.hpp"
@@ -245,6 +247,9 @@
 #include "src/GameServer/TgGame/TgDynamicSMActor/ForceNetRelevant/TgDynamicSMActor__ForceNetRelevant.hpp"
 #include "src/GameServer/TgGame/TgAIController/TargetInLOS/TgAIController__TargetInLOS.hpp"
 #include "src/GameServer/TgGame/TgAIController/CanBeRepaired/TgAIController__CanBeRepaired.hpp"
+#include "src/GameServer/TgGame/TgAIController/SpawnPets/TgAIController__SpawnPets.hpp"
+#include "src/GameServer/TgGame/TgAIController/RadioAlarm/TgAIController__RadioAlarm.hpp"
+// #include "src/GameServer/TgGame/TgBotFactory/BotDied/TgBotFactory__BotDied.hpp"
 #include "src/GameServer/TgGame/TgPawn/ApplyDye/TgPawn__ApplyDye.hpp"
 #include "src/GameServer/TgGame/TgPawn/ApplyJetpackTrail/TgPawn__ApplyJetpackTrail.hpp"
 #include "src/GameServer/TgGame/TgPawn/BeginStats/TgPawn__BeginStats.hpp"
@@ -429,6 +434,8 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgGame__ActivateAlarm::Install();
 	TgPawn_Scanner__DidSensorBeamDetectEnemy::Install();
 	TgPawn_Scanner__DoAlarm::Install();
+	TgPawn_Scanner__EnemyDetectedTimer::Install();
+	TgPawn_Scanner__UpdateSensorSweep::Install();
 	TgGame__LockoutObjectives::Install();
 	TgGame__IsFinalObjective::Install();
 	TgGame__SetObjectivesInactive::Install();
@@ -597,6 +604,10 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgPawn__CanMove::Install();
 	// TgAIController__TargetInLOS::Install();
 	// TgAIController__CanBeRepaired::Install();
+	TgAIController__SpawnPets::Install();
+	TgAIController__RadioAlarm::Install();
+	// TgBotFactory__BotDied::Install(); // intact native composes with the
+	// scheduler queue model — no override needed (2026-06-10 rewrite)
 	TgPawn__CheckKillQuestCredit::Install();
 	TgPawn__CheckUseQuestCredit::Install();
 	TgPawn__EndStats::Install();

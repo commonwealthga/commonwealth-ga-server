@@ -126,9 +126,12 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
-    if (cmd_name == "-spawnfriend" || cmd_name == "-spawnenemy") {
-        // -spawnfriend [low|medium|high|max|umax] <bot_id>
-        // -spawnenemy  [low|medium|high|max|umax] <bot_id>
+    if (cmd_name == "-spawnfriend" || cmd_name == "-spawnenemy" ||
+        cmd_name == "-spawnhenchman") {
+        // -spawnfriend    [low|medium|high|max|umax] <bot_id>
+        // -spawnenemy     [low|medium|high|max|umax] <bot_id>
+        // -spawnhenchman  [low|medium|high|max|umax] <bot_id>
+        //   (= -spawnfriend + henchman flag, player becomes its leader)
         // Difficulty token is optional; bare form falls back to the map's
         // current difficulty in the DLL (scalar=0 sentinel).
         out.recognized = true;
@@ -138,9 +141,10 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         if (tokens.empty() || tokens.size() > 2) return out;
 
         SpawnTargetArgs args;
-        args.team = (cmd_name == "-spawnfriend")
-                        ? SpawnTargetTeam::Friend
-                        : SpawnTargetTeam::Enemy;
+        args.team = (cmd_name == "-spawnenemy")
+                        ? SpawnTargetTeam::Enemy
+                        : SpawnTargetTeam::Friend;
+        args.henchman = (cmd_name == "-spawnhenchman");
 
         std::optional<int> bot_id;
         if (tokens.size() == 1) {
@@ -321,6 +325,7 @@ void DispatchSpawnTarget(const SpawnTargetArgs& args, const std::string& session
         {"bot_id",            args.bot_id},
         {"team",              SpawnTargetTeamName(args.team)},
         {"difficulty_scalar", args.difficulty_scalar},
+        {"henchman",          args.henchman},
     };
 
     const bool sent = TcpSession::DeliverPlayerAction(session_guid, payload);

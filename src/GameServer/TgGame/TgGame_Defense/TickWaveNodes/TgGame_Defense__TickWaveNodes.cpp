@@ -47,7 +47,9 @@ void __fastcall TgGame_Defense__TickWaveNodes::Call(ATgGame_Defense* Game, void*
 		// `rand() % Spawner->Targets.Num()` below is an integer divide-by-zero.
 		const int targetCount = Spawner->Targets.Num();
 		if (targetCount <= 0) continue;
-		float percent = Game->NumPlayers / 10;
+		// float division — NumPlayers/10 in int math is 0 for any normal
+		// lobby, pinning every tick to a single factory regardless of players.
+		float percent = static_cast<float>(Game->NumPlayers) / 10.0f;
 		int nMaxTargets = std::max(1, int(percent * targetCount));
 		for (int j = 0; j < nMaxTargets; j++) {
 			UObject* Target = Spawner->Targets.Data[rand() % targetCount];
@@ -61,11 +63,17 @@ void __fastcall TgGame_Defense__TickWaveNodes::Call(ATgGame_Defense* Game, void*
 			if (tcName.find("TgBotFactory") == std::string::npos) continue;
 
 			ATgBotFactory* Factory = (ATgBotFactory*)Target;
-			// Factory->SpawnWave(rand() % 10 + 3);
-			Factory->nPrevPriority = Factory->nPriority;
-			Factory->nPriority = Game->s_nCurrentPriority;
+			// Defense factories ship dormant (b_auto_spawn=0 override, v113) so
+			// PostBeginPlay doesn't dump 55 rosters at map load. Wake the
+			// factory UC-OnToggle-style; start a fresh wave roster only when
+			// the previous one finished spawning — m_fSpawnFrequency then
+			// paces wave STARTS, while alive enemies accumulate only if the
+			// players can't kill fast enough (the intended losing pressure).
+			Factory->bAutoSpawn = 1;
+			if (Factory->m_SpawnQueue.Num() == 0) {
+				Factory->ResetQueue(0);
+			}
 			Factory->SpawnNextBot();
-			Factory->nPriority = Factory->nPrevPriority;
 			nodeFactories++;
 			kickedFactories++;
 		}

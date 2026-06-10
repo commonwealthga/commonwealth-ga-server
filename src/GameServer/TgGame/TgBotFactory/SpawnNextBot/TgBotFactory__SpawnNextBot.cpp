@@ -4,29 +4,27 @@
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
 #include "src/GameServer/Engine/MapObjectConfig/MapObjectConfig.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 
 std::map<int, ATgPawn*> TgBotFactory__SpawnNextBot::m_lastSpawnedBot;
 
 namespace {
 
-// Jitter radius (UE units) applied to each spawn's XY around the picked
-// NavigationPoint. Keeps grouped bots from stacking exactly on top of each
-// other (which the engine treats as collision when m_bIgnoreCollisionOnSpawn
-// is false — bots get despawned immediately). Tuned down from 200 because
-// 200 was wide enough to clip bots into adjacent walls on tight maps; the
-// first bot in each group anchors at the nav point exactly (see below) so
-// only subsequent bots in the same group need to be spread apart.
+// Jitter radius (UE units) applied to a spawn's XY around the picked
+// NavigationPoint when other bots of the same group are already out — keeps
+// grouped bots from stacking. The first bot of a group anchors at the nav
+// point exactly (designer-placed, guaranteed in-bounds).
 constexpr float kSpawnJitterRadius = 120.0f;
 
-// Lower bound for fSpawnDelay when scheduling the next spawn. UC PostBeginPlay
-// clamps fSpawnDelay to >= 0.2 already, but we belt-and-suspenders it here so
-// factories with f_spawn_delay overridden to a tiny value don't melt the CPU.
-constexpr float kMinSpawnDelay = 0.05f;
+// Lower bound for SetTimer delays. UC PostBeginPlay clamps fSpawnDelay to
+// >= 0.2 already; belt-and-suspenders so tiny overrides don't melt the CPU.
+constexpr float kMinSpawnDelay = 0.2f;
 
 int PickNextLocationIndex(ATgBotFactory* f) {
 	const int n = f->LocationList.Num();
@@ -46,69 +44,6 @@ int PickNextLocationIndex(ATgBotFactory* f) {
 	return -1;
 }
 
-// Sentinel-aware state lookup. m_SpawnGroups[i].nMaxCount semantics:
-//   0  = first visit, not yet picked / locked
-//   >0 = locked to this target; full when nCurrentCount >= nMaxCount
-//   <0 = skip sentinel (PickBot returned 0 for this group at this difficulty)
-bool GroupNeedsMore(const FSpawnGroupDetail& g) {
-	if (g.nMaxCount == 0) return true;   // unvisited, may have bots
-	if (g.nMaxCount  < 0) return false;  // sentinel: skip
-	return g.nCurrentCount < g.nMaxCount;
-}
-
-// Find the next queue index needing a bot, starting from current cursor.
-// Returns -1 when every group is filled or sentineled.
-int FindNextNeedyGroup(ATgBotFactory* f) {
-	const int n = f->m_SpawnQueue.Num();
-	if (n <= 0 || f->m_SpawnGroups.Num() != n) return -1;
-
-	int startQ = f->s_nCurListIndex;
-	if (startQ < 0 || startQ >= n) startQ = 0;
-
-	// First, see if the current group still needs more (mid-fill).
-	if (f->s_nCurListIndex >= 0 && f->s_nCurListIndex < n &&
-	    GroupNeedsMore(f->m_SpawnGroups.Data[f->s_nCurListIndex])) {
-		return f->s_nCurListIndex;
-	}
-
-	// Otherwise, probe forward (wrapping) for the next group that needs bots.
-	for (int probe = 1; probe <= n; probe++) {
-		const int q = (startQ + probe) % n;
-		if (GroupNeedsMore(f->m_SpawnGroups.Data[q])) return q;
-	}
-	return -1;
-}
-
-bool AnyGroupNeedsMore(ATgBotFactory* f) {
-	for (int i = 0; i < f->m_SpawnGroups.Num(); i++) {
-		if (GroupNeedsMore(f->m_SpawnGroups.Data[i])) return true;
-	}
-	return false;
-}
-
-// Factory-wide cap. Per-group cap is implicit in GroupNeedsMore.
-//
-// Exception: alarm-eligible factories (`bSpawnOnAlarm=true`) are NOT
-// subject to the nActiveCount cap. These factories are typically configured
-// as patrol posts with `nActiveCount=1` (one normal guard), but when an
-// alarm fires they're expected to spawn the FULL responder group defined
-// in the spawn table — 5, 8, 12 bots depending on the group's bot_count.
-// With the cap applied, the first responder fills the slot and the chain
-// dies → "spawn 1 instead of 6" behavior. The group-level counts in
-// `m_SpawnGroups` (seeded from `asm_data_set_bot_spawn_tables.bot_count`
-// during the first SpawnNextBot pass) are the authoritative limit for
-// alarm-spawned waves.
-bool RespectsFactoryCap(ATgBotFactory* f) {
-	if (f->bSpawnOnAlarm) return true;
-	if (f->nActiveCount > 0 && f->nCurrentCount >= f->nActiveCount) {
-		Logger::Log("tgbotfactory",
-			"  factory %d at active cap (%d/%d) — stopping spawn chain\n",
-			f->m_nMapObjectId, f->nCurrentCount, f->nActiveCount);
-		return false;
-	}
-	return true;
-}
-
 void ApplyXYJitter(FVector& loc) {
 	const float angle  = (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 6.2831853f;
 	const float radius = (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * kSpawnJitterRadius;
@@ -116,27 +51,59 @@ void ApplyXYJitter(FVector& loc) {
 	loc.Y += std::sin(angle) * radius;
 }
 
+// First queue index whose fSpawnTime is due. Returns -1 and the earliest
+// future spawn time via outNextDue when nothing is due yet.
+int FindDueEntry(ATgBotFactory* f, float now, float* outNextDue) {
+	*outNextDue = -1.0f;
+	for (int i = 0; i < f->m_SpawnQueue.Num(); i++) {
+		const float t = f->m_SpawnQueue.Data[i].fSpawnTime;
+		if (t <= now) return i;
+		if (*outNextDue < 0.0f || t < *outNextDue) *outNextDue = t;
+	}
+	return -1;
+}
+
+// TArray<FSpawnQueueEntry> has no RemoveAt — entries are POD, shift down and
+// shrink Count. Allocation (Max) is untouched; GAllocator still owns Data.
+void RemoveQueueEntry(ATgBotFactory* f, int idx) {
+	const int n = f->m_SpawnQueue.Num();
+	if (idx < 0 || idx >= n) return;
+	if (idx < n - 1) {
+		std::memmove(&f->m_SpawnQueue.Data[idx], &f->m_SpawnQueue.Data[idx + 1],
+			sizeof(FSpawnQueueEntry) * (n - 1 - idx));
+	}
+	f->m_SpawnQueue.Count = n - 1;
+}
+
 }  // namespace
 
-// Per-bot state machine. Each call spawns exactly ONE bot, then schedules
-// itself via SetTimer(fSpawnDelay, 'SpawnNextBot') if more bots remain.
-// UC PostBeginPlay / UnlockObjective / ActivateAlarm / OnToggle all kick the
-// chain with a single SpawnNextBot call; the chain spreads the rest over
-// time. State lives on the actor (s_nCurListIndex, m_SpawnGroups counters),
-// so external re-entry (alarm during boss fight, ResetQueue) cleanly resumes.
+// Retail model: drain the m_SpawnQueue scheduler. Each entry = one pending
+// bot {group INDEX, due time, bRespawn, table}. ResetQueue builds the
+// activation roster; the INTACT BotDied appends timed replacements (bRespawn
+// && bAutoSpawn) and re-kicks us via SetTimer. We spawn the first due entry,
+// remove it, and self-schedule while entries remain (bBulkSpawn drains all
+// due entries in one call; pet factories never self-schedule — the
+// TgAIController::SpawnPets pacemaker drives them).
 void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void* edx) {
 	if (BotFactory == nullptr) return;
 
 	const int mid = BotFactory->m_nMapObjectId;
+	const bool isPetFactory =
+		ObjectClassCache::ClassNameContains(BotFactory, "TgBotFactorySpawnable");
 
 	Logger::Log("tgbotfactory",
-		"[%s] %s SpawnNextBot mapObjectId=%d (queueSize=%d locations=%d "
-		"current=%d active=%d totalSpawns=%d cursor=%d)\n",
+		"[%s] %s SpawnNextBot mapObjectId=%d (queue=%d locations=%d "
+		"current=%d active=%d totalSpawns=%d)\n",
 		Logger::GetTime(), BotFactory->GetName(), mid,
 		BotFactory->m_SpawnQueue.Num(), BotFactory->LocationList.Num(),
-		BotFactory->nCurrentCount, BotFactory->nActiveCount, BotFactory->nTotalSpawns,
-		BotFactory->s_nCurListIndex);
+		BotFactory->nCurrentCount, BotFactory->nActiveCount, BotFactory->nTotalSpawns);
 
+	// Despawn() parks the factory with bAutoSpawn=false + ClearQueue; a stray
+	// timer firing afterwards must not spawn.
+	if (!BotFactory->bAutoSpawn) {
+		Logger::Log("tgbotfactory", "  bAutoSpawn=0 — factory parked\n");
+		return;
+	}
 	if (BotFactory->m_SpawnQueue.Num() == 0 || BotFactory->LocationList.Num() == 0) {
 		Logger::Log("tgbotfactory", "  empty queue or LocationList — nothing to spawn\n");
 		return;
@@ -146,128 +113,133 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 		Logger::Log("tgbotfactory", "  null Data pointer — skipping\n");
 		return;
 	}
-	if (!RespectsFactoryCap(BotFactory)) return;
 
-	const int qIdx = FindNextNeedyGroup(BotFactory);
-	if (qIdx < 0) {
-		Logger::Log("tgbotfactory", "  all groups filled/sentineled — spawn chain done\n");
-		return;
-	}
-	BotFactory->s_nCurListIndex = qIdx;
+	AWorldInfo* WI = BotFactory->WorldInfo;
+	const float now = WI ? WI->TimeSeconds : 0.0f;
 
-	const int lIdx = PickNextLocationIndex(BotFactory);
-	if (lIdx < 0) {
-		Logger::Log("tgbotfactory", "  no valid location for factory %d — bailing chain\n", mid);
-		return;
-	}
-	BotFactory->s_nCurLocationIndex = lIdx;
+	// Bounded drain: one pass over at most the current queue length (bulk
+	// mode consumes every due entry; single mode breaks after one spawn).
+	const int maxIterations = BotFactory->m_SpawnQueue.Num();
+	int spawnedThisCall = 0;
+	for (int iter = 0; iter < maxIterations; iter++) {
+		// Concurrency brake. Leftover entries stay queued; BotDied's timer
+		// (bRespawn factories) or the next alarm/encounter kick resumes.
+		if (BotFactory->nActiveCount > 0 &&
+		    BotFactory->nCurrentCount >= BotFactory->nActiveCount) {
+			Logger::Log("tgbotfactory",
+				"  at active cap (%d/%d) — %d entries left queued\n",
+				BotFactory->nCurrentCount, BotFactory->nActiveCount,
+				BotFactory->m_SpawnQueue.Num());
+			return;
+		}
 
-	FSpawnQueueEntry* entry   = &BotFactory->m_SpawnQueue.Data[qIdx];
-	ANavigationPoint* BotStart = BotFactory->LocationList.Data[lIdx];
-	if (BotStart == nullptr) {
-		Logger::Log("tgbotfactory", "  unexpected null location after pick — bailing\n");
-		return;
-	}
+		float nextDue = -1.0f;
+		const int qIdx = FindDueEntry(BotFactory, now, &nextDue);
+		if (qIdx < 0) {
+			// Nothing due — wake up when the earliest replacement matures.
+			if (!isPetFactory && nextDue > 0.0f) {
+				float delay = nextDue - now;
+				if (delay < kMinSpawnDelay) delay = kMinSpawnDelay;
+				Actor__SetTimer::SetTimer(
+					(AActor*)BotFactory, delay, /*bLoop=*/ false,
+					FName("SpawnNextBot"), nullptr);
+				Logger::Log("tgbotfactory",
+					"  no due entries — next replacement in %.1fs\n", delay);
+			}
+			return;
+		}
 
-	const int groupIndex = qIdx;
-	FSpawnGroupDetail& gd = BotFactory->m_SpawnGroups.Data[groupIndex];
+		const FSpawnQueueEntry entry = BotFactory->m_SpawnQueue.Data[qIdx];
+		const int groupIdx    = entry.nGroupNumber;
+		const int tableId     = entry.nSpawnTableId > 0 ? entry.nSpawnTableId
+		                                                : BotFactory->nSpawnTableId;
+		const int groupNumber =
+			TgBotFactory__LoadObjectConfig::GetGroupNumberByIndex(tableId, groupIdx);
 
-	// Pick a fresh bot for this group every visit. PickBot returns 0 if the
-	// table has no rows at the current difficulty for this (table, group);
-	// in that case we sentinel the group with nMaxCount=-1 so the chain
-	// skips it on the next iteration instead of looping forever.
-	int botCountForGroup = 1;
-	const int botId = TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(
-		entry->nSpawnTableId, entry->nGroupNumber, &botCountForGroup);
-	if (botId <= 0) {
-		Logger::Log("tgbotfactory",
-			"  PickBot(table=%d group=%d) returned 0 — sentineling group_index=%d\n",
-			entry->nSpawnTableId, entry->nGroupNumber, groupIndex);
-		gd.nMaxCount = -1;
-		// Try next group in the chain immediately (no delay) — no point
-		// waiting fSpawnDelay just to skip a sentineled group.
-		if (AnyGroupNeedsMore(BotFactory)) BotFactory->SpawnNextBot();
-		return;
-	}
+		// Vanilla: the group's bot type was rolled ONCE at ResetQueue — every
+		// entry (and BotDied replacements) spawns that same bot. 0 = roster
+		// group (gmin/gmax, incubators) → fresh per-entry roll.
+		int botId = TgBotFactory__LoadObjectConfig::GetFactoryGroupRoll(BotFactory, groupIdx);
+		if (botId <= 0) {
+			botId = groupNumber >= 0
+				? TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(tableId, groupNumber)
+				: 0;
+		}
+		if (botId <= 0) {
+			Logger::Log("tgbotfactory",
+				"  entry (table=%d groupIdx=%d group=%d) yields no bot at current "
+				"difficulty — dropping entry\n", tableId, groupIdx, groupNumber);
+			RemoveQueueEntry(BotFactory, qIdx);
+			continue;
+		}
 
-	// First visit to this group — lock nMin/nMaxCount to the picked row's
-	// bot_count so BotDied + respawn refills back to that level (and
-	// CanSpawn doesn't blow past it on alarm re-triggers).
-	if (gd.nMaxCount == 0) {
-		gd.nMinCount = botCountForGroup;
-		gd.nMaxCount = botCountForGroup;
-	}
+		const int lIdx = PickNextLocationIndex(BotFactory);
+		if (lIdx < 0) {
+			Logger::Log("tgbotfactory", "  no valid location for factory %d — bailing\n", mid);
+			return;
+		}
+		BotFactory->s_nCurLocationIndex = lIdx;
+		ANavigationPoint* BotStart = BotFactory->LocationList.Data[lIdx];
+		if (BotStart == nullptr) return;
 
-	// Build spawn location: nav point + cylinder lift + XY jitter so bots
-	// don't stack and instantly despawn from collision overlap when
-	// m_bIgnoreCollisionOnSpawn is off. The FIRST bot of each group lands on
-	// the nav point exactly (no jitter) — level designers hand-placed the
-	// nav point inside playable space, so the anchor spawn is guaranteed
-	// in-bounds. Only subsequent bots in the same group jitter to avoid
-	// stacking on the anchor. Single-bot groups (the common case) therefore
-	// never jitter at all.
-	FVector loc = BotStart->Location;
-	{
-		float radius = 0.0f, halfHeight = 0.0f;
-		TgGame__SpawnBotById::GetBotCollisionCylinder(botId, &radius, &halfHeight);
-		if (halfHeight > 0.0f) loc.Z += halfHeight + 5.0f;
-	}
-	const bool jittered = (gd.nCurrentCount > 0);
-	if (jittered) ApplyXYJitter(loc);
+		FSpawnGroupDetail* gd =
+			(groupIdx >= 0 && groupIdx < BotFactory->m_SpawnGroups.Num())
+				? &BotFactory->m_SpawnGroups.Data[groupIdx] : nullptr;
 
-	// Spawn facing the nav point's rotation by default. Level designers leave
-	// most TgBotStart nav points at yaw 0 (north), so for factories whose
-	// spawns need a fixed facing — emplaced turrets, guards watching a lane —
-	// allow a per-factory `spawn_rotation_yaw` map_object_config override
-	// (UE3 yaw units, 0..65535). When present it replaces the nav point yaw;
-	// pitch/roll stay from the nav point.
-	FRotator spawnRot = BotStart->Rotation;
-	if (MapObjectConfig::Has(mid, "spawn_rotation_yaw")) {
-		spawnRot.Yaw = MapObjectConfig::GetInt(mid, "spawn_rotation_yaw", spawnRot.Yaw);
-	}
+		// Nav point + cylinder lift; XY jitter only when the group already
+		// has live bots (stack avoidance) and never for pet factories — pets
+		// must emerge at the exact socket location (spit animation).
+		FVector loc = BotStart->Location;
+		{
+			float radius = 0.0f, halfHeight = 0.0f;
+			TgGame__SpawnBotById::GetBotCollisionCylinder(botId, &radius, &halfHeight);
+			if (halfHeight > 0.0f) loc.Z += halfHeight + 5.0f;
+		}
+		const bool jittered = !isPetFactory && gd != nullptr && gd->nCurrentCount > 0;
+		if (jittered) ApplyXYJitter(loc);
 
-	ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
-	ATgPawn* Bot = (ATgPawn*)Game->SpawnBotById(
-		botId, loc, spawnRot,
-		/*bKillController=*/   false,
-		/*pFactory=*/          BotFactory,
-		/*bIgnoreCollision=*/  true,
-		/*pOwnerPawn=*/        nullptr,
-		/*bIsDecoy=*/          false,
-		/*deviceFire=*/        nullptr,
-		/*fDeployAnimLength=*/ 0.0f);
-	m_lastSpawnedBot[mid] = Bot;
+		// Facing: nav point rotation, with optional per-factory yaw override.
+		FRotator spawnRot = BotStart->Rotation;
+		if (MapObjectConfig::Has(mid, "spawn_rotation_yaw")) {
+			spawnRot.Yaw = MapObjectConfig::GetInt(mid, "spawn_rotation_yaw", spawnRot.Yaw);
+		}
 
+		ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
+		ATgPawn* Bot = (ATgPawn*)Game->SpawnBotById(
+			botId, loc, spawnRot,
+			/*bKillController=*/   false,
+			/*pFactory=*/          BotFactory,
+			/*bIgnoreCollision=*/  true,
+			/*pOwnerPawn=*/        nullptr,
+			/*bIsDecoy=*/          false,
+			/*deviceFire=*/        nullptr,
+			/*fDeployAnimLength=*/ 0.0f);
+		m_lastSpawnedBot[mid] = Bot;
 
-	if (Bot == nullptr || Bot->Controller == nullptr) {
-		Logger::Log("tgbotfactory",
-			"  SpawnBotById returned null pawn/controller for bot=%d (factory %d) — skipping wiring\n",
-			botId, mid);
-	} else {
+		// Entry is consumed either way — a persistently failing spawn (class
+		// not loaded) must not wedge the queue into an infinite retry.
+		RemoveQueueEntry(BotFactory, qIdx);
+
+		if (Bot == nullptr || Bot->Controller == nullptr) {
+			Logger::Log("tgbotfactory",
+				"  SpawnBotById returned null pawn/controller for bot=%d (factory %d)\n",
+				botId, mid);
+			continue;
+		}
 
 		ATgAIController* AIController = (ATgAIController*)Bot->Controller;
 
-		// Mark alarm-responder bots so the AI behavior tree knows they're
-		// alarm-spawned. UC `TgBotFactory.SetTarget(target, bAlarmBot=true)`
-		// is the canonical setter, but it's only called for already-spawned
-		// bots being re-targeted by kismet — for the ActivateAlarm spawn
-		// path, the responder bot is created HERE and nothing else fills in
-		// the flag. EvaluateTest case 0x20 reads `(m_FlagsAt3A0>>14)&1` —
-		// the IS_ALARM_BOT (test 1159) gate on "CANCEL ALARM-BOT STATUS"
-		// actions (action_type 1190 / 1272) — so without this the
-		// stand-down behaviors never know they apply.
-		//
-		// Discriminator: bSpawnOnAlarm=true factories never auto-spawn at
-		// PostBeginPlay (UC TgBotFactory.uc:135 guards on `!bSpawnOnAlarm`),
-		// so any SpawnNextBot call on such a factory is from an external
-		// trigger — almost always ActivateAlarm. May slightly over-mark in
-		// rare kismet-driven encounter cases; harmless because the stand-
-		// down gates still require no-enemy-sighted / time-since-spawn etc.
+		// The intact BotDied reads this INDEX to decrement the right group
+		// and to build the replacement entry.
+		AIController->m_nFactorySpawnGroup = groupIdx;
+
+		// Alarm responders: bSpawnOnAlarm factories never auto-spawn, so any
+		// spawn here came from ActivateAlarm — mark for the IS_ALARM_BOT
+		// behavior tests (stand-down actions).
 		if (BotFactory->bSpawnOnAlarm) {
 			AIController->m_bAlarmBot = 1;
 			Logger::Log("alarm",
-				"  marked spawned bot=%d (factory=%d) as alarm responder "
-				"(m_bAlarmBot=1)\n", botId, mid);
+				"  marked spawned bot=%d (factory=%d) as alarm responder\n", botId, mid);
 		}
 
 		if (BotFactory->bAlwaysPatrol) {
@@ -277,6 +249,7 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 			if (AIController->m_PatrolPath.Num() == 0) {
 				AIController->m_PatrolPath.Add(BotStart);
 			}
+			AIController->m_bPatrolLoop = BotFactory->bPatrolLoop;
 		} else {
 			if (BotFactory->s_nTaskForce == 1 && GTeamsData.Attackers->r_CurrActiveObjective != nullptr) {
 				ATgMissionObjective* Obj = (ATgMissionObjective*)GTeamsData.Attackers->r_CurrActiveObjective;
@@ -299,35 +272,51 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 					AIController->m_bInterrupt = 1;
 				}
 			}
-        }
+		}
 
 		BotFactory->nCurrentCount += 1;
 		BotFactory->nTotalSpawns  += 1;
 		BotFactory->m_nSpawnOrder += 1;
-		BotFactory->m_nLastGroup   = entry->nGroupNumber;
-		gd.nCurrentCount          += 1;
+		BotFactory->m_nLastGroup   = groupNumber;
+		BotFactory->m_bFirstSpawn  = 0;
+		if (gd != nullptr) gd->nCurrentCount += 1;
+
+		// Pet-spawner factories: notify the owner pawn. Only AttackTransport
+		// has an intact OnPetSpawned body (0x109d6af0 — rappel choreography);
+		// the incubator overrides are stubs.
+		if (isPetFactory && BotFactory->Owner &&
+		    ObjectClassCache::ClassNameContains(BotFactory->Owner, "AttackTransport")) {
+			ATgPawn* spawner = (ATgPawn*)BotFactory->Owner;
+			using OnPetSpawnedFn = void(__fastcall*)(ATgPawn*, void*, ATgPawn*);
+			((OnPetSpawnedFn)0x109d6af0)(spawner, nullptr, Bot);
+		}
 
 		Logger::Log("tgbotfactory",
-			"  spawned bot=%d at loc[%d] (%s) for factory=%d  group=%d "
-			"(%d/%d in group)  current=%d/%d  totalSpawns=%d\n",
-			botId, lIdx, jittered ? "jittered" : "anchored", mid, entry->nGroupNumber,
-			gd.nCurrentCount, gd.nMaxCount,
+			"  spawned bot=%d at loc[%d] (%s) factory=%d group=%d(idx %d) "
+			"alive=%d/%d  remaining=%d  totalSpawns=%d\n",
+			botId, lIdx, jittered ? "jittered" : "anchored", mid,
+			groupNumber, groupIdx,
 			BotFactory->nCurrentCount, BotFactory->nActiveCount,
-			BotFactory->nTotalSpawns);
+			BotFactory->m_SpawnQueue.Num(), BotFactory->nTotalSpawns);
+
+		spawnedThisCall++;
+
+		// Pets: exactly one per paced SpawnPets call. Single mode: one per
+		// timer tick. Bulk mode: keep draining due entries.
+		if (isPetFactory) return;
+		if (!BotFactory->bBulkSpawn) break;
 	}
 
-	// Schedule the next bot via SetTimer if there's more to spawn. UC
-	// PostBeginPlay clamps fSpawnDelay to >= 0.2; we floor to kMinSpawnDelay
-	// as a safety. SetTimer fires 'SpawnNextBot' on this actor → ProcessEvent
-	// → our hook again.
-	if (AnyGroupNeedsMore(BotFactory) && RespectsFactoryCap(BotFactory)) {
+	// Self-schedule while work remains (replacements or paced roster).
+	if (!isPetFactory && BotFactory->m_SpawnQueue.Num() > 0) {
 		float delay = BotFactory->fSpawnDelay;
 		if (delay < kMinSpawnDelay) delay = kMinSpawnDelay;
 		Actor__SetTimer::SetTimer(
 			(AActor*)BotFactory, delay, /*bLoop=*/ false,
 			FName("SpawnNextBot"), nullptr);
-	} else {
+	} else if (spawnedThisCall > 0 && BotFactory->m_SpawnQueue.Num() == 0) {
 		Logger::Log("tgbotfactory",
-			"  factory %d spawn chain complete (no more groups need bots)\n", mid);
+			"  factory %d roster fully spawned (alive=%d)\n",
+			mid, BotFactory->nCurrentCount);
 	}
 }

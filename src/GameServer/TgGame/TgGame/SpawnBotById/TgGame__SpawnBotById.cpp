@@ -518,7 +518,15 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	Logger::Log("pet_spawn", "SpawnBotById: nBotId=%d ignoreCollision=%d loc=(%.1f,%.1f,%.1f)\n",
 		nBotId, (int)bIgnoreCollision, vLocation.X, vLocation.Y, vLocation.Z);
 
-	if (pFactory != nullptr && (pFactory->nPriority == 0 || pFactory->nPriority != Game->s_nCurrentPriority)) {
+	// Phase-priority gate for MAP factories only: stop in-flight spawn chains
+	// from a phase the mission has moved past. nPriority 0 = always active
+	// (PostBeginPlay auto-spawn tier), -1 = any phase (same convention the
+	// intact ActivateAlarm uses); only a positive, non-current phase blocks.
+	// Pet-spawner factories (TgBotFactorySpawnable, runtime-spawned) aren't
+	// phase artifacts.
+	if (pFactory != nullptr &&
+	    !ObjectClassCache::ClassNameContains(pFactory, "TgBotFactorySpawnable") &&
+	    pFactory->nPriority > 0 && pFactory->nPriority != Game->s_nCurrentPriority) {
 		return nullptr;
 	}
 
@@ -593,6 +601,20 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// blanket-clearing here would defeat that.
 	if (pFactory != nullptr) {
 		TgPawn__InitializeDefaultProps::bPendingEnemyScaling = true;
+		// Designer per-factory stat knob — multiplies into BBM × difficulty.
+		TgPawn__InitializeDefaultProps::fPendingFactoryBalance = pFactory->fBalance;
+		// Designer-set retreat nav point. HAS_SAFETY_LOCATION (test 253) gates
+		// the PANIC retreat actions (e.g. Elite Helot behavior 832/836); retail's
+		// native spawn path did this copy. Done here, NOT after the ActorCache
+		// fallback below — a wrong factory's safety point is worse than none.
+		if (pFactory->SafetyLocation != nullptr) {
+			AIController->m_pSafetyLocation = pFactory->SafetyLocation;
+			Logger::Log("panic",
+				"SpawnBotById: bot=%d safety location set from factory %d\n",
+				nBotId, pFactory->m_nMapObjectId);
+		}
+		// Alarm group id for RadioAlarm (action 620) — same native-copy job.
+		AIController->m_nGlobalAlarmId = pFactory->nGlobalAlarmId;
 	}
 	ATgPawn_Character* Bot = (ATgPawn_Character*)Game->Spawn(
 		pawnClass,
@@ -955,6 +977,11 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// SyncPawnHealth::Apply(Bot, botHp, botHp);
 	//BotRepInfo->r_nCharacterId    = *(int*)((char*)BotConfig + 0x5C);
 
+	// Fallback factory is for TEAM RESOLUTION ONLY (below) — it must never
+	// become the controller's m_pFactory, or factory-less bots' deaths drain
+	// a factory that never spawned them via the intact BotDied (observed as
+	// negative nCurrentCount + junk respawn entries on factory 12289).
+	ATgBotFactory* const pCallerFactory = pFactory;
 	if (pFactory == nullptr) {
 		ActorCache::CacheMapActors();
 		pFactory = ActorCache::BotFactory;
@@ -993,6 +1020,13 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// AIController->m_pBot.Dummy was set up-top before bot Spawn — see the
 	// IsCrewable race comment in the AIController-spawn block.
 	TgAIController__InitBehavior::CallOriginal(AIController, edx, BotConfig, pFactory);
+
+	// InitBehavior stamps m_pFactory from its factory arg — undo that when
+	// the CALLER passed none (fallback was team-resolution only; retail
+	// factory-less spawns have m_pFactory=None and skip BotDied).
+	if (pCallerFactory == nullptr) {
+		AIController->m_pFactory = nullptr;
+	}
 
 	// Anchor the AIController to the spawn pose. m_vSpawnLocation (0x5F4) is
 	// consumed by behavior-tree actions whose destination_type=238 ("SPAWN

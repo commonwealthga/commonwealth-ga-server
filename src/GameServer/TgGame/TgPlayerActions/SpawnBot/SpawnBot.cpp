@@ -8,6 +8,7 @@
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 namespace TgPlayerActions::SpawnBotCmd {
@@ -61,7 +62,7 @@ constexpr float kSpawnFloorBufferUU = 5.0f;
 } // namespace
 
 void Execute(const std::string& session_guid, int bot_id, Team team,
-             float difficulty_scalar_override) {
+             float difficulty_scalar_override, bool henchman) {
     ATgPawn_Character* Pawn = FindPawnBySessionGuid(session_guid);
     if (!Pawn) {
         Logger::Log("chat-command",
@@ -130,9 +131,9 @@ void Execute(const std::string& session_guid, int bot_id, Team team,
     }
 
     Logger::Log("chat-command",
-        "[ChatCmd][DLL] /spawn%s guid=%s bot_id=%d scalar_override=%.2f loc=(%.1f,%.1f,%.1f) yaw=%d\n",
+        "[ChatCmd][DLL] /spawn%s guid=%s bot_id=%d scalar_override=%.2f henchman=%d loc=(%.1f,%.1f,%.1f) yaw=%d\n",
         TeamName(team), session_guid.c_str(), bot_id, difficulty_scalar_override,
-        loc.X, loc.Y, loc.Z, yaw);
+        (int)henchman, loc.X, loc.Y, loc.Z, yaw);
 
     // Difficulty scaling: always apply, regardless of friend/enemy. Set the
     // per-spawn scalar override (0 = "use map default") and raise the gate
@@ -185,6 +186,24 @@ void Execute(const std::string& session_guid, int bot_id, Team team,
     // bot's PRI resolves; UC never writes it (the native server did).
     Bot->r_bInitialIsEnemy = (team == Team::Enemy) ? 1 : 0;
 
+    // -spawnhenchman: mirror the retail henchman setup (kismet OnJoinTeam
+    // pattern: leader's team + aic.m_pOwner = leader; r_bIsHenchman was
+    // native-server-set). m_pOwner drives the behavior system's follow-owner /
+    // defend-owner actions; r_bIsHenchman routes death to the wave-revive
+    // path instead of factory BotDied.
+    if (henchman) {
+        Bot->r_bIsHenchman = 1;
+        if (Bot->Controller &&
+            ObjectClassCache::ClassNameContains(Bot->Controller, "TgAIController")) {
+            ((ATgAIController*)Bot->Controller)->m_pOwner = (ATgPawn*)Pawn;
+        } else {
+            Logger::Log("chat-command",
+                "[ChatCmd][DLL] -spawnhenchman: bot has no TgAIController (%s); "
+                "henchman flag set but no leader wired\n",
+                Bot->Controller ? "wrong class" : "null");
+        }
+    }
+
     // Mirror SpawnNextBot's post-spawn replication kick.
 		//   Bot->Role = 3;
 		//   Bot->RemoteRole = 1;
@@ -223,7 +242,8 @@ void Execute(const std::string& session_guid, int bot_id, Team team,
     Audit(session_guid, team, "spawned",
         "bot_id=" + std::to_string(bot_id)
         + " tf=" + std::to_string((int)targetTf->r_nTaskForce)
-        + " health=" + std::to_string((int)Bot->Health));
+        + " health=" + std::to_string((int)Bot->Health)
+        + (henchman ? " henchman" : ""));
 }
 
 } // namespace TgPlayerActions::SpawnBotCmd

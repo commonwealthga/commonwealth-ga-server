@@ -89,11 +89,12 @@ void __fastcall TgMissionObjective_Bot__SpawnObjectiveBot::Call(ATgMissionObject
 	if (Obj->s_nBotId > 0) {
 		botId = Obj->s_nBotId;
 	} else if (Obj->s_nSpawnTableId > 0) {
-		const auto queue = TgBotFactory__LoadObjectConfig::CreateRandomSpawnQueue(Obj->s_nSpawnTableId);
-		if (!queue.empty()) {
-			const FSpawnQueueEntry& first = queue.front();
+		// Boss tables conventionally have one group — pick from the first.
+		const int firstGroup = TgBotFactory__LoadObjectConfig::GetGroupNumberByIndex(
+			Obj->s_nSpawnTableId, 0);
+		if (firstGroup >= 0) {
 			botId = TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(
-				first.nSpawnTableId, first.nGroupNumber);
+				Obj->s_nSpawnTableId, firstGroup);
 		}
 		if (botId == 0) {
 			Logger::Log("tgmissionobjective_bot",
@@ -120,6 +121,20 @@ void __fastcall TgMissionObjective_Bot__SpawnObjectiveBot::Call(ATgMissionObject
 	// column, no side map.
 	ApplyTaskForce(Bot, Obj->nDefaultOwnerTaskForce);
 	StampObjective(Obj, Bot, Obj->nDefaultOwnerTaskForce);
+
+	// Designer-set retreat nav point — same copy retail's native spawn path
+	// did for factory bots; gates the PANIC retreat actions via test 253.
+	if (Bot->Controller != nullptr) {
+		ATgAIController* AIC = (ATgAIController*)Bot->Controller;
+		if (Obj->SafetyLocation != nullptr) {
+			AIC->m_pSafetyLocation = Obj->SafetyLocation;
+			Logger::Log("panic",
+				"SpawnObjectiveBot: bot=%d safety location set from objective %d\n",
+				botId, mid);
+		}
+		// Alarm group id for RadioAlarm (action 620) — bosses summoning adds.
+		AIC->m_nGlobalAlarmId = Obj->nGlobalAlarmId;
+	}
 
 	Logger::Log("tgmissionobjective_bot",
 		"  spawned objective bot %d successfully (team from nDefaultOwnerTaskForce=%d)\n",

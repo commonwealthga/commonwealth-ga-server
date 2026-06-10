@@ -1078,8 +1078,11 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// For AI bots the Timer would normally call Controller.Destroy() → PawnDied,
 		// but bots fall out of the world first (LifeSpan set by OutsideWorldBounds),
 		// so the Timer never fires and BotDied is never called.
-		// Fix: call TgBotFactory__BotDied @ 0x10a8cbf0 directly here,
-		// mirroring what TgAIController.PawnDied() would do.
+		// Fix: call the INTACT TgBotFactory::BotDied @ 0x10a8cbf0 directly,
+		// mirroring what TgAIController.PawnDied() would do. The 2026-06-10
+		// factory rewrite made m_SpawnQueue a scheduler (one entry per
+		// pending spawn), so the native's respawn-entry append + group-count
+		// decrement compose correctly.
 		//
 		// Kill attribution (m_DeathZoomInfo population + ClientAddKilled RPC)
 		// lives in TgEffect__TrackStats — it fires inside the damage callstack
