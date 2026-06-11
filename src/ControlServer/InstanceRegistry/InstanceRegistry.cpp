@@ -119,7 +119,9 @@ void InstanceRegistry::SeedHomeMapInstance(const std::string& map_name, uint16_t
 
 int64_t InstanceRegistry::InsertStarting(const std::string& map_name, const std::string& game_mode,
                                           uint16_t udp_port, int pid, bool is_home_map,
-                                          uint32_t queue_id, int64_t predecessor_instance_id) {
+                                          uint32_t queue_id, int64_t predecessor_instance_id,
+                                          const std::string& access_mode,
+                                          const std::string& owner_party_ids) {
     std::lock_guard<std::mutex> lock(mutex_);
     sqlite3* db = Database::GetConnection();
     if (!db) return 0;
@@ -127,8 +129,8 @@ int64_t InstanceRegistry::InsertStarting(const std::string& map_name, const std:
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db,
         "INSERT INTO ga_instances "
-        "(map_name, game_mode, state, pid, udp_port, ip_address, player_count, started_at, instance_id, is_home_map, queue_id, predecessor_instance_id) "
-        "VALUES (?, ?, 'STARTING', ?, ?, ?, 0, strftime('%s','now'), 0, ?, ?, ?)",
+        "(map_name, game_mode, state, pid, udp_port, ip_address, player_count, started_at, instance_id, is_home_map, queue_id, predecessor_instance_id, access_mode, owner_party_ids) "
+        "VALUES (?, ?, 'STARTING', ?, ?, ?, 0, strftime('%s','now'), 0, ?, ?, ?, ?, ?)",
         -1, &stmt, nullptr);
     if (rc != SQLITE_OK || !stmt) {
         Logger::Log("db", "[InstanceRegistry] InsertStarting prepare failed: %s\n",
@@ -146,6 +148,8 @@ int64_t InstanceRegistry::InsertStarting(const std::string& map_name, const std:
     else               sqlite3_bind_null(stmt,  7);
     if (predecessor_instance_id != 0) sqlite3_bind_int64(stmt, 8, predecessor_instance_id);
     else                              sqlite3_bind_null(stmt,  8);
+    sqlite3_bind_text(stmt, 9, access_mode.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 10, owner_party_ids.c_str(), -1, SQLITE_TRANSIENT);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -487,7 +491,8 @@ std::optional<InstanceInfo> InstanceRegistry::GetInstanceById(int64_t instance_i
         "       started_at, COALESCE(sealed_at, 0), "
         "       COALESCE(instance_id, 0), COALESCE(is_home_map, 0), COALESCE(max_players, 0), "
         "       COALESCE(game_mode, ''), "
-        "       COALESCE(queue_id, 0), COALESCE(predecessor_instance_id, 0), COALESCE(end_mission_at, 0) "
+        "       COALESCE(queue_id, 0), COALESCE(predecessor_instance_id, 0), COALESCE(end_mission_at, 0), "
+        "       COALESCE(access_mode, 'OPEN'), COALESCE(owner_party_ids, '') "
         "FROM ga_instances "
         "WHERE instance_id = ? "
         "LIMIT 1",
@@ -523,6 +528,10 @@ std::optional<InstanceInfo> InstanceRegistry::GetInstanceById(int64_t instance_i
         info.queue_id                = static_cast<uint32_t>(sqlite3_column_int64(stmt, 13));
         info.predecessor_instance_id = sqlite3_column_int64(stmt, 14);
         info.end_mission_at          = sqlite3_column_int64(stmt, 15);
+        const char* am    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 16));
+        info.access_mode  = (am && *am) ? am : "OPEN";
+        const char* op    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 17));
+        info.owner_party_ids = op ? op : "";
         result = std::move(info);
     }
     sqlite3_finalize(stmt);
@@ -772,6 +781,47 @@ InstanceRegistry::GetActivePlayersForInstance(int64_t instance_id) {
     return out;
 }
 
+std::vector<InstanceRegistry::SearchablePlayerRow>
+InstanceRegistry::GetActiveSearchablePlayers() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<SearchablePlayerRow> out;
+    sqlite3* db = Database::GetConnection();
+    if (!db) return out;
+
+    sqlite3_stmt* stmt = nullptr;
+    // Name comes from ga_users via the character row — ga_players is an
+    // ephemeral session table (wiped wholesale by PlayerRegistry::Init on
+    // every game-server boot), kept only as a fallback for character-less rows.
+    const char* sql =
+        "SELECT ip.session_guid, COALESCE(ip.character_id, 0), "
+        "       COALESCE(u.username, p.player_name, ''), COALESCE(c.profile_id, 0), "
+        "       i.map_name, COALESCE(i.is_home_map, 0) "
+        "FROM ga_instance_players ip "
+        "JOIN ga_instances i ON i.instance_id = ip.instance_id AND i.state != 'STOPPED' "
+        "LEFT JOIN ga_characters c ON c.id = ip.character_id "
+        "LEFT JOIN ga_users u ON u.id = c.user_id "
+        "LEFT JOIN ga_players p ON p.session_guid = ip.session_guid "
+        "WHERE ip.left_at IS NULL";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+        Logger::Log("db", "[InstanceRegistry] GetActiveSearchablePlayers prepare failed: %s\n",
+            sqlite3_errmsg(db));
+        return out;
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        SearchablePlayerRow row;
+        if (auto* g = sqlite3_column_text(stmt, 0)) row.session_guid = (const char*)g;
+        row.character_id = sqlite3_column_int64(stmt, 1);
+        if (auto* n = sqlite3_column_text(stmt, 2)) row.player_name = (const char*)n;
+        row.profile_id = (uint32_t)sqlite3_column_int(stmt, 3);
+        if (auto* m = sqlite3_column_text(stmt, 4)) row.map_name = (const char*)m;
+        row.in_mission = sqlite3_column_int(stmt, 5) == 0;
+        out.push_back(std::move(row));
+    }
+    sqlite3_finalize(stmt);
+    return out;
+}
+
 void InstanceRegistry::MarkInstancePlayerLeft(int64_t instance_id, const std::string& session_guid) {
     std::lock_guard<std::mutex> lock(mutex_);
     sqlite3* db = Database::GetConnection();
@@ -911,7 +961,8 @@ std::vector<InstanceInfo> InstanceRegistry::GetReadyMissionInstances() {
         "       started_at, COALESCE(sealed_at, 0), "
         "       COALESCE(instance_id, 0), COALESCE(is_home_map, 0), COALESCE(max_players, 0), "
         "       COALESCE(game_mode, ''), "
-        "       COALESCE(queue_id, 0), COALESCE(predecessor_instance_id, 0), COALESCE(end_mission_at, 0) "
+        "       COALESCE(queue_id, 0), COALESCE(predecessor_instance_id, 0), COALESCE(end_mission_at, 0), "
+        "       COALESCE(access_mode, 'OPEN'), COALESCE(owner_party_ids, '') "
         "FROM ga_instances "
         "WHERE state = 'READY' AND is_home_map = 0 AND end_mission_at IS NULL "
         "  AND EXISTS ("
@@ -944,6 +995,10 @@ std::vector<InstanceInfo> InstanceRegistry::GetReadyMissionInstances() {
         info.queue_id                = static_cast<uint32_t>(sqlite3_column_int64(stmt, 13));
         info.predecessor_instance_id = sqlite3_column_int64(stmt, 14);
         info.end_mission_at          = sqlite3_column_int64(stmt, 15);
+        const char* am    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 16));
+        info.access_mode  = (am && *am) ? am : "OPEN";
+        const char* op    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 17));
+        info.owner_party_ids = op ? op : "";
         results.push_back(std::move(info));
     }
     sqlite3_finalize(stmt);
@@ -1128,12 +1183,35 @@ int InstanceRegistry::GetActiveInstanceCountForQueue(uint32_t queue_id) {
     if (!db) return 0;
 
     sqlite3_stmt* stmt = nullptr;
+    // A mission counts when it is either STARTING (spawned, players not yet
+    // registered — the 0->1 flip tells queued players an invitation is seconds
+    // away) or READY with at least one active player (an empty READY mission is
+    // abandoned, not a live match). DRAFTING successors are intentionally NOT
+    // counted (state filter) — they're waiting on their predecessor.
+    //
+    // Successor de-dup: a chained mission must read as ONE mission even during
+    // the brief window where the predecessor is still live and the successor
+    // has already spawned. So a successor (predecessor_instance_id set) is
+    // suppressed while its predecessor is still an active (STARTING/READY,
+    // not-ended) mission; once the predecessor wraps (end_mission_at set →
+    // dropped here) the successor — by then promoted to READY — counts in its
+    // place, keeping the total at 1 across the handoff.
     if (sqlite3_prepare_v2(db,
-            "SELECT COUNT(DISTINCT i.instance_id) FROM ga_instances i "
-            "JOIN ga_instance_players ip ON ip.instance_id = i.instance_id "
-            "WHERE i.queue_id = ? AND i.state = 'READY' "
-            "  AND i.is_home_map = 0 AND i.end_mission_at IS NULL "
-            "  AND ip.left_at IS NULL",
+            "SELECT COUNT(*) FROM ga_instances i "
+            "WHERE i.queue_id = ? AND i.is_home_map = 0 AND i.end_mission_at IS NULL "
+            "  AND ( i.state = 'STARTING' "
+            // A just-promoted successor is briefly READY with no players yet
+            // (they're travelling from the predecessor) — count it anyway so the
+            // chain never dips to 0 across the handoff.
+            "        OR ( i.state = 'READY' AND ( i.predecessor_instance_id IS NOT NULL "
+            "             OR EXISTS ( SELECT 1 FROM ga_instance_players ip "
+            "                         WHERE ip.instance_id = i.instance_id AND ip.left_at IS NULL ) ) ) ) "
+            "  AND ( i.predecessor_instance_id IS NULL "
+            "        OR NOT EXISTS ("
+            "             SELECT 1 FROM ga_instances p "
+            "             WHERE p.instance_id = i.predecessor_instance_id "
+            "               AND p.is_home_map = 0 AND p.end_mission_at IS NULL "
+            "               AND p.state IN ('STARTING','READY') ) )",
             -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
         return 0;
     }
@@ -1151,9 +1229,14 @@ int InstanceRegistry::GetActivePlayerCountForQueue(uint32_t queue_id) {
 
     sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(db,
+            // PARTY_LOCKED (private) matches are excluded from the player /
+            // class counters — a solo can't be matched into them, so they don't
+            // describe "who you'd play with". They still count toward
+            // instance_count (GetActiveInstanceCountForQueue, unfiltered).
             "SELECT COUNT(*) FROM ga_instance_players ip "
             "JOIN ga_instances i ON i.instance_id = ip.instance_id "
-            "WHERE i.queue_id = ? AND i.state != 'STOPPED' AND ip.left_at IS NULL",
+            "WHERE i.queue_id = ? AND i.state != 'STOPPED' AND ip.left_at IS NULL "
+            "  AND COALESCE(i.access_mode, 'OPEN') != 'PARTY_LOCKED'",
             -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
         return 0;
     }
@@ -1174,10 +1257,12 @@ InstanceRegistry::GetActiveProfileCountsForQueue(uint32_t queue_id) {
 
     sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(db,
+            // PARTY_LOCKED (private) matches excluded — see GetActivePlayerCountForQueue.
             "SELECT ip.profile_id, COUNT(*) FROM ga_instance_players ip "
             "JOIN ga_instances i ON i.instance_id = ip.instance_id "
             "WHERE i.queue_id = ? AND i.state != 'STOPPED' AND ip.left_at IS NULL "
             "  AND ip.profile_id IS NOT NULL "
+            "  AND COALESCE(i.access_mode, 'OPEN') != 'PARTY_LOCKED' "
             "GROUP BY ip.profile_id",
             -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
         return out;

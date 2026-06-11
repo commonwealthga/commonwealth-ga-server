@@ -21,6 +21,7 @@
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
+#include "src/ControlServer/TeamService/TeamService.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/Shared/HexUtils.hpp"
@@ -86,6 +87,22 @@ public:
     // wedged with current_match_queue_id_ != 0 and the next GET_TICKET_INFO
     // shows the player as still queued. Silent if guid is unknown.
     static void DeliverMatchCancelled(const std::string& session_guid, const char* reason);
+
+    // Team wire pushes (TeamService). Resolve guid under sessions_mutex_.
+    // 0x4A routes to the client's message-display handler (MSG_ID template +
+    // @@token@@ fields), 0x4B queues the invitation popup, 0x4C dismisses it.
+    static void DeliverTeamSystemMessage(const std::string& session_guid,
+                                         uint32_t msg_id, const std::string& player_name);
+    static void DeliverTeamInvitation(const std::string& session_guid,
+                                      const std::string& leader_name);
+    static void DeliverTeamInviteExpired(const std::string& session_guid);
+    // TEAM_UPDATE (0x51) roster. Empty rows = "you are not in a team".
+    static void DeliverTeamUpdate(const std::string& session_guid,
+                                  const TeamRoster& roster);
+    // Set a session's current queue + push the AgentInfo HUD "IN QUEUE" frame
+    // (queue_id=0 clears it). Used to mirror team-queue state onto each member.
+    static void DeliverMatchQueueStatus(const std::string& session_guid,
+                                        uint32_t queue_id, uint32_t name_msg_id);
 
 private:
     // ── Static registry members ──────────────────────────────────────────────
@@ -460,6 +477,7 @@ private:
                     }
                     if (!session_guid_.empty()) {
                         MatchmakingService::RemovePlayer(session_guid_);
+                        TeamService::HandleDisconnect(session_guid_);
                         UnregisterSession(session_guid_);
                         IpcServer::ClearPendingAck(session_guid_);
                         PlayerSessionStore::Unregister(session_guid_);
@@ -526,6 +544,21 @@ private:
 
     void send_agency_get_roster_response();
 
+    // QUERY_PLAYERS (0x0152) — player search from the Team menu / player
+    // search scene. Echoes CALLER_ID (the client TgDataSet's GObjObjects
+    // index) + a DATA_SET of matching online players. See
+    // player-search-tcp-protocol.md.
+    void send_query_players_response(const PacketView& pkt);
+
+    // Team wire helpers. Opcodes 0x4A/0x4D/0x4E/0x4F all route to the client's
+    // message-display handler (vt[0x54]: MSG_ID 0x36E template + @@token@@
+    // fields); 0x4B queues the invitation popup; 0x4C dismisses it (no fields).
+    void send_team_system_message(uint32_t msg_id, const std::string& player_name);
+    void send_team_invitation_popup(const std::string& leader_name);
+    void send_team_invite_expired();
+    void send_team_update(const TeamRoster& roster);
+
+
     void send_start_listen_response();
 
     void send_player_update_client_response();
@@ -545,6 +578,13 @@ private:
 	void send_match_join_response(uint32_t matchQueueId, uint32_t matchFilters);
 
 	void send_match_leave_response();
+
+	// S→C MATCH_JOIN (0xE1): drives the AgentInfo HUD queue panel
+	// ("IN QUEUE: <name>" + leave-queue keybind / DESERTER countdown).
+	// queue_id=0 hides the panel. See queue-hud-protocol notes in
+	// team-tcp-protocol.md.
+	void send_match_queue_status(uint32_t queue_id, uint32_t name_msg_id,
+	                             uint32_t penalty_seconds = 0);
 
     void send_match_invitation(int64_t instance_id, const std::string& game_mode, int task_force);
 

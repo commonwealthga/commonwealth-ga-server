@@ -11,6 +11,7 @@
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
+#include "src/ControlServer/MatchmakingService/SidePlacement.hpp"
 #include <asio.hpp>
 #include <thread>
 #include <cstdlib>
@@ -386,11 +387,25 @@ int main(int argc, char* argv[]) {
     // map equality is no longer the join criterion. Filter is done in-memory
     // (small N — only READY mission instances live).
     MatchmakingService::SetInstanceProvider([](uint32_t queue_id) -> std::vector<RunningInstance> {
+        // Gather ALL live state here so the rules stay pure functions of
+        // (parties, instances): per-team seeds (live roster + reserved-but-not-
+        // yet-arrived), access mode + owner parties, seats.
         auto all = InstanceRegistry::GetReadyMissionInstances();
         auto qcfg = MatchmakingService::GetQueueConfig(queue_id);
-        const int queue_cap = qcfg
-            ? (int)MatchmakingService::GetQueueInstanceCap(*qcfg)
-            : 0;
+        const int queue_cap = qcfg ? (int)MatchmakingService::GetQueueInstanceCap(*qcfg) : 0;
+
+        auto parse_owner_csv = [](const std::string& csv) {
+            std::vector<uint64_t> ids;
+            size_t i = 0;
+            while (i < csv.size()) {
+                size_t j = csv.find(',', i);
+                if (j == std::string::npos) j = csv.size();
+                if (j > i) ids.push_back(strtoull(csv.substr(i, j - i).c_str(), nullptr, 10));
+                i = j + 1;
+            }
+            return ids;
+        };
+
         std::vector<RunningInstance> filtered;
         filtered.reserve(all.size());
         for (const auto& inst : all) {
@@ -399,27 +414,40 @@ int main(int argc, char* argv[]) {
             ri.instance_id  = inst.instance_id;
             ri.map_name     = inst.map_name;
             ri.game_mode    = inst.game_mode;
-            ri.player_count = inst.player_count;
             ri.max_players  = queue_cap > 0 ? queue_cap : inst.max_players;
             ri.queue_id     = inst.queue_id;
+            ri.access_mode  = mm::ParseAccessMode(inst.access_mode);
+            ri.owner_party_ids = parse_owner_csv(inst.owner_party_ids);
+            // Live roster -> per-team seed.
+            for (const auto& r : InstanceRegistry::GetActivePlayersForInstance(inst.instance_id)) {
+                TeamSeed& seed = (r.task_force == 2) ? ri.team2 : ri.team1;
+                seed.size += 1;
+                seed.heal_score += SidePlacement::HealValue(r.profile_id, r.task_force == 2 ? 2 : 1);
+                seed.class_counts[r.profile_id] += 1;
+            }
+            ri.player_count = ri.team1.size + ri.team2.size;
             filtered.push_back(std::move(ri));
         }
+
+        // Merge reserved (popped-but-not-yet-registered) contributions.
         for (auto& reserved : MatchmakingService::GetReservedReadyInstances(queue_id)) {
             auto it = std::find_if(filtered.begin(), filtered.end(),
-                [&](const RunningInstance& ri) {
-                    return ri.instance_id == reserved.instance_id;
-                });
+                [&](const RunningInstance& ri) { return ri.instance_id == reserved.instance_id; });
             if (it == filtered.end()) {
+                reserved.max_players = queue_cap > 0 ? queue_cap : reserved.max_players;
                 filtered.push_back(std::move(reserved));
-            } else {
-                it->player_count = std::max(it->player_count, reserved.player_count);
-                it->max_players = reserved.max_players;
-                it->reserved_team1_size += reserved.reserved_team1_size;
-                it->reserved_team2_size += reserved.reserved_team2_size;
-                it->reserved_team1_heal_score += reserved.reserved_team1_heal_score;
-                it->reserved_team2_heal_score += reserved.reserved_team2_heal_score;
+                continue;
             }
+            auto merge = [](TeamSeed& dst, const TeamSeed& src) {
+                dst.size += src.size;
+                dst.heal_score += src.heal_score;
+                for (const auto& [cls, n] : src.class_counts) dst.class_counts[cls] += n;
+            };
+            merge(it->team1, reserved.team1);
+            merge(it->team2, reserved.team2);
+            it->player_count = it->team1.size + it->team2.size;
         }
+
         filtered.erase(
             std::remove_if(filtered.begin(), filtered.end(),
                 [](const RunningInstance& ri) {
@@ -464,9 +492,20 @@ int main(int argc, char* argv[]) {
                 return;
             }
 
+            // Carry the rule's access semantics onto the instance row so the
+            // provider (and the invite-into-locked-match path) can read them
+            // back. owner_party_ids -> CSV.
+            std::string owner_csv;
+            for (size_t i = 0; i < result.owner_party_ids.size(); ++i) {
+                if (i) owner_csv += ",";
+                owner_csv += std::to_string(result.owner_party_ids[i]);
+            }
+            const std::string access_str = mm::AccessModeToString(result.access_mode);
+
             int64_t instance_id = InstanceRegistry::InsertStarting(
                 result.map_name, result.game_mode, *port, 0, /*is_home_map=*/false,
-                /*queue_id=*/queue_id);
+                /*queue_id=*/queue_id, /*predecessor_instance_id=*/0,
+                access_str, owner_csv);
 
             // Register pending match BEFORE Spawn so the unwind path on a
             // spawn-failure (and the symmetric IPC-disconnect-before-READY
@@ -478,6 +517,8 @@ int main(int argc, char* argv[]) {
             pending.instance_id = instance_id;
             pending.queue_id = queue_id;
             pending.game_mode = result.game_mode;
+            pending.access_mode = result.access_mode;
+            pending.owner_party_ids = result.owner_party_ids;
             pending.session_guids = std::move(result.session_guids);
             pending.task_force_assignments = std::move(result.task_force_assignments);
             pending.profile_ids = std::move(result.profile_ids);
@@ -626,6 +667,8 @@ int main(int argc, char* argv[]) {
     // pop-delay timers. Must happen BEFORE any TCP/chat listener starts
     // (those can trigger AddPlayer which may start a delay timer).
     MatchmakingService::SetIoContext(&io);
+    // TeamService schedules its invite-expiry timers on the same io_context.
+    TeamService::SetIoContext(&io);
 
     Logger::Log("main", "Binding TCP listener on port %d\n", (int)cfg.tcp_port);
     // Bind TCP listener (GA client connections)

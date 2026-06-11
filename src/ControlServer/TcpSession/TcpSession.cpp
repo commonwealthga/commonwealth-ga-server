@@ -5,6 +5,7 @@
 #include "src/ControlServer/Loadouts/ArmorLoadouts.hpp"
 #include "src/ControlServer/MapGameInfo/MapGameInfo.hpp"
 #include "src/ControlServer/MatchmakingService/TicketInfoEncoder.hpp"
+#include "src/ControlServer/TeamService/TeamService.hpp"
 #include "src/ControlServer/MatchmakingService/RuntimeStats.hpp"
 #include "src/ControlServer/MatchmakingService/RoleWeightedSplit.hpp"
 #include "src/Shared/IpcProtocol.hpp"
@@ -1238,6 +1239,9 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 					session_row_id_ = 0;
 				}
 				MatchmakingService::RemovePlayer(session_guid_);
+				// Same-socket relogin means the player went back to the login
+				// screen voluntarily — leave the team, don't park offline.
+				TeamService::HandleVoluntaryExit(session_guid_);
 				UnregisterSession(session_guid_);
 				IpcServer::ClearPendingAck(session_guid_);
 				PlayerSessionStore::Unregister(session_guid_);
@@ -1446,6 +1450,10 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 		}
 		case GA_U::PLAYER_LOGOFF:
 			Logger::Log("tcp", "[%s] Received: PLAYER_LOGOFF [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			// Quitting the game is a voluntary exit — leave the team now
+			// instead of lingering as an offline member.
+			if (!session_guid_.empty())
+				TeamService::HandleVoluntaryExit(session_guid_);
 			break;
 		case GA_U::PLAYER_LEAVE_GAME: {
 			// Client sends this when the user clicks "Disconnect" in the in-game
@@ -1458,6 +1466,11 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			// and the client times out back to the login screen.
 			Logger::Log("tcp", "[%s] Received: PLAYER_LEAVE_GAME [0x%04X] guid=%s instance=%lld\n",
 				Logger::GetTime(), packet_type, session_guid_.c_str(), (long long)assigned_instance_id_);
+
+			// Disconnect button = voluntary exit → leave the team (a socket
+			// drop keeps offline-marked membership instead).
+			if (!session_guid_.empty())
+				TeamService::HandleVoluntaryExit(session_guid_);
 
 			if (assigned_instance_id_ != 0 && !session_guid_.empty()) {
 				nlohmann::json leave;
@@ -1632,18 +1645,51 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			uint32_t matchQueueId = pkt.Read4B(GA_T::MATCH_QUEUE_ID).value_or(0);
 			uint32_t matchFilters = pkt.Read4B(GA_T::MATCH_FILTERS).value_or(0);
 
-			send_match_join_response(matchQueueId, matchFilters);
+			// Teamed: only the leader manages the queue, and joining queues the
+			// WHOLE team as one party.
+			if (TeamService::IsTeamed(session_guid_)) {
+				if (!TeamService::IsLeader(session_guid_)) {
+					send_team_system_message(TeamService::MSG_QUEUE_LEADER_ONLY, "");
+					break;
+				}
+				auto party = TeamService::BuildParty(session_guid_);
+				if (!party) break;
+				auto cfg = MatchmakingService::GetQueueConfig(matchQueueId);
+				if (cfg && cfg->team_policy == TeamPolicy::Block) {
+					Logger::Log("tcp", "[TcpSession] MATCH_JOIN: queue %u blocks teams — leader %s\n",
+						matchQueueId, session_guid_.c_str());
+					break;
+				}
+				if (cfg && party->size() > mm::MaxTeamSize(*cfg)) {
+					send_team_system_message(TeamService::MSG_TEAM_TOO_LARGE, "");
+					break;
+				}
+				MatchmakingService::AddParty(matchQueueId, *party);
+				TeamService::NotifyTeamQueued(party->party_id, matchQueueId,
+					cfg ? cfg->name_msg_id : 0);
+				break;
+			}
 
+			send_match_join_response(matchQueueId, matchFilters);
 			break;
 		}
 		case GA_U::MATCH_LEAVE: {
 			Logger::Log("tcp", "[%s] Received: MATCH_LEAVE [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-			// todo: MATCH_TEAM_FLAG is being passed
+
+			// Teamed: only the leader can pull the team out of queue. The
+			// dequeue sends "you left the match queue" + clears every member's
+			// HUD via the composition-change path.
+			if (TeamService::IsTeamed(session_guid_)) {
+				if (!TeamService::IsLeader(session_guid_)) {
+					send_team_system_message(TeamService::MSG_QUEUE_LEADER_ONLY, "");
+					break;
+				}
+				TeamService::DequeueForCompositionChange(session_guid_);
+				break;
+			}
 
 			send_match_leave_response();
-
 			break;
-
 		}
 		case GA_U::MATCH_ACCEPT:
 			Logger::Log("tcp", "[%s] Received: MATCH_ACCEPT [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
@@ -1652,6 +1698,36 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 		case GA_U::AGENCY_GET_ROSTER:
 			Logger::Log("tcp", "[%s] Received: AGENCY_GET_ROSTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 			send_agency_get_roster_response();
+			break;
+		case GA_U::QUERY_PLAYERS: {
+			Logger::Log("tcp", "[%s] Received: QUERY_PLAYERS [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			PacketView pkt(data + 6, length - 6);
+			send_query_players_response(pkt);
+			break;
+		}
+		case GA_U::TEAM_INVITE: {
+			Logger::Log("tcp", "[%s] Received: TEAM_INVITE [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			PacketView pkt(data + 6, length - 6);
+			std::string target = pkt.ReadString(GA_T::PLAYER_NAME).value_or("");
+			if (target.empty() || session_guid_.empty()) {
+				Logger::Log("tcp", "[TCP] TEAM_INVITE dropped (target='%s' guid='%s')\n",
+					target.c_str(), session_guid_.c_str());
+				break;
+			}
+			TeamService::RequestInvite(session_guid_, player_name, target);
+			break;
+		}
+		case GA_U::TEAM_ACCEPT:
+			// Bare frame — the invitee accepted the invitation popup.
+			Logger::Log("tcp", "[%s] Received: TEAM_ACCEPT [0x%04X]\n", Logger::GetTime(), packet_type);
+			if (!session_guid_.empty())
+				TeamService::AcceptInvite(session_guid_);
+			break;
+		case GA_U::TEAM_LEAVE:
+			// Bare frame — popup decline OR leave-team; TeamService routes.
+			Logger::Log("tcp", "[%s] Received: TEAM_LEAVE [0x%04X]\n", Logger::GetTime(), packet_type);
+			if (!session_guid_.empty())
+				TeamService::HandleLeave(session_guid_);
 			break;
 		case GA_U::SEND_PLAYER_SKILLS: {
 			// CGameClient::SendSkillsToServer @ 0x1141fd00 sends this when the player
@@ -1708,10 +1784,21 @@ void TcpSession::send_match_join_response(uint32_t matchQueueId, uint32_t matchF
     player.joined_at = std::chrono::steady_clock::now();
 
     MatchmakingService::AddPlayer(matchQueueId, player);
+
+    // Drive the AgentInfo HUD "IN QUEUE: <name>" panel + leave-queue keybind.
+    auto cfg = MatchmakingService::GetQueueConfig(matchQueueId);
+    send_match_queue_status(matchQueueId, cfg ? cfg->name_msg_id : 0);
+
+    // Chat confirmation via the vt[+0x54] display route (opcode-agnostic).
+    send_team_system_message(18306, "");  // "You have joined a match queue."
 }
 
 void TcpSession::send_match_leave_response() {
+    const bool was_queued = current_match_queue_id_ != 0;
     MatchmakingService::RemovePlayer(session_guid_);
+    send_match_queue_status(0, 0);  // hide the HUD queue panel
+    if (was_queued)
+        send_team_system_message(18308, "");  // "You have left the match queue"
     current_match_queue_id_       = 0;
     // Also clear the invitation-side state in case MATCH_LEAVE arrived
     // between MATCH_INVITATION and MATCH_ACCEPT (player declined the popup
@@ -1731,10 +1818,19 @@ void TcpSession::send_match_invitation(int64_t instance_id, const std::string& g
     std::vector<uint8_t> response;
 
     uint16_t packet_type = GA_U::MATCH_INVITATION;
-    uint16_t item_count = 0;
+    // 0xE4 routes through the SAME vt[+0x6c] handler as MATCH_JOIN before
+    // showing the popup, and the client's get_int32_t ZEROES the stored
+    // queue-state fields when absent — a bare frame wipes the HUD's
+    // "IN QUEUE" state the instant the queue pops. Carry the fields.
+    uint16_t item_count = 3;
 
     append(response, packet_type & 0xFF, packet_type >> 8);
     append(response, item_count & 0xFF, item_count >> 8);
+
+    auto cfg = MatchmakingService::GetQueueConfig(current_match_queue_id_);
+    Write4B(response, GA_T::MATCH_QUEUE_ID, current_match_queue_id_);
+    Write4B(response, GA_T::NAME_MSG_ID, cfg ? cfg->name_msg_id : 0);
+    Write4B(response, GA_T::PENALTY_SECONDS, 0);
 
     send_response(response);
 
@@ -1751,6 +1847,166 @@ void TcpSession::DeliverMatchInvitation(const std::string& session_guid, int64_t
     session->send_match_invitation(instance_id, game_mode, task_force);
 }
 
+void TcpSession::send_team_system_message(uint32_t msg_id, const std::string& player_name) {
+	std::vector<uint8_t> response;
+
+	uint16_t packet_type = GA_U::TEAM_INVITE;
+	uint16_t item_count = player_name.empty() ? 1 : 2;
+
+	append(response, packet_type & 0xFF, packet_type >> 8);
+	append(response, item_count & 0xFF, item_count >> 8);
+
+	Write4B(response, GA_T::MSG_ID, msg_id);
+	if (!player_name.empty())
+		WriteString(response, GA_T::PLAYER_NAME, player_name);
+
+	send_response(response);
+}
+
+void TcpSession::send_team_invitation_popup(const std::string& leader_name) {
+	std::vector<uint8_t> response;
+
+	uint16_t packet_type = GA_U::TEAM_INVITATION;
+	uint16_t item_count = 2;
+
+	append(response, packet_type & 0xFF, packet_type >> 8);
+	append(response, item_count & 0xFF, item_count >> 8);
+
+	Write4B(response, GA_T::MSG_ID, TeamService::MSG_INVITATION_POPUP);
+	WriteString(response, GA_T::LEADER_NAME, leader_name);
+
+	send_response(response);
+}
+
+void TcpSession::send_match_queue_status(uint32_t queue_id, uint32_t name_msg_id,
+                                         uint32_t penalty_seconds) {
+	// S→C MATCH_JOIN (0xE1) → CGameClient vt[+0x6c] @ 0x1091fe40 stores
+	// queue id / name msg id / deserter penalty at CGameClient+0xb0..0xc0;
+	// TgUIPrimaryHUD_AgentInfo::UpdateQueueValues (0x114d6ae0) renders them
+	// as "IN QUEUE: <name>" + leave-queue keybind (or DESERTER countdown).
+	// All fields written explicitly — the client stores into persistent
+	// fields, so absent fields would keep stale values. queue_id=0 hides.
+	std::vector<uint8_t> response;
+
+	uint16_t packet_type = GA_U::MATCH_JOIN;
+	uint16_t item_count = 3;
+
+	append(response, packet_type & 0xFF, packet_type >> 8);
+	append(response, item_count & 0xFF, item_count >> 8);
+
+	Write4B(response, GA_T::MATCH_QUEUE_ID, queue_id);
+	Write4B(response, GA_T::NAME_MSG_ID, name_msg_id);
+	// Write4B(response, GA_T::STATUS_CODE, 608);
+	Write4B(response, GA_T::PENALTY_SECONDS, penalty_seconds);
+
+	Logger::Log("tcp", "[TcpSession] send_match_queue_status guid=%s queue=%u nameMsg=%u penalty=%u\n",
+		session_guid_.c_str(), queue_id, name_msg_id, penalty_seconds);
+
+	send_response(response);
+}
+
+void TcpSession::send_team_invite_expired() {
+	std::vector<uint8_t> response;
+
+	// The client's 0x4C handler reads no fields — it just drops the queued
+	// team-invitation node and dismisses the popup.
+	uint16_t packet_type = GA_U::TEAM_EXPIRED_INVITE;
+	uint16_t item_count = 0;
+
+	append(response, packet_type & 0xFF, packet_type >> 8);
+	append(response, item_count & 0xFF, item_count >> 8);
+
+	send_response(response);
+}
+
+void TcpSession::send_team_update(const TeamRoster& roster) {
+	std::vector<uint8_t> response;
+
+	uint16_t packet_type = GA_U::TEAM_UPDATE;
+	uint16_t item_count = 6;
+
+	append(response, packet_type & 0xFF, packet_type >> 8);
+	append(response, item_count & 0xFF, item_count >> 8);
+
+	// Do NOT send SETTING_FLAGS (0x0474) — its presence flips the client
+	// parser into the settings-only branch and the roster is ignored.
+	Write4B(response, GA_T::TEAM_MODE, roster.team_mode);
+	Write4B(response, GA_T::TEAM_ID, (uint32_t)roster.team_id);
+	Write4B(response, GA_T::OWNER_AGENCY_ID, 0);
+	Write4B(response, GA_T::OWNER_ALLIANCE_ID, 0);
+	Write4B(response, GA_T::LEADER_CHARACTER_ID, (uint32_t)roster.leader_character_id);
+
+	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+	append(response, roster.rows.size() & 0xFF, (roster.rows.size() >> 8) & 0xFF);
+	for (const auto& row : roster.rows) {
+		append(response, 0x0B, 0x00);  // 11 fields per member
+		Write4B(response, GA_T::CHARACTER_ID, (uint32_t)row.character_id);
+		WriteString(response, GA_T::PLAYER_NAME, row.player_name);
+		Write4B(response, GA_T::PROFILE_ID, row.profile_id);
+		// 0xC2 is wire-string typed; the parser coerces digits via _wtoi.
+		WriteString(response, GA_T::CLASS_MSG_ID, std::to_string(row.class_msg_id));
+		Write4B(response, GA_T::STATUS_MSG_ID, row.status_msg_id);
+		Write4B(response, GA_T::MAP_NAME_MSG_ID, row.map_name_msg_id);
+		Write4B(response, GA_T::LEVEL, row.level);
+		WriteFloat(response, GA_T::SKILL_RATING, row.skill_rating);
+		Write1B(response, GA_T::OFFLINE_FLAG, row.offline ? 1 : 0);
+		WriteString(response, GA_T::AGENCY_NAME, row.agency_name);
+		WriteString(response, GA_T::ALLIANCE_NAME, row.alliance_name);
+	}
+
+	send_response(response);
+}
+
+void TcpSession::DeliverTeamUpdate(const std::string& session_guid,
+                                   const TeamRoster& roster) {
+	std::lock_guard<std::mutex> lock(sessions_mutex_);
+	auto it = g_sessions_.find(session_guid);
+	if (it == g_sessions_.end()) return;
+	auto session = it->second.lock();
+	if (!session) return;
+	session->send_team_update(roster);
+}
+
+void TcpSession::DeliverTeamSystemMessage(const std::string& session_guid,
+                                          uint32_t msg_id, const std::string& player_name) {
+	std::lock_guard<std::mutex> lock(sessions_mutex_);
+	auto it = g_sessions_.find(session_guid);
+	if (it == g_sessions_.end()) return;
+	auto session = it->second.lock();
+	if (!session) return;
+	session->send_team_system_message(msg_id, player_name);
+}
+
+void TcpSession::DeliverTeamInvitation(const std::string& session_guid,
+                                       const std::string& leader_name) {
+	std::lock_guard<std::mutex> lock(sessions_mutex_);
+	auto it = g_sessions_.find(session_guid);
+	if (it == g_sessions_.end()) return;
+	auto session = it->second.lock();
+	if (!session) return;
+	session->send_team_invitation_popup(leader_name);
+}
+
+void TcpSession::DeliverTeamInviteExpired(const std::string& session_guid) {
+	std::lock_guard<std::mutex> lock(sessions_mutex_);
+	auto it = g_sessions_.find(session_guid);
+	if (it == g_sessions_.end()) return;
+	auto session = it->second.lock();
+	if (!session) return;
+	session->send_team_invite_expired();
+}
+
+void TcpSession::DeliverMatchQueueStatus(const std::string& session_guid,
+                                         uint32_t queue_id, uint32_t name_msg_id) {
+	std::lock_guard<std::mutex> lock(sessions_mutex_);
+	auto it = g_sessions_.find(session_guid);
+	if (it == g_sessions_.end()) return;
+	auto session = it->second.lock();
+	if (!session) return;
+	session->current_match_queue_id_ = queue_id;
+	session->send_match_queue_status(queue_id, name_msg_id);
+}
+
 void TcpSession::DeliverMatchCancelled(const std::string& session_guid, const char* reason) {
     std::lock_guard<std::mutex> lock(sessions_mutex_);
     auto it = g_sessions_.find(session_guid);
@@ -1764,9 +2020,9 @@ void TcpSession::DeliverMatchCancelled(const std::string& session_guid, const ch
     session->pending_match_instance_id_    = 0;
     session->pending_match_game_mode_.clear();
     session->pending_match_task_force_     = 1;
-    // No client-side wire response: GET_TICKET_INFO polling already drives
-    // the UI off CURRENT_MATCH_QUEUE_ID; clearing it here lets the next
-    // refresh show the player as not queued and re-enables the Join button.
+    // GET_TICKET_INFO polling picks up CURRENT_MATCH_QUEUE_ID=0 for the
+    // queue menu; the HUD panel needs the explicit clear frame.
+    session->send_match_queue_status(0, 0);
 }
 
 void TcpSession::send_match_accept_response() {
@@ -1896,6 +2152,7 @@ void TcpSession::send_match_accept_response() {
             pending_match_game_mode_.clear();
             pending_match_task_force_ = 1;
             current_match_queue_id_ = 0;
+            send_match_queue_status(0, 0);  // entering the match — hide HUD queue panel
         });
 
     pending_ack_timer_->async_wait([this, self, timer](std::error_code ec) {
@@ -1923,7 +2180,11 @@ void TcpSession::send_get_ticket_info_response() {
 	append(response, packet_type & 0xFF, packet_type >> 8);
 	append(response, item_count  & 0xFF, item_count  >> 8);
 
-	Write1B(response, GA_T::TEAM_LEADER_FLAG, 0x1);
+	// Unteamed players queue for themselves; teamed non-leaders lose the
+	// join button (only the leader queues the team).
+	const bool can_queue = !TeamService::IsTeamed(session_guid_)
+	                    || TeamService::IsLeader(session_guid_);
+	Write1B(response, GA_T::TEAM_LEADER_FLAG, can_queue ? 0x1 : 0x0);
 	Write4B(response, GA_T::CURRENT_MATCH_QUEUE_ID, current_match_queue_id_);
 
 	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
@@ -2703,6 +2964,97 @@ void TcpSession::send_agency_get_roster_response()
 	append(response, item_count & 0xFF, item_count >> 8);
 
 	Write4B(response, GA_T::AGENCY_ID, 0x1);
+
+	send_response(response);
+}
+
+void TcpSession::send_query_players_response(const PacketView& pkt)
+{
+	// CALLER_ID is the GObjObjects index of the client's TgDataSet; without
+	// it MarshalReceived2 can't route the response (see player-search-tcp-protocol.md).
+	const uint32_t caller_id = pkt.Read4B(GA_T::CALLER_ID).value_or(0);
+	if (caller_id == 0) {
+		Logger::Log("tcp", "[TCP] QUERY_PLAYERS without CALLER_ID, dropping\n");
+		return;
+	}
+
+	// Filters — absent field = no constraint.
+	auto name_filter     = pkt.ReadString(GA_T::PLAYER_NAME);
+	auto agency_filter   = pkt.ReadString(GA_T::AGENCY_NAME);
+	auto alliance_filter = pkt.ReadString(GA_T::ALLIANCE_NAME);
+	auto level_min       = pkt.Read4B(GA_T::LEVEL_MIN);
+	auto level_max       = pkt.Read4B(GA_T::LEVEL_MAX);
+	auto profile_filter  = pkt.Read4B(GA_T::PROFILE_ID);
+	auto team_filter     = pkt.Read1B(GA_T::TEAM_FLAG);
+	auto mission_filter  = pkt.ReadString(GA_T::MISSION_FLAG);  // string flag "T"/"F"
+	// SYS_AVA_TEAMS_OK (the Team menu's AvA checkbox) isn't tracked yet — ignored.
+
+	auto to_lower = [](std::string s) {
+		for (auto& c : s) c = (char)std::tolower((unsigned char)c);
+		return s;
+	};
+	auto contains_ci = [&](const std::string& haystack, const std::string& needle) {
+		return to_lower(haystack).find(to_lower(needle)) != std::string::npos;
+	};
+
+	constexpr uint32_t kLevel   = 0x32;  // levels aren't tracked; 50 everywhere (matches GSC_CHARACTER_LIST)
+	// send_response chunks big payloads, so this is a UI sanity bound: the
+	// Team menu list scrolls, the standalone search menu shows 16 (paging
+	// natives are no-op stubs in this client build).
+	constexpr size_t   kMaxRows = 50;
+
+	const auto players = InstanceRegistry::GetActiveSearchablePlayers();
+
+	std::vector<uint8_t> rows;
+	size_t row_count = 0;
+	for (const auto& p : players) {
+		if (row_count >= kMaxRows) break;
+		const bool teamed = TeamService::IsTeamed(p.session_guid);
+		if (name_filter && !contains_ci(p.player_name, *name_filter)) continue;
+		// No agency/alliance system yet — a non-empty filter matches nobody.
+		if (agency_filter && !agency_filter->empty()) continue;
+		if (alliance_filter && !alliance_filter->empty()) continue;
+		if (level_min && kLevel < *level_min) continue;
+		if (level_max && kLevel > *level_max) continue;
+		if (profile_filter && p.profile_id != *profile_filter) continue;
+		if (team_filter && teamed != (*team_filter != 0)) continue;
+		if (mission_filter && p.in_mission != (*mission_filter == "T")) continue;
+
+		uint32_t map_msg_id = 0;
+		if (auto rec = MapGameInfo::LookupByName(p.map_name))
+			map_msg_id = rec->friendly_name_msg_id;
+
+		append(rows, 0x0A, 0x00);  // 10 fields per row
+		Write4B(rows, GA_T::PLAYER_ID, (uint32_t)p.character_id);
+		WriteString(rows, GA_T::PLAYER_NAME, p.player_name);
+		WriteString(rows, GA_T::AGENCY_NAME, "");
+		WriteString(rows, GA_T::ALLIANCE_NAME, "");
+		Write4B(rows, GA_T::LEVEL, kLevel);
+		Write4B(rows, GA_T::PROFILE_ID, p.profile_id);
+		Write4B(rows, GA_T::MAP_NAME_MSG_ID, map_msg_id);
+		// Always ship SKILL_RATING — the Team menu reads it into an
+		// uninitialized stack float when absent.
+		WriteFloat(rows, GA_T::SKILL_RATING, 5.0f);
+		Write1B(rows, GA_T::TEAM_FLAG, teamed ? 1 : 0);
+		WriteString(rows, GA_T::MISSION_FLAG, p.in_mission ? "T" : "F");
+		++row_count;
+	}
+
+	std::vector<uint8_t> response;
+
+	uint16_t packet_type = GA_U::QUERY_PLAYERS;
+	uint16_t item_count = 2;  // CALLER_ID + DATA_SET
+
+	append(response, packet_type & 0xFF, packet_type >> 8);
+	append(response, item_count & 0xFF, item_count >> 8);
+
+	Write4B(response, GA_T::CALLER_ID, caller_id);
+	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+	append(response, row_count & 0xFF, (row_count >> 8) & 0xFF);
+	WriteNBytesRaw(response, rows);
+
+	Logger::Log("tcp", "[TCP] QUERY_PLAYERS: caller_id=%u online=%d matched=%d\n",
+		caller_id, (int)players.size(), (int)row_count);
 
 	send_response(response);
 }

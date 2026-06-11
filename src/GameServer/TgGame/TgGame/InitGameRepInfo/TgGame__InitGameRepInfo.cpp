@@ -324,6 +324,16 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 				gamerep->r_bIsTutorialMap = 1;
 				gamerep->r_bIsPVP = 0;
 			}
+
+			// VR practice arena: the AgentInfo HUD panel (incl. queue status)
+			// only shows when r_GameType is GT_CITY/GT_OPENPVE or r_bIsArena
+			// (TgUIPrimaryHUD_AgentInfo tick @ 0x114d6110). Retail showed it here.
+			// r_bIsMatch must be 0 — OpenConfirmMatchLeave (0x10966180) refuses
+			// the leave-queue keybind with msg 32135 while r_bIsMatch is set.
+			if (mapName == "Dome3_VR_Arena_P") {
+				gamerep->r_bIsArena = 1;
+				gamerep->r_bIsMatch = 0;
+			}
 		}
 
 		if (GameClassName == "Class TgGame.TgGame_City") {

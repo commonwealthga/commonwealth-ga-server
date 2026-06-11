@@ -29,6 +29,12 @@ struct InstanceInfo {
     uint32_t    queue_id                  = 0;  // 0 = not from a matchmade queue
     int64_t     predecessor_instance_id   = 0;  // 0 = not a successor
     int64_t     end_mission_at            = 0;  // 0 = BeginEndMission not yet fired
+
+    // Team-aware access (2026-06-11). "OPEN" | "PARTY_LOCKED" | "SEALED".
+    // owner_party_ids is a CSV of QueuedParty ids permitted into a PARTY_LOCKED
+    // instance (matchmaking-side; invites bypass it). Empty/OPEN = drop-in.
+    std::string access_mode = "OPEN";
+    std::string owner_party_ids;  // CSV of uint64 party ids
 };
 
 class InstanceRegistry {
@@ -55,7 +61,9 @@ public:
     static int64_t InsertStarting(const std::string& map_name, const std::string& game_mode,
                                    uint16_t udp_port, int pid, bool is_home_map,
                                    uint32_t queue_id = 0,
-                                   int64_t predecessor_instance_id = 0);
+                                   int64_t predecessor_instance_id = 0,
+                                   const std::string& access_mode = "OPEN",
+                                   const std::string& owner_party_ids = "");
 
     // Store the real PID after the process has been spawned.
     static void UpdatePid(int64_t instance_id, int pid);
@@ -107,6 +115,20 @@ public:
     };
     static std::vector<ActivePlayerRow>
         GetActivePlayersForInstance(int64_t instance_id);
+
+    // Players currently inside any running instance, joined with identity
+    // fields for QUERY_PLAYERS (player search). One row per active
+    // ga_instance_players entry.
+    struct SearchablePlayerRow {
+        std::string session_guid;
+        int64_t     character_id = 0;
+        std::string player_name;
+        uint32_t    profile_id = 0;      // class value id (680/567/681/679)
+        std::string map_name;
+        bool        in_mission = false;  // instance is not a home map
+    };
+    static std::vector<SearchablePlayerRow> GetActiveSearchablePlayers();
+
     static void MarkInstancePlayerLeft(int64_t instance_id, const std::string& session_guid);
     static void MarkAllInstancePlayersLeft(int64_t instance_id);
     static std::pair<int, int> GetTeamCounts(int64_t instance_id);

@@ -593,13 +593,16 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/InstanceRegistry/InstanceRegistry.cpp \
 	$(CS_SRC_DIR)/InstanceSpawner/InstanceSpawner.cpp \
 	$(CS_SRC_DIR)/QuestStore/QuestStore.cpp \
+	$(CS_SRC_DIR)/TeamService/TeamService.cpp \
 	$(CS_SRC_DIR)/MatchmakingService/MatchmakingService.cpp \
     $(CS_SRC_DIR)/MatchmakingService/TicketInfoEncoder.cpp \
     $(CS_SRC_DIR)/MatchmakingService/RuleFactory.cpp \
     $(CS_SRC_DIR)/MatchmakingService/RuntimeStats.cpp \
     $(CS_SRC_DIR)/MatchmakingService/RoleWeightedSplit.cpp \
-    $(CS_SRC_DIR)/MatchmakingService/Rules/DataDrivenMatchRule.cpp \
+    $(CS_SRC_DIR)/MatchmakingService/SidePlacement.cpp \
+    $(CS_SRC_DIR)/MatchmakingService/Rules/CoopMatchRule.cpp \
     $(CS_SRC_DIR)/MatchmakingService/Rules/DoubleAgentRule.cpp \
+    $(CS_SRC_DIR)/MatchmakingService/Rules/VersusSidesRule.cpp \
     $(CS_SRC_DIR)/Auth/LoginAuth.cpp
 
 CS_SOURCES=$(CS_CPP_SOURCES)

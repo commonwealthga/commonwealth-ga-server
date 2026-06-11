@@ -807,6 +807,73 @@ void Database::Init() {
 			sqlite3_free(err); err = nullptr;
 		}
 
+		// Team-aware matchmaking (2026-06-11).
+		//   ga_queues.team_policy       — block | own_match | mixed | versus_sides
+		//   ga_queues.team_side_policy  — ignore | preferred | required
+		//   ga_queues.max_team_size     — 0 => queue's per-instance cap
+		//   ga_instances.access_mode    — OPEN | PARTY_LOCKED | SEALED
+		//   ga_instances.owner_party_ids— CSV of QueuedParty ids (PARTY_LOCKED)
+		// Defaults preserve the pre-team behaviour (every queue 'mixed'/'ignore',
+		// every instance 'OPEN'). Idempotent — duplicate-column errors swallowed.
+		const char* kTeamMatchmakingAlters[] = {
+			"ALTER TABLE ga_queues ADD COLUMN team_policy      TEXT    NOT NULL DEFAULT 'mixed';",
+			"ALTER TABLE ga_queues ADD COLUMN team_side_policy TEXT    NOT NULL DEFAULT 'ignore';",
+			"ALTER TABLE ga_queues ADD COLUMN max_team_size    INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_instances ADD COLUMN access_mode     TEXT DEFAULT 'OPEN';",
+			"ALTER TABLE ga_instances ADD COLUMN owner_party_ids TEXT DEFAULT '';",
+		};
+		for (const char* sql : kTeamMatchmakingAlters) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				sqlite3_free(err); err = nullptr;
+			}
+		}
+
+		// One-time per-archetype team config. Guarded by a marker row so it
+		// runs EXACTLY ONCE on first deploy and never stomps later operator
+		// edits to team_policy / team_side_policy. (We can't gate on
+		// version_info — the game DLL bumps it past us; hence a dedicated
+		// marker table.)
+		sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS cs_migration_markers (name TEXT PRIMARY KEY);",
+			nullptr, nullptr, &err);
+		if (err) { sqlite3_free(err); err = nullptr; }
+
+		bool team_cfg_applied = false;
+		{
+			sqlite3_stmt* mstmt = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT 1 FROM cs_migration_markers WHERE name='team_matchmaking_queue_config_2026_06_11'",
+					-1, &mstmt, nullptr) == SQLITE_OK && mstmt) {
+				team_cfg_applied = (sqlite3_step(mstmt) == SQLITE_ROW);
+			}
+			if (mstmt) sqlite3_finalize(mstmt);
+		}
+		if (!team_cfg_applied) {
+			// Standard PvE: a team pop spawns a fresh PARTY_LOCKED match;
+			// solos only ever join OPEN instances. Mercenary: mixed pool,
+			// keep teammates together unless class balance demands a split.
+			// DDR: mixed, teams whole (PvE defense, one side anyway).
+			// Double Agent: mixed shape-table pool, same-side preferred,
+			// sealed at pop. 1v1: each side is a whole party (VersusSidesRule).
+			static const char* kTeamCfgUpdates[] = {
+				"UPDATE ga_queues SET team_policy='own_match', team_side_policy='required' "
+					"WHERE name IN ('umax','medium','high','max');",
+				"UPDATE ga_queues SET team_policy='mixed', team_side_policy='preferred' WHERE name='merc';",
+				"UPDATE ga_queues SET team_policy='mixed', team_side_policy='required' WHERE name='ddr';",
+				"UPDATE ga_queues SET team_policy='mixed', team_side_policy='preferred' WHERE rule_class='DoubleAgent';",
+				"UPDATE ga_queues SET rule_class='VersusSides', team_policy='versus_sides', team_side_policy='required' "
+					"WHERE name='1v1';",
+				"INSERT OR IGNORE INTO cs_migration_markers (name) VALUES ('team_matchmaking_queue_config_2026_06_11');",
+			};
+			for (const char* sql : kTeamCfgUpdates) {
+				if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+					Logger::Log("db", "[Database] team queue config step failed: %s\n", err ? err : "?");
+					if (err) { sqlite3_free(err); err = nullptr; }
+				}
+			}
+			Logger::Log("db", "[Database] Applied one-time team-matchmaking queue archetype config\n");
+		}
+
 		// ga_queues — data-driven queue definitions. Each row maps to a
 		// MATCH_QUEUE_ID; the schema carries both matchmaking behaviour
 		// (rule_class + taskforce_policy + continue_in_queue) and the

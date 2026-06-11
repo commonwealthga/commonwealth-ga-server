@@ -1,33 +1,26 @@
 #pragma once
+//
+// DoubleAgentRule — asymmetric "Double Agent" coop. Party-aware.
+//
+//   • Total roster ∈ [2, 10]; a shape table maps total -> (TF1, TF2) where
+//     TF1 = attackers (PvE coop side) and TF2 = defenders (the agents).
+//   • Multiple parties + solos are matched into ONE match. Teammates are kept
+//     on the same side when the fixed shape allows; a party is split across the
+//     TF boundary only when a chunk can't fit whole.
+//   • Selection is longest-waiting-first (deterministic; fair to early joiners).
+//   • SEALED: every pop spawns a fresh instance and nobody — not even an
+//     invitee — joins it afterwards (cap_override = popped size + Sealed).
+//   • Map/mode left empty -> filled from the queue's weighted map_pool.
+//   • Ignores cfg.taskforce_policy — the shape table wins.
+//
+#include "src/ControlServer/MatchmakingService/MatchRule.hpp"
 
-#include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
-
-// DoubleAgentRule — asymmetric "Double Agent" coop matchmaker.
-//
-//   • Total roster ∈ [2, 10]. The shape table maps total -> (TF1, TF2)
-//     where TF1 = attackers (PvE coop side) and TF2 = defenders (the
-//     agents). TF mapping is the engine convention (TgAIController.uc:
-//     1315-1322 — AttackerAssaultNav on TF1, DefenderAssaultNav on TF2).
-//
-//   • Random assignment per pop. RNG is seeded per Evaluate from
-//     steady_clock so back-to-back pops don't correlate.
-//
-//   • Late-join lockout. Never returns existing_instance_id — every pop
-//     spawns a fresh instance. Sets MatchResult::cap_override to the
-//     pop_count so MatchmakingService's coalesce loop refuses to append
-//     more players to the resulting PendingMatch.
-//
-//   • Map / mode left empty so MatchmakingService fills from the queue's
-//     weighted map_pool via PickRandomMapPoolEntryForCount.
-//
-//   • Ignores cfg.taskforce_policy — the shape table wins regardless.
 class DoubleAgentRule : public MatchRule {
 public:
-    explicit DoubleAgentRule(const QueueConfig* cfg)
-        : cfg_(cfg ? *cfg : QueueConfig{}) {}
+    explicit DoubleAgentRule(const QueueConfig* cfg) : cfg_(cfg ? *cfg : QueueConfig{}) {}
 
     std::optional<MatchResult> Evaluate(
-        const std::vector<QueuedPlayer>& players,
+        const std::vector<QueuedParty>& parties,
         const std::vector<RunningInstance>& instances) override;
 
 private:
