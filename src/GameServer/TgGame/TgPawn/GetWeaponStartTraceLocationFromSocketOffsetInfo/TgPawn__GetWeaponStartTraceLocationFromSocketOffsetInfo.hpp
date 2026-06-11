@@ -3,6 +3,14 @@
 #include "src/pch.hpp"
 #include "src/Utils/HookBase.hpp"
 
+// ⚠️ DECOMMISSIONED 2026-06-11 — do NOT re-install. The native @ 0x109cc520 is
+// INTACT and now runs unhooked against REAL UTgSocketOffsetInfo assets
+// (FireSockets::EnsurePopulated replaces the self-pointer sentinel this hook
+// depended on; re-installing on top of real assets would discard the retail
+// aim-interpolated socket positions, and the original native would crash if
+// the sentinel ever returned). Removed from Makefile + dllmain. See
+// .planning/2026-06-11-fire-sockets-investigation.md.
+//
 // TgPawn::GetWeaponStartTraceLocationFromSocketOffsetInfo — native @ 0x109cc520.
 //
 // MSVC return-struct-by-pointer convention:

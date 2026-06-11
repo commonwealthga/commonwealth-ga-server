@@ -18,7 +18,8 @@
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/Database/Database.hpp"
-#include "src/Database/SocketCycle/SocketCycle.hpp"
+// #include "src/Database/SocketCycle/SocketCycle.hpp"  // decommissioned 2026-06-11 (FireSockets)
+#include "src/GameServer/Utils/FireSockets/FireSockets.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 std::map<int, int> TgGame__SpawnBotById::m_spawnedBotIds;
@@ -639,17 +640,14 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 
 	m_spawnedBotIds[(int)Bot] = nBotId;
 
-	// Activate the dedi-server branch in TgPawn_Boss/Turret/Hover/Robot/Siege
-	// .GetWeaponStartTraceLocation by giving the pawn a non-null
-	// m_TgSocketOffsetInfo. UC only checks `!= none` (verified across all
-	// 6 UC accesses); our hook on GetWeaponStartTraceLocationFromSocketOffsetInfo
-	// fully replaces the native that would deref the field. Self-pointer is
-	// safe — the only 4 binary refs at offset 0x1268 have all been audited.
-	// Currently scoped to Boss Shrike (body_asm_id 794); broaden when adding
-	// more multi-cannon bots.
-	if (SocketCycle::GetBodyAsmId(Bot) == 794) {
-		Bot->m_TgSocketOffsetInfo = reinterpret_cast<UTgSocketOffsetInfo*>(Bot);
-	}
+	// (2026-06-11) Replaced the Boss-Shrike self-pointer sentinel that fed our
+	// trace-native replacement hook. m_TgSocketOffsetInfo is now populated
+	// with the REAL UTgSocketOffsetInfo asset (FireSockets::EnsurePopulated,
+	// called below after r_nBodyMeshAsmId is assigned) and the intact native
+	// @ 0x109cc520 runs unhooked. The sentinel would crash that native.
+	// if (SocketCycle::GetBodyAsmId(Bot) == 794) {
+	// 	Bot->m_TgSocketOffsetInfo = reinterpret_cast<UTgSocketOffsetInfo*>(Bot);
+	// }
 
 	// if (pOwnerPawn != nullptr) {
 	// 	AIController->SetOwner(pOwnerPawn);
@@ -872,6 +870,12 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// CPF_Net so the client picks them up automatically.
 	Bot->r_nPhysicalType       = *(int*)((char*)BotConfig + 0x64); // PHYSICAL_TYPE_VALUE_ID
 	Bot->r_nBodyMeshAsmId      = *(int*)((char*)BotConfig + 0x54); // BODY_ASM_ID
+
+	// Load this body's TgSocketOffsetInfo asset (if the assembly binds one)
+	// so the intact GetWeaponStartTraceLocationFromSocketOffsetInfo native
+	// fires from the real weapon sockets. No-op for the ~all bodies without
+	// an SOI binding (they keep the retail eye-height fallback).
+	FireSockets::EnsurePopulated(Bot);
 
 	// Identity / classification — none of these were being set, so every bot
 	// looked like a "rank=0, profile=0, hunts=nothing" pawn to AI natives that

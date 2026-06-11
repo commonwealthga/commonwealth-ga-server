@@ -21,6 +21,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Utils/ClassPreloader/ClassPreloader.cpp \
 			  $(SRC_DIR)/GameServer/Utils/EngineLoad/EngineLoad.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ActorCache/ActorCache.cpp \
+			  $(SRC_DIR)/GameServer/Utils/FireSockets/FireSockets.cpp \
 			  $(SRC_DIR)/GameServer/Replication/ReplicationDefaults/ReplicationDefaults.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
 			  $(SRC_DIR)/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.cpp \
@@ -176,8 +177,6 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/UpdateDeployModeStatus/TgDevice__UpdateDeployModeStatus.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/CalcFireSocketIndexMax/TgDevice__CalcFireSocketIndexMax.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/GetFireSocketName/TgDevice__GetFireSocketName.cpp \
-			  $(SRC_DIR)/GameServer/TgGame/TgPawn/GetWeaponStartTraceLocationFromSocketOffsetInfo/TgPawn__GetWeaponStartTraceLocationFromSocketOffsetInfo.cpp \
-			  $(SRC_DIR)/Database/SocketCycle/SocketCycle.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RosterWalker.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RefIter.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.cpp \
@@ -421,6 +420,10 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetName/CMarshal__GetName.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetWcharT/CMarshal__GetWcharT.cpp \
 			  $(SRC_DIR)/dllmain.cpp
+
+# Decommissioned 2026-06-11, fire-sockets rework (.planning/2026-06-11-fire-sockets-investigation.md):
+#   $(SRC_DIR)/GameServer/TgGame/TgPawn/GetWeaponStartTraceLocationFromSocketOffsetInfo/TgPawn__GetWeaponStartTraceLocationFromSocketOffsetInfo.cpp
+#   $(SRC_DIR)/Database/SocketCycle/SocketCycle.cpp
 
 SOURCE_FILES_CLIENT= \
 			  $(SRC_DIR)/Utils/Logger/Logger/FileLogger.cpp \

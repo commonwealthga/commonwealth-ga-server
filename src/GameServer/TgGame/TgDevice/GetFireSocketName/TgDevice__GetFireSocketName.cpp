@@ -1,28 +1,40 @@
 #include "src/GameServer/TgGame/TgDevice/GetFireSocketName/TgDevice__GetFireSocketName.hpp"
-#include "src/Database/SocketCycle/SocketCycle.hpp"
+#include "src/GameServer/Utils/FireSockets/FireSockets.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 
 FName* __fastcall TgDevice__GetFireSocketName::Call(ATgDevice* Device, void* edx, FName* outName) {
-    FName* ret = CallOriginal(Device, edx, outName);
+	FName* ret = CallOriginal(Device, edx, outName);
 
-    if (!Device || !outName) return ret;
-    if (outName->Index != 0) return ret;
+	if (!Device || !outName) return ret;
+	if (outName->Index != 0) return ret;  // stock form/mesh path resolved it
 
-    APawn* Instigator = Device->Instigator;
-    if (!Instigator) return ret;
+	APawn* Instigator = Device->Instigator;
+	if (!Instigator) return ret;
+	if (!ObjectClassCache::ClassNameContains(Instigator, "TgPawn")) return ret;
+	ATgPawn* Pawn = reinterpret_cast<ATgPawn*>(Instigator);
 
-    ATgPawn* TgPawn = reinterpret_cast<ATgPawn*>(Instigator);
-    int equipPoint  = (int)Device->r_eEquippedAt;
+	// TgDevice.uc:1813 hazard: ProjectileFire takes the mesh-socket branch
+	// whenever `Mesh != none && GetFireSocketName() != 'None'`. A mesh
+	// component with no SkeletalMesh would yield a zero SocketLocation —
+	// don't hand the UC a name it can't resolve.
+	if (Pawn->Mesh && !Pawn->Mesh->SkeletalMesh) return ret;
 
-    int count = SocketCycle::LookupOriginSocketCount(TgPawn, equipPoint);
-    if (count == 0) return ret;
+	void* model = FireSockets::GetMeshModel(Pawn->r_nBodyMeshAsmId);
+	if (!model) return ret;
 
-    int idx = Device->m_nSocketIndex - 1;
-    if (idx < 0) idx = 0;
-    if (idx >= count) idx = count - 1;
+	// Same query the stock native runs — only the asmId source differs
+	// (pawn body asm instead of c_DeviceForm->c_Mesh's asm).
+	FName resolved = FireSockets::GetShotOriginSocketName(
+		model, (int)Device->CurrentFireMode, Device->m_nSocketIndex,
+		(int)Device->r_eEquippedAt);
+	if (resolved.Index != 0) {
+		*outName = resolved;
+	}
 
-    FName resolved = SocketCycle::GetOriginSocketName(TgPawn, equipPoint, idx);
-    if (resolved.Index != 0) {
-        *outName = resolved;
-    }
-    return ret;
+	// Retail side effect: refresh the cycle size + mark it calculated.
+	Device->m_nSocketMax = FireSockets::GetShotOriginSocketMax(
+		model, (int)Device->CurrentFireMode, (int)Device->r_eEquippedAt);
+	Device->m_bSocketMaxCalculated = 1;
+
+	return ret;
 }
