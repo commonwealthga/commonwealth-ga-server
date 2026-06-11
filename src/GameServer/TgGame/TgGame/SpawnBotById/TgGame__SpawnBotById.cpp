@@ -1098,6 +1098,16 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 
 	GiveDevicesFromBotConfig(Bot, BotRepInfo, nBotId);
 
+	// Corpse cleanup. TgPawn.Dying 'Begin:' arms SetTimer(m_fLifeAfterDeathSecs)
+	// whose Timer() does Controller.Destroy() + bTearOff + Destroy() for AI
+	// bots — but the field is 0 everywhere (no UC write, no defaultproperties;
+	// the retail SERVER set it natively), and SetTimer(0) never fires, so dead
+	// bots lingered forever (minimap ghosts + death-anim replay on
+	// re-relevancy). Exact retail value unknown; 8s ≈ death anim + 2s fade.
+	if (Bot->m_fLifeAfterDeathSecs <= 0.0f) {
+		Bot->m_fLifeAfterDeathSecs = 8.0f;
+	}
+
 	return Bot;
 }
 

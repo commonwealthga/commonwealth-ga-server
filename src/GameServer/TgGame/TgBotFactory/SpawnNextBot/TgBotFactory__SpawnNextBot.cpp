@@ -24,7 +24,7 @@ constexpr float kSpawnJitterRadius = 120.0f;
 
 // Lower bound for SetTimer delays. UC PostBeginPlay clamps fSpawnDelay to
 // >= 0.2 already; belt-and-suspenders so tiny overrides don't melt the CPU.
-constexpr float kMinSpawnDelay = 0.2f;
+constexpr float kMinSpawnDelay = 0.1f;
 
 int PickNextLocationIndex(ATgBotFactory* f) {
 	const int n = f->LocationList.Num();
