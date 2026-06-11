@@ -3,14 +3,19 @@
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
-// Reimplementation of TgBotFactory::BotDied (0x10a8cbf0). The binary's copy
-// is INTACT but operates retail's m_SpawnQueue model, where the queue is a
-// pending-respawn scheduler it APPENDS timed entries to on every death. Our
-// rebuilt factory stack (LoadObjectConfig / ResetQueue / SpawnNextBot) keeps
-// m_SpawnQueue as a static one-entry-per-group list parallel to
-// m_SpawnGroups, so the intact appends grew the queue past the groups array
-// and permanently wedged the factory (alarm wave 2 never spawned). This
-// version does the same observable work in OUR model:
+// ‼️ RETIRED — NOT in the Makefile, Install() commented out in dllmain.
+// The 2026-06-10 scheduler rewrite made our queue model match retail's, so
+// the INTACT native (0x10a8cbf0) runs unhooked now. Kept on disk for
+// reference only.
+//
+// Historical: reimplementation of TgBotFactory::BotDied (0x10a8cbf0). The
+// binary's copy is INTACT but operates retail's m_SpawnQueue model, where the
+// queue is a pending-respawn scheduler it APPENDS timed entries to on every
+// death. Our pre-rewrite factory stack kept m_SpawnQueue as a static
+// one-entry-per-group list parallel to m_SpawnGroups, so the intact appends
+// grew the queue past the groups array and permanently wedged the factory
+// (alarm wave 2 never spawned). This version did the same observable work in
+// the OLD model:
 //   - decrement factory + group counters (clamped: fallback-factory bots die
 //     against factories that never spawned them — see ActorCache backfill in
 //     SpawnBotById)

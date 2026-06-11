@@ -1074,6 +1074,20 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		DropCarriedBeaconIfAny((ATgPawn*)Object);
 
 		CallOriginal(Object, edx, Function, Params, Result);
+
+		// Dead pawns must not keep PHYS_Flying: retail death set falling
+		// physics, but SetPhysics natives are stripped no-ops on this binary,
+		// so flying bots (Physics=4 hand-set at spawn) stayed flying as
+		// corpses. A flying corpse whose controller is later destroyed crashes
+		// APawn::physicsRotation (0x10ca5330 reads Controller+0x258 BEFORE its
+		// null check) — 2026-06-11 production crash @ 0x10ca5412.
+		{
+			ATgPawn* DyingPawn = (ATgPawn*)Object;
+			if (DyingPawn->Physics == 4 /*PHYS_Flying*/) {
+				DyingPawn->Physics = 2 /*PHYS_Falling*/;
+				DyingPawn->bSimulateGravity = 1;
+			}
+		}
 		// UScript TgPawn.Dying.BeginState only calls PawnDied for bIsPlayer==true.
 		// For AI bots the Timer would normally call Controller.Destroy() → PawnDied,
 		// but bots fall out of the world first (LifeSpan set by OutsideWorldBounds),

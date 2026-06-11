@@ -66,6 +66,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/SeqActNullGuard/SeqActNullGuard.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Tick/Actor__Tick.cpp \
+			  $(SRC_DIR)/GameServer/Engine/Pawn/PhysicsRotation/Pawn__PhysicsRotation.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Tick/GameEngine__Tick.cpp \
 			  $(SRC_DIR)/GameServer/Engine/AutoReporter/GetLocalPlayerId/AutoReporter__GetLocalPlayerId.cpp \
 			  $(SRC_DIR)/GameServer/Engine/LaunchEngineLoop/ConstructCommandletObject/ConstructCommandletObject.cpp \
