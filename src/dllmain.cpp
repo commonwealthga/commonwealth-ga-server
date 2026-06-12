@@ -105,8 +105,11 @@
 #include "src/GameServer/TgGame/TgDevice/UpdateDeployModeStatus/TgDevice__UpdateDeployModeStatus.hpp"
 #include "src/GameServer/TgGame/TgDevice/CalcFireSocketIndexMax/TgDevice__CalcFireSocketIndexMax.hpp"
 #include "src/GameServer/TgGame/TgDevice/GetFireSocketName/TgDevice__GetFireSocketName.hpp"
-#include "src/GameServer/TgGame/TgPawn/GetWeaponStartTraceLocationFromSocketOffsetInfo/TgPawn__GetWeaponStartTraceLocationFromSocketOffsetInfo.hpp"
-#include "src/Database/SocketCycle/SocketCycle.hpp"
+// Decommissioned 2026-06-11: the intact trace native @ 0x109cc520 now runs
+// against real SOI assets (FireSockets::EnsurePopulated); SocketCycle's DB
+// cache is superseded by direct in-memory assembly-model queries.
+// #include "src/GameServer/TgGame/TgPawn/GetWeaponStartTraceLocationFromSocketOffsetInfo/TgPawn__GetWeaponStartTraceLocationFromSocketOffsetInfo.hpp"
+// #include "src/Database/SocketCycle/SocketCycle.hpp"
 #include "src/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RosterWalker.hpp"
 #include "src/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RefIter.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
@@ -343,7 +346,7 @@
 DWORD WINAPI ModuleThread(LPVOID) {
 
 	Database::Init();
-	SocketCycle::Init();
+	// SocketCycle::Init();  // decommissioned 2026-06-11 (FireSockets)
 
 	::DetourTransactionBegin();
 	::DetourUpdateThread(::GetCurrentThread());
@@ -485,7 +488,7 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgDevice__UpdateDeployModeStatus::Install();
 	TgDevice__CalcFireSocketIndexMax::Install();
 	TgDevice__GetFireSocketName::Install();
-	TgPawn__GetWeaponStartTraceLocationFromSocketOffsetInfo::Install();
+	// TgPawn__GetWeaponStartTraceLocationFromSocketOffsetInfo::Install();  // decommissioned 2026-06-11 — intact native runs against real SOI assets
 	TgPawn__RosterWalker::Install();
 	TgPawn__RefIter::Install();
 	TgProj_Deployable__SpawnDeployable::Install();

@@ -3,26 +3,25 @@
 #include "src/pch.hpp"
 #include "src/Utils/HookBase.hpp"
 
-// TgDevice::CalcFireSocketIndexMax — native @ 0x10a1dc50.
-// Computes m_nSocketMax (at +0x234 on UTgDevice), the modulus used by
-// UpdateIndex to cycle m_nSocketIndex across multiple firing sockets per
-// shot. UpdateIndex calls this every shot.
+// TgDevice::CalcFireSocketIndexMax — native @ 0x10a1dc50 (INTACT).
+// Computes m_nSocketMax (+0x234), the modulus UpdateIndex uses to cycle
+// m_nSocketIndex across multiple firing sockets. UpdateIndex calls this
+// every shot (after firing); FlashFire ships the index to clients, which
+// drives which MuzzleFlash/Tracer FX socket plays.
 //
-// The stock native is gated on `c_DeviceForm->c_Mesh` (UMeshComponent at
-// form +0x78). On a dedicated server c_Mesh is null for bot weapons —
-// UMeshComponents are visual-only and don't initialize server-side — so
-// the lookup short-circuits, m_nSocketMax falls back to 1, and the cycle
-// never advances past index 1. FlashFire then ships m_nSocketIndex=1 to
-// clients on every shot.
+// Stock pipeline mirrors GetFireSocketName: c_DeviceForm->c_Mesh -> asmId ->
+// assembly model -> max display_order over FX entries (group "ShotOrigin",
+// display_mode == CurrentFireMode, slot == r_eEquippedAt). Early-outs when
+// m_bSocketMaxCalculated is set. On the dedicated server the form mesh is
+// null for bot weapons, so m_nSocketMax stays 1 and multi-barrel bots only
+// ever flash barrel #1.
 //
-// Result observed in-game: Boss IceShrike (two shoulder cannons) only
-// ever muzzle-flashes one cannon, regardless of which weapon he uses.
-// Same shape would affect any multi-socket bot weapon.
-//
-// Fix: after the stock native runs, if m_nSocketMax is still 1, ask
-// SocketCycle (DB-backed cache built from asm_data_set_asm_mesh_fxs) for
-// the cycle size keyed by (Instigator's body_asm_id, device's
-// r_eEquippedAt). If a multi-socket cycle exists, overwrite m_nSocketMax.
+// Our override: rerun the same in-memory query with asmId =
+// Instigator->r_nBodyMeshAsmId when the stock result is still 1. Also the
+// lazy catch-all call site for FireSockets::EnsurePopulated (SOI asset for
+// the precise trace-origin path). See
+// decompiled/TgGame/ATgDevice/ATgDevice__CalcFireSocketIndexMax/ and
+// .planning/2026-06-11-fire-sockets-investigation.md.
 class TgDevice__CalcFireSocketIndexMax : public HookBase<
     void(__fastcall*)(ATgDevice*, void*),
     0x10a1dc50,
