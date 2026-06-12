@@ -24,7 +24,7 @@ bool __fastcall TgGame_Ticket__BeginEndMission::Call(ATgGame_Ticket* Game, void*
 		Game->m_GameWinState = winState;
 	}
 
-	BeginEndMissionImpl(Game, endMissionCamera);
+	BeginEndMissionImpl(Game, endMissionCamera, fDelayOverride);
 
 	LogCallEnd();
 	return true;

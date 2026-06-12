@@ -1,5 +1,6 @@
 #include "src/GameServer/Engine/World/BeginPlay/World__BeginPlay.hpp"
 #include "src/GameServer/Engine/KismetDump/KismetDump.hpp"
+#include "src/GameServer/Engine/KismetWebDump/KismetWebDump.hpp"
 #include "src/GameServer/Engine/MapDataDumper/MapDataDumper.hpp"
 #include "src/GameServer/Engine/MapObjectConfig/MapObjectConfig.hpp"
 #include "src/GameServer/Globals.hpp"
@@ -24,6 +25,10 @@ void __fastcall World__BeginPlay::Call(void *World, void *edx, void *Url, int bR
 
 	if (Config::GetDumpMapData()) {
 		MapDataDumper::DumpAll();
+	}
+
+	if (Config::GetDumpKismet()) {
+		KismetWebDump::DumpAll();
 	}
 
 	// Signal control server that this instance is ready for players.

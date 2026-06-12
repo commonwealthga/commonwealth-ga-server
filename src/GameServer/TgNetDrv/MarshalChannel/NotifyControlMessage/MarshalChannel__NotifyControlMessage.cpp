@@ -457,7 +457,7 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	}
 
 	// First player: wire up BeaconManagers (RegisterBeacon sets r_BeaconStatus so entrance activates).
-	if (!bFirstPlayerSpawned) {
+	if (FALSE && !bFirstPlayerSpawned) { // test
 		bFirstPlayerSpawned = true;
 
 		AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);

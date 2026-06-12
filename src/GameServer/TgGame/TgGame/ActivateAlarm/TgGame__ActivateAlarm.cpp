@@ -44,8 +44,38 @@ void __fastcall TgGame__ActivateAlarm::Call(ATgGame* Game, void* edx,
 		Logger::GetTime(), origName.c_str(), origClass.c_str(), nGlobalAlarmId,
 		alarmEligible, alarmMatchingId, Game ? Game->s_nCurrentPriority : -999);
 
+	// Alarm-kismet registry snapshot. BuildAlarmsArray (intact native, called
+	// from TgGame.PostBeginPlay) fills s_SeqEventAlarmBots; the intact native
+	// below CheckActivates output 0 "AlarmOn" on every entry. TriggerCount
+	// before/after CallOriginal proves whether activation actually happened.
+	if (Game != nullptr) {
+		Logger::Log("alarm",
+			"[%s] ActivateAlarm kismet registry: events=%d acts=%d\n",
+			Logger::GetTime(),
+			Game->s_SeqEventAlarmBots.Count, Game->s_SeqActAlarmBots.Count);
+		for (int i = 0; i < Game->s_SeqEventAlarmBots.Count; i++) {
+			UTgSeqEvent_AlarmBots* ev = Game->s_SeqEventAlarmBots.Data[i];
+			if (ev == nullptr) continue;
+			const char* enRaw = ev->GetFullName();
+			const std::string evName(enRaw ? enRaw : "<null>");
+			const int out0Links = ev->OutputLinks.Count > 0
+				? ev->OutputLinks.Data[0].Links.Count : -1;
+			Logger::Log("alarm",
+				"  ev[%d] %s enabled=%d trigCount=%d out0links=%d\n",
+				i, evName.c_str(), (int)ev->bEnabled, ev->TriggerCount, out0Links);
+		}
+	}
+
 	CallOriginal(Game, edx, Originator, nGlobalAlarmId,
 		sTypeCode_Data, sTypeCode_Count, sTypeCode_Max);
+
+	if (Game != nullptr) {
+		for (int i = 0; i < Game->s_SeqEventAlarmBots.Count; i++) {
+			UTgSeqEvent_AlarmBots* ev = Game->s_SeqEventAlarmBots.Data[i];
+			if (ev == nullptr) continue;
+			Logger::Log("alarm", "  ev[%d] post trigCount=%d\n", i, ev->TriggerCount);
+		}
+	}
 
 	// Post-native dump of every alarm-eligible factory: the native picked the
 	// closest one with nPriority==s_nCurrentPriority (or -1) and called

@@ -2,6 +2,8 @@
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.hpp"
 #include "src/GameServer/TgGame/TgGame/BeginEndMission/TgGame__BeginEndMission.hpp"
+#include "src/GameServer/TgGame/TgGame/ActivateAlarm/TgGame__ActivateAlarm.hpp"
+#include "src/GameServer/TgGame/TgGame/UpdateMissionTimerEventWinVar/TgGame__UpdateMissionTimerEventWinVar.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 #include "src/GameServer/Armor/Armor.hpp"
@@ -200,6 +202,7 @@ enum class DispatchTag : uint8_t {
 	PlayerControllerDestroyed,    // Pre-call: drop carried beacon if any, then CheckBeacon respawn
 	PawnDestroyed,                // Post-call: drop this pawn's pawnId-keyed Armor + Inventory tracking entries
 	ServerPickupPutdownDeployableTag, // Diagnostic: log RPC entry to confirm key press reaches server
+	SeqOpActivated,               // kismet op eventActivated — TgSeqAct_AlarmBots raises the global alarm
 	// GameTimerDiagnostic,          // Diagnostic-only: before/after snapshots around original timer/match flow
 };
 
@@ -530,6 +533,10 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	if (strcmp(name, "Function Engine.PlayerController.VeryShortClientAdjustPosition") == 0) return DispatchTag::VeryShortClientAdjustPosition;
 	if (strcmp(name, "Function Engine.PlayerController.LongClientAdjustPosition") == 0) return DispatchTag::LongClientAdjustPosition;
 	if (strcmp(name, "Function Engine.PlayerController.SendClientAdjustment") == 0) return DispatchTag::SendClientAdjustment;
+
+	// Kismet action activations. eventActivated is shared by every sequence
+	// op; the handler below filters by the activated object's class.
+	if (strcmp(name, "Function Engine.SequenceOp.Activated") == 0) return DispatchTag::SeqOpActivated;
 
 	if (   strcmp(name, "Function Engine.Actor.Tick") == 0
 		|| strcmp(name, "Function Engine.GameInfoDataProvider.ProviderInstanceBound") == 0
@@ -1803,6 +1810,60 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		if (!mgr || !mgr->r_Beacon) break;
 		if (!mgr->r_Beacon->m_bIsDeployed) {
 			*retPtr = 0;  // clear the bool — entrance stays inactive
+		}
+		break;
+	}
+
+	case DispatchTag::SeqOpActivated: {
+		CallOriginal(Object, edx, Function, Params, Result);
+		// Trace every game-specific kismet op activation — actions whose
+		// original-server native body is missing activate without effect;
+		// this trace is how we spot them on real maps.
+		if (Logger::IsChannelEnabled("kismet")
+		 && ObjectClassCache::ClassNameContains(Object, "TgSeq")) {
+			const char* onRaw = Object->GetFullName();
+			const std::string opName(onRaw ? onRaw : "<null>");
+			Logger::Log("kismet", "[%s] kismet op activated: %s\n",
+				Logger::GetTime(), opName.c_str());
+		}
+		// TgSeqAct_AlarmBots: the original server's native Activated() raised
+		// the global alarm; this binary lacks it, and the base SequenceAction
+		// handler-dispatch does nothing when Target is empty (typical wiring).
+		if (ObjectClassCache::ClassNameContains(Object, "TgSeqAct_AlarmBots")) {
+			ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
+			if (Game != nullptr) {
+				const char* anRaw = Object->GetFullName();
+				const std::string actName(anRaw ? anRaw : "<null>");
+				Logger::Log("alarm",
+					"[%s] kismet action activated: %s -> ActivateAlarm(originator=none, id=0)\n",
+					Logger::GetTime(), actName.c_str());
+				// Null originator is a designed-in path: the intact native
+				// picks a random player pawn as the alarm target.
+				TgGame__ActivateAlarm::Call(Game, nullptr, nullptr, 0, 0, 0, 0);
+			}
+		}
+		// TgSeqAct_EndMission: same disconnection — the original server native
+		// ended the mission with the winner encoded by which input pin fired.
+		// Map kismet is the canonical end driver for scripted missions.
+		if (ObjectClassCache::ClassNameContains(Object, "TgSeqAct_EndMission")) {
+			UTgSeqAct_EndMission* Act = (UTgSeqAct_EndMission*)Object;
+			ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
+			if (Game != nullptr) {
+				// Pins: 0=In (no winner override), 1=Attackers Win,
+				// 2=Defenders Win. m_GameWinState: 1=defenders, 2=attackers.
+				if (Act->InputLinks.Count > 1 && Act->InputLinks.Data[1].bHasImpulse) {
+					Game->m_GameWinState = 2;
+					TgGame__UpdateMissionTimerEventWinVar::Call(Game, nullptr);
+				} else if (Act->InputLinks.Count > 2 && Act->InputLinks.Data[2].bHasImpulse) {
+					Game->m_GameWinState = 1;
+					TgGame__UpdateMissionTimerEventWinVar::Call(Game, nullptr);
+				}
+				Logger::Log("endmission",
+					"kismet TgSeqAct_EndMission: winState=%u camera=%p delaySecs=%d nextMapGameId=%d\n",
+					(unsigned)Game->m_GameWinState, (void*)Act->m_SpectatorCamera,
+					Act->m_nDelay, Act->m_nNextMapGameId);
+				BeginEndMissionImpl(Game, Act->m_SpectatorCamera, (float)Act->m_nDelay);
+			}
 		}
 		break;
 	}

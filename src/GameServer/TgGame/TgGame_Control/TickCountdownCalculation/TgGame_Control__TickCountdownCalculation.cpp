@@ -5,7 +5,9 @@
 void __fastcall TgGame_Control__TickCountdownCalculation::Call(ATgGame_Control* Game, void* edx, float DeltaTime) {
 	LogCallBegin();
 
-	if (Game == nullptr || !Game->m_bCountdownEnabled) {
+	// bGameEnded: mission already over (BeginEndMission ran) — don't keep
+	// counting down / spamming countdown messages during the end window.
+	if (Game == nullptr || !Game->m_bCountdownEnabled || Game->bGameEnded) {
 		LogCallEnd();
 		return;
 	}

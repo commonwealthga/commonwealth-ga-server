@@ -25,6 +25,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
 			  $(SRC_DIR)/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.cpp \
 			  $(SRC_DIR)/GameServer/Engine/World/BeginPlay/World__BeginPlay.cpp \
+			  $(SRC_DIR)/GameServer/Engine/KismetWebDump/KismetWebDump.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/MapDataDumper.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/WriterCommon.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgBotFactoryLocationList.cpp \

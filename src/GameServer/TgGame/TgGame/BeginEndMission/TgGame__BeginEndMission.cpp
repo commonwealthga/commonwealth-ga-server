@@ -1,10 +1,12 @@
 #include "src/GameServer/TgGame/TgGame/BeginEndMission/TgGame__BeginEndMission.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
+#include "src/GameServer/TgGame/TgMissionObjective/SetObjectiveActive/TgMissionObjective__SetObjectiveActive.hpp"
+#include "src/GameServer/TgGame/TgMissionObjective_Bot/SetObjectiveActive/TgMissionObjective_Bot__SetObjectiveActive.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "lib/nlohmann/json.hpp"
-#include <cstring>
 
 // Stripped native — both `TgGame::BeginEndMission` and the `TgGame_Ticket`
 // override are `_notimplemented` stubs in this binary. UC `TgGame.uc` calls
@@ -28,6 +30,25 @@
 namespace {
 
 constexpr float kFinishDelaySeconds = 20.0f;  // Scaleform end-screen budget.
+constexpr float kBossDeathScreenDelaySeconds = 8.0f;  // boss death-anim window.
+
+// Deferred end screen (two-phase flow): set when BeginEndMissionImpl arms a
+// pre-screen delay; consumed by the first FinishEndMission timer fire.
+bool          s_PendingEndScreen = false;
+ACameraActor* s_PendingCamera    = nullptr;
+
+// A captured (r_eStatus==8) boss objective at end time means a boss kill
+// triggered this ending — the only mode that gets a default pre-screen delay.
+bool HasCapturedBossObjective(ATgRepInfo_Game* GRI) {
+	if (!GRI) return false;
+	for (int i = 0; i < GRI->m_MissionObjectives.Count; i++) {
+		ATgMissionObjective* Obj = GRI->m_MissionObjectives.Data[i];
+		if (Obj && Obj->r_eStatus == 8
+		 && ObjectClassCache::ClassNameContains((UObject*)Obj, "TgMissionObjective_Bot"))
+			return true;
+	}
+	return false;
+}
 
 // Last-chance winner derivation when m_GameWinState wasn't already set by the
 // caller's game-type-specific logic. Objective modes (CTF/Control/Defense/
@@ -44,13 +65,50 @@ unsigned char DeriveWinStateFromGRI(ATgRepInfo_Game* GRI) {
 	return 3;
 }
 
+// Freeze gameplay for the end-mission window so nothing can change the
+// outcome between the win stamp and the end screen (notably the boss-kill
+// pre-screen delay): clear the 'MissionTimer' UC timer (SetTimer rate 0 =
+// clear; expiry/overtime can't re-fire), deactivate every mission objective,
+// and god-mode human players. AI bots stay vulnerable on purpose.
+void FreezeGameplay(ATgGame* Game, ATgRepInfo_Game* GRI) {
+	Actor__SetTimer::SetTimer(Game, 0.0f, /*bLoop=*/false,
+		FName("MissionTimer"), nullptr);
+
+	int objectivesOff = 0;
+	if (GRI) {
+		for (int i = 0; i < GRI->m_MissionObjectives.Count; i++) {
+			ATgMissionObjective* Obj = GRI->m_MissionObjectives.Data[i];
+			if (!Obj) continue;
+			// UC dispatch resolves the Bot subclass's own native override —
+			// mirror that so the right hook (and its logging) runs.
+			if (ObjectClassCache::ClassNameContains((UObject*)Obj, "TgMissionObjective_Bot"))
+				TgMissionObjective_Bot__SetObjectiveActive::Call(
+					(ATgMissionObjective_Bot*)Obj, nullptr, 0);
+			else
+				TgMissionObjective__SetObjectiveActive::Call(Obj, nullptr, 0);
+			objectivesOff++;
+		}
+	}
+
+	int godModed = 0;
+	AWorldInfo* WI = Game->WorldInfo;
+	for (AController* C = WI ? WI->ControllerList : nullptr; C != nullptr; C = C->NextController) {
+		if (!ObjectClassCache::ClassNameContains((UObject*)C, "PlayerController")) continue;
+		C->bGodMode = 1;
+		godModed++;
+	}
+
+	Logger::Log("endmission",
+		"BeginEndMission — gameplay frozen: MissionTimer cleared, "
+		"%d objectives deactivated, %d players god-moded\n",
+		objectivesOff, godModed);
+}
+
 void BroadcastGameWinState(ATgGame* Game, unsigned char winState) {
 	AWorldInfo* WI = Game->WorldInfo;
 	if (!WI) return;
 	for (AController* C = WI->ControllerList; C != nullptr; C = C->NextController) {
-		if (!C || !C->Class) continue;
-		const char* clsName = C->Class->GetFullName();
-		if (!clsName || !strstr(clsName, "PlayerController")) continue;
+		if (!C || !ObjectClassCache::ClassNameContains((UObject*)C, "PlayerController")) continue;
 		ATgPlayerController* PC = (ATgPlayerController*)C;
 		PC->eventSendClientSetGameWinState(winState);
 	}
@@ -58,7 +116,10 @@ void BroadcastGameWinState(ATgGame* Game, unsigned char winState) {
 
 }  // namespace
 
-void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera) {
+static void ShowEndScreen(ATgGame* Game, ACameraActor* endMissionCamera);
+
+void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera,
+                         float fDelayOverride) {
 	if (Game == nullptr) return;
 	if (Game->s_bGameEndMissionProcessed) {
 		Logger::Log("endmission",
@@ -66,6 +127,8 @@ void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera) {
 		return;
 	}
 	Game->s_bGameEndMissionProcessed = 1;
+	s_PendingEndScreen = false;
+	s_PendingCamera    = nullptr;
 
 	ATgRepInfo_Game* GRI = (ATgRepInfo_Game*)Game->GameReplicationInfo;
 	unsigned char winState = Game->m_GameWinState;
@@ -104,6 +167,7 @@ void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera) {
 		GRI->bForceNetUpdate    = 1;
 	}
 
+	FreezeGameplay(Game, GRI);
 	BroadcastGameWinState(Game, winState);
 
 	// Tell the control server to warm up a home map instance now — the
@@ -132,13 +196,34 @@ void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera) {
 		IpcClient::Send(msg.dump());
 	}
 
-	// UC `AllPlayersEndGame` handles per-PC GameHasEnded, training-mission
-	// specialization, beacon-freeze, and deployable cleanup. Native call so
-	// we don't risk re-entering our own BeginEndMission hook.
+	// Phase 2: the end screen. Instant for every mode except a boss kill
+	// (death animation plays out) or an explicit "Delay to End" override.
+	float preScreenDelay = fDelayOverride;
+	if (preScreenDelay <= 0.0f && HasCapturedBossObjective(GRI))
+		preScreenDelay = kBossDeathScreenDelaySeconds;
+
+	if (preScreenDelay > 0.0f) {
+		s_PendingEndScreen = true;
+		s_PendingCamera    = endMissionCamera;
+		Actor__SetTimer::SetTimer(
+			Game, preScreenDelay, /*bLoop=*/false,
+			FName("FinishEndMission"), nullptr);
+		Logger::Log("endmission",
+			"BeginEndMission — end screen deferred %.1fs (bossKill=%d, override=%.1f)\n",
+			preScreenDelay, (int)HasCapturedBossObjective(GRI), fDelayOverride);
+		return;
+	}
+
+	ShowEndScreen(Game, endMissionCamera);
+}
+
+// Opens the Scaleform end scene and arms the real finish timer. UC
+// `AllPlayersEndGame` handles per-PC GameHasEnded, training-mission
+// specialization, beacon-freeze, and deployable cleanup. Native call so we
+// don't risk re-entering our own BeginEndMission hook.
+static void ShowEndScreen(ATgGame* Game, ACameraActor* endMissionCamera) {
 	Game->eventAllPlayersEndGame(endMissionCamera);
 
-	// Arm FinishEndMission. UC signature lets callers override the delay;
-	// honor it, but default to 20s (Scaleform end-screen runtime).
 	Actor__SetTimer::SetTimer(
 		Game, kFinishDelaySeconds, /*bLoop=*/false,
 		FName("FinishEndMission"), nullptr);
@@ -148,9 +233,20 @@ void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera) {
 		kFinishDelaySeconds);
 }
 
+bool ConsumePendingEndScreen(ATgGame* Game) {
+	if (!s_PendingEndScreen) return false;
+	s_PendingEndScreen = false;
+	ACameraActor* cam = s_PendingCamera;
+	s_PendingCamera = nullptr;
+	Logger::Log("endmission",
+		"FinishEndMission timer — deferred end screen opening now\n");
+	ShowEndScreen(Game, cam);
+	return true;
+}
+
 bool __fastcall TgGame__BeginEndMission::Call(ATgGame* Game, void* edx, unsigned long bClearNextMapGame, ACameraActor* endMissionCamera, float fDelayOverride) {
 	LogCallBegin();
-	BeginEndMissionImpl(Game, endMissionCamera);
+	BeginEndMissionImpl(Game, endMissionCamera, fDelayOverride);
 	LogCallEnd();
 	return true;
 }

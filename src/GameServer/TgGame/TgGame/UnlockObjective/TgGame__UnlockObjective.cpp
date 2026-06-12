@@ -166,8 +166,10 @@ void __fastcall TgGame__UnlockObjective::Call(ATgGame* Game, void* edx, int nPri
 	// priority-advancement beacon updates. Skipped at the bootstrap call
 	// (prev priority was 0 — no factories have spawned anything yet);
 	// SpawnObject's own priority filter handles the initial state.
-	if (Game->s_nPrevPriority > 0 && Game->s_nPrevPriority != nPriority) {
-		TgGame__AdjustBeaconForwardSpawn::Call(Game, nullptr, nPriority);
+	if (GRI->r_bIsPVP) {
+		if (Game->s_nPrevPriority > 0 && Game->s_nPrevPriority != nPriority) {
+			TgGame__AdjustBeaconForwardSpawn::Call(Game, nullptr, nPriority);
+		}
 	}
 
 	// Activate TgBotFactory actors whose nPriority matches the newly-unlocked

@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame/FinishEndMission/TgGame__FinishEndMission.hpp"
+#include "src/GameServer/TgGame/TgGame/BeginEndMission/TgGame__BeginEndMission.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Stripped native — fired by the 20s `SetTimer('FinishEndMission')` armed in
@@ -8,6 +9,11 @@
 // on the end-mission scene until they disconnect — fine for first test.
 bool __fastcall TgGame__FinishEndMission::Call(ATgGame* Game, void* edx) {
 	LogCallBegin();
+	// Two-phase end flow: a deferred end screen consumes the first timer fire.
+	if (ConsumePendingEndScreen(Game)) {
+		LogCallEnd();
+		return true;
+	}
 	Logger::Log("endmission",
 		"FinishEndMission fired (no-op stub — map travel deferred to Phase 2)\n");
 	LogCallEnd();
