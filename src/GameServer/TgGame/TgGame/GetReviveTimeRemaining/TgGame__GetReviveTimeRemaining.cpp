@@ -39,7 +39,13 @@ int __fastcall TgGame__GetReviveTimeRemaining::Call(ATgGame* Game, void* edx, AC
 		return autoReleaseSecs;
 	}
 
+	// Round up so the HUD never hits 0 before the wave actually fires.
+	int secs = (int)remaining;
+	if ((float)secs < remaining) {
+		secs++;
+	}
+
 	LogCallEnd();
-	return (int)remaining;
+	return secs;
 }
 

@@ -56,10 +56,11 @@ void __fastcall TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	// TgGame.PostLogin calls StartGameTimer().
 	Game->bWaitingToStartMatch = 1;
 
-	Game->s_UseCustomReviveTimer = 0;
-	Game->m_nSecsToAutoRelease = 15;
-	Game->m_nSecsToAutoReleaseAttackers = 15;
-	Game->m_nSecsToAutoReleaseDefenders = 15;
+	// s_UseCustomReviveTimer stays at the UC default (false for every
+	// TgGame-native mode). Wave interval: UC default 20s, both sides.
+	Game->m_nSecsToAutoRelease = 20;
+	Game->m_nSecsToAutoReleaseAttackers = Game->m_nSecsToAutoRelease;
+	Game->m_nSecsToAutoReleaseDefenders = Game->m_nSecsToAutoRelease;
 	Game->m_bIsTutorialMap = 0;
 
 	// Mission time + overtime are per-map via map_game_info (v95/v97). Falls

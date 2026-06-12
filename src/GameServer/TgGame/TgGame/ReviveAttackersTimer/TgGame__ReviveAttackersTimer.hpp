@@ -12,6 +12,9 @@ public:
 	static inline void __fastcall CallOriginal(ATgGame* Game, void* edx) {
 		m_original(Game, edx);
 	};
+
+	// Shared wave logic for both sides; ReviveDefendersTimer calls with bAttackers=false.
+	static void RunWave(ATgGame* Game, bool bAttackers);
 };
 
 

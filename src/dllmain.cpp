@@ -40,6 +40,7 @@
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.hpp"
 #include "src/GameServer/TgGame/TgGame/RegisterForWaveRevive/TgGame__RegisterForWaveRevive.hpp"
+#include "src/GameServer/TgGame/TgGame/UnregisterForWaveRevive/TgGame__UnregisterForWaveRevive.hpp"
 #include "src/GameServer/TgGame/TgGame/GetReviveTimeRemaining/TgGame__GetReviveTimeRemaining.hpp"
 #include "src/GameServer/TgGame/TgGame/ReviveAttackersTimer/TgGame__ReviveAttackersTimer.hpp"
 #include "src/GameServer/TgGame/TgGame/ReviveDefendersTimer/TgGame__ReviveDefendersTimer.hpp"
@@ -468,6 +469,7 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgGame__SpawnBotById::Install();
 	TgDeviceVolume_setupDevice::Install();
 	TgGame__RegisterForWaveRevive::Install();
+	TgGame__UnregisterForWaveRevive::Install();
 	TgGame__GetReviveTimeRemaining::Install();
 	TgGame__ReviveAttackersTimer::Install();
 	TgGame__ReviveDefendersTimer::Install();

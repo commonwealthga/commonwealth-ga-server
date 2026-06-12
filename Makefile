@@ -106,6 +106,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBotPawn/TgGame__SpawnBotPawn.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/RegisterForWaveRevive/TgGame__RegisterForWaveRevive.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgGame/UnregisterForWaveRevive/TgGame__UnregisterForWaveRevive.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/GetReviveTimeRemaining/TgGame__GetReviveTimeRemaining.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/ReviveAttackersTimer/TgGame__ReviveAttackersTimer.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/ReviveDefendersTimer/TgGame__ReviveDefendersTimer.cpp \

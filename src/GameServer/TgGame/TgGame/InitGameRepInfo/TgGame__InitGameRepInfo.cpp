@@ -78,9 +78,13 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		gamerep->r_bAllowPlayerRelease = 1;
 		gamerep->r_bDefenseAlarm = 1;
 		gamerep->r_bInOverTime = 0;
-		gamerep->r_nSecsToAutoReleaseAttackers = 1;// Game->m_nSecsToAutoReleaseAttackers;
-		gamerep->r_nSecsToAutoReleaseDefenders = 1;//Game->m_nSecsToAutoReleaseDefenders;
-		gamerep->r_nReleaseDelay = 1;
+		// Wave revive timing: per-side intervals from LoadGameConfig; the
+		// Revive*Timer natives keep these in sync if Calc* changes mid-game.
+		// r_nReleaseDelay is the corpse delay before joining the wave queue
+		// (UC default 5). Future instant-respawn knob: set all three to 1 here.
+		gamerep->r_nSecsToAutoReleaseAttackers = Game->m_nSecsToAutoReleaseAttackers;
+		gamerep->r_nSecsToAutoReleaseDefenders = Game->m_nSecsToAutoReleaseDefenders;
+		gamerep->r_nReleaseDelay = 5;
 		gamerep->r_nPointsToWin = 3;
 		gamerep->r_nRoundNumber = 1;
 		gamerep->r_nMaxRoundNumber = 5;
@@ -164,9 +168,6 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_bAllowPlayerRelease = 1;
 			gamerep->r_bDefenseAlarm = 0;
 			gamerep->r_bInOverTime = 0;
-			gamerep->r_nSecsToAutoReleaseAttackers = 1;// Game->m_nSecsToAutoReleaseAttackers;
-			gamerep->r_nSecsToAutoReleaseDefenders = 1;//Game->m_nSecsToAutoReleaseDefenders;
-			gamerep->r_nReleaseDelay = 1;
 			gamerep->r_nPointsToWin = 3;
 			gamerep->r_nRoundNumber = 0;
 			gamerep->r_nMaxRoundNumber = 5;
@@ -273,9 +274,6 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_bAllowPlayerRelease = 1;
 			gamerep->r_bDefenseAlarm = 1;
 			gamerep->r_bInOverTime = 0;
-			gamerep->r_nSecsToAutoReleaseAttackers = 1;// Game->m_nSecsToAutoReleaseAttackers;
-			gamerep->r_nSecsToAutoReleaseDefenders = 1;//Game->m_nSecsToAutoReleaseDefenders;
-			gamerep->r_nReleaseDelay = 1;
 			gamerep->r_nPointsToWin = 3;
 			gamerep->r_nRoundNumber = 1;
 			gamerep->r_nMaxRoundNumber = 5;
@@ -309,9 +307,6 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_bAllowPlayerRelease = 1;
 			gamerep->r_bDefenseAlarm = 1;
 			gamerep->r_bInOverTime = 0;
-			gamerep->r_nSecsToAutoReleaseAttackers = 1;// Game->m_nSecsToAutoReleaseAttackers;
-			gamerep->r_nSecsToAutoReleaseDefenders = 1;//Game->m_nSecsToAutoReleaseDefenders;
-			gamerep->r_nReleaseDelay = 1;
 			gamerep->r_nPointsToWin = 3;
 			gamerep->r_nRoundNumber = 1;
 			// gamerep->r_nMaxRoundNumber = 5;
@@ -333,6 +328,14 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			if (mapName == "Dome3_VR_Arena_P") {
 				gamerep->r_bIsArena = 1;
 				gamerep->r_bIsMatch = 0;
+
+				// instant respawn
+				Game->m_nSecsToAutoRelease = 1;
+				Game->m_nSecsToAutoReleaseAttackers = Game->m_nSecsToAutoRelease;
+				Game->m_nSecsToAutoReleaseDefenders = Game->m_nSecsToAutoRelease;
+				gamerep->r_nSecsToAutoReleaseAttackers = Game->m_nSecsToAutoReleaseAttackers;
+				gamerep->r_nSecsToAutoReleaseDefenders = Game->m_nSecsToAutoReleaseDefenders;
+				gamerep->r_nReleaseDelay = 2;
 			}
 		}
 
@@ -351,9 +354,6 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_bAllowPlayerRelease = 1;
 			gamerep->r_bDefenseAlarm = 1;
 			gamerep->r_bInOverTime = 0;
-			gamerep->r_nSecsToAutoReleaseAttackers = 1;// Game->m_nSecsToAutoReleaseAttackers;
-			gamerep->r_nSecsToAutoReleaseDefenders = 1;//Game->m_nSecsToAutoReleaseDefenders;
-			gamerep->r_nReleaseDelay = 1;
 			gamerep->r_nPointsToWin = 0;
 			gamerep->r_nRoundNumber = 0;
 			gamerep->r_nMaxRoundNumber = 0;
@@ -375,9 +375,6 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_bAllowPlayerRelease = 1;
 			gamerep->r_bDefenseAlarm = 1;
 			gamerep->r_bInOverTime = 0;
-			gamerep->r_nSecsToAutoReleaseAttackers = 1;// Game->m_nSecsToAutoReleaseAttackers;
-			gamerep->r_nSecsToAutoReleaseDefenders = 1;//Game->m_nSecsToAutoReleaseDefenders;
-			gamerep->r_nReleaseDelay = 1;
 			gamerep->r_nPointsToWin = 0;
 			gamerep->r_nRoundNumber = 0;
 			gamerep->r_nMaxRoundNumber = 0;
@@ -399,9 +396,6 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_bAllowPlayerRelease = 1;
 			gamerep->r_bDefenseAlarm = 1;
 			gamerep->r_bInOverTime = 0;
-			gamerep->r_nSecsToAutoReleaseAttackers = 1;// Game->m_nSecsToAutoReleaseAttackers;
-			gamerep->r_nSecsToAutoReleaseDefenders = 1;//Game->m_nSecsToAutoReleaseDefenders;
-			gamerep->r_nReleaseDelay = 1;
 			gamerep->r_nPointsToWin = 3;
 			gamerep->r_nRoundNumber = 1;
 			gamerep->r_nMaxRoundNumber = 3;
@@ -426,9 +420,6 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_bAllowPlayerRelease = 1;
 			gamerep->r_bDefenseAlarm = 1;
 			gamerep->r_bInOverTime = 0;
-			gamerep->r_nSecsToAutoReleaseAttackers = 1;// Game->m_nSecsToAutoReleaseAttackers;
-			gamerep->r_nSecsToAutoReleaseDefenders = 1;//Game->m_nSecsToAutoReleaseDefenders;
-			gamerep->r_nReleaseDelay = 1;
 			gamerep->r_nPointsToWin = 800;  // also set by TgGame_Ticket::LoadGameConfig
 			gamerep->r_nRoundNumber = 1;
 			gamerep->r_nMaxRoundNumber = 3;
@@ -453,9 +444,6 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_bAllowPlayerRelease = 1;
 			gamerep->r_bDefenseAlarm = 1;
 			gamerep->r_bInOverTime = 0;
-			gamerep->r_nSecsToAutoReleaseAttackers = 1;// Game->m_nSecsToAutoReleaseAttackers;
-			gamerep->r_nSecsToAutoReleaseDefenders = 1;//Game->m_nSecsToAutoReleaseDefenders;
-			gamerep->r_nReleaseDelay = 1;
 			gamerep->r_nPointsToWin = 3;
 			gamerep->r_nRoundNumber = 1;
 			gamerep->r_nMaxRoundNumber = 3;

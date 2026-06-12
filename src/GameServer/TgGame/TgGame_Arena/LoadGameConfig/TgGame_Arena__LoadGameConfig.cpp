@@ -5,9 +5,11 @@
 void __fastcall TgGame_Arena__LoadGameConfig::Call(ATgGame_Arena* Game, void* edx) {
 	LogCallBegin();
 
-	Game->m_nSecsToAutoRelease = 15;
-	Game->m_nSecsToAutoReleaseAttackers = 15;
-	Game->m_nSecsToAutoReleaseDefenders = 15;
+	// Wave interval: UC default 20s, both sides. s_UseCustomReviveTimer stays
+	// at the UC defaults (Arena true; Defense/PointRotation/CTF false).
+	Game->m_nSecsToAutoRelease = 20;
+	Game->m_nSecsToAutoReleaseAttackers = Game->m_nSecsToAutoRelease;
+	Game->m_nSecsToAutoReleaseDefenders = Game->m_nSecsToAutoRelease;
 	Game->m_bIsTutorialMap = 0;
 
 	TgGame__LoadGameConfig::LoadCommonGameConfig(Game);
