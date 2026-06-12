@@ -3,6 +3,7 @@
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective/SetObjectiveActive/TgMissionObjective__SetObjectiveActive.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective_Bot/SetObjectiveActive/TgMissionObjective_Bot__SetObjectiveActive.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -182,6 +183,10 @@ void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera,
 		IpcClient::Send(msg.dump());
 	}
 
+	// Final stats flush BEFORE the mission-ended stamp so every stint row
+	// lands while the instance is still live (design 2026-06-12).
+	MatchStats::FlushAll();
+
 	// Authoritative end-of-mission signal: stamps end_mission_at on the
 	// parent row AND promotes any DRAFTING successor to READY in one DB
 	// transaction. After this fires, GSC_CHANGE_INSTANCE{0,0} from any
@@ -189,10 +194,19 @@ void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera,
 	// the queue's continue_in_queue config to decide between home vs the
 	// successor. Always emit, regardless of queue config — the home-pin
 	// reaper and continue routing both depend on it.
+	// Also carries the match outcome (write-once on ga_instances):
+	// winState 2=Attackers, 1=Defenders, 3=Tie; task forces 1=Att, 2=Def.
 	{
+		const char* outcome   = "STALEMATE";
+		int         winningTf = 0;
+		if (winState == 2)      { outcome = "ATTACKERS_WIN"; winningTf = 1; }
+		else if (winState == 1) { outcome = "DEFENDERS_WIN"; winningTf = 2; }
+
 		nlohmann::json msg;
-		msg["type"]        = IpcProtocol::MSG_MISSION_ENDED;
-		msg["instance_id"] = IpcClient::GetInstanceId();
+		msg["type"]               = IpcProtocol::MSG_MISSION_ENDED;
+		msg["instance_id"]        = IpcClient::GetInstanceId();
+		msg["outcome"]            = outcome;
+		msg["winning_task_force"] = winningTf;
 		IpcClient::Send(msg.dump());
 	}
 

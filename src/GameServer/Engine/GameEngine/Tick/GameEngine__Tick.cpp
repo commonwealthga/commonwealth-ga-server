@@ -3,6 +3,7 @@
 #include "src/GameServer/Combat/MissionAlerts/MissionAlerts.hpp"
 #include "src/GameServer/Combat/CombatMessageFlusher/CombatMessageFlusher.hpp"
 #include "src/GameServer/Matchmaking/SetupRebalanceTrigger/SetupRebalanceTrigger.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
 
 void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSeconds) {
 	IpcClient::DrainInbound();
@@ -15,5 +16,8 @@ void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSecon
 	// Self-gates on mission timer SETUP state; fires one rebalance request 5s
 	// before setup ends.
 	SetupRebalanceTrigger::Tick();
+	// Match stats: pending-death flush + objective capture/contest time.
+	// Self-throttles to 4Hz; no-op when stats disabled (home map).
+	MatchStats::Tick();
 	CallOriginal(Engine, edx, DeltaSeconds);
 }

@@ -15,6 +15,7 @@
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 #include "src/ControlServer/MatchmakingService/RoleWeightedSplit.hpp"
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
+#include "src/ControlServer/Database/Database.hpp"
 
 namespace {
 
@@ -201,10 +202,14 @@ private:
                 g_sessions[inst_id] = shared_from_this();
             }
 
-            // Send ACK.
+            // Send ACK. stats_enabled=false on home maps — the DLL skips
+            // all match-stats tracking/emission there (design 2026-06-12).
+            auto info = InstanceRegistry::GetInstanceById(inst_id);
+            is_home_map_ = info && info->is_home_map;
             nlohmann::json ack;
-            ack["type"]     = IpcProtocol::MSG_INSTANCE_HELLO_ACK;
-            ack["accepted"] = true;
+            ack["type"]          = IpcProtocol::MSG_INSTANCE_HELLO_ACK;
+            ack["accepted"]      = true;
+            ack["stats_enabled"] = !is_home_map_;
             send(ack.dump());
             Logger::Log("ipc", "[IpcServer] INSTANCE_HELLO_ACK sent to instance_id=%lld\n",
                 (long long)inst_id);
@@ -309,6 +314,71 @@ private:
                 (long long)instance_id_);
             TcpSession::EnsureHomeMapWarm("MSG_NEED_HOME_MAP");
         }
+        else if (type == IpcProtocol::MSG_MATCH_EVENT) {
+            if (is_home_map_) return;  // home instances are not matches
+            int64_t inst_id = j.value("instance_id", instance_id_);
+            Database::MatchEventRow row;
+            row.instance_id         = inst_id;
+            row.game_time           = j.value("game_time", 0.0);
+            row.event_type          = j.value("event_type", "");
+            row.actor_user_id       = j.value("actor_user_id", (int64_t)0);
+            row.actor_character_id  = j.value("actor_character_id", (int64_t)0);
+            row.actor_bot_id        = j.value("actor_bot_id", 0);
+            row.actor_task_force    = j.value("actor_task_force", 0);
+            row.target_user_id      = j.value("target_user_id", (int64_t)0);
+            row.target_character_id = j.value("target_character_id", (int64_t)0);
+            row.target_bot_id       = j.value("target_bot_id", 0);
+            row.target_task_force   = j.value("target_task_force", 0);
+            row.owner_user_id       = j.value("owner_user_id", (int64_t)0);
+            row.owner_character_id  = j.value("owner_character_id", (int64_t)0);
+            row.device_id           = j.value("device_id", 0);
+            row.detail              = j.value("detail", (int64_t)0);
+            row.flags               = j.value("flags", 0);
+            if (row.event_type.empty()) return;
+            const int64_t event_id = Database::InsertMatchEvent(row);
+            // KILL piggybacks its assists; ASSIST.detail = kill rowid.
+            if (event_id != 0 && j.contains("assists") && j["assists"].is_array()) {
+                for (const auto& a : j["assists"]) {
+                    Database::MatchEventRow ar;
+                    ar.instance_id         = inst_id;
+                    ar.game_time           = row.game_time;
+                    ar.event_type          = "ASSIST";
+                    ar.actor_user_id       = a.value("user_id", (int64_t)0);
+                    ar.actor_character_id  = a.value("character_id", (int64_t)0);
+                    ar.actor_task_force    = a.value("task_force", 0);
+                    ar.target_user_id      = row.target_user_id;
+                    ar.target_character_id = row.target_character_id;
+                    ar.target_bot_id       = row.target_bot_id;
+                    ar.target_task_force   = row.target_task_force;
+                    ar.detail              = event_id;
+                    Database::InsertMatchEvent(ar);
+                }
+            }
+        }
+        else if (type == IpcProtocol::MSG_MATCH_STATS) {
+            if (is_home_map_) return;
+            Database::MatchPlayerStatsRow row;
+            row.instance_id  = j.value("instance_id", instance_id_);
+            row.user_id      = j.value("user_id", (int64_t)0);
+            row.character_id = j.value("character_id", (int64_t)0);
+            row.task_force   = j.value("task_force", 0);
+            if (row.character_id == 0) return;
+            if (j.contains("scores") && j["scores"].is_array()) {
+                int i = 0;
+                for (const auto& s : j["scores"]) {
+                    if (i >= 11) break;
+                    row.scores[i++] = s.is_number() ? s.get<int>() : 0;
+                }
+            }
+            row.capture_seconds        = j.value("capture_seconds", 0.0);
+            row.contest_seconds        = j.value("contest_seconds", 0.0);
+            row.objective_captures     = j.value("objective_captures", 0);
+            row.beacon_spawns_provided = j.value("beacon_spawns_provided", 0);
+            row.beacon_spawns_used     = j.value("beacon_spawns_used", 0);
+            row.beacons_destroyed      = j.value("beacons_destroyed", 0);
+            row.time_played_seconds    = j.value("time_played_seconds", 0.0);
+            Database::UpsertMatchPlayerStats(row);
+        }
         else if (type == IpcProtocol::MSG_MISSION_ENDED) {
             // BeginEndMission fired on the mission instance. Stamp end_mission_at
             // on the parent row AND promote any DRAFTING successor to READY in
@@ -321,6 +391,14 @@ private:
             int64_t successor = InstanceRegistry::MarkMissionEnded(inst_id);
             Logger::Log("ipc", "[IpcServer] MISSION_ENDED: parent=%lld successor=%lld\n",
                 (long long)inst_id, (long long)successor);
+
+            // Win/stalemate outcome from the game's own win-state
+            // computation (design 2026-06-12). Write-once.
+            const std::string outcome = j.value("outcome", "");
+            if (!outcome.empty()) {
+                Database::SetInstanceOutcomeIfNull(
+                    inst_id, outcome, j.value("winning_task_force", 0));
+            }
 
             // Populate pre-assigned teams for the successor so each
             // survivor's GSC_CHANGE_INSTANCE arrival lands them on a
@@ -553,6 +631,7 @@ private:
     bool                     write_in_progress_;
     int64_t                  instance_id_;   // 0 until INSTANCE_HELLO validated
     bool                     validated_;     // true after INSTANCE_HELLO accepted
+    bool                     is_home_map_ = false;  // cached at HELLO; gates match-stats writes
 
     // IpcServer::SendToInstance calls IpcSession::send() -- grant access via friend.
     friend class IpcServer;

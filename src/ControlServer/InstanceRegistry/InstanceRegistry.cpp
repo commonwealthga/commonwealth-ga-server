@@ -543,6 +543,24 @@ void InstanceRegistry::MarkStopped(int64_t instance_id) {
     sqlite3* db = Database::GetConnection();
     if (!db) return;
 
+    // Outcome fallback (design 2026-06-12): instance dying without a
+    // recorded outcome was CRASHED if players were still on it, else
+    // ABANDONED. Write-once; never for home maps. Must run before the
+    // left_at wipe below.
+    {
+        char osql[512];
+        snprintf(osql, sizeof(osql),
+            "UPDATE ga_instances SET outcome = CASE WHEN "
+            "(SELECT COUNT(*) FROM ga_instance_players "
+            " WHERE instance_id = %lld AND left_at IS NULL) > 0 "
+            "THEN 'CRASHED' ELSE 'ABANDONED' END "
+            "WHERE instance_id = %lld AND outcome IS NULL AND is_home_map = 0",
+            (long long)instance_id, (long long)instance_id);
+        char* oerr = nullptr;
+        sqlite3_exec(db, osql, nullptr, nullptr, &oerr);
+        if (oerr) { sqlite3_free(oerr); }
+    }
+
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db,
         "UPDATE ga_instances SET state='STOPPED', sealed_at=strftime('%s','now') "
@@ -621,6 +639,21 @@ void InstanceRegistry::ClearStaleInstances() {
     std::lock_guard<std::mutex> lock(mutex_);
     sqlite3* db = Database::GetConnection();
     if (!db) return;
+
+    // Outcome fallback for instances orphaned by a control-server restart
+    // (design 2026-06-12). Same CRASHED/ABANDONED rule as MarkStopped.
+    {
+        char* oerr = nullptr;
+        sqlite3_exec(db,
+            "UPDATE ga_instances SET outcome = CASE WHEN "
+            "(SELECT COUNT(*) FROM ga_instance_players p "
+            " WHERE p.instance_id = ga_instances.instance_id "
+            " AND p.left_at IS NULL) > 0 "
+            "THEN 'CRASHED' ELSE 'ABANDONED' END "
+            "WHERE state != 'STOPPED' AND outcome IS NULL AND is_home_map = 0",
+            nullptr, nullptr, &oerr);
+        if (oerr) { sqlite3_free(oerr); }
+    }
 
     char* err = nullptr;
     int rc = sqlite3_exec(db,

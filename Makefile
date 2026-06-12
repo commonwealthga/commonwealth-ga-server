@@ -80,6 +80,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.cpp \
 			  $(SRC_DIR)/GameServer/Storage/TeamsData/TeamsData.cpp \
 			  $(SRC_DIR)/GameServer/Storage/PlayerRegistry/PlayerRegistry.cpp \
+			  $(SRC_DIR)/GameServer/Stats/StatsCore.cpp \
+			  $(SRC_DIR)/GameServer/Stats/MatchStats.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/ClientConnection/SendMarshal/ClientConnection__SendMarshal.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.cpp \
 			  $(SRC_DIR)/GameServer/Engine/NetConnection/SendPackageMap/NetConnection__SendPackageMap.cpp \

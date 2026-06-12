@@ -15,6 +15,7 @@
 #include "src/GameServer/TgGame/TgPawn/TrackKill/TgPawn__TrackKill.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackKilledBot/TgPawn__TrackKilledBot.hpp"
 #include "src/GameServer/TgGame/Morale/MoraleCredit.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <string>
 
@@ -244,9 +245,27 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 	//      station, sensor self-buff, etc.) acting on its deployer — i.e.
 	//      Instigator->r_Owner == Target. Without this gate, parking on your
 	//      own medical station would farm STYPE_HEALING + morale points.
-	if (Target == reinterpret_cast<AActor*>(Instigator)) return;
-	if (Instigator->r_Owner != nullptr &&
-	    Target == reinterpret_cast<AActor*>(Instigator->r_Owner)) return;
+	const bool selfDirect   = (Target == reinterpret_cast<AActor*>(Instigator));
+	const bool selfIndirect = (Instigator->r_Owner != nullptr &&
+	    Target == reinterpret_cast<AActor*>(Instigator->r_Owner));
+	if (selfDirect || selfIndirect) {
+		// Self-kill: without this, m_DeathZoomInfo never gets populated for
+		// a self-inflicted death and the release dialog shows "[unknown]".
+		// Credit the victim as their own killer (own name + device label).
+		if (fDamage > 0.0f &&
+		    ObjectClassCache::ClassNameContains(Target, "TgPawn")) {
+			ATgPawn* victim = (ATgPawn*)Target;
+			if (victim->Health <= 0) {
+				const int selfDeviceId = ResolveDeviceIdFromFireMode(
+					(UObject*)Impact.dw[0x54 / 4]);
+				FireSaveDeathInfoForZoomCam(victim, victim, nullptr,
+				                            selfDeviceId, false);
+				MatchStats::OnKill(victim, nullptr, victim, selfDeviceId,
+				                   /*is_pet_kill=*/false, /*is_self_kill=*/true);
+			}
+		}
+		return;  // self-effects still never credit stats/morale
+	}
 
 	const bool isHeal = (fDamage < 0.0f);
 	const float magnitude = isHeal ? -fDamage : fDamage;
@@ -447,6 +466,12 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 			// path: TrackKill's native has no UC caller in our build.
 			if (bIsEnemy) {
 				TgPawn__TrackKill::Call(Victim, nullptr, DamagerPawn);
+
+				// Match event: scoreboard-parity KILL (+assists). Team-kills
+				// stay killer-less — the victim's pending DEATH covers them.
+				MatchStats::OnKill(CreditPawn, isPetKill ? DamagerPawn : nullptr,
+				                   Victim, killerDeviceId, isPetKill,
+				                   /*is_self_kill=*/false);
 			}
 
 			if (CreditPawn != nullptr && CreditPawn != Victim &&
@@ -540,13 +565,20 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 		    magnitude > 0.0f) {
 			TgPawn__TrackKilledBot::Call(damageCreditPawn, nullptr, 0);
 
+			// Match event: DEPLOYABLE_DESTROYED / BEACON_DESTROYED with
+			// deployer attribution (design 2026-06-12).
+			const bool isBeaconKill =
+				targetClassName.find("TgDeploy_Beacon") != std::string::npos;
+			MatchStats::OnDeployableDestroyed(damageCreditPawn, targetDeployable,
+			                                  isBeaconKill);
+
 			// Beacon destroy carries an additional bonus on top of the
 			// bot-kill credit: +3000 STYPE_OBJS for the destroyer and a
 			// center-screen "@@player_name@@ destroyed the enemy beacon!"
 			// alert broadcast to every player on the destroyer's task
 			// force (including the destroyer themselves). Numbers and
 			// 5s alert duration per user spec.
-			if (targetClassName.find("TgDeploy_Beacon") != std::string::npos &&
+			if (isBeaconKill &&
 			    damageCreditPawn->PlayerReplicationInfo != nullptr) {
 				ATgRepInfo_Player* attackerPRI =
 					(ATgRepInfo_Player*)damageCreditPawn->PlayerReplicationInfo;

@@ -8,6 +8,7 @@
 #include "src/Shared/IpcProtocol.hpp"
 #include "lib/nlohmann/json.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 void __fastcall NetConnection__Cleanup::Call(UNetConnection* Connection) {
@@ -49,6 +50,13 @@ void __fastcall NetConnection__Cleanup::Call(UNetConnection* Connection) {
 		left["instance_id"]  = IpcClient::GetInstanceId();
 		left["session_guid"] = session_guid;
 		IpcClient::Send(left.dump());
+
+		// Match stats: bank + upsert + LEAVE before the pawn is torn down.
+		{
+			auto pinfo = PlayerRegistry::GetByGuid(session_guid);
+			MatchStats::OnPlayerLeft((ATgPawn*)pawn,
+				pinfo ? pinfo->user_id : 0);
+		}
 
 		bool has_other_connection = false;
 		for (const auto& kv : GClientConnectionsData) {

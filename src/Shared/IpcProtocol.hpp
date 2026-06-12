@@ -56,6 +56,27 @@ constexpr const char* MSG_NEED_HOME_MAP = "NEED_HOME_MAP";
 //   { "type": "MISSION_ENDED", "instance_id": <int64> }
 constexpr const char* MSG_MISSION_ENDED = "MISSION_ENDED";
 
+// One row for ga_match_events, sent by the DLL the moment the event
+// happens. Control server stamps wall-clock ts at insert. KILL messages
+// carry an optional "assists" array; the server inserts the KILL row
+// first and writes its rowid into each ASSIST row's detail column.
+// All identity fields optional (0/absent = NULL): actor_user_id,
+// actor_character_id, actor_bot_id, actor_task_force, target_*,
+// owner_user_id, owner_character_id, device_id, detail, flags.
+//   { "type": "MATCH_EVENT", "instance_id": <int64>, "game_time": <float>,
+//     "event_type": "KILL", ..., "assists": [{...}] }
+constexpr const char* MSG_MATCH_EVENT = "MATCH_EVENT";
+
+// Absolute per-stint totals for ga_match_player_stats. Upsert keyed
+// (instance_id, character_id, task_force) — idempotent, resend-safe.
+//   { "type": "MATCH_STATS", "instance_id": <int64>, "user_id": <int64>,
+//     "character_id": <int64>, "task_force": <int>, "scores": [11 ints],
+//     "capture_seconds": <float>, "contest_seconds": <float>,
+//     "objective_captures": <int>, "beacon_spawns_provided": <int>,
+//     "beacon_spawns_used": <int>, "beacons_destroyed": <int>,
+//     "time_played_seconds": <float> }
+constexpr const char* MSG_MATCH_STATS = "MATCH_STATS";
+
 // Sent by a mission instance at the game-mode-specific pre-warm trigger
 // (e.g. when one team passes the 50% threshold, or a 60s-remaining alert
 // fires — exact trigger TBD per game mode). Asks the control server to

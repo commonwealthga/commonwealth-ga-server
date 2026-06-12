@@ -1658,6 +1658,102 @@ void Database::Init() {
 		}
 	}
 
+	// Match stats tables + ga_instances outcome columns (design
+	// 2026-06-12-match-stats-tracking). UNCONDITIONAL + idempotent —
+	// shared version counter, same rationale as the moderation block.
+	{
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_match_events ("
+			"  id                  INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  instance_id         INTEGER NOT NULL,"
+			"  ts                  INTEGER NOT NULL,"
+			"  game_time           REAL,"
+			"  event_type          TEXT NOT NULL,"
+			"  actor_user_id       INTEGER,"
+			"  actor_character_id  INTEGER,"
+			"  actor_bot_id        INTEGER,"
+			"  actor_task_force    INTEGER,"
+			"  target_user_id      INTEGER,"
+			"  target_character_id INTEGER,"
+			"  target_bot_id       INTEGER,"
+			"  target_task_force   INTEGER,"
+			"  owner_user_id       INTEGER,"
+			"  owner_character_id  INTEGER,"
+			"  device_id           INTEGER,"
+			"  detail              INTEGER,"
+			"  flags               INTEGER NOT NULL DEFAULT 0"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_match_events table: %s\n", err);
+			sqlite3_free(err); err = nullptr;
+		}
+
+		result = sqlite3_exec(db,
+			"CREATE INDEX IF NOT EXISTS idx_ga_match_events_instance "
+			"ON ga_match_events(instance_id);"
+			"CREATE INDEX IF NOT EXISTS idx_ga_match_events_actor "
+			"ON ga_match_events(actor_user_id);"
+			"CREATE INDEX IF NOT EXISTS idx_ga_match_events_target "
+			"ON ga_match_events(target_user_id);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_match_events indexes: %s\n", err);
+			sqlite3_free(err); err = nullptr;
+		}
+
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_match_player_stats ("
+			"  instance_id            INTEGER NOT NULL,"
+			"  user_id                INTEGER NOT NULL,"
+			"  character_id           INTEGER NOT NULL,"
+			"  task_force             INTEGER NOT NULL,"
+			"  rep_points             INTEGER NOT NULL DEFAULT 0,"
+			"  kills                  INTEGER NOT NULL DEFAULT 0,"
+			"  assists                INTEGER NOT NULL DEFAULT 0,"
+			"  damage_taken           INTEGER NOT NULL DEFAULT 0,"
+			"  damage_dealt           INTEGER NOT NULL DEFAULT 0,"
+			"  buff_value             INTEGER NOT NULL DEFAULT 0,"
+			"  healing                INTEGER NOT NULL DEFAULT 0,"
+			"  defense                INTEGER NOT NULL DEFAULT 0,"
+			"  deaths                 INTEGER NOT NULL DEFAULT 0,"
+			"  obj_points             INTEGER NOT NULL DEFAULT 0,"
+			"  bot_kills              INTEGER NOT NULL DEFAULT 0,"
+			"  capture_seconds        REAL    NOT NULL DEFAULT 0,"
+			"  contest_seconds        REAL    NOT NULL DEFAULT 0,"
+			"  objective_captures     INTEGER NOT NULL DEFAULT 0,"
+			"  beacon_spawns_provided INTEGER NOT NULL DEFAULT 0,"
+			"  beacon_spawns_used     INTEGER NOT NULL DEFAULT 0,"
+			"  beacons_destroyed      INTEGER NOT NULL DEFAULT 0,"
+			"  time_played_seconds    REAL    NOT NULL DEFAULT 0,"
+			"  PRIMARY KEY (instance_id, character_id, task_force)"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_match_player_stats table: %s\n", err);
+			sqlite3_free(err); err = nullptr;
+		}
+
+		result = sqlite3_exec(db,
+			"CREATE INDEX IF NOT EXISTS idx_ga_match_player_stats_user "
+			"ON ga_match_player_stats(user_id);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_match_player_stats index: %s\n", err);
+			sqlite3_free(err); err = nullptr;
+		}
+
+		// Outcome columns. ALTER failure tolerated (column already exists).
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_instances ADD COLUMN outcome TEXT;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_instances ADD COLUMN winning_task_force INTEGER;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
+	}
+
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
 }
@@ -2123,4 +2219,144 @@ bool Database::ClearUserVerifier(int64_t user_id) {
 	const bool ok = sqlite3_step(stmt) == SQLITE_DONE;
 	sqlite3_finalize(stmt);
 	return ok;
+}
+
+// ---- Match stats (design 2026-06-12) ---------------------------------------
+
+namespace {
+// 0 → NULL for optional identity columns.
+void BindIdOrNull(sqlite3_stmt* stmt, int idx, int64_t v) {
+	if (v != 0) sqlite3_bind_int64(stmt, idx, v);
+	else        sqlite3_bind_null(stmt, idx);
+}
+void BindIntOrNull(sqlite3_stmt* stmt, int idx, int v) {
+	if (v != 0) sqlite3_bind_int(stmt, idx, v);
+	else        sqlite3_bind_null(stmt, idx);
+}
+}  // namespace
+
+int64_t Database::InsertMatchEvent(const MatchEventRow& row) {
+	sqlite3* db = GetConnection();
+	if (!db) return 0;
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"INSERT INTO ga_match_events (instance_id, ts, game_time, event_type,"
+		" actor_user_id, actor_character_id, actor_bot_id, actor_task_force,"
+		" target_user_id, target_character_id, target_bot_id, target_task_force,"
+		" owner_user_id, owner_character_id, device_id, detail, flags)"
+		" VALUES (?, strftime('%s','now'), ?, ?,"
+		"  ?, ?, ?, ?,  ?, ?, ?, ?,  ?, ?, ?, ?, ?)",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("matchstats", "[DB] InsertMatchEvent prepare failed: %s\n",
+			sqlite3_errmsg(db));
+		return 0;
+	}
+	sqlite3_bind_int64(stmt, 1, row.instance_id);
+	sqlite3_bind_double(stmt, 2, row.game_time);
+	sqlite3_bind_text(stmt, 3, row.event_type.c_str(), -1, SQLITE_TRANSIENT);
+	BindIdOrNull (stmt, 4,  row.actor_user_id);
+	BindIdOrNull (stmt, 5,  row.actor_character_id);
+	BindIntOrNull(stmt, 6,  row.actor_bot_id);
+	BindIntOrNull(stmt, 7,  row.actor_task_force);
+	BindIdOrNull (stmt, 8,  row.target_user_id);
+	BindIdOrNull (stmt, 9,  row.target_character_id);
+	BindIntOrNull(stmt, 10, row.target_bot_id);
+	BindIntOrNull(stmt, 11, row.target_task_force);
+	BindIdOrNull (stmt, 12, row.owner_user_id);
+	BindIdOrNull (stmt, 13, row.owner_character_id);
+	BindIntOrNull(stmt, 14, row.device_id);
+	BindIdOrNull (stmt, 15, row.detail);
+	sqlite3_bind_int(stmt, 16, row.flags);
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	if (rc != SQLITE_DONE) {
+		Logger::Log("matchstats", "[DB] InsertMatchEvent step failed: %s\n",
+			sqlite3_errmsg(db));
+		return 0;
+	}
+	return sqlite3_last_insert_rowid(db);
+}
+
+void Database::UpsertMatchPlayerStats(const MatchPlayerStatsRow& row) {
+	sqlite3* db = GetConnection();
+	if (!db) return;
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"INSERT INTO ga_match_player_stats (instance_id, user_id, character_id,"
+		" task_force, rep_points, kills, assists, damage_taken, damage_dealt,"
+		" buff_value, healing, defense, deaths, obj_points, bot_kills,"
+		" capture_seconds, contest_seconds, objective_captures,"
+		" beacon_spawns_provided, beacon_spawns_used, beacons_destroyed,"
+		" time_played_seconds)"
+		" VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+		" ON CONFLICT(instance_id, character_id, task_force) DO UPDATE SET"
+		"  user_id=excluded.user_id, rep_points=excluded.rep_points,"
+		"  kills=excluded.kills, assists=excluded.assists,"
+		"  damage_taken=excluded.damage_taken, damage_dealt=excluded.damage_dealt,"
+		"  buff_value=excluded.buff_value, healing=excluded.healing,"
+		"  defense=excluded.defense, deaths=excluded.deaths,"
+		"  obj_points=excluded.obj_points, bot_kills=excluded.bot_kills,"
+		"  capture_seconds=excluded.capture_seconds,"
+		"  contest_seconds=excluded.contest_seconds,"
+		"  objective_captures=excluded.objective_captures,"
+		"  beacon_spawns_provided=excluded.beacon_spawns_provided,"
+		"  beacon_spawns_used=excluded.beacon_spawns_used,"
+		"  beacons_destroyed=excluded.beacons_destroyed,"
+		"  time_played_seconds=excluded.time_played_seconds",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("matchstats", "[DB] UpsertMatchPlayerStats prepare failed: %s\n",
+			sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int64(stmt, 1, row.instance_id);
+	sqlite3_bind_int64(stmt, 2, row.user_id);
+	sqlite3_bind_int64(stmt, 3, row.character_id);
+	sqlite3_bind_int(stmt, 4, row.task_force);
+	for (int i = 0; i < 11; i++) sqlite3_bind_int(stmt, 5 + i, row.scores[i]);
+	sqlite3_bind_double(stmt, 16, row.capture_seconds);
+	sqlite3_bind_double(stmt, 17, row.contest_seconds);
+	sqlite3_bind_int(stmt, 18, row.objective_captures);
+	sqlite3_bind_int(stmt, 19, row.beacon_spawns_provided);
+	sqlite3_bind_int(stmt, 20, row.beacon_spawns_used);
+	sqlite3_bind_int(stmt, 21, row.beacons_destroyed);
+	sqlite3_bind_double(stmt, 22, row.time_played_seconds);
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	if (rc != SQLITE_DONE) {
+		Logger::Log("matchstats", "[DB] UpsertMatchPlayerStats step failed: %s\n",
+			sqlite3_errmsg(db));
+	}
+}
+
+void Database::SetInstanceOutcomeIfNull(int64_t instance_id,
+                                        const std::string& outcome,
+                                        int winning_task_force) {
+	sqlite3* db = GetConnection();
+	if (!db) return;
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"UPDATE ga_instances SET outcome = ?, winning_task_force = ? "
+		"WHERE instance_id = ? AND outcome IS NULL AND is_home_map = 0",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("matchstats", "[DB] SetInstanceOutcomeIfNull prepare failed: %s\n",
+			sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_text(stmt, 1, outcome.c_str(), -1, SQLITE_TRANSIENT);
+	if (winning_task_force != 0) sqlite3_bind_int(stmt, 2, winning_task_force);
+	else                         sqlite3_bind_null(stmt, 2);
+	sqlite3_bind_int64(stmt, 3, instance_id);
+	rc = sqlite3_step(stmt);
+	const int changed = sqlite3_changes(db);
+	sqlite3_finalize(stmt);
+	if (rc != SQLITE_DONE) {
+		Logger::Log("matchstats", "[DB] SetInstanceOutcomeIfNull step failed: %s\n",
+			sqlite3_errmsg(db));
+	} else {
+		Logger::Log("matchstats", "[Outcome] instance=%lld outcome=%s wtf=%d applied=%d\n",
+			(long long)instance_id, outcome.c_str(), winning_task_force, changed);
+	}
 }

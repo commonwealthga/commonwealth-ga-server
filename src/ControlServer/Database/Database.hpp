@@ -92,4 +92,41 @@ public:
     // out after typing a throwaway password on their first verified login.
     // registered_at is left untouched. Returns false if the update failed.
     static bool ClearUserVerifier(int64_t user_id);
+
+    // ---- Match stats (design 2026-06-12) -----------------------------------
+    struct MatchEventRow {
+        int64_t instance_id = 0;
+        double  game_time   = 0;
+        std::string event_type;
+        // 0 = NULL for all identity/optional fields below.
+        int64_t actor_user_id = 0,  actor_character_id = 0;
+        int     actor_bot_id = 0,   actor_task_force = 0;
+        int64_t target_user_id = 0, target_character_id = 0;
+        int     target_bot_id = 0,  target_task_force = 0;
+        int64_t owner_user_id = 0,  owner_character_id = 0;
+        int     device_id = 0;
+        int64_t detail = 0;
+        int     flags = 0;
+    };
+    // Inserts one event row (ts stamped now). Returns rowid, 0 on failure.
+    static int64_t InsertMatchEvent(const MatchEventRow& row);
+
+    struct MatchPlayerStatsRow {
+        int64_t instance_id = 0, user_id = 0, character_id = 0;
+        int     task_force = 0;
+        int     scores[11] = {};   // r_Scores order (STYPE_*)
+        double  capture_seconds = 0, contest_seconds = 0;
+        int     objective_captures = 0;
+        int     beacon_spawns_provided = 0, beacon_spawns_used = 0;
+        int     beacons_destroyed = 0;
+        double  time_played_seconds = 0;
+    };
+    // Absolute totals; upsert on (instance_id, character_id, task_force).
+    static void UpsertMatchPlayerStats(const MatchPlayerStatsRow& row);
+
+    // Write-once outcome stamp (WHERE outcome IS NULL AND is_home_map=0).
+    // winning_task_force 0 = NULL.
+    static void SetInstanceOutcomeIfNull(int64_t instance_id,
+                                         const std::string& outcome,
+                                         int winning_task_force);
 };

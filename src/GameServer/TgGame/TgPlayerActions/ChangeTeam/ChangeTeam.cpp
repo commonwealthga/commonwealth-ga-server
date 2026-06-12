@@ -2,6 +2,7 @@
 
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/GameServer/TgGame/TgPawn/SetTaskForceNumber/TgPawn__SetTaskForceNumber.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -95,11 +96,17 @@ void Execute(const std::string& session_guid, Target target) {
         "[ChatCmd][DLL] /changeteam guid=%s target=%s: flipping %d -> %d\n",
         session_guid.c_str(), TargetName(target), current_team, new_team);
 
+    // Bank the old-team stint + emit TEAM_CHANGE before the flip.
+    MatchStats::OnTeamChanged((ATgPawn*)Pawn, new_team);
+
     // Flip the team. SetTaskForceNumber writes both r_TaskForce and Team on the
     // PRI, calls repinfo->SetTeam(taskforce), and fires Pawn->NotifyTeamChanged.
     // 1 = Attackers, anything else = Defenders (per
     // TgPawn__SetTaskForceNumber.cpp:5-18).
     TgPawn__SetTaskForceNumber::Call(Pawn, nullptr, new_team);
+
+    // Administrative respawn — must not count as a death (design 2026-06-12).
+    MatchStats::SuppressNextDeath(((ATgPawn*)Pawn)->r_nPawnId);
 
     // Suicide -> normal death state -> respawn timer -> respawn pulls the
     // freshly-flipped team from the PRI.

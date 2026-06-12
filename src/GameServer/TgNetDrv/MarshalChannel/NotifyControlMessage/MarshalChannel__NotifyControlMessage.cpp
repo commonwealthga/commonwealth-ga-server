@@ -33,6 +33,7 @@
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/GameServer/Constants/TcpTypes.h"
 #include "src/GameServer/Constants/TcpFunctions.h"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <algorithm>
 
@@ -454,6 +455,15 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 		joined["session_guid"] = session_guid;
 		joined["task_force"]   = tf;
 		IpcClient::Send(joined.dump());
+	}
+
+	// Match stats: open/restore this player's stint (no-op on home maps).
+	{
+		auto& cd = GClientConnectionsData[(int32_t)Connection];
+		MatchStats::OnPlayerJoined((ATgPawn*)newcontroller->Pawn,
+			cd.PlayerInfo.user_id,
+			cd.PlayerInfo.selected_character_id,
+			cd.PlayerInfo.task_force);
 	}
 
 	// First player: wire up BeaconManagers (RegisterBeacon sets r_BeaconStatus so entrance activates).

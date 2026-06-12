@@ -13,6 +13,7 @@
 #include "src/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Globals.hpp"
 
 namespace {
@@ -454,7 +455,10 @@ void IpcClient::DrainInbound() {
             Logger::Log("ipc", "[IPC] PONG received\n");
         } else if (type == IpcProtocol::MSG_INSTANCE_HELLO_ACK) {
             bool accepted = j.value("accepted", false);
-            Logger::Log("ipc", "[IPC] INSTANCE_HELLO_ACK: accepted=%d\n", (int)accepted);
+            bool stats_enabled = j.value("stats_enabled", false);
+            MatchStats::SetEnabled(stats_enabled);
+            Logger::Log("ipc", "[IPC] INSTANCE_HELLO_ACK: accepted=%d stats=%d\n",
+                (int)accepted, (int)stats_enabled);
         } else if (type == IpcProtocol::MSG_PLAYER_REGISTER) {
             std::string guid        = j.value("session_guid", "");
             std::string pname       = j.value("player_name", "");

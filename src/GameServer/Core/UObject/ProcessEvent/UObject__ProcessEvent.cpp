@@ -8,6 +8,7 @@
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 #include "src/GameServer/Armor/Armor.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
@@ -203,6 +204,7 @@ enum class DispatchTag : uint8_t {
 	PawnDestroyed,                // Post-call: drop this pawn's pawnId-keyed Armor + Inventory tracking entries
 	ServerPickupPutdownDeployableTag, // Diagnostic: log RPC entry to confirm key press reaches server
 	SeqOpActivated,               // kismet op eventActivated — TgSeqAct_AlarmBots raises the global alarm
+	TgTriggerBeaconEntrance,      // Pre-call: record teammate beacon-teleport usage for match stats
 	// GameTimerDiagnostic,          // Diagnostic-only: before/after snapshots around original timer/match flow
 };
 
@@ -606,6 +608,8 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	// covers every teardown path: death/respawn, disconnect, map travel.
 	if (strcmp(name, "Function Engine.Pawn.Destroyed") == 0)                         return DispatchTag::PawnDestroyed;
 	if (strcmp(name, "Function TgGame.TgPlayerController.ServerPickupPutdownDeployable") == 0) return DispatchTag::ServerPickupPutdownDeployableTag;
+	// Engine-timer dispatch of the beacon-entrance teleport (TgPawn.uc:9234).
+	if (strcmp(name, "Function TgGame.TgPawn.TriggerBeaconEntrance") == 0)           return DispatchTag::TgTriggerBeaconEntrance;
 	// if (IsGameTimerDiagnosticFunction(name)) return DispatchTag::GameTimerDiagnostic;
 
 	return DispatchTag::Unknown;
@@ -1811,6 +1815,24 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		if (!mgr->r_Beacon->m_bIsDeployed) {
 			*retPtr = 0;  // clear the bool — entrance stays inactive
 		}
+		break;
+	}
+
+	case DispatchTag::TgTriggerBeaconEntrance: {
+		// Teammate beacon teleport. Resolve the same way the UC body does
+		// (TgPawn.uc:9234): team beacon manager → r_Beacon → Instigator
+		// (deployer). Pre-call so the beacon still exists when we read it.
+		ATgPawn* P = (ATgPawn*)Object;
+		ATgRepInfo_Player* PRI = P
+			? (ATgRepInfo_Player*)P->PlayerReplicationInfo : nullptr;
+		if (PRI && PRI->r_TaskForce && PRI->r_TaskForce->r_BeaconManager) {
+			ATgDeploy_Beacon* beacon = PRI->r_TaskForce->r_BeaconManager->r_Beacon;
+			if (beacon && beacon->Instigator &&
+			    (ATgPawn*)beacon->Instigator != P) {
+				MatchStats::OnBeaconSpawnUsed(P, (ATgPawn*)beacon->Instigator);
+			}
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
 		break;
 	}
 

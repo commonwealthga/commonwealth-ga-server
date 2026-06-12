@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgPlayerController/ServerChangeTaskForce/TgPlayerController__ServerChangeTaskForce.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/TgGame/TgPawn/SetTaskForceNumber/TgPawn__SetTaskForceNumber.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
@@ -16,6 +17,9 @@ void __fastcall TgPlayerController__ServerChangeTaskForce::Call(ATgPlayerControl
 		LogCallEnd();
 		return;
 	}
+
+	// Bank the old-team stint + emit TEAM_CHANGE before the flip.
+	MatchStats::OnTeamChanged((ATgPawn*)Controller->Pawn, target_task_force);
 
 	TgPawn__SetTaskForceNumber::Call((ATgPawn*)Controller->Pawn, nullptr, target_task_force);
 
