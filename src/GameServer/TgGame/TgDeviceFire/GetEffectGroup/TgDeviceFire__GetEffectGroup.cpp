@@ -510,19 +510,17 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 			// Map fire-mode attack signal to TgEffectGroup.AttackType enum
 			// (TgEffectGroup.uc:40-48): None=0, Melee=1, Range=2, AOE=3.
 			//
-			// AOE takes precedence over melee/range — the only `valid_value_group=25`
-			// entries are 83/85/87/170/177/...; none of them encode "AOE", so the
-			// original game distinguishes splash damage via the m_bIsAOE bit on
-			// the fire mode (UC TgDeviceFire.uc keys all of its AoE handling off
-			// it: ApplyHit:339, splash distance scaling:448-465). Without this
-			// override, grenade/bomb/aftershock/gammaburst splash damage gets
-			// tagged as Range (2) and CalcAttackTypeProtection looks up prop 218
-			// (Protection-Ranged) instead of prop 219 (Protection-AOE) — making
-			// the AoE Shield (effect 5835: prop 219 +100, 10s/2000hp) silently
-			// useless against the very damage it's meant to absorb.
+			// m_bIsAOE is a GEOMETRY flag (attack has an area/arc), NOT an attack
+			// class. The native fire-mode setup (FUN_10a1f3b0 case 170) sets it via
+			// m_bIsAOE = (GetEffectiveRadius > 0), so cone melee (Effect Radius>0,
+			// Cone Angle prop 64) trips it too. Classify MELEE FIRST so its cone
+			// radius can't re-tag it AOE — otherwise melee routes to prop 219
+			// (Protection-AOE) and the AoE Shield (effect 5835) negates it.
+			// AOE bit is honoured only for non-melee (grenades/mines/artillery,
+			// ranged splash) so the shield still absorbs the damage it's meant to.
 			unsigned char eAttackType = 0;
-			if (fmIsAOE)                                        eAttackType = 3; // TGAT_AOE
-			else if (fmAttackType == 170)                       eAttackType = 1; // TGAT_Melee
+			if (fmAttackType == 170 || fmAttackType == 372)     eAttackType = 1; // TGAT_Melee (incl. Fast Melee)
+			else if (fmIsAOE)                                   eAttackType = 3; // TGAT_AOE
 			else if (fmAttackType == 85 || fmAttackType == 177) eAttackType = 2; // TGAT_Range
 
 			for (int** pp = begin; pp != end; pp++) {
