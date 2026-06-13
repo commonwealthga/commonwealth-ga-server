@@ -16,7 +16,7 @@ void __fastcall TgPawn__TrackBotHealing::Call(ATgPawn* Pawn, void* edx, int nDev
 		ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
 		if (PRI != nullptr) {
 			PRI->r_Scores[6] += (int)effectiveHeal;  // STYPE_HEALING
-			PRI->bNetDirty = 1;
+			// PRI->bNetDirty = 1;
 		}
 	}
 

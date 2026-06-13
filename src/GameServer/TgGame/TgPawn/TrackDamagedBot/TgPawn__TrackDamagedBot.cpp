@@ -10,7 +10,7 @@ void __fastcall TgPawn__TrackDamagedBot::Call(ATgPawn* Pawn, void* edx, ATgPawn*
 		ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
 		if (PRI != nullptr) {
 			PRI->r_Scores[4] += nDamage;  // STYPE_DAMAGE
-			PRI->bNetDirty = 1;
+			// PRI->bNetDirty = 1;
 		}
 	}
 

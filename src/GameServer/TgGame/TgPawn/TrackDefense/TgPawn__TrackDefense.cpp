@@ -11,7 +11,7 @@ void __fastcall TgPawn__TrackDefense::Call(ATgPawn* Pawn, void* edx, int nDevice
 		ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
 		if (PRI != nullptr) {
 			PRI->r_Scores[7] += nDamage;  // STYPE_DEFENSE
-			PRI->bNetDirty = 1;
+			// PRI->bNetDirty = 1;
 		}
 	}
 

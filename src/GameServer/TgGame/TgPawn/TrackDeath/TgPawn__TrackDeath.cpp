@@ -21,7 +21,7 @@ void __fastcall TgPawn__TrackDeath::Call(ATgPawn* Pawn, void* edx) {
 	ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
 	if (PRI != nullptr) {
 		PRI->r_Scores[8]++;  // STYPE_DEATHS
-		PRI->bNetDirty = 1;
+		// PRI->bNetDirty = 1;
 		// PRI->bForceNetUpdate = 1;
 	}
 

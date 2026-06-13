@@ -11,7 +11,7 @@ void __fastcall TgPawn__TrackBuff::Call(ATgPawn* Pawn, void* edx, int nDeviceMod
 		ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
 		if (PRI != nullptr) {
 			PRI->r_Scores[5] += (int)fValue;  // STYPE_BUFFVALUE
-			PRI->bNetDirty = 1;
+			// PRI->bNetDirty = 1;
 		}
 	}
 

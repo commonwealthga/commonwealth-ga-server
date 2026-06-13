@@ -11,7 +11,7 @@ void __fastcall TgPawn__TrackDamageTaken::Call(ATgPawn* Pawn, void* edx, int nDa
 		ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
 		if (PRI != nullptr) {
 			PRI->r_Scores[3] += nDamage;  // STYPE_DAMAGETAKEN
-			PRI->bNetDirty = 1;
+			// PRI->bNetDirty = 1;
 		}
 
 		// Reveal-on-damage: hold the stealth reveal for ~1s, then full stealth returns.

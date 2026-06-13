@@ -10,7 +10,7 @@ void __fastcall TgPawn__TrackKilledBot::Call(ATgPawn* Pawn, void* edx, int nDevi
 	ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
 	if (PRI != nullptr) {
 		PRI->r_Scores[10]++;  // STYPE_KILLS_BOT
-		PRI->bNetDirty = 1;
+		// PRI->bNetDirty = 1;
 	}
 
 	LogCallEnd();

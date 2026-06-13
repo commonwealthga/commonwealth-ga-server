@@ -20,7 +20,7 @@ void __fastcall TgPawn__TrackObjectivePoints::Call(ATgPawn* Pawn, void* edx, int
 		ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
 		if (PRI != nullptr) {
 			PRI->r_Scores[9] += nPoints;  // STYPE_OBJS
-			PRI->bNetDirty = 1;
+			// PRI->bNetDirty = 1;
 		}
 
 		ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;

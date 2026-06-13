@@ -37,8 +37,8 @@ void __fastcall TgPawn__TickMakeVisibleCalculation::Call(ATgPawn* Pawn, void* /*
 		// schemes drift. A fat constant crushes decay and the engine's own tick
 		// clamp at 100 pins m there — delivery-rate-insensitive.
 		Pawn->r_fMakeVisibleIncreased = 10.0f;  // DO_REP_FORCED ships while != 0
-		Pawn->bNetDirty = 1;
-		Pawn->bForceNetUpdate = 1;
+		// Pawn->bNetDirty = 1;
+		// Pawn->bForceNetUpdate = 1;
 		if (windowActive && it->second <= 0.0f) g_revealRemaining.erase(it);
 		return;
 	}
@@ -48,7 +48,7 @@ void __fastcall TgPawn__TickMakeVisibleCalculation::Call(ATgPawn* Pawn, void* /*
 	if (Pawn->m_fMakeVisibleCurrent != 0.0f || Pawn->r_fMakeVisibleIncreased != 0.0f) {
 		Pawn->m_fMakeVisibleCurrent   = 0.0f;
 		Pawn->r_fMakeVisibleIncreased = 0.0f;
-		Pawn->bNetDirty = 1;
+		// Pawn->bNetDirty = 1;
 	}
 	if (it != g_revealRemaining.end()) g_revealRemaining.erase(it);
 }

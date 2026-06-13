@@ -288,8 +288,8 @@ void Award(ATgPawn* recipient, float magnitude, bool isHeal,
 		// sync we haven't reimplemented.
 		recipient->m_fCurrentMoralePoints      = after;
 		recipient->r_fCurrentServerMoralePoints = after;
-		recipient->bForceNetUpdate = 1;
-		recipient->bNetDirty       = 1;
+		// recipient->bForceNetUpdate = 1;
+		// recipient->bNetDirty       = 1;
 	}
 
 	if (Logger::IsChannelEnabled("morale")) {

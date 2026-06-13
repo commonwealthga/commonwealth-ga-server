@@ -49,7 +49,7 @@ void __fastcall TgPawn__TrackKill::Call(ATgPawn* Pawn, void* edx, ATgPawn* Kille
 	ATgRepInfo_Player* KillerPRI = (ATgRepInfo_Player*)CreditPawn->PlayerReplicationInfo;
 	if (KillerPRI != nullptr) {
 		KillerPRI->r_Scores[scoreIndex]++;
-		KillerPRI->bNetDirty = 1;
+		// KillerPRI->bNetDirty = 1;
 		// KillerPRI->bForceNetUpdate = 1;
 	}
 
@@ -88,7 +88,7 @@ void __fastcall TgPawn__TrackKill::Call(ATgPawn* Pawn, void* edx, ATgPawn* Kille
 		if (candidatePRI == nullptr) continue;
 
 		candidatePRI->r_Scores[2]++;  // STYPE_ASSISTS
-		candidatePRI->bNetDirty = 1;
+		// candidatePRI->bNetDirty = 1;
 		// candidatePRI->bForceNetUpdate = 1;
 
 		if (Logger::IsChannelEnabled("stats")) {
