@@ -82,6 +82,12 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		// Revive*Timer natives keep these in sync if Calc* changes mid-game.
 		// r_nReleaseDelay is the corpse delay before joining the wave queue
 		// (UC default 5). Future instant-respawn knob: set all three to 1 here.
+
+		if (Game->m_nSecsToAutoRelease > 15) {
+			Game->m_nSecsToAutoRelease = 15;
+			Game->m_nSecsToAutoReleaseAttackers = Game->m_nSecsToAutoRelease;
+			Game->m_nSecsToAutoReleaseDefenders = Game->m_nSecsToAutoRelease;
+		}
 		gamerep->r_nSecsToAutoReleaseAttackers = Game->m_nSecsToAutoReleaseAttackers;
 		gamerep->r_nSecsToAutoReleaseDefenders = Game->m_nSecsToAutoReleaseDefenders;
 		gamerep->r_nReleaseDelay = 5;
