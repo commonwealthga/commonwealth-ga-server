@@ -40,4 +40,19 @@ ATgTeamBeaconManager* FindBeaconManagerByTaskForce(int taskforceNum);
 // later bools. Manual dword-per-param ProcessEvent.
 void SetCollision(AActor* actor, bool bColActors, bool bBlockActors, bool bIgnoreEncroachers);
 
+// Carrier-loss cleanup. For each team manager whose `r_BeaconHolder` matches
+// this pawn's PRI, strip the pickup device (slot 11) and re-trigger CheckBeacon
+// — the native walks all PRIs, finds no IsCarryingBeacon holder, and respawns
+// at the team's original-priority factory. Safe for any pawn (bails when no
+// manager matches). Used by the death path and by the team-change teleport.
+void DropCarriedBeacon(class ATgPawn* Pawn);
+
+// Beacon handoff for a pawn LEAVING its team without dying (-changeteam /
+// autobalance teleport). Runs DropCarriedBeacon (respawns the beacon for the
+// OLD team if the pawn was carrying it), then — if the pawn instead deployed
+// the team's world beacon — severs its personal ownership link (Instigator +
+// DRI r_InstigatorInfo) while leaving the beacon with the taskforce. Call
+// BEFORE flipping the team so the respawn lands on the correct team.
+void ReleaseBeaconForTeamChange(class ATgPawn* Pawn);
+
 }  // namespace BeaconSdk

@@ -42,6 +42,16 @@ void __fastcall TgInventoryManager__NonPersistRemoveDevice::Call(
 		"NonPersistRemoveDevice: slot=%d deviceId=%d invId=%d isBeacon=%d\n",
 		nEquipPoint, nDeviceId, nInventoryId, (int)bIsBeacon);
 
+	// Reverse equip effects BEFORE the actor is destroyed. TgDevice.Destroyed()
+	// does NOT call RemoveEquipEffects, and the only other trigger is a weapon
+	// switch-out — which our forced removal skips. Without this, a device's
+	// equip-effect group leaks on the living pawn (e.g. the beacon carry-visual
+	// ring stays on a player auto-balanced while carrying). eventRemoveAllDeviceEffects
+	// -> RemoveEquipEffects is internally guarded by m_bEquipEffectsApplied, so
+	// it's a no-op for devices that never applied equip effects (the apply side
+	// in NonPersistAddDevice only fires for deviceId 1918).
+	device->eventRemoveAllDeviceEffects();
+
 	// Full teardown: nulls m_EquippedDevices[slot], zeros PRI's
 	// r_EquipDeviceInfo[slot] + dirties replication, removes the invObj from
 	// the inventory TMap via TgInventoryManager::RemoveInventoryObjectById

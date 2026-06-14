@@ -526,8 +526,10 @@ void IpcClient::DrainInbound() {
 
             if (action == "change_team") {
                 std::string target_str;
+                bool is_autobalance = false;
                 if (j.contains("args") && j["args"].is_object()) {
-                    target_str = j["args"].value("target", "");
+                    target_str     = j["args"].value("target", "");
+                    is_autobalance = j["args"].value("autobalance", false);
                 }
 
                 using TgPlayerActions::ChangeTeamCmd::Target;
@@ -547,7 +549,7 @@ void IpcClient::DrainInbound() {
                     continue;
                 }
 
-                TgPlayerActions::ChangeTeamCmd::Execute(guid, target);
+                TgPlayerActions::ChangeTeamCmd::Execute(guid, target, is_autobalance);
             } else if (action == "spawn_target") {
                 if (CurrentMatchIsPVP()) {
                     Logger::Log("chat-command",

@@ -15,6 +15,40 @@
 #include "src/Utils/Logger/Logger.hpp"
 #include <cstring>
 
+// Ships a fully-built marshal on `Connection` now, then frees it. Shared by
+// Send() (msgId alerts) and SendText() (free-text alerts) so the cursed
+// QueuedBytes drain logic lives in exactly one place.
+static void DispatchMarshal(UNetConnection* Connection, void* Marshal) {
+	ClientConnection__SendMarshal::CallOriginal(Connection, nullptr, Marshal);
+
+	// Force-drain the marshal channel inline so this alert ships now instead
+	// of waiting for the next UNetConnection::Tick. Save + restore QueuedBytes
+	// verbatim (no delta accounting) — see TgPawn_Character__SendMarshal for
+	// the full why; short version: UChannel::IsReadyToSend calls IsNetReady
+	// with an indeterminate Saturate flag (no args), which sometimes
+	// clobbers our -1B fake bank with `QueuedBytes = -BunchBytes`. The
+	// delta would then be ≈ +1B and writing that back permanently exhausts
+	// the connection's budget, starving actor rep — the symptom is severe
+	// server-wide lag after the first such call.
+	{
+		void* MarshalChannel = *(void**)((char*)Connection + 0x4FB4);
+		if (MarshalChannel) {
+			volatile int32_t* QueuedBytesPtr =
+				(volatile int32_t*)((char*)Connection + 0x138);
+			constexpr int32_t kFakeBank = -1000000000;
+			const int32_t QbOriginal = *QueuedBytesPtr;
+			*QueuedBytesPtr = kFakeBank;
+			typedef void(__thiscall* TickFn)(void*);
+			TickFn Tick = (TickFn)((*(void***)MarshalChannel)[0x130 / 4]);
+			Tick(MarshalChannel);
+			*QueuedBytesPtr = QbOriginal;
+		}
+	}
+
+	NetConnection__FlushNet::CallOriginal(Connection);
+	CMarshal__Destroy::CallOriginal(Marshal);
+}
+
 // Builds and sends one CHAT_MESSAGE marshal carrying the alert fields.
 // Mirrors SendKillAlert's field layout — see reference_chat_message_alert_piggyback.md.
 void SendAlert::Send(UNetConnection* Connection,
@@ -46,34 +80,35 @@ void SendAlert::Send(UNetConnection* Connection,
 		CMarshal__SetWcharT::CallOriginal(Marshal, nullptr, GA_T::PLAYER_NAME, (wchar_t*)playerName);
 	}
 
-	ClientConnection__SendMarshal::CallOriginal(Connection, nullptr, Marshal);
+	DispatchMarshal(Connection, Marshal);
+}
 
-	// Force-drain the marshal channel inline so this alert ships now instead
-	// of waiting for the next UNetConnection::Tick. Save + restore QueuedBytes
-	// verbatim (no delta accounting) — see TgPawn_Character__SendMarshal for
-	// the full why; short version: UChannel::IsReadyToSend calls IsNetReady
-	// with an indeterminate Saturate flag (no args), which sometimes
-	// clobbers our -1B fake bank with `QueuedBytes = -BunchBytes`. The
-	// delta would then be ≈ +1B and writing that back permanently exhausts
-	// the connection's budget, starving actor rep — the symptom is severe
-	// server-wide lag after the first such call.
-	{
-		void* MarshalChannel = *(void**)((char*)Connection + 0x4FB4);
-		if (MarshalChannel) {
-			volatile int32_t* QueuedBytesPtr =
-				(volatile int32_t*)((char*)Connection + 0x138);
-			constexpr int32_t kFakeBank = -1000000000;
-			const int32_t QbOriginal = *QueuedBytesPtr;
-			*QueuedBytesPtr = kFakeBank;
-			typedef void(__thiscall* TickFn)(void*);
-			TickFn Tick = (TickFn)((*(void***)MarshalChannel)[0x130 / 4]);
-			Tick(MarshalChannel);
-			*QueuedBytesPtr = QbOriginal;
-		}
-	}
+// Like Send(), but carries free MESSAGE text instead of a localized msgId.
+// Used for dynamic alerts (e.g. "you have been autobalanced") that have no
+// pre-baked MSG_ID string. Sets GA_T::MESSAGE (wchar) + DISPLAY_AS_ALERT.
+void SendAlert::SendText(UNetConnection* Connection,
+                         const wchar_t* message,
+                         unsigned char priority,
+                         unsigned char type,
+                         float duration) {
+	if (!Connection) return;
+	if ((uintptr_t)Connection < 0x10000) return;  // not a real pointer
+	if (!message || !message[0]) return;
 
-	NetConnection__FlushNet::CallOriginal(Connection);
-	CMarshal__Destroy::CallOriginal(Marshal);
+	uint8_t MarshalStorage[0x80] = {0};
+	void* Marshal = MarshalStorage;
+	CMarshalObject__Create::CallOriginal(Marshal);
+	*(void**)Marshal = CMarshalObject__Create::CMarshal_vftable;
+	*(uint16_t*)((uint8_t*)Marshal + 0x26) = GA_U::CHAT_MESSAGE;  // 0x0073
+
+	CMarshal__SetInt32 ::CallOriginal(Marshal, nullptr, GA_T::CHAT_CH_TYPE,     1);
+	CMarshal__SetBool  ::CallOriginal(Marshal, nullptr, GA_T::DISPLAY_AS_ALERT, 1);
+	CMarshal__SetInt32 ::CallOriginal(Marshal, nullptr, GA_T::ALERT_PRIORITY,   priority);
+	CMarshal__SetInt32 ::CallOriginal(Marshal, nullptr, GA_T::ALERT_TYPE,       type);
+	CMarshal__SetFloat ::CallOriginal(Marshal, nullptr, GA_T::FLOAT_VALUE,      duration);
+	CMarshal__SetWcharT::CallOriginal(Marshal, nullptr, GA_T::MESSAGE,          (wchar_t*)message);
+
+	DispatchMarshal(Connection, Marshal);
 }
 
 void SendAlert::Broadcast(int msgId,

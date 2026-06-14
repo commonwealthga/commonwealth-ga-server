@@ -495,7 +495,8 @@ private:
                             "[IpcServer] REQUEST_REBALANCE inst=%lld moving %zu of %zu player(s)\n",
                             (long long)inst_id, delta.size(), roster.size());
                         for (const auto& m : delta) {
-                            ChatCommand::DispatchTeamMove(inst_id, m.first, m.second);
+                            ChatCommand::DispatchTeamMove(inst_id, m.first, m.second,
+                                                          /*is_autobalance=*/true);
                         }
                     }
                 }

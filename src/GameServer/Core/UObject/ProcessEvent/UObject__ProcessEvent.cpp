@@ -112,44 +112,9 @@ static void RefreshStealthEffectTimers(ATgPawn* Pawn) {
 	}
 }
 
-// Carrier-loss cleanup. Called when a beacon-carrying pawn dies or its
-// controlling PlayerController is destroyed (disconnect). For each team
-// manager whose `r_BeaconHolder` matches this pawn's PRI, remove the
-// pickup device (id 1918) from the carrier's slot 11 and re-trigger
-// CheckBeacon — the native walks all PRIs, finds no IsCarryingBeacon
-// holder, and re-spawns at the team's original-priority factory.
-//
-// Safe to invoke for any pawn — bails fast when no manager matches.
-static void DropCarriedBeaconIfAny(ATgPawn* Pawn) {
-	if (!Pawn || !Pawn->PlayerReplicationInfo) return;
-	ATgRepInfo_Player* pri = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
-
-	ATgTeamBeaconManager* managers[2] = {
-		(GTeamsData.Attackers ? GTeamsData.Attackers->r_BeaconManager : nullptr),
-		(GTeamsData.Defenders ? GTeamsData.Defenders->r_BeaconManager : nullptr),
-	};
-	for (ATgTeamBeaconManager* mgr : managers) {
-		if (!mgr || mgr->r_BeaconHolder != pri) continue;
-
-		Logger::Log("beacon",
-			"DropCarriedBeaconIfAny: pawn=0x%p pri=0x%p was carrier for mgr=0x%p — clearing slot 11 + CheckBeacon\n",
-			Pawn, pri, mgr);
-
-		// Inventory device removal first — UC TgDevice.uc:677 invokes
-		// CheckBeacon on inventory change, but we follow up with an explicit
-		// call to guarantee the respawn fires even if the inventory hook
-		// path doesn't trigger during the Dying / Destroyed teardown.
-		ATgInventoryManager* invMgr = (ATgInventoryManager*)Pawn->InvManager;
-		if (invMgr) {
-			TgInventoryManager__NonPersistRemoveDevice::Call(invMgr, nullptr, 11);
-		}
-
-		// Whether or not the inventory remove succeeded, we still need
-		// CheckBeacon to re-evaluate. bAttemptRespawn=true so it spawns
-		// at the original-priority factory if nobody else is carrying.
-		BeaconSdk::CheckBeacon(mgr, true);
-	}
-}
+// Carrier-loss cleanup (beacon-carrying pawn dies / its PlayerController is
+// destroyed on disconnect) moved to BeaconSdk::DropCarriedBeacon so the
+// team-change teleport path can share it — see BeaconSdkSafe.{hpp,cpp}.
 
 // (Former NativeApplyEffect / NativeRemoveEffect / ComputeEffectDelta helpers
 // were removed — see the commented-out TgEffect.ApplyEffect/Remove branches
@@ -1082,7 +1047,7 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// chain doesn't touch the beacon-carry slot directly; without this
 		// the pawn dies, IsCarryingBeacon stays true until the corpse is
 		// fully destroyed, and the team's beacon never respawns.
-		DropCarriedBeaconIfAny((ATgPawn*)Object);
+		BeaconSdk::DropCarriedBeacon((ATgPawn*)Object);
 
 		CallOriginal(Object, edx, Function, Params, Result);
 
@@ -1754,7 +1719,7 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// chain is still wired when we issue the inventory remove.
 		APlayerController* PC = (APlayerController*)Object;
 		if (PC && PC->Pawn) {
-			DropCarriedBeaconIfAny((ATgPawn*)PC->Pawn);
+			BeaconSdk::DropCarriedBeacon((ATgPawn*)PC->Pawn);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
 		break;

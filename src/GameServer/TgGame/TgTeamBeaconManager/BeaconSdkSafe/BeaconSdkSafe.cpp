@@ -2,6 +2,8 @@
 
 #include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
+#include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 namespace BeaconSdk {
@@ -98,6 +100,75 @@ void SetCollision(AActor* actor, bool bColActors, bool bBlockActors, bool bIgnor
 	};
 
 	CallNative(actor, fn, &parms);
+}
+
+void DropCarriedBeacon(ATgPawn* Pawn) {
+	if (!Pawn || !Pawn->PlayerReplicationInfo) return;
+	ATgRepInfo_Player* pri = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+
+	ATgTeamBeaconManager* managers[2] = {
+		(GTeamsData.Attackers ? GTeamsData.Attackers->r_BeaconManager : nullptr),
+		(GTeamsData.Defenders ? GTeamsData.Defenders->r_BeaconManager : nullptr),
+	};
+	for (ATgTeamBeaconManager* mgr : managers) {
+		if (!mgr || mgr->r_BeaconHolder != pri) continue;
+
+		Logger::Log("beacon",
+			"DropCarriedBeacon: pawn=0x%p pri=0x%p was carrier for mgr=0x%p — clearing slot 11 + CheckBeacon\n",
+			Pawn, pri, mgr);
+
+		// Inventory device removal first — UC TgDevice.uc:677 invokes
+		// CheckBeacon on inventory change, but we follow up with an explicit
+		// call to guarantee the respawn fires even if the inventory hook
+		// path doesn't trigger during the Dying / Destroyed teardown.
+		ATgInventoryManager* invMgr = (ATgInventoryManager*)Pawn->InvManager;
+		if (invMgr) {
+			TgInventoryManager__NonPersistRemoveDevice::Call(invMgr, nullptr, 11);
+		}
+
+		// Whether or not the inventory remove succeeded, we still need
+		// CheckBeacon to re-evaluate. bAttemptRespawn=true so it spawns
+		// at the original-priority factory if nobody else is carrying.
+		CheckBeacon(mgr, true);
+	}
+}
+
+void ReleaseBeaconForTeamChange(ATgPawn* Pawn) {
+	if (!Pawn || !Pawn->PlayerReplicationInfo) return;
+	ATgRepInfo_Player* pri = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+
+	// Case A: carrying — drop + respawn for the (still-current) old team.
+	DropCarriedBeacon(Pawn);
+
+	// Case B: this pawn deployed the team's world beacon. Sever its personal
+	// ownership (Instigator + DRI r_InstigatorInfo) but keep the beacon with
+	// the taskforce (r_bOwnedByTaskforce / r_TaskforceInfo untouched) so the
+	// old team keeps its forward spawn after the carrier leaves.
+	ATgTeamBeaconManager* managers[2] = {
+		(GTeamsData.Attackers ? GTeamsData.Attackers->r_BeaconManager : nullptr),
+		(GTeamsData.Defenders ? GTeamsData.Defenders->r_BeaconManager : nullptr),
+	};
+	for (ATgTeamBeaconManager* mgr : managers) {
+		if (!mgr) continue;
+		ATgDeploy_Beacon* beacon = mgr->r_Beacon;
+		if (!beacon) continue;
+
+		const bool ownedByPawn =
+			(beacon->Instigator == (APawn*)Pawn) ||
+			(beacon->r_DRI && beacon->r_DRI->r_InstigatorInfo == pri);
+		if (!ownedByPawn) continue;
+
+		Logger::Log("beacon",
+			"ReleaseBeaconForTeamChange: pawn=0x%p deployed beacon 0x%p on mgr=0x%p — clearing personal ownership\n",
+			Pawn, beacon, mgr);
+
+		beacon->Instigator = nullptr;
+		if (beacon->r_DRI) {
+			beacon->r_DRI->r_InstigatorInfo = nullptr;
+			beacon->r_DRI->bNetDirty       = 1;
+			beacon->r_DRI->bForceNetUpdate = 1;
+		}
+	}
 }
 
 ATgRepInfo_TaskForce* GetTaskForce(ATgRepInfo_Game* GRI, int nTaskForceNum, bool bCreate) {

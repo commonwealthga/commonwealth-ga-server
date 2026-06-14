@@ -5,6 +5,9 @@
 #include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/GameServer/TgGame/TgPawn/SetTaskForceNumber/TgPawn__SetTaskForceNumber.hpp"
+#include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
+#include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
+#include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 namespace TgPlayerActions::ChangeTeamCmd {
@@ -54,9 +57,85 @@ int ResolveCurrentTeamNumber(ATgPawn_Character* Pawn) {
     return 0;
 }
 
+// Move the (living) pawn to its team's player start. FindPlayerStart reads the
+// controller PRI's r_TaskForce, so this MUST run AFTER the team flip to land on
+// the new side. Mirrors TgTeleporter.UsePlayerStart / ReturnHomeArea: a
+// game-thread relocate, not a respawn.
+void TeleportToTeamStart(const std::string& session_guid, ATgPawn_Character* pawn) {
+    if (!pawn->Controller || !pawn->WorldInfo || !pawn->WorldInfo->Game) {
+        Logger::Log("chat-command",
+            "[ChatCmd][DLL] /changeteam guid=%s: missing controller/world/game; skipping teleport\n",
+            session_guid.c_str());
+        return;
+    }
+
+    ATgGame* game = reinterpret_cast<ATgGame*>(pawn->WorldInfo->Game);
+    FString incomingName;
+    ANavigationPoint* start = game->FindPlayerStart(pawn->Controller, 0, incomingName);
+    if (!start) {
+        Logger::Log("chat-command",
+            "[ChatCmd][DLL] /changeteam guid=%s: FindPlayerStart returned null\n",
+            session_guid.c_str());
+        return;
+    }
+
+    FRotator newRot = pawn->Rotation;
+    newRot.Pitch = 0;
+    newRot.Yaw = start->Rotation.Yaw;
+    newRot.Roll = 0;
+
+    if (!pawn->SetLocation(start->Location)) {
+        Logger::Log("chat-command",
+            "[ChatCmd][DLL] /changeteam guid=%s: SetLocation failed loc=(%.0f,%.0f,%.0f)\n",
+            session_guid.c_str(), start->Location.X, start->Location.Y, start->Location.Z);
+        return;
+    }
+
+    pawn->Velocity = FVector(0, 0, 0);
+    pawn->SetRotation(newRot);
+    pawn->SetViewRotation(newRot);
+    pawn->ClientSetRotation(newRot);
+    pawn->Controller->ClientSetRotation(newRot, 1);
+    pawn->Controller->MoveTimer = -1.0f;
+    pawn->SetAnchor(start);
+    pawn->SetMoveTarget(start);
+    pawn->PlayTeleportEffect(false, true);
+
+    // SetLocation doesn't fire volume Touched events — re-resolve volume-driven
+    // pawn properties at the destination (mirrors ReturnHomeArea).
+    ActorCache::CacheMapActors();
+    pawn->eventModifyPawnPropertiesVolumeChanged();
+    pawn->eventOmegaVolumePropertiesChanged();
+    pawn->bNetDirty = 1;
+    pawn->bForceNetUpdate = 1;
+
+    Logger::Log("chat-command",
+        "[ChatCmd][DLL] /changeteam guid=%s: teleported to %s loc=(%.0f,%.0f,%.0f) yaw=%d\n",
+        session_guid.c_str(), ((UObject*)start)->GetName(),
+        start->Location.X, start->Location.Y, start->Location.Z, newRot.Yaw);
+}
+
+// Free-text center-screen toast telling the player they were auto-rebalanced.
+// PlayerControllers only — bots / AI have no client connection.
+void SendAutobalanceAlert(ATgPawn_Character* pawn) {
+    if (!pawn->Controller) return;
+    const char* raw = pawn->Controller->Class ? pawn->Controller->Class->GetFullName() : nullptr;
+    const std::string ctrlClass(raw ? raw : "");
+    if (ctrlClass.find("PlayerController") == std::string::npos) return;
+
+    APlayerController* PC = (APlayerController*)pawn->Controller;
+    if (!PC->Player) return;
+    UNetConnection* Connection = (UNetConnection*)PC->Player;
+
+    // priority 2 = High, type 3 = Important (TgObject.AlertPriority / AlertType).
+    SendAlert::SendText(Connection,
+        L"You have been moved to the other team to balance the match.",
+        2, 3, 4.0f);
+}
+
 } // namespace
 
-void Execute(const std::string& session_guid, Target target) {
+void Execute(const std::string& session_guid, Target target, bool is_autobalance) {
     ATgPawn_Character* Pawn = FindPawnBySessionGuid(session_guid);
     if (!Pawn) {
         Logger::Log("chat-command",
@@ -93,11 +172,17 @@ void Execute(const std::string& session_guid, Target target) {
     }
 
     Logger::Log("chat-command",
-        "[ChatCmd][DLL] /changeteam guid=%s target=%s: flipping %d -> %d\n",
-        session_guid.c_str(), TargetName(target), current_team, new_team);
+        "[ChatCmd][DLL] /changeteam guid=%s target=%s autobalance=%d: flipping %d -> %d\n",
+        session_guid.c_str(), TargetName(target), (int)is_autobalance, current_team, new_team);
 
     // Bank the old-team stint + emit TEAM_CHANGE before the flip.
     MatchStats::OnTeamChanged((ATgPawn*)Pawn, new_team);
+
+    // Beacon handoff BEFORE the flip: if the player carries the team beacon,
+    // strip it and respawn for the OLD team; if they deployed it, sever their
+    // personal ownership. Reads the still-current (old) team, so order matters
+    // — same reason the player teardown ran before the team change on death.
+    BeaconSdk::ReleaseBeaconForTeamChange((ATgPawn*)Pawn);
 
     // Flip the team. SetTaskForceNumber writes both r_TaskForce and Team on the
     // PRI, calls repinfo->SetTeam(taskforce), and fires Pawn->NotifyTeamChanged.
@@ -105,15 +190,17 @@ void Execute(const std::string& session_guid, Target target) {
     // TgPawn__SetTaskForceNumber.cpp:5-18).
     TgPawn__SetTaskForceNumber::Call(Pawn, nullptr, new_team);
 
-    // Administrative respawn — must not count as a death (design 2026-06-12).
-    MatchStats::SuppressNextDeath(((ATgPawn*)Pawn)->r_nPawnId);
+    // No death, no respawn timer: teleport the living pawn to the new team's
+    // player start (FindPlayerStart reads the now-flipped PRI team).
+    TeleportToTeamStart(session_guid, Pawn);
 
-    // Suicide -> normal death state -> respawn timer -> respawn pulls the
-    // freshly-flipped team from the PRI.
-    Pawn->eventSuicide();
+    // Auto-rebalance only: tell the player they were moved.
+    if (is_autobalance) {
+        SendAutobalanceAlert(Pawn);
+    }
 
     Logger::Log("chat-command",
-        "[ChatCmd][DLL] /changeteam guid=%s: SetTaskForceNumber + eventSuicide dispatched\n",
+        "[ChatCmd][DLL] /changeteam guid=%s: SetTaskForceNumber + teleport dispatched\n",
         session_guid.c_str());
     Audit(session_guid, "activated",
         "changed team " + std::to_string(current_team) + "->" + std::to_string(new_team));

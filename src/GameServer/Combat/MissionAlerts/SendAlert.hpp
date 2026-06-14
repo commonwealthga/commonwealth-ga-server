@@ -28,6 +28,16 @@ public:
 	                 const wchar_t* name = nullptr,
 	                 const wchar_t* playerName = nullptr);
 
+	// Send a free-text alert to one connection. Same center-screen toast +
+	// sound as Send(), but the text travels in GA_T::MESSAGE instead of being
+	// looked up from a localized MSG_ID — for dynamic strings that have no
+	// pre-baked id (e.g. "you have been autobalanced").
+	static void SendText(UNetConnection* Connection,
+	                     const wchar_t* message,
+	                     unsigned char priority,
+	                     unsigned char type,
+	                     float duration = 3.0f);
+
 	// Send to every connected player (skips closed connections + ones with no Pawn).
 	static void Broadcast(int msgId,
 	                      unsigned char priority,
