@@ -2,6 +2,8 @@
 #include "src/GameServer/TgGame/TgPawn/GetProperty/TgPawn__GetProperty.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include <map>
+#include <set>
 
 // Reimplements stripped UC native
 //   `native function ProcessReactiveSkillBasedEffectGroup(int nCategory, bool bRemove)`
@@ -71,6 +73,23 @@ void ApplyOrReverseStatMod(ATgPawn* pawn, int propId, int calcMethod, float base
 		propId, calcMethod, base, bRemove ? 1 : 0, curRaw, prop->m_fRaw);
 }
 
+// Per-pawn record of which reactive categories are CURRENTLY committed to
+// s_Properties. The native applies its stat-mod as a raw `m_fRaw += delta`
+// (no in-place re-derivation), so a double-ON or a missed-OFF permanently
+// desyncs the property — and because death-cleanup only fires OFF for
+// categories still present at death, a leak can't self-heal by dying, only by
+// reconnect. This registry makes apply/reverse idempotent: ON commits the
+// delta only on the off->on edge, OFF reverses only on the on->off edge.
+//
+// Keyed by r_nPawnId (monotonic per-spawn, never reused — same rationale as
+// Armor::Records), so the committed-state persists across same-actor respawn
+// alongside the m_fRaw it tracks, while a fresh pawn / reconnect gets a clean
+// slate. Entries self-prune when a pawn's last reactive category turns off.
+std::map<int, std::set<int>>& ActiveReactiveCategories() {
+	static std::map<int, std::set<int>> g;
+	return g;
+}
+
 }  // namespace
 
 void __fastcall TgEffectManager__ProcessReactiveSkillBasedEffectGroup::Call(
@@ -99,6 +118,21 @@ void __fastcall TgEffectManager__ProcessReactiveSkillBasedEffectGroup::Call(
 	const std::string& cn = ObjectClassCache::GetClassName(owner->Class);
 	if (cn.compare(0, 19, "Class TgGame.TgPawn") != 0) return;
 	ATgPawn* pawn = (ATgPawn*)owner;
+
+	// Idempotency guard: collapse redundant edges. ON only commits when the
+	// category isn't already committed; OFF only reverses when it is. This caps
+	// the worst case of any unbalanced caller at a single delta that self-heals
+	// on the next clean toggle — it can never compound across shield re-casts.
+	auto& reg = ActiveReactiveCategories();
+	auto regIt = reg.find(pawn->r_nPawnId);
+	const bool currentlyOn = (regIt != reg.end() && regIt->second.count(nCategory) != 0);
+	const bool wantOn = (bRemove == 0);
+	if (currentlyOn == wantOn) {
+		Logger::Log("skills",
+			"[REACTIVE] mgr=%p cat=%d bRemove=%lu  already %s — idempotent no-op\n",
+			(void*)Manager, nCategory, bRemove, currentlyOn ? "ON" : "OFF");
+		return;
+	}
 
 	int matched = 0;
 	for (int i = 0; i < Manager->s_SkillBasedEffectGroups.Count; i++) {
@@ -145,6 +179,16 @@ void __fastcall TgEffectManager__ProcessReactiveSkillBasedEffectGroup::Call(
 			                      e->m_fBase, bRemove != 0);
 		}
 		matched++;
+	}
+
+	// Record the new committed-state only on a real transition. ON commits the
+	// category only if a skill group actually applied (matched>0); OFF clears it
+	// and prunes the pawn entry once it holds no committed categories.
+	if (wantOn) {
+		if (matched > 0) reg[pawn->r_nPawnId].insert(nCategory);
+	} else if (regIt != reg.end()) {
+		regIt->second.erase(nCategory);
+		if (regIt->second.empty()) reg.erase(regIt);
 	}
 
 	if (matched == 0) {
