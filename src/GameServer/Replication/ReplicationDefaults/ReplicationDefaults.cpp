@@ -140,17 +140,17 @@ inline const RepDefault kPrioCrit    { .NetPriority = 5.0f };
 // literal NetUpdateFreq=5 restore so a possess-then-unpossess round trip
 // leaves the value consistent with what the CDO says.
 inline const RepDefault kPawnFamily {
-	.NetPriority = 2.0f,
+	.NetPriority = 5.0f,
 	.NetUpdateFrequency = 10.0f,
 	.bUpdateSimulatedPosition = true,
-	.AlwaysRelevantDistanceSquared = 1280000.0f,
+	.AlwaysRelevantDistanceSquared = 2560000.0f,
 };
 
 // TgPawn — adds rigid-body location rep for ragdoll / physics poses.
 // NetPriority=4 is engine-clamped to 3 on possess, so it's decorative for
 // any pawn that gets controlled (i.e. all of them).
 inline const RepDefault kTgPawnFamily {
-	.NetPriority = 4.0f,
+	.NetPriority = 5.0f,
 	.bReplicateRigidBodyLocation = true,
 };
 
@@ -200,14 +200,14 @@ inline const RepDefault kDeployableFamily {
 inline const RepDefault kProjectileFamily {
 	.NetPriority = 2.5f,
 	.NetUpdateFrequency = 1.0f,
-	.bAlwaysRelevant = true,
+	// .bAlwaysRelevant = true,
 	.bNetTemporary = true,
 	.bReplicateInstigator = true,
 };
 
 // Per-pawn effect router. Owner-attached, no movement.
 inline const RepDefault kEffectManagerFamily {
-	.NetPriority = 1.1f,
+	.NetPriority = 1.4f,
 	.NetUpdateFrequency = 10.0f,
 	.bReplicateMovement = false,
 	.bReplicateInstigator = true,

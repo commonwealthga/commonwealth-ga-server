@@ -113,11 +113,14 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 
 		UNetDriver* Driver = *(UNetDriver**)((char*)Connection + 0x70);
 		// int MaxRate = Driver ? Driver->MaxClientRate : 50000;
-		int MaxRate = 200000;
+		int MaxRate = 50000;
 		int clamped = std::max(1800, std::min(rate > 0 ? rate : MaxRate, MaxRate));
-		Connection->CurrentNetSpeed = clamped;
-		Logger::Log(GetLogChannel(), "[handshake] NETSPEED: requested=%d clamped=%d (MaxClientRate=%d)\n",
-			rate, clamped, MaxRate);
+		// Server-side downstream send budget floor: keeps corrections/acks/other-pawn
+		// rep flowing under load. Client upstream unaffected (ClientCapBandwidth lower-only).
+		int floored = std::max(clamped, 50000);
+		Connection->CurrentNetSpeed = floored;
+		Logger::Log(GetLogChannel(), "[handshake] NETSPEED: requested=%d clamped=%d floored=%d\n",
+			rate, clamped, floored);
 
 	} else if (strncmp(tmp, "LOGIN", 5) == 0) {
 		// Equivalent of UnWorld.cpp:4917 NMT_Login handling: server now welcomes
@@ -276,6 +279,9 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 		// LogToFile("C:\\mylog.txt", "[SpawnPlayActor] end");
 
 		if (newcontrollerptr) {
+			// Bridge dropped-move gaps instead of discarding time past the 0.125s
+			// default (PlayerController.uc:1999 truncation → position-error snap).
+			((APlayerController*)newcontrollerptr)->MaxResponseTime = 0.5f;
 			MarshalChannel__NotifyControlMessage::HandlePlayerConnected(Connection, newcontrollerptr, session_guid, player_name_from_registry);
 		}
 	} else {
