@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame/IsFinalObjective/TgGame__IsFinalObjective.hpp"
+#include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // An objective is "final" if it has the highest nPriority among all objectives.
@@ -11,6 +12,17 @@ bool __fastcall TgGame__IsFinalObjective::Call(ATgGame* Game, void* edx, ATgMiss
 	if (Objective == nullptr) {
 		LogCallEnd();
 		return false;
+	}
+
+	// Super Agent authors the mission as boss(1) -> A(2) -> B(3); B is THE final
+	// objective by design. The map's leftover baked objectives stay in
+	// m_MissionObjectives with their original (often >3) priorities, so the generic
+	// max-priority scan below would never deem B final and capturing it would never
+	// end the mission. Declare B final explicitly.
+	if (SuperAgent::IsActive() && SuperAgent::B.obj
+	 && Objective == (ATgMissionObjective*)SuperAgent::B.obj) {
+		LogCallEnd();
+		return true;
 	}
 
 	ATgRepInfo_Game* GRI = (ATgRepInfo_Game*)Game->GameReplicationInfo;

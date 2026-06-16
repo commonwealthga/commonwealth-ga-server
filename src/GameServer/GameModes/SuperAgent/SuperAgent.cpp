@@ -442,6 +442,14 @@ ATgMissionObjective_Proximity* SpawnPoint(
 	if (Obj->s_CollisionProxy) {
 		UCylinderComponent* cyl = (UCylinderComponent*)Obj->s_CollisionProxy->CollisionComponent;
 		if (cyl) cyl->SetCylinderSize(cfg.cylRadius, cfg.cylHalfHeight);
+		// Human-only capture. GetNearByPlayersTaskforce counts EVERY pawn in the
+		// proxy, so an enemy AI bot (TF2) standing in the cylinder reads as a
+		// "defender" — bDefenderFound stays true, so CalculateNearByPlayers never
+		// reaches `currStatus = 8` and the bar pins at 100% forever (the escape
+		// phase swarms B with bots). m_bIgnoreNonPlayers makes ShouldIgnoreActor
+		// skip non-hacked, non-henchman bots, so only humans/henchmen count —
+		// matching the mode's human-only capture intent.
+		Obj->s_CollisionProxy->m_bIgnoreNonPlayers = 1;
 	}
 
 	AddObjectivePointToList(GRI, nullptr, (ATgMissionObjective*)Obj);
@@ -484,6 +492,13 @@ void Unleash(int tableId) {
 		// phase), so once the mission advances they spawn nothing. Set the "any
 		// phase" sentinel -1 so they fire in every phase from here on.
 		f->nPriority = -1;
+		// Keep these adds (incl. the juggernaut) alive through a team wipe.
+		// TgBotEncounterVolume.CheckTouching despawns a factory's bots (60s
+		// EndEncounter -> Despawn -> KillBots) when no human is left in the volume,
+		// but ONLY if the factory's bRespawn is set. Real bosses (Shrike) survive
+		// because they aren't bRespawn factory bots; clear it here so our unleashed
+		// bosses get the same treatment instead of vanishing on a wipe.
+		f->bRespawn = 0;
 		// Spawn this wave's FULL roster, unconditionally, ADDING to whatever's
 		// already alive — previous waves must NOT despawn. So: no KillBots, no
 		// count reset. Instead, for the duration of this call, disable the
