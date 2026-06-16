@@ -42,7 +42,13 @@ namespace MoraleCredit {
 //   deviceModeId     — source TgDeviceFire's nDeviceModeId. Used for the
 //                      morale-source anti-feedback filter (DB lookup
 //                      via `asm_data_set_devices.slot_used_value_id`).
+//   originDeviceId   — for damage from a morale-spawned deployable (Shatter
+//                      Bomb etc.), the static device_id of the spawning morale
+//                      device, recovered by the caller via the deployable's
+//                      s_SpawnerDeviceMode chain. 0 when not deployable-sourced.
+//                      Closes the bomb-chain anti-feedback hole that deviceModeId
+//                      alone can't (the explosion carries the deployable's mode).
 void Award(ATgPawn* recipient, float magnitude, bool isHeal,
-           float fMissingHealth, int deviceModeId);
+           float fMissingHealth, int deviceModeId, int originDeviceId = 0);
 
 }  // namespace MoraleCredit
