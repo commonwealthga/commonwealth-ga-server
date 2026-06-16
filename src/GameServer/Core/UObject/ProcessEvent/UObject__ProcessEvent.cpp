@@ -12,6 +12,7 @@
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 #include "src/Config/Config.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -170,6 +171,7 @@ enum class DispatchTag : uint8_t {
 	ServerPickupPutdownDeployableTag, // Diagnostic: log RPC entry to confirm key press reaches server
 	SeqOpActivated,               // kismet op eventActivated — TgSeqAct_AlarmBots raises the global alarm
 	TgTriggerBeaconEntrance,      // Pre-call: record teammate beacon-teleport usage for match stats
+	SuperAgentCaptureGate,        // Super Agent mode: freeze proximity capture per the all-players / drain gate, then detect A's capture
 	// GameTimerDiagnostic,          // Diagnostic-only: before/after snapshots around original timer/match flow
 };
 
@@ -510,7 +512,6 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 		|| strcmp(name, "Function TgGame.TgPawn.ShouldRechargePowerPool") == 0
 		|| strcmp(name, "Function TgGame.TgPawn_Character.Tick") == 0
 		|| strcmp(name, "Function TgGame.TgDeployable.Tick") == 0
-		|| strcmp(name, "Function TgGame.TgMissionObjective_Proximity.Tick") == 0
 		|| strcmp(name, "Function TgGame.TgMissionObjective.IsLocalPlayerAttacker") == 0
 		|| strcmp(name, "Function TgGame.TgProperty.Copy") == 0
 		|| strcmp(name, "Function TgGame.TgDeploy_BeaconEntrance.Touch") == 0
@@ -575,6 +576,10 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	if (strcmp(name, "Function TgGame.TgPlayerController.ServerPickupPutdownDeployable") == 0) return DispatchTag::ServerPickupPutdownDeployableTag;
 	// Engine-timer dispatch of the beacon-entrance teleport (TgPawn.uc:9234).
 	if (strcmp(name, "Function TgGame.TgPawn.TriggerBeaconEntrance") == 0)           return DispatchTag::TgTriggerBeaconEntrance;
+	// Super Agent mode: gate proximity capture for objectives A/B and detect A's
+	// capture. Intercept Tick (which DOES route through ProcessEvent) rather than
+	// the inner CalculateNearByPlayers (an intra-UC call that does not).
+	if (strcmp(name, "Function TgGame.TgMissionObjective_Proximity.Tick") == 0) return DispatchTag::SuperAgentCaptureGate;
 	// if (IsGameTimerDiagnosticFunction(name)) return DispatchTag::GameTimerDiagnostic;
 
 	return DispatchTag::Unknown;
@@ -1852,6 +1857,22 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 				BeginEndMissionImpl(Game, Act->m_SpectatorCamera, (float)Act->m_nDelay);
 			}
 		}
+		break;
+	}
+
+	// Super Agent mode gate on the proximity objective's Tick. Skipping the
+	// CallOriginal freezes the capture math (CalculateNearByPlayers never runs,
+	// so m_fCurrCaptureTime is untouched — no add, no decay, no status change).
+	// OnCaptureTick runs UNCONDITIONALLY afterward (lifecycle detection + the
+	// per-frame escape mechanics must keep ticking even while capture is frozen,
+	// e.g. the periodic escape alarm while players are off-point). It early-
+	// returns for every objective that isn't our A, and for non-Super-Agent matches.
+	case DispatchTag::SuperAgentCaptureGate: {
+		ATgMissionObjective_Proximity* Obj = (ATgMissionObjective_Proximity*)Object;
+		if (SuperAgent::ShouldRunCapture(Obj)) {
+			CallOriginal(Object, edx, Function, Params, Result);
+		}
+		SuperAgent::OnCaptureTick(Obj);
 		break;
 	}
 

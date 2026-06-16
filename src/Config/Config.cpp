@@ -149,6 +149,7 @@ float Config::GetDifficultyScalar() {
 		case GA_G::DIFFICULTY_VALUE_ID_MAXIMUM_SECURITY:
 		case GA_G::DIFFICULTY_VALUE_ID_EXPERT:               return 1.75f;
 		case GA_G::DIFFICULTY_VALUE_ID_ULTRA_MAX_SECURITY:   return 2.0f;
+		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_SUPER_AGENT:   return 2.25f;
 		default:                                             return 1.0f;
 	}
 }

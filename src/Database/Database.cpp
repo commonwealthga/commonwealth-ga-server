@@ -7487,8 +7487,45 @@ void Database::Init() {
 
 		Logger::Log("db", "v113: b_auto_spawn=0 + b_respawn=0 for Raid_DomeCityDefense_P factories\n");
 	}
+	if (version < 114) {
+		// v114: add the custom "Super Agent" PvE queue. Same kind as the security
+		// tiers (queue_type 1021, pinned_1, own_match, specops map pool) — a clone
+		// of `umax` with its own name/desc strings and difficulty_value_id 10000
+		// (which drives SuperAgent::IsActive on the game side). marshal_difficulty
+		// _value_id=1471 so the client renders it as Ultra-Max (it has no label
+		// for the custom 10000 and won't list the queue otherwise). Slot it
+		// between Ultra-Max (sort_order 4) and the Double Agent queues, shifting
+		// those down one. Also bump Ultra-Max's location_value_id to 1483.
+		// Explicit values = idempotent.
+		const char* kV114_queue_fixups =
+			"UPDATE ga_queues SET sort_order = 6 WHERE name = 'double_agent_high';"
+			"UPDATE ga_queues SET sort_order = 7 WHERE name = 'double_agent_max';"
+			"UPDATE ga_queues SET sort_order = 8 WHERE name = 'double_agent_umax';"
+			"UPDATE ga_queues SET location_value_id = 1483 WHERE name = 'umax';";
+		result = sqlite3_exec(db, kV114_queue_fixups, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v114 (queue fixups): %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 113", nullptr, nullptr, &err);
+		const char* kV114_super_agent_queue =
+			"INSERT OR IGNORE INTO ga_queues "
+			"(queue_id, name, taskforce_policy, continue_in_queue, enabled, queue_type_value_id, "
+			" status_msg_id, name_msg_id, desc_msg_id, icon_id, max_players_per_side, "
+			" min_players_per_team, max_players_per_team, level_min, level_max, tab, map_x, map_y, "
+			" map_active_flag, map_icon_texture_res_id, video_res_id, location_value_id, "
+			" double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, difficulty_value_id, "
+			" access_flags, active_flag, locked_flag, map_pool_id, min_players_to_pop, "
+			" max_players_per_instance, pop_delay_seconds, pop_delay_policy, instant_pop_when_full, "
+			" marshal_difficulty_value_id, requires_pvp_verification, team_policy, team_side_policy, "
+			" max_team_size) VALUES "
+			"(11, 'super_agent', 'pinned_1', 0, 1, 1021, 0, 55411, 55410, 537, 30, 1, 30, 5, 200, "
+			" 443, 6.0, 0.0, 1, 5126, 0, 1477, 1, 0, 5, 0, 10000, 0, 1, 0, 1, 1, 0, 0.0, "
+			" 'halve_on_join', 1, 1471, 0, 'own_match', 'required', 0);";
+		result = sqlite3_exec(db, kV114_super_agent_queue, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v114 (super agent queue): %s\n", err); return; }
+
+		Logger::Log("db", "v114: added Super Agent queue (difficulty 10000, marshal 1471, specops pool, sort_order 5) + umax location 1483\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 114", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

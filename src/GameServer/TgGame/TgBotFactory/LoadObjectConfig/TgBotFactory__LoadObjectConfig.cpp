@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgActorFactory/LoadObjectConfig/TgActorFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/Engine/MapObjectConfig/MapObjectConfig.hpp"
+#include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -9,6 +10,7 @@
 #include <cstring>
 #include <ctime>
 #include <map>
+#include <set>
 #include <vector>
 
 namespace {
@@ -33,6 +35,17 @@ int g_loadedDifficultyValueId = -1;
 // so 1260 never participates unless it's the primary.
 std::vector<int> GetDifficultyCascade(sqlite3* db, int primaryDifficulty) {
 	std::vector<int> cascade;
+
+	// Super Agent (10000) is a custom difficulty: it MAY ship its own spawn-table
+	// rows (which must take precedence) but otherwise inherits Ultra-Max Security
+	// (1471). Build the cascade from 1471's group-116 ladder, then put 10000 back
+	// at the FRONT as the primary tier so any 10000 rows win and 1471-and-below
+	// fill the gaps. (Gap tiers correctly load full multi-row tables — see the
+	// pre-existing-table snapshot in LoadSpawnTableRows.)
+	const int requestedDifficulty = primaryDifficulty;
+	if (primaryDifficulty == 10000) {
+		primaryDifficulty = 1471;
+	}
 
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
@@ -59,7 +72,16 @@ std::vector<int> GetDifficultyCascade(sqlite3* db, int primaryDifficulty) {
 	// Defensive: if the lookup returned nothing (e.g. primary isn't in group
 	// 116), at least try the primary directly so we don't degrade to "no
 	// spawn tables at all".
-	if (cascade.empty()) cascade.push_back(primaryDifficulty);
+	if (cascade.empty()) {
+		cascade.push_back(primaryDifficulty);
+	}
+
+	// Custom difficulty leads the cascade as the primary tier, so its own rows
+	// (if any) win over the inherited Ultra-Max roster.
+	if (requestedDifficulty == 10000) {
+		cascade.insert(cascade.begin(), requestedDifficulty);
+	}
+
 	return cascade;
 }
 
@@ -108,10 +130,20 @@ int LoadSpawnTableRows(sqlite3* db, int difficulty, bool skipExisting,
 	}
 	sqlite3_bind_int(stmt, 1, difficulty);
 
+	// Snapshot the tables shipped by HIGHER-priority tiers. skipExisting must
+	// drop only tables a PREVIOUS tier already shipped — never a table THIS tier
+	// is introducing. Testing the live g_spawnTables instead would skip every row
+	// after the first of each new table (the cache gains the table on row 1),
+	// truncating every gap-filled table to a single row.
+	std::set<int> preexistingTables;
+	if (skipExisting) {
+		for (const auto& kv : g_spawnTables) preexistingTables.insert(kv.first);
+	}
+
 	int rowsInserted = 0;
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		const int tableId = sqlite3_column_int(stmt, 0);
-		if (skipExisting && g_spawnTables.find(tableId) != g_spawnTables.end()) continue;
+		if (skipExisting && preexistingTables.count(tableId)) continue;
 		const int group   = sqlite3_column_int(stmt, 1);
 		const int botId   = sqlite3_column_int(stmt, 2);
 		const int count   = sqlite3_column_int(stmt, 3);
@@ -132,6 +164,41 @@ int LoadSpawnTableRows(sqlite3* db, int difficulty, bool skipExisting,
 	}
 	sqlite3_finalize(stmt);
 	return rowsInserted;
+}
+
+// Super Agent composite tables: REBUILD each target table by concatenating the
+// groups of its source tables (renumbered into a fresh 0..N sequence). Runs
+// after the cascade so the source tables are already loaded. Difficulty-gated to
+// the custom mode so normal play is untouched. A target listed as its own source
+// is read before the overwrite, so it can keep its original groups.
+void ApplyCompositeTables() {
+	if (!SuperAgent::IsActive()) return;
+	for (const auto& comp : SuperAgent::SpawnTableComposites()) {
+		const int target = comp.first;
+		std::map<int, std::vector<SpawnTableEntry>> combined;
+		int nextGroup = 0;
+		for (const int src : comp.second) {
+			const auto it = g_spawnTables.find(src);
+			if (it == g_spawnTables.end()) {
+				Logger::Log("tgbotfactory",
+					"  composite %d: source table %d not loaded at this difficulty — skipped\n",
+					target, src);
+				continue;
+			}
+			for (const auto& grp : it->second) {           // ascending group key
+				std::vector<SpawnTableEntry> rows = grp.second;   // copy
+				for (auto& e : rows) { e.SpawnTableId = target; e.SpawnGroup = nextGroup; }
+				combined[nextGroup] = std::move(rows);
+				nextGroup++;
+			}
+		}
+		if (!combined.empty()) {
+			g_spawnTables[target] = std::move(combined);
+			Logger::Log("tgbotfactory",
+				"  composite table %d = %d group(s) from %zu source(s)\n",
+				target, nextGroup, comp.second.size());
+		}
+	}
 }
 
 void EnsureSpawnTablesLoaded() {
@@ -158,6 +225,9 @@ void EnsureSpawnTablesLoaded() {
 			"  cascade tier %zu difficulty=%d -> %d rows / %d new tables%s\n",
 			i, tier, rows, tablesAdded, isPrimary ? " (primary)" : "");
 	}
+
+	// Rebuild composite tables from the now-loaded raw tables (Super Agent only).
+	ApplyCompositeTables();
 
 	Logger::Log("tgbotfactory",
 		"  EnsureSpawnTablesLoaded: difficulty=%d cascade depth=%zu total tables=%zu\n",

@@ -194,6 +194,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective_Bot/SpawnObjectiveBot/TgMissionObjective_Bot__SpawnObjectiveBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective_Proximity/ScoreObjectiveProgress/TgMissionObjective_Proximity__ScoreObjectiveProgress.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerCountVolume/Update/TgPlayerCountVolume__Update.cpp \
+			  $(SRC_DIR)/GameServer/GameModes/SuperAgent/SuperAgent.cpp \
+			  $(SRC_DIR)/GameServer/GameModes/SuperAgent/SuperAgentMission.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/SendMapRandomSMSettingsMarshal/CGameClient__SendMapRandomSMSettingsMarshal.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.cpp \

@@ -5,6 +5,7 @@
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/GameServer/Constants/GameTypes.h"
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -72,6 +73,9 @@ void __fastcall TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 		missionTimeSecs = row->mission_time_secs;
 		overtimeSecs    = row->overtime_secs;
 		allowOvertime   = row->allow_overtime;
+	}
+	if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_SUPER_AGENT) {
+		missionTimeSecs = 45 * 60;
 	}
 	Game->m_fGameMissionTime  = static_cast<float>(missionTimeSecs);
 	Game->m_fGameOvertimeTime = static_cast<float>(overtimeSecs);

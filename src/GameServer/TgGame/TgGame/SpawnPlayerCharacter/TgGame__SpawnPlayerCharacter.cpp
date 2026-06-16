@@ -942,6 +942,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// before the engine's RestartPlayer fallback so we control the ordering.
 	PlayerController->eventPossess(PlayerController->Pawn, 0, 0);
 
+	// PlayerController->bGodMode = 1;
+
 	Logger::Log("spawn-asm", "=== SpawnPlayerCharacter EXIT final snapshots ===\n");
 	LogAssemblySnapshot("[EXIT pawn]", newpawn, newpawn->r_CustomCharacterAssembly);
 	LogAssemblySnapshot("[EXIT Orig]", newpawn, newpawn->s_OrigCustomCharacterAssembly);

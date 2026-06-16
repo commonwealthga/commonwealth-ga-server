@@ -2,6 +2,7 @@
 #include "src/GameServer/Engine/MapGameInfo/MapGameInfo.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
+#include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Config/Config.hpp"
@@ -53,9 +54,15 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		// fall back to the historical hardcoded behavior.
 		const std::string mapName = Config::GetMapNameChar();
 		const auto mapRow = MapGameInfo::LookupByName(mapName);
-		const int  missionTimeSecs = mapRow ? mapRow->mission_time_secs : 15 * 60;
+		int        missionTimeSecs = mapRow ? mapRow->mission_time_secs : 15 * 60;
 		const int  overtimeSecs    = mapRow ? mapRow->overtime_secs     : 4 * 60;
 		const bool allowOvertime   = mapRow ? mapRow->allow_overtime    : true;
+
+		// Super Agent is one long mission (5-min hold + travel + final capture).
+		// InitGameRepInfo runs AFTER TgGame__LoadGameConfig and re-derives the
+		// mission length from map_game_info, so the override has to be reapplied
+		// here too or it clobbers LoadGameConfig's 45-min back to the map default.
+		if (SuperAgent::IsActive()) missionTimeSecs = 45 * 60;
 
 		gamerep->GameClass = Game->Class;
 		gamerep->r_GameType = Game->m_GameType;
@@ -125,6 +132,12 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 				}
 			}
 		}
+
+		// Super Agent custom mode: seed + register the two extra proximity
+		// objectives (no-op unless the match runs under the custom difficulty).
+		// Unconditional: the manual-registration block above only runs when the
+		// objective list was empty, but our seeding must happen either way.
+		SuperAgent::Init(Game);
 
 
 		const std::string GameClassName = Game->Class->GetFullName();
