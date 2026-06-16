@@ -791,9 +791,14 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* Effect, void* /*edx*/,
 	if (Effect != nullptr && Effect->m_EffectGroup != nullptr) {
 		AActor* egInst = Effect->m_EffectGroup->m_Instigator;
 		if (egInst != nullptr && ObjectClassCache::ClassNameContains(egInst, "TgDeploy")) {
-			UTgDeviceFire* spawnMode = ((ATgDeployable*)egInst)->s_SpawnerDeviceMode;
-			if (spawnMode != nullptr)
-				originDeviceId = ResolveDeviceIdFromFireMode((UObject*)spawnMode);
+			// Use the deployable's r_Owner (the spawning ATgDevice), NOT
+			// s_SpawnerDeviceMode: for projectile-spawned deployables (thrown
+			// bombs like Shatter) the projectile carries r_Owner but no
+			// s_OwnerFireMode, so SpawnDeployable leaves s_SpawnerDeviceMode null
+			// while r_Owner is set to the firing morale device. r_Owner is the
+			// reliable link back to the source device.
+			ATgDevice* ownerDev = ((ATgDeployable*)egInst)->r_Owner;
+			if (ownerDev != nullptr) originDeviceId = ownerDev->r_nDeviceId;
 		}
 	}
 
