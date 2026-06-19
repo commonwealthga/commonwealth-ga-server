@@ -39,16 +39,12 @@ namespace MoraleCredit {
 //   isHeal           — true for heal events.
 //   fMissingHealth   — target's missing HP at the moment of apply.
 //                      Heal-only (ignored for damage). <0 treated as 0.
-//   deviceModeId     — source TgDeviceFire's nDeviceModeId. Used for the
-//                      morale-source anti-feedback filter (DB lookup
-//                      via `asm_data_set_devices.slot_used_value_id`).
-//   originDeviceId   — for damage from a morale-spawned deployable (Shatter
-//                      Bomb etc.), the static device_id of the spawning morale
-//                      device, recovered by the caller via the deployable's
-//                      s_SpawnerDeviceMode chain. 0 when not deployable-sourced.
-//                      Closes the bomb-chain anti-feedback hole that deviceModeId
-//                      alone can't (the explosion carries the deployable's mode).
+//   deviceModeId     — the SOURCE fire mode's id (TgEffectDamage.uc: from
+//                      Impact.DeviceModeReference). Anti-feedback filter matches
+//                      it against the morale set, which includes both morale
+//                      devices' own modes AND the explosion modes of the
+//                      deployables they spawn (Shatter Bomb et al.).
 void Award(ATgPawn* recipient, float magnitude, bool isHeal,
-           float fMissingHealth, int deviceModeId, int originDeviceId = 0);
+           float fMissingHealth, int deviceModeId);
 
 }  // namespace MoraleCredit

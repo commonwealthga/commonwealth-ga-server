@@ -228,7 +228,7 @@ void FireSaveDeathInfoForZoomCam(ATgPawn* Victim, ATgPawn* KillerForUC,
 // decompile + the data audit (2026-05-19), morale gain has no DB-driven rate
 // property; constants are calibrated from old-GA playtest evidence and live
 // in the MoraleCredit module.
-void __fastcall TgEffect__TrackStats::Call(UTgEffect* Effect, void* /*edx*/,
+void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
                                            ATgPawn* Instigator, AActor* Target, FImpactInfoBytes Impact,
                                            float fDamage, int iTargetDeviceModeId,
                                            unsigned long bIsEnemy, float fMissingHealth) {
@@ -778,38 +778,12 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* Effect, void* /*edx*/,
 	// already filtered at the top of this function.
 	if (isHeal && targetIsOwnedByInstigator) return;
 
-	// Deployable-chain morale anti-feedback. A morale device (slot 476) that
-	// spawns a projectile -> deployable (Shatter Bomb = device 2113) deals its
-	// explosion damage under the DEPLOYABLE's device mode, not the morale
-	// device's mode, so iTargetDeviceModeId alone can't see it and the bomb
-	// farms morale (chain-castable on any crowd). Recover the spawning device
-	// from the effect group's deployable instigator
-	// (m_Instigator -> s_SpawnerDeviceMode -> m_Owner device -> r_nDeviceId) so
-	// Award can also gate on the morale device-id set. Same chain
-	// OriginResolver / GetSpawnerDeviceInstanceId walk.
-	int originDeviceId = 0;
-	if (Effect != nullptr && Effect->m_EffectGroup != nullptr) {
-		AActor* egInst = Effect->m_EffectGroup->m_Instigator;
-		if (egInst != nullptr && ObjectClassCache::ClassNameContains(egInst, "TgDeploy")) {
-			// Use the deployable's r_Owner (the spawning ATgDevice), NOT
-			// s_SpawnerDeviceMode: for projectile-spawned deployables (thrown
-			// bombs like Shatter) the projectile carries r_Owner but no
-			// s_OwnerFireMode, so SpawnDeployable leaves s_SpawnerDeviceMode null
-			// while r_Owner is set to the firing morale device. r_Owner is the
-			// reliable link back to the source device.
-			ATgDevice* ownerDev = ((ATgDeployable*)egInst)->r_Owner;
-			if (ownerDev != nullptr) originDeviceId = ownerDev->r_nDeviceId;
-		}
-	}
-
-	// All other morale-system concerns (anti-feedback for morale-device
-	// sources, recipient-side gates, Output Mod scaling, accumulator math,
-	// replicated mirror write) live in MoraleCredit::Award. The damage
-	// source's morale-device classification is DB-driven via the source's
-	// `iTargetDeviceModeId` (direct fire) or originDeviceId (deployable chain) —
-	// the parent device's `slot_used_value_id == 476` flag ("Morale Device"
-	// category) is what the binary's intact AddMoralePoints native at
-	// 0x109d2f00 checks.
+	// Morale credit (anti-feedback, recipient gates, Output Mod scaling,
+	// accumulator math, replicated mirror) lives in MoraleCredit::Award. The
+	// anti-feedback is DB-driven off iTargetDeviceModeId (the source fire mode's
+	// id): MoraleCredit's set includes morale devices' own modes AND the
+	// explosion modes of the deployables they spawn (Shatter Bomb et al.), so
+	// the bomb-chain feedback loop is closed there without any actor-graph walk.
 	MoraleCredit::Award(damageCreditPawn, magnitude, isHeal,
-	                    fMissingHealth, iTargetDeviceModeId, originDeviceId);
+	                    fMissingHealth, iTargetDeviceModeId);
 }

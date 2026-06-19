@@ -19,18 +19,18 @@ namespace {
 constexpr float kBaseDamagePerMoralePoint = 450.0f;
 constexpr float kBaseHealPerMoralePoint   = 540.0f;
 
-// Set of device_mode_ids whose parent device is `slot_used_value_id == 476`
-// ("Morale Device" category). Damage sourced from one of these blocks morale
-// credit — anti-feedback gate matching the binary's intact AddMoralePoints
-// native (which does this lookup at runtime via the asm manager).
+// Device-mode ids that must NOT credit morale (anti-feedback). Two sources,
+// both folded into this single set at init:
+//   (1) modes of morale-category devices (slot_used_value_id == 476) — direct
+//       morale fire (matches the binary's intact AddMoralePoints native lookup).
+//   (2) the EXPLOSION modes of the deployables those morale devices spawn
+//       (Shatter Bomb, Dome Morale, ...). The bomb's explosion is dealt by the
+//       deployable's OWN internal device — NOT slot 476 — so its mode isn't in
+//       (1); without it the high-damage AoE farms morale and is chain-castable
+//       on any crowd. `iTargetDeviceModeId` (TgEffectDamage.uc:98, = the source
+//       fire mode's m_nId) carries this explosion mode, so one set lookup in
+//       Award catches every case without any per-effect actor-graph walking.
 std::set<int> g_moraleDeviceModeIds;
-// Set of device_ids (static, not mode) in the same morale category. Used for
-// the deployable-chain trace: a morale device that spawns a projectile ->
-// deployable (e.g. Shatter Bomb, device 2113) deals its explosion damage under
-// the DEPLOYABLE's mode, which is NOT one of the morale device's modes, so the
-// mode-id set above can't see it. The caller recovers the spawning device's id
-// (deployable->s_SpawnerDeviceMode->m_Owner->r_nDeviceId) and we match it here.
-std::set<int> g_moraleDeviceIds;
 bool g_inited = false;
 
 void DoInit() {
@@ -41,11 +41,27 @@ void DoInit() {
 		return;
 	}
 
+	// (1) modes of slot-476 morale devices, UNION (2) the explosion modes of the
+	// deployables those devices spawn — reached either via the device mode's
+	// direct deployable_id, or via its projectile's spawn_deployable_id — mapped
+	// to the deployable's internal device, then that device's modes. (2) is what
+	// closes the Shatter Bomb / Dome Morale feedback loop.
 	const char* sql =
-		"SELECT m.device_mode_id, m.device_id "
+		"SELECT m.device_mode_id "
 		"FROM asm_data_set_devices_data_set_device_modes m "
 		"JOIN asm_data_set_devices d ON d.device_id = m.device_id "
-		"WHERE d.slot_used_value_id = 476";
+		"WHERE d.slot_used_value_id = 476 "
+		"UNION "
+		"SELECT em.device_mode_id FROM ("
+		"  SELECT DISTINCT dep.device_id AS internal_device_id "
+		"  FROM asm_data_set_devices_data_set_device_modes mm "
+		"  JOIN asm_data_set_devices d2 ON d2.device_id = mm.device_id AND d2.slot_used_value_id = 476 "
+		"  LEFT JOIN asm_data_set_projectiles p ON p.device_projectile_id = mm.device_projectile_id "
+		"  JOIN asm_data_set_deployables dep "
+		"    ON dep.deployable_id = mm.deployable_id OR dep.deployable_id = p.spawn_deployable_id "
+		"  WHERE dep.device_id > 0"
+		") sd "
+		"JOIN asm_data_set_devices_data_set_device_modes em ON em.device_id = sd.internal_device_id";
 
 	sqlite3_stmt* stmt = nullptr;
 	if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -56,25 +72,17 @@ void DoInit() {
 
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		g_moraleDeviceModeIds.insert(sqlite3_column_int(stmt, 0));
-		g_moraleDeviceIds.insert(sqlite3_column_int(stmt, 1));
 	}
 	sqlite3_finalize(stmt);
 
 	Logger::Log("morale",
-		"[MoraleCredit] indexed %d morale-category device_mode_ids / %d device_ids (anti-feedback set)\n",
-		(int)g_moraleDeviceModeIds.size(), (int)g_moraleDeviceIds.size());
+		"[MoraleCredit] indexed %d no-credit device_mode_ids (morale devices + their deployables' explosion modes)\n",
+		(int)g_moraleDeviceModeIds.size());
 }
 
 inline bool IsMoraleSourceDeviceMode(int deviceModeId) {
 	if (!g_inited) { DoInit(); g_inited = true; }
 	return g_moraleDeviceModeIds.count(deviceModeId) > 0;
-}
-
-// Static device-id variant for the deployable-chain trace (Shatter Bomb etc.).
-inline bool IsMoraleSourceDevice(int deviceId) {
-	if (deviceId == 0) return false;
-	if (!g_inited) { DoInit(); g_inited = true; }
-	return g_moraleDeviceIds.count(deviceId) > 0;
 }
 
 // Compute the multiplicative gain-rate factor for the recipient's morale
@@ -235,26 +243,27 @@ static void DumpMoraleBuffEntriesOnce(ATgPawn* recipient) {
 }
 
 void Award(ATgPawn* recipient, float magnitude, bool isHeal,
-           float fMissingHealth, int deviceModeId, int originDeviceId) {
+           float fMissingHealth, int deviceModeId) {
 	if (!recipient) return;
 	if (magnitude <= 0.0f) return;
 
 	DumpMoraleBuffEntriesOnce(recipient);
 
-	// Anti-feedback: morale-device sources don't credit. Two paths:
-	//   (1) direct morale-fire damage — the source device mode is itself in the
-	//       morale category set.
-	//   (2) bomb-spawned-by-morale damage (Shatter Bomb et al.) — the deployable's
-	//       explosion mode is NOT a morale mode, so (1) misses it. The caller
-	//       traces deployable->s_SpawnerDeviceMode->m_Owner->r_nDeviceId and hands
-	//       it here as originDeviceId; we match it against the morale device-id set.
-	// Without (2), the Shatter Bomb's high-damage explosion farms morale off any
-	// crowd and becomes infinitely chain-castable.
-	if (IsMoraleSourceDeviceMode(deviceModeId) || IsMoraleSourceDevice(originDeviceId)) {
+	// Anti-feedback: a morale-device source never credits. `g_moraleDeviceModeIds`
+	// (built in DoInit) covers BOTH direct morale fire AND the explosion modes of
+	// deployables those morale devices spawn (Shatter Bomb et al.), so this one
+	// lookup is the general fix — no actor-graph walking needed.
+	//
+	// The kShatterBombExplosionModeId hardcode is kept as a belt-and-suspenders
+	// safety net (the DB UNION already includes 2134; left in until the general
+	// path is confirmed in the field).
+	constexpr int kShatterBombExplosionModeId = 2134;
+	if (deviceModeId == kShatterBombExplosionModeId
+	 || IsMoraleSourceDeviceMode(deviceModeId)) {
 		if (Logger::IsChannelEnabled("morale")) {
 			Logger::Log("morale",
-				"[MoraleCredit] morale-device source (no credit): recipient=0x%p devModeId=%d originDevId=%d mag=%.2f isHeal=%d\n",
-				recipient, deviceModeId, originDeviceId, magnitude, (int)isHeal);
+				"[MoraleCredit] morale-device source (no credit): recipient=0x%p devModeId=%d mag=%.2f isHeal=%d\n",
+				recipient, deviceModeId, magnitude, (int)isHeal);
 		}
 		return;
 	}
