@@ -84,7 +84,10 @@ void __fastcall TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 					if (sqlite3_column_type(stmt, 4) != SQLITE_NULL && sqlite3_column_double(stmt, 4) > 0.0)
 						d.accuracy     = (float)sqlite3_column_double(stmt, 4);
 					if (sqlite3_column_type(stmt, 5) != SQLITE_NULL && sqlite3_column_double(stmt, 5) > 0.0)
-						d.sightRange   = (float)sqlite3_column_double(stmt, 5);
+						// asm default_sensor_range is in scanner-range units; the game's
+						// own GetSensorRange() converts to unreal units via ×16
+						// (TgPawn.uc:6108). Apply the same scale so SightRadius lands in uu.
+						d.sightRange   = (float)sqlite3_column_double(stmt, 5) * 16.0f;
 					if (sqlite3_column_type(stmt, 6) != SQLITE_NULL)
 						d.balanceMultiplier = (float)sqlite3_column_double(stmt, 6);
 					if (sqlite3_column_type(stmt, 7) != SQLITE_NULL && sqlite3_column_int(stmt, 7) > 0)
@@ -215,6 +218,16 @@ void __fastcall TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	// if (nBotId != 680 && nBotId != 681 && nBotId != 679 && nBotId != 567) {
 		Pawn->AddProperty( GA_PROPERTY::TGPID_CHARACTER_VISION_RANGE,  sightRange,   sightRange,   0, 10000);
 	// } else {
+
+	// Push the resolved vision range straight to the engine SightRadius field.
+	// Property 152 alone is dead at spawn: the only UC site that copies it into
+	// SightRadius is ApplyScannerSettingsToPawn(bReset=true) (TgPawn.uc:7273),
+	// reached exclusively through the r_ScannerSettings repnotify (sensor
+	// effect) — never on a plain spawn/deploy. Without this write every bot
+	// keeps the UC class default SightRadius=1600 (TgPawn.uc:10534) and ignores
+	// its per-bot default_sensor_range, leaving bots effectively half-blind and
+	// stationary turrets with a constant ~1600uu range regardless of design.
+	Pawn->SightRadius = sightRange;
 	// 	// Pawn->AddProperty(GA_PROPERTY::TGPID_HEALTH,                  1000000,    1000000,    0, 1000000);
 	// 	// Pawn->AddProperty(GA_PROPERTY::TGPID_HEALTH_MAX,              1000000,    1000000,    0, 1000000);
 	// }

@@ -143,8 +143,23 @@ public:
 		// this bumps eye from 38 → 47 — a minor 9uu shift that keeps the eye
 		// just above the head. The trace-arithmetic fix is the same regardless
 		// of class.
-		if (d.collision_halfHeight > 0.0f && Bot->BaseEyeHeight < d.collision_halfHeight) {
-			Bot->BaseEyeHeight = d.collision_halfHeight + 1.0f;
+		//
+		// Eye-lift target = top of the ACTUAL collision cylinder. When the asm
+		// row carries a collision_height, SetCollisionSize just installed it
+		// above and d.collision_halfHeight == the live value. But Auto Cannon /
+		// Proto Rocket / Rocket Turret have collision_height=0 in their asm mesh
+		// row, so SetCollisionSize never ran and the old `collision_halfHeight >
+		// 0` gate skipped the lift entirely — leaving their AI eye at the
+		// TgPawn_Turret UC default BaseEyeHeight=10, a full 25uu inside the
+		// inherited 35-half-height cylinder. That sunk eye is why the Auto Cannon
+		// "refuses to lock on": the TargetInLOS / CanSeeActor trace fires from
+		// inside the body and fails on close & off-axis targets. Read the live
+		// cylinder height as the fallback so those turrets get lifted too.
+		const float cylTop = d.collision_halfHeight > 0.0f
+			? d.collision_halfHeight
+			: (Bot->CylinderComponent ? Bot->CylinderComponent->CollisionHeight : 0.0f);
+		if (cylTop > 0.0f && Bot->BaseEyeHeight < cylTop) {
+			Bot->BaseEyeHeight = cylTop + 1.0f;
 			Bot->EyeHeight     = Bot->BaseEyeHeight;
 		}
 

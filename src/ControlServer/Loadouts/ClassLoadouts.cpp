@@ -100,7 +100,9 @@ static const std::vector<GearSlot> kRobotics = {
     { 7034,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false)},
 
     { 2095,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // rocket turret
+    { 2095,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // rocket turret
     { 3755,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // auto cannon
+    { 3755,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // auto cannon
     { 2675,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // eye drone
     { 5792,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddr", "ddd", false )}, // flame turret
     { 2051,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // force wall
@@ -109,6 +111,7 @@ static const std::vector<GearSlot> kRobotics = {
     { 2279,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // hornet drone
     { 4698,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // lockdown drone
     { 2300,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // personal turret
+    { 2300,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // personal turret
     { 4076,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "ccc", false )}, // power station
     { 2326,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "ccc", false )}, // sensor
     { 2066,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("hhh", "hhh" , false)}, // medical station

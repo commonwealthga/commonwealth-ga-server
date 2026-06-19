@@ -6,6 +6,8 @@
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
 #include "src/GameServer/Engine/World/GetGameInfo/World__GetGameInfo.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
+#include <string>
 
 // Placement trace helper (FUN_10a1b7e0) — same one TgDeviceFire::Deploy uses.
 // Client UpdateDeployModeStatus calls this with the bot's collision cylinder
@@ -143,6 +145,108 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 		// this baking step those skills silently no-op. Mirrors
 		// ApplyPlayerModsToDeployable's design for deployables.
 		ApplyPlayerModsToPet::Apply(pawn, PetPawn, device ? device->r_nDeviceInstanceId : 0);
+
+		// --- Turret flicker fix (ask 1) + pet-range-mod fix (ask 2) ---
+		// Runs right after ApplyPlayerModsToPet. A turret is stationary, so its
+		// effective engagement range is min(detection, weapon reach).
+		//
+		// (1) Flicker: clamp detection (SightRadius) down to the effective gun
+		//     range so the turret never acquires a target it can't yet shoot
+		//     (the ~10% "lock on / give up" band). min() keeps the sensor cap for
+		//     long-gun turrets (Proto Rocket, gun 16000 >> sensor 2560).
+		//
+		// (2) Pet-range mods (the OG bug): a +X% Pet Range device mod lands an
+		//     owner prop-381 buff SCOPED to the mod's device instance
+		//     (nReqDeviceInstId > 0). But the turret's range query
+		//     (UTgDeviceFire::GetPropertyValueById path A) asks the owner for prop
+		//     381 GENERICALLY (devInst=0), so it only matches WILDCARD entries —
+		//     skills like Heavy Artillery (devInst=0) work, device-scoped mod
+		//     entries never apply. The ScaleTargetProperties bridge writes to the
+		//     PET (path B), which range doesn't use, so it can't fix it either.
+		//     Fix at the source the query actually reads: scale the pet's OWN
+		//     weapon range base by the device-scoped mod %. Heavy Artillery still
+		//     compounds on top (path A reads m_fBase). Self-contained — the pet
+		//     weapon is a fresh per-turret instance that dies with the turret, so
+		//     no owner/CDO pollution. Wildcard (devInst=0) entries are excluded
+		//     here since path A already applies them.
+		// (Earlier WaitForInventoryThenDoPostPawnSetup hook never fired for
+		// turrets: that UC path is gated to custom characters / vanity pets.)
+		if (ObjectClassCache::ClassNameContains(PetPawn, "Turret") && PetPawn->Controller) {
+			const int srcDevInst = device ? device->r_nDeviceInstanceId : 0;
+
+			// Combined factor from owner pet-range mods scoped to THIS deploy
+			// device — the entries path A's generic query misses.
+			float modFactor = 1.0f;
+			if (pawn->m_EffectBuffInfo.Data) {
+				for (int i = 0; i < pawn->m_EffectBuffInfo.Num(); ++i) {
+					const FBuffInfo& e = pawn->m_EffectBuffInfo.Data[i];
+					if (e.BuffHeader.nPropId != 381) continue;
+					const int dev = e.BuffHeader.nReqDeviceInstId;
+					if (dev <= 0 || dev != srcDevInst) continue;  // skip wildcard (path A) + other devices
+					const float pct = e.fSkillPercentModifier + e.fItemPercentModifier
+					                + e.fSelfPercentModifier  + e.fPercentModifier;
+					if (pct != 0.0f) modFactor *= (1.0f + pct / 100.0f);
+				}
+			}
+
+			// Scale the pet weapon's RANGE property (prop 5, m_nRangeIndex) by the
+			// mod %. m_fBase is path A's input, m_fRaw the no-buff fallback — scale
+			// both. GetMaxRangedDistance reads this.
+			if (modFactor != 1.0f) {
+				for (int slot = 0; slot < 0x19; ++slot) {
+					ATgDevice* dev = PetPawn->m_EquippedDevices[slot];
+					if (!dev) continue;
+					for (int fm = 0; fm < dev->m_FireMode.Count; ++fm) {
+						UTgDeviceFire* fire = dev->m_FireMode.Data[fm];
+						if (!fire) continue;
+						const int ri = fire->m_nRangeIndex;
+						if (ri < 0 || ri >= fire->m_Properties.Count) continue;
+						UTgProperty* rp = fire->m_Properties.Data[ri];
+						if (!rp) continue;
+						rp->m_fBase *= modFactor;
+						rp->m_fRaw  *= modFactor;
+					}
+				}
+			}
+
+			ATgAIController* aic = (ATgAIController*)PetPawn->Controller;
+			const float gunRange = aic->GetMaxRangedDistance();   // now includes mod (device) + Heavy Artillery (path A)
+			const float designedSight = PetPawn->SightRadius;
+			// Detection cap = designed sensor range, also scaled by the pet-range
+			// mod so a mod that pushes firing past the sensor isn't re-capped.
+			const float sensorCap = designedSight * modFactor;
+			PetPawn->SightRadius = (gunRange > 0.0f && gunRange < sensorCap) ? gunRange : sensorCap;
+			// "turret" channel: confirms the clamp AND whether a range modifier
+			// reaches the turret. The pet-range pipeline only sees owner buffs that
+			// sit in m_EffectBuffInfo as prop 381 (PET_RANGE_MODIFIER) -- that is
+			// how Heavy Artillery works (BridgeOwnerEntriesToPet re-targets 381->114
+			// onto the pet weapon). Dump the owner prop-381 entries: none with the
+			// [rrr] +15% Pet Range mod equipped => the mod never reaches the owner
+			// buff registry (the OG bug); an entry with a non-matching devInst =>
+			// the bridge devInst filter drops it.
+			if (Logger::IsChannelEnabled("turret")) {
+				int n381 = 0;
+				if (pawn->m_EffectBuffInfo.Data) {
+					for (int i = 0; i < pawn->m_EffectBuffInfo.Num(); ++i) {
+						const FBuffInfo& e = pawn->m_EffectBuffInfo.Data[i];
+						if (e.BuffHeader.nPropId != 381) continue;
+						++n381;
+						Logger::Log("turret",
+							"  owner prop381(PetRange) entry: devInst=%d skillPct=%.3f itemPct=%.3f selfPct=%.3f otherPct=%.3f\n",
+							e.BuffHeader.nReqDeviceInstId,
+							e.fSkillPercentModifier, e.fItemPercentModifier,
+							e.fSelfPercentModifier, e.fPercentModifier);
+					}
+				}
+				const std::string turretCls(PetPawn->Class ? PetPawn->Class->GetFullName() : "<no-class>");
+				const char* rawOwner = pawn ? pawn->GetFullName() : nullptr;
+				const std::string ownerName(rawOwner ? rawOwner : "<null>");
+				Logger::Log("turret",
+					"SpawnPet turret=%s owner=%s srcDevInst=%d modFactor=%.3f designedSight=%.0f gunRange=%.0f -> SightRadius=%.0f prop381_entries=%d\n",
+					turretCls.c_str(), ownerName.c_str(), srcDevInst, modFactor,
+					designedSight, gunRange, PetPawn->SightRadius, n381);
+			}
+		}
 
 		ATgRepInfo_Player* PetRep = (ATgRepInfo_Player*)PetPawn->PlayerReplicationInfo;
 		ATgRepInfo_Player* PawnRep = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
