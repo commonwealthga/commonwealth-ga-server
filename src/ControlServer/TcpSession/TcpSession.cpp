@@ -466,10 +466,20 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
                 }
             }
         }
+        // Engine slots (6=Suit, 12=Helmet) the client explicitly blanked —
+        // SlotIndices[slot]==0, a genuine "make this empty" signal, not
+        // "didn't touch this slot". See CosmeticEquip::ClearSlot.
+        std::set<int> cleared_cosmetic_slots;
+        if (j.contains("cleared_cosmetic_slots") && j["cleared_cosmetic_slots"].is_array()) {
+            for (const auto& v : j["cleared_cosmetic_slots"]) {
+                if (v.is_number_integer()) cleared_cosmetic_slots.insert(v.get<int>());
+            }
+        }
         Logger::Log("armor",
-            "[equip_save] char=%lld pawnId=%d loadout=%d slots=%zu misc=%zu guid=%s\n",
+            "[equip_save] char=%lld pawnId=%d loadout=%d slots=%zu misc=%zu cleared=%zu guid=%s\n",
             (long long)character_id, pawn_id, loadout_profile,
-            slot_to_inventory.size(), misc_items.size(), session_guid.c_str());
+            slot_to_inventory.size(), misc_items.size(), cleared_cosmetic_slots.size(),
+            session_guid.c_str());
         for (const auto& kv : slot_to_inventory) {
             Logger::Log("armor",
                 "[equip_save]   SlotIndices[%d] = inv_id %d\n", kv.first, kv.second);
@@ -478,12 +488,16 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
             Logger::Log("armor",
                 "[equip_save]   MiscItems[%d]   = inv_id %d\n", kv.first, kv.second);
         }
+        for (int slot : cleared_cosmetic_slots) {
+            Logger::Log("armor",
+                "[equip_save]   ClearedCosmeticSlot[%d]\n", slot);
+        }
 
         if (character_id != 0) {
             const bool ok = PlayerSessionStore::SaveEquippedDevices(
                 character_id, session->user_id_, session->selected_profile_id_,
                 loadout_profile,
-                slot_to_inventory, misc_items);
+                slot_to_inventory, misc_items, cleared_cosmetic_slots);
             if (!ok) {
                 Logger::Log("armor",
                     "[equip_save] REJECTED — DB state unchanged; client will resync from existing\n");

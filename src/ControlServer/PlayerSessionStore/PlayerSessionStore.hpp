@@ -3,6 +3,7 @@
 #include <string>
 #include <optional>
 #include <map>
+#include <set>
 #include <array>
 #include <vector>
 #include <cstdint>
@@ -234,11 +235,17 @@ public:
     //                       for the index↔SVID decode.
     // `item_profile_id` is the loadout slot (1..5) being saved into. Unsent
     // slots are preserved because some cosmetic actions send partial payloads.
+    // `cleared_cosmetic_slots` = engine equip-points (6=Suit, 12=Helmet) the
+    // client explicitly blanked (FTGEQUIP_SLOTS_STRUCT.SlotIndices[slot]==0,
+    // a genuine "make this empty" signal — see CosmeticEquip::ClearSlot for
+    // why only 6/12 are safe to treat this way). Deletes the remapped
+    // cosmetic DB row (22/23) for each, independent of slot_to_inventory.
     static bool SaveEquippedDevices(int64_t character_id, int64_t user_id,
                                     uint32_t profile_id,
                                     int item_profile_id,
                                     const std::map<int, int>& slot_to_inventory,
-                                    const std::map<int, int>& misc_items);
+                                    const std::map<int, int>& misc_items,
+                                    const std::set<int>& cleared_cosmetic_slots = {});
 
     // UNUSED — kept for reference. Returns the union of every static effect
     // group attached to a device in asm.dat (equip + per-fire-mode). We used
