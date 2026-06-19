@@ -1,5 +1,6 @@
 
 SOURCE_FILES= \
+			  $(SRC_DIR)/Utils/SehStub/SehStub.cpp \
 			  $(SRC_DIR)/Config/Config.cpp \
 			  \
 			  $(SRC_DIR)/Utils/Logger/Logger/FileLogger.cpp \
@@ -432,6 +433,7 @@ SOURCE_FILES= \
 #   $(SRC_DIR)/Database/SocketCycle/SocketCycle.cpp
 
 SOURCE_FILES_CLIENT= \
+			  $(SRC_DIR)/Utils/SehStub/SehStub.cpp \
 			  $(SRC_DIR)/Utils/Logger/Logger/FileLogger.cpp \
 			  $(SRC_DIR)/Utils/DebugWindow/DebugWindow.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ObjectCache/ObjectCache.cpp \
@@ -460,6 +462,13 @@ SOURCE_FILES_CLIENT= \
 # MAKEFLAGS += -j$(JOBS)
 MAKEFLAGS += -j4
 CC=i686-w64-mingw32-g++
+# Restored the blanket `-static` (2026-06-19): dropping it to dodge the
+# __mingw_SEH_error_handler link error (see SehStub.cpp) broke DLL injection
+# instead — without -static, -pthread's libwinpthread resolves dynamically,
+# and a dynamically-loaded runtime DLL with its own TLS/init callbacks hangs
+# silently when loaded via injection rather than normal process startup
+# (every instance log came up empty, no crash dump — a hang, not a crash).
+# -static keeps everything, including winpthread, embedded in the DLL itself.
 CFLAGS=-std=c++17 -pthread -I. -I./lib/detours -I./lib/asio-1.34.2/include -I./lib/sqlite3 -L/usr/i686-w64-mingw32/lib -shared -static -static-libgcc -static-libstdc++ -fpermissive -s -w
 # Header-dependency tracking: -MMD writes a .d file next to every .o listing
 # every user header that TU included, as a makefile rule.  -MP adds phony rules

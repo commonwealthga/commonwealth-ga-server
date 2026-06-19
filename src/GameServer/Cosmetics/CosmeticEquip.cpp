@@ -135,37 +135,44 @@ static void ApplyMeshCollisionData(ATgPawn* Pawn, int meshAsmId) {
 		meshAsmId, data.radius, data.halfHeight);
 }
 
-struct ClassVisualFallback {
-	int suit_item_id;
-};
+static constexpr int kNoCosmeticItemId = 0;
 
-static ClassVisualFallback GetClassVisualFallback(uint32_t profileId) {
+// Per-class, per-gender default body suit shown when no cosmetic suit is
+// equipped. Found via asm_data_set_assembly_meshes — male rows are named
+// "*_SUIT_DEFAULT" (asm 1354-1357); female rows are separate, mislabeled
+// rows named "Female Suit <Class> DEFAULT" (asm 1482-1485) that an earlier
+// case-sensitive `LIKE '%SUIT%DEFAULT%'` search missed entirely (DuckDB LIKE
+// is case-sensitive; "Suit" != "SUIT"). Not a catalog item — no
+// LookupMeshAsmIdForCosmetic lookup applies, these are raw asm_ids.
+static int GetClassDefaultSuitAsmId(uint32_t profileId, bool isFemale) {
+	if (isFemale) {
+		switch (profileId) {
+			case 567: return 1484;  // Female Suit Medic DEFAULT
+			case 679: return 1482;  // Female Suit Robotics DEFAULT
+			case 680: return 1485;  // Female Suit Assault DEFAULT
+			case 681: return 1483;  // Female Suit Recon DEFAULT
+			default:  return 1485;
+		}
+	}
 	switch (profileId) {
-		case 567: return {3139};  // Medic Acolyte
-		case 679: return {4770};  // Robotics Operative
-		case 680: return {3160};  // Assault Heavy
-		case 681: return {3196};  // Recon Wraith
-		default:  return {3160};
+		case 567: return 1355;  // MEDIC_SUIT_DEFAULT
+		case 679: return 1357;  // ROBOTICS_SUIT_DEFAULT
+		case 680: return 1354;  // ASSAULT_SUIT_DEFAULT
+		case 681: return 1356;  // RECON_SUIT_DEFAULT
+		default:  return 1354;
 	}
 }
-
-static constexpr int kNoCosmeticItemId = 0;
 
 static void ApplyClassVisualFallback(ATgPawn* Pawn, uint32_t profileId) {
 	if (!Pawn) return;
 	auto* charPawn = (ATgPawn_Character*)Pawn;
 	auto* PRI      = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
-	const int gender = charPawn->r_CustomCharacterAssembly.nGenderTypeId;
-	const ClassVisualFallback fallback = GetClassVisualFallback(profileId);
 
 	if (charPawn->r_CustomCharacterAssembly.SuitMeshId <= 0) {
-		int meshAsm = LookupMeshAsmIdForCosmetic(fallback.suit_item_id, gender);
-		if (meshAsm <= 0) meshAsm = 1225;
+		const bool isFemale = charPawn->r_CustomCharacterAssembly.nGenderTypeId == GA_G::GENDER_TYPE_ID_FEMALE;
+		const int meshAsm = GetClassDefaultSuitAsmId(profileId, isFemale);
 		charPawn->r_CustomCharacterAssembly.SuitMeshId = meshAsm;
 		if (PRI) PRI->r_CustomCharacterAssembly.SuitMeshId = meshAsm;
-		Logger::Log("cosmetic-equip",
-			"LoadFromDB: class visual suit fallback profile=%u item=%d mesh=%d\n",
-			profileId, fallback.suit_item_id, meshAsm);
 	}
 
 	if (charPawn->r_CustomCharacterAssembly.HeadFlairId <= 0) {
@@ -377,7 +384,14 @@ bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int item_profile_id,
 		sqlite3_bind_int  (stmt, 2, item_profile_id);
 		sqlite3_bind_int  (stmt, 3, invId);
 		sqlite3_bind_int  (stmt, 4, dbSlot);
-		sqlite3_step(stmt);
+		const int stepResult = sqlite3_step(stmt);
+		if (stepResult != SQLITE_DONE) {
+			Logger::Log("cosmetic-equip",
+				"ApplyToPawn: persist FAILED char=%lld itemProf=%d dbSlot=%d invId=%d: %s\n",
+				(long long)character_id, item_profile_id, dbSlot, invId, sqlite3_errmsg(db));
+			sqlite3_finalize(stmt);
+			return false;
+		}
 		sqlite3_finalize(stmt);
 	} else {
 		Logger::Log("cosmetic-equip", "ApplyToPawn: prepare(insert) failed: %s\n",
@@ -393,11 +407,34 @@ bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int item_profile_id,
 bool ClearSlot(ATgPawn* Pawn, int64_t character_id, int item_profile_id, int slot) {
 	if (!Pawn) return false;
 	item_profile_id = NormalizeItemProfileId(Pawn, item_profile_id);
-	if (slot < 16 || slot > 20) return false;
+	if (slot != 6 && slot != 12 && (slot < 16 || slot > 20)) return false;
 
 	auto* charPawn = (ATgPawn_Character*)Pawn;
 	auto* PRI      = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
-	charPawn->r_CustomCharacterAssembly.DyeList[slot - 16] = kNoCosmeticItemId;
+
+	// Engine slot → DB storage slot. Suit (6) / Helmet (12) use the
+	// CosmeticSlots remap (22/23); dyes pass through unchanged.
+	int dbSlot = slot;
+	if (slot == 6) {
+		charPawn->r_CustomCharacterAssembly.SuitFlairId = -1;
+		charPawn->r_CustomCharacterAssembly.SuitMeshId  = -1;
+		if (PRI) {
+			PRI->r_CustomCharacterAssembly.SuitFlairId = -1;
+			PRI->r_CustomCharacterAssembly.SuitMeshId  = -1;
+		}
+		dbSlot = CosmeticSlots::kCosmeticSuitDbSlot;
+	} else if (slot == 12) {
+		charPawn->r_CustomCharacterAssembly.HeadFlairId  = -1;
+		charPawn->r_CustomCharacterAssembly.HelmetMeshId = -1;
+		if (PRI) {
+			PRI->r_CustomCharacterAssembly.HeadFlairId  = -1;
+			PRI->r_CustomCharacterAssembly.HelmetMeshId = -1;
+		}
+		dbSlot = CosmeticSlots::kCosmeticHelmetDbSlot;
+	} else {
+		charPawn->r_CustomCharacterAssembly.DyeList[slot - 16] = kNoCosmeticItemId;
+		if (PRI) PRI->r_CustomCharacterAssembly.DyeList[slot - 16] = kNoCosmeticItemId;
+	}
 
 	sqlite3* db = Database::GetConnection();
 	if (db) {
@@ -408,8 +445,11 @@ bool ClearSlot(ATgPawn* Pawn, int64_t character_id, int item_profile_id, int slo
 		        -1, &stmt, nullptr) == SQLITE_OK) {
 			sqlite3_bind_int64(stmt, 1, character_id);
 			sqlite3_bind_int  (stmt, 2, item_profile_id);
-			sqlite3_bind_int  (stmt, 3, slot);
-			sqlite3_step(stmt);
+			sqlite3_bind_int  (stmt, 3, dbSlot);
+			if (sqlite3_step(stmt) != SQLITE_DONE) {
+				Logger::Log("cosmetic-equip", "ClearSlot: DELETE FAILED char=%lld dbSlot=%d: %s\n",
+					(long long)character_id, dbSlot, sqlite3_errmsg(db));
+			}
 			sqlite3_finalize(stmt);
 		} else {
 			Logger::Log("cosmetic-equip", "ClearSlot: prepare(delete) failed: %s\n",
@@ -418,7 +458,11 @@ bool ClearSlot(ATgPawn* Pawn, int64_t character_id, int item_profile_id, int slo
 	}
 
 	ApplyClassVisualFallback(Pawn, charPawn->r_nProfileId);
-	ApplyMeshCollisionData(Pawn, charPawn->r_CustomCharacterAssembly.SuitMeshId);
+	// 1225 is a collision-lookup key only when no suit is equipped — see the
+	// matching comment in LoadFromDB; must not be written back to SuitMeshId.
+	int collisionLookupMesh = charPawn->r_CustomCharacterAssembly.SuitMeshId;
+	if (collisionLookupMesh <= 0) collisionLookupMesh = 1225;
+	ApplyMeshCollisionData(Pawn, collisionLookupMesh);
 	if (PRI) PRI->r_CustomCharacterAssembly = charPawn->r_CustomCharacterAssembly;
 	Pawn->bNetDirty       = 1;
 	Pawn->bForceNetUpdate = 1;
@@ -428,8 +472,8 @@ bool ClearSlot(ATgPawn* Pawn, int64_t character_id, int item_profile_id, int slo
 	}
 
 	Logger::Log("cosmetic-equip",
-		"ClearSlot: char=%lld itemProf=%d dyeSlot=%d\n",
-		(long long)character_id, item_profile_id, slot);
+		"ClearSlot: char=%lld itemProf=%d engineSlot=%d dbSlot=%d\n",
+		(long long)character_id, item_profile_id, slot, dbSlot);
 	return true;
 }
 
@@ -558,13 +602,15 @@ void LoadFromDB(ATgPawn* Pawn, int64_t character_id, int item_profile_id) {
 	// Do not write r_nBodyMeshAsmId or call ApplyPawnSetup here: both paths
 	// re-enter native pawn setup and crashed later loadout-profile switches.
 	ApplyClassVisualFallback(Pawn, profileId);
-	int resolvedSuitMesh = charPawn->r_CustomCharacterAssembly.SuitMeshId;
-	if (resolvedSuitMesh <= 0) {
-		resolvedSuitMesh = 1225;
-		charPawn->r_CustomCharacterAssembly.SuitMeshId = resolvedSuitMesh;
-		if (PRI) PRI->r_CustomCharacterAssembly.SuitMeshId = resolvedSuitMesh;
+	// 1225 is used ONLY as a collision-lookup key when no cosmetic suit is
+	// equipped — it must NOT be written into SuitMeshId (the replicated,
+	// rendered field), or "no suit" would render the Medic Acolyte mesh
+	// instead of the bare class-default body.
+	int collisionLookupMesh = charPawn->r_CustomCharacterAssembly.SuitMeshId;
+	if (collisionLookupMesh <= 0) {
+		collisionLookupMesh = 1225;
 	}
-	ApplyMeshCollisionData(Pawn, resolvedSuitMesh);
+	ApplyMeshCollisionData(Pawn, collisionLookupMesh);
 	if (PRI) {
 		// The pawn is authoritative; clear-only profile switches must not
 		// leave PRI dye/trail fields from the previous profile.

@@ -22,7 +22,10 @@ namespace CosmeticEquip {
 bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int item_profile_id,
                  int slot, int invId, int itemId);
 
-// Clear one cosmetic slot from live assembly and profile storage.
+// Clear one cosmetic slot from live assembly and profile storage. Accepts
+// engine slot 6 (Suit), 12 (Helmet), or 16-20 (dyes). Suit/helmet reset their
+// Flair/Mesh fields to -1 (bare — no overlay) and delete the remapped DB row
+// (22/23); dyes reset to kNoCosmeticItemId. Returns false for any other slot.
 bool ClearSlot(ATgPawn* Pawn, int64_t character_id, int item_profile_id, int slot);
 
 // On pawn spawn/profile switch, replay rows from ga_character_devices whose

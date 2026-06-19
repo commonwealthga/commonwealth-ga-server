@@ -179,6 +179,24 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 		}
 	}
 
+	// Explicit cosmetic clear. FTGEQUIP_SLOTS_STRUCT.SlotIndices[] is a fixed
+	// array sent in full on every Apply, so SlotIndices[slot]==0 genuinely
+	// means "this icon is empty" for the Appearance tab's Suit (6) / Head
+	// (12) icons — confirmed via right-click-to-remove repro 2026-06-19. This
+	// is safe to treat as a real clear (unlike most other slots — see the
+	// "Conservative gate" comment below) because, for players, the Appearance
+	// tab's icon is the only thing that ever writes engine slots 6/12; there's
+	// no separate player-equippable gameplay device sharing that wire slot.
+	std::set<int> clearedCosmeticSlots;
+	if (DeviceArray.SlotIndices[6] == 0) {
+		CosmeticEquip::ClearSlot(Pawn, character_id, itemProfileId, 6);
+		clearedCosmeticSlots.insert(6);
+	}
+	if (DeviceArray.SlotIndices[12] == 0) {
+		CosmeticEquip::ClearSlot(Pawn, character_id, itemProfileId, 12);
+		clearedCosmeticSlots.insert(12);
+	}
+
 	// Pre-pass: Unequip anything that's being SWAPPED for a different invId.
 	// Without this, `Inventory::Equip` would create a second ATgDevice actor
 	// at the same slot carrying a now-stale invId from the previous loadout,
@@ -191,10 +209,11 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 	//
 	// Conservative gate: only unequip when the new invId is non-zero AND
 	// different from current. Treat newInvId==0 as "client didn't ship this
-	// slot" rather than "user removed this item" — the equip screen UI on
-	// this build doesn't expose a clear-slot action, and the slot-14 rest
-	// device is invisible to the screen so the client may legitimately omit
-	// it. Skipping zero entries keeps that device safe.
+	// slot" rather than "user removed this item" for every OTHER slot — the
+	// slot-14 rest device is invisible to the screen so the client always
+	// reads 0 there, and weapon/offhand slots are never meant to go empty
+	// (the UI only replaces, never blanks them). Skipping zero entries keeps
+	// those slots safe; 6/12 are handled explicitly above instead.
 	//
 	// Cosmetic items (deviceId == 0): they don't occupy m_EquippedDevices,
 	// the engine-side write is just a r_CustomCharacterAssembly field.
@@ -374,20 +393,22 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 	}
 
 	nlohmann::json ev;
-	ev["type"]              = IpcProtocol::MSG_GAME_EVENT;
-	ev["subtype"]           = "equip_save";
-	ev["instance_id"]       = IpcClient::GetInstanceId();
-	ev["session_guid"]      = it->second;
-	ev["pawn_id"]           = (int)Pawn->r_nPawnId;
-	ev["character_id"]      = character_id;
-	ev["loadout_profile"]   = nProfileId;
-	ev["slot_to_inventory"] = std::move(slotMap);
-	ev["misc_items"]        = std::move(miscMap);  // armor / unknown-Misc-tab data
+	ev["type"]                    = IpcProtocol::MSG_GAME_EVENT;
+	ev["subtype"]                 = "equip_save";
+	ev["instance_id"]             = IpcClient::GetInstanceId();
+	ev["session_guid"]            = it->second;
+	ev["pawn_id"]                 = (int)Pawn->r_nPawnId;
+	ev["character_id"]            = character_id;
+	ev["loadout_profile"]         = nProfileId;
+	ev["slot_to_inventory"]       = std::move(slotMap);
+	ev["misc_items"]              = std::move(miscMap);  // armor / unknown-Misc-tab data
+	ev["cleared_cosmetic_slots"]  = nlohmann::json(clearedCosmeticSlots);
 	IpcClient::Send(ev.dump());
 
 	Logger::Log(GetLogChannel(),
-		"equip-save: forwarded loadout=%d slots=%d/24 misc=%d/25 pawn=%p guid=%s\n",
-		nProfileId, slotPopulated, miscPopulated, (void*)Pawn, it->second.c_str());
+		"equip-save: forwarded loadout=%d slots=%d/24 misc=%d/25 cleared=%zu pawn=%p guid=%s\n",
+		nProfileId, slotPopulated, miscPopulated, clearedCosmeticSlots.size(),
+		(void*)Pawn, it->second.c_str());
 
 	LogCallEnd();
 }

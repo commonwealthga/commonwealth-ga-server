@@ -1561,7 +1561,8 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
                                               uint32_t profile_id,
                                               int item_profile_id,
                                               const std::map<int, int>& slot_to_inventory,
-                                              const std::map<int, int>& misc_items) {
+                                              const std::map<int, int>& misc_items,
+                                              const std::set<int>& cleared_cosmetic_slots) {
 	if (item_profile_id < 1 || item_profile_id > 5) {
 		Logger::Log("armor",
 			"[Save] REJECT char=%lld: item_profile_id=%d out of range [1..5]\n",
@@ -1711,7 +1712,14 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 		sqlite3_bind_int64(del, 1, character_id);
 		sqlite3_bind_int  (del, 2, item_profile_id);
 		sqlite3_bind_int  (del, 3, db_slot);
-		sqlite3_step(del);
+		if (sqlite3_step(del) != SQLITE_DONE) {
+			Logger::Log("armor",
+				"[Save] DELETE FAILED char=%lld itemProf=%d dbSlot=%d engineSlot=%d: %s\n",
+				character_id, item_profile_id, db_slot, engine_slot, sqlite3_errmsg(db));
+			sqlite3_finalize(del);
+			sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, &err);
+			return false;
+		}
 	}
 	sqlite3_finalize(del);
 
@@ -1741,7 +1749,14 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 		sqlite3_bind_int  (ins, 2, item_profile_id);
 		sqlite3_bind_int  (ins, 3, inv_id);
 		sqlite3_bind_int  (ins, 4, db_slot);
-		sqlite3_step(ins);
+		if (sqlite3_step(ins) != SQLITE_DONE) {
+			Logger::Log("armor",
+				"[Save] INSERT FAILED char=%lld itemProf=%d dbSlot=%d engineSlot=%d invId=%d: %s\n",
+				character_id, item_profile_id, db_slot, engine_slot, inv_id, sqlite3_errmsg(db));
+			sqlite3_finalize(ins);
+			sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, &err);
+			return false;
+		}
 	}
 	sqlite3_finalize(ins);
 
@@ -1803,6 +1818,40 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 				}
 			}
 			sqlite3_finalize(insArmor);
+		}
+	}
+
+	// Cosmetic suit/helmet clear. `cleared_cosmetic_slots` carries engine
+	// slots (6/12) the client explicitly blanked (SlotIndices[slot]==0) —
+	// see CosmeticSlots.hpp for the engine→DB remap rationale. Independent
+	// of slot_to_inventory since there's no inventory row to validate when
+	// clearing.
+	if (!cleared_cosmetic_slots.empty()) {
+		sqlite3_stmt* delCosmetic = nullptr;
+		if (sqlite3_prepare_v2(db,
+		    "DELETE FROM ga_character_devices "
+		    "WHERE character_id = ? AND item_profile_id = ? AND equipped_slot = ?",
+		    -1, &delCosmetic, nullptr) == SQLITE_OK) {
+			for (int engine_slot : cleared_cosmetic_slots) {
+				const int db_slot = (engine_slot == 6)  ? CosmeticSlots::kCosmeticSuitDbSlot
+				                  : (engine_slot == 12) ? CosmeticSlots::kCosmeticHelmetDbSlot
+				                                         : engine_slot;
+				sqlite3_reset(delCosmetic);
+				sqlite3_clear_bindings(delCosmetic);
+				sqlite3_bind_int64(delCosmetic, 1, character_id);
+				sqlite3_bind_int  (delCosmetic, 2, item_profile_id);
+				sqlite3_bind_int  (delCosmetic, 3, db_slot);
+				if (sqlite3_step(delCosmetic) != SQLITE_DONE) {
+					Logger::Log("armor",
+						"[Save] cosmetic clear FAILED char=%lld engineSlot=%d dbSlot=%d: %s\n",
+						character_id, engine_slot, db_slot, sqlite3_errmsg(db));
+				} else {
+					Logger::Log("armor",
+						"[Save] cosmetic clear: engineSlot=%d dbSlot=%d cleared\n",
+						engine_slot, db_slot);
+				}
+			}
+			sqlite3_finalize(delCosmetic);
 		}
 	}
 
