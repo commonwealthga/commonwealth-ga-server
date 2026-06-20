@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgMissionObjective/RegisterSelf/TgMissionObjective__RegisterSelf.hpp"
+#include "src/GameServer/GameModes/CtrPointRotation/CtrPointRotation.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
@@ -9,6 +10,12 @@
 // a TgCollisionProxy so that player-in-zone detection works.
 void __fastcall TgMissionObjective__RegisterSelf::Call(ATgMissionObjective* Objective, void* edx) {
 	LogCallBegin();
+
+	// On the repurposed CTR maps, stock CTR objectives run their PostBeginPlay
+	// (AddToList + RegisterSelf) AFTER CtrPointRotation::Init seeds our points,
+	// so they re-pollute the rotation list. Drop + disable any such straggler.
+	// No-op on every non-CTR map and before seeding completes.
+	CtrPointRotation::ExcludeLateStockObjective(Objective);
 
 	char* className = Objective->Class->GetFullName();
 	Logger::Log(GetLogChannel(), "Objective class: %s\n", className);

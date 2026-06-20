@@ -126,6 +126,14 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
+    if (cmd_name == "-coords") {
+        // No args — report the player's current XYZ.
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        out.coords = true;
+        return out;
+    }
+
     if (cmd_name == "-spawnfriend" || cmd_name == "-spawnenemy" ||
         cmd_name == "-spawnhenchman") {
         // -spawnfriend    [low|medium|high|max|umax] <bot_id>
@@ -358,6 +366,7 @@ static void DispatchSimpleAction(const std::string& action_name, const std::stri
 
 void DispatchPossess(const std::string& session_guid)   { DispatchSimpleAction("possess",   session_guid); }
 void DispatchUnpossess(const std::string& session_guid) { DispatchSimpleAction("unpossess", session_guid); }
+void DispatchCoords(const std::string& session_guid)    { DispatchSimpleAction("coords",    session_guid); }
 
 void DispatchTopDown(const TopDownArgs& args, const std::string& session_guid) {
     if (session_guid.empty()) {

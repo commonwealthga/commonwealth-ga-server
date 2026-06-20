@@ -105,6 +105,7 @@
 #include "src/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.hpp"
 #include "src/GameServer/TgGame/TgDevice/UpdateDeployModeStatus/TgDevice__UpdateDeployModeStatus.hpp"
 #include "src/GameServer/TgGame/TgDevice/CalcFireSocketIndexMax/TgDevice__CalcFireSocketIndexMax.hpp"
+#include "src/GameServer/TgGame/TgDevice/ServerDetonate/TgDevice__ServerDetonate.hpp"
 #include "src/GameServer/TgGame/TgDevice/GetFireSocketName/TgDevice__GetFireSocketName.hpp"
 // Decommissioned 2026-06-11: the intact trace native @ 0x109cc520 now runs
 // against real SOI assets (FireSockets::EnsurePopulated); SocketCycle's DB
@@ -489,6 +490,7 @@ DWORD WINAPI ModuleThread(LPVOID) {
 
 	TgDevice__UpdateDeployModeStatus::Install();
 	TgDevice__CalcFireSocketIndexMax::Install();
+	TgDevice__ServerDetonate::Install();
 	TgDevice__GetFireSocketName::Install();
 	// TgPawn__GetWeaponStartTraceLocationFromSocketOffsetInfo::Install();  // decommissioned 2026-06-11 — intact native runs against real SOI assets
 	TgPawn__RosterWalker::Install();

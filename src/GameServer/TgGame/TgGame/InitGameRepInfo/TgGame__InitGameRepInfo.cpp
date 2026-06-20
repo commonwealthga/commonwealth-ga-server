@@ -3,6 +3,8 @@
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
+#include "src/GameServer/Maps/CtrRecursiveDoors/CtrRecursiveDoors.hpp"
+#include "src/GameServer/GameModes/CtrPointRotation/CtrPointRotation.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Config/Config.hpp"
@@ -53,7 +55,15 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		// r_bIsPVP AFTER all class blocks run. Maps absent from map_game_info
 		// fall back to the historical hardcoded behavior.
 		const std::string mapName = Config::GetMapNameChar();
-		const auto mapRow = MapGameInfo::LookupByName(mapName);
+		// Game class disambiguates maps with multiple map_game_info rows (stock +
+		// custom mode) sharing one map_name.
+		std::string gameClass;
+		if (Game->Class) {
+			const char* raw = Game->Class->GetFullName();
+			const std::string full(raw ? raw : "");
+			gameClass = (full.rfind("Class ", 0) == 0) ? full.substr(6) : full;
+		}
+		const auto mapRow = MapGameInfo::LookupByNameAndGameMode(mapName, gameClass);
 		int        missionTimeSecs = mapRow ? mapRow->mission_time_secs : 15 * 60;
 		const int  overtimeSecs    = mapRow ? mapRow->overtime_secs     : 4 * 60;
 		const bool allowOvertime   = mapRow ? mapRow->allow_overtime    : true;
@@ -138,6 +148,19 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		// Unconditional: the manual-registration block above only runs when the
 		// objective list was empty, but our seeding must happen either way.
 		SuperAgent::Init(Game);
+
+		// Custom Point-Rotation mode on the CTR_* maps — seeds KOTH-345 rotation
+		// points + neutralizes the stock objectives. No-op unless the instance is
+		// running as TgGame_PointRotation on a surveyed CTR map.
+		CtrPointRotation::Init(Game);
+
+		if (mapName == "CTR_Recursive_P") {
+			// Unfinished map: the attacker spawn door never opens. Resolve + cache
+			// its leaf actors here at init; they get hidden at mission start (from
+			// SendMissionTimerEvent). See CtrRecursiveDoors.hpp.
+			Logger::Log("recursive", "Map is CTR_Recursive_P - caching spawn doors\n");
+			CtrRecursiveDoors::CacheSpawnDoors();
+		}
 
 
 		const std::string GameClassName = Game->Class->GetFullName();

@@ -42,6 +42,7 @@ static const std::vector<GearSlot> kMedic = {
     { 3967,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // Poison injector
 
     { 2991,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("rrr", "ppp", false) },  // Agonizer
+    { 2991,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // Agonizer
     { 4154,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // Euthanizer
     { 5797,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // Rockwind
     { 4676,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Paingun
@@ -58,17 +59,37 @@ static const std::vector<GearSlot> kMedic = {
     { 7032,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Medic Crescent Jetpack
 
     { 2531,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("hhh", "hhh", true) },  // Healing Grenade
-    { 2168,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("xxx", "ccc", true) },  // Poison Grenade
+    { 2168,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("xxx", "ccc", false) },  // Poison Grenade
+    { 2168,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // Poison Grenade
+    { 2168,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // Poison Grenade
     { 3645,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("xxx", "ccc", false) },  // frenzy
+    { 3645,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // frenzy
     { 3642,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("xxx", "ccc", false) },  // neut
+    { 3642,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // neut
+    { 3642,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // neut
     { 2379,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("xxx", "ccc", false) },  // psn aura
+    { 2379,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // psn aura
+    { 2379,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // psn aura
     { 4682,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("xxx", "ccc", false) },  // power wave
+    { 4682,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // power wave
     { 4690,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("xxx", "ccc", false) },  // powervirus
+    { 4690,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // powervirus
+    { 4690,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // powervirus
     { 3639,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("xxx", "ccc", false) },  // prot wave
+    { 3639,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // prot wave
     { 2246,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("hhh", "hhh", false) },  // regen
+    { 2246,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ttt", "hhh", false) },  // regen
+    { 2246,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ttt", "ccc", false) },  // regen
+    { 2246,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // regen
+    { 2246,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // regen
+    { 2246,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ccc", "hhh", false) },  // regen
     { 6006,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("xxx", "ccc", false) },  // soul stealer
+    { 6006,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // soul stealer
+    { 6006,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // soul stealer
     { 5808,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("xxx", "ccc", false) },  // triage
     { 2376,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("xxx", "ccc" , false)}, // healwave
+    { 2376,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ccc", "ccc" , false)}, // healwave
+    { 2376,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("hhh", "hhh" , false)}, // healwave
 
     { 2773, 10,  SVID_MORALE,       Q_EPIC, Mods::Letters("mmm", "hhh", false) },  // Healing Boost
     { 5776, 10,  SVID_MORALE,       Q_EPIC, Mods::Letters("mmm", "ddd", false) },  // Oathbreaker
@@ -106,6 +127,7 @@ static const std::vector<GearSlot> kRobotics = {
     { 2675,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // eye drone
     { 5792,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddr", "ddd", false )}, // flame turret
     { 2051,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // force wall
+    { 2051,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("nnn", "vnvnvn", true )}, // force wall
     { 2107,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", true )}, // grizzly drone
     { 4782,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // harrier drone
     { 2279,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // hornet drone
@@ -140,18 +162,24 @@ static const std::vector<GearSlot> kAssault = {
     { 5789,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", true)},  // longbow
     { 3695,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("xxx", "ddd", false)},  // magmalance
     { 1994,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("xxx", "ddd", false)},  // tremor
+    { 2202,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", true)},  // tremor
 
     { 7031,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Assault Crescent Jetpack
 
     { 3699,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // Power Stim
     { 2022,  8,  SVID_OFFHAND2, Q_EPIC,  Mods::Letters("xxx", "ccc", false)  },  // emp
     { 2013,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ttt", "ccc", false) }, // range shield
+    { 2013,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ccc", "ccc", false) }, // range shield
     { 2004,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ttt", "ccc", false) }, // aoe shield
+    { 2004,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ccc", "ccc", false) }, // aoe shield
     { 5809,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ttc", "ccc", false) }, // berserk
     { 2498,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ddd", "ddd", true) }, // conc
+    { 2498,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("xxx", "ccc", false) }, // conc
     { 2019,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ddd", "ddd", false) }, // incen
+    { 2019,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("xxx", "ccc", false) }, // incen
     { 5806,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ddx", "ddd", false) }, // overcharge
     { 3708,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ttt", "ccc", false) }, // perfect target
+    { 3708,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ccc", "ccc", false) }, // perfect target
     { 2163,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ddd", "ddd", true) }, // spider grenades
 
 
@@ -180,17 +208,29 @@ static const std::vector<GearSlot> kRecon = {
     { 7033,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Recon Crescent Jetpack
 
     { 4708,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "ccc", false) },  // Venom bomb
+    { 4708,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // Venom bomb
+    { 4708,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // Venom bomb
     { 2219,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "ccc", false) },  // emp bomb
+    { 2219,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // emp bomb
+    { 2219,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // emp bomb
     { 3056,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "ccc", false) },  // fire bomb
+    { 3056,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // fire bomb
+    { 3056,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // fire bomb
     { 4716,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "ccc", false) },  // graviton bomb
+    { 4716,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // graviton bomb
+    { 4716,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // graviton bomb
     { 5804,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ddx", "ddd", false) },  // Deconstructor
     { 6012,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // vulture vision
     { 2368,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // bionics
+    { 2368,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ttt", "ccc", false) },  // bionics
     { 2129,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // decoy
     { 2953,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // melee stim
+    { 2953,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ttt", "ccc", false) },  // melee stim
     { 2218,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // range stim
+    { 2218,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ttt", "ccc", false) },  // range stim
     { 3704,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // sealed system
     { 2176,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // visual scanner
+    { 2176,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ttt", "ccc", false) },  // visual scanner
     { 2225,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // standard mine
     { 2897,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // poison mine
 

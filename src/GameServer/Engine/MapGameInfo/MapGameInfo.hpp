@@ -23,5 +23,14 @@ struct MapGameInfoRow {
 
 class MapGameInfo {
 public:
+	// Two rows can share a map_name across game classes (e.g. a stock CTR row
+	// plus a custom PointRotation row). Prefer the row whose game_class equals
+	// `gameMode` (the "TgGame.TgGame_X" string, no "Class " prefix); fall back to
+	// any name match when gameMode is empty or unmatched.
+	static std::optional<MapGameInfoRow> LookupByNameAndGameMode(
+		const std::string& mapName, const std::string& gameMode);
+
+	// Name-only convenience for callers without a game-class context. Equivalent
+	// to LookupByNameAndGameMode(mapName, "") — first name match wins.
 	static std::optional<MapGameInfoRow> LookupByName(const std::string& mapName);
 };

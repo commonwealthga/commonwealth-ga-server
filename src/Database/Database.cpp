@@ -7525,7 +7525,94 @@ void Database::Init() {
 		Logger::Log("db", "v114: added Super Agent queue (difficulty 10000, marshal 1471, specops pool, sort_order 5) + umax location 1483\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 114", nullptr, nullptr, &err);
+	if (version < 115) {
+		// v115: CTR_Recursive_P spawns everyone in one room regardless of task
+		// force. Assign the two spawn-room objects to opposing task forces so
+		// attackers (TF1) and defenders (TF2) spawn separately, matching the
+		// CTR/DualCTF layout used by the released CTR_DuelStrike maps.
+		const char* kV115_recursive_spawn_task_forces =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('CTR_Recursive_P', 13880, 'm_n_task_force', '1', NULL, NULL, 1),"
+			"  ('CTR_Recursive_P', 13881, 'm_n_task_force', '2', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV115_recursive_spawn_task_forces, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v115 (recursive spawn task forces): %s\n", err); return; }
+
+		Logger::Log("db", "v115: assigned CTR_Recursive_P spawn rooms 13880=TF1, 13881=TF2\n");
+	}
+
+	if (version < 116) {
+		// v116: CTR_DuelStrike3_P and CTR_DuelStrike_P had their friendly names
+		// crossed — DuelStrike3 showed "Kimerial Point" (msg 36824) and
+		// DuelStrike_P showed "Hart Station" (msg 35942). Swap so DuelStrike3 =
+		// Hart Station. The msg strings live in read-only asm_data_set_msg_
+		// translations; only the map_game_info references move. Both maps already
+		// share loading screen 5146 (loading_dualstrike_a), so there is no screen
+		// to swap. Explicit values = idempotent.
+		const char* kV116_duelstrike_name_swap =
+			"UPDATE map_game_info SET friendly_name_msg_id = 35942 WHERE map_name = 'CTR_DuelStrike3_P';"  // Hart Station
+			"UPDATE map_game_info SET friendly_name_msg_id = 36824 WHERE map_name = 'CTR_DuelStrike_P';";   // Kimerial Point
+		result = sqlite3_exec(db, kV116_duelstrike_name_swap, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v116 (duelstrike name swap): %s\n", err); return; }
+
+		Logger::Log("db", "v116: swapped names — CTR_DuelStrike3_P=Hart Station(35942), CTR_DuelStrike_P=Kimerial Point(36824)\n");
+	}
+
+	if (version < 117) {
+		// v117: register the 4 CTR maps as a custom Point-Rotation PvP mode.
+		// New map_game_info rows with fabricated ids (100006-100009) leave the
+		// originals' client-recognized ids intact; the DLL resolves the right row
+		// via LookupByNameAndGameMode(map_name, game_class). Cloned from the Rot_
+		// PointRotation maps (gameplay_type 1548, 900s/180s/pvp). friendly_name +
+		// bg keep each map's identity (post-v116 DuelStrike name swap). NOTE: the
+		// actual PointRotation timer is set by TgGame_Arena's LoadGameConfig hook,
+		// not these columns — they match the other Rot_ rows for consistency.
+		const char* kV117_mapgameinfo =
+			"INSERT OR IGNORE INTO map_game_info "
+			"(map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, "
+			" entry_background_image_res_id, mission_time_secs, is_pvp, overtime_secs, allow_overtime) VALUES "
+			"  (100006, 'CTR_Recursive_P',   'TgGame.TgGame_PointRotation', 1548, 65824, 6064, 900, 1, 180, 1),"
+			"  (100007, 'CTR_DuelStrike_P',  'TgGame.TgGame_PointRotation', 1548, 36824, 5146, 900, 1, 180, 1),"  // Kimerial Point
+			"  (100008, 'CTR_DuelStrike2_P', 'TgGame.TgGame_PointRotation', 1548, 34477, 5713, 900, 1, 180, 1),"
+			"  (100009, 'CTR_DuelStrike3_P', 'TgGame.TgGame_PointRotation', 1548, 35942, 5146, 900, 1, 180, 1);"; // Hart Station
+		result = sqlite3_exec(db, kV117_mapgameinfo, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v117 (cp map_game_info): %s\n", err); return; }
+
+		// Add to the pvp ("merc") pool (map_pool_id=2), matching the Rot_
+		// PointRotation entries (weight 10, enabled, min_players 9, no max).
+		const char* kV117_pool =
+			"INSERT OR IGNORE INTO ga_map_pool_entries "
+			"(map_pool_id, map_name, game_mode, weight, enabled, min_players, max_players) VALUES "
+			"  (2, 'CTR_Recursive_P',   'TgGame.TgGame_PointRotation', 10, 1, 9, NULL),"
+			"  (2, 'CTR_DuelStrike_P',  'TgGame.TgGame_PointRotation', 10, 1, 9, NULL),"
+			"  (2, 'CTR_DuelStrike2_P', 'TgGame.TgGame_PointRotation', 10, 1, 9, NULL),"
+			"  (2, 'CTR_DuelStrike3_P', 'TgGame.TgGame_PointRotation', 10, 1, 9, NULL);";
+		result = sqlite3_exec(db, kV117_pool, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v117 (cp pool entries): %s\n", err); return; }
+
+		Logger::Log("db", "v117: registered 4 CTR maps as custom PointRotation (ids 100006-100009) + added to pvp pool\n");
+	}
+
+	if (version < 118) {
+		// v118: assign opposing task forces to the two spawn-room objects on the
+		// three CTR_DuelStrike maps (10394=TF2, 10395=TF1) so attackers and
+		// defenders spawn separately — the same fix v115 applied to
+		// CTR_Recursive_P's 13880/13881. Needed now that these maps run the custom
+		// two-sided PointRotation PvP mode (v117).
+		const char* kV118_duelstrike_spawn_task_forces =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('CTR_DuelStrike_P',  10394, 'm_n_task_force', '2', NULL, NULL, 1),"
+			"  ('CTR_DuelStrike_P',  10395, 'm_n_task_force', '1', NULL, NULL, 1),"
+			"  ('CTR_DuelStrike2_P', 10394, 'm_n_task_force', '2', NULL, NULL, 1),"
+			"  ('CTR_DuelStrike2_P', 10395, 'm_n_task_force', '1', NULL, NULL, 1),"
+			"  ('CTR_DuelStrike3_P', 10394, 'm_n_task_force', '2', NULL, NULL, 1),"
+			"  ('CTR_DuelStrike3_P', 10395, 'm_n_task_force', '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV118_duelstrike_spawn_task_forces, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v118 (duelstrike spawn task forces): %s\n", err); return; }
+
+		Logger::Log("db", "v118: assigned CTR_DuelStrike{,2,3}_P spawn rooms 10394=TF2, 10395=TF1\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 118", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

@@ -66,10 +66,18 @@ void __fastcall TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	// back to the historical 15-min mission / 4-min overtime / allowed default
 	// if no row exists for the current map.
 	std::string map_name = Config::GetMapNameChar();
+	// Game class (e.g. "TgGame.TgGame_PointRotation") disambiguates maps that
+	// have multiple map_game_info rows (stock + custom mode) under one map_name.
+	std::string game_class;
+	if (Game->Class) {
+		const char* raw = Game->Class->GetFullName();
+		const std::string full(raw ? raw : "");
+		game_class = (full.rfind("Class ", 0) == 0) ? full.substr(6) : full;
+	}
 	int  missionTimeSecs = 15 * 60;
 	int  overtimeSecs    = 4 * 60;
 	bool allowOvertime   = true;
-	if (auto row = MapGameInfo::LookupByName(map_name)) {
+	if (auto row = MapGameInfo::LookupByNameAndGameMode(map_name, game_class)) {
 		missionTimeSecs = row->mission_time_secs;
 		overtimeSecs    = row->overtime_secs;
 		allowOvertime   = row->allow_overtime;
@@ -104,6 +112,7 @@ void __fastcall TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	if (map_name == "Push_Dust_P") {
 		// UObject__CollectGarbage::bDisableGarbageCollection = true;
 	}
+
 
 	LoadCommonGameConfig(Game);
 

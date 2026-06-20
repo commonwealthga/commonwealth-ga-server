@@ -148,6 +148,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/ReturnHomeArea/ReturnHomeArea.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/Coords/Coords.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.cpp \
@@ -181,6 +182,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/HasEnoughPowerPool/TgDevice__HasEnoughPowerPool.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/UpdateDeployModeStatus/TgDevice__UpdateDeployModeStatus.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/CalcFireSocketIndexMax/TgDevice__CalcFireSocketIndexMax.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDevice/ServerDetonate/TgDevice__ServerDetonate.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/GetFireSocketName/TgDevice__GetFireSocketName.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RosterWalker.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/RosterWalker/TgPawn__RefIter.cpp \
@@ -197,6 +199,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerCountVolume/Update/TgPlayerCountVolume__Update.cpp \
 			  $(SRC_DIR)/GameServer/GameModes/SuperAgent/SuperAgent.cpp \
 			  $(SRC_DIR)/GameServer/GameModes/SuperAgent/SuperAgentMission.cpp \
+			  $(SRC_DIR)/GameServer/GameModes/CtrPointRotation/CtrPointRotation.cpp \
+			  $(SRC_DIR)/GameServer/Maps/CtrRecursiveDoors/CtrRecursiveDoors.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/SendMapRandomSMSettingsMarshal/CGameClient__SendMapRandomSMSettingsMarshal.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.cpp \

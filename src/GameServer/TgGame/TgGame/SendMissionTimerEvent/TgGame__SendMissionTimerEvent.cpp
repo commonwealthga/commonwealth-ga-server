@@ -1,7 +1,9 @@
 #include "src/GameServer/TgGame/TgGame/SendMissionTimerEvent/TgGame__SendMissionTimerEvent.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
+#include "src/GameServer/Maps/CtrRecursiveDoors/CtrRecursiveDoors.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // TArray<int> TgGame__SendMissionTimerEvent::ActivateIndices;
@@ -71,6 +73,13 @@ void __fastcall TgGame__SendMissionTimerEvent::Call(ATgGame *Game, void *edx, in
 	}
 
 	Logger::Log("gametimer", "SendMissionTimerEvent(%d): activated %d MissionTimer sequence events\n", nEventId, Events.Num());
+
+	// MissionStarted (1): clear CTR_Recursive_P's unbound attacker spawn door,
+	// matching when the defender door's matinee opens. Leaves were cached at
+	// init (TgGame::InitGameRepInfo) so nothing scans here.
+	if (nEventId == 1 && Config::GetMapNameChar() == std::string("CTR_Recursive_P")) {
+		CtrRecursiveDoors::OpenAttackerSpawnDoor();
+	}
 
 	LogCallEnd();
 }

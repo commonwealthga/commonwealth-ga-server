@@ -11,6 +11,7 @@
 #include "src/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/ReturnHomeArea/ReturnHomeArea.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/Coords/Coords.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
@@ -649,6 +650,8 @@ void IpcClient::DrainInbound() {
                     continue;
                 }
                 TgPlayerActions::PossessCmd::ExecuteUnpossess(guid);
+            } else if (action == "coords") {
+                TgPlayerActions::CoordsCmd::Execute(guid);
             } else if (action == "topdown") {
                 if (CurrentMatchIsPVP()) {
                     Logger::Log("chat-command",

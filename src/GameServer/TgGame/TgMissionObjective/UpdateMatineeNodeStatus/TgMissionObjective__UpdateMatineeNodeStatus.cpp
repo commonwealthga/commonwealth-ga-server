@@ -36,6 +36,20 @@ static std::unordered_map<ATgMissionObjective*, int> s_LastFiredPin;
 void __fastcall TgMissionObjective__UpdateMatineeNodeStatus::Call(ATgMissionObjective* Obj, void* edx, unsigned char eStatus) {
 	if (Obj == nullptr) return;
 
+	// Capture-moment trace for the CTR rotation points (objId 345). Logs EVERY
+	// status transition with the live meter + nearby count, so we can see what
+	// drives a point to status 7/8 (captured) — players present? meter at an
+	// extreme? owner pre-assigned?
+	if (Obj->nObjectiveId == 345 && Logger::IsChannelEnabled("ctrrot")) {
+		ATgMissionObjective_Proximity* po = (ATgMissionObjective_Proximity*)Obj;
+		int nNearby = po->s_CollisionProxy ? po->s_CollisionProxy->m_NearByPlayers.Count : -1;
+		Logger::Log("ctrrot",
+			"StatusChange %s: -> status=%d ownerTF=%d currOwnerTF=%d defOwnerTF=%d capOnce=%d time=%.2f curr=%.2f nearby=%d active=%d locked=%d\n",
+			po->GetName(), (int)eStatus, po->r_nOwnerTaskForce, po->m_nCurrOwnerTaskforce,
+			po->nDefaultOwnerTaskForce, (int)po->m_bCaptureOnlyOnce, po->m_fTimeToCapture,
+			po->m_fCurrCaptureTime, nNearby, (int)po->r_bIsActive, (int)po->r_bIsLocked);
+	}
+
 	const int pin = MapStatusToPin(eStatus);
 	if (pin < 0) return;
 
