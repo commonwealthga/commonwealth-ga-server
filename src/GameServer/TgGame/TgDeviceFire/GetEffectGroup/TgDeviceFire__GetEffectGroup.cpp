@@ -4,6 +4,9 @@
 #include "src/Utils/Logger/Logger.hpp"
 
 #include <unordered_set>
+#include <unordered_map>
+#include <vector>
+#include <algorithm>
 
 // ConstructObject<UTgEffectGroup> (validates IsChildOf UTgEffectGroup::StaticClass())
 typedef void*(__cdecl* ConstructEffectGroupFn)(void*, int, int, int, unsigned, unsigned, int, int, int*);
@@ -175,6 +178,20 @@ static UClass* GetEffectClassById(int classResId) {
 		c = ClassPreloader::GetClass("Class TgGame.TgEffect");
 	}
 	return c;
+}
+
+// -------------------------------------------------------------------------
+// True if any child effect raises HEALTH_MAX_MODIFIER (412) or HEALTH_MOD
+// (390) — the two props TgPawn__ApplyBuff folds into the eager-cached
+// HEALTH_MAX (see that file's RecomputeEagerBaseProp comment).
+// -------------------------------------------------------------------------
+static bool GroupRaisesMaxHealth(UTgEffectGroup* g) {
+	if (!g || !g->m_Effects.Data) return false;
+	for (int i = 0; i < g->m_Effects.Count; i++) {
+		UTgEffect* e = g->m_Effects.Data[i];
+		if (e && (e->m_nPropertyId == 412 || e->m_nPropertyId == 390)) return true;
+	}
+	return false;
 }
 
 // -------------------------------------------------------------------------
@@ -535,6 +552,39 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 					// recovers the firing deployable at apply time by walking
 					// the effect group's m_Instigator -> s_SpawnerDeviceMode ->
 					// device, so no per-template note is needed.)
+				}
+			}
+		}
+
+		// Within each same-nType bucket, a group that raises max HP (412/390)
+		// must apply BEFORE a same-type heal group. Native list order for
+		// Adrenaline Gun (device 6898/7457) is HoT, instant +200 heal, then
+		// +400 max-HP buff — all type 264 — so the instant heal fires while
+		// the target is still capped at the OLD max. If already near-full,
+		// that heal gets clamped and lost; TgPawn__ApplyBuff deliberately
+		// doesn't auto-bump current HP when the buff lands afterward (that
+		// gate exists to stop the buff from auto-topping the target off), so
+		// the lost heal only shows up a tick late, on the HoT's first pulse.
+		// Reordering per-type (not a flat sort) avoids disturbing relative
+		// order across different nType buckets used by other apply passes.
+		{
+			std::unordered_map<int, std::vector<int>> idxByType;
+			for (int i = 0; i < pThis->s_EffectGroupList.Count; i++) {
+				UTgEffectGroup* g = pThis->s_EffectGroupList.Data[i];
+				if (g) idxByType[g->m_nType].push_back(i);
+			}
+			for (auto& kv : idxByType) {
+				std::vector<int>& idxs = kv.second;
+				if (idxs.size() < 2) continue;
+				std::vector<UTgEffectGroup*> groups;
+				groups.reserve(idxs.size());
+				for (int idx : idxs) groups.push_back(pThis->s_EffectGroupList.Data[idx]);
+				std::stable_sort(groups.begin(), groups.end(),
+					[](UTgEffectGroup* a, UTgEffectGroup* b) {
+						return GroupRaisesMaxHealth(a) && !GroupRaisesMaxHealth(b);
+					});
+				for (size_t k = 0; k < idxs.size(); k++) {
+					pThis->s_EffectGroupList.Data[idxs[k]] = groups[k];
 				}
 			}
 		}
