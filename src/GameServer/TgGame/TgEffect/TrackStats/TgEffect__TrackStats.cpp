@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgEffect/TrackStats/TgEffect__TrackStats.hpp"
+#include "src/GameServer/TgGame/_effect_core/HealCreditGate.hpp"
 #include "src/GameServer/Combat/SendKillAlert/SendKillAlert.hpp"
 #include "src/GameServer/Combat/SendCombatMessage/SendCombatMessage.hpp"
 #include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
@@ -625,6 +626,18 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 		// the only thing that keeps the field fresh.
 		if (targetPawn != nullptr) {
 			targetPawn->m_LastHealer = Instigator;
+		}
+
+		// Target was already at its OLD max HP when a device-fire max-HP buff
+		// (Adrenaline Gun's +400) raised the ceiling moments ago in this same
+		// combo — see TgPawn__ApplyBuff.cpp. The instant heal that follows is
+		// only filling headroom the device itself created, not real healing
+		// performed by the player, so zero out fMissingHealth: the existing
+		// overheal clamps in TrackHealing/TrackBotHealing and
+		// MoraleCredit::Award already turn that into zero credit.
+		if (targetPawn != nullptr &&
+		    HealCreditGate::ConsumeFullBeforeMaxBuff(targetPawn)) {
+			fMissingHealth = 0.0f;
 		}
 
 		// STYPE_HEALING credit — credit Instigator (or owner if pet) for

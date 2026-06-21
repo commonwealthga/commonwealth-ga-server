@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgPawn/ApplyBuff/TgPawn__ApplyBuff.hpp"
+#include "src/GameServer/TgGame/_effect_core/HealCreditGate.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Direct native call to TgPawn::GetBuffIndex (vtable[0x560], FUN_109cd890).
@@ -328,10 +329,20 @@ void __fastcall TgPawn__ApplyBuff::Call(ATgPawn* Pawn, void* /*edx*/, FBuffHeade
 	    BuffFilter.nPropId == 390 /* HEALTH_MOD (blueprint maxHP rolls) */) {
 		const bool deviceFire = (buffSourceType >= 3);  // SELF (3) or OTHER (4)
 		const int hpBefore = deviceFire ? *(int*)((char*)Pawn + 0x2c4) : 0;
+		// r_nHealthMaximum BEFORE this recompute — the ceiling the pawn was
+		// actually capped at a moment ago. If hpBefore already sat at (or
+		// above) it, the pawn was truly full pre-buff; any heal that follows
+		// in this same combo is only filling the headroom this buff just
+		// created, not real player healing (see HealCreditGate.hpp).
+		const int oldMaxBefore = deviceFire ? *(int*)((char*)Pawn + 0x43c) : 0;
 
 		RecomputeEagerBaseProp(Pawn, 304 /* HEALTH_MAX */);
 
 		if (deviceFire) {
+			if (hpBefore >= oldMaxBefore && oldMaxBefore > 0) {
+				HealCreditGate::MarkFullBeforeMaxBuff(Pawn);
+			}
+
 			const int hpAfter = *(int*)((char*)Pawn + 0x2c4);
 			if (hpAfter > hpBefore) {
 				SetPropertyNative(Pawn, /*edx=*/nullptr, 51 /* HEALTH */, (float)hpBefore);
