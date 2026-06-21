@@ -1,5 +1,7 @@
 #include "src/ControlServer/Loadouts/ModResolver.hpp"
 
+#include <climits>
+#include <cstdlib>
 #include <map>
 #include <mutex>
 #include <string>
@@ -30,6 +32,7 @@ const std::map<int, KitEgids> kPropToKit = {
     { 65,  { 0, 24191, 24195, 24199 } },  // Effect Damage Modifier
     { 212, { 0, 24191, 24195, 24199 } },  // Damage - Melee     (reuse Effect Damage kit)
     { 214, { 0, 24191, 24195, 24199 } },  // Damage - Range     (reuse Effect Damage kit)
+    { 321, { 0, 24191, 24195, 24199 } },  // Damage - AoE       (reuse Effect Damage kit)
     { 350, { 0, 25321, 25322, 25323 } },  // Pet Damage Modifier
 
     { 330, { 0, 24208, 24211, 24212 } },  // 'h' Effect Healing Modifier
@@ -68,6 +71,22 @@ const std::map<int, KitEgids> kPropToKit = {
 
 // Survivor (multi-letter) kit — emits 'v' AND 'n' in the suffix from one egid.
 constexpr KitEgids kSurvivorKit = { 0, 24222, 24223, 24219 };
+
+// Canonical single-prop letters — fallback for the kit half when a device's
+// own pool has no entry for the letter, so we can still attach the generic,
+// device-independent kit egid (e.g. 'c' Cooldown on Soul Stealer, whose pool
+// ships no 'c' at all). Pool-derivation always runs FIRST, so a device that
+// rolls a specific variant of a letter (e.g. 'd' as Melee 212 / Range 214 /
+// AoE 321 / Pet 350 — all present in that device's pool) keeps the right prop;
+// this default only fires when the device has no entry for the letter, where
+// the umbrella prop ('d' → Effect Damage 65) is the correct generic.
+// Truly-ambiguous letters 'r'/'n'/'v' are still omitted (no clear umbrella).
+const std::map<char, int> kDefaultLetterProp = {
+    { 'h', 330 }, { 'c', 203 }, { 'p', 242 }, { 'x', 352 },
+    { 't', 208 }, { 's', 386 }, { 'y', 210 }, { 'q', 207 },
+    { 'l', 355 }, { 'g', 155 }, { 'a', 113 }, { 'f', 137 },
+    { 'm', 217 }, { 'b', 219 }, { 'T', 421 }, { 'd', 65 },
+};
 
 int PickByQuality(const KitEgids& k, int q) {
     switch (q) {
@@ -146,18 +165,34 @@ int LookupInnate(int device_id, char letter, int quality) {
     auto di = g_innateTable.find(device_id);
     if (di == g_innateTable.end()) return 0;
     auto li = di->second.find(letter);
-    if (li == di->second.end()) return 0;
-    auto qi = li->second.find(quality);
-    if (qi == li->second.end()) return 0;
-    return qi->second;
+    if (li == di->second.end()) return 0;          // device never rolls this letter
+    const auto& byQuality = li->second;
+    auto qi = byQuality.find(quality);
+    if (qi != byQuality.end()) return qi->second;  // exact tier
+
+    // Device ships this innate letter, just not at the requested tier (e.g.
+    // EPIC innate 'h' missing, only RARE/UNCOMMON rolls exist). Fall back to
+    // the nearest tier rather than silently dropping the letter — that
+    // weaker roll is the most faithful content for this device.
+    int best = 0, bestDist = INT_MAX;
+    for (const auto& kv : byQuality) {
+        int dist = std::abs(kv.first - quality);
+        if (dist < bestDist) { bestDist = dist; best = kv.second; }
+    }
+    return best;
 }
 
 int LookupLetterProp(int device_id, char letter) {
     auto di = g_letterToProp.find(device_id);
-    if (di == g_letterToProp.end()) return 0;
-    auto li = di->second.find(letter);
-    if (li == di->second.end()) return 0;
-    return li->second;
+    if (di != g_letterToProp.end()) {
+        auto li = di->second.find(letter);
+        if (li != di->second.end()) return li->second;
+    }
+    // Device pool has no entry for this letter — fall back to the canonical
+    // single-prop mapping so generic kits still attach.
+    auto df = kDefaultLetterProp.find(letter);
+    if (df != kDefaultLetterProp.end()) return df->second;
+    return 0;
 }
 
 // Look up the Output Mod egid (prop 385, Common-tier slot of the device's
@@ -207,11 +242,6 @@ namespace ModResolver {
 std::vector<int> Resolve(int device_id, int quality, const Mods::Result& mods) {
     std::call_once(g_initOnce, DoInit);
 
-    // Back-compat: explicit egid list bypasses letter resolution entirely
-    if (!mods.raw_egids.empty()) {
-        return mods.raw_egids;
-    }
-
     std::vector<int> out;
 
     // Output Mod (prop 385): every shipped device's blueprint carries a
@@ -225,9 +255,26 @@ std::vector<int> Resolve(int device_id, int quality, const Mods::Result& mods) {
     int outputEgid = LookupOutputModEgid(device_id, mods.oc);
     if (outputEgid) out.push_back(outputEgid);
 
-    // Innate letters: device-specific lookup, skip unknowns silently
+    // Manual escape hatch (Mods::Egids / brace-init): explicit egid list
+    // bypasses letter resolution for oddball devices whose blueprint pool
+    // lacks the innate/kit entries the resolver needs. Output Mod above is
+    // still prepended so these rows keep the same base output as Letters().
+    if (!mods.raw_egids.empty()) {
+        out.insert(out.end(), mods.raw_egids.begin(), mods.raw_egids.end());
+        return out;
+    }
+
+    // Innate letters: device-specific roll first. If the device can't roll
+    // this letter at all (no innate egid anywhere in its pool — e.g. the
+    // Adrenaline Gun has no 'p' roll), fall back to the generic kit egid so
+    // the letter still applies & renders instead of silently dropping. A
+    // device that CAN roll the innate never reaches the fallback.
     for (char c : mods.innate) {
         int egid = LookupInnate(device_id, c, quality);
+        if (!egid) {
+            int prop_id = LookupLetterProp(device_id, c);
+            if (prop_id) egid = KitEgidForProp(prop_id, quality);
+        }
         if (egid) out.push_back(egid);
     }
 

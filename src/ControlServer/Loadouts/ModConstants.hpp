@@ -91,8 +91,9 @@ namespace Mods {
 //     Q_EPIC, Mods::Letters("hhh", "hhh")           // letters, device-resolved
 //     Q_EPIC, Mods::Letters("hhh", "hhh", true)     // letters + OC name
 //
-// Raw `raw_egids` non-empty short-circuits letter resolution entirely —
-// useful when you want a specific egid the resolver wouldn't pick.
+// Raw `raw_egids` non-empty (via Mods::Egids(...) or a brace list) bypasses
+// letter resolution — useful when you want specific egids the resolver
+// wouldn't pick. The device Output Mod (prop 385) is still prepended.
 struct Result {
     std::vector<int> raw_egids;  // explicit egids; bypasses letter resolution
     std::string      innate;     // letters → device-specific innate egids
@@ -186,6 +187,40 @@ inline Result Letters(const char* innate, const char* kit, bool oc = false) {
     Result r;
     if (innate) r.innate = innate;
     if (kit)    r.kit    = kit;
+    r.oc = oc;
+    return r;
+}
+
+// Manual escape hatch — pin an EXACT egid list, bypassing letter resolution.
+// Use for oddball devices whose own blueprint pool lacks the entries the
+// resolver needs, so Mods::Letters() silently drops letters:
+//   - innate letters need the letter present AT the requested quality
+//     (most devices only ship innate rolls at RARE/UNCOMMON, not EPIC);
+//   - kit letters need the letter present at ANY quality just to derive the
+//     prop (even though the kit egid itself is generic & device-independent).
+//
+// Each egid → one inventory entry → one suffix letter (the effect's prop
+// ui_code). The device Output Mod (prop 385) is still prepended, exactly as
+// for every Letters() row, so base output matches. Same `oc` flag semantics.
+//
+// Reuse the named kit constants below for the kit half; pull innate egids
+// straight from the device's pool, e.g.:
+//   SELECT p.ui_code, bim.quality_value_id, bmg.effect_group_id
+//   FROM asm_data_set_blueprints b
+//   JOIN asm_data_set_blueprint_item_mods bim ON bim.blueprint_id=b.blueprint_id
+//   JOIN asm_data_set_blueprint_mod_effect_groups bmg ON bmg.blueprint_mod_id=bim.blueprint_mod_id
+//   JOIN asm_data_set_effects e ON e.effect_group_id=bmg.effect_group_id
+//   JOIN asm_data_set_properties p ON p.prop_id=e.prop_id
+//   WHERE p.ui_code!='' AND b.created_item_id=<device_id>;
+//
+//   // Adrenaline Gun [hhhhhh] — pool has no EPIC innate 'h', so
+//   // Letters("hhh","hhh") dropped the 3 innate; pin them explicitly:
+//   { 7457, 3, SVID_SPECIALTY, Q_EPIC, Mods::Egids({
+//        27486, 27486, 27486,                                      // 3 innate 'h' (device pool, RARE roll)
+//        Mods::Healing::EPIC, Mods::Healing::EPIC, Mods::Healing::EPIC }) },  // 3 kit 'h'
+inline Result Egids(std::initializer_list<int> egids, bool oc = false) {
+    Result r;
+    r.raw_egids = egids;
     r.oc = oc;
     return r;
 }
