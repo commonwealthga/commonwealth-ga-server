@@ -122,6 +122,11 @@ public:
                                    uint32_t eye_mat_param_id = 0);
     static std::vector<CharacterInfo> GetCharactersByUserId(int64_t user_id);
     static std::optional<CharacterInfo> GetCharacterById(int64_t id);
+    // Deletes a character and its per-character rows (devices, skills, quests).
+    // Guarded by user_id so a client can only delete its own characters; the
+    // account-scoped ga_players_inventory pool is NOT touched (shared across
+    // characters). Returns true if a ga_characters row was actually removed.
+    static bool DeleteCharacter(int64_t character_id, int64_t user_id);
     static void SetSelectedCharacter(const std::string& guid, int64_t char_id, uint32_t profile_id);
 
     // Walk every profile's ClassLoadouts entry and INSERT any (user_id,
