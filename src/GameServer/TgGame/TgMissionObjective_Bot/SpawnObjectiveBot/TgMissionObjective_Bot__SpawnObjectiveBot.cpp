@@ -54,13 +54,16 @@ void StampObjective(ATgMissionObjective_Bot* Obj, ATgPawn* Bot, int taskForce) {
 	// safe: actor PostBeginPlay runs first (boss spawned here), then game
 	// PostBeginPlay fires UnlockObjective(1) — the bot is already stamped
 	// by the time activation flips the flags.
-	if (taskForce == 2){
-		Obj->r_eStatus = 7;
-		GTeamsData.Attackers->r_CurrActiveObjective = Obj;
-	} else {
-		Obj->r_eStatus = 8;
-		GTeamsData.Defenders->r_CurrActiveObjective = Obj;
-	}
+	// A freshly-spawned bot is alive and intact → status 7. (ServerCalcStatus
+	// re-derives this from health each tick once active.) Do NOT seed the
+	// attacker boss at 8: r_eStatus==8 is the engine's "destroyed" status, and
+	// the win-checks read it directly — a seeded 8 reads as "boss already dead"
+	// the instant it spawns and would hand the defenders an instant round-5 win.
+	Obj->r_eStatus = 7;
+	if (taskForce == 2)
+		GTeamsData.Attackers->r_CurrActiveObjective = Obj;  // attackers' goal: kill Bancroft
+	else
+		GTeamsData.Defenders->r_CurrActiveObjective = Obj;  // defenders' goal: kill the boss
 }
 
 }  // namespace
@@ -134,6 +137,14 @@ void __fastcall TgMissionObjective_Bot__SpawnObjectiveBot::Call(ATgMissionObject
 		}
 		// Alarm group id for RadioAlarm (action 620) — bosses summoning adds.
 		AIC->m_nGlobalAlarmId = Obj->nGlobalAlarmId;
+	}
+
+	// TEMP TEST CHEAT — REMOVE BEFORE SHIPPING. Bancroft (defended NPC,
+	// mapObjectId 13623) is unkillable so the 10-player mission can be soloed.
+	// Mirrors the player godmode in TgGame::SpawnPlayerCharacter.
+	if (mid == 13623 && Bot->Controller != nullptr) {
+		// Bot->Controller->bGodMode = 1;
+		Logger::Log("tgmissionobjective_bot", "  TEMP CHEAT: godmode enabled on Bancroft (mid=%d)\n", mid);
 	}
 
 	Logger::Log("tgmissionobjective_bot",

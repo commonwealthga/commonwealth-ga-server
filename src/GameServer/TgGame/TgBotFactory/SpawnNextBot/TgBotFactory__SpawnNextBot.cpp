@@ -13,8 +13,26 @@
 #include <cstring>
 
 std::map<int, ATgPawn*> TgBotFactory__SpawnNextBot::m_lastSpawnedBot;
+std::map<int, std::vector<TgBotFactory__SpawnNextBot::EscortDroneRef>>
+	TgBotFactory__SpawnNextBot::m_escortDrones;
+
+void TgBotFactory__SpawnNextBot::ClearEscort(int mid) {
+	m_escortDrones.erase(mid);
+}
 
 namespace {
+
+// Raid_DomeCityDefense_P juggernaut spawn table. Its repair drones idle after
+// spawn because Colony_RepairDrone_AI is owner-driven (target type 344 "Owner")
+// and r_Owner is unset until we wire it to the juggernaut they spawn alongside.
+constexpr int kJuggernautSpawnTable = 149;
+
+// A tracked drone is still wireable only if its slot wasn't recycled (pawnId
+// still matches), it isn't pending destruction, and it's alive.
+bool EscortDroneValid(const TgBotFactory__SpawnNextBot::EscortDroneRef& r) {
+	return r.pawn != nullptr && !r.pawn->bDeleteMe &&
+	       r.pawn->r_nPawnId == r.pawnId && r.pawn->Health > 0;
+}
 
 // Jitter radius (UE units) applied to a spawn's XY around the picked
 // NavigationPoint when other bots of the same group are already out — keeps
@@ -232,6 +250,37 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 		// The intact BotDied reads this INDEX to decrement the right group
 		// and to build the replacement entry.
 		AIController->m_nFactorySpawnGroup = groupIdx;
+
+		// Juggernaut escort wiring (Raid_DomeCityDefense_P, table 149). Drones
+		// spawn ahead of the juggernaut (last group); accumulate them per
+		// factory, then adopt every still-valid drone as the juggernaut's
+		// owner-driven follower when it spawns. Pointers are batch-scoped
+		// (ResetQueue clears the list) and re-validated by r_nPawnId on use.
+		if (tableId == kJuggernautSpawnTable) {
+			std::vector<EscortDroneRef>& pending = m_escortDrones[mid];
+			if (ObjectClassCache::ClassNameContains(Bot, "TgPawn_Juggernaut")) {
+				int wired = 0;
+				for (size_t d = 0; d < pending.size(); d++) {
+					const EscortDroneRef& r = pending[d];
+					if (!EscortDroneValid(r)) continue;
+					r.pawn->r_Owner = (AActor*)Bot;
+					if (r.pawn->Controller != nullptr) {
+						((ATgAIController*)r.pawn->Controller)->m_pOwner = Bot;
+					}
+					wired++;
+				}
+				pending.clear();
+				Logger::Log("tgbotfactory",
+					"  juggernaut pawnId=%d spawned (factory=%d) — adopted %d repair drones\n",
+					Bot->r_nPawnId, mid, wired);
+			} else if (ObjectClassCache::ClassNameContains(Bot, "TgPawn_HoverShieldSphere")) {
+				EscortDroneRef ref = { Bot->r_nPawnId, Bot };
+				pending.push_back(ref);
+				Logger::Log("tgbotfactory",
+					"  tracked repair drone pawnId=%d (factory=%d, pending=%d)\n",
+					Bot->r_nPawnId, mid, (int)pending.size());
+			}
+		}
 
 		// Alarm responders: bSpawnOnAlarm factories never auto-spawn, so any
 		// spawn here came from ActivateAlarm — mark for the IS_ALARM_BOT

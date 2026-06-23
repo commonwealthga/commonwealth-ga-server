@@ -9,6 +9,7 @@
 #include "src/GameServer/Armor/Armor.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
+#include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
@@ -18,6 +19,7 @@
 #include "src/Utils/Logger/Logger.hpp"
 #include <string>
 #include <unordered_map>
+#include <cstdlib>  // wcstombs (kismet LinkDesc → char buffer)
 
 // TgPawn__SetProperty @ 0x109bf420 — __thiscall(pawn, nPropertyId, fNewValue)
 // Called as __fastcall with dummy EDX to avoid inline asm.
@@ -1855,6 +1857,57 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 					(unsigned)Game->m_GameWinState, (void*)Act->m_SpectatorCamera,
 					Act->m_nDelay, Act->m_nNextMapGameId);
 				BeginEndMissionImpl(Game, Act->m_SpectatorCamera, (float)Act->m_nDelay);
+			}
+		}
+		// TgSeqAct_SetUITextBox: the ally announcer callouts ("North Door!",
+		// "Satellite Strike imminent!", "Defend Bancroft", etc.). Same stripped-
+		// Activated() disconnection — the native dispatch that calls
+		// OnSetUITextBox on the target players is gone, so nothing fires.
+		// OnSetUITextBox -> AddAlertScript can't be reproduced via ProcessEvent
+		// either: AddAlertScript has no FUNC_NetClient, so a server-side call runs
+		// locally on the headless server (no HUD) and never reaches clients
+		// (reference_alert_dispatcher_734). The server-reachable path is the
+		// CHAT_MESSAGE piggyback (SendAlert), exactly what AddKillAlert uses. The
+		// target is TgSeqVar_Player ("the players") → broadcast to everyone
+		// (co-op defense: all human players are on one team).
+		if (ObjectClassCache::ClassNameContains(Object, "TgSeqAct_SetUITextBox")) {
+			UTgSeqAct_SetUITextBox* Act = (UTgSeqAct_SetUITextBox*)Object;
+			// Start pin (0) shows the alert; Stop pin (1) would remove it. We only
+			// reproduce the show path — the VO callouts all fire Start; the Stop
+			// pin (persistent objective banners) has no CHAT_MESSAGE remove twin.
+			const bool startImpulse =
+				Act->InputLinks.Count > 0 && Act->InputLinks.Data[0].bHasImpulse;
+			const bool stopImpulse =
+				Act->InputLinks.Count > 1 && Act->InputLinks.Data[1].bHasImpulse;
+			if (startImpulse && !stopImpulse) {
+				// Priority mirrors TgPawn.OnSetUITextBox: secondary -> APT_Normal(1),
+				// else APT_High(2). Type = TextBox_MessageType (AlertType enum).
+				const unsigned char priority = Act->TextBox_TargetSecondary ? 1 : 2;
+				const unsigned char type     = Act->TextBox_MessageType;
+				// Duration from the "Duration" SeqVar_Float varLink. Designers wire
+				// it even when TextBox_UseDuration is off; fall back to a readable
+				// default if absent / non-positive so the callout doesn't flash.
+				float duration = 5.0f;
+				for (int v = 0; v < Act->VariableLinks.Num(); v++) {
+					const FSeqVarLink& vl = Act->VariableLinks.Data[v];
+					char desc[64] = {0};
+					if (vl.LinkDesc.Data && vl.LinkDesc.Count > 0)
+						wcstombs(desc, vl.LinkDesc.Data, sizeof(desc) - 1);
+					if (strcmp(desc, "Duration") != 0) continue;
+					for (int k = 0; k < vl.LinkedVariables.Num(); k++) {
+						USequenceVariable* var = vl.LinkedVariables.Data[k];
+						if (var && ObjectClassCache::ClassNameContains(var, "SeqVar_Float")) {
+							const float f = ((USeqVar_Float*)var)->FloatValue;
+							if (f > 0.0f) duration = f;
+							break;
+						}
+					}
+					break;
+				}
+				SendAlert::Broadcast(Act->TextBox_MessageID, priority, type, duration);
+				Logger::Log("announcer",
+					"kismet TgSeqAct_SetUITextBox: msgId=%d type=%d pri=%d dur=%.1f -> broadcast\n",
+					Act->TextBox_MessageID, (int)type, (int)priority, duration);
 			}
 		}
 		break;

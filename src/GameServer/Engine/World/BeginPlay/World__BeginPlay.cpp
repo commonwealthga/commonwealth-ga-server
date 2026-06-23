@@ -28,7 +28,11 @@ void __fastcall World__BeginPlay::Call(void *World, void *edx, void *Url, int bR
 	}
 
 	if (Config::GetDumpKismet()) {
-		KismetWebDump::DumpAll();
+		// Arm a delayed dump instead of dumping now: BeginPlay runs before the
+		// async streaming of sublevels (e.g. *_Sound holds the announcer-VO
+		// kismet) finishes, so an immediate dump misses them. GameEngine::Tick
+		// fires the actual dump once the settle window elapses.
+		KismetWebDump::ArmDelayedDump();
 	}
 
 	// Signal control server that this instance is ready for players.

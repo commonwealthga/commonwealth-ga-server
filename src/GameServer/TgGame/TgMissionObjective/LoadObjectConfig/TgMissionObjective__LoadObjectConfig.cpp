@@ -19,6 +19,22 @@ void __fastcall TgMissionObjective__LoadObjectConfig::Call(ATgMissionObjective* 
 			mid, (int)prevStatus, (int)Obj->r_eStatus);
 	}
 
+	// n_priority override. The baked map sometimes leaves scripted objectives
+	// (e.g. a kismet-spawned boss) at priority 1, which makes PostBeginPlay's
+	// UnlockObjective(1) + TgGame_Defense's per-objective UnlockObjective() loop
+	// activate them at map load. Setting n_priority<=0 takes them out of the
+	// unlock sequence (both paths skip nPriority<=0) so only kismet flips them.
+	// Runs in LoadObjectConfig (objective PostBeginPlay), before the game's
+	// PostBeginPlay unlock pass.
+	const int prevPriority = Obj->nPriority;
+	Obj->nPriority = MapObjectConfig::GetInt(mid, "n_priority", Obj->nPriority);
+
+	if (Obj->nPriority != prevPriority) {
+		Logger::Log("config",
+			"TgMissionObjective::LoadObjectConfig — map_object_id=%d n_priority %d -> %d\n",
+			mid, prevPriority, Obj->nPriority);
+	}
+
 	std::string map = Config::GetMapNameChar();
 	if (map == "Rot_Redistribution03"
 		|| map == "Rot_Redistribution05"

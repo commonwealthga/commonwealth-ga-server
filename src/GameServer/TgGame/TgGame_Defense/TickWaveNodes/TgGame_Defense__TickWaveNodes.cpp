@@ -1,8 +1,73 @@
 #include "src/GameServer/TgGame/TgGame_Defense/TickWaveNodes/TgGame_Defense__TickWaveNodes.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
+#include "src/GameServer/TgGame/TgBotFactory/ClearQueue/TgBotFactory__ClearQueue.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include <set>
+
+namespace {
+
+// Last round we ran the park pass for. Single-threaded in-game state; harmless
+// across matches (the pass is idempotent and only touches still-awake factories).
+int s_lastParkedRound = -1;
+
+// Defense spawn rosters are tuned for a full ~10-player lobby, and Defense
+// factories ship with nActiveCount=0 (no concurrency cap) — so a woken factory
+// bulk-dumps its entire roster. At low player counts that floods the map. Cap
+// each woken factory's concurrent-alive count, scaled by player count, so small
+// lobbies get proportionally fewer enemies on the field. This is wave-spawner
+// level only: it writes the factory's existing nActiveCount brake (honored by
+// SpawnNextBot) — no change to shared TgBotFactory spawn logic, so other game
+// modes are unaffected. The per-player rate is chosen so a full lobby's cap
+// exceeds any roster (≈ original unlimited feel) while solo stays light.
+constexpr int kAlivePerPlayerPerFactory = 3;
+
+int PlayerScaledActiveCap(int numPlayers) {
+	const int players = numPlayers > 0 ? numPlayers : 1;
+	return std::max(1, players * kAlivePerPlayerPerFactory);
+}
+
+// On a round change, stop factories that belong only to earlier rounds from
+// self-spawning. A factory keeps spawning on its own SpawnNextBot/BotDied
+// SetTimer loop once woken (bAutoSpawn=1) — nothing else clears it — so without
+// this every prior round's factories accumulate. Parking = bAutoSpawn=0 (kills
+// the self-reschedule + BotDied respawn) + ClearQueue (drop pending). We do NOT
+// KillBots: already-spawned enemies persist by design (prior-wave pressure).
+// Shared factories that also belong to the new round are kept awake.
+void ParkStaleRoundFactories(ATgGame_Defense* Game, int curRound) {
+	std::set<UObject*> keep;
+	for (int i = 0; i < Game->s_WaveSpawnerList.Num(); i++) {
+		UTgSeqAct_DefenseWaveSpawner* sp = Game->s_WaveSpawnerList.Data[i];
+		if (sp == nullptr || sp->m_nRoundNumber != curRound) continue;
+		for (int t = 0; t < sp->Targets.Num(); t++) {
+			if (sp->Targets.Data[t] != nullptr) keep.insert(sp->Targets.Data[t]);
+		}
+	}
+
+	int parked = 0;
+	for (int i = 0; i < Game->s_WaveSpawnerList.Num(); i++) {
+		UTgSeqAct_DefenseWaveSpawner* sp = Game->s_WaveSpawnerList.Data[i];
+		if (sp == nullptr || sp->m_nRoundNumber == curRound) continue;
+		for (int t = 0; t < sp->Targets.Num(); t++) {
+			UObject* obj = sp->Targets.Data[t];
+			if (obj == nullptr || keep.count(obj) > 0) continue;
+			ATgBotFactory* Factory = (ATgBotFactory*)obj;
+			if (!Factory->bAutoSpawn) continue;  // already parked
+			Factory->bAutoSpawn = 0;
+			TgBotFactory__ClearQueue::Call(Factory, nullptr);
+			parked++;
+		}
+	}
+
+	if (parked > 0) {
+		Logger::Log("gametimer",
+			"TickWaveNodes: round=%d parked %d factory(ies) from earlier rounds\n",
+			curRound, parked);
+	}
+}
+
+}  // namespace
 
 void __fastcall TgGame_Defense__TickWaveNodes::Call(ATgGame_Defense* Game, void* edx) {
 	LogCallBegin();
@@ -15,6 +80,13 @@ void __fastcall TgGame_Defense__TickWaveNodes::Call(ATgGame_Defense* Game, void*
 	if (Game->s_WaveSpawnerList.Num() == 0) {
 		LogCallEnd();
 		return;
+	}
+
+	// Round advanced: park factories that belong only to earlier rounds so they
+	// stop pumping bots forever. Idempotent — runs once per round transition.
+	if (Game->s_nRoundNumber != s_lastParkedRound) {
+		s_lastParkedRound = Game->s_nRoundNumber;
+		ParkStaleRoundFactories(Game, Game->s_nRoundNumber);
 	}
 
 	AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
@@ -70,6 +142,9 @@ void __fastcall TgGame_Defense__TickWaveNodes::Call(ATgGame_Defense* Game, void*
 			// paces wave STARTS, while alive enemies accumulate only if the
 			// players can't kill fast enough (the intended losing pressure).
 			Factory->bAutoSpawn = 1;
+			// Player-scaled concurrent-alive cap (see PlayerScaledActiveCap) so
+			// small lobbies aren't buried under full-lobby-sized rosters.
+			// Factory->nActiveCount = PlayerScaledActiveCap(Game->NumPlayers);
 			if (Factory->m_SpawnQueue.Num() == 0) {
 				Factory->ResetQueue(0);
 			}
@@ -78,7 +153,21 @@ void __fastcall TgGame_Defense__TickWaveNodes::Call(ATgGame_Defense* Game, void*
 			kickedFactories++;
 		}
 
+		// Pulse the "Activated" output AND queue the op into its parent sequence.
+		// ActivateOutputLink only sets the impulse; ExecuteActiveOps propagates it
+		// only for ops in ActiveSequenceOps (mirrors USequenceEvent::ActivateEvent,
+		// the working CheckActivate path). Without the queue the announce-VO chain
+		// (juggernaut/dismantler/wave callouts) never fired.
 		Spawner->ActivateOutputLink(0);
+		USequence* ParentSeq = ((USequenceObject*)Spawner)->ParentSequence;
+		if (ParentSeq != nullptr) {
+			Spawner->bActive = 1;
+			bool bAlreadyQueued = false;
+			for (int q = 0; q < ParentSeq->ActiveSequenceOps.Num(); q++) {
+				if (ParentSeq->ActiveSequenceOps.Data[q] == (USequenceOp*)Spawner) { bAlreadyQueued = true; break; }
+			}
+			if (!bAlreadyQueued) ParentSeq->ActiveSequenceOps.Add((USequenceOp*)Spawner);
+		}
 		activatedNodes++;
 
 		Logger::Log("gametimer",

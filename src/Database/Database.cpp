@@ -7612,7 +7612,151 @@ void Database::Init() {
 		Logger::Log("db", "v118: assigned CTR_DuelStrike{,2,3}_P spawn rooms 10394=TF2, 10395=TF1\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 118", nullptr, nullptr, &err);
+	if (version < 119) {
+		// v119: Raid_DomeCityDefense_P spawn-table / objective-priority fixes.
+		// Runtime factory + objective config is read from map_object_config (the
+		// map_tg_* tables are dump-only). The boss has no rows yet (INSERT); the
+		// factory rows already exist with the wrong values (UPDATE).
+
+		// (a) Take the boss objective (13460) out of the priority unlock sequence
+		//     so PostBeginPlay's UnlockObjective(1) + TgGame_Defense's per-objective
+		//     UnlockObjective() loop skip it (both bail on nPriority<=0). The boss
+		//     then spawns only when the kismet "ACTIVATE BOSS" node fires. Relies
+		//     on the n_priority read added to TgMissionObjective::LoadObjectConfig.
+		const char* kV119_boss_priority =
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('Raid_DomeCityDefense_P', 13460, 'n_priority', '0', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV119_boss_priority, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v119 (boss priority): %s\n", err); return; }
+
+		// (b) The Wave-3 juggernaut DefenseWaveSpawner's only factory is 13809
+		//     ("Dummy Bot Factory"), but it was configured with spawn table 102
+		//     (Sand Spider) — so wave 3 produced spiders, not juggernauts. Point it
+		//     at the juggernaut table (149). Update active + default table ids.
+		const char* kV119_jugg =
+			"UPDATE map_object_config SET value='149' "
+			"WHERE map_name='Raid_DomeCityDefense_P' AND map_object_id=13809 "
+			"  AND column_name IN ('n_spawn_table_id','n_default_spawn_table_id');";
+		result = sqlite3_exec(db, kV119_jugg, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v119 (13809 juggernaut table): %s\n", err); return; }
+
+		// (c) The end-of-wave "spider swarm" factories (13802-13806, 13810) were on
+		//     spawn table 102 (Sand Spider) but are meant to spawn Hunter Spiders
+		//     (table 86). Update active + default table ids.
+		const char* kV119_spiders =
+			"UPDATE map_object_config SET value='86' "
+			"WHERE map_name='Raid_DomeCityDefense_P' "
+			"  AND map_object_id IN (13802,13803,13804,13805,13806,13810) "
+			"  AND column_name IN ('n_spawn_table_id','n_default_spawn_table_id');";
+		result = sqlite3_exec(db, kV119_spiders, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v119 (spider swarm table): %s\n", err); return; }
+
+		Logger::Log("db", "v119: DomeCityDefense boss n_priority=0; 13809 spawn table=149 (juggernaut); spider swarm spawn table=86 (Hunter Spider)\n");
+	}
+
+	if (version < 120) {
+		// v120: round-2 juggernaut. Split out from v119 (already shipped). The
+		// round-2 juggernaut is factory 13700 — toggle-driven (SeqAct_Toggle fires
+		// 270s after MissionStarted, one-shot guarded), which also fires the
+		// "Juggernaut_Spawned" remote event / announcer line. It was configured with
+		// spawn table 102 (Sand Spider), so the cue played while a sand spider
+		// spawned in place of the juggernaut. Point it at the juggernaut table (149);
+		// rows already exist (102) → UPDATE active + default ids.
+		const char* kV120_round2_jugg =
+			"UPDATE map_object_config SET value='149' "
+			"WHERE map_name='Raid_DomeCityDefense_P' AND map_object_id=13700 "
+			"  AND column_name IN ('n_spawn_table_id','n_default_spawn_table_id');";
+		result = sqlite3_exec(db, kV120_round2_jugg, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v120 (round-2 juggernaut table 13700): %s\n", err); return; }
+
+		Logger::Log("db", "v120: DomeCityDefense round-2 juggernaut 13700 spawn table=149\n");
+	}
+
+	if (version < 121) {
+		// v121: Raid_DomeCityDefense_P deployable factories. These have no baked
+		// per-factory deployable id (selection-list resolution lived in the stripped
+		// native), so drive them from map_object_config — read in
+		// TgActorFactory::LoadObjectConfig, spawned by TgDeployableFactory::SpawnObject.
+		//   13728 -> deployable 217 (DEF_DismantlerLanding, the boss-landing FX), TF1.
+		//   13791/13792/13793/13794/13800 -> deployable 218 (DEF_DomeEMP, end-of-wave
+		//     EMP), TF2.
+		// All are kismet-toggle driven, so s_b_auto_spawn=0 suppresses the
+		// PostBeginPlay auto-spawn (the toggle's "Turn On" is the real trigger).
+		// No existing rows for these map_object_ids → INSERT.
+		const char* kV121_deployables =
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('Raid_DomeCityDefense_P', 13728, 's_n_selected_object_id', '217', NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13728, 's_n_task_force',         '1',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13728, 's_n_team_number',        '1',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13728, 's_b_auto_spawn',         '0',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13791, 's_n_selected_object_id', '218', NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13791, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13791, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13791, 's_b_auto_spawn',         '0',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13792, 's_n_selected_object_id', '218', NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13792, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13792, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13792, 's_b_auto_spawn',         '0',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13793, 's_n_selected_object_id', '218', NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13793, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13793, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13793, 's_b_auto_spawn',         '0',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13794, 's_n_selected_object_id', '218', NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13794, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13794, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13794, 's_b_auto_spawn',         '0',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13800, 's_n_selected_object_id', '218', NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13800, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13800, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			"  ('Raid_DomeCityDefense_P', 13800, 's_b_auto_spawn',         '0',   NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV121_deployables, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v121 (deployable factory config): %s\n", err); return; }
+
+		Logger::Log("db", "v121: DomeCityDefense deployable factories — 13728=217/TF1, 13791-13794/13800=218/TF2, auto_spawn=0\n");
+	}
+
+	if (version < 122) {
+		// v122: Raid_DomeCityDefense_P mission time -> 0 so TgGame_Defense uses
+		// its PER-ROUND timer. TgGame_Defense.RoundInProgress.BeginState only runs
+		// SetMissionTime(roundTime)+ChangeTimerState(6)+MissionTimerStart() when
+		// `m_fGameMissionTime == 0`; with a non-zero overall mission time the
+		// per-round countdown state (6) never replicates, and the client's Ava
+		// satellite-countdown VO director (Bancroft_Start/HalfwayPoint/30s/10s)
+		// — which keys on that round countdown — stays silent. Our LoadGameConfig
+		// reads mission_time_secs from this row (and defaults to 900 otherwise),
+		// which is what regressed her VO. 0 restores the round timer; round
+		// progression itself is unaffected (the 'RoundTimer' SetTimer runs
+		// regardless). overtime already 0/disabled for this row.
+		const char* kV122 =
+			"UPDATE map_game_info SET mission_time_secs = 0 "
+			"WHERE map_name = 'Raid_DomeCityDefense_P';";
+		result = sqlite3_exec(db, kV122, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v122 (dome mission_time=0): %s\n", err); return; }
+		Logger::Log("db", "v122: Raid_DomeCityDefense_P mission_time_secs=0 (enable per-round timer -> Ava satellite VO)\n");
+	}
+
+	if (version < 123) {
+		// v123: Raid_DomeCityDefense_P bot factories — swap spawn table 102 -> 99.
+		// Every factory on this map already carries an explicit n_spawn_table_id /
+		// n_default_spawn_table_id override in map_object_config (which is the only
+		// source the DLL reads — TgBotFactory::LoadObjectConfig →
+		// ApplyFactoryFieldOverrides; map_tg_bot_factory is a write-only dump).
+		// Exactly five are at 102 (13635/13659/13665/13694/13709); the rest are
+		// already pointed at other tables (86/87/99/147/148/149/166), so a plain
+		// value swap of the 102 rows is all that's needed — no inserts.
+		result = sqlite3_exec(db,
+			"UPDATE map_object_config SET value = '99' "
+			"WHERE map_name = 'Raid_DomeCityDefense_P' "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') "
+			"  AND value = '102';", nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v123 (spawn table 102->99): %s\n", err); return; }
+
+		Logger::Log("db", "v123: DomeCityDefense bot factory spawn table 102 -> 99\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 123", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

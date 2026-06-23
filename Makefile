@@ -161,6 +161,9 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Constants/DeviceIds.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepListV2.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgActorFactory/LoadObjectConfig/TgActorFactory__LoadObjectConfig.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgDeployableFactory/SpawnObject/TgDeployableFactory__SpawnObject.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/MissionVO/MissionVO.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/MissionVODirector/MissionVODirector.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamPlayerStart/LoadObjectConfig/TgTeamPlayerStart__LoadObjectConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamPlayerStart/GetRating/TgTeamPlayerStart__GetRating.cpp \

@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame_Defense/CheckWinGame/TgGame_Defense__CheckWinGame.hpp"
+#include "src/GameServer/TgGame/TgGame_Defense/ObjectiveBotOutcome.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -43,6 +44,25 @@ bool __fastcall TgGame_Defense__CheckWinGame::Call(ATgGame_Defense* Game, void* 
 	if (GRI == nullptr) {
 		LogCallEnd();
 		return false;
+	}
+
+	// Boss/escort objective-bot outcome first: killing the attacker boss = a
+	// Defenders win; losing the defended NPC = an Attackers win. The canonical
+	// flow (ObjectiveTaken → GotoState('PostRound') → TgGame_Arena::PostRound.
+	// BeginState → CheckWinGame → FinalizeGameScore + BeginEndMission) ends the
+	// mission from here, and BeginEndMissionImpl applies the boss-death screen
+	// delay. m_GameWinState (1=Def,2=Att) is seeded so the end screen reads right.
+	const int botOutcome = ObjectiveBotOutcome(GRI);
+	if (botOutcome != 0) {
+		const bool bDefendersWin = (botOutcome == 1);
+		*Winner = bDefendersWin ? GTeamsData.Defenders : GTeamsData.Attackers;
+		Game->m_GameWinState = bDefendersWin ? 1 : 2;
+		GRI->r_Winner = *Winner;
+		Logger::Log("gametimer",
+			"CheckWinGame: objective-bot outcome -> %s win\n",
+			bDefendersWin ? "Defenders" : "Attackers");
+		LogCallEnd();
+		return true;
 	}
 
 	if (AllActiveObjectivesCapturedByAttackers(GRI)) {

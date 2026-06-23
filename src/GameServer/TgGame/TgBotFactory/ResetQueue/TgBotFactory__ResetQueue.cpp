@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgBotFactory/ResetQueue/TgBotFactory__ResetQueue.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
+#include "src/GameServer/TgGame/TgBotFactory/SpawnNextBot/TgBotFactory__SpawnNextBot.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 #include <vector>
@@ -42,6 +43,9 @@ void __fastcall TgBotFactory__ResetQueue::Call(ATgBotFactory* BotFactory, void* 
 	BotFactory->nSpawnTableId = tableId;
 
 	BotFactory->m_SpawnQueue.Clear();
+	// New batch — drop any escort drones tracked for the prior queue so their
+	// pointers never outlive the wave they were spawned in.
+	TgBotFactory__SpawnNextBot::ClearEscort(BotFactory->m_nMapObjectId);
 	if (tableId <= 0) {
 		BotFactory->m_SpawnGroups.Clear();
 		BotFactory->nBotCount = 0;

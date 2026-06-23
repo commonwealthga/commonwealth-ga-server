@@ -4,6 +4,8 @@
 #include "src/GameServer/Combat/CombatMessageFlusher/CombatMessageFlusher.hpp"
 #include "src/GameServer/Matchmaking/SetupRebalanceTrigger/SetupRebalanceTrigger.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
+#include "src/GameServer/Engine/KismetWebDump/KismetWebDump.hpp"
+#include "src/GameServer/TgGame/MissionVODirector/MissionVODirector.hpp"
 
 void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSeconds) {
 	IpcClient::DrainInbound();
@@ -19,5 +21,13 @@ void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSecon
 	// Match stats: pending-death flush + objective capture/contest time.
 	// Self-throttles to 4Hz; no-op when stats disabled (home map).
 	MatchStats::Tick();
+	// One-shot delayed kismet dump (no-op unless -dumpkismet armed it at
+	// BeginPlay). Fires after the sublevel-streaming settle window so the dump
+	// includes streamed sublevels (e.g. the *_Sound announcer-VO kismet).
+	KismetWebDump::TickDelayedDump(DeltaSeconds);
+	// Raid_DomeCityDefense_P: fire Ava's per-round satellite-countdown VO
+	// (Bancroft_HalfwayPoint/_30sRemaining/_10sRemaining) off the round timer.
+	// Self-gates on map name + Defense round state; no-op elsewhere.
+	MissionVODirector::Tick(DeltaSeconds);
 	CallOriginal(Engine, edx, DeltaSeconds);
 }

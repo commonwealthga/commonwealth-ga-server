@@ -20,6 +20,18 @@
 void __fastcall TgGame__UnlockObjective::Call(ATgGame* Game, void* edx, int nPriority) {
 	LogCallBegin();
 
+	// No objective unlocks once the match is over. The Defense boss/escort end
+	// path runs UC TgMissionObjective_Bot.UpdateObjectiveStatus(8) →
+	// Game.UnlockObjective(nPriority+1) AFTER CheckWinGame has already fired
+	// BeginEndMission (bGameEnded=1); without this gate that re-unlocks the
+	// next-priority objective (Bancroft) when the boss dies → "mission restarts".
+	if (Game != nullptr && Game->bGameEnded) {
+		Logger::Log(GetLogChannel(),
+			"UnlockObjective(%d): match over (bGameEnded) — suppressing unlock\n", nPriority);
+		LogCallEnd();
+		return;
+	}
+
 	// One-shot dump of the alarm-event registry built by BuildAlarmsArray
 	// at TgGame.BeginPlay. By the time UnlockObjective(1) fires from
 	// BeginPlay this is already populated. Logs per-event Originator,

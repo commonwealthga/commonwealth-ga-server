@@ -2,6 +2,7 @@
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Maps/CtrRecursiveDoors/CtrRecursiveDoors.hpp"
+#include "src/GameServer/TgGame/MissionVO/MissionVO.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -79,6 +80,17 @@ void __fastcall TgGame__SendMissionTimerEvent::Call(ATgGame *Game, void *edx, in
 	// init (TgGame::InitGameRepInfo) so nothing scans here.
 	if (nEventId == 1 && Config::GetMapNameChar() == std::string("CTR_Recursive_P")) {
 		CtrRecursiveDoors::OpenAttackerSpawnDoor();
+	}
+
+	// Ava VO validation (Raid_DomeCityDefense_P): the shipped game fired her
+	// console-event VO via a native mission director that's gone on our server.
+	// On SETUP (nEventId==0) fire her intro banter directly — this proves the
+	// whole pipeline end-to-end (SeqEvent_Console -> SeqAct_PlaySound ->
+	// Kismet_ClientPlaySound RPC) without depending on the dormant client
+	// director. If she speaks, the rest of her cues get wired to their mission
+	// moments next. Channel: "missionvo".
+	if (nEventId == 0 && Config::GetMapNameChar() == std::string("Raid_DomeCityDefense_P")) {
+		MissionVO::CauseEvent("Bancroft_SetupBanter");
 	}
 
 	LogCallEnd();

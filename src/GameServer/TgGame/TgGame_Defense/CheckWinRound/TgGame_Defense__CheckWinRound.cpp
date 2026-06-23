@@ -1,4 +1,6 @@
 #include "src/GameServer/TgGame/TgGame_Defense/CheckWinRound/TgGame_Defense__CheckWinRound.hpp"
+#include "src/GameServer/TgGame/TgGame_Defense/ObjectiveBotOutcome.hpp"
+#include "src/GameServer/TgGame/TgGame/BeginEndMission/TgGame__BeginEndMission.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -16,6 +18,32 @@ bool __fastcall TgGame_Defense__CheckWinRound::Call(ATgGame_Defense* Game, void*
 	if (GRI == nullptr || GRI->m_MissionObjectives.Count == 0) {
 		LogCallEnd();
 		return false;
+	}
+
+	// Boss/escort objective-bot outcome = GAME over, not just round over, so we
+	// end the mission directly here. CheckWinRound is the only point that
+	// reliably runs every frame and sees the deciding state; the round →
+	// PostRound → CheckWinGame → BeginEndMission path does NOT fire in this
+	// build (the redeclared Defense PostRound state never executes the inherited
+	// BeginState, so CheckWinGame is never reached — verified by logging). This
+	// mirrors the canonical base TgGame.ObjectiveTaken, which calls
+	// BeginEndMission() the instant the deciding objective is taken.
+	// Boss (attacker objective) destroyed → Defenders win; defended NPC
+	// destroyed → Attackers win. BeginEndMissionImpl is idempotent
+	// (s_bGameEndMissionProcessed) so the per-frame call is safe, and it applies
+	// the boss-death end-screen delay via HasCapturedBossObjective.
+	const int botOutcome = ObjectiveBotOutcome(GRI);
+	if (botOutcome != 0) {
+		const bool bDefendersWin = (botOutcome == 1);
+		*Winner = bDefendersWin ? GTeamsData.Defenders : GTeamsData.Attackers;
+		Game->m_GameWinState = bDefendersWin ? 1 : 2;
+		GRI->r_Winner = *Winner;
+		Logger::Log("gametimer",
+			"CheckWinRound: objective-bot outcome -> %s win — ending mission directly\n",
+			bDefendersWin ? "Defenders" : "Attackers");
+		BeginEndMissionImpl((ATgGame*)Game, nullptr);
+		LogCallEnd();
+		return true;
 	}
 
 	// Check if all active objectives are captured by attackers

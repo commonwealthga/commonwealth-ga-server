@@ -85,6 +85,7 @@
 #include "src/GameServer/Engine/GameEngine/Tick/GameEngine__Tick.hpp"
 #include "src/GameServer/Engine/AutoReporter/GetLocalPlayerId/AutoReporter__GetLocalPlayerId.hpp"
 #include "src/GameServer/TgGame/TgActorFactory/LoadObjectConfig/TgActorFactory__LoadObjectConfig.hpp"
+#include "src/GameServer/TgGame/TgDeployableFactory/SpawnObject/TgDeployableFactory__SpawnObject.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgTeamPlayerStart/LoadObjectConfig/TgTeamPlayerStart__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgTeamPlayerStart/GetRating/TgTeamPlayerStart__GetRating.hpp"
@@ -459,6 +460,7 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgInventoryManager__NonPersistAddDevice::Install();
 	TgInventoryManager__NonPersistRemoveDevice::Install();
 	TgActorFactory__LoadObjectConfig::Install();
+	TgDeployableFactory__SpawnObject::Install();
 	TgBotFactory__LoadObjectConfig::Install();
 	TgTeamPlayerStart__LoadObjectConfig::Install();
 	TgTeamPlayerStart__GetRating::Install();

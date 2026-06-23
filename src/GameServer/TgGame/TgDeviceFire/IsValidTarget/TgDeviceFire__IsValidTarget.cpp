@@ -35,6 +35,30 @@ bool __fastcall TgDeviceFire__IsValidTarget::Call(
 
 	bool result = CallOriginal(FireMode, edx, TargetActor, OverrideTargeterType);
 
+	// EMP / deployable-bomb diagnostic (channel "deployablefactory"). A
+	// deployable bomb's victims are PAWNS, which the combat-trace block below
+	// skips (it only logs deployable targets). Log every target a
+	// deployable-OWNED fire mode evaluates so we can see whether the
+	// detonation's radial query reaches any enemies at all, and the verdict —
+	// this is what tells us if "EMP did no damage" is "found no targets" vs
+	// "found targets but rejected them" (team/instigator) vs "applied but the
+	// effect groups did nothing".
+	if (TargetActor && FireMode && Logger::IsChannelEnabled("deployablefactory")) {
+		AActor* fmOwner = FireMode->m_Owner;
+		std::string ownerCls = SafeGetFullName(fmOwner);
+		if (Contains(ownerCls, "TgDeploy")) {
+			std::string tgtCls = SafeGetFullName(TargetActor);
+			APawn* inst = (fmOwner && fmOwner->Instigator) ? fmOwner->Instigator : nullptr;
+			Logger::Log("deployablefactory",
+				"[bomb IsValidTarget] fmOwner=%p (%s) instigator=%p  target=%p (%s)  "
+				"targeter=%d override=%d  -> %s\n",
+				(void*)fmOwner, ownerCls.c_str(), (void*)inst,
+				(void*)TargetActor, tgtCls.c_str(),
+				(int)*(uint8_t*)((char*)FireMode + 0x42), (int)(uint8_t)OverrideTargeterType,
+				result ? "VALID" : "reject");
+		}
+	}
+
 	// IsValidTarget fires per-target per-fire-tick — easily thousands of
 	// calls/sec under aggressive AI. Skip every diagnostic touch when the
 	// "combat-trace" channel is off.

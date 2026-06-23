@@ -435,6 +435,32 @@ json DumpVarValue(USequenceVariable* var, const std::string& shortCls,
 
 // ---------------------------------------------------------------------------
 
+namespace {
+// Delayed-dump arm state. Single-threaded in-game; re-armed each BeginPlay.
+bool  s_dumpArmed   = false;
+float s_dumpElapsed = 0.0f;
+// Seconds to wait after BeginPlay for async sublevel streaming to settle before
+// dumping. Sound/terrain sublevels (_Sound/_TER) finish loading well within
+// this; bump if a larger map streams slower.
+constexpr float kDumpSettleSeconds = 20.0f;
+}  // namespace
+
+void KismetWebDump::ArmDelayedDump() {
+	s_dumpArmed   = true;
+	s_dumpElapsed = 0.0f;
+	Logger::Log("kismet",
+		"[KismetWebDump] armed — will dump in %.0fs (after sublevel streaming settles)\n",
+		kDumpSettleSeconds);
+}
+
+void KismetWebDump::TickDelayedDump(float deltaSeconds) {
+	if (!s_dumpArmed) return;
+	s_dumpElapsed += deltaSeconds;
+	if (s_dumpElapsed < kDumpSettleSeconds) return;
+	s_dumpArmed = false;  // one-shot
+	DumpAll();
+}
+
 void KismetWebDump::DumpAll() {
 	TArray<UObject*>* objs = UObject::GObjObjects();
 	if (!objs) {
