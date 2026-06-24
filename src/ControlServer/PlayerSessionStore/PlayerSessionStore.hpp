@@ -139,6 +139,44 @@ public:
     // player equips them; hidden class state is pinned separately.
     static void SeedInventoryFromLoadouts(int64_t user_id);
 
+    // Equip the curated opening loadouts (OpeningLoadouts.cpp) into
+    // ga_character_devices across all 5 loadout profiles (item_profile_id
+    // 1..5) so a brand-new character spawns combat-ready and can switch
+    // between builds. Each curated entry is resolved to its bag inventory_id
+    // (must already exist — SeedInventoryFromLoadouts runs first); unresolved
+    // entries are logged and skipped.
+    //
+    // Once-only by design: bails if the character already has any
+    // ga_character_devices row, so it can never clobber player edits. Called
+    // from InsertCharacter only. Assumes the caller already holds mutex_
+    // (does NOT lock — mutex_ is non-recursive), mirroring
+    // SeedInventoryFromLoadouts. Skips equip_slot 14 (class device) — that's
+    // pinned separately by PinClassDeviceSlot14.
+    static void SeedOpeningLoadout(int64_t character_id, int64_t user_id,
+                                   uint32_t class_profile_id);
+
+    // Allocate the curated opening skill build (OpeningSkills.cpp) into
+    // ga_character_skills across all 5 loadout profiles (item_profile_id 1..5)
+    // so a brand-new character starts with a sensible skill tree per build.
+    // No inventory linkage — just inserts (group, skill, points) rows.
+    //
+    // Once-only by design: bails if the character already has any
+    // ga_character_skills row, so it can never clobber player edits. Called
+    // from InsertCharacter only. Assumes the caller already holds mutex_ (does
+    // NOT lock — mutex_ is non-recursive), mirroring SeedOpeningLoadout.
+    static void SeedOpeningSkills(int64_t character_id, uint32_t class_profile_id);
+
+    // Equip the rrr armor set (ArmorLoadouts::kDefaultVariantIndex, the
+    // [rrrrrr] ranged-protection variant) into all 7 armor slots across all 5
+    // loadout profiles, so a brand-new character spawns fully armored. Resolves
+    // each slot's rrr bag row (must already exist — SeedArmor runs first inside
+    // SeedInventoryFromLoadouts) to its inventory_id and INSERT OR IGNOREs the
+    // equip row at equipped_slot = the armor slot SVID. Coexists with device /
+    // slot-14 rows (distinct equipped_slot values); INSERT OR IGNORE keeps it
+    // from clobbering any profile a player already customized. Called from
+    // InsertCharacter only; assumes the caller holds mutex_ (does NOT lock).
+    static void SeedOpeningArmor(int64_t character_id, int64_t user_id);
+
     // v76 cosmetic seed. Idempotent — runs every login. Inserts one row per
     // owned cosmetic (helmet/flair/suit/trail) and five rows per dye (so the
     // same dye can be set across all 5 dye slots simultaneously).

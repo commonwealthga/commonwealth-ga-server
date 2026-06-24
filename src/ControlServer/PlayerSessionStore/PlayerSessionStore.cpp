@@ -4,6 +4,8 @@
 #include "src/ControlServer/Loadouts/ClassLoadouts.hpp"
 #include "src/ControlServer/Loadouts/CosmeticLoadouts.hpp"
 #include "src/ControlServer/Loadouts/ModResolver.hpp"
+#include "src/ControlServer/Loadouts/OpeningLoadouts.hpp"
+#include "src/ControlServer/Loadouts/OpeningSkills.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/Shared/CosmeticSlots.hpp"
 #include "sqlite3.h"
@@ -445,6 +447,17 @@ int64_t PlayerSessionStore::InsertCharacter(int64_t user_id, uint32_t profile_id
 	// otherwise left empty; the player equips from the bag via the equip
 	// screen.
 	SeedInventoryFromLoadouts(user_id);
+	// Equip the curated opening loadouts across all 5 profiles so the new
+	// character spawns combat-ready. Must run AFTER the bag seed above — it
+	// resolves each curated entry to a ga_players_inventory.id that the seed
+	// just created. Once-only; never re-run on select, so player edits stick.
+	SeedOpeningLoadout(newId, user_id, profile_id);
+	// Allocate the curated opening skill build across all 5 profiles. No
+	// inventory dependency; once-only so player edits are never clobbered.
+	SeedOpeningSkills(newId, profile_id);
+	// Equip the rrr armor set into all 5 profiles. Must run AFTER
+	// SeedInventoryFromLoadouts (its SeedArmor pass created the rrr bag rows).
+	SeedOpeningArmor(newId, user_id);
 	// HUMAN BASE ATTRIBUTES (slot 14) is the one exception — the player can't
 	// equip it, so we pin it across all 5 loadout profiles before they ever
 	// load in. Without this, fresh characters hit the resubmit loop on the
@@ -933,6 +946,230 @@ void PlayerSessionStore::SeedInventoryFromLoadouts(int64_t user_id) {
 	Logger::Log("db",
 		"[PlayerSessionStore] Seed: user=%lld inventory+=%d inventory-=%d device-rows-cleared=%d\n",
 		user_id, inserted, deletedInvRows, deletedDevRows);
+}
+
+// ---------------------------------------------------------------------------
+// Shared helpers for the SeedOpening* functions below. Each prepares, runs, and
+// finalizes one statement so the seeders stay short and read top-to-bottom.
+// ---------------------------------------------------------------------------
+
+// Loadout profiles a character can switch between (the item_profile_id column).
+static constexpr int kFirstLoadoutProfile = 1;
+static constexpr int kLastLoadoutProfile  = 5;
+// Skill nodes the client expects per profile. The server does not enforce this;
+// SeedOpeningSkills only warns when a curated build differs.
+static constexpr int kSkillNodesPerProfile = 13;
+
+// True when the character already has at least one row in `table` — the
+// once-only guard that stops a seed from overwriting a player's own edits.
+static bool CharacterHasRows(sqlite3* db, const char* table, int64_t character_id) {
+	const std::string sql =
+		std::string("SELECT 1 FROM ") + table + " WHERE character_id = ? LIMIT 1";
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+		return false;
+	sqlite3_bind_int64(stmt, 1, character_id);
+	const bool has_rows = (sqlite3_step(stmt) == SQLITE_ROW);
+	sqlite3_finalize(stmt);
+	return has_rows;
+}
+
+// inventory_id of the bag row a curated device entry points at, or 0 if no
+// matching row exists. Key matches the tuple SeedInventoryFromLoadouts inserts.
+static int FindDeviceInventoryId(sqlite3* db, int64_t user_id, int profile_id,
+                                 int device_id, int quality,
+                                 const std::string& mods_csv, bool oc) {
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+	    "SELECT id FROM ga_players_inventory "
+	    "WHERE user_id = ? AND profile_id = ? AND device_id = ? "
+	    "  AND quality = ? AND mod_effect_group_ids = ? AND oc = ? LIMIT 1",
+	    -1, &stmt, nullptr) != SQLITE_OK)
+		return 0;
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_int  (stmt, 2, profile_id);
+	sqlite3_bind_int  (stmt, 3, device_id);
+	sqlite3_bind_int  (stmt, 4, quality);
+	sqlite3_bind_text (stmt, 5, mods_csv.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int  (stmt, 6, oc ? 1 : 0);
+	const int inventory_id =
+		(sqlite3_step(stmt) == SQLITE_ROW) ? sqlite3_column_int(stmt, 0) : 0;
+	sqlite3_finalize(stmt);
+	return inventory_id;
+}
+
+// inventory_id of the bag row for an armor piece (item_id + variant in stock_n),
+// or 0 if absent.
+static int FindArmorInventoryId(sqlite3* db, int64_t user_id, int item_id,
+                                int variant_index) {
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+	    "SELECT id FROM ga_players_inventory "
+	    "WHERE user_id = ? AND item_id = ? AND stock_n = ? LIMIT 1",
+	    -1, &stmt, nullptr) != SQLITE_OK)
+		return 0;
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_int  (stmt, 2, item_id);
+	sqlite3_bind_int  (stmt, 3, variant_index);
+	const int inventory_id =
+		(sqlite3_step(stmt) == SQLITE_ROW) ? sqlite3_column_int(stmt, 0) : 0;
+	sqlite3_finalize(stmt);
+	return inventory_id;
+}
+
+// Equips one bag item into a loadout profile slot. INSERT OR IGNORE leaves a
+// slot a player already filled untouched. Returns true when a new row landed.
+static bool EquipInventoryItem(sqlite3* db, int64_t character_id,
+                               int item_profile_id, int inventory_id,
+                               int equipped_slot) {
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+	    "INSERT OR IGNORE INTO ga_character_devices "
+	    "(character_id, item_profile_id, inventory_id, equipped_slot) "
+	    "VALUES (?, ?, ?, ?)",
+	    -1, &stmt, nullptr) != SQLITE_OK)
+		return false;
+	sqlite3_bind_int64(stmt, 1, character_id);
+	sqlite3_bind_int  (stmt, 2, item_profile_id);
+	sqlite3_bind_int  (stmt, 3, inventory_id);
+	sqlite3_bind_int  (stmt, 4, equipped_slot);
+	const bool inserted =
+		(sqlite3_step(stmt) == SQLITE_DONE) && (sqlite3_changes(db) > 0);
+	sqlite3_finalize(stmt);
+	return inserted;
+}
+
+// Allocates one skill node into a loadout profile. INSERT OR IGNORE leaves a
+// node a player already has untouched. Returns true when a new row landed.
+static bool AllocateSkillNode(sqlite3* db, int64_t character_id,
+                              int item_profile_id,
+                              const Loadouts::SkillNode& node) {
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+	    "INSERT OR IGNORE INTO ga_character_skills "
+	    "(character_id, item_profile_id, skill_group_id, skill_id, points) "
+	    "VALUES (?, ?, ?, ?, ?)",
+	    -1, &stmt, nullptr) != SQLITE_OK)
+		return false;
+	sqlite3_bind_int64(stmt, 1, character_id);
+	sqlite3_bind_int  (stmt, 2, item_profile_id);
+	sqlite3_bind_int  (stmt, 3, node.skill_group_id);
+	sqlite3_bind_int  (stmt, 4, node.skill_id);
+	sqlite3_bind_int  (stmt, 5, node.points);
+	const bool inserted =
+		(sqlite3_step(stmt) == SQLITE_DONE) && (sqlite3_changes(db) > 0);
+	sqlite3_finalize(stmt);
+	return inserted;
+}
+
+void PlayerSessionStore::SeedOpeningLoadout(int64_t character_id, int64_t user_id,
+                                            uint32_t class_profile_id) {
+	sqlite3* db = Database::GetConnection();
+	if (!db) return;
+
+	// Once-only: never clobber a loadout a player has already edited.
+	if (CharacterHasRows(db, "ga_character_devices", character_id)) {
+		Logger::Log("loadout-seed",
+			"[OpeningLoadout] char=%lld already has equipped devices — skipping seed\n",
+			(long long)character_id);
+		return;
+	}
+
+	int equipped = 0;
+	int missing  = 0;
+	for (int profile = kFirstLoadoutProfile; profile <= kLastLoadoutProfile; ++profile) {
+		for (const Loadouts::GearSlot& gear : Loadouts::GetOpeningLoadout(class_profile_id, profile)) {
+			const std::string mods_csv =
+				ModsToCsv(ModResolver::Resolve(gear.device_id, gear.quality, gear.mods));
+			const int inventory_id = FindDeviceInventoryId(
+				db, user_id, (int)class_profile_id,
+				gear.device_id, gear.quality, mods_csv, gear.mods.oc);
+
+			if (inventory_id == 0) {
+				++missing;
+				Logger::Log("loadout-seed",
+					"[OpeningLoadout] char=%lld profile=%d no bag row for device=%d q=%d mods=[%s] oc=%d — slot left empty\n",
+					(long long)character_id, profile, gear.device_id, gear.quality,
+					mods_csv.c_str(), gear.mods.oc ? 1 : 0);
+				continue;
+			}
+			if (EquipInventoryItem(db, character_id, profile, inventory_id, gear.equip_slot))
+				++equipped;
+		}
+	}
+
+	Logger::Log("loadout-seed",
+		"[OpeningLoadout] char=%lld profile=%u equipped=%d missing=%d\n",
+		(long long)character_id, class_profile_id, equipped, missing);
+}
+
+void PlayerSessionStore::SeedOpeningSkills(int64_t character_id, uint32_t class_profile_id) {
+	sqlite3* db = Database::GetConnection();
+	if (!db) return;
+
+	// Once-only: never clobber a skill allocation a player has already edited.
+	if (CharacterHasRows(db, "ga_character_skills", character_id)) {
+		Logger::Log("loadout-seed",
+			"[OpeningSkills] char=%lld already has skills — skipping seed\n",
+			(long long)character_id);
+		return;
+	}
+
+	int allocated = 0;
+	for (int profile = kFirstLoadoutProfile; profile <= kLastLoadoutProfile; ++profile) {
+		const std::vector<Loadouts::SkillNode>& nodes =
+			Loadouts::GetOpeningSkills(class_profile_id, profile);
+
+		// The server doesn't enforce the budget, so flag an off-count build —
+		// it would just render wrong in the client's skill tree.
+		if (!nodes.empty() && (int)nodes.size() != kSkillNodesPerProfile) {
+			Logger::Log("loadout-seed",
+				"[OpeningSkills] WARNING char=%lld profile=%u slot=%d has %d nodes (expected %d)\n",
+				(long long)character_id, class_profile_id, profile,
+				(int)nodes.size(), kSkillNodesPerProfile);
+		}
+
+		for (const Loadouts::SkillNode& node : nodes) {
+			if (AllocateSkillNode(db, character_id, profile, node))
+				++allocated;
+		}
+	}
+
+	Logger::Log("loadout-seed",
+		"[OpeningSkills] char=%lld profile=%u allocated=%d\n",
+		(long long)character_id, class_profile_id, allocated);
+}
+
+void PlayerSessionStore::SeedOpeningArmor(int64_t character_id, int64_t user_id) {
+	sqlite3* db = Database::GetConnection();
+	if (!db) return;
+
+	int equipped = 0;
+	int missing  = 0;
+	for (int i = 0; i < ArmorLoadouts::kSlotCount; ++i) {
+		const ArmorLoadouts::ArmorSlotEntry& slot = ArmorLoadouts::kSlots[i];
+
+		// The rrr ([rrrrrr]) piece is the bag row at the default variant index.
+		const int inventory_id = FindArmorInventoryId(
+			db, user_id, slot.base_item_id, ArmorLoadouts::kDefaultVariantIndex);
+		if (inventory_id == 0) {
+			++missing;
+			Logger::Log("loadout-seed",
+				"[OpeningArmor] char=%lld no rrr bag row for slot=%s item=%d — skipped\n",
+				(long long)character_id, slot.name, slot.base_item_id);
+			continue;
+		}
+
+		// Same piece into every loadout profile (uniform rrr across all 5).
+		for (int profile = kFirstLoadoutProfile; profile <= kLastLoadoutProfile; ++profile) {
+			if (EquipInventoryItem(db, character_id, profile, inventory_id, slot.slot_value_id))
+				++equipped;
+		}
+	}
+
+	Logger::Log("loadout-seed",
+		"[OpeningArmor] char=%lld equipped=%d missing=%d (rrr, all 5 profiles)\n",
+		(long long)character_id, equipped, missing);
 }
 
 void PlayerSessionStore::SeedCosmetics(int64_t user_id) {

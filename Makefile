@@ -608,6 +608,8 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/Database/Database.cpp \
 	$(CS_SRC_DIR)/MapGameInfo/MapGameInfo.cpp \
 	$(CS_SRC_DIR)/Loadouts/ClassLoadouts.cpp \
+	$(CS_SRC_DIR)/Loadouts/OpeningLoadouts.cpp \
+	$(CS_SRC_DIR)/Loadouts/OpeningSkills.cpp \
 	$(CS_SRC_DIR)/Loadouts/CosmeticLoadouts.cpp \
 	$(CS_SRC_DIR)/Loadouts/ModResolver.cpp \
 	$(CS_SRC_DIR)/PlayerSessionStore/PlayerSessionStore.cpp \
