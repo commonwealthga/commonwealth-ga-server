@@ -1641,10 +1641,28 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			wait_for_home_map_then_register(120);  // 120 second timeout
 			break;
 		}
-		case GA_U::DELETE_CHARACTER:
+		case GA_U::DELETE_CHARACTER: {
 			Logger::Log("tcp", "[%s] Received: DELETE_CHARACTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-			// todo
+			PacketView pkt(data + 6, length - 6);
+			uint32_t charId = pkt.Read4B(GA_T::CHARACTER_ID).value_or(0);
+
+			const bool ok = (charId != 0) &&
+				PlayerSessionStore::DeleteCharacter(static_cast<int64_t>(charId), user_id_);
+
+			// If the deleted character was the active selection, clear it so a
+			// later SELECT/register can't target a now-gone row.
+			if (ok && selected_character_id_ == static_cast<int64_t>(charId)) {
+				selected_character_id_ = 0;
+				selected_profile_id_ = 0;
+			}
+
+			Logger::Log("tcp", "[%s] DELETE_CHARACTER: charId=%u user=%lld ok=%d\n",
+				Logger::GetTime(), charId, (long long)user_id_, (int)ok);
+
+			send_delete_character_response(charId, ok ? 0 : 1);
+			send_character_list_response();
 			break;
+		}
 		case GA_U::UPDATE_NEW_MAIL_COUNT:
 			Logger::Log("tcp", "[%s] Received: UPDATE_NEW_MAIL_COUNT [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 			send_update_new_mail_count_response();
@@ -3153,6 +3171,22 @@ void TcpSession::send_add_player_character_response()
 	Write4B(response, GA_T::CLASS_MSG_ID,
 		ResolveClassMsgId(selected_profile_id_, 22976, "ADD_PLAYER_CHARACTER"));
 	Write4B(response, GA_T::HOME_MAP_GAME_ID, ResolveHomeMapGameId());
+
+	send_response(response);
+}
+
+void TcpSession::send_delete_character_response(uint32_t character_id, uint32_t error_code)
+{
+	std::vector<uint8_t> response;
+
+	uint16_t packet_type = GA_U::DELETE_CHARACTER;
+	uint16_t item_count = 2;
+
+	append(response, packet_type & 0xFF, packet_type >> 8);
+	append(response, item_count & 0xFF, item_count >> 8);
+
+	Write4B(response, GA_T::ERROR_CODE,   error_code);
+	Write4B(response, GA_T::CHARACTER_ID, character_id);
 
 	send_response(response);
 }
