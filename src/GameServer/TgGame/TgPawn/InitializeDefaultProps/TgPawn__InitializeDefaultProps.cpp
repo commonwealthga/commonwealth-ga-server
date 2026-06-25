@@ -325,6 +325,11 @@ void __fastcall TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_RANGED,       0, 0, 0, 1000.0f);
 	Pawn->AddProperty( GA_PROPERTY::TGPID_PROTECTION_AOE,          0, 0, 0, 1000.0f);
 
+	// TGPID_TAUNT (305): Force Target device effect calls ApplyToProperty(305, value),
+	// which resolves via GetTargetProperty — no-ops silently if the slot is absent.
+	// Seed at 0; the effect's ADD calc writes a positive value in, Remove subtracts it back.
+	Pawn->AddProperty( GA_PROPERTY::TGPID_TAUNT,                   0, 0, 0, 100.0f);
+
 	// Vision arc — APawn::PeripheralVision (offset 0x0228) is the cosine of
 	// the half-arc the AI uses for SeePlayer / target acquisition. UC default
 	// from TgPawn.uc:10535 is 0.5 (= 120° total arc) which is too narrow for
