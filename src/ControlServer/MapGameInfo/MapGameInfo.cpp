@@ -44,10 +44,12 @@ void MapGameInfo::Init() {
 
     sqlite3_stmt* stmt = nullptr;
     const char* kSql =
-        "SELECT map_game_id, COALESCE(map_name, ''), COALESCE(game_class, ''), "
-        "       COALESCE(gameplay_type_value_id, 0), friendly_name_msg_id, "
-        "       COALESCE(entry_background_image_res_id, 0) "
-        "FROM map_game_info";
+        "SELECT m.map_game_id, COALESCE(m.map_name, ''), COALESCE(m.game_class, ''), "
+        "       COALESCE(m.gameplay_type_value_id, 0), m.friendly_name_msg_id, "
+        "       COALESCE(m.entry_background_image_res_id, 0), "
+        "       COALESCE(NULLIF(t.message, ''), m.map_name) "
+        "FROM map_game_info m "
+        "LEFT JOIN asm_data_set_msg_translations t ON t.msg_id = m.friendly_name_msg_id";
     if (sqlite3_prepare_v2(db, kSql, -1, &stmt, nullptr) != SQLITE_OK) {
         // Table may not exist yet (game-server v51 hasn't run). Treat as
         // empty registry — every lookup falls back to caller defaults.
@@ -66,6 +68,7 @@ void MapGameInfo::Init() {
         r.gameplay_type_value_id        = static_cast<uint32_t>(sqlite3_column_int(stmt, 3));
         r.friendly_name_msg_id          = static_cast<uint32_t>(sqlite3_column_int(stmt, 4));
         r.entry_background_image_res_id = static_cast<uint32_t>(sqlite3_column_int(stmt, 5));
+        r.friendly_name                 = SafeText(stmt, 6);
 
         if (r.map_name.empty()) {
             // Rows whose map_name is still NULL can't be reverse-resolved by
@@ -90,4 +93,43 @@ std::optional<MapGameRecord> MapGameInfo::LookupByName(const std::string& map_na
     auto it = g_byMapName.find(LowerCopy(map_name));
     if (it == g_byMapName.end()) return std::nullopt;
     return it->second;
+}
+
+std::vector<MapGameInfo::ChallengeMapEntry> MapGameInfo::GetChallengeMaps() {
+    std::vector<ChallengeMapEntry> out;
+
+    sqlite3* db = Database::GetConnection();
+    if (!db) return out;
+
+    sqlite3_stmt* stmt = nullptr;
+    // Exclude PvE missions; dedupe by name; resolve the vanity/loading-screen
+    // name; order by that display name so the list reads naturally and a given
+    // number stays stable between the list and number→map resolution.
+    const char* kSql =
+        "SELECT m.map_name, m.game_class, "
+        "       COALESCE(NULLIF(t.message, ''), m.map_name) AS display_name "
+        "FROM map_game_info m "
+        "LEFT JOIN asm_data_set_msg_translations t ON t.msg_id = m.friendly_name_msg_id "
+        "WHERE m.map_name IS NOT NULL AND m.map_name <> '' "
+        "  AND m.game_class <> 'TgGame.TgGame_Mission' "
+        "  AND m.map_name <> 'Raid_DomeCityDefense_P' "
+        "GROUP BY LOWER(m.map_name) "
+        "ORDER BY display_name COLLATE NOCASE";
+    if (sqlite3_prepare_v2(db, kSql, -1, &stmt, nullptr) != SQLITE_OK) {
+        Logger::Log("config", "MapGameInfo::GetChallengeMaps — prepare failed (%s)\n",
+            sqlite3_errmsg(db));
+        return out;
+    }
+
+    int n = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        ChallengeMapEntry e;
+        e.number       = ++n;
+        e.map_name     = SafeText(stmt, 0);
+        e.game_class   = SafeText(stmt, 1);
+        e.display_name = SafeText(stmt, 2);
+        out.push_back(std::move(e));
+    }
+    sqlite3_finalize(stmt);
+    return out;
 }

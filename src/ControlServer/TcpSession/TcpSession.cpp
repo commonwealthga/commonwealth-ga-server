@@ -1799,6 +1799,20 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			break;
 		}
 		default:
+			// Challenge-system probe: if the retail client has a NATIVE challenge
+			// send path (e.g. the stubbed TgPlayerController.TeamChallenge exec, or
+			// a UI button), challenging a player should produce one of these on the
+			// game-TCP connection. Seeing 0x01F3 here means we should HANDLE the
+			// client's request rather than parse `/challenge` chat text; the raw
+			// LogData below then hands us the on-wire payload format for free.
+			if (packet_type == GA_U::CHALLENGE_REQUEST ||
+			    packet_type == GA_U::CHALLENGE_INVITES ||
+			    packet_type == GA_U::CHALLENGE_EXPIRED_INVITE) {
+				Logger::Log("challenge",
+					"[Challenge] INBOUND challenge-family packet 0x%04X player='%s' guid=%s item_count=%d "
+					"-- client HAS a native challenge send path; raw bytes follow on 'tcp'\n",
+					packet_type, player_name.c_str(), session_guid_.c_str(), item_count);
+			}
 			Logger::Log("tcp", "[%s] Received unknown packet type: %04X, raw data:\n", Logger::GetTime(), packet_type);
 			LogData(data, length);
 			break;
