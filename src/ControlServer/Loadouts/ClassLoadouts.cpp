@@ -66,6 +66,8 @@ static const std::vector<GearSlot> kMedic = {
     { 2061,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // nanite restore
 
     { 7032,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Medic Crescent Jetpack
+    { 6077,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Medic Combat Jetpack
+    { 3500,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Medic Jetpack III
 
     { 2531,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("hhh", "hhh", true) },  // Healing Grenade
     { 2531,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "hhh", false) },  // Healing Grenade
@@ -138,7 +140,9 @@ static const std::vector<GearSlot> kRobotics = {
     { 5810,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("hhh", "hhh", true )}, // Nanite repair
     { 5811,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddp", "ppp", false )}, // Force target
 
-    { 7034,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false)},
+    { 7034,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false)},  // Robotics Crescent Jetpack
+    { 6079,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Robotics Combat Jetpack
+    { 3502,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Robotics Jetpack III
 
     { 2095,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // rocket turret
     { 2095,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // rocket turret
@@ -169,8 +173,8 @@ static const std::vector<GearSlot> kRobotics = {
 // 680 — Assault — Impact Hammer + Assault Crescent Jetpack
 static const std::vector<GearSlot> kAssault = {
     { 5801,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // Impact Hammer
-    { 6806,  1,  SVID_MELEE,      Q_RARE,   Mods::Letters("dd", "ppp", false) },  // beatstick
-    { 6806,  1,  SVID_MELEE,      Q_RARE,   Mods::Letters("dd", "ddd", false) },  // beatstick
+    // { 6806,  1,  SVID_MELEE,      Q_RARE,   Mods::Letters("dd", "ppp", false) },  // beatstick
+    // { 6806,  1,  SVID_MELEE,      Q_RARE,   Mods::Letters("dd", "ddd", false) },  // beatstick
     { 3973,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // axe
 
     { 5788,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // Rhino SMG
@@ -183,7 +187,7 @@ static const std::vector<GearSlot> kAssault = {
     { 2790,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("xxx", "ppp", false)},  // gammaburst
     { 2790,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", true)},  // gammaburst
     { 1991,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", true)},  // headhunter
-    { 6896,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", false)},  // helot mini
+    // { 6896,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", false)},  // helot mini
     { 2914,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", true)},  // inferno
     { 5789,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", true)},  // longbow
     { 5789,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddx", "ddd", false)},  // longbow
@@ -196,6 +200,8 @@ static const std::vector<GearSlot> kAssault = {
     // { 2202,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", true)},  // aftershock
 
     { 7031,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Assault Crescent Jetpack
+    { 6076,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Assault Combat Jetpack
+    { 3499,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Assault Jetpack III
 
     { 3699,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // Power Stim
     { 3699,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ttt", "ccc", false) },  // Power Stim
@@ -247,6 +253,8 @@ static const std::vector<GearSlot> kRecon = {
     { 2209,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // sprint stealth
 
     { 7033,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Recon Crescent Jetpack
+    { 6078,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Recon Combat Jetpack
+    { 3501,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Recon Jetpack III
 
     { 4708,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "ccc", false) },  // Venom bomb
     { 4708,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "ddd", false) },  // Venom bomb
