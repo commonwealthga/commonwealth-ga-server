@@ -1347,8 +1347,13 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				// login path) — allow through; there is nothing to verify yet.
 			}
 
-			player_name = requested_user_name;
-			const int64_t resolved_user_id = PlayerSessionStore::UpsertUser(player_name);
+			// Resolve the account case-insensitively. player_name takes the
+			// account's stored (first-registered) capitalization so the display
+			// name is stable no matter how the player typed it this time.
+			std::string canonical_name;
+			const int64_t resolved_user_id =
+				PlayerSessionStore::UpsertUser(requested_user_name, &canonical_name);
+			player_name = canonical_name.empty() ? requested_user_name : canonical_name;
 
 			if (store_new_verifier) {
 				PlayerSessionStore::SetUserVerifier(resolved_user_id, new_verifier,

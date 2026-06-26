@@ -94,7 +94,14 @@ public:
     static std::optional<SessionInfo> GetByPlayerName(const std::string& player_name);
     static SessionInfo* GetByGuidPtr(const std::string& guid);
 
-    static int64_t UpsertUser(const std::string& username);
+    // Case-insensitive resolve-or-create. An account already registered in ANY
+    // capitalization owns the name; this returns that account's id and never
+    // rewrites the stored username, so the first registration's casing stays the
+    // display name. `out_display_name` (optional) receives that stored casing —
+    // callers should use it for display rather than the typed string. A fresh
+    // name is created with the typed casing as its permanent display name.
+    static int64_t UpsertUser(const std::string& username,
+                              std::string* out_display_name = nullptr);
 
     // Account auth state for the login password check. `exists` is false when
     // the username has no ga_users row yet (first login). `verifier` is empty
