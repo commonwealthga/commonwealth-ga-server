@@ -12,6 +12,11 @@
 typedef void*(__cdecl* ConstructEffectGroupFn)(void*, int, int, int, unsigned, unsigned, int, int, int*);
 static ConstructEffectGroupFn ConstructEffectGroup = (ConstructEffectGroupFn)0x109a90b0;
 
+// Recon stim pairing: cat-936 buff EG id → paired cat-773 sensor EG id.
+// Populated per device on first GetEffectGroup call; consumed by
+// TgEffectGroup__RemoveEffects to clear scanner slots when the buff is evicted.
+std::unordered_map<int, int> g_sensorEgForBuffEg;
+
 // -------------------------------------------------------------------------
 // Visual-noise blacklist: type-263 (DeviceFiring) effect groups whose
 // target_fx_id is the "dome ring" asset 1275. On every refire pulse
@@ -286,6 +291,7 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 	}
 
 	// --- Build UTgEffect children ---
+	bool hasSensorEffect = false;
 	{
 		sqlite3_stmt* stmt = nullptr;
 		int rc = sqlite3_prepare_v2(db,
@@ -298,6 +304,7 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 
 			while (sqlite3_step(stmt) == SQLITE_ROW) {
 				int classResId = sqlite3_column_int(stmt, 0);
+				if (classResId == 244) hasSensorEffect = true;
 				UClass* effectClass = GetEffectClassById(classResId);
 				if (!effectClass) {
 					Logger::Log("effects",
@@ -369,6 +376,15 @@ UTgEffectGroup* BuildEffectGroup(int egId, int egType) {
 			sqlite3_finalize(stmt);
 		}
 	}
+
+	// Sensor stims (TgEffectSensor, class_res_id=244) come from the DB with
+	// application_value_id=155 (stacking), so firing Visual Scanner while
+	// Vulture Vision is active would fill both r_ScannerSettings slots and both
+	// effects persist simultaneously. Promote to 156 (Newest Wins) so
+	// GetNewEffectGroupByApp calls RemoveAllEffectGroups before applying the
+	// clone, evicting the old stim's scanner settings.
+	if (hasSensorEffect && g->m_nApplicationType == 155)
+		g->m_nApplicationType = 156;
 
 	// Stealth-category (621) effect groups in the DB have lifetime=0
 	// (e.g. egId 9315 for Spring Stealth, slot 981 / device 3023). Promote
@@ -586,6 +602,46 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 				for (size_t k = 0; k < idxs.size(); k++) {
 					pThis->s_EffectGroupList.Data[idxs[k]] = groups[k];
 				}
+			}
+		}
+
+		// Recon stim mutual exclusivity.
+		// VS/VV devices have a cat-773 TgEffectSensor EG (promoted to app=156 in
+		// BuildEffectGroup) paired with a cat-936 damage buff EG. Range Stim
+		// devices have only the cat-936 EG (prop 214, range damage). All three
+		// families must evict each other when a new stim fires, so:
+		//   • Promote each cat-936 buff EG to app=156 (Newest Wins), ensuring
+		//     RemoveAllEffectGroups(cat-936) is called before the clone applies.
+		//   • Record cat-936_egId → cat-773_egId so RemoveEffects can clear the
+		//     scanner slot when the VS/VV buff is evicted by Range Stim firing.
+		{
+			UTgEffectGroup* sensorEG = nullptr;
+			UTgEffectGroup* buffEG   = nullptr;
+			bool buffHasProp214      = false;
+
+			for (int i = 0; i < pThis->s_EffectGroupList.Count; i++) {
+				UTgEffectGroup* g = pThis->s_EffectGroupList.Data[i];
+				if (!g) continue;
+				if (g->m_nCategoryCode == 773 && g->m_nApplicationType == 156) {
+					sensorEG = g;
+				} else if (g->m_nCategoryCode == 936) {
+					for (int j = 0; j < g->m_Effects.Count; j++) {
+						UTgEffect* e = g->m_Effects.Data[j];
+						if (e && (e->m_nPropertyId == 214 || e->m_nPropertyId == 65)) {
+							buffEG = g;
+							if (e->m_nPropertyId == 214) buffHasProp214 = true;
+							break;
+						}
+					}
+				}
+			}
+
+			// VS/VV identified by sensorEG; RS identified by prop-214 range buff
+			if (buffEG && (sensorEG || buffHasProp214)) {
+				if (buffEG->m_nApplicationType != 156)
+					buffEG->m_nApplicationType = 156;
+				if (sensorEG)
+					g_sensorEgForBuffEg[buffEG->m_nEffectGroupId] = sensorEG->m_nEffectGroupId;
 			}
 		}
 	}

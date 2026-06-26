@@ -2,6 +2,10 @@
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
+// Populated by TgDeviceFire__GetEffectGroup: cat-936 buff EG id → cat-773 sensor EG id.
+// Used below to clear scanner slots when a VS/VV buff EG is evicted by Range Stim or a newer stim.
+extern std::unordered_map<int, int> g_sensorEgForBuffEg;
+
 // TgEffectGroup::RemoveEffects — reimplements stripped stub @ 0x10a6f3d0.
 // Reverse each effect via its OWN-class Remove. The SDK eventRemove wrapper
 // resolves base TgEffect.Remove and ProcessEvent runs it without virtual
@@ -78,6 +82,24 @@ void __fastcall TgEffectGroup__RemoveEffects::Call(UTgEffectGroup* eg, void* /*e
 			Logger::Log("effects",
 				"[REMOVE-EFFECTS]   effect[%d] propId=%d m_fCurrent=%.2f -> Remove dispatched\n",
 				i, effect->m_nPropertyId, beforeCurrent);
+		}
+	}
+
+	// When a VS/VV cat-936 buff EG is evicted (by Range Stim or a newer stim
+	// firing), clear the paired cat-773 sensor EG's scanner slot so the stim's
+	// visual effects (stealth reveal, health-bracket highlight) stop immediately.
+	if (eg->m_nCategoryCode == 936 && Target) {
+		auto it = g_sensorEgForBuffEg.find(eg->m_nEffectGroupId);
+		if (it != g_sensorEgForBuffEg.end() && ObjectClassCache::ClassNameContains(Target, "TgPawn")) {
+			ATgPawn* pawn = (ATgPawn*)Target;
+			const int sensorEgId = it->second;
+			for (int i = 0; i < 2; i++) {
+				if (pawn->r_ScannerSettings[i].EffectGroupId == sensorEgId) {
+					pawn->ClearScannerSettingByIndex(i);
+					pawn->ApplyScannerSettingsToPawn(true);
+					break;
+				}
+			}
 		}
 	}
 }
