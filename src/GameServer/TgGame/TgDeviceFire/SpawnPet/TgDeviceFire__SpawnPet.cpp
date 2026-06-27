@@ -422,15 +422,15 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 				// (with pin removed, AI defaults m_rFixedDirection to (0,0,0)
 				// world-X — same fixed-pin behavior, just to a wrong direction).
 				// Idle scanning is anim-tree-driven, not AI-driven.
-				PetPawn->Rotation         = spawnRot;
-				PetPawn->DesiredRotation  = spawnRot;
+				PetPawn->Rotation         = rot;
+				PetPawn->DesiredRotation  = rot;
 				if (PetPawn->Controller) {
 					ATgAIController* aic = (ATgAIController*)PetPawn->Controller;
-					aic->Rotation           = spawnRot;
+					aic->Rotation           = rot;
 					// aic->Focus              = nullptr;
-					aic->DesiredRotation    = spawnRot;
-					aic->m_rFixedDirection  = spawnRot;
-					aic->m_rSpawnDirection  = spawnRot;
+					aic->DesiredRotation    = rot;
+					aic->m_rFixedDirection  = rot;
+					aic->m_rSpawnDirection  = rot;
 					aic->m_vSpawnLocation   = PetPawn->Location;
 					// aic->bReplicateMovement = 1;
 				}
@@ -439,8 +439,9 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 				// PetPawn->bNetDirty       = 1;
 				// PetPawn->bForceNetUpdate = 1;
 				Logger::Log("pet_spawn",
-					"TgDeviceFire::SpawnPet: rotation locked to (%d,%d,%d) "
-					"(pawn + AI m_rFixedDirection/m_rSpawnDirection)\n",
+					"TgDeviceFire::SpawnPet: rotation locked to (%d,%d,%d) pitch-zeroed "
+					"(pawn + AI m_rFixedDirection/m_rSpawnDirection); spawnRot was (%d,%d,%d)\n",
+					rot.Pitch, rot.Yaw, rot.Roll,
 					spawnRot.Pitch, spawnRot.Yaw, spawnRot.Roll);
 
 				Logger::Log("pet_spawn",
