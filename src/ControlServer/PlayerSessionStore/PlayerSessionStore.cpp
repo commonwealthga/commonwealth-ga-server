@@ -453,6 +453,74 @@ int64_t PlayerSessionStore::InsertCharacter(int64_t user_id, uint32_t profile_id
 	return newId;
 }
 
+bool PlayerSessionStore::DeleteCharacter(int64_t character_id, int64_t user_id) {
+	std::lock_guard<std::mutex> lock(mutex_);
+	sqlite3* db = Database::GetConnection();
+
+	// Ownership gate: only delete a character that belongs to this user.
+	{
+		sqlite3_stmt* own = nullptr;
+		if (sqlite3_prepare_v2(db,
+			"SELECT 1 FROM ga_characters WHERE id = ? AND user_id = ?",
+			-1, &own, nullptr) != SQLITE_OK) {
+			Logger::Log("db", "[PlayerSessionStore] DeleteCharacter own-check prepare failed: %s\n",
+				sqlite3_errmsg(db));
+			return false;
+		}
+		sqlite3_bind_int64(own, 1, character_id);
+		sqlite3_bind_int64(own, 2, user_id);
+		const bool owned = (sqlite3_step(own) == SQLITE_ROW);
+		sqlite3_finalize(own);
+		if (!owned) {
+			Logger::Log("db",
+				"[PlayerSessionStore] DeleteCharacter refused: char=%lld not owned by user=%lld\n",
+				(long long)character_id, (long long)user_id);
+			return false;
+		}
+	}
+
+	// Delete children before parent (correct whether or not FK enforcement is
+	// on). Inventory pool is account-scoped (user_id) and intentionally left
+	// alone. Match/stats history rows are kept for historical integrity.
+	sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr);
+	static const char* const kChildDeletes[] = {
+		"DELETE FROM ga_character_devices WHERE character_id = ?",
+		"DELETE FROM ga_character_skills  WHERE character_id = ?",
+		"DELETE FROM ga_character_quests  WHERE character_id = ?",
+	};
+	for (const char* sql : kChildDeletes) {
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db, sql, -1, &st, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(st, 1, character_id);
+			sqlite3_step(st);
+			sqlite3_finalize(st);
+		} else {
+			// A missing optional table shouldn't abort the delete.
+			Logger::Log("db", "[PlayerSessionStore] DeleteCharacter child delete skipped (%s): %s\n",
+				sql, sqlite3_errmsg(db));
+		}
+	}
+
+	bool removed = false;
+	{
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db,
+			"DELETE FROM ga_characters WHERE id = ? AND user_id = ?",
+			-1, &st, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(st, 1, character_id);
+			sqlite3_bind_int64(st, 2, user_id);
+			sqlite3_step(st);
+			sqlite3_finalize(st);
+			removed = (sqlite3_changes(db) > 0);
+		}
+	}
+	sqlite3_exec(db, removed ? "COMMIT" : "ROLLBACK", nullptr, nullptr, nullptr);
+
+	Logger::Log("db", "[PlayerSessionStore] DeleteCharacter char=%lld user=%lld removed=%d\n",
+		(long long)character_id, (long long)user_id, (int)removed);
+	return removed;
+}
+
 std::vector<CharacterInfo> PlayerSessionStore::GetCharactersByUserId(int64_t user_id) {
 	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();

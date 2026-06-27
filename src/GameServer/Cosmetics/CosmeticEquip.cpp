@@ -477,6 +477,64 @@ bool ClearSlot(ATgPawn* Pawn, int64_t character_id, int item_profile_id, int slo
 	return true;
 }
 
+struct CharacterBaseState {
+	int headMesh = 1605;
+	int genderId = GA_G::GENDER_TYPE_ID_MALE;
+	uint32_t profileId = 680;
+	int hairMesh = 1757;
+};
+
+// Reads the per-character creation fields from ga_characters and decodes the
+// morph blob into the pawn's replicated morph arrays. Returns the base state
+// (head mesh, gender, profile, hair mesh) with defaults if the row is missing.
+static CharacterBaseState ReadCharacterBaseState(int64_t character_id, ATgPawn_Character* charPawn) {
+	CharacterBaseState state;
+	sqlite3* db = Database::GetConnection();
+	if (!db) return state;
+
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+		"SELECT head_asm_id, gender_type_value_id, profile_id, morph_data, hair_asm_id "
+		"FROM ga_characters WHERE id = ?",
+		-1, &stmt, nullptr) != SQLITE_OK) return state;
+
+	enum Col { head_asm_id = 0, gender_type_value_id, profile_id, morph_data, hair_asm_id };
+	sqlite3_bind_int64(stmt, 1, character_id);
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		const int h = sqlite3_column_int(stmt, Col::head_asm_id);
+		const int g = sqlite3_column_int(stmt, Col::gender_type_value_id);
+		const int p = sqlite3_column_int(stmt, Col::profile_id);
+		const int hr = sqlite3_column_int(stmt, Col::hair_asm_id);
+		if (h > 0) state.headMesh = h;
+		if (g > 0) state.genderId = g;
+		if (p > 0) state.profileId = (uint32_t)p;
+		if (hr > 0) state.hairMesh = hr;
+
+		struct MorphPair { uint32_t index; uint32_t weight; };
+		static_assert(sizeof(MorphPair) == 8, "morph blob stride");
+
+		const auto* blob = (const uint8_t*)sqlite3_column_blob(stmt, Col::morph_data);
+		const int pairCount = sqlite3_column_bytes(stmt, Col::morph_data) / (int)sizeof(MorphPair);
+		int maxIdx = -1;
+		for (int i = 0; i < pairCount; ++i) {
+			MorphPair pair;
+			memcpy(&pair, blob + i * sizeof(MorphPair), sizeof(MorphPair));
+			if (pair.index < 255u) {
+				charPawn->r_nMorphSettings[pair.index] = (int)pair.weight;
+				if ((int)pair.index > maxIdx) maxIdx = (int)pair.index;
+			}
+		}
+		if (maxIdx >= 0) {
+			charPawn->r_nMaxMorphIndexSentFromServer = maxIdx + 1;
+			Logger::Log("spawn-asm",
+				"LoadFromDB morph: char=%lld decoded %d pairs (maxIdx=%d)\n",
+				(long long)character_id, pairCount, maxIdx);
+		}
+	}
+	sqlite3_finalize(stmt);
+	return state;
+}
+
 // Baseline assembly used as the starting point before overlaying DB cosmetics.
 // Mirrors what SpawnPlayerCharacter used to write inline, except SuitMeshId
 // starts at -1 instead of the 1225 Medic Acolyte placeholder — the cosmetic
@@ -519,42 +577,13 @@ void LoadFromDB(ATgPawn* Pawn, int64_t character_id, int item_profile_id) {
 	auto* PRI      = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
 	item_profile_id = NormalizeItemProfileId(Pawn, item_profile_id);
 
-	// (0) Pull head_asm_id + gender from ga_characters. These are character
-	// state (picked at character creation), not cosmetic-equip state. Engine
-	// class defaults (TgPawn_Character.uc:1097 male / line 907-908 female via
-	// GetDefaultAssembly) are used as the fallback when the row is missing.
-	int headMesh = 1605;                          // male class default
-	int genderId = GA_G::GENDER_TYPE_ID_MALE;     // 853
-	uint32_t profileId = 680;                     // Assault class default
-	{
-		sqlite3* db = Database::GetConnection();
-		if (db) {
-			sqlite3_stmt* stmt = nullptr;
-			if (sqlite3_prepare_v2(db,
-				"SELECT head_asm_id, gender_type_value_id, profile_id "
-				"FROM ga_characters WHERE id = ?",
-				-1, &stmt, nullptr) == SQLITE_OK) {
-				sqlite3_bind_int64(stmt, 1, character_id);
-				if (sqlite3_step(stmt) == SQLITE_ROW) {
-					const int h = sqlite3_column_int(stmt, 0);
-					const int g = sqlite3_column_int(stmt, 1);
-					const int p = sqlite3_column_int(stmt, 2);
-					if (h > 0) headMesh = h;
-					if (g > 0) genderId = g;
-					if (p > 0) profileId = (uint32_t)p;
-				}
-				sqlite3_finalize(stmt);
-			}
-		}
-	}
-	// Hair pairs with gender. Both branches now use 1757 (NewHair1) — the
-	// male class default that was already in use. The original code wrote
-	// 0 for female, which crashes the client at 0x109d1f5b on the hair-
-	// component deref through 0xCCCCCCCC. This is the MINIMAL change off
-	// the pre-session baseline. Earlier attempts in this session widened
-	// the SELECT and added a SpawnPlayerCharacter pre-Fill — both regressed
-	// the inventory pipeline and have been reverted.
-	const int hairMesh = 1757;
+	// (0) Read per-character creation state (head, hair, gender, morph poses)
+	// from ga_characters and write morph arrays onto the pawn.
+	const CharacterBaseState base = ReadCharacterBaseState(character_id, charPawn);
+	const int headMesh = base.headMesh;
+	const int genderId = base.genderId;
+	const uint32_t profileId = base.profileId;
+	const int hairMesh = base.hairMesh;
 
 	// (1) Initialize the baseline assembly. Owning this here (instead of in
 	// SpawnPlayerCharacter) keeps the cosmetic state machine in one place and
