@@ -318,34 +318,52 @@ std::optional<SessionInfo> PlayerSessionStore::GetByPlayerName(const std::string
 	return std::nullopt;
 }
 
-int64_t PlayerSessionStore::UpsertUser(const std::string& username) {
+int64_t PlayerSessionStore::UpsertUser(const std::string& username,
+                                       std::string* out_display_name) {
 	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();
 
-	// Insert if not present (ignore on conflict keeps existing row).
-	sqlite3_stmt* stmt = nullptr;
-	int rc = sqlite3_prepare_v2(db, "INSERT OR IGNORE INTO ga_users (username) VALUES (?)", -1, &stmt, nullptr);
-	if (rc == SQLITE_OK && stmt) {
-		sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_TRANSIENT);
-		sqlite3_step(stmt);
-		sqlite3_finalize(stmt);
+	// Case-insensitive resolve. An existing account in any capitalization owns
+	// the name; COLLATE NOCASE folds the same ASCII set the login verifier does
+	// (LoginAuth::LowerAscii). ORDER BY id ASC makes the choice deterministic
+	// while a legacy case-duplicate may still exist, so this and GetUserAuth
+	// always agree on which row is canonical.
+	int64_t id = 0;
+	std::string display = username;
+	sqlite3_stmt* sel = nullptr;
+	if (sqlite3_prepare_v2(db,
+	    "SELECT id, username FROM ga_users WHERE username = ? COLLATE NOCASE "
+	    "ORDER BY id ASC LIMIT 1",
+	    -1, &sel, nullptr) == SQLITE_OK) {
+		sqlite3_bind_text(sel, 1, username.c_str(), -1, SQLITE_TRANSIENT);
+		if (sqlite3_step(sel) == SQLITE_ROW) {
+			id = sqlite3_column_int64(sel, 0);
+			if (const unsigned char* nm = sqlite3_column_text(sel, 1))
+				display = reinterpret_cast<const char*>(nm);
+		}
+		sqlite3_finalize(sel);
 	} else {
-		Logger::Log("db", "[PlayerSessionStore] UpsertUser insert prepare failed: %s\n", sqlite3_errmsg(db));
+		Logger::Log("db", "[PlayerSessionStore] UpsertUser select prepare failed: %s\n", sqlite3_errmsg(db));
 		return 0;
 	}
 
-	// Fetch id.
-	int64_t id = 0;
-	rc = sqlite3_prepare_v2(db, "SELECT id FROM ga_users WHERE username = ?", -1, &stmt, nullptr);
-	if (rc == SQLITE_OK && stmt) {
-		sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_TRANSIENT);
-		if (sqlite3_step(stmt) == SQLITE_ROW)
-			id = sqlite3_column_int64(stmt, 0);
-		sqlite3_finalize(stmt);
-	} else {
-		Logger::Log("db", "[PlayerSessionStore] UpsertUser select prepare failed: %s\n", sqlite3_errmsg(db));
+	// First time we've seen this name (in any case): create it with the typed
+	// capitalization, which becomes the permanent display name. The NOCASE
+	// unique index (migration v124) is the storage-level race backstop.
+	if (id == 0) {
+		sqlite3_stmt* ins = nullptr;
+		if (sqlite3_prepare_v2(db, "INSERT INTO ga_users (username) VALUES (?)", -1, &ins, nullptr) == SQLITE_OK) {
+			sqlite3_bind_text(ins, 1, username.c_str(), -1, SQLITE_TRANSIENT);
+			if (sqlite3_step(ins) == SQLITE_DONE)
+				id = sqlite3_last_insert_rowid(db);
+			sqlite3_finalize(ins);
+		}
+		if (id == 0)
+			Logger::Log("db", "[PlayerSessionStore] UpsertUser insert failed: %s\n", sqlite3_errmsg(db));
+		display = username;
 	}
 
+	if (out_display_name) *out_display_name = display;
 	return id;
 }
 
@@ -357,7 +375,11 @@ PlayerSessionStore::UserAuth PlayerSessionStore::GetUserAuth(const std::string& 
 
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
-		"SELECT id, password_verifier, registered_at FROM ga_users WHERE username = ? LIMIT 1",
+		// Case-insensitive + deterministic: must resolve to the same canonical
+		// row UpsertUser picks (ORDER BY id ASC), or the verifier could be
+		// checked against a different row than the session is opened under.
+		"SELECT id, password_verifier, registered_at FROM ga_users "
+		"WHERE username = ? COLLATE NOCASE ORDER BY id ASC LIMIT 1",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
 		Logger::Log("db", "[PlayerSessionStore] GetUserAuth prepare failed: %s\n", sqlite3_errmsg(db));
