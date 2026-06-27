@@ -1754,6 +1754,112 @@ void Database::Init() {
 		if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
 	}
 
+	// AvA challenge maps — seed HEX_AVA maps into map_game_info so they appear
+	// in the -challenge list. Guarded by marker; easy to revert by deleting the
+	// marker row + the 4 map_game_info rows (map_game_id 100010..100013).
+	{
+		sqlite3_stmt* probe = nullptr;
+		bool already = false;
+		if (sqlite3_prepare_v2(db,
+				"SELECT 1 FROM cs_migration_markers WHERE name='ava_maps_map_game_info_2026_06_25'",
+				-1, &probe, nullptr) == SQLITE_OK) {
+			already = sqlite3_step(probe) == SQLITE_ROW;
+			sqlite3_finalize(probe);
+		}
+		if (!already) {
+			// gameplay_type_value_id 1547 = Escort (same as all Push/Payload maps).
+			// friendly_name_msg_id:
+			//   31231 -> "10v10 HEX Lab"     (push-lab)
+			//   31840 -> "Hex Factory"        (push-factory)
+			//   43906 -> "* HEX LABS STEAL"   (theft-lab)
+			//   43907 -> "* HEX FACTORY STEAL"(theft-factory)
+			result = sqlite3_exec(db,
+				"INSERT OR IGNORE INTO map_game_info"
+				" (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id)"
+				" VALUES"
+				" (100010, 'HEX_AVA_Push_Lab1_P',         'TgGame.TgGame_Escort', 1547, 31231, 0),"
+				" (100011, 'HEX_AVA_Push_Factory1_P',     'TgGame.TgGame_Escort', 1547, 31840, 0),"
+				" (100012, 'HEX_AVA_2pt_Theft_Lab1',      'TgGame.TgGame_Escort', 1547, 43906, 0),"
+				" (100013, 'HEX_AVA_2pt_Theft_Factory1_P','TgGame.TgGame_Escort', 1547, 43907, 0);",
+				nullptr, nullptr, &err);
+			if (result != SQLITE_OK) {
+				Logger::Log("db", "Failed ava_maps_map_game_info seed: %s\n", err);
+				sqlite3_free(err); err = nullptr;
+			} else {
+				sqlite3_exec(db,
+					"INSERT OR IGNORE INTO cs_migration_markers (name)"
+					" VALUES ('ava_maps_map_game_info_2026_06_25');",
+					nullptr, nullptr, &err);
+				sqlite3_free(err); err = nullptr;
+				Logger::Log("db", "ava_maps_map_game_info_2026_06_25: seeded 4 HEX_AVA rows into map_game_info\n");
+			}
+		}
+	}
+
+	// AvA challenge maps wave 2 — remaining HEX_AVA map packages visible on the
+	// client filesystem. map_game_ids 100020..100032. Easy rollback:
+	//   DELETE FROM map_game_info WHERE map_game_id BETWEEN 100020 AND 100032;
+	//   DELETE FROM cs_migration_markers WHERE name='ava_maps_wave2_2026_06_26';
+	{
+		sqlite3_stmt* probe = nullptr;
+		bool already = false;
+		if (sqlite3_prepare_v2(db,
+				"SELECT 1 FROM cs_migration_markers WHERE name='ava_maps_wave2_2026_06_26'",
+				-1, &probe, nullptr) == SQLITE_OK) {
+			already = sqlite3_step(probe) == SQLITE_ROW;
+			sqlite3_finalize(probe);
+		}
+		if (!already) {
+			// gameplay_type_value_id:
+			//   1550 = TgGame_Defense  (same as Raid_DomeCityDefense_P)
+			//   1548 = TgGame_PointRotation  (Scramble / 3-point)
+			//   1547 = TgGame_Escort  (Payload)
+			//   1545 = TgGame_Ticket  (Control)
+			// friendly_name_msg_ids from asm_data_set_msg_translations:
+			//   43934=HEX_AVA_Defense1, 43933=HEX_AVA_Defense2
+			//   38247=HEX_AVA_Factory1, 39033=HEX_AVA_Factory2, 39135=HEX_AVA_Factory3
+			//   39936=HEX_AVA_Lab1, 37965=HEX_AVA_Lab2, 38116=HEX_AVA_Lab3
+			//   41220=HEX_AVA_Missile1
+			//   39935=HEX_AVA_Plant1, 39908=HEX_AVA_Plant2, 39929=HEX_AVA_Plant3
+			//   42184=HEX_AVA_Neutral_Ticket
+			result = sqlite3_exec(db,
+				"INSERT OR IGNORE INTO map_game_info"
+				" (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id)"
+				" VALUES"
+				// Defense (base raid)
+				" (100020, 'HEX_AVA_Defense1_P',       'TgGame.TgGame_Defense',       1550, 43934, 0),"
+				" (100021, 'HEX_AVA_Defense2_P',       'TgGame.TgGame_Defense',       1550, 43933, 0),"
+				// Factory 3-point capture (Scramble)
+				" (100022, 'HEX_AVA_Factory1_P',       'TgGame.TgGame_PointRotation', 1548, 38247, 0),"
+				" (100023, 'HEX_AVA_Factory2_P',       'TgGame.TgGame_PointRotation', 1548, 39033, 0),"
+				" (100024, 'HEX_AVA_Factory3_P',       'TgGame.TgGame_PointRotation', 1548, 39135, 0),"
+				// Lab 3-point capture (Scramble)
+				" (100025, 'HEX_AVA_Lab1_P',           'TgGame.TgGame_PointRotation', 1548, 39936, 0),"
+				" (100026, 'HEX_AVA_Lab2_P',           'TgGame.TgGame_PointRotation', 1548, 37965, 0),"
+				" (100027, 'HEX_AVA_Lab3_P',           'TgGame.TgGame_PointRotation', 1548, 38116, 0),"
+				// Missile escort
+				" (100028, 'HEX_AVA_Missile1_P',       'TgGame.TgGame_Escort',        1547, 41220, 0),"
+				// Plant base defense
+				" (100029, 'HEX_AVA_Plant_P',          'TgGame.TgGame_Defense',       1550, 39935, 0),"
+				" (100030, 'HEX_AVA_Plant2_P',         'TgGame.TgGame_Defense',       1550, 39908, 0),"
+				" (100031, 'HEX_AVA_Plant3_P',         'TgGame.TgGame_Defense',       1550, 39929, 0),"
+				// Ticket/Control neutral
+				" (100032, 'HEX_AVA_Ticket_Neutral',   'TgGame.TgGame_Ticket',        1545, 42184, 0);",
+				nullptr, nullptr, &err);
+			if (result != SQLITE_OK) {
+				Logger::Log("db", "Failed ava_maps_wave2 seed: %s\n", err);
+				sqlite3_free(err); err = nullptr;
+			} else {
+				sqlite3_exec(db,
+					"INSERT OR IGNORE INTO cs_migration_markers (name)"
+					" VALUES ('ava_maps_wave2_2026_06_26');",
+					nullptr, nullptr, &err);
+				sqlite3_free(err); err = nullptr;
+				Logger::Log("db", "ava_maps_wave2_2026_06_26: seeded 13 HEX_AVA rows into map_game_info\n");
+			}
+		}
+	}
+
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
 }
@@ -2155,7 +2261,9 @@ int64_t Database::FindUserIdByUsername(const std::string& username) {
 	sqlite3* db = GetConnection();
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
-		"SELECT id FROM ga_users WHERE username = ? LIMIT 1",
+		// Case-insensitive: admin actions (ban/unban/pvp/reset) target the same
+		// canonical account regardless of the capitalization typed.
+		"SELECT id FROM ga_users WHERE username = ? COLLATE NOCASE ORDER BY id ASC LIMIT 1",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
 		Logger::Log("db", "[User] FindUserIdByUsername prepare failed: %s\n", sqlite3_errmsg(db));

@@ -293,8 +293,7 @@ static bool SpawnAdminInstance(const ControlServerConfig& cfg, const std::string
 static int64_t SpawnInstanceForPendingMatch(
         const ControlServerConfig& cfg,
         const std::string& map_name, const std::string& game_mode,
-        uint32_t queue_id, uint32_t difficulty, PendingMatch&& pending,
-        bool is_challenge = false) {
+        uint32_t queue_id, uint32_t difficulty, PendingMatch&& pending) {
     auto port = InstanceRegistry::AllocatePort(cfg.udp_port_range.lo, cfg.udp_port_range.hi);
     if (!port) {
         Logger::Log("matchmaking", "[Matchmaking] No UDP ports available for match spawn\n");
@@ -321,7 +320,7 @@ static int64_t SpawnInstanceForPendingMatch(
     MatchmakingService::AddPendingMatch(instance_id, std::move(pending));
 
     pid_t pid = InstanceSpawner::Spawn(
-        cfg, map_name, game_mode, *port, instance_id, difficulty, is_challenge);
+        cfg, map_name, game_mode, *port, instance_id, difficulty);
     if (pid < 0) {
         MatchmakingService::DiscardPendingMatchForDeadInstance(
             instance_id, "InstanceSpawner::Spawn returned -1");
@@ -592,8 +591,7 @@ int main(int argc, char* argv[]) {
             pending.cap = (uint32_t)pending.session_guids.size();
             return SpawnInstanceForPendingMatch(
                        cfg, map_name, game_mode, /*queue_id=*/0,
-                       /*difficulty=*/0, std::move(pending),
-                       /*is_challenge=*/true) != 0;
+                       /*difficulty=*/0, std::move(pending)) != 0;
         });
 
     // Successor spawner — invoked from IpcServer's MSG_REQUEST_SUCCESSOR
