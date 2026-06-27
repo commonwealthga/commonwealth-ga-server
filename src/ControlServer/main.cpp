@@ -12,6 +12,7 @@
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 #include "src/ControlServer/MatchmakingService/SidePlacement.hpp"
+#include "src/ControlServer/ChatSession/ChatCommand.hpp"
 #include <asio.hpp>
 #include <thread>
 #include <cstdlib>
@@ -278,6 +279,62 @@ static bool SpawnAdminInstance(const ControlServerConfig& cfg, const std::string
     return true;
 }
 
+// Spawn a fresh instance for an already-populated PendingMatch and register the
+// pending match BEFORE Spawn — so the spawn-failure / IPC-disconnect-before-READY
+// unwind can DiscardPendingMatchForDeadInstance and unstick the matched players.
+// On INSTANCE_READY, IpcServer consumes the pending match and delivers a
+// MATCH_INVITATION to each session_guid on its assigned task force. Returns the
+// new instance_id, or 0 if no UDP port was free / the spawn failed.
+//
+// `pending` must already carry session_guids, task_force_assignments,
+// profile_ids, cap, access_mode and owner_party_ids; instance_id/queue_id/
+// game_mode are stamped here. Shared by the matchmaker's match-pop path and the
+// /challenge launcher.
+static int64_t SpawnInstanceForPendingMatch(
+        const ControlServerConfig& cfg,
+        const std::string& map_name, const std::string& game_mode,
+        uint32_t queue_id, uint32_t difficulty, PendingMatch&& pending) {
+    auto port = InstanceRegistry::AllocatePort(cfg.udp_port_range.lo, cfg.udp_port_range.hi);
+    if (!port) {
+        Logger::Log("matchmaking", "[Matchmaking] No UDP ports available for match spawn\n");
+        return 0;
+    }
+
+    // Carry the access semantics onto the instance row so the provider (and the
+    // invite-into-locked-match path) can read them back. owner_party_ids -> CSV.
+    std::string owner_csv;
+    for (size_t i = 0; i < pending.owner_party_ids.size(); ++i) {
+        if (i) owner_csv += ",";
+        owner_csv += std::to_string(pending.owner_party_ids[i]);
+    }
+    const std::string access_str = mm::AccessModeToString(pending.access_mode);
+
+    int64_t instance_id = InstanceRegistry::InsertStarting(
+        map_name, game_mode, *port, 0, /*is_home_map=*/false,
+        /*queue_id=*/queue_id, /*predecessor_instance_id=*/0,
+        access_str, owner_csv);
+
+    pending.instance_id = instance_id;
+    pending.queue_id    = queue_id;
+    pending.game_mode   = game_mode;
+    MatchmakingService::AddPendingMatch(instance_id, std::move(pending));
+
+    pid_t pid = InstanceSpawner::Spawn(
+        cfg, map_name, game_mode, *port, instance_id, difficulty);
+    if (pid < 0) {
+        MatchmakingService::DiscardPendingMatchForDeadInstance(
+            instance_id, "InstanceSpawner::Spawn returned -1");
+        InstanceRegistry::MarkStopped(instance_id);
+        return 0;
+    }
+
+    InstanceRegistry::UpdatePid(instance_id, pid);
+    Logger::Log("matchmaking",
+        "[Matchmaking] Spawned instance %lld (pid=%d port=%d) for queue %u\n",
+        (long long)instance_id, (int)pid, (int)*port, queue_id);
+    return instance_id;
+}
+
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
@@ -483,81 +540,59 @@ int main(int argc, char* argv[]) {
                 return;
             }
 
-            // Spawn new instance
-            auto port = InstanceRegistry::AllocatePort(
-                cfg.udp_port_range.lo, cfg.udp_port_range.hi);
-            if (!port) {
-                Logger::Log("matchmaking",
-                    "[Matchmaking] No UDP ports available for match spawn\n");
-                return;
-            }
-
-            // Carry the rule's access semantics onto the instance row so the
-            // provider (and the invite-into-locked-match path) can read them
-            // back. owner_party_ids -> CSV.
-            std::string owner_csv;
-            for (size_t i = 0; i < result.owner_party_ids.size(); ++i) {
-                if (i) owner_csv += ",";
-                owner_csv += std::to_string(result.owner_party_ids[i]);
-            }
-            const std::string access_str = mm::AccessModeToString(result.access_mode);
-
-            int64_t instance_id = InstanceRegistry::InsertStarting(
-                result.map_name, result.game_mode, *port, 0, /*is_home_map=*/false,
-                /*queue_id=*/queue_id, /*predecessor_instance_id=*/0,
-                access_str, owner_csv);
-
-            // Register pending match BEFORE Spawn so the unwind path on a
-            // spawn-failure (and the symmetric IPC-disconnect-before-READY
-            // path in IpcServer) can call DiscardPendingMatchForDeadInstance
-            // to unstick the matched players. Without this, a process that
-            // fails to fork leaves its session_guids out of queue.players
-            // with no way back.
+            // Spawn new instance. Build the PendingMatch from the popped result,
+            // then hand off to the shared spawn-and-register helper.
             PendingMatch pending;
-            pending.instance_id = instance_id;
-            pending.queue_id = queue_id;
-            pending.game_mode = result.game_mode;
             pending.access_mode = result.access_mode;
             pending.owner_party_ids = result.owner_party_ids;
             pending.session_guids = std::move(result.session_guids);
             pending.task_force_assignments = std::move(result.task_force_assignments);
             pending.profile_ids = std::move(result.profile_ids);
-            // Honour rule-supplied cap_override (e.g. DoubleAgentRule seals
-            // each match at its roster size). Falls back to the queue-wide
-            // cap when the rule didn't override.
+
+            // Honour rule-supplied cap_override (e.g. DoubleAgentRule seals each
+            // match at its roster size); fall back to the queue-wide cap. Look up
+            // queue difficulty so the instance runs at the queue's tier instead
+            // of the DLL's map-name heuristic.
+            uint32_t queue_difficulty = 0;
             if (auto qcfg = MatchmakingService::GetQueueConfig(queue_id)) {
                 pending.cap = result.cap_override.value_or(
                     MatchmakingService::GetQueueInstanceCap(*qcfg));
-            }
-            MatchmakingService::AddPendingMatch(instance_id, std::move(pending));
-
-            // Look up queue's configured difficulty so the instance runs
-            // at the queue's tier instead of the DLL's map-name heuristic.
-            uint32_t queue_difficulty = 0;
-            if (auto qcfg = MatchmakingService::GetQueueConfig(queue_id)) {
                 queue_difficulty = qcfg->difficulty_value_id;
             }
 
-            pid_t pid = InstanceSpawner::Spawn(
-                cfg, result.map_name, result.game_mode, *port, instance_id,
-                queue_difficulty);
-
-            if (pid < 0) {
+            if (SpawnInstanceForPendingMatch(
+                    cfg, result.map_name, result.game_mode, queue_id,
+                    queue_difficulty, std::move(pending)) == 0) {
                 Logger::Log("matchmaking",
                     "[Matchmaking] Failed to spawn instance for queue %u\n", queue_id);
-                MatchmakingService::DiscardPendingMatchForDeadInstance(
-                    instance_id, "InstanceSpawner::Spawn returned -1");
-                InstanceRegistry::MarkStopped(instance_id);
-                return;
             }
-
-            InstanceRegistry::UpdatePid(instance_id, pid);
-
-            Logger::Log("matchmaking",
-                "[Matchmaking] Spawned instance %lld (pid=%d port=%d) for queue %u\n",
-                (long long)instance_id, (int)pid, (int)*port, queue_id);
         }
     );
+
+    // Challenge launcher — invoked from ChatCommand::DispatchChallenge when a
+    // player runs /challenge. Builds a sealed 2-player PendingMatch (challenger
+    // on their chosen side, target opposite) and reuses the same spawn-and-invite
+    // path as a matchmade pop (queue_id=0 = ad-hoc, difficulty=0 = DLL default).
+    ChatCommand::SetChallengeLauncher(
+        [&cfg](const std::vector<std::string>& challenger_team, int challenger_tf,
+               const std::vector<std::string>& target_team, const std::string& map_name,
+               const std::string& game_mode) -> bool {
+            PendingMatch pending;
+            pending.access_mode = AccessMode::Sealed;
+            const int target_tf = (challenger_tf == 1) ? 2 : 1;
+            for (const auto& g : challenger_team) {
+                pending.session_guids.push_back(g);
+                pending.task_force_assignments[g] = challenger_tf;
+            }
+            for (const auto& g : target_team) {
+                pending.session_guids.push_back(g);
+                pending.task_force_assignments[g] = target_tf;
+            }
+            pending.cap = (uint32_t)pending.session_guids.size();
+            return SpawnInstanceForPendingMatch(
+                       cfg, map_name, game_mode, /*queue_id=*/0,
+                       /*difficulty=*/0, std::move(pending)) != 0;
+        });
 
     // Successor spawner — invoked from IpcServer's MSG_REQUEST_SUCCESSOR
     // handler after dedupe. Picks a fresh (map, game_mode) at random from

@@ -86,6 +86,13 @@ public:
     static bool IsTeamed(const std::string& session_guid);
     static bool IsLeader(const std::string& session_guid);
 
+    // Session guids of all ONLINE members of the team containing `session_guid`
+    // (leader + members), or just { session_guid } if the player isn't in a
+    // team. Offline-marked members are skipped (they can't be routed into a
+    // match). Used by the challenge system to pull whole teams into a private
+    // challenge match rather than just the two individuals.
+    static std::vector<std::string> GetTeamMemberGuids(const std::string& session_guid);
+
     // --- Team queueing -----------------------------------------------------
 
     // Build a matchmaking party from the team led by `leader_guid` (live
