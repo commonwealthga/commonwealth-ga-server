@@ -7756,7 +7756,36 @@ void Database::Init() {
 		Logger::Log("db", "v123: DomeCityDefense bot factory spawn table 102 -> 99\n");
 	}
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 123", nullptr, nullptr, &err);
+	if (version < 124) {
+		// v124: case-insensitive usernames. The login verifier already folds the
+		// username to lowercase (LoginAuth::LowerAscii, ASCII A-Z only), and
+		// SQLite COLLATE NOCASE folds the same set — but the account lookups used
+		// the default BINARY collation, allowing a second login under a differently-
+		// cased spelling of an existing name to silently create a duplicate row.
+		//
+		// Resolution: for any NOCASE duplicate group, the lowest id keeps its
+		// name (first registered = the original account). Every higher-id
+		// duplicate (created by the bug) is renamed to <username><4-digit-number>
+		// so no account data is lost and the NOCASE unique index can be created
+		// cleanly. Idempotent: if no duplicates exist every UPDATE matches zero rows.
+		result = sqlite3_exec(db,
+			"UPDATE ga_users "
+			"SET username = username || CAST((ABS(RANDOM()) % 9000 + 1000) AS TEXT) "
+			"WHERE id NOT IN (SELECT MIN(id) FROM ga_users GROUP BY LOWER(username));",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v124 (rename duplicate usernames): %s\n", err); return; }
+
+		// Storage-level backstop: no two usernames may fold to the same string.
+		// IF NOT EXISTS makes this safe on a fresh DB that never had duplicates.
+		result = sqlite3_exec(db,
+			"CREATE UNIQUE INDEX IF NOT EXISTS idx_ga_users_username_nocase "
+			"ON ga_users(username COLLATE NOCASE);", nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v124 (nocase unique index): %s\n", err); return; }
+
+		Logger::Log("db", "v124: renamed case-duplicate usernames to <name><####>, added NOCASE username index\n");
+	}
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 124", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
