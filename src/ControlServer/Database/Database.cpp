@@ -716,6 +716,86 @@ void Database::Init() {
 			if (err) { sqlite3_free(err); err = nullptr; }
 		}
 
+		// cs_challenge_catalog — curated -challenge map catalog. Lives entirely on
+		// the control server (the game DLL never reads it), so it's created here
+		// rather than in the game-DLL migration ladder. PvP maps are grouped into
+		// six player-facing categories (Arena, Scramble, Payload, Control,
+		// Acquisition, AvA) with a fixed in-category order and vanity names.
+		// game_class is NOT stored — it stays in map_game_info (source of truth)
+		// and is JOINed at read time by MapGameInfo::GetChallengeCategories.
+		//
+		// The seed uses INSERT OR IGNORE so it's safe to run every boot AND so
+		// live re-curation survives: renaming a vanity_name or reordering
+		// map_pos/category via SQL keeps the row (same map_name PK), and the
+		// boot-time seed never overwrites it. New baseline maps added to the seed
+		// below get inserted; existing rows are left untouched.
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS cs_challenge_catalog ("
+			"  map_name     TEXT PRIMARY KEY,"
+			"  category     TEXT NOT NULL,"
+			"  category_pos INTEGER NOT NULL,"
+			"  map_pos      INTEGER NOT NULL,"
+			"  vanity_name  TEXT NOT NULL);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create cs_challenge_catalog: %s\n", err);
+			sqlite3_free(err); err = nullptr;
+		}
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO cs_challenge_catalog "
+			"(map_name, category, category_pos, map_pos, vanity_name) VALUES "
+			// Arena
+			"('Ticket_HimLab_4v4','Arena',1,1,'HM-44'),"
+			"('Ticket_Silo_4v4_P','Arena',1,2,'Silo'),"
+			"('Ticket_Osprey_4v4_P','Arena',1,3,'Osprey'),"
+			// Scramble
+			"('Rot_Redistribution05','Scramble',2,1,'Tetra Pier'),"
+			"('Rot_Redistribution03','Scramble',2,2,'Stockpile'),"
+			"('Rot_Redistribution04','Scramble',2,3,'Redistribution'),"
+			"('Rot_Trafalgar_P','Scramble',2,4,'CNS Trafalgar'),"
+			"('Rot_BlackwaterLoch_P','Scramble',2,5,'Blackwater Loch'),"
+			// Payload
+			"('Push_IceFloe_P','Payload',3,1,'Ice Floe'),"
+			"('Push_IceFloe3_P','Payload',3,2,'Tundra'),"
+			"('push_Ravine_P','Payload',3,3,'Ravine'),"
+			"('Push_Toxicity','Payload',3,4,'Toxicity'),"
+			"('Push_Dust_P','Payload',3,5,'Haulin'' Acid'),"
+			// Control
+			"('Ticket_Datafarm_P','Control',4,1,'Data Farm'),"
+			"('SeaSide_Ticket_P','Control',4,2,'Seaside'),"
+			"('SeaSide_Ticket2_P','Control',4,3,'Azores Complex'),"
+			"('SeaSide_Ticket3','Control',4,4,'Brine Complex'),"
+			"('Ticket_Datafarm3','Control',4,5,'Harvest'),"
+			"('Ticket_Datafarm2','Control',4,6,'Sun Spot'),"
+			"('Ticket_Volcano_P','Control',4,7,'Magmarock'),"
+			// Acquisition
+			"('CTR_DuelStrike_P','Acquisition',5,1,'Hart Station'),"
+			"('CTR_DuelStrike3_P','Acquisition',5,2,'Kimerial Point'),"
+			"('CTR_DuelStrike2_P','Acquisition',5,3,'The Crossroads'),"
+			// AvA
+			"('HEX_AVA_Push_Factory1_P','AvA',6,1,'AvA 1'),"
+			"('HEX_AVA_Push_Lab1_P','AvA',6,2,'AvA 2'),"
+			"('HEX_AVA_Plant_P','AvA',6,3,'AvA 3'),"
+			"('HEX_AVA_Plant2_P','AvA',6,4,'AvA 4'),"
+			"('HEX_AVA_Plant3_P','AvA',6,5,'AvA 5'),"
+			"('HEX_AVA_2pt_Theft_Lab1','AvA',6,6,'Theft Lab'),"
+			"('HEX_AVA_2pt_Theft_Factory1_P','AvA',6,7,'Theft Factory'),"
+			"('HEX_AVA_Factory1_P','AvA',6,8,'Factory 1'),"
+			"('HEX_AVA_Factory2_P','AvA',6,9,'Factory 2'),"
+			"('HEX_AVA_Factory3_P','AvA',6,10,'Factory 3'),"
+			"('HEX_AVA_Lab1_P','AvA',6,11,'Lab 1'),"
+			"('HEX_AVA_Lab2_P','AvA',6,12,'Lab 2'),"
+			"('HEX_AVA_Lab3_P','AvA',6,13,'Lab 3'),"
+			"('HEX_AVA_Missile1_P','AvA',6,14,'Missile'),"
+			"('HEX_AVA_Ticket_Neutral','AvA',6,15,'Neutral'),"
+			"('HEX_AVA_Defense1_P','AvA',6,16,'Tech Defence 1'),"
+			"('HEX_AVA_Defense2_P','AvA',6,17,'Tech Defence 2');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed cs_challenge_catalog: %s\n", err);
+			sqlite3_free(err); err = nullptr;
+		}
+
 		// Continuous-queue support: instances optionally carry the queue_id
 		// they were spawned for, can point at a predecessor (DRAFTING state =
 		// READY-but-waiting for predecessor's BeginEndMission), and stamp the

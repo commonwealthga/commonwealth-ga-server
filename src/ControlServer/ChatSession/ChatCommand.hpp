@@ -49,12 +49,16 @@ struct TopDownArgs {
     float lift_z = 0.0f;
 };
 
-// -challenge <person> <map> [side]: challenge another online player (and their
-// whole team) to a private match on <map>. <side> is optional and defaults to
-// attackers. target_name is resolved to a session at dispatch time.
+// -challenge <person> <type> [map#] [side]: challenge another online player (and
+// their whole team) to a private match. <type> is a category number (1-6) or
+// name (Arena, Scramble, …). <map#> is empty (→ list that type's pool), "0"
+// (→ random map from the pool), or the 1-based map number within the pool.
+// <side> is optional and defaults to attackers. Everything is resolved against
+// the cs_challenge_catalog at dispatch time.
 struct ChallengeArgs {
     std::string target_name;   // <person>
-    std::string map_token;     // <map> — a list NUMBER or a map_name; resolved at dispatch
+    std::string type_token;    // <type>  — category number (1-6) or name
+    std::string map_token;     // <map#>  — "" = list pool, "0" = random, N = specific
     int         challenger_tf = 1;  // challenger's side; 1=attackers (default), 2=defenders
 };
 
@@ -151,14 +155,16 @@ void SetChallengeLauncher(ChallengeLauncher launcher);
 // ChatSession supplies one that delivers to just that player's chat.
 using ChallengeReply = std::function<void(const std::string& line)>;
 
-// Handle -challenge: resolve <person> to an online session and <map_token>
-// (a list number OR a map name) to its game_mode, then invoke the launcher for
-// both whole teams. `reply` reports usage/errors/confirmation to the requester.
+// Handle -challenge: resolve <type> to a catalog category, then either list that
+// category's pool (no <map#>), pick a random map ("0"), or select a specific map
+// (N). For an actual launch, resolve <person> to an online session and invoke
+// the launcher for both whole teams. `reply` reports the pool / errors /
+// confirmation to the requester.
 void DispatchChallenge(const ChallengeArgs& args, const std::string& challenger_guid,
                        const ChallengeReply& reply);
 
-// Send the numbered challenge-map list (and a usage hint) to the requester via
-// `reply`. Backs `-challenge` / `-challenge maps`.
+// Send the -challenge usage hint and the list of map TYPES (one per line) to the
+// requester via `reply`. Backs bare `-challenge` (and `-challenge maps`/`list`).
 void SendChallengeMapList(const ChallengeReply& reply);
 
 } // namespace ChatCommand

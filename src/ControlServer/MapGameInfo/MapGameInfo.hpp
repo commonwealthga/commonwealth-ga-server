@@ -39,18 +39,27 @@ public:
     // Case-insensitive match against map_name.
     static std::optional<MapGameRecord> LookupByName(const std::string& map_name);
 
-    // One challenge-playable map (PvP). `number` is the 1-based position in the
-    // stable list — exactly what a player types as `<map>` in -challenge.
+    // One challenge-playable map (PvP). `number` is the 1-based position WITHIN
+    // its category — exactly what a player types as `<map#>` in -challenge.
     struct ChallengeMapEntry {
         int         number = 0;
         std::string map_name;
         std::string game_class;     // = the instance game_mode
-        std::string display_name;   // vanity/loading-screen name (falls back to map_name)
+        std::string display_name;   // curated vanity name (cs_challenge_catalog)
     };
 
-    // PvP maps playable in a -challenge match: every map_game_info row with a
-    // real map_name whose game_class is not the PvE TgGame_Mission, deduped by
-    // name and ordered stably (by map_name) so a given number is consistent
-    // between the list display and number→map resolution.
-    static std::vector<ChallengeMapEntry> GetChallengeMaps();
+    // A player-facing -challenge category (Arena, Scramble, …). `number` is the
+    // 1-based type number (category_pos) the player types as `<type>`.
+    struct ChallengeCategory {
+        int         number = 0;
+        std::string name;                     // "Arena", "Scramble", …
+        std::vector<ChallengeMapEntry> maps;  // ordered by map_pos; display = vanity
+    };
+
+    // The curated -challenge catalog from cs_challenge_catalog (seeded by
+    // game-server migration v125), joined to map_game_info for game_class (the
+    // source of truth). Categories are returned in category_pos order; maps
+    // within each in map_pos order. A catalog row whose map_name has no
+    // map_game_info match is skipped (logged) so it can never spawn a bad mode.
+    static std::vector<ChallengeCategory> GetChallengeCategories();
 };

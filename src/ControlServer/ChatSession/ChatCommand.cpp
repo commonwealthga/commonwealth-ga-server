@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <climits>
+#include <random>
 #include <vector>
 
 #include "lib/nlohmann/json.hpp"
@@ -91,16 +92,36 @@ std::optional<int> ParseInt(const std::string& s) {
     return v;
 }
 
-// Resolve a <map> token that is EITHER a 1-based challenge-list number OR a map
-// name (case-insensitive). nullopt if neither matches.
-std::optional<MapGameRecord> ResolveMapToken(const std::string& token) {
-    if (auto n = ParseInt(token)) {              // all-digit -> list index
-        auto maps = MapGameInfo::GetChallengeMaps();
-        if (*n >= 1 && static_cast<size_t>(*n) <= maps.size())
-            return MapGameInfo::LookupByName(maps[*n - 1].map_name);
+// Resolve a <type> token (category number 1-6 OR name, case-insensitive) to an
+// index into `cats`. nullopt if it matches neither.
+std::optional<size_t> ResolveCategoryIndex(
+        const std::string& token,
+        const std::vector<MapGameInfo::ChallengeCategory>& cats) {
+    if (auto n = ParseInt(token)) {                 // numeric -> 1-based type number
+        for (size_t i = 0; i < cats.size(); ++i)
+            if (cats[i].number == *n) return i;
         return std::nullopt;
     }
-    return MapGameInfo::LookupByName(token);     // otherwise treat as a name
+    const std::string want = LowerAscii(token);     // else name (case-insensitive)
+    for (size_t i = 0; i < cats.size(); ++i)
+        if (LowerAscii(cats[i].name) == want) return i;
+    return std::nullopt;
+}
+
+// Uniform random index in [0, count). Caller guarantees count >= 1.
+size_t PickRandomIndex(size_t count) {
+    static std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<size_t> dist(0, count - 1);
+    return dist(rng);
+}
+
+// Send one category's map pool to the requester, one map per line, with a hint
+// describing how to launch (a specific number, or 0 for random).
+void SendCategoryPool(const MapGameInfo::ChallengeCategory& cat, const ChallengeReply& reply) {
+    reply(cat.name + " maps:");
+    reply("  0: Random");
+    for (const auto& m : cat.maps)
+        reply("  " + std::to_string(m.number) + ". " + m.display_name);
 }
 
 } // namespace
@@ -153,31 +174,34 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
     }
 
     if (cmd_name == "-challenge" || cmd_name == "/challenge") {
-        // -challenge                        -> show the numbered map list
-        // -challenge maps | list            -> show the numbered map list
-        // -challenge <person> <map>         -> side defaults to attackers
-        // -challenge <person> <map> <side>  -> explicit side (attackers/defenders)
-        // <map> is a list NUMBER or a map name. Extra trailing tokens (e.g. a
-        // stray region) are ignored — there is no server-location argument.
+        // -challenge                              -> usage + list of map TYPES
+        // -challenge maps | list                  -> same
+        // -challenge <person> <type>              -> list that type's map pool
+        // -challenge <person> <type> 0   [side]   -> random map from the pool
+        // -challenge <person> <type> <map#> [side]-> a specific map in the pool
+        // <type> is a category number (1-6) or name. <side> (optional, last)
+        // is attack[ers]/a or defend[ers]/d; default attackers. The map pool,
+        // categories and vanity names all come from cs_challenge_catalog.
         out.recognized = true;
         out.suppress_broadcast = true;
 
         std::vector<std::string> tokens = SplitWs(rest);
         if (tokens.size() < 2 ||
             LowerAscii(tokens[0]) == "maps" || LowerAscii(tokens[0]) == "list") {
-            out.challenge_list = true;  // bare / keyword / missing map -> show list
+            out.challenge_list = true;  // bare / keyword / missing <type> -> show types
             return out;
         }
 
         ChallengeArgs args;
         args.target_name   = tokens[0];
-        args.map_token     = tokens[1];
+        args.type_token    = tokens[1];
+        args.map_token     = (tokens.size() >= 3) ? tokens[2] : "";  // "" -> list pool
         args.challenger_tf = 1;  // default = attackers
-        if (tokens.size() >= 3) {
-            const std::string side = LowerAscii(tokens[2]);
-            if (side == "defenders" || side == "defender" || side == "d")
+        if (tokens.size() >= 4) {
+            const std::string side = LowerAscii(tokens[3]);
+            if (side == "defenders" || side == "defender" || side == "defend" || side == "d")
                 args.challenger_tf = 2;
-            // attackers/attacker/a (or any other ignored token) -> default tf 1
+            // attackers/attacker/attack/a (or any other token) -> default tf 1
         }
         out.challenge = args;
         return out;
@@ -442,67 +466,63 @@ void SetChallengeLauncher(ChallengeLauncher launcher) {
 }
 
 void SendChallengeMapList(const ChallengeReply& reply) {
-    auto maps = MapGameInfo::GetChallengeMaps();
-    reply("Usage: -challenge <player> <number> [defenders]");
-    if (maps.empty()) {
-        reply("(no maps available)");
-        return;
+    reply("Usage: -challenge <player> <type> <a|d>");
+
+    auto cats = MapGameInfo::GetChallengeCategories();
+    if (cats.empty()) return;
+    reply("Types:");
+    for (const auto& cat : cats) {
+        reply("  " + std::to_string(cat.number) + ". " + cat.name +
+              " (" + std::to_string(cat.maps.size()) + " maps)");
     }
-    // Pack 4 maps per message.
-    // Regular maps: strip mode prefix ("CONTROL: Seaside" -> "Seaside").
-    // AvA maps: strip "HEX_AVA_" prefix, underscores to spaces, space before digits.
-    auto shortName = [](const std::string& display_name) -> std::string {
-        auto pos = display_name.find(": ");
-        if (pos != std::string::npos) return display_name.substr(pos + 2);
-        if (display_name.size() > 8 && display_name.substr(0, 8) == "HEX_AVA_") {
-            std::string s = display_name.substr(8);
-            if (s.size() > 2 && s.substr(s.size() - 2) == "_P")
-                s = s.substr(0, s.size() - 2);
-            std::string out;
-            for (size_t i = 0; i < s.size(); i++) {
-                if (s[i] == '_') { out += ' '; continue; }
-                if (std::isdigit(static_cast<unsigned char>(s[i])) && i > 0
-                        && s[i-1] != '_' && s[i-1] != ' ')
-                    out += ' ';
-                out += s[i];
-            }
-            return out;
-        }
-        return display_name;
-    };
-    std::string line;
-    int col = 0;
-    for (const auto& m : maps) {
-        if (!line.empty()) line += "  ";
-        line += std::to_string(m.number) + "." + shortName(m.display_name);
-        if (++col == 4) {
-            reply(line);
-            line.clear();
-            col = 0;
-        }
-    }
-    if (!line.empty()) reply(line);
 }
 
 void DispatchChallenge(const ChallengeArgs& args, const std::string& challenger_guid,
                        const ChallengeReply& reply) {
     Logger::Log("challenge",
-        "[Challenge] DispatchChallenge target='%s' map_token='%s' challenger_tf=%d challenger_guid=%s\n",
-        args.target_name.c_str(), args.map_token.c_str(), args.challenger_tf,
-        challenger_guid.c_str());
+        "[Challenge] DispatchChallenge target='%s' type='%s' map='%s' challenger_tf=%d challenger_guid=%s\n",
+        args.target_name.c_str(), args.type_token.c_str(), args.map_token.c_str(),
+        args.challenger_tf, challenger_guid.c_str());
 
     if (challenger_guid.empty()) {
         Logger::Log("challenge", "[Challenge] dropped: empty challenger session_guid\n");
         return;
     }
 
-    // Resolve <map> first (number or name) so a typo can hint the list.
-    auto rec = ResolveMapToken(args.map_token);
-    if (!rec) {
-        reply("Unknown map '" + args.map_token + "'. Type -challenge to list maps.");
+    // Resolve <type> first so a bad type can hint the type list.
+    auto cats = MapGameInfo::GetChallengeCategories();
+    auto ci = ResolveCategoryIndex(args.type_token, cats);
+    if (!ci) {
+        reply("Unknown type '" + args.type_token + "'. Type -challenge to list types.");
         Logger::Log("challenge",
-            "[Challenge] guid=%s map_token='%s' outcome=ignored details=unknown_map\n",
-            challenger_guid.c_str(), args.map_token.c_str());
+            "[Challenge] guid=%s type='%s' outcome=ignored details=unknown_type\n",
+            challenger_guid.c_str(), args.type_token.c_str());
+        return;
+    }
+    const MapGameInfo::ChallengeCategory& cat = cats[*ci];
+
+    // No <map#> -> just show this type's pool (informational; no player needed).
+    if (args.map_token.empty()) {
+        SendCategoryPool(cat, reply);
+        return;
+    }
+
+    // Resolve <map#>: "0" -> random map from the pool, N -> the Nth map.
+    const MapGameInfo::ChallengeMapEntry* picked = nullptr;
+    if (auto n = ParseInt(args.map_token)) {
+        if (*n == 0) {
+            if (!cat.maps.empty())
+                picked = &cat.maps[PickRandomIndex(cat.maps.size())];
+        } else if (*n >= 1 && static_cast<size_t>(*n) <= cat.maps.size()) {
+            picked = &cat.maps[*n - 1];
+        }
+    }
+    if (!picked) {
+        reply("Pick a map number (0 = random):");
+        SendCategoryPool(cat, reply);
+        Logger::Log("challenge",
+            "[Challenge] guid=%s type='%s' map='%s' outcome=ignored details=bad_map_number\n",
+            challenger_guid.c_str(), cat.name.c_str(), args.map_token.c_str());
         return;
     }
 
@@ -553,24 +573,24 @@ void DispatchChallenge(const ChallengeArgs& args, const std::string& challenger_
     }
 
     Logger::Log("challenge",
-        "[Challenge] resolved challenger_team=%zu target='%s' target_team=%zu map=%s mode=%s -- invoking launcher\n",
+        "[Challenge] resolved challenger_team=%zu target='%s' target_team=%zu type=%s map=%s vanity='%s' mode=%s -- invoking launcher\n",
         challenger_team.size(), args.target_name.c_str(), target_team.size(),
-        rec->map_name.c_str(), rec->game_class.c_str());
+        cat.name.c_str(), picked->map_name.c_str(), picked->display_name.c_str(),
+        picked->game_class.c_str());
 
     const bool ok = g_challenge_launcher(
-        challenger_team, args.challenger_tf, target_team, rec->map_name, rec->game_class);
+        challenger_team, args.challenger_tf, target_team, picked->map_name, picked->game_class);
 
     const char* side = (args.challenger_tf == 2) ? "defenders" : "attackers";
     if (ok) {
-        const std::string& shown = rec->friendly_name.empty() ? rec->map_name : rec->friendly_name;
-        reply("Challenge sent to " + args.target_name + " on " + shown +
+        reply("Challenge sent to " + args.target_name + " on " + picked->display_name +
               " (you: " + side + "). Waiting for them to accept...");
     } else {
         reply("Could not start the challenge match. Try again.");
     }
     Logger::Log("challenge",
         "[Challenge] guid=%s target='%s' map=%s challenger_tf=%d challengers=%zu targets=%zu outcome=%s\n",
-        challenger_guid.c_str(), args.target_name.c_str(), rec->map_name.c_str(),
+        challenger_guid.c_str(), args.target_name.c_str(), picked->map_name.c_str(),
         args.challenger_tf, challenger_team.size(), target_team.size(),
         ok ? "instance_spawning" : "spawn_failed");
 }
