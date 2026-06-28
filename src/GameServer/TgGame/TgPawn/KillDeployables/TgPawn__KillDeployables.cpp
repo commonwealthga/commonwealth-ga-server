@@ -1,9 +1,6 @@
 #include "src/GameServer/TgGame/TgPawn/KillDeployables/TgPawn__KillDeployables.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
-#include "src/Database/Database.hpp"
-#include <sqlite3.h>
-#include <unordered_set>
 
 // Native UTgPawn::execKillDeployables @ 0x109c0870 is a void stub. UC declares
 //     native function KillDeployables(bool bAll);
@@ -80,26 +77,6 @@ void __fastcall TgPawn__KillDeployables::Call(ATgPawn* Pawn, void* edx, unsigned
 	Pawn->s_SelfDeployableList.Count = 0;
 }
 
-// Deployable IDs with pickup_device_id > 0 in asm_data_set_deployables are
-// B-keybind-pickupable team assets (hubs, beacons, platforms, etc.) that
-// must survive profile-switch and team-change. Loaded once from the DB.
-static const std::unordered_set<int>& GetPickupableIds() {
-	static std::unordered_set<int> ids;
-	static bool loaded = false;
-	if (loaded) return ids;
-	loaded = true;
-	sqlite3* db = Database::GetConnection();
-	sqlite3_stmt* stmt = nullptr;
-	if (sqlite3_prepare_v2(db,
-		"SELECT deployable_id FROM asm_data_set_deployables WHERE pickup_device_id > 0",
-		-1, &stmt, nullptr) == SQLITE_OK) {
-		while (sqlite3_step(stmt) == SQLITE_ROW)
-			ids.insert(sqlite3_column_int(stmt, 0));
-		sqlite3_finalize(stmt);
-	}
-	return ids;
-}
-
 // Walk gri->m_Deployables (global, survives pawn respawn) and PawnList (for
 // deployed bot pawns like the Grizzly drone). Called on team-change and
 // profile-switch so deployables placed before a prior death are also caught.
@@ -112,7 +89,6 @@ void TgPawn__KillDeployables::KillAllOwned(ATgPawn* Pawn) {
 	ATgRepInfo_Player* pri = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
 
 	// Destroy ATgDeployables in the global list that belong to this player.
-	const auto& pickupable = GetPickupableIds();
 	Logger::Log("deployables",
 		"[KillAllOwned] pawn=0x%p pri=0x%p gri->m_Deployables.Count=%d\n",
 		Pawn, pri, gri->m_Deployables.Count);
@@ -124,7 +100,6 @@ void TgPawn__KillDeployables::KillAllOwned(ATgPawn* Pawn) {
 			i, dep, dep->r_nDeployableId, (int)dep->m_bInDestroyedState,
 			dep->r_DRI, dep->r_DRI ? dep->r_DRI->r_InstigatorInfo : nullptr);
 		if (dep->m_bInDestroyedState) continue;
-		if (pickupable.count(dep->r_nDeployableId)) continue; // B-keybind team asset
 		if (!dep->r_DRI || dep->r_DRI->r_InstigatorInfo != pri) continue;
 		Logger::Log("deployables",
 			"[KillAllOwned] DestroyIt deployable=0x%p id=%d\n",
@@ -133,7 +108,6 @@ void TgPawn__KillDeployables::KillAllOwned(ATgPawn* Pawn) {
 	}
 
 	// Kill deployed bot pawns (e.g. Grizzly drone).
-	// Log all non-player pawns so we can identify the correct ownership field.
 	for (APawn* p = wi->PawnList; p != nullptr; p = p->NextPawn) {
 		if (p == (APawn*)Pawn || p->Health <= 0 || p->bDeleteMe) continue;
 		if (ObjectClassCache::ClassNameContains((UObject*)p->Controller, "PlayerController")) continue;
