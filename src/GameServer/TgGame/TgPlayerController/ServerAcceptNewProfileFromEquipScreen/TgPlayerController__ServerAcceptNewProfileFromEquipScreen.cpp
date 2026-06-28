@@ -196,6 +196,44 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 		CosmeticEquip::ClearSlot(Pawn, character_id, itemProfileId, 12);
 		clearedCosmeticSlots.insert(12);
 	}
+	if (DeviceArray.SlotIndices[21] == 0) {
+		CosmeticEquip::ClearSlot(Pawn, character_id, itemProfileId, 21);
+		clearedCosmeticSlots.insert(21);
+	}
+	for (int slot = 16; slot <= 20; ++slot) {
+		if (DeviceArray.SlotIndices[slot] == 0) {
+			CosmeticEquip::ClearSlot(Pawn, character_id, itemProfileId, slot);
+			clearedCosmeticSlots.insert(slot);
+		}
+	}
+
+	// Explicit device unequip — visible weapon/offhand/etc slots the player
+	// blanked (SlotIndices[slot]==0). Slot 14 (class device, hidden from the
+	// equip screen) always sends 0 and is excluded from this list.
+	if (character_id != 0) {
+		static const int kClearableDeviceSlots[] = {1, 2, 3, 5, 7, 8, 9, 10, 13};
+		sqlite3_stmt* delDev = nullptr;
+		sqlite3_prepare_v2(db,
+			"DELETE FROM ga_character_devices "
+			"WHERE character_id = ? AND item_profile_id = ? AND equipped_slot = ?",
+			-1, &delDev, nullptr);
+		for (int slot : kClearableDeviceSlots) {
+			if (DeviceArray.SlotIndices[slot] != 0) continue;
+			Inventory::Unequip(Pawn, slot);
+			if (delDev) {
+				sqlite3_reset(delDev);
+				sqlite3_clear_bindings(delDev);
+				sqlite3_bind_int64(delDev, 1, character_id);
+				sqlite3_bind_int  (delDev, 2, itemProfileId);
+				sqlite3_bind_int  (delDev, 3, slot);
+				sqlite3_step(delDev);
+				Logger::Log(GetLogChannel(),
+					"equip-save: cleared device slot %d for char=%lld\n",
+					slot, (long long)character_id);
+			}
+		}
+		if (delDev) sqlite3_finalize(delDev);
+	}
 
 	// Pre-pass: Unequip anything that's being SWAPPED for a different invId.
 	// Without this, `Inventory::Equip` would create a second ATgDevice actor
