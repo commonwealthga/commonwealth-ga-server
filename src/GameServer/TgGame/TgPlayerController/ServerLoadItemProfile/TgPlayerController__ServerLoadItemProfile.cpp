@@ -5,6 +5,7 @@
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/GameServer/TgGame/TgPawn_Character/ReapplyCharacterSkillTree/TgPawn_Character__ReapplyCharacterSkillTree.hpp"
+#include "src/GameServer/TgGame/TgPawn/KillDeployables/TgPawn__KillDeployables.hpp"
 #include "src/Database/Database.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
@@ -100,6 +101,10 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
         oldProfile, nId, (long long)character_id, guid.c_str());
 
     sqlite3* db = Database::GetConnection();
+
+    // Destroy all personal deployables on profile switch — turrets, drones,
+    // stations etc. placed under the old loadout should not persist.
+    TgPawn__KillDeployables::KillAllOwned((ATgPawn*)Pawn);
 
     // ── Step 1: Tear down current-profile device equipment ────────────────
     // Inventory::Unequip is idempotent on already-cleared slots; we walk all
