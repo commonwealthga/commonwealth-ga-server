@@ -61,7 +61,7 @@ constexpr int kSlotCount    = 7;
 
 // stock_n in the inventory row equals the variant's index here.
 // kDefaultVariantIndex picks which variant is auto-equipped per slot.
-constexpr int kDefaultVariantIndex = 0;  // [rrrrrr]
+constexpr int kDefaultVariantIndex = kVariantCount;  // "No Armor" sentinel (Common, no buffs)
 
 // EPIC-tier kit egids:
 //   ArmorBallistics::EPIC = 24165  (prop 218 Protection-Ranged   'r')
