@@ -3,14 +3,14 @@
 #include "src/pch.hpp"
 #include "src/Utils/HookBase.hpp"
 
-// Hook on `TgAIController::TargetInLOS` (0x10a86100). Diagnostic-only — used
-// to investigate the "owner blocks turret LOS" gameplay regression. The AI
-// runs this every fire-tick during continuous fire; if it returns 1 the AI
-// keeps firing through whatever's in between. Original game dropped the
-// lock-on when the deploying player walked into the LOS path.
+// Hook on `TgAIController::TargetInLOS` (FUN_10a85c60).
+// Fixes the multi-dome turret bug: ForceField domes are transparent to friendly
+// fire (CheckTeamPassThrough), so they should also be transparent to LOS checks.
+// We disable bCollideActors on all live domes before the trace runs so the
+// recursive tracer (FUN_10a806e0) never hits them at all, then restore.
 class TgAIController__TargetInLOS : public HookBase<
 	int(__fastcall*)(ATgAIController*, void*),
-	0x10a86100,
+	0x10a85c60,
 	TgAIController__TargetInLOS> {
 public:
 	static int __fastcall Call(ATgAIController* aic, void* edx);

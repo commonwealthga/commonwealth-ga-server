@@ -198,6 +198,11 @@ void TgProj_Deployable__SpawnDeployable::GetDeployableSpawnZLift(
 		: 5.0f;  // TgDeployable.CollisionCylinder CDO halfHeight * 0.5
 }
 
+std::unordered_set<ATgDeployable*>& TgProj_Deployable__SpawnDeployable::GetForceFieldSet() {
+	static std::unordered_set<ATgDeployable*> s_set;
+	return s_set;
+}
+
 bool TgProj_Deployable__SpawnDeployable::IsForceFieldDeployableId(int nDeployableId) {
 	const char* clsName = GetDeployableClassName(nDeployableId);
 	if (!clsName) return false;
@@ -972,6 +977,9 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// this list to enumerate live deployables. The native that originally
 	// populated it is stripped — see RegisterDeployableInGRI.
 	RegisterDeployableInGRI(Deployable);
+
+	if (IsForceFieldDeployableId(deployableId))
+		GetForceFieldSet().insert(Deployable);
 
 	// Team-ownership fix (long-standing bug: deployables rendered as enemy
 	// to their own team, repair arm refused to target them).

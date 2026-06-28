@@ -337,6 +337,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective/RegisterSelf/TgMissionObjective__RegisterSelf.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDynamicSMActor/ForceNetRelevant/TgDynamicSMActor__ForceNetRelevant.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgAIController/TargetInLOS/TgAIController__TargetInLOS.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgAIController/LOSTrace/TgAIController__LOSTrace.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgAIController/CanBeRepaired/TgAIController__CanBeRepaired.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgAIController/SpawnPets/TgAIController__SpawnPets.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgAIController/RadioAlarm/TgAIController__RadioAlarm.cpp \
