@@ -1743,6 +1743,26 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			if (!session_guid_.empty())
 				TeamService::HandleLeave(session_guid_);
 			break;
+		case GA_U::TEAM_KICK: {
+			// C→S: team leader removes a member from the team.
+			// Payload: CHARACTER_ID of the member to kick.
+			Logger::Log("tcp", "[%s] Received: TEAM_KICK [0x%04X]\n", Logger::GetTime(), packet_type);
+			PacketView pkt(data + 6, length - 6);
+			int64_t target_char_id = (int64_t)pkt.Read4B(GA_T::CHARACTER_ID).value_or(0);
+			if (!session_guid_.empty() && target_char_id != 0)
+				TeamService::KickMember(session_guid_, target_char_id);
+			break;
+		}
+		case GA_U::GROUP_SET_LEADER: {
+			// C→S: current leader promotes a team member to leader.
+			// Payload: CHARACTER_ID of the member to promote.
+			Logger::Log("tcp", "[%s] Received: GROUP_SET_LEADER [0x%04X]\n", Logger::GetTime(), packet_type);
+			PacketView pkt(data + 6, length - 6);
+			int64_t target_char_id = (int64_t)pkt.Read4B(GA_T::CHARACTER_ID).value_or(0);
+			if (!session_guid_.empty() && target_char_id != 0)
+				TeamService::PromoteLeader(session_guid_, target_char_id);
+			break;
+		}
 		case GA_U::SEND_PLAYER_SKILLS: {
 			// CGameClient::SendSkillsToServer @ 0x1141fd00 sends this when the player
 			// hits Save on the skill tree. Payload carries a DATA_SET_CHARACTER_SKILLS

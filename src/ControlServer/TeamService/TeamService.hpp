@@ -83,6 +83,14 @@ public:
     // leave the current team (promote/disband as needed).
     static void HandleLeave(const std::string& session_guid);
 
+    // GROUP_SET_LEADER (0x0054): promote target_character_id to team leader.
+    // Caller must be the current leader; no-ops if conditions aren't met.
+    static void PromoteLeader(const std::string& requester_guid, int64_t target_character_id);
+
+    // TEAM_KICK (0x004E): remove target_character_id from the team.
+    // Caller must be the current leader; no-ops if conditions aren't met.
+    static void KickMember(const std::string& requester_guid, int64_t target_character_id);
+
     static bool IsTeamed(const std::string& session_guid);
     static bool IsLeader(const std::string& session_guid);
 
