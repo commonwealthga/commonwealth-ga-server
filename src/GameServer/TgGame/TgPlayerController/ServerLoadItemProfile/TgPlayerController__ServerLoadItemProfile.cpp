@@ -240,8 +240,6 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
         }
     }
 
-    CosmeticEquip::LoadFromDB((ATgPawn*)Pawn, character_id, nId);
-
     Logger::Log("loadout",
         "[ServerLoadItemProfile] pre-Finalize: pawn=%p invMgr=%p changed=%d reused=%d\n",
         Pawn, Pawn->InvManager, teardown_count + gameplay_equipped, gameplay_reused);
@@ -252,7 +250,7 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
         "[ServerLoadItemProfile] post-Finalize done; changed=%d reused=%d\n",
         teardown_count + gameplay_equipped, gameplay_reused);
     Logger::Log("loadout",
-        "[ServerLoadItemProfile] equipped new profile %d: %d gameplay device(s), reused=%d; cosmetics reloaded\n",
+        "[ServerLoadItemProfile] equipped new profile %d: %d gameplay device(s), reused=%d\n",
         nId, gameplay_equipped, gameplay_reused);
 
     // ── Step 3b: Reset InvManager.r_ItemCount to the DB pool size ────────
@@ -303,6 +301,14 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
     CallOriginal(Controller, edx, nId);
     Logger::Log("loadout",
         "[ServerLoadItemProfile] post-CallOriginal\n");
+
+    // ── Step 5b: Re-apply cosmetics AFTER the native runs.
+    // The native ServerLoadItemProfile can reset r_CustomCharacterAssembly from
+    // s_OrigCustomCharacterAssembly (the spawn-time assembly), which may still
+    // carry the previous profile's helm. LoadFromDB here overwrites that reset
+    // so BeginProfileAssemblyPulse (triggered by the IPC response below)
+    // captures the correct new-profile assembly.
+    CosmeticEquip::LoadFromDB((ATgPawn*)Pawn, character_id, nId);
 
     // The control server sends ClientResetEquipScreen after its TCP refresh.
     // Firing it here can rebuild the open skill UI before new rows arrive.

@@ -3412,6 +3412,17 @@ void TcpSession::send_character_list_response()
 {
 	auto characters = PlayerSessionStore::GetCharactersByUserId(user_id_);
 
+	// Collect equipped cosmetics (helmet, suit, dyes, trail) for all characters.
+	struct CosmeticEntry { uint32_t char_id; int item_id; int slot_value_id; };
+	std::vector<CosmeticEntry> cosmetics;
+	for (const auto& c : characters) {
+		auto devices = PlayerSessionStore::GetDevicesForCharacter(c.id, c.current_item_profile_id);
+		for (const auto& d : devices) {
+			if (d.item_id > 0)
+				cosmetics.push_back({ static_cast<uint32_t>(c.id), d.item_id, d.slot_value_id });
+		}
+	}
+
 	std::vector<uint8_t> response;
 
 	uint16_t packet_type = GA_U::GSC_CHARACTER_LIST;
@@ -3427,23 +3438,32 @@ void TcpSession::send_character_list_response()
 	                 static_cast<uint8_t>(characters.size() >> 8));
 
 	for (const auto& c : characters) {
-		append(response, 0x0C, 0x00);  // inner item count = 12
-		Write4B(response, GA_T::CHARACTER_ID,           static_cast<uint32_t>(c.id));
-		Write4B(response, GA_T::CHARACTER_LEVEL,        0x32);
-		Write4B(response, GA_T::CURRENT_LEVEL,          0x32);
-		Write4B(response, GA_T::FORCED_CHARACTER_LEVEL, 0x32);
-		Write4B(response, GA_T::PROFILE_ID,             c.profile_id);
-		Write4B(response, GA_T::CLASS_TYPE_VALUE_ID,    GetClassConfig(c.profile_id).classTypeValueId);
-		Write4B(response, GA_T::HEAD_ASM_ID,            c.head_asm_id);
-		Write4B(response, GA_T::HAIR_ASM_ID,            0x85D);
-		Write4B(response, GA_T::GENDER_TYPE_VALUE_ID,   c.gender_type_value_id);
-		WriteString(response, GA_T::MAP_NAME,           "Scramble: Tetra Pier");
-		Write4B(response, GA_T::XP_VALUE,               0xbbddc);
-		Write4B(response, GA_T::SKILL_GROUP_SET_ID,     GetClassConfig(c.profile_id).skillGroupSetId);
+		append(response, 0x0E, 0x00);  // inner item count = 14
+		Write4B(response, GA_T::CHARACTER_ID,               static_cast<uint32_t>(c.id));
+		Write4B(response, GA_T::CHARACTER_LEVEL,            0x32);
+		Write4B(response, GA_T::CURRENT_LEVEL,              0x32);
+		Write4B(response, GA_T::FORCED_CHARACTER_LEVEL,     0x32);
+		Write4B(response, GA_T::PROFILE_ID,                 c.profile_id);
+		Write4B(response, GA_T::CLASS_TYPE_VALUE_ID,        GetClassConfig(c.profile_id).classTypeValueId);
+		Write4B(response, GA_T::HEAD_ASM_ID,                c.head_asm_id);
+		Write4B(response, GA_T::HAIR_ASM_ID,                c.hair_asm_id);
+		Write4B(response, GA_T::GENDER_TYPE_VALUE_ID,       c.gender_type_value_id);
+		WriteString(response, GA_T::MAP_NAME,               "Scramble: Tetra Pier");
+		Write4B(response, GA_T::XP_VALUE,                   0xbbddc);
+		Write4B(response, GA_T::SKILL_GROUP_SET_ID,         GetClassConfig(c.profile_id).skillGroupSetId);
+		Write4B(response, GA_T::SKIN_MATERIAL_PARAMETER_ID, c.skin_mat_param_id);
+		Write4B(response, GA_T::EYE_MATERIAL_PARAMETER_ID,  c.eye_mat_param_id);
 	}
 
 	append(response, GA_T::DATA_SET_PLAYER_INVENTORY & 0xFF, GA_T::DATA_SET_PLAYER_INVENTORY >> 8);
-	append(response, 0x00, 0x00);  // count elements
+	append(response, static_cast<uint8_t>(cosmetics.size() & 0xFF),
+	                 static_cast<uint8_t>(cosmetics.size() >> 8));
+	for (const auto& entry : cosmetics) {
+		append(response, 0x03, 0x00);  // 3 fields per record: CHARACTER_ID, ITEM_ID, EQUIPPED_SLOT_VALUE_ID
+		Write4B(response, GA_T::CHARACTER_ID,           entry.char_id);
+		Write4B(response, GA_T::ITEM_ID,                static_cast<uint32_t>(entry.item_id));
+		Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, static_cast<uint32_t>(entry.slot_value_id));
+	}
 
 	send_response(response);
 }
