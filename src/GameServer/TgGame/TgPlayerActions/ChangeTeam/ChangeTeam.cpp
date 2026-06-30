@@ -5,6 +5,7 @@
 #include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/GameServer/TgGame/TgPawn/SetTaskForceNumber/TgPawn__SetTaskForceNumber.hpp"
+#include "src/GameServer/TgGame/TgPawn/KillDeployables/TgPawn__KillDeployables.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 #include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
@@ -183,6 +184,10 @@ void Execute(const std::string& session_guid, Target target, bool is_autobalance
     // personal ownership. Reads the still-current (old) team, so order matters
     // — same reason the player teardown ran before the team change on death.
     BeaconSdk::ReleaseBeaconForTeamChange((ATgPawn*)Pawn);
+
+    // Destroy all personal deployables before the team flip so they don't
+    // linger as orphaned objects belonging to the old team.
+    TgPawn__KillDeployables::KillAllOwned((ATgPawn*)Pawn);
 
     // Flip the team. SetTaskForceNumber writes both r_TaskForce and Team on the
     // PRI, calls repinfo->SetTeam(taskforce), and fires Pawn->NotifyTeamChanged.
