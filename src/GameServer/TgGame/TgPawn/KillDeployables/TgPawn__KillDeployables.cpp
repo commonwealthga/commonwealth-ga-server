@@ -100,6 +100,7 @@ void TgPawn__KillDeployables::KillAllOwned(ATgPawn* Pawn) {
 			i, dep, dep->r_nDeployableId, (int)dep->m_bInDestroyedState,
 			dep->r_DRI, dep->r_DRI ? dep->r_DRI->r_InstigatorInfo : nullptr);
 		if (dep->m_bInDestroyedState) continue;
+		if (dep->r_nDeployableId == 36) continue; // beacon: team resource, survives profile swap
 		if (!dep->r_DRI || dep->r_DRI->r_InstigatorInfo != pri) continue;
 		Logger::Log("deployables",
 			"[KillAllOwned] DestroyIt deployable=0x%p id=%d\n",
