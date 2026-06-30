@@ -294,21 +294,19 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
     // ── Step 4: RCST does the armor + skill revert+apply atomically ──────
     TgPawn_Character__ReapplyCharacterSkillTree::Call(Pawn, nullptr);
 
-    // ── Step 5: Run native before the control-server UI refresh packet.
-    // Native owns client profile button state; refreshing earlier races it.
+    // ── Step 5: Load cosmetics, then prime s_OrigCustomCharacterAssembly so
+    // the native's own reset restores the NEW profile's assembly (not spawn-time).
+    // This lets CallOriginal do the one-step visual refresh the original server did,
+    // with no intermediate zeroed state and no pulse race.
+    CosmeticEquip::LoadFromDB((ATgPawn*)Pawn, character_id, nId);
+    ((ATgPawn_Character*)Pawn)->s_OrigCustomCharacterAssembly =
+        ((ATgPawn_Character*)Pawn)->r_CustomCharacterAssembly;
+
     Logger::Log("loadout",
         "[ServerLoadItemProfile] pre-CallOriginal\n");
     CallOriginal(Controller, edx, nId);
     Logger::Log("loadout",
         "[ServerLoadItemProfile] post-CallOriginal\n");
-
-    // ── Step 5b: Re-apply cosmetics AFTER the native runs.
-    // The native ServerLoadItemProfile can reset r_CustomCharacterAssembly from
-    // s_OrigCustomCharacterAssembly (the spawn-time assembly), which may still
-    // carry the previous profile's helm. LoadFromDB here overwrites that reset
-    // so BeginProfileAssemblyPulse (triggered by the IPC response below)
-    // captures the correct new-profile assembly.
-    CosmeticEquip::LoadFromDB((ATgPawn*)Pawn, character_id, nId);
 
     // The control server sends ClientResetEquipScreen after its TCP refresh.
     // Firing it here can rebuild the open skill UI before new rows arrive.

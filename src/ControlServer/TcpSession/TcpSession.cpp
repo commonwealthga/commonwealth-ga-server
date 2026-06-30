@@ -544,31 +544,6 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
             if (instance_id != 0) {
                 const uint64_t refresh_token = ++session->profile_refresh_token_;
                 SendProfileUiRefresh(instance_id, session_guid, item_profile_id, refresh_token, "immediate");
-
-                auto timer = std::make_shared<asio::steady_timer>(session->io_ctx_);
-                std::weak_ptr<TcpSession> weak_session = session;
-                // Keep the clear frame visible long enough to avoid client-side coalescing.
-                timer->expires_after(std::chrono::milliseconds(500));
-                timer->async_wait([timer, weak_session, instance_id, session_guid, item_profile_id, refresh_token](std::error_code ec) {
-                    if (ec) {
-                        return;
-                    }
-                    auto s = weak_session.lock();
-                    if (!s) {
-                        return;
-                    }
-                    if (s->profile_refresh_token_ != refresh_token) {
-                        Logger::Log("loadout",
-                            "[TcpSession] profile_switch delayed refresh skipped stale token=%llu current=%llu guid=%s itemProf=%d\n",
-                            (unsigned long long)refresh_token,
-                            (unsigned long long)s->profile_refresh_token_,
-                            session_guid.c_str(), item_profile_id);
-                        return;
-                    }
-                    s->item_profile_id_ = item_profile_id;
-                    s->send_player_skills_response();
-                    SendProfileUiRefresh(instance_id, session_guid, item_profile_id, refresh_token, "delayed");
-                });
             }
         }
     }
