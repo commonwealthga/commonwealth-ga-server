@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
+#include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -590,6 +591,10 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 		}
 	}
 
+	// VR heal pad chain diagnostic: proves the volume's ApplyHit reached
+	// SubmitHitEffects and shows whether the pad's effect groups got built.
+	const bool padLog = DomeVrHealPad::IsPadFireMode(pThis) && Logger::IsChannelEnabled("healpad");
+
 	// Search for a group matching nType
 	int startIdx = (nIndex && *nIndex >= 0) ? *nIndex : 0;
 	TArray<UTgEffectGroup*>& list = pThis->s_EffectGroupList;
@@ -609,6 +614,12 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 
 			if (nIndex) *nIndex = i;
 
+			if (padLog) {
+				Logger::Log("healpad",
+					"[GetEffectGroup] nType=%d startIdx=%d -> egId=%d (list=%d)\n",
+					nType, startIdx, g->m_nEffectGroupId, list.Count);
+			}
+
 			if (Logger::IsChannelEnabled("effects")) {
 				Logger::Log("effects",
 					"[GET] fireMode=%s nType=%d -> egId=%d (startIdx=%d resultIdx=%d)\n",
@@ -619,6 +630,12 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 	}
 
 	if (nIndex) *nIndex = -1;
+
+	if (padLog) {
+		Logger::Log("healpad",
+			"[GetEffectGroup] nType=%d startIdx=%d -> NONE (list=%d)\n",
+			nType, startIdx, list.Count);
+	}
 
 	if (Logger::IsChannelEnabled("effects")) {
 		Logger::Log("effects",

@@ -7756,6 +7756,17 @@ void Database::Init() {
 		Logger::Log("db", "v123: DomeCityDefense bot factory spawn table 102 -> 99\n");
 	}
 
+	// VR heal pad: enforce the pad device unconditionally (idempotent) —
+	// branch-divergent DBs have version counters past the v101/v102 gates.
+	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
+	// 5134 = ER-2 flat +100, no FX. Testing 2064 for feel-comparison vs 5134.
+	result = sqlite3_exec(db,
+		"UPDATE map_object_config SET value = '2064' "
+		"WHERE map_name = 'Dome3_VR_Arena_P' AND map_object_id = 11041 "
+		"  AND column_name = 's_n_device_id' AND value <> '2064';",
+		nullptr, nullptr, &err);
+	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
+
 	result = sqlite3_exec(db, "UPDATE version_info SET version = 123", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
