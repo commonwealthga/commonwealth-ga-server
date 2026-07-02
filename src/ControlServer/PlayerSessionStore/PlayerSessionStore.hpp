@@ -26,10 +26,8 @@ struct CharacterInfo {
     uint32_t head_asm_id = 0;
     uint32_t gender_type_value_id = 0;
     std::vector<uint8_t> morph_data;
-    // Appearance fields the head-menu collects but pre-v81 used to throw
-    // away. Skin/eye material parameter ids are stored for completeness;
-    // not yet emitted in GSC_CHARACTER_LIST (the lobby card protocol only
-    // ships hair) — kept available for future spawn-time application.
+    // Appearance fields from ga_characters. skin_mat_param_id and
+    // eye_mat_param_id are sent in GSC_CHARACTER_LIST per-character block.
     //
     // hair_asm_id default 1974 = "NewHair15" (asm_mesh_type_value_id=850),
     // the in-game pawn hair category — same asm SpawnBotPawn sets on bots.
@@ -39,6 +37,7 @@ struct CharacterInfo {
     uint32_t hair_asm_id = 1974;
     uint32_t skin_mat_param_id = 0;
     uint32_t eye_mat_param_id = 0;
+    int current_item_profile_id = 1;  // last-active loadout slot (1..5)
 };
 
 struct DeviceRow {

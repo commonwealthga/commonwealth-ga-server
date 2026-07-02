@@ -461,7 +461,7 @@ std::vector<CharacterInfo> PlayerSessionStore::GetCharactersByUserId(int64_t use
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
 		"SELECT id, profile_id, head_asm_id, gender_type_value_id, morph_data, "
-		"       hair_asm_id, skin_mat_param_id, eye_mat_param_id "
+		"       hair_asm_id, skin_mat_param_id, eye_mat_param_id, current_item_profile_id "
 		"FROM ga_characters WHERE user_id = ?",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
@@ -482,9 +482,10 @@ std::vector<CharacterInfo> PlayerSessionStore::GetCharactersByUserId(int64_t use
 		if (blob && bytes > 0)
 			c.morph_data.assign(static_cast<const uint8_t*>(blob),
 			                    static_cast<const uint8_t*>(blob) + bytes);
-		c.hair_asm_id          = static_cast<uint32_t>(sqlite3_column_int(stmt, 5));
-		c.skin_mat_param_id    = static_cast<uint32_t>(sqlite3_column_int(stmt, 6));
-		c.eye_mat_param_id     = static_cast<uint32_t>(sqlite3_column_int(stmt, 7));
+		c.hair_asm_id              = static_cast<uint32_t>(sqlite3_column_int(stmt, 5));
+		c.skin_mat_param_id        = static_cast<uint32_t>(sqlite3_column_int(stmt, 6));
+		c.eye_mat_param_id         = static_cast<uint32_t>(sqlite3_column_int(stmt, 7));
+		c.current_item_profile_id  = sqlite3_column_int(stmt, 8);
 		result.push_back(std::move(c));
 	}
 	sqlite3_finalize(stmt);

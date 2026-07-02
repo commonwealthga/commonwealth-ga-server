@@ -6,6 +6,7 @@
 #include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Engine/KismetWebDump/KismetWebDump.hpp"
 #include "src/GameServer/TgGame/MissionVODirector/MissionVODirector.hpp"
+#include "src/GameServer/Cosmetics/SuitRebuildKick.hpp"
 
 void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSeconds) {
 	IpcClient::DrainInbound();
@@ -29,5 +30,7 @@ void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSecon
 	// (Bancroft_HalfwayPoint/_30sRemaining/_10sRemaining) off the round timer.
 	// Self-gates on map name + Defense round state; no-op elsewhere.
 	MissionVODirector::Tick(DeltaSeconds);
+	// Deferred post-profile-switch rebuild kick (suit-mesh load-race recovery).
+	SuitRebuildKick::Tick(DeltaSeconds);
 	CallOriginal(Engine, edx, DeltaSeconds);
 }
