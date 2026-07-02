@@ -1,6 +1,8 @@
 #include "src/GameServer/TgGame/TgPlayerController/ServerLoadItemProfile/TgPlayerController__ServerLoadItemProfile.hpp"
 #include "src/GameServer/Armor/Armor.hpp"
 #include "src/GameServer/Cosmetics/CosmeticEquip.hpp"
+#include "src/GameServer/Cosmetics/JetpackReload.hpp"
+#include "src/GameServer/Cosmetics/SuitRebuildKick.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
@@ -281,6 +283,22 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
     // the listen-server local pawn — call OnCustomAssemblyChanged directly to
     // trigger ApplyPawnSetup (helmet/suit mesh swap, body dyes).
     ((ATgPawn_Character*)Pawn)->eventOnCustomAssemblyChanged();
+
+    // The owner's rebuild ends in DeviceFormChanged(false) (TgPawn.uc:6711),
+    // which only rebuilds forms whose replicated instance id changed — the
+    // jetpack reuses the same invId across profiles, so its form (and the
+    // backpack's baked dye) survives. Bump the slot-5 replicated instance id
+    // so that reload rebuilds + re-dyes it. Must run after CallOriginal /
+    // Inventory::Finalize (UpdateClientDevices would rewrite the slot from
+    // the device). See JetpackReload.hpp.
+    JetpackReload::MarkJetpackFormDirty((ATgPawn*)Pawn);
+
+    // The client's suit-mesh apply is a one-shot synchronous load that can fail
+    // (and silently skip) when the previous switch's async preload still has the
+    // package queued — dyes apply, meshes stay old (~1/50 rapid switches).
+    // Schedule a deferred rebuild kick; it heals a failed apply and visually
+    // no-ops on a successful one. See SuitRebuildKick.hpp.
+    SuitRebuildKick::Schedule((ATgPawn*)Pawn);
 
     // The control server sends ClientResetEquipScreen after its TCP refresh.
     // Firing it here can rebuild the open skill UI before new rows arrive.
