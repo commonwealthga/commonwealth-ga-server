@@ -6,6 +6,7 @@
 #include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Engine/KismetWebDump/KismetWebDump.hpp"
 #include "src/GameServer/TgGame/MissionVODirector/MissionVODirector.hpp"
+#include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
 
 void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSeconds) {
 	IpcClient::DrainInbound();
@@ -29,5 +30,8 @@ void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSecon
 	// (Bancroft_HalfwayPoint/_30sRemaining/_10sRemaining) off the round timer.
 	// Self-gates on map name + Defense round state; no-op elsewhere.
 	MissionVODirector::Tick(DeltaSeconds);
+	// One-shot: verify (and if needed redo) the VR heal pad's PostBeginPlay
+	// arming ~5s after setupDevice registered it. No-op on other maps.
+	DomeVrHealPad::TickArmCheck();
 	CallOriginal(Engine, edx, DeltaSeconds);
 }
