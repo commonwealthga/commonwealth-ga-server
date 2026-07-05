@@ -683,11 +683,6 @@ void IpcClient::DrainInbound() {
                     if (controller == nullptr || controller->Player == nullptr) continue;
 
                     controller->eventClientResetEquipScreen();
-                    if (phase == "immediate") {
-                        BeginProfileAssemblyPulse(data.Pawn, guid, item_profile_id, refresh_token);
-                    } else if (phase == "delayed") {
-                        FinishProfileAssemblyPulse(data.Pawn, guid, item_profile_id, refresh_token);
-                    }
                     ++refreshed;
                 }
                 Logger::Log("loadout",
