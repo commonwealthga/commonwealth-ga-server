@@ -71,6 +71,10 @@ struct ParseResult {
     // -coords — report the player's current XYZ (map-prep tooling). No args.
     bool coords = false;
 
+    // -fullheal — restore the player's pawn to full health (VR arena / 1v1
+    // practice; DLL enforces map gate + per-player cooldown). No args.
+    bool fullheal = false;
+
     // -reload-queues — re-read ga_queues + ga_map_pool_entries. Handled
     // entirely on the control server; no PLAYER_ACTION IPC dispatched.
     bool reload_queues = false;
@@ -114,6 +118,10 @@ void DispatchUnpossess(const std::string& session_guid);
 // Send -coords to the game DLL. Same delivery path; the DLL logs + shows the
 // requesting player's current XYZ.
 void DispatchCoords(const std::string& session_guid);
+
+// Send -fullheal to the game DLL. Same delivery path; map gate + cooldown
+// are enforced DLL-side.
+void DispatchFullHeal(const std::string& session_guid);
 
 // Send -topdown to the game DLL. Toggles top-down view in the DLL — repeated
 // invocations alternate enter/restore. lift_z=0 means "use the DLL default".

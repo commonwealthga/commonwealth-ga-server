@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgEffectManager/SetEffectRep/TgEffectManager__SetEffectRep.hpp"
+#include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // TgEffectManager::SetEffectRep — the native @ 0x10a6ffe0 is INTACT (it does
@@ -24,6 +25,18 @@
 
 int __fastcall TgEffectManager__SetEffectRep::Call(ATgEffectManager* Manager, void* edx,
 		int nEffectGroupID, float fTime, unsigned long bIsBuff, int nHealthChange) {
+	// VR heal pad: UC computes bIsBuff via TgEffectGroup.IsBuff(), whose default
+	// branch is `m_Instigator != none && !m_Instigator.IsEnemy(m_Target)` — the
+	// pad's instigator is the team-0 TgDeviceVolume, which fails IsEnemy, so the
+	// heal reps as a debuff. The client packs this bit into the queue entry
+	// (bit 24) and sets TgEffectForm.c_bIsDebuff from it, inverting the FX tint
+	// (yellow self / green enemy instead of the Medical Station's green/yellow).
+	// A heal is a buff regardless of instigator — force the bit for the pad's
+	// heal group ids.
+	if (!bIsBuff && DomeVrHealPad::IsPadHealEffectGroup(nEffectGroupID)) {
+		bIsBuff = 1;
+		Logger::Log("healpad", "[SetEffectRep] forced bIsBuff for egId=%d\n", nEffectGroupID);
+	}
 	// The intact native does all replication (queue / managed-list / forms).
 	const int ret = CallOriginal(Manager, edx, nEffectGroupID, fTime, bIsBuff, nHealthChange);
 

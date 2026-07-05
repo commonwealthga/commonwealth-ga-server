@@ -485,7 +485,10 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgDeviceFire__Deploy::Install();
 	TgDeviceFire__SpawnPet::Install();
 	// TgDeviceFire__CheckTeamPassThrough::Install();
-	// TgDeviceFire__IsValidTarget::Install();
+	// Diagnostic hook (pass-through + channel-gated logging). Re-enabled for
+	// the VR heal pad chain trace — the "healpad" block needs it to see UC's
+	// ApplyHit → IsValidTarget calls.
+	TgDeviceFire__IsValidTarget::Install();
 	// TgDevice__HasMinimumPowerPool::Install();
 	TgEffectManager__RemoveAllEffectGroups::Install();
 	TgEffectManager__RemoveAllEffects::Install();
