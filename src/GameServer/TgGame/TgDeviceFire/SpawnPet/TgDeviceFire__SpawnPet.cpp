@@ -122,6 +122,10 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 			petId, spawnLocation.X, spawnLocation.Y, spawnLocation.Z);
 	}
 	if (PetPawn) {
+		// Tag the pet with its owner so KillAllOwned can find and destroy it
+		// on team-change / profile-switch via the PawnList walk.
+		PetPawn->Instigator = pawn;
+
 		if (Logger::IsChannelEnabled("pet_spawn")) {
 			Logger::Log("pet_spawn",
 				"TgDeviceFire::SpawnPet: pet spawned 0x%p class=%s at (%.1f,%.1f,%.1f)\n",

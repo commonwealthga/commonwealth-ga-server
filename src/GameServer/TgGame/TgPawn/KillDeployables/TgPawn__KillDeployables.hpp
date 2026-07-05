@@ -12,4 +12,10 @@ public:
 	static inline void __fastcall CallOriginal(ATgPawn* Pawn, void* edx, unsigned long bAll) {
 		m_original(Pawn, edx, bAll);
 	};
+
+	// Destroy all personal deployables owned by Pawn's PRI.
+	// Walks gri->m_Deployables (global, survives pawn respawn) and PawnList
+	// (catches deployed bot pawns like the Grizzly drone). Use this instead of
+	// Call(bAll=1) on team-change / profile-switch paths.
+	static void KillAllOwned(ATgPawn* Pawn);
 };
