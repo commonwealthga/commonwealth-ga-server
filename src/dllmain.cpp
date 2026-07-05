@@ -253,6 +253,7 @@
 #include "src/GameServer/TgGame/TgMissionObjective/RegisterSelf/TgMissionObjective__RegisterSelf.hpp"
 #include "src/GameServer/TgGame/TgDynamicSMActor/ForceNetRelevant/TgDynamicSMActor__ForceNetRelevant.hpp"
 #include "src/GameServer/TgGame/TgAIController/TargetInLOS/TgAIController__TargetInLOS.hpp"
+#include "src/GameServer/TgGame/TgAIController/LOSTrace/TgAIController__LOSTrace.hpp"
 #include "src/GameServer/TgGame/TgAIController/CanBeRepaired/TgAIController__CanBeRepaired.hpp"
 #include "src/GameServer/TgGame/TgAIController/SpawnPets/TgAIController__SpawnPets.hpp"
 #include "src/GameServer/TgGame/TgAIController/RadioAlarm/TgAIController__RadioAlarm.hpp"
@@ -485,7 +486,10 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgDeviceFire__Deploy::Install();
 	TgDeviceFire__SpawnPet::Install();
 	// TgDeviceFire__CheckTeamPassThrough::Install();
-	// TgDeviceFire__IsValidTarget::Install();
+	// Diagnostic hook (pass-through + channel-gated logging). Re-enabled for
+	// the VR heal pad chain trace — the "healpad" block needs it to see UC's
+	// ApplyHit → IsValidTarget calls.
+	TgDeviceFire__IsValidTarget::Install();
 	// TgDevice__HasMinimumPowerPool::Install();
 	TgEffectManager__RemoveAllEffectGroups::Install();
 	TgEffectManager__RemoveAllEffects::Install();
@@ -613,7 +617,8 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgPawn__ApplyJetpackTrail::Install();
 	TgPawn__BeginStats::Install();
 	TgPawn__CanMove::Install();
-	// TgAIController__TargetInLOS::Install();
+	// TgAIController__TargetInLOS::Install();   // superseded by LOSTrace
+	TgAIController__LOSTrace::Install();
 	// TgAIController__CanBeRepaired::Install();
 	TgAIController__SpawnPets::Install();
 	TgAIController__RadioAlarm::Install();

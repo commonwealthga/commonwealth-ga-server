@@ -450,6 +450,7 @@ int64_t PlayerSessionStore::InsertCharacter(int64_t user_id, uint32_t profile_id
 	// load in. Without this, fresh characters hit the resubmit loop on the
 	// REST device until disconnect+reconnect.
 	PinClassDeviceSlot14(newId);
+	SeedCharacterArmorDefaults(newId);
 	return newId;
 }
 
@@ -461,7 +462,7 @@ std::vector<CharacterInfo> PlayerSessionStore::GetCharactersByUserId(int64_t use
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
 		"SELECT id, profile_id, head_asm_id, gender_type_value_id, morph_data, "
-		"       hair_asm_id, skin_mat_param_id, eye_mat_param_id "
+		"       hair_asm_id, skin_mat_param_id, eye_mat_param_id, current_item_profile_id "
 		"FROM ga_characters WHERE user_id = ?",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
@@ -482,9 +483,10 @@ std::vector<CharacterInfo> PlayerSessionStore::GetCharactersByUserId(int64_t use
 		if (blob && bytes > 0)
 			c.morph_data.assign(static_cast<const uint8_t*>(blob),
 			                    static_cast<const uint8_t*>(blob) + bytes);
-		c.hair_asm_id          = static_cast<uint32_t>(sqlite3_column_int(stmt, 5));
-		c.skin_mat_param_id    = static_cast<uint32_t>(sqlite3_column_int(stmt, 6));
-		c.eye_mat_param_id     = static_cast<uint32_t>(sqlite3_column_int(stmt, 7));
+		c.hair_asm_id              = static_cast<uint32_t>(sqlite3_column_int(stmt, 5));
+		c.skin_mat_param_id        = static_cast<uint32_t>(sqlite3_column_int(stmt, 6));
+		c.eye_mat_param_id         = static_cast<uint32_t>(sqlite3_column_int(stmt, 7));
+		c.current_item_profile_id  = sqlite3_column_int(stmt, 8);
 		result.push_back(std::move(c));
 	}
 	sqlite3_finalize(stmt);
@@ -1222,7 +1224,7 @@ void PlayerSessionStore::SeedArmor(int64_t user_id) {
 	//                       class wears the same armor pool)
 	//   device_id      — 0 (armor pieces have no backing device; the
 	//                       Inventory marshal's cosmetic-style path applies)
-	//   quality        — 1162 (Q_EPIC; tier color in the client UI)
+	//   quality        — 1162 (Q_EPIC; matches 6-mod variants)
 	//   mod_effect_group_ids — variant CSV from ArmorLoadouts::kVariants
 	//   oc             — 0
 	//   allowed_slots  — the slot's group-126 SVID as a decimal string
@@ -1275,9 +1277,35 @@ void PlayerSessionStore::SeedArmor(int64_t user_id) {
 	}
 	sqlite3_finalize(stmt);
 
+	// "No Armor" sentinel — one row per slot, stock_n = kVariantCount (5).
+	// Empty mod_effect_group_ids → ParseEgidCsv("") = {} → zero buffs when
+	// applied. Appears in the armor picker alongside the 5 stat variants so
+	// the player can select it to clear a slot. ApplyDefaultArmor handles
+	// the empty-CSV row naturally (zero egids, zero ApplyBuff calls).
+	int insertedNone = 0;
+	sqlite3_stmt* noneStmt = nullptr;
+	const char* kNone =
+		"INSERT OR IGNORE INTO ga_players_inventory"
+		"  (user_id, profile_id, device_id, quality, mod_effect_group_ids, oc, allowed_slots, item_id, stock_n) "
+		"VALUES (?, 0, 0, 1165, '', 0, ?, ?, ?)";
+	if (sqlite3_prepare_v2(db, kNone, -1, &noneStmt, nullptr) == SQLITE_OK) {
+		for (int si = 0; si < ArmorLoadouts::kSlotCount; ++si) {
+			const auto& slot = ArmorLoadouts::kSlots[si];
+			const std::string allowed = std::to_string(slot.slot_value_id);
+			sqlite3_reset(noneStmt);
+			sqlite3_clear_bindings(noneStmt);
+			sqlite3_bind_int64(noneStmt, 1, user_id);
+			sqlite3_bind_text (noneStmt, 2, allowed.c_str(), -1, SQLITE_TRANSIENT);
+			sqlite3_bind_int  (noneStmt, 3, slot.base_item_id);
+			sqlite3_bind_int  (noneStmt, 4, ArmorLoadouts::kVariantCount);
+			if (sqlite3_step(noneStmt) == SQLITE_DONE && sqlite3_changes(db) > 0) ++insertedNone;
+		}
+		sqlite3_finalize(noneStmt);
+	}
+
 	Logger::Log("armor-seed",
-		"SeedArmor: user=%lld inserted=%d (of %d possible — rest already present)\n",
-		(long long)user_id, inserted, ArmorLoadouts::kSlotCount * ArmorLoadouts::kVariantCount);
+		"SeedArmor: user=%lld inserted=%d (of %d possible — rest already present) none=%d\n",
+		(long long)user_id, inserted, ArmorLoadouts::kSlotCount * ArmorLoadouts::kVariantCount, insertedNone);
 }
 
 void PlayerSessionStore::SeedCharacterArmorDefaults(int64_t character_id) {

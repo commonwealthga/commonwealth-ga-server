@@ -5,3 +5,9 @@ compile_commands.json
 Memory/
 AGENTS.md
 
+
+# Runtime / host-specific (never commit — control-server.json holds admin_token secret)
+control-server.json
+server.db
+server.db-shm
+server.db-wal

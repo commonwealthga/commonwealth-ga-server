@@ -544,31 +544,6 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
             if (instance_id != 0) {
                 const uint64_t refresh_token = ++session->profile_refresh_token_;
                 SendProfileUiRefresh(instance_id, session_guid, item_profile_id, refresh_token, "immediate");
-
-                auto timer = std::make_shared<asio::steady_timer>(session->io_ctx_);
-                std::weak_ptr<TcpSession> weak_session = session;
-                // Keep the clear frame visible long enough to avoid client-side coalescing.
-                timer->expires_after(std::chrono::milliseconds(500));
-                timer->async_wait([timer, weak_session, instance_id, session_guid, item_profile_id, refresh_token](std::error_code ec) {
-                    if (ec) {
-                        return;
-                    }
-                    auto s = weak_session.lock();
-                    if (!s) {
-                        return;
-                    }
-                    if (s->profile_refresh_token_ != refresh_token) {
-                        Logger::Log("loadout",
-                            "[TcpSession] profile_switch delayed refresh skipped stale token=%llu current=%llu guid=%s itemProf=%d\n",
-                            (unsigned long long)refresh_token,
-                            (unsigned long long)s->profile_refresh_token_,
-                            session_guid.c_str(), item_profile_id);
-                        return;
-                    }
-                    s->item_profile_id_ = item_profile_id;
-                    s->send_player_skills_response();
-                    SendProfileUiRefresh(instance_id, session_guid, item_profile_id, refresh_token, "delayed");
-                });
             }
         }
     }
@@ -1743,6 +1718,26 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			if (!session_guid_.empty())
 				TeamService::HandleLeave(session_guid_);
 			break;
+		case GA_U::TEAM_KICK: {
+			// C→S: team leader removes a member from the team.
+			// Payload: CHARACTER_ID of the member to kick.
+			Logger::Log("tcp", "[%s] Received: TEAM_KICK [0x%04X]\n", Logger::GetTime(), packet_type);
+			PacketView pkt(data + 6, length - 6);
+			int64_t target_char_id = (int64_t)pkt.Read4B(GA_T::CHARACTER_ID).value_or(0);
+			if (!session_guid_.empty() && target_char_id != 0)
+				TeamService::KickMember(session_guid_, target_char_id);
+			break;
+		}
+		case GA_U::GROUP_SET_LEADER: {
+			// C→S: current leader promotes a team member to leader.
+			// Payload: CHARACTER_ID of the member to promote.
+			Logger::Log("tcp", "[%s] Received: GROUP_SET_LEADER [0x%04X]\n", Logger::GetTime(), packet_type);
+			PacketView pkt(data + 6, length - 6);
+			int64_t target_char_id = (int64_t)pkt.Read4B(GA_T::CHARACTER_ID).value_or(0);
+			if (!session_guid_.empty() && target_char_id != 0)
+				TeamService::PromoteLeader(session_guid_, target_char_id);
+			break;
+		}
 		case GA_U::SEND_PLAYER_SKILLS: {
 			// CGameClient::SendSkillsToServer @ 0x1141fd00 sends this when the player
 			// hits Save on the skill tree. Payload carries a DATA_SET_CHARACTER_SKILLS
@@ -3412,6 +3407,17 @@ void TcpSession::send_character_list_response()
 {
 	auto characters = PlayerSessionStore::GetCharactersByUserId(user_id_);
 
+	// Collect equipped cosmetics (helmet, suit, dyes, trail) for all characters.
+	struct CosmeticEntry { uint32_t char_id; int item_id; int slot_value_id; };
+	std::vector<CosmeticEntry> cosmetics;
+	for (const auto& c : characters) {
+		auto devices = PlayerSessionStore::GetDevicesForCharacter(c.id, c.current_item_profile_id);
+		for (const auto& d : devices) {
+			if (d.item_id > 0)
+				cosmetics.push_back({ static_cast<uint32_t>(c.id), d.item_id, d.slot_value_id });
+		}
+	}
+
 	std::vector<uint8_t> response;
 
 	uint16_t packet_type = GA_U::GSC_CHARACTER_LIST;
@@ -3427,23 +3433,32 @@ void TcpSession::send_character_list_response()
 	                 static_cast<uint8_t>(characters.size() >> 8));
 
 	for (const auto& c : characters) {
-		append(response, 0x0C, 0x00);  // inner item count = 12
-		Write4B(response, GA_T::CHARACTER_ID,           static_cast<uint32_t>(c.id));
-		Write4B(response, GA_T::CHARACTER_LEVEL,        0x32);
-		Write4B(response, GA_T::CURRENT_LEVEL,          0x32);
-		Write4B(response, GA_T::FORCED_CHARACTER_LEVEL, 0x32);
-		Write4B(response, GA_T::PROFILE_ID,             c.profile_id);
-		Write4B(response, GA_T::CLASS_TYPE_VALUE_ID,    GetClassConfig(c.profile_id).classTypeValueId);
-		Write4B(response, GA_T::HEAD_ASM_ID,            c.head_asm_id);
-		Write4B(response, GA_T::HAIR_ASM_ID,            0x85D);
-		Write4B(response, GA_T::GENDER_TYPE_VALUE_ID,   c.gender_type_value_id);
-		WriteString(response, GA_T::MAP_NAME,           "Scramble: Tetra Pier");
-		Write4B(response, GA_T::XP_VALUE,               0xbbddc);
-		Write4B(response, GA_T::SKILL_GROUP_SET_ID,     GetClassConfig(c.profile_id).skillGroupSetId);
+		append(response, 0x0E, 0x00);  // inner item count = 14
+		Write4B(response, GA_T::CHARACTER_ID,               static_cast<uint32_t>(c.id));
+		Write4B(response, GA_T::CHARACTER_LEVEL,            0x32);
+		Write4B(response, GA_T::CURRENT_LEVEL,              0x32);
+		Write4B(response, GA_T::FORCED_CHARACTER_LEVEL,     0x32);
+		Write4B(response, GA_T::PROFILE_ID,                 c.profile_id);
+		Write4B(response, GA_T::CLASS_TYPE_VALUE_ID,        GetClassConfig(c.profile_id).classTypeValueId);
+		Write4B(response, GA_T::HEAD_ASM_ID,                c.head_asm_id);
+		Write4B(response, GA_T::HAIR_ASM_ID,                c.hair_asm_id);
+		Write4B(response, GA_T::GENDER_TYPE_VALUE_ID,       c.gender_type_value_id);
+		WriteString(response, GA_T::MAP_NAME,               "Scramble: Tetra Pier");
+		Write4B(response, GA_T::XP_VALUE,                   0xbbddc);
+		Write4B(response, GA_T::SKILL_GROUP_SET_ID,         GetClassConfig(c.profile_id).skillGroupSetId);
+		Write4B(response, GA_T::SKIN_MATERIAL_PARAMETER_ID, c.skin_mat_param_id);
+		Write4B(response, GA_T::EYE_MATERIAL_PARAMETER_ID,  c.eye_mat_param_id);
 	}
 
 	append(response, GA_T::DATA_SET_PLAYER_INVENTORY & 0xFF, GA_T::DATA_SET_PLAYER_INVENTORY >> 8);
-	append(response, 0x00, 0x00);  // count elements
+	append(response, static_cast<uint8_t>(cosmetics.size() & 0xFF),
+	                 static_cast<uint8_t>(cosmetics.size() >> 8));
+	for (const auto& entry : cosmetics) {
+		append(response, 0x03, 0x00);  // 3 fields per record: CHARACTER_ID, ITEM_ID, EQUIPPED_SLOT_VALUE_ID
+		Write4B(response, GA_T::CHARACTER_ID,           entry.char_id);
+		Write4B(response, GA_T::ITEM_ID,                static_cast<uint32_t>(entry.item_id));
+		Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, static_cast<uint32_t>(entry.slot_value_id));
+	}
 
 	send_response(response);
 }

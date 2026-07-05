@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgDeviceFire/IsValidTarget/TgDeviceFire__IsValidTarget.hpp"
+#include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <string>
 
@@ -34,6 +35,21 @@ bool __fastcall TgDeviceFire__IsValidTarget::Call(
 		UTgDeviceFire* FireMode, void* edx, AActor* TargetActor, char OverrideTargeterType) {
 
 	bool result = CallOriginal(FireMode, edx, TargetActor, OverrideTargeterType);
+
+	// VR heal pad chain diagnostic. A hit here proves the volume's
+	// TimerPop/Touch → CausePainTo → ApplyHit path is reaching the fire mode.
+	if (DomeVrHealPad::IsPadFireMode(FireMode) && Logger::IsChannelEnabled("healpad")) {
+		std::string tgtCls = SafeGetFullName(TargetActor);
+		int physType = -1;
+		if (TargetActor && tgtCls.find("TgPawn") != std::string::npos) {
+			physType = ((ATgPawn*)TargetActor)->r_nPhysicalType;
+		}
+		Logger::Log("healpad",
+			"[IsValidTarget] target=%p (%s) override=%d targeter=%d affects=%d physType=%d -> %s\n",
+			(void*)TargetActor, tgtCls.c_str(), (int)(uint8_t)OverrideTargeterType,
+			(int)FireMode->m_eTargeterType, FireMode->m_nTargetAffectsType, physType,
+			result ? "VALID" : "reject");
+	}
 
 	// EMP / deployable-bomb diagnostic (channel "deployablefactory"). A
 	// deployable bomb's victims are PAWNS, which the combat-trace block below

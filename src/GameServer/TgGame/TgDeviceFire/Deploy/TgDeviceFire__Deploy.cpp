@@ -61,6 +61,7 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 		// point) is meaningless for self-spawning deployables — it could be
 		// a wall 30m away, the floor in front, or mid-air.
 		bool bSelfSpawn = DeployableClassify::DeploysOnSelf(deployableId);
+		bool bIsForceFieldByClass = TgProj_Deployable__SpawnDeployable::IsForceFieldDeployableId(deployableId);
 		AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
 
 		FVector spawnLocation = bSelfSpawn
@@ -137,6 +138,11 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 			Logger::Log("inventory", "[deploy] Spawn returned null for %s (deployableId=%d), aborting\n", clsName, deployableId);
 			return;
 		}
+
+		// Register immediately after Spawn so LOSTrace can disable this dome's
+		// collision before any LOS check fires.
+		if (bIsForceFieldByClass)
+			TgProj_Deployable__SpawnDeployable::GetForceFieldSet().insert(Deployable);
 
 		// cylHalfHeight is now the SCALED half-extent (UE3 convention), so it
 		// goes straight into SetCollisionSize. The previous `* 2` was a vestige

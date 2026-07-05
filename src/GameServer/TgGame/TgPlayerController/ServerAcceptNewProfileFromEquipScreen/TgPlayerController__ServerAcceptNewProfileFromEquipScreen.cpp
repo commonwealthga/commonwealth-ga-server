@@ -104,10 +104,18 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 	PlayerInfo* info = PlayerRegistry::GetByGuidPtr(it->second);
 	const int64_t character_id = info ? info->selected_character_id : 0;
 	const int64_t user_id      = info ? info->user_id : 0;
-	int itemProfileId = nProfileId;
-	if (itemProfileId < 1 || itemProfileId > 5) {
-		itemProfileId = ((ATgPawn_Character*)Pawn)->r_nItemProfileId;
-		if (itemProfileId < 1 || itemProfileId > 5) itemProfileId = 1;
+	// Always use the server-authoritative active profile, not the client-supplied
+	// nProfileId. Profile switches are server-side (ServerLoadItemProfile), so
+	// the equip screen is always for r_nItemProfileId. When the client sends a
+	// different nProfileId — e.g. when two profiles share the same helm cosmetic
+	// and the client fires a stale save with the previously-edited profile number —
+	// trusting it overwrites the wrong profile's ga_character_devices rows.
+	const int serverProfileId = ((ATgPawn_Character*)Pawn)->r_nItemProfileId;
+	int itemProfileId = (serverProfileId >= 1 && serverProfileId <= 5) ? serverProfileId : 1;
+	if (nProfileId != itemProfileId) {
+		Logger::Log(GetLogChannel(),
+			"equip-save: client nProfileId=%d != server r_nItemProfileId=%d — using server value\n",
+			nProfileId, itemProfileId);
 	}
 
 	// Engine-side re-equip. The original `ServerAcceptNewProfileFromEquipScreen`
@@ -195,6 +203,44 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 	if (DeviceArray.SlotIndices[12] == 0) {
 		CosmeticEquip::ClearSlot(Pawn, character_id, itemProfileId, 12);
 		clearedCosmeticSlots.insert(12);
+	}
+	if (DeviceArray.SlotIndices[21] == 0) {
+		CosmeticEquip::ClearSlot(Pawn, character_id, itemProfileId, 21);
+		clearedCosmeticSlots.insert(21);
+	}
+	for (int slot = 16; slot <= 20; ++slot) {
+		if (DeviceArray.SlotIndices[slot] == 0) {
+			CosmeticEquip::ClearSlot(Pawn, character_id, itemProfileId, slot);
+			clearedCosmeticSlots.insert(slot);
+		}
+	}
+
+	// Explicit device unequip — visible weapon/offhand/etc slots the player
+	// blanked (SlotIndices[slot]==0). Slot 14 (class device, hidden from the
+	// equip screen) always sends 0 and is excluded from this list.
+	if (character_id != 0) {
+		static const int kClearableDeviceSlots[] = {1, 2, 3, 5, 7, 8, 9, 10, 13};
+		sqlite3_stmt* delDev = nullptr;
+		sqlite3_prepare_v2(db,
+			"DELETE FROM ga_character_devices "
+			"WHERE character_id = ? AND item_profile_id = ? AND equipped_slot = ?",
+			-1, &delDev, nullptr);
+		for (int slot : kClearableDeviceSlots) {
+			if (DeviceArray.SlotIndices[slot] != 0) continue;
+			Inventory::Unequip(Pawn, slot);
+			if (delDev) {
+				sqlite3_reset(delDev);
+				sqlite3_clear_bindings(delDev);
+				sqlite3_bind_int64(delDev, 1, character_id);
+				sqlite3_bind_int  (delDev, 2, itemProfileId);
+				sqlite3_bind_int  (delDev, 3, slot);
+				sqlite3_step(delDev);
+				Logger::Log(GetLogChannel(),
+					"equip-save: cleared device slot %d for char=%lld\n",
+					slot, (long long)character_id);
+			}
+		}
+		if (delDev) sqlite3_finalize(delDev);
 	}
 
 	// Pre-pass: Unequip anything that's being SWAPPED for a different invId.
@@ -336,9 +382,6 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 		}
 
 		if (anyArmorMisc) {
-			// Profile-scoped: this RPC names its target loadout via nProfileId.
-			// Only that profile's armor rows are replaced — other profiles
-			// keep their armor untouched.
 			sqlite3_stmt* delA = nullptr;
 			if (sqlite3_prepare_v2(db,
 			    "DELETE FROM ga_character_devices "
@@ -346,7 +389,7 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 			    "  AND equipped_slot IN (1130, 1132, 1133, 1136, 1139, 1142, 1143)",
 			    -1, &delA, nullptr) == SQLITE_OK) {
 				sqlite3_bind_int64(delA, 1, character_id);
-				sqlite3_bind_int  (delA, 2, nProfileId);
+				sqlite3_bind_int  (delA, 2, itemProfileId);
 				sqlite3_step(delA);
 				sqlite3_finalize(delA);
 			}
@@ -372,7 +415,7 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 					sqlite3_reset(insA);
 					sqlite3_clear_bindings(insA);
 					sqlite3_bind_int64(insA, 1, character_id);
-					sqlite3_bind_int  (insA, 2, nProfileId);
+					sqlite3_bind_int  (insA, 2, itemProfileId);
 					sqlite3_bind_int  (insA, 3, invId);
 					sqlite3_bind_int  (insA, 4, armorSvid);
 					if (sqlite3_step(insA) == SQLITE_DONE) ++wroteArmor;
@@ -380,7 +423,7 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 				sqlite3_finalize(insA);
 				Logger::Log(GetLogChannel(),
 					"equip-save: armor local-DB updated itemProf=%d, %d slot(s); refreshing buffs\n",
-					nProfileId, wroteArmor);
+					itemProfileId, wroteArmor);
 			}
 
 			// Reverse the previous armor's buff entries (recorded per-pawn in
@@ -399,7 +442,7 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 	ev["session_guid"]            = it->second;
 	ev["pawn_id"]                 = (int)Pawn->r_nPawnId;
 	ev["character_id"]            = character_id;
-	ev["loadout_profile"]         = nProfileId;
+	ev["loadout_profile"]         = itemProfileId;
 	ev["slot_to_inventory"]       = std::move(slotMap);
 	ev["misc_items"]              = std::move(miscMap);  // armor / unknown-Misc-tab data
 	ev["cleared_cosmetic_slots"]  = nlohmann::json(clearedCosmeticSlots);
@@ -407,7 +450,7 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 
 	Logger::Log(GetLogChannel(),
 		"equip-save: forwarded loadout=%d slots=%d/24 misc=%d/25 cleared=%zu pawn=%p guid=%s\n",
-		nProfileId, slotPopulated, miscPopulated, clearedCosmeticSlots.size(),
+		itemProfileId, slotPopulated, miscPopulated, clearedCosmeticSlots.size(),
 		(void*)Pawn, it->second.c_str());
 
 	LogCallEnd();

@@ -159,6 +159,10 @@ public:
 	// fire mode has no prop-154 row or the pawn has no PRI.
 	static void EnforceDeployableLimit(ATgPawn* pawn, ATgDeployable* newDep, UTgDeviceFire* sourceFireMode);
 
+	// Set of currently live ATgDeploy_ForceField actors. Populated at spawn;
+	// stale entries (bDeleteMe) pruned lazily in TargetInLOS.
+	static std::unordered_set<ATgDeployable*>& GetForceFieldSet();
+
 	// Append `dep` to the global `GRI.m_Deployables` list (TgRepInfo_Game's
 	// world-wide deployable registry, replicated to every client). UC's
 	// TgBeaconFactory.uc:58 iterates this list, and the HUD's device-bar

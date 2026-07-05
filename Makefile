@@ -149,6 +149,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/ReturnHomeArea/ReturnHomeArea.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/Coords/Coords.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/FullHeal/FullHeal.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.cpp \
@@ -157,6 +158,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.cpp \
 			  $(SRC_DIR)/GameServer/Inventory/Inventory.cpp \
 			  $(SRC_DIR)/GameServer/Cosmetics/CosmeticEquip.cpp \
+			  $(SRC_DIR)/GameServer/Cosmetics/JetpackReload.cpp \
+			  $(SRC_DIR)/GameServer/Cosmetics/SuitRebuildKick.cpp \
 			  $(SRC_DIR)/GameServer/Armor/Armor.cpp \
 			  $(SRC_DIR)/GameServer/Constants/DeviceIds.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepListV2.cpp \
@@ -337,6 +340,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective/RegisterSelf/TgMissionObjective__RegisterSelf.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDynamicSMActor/ForceNetRelevant/TgDynamicSMActor__ForceNetRelevant.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgAIController/TargetInLOS/TgAIController__TargetInLOS.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgAIController/LOSTrace/TgAIController__LOSTrace.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgAIController/CanBeRepaired/TgAIController__CanBeRepaired.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgAIController/SpawnPets/TgAIController__SpawnPets.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgAIController/RadioAlarm/TgAIController__RadioAlarm.cpp \

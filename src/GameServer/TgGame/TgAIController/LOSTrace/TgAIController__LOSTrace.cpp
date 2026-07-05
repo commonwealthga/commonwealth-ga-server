@@ -1,17 +1,22 @@
-#include "src/GameServer/TgGame/TgAIController/TargetInLOS/TgAIController__TargetInLOS.hpp"
+#include "src/GameServer/TgGame/TgAIController/LOSTrace/TgAIController__LOSTrace.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
 
-// bCollideActors is bit 0x08000000 at AActor+0xB0.
-// bDeleteMe   is bit 0x00000008 at AActor+0xAC.
 static const uint32_t kCollide  = 0x08000000;
 static const uint32_t kDeleteMe = 0x00000008;
 
-int __fastcall TgAIController__TargetInLOS::Call(ATgAIController* aic, void* edx) {
-	// ForceField domes are transparent to friendly fire (CheckTeamPassThrough),
-	// so the LOS trace should also see through them. Disable their collision
-	// for the duration of the check so the recursive trace (FUN_10a806e0)
-	// never hits them in the first place.
+// Depth counter — prevents re-disabling/re-enabling on recursive self-calls.
+static int s_depth = 0;
+
+int __fastcall TgAIController__LOSTrace::Call(int* param_1, void* edx,
+	int p2, int p3, int p4, int p5, int p6, int p7, int p8, int p9, int p10)
+{
+	if (s_depth > 0)
+		return CallOriginal(param_1, edx, p2, p3, p4, p5, p6, p7, p8, p9, p10);
+
 	auto& ffs = TgProj_Deployable__SpawnDeployable::GetForceFieldSet();
+	if (ffs.empty())
+		return CallOriginal(param_1, edx, p2, p3, p4, p5, p6, p7, p8, p9, p10);
+
 	std::vector<ATgDeployable*> disabled;
 	std::vector<ATgDeployable*> toRemove;
 
@@ -26,7 +31,9 @@ int __fastcall TgAIController__TargetInLOS::Call(ATgAIController* aic, void* edx
 	for (ATgDeployable* d : toRemove)
 		ffs.erase(d);
 
-	int result = CallOriginal(aic, edx);
+	s_depth++;
+	int result = CallOriginal(param_1, edx, p2, p3, p4, p5, p6, p7, p8, p9, p10);
+	s_depth--;
 
 	for (ATgDeployable* d : disabled)
 		*(uint32_t*)((char*)d + 0xB0) |= kCollide;
