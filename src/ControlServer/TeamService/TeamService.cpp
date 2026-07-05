@@ -356,6 +356,56 @@ void TeamService::HandleLeave(const std::string& session_guid) {
         TcpSession::DeliverTeamSystemMessage(session_guid, MSG_NOT_IN_A_TEAM, "");
 }
 
+void TeamService::PromoteLeader(const std::string& requester_guid, int64_t target_character_id) {
+    if (target_character_id == 0) return;
+
+    uint64_t team_id = 0;
+    std::string new_leader_name;
+    std::vector<std::string> member_guids;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        Team* team = FindTeamByMemberLocked(requester_guid);
+        if (!team || team->leader_guid != requester_guid) return;
+
+        auto it = std::find_if(team->members.begin(), team->members.end(),
+            [&](const TeamMember& m) { return m.character_id == target_character_id; });
+        if (it == team->members.end()) return;
+        if (it->session_guid == requester_guid) return;  // already leader
+
+        team->leader_guid = it->session_guid;
+        new_leader_name   = it->player_name;
+        team_id = team->id;
+        for (const auto& m : team->members) member_guids.push_back(m.session_guid);
+    }
+
+    Logger::Log("team", "[team] leader promoted to %s in team #%llu\n",
+        new_leader_name.c_str(), (unsigned long long)team_id);
+
+    for (const auto& guid : member_guids)
+        TcpSession::DeliverTeamSystemMessage(guid, MSG_NEW_LEADER, new_leader_name);
+    BroadcastRoster(team_id);
+}
+
+void TeamService::KickMember(const std::string& requester_guid, int64_t target_character_id) {
+    if (target_character_id == 0) return;
+
+    std::string target_guid;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        Team* team = FindTeamByMemberLocked(requester_guid);
+        if (!team || team->leader_guid != requester_guid) return;
+
+        auto it = std::find_if(team->members.begin(), team->members.end(),
+            [&](const TeamMember& m) { return m.character_id == target_character_id; });
+        if (it == team->members.end()) return;
+        if (it->session_guid == requester_guid) return;  // can't kick yourself
+
+        target_guid = it->session_guid;
+    }
+
+    LeaveCurrentTeam(target_guid);
+}
+
 bool TeamService::LeaveCurrentTeam(const std::string& session_guid) {
     // Composition change: dequeue the whole team (if queued) before mutating.
     DequeueForCompositionChange(session_guid);
