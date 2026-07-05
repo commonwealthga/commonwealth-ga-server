@@ -407,7 +407,7 @@ bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int item_profile_id,
 bool ClearSlot(ATgPawn* Pawn, int64_t character_id, int item_profile_id, int slot) {
 	if (!Pawn) return false;
 	item_profile_id = NormalizeItemProfileId(Pawn, item_profile_id);
-	if (slot != 6 && slot != 12 && (slot < 16 || slot > 20)) return false;
+	if (slot != 6 && slot != 12 && slot != 21 && (slot < 16 || slot > 20)) return false;
 
 	auto* charPawn = (ATgPawn_Character*)Pawn;
 	auto* PRI      = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
@@ -431,6 +431,9 @@ bool ClearSlot(ATgPawn* Pawn, int64_t character_id, int item_profile_id, int slo
 			PRI->r_CustomCharacterAssembly.HelmetMeshId = -1;
 		}
 		dbSlot = CosmeticSlots::kCosmeticHelmetDbSlot;
+	} else if (slot == 21) {
+		charPawn->r_CustomCharacterAssembly.JetpackTrailId = kNoCosmeticItemId;
+		if (PRI) PRI->r_CustomCharacterAssembly.JetpackTrailId = kNoCosmeticItemId;
 	} else {
 		charPawn->r_CustomCharacterAssembly.DyeList[slot - 16] = kNoCosmeticItemId;
 		if (PRI) PRI->r_CustomCharacterAssembly.DyeList[slot - 16] = kNoCosmeticItemId;
