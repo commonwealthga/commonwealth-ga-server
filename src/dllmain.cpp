@@ -253,6 +253,7 @@
 #include "src/GameServer/TgGame/TgMissionObjective/RegisterSelf/TgMissionObjective__RegisterSelf.hpp"
 #include "src/GameServer/TgGame/TgDynamicSMActor/ForceNetRelevant/TgDynamicSMActor__ForceNetRelevant.hpp"
 #include "src/GameServer/TgGame/TgAIController/TargetInLOS/TgAIController__TargetInLOS.hpp"
+#include "src/GameServer/TgGame/TgAIController/LOSTrace/TgAIController__LOSTrace.hpp"
 #include "src/GameServer/TgGame/TgAIController/CanBeRepaired/TgAIController__CanBeRepaired.hpp"
 #include "src/GameServer/TgGame/TgAIController/SpawnPets/TgAIController__SpawnPets.hpp"
 #include "src/GameServer/TgGame/TgAIController/RadioAlarm/TgAIController__RadioAlarm.hpp"
@@ -616,7 +617,8 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgPawn__ApplyJetpackTrail::Install();
 	TgPawn__BeginStats::Install();
 	TgPawn__CanMove::Install();
-	// TgAIController__TargetInLOS::Install();
+	// TgAIController__TargetInLOS::Install();   // superseded by LOSTrace
+	TgAIController__LOSTrace::Install();
 	// TgAIController__CanBeRepaired::Install();
 	TgAIController__SpawnPets::Install();
 	TgAIController__RadioAlarm::Install();
