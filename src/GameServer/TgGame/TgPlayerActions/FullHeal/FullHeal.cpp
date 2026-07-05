@@ -3,7 +3,7 @@
 #include "src/Config/Config.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
-#include "src/GameServer/TgGame/TgPawn/SyncPawnHealth/SyncPawnHealth.hpp"
+#include "src/GameServer/Constants/TgProperties.h"
 #include <vector>
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -114,9 +114,27 @@ void Execute(const std::string& session_guid) {
 	if (resetPosture) pawn->eventSetPosture(0, 1.0f, false);
 
 	const int oldHealth = pawn->Health;
-	// Full engine + property + PRI fan-out; notifyClient=true is the opt-in
-	// post-spawn heal path (see SyncPawnHealth.cpp).
-	SyncPawnHealth::Apply(pawn, pawn->r_nHealthMaximum, pawn->r_nHealthMaximum, true);
+	// Heal-only: restore current HP to the live maximum. Do NOT use
+	// SyncPawnHealth::Apply here — it rebases property m_fBase and rewrites
+	// HealthMax/r_nHealthMaximum, baking any temporary max-HP buff in
+	// permanently. Spawn is the only place that full sync belongs.
+	const int maxHp = pawn->r_nHealthMaximum;
+	pawn->Health = maxHp;
+	if (pawn->s_Properties.Data) {
+		for (int i = 0; i < pawn->s_Properties.Num(); ++i) {
+			UTgProperty* p = pawn->s_Properties.Data[i];
+			if (p && p->m_nPropertyId == GA_PROPERTY::TGPID_HEALTH) {
+				p->m_fRaw = (float)maxHp;
+			}
+		}
+	}
+	ATgRepInfo_Player* pri = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
+	if (pri) {
+		pri->r_nHealthCurrent = maxHp;
+		pri->bNetDirty = 1;
+		pri->eventUpdateHealth(maxHp, maxHp);
+	}
+	pawn->bNetDirty = 1;
 
 	Logger::Log("chat-command",
 		"[ChatCmd][DLL] fullheal guid=%s: %d -> %d (cleansed %d debuff groups%s)\n",
