@@ -108,15 +108,17 @@ void __fastcall TgEffectManager__SubmitMitigationDamage::Call(
 		}
 		TgEffectManager__RemoveEffectGroup::Call(Manager, nullptr, shield);
 
-		// Clear the published bar so the client HUD's shield indicator
-		// disappears. UC apply rewrites these on the next shield, so we don't
-		// need to reset on every mitigation — just on shield-break.
-		if (ownerIsPawn) {
-			ATgPawn* pawn = (ATgPawn*)owner;
-			pawn->r_nShieldHealthMax = 0;
-			pawn->r_nShieldHealthRemaining = 0;
-			pawn->bNetDirty = 1;
-			pawn->bForceNetUpdate = 1;
-		}
+		// Bar clear now lives centrally in RemoveEffectGroup (fires for any
+		// m_nHealth>0 group on every removal reason — damage-break, lifetime
+		// timeout, stack-replace). The break path above already found this
+		// shield in s_AppliedEffectGroups, so RemoveEffectGroup finds the same
+		// entry and zeroes the bar. Kept commented as the local reference.
+		// if (ownerIsPawn) {
+		// 	ATgPawn* pawn = (ATgPawn*)owner;
+		// 	pawn->r_nShieldHealthMax = 0;
+		// 	pawn->r_nShieldHealthRemaining = 0;
+		// 	pawn->bNetDirty = 1;
+		// 	pawn->bForceNetUpdate = 1;
+		// }
 	}
 }
