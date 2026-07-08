@@ -149,6 +149,24 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 			Manager, nullptr, removedCategory, 1u);
 	}
 
+	// 6. Shield-bar clear. A finite-HP shield group (m_nHealth > 0) publishes the
+	//    pawn's yellow r_nShieldHealthMax/Remaining bar at apply time. The
+	//    damage-break path (SubmitMitigationDamage) clears it, but lifetime
+	//    expiry (LifeDone timer) / stack-replace route here without clearing —
+	//    leaving the bar stuck when the buff times out before HP is drained.
+	//    Clear it centrally so every removal reason drops the bar. UC scopes
+	//    shield HP to one active group, so a lone match is safe.
+	if (applied->m_nHealth > 0) {
+		AActor* owner = Manager->r_Owner;
+		if (owner && ObjectClassCache::GetClassName(owner).compare(0, 19, "Class TgGame.TgPawn") == 0) {
+			ATgPawn* pawn = (ATgPawn*)owner;
+			pawn->r_nShieldHealthMax = 0;
+			pawn->r_nShieldHealthRemaining = 0;
+			pawn->bNetDirty = 1;
+			pawn->bForceNetUpdate = 1;
+		}
+	}
+
 	Manager->bNetDirty = 1;
 	if (Logger::IsChannelEnabled("effects")) {
 		Logger::Log("effects", "[REMOVE-GROUP] removed egId=%d cat=%d slot=%d\n",
