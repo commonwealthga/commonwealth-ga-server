@@ -7,7 +7,12 @@
 #include "src/GameServer/Engine/World/GetGameInfo/World__GetGameInfo.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
+#include "src/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.hpp"
 #include <string>
+
+// BOT_TYPE_VALUE_ID (BotConfig+0x5C) that marks a spawned pet as a decoy.
+// UC: const TG_BOT_TYPE_DECOY = 628.
+static constexpr int TG_BOT_TYPE_DECOY = 628;
 
 // Placement trace helper (FUN_10a1b7e0) — same one TgDeviceFire::Deploy uses.
 // Client UpdateDeployModeStatus calls this with the bot's collision cylinder
@@ -113,6 +118,10 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
     rot.Yaw   = spawnRot.Yaw;
     rot.Roll  = 0;
 
+	// Decoy detection is by the spawned bot's BOT_TYPE_VALUE_ID (== 628
+	// TG_BOT_TYPE_DECOY), NOT bPet: the Decoy offhand (device 2129) fires as a
+	// normal SPAWN_PET (attack_type 306, bPet=TRUE) exactly like turrets/drones.
+	// The decoy mimicry is applied below on the spawned pawn.
 	ATgPawn* PetPawn = TgGame__SpawnBotById::Call(game, nullptr, petId, spawnLocation, spawnRot, false, nullptr, true, pawn, false, pThis, 0.0f);
 	// ATgPawn* PetPawn = (ATgPawn*)game->SpawnBotById(petId, spawnLocation, spawnRot, false, nullptr, true, pawn, false, pThis, 0.0f);
 
@@ -258,6 +267,65 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 		PetRep->Team = PawnRep->Team;
 		PetRep->SetTeam(PawnRep->r_TaskForce);
 		PetPawn->NotifyTeamChanged();
+
+		// --- Decoy: mimic the deploying player's appearance ---
+		// The Decoy offhand (device 2129) fires as a normal SPAWN_PET
+		// (attack_type 306, bPet=TRUE) just like turrets/drones, so bPet can't
+		// distinguish it. The spawned bot's BOT_TYPE_VALUE_ID (BotConfig+0x5C)
+		// == 628 (TG_BOT_TYPE_DECOY) is the discriminator. Copy the owner's
+		// custom-character assembly (Suit/Head/Hair/Helmet mesh + skin/dye/flair,
+		// incl. bValidCustomAssembly) onto the decoy pawn AND its PRI so the
+		// client's OnCustomAssemblyChanged -> IsCustomCharacter path rebuilds the
+		// decoy from the player's cosmetics (same mechanism SpawnBotPawn uses to
+		// render a bot as a custom character). r_bIsDecoy also drives the
+		// server-side taunt/threat mechanic (TgDeviceFire::IsDecoyEffect).
+		// Assembly + head-mesh writes are at ATgPawn_Character offsets, so gate
+		// them on both pawns actually being Characters; r_bIsDecoy / body-mesh /
+		// profile-type live on base ATgPawn.
+		void* botCfg = (void*)CAmBot__LoadBotMarshal::m_BotPointers[petId];
+		const int botTypeValueId = botCfg ? *(int*)((char*)botCfg + 0x5C) : 0;
+		const bool isDecoy = (botTypeValueId == TG_BOT_TYPE_DECOY);
+		if (isDecoy) {
+			PetPawn->r_bIsDecoy            = 1;
+			PetPawn->r_nProfileTypeValueId = pawn->r_nProfileTypeValueId;
+			PetPawn->r_nBodyMeshAsmId      = pawn->r_nBodyMeshAsmId;
+			const bool decoyIsChar = ObjectClassCache::ClassNameContains(PetPawn, "TgPawn_Character");
+			const bool ownerIsChar = ObjectClassCache::ClassNameContains(pawn, "TgPawn_Character");
+			if (decoyIsChar && ownerIsChar) {
+				ATgPawn_Character* ownerChar = (ATgPawn_Character*)pawn;
+				ATgPawn_Character* decoyChar = (ATgPawn_Character*)PetPawn;
+				decoyChar->r_CustomCharacterAssembly = ownerChar->r_CustomCharacterAssembly;
+				decoyChar->r_nHeadMeshAsmId          = ownerChar->r_nHeadMeshAsmId;
+				if (PetRep) PetRep->r_CustomCharacterAssembly = ownerChar->r_CustomCharacterAssembly;
+			}
+			// Nameplate: the client renders "<PlayerName> - Decoy" for r_bIsDecoy
+			// pawns. The decoy bot's PRI defaults to the bot's own name ("Decoy"),
+			// giving "Decoy - Decoy" — replace it with the owner's name so it reads
+			// "<Owner> - Decoy". Mirror SpawnPlayerCharacter's FString handoff:
+			// eventSetPlayerName memcpys our FString into its Parms and ProcessEvent
+			// may free the Data, so pass a COPY and null its Data before scope exit
+			// (never hand it PawnRep's own PlayerName.Data — that would free the
+			// owner's name).
+			if (PetRep && PawnRep && PawnRep->PlayerName.Data) {
+				FString ownerName(PawnRep->PlayerName.Data);
+				PetRep->eventSetPlayerName(ownerName);
+				ownerName.Data = nullptr;
+				ownerName.Count = ownerName.Max = 0;
+			}
+
+			// NOTE: melee mimicry (give the decoy the recon's ES1 melee so the
+			// follow-AI swings it) is NOT done here. The device-equip helper
+			// GiveDeviceById crashes: it reads deviceId (an EBX-frame-spilled
+			// local) after calling UpdateClientDevices, which returns with EBX
+			// clobbered (a hooked native not preserving the callee-saved reg —
+			// same class of bug as the SpawnBotById frame trap). Needs a
+			// crash-safe equip path (UpdateClientDevices as the final call, no
+			// local reads after) — pending.
+
+			PetPawn->bNetDirty       = 1;
+			PetPawn->bForceNetUpdate = 1;
+			if (PetRep) { PetRep->bNetDirty = 1; PetRep->bForceNetUpdate = 1; }
+		}
 
 		// Pet auto-despawn timer. Prop 354 TGPID_PET_LIFESPAN on the spawn-pet
 		// device-mode (drones 10-20s typical; turrets generally lack the row →

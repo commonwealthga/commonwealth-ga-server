@@ -1102,6 +1102,13 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 
 	GiveDevicesFromBotConfig(Bot, BotRepInfo, nBotId);
 
+	// NOTE: decoy appearance mimicry (r_bIsDecoy + copy the deployer's custom-
+	// character assembly) is applied by the CALLER (TgDeviceFire::SpawnPet),
+	// not here. Doing it in this function crashed: the compiler spills
+	// pOwnerPawn/bIsDecoy to an EBX-based frame slot that is not valid across
+	// the GiveDevicesFromBotConfig call in the optimized build. SpawnPet holds
+	// clean pawn/PetPawn locals, so the copy is safe there.
+
 	// Corpse cleanup. TgPawn.Dying 'Begin:' arms SetTimer(m_fLifeAfterDeathSecs)
 	// whose Timer() does Controller.Destroy() + bTearOff + Destroy() for AI
 	// bots — but the field is 0 everywhere (no UC write, no defaultproperties;
