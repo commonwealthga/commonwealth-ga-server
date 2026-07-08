@@ -23,6 +23,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Utils/EngineLoad/EngineLoad.cpp \
 			  $(SRC_DIR)/GameServer/Utils/ActorCache/ActorCache.cpp \
 			  $(SRC_DIR)/GameServer/Utils/FireSockets/FireSockets.cpp \
+			  $(SRC_DIR)/GameServer/Utils/MovementTolerance/MovementTolerance.cpp \
 			  $(SRC_DIR)/GameServer/Replication/ReplicationDefaults/ReplicationDefaults.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
 			  $(SRC_DIR)/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.cpp \

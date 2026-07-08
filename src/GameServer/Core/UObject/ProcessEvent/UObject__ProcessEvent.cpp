@@ -11,6 +11,7 @@
 #include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
+#include "src/GameServer/Utils/MovementTolerance/MovementTolerance.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
@@ -761,13 +762,18 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		break;
 
 	case DispatchTag::ServerMove: {
+		APlayerController* PC = (APlayerController*)Object;
+		FVector* clientLoc = Params ? (FVector*)((char*)Params + 0x10) : nullptr;
 		if (Logger::IsChannelEnabled("ping") && Params) {
 			float ts = *(float*)((char*)Params + 0x00);
-			FVector* loc = (FVector*)((char*)Params + 0x10);
 			unsigned char flags = *(unsigned char*)((char*)Params + 0x1C);
-			LogMovePingSample("ServerMove", (APlayerController*)Object, ts, flags, loc);
+			LogMovePingSample("ServerMove", PC, ts, flags, clientLoc);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		if (clientLoc) {
+			MovementTolerance::RecordClientMove(PC, *clientLoc);
+			MovementTolerance::TrySoftAuthorizeAfterMove(PC, PC->Pawn, *clientLoc);
+		}
 		break;
 	}
 
@@ -782,35 +788,50 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 	}
 
 	case DispatchTag::DualServerMove: {
+		APlayerController* PC = (APlayerController*)Object;
+		FVector* clientLoc = Params ? (FVector*)((char*)Params + 0x28) : nullptr;
 		if (Logger::IsChannelEnabled("ping") && Params) {
 			float ts = *(float*)((char*)Params + 0x18);
-			FVector* loc = (FVector*)((char*)Params + 0x28);
 			unsigned char flags = *(unsigned char*)((char*)Params + 0x34);
-			LogMovePingSample("DualServerMove", (APlayerController*)Object, ts, flags, loc);
+			LogMovePingSample("DualServerMove", PC, ts, flags, clientLoc);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		if (clientLoc) {
+			MovementTolerance::RecordClientMove(PC, *clientLoc);
+			MovementTolerance::TrySoftAuthorizeAfterMove(PC, PC->Pawn, *clientLoc);
+		}
 		break;
 	}
 
 	case DispatchTag::TgShortServerMove: {
+		APlayerController* PC = (APlayerController*)Object;
+		FVector* clientLoc = Params ? (FVector*)((char*)Params + 0x04) : nullptr;
 		if (Logger::IsChannelEnabled("ping") && Params) {
 			float ts = *(float*)((char*)Params + 0x00);
-			FVector* loc = (FVector*)((char*)Params + 0x04);
 			unsigned char flags = *(unsigned char*)((char*)Params + 0x10);
-			LogMovePingSample("TgShortServerMove", (APlayerController*)Object, ts, flags, loc);
+			LogMovePingSample("TgShortServerMove", PC, ts, flags, clientLoc);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		if (clientLoc) {
+			MovementTolerance::RecordClientMove(PC, *clientLoc);
+			MovementTolerance::TrySoftAuthorizeAfterMove(PC, PC->Pawn, *clientLoc);
+		}
 		break;
 	}
 
 	case DispatchTag::TgRMServerMove: {
+		APlayerController* PC = (APlayerController*)Object;
+		FVector* clientLoc = Params ? (FVector*)((char*)Params + 0x10) : nullptr;
 		if (Logger::IsChannelEnabled("ping") && Params) {
 			float ts = *(float*)((char*)Params + 0x00);
-			FVector* loc = (FVector*)((char*)Params + 0x10);
 			unsigned char flags = *(unsigned char*)((char*)Params + 0x1C);
-			LogMovePingSample("TgRMServerMove", (APlayerController*)Object, ts, flags, loc);
+			LogMovePingSample("TgRMServerMove", PC, ts, flags, clientLoc);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		if (clientLoc) {
+			MovementTolerance::RecordClientMove(PC, *clientLoc);
+			MovementTolerance::TrySoftAuthorizeAfterMove(PC, PC->Pawn, *clientLoc);
+		}
 		break;
 	}
 
@@ -875,9 +896,11 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 	}
 
 	case DispatchTag::SendClientAdjustment: {
-		LogSendClientAdjustmentSample("before", (APlayerController*)Object);
+		APlayerController* PC = (APlayerController*)Object;
+		LogSendClientAdjustmentSample("before", PC);
+		MovementTolerance::TrySuppressPendingAdjustment(PC, PC->Pawn);
 		CallOriginal(Object, edx, Function, Params, Result);
-		LogSendClientAdjustmentSample("after", (APlayerController*)Object);
+		LogSendClientAdjustmentSample("after", PC);
 		break;
 	}
 
