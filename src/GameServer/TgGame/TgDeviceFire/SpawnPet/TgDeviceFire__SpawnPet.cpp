@@ -8,6 +8,7 @@
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.hpp"
+#include "src/GameServer/Constants/GameTypes.h"
 #include <string>
 
 // BOT_TYPE_VALUE_ID (BotConfig+0x5C) that marks a spawned pet as a decoy.
@@ -313,18 +314,24 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 				ownerName.Count = ownerName.Max = 0;
 			}
 
-			// NOTE: melee mimicry (give the decoy the recon's ES1 melee so the
-			// follow-AI swings it) is NOT done here. The device-equip helper
-			// GiveDeviceById crashes: it reads deviceId (an EBX-frame-spilled
-			// local) after calling UpdateClientDevices, which returns with EBX
-			// clobbered (a hooked native not preserving the callee-saved reg —
-			// same class of bug as the SpawnBotById frame trap). Needs a
-			// crash-safe equip path (UpdateClientDevices as the final call, no
-			// local reads after) — pending.
-
 			PetPawn->bNetDirty       = 1;
 			PetPawn->bForceNetUpdate = 1;
 			if (PetRep) { PetRep->bNetDirty = 1; PetRep->bForceNetUpdate = 1; }
+
+			// Melee mimicry: give the decoy the recon's ES1 melee weapon (engine
+			// equip point 1) and set it in-hand so the already-engaging follow-AI
+			// swings it. The weapon's dye rides along in r_CustomCharacterAssembly
+			// (DyeList[3]=WeaponColor, [4]=WeaponEmissive), copied above. No damage
+			// results — r_bIsDecoy makes TgDeviceFire::IsDecoyEffect short-circuit
+			// SubmitEffect. Uses the crash-safe single-device equip helper (NOT the
+			// landmined GiveDeviceById). Done LAST in this block, after all local
+			// reads, since EquipInHandDevice ends in UpdateClientDevices.
+			ATgDevice* ownerMelee = pawn->m_EquippedDevices[1];
+			if (ownerMelee && ownerMelee->r_nDeviceId != 0) {
+				TgGame__SpawnBotById::EquipInHandDevice(
+					PetPawn, PetRep, ownerMelee->r_nDeviceId,
+					/*equipPoint=*/1, ownerMelee->r_nQualityValueId, GA_G::TGDT_MELEE);
+			}
 		}
 
 		// Pet auto-despawn timer. Prop 354 TGPID_PET_LIFESPAN on the spawn-pet

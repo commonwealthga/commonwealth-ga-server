@@ -240,6 +240,14 @@ public:
 		int nInventoryId
 	);
 	static void GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Player* BotRepInfo, int nBotId);
+	// Crash-safe post-spawn equip of ONE in-hand device (decoy melee mimicry).
+	// Mirrors GiveDevicesFromBotConfig's proven per-device wiring and ends with
+	// UpdateClientDevices as the FINAL call — never add code after that call that
+	// reads spilled locals (that ordering is exactly what makes the legacy
+	// GiveDeviceById crash: EBX clobbered across UpdateClientDevices). See
+	// project_spawnbotbyid-frame-trap.
+	static void EquipInHandDevice(ATgPawn* Pawn, ATgRepInfo_Player* PRI,
+		int deviceId, int equipPoint, int quality, int deviceType);
 	static inline char* GetPawnClassName(int nBotId) {
 
 		const char* dbClass = LookupPawnClassFromDb(nBotId);
