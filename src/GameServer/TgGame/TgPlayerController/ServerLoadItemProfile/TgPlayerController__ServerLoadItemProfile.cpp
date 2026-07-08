@@ -15,15 +15,41 @@
 #include "lib/nlohmann/json.hpp"
 #include "lib/sqlite3/sqlite3.h"
 #include <cstdlib>
+#include <cstring>
 
+// The new profile's inventory id for one engine equip point — the teardown
+// loop's reuse gate compares it against the live device actor.
+static int LookupGameplayInvIdForSlot(sqlite3* db, int64_t character_id, int item_profile_id, int slot) {
+    if (!db) return 0;
+    sqlite3_stmt* st = nullptr;
+    int invId = 0;
+    if (sqlite3_prepare_v2(db,
+        "SELECT MIN(pi.id) "
+        "FROM ga_character_devices cd "
+        "JOIN ga_players_inventory pi ON pi.id = cd.inventory_id "
+        "WHERE cd.character_id = ? AND cd.item_profile_id = ? "
+        "  AND cd.equipped_slot = ? AND pi.device_id > 0",
+        -1, &st, nullptr) == SQLITE_OK && st) {
+        sqlite3_bind_int64(st, 1, character_id);
+        sqlite3_bind_int  (st, 2, item_profile_id);
+        sqlite3_bind_int  (st, 3, slot);
+        if (sqlite3_step(st) == SQLITE_ROW) {
+            invId = sqlite3_column_int(st, 0);
+        }
+        sqlite3_finalize(st);
+    }
+    return invId;
+}
 
 // Reliable-server RPC fired when the player clicks a loadout-slot button
 // (1..5) anywhere in the UI. Atomic switch:
-//   1. unequip current profile's devices (RCST's PHASE 1 still sees the
-//      old applied state and reverses it on the next call)
-//   2. flip Pawn->r_nItemProfileId + refresh info->skills from DB
-//   3. load cosmetics into r_CustomCharacterAssembly (BEFORE the equip
-//      loop so device actors spawn reading the correct DyeList)
+//   1. load new-profile cosmetics into r_CustomCharacterAssembly (BEFORE
+//      teardown, so the old/new assembly diff decides device-actor reuse;
+//      also before the equip loop so spawned actors read the new DyeList)
+//   2. unequip current profile's devices (RCST's PHASE 1 still sees the
+//      old applied state and reverses it on the next call); same-invId
+//      slots are reused when the assembly is unchanged
+//   3. flip Pawn->r_nItemProfileId + refresh info->skills from DB
 //   4. equip target profile's gameplay devices
 //   5. RCST PHASE 1 reverts old armor/skills, PHASE 2 applies new armor
 //      (FetchEquippedArmor scoped by new r_nItemProfileId) + new skills
@@ -89,11 +115,29 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
     // stations etc. placed under the old loadout should not persist.
     TgPawn__KillDeployables::KillAllOwned((ATgPawn*)Pawn);
 
-    // ── Step 1: Tear down current-profile device equipment ────────────────
+    // ── Step 1: Load new-profile cosmetics + detect assembly change ──────
+    // Device actors (jetpack, etc.) bake dyes from r_CustomCharacterAssembly
+    // at spawn time, so the assembly must be current before the equip loop.
+    // Loading it before teardown also gives the old-vs-new diff: when the
+    // assembly is byte-identical (plain-int struct, fully rewritten by
+    // LoadFromDB), a live actor's baked dye is already correct and
+    // same-invId slots can be reused instead of destroyed + respawned.
+    const FCustomCharacterAssembly prevAssembly = Pawn->r_CustomCharacterAssembly;
+    CosmeticEquip::LoadFromDB((ATgPawn*)Pawn, character_id, nId);
+    Pawn->s_OrigCustomCharacterAssembly = Pawn->r_CustomCharacterAssembly;
+    const bool assemblyChanged = std::memcmp(&prevAssembly,
+        &Pawn->r_CustomCharacterAssembly, sizeof(FCustomCharacterAssembly)) != 0;
+    if (assemblyChanged) {
+        // ReplicatedEvent('r_CustomCharacterAssembly') on the PRI calls
+        // UpdateCharacterAssetRefs(), queuing async load of suit mesh assets.
+        // Never fires for the listen-server local player — call directly.
+        auto* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+        if (PRI) PRI->UpdateCharacterAssetRefs();
+    }
+
+    // ── Step 2: Tear down current-profile device equipment ────────────────
     // Inventory::Unequip is idempotent on already-cleared slots; we walk all
     // engine equip points (1..24) to cover every weapon/utility/cosmetic.
-    // r_CustomCharacterAssembly is rewritten in step 3 before devices are
-    // equipped, so device actors spawn with the new profile's DyeList.
     //
     // SKIP SLOT 14 (CLASS_DEVICE / HUMAN BASE ATTRIBUTES). It's server-pinned:
     // SaveEquippedDevices forces a slot-14 row into every profile keyed to the
@@ -128,37 +172,28 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
         const bool bIsBeacon = ((IsBeaconFn)0x10a19a40)(slotDev, nullptr) != 0;
         if (bIsBeacon) continue;  // beacon survives profile switch
 
-        // Always unequip even if the target profile uses the same invId. Reused
-        // device actors keep the dye baked from their spawn-time assembly; they
-        // must be recreated so the new profile's DyeList is applied on re-equip.
+        // Reuse gate: with the assembly unchanged, a same-invId actor's
+        // spawn-time baked dye is still correct — keep it; the equip loop's
+        // same-invId branch then no-ops the slot. Any assembly change falls
+        // back to full respawn (respawn is how the new DyeList reaches
+        // device MICs; ApplyPawnSetup never touches device-actor forms).
+        if (!assemblyChanged) {
+            const int targetInvId = LookupGameplayInvIdForSlot(db, character_id, nId, slot);
+            if (targetInvId > 0 && slotDev->r_nDeviceInstanceId == targetInvId) {
+                continue;
+            }
+        }
         Inventory::Unequip((ATgPawn*)Pawn, slot);
         ++teardown_count;
     }
     Logger::Log("loadout",
-        "[ServerLoadItemProfile] unequipped %d device(s) from old profile %d\n",
-        teardown_count, oldProfile);
+        "[ServerLoadItemProfile] unequipped %d device(s) from old profile %d (assemblyChanged=%d)\n",
+        teardown_count, oldProfile, (int)assemblyChanged);
 
-    // ── Step 2: Flip active profile + refresh in-memory skill cache ──────
+    // ── Step 3: Flip active profile + refresh in-memory skill cache ──────
     Pawn->r_nItemProfileId = nId;
     info->current_item_profile_id = nId;
     PlayerRegistry::RefreshSkillsForProfile(guid, nId);
-
-    // ── Step 3: Load cosmetics BEFORE the equip loop ─────────────────────
-    // Device actors (jetpack, etc.) apply dyes from r_CustomCharacterAssembly
-    // at spawn time. Loading cosmetics here ensures they see the new profile's
-    // DyeList when Inventory::Equip spawns them below. ApplyPawnSetup (called
-    // later via eventOnCustomAssemblyChanged) updates the body mesh dyes but
-    // does not reach device actor MICs — spawn-time is the only window.
-    CosmeticEquip::LoadFromDB((ATgPawn*)Pawn, character_id, nId);
-    ((ATgPawn_Character*)Pawn)->s_OrigCustomCharacterAssembly =
-        ((ATgPawn_Character*)Pawn)->r_CustomCharacterAssembly;
-    {
-        // ReplicatedEvent('r_CustomCharacterAssembly') on the PRI calls
-        // UpdateCharacterAssetRefs(), queuing async load of suit mesh assets.
-        // Never fires for the listen-server local player — call directly.
-        auto* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
-        if (PRI) PRI->UpdateCharacterAssetRefs();
-    }
 
     // ── Step 4: Equip new profile's gameplay devices ─────────────────────
     int gameplay_equipped = 0;
@@ -238,10 +273,10 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
     // Bare Finalize(Pawn) previously faulted before refresh_profile_ui could repaint.
     Inventory::Finalize((ATgPawn*)Pawn, false);
     Logger::Log("loadout",
-        "[ServerLoadItemProfile] equipped new profile %d: %d gameplay device(s)\n",
-        nId, gameplay_equipped);
+        "[ServerLoadItemProfile] equipped new profile %d: %d gameplay device(s), %d reused\n",
+        nId, gameplay_equipped, gameplay_reused);
 
-    // ── Step 3b: Reset InvManager.r_ItemCount to the DB pool size ────────
+    // ── Step 4b: Reset InvManager.r_ItemCount to the DB pool size ────────
     // Inventory::Equip blindly ++'s r_ItemCount on every call (gameplay devices
     // only). Across a few switches into populated profiles it drifts above the
     // real pool count → the client's InvManager.IsValid (r_ItemCount vs
@@ -284,26 +319,33 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
 
     CallOriginal(Controller, edx, nId);
 
-    // r_CustomCharacterAssembly is correct but ReplicatedEvent never fires for
-    // the listen-server local pawn — call OnCustomAssemblyChanged directly to
-    // trigger ApplyPawnSetup (helmet/suit mesh swap, body dyes).
-    ((ATgPawn_Character*)Pawn)->eventOnCustomAssemblyChanged();
+    // Cosmetic-rebuild tail — only when the assembly actually changed. With
+    // identical bytes there is no client repnotify delta, the server-side
+    // ApplyPawnSetup would re-apply the same meshes/dyes, and the jetpack
+    // form's baked dye is already correct — all three are dead work (the
+    // server-side mesh loads being the expensive part).
+    if (assemblyChanged) {
+        // r_CustomCharacterAssembly is correct but ReplicatedEvent never fires
+        // for the listen-server local pawn — call OnCustomAssemblyChanged
+        // directly to trigger ApplyPawnSetup (helmet/suit mesh swap, body dyes).
+        Pawn->eventOnCustomAssemblyChanged();
 
-    // The owner's rebuild ends in DeviceFormChanged(false) (TgPawn.uc:6711),
-    // which only rebuilds forms whose replicated instance id changed — the
-    // jetpack reuses the same invId across profiles, so its form (and the
-    // backpack's baked dye) survives. Bump the slot-5 replicated instance id
-    // so that reload rebuilds + re-dyes it. Must run after CallOriginal /
-    // Inventory::Finalize (UpdateClientDevices would rewrite the slot from
-    // the device). See JetpackReload.hpp.
-    JetpackReload::MarkJetpackFormDirty((ATgPawn*)Pawn);
+        // The owner's rebuild ends in DeviceFormChanged(false) (TgPawn.uc:6711),
+        // which only rebuilds forms whose replicated instance id changed — the
+        // jetpack reuses the same invId across profiles, so its form (and the
+        // backpack's baked dye) survives. Bump the slot-5 replicated instance id
+        // so that reload rebuilds + re-dyes it. Must run after CallOriginal /
+        // Inventory::Finalize (UpdateClientDevices would rewrite the slot from
+        // the device). See JetpackReload.hpp.
+        JetpackReload::MarkJetpackFormDirty((ATgPawn*)Pawn);
 
-    // The client's suit-mesh apply is a one-shot synchronous load that can fail
-    // (and silently skip) when the previous switch's async preload still has the
-    // package queued — dyes apply, meshes stay old (~1/50 rapid switches).
-    // Schedule a deferred rebuild kick; it heals a failed apply and visually
-    // no-ops on a successful one. See SuitRebuildKick.hpp.
-    SuitRebuildKick::Schedule((ATgPawn*)Pawn);
+        // The client's suit-mesh apply is a one-shot synchronous load that can
+        // fail (and silently skip) when the previous switch's async preload
+        // still has the package queued — dyes apply, meshes stay old (~1/50
+        // rapid switches). Schedule a deferred rebuild kick; it heals a failed
+        // apply and visually no-ops on a successful one. See SuitRebuildKick.hpp.
+        SuitRebuildKick::Schedule((ATgPawn*)Pawn);
+    }
 
     // The control server sends ClientResetEquipScreen after its TCP refresh.
     // Firing it here can rebuild the open skill UI before new rows arrive.

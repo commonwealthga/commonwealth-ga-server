@@ -198,9 +198,53 @@ void TgProj_Deployable__SpawnDeployable::GetDeployableSpawnZLift(
 		: 5.0f;  // TgDeployable.CollisionCylinder CDO halfHeight * 0.5
 }
 
-std::unordered_set<ATgDeployable*>& TgProj_Deployable__SpawnDeployable::GetForceFieldSet() {
-	static std::unordered_set<ATgDeployable*> s_set;
-	return s_set;
+namespace {
+	struct ForceFieldEntry {
+		ATgDeployable* Dep;
+		int            ObjIndex;  // GObjObjects slot at registration
+	};
+	std::vector<ForceFieldEntry> g_forceFields;
+
+	// bCollideActors is bit 0x08000000 at AActor+0xB0.
+	// bDeleteMe      is bit 0x00000008 at AActor+0xAC.
+	const uint32_t kFFCollide  = 0x08000000;
+	const uint32_t kFFDeleteMe = 0x00000008;
+}
+
+void TgProj_Deployable__SpawnDeployable::RegisterForceField(ATgDeployable* dep) {
+	if (!dep) return;
+	for (const ForceFieldEntry& e : g_forceFields)
+		if (e.Dep == dep) return;
+	g_forceFields.push_back({ dep, dep->ObjectInternalInteger });
+}
+
+int TgProj_Deployable__SpawnDeployable::ForceFieldCount() {
+	return (int)g_forceFields.size();
+}
+
+void TgProj_Deployable__SpawnDeployable::DisableForceFieldCollision(std::vector<ATgDeployable*>& disabled) {
+	TArray<UObject*>* objs = UObject::GObjObjects();
+	for (size_t i = 0; i < g_forceFields.size(); ) {
+		ATgDeployable* d  = g_forceFields[i].Dep;
+		const int      idx = g_forceFields[i].ObjIndex;
+		// GC-safe liveness gate: only dereference while the GObjObjects slot
+		// still holds this pointer.
+		const bool alive = d && objs && idx >= 0 && idx < objs->Count
+			&& objs->Data[idx] == (UObject*)d;
+		if (!alive || (*(uint32_t*)((char*)d + 0xAC) & kFFDeleteMe)) {
+			g_forceFields[i] = g_forceFields.back();
+			g_forceFields.pop_back();
+			continue;
+		}
+		*(uint32_t*)((char*)d + 0xB0) &= ~kFFCollide;
+		disabled.push_back(d);
+		++i;
+	}
+}
+
+void TgProj_Deployable__SpawnDeployable::RestoreForceFieldCollision(const std::vector<ATgDeployable*>& disabled) {
+	for (ATgDeployable* d : disabled)
+		*(uint32_t*)((char*)d + 0xB0) |= kFFCollide;
 }
 
 bool TgProj_Deployable__SpawnDeployable::IsForceFieldDeployableId(int nDeployableId) {
@@ -979,7 +1023,7 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	RegisterDeployableInGRI(Deployable);
 
 	if (IsForceFieldDeployableId(deployableId))
-		GetForceFieldSet().insert(Deployable);
+		RegisterForceField(Deployable);
 
 	// Team-ownership fix (long-standing bug: deployables rendered as enemy
 	// to their own team, repair arm refused to target them).
