@@ -716,6 +716,86 @@ void Database::Init() {
 			if (err) { sqlite3_free(err); err = nullptr; }
 		}
 
+		// cs_challenge_catalog — curated -challenge map catalog. Lives entirely on
+		// the control server (the game DLL never reads it), so it's created here
+		// rather than in the game-DLL migration ladder. PvP maps are grouped into
+		// six player-facing categories (Arena, Scramble, Payload, Control,
+		// Acquisition, AvA) with a fixed in-category order and vanity names.
+		// game_class is NOT stored — it stays in map_game_info (source of truth)
+		// and is JOINed at read time by MapGameInfo::GetChallengeCategories.
+		//
+		// The seed uses INSERT OR IGNORE so it's safe to run every boot AND so
+		// live re-curation survives: renaming a vanity_name or reordering
+		// map_pos/category via SQL keeps the row (same map_name PK), and the
+		// boot-time seed never overwrites it. New baseline maps added to the seed
+		// below get inserted; existing rows are left untouched.
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS cs_challenge_catalog ("
+			"  map_name     TEXT PRIMARY KEY,"
+			"  category     TEXT NOT NULL,"
+			"  category_pos INTEGER NOT NULL,"
+			"  map_pos      INTEGER NOT NULL,"
+			"  vanity_name  TEXT NOT NULL);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create cs_challenge_catalog: %s\n", err);
+			sqlite3_free(err); err = nullptr;
+		}
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO cs_challenge_catalog "
+			"(map_name, category, category_pos, map_pos, vanity_name) VALUES "
+			// Arena
+			"('Ticket_HimLab_4v4','Arena',1,1,'HM-44'),"
+			"('Ticket_Silo_4v4_P','Arena',1,2,'Silo'),"
+			"('Ticket_Osprey_4v4_P','Arena',1,3,'Osprey'),"
+			// Scramble
+			"('Rot_Redistribution05','Scramble',2,1,'Tetra Pier'),"
+			"('Rot_Redistribution03','Scramble',2,2,'Stockpile'),"
+			"('Rot_Redistribution04','Scramble',2,3,'Redistribution'),"
+			"('Rot_Trafalgar_P','Scramble',2,4,'CNS Trafalgar'),"
+			"('Rot_BlackwaterLoch_P','Scramble',2,5,'Blackwater Loch'),"
+			// Payload
+			"('Push_IceFloe_P','Payload',3,1,'Ice Floe'),"
+			"('Push_IceFloe3_P','Payload',3,2,'Tundra'),"
+			"('push_Ravine_P','Payload',3,3,'Ravine'),"
+			"('Push_Toxicity','Payload',3,4,'Toxicity'),"
+			"('Push_Dust_P','Payload',3,5,'Haulin'' Acid'),"
+			// Control
+			"('Ticket_Datafarm_P','Control',4,1,'Data Farm'),"
+			"('SeaSide_Ticket_P','Control',4,2,'Seaside'),"
+			"('SeaSide_Ticket2_P','Control',4,3,'Azores Complex'),"
+			"('SeaSide_Ticket3','Control',4,4,'Brine Complex'),"
+			"('Ticket_Datafarm3','Control',4,5,'Harvest'),"
+			"('Ticket_Datafarm2','Control',4,6,'Sun Spot'),"
+			"('Ticket_Volcano_P','Control',4,7,'Magmarock'),"
+			// Acquisition
+			"('CTR_DuelStrike_P','Acquisition',5,1,'Hart Station'),"
+			"('CTR_DuelStrike3_P','Acquisition',5,2,'Kimerial Point'),"
+			"('CTR_DuelStrike2_P','Acquisition',5,3,'The Crossroads'),"
+			// AvA
+			"('HEX_AVA_Push_Factory1_P','AvA',6,1,'AvA 1'),"
+			"('HEX_AVA_Push_Lab1_P','AvA',6,2,'AvA 2'),"
+			"('HEX_AVA_Plant_P','AvA',6,3,'AvA 3'),"
+			"('HEX_AVA_Plant2_P','AvA',6,4,'AvA 4'),"
+			"('HEX_AVA_Plant3_P','AvA',6,5,'AvA 5'),"
+			"('HEX_AVA_2pt_Theft_Lab1','AvA',6,6,'Theft Lab'),"
+			"('HEX_AVA_2pt_Theft_Factory1_P','AvA',6,7,'Theft Factory'),"
+			"('HEX_AVA_Factory1_P','AvA',6,8,'Factory 1'),"
+			"('HEX_AVA_Factory2_P','AvA',6,9,'Factory 2'),"
+			"('HEX_AVA_Factory3_P','AvA',6,10,'Factory 3'),"
+			"('HEX_AVA_Lab1_P','AvA',6,11,'Lab 1'),"
+			"('HEX_AVA_Lab2_P','AvA',6,12,'Lab 2'),"
+			"('HEX_AVA_Lab3_P','AvA',6,13,'Lab 3'),"
+			"('HEX_AVA_Missile1_P','AvA',6,14,'Missile'),"
+			"('HEX_AVA_Ticket_Neutral','AvA',6,15,'Neutral'),"
+			"('HEX_AVA_Defense1_P','AvA',6,16,'Tech Defence 1'),"
+			"('HEX_AVA_Defense2_P','AvA',6,17,'Tech Defence 2');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed cs_challenge_catalog: %s\n", err);
+			sqlite3_free(err); err = nullptr;
+		}
+
 		// Continuous-queue support: instances optionally carry the queue_id
 		// they were spawned for, can point at a predecessor (DRAFTING state =
 		// READY-but-waiting for predecessor's BeginEndMission), and stamp the
@@ -1754,6 +1834,112 @@ void Database::Init() {
 		if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
 	}
 
+	// AvA challenge maps — seed HEX_AVA maps into map_game_info so they appear
+	// in the -challenge list. Guarded by marker; easy to revert by deleting the
+	// marker row + the 4 map_game_info rows (map_game_id 100010..100013).
+	{
+		sqlite3_stmt* probe = nullptr;
+		bool already = false;
+		if (sqlite3_prepare_v2(db,
+				"SELECT 1 FROM cs_migration_markers WHERE name='ava_maps_map_game_info_2026_06_25'",
+				-1, &probe, nullptr) == SQLITE_OK) {
+			already = sqlite3_step(probe) == SQLITE_ROW;
+			sqlite3_finalize(probe);
+		}
+		if (!already) {
+			// gameplay_type_value_id 1547 = Escort (same as all Push/Payload maps).
+			// friendly_name_msg_id:
+			//   31231 -> "10v10 HEX Lab"     (push-lab)
+			//   31840 -> "Hex Factory"        (push-factory)
+			//   43906 -> "* HEX LABS STEAL"   (theft-lab)
+			//   43907 -> "* HEX FACTORY STEAL"(theft-factory)
+			result = sqlite3_exec(db,
+				"INSERT OR IGNORE INTO map_game_info"
+				" (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id)"
+				" VALUES"
+				" (100010, 'HEX_AVA_Push_Lab1_P',         'TgGame.TgGame_Escort', 1547, 31231, 0),"
+				" (100011, 'HEX_AVA_Push_Factory1_P',     'TgGame.TgGame_Escort', 1547, 31840, 0),"
+				" (100012, 'HEX_AVA_2pt_Theft_Lab1',      'TgGame.TgGame_Escort', 1547, 43906, 0),"
+				" (100013, 'HEX_AVA_2pt_Theft_Factory1_P','TgGame.TgGame_Escort', 1547, 43907, 0);",
+				nullptr, nullptr, &err);
+			if (result != SQLITE_OK) {
+				Logger::Log("db", "Failed ava_maps_map_game_info seed: %s\n", err);
+				sqlite3_free(err); err = nullptr;
+			} else {
+				sqlite3_exec(db,
+					"INSERT OR IGNORE INTO cs_migration_markers (name)"
+					" VALUES ('ava_maps_map_game_info_2026_06_25');",
+					nullptr, nullptr, &err);
+				sqlite3_free(err); err = nullptr;
+				Logger::Log("db", "ava_maps_map_game_info_2026_06_25: seeded 4 HEX_AVA rows into map_game_info\n");
+			}
+		}
+	}
+
+	// AvA challenge maps wave 2 — remaining HEX_AVA map packages visible on the
+	// client filesystem. map_game_ids 100020..100032. Easy rollback:
+	//   DELETE FROM map_game_info WHERE map_game_id BETWEEN 100020 AND 100032;
+	//   DELETE FROM cs_migration_markers WHERE name='ava_maps_wave2_2026_06_26';
+	{
+		sqlite3_stmt* probe = nullptr;
+		bool already = false;
+		if (sqlite3_prepare_v2(db,
+				"SELECT 1 FROM cs_migration_markers WHERE name='ava_maps_wave2_2026_06_26'",
+				-1, &probe, nullptr) == SQLITE_OK) {
+			already = sqlite3_step(probe) == SQLITE_ROW;
+			sqlite3_finalize(probe);
+		}
+		if (!already) {
+			// gameplay_type_value_id:
+			//   1550 = TgGame_Defense  (same as Raid_DomeCityDefense_P)
+			//   1548 = TgGame_PointRotation  (Scramble / 3-point)
+			//   1547 = TgGame_Escort  (Payload)
+			//   1545 = TgGame_Ticket  (Control)
+			// friendly_name_msg_ids from asm_data_set_msg_translations:
+			//   43934=HEX_AVA_Defense1, 43933=HEX_AVA_Defense2
+			//   38247=HEX_AVA_Factory1, 39033=HEX_AVA_Factory2, 39135=HEX_AVA_Factory3
+			//   39936=HEX_AVA_Lab1, 37965=HEX_AVA_Lab2, 38116=HEX_AVA_Lab3
+			//   41220=HEX_AVA_Missile1
+			//   39935=HEX_AVA_Plant1, 39908=HEX_AVA_Plant2, 39929=HEX_AVA_Plant3
+			//   42184=HEX_AVA_Neutral_Ticket
+			result = sqlite3_exec(db,
+				"INSERT OR IGNORE INTO map_game_info"
+				" (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id)"
+				" VALUES"
+				// Defense (base raid)
+				" (100020, 'HEX_AVA_Defense1_P',       'TgGame.TgGame_Defense',       1550, 43934, 0),"
+				" (100021, 'HEX_AVA_Defense2_P',       'TgGame.TgGame_Defense',       1550, 43933, 0),"
+				// Factory 3-point capture (Scramble)
+				" (100022, 'HEX_AVA_Factory1_P',       'TgGame.TgGame_PointRotation', 1548, 38247, 0),"
+				" (100023, 'HEX_AVA_Factory2_P',       'TgGame.TgGame_PointRotation', 1548, 39033, 0),"
+				" (100024, 'HEX_AVA_Factory3_P',       'TgGame.TgGame_PointRotation', 1548, 39135, 0),"
+				// Lab 3-point capture (Scramble)
+				" (100025, 'HEX_AVA_Lab1_P',           'TgGame.TgGame_PointRotation', 1548, 39936, 0),"
+				" (100026, 'HEX_AVA_Lab2_P',           'TgGame.TgGame_PointRotation', 1548, 37965, 0),"
+				" (100027, 'HEX_AVA_Lab3_P',           'TgGame.TgGame_PointRotation', 1548, 38116, 0),"
+				// Missile escort
+				" (100028, 'HEX_AVA_Missile1_P',       'TgGame.TgGame_Escort',        1547, 41220, 0),"
+				// Plant base defense
+				" (100029, 'HEX_AVA_Plant_P',          'TgGame.TgGame_Defense',       1550, 39935, 0),"
+				" (100030, 'HEX_AVA_Plant2_P',         'TgGame.TgGame_Defense',       1550, 39908, 0),"
+				" (100031, 'HEX_AVA_Plant3_P',         'TgGame.TgGame_Defense',       1550, 39929, 0),"
+				// Ticket/Control neutral
+				" (100032, 'HEX_AVA_Ticket_Neutral',   'TgGame.TgGame_Ticket',        1545, 42184, 0);",
+				nullptr, nullptr, &err);
+			if (result != SQLITE_OK) {
+				Logger::Log("db", "Failed ava_maps_wave2 seed: %s\n", err);
+				sqlite3_free(err); err = nullptr;
+			} else {
+				sqlite3_exec(db,
+					"INSERT OR IGNORE INTO cs_migration_markers (name)"
+					" VALUES ('ava_maps_wave2_2026_06_26');",
+					nullptr, nullptr, &err);
+				sqlite3_free(err); err = nullptr;
+				Logger::Log("db", "ava_maps_wave2_2026_06_26: seeded 13 HEX_AVA rows into map_game_info\n");
+			}
+		}
+	}
+
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
 }
@@ -2155,7 +2341,9 @@ int64_t Database::FindUserIdByUsername(const std::string& username) {
 	sqlite3* db = GetConnection();
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
-		"SELECT id FROM ga_users WHERE username = ? LIMIT 1",
+		// Case-insensitive: admin actions (ban/unban/pvp/reset) target the same
+		// canonical account regardless of the capitalization typed.
+		"SELECT id FROM ga_users WHERE username = ? COLLATE NOCASE ORDER BY id ASC LIMIT 1",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
 		Logger::Log("db", "[User] FindUserIdByUsername prepare failed: %s\n", sqlite3_errmsg(db));

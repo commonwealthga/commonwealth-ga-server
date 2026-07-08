@@ -73,6 +73,17 @@ bool TeamService::IsLeader(const std::string& session_guid) {
     return team && team->leader_guid == session_guid;
 }
 
+std::vector<std::string> TeamService::GetTeamMemberGuids(const std::string& session_guid) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    Team* team = FindTeamByMemberLocked(session_guid);
+    if (!team) return { session_guid };  // solo / not in a team
+    std::vector<std::string> guids;
+    for (const auto& m : team->members)
+        if (!m.offline) guids.push_back(m.session_guid);
+    if (guids.empty()) guids.push_back(session_guid);  // defensive
+    return guids;
+}
+
 TeamRoster TeamService::BuildRosterLocked(const Team& team) {
     TeamRoster roster;
     roster.team_id = team.id;

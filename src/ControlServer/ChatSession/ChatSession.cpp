@@ -114,6 +114,7 @@ std::vector<uint8_t> BuildChatFrame(uint32_t channel, const std::string& message
     return chunk;
 }
 
+
 // Broadcast a system message (e.g. join/leave announcement) to every active
 // chat session. Doesn't read or modify any per-session state besides
 // write_queue_ via deliver(). `exclude` skips one specific session (used for
@@ -152,6 +153,8 @@ bool HasParsedCommandAction(const ChatCommand::ParseResult& parsed) {
         || parsed.spawn_target.has_value()
         || parsed.deploy_target.has_value()
         || parsed.topdown.has_value()
+        || parsed.challenge.has_value()
+        || parsed.challenge_list
         || parsed.possess
         || parsed.unpossess
         || parsed.coords
@@ -382,6 +385,19 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         }
         if (parsed.recognized && parsed.topdown) {
             ChatCommand::DispatchTopDown(*parsed.topdown, session_guid_);
+        }
+        if (parsed.recognized && (parsed.challenge || parsed.challenge_list)) {
+            // Reply sink: deliver a private chat line to just this requester.
+            // Echo the incoming channel so the response appears in the right tab.
+            const uint32_t reply_ch = pkt.Read4B(GA_T::CHAT_CH_TYPE).value_or(4);
+            auto reply = [this, reply_ch](const std::string& line) {
+                deliver(BuildChatFrame(reply_ch, line));
+            };
+            if (parsed.challenge_list) {
+                ChatCommand::SendChallengeMapList(reply);
+            } else {
+                ChatCommand::DispatchChallenge(*parsed.challenge, session_guid_, reply);
+            }
         }
         if (parsed.recognized && parsed.reload_queues) {
             Logger::Log("chat-command",

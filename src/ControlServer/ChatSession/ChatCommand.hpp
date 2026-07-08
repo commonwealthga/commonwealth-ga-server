@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace ChatCommand {
 
@@ -47,6 +49,19 @@ struct TopDownArgs {
     float lift_z = 0.0f;
 };
 
+// -challenge <person> <type> [map#] [side]: challenge another online player (and
+// their whole team) to a private match. <type> is a category number (1-6) or
+// name (Arena, Scramble, …). <map#> is empty (→ list that type's pool), "0"
+// (→ random map from the pool), or the 1-based map number within the pool.
+// <side> is optional and defaults to attackers. Everything is resolved against
+// the cs_challenge_catalog at dispatch time.
+struct ChallengeArgs {
+    std::string target_name;   // <person>
+    std::string type_token;    // <type>  — category number (1-6) or name
+    std::string map_token;     // <map#>  — "" = list pool, "0" = random, N = specific
+    int         challenger_tf = 1;  // challenger's side; 1=attackers (default), 2=defenders
+};
+
 struct ParseResult {
     // True if the message was a /-prefixed slash command attempt that we own
     // (currently: "-changeteam", "-spawnfriend", "-spawnenemy", "-possess",
@@ -63,6 +78,11 @@ struct ParseResult {
     std::optional<SpawnTargetArgs>  spawn_target;
     std::optional<DeployTargetArgs> deploy_target;
     std::optional<TopDownArgs>      topdown;
+    std::optional<ChallengeArgs>    challenge;
+
+    // -challenge with no usable <person> <map> (bare, or "maps"/"list"): reply
+    // to the requester with the numbered map list instead of launching.
+    bool challenge_list = false;
 
     // No-arg toggles. Flag is set when recognized + parsed cleanly.
     bool possess   = false;
@@ -126,5 +146,33 @@ void DispatchFullHeal(const std::string& session_guid);
 // Send -topdown to the game DLL. Toggles top-down view in the DLL — repeated
 // invocations alternate enter/restore. lift_z=0 means "use the DLL default".
 void DispatchTopDown(const TopDownArgs& args, const std::string& session_guid);
+
+// Launcher injected by main.cpp (which owns ControlServerConfig). Spawns the
+// private challenge instance and registers the PendingMatch so the existing
+// INSTANCE_READY → MATCH_INVITATION flow invites every player. Returns true if
+// the instance was spawned. Whole teams are pulled: the challenger's team takes
+// `challenger_tf`, the target's team the opposite side. Each side is the set of
+// online team-member guids (or a single guid for a solo player).
+using ChallengeLauncher = std::function<bool(
+    const std::vector<std::string>& challenger_team, int challenger_tf,
+    const std::vector<std::string>& target_team,
+    const std::string& map_name, const std::string& game_mode)>;
+void SetChallengeLauncher(ChallengeLauncher launcher);
+
+// Sink for sending a single line of private chat back to the requesting player.
+// ChatSession supplies one that delivers to just that player's chat.
+using ChallengeReply = std::function<void(const std::string& line)>;
+
+// Handle -challenge: resolve <type> to a catalog category, then either list that
+// category's pool (no <map#>), pick a random map ("0"), or select a specific map
+// (N). For an actual launch, resolve <person> to an online session and invoke
+// the launcher for both whole teams. `reply` reports the pool / errors /
+// confirmation to the requester.
+void DispatchChallenge(const ChallengeArgs& args, const std::string& challenger_guid,
+                       const ChallengeReply& reply);
+
+// Send the -challenge usage hint and the list of map TYPES (one per line) to the
+// requester via `reply`. Backs bare `-challenge` (and `-challenge maps`/`list`).
+void SendChallengeMapList(const ChallengeReply& reply);
 
 } // namespace ChatCommand
