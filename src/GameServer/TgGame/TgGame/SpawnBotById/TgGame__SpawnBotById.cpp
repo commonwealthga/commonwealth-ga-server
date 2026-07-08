@@ -467,6 +467,57 @@ void TgGame__SpawnBotById::GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Pla
 	// BotRepInfo->bForceNetUpdate = 1;
 }
 
+// Crash-safe post-spawn equip of one in-hand device. Same per-device wiring as
+// GiveDevicesFromBotConfig (the proven-safe path that already equips every bot's
+// devices), collapsed to a single device. CRITICAL: UpdateClientDevices is the
+// FINAL statement and nothing reads a spilled local after it — the legacy
+// GiveDeviceById crashes precisely because it reads deviceId after that call
+// (EBX clobbered across UpdateClientDevices). See project_spawnbotbyid-frame-trap.
+void TgGame__SpawnBotById::EquipInHandDevice(
+	ATgPawn* Pawn, ATgRepInfo_Player* PRI,
+	int deviceId, int equipPoint, int quality, int deviceType) {
+	if (Pawn == nullptr || Pawn->InvManager == nullptr || deviceId == 0) return;
+
+	ATgDevice* Device = Pawn->CreateEquipDevice(0, deviceId, equipPoint);
+	if (Device == nullptr) return;
+
+	// Permanent equip-effect groups (stand-in for the stripped m_EquipEffect
+	// path), same as the bot-config equip.
+	Inventory::ApplyDeviceEquipEffects(Pawn, deviceId);
+
+	const int invId = Inventory::NextId();
+	Device->r_nDeviceInstanceId = invId;
+	Device->r_eEquippedAt       = equipPoint;
+	Device->m_bIsOffHand        = false;   // in-hand weapon
+	Device->m_bHandDevice       = true;
+	Device->m_nDeviceType       = deviceType;
+	Device->r_nDeviceId         = deviceId;
+	Device->r_nQualityValueId   = quality;
+	Device->Instigator          = (APawn*)Pawn;
+
+	Pawn->m_EquippedDevices[equipPoint] = Device;
+
+	// Build the fire-mode m_Properties so the weapon's fire path (and thus the
+	// attack animation) resolves — same native pipeline the bot-config path runs.
+	BuildDeviceFireProperties(Device);
+	Device->Role = 3;
+
+	FEquipDeviceInfo info;
+	info.nDeviceId         = deviceId;
+	info.nDeviceInstanceId = invId;
+	info.nQualityValueId   = quality;
+	Pawn->r_EquipDeviceInfo[equipPoint] = info;
+	if (PRI) PRI->r_EquipDeviceInfo[equipPoint] = info;
+
+	// Make it the in-hand weapon so the engaging AI swings it.
+	Pawn->m_CurrentInHandDevice = Device;
+	Pawn->r_eDesiredInHand      = equipPoint;
+
+	Pawn->bNetDirty       = 1;
+	Pawn->bForceNetUpdate = 1;
+	Pawn->UpdateClientDevices(0, 0);   // FINAL — read no spilled local after this
+}
+
 
 // Pack-pet limit (prop 154 MAX_PLACEABLE_ENTITIES_OUT > 1 on the spawning fire
 // mode, e.g. Spider Grenades = 3): suicide the oldest live pets spawned by the
@@ -1101,6 +1152,13 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// Bot->NetUpdateFrequency = 10;
 
 	GiveDevicesFromBotConfig(Bot, BotRepInfo, nBotId);
+
+	// NOTE: decoy appearance mimicry (r_bIsDecoy + copy the deployer's custom-
+	// character assembly) is applied by the CALLER (TgDeviceFire::SpawnPet),
+	// not here. Doing it in this function crashed: the compiler spills
+	// pOwnerPawn/bIsDecoy to an EBX-based frame slot that is not valid across
+	// the GiveDevicesFromBotConfig call in the optimized build. SpawnPet holds
+	// clean pawn/PetPawn locals, so the copy is safe there.
 
 	// Corpse cleanup. TgPawn.Dying 'Begin:' arms SetTimer(m_fLifeAfterDeathSecs)
 	// whose Timer() does Controller.Destroy() + bTearOff + Destroy() for AI
