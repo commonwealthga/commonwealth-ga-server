@@ -159,9 +159,18 @@ public:
 	// fire mode has no prop-154 row or the pawn has no PRI.
 	static void EnforceDeployableLimit(ATgPawn* pawn, ATgDeployable* newDep, UTgDeviceFire* sourceFireMode);
 
-	// Set of currently live ATgDeploy_ForceField actors. Populated at spawn;
-	// stale entries (bDeleteMe) pruned lazily in TargetInLOS.
-	static std::unordered_set<ATgDeployable*>& GetForceFieldSet();
+	// Registry of live ATgDeploy_ForceField actors, used by the AI LOS hooks
+	// to make domes transparent to line checks. Each entry stores the
+	// GObjObjects slot captured at registration; the disable pass only
+	// dereferences a pointer whose slot still holds it, so a dome GC'd
+	// between traces is detected as stale instead of read after free.
+	static void RegisterForceField(ATgDeployable* dep);
+	static int  ForceFieldCount();
+	// Clears bCollideActors on every live registered force field (pruning
+	// stale/bDeleteMe entries) and appends the modified actors to `disabled`.
+	static void DisableForceFieldCollision(std::vector<ATgDeployable*>& disabled);
+	// Restores bCollideActors on the actors from the matching disable call.
+	static void RestoreForceFieldCollision(const std::vector<ATgDeployable*>& disabled);
 
 	// Append `dep` to the global `GRI.m_Deployables` list (TgRepInfo_Game's
 	// world-wide deployable registry, replicated to every client). UC's

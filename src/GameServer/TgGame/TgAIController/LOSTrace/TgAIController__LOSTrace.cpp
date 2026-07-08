@@ -1,9 +1,6 @@
 #include "src/GameServer/TgGame/TgAIController/LOSTrace/TgAIController__LOSTrace.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
 
-static const uint32_t kCollide  = 0x08000000;
-static const uint32_t kDeleteMe = 0x00000008;
-
 // Depth counter — prevents re-disabling/re-enabling on recursive self-calls.
 static int s_depth = 0;
 
@@ -13,30 +10,20 @@ int __fastcall TgAIController__LOSTrace::Call(int* param_1, void* edx,
 	if (s_depth > 0)
 		return CallOriginal(param_1, edx, p2, p3, p4, p5, p6, p7, p8, p9, p10);
 
-	auto& ffs = TgProj_Deployable__SpawnDeployable::GetForceFieldSet();
-	if (ffs.empty())
+	if (TgProj_Deployable__SpawnDeployable::ForceFieldCount() == 0)
 		return CallOriginal(param_1, edx, p2, p3, p4, p5, p6, p7, p8, p9, p10);
 
-	std::vector<ATgDeployable*> disabled;
-	std::vector<ATgDeployable*> toRemove;
-
-	for (ATgDeployable* d : ffs) {
-		if (!d || (*(uint32_t*)((char*)d + 0xAC) & kDeleteMe)) {
-			toRemove.push_back(d);
-			continue;
-		}
-		*(uint32_t*)((char*)d + 0xB0) &= ~kCollide;
-		disabled.push_back(d);
-	}
-	for (ATgDeployable* d : toRemove)
-		ffs.erase(d);
+	// static: game thread only + s_depth guard; avoids a heap alloc per line
+	// check (this fires for every AI LOS trace).
+	static std::vector<ATgDeployable*> s_disabled;
+	s_disabled.clear();
+	TgProj_Deployable__SpawnDeployable::DisableForceFieldCollision(s_disabled);
 
 	s_depth++;
 	int result = CallOriginal(param_1, edx, p2, p3, p4, p5, p6, p7, p8, p9, p10);
 	s_depth--;
 
-	for (ATgDeployable* d : disabled)
-		*(uint32_t*)((char*)d + 0xB0) |= kCollide;
+	TgProj_Deployable__SpawnDeployable::RestoreForceFieldCollision(s_disabled);
 
 	return result;
 }

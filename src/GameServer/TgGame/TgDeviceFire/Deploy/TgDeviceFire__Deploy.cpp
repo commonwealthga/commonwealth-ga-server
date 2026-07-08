@@ -142,7 +142,7 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 		// Register immediately after Spawn so LOSTrace can disable this dome's
 		// collision before any LOS check fires.
 		if (bIsForceFieldByClass)
-			TgProj_Deployable__SpawnDeployable::GetForceFieldSet().insert(Deployable);
+			TgProj_Deployable__SpawnDeployable::RegisterForceField(Deployable);
 
 		// cylHalfHeight is now the SCALED half-extent (UE3 convention), so it
 		// goes straight into SetCollisionSize. The previous `* 2` was a vestige
