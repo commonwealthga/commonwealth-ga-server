@@ -21,7 +21,7 @@ int s_lastParkedRound = -1;
 // SpawnNextBot) — no change to shared TgBotFactory spawn logic, so other game
 // modes are unaffected. The per-player rate is chosen so a full lobby's cap
 // exceeds any roster (≈ original unlimited feel) while solo stays light.
-constexpr int kAlivePerPlayerPerFactory = 3;
+constexpr int kAlivePerPlayerPerFactory = 1;
 
 int PlayerScaledActiveCap(int numPlayers) {
 	const int players = numPlayers > 0 ? numPlayers : 1;
@@ -144,7 +144,7 @@ void __fastcall TgGame_Defense__TickWaveNodes::Call(ATgGame_Defense* Game, void*
 			Factory->bAutoSpawn = 1;
 			// Player-scaled concurrent-alive cap (see PlayerScaledActiveCap) so
 			// small lobbies aren't buried under full-lobby-sized rosters.
-			// Factory->nActiveCount = PlayerScaledActiveCap(Game->NumPlayers);
+			Factory->nActiveCount = PlayerScaledActiveCap(Game->NumPlayers);
 			if (Factory->m_SpawnQueue.Num() == 0) {
 				Factory->ResetQueue(0);
 			}
