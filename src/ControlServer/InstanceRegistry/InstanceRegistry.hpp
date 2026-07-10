@@ -129,6 +129,16 @@ public:
     };
     static std::vector<SearchablePlayerRow> GetActiveSearchablePlayers();
 
+    // Every ga_instance_players row that hasn't been marked left yet, across
+    // all instances. Used by the periodic ghost-player reconciliation in
+    // main.cpp: a row whose session guid has no live control connection is a
+    // crashed player whose PLAYER_LEFT was lost.
+    struct InstancePlayerRef {
+        int64_t     instance_id = 0;
+        std::string session_guid;
+    };
+    static std::vector<InstancePlayerRef> GetAllActiveInstancePlayers();
+
     static void MarkInstancePlayerLeft(int64_t instance_id, const std::string& session_guid);
     static void MarkAllInstancePlayersLeft(int64_t instance_id);
     static std::pair<int, int> GetTeamCounts(int64_t instance_id);

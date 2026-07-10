@@ -46,10 +46,5 @@ public:
 	// DLL is still a Windows binary under Wine, so _WIN32 cannot distinguish
 	// host runtime.
 	static bool GetNativeWindowsRuntime();
-
-	// Server-side AFK backstop window in seconds (AfkReaper). 0 disables.
-	// Switch: -afkkicksec=<n>. Default 1200 — above the client's 900s
-	// CheckAFKForDC self-disconnect, so it only catches hung clients.
-	static int GetAfkKickSeconds();
 };
 

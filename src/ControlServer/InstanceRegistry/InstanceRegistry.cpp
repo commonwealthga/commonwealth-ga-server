@@ -784,6 +784,34 @@ InstanceRegistry::GetInstancePlayerTaskForce(const std::string& session_guid) {
     return out;
 }
 
+std::vector<InstanceRegistry::InstancePlayerRef>
+InstanceRegistry::GetAllActiveInstancePlayers() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<InstancePlayerRef> out;
+    sqlite3* db = Database::GetConnection();
+    if (!db) return out;
+
+    sqlite3_stmt* stmt = nullptr;
+    const char* sql =
+        "SELECT instance_id, session_guid "
+        "FROM ga_instance_players "
+        "WHERE left_at IS NULL";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+        Logger::Log("db", "[InstanceRegistry] GetAllActiveInstancePlayers prepare failed: %s\n",
+            sqlite3_errmsg(db));
+        return out;
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        InstancePlayerRef row;
+        row.instance_id = sqlite3_column_int64(stmt, 0);
+        if (auto* p = sqlite3_column_text(stmt, 1)) row.session_guid = (const char*)p;
+        out.push_back(std::move(row));
+    }
+    sqlite3_finalize(stmt);
+    return out;
+}
+
 std::vector<InstanceRegistry::ActivePlayerRow>
 InstanceRegistry::GetActivePlayersForInstance(int64_t instance_id) {
     std::lock_guard<std::mutex> lock(mutex_);

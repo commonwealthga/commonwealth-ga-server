@@ -1003,6 +1003,27 @@ int main(int argc, char* argv[]) {
                 InstanceRegistry::MarkStopped(inst.instance_id);
             }
 
+            // Ghost-player reconciliation: instance-occupancy rows are only
+            // cleared by PLAYER_LEFT events, so one lost event (instance
+            // hiccup, control-server restart, missed engine reap) leaves a
+            // player "in an instance" forever. A row whose session guid has
+            // no live control connection is such a ghost: close any leftover
+            // engine-side connection (PLAYER_CLOSE → state flip → engine
+            // reap) and mark the row left. Idempotent — racing a normal
+            // disconnect just repeats no-op cleanup.
+            for (const auto& ref : InstanceRegistry::GetAllActiveInstancePlayers()) {
+                if (TcpSession::HasLiveSession(ref.session_guid)) continue;
+                Logger::Log("main",
+                    "Ghost cleanup: guid=%s in instance %lld has no live control session — clearing\n",
+                    ref.session_guid.c_str(), (long long)ref.instance_id);
+                nlohmann::json close_msg;
+                close_msg["type"]           = IpcProtocol::MSG_PLAYER_CLOSE;
+                close_msg["session_guid"]   = ref.session_guid;
+                close_msg["register_token"] = 0;
+                IpcServer::SendToInstance(ref.instance_id, close_msg.dump());
+                InstanceRegistry::MarkInstancePlayerLeft(ref.instance_id, ref.session_guid);
+            }
+
             schedule_idle_check();
         });
     };

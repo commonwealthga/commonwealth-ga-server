@@ -77,12 +77,6 @@ struct ControlServerConfig {
     // false to fall back to the old username-only behavior — an emergency
     // rollback knob in case the GUID-string reconstruction needs field tuning.
     bool        require_password_verification = true;
-    // Server-side AFK backstop window (seconds) passed to instances as
-    // -afkkicksec. The instance reaps any player connection whose pawn shows
-    // no input for this long, then the control server drops the TCP session
-    // (GAME_EVENT afk_kick). 0 disables. Default 1200 — above the client's
-    // 900s CheckAFKForDC self-disconnect, so only hung clients are caught.
-    int         afk_kick_seconds   = 1200;
 
     // ---- Docker spawn mode -------------------------------------------------
     // When use_docker is true, InstanceSpawner::Spawn execs `docker run`

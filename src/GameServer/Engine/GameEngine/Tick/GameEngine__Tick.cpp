@@ -8,7 +8,6 @@
 #include "src/GameServer/TgGame/MissionVODirector/MissionVODirector.hpp"
 #include "src/GameServer/Cosmetics/SuitRebuildKick.hpp"
 #include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
-#include "src/GameServer/Moderation/AfkReaper/AfkReaper.hpp"
 
 void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSeconds) {
 	IpcClient::DrainInbound();
@@ -37,9 +36,5 @@ void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSecon
 	// One-shot: verify (and if needed redo) the VR heal pad's PostBeginPlay
 	// arming ~5s after setupDevice registered it. No-op on other maps.
 	DomeVrHealPad::TickArmCheck();
-	// Server-side AFK backstop: reaps connections whose pawn shows no input
-	// for the configured window (a hung client never self-DCs). Self-throttles
-	// to one sweep per ~15s.
-	AfkReaper::Tick(DeltaSeconds);
 	CallOriginal(Engine, edx, DeltaSeconds);
 }

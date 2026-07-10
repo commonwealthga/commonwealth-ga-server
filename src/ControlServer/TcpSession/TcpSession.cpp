@@ -41,8 +41,6 @@ int         TcpSession::s_kick_fallback_close_sec_       = 30;
 // for re-login: dead peers MUST be reaped fast or the next attempt hits the
 // "duplicate account" rejection. Detection ~25s: 10s idle + 3 probes * 5s.
 // Tolerates a ~10s network blip before probing starts; declared dead at 25s.
-// NB: keepalive is kernel-level — a hung-but-alive client process still ACKs
-// probes; the AfkReaper GAME_EVENT afk_kick path covers that case.
 void TcpSession::EnableKeepAlive() {
     std::error_code ec;
     socket_.set_option(asio::socket_base::keep_alive(true), ec);
@@ -332,6 +330,12 @@ void TcpSession::handle_socket_disconnect() {
     session_guid_.clear();
 }
 
+bool TcpSession::HasLiveSession(const std::string& guid) {
+    std::lock_guard<std::mutex> lock(sessions_mutex_);
+    auto it = g_sessions_.find(guid);
+    return it != g_sessions_.end() && !it->second.expired();
+}
+
 int TcpSession::EvictStaleSession(const std::string& guid, const char* reason) {
     std::shared_ptr<TcpSession> s;
     {
@@ -387,18 +391,6 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
     }
 
     std::string subtype = j.value("subtype", "");
-
-    if (subtype == "afk_kick") {
-        // The instance's AfkReaper reaped this player's NetConnection (no
-        // input for the configured window — a hung client never self-DCs via
-        // CheckAFKForDC). Drop the control session too so the player stops
-        // showing as online; a healthy-but-idle client lands back on the
-        // login screen, matching the client's own AFK disconnect behavior.
-        Logger::Log("tcp", "[TcpSession] afk_kick guid=%s name=%s\n",
-            session_guid.c_str(), session->player_name.c_str());
-        EvictStaleSession(session_guid, "afk kick");
-        return;
-    }
 
     if (subtype == "spawn") {
         int pawn_id = j.value("pawn_id", 0);

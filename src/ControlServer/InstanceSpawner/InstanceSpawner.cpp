@@ -285,7 +285,6 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
     const std::string crashdir_arg  = "-crashdir=" + AbsolutePathFromCwd(cfg.crash_dir);
     const std::string logdir_arg    = "-logdir=" + AbsolutePathFromCwd(cfg.log_dir) + "\\" + std::to_string(instance_id);
     const std::string nativewindows_arg = "-nativewindows=1";
-    const std::string afkkick_arg   = "-afkkicksec=" + std::to_string(cfg.afk_kick_seconds);
 
     auto join_csv = [](const std::vector<std::string>& v) {
         std::string out;
@@ -311,7 +310,6 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         ipc_port_arg, inst_id_arg, dbpath_arg, gamepath_arg,
         fixguids_arg, clearlogs_arg, crashdir_arg, logdir_arg,
         enabled_channels_arg, enabled_crash_channels_arg, nativewindows_arg,
-        afkkick_arg,
     };
     if (!difficulty_arg.empty()) args.push_back(difficulty_arg);
 
@@ -461,7 +459,6 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         // Control server's own log_dir (cfg.log_dir) stays unscoped; only the
         // per-instance arg is rewritten here.
         std::string logdir_arg    = "-logdir=" + cfg.log_dir + "\\" + std::to_string(instance_id);
-        std::string afkkick_arg   = "-afkkicksec=" + std::to_string(cfg.afk_kick_seconds);
 
         auto join_csv = [](const std::vector<std::string>& v) {
             std::string out;
@@ -503,7 +500,6 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
             fixguids_arg.c_str(), clearlogs_arg.c_str(),
             crashdir_arg.c_str(), logdir_arg.c_str(),
             enabled_channels_arg.c_str(), enabled_crash_channels_arg.c_str(),
-            afkkick_arg.c_str(),
         }) {
             inner_argv.push_back(a);
         }

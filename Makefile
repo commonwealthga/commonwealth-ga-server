@@ -160,7 +160,6 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Cosmetics/CosmeticEquip.cpp \
 			  $(SRC_DIR)/GameServer/Cosmetics/JetpackReload.cpp \
 			  $(SRC_DIR)/GameServer/Cosmetics/SuitRebuildKick.cpp \
-			  $(SRC_DIR)/GameServer/Moderation/AfkReaper/AfkReaper.cpp \
 			  $(SRC_DIR)/GameServer/Armor/Armor.cpp \
 			  $(SRC_DIR)/GameServer/Constants/DeviceIds.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepListV2.cpp \

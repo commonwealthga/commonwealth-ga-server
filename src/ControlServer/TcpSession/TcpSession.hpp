@@ -169,10 +169,14 @@ public:
 
     // Tear down the session registered under guid: reap its instance-side
     // NetConnection (MSG_PLAYER_CLOSE), unregister it everywhere and close its
-    // socket. Used by the re-login takeover (crashed/hung client whose dead
-    // socket hasn't been reaped yet) and by the AFK-kick game event. Returns 1
-    // if a live TcpSession was closed, 0 if only store entries were swept.
+    // socket. Used by the re-login takeover (crashed client whose dead socket
+    // hasn't been reaped yet). Returns 1 if a live TcpSession was closed, 0 if
+    // only store entries were swept.
     static int EvictStaleSession(const std::string& guid, const char* reason);
+
+    // True when a live TcpSession object is registered under guid. Used by the
+    // periodic ghost-player reconciliation in main.cpp.
+    static bool HasLiveSession(const std::string& guid);
 
     // Snapshot for the dashboard "Online now" panel.
     struct OnlineSnapshot {

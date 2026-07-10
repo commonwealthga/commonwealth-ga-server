@@ -272,18 +272,4 @@ bool Config::GetNativeWindowsRuntime() {
 	return val == L"1" || val == L"true";
 }
 
-int Config::GetAfkKickSeconds() {
-	ParsedOptions options = CommandLineParser::ParseCommandLine();
-	std::wstring val = options.switches[L"afkkicksec"];
-	if (!val.empty()) {
-		try {
-			int parsed = std::stoi(CommandLineParser::WideToUtf8(val));
-			if (parsed >= 0) return parsed;
-		} catch (...) {
-			// Malformed flag — fall through to the default.
-		}
-	}
-	return 1200;
-}
-
 
