@@ -43,15 +43,23 @@ static bool UpdateQueueField(uint32_t queue_id, const std::string& field,
                               const nlohmann::json& value, std::string& message) {
     // Whitelist: each field has its own type + range gate. Anything not
     // listed here is rejected.
-    enum class Kind { Bool, Uint, NonNegUint, NonNegFloat };
+    enum class Kind { Bool, Uint, NonNegUint, NonNegFloat, Enum };
     struct FieldSpec { const char* name; Kind kind; };
     static const FieldSpec kSpecs[] = {
         { "enabled",                   Kind::Bool        },
         { "continue_in_queue",         Kind::Bool        },
         { "requires_pvp_verification", Kind::Bool        },
+        { "instant_pop_when_full",     Kind::Bool        },
         { "min_players_to_pop",        Kind::Uint        },  // >= 1
         { "max_players_per_instance", Kind::NonNegUint  },  // >= 0
+        { "max_players_per_side",     Kind::NonNegUint  },  // >= 0
+        { "max_players_per_team",     Kind::NonNegUint  },  // >= 0
+        { "max_team_size",            Kind::NonNegUint  },  // >= 0
         { "pop_delay_seconds",        Kind::NonNegFloat },  // >= 0
+        { "taskforce_policy",         Kind::Enum        },
+        { "team_policy",              Kind::Enum        },
+        { "team_side_policy",         Kind::Enum        },
+        { "pop_delay_policy",         Kind::Enum        },
     };
 
     const FieldSpec* spec = nullptr;
@@ -61,9 +69,11 @@ static bool UpdateQueueField(uint32_t queue_id, const std::string& field,
         return false;
     }
 
-    int    bind_int    = 0;
-    double bind_double = 0.0;
-    bool   is_double   = false;
+    int         bind_int    = 0;
+    double      bind_double = 0.0;
+    std::string bind_text;
+    bool        is_double   = false;
+    bool        is_text     = false;
     switch (spec->kind) {
         case Kind::Bool:
             if (!value.is_boolean()) { message = "value must be boolean"; return false; }
@@ -89,6 +99,20 @@ static bool UpdateQueueField(uint32_t queue_id, const std::string& field,
             if (bind_double < 0.0) { message = std::string(spec->name) + " must be >= 0"; return false; }
             is_double = true;
             break;
+        case Kind::Enum: {
+            if (!value.is_string()) { message = "value must be string"; return false; }
+            bind_text = value.get<std::string>();
+            // Validate with the same parsers the config loader uses, so the
+            // accepted set can never drift from what ReloadQueues understands.
+            bool ok = false;
+            if      (field == "taskforce_policy") mm::ParseTaskforcePolicy(bind_text, &ok);
+            else if (field == "team_policy")      mm::ParseTeamPolicy(bind_text, &ok);
+            else if (field == "team_side_policy") mm::ParseTeamSidePolicy(bind_text, &ok);
+            else if (field == "pop_delay_policy") mm::ParsePopDelayPolicy(bind_text, &ok);
+            if (!ok) { message = "invalid value for " + field; return false; }
+            is_text = true;
+            break;
+        }
     }
 
     sqlite3* db = Database::GetConnection();
@@ -100,8 +124,9 @@ static bool UpdateQueueField(uint32_t queue_id, const std::string& field,
         message = sqlite3_errmsg(db);
         return false;
     }
-    if (is_double) sqlite3_bind_double(stmt, 1, bind_double);
-    else           sqlite3_bind_int(stmt, 1, bind_int);
+    if (is_text)        sqlite3_bind_text(stmt, 1, bind_text.c_str(), -1, SQLITE_TRANSIENT);
+    else if (is_double) sqlite3_bind_double(stmt, 1, bind_double);
+    else                sqlite3_bind_int(stmt, 1, bind_int);
     sqlite3_bind_int(stmt, 2, (int)queue_id);
 
     int rc = sqlite3_step(stmt);
@@ -110,7 +135,11 @@ static bool UpdateQueueField(uint32_t queue_id, const std::string& field,
     if (rc != SQLITE_DONE) { message = sqlite3_errmsg(db); return false; }
     if (sqlite3_changes(db) == 0) { message = "queue not found"; return false; }
 
-    if (is_double) {
+    if (is_text) {
+        Logger::Log("matchmaking",
+            "[Matchmaking] Admin update queue=%u field=%s value=%s → reloading\n",
+            queue_id, field.c_str(), bind_text.c_str());
+    } else if (is_double) {
         Logger::Log("matchmaking",
             "[Matchmaking] Admin update queue=%u field=%s value=%.2f → reloading\n",
             queue_id, field.c_str(), bind_double);

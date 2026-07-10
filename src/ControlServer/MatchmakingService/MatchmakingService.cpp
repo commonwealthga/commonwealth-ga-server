@@ -252,6 +252,13 @@ void MatchmakingService::ReloadQueues() {
 
     queues_ = std::move(rebuilt);
     Logger::Log("matchmaking", "[Matchmaking] ReloadQueues: %zu queue(s) now active\n", queues_.size());
+
+    // Re-evaluate every queue with waiters: a config change (e.g. raised cap)
+    // must take effect without waiting for the next join/leave event.
+    std::vector<uint32_t> qids;
+    for (const auto& [qid, q] : queues_)
+        if (!q.parties.empty() && !q.delayed_pop) qids.push_back(qid);
+    for (uint32_t qid : qids) TryPop(qid);
 }
 
 // ---------------------------------------------------------------------------
