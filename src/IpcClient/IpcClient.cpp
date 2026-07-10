@@ -742,6 +742,37 @@ void IpcClient::DrainInbound() {
 
             Logger::Log("ipc", "[IPC] PLAYER_LEAVE guid=%s token=%llu: cleaned up %d connection(s)\n",
                 guid.c_str(), (unsigned long long)expected_token, matches);
+        } else if (type == IpcProtocol::MSG_PLAYER_CLOSE) {
+            // Control server lost this player's TCP session (socket death,
+            // re-login takeover). The client didn't quiesce its UDP side, so
+            // NetConnection__Cleanup must NOT be driven directly (crashes on a
+            // live connection) — flip State to USOCK_Closed and let the
+            // engine's TickDispatch reap run CleanUp this frame instead.
+            std::string guid = j.value("session_guid", "");
+            uint64_t expected_token = j.value("register_token", uint64_t{0});
+            if (guid.empty()) {
+                Logger::Log("ipc", "[IPC] PLAYER_CLOSE: missing session_guid; dropping\n");
+                continue;
+            }
+
+            int matches = 0;
+            for (auto& kv : GClientConnectionsData) {
+                if (kv.second.SessionGuid != guid) continue;
+                if (expected_token != 0 &&
+                    kv.second.PlayerInfo.control_register_token != expected_token) {
+                    Logger::Log("ipc",
+                        "[IPC] PLAYER_CLOSE: stale token guid=%s expected=%llu current=%llu; skipping connection 0x%p\n",
+                        guid.c_str(), (unsigned long long)expected_token,
+                        (unsigned long long)kv.second.PlayerInfo.control_register_token,
+                        (UNetConnection*)kv.first);
+                    continue;
+                }
+                MarkConnectionClosed((UNetConnection*)kv.first);
+                matches++;
+            }
+
+            Logger::Log("ipc", "[IPC] PLAYER_CLOSE guid=%s token=%llu: marked %d connection(s) closed\n",
+                guid.c_str(), (unsigned long long)expected_token, matches);
         } else {
             Logger::Log("ipc", "[IPC] Unknown message type: %s\n", type.c_str());
         }

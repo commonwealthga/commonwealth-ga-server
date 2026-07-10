@@ -39,8 +39,10 @@ int         TcpSession::s_kick_fallback_close_sec_       = 30;
 
 // Tuned tighter than ChatSession's helper because this is the gating socket
 // for re-login: dead peers MUST be reaped fast or the next attempt hits the
-// "duplicate account" rejection. Detection ~50s: 20s idle + 3 probes * 10s.
-// Tolerates a ~20s network blip before probing starts; declared dead at 50s.
+// "duplicate account" rejection. Detection ~25s: 10s idle + 3 probes * 5s.
+// Tolerates a ~10s network blip before probing starts; declared dead at 25s.
+// NB: keepalive is kernel-level — a hung-but-alive client process still ACKs
+// probes; the AfkReaper GAME_EVENT afk_kick path covers that case.
 void TcpSession::EnableKeepAlive() {
     std::error_code ec;
     socket_.set_option(asio::socket_base::keep_alive(true), ec);
@@ -50,7 +52,7 @@ void TcpSession::EnableKeepAlive() {
     }
 #ifndef _WIN32
     int fd = socket_.native_handle();
-    int idle = 20, intvl = 10, count = 3;
+    int idle = 10, intvl = 5, count = 3;
     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,  &idle,  sizeof(idle))  < 0 ||
         setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)) < 0 ||
         setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,   &count, sizeof(count)) < 0) {
@@ -287,6 +289,80 @@ void TcpSession::UnregisterSession(const std::string& guid) {
     g_sessions_.erase(guid);
 }
 
+void TcpSession::handle_socket_disconnect() {
+    if (session_row_id_) {
+        Database::FinalizeSession(session_row_id_);
+        session_row_id_ = 0;
+    }
+    // Cancel any pending ACK wait timer.
+    if (pending_ack_timer_) {
+        pending_ack_timer_->cancel();
+        pending_ack_timer_.reset();
+    }
+    if (session_guid_.empty()) {
+        return;
+    }
+
+    // Reap the instance-side NetConnection now instead of waiting for the
+    // engine's ~30s ConnectionTimeout — a zombie client that still sends UDP
+    // heartbeats would never hit that timeout at all. PLAYER_CLOSE (state
+    // flip + engine reap), NOT PLAYER_LEAVE: driving NetConnection__Cleanup
+    // on a still-live connection crashes (see GSC_CHANGE_INSTANCE below).
+    if (assigned_instance_id_ != 0) {
+        nlohmann::json close_msg;
+        close_msg["type"]           = IpcProtocol::MSG_PLAYER_CLOSE;
+        close_msg["session_guid"]   = session_guid_;
+        close_msg["register_token"] = active_register_token_;
+        const bool ok = IpcServer::SendToInstance(assigned_instance_id_, close_msg.dump());
+        Logger::Log("tcp", "[TcpSession] disconnect: PLAYER_CLOSE guid=%s instance=%lld send=%d\n",
+            session_guid_.c_str(), (long long)assigned_instance_id_, (int)ok);
+        if (!ok) {
+            // Instance unreachable — keep the registry honest at least.
+            InstanceRegistry::MarkInstancePlayerLeft(assigned_instance_id_, session_guid_);
+        }
+        assigned_instance_id_  = 0;
+        active_register_token_ = 0;
+    }
+
+    MatchmakingService::RemovePlayer(session_guid_);
+    TeamService::HandleDisconnect(session_guid_);
+    UnregisterSession(session_guid_);
+    IpcServer::ClearPendingAck(session_guid_);
+    PlayerSessionStore::Unregister(session_guid_);
+    session_guid_.clear();
+}
+
+int TcpSession::EvictStaleSession(const std::string& guid, const char* reason) {
+    std::shared_ptr<TcpSession> s;
+    {
+        std::lock_guard<std::mutex> lock(sessions_mutex_);
+        auto it = g_sessions_.find(guid);
+        if (it != g_sessions_.end()) {
+            s = it->second.lock();
+        }
+    }
+    Logger::Log("tcp", "[TcpSession] evicting stale session guid=%s live=%d reason=%s\n",
+        guid.c_str(), s ? 1 : 0, reason ? reason : "unspecified");
+    if (s) {
+        // Single io_context thread — safe to tear the other session down inline.
+        // Closing the socket makes its pending do_read fire with an error; the
+        // error branch then no-ops because session_guid_ is already cleared.
+        s->handle_socket_disconnect();
+        std::error_code ignored;
+        s->socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ignored);
+        s->socket_.close(ignored);
+    } else {
+        MatchmakingService::RemovePlayer(guid);
+        TeamService::HandleDisconnect(guid);
+        UnregisterSession(guid);
+        IpcServer::ClearPendingAck(guid);
+    }
+    // Both branches: guarantee the store row is gone so the caller's
+    // GetByPlayerName loop always makes progress.
+    PlayerSessionStore::Unregister(guid);
+    return s ? 1 : 0;
+}
+
 // ---------------------------------------------------------------------------
 // DeliverGameEvent -- route IPC GAME_EVENT to the correct TcpSession
 // ---------------------------------------------------------------------------
@@ -311,6 +387,18 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
     }
 
     std::string subtype = j.value("subtype", "");
+
+    if (subtype == "afk_kick") {
+        // The instance's AfkReaper reaped this player's NetConnection (no
+        // input for the configured window — a hung client never self-DCs via
+        // CheckAFKForDC). Drop the control session too so the player stops
+        // showing as online; a healthy-but-idle client lands back on the
+        // login screen, matching the client's own AFK disconnect behavior.
+        Logger::Log("tcp", "[TcpSession] afk_kick guid=%s name=%s\n",
+            session_guid.c_str(), session->player_name.c_str());
+        EvictStaleSession(session_guid, "afk kick");
+        return;
+    }
 
     if (subtype == "spawn") {
         int pawn_id = j.value("pawn_id", 0);
@@ -1246,20 +1334,11 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				pending_match_task_force_ = 1;
 			}
 
-			if (!s_allow_duplicate_account_logins_) {
-				auto existing = PlayerSessionStore::GetByPlayerName(requested_user_name);
-				if (existing) {
-					Logger::Log("tcp",
-						"[%s] GSC_USER_LOGIN duplicate account rejected name=%s existing_guid=%s existing_ip=%s new_ip=%s\n",
-						Logger::GetTime(), requested_user_name.c_str(),
-						existing->session_guid.c_str(), existing->ip_address.c_str(), ip_address_.c_str());
-					Database::InsertSession(0, requested_user_name, remote_ip, "rejected");
-					MarkFailedLoginIp(remote_ip);
-					send_login_rejected_response("This account is already logged in.");
-					close_after_login_rejection();
-					break;
-				}
-			}
+			// NB: a login colliding with an existing session is no longer
+			// rejected here — it evicts the stale session AFTER password
+			// verification below (re-login takeover). Rejecting pre-verify
+			// locked crashed players out until keepalive reaped the dead
+			// socket — and forever when a hung client kept ACKing probes.
 
 			// ---- Password verification (challenge-response) -------------------
 			// The client encrypted a credential blob against the SESSION_GUID
@@ -1342,6 +1421,22 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 					user_ban->reason.c_str(), s_ban_spoof_mode_.c_str());
 				ApplyBanSpoof();
 				break;
+			}
+
+			// Re-login takeover: this login passed verification, so it owns
+			// the account — evict any session still registered under the same
+			// name (crashed or hung client whose socket wasn't reaped yet)
+			// instead of rejecting. Loop in case multiple stale rows exist;
+			// EvictStaleSession always removes the store row, so it converges.
+			if (!s_allow_duplicate_account_logins_) {
+				while (auto existing = PlayerSessionStore::GetByPlayerName(player_name)) {
+					Logger::Log("tcp",
+						"[%s] GSC_USER_LOGIN takeover name=%s stale_guid=%s stale_ip=%s new_ip=%s\n",
+						Logger::GetTime(), player_name.c_str(),
+						existing->session_guid.c_str(), existing->ip_address.c_str(),
+						ip_address_.c_str());
+					EvictStaleSession(existing->session_guid, "re-login takeover");
+				}
 			}
 
 			session_guid_ = GenerateSessionGuid();

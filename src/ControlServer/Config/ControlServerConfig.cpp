@@ -104,6 +104,8 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
         cfg.allow_duplicate_account_logins = j["allow_duplicate_account_logins"].get<bool>();
     if (j.contains("require_password_verification"))
         cfg.require_password_verification = j["require_password_verification"].get<bool>();
+    if (j.contains("afk_kick_seconds"))
+        cfg.afk_kick_seconds = j["afk_kick_seconds"].get<int>();
 
     if (j.contains("enabled_channels") && j["enabled_channels"].is_array()) {
         for (const auto& item : j["enabled_channels"]) {

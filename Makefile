@@ -160,6 +160,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Cosmetics/CosmeticEquip.cpp \
 			  $(SRC_DIR)/GameServer/Cosmetics/JetpackReload.cpp \
 			  $(SRC_DIR)/GameServer/Cosmetics/SuitRebuildKick.cpp \
+			  $(SRC_DIR)/GameServer/Moderation/AfkReaper/AfkReaper.cpp \
 			  $(SRC_DIR)/GameServer/Armor/Armor.cpp \
 			  $(SRC_DIR)/GameServer/Constants/DeviceIds.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepListV2.cpp \
@@ -480,7 +481,11 @@ CC=i686-w64-mingw32-g++
 # silently when loaded via injection rather than normal process startup
 # (every instance log came up empty, no crash dump — a hang, not a crash).
 # -static keeps everything, including winpthread, embedded in the DLL itself.
-CFLAGS=-std=c++17 -pthread -I. -I./lib/detours -I./lib/asio-1.34.2/include -I./lib/sqlite3 -L/usr/i686-w64-mingw32/lib -shared -static -static-libgcc -static-libstdc++ -fpermissive -s -w
+# -D_WIN32_WINNT=0x0601: mingw-w64 headers guard Vista+ APIs (GetTickCount64)
+# behind this; older toolchains default to 0x0502 and fail to declare them.
+# Pin Win7 explicitly so builds don't depend on the local mingw default.
+# Must match the pch.hpp.gch rule below or the precompiled header is rejected.
+CFLAGS=-std=c++17 -D_WIN32_WINNT=0x0601 -pthread -I. -I./lib/detours -I./lib/asio-1.34.2/include -I./lib/sqlite3 -L/usr/i686-w64-mingw32/lib -shared -static -static-libgcc -static-libstdc++ -fpermissive -s -w
 # Header-dependency tracking: -MMD writes a .d file next to every .o listing
 # every user header that TU included, as a makefile rule.  -MP adds phony rules
 # per header so deleting a header doesn't break the build.  Combined with the
@@ -545,7 +550,7 @@ DINPUT8_OUT=$(OUT_DIR)/dinput8.dll
 VERSION_CLIENT_OUT=$(OUT_CLIENT_DIR)/version.dll
 
 obj/pch.hpp.gch: src/pch.hpp
-	i686-w64-mingw32-g++ -std=c++17 -I. -I./lib/detours -I./lib/asio-1.34.2/include -x c++-header src/pch.hpp -o obj/pch.hpp.gch
+	i686-w64-mingw32-g++ -std=c++17 -D_WIN32_WINNT=0x0601 -I. -I./lib/detours -I./lib/asio-1.34.2/include -x c++-header src/pch.hpp -o obj/pch.hpp.gch
 
 
 # Compile any src .cpp -> obj/src/... .o (with PCH)

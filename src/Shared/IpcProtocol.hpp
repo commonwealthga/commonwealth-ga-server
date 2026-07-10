@@ -28,6 +28,15 @@ constexpr const char* MSG_PLAYER_REGISTER_ACK = "PLAYER_REGISTER_ACK";
 // USOCK_Open connection and the client times out back to login.
 constexpr const char* MSG_PLAYER_LEAVE = "PLAYER_LEAVE";
 
+// Control server → game DLL. Force-drop a player's UDP connection whose
+// client can no longer be trusted to quiesce first (control TCP socket died,
+// re-login takeover evicted the session). Unlike MSG_PLAYER_LEAVE this does
+// NOT drive NetConnection__Cleanup — that crashes on a still-live connection —
+// it flips the connection to USOCK_Closed so the engine's own TickDispatch
+// reap tears it down this frame (which then emits PLAYER_LEFT as normal).
+// Fields: session_guid, register_token (0 = match any).
+constexpr const char* MSG_PLAYER_CLOSE = "PLAYER_CLOSE";
+
 constexpr const char* MSG_INSTANCE_HELLO     = "INSTANCE_HELLO";
 constexpr const char* MSG_INSTANCE_HELLO_ACK = "INSTANCE_HELLO_ACK";
 constexpr const char* MSG_INSTANCE_READY     = "INSTANCE_READY";

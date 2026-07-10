@@ -46,7 +46,7 @@ public:
     // NAT drop) leaves do_read() blocked indefinitely -- so the matching
     // PlayerSessionStore entry persists and the next login of the same name
     // is rejected as "duplicate account." With keepalive, the OS times the
-    // dead peer out in ~50s and do_read's error branch runs the normal
+    // dead peer out in ~25s and do_read's error branch runs the normal
     // cleanup (Unregister, FinalizeSession, ClearPendingAck, etc.).
     void EnableKeepAlive();
 
@@ -166,6 +166,13 @@ public:
     // its own — the existing do_read error branch sweeps up.
     static int KickSessionsForUser(int64_t user_id);
     static int KickSessionsForIp  (const std::string& ip);
+
+    // Tear down the session registered under guid: reap its instance-side
+    // NetConnection (MSG_PLAYER_CLOSE), unregister it everywhere and close its
+    // socket. Used by the re-login takeover (crashed/hung client whose dead
+    // socket hasn't been reaped yet) and by the AFK-kick game event. Returns 1
+    // if a live TcpSession was closed, 0 if only store entries were swept.
+    static int EvictStaleSession(const std::string& guid, const char* reason);
 
     // Snapshot for the dashboard "Online now" panel.
     struct OnlineSnapshot {
@@ -466,26 +473,18 @@ private:
                     }
                     do_read();
                 } else {
-                    if (session_row_id_) {
-                        Database::FinalizeSession(session_row_id_);
-                        session_row_id_ = 0;
-                    }
-                    // Cancel any pending ACK wait timer.
-                    if (pending_ack_timer_) {
-                        pending_ack_timer_->cancel();
-                        pending_ack_timer_.reset();
-                    }
-                    if (!session_guid_.empty()) {
-                        MatchmakingService::RemovePlayer(session_guid_);
-                        TeamService::HandleDisconnect(session_guid_);
-                        UnregisterSession(session_guid_);
-                        IpcServer::ClearPendingAck(session_guid_);
-                        PlayerSessionStore::Unregister(session_guid_);
-                    }
+                    handle_socket_disconnect();
                     Logger::Log("tcp", "[TCP] Client disconnected: %s\n", player_name.c_str());
                 }
             });
     }
+
+    // Full session teardown after the control socket is gone (read error) or
+    // the session is evicted by a re-login takeover. Reaps the instance-side
+    // NetConnection via MSG_PLAYER_CLOSE, finalizes the DB session row and
+    // unregisters everywhere. Idempotent — clears session_guid_ so a later
+    // do_read error on the same object is a no-op.
+    void handle_socket_disconnect();
 
     void handle_packet(const uint8_t* data, size_t length);
 
