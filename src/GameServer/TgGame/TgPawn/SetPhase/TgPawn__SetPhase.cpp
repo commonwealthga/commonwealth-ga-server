@@ -35,6 +35,10 @@ struct PhaseTelegraphConfig {
 constexpr PhaseTelegraphConfig kConfigs[] = {
 	{ "TgPawn_UberWalker",     { 0.0f, 1.0f, 2.5f, 0.0f, 0.0f, 0.0f } },
 	{ "TgPawn_Boss_Destroyer", { 0.0f, 1.0f, 2.0f, 0.0f, 0.0f, 0.0f } },
+	// Dune/Doom Commander (both TgPawn_DuneCommander, behavior 712): phase 3
+	// is SHOCKER — rooted AoE with a ~4s fire-bubble telegraph. COMBAT 3 SHOCK
+	// (action 12595) otherwise fires the same tick phase 3 starts.
+	{ "TgPawn_DuneCommander",  { 0.0f, 0.0f, 0.0f, 4.0f, 0.0f, 0.0f } },
 };
 
 const PhaseTelegraphConfig* MatchConfig(ATgPawn* Pawn) {
