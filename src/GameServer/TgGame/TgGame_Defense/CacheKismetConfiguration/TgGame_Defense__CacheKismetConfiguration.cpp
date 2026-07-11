@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame_Defense/CacheKismetConfiguration/TgGame_Defense__CacheKismetConfiguration.hpp"
+#include "src/GameServer/TgGame/TgGame_Defense/TickWaveNodes/TgGame_Defense__TickWaveNodes.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
@@ -24,6 +25,7 @@ void __fastcall TgGame_Defense__CacheKismetConfiguration::Call(ATgGame_Defense* 
 	}
 
 	Game->s_WaveSpawnerList.Clear();
+	TgGame_Defense__TickWaveNodes::ResetNodeState();
 
 	AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
 	if (WorldInfo == nullptr || WorldInfo->GetGameSequence() == nullptr) {
@@ -44,6 +46,8 @@ void __fastcall TgGame_Defense__CacheKismetConfiguration::Call(ATgGame_Defense* 
 
 		int   round        = 0;
 		float frequency    = 0.0f;
+		float freqMin      = 0.0f;
+		float freqMax      = 0.0f;
 		int   factoryCount = 0;
 
 		Spawner->Targets.Clear();
@@ -67,12 +71,22 @@ void __fastcall TgGame_Defense__CacheKismetConfiguration::Call(ATgGame_Defense* 
 					USequenceVariable* var = vl.LinkedVariables.Data[k];
 					if (var == nullptr) continue;
 					float f = ((USeqVar_Float*)var)->FloatValue;
+					freqMin = f;
+					freqMax = f;
 					// RandomFloat publishes into FloatValue only when evaluated;
-					// at cache time it's usually 0, so derive from [Min,Max].
-					if (f <= 0.0f && ObjectClassCache::ClassNameContains(var, "SeqVar_RandomFloat")) {
+					// at cache time it's usually 0, so read [Min,Max]. Retail
+					// re-evaluated the var per pulse — TickWaveNodes re-rolls
+					// from these bounds each firing.
+					if (ObjectClassCache::ClassNameContains(var, "SeqVar_RandomFloat")) {
 						USeqVar_RandomFloat* rf = (USeqVar_RandomFloat*)var;
-						if (rf->Max > 0.0f)      f = (rf->Min + rf->Max) * 0.5f;
-						else if (rf->Min > 0.0f) f = rf->Min;
+						if (rf->Max > 0.0f) {
+							freqMin = rf->Min;
+							freqMax = rf->Max;
+						} else if (rf->Min > 0.0f) {
+							freqMin = rf->Min;
+							freqMax = rf->Min;
+						}
+						if (f <= 0.0f) f = (freqMin + freqMax) * 0.5f;
 					}
 					frequency = f;
 					break;
@@ -94,12 +108,13 @@ void __fastcall TgGame_Defense__CacheKismetConfiguration::Call(ATgGame_Defense* 
 		Spawner->m_nRoundNumber    = round;
 		Spawner->m_fSpawnFrequency = frequency;
 		Spawner->m_fNextSpawnTime  = 0.0f;
+		TgGame_Defense__TickWaveNodes::SetNodeFrequency(Spawner, freqMin, freqMax);
 
 		Game->s_WaveSpawnerList.Add(Spawner);
 
 		Logger::Log("gametimer",
-			"Spawner cached (varlink): round=%d freq=%.2f factories=%d\n",
-			round, frequency, factoryCount);
+			"Spawner cached (varlink): round=%d freq=%.2f-%.2f factories=%d\n",
+			round, freqMin, freqMax, factoryCount);
 	}
 
 	Logger::Log("gametimer",

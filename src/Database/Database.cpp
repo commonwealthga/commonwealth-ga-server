@@ -7756,6 +7756,27 @@ void Database::Init() {
 		Logger::Log("db", "v123: DomeCityDefense bot factory spawn table 102 -> 99\n");
 	}
 
+	if (version < 124) {
+		// v124: revert v119(b) — factory 13809 back to its original table 102
+		// (android trash; the v119 comment mislabeled it). 13809 is the wave-3
+		// DefenseWaveSpawner's only Target and its role is the between-pulse
+		// trash trickle; the wave-3 juggernauts come from the node's Activated
+		// kismet chain instead (SeqCond_Increment capped at 2 -> SeqAct_Toggle
+		// on factory 13653, table 149): exactly two per wave 3 — pulse 1 at
+		// round start, pulse 2 at +90s, pulse 3 blocked by the counter.
+		// Pointing 13809 at 149 made the node pulse AND the toggle chain each
+		// spawn a juggernaut roster simultaneously (the "two juggernauts at
+		// once" bug).
+		result = sqlite3_exec(db,
+			"UPDATE map_object_config SET value = '102' "
+			"WHERE map_name = 'Raid_DomeCityDefense_P' AND map_object_id = 13809 "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v124 (13809 back to table 102): %s\n", err); return; }
+
+		Logger::Log("db", "v124: DomeCityDefense wave-3 node dummy factory 13809 spawn table 149 -> 102\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -7767,7 +7788,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 123", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 124", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
