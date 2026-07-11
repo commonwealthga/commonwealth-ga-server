@@ -139,12 +139,13 @@ void __fastcall TgMissionObjective_Bot__SpawnObjectiveBot::Call(ATgMissionObject
 		AIC->m_nGlobalAlarmId = Obj->nGlobalAlarmId;
 	}
 
-	// TEMP TEST CHEAT — REMOVE BEFORE SHIPPING. Bancroft (defended NPC,
-	// mapObjectId 13623) is unkillable so the 10-player mission can be soloed.
+	// TEMP TEST CHEAT — REMOVE BEFORE SHIPPING. Defended NPCs are unkillable
+	// so the 10-player missions can be soloed: Bancroft (dome, mapObjectId
+	// 13623) and the Backup Generator (Canyon_Defense00, mapObjectId 13282).
 	// Mirrors the player godmode in TgGame::SpawnPlayerCharacter.
-	if (mid == 13623 && Bot->Controller != nullptr) {
+	if ((mid == 13623 || mid == 13282) && Bot->Controller != nullptr) {
 		// Bot->Controller->bGodMode = 1;
-		Logger::Log("tgmissionobjective_bot", "  TEMP CHEAT: godmode enabled on Bancroft (mid=%d)\n", mid);
+		Logger::Log("tgmissionobjective_bot", "  TEMP CHEAT: godmode enabled on defended NPC (mid=%d)\n", mid);
 	}
 
 	Logger::Log("tgmissionobjective_bot",

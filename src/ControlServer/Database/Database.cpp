@@ -1350,6 +1350,68 @@ void Database::Init() {
 			sqlite3_free(err);
 		}
 
+		// Sonoran Raid ('sr') — second defense-raid queue, pool 4. Three
+		// Sonoran defense maps planned; Canyon_Defense00 is the first.
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_map_pools (map_pool_id, name) VALUES (4, 'sr');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed ga_map_pools (sr): %s\n", err);
+			sqlite3_free(err);
+		}
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode, weight, enabled) VALUES"
+			" (4, 'Canyon_Defense00', 'TgGame.TgGame_Defense', 1, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed ga_map_pool_entries (sr): %s\n", err);
+			sqlite3_free(err);
+		}
+
+		// Queue mirrors ddr (queue 3) in every wire field except name/desc
+		// (36828 "Sonoran Raid" / 59312 the retail defense-raid blurb: "Key
+		// areas that support Dome City are under attack ... (Level 30
+		// Required)") and map_pool_id. sort_order 0 + the gated ddr bump
+		// below put it above Dome Defense in the same tab-231 raid category.
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_queues "
+			"(queue_id, name, taskforce_policy, continue_in_queue, enabled, "
+			" queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, "
+			" max_players_per_side, min_players_per_team, max_players_per_team, "
+			" level_min, level_max, tab, map_x, map_y, map_active_flag, "
+			" map_icon_texture_res_id, video_res_id, location_value_id, "
+			" double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, "
+			" difficulty_value_id, access_flags, active_flag, locked_flag, "
+			" map_pool_id, min_players_to_pop, max_players_per_instance, "
+			" pop_delay_seconds, team_policy, team_side_policy) VALUES"
+			" (12, 'sr', 'pinned_2', 0, 1,"
+			"  1454, 0, 36828, 59312, 1714,"
+			"  10, 1, 10, 5, 50, 231, 0.0, 0.0, 1,"
+			"  5126, 0, 0, 1, 0, 0, 1,"
+			"  1471, 0, 1, 0, 4, 1, 0,"
+			"  0.0, 'mixed', 'required');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed sr queue: %s\n", err);
+			sqlite3_free(err);
+		}
+
+		// Repair an early sr seed that shipped the wrong description (41461,
+		// the level 5-19 strike-mission blurb). Gated on the old value so
+		// operator edits stick.
+		result = sqlite3_exec(db,
+			"UPDATE ga_queues SET desc_msg_id = 59312 "
+			"WHERE queue_id = 12 AND desc_msg_id = 41461;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) sqlite3_free(err);
+
+		// Bump ddr below the new sr queue. Gated on sort_order=0 so operator
+		// edits stick across boots (same pattern as the umax bump above).
+		result = sqlite3_exec(db,
+			"UPDATE ga_queues SET sort_order = 1 WHERE queue_id = 3 AND sort_order = 0;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) sqlite3_free(err);
+
 		// Drop the CHECK constraint on ga_queues.taskforce_policy. The C++
 		// ParseTaskforcePolicy already validates with a graceful pinned_1
 		// fallback on unknown, so the DB constraint just forces a schema

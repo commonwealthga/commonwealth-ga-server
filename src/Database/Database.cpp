@@ -7777,6 +7777,121 @@ void Database::Init() {
 		Logger::Log("db", "v124: DomeCityDefense wave-3 node dummy factory 13809 spawn table 149 -> 102\n");
 	}
 
+	if (version < 125) {
+		// v125: Canyon_Defense00 — second defense raid ("Sonoran Raid" pool).
+		// Factory archetypes come straight from the kismet dump's SeqVar comments
+		// (kismet_Canyon_Defense00.json, "Minion/Spider/Guardian - waveN - facN"),
+		// resolved to map_object_ids via the vars' mapObjectId field. Spawn
+		// tables reuse the dome-proven per-archetype rosters:
+		//   99 = Colony minion trash mix (Drone/Soldier/Wasp/Ant/Sand Spider)
+		//   86 = Hunter Spider x2      87 = Colony Guardian x1
+		// All factories ship dormant (b_auto_spawn=0 — the DefenseWaveSpawner
+		// pulse is the only trigger) and one-roster (b_respawn=0), task force 1
+		// (Colony side) — the same shape the dome factory config uses.
+		//
+		// (a) map_game_info so the map can launch as TgGame_Defense.
+		//     54108 = "Canyon Defense", 6635 = HUD_MissionLoads.Defense.DEF_CanyonDefense.
+		//     mission_time_secs MUST be 0 (defaults to 900): TgGame_Defense's
+		//     RoundInProgress.BeginState only arms the per-round countdown
+		//     (SetMissionTime + ChangeTimerState(6)) when m_fGameMissionTime==0 —
+		//     see the v122 dome fix.
+		result = sqlite3_exec(db,
+			"INSERT OR REPLACE INTO map_game_info "
+			"(map_game_id, map_name, game_class, gameplay_type_value_id, "
+			" friendly_name_msg_id, entry_background_image_res_id, "
+			" mission_time_secs, is_pvp, overtime_secs, allow_overtime) VALUES "
+			"(100010, 'Canyon_Defense00', 'TgGame.TgGame_Defense', 1550, 54108, 6635, 0, 0, 0, 0);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v125 (canyon map_game_info): %s\n", err); return; }
+
+		// (b) Bot factory spawn tables. Minion gates -> 99, Spider drops -> 86,
+		//     Guardian escorts -> 87 (both active + default table ids).
+		const char* kV125_tables =
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'Canyon_Defense00', mid, col, tbl, NULL, NULL, 1 "
+			"FROM (SELECT 'n_spawn_table_id' AS col UNION ALL SELECT 'n_default_spawn_table_id'), ("
+			"  SELECT 13280 AS mid, '99' AS tbl UNION ALL SELECT 13287, '99' UNION ALL"
+			"  SELECT 13289, '99' UNION ALL SELECT 13291, '99' UNION ALL"
+			"  SELECT 13292, '99' UNION ALL SELECT 13293, '99' UNION ALL"
+			"  SELECT 13294, '99' UNION ALL SELECT 13296, '99' UNION ALL"
+			"  SELECT 13461, '99' UNION ALL SELECT 13476, '99' UNION ALL"
+			"  SELECT 13299, '86' UNION ALL SELECT 13300, '86' UNION ALL"
+			"  SELECT 13307, '86' UNION ALL SELECT 13551, '86' UNION ALL"
+			"  SELECT 13552, '86' UNION ALL"
+			"  SELECT 13297, '87' UNION ALL SELECT 13298, '87' UNION ALL SELECT 13308, '87');";
+		result = sqlite3_exec(db, kV125_tables, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v125 (canyon spawn tables): %s\n", err); return; }
+
+		// All 18 factories: dormant + one-roster + Colony side (task force /
+		// team 1), matching the dome factory config shape.
+		const char* kV125_flags =
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'Canyon_Defense00', mid, col, val, NULL, NULL, 1 "
+			"FROM (SELECT 'b_auto_spawn' AS col, '0' AS val UNION ALL"
+			"      SELECT 'b_respawn', '0' UNION ALL"
+			"      SELECT 's_n_task_force', '1' UNION ALL"
+			"      SELECT 's_n_team_number', '1'), ("
+			"  SELECT 13280 AS mid UNION ALL SELECT 13287 UNION ALL SELECT 13289 UNION ALL"
+			"  SELECT 13291 UNION ALL SELECT 13292 UNION ALL SELECT 13293 UNION ALL"
+			"  SELECT 13294 UNION ALL SELECT 13296 UNION ALL SELECT 13297 UNION ALL"
+			"  SELECT 13298 UNION ALL SELECT 13299 UNION ALL SELECT 13300 UNION ALL"
+			"  SELECT 13307 UNION ALL SELECT 13308 UNION ALL SELECT 13461 UNION ALL"
+			"  SELECT 13476 UNION ALL SELECT 13551 UNION ALL SELECT 13552);";
+		result = sqlite3_exec(db, kV125_flags, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v125 (canyon factory flags): %s\n", err); return; }
+
+		// (c) Boss objective 13459 (Dune Commander, bot 1486, s_b_auto_spawn=0
+		//     baked) out of the priority unlock sequence — n_priority=0 so both
+		//     unlock paths skip it and only the kismet chain (first Boss Wave
+		//     Minions pulse -> CompareBool -> ActivateObjective) spawns it.
+		//     Mirrors the dome boss fix (v119a, objective 13460). The defended
+		//     NPC 13282 (Backup Generator, tf=2, auto-spawn) needs no config —
+		//     its baked values are already correct.
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('Canyon_Defense00', 13459, 'n_priority', '0', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v125 (canyon boss priority): %s\n", err); return; }
+
+		Logger::Log("db", "v125: Canyon_Defense00 defense raid config — map_game_info 100010, "
+			"18 factories (minion=99 spider=86 guardian=87, dormant), boss 13459 n_priority=0\n");
+	}
+
+	if (version < 126) {
+		// v126: Canyon_Defense00 minion gates were ALL on table 99 (the heavy
+		// 21-24 bot UMax mix) — every node pulse dumped a worst-case roster
+		// (~100 heavy bots/min in wave 1, worse at the faster wave-2/3
+		// frequencies) and the server choked. Dome's wave-1 shape — the one
+		// that plays right — is mostly cheap swarm gates with a few heavy
+		// anchors (5x148 ticks + 3x99). Mirror that ratio:
+		//   99  (heavy mix)   keep: 13280, 13289, 13291 (present in all 4 waves)
+		//   148 (ant + ticks) ->    13287, 13292, 13293, 13294, 13296
+		//   147 (wasps)       ->    13461, 13476 (wave 2-4 flavor gates)
+		// Spider (86) / guardian (87) support gates unchanged. NOTE: 147/148
+		// have rosters only at 1259/1471 — empty at MedSec (known trap).
+		result = sqlite3_exec(db,
+			"UPDATE map_object_config SET value = '148' "
+			"WHERE map_name = 'Canyon_Defense00' "
+			"  AND map_object_id IN (13287, 13292, 13293, 13294, 13296) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v126 (canyon tick gates): %s\n", err); return; }
+
+		result = sqlite3_exec(db,
+			"UPDATE map_object_config SET value = '147' "
+			"WHERE map_name = 'Canyon_Defense00' "
+			"  AND map_object_id IN (13461, 13476) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v126 (canyon wasp gates): %s\n", err); return; }
+
+		Logger::Log("db", "v126: Canyon_Defense00 minion gates rebalanced — "
+			"3x99 heavy anchors, 5x148 ticks, 2x147 wasps\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -7788,7 +7903,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 124", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 126", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

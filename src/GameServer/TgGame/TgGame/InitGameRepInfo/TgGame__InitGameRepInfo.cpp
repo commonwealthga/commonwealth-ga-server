@@ -196,6 +196,12 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		}
 
 		if (GameClassName == "Class TgGame.TgGame_Defense") {
+			// Dome City is the outlier: 5 rounds of 210s (timeline-locked kismet
+			// one-shots at 210/450/690). Every other defense raid runs the stock
+			// shape: 4 rounds (3 timed + untimed boss round) of 180s. The final
+			// round is untimed either way — GetRoundDuration returns 0 when
+			// s_nRoundNumber >= s_nMaxRoundNumber.
+			const bool bDomeDefense = (mapName == "Raid_DomeCityDefense_P");
 			gamerep->r_bIsRaid = 1;
 			gamerep->r_bIsMission = 1;
 			gamerep->r_bIsPVP = 0;
@@ -212,7 +218,7 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_bInOverTime = 0;
 			gamerep->r_nPointsToWin = 3;
 			gamerep->r_nRoundNumber = 0;
-			gamerep->r_nMaxRoundNumber = 5;
+			gamerep->r_nMaxRoundNumber = bDomeDefense ? 5 : 4;
 
 			ATgGame_Defense* GameDef = (ATgGame_Defense*)Game;
 
@@ -250,11 +256,11 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 // }
 
 
-			GameDef->s_nMaxRoundNumber = 5;
+			GameDef->s_nMaxRoundNumber = bDomeDefense ? 5 : 4;
 			GameDef->s_nRoundSetupTime = 0;
 			GameDef->s_nBetweenRoundDelay = 30;
 			GameDef->s_nRoundNumber = 0;
-			GameDef->s_fRoundDuration = 210; // 3 minutes 30 seconds
+			GameDef->s_fRoundDuration = bDomeDefense ? 210.0f : 180.0f;
 			GameDef->m_fGameMissionTime = 0;
 
 			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
