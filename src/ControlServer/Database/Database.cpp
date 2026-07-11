@@ -1361,7 +1361,10 @@ void Database::Init() {
 		}
 		result = sqlite3_exec(db,
 			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode, weight, enabled) VALUES"
-			" (4, 'Canyon_Defense00', 'TgGame.TgGame_Defense', 1, 1);",
+			" (4, 'Canyon_Defense00',       'TgGame.TgGame_Defense', 1, 1),"
+			" (4, 'Moving_Target00',        'TgGame.TgGame_Defense', 1, 1),"
+			" (4, 'Oasis_Checkpoint',       'TgGame.TgGame_Defense', 1, 1),"
+			" (4, 'Raid_Halloween_Oasis_P', 'TgGame.TgGame_Defense', 1, 1);",
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
 			Logger::Log("db", "Failed to seed ga_map_pool_entries (sr): %s\n", err);

@@ -7892,6 +7892,185 @@ void Database::Init() {
 			"3x99 heavy anchors, 5x148 ticks, 2x147 wasps\n");
 	}
 
+	if (version < 127) {
+		// v127: Moving_Target00 — third defense raid (Sonoran Raid pool). Same
+		// template as Canyon_Defense00 (waves 1-4 minion+support nodes, identical
+		// kismet frequencies, Dune Commander boss), except the defended NPC is
+		// the "Mobile Power Unit" (bot 1505, rides the mission-long battery
+		// matinee). Factory archetypes from kismet_Moving_Target00.json SeqVar
+		// comments/mapObjectIds; minion tables use the canyon-playtested ratio
+		// (2 heavy 99 gates per wave + 148 ticks / 147 wasps).
+		//
+		// (a) map_game_info. 59353 = "Pentarch Reactor Facility" (the map's
+		//     retail display name; 55200 "Moving Target" is the internal name),
+		//     6646 = DEF_MovingTarget. mission_time_secs=0 -> per-round timer
+		//     (v122 lesson).
+		result = sqlite3_exec(db,
+			"INSERT OR REPLACE INTO map_game_info "
+			"(map_game_id, map_name, game_class, gameplay_type_value_id, "
+			" friendly_name_msg_id, entry_background_image_res_id, "
+			" mission_time_secs, is_pvp, overtime_secs, allow_overtime) VALUES "
+			"(100011, 'Moving_Target00', 'TgGame.TgGame_Defense', 1550, 59353, 6646, 0, 0, 0, 0);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v127 (moving target map_game_info): %s\n", err); return; }
+
+		// (b) Spawn tables for the 28 kismet-referenced factories (13374/13378
+		//     are unreferenced by any wave node — flags only, no table).
+		//     Per-wave minion mix = 2x99 + light swarm, avg ~16 bots/pulse:
+		//       w1: 99{13393,13357} 148{13359,13360,13363,13380}
+		//       w2: 99{13395,13368} 148{13365,13377,13375} 147{13382}
+		//       w3/w4: 99{13370,13368} 148{13375,13550} 147{13373,13382}
+		const char* kV127_tables =
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'Moving_Target00', mid, col, tbl, NULL, NULL, 1 "
+			"FROM (SELECT 'n_spawn_table_id' AS col UNION ALL SELECT 'n_default_spawn_table_id'), ("
+			"  SELECT 13357 AS mid, '99' AS tbl UNION ALL SELECT 13368, '99' UNION ALL"
+			"  SELECT 13370, '99' UNION ALL SELECT 13393, '99' UNION ALL SELECT 13395, '99' UNION ALL"
+			"  SELECT 13359, '148' UNION ALL SELECT 13360, '148' UNION ALL"
+			"  SELECT 13363, '148' UNION ALL SELECT 13365, '148' UNION ALL"
+			"  SELECT 13375, '148' UNION ALL SELECT 13377, '148' UNION ALL"
+			"  SELECT 13380, '148' UNION ALL SELECT 13550, '148' UNION ALL"
+			"  SELECT 13373, '147' UNION ALL SELECT 13382, '147' UNION ALL"
+			"  SELECT 13361, '86' UNION ALL SELECT 13362, '86' UNION ALL"
+			"  SELECT 13364, '86' UNION ALL SELECT 13366, '86' UNION ALL"
+			"  SELECT 13369, '86' UNION ALL SELECT 13371, '86' UNION ALL"
+			"  SELECT 13376, '86' UNION ALL SELECT 13549, '86' UNION ALL"
+			"  SELECT 13367, '87' UNION ALL SELECT 13372, '87' UNION ALL"
+			"  SELECT 13379, '87' UNION ALL SELECT 13381, '87' UNION ALL SELECT 13383, '87');";
+		result = sqlite3_exec(db, kV127_tables, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v127 (moving target spawn tables): %s\n", err); return; }
+
+		// All 30 factories: dormant + one-roster + Colony side.
+		const char* kV127_flags =
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'Moving_Target00', mid, col, val, NULL, NULL, 1 "
+			"FROM (SELECT 'b_auto_spawn' AS col, '0' AS val UNION ALL"
+			"      SELECT 'b_respawn', '0' UNION ALL"
+			"      SELECT 's_n_task_force', '1' UNION ALL"
+			"      SELECT 's_n_team_number', '1'), ("
+			"  SELECT 13357 AS mid UNION ALL SELECT 13359 UNION ALL SELECT 13360 UNION ALL"
+			"  SELECT 13361 UNION ALL SELECT 13362 UNION ALL SELECT 13363 UNION ALL"
+			"  SELECT 13364 UNION ALL SELECT 13365 UNION ALL SELECT 13366 UNION ALL"
+			"  SELECT 13367 UNION ALL SELECT 13368 UNION ALL SELECT 13369 UNION ALL"
+			"  SELECT 13370 UNION ALL SELECT 13371 UNION ALL SELECT 13372 UNION ALL"
+			"  SELECT 13373 UNION ALL SELECT 13374 UNION ALL SELECT 13375 UNION ALL"
+			"  SELECT 13376 UNION ALL SELECT 13377 UNION ALL SELECT 13378 UNION ALL"
+			"  SELECT 13379 UNION ALL SELECT 13380 UNION ALL SELECT 13381 UNION ALL"
+			"  SELECT 13382 UNION ALL SELECT 13383 UNION ALL SELECT 13393 UNION ALL"
+			"  SELECT 13395 UNION ALL SELECT 13549 UNION ALL SELECT 13550);";
+		result = sqlite3_exec(db, kV127_flags, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v127 (moving target factory flags): %s\n", err); return; }
+
+		// (c) Boss objective (Dune Commander, bot 1486, s_b_auto_spawn=0) has
+		//     map_object_id **0** on this map — the designers never assigned
+		//     one. It is the ONLY mid-0 object on the map, and MapObjectConfig
+		//     keys overrides by plain int, so a 0-keyed n_priority row lands
+		//     exactly on it: out of the unlock sequence, kismet-only activation
+		//     (first Boss Wave Minions pulse), same as dome 13460 / canyon 13459.
+		//     The defended NPC 13332 (Mobile Power Unit) needs no config.
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('Moving_Target00', 0, 'n_priority', '0', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v127 (moving target boss priority): %s\n", err); return; }
+
+		Logger::Log("db", "v127: Moving_Target00 defense raid config — map_game_info 100011, "
+			"30 factories (5x99/8x148/2x147 minions, 8x86 spiders, 5x87 guardians, dormant), "
+			"boss (mid 0) n_priority=0\n");
+	}
+
+	if (version < 128) {
+		// v128: Moving_Target00 display name — the v127 seed shipped 55200
+		// ("Moving Target", the internal map name); the retail display name is
+		// 59353 "Pentarch Reactor Facility". Repair DBs already at v127.
+		result = sqlite3_exec(db,
+			"UPDATE map_game_info SET friendly_name_msg_id = 59353 "
+			"WHERE map_name = 'Moving_Target00' AND friendly_name_msg_id = 55200;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v128 (moving target display name): %s\n", err); return; }
+
+		Logger::Log("db", "v128: Moving_Target00 friendly name -> 59353 'Pentarch Reactor Facility'\n");
+	}
+
+	if (version < 129) {
+		// v129: Oasis_Checkpoint + Raid_Halloween_Oasis_P — Sonoran Raid maps
+		// 3 and 4. The Halloween map is a verbatim reskin: both kismets are
+		// identical clones (same wave nodes, same frequencies, same
+		// map_object_ids for every factory/objective), so both maps share one
+		// config set. Only the baked boss/NPC bots differ: Dune Commander
+		// (1486) + Backup Generator (1645) vs Doom Commander (1595) + Cage of
+		// Souls (1597) — those come from the maps' baked s_n_bot_id, no config
+		// needed. No orphan factories; all 12 are kismet-referenced.
+		//
+		// (a) map_game_info. 39114 "Oasis Checkpoint" / 6638 DEF_OasisCheckpoint;
+		//     62626 "Oasis Checkpoint... of DOOM" / 7175 DEF_HalloweenOasis.
+		result = sqlite3_exec(db,
+			"INSERT OR REPLACE INTO map_game_info "
+			"(map_game_id, map_name, game_class, gameplay_type_value_id, "
+			" friendly_name_msg_id, entry_background_image_res_id, "
+			" mission_time_secs, is_pvp, overtime_secs, allow_overtime) VALUES "
+			"(100012, 'Oasis_Checkpoint',       'TgGame.TgGame_Defense', 1550, 39114, 6638, 0, 0, 0, 0),"
+			"(100013, 'Raid_Halloween_Oasis_P', 'TgGame.TgGame_Defense', 1550, 62626, 7175, 0, 0, 0, 0);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v129 (oasis map_game_info): %s\n", err); return; }
+
+		// (b) Spawn tables, canyon-playtested per-wave ratio (2x99 heavy
+		//     anchors + 148 ticks / 147 wasps, avg ~16 bots/pulse):
+		//       minions: 99{12597,12598} 148{12593,12595,12596,13540} 147{12594}
+		//       spiders: 86{12602,12603}  guardians: 87{12601,13284,13290}
+		const char* kV129_tables =
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT map, mid, col, tbl, NULL, NULL, 1 "
+			"FROM (SELECT 'Oasis_Checkpoint' AS map UNION ALL SELECT 'Raid_Halloween_Oasis_P'),"
+			"     (SELECT 'n_spawn_table_id' AS col UNION ALL SELECT 'n_default_spawn_table_id'), ("
+			"  SELECT 12597 AS mid, '99' AS tbl UNION ALL SELECT 12598, '99' UNION ALL"
+			"  SELECT 12593, '148' UNION ALL SELECT 12595, '148' UNION ALL"
+			"  SELECT 12596, '148' UNION ALL SELECT 13540, '148' UNION ALL"
+			"  SELECT 12594, '147' UNION ALL"
+			"  SELECT 12602, '86' UNION ALL SELECT 12603, '86' UNION ALL"
+			"  SELECT 12601, '87' UNION ALL SELECT 13284, '87' UNION ALL SELECT 13290, '87');";
+		result = sqlite3_exec(db, kV129_tables, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v129 (oasis spawn tables): %s\n", err); return; }
+
+		// All 12 factories on both maps: dormant + one-roster + Colony side.
+		const char* kV129_flags =
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT map, mid, col, val, NULL, NULL, 1 "
+			"FROM (SELECT 'Oasis_Checkpoint' AS map UNION ALL SELECT 'Raid_Halloween_Oasis_P'),"
+			"     (SELECT 'b_auto_spawn' AS col, '0' AS val UNION ALL"
+			"      SELECT 'b_respawn', '0' UNION ALL"
+			"      SELECT 's_n_task_force', '1' UNION ALL"
+			"      SELECT 's_n_team_number', '1'), ("
+			"  SELECT 12593 AS mid UNION ALL SELECT 12594 UNION ALL SELECT 12595 UNION ALL"
+			"  SELECT 12596 UNION ALL SELECT 12597 UNION ALL SELECT 12598 UNION ALL"
+			"  SELECT 12601 UNION ALL SELECT 12602 UNION ALL SELECT 12603 UNION ALL"
+			"  SELECT 13284 UNION ALL SELECT 13290 UNION ALL SELECT 13540);";
+		result = sqlite3_exec(db, kV129_flags, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v129 (oasis factory flags): %s\n", err); return; }
+
+		// (c) Boss objective 13460 (same mid on both maps, and coincidentally
+		//     the same mid as dome's boss — rows are scoped per map_name) out
+		//     of the priority unlock sequence; kismet activates it on the
+		//     first Boss Wave Minions pulse. Defended NPC 12599 (auto-spawn,
+		//     tf=2 baked) needs no config.
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('Oasis_Checkpoint',       13460, 'n_priority', '0', NULL, NULL, 1),"
+			"  ('Raid_Halloween_Oasis_P', 13460, 'n_priority', '0', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v129 (oasis boss priority): %s\n", err); return; }
+
+		Logger::Log("db", "v129: Oasis_Checkpoint + Raid_Halloween_Oasis_P defense raid config — "
+			"map_game_info 100012/100013, 12 shared factories per map "
+			"(2x99/4x148/1x147 minions, 2x86 spiders, 3x87 guardians, dormant), boss 13460 n_priority=0\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -7903,7 +8082,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 126", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 129", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
