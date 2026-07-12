@@ -236,6 +236,18 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 			}
 		}
 
+		// The native ApplyDeployableSetup runs the deployable's FULL deploy
+		// lifecycle synchronously (StartDeploy → Deploy → DeployComplete →
+		// UpdateHealth → Active). Our InitializeDefaultProps — which sets
+		// r_nHealth to the real max — runs AFTER, so without this the lifecycle
+		// executes at r_nHealth==0 and health<=0 code paths can treat the dome
+		// as already dead and destroy it at launch. Seed the real health FIRST
+		// so it deploys alive; InitializeDefaultProps re-applies it right after.
+		{
+			const int seedHp = DeployableClassify::GetMaxHealth(deployableId);
+			if (seedHp > 0) Deployable->r_nHealth = seedHp;
+		}
+
 		Deployable->ApplyDeployableSetup();
 		Deployable->InitializeDefaultProps();
 

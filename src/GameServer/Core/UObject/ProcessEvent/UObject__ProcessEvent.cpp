@@ -11,6 +11,7 @@
 #include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
+#include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
@@ -174,6 +175,7 @@ enum class DispatchTag : uint8_t {
 	SeqOpActivated,               // kismet op eventActivated — TgSeqAct_AlarmBots raises the global alarm
 	TgTriggerBeaconEntrance,      // Pre-call: record teammate beacon-teleport usage for match stats
 	SuperAgentCaptureGate,        // Super Agent mode: freeze proximity capture per the all-players / drain gate, then detect A's capture
+	PayloadDeployableCrush,       // Payload (TgObjectiveAttachActor) Touch/RanInto/EncroachingOn — skip for morale Dome Shields
 	// GameTimerDiagnostic,          // Diagnostic-only: before/after snapshots around original timer/match flow
 };
 
@@ -582,6 +584,14 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	// capture. Intercept Tick (which DOES route through ProcessEvent) rather than
 	// the inner CalculateNearByPlayers (an intra-UC call that does not).
 	if (strcmp(name, "Function TgGame.TgMissionObjective_Proximity.Tick") == 0) return DispatchTag::SuperAgentCaptureGate;
+	// Escort/payload crush. The payload is a TgObjectiveAttachActor whose
+	// Touch / RanInto / EncroachingOn each do
+	// `if (TgDeployable(Other)) Other.DestroyIt()`. Skip all three for morale
+	// Dome Shields so the payload passes through without destroying them.
+	if (strcmp(name, "Function TgGame.TgObjectiveAttachActor.Touch") == 0 ||
+	    strcmp(name, "Function TgGame.TgObjectiveAttachActor.RanInto") == 0 ||
+	    strcmp(name, "Function TgGame.TgObjectiveAttachActor.EncroachingOn") == 0)
+		return DispatchTag::PayloadDeployableCrush;
 	// if (IsGameTimerDiagnosticFunction(name)) return DispatchTag::GameTimerDiagnostic;
 
 	return DispatchTag::Unknown;
@@ -1920,6 +1930,30 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 	// per-frame escape mechanics must keep ticking even while capture is frozen,
 	// e.g. the periodic escape alarm while players are off-point). It early-
 	// returns for every objective that isn't our A, and for non-Super-Agent matches.
+	case DispatchTag::PayloadDeployableCrush: {
+		// Payload crush immunity for the Robotics Morale Dome Shield. The escort
+		// payload is a TgObjectiveAttachActor; its Touch / RanInto /
+		// EncroachingOn each call `if (TgDeployable(Other)) Other.DestroyIt()`.
+		// For a self-spawning force-field dome, skip the whole handler so the
+		// DestroyIt never runs and the payload passes through it. Turrets
+		// (Suicide) and other deployables are unaffected — only self-spawn domes
+		// match. `Other` is param 0. EncroachingOn returns bool at Params+4
+		// (Touch/RanInto are void — must NOT write past their smaller Parms).
+		AActor* other = Params ? *(AActor**)Params : nullptr;
+		if (other &&
+		    ObjectClassCache::ClassNameContains(other, "TgDeploy_ForceField") &&
+		    DeployableClassify::DeploysOnSelf(((ATgDeployable*)other)->r_nDeployableId)) {
+			const char* fn = Function->GetFullName();
+			if (fn && strstr(fn, "EncroachingOn")) {
+				if (Params) *(uint32_t*)((char*)Params + 4) = 0;  // ReturnValue = false (don't stop)
+				if (Result) *(uint32_t*)Result = 0;
+			}
+			break;  // skip CallOriginal → no dome.DestroyIt()
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	}
+
 	case DispatchTag::SuperAgentCaptureGate: {
 		ATgMissionObjective_Proximity* Obj = (ATgMissionObjective_Proximity*)Object;
 		if (SuperAgent::ShouldRunCapture(Obj)) {
