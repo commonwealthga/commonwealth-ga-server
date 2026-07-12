@@ -39,6 +39,9 @@ namespace DeployableClassify {
 	// positive HP and remain damageable. Cached per id.
 	bool IsDestructible(int nDeployableId);
 
+	// asm_data_set_deployables.health for this id (0 if absent/unset). Cached.
+	int GetMaxHealth(int nDeployableId);
+
 	// True iff ANY device-mode that deploys this deployable has
 	// `require_los_flag = 0` — i.e. the deploy action doesn't need a line-of-
 	// sight aim trace because the deployable spawns on the firing pawn rather
