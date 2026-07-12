@@ -37,14 +37,19 @@ void AddSlot(TeamSeed& seed, const Slot& s, int tf) {
     seed.size += 1;
     seed.heal_score += HealValue(s.profile_id, tf);
     seed.class_counts[s.profile_id] += 1;
+    seed.mmr_sum += s.mmr;
 }
 
 // Place one slot on whichever side yields lower post-placement imbalance.
-// Tie -> TF1 (deterministic). Updates the chosen seed, records the assignment.
+// Tie -> lower-MMR side, then TF1. Updates the chosen seed, records the
+// assignment.
 int PlaceSlotGreedy(const Slot& s, TeamSeed& seed1, TeamSeed& seed2) {
     TeamSeed try1 = seed1; AddSlot(try1, s, 1);
     TeamSeed try2 = seed2; AddSlot(try2, s, 2);
-    if (Imbalance(seed1, try2) < Imbalance(try1, seed2)) { seed2 = try2; return 2; }
+    const float cost1 = Imbalance(try1, seed2);
+    const float cost2 = Imbalance(seed1, try2);
+    if (cost2 < cost1) { seed2 = try2; return 2; }
+    if (cost1 == cost2 && seed2.mmr_sum < seed1.mmr_sum) { seed2 = try2; return 2; }
     seed1 = try1; return 1;
 }
 
@@ -72,7 +77,9 @@ void AssignWhole(const std::vector<Group>& groups,
         TeamSeed s1b = seed1, s2b = seed2;
         for (const auto& m : g.members) AddSlot(s2b, m, 2);
         const float cost2 = Imbalance(seed1, s2b);
-        const int side = (cost2 < cost1) ? 2 : 1;
+        // Tie -> the MMR-weaker side (was: always TF1).
+        const int side = (cost2 < cost1) ? 2
+            : (cost1 == cost2 && seed2.mmr_sum < seed1.mmr_sum) ? 2 : 1;
         if (side == 1) seed1 = s1a; else seed2 = s2b;
         for (const auto& m : g.members) out[m.guid] = side;
     }
@@ -94,18 +101,20 @@ void AssignIndividual(const std::vector<Group>& groups,
 
 // BalancedPvp only: MMR post-pass over solo players. Same-class swaps keep
 // the class/heal/size result of the placement above fully intact; party
-// members are never moved.
+// members are never moved. seed_diff = live-roster MMR imbalance, so the
+// newcomers compensate for the match they are joining.
 std::unordered_map<std::string, int> Finish(
     TaskforcePolicy tf_policy,
     const std::vector<Group>& groups,
-    std::unordered_map<std::string, int> out) {
+    std::unordered_map<std::string, int> out,
+    double seed_diff) {
     if (tf_policy != TaskforcePolicy::BalancedPvp) return out;
     std::vector<MmrSwap::Player> mp;
     for (const auto& g : groups)
         for (const auto& m : g.members)
             mp.push_back({m.guid, m.profile_id, m.mmr,
                           m.solo && g.members.size() == 1});
-    MmrSwap::BalanceByMmr(mp, out);
+    MmrSwap::BalanceByMmr(mp, out, seed_diff);
     return out;
 }
 
@@ -120,6 +129,9 @@ std::unordered_map<std::string, int> Assign(
 
     std::unordered_map<std::string, int> out;
 
+    // Live-roster MMR imbalance, captured before placement mutates the seeds.
+    const double seed_diff = seed1.mmr_sum - seed2.mmr_sum;
+
     // Pinned: one side, side_policy irrelevant.
     if (tf_policy == TaskforcePolicy::Pinned1 || tf_policy == TaskforcePolicy::Pinned2) {
         const int tf = (tf_policy == TaskforcePolicy::Pinned1) ? 1 : 2;
@@ -130,12 +142,12 @@ std::unordered_map<std::string, int> Assign(
 
     if (side_policy == TeamSidePolicy::Ignore) {
         AssignIndividual(groups, seed1, seed2, out);
-        return Finish(tf_policy, groups, std::move(out));
+        return Finish(tf_policy, groups, std::move(out), seed_diff);
     }
 
     if (side_policy == TeamSidePolicy::Required) {
         AssignWhole(groups, seed1, seed2, out);
-        return Finish(tf_policy, groups, std::move(out));
+        return Finish(tf_policy, groups, std::move(out), seed_diff);
     }
 
     // Preferred: keep parties whole unless doing so leaves a class imbalance
@@ -150,8 +162,8 @@ std::unordered_map<std::string, int> Assign(
     AssignIndividual(groups, is1, is2, indiv);
 
     if (ClassImbalance(is1, is2) < ClassImbalance(ws1, ws2))
-        return Finish(tf_policy, groups, std::move(indiv));
-    return Finish(tf_policy, groups, std::move(whole));
+        return Finish(tf_policy, groups, std::move(indiv), seed_diff);
+    return Finish(tf_policy, groups, std::move(whole), seed_diff);
 }
 
 }  // namespace SidePlacement

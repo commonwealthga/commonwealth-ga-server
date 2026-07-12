@@ -18,9 +18,12 @@ struct Player {
 };
 
 // Repeatedly applies the same-class cross-team swap that most reduces
-// |sum(tf1 mmr) - sum(tf2 mmr)| until none strictly improves.
-// `assignment`: guid -> 1|2, mutated in place. Returns number of swaps.
+// |seed_diff + sum(tf1 mmr) - sum(tf2 mmr)| until none strictly improves.
+// `assignment`: guid -> 1|2, mutated in place. `seed_diff` is the MMR-sum
+// difference (tf1 - tf2) of players NOT in the list — e.g. the live roster
+// of an in-progress match the batch is joining. Returns number of swaps.
 int BalanceByMmr(const std::vector<Player>& players,
-                 std::unordered_map<std::string, int>& assignment);
+                 std::unordered_map<std::string, int>& assignment,
+                 double seed_diff = 0.0);
 
 }  // namespace MmrSwap

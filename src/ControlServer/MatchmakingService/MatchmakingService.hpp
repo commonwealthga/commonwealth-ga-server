@@ -26,6 +26,7 @@ struct PendingMatch {
     std::vector<std::string> session_guids;
     std::unordered_map<std::string, int> task_force_assignments;  // guid -> task_force
     std::unordered_map<std::string, uint32_t> profile_ids;        // guid -> profile_id
+    std::unordered_map<std::string, double> mmrs;                 // guid -> stamped rating
     uint32_t cap = 0;  // 0 = unlimited; hard ceiling on session_guids.size()
 
     // Access semantics carried from the rule. Coalesce only appends to OPEN
@@ -87,6 +88,7 @@ public:
         const std::vector<std::string>& session_guids,
         const std::unordered_map<std::string, int>& task_force_assignments,
         const std::unordered_map<std::string, uint32_t>& profile_ids,
+        const std::unordered_map<std::string, double>& mmrs,
         uint32_t cap);
     static std::vector<RunningInstance> GetReservedReadyInstances(uint32_t queue_id);
     static void RemoveReadyMatchReservation(

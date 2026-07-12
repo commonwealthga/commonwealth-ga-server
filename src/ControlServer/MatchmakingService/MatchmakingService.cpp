@@ -565,7 +565,8 @@ void MatchmakingService::TrackReadyMatchReservations(
     int64_t instance_id, uint32_t queue_id, const std::string& game_mode,
     const std::vector<std::string>& session_guids,
     const std::unordered_map<std::string, int>& task_force_assignments,
-    const std::unordered_map<std::string, uint32_t>& profile_ids, uint32_t cap) {
+    const std::unordered_map<std::string, uint32_t>& profile_ids,
+    const std::unordered_map<std::string, double>& mmrs, uint32_t cap) {
     if (instance_id == 0 || session_guids.empty()) return;
     auto qit = queues_.find(queue_id);
     if (qit == queues_.end() || !TracksReadyReservations(qit->second.config)) return;
@@ -592,6 +593,8 @@ void MatchmakingService::TrackReadyMatchReservations(
         ready.task_force_assignments[guid] = (tfit != task_force_assignments.end()) ? tfit->second : 1;
         auto pfit = profile_ids.find(guid);
         ready.profile_ids[guid] = (pfit != profile_ids.end()) ? pfit->second : 0;
+        auto mit = mmrs.find(guid);
+        ready.mmrs[guid] = (mit != mmrs.end()) ? mit->second : 1000.0;
         added++;
     }
     if (added > 0)
@@ -632,6 +635,10 @@ std::vector<RunningInstance> MatchmakingService::GetReservedReadyInstances(uint3
             }
         }
         // Reserved contribution ONLY — the provider adds the live roster.
+        // MMR seeds only for BalancedPvp (neutral elsewhere, see design).
+        const auto qcfg = GetQueueConfig(ready.queue_id);
+        const bool mmr_aware =
+            qcfg && qcfg->taskforce_policy == TaskforcePolicy::BalancedPvp;
         for (const auto& [guid, tf] : ready.task_force_assignments) {
             uint32_t profile_id = 0;
             auto pit = ready.profile_ids.find(guid);
@@ -640,6 +647,10 @@ std::vector<RunningInstance> MatchmakingService::GetReservedReadyInstances(uint3
             seed.size += 1;
             seed.heal_score += SidePlacement::HealValue(profile_id, tf == 2 ? 2 : 1);
             seed.class_counts[profile_id] += 1;
+            if (mmr_aware) {
+                auto mit = ready.mmrs.find(guid);
+                seed.mmr_sum += (mit != ready.mmrs.end()) ? mit->second : 1000.0;
+            }
         }
         ri.player_count = (int)ready.session_guids.size();
         out.push_back(std::move(ri));
@@ -892,6 +903,8 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
                     (tfit != result->task_force_assignments.end()) ? tfit->second : 1;
                 auto pfit = result->profile_ids.find(guid);
                 pm.profile_ids[guid] = (pfit != result->profile_ids.end()) ? pfit->second : 0;
+                auto mit = result->mmrs.find(guid);
+                pm.mmrs[guid] = (mit != result->mmrs.end()) ? mit->second : 1000.0;
             }
             RemoveConsumedParties(queue.parties, result->consumed_party_ids);
             Logger::Log("matchmaking",

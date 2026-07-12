@@ -233,7 +233,7 @@ private:
                 MatchmakingService::TrackReadyMatchReservations(
                     inst_id, pending->queue_id, pending->game_mode,
                     pending->session_guids, pending->task_force_assignments,
-                    pending->profile_ids, pending->cap);
+                    pending->profile_ids, pending->mmrs, pending->cap);
                 for (const auto& guid : pending->session_guids) {
                     int tf = 1;
                     auto tfit = pending->task_force_assignments.find(guid);

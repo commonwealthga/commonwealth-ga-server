@@ -5,8 +5,9 @@
 namespace MmrSwap {
 
 int BalanceByMmr(const std::vector<Player>& players,
-                 std::unordered_map<std::string, int>& assignment) {
-    double diff = 0.0;   // sum(tf1) - sum(tf2), all players count
+                 std::unordered_map<std::string, int>& assignment,
+                 double seed_diff) {
+    double diff = seed_diff;   // sum(tf1) - sum(tf2), live seed + all players
     for (const auto& p : players) {
         auto it = assignment.find(p.guid);
         if (it == assignment.end()) continue;

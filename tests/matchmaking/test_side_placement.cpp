@@ -153,6 +153,44 @@ TEST(side_balancedpvp_mmr_never_splits_party) {
     CHECK_EQ(Count(a, 2), 2);
 }
 
+TEST(side_balancedpvp_join_compensates_live_imbalance) {
+    // Live match: both sides 1 assault each (class-even), tf1 ahead by 500
+    // MMR. Two joining solo assaults split 1/1; the stronger one must land
+    // on tf2.
+    TeamSeed s1; s1.size = 1; s1.class_counts[A] = 1; s1.mmr_sum = 1500.0;
+    TeamSeed s2; s2.size = 1; s2.class_counts[A] = 1; s2.mmr_sum = 1000.0;
+    std::vector<Group> groups;
+    Group g1; g1.party_id = 1;
+    g1.members.push_back({"strong", A, 1200.0, true});
+    groups.push_back(std::move(g1));
+    Group g2; g2.party_id = 2;
+    g2.members.push_back({"weak", A, 800.0, true});
+    groups.push_back(std::move(g2));
+    auto a = Assign(TaskforcePolicy::BalancedPvp, TeamSidePolicy::Ignore,
+                    groups, s1, s2);
+    CHECK_EQ(Count(a, 1), 1);
+    CHECK_EQ(Count(a, 2), 1);
+    CHECK_EQ(Tf(a, "strong"), 2);
+    CHECK_EQ(Tf(a, "weak"), 1);
+}
+
+TEST(side_balancedpvp_party_tie_breaks_to_weaker_side) {
+    // Class-symmetric live seeds, tf1 ahead on MMR: a joining duo whose
+    // placement is a class/heal/size tie lands whole on the weaker tf2
+    // (was: always TF1).
+    TeamSeed s1; s1.size = 2; s1.class_counts[A] = 2; s1.mmr_sum = 2600.0;
+    TeamSeed s2; s2.size = 2; s2.class_counts[A] = 2; s2.mmr_sum = 1800.0;
+    std::vector<Group> groups;
+    Group duo; duo.party_id = 7;
+    duo.members.push_back({"d1", R, 1100.0, false});
+    duo.members.push_back({"d2", R, 1100.0, false});
+    groups.push_back(std::move(duo));
+    auto a = Assign(TaskforcePolicy::BalancedPvp, TeamSidePolicy::Required,
+                    groups, s1, s2);
+    CHECK_EQ(Tf(a, "d1"), 2);
+    CHECK_EQ(Tf(a, "d2"), 2);
+}
+
 TEST(side_balanced_headcount_policy_has_no_mmr_pass) {
     // Plain Balanced (non-PvP): swap pass is gated off; split still 1/1.
     std::vector<Group> groups;

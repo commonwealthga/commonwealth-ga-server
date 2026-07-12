@@ -63,11 +63,15 @@ inline MatchResult BuildResult(
 
     std::vector<SidePlacement::Group> groups;
     groups.reserve(chosen.size());
+    // Real ratings only for BalancedPvp — other policies get neutral values
+    // so their placement (and every MMR tie-break) stays byte-identical.
+    const bool mmr_aware = tf_policy == TaskforcePolicy::BalancedPvp;
     for (const QueuedParty* p : chosen) {
         SidePlacement::Group g;
         g.party_id = p->party_id;
         for (const auto& m : p->members)
-            g.members.push_back({m.session_guid, m.profile_id, m.mmr,
+            g.members.push_back({m.session_guid, m.profile_id,
+                                 mmr_aware ? m.mmr : 1000.0,
                                  p->size() == 1});
         groups.push_back(std::move(g));
     }
@@ -84,6 +88,7 @@ inline MatchResult BuildResult(
             r.session_guids.push_back(m.session_guid);
             r.task_force_assignments[m.session_guid] = tf;
             r.profile_ids[m.session_guid] = m.profile_id;
+            r.mmrs[m.session_guid] = mmr_aware ? m.mmr : 1000.0;
         }
     }
     return r;

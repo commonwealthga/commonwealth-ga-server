@@ -69,4 +69,17 @@ TEST(mmr_swap_noop_on_equal_ratings) {
     CHECK(asn.at("a") == 1);
 }
 
+TEST(mmr_swap_seed_diff_steers_join) {
+    // The incoming pair alone is balanced either way (1200 vs 800 on some
+    // side); a live match already favoring tf1 by 500 pulls the stronger
+    // newcomer to tf2.
+    std::vector<Player> ps = {
+        {"strong", 680, 1200.0, true}, {"weak", 680, 800.0, true},
+    };
+    std::unordered_map<std::string, int> asn = {{"strong", 1}, {"weak", 2}};
+    MmrSwap::BalanceByMmr(ps, asn, /*seed_diff=*/500.0);
+    CHECK(asn.at("strong") == 2);   // |500 - 400| beats |500 + 400|
+    CHECK(asn.at("weak") == 1);
+}
+
 }  // namespace

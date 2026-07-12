@@ -135,10 +135,12 @@ ComputeBatchAssignment(const std::vector<PlayerSlot>& players,
 
     // MMR post-pass: same-class swaps only, so the class/heal/size balance
     // above is invariant. No party context on this path — all swappable.
+    // Seeded joins compensate for the live rosters' imbalance.
     std::vector<MmrSwap::Player> mp;
     mp.reserve(players.size());
     for (const auto& p : players) mp.push_back({p.guid, p.profile_id, p.mmr, true});
-    const int swaps = MmrSwap::BalanceByMmr(mp, out);
+    const int swaps = MmrSwap::BalanceByMmr(mp, out,
+                                            seed1.mmr_sum - seed2.mmr_sum);
     double sum1 = 0.0, sum2 = 0.0;
     for (const auto& p : players) {
         if (out[p.guid] == 1) sum1 += p.mmr;

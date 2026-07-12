@@ -454,12 +454,19 @@ int main(int argc, char* argv[]) {
             ri.queue_id     = inst.queue_id;
             ri.access_mode  = mm::ParseAccessMode(inst.access_mode);
             ri.owner_party_ids = parse_owner_csv(inst.owner_party_ids);
-            // Live roster -> per-team seed.
+            // Live roster -> per-team seed. MMR sums only for BalancedPvp
+            // queues (steers newcomers toward the weaker side; neutral
+            // elsewhere so non-PvP placement is unchanged).
+            const auto seed_qcfg = MatchmakingService::GetQueueConfig(inst.queue_id);
+            const bool seed_mmr_aware = seed_qcfg
+                && seed_qcfg->taskforce_policy == TaskforcePolicy::BalancedPvp;
             for (const auto& r : InstanceRegistry::GetActivePlayersForInstance(inst.instance_id)) {
                 TeamSeed& seed = (r.task_force == 2) ? ri.team2 : ri.team1;
                 seed.size += 1;
                 seed.heal_score += SidePlacement::HealValue(r.profile_id, r.task_force == 2 ? 2 : 1);
                 seed.class_counts[r.profile_id] += 1;
+                if (seed_mmr_aware)
+                    seed.mmr_sum += MmrService::GetCurrentRating(r.user_id, r.profile_id);
             }
             ri.player_count = ri.team1.size + ri.team2.size;
             filtered.push_back(std::move(ri));
@@ -509,7 +516,7 @@ int main(int argc, char* argv[]) {
                 MatchmakingService::TrackReadyMatchReservations(
                     *result.existing_instance_id, queue_id, result.game_mode,
                     result.session_guids, result.task_force_assignments,
-                    result.profile_ids, cap);
+                    result.profile_ids, result.mmrs, cap);
                 for (const auto& guid : result.session_guids) {
                     int tf = 1;
                     auto it = result.task_force_assignments.find(guid);
@@ -558,6 +565,7 @@ int main(int argc, char* argv[]) {
             pending.session_guids = std::move(result.session_guids);
             pending.task_force_assignments = std::move(result.task_force_assignments);
             pending.profile_ids = std::move(result.profile_ids);
+            pending.mmrs = std::move(result.mmrs);
             // Honour rule-supplied cap_override (e.g. DoubleAgentRule seals
             // each match at its roster size). Falls back to the queue-wide
             // cap when the rule didn't override.

@@ -114,6 +114,9 @@ struct MapModeSpec {
 struct TeamSeed {
     int   size       = 0;
     float heal_score = 0.0f;
+    // MMR sum of the side (live + reserved). Only breaks ties / steers the
+    // newcomer swap pass — never outranks class/heal/size.
+    double mmr_sum   = 0.0;
     std::unordered_map<uint32_t, int> class_counts;  // profile_id -> headcount
 };
 
@@ -160,6 +163,10 @@ struct MatchResult {
     std::optional<int64_t> existing_instance_id;   // set => join, don't spawn
     std::unordered_map<std::string, int> task_force_assignments;  // guid -> TF (1/2)
     std::unordered_map<std::string, uint32_t> profile_ids;        // guid -> profile_id
+    // guid -> stamped rating (neutral 1000 for non-PvP policies). Carried into
+    // PendingMatch / ready reservations so reserved seats count toward the
+    // live-side MMR seed for later joins.
+    std::unordered_map<std::string, double> mmrs;
 
     // Override QueueConfig cap for the resulting PendingMatch. Used to seal a
     // match at its popped size (DA) regardless of the queue's nominal cap.
