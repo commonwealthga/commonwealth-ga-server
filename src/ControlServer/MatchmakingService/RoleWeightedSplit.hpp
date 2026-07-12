@@ -12,19 +12,26 @@
 
 namespace RoleWeightedSplit {
 
-// Tunables. Single source of truth for playtest re-tuning. Documented
-// values match .planning/2026-06-03-matchmaking-control-server-fixes-design.md.
+// Tunables. Single source of truth for playtest re-tuning. Priority:
+// size > class > heal; MMR only breaks exact cost ties, picks rebalance
+// movers, and drives the same-class swap pass. (2026-07-12: was class-first
+// per the 2026-06-03 design doc; a JIP medic joining a live 6v7 landed on
+// the 7 side to even the medic count, producing 6v8.)
 inline constexpr float kAlpha            = 1.0f;  // heal-imbalance weight
-inline constexpr float kBeta             = 0.5f;  // size-imbalance weight
 inline constexpr float kGamma            = 0.3f;  // co-aligned penalty
 inline constexpr float kRoboticsDefBonus = 0.10f; // robotics TF2 bonus
 
-// Per-class-count imbalance weight. PRIMARY objective: split every class
-// evenly. Must dominate the heal/size/co-aligned terms so a 1-player class
-// imbalance always outweighs any heal-score or size benefit. Keep it well
-// above the max achievable (kAlpha*healDiff + kBeta*sizeDiff + kGamma*coAligned)
-// for your largest match (~37 for a 12-player match) — 1000 gives wide margin.
-inline constexpr float kDelta            = 1000.0f; // per-class-imbalance weight
+// Size-imbalance weight. PRIMARY objective: a headcount gap always outweighs
+// any class benefit. Placement is one player at a time, so the smallest
+// nonzero size differential between the two choices is 2*kBeta vs a class
+// differential of at most 2*kDelta — 100x margin.
+inline constexpr float kBeta             = 100000.0f;
+
+// Per-class-count imbalance weight. SECONDARY objective: split every class
+// evenly once headcounts are even. Must dominate the heal/co-aligned terms so
+// a 1-player class imbalance always outweighs any heal-score benefit — 1000
+// gives wide margin over their max (~37 for a 12-player match).
+inline constexpr float kDelta            = 1000.0f;
 
 // Engine PROFILE_* values (mirror MatchmakingService::GetQueuedProfileCounts).
 inline constexpr uint32_t kProfileAssault  = 680;

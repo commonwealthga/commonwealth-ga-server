@@ -1,5 +1,6 @@
 #include "src/ControlServer/MatchmakingService/SidePlacement.hpp"
 
+#include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/MatchmakingService/MmrSwap.hpp"
 
 #include <algorithm>
@@ -108,13 +109,19 @@ std::unordered_map<std::string, int> Finish(
     const std::vector<Group>& groups,
     std::unordered_map<std::string, int> out,
     double seed_diff) {
-    if (tf_policy != TaskforcePolicy::BalancedPvp) return out;
-    std::vector<MmrSwap::Player> mp;
+    if (tf_policy == TaskforcePolicy::BalancedPvp) {
+        std::vector<MmrSwap::Player> mp;
+        for (const auto& g : groups)
+            for (const auto& m : g.members)
+                mp.push_back({m.guid, m.profile_id, m.mmr,
+                              m.solo && g.members.size() == 1});
+        MmrSwap::BalanceByMmr(mp, out, seed_diff);
+    }
     for (const auto& g : groups)
         for (const auto& m : g.members)
-            mp.push_back({m.guid, m.profile_id, m.mmr,
-                          m.solo && g.members.size() == 1});
-    MmrSwap::BalanceByMmr(mp, out, seed_diff);
+            Logger::Log("team-balance",
+                "[SidePlacement]   guid=%s profile=%u mmr=%.0f -> tf=%d\n",
+                m.guid.c_str(), m.profile_id, m.mmr, out[m.guid]);
     return out;
 }
 
@@ -131,6 +138,11 @@ std::unordered_map<std::string, int> Assign(
 
     // Live-roster MMR imbalance, captured before placement mutates the seeds.
     const double seed_diff = seed1.mmr_sum - seed2.mmr_sum;
+
+    Logger::Log("team-balance",
+        "[SidePlacement] Assign groups=%zu seed1=(%.2f,%d,%.0f) seed2=(%.2f,%d,%.0f)\n",
+        groups.size(), seed1.heal_score, seed1.size, seed1.mmr_sum,
+        seed2.heal_score, seed2.size, seed2.mmr_sum);
 
     // Pinned: one side, side_policy irrelevant.
     if (tf_policy == TaskforcePolicy::Pinned1 || tf_policy == TaskforcePolicy::Pinned2) {
@@ -151,8 +163,9 @@ std::unordered_map<std::string, int> Assign(
     }
 
     // Preferred: keep parties whole unless doing so leaves a class imbalance
-    // that individual placement would fix. Class balance is the primary
-    // objective; size-only imbalance never breaks a party apart.
+    // that individual placement would fix. Placement itself is size-first;
+    // this gate stays class-only, so a size-only imbalance never breaks a
+    // party apart.
     TeamSeed ws1 = seed1, ws2 = seed2;
     std::unordered_map<std::string, int> whole;
     AssignWhole(groups, ws1, ws2, whole);

@@ -25,8 +25,8 @@ int ClassCountOn(const TeamState& s, uint32_t profile_id) {
 }
 
 // Cost of placing a `profile_id` player onto team `t` given the pre-placement
-// states s1/s2. Per-class term dominates (kDelta); heal/size/co-aligned only
-// break ties among equal per-class outcomes.
+// states s1/s2. Size term dominates (kBeta), then per-class (kDelta);
+// heal/co-aligned only break ties among equal size+class outcomes.
 float Cost(int t, uint32_t profile_id,
            const TeamState& s1, const TeamState& s2)
 {

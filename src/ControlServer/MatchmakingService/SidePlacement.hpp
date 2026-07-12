@@ -25,12 +25,16 @@ inline constexpr uint32_t kProfileMedic    = 567;
 inline constexpr uint32_t kProfileRecon    = 681;
 inline constexpr uint32_t kProfileRobotics = 679;
 
-// Cost weights. kClassWeight dominates so per-class balance is the primary
-// objective (a 1-player class imbalance always outweighs any heal/size benefit);
-// heal and size are secondary tie-breakers.
+// Cost weights. Priority: size > class > heal; MMR only breaks exact cost
+// ties and drives the same-class swap pass (which preserves size and class).
+// kSizeWeight dominates kClassWeight so a headcount gap always outweighs any
+// class benefit: the smallest nonzero size differential between the two
+// choices is 2*kSizeWeight, while a k-member group shifts the class term by
+// at most 2k*kClassWeight — the 100x ratio covers groups up to 100 members.
+// kClassWeight in turn dominates every heal term.
+inline constexpr float kSizeWeight  = 100000.0f;
 inline constexpr float kClassWeight = 1000.0f;
 inline constexpr float kHealWeight  = 1.0f;
-inline constexpr float kSizeWeight  = 1.0f;
 
 // Per-class headcount imbalance between two sides (the primary objective,
 // independent of heal/size). 0 = every class evenly split.
