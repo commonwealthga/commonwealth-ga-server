@@ -109,4 +109,32 @@ bool IsDestructible(int nDeployableId) {
 	return destructible == 1;
 }
 
+int GetMaxHealth(int nDeployableId) {
+	// asm_data_set_deployables.health (0 when absent). Cached per id. Used to
+	// pre-seed r_nHealth before ApplyDeployableSetup so a deployable's in-setup
+	// deploy lifecycle doesn't run at 0 HP (which lets an incidental hit event
+	// drop it to <=0 → DestroyIt → instant despawn).
+	static std::unordered_map<int, int> s_cache;
+	auto it = s_cache.find(nDeployableId);
+	if (it != s_cache.end()) return it->second;
+
+	int health = 0;
+	sqlite3* db = Database::GetConnection();
+	if (db) {
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+			"SELECT health FROM asm_data_set_deployables WHERE deployable_id = ? LIMIT 1;",
+			-1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int(stmt, 1, nDeployableId);
+			if (sqlite3_step(stmt) == SQLITE_ROW) {
+				const int h = sqlite3_column_int(stmt, 0);
+				if (h > 0) health = h;
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+	s_cache[nDeployableId] = health;
+	return health;
+}
+
 }  // namespace DeployableClassify
