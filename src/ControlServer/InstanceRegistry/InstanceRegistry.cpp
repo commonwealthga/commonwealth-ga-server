@@ -821,9 +821,11 @@ InstanceRegistry::GetActivePlayersForInstance(int64_t instance_id) {
 
     sqlite3_stmt* stmt = nullptr;
     const char* sql =
-        "SELECT session_guid, profile_id, task_force_number "
-        "FROM ga_instance_players "
-        "WHERE instance_id = ? AND left_at IS NULL";
+        "SELECT ip.session_guid, ip.profile_id, ip.task_force_number, "
+        "       COALESCE(c.user_id, 0) "
+        "FROM ga_instance_players ip "
+        "LEFT JOIN ga_characters c ON c.id = ip.character_id "
+        "WHERE ip.instance_id = ? AND ip.left_at IS NULL";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
         Logger::Log("db", "[InstanceRegistry] GetActivePlayersForInstance prepare failed: %s\n",
             sqlite3_errmsg(db));
@@ -836,6 +838,7 @@ InstanceRegistry::GetActivePlayersForInstance(int64_t instance_id) {
         if (auto* p = sqlite3_column_text(stmt, 0)) row.guid = (const char*)p;
         row.profile_id = (uint32_t)sqlite3_column_int(stmt, 1);
         row.task_force = sqlite3_column_int(stmt, 2);
+        row.user_id    = sqlite3_column_int64(stmt, 3);
         out.push_back(std::move(row));
     }
     sqlite3_finalize(stmt);

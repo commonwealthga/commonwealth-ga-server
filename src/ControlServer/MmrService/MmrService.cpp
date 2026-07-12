@@ -583,6 +583,29 @@ std::string MmrService::GetActiveEngine() {
     return engine;
 }
 
+double MmrService::GetCurrentRating(int64_t user_id, uint32_t profile_id) {
+    const char* cls = ClassNameForProfile(static_cast<int>(profile_id));
+    if (!cls) return kDefaultMmr;
+    sqlite3* db = Database::GetConnection();
+    if (!db) return kDefaultMmr;
+    const std::string table =
+        (GetActiveEngine() == "perf") ? "ga_mmr_history" : "ga_wl_mmr_history";
+    // rowid order == fold order; the last row per (user, class) is current.
+    const std::string sql =
+        "SELECT mmr_after FROM " + table +
+        " WHERE user_id = ? AND class_name = ? ORDER BY rowid DESC LIMIT 1";
+    sqlite3_stmt* stmt = nullptr;
+    double rating = kDefaultMmr;
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK && stmt) {
+        sqlite3_bind_int64(stmt, 1, user_id);
+        sqlite3_bind_text(stmt, 2, cls, -1, SQLITE_STATIC);
+        if (sqlite3_step(stmt) == SQLITE_ROW)
+            rating = sqlite3_column_double(stmt, 0);
+    }
+    sqlite3_finalize(stmt);
+    return rating;
+}
+
 bool MmrService::SetActiveEngine(const std::string& engine) {
     if (engine != "wl" && engine != "perf") return false;
     sqlite3* db = Database::GetConnection();

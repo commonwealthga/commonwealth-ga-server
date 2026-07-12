@@ -46,6 +46,8 @@ float Imbalance(const TeamSeed& a, const TeamSeed& b);
 struct Slot {
     std::string guid;
     uint32_t    profile_id = 0;
+    double      mmr = 1000.0;   // rating for the queued class
+    bool        solo = false;   // solo-queued: eligible for the MMR swap pass
 };
 
 struct Group {

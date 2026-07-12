@@ -628,6 +628,7 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/QuestStore/QuestStore.cpp \
 	$(CS_SRC_DIR)/TeamService/TeamService.cpp \
 	$(CS_SRC_DIR)/MmrService/MmrService.cpp \
+	$(CS_SRC_DIR)/MatchmakingService/MmrSwap.cpp \
 	$(CS_SRC_DIR)/MatchmakingService/MatchmakingService.cpp \
     $(CS_SRC_DIR)/MatchmakingService/TicketInfoEncoder.cpp \
     $(CS_SRC_DIR)/MatchmakingService/RuleFactory.cpp \

@@ -39,11 +39,14 @@ float HealValue(uint32_t profile_id, int task_force);
 struct PlayerSlot {
     std::string guid;
     uint32_t    profile_id;
+    double      mmr = 1000.0;   // current rating for the queued class
 };
 
 struct TeamState {
     float heal_score = 0.0f;
     int   size       = 0;
+    // Sum of member ratings. Breaks exact cost ties in single placement.
+    double mmr_sum   = 0.0;
     // Per-class headcount currently on this team. Drives the per-class balance
     // term. Empty seed = no prior players (fresh match / rebalance).
     std::unordered_map<uint32_t, int> class_counts;
@@ -67,6 +70,7 @@ struct RosterEntry {
     std::string guid;
     uint32_t    profile_id;
     int         current_tf;
+    double      mmr = 1000.0;   // current rating for the played class
 };
 
 // Minimal-swap delta. Computes the ideal per-(team,class) target counts, then

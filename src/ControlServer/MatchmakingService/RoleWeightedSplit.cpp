@@ -1,5 +1,6 @@
 #include "src/ControlServer/MatchmakingService/RoleWeightedSplit.hpp"
 
+#include "src/ControlServer/MatchmakingService/MmrSwap.hpp"
 #include "src/ControlServer/Logger.hpp"
 
 #include <algorithm>
@@ -57,6 +58,9 @@ int GreedyPlaceOne(uint32_t profile_id, const TeamState& s1, const TeamState& s2
 
     if (c1 < c2) return 1;
     if (c2 < c1) return 2;
+    // Exact cost tie: nudge toward the lower-MMR side, then smaller side.
+    if (s1.mmr_sum < s2.mmr_sum) return 1;
+    if (s2.mmr_sum < s1.mmr_sum) return 2;
     if (s1.size < s2.size) return 1;
     if (s2.size < s1.size) return 2;
     return 1;
@@ -115,10 +119,12 @@ ComputeBatchAssignment(const std::vector<PlayerSlot>& players,
             s1.heal_score += HealValue(p.profile_id, 1);
             s1.size += 1;
             s1.class_counts[p.profile_id] += 1;
+            s1.mmr_sum += p.mmr;
         } else {
             s2.heal_score += HealValue(p.profile_id, 2);
             s2.size += 1;
             s2.class_counts[p.profile_id] += 1;
+            s2.mmr_sum += p.mmr;
         }
         out[p.guid] = tf;
         Logger::Log("team-balance",
@@ -126,6 +132,21 @@ ComputeBatchAssignment(const std::vector<PlayerSlot>& players,
             p.guid.c_str(), p.profile_id, tf,
             s1.heal_score, s1.size, s2.heal_score, s2.size);
     }
+
+    // MMR post-pass: same-class swaps only, so the class/heal/size balance
+    // above is invariant. No party context on this path — all swappable.
+    std::vector<MmrSwap::Player> mp;
+    mp.reserve(players.size());
+    for (const auto& p : players) mp.push_back({p.guid, p.profile_id, p.mmr, true});
+    const int swaps = MmrSwap::BalanceByMmr(mp, out);
+    double sum1 = 0.0, sum2 = 0.0;
+    for (const auto& p : players) {
+        if (out[p.guid] == 1) sum1 += p.mmr;
+        else                  sum2 += p.mmr;
+    }
+    Logger::Log("team-balance",
+        "[RoleWeightedSplit]   mmr post-pass swaps=%d sums=(%.1f)/(%.1f)\n",
+        swaps, sum1, sum2);
 
     return out;
 }
@@ -152,27 +173,48 @@ ComputeRebalanceDelta(const std::vector<RosterEntry>& roster) {
         if (kv.second == 1) target1[class_of[kv.first]] += 1;
     }
 
-    // 2) Current per-class tf1 counts + the actual guids on each side per class.
+    // 2) Current per-class tf1 counts, the guid+mmr lists per side per class,
+    //    and the current MMR diff (sum1 - sum2) for mover selection.
     std::unordered_map<uint32_t, int> cur1, total;
-    std::unordered_map<uint32_t, std::vector<std::string>> on1, on2;
+    std::unordered_map<uint32_t, std::vector<std::pair<std::string, double>>> on1, on2;
+    double diff = 0.0;
     for (const auto& r : roster) {
         total[r.profile_id] += 1;
-        if (r.current_tf == 1) { cur1[r.profile_id] += 1; on1[r.profile_id].push_back(r.guid); }
-        else                   {                          on2[r.profile_id].push_back(r.guid); }
+        if (r.current_tf == 1) { cur1[r.profile_id] += 1; on1[r.profile_id].push_back({r.guid, r.mmr}); diff += r.mmr; }
+        else                   {                          on2[r.profile_id].push_back({r.guid, r.mmr}); diff -= r.mmr; }
     }
 
-    // 3) For each class, move exactly the surplus from the over-target side.
+    // 3) Move exactly the per-class surplus, choosing WHICH members move by
+    //    what best closes the MMR gap (was: first-N list order).
     for (const auto& kv : total) {
         const uint32_t cls = kv.first;
         const int want1 = target1.count(cls) ? target1[cls] : 0;
         const int have1 = cur1.count(cls)    ? cur1[cls]    : 0;
-        if (have1 > want1) {
-            auto& g = on1[cls];
-            for (int i = 0; i < have1 - want1 && i < (int)g.size(); ++i) moves[g[i]] = 2;
-        } else if (have1 < want1) {
-            auto& g = on2[cls];
-            for (int i = 0; i < want1 - have1 && i < (int)g.size(); ++i) moves[g[i]] = 1;
-        }
+        auto pick_movers = [&](std::vector<std::pair<std::string, double>>& side,
+                               int count, int to_tf) {
+            for (int n = 0; n < count; ++n) {
+                int best = -1;
+                double best_abs = 0.0;
+                for (size_t i = 0; i < side.size(); ++i) {
+                    if (moves.count(side[i].first)) continue;
+                    const double nd = (to_tf == 2) ? diff - 2.0 * side[i].second
+                                                   : diff + 2.0 * side[i].second;
+                    if (best < 0 || std::fabs(nd) < best_abs) {
+                        best = static_cast<int>(i);
+                        best_abs = std::fabs(nd);
+                    }
+                }
+                if (best < 0) break;
+                Logger::Log("team-balance",
+                    "[RoleWeightedSplit]   rebalance mover %s (mmr=%.1f) -> tf%d\n",
+                    side[best].first.c_str(), side[best].second, to_tf);
+                moves[side[best].first] = to_tf;
+                diff = (to_tf == 2) ? diff - 2.0 * side[best].second
+                                    : diff + 2.0 * side[best].second;
+            }
+        };
+        if (have1 > want1)      pick_movers(on1[cls], have1 - want1, 2);
+        else if (have1 < want1) pick_movers(on2[cls], want1 - have1, 1);
     }
 
     Logger::Log("team-balance",

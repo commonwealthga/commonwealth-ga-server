@@ -1,5 +1,7 @@
 #include "src/ControlServer/MatchmakingService/SidePlacement.hpp"
 
+#include "src/ControlServer/MatchmakingService/MmrSwap.hpp"
+
 #include <algorithm>
 #include <cmath>
 
@@ -90,6 +92,23 @@ void AssignIndividual(const std::vector<Group>& groups,
     for (const Slot* s : slots) out[s->guid] = PlaceSlotGreedy(*s, seed1, seed2);
 }
 
+// BalancedPvp only: MMR post-pass over solo players. Same-class swaps keep
+// the class/heal/size result of the placement above fully intact; party
+// members are never moved.
+std::unordered_map<std::string, int> Finish(
+    TaskforcePolicy tf_policy,
+    const std::vector<Group>& groups,
+    std::unordered_map<std::string, int> out) {
+    if (tf_policy != TaskforcePolicy::BalancedPvp) return out;
+    std::vector<MmrSwap::Player> mp;
+    for (const auto& g : groups)
+        for (const auto& m : g.members)
+            mp.push_back({m.guid, m.profile_id, m.mmr,
+                          m.solo && g.members.size() == 1});
+    MmrSwap::BalanceByMmr(mp, out);
+    return out;
+}
+
 }  // namespace
 
 std::unordered_map<std::string, int> Assign(
@@ -111,12 +130,12 @@ std::unordered_map<std::string, int> Assign(
 
     if (side_policy == TeamSidePolicy::Ignore) {
         AssignIndividual(groups, seed1, seed2, out);
-        return out;
+        return Finish(tf_policy, groups, std::move(out));
     }
 
     if (side_policy == TeamSidePolicy::Required) {
         AssignWhole(groups, seed1, seed2, out);
-        return out;
+        return Finish(tf_policy, groups, std::move(out));
     }
 
     // Preferred: keep parties whole unless doing so leaves a class imbalance
@@ -130,8 +149,9 @@ std::unordered_map<std::string, int> Assign(
     std::unordered_map<std::string, int> indiv;
     AssignIndividual(groups, is1, is2, indiv);
 
-    if (ClassImbalance(is1, is2) < ClassImbalance(ws1, ws2)) return indiv;
-    return whole;
+    if (ClassImbalance(is1, is2) < ClassImbalance(ws1, ws2))
+        return Finish(tf_policy, groups, std::move(indiv));
+    return Finish(tf_policy, groups, std::move(whole));
 }
 
 }  // namespace SidePlacement

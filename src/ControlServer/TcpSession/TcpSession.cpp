@@ -8,6 +8,7 @@
 #include "src/ControlServer/TeamService/TeamService.hpp"
 #include "src/ControlServer/MatchmakingService/RuntimeStats.hpp"
 #include "src/ControlServer/MatchmakingService/RoleWeightedSplit.hpp"
+#include "src/ControlServer/MmrService/MmrService.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include <set>
 #include <map>
@@ -898,11 +899,20 @@ void TcpSession::route_from_mission_instance(int64_t parent_instance_id,
                     case TaskforcePolicy::BalancedPvp: {
                         auto roster =
                             InstanceRegistry::GetActivePlayersForInstance(successor->instance_id);
+                        // Seed class counts (per-class term) and MMR sums
+                        // (cost tie-break) alongside heal/size.
                         RoleWeightedSplit::TeamState t1, t2;
                         for (const auto& r : roster) {
                             const float v = RoleWeightedSplit::HealValue(r.profile_id, r.task_force);
-                            if (r.task_force == 1) { t1.heal_score += v; t1.size += 1; }
-                            else                   { t2.heal_score += v; t2.size += 1; }
+                            const double mmr =
+                                MmrService::GetCurrentRating(r.user_id, r.profile_id);
+                            if (r.task_force == 1) {
+                                t1.heal_score += v; t1.size += 1;
+                                t1.class_counts[r.profile_id] += 1; t1.mmr_sum += mmr;
+                            } else {
+                                t2.heal_score += v; t2.size += 1;
+                                t2.class_counts[r.profile_id] += 1; t2.mmr_sum += mmr;
+                            }
                         }
                         tf = RoleWeightedSplit::PlaceSingle(selected_profile_id_, t1, t2);
                         break;

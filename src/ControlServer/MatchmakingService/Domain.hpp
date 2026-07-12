@@ -24,6 +24,7 @@ struct QueuedPlayer {
     std::string session_guid;
     uint32_t    profile_id = 0;   // ASSAULT/MEDIC/RECON/ROBOTICS engine ids
     int64_t     user_id    = 0;   // ga_users.id — drives requires_pvp_verification
+    double      mmr        = 1000.0;  // current rating for the queued class (stamped at enqueue)
     std::chrono::steady_clock::time_point joined_at{};
 };
 

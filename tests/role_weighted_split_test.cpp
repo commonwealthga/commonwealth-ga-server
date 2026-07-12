@@ -3,6 +3,7 @@
 //
 //   g++ -std=c++17 -I. tests/role_weighted_split_test.cpp \
 //       src/ControlServer/MatchmakingService/RoleWeightedSplit.cpp \
+//       src/ControlServer/MatchmakingService/MmrSwap.cpp \
 //       -o /tmp/rws_test && /tmp/rws_test
 //
 // Expected output ends with: "ALL TESTS PASSED".
@@ -10,6 +11,7 @@
 #include "src/ControlServer/MatchmakingService/RoleWeightedSplit.hpp"
 
 #include <cassert>
+#include <cmath>
 #include <cstdio>
 #include <map>
 #include <vector>
@@ -111,6 +113,51 @@ int main() {
         assert(delta.size() == 1);
         for (const auto& m : delta) assert(m.second == 2); // moved onto the small team
         printf("[ok] 5v3 -> 1 move onto the small team\n");
+    }
+
+    // 7) MMR post-pass: class splits stay exact, MMR gap shrinks to ~0.
+    {
+        std::vector<PlayerSlot> slots = {
+            {"m0", M, 1200.0}, {"m1", M, 1100.0}, {"m2", M, 1000.0}, {"m3", M, 900.0},
+            {"a0", A, 1300.0}, {"a1", A,  700.0}, {"a2", A, 1000.0}, {"a3", A, 1000.0},
+        };
+        auto asn = RoleWeightedSplit::ComputeBatchAssignment(slots, TeamState{}, TeamState{});
+        auto split = ClassSplit(slots, asn);
+        assert(split[M] == std::make_pair(2, 2));
+        assert(split[A] == std::make_pair(2, 2));
+        double diff = 0.0;
+        for (const auto& s : slots) diff += (asn.at(s.guid) == 1) ? s.mmr : -s.mmr;
+        // Greedy pairwise swaps stop at a local minimum; for this fixture the
+        // stable endpoints are 0 or +/-200 (raw placement can reach +/-1000).
+        assert(std::fabs(diff) <= 200.0 + 1e-6);
+        printf("[ok] batch mmr post-pass\n");
+    }
+
+    // 8) PlaceSingle: exact cost tie -> lower-MMR-sum side (was: team 1).
+    {
+        TeamState t1, t2;
+        t1.size = 2; t1.mmr_sum = 2400.0; t1.class_counts[A] = 1; t1.class_counts[M] = 1;
+        t2.size = 2; t2.mmr_sum = 1800.0; t2.class_counts[A] = 1; t2.class_counts[M] = 1;
+        assert(RoleWeightedSplit::PlaceSingle(R, t1, t2) == 2);
+        printf("[ok] place-single mmr tie-break\n");
+    }
+
+    // 9) Rebalance mover selection: the surplus assault whose move best
+    //    closes the MMR gap is chosen (not the first in list order).
+    {
+        std::vector<RosterEntry> roster = {
+            {"a1", A, 1, 1500.0}, {"a2", A, 1, 1000.0}, {"a3", A, 1, 500.0},
+            {"a4", A, 2, 1000.0},
+            {"r1", R, 1, 1000.0}, {"r2", R, 1, 1000.0},
+            {"r3", R, 2, 1000.0}, {"r4", R, 2, 1000.0},
+        };
+        // diff = 5000 - 3000 = 2000; moving a2 (1000) lands it exactly on 0,
+        // a1 would overshoot to -1000 and a3 undershoot to +1000.
+        auto delta = RoleWeightedSplit::ComputeRebalanceDelta(roster);
+        assert(delta.size() == 1);
+        assert(delta.count("a2") == 1);
+        assert(delta.at("a2") == 2);
+        printf("[ok] rebalance mmr mover selection\n");
     }
 
     printf("ALL TESTS PASSED\n");

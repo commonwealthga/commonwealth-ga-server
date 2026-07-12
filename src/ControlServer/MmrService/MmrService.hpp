@@ -22,6 +22,10 @@ public:
     static std::string GetActiveEngine();                 // "wl" | "perf"
     static bool SetActiveEngine(const std::string& engine);
 
+    // Current rating for (user, queued class) from the ACTIVE engine's
+    // history table; 1000.0 when unrated / unknown profile.
+    static double GetCurrentRating(int64_t user_id, uint32_t profile_id);
+
 private:
     static std::mutex mutex_;
 };

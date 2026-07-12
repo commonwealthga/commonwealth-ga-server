@@ -420,8 +420,15 @@ private:
                         auto roster = InstanceRegistry::GetActivePlayersForInstance(inst_id);
                         std::vector<RoleWeightedSplit::PlayerSlot> slots;
                         slots.reserve(roster.size());
+                        // MMR nudging is a PvP-only concern; plain Balanced
+                        // gets neutral ratings (post-pass becomes a no-op).
+                        const bool mmr_aware = queue_cfg->taskforce_policy
+                                               == TaskforcePolicy::BalancedPvp;
                         for (const auto& r : roster) {
-                            slots.push_back({r.guid, r.profile_id});
+                            const double mmr = mmr_aware
+                                ? MmrService::GetCurrentRating(r.user_id, r.profile_id)
+                                : 1000.0;
+                            slots.push_back({r.guid, r.profile_id, mmr});
                         }
                         auto assignment = RoleWeightedSplit::ComputeBatchAssignment(
                             slots, RoleWeightedSplit::TeamState{},
@@ -486,8 +493,15 @@ private:
                     auto rows = InstanceRegistry::GetActivePlayersForInstance(inst_id);
                     std::vector<RoleWeightedSplit::RosterEntry> roster;
                     roster.reserve(rows.size());
+                    // Ratings pick WHICH surplus players move (PvP only);
+                    // neutral values keep plain Balanced on list order.
+                    const bool mmr_aware = queue_cfg->taskforce_policy
+                                           == TaskforcePolicy::BalancedPvp;
                     for (const auto& r : rows) {
-                        roster.push_back({r.guid, r.profile_id, r.task_force});
+                        const double mmr = mmr_aware
+                            ? MmrService::GetCurrentRating(r.user_id, r.profile_id)
+                            : 1000.0;
+                        roster.push_back({r.guid, r.profile_id, r.task_force, mmr});
                     }
                     auto delta = RoleWeightedSplit::ComputeRebalanceDelta(roster);
                     if (!RoleWeightedSplit::ShouldRebalance(roster, delta)) {

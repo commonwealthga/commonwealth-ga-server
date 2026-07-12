@@ -2,6 +2,8 @@
 #include "mm_test_util.hpp"
 #include "src/ControlServer/MatchmakingService/SidePlacement.hpp"
 
+#include <cmath>
+
 using namespace tu;
 using SidePlacement::Group;
 using SidePlacement::Slot;
@@ -109,4 +111,58 @@ TEST(side_balancedpvp_seeded_join_balances_against_existing) {
     auto a = Assign(TaskforcePolicy::BalancedPvp, TeamSidePolicy::Ignore,
                     Groups({ Solo(A,0) }), s1, {});
     CHECK_EQ(Tf(a, "s0"), 2);
+}
+
+TEST(side_balancedpvp_mmr_swap_balances_solos) {
+    // 4 solo assaults: class split stays 2/2, MMR pass pairs strong+weak.
+    std::vector<Group> groups;
+    const double mmrs[4] = {1400.0, 600.0, 1300.0, 700.0};
+    for (int i = 0; i < 4; ++i) {
+        Group g;
+        g.party_id = 100 + i;
+        g.members.push_back({"s" + std::to_string(i), A, mmrs[i], true});
+        groups.push_back(std::move(g));
+    }
+    auto a = Assign(TaskforcePolicy::BalancedPvp, TeamSidePolicy::Ignore, groups);
+    CHECK_EQ(Count(a, 1), 2);
+    CHECK_EQ(Count(a, 2), 2);
+    double diff = 0.0;
+    for (int i = 0; i < 4; ++i)
+        diff += (Tf(a, "s" + std::to_string(i)) == 1) ? mmrs[i] : -mmrs[i];
+    CHECK(std::fabs(diff) < 1e-6);   // 1400+600 vs 1300+700
+}
+
+TEST(side_balancedpvp_mmr_never_splits_party) {
+    // A strong same-class duo vs two weak solos: the duo stays whole even
+    // though splitting it would improve the MMR balance.
+    std::vector<Group> groups;
+    Group duo;
+    duo.party_id = 1;
+    duo.members.push_back({"d1", A, 1500.0, false});
+    duo.members.push_back({"d2", A, 1500.0, false});
+    groups.push_back(std::move(duo));
+    for (int i = 0; i < 2; ++i) {
+        Group g;
+        g.party_id = 10 + i;
+        g.members.push_back({"s" + std::to_string(i), A, 500.0, true});
+        groups.push_back(std::move(g));
+    }
+    auto a = Assign(TaskforcePolicy::BalancedPvp, TeamSidePolicy::Required, groups);
+    CHECK_EQ(Tf(a, "d1"), Tf(a, "d2"));
+    CHECK_EQ(Count(a, 1), 2);
+    CHECK_EQ(Count(a, 2), 2);
+}
+
+TEST(side_balanced_headcount_policy_has_no_mmr_pass) {
+    // Plain Balanced (non-PvP): swap pass is gated off; split still 1/1.
+    std::vector<Group> groups;
+    for (int i = 0; i < 2; ++i) {
+        Group g;
+        g.party_id = 20 + i;
+        g.members.push_back({"b" + std::to_string(i), A,
+                             i == 0 ? 2000.0 : 100.0, true});
+        groups.push_back(std::move(g));
+    }
+    auto a = Assign(TaskforcePolicy::Balanced, TeamSidePolicy::Ignore, groups);
+    CHECK(Tf(a, "b0") != Tf(a, "b1"));
 }

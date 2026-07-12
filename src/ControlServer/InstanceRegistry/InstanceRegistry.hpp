@@ -112,6 +112,7 @@ public:
         std::string guid;
         uint32_t    profile_id;
         int         task_force;
+        int64_t     user_id = 0;   // ga_users.id via character row; 0 if unresolvable
     };
     static std::vector<ActivePlayerRow>
         GetActivePlayersForInstance(int64_t instance_id);

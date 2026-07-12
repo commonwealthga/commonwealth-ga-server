@@ -3,6 +3,7 @@
 #include "src/ControlServer/MatchmakingService/SidePlacement.hpp"
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
+#include "src/ControlServer/MmrService/MmrService.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "sqlite3.h"
@@ -436,6 +437,11 @@ void MatchmakingService::AddParty(uint32_t queue_id, const QueuedParty& party) {
     parties.erase(std::remove_if(parties.begin(), parties.end(),
         [&](const QueuedParty& p) { return p.party_id == party.party_id; }), parties.end());
     parties.push_back(party);
+
+    // Stamp current ratings for the queued class (design 2026-07-12 MMR
+    // nudge). Folds run at MISSION_ENDED, so re-queuing players are fresh.
+    for (auto& m : parties.back().members)
+        m.mmr = MmrService::GetCurrentRating(m.user_id, m.profile_id);
 
     Logger::Log("matchmaking",
         "[Matchmaking] Party %llu (%s, %zu member(s)) joined queue %u (%zu player(s) queued)\n",

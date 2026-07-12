@@ -67,7 +67,8 @@ inline MatchResult BuildResult(
         SidePlacement::Group g;
         g.party_id = p->party_id;
         for (const auto& m : p->members)
-            g.members.push_back({m.session_guid, m.profile_id});
+            g.members.push_back({m.session_guid, m.profile_id, m.mmr,
+                                 p->size() == 1});
         groups.push_back(std::move(g));
     }
 
