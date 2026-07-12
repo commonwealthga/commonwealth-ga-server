@@ -13,6 +13,7 @@
 #include <deque>
 #include <string>
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
+#include "src/ControlServer/MmrService/MmrService.hpp"
 #include "src/ControlServer/MatchmakingService/RoleWeightedSplit.hpp"
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
 #include "src/ControlServer/Database/Database.hpp"
@@ -398,6 +399,9 @@ private:
             if (!outcome.empty()) {
                 Database::SetInstanceOutcomeIfNull(
                     inst_id, outcome, j.value("winning_task_force", 0));
+                // Fold the just-concluded match into both MMR engines now so
+                // the next matchmaking round sees fresh ratings.
+                MmrService::FoldUnprocessed();
             }
 
             // Populate pre-assigned teams for the successor so each

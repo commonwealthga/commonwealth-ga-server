@@ -1621,6 +1621,36 @@ void Database::Init() {
 		}
 	}
 
+	// MMR engine tables (design 2026-07-12). Schemas identical to the data
+	// analyst's compute_mmr.py / mmr_tracker.py so his tooling keeps working
+	// on DB exports. cs_settings holds the active-engine switch read by the
+	// dashboard and public site directly from the DB.
+	const char* kMmrSchema =
+		"CREATE TABLE IF NOT EXISTS ga_wl_mmr_history ("
+		"  user_id INTEGER, class_name TEXT, instance_id INTEGER,"
+		"  played_at INTEGER, mmr_before REAL, mmr_after REAL,"
+		"  PRIMARY KEY (user_id, class_name, instance_id));"
+		"CREATE TABLE IF NOT EXISTS ga_wl_mmr_processed ("
+		"  instance_id INTEGER PRIMARY KEY, played_at INTEGER);"
+		"CREATE TABLE IF NOT EXISTS ga_mmr_history ("
+		"  user_id INTEGER NOT NULL, class_name TEXT NOT NULL,"
+		"  instance_id INTEGER NOT NULL, played_at INTEGER NOT NULL,"
+		"  mmr_before REAL NOT NULL, mmr_after REAL NOT NULL,"
+		"  games_after INTEGER NOT NULL,"
+		"  PRIMARY KEY (user_id, class_name, instance_id));"
+		"CREATE TABLE IF NOT EXISTS ga_mmr_processed ("
+		"  instance_id INTEGER PRIMARY KEY, played_at INTEGER);"
+		"CREATE TABLE IF NOT EXISTS cs_settings ("
+		"  key TEXT PRIMARY KEY, value TEXT);"
+		"INSERT OR IGNORE INTO cs_settings (key, value)"
+		"  VALUES ('active_mmr_engine', 'wl');";
+	result = sqlite3_exec(db, kMmrSchema, nullptr, nullptr, &err);
+	if (result != SQLITE_OK) {
+		Logger::Log("db", "Failed to ensure MMR schema: %s\n", err);
+		sqlite3_free(err);
+		err = nullptr;
+	}
+
 	// Floor-only version write. The game-server DLL bumps `version_info.version`
 	// past 19 (currently to 24) — an unconditional UPDATE here would silently
 	// downgrade the counter, causing the DLL's `version < 21` block to re-fire

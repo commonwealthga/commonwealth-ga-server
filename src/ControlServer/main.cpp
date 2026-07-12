@@ -12,6 +12,7 @@
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 #include "src/ControlServer/MatchmakingService/SidePlacement.hpp"
+#include "src/ControlServer/MmrService/MmrService.hpp"
 #include <asio.hpp>
 #include <thread>
 #include <cstdlib>
@@ -410,6 +411,12 @@ int main(int argc, char* argv[]) {
     // (e.g. 3P_Beachhead2_P, 3P_Beachhead_P) belong in ga_map_pool_entries with
     // enabled=0 until the client downloads them.
     MatchmakingService::Init();
+
+    // Seed / catch up the MMR engines (design 2026-07-12). First boot on an
+    // empty history replays the entire match backlog; later boots fold
+    // anything concluded while the control server was down.
+    MmrService::FoldUnprocessed();
+
     // Provide queue-scoped running-instance info to matchmaking rules. Rules
     // iterate this list to find a seat-available instance regardless of map —
     // because pool-randomized queues can have instances on different maps,
@@ -980,6 +987,23 @@ int main(int argc, char* argv[]) {
                 });
             });
             message = arr.dump();
+            return true;
+        }
+
+        if (subtype == "mmr-reseed") {
+            // Wipes BOTH engines' history and replays every recorded match.
+            // Dashboard-only (deliberately no chat command — abuse surface).
+            message = MmrService::Reseed();
+            return true;
+        }
+
+        if (subtype == "set-mmr-engine") {
+            const std::string engine = payload.value("engine", "");
+            if (!MmrService::SetActiveEngine(engine)) {
+                message = "engine must be 'wl' or 'perf'";
+                return false;
+            }
+            message = "active MMR engine set to " + engine;
             return true;
         }
 
