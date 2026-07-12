@@ -161,9 +161,9 @@ std::pair<int, double> GetTeamSizeGap(sqlite3* db, int64_t instance_id) {
     return {avg1 > avg2 ? 1 : 2, std::fabs(avg1 - avg2)};
 }
 
-// Decided PvP matches in conclusion-time order (deviation from the analyst's
-// started_at order: live folds happen at conclusion, and a reseed must
-// reproduce the live chain).
+// Concluded PvP matches (wins and stalemates) in conclusion-time order
+// (deviation from the analyst's started_at order: live folds happen at
+// conclusion, and a reseed must reproduce the live chain).
 std::vector<Match> LoadMatches(sqlite3* db) {
     std::vector<Match> matches;
     sqlite3_stmt* stmt = nullptr;
@@ -172,7 +172,7 @@ std::vector<Match> LoadMatches(sqlite3* db) {
             "       COALESCE(NULLIF(i.end_mission_at, 0), NULLIF(i.sealed_at, 0), "
             "                i.started_at) AS concluded_at "
             "FROM ga_instances i "
-            "WHERE i.outcome IN ('ATTACKERS_WIN', 'DEFENDERS_WIN') "
+            "WHERE i.outcome IN ('ATTACKERS_WIN', 'DEFENDERS_WIN', 'STALEMATE') "
             "  AND EXISTS (SELECT 1 FROM map_game_info m "
             "              WHERE m.map_name = i.map_name AND m.is_pvp = 1) "
             "ORDER BY concluded_at ASC, i.id ASC",
@@ -213,7 +213,7 @@ void BuildParticipants(sqlite3* db, std::vector<Match>& matches) {
             "      WHERE profile_id IN (680, 567, 681, 679) "
             "      GROUP BY instance_id, character_id) r "
             "  ON r.instance_id = s.instance_id AND r.character_id = s.character_id "
-            "WHERE i.outcome IN ('ATTACKERS_WIN', 'DEFENDERS_WIN') "
+            "WHERE i.outcome IN ('ATTACKERS_WIN', 'DEFENDERS_WIN', 'STALEMATE') "
             "  AND (s.kills + s.assists + s.deaths + s.damage_dealt "
             "       + s.healing + s.obj_points + s.bot_kills) > 0 "
             "  AND EXISTS (SELECT 1 FROM map_game_info m "
@@ -353,7 +353,7 @@ std::string FoldLocked() {
         int64_t pending = 0;
         if (sqlite3_prepare_v2(db,
                 "SELECT COUNT(*) FROM ga_instances i "
-                "WHERE i.outcome IN ('ATTACKERS_WIN', 'DEFENDERS_WIN') "
+                "WHERE i.outcome IN ('ATTACKERS_WIN', 'DEFENDERS_WIN', 'STALEMATE') "
                 "  AND EXISTS (SELECT 1 FROM map_game_info m "
                 "              WHERE m.map_name = i.map_name AND m.is_pvp = 1) "
                 "  AND (i.id NOT IN (SELECT instance_id FROM ga_wl_mmr_processed) "
@@ -475,7 +475,9 @@ std::string FoldLocked() {
                 auto it = wl_rating.find(key);
                 const double before = (it != wl_rating.end()) ? it->second : kDefaultMmr;
                 const double expected = ExpectedScore(before, adj.at(opp));
-                const double actual = (p.task_force == m.winning_tf) ? 1.0 : 0.0;
+                // winning_tf 0 = stalemate (NULL winner) -> both sides draw.
+                const double actual = (m.winning_tf == 0) ? 0.5
+                    : (p.task_force == m.winning_tf) ? 1.0 : 0.0;
                 const double after = before + kWlK * (actual - expected);
                 wl_rating[key] = after;
 
@@ -502,7 +504,9 @@ std::string FoldLocked() {
                 const double before = (it != perf_rating.end()) ? it->second : kDefaultMmr;
                 // Team-average expected score (mmr_tracker.py semantics).
                 const double expected = ExpectedScore(avg.at(p.task_force), adj.at(opp));
-                const double actual = (p.task_force == m.winning_tf) ? 1.0 : 0.0;
+                // winning_tf 0 = stalemate (NULL winner) -> both sides draw.
+                const double actual = (m.winning_tf == 0) ? 0.5
+                    : (p.task_force == m.winning_tf) ? 1.0 : 0.0;
                 const int64_t games = perf_games[key];
                 const double k = (games < kPerfMinGames) ? kPerfKProvisional : kPerfKBase;
                 const double after = before + k * ((actual - expected) + kPerfBeta * p.perf);
