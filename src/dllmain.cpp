@@ -161,6 +161,7 @@
 #include "src/GameServer/TgGame/TgDroppedItem/GetEffectGroup/TgDroppedItem__GetEffectGroup.hpp"
 #include "src/GameServer/TgAssemblyMisc/LoadAssetRefs/TgAssemblyMisc__LoadAssetRefs.hpp"
 #include "src/GameServer/Core/LoadObject/Core__LoadObject.hpp"
+#include "src/GameServer/Core/UClass/Bind/UClass__Bind.hpp"
 #include "src/GameServer/TgGame/TgDevice/ApplyInventoryEquipEffects/TgDevice__ApplyInventoryEquipEffects.hpp"
 #include "src/GameServer/TgGame/TgDevice/ClearInstigatorEquippedDevices/TgDevice__ClearInstigatorEquippedDevices.hpp"
 #include "src/GameServer/TgGame/TgDevice/PopulateInstigatorEquippedDevices/TgDevice__PopulateInstigatorEquippedDevices.hpp"
@@ -511,6 +512,7 @@ DWORD WINAPI ModuleThread(LPVOID) {
 
 	TgAssemblyMisc__LoadAssetRefs::Install();
 	Core__LoadObject::Install();
+	// UClass__Bind::Install();
 
 	// --- stub hooks (logging only) ---
 	TgBotFactory__ClearQueue::Install();

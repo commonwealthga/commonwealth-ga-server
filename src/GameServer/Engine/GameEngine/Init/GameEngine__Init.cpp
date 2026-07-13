@@ -46,6 +46,8 @@ void GameEngine__Init::Call(void* GameEngine) {
 	// (ObjectCache::Find) will return nullptr if we don't load it here.
 	EngineLoad::PreloadClass("TgGame.TgEffectBuff");
 
+	EngineLoad::PreloadClass("TgGame.TgWaterVolume");
+
 	EngineLoad::PreloadClass("TgGame.TgPawn_TurretFlak");
 	EngineLoad::PreloadClass("TgGame.TgPawn_TurretFlame");
 	EngineLoad::PreloadClass("TgGame.TgPawn_TurretPlasma");

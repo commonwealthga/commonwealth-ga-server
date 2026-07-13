@@ -238,6 +238,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/SetProperty/TgDeployable__SetProperty.cpp \
 			  $(SRC_DIR)/GameServer/TgAssemblyMisc/LoadAssetRefs/TgAssemblyMisc__LoadAssetRefs.cpp \
 			  $(SRC_DIR)/GameServer/Core/LoadObject/Core__LoadObject.cpp \
+			  $(SRC_DIR)/GameServer/Core/UClass/Bind/UClass__Bind.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/ApplyInventoryEquipEffects/TgDevice__ApplyInventoryEquipEffects.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/ClearInstigatorEquippedDevices/TgDevice__ClearInstigatorEquippedDevices.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/PopulateInstigatorEquippedDevices/TgDevice__PopulateInstigatorEquippedDevices.cpp \
