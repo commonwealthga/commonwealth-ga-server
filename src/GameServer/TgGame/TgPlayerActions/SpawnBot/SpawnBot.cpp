@@ -9,6 +9,7 @@
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 namespace TgPlayerActions::SpawnBotCmd {
@@ -239,6 +240,10 @@ void Execute(const std::string& session_guid, int bot_id, Team team,
     Logger::Log("chat-command",
         "[ChatCmd][DLL] /spawn%s guid=%s: bot=%p (botId=%d) spawned\n",
         TeamName(team), session_guid.c_str(), (void*)Bot, bot_id);
+    MatchStats::OnChatCommand((ATgPawn*)Pawn,
+        henchman ? "CMD_SPAWNHENCHMAN"
+                 : (team == Team::Friend ? "CMD_SPAWNFRIEND" : "CMD_SPAWNENEMY"),
+        bot_id, (ATgPawn*)Bot);
     Audit(session_guid, team, "spawned",
         "bot_id=" + std::to_string(bot_id)
         + " tf=" + std::to_string((int)targetTf->r_nTaskForce)

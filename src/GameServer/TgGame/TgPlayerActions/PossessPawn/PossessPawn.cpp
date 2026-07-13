@@ -9,6 +9,7 @@
 
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -338,6 +339,7 @@ void ExecutePossess(const std::string& guid) {
     if (target->m_CurrentInHandDevice && target->InvManager) {
         target->eventSetActiveWeapon((AWeapon*)target->m_CurrentInHandDevice, 0, 1);
     }
+    MatchStats::OnChatCommand((ATgPawn*)PlayerPawn, "CMD_POSSESS", 0, target);
     Audit(guid, "-possess", "possessed",
         std::string("class=") + hitClassName
         + " pawn_id=" + std::to_string(bot_pawn_id));
@@ -396,6 +398,10 @@ void ExecuteUnpossess(const std::string& guid) {
     // and our hook handles player-side refresh through the DB-backed path.
     // Doing it manually here on top of the hook double-sends and was racing
     // against the natural engine flow.
+    if (st.original_pawn && !st.original_pawn->bDeleteMe) {
+        MatchStats::OnChatCommand(st.original_pawn, "CMD_UNPOSSESS", 0,
+            (bot && !bot->bDeleteMe) ? bot : nullptr);
+    }
     Audit(guid, "-unpossess", "restored", "returned to player body");
 }
 

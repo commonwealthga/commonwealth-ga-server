@@ -2,6 +2,7 @@
 
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 #include <cstdio>
@@ -37,6 +38,9 @@ void Execute(const std::string& session_guid) {
 	char buf[96];
 	std::snprintf(buf, sizeof(buf), "X=%.0f  Y=%.0f  Z=%.0f", x, y, z);
 	Logger::Log("coords", "coords guid=%s: %s\n", session_guid.c_str(), buf);
+
+	// Before the alert-delivery early-returns — the command itself succeeded.
+	MatchStats::OnChatCommand((ATgPawn*)pawn, "CMD_COORDS");
 
 	// On-screen center alert — PlayerControllers only (bots have no connection).
 	if (!pawn->Controller) return;

@@ -8,6 +8,7 @@
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
 #include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 namespace TgPlayerActions::DeployCmd {
@@ -177,6 +178,9 @@ void Execute(const std::string& session_guid, int deployable_id, Team team) {
         TeamName(team), session_guid.c_str(),
         (void*)Deployable, deployable_id,
         (int)targetTf->r_nTaskForce, Deployable->r_nHealth);
+    MatchStats::OnChatCommand((ATgPawn*)Pawn,
+        team == Team::Friend ? "CMD_DEPLOYFRIEND" : "CMD_DEPLOYENEMY",
+        deployable_id);
     Audit(session_guid, team, "spawned",
         "deployable_id=" + std::to_string(deployable_id)
         + " tf=" + std::to_string((int)targetTf->r_nTaskForce)

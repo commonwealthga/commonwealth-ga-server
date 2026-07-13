@@ -176,6 +176,13 @@ void Execute(const std::string& session_guid, Target target, bool is_autobalance
         "[ChatCmd][DLL] /changeteam guid=%s target=%s autobalance=%d: flipping %d -> %d\n",
         session_guid.c_str(), TargetName(target), (int)is_autobalance, current_team, new_team);
 
+    // Manual -changeteam only — autobalance moves are bracketed by the
+    // AUTOBALANCE_START/END markers instead. Emitted before TEAM_CHANGE
+    // so the CMD row precedes the flip it caused.
+    if (!is_autobalance) {
+        MatchStats::OnChatCommand((ATgPawn*)Pawn, "CMD_CHANGETEAM", new_team);
+    }
+
     // Bank the old-team stint + emit TEAM_CHANGE before the flip.
     MatchStats::OnTeamChanged((ATgPawn*)Pawn, new_team);
 

@@ -4,6 +4,7 @@
 #include <map>
 
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -123,6 +124,8 @@ void Execute(const std::string& session_guid, float lift_z) {
             Restore(pawn, it->second);
             Logger::Log("chat-command",
                 "[ChatCmd][TopDown] guid=%s: restored\n", session_guid.c_str());
+            // detail: 1 = entered top-down, 0 = restored.
+            MatchStats::OnChatCommand((ATgPawn*)pawn, "CMD_TOPDOWN", 0);
             Audit(session_guid, "restored", "topdown off");
         } else {
             Logger::Log("chat-command",
@@ -159,6 +162,7 @@ void Execute(const std::string& session_guid, float lift_z) {
     Logger::Log("chat-command",
         "[ChatCmd][TopDown] guid=%s: applied (lift_z=%.0f, target Z=%.0f)\n",
         session_guid.c_str(), dz, pawn->Location.Z);
+    MatchStats::OnChatCommand((ATgPawn*)pawn, "CMD_TOPDOWN", 1);
     Audit(session_guid, "activated",
         "lift_z=" + std::to_string((int)dz)
         + " target_z=" + std::to_string((int)pawn->Location.Z));

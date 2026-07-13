@@ -4,6 +4,7 @@
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
 #include "src/GameServer/Constants/TgProperties.h"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include <vector>
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -140,6 +141,9 @@ void Execute(const std::string& session_guid) {
 		"[ChatCmd][DLL] fullheal guid=%s: %d -> %d (cleansed %d debuff groups%s)\n",
 		session_guid.c_str(), oldHealth, pawn->Health, cleansed,
 		resetPosture ? ", posture reset" : "");
+
+	// detail = number of debuff groups cleansed.
+	MatchStats::OnChatCommand((ATgPawn*)pawn, "CMD_FULLHEAL", cleansed);
 
 	AlertPlayer(pawn, "Healed to full");
 }

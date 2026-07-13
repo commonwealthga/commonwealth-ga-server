@@ -512,10 +512,25 @@ private:
                         Logger::Log("team-balance",
                             "[IpcServer] REQUEST_REBALANCE inst=%lld moving %zu of %zu player(s)\n",
                             (long long)inst_id, delta.size(), roster.size());
+                        // Bracket the batch with ga_match_events markers so
+                        // the analyst can tell autobalance TEAM_CHANGEs from
+                        // manual ones. Routed through the DLL (not inserted
+                        // here) so the rows keep stream order around the
+                        // TEAM_CHANGE rows the moves produce.
+                        nlohmann::json start_marker;
+                        start_marker["type"]       = IpcProtocol::MSG_EMIT_MATCH_EVENT;
+                        start_marker["event_type"] = "AUTOBALANCE_START";
+                        start_marker["detail"]     = (int64_t)delta.size();
+                        IpcServer::SendToInstance(inst_id, start_marker.dump());
                         for (const auto& m : delta) {
                             ChatCommand::DispatchTeamMove(inst_id, m.first, m.second,
                                                           /*is_autobalance=*/true);
                         }
+                        nlohmann::json end_marker;
+                        end_marker["type"]       = IpcProtocol::MSG_EMIT_MATCH_EVENT;
+                        end_marker["event_type"] = "AUTOBALANCE_END";
+                        end_marker["detail"]     = (int64_t)delta.size();
+                        IpcServer::SendToInstance(inst_id, end_marker.dump());
                     }
                 }
             }

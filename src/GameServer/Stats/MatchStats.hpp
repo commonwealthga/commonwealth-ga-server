@@ -48,6 +48,18 @@ public:
     // ProcessEvent intercept on TgPawn.TriggerBeaconEntrance.
     static void OnBeaconSpawnUsed(ATgPawn* User, ATgPawn* Deployer);
 
+    // MSG_EMIT_MATCH_EVENT (control server → DLL): emit an identity-less
+    // event row (e.g. AUTOBALANCE_START / AUTOBALANCE_END batch markers).
+    static void EmitMarker(const char* event_type, int64_t detail);
+
+    // Chat-command success sites (TgPlayerActions modules). Emits a CMD_*
+    // event tied to the invoking player. Call only for manual invocations
+    // (ChangeTeam passes is_autobalance=false). detail = the command's
+    // numeric argument (bot_id / deployable_id / new tf / ...); Target =
+    // affected pawn when there is one (spawned bot, possessed pawn).
+    static void OnChatCommand(ATgPawn* Actor, const char* event_type,
+                              int64_t detail = 0, ATgPawn* Target = nullptr);
+
     // -changeteam / autobalance: the imminent eventSuicide() must not
     // count a death. Keyed by r_nPawnId (pointer keys are forbidden).
     static void SuppressNextDeath(int pawn_id);

@@ -267,6 +267,27 @@ void MatchStats::OnTeamChanged(ATgPawn* Pawn, int new_task_force) {
     EmitEvent(ev, "TEAM_CHANGE");
 }
 
+void MatchStats::EmitMarker(const char* event_type, int64_t detail) {
+    if (!g_enabled || !event_type || !*event_type) return;
+    nlohmann::json ev;
+    ev["detail"] = detail;
+    EmitEvent(ev, event_type);
+}
+
+void MatchStats::OnChatCommand(ATgPawn* Actor, const char* event_type,
+                               int64_t detail, ATgPawn* Target) {
+    if (!g_enabled || !Actor || !event_type || !*event_type) return;
+    LivePlayer lp;
+    if (!ResolveLive(Actor, lp)) return;  // command sender is always a player
+    nlohmann::json ev;
+    ev["actor_user_id"]      = lp.user_id;
+    ev["actor_character_id"] = lp.character_id;
+    ev["actor_task_force"]   = lp.task_force;
+    FillIdentity(ev, "target", Target);
+    ev["detail"] = detail;
+    EmitEvent(ev, event_type);
+}
+
 void MatchStats::OnDeath(ATgPawn* Victim) {
     if (!g_enabled || !Victim) return;
     LivePlayer lp;

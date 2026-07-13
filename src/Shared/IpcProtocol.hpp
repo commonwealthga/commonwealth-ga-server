@@ -102,6 +102,16 @@ constexpr const char* MSG_REQUEST_SUCCESSOR = "REQUEST_SUCCESSOR";
 //   { "type": "REQUEST_REBALANCE", "instance_id": <int64> }
 constexpr const char* MSG_REQUEST_REBALANCE = "REQUEST_REBALANCE";
 
+// Control server → game DLL. Ask the DLL to emit a bare ga_match_events row
+// (no actor/target identity) back over MATCH_EVENT, stamped with the DLL's
+// game_time. Routed through the DLL — instead of inserted directly — so the
+// row's position in the event stream matches the DLL-emitted events around
+// it. Used for AUTOBALANCE_START / AUTOBALANCE_END markers bracketing a
+// rebalance move batch (detail = number of moves dispatched).
+//   { "type": "EMIT_MATCH_EVENT", "event_type": "AUTOBALANCE_START",
+//     "detail": <int64> }
+constexpr const char* MSG_EMIT_MATCH_EVENT = "EMIT_MATCH_EVENT";
+
 constexpr const char* MSG_PLAYER_ACTION = "PLAYER_ACTION";
 
 // ---------------------------------------------------------------------------

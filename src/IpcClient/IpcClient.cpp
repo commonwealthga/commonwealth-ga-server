@@ -696,6 +696,17 @@ void IpcClient::DrainInbound() {
                 SendChatCommandAudit(guid, action.empty() ? "unknown" : action, "ignored",
                     "unknown player action");
             }
+        } else if (type == IpcProtocol::MSG_EMIT_MATCH_EVENT) {
+            // Echo an identity-less match event back over MATCH_EVENT so its
+            // row lands in ga_match_events in stream order (autobalance
+            // batch markers). EmitMarker no-ops when stats are disabled.
+            std::string event_type = j.value("event_type", "");
+            int64_t detail         = j.value("detail", (int64_t)0);
+            if (event_type.empty()) {
+                Logger::Log("ipc", "[IPC] EMIT_MATCH_EVENT: missing event_type; dropping\n");
+                continue;
+            }
+            MatchStats::EmitMarker(event_type.c_str(), detail);
         } else if (type == IpcProtocol::MSG_PLAYER_LEAVE) {
             // Forwarded by the control server when the client sends
             // PLAYER_LEAVE_GAME (0x0200) — the user clicked Disconnect in the
