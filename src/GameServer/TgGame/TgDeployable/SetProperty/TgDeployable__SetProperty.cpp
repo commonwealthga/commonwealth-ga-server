@@ -98,6 +98,15 @@ void __fastcall TgDeployable__SetProperty::Call(ATgDeployable* D, void* edx, int
 			// ApplyProperty had reached them.
 			D->UpdateHealth(newHp);
 
+			// UC TakeDamage destroys on the 0-crossing (TgDeployable.uc:1217-1228);
+			// this mirror is the only other runtime writer that can land
+			// r_nHealth at 0. Without the same destroy, the deployable survives
+			// at 0 HP and TakeDamage's health<=0 early-out (uc:1211) makes it
+			// permanently indestructible.
+			if (oldHp > 0 && newHp <= 0 && !D->m_bInDestroyedState) {
+				D->eventDestroyIt(0);
+			}
+
 			Logger::Log("heal_tick",
 				"[SetProperty mirror] deployable=0x%p id=%d  HEALTH %d -> %d  hpMax=%d  combatMsg=%s\n",
 				D, D->r_nDeployableId, oldHp, newHp, hpMax,

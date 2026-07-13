@@ -100,6 +100,12 @@ void __fastcall TgTeamBeaconManager__SpawnNewBeaconForTeam::Call(
 		pick, pick->m_nMapObjectId, pick->m_nPriority, (int)pick->m_bIsFallback,
 		(pick == tieredMatch) ? "priority" : (pick == untiered ? "untiered" : "fallback"));
 
+	// Fresh team beacon = full health. s_fHealthPercent is only ever written
+	// by pickup (TgDeploy_Beacon.uc:144 SetHealthPercent(GetSaveHealthPercent()))
+	// and consumed by RegisterBeacon(bDeployed=false) on the next deploy;
+	// nothing resets it, so a respawn here must not inherit a stale percent.
+	mgr->s_fHealthPercent = 1.0f;
+
 	TgBeaconFactory__SpawnObject::Call(pick, nullptr);
 	return nullptr;
 }

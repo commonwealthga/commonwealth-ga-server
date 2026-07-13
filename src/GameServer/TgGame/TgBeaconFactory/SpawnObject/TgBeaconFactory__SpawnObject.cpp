@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
+#include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
@@ -186,7 +187,39 @@ void __fastcall TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, vo
 
 	beacon->r_nDeployableId   = 36;
 	beacon->m_nPickupDeviceId = 1918;
+
+	// Health seed. This path skips the device-fire init chain, so without it
+	// the exit stands at r_nHealth==0 forever: UC TakeDamage early-outs at
+	// health<=0 (TgDeployable.uc:1211), DestroyIt is unreachable — an
+	// indestructible 0-HP beacon that still shows damage numbers. Seed BEFORE
+	// WireDeployableOwnership so InitReplicationInfo copies the value into
+	// r_DRI.r_nHealthMaximum (UC: r_DRI.r_nHealthMaximum = r_nHealth).
+	{
+		const int seedHp = DeployableClassify::GetMaxHealth(36);
+		if (seedHp > 0) beacon->r_nHealth = seedHp;
+	}
+
 	WireDeployableOwnership(beacon, factory, tf);
+
+	// Property/DRI init parity with the device-fire path: s_Properties slots,
+	// DRI current/max + deploy PCT, r_bTakeDamage from DB health.
+	beacon->InitializeDefaultProps();
+
+	// EffectManager parity with the device-fire path — without it, UC
+	// ProcessEffect (repairs/heals targeting the beacon) dereferences None.
+	if (!beacon->r_EffectManager) {
+		UClass* emClass = ClassPreloader::GetClass("Class TgGame.TgEffectManager");
+		if (emClass) {
+			FVector emLoc = {0.0f, 0.0f, 0.0f};
+			beacon->r_EffectManager = (ATgEffectManager*)beacon->Spawn(
+				emClass, beacon, FName(), emLoc, beacon->Rotation, nullptr, 1);
+			if (beacon->r_EffectManager) {
+				beacon->r_EffectManager->r_Owner = (AActor*)beacon;
+				beacon->r_EffectManager->SetOwner((AActor*)beacon);
+				beacon->r_EffectManager->Base    = (AActor*)beacon;
+			}
+		}
+	}
 
 	// Pre-deployed (no Deploy animation). Marks m_bIsDeployed=1 (via
 	// WireDeployableOwnership above) AND status=DEPLOYED so HasExit returns
