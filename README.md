@@ -29,20 +29,20 @@ A built DLL is available for download [in the releases](https://github.com/commo
 **Phase 3 "make it right"** (2026)
 - [x] get a public server up and running 24/7 - [join our discord to learn more](https://discord.gg/CqACf4qArk)
 - [x] implement server orchestration (matchmaking, home map etc.)
-- [ ] registrations and auth
+- [x] registrations and auth
 - [ ] *(in progress)* implement important parts of TCP server and database (enable changing gear, skills, cosmetics etc.)
 - [ ] *(in progress)* implement chat
 - [ ] *(in progress)* make all devices work properly
 - [ ] *(in progress)* make all skills work properly
 - [x] implement merc
-- [ ] *(in progress)* implement umax
-- [ ] implement double agent
-- [ ] implement raids
+- [x] implement umax
+- [x] implement double agent
+- [x] implement raids
 - [ ] implement open world and quests
 - [ ] implement mission rewards and item drops
 - [ ] implement vendors
 - [ ] implement crafting
-- [ ] website, stats, leaderboards
+- [x] website, stats
 
 ## Useful links
 
