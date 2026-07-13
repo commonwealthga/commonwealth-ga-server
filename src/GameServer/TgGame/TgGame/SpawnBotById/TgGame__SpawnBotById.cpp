@@ -707,6 +707,13 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// }
 
 	Bot->r_bIsBot = 1;
+	// Cascade-kill-on-owner-death: pets/drones (Grizzly, Hornet, Lockdown,
+	// Harrier, Eye, decoys) carry destroy_on_owner_death_flag=1 in bot config.
+	// The intact native KillOwnedBots (fired from PlayDying at owner death)
+	// only kills bots with this flag set — without it the drone lingers until
+	// the owner pawn is finally Destroyed (much later), which is the
+	// "drone stays alive too long" symptom. Turrets/map enemies have flag=0.
+	Bot->m_bDestroyOnOwnerDeathFlag = GetDestroyOnOwnerDeathFlag(nBotId) ? 1 : 0;
 	// The AI test evaluator's "Time Since Spawned" (test 1486) reads this; UC
 	// only stamps it on player spawn / revive / arena paths, so bot spawns must
 	// stamp it here. Left at 0, every time-since-spawn gate sees match-elapsed

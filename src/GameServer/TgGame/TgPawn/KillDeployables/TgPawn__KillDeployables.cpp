@@ -19,6 +19,20 @@ void __fastcall TgPawn__KillDeployables::Call(ATgPawn* Pawn, void* edx, unsigned
 	if (!Pawn) return;
 
 	const int count = Pawn->s_SelfDeployableList.Count;
+
+	// An AI's death takes its deployables with it. The PlayDying path calls
+	// KillDeployables(false), which normally only reaps deployables flagged
+	// destroy_on_owner_death — that flag-gate exists so a PLAYER's death lets
+	// their turrets/etc. live out their own lifespan (the player respawns and
+	// the deployables get reaped later at pawn Destroyed). AI bosses (e.g.
+	// Elite Techro's Buff Station, deployable 209, flag=0) don't respawn, so
+	// there's no "later" — defer-to-Destroyed left the station standing.
+	// Treat a non-player owner's death as destroy-all so NPC summons die with
+	// the summoner, at the same PlayDying moment their owned bots do (KillOwnedBots).
+	const bool bOwnerIsAI =
+		!ObjectClassCache::ClassNameContains((UObject*)Pawn->Controller, "PlayerController");
+	const bool bDestroyAll = bAll || bOwnerIsAI;
+
 	Logger::Log("debug",
 		"[KillDeployables] pawn=0x%p pawnId=%d bAll=%d listCount=%d\n",
 		Pawn, (int)Pawn->r_nPawnId, (int)bAll, count);
@@ -46,7 +60,7 @@ void __fastcall TgPawn__KillDeployables::Call(ATgPawn* Pawn, void* edx, unsigned
 			continue;
 		}
 
-		const bool shouldDestroy = bAll || dep->m_bDestroyOnOwnerDeathFlag;
+		const bool shouldDestroy = bDestroyAll || dep->m_bDestroyOnOwnerDeathFlag;
 		if (!shouldDestroy) {
 			Logger::Log("debug",
 				"  [KillDeployables] keep [%d] 0x%p deployableId=%d (destroy_on_owner_death=0)\n",
