@@ -94,6 +94,35 @@ public:
 		return ins->second;
 	}
 
+	// asm_data_set_bots.destroy_on_owner_death_flag — whether this bot is
+	// cascade-killed when its owner pawn dies. Set on pets/drones (Grizzly,
+	// Hornet, Lockdown, Harrier, Eye, decoys), clear on emplaced turrets and
+	// standalone map enemies. Read by the intact native KillOwnedBots
+	// (0x109e5090), fired from TgPawn.PlayDying at the moment of owner death —
+	// it only kills bots with r_bIsBot + r_Owner==dead-pawn + THIS flag. Cached.
+	static bool GetDestroyOnOwnerDeathFlag(int nBotId) {
+		static std::unordered_map<int, bool> cache;
+		auto it = cache.find(nBotId);
+		if (it != cache.end()) return it->second;
+
+		bool flag = false;
+		sqlite3* db = Database::GetConnection();
+		if (db) {
+			sqlite3_stmt* stmt = nullptr;
+			if (sqlite3_prepare_v2(db,
+				"SELECT destroy_on_owner_death_flag FROM asm_data_set_bots "
+				"WHERE bot_id = ? LIMIT 1;",
+				-1, &stmt, nullptr) == SQLITE_OK) {
+				sqlite3_bind_int(stmt, 1, nBotId);
+				if (sqlite3_step(stmt) == SQLITE_ROW)
+					flag = sqlite3_column_int(stmt, 0) != 0;
+				sqlite3_finalize(stmt);
+			}
+		}
+		cache[nBotId] = flag;
+		return flag;
+	}
+
 	// Helper used by spawn-Z-lift callers (SpawnNextBot, SpawnObjectiveBot,
 	// SpawnPet, SpawnWave, PlayerActions::SpawnBot). Returns the primary
 	// cylinder dimensions — same as what ApplyBotCollisionData installs.
