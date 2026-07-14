@@ -1088,6 +1088,7 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// factory-less spawns have m_pFactory=None and skip BotDied).
 	if (pCallerFactory == nullptr) {
 		AIController->m_pFactory = nullptr;
+		AIController->m_bAlarmBot = 0;
 	}
 
 	// Anchor the AIController to the spawn pose. m_vSpawnLocation (0x5F4) is
