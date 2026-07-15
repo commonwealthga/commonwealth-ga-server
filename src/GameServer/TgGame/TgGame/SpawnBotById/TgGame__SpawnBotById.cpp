@@ -703,8 +703,15 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// if (pOwnerPawn != nullptr) {
 	// 	AIController->SetOwner(pOwnerPawn);
 	// } else {
-		AIController->SetOwner(WorldInfo);
+	// 	AIController->SetOwner(WorldInfo);
 	// }
+	// Stock: controllers have NO engine Owner. Possession re-owns the pawn to
+	// the AIC (PossessedBy -> SetOwner(C), seen in the 2026-07-15 "botdied"
+	// capture), so the AIC is the pawn's GetTopOwner() — with WorldInfo as the
+	// AIC's owner the walk ran past it and IsPlayerOwned() returned false,
+	// blocking every bPlayerOnly kismet event (TgSeqEvent_BotDied door panels).
+	// Owner=None stops the walk at the AIC (bIsPlayer=1) and the gate passes.
+	AIController->SetOwner(nullptr);
 
 	Bot->r_bIsBot = 1;
 	// Cascade-kill-on-owner-death: pets/drones (Grizzly, Hornet, Lockdown,
@@ -756,8 +763,16 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 	// if (pOwnerPawn != nullptr) {
 	// 	Bot->SetOwner(pOwnerPawn);
 	// } else {
-		Bot->SetOwner(BotRepInfo);
+	// 	Bot->SetOwner(BotRepInfo);
 	// }
+	// Stock topology: a pawn keeps NO engine Owner. With any Owner set,
+	// IsPlayerOwned() (0x10c54240) walks GetTopOwner() PAST the pawn and finds
+	// no controller, so kismet bPlayerOnly events with the dead bot as
+	// instigator (TgSeqEvent_BotDied — SDColony04 door panels) never activate.
+	// Owner=None stops the walk at the pawn -> GetAController() -> AIC
+	// (bIsPlayer=1) and the gate passes. Chaining to pOwnerPawn stays forbidden
+	// (bNetOwner rep filter would kill owner-client fire anims).
+	Bot->SetOwner(nullptr);
 
 	if (pOwnerPawn != nullptr) {
 		Bot->r_Owner = pOwnerPawn;

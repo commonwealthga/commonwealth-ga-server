@@ -1066,7 +1066,62 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// fully destroyed, and the team's beacon never respawns.
 		BeaconSdk::DropCarriedBeacon((ATgPawn*)Object);
 
+		// "botdied" diagnostics: dump the factory's kismet BotDied events
+		// (flag bits + TriggerCount) around both possible BotDied call
+		// paths — UC PawnDied inside CallOriginal, and our direct call
+		// below. TriggerCount delta = CheckActivate actually activated.
+		auto LogBotDiedEvents = [](const char* tag, ATgBotFactory* f) {
+			if (f == nullptr) {
+				Logger::Log("botdied", "%s: factory=<null>\n", tag);
+				return;
+			}
+			Logger::Log("botdied", "%s: factory mapId=%d events=%d\n",
+				tag, f->m_nMapObjectId, f->GeneratedEvents.Num());
+			for (int i = 0; i < f->GeneratedEvents.Num(); i++) {
+				USequenceEvent* Evt = f->GeneratedEvents.Data[i];
+				if (Evt == nullptr) continue;
+				Logger::Log("botdied",
+					"  evt[%d] %s trig=%d/%d en=%d playerOnly=%d humanOnly=%d "
+					"clientOnly=%d srvAndCli=%d reTrigDelay=%.1f\n",
+					i, ObjectClassCache::GetClassName(Evt).c_str(),
+					Evt->TriggerCount, Evt->MaxTriggerCount,
+					(int)Evt->bEnabled, (int)Evt->bPlayerOnly,
+					(int)Evt->bHumanOnly, (int)Evt->bClientSideOnly,
+					(int)Evt->bServerAndClientSide, Evt->ReTriggerDelay);
+			}
+		};
+		ATgBotFactory* DiagFactory = nullptr;
+		const bool diagOn = Logger::IsChannelEnabled("botdied");
+		if (diagOn) {
+			ATgPawn* DiagPawn = (ATgPawn*)Object;
+			const char* pnRaw = DiagPawn->GetFullName();
+			const std::string pn(pnRaw ? pnRaw : "<null>");
+			AController* C = DiagPawn->Controller;
+			Logger::Log("botdied",
+				"Dying.BeginState: %s owner=%s ctrl=%s bIsPlayer=%d hench=%d\n",
+				pn.c_str(),
+				DiagPawn->Owner ? ObjectClassCache::GetClassName(DiagPawn->Owner).c_str() : "<none>",
+				C ? ObjectClassCache::GetClassName(C).c_str() : "<none>",
+				C ? (int)C->bIsPlayer : -1,
+				(int)DiagPawn->r_bIsHenchman);
+			if (C && !ObjectClassCache::ClassNameContains(C, "PlayerController")) {
+				DiagFactory = ((ATgAIController*)C)->m_pFactory;
+				LogBotDiedEvents("pre-BeginState", DiagFactory);
+			}
+		}
+
 		CallOriginal(Object, edx, Function, Params, Result);
+
+		if (diagOn && DiagFactory != nullptr) {
+			ATgPawn* DiagPawn = (ATgPawn*)Object;
+			AController* C = DiagPawn->Controller;
+			Logger::Log("botdied",
+				"post-BeginState: ctrl=%s m_pFactory=%s (None => UC PawnDied consumed it)\n",
+				C ? ObjectClassCache::GetClassName(C).c_str() : "<none>",
+				(C && !ObjectClassCache::ClassNameContains(C, "PlayerController") &&
+				 ((ATgAIController*)C)->m_pFactory) ? "set" : "None");
+			LogBotDiedEvents("post-BeginState", DiagFactory);
+		}
 
 		// Dead pawns must not keep PHYS_Flying: retail death set falling
 		// physics, but SetPhysics natives are stripped no-ops on this binary,
@@ -1081,14 +1136,14 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 				DyingPawn->bSimulateGravity = 1;
 			}
 		}
-		// UScript TgPawn.Dying.BeginState only calls PawnDied for bIsPlayer==true.
-		// For AI bots the Timer would normally call Controller.Destroy() → PawnDied,
-		// but bots fall out of the world first (LifeSpan set by OutsideWorldBounds),
-		// so the Timer never fires and BotDied is never called.
-		// Fix: call the INTACT TgBotFactory::BotDied @ 0x10a8cbf0 directly,
-		// mirroring what TgAIController.PawnDied() would do. The 2026-06-10
-		// factory rewrite made m_SpawnQueue a scheduler (one entry per
-		// pending spawn), so the native's respawn-entry append + group-count
+		// Fallback path: normally UC Dying.BeginState -> Controller.PawnDied
+		// (bIsPlayer=1 on TgAIController) already called the INTACT
+		// TgBotFactory::BotDied inside CallOriginal and nulled m_pFactory
+		// (proven by the 2026-07-15 "botdied" capture). If m_pFactory is
+		// still set here (controller detached before Dying, etc.), call the
+		// intact native @ 0x10a8cbf0 directly. The 2026-06-10 factory
+		// rewrite made m_SpawnQueue a scheduler (one entry per pending
+		// spawn), so the native's respawn-entry append + group-count
 		// decrement compose correctly.
 		//
 		// Kill attribution (m_DeathZoomInfo population + ClientAddKilled RPC)
@@ -1115,8 +1170,12 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 						const std::string pnName = pnRaw ? pnRaw : "<null>";
 						Logger::Log(GetLogChannel(), "Dying.BeginState: calling BotDied on factory for %s\n", pnName.c_str());
 					}
+					ATgBotFactory* CalledFactory = AIC->m_pFactory;
 					((void(__thiscall*)(ATgBotFactory*, ATgPawn*, ATgAIController*))0x10a8cbf0)(AIC->m_pFactory, Pawn, AIC);
 					AIC->m_pFactory = nullptr;
+					if (diagOn) LogBotDiedEvents("post-direct-BotDied", CalledFactory);
+				} else if (diagOn) {
+					Logger::Log("botdied", "direct call skipped: m_pFactory already None\n");
 				}
 			}
 		}

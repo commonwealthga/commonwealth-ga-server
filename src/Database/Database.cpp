@@ -8237,6 +8237,192 @@ void Database::Init() {
 		Logger::Log("db", "v131: disabled b_respawn on all 17 bot factories of 1P_CPMine03_P\n");
 	}
 
+	if (version < 132) {
+		// v132: 1p_SDColony04_P ("Recursive Communications", retail map_game_id
+		// 1469 per asm_data_set_production_map_game_list + the kismet MapGameId
+		// compares). Recursive Colony node mission: 3 doors open by destroying
+		// Control Panel bots (factory TgSeqEvent_BotDied -> door matinee), then
+		// 3 inner panels + the Colony Eye objective bot (13332, baked spawn
+		// table 210, needs no config).
+		//
+		// Factory roles from the kismet dump:
+		//   panels (spawn table 173 = Control Panel 1621):
+		//     13911 first door, 13910 cave door, 13909 arena door,
+		//     13904/13905/13908 inner "Destroy All 3 Panels" trio
+		//   kismet-toggled (start dormant, b_auto_spawn=0):
+		//     13917/13920/13925  Turn On at 2+ players (GetPlayerCount)
+		//     13921/13922/13923/14091/14283  Turn On at 3+ players
+		//     13927  Turn On 60s after the boss-area trigger volume
+		//   alarm responder: 14094 (b_spawn_on_alarm=1 baked)
+		//   flying (VolumePathNode patrols): 13918, 13923 -> wasp table 147
+		// Spawn tables are the retail Recursive Colony set (85/98..103/147/
+		// 167/168 — same family 1P_SDColony01_P uses); all carry Ultra-Max
+		// Security (1471) rows so the difficulty cascade serves every tier of
+		// the desert_pve queues. b_respawn=0 everywhere (retail shape, v131
+		// lesson). Bots on task force / team 2, players + beacons on 1.
+		const char* kV132_sdcolony04 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			// --- door + inner panels: 1x Control Panel each ---
+			" ('1p_SDColony04_P', 13911, 'n_spawn_table_id',         '173', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13911, 'n_default_spawn_table_id', '173', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13910, 'n_spawn_table_id',         '173', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13910, 'n_default_spawn_table_id', '173', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13909, 'n_spawn_table_id',         '173', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13909, 'n_default_spawn_table_id', '173', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13904, 'n_spawn_table_id',         '173', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13904, 'n_default_spawn_table_id', '173', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13905, 'n_spawn_table_id',         '173', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13905, 'n_default_spawn_table_id', '173', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13908, 'n_spawn_table_id',         '173', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13908, 'n_default_spawn_table_id', '173', NULL, NULL, 1),"
+			// --- entry / surface area ---
+			" ('1p_SDColony04_P', 13916, 'n_spawn_table_id',         '85',  NULL, NULL, 1)," // drones/ants/soldiers
+			" ('1p_SDColony04_P', 13916, 'n_default_spawn_table_id', '85',  NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13917, 'n_spawn_table_id',         '85',  NULL, NULL, 1)," // 2p+ extra
+			" ('1p_SDColony04_P', 13917, 'n_default_spawn_table_id', '85',  NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13922, 'n_spawn_table_id',         '102', NULL, NULL, 1)," // 3p+ extra, drones/soldiers
+			" ('1p_SDColony04_P', 13922, 'n_default_spawn_table_id', '102', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13918, 'n_spawn_table_id',         '147', NULL, NULL, 1)," // wasps (VolumePathNode)
+			" ('1p_SDColony04_P', 13918, 'n_default_spawn_table_id', '147', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13923, 'n_spawn_table_id',         '147', NULL, NULL, 1)," // wasps, 3p+ extra
+			" ('1p_SDColony04_P', 13923, 'n_default_spawn_table_id', '147', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13930, 'n_spawn_table_id',         '102', NULL, NULL, 1)," // spawn approach, light
+			" ('1p_SDColony04_P', 13930, 'n_default_spawn_table_id', '102', NULL, NULL, 1),"
+			// --- mid area (after first door) ---
+			" ('1p_SDColony04_P', 13924, 'n_spawn_table_id',         '167', NULL, NULL, 1)," // standard mix
+			" ('1p_SDColony04_P', 13924, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13925, 'n_spawn_table_id',         '167', NULL, NULL, 1)," // 2p+ extra
+			" ('1p_SDColony04_P', 13925, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			// --- arena door cluster ---
+			" ('1p_SDColony04_P', 13919, 'n_spawn_table_id',         '99',  NULL, NULL, 1)," // heavy mix + sand spiders
+			" ('1p_SDColony04_P', 13919, 'n_default_spawn_table_id', '99',  NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13932, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13932, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13920, 'n_spawn_table_id',         '167', NULL, NULL, 1)," // 2p+ extra
+			" ('1p_SDColony04_P', 13920, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13921, 'n_spawn_table_id',         '99',  NULL, NULL, 1)," // 3p+ extra
+			" ('1p_SDColony04_P', 13921, 'n_default_spawn_table_id', '99',  NULL, NULL, 1),"
+			// --- deep area / Colony Eye pit ---
+			" ('1p_SDColony04_P', 13929, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13929, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13927, 'n_spawn_table_id',         '100', NULL, NULL, 1)," // boss-trigger ambush: sentry/guardian/scorpion/spiders
+			" ('1p_SDColony04_P', 13927, 'n_default_spawn_table_id', '100', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 14091, 'n_spawn_table_id',         '101', NULL, NULL, 1)," // 3p+ extra, repair/soldier/scorpion
+			" ('1p_SDColony04_P', 14091, 'n_default_spawn_table_id', '101', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 14283, 'n_spawn_table_id',         '99',  NULL, NULL, 1)," // 3p+ extra
+			" ('1p_SDColony04_P', 14283, 'n_default_spawn_table_id', '99',  NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 14094, 'n_spawn_table_id',         '168', NULL, NULL, 1)," // alarm responders: elites
+			" ('1p_SDColony04_P', 14094, 'n_default_spawn_table_id', '168', NULL, NULL, 1),"
+			// --- kismet-toggled factories start dormant ---
+			" ('1p_SDColony04_P', 13917, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13920, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13921, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13922, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13923, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13925, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 14091, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 14283, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13927, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			// --- b_respawn=0 on all 23 factories (retail shape) ---
+			" ('1p_SDColony04_P', 13904, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13905, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13908, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13909, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13910, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13911, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13916, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13917, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13918, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13919, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13920, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13921, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13922, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13923, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13924, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13925, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13927, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13929, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13930, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13932, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 14091, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 14094, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 14283, 'b_respawn', '0', NULL, NULL, 1),"
+			// --- bots on task force / team 2 ---
+			" ('1p_SDColony04_P', 13904, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13904, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13905, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13905, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13908, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13908, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13909, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13909, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13910, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13910, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13911, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13911, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13916, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13916, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13917, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13917, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13918, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13918, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13919, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13919, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13920, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13920, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13921, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13921, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13922, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13922, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13923, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13923, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13924, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13924, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13925, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13925, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13927, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13927, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13929, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13929, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13930, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13930, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13932, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13932, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 14091, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 14091, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 14094, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 14094, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 14283, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 14283, 's_n_team_number', '2', NULL, NULL, 1),"
+			// --- beacons: 13912 spawn-room, 13913 checkpoint (kismet Turn On
+			//     via the TgPlayerCountVolume 'Toggle Checkpoint' event) ---
+			" ('1p_SDColony04_P', 13912, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13912, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13912, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13913, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13913, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13913, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13913, 's_b_auto_spawn',  '0', NULL, NULL, 1),"
+			// --- player start ---
+			" ('1p_SDColony04_P', 13903, 'm_n_task_force',  '1', NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV132_sdcolony04, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v132 (map_object_config sdcolony04): %s\n", err); return; }
+
+		// map_game_info: 1469 is the retail production id for this map (kismet
+		// compares MapGameId==1469 for the intro textbox; ==1460 is a doors-
+		// pre-opened variant we deliberately do NOT use). 66986 = "Recursive
+		// Communications"; 8022 = HUD_MissionLoads_1_5.1P_DN_Colony_04 (the
+		// 1.5-era Desert North colony-node loading screen set).
+		result = sqlite3_exec(db,
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"(1469, '1p_SDColony04_P', 'TgGame.TgGame_Mission', 1553, 66986, 8022);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v132 (map_game_info sdcolony04): %s\n", err); return; }
+
+		Logger::Log("db", "v132: seeded map_object_config + map_game_info "
+			"(1469, Recursive Communications) for 1p_SDColony04_P\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -8248,7 +8434,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 131", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 132", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

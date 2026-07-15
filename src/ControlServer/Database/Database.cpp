@@ -1415,6 +1415,108 @@ void Database::Init() {
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) sqlite3_free(err);
 
+		// Desert PvE ('desert_pve') — pool 5, currently just the Recursive
+		// Communications node mission (1p_SDColony04_P, map_game_id 1469;
+		// map_object_config + map_game_info seeded by game-DLL v132).
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_map_pools (map_pool_id, name) VALUES (5, 'desert_pve');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed ga_map_pools (desert_pve): %s\n", err);
+			sqlite3_free(err);
+		}
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode, weight, enabled) VALUES"
+			" (5, '1p_SDColony04_P', 'TgGame.TgGame_Mission', 1, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed ga_map_pool_entries (desert_pve): %s\n", err);
+			sqlite3_free(err);
+		}
+
+		// Three desert_pve difficulty queues (13/14/15). Pure PvE attack
+		// missions: specops mechanics (pinned_1, own_match/required,
+		// min_to_pop 1, no pop delay, level 5-200) with the Double Agent
+		// UI-grouping shape (values playtested 2026-07-15): shared name
+		// 26637 "PvE Attack Missions", per-tier desc (27674 High / 34212
+		// Maximum / 55465 Ultra Max Security), one queue per location page
+		// (1483 Sonoran Desert / 1478 Mining Province / 1477 Commonwealth
+		// Prime) — location acts as the difficulty selector inside the
+		// group — and a shared marshal_difficulty_value_id 1028 ("Low
+		// Security", unused by any other queue) as the wire-side group key.
+		// double_agent_flag=1 is REQUIRED for the client to display the
+		// queue at all (every live queue carries it). Gameplay difficulty
+		// still comes from difficulty_value_id (1030/1259/1471 ->
+		// -difficulty flag -> spawn-table cascade + 1.5x/1.75x/2.0x
+		// scalar). sort_orders 9/10/11 append after double_agent (6/7/8).
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_queues "
+			"(queue_id, name, taskforce_policy, continue_in_queue, enabled, "
+			" queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, "
+			" max_players_per_side, min_players_per_team, max_players_per_team, "
+			" level_min, level_max, tab, map_x, map_y, map_active_flag, "
+			" map_icon_texture_res_id, video_res_id, location_value_id, "
+			" double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, "
+			" difficulty_value_id, access_flags, active_flag, locked_flag, "
+			" map_pool_id, min_players_to_pop, max_players_per_instance, "
+			" pop_delay_seconds, team_policy, team_side_policy, "
+			" marshal_difficulty_value_id) VALUES"
+			" (13, 'desert_pve_high', 'pinned_1', 0, 1,"
+			"  1021, 0, 26637, 27674, 537,"
+			"  10, 1, 10, 5, 200, 443, 6.0, 0.0, 1,"
+			"  5126, 0, 1483, 1, 0, 9, 0,"
+			"  1030, 0, 1, 0, 5, 1, 0,"
+			"  0.0, 'own_match', 'required', 1028),"
+			" (14, 'desert_pve_max', 'pinned_1', 0, 1,"
+			"  1021, 0, 26637, 34212, 537,"
+			"  10, 1, 10, 5, 200, 443, 6.0, 0.0, 1,"
+			"  5126, 0, 1478, 1, 0, 10, 0,"
+			"  1259, 0, 1, 0, 5, 1, 0,"
+			"  0.0, 'own_match', 'required', 1028),"
+			" (15, 'desert_pve_umax', 'pinned_1', 0, 1,"
+			"  1021, 0, 26637, 55465, 537,"
+			"  10, 1, 10, 5, 200, 443, 6.0, 0.0, 1,"
+			"  5126, 0, 1477, 1, 0, 11, 0,"
+			"  1471, 0, 1, 0, 5, 1, 0,"
+			"  0.0, 'own_match', 'required', 1028);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed desert_pve queues: %s\n", err);
+			sqlite3_free(err);
+		}
+
+		// Repair pass for DBs that ran the pre-playtest desert_pve seed
+		// (double_agent_flag=0 hid the queues client-side; marshal 1470).
+		// Gated on the old values so operator edits stick across boots.
+		result = sqlite3_exec(db,
+			"UPDATE ga_queues SET double_agent_flag = 1 "
+			"WHERE queue_id IN (13, 14, 15) AND double_agent_flag = 0;"
+			"UPDATE ga_queues SET marshal_difficulty_value_id = 1028 "
+			"WHERE queue_id IN (13, 14, 15) AND marshal_difficulty_value_id = 1470;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) sqlite3_free(err);
+
+		// Consolidate the specops medium/high/max queues into ONE mission-
+		// board group (playtested 2026-07-15): shared marshal 1029 ("Medium
+		// Security") as the group key, location as the difficulty selector
+		// (medium 1483 Sonoran Desert / high 1478 Mining Province / max
+		// 1477 Commonwealth Prime), desc = the tier name (27673/27674/
+		// 34212) instead of the level-range blurbs. umax (queue 1) stays
+		// its own group. Gated on the old values so operator edits stick.
+		result = sqlite3_exec(db,
+			"UPDATE ga_queues SET desc_msg_id = 27673 WHERE queue_id = 4 AND desc_msg_id = 41459;"
+			"UPDATE ga_queues SET desc_msg_id = 27674 WHERE queue_id = 5 AND desc_msg_id = 55458;"
+			"UPDATE ga_queues SET desc_msg_id = 34212 WHERE queue_id = 6 AND desc_msg_id = 55460;"
+			"UPDATE ga_queues SET location_value_id = 1483 WHERE queue_id = 4 AND location_value_id = 1477;"
+			"UPDATE ga_queues SET location_value_id = 1478 WHERE queue_id = 5 AND location_value_id = 1477;"
+			"UPDATE ga_queues SET marshal_difficulty_value_id = 1029 "
+			"WHERE queue_id IN (4, 5, 6) AND marshal_difficulty_value_id IS NULL;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed specops medium/high/max consolidation: %s\n", err);
+			sqlite3_free(err);
+		}
+
 		// Drop the CHECK constraint on ga_queues.taskforce_policy. The C++
 		// ParseTaskforcePolicy already validates with a graceful pinned_1
 		// fallback on unknown, so the DB constraint just forces a schema
