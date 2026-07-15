@@ -8201,6 +8201,42 @@ void Database::Init() {
 			"(1316, Uranium Mining Complex) for 1P_CPMine03_P\n");
 	}
 
+	if (version < 131) {
+		// v131: 1P_CPMine03_P bakes b_respawn=1 on ALL its factories, unlike
+		// retail maps (1P_CPLab05_P: all 25 factories b_respawn=0). On alarm
+		// factories that combines with the alarm bots' data-driven stand-down
+		// (action 1272 Despawn, "CANCEL ALARM-BOT STATUS") into an endless
+		// spawn/despawn loop: stand-down despawn -> intact BotDied requeues a
+		// replacement (bRespawn) -> respawn -> stand-down again. Bot 1320
+		// "Elite Assassin" (behavior 658) has no time-since-spawned gate, so its
+		// loop cycles sub-second — spawn FX with no visible pawn + client FPS
+		// collapse. Override ALL 17 factories to retail shape (regular
+		// factories get the same b_respawn=0 override on other maps too).
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			" ('1P_CPMine03_P', 12197, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12198, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12199, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12200, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12458, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12478, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12479, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12506, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12528, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12529, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12530, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12531, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12532, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12533, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12534, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12535, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_CPMine03_P', 12536, 'b_respawn', '0', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v131 (cpmine03 factory respawn): %s\n", err); return; }
+
+		Logger::Log("db", "v131: disabled b_respawn on all 17 bot factories of 1P_CPMine03_P\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -8212,7 +8248,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 130", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 131", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
