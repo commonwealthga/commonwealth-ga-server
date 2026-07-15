@@ -8,8 +8,31 @@
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Config/Config.hpp"
+#include "src/Database/Database.hpp"
 #include "src/Utils/DebugWindow/DebugWindow.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+
+// PvE challenge ("victory") bonus threshold from our ga_instances row —
+// inherited from ga_queues.victory_bonus_lives at spawn by InsertStarting.
+// 0 = feature off: the client HUD element (TgUIPrimaryHUD_MissionInfo)
+// never renders while r_nVictoryBonusLives == 0.
+static int FetchVictoryBonusLives() {
+	const int64_t instanceId = Config::GetInstanceId();
+	if (instanceId == 0) return 0;
+	sqlite3* db = Database::GetConnection();
+	if (!db) return 0;
+	sqlite3_stmt* stmt = nullptr;
+	// Pre-migration DB (column missing): prepare fails → feature off.
+	if (sqlite3_prepare_v2(db,
+			"SELECT victory_bonus_lives FROM ga_instances WHERE instance_id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt)
+		return 0;
+	sqlite3_bind_int64(stmt, 1, instanceId);
+	int lives = 0;
+	if (sqlite3_step(stmt) == SQLITE_ROW) lives = sqlite3_column_int(stmt, 0);
+	sqlite3_finalize(stmt);
+	return lives;
+}
 
 void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 	LogCallBegin();
@@ -111,6 +134,11 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		gamerep->r_nPointsToWin = 3;
 		gamerep->r_nRoundNumber = 1;
 		gamerep->r_nMaxRoundNumber = 5;
+		// bNetInitial-only replication — must be set here, before any client
+		// connects. None of the per-class blocks below touch it. The HUD
+		// additionally gates on IsPvEMission(), so PvP modes never show it
+		// even if a PvP queue configures a threshold.
+		gamerep->r_nVictoryBonusLives = FetchVictoryBonusLives();
 
 
 		Game->m_fGameMissionTime  = static_cast<float>(missionTimeSecs);

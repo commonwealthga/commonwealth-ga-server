@@ -127,10 +127,15 @@ int64_t InstanceRegistry::InsertStarting(const std::string& map_name, const std:
     if (!db) return 0;
 
     sqlite3_stmt* stmt = nullptr;
+    // victory_bonus_lives inherits the queue's configured threshold at spawn
+    // time (snapshot, not a live join — later queue edits don't retroactively
+    // change running instances). Non-queue spawns (home map, admin) get 0 =
+    // challenge bonus off.
     int rc = sqlite3_prepare_v2(db,
         "INSERT INTO ga_instances "
-        "(map_name, game_mode, state, pid, udp_port, ip_address, player_count, started_at, instance_id, is_home_map, queue_id, predecessor_instance_id, access_mode, owner_party_ids) "
-        "VALUES (?, ?, 'STARTING', ?, ?, ?, 0, strftime('%s','now'), 0, ?, ?, ?, ?, ?)",
+        "(map_name, game_mode, state, pid, udp_port, ip_address, player_count, started_at, instance_id, is_home_map, queue_id, predecessor_instance_id, access_mode, owner_party_ids, victory_bonus_lives) "
+        "VALUES (?, ?, 'STARTING', ?, ?, ?, 0, strftime('%s','now'), 0, ?, ?, ?, ?, ?, "
+        "COALESCE((SELECT victory_bonus_lives FROM ga_queues WHERE queue_id = ?), 0))",
         -1, &stmt, nullptr);
     if (rc != SQLITE_OK || !stmt) {
         Logger::Log("db", "[InstanceRegistry] InsertStarting prepare failed: %s\n",
@@ -150,6 +155,7 @@ int64_t InstanceRegistry::InsertStarting(const std::string& map_name, const std:
     else                              sqlite3_bind_null(stmt,  8);
     sqlite3_bind_text(stmt, 9, access_mode.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 10, owner_party_ids.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int64(stmt, 11, static_cast<int64_t>(queue_id));  // victory_bonus_lives subselect
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);

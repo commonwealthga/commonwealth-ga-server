@@ -129,4 +129,10 @@ public:
     static void SetInstanceOutcomeIfNull(int64_t instance_id,
                                          const std::string& outcome,
                                          int winning_task_force);
+
+    // Final per-taskforce team-death totals from MSG_MISSION_ENDED
+    // (challenge bonus source data).
+    static void SetInstanceDeathCounts(int64_t instance_id,
+                                       int count_deaths_attackers,
+                                       int count_deaths_defenders);
 };

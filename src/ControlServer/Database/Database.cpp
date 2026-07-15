@@ -1950,6 +1950,59 @@ void Database::Init() {
 			"ALTER TABLE ga_instances ADD COLUMN winning_task_force INTEGER;",
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
+
+		// PvE challenge ("victory") bonus (2026-07-15).
+		//   ga_queues.victory_bonus_lives    — per-queue team-deaths threshold
+		//   ga_instances.victory_bonus_lives — inherited from the queue at
+		//       InsertStarting; the game DLL's InitGameRepInfo reads it into
+		//       TgRepInfo_Game.r_nVictoryBonusLives (0 = HUD element hidden)
+		//   ga_instances.count_deaths_attackers / count_deaths_defenders —
+		//       final per-taskforce r_nNumDeaths, written on MSG_MISSION_ENDED
+		//       (consumed externally for the card-drops system).
+		// Idempotent — duplicate-column errors swallowed.
+		const char* kVictoryBonusAlters[] = {
+			"ALTER TABLE ga_queues    ADD COLUMN victory_bonus_lives    INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_instances ADD COLUMN victory_bonus_lives    INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_instances ADD COLUMN count_deaths_attackers INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_instances ADD COLUMN count_deaths_defenders INTEGER NOT NULL DEFAULT 0;",
+		};
+		for (const char* sql : kVictoryBonusAlters) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				sqlite3_free(err); err = nullptr;
+			}
+		}
+
+		// One-time per-queue threshold seed. Marker-guarded so it runs exactly
+		// once and never stomps later operator edits. Unlisted queues (merc,
+		// 1v1) stay 0 = feature off.
+		bool victory_bonus_seeded = false;
+		{
+			sqlite3_stmt* mstmt = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT 1 FROM cs_migration_markers WHERE name='victory_bonus_lives_seed_2026_07_15'",
+					-1, &mstmt, nullptr) == SQLITE_OK && mstmt) {
+				victory_bonus_seeded = (sqlite3_step(mstmt) == SQLITE_ROW);
+			}
+			if (mstmt) sqlite3_finalize(mstmt);
+		}
+		if (!victory_bonus_seeded) {
+			static const char* kVictoryBonusSeed[] = {
+				"UPDATE ga_queues SET victory_bonus_lives=4 WHERE name IN "
+					"('medium','high','max','umax','desert_pve_high','desert_pve_max','desert_pve_umax');",
+				"UPDATE ga_queues SET victory_bonus_lives=6 WHERE name IN "
+					"('sr','double_agent_high','double_agent_max','double_agent_umax');",
+				"UPDATE ga_queues SET victory_bonus_lives=10 WHERE name='ddr';",
+				"UPDATE ga_queues SET victory_bonus_lives=40 WHERE name='super_agent';",
+				"INSERT OR IGNORE INTO cs_migration_markers (name) VALUES ('victory_bonus_lives_seed_2026_07_15');",
+			};
+			for (const char* sql : kVictoryBonusSeed) {
+				if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+					Logger::Log("db", "[Database] victory bonus seed step failed: %s\n", err ? err : "?");
+					if (err) { sqlite3_free(err); err = nullptr; }
+				}
+			}
+			Logger::Log("db", "[Database] Applied one-time victory_bonus_lives queue seed\n");
+		}
 	}
 
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
@@ -2556,5 +2609,34 @@ void Database::SetInstanceOutcomeIfNull(int64_t instance_id,
 	} else {
 		Logger::Log("matchstats", "[Outcome] instance=%lld outcome=%s wtf=%d applied=%d\n",
 			(long long)instance_id, outcome.c_str(), winning_task_force, changed);
+	}
+}
+
+void Database::SetInstanceDeathCounts(int64_t instance_id,
+                                      int count_deaths_attackers,
+                                      int count_deaths_defenders) {
+	sqlite3* db = GetConnection();
+	if (!db) return;
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"UPDATE ga_instances SET count_deaths_attackers = ?, count_deaths_defenders = ? "
+		"WHERE instance_id = ? AND is_home_map = 0",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("matchstats", "[DB] SetInstanceDeathCounts prepare failed: %s\n",
+			sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int(stmt, 1, count_deaths_attackers);
+	sqlite3_bind_int(stmt, 2, count_deaths_defenders);
+	sqlite3_bind_int64(stmt, 3, instance_id);
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	if (rc != SQLITE_DONE) {
+		Logger::Log("matchstats", "[DB] SetInstanceDeathCounts step failed: %s\n",
+			sqlite3_errmsg(db));
+	} else {
+		Logger::Log("matchstats", "[DeathCounts] instance=%lld attackers=%d defenders=%d\n",
+			(long long)instance_id, count_deaths_attackers, count_deaths_defenders);
 	}
 }

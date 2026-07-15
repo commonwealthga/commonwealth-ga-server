@@ -393,6 +393,13 @@ private:
             Logger::Log("ipc", "[IpcServer] MISSION_ENDED: parent=%lld successor=%lld\n",
                 (long long)inst_id, (long long)successor);
 
+            // Final per-taskforce team-death totals (challenge bonus source
+            // data for the external card-drops system).
+            Database::SetInstanceDeathCounts(
+                inst_id,
+                j.value("count_deaths_attackers", 0),
+                j.value("count_deaths_defenders", 0));
+
             // Win/stalemate outcome from the game's own win-state
             // computation (design 2026-06-12). Write-once.
             const std::string outcome = j.value("outcome", "");

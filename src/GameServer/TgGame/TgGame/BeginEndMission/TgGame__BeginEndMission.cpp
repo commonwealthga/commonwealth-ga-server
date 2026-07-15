@@ -4,6 +4,7 @@
 #include "src/GameServer/TgGame/TgMissionObjective/SetObjectiveActive/TgMissionObjective__SetObjectiveActive.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective_Bot/SetObjectiveActive/TgMissionObjective_Bot__SetObjectiveActive.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
+#include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -207,6 +208,12 @@ void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera,
 		msg["instance_id"]        = IpcClient::GetInstanceId();
 		msg["outcome"]            = outcome;
 		msg["winning_task_force"] = winningTf;
+		// Final per-taskforce team-death totals (challenge bonus source data)
+		// — written to ga_instances.count_deaths_attackers/defenders.
+		msg["count_deaths_attackers"] =
+			GTeamsData.Attackers ? GTeamsData.Attackers->r_nNumDeaths : 0;
+		msg["count_deaths_defenders"] =
+			GTeamsData.Defenders ? GTeamsData.Defenders->r_nNumDeaths : 0;
 		IpcClient::Send(msg.dump());
 	}
 
