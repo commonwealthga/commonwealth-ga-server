@@ -1427,7 +1427,8 @@ void Database::Init() {
 		}
 		result = sqlite3_exec(db,
 			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode, weight, enabled) VALUES"
-			" (5, '1p_SDColony04_P', 'TgGame.TgGame_Mission', 1, 1);",
+			" (5, '1p_SDColony04_P', 'TgGame.TgGame_Mission', 1, 1),"
+			" (5, '1P_SDColony03_P', 'TgGame.TgGame_Mission', 1, 1);",
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
 			Logger::Log("db", "Failed to seed ga_map_pool_entries (desert_pve): %s\n", err);

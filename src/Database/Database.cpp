@@ -8423,6 +8423,192 @@ void Database::Init() {
 			"(1469, Recursive Communications) for 1p_SDColony04_P\n");
 	}
 
+	if (version < 133) {
+		// v133: 1P_SDColony03_P ("Recursive Colony Nest", never released —
+		// no retail production id, custom 100014). Kismet roles:
+		//   13807 BotDied -> door matinee (Doors/door_2/Lock/Bracer/Light)
+		//     -> single Control Panel (173), like the SDColony04 doors
+		//   13853 BotDied -> SetBool -> stops the Crusher loop -> panel (173)
+		//   player-count extras (Turn On at 2+: 13808/13851/13966/13967,
+		//     3+ adds 13838/13970) -> b_auto_spawn=0 (dormant until
+		//     TgSeqAct_GetPlayerCount gets wired, same as SDColony04)
+		//   13852 b_spawn_on_alarm=1 baked (alarm responders)
+		//   flying (VolumePathNode patrols): 13838/13840/13971 -> wasps 147
+		//   objective 13854 bakes spawn table 104 = Colony Overseer (80k HP)
+		//     -> no config needed
+		// Roster follows the v32 map-planner pass (obj_bot_factories, legacy
+		// dead table) ported to map_object_config, with 13807 168->173 (door
+		// panel, not a guardian pack) and 13838/13840 167->147 (flying).
+		const char* kV133_sdcolony03 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			// --- door panel + crusher panel ---
+			" ('1P_SDColony03_P', 13807, 'n_spawn_table_id',         '173', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13807, 'n_default_spawn_table_id', '173', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13853, 'n_spawn_table_id',         '173', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13853, 'n_default_spawn_table_id', '173', NULL, NULL, 1),"
+			// --- standard mixes ---
+			" ('1P_SDColony03_P', 13808, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13808, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13836, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13836, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13837, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13837, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13841, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13841, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13842, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13842, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13850, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13850, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13966, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13966, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13967, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13967, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13968, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13968, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			// --- special rosters ---
+			" ('1P_SDColony03_P', 13851, 'n_spawn_table_id',         '99',  NULL, NULL, 1)," // heavy mix + sand spiders
+			" ('1P_SDColony03_P', 13851, 'n_default_spawn_table_id', '99',  NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13852, 'n_spawn_table_id',         '98',  NULL, NULL, 1)," // alarm: drones/ants/wasps
+			" ('1P_SDColony03_P', 13852, 'n_default_spawn_table_id', '98',  NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13969, 'n_spawn_table_id',         '148', NULL, NULL, 1)," // ants/ticks
+			" ('1P_SDColony03_P', 13969, 'n_default_spawn_table_id', '148', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13970, 'n_spawn_table_id',         '102', NULL, NULL, 1)," // drones/soldiers
+			" ('1P_SDColony03_P', 13970, 'n_default_spawn_table_id', '102', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13838, 'n_spawn_table_id',         '147', NULL, NULL, 1)," // wasps (VolumePathNode)
+			" ('1P_SDColony03_P', 13838, 'n_default_spawn_table_id', '147', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13840, 'n_spawn_table_id',         '147', NULL, NULL, 1)," // wasps (VolumePathNode)
+			" ('1P_SDColony03_P', 13840, 'n_default_spawn_table_id', '147', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13971, 'n_spawn_table_id',         '147', NULL, NULL, 1)," // wasps (VolumePathNode)
+			" ('1P_SDColony03_P', 13971, 'n_default_spawn_table_id', '147', NULL, NULL, 1),"
+			// --- kismet-toggled player-count extras start dormant ---
+			" ('1P_SDColony03_P', 13808, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13838, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13851, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13966, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13967, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13970, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			// --- b_respawn=0 on all 18 factories (retail shape) ---
+			" ('1P_SDColony03_P', 13807, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13808, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13836, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13837, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13838, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13840, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13841, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13842, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13850, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13851, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13852, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13853, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13966, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13967, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13968, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13969, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13970, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13971, 'b_respawn', '0', NULL, NULL, 1),"
+			// --- bots on task force / team 2 ---
+			" ('1P_SDColony03_P', 13807, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13807, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13808, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13808, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13836, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13836, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13837, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13837, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13838, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13838, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13840, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13840, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13841, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13841, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13842, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13842, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13850, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13850, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13851, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13851, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13852, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13852, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13853, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13853, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13966, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13966, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13967, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13967, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13968, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13968, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13969, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13969, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13970, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13970, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13971, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13971, 's_n_team_number', '2', NULL, NULL, 1),"
+			// --- beacons: 12456 spawn-room, 13839 checkpoint (kismet
+			//     PlayerCountHit Turn On, m_b_beacon_exit=1 baked) ---
+			" ('1P_SDColony03_P', 12456, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 12456, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 12456, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13839, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13839, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13839, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13839, 's_b_auto_spawn',  '0', NULL, NULL, 1),"
+			// --- player start ---
+			" ('1P_SDColony03_P', 13285, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			// --- device volumes. 8990 = the standard spawn invulnerability
+			//     pad (2801) every 1P map configures; 12552 is stacked on it
+			//     at the spawn room -> same 2801 (redundant coverage beats a
+			//     wrong-guess gameplay effect). 13835 = Crusher (2238) and
+			//     13466 = High Voltage (5450), both named by kismet toggle
+			//     comments; 13814 sits at the bottom of the boss-room shaft
+			//     (z=-5764) -> 5450 kill volume. Enemy-targeting hazards on
+			//     team 2, friend-only pads on team 1 (v130 CPMine03 shape).
+			" ('1P_SDColony03_P', 8990,  's_n_device_id',   '2801', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 8990,  's_n_task_force',  '1',    NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 8990,  's_n_team_number', '1',    NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 12552, 's_n_device_id',   '2801', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 12552, 's_n_task_force',  '1',    NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 12552, 's_n_team_number', '1',    NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13835, 's_n_device_id',   '2238', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13835, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13835, 's_n_team_number', '2',    NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13466, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13466, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13466, 's_n_team_number', '2',    NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13814, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13814, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDColony03_P', 13814, 's_n_team_number', '2',    NULL, NULL, 1),"
+			// --- 1p_SDColony04_P device-volume backfill (missed in v132):
+			//     13915 sits at the spawn area next to beacon 13912 -> the
+			//     standard 2801 pad; 13972/13973 are stacked in the deep
+			//     shaft below the Colony Eye pit -> 5450 kill volumes.
+			" ('1p_SDColony04_P', 13915, 's_n_device_id',   '2801', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13915, 's_n_task_force',  '1',    NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13915, 's_n_team_number', '1',    NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13972, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13972, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13972, 's_n_team_number', '2',    NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13973, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13973, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1p_SDColony04_P', 13973, 's_n_team_number', '2',    NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV133_sdcolony03, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v133 (map_object_config sdcolony03): %s\n", err); return; }
+
+		// map_game_info: never released, no retail production id -> custom
+		// 100014. 68623 = "Recursive Colony Nest"; 7855 =
+		// HUD_MissionLoads.PVE_DN.1P_Colony04 (user-picked from extracted
+		// art; alternatives: 8021 _1_5.1P_DN_Colony_02, 6844
+		// PVE_SD.SDColony_01, 8023/8024 _05/_06).
+		result = sqlite3_exec(db,
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"(100014, '1P_SDColony03_P', 'TgGame.TgGame_Mission', 1553, 68623, 7855);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v133 (map_game_info sdcolony03): %s\n", err); return; }
+
+		Logger::Log("db", "v133: seeded map_object_config + map_game_info "
+			"(100014, Recursive Colony Nest) for 1P_SDColony03_P "
+			"+ SDColony04 device-volume backfill\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -8434,7 +8620,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 132", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 133", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
