@@ -8609,6 +8609,500 @@ void Database::Init() {
 			"+ SDColony04 device-volume backfill\n");
 	}
 
+	if (version < 134) {
+		// v134: 1P_SDColony06_P ("28 Nights Later", never released — kismet's
+		// SeqVar_Int 1468 is labeled "Quest Version" and its MissionStarted ->
+		// CompareInt(MapGameId==1468) -> Destroy path removes the 6 barrier
+		// InterpActors of the "More Areas for Quest Version" frame, so 1468 is
+		// used as the map_game_id to open the side rooms at mission start).
+		// Spawn-room doors open via the MissionStarted matinee (leftDoor/
+		// RightDoor); the player-count toggles on this map target NOTHING
+		// (unwired) -> no dormant factories.
+		//
+		// Roster = the map's own dev-authored spawn-table family 179-188
+		// (difficulty-1029-only; the cascade serves every desert_pve tier):
+		// 182 Corrupted Tribesman x4 (melee horde), 183 Corrupted Bruiser,
+		// 163 Tick Incubator, 188 Wasp Incubator,
+		// 184 Colony Tick x3 + Ant. Objective 13288 bakes table 181 = Colony
+		// Overlord (50k) but also bakes s_bAutoSpawn=FALSE (every other 1P
+		// map bakes TRUE) -> override, else the boss never spawns and the
+		// mission cannot end.
+		const char* kV134_sdcolony06 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			// --- Corrupted Tribesman packs (182) — patrol factories ---
+			" ('1P_SDColony06_P', 14020, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14020, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14021, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14021, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14022, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14022, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14025, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14025, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14026, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14026, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14027, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14027, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14028, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14028, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14031, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14031, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14032, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14032, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14034, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14034, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14035, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14035, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14038, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14038, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14040, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14040, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14041, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14041, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14042, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14042, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14198, 'n_spawn_table_id',         '182', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14198, 'n_default_spawn_table_id', '182', NULL, NULL, 1),"
+			// --- Corrupted Bruisers (183) — one heavy per cluster.
+			//     14018/14019 confirmed by user playtest 2026-07-16 (OG had
+			//     bruisers near the player spawn, not incubators) ---
+			" ('1P_SDColony06_P', 14018, 'n_spawn_table_id',         '183', NULL, NULL, 1)," // near spawn
+			" ('1P_SDColony06_P', 14018, 'n_default_spawn_table_id', '183', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14019, 'n_spawn_table_id',         '183', NULL, NULL, 1)," // near spawn
+			" ('1P_SDColony06_P', 14019, 'n_default_spawn_table_id', '183', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14029, 'n_spawn_table_id',         '183', NULL, NULL, 1)," // west triple w/ 14041/14042
+			" ('1P_SDColony06_P', 14029, 'n_default_spawn_table_id', '183', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14030, 'n_spawn_table_id',         '183', NULL, NULL, 1)," // north pair w/ 14031
+			" ('1P_SDColony06_P', 14030, 'n_default_spawn_table_id', '183', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14037, 'n_spawn_table_id',         '183', NULL, NULL, 1)," // lower level
+			" ('1P_SDColony06_P', 14037, 'n_default_spawn_table_id', '183', NULL, NULL, 1),"
+			// --- Tick Incubators (163) — single-location nests.
+			//     14039 confirmed by user playtest (boss approach) ---
+			" ('1P_SDColony06_P', 14033, 'n_spawn_table_id',         '163', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14033, 'n_default_spawn_table_id', '163', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14039, 'n_spawn_table_id',         '163', NULL, NULL, 1)," // boss approach
+			" ('1P_SDColony06_P', 14039, 'n_default_spawn_table_id', '163', NULL, NULL, 1),"
+			// --- Wasp Incubators (188) — elevated in-place perches (z=616)
+			//     + 14046 in the boss room (user playtest: OG had a Wasp
+			//     Incubator there, not a wasp patrol) ---
+			" ('1P_SDColony06_P', 14023, 'n_spawn_table_id',         '188', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14023, 'n_default_spawn_table_id', '188', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14024, 'n_spawn_table_id',         '188', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14024, 'n_default_spawn_table_id', '188', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14046, 'n_spawn_table_id',         '188', NULL, NULL, 1)," // boss room
+			" ('1P_SDColony06_P', 14046, 'n_default_spawn_table_id', '188', NULL, NULL, 1),"
+			// --- tick pack in the mid trench (in-place spawn) ---
+			" ('1P_SDColony06_P', 14036, 'n_spawn_table_id',         '184', NULL, NULL, 1)," // Ticks x3 + Ant
+			" ('1P_SDColony06_P', 14036, 'n_default_spawn_table_id', '184', NULL, NULL, 1),"
+			// --- b_respawn=0 on all 27 factories (retail shape) ---
+			" ('1P_SDColony06_P', 14018, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14019, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14020, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14021, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14022, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14023, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14024, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14025, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14026, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14027, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14028, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14029, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14030, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14031, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14032, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14033, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14034, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14035, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14036, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14037, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14038, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14039, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14040, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14041, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14042, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14046, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14198, 'b_respawn', '0', NULL, NULL, 1),"
+			// --- bots on task force / team 2 ---
+			" ('1P_SDColony06_P', 14018, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14018, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14019, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14019, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14020, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14020, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14021, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14021, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14022, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14022, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14023, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14023, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14024, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14024, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14025, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14025, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14026, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14026, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14027, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14027, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14028, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14028, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14029, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14029, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14030, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14030, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14031, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14031, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14032, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14032, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14033, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14033, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14034, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14034, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14035, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14035, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14036, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14036, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14037, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14037, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14038, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14038, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14039, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14039, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14040, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14040, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14041, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14041, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14042, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14042, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14046, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14046, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14198, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14198, 's_n_team_number', '2', NULL, NULL, 1),"
+			// --- boss objective: baked s_bAutoSpawn=FALSE on this map only ---
+			" ('1P_SDColony06_P', 13288, 's_b_auto_spawn', '1', NULL, NULL, 1),"
+			// --- beacons: 13997 spawn-room, 13998 checkpoint (kismet
+			//     PlayerCountHit Turn On, m_b_beacon_exit=1 baked) ---
+			" ('1P_SDColony06_P', 13997, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 13997, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 13997, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 13998, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 13998, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 13998, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 13998, 's_b_auto_spawn',  '0', NULL, NULL, 1),"
+			// --- player start ---
+			" ('1P_SDColony06_P', 13996, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			// --- device volumes: 14047 sits over the spawn room -> standard
+			//     2801 invulnerability pad; 13972/13973 are stacked deep under
+			//     the boss pit (z=-1600/-1817) -> 5450 kill volumes. The nine
+			//     13409 placements have no kismet reference and no identifiable
+			//     role -> left unconfigured (inert).
+			" ('1P_SDColony06_P', 14047, 's_n_device_id',   '2801', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14047, 's_n_task_force',  '1',    NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 14047, 's_n_team_number', '1',    NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 13972, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 13972, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 13972, 's_n_team_number', '2',    NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 13973, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 13973, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDColony06_P', 13973, 's_n_team_number', '2',    NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV134_sdcolony06, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v134 (map_object_config sdcolony06): %s\n", err); return; }
+
+		// map_game_info: 1468 = the kismet "Quest Version" id (not in the
+		// production list — the map never shipped) so the side areas open at
+		// mission start. 66983 = "28 Nights Later"; 8024 =
+		// HUD_MissionLoads_1_5.1P_DN_Colony_06 (authored for this map).
+		result = sqlite3_exec(db,
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"(1468, '1P_SDColony06_P', 'TgGame.TgGame_Mission', 1553, 66983, 8024);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v134 (map_game_info sdcolony06): %s\n", err); return; }
+
+		Logger::Log("db", "v134: seeded map_object_config + map_game_info "
+			"(1468, 28 Nights Later) for 1P_SDColony06_P\n");
+	}
+
+	if (version < 135) {
+		// v135: 1P_SDColony05_P ("Terminus Water Station", never released —
+		// the Underground Waterway beneath Terminus; no retail production id
+		// -> custom 100015). Elevator doors open via the MissionStarted
+		// matinee. Kismet player-count wiring (dormant until
+		// TgSeqAct_GetPlayerCount gets wired, same as the other colony maps):
+		//   Turn On at 2+: 13955/13959/13960/13962/14000/14010/14193
+		//   Turn On at 3+ adds: 13949/13961/14001/14012/14014/14015/14194/
+		//     14196/14280/14281/14282
+		//   "Chest encounter" (14274/14275 + TgChestActor): retail turns it
+		//     OFF right after mission start (both compare branches feed Turn
+		//     Off) — the initial spawn survives either way, so baked
+		//     auto-spawn stays.
+		// Objective 13288 bakes table 104 = Colony Overseer + s_bAutoSpawn=
+		// TRUE -> no config. Varied roster from the retail colony tables
+		// (multi-difficulty) + the incubator dev tables; 13 factories patrol
+		// VolumePathNodes (flying) -> wasp tables.
+		const char* kV135_sdcolony05 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			// --- standard colony mix (167: drones/soldiers/ants/wasps) ---
+			" ('1P_SDColony05_P', 13936, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13936, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13938, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13938, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13950, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13950, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13949, 'n_spawn_table_id',         '167', NULL, NULL, 1)," // 3p+ extra
+			" ('1P_SDColony05_P', 13949, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13959, 'n_spawn_table_id',         '167', NULL, NULL, 1)," // 2p+ extra
+			" ('1P_SDColony05_P', 13959, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13960, 'n_spawn_table_id',         '167', NULL, NULL, 1)," // 2p+ extra
+			" ('1P_SDColony05_P', 13960, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13962, 'n_spawn_table_id',         '167', NULL, NULL, 1)," // 2p+ extra
+			" ('1P_SDColony05_P', 13962, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14001, 'n_spawn_table_id',         '167', NULL, NULL, 1)," // 3p+ extra
+			" ('1P_SDColony05_P', 14001, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14015, 'n_spawn_table_id',         '167', NULL, NULL, 1)," // 3p+ extra
+			" ('1P_SDColony05_P', 14015, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			// --- heavy mix + sand spiders (99) ---
+			" ('1P_SDColony05_P', 13948, 'n_spawn_table_id',         '99',  NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13948, 'n_default_spawn_table_id', '99',  NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14000, 'n_spawn_table_id',         '99',  NULL, NULL, 1)," // 2p+ extra
+			" ('1P_SDColony05_P', 14000, 'n_default_spawn_table_id', '99',  NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13961, 'n_spawn_table_id',         '99',  NULL, NULL, 1)," // 3p+ extra
+			" ('1P_SDColony05_P', 13961, 'n_default_spawn_table_id', '99',  NULL, NULL, 1),"
+			// --- elites: sentry/guardian/scorpion (168) ---
+			" ('1P_SDColony05_P', 13953, 'n_spawn_table_id',         '168', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13953, 'n_default_spawn_table_id', '168', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14012, 'n_spawn_table_id',         '168', NULL, NULL, 1)," // 3p+ extra
+			" ('1P_SDColony05_P', 14012, 'n_default_spawn_table_id', '168', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14274, 'n_spawn_table_id',         '168', NULL, NULL, 1)," // chest guards
+			" ('1P_SDColony05_P', 14274, 'n_default_spawn_table_id', '168', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14275, 'n_spawn_table_id',         '168', NULL, NULL, 1)," // chest guards
+			" ('1P_SDColony05_P', 14275, 'n_default_spawn_table_id', '168', NULL, NULL, 1),"
+			// --- Colony Guardians (170: 1/1/2/3 by tier) ---
+			" ('1P_SDColony05_P', 14013, 'n_spawn_table_id',         '170', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14013, 'n_default_spawn_table_id', '170', NULL, NULL, 1),"
+			// --- flying wasp patrols (147) — VolumePathNode routes ---
+			" ('1P_SDColony05_P', 13941, 'n_spawn_table_id',         '147', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13941, 'n_default_spawn_table_id', '147', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13947, 'n_spawn_table_id',         '147', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13947, 'n_default_spawn_table_id', '147', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14118, 'n_spawn_table_id',         '147', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14118, 'n_default_spawn_table_id', '147', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13955, 'n_spawn_table_id',         '147', NULL, NULL, 1)," // 2p+ extra
+			" ('1P_SDColony05_P', 13955, 'n_default_spawn_table_id', '147', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14193, 'n_spawn_table_id',         '147', NULL, NULL, 1)," // 2p+ extra
+			" ('1P_SDColony05_P', 14193, 'n_default_spawn_table_id', '147', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14014, 'n_spawn_table_id',         '147', NULL, NULL, 1)," // 3p+ extra
+			" ('1P_SDColony05_P', 14014, 'n_default_spawn_table_id', '147', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14194, 'n_spawn_table_id',         '147', NULL, NULL, 1)," // 3p+ extra
+			" ('1P_SDColony05_P', 14194, 'n_default_spawn_table_id', '147', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14281, 'n_spawn_table_id',         '147', NULL, NULL, 1)," // 3p+ extra
+			" ('1P_SDColony05_P', 14281, 'n_default_spawn_table_id', '147', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14282, 'n_spawn_table_id',         '147', NULL, NULL, 1)," // 3p+ extra
+			" ('1P_SDColony05_P', 14282, 'n_default_spawn_table_id', '147', NULL, NULL, 1),"
+			// --- big wasp swarms (162: 6-12) — the 20-node flying routes ---
+			" ('1P_SDColony05_P', 13944, 'n_spawn_table_id',         '162', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13944, 'n_default_spawn_table_id', '162', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14011, 'n_spawn_table_id',         '162', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14011, 'n_default_spawn_table_id', '162', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14010, 'n_spawn_table_id',         '162', NULL, NULL, 1)," // 2p+ extra
+			" ('1P_SDColony05_P', 14010, 'n_default_spawn_table_id', '162', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14280, 'n_spawn_table_id',         '162', NULL, NULL, 1)," // 3p+ extra
+			" ('1P_SDColony05_P', 14280, 'n_default_spawn_table_id', '162', NULL, NULL, 1),"
+			// --- incubators (single-location nests) ---
+			" ('1P_SDColony05_P', 14127, 'n_spawn_table_id',         '163', NULL, NULL, 1)," // Tick Incubator
+			" ('1P_SDColony05_P', 14127, 'n_default_spawn_table_id', '163', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14272, 'n_spawn_table_id',         '163', NULL, NULL, 1)," // Tick Incubator
+			" ('1P_SDColony05_P', 14272, 'n_default_spawn_table_id', '163', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14195, 'n_spawn_table_id',         '188', NULL, NULL, 1)," // Wasp Incubator
+			" ('1P_SDColony05_P', 14195, 'n_default_spawn_table_id', '188', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14196, 'n_spawn_table_id',         '188', NULL, NULL, 1)," // Wasp Incubator, 3p+ extra
+			" ('1P_SDColony05_P', 14196, 'n_default_spawn_table_id', '188', NULL, NULL, 1),"
+			// --- kismet-toggled player-count extras start dormant ---
+			" ('1P_SDColony05_P', 13949, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13955, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13959, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13960, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13961, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13962, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14000, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14001, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14010, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14012, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14014, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14015, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14193, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14194, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14196, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14280, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14281, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14282, 'b_auto_spawn', '0', NULL, NULL, 1),"
+			// --- b_respawn=0 on all 34 factories (retail shape) ---
+			" ('1P_SDColony05_P', 13936, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13938, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13941, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13944, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13947, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13948, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13949, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13950, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13953, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13955, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13959, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13960, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13961, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13962, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14000, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14001, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14010, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14011, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14012, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14013, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14014, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14015, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14118, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14127, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14193, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14194, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14195, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14196, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14272, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14274, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14275, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14280, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14281, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14282, 'b_respawn', '0', NULL, NULL, 1),"
+			// --- bots on task force / team 2 ---
+			" ('1P_SDColony05_P', 13936, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13936, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13938, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13938, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13941, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13941, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13944, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13944, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13947, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13947, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13948, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13948, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13949, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13949, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13950, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13950, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13953, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13953, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13955, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13955, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13959, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13959, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13960, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13960, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13961, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13961, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13962, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13962, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14000, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14000, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14001, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14001, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14010, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14010, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14011, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14011, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14012, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14012, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14013, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14013, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14014, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14014, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14015, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14015, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14118, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14118, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14127, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14127, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14193, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14193, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14194, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14194, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14195, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14195, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14196, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14196, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14272, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14272, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14274, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14274, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14275, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14275, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14280, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14280, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14281, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14281, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14282, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 14282, 's_n_team_number', '2', NULL, NULL, 1),"
+			// --- beacons: 13958 spawn-room, 13956 checkpoint (kismet
+			//     PlayerCountHit Turn On + checkpoint-door matinee,
+			//     m_b_beacon_exit=1 baked) ---
+			" ('1P_SDColony05_P', 13958, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13958, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13958, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13956, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13956, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13956, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13956, 's_b_auto_spawn',  '0', NULL, NULL, 1),"
+			// --- player start ---
+			" ('1P_SDColony05_P', 13934, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			// --- device volumes: 13957 sits over the spawn room -> standard
+			//     2801 invulnerability pad; 13965 (x2, stacked at z=-160/-376)
+			//     and 13964 (z=-152) sit far below the walkable areas
+			//     -> 5450 kill volumes (deep-water/shaft bottoms).
+			" ('1P_SDColony05_P', 13957, 's_n_device_id',   '2801', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13957, 's_n_task_force',  '1',    NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13957, 's_n_team_number', '1',    NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13964, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13964, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13964, 's_n_team_number', '2',    NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13965, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13965, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDColony05_P', 13965, 's_n_team_number', '2',    NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV135_sdcolony05, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v135 (map_object_config sdcolony05): %s\n", err); return; }
+
+		// map_game_info: never released, no retail production id -> custom
+		// 100015. 66988 = "Terminus Water Station"; 8023 =
+		// HUD_MissionLoads_1_5.1P_DN_Colony_05 (authored for this map).
+		result = sqlite3_exec(db,
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"(100015, '1P_SDColony05_P', 'TgGame.TgGame_Mission', 1553, 66988, 8023);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v135 (map_game_info sdcolony05): %s\n", err); return; }
+
+		Logger::Log("db", "v135: seeded map_object_config + map_game_info "
+			"(100015, Terminus Water Station) for 1P_SDColony05_P\n");
+	}
+
+	if (version < 136) {
+		// v136: SDColony06 roster corrections from the user's OG-server
+		// playtest (2026-07-16), for DBs that already ran the original v134
+		// (v134 itself was fixed in place for fresh DBs): 14018/14019 near
+		// the player spawn are Corrupted Bruisers (183, not Tick Incubators),
+		// 14039 at the boss approach is a Tick Incubator (163, not a
+		// Bruiser), 14046 in the boss room is a Wasp Incubator (188, not a
+		// wasp patrol). Value-gated so manual edits stick.
+		const char* kV136_sdcolony06_fixups =
+			"UPDATE map_object_config SET value = '183' "
+			"  WHERE map_name = '1P_SDColony06_P' AND map_object_id IN (14018, 14019) "
+			"    AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '163';"
+			"UPDATE map_object_config SET value = '163' "
+			"  WHERE map_name = '1P_SDColony06_P' AND map_object_id = 14039 "
+			"    AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '183';"
+			"UPDATE map_object_config SET value = '188' "
+			"  WHERE map_name = '1P_SDColony06_P' AND map_object_id = 14046 "
+			"    AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '180';";
+		result = sqlite3_exec(db, kV136_sdcolony06_fixups, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v136 (sdcolony06 roster fixups): %s\n", err); return; }
+
+		Logger::Log("db", "v136: SDColony06 roster fixups (14018/14019 -> 183, "
+			"14039 -> 163, 14046 -> 188)\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -8620,7 +9114,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 133", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 136", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
