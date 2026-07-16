@@ -1418,7 +1418,8 @@ void Database::Init() {
 		// Desert PvE ('desert_pve') — pool 5: the Recursive Colony node
 		// missions (map_object_config + map_game_info seeded by game-DLL
 		// v132 SDColony04 / v133 SDColony03 / v134 SDColony06 / v135
-		// SDColony05 / v137 SDColony02).
+		// SDColony05 / v137 SDColony02) + the dweller-camp missions
+		// (v141 SDDweller01).
 		result = sqlite3_exec(db,
 			"INSERT OR IGNORE INTO ga_map_pools (map_pool_id, name) VALUES (5, 'desert_pve');",
 			nullptr, nullptr, &err);
@@ -1433,7 +1434,10 @@ void Database::Init() {
 			" (5, '1P_SDColony05_P', 'TgGame.TgGame_Mission', 1, 1),"
 			" (5, '1P_SDColony06_P', 'TgGame.TgGame_Mission', 1, 1),"
 			" (5, '1P_SDColony02_P', 'TgGame.TgGame_Mission', 1, 1),"
-			" (5, '1P_SDColony01_P', 'TgGame.TgGame_Mission', 1, 1);",
+			" (5, '1P_SDColony01_P', 'TgGame.TgGame_Mission', 1, 1),"
+			" (5, '1P_SDDweller01_P', 'TgGame.TgGame_Mission', 1, 1),"
+			" (5, '1P_SDDweller02_P', 'TgGame.TgGame_Mission', 1, 1),"
+			" (5, '1P_SDDweller03_P', 'TgGame.TgGame_Mission', 1, 1);",
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
 			Logger::Log("db", "Failed to seed ga_map_pool_entries (desert_pve): %s\n", err);

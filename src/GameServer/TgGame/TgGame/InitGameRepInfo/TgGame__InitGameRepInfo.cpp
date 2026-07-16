@@ -5,6 +5,7 @@
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 #include "src/GameServer/Maps/CtrRecursiveDoors/CtrRecursiveDoors.hpp"
 #include "src/GameServer/GameModes/CtrPointRotation/CtrPointRotation.hpp"
+#include "src/GameServer/TgGame/TgDeployableFactory/SpawnObject/TgDeployableFactory__SpawnObject.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Config/Config.hpp"
@@ -602,6 +603,21 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		// gamerep->r_nMissionTimerState
 		// gamerep->bReplicateInstigator = 0;
 
+		// Auto-spawn map-baked deployables (EMP posts). Their PostBeginPlay
+		// SpawnObject call fires during RouteBeginPlay — before the GRI
+		// exists — so our SpawnObject defers it (no GRI registration / task
+		// force there). Kick the deferred factories here: config is loaded
+		// (baked actors route before the GameInfo) and the task forces were
+		// just created above.
+		ActorCache::CacheMapActors();
+		for (ATgDeployableFactory* f : ActorCache::DeployableFactories) {
+			if (!f || !f->s_bAutoSpawn || f->s_nSelectedObjectId <= 0) continue;
+			if (f->s_bSpawnOnce && f->s_fLastSpawnTime > 0.0f) continue;
+			Logger::Log("deployablefactory",
+				"InitGameRepInfo: auto-spawn kick mapObjectId=%d deployable=%d\n",
+				f->m_nMapObjectId, f->s_nSelectedObjectId);
+			TgDeployableFactory__SpawnObject::Call(f, nullptr);
+		}
 	}
 
 	LogCallEnd();

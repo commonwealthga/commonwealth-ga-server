@@ -91,6 +91,18 @@ void __fastcall TgDeployableFactory__SpawnObject::Call(ATgDeployableFactory* Obj
 		return;
 	}
 
+	// Startup deferral. TgDeployableFactory.PostBeginPlay auto-spawn fires
+	// during RouteBeginPlay, before the GameInfo has spawned the GRI — too
+	// early to register in GRI->m_Deployables or resolve task forces.
+	// InitGameRepInfo re-kicks the s_bAutoSpawn factories once GRI + task
+	// forces are up; kismet-toggle calls (mid-game) are unaffected.
+	if (!Obj->WorldInfo || !Obj->WorldInfo->GRI) {
+		Logger::Log("deployablefactory",
+			"SpawnObject mapObjectId=%d: deferred (no GRI yet) — InitGameRepInfo kick will spawn\n",
+			Obj->m_nMapObjectId);
+		return;
+	}
+
 	if (!DeployableClassify::IsKnownDeployableId(deployableId)) {
 		Logger::Log("deployablefactory",
 			"SpawnObject mapObjectId=%d: unknown deployableId=%d — dropping\n",
@@ -267,11 +279,23 @@ void __fastcall TgDeployableFactory__SpawnObject::Call(ATgDeployableFactory* Obj
 	// the deployable itself can expire shortly after. Respect any LifeSpan that
 	// setup already established.
 	if (dep->LifeSpan <= 0.0f) {
-		dep->LifeSpan = dep->s_fActivationTime + 5.0f;
+		// Persistent field deployables (EMP posts: s_fPersistTime=10000) live
+		// out their persist time — what the consumed StartFire latch would
+		// have set. Timed bombs (persist 0, e.g. DEF_DomeEMP) expire just
+		// after detonation.
+		dep->LifeSpan = (dep->s_fPersistTime > 0.0f)
+			? dep->s_fPersistTime
+			: dep->s_fActivationTime + 5.0f;
 	}
 
 	Obj->nCurrentCount++;
-	Obj->s_fLastSpawnTime = WI ? WI->TimeSeconds : 0.0f;
+	// Stamp non-zero even at match start (TimeSeconds=0.0 there) — the
+	// s_bSpawnOnce guard tests > 0, and a zero stamp would let DeployableDied
+	// respawn a destroyed spawn-once post.
+	{
+		float now = WI ? WI->TimeSeconds : 0.0f;
+		Obj->s_fLastSpawnTime = (now > 0.0f) ? now : 0.001f;
+	}
 
 	// Fire-path diagnostics. For a target-less timed bomb, FireAmmunitionDeployable
 	// branches on m_bInstantFire: instant → InstantFireDeployable (trace+radial),

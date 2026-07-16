@@ -9400,6 +9400,544 @@ void Database::Init() {
 		Logger::Log("db", "v140: SDColony01 electric barriers 5079 -> 5450 (High Voltage)\n");
 	}
 
+	if (version < 141) {
+		// v141: 1P_SDDweller01_P ("Canyon Encampment", retail msg 57316).
+		// First dweller-camp map: human enemies (Kanar / Legion), no colony.
+		// Kismet is minimal: LevelLoaded streams the sound sublevel;
+		// TgSeqEvent_PlayerCountHit -> SeqAct_Toggle turns on the exit
+		// beacon; the Touch -> CauseDamage(poison) chain is unbound
+		// (originator None) and inert; the Scarab door matinees + GameOver
+		// sounds are client cosmetics. No MapGameId compare anywhere.
+		// Boss is baked: TgMissionObjective_Bot 13328 ("01_DES_DwellerBoss",
+		// msg 55954) bakes s_b_auto_spawn=1 + spawn table 84 -> Legion
+		// Champion (bot 1507 at difficulty 1029) — no override needed.
+		//
+		// Roster: retail tables 78-84 form the dweller cluster around the
+		// baked boss table 84 (76/77/83/85 belong to other maps; none of
+		// 78-84 used anywhere else by us). Assignment is ours, sized by each
+		// factory's location-list count and position along the south (start,
+		// y=-14627) -> north (exit, y=+10798) canyon:
+		//   78 = Legion Soldier x4 + Kanar Tribesman x3 (+50% one more)
+		//   79 = Legion Soldier x5 + Tribesman x3 + Bruiser + Raider (+25%)
+		//   80 = Kanar Sniper x1     81 = Kanar Tribesman x4
+		//   82 = Legion Bruiser x1
+		// All factories bake b_respawn=1 with no tables (same dump state as
+		// SDColony02) -> b_respawn=0, tf/team 2.
+		// NOT configured (retail intent unrecoverable, no kismet trigger):
+		// the 9 TgDeployableFactory hazard emitters (13478-13482 valley,
+		// 13489-13492 ravine).
+		const char* kV141_sddweller01 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			// --- camps (78): 13327 south plateau (12 locs), 13330 start
+			//     canyon high ground (10), 13333 mid camp (9), 13468 camp
+			//     above the boss pit (7) ---
+			" ('1P_SDDweller01_P', 13327, 'n_spawn_table_id',         '78', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13327, 'n_default_spawn_table_id', '78', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13330, 'n_spawn_table_id',         '78', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13330, 'n_default_spawn_table_id', '78', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13333, 'n_spawn_table_id',         '78', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13333, 'n_default_spawn_table_id', '78', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13468, 'n_spawn_table_id',         '78', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13468, 'n_default_spawn_table_id', '78', NULL, NULL, 1),"
+			// --- heavy camps (79): 13335 north camp guarding the exit
+			//     approach (13 locs), 13471 mid-low camp (9) ---
+			" ('1P_SDDweller01_P', 13335, 'n_spawn_table_id',         '79', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13335, 'n_default_spawn_table_id', '79', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13471, 'n_spawn_table_id',         '79', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13471, 'n_default_spawn_table_id', '79', NULL, NULL, 1),"
+			// --- snipers (80): 13342 lone perch over the start valley
+			//     (single location), 13343 mid ledge (3) ---
+			" ('1P_SDDweller01_P', 13342, 'n_spawn_table_id',         '80', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13342, 'n_default_spawn_table_id', '80', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13343, 'n_spawn_table_id',         '80', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13343, 'n_default_spawn_table_id', '80', NULL, NULL, 1),"
+			// --- tribesmen (81): 13344 exit area (6 locs), 13355 west camp
+			//     (7), 13467 alarm reinforcements near the boss pit
+			//     (b_spawn_on_alarm=1 baked, 4 locs), 13472 far west (7) ---
+			" ('1P_SDDweller01_P', 13344, 'n_spawn_table_id',         '81', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13344, 'n_default_spawn_table_id', '81', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13355, 'n_spawn_table_id',         '81', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13355, 'n_default_spawn_table_id', '81', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13467, 'n_spawn_table_id',         '81', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13467, 'n_default_spawn_table_id', '81', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13472, 'n_spawn_table_id',         '81', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13472, 'n_default_spawn_table_id', '81', NULL, NULL, 1),"
+			// --- bruiser (82): 13470 northwest ledge (4 locs) ---
+			" ('1P_SDDweller01_P', 13470, 'n_spawn_table_id',         '82', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13470, 'n_default_spawn_table_id', '82', NULL, NULL, 1),"
+			// --- all factories: single-clear mission, enemy team ---
+			" ('1P_SDDweller01_P', 13327, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13330, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13333, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13335, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13342, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13343, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13344, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13355, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13467, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13468, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13470, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13471, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13472, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13327, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13327, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13330, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13330, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13333, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13333, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13335, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13335, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13342, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13342, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13343, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13343, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13344, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13344, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13355, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13355, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13467, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13467, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13468, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13468, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13470, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13470, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13471, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13471, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13472, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13472, 's_n_team_number', '2', NULL, NULL, 1),"
+			// --- beacons: 13353 entry (at the start omega/equip zone);
+			//     13354 exit (m_b_beacon_exit=1 baked, kismet PlayerCountHit
+			//     Turn On -> no prespawn) ---
+			" ('1P_SDDweller01_P', 13353, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13353, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13353, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13354, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13354, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13354, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13354, 's_b_auto_spawn',  '0', NULL, NULL, 1),"
+			// --- device volumes: flooded floors with submerged electric
+			//     cables (two low areas: 13484/13485/13486 ravine z=-320,
+			//     13483/13495 valley z=80; 13397 northwest low z=-940) ->
+			//     5450 "High Voltage" (KillEffect), same device as the
+			//     SDColony01/03 barriers ---
+			" ('1P_SDDweller01_P', 13397, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13397, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13397, 's_n_team_number', '2',    NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13483, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13483, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13483, 's_n_team_number', '2',    NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13484, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13484, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13484, 's_n_team_number', '2',    NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13485, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13485, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13485, 's_n_team_number', '2',    NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13486, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13486, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13486, 's_n_team_number', '2',    NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13495, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13495, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13495, 's_n_team_number', '2',    NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV141_sddweller01, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v141 (map_object_config sddweller01): %s\n", err); return; }
+
+		// map_game_info: no MapGameId compare in kismet and no resource link
+		// to a retail id -> custom 100017 (pattern: 100014-100016 colony
+		// maps). 57316 = "Canyon Encampment"; 6847 =
+		// HUD_MissionLoads.PVE_SD.SD_DDweller_01 (authored for this map).
+		// No TgStartPoint on this map — players use the baked PlayerStarts.
+		result = sqlite3_exec(db,
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"(100017, '1P_SDDweller01_P', 'TgGame.TgGame_Mission', 1553, 57316, 6847);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v141 (map_game_info sddweller01): %s\n", err); return; }
+
+		Logger::Log("db", "v141: seeded map_object_config + map_game_info "
+			"(100017, Canyon Encampment) for 1P_SDDweller01_P\n");
+	}
+
+	if (version < 142) {
+		// v142: SDDweller01 boss table override. The baked objective table 84
+		// has retail rows at several tiers and the cascade fills per-table
+		// from the highest tier <= current, so at desert_pve_high
+		// (difficulty 1030) table 84 resolves to its 1030 row = bot 929
+		// "FLAG BOT" (retail junk) instead of the 1029 Legion Champion
+		// (playtested 2026-07-16). Custom table 10006 exists only at Novice
+		// (1467, lowest tier) -> the cascade reaches its Legion Champion row
+		// at EVERY difficulty.
+		result = sqlite3_exec(db,
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"VALUES (10006, 1467, 0, 1, 1507, 1, 1.0, 0, 0, 1.0, 0, 0, 0);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v142 (mod spawn table 10006): %s\n", err); return; }
+
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			" ('1P_SDDweller01_P', 13328, 's_n_spawn_table_id', '10006', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v142 (sddweller01 boss override): %s\n", err); return; }
+
+		Logger::Log("db", "v142: SDDweller01 boss objective -> mod table 10006 "
+			"(Legion Champion at all difficulties)\n");
+	}
+
+	if (version < 143) {
+		// v143: 1P_SDDweller02_P ("Shifting Sands", retail msg 54117) + EMP
+		// posts on both dweller maps.
+		// Kismet: LevelLoaded streams the sound sublevel and drives a
+		// cosmetic sand-geyser system (RandomSwitch -> Toggle 4-emitter
+		// clusters + spray sound, 1s later Turn Off, loop); PlayerCountHit
+		// -> Toggle turns on exit beacon 13313; a one-shot Touch ->
+		// GetTaskForceNumber -> CompareInt -> music cue; GameOver/FadedIn
+		// sounds are client-only. No MapGameId compare -> custom 100018.
+		// Boss: objective 13288 bakes s_b_auto_spawn=1 + table 84 -> same
+		// FLAG-BOT-at-1030 hazard as Dweller01 -> override to mod table
+		// 10006 (Legion Champion at all tiers, seeded in v142).
+		// Standard start kit baked: start point 13285, spawn beacon 12456,
+		// pad volumes 8990/12552 (same id trio as the colony maps).
+		// NOT configured: the 10 device volumes sharing map_object_id 13409
+		// (walkable-height spots near the camps, purpose unrecoverable; the
+		// same unidentified id recurs on SDColony06).
+		//
+		// Roster: same dweller cluster 78-82 as SDDweller01 (see v141),
+		// sized by location-list counts; start (4904,4938) -> south valley
+		// -> boss far east (20404,-12349).
+		const char* kV143_sddweller02 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			// --- camps (78): 13286 west camp (7 locs), 13303 south valley
+			//     overlook (11), 13309 east approach (12), 13340 boss camp (6) ---
+			" ('1P_SDDweller02_P', 13286, 'n_spawn_table_id',         '78', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13286, 'n_default_spawn_table_id', '78', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13303, 'n_spawn_table_id',         '78', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13303, 'n_default_spawn_table_id', '78', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13309, 'n_spawn_table_id',         '78', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13309, 'n_default_spawn_table_id', '78', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13340, 'n_spawn_table_id',         '78', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13340, 'n_default_spawn_table_id', '78', NULL, NULL, 1),"
+			// --- heavy camps (79): 13319 mid-west (11 locs), 13326 mid-east
+			//     high ground (9) ---
+			" ('1P_SDDweller02_P', 13319, 'n_spawn_table_id',         '79', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13319, 'n_default_spawn_table_id', '79', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13326, 'n_spawn_table_id',         '79', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13326, 'n_default_spawn_table_id', '79', NULL, NULL, 1),"
+			// --- snipers (80): high perches with 1-3 locations ---
+			" ('1P_SDDweller02_P', 13315, 'n_spawn_table_id',         '80', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13315, 'n_default_spawn_table_id', '80', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13316, 'n_spawn_table_id',         '80', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13316, 'n_default_spawn_table_id', '80', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13317, 'n_spawn_table_id',         '80', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13317, 'n_default_spawn_table_id', '80', NULL, NULL, 1),"
+			// --- tribesmen (81): 13396 southeast, 13399 east ---
+			" ('1P_SDDweller02_P', 13396, 'n_spawn_table_id',         '81', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13396, 'n_default_spawn_table_id', '81', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13399, 'n_spawn_table_id',         '81', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13399, 'n_default_spawn_table_id', '81', NULL, NULL, 1),"
+			// --- bruiser (82): 13341 boss-pit alarm reinforcement
+			//     (b_spawn_on_alarm=1 baked) ---
+			" ('1P_SDDweller02_P', 13341, 'n_spawn_table_id',         '82', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13341, 'n_default_spawn_table_id', '82', NULL, NULL, 1),"
+			// --- all factories: single-clear mission, enemy team ---
+			" ('1P_SDDweller02_P', 13286, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13303, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13309, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13315, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13316, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13317, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13319, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13326, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13340, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13341, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13396, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13399, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13286, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13286, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13303, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13303, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13309, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13309, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13315, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13315, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13316, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13316, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13317, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13317, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13319, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13319, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13326, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13326, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13340, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13340, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13341, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13341, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13396, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13396, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13399, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13399, 's_n_team_number', '2', NULL, NULL, 1),"
+			// --- boss override (same table-84 tier hazard as Dweller01) ---
+			" ('1P_SDDweller02_P', 13288, 's_n_spawn_table_id', '10006', NULL, NULL, 1),"
+			// --- beacons: 12456 spawn-room; 13313 exit (m_b_beacon_exit=1
+			//     baked, kismet PlayerCountHit Turn On -> no prespawn) ---
+			" ('1P_SDDweller02_P', 12456, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 12456, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 12456, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13313, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13313, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13313, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13313, 's_b_auto_spawn',  '0', NULL, NULL, 1),"
+			// --- player start ---
+			" ('1P_SDDweller02_P', 13285, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			// --- spawn pads over the start (standard 8990/12552 pair) ---
+			" ('1P_SDDweller02_P', 8990,  's_n_device_id',   '2801', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 8990,  's_n_task_force',  '1',    NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 8990,  's_n_team_number', '1',    NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 12552, 's_n_device_id',   '2801', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 12552, 's_n_task_force',  '1',    NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 12552, 's_n_team_number', '1',    NULL, NULL, 1),"
+			// --- EMP posts: deployable 210 "Dweller EMP Field Generator"
+			//     (destructible pole, 1500 HP, device 6264 saps Power Pool
+			//     20/s + stun-flag in an aura). No kismet trigger ->
+			//     s_b_auto_spawn=1 (PostBeginPlay spawn); enemy-owned so
+			//     players are the target and can destroy them. ---
+			" ('1P_SDDweller02_P', 13400, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13400, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13400, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13400, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13401, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13401, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13401, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13401, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13402, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13402, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13402, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13402, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13403, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13403, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13403, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13403, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13404, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13404, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13404, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13404, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13405, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13405, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13405, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13405, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13406, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13406, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13406, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13406, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13407, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13407, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13407, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13407, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13421, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13421, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13421, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13421, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13422, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13422, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13422, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13422, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13423, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13423, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13423, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13423, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13424, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13424, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13424, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13424, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13426, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13426, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13426, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13426, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13427, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13427, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13427, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13427, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13428, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13428, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13428, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller02_P', 13428, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			// --- Dweller01 EMP posts (same prop set; 13478-13482 valley,
+			//     13489-13492 ravine, left unconfigured in v141) ---
+			" ('1P_SDDweller01_P', 13478, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13478, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13478, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13478, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13479, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13479, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13479, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13479, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13480, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13480, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13480, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13480, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13481, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13481, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13481, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13481, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13482, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13482, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13482, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13482, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13489, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13489, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13489, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13489, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13490, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13490, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13490, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13490, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13491, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13491, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13491, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13491, 's_b_auto_spawn',         '1',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13492, 's_n_selected_object_id', '210', NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13492, 's_n_task_force',         '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13492, 's_n_team_number',        '2',   NULL, NULL, 1),"
+			" ('1P_SDDweller01_P', 13492, 's_b_auto_spawn',         '1',   NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV143_sddweller02, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v143 (map_object_config sddweller02): %s\n", err); return; }
+
+		// map_game_info: 54117 = "Shifting Sands"; 6594 =
+		// HUD_MissionLoads.PVE_SD.1P_SDDweller02_P (authored for this map;
+		// 6726 is the separate Portalled variant).
+		result = sqlite3_exec(db,
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"(100018, '1P_SDDweller02_P', 'TgGame.TgGame_Mission', 1553, 54117, 6594);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v143 (map_game_info sddweller02): %s\n", err); return; }
+
+		Logger::Log("db", "v143: seeded map_object_config + map_game_info "
+			"(100018, Shifting Sands) for 1P_SDDweller02_P + EMP posts "
+			"(deployable 210) on both dweller maps\n");
+	}
+
+	if (version < 144) {
+		// v144: 1P_SDDweller03_P ("Dweller Hideout", retail msg 55320) —
+		// final dweller map. Kismet is the same kit as Dweller02: sound
+		// sublevel streaming, cosmetic sand geysers, PlayerCountHit ->
+		// Toggle turns on exit beacon 13313, touch music cue; no MapGameId
+		// compare -> custom 100019. No deployable factories (no EMP posts)
+		// and no hazard volumes — the only two device volumes are the
+		// standard 8990/12552 spawn pads. Start kit baked: start 13285,
+		// spawn beacon 12456 (south, y=-11400), boss far north (y=+17900).
+		//
+		// Boss: objective 13356 bakes s_b_auto_spawn=1 + table 97 (Legion
+		// Inquisitor at 1029 — but Legion Jailor at Adept 1468, nothing at
+		// Novice). User wants Legion Inquisitor at ALL difficulties -> mod
+		// table 10007 (bot 1531 at Novice 1467, cascade reaches it from
+		// every tier) + override, same pattern as 10006.
+		//
+		// One factory bakes map_object_id=0 (3 locs, mid-map at
+		// 12975,6165). Config rows with map_object_id=0 are safe here:
+		// they're keyed per-map, and the only OTHER id-0 actors on this map
+		// (alarm point, modify-pawn volumes) don't read these columns.
+		result = sqlite3_exec(db,
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"VALUES (10007, 1467, 0, 1, 1531, 1, 1.0, 0, 0, 1.0, 0, 0, 0);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v144 (mod spawn table 10007): %s\n", err); return; }
+
+		const char* kV144_sddweller03 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			// --- camps (78): 13312 south-mid (10 locs), 13318 boss camp (7),
+			//     13346 first camp after start (7), 13348 mid-north (8) ---
+			" ('1P_SDDweller03_P', 13312, 'n_spawn_table_id',         '78', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13312, 'n_default_spawn_table_id', '78', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13318, 'n_spawn_table_id',         '78', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13318, 'n_default_spawn_table_id', '78', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13346, 'n_spawn_table_id',         '78', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13346, 'n_default_spawn_table_id', '78', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13348, 'n_spawn_table_id',         '78', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13348, 'n_default_spawn_table_id', '78', NULL, NULL, 1),"
+			// --- heavy camps (79): 13345 mid (9 locs), 13347 exit-beacon
+			//     overlook (9, z=+392 high ground) ---
+			" ('1P_SDDweller03_P', 13345, 'n_spawn_table_id',         '79', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13345, 'n_default_spawn_table_id', '79', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13347, 'n_spawn_table_id',         '79', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13347, 'n_default_spawn_table_id', '79', NULL, NULL, 1),"
+			// --- sniper (80): 13349 single-location perch ---
+			" ('1P_SDDweller03_P', 13349, 'n_spawn_table_id',         '80', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13349, 'n_default_spawn_table_id', '80', NULL, NULL, 1),"
+			// --- tribesmen (81): 13350 boss-camp alarm reinforcement
+			//     (b_spawn_on_alarm=1 baked, 4 locs) ---
+			" ('1P_SDDweller03_P', 13350, 'n_spawn_table_id',         '81', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13350, 'n_default_spawn_table_id', '81', NULL, NULL, 1),"
+			// --- bruiser (82): the id-0 factory (3 locs, mid-map) ---
+			" ('1P_SDDweller03_P', 0,     'n_spawn_table_id',         '82', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 0,     'n_default_spawn_table_id', '82', NULL, NULL, 1),"
+			// --- all factories: single-clear mission, enemy team ---
+			" ('1P_SDDweller03_P', 13312, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13318, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13345, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13346, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13347, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13348, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13349, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13350, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 0,     'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13312, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13312, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13318, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13318, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13345, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13345, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13346, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13346, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13347, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13347, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13348, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13348, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13349, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13349, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13350, 's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13350, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 0,     's_n_task_force',  '2', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 0,     's_n_team_number', '2', NULL, NULL, 1),"
+			// --- boss override: Legion Inquisitor at all difficulties ---
+			" ('1P_SDDweller03_P', 13356, 's_n_spawn_table_id', '10007', NULL, NULL, 1),"
+			// --- beacons: 12456 spawn-room; 13313 exit (m_b_beacon_exit=1
+			//     baked, kismet PlayerCountHit Turn On -> no prespawn) ---
+			" ('1P_SDDweller03_P', 12456, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 12456, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 12456, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13313, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13313, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13313, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 13313, 's_b_auto_spawn',  '0', NULL, NULL, 1),"
+			// --- player start ---
+			" ('1P_SDDweller03_P', 13285, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			// --- spawn pads over the start (standard 8990/12552 pair) ---
+			" ('1P_SDDweller03_P', 8990,  's_n_device_id',   '2801', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 8990,  's_n_task_force',  '1',    NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 8990,  's_n_team_number', '1',    NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 12552, 's_n_device_id',   '2801', NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 12552, 's_n_task_force',  '1',    NULL, NULL, 1),"
+			" ('1P_SDDweller03_P', 12552, 's_n_team_number', '1',    NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV144_sddweller03, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v144 (map_object_config sddweller03): %s\n", err); return; }
+
+		// map_game_info: 55320 = "Dweller Hideout"; 6622 =
+		// HUD_MissionLoads.PVE_SD.1P_SDDweller03_P (authored for this map;
+		// 6725 is the separate Portalled variant).
+		result = sqlite3_exec(db,
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"(100019, '1P_SDDweller03_P', 'TgGame.TgGame_Mission', 1553, 55320, 6622);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v144 (map_game_info sddweller03): %s\n", err); return; }
+
+		Logger::Log("db", "v144: seeded map_object_config + map_game_info "
+			"(100019, Dweller Hideout) for 1P_SDDweller03_P; boss -> mod "
+			"table 10007 (Legion Inquisitor at all difficulties)\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -9411,7 +9949,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 140", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 144", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

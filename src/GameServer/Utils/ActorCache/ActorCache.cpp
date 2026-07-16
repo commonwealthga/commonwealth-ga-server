@@ -9,6 +9,7 @@ std::vector<ATgRandomSMActor*> ActorCache::RandomSMActors;
 std::vector<ATgPlayerCountVolume*> ActorCache::PlayerCountVolumes;
 std::vector<ATgModifyPawnPropertiesVolume*> ActorCache::ModifyPawnPropertiesVolumes;
 std::vector<ATgOmegaVolume*> ActorCache::OmegaVolumes;
+std::vector<ATgDeployableFactory*> ActorCache::DeployableFactories;
 ATgBotFactory* ActorCache::BotFactory = nullptr;
 
 void ActorCache::CacheMapActors() {
@@ -43,6 +44,10 @@ void ActorCache::CacheMapActors() {
 
 	for (UObject* obj : ObjectCache::FindAllByClass("Class TgGame.TgOmegaVolume")) {
 		OmegaVolumes.push_back((ATgOmegaVolume*)obj);
+	}
+
+	for (UObject* obj : ObjectCache::FindAllByClass("Class TgGame.TgDeployableFactory")) {
+		DeployableFactories.push_back((ATgDeployableFactory*)obj);
 	}
 
 	Logger::Log("debug",

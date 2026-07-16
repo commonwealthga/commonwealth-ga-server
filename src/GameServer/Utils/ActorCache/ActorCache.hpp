@@ -23,6 +23,10 @@ public:
 	// (engine Touched events don't fire from SetLocation teleports).
 	static std::vector<ATgModifyPawnPropertiesVolume*> ModifyPawnPropertiesVolumes;
 	static std::vector<ATgOmegaVolume*> OmegaVolumes;
+	// Map-baked deployable factories (EMP posts, kismet-timed FX). InitGameRepInfo
+	// kicks the s_bAutoSpawn ones — TgDeployableFactory.PostBeginPlay only
+	// auto-spawns under NM_DedicatedServer, which is never true on this build.
+	static std::vector<ATgDeployableFactory*> DeployableFactories;
 	static ATgBotFactory* BotFactory;
 
 	static void CacheMapActors();
