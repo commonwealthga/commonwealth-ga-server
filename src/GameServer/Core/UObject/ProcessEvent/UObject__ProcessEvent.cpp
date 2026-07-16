@@ -1979,6 +1979,66 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 					Act->TextBox_MessageID, (int)type, (int)priority, duration);
 			}
 		}
+		// Diagnostic: eventActivated fires after the native compare, so ValueA/B
+		// hold what the compare actually saw.
+		if (Logger::IsChannelEnabled("kismetdestroy")
+		 && ObjectClassCache::ClassNameContains(Object, "SeqCond_CompareInt")) {
+			USeqCond_CompareInt* Cond = (USeqCond_CompareInt*)Object;
+			const char* cRaw = Object->GetFullName();
+			const std::string cName(cRaw ? cRaw : "<null>");
+			Logger::Log("kismetdestroy", "compare: %s ValueA=%d ValueB=%d\n",
+				cName.c_str(), Cond->ValueA, Cond->ValueB);
+		}
+		// SeqAct_Destroy on map-baked (bNoDelete) actors. Retail path: base
+		// SequenceAction handler dispatch -> Actor.OnDestroy -> ShutDown() ->
+		// ForceNetRelevant() (RemoteRole flip + forced-initial bookkeeping), so
+		// the hide/collision reaches clients. On our server the SDColony06 side-
+		// room barriers stayed up, so drive the bNoDelete branch of OnDestroy
+		// here ourselves: eventShutDown() (idempotent if the handler already ran;
+		// InterpActor's override only adds a checkpoint flag) + the playtested
+		// CtrRecursiveDoors net-flip on top.
+		if (ObjectClassCache::ClassNameContains(Object, "SeqAct_Destroy")) {
+			USequenceOp* Op = (USequenceOp*)Object;
+			if (Logger::IsChannelEnabled("kismetdestroy")) {
+				const char* oRaw = Object->GetFullName();
+				const std::string oName(oRaw ? oRaw : "<null>");
+				Logger::Log("kismetdestroy", "activated: %s (varLinks=%d)\n",
+					oName.c_str(), Op->VariableLinks.Count);
+			}
+			for (int li = 0; li < Op->VariableLinks.Count; li++) {
+				TArray<USequenceVariable*>& vars = Op->VariableLinks.Data[li].LinkedVariables;
+				for (int vi = 0; vi < vars.Count; vi++) {
+					USequenceVariable* var = vars.Data[vi];
+					if (!var || !ObjectClassCache::ClassNameContains(var, "SeqVar_Object")) continue;
+					UObject* held = ((USeqVar_Object*)var)->ObjValue;
+					if (!held) continue;
+					// Actor-ness via SuperField walk (IsA is unreliable on this build).
+					bool isActor = false;
+					for (UClass* c = held->Class; c; c = (UClass*)((UField*)c)->SuperField) {
+						if (ObjectClassCache::GetClassName(c) == "Class Engine.Actor") { isActor = true; break; }
+					}
+					if (!isActor) continue;
+					AActor* a = (AActor*)held;
+					if (!a->bNoDelete) continue;  // deletable targets replicate their destruction natively
+					a->eventShutDown();  // hide + collision off + ForceNetRelevant
+					// Belt-and-suspenders: the exact playtested CTR formula.
+					a->bStatic = 0;
+					a->RemoteRole = 1;  // ROLE_SimulatedProxy
+					a->bAlwaysRelevant = 1;
+					a->SetHidden(1);           // bHidden        — CPF_Net
+					a->SetCollision(0, 0, 0);  // bCollide/Block — CPF_Net
+					a->bNetDirty = 1;
+					a->bForceNetUpdate = 1;
+					if (Logger::IsChannelEnabled("kismetdestroy")) {
+						const char* araw = a->GetFullName();
+						const std::string aname(araw ? araw : "<null>");
+						Logger::Log("kismetdestroy",
+							"  shut down bNoDelete target %s at (%.0f,%.0f,%.0f)\n",
+							aname.c_str(), a->Location.X, a->Location.Y, a->Location.Z);
+					}
+				}
+			}
+		}
 		break;
 	}
 

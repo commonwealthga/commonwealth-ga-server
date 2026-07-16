@@ -15,6 +15,7 @@
 // Defaults inside the DB row (when present): mission_time_secs=900, is_pvp=0,
 // overtime_secs=0, allow_overtime=false.
 struct MapGameInfoRow {
+	int  map_game_id;
 	int  mission_time_secs;
 	bool is_pvp;
 	int  overtime_secs;

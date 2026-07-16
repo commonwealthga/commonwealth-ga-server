@@ -114,6 +114,9 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/MissionTimeRemaining/TgGame__MissionTimeRemaining.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SendMissionTimerEvent/TgGame__SendMissionTimerEvent.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgSeqVar_MapGameId/GetRef/TgSeqVar_MapGameId__GetRef.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgSeqVar_MapGameId/PublishValue/TgSeqVar_MapGameId__PublishValue.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgSeqVar_MapGameId/PopulateValue/TgSeqVar_MapGameId__PopulateValue.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/FinalizeRoundScore/TgGame_Arena__FinalizeRoundScore.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/FinalizeGameScore/TgGame_Arena__FinalizeGameScore.cpp \

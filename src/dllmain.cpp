@@ -46,6 +46,9 @@
 #include "src/GameServer/TgGame/TgGame/ReviveDefendersTimer/TgGame__ReviveDefendersTimer.hpp"
 #include "src/GameServer/TgGame/TgGame/MissionTimeRemaining/TgGame__MissionTimeRemaining.hpp"
 #include "src/GameServer/TgGame/TgGame/SendMissionTimerEvent/TgGame__SendMissionTimerEvent.hpp"
+#include "src/GameServer/TgGame/TgSeqVar_MapGameId/GetRef/TgSeqVar_MapGameId__GetRef.hpp"
+#include "src/GameServer/TgGame/TgSeqVar_MapGameId/PublishValue/TgSeqVar_MapGameId__PublishValue.hpp"
+#include "src/GameServer/TgGame/TgSeqVar_MapGameId/PopulateValue/TgSeqVar_MapGameId__PopulateValue.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/FinalizeRoundScore/TgGame_Arena__FinalizeRoundScore.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/FinalizeGameScore/TgGame_Arena__FinalizeGameScore.hpp"
@@ -480,6 +483,9 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgGame__ReviveDefendersTimer::Install();
 	TgGame__MissionTimeRemaining::Install();
 	TgGame__SendMissionTimerEvent::Install();
+	TgSeqVar_MapGameId__GetRef::Install();
+	TgSeqVar_MapGameId__PublishValue::Install();
+	TgSeqVar_MapGameId__PopulateValue::Install();
 	TgDeviceFire__GetEffectGroup::Install();
 	// TgDeviceFire__ApplyFireModeSetup::Install();
 	TgDeviceFire__InitializeProjectile::Install();

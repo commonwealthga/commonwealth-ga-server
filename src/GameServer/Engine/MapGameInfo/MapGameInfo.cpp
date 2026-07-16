@@ -24,7 +24,7 @@ std::optional<MapGameInfoRow> MapGameInfo::LookupByNameAndGameMode(
 	// with an empty/unmatched gameMode the predicate is 0 for every row and this
 	// degrades to "first name match" — the old name-only behavior.
 	const char* kSql =
-		"SELECT mission_time_secs, is_pvp, overtime_secs, allow_overtime "
+		"SELECT map_game_id, mission_time_secs, is_pvp, overtime_secs, allow_overtime "
 		"FROM map_game_info "
 		"WHERE map_name = ? COLLATE NOCASE OR map_name = ? COLLATE NOCASE "
 		"ORDER BY (game_class = ? COLLATE NOCASE) DESC "
@@ -43,10 +43,11 @@ std::optional<MapGameInfoRow> MapGameInfo::LookupByNameAndGameMode(
 	std::optional<MapGameInfoRow> out;
 	if (sqlite3_step(stmt) == SQLITE_ROW) {
 		MapGameInfoRow r;
-		r.mission_time_secs = sqlite3_column_int(stmt, 0);
-		r.is_pvp            = sqlite3_column_int(stmt, 1) != 0;
-		r.overtime_secs     = sqlite3_column_int(stmt, 2);
-		r.allow_overtime    = sqlite3_column_int(stmt, 3) != 0;
+		r.map_game_id       = sqlite3_column_int(stmt, 0);
+		r.mission_time_secs = sqlite3_column_int(stmt, 1);
+		r.is_pvp            = sqlite3_column_int(stmt, 2) != 0;
+		r.overtime_secs     = sqlite3_column_int(stmt, 3);
+		r.allow_overtime    = sqlite3_column_int(stmt, 4) != 0;
 		out = r;
 	}
 	sqlite3_finalize(stmt);
