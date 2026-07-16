@@ -9103,6 +9103,231 @@ void Database::Init() {
 			"14039 -> 163, 14046 -> 188)\n");
 	}
 
+	if (version < 137) {
+		// v137: 1P_SDColony02_P ("Bolonov's Entourage", retail msg 67001 —
+		// the Find-Dr-Bolonov quest instance, originally playable only with
+		// the quest active). map_game_id 1471 = the kismet "quest version":
+		// LevelLoaded -> CompareInt(MapGameId==1471) streams the
+		// 1P_SDColony02_Quest sublevel (Bolonov / escort content; streaming
+		// reaches clients via the native ClientUpdateLevelStreamingStatus
+		// RPC) and sets the 'door' bool; boss capture (objective 13288,
+		// AttackerCaptured) -> CompareBool -> escort-door matinee +
+		// SetMissionTime Increment 300s + Music_Escort. The 1437 compare is
+		// wired to nothing (non-quest visit: no sublevel, door stays shut) —
+		// 1437 is what we ship (see the map_game_info comment below).
+		// Mid-map cave doors: TgSeqEvent_BotDied (playerOnly) on factory
+		// 13857 pumps a SeqAct_Switch whose Link 4 plays the cave-door
+		// matinee -> 13857 gets table 99 (up to 10 bots) so the kill counter
+		// always has enough deaths. Player-spawn doors ride MissionStarted.
+		// Checkpoint beacon 13875 (m_b_beacon_exit=1 baked) is turned on by
+		// TgSeqEvent_PlayerCountHit -> SeqAct_Toggle. The 3+-player
+		// CompareFloat/Toggle chain is unwired -> no dormant factories.
+		// Objective 13288 bakes s_b_auto_spawn=1 + table 104 (Colony
+		// Overseer) -> no boss override needed.
+		//
+		// Roster: colony-node interior, varied retail colony tables —
+		// 99/167 mixed drone-soldier-wasp packs, 101 drone trio,
+		// 168 Colony Soldier, 100/102 Sand Spiders, 163 Tick Incubator,
+		// 188 Wasp Incubator, 170 Colony Guardian.
+		const char* kV137_sdcolony02 =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			// --- mixed packs (99: drones x5 + soldiers x2 + spider + wasps x2) ---
+			" ('1P_SDColony02_P', 13857, 'n_spawn_table_id',         '99',  NULL, NULL, 1)," // cave-door kill counter
+			" ('1P_SDColony02_P', 13857, 'n_default_spawn_table_id', '99',  NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13869, 'n_spawn_table_id',         '99',  NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13869, 'n_default_spawn_table_id', '99',  NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13876, 'n_spawn_table_id',         '99',  NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13876, 'n_default_spawn_table_id', '99',  NULL, NULL, 1),"
+			// --- mixed packs (167: drones x3 + soldier + wasps x2) ---
+			" ('1P_SDColony02_P', 13858, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13858, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13868, 'n_spawn_table_id',         '167', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13868, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13872, 'n_spawn_table_id',         '167', NULL, NULL, 1)," // boss room
+			" ('1P_SDColony02_P', 13872, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14218, 'n_spawn_table_id',         '167', NULL, NULL, 1)," // mid-arena patroller
+			" ('1P_SDColony02_P', 14218, 'n_default_spawn_table_id', '167', NULL, NULL, 1),"
+			// --- drone trios (101) ---
+			" ('1P_SDColony02_P', 13879, 'n_spawn_table_id',         '101', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13879, 'n_default_spawn_table_id', '101', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13976, 'n_spawn_table_id',         '101', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13976, 'n_default_spawn_table_id', '101', NULL, NULL, 1),"
+			// --- Colony Soldiers (168) ---
+			" ('1P_SDColony02_P', 13867, 'n_spawn_table_id',         '168', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13867, 'n_default_spawn_table_id', '168', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14207, 'n_spawn_table_id',         '168', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14207, 'n_default_spawn_table_id', '168', NULL, NULL, 1),"
+			// --- Sand Spiders (100 single, 102 pair) ---
+			" ('1P_SDColony02_P', 13988, 'n_spawn_table_id',         '100', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13988, 'n_default_spawn_table_id', '100', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13987, 'n_spawn_table_id',         '102', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13987, 'n_default_spawn_table_id', '102', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14208, 'n_spawn_table_id',         '102', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14208, 'n_default_spawn_table_id', '102', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14197, 'n_spawn_table_id',         '102', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14197, 'n_default_spawn_table_id', '102', NULL, NULL, 1),"
+			// --- Tick Incubators (163) ---
+			" ('1P_SDColony02_P', 13878, 'n_spawn_table_id',         '163', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13878, 'n_default_spawn_table_id', '163', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13975, 'n_spawn_table_id',         '163', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13975, 'n_default_spawn_table_id', '163', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13980, 'n_spawn_table_id',         '163', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13980, 'n_default_spawn_table_id', '163', NULL, NULL, 1),"
+			// --- Wasp Incubators (188) ---
+			" ('1P_SDColony02_P', 14217, 'n_spawn_table_id',         '188', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14217, 'n_default_spawn_table_id', '188', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13871, 'n_spawn_table_id',         '188', NULL, NULL, 1)," // boss room
+			" ('1P_SDColony02_P', 13871, 'n_default_spawn_table_id', '188', NULL, NULL, 1),"
+			// --- Colony Guardians (170) ---
+			" ('1P_SDColony02_P', 14080, 'n_spawn_table_id',         '170', NULL, NULL, 1)," // cave-door twin
+			" ('1P_SDColony02_P', 14080, 'n_default_spawn_table_id', '170', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14009, 'n_spawn_table_id',         '170', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14009, 'n_default_spawn_table_id', '170', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14209, 'n_spawn_table_id',         '170', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14209, 'n_default_spawn_table_id', '170', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14066, 'n_spawn_table_id',         '170', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14066, 'n_default_spawn_table_id', '170', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13981, 'n_spawn_table_id',         '170', NULL, NULL, 1)," // boss room
+			" ('1P_SDColony02_P', 13981, 'n_default_spawn_table_id', '170', NULL, NULL, 1),"
+			// --- b_respawn=0 on all 25 factories (retail shape) ---
+			" ('1P_SDColony02_P', 13857, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13858, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13867, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13868, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13869, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13871, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13872, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13876, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13878, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13879, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13975, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13976, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13980, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13981, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13987, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13988, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14009, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14066, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14080, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14197, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14207, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14208, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14209, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14217, 'b_respawn', '0', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14218, 'b_respawn', '0', NULL, NULL, 1),"
+			// --- bots on task force / team 2 ---
+			" ('1P_SDColony02_P', 13857, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13857, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13858, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13858, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13867, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13867, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13868, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13868, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13869, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13869, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13871, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13871, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13872, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13872, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13876, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13876, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13878, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13878, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13879, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13879, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13975, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13975, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13976, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13976, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13980, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13980, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13981, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13981, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13987, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13987, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13988, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13988, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14009, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14009, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14066, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14066, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14080, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14080, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14197, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14197, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14207, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14207, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14208, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14208, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14209, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14209, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14217, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14217, 's_n_team_number', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14218, 's_n_task_force', '2', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 14218, 's_n_team_number', '2', NULL, NULL, 1),"
+			// --- beacons: 12456 spawn-room; 13875 checkpoint near the boss
+			//     (m_b_beacon_exit=1 baked, kismet PlayerCountHit Turn On) ---
+			" ('1P_SDColony02_P', 12456, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 12456, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 12456, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13875, 'm_n_priority',    '1', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13875, 's_n_task_force',  '1', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13875, 's_n_team_number', '1', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13875, 's_b_auto_spawn',  '0', NULL, NULL, 1),"
+			// --- player start ---
+			" ('1P_SDColony02_P', 13285, 'm_n_task_force',  '1', NULL, NULL, 1),"
+			// --- device volumes: 12552 sits over the spawn room (z=1996 above
+			//     the z=1766 start) -> standard 2801 invulnerability pad;
+			//     13972/13973/13989 sit below the deep-cave floor
+			//     (z=-3648..-3936 under the z=-3274 walkable) -> 5450 kill
+			//     volumes (pit bottoms).
+			" ('1P_SDColony02_P', 12552, 's_n_device_id',   '2801', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 12552, 's_n_task_force',  '1',    NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 12552, 's_n_team_number', '1',    NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13972, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13972, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13972, 's_n_team_number', '2',    NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13973, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13973, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13973, 's_n_team_number', '2',    NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13989, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13989, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDColony02_P', 13989, 's_n_team_number', '2',    NULL, NULL, 1);";
+		result = sqlite3_exec(db, kV137_sdcolony02, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v137 (map_object_config sdcolony02): %s\n", err); return; }
+
+		// map_game_info: 1437 = the kismet NON-quest id (the 1471 quest
+		// version was playtested 2026-07-16: sublevel streams, escort runs,
+		// but nothing happens at the escort's end — the quest turn-in doesn't
+		// exist server-side — so the mission couldn't finish; 1437 skips the
+		// sublevel and the mission ends at the boss). 67001 = "Bolonov's
+		// Entourage"; 8021 = HUD_MissionLoads_1_5.1P_DN_Colony_02 (authored
+		// for this map).
+		result = sqlite3_exec(db,
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"(1437, '1P_SDColony02_P', 'TgGame.TgGame_Mission', 1553, 67001, 8021);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v137 (map_game_info sdcolony02): %s\n", err); return; }
+
+		Logger::Log("db", "v137: seeded map_object_config + map_game_info "
+			"(1437, Bolonov's Entourage) for 1P_SDColony02_P\n");
+	}
+
+	if (version < 138) {
+		// v138: SDColony02 quest->non-quest flip for DBs that already ran the
+		// original v137 (which seeded map_game_id 1471; v137 itself was fixed
+		// in place for fresh DBs). Gated on the 1471 row still existing so
+		// manual edits stick.
+		result = sqlite3_exec(db,
+			"UPDATE map_game_info SET map_game_id = 1437 "
+			"WHERE map_game_id = 1471 AND map_name = '1P_SDColony02_P';",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v138 (sdcolony02 1471 -> 1437): %s\n", err); return; }
+
+		Logger::Log("db", "v138: SDColony02 map_game_id 1471 -> 1437 (non-quest)\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -9114,7 +9339,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 136", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 138", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
