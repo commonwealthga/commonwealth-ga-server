@@ -570,6 +570,8 @@ private:
 
     void send_add_player_character_response();
 
+    void send_delete_character_response(uint32_t character_id, uint32_t error_code);
+
     void send_select_character_response();
 
     void send_change_map_prep_response();
