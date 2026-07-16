@@ -1432,10 +1432,23 @@ void Database::Init() {
 			" (5, '1P_SDColony03_P', 'TgGame.TgGame_Mission', 1, 1),"
 			" (5, '1P_SDColony05_P', 'TgGame.TgGame_Mission', 1, 1),"
 			" (5, '1P_SDColony06_P', 'TgGame.TgGame_Mission', 1, 1),"
-			" (5, '1P_SDColony02_P', 'TgGame.TgGame_Mission', 1, 1);",
+			" (5, '1P_SDColony02_P', 'TgGame.TgGame_Mission', 1, 1),"
+			" (5, '1P_SDColony01_P', 'TgGame.TgGame_Mission', 1, 1);",
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
 			Logger::Log("db", "Failed to seed ga_map_pool_entries (desert_pve): %s\n", err);
+			sqlite3_free(err);
+		}
+
+		// SDColony01 belongs to desert_pve (seeded above) — remove the stray
+		// manually-added specops entry (was weight 999, enabled 0). PK is
+		// (map_pool_id, map_name, game_mode) so a move = insert + delete.
+		result = sqlite3_exec(db,
+			"DELETE FROM ga_map_pool_entries "
+			"WHERE map_pool_id = 1 AND map_name = '1P_SDColony01_P';",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to remove SDColony01 specops pool entry: %s\n", err);
 			sqlite3_free(err);
 		}
 

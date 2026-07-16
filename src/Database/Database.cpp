@@ -9328,6 +9328,78 @@ void Database::Init() {
 		Logger::Log("db", "v138: SDColony02 map_game_id 1471 -> 1437 (non-quest)\n");
 	}
 
+	if (version < 139) {
+		// v139: 1P_SDColony01_P corrections (map configured long ago, moving
+		// from the disabled specops entry into desert_pve — control-server
+		// seed handles the pool move):
+		// - checkpoint/exit beacon 13440 (m_b_beacon_exit=1 baked) is
+		//   kismet-activated (TgSeqEvent_PlayerCountHit -> SeqAct_Toggle
+		//   Turn On) but was pre-spawning -> s_b_auto_spawn=0 (same
+		//   treatment as SDColony05 13956 / SDColony02 13875).
+		// - spawn-pad volumes 8990 + 12552 over the player start were
+		//   unconfigured -> 2801 invulnerability pads (same id pair as
+		//   SDColony03).
+		// - electric barriers: kismet loops (LevelLoaded -> Delay 10/5/7s ->
+		//   matinee with beam/spark/warmup emitters, event keys 'Kill' ->
+		//   Toggle Turn On / 'Off' -> Turn Off) cycle bPainCausing on
+		//   volumes 13466/13541 (tunnel pair) + 13542, but no device was
+		//   configured so an active barrier did nothing -> 5450
+		//   "High Voltage" (KillEffect), matching SDColony03's working
+		//   barriers (same volume id 13466 there). setupDevice arms them;
+		//   the kismet toggles gate the pain windows.
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			" ('1P_SDColony01_P', 13440, 's_b_auto_spawn',  '0',    NULL, NULL, 1),"
+			" ('1P_SDColony01_P', 8990,  's_n_device_id',   '2801', NULL, NULL, 1),"
+			" ('1P_SDColony01_P', 8990,  's_n_task_force',  '1',    NULL, NULL, 1),"
+			" ('1P_SDColony01_P', 8990,  's_n_team_number', '1',    NULL, NULL, 1),"
+			" ('1P_SDColony01_P', 12552, 's_n_device_id',   '2801', NULL, NULL, 1),"
+			" ('1P_SDColony01_P', 12552, 's_n_task_force',  '1',    NULL, NULL, 1),"
+			" ('1P_SDColony01_P', 12552, 's_n_team_number', '1',    NULL, NULL, 1),"
+			" ('1P_SDColony01_P', 13466, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDColony01_P', 13466, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDColony01_P', 13466, 's_n_team_number', '2',    NULL, NULL, 1),"
+			" ('1P_SDColony01_P', 13541, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDColony01_P', 13541, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDColony01_P', 13541, 's_n_team_number', '2',    NULL, NULL, 1),"
+			" ('1P_SDColony01_P', 13542, 's_n_device_id',   '5450', NULL, NULL, 1),"
+			" ('1P_SDColony01_P', 13542, 's_n_task_force',  '2',    NULL, NULL, 1),"
+			" ('1P_SDColony01_P', 13542, 's_n_team_number', '2',    NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v139 (map_object_config sdcolony01): %s\n", err); return; }
+
+		// map_game_info: no MapGameId compare anywhere in this map's kismet,
+		// so the canonical retail id is unrecoverable and irrelevant ->
+		// custom 100016 (pattern: 100014 SDColony03 / 100015 SDColony05).
+		// 55531 = "Recursive Colony Node 1393"; 6844 =
+		// HUD_MissionLoads.PVE_SD.SDColony_01 (authored for this map).
+		result = sqlite3_exec(db,
+			"INSERT OR REPLACE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES "
+			"(100016, '1P_SDColony01_P', 'TgGame.TgGame_Mission', 1553, 55531, 6844);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v139 (map_game_info sdcolony01): %s\n", err); return; }
+
+		Logger::Log("db", "v139: SDColony01 fixups (checkpoint beacon no-prespawn, "
+			"2801 spawn pads, 5450 electric barriers) + map_game_info "
+			"(100016, Recursive Colony Node 1393)\n");
+	}
+
+	if (version < 140) {
+		// v140: SDColony01 barrier device correction for DBs that already ran
+		// the original v139 (which used 5079 Electricity; v139 itself was
+		// fixed in place for fresh DBs). SDColony03's working barriers use
+		// 5450 High Voltage — same hazard kind, same volume id 13466 there.
+		// Value-gated so manual edits stick.
+		result = sqlite3_exec(db,
+			"UPDATE map_object_config SET value = '5450' "
+			"WHERE map_name = '1P_SDColony01_P' AND map_object_id IN (13466, 13541, 13542) "
+			"  AND column_name = 's_n_device_id' AND value = '5079';",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v140 (sdcolony01 5079 -> 5450): %s\n", err); return; }
+
+		Logger::Log("db", "v140: SDColony01 electric barriers 5079 -> 5450 (High Voltage)\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -9339,7 +9411,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 138", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 140", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
