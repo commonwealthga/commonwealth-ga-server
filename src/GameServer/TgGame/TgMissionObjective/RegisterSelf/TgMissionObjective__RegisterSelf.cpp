@@ -1,9 +1,12 @@
 #include "src/GameServer/TgGame/TgMissionObjective/RegisterSelf/TgMissionObjective__RegisterSelf.hpp"
+#include "src/Config/Config.hpp"
 #include "src/GameServer/GameModes/CtrPointRotation/CtrPointRotation.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+
+#include <string>
 
 // RegisterSelf is called from TgMissionObjective.PostBeginPlay().
 // The original is a stub. For proximity/KOTH objectives we need to spawn
@@ -16,6 +19,46 @@ void __fastcall TgMissionObjective__RegisterSelf::Call(ATgMissionObjective* Obje
 	// so they re-pollute the rotation list. Drop + disable any such straggler.
 	// No-op on every non-CTR map and before seeding completes.
 	CtrPointRotation::ExcludeLateStockObjective(Objective);
+
+	// "Register self" with the GRI's replicated r_Objectives[0x4B] mirror —
+	// the array the client HUD reads. On our server the only other writer is
+	// TgGame__InitGameRepInfo's one-time ActorCache pass, which runs before
+	// kismet-streamed sublevels arrive, so their objectives (Solar Farm's
+	// BossSolo/BossGrp bosses) never reached any client: bosshud playtest
+	// 2026-07-17 showed boss 14073 spawning with r_Objectives slot=-1 while
+	// the client had the sublevel confirmed visible. Gates:
+	//  - streamed-package actors only (full name lacks the persistent map
+	//    package): persistent objectives are covered by the init pass,
+	//    dynamic ones (SuperAgent/CTR) are inserted explicitly by their modes
+	//    right after this hook and must not be double-added;
+	//  - present in m_MissionObjectives (own AddToList ran, not CTR-excluded);
+	//  - absent from r_Objectives (idempotent).
+	{
+		ATgRepInfo_Game* GRI = (ATgRepInfo_Game*)(Objective->WorldInfo != nullptr
+			? Objective->WorldInfo->GRI : nullptr);
+		const char* rawFull = ((UObject*)Objective)->GetFullName();
+		const std::string fullName(rawFull ? rawFull : "");
+		const bool bStreamedIn =
+			fullName.find(std::string(Config::GetMapNameChar()) + ".") == std::string::npos;
+		if (GRI != nullptr && bStreamedIn) {
+			bool bInMissionList = false;
+			for (int i = 0; i < GRI->m_MissionObjectives.Num(); i++) {
+				if (GRI->m_MissionObjectives.Data[i] == Objective) { bInMissionList = true; break; }
+			}
+			bool bInRepList = false;
+			for (int i = 0; i < 0x4B; i++) {
+				if (GRI->r_Objectives[i] == Objective) { bInRepList = true; break; }
+			}
+			if (bInMissionList && !bInRepList) {
+				using AddObjectivePointToList_t =
+					void(__fastcall*)(ATgRepInfo_Game*, void*, ATgMissionObjective*);
+				reinterpret_cast<AddObjectivePointToList_t>(0x109f0580)(GRI, nullptr, Objective);
+				Logger::Log("bosshud",
+					"RegisterSelf: streamed-in objective mid=%d prio=%d -> r_Objectives\n",
+					Objective->m_nMapObjectId, Objective->nPriority);
+			}
+		}
+	}
 
 	char* className = Objective->Class->GetFullName();
 	Logger::Log(GetLogChannel(), "Objective class: %s\n", className);

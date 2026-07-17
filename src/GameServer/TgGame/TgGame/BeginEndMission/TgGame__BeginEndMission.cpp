@@ -39,15 +39,23 @@ constexpr float kBossDeathScreenDelaySeconds = 8.0f;  // boss death-anim window.
 bool          s_PendingEndScreen = false;
 ACameraActor* s_PendingCamera    = nullptr;
 
-// A captured (r_eStatus==8) boss objective at end time means a boss kill
-// triggered this ending — the only mode that gets a default pre-screen delay.
-bool HasCapturedBossObjective(ATgRepInfo_Game* GRI) {
+// A destroyed bot objective at end time means a boss / defended-NPC death
+// triggered this ending — the only mode that gets a default pre-screen delay
+// (death-animation window). Same destroyed predicate as ObjectiveBotOutcome:
+// r_eStatus 8 OR the bound pawn dead. The pawn-health arm is required because
+// CheckWinRound's per-frame outcome check runs from the GameInfo tick, which
+// ticks BEFORE the objective actor — so at end time the objective's own
+// ServerCalcStatus has usually not latched status 8 yet and the old
+// status-8-only test skipped the delay (Solar Farm playtest 2026-07-17).
+bool HasDestroyedBotObjective(ATgRepInfo_Game* GRI) {
 	if (!GRI) return false;
 	for (int i = 0; i < GRI->m_MissionObjectives.Count; i++) {
 		ATgMissionObjective* Obj = GRI->m_MissionObjectives.Data[i];
-		if (Obj && Obj->r_eStatus == 8
-		 && ObjectClassCache::ClassNameContains((UObject*)Obj, "TgMissionObjective_Bot"))
-			return true;
+		if (Obj == nullptr) continue;
+		if (!ObjectClassCache::ClassNameContains((UObject*)Obj, "TgMissionObjective_Bot")) continue;
+		ATgMissionObjective_Bot* B = (ATgMissionObjective_Bot*)Obj;
+		if (B->r_eStatus == 8) return true;
+		if (B->r_ObjectiveBot != nullptr && B->r_ObjectiveBot->Health <= 0) return true;
 	}
 	return false;
 }
@@ -169,6 +177,11 @@ void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera,
 		GRI->bForceNetUpdate    = 1;
 	}
 
+	// Evaluate the boss-kill delay condition BEFORE FreezeGameplay: its
+	// SetObjectiveActive(false) sweep despawns bot pawns and nulls
+	// r_ObjectiveBot, which destroys the dead-pawn half of the predicate.
+	const bool bBotObjectiveEnding = HasDestroyedBotObjective(GRI);
+
 	FreezeGameplay(Game, GRI);
 	BroadcastGameWinState(Game, winState);
 
@@ -217,10 +230,11 @@ void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera,
 		IpcClient::Send(msg.dump());
 	}
 
-	// Phase 2: the end screen. Instant for every mode except a boss kill
-	// (death animation plays out) or an explicit "Delay to End" override.
+	// Phase 2: the end screen. Instant for every mode except a bot-objective
+	// death — boss kill OR defended-NPC loss, both play a death animation —
+	// or an explicit "Delay to End" override.
 	float preScreenDelay = fDelayOverride;
-	if (preScreenDelay <= 0.0f && HasCapturedBossObjective(GRI))
+	if (preScreenDelay <= 0.0f && bBotObjectiveEnding)
 		preScreenDelay = kBossDeathScreenDelaySeconds;
 
 	if (preScreenDelay > 0.0f) {
@@ -230,8 +244,8 @@ void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera,
 			Game, preScreenDelay, /*bLoop=*/false,
 			FName("FinishEndMission"), nullptr);
 		Logger::Log("endmission",
-			"BeginEndMission — end screen deferred %.1fs (bossKill=%d, override=%.1f)\n",
-			preScreenDelay, (int)HasCapturedBossObjective(GRI), fDelayOverride);
+			"BeginEndMission — end screen deferred %.1fs (botObjectiveEnding=%d, override=%.1f)\n",
+			preScreenDelay, (int)bBotObjectiveEnding, fDelayOverride);
 		return;
 	}
 

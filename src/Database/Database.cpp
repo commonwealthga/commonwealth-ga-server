@@ -9938,6 +9938,395 @@ void Database::Init() {
 			"table 10007 (Legion Inquisitor at all difficulties)\n");
 	}
 
+	if (version < 145) {
+		// v145: DN_Defense_Solar_Farm_P "Solar Farm Defense" — first map of the
+		// desert_raids queue (pool 6, ControlServer seed). Same TgGame_Defense
+		// template as canyon/oasis (8 wave nodes = waves 1-4 x minion+support,
+		// Recursive Colony faction), with two new twists, both kismet-driven:
+		//   - Player-count scaling: every wave pulse runs TgSeqAct_GetPlayerCount
+		//     -> CompareFloat -> Toggle chains that wake EXTRA factories at
+		//     2/3/4+ players (reimplemented in UObject__ProcessEvent
+		//     SeqOpActivated — the stripped native reported 0 players).
+		//   - Two boss variants in streaming sublevels: BossSolo (objective
+		//     14073, Colony Eye 1666, 35k HP, "1-2 player" per its asm desc)
+		//     and BossGrp (objective 13460, Colony Eye 1623, 60k HP). At
+		//     SetupStarted+10s kismet unloads one sublevel by player count
+		//     (<=2 -> solo). Both objectives are enabled by the same
+		//     "BossActivate" remote event on the first Wave-4 Minions pulse;
+		//     only the surviving sublevel's objective exists to spawn.
+		//
+		// (a) map_game_info. 1467 is the map's CANONICAL retail id (referenced
+		//     by asm_data_set_quest_requirements 89/92 "Defend the Solar Farm"
+		//     and the "Solar Farm Night Defense" ui_volumes). 66976 = "Solar
+		//     Farm Defense" (the colony quest-name cluster), 6866 =
+		//     HUD_MissionLoads.PVE_DN.DEF_OZ_DN_SolarFarm. mission_time_secs=0
+		//     -> per-round timer (v122 lesson); non-dome defense shape = 4
+		//     rounds x 180s from InitGameRepInfo.
+		result = sqlite3_exec(db,
+			"INSERT OR REPLACE INTO map_game_info "
+			"(map_game_id, map_name, game_class, gameplay_type_value_id, "
+			" friendly_name_msg_id, entry_background_image_res_id, "
+			" mission_time_secs, is_pvp, overtime_secs, allow_overtime) VALUES "
+			"(1467, 'DN_Defense_Solar_Farm_P', 'TgGame.TgGame_Defense', 1550, 66976, 6866, 0, 0, 0, 0);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v145 (solar farm map_game_info): %s\n", err); return; }
+
+		// (b) Spawn tables for the 9 kismet wave factories. Archetypes from
+		//     the dump's SeqVar comments ("Standard Spawn" / "Ticks/Ant"),
+		//     mix per the canyon-playtested ratio (2x99 heavy anchors per
+		//     wave, rest 148 ticks; avg ~16 bots/pulse):
+		//       minions  w1/w2 {14003,14002,14004,14005} w3 +{14045,14044}
+		//                -> 99 {14002,14003}, 148 {14004,14005,14044,14045}
+		//       support  {14008,14043,14007} (all waves; w4 = 14008 alone)
+		//                -> 87 guardian {14008}, 86 spiders {14007,14043}
+		//     Wave-4 minions node is EMPTY by design — its trash comes from
+		//     the 2p+ player-count toggle chains over the same factories.
+		const char* kV145_tables =
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'DN_Defense_Solar_Farm_P', mid, col, tbl, NULL, NULL, 1 "
+			"FROM (SELECT 'n_spawn_table_id' AS col UNION ALL SELECT 'n_default_spawn_table_id'), ("
+			"  SELECT 14002 AS mid, '99' AS tbl UNION ALL SELECT 14003, '99' UNION ALL"
+			"  SELECT 14004, '148' UNION ALL SELECT 14005, '148' UNION ALL"
+			"  SELECT 14044, '148' UNION ALL SELECT 14045, '148' UNION ALL"
+			"  SELECT 14007, '86' UNION ALL SELECT 14043, '86' UNION ALL"
+			"  SELECT 14008, '87');";
+		result = sqlite3_exec(db, kV145_tables, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v145 (solar farm spawn tables): %s\n", err); return; }
+
+		// All wave factories + 14016/14017: dormant + one-roster + Colony
+		// side. 14016/14017 sit right beside the defended generator and are
+		// kismet-toggled ON at SetupStarted — retail roster unknown (baked
+		// table 0), so they get flags only and spawn nothing until stocked.
+		// The map's twelfth factory has map_object_id 0, which is NOT unique
+		// here (omega volumes / nav points / bot starts share mid 0), so it
+		// gets NO config row — baked table 0 means it never spawns anyway.
+		const char* kV145_flags =
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'DN_Defense_Solar_Farm_P', mid, col, val, NULL, NULL, 1 "
+			"FROM (SELECT 'b_auto_spawn' AS col, '0' AS val UNION ALL"
+			"      SELECT 'b_respawn', '0' UNION ALL"
+			"      SELECT 's_n_task_force', '1' UNION ALL"
+			"      SELECT 's_n_team_number', '1'), ("
+			"  SELECT 14002 AS mid UNION ALL SELECT 14003 UNION ALL SELECT 14004 UNION ALL"
+			"  SELECT 14005 UNION ALL SELECT 14007 UNION ALL SELECT 14008 UNION ALL"
+			"  SELECT 14016 UNION ALL SELECT 14017 UNION ALL SELECT 14043 UNION ALL"
+			"  SELECT 14044 UNION ALL SELECT 14045);";
+		result = sqlite3_exec(db, kV145_flags, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v145 (solar farm factory flags): %s\n", err); return; }
+
+		// (c) Both boss objectives out of the priority unlock sequence —
+		//     n_priority=0 so only the kismet BossActivate chain spawns them
+		//     (dome v119a / canyon v125 pattern). They live in the BossGrp /
+		//     BossSolo streaming sublevels (absent from the map dump); the
+		//     override lands when the surviving sublevel streams in. The
+		//     defended NPC 12599 (Backup Generator 1645, tf=2, auto-spawn)
+		//     needs no config — same baked shape as the oasis maps.
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+			"  ('DN_Defense_Solar_Farm_P', 13460, 'n_priority', '0', NULL, NULL, 1),"
+			"  ('DN_Defense_Solar_Farm_P', 14073, 'n_priority', '0', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v145 (solar farm boss priority): %s\n", err); return; }
+
+		Logger::Log("db", "v145: DN_Defense_Solar_Farm_P defense raid config — map_game_info 1467, "
+			"9 wave factories (2x99/4x148 minions, 2x86/1x87 support, dormant), "
+			"bosses 13460/14073 n_priority=0\n");
+	}
+
+	if (version < 146) {
+		// v146: DN_Defense_Solar_Farm_P playtest repairs (first solo run).
+		//
+		// (a) Loading screen: v145 shipped 6866, which is the asm_data_set_resources
+		//     ROW id, not the res_id (6866 = test_data_mover_mesh). The real
+		//     DEF_OZ_DN_SolarFarm res_id is 7856.
+		result = sqlite3_exec(db,
+			"UPDATE map_game_info SET entry_background_image_res_id = 7856 "
+			"WHERE map_name = 'DN_Defense_Solar_Farm_P' "
+			"  AND entry_background_image_res_id = 6866;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v146 (solar farm loading screen): %s\n", err); return; }
+
+		// (b) Wave volume: the v145 tables (99/148/86/87, 12-24 bot rosters)
+		//     are the group-raid rosters — a solo player was buried inside a
+		//     minute. This map has its OWN retail table cluster, 240-252
+		//     (1029-only rows -> cascade-safe at every tier), authored around
+		//     1-4 bots per pulse (the mission is "Recommended for 2-4 Agents"
+		//     but soloable; player-count toggles add whole factories per pulse
+		//     for bigger groups). Cluster also holds the bosses: 241 Colony
+		//     Overlord (group), 251 Colony Guardian 1646 "Quest Defense
+		//     missions" (solo), 250 Colony Eye — all baked in the BossGrp/
+		//     BossSolo sublevels, no factory uses them.
+		//     User-confirmed OG roster: solo play only ever sees Colony Wasps,
+		//     Drones and Ants (ants bring the ticks) + the Guardian boss —
+		//     easiest mission. Every wave factory can fire solo (round-robin),
+		//     so NO factory may carry the cluster's Soldier pairs (242/248/
+		//     252), Wasp Mk2 (243), Feelers (247/249) or Sand Spider (240):
+		//       minions: 14003/14004 -> 244 (Drone)
+		//                14002/14005 + wave-3 14044/14045 -> 246 (Ant)
+		//       support: 14007/14043/14008 -> 245 (Wasp)
+		result = sqlite3_exec(db,
+			"UPDATE map_object_config SET value = CASE map_object_id "
+			"  WHEN 14003 THEN '244' WHEN 14004 THEN '244' "
+			"  WHEN 14002 THEN '246' WHEN 14005 THEN '246' "
+			"  WHEN 14044 THEN '246' WHEN 14045 THEN '246' "
+			"  WHEN 14007 THEN '245' WHEN 14043 THEN '245' WHEN 14008 THEN '245' END "
+			"WHERE map_name = 'DN_Defense_Solar_Farm_P' "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') "
+			"  AND map_object_id IN (14002,14003,14004,14005,14007,14008,14043,14044,14045);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v146 (solar farm retail tables): %s\n", err); return; }
+
+		// (c) 14016/14017 are the friendly guards beside the generator
+		//     (kismet-toggled ON at SetupStarted; user-confirmed they fight
+		//     alongside the players). Flip them to the defender side and stock
+		//     them with the retail A.R.M. Guard singles (189/203, bot 1641
+		//     "Employed by Bancroft, these guards protect Dome City's
+		//     borders"; 1029-only rows, cascade-safe). b_respawn stays 0 —
+		//     finite guards; flip to 1 if they should reinforce.
+		result = sqlite3_exec(db,
+			"UPDATE map_object_config SET value = '2' "
+			"WHERE map_name = 'DN_Defense_Solar_Farm_P' "
+			"  AND map_object_id IN (14016, 14017) "
+			"  AND column_name IN ('s_n_task_force', 's_n_team_number');"
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'DN_Defense_Solar_Farm_P', mid, col, tbl, NULL, NULL, 1 "
+			"FROM (SELECT 'n_spawn_table_id' AS col UNION ALL SELECT 'n_default_spawn_table_id'), "
+			"     (SELECT 14016 AS mid, '189' AS tbl UNION ALL SELECT 14017, '203');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v146 (solar farm guards): %s\n", err); return; }
+
+		// (d) Drop the v145 boss n_priority=0 overrides (13460/14073). That
+		//     override exists for PERSISTENT-level bosses (dome/canyon), which
+		//     TgGame_Defense.PostBeginPlay's unlock-everything loop would
+		//     otherwise activate-and-spawn at map load. These bosses live in
+		//     the BossGrp/BossSolo streaming sublevels and register AFTER that
+		//     loop runs, so nothing server-side touches them before the wave-4
+		//     BossActivate kismet — the override is unnecessary. It is also
+		//     harmful: nPriority is a repnotify var the client HUD reads, and
+		//     zeroing it diverges from the retail-baked value (OG showed both
+		//     boss objectives on the HUD from mission start until one sublevel
+		//     unloads). With the override gone, pre-wave-4 server state is
+		//     bit-identical to OG: locked, inactive, baked priority.
+		result = sqlite3_exec(db,
+			"DELETE FROM map_object_config "
+			"WHERE map_name = 'DN_Defense_Solar_Farm_P' "
+			"  AND map_object_id IN (13460, 14073) "
+			"  AND column_name = 'n_priority';",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v146 (solar farm boss priority removal): %s\n", err); return; }
+
+		Logger::Log("db", "v146: Solar Farm repairs — loading screen 7856, retail cluster "
+			"tables 240-252 (solo-scale), A.R.M. Guard factories 14016/14017 tf2, "
+			"boss priority overrides removed\n");
+	}
+
+	if (version < 147) {
+		// v147: DN_Defense_NorthOutpost_P "Terminus Night Defense" +
+		// DN_Defense_Newtopia_P "Robot Ranch Night Defense" — maps 2 and 3 of
+		// the desert_raids queue (pool 6). Same OZ_DN template as Solar Farm
+		// (v145/v146): 8 wave nodes, GetPlayerCount toggle chains for 2/3/4+
+		// players, dual boss variants in BossSolo/BossGrp streaming sublevels
+		// (both maps! — bosses baked in the sublevels, spawn-table cluster
+		// 235-252 holds the rosters), defended NPC 12599 = Backup Generator
+		// 1645 (baked tf=2, already in the godmode test gate).
+		//
+		// (a) map_game_info. 1472/1474 are the CANONICAL retail ids (both in
+		//     asm_data_set_quest_requirements and the "Terminus Night Defense" /
+		//     "Robot Ranch Night Defense" ui_volumes). Loading screens by
+		//     res_id (NOT row id — v145 lesson): 7926 =
+		//     HUD_MissionLoads_1_5.DEF_OZ_DN_NorthOutpost, 7958 =
+		//     HUD_MissionLoads_1_5.DEF_OZ_DN_Newtopia. mission_time_secs=0 ->
+		//     per-round timer; non-dome shape = 4 rounds x 180s.
+		result = sqlite3_exec(db,
+			"INSERT OR REPLACE INTO map_game_info "
+			"(map_game_id, map_name, game_class, gameplay_type_value_id, "
+			" friendly_name_msg_id, entry_background_image_res_id, "
+			" mission_time_secs, is_pvp, overtime_secs, allow_overtime) VALUES "
+			"(1472, 'DN_Defense_NorthOutpost_P', 'TgGame.TgGame_Defense', 1550, 67747, 7926, 0, 0, 0, 0),"
+			"(1474, 'DN_Defense_Newtopia_P',     'TgGame.TgGame_Defense', 1550, 68624, 7958, 0, 0, 0, 0);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v147 (map_game_info): %s\n", err); return; }
+
+		// (b) NorthOutpost spawn tables, straight from the kismet SeqVar
+		//     comments onto the retail 235-252 cluster (1029-only rows,
+		//     cascade-safe, 1-2 bots per roster). User-specified roster:
+		//     drones/wasps/ants+ticks always, soldiers occasionally, Wasp Mk2
+		//     in later waves (kismet already gates Mk2 factories to wave-2+
+		//     support). "Minions" gates split evenly Drone 244 / Ant 246;
+		//     "Ticks Ant" -> 246 (ants bring the ticks); "Soldier" -> the
+		//     retail pair tables (242 Soldier+Ant, 248 Drone+Soldier — one
+		//     soldier per pulse of that one gate = occasional); "Wasps" -> 245;
+		//     "MK2 Wasps" -> 243. Friendlies (kismet-toggled ON at setup,
+		//     comment-less SeqVars): 14057/14058/14059 = the three A.R.M.
+		//     Guard singles 189/203/208 (bot 1641 — exactly three retail
+		//     tables for exactly three factories), 14081 "HERO NPC" = Gruff
+		//     1649 table 214 ("Agency Zero Assault - helps defend the gates
+		//     of Dome City").
+		const char* kV147_no_tables =
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'DN_Defense_NorthOutpost_P', mid, col, tbl, NULL, NULL, 1 "
+			"FROM (SELECT 'n_spawn_table_id' AS col UNION ALL SELECT 'n_default_spawn_table_id'), ("
+			"  SELECT 14049 AS mid, '244' AS tbl UNION ALL SELECT 14050, '244' UNION ALL"
+			"  SELECT 14120, '244' UNION ALL SELECT 14122, '244' UNION ALL"
+			"  SELECT 14052, '246' UNION ALL SELECT 14053, '246' UNION ALL"
+			"  SELECT 14121, '246' UNION ALL SELECT 14126, '246' UNION ALL"
+			"  SELECT 14060, '246' UNION ALL SELECT 14061, '246' UNION ALL"
+			"  SELECT 14064, '242' UNION ALL SELECT 14068, '248' UNION ALL"
+			"  SELECT 14054, '245' UNION ALL SELECT 14055, '245' UNION ALL"
+			"  SELECT 14056, '245' UNION ALL SELECT 14119, '245' UNION ALL"
+			"  SELECT 14123, '245' UNION ALL SELECT 14124, '245' UNION ALL"
+			"  SELECT 14125, '245' UNION ALL"
+			"  SELECT 14062, '243' UNION ALL SELECT 14063, '243' UNION ALL"
+			"  SELECT 14112, '243' UNION ALL"
+			"  SELECT 14057, '189' UNION ALL SELECT 14058, '203' UNION ALL"
+			"  SELECT 14059, '208' UNION ALL SELECT 14081, '214');";
+		result = sqlite3_exec(db, kV147_no_tables, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v147 (northoutpost spawn tables): %s\n", err); return; }
+
+		// NorthOutpost flags: every factory dormant + one-roster (the wave
+		// pulse / kismet toggle is the only trigger). Enemy side tf/team 1;
+		// friendlies 14057/14058/14059/14081 tf/team 2. Orphans 14065/14082
+		// (in the map, zero kismet refs) get flags but no table.
+		const char* kV147_no_flags =
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'DN_Defense_NorthOutpost_P', mid, col, val, NULL, NULL, 1 "
+			"FROM (SELECT 'b_auto_spawn' AS col, '0' AS val UNION ALL"
+			"      SELECT 'b_respawn', '0' UNION ALL"
+			"      SELECT 's_n_task_force', '1' UNION ALL"
+			"      SELECT 's_n_team_number', '1'), ("
+			"  SELECT 14049 AS mid UNION ALL SELECT 14050 UNION ALL SELECT 14052 UNION ALL"
+			"  SELECT 14053 UNION ALL SELECT 14054 UNION ALL SELECT 14055 UNION ALL"
+			"  SELECT 14056 UNION ALL SELECT 14060 UNION ALL SELECT 14061 UNION ALL"
+			"  SELECT 14062 UNION ALL SELECT 14063 UNION ALL SELECT 14064 UNION ALL"
+			"  SELECT 14065 UNION ALL SELECT 14068 UNION ALL SELECT 14082 UNION ALL"
+			"  SELECT 14112 UNION ALL SELECT 14119 UNION ALL SELECT 14120 UNION ALL"
+			"  SELECT 14121 UNION ALL SELECT 14122 UNION ALL SELECT 14123 UNION ALL"
+			"  SELECT 14124 UNION ALL SELECT 14125 UNION ALL SELECT 14126);"
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'DN_Defense_NorthOutpost_P', mid, col, val, NULL, NULL, 1 "
+			"FROM (SELECT 'b_auto_spawn' AS col, '0' AS val UNION ALL"
+			"      SELECT 'b_respawn', '0' UNION ALL"
+			"      SELECT 's_n_task_force', '2' UNION ALL"
+			"      SELECT 's_n_team_number', '2'), ("
+			"  SELECT 14057 AS mid UNION ALL SELECT 14058 UNION ALL"
+			"  SELECT 14059 UNION ALL SELECT 14081);";
+		result = sqlite3_exec(db, kV147_no_flags, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v147 (northoutpost factory flags): %s\n", err); return; }
+
+		// (c) Newtopia spawn tables. User roster adds occasional Sand Spiders
+		//     and Feelers (the kismet "Tentacles" gates) on top of the
+		//     NorthOutpost mix. Minions split Drone 244 / Ant 246; "Ant" /
+		//     "Ticks/Ant" -> 246; Soldier gates -> 242/248/252 pairs;
+		//     Tentacles -> Feeler singles 236/237/249; Sand Spider -> 240;
+		//     wasps -> 245; MK2 -> 243. Friendlies: 14179 "HERO NPC" = Robot
+		//     Rancher 1654 table 219 ("Heals nearby friendly robots"),
+		//     14177/14178/14180 = Reprogrammed Colony Drone 1655 table 220
+		//     ("Reinforced with extra health. Helps defend the Robot Ranch").
+		const char* kV147_nt_tables =
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'DN_Defense_Newtopia_P', mid, col, tbl, NULL, NULL, 1 "
+			"FROM (SELECT 'n_spawn_table_id' AS col UNION ALL SELECT 'n_default_spawn_table_id'), ("
+			"  SELECT 14130 AS mid, '244' AS tbl UNION ALL SELECT 14134, '244' UNION ALL"
+			"  SELECT 14139, '244' UNION ALL SELECT 14143, '244' UNION ALL"
+			"  SELECT 14147, '244' UNION ALL SELECT 14151, '244' UNION ALL"
+			"  SELECT 14129, '246' UNION ALL SELECT 14133, '246' UNION ALL"
+			"  SELECT 14138, '246' UNION ALL SELECT 14142, '246' UNION ALL"
+			"  SELECT 14146, '246' UNION ALL SELECT 14150, '246' UNION ALL"
+			"  SELECT 14154, '246' UNION ALL"
+			"  SELECT 14140, '246' UNION ALL SELECT 14156, '246' UNION ALL"
+			"  SELECT 14132, '242' UNION ALL SELECT 14145, '248' UNION ALL"
+			"  SELECT 14157, '252' UNION ALL"
+			"  SELECT 14171, '236' UNION ALL SELECT 14175, '237' UNION ALL"
+			"  SELECT 14176, '249' UNION ALL"
+			"  SELECT 14170, '240' UNION ALL SELECT 14181, '240' UNION ALL"
+			"  SELECT 14182, '240' UNION ALL"
+			"  SELECT 14164, '245' UNION ALL SELECT 14166, '245' UNION ALL"
+			"  SELECT 14173, '245' UNION ALL SELECT 14174, '245' UNION ALL"
+			"  SELECT 14165, '243' UNION ALL SELECT 14167, '243' UNION ALL"
+			"  SELECT 14169, '243' UNION ALL"
+			"  SELECT 14179, '219' UNION ALL SELECT 14177, '220' UNION ALL"
+			"  SELECT 14178, '220' UNION ALL SELECT 14180, '220');";
+		result = sqlite3_exec(db, kV147_nt_tables, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v147 (newtopia spawn tables): %s\n", err); return; }
+
+		// Newtopia flags — 43 enemy-side factories (incl. the 12 kismet-less
+		// orphans 14131/14135/14136/14141/14144/14148/14149/14152/14153/
+		// 14155/14168/14172, flags only), 4 friendlies tf/team 2.
+		const char* kV147_nt_flags =
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'DN_Defense_Newtopia_P', mid, col, val, NULL, NULL, 1 "
+			"FROM (SELECT 'b_auto_spawn' AS col, '0' AS val UNION ALL"
+			"      SELECT 'b_respawn', '0' UNION ALL"
+			"      SELECT 's_n_task_force', '1' UNION ALL"
+			"      SELECT 's_n_team_number', '1'), ("
+			"  SELECT 14129 AS mid UNION ALL SELECT 14130 UNION ALL SELECT 14131 UNION ALL"
+			"  SELECT 14132 UNION ALL SELECT 14133 UNION ALL SELECT 14134 UNION ALL"
+			"  SELECT 14135 UNION ALL SELECT 14136 UNION ALL SELECT 14138 UNION ALL"
+			"  SELECT 14139 UNION ALL SELECT 14140 UNION ALL SELECT 14141 UNION ALL"
+			"  SELECT 14142 UNION ALL SELECT 14143 UNION ALL SELECT 14144 UNION ALL"
+			"  SELECT 14145 UNION ALL SELECT 14146 UNION ALL SELECT 14147 UNION ALL"
+			"  SELECT 14148 UNION ALL SELECT 14149 UNION ALL SELECT 14150 UNION ALL"
+			"  SELECT 14151 UNION ALL SELECT 14152 UNION ALL SELECT 14153 UNION ALL"
+			"  SELECT 14154 UNION ALL SELECT 14155 UNION ALL SELECT 14156 UNION ALL"
+			"  SELECT 14157 UNION ALL SELECT 14164 UNION ALL SELECT 14165 UNION ALL"
+			"  SELECT 14166 UNION ALL SELECT 14167 UNION ALL SELECT 14168 UNION ALL"
+			"  SELECT 14169 UNION ALL SELECT 14170 UNION ALL SELECT 14171 UNION ALL"
+			"  SELECT 14172 UNION ALL SELECT 14173 UNION ALL SELECT 14174 UNION ALL"
+			"  SELECT 14175 UNION ALL SELECT 14176 UNION ALL SELECT 14181 UNION ALL"
+			"  SELECT 14182);"
+			"INSERT INTO map_object_config "
+			"(map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'DN_Defense_Newtopia_P', mid, col, val, NULL, NULL, 1 "
+			"FROM (SELECT 'b_auto_spawn' AS col, '0' AS val UNION ALL"
+			"      SELECT 'b_respawn', '0' UNION ALL"
+			"      SELECT 's_n_task_force', '2' UNION ALL"
+			"      SELECT 's_n_team_number', '2'), ("
+			"  SELECT 14177 AS mid UNION ALL SELECT 14178 UNION ALL"
+			"  SELECT 14179 UNION ALL SELECT 14180);";
+		result = sqlite3_exec(db, kV147_nt_flags, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v147 (newtopia factory flags): %s\n", err); return; }
+
+		// No boss config on either map: both boss objectives live in the
+		// BossSolo/BossGrp streaming sublevels (baked s_nBotId, baked
+		// priority — the v146 no-override rule). No n_priority rows.
+
+		Logger::Log("db", "v147: NorthOutpost + Newtopia defense raids — map_game_info "
+			"1472/1474, retail cluster tables, guards+Gruff / Rancher+drones friendlies\n");
+	}
+
+	if (version < 148) {
+		// v148: Newtopia playtest fix — the Robot Rancher spawned at the wrong
+		// spot. v147 put him on 14179 (the kismet "HERO NPC" SeqVar), but the
+		// factory nearest the defended generator is 14178 (376 units vs 655,
+		// per the map-dump locations), and that's where the Rancher belongs.
+		// Swap 14178 <-> 14179 (Rancher 219 / Reprogrammed Drone 220). Both
+		// UPDATEs are value-gated so a DB that already got the direct-edit
+		// version of this swap no-ops.
+		result = sqlite3_exec(db,
+			"UPDATE map_object_config SET value = '219' "
+			"WHERE map_name = 'DN_Defense_Newtopia_P' AND map_object_id = 14178 "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') "
+			"  AND value = '220';"
+			"UPDATE map_object_config SET value = '220' "
+			"WHERE map_name = 'DN_Defense_Newtopia_P' AND map_object_id = 14179 "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') "
+			"  AND value = '219';",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v148 (newtopia rancher swap): %s\n", err); return; }
+
+		Logger::Log("db", "v148: Newtopia Robot Rancher moved to 14178 (nearest the generator), "
+			"14179 -> Reprogrammed Colony Drone\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -9949,7 +10338,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 144", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 148", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

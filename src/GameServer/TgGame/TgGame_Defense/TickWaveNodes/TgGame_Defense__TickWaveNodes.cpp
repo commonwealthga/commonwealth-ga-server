@@ -1,6 +1,8 @@
 #include "src/GameServer/TgGame/TgGame_Defense/TickWaveNodes/TgGame_Defense__TickWaveNodes.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 #include <cstdlib>
@@ -55,6 +57,60 @@ float RollFrequency(UTgSeqAct_DefenseWaveSpawner* Spawner) {
 	return Spawner->m_fSpawnFrequency > 0.0f ? Spawner->m_fSpawnFrequency : 1.0f;
 }
 
+// TEMP DIAGNOSTIC (channel "bosshud") — Solar Farm: boss objective never shows
+// on the client HUD even after it spawns. Dumps the two replicated feeds the
+// client HUD can read (GRI r_Objectives + per-taskforce r_CurrActiveObjective)
+// and each connection's confirmed-visible level list (UNetConnection+0x4F64,
+// maintained by ServerUpdateLevelVisibility). If the Boss sublevel names never
+// appear in a client's visible list, the engine can never map the objective
+// refs for that connection (NetSerializeItem Mapped=false → StillDirty retry
+// forever) and the HUD stays empty — streaming-sync problem, not HUD logic.
+void DumpBossHudState(ATgGame_Defense* Game, float Now) {
+	static float s_fNextDump = 0.0f;
+	if (!Logger::IsChannelEnabled("bosshud") || Now < s_fNextDump) return;
+	s_fNextDump = Now + 20.0f;
+
+	ATgRepInfo_Game* GRI = (ATgRepInfo_Game*)Game->GameReplicationInfo;
+	if (GRI != nullptr) {
+		for (int i = 0; i < 0x4B; i++) {
+			ATgMissionObjective* O = GRI->r_Objectives[i];
+			if (O == nullptr) continue;
+			Logger::Log("bosshud",
+				"r_Objectives[%d]: %s mid=%d prio=%d enabled=%d active=%d locked=%d status=%d\n",
+				i, ObjectClassCache::GetClassName((UObject*)O).c_str(),
+				O->m_nMapObjectId, O->nPriority,
+				(int)O->bEnabled, (int)O->r_bIsActive, (int)O->r_bIsLocked,
+				(int)O->r_eStatus);
+		}
+	}
+	ATgMissionObjective* defGoal = GTeamsData.Defenders
+		? GTeamsData.Defenders->r_CurrActiveObjective : nullptr;
+	ATgMissionObjective* attGoal = GTeamsData.Attackers
+		? GTeamsData.Attackers->r_CurrActiveObjective : nullptr;
+	Logger::Log("bosshud", "r_CurrActiveObjective: defenders mid=%d attackers mid=%d\n",
+		defGoal ? defGoal->m_nMapObjectId : -1,
+		attGoal ? attGoal->m_nMapObjectId : -1);
+
+	UWorld* World = (UWorld*)Globals::Get().GWorld;
+	if (World != nullptr && World->NetDriver != nullptr) {
+		for (int c = 0; c < World->NetDriver->ClientConnections.Num(); c++) {
+			UNetConnection* Conn = World->NetDriver->ClientConnections.Data[c];
+			if (Conn == nullptr || (uintptr_t)Conn < 0x10000) continue;
+			// ClientVisibleLevelNames — TArray<FName> at +0x4F64 (offset from
+			// the binary's ServerUpdateLevelVisibility impl, 0x10c7b150).
+			TArray<FName>* Visible = (TArray<FName>*)((char*)Conn + 0x4F64);
+			std::string names;
+			for (int n = 0; n < Visible->Num(); n++) {
+				const char* raw = Visible->Data[n].GetName();
+				names += raw ? raw : "<null>";
+				names += " ";
+			}
+			Logger::Log("bosshud", "conn[%d] visibleLevels(%d): %s\n",
+				c, Visible->Num(), names.c_str());
+		}
+	}
+}
+
 }  // namespace
 
 void __fastcall TgGame_Defense__TickWaveNodes::Call(ATgGame_Defense* Game, void* edx) {
@@ -72,6 +128,8 @@ void __fastcall TgGame_Defense__TickWaveNodes::Call(ATgGame_Defense* Game, void*
 	}
 
 	const float Now = WorldInfo->TimeSeconds;
+
+	DumpBossHudState(Game, Now);
 
 	for (int i = 0; i < Game->s_WaveSpawnerList.Num(); i++) {
 		UTgSeqAct_DefenseWaveSpawner* Spawner = Game->s_WaveSpawnerList.Data[i];

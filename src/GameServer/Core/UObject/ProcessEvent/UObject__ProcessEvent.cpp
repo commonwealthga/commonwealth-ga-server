@@ -1928,6 +1928,39 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 				BeginEndMissionImpl(Game, Act->m_SpectatorCamera, (float)Act->m_nDelay);
 			}
 		}
+		// TgSeqAct_GetPlayerCount: same stripped-Activated() disconnection. The
+		// engine op lifecycle still runs around the stub — outputs fire
+		// (DeActivated) and m_fPlayerCount is copied into the linked "Players"
+		// SeqVar_Float afterwards (PopulateLinkedVariableValues) — so every
+		// player-count chain executed with a count of 0. That silently killed
+		// the 2p/3p/4p extra-factory toggles (SDColony02-06, Solar Farm waves)
+		// and made DN_Defense_Solar_Farm_P always unload the group-boss
+		// sublevel ("A <= 2" branch). eventActivated lands between the stripped
+		// native and the publish, so filling the count here is sufficient.
+		// m_nTaskForce 0 (every dumped map) = all players.
+		if (ObjectClassCache::ClassNameContains(Object, "TgSeqAct_GetPlayerCount")) {
+			UTgSeqAct_GetPlayerCount* Act = (UTgSeqAct_GetPlayerCount*)Object;
+			ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
+			float fCount = 0.0f;
+			if (Game != nullptr) {
+				if (Act->m_nTaskForce > 0 && Game->GameReplicationInfo != nullptr) {
+					AGameReplicationInfo* GRI = Game->GameReplicationInfo;
+					for (int i = 0; i < GRI->PRIArray.Num(); i++) {
+						ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)GRI->PRIArray.Data[i];
+						if (PRI == nullptr || PRI->bBot) continue;
+						if (PRI->r_TaskForce != nullptr &&
+						    PRI->r_TaskForce->r_nTaskForce == Act->m_nTaskForce) {
+							fCount += 1.0f;
+						}
+					}
+				} else {
+					fCount = (float)Game->NumPlayers;
+				}
+			}
+			Act->m_fPlayerCount = fCount;
+			Logger::Log("kismet", "TgSeqAct_GetPlayerCount: taskforce=%d -> %.0f players\n",
+				Act->m_nTaskForce, fCount);
+		}
 		// TgSeqAct_SetUITextBox: the ally announcer callouts ("North Door!",
 		// "Satellite Strike imminent!", "Defend Bancroft", etc.). Same stripped-
 		// Activated() disconnection — the native dispatch that calls

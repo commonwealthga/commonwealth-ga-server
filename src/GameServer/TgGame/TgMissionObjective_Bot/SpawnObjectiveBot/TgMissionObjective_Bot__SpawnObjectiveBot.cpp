@@ -143,7 +143,8 @@ void __fastcall TgMissionObjective_Bot__SpawnObjectiveBot::Call(ATgMissionObject
 	// so the 10-player missions can be soloed: Bancroft (dome, mapObjectId
 	// 13623), the Backup Generator (Canyon_Defense00, 13282), the Mobile
 	// Power Unit (Moving_Target00, 13332) and the Backup Generator / Cage of
-	// Souls (Oasis_Checkpoint / Raid_Halloween_Oasis_P, both 12599).
+	// Souls (Oasis_Checkpoint / Raid_Halloween_Oasis_P / DN_Defense_Solar_Farm_P /
+	// DN_Defense_NorthOutpost_P / DN_Defense_Newtopia_P, all mid 12599).
 	// Mirrors the player godmode in TgGame::SpawnPlayerCharacter.
 	if ((mid == 13623 || mid == 13282 || mid == 13332 || mid == 12599) && Bot->Controller != nullptr) {
 		// Bot->Controller->bGodMode = 1;
@@ -153,4 +154,20 @@ void __fastcall TgMissionObjective_Bot__SpawnObjectiveBot::Call(ATgMissionObject
 	Logger::Log("tgmissionobjective_bot",
 		"  spawned objective bot %d successfully (team from nDefaultOwnerTaskForce=%d)\n",
 		botId, Obj->nDefaultOwnerTaskForce);
+
+	// TEMP DIAGNOSTIC (channel "bosshud", see TickWaveNodes::DumpBossHudState):
+	// objective state + GRI r_Objectives registration at the spawn instant.
+	if (Logger::IsChannelEnabled("bosshud")) {
+		ATgRepInfo_Game* GRI = Game ? (ATgRepInfo_Game*)Game->GameReplicationInfo : nullptr;
+		int slot = -1;
+		if (GRI != nullptr) {
+			for (int i = 0; i < 0x4B; i++) {
+				if (GRI->r_Objectives[i] == (ATgMissionObjective*)Obj) { slot = i; break; }
+			}
+		}
+		Logger::Log("bosshud",
+			"spawn: mid=%d prio=%d enabled=%d active=%d locked=%d status=%d r_Objectives slot=%d\n",
+			mid, Obj->nPriority, (int)Obj->bEnabled, (int)Obj->r_bIsActive,
+			(int)Obj->r_bIsLocked, (int)Obj->r_eStatus, slot);
+	}
 }

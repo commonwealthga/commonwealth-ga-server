@@ -1415,6 +1415,58 @@ void Database::Init() {
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) sqlite3_free(err);
 
+		// Desert Raids ('desert_raids') — third defense-raid queue, pool 6:
+		// the OZ_DN night-defense maps. Game-DLL migrations seed
+		// map_object_config + map_game_info: v145/v146 Solar Farm (canonical
+		// map_game_id 1467), v147 NorthOutpost "Terminus Night Defense" (1472)
+		// + Newtopia "Robot Ranch Night Defense" (1474).
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_map_pools (map_pool_id, name) VALUES (6, 'desert_raids');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed ga_map_pools (desert_raids): %s\n", err);
+			sqlite3_free(err);
+		}
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode, weight, enabled) VALUES"
+			" (6, 'DN_Defense_Solar_Farm_P', 'TgGame.TgGame_Defense', 1, 1),"
+			" (6, 'DN_Defense_NorthOutpost_P', 'TgGame.TgGame_Defense', 1, 1),"
+			" (6, 'DN_Defense_Newtopia_P', 'TgGame.TgGame_Defense', 1, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed ga_map_pool_entries (desert_raids): %s\n", err);
+			sqlite3_free(err);
+		}
+
+		// Queue mirrors sr (queue 12) in every wire field except name (26638
+		// "PvE Defense Missions"), map_pool_id and sort_order 2 — bottom of
+		// the tab-231 raid category, below sr (0) and ddr (1). desc 59312 is
+		// the same defense-raid blurb the category siblings use (the Solar
+		// Farm is Dome City's power source, so "Key areas that support Dome
+		// City are under attack" fits).
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_queues "
+			"(queue_id, name, taskforce_policy, continue_in_queue, enabled, "
+			" queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, "
+			" max_players_per_side, min_players_per_team, max_players_per_team, "
+			" level_min, level_max, tab, map_x, map_y, map_active_flag, "
+			" map_icon_texture_res_id, video_res_id, location_value_id, "
+			" double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, "
+			" difficulty_value_id, access_flags, active_flag, locked_flag, "
+			" map_pool_id, min_players_to_pop, max_players_per_instance, "
+			" pop_delay_seconds, team_policy, team_side_policy) VALUES"
+			" (16, 'desert_raids', 'pinned_2', 0, 1,"
+			"  1454, 0, 26638, 59312, 1714,"
+			"  10, 1, 10, 5, 50, 231, 0.0, 0.0, 1,"
+			"  5126, 0, 0, 1, 0, 2, 1,"
+			"  1471, 0, 1, 0, 6, 1, 0,"
+			"  0.0, 'mixed', 'required');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed desert_raids queue: %s\n", err);
+			sqlite3_free(err);
+		}
+
 		// Desert PvE ('desert_pve') — pool 5: the Recursive Colony node
 		// missions (map_object_config + map_game_info seeded by game-DLL
 		// v132 SDColony04 / v133 SDColony03 / v134 SDColony06 / v135
