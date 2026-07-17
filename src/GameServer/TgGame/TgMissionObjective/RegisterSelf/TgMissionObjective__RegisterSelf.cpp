@@ -1,12 +1,9 @@
 #include "src/GameServer/TgGame/TgMissionObjective/RegisterSelf/TgMissionObjective__RegisterSelf.hpp"
-#include "src/Config/Config.hpp"
 #include "src/GameServer/GameModes/CtrPointRotation/CtrPointRotation.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
-
-#include <string>
 
 // RegisterSelf is called from TgMissionObjective.PostBeginPlay().
 // The original is a stub. For proximity/KOTH objectives we need to spawn
@@ -27,19 +24,25 @@ void __fastcall TgMissionObjective__RegisterSelf::Call(ATgMissionObjective* Obje
 	// BossSolo/BossGrp bosses) never reached any client: bosshud playtest
 	// 2026-07-17 showed boss 14073 spawning with r_Objectives slot=-1 while
 	// the client had the sublevel confirmed visible. Gates:
-	//  - streamed-package actors only (full name lacks the persistent map
-	//    package): persistent objectives are covered by the init pass,
-	//    dynamic ones (SuperAgent/CTR) are inserted explicitly by their modes
-	//    right after this hook and must not be double-added;
+	//  - streamed-package actors only (outermost package differs from
+	//    WorldInfo's, i.e. the actor lives in a streamed sublevel package):
+	//    persistent objectives are covered by the init pass, dynamic ones
+	//    (SuperAgent/CTR) are spawned INTO the persistent level and inserted
+	//    explicitly by their modes — auto-adding them here duplicated the
+	//    SuperAgent points on the HUD (added at class-default priority during
+	//    Spawn's PostBeginPlay, then again by the mode at real priority; the
+	//    old gate compared GetFullName against Config::GetMapNameChar and
+	//    missed on package-name case differences);
 	//  - present in m_MissionObjectives (own AddToList ran, not CTR-excluded);
 	//  - absent from r_Objectives (idempotent).
 	{
 		ATgRepInfo_Game* GRI = (ATgRepInfo_Game*)(Objective->WorldInfo != nullptr
 			? Objective->WorldInfo->GRI : nullptr);
-		const char* rawFull = ((UObject*)Objective)->GetFullName();
-		const std::string fullName(rawFull ? rawFull : "");
-		const bool bStreamedIn =
-			fullName.find(std::string(Config::GetMapNameChar()) + ".") == std::string::npos;
+		UObject* objPkg = (UObject*)Objective;
+		while (objPkg->Outer != nullptr) objPkg = objPkg->Outer;
+		UObject* worldPkg = (UObject*)Objective->WorldInfo;
+		while (worldPkg != nullptr && worldPkg->Outer != nullptr) worldPkg = worldPkg->Outer;
+		const bool bStreamedIn = (worldPkg != nullptr && objPkg != worldPkg);
 		if (GRI != nullptr && bStreamedIn) {
 			bool bInMissionList = false;
 			for (int i = 0; i < GRI->m_MissionObjectives.Num(); i++) {

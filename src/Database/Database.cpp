@@ -10327,6 +10327,127 @@ void Database::Init() {
 			"14179 -> Reprogrammed Colony Drone\n");
 	}
 
+	if (version < 149) {
+		// v149: OZ_DN trio spawn rebalance (playtest 2026-07-17: wasp spawns
+		// extreme, ants/drones sparse, no ticks, Terminus wave 3 wipes teams).
+		// Root cause is per-pulse roster size in the retail tables v146/v147
+		// picked: 245 = 8-12 wasps, 243 = 4-6 Mk2, 242/248/252 = soldier packs
+		// up to 8 bots, while ants (246) field only 1-2. The kismet factory
+		// comments state the intended sizes ("3 wasps", "2 MK2 wasps",
+		// "Ticks Ant", "Soldier") — retable to match:
+		//   221 = 3x Wasp 1644, 226 = 1 Ant + 2 Soldiers, 206 = 1 Sand Spider.
+		// No retail 1029 table pairs Ant 1670 with Tick 1672 or fields exactly
+		// 2x Mk2 1652, so three mod tables (Novice tier 1467 so the cascade
+		// reaches them at every difficulty, per the v142 precedent):
+		//   10008 = 2x Ant 1670 + 3-5 Ticks 1672 (the "Ticks Ant" factories)
+		//   10009 = 2-3 Ants 1670 (standard ant minion, replaces sparse 246)
+		//   10010 = 2x Wasp Mk2 1652
+		// All UPDATEs are value-gated (idempotent; no-op on a DB that already
+		// got the direct-edit version).
+		result = sqlite3_exec(db,
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10008, 1467, 0, 1, 1670, 2, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables WHERE bot_spawn_table_id = 10008);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10008, 1467, 0, 2, 1672, 1, 1.0, 0, 0, 1.0, 3, 5, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10008 AND spawn_group = 2);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10009, 1467, 0, 1, 1670, 1, 1.0, 0, 0, 1.0, 2, 3, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables WHERE bot_spawn_table_id = 10009);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10010, 1467, 0, 1, 1652, 2, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables WHERE bot_spawn_table_id = 10010);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v149 (mod spawn tables 10008-10010): %s\n", err); return; }
+
+		result = sqlite3_exec(db,
+			// Solar Farm: wasps 8-12 -> 3; "Ticks/Ant" factories get ticks; ants 1-2 -> 2-3.
+			"UPDATE map_object_config SET value = '221' "
+			"WHERE map_name = 'DN_Defense_Solar_Farm_P' AND map_object_id IN (14007, 14008, 14043) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '245';"
+			"UPDATE map_object_config SET value = '10008' "
+			"WHERE map_name = 'DN_Defense_Solar_Farm_P' AND map_object_id IN (14044, 14045) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '246';"
+			"UPDATE map_object_config SET value = '10009' "
+			"WHERE map_name = 'DN_Defense_Solar_Farm_P' AND map_object_id IN (14002, 14005) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '246';",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v149 (solar farm retable): %s\n", err); return; }
+
+		result = sqlite3_exec(db,
+			// NorthOutpost: wasps 8-12 -> 3; Mk2 4-6 -> 2; soldier packs -> 2
+			// soldiers + 1 ant; "Ticks Ant" factories get ticks; ants 1-2 -> 2-3.
+			"UPDATE map_object_config SET value = '221' "
+			"WHERE map_name = 'DN_Defense_NorthOutpost_P' "
+			"  AND map_object_id IN (14054, 14055, 14056, 14119, 14123, 14124, 14125) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '245';"
+			"UPDATE map_object_config SET value = '10010' "
+			"WHERE map_name = 'DN_Defense_NorthOutpost_P' AND map_object_id IN (14062, 14063, 14112) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '243';"
+			"UPDATE map_object_config SET value = '226' "
+			"WHERE map_name = 'DN_Defense_NorthOutpost_P' AND map_object_id = 14064 "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '242';"
+			"UPDATE map_object_config SET value = '226' "
+			"WHERE map_name = 'DN_Defense_NorthOutpost_P' AND map_object_id = 14068 "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '248';"
+			"UPDATE map_object_config SET value = '10008' "
+			"WHERE map_name = 'DN_Defense_NorthOutpost_P' AND map_object_id IN (14060, 14061) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '246';"
+			"UPDATE map_object_config SET value = '10009' "
+			"WHERE map_name = 'DN_Defense_NorthOutpost_P' AND map_object_id IN (14052, 14053, 14121, 14126) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '246';",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v149 (northoutpost retable): %s\n", err); return; }
+
+		result = sqlite3_exec(db,
+			// Newtopia: same treatment; sand spiders 3-5 -> 1 (kismet: "Sand
+			// Spider"); ticks ride the "Ant, SW tunnel" factory 14140.
+			"UPDATE map_object_config SET value = '221' "
+			"WHERE map_name = 'DN_Defense_Newtopia_P' AND map_object_id IN (14164, 14166, 14173, 14174) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '245';"
+			"UPDATE map_object_config SET value = '10010' "
+			"WHERE map_name = 'DN_Defense_Newtopia_P' AND map_object_id IN (14165, 14167, 14169) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '243';"
+			"UPDATE map_object_config SET value = '226' "
+			"WHERE map_name = 'DN_Defense_Newtopia_P' AND map_object_id = 14157 "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '252';"
+			"UPDATE map_object_config SET value = '226' "
+			"WHERE map_name = 'DN_Defense_Newtopia_P' AND map_object_id = 14132 "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '242';"
+			"UPDATE map_object_config SET value = '226' "
+			"WHERE map_name = 'DN_Defense_Newtopia_P' AND map_object_id = 14145 "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '248';"
+			"UPDATE map_object_config SET value = '206' "
+			"WHERE map_name = 'DN_Defense_Newtopia_P' AND map_object_id IN (14170, 14181, 14182) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '240';"
+			"UPDATE map_object_config SET value = '10008' "
+			"WHERE map_name = 'DN_Defense_Newtopia_P' AND map_object_id = 14140 "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '246';"
+			"UPDATE map_object_config SET value = '10009' "
+			"WHERE map_name = 'DN_Defense_Newtopia_P' "
+			"  AND map_object_id IN (14129, 14133, 14138, 14142, 14146, 14150, 14154, 14156) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '246';",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v149 (newtopia retable): %s\n", err); return; }
+
+		Logger::Log("db", "v149: OZ_DN trio spawn rebalance — wasps -> 3/pulse (221), "
+			"Mk2 -> 2/pulse (10010), soldiers -> 2+ant (226), ants -> 2-3 (10009), "
+			"Ticks Ant factories -> 10008, Newtopia sand spiders -> single (206)\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -10338,7 +10459,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 148", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 149", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
