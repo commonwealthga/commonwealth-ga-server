@@ -619,7 +619,11 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 	if (deviceId == GA::DeviceId::RestDevice) {
 		Device->m_bIsRestDevice = 1;
 		Pawn->m_RestDevice = Device;
-		Pawn->r_nRestDeviceSlot = slot;
+		// r_nRestDeviceSlot must stay -1 (UC default) outside an active rest:
+		// a permanent slot makes per-tick CheckInterrupt→InterruptRestDevice
+		// StopFire(864) every tick, which kills every held ('n'-flag) fire anim.
+		// Set transiently in DeviceFiring Begin/EndState (UObject__ProcessEvent.cpp).
+		// Pawn->r_nRestDeviceSlot = slot;
 	}
 
 	// --- Stealth device flag ---
