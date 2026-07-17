@@ -104,7 +104,7 @@ void __fastcall TgDeployable__SetProperty::Call(ATgDeployable* D, void* edx, int
 			// at 0 HP and TakeDamage's health<=0 early-out (uc:1211) makes it
 			// permanently indestructible.
 			if (oldHp > 0 && newHp <= 0 && !D->m_bInDestroyedState) {
-				D->eventDestroyIt(0);
+				DeployableClassify::DispatchDestroyIt(D, 0);
 			}
 
 			Logger::Log("heal_tick",

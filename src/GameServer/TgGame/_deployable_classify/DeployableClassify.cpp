@@ -1,10 +1,28 @@
 #include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
 
+#include "src/pch.hpp"
 #include "src/Database/Database.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 
 #include <unordered_map>
 
 namespace DeployableClassify {
+
+void DispatchDestroyIt(ATgDeployable* Dep, unsigned long bSkipFx) {
+	if (!Dep) return;
+	// Exact class-name match, not ClassNameContains — "TgDeploy_Beacon" is a
+	// substring of "TgDeploy_BeaconEntrance" (which has no override and must
+	// take the base path).
+	const std::string& cls = ObjectClassCache::GetClassName((UObject*)Dep);
+	if (cls == "Class TgGame.TgDeploy_Sensor")
+		((ATgDeploy_Sensor*)Dep)->DestroyIt(bSkipFx);
+	else if (cls == "Class TgGame.TgDeploy_Beacon")
+		((ATgDeploy_Beacon*)Dep)->DestroyIt(bSkipFx);
+	else if (cls == "Class TgGame.TgDeploy_DestructibleCover")
+		((ATgDeploy_DestructibleCover*)Dep)->DestroyIt(bSkipFx);
+	else
+		Dep->eventDestroyIt(bSkipFx);
+}
 
 bool IsKnownDeployableId(int nDeployableId) {
 	if (nDeployableId <= 0) return false;

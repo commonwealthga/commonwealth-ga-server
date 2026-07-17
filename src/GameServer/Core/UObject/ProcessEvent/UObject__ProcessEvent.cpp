@@ -176,6 +176,7 @@ enum class DispatchTag : uint8_t {
 	TgTriggerBeaconEntrance,      // Pre-call: record teammate beacon-teleport usage for match stats
 	SuperAgentCaptureGate,        // Super Agent mode: freeze proximity capture per the all-players / drain gate, then detect A's capture
 	PayloadDeployableCrush,       // Payload (TgObjectiveAttachActor) Touch/RanInto/EncroachingOn — skip for morale Dome Shields
+	SensorProximitySweep,         // Post-call: remove TouchedPlayers beyond config radius (UC loop can't see pawns outside m_fProximityDistance)
 	// GameTimerDiagnostic,          // Diagnostic-only: before/after snapshots around original timer/match flow
 };
 
@@ -592,6 +593,13 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	    strcmp(name, "Function TgGame.TgObjectiveAttachActor.RanInto") == 0 ||
 	    strcmp(name, "Function TgGame.TgObjectiveAttachActor.EncroachingOn") == 0)
 		return DispatchTag::PayloadDeployableCrush;
+	// Sensor 0.2s proximity poll (engine-timer dispatch, TgDeploy_Sensor.uc:48).
+	// UC's foreach only iterates pawns WITHIN m_fProximityDistance of the sensor,
+	// so a detected pawn that moves beyond that envelope is never removed from
+	// TouchedPlayers and its r_nSensorAlertLevel (HUD "detected" icon) sticks
+	// forever. Post-call sweep removes out-of-range entries.
+	if (strcmp(name, "Function TgGame.TgDeploy_Sensor.CheckPlayersWithInProximity") == 0)
+		return DispatchTag::SensorProximitySweep;
 	// if (IsGameTimerDiagnosticFunction(name)) return DispatchTag::GameTimerDiagnostic;
 
 	return DispatchTag::Unknown;
@@ -2103,6 +2111,33 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			break;  // skip CallOriginal → no dome.DestroyIt()
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	}
+
+	// Stale-detection sweep for deployed sensors. The UC poll's
+	// `foreach AllPawns(..., Location, m_fProximityDistance)` never iterates a
+	// pawn outside that radius, so RemovePlayerFromList is unreachable for
+	// pawns that left the envelope — their s_nSensorAlertList slot (and the
+	// replicated r_nSensorAlertLevel HUD icon) stayed set forever. Walk each
+	// config's TouchedPlayers after the original and remove anyone beyond that
+	// config's radius; RemovePlayerFromList recomputes the pawn's alert level.
+	case DispatchTag::SensorProximitySweep: {
+		CallOriginal(Object, edx, Function, Params, Result);
+		ATgDeploy_Sensor* sensor = (ATgDeploy_Sensor*)Object;
+		for (int idx = 0; idx < sensor->m_DeploySensorConfig.Count; ++idx) {
+			FDeploySensorConfig& cfg = sensor->m_DeploySensorConfig.Data[idx];
+			const float maxDistSq = cfg.fProximityDistance * cfg.fProximityDistance;
+			// Reverse walk — RemovePlayerFromList does RemoveItem on this array.
+			for (int i = cfg.TouchedPlayers.Count - 1; i >= 0; --i) {
+				ATgPawn* p = cfg.TouchedPlayers.Data[i];
+				if (!p) continue;
+				const float dx = p->Location.X - sensor->Location.X;
+				const float dy = p->Location.Y - sensor->Location.Y;
+				const float dz = p->Location.Z - sensor->Location.Z;
+				if (dx * dx + dy * dy + dz * dz <= maxDistSq) continue;
+				sensor->RemovePlayerFromList(p, idx);
+			}
+		}
 		break;
 	}
 

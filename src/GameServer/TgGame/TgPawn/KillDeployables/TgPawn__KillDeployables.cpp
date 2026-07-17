@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgPawn/KillDeployables/TgPawn__KillDeployables.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
+#include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
 
 // Native UTgPawn::execKillDeployables @ 0x109c0870 is a void stub. UC declares
 //     native function KillDeployables(bool bAll);
@@ -78,11 +79,12 @@ void __fastcall TgPawn__KillDeployables::Call(ATgPawn* Pawn, void* edx, unsigned
 			"  [KillDeployables] DestroyIt [%d] 0x%p deployableId=%d\n",
 			i, dep, dep->r_nDeployableId);
 
-		// UC `Dep.eventDestroyIt(false)` — runs the full UC DestroyIt event
+		// UC `Dep.DestroyIt(false)` — runs the full UC DestroyIt event
 		// which: stops fire, sets LifeSpan, hides mesh, swaps to destroyed
 		// mesh, flips m_bInDestroyedState, bumps r_nReplicateDestroyIt to
-		// trigger the client-side repnotify.
-		dep->eventDestroyIt(0 /* bSkipFx */);
+		// trigger the client-side repnotify. Routed through DispatchDestroyIt
+		// so subclass overrides (sensor alert cleanup, etc.) run too.
+		DeployableClassify::DispatchDestroyIt(dep, 0 /* bSkipFx */);
 	}
 
 	// UC does `s_SelfDeployableList.Length = 0;` — reset the Count. Data
@@ -119,7 +121,7 @@ void TgPawn__KillDeployables::KillAllOwned(ATgPawn* Pawn) {
 		Logger::Log("deployables",
 			"[KillAllOwned] DestroyIt deployable=0x%p id=%d\n",
 			dep, dep->r_nDeployableId);
-		dep->eventDestroyIt(0);
+		DeployableClassify::DispatchDestroyIt(dep, 0);
 	}
 
 	// Kill deployed bot pawns (e.g. Grizzly drone).
