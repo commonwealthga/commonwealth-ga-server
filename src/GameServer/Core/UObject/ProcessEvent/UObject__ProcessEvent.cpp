@@ -161,6 +161,7 @@ enum class DispatchTag : uint8_t {
 	SpectateVisualState,          // Diagnostic for black-screen/fade/view-target join races
 	DyingBeginState,              // CallOriginal then BotDied
 	DeviceFiringEndState,         // CallOriginal then jetpack-flag clear
+	DeviceFiringBeginState,       // Rest device: set r_nRestDeviceSlot while resting (transient)
 	ServerStopFire,               // CallOriginal then RemoveEffectGroupsByCategory(stealth)
 	TgEffectRemove,               // DoCatchAll — TgEffectBuff.Remove now reverses buffs canonically
 	PostPawnSetup,                // CallOriginal (sets PHYS_Falling) then restore PHYS_Flying for flying bots
@@ -562,6 +563,7 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	}
 	if (strcmp(name, "Function TgPawn.Dying.BeginState") == 0)                       return DispatchTag::DyingBeginState;
 	if (strcmp(name, "Function TgDevice.DeviceFiring.EndState") == 0)                return DispatchTag::DeviceFiringEndState;
+	if (strcmp(name, "Function TgDevice.DeviceFiring.BeginState") == 0)              return DispatchTag::DeviceFiringBeginState;
 	if (strcmp(name, "Function TgGame.TgDevice.ServerStopFire") == 0)                return DispatchTag::ServerStopFire;
 	if (strcmp(name, "Function TgGame.TgDevice.ServerStartFire") == 0)               return DispatchTag::ServerStartFire;
 	if (strcmp(name, "Function TgGame.TgEffect.Remove") == 0)                        return DispatchTag::TgEffectRemove;
@@ -1336,7 +1338,31 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		break;
 	}
 
+	case DispatchTag::DeviceFiringBeginState: {
+		// Rest device (864): expose r_nRestDeviceSlot only WHILE resting.
+		// InterruptRestDevice (client+server per-tick CheckInterrupt) uses it to
+		// stop an in-progress rest on movement; a permanently-set slot makes it
+		// call StopFire(864) every tick instead, flooding the flash queue and
+		// clearing the client's shared range-node m_bPendingFire each frame
+		// (kills every INTERRUPT_FIRE_ANIM_ON_REFIRE='n' held fire anim).
+		{
+			ATgDevice* Dev = (ATgDevice*)Object;
+			if (Dev && Dev->m_bIsRestDevice && Dev->Instigator) {
+				((ATgPawn*)Dev->Instigator)->r_nRestDeviceSlot = (int)Dev->r_eEquippedAt;
+			}
+		}
+		DoCatchAll();
+		break;
+	}
+
 	case DispatchTag::DeviceFiringEndState: {
+		// Rest device: rest over → hide the slot again (see BeginState above).
+		{
+			ATgDevice* Dev = (ATgDevice*)Object;
+			if (Dev && Dev->m_bIsRestDevice && Dev->Instigator) {
+				((ATgPawn*)Dev->Instigator)->r_nRestDeviceSlot = -1;
+			}
+		}
 		CallOriginal(Object, edx, Function, Params, Result);
 		ATgDevice* Device = (ATgDevice*)Object;
 

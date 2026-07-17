@@ -209,7 +209,11 @@ void TgGame__SpawnBotById::GiveDeviceById(
 		if (deviceId == 864) {
 			*(uint32_t*)((char*)Device + 0x22C) |= 0x00020000;    // m_bIsRestDevice
 			*(ATgDevice**)((char*)Pawn + 0x0904) = Device;         // m_RestDevice
-			*(int*)((char*)Pawn + 0x1524) = equipPoint;             // r_nRestDeviceSlot (replicated)
+			// r_nRestDeviceSlot stays -1 outside an active rest — a permanent
+			// slot makes server+client CheckInterrupt spam StopFire(864) every
+			// tick, killing pending-fire ('n' flag) anims. Set transiently in
+			// DeviceFiring Begin/EndState (UObject__ProcessEvent.cpp).
+			// *(int*)((char*)Pawn + 0x1524) = equipPoint;             // r_nRestDeviceSlot (replicated)
 		}
 		if (deviceType == GA_G::TGDT_MORALE) {
 			*(int*)((char*)Pawn + 0x1520) = equipPoint;             // r_nMoraleDeviceSlot (replicated)
@@ -443,7 +447,9 @@ void TgGame__SpawnBotById::GiveDevicesFromBotConfig(ATgPawn* Bot, ATgRepInfo_Pla
 			if (deviceId == 864) {
 				*(uint32_t*)((char*)Device + 0x22C) |= 0x00020000;    // m_bIsRestDevice
 				*(ATgDevice**)((char*)Bot + 0x0904) = Device;         // m_RestDevice
-				*(int*)((char*)Bot + 0x1524) = equipPoint;             // r_nRestDeviceSlot (replicated)
+				// r_nRestDeviceSlot stays -1 outside an active rest — see
+				// Inventory.cpp rest-device block for the full rationale.
+				// *(int*)((char*)Bot + 0x1524) = equipPoint;             // r_nRestDeviceSlot (replicated)
 				Logger::Log("debug", "GiveDevicesFromBotConfig: REST device 864 at equipPoint=%d\n", equipPoint);
 			}
 
