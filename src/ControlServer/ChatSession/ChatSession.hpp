@@ -21,6 +21,10 @@ public:
     void deliver(const std::vector<uint8_t>& msg);
     const std::string& get_player_name() const { return player_name_; }
 
+    // Deliver a system chat line to one player's chat session, if they have
+    // one. Used by TcpSession (e.g. friends "player not found" feedback).
+    static void SystemMessageTo(const std::string& player_name, const std::string& text);
+
 private:
     asio::ip::tcp::socket socket_;
     asio::steady_timer bind_retry_timer_;

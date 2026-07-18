@@ -1,5 +1,6 @@
 #include "src/ControlServer/ChatSession/ChatSession.hpp"
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
+#include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 
 #include <algorithm>
@@ -458,6 +459,14 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
         };
 
         const std::string& targetName = target->get_player_name();
+        // Ignore gate: recipient has the sender on their F3 ignore list.
+        if (Database::IsIgnoring(targetName, player_name_)) {
+            Logger::Log("friends", "[Friends] whisper blocked: '%s' ignores '%s'\n",
+                targetName.c_str(), player_name_.c_str());
+            deliver(BuildChatFrame(kSystemChannelId,
+                "*** " + targetName + " is ignoring you ***"));
+            return;
+        }
         target->deliver(makeWhisperFrame(player_name_, text, player_name_));
         if (target.get() != this)
             deliver(makeWhisperFrame("", "To " + targetName + ": " + text, targetName));
@@ -494,7 +503,26 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
                     peer->deliver(chunk);
                 }
             } else {
+                // Ignore gate: don't show this sender's lines to players who
+                // have them on the F3 ignore list.
+                if (peer.get() != this &&
+                    Database::IsIgnoring(peer->get_player_name(), player_name_)) {
+                    continue;
+                }
                 peer->deliver(chunk);
+            }
+        }
+    }
+}
+
+void ChatSession::SystemMessageTo(const std::string& player_name, const std::string& text) {
+    if (player_name.empty()) return;
+    auto frame = BuildChatFrame(kSystemChannelId, text);
+    for (auto& weak : g_chat_sessions) {
+        if (auto peer = weak.lock()) {
+            if (peer->get_player_name() == player_name) {
+                peer->deliver(frame);
+                return;
             }
         }
     }
