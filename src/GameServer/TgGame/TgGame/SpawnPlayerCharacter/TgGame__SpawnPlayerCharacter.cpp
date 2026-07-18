@@ -459,7 +459,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 
 	// newrepplayer->Team = defenders;
-	newrepplayer->bAdmin = 1;
+	newrepplayer->bAdmin = 0;
 	// PRI's r_CustomCharacterAssembly is also written by CosmeticEquip::LoadFromDB
 	// (it mirrors every assembly field from the pawn so the client's
 	// UpdateCharacterAssetRefs preload sees the final cosmetic state).
