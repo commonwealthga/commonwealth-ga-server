@@ -3,6 +3,7 @@
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #ifndef _WIN32
 #include <netinet/tcp.h>
@@ -413,7 +414,54 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
     bool isDM = channel == 8;
 
     if (isDM) {
-        message = "DMs are not supported yet, sorry!";
+        // Whisper: recipient arrives in PLAYER_NAME (0x03C5), verified via live capture.
+        const std::string recipient = pkt.ReadString(GA_T::PLAYER_NAME).value_or("");
+        auto ieq = [](const std::string& a, const std::string& b) {
+            if (a.size() != b.size()) return false;
+            for (size_t i = 0; i < a.size(); i++)
+                if (std::tolower((unsigned char)a[i]) != std::tolower((unsigned char)b[i]))
+                    return false;
+            return true;
+        };
+        PruneExpiredSessions();
+        std::shared_ptr<ChatSession> target;
+        for (auto& weak : g_chat_sessions) {
+            if (auto peer = weak.lock()) {
+                if (ieq(peer->get_player_name(), recipient)) { target = peer; break; }
+            }
+        }
+        if (!target) {
+            deliver(BuildChatFrame(kSystemChannelId,
+                "*** " + recipient + " is not online ***"));
+            return;
+        }
+        // Per-side frames. Client renders NAME (0x370) as "<name> says:" (or
+        // MESSAGE verbatim when NAME is empty — used for the sender echo) and
+        // caches PLAYER_NAME (0x3C5) as the reply-keybind target.
+        const std::string text = pkt.ReadString(GA_T::MESSAGE).value_or("");
+        auto makeWhisperFrame = [this, channel](const std::string& displayName,
+                                                const std::string& msgText,
+                                                const std::string& replyToName) {
+            std::vector<uint8_t> body;
+            uint16_t pt = GA_U::CHAT_MESSAGE, ic = 4;
+            append(body, pt & 0xFF, pt >> 8, ic & 0xFF, ic >> 8);
+            Write4B(body, GA_T::CHAT_CH_TYPE, channel);
+            WriteString(body, GA_T::NAME, displayName);
+            WriteString(body, GA_T::MESSAGE, msgText);
+            WriteString(body, GA_T::PLAYER_NAME, replyToName);
+            std::vector<uint8_t> frame;
+            uint16_t sz = static_cast<uint16_t>(body.size());
+            frame.push_back(sz & 0xFF);
+            frame.push_back(sz >> 8);
+            frame.insert(frame.end(), body.begin(), body.end());
+            return frame;
+        };
+
+        const std::string& targetName = target->get_player_name();
+        target->deliver(makeWhisperFrame(player_name_, text, player_name_));
+        if (target.get() != this)
+            deliver(makeWhisperFrame("", "To " + targetName + ": " + text, targetName));
+        return;
     }
 
     Logger::Log("chat", "Broadcasting message '%s' to channel %u\n", message.c_str(), channel);
