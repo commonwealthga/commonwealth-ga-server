@@ -4,6 +4,11 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <atomic>
+
+// Bumped on every ga_friends mutation; starts at 1 so a fresh ChatSession
+// cache (epoch 0) always loads on first use.
+static std::atomic<uint64_t> g_friends_epoch{1};
 
 sqlite3* Database::connection = nullptr;
 std::string Database::db_path_ = "server.db";
@@ -2574,6 +2579,7 @@ bool Database::AddFriend(int64_t user_id, const std::string& name, bool ignore_f
 		Logger::Log("db", "[Friends] AddFriend insert failed: %s\n", sqlite3_errmsg(db));
 	}
 	sqlite3_finalize(stmt);
+	g_friends_epoch++;
 	return true;
 }
 
@@ -2592,6 +2598,7 @@ void Database::RemoveFriend(int64_t user_id, int64_t friend_user_id) {
 	sqlite3_bind_int64(stmt, 2, friend_user_id);
 	sqlite3_step(stmt);
 	sqlite3_finalize(stmt);
+	g_friends_epoch++;
 }
 
 void Database::SetFriendNotes(int64_t user_id, int64_t friend_user_id, const std::string& notes) {
@@ -2632,6 +2639,34 @@ bool Database::IsIgnoring(const std::string& owner_name, const std::string& othe
 	const bool ignoring = sqlite3_step(stmt) == SQLITE_ROW;
 	sqlite3_finalize(stmt);
 	return ignoring;
+}
+
+uint64_t Database::FriendsEpoch() {
+	return g_friends_epoch.load();
+}
+
+std::vector<std::string> Database::GetIgnoredNames(const std::string& owner_name) {
+	std::vector<std::string> out;
+	if (owner_name.empty()) return out;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT lower(t.username) FROM ga_friends f "
+		"JOIN ga_users o ON o.id = f.user_id "
+		"JOIN ga_users t ON t.id = f.friend_user_id "
+		"WHERE o.username = ? COLLATE NOCASE AND f.ignore_flag = 1",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Friends] GetIgnoredNames prepare failed: %s\n", sqlite3_errmsg(db));
+		return out;
+	}
+	sqlite3_bind_text(stmt, 1, owner_name.c_str(), -1, SQLITE_TRANSIENT);
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		const char* name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+		if (name) out.push_back(name);
+	}
+	sqlite3_finalize(stmt);
+	return out;
 }
 
 bool Database::SetUserPvpVerification(int64_t user_id, bool verified) {

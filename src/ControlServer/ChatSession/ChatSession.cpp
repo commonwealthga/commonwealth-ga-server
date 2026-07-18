@@ -460,7 +460,7 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
 
         const std::string& targetName = target->get_player_name();
         // Ignore gate: recipient has the sender on their F3 ignore list.
-        if (Database::IsIgnoring(targetName, player_name_)) {
+        if (target->is_ignoring(player_name_)) {
             Logger::Log("friends", "[Friends] whisper blocked: '%s' ignores '%s'\n",
                 targetName.c_str(), player_name_.c_str());
             deliver(BuildChatFrame(kSystemChannelId,
@@ -506,13 +506,28 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
                 // Ignore gate: don't show this sender's lines to players who
                 // have them on the F3 ignore list.
                 if (peer.get() != this &&
-                    Database::IsIgnoring(peer->get_player_name(), player_name_)) {
+                    peer->is_ignoring(player_name_)) {
                     continue;
                 }
                 peer->deliver(chunk);
             }
         }
     }
+}
+
+bool ChatSession::is_ignoring(const std::string& sender_name) {
+    const uint64_t epoch = Database::FriendsEpoch();
+    if (epoch != ignore_epoch_) {
+        ignored_lower_.clear();
+        for (auto& name : Database::GetIgnoredNames(player_name_))
+            ignored_lower_.insert(std::move(name));
+        ignore_epoch_ = epoch;
+    }
+    if (ignored_lower_.empty()) return false;
+    std::string lower = sender_name;
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return ignored_lower_.count(lower) != 0;
 }
 
 void ChatSession::SystemMessageTo(const std::string& player_name, const std::string& text) {

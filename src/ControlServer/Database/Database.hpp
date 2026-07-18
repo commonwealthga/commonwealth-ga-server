@@ -108,8 +108,15 @@ public:
     static void RemoveFriend(int64_t user_id, int64_t friend_user_id);
     static void SetFriendNotes(int64_t user_id, int64_t friend_user_id, const std::string& notes);
     // True when `owner_name` has `other_name` on their ignore list (both are
-    // ga_users.username, matched case-insensitively). Used by the whisper gate.
+    // ga_users.username, matched case-insensitively). Used by the team-invite
+    // gate; chat gates use the ChatSession per-session cache instead.
     static bool IsIgnoring(const std::string& owner_name, const std::string& other_name);
+    // Monotonic counter bumped on every ga_friends mutation. ChatSession
+    // compares it against its cached value to know when to reload its
+    // ignore set.
+    static uint64_t FriendsEpoch();
+    // Lowercased usernames on owner_name's ignore list.
+    static std::vector<std::string> GetIgnoredNames(const std::string& owner_name);
 
     // ---- Match stats (design 2026-06-12) -----------------------------------
     struct MatchEventRow {
