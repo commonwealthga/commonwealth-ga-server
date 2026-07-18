@@ -115,6 +115,47 @@ std::vector<uint8_t> BuildChatFrame(uint32_t channel, const std::string& message
     return chunk;
 }
 
+// Build a CHAT_CONFIG (0x0072) wire frame enabling the given chat channels.
+// The client keeps a 16-slot enabled-channel table (slot = CHAT_CH_TYPE,
+// value = CHAT_CH_ID, nonzero = enabled) and refuses to switch its current
+// send channel to a slot that is 0 — so without this packet a client that
+// entered whisper mode (/r or reply keybind) can never switch back to Local.
+// Layout:
+//   [2B chunk_size][2B packet_type=0x0072][2B item_count=1]
+//   [2B DATA_SET][2B row_count]
+//     per row: [2B field_count=2][CHAT_CH_TYPE 4B][CHAT_CH_ID 4B]
+std::vector<uint8_t> BuildChatConfigFrame(const std::vector<uint32_t>& channels) {
+    std::vector<uint8_t> body;
+    const uint16_t packet_type = GA_U::CHAT_CONFIG;
+    const uint16_t item_count  = 1;
+    body.push_back(packet_type & 0xFF); body.push_back(packet_type >> 8);
+    body.push_back(item_count  & 0xFF); body.push_back(item_count  >> 8);
+
+    body.push_back(GA_T::DATA_SET & 0xFF);
+    body.push_back(GA_T::DATA_SET >> 8);
+    const uint16_t row_count = static_cast<uint16_t>(channels.size());
+    body.push_back(row_count & 0xFF);
+    body.push_back(row_count >> 8);
+    for (uint32_t ch : channels) {
+        body.push_back(0x02); body.push_back(0x00);  // 2 fields per row
+        for (uint16_t type : { (uint16_t)GA_T::CHAT_CH_TYPE, (uint16_t)GA_T::CHAT_CH_ID }) {
+            body.push_back(type & 0xFF);
+            body.push_back(type >> 8);
+            body.push_back(ch        & 0xFF);
+            body.push_back((ch >>  8) & 0xFF);
+            body.push_back((ch >> 16) & 0xFF);
+            body.push_back((ch >> 24) & 0xFF);
+        }
+    }
+
+    std::vector<uint8_t> chunk;
+    const uint16_t chunk_size = static_cast<uint16_t>(body.size());
+    chunk.push_back(chunk_size & 0xFF);
+    chunk.push_back(chunk_size >> 8);
+    chunk.insert(chunk.end(), body.begin(), body.end());
+    return chunk;
+}
+
 // Broadcast a system message (e.g. join/leave announcement) to every active
 // chat session. Doesn't read or modify any per-session state besides
 // write_queue_ via deliver(). `exclude` skips one specific session (used for
@@ -179,6 +220,9 @@ void ChatSession::start() {
 void ChatSession::AnnounceJoinIfNeeded() {
     if (announced_join_ || player_name_.empty()) return;
     announced_join_ = true;
+    // Enable Local (4) and Tell (8) in the client's channel table so channel
+    // switching (combo box, /local) works — see BuildChatConfigFrame.
+    deliver(BuildChatConfigFrame({ 4, 8 }));
     BroadcastSystemMessage(
         "*** " + player_name_ + " has joined the chat ***",
         kSystemChannelId,
