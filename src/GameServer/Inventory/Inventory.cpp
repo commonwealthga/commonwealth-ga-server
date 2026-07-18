@@ -1017,6 +1017,17 @@ void Inventory::Unequip(ATgPawn* Pawn, int slot) {
 	Logger::Log("inventory", "Unequip: pawn=0x%p slot=%d deviceId=%d invId=%d mods=%zu\n",
 		Pawn, slot, deviceId, invId, mods.size());
 
+	// 0. Deactivate fire modes BEFORE teardown. TgDeviceFire.Activate applies
+	//    type-283 "in hand" / type-266 aim effect groups on the authority side
+	//    (e.g. Pain Gun AutoLockAngle prop 200, stored with required_skill_id=0
+	//    — a wildcard the client's SetTargetAutoLock matches for ANY weapon).
+	//    The only retail removal is TgDeviceFire.Deactivate on weapon
+	//    switch-out; TgDevice.Destroyed() never runs it. Without this the buff
+	//    outlives the device and the next equipped weapon inherits auto-lock.
+	//    Deactivate is guarded (non-forced RemoveEffectType only touches
+	//    applied managed groups), so this is a no-op for never-activated modes.
+	device->DeactivateAllModes();
+
 	// 1. Reverse rolled-mod buffs (must precede the device destroy — the
 	//    ApplyBuff path mirrors to the client RPC which expects a live
 	//    Instigator chain).
