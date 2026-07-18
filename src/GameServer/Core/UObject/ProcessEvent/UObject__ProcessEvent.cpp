@@ -178,6 +178,7 @@ enum class DispatchTag : uint8_t {
 	SuperAgentCaptureGate,        // Super Agent mode: freeze proximity capture per the all-players / drain gate, then detect A's capture
 	PayloadDeployableCrush,       // Payload (TgObjectiveAttachActor) Touch/RanInto/EncroachingOn — skip for morale Dome Shields
 	SensorProximitySweep,         // Post-call: remove TouchedPlayers beyond config radius (UC loop can't see pawns outside m_fProximityDistance)
+	DevCheatRpc,                  // Client-invocable dev/cheat server RPCs (Icarus/Zeus/TgSvrExec/...) — dropped unless PRI bAdmin
 	// GameTimerDiagnostic,          // Diagnostic-only: before/after snapshots around original timer/match flow
 };
 
@@ -603,6 +604,57 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	if (strcmp(name, "Function TgGame.TgDeploy_Sensor.CheckPlayersWithInProximity") == 0)
 		return DispatchTag::SensorProximitySweep;
 	// if (IsGameTimerDiagnosticFunction(name)) return DispatchTag::GameTimerDiagnostic;
+
+	// Retail-shipped dev/cheat console commands whose `reliable server`
+	// halves execute here ungated (the UC bodies check nothing — the
+	// original server dropped these for non-GM accounts). Every incoming
+	// client RPC dispatches through ProcessEvent (UnChan.cpp
+	// UActorChannel::ReceivedBunch), so tagging them here intercepts the
+	// whole family. Handled in the DevCheatRpc case below.
+	{
+		static const char kPCPrefix[] = "Function TgGame.TgPlayerController.";
+		if (strncmp(name, kPCPrefix, sizeof(kPCPrefix) - 1) == 0) {
+			const char* fn = name + (sizeof(kPCPrefix) - 1);
+			if (   strcmp(fn, "ServerZeus") == 0                  // god mode
+				|| strcmp(fn, "ServerIcarus") == 0                // fly / no-clip
+				|| strcmp(fn, "ServerApollo") == 0                // unlimited energy
+				|| strcmp(fn, "ServerHades") == 0                 // no cooldowns
+				|| strcmp(fn, "ServerAthena") == 0                // invisible to AI
+				|| strcmp(fn, "ServerElectra") == 0               // r_bIsBot toggle
+				|| strcmp(fn, "ServerChronos") == 0               // mission-timer pause/set
+				|| strcmp(fn, "ServerGotoFly") == 0               // PlayerFlying state
+				|| strcmp(fn, "ServerSetGroundspeed") == 0        // speed hack
+				|| strcmp(fn, "ServerSetGameSpeed") == 0          // global game-speed modifier
+				|| strcmp(fn, "serverdostun") == 0                // self stun/UNstun (escapes enemy stuns)
+				|| strcmp(fn, "TgSvrExec") == 0                   // arbitrary server console command
+				|| strcmp(fn, "ServerSetValue") == 0              // arbitrary object field write
+				|| strcmp(fn, "ServerGetValue") == 0
+				|| strcmp(fn, "ServerCallKismetEventFromClient") == 0
+				|| strcmp(fn, "ServerTestAwardLoot") == 0
+				|| strcmp(fn, "_ServerSpawnBot") == 0
+				|| strcmp(fn, "_ServerSpawnTemplatePlayer") == 0
+				|| strcmp(fn, "_ServerEquipDevice") == 0          // arbitrary device equip (beacon pickup uses NonPersistAddDevice directly, not this RPC)
+				|| strcmp(fn, "ServerForceBotAction") == 0
+				|| strcmp(fn, "ServerObama") == 0                 // currency grant
+				|| strcmp(fn, "ServerAddToken") == 0
+				|| strcmp(fn, "ServerAddHZPoints") == 0
+				|| strcmp(fn, "ServerGMGiven") == 0
+				|| strcmp(fn, "ServerDevGiveXP") == 0
+				|| strcmp(fn, "ServerSetLevel") == 0
+				|| strcmp(fn, "ServerTestSystemMailItem") == 0    // mail items to any player
+				|| strcmp(fn, "ServerSetPawnAlwaysRelevant") == 0
+				|| strcmp(fn, "ServerTestBeginAssignment") == 0
+				|| strcmp(fn, "ServerTestRequestAssignment") == 0
+				|| strcmp(fn, "ServerTestCloseAllAssignments") == 0
+				|| strcmp(fn, "ServerSimNWCondition") == 0
+				|| strcmp(fn, "ServerGetTraceTime") == 0
+				|| strcmp(fn, "ServerProfiling") == 0
+				|| strcmp(fn, "ServerQuit") == 0)                 // instance shutdown when <2 players
+			{
+				return DispatchTag::DevCheatRpc;
+			}
+		}
+	}
 
 	return DispatchTag::Unknown;
 }
@@ -2173,6 +2225,23 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			CallOriginal(Object, edx, Function, Params, Result);
 		}
 		SuperAgent::OnCaptureTick(Obj);
+		break;
+	}
+
+	// Dev/cheat RPC gate. Nothing in our C++ dispatches these functions, so
+	// every arrival is a client console command. PRI bAdmin is the GM flag
+	// (SpawnPlayerCharacter writes 0 for everyone); flagged accounts keep
+	// the full retail cheat/GM console.
+	case DispatchTag::DevCheatRpc: {
+		APlayerReplicationInfo* pri =
+			((APlayerController*)Object)->PlayerReplicationInfo;
+		if (pri && pri->bAdmin) {
+			DoCatchAll();
+		} else if (Logger::IsChannelEnabled("cheatgate")) {
+			std::string fn = Function->GetFullName();
+			std::string obj = Object->GetFullName();
+			Logger::Log("cheatgate", "blocked %s [%s]\n", fn.c_str(), obj.c_str());
+		}
 		break;
 	}
 
