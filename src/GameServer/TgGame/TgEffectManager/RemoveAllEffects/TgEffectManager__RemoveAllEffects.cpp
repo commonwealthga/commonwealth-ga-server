@@ -97,7 +97,10 @@ void __fastcall TgEffectManager__RemoveAllEffects::Call(ATgEffectManager* pThis,
 				}
 				const unsigned int eflags = *(unsigned int*)((char*)eff + 0x48);
 				if (eflags & 0x01) continue;        // aoi=1: tick-gift, skip reversal
-				if (eff->m_fCurrent == 0.0f) continue;  // phantom clone: Apply never ran
+				// Sensor/Visibility exemption (see RemoveEffects.cpp): without it,
+				// dying mid Visual Scanner / Vulture Vision left r_ScannerSettings
+				// populated forever on the revived pawn (permanent reveal).
+				if (!EffectPhantomGuardExempt(eff) && eff->m_fCurrent == 0.0f) continue;  // phantom clone: Apply never ran
 				DispatchEffectRemove(eff, target, 0);  // own-class Remove (buffs need the override)
 			}
 		}

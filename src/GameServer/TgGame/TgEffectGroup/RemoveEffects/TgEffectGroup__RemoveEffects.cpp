@@ -19,6 +19,11 @@ void DispatchEffectRemove(UTgEffect* effect, AActor* Target, unsigned long bRese
 	else                                                                        effect->eventRemove(Target, bResetToFollow);
 }
 
+bool EffectPhantomGuardExempt(UTgEffect* effect) {
+	return ObjectClassCache::ClassNameContains(effect, "TgEffectSensor") ||
+	       ObjectClassCache::ClassNameContains(effect, "TgEffectVisibility");
+}
+
 void __fastcall TgEffectGroup__RemoveEffects::Call(UTgEffectGroup* eg, void* /*edx*/, AActor* Target, unsigned long bResetToFollow) {
 	if (!eg) return;
 
@@ -64,10 +69,7 @@ void __fastcall TgEffectGroup__RemoveEffects::Call(UTgEffectGroup* eg, void* /*e
 		// persisted after Sensor Boost / Visual Scanner expired, and prop-141
 		// r_nStealthDisabled leaked. Their Removes are internally guarded
 		// (slot-keyed clear / `>0` decrement / idempotent SetProperty-0).
-		const bool guardExempt =
-			ObjectClassCache::ClassNameContains(effect, "TgEffectSensor") ||
-			ObjectClassCache::ClassNameContains(effect, "TgEffectVisibility");
-		if (!guardExempt && effect->m_fCurrent == 0.0f) {
+		if (!EffectPhantomGuardExempt(effect) && effect->m_fCurrent == 0.0f) {
 			continue;
 		}
 

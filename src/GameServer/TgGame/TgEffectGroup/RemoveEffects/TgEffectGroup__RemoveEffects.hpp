@@ -27,6 +27,11 @@
 // Shared so RemoveEffects and RemoveAllEffects can't bypass the override.
 void DispatchEffectRemove(UTgEffect* effect, AActor* Target, unsigned long bResetToFollow);
 
+// Sensor/Visibility ApplyEffect never writes m_fCurrent, so the phantom-clone
+// guard (m_fCurrent==0 → skip Remove) would eat their Remove forever. Shared
+// by RemoveEffects and RemoveAllEffects so the exemption can't diverge.
+bool EffectPhantomGuardExempt(UTgEffect* effect);
+
 class TgEffectGroup__RemoveEffects : public HookBase<
 	void(__fastcall*)(UTgEffectGroup*, void*, AActor*, unsigned long),
 	0x10a6f3d0,
