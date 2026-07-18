@@ -695,12 +695,13 @@ void TgProj_Deployable__SpawnDeployable::EnforceDeployableLimit(
 			"[DeployableLimit]   destroying [%d] 0x%p deployableId=%d\n",
 			i, dep, dep->r_nDeployableId);
 
-		// `eventDestroyIt(false)` runs UC's full destroy event: stops fire,
+		// DestroyIt(false) runs UC's full destroy event: stops fire,
 		// sets LifeSpan, swaps to destroyed mesh, flips m_bInDestroyedState,
 		// and bumps r_nReplicateDestroyIt so the client repnotify fires.
 		// Match KillDeployables' approach so behavior is consistent across
-		// owner-death cleanup and limit-enforcement cleanup.
-		dep->eventDestroyIt(0 /* bSkipFx */);
+		// owner-death cleanup and limit-enforcement cleanup. Routed through
+		// DispatchDestroyIt so subclass overrides (sensor alert cleanup) run.
+		DeployableClassify::DispatchDestroyIt(dep, 0 /* bSkipFx */);
 		--toKill;
 	}
 }

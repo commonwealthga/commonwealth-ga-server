@@ -14,7 +14,19 @@
 // Keeping these classifiers in a shared module avoids any hook depending on
 // the implementation file of another hook.
 
+class ATgDeployable;
+
 namespace DeployableClassify {
+
+	// Destroy a deployable running its UC subclass's DestroyIt override. The
+	// SDK's `eventDestroyIt` resolves the UFunction of the pointer's STATIC
+	// type (no virtual dispatch — see docs/claude/hooking-and-sdk.md), so
+	// calling it on a generic ATgDeployable* skipped the overrides:
+	// TgDeploy_Sensor's clears detected players' r_nSensorAlertLevel (HUD
+	// "detected" icon stuck forever), Beacon's deregisters from the beacon
+	// manager, DestructibleCover's runs CheckDeathBehavior. Every C++ destroy
+	// site on a generic ATgDeployable* must route through this.
+	void DispatchDestroyIt(ATgDeployable* Dep, unsigned long bSkipFx);
 
 	// True iff `asm_data_set_deployables` contains this deployable_id.
 	// Debug chat commands can pass arbitrary ids; missing rows must fail
