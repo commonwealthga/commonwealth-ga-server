@@ -41,15 +41,18 @@ static const std::vector<GearSlot> kMedic = {
     { 5800,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // Life Stealer
     { 5800,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "hhh", false) },  // Life Stealer
     { 3967,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // Poison injector
+    { 7485,  1,  SVID_MELEE,      Q_RARE,   Mods::Letters("dd", "ddd", false) },  // Legion combat knife
 
     { 2991,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("rrr", "ppp", false) },  // Agonizer
     { 2991,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Agonizer
     { 2991,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // Agonizer
     { 4154,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // Euthanizer
+    { 4154,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("rrr", "ddd", false) },  // Euthanizer
     { 5797,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // Rockwind
     { 4676,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Paingun
     { 4676,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ppp", "ddd", false) },  // Paingun
     { 6884,  2,  SVID_RANGED,     Q_RARE,   Mods::Letters("dd", "ddd", false) },  // Legion side arm
+    { 6884,  2,  SVID_RANGED,     Q_RARE,   Mods::Letters("rr", "ddd", false) },  // Legion side arm
 
 
     { 2906,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("hhh", "hhh", true) },  // BFB
@@ -66,6 +69,9 @@ static const std::vector<GearSlot> kMedic = {
     { 2061,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // nanite restore
 
     { 7032,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Medic Crescent Jetpack
+    { 6077,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Medic Combat Jetpack
+    { 5838,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Medic Hands-free Jetpack
+    { 3500,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Medic Jetpack
 
     { 2531,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("hhh", "hhh", true) },  // Healing Grenade
     { 2531,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "hhh", false) },  // Healing Grenade
@@ -118,8 +124,10 @@ static const std::vector<GearSlot> kMedic = {
 static const std::vector<GearSlot> kRobotics = {
     { 5802,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd" , false)}, // mace and shield
     { 3951,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd" , false)}, // energyburn mace
+    { 7484,  1,  SVID_MELEE,      Q_RARE,   Mods::Letters("dd", "ddd" , false)}, // heavy wrench
 
     { 6885,  2,  SVID_RANGED,     Q_RARE,   Mods::Letters("dd", "ddd", false )}, // colony rifle
+    { 6885,  2,  SVID_RANGED,     Q_RARE,   Mods::Letters("rr", "ddd", false )}, // colony rifle
     { 4158,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true )}, // hel-tac
     { 5798,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true )}, // harken
     { 3523,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true )}, // rumbleblaster
@@ -136,28 +144,65 @@ static const std::vector<GearSlot> kRobotics = {
     { 2918,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("hhh", "hhh", true )}, // focused repair arm
     { 2046,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("hhh", "hhh", true )}, // ARC
     { 5810,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("hhh", "hhh", true )}, // Nanite repair
+    { 5810,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("hhp", "ppp", false )}, // Nanite repair
     { 5811,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddp", "ppp", false )}, // Force target
+    { 5811,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddp", "ddd", false )}, // Force target
 
-    { 7034,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false)},
+    { 7034,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false)}, // Robotics Crescent Jetpack
+    { 6079,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false)}, // Robotics Combat Jetpack
+    { 5840,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false)}, // Robotics Hands-free Jetpack
+    { 3502,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false)}, // Robotics Jetpack
 
     { 2095,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // rocket turret
     { 2095,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // rocket turret
+    { 2095,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // rocket turret
+    { 2095,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "vnvnvn", false )}, // rocket turret
+    { 2095,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "ddd", false )}, // rocket turret
     { 3755,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // auto cannon
     { 3755,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // auto cannon
+	{ 3755,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // auto cannon
+    { 3755,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "vnvnvn", false )}, // auto cannon
+    { 3755,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "ddd", false )}, // auto cannon
     { 2675,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // eye drone
+    { 2675,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // eye drone
+    { 2675,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "vnvnvn", false )}, // eye drone
+    { 2675,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // eye drone
     { 5792,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddr", "ddd", false )}, // flame turret
+    { 5792,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddr", "vnvnvn", false )}, // flame turret
+    { 5792,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddr", "ccc", false )}, // flame turret
     { 2051,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // force wall
     { 2051,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("nnn", "vnvnvn", true )}, // force wall
+    { 2051,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("nnn", "ccc", true )}, // force wall
     { 2107,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", true )}, // grizzly drone
+    { 2107,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // grizzly drone
+    { 2107,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "vnvnvn", false )}, // grizzly drone
+    { 2107,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // grizzly drone
     { 4782,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // harrier drone
+    { 4782,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // harrier drone
+    { 4782,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "vnvnvn", false )}, // harrier drone
+    { 4782,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // harrier drone
     { 2279,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // hornet drone
+    { 2279,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // hornet drone
+    { 2279,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "vnvnvn", false )}, // hornet drone
+    { 2279,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // hornet drone
     { 4698,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // lockdown drone
+    { 4698,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // lockdown drone
+    { 4698,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "vnvnvn", false )}, // lockdown drone
+    { 4698,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // lockdown drone
     { 2300,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // personal turret
     { 2300,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // personal turret
+    { 2300,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // personal turret
+    { 2300,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "vnvnvn", false )}, // personal turret
+    { 2300,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "ddd", false )}, // personal turret
+    { 4076,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // power station
     { 4076,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "ccc", false )}, // power station
     { 4076,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "vnvnvn", false )}, // power station
+    { 2326,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // sensor
     { 2326,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "ccc", false )}, // sensor
     { 2326,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "vnvnvn", false )}, // sensor
+    { 2066,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("ccc", "ccc" , false)}, // medical station
+    { 2066,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("nnn", "hhh" , false)}, // medical station
+    { 2066,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("nnn", "vnvnvn" , false)}, // medical station
     { 2066,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("hhh", "hhh" , false)}, // medical station
     { 2066,  8,  SVID_OFFHAND2, Q_EPIC,   Mods::Letters("xxx", "hhh" , false)}, // medical station
     // { 6143,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("xxx", "ccc" , false)}, // buff station
@@ -175,7 +220,9 @@ static const std::vector<GearSlot> kAssault = {
 
     { 5788,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // Rhino SMG
     { 6882,  2,  SVID_RANGED,     Q_RARE,   Mods::Letters("dd", "ddd", false) },  // Legion SMG
+    { 6882,  2,  SVID_RANGED,     Q_RARE,   Mods::Letters("rr", "ddd", false) },  // Legion SMG
     { 4166,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // heatwrack
+    { 4166,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("rrr", "ddd", false) },  // heatwrack
     { 4196,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // stormer
 
     { 1987,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", true)},  // imini
@@ -196,6 +243,9 @@ static const std::vector<GearSlot> kAssault = {
     // { 2202,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ddd", "ddd", true)},  // aftershock
 
     { 7031,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Assault Crescent Jetpack
+    { 6076,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Assault Combat Jetpack
+    { 5837,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Assault Hands-free Jetpack
+    { 3499,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Assault Jetpack
 
     { 3699,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false) },  // Power Stim
     { 3699,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ttt", "ccc", false) },  // Power Stim
@@ -235,11 +285,13 @@ static const std::vector<GearSlot> kRecon = {
     { 6895,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // assassin blade
     { 6895,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ppp", false) },  // assassin blade
     { 3970,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // ghost sword
+    { 7486,  1,  SVID_MELEE,      Q_RARE,   Mods::Letters("dd", "ddd", false) },  // rusted machete
 
     { 2110,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // Ballista
     { 6883,  2,  SVID_RANGED,     Q_RARE,   Mods::Letters("dd", "ddd", false) },  // dweller
     { 6069,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // raven
     { 4946,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // rogue
+    { 4946,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("rrr", "ddd", false) },  // rogue
     { 3249,  2,  SVID_RANGED,     Q_EPIC,   Mods::Letters("ddd", "ddd", true) },  // scorpia
 
     { 5807,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // targetting system
@@ -247,6 +299,9 @@ static const std::vector<GearSlot> kRecon = {
     { 2209,  3,  SVID_SPECIALTY,  Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // sprint stealth
 
     { 7033,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Recon Crescent Jetpack
+    { 6078,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Recon Combat Jetpack
+    { 5839,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Recon Hands-free Jetpack
+    { 3501,  5,  SVID_JETPACK,    Q_EPIC,   Mods::Letters("ppp", "ppp", false) },  // Recon Jetpack
 
     { 4708,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "ccc", false) },  // Venom bomb
     { 4708,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("xxx", "ddd", false) },  // Venom bomb
