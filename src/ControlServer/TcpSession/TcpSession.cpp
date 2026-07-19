@@ -1503,7 +1503,7 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			// Look up the requested character from DB and select it.
 			if (nCharacterId != 0) {
 				auto charInfo = PlayerSessionStore::GetCharacterById(nCharacterId);
-				if (charInfo && charInfo->user_id == user_id_) {
+				if (charInfo && charInfo->user_id == user_id_ && charInfo->deleted_at == 0) {
 					selected_character_id_ = charInfo->id;
 					selected_profile_id_   = charInfo->profile_id;
 					PlayerSessionStore::SetSelectedCharacter(session_guid_, charInfo->id, charInfo->profile_id);
@@ -1714,10 +1714,25 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			wait_for_home_map_then_register(120);  // 120 second timeout
 			break;
 		}
-		case GA_U::DELETE_CHARACTER:
-			Logger::Log("tcp", "[%s] Received: DELETE_CHARACTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-			// todo
+		case GA_U::DELETE_CHARACTER: {
+			PacketView pkt(data + 6, length - 6);
+			int64_t nCharacterId = pkt.Read4B(GA_T::CHARACTER_ID).value_or(0);
+			Logger::Log("tcp", "[%s] Received: DELETE_CHARACTER [0x%04X] charId=%lld user=%lld\n",
+				Logger::GetTime(), packet_type, (long long)nCharacterId, (long long)user_id_);
+
+			bool deleted = nCharacterId != 0 &&
+				PlayerSessionStore::SoftDeleteCharacter(nCharacterId, user_id_);
+			if (!deleted)
+				Logger::Log("tcp", "[%s] DELETE_CHARACTER: charId=%lld not deleted (not found, wrong user, or already deleted)\n",
+					Logger::GetTime(), (long long)nCharacterId);
+
+			// Push a fresh GSC_CHARACTER_LIST either way — the character-select
+			// scene's UpdateCharacterListCallback rebuilds the roster from it,
+			// which both removes the deleted entry and leaves the
+			// CSS_DELETING_CHARACTER wait state.
+			send_character_list_response();
 			break;
+		}
 		case GA_U::UPDATE_NEW_MAIL_COUNT:
 			Logger::Log("tcp", "[%s] Received: UPDATE_NEW_MAIL_COUNT [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 			send_update_new_mail_count_response();
