@@ -51,14 +51,19 @@ struct TopDownArgs {
 // ("broken") cosmetic suits on other players. 1 = show originals, 0 = show
 // the replacement cosmetics, omitted = toggle the current value. Persisted in
 // ga_user_preferences and enforced DLL-side at replication time.
+// -toggleallsuits [1|0] rides the same struct with all = true: 0 hides EVERY
+// suit/helmet/flair on OTHER players for this viewer (stutter triage; own
+// character exempt), 1 restores normal.
 struct ToggleBrokenSuitsArgs {
-    int mode = -1;  // -1 = toggle, 0 = off, 1 = on
+    int mode = -1;    // -1 = toggle, 0 = off, 1 = on
+    bool all = false; // true = -toggleallsuits variant
 };
 
 struct ParseResult {
     // True if the message was a /-prefixed slash command attempt that we own
     // (currently: "-changeteam", "-spawnfriend", "-spawnenemy", "-possess",
-    // "-unpossess", "-topdown", "-reload-queues", "-togglebrokensuits").
+    // "-unpossess", "-topdown", "-reload-queues", "-togglebrokensuits",
+    // "-toggleallsuits").
     // False for ordinary chat and for slash commands we don't recognize.
     bool recognized = false;
 

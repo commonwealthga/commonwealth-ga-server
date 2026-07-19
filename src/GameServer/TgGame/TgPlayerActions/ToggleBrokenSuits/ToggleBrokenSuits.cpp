@@ -56,39 +56,48 @@ void ForceAssemblyResend() {
 
 } // namespace
 
-void Execute(const std::string& session_guid, int mode) {
+void Execute(const std::string& session_guid, int mode, bool all) {
+	const char* cmdName = all ? "toggleallsuits" : "togglebrokensuits";
 	ClientConnectionData* data = FindBySessionGuid(session_guid);
 	if (!data) {
 		Logger::Log("brokensuits",
-			"[ChatCmd][DLL] togglebrokensuits guid=%s: no connection; dropping\n",
-			session_guid.c_str());
+			"[ChatCmd][DLL] %s guid=%s: no connection; dropping\n",
+			cmdName, session_guid.c_str());
 		return;
 	}
 	const int64_t userId = data->PlayerInfo.user_id;
 	if (userId <= 0) {
 		Logger::Log("brokensuits",
-			"[ChatCmd][DLL] togglebrokensuits guid=%s: no user_id; dropping\n",
-			session_guid.c_str());
+			"[ChatCmd][DLL] %s guid=%s: no user_id; dropping\n",
+			cmdName, session_guid.c_str());
 		return;
 	}
+
+	const char* prefKey    = all ? BrokenSuitSwap::kPrefKeyAll : BrokenSuitSwap::kPrefKey;
+	const bool prefDefault = all ? BrokenSuitSwap::kPrefAllDefault : BrokenSuitSwap::kPrefDefault;
 
 	bool show;
 	if (mode == 0 || mode == 1) {
 		show = (mode == 1);
-		UserPreferences::Set(userId, BrokenSuitSwap::kPrefKey, show ? "1" : "0");
+		UserPreferences::Set(userId, prefKey, show ? "1" : "0");
 	} else {
-		show = UserPreferences::ToggleBool(userId, BrokenSuitSwap::kPrefKey,
-		                                   BrokenSuitSwap::kPrefDefault);
+		show = UserPreferences::ToggleBool(userId, prefKey, prefDefault);
 	}
 	ForceAssemblyResend();
 
 	Logger::Log("brokensuits",
-		"[ChatCmd][DLL] togglebrokensuits guid=%s user=%lld mode=%d -> show=%d\n",
-		session_guid.c_str(), (long long)userId, mode, show ? 1 : 0);
+		"[ChatCmd][DLL] %s guid=%s user=%lld mode=%d -> show=%d\n",
+		cmdName, session_guid.c_str(), (long long)userId, mode, show ? 1 : 0);
 
-	AlertPlayer(data->Pawn, show
-		? "Broken suits ENABLED - you see original cosmetics"
-		: "Broken suits DISABLED - stutter-prone cosmetics are replaced");
+	if (all) {
+		AlertPlayer(data->Pawn, show
+			? "All suits ENABLED - cosmetics render normally"
+			: "All suits DISABLED - other players appear without suits/helmets");
+	} else {
+		AlertPlayer(data->Pawn, show
+			? "Broken suits ENABLED - you see original cosmetics"
+			: "Broken suits DISABLED - stutter-prone cosmetics are replaced");
+	}
 }
 
 } // namespace TgPlayerActions::ToggleBrokenSuitsCmd

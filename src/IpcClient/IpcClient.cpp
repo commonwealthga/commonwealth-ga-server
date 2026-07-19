@@ -661,12 +661,13 @@ void IpcClient::DrainInbound() {
                 TgPlayerActions::CoordsCmd::Execute(guid);
             } else if (action == "fullheal") {
                 TgPlayerActions::FullHealCmd::Execute(guid);
-            } else if (action == "toggle_broken_suits") {
+            } else if (action == "toggle_broken_suits" || action == "toggle_all_suits") {
                 int mode = -1;
                 if (j.contains("args") && j["args"].is_object()) {
                     mode = j["args"].value("mode", -1);
                 }
-                TgPlayerActions::ToggleBrokenSuitsCmd::Execute(guid, mode);
+                TgPlayerActions::ToggleBrokenSuitsCmd::Execute(
+                    guid, mode, action == "toggle_all_suits");
             } else if (action == "topdown") {
                 if (CurrentMatchIsPVP()) {
                     Logger::Log("chat-command",

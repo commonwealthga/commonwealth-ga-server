@@ -88,7 +88,16 @@ void __fastcall ActorChannel__ReplicateActor::Call(void* Channel, void* edx) {
 		// actually wearing a mapped cosmetic.
 	}
 
-	if (BrokenSuitSwap::HasMappedCosmetic(*assembly) &&
+	// Hide-all ("-toggleallsuits 0") outranks the broken-suit swap map, but
+	// never applies to the viewer's OWN pawn/PRI — nobody wants to look naked
+	// themselves (own broken suits still fall through to the swap branch).
+	// Cheap field/table checks first — the per-connection pref lookup only
+	// runs for actors actually wearing something.
+	if (!isOwner &&
+		BrokenSuitSwap::HasAnyCosmetic(*assembly) &&
+		BrokenSuitSwap::ViewerHidesAllSuits(conn)) {
+		suitSwapped = BrokenSuitSwap::HideAll(*assembly, wearerProfileId, savedSuit);
+	} else if (BrokenSuitSwap::HasMappedCosmetic(*assembly) &&
 		BrokenSuitSwap::ViewerHidesBrokenSuits(conn)) {
 		suitSwapped = BrokenSuitSwap::ApplyReplacements(*assembly, wearerProfileId, savedSuit);
 	}

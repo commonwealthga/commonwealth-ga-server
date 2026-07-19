@@ -130,13 +130,30 @@ bool HasMappedCosmetic(const FCustomCharacterAssembly& a) {
 	return Find(a.SuitFlairId) != nullptr || Find(a.HeadFlairId) != nullptr;
 }
 
-bool ViewerHidesBrokenSuits(void* Connection) {
+bool HasAnyCosmetic(const FCustomCharacterAssembly& a) {
+	return a.SuitFlairId > 0 || a.HeadFlairId > 0;
+}
+
+namespace {
+
+// Shared viewer-pref lookup: connection → user_id → cached preference.
+bool ViewerPrefOff(void* Connection, const char* key, bool defaultValue) {
 	if (!Connection) return false;
 	auto it = GClientConnectionsData.find((int32_t)Connection);
 	if (it == GClientConnectionsData.end()) return false;
 	const int64_t userId = it->second.PlayerInfo.user_id;
 	if (userId <= 0) return false;
-	return !UserPreferences::GetBool(userId, kPrefKey, kPrefDefault);
+	return !UserPreferences::GetBool(userId, key, defaultValue);
+}
+
+} // namespace
+
+bool ViewerHidesBrokenSuits(void* Connection) {
+	return ViewerPrefOff(Connection, kPrefKey, kPrefDefault);
+}
+
+bool ViewerHidesAllSuits(void* Connection) {
+	return ViewerPrefOff(Connection, kPrefKeyAll, kPrefAllDefault);
 }
 
 bool ApplyReplacements(FCustomCharacterAssembly& a, int profileId, SavedFields& saved) {
@@ -172,6 +189,29 @@ bool ApplyReplacements(FCustomCharacterAssembly& a, int profileId, SavedFields& 
 			const int mesh = isFemale ? rep->meshAsmFemale : rep->meshAsmMale;
 			if (mesh > 0) a.HelmetMeshId = mesh;
 		}
+		changed = true;
+	}
+	return changed;
+}
+
+bool HideAll(FCustomCharacterAssembly& a, int profileId, SavedFields& saved) {
+	saved.SuitFlairId  = a.SuitFlairId;
+	saved.SuitMeshId   = a.SuitMeshId;
+	saved.HeadFlairId  = a.HeadFlairId;
+	saved.HelmetMeshId = a.HelmetMeshId;
+
+	const bool isFemale = a.nGenderTypeId == GA_G::GENDER_TYPE_ID_FEMALE;
+	bool changed = false;
+
+	if (a.SuitFlairId > 0) {
+		a.SuitFlairId = -1;
+		const int mesh = CosmeticEquip::ClassDefaultSuitAsmId((uint32_t)profileId, isFemale);
+		if (mesh > 0) a.SuitMeshId = mesh;
+		changed = true;
+	}
+	if (a.HeadFlairId > 0) {
+		a.HeadFlairId  = -1;
+		a.HelmetMeshId = -1;
 		changed = true;
 	}
 	return changed;
