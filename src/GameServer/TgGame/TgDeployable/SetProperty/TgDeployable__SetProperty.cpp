@@ -4,6 +4,7 @@
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Broadcast a COMBAT_MESSAGE (0x9F) to every connected client. Each client's
@@ -102,15 +103,28 @@ void __fastcall TgDeployable__SetProperty::Call(ATgDeployable* D, void* edx, int
 			// this mirror is the only other runtime writer that can land
 			// r_nHealth at 0. Without the same destroy, the deployable survives
 			// at 0 HP and TakeDamage's health<=0 early-out (uc:1211) makes it
-			// permanently indestructible.
-			if (oldHp > 0 && newHp <= 0 && !D->m_bInDestroyedState) {
+			// permanently indestructible. Honor the same r_bTakeDamage gate
+			// TakeDamage does — indestructible deployables (PvE checkpoint
+			// beacons) must never be destroyed through the mirror either.
+			bool destroyDispatched = false;
+			if (D->r_bTakeDamage && oldHp > 0 && newHp <= 0 && !D->m_bInDestroyedState) {
 				DeployableClassify::DispatchDestroyIt(D, 0);
+				destroyDispatched = true;
 			}
 
 			Logger::Log("heal_tick",
 				"[SetProperty mirror] deployable=0x%p id=%d  HEALTH %d -> %d  hpMax=%d  combatMsg=%s\n",
 				D, D->r_nDeployableId, oldHp, newHp, hpMax,
 				(oldHp > 0 ? (newHp > oldHp ? "HEAL" : "DAMAGE") : "(skipped — spawn)"));
+
+			// Indestructible-beacon hunt: mirror the line onto the "beacon"
+			// channel so the repro capture has the effect-pipeline health
+			// writes in the same timeline as the deploy/pickup/TakeDamage logs.
+			if (ObjectClassCache::ClassNameContains((UObject*)D, "TgDeploy_Beacon")) {
+				Logger::Log("beacon",
+					"SetProperty HEALTH beacon=0x%p %d -> %d hpMax=%d destroyDispatched=%d\n",
+					D, oldHp, newHp, hpMax, destroyDispatched ? 1 : 0);
+			}
 			break;
 		}
 
@@ -260,6 +274,16 @@ void __fastcall TgDeployable__SetProperty::Call(ATgDeployable* D, void* edx, int
 			int oldMax = D->r_DRI ? D->r_DRI->r_nHealthMaximum : 0;
 			int curHp  = D->r_DRI ? D->r_DRI->r_nHealthCurrent : D->r_nHealth;
 
+			// Spawn-window guard (CONFIRMED indestructible-beacon producer,
+			// 2026-07-19 log): the base HEALTH_MAX write from Initialize-
+			// DefaultProps lands BEFORE the DRI current is seeded, so DRI cur
+			// is still 0 while the spawn path already seeded the actor's
+			// r_nHealth. Trusting the DRI 0 here made the sync below zero the
+			// seed → live 0-HP deployable → UC TakeDamage early-outs forever.
+			// If the DRI says 0 but the actor is alive, the actor value is the
+			// real current.
+			if (curHp <= 0 && D->r_nHealth > 0) curHp = D->r_nHealth;
+
 			if (D->r_DRI) {
 				D->r_DRI->r_nHealthMaximum = newMax;
 				D->r_DRI->bNetDirty        = 1;
@@ -300,6 +324,12 @@ void __fastcall TgDeployable__SetProperty::Call(ATgDeployable* D, void* edx, int
 			Logger::Log("heal_tick",
 				"[SetProperty mirror] deployable=0x%p id=%d  prop=%d (HEALTH_MAX) %d -> %d  cur %d -> %d\n",
 				D, D->r_nDeployableId, nPropId, oldMax, newMax, curHp, newCur);
+
+			if (ObjectClassCache::ClassNameContains((UObject*)D, "TgDeploy_Beacon")) {
+				Logger::Log("beacon",
+					"SetProperty HEALTH_MAX beacon=0x%p max %d -> %d cur %d -> %d\n",
+					D, oldMax, newMax, curHp, newCur);
+			}
 			break;
 		}
 

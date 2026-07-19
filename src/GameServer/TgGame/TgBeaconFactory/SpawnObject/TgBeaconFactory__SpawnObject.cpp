@@ -205,6 +205,25 @@ void __fastcall TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, vo
 	// DRI current/max + deploy PCT, r_bTakeDamage from DB health.
 	beacon->InitializeDefaultProps();
 
+	// PvE checkpoint beacons are not a combat objective: pickup is already
+	// blocked by UC (PickUpDeployable early-outs on IsPvEMission) and the
+	// beacon must be indestructible. r_bTakeDamage=0 is the canonical gate —
+	// UC TakeDamage ignores damage entirely and the client hides the health
+	// bar (DrawHealth early-return). Must land AFTER InitializeDefaultProps,
+	// which sets r_bTakeDamage=1 from the DB health (3000). Before the
+	// 2026-07-19 HEALTH_MAX-stomp fix these were accidentally protected by
+	// spawning as 0-HP zombies; now they need the real flag. PvP keeps the
+	// destructible full-health beacon.
+	{
+		ATgRepInfo_Game* gri = game
+			? (ATgRepInfo_Game*)game->GameReplicationInfo : nullptr;
+		if (gri && gri->eventIsPvEMission()) {
+			beacon->r_bTakeDamage = 0;
+			Logger::Log("beacon",
+				"  exit: PvE mission — r_bTakeDamage=0 (indestructible checkpoint)\n");
+		}
+	}
+
 	// EffectManager parity with the device-fire path — without it, UC
 	// ProcessEffect (repairs/heals targeting the beacon) dereferences None.
 	if (!beacon->r_EffectManager) {
@@ -220,6 +239,14 @@ void __fastcall TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, vo
 			}
 		}
 	}
+
+	// Fresh world beacon = full save percent. The manager's s_fHealthPercent
+	// CDO default is 0 and nothing else seeds it before the first player
+	// deploy, which consumes it as the deploy-max PCT (RegisterBeacon(false)
+	// → SetInitialHealthPercent) — an unseeded manager silently disabled the
+	// whole deploy health ramp (deployTarget=0, observed 2026-07-19). A real
+	// pickup overwrites this right before any legit redeploy.
+	mgr->s_fHealthPercent = 1.0f;
 
 	// Pre-deployed (no Deploy animation). Marks m_bIsDeployed=1 (via
 	// WireDeployableOwnership above) AND status=DEPLOYED so HasExit returns
@@ -238,9 +265,15 @@ void __fastcall TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, vo
 	}
 
 	Logger::Log("beacon",
-		"  exit spawned 0x%p tf=%d at (%.0f,%.0f,%.0f) registered with manager 0x%p r_BeaconInfo=0x%p\n",
+		"  exit spawned 0x%p tf=%d at (%.0f,%.0f,%.0f) registered with manager 0x%p r_BeaconInfo=0x%p "
+		"hp=%d driCur=%d driMax=%d pct=%.4f mgrPct=%.4f\n",
 		beacon, (int)factory->s_nTaskForce,
 		beacon->Location.X, beacon->Location.Y, beacon->Location.Z, mgr,
-		mgr->r_BeaconInfo);
+		mgr->r_BeaconInfo,
+		beacon->r_nHealth,
+		beacon->r_DRI ? beacon->r_DRI->r_nHealthCurrent : -1,
+		beacon->r_DRI ? beacon->r_DRI->r_nHealthMaximum : -1,
+		beacon->r_DRI ? beacon->r_DRI->r_fDeployMaxHealthPCT : -99.0f,
+		mgr->s_fHealthPercent);
 	return nullptr;
 }
