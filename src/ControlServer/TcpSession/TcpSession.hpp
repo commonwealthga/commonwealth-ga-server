@@ -552,6 +552,9 @@ private:
     // index) + a DATA_SET of matching online players. See
     // player-search-tcp-protocol.md.
     void send_query_players_response(const PacketView& pkt);
+// F3 friends menu (FRIEND_GET_LIST / FRIEND_UPDATE arrive on this socket).
+void handle_friend_update(const PacketView& pkt);
+void send_friends_list();
 
     // Team wire helpers. Opcodes 0x4A/0x4D/0x4E/0x4F all route to the client's
     // message-display handler (vt[0x54]: MSG_ID 0x36E template + @@token@@
