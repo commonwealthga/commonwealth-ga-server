@@ -194,6 +194,7 @@ bool HasParsedCommandAction(const ChatCommand::ParseResult& parsed) {
         || parsed.spawn_target.has_value()
         || parsed.deploy_target.has_value()
         || parsed.topdown.has_value()
+        || parsed.toggle_broken_suits.has_value()
         || parsed.possess
         || parsed.unpossess
         || parsed.coords
@@ -427,6 +428,9 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         }
         if (parsed.recognized && parsed.topdown) {
             ChatCommand::DispatchTopDown(*parsed.topdown, session_guid_);
+        }
+        if (parsed.recognized && parsed.toggle_broken_suits) {
+            ChatCommand::DispatchToggleBrokenSuits(*parsed.toggle_broken_suits, session_guid_);
         }
         if (parsed.recognized && parsed.reload_queues) {
             Logger::Log("chat-command",

@@ -13,7 +13,9 @@
 #include "src/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/Coords/Coords.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/FullHeal/FullHeal.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/ToggleBrokenSuits/ToggleBrokenSuits.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+#include "src/GameServer/Storage/UserPreferences/UserPreferences.hpp"
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Globals.hpp"
@@ -505,6 +507,10 @@ void IpcClient::DrainInbound() {
 
             PlayerRegistry::Register(info);
 
+            // Warm the per-user preference cache now so hot-path reads
+            // (broken-suit swap in ReplicateActor) never touch the DB.
+            UserPreferences::Preload(uid);
+
             Logger::Log("ipc",
                 "[IPC] PLAYER_REGISTER: guid=%s profile=%u itemProf=%d char=%lld user=%lld tf=%d skills=%d\n",
                 guid.c_str(), profile_id, info.current_item_profile_id,
@@ -655,6 +661,12 @@ void IpcClient::DrainInbound() {
                 TgPlayerActions::CoordsCmd::Execute(guid);
             } else if (action == "fullheal") {
                 TgPlayerActions::FullHealCmd::Execute(guid);
+            } else if (action == "toggle_broken_suits") {
+                int mode = -1;
+                if (j.contains("args") && j["args"].is_object()) {
+                    mode = j["args"].value("mode", -1);
+                }
+                TgPlayerActions::ToggleBrokenSuitsCmd::Execute(guid, mode);
             } else if (action == "topdown") {
                 if (CurrentMatchIsPVP()) {
                     Logger::Log("chat-command",

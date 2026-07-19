@@ -674,6 +674,23 @@ void Database::Init() {
 			Logger::Log("db", "Failed to create ga_character_skills index: %s\n", err);
 			sqlite3_free(err);
 		}
+		// Per-user key/value preferences (e.g. show_broken_suits). Written by
+		// the game DLL (UserPreferences); the DLL also runs the same idempotent
+		// CREATE as a fallback for standalone-instance runs.
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_user_preferences ("
+			"  id           INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  user_id      INTEGER NOT NULL,"
+			"  config_key   TEXT    NOT NULL,"
+			"  config_value TEXT    NOT NULL,"
+			"  UNIQUE(user_id, config_key)"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_user_preferences table: %s\n", err);
+			sqlite3_free(err);
+			return;
+		}
 		// ALTER TABLE ADD COLUMN fails once the column exists — swallow that
 		// error so we stay idempotent across boots.
 		result = sqlite3_exec(db,

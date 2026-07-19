@@ -28,6 +28,11 @@ bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int item_profile_id,
 // (22/23); dyes reset to kNoCosmeticItemId. Returns false for any other slot.
 bool ClearSlot(ATgPawn* Pawn, int64_t character_id, int item_profile_id, int slot);
 
+// Class-default body suit asm_id for (profile, gender) — the mesh a pawn with
+// no cosmetic suit equipped renders. Exposed for BrokenSuitSwap's
+// "show as wearing no suit" sentinel.
+int ClassDefaultSuitAsmId(uint32_t profileId, bool isFemale);
+
 // On pawn spawn/profile switch, replay rows from ga_character_devices whose
 // joined inventory row is a cosmetic (item_id > 0) for the active profile, applying
 // each via the same dispatch as ApplyToPawn but WITHOUT re-persisting

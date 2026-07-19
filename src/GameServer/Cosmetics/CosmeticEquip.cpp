@@ -163,6 +163,10 @@ static int GetClassDefaultSuitAsmId(uint32_t profileId, bool isFemale) {
 	}
 }
 
+int ClassDefaultSuitAsmId(uint32_t profileId, bool isFemale) {
+	return GetClassDefaultSuitAsmId(profileId, isFemale);
+}
+
 static void ApplyClassVisualFallback(ATgPawn* Pawn, uint32_t profileId) {
 	if (!Pawn) return;
 	auto* charPawn = (ATgPawn_Character*)Pawn;

@@ -81,6 +81,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.cpp \
 			  $(SRC_DIR)/GameServer/Storage/TeamsData/TeamsData.cpp \
 			  $(SRC_DIR)/GameServer/Storage/PlayerRegistry/PlayerRegistry.cpp \
+			  $(SRC_DIR)/GameServer/Storage/UserPreferences/UserPreferences.cpp \
 			  $(SRC_DIR)/GameServer/Stats/StatsCore.cpp \
 			  $(SRC_DIR)/GameServer/Stats/MatchStats.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/ClientConnection/SendMarshal/ClientConnection__SendMarshal.cpp \
@@ -153,6 +154,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/Coords/Coords.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/FullHeal/FullHeal.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/ToggleBrokenSuits/ToggleBrokenSuits.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.cpp \
@@ -160,6 +162,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.cpp \
 			  $(SRC_DIR)/GameServer/Inventory/Inventory.cpp \
+			  $(SRC_DIR)/GameServer/Cosmetics/BrokenSuitSwap.cpp \
 			  $(SRC_DIR)/GameServer/Cosmetics/CosmeticEquip.cpp \
 			  $(SRC_DIR)/GameServer/Cosmetics/JetpackReload.cpp \
 			  $(SRC_DIR)/GameServer/Cosmetics/SuitRebuildKick.cpp \
