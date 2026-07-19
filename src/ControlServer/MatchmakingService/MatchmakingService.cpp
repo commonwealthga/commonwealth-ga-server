@@ -8,6 +8,7 @@
 #include "src/ControlServer/Logger.hpp"
 #include "sqlite3.h"
 #include <algorithm>
+#include <cstdio>
 #include <cstdlib>
 #include <functional>
 #include <limits>
@@ -90,7 +91,7 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
         "       min_players_to_pop, max_players_per_instance, pop_delay_seconds,"
         "       pop_delay_policy, instant_pop_when_full,"
         "       marshal_difficulty_value_id, requires_pvp_verification,"
-        "       team_policy, team_side_policy, max_team_size "
+        "       team_policy, team_side_policy, max_team_size, map_recency_divisors "
         "FROM ga_queues ORDER BY sort_order, queue_id";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
         Logger::Log("matchmaking", "[Matchmaking] LoadQueueConfigs prepare failed: %s\n",
@@ -167,6 +168,15 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
             c.queue_id);
         col++;
         c.max_team_size = (uint32_t)sqlite3_column_int(stmt, col++);
+        if (sqlite3_column_type(stmt, col) != SQLITE_NULL) {
+            const char* raw = (const char*)sqlite3_column_text(stmt, col);
+            bool ok = true;
+            c.map_recency_divisors = mm::ParseRecencyDivisors(raw ? raw : "", &ok);
+            if (!ok) Logger::Log("matchmaking",
+                "[Matchmaking] Queue %u invalid map_recency_divisors '%s' — recency weighting disabled\n",
+                c.queue_id, raw ? raw : "");
+        }
+        col++;
         out.push_back(std::move(c));
     }
     sqlite3_finalize(stmt);
@@ -220,9 +230,11 @@ void MatchmakingService::ReloadQueues() {
 
     std::unordered_map<uint32_t, std::vector<QueuedParty>> kept_parties;
     std::unordered_map<uint32_t, std::optional<DelayedPop>> kept_delays;
+    std::unordered_map<uint32_t, std::deque<std::string>>   kept_recent;
     for (auto& [qid, q] : queues_) {
         kept_parties[qid] = std::move(q.parties);
         kept_delays[qid]  = std::move(q.delayed_pop);
+        kept_recent[qid]  = std::move(q.recent_maps);
     }
 
     std::unordered_map<uint32_t, Queue> rebuilt;
@@ -234,6 +246,8 @@ void MatchmakingService::ReloadQueues() {
         if (pit != kept_parties.end()) { q.parties = std::move(pit->second); kept_parties.erase(pit); }
         auto dit = kept_delays.find(qid);
         if (dit != kept_delays.end()) { q.delayed_pop = std::move(dit->second); kept_delays.erase(dit); }
+        auto rit = kept_recent.find(qid);
+        if (rit != kept_recent.end()) q.recent_maps = std::move(rit->second);
         rebuilt[qid] = std::move(q);
     }
 
@@ -397,17 +411,46 @@ MatchmakingService::PickRandomMapPoolEntryForCount(uint32_t queue_id, int count)
     }
     if (candidates.empty()) return std::nullopt;
 
-    int total = 0;
-    for (const auto* e : candidates) total += e->weight;
-    std::uniform_int_distribution<int> dist(0, total - 1);
-    int roll = dist(MatchRng());
+    // Recency down-weighting: a map's DB weight is divided by the divisor of
+    // its most recent slot in recent_maps (most recent first). Not in history
+    // (or feature off, divisors empty) → raw weight.
+    auto& recent = it->second.recent_maps;
+    const auto& divisors = it->second.config.map_recency_divisors;
+    auto recency_divisor = [&](const std::string& map_name) -> double {
+        for (size_t i = 0; i < recent.size() && i < divisors.size(); ++i)
+            if (recent[i] == map_name) return divisors[i];
+        return 1.0;
+    };
+    std::vector<double> eff(candidates.size());
+    double total = 0.0;
+    for (size_t i = 0; i < candidates.size(); ++i) {
+        eff[i] = (double)candidates[i]->weight / recency_divisor(candidates[i]->map_name);
+        total += eff[i];
+    }
+    std::uniform_real_distribution<double> dist(0.0, total);
+    double roll = dist(MatchRng());
     const MapModeEntry* picked = candidates.back();
-    for (const auto* e : candidates) { roll -= e->weight; if (roll < 0) { picked = e; break; } }
+    for (size_t i = 0; i < candidates.size(); ++i) {
+        roll -= eff[i];
+        if (roll < 0.0) { picked = candidates[i]; break; }
+    }
 
+    if (!divisors.empty()) {
+        recent.push_front(picked->map_name);
+        while (recent.size() > divisors.size()) recent.pop_back();
+    }
+
+    std::string eff_str;
+    for (size_t i = 0; i < candidates.size(); ++i) {
+        char buf[160];
+        snprintf(buf, sizeof(buf), "%s%s=%.3g", i ? " " : "",
+                 candidates[i]->map_name.c_str(), eff[i]);
+        eff_str += buf;
+    }
     Logger::Log("queue-pop",
-        "[Matchmaking] map_pool %s queue=%u count=%d candidates=%zu/%zu picked=%s\n",
+        "[Matchmaking] map_pool %s queue=%u count=%d candidates=%zu/%zu picked=%s eff=[%s]\n",
         nearest_fit_used ? "nearest" : "filter", queue_id, count,
-        candidates.size(), pool.size(), picked->map_name.c_str());
+        candidates.size(), pool.size(), picked->map_name.c_str(), eff_str.c_str());
     return MapModeSpec{ picked->map_name, picked->game_mode };
 }
 

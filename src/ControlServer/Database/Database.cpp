@@ -2119,6 +2119,15 @@ void Database::Init() {
 		}
 	}
 
+	// Map recency weighting (2026-07-19): per-queue CSV of weight divisors,
+	// most recent pick first (e.g. '25,5'); NULL/empty = off. Consumed by
+	// MatchmakingService::PickRandomMapPoolEntryForCount. Idempotent —
+	// duplicate-column error swallowed.
+	result = sqlite3_exec(db,
+		"ALTER TABLE ga_queues ADD COLUMN map_recency_divisors TEXT DEFAULT NULL;",
+		nullptr, nullptr, &err);
+	if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
+
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
 }

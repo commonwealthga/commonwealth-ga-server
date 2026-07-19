@@ -44,7 +44,7 @@ static bool UpdateQueueField(uint32_t queue_id, const std::string& field,
                               const nlohmann::json& value, std::string& message) {
     // Whitelist: each field has its own type + range gate. Anything not
     // listed here is rejected.
-    enum class Kind { Bool, Uint, NonNegUint, NonNegFloat, Enum };
+    enum class Kind { Bool, Uint, NonNegUint, NonNegFloat, Enum, DivisorList };
     struct FieldSpec { const char* name; Kind kind; };
     static const FieldSpec kSpecs[] = {
         { "enabled",                   Kind::Bool        },
@@ -61,6 +61,7 @@ static bool UpdateQueueField(uint32_t queue_id, const std::string& field,
         { "team_policy",              Kind::Enum        },
         { "team_side_policy",         Kind::Enum        },
         { "pop_delay_policy",         Kind::Enum        },
+        { "map_recency_divisors",     Kind::DivisorList },  // CSV, each >= 1; empty = off
     };
 
     const FieldSpec* spec = nullptr;
@@ -111,6 +112,19 @@ static bool UpdateQueueField(uint32_t queue_id, const std::string& field,
             else if (field == "team_side_policy") mm::ParseTeamSidePolicy(bind_text, &ok);
             else if (field == "pop_delay_policy") mm::ParsePopDelayPolicy(bind_text, &ok);
             if (!ok) { message = "invalid value for " + field; return false; }
+            is_text = true;
+            break;
+        }
+        case Kind::DivisorList: {
+            if (!value.is_string()) { message = "value must be string"; return false; }
+            bind_text = value.get<std::string>();
+            // Same parser the config loader uses — accepted syntax can't drift.
+            bool ok = false;
+            mm::ParseRecencyDivisors(bind_text, &ok);
+            if (!ok) {
+                message = "map_recency_divisors must be comma-separated numbers >= 1 (empty = off)";
+                return false;
+            }
             is_text = true;
             break;
         }
