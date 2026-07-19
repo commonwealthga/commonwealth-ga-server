@@ -546,6 +546,61 @@ private:
     void send_player_skills_response();
 
     void send_agency_get_roster_response();
+    void handle_agency_create(const PacketView& pkt);
+    // Leader disbands the agency (delete it + push the "no agency" reset).
+    void handle_agency_disband();
+    // Append the caller's agency (meta + DATA_SET_RANKS + DATA_SET_MEMBERS) to
+    // `response` as top-level fields. Returns the number of fields appended (0
+    // if the caller is not in an agency). Shared by roster + create responses.
+    int append_agency_payload(std::vector<uint8_t>& response);
+
+    void handle_agency_invite(const PacketView& pkt);
+    // AGENCY_PROMOTE / AGENCY_DEMOTE — target member by PLAYER_ID (= character_id).
+    void handle_agency_rank_change(const PacketView& pkt, bool promote);
+    // Kick a member (AGENCY_PLAYER_REMOVE, or AGENCY_REMOVE with someone else's id).
+    void handle_agency_kick(int64_t target_char);
+    // AGENCY_SET_NOTE — MOTD / description / per-member public+officer notes.
+    void handle_agency_set_note(const PacketView& pkt);
+    // AGENCY_UPDATE_RANKS — full rank-table replacement from the rank editor.
+    void handle_agency_update_ranks(const PacketView& pkt);
+    // AGENCY_UPDATE_RECRUITING — Recruiting tab listing text + the two flags.
+    void handle_agency_update_recruiting(const PacketView& pkt);
+    // AGENCY_SET_OWNER — Management tab "Transfer Leader".
+    void handle_agency_set_owner(const PacketView& pkt);
+    // Push "no agency" + "no alliance" to a live session that just lost its
+    // agency without asking (kick / someone else's disband).
+    static void DeliverAgencyRefresh(int64_t target_user_id);
+    void handle_agency_accept();
+    // Push an AGENCY_INVITATION popup to this session.
+    // Status/error line for agency actions (MSG_ID template + @@player_name@@).
+    void send_agency_message(uint32_t msg_id, const std::string& player_name_token);
+    void send_agency_invitation(const std::string& agency_name,
+                                const std::string& inviter_leader_name);
+    // Pending agency invites: invited user_id -> agency_id it was invited to.
+    static std::mutex pending_agency_mutex_;
+    static std::map<int64_t, int64_t> pending_agency_invites_;
+
+    void send_alliance_member_list_response();
+    void handle_alliance_create(const PacketView& pkt);
+    // Append the caller's alliance (meta + DATA_SET_AGENCIES) as top-level
+    // fields. Returns field count (0 if the caller's agency has no alliance).
+    int append_alliance_payload(std::vector<uint8_t>& response);
+    void handle_alliance_disband();
+    void handle_alliance_invite(const PacketView& pkt);
+    void handle_alliance_accept();
+    void handle_alliance_remove(const PacketView& pkt);
+    // Push an ALLIANCE_INVITATION popup to this session.
+    void send_alliance_invitation(const std::string& alliance_name,
+                                  const std::string& inviter_leader_name,
+                                  int64_t alliance_id);
+    // Deliver an alliance invitation to whichever live session owns target_user_id.
+    static bool DeliverAllianceInvitation(int64_t target_user_id,
+                                          const std::string& alliance_name,
+                                          const std::string& inviter_leader_name,
+                                          int64_t alliance_id);
+    // Pending alliance invites: target agency_id -> alliance_id it was invited to.
+    static std::mutex pending_alliance_mutex_;
+    static std::map<int64_t, int64_t> pending_alliance_invites_;
 
     // QUERY_PLAYERS (0x0152) — player search from the Team menu / player
     // search scene. Echoes CALLER_ID (the client TgDataSet's GObjObjects

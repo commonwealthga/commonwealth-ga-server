@@ -85,7 +85,7 @@ These have been learned the hard way over hundreds of sessions. Re-deriving why 
 - `Makefile` — explicit source list. Add new `.cpp` here.
 - `server.db` — SQLite at repo root. Asset / blueprint / effect data.
 - `control-server.json` — runtime knobs, log channel toggles.
-- Existing technical docs in the repo: `bots.md`, `deployables.md`, `device_volumes.md`, `equip-slots.md`, `equippable-devices.md`, `medsec_spawn_tables.md`, `umax_spawn_tables.md`, `docs/gameplay/rest-device-slot14.md`. Read the relevant one before working in an area.
+- Existing technical docs in the repo: `agencies-alliances.md`, `bots.md`, `deployables.md`, `device_volumes.md`, `equip-slots.md`, `equippable-devices.md`, `medsec_spawn_tables.md`, `umax_spawn_tables.md`, `docs/gameplay/rest-device-slot14.md`. Read the relevant one before working in an area.
 
 ## Supporting docs (read on demand)
 
