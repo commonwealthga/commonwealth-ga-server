@@ -295,4 +295,13 @@ public:
     // Agency led by the account whose leader player_name matches (rank_id 0 =
     // leader). Used to resolve ALLIANCE_INVITE (invite by leader name). 0 if none.
     static int64_t GetAgencyIdByLeaderName(const std::string& leader_name);
+
+    // character_id -> {agency name, alliance name} for every agency member.
+    // Whole table in one query — the Team window and player search need the two
+    // name columns for a list of characters at once.
+    struct AffiliationRow {
+        std::string agency_name;
+        std::string alliance_name;   // "" when the agency is in no alliance
+    };
+    static std::map<int64_t, AffiliationRow> GetAffiliationsByCharacter();
 };

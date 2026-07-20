@@ -3509,6 +3509,31 @@ int64_t Database::GetAgencyIdByLeaderName(const std::string& leader_name) {
 	return id;
 }
 
+std::map<int64_t, Database::AffiliationRow> Database::GetAffiliationsByCharacter() {
+	std::map<int64_t, AffiliationRow> out;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT m.character_id, ag.name, COALESCE(al.name,'') "
+			"FROM ga_agency_members m "
+			"JOIN ga_agencies ag ON ag.id = m.agency_id "
+			"LEFT JOIN ga_alliance_members am ON am.agency_id = m.agency_id "
+			"LEFT JOIN ga_alliances al ON al.id = am.alliance_id "
+			"WHERE m.character_id > 0",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return out;
+	}
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		auto txt = [&](int c) {
+			const unsigned char* t = sqlite3_column_text(stmt, c);
+			return t ? std::string(reinterpret_cast<const char*>(t)) : std::string();
+		};
+		out[sqlite3_column_int64(stmt, 0)] = AffiliationRow{ txt(1), txt(2) };
+	}
+	sqlite3_finalize(stmt);
+	return out;
+}
+
 void Database::RemoveAgencyFromAlliance(int64_t agency_id) {
 	if (agency_id <= 0) return;
 	sqlite3* db = GetConnection();

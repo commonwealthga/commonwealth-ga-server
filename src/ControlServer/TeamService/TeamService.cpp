@@ -6,6 +6,7 @@
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/Constants/GameTypes.h"
+#include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/Logger.hpp"
 
 #include <algorithm>
@@ -77,6 +78,7 @@ TeamRoster TeamService::BuildRosterLocked(const Team& team) {
     TeamRoster roster;
     roster.team_id = team.id;
     roster.team_mode = 1;
+    const auto affiliations = Database::GetAffiliationsByCharacter();
     for (const auto& m : team.members) {
         if (m.session_guid == team.leader_guid)
             roster.leader_character_id = m.character_id;
@@ -88,6 +90,10 @@ TeamRoster TeamService::BuildRosterLocked(const Team& team) {
         row.class_msg_id    = ClassMsgIdFor(m.profile_id);
         row.map_name_msg_id = MapMsgIdForSession(m.session_guid);
         row.offline         = m.offline;
+        if (auto a = affiliations.find(m.character_id); a != affiliations.end()) {
+            row.agency_name   = a->second.agency_name;
+            row.alliance_name = a->second.alliance_name;
+        }
         roster.rows.push_back(std::move(row));
     }
     return roster;

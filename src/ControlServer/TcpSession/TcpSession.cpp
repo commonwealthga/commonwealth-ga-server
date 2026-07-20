@@ -4121,16 +4121,21 @@ void TcpSession::send_query_players_response(const PacketView& pkt)
 	constexpr size_t   kMaxRows = 50;
 
 	const auto players = InstanceRegistry::GetActiveSearchablePlayers();
+	const auto affiliations = Database::GetAffiliationsByCharacter();
 
 	std::vector<uint8_t> rows;
 	size_t row_count = 0;
 	for (const auto& p : players) {
 		if (row_count >= kMaxRows) break;
 		const bool teamed = TeamService::IsTeamed(p.session_guid);
+		Database::AffiliationRow aff;
+		if (auto a = affiliations.find(p.character_id); a != affiliations.end())
+			aff = a->second;
 		if (name_filter && !contains_ci(p.player_name, *name_filter)) continue;
-		// No agency/alliance system yet — a non-empty filter matches nobody.
-		if (agency_filter && !agency_filter->empty()) continue;
-		if (alliance_filter && !alliance_filter->empty()) continue;
+		if (agency_filter && !agency_filter->empty() &&
+			!contains_ci(aff.agency_name, *agency_filter)) continue;
+		if (alliance_filter && !alliance_filter->empty() &&
+			!contains_ci(aff.alliance_name, *alliance_filter)) continue;
 		if (level_min && kLevel < *level_min) continue;
 		if (level_max && kLevel > *level_max) continue;
 		if (profile_filter && p.profile_id != *profile_filter) continue;
@@ -4144,8 +4149,8 @@ void TcpSession::send_query_players_response(const PacketView& pkt)
 		append(rows, 0x0A, 0x00);  // 10 fields per row
 		Write4B(rows, GA_T::PLAYER_ID, (uint32_t)p.character_id);
 		WriteString(rows, GA_T::PLAYER_NAME, p.player_name);
-		WriteString(rows, GA_T::AGENCY_NAME, "");
-		WriteString(rows, GA_T::ALLIANCE_NAME, "");
+		WriteString(rows, GA_T::AGENCY_NAME, aff.agency_name);
+		WriteString(rows, GA_T::ALLIANCE_NAME, aff.alliance_name);
 		Write4B(rows, GA_T::LEVEL, kLevel);
 		Write4B(rows, GA_T::PROFILE_ID, p.profile_id);
 		Write4B(rows, GA_T::MAP_NAME_MSG_ID, map_msg_id);
