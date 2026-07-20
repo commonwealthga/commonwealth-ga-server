@@ -84,6 +84,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Storage/UserPreferences/UserPreferences.cpp \
 			  $(SRC_DIR)/GameServer/Stats/StatsCore.cpp \
 			  $(SRC_DIR)/GameServer/Stats/MatchStats.cpp \
+			  $(SRC_DIR)/GameServer/Stats/DeviceStats.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/ClientConnection/SendMarshal/ClientConnection__SendMarshal.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.cpp \
 			  $(SRC_DIR)/GameServer/Engine/NetConnection/SendPackageMap/NetConnection__SendPackageMap.cpp \
