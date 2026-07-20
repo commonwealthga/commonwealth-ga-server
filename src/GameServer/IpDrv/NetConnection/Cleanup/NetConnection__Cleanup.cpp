@@ -9,6 +9,7 @@
 #include "lib/nlohmann/json.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
+#include "src/GameServer/TgGame/TgPawn/KillDeployables/TgPawn__KillDeployables.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 void __fastcall NetConnection__Cleanup::Call(UNetConnection* Connection) {
@@ -84,6 +85,13 @@ void __fastcall NetConnection__Cleanup::Call(UNetConnection* Connection) {
 	// leaving a dangling key would cause those routes to hit free'd memory
 	// on the next inventory change.
 	if (pawn) {
+		// Leaving the mission takes your live deployables/pets with you —
+		// otherwise a player parks a power/med station in a PvE boss room,
+		// disconnects or swaps character, and the station keeps working for
+		// the team. Same teardown team-change and profile-switch already do.
+		if (!pawn->bDeleteMe) {
+			TgPawn__KillDeployables::KillAllOwned((ATgPawn*)pawn);
+		}
 		GPawnSessions.erase((ATgPawn*)pawn);
 	}
 
