@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
+#include "src/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/GameServer/Cosmetics/CosmeticEquip.hpp"
 #include "src/GameServer/Constants/EquipSlot.hpp"
@@ -252,7 +253,22 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// nPendingBotId = profileId so InitializeDefaultProps loads the correct class stats from DB.
 	// For player classes, bot_id == profile_id in asm_data_set_bots.
 	TgPawn__InitializeDefaultProps::nPendingBotId = profileId;
-	ATgPawn_Character* newpawn = (ATgPawn_Character*)Game->Spawn(ClassPreloader::GetTgPawnCharacterClass(), PlayerController, FName(), SpawnLocation, PlayerController->Rotation, nullptr, 1);
+	// Face the pawn the way the chosen TgTeamPlayerStart points. Retail
+	// RestartPlayer does Pawn.SetRotation(StartSpot.Rotation); we were reusing
+	// the controller's stale rotation (0 on join, last death view on respawn),
+	// which spawned players looking backwards on any start whose yaw isn't ~0.
+	// Yaw only, mirroring TgTeleporter.UsePlayerStart (see ReturnHomeArea.cpp).
+	FRotator SpawnRotation = PlayerController->Rotation;
+	SpawnRotation.Pitch = 0;
+	SpawnRotation.Roll  = 0;
+	{
+		auto it = TgGame__TgFindPlayerStart::s_ChosenYaw.find((AController*)PlayerController);
+		if (it != TgGame__TgFindPlayerStart::s_ChosenYaw.end()) {
+			SpawnRotation.Yaw = it->second;
+		}
+	}
+
+	ATgPawn_Character* newpawn = (ATgPawn_Character*)Game->Spawn(ClassPreloader::GetTgPawnCharacterClass(), PlayerController, FName(), SpawnLocation, SpawnRotation, nullptr, 1);
 	// nPendingBotId cleared inside InitializeDefaultProps::Call
 
 	// r_nPawnId is assigned by UC TgPawn.PostBeginPlay via TgGame.GetNextPawnId()
@@ -881,7 +897,13 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// Refresh against the pawn's actual spawned transform. The native
 	// vLocation argument can be unavailable on some hook paths after Spawn().
 	newpawn->SetLocation(newpawn->Location);
-	newpawn->SetRotation(PlayerController ? PlayerController->Rotation : newpawn->Rotation);
+	newpawn->SetRotation(SpawnRotation);
+	newpawn->SetViewRotation(SpawnRotation);
+	newpawn->ClientSetRotation(SpawnRotation);
+	if (PlayerController) {
+		PlayerController->Rotation = SpawnRotation;
+		PlayerController->ClientSetRotation(SpawnRotation, 1);
+	}
 	RepairSpawnVolumeState(newpawn);
 
 	// scope-zoom investigation baseline — snapshot the aim-mode fields right
