@@ -342,17 +342,17 @@ void SuperAgent::AuthorMission() {
 const std::map<int, std::vector<int>>& SuperAgent::SpawnTableComposites() {
 	static const std::map<int, std::vector<int>> composites = {
 		// local test:
-		{ 102, { 33, 102, 102} }, // small group of responders
-		{ 33, { 33, 102, 102, 33, 102, 102} }, // large group of responders
-
-		// live:
-		// { 34, { 34, 34, 100, 101, 104, 148 } },   // support enemies
-		// { 28, { 28, 28, 167, 157, 148} }, // normal spawns
-		// { 29, { 29, 29, 212, 212, 72, 210} }, // first spawn
 		// { 102, { 33, 102, 102} }, // small group of responders
 		// { 33, { 33, 102, 102, 33, 102, 102} }, // large group of responders
-		// { 40, { 40, 40, 100, 101, 104, 148 } }, // support enemies
-		// { 58, { 58, 58, 167, 58, 157 } }, // normal spawns + guardian
+
+		// live:
+		{ 34, { 34, 34, 100, 101, 104, 148 } },   // support enemies
+		{ 28, { 28, 28, 167, 157, 148} }, // normal spawns
+		{ 29, { 29, 29, 212, 212, 72, 210} }, // first spawn
+		{ 102, { 33, 102, 102} }, // small group of responders
+		{ 33, { 33, 102, 102, 33, 102, 102} }, // large group of responders
+		{ 40, { 40, 40, 100, 101, 104, 148 } }, // support enemies
+		{ 58, { 58, 58, 167, 58, 157 } }, // normal spawns + guardian
 
 		// { 177, { 177, 177, 177, 177, 177, 177, 177, 177, 177, 177, 177, 177} }, // huge amount of ticks
 
