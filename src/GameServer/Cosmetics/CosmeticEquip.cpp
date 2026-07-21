@@ -4,6 +4,7 @@
 #include "src/Database/Database.hpp"
 #include "src/Shared/CosmeticSlots.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 
 namespace CosmeticEquip {
 
@@ -354,6 +355,20 @@ static int NormalizeItemProfileId(ATgPawn* Pawn, int item_profile_id) {
 		}
 	}
 	return 1;
+}
+
+bool ApplyItemToBot(ATgPawn* Pawn, int itemId) {
+	if (!Pawn || itemId == 0) return false;
+	// Strict class gate — see the header. Anything else either has no
+	// r_CustomCharacterAssembly or holds it at a different offset.
+	if (!ObjectClassCache::ClassNameContains(Pawn, "TgPawn_Character")) {
+		Logger::Log("cosmetic-equip",
+			"ApplyItemToBot: itemId=%d skipped — pawn class '%s' is not "
+			"TgPawn_Character (mesh comes from body_asm_id, not the assembly)\n",
+			itemId, ObjectClassCache::GetClassName(Pawn).c_str());
+		return false;
+	}
+	return ApplyOnly(Pawn, /*slot=*/-1, itemId);
 }
 
 bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int item_profile_id,

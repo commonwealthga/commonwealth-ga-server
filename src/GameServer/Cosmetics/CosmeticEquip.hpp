@@ -22,6 +22,20 @@ namespace CosmeticEquip {
 bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int item_profile_id,
                  int slot, int invId, int itemId);
 
+// Apply ONE cosmetic item to a pawn with no character/DB backing — for BOTS.
+// Same dispatch as ApplyToPawn (helmet/flair writes HeadFlairId + HelmetMeshId,
+// suit writes SuitFlairId + SuitMeshId) but persists nothing.
+//
+// Returns false — a safe no-op — unless the pawn is a TgPawn_Character. Only
+// that class builds its mesh from r_CustomCharacterAssembly. Bot-mesh classes
+// take their look from asm_data_set_bots.body_asm_id and have no assembly field
+// at all (e.g. the Elite Helot is TgPawn_AndroidMinion), so cosmetics cannot
+// show on them — and writing the field anyway would scribble whatever lives at
+// that offset. The guard is deliberately TgPawn_Character ONLY, not the whole
+// lineage: TgPawn_CTR has its own r_CustomCharacterAssembly at a DIFFERENT
+// offset (0x1650 vs 0x1784), so the ATgPawn_Character cast is wrong for it.
+bool ApplyItemToBot(ATgPawn* Pawn, int itemId);
+
 // Clear one cosmetic slot from live assembly and profile storage. Accepts
 // engine slot 6 (Suit), 12 (Helmet), or 16-20 (dyes). Suit/helmet reset their
 // Flair/Mesh fields to -1 (bare — no overlay) and delete the remapped DB row

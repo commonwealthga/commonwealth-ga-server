@@ -28,15 +28,24 @@ public:
 	                 const wchar_t* name = nullptr,
 	                 const wchar_t* playerName = nullptr);
 
-	// Send a free-text alert to one connection. Same center-screen toast +
-	// sound as Send(), but the text travels in GA_T::MESSAGE instead of being
-	// looked up from a localized MSG_ID — for dynamic strings that have no
-	// pre-baked id (e.g. "you have been autobalanced").
+	// Send free text to one connection. The text travels in GA_T::MESSAGE with
+	// no MSG_ID, so the client renders it as a CHAT LINE ("Instance" channel),
+	// NOT the center-screen toast — MSG_ID presence gates the alert path
+	// (playtest 2026-07-20). Good for command replies (/coords etc.); use
+	// BroadcastText for a real toast.
 	static void SendText(UNetConnection* Connection,
 	                     const wchar_t* message,
 	                     unsigned char priority,
 	                     unsigned char type,
 	                     float duration = 3.0f);
+
+	// Free-text CENTER-SCREEN toast to every connected player. Rides the bare
+	// "@@text_value@@" msg template (23083) with the text in GA_T::TEXT_VALUE,
+	// so the dispatcher takes the real alert path (unlike SendText's chat line).
+	static void BroadcastText(const wchar_t* message,
+	                          unsigned char priority,
+	                          unsigned char type,
+	                          float duration = 3.0f);
 
 	// Send to every connected player (skips closed connections + ones with no Pawn).
 	static void Broadcast(int msgId,

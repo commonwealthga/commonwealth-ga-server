@@ -330,6 +330,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Combat/SendCombatMessage/SendCombatMessage.cpp \
 			  $(SRC_DIR)/GameServer/Combat/SendKillAlert/SendKillAlert.cpp \
 			  $(SRC_DIR)/GameServer/Combat/MissionAlerts/SendAlert.cpp \
+			  $(SRC_DIR)/GameServer/Audio/BotVoice/BotVoice.cpp \
 			  $(SRC_DIR)/GameServer/Combat/MissionAlerts/MissionAlerts.cpp \
 			  $(SRC_DIR)/GameServer/Combat/CombatMessageFlusher/CombatMessageFlusher.cpp \
 			  $(SRC_DIR)/GameServer/Matchmaking/SetupRebalanceTrigger/SetupRebalanceTrigger.cpp \

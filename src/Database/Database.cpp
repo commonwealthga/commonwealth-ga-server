@@ -10448,6 +10448,176 @@ void Database::Init() {
 			"Ticks Ant factories -> 10008, Newtopia sand spiders -> single (206)\n");
 	}
 
+	if (version < 150) {
+		// v150: mod spawn table 10011 — elite squad roster (Novice tier 1467 so
+		// the cascade reaches it at every difficulty, per the v142 precedent).
+		// Two groups, each rolling ONE of the four elites at equal chance:
+		//   group 1 (heavy): Assassin 1320 x8 | Helot 1321 x6 | Alchemist 1431 x4 | Techro 1432 x4
+		//   group 2 (light): any of the four x2
+		result = sqlite3_exec(db,
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10011, 1467, 0, 1, 1320, 8, 0.25, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10011 AND spawn_group = 1 AND enemy_bot_id = 1320);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10011, 1467, 0, 1, 1321, 6, 0.25, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10011 AND spawn_group = 1 AND enemy_bot_id = 1321);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10011, 1467, 0, 1, 1431, 4, 0.25, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10011 AND spawn_group = 1 AND enemy_bot_id = 1431);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10011, 1467, 0, 1, 1432, 4, 0.25, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10011 AND spawn_group = 1 AND enemy_bot_id = 1432);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10011, 1467, 0, 2, 1320, 2, 0.25, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10011 AND spawn_group = 2 AND enemy_bot_id = 1320);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10011, 1467, 0, 2, 1321, 2, 0.25, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10011 AND spawn_group = 2 AND enemy_bot_id = 1321);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10011, 1467, 0, 2, 1431, 2, 0.25, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10011 AND spawn_group = 2 AND enemy_bot_id = 1431);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10011, 1467, 0, 2, 1432, 2, 0.25, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10011 AND spawn_group = 2 AND enemy_bot_id = 1432);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v150 (mod spawn table 10011): %s\n", err); return; }
+
+		Logger::Log("db", "v150: mod spawn table 10011 — elite squad, "
+			"group 1 Assassin x8 / Helot x6 / Alchemist x4 / Techro x4 @0.25, "
+			"group 2 any elite x2 @0.25\n");
+	}
+
+	if (version < 151) {
+		// v151: mod spawn table 10012 — escort pack for the Super Agent
+		// UnleashGroup overload (leader + medics). Novice tier 1467 so the
+		// cascade reaches it at every difficulty, matching 10000-10011.
+		//   group 1: Elite Helot 1321 x1   (the leader)
+		//   group 2: Field Medic 1571 x3  (the escorts)
+		// Single bot per group at chance 1.0 (the 10001 shape), min/max 0 so
+		// the counts are fixed rather than ranged.
+		result = sqlite3_exec(db,
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10012, 1467, 0, 1, 1321, 1, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10012 AND spawn_group = 1 AND enemy_bot_id = 1321);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10012, 1467, 0, 2, 1571, 3, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10012 AND spawn_group = 2 AND enemy_bot_id = 1571);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v151 (mod spawn table 10012): %s\n", err); return; }
+
+		Logger::Log("db", "v151: mod spawn table 10012 — group 1 Elite Helot 1321 x1, "
+			"group 2 Field Medic 1571 x3\n");
+	}
+
+	if (version < 152) {
+		// v152: mod spawn table 10013 — a copy of asm table 149 (juggernaut wave)
+		// with group 4 randomized. Super Agent resolves 149 at its difficulty-1471
+		// tier (the cascade's first tier holding 149), so this reproduces THOSE
+		// rows — group 2: repair drone 1576 x4; group 3: 1468 x4 / 1576 x2 @0.5 —
+		// and replaces group 4's single Colony Juggernaut with an EQUAL (0.25)
+		// roll of one of four bosses: Colony Juggernaut 1574 / Colony Dreadnaught
+		// 1609 / Electrocutioner 1587 / Magma Lord 1586. Difficulty 1467 matches
+		// the 10000-10012 mod-table convention (unique table id → the cascade
+		// gap-fills it regardless of tier). All four bosses have
+		// bot_balance_multiplier=1.0 (not the never-spawn sentinel).
+		result = sqlite3_exec(db,
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10013, 1467, 0, 2, 1576, 4, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10013 AND spawn_group = 2 AND enemy_bot_id = 1576);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10013, 1467, 0, 3, 1468, 4, 0.5, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10013 AND spawn_group = 3 AND enemy_bot_id = 1468);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10013, 1467, 0, 3, 1576, 2, 0.5, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10013 AND spawn_group = 3 AND enemy_bot_id = 1576);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10013, 1467, 0, 4, 1574, 1, 0.25, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10013 AND spawn_group = 4 AND enemy_bot_id = 1574);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10013, 1467, 0, 4, 1609, 1, 0.25, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10013 AND spawn_group = 4 AND enemy_bot_id = 1609);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10013, 1467, 0, 4, 1587, 1, 0.25, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10013 AND spawn_group = 4 AND enemy_bot_id = 1587);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, "
+			"   enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, "
+			"   bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10013, 1467, 0, 4, 1586, 1, 0.25, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables "
+			"                  WHERE bot_spawn_table_id = 10013 AND spawn_group = 4 AND enemy_bot_id = 1586);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v152 (mod spawn table 10013): %s\n", err); return; }
+
+		Logger::Log("db", "v152: mod spawn table 10013 — copy of 149 (g2 drone x4, "
+			"g3 1468 x4 / 1576 x2), group 4 = one of Juggernaut/Dreadnaught/"
+			"Electrocutioner/Magma Lord @0.25\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -10459,7 +10629,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 149", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 152", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
