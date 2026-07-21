@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgBotFactory/ResetQueue/TgBotFactory__ResetQueue.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/SpawnNextBot/TgBotFactory__SpawnNextBot.hpp"
+#include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 #include <vector>
@@ -22,6 +23,20 @@
 // UnlockObjective (override 0).
 void __fastcall TgBotFactory__ResetQueue::Call(ATgBotFactory* BotFactory, void* edx, int nOverrideSpawnTableId) {
 	if (BotFactory == nullptr) return;
+
+	// SuperAgent-owned factories: only SuperAgent may rebuild the queue. UC
+	// TgBotEncounterVolume.CheckTouching -> StartEncounter -> ResetQueue(0)
+	// fires on any member factory with no live bots whenever the human count in
+	// the volume changes, wiping an in-flight wave queue (and the native
+	// ActivateAlarm retargets factories through this same call).
+	if (SuperAgent::Adds::BlockExternalReset(BotFactory)) {
+		Logger::Log("tgbotfactory",
+			"[%s] %s ResetQueue(override=%d) mapObjectId=%d IGNORED — "
+			"SuperAgent-owned factory (external reset blocked, queue=%d kept)\n",
+			Logger::GetTime(), BotFactory->GetName(), nOverrideSpawnTableId,
+			BotFactory->m_nMapObjectId, BotFactory->m_SpawnQueue.Num());
+		return;
+	}
 
 	// Resolve the table. ResetQueue(0) restores the designer default after a
 	// nonzero alarm id retargeted nSpawnTableId (nDefaultSpawnTableId is 0

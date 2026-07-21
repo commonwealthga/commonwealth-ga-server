@@ -179,7 +179,7 @@ void SuperAgent::AuthorMission() {
 			boss.rotationRateYaw = 120000;
 			boss.accuracy = 1.0f;
 			boss.setAccuracyLoss = true;
-			boss.targetSwitchSecs = 0.4f;
+			boss.targetSwitchSecs = 0.8f;
 			boss.behaviorFromBotId = 1384;
 			boss.name = L"The Agenderp";
 			boss.voCueIds  = { 59, 60, 55, 64, 65 };

@@ -31,6 +31,7 @@
 
 class ATgGame;
 class ATgMissionObjective_Proximity;
+class ATgBotFactory;
 
 namespace SuperAgent {
 
@@ -133,6 +134,12 @@ struct UnleashOpts {
 	// Health + max-health multiplier (spawns at full). Applied through props
 	// 304/51, not the engine fields — see the comment at the call site.
 	float healthMult = 0.0f;
+	// Immune to stun AND EMP-stun (EMP bomb, Shatter bomb, ...). Stun lifetime
+	// is mitigated by TgEffectGroup.CalcProtection: protection-prop raw /
+	// attacker device rating = % reduction. Sets props 163 (PROTECTION_STUN)
+	// and 235 (PROTECTION_EMP_STUN) so high no device rating can dent it —
+	// the stun's lifetime calcs to 0 and it never applies.
+	bool  stunImmune = false;
 	const wchar_t* name = nullptr;   // display-name override -> the bot's PRI PlayerName
 
 	// ---- "obvious cheater" knobs — each independent, all optional ----
@@ -298,6 +305,23 @@ namespace Adds {
 	// Fire the engine alarm (siren + AlarmBots kismet). Cosmetic/atmospheric —
 	// pair it with Unleash() for the actual spawn.
 	void Alarm();
+
+	// Queried by the TgBotFactory::ResetQueue hook. True when SuperAgent has
+	// taken `f` over (any Unleash / escape wave / escape respawn) and the call
+	// is NOT SuperAgent's own — such external rebuilds are dropped. Rationale:
+	// UC TgBotEncounterVolume.CheckTouching fires StartEncounter -> ResetQueue(0)
+	// on every member factory with no live bots whenever the human count in the
+	// volume changes (death/respawn/walk-in), wiping in-flight wave queues; the
+	// native ActivateAlarm retargets factories through the same call.
+	bool BlockExternalReset(ATgBotFactory* f);
+
+	// Queried by the TgBotFactory::SpawnNextBot hook. True when `f`'s CURRENT
+	// queue was authored by Unleash/UnleashOutside — those spawns are the wave
+	// itself, not alarm responders, so the hook skips the m_bAlarmBot stamp
+	// (which would expose them to the behavior stand-down/despawn actions,
+	// ExecuteAction 1318 DespawnAlarmBots / 1272 Despawn). Escape alarm waves
+	// (FireGlobalAlarm) and untouched factories keep retail marking.
+	bool SuppressAlarmMark(ATgBotFactory* f);
 }
 
 // Escape phase. When point A is captured, EVERY map bot factory is respawned

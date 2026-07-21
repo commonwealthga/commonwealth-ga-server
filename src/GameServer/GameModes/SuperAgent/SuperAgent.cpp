@@ -66,6 +66,47 @@ std::vector<ATgBotFactory*> s_AlarmFactories;
 AActor* s_AlarmOriginator = nullptr;
 int     s_AlarmId         = 0;
 
+// Factories SuperAgent has taken over (any Unleash / escape wave / respawn).
+// External ResetQueue calls on these are DROPPED by the ResetQueue hook (see
+// Adds::BlockExternalReset): UC TgBotEncounterVolume.CheckTouching fires
+// StartEncounter -> ResetQueue(0) on every member factory with no live bots
+// whenever the human count in the volume CHANGES (death/respawn/walk-in),
+// replacing an in-flight wave queue with the factory's default table. Solo the
+// count never changes mid-wave; with real players it changes constantly —
+// capture-phase drip waves were reduced to their first bot (playtest
+// 2026-07-21). s_ResetBypass tokens SuperAgent's OWN ResetQueue calls past the
+// guard. Single-threaded game — a plain static is safe.
+std::vector<ATgBotFactory*> s_OwnedFactories;
+ATgBotFactory* s_ResetBypass = nullptr;
+
+bool IsOwnedFactory(ATgBotFactory* f) {
+	for (ATgBotFactory* o : s_OwnedFactories) if (o == f) return true;
+	return false;
+}
+
+void MarkOwned(ATgBotFactory* f) {
+	if (f && !IsOwnedFactory(f)) s_OwnedFactories.push_back(f);
+}
+
+// SuperAgent-internal ResetQueue: mark the factory owned and bypass the
+// external-reset guard for this one call.
+void OwnedResetQueue(ATgBotFactory* f, int tableId) {
+	MarkOwned(f);
+	s_ResetBypass = f;
+	TgBotFactory__ResetQueue::Call(f, nullptr, tableId);
+	s_ResetBypass = nullptr;
+}
+
+// Factories whose CURRENT queue is an Unleash/UnleashOutside wave. Spawns from
+// these must NOT get the m_bAlarmBot stamp (see Adds::SuppressAlarmMark) —
+// wave bots are the assault itself, not alarm responders, and the mark exposes
+// them to the behavior stand-down/despawn actions (ExecuteAction 1318
+// DespawnAlarmBots / 1272 Despawn). Valid across the drip's async timer spawns
+// because the ownership guard blocks external queue rebuilds: an owned
+// factory's queue only ever holds the wave that inserted it here. UnleashFactory
+// inserts; FireGlobalAlarm erases (escape alarm waves keep retail semantics).
+std::set<ATgBotFactory*> s_NoAlarmMarkFactories;
+
 // The NORMAL (non-pet, non-alarm) factory whose spawn nav point sits nearest a
 // boss-room ENTRANCE volume (one-way ATgModifyPawnPropertiesVolume facing the
 // boss — see CacheAddFactories). Driven only by Adds::UnleashOutside: its bots
@@ -391,7 +432,7 @@ void RespawnAllFactories() {
 		for (int i = 0; i < f->m_SpawnGroups.Num(); i++) {
 			if (f->m_SpawnGroups.Data) f->m_SpawnGroups.Data[i].nCurrentCount = 0;
 		}
-		TgBotFactory__ResetQueue::Call(f, nullptr, newTable);
+		OwnedResetQueue(f, newTable);
 		// Don't spawn now — stagger each factory's FIRST spawn so the whole map's
 		// roster doesn't replicate in one frame. From there, bBulkSpawn=0 +
 		// fSpawnDelay keep each factory's roster dripping out over time.
@@ -493,6 +534,9 @@ void CacheGeometry(ATgTeamPlayerStart* attackerStart, ATgTeamPlayerStart* defend
 void CacheAddFactories(ATgMissionObjective* boss) {
 	s_AddFactories.clear();
 	s_AlarmFactories.clear();
+	s_OwnedFactories.clear();
+	s_ResetBypass = nullptr;
+	s_NoAlarmMarkFactories.clear();
 	s_AlarmOriginator = nullptr;
 	s_AlarmId = 0;
 	s_OutsideFactory = nullptr;
@@ -766,11 +810,31 @@ void Log(const char* fmt, ...) {
 
 namespace Adds {
 
+bool BlockExternalReset(ATgBotFactory* f) {
+	return SuperAgent::IsActive() && IsOwnedFactory(f) && s_ResetBypass != f;
+}
+
+bool SuppressAlarmMark(ATgBotFactory* f) {
+	return SuperAgent::IsActive() &&
+	       s_NoAlarmMarkFactories.find(f) != s_NoAlarmMarkFactories.end();
+}
+
 // Shared per-factory unleash policy, used by Unleash() and UnleashOutside().
 // Spawns `tableId`'s roster from `f`, ADDING to whatever's alive. spawnDelay<=0
 // dumps the FULL roster in one frame (instant, the default); spawnDelay>0 DRIPS
 // it out one bot every `spawnDelay` seconds.
 static void UnleashFactory(ATgBotFactory* f, int tableId, float spawnDelay = 0.0f) {
+	// Mirror the unleash context onto the factory channel so one capture shows
+	// the whole chain (unleash -> ResetQueue -> per-spawn / bail lines).
+	Logger::Log("tgbotfactory",
+		"[%s] %s UNLEASH mapObjectId=%d table=%d delay=%.2f "
+		"(locations=%d current=%d auto=%d bulk=%d alarmFlag=%d)\n",
+		Logger::GetTime(), f->GetName(), f->m_nMapObjectId, tableId, spawnDelay,
+		f->LocationList.Num(), f->nCurrentCount,
+		(int)f->bAutoSpawn, (int)f->bBulkSpawn, (int)f->bSpawnOnAlarm);
+	// This queue is a wave, not an alarm response — spawns from it must not be
+	// m_bAlarmBot-marked (behavior stand-down/despawn eligibility).
+	s_NoAlarmMarkFactories.insert(f);
 	if (tableId > 0) f->nSpawnTableId = tableId;
 	// SpawnBotById drops every bot from a factory whose nPriority>0 and
 	// != s_nCurrentPriority. The boss-room factories are nPriority=1 (boss
@@ -801,7 +865,7 @@ static void UnleashFactory(ATgBotFactory* f, int tableId, float spawnDelay = 0.0
 		f->bBulkSpawn   = 0;
 		f->fSpawnDelay  = spawnDelay;
 		f->nActiveCount = 0;
-		TgBotFactory__ResetQueue::Call(f, nullptr, tableId);
+		OwnedResetQueue(f, tableId);
 		TgBotFactory__SpawnNextBot::Call(f, nullptr);
 		return;
 	}
@@ -816,7 +880,7 @@ static void UnleashFactory(ATgBotFactory* f, int tableId, float spawnDelay = 0.0
 	f->bAutoSpawn   = 1;
 	f->bBulkSpawn   = 1;
 	f->nActiveCount = 0;
-	TgBotFactory__ResetQueue::Call(f, nullptr, tableId);
+	OwnedResetQueue(f, tableId);
 	TgBotFactory__SpawnNextBot::Call(f, nullptr);
 	f->nActiveCount = savedActive;
 	f->bBulkSpawn   = savedBulk;
@@ -830,7 +894,20 @@ void Unleash(int tableId, float spawnDelay) {
 	// authored wave design.
 	std::vector<ATgBotFactory*> valid;
 	for (ATgBotFactory* f : s_AddFactories) {
-		if (f) valid.push_back(f);
+		if (!f) continue;
+		// A factory with no usable LocationList nav can't spawn ANYTHING —
+		// SpawnNextBot bails pre-spawn ("no valid location") and the whole wave
+		// silently vanishes. Never let the random pick land on one.
+		bool hasNav = false;
+		for (int i = 0; i < f->LocationList.Num(); i++) {
+			if (f->LocationList.Data && f->LocationList.Data[i]) { hasNav = true; break; }
+		}
+		if (!hasNav) {
+			Log("Adds::Unleash(%d): skipping factory %d — no usable spawn nav\n",
+				tableId, f->m_nMapObjectId);
+			continue;
+		}
+		valid.push_back(f);
 	}
 	if (valid.empty()) { Log("Adds::Unleash(%d): no factories\n", tableId); return; }
 	ATgBotFactory* f = valid[rand() % valid.size()];
@@ -914,6 +991,18 @@ static void ApplyUnleashOpts(ATgPawn* pawn, const UnleashOpts& o) {
 		pawn->AddProperty(GA_PROPERTY::TGPID_HEALTH_MAX, newMax, newMax, 0, newMax * 10.0f);
 		pawn->AddProperty(GA_PROPERTY::TGPID_HEALTH,     newMax, newMax, 0, newMax * 10.0f);
 		pawn->HealthMax = (int)newMax;   // base UE3 field, not written by the fanout
+	}
+	if (o.stunImmune) {
+		// TgEffectGroup.CalcCategoryProtection: stun = category 378 -> prop 163,
+		// EMP stun = category 653 -> prop 235. CalcProtection reduces the stun's
+		// LIFETIME by FClamp(raw,min,max)/deviceRating — raw and max far above
+		// any device rating = 100% reduction, the stun never lands. (Defaults
+		// seed these at raw 0, max 1000 — max must be raised too or the clamp
+		// caps the reduction at 1000/rating.)
+		pawn->AddProperty(GA_PROPERTY::TGPID_PROTECTION_STUN,
+			100000.0f, 100000.0f, 0, 100000.0f);
+		pawn->AddProperty(GA_PROPERTY::TGPID_PROTECTION_EMP_STUN,
+			100000.0f, 100000.0f, 0, 100000.0f);
 	}
 	// ---- cheater knobs ----
 	if (o.rotationRateYaw > 0) {
@@ -1081,7 +1170,10 @@ static void FireGlobalAlarm(const Escape::AlarmWave* wave) {
 		const int           savedTable = nearest->nSpawnTableId;
 		const unsigned long savedAuto  = nearest->bAutoSpawn;
 		nearest->bAutoSpawn = 1;
-		TgBotFactory__ResetQueue::Call(nearest, nullptr, tableId);
+		// Escape alarm waves ARE alarm responses — keep retail m_bAlarmBot
+		// marking even if a capture-phase Unleash used this factory earlier.
+		s_NoAlarmMarkFactories.erase(nearest);
+		OwnedResetQueue(nearest, tableId);
 		TgBotFactory__SpawnNextBot::Call(nearest, nullptr);
 		nearest->bAutoSpawn = savedAuto;
 		if (tableId > 0) nearest->nSpawnTableId = savedTable;
