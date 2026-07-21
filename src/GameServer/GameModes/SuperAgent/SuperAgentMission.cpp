@@ -224,7 +224,7 @@ void SuperAgent::AuthorMission() {
 	// A small unannounced harassment wave (no alertText → silent).
 	// The classic announced alarm keeps its warning string. Keep one common case.
 	Escape::AlarmWave smallWave;
-	smallWave.weight = 50.0f;
+	smallWave.weight = 30.0f;
 	smallWave.tableId = 102;
 	smallWave.alertText = L"WARNING! Recursive ambush wave detected!";
 
@@ -235,7 +235,7 @@ void SuperAgent::AuthorMission() {
 	standard.alertText = L"WARNING! Large recursive ambush wave detected!";
 
 	Escape::AlarmWave ants;
-	ants.weight = 20.0f;
+	ants.weight = 15.0f;
 	ants.tableId = 213;
 	ants.maxFactories = 2;
 	ants.alertText = L"WARNING! Large swarm of colony ants detected!";
@@ -261,7 +261,7 @@ void SuperAgent::AuthorMission() {
 	// anomaly.opts.scale = 1.4f;
 	// anomaly.opts.name  = L"Anomaly";
 
-	Escape::PeriodicAlarm(60.0f, 150.0f, { smallWave, standard , ants, ticks  });
+	Escape::PeriodicAlarm(30.0f, 60.0f, { smallWave, standard , ants, ticks  });
 
 	// ------------------------------------------------------------------ //
 	//  POINT B — back to the dropship. Default attacker-capture = win.   //
@@ -287,17 +287,17 @@ void SuperAgent::AuthorMission() {
 //   target table -> { source tables, in append order }
 const std::map<int, std::vector<int>>& SuperAgent::SpawnTableComposites() {
 	static const std::map<int, std::vector<int>> composites = {
-		{ 34, { 34, 100, 101, 104 } },   // support enemies
-		{ 28, { 28, 167, 167} }, // normal spawns
-		{ 29, { 29, 212, 212, 72, 210} }, // first spawn
+		{ 34, { 34, 34, 100, 101, 104, 148 } },   // support enemies
+		{ 28, { 28, 28, 167, 157, 148} }, // normal spawns
+		{ 29, { 29, 29, 212, 212, 72, 210} }, // first spawn
 		{ 102, { 33, 102, 102} }, // small group of responders
 		{ 33, { 33, 102, 102, 33, 102, 102} }, // large group of responders
-		{ 40, { 40, 100, 101, 104 } }, // support enemies
-		{ 58, { 58, 167, 58, 167 } }, // normal spawns + guardian
+		{ 40, { 40, 40, 100, 101, 104, 148 } }, // support enemies
+		{ 58, { 58, 58, 167, 58, 157 } }, // normal spawns + guardian
 
 		{ 177, { 177, 177, 177, 177, 177, 177, 177, 177, 177, 177, 177, 177} }, // huge amount of ticks
 
-		{ 213, { 213, 213, 213, 213, 213, 213 }}, // huge amount of ants
+		{ 213, { 213, 213, 213, 213, 213, 213, 213 }}, // huge amount of ants
 		// { 193, { 193, 193, 193, 193, 193, 193, 193, 193 } }, // huge amount of guardians
 	};
 	return composites;
