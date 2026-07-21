@@ -1,5 +1,6 @@
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/ChatSession/ChatSession.hpp"
+#include "src/ControlServer/ChatSession/ChatCommand.hpp"
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/Auth/LoginAuth.hpp"
 #include "src/ControlServer/Constants/DeviceIds.hpp"
@@ -1925,6 +1926,11 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			Logger::Log("tcp", "[%s] Received: QUERY_PLAYERS [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 			PacketView pkt(data + 6, length - 6);
 			send_query_players_response(pkt);
+			break;
+		}
+		case GA_U::PLAYER_COMMAND: {
+			PacketView pkt(data + 6, length - 6);
+			handle_player_command(pkt);
 			break;
 		}
 		case GA_U::FRIEND_GET_LIST:
@@ -4216,6 +4222,64 @@ void TcpSession::send_query_players_response(const PacketView& pkt)
 		caller_id, (int)players.size(), (int)row_count);
 
 	send_response(response);
+}
+
+void TcpSession::handle_player_command(const PacketView& pkt)
+{
+	if (session_guid_.empty()) return;
+
+	// TEXT_VALUE is flagged TYPE_TCP_WCHAR_STR, but the chat path proves this
+	// client ships narrow strings on the wire. Read narrow, fall back to wide.
+	std::string raw = pkt.ReadString(GA_T::TEXT_VALUE).value_or("");
+	if (raw.empty()) {
+		if (auto wide = pkt.ReadWideString(GA_T::TEXT_VALUE)) {
+			raw.assign(wide->begin(), wide->end());  // ASCII-only narrowing
+		}
+	}
+
+	// The client forwards the command with its leading '/' intact on some
+	// paths and stripped on others — tolerate both.
+	size_t start = raw.find_first_not_of(" \t\r\n");
+	if (start == std::string::npos) return;
+	if (raw[start] == '/') start++;
+
+	size_t sep = raw.find_first_of(" \t", start);
+	const std::string token = raw.substr(start, sep == std::string::npos
+		? std::string::npos : sep - start);
+	std::string rest;
+	if (sep != std::string::npos) {
+		size_t body = raw.find_first_not_of(" \t", sep);
+		if (body != std::string::npos) rest = raw.substr(body);
+		while (!rest.empty() && (rest.back() == ' ' || rest.back() == '\t' ||
+		                         rest.back() == '\r' || rest.back() == '\n')) {
+			rest.pop_back();
+		}
+	}
+	if (token.empty()) return;
+
+	const auto channel = ChatCommand::ChannelForCommandToken(token);
+	if (!channel) {
+		Logger::Log("chat-command",
+			"[ChatCmd] PLAYER_COMMAND guid=%s token='%s' outcome=unknown\n",
+			session_guid_.c_str(), token.c_str());
+		ChatSession::SystemMessageToGuid(session_guid_,
+			"*** Unknown command: /" + token + " ***");
+		return;
+	}
+	if (rest.empty()) {
+		ChatSession::SystemMessageToGuid(session_guid_,
+			"*** Usage: /" + token + " <message> ***");
+		return;
+	}
+
+	const bool sent = ChatSession::SendChannelMessageFrom(session_guid_, *channel, rest);
+	Logger::Log("chat-command",
+		"[ChatCmd] PLAYER_COMMAND guid=%s token='%s' channel=%u outcome=%s\n",
+		session_guid_.c_str(), token.c_str(), *channel, sent ? "sent" : "no_chat_session");
+	if (!sent) {
+		ChatSession::SystemMessageToGuid(session_guid_,
+			"*** Chat is not connected ***");
+	}
 }
 
 void TcpSession::handle_friend_update(const PacketView& pkt)

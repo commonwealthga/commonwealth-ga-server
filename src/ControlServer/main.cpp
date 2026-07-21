@@ -737,6 +737,7 @@ int main(int argc, char* argv[]) {
     }
 
     Logger::Log("main", "Binding chat listener on port %d\n", (int)cfg.chat_port);
+    ChatSession::SetAnnouncers(cfg.announcers);
     // Bind chat listener (GA chat connections — separate port)
     ChatListener chat_listener(io, cfg.chat_port);
     if (!chat_listener.IsListening()) {

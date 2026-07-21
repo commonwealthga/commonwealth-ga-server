@@ -91,6 +91,21 @@ std::optional<int> ParseInt(const std::string& s) {
 
 } // namespace
 
+std::optional<uint32_t> ChannelForCommandToken(const std::string& token) {
+    const std::string t = LowerAscii(token);
+    // Channel ids: see handoff.md §1. Agency (2), Alliance (3) and Raid (6)
+    // are deliberately absent until the features behind them exist — an
+    // unknown token gets an "unknown command" reply rather than silently
+    // sending into a channel nobody is scoped to.
+    if (t == "l"    || t == "local")    return 4;
+    if (t == "t"    || t == "team")     return 5;
+    if (t == "c"    || t == "city")     return 7;
+    if (t == "i"    || t == "instance") return 1;
+    if (t == "tr"   || t == "trade")    return 12;
+    if (t == "lfg")                     return 13;
+    return std::nullopt;
+}
+
 ParseResult TryParseChatCommand(const std::string& message_text) {
     ParseResult out;
 
@@ -220,6 +235,15 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         out.suppress_broadcast = true;
         // No args; trailing junk silently ignored (recognized + suppressed).
         if (rest.empty()) out.reload_queues = true;
+        return out;
+    }
+
+    if (cmd_name == "-announce") {
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        // Empty text -> nullopt (silent reject). Permission is the caller's
+        // job — parsing does not know who sent this.
+        if (!rest.empty()) out.announce = rest;
         return out;
     }
 
