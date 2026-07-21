@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgPawn/TrackDeath/TgPawn__TrackDeath.hpp"
+#include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -39,6 +40,12 @@ void __fastcall TgPawn__TrackDeath::Call(ATgPawn* Pawn, void* edx) {
 				(int)PRI->r_TaskForce->r_nTaskForce,
 				PRI->r_TaskForce->r_nNumDeaths);
 		}
+	}
+
+	// Escape-phase ambush pacing (SuperAgent death tax). Human deaths only.
+	if (Pawn->Controller != nullptr
+	 && ObjectClassCache::ClassNameContains(Pawn->Controller, "PlayerController")) {
+		SuperAgent::NotifyHumanDeath();
 	}
 
 	// Pending death — claimed by a KILL within 1s, else flushed as DEATH.

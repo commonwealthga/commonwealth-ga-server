@@ -322,6 +322,10 @@ namespace Adds {
 	// ExecuteAction 1318 DespawnAlarmBots / 1272 Despawn). Escape alarm waves
 	// (FireGlobalAlarm) and untouched factories keep retail marking.
 	bool SuppressAlarmMark(ATgBotFactory* f);
+
+	// Escape waves pin a factory to its selected LocationList indices; the
+	// SpawnNextBot location picker consults this. True when no filter is set.
+	bool LocationAllowed(ATgBotFactory* f, int locIdx);
 }
 
 // Escape phase. When point A is captured, EVERY map bot factory is respawned
@@ -334,11 +338,12 @@ namespace Escape {
 	void Remap(int oldTable, int newTable);
 
 	// During the escape phase, set off a GLOBAL alarm at a random interval
-	// between `minSecs` and `maxSecs` — ambushing every player from the
-	// alarm-gated factory nearest to them (its own roster), like the
-	// normal-mission alarm. Every alarm is telegraphed 5s ahead by a
-	// center-screen warning toast. maxSecs <= 0 disables. Author in
-	// AuthorMission().
+	// between `minSecs` and `maxSecs`. Spawn points are picked player-position-
+	// aware from the alarm factories' nav points: never on top of a player,
+	// preferring behind the team / inside a split team's gap (see AlarmWave's
+	// direction flags). Every alarm is telegraphed 5s ahead by a center-screen
+	// warning toast; a human death pushes the next alarm out (death tax).
+	// maxSecs <= 0 disables. Author in AuthorMission().
 	void PeriodicAlarm(float minSecs, float maxSecs);
 
 	// One possible flavour of escape-phase ambush. Give PeriodicAlarm a pool of
@@ -348,7 +353,26 @@ namespace Escape {
 	struct AlarmWave {
 		int   tableId      = 0;         // spawn table to fire; 0 = each factory's OWN default roster
 		float weight       = 1.0f;      // relative selection weight (share of the total)
-		int   maxFactories = 0;         // cap how many factories erupt; 0 = unlimited (nearest to each player)
+		// Geometric cap: how many physical spawn POINTS the wave may use
+		// (0 = no cap). Replaces the old maxFactories — one factory can own
+		// many points, so capping factories never bounded the actual spread.
+		int   maxSpawnPoints = 0;
+		// Direction filters relative to the alive team's span along the
+		// boss->dropship axis. Points within kAmbushExclusionRadius of any
+		// player are ALWAYS dropped unless allowOnTop.
+		bool  allowBehind = true;    // t below the rear-most player
+		bool  allowGaps   = true;    // inside the span (split team = the gap)
+		bool  allowAhead  = false;   // t above the front-most player (cutoff)
+		bool  allowOnTop  = false;   // skip the occupancy exclusion entirely
+		// Volume: the table's plan is rolled X times, X = rand[rosterMin..
+		// rosterMax] (chance rows re-roll each repetition). A 1-ant base table
+		// with 10..20 here = a 10-20 ant wave. tableId 0 (per-factory default
+		// roster) applies X per involved factory instead.
+		int   rosterMin = 1;
+		int   rosterMax = 1;
+		// Countdown to the NEXT alarm starts only after this many seconds —
+		// give slow-to-clear waves a longer floor before the next clock runs.
+		float durationSecs = 0.0f;
 		// Heads-up toast shown 5s before the wave. nullptr = NO warning — the
 		// wave arrives UNANNOUNCED (good for small surprise waves). Set a string
 		// to telegraph it. alertSecs = how long it stays up (5s lead is fixed).
@@ -375,6 +399,10 @@ void Log(const char* fmt, ...);
 
 // True when this match runs under the custom Super Agent difficulty.
 bool IsActive();
+
+// Human player death observation (called from the TgPawn::TrackDeath hook) —
+// drives the escape-phase ambush death tax. No-op outside the escape phase.
+void NotifyHumanDeath();
 
 // Author the mission, spawn A + B, cache spawn/blocker geometry, force the boss
 // to priority 1 and reorder the GRI list. Called once from TgGame::InitGameRepInfo.

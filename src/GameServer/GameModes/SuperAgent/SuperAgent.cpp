@@ -12,8 +12,10 @@
 #include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective/RegisterSelf/TgMissionObjective__RegisterSelf.hpp"
+#include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/ResetQueue/TgBotFactory__ResetQueue.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/SpawnNextBot/TgBotFactory__SpawnNextBot.hpp"
+#include "src/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.hpp"
 #include "src/GameServer/TgGame/TgGame/ActivateAlarm/TgGame__ActivateAlarm.hpp"
 #include "src/GameServer/TgGame/TgAIController/InitBehavior/TgAIController__InitBehavior.hpp"
 #include "src/GameServer/Misc/CAmBot/LoadBotMarshal/CAmBot__LoadBotMarshal.hpp"
@@ -22,6 +24,7 @@
 
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
@@ -97,6 +100,62 @@ void OwnedResetQueue(ATgBotFactory* f, int tableId) {
 	s_ResetBypass = nullptr;
 }
 
+// Escape-wave combined plan: the wave's table rolled `reps` times over
+// (chance rows re-roll each repetition — variety, not X copies of one roll).
+struct CombinedPlan {
+	std::vector<FSpawnGroupDetail> groups;
+	std::vector<int> rolls;       // RolledBotId per combined group index
+	std::vector<int> values;      // table group VALUE per combined group index
+	std::vector<int> entryIdxs;   // one combined group index per queue entry
+};
+
+CombinedPlan RollCombinedPlan(int tableId, int reps) {
+	CombinedPlan c;
+	for (int r = 0; r < reps; r++) {
+		const auto plan = TgBotFactory__LoadObjectConfig::RollSpawnPlan(tableId);
+		for (size_t i = 0; i < plan.size(); i++) {
+			const int gIdx = (int)c.groups.size();
+			c.groups.push_back(plan[i].Detail);
+			c.rolls.push_back(plan[i].RolledBotId);
+			c.values.push_back(plan[i].GroupNumber);
+			for (int k = 0; k < plan[i].EntryCount; k++) c.entryIdxs.push_back(gIdx);
+		}
+	}
+	return c;
+}
+
+// Hand a factory a pre-built queue (escape waves roll ONE combined plan and
+// split it across factories — ResetQueue would re-roll per factory). Mirrors
+// ResetQueue's rebuild bookkeeping. Entries reference combined group indices,
+// so the full groups/rolls/values arrays go on every involved factory; only
+// `share` picks which entries this factory drains. Combined indices exceed
+// the table's group count, hence the group-VALUES side map (SpawnNextBot
+// falls back to GetGroupNumberByIndex only when no value is stored).
+void OwnedSetQueue(ATgBotFactory* f, int tableId, const CombinedPlan& c,
+		const std::vector<int>& share) {
+	MarkOwned(f);
+	f->nSpawnTableId = tableId;
+	f->m_SpawnQueue.Clear();
+	TgBotFactory__SpawnNextBot::ClearEscort(f->m_nMapObjectId);
+	f->m_SpawnGroups.Clear();
+	for (const FSpawnGroupDetail& gd : c.groups) f->m_SpawnGroups.Add(gd);
+	TgBotFactory__LoadObjectConfig::SetFactoryGroupRolls(f, c.rolls);
+	TgBotFactory__LoadObjectConfig::SetFactoryGroupValues(f, c.values);
+	for (int gi : share) {
+		FSpawnQueueEntry e;
+		e.nGroupNumber  = gi;
+		e.fSpawnTime    = 0.0f;
+		e.bRespawn      = 0;
+		e.nSpawnTableId = tableId;
+		f->m_SpawnQueue.Add(e);
+	}
+	// FactoryEmpty pin anchor — same convention as ResetQueue.
+	f->nBotCount = f->nTotalSpawns + (int)share.size();
+	f->s_nCurListIndex     = -1;
+	f->s_nCurLocationIndex = -1;
+	f->m_nLastGroup        = 0;
+}
+
 // Factories whose CURRENT queue is an Unleash/UnleashOutside wave. Spawns from
 // these must NOT get the m_bAlarmBot stamp (see Adds::SuppressAlarmMark) —
 // wave bots are the assault itself, not alarm responders, and the mark exposes
@@ -106,6 +165,28 @@ void OwnedResetQueue(ATgBotFactory* f, int tableId) {
 // factory's queue only ever holds the wave that inserted it here. UnleashFactory
 // inserts; FireGlobalAlarm erases (escape alarm waves keep retail semantics).
 std::set<ATgBotFactory*> s_NoAlarmMarkFactories;
+
+// Escape-wave location filter: while a factory has an entry here, it may only
+// spawn at these LocationList indices (mapObjectId -> allowed idx set).
+// Consulted by SpawnNextBot's location picker via Adds::LocationAllowed.
+// Overwritten when a later wave reuses the factory (its remaining old-wave
+// entries then drip from the new points — acceptable); cleared wholesale in
+// CacheAddFactories.
+std::map<int, std::set<int>> s_AllowedLocations;
+
+// Escape ambush geometry. Axis anchors stored at Init (t=0 boss room, t=1
+// dropship); the flattened alarm spawn-point list is built when A is captured.
+FVector s_AxisStart = { 0, 0, 0 };
+FVector s_AxisEnd   = { 0, 0, 0 };
+bool    s_AxisValid = false;
+
+struct AmbushPoint {
+	ATgBotFactory* factory;
+	int            locIdx;
+	FVector        loc;
+	float          t;      // normalized position along the escape axis
+};
+std::vector<AmbushPoint> s_AmbushPoints;
 
 // The NORMAL (non-pet, non-alarm) factory whose spawn nav point sits nearest a
 // boss-room ENTRANCE volume (one-way ATgModifyPawnPropertiesVolume facing the
@@ -209,6 +290,16 @@ float s_nextEscapeAlarm = 0.0f;
 constexpr float kEscapeAlarmWarnSecs = 5.0f;
 bool s_escapeAlarmWarned = false;
 
+// Ambush occupancy law: no wave point within this range of any alive player
+// (unless the wave sets allowOnTop).
+constexpr float kAmbushExclusionRadius = 1300.0f;
+
+// Death tax: each human death during the escape pushes the next ambush out,
+// capped per inter-wave window so a slaughter can't silence alarms forever.
+constexpr float kDeathTaxSecs = 15.0f;
+constexpr float kDeathTaxCap  = 45.0f;
+float s_deathTaxAccrued = 0.0f;
+
 // Weighted pool of escape-alarm flavours (Escape::PeriodicAlarm overload). Empty
 // = legacy single-table behaviour. s_pendingWaveIdx is the wave chosen for the
 // NEXT alarm — locked in when the alarm is scheduled so the telegraph toast can
@@ -245,6 +336,54 @@ float RandRange(float lo, float hi) {
 	return lo + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * (hi - lo);
 }
 
+// Normalized projection onto the boss->dropship axis, clamped [0,1].
+float ProjectT(const FVector& p) {
+	if (!s_AxisValid) return 0.0f;
+	const float ax = s_AxisEnd.X - s_AxisStart.X;
+	const float ay = s_AxisEnd.Y - s_AxisStart.Y;
+	const float az = s_AxisEnd.Z - s_AxisStart.Z;
+	const float len2 = ax * ax + ay * ay + az * az;
+	if (len2 <= 1.0f) return 0.0f;
+	float t = ((p.X - s_AxisStart.X) * ax + (p.Y - s_AxisStart.Y) * ay
+	         + (p.Z - s_AxisStart.Z) * az) / len2;
+	if (t < 0.0f) t = 0.0f;
+	if (t > 1.0f) t = 1.0f;
+	return t;
+}
+
+// Flatten every alarm factory's valid nav points into the ambush list.
+// Called at escape start (OnACaptured). Factories can SHARE nav points (same
+// world spot in several LocationLists) — dedupe by proximity so a physical
+// spot occupies ONE list slot (else maxSpawnPoints spends two budget slots on
+// one spot and the "spread" cap lies). First factory to claim a spot keeps it.
+void BuildAmbushPoints() {
+	constexpr float kPointDupRadius = 64.0f;
+	int dups = 0;
+	s_AmbushPoints.clear();
+	for (ATgBotFactory* f : s_AlarmFactories) {
+		if (!f) continue;
+		for (int i = 0; i < f->LocationList.Num(); i++) {
+			ANavigationPoint* nav =
+				f->LocationList.Data ? f->LocationList.Data[i] : nullptr;
+			if (!nav) continue;
+			bool dup = false;
+			for (const AmbushPoint& q : s_AmbushPoints) {
+				if (Dist2(nav->Location, q.loc) <
+				    kPointDupRadius * kPointDupRadius) { dup = true; break; }
+			}
+			if (dup) { dups++; continue; }
+			AmbushPoint p;
+			p.factory = f;
+			p.locIdx  = i;
+			p.loc     = nav->Location;
+			p.t       = ProjectT(nav->Location);
+			s_AmbushPoints.push_back(p);
+		}
+	}
+	SuperAgent::Log("escape: %zu ambush spawn points on axis (%d shared-point duplicates dropped)\n",
+		s_AmbushPoints.size(), dups);
+}
+
 // Roll one wave index from s_escapeWaves by weight. -1 if the pool is empty or
 // every weight is non-positive.
 static int PickEscapeWave() {
@@ -262,10 +401,13 @@ static int PickEscapeWave() {
 
 // Schedule the next escape alarm and lock in which wave it will be, so the
 // telegraph (fired kEscapeAlarmWarnSecs earlier) matches the wave that lands.
-static void ArmNextEscapeAlarm(float now) {
-	s_nextEscapeAlarm   = now + RandRange(s_escapeAlarmMin, s_escapeAlarmMax);
+// extraDelay = the just-fired wave's durationSecs (waves are not created
+// equal — a slow-to-clear wave gets a longer floor before the next clock).
+static void ArmNextEscapeAlarm(float now, float extraDelay = 0.0f) {
+	s_nextEscapeAlarm   = now + extraDelay + RandRange(s_escapeAlarmMin, s_escapeAlarmMax);
 	s_pendingWaveIdx    = PickEscapeWave();
 	s_escapeAlarmWarned = false;
+	s_deathTaxAccrued   = 0.0f;
 }
 
 // UE3 rotator (65536 units = 360°) -> unit direction vector.
@@ -466,6 +608,8 @@ void OnACaptured() {
 	s_pendingMarches.clear();
 	if (s_OutsideFactory) s_OutsideFactory->bAutoSpawn = 0;
 	RespawnAllFactories();
+	// Flatten the alarm spawn points onto the escape axis for wave selection.
+	BuildAmbushPoints();
 	// Arm the first periodic global alarm at a random offset (also picks the
 	// wave that first alarm will be, so its telegraph text is right).
 	const float now = (s_Game && s_Game->WorldInfo) ? s_Game->WorldInfo->TimeSeconds : 0.0f;
@@ -537,6 +681,7 @@ void CacheAddFactories(ATgMissionObjective* boss) {
 	s_OwnedFactories.clear();
 	s_ResetBypass = nullptr;
 	s_NoAlarmMarkFactories.clear();
+	s_AllowedLocations.clear();
 	s_AlarmOriginator = nullptr;
 	s_AlarmId = 0;
 	s_OutsideFactory = nullptr;
@@ -817,6 +962,13 @@ bool BlockExternalReset(ATgBotFactory* f) {
 bool SuppressAlarmMark(ATgBotFactory* f) {
 	return SuperAgent::IsActive() &&
 	       s_NoAlarmMarkFactories.find(f) != s_NoAlarmMarkFactories.end();
+}
+
+bool LocationAllowed(ATgBotFactory* f, int locIdx) {
+	if (!SuperAgent::IsActive() || !f) return true;
+	auto it = s_AllowedLocations.find(f->m_nMapObjectId);
+	if (it == s_AllowedLocations.end()) return true;
+	return it->second.find(locIdx) != it->second.end();
 }
 
 // Shared per-factory unleash policy, used by Unleash() and UnleashOutside().
@@ -1104,103 +1256,201 @@ static void ApplyDeviceSwaps(ATgPawn* pawn, const UnleashOpts& opts) {
 	}
 }
 
-// Periodic GLOBAL escape alarm. Ambush every player from the alarm-gated factory
-// nearest to them, capped at wave->maxFactories (0 = unlimited). `wave` picks the
-// spawn table (0 = each factory's own default roster) and applies its per-pawn
-// overrides to the fresh spawns; nullptr = legacy own-table, no overrides.
-// Respects each factory's active cap (no count reset) so ambushers replenish as
-// they die rather than piling up. Also fires the native siren/AlarmBots kismet.
+// Periodic GLOBAL escape alarm, spawn-POINT granular. Candidates come from
+// s_AmbushPoints (every alarm-factory nav point, axis-projected); the occupancy
+// law drops points near players, the wave's direction flags filter against the
+// team's axis span, the closest survivors win up to wave->maxSpawnPoints.
+// Volume = the wave table's plan rolled rosterMin..rosterMax times, split
+// round-robin across the chosen points' factories (tableId 0 = per-factory
+// default roster instead); involved factories are pinned to their chosen
+// points via s_AllowedLocations for the whole drip. nullptr wave = legacy
+// defaults. Respects each factory's active cap (no count reset) so ambushers
+// replenish as they die. Also fires the native siren/AlarmBots kismet.
 static void FireGlobalAlarm(const Escape::AlarmWave* wave) {
 	ATgRepInfo_TaskForce* tf1 = GTeamsData.Attackers;
-	if (!tf1 || s_AlarmFactories.empty()) return;
+	if (!tf1 || s_AmbushPoints.empty()) return;
 
-	const int tableId = wave ? wave->tableId : 0;
-	const int maxFac  = wave ? wave->maxFactories : 0;
+	// Legacy no-pool path: struct defaults (behind+gap, own-table, uncapped).
+	static const Escape::AlarmWave kLegacy;
+	const Escape::AlarmWave& w = wave ? *wave : kLegacy;
 
-	std::vector<ATgBotFactory*> seen;   // dedupe: consider each factory once
-	int erupted = 0;                    // factories that actually spawned (maxFac target)
+	// Alive human pawns + the team's span along the boss->dropship axis.
+	std::vector<ATgPawn*> humans;
+	float tRear = 1.0f, tFront = 0.0f;
 	for (int i = 0; i < tf1->m_TeamPlayers.Count; i++) {
-		if (maxFac > 0 && erupted >= maxFac) break;
 		ATgRepInfo_Player* pri = tf1->m_TeamPlayers.Data[i].pPrep;
 		if (!pri || pri->bBot) continue;
 		ATgPawn* pawn = pri->r_PawnOwner;
 		if (!IsHumanPawn(pawn)) continue;   // alive human only
+		humans.push_back(pawn);
+		const float t = ProjectT(pawn->Location);
+		if (t < tRear)  tRear  = t;
+		if (t > tFront) tFront = t;
+	}
+	if (humans.empty()) {
+		SuperAgent::Log("global alarm: no alive humans — wave skipped\n");
+		return;
+	}
+	if (tRear > tFront) tRear = tFront;
 
-		ATgBotFactory* nearest = nullptr; float best = 0.0f;
-		for (ATgBotFactory* f : s_AlarmFactories) {
-			if (!f) continue;
-			const float d = Dist2(f->Location, pawn->Location);
-			if (!nearest || d < best) { best = d; nearest = f; }
-		}
-		if (!nearest) continue;
-		bool already = false;
-		for (ATgBotFactory* g : seen) if (g == nearest) { already = true; break; }
-		if (already) continue;
-		seen.push_back(nearest);
-
-		// Skip if it's already at its active cap from a recent ambush.
-		if (nearest->nActiveCount > 0 && nearest->nCurrentCount >= nearest->nActiveCount) continue;
-
-		// Snapshot this factory's current bots so the wave's opts hit only the
-		// bots THIS eruption spawns, not survivors from a prior alarm.
-		std::vector<int> preexisting;
-		if (wave && s_Game && s_Game->WorldInfo) {
-			for (AController* C = s_Game->WorldInfo->ControllerList; C; C = C->NextController) {
-				if (!ObjectClassCache::ClassNameContains(C, "TgAIController")) continue;
-				ATgAIController* aic = (ATgAIController*)C;
-				if (aic->m_pFactory == nearest && aic->Pawn)
-					preexisting.push_back(((ATgPawn*)aic->Pawn)->r_nPawnId);
+	// Candidate points. Occupancy law first — no point within
+	// kAmbushExclusionRadius of any alive player (unless allowOnTop) — then
+	// the wave's direction filters against the team span. A split team (dead
+	// player respawned at the dropship) stretches the span, so the unoccupied
+	// points BETWEEN the group and the runner become "gap" — the escort-ambush
+	// dynamic needs no special case.
+	struct Cand { const AmbushPoint* p; float dist2; };
+	std::vector<Cand> cands;
+	const float excl2 = kAmbushExclusionRadius * kAmbushExclusionRadius;
+	auto collect = [&](bool useDirectionFilters) {
+		cands.clear();
+		for (const AmbushPoint& p : s_AmbushPoints) {
+			// Capped factory can't spawn — its points would eat roster share.
+			if (!p.factory) continue;
+			if (p.factory->nActiveCount > 0 &&
+			    p.factory->nCurrentCount >= p.factory->nActiveCount) continue;
+			float nearestD = -1.0f;
+			bool occupied = false;
+			for (ATgPawn* h : humans) {
+				const float d = Dist2(p.loc, h->Location);
+				if (nearestD < 0.0f || d < nearestD) nearestD = d;
+				if (d < excl2) occupied = true;
 			}
+			if (occupied && !w.allowOnTop) continue;
+			if (useDirectionFilters) {
+				const bool behind = p.t < tRear;
+				const bool ahead  = p.t > tFront;
+				if (behind ? !w.allowBehind
+				           : (ahead ? !w.allowAhead : !w.allowGaps)) continue;
+			}
+			Cand c; c.p = &p; c.dist2 = nearestD;
+			cands.push_back(c);
+		}
+	};
+	collect(true);
+	if (cands.empty()) {
+		// Widen rather than fizzle: a telegraphed wave that spawns nothing
+		// reads as a bug. Only a fully-occupied map skips.
+		collect(false);
+		SuperAgent::Log("global alarm: direction filters empty — widened to any "
+			"non-occupied point (%zu)\n", cands.size());
+	}
+
+	int erupted = 0, totalEntries = 0, reps = 1;
+	if (cands.empty()) {
+		SuperAgent::Log("global alarm: every point occupied/capped — nothing spawned\n");
+	} else {
+		// Ambushes arrive: the points closest to the team win the budget.
+		std::sort(cands.begin(), cands.end(),
+			[](const Cand& a, const Cand& b) { return a.dist2 < b.dist2; });
+		if (w.maxSpawnPoints > 0 && (int)cands.size() > w.maxSpawnPoints)
+			cands.resize(w.maxSpawnPoints);
+
+		// Group the chosen points by owning factory.
+		std::vector<std::pair<ATgBotFactory*, std::set<int>>> perFactory;
+		for (const Cand& c : cands) {
+			bool found = false;
+			for (auto& pf : perFactory) {
+				if (pf.first == c.p->factory) {
+					pf.second.insert(c.p->locIdx);
+					found = true;
+					break;
+				}
+			}
+			if (!found) perFactory.push_back({ c.p->factory, { c.p->locIdx } });
 		}
 
-		nearest->nPriority = -1;   // phase-gate: eligible in the escape phase
-		// Spawn the wave and let the factory DRIP it at its own pace — mirror the
-		// standard-wave discipline, differing ONLY in the table. The old override
-		// path forced bBulkSpawn=1 + nActiveCount=0, dumping the FULL roster in a
-		// single frame → enemies appeared all at once (unfair) AND a replication
-		// spike lag-hitched the spawn. Left at the factory's natural bBulkSpawn=0,
-		// SpawnNextBot spawns one bot and self-schedules the rest at fSpawnDelay,
-		// and the active cap stays IN FORCE (replenish-as-they-die, no pile-up).
-		// The native ActivateAlarm below is spawn-suppressed, so nothing re-queues
-		// the factory; the queue built here (composite-aware via RollSpawnPlan)
-		// drains over time. tableId>0 = the wave's override table; 0 = factory
-		// default. Restore the table after the override case so the factory stays
-		// pristine (the queue is already built, so the drip keeps popping wave
-		// bots regardless).
-		const int           savedTable = nearest->nSpawnTableId;
-		const unsigned long savedAuto  = nearest->bAutoSpawn;
-		nearest->bAutoSpawn = 1;
-		// Escape alarm waves ARE alarm responses — keep retail m_bAlarmBot
-		// marking even if a capture-phase Unleash used this factory earlier.
-		s_NoAlarmMarkFactories.erase(nearest);
-		OwnedResetQueue(nearest, tableId);
-		TgBotFactory__SpawnNextBot::Call(nearest, nullptr);
-		nearest->bAutoSpawn = savedAuto;
-		if (tableId > 0) nearest->nSpawnTableId = savedTable;
-		erupted++;
+		// Volume: the plan rolled reps times over. tableId>0 = ONE combined
+		// roster split round-robin across the involved factories (authored
+		// volume, point count is purely geometric); tableId==0 = "each
+		// factory's own default roster" is inherently per-factory, so each
+		// rolls its own (reps still applies).
+		reps = w.rosterMin > 0 ? w.rosterMin : 1;
+		if (w.rosterMax > reps) reps += rand() % (w.rosterMax - reps + 1);
+		CombinedPlan combined;
+		if (w.tableId > 0) combined = RollCombinedPlan(w.tableId, reps);
 
-		// Apply the wave's per-pawn overrides to the bots spawned SO FAR. Escape
-		// spawns fight in place — no march/leader/follow, just the stat/gear/
-		// cosmetic/bark/behavior overrides. ApplyDeviceSwaps LAST (frame trap).
-		// NOTE: the wave now DRIPS (see above), so only the bot(s) already spawned
-		// at eruption time are covered here; the rest arrive on later fSpawnDelay
-		// timers WITHOUT opts. The active pool uses no opts, so this is currently
-		// a no-op — if an opts-bearing escape wave is ever configured, apply the
-		// opts from a SpawnNextBot post-hook / per-tick sweep instead.
-		if (wave && s_Game && s_Game->WorldInfo) {
-			for (AController* C = s_Game->WorldInfo->ControllerList; C; C = C->NextController) {
-				if (!ObjectClassCache::ClassNameContains(C, "TgAIController")) continue;
-				ATgAIController* aic = (ATgAIController*)C;
-				if (aic->m_pFactory != nearest || !aic->Pawn) continue;
-				ATgPawn* p = (ATgPawn*)aic->Pawn;
-				bool old = false;
-				for (int id : preexisting) if (id == p->r_nPawnId) { old = true; break; }
-				if (old) continue;
-				if (wave->opts.behaviorFromBotId > 0)
-					SwapBehavior(aic, wave->opts.behaviorFromBotId, nearest);
-				ApplyUnleashOpts(p, wave->opts);
-				RegisterBarker(p, wave->opts);
-				ApplyDeviceSwaps(p, wave->opts);
+		for (size_t fi = 0; fi < perFactory.size(); fi++) {
+			ATgBotFactory* f = perFactory[fi].first;
+			if (!f) continue;
+
+			// Snapshot this factory's current bots so the wave's opts hit only
+			// the bots THIS eruption spawns, not survivors from a prior alarm.
+			std::vector<int> preexisting;
+			if (wave && s_Game && s_Game->WorldInfo) {
+				for (AController* C = s_Game->WorldInfo->ControllerList; C; C = C->NextController) {
+					if (!ObjectClassCache::ClassNameContains(C, "TgAIController")) continue;
+					ATgAIController* aic = (ATgAIController*)C;
+					if (aic->m_pFactory == f && aic->Pawn)
+						preexisting.push_back(((ATgPawn*)aic->Pawn)->r_nPawnId);
+				}
+			}
+
+			// This factory's table + queue share.
+			int fTable = w.tableId;
+			const CombinedPlan* plan = &combined;
+			CombinedPlan own;
+			std::vector<int> share;
+			if (w.tableId > 0) {
+				for (size_t e = fi; e < combined.entryIdxs.size(); e += perFactory.size())
+					share.push_back(combined.entryIdxs[e]);
+			} else {
+				fTable = f->nDefaultSpawnTableId > 0 ? f->nDefaultSpawnTableId
+				                                     : f->nSpawnTableId;
+				own = RollCombinedPlan(fTable, reps);
+				plan = &own;
+				share = own.entryIdxs;
+			}
+
+			// Pin the drip to the wave's chosen points (consulted by the
+			// SpawnNextBot location picker for as long as entries remain).
+			s_AllowedLocations[f->m_nMapObjectId] = perFactory[fi].second;
+
+			f->nPriority = -1;   // phase-gate: eligible in the escape phase
+			// Spawn the wave and let the factory DRIP it at its own pace —
+			// bBulkSpawn stays 0, SpawnNextBot spawns one bot and self-schedules
+			// the rest at fSpawnDelay, and the active cap stays IN FORCE
+			// (replenish-as-they-die, no pile-up). The native ActivateAlarm
+			// below is spawn-suppressed, so nothing re-queues the factory.
+			// Restore the table after the override case so the factory stays
+			// pristine (the queue is already built and entries carry the table).
+			const int           savedTable = f->nSpawnTableId;
+			const unsigned long savedAuto  = f->bAutoSpawn;
+			f->bAutoSpawn = 1;
+			// Escape alarm waves ARE alarm responses — keep retail m_bAlarmBot
+			// marking even if a capture-phase Unleash used this factory earlier.
+			s_NoAlarmMarkFactories.erase(f);
+			OwnedSetQueue(f, fTable, *plan, share);
+			TgBotFactory__SpawnNextBot::Call(f, nullptr);
+			f->bAutoSpawn = savedAuto;
+			if (w.tableId > 0) f->nSpawnTableId = savedTable;
+			erupted++;
+			totalEntries += (int)share.size();
+
+			// Apply the wave's per-pawn overrides to the bots spawned SO FAR.
+			// Escape spawns fight in place — no march/leader/follow, just the
+			// stat/gear/cosmetic/bark/behavior overrides. ApplyDeviceSwaps LAST
+			// (frame trap). NOTE: the wave DRIPS, so only the bot(s) already
+			// spawned at eruption time are covered here; the rest arrive on
+			// later fSpawnDelay timers WITHOUT opts. The active pool uses no
+			// opts, so this is currently a no-op — if an opts-bearing escape
+			// wave is ever configured, apply the opts from a SpawnNextBot
+			// post-hook / per-tick sweep instead.
+			if (wave && s_Game && s_Game->WorldInfo) {
+				for (AController* C = s_Game->WorldInfo->ControllerList; C; C = C->NextController) {
+					if (!ObjectClassCache::ClassNameContains(C, "TgAIController")) continue;
+					ATgAIController* aic = (ATgAIController*)C;
+					if (aic->m_pFactory != f || !aic->Pawn) continue;
+					ATgPawn* p = (ATgPawn*)aic->Pawn;
+					bool old = false;
+					for (int id : preexisting) if (id == p->r_nPawnId) { old = true; break; }
+					if (old) continue;
+					if (wave->opts.behaviorFromBotId > 0)
+						SwapBehavior(aic, wave->opts.behaviorFromBotId, f);
+					ApplyUnleashOpts(p, wave->opts);
+					RegisterBarker(p, wave->opts);
+					ApplyDeviceSwaps(p, wave->opts);
+				}
 			}
 		}
 	}
@@ -1217,8 +1467,8 @@ static void FireGlobalAlarm(const Escape::AlarmWave* wave) {
 	// factory across the call so the native finds none eligible and spawns
 	// nothing; the siren / AlarmBots kismet runs earlier in the native (driven by
 	// s_SeqEventAlarmBots, independent of these factories) and is unaffected. Our
-	// per-player loop above is now the ONLY spawn source, so the spawn always
-	// matches the telegraphed wave.
+	// point-selection loop above is now the ONLY spawn source, so the spawn
+	// always matches the telegraphed wave.
 	if (s_Game && s_AlarmOriginator) {
 		std::vector<std::pair<ATgBotFactory*, unsigned long>> alarmFlagSaved;
 		alarmFlagSaved.reserve(s_AlarmFactories.size());
@@ -1232,8 +1482,9 @@ static void FireGlobalAlarm(const Escape::AlarmWave* wave) {
 		for (auto& r : alarmFlagSaved) if (r.first) r.first->bSpawnOnAlarm = r.second;
 	}
 
-	SuperAgent::Log("global alarm: %d eruption(s), table=%d maxFac=%d\n",
-		erupted, tableId, maxFac);
+	SuperAgent::Log("global alarm: %zu point(s) -> %d eruption(s), table=%d "
+		"reps=%d entries=%d span=[%.2f..%.2f]\n",
+		cands.size(), erupted, w.tableId, reps, totalEntries, tRear, tFront);
 }
 
 // Match a spawned pawn to its group by bot id. SpawnBotById stamps the bot id
@@ -1503,6 +1754,26 @@ bool IsActive() {
 	return Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_SUPER_AGENT;
 }
 
+// Death tax: a human death during the escape phase pushes the next ambush out
+// (+kDeathTaxSecs, capped at kDeathTaxCap per inter-wave window) — the team
+// gets room to regroup instead of a wave landing on the wipe.
+void NotifyHumanDeath() {
+	if (!IsActive() || !s_aCaptured || s_escapeAlarmMax <= 0.0f) return;
+	if (!s_Game || !s_Game->WorldInfo) return;
+	if (s_deathTaxAccrued >= kDeathTaxCap) return;
+	float add = kDeathTaxSecs;
+	if (s_deathTaxAccrued + add > kDeathTaxCap) add = kDeathTaxCap - s_deathTaxAccrued;
+	s_deathTaxAccrued += add;
+	s_nextEscapeAlarm += add;
+	// If the telegraph already fired but the push moved the alarm back outside
+	// the warning window, re-arm it so the toast shows again at the new time.
+	const float now = s_Game->WorldInfo->TimeSeconds;
+	if (s_escapeAlarmWarned && now < s_nextEscapeAlarm - kEscapeAlarmWarnSecs)
+		s_escapeAlarmWarned = false;
+	Log("death tax: next escape alarm +%.0fs (accrued %.0f/%.0f)\n",
+		add, s_deathTaxAccrued, kDeathTaxCap);
+}
+
 void Init(ATgGame* Game) {
 	if (!IsActive() || !Game) return;
 
@@ -1545,15 +1816,68 @@ void Init(ATgGame* Game) {
 	s_escapeAlarmWarned = false;
 	s_escapeWaves.clear();
 	s_pendingWaveIdx = -1;
+	s_deathTaxAccrued = 0.0f;
+	s_AxisValid = false;
+	s_AmbushPoints.clear();
 	A.hooks.clear(); A.obj = nullptr;
 	B.hooks.clear(); B.obj = nullptr;
 	AuthorMission();
 
 	boss->nPriority = 1;
 
+	// Escape ambush axis: t=0 at the boss room (players fight FROM here),
+	// t=1 at the attacker/dropship start (TO here).
+	s_AxisStart = boss->Location;
+	s_AxisEnd   = attackerStart->Location;
+	s_AxisValid = true;
+
 	// Cache geometry + adds factories BEFORE the boss-room factories get re-tabled.
 	CacheGeometry(attackerStart, defenderStart);
 	CacheAddFactories(boss);
+
+	// QoL: mark every ambush spawn point on the players' map. The entrance
+	// pad is the same actor the map already uses for its (partial) spawn
+	// marks; duplicates over pre-existing marks are fine (user-confirmed).
+	// Owned by the DEFENDERS + r_bInitialIsEnemy so they color RED like the
+	// pre-existing map marks (the repnotify drives NotifyGroupChanged, the
+	// client recolor). GTeamsData.Defenders may be null this early — the
+	// enemy hint alone still replicates and carries the red.
+	{
+		// Factories can SHARE nav points (same world spot in several
+		// LocationLists) — dedupe by proximity or the pads stack (the second
+		// pad's ground trace even lands ON the first). 64 UU: well under the
+		// spacing of genuinely distinct spawn spots.
+		constexpr float kMarkerDupRadius = 64.0f;
+		std::vector<FVector> placed;
+		int markers = 0, dups = 0;
+		for (ATgBotFactory* f : s_AlarmFactories) {
+			if (!f) continue;
+			for (int i = 0; i < f->LocationList.Num(); i++) {
+				ANavigationPoint* nav =
+					f->LocationList.Data ? f->LocationList.Data[i] : nullptr;
+				if (!nav) continue;
+				bool dup = false;
+				for (const FVector& p : placed) {
+					if (Dist2(nav->Location, p) <
+					    kMarkerDupRadius * kMarkerDupRadius) { dup = true; break; }
+				}
+				if (dup) { dups++; continue; }
+				// zLift=false: ground-trace + surface-align (nav points float
+				// at pawn-center height and can sit on slopes).
+				ATgDeploy_BeaconEntrance* m =
+					TgBeaconFactory__SpawnObject::SpawnEntranceMarker(
+						(AActor*)f, nav->Location, nav->Rotation,
+						nullptr, GTeamsData.Defenders, /*zLift=*/false);
+				if (m) {
+					m->r_bInitialIsEnemy = 1;   // wire helper defaults it to 0
+					placed.push_back(nav->Location);
+					markers++;
+				}
+			}
+		}
+		Log("spawn-point markers: %d entrance pads on alarm nav points (%d shared-point duplicates skipped)\n",
+			markers, dups);
+	}
 
 	// SpawnActor refuses bStatic/bNoDelete CDOs; clear them around the spawns.
 	AActor* cdo = (AActor*)ObjectCache::Find(
@@ -1807,7 +2131,9 @@ void OnCaptureTick(ATgMissionObjective_Proximity* Obj) {
 		}
 		if (now >= s_nextEscapeAlarm) {
 			Adds::FireGlobalAlarm(wave);
-			ArmNextEscapeAlarm(now);
+			// The fired wave's duration floors the next countdown (slow-to-
+			// clear waves get more room before the clock runs again).
+			ArmNextEscapeAlarm(now, wave ? wave->durationSecs : 0.0f);
 		}
 	}
 }

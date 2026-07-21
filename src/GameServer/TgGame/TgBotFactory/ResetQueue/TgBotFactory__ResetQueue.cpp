@@ -61,6 +61,10 @@ void __fastcall TgBotFactory__ResetQueue::Call(ATgBotFactory* BotFactory, void* 
 	// New batch — drop any escort drones tracked for the prior queue so their
 	// pointers never outlive the wave they were spawned in.
 	TgBotFactory__SpawnNextBot::ClearEscort(BotFactory->m_nMapObjectId);
+	// A vanilla rebuild's indices are table-native again — drop any
+	// repeated-plan index->group-value override left by an escape-wave
+	// OwnedSetQueue.
+	TgBotFactory__LoadObjectConfig::ClearFactoryGroupValues(BotFactory);
 	if (tableId <= 0) {
 		BotFactory->m_SpawnGroups.Clear();
 		BotFactory->nBotCount = 0;

@@ -216,52 +216,106 @@ void SuperAgent::AuthorMission() {
 	// rare waves become "encounters" players chase. Weights are relative shares,
 	// not percentages — they don't have to sum to 100; each wave's odds are its
 	// weight / total. tableId 0 = each factory's OWN baked roster (the classic
-	// behaviour, per-map); maxFactories 0 = unlimited; alertText nullptr = NO
-	// warning (the wave arrives UNANNOUNCED — good for small surprise waves), set
-	// a string to telegraph it; opts = optional per-pawn overrides
-	// (stats/name/cosmetics/devices/barks/behavior — no march here).
+	// behaviour, per-map); maxSpawnPoints = how many physical spawn POINTS the
+	// wave may use (0 = uncapped) — points are picked player-position-aware:
+	// never on top of a player, preferring behind the team / inside a split
+	// team's gap (allowBehind/allowGaps/allowAhead/allowOnTop per wave);
+	// rosterMin..rosterMax multiplies the table's rolled plan; durationSecs
+	// floors the countdown to the NEXT alarm (slow-to-clear waves get more
+	// room); alertText nullptr = NO warning (the wave arrives UNANNOUNCED —
+	// good for small surprise waves), set a string to telegraph it; opts =
+	// optional per-pawn overrides (stats/name/cosmetics/devices/barks/behavior
+	// — no march here).
 
 	// A small unannounced harassment wave (no alertText → silent).
 	// The classic announced alarm keeps its warning string. Keep one common case.
 	Escape::AlarmWave smallWave;
-	smallWave.weight = 30.0f;
+	smallWave.weight = 40.0f;
 	smallWave.tableId = 102;
-	smallWave.alertText = L"WARNING! Recursive ambush wave detected!";
+	smallWave.maxSpawnPoints = 4;
+	smallWave.durationSecs = 5.0f;
+	smallWave.allowAhead = true;
+	smallWave.allowBehind = true;
+	smallWave.allowGaps = true;
+	smallWave.allowOnTop = true;
+	smallWave.rosterMin = 0.5;
+	smallWave.rosterMax = 1;
+	// smallWave.alertText = L"WARNING! Recursive ambush wave detected!";
 
 	Escape::AlarmWave standard;
-	standard.weight = 20.0f;
-	standard.tableId = 0;          // factory's own default roster (per map)
-	standard.maxFactories = 2;
-	standard.alertText = L"WARNING! Large recursive ambush wave detected!";
+	standard.weight = 25.0f;
+	standard.tableId = 33;
+	standard.maxSpawnPoints = 4;
+	standard.durationSecs = 30.0f;
+	standard.allowAhead = true;
+	standard.allowBehind = true;
+	standard.allowGaps = true;
+	standard.allowOnTop = false;
+	standard.rosterMin = 0.8;
+	standard.rosterMax = 1.2;
+	standard.alertText = L"WARNING! Recursive ambush wave detected in the area!";
+
+	Escape::AlarmWave elites;
+	elites.weight = 10.0f;
+	elites.tableId = 10011;
+	elites.maxSpawnPoints = 5;
+	elites.durationSecs = 60.0f;
+	elites.allowAhead = true;
+	elites.allowBehind = true;
+	elites.allowGaps = true;
+	elites.allowOnTop = false;
+	elites.rosterMin = 1.5;
+	elites.rosterMax = 2.5;
+	elites.alertText = L"WARNING! Elite strike team detected in the area!";
 
 	Escape::AlarmWave ants;
-	ants.weight = 15.0f;
+	ants.weight = 10.0f;
 	ants.tableId = 213;
-	ants.maxFactories = 2;
-	ants.alertText = L"WARNING! Large swarm of colony ants detected!";
+	ants.maxSpawnPoints = 2;
+	ants.durationSecs = 30.0f;
+	ants.allowAhead = false;
+	ants.allowBehind = true;
+	ants.allowGaps = true;
+	ants.allowOnTop = false;
+	ants.rosterMin = 7;
+	ants.rosterMax = 14;
+	ants.alertText = L"WARNING! Swarm of colony ants detected in the area!";
 
 	Escape::AlarmWave ticks;
-	ticks.weight = 20.0f;
+	ticks.weight = 10.0f;
 	ticks.tableId = 177;
-	ticks.maxFactories = 2;
-	ticks.alertText = L"WARNING! Large swarm of colony ticks detected!";
+	ticks.maxSpawnPoints = 4;
+	ticks.durationSecs = 30.0f;
+	ticks.allowAhead = true;
+	ticks.allowBehind = true;
+	ticks.allowGaps = true;
+	ticks.allowOnTop = false;
+	ticks.rosterMin = 6;
+	ticks.rosterMax = 10;
+	ticks.alertText = L"WARNING! Swarm of colony ticks detected in the area!";
 
+
+	Escape::AlarmWave overlord;
+	overlord.weight = 1.0f;
+	overlord.tableId = 233;
+	overlord.maxSpawnPoints = 1;
+	overlord.durationSecs = 80.0f;
+	overlord.allowAhead = false;
+	overlord.allowBehind = true;
+	overlord.allowGaps = false;
+	overlord.allowOnTop = false;
+	overlord.rosterMin = 1;
+	overlord.rosterMax = 1;
+	overlord.alertText = L"WARNING! Colony overlord detected in the area!";
 
 	// --- rare "encounter" waves — fill in real tables/opts and tune weights ---
 	// Escape::AlarmWave elites;
 	// elites.weight = 15.0f;
 	// elites.tableId = 10011;                 // migrated elite squad
-	// elites.maxFactories = 1;                // just one eruption, not everywhere
+	// elites.maxSpawnPoints = 1;              // just one eruption point, not everywhere
 	// elites.alertText = L"WARNING! Elite strike team detected!";
 
-	// Escape::AlarmWave anomaly;
-	// anomaly.weight = 5.0f;                   // ~1-in-20 — the chase target
-	// anomaly.tableId = 10012;
-	// anomaly.alertText = L"?!  Something is very wrong here...";
-	// anomaly.opts.scale = 1.4f;
-	// anomaly.opts.name  = L"Anomaly";
-
-	Escape::PeriodicAlarm(30.0f, 60.0f, { smallWave, standard , ants, ticks  });
+	Escape::PeriodicAlarm(60.0f, 100.0f, { smallWave, standard , ants, ticks, overlord  });
 
 	// ------------------------------------------------------------------ //
 	//  POINT B — back to the dropship. Default attacker-capture = win.   //
@@ -287,17 +341,22 @@ void SuperAgent::AuthorMission() {
 //   target table -> { source tables, in append order }
 const std::map<int, std::vector<int>>& SuperAgent::SpawnTableComposites() {
 	static const std::map<int, std::vector<int>> composites = {
-		{ 34, { 34, 34, 100, 101, 104, 148 } },   // support enemies
-		{ 28, { 28, 28, 167, 157, 148} }, // normal spawns
-		{ 29, { 29, 29, 212, 212, 72, 210} }, // first spawn
+		// local test:
 		{ 102, { 33, 102, 102} }, // small group of responders
 		{ 33, { 33, 102, 102, 33, 102, 102} }, // large group of responders
-		{ 40, { 40, 40, 100, 101, 104, 148 } }, // support enemies
-		{ 58, { 58, 58, 167, 58, 157 } }, // normal spawns + guardian
 
-		{ 177, { 177, 177, 177, 177, 177, 177, 177, 177, 177, 177, 177, 177} }, // huge amount of ticks
+		// live:
+		// { 34, { 34, 34, 100, 101, 104, 148 } },   // support enemies
+		// { 28, { 28, 28, 167, 157, 148} }, // normal spawns
+		// { 29, { 29, 29, 212, 212, 72, 210} }, // first spawn
+		// { 102, { 33, 102, 102} }, // small group of responders
+		// { 33, { 33, 102, 102, 33, 102, 102} }, // large group of responders
+		// { 40, { 40, 40, 100, 101, 104, 148 } }, // support enemies
+		// { 58, { 58, 58, 167, 58, 157 } }, // normal spawns + guardian
 
-		{ 213, { 213, 213, 213, 213, 213, 213, 213 }}, // huge amount of ants
+		// { 177, { 177, 177, 177, 177, 177, 177, 177, 177, 177, 177, 177, 177} }, // huge amount of ticks
+
+		// { 213, { 213, 213, 213, 213, 213, 213, 213 }}, // huge amount of ants
 		// { 193, { 193, 193, 193, 193, 193, 193, 193, 193 } }, // huge amount of guardians
 	};
 	return composites;

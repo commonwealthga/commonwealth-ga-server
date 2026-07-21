@@ -58,7 +58,10 @@ int PickNextLocationIndex(ATgBotFactory* f) {
 	}
 	for (int probe = 0; probe < n; probe++) {
 		const int idx = (startIdx + probe) % n;
-		if (f->LocationList.Data[idx] != nullptr) return idx;
+		if (f->LocationList.Data[idx] == nullptr) continue;
+		// SuperAgent escape waves pin the factory to their selected points.
+		if (!SuperAgent::Adds::LocationAllowed(f, idx)) continue;
+		return idx;
 	}
 	return -1;
 }
@@ -172,8 +175,12 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 		const int groupIdx    = entry.nGroupNumber;
 		const int tableId     = entry.nSpawnTableId > 0 ? entry.nSpawnTableId
 		                                                : BotFactory->nSpawnTableId;
-		const int groupNumber =
-			TgBotFactory__LoadObjectConfig::GetGroupNumberByIndex(tableId, groupIdx);
+		int groupNumber =
+			TgBotFactory__LoadObjectConfig::GetFactoryGroupValue(BotFactory, groupIdx);
+		if (groupNumber < 0) {
+			groupNumber =
+				TgBotFactory__LoadObjectConfig::GetGroupNumberByIndex(tableId, groupIdx);
+		}
 
 		// Vanilla: the group's bot type was rolled ONCE at ResetQueue — every
 		// entry (and BotDied replacements) spawns that same bot. 0 = roster

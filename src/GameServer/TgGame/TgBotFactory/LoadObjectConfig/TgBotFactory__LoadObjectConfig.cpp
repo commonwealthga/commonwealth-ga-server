@@ -431,6 +431,30 @@ int TgBotFactory__LoadObjectConfig::GetFactoryGroupRoll(
 	return it->second[nGroupIndex];
 }
 
+// Escape-wave combined plans repeat group indices past the table's group
+// count — this map carries their index->group-VALUE resolution per factory.
+static std::map<uint64_t, std::vector<int>> g_factoryGroupValues;
+
+void TgBotFactory__LoadObjectConfig::SetFactoryGroupValues(
+		ATgBotFactory* Factory, const std::vector<int>& values) {
+	if (Factory == nullptr) return;
+	g_factoryGroupValues[FactoryKey(Factory)] = values;
+}
+
+void TgBotFactory__LoadObjectConfig::ClearFactoryGroupValues(ATgBotFactory* Factory) {
+	if (Factory == nullptr) return;
+	g_factoryGroupValues.erase(FactoryKey(Factory));
+}
+
+int TgBotFactory__LoadObjectConfig::GetFactoryGroupValue(
+		ATgBotFactory* Factory, int nGroupIndex) {
+	if (Factory == nullptr || nGroupIndex < 0) return -1;
+	auto it = g_factoryGroupValues.find(FactoryKey(Factory));
+	if (it == g_factoryGroupValues.end()) return -1;
+	if (nGroupIndex >= static_cast<int>(it->second.size())) return -1;
+	return it->second[nGroupIndex];
+}
+
 void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory* BotFactory, void* edx) {
 	if (BotFactory == nullptr) return;
 	const int mid = BotFactory->m_nMapObjectId;
