@@ -1,6 +1,9 @@
 #include "src/ControlServer/ChatSession/ChatSession.hpp"
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
+#include "src/ControlServer/Database/Database.hpp"
+#include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
+#include "src/ControlServer/TcpSession/TcpSession.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -152,6 +155,7 @@ bool HasParsedCommandAction(const ChatCommand::ParseResult& parsed) {
         || parsed.spawn_target.has_value()
         || parsed.deploy_target.has_value()
         || parsed.topdown.has_value()
+        || parsed.spectate.has_value()
         || parsed.possess
         || parsed.unpossess
         || parsed.coords
@@ -383,6 +387,9 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         if (parsed.recognized && parsed.topdown) {
             ChatCommand::DispatchTopDown(*parsed.topdown, session_guid_);
         }
+        if (parsed.recognized && parsed.spectate) {
+            HandleSpectateCommand(parsed.spectate->instance_id, parsed.spectate->team);
+        }
         if (parsed.recognized && parsed.reload_queues) {
             Logger::Log("chat-command",
                 "[ChatCmd] -reload-queues player='%s' guid=%s outcome=activated details=MatchmakingService::ReloadQueues\n",
@@ -399,6 +406,68 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         player_name_.c_str(),
         g_chat_sessions.size() > 0 ? g_chat_sessions.size() - 1 : 0);
     broadcast(data, length);
+}
+
+void ChatSession::HandleSpectateCommand(int64_t instance_id, ChatCommand::SpectateTeam team) {
+    auto info = PlayerSessionStore::GetByGuid(session_guid_);
+    const int64_t user_id = info ? info->user_id : 0;
+
+    if (user_id <= 0 || !Database::UserHasRole(user_id, "spectator")) {
+        deliver(BuildChatFrame(kSystemChannelId,
+            "You don't have permission to use spectator mode."));
+        Logger::Log("chat-command",
+            "[ChatCmd] -spectate player='%s' guid=%s outcome=rejected details=no_spectator_role\n",
+            player_name_.c_str(), session_guid_.c_str());
+        return;
+    }
+
+    if (instance_id == 0) {
+        // List request: running, READY, non-home-map instances only — a
+        // spectator has nowhere useful to go in a still-starting instance,
+        // and the always-on home/lobby map is excluded per design (nothing
+        // there to spectate).
+        auto running = InstanceRegistry::GetAllRunningInstances();
+        std::vector<InstanceInfo> spectatable;
+        for (auto& inst : running) {
+            if (!inst.is_home_map && inst.state == "READY") spectatable.push_back(inst);
+        }
+
+        if (spectatable.empty()) {
+            deliver(BuildChatFrame(kSystemChannelId,
+                "No running instances available to spectate right now."));
+        } else {
+            deliver(BuildChatFrame(kSystemChannelId,
+                "Instances available to spectate (join with -spectate <id>):"));
+            for (auto& inst : spectatable) {
+                std::ostringstream line;
+                line << "  [" << inst.instance_id << "] " << inst.map_name
+                     << " (" << inst.game_mode << ") players="
+                     << InstanceRegistry::GetActivePlayerCount(inst.instance_id)
+                     << "/" << inst.max_players;
+                deliver(BuildChatFrame(kSystemChannelId, line.str()));
+            }
+        }
+        Logger::Log("chat-command",
+            "[ChatCmd] -spectate player='%s' guid=%s outcome=listed count=%zu\n",
+            player_name_.c_str(), session_guid_.c_str(), spectatable.size());
+        return;
+    }
+
+    // Purely cosmetic — 0 = teamless (unchanged behavior), 1/2 assign
+    // PRI.r_TaskForce/Team so the client's own same-team HUD checks resolve.
+    // Never affects whether a pawn spawns (still gated on is_spectator).
+    const int team_task_force = (team == ChatCommand::SpectateTeam::Attackers) ? 1
+                               : (team == ChatCommand::SpectateTeam::Defenders) ? 2
+                               : 0;
+
+    std::string message;
+    const bool dispatched =
+        TcpSession::DeliverSpectateJoin(session_guid_, instance_id, team_task_force, message);
+    deliver(BuildChatFrame(kSystemChannelId, message));
+    Logger::Log("chat-command",
+        "[ChatCmd] -spectate player='%s' guid=%s instance=%lld team_tf=%d outcome=%s details=%s\n",
+        player_name_.c_str(), session_guid_.c_str(), (long long)instance_id,
+        team_task_force, dispatched ? "dispatched" : "rejected", message.c_str());
 }
 
 void ChatSession::broadcast(const uint8_t* data, size_t length) {

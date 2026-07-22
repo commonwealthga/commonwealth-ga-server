@@ -47,6 +47,31 @@ struct TopDownArgs {
     float lift_z = 0.0f;
 };
 
+// Optional team for -spectate <id> [team]. Purely cosmetic — assigns
+// PRI.r_TaskForce/Team so the client's own same-team HUD checks (health bars)
+// resolve, WITHOUT clearing bOnlySpectator/bIsSpectator/bOutOfLives. The
+// spectator still never spawns a pawn: no model, no collision, no scoreboard
+// entry, no world interaction. None = today's teamless behavior.
+enum class SpectateTeam {
+    None,
+    Attackers,
+    Defenders,
+};
+
+// -spectate                       -> list running (non-home-map) instances
+//                                    the caller may join as a spectator.
+// -spectate <instance_id>         -> join that instance as a teamless spectator.
+// -spectate <instance_id> <team>  -> join, cosmetically assigned to <team>
+//                                    ("attack"/"attackers" or
+//                                    "defense"/"defence"/"defenders") so that
+//                                    team's health bars render. Still no pawn.
+// All forms are permission-gated (ga_user_roles "spectator") and handled
+// entirely on the control server — see ChatSession::HandleSpectateCommand.
+struct SpectateArgs {
+    int64_t instance_id = 0;  // 0 = list request
+    SpectateTeam team = SpectateTeam::None;
+};
+
 struct ParseResult {
     // True if the message was a /-prefixed slash command attempt that we own
     // (currently: "-changeteam", "-spawnfriend", "-spawnenemy", "-possess",
@@ -63,6 +88,7 @@ struct ParseResult {
     std::optional<SpawnTargetArgs>  spawn_target;
     std::optional<DeployTargetArgs> deploy_target;
     std::optional<TopDownArgs>      topdown;
+    std::optional<SpectateArgs>     spectate;
 
     // No-arg toggles. Flag is set when recognized + parsed cleanly.
     bool possess   = false;

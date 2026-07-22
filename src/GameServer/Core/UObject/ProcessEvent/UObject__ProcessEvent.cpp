@@ -949,71 +949,87 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// hardcoded false). It sets PRI.bOnlySpectator/bIsSpectator/bOutOfLives
 		// = true on the new PC.
 		//
-		// SpawnPlayActor immediately calls eventPostLogin → TgGame.RestartPlayer,
-		// which gates on bOnlySpectator and returns without spawning. Without
-		// intervention the player is permanently stuck as spectator.
-		//
-		// Fix: clear those flags right after Login returns, BEFORE
-		// SpawnPlayActor's subsequent eventPostLogin runs. The first PostLogin
-		// then takes the non-spectator branch and spawns naturally — no need
-		// for a redundant second eventPostLogin call from HandlePlayerConnected,
-		// and no replication race that lands the client in SpectatingMatch (which
-		// fires ServerSetViewTarget(none) on its BeginState and locks server-side
-		// PC.ViewTarget = self, breaking aim until respawn).
+		// Whether those flags get cleared (normal join) or left set
+		// (intentional spectator join) is decided in the TgGamePostLogin case
+		// below, not here: at Login-return time the engine has not yet wired
+		// NewPC->Player to the InPlayer connection (verified empirically —
+		// PC->Player reads as 0x00000000 in this intercept), so we cannot look
+		// up PlayerInfo.is_spectator (or task_force) for this connection yet.
+		// PostLogin resolves the connection via NewPlayer->Player and runs
+		// before SpawnPlayActor's RestartPlayer gate, so it's the right (and
+		// only viable) place to decide.
 		CallOriginal(Object, edx, Function, Params, Result);
-		if (Params) {
-			// Parms layout (ATgGame_eventLogin_Parms / AGameInfo_eventLogin_Parms):
-			//   0x00 Portal (FString)
-			//   0x0C Options (FString)
-			//   0x18 ErrorMessage (FString)
-			//   0x24 ReturnValue (APlayerController*)
-			APlayerController* PC = *(APlayerController**)((char*)Params + 0x24);
-			if (PC && PC->PlayerReplicationInfo) {
-				PC->PlayerReplicationInfo->bOnlySpectator = 0;
-				PC->PlayerReplicationInfo->bIsSpectator   = 0;
-				PC->PlayerReplicationInfo->bOutOfLives    = 0;
-			}
-			// r_TaskForce seeding lives in the TgGamePostLogin case below
-			// rather than here. At Login-return time the engine has not yet
-			// wired NewPC->Player to the InPlayer connection (verified
-			// empirically — PC->Player reads as 0x00000000 in this intercept),
-			// so we cannot resolve the player's task_force from
-			// GClientConnectionsData via PC->Player. The engine assigns
-			// PC->Player between Login returning and PostLogin being called,
-			// so PostLogin (which then runs super.PostLogin → RestartPlayer
-			// → FindPlayerStart) is the right window for the seed.
-		}
 		break;
 
 	case DispatchTag::TgGamePostLogin: {
 		// Parms layout (AGameInfo_eventPostLogin_Parms / ATgGame_eventPostLogin_Parms):
 		//   0x00 NewPlayer (APlayerController*)
 		//
-		// Seed PRI.r_TaskForce BEFORE super.PostLogin (called from the UC
-		// body of TgGame.PostLogin) triggers RestartPlayer → FindPlayerStart.
-		// Without this seed the picker reads playerTaskForce=0, fails every
-		// team filter, and lands the player in the wrong spawn room.
-		// Do not pre-write PRI.Team here: native SetTeam compares that field
-		// later, and a pre-write can skip AddPRI or crash duplicate VR joins.
-		// SpawnPlayerCharacter writes the same field later
-		// (TgGame__SpawnPlayerCharacter.cpp:295) but by then the spawn point
-		// has already been chosen, so the wrong-room result persists until
-		// the player dies and respawns.
+		// Runs BEFORE super.PostLogin (called from the UC body of
+		// TgGame.PostLogin) triggers RestartPlayer → FindPlayerStart, and is
+		// the first point NewPlayer->Player is wired up (see TgGameLogin
+		// comment above). Two decisions live here, both keyed off
+		// PlayerInfo.is_spectator — set authoritatively by the control server,
+		// never by the connecting client (see ga_user_roles / spectator join
+		// routing):
+		//   1. Normal join (is_spectator=false): clear bOnlySpectator/
+		//      bIsSpectator/bOutOfLives (forced true by TgGame.Login above,
+		//      because TgGame.ChangeTeam is hardcoded to return false) so
+		//      RestartPlayer takes the spawn branch, and seed PRI.r_TaskForce
+		//      so FindPlayerStart lands in the right room.
+		//   2. Spectator join (is_spectator=true): leave those flags set and
+		//      skip the team seed entirely. RestartPlayer's existing
+		//      bOnlySpectator gate then skips spawning a pawn — no pawn is
+		//      what makes a spectator invisible, uncollidable, and
+		//      unshootable, with no separate hide/no-collide/invulnerability
+		//      hack needed.
 		if (Params) {
 			APlayerController* NewPlayer = *(APlayerController**)Params;
 			if (NewPlayer && NewPlayer->PlayerReplicationInfo && NewPlayer->Player) {
 				ATgRepInfo_Player* repInfo = (ATgRepInfo_Player*)NewPlayer->PlayerReplicationInfo;
 				int32_t connectionIndex = (int32_t)((UNetConnection*)NewPlayer->Player);
+				bool isSpectator = GClientConnectionsData[connectionIndex].PlayerInfo.is_spectator;
+
+				// Whether a pawn is allowed to spawn is entirely decided by these
+				// three flags — leave them set for spectators (real or
+				// team-assigned) so RestartPlayer's bOnlySpectator gate keeps
+				// skipping the spawn. This is independent of team seeding below.
+				if (!isSpectator) {
+					repInfo->bOnlySpectator = 0;
+					repInfo->bIsSpectator   = 0;
+					repInfo->bOutOfLives    = 0;
+				}
+
+				// Do not pre-write PRI.Team here: native SetTeam compares that field
+				// later, and a pre-write can skip AddPRI or crash duplicate VR joins.
+				// SpawnPlayerCharacter writes the same field later
+				// (TgGame__SpawnPlayerCharacter.cpp:295) but by then the spawn point
+				// has already been chosen, so the wrong-room result persists until
+				// the player dies and respawns.
+				//
+				// Runs for non-spectators AND team-assigned spectators (task_force
+				// 1/2 either way) — a spectator's team here is purely cosmetic (it
+				// drives the client's own same-team HUD health-bar check) and never
+				// spawns a pawn; that's gated solely by whether bOnlySpectator got
+				// cleared above. Teamless spectators keep task_force=0 -> taskforce
+				// stays null -> r_TaskForce untouched.
 				int tf = GClientConnectionsData[connectionIndex].PlayerInfo.task_force;
 				ATgRepInfo_TaskForce* taskforce = (tf == 1) ? GTeamsData.Attackers
 				                                  : (tf == 2 ? GTeamsData.Defenders : nullptr);
 				Logger::Log("spawn",
-					"TgGame.PostLogin intercept: conn=%d task_force=%d prevTF=%p newTF=%p\n",
-					connectionIndex, tf, (void*)repInfo->r_TaskForce, (void*)taskforce);
+					"TgGame.PostLogin intercept: conn=%d isSpectator=%d task_force=%d prevTF=%p newTF=%p\n",
+					connectionIndex, (int)isSpectator, tf, (void*)repInfo->r_TaskForce, (void*)taskforce);
 				if (taskforce != nullptr) {
 					repInfo->r_TaskForce = taskforce;
 					repInfo->bNetDirty = 1;
 					repInfo->bForceNetUpdate = 1;
+				}
+
+				if (isSpectator) {
+					Logger::Log("spawn",
+						"TgGame.PostLogin intercept: conn=%d spectator join (team_tf=%d) — leaving "
+						"bOnlySpectator/bIsSpectator/bOutOfLives set, pawn spawn stays skipped\n",
+						connectionIndex, tf);
 				}
 			}
 		}

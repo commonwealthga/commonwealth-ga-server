@@ -1797,6 +1797,29 @@ void Database::Init() {
 		}
 	}
 
+	// Generic user role grants (spectator mode, future gated features).
+	// Unconditional/idempotent for the same reason as kUserAuthColumnAlters
+	// above — the control server only floor-writes version_info to 19, so a
+	// version-gated block here would never fire on an already-migrated DB.
+	// This table is control-server-owned: it's the authority that decides
+	// who may request spectator access, and the game-server DLL never reads
+	// it directly (it only trusts the pre-vetted is_spectator flag threaded
+	// through the per-connection control message).
+	result = sqlite3_exec(db,
+		"CREATE TABLE IF NOT EXISTS ga_user_roles ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"  user_id INTEGER NOT NULL REFERENCES ga_users(id),"
+		"  role TEXT NOT NULL,"
+		"  granted_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),"
+		"  UNIQUE(user_id, role)"
+		");",
+		nullptr, nullptr, &err);
+	if (result != SQLITE_OK) {
+		Logger::Log("db", "Failed to create ga_user_roles table: %s\n", err);
+		sqlite3_free(err);
+		err = nullptr;
+	}
+
 	// MMR engine tables (design 2026-07-12). Schemas identical to the data
 	// analyst's compute_mmr.py / mmr_tracker.py so his tooling keeps working
 	// on DB exports. cs_settings holds the active-engine switch read by the
@@ -2543,6 +2566,60 @@ bool Database::ClearUserVerifier(int64_t user_id) {
 	const bool ok = sqlite3_step(stmt) == SQLITE_DONE;
 	sqlite3_finalize(stmt);
 	return ok;
+}
+
+// ---- User roles (spectator mode, design 2026-07-18) ------------------------
+
+bool Database::UserHasRole(int64_t user_id, const std::string& role) {
+	if (user_id <= 0) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT 1 FROM ga_user_roles WHERE user_id = ? AND role = ? LIMIT 1",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[User] UserHasRole prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_text(stmt, 2, role.c_str(), -1, SQLITE_TRANSIENT);
+	const bool has_role = sqlite3_step(stmt) == SQLITE_ROW;
+	sqlite3_finalize(stmt);
+	return has_role;
+}
+
+void Database::GrantRole(int64_t user_id, const std::string& role) {
+	if (user_id <= 0) return;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"INSERT OR IGNORE INTO ga_user_roles (user_id, role) VALUES (?, ?)",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[User] GrantRole prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_text(stmt, 2, role.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+}
+
+void Database::RevokeRole(int64_t user_id, const std::string& role) {
+	if (user_id <= 0) return;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"DELETE FROM ga_user_roles WHERE user_id = ? AND role = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[User] RevokeRole prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_text(stmt, 2, role.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
 }
 
 // ---- Match stats (design 2026-06-12) ---------------------------------------

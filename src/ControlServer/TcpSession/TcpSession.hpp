@@ -65,6 +65,24 @@ public:
     // Returns true if dispatched, false if the session is unknown or the player is not assigned to an instance.
     static bool DeliverPlayerAction(const std::string& session_guid, const nlohmann::json& payload);
 
+    // Request that the session identified by session_guid join target_instance_id
+    // as a spectator. Caller (ChatSession) is expected to have already checked
+    // the "spectator" role — this only validates the target instance is a real,
+    // READY, non-home-map instance. team_task_force is purely cosmetic (0 =
+    // teamless, 1 = attackers, 2 = defenders) — it assigns PRI.r_TaskForce/Team
+    // so the client's own same-team HUD checks resolve, but never affects
+    // whether a pawn spawns (still gated on is_spectator=true regardless of
+    // team_task_force) and never touches the matchmaking/roster tables (no
+    // InsertInstancePlayer call, same as the teamless path). Returns true if
+    // the join was dispatched (async — success/failure of the actual connect
+    // arrives later via the PLAYER_REGISTER ACK, same as a normal join); false
+    // if rejected outright, with `message` set to a short reason suitable for
+    // a private chat reply.
+    static bool DeliverSpectateJoin(const std::string& session_guid,
+                                    int64_t target_instance_id,
+                                    int team_task_force,
+                                    std::string& message);
+
     // Admin dashboard move/team-change helper. Same-instance moves use the existing
     // in-instance change_team action; cross-instance moves reuse PLAYER_REGISTER +
     // GO_PLAY routing.
@@ -508,6 +526,18 @@ private:
     // successor was already full), falls back to the standard home-routing
     // path so the player still ends up somewhere sensible.
     void initiate_player_register_for_target(const struct InstanceInfo& target, int task_force);
+
+    // Spectator variant: registers with is_spectator=true. team_task_force is
+    // purely cosmetic (0/1/2, see DeliverSpectateJoin) — it's carried in the
+    // PLAYER_REGISTER payload so the DLL can seed PRI.r_TaskForce/Team for HUD
+    // purposes, but it never affects pawn spawning. On ACK success, still
+    // skips the ga_instance_players roster insert regardless of team choice
+    // (spectators shouldn't skew team-balance/roster accounting) and just
+    // points the client at the instance via GSC_GO_PLAY. On ACK
+    // failure/timeout: silent, same as DeliverPlayerAction failures — the
+    // player simply stays where they were.
+    void initiate_player_register_for_spectate(const struct InstanceInfo& target,
+                                               int team_task_force);
 
     void send_get_loot_table_items_by_id_filtered_response();
 

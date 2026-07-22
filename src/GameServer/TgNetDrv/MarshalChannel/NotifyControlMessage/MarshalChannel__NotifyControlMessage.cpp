@@ -201,6 +201,7 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.selected_profile_id  = info->selected_profile_id;
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.selected_character_id = info->selected_character_id;
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.task_force = info->task_force;
+			GClientConnectionsData[(int32_t)Connection].PlayerInfo.is_spectator = info->is_spectator;
 			GClientConnectionsData[(int32_t)Connection].PlayerInfo.control_register_token = info->control_register_token;
 			GClientConnectionsData[(int32_t)Connection].pPlayerInfo = PlayerRegistry::GetByGuidPtr(session_guid);
 			Logger::Log(GetLogChannel(), "JOIN: identified player '%s' (guid=%s, profile=%u, connection=%d)\n",
@@ -355,10 +356,10 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	ATgPlayerController* newcontroller = reinterpret_cast<ATgPlayerController*>(Controller);
 	ATgPawn_Character* newpawn = NULL;
 
-	// bOnlySpectator/bIsSpectator/bOutOfLives are now cleared inside our
-	// `Function TgGame.TgGame.Login` ProcessEvent hook, BEFORE SpawnPlayActor's
-	// internal eventPostLogin runs. That first PostLogin now spawns the pawn
-	// naturally, so we no longer need:
+	// bOnlySpectator/bIsSpectator/bOutOfLives are now cleared (for non-spectator
+	// joins) inside our `Function TgGame.TgGame.PostLogin` ProcessEvent hook,
+	// BEFORE its CallOriginal reaches super.PostLogin → RestartPlayer. That
+	// first PostLogin now spawns the pawn naturally, so we no longer need:
 	//   1. the manual `bOnlySpectator = 0` flip here, and
 	//   2. the redundant second `game->eventPostLogin(...)` call below.
 	// Removing both eliminates the UnPossess+re-Possess transient ViewTarget
@@ -368,9 +369,23 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	// ServerSetViewTarget(Pawn=null on client) → server SetViewTarget(none) →
 	// null→self conversion in public SetViewTarget → ViewTarget = PC permanently).
 
-	if (GClientConnectionsData[(int32_t)Connection].PlayerInfo.task_force == 1) {
+	// Spectators have no pawn/roster row at all (see below) regardless of
+	// team. Checked once here and reused for the pawn-dependent bookkeeping
+	// further down.
+	const bool isSpectator = GClientConnectionsData[(int32_t)Connection].PlayerInfo.is_spectator;
+
+	// Team assignment is driven purely by task_force, independent of
+	// isSpectator: a team-assigned spectator (task_force 1/2) gets this same
+	// Team field set as a real player would, purely so the client's own
+	// same-team HUD checks (health bars) resolve for that side. A teamless
+	// spectator keeps task_force=0 and this is skipped entirely — Team stays
+	// at the engine default (None). Either way this never spawns a pawn;
+	// that's decided solely by the bOnlySpectator/bIsSpectator/bOutOfLives
+	// flags in the PostLogin hook.
+	const int tf = GClientConnectionsData[(int32_t)Connection].PlayerInfo.task_force;
+	if (tf == 1) {
 		newcontroller->PlayerReplicationInfo->Team = GTeamsData.Attackers;
-	} else {
+	} else if (tf == 2) {
 		newcontroller->PlayerReplicationInfo->Team = GTeamsData.Defenders;
 	}
 
@@ -428,33 +443,44 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	// TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 2773, 386, 10, 1162, 1, 0, GA_G::TGDT_MORALE, 994); // heal boost
 	// TgGame__SpawnBotById::GiveDeviceById((ATgPawn_Character*)newcontroller->Pawn, (ATgRepInfo_Player*)newcontroller->PlayerReplicationInfo, 864, 502, 15, 1162, 1, 0, GA_G::TGDT_OFF_HAND, 998); // rest device
 
-	GPawnSessions[(ATgPawn*)newcontroller->Pawn] = session_guid;
 	GClientConnectionsData[(int32_t)Connection].Pawn = (ATgPawn_Character*)newcontroller->Pawn;
 
-	// Now that GPawnSessions has the mapping, our ReapplyCharacterSkillTree
-	// hook can resolve the pawn's PlayerInfo and materialize skill-based
-	// effect groups. Running it earlier (at SpawnPlayerCharacter time) hits
-	// the "no session mapping" path and no-ops.
-	if (auto* tgpc = (ATgPlayerController*)newcontroller) {
-		if (auto* pc = (ATgPawn_Character*)tgpc->Pawn) {
-			pc->ReapplyCharacterSkillTree();
-		}
-	}
+	// Spectators have no pawn (that's the whole point — nothing exists to hide
+	// or render). Everything below this point assumes a spawned pawn: the
+	// GPawnSessions map keys off it, ReapplyCharacterSkillTree needs one to
+	// apply skills to, and the "spawn" GAME_EVENT reports pawn_id/item_profile_id
+	// read off it. Skipping the lot for a null pawn is what actually fixes the
+	// crash — this code previously ran unconditionally because a Controller
+	// reaching this point with Pawn==nullptr never used to happen (the old
+	// accidental-spectator bug was always cleared before here); a real,
+	// intentional spectator is the first caller that keeps Pawn null.
+	if (!isSpectator && newcontroller->Pawn) {
+		GPawnSessions[(ATgPawn*)newcontroller->Pawn] = session_guid;
 
-	{
-		nlohmann::json ev;
-		ev["type"]            = IpcProtocol::MSG_GAME_EVENT;
-		ev["subtype"]         = "spawn";
-		ev["instance_id"]     = IpcClient::GetInstanceId();
-		ev["session_guid"]    = session_guid;
-		ev["pawn_id"]         = (int)((ATgPawn*)newcontroller->Pawn)->r_nPawnId;
-		ev["item_profile_id"] = (int)((ATgPawn_Character*)newcontroller->Pawn)->r_nItemProfileId;
-		IpcClient::Send(ev.dump());
+		// Now that GPawnSessions has the mapping, our ReapplyCharacterSkillTree
+		// hook can resolve the pawn's PlayerInfo and materialize skill-based
+		// effect groups. Running it earlier (at SpawnPlayerCharacter time) hits
+		// the "no session mapping" path and no-ops.
+		if (auto* tgpc = (ATgPlayerController*)newcontroller) {
+			if (auto* pc = (ATgPawn_Character*)tgpc->Pawn) {
+				pc->ReapplyCharacterSkillTree();
+			}
+		}
+
+		{
+			nlohmann::json ev;
+			ev["type"]            = IpcProtocol::MSG_GAME_EVENT;
+			ev["subtype"]         = "spawn";
+			ev["instance_id"]     = IpcClient::GetInstanceId();
+			ev["session_guid"]    = session_guid;
+			ev["pawn_id"]         = (int)((ATgPawn*)newcontroller->Pawn)->r_nPawnId;
+			ev["item_profile_id"] = (int)((ATgPawn_Character*)newcontroller->Pawn)->r_nItemProfileId;
+			IpcClient::Send(ev.dump());
+		}
 	}
 
 	// Also send PLAYER_JOINED to track this player in the instance
 	{
-		int tf = GClientConnectionsData[(int32_t)Connection].PlayerInfo.task_force;
 		nlohmann::json joined;
 		joined["type"]         = IpcProtocol::MSG_PLAYER_JOINED;
 		joined["instance_id"]  = IpcClient::GetInstanceId();

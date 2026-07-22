@@ -468,6 +468,7 @@ void IpcClient::DrainInbound() {
             int64_t char_id         = j.value("character_id", (int64_t)0);
             uint32_t profile_id     = j.value("profile_id", (uint32_t)0);
             int task_force          = j.value("task_force", 1);
+            bool is_spectator       = j.value("is_spectator", false);
             uint64_t register_token = j.value("register_token", uint64_t{0});
             // head_asm_id, gender_type_value_id, morph_data available in payload but not stored
             // in PlayerInfo at registration time -- SpawnPlayerCharacter reads morph_data from
@@ -481,6 +482,7 @@ void IpcClient::DrainInbound() {
             info.selected_character_id    = char_id;
             info.selected_profile_id      = profile_id;
             info.task_force               = task_force;
+            info.is_spectator              = is_spectator;
             info.current_item_profile_id  = j.value("current_item_profile_id", 1);
             if (info.current_item_profile_id < 1 || info.current_item_profile_id > 5)
                 info.current_item_profile_id = 1;
@@ -506,9 +508,9 @@ void IpcClient::DrainInbound() {
             PlayerRegistry::Register(info);
 
             Logger::Log("ipc",
-                "[IPC] PLAYER_REGISTER: guid=%s profile=%u itemProf=%d char=%lld user=%lld tf=%d skills=%d\n",
+                "[IPC] PLAYER_REGISTER: guid=%s profile=%u itemProf=%d char=%lld user=%lld tf=%d spectator=%d skills=%d\n",
                 guid.c_str(), profile_id, info.current_item_profile_id,
-                char_id, uid, task_force, (int)info.skills.size());
+                char_id, uid, task_force, (int)is_spectator, (int)info.skills.size());
 
             // Send ACK back to control server.
             // pawn_id is 0 at registration time (pawn not yet spawned -- spawns at JOIN).

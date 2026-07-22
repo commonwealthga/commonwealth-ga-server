@@ -241,6 +241,37 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
+    if (cmd_name == "-spectate") {
+        // -spectate                      -> list (instance_id stays 0)
+        // -spectate <instance_id>        -> join request, teamless
+        // -spectate <instance_id> <team> -> join request, cosmetic team assignment
+        out.recognized = true;
+        out.suppress_broadcast = true;
+
+        SpectateArgs args;
+        if (!rest.empty()) {
+            std::vector<std::string> tokens = SplitWs(rest);
+            if (tokens.empty() || tokens.size() > 2) return out;
+
+            std::optional<int> instance_id = ParseInt(tokens[0]);
+            if (!instance_id || *instance_id <= 0) return out;  // bad arg -> silent reject
+            args.instance_id = *instance_id;
+
+            if (tokens.size() == 2) {
+                const std::string teamTok = LowerAscii(tokens[1]);
+                if (teamTok == "attack" || teamTok == "attackers") {
+                    args.team = SpectateTeam::Attackers;
+                } else if (teamTok == "defense" || teamTok == "defence" || teamTok == "defenders") {
+                    args.team = SpectateTeam::Defenders;
+                } else {
+                    return out;  // unknown team token -> silent reject
+                }
+            }
+        }
+        out.spectate = args;
+        return out;
+    }
+
     // Other "-" text — pass through to broadcast as ordinary chat.
     return out;
 }

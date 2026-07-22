@@ -93,6 +93,15 @@ public:
     // registered_at is left untouched. Returns false if the update failed.
     static bool ClearUserVerifier(int64_t user_id);
 
+    // ---- User roles (spectator mode, design 2026-07-18) --------------------
+    // Generic role grants on ga_users, e.g. "spectator". Control-server-owned
+    // and authoritative — the game-server DLL never queries this directly,
+    // it only trusts the pre-vetted flag threaded through the per-connection
+    // control message (see PlayerInfo.is_spectator).
+    static bool UserHasRole(int64_t user_id, const std::string& role);
+    static void GrantRole(int64_t user_id, const std::string& role);
+    static void RevokeRole(int64_t user_id, const std::string& role);
+
     // ---- Match stats (design 2026-06-12) -----------------------------------
     struct MatchEventRow {
         int64_t instance_id = 0;
