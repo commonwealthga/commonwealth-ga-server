@@ -17,6 +17,8 @@
 #include "src/ControlServer/MatchmakingService/RoleWeightedSplit.hpp"
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
 #include "src/ControlServer/Database/Database.hpp"
+#include "src/ControlServer/SpectatorOverlay/SpectatorOverlayState.hpp"
+#include <ctime>
 
 namespace {
 
@@ -60,6 +62,7 @@ bool StopNonHomeInstanceIfEmpty(int64_t instance_id, const char* reason) {
         (long long)instance_id, reason ? reason : "unspecified");
     InstanceSpawner::StopInstanceProcess(*inst, reason ? reason : "empty non-home instance");
     InstanceRegistry::MarkStopped(instance_id);
+    SpectatorOverlayState::ClearInstance(instance_id);
     return true;
 }
 
@@ -166,6 +169,7 @@ private:
             MatchmakingService::DiscardPendingMatchForDeadInstance(
                 instance_id_, "instance disconnected before INSTANCE_READY");
             InstanceRegistry::MarkStopped(instance_id_);
+            SpectatorOverlayState::ClearInstance(instance_id_);
             Logger::Log("ipc", "[IpcServer] Instance %lld disconnected, marked STOPPED\n",
                 (long long)instance_id_);
         }
@@ -296,6 +300,24 @@ private:
                 (long long)inst_id, guid.c_str());
             InstanceRegistry::MarkInstancePlayerLeft(inst_id, guid);
             StopNonHomeInstanceIfEmpty(inst_id, "last player left");
+        }
+        else if (type == IpcProtocol::MSG_PAWN_HEALTH_SNAPSHOT) {
+            int64_t inst_id   = j.value("instance_id", (int64_t)0);
+            std::string guid  = j.value("session_guid", "");
+            if (inst_id == 0 || guid.empty()) return;
+
+            SpectatorOverlayState::PawnSnapshot snap;
+            snap.session_guid = guid;
+            snap.task_force    = j.value("task_force", 0);
+            snap.health        = j.value("health", 0);
+            snap.health_max    = j.value("health_max", 0);
+            if (j.contains("effect_ids") && j["effect_ids"].is_array()) {
+                for (const auto& id : j["effect_ids"]) {
+                    if (id.is_number_integer()) snap.effect_ids.push_back(id.get<int>());
+                }
+            }
+            snap.updated_at = (int64_t)std::time(nullptr);
+            SpectatorOverlayState::Update(inst_id, snap);
         }
         else if (type == IpcProtocol::MSG_INSTANCE_EMPTY) {
             int64_t inst_id = j.value("instance_id", (int64_t)0);

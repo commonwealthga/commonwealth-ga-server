@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Spectator Overlay</title>
+<style>
+  /* Transparent by design — this is meant to sit as an OBS Browser Source
+     cropped/composited over gameplay footage, not viewed as its own page. */
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    font-family: "Segoe UI", Arial, sans-serif;
+    overflow: hidden;
+  }
+
+  #root {
+    display: flex;
+    justify-content: space-between;
+    width: 100vw;
+    height: 100vh;
+    box-sizing: border-box;
+    padding: 16px;
+  }
+
+  .team-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 320px;
+  }
+
+  .team-panel.defenders { align-items: flex-end; }
+
+  .team-label {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #ffffff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+    margin-bottom: 2px;
+  }
+
+  .attackers .team-label { color: #ff8a5c; }
+  .defenders .team-label { color: #5cc7ff; }
+
+  .player-card {
+    width: 100%;
+    background: rgba(12, 14, 20, 0.72);
+    border-radius: 6px;
+    padding: 8px 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    box-sizing: border-box;
+  }
+
+  .player-name-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+
+  .player-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #f0f0f0;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+  }
+
+  .health-text {
+    font-size: 11px;
+    color: #cfcfcf;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .health-bar-bg {
+    width: 100%;
+    height: 8px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .health-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 150ms linear, background-color 200ms linear;
+  }
+
+  .effects-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+  }
+
+  .effect-tag {
+    font-size: 10px;
+    line-height: 1;
+    padding: 3px 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.14);
+    color: #f5f5f5;
+    white-space: nowrap;
+  }
+
+  .status-line {
+    position: fixed;
+    bottom: 4px;
+    left: 8px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+
+<div id="root">
+  <div class="team-panel attackers" id="panel-attackers">
+    <div class="team-label">Attackers</div>
+  </div>
+  <div class="team-panel defenders" id="panel-defenders">
+    <div class="team-label">Defenders</div>
+  </div>
+</div>
+<div class="status-line" id="status">connecting…</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Config — edit these three to point at your control server + match.
+// ---------------------------------------------------------------------------
+const OVERLAY_BASE_URL = "http://127.0.0.1:8090/overlay";
+const OVERLAY_TOKEN    = "retro";
+const INSTANCE_ID      = 18; // set to the live match's instance id (see -spectate list)
+const POLL_MS          = 100;
+
+// ---------------------------------------------------------------------------
+// Effect id -> display name. UTgEffectGroup.m_nEffectGroupId values are not
+// yet mapped here — the feed sends raw ids until this table is filled in.
+// Watch a live match, note which ids show up when Frenzy / Protection Wave /
+// Sensor Boost etc. are active, and add them here. Unknown ids just render
+// as "#<id>" so nothing silently disappears while this list is incomplete.
+// ---------------------------------------------------------------------------
+const EFFECT_NAMES = {
+  //7777: "HEAL NADE",
+  // 5678: "Protection Wave",
+  // 9012: "Sensor Boost",
+//15452: "Protection 1",
+};
+
+function effectLabel(id) {
+  return EFFECT_NAMES[id] || ("#" + id);
+}
+
+function healthColor(pct) {
+  if (pct > 0.5) return "#4caf50";
+  if (pct > 0.25) return "#ffb300";
+  return "#e53935";
+}
+
+function renderTeam(panelId, players) {
+  const panel = document.getElementById(panelId);
+  // Keep the team-label div, replace everything after it.
+  const label = panel.querySelector(".team-label");
+  panel.innerHTML = "";
+  panel.appendChild(label);
+
+  players.forEach(p => {
+    const pct = p.health_max > 0 ? Math.max(0, Math.min(1, p.health / p.health_max)) : 0;
+
+    const card = document.createElement("div");
+    card.className = "player-card";
+
+    const nameRow = document.createElement("div");
+    nameRow.className = "player-name-row";
+    const name = document.createElement("div");
+    name.className = "player-name";
+    name.textContent = p.player_name || "(unknown)";
+    const hpText = document.createElement("div");
+    hpText.className = "health-text";
+    hpText.textContent = p.health + " / " + p.health_max;
+    nameRow.appendChild(name);
+    nameRow.appendChild(hpText);
+
+    const barBg = document.createElement("div");
+    barBg.className = "health-bar-bg";
+    const barFill = document.createElement("div");
+    barFill.className = "health-bar-fill";
+    barFill.style.width = (pct * 100) + "%";
+    barFill.style.backgroundColor = healthColor(pct);
+    barBg.appendChild(barFill);
+
+    card.appendChild(nameRow);
+    card.appendChild(barBg);
+
+    if (p.effect_ids && p.effect_ids.length > 0) {
+      const effectsRow = document.createElement("div");
+      effectsRow.className = "effects-row";
+      p.effect_ids.forEach(id => {
+        const tag = document.createElement("div");
+        tag.className = "effect-tag";
+        tag.textContent = effectLabel(id);
+        effectsRow.appendChild(tag);
+      });
+      card.appendChild(effectsRow);
+    }
+
+    panel.appendChild(card);
+  });
+}
+
+async function poll() {
+  const status = document.getElementById("status");
+  try {
+    const url = OVERLAY_BASE_URL + "?instance_id=" + encodeURIComponent(INSTANCE_ID)
+              + "&token=" + encodeURIComponent(OVERLAY_TOKEN);
+    const resp = await fetch(url, { cache: "no-store" });
+    if (!resp.ok) {
+      status.textContent = "overlay: HTTP " + resp.status;
+      return;
+    }
+    const data = await resp.json();
+    const players = data.players || [];
+
+    renderTeam("panel-attackers", players.filter(p => p.task_force === 1));
+    renderTeam("panel-defenders", players.filter(p => p.task_force === 2));
+
+    status.textContent = "instance " + data.instance_id + " — " + players.length + " tracked";
+  } catch (e) {
+    status.textContent = "overlay: " + e;
+  }
+}
+
+poll();
+setInterval(poll, POLL_MS);
+</script>
+
+</body>
+</html>

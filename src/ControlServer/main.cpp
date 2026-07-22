@@ -8,6 +8,7 @@
 #include "src/ControlServer/TcpListener/TcpListener.hpp"
 #include "src/ControlServer/ChatListener/ChatListener.hpp"
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
+#include "src/ControlServer/SpectatorOverlay/OverlayHttpServer.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
@@ -737,6 +738,12 @@ int main(int argc, char* argv[]) {
         Logger::Log("main", "IPC listener failed; aborting startup\n");
         return 1;
     }
+
+    // Spectator broadcast overlay HTTP endpoint. Non-fatal if it fails to
+    // bind or overlay_http_port is left at its 0 default — the feature is
+    // opt-in, unlike the listeners above.
+    OverlayHttpServer overlay_http(io, cfg.overlay_http_port, cfg.overlay_token);
+
     Logger::Log("main", "All listeners bound\n");
     IpcServer::SetAdminToken(cfg.admin_token);
     IpcServer::SetAdminActionHandler([&cfg](const std::string& subtype,
@@ -975,6 +982,39 @@ int main(int argc, char* argv[]) {
                 (long long)user_id);
             message = "password reset for user_id=" + std::to_string(user_id) +
                       " (next login re-registers the password)";
+            return true;
+        }
+
+        if (subtype == "set-role") {
+            // Grants/revokes an entry in ga_user_roles (e.g. role="spectator").
+            // No in-game self-service UI — this admin_token-gated action (same
+            // local/private-network + token gate as every other admin action)
+            // is the only way to grant a role, which is what makes spectator
+            // access abuse-resistant: a player can never self-grant it.
+            int64_t user_id = payload.value("user_id", (int64_t)0);
+            if (user_id == 0) {
+                const std::string username = payload.value("username", std::string());
+                if (!username.empty()) user_id = Database::FindUserIdByUsername(username);
+            }
+            if (user_id == 0) {
+                message = "set-role needs user_id or a known username";
+                return false;
+            }
+            const std::string role = payload.value("role", std::string());
+            if (role.empty()) {
+                message = "set-role needs a non-empty role";
+                return false;
+            }
+            const bool granted = payload.value("granted", true);
+            if (granted) {
+                Database::GrantRole(user_id, role);
+            } else {
+                Database::RevokeRole(user_id, role);
+            }
+            Logger::Log("admin", "[admin] set-role user_id=%lld role=%s granted=%d\n",
+                (long long)user_id, role.c_str(), granted ? 1 : 0);
+            message = "role '" + role + "' " + (granted ? "granted to" : "revoked from") +
+                      " user_id=" + std::to_string(user_id);
             return true;
         }
 

@@ -92,6 +92,8 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
     if (j.contains("chat_port"))          cfg.chat_port          = j["chat_port"].get<uint16_t>();
     if (j.contains("ipc_port"))           cfg.ipc_port           = j["ipc_port"].get<uint16_t>();
     if (j.contains("admin_token"))        cfg.admin_token        = j["admin_token"].get<std::string>();
+    if (j.contains("overlay_http_port"))  cfg.overlay_http_port  = j["overlay_http_port"].get<uint16_t>();
+    if (j.contains("overlay_token"))      cfg.overlay_token      = j["overlay_token"].get<std::string>();
     if (j.contains("startup_timeout_seconds"))
         cfg.startup_timeout_seconds = j["startup_timeout_seconds"].get<int>();
     if (j.contains("db_path"))            cfg.db_path            = j["db_path"].get<std::string>();

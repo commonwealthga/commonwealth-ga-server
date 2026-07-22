@@ -1,4 +1,5 @@
 #include "src/GameServer/Engine/Actor/Tick/Actor__Tick.hpp"
+#include "src/GameServer/Stats/SpectatorOverlayFeed/SpectatorOverlayFeed.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -41,5 +42,6 @@ void* __fastcall Actor__Tick::Call(void* a1, void* edx, float a2, int a3) {
 
 void* __fastcall Actor__Tick::Call(void* a1, void* edx, float a2, int a3) {
     // IpcClient::DrainInbound();  // moved to World__Tick — was firing per-actor per-frame
+    SpectatorOverlayFeed::MaybePushSnapshot((AActor*)a1);
     return CallOriginal(a1, edx, a2, a3);
 }

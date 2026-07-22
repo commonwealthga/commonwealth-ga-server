@@ -57,6 +57,14 @@ struct ControlServerConfig {
     uint16_t    chat_port          = 9001;
     uint16_t    ipc_port           = 9010;
     std::string admin_token;
+    // Read-only HTTP JSON endpoint for the spectator broadcast overlay
+    // (live per-instance health/effect state, see SpectatorOverlayState).
+    // 0 = disabled — no listener is started. Gated by overlay_token (query
+    // param "token") the same way admin actions are gated by admin_token;
+    // empty token means the endpoint is open to anyone who can reach the
+    // port, so set one before exposing this beyond localhost.
+    uint16_t    overlay_http_port  = 0;
+    std::string overlay_token;
     int         startup_timeout_seconds = 120;
     std::string db_path            = "server.db";
     std::string crash_dir          = "Z:\\home\\zax\\games\\crashes";
