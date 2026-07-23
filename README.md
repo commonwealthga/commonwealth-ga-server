@@ -42,7 +42,7 @@ A built DLL is available for download [in the releases](https://github.com/commo
 - [ ] implement mission rewards and item drops
 - [ ] implement vendors
 - [ ] implement crafting
-- [x] website, stats
+- [x] website, stats - [link](https://commonwealth.ydns.eu)
 
 ## Useful links
 
