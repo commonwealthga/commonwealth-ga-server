@@ -10629,6 +10629,23 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
+	// Inferno-X Cannon (device 2914) charge-up particle-clamp fix — enforce
+	// unconditionally (idempotent); branch-divergent DBs are past the version
+	// gates. The beam is continuous_fire, so interrupt_fire_anim_on_refire=1
+	// restarts the fire anim every ~0.1s refire, re-spawning the
+	// PS_EFX_BeamChargeUpA charge burst each time; overlapping bursts push
+	// ActiveParticles past GEngine->MaxParticleSpriteCount -> yellow
+	// "Emitter spawn vertices ... clamp" warning on the firer and bystanders.
+	// Clearing the flag plays the anim once per fire sequence (modes 3339
+	// primary / 3409 alt). Tested on VR: no warning under L/R-click spam.
+	result = sqlite3_exec(db,
+		"UPDATE asm_data_set_devices_data_set_device_modes "
+		"SET interrupt_fire_anim_on_refire_flag = 0 "
+		"WHERE device_mode_id IN (3339, 3409) "
+		"  AND interrupt_fire_anim_on_refire_flag <> 0;",
+		nullptr, nullptr, &err);
+	if (result != SQLITE_OK) { Logger::Log("db", "Failed Inferno charge-clamp enforce: %s\n", err); return; }
+
 	result = sqlite3_exec(db, "UPDATE version_info SET version = 152", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
