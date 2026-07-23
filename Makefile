@@ -254,6 +254,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/_effect_core/ScaleTargetProperties.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/_deployable_classify/DeployableClassify.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/_surface_rotation/SurfaceRotation.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/GrinderWalkFix/GrinderWalkFix.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/CloneEffectGroup/TgEffectGroup__CloneEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgEffectSensor/GetSensorVisConfig/TgEffectSensor__GetSensorVisConfig.cpp \

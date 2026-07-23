@@ -8,6 +8,7 @@
 #include "src/GameServer/TgGame/MissionVODirector/MissionVODirector.hpp"
 #include "src/GameServer/Cosmetics/SuitRebuildKick.hpp"
 #include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
+#include "src/GameServer/TgGame/GrinderWalkFix/GrinderWalkFix.hpp"
 
 void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSeconds) {
 	IpcClient::DrainInbound();
@@ -36,5 +37,8 @@ void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSecon
 	// One-shot: verify (and if needed redo) the VR heal pad's PostBeginPlay
 	// arming ~5s after setupDevice registered it. No-op on other maps.
 	DomeVrHealPad::TickArmCheck();
+	// Mobile Grinder: remap its stun posture off TG_POSTURE_CRITICALFAILURE,
+	// which permanently breaks its walk anim. No-op for every other pawn.
+	GrinderWalkFix::Tick();
 	CallOriginal(Engine, edx, DeltaSeconds);
 }
