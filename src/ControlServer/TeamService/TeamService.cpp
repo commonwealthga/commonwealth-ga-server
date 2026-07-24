@@ -68,6 +68,18 @@ bool TeamService::IsTeamed(const std::string& session_guid) {
     return FindTeamByMemberLocked(session_guid) != nullptr;
 }
 
+std::vector<std::string> TeamService::GetTeamMemberGuids(const std::string& session_guid) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<std::string> guids;
+    Team* team = FindTeamByMemberLocked(session_guid);
+    if (!team) return guids;
+    guids.reserve(team->members.size());
+    for (const auto& m : team->members) {
+        if (!m.session_guid.empty()) guids.push_back(m.session_guid);
+    }
+    return guids;
+}
+
 bool TeamService::IsLeader(const std::string& session_guid) {
     std::lock_guard<std::mutex> lock(mutex_);
     Team* team = FindTeamByMemberLocked(session_guid);

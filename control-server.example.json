@@ -22,5 +22,6 @@
 	"crash_dir": "Z:\\opt\\ga\\crashes",
 	"log_dir": "Z:\\opt\\ga\\logs",
 	"enabled_channels": [],
-	"enabled_crash_channels": []
+	"enabled_crash_channels": [],
+	"announcers": []
 }
