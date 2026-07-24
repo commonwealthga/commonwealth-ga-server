@@ -4900,8 +4900,7 @@ void TcpSession::ApplyBanSpoof() {
 	if (s_ban_spoof_mode_ == "garbage") {
 		std::vector<uint8_t> garbage(32);
 		for (auto& b : garbage) b = static_cast<uint8_t>(std::rand() & 0xFF);
-		std::error_code ec;
-		asio::write(socket_, asio::buffer(garbage), ec);
+		enqueue_write(std::move(garbage));
 		close_after_login_rejection();
 		return;
 	}

@@ -2,6 +2,7 @@
 
 #include <asio.hpp>
 #include <vector>
+#include <deque>
 #include <string>
 #include <memory>
 #include <random>
@@ -112,6 +113,17 @@ private:
     asio::io_context& io_ctx_;
     std::vector<uint8_t> data_;
     std::vector<uint8_t> rx_buffer_;
+
+    // Outbound frames awaiting async_write. All writes MUST go through
+    // enqueue_write: a blocking asio::write to a client that stops draining
+    // its socket (e.g. wedged during map load) parks the single io_context
+    // thread and takes chat/login/matchmaking down with it (2026-07-24
+    // incident: one 121KB SEND_INVENTORY write blocked for 607s).
+    std::deque<std::vector<uint8_t>> write_queue_;
+    size_t write_queue_bytes_  = 0;
+    bool   close_when_drained_ = false;
+    // A client buffering this much unread data is not coming back — close it.
+    static constexpr size_t kMaxWriteQueueBytes = 2 * 1024 * 1024;
 
     std::string player_name;
     std::string session_guid_;
@@ -440,15 +452,63 @@ private:
                 continuation_chunks, last_chunk_size);
         }
 
-        std::error_code ec;
-        asio::write(socket_, asio::buffer(response), ec);
+        enqueue_write(std::move(response));
+    }
 
-        if (ec) {
-            Logger::Log("tcp", "[TCP] Write failed: %s\n", ec.message().c_str());
+    // Queue a wire-ready frame and start the async write chain if idle.
+    // Single io_context thread — no locking needed.
+    void enqueue_write(std::vector<uint8_t>&& frame) {
+        if (!socket_.is_open() || close_when_drained_) return;
+        if (write_queue_bytes_ + frame.size() > kMaxWriteQueueBytes) {
+            Logger::Log("tcp",
+                "[TCP] write queue overflow (%zu + %zu bytes) player='%s' — closing stalled socket\n",
+                write_queue_bytes_, frame.size(), player_name.c_str());
+            // Close only — no queue clear here: the in-flight async_write still
+            // references the front buffer; its aborted completion clears the
+            // queue, and do_read's error branch runs handle_socket_disconnect.
+            std::error_code ignored;
+            socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ignored);
+            socket_.close(ignored);
+            return;
         }
+        write_queue_bytes_ += frame.size();
+        const bool idle = write_queue_.empty();
+        write_queue_.push_back(std::move(frame));
+        if (idle) do_write();
+    }
+
+    void do_write() {
+        auto self(shared_from_this());
+        asio::async_write(socket_, asio::buffer(write_queue_.front()),
+            [this, self](std::error_code ec, std::size_t /*bytes*/) {
+                if (ec) {
+                    Logger::Log("tcp", "[TCP] Write failed: %s (player='%s')\n",
+                        ec.message().c_str(), player_name.c_str());
+                    write_queue_.clear();
+                    write_queue_bytes_ = 0;
+                    std::error_code ignored;
+                    socket_.close(ignored);  // do_read's error branch cleans up
+                    return;
+                }
+                write_queue_bytes_ -= write_queue_.front().size();
+                write_queue_.pop_front();
+                if (!write_queue_.empty()) {
+                    do_write();
+                } else if (close_when_drained_) {
+                    std::error_code ignored;
+                    socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ignored);
+                    socket_.close(ignored);
+                }
+            });
     }
 
     void close_after_login_rejection() {
+        // Writes are queued now — closing immediately would cancel an
+        // in-flight rejection frame. Drain first if anything is pending.
+        if (!write_queue_.empty()) {
+            close_when_drained_ = true;
+            return;
+        }
         std::error_code ignored;
         socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ignored);
         socket_.close(ignored);
