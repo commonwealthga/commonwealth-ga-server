@@ -4,6 +4,7 @@
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/GameServer/Cosmetics/CosmeticEquip.hpp"
+#include "src/GameServer/TgGame/TgPawn/KillDeployables/TgPawn__KillDeployables.hpp"
 #include "src/Database/Database.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
@@ -227,6 +228,7 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 			-1, &delDev, nullptr);
 		for (int slot : kClearableDeviceSlots) {
 			if (DeviceArray.SlotIndices[slot] != 0) continue;
+			TgPawn__KillDeployables::KillFromDevice(Pawn, Pawn->m_EquippedDevices[slot]);
 			Inventory::Unequip(Pawn, slot);
 			if (delDev) {
 				sqlite3_reset(delDev);
@@ -275,6 +277,8 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 		ATgDevice* cur = Pawn->m_EquippedDevices[slot];
 		if (cur == nullptr) continue;
 		if (cur->r_nDeviceInstanceId == r.newInvId) continue;  // same item, leave alone (Equip will short-circuit)
+		// The outgoing device's live turrets/stations/drones go with it.
+		TgPawn__KillDeployables::KillFromDevice(Pawn, cur);
 		Inventory::Unequip(Pawn, slot);
 	}
 
