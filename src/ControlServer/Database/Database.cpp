@@ -1614,20 +1614,19 @@ void Database::Init() {
 		if (result != SQLITE_OK) sqlite3_free(err);
 
 		// Consolidate the specops medium/high/max queues into ONE mission-
-		// board group (playtested 2026-07-15): shared marshal 1029 ("Medium
-		// Security") as the group key, location as the difficulty selector
-		// (medium 1483 Sonoran Desert / high 1478 Mining Province / max
-		// 1477 Commonwealth Prime), desc = the tier name (27673/27674/
-		// 34212) instead of the level-range blurbs. umax (queue 1) stays
-		// its own group. Gated on the old values so operator edits stick.
+		// board group (playtested 2026-07-15): desc = the tier name (27673/
+		// 27674/34212) instead of the level-range blurbs. The location/
+		// marshal part of the consolidation is superseded by the 2026-07-24
+		// queue reorg at the end of Init (rows = real difficulty, location =
+		// map pool) — it must stay retired or it re-shuffles every boot.
 		result = sqlite3_exec(db,
 			"UPDATE ga_queues SET desc_msg_id = 27673 WHERE queue_id = 4 AND desc_msg_id = 41459;"
 			"UPDATE ga_queues SET desc_msg_id = 27674 WHERE queue_id = 5 AND desc_msg_id = 55458;"
-			"UPDATE ga_queues SET desc_msg_id = 34212 WHERE queue_id = 6 AND desc_msg_id = 55460;"
-			"UPDATE ga_queues SET location_value_id = 1483 WHERE queue_id = 4 AND location_value_id = 1477;"
-			"UPDATE ga_queues SET location_value_id = 1478 WHERE queue_id = 5 AND location_value_id = 1477;"
-			"UPDATE ga_queues SET marshal_difficulty_value_id = 1029 "
-			"WHERE queue_id IN (4, 5, 6) AND marshal_difficulty_value_id IS NULL;",
+			"UPDATE ga_queues SET desc_msg_id = 34212 WHERE queue_id = 6 AND desc_msg_id = 55460;",
+			// "UPDATE ga_queues SET location_value_id = 1483 WHERE queue_id = 4 AND location_value_id = 1477;"
+			// "UPDATE ga_queues SET location_value_id = 1478 WHERE queue_id = 5 AND location_value_id = 1477;"
+			// "UPDATE ga_queues SET marshal_difficulty_value_id = 1029 "
+			// "WHERE queue_id IN (4, 5, 6) AND marshal_difficulty_value_id IS NULL;",
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
 			Logger::Log("db", "Failed specops medium/high/max consolidation: %s\n", err);
@@ -2209,6 +2208,98 @@ void Database::Init() {
 		"ALTER TABLE ga_queues ADD COLUMN map_recency_divisors TEXT DEFAULT NULL;",
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
+
+	// Queue-structure reorg (2026-07-24, community-approved): mission-board
+	// rows become the REAL difficulty tiers (wire difficulty = marshal
+	// fallback to difficulty_value_id) and the location pager selects the
+	// map pool — 1477 Commonwealth Prime = specops pool 1, 1483 Sonoran
+	// Desert = desert_pve pool 5. Double Agent (8/9/10) keeps its
+	// location-as-difficulty pages. super_agent (11) moves under the
+	// tab-231 raids category next to sr/ddr/desert_raids. Wire/UI fields
+	// only — difficulty_value_id, map_pool_id and queue_ids are untouched,
+	// so matchmaking, spawning and stats are unaffected. Every UPDATE is
+	// gated on the pre-reorg value so operator edits stick across boots.
+	{
+		static const char* kQueueReorg2026_07_24[] = {
+			// Specops tiers: drop the shared "Medium Security" group key,
+			// page them under Commonwealth Prime.
+			"UPDATE ga_queues SET marshal_difficulty_value_id = NULL "
+			"WHERE queue_id IN (4, 5, 6) AND marshal_difficulty_value_id = 1029;",
+			"UPDATE ga_queues SET location_value_id = 1477 WHERE queue_id = 4 AND location_value_id = 1483;",
+			"UPDATE ga_queues SET location_value_id = 1477 WHERE queue_id = 5 AND location_value_id = 1478;",
+			"UPDATE ga_queues SET location_value_id = 1477 WHERE queue_id = 1 AND location_value_id = 1483;",
+			// Desert tiers: drop the shared "Low Security" group key, page
+			// them under Sonoran Desert.
+			"UPDATE ga_queues SET marshal_difficulty_value_id = NULL "
+			"WHERE queue_id IN (13, 14, 15) AND marshal_difficulty_value_id = 1028;",
+			"UPDATE ga_queues SET location_value_id = 1483 WHERE queue_id = 14 AND location_value_id = 1478;",
+			"UPDATE ga_queues SET location_value_id = 1483 WHERE queue_id = 15 AND location_value_id = 1477;",
+			// sort_order: rows by difficulty ascending, Commonwealth Prime
+			// page before Sonoran within a row. medium (4) keeps 1;
+			// desert_pve_medium (17, seeded below) takes 2. The IN() gates
+			// on 8/9/10 also catch the pre-v114 seed values (5/6/7) on a
+			// DB where the game DLL hasn't run its migrations yet.
+			"UPDATE ga_queues SET sort_order = 3  WHERE queue_id = 5  AND sort_order = 2;",
+			"UPDATE ga_queues SET sort_order = 4  WHERE queue_id = 13 AND sort_order = 9;",
+			"UPDATE ga_queues SET sort_order = 5  WHERE queue_id = 6  AND sort_order = 3;",
+			"UPDATE ga_queues SET sort_order = 6  WHERE queue_id = 14 AND sort_order = 10;",
+			"UPDATE ga_queues SET sort_order = 7  WHERE queue_id = 1  AND sort_order = 4;",
+			"UPDATE ga_queues SET sort_order = 8  WHERE queue_id = 15 AND sort_order = 11;",
+			"UPDATE ga_queues SET sort_order = 9  WHERE queue_id = 8  AND sort_order IN (5, 6);",
+			"UPDATE ga_queues SET sort_order = 10 WHERE queue_id = 9  AND sort_order IN (6, 7);",
+			"UPDATE ga_queues SET sort_order = 11 WHERE queue_id = 10 AND sort_order IN (7, 8);",
+			// super_agent -> raids category. Presentation fields mirror the
+			// sr/ddr/desert_raids rows; rule config, pool, difficulty 10000
+			// and marshal 1471 stay.
+			"UPDATE ga_queues SET queue_type_value_id = 1454 WHERE queue_id = 11 AND queue_type_value_id = 1021;",
+			"UPDATE ga_queues SET tab = 231 WHERE queue_id = 11 AND tab = 443;",
+			"UPDATE ga_queues SET icon_id = 1714 WHERE queue_id = 11 AND icon_id = 537;",
+			"UPDATE ga_queues SET location_value_id = 0 WHERE queue_id = 11 AND location_value_id = 1477;",
+			"UPDATE ga_queues SET map_x = 0.0 WHERE queue_id = 11 AND map_x = 6.0;",
+			"UPDATE ga_queues SET sort_order = 3 WHERE queue_id = 11 AND sort_order = 5;",
+			"UPDATE ga_queues SET bonus_queue_flag = 1 WHERE queue_id = 11 AND bonus_queue_flag = 0;",
+			// The raids list shows the queue name; 55411 is the dev string
+			// "CO-OP PvE - D5 - SUPER AGENT" -> 30009 "Super Agent".
+			"UPDATE ga_queues SET name_msg_id = 30009 WHERE queue_id = 11 AND name_msg_id = 55411;",
+		};
+		for (const char* sql : kQueueReorg2026_07_24) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] queue reorg step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+
+		// desert_pve_medium (queue 17) — completes the Medium row's Sonoran
+		// page. Mirrors the live desert_pve_high (13) row except difficulty
+		// 1029 and desc 27673 "Medium Security"; marshal stays NULL so the
+		// wire difficulty is the real 1029. Spawn tables resolve through
+		// the downward cascade at 1029; tables 147/148 (Colony Wasp/Tick
+		// swarms, Max+ only) stay empty by design — same as on high.
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_queues "
+			"(queue_id, name, taskforce_policy, continue_in_queue, enabled, "
+			" queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, "
+			" max_players_per_side, min_players_per_team, max_players_per_team, "
+			" level_min, level_max, tab, map_x, map_y, map_active_flag, "
+			" map_icon_texture_res_id, video_res_id, location_value_id, "
+			" double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, "
+			" difficulty_value_id, access_flags, active_flag, locked_flag, "
+			" map_pool_id, min_players_to_pop, max_players_per_instance, "
+			" pop_delay_seconds, pop_delay_policy, instant_pop_when_full, "
+			" requires_pvp_verification, team_policy, team_side_policy, "
+			" max_team_size, victory_bonus_lives, map_recency_divisors) VALUES"
+			" (17, 'desert_pve_medium', 'pinned_1', 0, 1,"
+			"  1021, 0, 26637, 27673, 537,"
+			"  30, 1, 30, 5, 200, 443, 6.0, 0.0, 1,"
+			"  5126, 0, 1483, 1, 0, 2, 0,"
+			"  1029, 0, 1, 0, 5, 1, 0,"
+			"  15.0, 'halve_on_join', 1, 0, 'own_match', 'required', 0, 4, '2.5,2,1.5');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed desert_pve_medium queue: %s\n", err);
+			sqlite3_free(err);
+		}
+	}
 
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
