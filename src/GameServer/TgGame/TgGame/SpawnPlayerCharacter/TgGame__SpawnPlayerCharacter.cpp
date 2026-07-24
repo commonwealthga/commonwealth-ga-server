@@ -47,6 +47,26 @@ static void LogAssemblySnapshot(const char* where, void* obj, const FCustomChara
 		a.DyeList[0], a.DyeList[1], a.DyeList[2], a.DyeList[3], a.DyeList[4]);
 }
 
+// Persistently assign a replicated FString field on a UObject. The field is
+// replicated over many frames and later freed by the engine via GAllocator, so
+// Data must come from GAllocator (not C++ new[] — mixing allocators corrupts
+// the heap, see the eventSetPlayerName note below). Frees any prior
+// GAllocator-owned buffer first so respawns don't leak.
+static void SetReplicatedFString(FString& field, const std::string& utf8) {
+	if (field.Data) {
+		GAllocator::Free(field.Data);
+		field.Data = nullptr;
+		field.Count = field.Max = 0;
+	}
+	if (utf8.empty()) return;
+	int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
+	if (wlen <= 0) return;  // includes the null terminator
+	wchar_t* buf = (wchar_t*)GAllocator::Malloc(sizeof(wchar_t) * wlen);
+	MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, buf, wlen);
+	field.Data = buf;
+	field.Count = field.Max = wlen;  // FString Count includes the terminator
+}
+
 static bool AddTouchingIfMissing(AActor* Actor, AActor* Other) {
 	if (!Actor || !Other) return false;
 	for (int i = 0; i < Actor->Touching.Count; ++i) {
@@ -485,6 +505,9 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	SyncPawnHealth::Apply(newpawn, hp, hp);
 	newrepplayer->r_nCharacterId = newpawn->s_nCharacterId;
 	newrepplayer->r_nLevel = 50;
+	// Scoreboard Agency column — replicated FString on the PRI.
+	SetReplicatedFString(newrepplayer->r_sAgencyName,
+	                     Database::GetAgencyName(newpawn->s_nCharacterId));
 	// newrepplayer->r_sOrigPlayerName = FString(L"Zaxik");
 	newrepplayer->r_PawnOwner = newpawn;
 	newrepplayer->r_ApproxLocation = newpawn->Location;

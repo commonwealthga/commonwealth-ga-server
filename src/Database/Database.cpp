@@ -10658,6 +10658,27 @@ void Database::Init() {
 	PlayerRegistry::Init();
 }
 
+std::string Database::GetAgencyName(int64_t character_id) {
+	if (character_id <= 0) return "";
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT ag.name FROM ga_agency_members m "
+			"JOIN ga_agencies ag ON ag.id = m.agency_id "
+			"WHERE m.character_id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return "";
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+	std::string name;
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		const char* a = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+		if (a) name = a;
+	}
+	sqlite3_finalize(stmt);
+	return name;
+}
+
 std::string Database::GetQuestStatus(int64_t character_id, int quest_id) {
 	sqlite3* db = GetConnection();
 	sqlite3_stmt* stmt = nullptr;
