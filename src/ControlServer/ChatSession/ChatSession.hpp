@@ -21,6 +21,7 @@ public:
     void start();
     void deliver(const std::vector<uint8_t>& msg);
     const std::string& get_player_name() const { return player_name_; }
+    const std::string& get_session_guid() const { return session_guid_; }
     // True when this session's player ignores `sender_name`. Backed by a
     // per-session cached ignore set, reloaded only when
     // Database::FriendsEpoch() has changed since the last check.
@@ -29,6 +30,24 @@ public:
     // Deliver a system chat line to one player's chat session, if they have
     // one. Used by TcpSession (e.g. friends "player not found" feedback).
     static void SystemMessageTo(const std::string& player_name, const std::string& text);
+
+    // Same, addressed by session guid — the main TCP socket knows guids, not
+    // player names.
+    static void SystemMessageToGuid(const std::string& session_guid,
+                                    const std::string& text);
+
+    // Send `text` as a chat line on `channel` from the player owning
+    // `session_guid`, with the same recipient scoping an ordinary chat message
+    // gets. Used by the PLAYER_COMMAND (0x019F) slash-command handler, which
+    // arrives on the main TCP socket rather than the chat socket. Returns false
+    // when that player has no bound chat session.
+    static bool SendChannelMessageFrom(const std::string& session_guid,
+                                       uint32_t channel,
+                                       const std::string& text);
+
+    // Names permitted to use -announce. Set once at startup from
+    // ControlServerConfig::announcers; empty means the command is disabled.
+    static void SetAnnouncers(const std::vector<std::string>& names);
 
 private:
     asio::ip::tcp::socket socket_;
@@ -73,10 +92,16 @@ private:
         append(buffer, val & 0xFF, (val >> 8) & 0xFF, (val >> 16) & 0xFF, (val >> 24) & 0xFF);
     }
 
+    // True when this session's player is in the configured announcer list.
+    bool IsAnnouncer() const;
+
     void do_read();
     void do_write();
     void handle_packet(const uint8_t* data, size_t length);
     void broadcast(const uint8_t* data, size_t length);
+    // Scope + build + deliver one formatted chat line. `message` is the final
+    // MESSAGE field ("<name>: <text>"), already prefixed by the caller.
+    void SendOnChannel(uint32_t channel, const std::string& message);
     bool BindPlayerFromRegistry(const char* reason);
     void ScheduleBindRetry();
     void AnnounceJoinIfNeeded();

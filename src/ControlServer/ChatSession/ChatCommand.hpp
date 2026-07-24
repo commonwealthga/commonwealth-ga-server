@@ -92,7 +92,23 @@ struct ParseResult {
     // -reload-queues — re-read ga_queues + ga_map_pool_entries. Handled
     // entirely on the control server; no PLAYER_ACTION IPC dispatched.
     bool reload_queues = false;
+
+    // -announce <text> — server-wide announcement on chat channel 20, the one
+    // channel the client's tab filter cannot exclude. Holds the announcement
+    // text (never empty when set). Handled entirely on the control server;
+    // caller must check the sender is permitted before acting on it.
+    std::optional<std::string> announce;
 };
+
+// Resolve a slash-command token (no leading '/', any case) to the chat channel
+// it targets. Returns nullopt for tokens that aren't channel commands.
+//
+// Covers the commands the client forwards to us as PLAYER_COMMAND (0x019F)
+// because they aren't in its own name->id map — /t, /l, /a, /al, /rg — plus
+// aliases of our own for channels whose combo-box label the client hardcodes
+// (City is shown as "/1", so /c and /city are ours to define). Commands the
+// client handles itself (/w, /gl, /i) never reach us and are absent here.
+std::optional<uint32_t> ChannelForCommandToken(const std::string& token);
 
 // Parse a chat MESSAGE string. Trims leading/trailing whitespace, recognises
 // "-changeteam" (optional arg "attackers" | "defenders"; bare -> Toggle),

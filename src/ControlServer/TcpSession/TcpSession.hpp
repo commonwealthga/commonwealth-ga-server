@@ -671,6 +671,12 @@ private:
 void handle_friend_update(const PacketView& pkt);
 void send_friends_list();
 
+    // PLAYER_COMMAND (0x019F) — slash commands the client doesn't recognise
+    // itself are forwarded here verbatim in TEXT_VALUE (0x04FF). Channel
+    // commands (/t, /l, /c, ...) route into the player's chat session;
+    // anything else gets an "unknown command" reply.
+    void handle_player_command(const PacketView& pkt);
+
     // Team wire helpers. Opcodes 0x4A/0x4D/0x4E/0x4F all route to the client's
     // message-display handler (vt[0x54]: MSG_ID 0x36E template + @@token@@
     // fields); 0x4B queues the invitation popup; 0x4C dismisses it (no fields).

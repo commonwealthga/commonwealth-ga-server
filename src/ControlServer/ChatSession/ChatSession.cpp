@@ -1,11 +1,14 @@
 #include "src/ControlServer/ChatSession/ChatSession.hpp"
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
 #include "src/ControlServer/Database/Database.hpp"
+#include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
+#include "src/ControlServer/TeamService/TeamService.hpp"
 
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <optional>
 #ifndef _WIN32
 #include <netinet/tcp.h>
 #include <sys/socket.h>
@@ -19,14 +22,40 @@ static std::vector<std::weak_ptr<ChatSession>> g_chat_sessions;
 
 namespace {
 
-// Wire-level channel id used for join/leave system announcements. Chosen to
-// be distinct from the gameplay-chat channels the client receives (channel 4
-// = global, channel 8 = DM). Real clients render unknown channels as a
-// default-tinted chat line so the message still appears even if the client
-// has no special styling for this id; the "*** ... ***" decoration in the
-// message body guarantees visibility regardless. If a future client patch
-// adds a dedicated system-tint channel, change here and rebuild.
-constexpr uint32_t kSystemChannelId = 4;
+// Chat channel ids. These are the client's own enum — index into the name and
+// colour tables built by FUN_10902990 (name at 0x1199ec28 + id*4, ARGB colour
+// at 0x1199eca0 + id*4). See handoff.md §1 for the full table.
+constexpr uint32_t kInstanceChannelId = 1;   // same instance, both sides
+constexpr uint32_t kAgencyChannelId   = 2;   // agency membership
+constexpr uint32_t kAllianceChannelId = 3;   // every agency in the alliance
+constexpr uint32_t kLocalChannelId    = 4;   // same instance + same task force
+constexpr uint32_t kTeamChannelId     = 5;   // party members
+constexpr uint32_t kCityChannelId     = 7;   // every connected session
+constexpr uint32_t kWhisperChannelId  = 8;   // /w, /tell
+constexpr uint32_t kTradeChannelId    = 12;  // every connected session
+constexpr uint32_t kLfgChannelId      = 13;  // every connected session
+
+// Join/leave notices and error replies. Channel 11 (System) is present in all
+// four default tab masks and renders yellow, so these no longer masquerade as
+// Local chat.
+constexpr uint32_t kSystemChannelId = 11;
+
+// -announce goes out on channel 20. FUN_113be150 in the client remaps channel
+// 20 to 11 (System) before testing the player's tab filter mask, and bit 11 is
+// set in all four default tab masks — so a channel-20 line lands in every tab
+// regardless of the player's Chat settings. It is the only id with that
+// property, has no channel-name prefix of its own, and renders yellow.
+constexpr uint32_t kAnnounceChannelId = 20;
+
+// Lowercased names permitted to use -announce. Empty = command disabled.
+// Written once at startup before any session exists, read-only thereafter.
+std::unordered_set<std::string> g_announcers;
+
+std::string ToLowerAscii(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return s;
+}
 
 // Hard cap on the per-session write_queue_. Reached only if writes are
 // failing or stalled long enough that the server has queued this many frames
@@ -178,6 +207,95 @@ void BroadcastSystemMessage(const std::string& message_text,
         channel, message_text.c_str(), delivered);
 }
 
+// Which sessions may receive a message on `channel`.
+//
+// nullopt      = every connected session (City, and any channel we don't scope).
+// empty set    = the sender can't use this channel right now (not in an
+//                instance / not in a team) — caller replies with a system line
+//                instead of broadcasting.
+// non-empty    = deliver only to sessions whose guid is in the set. The sender's
+//                own guid is included, so their line still echoes back to them.
+//
+// One roster lookup per message, not per peer.
+std::optional<std::unordered_set<std::string>> RecipientsFor(
+        uint32_t channel, const std::string& sender_guid) {
+    if (channel == kTeamChannelId) {
+        const auto guids = TeamService::GetTeamMemberGuids(sender_guid);
+        return std::unordered_set<std::string>(guids.begin(), guids.end());
+    }
+
+    if (channel == kAgencyChannelId || channel == kAllianceChannelId) {
+        // Agency membership is keyed by account, not character or session, so
+        // resolve guid -> user_id through the session store on both ends.
+        auto sender = PlayerSessionStore::GetByGuid(sender_guid);
+        if (!sender || sender->user_id == 0) return std::unordered_set<std::string>{};
+        const int64_t agency_id = Database::GetAgencyIdForUser(sender->user_id);
+        if (agency_id == 0) return std::unordered_set<std::string>{};
+
+        std::vector<int64_t> member_ids;
+        if (channel == kAgencyChannelId) {
+            member_ids = Database::GetAgencyMemberUserIds(agency_id);
+        } else {
+            const int64_t alliance_id = Database::GetAllianceIdForAgency(agency_id);
+            if (alliance_id == 0) return std::unordered_set<std::string>{};
+            member_ids = Database::GetAllianceMemberUserIds(alliance_id);
+        }
+        const std::unordered_set<int64_t> members(member_ids.begin(), member_ids.end());
+
+        // Walk the connected sessions rather than the member list: offline
+        // members can't receive anything, and this keeps it to one store
+        // lookup per online player instead of a DB query per member.
+        std::unordered_set<std::string> out;
+        PruneExpiredSessions();
+        for (auto& weak : g_chat_sessions) {
+            if (auto peer = weak.lock()) {
+                const std::string& guid = peer->get_session_guid();
+                if (guid.empty()) continue;
+                auto info = PlayerSessionStore::GetByGuid(guid);
+                if (info && members.count(info->user_id)) out.insert(guid);
+            }
+        }
+        Logger::Log("chat", "[Scope] ch=%u agency=%lld members=%zu recipients=%zu\n",
+            channel, (long long)agency_id, members.size(), out.size());
+        return out;
+    }
+
+    if (channel == kInstanceChannelId || channel == kLocalChannelId) {
+        auto where = InstanceRegistry::GetInstancePlayerTaskForce(sender_guid);
+        if (!where) return std::unordered_set<std::string>{};  // not in an instance
+        const int64_t instance_id = where->first;
+        const int sender_tf       = where->second;
+
+        // Local is side-scoped ("Attacker/Defender Channel" per the client's
+        // own /help text). On the home map / VR there are no sides — task
+        // force comes back unset, so fall back to instance-wide.
+        const bool side_scoped = (channel == kLocalChannelId) && sender_tf > 0;
+
+        std::unordered_set<std::string> out;
+        const auto roster = InstanceRegistry::GetActivePlayersForInstance(instance_id);
+        for (const auto& row : roster) {
+            if (side_scoped && row.task_force != sender_tf) continue;
+            if (!row.guid.empty()) out.insert(row.guid);
+        }
+        // Recipient count is the one number worth having when someone reports
+        // "my message didn't arrive" — autobalance can leave a player alone on
+        // a side, where recipients=1 is correct rather than broken.
+        Logger::Log("chat", "[Scope] ch=%u inst=%lld sender_tf=%d roster=%zu recipients=%zu\n",
+            channel, (long long)instance_id, sender_tf, roster.size(), out.size());
+        return out;
+    }
+
+    return std::nullopt;  // City + anything unscoped: everyone.
+}
+
+// System line shown when a player sends on a channel they can't currently use.
+const char* UnavailableChannelText(uint32_t channel) {
+    if (channel == kTeamChannelId)     return "*** You are not in a team ***";
+    if (channel == kAgencyChannelId)   return "*** You are not in an agency ***";
+    if (channel == kAllianceChannelId) return "*** Your agency is not in an alliance ***";
+    return "*** You are not in an instance ***";
+}
+
 std::string SanitizeCommandForLog(std::string s) {
     for (char& c : s) {
         if (c == '\r' || c == '\n' || c == '\t') c = ' ';
@@ -200,7 +318,8 @@ bool HasParsedCommandAction(const ChatCommand::ParseResult& parsed) {
         || parsed.unpossess
         || parsed.coords
         || parsed.fullheal
-        || parsed.reload_queues;
+        || parsed.reload_queues
+        || parsed.announce.has_value();
 }
 
 } // anonymous namespace
@@ -222,9 +341,27 @@ void ChatSession::start() {
 void ChatSession::AnnounceJoinIfNeeded() {
     if (announced_join_ || player_name_.empty()) return;
     announced_join_ = true;
-    // Enable Local (4) and Tell (8) in the client's channel table so channel
-    // switching (combo box, /local) works — see BuildChatConfigFrame.
-    deliver(BuildChatConfigFrame({ 4, 8 }));
+    // Populate the client's send-channel table (combo box) — see
+    // BuildChatConfigFrame. Sent once at join and never revised: a player who
+    // picks a channel they can't currently use (Team with no party, Local
+    // outside an instance) gets a system reply instead. Far less state to keep
+    // in sync than re-sending CHAT_CONFIG on every instance or party change.
+    //
+    // The combo box can only ever show channels from a hardcoded 10-entry
+    // candidate table in the client (`DAT_1199c770`, read by FUN_113bdd20):
+    // 4 Local, 7 City, 2 Agency, 3 Alliance, 5 Team, 6 Raid, 12 Trade, 13 LFG,
+    // 9 Private1, 10 GM. This packet only decides which of *those* are shown.
+    // Instance (1) and Personal (8) are not on it and can never appear —
+    // Instance is reachable via the client's own /i, Personal via the tell
+    // flow. Both are still enabled here because the client's channel-switch
+    // paths check this table. Private1 (9) and GM (10) are deliberately
+    // omitted: they're selectable but sit in no default tab, so anything sent
+    // on them is invisible to every recipient.
+    deliver(BuildChatConfigFrame({ kCityChannelId, kLocalChannelId,
+                                   kInstanceChannelId, kTeamChannelId,
+                                   kWhisperChannelId, kTradeChannelId,
+                                   kLfgChannelId, kAgencyChannelId,
+                                   kAllianceChannelId }));
     BroadcastSystemMessage(
         "*** " + player_name_ + " has joined the chat ***",
         kSystemChannelId,
@@ -433,6 +570,28 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         if (parsed.recognized && parsed.toggle_broken_suits) {
             ChatCommand::DispatchToggleBrokenSuits(*parsed.toggle_broken_suits, session_guid_);
         }
+        if (parsed.recognized && parsed.announce) {
+            if (!IsAnnouncer()) {
+                Logger::Log("chat-command",
+                    "[ChatCmd] -announce player='%s' guid=%s outcome=denied details=not_in_announcer_list\n",
+                    player_name_.c_str(), session_guid_.c_str());
+                deliver(BuildChatFrame(kSystemChannelId,
+                    "*** You are not permitted to use -announce ***"));
+            } else {
+                // No ignore gate and no self-skip: an announcement goes to
+                // every connected session, sender included.
+                const auto frame = BuildChatFrame(kAnnounceChannelId, *parsed.announce);
+                PruneExpiredSessions();
+                size_t sent = 0;
+                for (auto& weak : g_chat_sessions) {
+                    if (auto peer = weak.lock()) { peer->deliver(frame); sent++; }
+                }
+                Logger::Log("chat-command",
+                    "[ChatCmd] -announce player='%s' guid=%s outcome=sent details=%zu_session(s) text='%s'\n",
+                    player_name_.c_str(), session_guid_.c_str(), sent,
+                    parsed.announce->c_str());
+            }
+        }
         if (parsed.recognized && parsed.reload_queues) {
             Logger::Log("chat-command",
                 "[ChatCmd] -reload-queues player='%s' guid=%s outcome=activated details=MatchmakingService::ReloadQueues\n",
@@ -456,11 +615,13 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
 
     PacketView pkt(data + 6, length - 6);
 
-    uint32_t channel = pkt.Read4B(GA_T::CHAT_CH_TYPE).value_or(4);
+    // Missing channel field falls back to City — the unscoped "everyone"
+    // channel, which is what this code did before channels were scoped.
+    uint32_t channel = pkt.Read4B(GA_T::CHAT_CH_TYPE).value_or(kCityChannelId);
 
     std::string message = player_name_ + ": " + pkt.ReadString(GA_T::MESSAGE).value_or("");
 
-    bool isDM = channel == 8;
+    bool isDM = channel == kWhisperChannelId;
 
     if (isDM) {
         // Whisper: recipient arrives in PLAYER_NAME (0x03C5), verified via live capture.
@@ -528,10 +689,30 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
         return;
     }
 
-    Logger::Log("chat", "Broadcasting message '%s' to channel %u\n", message.c_str(), channel);
+    SendOnChannel(channel, message);
+}
 
-    uint16_t packet_type = GA_U::CHAT_MESSAGE;
-    uint16_t item_count = 2;
+// Scope, build and deliver one already-formatted chat line. Shared by the chat
+// socket (ChatSession::broadcast) and by slash commands arriving as
+// PLAYER_COMMAND on the main TCP socket (SendChannelMessageFrom).
+void ChatSession::SendOnChannel(uint32_t channel, const std::string& message) {
+    // Scope the recipients before building the frame — an unusable channel
+    // costs the sender a system line and nobody else anything.
+    const auto recipients = RecipientsFor(channel, session_guid_);
+    if (recipients && recipients->empty()) {
+        Logger::Log("chat", "[Chat] ch=%u unavailable for player='%s'\n",
+            channel, player_name_.c_str());
+        deliver(BuildChatFrame(kSystemChannelId, UnavailableChannelText(channel)));
+        return;
+    }
+
+    Logger::Log("chat", "Broadcasting message '%s' to channel %u (%s)\n",
+        message.c_str(), channel,
+        recipients ? "scoped" : "all sessions");
+
+    std::vector<uint8_t> response;
+    const uint16_t packet_type = GA_U::CHAT_MESSAGE;
+    const uint16_t item_count = 2;
 
     append(response, packet_type & 0xFF, packet_type >> 8);
     append(response, item_count & 0xFF, item_count >> 8);
@@ -540,7 +721,7 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
     WriteString(response, GA_T::MESSAGE, message);
 
     std::vector<uint8_t> chunk;
-    uint16_t chunk_size = static_cast<uint16_t>(response.size());
+    const uint16_t chunk_size = static_cast<uint16_t>(response.size());
 
     chunk.push_back(chunk_size & 0xFF);
     chunk.push_back(chunk_size >> 8);
@@ -553,18 +734,49 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
 
     for (auto& weak : g_chat_sessions) {
         if (auto peer = weak.lock()) {
-            if (isDM) {
-                if (peer.get() == this) {
-                    peer->deliver(chunk);
-                }
-            } else {
-                // Ignore gate: don't show this sender's lines to players who
-                // have them on the F3 ignore list.
-                if (peer.get() != this &&
-                    peer->is_ignoring(player_name_)) {
-                    continue;
-                }
-                peer->deliver(chunk);
+            // Channel scope: instance / side / party membership.
+            if (recipients && !recipients->count(peer->get_session_guid())) {
+                continue;
+            }
+            // Ignore gate: don't show this sender's lines to players who
+            // have them on the F3 ignore list. Logged because a one-way
+            // ignore is indistinguishable from a broken channel when you're
+            // staring at two clients — the sender still sees their own line.
+            if (peer.get() != this && peer->is_ignoring(player_name_)) {
+                Logger::Log("chat", "[Chat] ch=%u '%s' ignores '%s' — line dropped\n",
+                    channel, peer->get_player_name().c_str(), player_name_.c_str());
+                continue;
+            }
+            peer->deliver(chunk);
+        }
+    }
+}
+
+bool ChatSession::SendChannelMessageFrom(const std::string& session_guid,
+                                         uint32_t channel,
+                                         const std::string& text) {
+    if (session_guid.empty() || text.empty()) return false;
+    PruneExpiredSessions();
+    for (auto& weak : g_chat_sessions) {
+        if (auto peer = weak.lock()) {
+            if (peer->get_session_guid() != session_guid) continue;
+            if (peer->get_player_name().empty()) return false;
+            peer->SendOnChannel(channel, peer->get_player_name() + ": " + text);
+            return true;
+        }
+    }
+    return false;
+}
+
+void ChatSession::SystemMessageToGuid(const std::string& session_guid,
+                                      const std::string& text) {
+    if (session_guid.empty()) return;
+    auto frame = BuildChatFrame(kSystemChannelId, text);
+    for (auto& weak : g_chat_sessions) {
+        if (auto peer = weak.lock()) {
+            if (peer->get_session_guid() == session_guid) {
+                peer->deliver(frame);
+                return;
             }
         }
     }
@@ -583,6 +795,19 @@ bool ChatSession::is_ignoring(const std::string& sender_name) {
     std::transform(lower.begin(), lower.end(), lower.begin(),
         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return ignored_lower_.count(lower) != 0;
+}
+
+void ChatSession::SetAnnouncers(const std::vector<std::string>& names) {
+    g_announcers.clear();
+    for (const auto& n : names) {
+        if (!n.empty()) g_announcers.insert(ToLowerAscii(n));
+    }
+    Logger::Log("chat", "[Chat] announcer list loaded: %zu name(s)\n", g_announcers.size());
+}
+
+bool ChatSession::IsAnnouncer() const {
+    if (g_announcers.empty() || player_name_.empty()) return false;
+    return g_announcers.count(ToLowerAscii(player_name_)) != 0;
 }
 
 void ChatSession::SystemMessageTo(const std::string& player_name, const std::string& text) {

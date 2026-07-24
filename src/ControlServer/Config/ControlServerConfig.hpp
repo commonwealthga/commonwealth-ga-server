@@ -124,6 +124,13 @@ struct ControlServerConfig {
     };
     KickConfig kick;
 
+    // Player names allowed to use "-announce <text>" (case-insensitive).
+    // Empty (the default) = nobody can. Chat channel 20 is unfilterable, so
+    // this is deliberately not open to everyone.
+    // ponytail: a config list, not an ga_users column — swap to a DB flag if
+    // this ever needs per-account revocation or more than a couple of names.
+    std::vector<std::string> announcers;
+
     // Load config from JSON file at path. Returns defaults if file is absent or invalid.
     static ControlServerConfig Load(const std::string& path);
 };

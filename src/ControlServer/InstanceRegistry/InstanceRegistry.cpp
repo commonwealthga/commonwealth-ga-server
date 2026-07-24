@@ -772,6 +772,9 @@ InstanceRegistry::GetInstancePlayerTaskForce(const std::string& session_guid) {
     const char* sql =
         "SELECT instance_id, task_force_number FROM ga_instance_players "
         "WHERE session_guid = ? AND left_at IS NULL "
+        // Newest first: if a previous instance's row was ever left unstamped,
+        // an unordered LIMIT 1 would hand back the stale instance/task force.
+        "ORDER BY joined_at DESC, id DESC "
         "LIMIT 1";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
         Logger::Log("db", "[InstanceRegistry] GetInstancePlayerTaskForce prepare failed: %s\n",

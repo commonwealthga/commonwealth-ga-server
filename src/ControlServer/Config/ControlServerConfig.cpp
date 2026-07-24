@@ -110,6 +110,11 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
             if (item.is_string()) cfg.enabled_channels.push_back(item.get<std::string>());
         }
     }
+    if (j.contains("announcers") && j["announcers"].is_array()) {
+        for (const auto& item : j["announcers"]) {
+            if (item.is_string()) cfg.announcers.push_back(item.get<std::string>());
+        }
+    }
     if (j.contains("enabled_crash_channels") && j["enabled_crash_channels"].is_array()) {
         for (const auto& item : j["enabled_crash_channels"]) {
             if (item.is_string()) cfg.enabled_crash_channels.push_back(item.get<std::string>());
