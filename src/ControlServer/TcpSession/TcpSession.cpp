@@ -30,6 +30,10 @@
 
 std::mutex TcpSession::sessions_mutex_;
 std::map<std::string, std::weak_ptr<TcpSession>> TcpSession::g_sessions_;
+std::mutex TcpSession::pending_alliance_mutex_;
+std::map<int64_t, int64_t> TcpSession::pending_alliance_invites_;
+std::mutex TcpSession::pending_agency_mutex_;
+std::map<int64_t, int64_t> TcpSession::pending_agency_invites_;
 std::function<void()> TcpSession::on_need_home_map_;
 std::string TcpSession::s_host_ = "127.0.0.1";
 uint16_t    TcpSession::s_chat_port_ = 9001;
@@ -1801,6 +1805,122 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			Logger::Log("tcp", "[%s] Received: AGENCY_GET_ROSTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 			send_agency_get_roster_response();
 			break;
+		case GA_U::AGENCY_CREATE: {
+			Logger::Log("tcp", "[%s] Received: AGENCY_CREATE [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			PacketView pkt(data + 6, length - 6);
+			handle_agency_create(pkt);
+			break;
+		}
+		// Solo leader disband: "remove" on the last member confirms as a disband.
+		// The client may send DISBAND, LEAVE, or a self-targeted REMOVE — all mean
+		// "delete my agency" for a solo leader, so route them together.
+		case GA_U::AGENCY_DISBAND:
+		case GA_U::AGENCY_LEAVE:
+		case GA_U::AGENCY_REMOVE:
+		case GA_U::AGENCY_PLAYER_REMOVE: {
+			Logger::Log("tcp", "[%s] Received: AGENCY disband/leave/remove [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			PacketView pkt(data + 6, length - 6);
+			// A PLAYER_ID that isn't mine = kicking that member; anything else
+			// (no target, or myself) is the leave/disband path.
+			const int64_t target = (int64_t)pkt.Read4B(GA_T::PLAYER_ID).value_or(0);
+			if (target != 0 && target != selected_character_id_) {
+				handle_agency_kick(target);
+				break;
+			}
+			handle_agency_disband();
+			break;
+		}
+		case GA_U::AGENCY_SET_NOTE: {
+			Logger::Log("tcp", "[%s] Received: AGENCY_SET_NOTE [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			PacketView pkt(data + 6, length - 6);
+			handle_agency_set_note(pkt);
+			break;
+		}
+		case GA_U::AGENCY_UPDATE_RECRUITING: {
+			Logger::Log("tcp", "[%s] Received: AGENCY_UPDATE_RECRUITING [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			PacketView pkt(data + 6, length - 6);
+			handle_agency_update_recruiting(pkt);
+			break;
+		}
+		case GA_U::AGENCY_SET_OWNER: {
+			Logger::Log("tcp", "[%s] Received: AGENCY_SET_OWNER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			PacketView pkt(data + 6, length - 6);
+			handle_agency_set_owner(pkt);
+			break;
+		}
+		case GA_U::AGENCY_UPDATE_RANKS: {
+			Logger::Log("tcp", "[%s] Received: AGENCY_UPDATE_RANKS [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			PacketView pkt(data + 6, length - 6);
+			handle_agency_update_ranks(pkt);
+			break;
+		}
+		case GA_U::AGENCY_PROMOTE:
+		case GA_U::AGENCY_DEMOTE: {
+			Logger::Log("tcp", "[%s] Received: AGENCY_PROMOTE/DEMOTE [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			PacketView pkt(data + 6, length - 6);
+			handle_agency_rank_change(pkt, packet_type == GA_U::AGENCY_PROMOTE);
+			break;
+		}
+		case GA_U::AGENCY_INVITE: {
+			Logger::Log("tcp", "[%s] Received: AGENCY_INVITE [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			PacketView pkt(data + 6, length - 6);
+			handle_agency_invite(pkt);
+			break;
+		}
+		// UC has ONE native for both answers — ATgPlayerController::AgencyAccept(bool
+		// bAccepted) (TgPlayerController.uc) — so the accept/decline split is assumed
+		// to be 0xB7 vs 0xB8 (both opcodes exist). LogData confirms on first test; if
+		// decline arrives as 0xB7 + a flag field, gate the join on that flag here.
+		case GA_U::AGENCY_ACCEPT_INVITE:
+			Logger::Log("tcp", "[%s] Received: AGENCY_ACCEPT_INVITE [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			handle_agency_accept();
+			break;
+		case GA_U::AGENCY_REJECT_INVITE: {
+			Logger::Log("tcp", "[%s] Received: AGENCY_REJECT_INVITE [0x%04X]\n", Logger::GetTime(), packet_type);
+			std::lock_guard<std::mutex> lock(pending_agency_mutex_);
+			pending_agency_invites_.erase(user_id_);
+			break;
+		}
+		case GA_U::ALLIANCE_GET_MEMBER_LIST:
+			Logger::Log("tcp", "[%s] Received: ALLIANCE_GET_MEMBER_LIST [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			send_alliance_member_list_response();
+			break;
+		case GA_U::ALLIANCE_CREATE: {
+			Logger::Log("tcp", "[%s] Received: ALLIANCE_CREATE [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			PacketView pkt(data + 6, length - 6);
+			handle_alliance_create(pkt);
+			break;
+		}
+		case GA_U::ALLIANCE_DISBAND:
+			Logger::Log("tcp", "[%s] Received: ALLIANCE_DISBAND [0x%04X]\n", Logger::GetTime(), packet_type);
+			handle_alliance_disband();
+			break;
+		case GA_U::ALLIANCE_REMOVE: {
+			Logger::Log("tcp", "[%s] Received: ALLIANCE_REMOVE [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			PacketView pkt(data + 6, length - 6);
+			handle_alliance_remove(pkt);
+			break;
+		}
+		case GA_U::ALLIANCE_INVITE: {
+			Logger::Log("tcp", "[%s] Received: ALLIANCE_INVITE [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			PacketView pkt(data + 6, length - 6);
+			handle_alliance_invite(pkt);
+			break;
+		}
+		case GA_U::ALLIANCE_ACCEPT_INVITE: {
+			Logger::Log("tcp", "[%s] Received: ALLIANCE_ACCEPT_INVITE [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+			handle_alliance_accept();
+			break;
+		}
+		case GA_U::ALLIANCE_REJECT_INVITE: {
+			Logger::Log("tcp", "[%s] Received: ALLIANCE_REJECT_INVITE [0x%04X]\n", Logger::GetTime(), packet_type);
+			int64_t my_agency = Database::GetAgencyIdForUser(user_id_);
+			if (my_agency != 0) {
+				std::lock_guard<std::mutex> lock(pending_alliance_mutex_);
+				pending_alliance_invites_.erase(my_agency);
+			}
+			break;
+		}
 		case GA_U::QUERY_PLAYERS: {
 			Logger::Log("tcp", "[%s] Received: QUERY_PLAYERS [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 			PacketView pkt(data + 6, length - 6);
@@ -3096,18 +3216,909 @@ void TcpSession::send_player_skills_response()
 	send_response(response);
 }
 
+// Rank helpers. Ranks are ordered rank_level ASC; level 0 = Leader, who always
+// passes every permission check regardless of the stored bits.
+namespace {
+int agency_rank_level(const Database::AgencyInfo& info, int rank_id) {
+	for (const auto& rk : info.ranks) if (rk.rank_id == rank_id) return rk.rank_level;
+	return 9999;
+}
+
+const Database::AgencyMemberRow* agency_member_by_user(const Database::AgencyInfo& info,
+                                                       int64_t user_id) {
+	for (const auto& m : info.members) if (m.user_id == user_id) return &m;
+	return nullptr;
+}
+
+bool agency_has_perm(const Database::AgencyInfo& info, int64_t user_id, uint32_t bit) {
+	const auto* me = agency_member_by_user(info, user_id);
+	if (!me) return false;
+	for (const auto& rk : info.ranks) {
+		if (rk.rank_id != me->rank_id) continue;
+		return rk.rank_level == 0 || ((uint32_t)rk.permissions & bit) != 0;
+	}
+	return false;
+}
+}  // namespace
+
+// Append the caller's agency as top-level TLV fields, in the exact shape the
+// client's receive handler (TgAgencyData, reversed at client FUN_113cd3d0)
+// consumes. The gate is ROSTER_FLAGS bit0 — WITHOUT it the client leaves
+// m_bNoAgency=true and ignores the whole block. Agency/rank name is tag NAME
+// (0x370), NOT AGENCY_NAME/RANK_NAME. Returns the top-level field count (0 if
+// the caller has no agency).
+int TcpSession::append_agency_payload(std::vector<uint8_t>& response)
+{
+	int64_t agency_id = Database::GetAgencyIdForUser(user_id_);
+	if (agency_id == 0) return 0;
+
+	auto info = Database::GetAgencyInfo(agency_id);
+	if (!info) return 0;
+
+	// bit0 = "core agency data present" → clears m_bNoAgency. (bit4 = inventory.)
+	Write4B(response,     GA_T::ROSTER_FLAGS,             0x1);
+	WriteString(response, GA_T::NAME,                     info->name);        // 0x370
+	WriteString(response, GA_T::AGENCY_MOTD,              info->motd);
+	WriteString(response, GA_T::AGENCY_INFORMATION,       info->information);
+	WriteString(response, GA_T::RECRUITING_LISTING_TEXT,  info->recruiting_text);
+	// Flags are WCHAR_STR on the wire; client GetFlag reads first char (y/Y/t/T=true).
+	WriteString(response, GA_T::RECRUITING_FLAG,          info->recruiting ? "y" : "n");
+	WriteString(response, GA_T::RECRUITING_SUB_ONLY_FLAG, info->sub_only ? "y" : "n");
+	Write4B(response,     GA_T::AGENCY_ID,                (uint32_t)info->id);
+	// PLAYER_ID at top level = the local player's member id (→ m_nLocalPlayerId,
+	// drives LocalPlayerIsLeader). Must match this member's PLAYER_ID row below.
+	Write4B(response,     GA_T::PLAYER_ID,                (uint32_t)selected_character_id_);
+	Write4B(response,     GA_T::COUNT,                    (uint32_t)info->members.size());
+
+	// DATA_SET_RANKS — rows: RANK_ID, RANK_LEVEL, PERMISSION_FLAGS, NAME(0x370).
+	append(response, GA_T::DATA_SET_RANKS & 0xFF, GA_T::DATA_SET_RANKS >> 8);
+	append(response, info->ranks.size() & 0xFF, (info->ranks.size() >> 8) & 0xFF);
+	for (const auto& rk : info->ranks) {
+		append(response, 0x04, 0x00);  // 4 fields
+		Write4B(response,     GA_T::RANK_ID,          (uint32_t)rk.rank_id);
+		Write4B(response,     GA_T::RANK_LEVEL,       (uint32_t)rk.rank_level);
+		Write4B(response,     GA_T::PERMISSION_FLAGS, (uint32_t)rk.permissions);
+		WriteString(response, GA_T::NAME,             rk.rank_name);
+	}
+
+	// Online members (character_id -> map name) in ONE query scoped to this
+	// agency. The roster is polled every 2s per client, so this path stays at a
+	// fixed 5 queries regardless of member count: agency id, meta, ranks,
+	// members (profile_id joined in), online map.
+	const std::map<int64_t, std::string> online =
+		Database::GetOnlineAgencyMemberMaps(agency_id);
+
+	// DATA_SET_MEMBERS — the row parser (client FUN_113ccbe0) reads, in order:
+	// PLAYER_NAME 0x3C5, PLAYER_ID 0x3C3, RANK_ID 0x417, LEVEL 0x303,
+	// PROFILE_ID 0x3DF, ACTIVE_FLAG 0x16, MAP_NAME_MSG_ID 0x327 (the Location
+	// column), PUBLIC_COMMENT 0x3F3, OFFICER_COMMENT 0x386. It stores
+	// ACTIVE_FLAG inverted (absent/false => "offline"), so online must send "y".
+	append(response, GA_T::DATA_SET_MEMBERS & 0xFF, GA_T::DATA_SET_MEMBERS >> 8);
+	append(response, info->members.size() & 0xFF, (info->members.size() >> 8) & 0xFF);
+	for (const auto& m : info->members) {
+		auto it = online.find(m.character_id);
+		const bool is_online = (it != online.end());
+
+		uint32_t map_msg_id = 0;
+		if (is_online) {
+			if (auto rec = MapGameInfo::LookupByName(it->second))
+				map_msg_id = rec->friendly_name_msg_id;
+		}
+		// A map with no friendly-name msg id would localize to "Unknown" too.
+		const bool send_location = (map_msg_id != 0);
+
+		// Offline members OMIT MAP_NAME_MSG_ID: the parser only localizes the id
+		// when the field is present, so leaving it out keeps
+		// sMemberLocationString at its "" default (a 0 id localizes to
+		// "Unknown"). Field count is per-row, so 8 vs 9 is fine.
+		append(response, send_location ? 0x09 : 0x08, 0x00);
+		WriteString(response, GA_T::PLAYER_NAME,     m.player_name);
+		Write4B(response,     GA_T::PLAYER_ID,       (uint32_t)m.character_id);
+		Write4B(response,     GA_T::RANK_ID,         (uint32_t)m.rank_id);
+		// Levels aren't tracked anywhere on this server — 50 everywhere, same
+		// constant GSC_CHARACTER_LIST and QUERY_PLAYERS use.
+		Write4B(response,     GA_T::LEVEL,           50);
+		Write4B(response,     GA_T::PROFILE_ID,      m.profile_id);
+		WriteString(response, GA_T::ACTIVE_FLAG,     is_online ? "y" : "n");
+		if (send_location) Write4B(response, GA_T::MAP_NAME_MSG_ID, map_msg_id);
+		WriteString(response, GA_T::PUBLIC_COMMENT,  m.public_comment);
+		// Officer notes only go out to ranks allowed to read them — the client
+		// hides the box, but don't ship the text to a client that can't show it.
+		WriteString(response, GA_T::OFFICER_COMMENT,
+			agency_has_perm(*info, user_id_, Database::AGENCY_PERM_VIEW_OFFICER_MSG)
+				? m.officer_comment : std::string());
+	}
+
+	// ROSTER_FLAGS, NAME, MOTD, INFORMATION, RECRUITING_TEXT, RECRUITING_FLAG,
+	// SUB_ONLY, AGENCY_ID, PLAYER_ID, COUNT, DATA_SET_RANKS, DATA_SET_MEMBERS.
+	return 12;
+}
+
 void TcpSession::send_agency_get_roster_response()
 {
+	std::vector<uint8_t> payload;
+	int fields = append_agency_payload(payload);
+
 	std::vector<uint8_t> response;
-
 	uint16_t packet_type = GA_U::AGENCY_GET_ROSTER;
-	uint16_t item_count = 1;
 
+	if (fields == 0) {
+		// "You are not in an agency." MSG_ID==0x37B9 makes the receiver set
+		// m_bNoAgency + ClearData — needed to reset the UI after a disband
+		// (the creation menu shows again). Harmless before first create too.
+		uint16_t item_count = 1;
+		append(response, packet_type & 0xFF, packet_type >> 8);
+		append(response, item_count & 0xFF, item_count >> 8);
+		Write4B(response, GA_T::MSG_ID, 0x37B9);
+		send_response(response);
+		return;
+	}
+
+	uint16_t item_count = (uint16_t)fields;
 	append(response, packet_type & 0xFF, packet_type >> 8);
 	append(response, item_count & 0xFF, item_count >> 8);
+	WriteNBytesRaw(response, payload);
 
-	Write4B(response, GA_T::AGENCY_ID, 0x1);
+	send_response(response);
+}
 
+void TcpSession::handle_agency_disband()
+{
+	int64_t agency_id = Database::GetAgencyIdForUser(user_id_);
+	if (agency_id == 0) { send_agency_get_roster_response(); return; }
+
+	auto agency = Database::GetAgencyInfo(agency_id);
+	if (!agency) return;
+	// Non-leader: this is a plain LEAVE — drop just my member row. (Only the
+	// leader's "remove last member" confirms as a disband.)
+	if (agency->leader_user_id != user_id_) {
+		Logger::Log("agency", "[TCP] AGENCY leave: user %lld leaving agency %lld\n",
+			(long long)user_id_, (long long)agency_id);
+		Database::RemoveAgencyMember(agency_id, selected_character_id_);
+		// Alliance tab needs the explicit reset too — it only refreshes while open.
+		send_agency_get_roster_response();
+		send_alliance_member_list_response();
+		return;
+	}
+
+	// Everyone else loses their agency too — collect them before the delete so
+	// their panels can be reset without waiting for a relog.
+	std::vector<int64_t> others;
+	for (const auto& m : agency->members) {
+		if (m.user_id != user_id_) others.push_back(m.user_id);
+	}
+
+	Database::DisbandAgency(agency_id);
+	// Reset both panels: no-agency roster + no-alliance member list.
+	send_agency_get_roster_response();
+	send_alliance_member_list_response();
+	for (int64_t uid : others) DeliverAgencyRefresh(uid);
+}
+
+void TcpSession::handle_agency_create(const PacketView& pkt)
+{
+	std::string name = pkt.ReadString(GA_T::AGENCY_NAME).value_or("");
+	float r = pkt.ReadFloat(GA_T::LINEAR_COLOR_R).value_or(0.0f);
+	float g = pkt.ReadFloat(GA_T::LINEAR_COLOR_G).value_or(0.0f);
+	float b = pkt.ReadFloat(GA_T::LINEAR_COLOR_B).value_or(0.0f);
+
+	Logger::Log("agency", "[TCP] AGENCY_CREATE name='%s' color=(%.3f,%.3f,%.3f) user=%lld\n",
+		name.c_str(), r, g, b, (long long)user_id_);
+
+	if (name.empty() || user_id_ <= 0) return;
+
+	int64_t agency_id = Database::CreateAgency(
+		name, r, g, b, user_id_, selected_character_id_, player_name);
+	if (agency_id == 0) {
+		Logger::Log("agency", "[TCP] AGENCY_CREATE rejected (dup name or already in agency)\n");
+		return;  // ponytail: no error-reply reversed yet; client stays on the
+		         // creation panel. Add AGENCY_CREATE error path when observed.
+	}
+
+	// Push the agency data as a roster response so the client's TgAgencyData
+	// receiver clears m_bNoAgency and the UI leaves the creation panel. The
+	// menu's own 2s roster poll is the backup path.
+	send_agency_get_roster_response();
+}
+
+// AGENCY_INVITE (0xB5) — invite a player by name, same shape as ALLIANCE_INVITE.
+// Target must be online (the popup is a live push); pending state drives accept.
+void TcpSession::handle_agency_invite(const PacketView& pkt)
+{
+	std::string target_name = pkt.ReadString(GA_T::PLAYER_NAME).value_or("");
+	Logger::Log("agency", "[TCP] AGENCY_INVITE target='%s' user=%lld\n",
+		target_name.c_str(), (long long)user_id_);
+	if (target_name.empty() || user_id_ <= 0) return;
+
+	int64_t my_agency = Database::GetAgencyIdForUser(user_id_);
+	if (my_agency == 0) { send_agency_message(14265, target_name); return; }
+	auto agency = Database::GetAgencyInfo(my_agency);
+	if (!agency) return;
+	if (!agency_has_perm(*agency, user_id_, Database::AGENCY_PERM_INVITE)) {
+		Logger::Log("agency", "[TCP] AGENCY_INVITE denied: user %lld lacks the invite permission\n",
+			(long long)user_id_);
+		send_agency_message(14258, target_name);  // "Your rank does not allow..."
+		return;
+	}
+
+	int64_t target_user = 0;
+	std::shared_ptr<TcpSession> target_session;
+	{
+		std::lock_guard<std::mutex> lock(sessions_mutex_);
+		for (auto& kv : g_sessions_) {
+			auto s = kv.second.lock();
+			if (s && s->player_name == target_name && s->user_id_ > 0) {
+				target_session = s;
+				target_user = s->user_id_;
+				break;
+			}
+		}
+	}
+	if (!target_session) {
+		// Offline players can't be invited (the popup is a live push), and the
+		// client's own message for that case is "character was not found".
+		Logger::Log("agency", "[TCP] AGENCY_INVITE: '%s' not online\n", target_name.c_str());
+		send_agency_message(14259, target_name);
+		return;
+	}
+	if (target_user == user_id_) return;
+	const int64_t their_agency = Database::GetAgencyIdForUser(target_user);
+	if (their_agency != 0) {
+		Logger::Log("agency", "[TCP] AGENCY_INVITE: '%s' already in an agency\n",
+			target_name.c_str());
+		// 14260 "is already a member." / 14262 "is a member of another agency."
+		send_agency_message(their_agency == my_agency ? 14260 : 14262, target_name);
+		return;
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(pending_agency_mutex_);
+		if (pending_agency_invites_.count(target_user)) {
+			send_agency_message(14267, target_name);  // "has a pending invite."
+			return;
+		}
+		pending_agency_invites_[target_user] = my_agency;
+	}
+	target_session->send_agency_invitation(agency->name, player_name);
+	send_agency_message(14261, target_name);  // "Invite to join agency was sent to..."
+}
+
+void TcpSession::handle_agency_accept()
+{
+	int64_t agency_id = 0;
+	{
+		std::lock_guard<std::mutex> lock(pending_agency_mutex_);
+		auto it = pending_agency_invites_.find(user_id_);
+		if (it == pending_agency_invites_.end()) {
+			Logger::Log("agency", "[TCP] AGENCY_ACCEPT: no pending invite for user %lld\n",
+				(long long)user_id_);
+			return;
+		}
+		agency_id = it->second;
+		pending_agency_invites_.erase(it);
+	}
+
+	// rank_id 2 = the seeded "Member" rank (see CreateAgency).
+	if (!Database::AddAgencyMember(agency_id, user_id_, selected_character_id_,
+	                               player_name, 2)) {
+		return;
+	}
+	Logger::Log("agency", "[TCP] AGENCY_ACCEPT: user %lld joined agency %lld\n",
+		(long long)user_id_, (long long)agency_id);
+	// Roster + alliance both: the agency I just joined may already be in an
+	// alliance, and the Alliance tab won't refresh on its own until opened.
+	send_agency_get_roster_response();
+	send_alliance_member_list_response();
+}
+
+// AGENCY_PROMOTE (0xBB) / AGENCY_DEMOTE (0xBC). Client sends the member's
+// PLAYER_ID, which is the character_id we put in the DATA_SET_MEMBERS rows
+// (UC: TgAgencyData::Promote/Demote(int nPlayerId)). Ranks are ordered by
+// rank_level ASC (0 = Leader), so promote = previous rank in that list.
+void TcpSession::handle_agency_rank_change(const PacketView& pkt, bool promote)
+{
+	const int64_t target_char = (int64_t)pkt.Read4B(GA_T::PLAYER_ID).value_or(0);
+	int64_t my_agency = Database::GetAgencyIdForUser(user_id_);
+	Logger::Log("agency", "[TCP] AGENCY_%s target_char=%lld user=%lld agency=%lld\n",
+		promote ? "PROMOTE" : "DEMOTE", (long long)target_char,
+		(long long)user_id_, (long long)my_agency);
+	if (target_char == 0 || my_agency == 0) return;
+
+	auto info = Database::GetAgencyInfo(my_agency);
+	if (!info) return;
+
+	const Database::AgencyMemberRow* me = nullptr;
+	const Database::AgencyMemberRow* target = nullptr;
+	for (const auto& m : info->members) {
+		if (m.user_id == user_id_)          me = &m;
+		if (m.character_id == target_char)  target = &m;
+	}
+	if (!me || !target) return;
+
+	auto level_of = [&](int rank_id) {
+		for (const auto& rk : info->ranks) if (rk.rank_id == rank_id) return rk.rank_level;
+		return 9999;
+	};
+	// info->ranks comes back ordered by rank_level ASC.
+	size_t idx = info->ranks.size();
+	for (size_t i = 0; i < info->ranks.size(); ++i) {
+		if (info->ranks[i].rank_id == target->rank_id) { idx = i; break; }
+	}
+	if (idx >= info->ranks.size()) return;
+	// idx 0 = the rank_level 0 Leader rank — promoting INTO it is TransferLeader
+	// (a separate native), so promote stops one below.
+	if (promote && idx <= 1) return;
+	if (!promote && idx + 1 >= info->ranks.size()) return; // already bottom rank
+	const auto& new_rank = info->ranks[promote ? idx - 1 : idx + 1];
+
+	if (!agency_has_perm(*info, user_id_, promote ? Database::AGENCY_PERM_PROMOTE
+	                                              : Database::AGENCY_PERM_DEMOTE)) {
+		Logger::Log("agency", "[TCP] AGENCY rank change denied: no permission\n");
+		return;
+	}
+	// Only outrank-ers may act, and never onto/above your own rank.
+	const int my_level = level_of(me->rank_id);
+	if (my_level >= level_of(target->rank_id) || my_level >= new_rank.rank_level) {
+		Logger::Log("agency", "[TCP] AGENCY rank change denied: my_level=%d target_level=%d new_level=%d\n",
+			my_level, level_of(target->rank_id), new_rank.rank_level);
+		return;
+	}
+
+	if (!Database::SetAgencyMemberRank(my_agency, target_char, new_rank.rank_id)) return;
+	// The affected member (and everyone else) picks this up on the 2s roster poll.
+	send_agency_get_roster_response();
+}
+
+// AGENCY_UPDATE_RANKS (0xCB) — the Management tab's rank editor Submit. Sends
+// DATA_SET_RANKS (0x193) with EVERY rank row: RANK_ID(0x417), NAME(0x370),
+// PERMISSION_FLAGS(0x3B0), RANK_LEVEL(0x418) — so add / rename / delete /
+// permission edits all arrive as one replacement set. Leader only.
+void TcpSession::handle_agency_update_ranks(const PacketView& pkt)
+{
+	int64_t my_agency = Database::GetAgencyIdForUser(user_id_);
+	if (my_agency == 0) return;
+	auto info = Database::GetAgencyInfo(my_agency);
+	if (!info) return;
+
+	const auto* me = agency_member_by_user(*info, user_id_);
+	if (!me || agency_rank_level(*info, me->rank_id) != 0) {
+		Logger::Log("agency", "[TCP] AGENCY_UPDATE_RANKS rejected: user %lld is not the leader\n",
+			(long long)user_id_);
+		return;
+	}
+
+	std::vector<Database::AgencyRankRow> ranks;
+	for (const auto& row : pkt.GetDataSet(GA_T::DATA_SET_RANKS)) {
+		Database::AgencyRankRow rk;
+		rk.rank_id     = (int)row.Read4B(GA_T::RANK_ID).value_or(0);
+		rk.rank_level  = (int)row.Read4B(GA_T::RANK_LEVEL).value_or(0);
+		rk.permissions = (int)row.Read4B(GA_T::PERMISSION_FLAGS).value_or(0);
+		rk.rank_name   = row.ReadString(GA_T::NAME).value_or("");
+		ranks.push_back(std::move(rk));
+	}
+	Logger::Log("agency", "[TCP] AGENCY_UPDATE_RANKS user=%lld rows=%d\n",
+		(long long)user_id_, (int)ranks.size());
+	if (ranks.empty()) return;
+
+	if (!Database::ReplaceAgencyRanks(my_agency, ranks)) return;
+	send_agency_get_roster_response();
+	for (int64_t uid : Database::GetAgencyMemberUserIds(my_agency)) {
+		if (uid != user_id_) DeliverAgencyRefresh(uid);
+	}
+}
+
+// AGENCY_SET_NOTE (0xC4) — the four text edits share this opcode; which one is
+// meant is told by the tag present (UC: TgAgencyData::SetMOTD(string),
+// SetDescription(string), SetPublicComment/SetOfficerComment(int nPlayerId,
+// string)). A PLAYER_ID alongside the text = a per-member note.
+void TcpSession::handle_agency_set_note(const PacketView& pkt)
+{
+	int64_t my_agency = Database::GetAgencyIdForUser(user_id_);
+	if (my_agency == 0) return;
+	auto info = Database::GetAgencyInfo(my_agency);
+	if (!info) return;
+
+	const auto* me = agency_member_by_user(*info, user_id_);
+	if (!me) return;
+
+	auto motd        = pkt.ReadString(GA_T::AGENCY_MOTD);
+	auto information = pkt.ReadString(GA_T::AGENCY_INFORMATION);
+	auto public_note = pkt.ReadString(GA_T::PUBLIC_COMMENT);
+	auto officer_note= pkt.ReadString(GA_T::OFFICER_COMMENT);
+	const int64_t target_char = (int64_t)pkt.Read4B(GA_T::PLAYER_ID)
+		.value_or((uint32_t)selected_character_id_);
+
+	Logger::Log("agency", "[TCP] AGENCY_SET_NOTE user=%lld motd=%d info=%d pub=%d off=%d target=%lld\n",
+		(long long)user_id_, (int)motd.has_value(), (int)information.has_value(),
+		(int)public_note.has_value(), (int)officer_note.has_value(), (long long)target_char);
+
+	bool changed = false;
+	if (motd && agency_has_perm(*info, user_id_, Database::AGENCY_PERM_EDIT_MOTD))
+		changed |= Database::SetAgencyText(my_agency, true, *motd);
+	if (information && agency_has_perm(*info, user_id_, Database::AGENCY_PERM_EDIT_DESCRIPTION))
+		changed |= Database::SetAgencyText(my_agency, false, *information);
+	if (public_note && agency_has_perm(*info, user_id_, Database::AGENCY_PERM_EDIT_PUBLIC_MSG))
+		changed |= Database::SetAgencyMemberComment(my_agency, target_char, false, *public_note);
+	if (officer_note && agency_has_perm(*info, user_id_, Database::AGENCY_PERM_EDIT_OFFICER_MSG))
+		changed |= Database::SetAgencyMemberComment(my_agency, target_char, true, *officer_note);
+	if (!changed) return;
+
+	send_agency_get_roster_response();
+	// MOTD/description are agency-wide — everyone else's panel shows them too.
+	for (int64_t uid : Database::GetAgencyMemberUserIds(my_agency)) {
+		if (uid != user_id_) DeliverAgencyRefresh(uid);
+	}
+}
+
+// AGENCY_UPDATE_RECRUITING (0xCA) — the Recruiting tab's Submit. Observed:
+// RECRUITING_LISTING_TEXT(0x41F) + RECRUITING_FLAG(0x41E) +
+// RECRUITING_SUB_ONLY_FLAG(0x420); both flags are "y"/"n" strings, same as the
+// roster response direction.
+void TcpSession::handle_agency_update_recruiting(const PacketView& pkt)
+{
+	int64_t my_agency = Database::GetAgencyIdForUser(user_id_);
+	if (my_agency == 0) return;
+	auto info = Database::GetAgencyInfo(my_agency);
+	if (!info) return;
+
+	auto flag_of = [&](uint16_t tag, bool fallback) {
+		auto s = pkt.ReadString(tag);
+		if (!s || s->empty()) return fallback;
+		const char c = (*s)[0];
+		return c == 'y' || c == 'Y' || c == 't' || c == 'T';
+	};
+	const std::string text = pkt.ReadString(GA_T::RECRUITING_LISTING_TEXT)
+		.value_or(info->recruiting_text);
+	const bool recruiting = flag_of(GA_T::RECRUITING_FLAG,          info->recruiting);
+	const bool sub_only   = flag_of(GA_T::RECRUITING_SUB_ONLY_FLAG, info->sub_only);
+
+	Logger::Log("agency", "[TCP] AGENCY_UPDATE_RECRUITING user=%lld recruiting=%d sub_only=%d text='%s'\n",
+		(long long)user_id_, (int)recruiting, (int)sub_only, text.c_str());
+
+	if (!Database::SetAgencyRecruiting(my_agency, text, recruiting, sub_only)) return;
+	send_agency_get_roster_response();
+	for (int64_t uid : Database::GetAgencyMemberUserIds(my_agency)) {
+		if (uid != user_id_) DeliverAgencyRefresh(uid);
+	}
+}
+
+// AGENCY_SET_OWNER (0xC6) — Management tab's "Transfer Leader". The client
+// resolves the typed name itself and sends the target's PLAYER_ID
+// (= character_id). Leader takes the target's old rank; target takes rank 0.
+void TcpSession::handle_agency_set_owner(const PacketView& pkt)
+{
+	const int64_t target_char = (int64_t)pkt.Read4B(GA_T::PLAYER_ID).value_or(0);
+	int64_t my_agency = Database::GetAgencyIdForUser(user_id_);
+	Logger::Log("agency", "[TCP] AGENCY_SET_OWNER target_char=%lld user=%lld agency=%lld\n",
+		(long long)target_char, (long long)user_id_, (long long)my_agency);
+	if (target_char == 0 || my_agency == 0) return;
+
+	auto info = Database::GetAgencyInfo(my_agency);
+	if (!info || info->leader_user_id != user_id_) {
+		Logger::Log("agency", "[TCP] AGENCY_SET_OWNER rejected: user %lld is not the leader\n",
+			(long long)user_id_);
+		return;
+	}
+	const Database::AgencyMemberRow* target = nullptr;
+	for (const auto& m : info->members) if (m.character_id == target_char) target = &m;
+	if (!target || target->user_id == user_id_) return;
+
+	// Leader drops to the rank just below rank_level 0 (ranks are level-ASC).
+	const int demoted_rank = info->ranks.size() > 1 ? info->ranks[1].rank_id : 0;
+	const int64_t new_leader_user = target->user_id;
+
+	Database::SetAgencyMemberRank(my_agency, target_char, 0);
+	Database::SetAgencyMemberRank(my_agency, selected_character_id_, demoted_rank);
+	Database::SetAgencyLeader(my_agency, new_leader_user);
+
+	send_agency_get_roster_response();
+	for (int64_t uid : Database::GetAgencyMemberUserIds(my_agency)) {
+		if (uid != user_id_) DeliverAgencyRefresh(uid);
+	}
+}
+
+// Kick a member: AGENCY_PLAYER_REMOVE (0xBF), or AGENCY_REMOVE (0xBD) carrying
+// someone else's PLAYER_ID. Self-targeted / no target = leave-or-disband.
+void TcpSession::handle_agency_kick(int64_t target_char)
+{
+	int64_t my_agency = Database::GetAgencyIdForUser(user_id_);
+	Logger::Log("agency", "[TCP] AGENCY kick target_char=%lld user=%lld agency=%lld\n",
+		(long long)target_char, (long long)user_id_, (long long)my_agency);
+	if (target_char == 0 || my_agency == 0) return;
+
+	auto info = Database::GetAgencyInfo(my_agency);
+	if (!info) return;
+
+	const Database::AgencyMemberRow* me = nullptr;
+	const Database::AgencyMemberRow* target = nullptr;
+	for (const auto& m : info->members) {
+		if (m.user_id == user_id_)         me = &m;
+		if (m.character_id == target_char) target = &m;
+	}
+	if (!me || !target) return;
+
+	auto level_of = [&](int rank_id) {
+		for (const auto& rk : info->ranks) if (rk.rank_id == rank_id) return rk.rank_level;
+		return 9999;
+	};
+	if (!agency_has_perm(*info, user_id_, Database::AGENCY_PERM_KICK)) {
+		Logger::Log("agency", "[TCP] AGENCY kick denied: no permission\n");
+		return;
+	}
+	if (level_of(me->rank_id) >= level_of(target->rank_id)) {
+		Logger::Log("agency", "[TCP] AGENCY kick denied: target outranks or equals kicker\n");
+		return;
+	}
+
+	const int64_t kicked_user = target->user_id;
+	if (!Database::RemoveAgencyMember(my_agency, target_char)) return;
+	send_agency_get_roster_response();
+	// Push the reset to the kicked player too: their agency panel would clear on
+	// its own roster poll, but the Alliance tab only refreshes while that tab is
+	// open, so without this it stays stale until relog.
+	DeliverAgencyRefresh(kicked_user);
+}
+
+// Push the caller's CURRENT agency + alliance state to whichever live session
+// owns target_user_id (so it doubles as the "no agency"/"no alliance" reset).
+// Needed whenever a player's agency or alliance changes without them asking —
+// the roster poll self-heals the AgentInfo panel, but the Alliance tab only
+// refreshes while it's open, so it stays stale until relog otherwise.
+void TcpSession::DeliverAgencyRefresh(int64_t target_user_id)
+{
+	if (target_user_id <= 0) return;
+	std::shared_ptr<TcpSession> s;
+	{
+		std::lock_guard<std::mutex> lock(sessions_mutex_);
+		for (auto& kv : g_sessions_) {
+			auto cand = kv.second.lock();
+			if (cand && cand->user_id_ == target_user_id) { s = cand; break; }
+		}
+	}
+	if (!s) return;
+	s->send_agency_get_roster_response();
+	s->send_alliance_member_list_response();
+}
+
+// Agency status/error line (the Invite tab's message label). The full set of
+// templates exists in asm_data_set_msg_translations: 14258 no permission, 14259
+// character not found, 14260 already a member, 14261 invite sent, 14262 member
+// of another agency, 14265 you have no agency, 14267 has a pending invite.
+// Carrier: echoed on AGENCY_INVITE (0xB5) — the request opcode — with MSG_ID +
+// the @@player_name@@ token. Tested: renders in the Invite tab's label, an OK
+// dialog, and the chat log. Do NOT reuse 0xB6, that one raises the HUD dialog.
+void TcpSession::send_agency_message(uint32_t msg_id, const std::string& player_name_token)
+{
+	std::vector<uint8_t> response;
+	uint16_t packet_type = GA_U::AGENCY_INVITE;
+	uint16_t item_count = 2;
+	append(response, packet_type & 0xFF, packet_type >> 8);
+	append(response, item_count & 0xFF, item_count >> 8);
+	Write4B(response,     GA_T::MSG_ID,      msg_id);
+	WriteString(response, GA_T::PLAYER_NAME, player_name_token);
+	Logger::Log("agency", "[TCP] send agency message msg_id=%u token='%s' to user=%lld\n",
+		msg_id, player_name_token.c_str(), (long long)user_id_);
+	send_response(response);
+}
+
+void TcpSession::send_agency_invitation(const std::string& agency_name,
+                                        const std::string& inviter_leader_name)
+{
+	// MSG_ID 14266 = "@@leader_name@@ has invited you to join agency
+	// \"@@agency_name@@\"." — tokens substitute by field name.
+	// NOT reversed at the client yet (unlike the roster/alliance receivers): the
+	// client shows this as a HUD dialog — TgUIPrimaryHUD_DialogQuery.HUDDialogType
+	// DialogInviteToAgency, the same widget the team invite (0x4B) drives — so the
+	// shape mirrors send_team_invitation_popup (MSG_ID + LEADER_NAME), plus
+	// AGENCY_NAME for the second token. Confirm on first test.
+	std::vector<uint8_t> response;
+	uint16_t packet_type = GA_U::AGENCY_INVITATION;
+	uint16_t item_count = 3;
+	append(response, packet_type & 0xFF, packet_type >> 8);
+	append(response, item_count & 0xFF, item_count >> 8);
+	Write4B(response,     GA_T::MSG_ID,      14266);
+	WriteString(response, GA_T::LEADER_NAME, inviter_leader_name);
+	WriteString(response, GA_T::AGENCY_NAME, agency_name);
+	Logger::Log("agency", "[TCP] send AGENCY_INVITATION agency='%s' from '%s' to user=%lld\n",
+		agency_name.c_str(), inviter_leader_name.c_str(), (long long)user_id_);
+	send_response(response);
+}
+
+// Alliance member-list payload, matching the client TgAllianceData receiver
+// (reversed at client FUN_113ce850). Gate is ROSTER_FLAGS bit0 (clears
+// m_bNoAlliance). Alliance name = NAME(0x370); owner agency name = AGENCY_NAME.
+// Returns top-level field count (0 if the caller's agency has no alliance).
+int TcpSession::append_alliance_payload(std::vector<uint8_t>& response)
+{
+	int64_t agency_id = Database::GetAgencyIdForUser(user_id_);
+	if (agency_id == 0) return 0;
+	int64_t alliance_id = Database::GetAllianceIdForAgency(agency_id);
+	if (alliance_id == 0) return 0;
+
+	auto info = Database::GetAllianceInfo(alliance_id);
+	if (!info) return 0;
+
+	// bit0 = core present (clears m_bNoAlliance); bit2 = member-agency data set
+	// present (the receiver gates DATA_SET_AGENCIES on it). Client requests flags=5.
+	Write4B(response,     GA_T::ROSTER_FLAGS,     0x5);
+	WriteString(response, GA_T::NAME,             info->name);              // 0x370
+	WriteString(response, GA_T::AGENCY_NAME,      info->owner_agency_name); // 0x24
+	Write4B(response,     GA_T::ALLIANCE_ID,      (uint32_t)info->id);
+	Write4B(response,     GA_T::OWNER_AGENCY_ID,  (uint32_t)info->owner_agency_id);
+	Write4B(response,     GA_T::COUNT,            (uint32_t)info->members.size());
+	// "Formed <date>" line. The client's DATETIME formatter (FUN_10955ab0) reads
+	// this double as DAYS SINCE 1900-01-01 (input 0 -> 01/01/1900). Convert from
+	// unix seconds: days = (unix + 2208988800) / 86400  (offset = 1900->1970 secs).
+	const double kSecs1900to1970 = 2208988800.0;
+	double days_since_1900 = ((double)info->created_at + kSecs1900to1970) / 86400.0;
+	WriteDouble(response, GA_T::CREATED_DATETIME, days_since_1900);
+
+	// DATA_SET_AGENCIES — rows: AGENCY_NAME, AGENCY_ID, PLAYER_COUNT, TERRITORY_COUNT.
+	append(response, GA_T::DATA_SET_AGENCIES & 0xFF, GA_T::DATA_SET_AGENCIES >> 8);
+	append(response, info->members.size() & 0xFF, (info->members.size() >> 8) & 0xFF);
+	for (const auto& m : info->members) {
+		append(response, 0x04, 0x00);  // 4 fields
+		WriteString(response, GA_T::AGENCY_NAME,     m.agency_name);
+		Write4B(response,     GA_T::AGENCY_ID,       (uint32_t)m.agency_id);
+		Write4B(response,     GA_T::PLAYER_COUNT,    (uint32_t)m.member_count);
+		Write4B(response,     GA_T::TERRITORY_COUNT, (uint32_t)m.territory_count);
+	}
+
+	// ROSTER_FLAGS, NAME, AGENCY_NAME, ALLIANCE_ID, OWNER_AGENCY_ID, COUNT,
+	// CREATED_DATETIME, DATA_SET_AGENCIES.
+	return 8;
+}
+
+// The client's alliance receiver needs a DEFINITIVE answer to show the Alliance
+// tab: either the alliance data, or the explicit "no alliance" signal
+// MSG_ID==0x624F (which sets m_bNoAlliance + runs ClearData, unlocking the
+// in-tab Create panel). An empty response is ignored and leaves the tab blank.
+void TcpSession::send_alliance_member_list_response()
+{
+	std::vector<uint8_t> payload;
+	int fields = append_alliance_payload(payload);
+
+	std::vector<uint8_t> response;
+	uint16_t packet_type = GA_U::ALLIANCE_GET_MEMBER_LIST;
+
+	if (fields == 0) {
+		// "You are not in an alliance."
+		uint16_t item_count = 1;
+		append(response, packet_type & 0xFF, packet_type >> 8);
+		append(response, item_count & 0xFF, item_count >> 8);
+		Write4B(response, GA_T::MSG_ID, 0x624F);
+		send_response(response);
+		return;
+	}
+
+	uint16_t item_count = (uint16_t)fields;
+	append(response, packet_type & 0xFF, packet_type >> 8);
+	append(response, item_count & 0xFF, item_count >> 8);
+	WriteNBytesRaw(response, payload);
+
+	send_response(response);
+}
+
+void TcpSession::handle_alliance_create(const PacketView& pkt)
+{
+	// Observed tag is NAME (0x370); the other two are harmless fallbacks.
+	std::string name = pkt.ReadString(GA_T::ALLIANCE_NAME)
+		.value_or(pkt.ReadString(GA_T::NAME)
+		.value_or(pkt.ReadString(GA_T::AGENCY_NAME).value_or("")));
+
+	Logger::Log("agency", "[TCP] ALLIANCE_CREATE name='%s' user=%lld\n",
+		name.c_str(), (long long)user_id_);
+
+	if (name.empty() || user_id_ <= 0) return;
+
+	// Must be in an agency AND be its leader to found an alliance.
+	int64_t agency_id = Database::GetAgencyIdForUser(user_id_);
+	if (agency_id == 0) {
+		Logger::Log("agency", "[TCP] ALLIANCE_CREATE rejected: user %lld not in an agency\n",
+			(long long)user_id_);
+		return;
+	}
+	auto agency = Database::GetAgencyInfo(agency_id);
+	if (!agency || agency->leader_user_id != user_id_) {
+		Logger::Log("agency", "[TCP] ALLIANCE_CREATE rejected: user %lld not agency leader\n",
+			(long long)user_id_);
+		return;
+	}
+
+	int64_t alliance_id = Database::CreateAlliance(name, agency_id);
+	if (alliance_id == 0) {
+		Logger::Log("agency", "[TCP] ALLIANCE_CREATE rejected (dup name or agency already allied)\n");
+		return;
+	}
+
+	// Push the member list so the client's TgAllianceData clears m_bNoAlliance.
+	send_alliance_member_list_response();
+	// My agency-mates just gained an alliance too.
+	for (int64_t uid : Database::GetAgencyMemberUserIds(agency_id)) {
+		if (uid != user_id_) DeliverAgencyRefresh(uid);
+	}
+}
+
+
+void TcpSession::handle_alliance_disband()
+{
+	int64_t agency_id = Database::GetAgencyIdForUser(user_id_);
+	int64_t alliance_id = agency_id ? Database::GetAllianceIdForAgency(agency_id) : 0;
+	if (alliance_id == 0) { send_alliance_member_list_response(); return; }
+
+	auto info = Database::GetAllianceInfo(alliance_id);
+	if (!info || info->owner_agency_id != agency_id) {
+		Logger::Log("agency", "[TCP] ALLIANCE_DISBAND rejected: agency %lld does not own alliance %lld\n",
+			(long long)agency_id, (long long)alliance_id);
+		return;  // only the owning agency can disband
+	}
+
+	// Collect everyone in the alliance BEFORE the delete — after it, the
+	// membership rows are gone and there's no way to find them.
+	auto affected = Database::GetAllianceMemberUserIds(alliance_id);
+	Database::DisbandAlliance(alliance_id);
+	send_alliance_member_list_response();
+	// Push the reset to every other member agency's players: their Alliance tab
+	// (and the AgentInfo line) would otherwise stay stale until relog.
+	for (int64_t uid : affected) {
+		if (uid != user_id_) DeliverAgencyRefresh(uid);
+	}
+}
+
+// ALLIANCE_REMOVE (0xD3) handles both "owner kicks a member agency" and "member
+// agency leaves" — both send AGENCY_ID of the agency to drop.
+void TcpSession::handle_alliance_remove(const PacketView& pkt)
+{
+	uint32_t target_agency = pkt.Read4B(GA_T::AGENCY_ID).value_or(0);
+	int64_t my_agency = Database::GetAgencyIdForUser(user_id_);
+	int64_t alliance_id = my_agency ? Database::GetAllianceIdForAgency(my_agency) : 0;
+	Logger::Log("agency", "[TCP] ALLIANCE_REMOVE target_agency=%u my_agency=%lld alliance=%lld\n",
+		target_agency, (long long)my_agency, (long long)alliance_id);
+	if (target_agency == 0 || alliance_id == 0) return;
+
+	auto info = Database::GetAllianceInfo(alliance_id);
+	if (!info) return;
+
+	const bool leaving = ((int64_t)target_agency == my_agency);
+	const bool is_owner = (info->owner_agency_id == my_agency);
+	if (!leaving && !is_owner) {
+		Logger::Log("agency", "[TCP] ALLIANCE_REMOVE rejected: not owner and not self-leave\n");
+		return;
+	}
+	if ((int64_t)target_agency == info->owner_agency_id) {
+		// The owner agency can't be removed from its own alliance — that's a disband.
+		Logger::Log("agency", "[TCP] ALLIANCE_REMOVE: target is owner agency; use disband\n");
+		return;
+	}
+	// Target must actually be in THIS alliance.
+	if (Database::GetAllianceIdForAgency((int64_t)target_agency) != alliance_id) {
+		Logger::Log("agency", "[TCP] ALLIANCE_REMOVE: agency %u not in alliance %lld\n",
+			target_agency, (long long)alliance_id);
+		return;
+	}
+
+	// Both sides change: the dropped agency loses the alliance, the remaining
+	// ones lose a row. Collect before the delete so the dropped agency's players
+	// are still reachable through the alliance join.
+	auto affected = Database::GetAllianceMemberUserIds(alliance_id);
+	Database::RemoveAgencyFromAlliance((int64_t)target_agency);
+	send_alliance_member_list_response();
+	for (int64_t uid : affected) {
+		if (uid != user_id_) DeliverAgencyRefresh(uid);
+	}
+}
+
+void TcpSession::handle_alliance_invite(const PacketView& pkt)
+{
+	std::string leader_name = pkt.ReadString(GA_T::PLAYER_NAME).value_or("");
+	Logger::Log("agency", "[TCP] ALLIANCE_INVITE target-leader='%s' user=%lld\n",
+		leader_name.c_str(), (long long)user_id_);
+	if (leader_name.empty() || user_id_ <= 0) return;
+
+	// I must own an alliance.
+	int64_t my_agency = Database::GetAgencyIdForUser(user_id_);
+	int64_t alliance_id = my_agency ? Database::GetAllianceIdForAgency(my_agency) : 0;
+	if (alliance_id == 0) return;
+	auto alliance = Database::GetAllianceInfo(alliance_id);
+	if (!alliance || alliance->owner_agency_id != my_agency) {
+		Logger::Log("agency", "[TCP] ALLIANCE_INVITE rejected: user %lld not alliance owner\n",
+			(long long)user_id_);
+		return;
+	}
+
+	// Resolve the target agency by its leader's player name.
+	int64_t target_agency = Database::GetAgencyIdByLeaderName(leader_name);
+	if (target_agency == 0 || target_agency == my_agency) {
+		Logger::Log("agency", "[TCP] ALLIANCE_INVITE: no other agency led by '%s'\n",
+			leader_name.c_str());
+		return;
+	}
+	if (Database::GetAllianceIdForAgency(target_agency) != 0) {
+		Logger::Log("agency", "[TCP] ALLIANCE_INVITE: target agency %lld already in an alliance\n",
+			(long long)target_agency);
+		return;
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(pending_alliance_mutex_);
+		pending_alliance_invites_[target_agency] = alliance_id;
+	}
+	auto target = Database::GetAgencyInfo(target_agency);
+	int64_t target_user = target ? target->leader_user_id : 0;
+	// @@leader_name@@ in the popup = the inviting leader (me).
+	DeliverAllianceInvitation(target_user, alliance->name, player_name, alliance_id);
+}
+
+void TcpSession::handle_alliance_accept()
+{
+	int64_t my_agency = Database::GetAgencyIdForUser(user_id_);
+	if (my_agency == 0) return;
+
+	int64_t alliance_id = 0;
+	{
+		std::lock_guard<std::mutex> lock(pending_alliance_mutex_);
+		auto it = pending_alliance_invites_.find(my_agency);
+		if (it == pending_alliance_invites_.end()) {
+			Logger::Log("agency", "[TCP] ALLIANCE_ACCEPT: no pending invite for agency %lld\n",
+				(long long)my_agency);
+			return;
+		}
+		alliance_id = it->second;
+		pending_alliance_invites_.erase(it);
+	}
+
+	if (!Database::AddAgencyToAlliance(alliance_id, my_agency)) {
+		Logger::Log("agency", "[TCP] ALLIANCE_ACCEPT: AddAgencyToAlliance(%lld,%lld) failed\n",
+			(long long)alliance_id, (long long)my_agency);
+		return;
+	}
+	Logger::Log("agency", "[TCP] ALLIANCE_ACCEPT: agency %lld joined alliance %lld\n",
+		(long long)my_agency, (long long)alliance_id);
+	send_alliance_member_list_response();
+	// Everyone already in the alliance gains a member row — push it to them too.
+	for (int64_t uid : Database::GetAllianceMemberUserIds(alliance_id)) {
+		if (uid != user_id_) DeliverAgencyRefresh(uid);
+	}
+}
+
+bool TcpSession::DeliverAllianceInvitation(int64_t target_user_id,
+                                           const std::string& alliance_name,
+                                           const std::string& inviter_leader_name,
+                                           int64_t alliance_id)
+{
+	if (target_user_id <= 0) return false;
+	std::lock_guard<std::mutex> lock(sessions_mutex_);
+	for (auto& kv : g_sessions_) {
+		auto s = kv.second.lock();
+		if (s && s->user_id_ == target_user_id) {
+			s->send_alliance_invitation(alliance_name, inviter_leader_name, alliance_id);
+			return true;
+		}
+	}
+	Logger::Log("agency", "[TCP] DeliverAllianceInvitation: target user %lld not online\n",
+		(long long)target_user_id);
+	return false;
+}
+
+void TcpSession::send_alliance_invitation(const std::string& alliance_name,
+                                          const std::string& inviter_leader_name,
+                                          int64_t alliance_id)
+{
+	// The popup is a MSG_ID template + @@token@@ substitution (like team invites).
+	// MSG_ID 25111 = "Invitation from @@leader_name@@ to join alliance
+	// @@alliance_name@@" (asm_data_set_msg_translations). Tokens map by name:
+	// @@leader_name@@ -> LEADER_NAME, @@alliance_name@@ -> ALLIANCE_NAME.
+	std::vector<uint8_t> response;
+	uint16_t packet_type = GA_U::ALLIANCE_INVITATION;
+	uint16_t item_count = 4;
+	append(response, packet_type & 0xFF, packet_type >> 8);
+	append(response, item_count & 0xFF, item_count >> 8);
+	Write4B(response,     GA_T::MSG_ID,        25111);
+	WriteString(response, GA_T::LEADER_NAME,   inviter_leader_name);
+	WriteString(response, GA_T::ALLIANCE_NAME, alliance_name);
+	Write4B(response,     GA_T::ALLIANCE_ID,   (uint32_t)alliance_id);
+	Logger::Log("agency", "[TCP] send ALLIANCE_INVITATION alliance='%s' from '%s' to user=%lld\n",
+		alliance_name.c_str(), inviter_leader_name.c_str(), (long long)user_id_);
 	send_response(response);
 }
 
@@ -3147,16 +4158,21 @@ void TcpSession::send_query_players_response(const PacketView& pkt)
 	constexpr size_t   kMaxRows = 50;
 
 	const auto players = InstanceRegistry::GetActiveSearchablePlayers();
+	const auto affiliations = Database::GetAffiliationsByCharacter();
 
 	std::vector<uint8_t> rows;
 	size_t row_count = 0;
 	for (const auto& p : players) {
 		if (row_count >= kMaxRows) break;
 		const bool teamed = TeamService::IsTeamed(p.session_guid);
+		Database::AffiliationRow aff;
+		if (auto a = affiliations.find(p.character_id); a != affiliations.end())
+			aff = a->second;
 		if (name_filter && !contains_ci(p.player_name, *name_filter)) continue;
-		// No agency/alliance system yet — a non-empty filter matches nobody.
-		if (agency_filter && !agency_filter->empty()) continue;
-		if (alliance_filter && !alliance_filter->empty()) continue;
+		if (agency_filter && !agency_filter->empty() &&
+			!contains_ci(aff.agency_name, *agency_filter)) continue;
+		if (alliance_filter && !alliance_filter->empty() &&
+			!contains_ci(aff.alliance_name, *alliance_filter)) continue;
 		if (level_min && kLevel < *level_min) continue;
 		if (level_max && kLevel > *level_max) continue;
 		if (profile_filter && p.profile_id != *profile_filter) continue;
@@ -3170,8 +4186,8 @@ void TcpSession::send_query_players_response(const PacketView& pkt)
 		append(rows, 0x0A, 0x00);  // 10 fields per row
 		Write4B(rows, GA_T::PLAYER_ID, (uint32_t)p.character_id);
 		WriteString(rows, GA_T::PLAYER_NAME, p.player_name);
-		WriteString(rows, GA_T::AGENCY_NAME, "");
-		WriteString(rows, GA_T::ALLIANCE_NAME, "");
+		WriteString(rows, GA_T::AGENCY_NAME, aff.agency_name);
+		WriteString(rows, GA_T::ALLIANCE_NAME, aff.alliance_name);
 		Write4B(rows, GA_T::LEVEL, kLevel);
 		Write4B(rows, GA_T::PROFILE_ID, p.profile_id);
 		Write4B(rows, GA_T::MAP_NAME_MSG_ID, map_msg_id);
