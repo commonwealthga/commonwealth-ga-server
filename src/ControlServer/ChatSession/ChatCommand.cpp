@@ -93,11 +93,12 @@ std::optional<int> ParseInt(const std::string& s) {
 
 std::optional<uint32_t> ChannelForCommandToken(const std::string& token) {
     const std::string t = LowerAscii(token);
-    // Channel ids: see handoff.md §1. Agency (2), Alliance (3) and Raid (6)
-    // are deliberately absent until the features behind them exist — an
-    // unknown token gets an "unknown command" reply rather than silently
-    // sending into a channel nobody is scoped to.
+    // Channel ids: see handoff.md §1. Raid (6) is deliberately absent — no
+    // raid-group concept exists server-side, so an unknown-command reply beats
+    // silently sending into a channel nobody is scoped to.
     if (t == "l"    || t == "local")    return 4;
+    if (t == "a"    || t == "agency")   return 2;
+    if (t == "al"   || t == "alliance") return 3;
     if (t == "t"    || t == "team")     return 5;
     if (t == "c"    || t == "city")     return 7;
     if (t == "i"    || t == "instance") return 1;

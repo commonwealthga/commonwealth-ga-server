@@ -1,9 +1,11 @@
 # Chat channels — investigation + implementation plan
 
 Branch: `implement-chats` (from `master`).
-Status: **7 of 12 channels live and tested** — Personal, Announcements (20),
-City, Local, Instance, Team, Trade, LFG. All five shared-infrastructure items
-except `PLAYER_COMMAND` (INF-2) are done. **Task checklist is §5b.**
+Status: **9 of 12 channels live and tested** — Personal, Announcements (20),
+City, Local, Instance, Team, Trade, LFG, Agency, Alliance. All five
+shared-infrastructure items except `PLAYER_COMMAND` (INF-2) are done.
+Agency (2) and Alliance (3) landed once `enable-agencies-alliances` merged
+upstream — they route on the agency-management DB backend. **Task checklist is §5b.**
 
 Today the server has exactly two working channels: a server-wide broadcast sent
 on channel 4 ("Local") and whispers on channel 8. This document records what the
@@ -263,10 +265,13 @@ holds `session_guid_`.
   stale.
 - `TeamService` is keyed by session guid but exposes no public "member guids"
   accessor. `FindTeamByMemberLocked` exists privately; needs a thin wrapper.
-- **Agency and alliance are not implemented on `master`.** The tables
-  (`ga_agencies`, `ga_agency_members`, `ga_alliances`, `ga_alliance_members`)
-  exist, but `send_agency_get_roster_response` is a stub and no code reads them.
-  Channels 2 and 3 are blocked on the `enable-agencies-alliances` branch landing.
+- **Agency and alliance chat are live** (channels 2 and 3). The management
+  backend from `enable-agencies-alliances` merged upstream, so
+  `ga_agencies` / `ga_agency_members` / `ga_alliances` / `ga_alliance_members`
+  are populated and readable. `RecipientsFor` resolves guid → `user_id` →
+  agency/alliance membership via `Database::GetAgencyIdForUser` /
+  `GetAgencyMemberUserIds` / `GetAllianceIdForAgency` / `GetAllianceMemberUserIds`,
+  then delivers to online members by walking connected sessions.
 
 ---
 
@@ -280,8 +285,8 @@ holds `session_guid_`.
 | 5 Team | `/t` | `TeamService` party members | small + one accessor |
 | 8 Personal | `/w`, `/tell` | whisper — already working | none |
 | 0 Global | `/gl` (client-side) | everyone; staff-gated or open | small |
-| 2 Agency | `/a` | agency membership | blocked on agencies branch |
-| 3 Alliance | `/al` | alliance membership | blocked on agencies branch |
+| 2 Agency | `/a` | agency membership | done |
+| 3 Alliance | `/al` | alliance membership | done |
 | 6 Raid | `/rg`, `*raid` | not implemented | — |
 | 0 GM | staff broadcast to everyone | small, needs an admin flag |
 | 12 Trade, 13 LFG, 9 Private 1, 14 Help | not implemented | — |
@@ -330,7 +335,8 @@ predicate change in one function, not a redesign.
    error replies stop masquerading as Local chat.
 5. **Add `TeamService::GetTeamMemberGuids(guid)`** — thin public wrapper over the
    existing locked member lookup.
-6. **Agency and Alliance** land after `enable-agencies-alliances` merges.
+6. **Agency and Alliance** — DONE. Landed after `enable-agencies-alliances`
+   merged upstream; route on its DB backend.
 7. **Logging and test.** Everything on the existing `chat` channel. Test matrix:
    two accounts across two instances and two sides, walking every channel, plus a
    whisper regression pass.
@@ -404,12 +410,13 @@ Status key: **DONE** = shipped and tested in game. **WIP** = someone owns it.
       whether it's open to all players or staff-gated — if staff-gated, reuse
       the `announcers` config list rather than adding a second mechanism.
       **TODO.**
-- [ ] **2 · Agency** — entry: `/a`. Scope: agency membership. **BLOCKED** on
-      `enable-agencies-alliances` landing: `ga_agencies` / `ga_agency_members`
-      exist but nothing reads them and `send_agency_get_roster_response` is a
-      stub. Needs INF-2 once unblocked.
-- [ ] **3 · Alliance** — entry: `/al`. Scope: alliance membership. **BLOCKED**,
-      same branch as Agency.
+- [x] **2 · Agency** — entry: `/a` / `/agency`. Scope: online agency members
+      (guid → `user_id` → `GetAgencyMemberUserIds`). No-agency reply:
+      "*** You are not in an agency ***". **DONE.**
+- [x] **3 · Alliance** — entry: `/al` / `/alliance`. Scope: online members of
+      every agency in the alliance (`GetAllianceIdForAgency` →
+      `GetAllianceMemberUserIds`). No-alliance reply:
+      "*** Your agency is not in an alliance ***". **DONE.**
 - [ ] **6 · Raid** — entry: `/rg`, `*raid`, `rgw`/`raidw` for raid-whisper.
       Scope: raid group. **TODO**, no raid-group concept exists server-side yet —
       scope this before starting.

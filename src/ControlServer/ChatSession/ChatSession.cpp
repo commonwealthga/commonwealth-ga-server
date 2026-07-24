@@ -26,6 +26,8 @@ namespace {
 // colour tables built by FUN_10902990 (name at 0x1199ec28 + id*4, ARGB colour
 // at 0x1199eca0 + id*4). See handoff.md §1 for the full table.
 constexpr uint32_t kInstanceChannelId = 1;   // same instance, both sides
+constexpr uint32_t kAgencyChannelId   = 2;   // agency membership
+constexpr uint32_t kAllianceChannelId = 3;   // every agency in the alliance
 constexpr uint32_t kLocalChannelId    = 4;   // same instance + same task force
 constexpr uint32_t kTeamChannelId     = 5;   // party members
 constexpr uint32_t kCityChannelId     = 7;   // every connected session
@@ -222,6 +224,42 @@ std::optional<std::unordered_set<std::string>> RecipientsFor(
         return std::unordered_set<std::string>(guids.begin(), guids.end());
     }
 
+    if (channel == kAgencyChannelId || channel == kAllianceChannelId) {
+        // Agency membership is keyed by account, not character or session, so
+        // resolve guid -> user_id through the session store on both ends.
+        auto sender = PlayerSessionStore::GetByGuid(sender_guid);
+        if (!sender || sender->user_id == 0) return std::unordered_set<std::string>{};
+        const int64_t agency_id = Database::GetAgencyIdForUser(sender->user_id);
+        if (agency_id == 0) return std::unordered_set<std::string>{};
+
+        std::vector<int64_t> member_ids;
+        if (channel == kAgencyChannelId) {
+            member_ids = Database::GetAgencyMemberUserIds(agency_id);
+        } else {
+            const int64_t alliance_id = Database::GetAllianceIdForAgency(agency_id);
+            if (alliance_id == 0) return std::unordered_set<std::string>{};
+            member_ids = Database::GetAllianceMemberUserIds(alliance_id);
+        }
+        const std::unordered_set<int64_t> members(member_ids.begin(), member_ids.end());
+
+        // Walk the connected sessions rather than the member list: offline
+        // members can't receive anything, and this keeps it to one store
+        // lookup per online player instead of a DB query per member.
+        std::unordered_set<std::string> out;
+        PruneExpiredSessions();
+        for (auto& weak : g_chat_sessions) {
+            if (auto peer = weak.lock()) {
+                const std::string& guid = peer->get_session_guid();
+                if (guid.empty()) continue;
+                auto info = PlayerSessionStore::GetByGuid(guid);
+                if (info && members.count(info->user_id)) out.insert(guid);
+            }
+        }
+        Logger::Log("chat", "[Scope] ch=%u agency=%lld members=%zu recipients=%zu\n",
+            channel, (long long)agency_id, members.size(), out.size());
+        return out;
+    }
+
     if (channel == kInstanceChannelId || channel == kLocalChannelId) {
         auto where = InstanceRegistry::GetInstancePlayerTaskForce(sender_guid);
         if (!where) return std::unordered_set<std::string>{};  // not in an instance
@@ -252,7 +290,9 @@ std::optional<std::unordered_set<std::string>> RecipientsFor(
 
 // System line shown when a player sends on a channel they can't currently use.
 const char* UnavailableChannelText(uint32_t channel) {
-    if (channel == kTeamChannelId) return "*** You are not in a team ***";
+    if (channel == kTeamChannelId)     return "*** You are not in a team ***";
+    if (channel == kAgencyChannelId)   return "*** You are not in an agency ***";
+    if (channel == kAllianceChannelId) return "*** Your agency is not in an alliance ***";
     return "*** You are not in an instance ***";
 }
 
@@ -320,7 +360,8 @@ void ChatSession::AnnounceJoinIfNeeded() {
     deliver(BuildChatConfigFrame({ kCityChannelId, kLocalChannelId,
                                    kInstanceChannelId, kTeamChannelId,
                                    kWhisperChannelId, kTradeChannelId,
-                                   kLfgChannelId }));
+                                   kLfgChannelId, kAgencyChannelId,
+                                   kAllianceChannelId }));
     BroadcastSystemMessage(
         "*** " + player_name_ + " has joined the chat ***",
         kSystemChannelId,
@@ -698,8 +739,12 @@ void ChatSession::SendOnChannel(uint32_t channel, const std::string& message) {
                 continue;
             }
             // Ignore gate: don't show this sender's lines to players who
-            // have them on the F3 ignore list.
+            // have them on the F3 ignore list. Logged because a one-way
+            // ignore is indistinguishable from a broken channel when you're
+            // staring at two clients — the sender still sees their own line.
             if (peer.get() != this && peer->is_ignoring(player_name_)) {
+                Logger::Log("chat", "[Chat] ch=%u '%s' ignores '%s' — line dropped\n",
+                    channel, peer->get_player_name().c_str(), player_name_.c_str());
                 continue;
             }
             peer->deliver(chunk);
