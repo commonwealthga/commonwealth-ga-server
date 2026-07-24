@@ -472,6 +472,11 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
                     return false;
             return true;
         };
+        if (ieq(recipient, player_name_)) {
+            deliver(BuildChatFrame(kSystemChannelId,
+                "*** You cannot whisper yourself ***"));
+            return;
+        }
         PruneExpiredSessions();
         std::shared_ptr<ChatSession> target;
         for (auto& weak : g_chat_sessions) {
@@ -484,9 +489,12 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
                 "*** " + recipient + " is not online ***"));
             return;
         }
-        // Per-side frames. Client renders NAME (0x370) as "<name> says:" (or
-        // MESSAGE verbatim when NAME is empty — used for the sender echo) and
-        // caches PLAYER_NAME (0x3C5) as the reply-keybind target.
+        // Per-side frames. On channel 8 the client composes the line itself:
+        // NAME (0x370) == own player name + non-empty PLAYER_NAME (0x3C5)
+        // renders "To <PLAYER_NAME>: msg" (sender echo), otherwise
+        // "<NAME> says: msg". The reply cache is NAME, and it is overwritten on
+        // every ch8 line whose NAME != own name — so the echo MUST carry the
+        // sender's own name, else it blanks the cache and /r dies after one use.
         const std::string text = pkt.ReadString(GA_T::MESSAGE).value_or("");
         auto makeWhisperFrame = [this, channel](const std::string& displayName,
                                                 const std::string& msgText,
@@ -516,8 +524,7 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
             return;
         }
         target->deliver(makeWhisperFrame(player_name_, text, player_name_));
-        if (target.get() != this)
-            deliver(makeWhisperFrame("", "To " + targetName + ": " + text, targetName));
+        deliver(makeWhisperFrame(player_name_, text, targetName));
         return;
     }
 
