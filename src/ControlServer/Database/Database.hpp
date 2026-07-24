@@ -93,6 +93,31 @@ public:
     // registered_at is left untouched. Returns false if the update failed.
     static bool ClearUserVerifier(int64_t user_id);
 
+    // ---- Friends list (chat server, F3 menu) -------------------------------
+    struct FriendRow {
+        int64_t     friend_user_id = 0;
+        std::string friend_name;          // canonical ga_users.username
+        bool        ignore_flag = false;  // 0 = friend, 1 = ignore list
+        std::string notes;
+    };
+    static std::vector<FriendRow> GetFriendsForUser(int64_t user_id);
+    // Resolves `name` (case-insensitive) against ga_users and upserts the
+    // friendship row; re-adding an existing entry updates ignore_flag.
+    // Returns false if no such user exists.
+    static bool AddFriend(int64_t user_id, const std::string& name, bool ignore_flag);
+    static void RemoveFriend(int64_t user_id, int64_t friend_user_id);
+    static void SetFriendNotes(int64_t user_id, int64_t friend_user_id, const std::string& notes);
+    // True when `owner_name` has `other_name` on their ignore list (both are
+    // ga_users.username, matched case-insensitively). Used by the team-invite
+    // gate; chat gates use the ChatSession per-session cache instead.
+    static bool IsIgnoring(const std::string& owner_name, const std::string& other_name);
+    // Monotonic counter bumped on every ga_friends mutation. ChatSession
+    // compares it against its cached value to know when to reload its
+    // ignore set.
+    static uint64_t FriendsEpoch();
+    // Lowercased usernames on owner_name's ignore list.
+    static std::vector<std::string> GetIgnoredNames(const std::string& owner_name);
+
     // ---- Match stats (design 2026-06-12) -----------------------------------
     struct MatchEventRow {
         int64_t instance_id = 0;

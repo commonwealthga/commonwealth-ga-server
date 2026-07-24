@@ -7,6 +7,10 @@
 #include <atomic>
 #include <ctime>
 
+// Bumped on every ga_friends mutation; starts at 1 so a fresh ChatSession
+// cache (epoch 0) always loads on first use.
+static std::atomic<uint64_t> g_friends_epoch{1};
+
 sqlite3* Database::connection = nullptr;
 std::string Database::db_path_ = "server.db";
 
@@ -695,6 +699,23 @@ void Database::Init() {
 		if (result != SQLITE_OK) {
 			Logger::Log("db", "Failed to create ga_character_skills index: %s\n", err);
 			sqlite3_free(err);
+		}
+		// Per-user key/value preferences (e.g. show_broken_suits). Written by
+		// the game DLL (UserPreferences); the DLL also runs the same idempotent
+		// CREATE as a fallback for standalone-instance runs.
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_user_preferences ("
+			"  id           INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  user_id      INTEGER NOT NULL,"
+			"  config_key   TEXT    NOT NULL,"
+			"  config_value TEXT    NOT NULL,"
+			"  UNIQUE(user_id, config_key)"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_user_preferences table: %s\n", err);
+			sqlite3_free(err);
+			return;
 		}
 		// ALTER TABLE ADD COLUMN fails once the column exists — swallow that
 		// error so we stay idempotent across boots.
@@ -1951,6 +1972,25 @@ void Database::Init() {
 		}
 	}
 
+	// Friends list (chat server F3 menu). UNCONDITIONAL + idempotent —
+	// shared version counter, same rationale as the moderation block.
+	{
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_friends ("
+			"  user_id        INTEGER NOT NULL,"
+			"  friend_user_id INTEGER NOT NULL,"
+			"  ignore_flag    INTEGER NOT NULL DEFAULT 0,"
+			"  notes          TEXT NOT NULL DEFAULT '',"
+			"  PRIMARY KEY (user_id, friend_user_id)"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_friends table: %s\n", err);
+			sqlite3_free(err);
+			err = nullptr;
+		}
+	}
+
 	// Match stats tables + ga_instances outcome columns (design
 	// 2026-06-12-match-stats-tracking). UNCONDITIONAL + idempotent —
 	// shared version counter, same rationale as the moderation block.
@@ -2161,6 +2201,14 @@ void Database::Init() {
 			if (err) { sqlite3_free(err); err = nullptr; }
 		}
 	}
+	// Map recency weighting (2026-07-19): per-queue CSV of weight divisors,
+	// most recent pick first (e.g. '25,5'); NULL/empty = off. Consumed by
+	// MatchmakingService::PickRandomMapPoolEntryForCount. Idempotent —
+	// duplicate-column error swallowed.
+	result = sqlite3_exec(db,
+		"ALTER TABLE ga_queues ADD COLUMN map_recency_divisors TEXT DEFAULT NULL;",
+		nullptr, nullptr, &err);
+	if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
 
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
@@ -2574,6 +2622,159 @@ int64_t Database::FindUserIdByUsername(const std::string& username) {
 	if (sqlite3_step(stmt) == SQLITE_ROW) id = sqlite3_column_int64(stmt, 0);
 	sqlite3_finalize(stmt);
 	return id;
+}
+
+std::vector<Database::FriendRow> Database::GetFriendsForUser(int64_t user_id) {
+	std::vector<FriendRow> rows;
+	if (user_id <= 0) return rows;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT f.friend_user_id, u.username, f.ignore_flag, f.notes "
+		"FROM ga_friends f JOIN ga_users u ON u.id = f.friend_user_id "
+		"WHERE f.user_id = ? ORDER BY u.username",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Friends] GetFriendsForUser prepare failed: %s\n", sqlite3_errmsg(db));
+		return rows;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		FriendRow r;
+		r.friend_user_id = sqlite3_column_int64(stmt, 0);
+		const char* name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+		r.friend_name = name ? name : "";
+		r.ignore_flag = sqlite3_column_int(stmt, 2) != 0;
+		const char* notes = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+		r.notes = notes ? notes : "";
+		rows.push_back(std::move(r));
+	}
+	sqlite3_finalize(stmt);
+	return rows;
+}
+
+bool Database::AddFriend(int64_t user_id, const std::string& name, bool ignore_flag) {
+	if (user_id <= 0 || name.empty()) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT id FROM ga_users WHERE username = ? COLLATE NOCASE LIMIT 1",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Friends] AddFriend lookup prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_TRANSIENT);
+	int64_t friend_id = 0;
+	if (sqlite3_step(stmt) == SQLITE_ROW) friend_id = sqlite3_column_int64(stmt, 0);
+	sqlite3_finalize(stmt);
+	if (friend_id == 0) return false;
+	if (friend_id == user_id) return true;  // self-add: silently ignore
+
+	stmt = nullptr;
+	rc = sqlite3_prepare_v2(db,
+		"INSERT INTO ga_friends (user_id, friend_user_id, ignore_flag) VALUES (?, ?, ?) "
+		"ON CONFLICT(user_id, friend_user_id) DO UPDATE SET ignore_flag = excluded.ignore_flag",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Friends] AddFriend insert prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_int64(stmt, 2, friend_id);
+	sqlite3_bind_int(stmt, 3, ignore_flag ? 1 : 0);
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
+		Logger::Log("db", "[Friends] AddFriend insert failed: %s\n", sqlite3_errmsg(db));
+	}
+	sqlite3_finalize(stmt);
+	g_friends_epoch++;
+	return true;
+}
+
+void Database::RemoveFriend(int64_t user_id, int64_t friend_user_id) {
+	if (user_id <= 0 || friend_user_id <= 0) return;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"DELETE FROM ga_friends WHERE user_id = ? AND friend_user_id = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Friends] RemoveFriend prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_int64(stmt, 2, friend_user_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	g_friends_epoch++;
+}
+
+void Database::SetFriendNotes(int64_t user_id, int64_t friend_user_id, const std::string& notes) {
+	if (user_id <= 0 || friend_user_id <= 0) return;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"UPDATE ga_friends SET notes = ? WHERE user_id = ? AND friend_user_id = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Friends] SetFriendNotes prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_text(stmt, 1, notes.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int64(stmt, 2, user_id);
+	sqlite3_bind_int64(stmt, 3, friend_user_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+}
+
+bool Database::IsIgnoring(const std::string& owner_name, const std::string& other_name) {
+	if (owner_name.empty() || other_name.empty()) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT 1 FROM ga_friends f "
+		"JOIN ga_users o ON o.id = f.user_id "
+		"JOIN ga_users t ON t.id = f.friend_user_id "
+		"WHERE o.username = ?1 COLLATE NOCASE AND t.username = ?2 COLLATE NOCASE "
+		"AND f.ignore_flag = 1 LIMIT 1",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Friends] IsIgnoring prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	sqlite3_bind_text(stmt, 1, owner_name.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 2, other_name.c_str(), -1, SQLITE_TRANSIENT);
+	const bool ignoring = sqlite3_step(stmt) == SQLITE_ROW;
+	sqlite3_finalize(stmt);
+	return ignoring;
+}
+
+uint64_t Database::FriendsEpoch() {
+	return g_friends_epoch.load();
+}
+
+std::vector<std::string> Database::GetIgnoredNames(const std::string& owner_name) {
+	std::vector<std::string> out;
+	if (owner_name.empty()) return out;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT lower(t.username) FROM ga_friends f "
+		"JOIN ga_users o ON o.id = f.user_id "
+		"JOIN ga_users t ON t.id = f.friend_user_id "
+		"WHERE o.username = ? COLLATE NOCASE AND f.ignore_flag = 1",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Friends] GetIgnoredNames prepare failed: %s\n", sqlite3_errmsg(db));
+		return out;
+	}
+	sqlite3_bind_text(stmt, 1, owner_name.c_str(), -1, SQLITE_TRANSIENT);
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		const char* name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+		if (name) out.push_back(name);
+	}
+	sqlite3_finalize(stmt);
+	return out;
 }
 
 bool Database::SetUserPvpVerification(int64_t user_id, bool verified) {

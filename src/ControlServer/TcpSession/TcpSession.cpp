@@ -1,4 +1,5 @@
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
+#include "src/ControlServer/ChatSession/ChatSession.hpp"
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/Auth/LoginAuth.hpp"
 #include "src/ControlServer/Constants/DeviceIds.hpp"
@@ -1506,7 +1507,7 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			// Look up the requested character from DB and select it.
 			if (nCharacterId != 0) {
 				auto charInfo = PlayerSessionStore::GetCharacterById(nCharacterId);
-				if (charInfo && charInfo->user_id == user_id_) {
+				if (charInfo && charInfo->user_id == user_id_ && charInfo->deleted_at == 0) {
 					selected_character_id_ = charInfo->id;
 					selected_profile_id_   = charInfo->profile_id;
 					PlayerSessionStore::SetSelectedCharacter(session_guid_, charInfo->id, charInfo->profile_id);
@@ -1717,10 +1718,25 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			wait_for_home_map_then_register(120);  // 120 second timeout
 			break;
 		}
-		case GA_U::DELETE_CHARACTER:
-			Logger::Log("tcp", "[%s] Received: DELETE_CHARACTER [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
-			// todo
+		case GA_U::DELETE_CHARACTER: {
+			PacketView pkt(data + 6, length - 6);
+			int64_t nCharacterId = pkt.Read4B(GA_T::CHARACTER_ID).value_or(0);
+			Logger::Log("tcp", "[%s] Received: DELETE_CHARACTER [0x%04X] charId=%lld user=%lld\n",
+				Logger::GetTime(), packet_type, (long long)nCharacterId, (long long)user_id_);
+
+			bool deleted = nCharacterId != 0 &&
+				PlayerSessionStore::SoftDeleteCharacter(nCharacterId, user_id_);
+			if (!deleted)
+				Logger::Log("tcp", "[%s] DELETE_CHARACTER: charId=%lld not deleted (not found, wrong user, or already deleted)\n",
+					Logger::GetTime(), (long long)nCharacterId);
+
+			// Push a fresh GSC_CHARACTER_LIST either way — the character-select
+			// scene's UpdateCharacterListCallback rebuilds the roster from it,
+			// which both removes the deleted entry and leaves the
+			// CSS_DELETING_CHARACTER wait state.
+			send_character_list_response();
 			break;
+		}
 		case GA_U::UPDATE_NEW_MAIL_COUNT:
 			Logger::Log("tcp", "[%s] Received: UPDATE_NEW_MAIL_COUNT [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 			send_update_new_mail_count_response();
@@ -1911,6 +1927,17 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			send_query_players_response(pkt);
 			break;
 		}
+		case GA_U::FRIEND_GET_LIST:
+			send_friends_list();
+			break;
+		case GA_U::FRIEND_UPDATE: {
+			PacketView pkt(data + 6, length - 6);
+			handle_friend_update(pkt);
+			// No incoming FRIEND_UPDATE handler on the client — ack every
+			// update by re-sending the full list (client re-renders on 0x1AE).
+			send_friends_list();
+			break;
+		}
 		case GA_U::TEAM_INVITE: {
 			Logger::Log("tcp", "[%s] Received: TEAM_INVITE [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 			PacketView pkt(data + 6, length - 6);
@@ -1918,6 +1945,16 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			if (target.empty() || session_guid_.empty()) {
 				Logger::Log("tcp", "[TCP] TEAM_INVITE dropped (target='%s' guid='%s')\n",
 					target.c_str(), session_guid_.c_str());
+				break;
+			}
+			// Ignore gate: invitee has the inviter on their F3 ignore list —
+			// the invite is never delivered, inviter gets the same chat line
+			// as a blocked whisper.
+			if (Database::IsIgnoring(target, player_name)) {
+				Logger::Log("friends", "[Friends] team invite blocked: '%s' ignores '%s'\n",
+					target.c_str(), player_name.c_str());
+				ChatSession::SystemMessageTo(player_name,
+					"*** " + target + " is ignoring you ***");
 				break;
 			}
 			TeamService::RequestInvite(session_guid_, player_name, target);
@@ -4177,6 +4214,122 @@ void TcpSession::send_query_players_response(const PacketView& pkt)
 
 	Logger::Log("tcp", "[TCP] QUERY_PLAYERS: caller_id=%u online=%d matched=%d\n",
 		caller_id, (int)players.size(), (int)row_count);
+
+	send_response(response);
+}
+
+void TcpSession::handle_friend_update(const PacketView& pkt)
+{
+	if (user_id_ == 0) return;
+	const auto friend_id = pkt.Read4B(GA_T::FRIEND_PLAYER_ID);
+
+	// Remove: PLAYER_NAME + IGNORE_FLAG + FRIEND_PLAYER_ID + DELETE_FLAG=1.
+	if (pkt.Exists(GA_T::DELETE_FLAG)) {
+		if (friend_id) {
+			Database::RemoveFriend(user_id_, static_cast<int64_t>(*friend_id));
+			Logger::Log("friends", "[Friends] user=%lld removed friend_id=%u\n",
+				(long long)user_id_, *friend_id);
+		}
+		return;
+	}
+
+	// Note edit: NOTES + FRIEND_PLAYER_ID (no PLAYER_NAME).
+	if (auto notes = pkt.ReadString(GA_T::NOTES)) {
+		if (friend_id) {
+			Database::SetFriendNotes(user_id_, static_cast<int64_t>(*friend_id), *notes);
+			Logger::Log("friends", "[Friends] user=%lld set notes for friend_id=%u\n",
+				(long long)user_id_, *friend_id);
+		}
+		return;
+	}
+
+	// Add: PLAYER_NAME + IGNORE_FLAG ("y" = ignore list, "n" = friend —
+	// bools ride the wire as 1-char strings; client accepts Y/y/T/t as true).
+	auto name = pkt.ReadString(GA_T::PLAYER_NAME);
+	if (!name || name->empty()) return;
+	const std::string flag = pkt.ReadString(GA_T::IGNORE_FLAG).value_or("n");
+	const bool ignore = !flag.empty() &&
+		(flag[0] == 'y' || flag[0] == 'Y' || flag[0] == 't' || flag[0] == 'T');
+	if (Database::AddFriend(user_id_, *name, ignore)) {
+		Logger::Log("friends", "[Friends] user=%lld added '%s' ignore=%d\n",
+			(long long)user_id_, name->c_str(), ignore ? 1 : 0);
+	} else {
+		Logger::Log("friends", "[Friends] user=%lld add failed, no such player '%s'\n",
+			(long long)user_id_, name->c_str());
+		ChatSession::SystemMessageTo(player_name, "Player '" + *name + "' not found.");
+	}
+}
+
+void TcpSession::send_friends_list()
+{
+	if (user_id_ == 0) return;
+	const auto rows = Database::GetFriendsForUser(user_id_);
+
+	// Online decoration (map / class / profile) from the same snapshot
+	// QUERY_PLAYERS uses. A friend absent from it is shown offline.
+	const auto online_players = InstanceRegistry::GetActiveSearchablePlayers();
+
+	std::vector<uint8_t> data_rows;
+	uint16_t row_count = 0;
+	for (const auto& r : rows) {
+		if (r.ignore_flag) {
+			append(data_rows, 0x04, 0x00);  // 4 fields
+			WriteString(data_rows, GA_T::IGNORE_FLAG, "y");
+			WriteString(data_rows, GA_T::PLAYER_NAME, r.friend_name);
+			WriteString(data_rows, GA_T::NOTES, r.notes);
+			Write4B(data_rows, GA_T::FRIEND_PLAYER_ID, static_cast<uint32_t>(r.friend_user_id));
+			++row_count;
+			continue;
+		}
+
+		const InstanceRegistry::SearchablePlayerRow* online = nullptr;
+		for (const auto& p : online_players) {
+			if (p.player_name == r.friend_name) { online = &p; break; }
+		}
+
+		if (online) {
+			uint32_t map_msg_id = 0;
+			if (auto rec = MapGameInfo::LookupByName(online->map_name))
+				map_msg_id = rec->friendly_name_msg_id;
+			append(data_rows, 0x09, 0x00);  // 9 fields
+			WriteString(data_rows, GA_T::IGNORE_FLAG, "n");
+			WriteString(data_rows, GA_T::PLAYER_NAME, r.friend_name);
+			WriteString(data_rows, GA_T::NOTES, r.notes);
+			Write4B(data_rows, GA_T::FRIEND_PLAYER_ID, static_cast<uint32_t>(r.friend_user_id));
+			Write1B(data_rows, GA_T::OFFLINE_FLAG, 0);
+			Write4B(data_rows, GA_T::MAP_NAME_MSG_ID, map_msg_id);
+			// CLASS_MSG_ID is a WCHAR_STR on the wire; the client converts.
+			WriteString(data_rows, GA_T::CLASS_MSG_ID,
+				std::to_string(ResolveClassMsgId(online->profile_id, 22976, "FRIENDS_LIST")));
+			Write4B(data_rows, GA_T::PROFILE_ID, online->profile_id);
+			// LEVEL presence is what routes the row into the client's online
+			// list (levels aren't tracked; 50 everywhere, like QUERY_PLAYERS).
+			Write4B(data_rows, GA_T::LEVEL, 50);
+		} else {
+			append(data_rows, 0x05, 0x00);  // 5 fields, no LEVEL → offline list
+			WriteString(data_rows, GA_T::IGNORE_FLAG, "n");
+			WriteString(data_rows, GA_T::PLAYER_NAME, r.friend_name);
+			WriteString(data_rows, GA_T::NOTES, r.notes);
+			Write4B(data_rows, GA_T::FRIEND_PLAYER_ID, static_cast<uint32_t>(r.friend_user_id));
+			Write1B(data_rows, GA_T::OFFLINE_FLAG, 1);
+		}
+		++row_count;
+	}
+
+	// Reply is packet type FRIEND_GET_LIST carrying DATA_SET_FRIENDS — the
+	// client dispatches 0x1AE to its friends-store populate handler, fires
+	// the F3 UI refresh event, then feeds the same packet to the chat-side
+	// friend/ignore name map.
+	std::vector<uint8_t> response;
+	uint16_t packet_type = GA_U::FRIEND_GET_LIST;
+	uint16_t item_count = 1;
+
+	append(response, packet_type & 0xFF, packet_type >> 8);
+	append(response, item_count & 0xFF, item_count >> 8);
+
+	append(response, GA_T::DATA_SET_FRIENDS & 0xFF, GA_T::DATA_SET_FRIENDS >> 8);
+	append(response, row_count & 0xFF, (row_count >> 8) & 0xFF);
+	WriteNBytesRaw(response, data_rows);
 
 	send_response(response);
 }

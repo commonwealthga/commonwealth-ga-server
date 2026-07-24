@@ -223,6 +223,24 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
+    if (cmd_name == "-togglebrokensuits" || cmd_name == "-toggleallsuits") {
+        // -togglebrokensuits     -> toggle current preference
+        // -togglebrokensuits 1   -> show broken suits (default)
+        // -togglebrokensuits 0   -> replace broken suits
+        // -toggleallsuits [1|0]  -> same, but 0 hides ALL suits/helmets/flairs
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        ToggleBrokenSuitsArgs args;
+        args.all = (cmd_name == "-toggleallsuits");
+        if (!rest.empty()) {
+            if (rest == "0")      args.mode = 0;
+            else if (rest == "1") args.mode = 1;
+            else return out;  // bad arg — silent reject
+        }
+        out.toggle_broken_suits = args;
+        return out;
+    }
+
     if (cmd_name == "-topdown") {
         // -topdown            -> toggle, default lift
         // -topdown <lift_z>   -> toggle, explicit lift in world units (cm)
@@ -376,6 +394,26 @@ void DispatchPossess(const std::string& session_guid)   { DispatchSimpleAction("
 void DispatchUnpossess(const std::string& session_guid) { DispatchSimpleAction("unpossess", session_guid); }
 void DispatchCoords(const std::string& session_guid)    { DispatchSimpleAction("coords",    session_guid); }
 void DispatchFullHeal(const std::string& session_guid)  { DispatchSimpleAction("fullheal",  session_guid); }
+
+void DispatchToggleBrokenSuits(const ToggleBrokenSuitsArgs& args,
+                               const std::string& session_guid) {
+    if (session_guid.empty()) {
+        Logger::Log("chat-command", "[ChatCmd] DispatchToggleBrokenSuits dropped: empty session_guid\n");
+        return;
+    }
+    nlohmann::json payload;
+    payload["type"]         = IpcProtocol::MSG_PLAYER_ACTION;
+    payload["session_guid"] = session_guid;
+    payload["action"]       = args.all ? "toggle_all_suits" : "toggle_broken_suits";
+    payload["args"]         = { {"mode", args.mode} };
+    const bool sent = TcpSession::DeliverPlayerAction(session_guid, payload);
+    if (!sent) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=%s mode=%d outcome=ignored details=dispatch_failed\n",
+            session_guid.c_str(),
+            args.all ? "-toggleallsuits" : "-togglebrokensuits", args.mode);
+    }
+}
 
 void DispatchTopDown(const TopDownArgs& args, const std::string& session_guid) {
     if (session_guid.empty()) {

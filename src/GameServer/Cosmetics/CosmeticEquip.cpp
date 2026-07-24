@@ -4,6 +4,7 @@
 #include "src/Database/Database.hpp"
 #include "src/Shared/CosmeticSlots.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 
 namespace CosmeticEquip {
 
@@ -161,6 +162,10 @@ static int GetClassDefaultSuitAsmId(uint32_t profileId, bool isFemale) {
 		case 681: return 1356;  // RECON_SUIT_DEFAULT
 		default:  return 1354;
 	}
+}
+
+int ClassDefaultSuitAsmId(uint32_t profileId, bool isFemale) {
+	return GetClassDefaultSuitAsmId(profileId, isFemale);
 }
 
 static void ApplyClassVisualFallback(ATgPawn* Pawn, uint32_t profileId) {
@@ -350,6 +355,38 @@ static int NormalizeItemProfileId(ATgPawn* Pawn, int item_profile_id) {
 		}
 	}
 	return 1;
+}
+
+bool ApplyItemToBot(ATgPawn* Pawn, int itemId) {
+	if (!Pawn || itemId == 0) return false;
+	// Strict class gate — see the header. Anything else either has no
+	// r_CustomCharacterAssembly or holds it at a different offset.
+	if (!ObjectClassCache::ClassNameContains(Pawn, "TgPawn_Character")) {
+		Logger::Log("cosmetic-equip",
+			"ApplyItemToBot: itemId=%d skipped — pawn class '%s' is not "
+			"TgPawn_Character (mesh comes from body_asm_id, not the assembly)\n",
+			itemId, ObjectClassCache::GetClassName(Pawn).c_str());
+		return false;
+	}
+	// Bots spawn with bValidCustomAssembly=false, and the client only builds
+	// from the assembly when it's true (TgPawn_Character.uc:369 GetBodyMeshId
+	// -> IsCustomCharacter, which returns exactly that bit) — otherwise the
+	// pawn keeps its r_nBodyMeshAsmId bot mesh and every assembly write is
+	// invisible. First cosmetic on a bot promotes it to a custom character:
+	// the class defaultproperties already hold a complete default body
+	// (suit 1752 / head 1605 / hair 1757 / male 853), which the item then
+	// overrides via ApplyOnly.
+	auto* charPawn = (ATgPawn_Character*)Pawn;
+	if (!charPawn->r_CustomCharacterAssembly.bValidCustomAssembly) {
+		charPawn->r_CustomCharacterAssembly.bValidCustomAssembly = 1;
+		auto* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+		if (PRI) PRI->r_CustomCharacterAssembly = charPawn->r_CustomCharacterAssembly;
+		Logger::Log("cosmetic-equip",
+			"ApplyItemToBot: pawn %d promoted to custom character "
+			"(bValidCustomAssembly=1; bot mesh %d no longer drives the visual)\n",
+			(int)Pawn->r_nPawnId, (int)Pawn->r_nBodyMeshAsmId);
+	}
+	return ApplyOnly(Pawn, /*slot=*/-1, itemId);
 }
 
 bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int item_profile_id,

@@ -38,6 +38,10 @@ struct CharacterInfo {
     uint32_t skin_mat_param_id = 0;
     uint32_t eye_mat_param_id = 0;
     int current_item_profile_id = 1;  // last-active loadout slot (1..5)
+    // Soft-delete epoch (0 = active). GetCharactersByUserId already filters
+    // deleted rows out; GetCharacterById returns them so history/stats
+    // lookups keep resolving — callers gate on this when selecting.
+    int64_t deleted_at = 0;
 };
 
 struct DeviceRow {
@@ -121,6 +125,10 @@ public:
                                    uint32_t eye_mat_param_id = 0);
     static std::vector<CharacterInfo> GetCharactersByUserId(int64_t user_id);
     static std::optional<CharacterInfo> GetCharacterById(int64_t id);
+    // Soft-delete: stamps deleted_at, never removes the row (stats/history/
+    // MMR stay intact). user_id must match — returns false for a character
+    // that isn't yours or is already deleted.
+    static bool SoftDeleteCharacter(int64_t character_id, int64_t user_id);
     static void SetSelectedCharacter(const std::string& guid, int64_t char_id, uint32_t profile_id);
 
     // Walk every profile's ClassLoadouts entry and INSERT any (user_id,

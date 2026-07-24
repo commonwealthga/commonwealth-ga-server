@@ -84,8 +84,10 @@ void SendAlert::Send(UNetConnection* Connection,
 }
 
 // Like Send(), but carries free MESSAGE text instead of a localized msgId.
-// Used for dynamic alerts (e.g. "you have been autobalanced") that have no
-// pre-baked MSG_ID string. Sets GA_T::MESSAGE (wchar) + DISPLAY_AS_ALERT.
+// NOTE (playtest 2026-07-20): without MSG_ID the client dispatcher falls back
+// to the CHAT PANEL ("Instance" channel line), not the center-screen toast —
+// MSG_ID presence is the gate that selects the alert path. Use BroadcastText /
+// the @@text_value@@ template below when the center-screen toast is wanted.
 void SendAlert::SendText(UNetConnection* Connection,
                          const wchar_t* message,
                          unsigned char priority,
@@ -109,6 +111,57 @@ void SendAlert::SendText(UNetConnection* Connection,
 	CMarshal__SetWcharT::CallOriginal(Marshal, nullptr, GA_T::MESSAGE,          (wchar_t*)message);
 
 	DispatchMarshal(Connection, Marshal);
+}
+
+// asm_data_set_msg_translations 23083 is the bare "@@text_value@@" template:
+// a real localized MSG_ID (so the dispatcher takes the center-screen alert
+// path) whose entire rendered text is the TEXT_VALUE field we send. This is
+// how a dynamic string becomes a genuine toast instead of a chat line.
+static constexpr int kMsgIdTextValue = 23083;
+
+// Per-connection free-text CENTER-SCREEN toast, via the @@text_value@@ template.
+static void SendTextToast(UNetConnection* Connection,
+                          const wchar_t* message,
+                          unsigned char priority,
+                          unsigned char type,
+                          float duration) {
+	if (!Connection) return;
+	if ((uintptr_t)Connection < 0x10000) return;  // not a real pointer
+	if (!message || !message[0]) return;
+
+	uint8_t MarshalStorage[0x80] = {0};
+	void* Marshal = MarshalStorage;
+	CMarshalObject__Create::CallOriginal(Marshal);
+	*(void**)Marshal = CMarshalObject__Create::CMarshal_vftable;
+	*(uint16_t*)((uint8_t*)Marshal + 0x26) = GA_U::CHAT_MESSAGE;  // 0x0073
+
+	CMarshal__SetInt32 ::CallOriginal(Marshal, nullptr, GA_T::CHAT_CH_TYPE,     1);
+	CMarshal__SetInt32 ::CallOriginal(Marshal, nullptr, GA_T::MSG_ID,           kMsgIdTextValue);
+	CMarshal__SetBool  ::CallOriginal(Marshal, nullptr, GA_T::DISPLAY_AS_ALERT, 1);
+	CMarshal__SetInt32 ::CallOriginal(Marshal, nullptr, GA_T::ALERT_PRIORITY,   priority);
+	CMarshal__SetInt32 ::CallOriginal(Marshal, nullptr, GA_T::ALERT_TYPE,       type);
+	CMarshal__SetFloat ::CallOriginal(Marshal, nullptr, GA_T::FLOAT_VALUE,      duration);
+	CMarshal__SetWcharT::CallOriginal(Marshal, nullptr, GA_T::TEXT_VALUE,       (wchar_t*)message);
+
+	DispatchMarshal(Connection, Marshal);
+}
+
+void SendAlert::BroadcastText(const wchar_t* message,
+                              unsigned char priority,
+                              unsigned char type,
+                              float duration) {
+	int sent = 0;
+	for (auto& pair : GClientConnectionsData) {
+		const ClientConnectionData& conn = pair.second;
+		if (conn.bClosed) continue;
+		UNetConnection* Connection = (UNetConnection*)(intptr_t)pair.first;
+		SendTextToast(Connection, message, priority, type, duration);
+		sent++;
+	}
+	if (Logger::IsChannelEnabled("announcer")) {
+		Logger::Log("announcer", "[BroadcastText] pri=%d type=%d → %d connection(s)\n",
+			(int)priority, (int)type, sent);
+	}
 }
 
 void SendAlert::Broadcast(int msgId,

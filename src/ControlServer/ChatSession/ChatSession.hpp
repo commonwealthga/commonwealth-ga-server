@@ -7,6 +7,7 @@
 #include <memory>
 #include <sstream>
 #include <iomanip>
+#include <unordered_set>
 
 #include "src/ControlServer/Constants/TcpFunctions.h"
 #include "src/ControlServer/Constants/TcpTypes.h"
@@ -20,6 +21,14 @@ public:
     void start();
     void deliver(const std::vector<uint8_t>& msg);
     const std::string& get_player_name() const { return player_name_; }
+    // True when this session's player ignores `sender_name`. Backed by a
+    // per-session cached ignore set, reloaded only when
+    // Database::FriendsEpoch() has changed since the last check.
+    bool is_ignoring(const std::string& sender_name);
+
+    // Deliver a system chat line to one player's chat session, if they have
+    // one. Used by TcpSession (e.g. friends "player not found" feedback).
+    static void SystemMessageTo(const std::string& player_name, const std::string& text);
 
 private:
     asio::ip::tcp::socket socket_;
@@ -34,6 +43,10 @@ private:
     std::deque<std::vector<uint8_t>> write_queue_;
     std::string player_name_;
     std::string session_guid_;
+    // Cached ignore list (lowercased names) + the friends-epoch it was built
+    // at. 0 = never loaded (Database epoch starts at 1).
+    std::unordered_set<std::string> ignored_lower_;
+    uint64_t ignore_epoch_ = 0;
     int bind_retry_attempts_ = 0;
     bool announced_join_ = false;
     // Single-shot lifecycle guard. Set by TearDown(); checked in every async

@@ -1,5 +1,6 @@
 #include "src/ControlServer/ChatSession/ChatSession.hpp"
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
+#include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 
 #include <algorithm>
@@ -115,6 +116,47 @@ std::vector<uint8_t> BuildChatFrame(uint32_t channel, const std::string& message
     return chunk;
 }
 
+// Build a CHAT_CONFIG (0x0072) wire frame enabling the given chat channels.
+// The client keeps a 16-slot enabled-channel table (slot = CHAT_CH_TYPE,
+// value = CHAT_CH_ID, nonzero = enabled) and refuses to switch its current
+// send channel to a slot that is 0 — so without this packet a client that
+// entered whisper mode (/r or reply keybind) can never switch back to Local.
+// Layout:
+//   [2B chunk_size][2B packet_type=0x0072][2B item_count=1]
+//   [2B DATA_SET][2B row_count]
+//     per row: [2B field_count=2][CHAT_CH_TYPE 4B][CHAT_CH_ID 4B]
+std::vector<uint8_t> BuildChatConfigFrame(const std::vector<uint32_t>& channels) {
+    std::vector<uint8_t> body;
+    const uint16_t packet_type = GA_U::CHAT_CONFIG;
+    const uint16_t item_count  = 1;
+    body.push_back(packet_type & 0xFF); body.push_back(packet_type >> 8);
+    body.push_back(item_count  & 0xFF); body.push_back(item_count  >> 8);
+
+    body.push_back(GA_T::DATA_SET & 0xFF);
+    body.push_back(GA_T::DATA_SET >> 8);
+    const uint16_t row_count = static_cast<uint16_t>(channels.size());
+    body.push_back(row_count & 0xFF);
+    body.push_back(row_count >> 8);
+    for (uint32_t ch : channels) {
+        body.push_back(0x02); body.push_back(0x00);  // 2 fields per row
+        for (uint16_t type : { (uint16_t)GA_T::CHAT_CH_TYPE, (uint16_t)GA_T::CHAT_CH_ID }) {
+            body.push_back(type & 0xFF);
+            body.push_back(type >> 8);
+            body.push_back(ch        & 0xFF);
+            body.push_back((ch >>  8) & 0xFF);
+            body.push_back((ch >> 16) & 0xFF);
+            body.push_back((ch >> 24) & 0xFF);
+        }
+    }
+
+    std::vector<uint8_t> chunk;
+    const uint16_t chunk_size = static_cast<uint16_t>(body.size());
+    chunk.push_back(chunk_size & 0xFF);
+    chunk.push_back(chunk_size >> 8);
+    chunk.insert(chunk.end(), body.begin(), body.end());
+    return chunk;
+}
+
 // Broadcast a system message (e.g. join/leave announcement) to every active
 // chat session. Doesn't read or modify any per-session state besides
 // write_queue_ via deliver(). `exclude` skips one specific session (used for
@@ -153,6 +195,7 @@ bool HasParsedCommandAction(const ChatCommand::ParseResult& parsed) {
         || parsed.spawn_target.has_value()
         || parsed.deploy_target.has_value()
         || parsed.topdown.has_value()
+        || parsed.toggle_broken_suits.has_value()
         || parsed.possess
         || parsed.unpossess
         || parsed.coords
@@ -179,6 +222,9 @@ void ChatSession::start() {
 void ChatSession::AnnounceJoinIfNeeded() {
     if (announced_join_ || player_name_.empty()) return;
     announced_join_ = true;
+    // Enable Local (4) and Tell (8) in the client's channel table so channel
+    // switching (combo box, /local) works — see BuildChatConfigFrame.
+    deliver(BuildChatConfigFrame({ 4, 8 }));
     BroadcastSystemMessage(
         "*** " + player_name_ + " has joined the chat ***",
         kSystemChannelId,
@@ -384,6 +430,9 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         if (parsed.recognized && parsed.topdown) {
             ChatCommand::DispatchTopDown(*parsed.topdown, session_guid_);
         }
+        if (parsed.recognized && parsed.toggle_broken_suits) {
+            ChatCommand::DispatchToggleBrokenSuits(*parsed.toggle_broken_suits, session_guid_);
+        }
         if (parsed.recognized && parsed.reload_queues) {
             Logger::Log("chat-command",
                 "[ChatCmd] -reload-queues player='%s' guid=%s outcome=activated details=MatchmakingService::ReloadQueues\n",
@@ -423,6 +472,11 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
                     return false;
             return true;
         };
+        if (ieq(recipient, player_name_)) {
+            deliver(BuildChatFrame(kSystemChannelId,
+                "*** You cannot whisper yourself ***"));
+            return;
+        }
         PruneExpiredSessions();
         std::shared_ptr<ChatSession> target;
         for (auto& weak : g_chat_sessions) {
@@ -435,9 +489,12 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
                 "*** " + recipient + " is not online ***"));
             return;
         }
-        // Per-side frames. Client renders NAME (0x370) as "<name> says:" (or
-        // MESSAGE verbatim when NAME is empty — used for the sender echo) and
-        // caches PLAYER_NAME (0x3C5) as the reply-keybind target.
+        // Per-side frames. On channel 8 the client composes the line itself:
+        // NAME (0x370) == own player name + non-empty PLAYER_NAME (0x3C5)
+        // renders "To <PLAYER_NAME>: msg" (sender echo), otherwise
+        // "<NAME> says: msg". The reply cache is NAME, and it is overwritten on
+        // every ch8 line whose NAME != own name — so the echo MUST carry the
+        // sender's own name, else it blanks the cache and /r dies after one use.
         const std::string text = pkt.ReadString(GA_T::MESSAGE).value_or("");
         auto makeWhisperFrame = [this, channel](const std::string& displayName,
                                                 const std::string& msgText,
@@ -458,9 +515,16 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
         };
 
         const std::string& targetName = target->get_player_name();
+        // Ignore gate: recipient has the sender on their F3 ignore list.
+        if (target->is_ignoring(player_name_)) {
+            Logger::Log("friends", "[Friends] whisper blocked: '%s' ignores '%s'\n",
+                targetName.c_str(), player_name_.c_str());
+            deliver(BuildChatFrame(kSystemChannelId,
+                "*** " + targetName + " is ignoring you ***"));
+            return;
+        }
         target->deliver(makeWhisperFrame(player_name_, text, player_name_));
-        if (target.get() != this)
-            deliver(makeWhisperFrame("", "To " + targetName + ": " + text, targetName));
+        deliver(makeWhisperFrame(player_name_, text, targetName));
         return;
     }
 
@@ -494,7 +558,41 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
                     peer->deliver(chunk);
                 }
             } else {
+                // Ignore gate: don't show this sender's lines to players who
+                // have them on the F3 ignore list.
+                if (peer.get() != this &&
+                    peer->is_ignoring(player_name_)) {
+                    continue;
+                }
                 peer->deliver(chunk);
+            }
+        }
+    }
+}
+
+bool ChatSession::is_ignoring(const std::string& sender_name) {
+    const uint64_t epoch = Database::FriendsEpoch();
+    if (epoch != ignore_epoch_) {
+        ignored_lower_.clear();
+        for (auto& name : Database::GetIgnoredNames(player_name_))
+            ignored_lower_.insert(std::move(name));
+        ignore_epoch_ = epoch;
+    }
+    if (ignored_lower_.empty()) return false;
+    std::string lower = sender_name;
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return ignored_lower_.count(lower) != 0;
+}
+
+void ChatSession::SystemMessageTo(const std::string& player_name, const std::string& text) {
+    if (player_name.empty()) return;
+    auto frame = BuildChatFrame(kSystemChannelId, text);
+    for (auto& weak : g_chat_sessions) {
+        if (auto peer = weak.lock()) {
+            if (peer->get_player_name() == player_name) {
+                peer->deliver(frame);
+                return;
             }
         }
     }

@@ -169,17 +169,27 @@ int LoadSpawnTableRows(sqlite3* db, int difficulty, bool skipExisting,
 // Super Agent composite tables: REBUILD each target table by concatenating the
 // groups of its source tables (renumbered into a fresh 0..N sequence). Runs
 // after the cascade so the source tables are already loaded. Difficulty-gated to
-// the custom mode so normal play is untouched. A target listed as its own source
-// is read before the overwrite, so it can keep its original groups.
+// the custom mode so normal play is untouched.
+//
+// Every source is read from a SNAPSHOT of the base tables taken before any
+// rewrite, so a source ALWAYS expands to that table's ORIGINAL rows — even when
+// it is itself a composite target (e.g. `{33,{33,102,102}}` + `{102,{33,102}}`,
+// where 33 and 102 reference each other). No recursion and no dependence on the
+// order targets happen to be processed in: a composite is always
+// "original(srcA) + original(srcB) + …". That's the point — keep the map's
+// baked spawns (a target listing ITSELF keeps its original groups) and ADD to
+// them. A source that is a target expands to the ORIGINAL, never the other
+// composite, so `{33,…102…}` gets base-102, not 102's Super-Agent wave.
 void ApplyCompositeTables() {
 	if (!SuperAgent::IsActive()) return;
+	const auto base = g_spawnTables;   // snapshot of the un-composited tables
 	for (const auto& comp : SuperAgent::SpawnTableComposites()) {
 		const int target = comp.first;
 		std::map<int, std::vector<SpawnTableEntry>> combined;
 		int nextGroup = 0;
 		for (const int src : comp.second) {
-			const auto it = g_spawnTables.find(src);
-			if (it == g_spawnTables.end()) {
+			const auto it = base.find(src);   // ALWAYS the original rows
+			if (it == base.end()) {
 				Logger::Log("tgbotfactory",
 					"  composite %d: source table %d not loaded at this difficulty — skipped\n",
 					target, src);
@@ -418,6 +428,30 @@ int TgBotFactory__LoadObjectConfig::GetFactoryGroupRoll(
 	auto it = g_factoryGroupRolls.find(FactoryKey(Factory));
 	if (it == g_factoryGroupRolls.end()) return 0;
 	if (nGroupIndex >= static_cast<int>(it->second.size())) return 0;
+	return it->second[nGroupIndex];
+}
+
+// Escape-wave combined plans repeat group indices past the table's group
+// count — this map carries their index->group-VALUE resolution per factory.
+static std::map<uint64_t, std::vector<int>> g_factoryGroupValues;
+
+void TgBotFactory__LoadObjectConfig::SetFactoryGroupValues(
+		ATgBotFactory* Factory, const std::vector<int>& values) {
+	if (Factory == nullptr) return;
+	g_factoryGroupValues[FactoryKey(Factory)] = values;
+}
+
+void TgBotFactory__LoadObjectConfig::ClearFactoryGroupValues(ATgBotFactory* Factory) {
+	if (Factory == nullptr) return;
+	g_factoryGroupValues.erase(FactoryKey(Factory));
+}
+
+int TgBotFactory__LoadObjectConfig::GetFactoryGroupValue(
+		ATgBotFactory* Factory, int nGroupIndex) {
+	if (Factory == nullptr || nGroupIndex < 0) return -1;
+	auto it = g_factoryGroupValues.find(FactoryKey(Factory));
+	if (it == g_factoryGroupValues.end()) return -1;
+	if (nGroupIndex >= static_cast<int>(it->second.size())) return -1;
 	return it->second[nGroupIndex];
 }
 

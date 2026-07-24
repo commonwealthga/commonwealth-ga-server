@@ -1,11 +1,15 @@
 #include "src/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
+#include "src/GameServer/TgGame/_surface_rotation/SurfaceRotation.hpp"
 #include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+
+#include <cmath>
+#include <cstring>
 
 // Stripped native (TgBeaconFactory__SpawnObject_notimplemented @ 0x10a8c260).
 // Callers in UC: TgActorFactory.PostBeginPlay (auto on dedicated server),
@@ -55,6 +59,77 @@ static void WireDeployableOwnership(ATgDeployable* dep, ATgBeaconFactory* factor
 		// dep->r_DRI->bForceNetUpdate     = 1;
 	}
 	dep->r_bInitialIsEnemy = 0;
+}
+
+ATgDeploy_BeaconEntrance* TgBeaconFactory__SpawnObject::SpawnEntranceMarker(
+		AActor* spawner, const FVector& baseLoc, const FRotator& rot,
+		ATgBeaconFactory* factory, ATgRepInfo_TaskForce* tf, bool zLift) {
+	if (!spawner) return nullptr;
+	UClass* cls = ClassPreloader::GetTgDeployBeaconEntranceClass();
+	if (!cls) {
+		Logger::Log("beacon", "  entrance: class not preloaded, skipping\n");
+		return nullptr;
+	}
+
+	FVector  spawnLoc = baseLoc;
+	FRotator spawnRot = rot;
+	float r = 0.f, halfH = 0.f, liftH = 0.f;
+	TgProj_Deployable__SpawnDeployable::GetDeployableCollisionCylinder(48, &r, &halfH);
+	TgProj_Deployable__SpawnDeployable::GetDeployableSpawnZLift(48, &liftH);
+	if (zLift) {
+		// Lift uses the legacy raw*0.5 value, NOT the scaled cylinder halfHeight
+		// — see GetDeployableSpawnZLift. The two diverge on scale≠1 deployables.
+		spawnLoc.Z += liftH + 5.0f;
+	} else {
+		// Nav-point markers: nav points sit at pawn-center height (and on
+		// slopes), not on the floor. Ground-snap with a downward trace
+		// (bTraceActors=1 so static meshes count as floor, same as the
+		// objective snap in SuperAgent::SpawnPoint), then rest the pad on the
+		// surface like a player-placed deployable: position lifted ALONG the
+		// hit normal (reduces to the plain Z lift on flat ground), rotation
+		// aligned to the surface with the nav point's yaw as facing. Trace
+		// miss (nav over a pit) keeps the nav's own placement.
+		FVector start = baseLoc; start.Z += 64.0f;
+		FVector end   = baseLoc; end.Z   -= 8192.0f;
+		FVector hitLoc, hitNorm;
+		FTraceHitInfo hitInfo;
+		std::memset(&hitInfo, 0, sizeof(hitInfo));
+		AActor* ground = spawner->Trace(end, start, 1, FVector(0, 0, 0), 0,
+		                                &hitLoc, &hitNorm, &hitInfo);
+		if (ground) {
+			FVector n = { 0.0f, 0.0f, 1.0f };   // degenerate normal -> world up
+			const float len2 = hitNorm.X * hitNorm.X + hitNorm.Y * hitNorm.Y
+			                 + hitNorm.Z * hitNorm.Z;
+			if (len2 > 0.001f) {
+				const float inv = 1.0f / std::sqrt(len2);
+				n.X = hitNorm.X * inv; n.Y = hitNorm.Y * inv; n.Z = hitNorm.Z * inv;
+			}
+			const float lift = liftH + 5.0f;
+			spawnLoc.X = hitLoc.X + n.X * lift;
+			spawnLoc.Y = hitLoc.Y + n.Y * lift;
+			spawnLoc.Z = hitLoc.Z + n.Z * lift;
+			// Facing from the nav point's yaw (UC Vector(Rotation), pitch 0).
+			const float yaw = rot.Yaw * (3.14159265f / 32768.0f);
+			const FVector facing = { std::cos(yaw), std::sin(yaw), 0.0f };
+			spawnRot = SurfaceRotation::FromSurfaceNormal(n, facing);
+		}
+	}
+
+	ATgDeploy_BeaconEntrance* entrance = (ATgDeploy_BeaconEntrance*)spawner->Spawn(
+		cls, spawner, FName(), spawnLoc, spawnRot, nullptr, 1);
+	if (!entrance) {
+		Logger::Log("beacon", "  entrance: Spawn returned null\n");
+		return nullptr;
+	}
+
+	entrance->r_nDeployableId = 48;
+	WireDeployableOwnership(entrance, factory, tf);
+
+	Logger::Log("beacon",
+		"  entrance spawned 0x%p tf=%d at (%.0f,%.0f,%.0f)\n",
+		entrance, tf ? (int)tf->r_nTaskForce : 0,
+		entrance->Location.X, entrance->Location.Y, entrance->Location.Z);
+	return entrance;
 }
 
 void __fastcall TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, void* /*edx*/) {
@@ -117,36 +192,11 @@ void __fastcall TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, vo
 		return nullptr;
 	}
 
-	// ENTRANCE
+	// ENTRANCE — recipe lives in SpawnEntranceMarker (also used standalone by
+	// SuperAgent for ambush spawn-point map markers).
 	if (!factory->m_bBeaconExit) {
-		UClass* cls = ClassPreloader::GetTgDeployBeaconEntranceClass();
-		if (!cls) {
-			Logger::Log("beacon", "  entrance: class not preloaded, skipping\n");
-			return nullptr;
-		}
-
-		FVector spawnLoc = factory->Location;
-		float r = 0.f, halfH = 0.f, liftH = 0.f;
-		TgProj_Deployable__SpawnDeployable::GetDeployableCollisionCylinder(48, &r, &halfH);
-		TgProj_Deployable__SpawnDeployable::GetDeployableSpawnZLift(48, &liftH);
-		// Lift uses the legacy raw*0.5 value, NOT the scaled cylinder halfHeight
-		// — see GetDeployableSpawnZLift. The two diverge on scale≠1 deployables.
-		spawnLoc.Z += liftH + 5.0f;
-
-		ATgDeploy_BeaconEntrance* entrance = (ATgDeploy_BeaconEntrance*)factory->Spawn(
-			cls, factory, FName(), spawnLoc, factory->Rotation, nullptr, 1);
-		if (!entrance) {
-			Logger::Log("beacon", "  entrance: Spawn returned null\n");
-			return nullptr;
-		}
-
-		entrance->r_nDeployableId = 48;
-		WireDeployableOwnership(entrance, factory, tf);
-
-		Logger::Log("beacon",
-			"  entrance spawned 0x%p tf=%d at (%.0f,%.0f,%.0f)\n",
-			entrance, (int)factory->s_nTaskForce,
-			entrance->Location.X, entrance->Location.Y, entrance->Location.Z);
+		SpawnEntranceMarker((AActor*)factory, factory->Location,
+			factory->Rotation, factory, tf, /*zLift=*/true);
 		return nullptr;
 	}
 
@@ -205,6 +255,25 @@ void __fastcall TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, vo
 	// DRI current/max + deploy PCT, r_bTakeDamage from DB health.
 	beacon->InitializeDefaultProps();
 
+	// PvE checkpoint beacons are not a combat objective: pickup is already
+	// blocked by UC (PickUpDeployable early-outs on IsPvEMission) and the
+	// beacon must be indestructible. r_bTakeDamage=0 is the canonical gate —
+	// UC TakeDamage ignores damage entirely and the client hides the health
+	// bar (DrawHealth early-return). Must land AFTER InitializeDefaultProps,
+	// which sets r_bTakeDamage=1 from the DB health (3000). Before the
+	// 2026-07-19 HEALTH_MAX-stomp fix these were accidentally protected by
+	// spawning as 0-HP zombies; now they need the real flag. PvP keeps the
+	// destructible full-health beacon.
+	{
+		ATgRepInfo_Game* gri = game
+			? (ATgRepInfo_Game*)game->GameReplicationInfo : nullptr;
+		if (gri && gri->eventIsPvEMission()) {
+			beacon->r_bTakeDamage = 0;
+			Logger::Log("beacon",
+				"  exit: PvE mission — r_bTakeDamage=0 (indestructible checkpoint)\n");
+		}
+	}
+
 	// EffectManager parity with the device-fire path — without it, UC
 	// ProcessEffect (repairs/heals targeting the beacon) dereferences None.
 	if (!beacon->r_EffectManager) {
@@ -220,6 +289,14 @@ void __fastcall TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, vo
 			}
 		}
 	}
+
+	// Fresh world beacon = full save percent. The manager's s_fHealthPercent
+	// CDO default is 0 and nothing else seeds it before the first player
+	// deploy, which consumes it as the deploy-max PCT (RegisterBeacon(false)
+	// → SetInitialHealthPercent) — an unseeded manager silently disabled the
+	// whole deploy health ramp (deployTarget=0, observed 2026-07-19). A real
+	// pickup overwrites this right before any legit redeploy.
+	mgr->s_fHealthPercent = 1.0f;
 
 	// Pre-deployed (no Deploy animation). Marks m_bIsDeployed=1 (via
 	// WireDeployableOwnership above) AND status=DEPLOYED so HasExit returns
@@ -238,9 +315,15 @@ void __fastcall TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, vo
 	}
 
 	Logger::Log("beacon",
-		"  exit spawned 0x%p tf=%d at (%.0f,%.0f,%.0f) registered with manager 0x%p r_BeaconInfo=0x%p\n",
+		"  exit spawned 0x%p tf=%d at (%.0f,%.0f,%.0f) registered with manager 0x%p r_BeaconInfo=0x%p "
+		"hp=%d driCur=%d driMax=%d pct=%.4f mgrPct=%.4f\n",
 		beacon, (int)factory->s_nTaskForce,
 		beacon->Location.X, beacon->Location.Y, beacon->Location.Z, mgr,
-		mgr->r_BeaconInfo);
+		mgr->r_BeaconInfo,
+		beacon->r_nHealth,
+		beacon->r_DRI ? beacon->r_DRI->r_nHealthCurrent : -1,
+		beacon->r_DRI ? beacon->r_DRI->r_nHealthMaximum : -1,
+		beacon->r_DRI ? beacon->r_DRI->r_fDeployMaxHealthPCT : -99.0f,
+		mgr->s_fHealthPercent);
 	return nullptr;
 }

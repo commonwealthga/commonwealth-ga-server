@@ -176,9 +176,13 @@ enum class DispatchTag : uint8_t {
 	SeqOpActivated,               // kismet op eventActivated — TgSeqAct_AlarmBots raises the global alarm
 	TgTriggerBeaconEntrance,      // Pre-call: record teammate beacon-teleport usage for match stats
 	SuperAgentCaptureGate,        // Super Agent mode: freeze proximity capture per the all-players / drain gate, then detect A's capture
+	SuperAgentMarchDrive,         // Super Agent mode: rewrite AI movement params so tracked outside marchers run at A
 	PayloadDeployableCrush,       // Payload (TgObjectiveAttachActor) Touch/RanInto/EncroachingOn — skip for morale Dome Shields
 	SensorProximitySweep,         // Post-call: remove TouchedPlayers beyond config radius (UC loop can't see pawns outside m_fProximityDistance)
 	DevCheatRpc,                  // Client-invocable dev/cheat server RPCs (Icarus/Zeus/TgSvrExec/...) — dropped unless PRI bAdmin
+	DeployableTakeDamage,         // Diagnostic (indestructible beacons): log entry gates + result of UC TakeDamage on exit beacons
+	BeaconDestroyIt,              // Diagnostic (indestructible beacons): log DestroyIt entry gates on exit beacons
+	BeaconHealthWatch,            // Diagnostic (indestructible beacons): per-tick change watcher over beacon health/PCT fields
 	// GameTimerDiagnostic,          // Diagnostic-only: before/after snapshots around original timer/match flow
 };
 
@@ -486,6 +490,13 @@ static void LogGameTimerSnapshot(const char* phase, UObject* Object, UFunction* 
 	}
 }
 
+// Exit beacons only — "TgDeploy_Beacon" also prefixes TgDeploy_BeaconEntrance,
+// which is a static pad with no health lifecycle and would only add noise.
+static bool IsExitBeacon(UObject* Obj) {
+	return ObjectClassCache::ClassNameContains(Obj, "TgDeploy_Beacon")
+		&& !ObjectClassCache::ClassNameContains(Obj, "BeaconEntrance");
+}
+
 // First-sight classification: walks the strcmp ladder once per unique
 // UFunction. Returns the matching DispatchTag (or Unknown for the catch-all
 // path). Order kept matching the historical hand-written branches so the
@@ -551,6 +562,15 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	}
 
 	// Specific handlers.
+	// Indestructible-beacon per-tick health watcher — DISABLED (hot path:
+	// every deployable, every frame). Re-enable by uncommenting; the
+	// BeaconHealthWatch case below is kept dormant. Remember to also drop
+	// TgGame.TgDeployable.Tick from the EarlyOut group above when re-enabling.
+	// if (strcmp(name, "Function TgGame.TgDeployable.Tick") == 0
+	// 	|| strcmp(name, "Function TgDeployable.Deploy.Tick") == 0)                   return DispatchTag::BeaconHealthWatch;
+	if (strcmp(name, "Function TgGame.TgDeployable.TakeDamage") == 0)                return DispatchTag::DeployableTakeDamage;
+	if (strcmp(name, "Function TgGame.TgDeploy_Beacon.DestroyIt") == 0
+		|| strcmp(name, "Function TgGame.TgDeployable.DestroyIt") == 0)              return DispatchTag::BeaconDestroyIt;
 	if (strcmp(name, "Function TgDevice.DeviceFiring.RefireCheckTimer") == 0)        return DispatchTag::RefireCheckTimer;
 	if (strcmp(name, "Function TgGame.TgGame.Login") == 0)                           return DispatchTag::TgGameLogin;
 	if (strcmp(name, "Function TgGame.TgGame.PostLogin") == 0)                       return DispatchTag::TgGamePostLogin;
@@ -588,6 +608,11 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	// capture. Intercept Tick (which DOES route through ProcessEvent) rather than
 	// the inner CalculateNearByPlayers (an intra-UC call that does not).
 	if (strcmp(name, "Function TgGame.TgMissionObjective_Proximity.Tick") == 0) return DispatchTag::SuperAgentCaptureGate;
+	// Super Agent outside march: the behavior engine fires this event on every
+	// AI action selection; the handler rewrites its (movementCode, destCode)
+	// params for tracked outside marchers. Cached per-UFunction like the rest,
+	// so the hot path is one hash lookup.
+	if (strcmp(name, "Function TgGame.TgAIController.SetWhatToDoNext") == 0) return DispatchTag::SuperAgentMarchDrive;
 	// Escort/payload crush. The payload is a TgObjectiveAttachActor whose
 	// Touch / RanInto / EncroachingOn each do
 	// `if (TgDeployable(Other)) Other.DestroyIt()`. Skip all three for morale
@@ -1450,11 +1475,14 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			uint32_t devFlags = *(uint32_t*)((char*)Device + 0x22C);
 			bool bIsBeaconPlacing = (devFlags & 0x10000u) != 0;
 			int nEquipPoint = (int)Device->r_eEquippedAt;
-			Logger::Log("beacon",
-				"DeviceFiring.EndState: device=0x%p devId=%d invId=%d slot=%d "
-				"devFlags=0x%08x m_bIsBeaconPlacing=%d instigator=0x%p\n",
-				Device, Device->r_nDeviceId, Device->r_nInventoryId, nEquipPoint,
-				devFlags, (int)bIsBeaconPlacing, Device->Instigator);
+			// Hot path — EndState fires for EVERY device fire cycle; the
+			// unconditional entry log flooded captures. Rare beacon-cleanup
+			// logs below remain.
+			// Logger::Log("beacon",
+			// 	"DeviceFiring.EndState: device=0x%p devId=%d invId=%d slot=%d "
+			// 	"devFlags=0x%08x m_bIsBeaconPlacing=%d instigator=0x%p\n",
+			// 	Device, Device->r_nDeviceId, Device->r_nInventoryId, nEquipPoint,
+			// 	devFlags, (int)bIsBeaconPlacing, Device->Instigator);
 			if (bIsBeaconPlacing && Device->Instigator) {
 				ATgPawn* Pawn = (ATgPawn*)Device->Instigator;
 				ATgInventoryManager* InvMgr = (ATgInventoryManager*)Pawn->InvManager;
@@ -1800,19 +1828,37 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 				"  m_nPickupDeviceId=%d s_bWasPickedUp=%d m_bPickupOnlyOnce=%d -> CanBePickedUp=%s\n"
 				"  m_bInDestroyedState=%d\n"
 				"  beacon.r_DRI=0x%p instigatorInfo=0x%p tfInfo=0x%p bOwnedByTf=%d\n"
-				"  receiver.PRI=0x%p receiver.PRI.r_TaskForce=0x%p\n",
+				"  receiver.PRI=0x%p receiver.PRI.r_TaskForce=0x%p\n"
+				"  hp=%d driCur=%d driMax=%d pct=%.4f dmgDuringDeploy=%.1f state=%s\n",
 				beacon, pReceiver,
 				beacon->m_nPickupDeviceId, (int)beacon->s_bWasPickedUp, (int)beacon->m_bPickupOnlyOnce,
 				canBePickedUp ? "TRUE" : "FALSE",
 				(int)beacon->m_bInDestroyedState,
 				dri, dri ? dri->r_InstigatorInfo : nullptr, dri ? dri->r_TaskforceInfo : nullptr,
 				dri ? (int)dri->r_bOwnedByTaskforce : -1,
-				recvPri, recvTf);
+				recvPri, recvTf,
+				beacon->r_nHealth,
+				dri ? dri->r_nHealthCurrent : -1, dri ? dri->r_nHealthMaximum : -1,
+				dri ? dri->r_fDeployMaxHealthPCT : -99.0f,
+				beacon->m_fDamagedDuringDeploy,
+				beacon->GetStateName().GetName() ? beacon->GetStateName().GetName() : "<null>");
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
 		if (Params) {
 			bool ret = (*(uint32_t*)((char*)Params + 4) & 1u) != 0;
 			Logger::Log("beacon", "PickUpDeployable: EXIT returned %s\n", ret ? "true" : "false");
+		}
+		// The percent the UC body just saved (SetHealthPercent(GetSaveHealthPercent()))
+		// is the deploy-max PCT the NEXT redeploy will consume. Picked up while in
+		// Deploy state, GetSaveHealthPercent = (deployMax - dmgDuringDeploy)/max —
+		// which can be <= 0 or > 1; picked up while Active it's hp/max.
+		if (beacon && beacon->r_DRI && beacon->r_DRI->r_TaskforceInfo) {
+			ATgTeamBeaconManager* mgr = beacon->r_DRI->r_TaskforceInfo->r_BeaconManager;
+			if (mgr) {
+				Logger::Log("beacon",
+					"PickUpDeployable[saved]: mgr=0x%p s_fHealthPercent=%.4f\n",
+					mgr, mgr->s_fHealthPercent);
+			}
 		}
 		break;
 	}
@@ -2225,6 +2271,107 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			CallOriginal(Object, edx, Function, Params, Result);
 		}
 		SuperAgent::OnCaptureTick(Obj);
+		break;
+	}
+
+	// Super Agent outside march. SetWhatToDoNext(nMovementCode, nMoveDestination)
+	// — two ints at Params+0 / Params+4. The override rewrites them in place for
+	// tracked outside marchers (no-op for everything else), then the original
+	// runs with the (possibly) rewritten action.
+	case DispatchTag::SuperAgentMarchDrive: {
+		if (Params) {
+			SuperAgent::OverrideMarchMovement((ATgAIController*)Object,
+				(int*)Params, (int*)((char*)Params + 4));
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	}
+
+	// —— Indestructible-beacon diagnostics (channel "beacon") ————————————
+	// UC TakeDamage is the ONLY damage→destroy path for deployables; a live
+	// beacon that ignores damage is either never reached here, or eaten by
+	// one of the entry gates (r_bTakeDamage=0, r_nHealth<=0 zombie, or
+	// m_bInDestroyedState husk). Log the gates before and the result after.
+	case DispatchTag::DeployableTakeDamage: {
+		const bool isBeacon = IsExitBeacon(Object);
+		ATgDeployable* d = (ATgDeployable*)Object;
+		if (isBeacon) {
+			ATgRepInfo_Deployable* dri = d->r_DRI;
+			Logger::Log("beacon",
+				"TakeDamage ENTER beacon=0x%p dmg=%d hp=%d driCur=%d driMax=%d pct=%.4f "
+				"takeDmg=%d destroyed=%d tearOff=%d state=%s\n",
+				d, Params ? *(int*)Params : -1, d->r_nHealth,
+				dri ? dri->r_nHealthCurrent : -1, dri ? dri->r_nHealthMaximum : -1,
+				dri ? dri->r_fDeployMaxHealthPCT : -99.0f,
+				(int)d->r_bTakeDamage, (int)d->m_bInDestroyedState, (int)d->bTearOff,
+				d->GetStateName().GetName() ? d->GetStateName().GetName() : "<null>");
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		if (isBeacon) {
+			Logger::Log("beacon",
+				"TakeDamage EXIT  beacon=0x%p hp=%d destroyed=%d\n",
+				d, d->r_nHealth, (int)d->m_bInDestroyedState);
+		}
+		break;
+	}
+
+	// DestroyIt no-ops on m_bInDestroyedState or bTearOff — if either is
+	// already set when a kill arrives, the husk stays in the world forever.
+	case DispatchTag::BeaconDestroyIt: {
+		if (IsExitBeacon(Object)) {
+			ATgDeployable* d = (ATgDeployable*)Object;
+			Logger::Log("beacon",
+				"DestroyIt ENTER beacon=0x%p hp=%d destroyed=%d tearOff=%d lifeSpan=%.2f\n",
+				d, d->r_nHealth, (int)d->m_bInDestroyedState, (int)d->bTearOff,
+				d->LifeSpan);
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	}
+
+	// Per-tick change watcher. UC-internal writers (TickDeploy ramp,
+	// UpdateHealth calls from UC bytecode) never cross a hook — sampling the
+	// fields every Tick catches every writer, one log line per change.
+	case DispatchTag::BeaconHealthWatch: {
+		if (!IsExitBeacon(Object)) {
+			CallOriginal(Object, edx, Function, Params, Result);
+			break;
+		}
+		ATgDeployable* b = (ATgDeployable*)Object;
+		ATgRepInfo_Deployable* dri = b->r_DRI;
+		struct BeaconSnap {
+			int hp, driCur, driMax;
+			float pct;
+			int destroyed, tearOff, takeDmg, deployed;
+		};
+		static std::unordered_map<UObject*, BeaconSnap> s_beaconSnaps;
+		BeaconSnap cur;
+		cur.hp        = b->r_nHealth;
+		cur.driCur    = dri ? dri->r_nHealthCurrent : -1;
+		cur.driMax    = dri ? dri->r_nHealthMaximum : -1;
+		cur.pct       = dri ? dri->r_fDeployMaxHealthPCT : -99.0f;
+		cur.destroyed = (int)b->m_bInDestroyedState;
+		cur.tearOff   = (int)b->bTearOff;
+		cur.takeDmg   = (int)b->r_bTakeDamage;
+		cur.deployed  = (int)b->m_bIsDeployed;
+		auto it = s_beaconSnaps.find(Object);
+		const bool changed = (it == s_beaconSnaps.end())
+			|| it->second.hp != cur.hp || it->second.driCur != cur.driCur
+			|| it->second.driMax != cur.driMax || it->second.pct != cur.pct
+			|| it->second.destroyed != cur.destroyed || it->second.tearOff != cur.tearOff
+			|| it->second.takeDmg != cur.takeDmg || it->second.deployed != cur.deployed;
+		if (changed) {
+			Logger::Log("beacon",
+				"WATCH beacon=0x%p uid=%d state=%s hp=%d driCur=%d driMax=%d pct=%.4f "
+				"deployPct=%.3f dmgDuringDeploy=%.1f destroyed=%d tearOff=%d takeDmg=%d deployed=%d\n",
+				b, dri ? dri->r_nUniqueDeployableId : -1,
+				b->GetStateName().GetName() ? b->GetStateName().GetName() : "<null>",
+				cur.hp, cur.driCur, cur.driMax, cur.pct,
+				b->m_fCurrentDeployPercentage, b->m_fDamagedDuringDeploy,
+				cur.destroyed, cur.tearOff, cur.takeDmg, cur.deployed);
+			s_beaconSnaps[Object] = cur;
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
 		break;
 	}
 
