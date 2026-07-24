@@ -32,6 +32,8 @@
 class ATgGame;
 class ATgMissionObjective_Proximity;
 class ATgBotFactory;
+class ATgPawn;
+class ATgAIController;
 
 namespace SuperAgent {
 
@@ -92,6 +94,14 @@ void AuthorMission();
 // IsActive(). A source that's also the target is read first, so it can include
 // the original groups. Sources must be raw DB tables, not other composites.
 const std::map<int, std::vector<int>>& SpawnTableComposites();
+
+// Bot ids whose deaths skip the client-side ragdoll: their pawns die with
+// r_eDeathReason = DR_DESPAWN, which routes the client's PlayDyingEffects to
+// the 'Despawned' FX group + an immediate mesh hide instead of the
+// 'PawnDied' FX + a ragdolled corpse. Perf knob for the huge ambush/alarm
+// waves — many simultaneous ragdolls tank client FPS. Authored in
+// SuperAgentMission.cpp; queried on every bot death when IsActive().
+const std::vector<int>& ExplodeOnDeathBotIds();
 
 // ---------------------------------------------------------------------------
 // Helpers callable from inside hook bodies.
@@ -159,9 +169,9 @@ struct UnleashOpts {
 	float accuracyLossMax     = 0.0f;
 	// Re-roll a RANDOM living player as the bot's target every N seconds —
 	// the "spinning at people across the room for no reason" tell. 0 = off.
-	// Starts only once the bot is INSIDE the boss room (armed at the doorway
-	// handoff), never during the march: handing the behavior a combat target
-	// early stalls the patrol drive that walks it in.
+	// Starts only once the bot has ARRIVED at the capture objective, never
+	// during the march: handing the behavior a combat target early stalls the
+	// patrol drive that walks it in.
 	float targetSwitchSecs = 0.0f;
 	// Movement tells: bunnyhop (JumpZ / AirControl multipliers) and low
 	// friction so direction changes slide (strafe-jank).
@@ -238,6 +248,14 @@ struct UnleashOpts {
 	// is attached to the bot and tracks it. If the cue can't be resolved or
 	// loaded, it silently falls back to the plain path rather than going quiet.
 	float voPitch = 0.0f;
+	// Voice transplant: bark in ANOTHER bot's voice. voCueIds slots resolve
+	// against this donor bot's body-mesh audio group (e.g. 1321 = Elite Helot,
+	// body asm 2177, group 99) instead of the pawn's own. Requires voPitch > 0
+	// — only the Kismet_ClientPlaySound path carries an explicit cue; the
+	// plain replicated path resolves CLIENT-side from the pawn's built mesh
+	// and cannot be redirected (its fallback barks stay in the pawn's own
+	// voice, or silence if its mesh has no audio group). 0 = own voice.
+	int voFromBotId = 0;
 
 	// Equipment overrides — swap a bot's gear per slot. Empty = keep its DB
 	// loadout. See DeviceSwap above. e.g. give an Elite Helot (primary = device
@@ -281,7 +299,8 @@ namespace Adds {
 	// non-pet) factory whose spawn nav point is nearest a boss-room entrance,
 	// where "entrance" = a one-way ATgModifyPawnPropertiesVolume facing the
 	// boss objective (cached at Init) — and march the spawns into the boss
-	// room (patrol drive to a baked in-room nav + two-leg trigger march).
+	// room (patrol drive to a baked in-room nav + trigger march straight at
+	// the capture objective; doors are passable both ways).
 	// For "a big enemy walks in menacingly" beats. `opts` optionally rescales
 	// / renames the spawns — see UnleashOpts above. Set opts.spawnDelay > 0 to
 	// DRIP the wave in one bot at a time instead of all at once (see UnleashOpts).
@@ -403,6 +422,21 @@ bool IsActive();
 // Human player death observation (called from the TgPawn::TrackDeath hook) —
 // drives the escape-phase ambush death tax. No-op outside the escape phase.
 void NotifyHumanDeath();
+
+// Bot death observation (called from the TgPawn::TrackDeath hook, i.e. from
+// inside TgPawn.Died before PlayDying replicates). Stamps r_eDeathReason on
+// ExplodeOnDeathBotIds() bots — see the comment on that function.
+void NotifyBotDeath(ATgPawn* Pawn);
+
+// Movement override for the outside march (called from the ProcessEvent
+// intercept of TgAIController.SetWhatToDoNext). The behavior engine calls
+// SetWhatToDoNext on EVERY action selection, and SetMovement clears movement
+// for any dest code its switch doesn't list — which is why every one-shot
+// drive (trigger fields, patrol path, seeded aggro) left marchers standing.
+// Rewrites the event's two int params in place: a tracked marcher with no
+// combat target that hasn't reached A runs at A; it fights whatever it
+// aggroes on the way and resumes the run when the target drops.
+void OverrideMarchMovement(ATgAIController* aic, int* nMovementCode, int* nMoveDestination);
 
 // Author the mission, spawn A + B, cache spawn/blocker geometry, force the boss
 // to priority 1 and reorder the GRI list. Called once from TgGame::InitGameRepInfo.

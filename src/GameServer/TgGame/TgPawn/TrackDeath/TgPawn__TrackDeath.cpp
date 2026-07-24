@@ -46,6 +46,9 @@ void __fastcall TgPawn__TrackDeath::Call(ATgPawn* Pawn, void* edx) {
 	if (Pawn->Controller != nullptr
 	 && ObjectClassCache::ClassNameContains(Pawn->Controller, "PlayerController")) {
 		SuperAgent::NotifyHumanDeath();
+	} else {
+		// Bot death: ragdoll suppression for the explode-on-death roster.
+		SuperAgent::NotifyBotDeath(Pawn);
 	}
 
 	// Pending death — claimed by a KILL within 1s, else flushed as DEATH.

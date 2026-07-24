@@ -368,6 +368,24 @@ bool ApplyItemToBot(ATgPawn* Pawn, int itemId) {
 			itemId, ObjectClassCache::GetClassName(Pawn).c_str());
 		return false;
 	}
+	// Bots spawn with bValidCustomAssembly=false, and the client only builds
+	// from the assembly when it's true (TgPawn_Character.uc:369 GetBodyMeshId
+	// -> IsCustomCharacter, which returns exactly that bit) — otherwise the
+	// pawn keeps its r_nBodyMeshAsmId bot mesh and every assembly write is
+	// invisible. First cosmetic on a bot promotes it to a custom character:
+	// the class defaultproperties already hold a complete default body
+	// (suit 1752 / head 1605 / hair 1757 / male 853), which the item then
+	// overrides via ApplyOnly.
+	auto* charPawn = (ATgPawn_Character*)Pawn;
+	if (!charPawn->r_CustomCharacterAssembly.bValidCustomAssembly) {
+		charPawn->r_CustomCharacterAssembly.bValidCustomAssembly = 1;
+		auto* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+		if (PRI) PRI->r_CustomCharacterAssembly = charPawn->r_CustomCharacterAssembly;
+		Logger::Log("cosmetic-equip",
+			"ApplyItemToBot: pawn %d promoted to custom character "
+			"(bValidCustomAssembly=1; bot mesh %d no longer drives the visual)\n",
+			(int)Pawn->r_nPawnId, (int)Pawn->r_nBodyMeshAsmId);
+	}
 	return ApplyOnly(Pawn, /*slot=*/-1, itemId);
 }
 

@@ -192,29 +192,39 @@ std::vector<AmbushPoint> s_AmbushPoints;
 // boss-room ENTRANCE volume (one-way ATgModifyPawnPropertiesVolume facing the
 // boss — see CacheAddFactories). Driven only by Adds::UnleashOutside: its bots
 // spawn outside and march in toward A. s_EntranceVolume is the volume that won
-// the pairing — leg 1 of the march aims THERE, because pathfinding straight to
-// A can route a bot into the one-way EXIT, which blocks inward movement and
-// strands it. From the entrance doorway the inward path is the natural one.
+// the pairing — kept only as the SELECTION anchor; the march targets A
+// directly (the boss-room doors were made passable in both directions, so the
+// old two-leg spawn->entrance->A handoff is gone — its doorway-proximity flip
+// could strand a bot that stalled short of the radius or pathed in the other
+// side, leaving its trigger destination parked on the volume forever).
 ATgBotFactory* s_OutsideFactory = nullptr;
 ATgModifyPawnPropertiesVolume* s_EntranceVolume = nullptr;
 
-// Bots on leg 1 (spawn -> entrance) of the outside march, keyed by pawnId.
-// Pointers re-validated by r_nPawnId on use (recycled-slot guard, same pattern
-// as SpawnNextBot's escort drones). OnCaptureTick retargets each to A once it
-// is within kEntranceReachDist of the entrance volume, and REVERTS the seeded
-// quarry aggro there so normal behavior picks its own targets inside.
-// pendingSwitchSecs: targetSwitchSecs to arm at the doorway handoff (0 = none).
-// Target switching must NOT run during the march — SetTargetActor gives the
-// behavior a combat target, which is what appears to hold it out of the patrol
-// phase (the reason kSeedQuarryAggro is off). Switching only starts once the
-// bot is inside and the patrol drive has done its job.
+// Bots marching from the outside factory to A, keyed by pawnId. Pointers
+// re-validated by r_nPawnId on use (recycled-slot guard, same pattern as
+// SpawnNextBot's escort drones). OnCaptureTick re-asserts run pace while they
+// walk and drops each once it is within kMarchArriveDist of A — arming erratic
+// target switching there. pendingSwitchSecs: targetSwitchSecs to arm on
+// arrival (0 = none). Target switching must NOT run during the march —
+// SetTargetActor gives the behavior a combat target, which is what appears to
+// hold it out of the patrol phase (the reason kSeedQuarryAggro is off).
+// Switching only starts once the bot is at A and the patrol drive has done
+// its job.
 struct OutsideMarcher {
 	ATgPawn* pawn; ATgPawn* quarry; int quarryId; float pendingSwitchSecs;
 	float nextPaceReassert;   // patrol actions re-apply their own pace; re-force run
+	// Stall telemetry (march-stall investigation 2026-07-22): position sampled
+	// every kStallCheckSecs; a marcher that moved less than kStallMoveEpsilon
+	// since the last sample logs a behavior-state snapshot.
+	FVector lastPos; float nextStallCheck;
+	// One-shot log flag for OverrideMarchMovement (value-initialized false).
+	bool driveLogged;
 };
 constexpr float kPaceReassertSecs = 0.5f;
 std::map<int, OutsideMarcher> s_OutsideMarchers;
-constexpr float kEntranceReachDist = 600.0f;
+constexpr float kMarchArriveDist   = 600.0f;
+constexpr float kStallCheckSecs    = 3.0f;
+constexpr float kStallMoveEpsilon  = 100.0f;
 constexpr float kQuarryThreatSeed  = 1000.0f;
 
 // Aggro seeding (SetTargetActor + AddThreat on the human nearest A) did NOT
@@ -247,7 +257,7 @@ constexpr float kMarchDripGrace = 3.0f;
 struct PendingMarch {
 	ATgBotFactory*                        f;
 	std::vector<SuperAgent::UnleashGroup> groups;
-	AActor*                               leg1;
+	AActor*                               marchTarget;
 	ATgPawn*                  quarry;
 	std::set<int>             seen;
 	ATgPawn*                  leader;
@@ -271,6 +281,7 @@ struct Barker {
 	float nextBark;
 	int   sign;      // flips every bark so repnotify always re-fires
 	float pitch;     // 0 = plain replicated path; else Kismet_ClientPlaySound
+	int   voAsmId;   // 0 = own voice; else donor body asm for cue resolution
 };
 std::map<int, Barker> s_Barkers;
 
@@ -1233,10 +1244,14 @@ static void SwapBehavior(ATgAIController* aic, int donorBotId, ATgBotFactory* fa
 // point after the pawn exists, in any order relative to other staging.
 static void RegisterBarker(ATgPawn* pawn, const UnleashOpts& opts) {
 	if (opts.voMaxSecs <= 0.0f || opts.voCueIds.empty()) return;
+	// Voice transplant (voFromBotId): resolve the donor's body asm once here;
+	// only the pitched path can honor it (see UnleashOpts::voFromBotId).
+	const int voAsm = (opts.voFromBotId > 0 && opts.voPitch > 0.0f)
+	                      ? BotVoice::LookupBodyAsmId(opts.voFromBotId) : 0;
 	Barker b = { pawn, opts.voCueIds, opts.voMinSecs, opts.voMaxSecs,
 	             s_Game->WorldInfo->TimeSeconds
 	                 + RandRange(opts.voMinSecs, opts.voMaxSecs), 1,
-	             opts.voPitch };
+	             opts.voPitch, voAsm };
 	s_Barkers[pawn->r_nPawnId] = b;
 }
 
@@ -1508,21 +1523,22 @@ static const UnleashOpts& ResolveGroupOpts(ATgPawn* pawn,
 // bot at a time as they trickle in).
 static const UnleashOpts& StageOutsideBot(ATgAIController* aic, ATgPawn* pawn,
 		ATgBotFactory* f, const std::vector<UnleashGroup>& groups,
-		AActor* leg1, ATgPawn* quarry) {
+		AActor* marchTarget, ATgPawn* quarry) {
 	const UnleashOpts& opts = ResolveGroupOpts(pawn, groups);
 	// Behavior swap FIRST: InitBehavior re-initializes controller behavior state,
 	// so every march field below has to be written after it.
 	if (opts.behaviorFromBotId > 0) SwapBehavior(aic, opts.behaviorFromBotId, f);
 	// Non-escorts march. Trigger fields are the ones SpawnNextBot auto-assigns
 	// when a taskforce's active objective is a TgMissionObjective_Bot; A is a
-	// proximity point with no objective pawn, so we set them by hand. Leg 1 aims
-	// at the ENTRANCE volume, not A — pathing straight to A can route a bot into
-	// the one-way exit. m_bInterrupt makes the behavior pick it up immediately.
+	// proximity point with no objective pawn, so we set them by hand. The march
+	// targets A directly — the boss-room doors are passable both ways now, so
+	// no intermediate doorway leg. m_bInterrupt makes the behavior pick it up
+	// immediately.
 	const bool escort = opts.followLeader;
 	if (!escort) {
-		aic->m_pTriggerTarget      = leg1;
-		aic->m_pTriggerDestination = leg1;
-		aic->m_vTriggerLocation    = leg1->Location;
+		aic->m_pTriggerTarget      = marchTarget;
+		aic->m_pTriggerDestination = marchTarget;
+		aic->m_vTriggerLocation    = marchTarget->Location;
 		aic->m_bInterrupt          = 1;
 	}
 	// SpawnBotById copies the factory's SafetyLocation onto the controller; a
@@ -1545,19 +1561,20 @@ static const UnleashOpts& StageOutsideBot(ATgAIController* aic, ATgPawn* pawn,
 		aic->AddThreat(quarry, kQuarryThreatSeed);
 	}
 	if (!escort) {
-		if (s_EntranceVolume) {
-			// Tracked march: target switching is armed at the doorway handoff.
-			OutsideMarcher m = { pawn, quarry, quarry ? quarry->r_nPawnId : -1,
-			                     opts.targetSwitchSecs,
-			                     s_Game->WorldInfo->TimeSeconds + kPaceReassertSecs };
-			s_OutsideMarchers[pawn->r_nPawnId] = m;
-		} else if (opts.targetSwitchSecs > 0.0f) {
-			// No entrance volume -> no march to protect, so arm it now.
-			const float now = s_Game->WorldInfo->TimeSeconds;
-			TargetSwitcher ts = { pawn, opts.targetSwitchSecs, now + opts.targetSwitchSecs };
-			s_TargetSwitchers[pawn->r_nPawnId] = ts;
-		}
+		// Tracked march: pace reassert while walking; target switching is armed
+		// on arrival at A (OnCaptureTick).
+		const float now = s_Game->WorldInfo->TimeSeconds;
+		OutsideMarcher m = { pawn, quarry, quarry ? quarry->r_nPawnId : -1,
+		                     opts.targetSwitchSecs,
+		                     now + kPaceReassertSecs,
+		                     pawn->Location, now + kStallCheckSecs };
+		s_OutsideMarchers[pawn->r_nPawnId] = m;
 	}
+	Log("outside march: staged pawn %d (bot %d) at (%.0f, %.0f, %.0f)%s%s\n",
+		pawn->r_nPawnId, pawn->r_nProfileId,
+		pawn->Location.X, pawn->Location.Y, pawn->Location.Z,
+		escort ? " ESCORT" : "",
+		opts.behaviorFromBotId > 0 ? " (behavior swapped)" : "");
 	// Equipment overrides LAST (EquipInHandDevice ends in UpdateClientDevices,
 	// the SpawnBotById frame trap).
 	ApplyDeviceSwaps(pawn, opts);
@@ -1595,11 +1612,12 @@ void UnleashOutside(int tableId, const std::vector<UnleashGroup>& groups) {
 		if (groups[gi].opts.spawnDelay > 0.0f) { spawnDelay = groups[gi].opts.spawnDelay; break; }
 	}
 
-	// Leg 1 aims at the ENTRANCE volume, not A: pathing straight to A can route a
-	// bot into the one-way exit, which blocks inward movement and strands it.
-	// OnCaptureTick flips each marcher to A at the doorway.
-	AActor* leg1 = s_EntranceVolume ? (AActor*)s_EntranceVolume : (AActor*)A.obj;
-	if (!leg1) { Log("Adds::UnleashOutside(%d): no entrance/A to march at\n", tableId); return; }
+	// March straight at A: the boss-room doors are passable both ways, so the
+	// old entrance-volume intermediate leg (and its doorway handoff, which could
+	// strand a bot that never crossed the proximity radius) is gone.
+	// AActor* marchTarget = s_EntranceVolume ? (AActor*)s_EntranceVolume : (AActor*)A.obj;
+	AActor* marchTarget = (AActor*)A.obj;
+	if (!marchTarget) { Log("Adds::UnleashOutside(%d): no A to march at\n", tableId); return; }
 
 	// Snapshot the factory's pre-existing bots so only THIS call's spawns get
 	// staged — a later unleash must not re-route survivors already inside.
@@ -1623,7 +1641,7 @@ void UnleashOutside(int tableId, const std::vector<UnleashGroup>& groups) {
 		// huge wave walks in one-by-one instead of swarming the room at once.
 		UnleashFactory(f, tableId, spawnDelay);
 		PendingMarch pm;
-		pm.f = f; pm.groups = groups; pm.leg1 = leg1; pm.quarry = quarry;
+		pm.f = f; pm.groups = groups; pm.marchTarget = marchTarget; pm.quarry = quarry;
 		pm.seen = preexisting; pm.leader = nullptr; pm.alerted = false;
 		pm.tableId = tableId; pm.lastActivity = s_Game->WorldInfo->TimeSeconds;
 		s_pendingMarches.push_back(pm);
@@ -1643,7 +1661,7 @@ void UnleashOutside(int tableId, const std::vector<UnleashGroup>& groups) {
 		if (aic->m_pFactory != f || !aic->Pawn) continue;
 		ATgPawn* pawn = (ATgPawn*)aic->Pawn;
 		if (preexisting.count(pawn->r_nPawnId)) continue;
-		const UnleashOpts& opts = StageOutsideBot(aic, pawn, f, groups, leg1, quarry);
+		const UnleashOpts& opts = StageOutsideBot(aic, pawn, f, groups, marchTarget, quarry);
 		if (opts.isLeader && !leader) leader = pawn;
 		if (opts.followLeader) escorts.push_back(aic);
 		pointed++;
@@ -1663,9 +1681,8 @@ void UnleashOutside(int tableId, const std::vector<UnleashGroup>& groups) {
 	}
 	if (pointed > 0) FireUnleashAlert(groups);
 
-	Log("Adds::UnleashOutside(%d): factory %p, %d bot(s) marching at %s, quarry=%d\n",
-		tableId, (void*)f, pointed, s_EntranceVolume ? "entrance (leg 1)" : "A",
-		quarry ? quarry->r_nPawnId : -1);
+	Log("Adds::UnleashOutside(%d): factory %p, %d bot(s) marching at A, quarry=%d\n",
+		tableId, (void*)f, pointed, quarry ? quarry->r_nPawnId : -1);
 }
 
 // Stage the bots of any in-progress DRIPPED UnleashOutside as they trickle in.
@@ -1688,7 +1705,7 @@ static void ProcessPendingMarches(float now) {
 			pm.seen.insert(pid);
 			pm.lastActivity = now;
 			const UnleashOpts& opts =
-				StageOutsideBot(aic, pawn, pm.f, pm.groups, pm.leg1, pm.quarry);
+				StageOutsideBot(aic, pawn, pm.f, pm.groups, pm.marchTarget, pm.quarry);
 			if (opts.isLeader && !pm.leader) { pm.leader = pawn; leaderJustAppeared = true; }
 			if (opts.followLeader) {
 				if (pm.leader) aic->m_pOwner = pm.leader;
@@ -1772,6 +1789,56 @@ void NotifyHumanDeath() {
 		s_escapeAlarmWarned = false;
 	Log("death tax: next escape alarm +%.0fs (accrued %.0f/%.0f)\n",
 		add, s_deathTaxAccrued, kDeathTaxCap);
+}
+
+// Ragdoll suppression for the ExplodeOnDeathBotIds() roster. Runs inside
+// TgPawn.Died (via TrackDeath), so the stamp lands in the same tick as
+// PlayDying's r_nReplicateDying++ and both replicate in one bunch; the client
+// then takes the r_eDeathReason==1 branch of PlayDyingEffects ('Despawned' FX
+// + instant mesh hide) instead of leaving a ragdolled corpse. Kill credit is
+// unaffected: nothing in the Died chain (GiveKillXp/SpawnLoot/ScoreKill) reads
+// r_eDeathReason, and s_nLootTableId is left alone.
+void NotifyBotDeath(ATgPawn* Pawn) {
+	if (!IsActive() || !Pawn || !Pawn->r_bIsBot) return;
+	const std::vector<int>& ids = ExplodeOnDeathBotIds();
+	if (std::find(ids.begin(), ids.end(), Pawn->r_nProfileId) == ids.end()) return;
+	Pawn->r_eDeathReason = 1;  // TG_DEATH_REASON DR_DESPAWN
+	Log("explode-on-death: bot %d (pawn %d) death reason -> despawn\n",
+		Pawn->r_nProfileId, Pawn->r_nPawnId);
+}
+
+// The behavior engine stomps movement on EVERY action selection: native code
+// fires event SetWhatToDoNext(movementCode, destCode) -> SetMovement(destCode),
+// whose switch DEFAULT is SetMovementTarget(none) — so the ubiquitous dest 196
+// (idle/combat rows) actively clears movement, and one-shot drives (trigger
+// fields, patrol path, seeded aggro) die on the next action change. The fix is
+// to rewrite the event's params at the choke point instead: movement 238 (run —
+// TgPawn.uc:8602 uses 238 for its run-to-spawn) + dest 289
+// (SetMovementLocation(m_vTriggerLocation)), with m_vTriggerLocation re-stamped
+// to A each call so SetMovementLocation re-paths there every cycle. A marcher
+// holding a combat target is left alone (a real fight suppresses the run);
+// the next targetless cycle resumes it.
+void OverrideMarchMovement(ATgAIController* aic, int* nMovementCode, int* nMoveDestination) {
+	if (!IsActive() || s_OutsideMarchers.empty()) return;
+	if (!aic || !nMovementCode || !nMoveDestination || !A.obj) return;
+	ATgPawn* pawn = (ATgPawn*)aic->Pawn;
+	if (!pawn || pawn->Health <= 0) return;
+	auto it = s_OutsideMarchers.find(pawn->r_nPawnId);
+	if (it == s_OutsideMarchers.end() || it->second.pawn != pawn) return;
+	if (aic->GetTargetActor() != nullptr) return;  // fighting — behavior owns movement
+	const float dx = pawn->Location.X - A.obj->Location.X;
+	const float dy = pawn->Location.Y - A.obj->Location.Y;
+	const float dz = pawn->Location.Z - A.obj->Location.Z;
+	if (dx * dx + dy * dy + dz * dz <= kMarchArriveDist * kMarchArriveDist)
+		return;  // at A — OnCaptureTick drops the entry and arms target switching
+	aic->m_vTriggerLocation = A.obj->Location;
+	*nMovementCode    = 238;  // run
+	*nMoveDestination = 289;  // SetMovement -> SetMovementLocation(m_vTriggerLocation)
+	if (!it->second.driveLogged) {
+		it->second.driveLogged = true;
+		Log("outside march: pawn %d (bot %d) movement drive engaged -> run at A\n",
+			pawn->r_nPawnId, pawn->r_nProfileId);
+	}
 }
 
 void Init(ATgGame* Game) {
@@ -1948,12 +2015,12 @@ void OnCaptureTick(ATgMissionObjective_Proximity* Obj) {
 		OnACaptured();
 	}
 
-	// Outside-march leg 2: a marcher that reached the entrance doorway gets
-	// retargeted from the entrance volume to A — from there the inward one-way
-	// path is the natural route, so it walks in instead of hugging the exit.
-	// Stale entries (died, despawned, slot recycled) are dropped by the
-	// r_nPawnId re-validation.
-	if (!s_OutsideMarchers.empty() && s_EntranceVolume && A.obj &&
+	// Outside-march arrival watcher: marchers target A from spawn (no doorway
+	// leg — doors are passable both ways). While walking, run pace is
+	// re-asserted; a marcher within kMarchArriveDist of A has arrived and is
+	// dropped, arming its erratic target switching there. Stale entries (died,
+	// despawned, slot recycled) are dropped by the r_nPawnId re-validation.
+	if (!s_OutsideMarchers.empty() && A.obj &&
 	    s_Game && s_Game->WorldInfo) {
 		const float now = s_Game->WorldInfo->TimeSeconds;
 		ATgPawn* fresh = nullptr;         // lazy, at most one PickQuarry per tick
@@ -1968,6 +2035,57 @@ void OnCaptureTick(ATgMissionObjective_Proximity* Obj) {
 				if (now >= it->second.nextPaceReassert) {
 					((ATgAIController*)p->Controller)->eventSetPace(356);
 					it->second.nextPaceReassert = now + kPaceReassertSecs;
+				}
+				// Stall telemetry: a marcher that hasn't moved since the last
+				// sample dumps its behavior state — which action/move/target
+				// codes it is stuck in and whether it holds a combat target.
+				if (now >= it->second.nextStallCheck) {
+					if (Dist2(p->Location, it->second.lastPos) <
+					    kStallMoveEpsilon * kStallMoveEpsilon) {
+						ATgAIController* sc = (ATgAIController*)p->Controller;
+						AActor* tgt = sc->GetTargetActor();
+						const float v = sqrtf(p->Velocity.X * p->Velocity.X +
+						                      p->Velocity.Y * p->Velocity.Y +
+						                      p->Velocity.Z * p->Velocity.Z);
+						Log("outside march STALL: pawn %d (bot %d) at (%.0f, %.0f, %.0f) "
+							"distA=%.0f vel=%.0f phys=%d action=%d lastAction=%d "
+							"moveDest=%d move=%d targetCode=%d pace=%d "
+							"actionlessPause=%d delayAction=%d interrupt=%d "
+							"patrolNum=%d trigDest=%s target=%s\n",
+							it->first, p->r_nProfileId,
+							p->Location.X, p->Location.Y, p->Location.Z,
+							sqrtf(Dist2(p->Location, A.obj->Location)), v,
+							(int)p->Physics,
+							sc->m_nActionCode, sc->m_nLastActionCode,
+							sc->m_nMoveDestinationCode, sc->m_nMovementCode,
+							sc->m_nTargetCode, sc->m_nPaceCode,
+							(int)sc->m_bActionlessPause, (int)sc->m_bDelayAction,
+							(int)sc->m_bInterrupt,
+							sc->m_PatrolPath.Num(),
+							sc->m_pTriggerDestination ? "set" : "NULL",
+							tgt ? ObjectClassCache::GetClassName(tgt).c_str() : "none");
+						// Idle-stall recovery: mid-march aggro suppresses the
+						// patrol/trigger drive (proven by the aggro-seed
+						// experiments), and both drives are one-shot — after
+						// the target is lost the bot has nothing to resume, so
+						// re-arm the full drive. Gated on NO current target:
+						// a marcher actually fighting is left alone.
+						if (!tgt) {
+							sc->m_pTriggerTarget      = (AActor*)A.obj;
+							sc->m_pTriggerDestination = (AActor*)A.obj;
+							sc->m_vTriggerLocation    = A.obj->Location;
+							sc->m_bInterrupt          = 1;
+							if (s_BossRoomNav) {
+								sc->m_PatrolPath.Clear();
+								sc->m_PatrolPath.Add(s_BossRoomNav);
+								sc->m_bPatrolLoop = 0;
+							}
+							Log("outside march: pawn %d idle-stalled, no target — "
+								"re-driven at A\n", it->first);
+						}
+					}
+					it->second.lastPos = p->Location;
+					it->second.nextStallCheck = now + kStallCheckSecs;
 				}
 				// (kSeedQuarryAggro only) Quarry died / left mid-march -> the
 				// pursuit driver is gone; re-seed a fresh one.
@@ -1986,18 +2104,14 @@ void OnCaptureTick(ATgMissionObjective_Proximity* Obj) {
 							it->first, fresh->r_nPawnId);
 					}
 				}
-				if (Dist2(p->Location, s_EntranceVolume->Location) <
-				    kEntranceReachDist * kEntranceReachDist) {
+				if (Dist2(p->Location, A.obj->Location) <
+				    kMarchArriveDist * kMarchArriveDist) {
 					ATgAIController* aic = (ATgAIController*)p->Controller;
-					aic->m_pTriggerTarget      = (AActor*)A.obj;
-					aic->m_pTriggerDestination = (AActor*)A.obj;
-					aic->m_vTriggerLocation    = A.obj->Location;
-					aic->m_bInterrupt          = 1;
 					// (kSeedQuarryAggro only) Revert the seeded aggro now that
-					// it's through the door: subtract exactly our threat
-					// contribution and clear the forced target, so normal
-					// behavior picks its own. Re-read the entry — the quarry
-					// may have been re-seeded.
+					// it has arrived: subtract exactly our threat contribution
+					// and clear the forced target, so normal behavior picks its
+					// own. Re-read the entry — the quarry may have been
+					// re-seeded.
 					if (kSeedQuarryAggro) {
 						ATgPawn* rq = it->second.quarry;
 						if (rq && rq->r_nPawnId == it->second.quarryId) {
@@ -2005,7 +2119,7 @@ void OnCaptureTick(ATgMissionObjective_Proximity* Obj) {
 						}
 						aic->SetTargetActor(nullptr);
 					}
-					// Through the door — NOW arm erratic target switching. Doing
+					// Arrived at A — NOW arm erratic target switching. Doing
 					// it any earlier would hand the behavior a combat target
 					// mid-march and stall the patrol drive outside.
 					if (it->second.pendingSwitchSecs > 0.0f) {
@@ -2015,8 +2129,7 @@ void OnCaptureTick(ATgMissionObjective_Proximity* Obj) {
 						Log("outside march: pawn %d target-switching armed (%.1fs)\n",
 							it->first, it->second.pendingSwitchSecs);
 					}
-					Log("outside march: pawn %d at entrance, retargeted to A\n",
-						it->first);
+					Log("outside march: pawn %d arrived at A\n", it->first);
 					drop = true;
 				}
 			}
@@ -2083,7 +2196,8 @@ void OnCaptureTick(ATgMissionObjective_Proximity* Obj) {
 				// plain replicated bark instead of going silent.
 				bool played = false;
 				if (it->second.pitch > 0.0f) {
-					played = BotVoice::PlayPitched(p, cue, it->second.pitch);
+					played = BotVoice::PlayPitched(p, cue, it->second.pitch,
+					                               it->second.voAsmId);
 				}
 				if (!played) {
 					it->second.sign = -it->second.sign;

@@ -176,6 +176,7 @@ enum class DispatchTag : uint8_t {
 	SeqOpActivated,               // kismet op eventActivated — TgSeqAct_AlarmBots raises the global alarm
 	TgTriggerBeaconEntrance,      // Pre-call: record teammate beacon-teleport usage for match stats
 	SuperAgentCaptureGate,        // Super Agent mode: freeze proximity capture per the all-players / drain gate, then detect A's capture
+	SuperAgentMarchDrive,         // Super Agent mode: rewrite AI movement params so tracked outside marchers run at A
 	PayloadDeployableCrush,       // Payload (TgObjectiveAttachActor) Touch/RanInto/EncroachingOn — skip for morale Dome Shields
 	SensorProximitySweep,         // Post-call: remove TouchedPlayers beyond config radius (UC loop can't see pawns outside m_fProximityDistance)
 	DevCheatRpc,                  // Client-invocable dev/cheat server RPCs (Icarus/Zeus/TgSvrExec/...) — dropped unless PRI bAdmin
@@ -607,6 +608,11 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	// capture. Intercept Tick (which DOES route through ProcessEvent) rather than
 	// the inner CalculateNearByPlayers (an intra-UC call that does not).
 	if (strcmp(name, "Function TgGame.TgMissionObjective_Proximity.Tick") == 0) return DispatchTag::SuperAgentCaptureGate;
+	// Super Agent outside march: the behavior engine fires this event on every
+	// AI action selection; the handler rewrites its (movementCode, destCode)
+	// params for tracked outside marchers. Cached per-UFunction like the rest,
+	// so the hot path is one hash lookup.
+	if (strcmp(name, "Function TgGame.TgAIController.SetWhatToDoNext") == 0) return DispatchTag::SuperAgentMarchDrive;
 	// Escort/payload crush. The payload is a TgObjectiveAttachActor whose
 	// Touch / RanInto / EncroachingOn each do
 	// `if (TgDeployable(Other)) Other.DestroyIt()`. Skip all three for morale
@@ -2265,6 +2271,19 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			CallOriginal(Object, edx, Function, Params, Result);
 		}
 		SuperAgent::OnCaptureTick(Obj);
+		break;
+	}
+
+	// Super Agent outside march. SetWhatToDoNext(nMovementCode, nMoveDestination)
+	// — two ints at Params+0 / Params+4. The override rewrites them in place for
+	// tracked outside marchers (no-op for everything else), then the original
+	// runs with the (possibly) rewritten action.
+	case DispatchTag::SuperAgentMarchDrive: {
+		if (Params) {
+			SuperAgent::OverrideMarchMovement((ATgAIController*)Object,
+				(int*)Params, (int*)((char*)Params + 4));
+		}
+		CallOriginal(Object, edx, Function, Params, Result);
 		break;
 	}
 

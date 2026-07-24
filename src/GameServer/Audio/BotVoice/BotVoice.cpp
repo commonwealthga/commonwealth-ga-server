@@ -80,12 +80,37 @@ UObject* ResolveCue(int asmId, int cueId) {
 
 }  // namespace
 
-bool PlayPitched(ATgPawn* pawn, int cueId, float pitch) {
+int LookupBodyAsmId(int botId) {
+	static std::map<int, int> s_cache;
+	auto it = s_cache.find(botId);
+	if (it != s_cache.end()) return it->second;
+
+	int asmId = 0;
+	sqlite3* db = Database::GetConnection();
+	if (db) {
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+			"SELECT body_asm_id FROM asm_data_set_bots WHERE bot_id = ? LIMIT 1;",
+			-1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int(stmt, 1, botId);
+			if (sqlite3_step(stmt) == SQLITE_ROW) asmId = sqlite3_column_int(stmt, 0);
+			sqlite3_finalize(stmt);
+		}
+	}
+	if (asmId == 0)
+		Logger::Log("botvoice", "LookupBodyAsmId: no body asm for bot %d\n", botId);
+	s_cache[botId] = asmId;
+	return asmId;
+}
+
+bool PlayPitched(ATgPawn* pawn, int cueId, float pitch, int voiceAsmId) {
 	if (!pawn || cueId == 0) return false;
 	AWorldInfo* wi = pawn->WorldInfo;
 	if (!wi) return false;
 
-	UObject* cue = ResolveCue(pawn->r_nBodyMeshAsmId, cueId);
+	// voiceAsmId > 0 = voice transplant: resolve the slot against that body
+	// mesh's audio group instead of the pawn's own.
+	UObject* cue = ResolveCue(voiceAsmId > 0 ? voiceAsmId : pawn->r_nBodyMeshAsmId, cueId);
 	if (!cue) return false;
 
 	static UFunction* fn = nullptr;

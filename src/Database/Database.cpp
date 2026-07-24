@@ -10618,6 +10618,26 @@ void Database::Init() {
 			"Electrocutioner/Magma Lord @0.25\n");
 	}
 
+	if (version < 153) {
+		// v153: the Super Agent boss (table 10012 group 1) becomes Shock
+		// Trooper 1570 instead of Elite Helot 1321. 1570 is a
+		// TgPawn_Character-class bot, so the Agenderp can wear cosmetics
+		// (the Eternal Glory helmet) — the Elite Helot is TgPawn_AndroidMinion,
+		// which has no character assembly and can't be dressed. Its helot
+		// voice is kept via the UnleashOpts::voFromBotId transplant. Stats,
+		// name, gear, behavior all come from the mission's UnleashOpts, not
+		// the base bot (healthMult rebalanced in the mission file: 1570's base
+		// HP is 1000 vs the helot's 5000).
+		result = sqlite3_exec(db,
+			"UPDATE mod_data_set_bot_spawn_tables SET enemy_bot_id = 1570 "
+			"WHERE bot_spawn_table_id = 10012 AND spawn_group = 1 AND enemy_bot_id = 1321;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v153 (10012 boss -> 1570): %s\n", err); return; }
+
+		Logger::Log("db", "v153: mod spawn table 10012 group 1 -> Shock Trooper 1570 "
+			"(character-class Agenderp base)\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -10629,7 +10649,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 152", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 153", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

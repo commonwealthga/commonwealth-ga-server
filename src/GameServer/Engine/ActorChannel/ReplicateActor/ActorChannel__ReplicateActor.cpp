@@ -33,17 +33,20 @@ void __fastcall ActorChannel__ReplicateActor::Call(void* Channel, void* edx) {
 	AController* ownerCtrl = nullptr;
 	ATgPawn_Character* pawn = nullptr;
 	int wearerProfileId = 0;  // r_nProfileId of the wearer — picks the class-default body for "hide" swaps
+	bool wearerIsBot = false; // mission-dressed bots are exempt from the suit-pref swaps
 	if (actor) {
 		if (ObjectClassCache::ClassNameContains((UObject*)actor, "TgPawn_Character")) {
 			pawn = (ATgPawn_Character*)actor;
 			assembly = &pawn->r_CustomCharacterAssembly;
 			ownerCtrl = pawn->Controller;
 			wearerProfileId = pawn->r_nProfileId;
+			wearerIsBot = pawn->r_bIsBot != 0;
 		} else if (ObjectClassCache::ClassNameContains((UObject*)actor, "TgRepInfo_Player")) {
 			auto* pri = (ATgRepInfo_Player*)actor;
 			assembly = &pri->r_CustomCharacterAssembly;
 			ownerCtrl = (AController*)pri->Owner;  // PRI's Owner is its controller
 			wearerProfileId = pri->r_nProfileId;
+			wearerIsBot = pri->bBot != 0;  // SpawnBotById stamps bBot on bot PRIs
 		}
 	}
 	if (!assembly) {
@@ -91,15 +94,19 @@ void __fastcall ActorChannel__ReplicateActor::Call(void* Channel, void* edx) {
 	// Hide-all ("-toggleallsuits 0") outranks the broken-suit swap map, but
 	// never applies to the viewer's OWN pawn/PRI — nobody wants to look naked
 	// themselves (own broken suits still fall through to the swap branch).
-	// Cheap field/table checks first — the per-connection pref lookup only
-	// runs for actors actually wearing something.
-	if (!isOwner &&
-		BrokenSuitSwap::HasAnyCosmetic(*assembly) &&
-		BrokenSuitSwap::ViewerHidesAllSuits(conn)) {
-		suitSwapped = BrokenSuitSwap::HideAll(*assembly, wearerProfileId, savedSuit);
-	} else if (BrokenSuitSwap::HasMappedCosmetic(*assembly) &&
-		BrokenSuitSwap::ViewerHidesBrokenSuits(conn)) {
-		suitSwapped = BrokenSuitSwap::ApplyReplacements(*assembly, wearerProfileId, savedSuit);
+	// Mission-dressed BOTS (the Agenderp) are exempt from both prefs: their
+	// cosmetics are authored spectacle, always replicated as-is. Cheap
+	// field/table checks first — the per-connection pref lookup only runs for
+	// actors actually wearing something.
+	if (!wearerIsBot) {
+		if (!isOwner &&
+			BrokenSuitSwap::HasAnyCosmetic(*assembly) &&
+			BrokenSuitSwap::ViewerHidesAllSuits(conn)) {
+			suitSwapped = BrokenSuitSwap::HideAll(*assembly, wearerProfileId, savedSuit);
+		} else if (BrokenSuitSwap::HasMappedCosmetic(*assembly) &&
+			BrokenSuitSwap::ViewerHidesBrokenSuits(conn)) {
+			suitSwapped = BrokenSuitSwap::ApplyReplacements(*assembly, wearerProfileId, savedSuit);
+		}
 	}
 
 	CallOriginal(Channel, edx);

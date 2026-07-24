@@ -171,10 +171,16 @@ void SuperAgent::AuthorMission() {
 			// Adds::Alarm();
 		}},*/
 		{ 0.000001f, [] {
+			// The Agenderp base is Shock Trooper 1570 (v153: 10012 group 1) —
+			// a TgPawn_Character bot so it can WEAR the Eternal Glory helmet;
+			// the old Elite Helot base (TgPawn_AndroidMinion) had no character
+			// assembly. The helot VOICE stays via voFromBotId (cue slots
+			// resolve against helot body asm 2177 / audio group 99 on the
+			// pitched bark path).
 			UnleashOpts boss;
 			boss.damageMult = 0.8;
-			boss.healthMult = 50;
-			boss.speedMult = 3;
+			boss.healthMult = 150;   // was 30 on the helot: 1570 base HP 1000 vs 5000, same 150k total
+			boss.speedMult = 1.5;
 			boss.scale = 0.75;
 			boss.rotationRateYaw = 120000;
 			boss.accuracy = 1.0f;
@@ -186,6 +192,14 @@ void SuperAgent::AuthorMission() {
 			boss.voMinSecs = 2.5f;
 			boss.voMaxSecs = 6.0f;
 			boss.voPitch = 1.35f;
+			boss.voFromBotId = 1321;             // helot voice on the trooper body
+			// Suit 6780 (HoloSuit - Assault Heavy - Tier 3) + Eternal Glory
+			// flair 6994. Item ids from cosmetic-items.md — cosmetics.md's ID
+			// column is the row PK, not item_id (its "3136"/"3347" are really
+			// 6780/6994). The first cosmetic flips bValidCustomAssembly, so
+			// the client builds a player-style body from the assembly instead
+			// of the shock-trooper bot mesh.
+			boss.cosmeticItemIds = { 6780, 6994 };
 			boss.devices = { { 2, 2914 }, {3, 2498} }; // inferno + conc nade
 			boss.noCooldowns = true;
 			boss.infinitePower = true;
@@ -204,7 +218,7 @@ void SuperAgent::AuthorMission() {
 			medic.speedMult = 3;
 			medic.infinitePower = true;
 
-			Adds::UnleashOutside(10012, {{1321, boss}, {1571, medic}});
+			Adds::UnleashOutside(10012, {{1570, boss}, {1571, medic}});
 			// Adds::Alarm();
 		 }}
 	});
@@ -346,13 +360,13 @@ const std::map<int, std::vector<int>>& SuperAgent::SpawnTableComposites() {
 		// { 33, { 33, 102, 102, 33, 102, 102} }, // large group of responders
 
 		// live:
-		{ 34, { 34, 34, 100, 101, 104, 148 } },   // support enemies
-		{ 28, { 28, 28, 167, 157, 148} }, // normal spawns
+		{ 34, { 34, 100, 101, 104, 148 } },   // support enemies
+		{ 28, { 28, 167, 157, 148} }, // normal spawns
 		{ 29, { 29, 29, 212, 212, 72, 210} }, // first spawn
 		{ 102, { 33, 102, 102} }, // small group of responders
 		{ 33, { 33, 102, 102, 33, 102, 102} }, // large group of responders
 		{ 40, { 40, 40, 100, 101, 104, 148 } }, // support enemies
-		{ 58, { 58, 58, 167, 58, 157 } }, // normal spawns + guardian
+		{ 58, { 58, 58, 167, 157 } }, // normal spawns + guardian
 
 		// { 177, { 177, 177, 177, 177, 177, 177, 177, 177, 177, 177, 177, 177} }, // huge amount of ticks
 
@@ -360,4 +374,25 @@ const std::map<int, std::vector<int>>& SuperAgent::SpawnTableComposites() {
 		// { 193, { 193, 193, 193, 193, 193, 193, 193, 193 } }, // huge amount of guardians
 	};
 	return composites;
+}
+
+// ============================================================================
+//  EXPLODE-ON-DEATH BOTS (ragdoll suppression)
+// ============================================================================
+// Bots listed here die with r_eDeathReason = DR_DESPAWN: the client plays the
+// mesh's 'Despawned' FX group and hides the body immediately instead of
+// ragdolling a corpse. Perf knob — the ambush/alarm waves are mostly
+// human-like androids, and dozens of simultaneous ragdolls tank client FPS.
+// Roster: everything in raw spawn tables 33 + 102 (the responder waves)
+// except the elites, which stay on the normal ragdoll death.
+const std::vector<int>& SuperAgent::ExplodeOnDeathBotIds() {
+	static const std::vector<int> ids = {
+		1335,   // Alarm Responder (table 33)
+		1349,   // Alarm Responder (table 33)
+		1458,   // Sand Spider     (table 102) — mesh has no 'Despawned' FX, vanishes without a flash
+		1468,   // Colony Drone    (table 102)
+		1492,   // Colony Soldier  (table 102)
+		// excluded: 1320 Elite Assassin, 1321 Elite Helot
+	};
+	return ids;
 }
