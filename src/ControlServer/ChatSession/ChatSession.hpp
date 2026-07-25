@@ -36,6 +36,12 @@ public:
     static void SystemMessageToGuid(const std::string& session_guid,
                                     const std::string& text);
 
+    // Push a line onto the green Agency channel for every online member of
+    // `agency_id`. Used by TcpSession for the join/leave/kick notices; the
+    // membership row of the player being announced must already be written
+    // (join) or deleted (leave) so the audience matches the new roster.
+    static void AgencyMessage(int64_t agency_id, const std::string& text);
+
     // Send `text` as a chat line on `channel` from the player owning
     // `session_guid`, with the same recipient scoping an ordinary chat message
     // gets. Used by the PLAYER_COMMAND (0x019F) slash-command handler, which

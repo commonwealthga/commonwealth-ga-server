@@ -768,6 +768,25 @@ bool ChatSession::SendChannelMessageFrom(const std::string& session_guid,
     return false;
 }
 
+void ChatSession::AgencyMessage(int64_t agency_id, const std::string& text) {
+    if (agency_id == 0 || text.empty()) return;
+    const auto ids = Database::GetAgencyMemberUserIds(agency_id);
+    const std::unordered_set<int64_t> members(ids.begin(), ids.end());
+    auto frame = BuildChatFrame(kAgencyChannelId, text);
+    PruneExpiredSessions();
+    size_t delivered = 0;
+    for (auto& weak : g_chat_sessions) {
+        auto peer = weak.lock();
+        if (!peer) continue;
+        const std::string& guid = peer->get_session_guid();
+        if (guid.empty()) continue;
+        auto info = PlayerSessionStore::GetByGuid(guid);
+        if (info && members.count(info->user_id)) { peer->deliver(frame); delivered++; }
+    }
+    Logger::Log("chat", "[Chat] agency msg agency=%lld text='%s' delivered to %zu session(s)\n",
+        (long long)agency_id, text.c_str(), delivered);
+}
+
 void ChatSession::SystemMessageToGuid(const std::string& session_guid,
                                       const std::string& text) {
     if (session_guid.empty()) return;

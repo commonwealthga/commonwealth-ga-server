@@ -3385,6 +3385,8 @@ void TcpSession::handle_agency_disband()
 		Logger::Log("agency", "[TCP] AGENCY leave: user %lld leaving agency %lld\n",
 			(long long)user_id_, (long long)agency_id);
 		Database::RemoveAgencyMember(agency_id, selected_character_id_);
+		// Announced after the delete so the leaver isn't in the audience.
+		ChatSession::AgencyMessage(agency_id, player_name + " has left the agency.");
 		// Alliance tab needs the explicit reset too — it only refreshes while open.
 		send_agency_get_roster_response();
 		send_alliance_member_list_response();
@@ -3515,6 +3517,7 @@ void TcpSession::handle_agency_accept()
 	}
 	Logger::Log("agency", "[TCP] AGENCY_ACCEPT: user %lld joined agency %lld\n",
 		(long long)user_id_, (long long)agency_id);
+	ChatSession::AgencyMessage(agency_id, player_name + " has joined the agency.");
 	// Roster + alliance both: the agency I just joined may already be in an
 	// alliance, and the Alliance tab won't refresh on its own until opened.
 	send_agency_get_roster_response();
@@ -3761,7 +3764,9 @@ void TcpSession::handle_agency_kick(int64_t target_char)
 	}
 
 	const int64_t kicked_user = target->user_id;
+	const std::string kicked_name = target->player_name;
 	if (!Database::RemoveAgencyMember(my_agency, target_char)) return;
+	ChatSession::AgencyMessage(my_agency, kicked_name + " has left the agency.");
 	send_agency_get_roster_response();
 	// Push the reset to the kicked player too: their agency panel would clear on
 	// its own roster poll, but the Alliance tab only refreshes while that tab is
