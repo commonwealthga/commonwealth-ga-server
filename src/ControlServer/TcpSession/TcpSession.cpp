@@ -1661,6 +1661,10 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 		}
 		case GA_U::ADD_PLAYER_CHARACTER: {
 			Logger::Log("tcp", "[%s] Received: ADD_PLAYER_CHARACTER [0x%04X]\n", Logger::GetTime(), packet_type);
+			// Field set confirmed from a live capture: PROFILE_ID, HEAD_ASM_ID,
+			// HAIR_ASM_ID, GENDER_TYPE_VALUE_ID, DWORDS (morph blob), CALLER_ID.
+			// The client sends no SKIN/EYE_MATERIAL_PARAMETER_ID — skin tone is
+			// carried inside the morph blob, so those two columns stay 0.
 			PacketView pkt(data + 6, length - 6);
 			// uint32_t trainingMapGameId  = pkt.Read4B(GA_T::TRAINING_MAP_GAME_ID).value_or(0);  // unused: both paths now use initiate_player_register_and_go_play
 			pkt.Read4B(GA_T::TRAINING_MAP_GAME_ID);  // consume but ignore
@@ -4748,10 +4752,28 @@ void TcpSession::send_character_list_response()
 		}
 	}
 
+	// Head-morph poses, decoded from the (node index, weight) uint32 pairs the
+	// client sent at creation. TgUICharacterSelectScene.UpdateCustomModel feeds
+	// these to the preview model via PopulateCurrentMorphSettings — the skin
+	// tone rides along with them (the head menu's colour sliders are morph
+	// nodes: EHeadMorphGroups has HMG_Colors / HMG_HairColors), which is why
+	// the assembly's SkinToneParameterId alone can't carry it.
+	struct MorphEntry { uint32_t char_id; uint32_t node_index; uint32_t weight; };
+	std::vector<MorphEntry> morphs;
+	for (const auto& c : characters) {
+		const size_t pairs = c.morph_data.size() / 8;
+		for (size_t i = 0; i < pairs; ++i) {
+			uint32_t idx = 0, weight = 0;
+			std::memcpy(&idx,    c.morph_data.data() + i * 8,     4);
+			std::memcpy(&weight, c.morph_data.data() + i * 8 + 4, 4);
+			morphs.push_back({ static_cast<uint32_t>(c.id), idx, weight });
+		}
+	}
+
 	std::vector<uint8_t> response;
 
 	uint16_t packet_type = GA_U::GSC_CHARACTER_LIST;
-	uint16_t item_count = 3;
+	uint16_t item_count = 4;
 
 	append(response, packet_type & 0xFF, packet_type >> 8);
 	append(response, item_count & 0xFF, item_count >> 8);
@@ -4788,6 +4810,16 @@ void TcpSession::send_character_list_response()
 		Write4B(response, GA_T::CHARACTER_ID,           entry.char_id);
 		Write4B(response, GA_T::ITEM_ID,                static_cast<uint32_t>(entry.item_id));
 		Write4B(response, GA_T::EQUIPPED_SLOT_VALUE_ID, static_cast<uint32_t>(entry.slot_value_id));
+	}
+
+	append(response, GA_T::DATA_SET_CHAR_MORPH_SETTINGS & 0xFF, GA_T::DATA_SET_CHAR_MORPH_SETTINGS >> 8);
+	append(response, static_cast<uint8_t>(morphs.size() & 0xFF),
+	                 static_cast<uint8_t>(morphs.size() >> 8));
+	for (const auto& m : morphs) {
+		append(response, 0x03, 0x00);  // 3 fields: CHARACTER_ID, MORPH_NODE_INDEX, MORPH_NODE_WEIGHT
+		Write4B(response, GA_T::CHARACTER_ID,      m.char_id);
+		Write4B(response, GA_T::MORPH_NODE_INDEX,  m.node_index);
+		Write4B(response, GA_T::MORPH_NODE_WEIGHT, m.weight);
 	}
 
 	send_response(response);
