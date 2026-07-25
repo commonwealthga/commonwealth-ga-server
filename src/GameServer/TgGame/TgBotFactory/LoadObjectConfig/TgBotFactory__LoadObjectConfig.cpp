@@ -6,10 +6,12 @@
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <map>
+#include <random>
 #include <set>
 #include <vector>
 
@@ -244,11 +246,22 @@ void EnsureSpawnTablesLoaded() {
 		difficulty, cascade.size(), g_spawnTables.size());
 }
 
-// Seed once per process; rand() is fine for spawn randomisation.
-void EnsureRandSeeded() {
-	static bool seeded = false;
-	if (!seeded) { srand(static_cast<unsigned>(time(nullptr))); seeded = true; }
+// Private RNG for spawn rolls. Do NOT use CRT rand(): the DLL shares
+// msvcrt's rand state with the game binary, which can re-seed srand()
+// deterministically during map load — observed as the SAME boss rolled from
+// an 80/20 table on 7 consecutive Ultra-Max runs. mt19937 state is ours alone.
+std::mt19937& SpawnRng() {
+	static std::mt19937 gen(
+		static_cast<unsigned>(std::chrono::high_resolution_clock::now().time_since_epoch().count()));
+	return gen;
 }
+float SpawnRollFloat(float span) {
+	return std::uniform_real_distribution<float>(0.0f, span)(SpawnRng());
+}
+int SpawnRollInt(int lo, int hi) {  // inclusive
+	return std::uniform_int_distribution<int>(lo, hi)(SpawnRng());
+}
+void EnsureRandSeeded() {}  // superseded by SpawnRng; kept for call sites
 
 // Apply MapObjectConfig overrides for every config-shaped field declared on
 // ATgBotFactory (NOT the parent class — those are handled by
@@ -309,7 +322,7 @@ const SpawnTableEntry* RollGroupRow(const std::vector<SpawnTableEntry>& rows) {
 	if (total <= 0.0f) return nullptr;
 
 	const float span = total > 1.0f ? total : 1.0f;
-	float roll = (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * span;
+	float roll = SpawnRollFloat(span);
 	for (const auto& r : rows) {
 		if (roll < r.SpawnChance) return &r;
 		roll -= r.SpawnChance;
@@ -336,7 +349,7 @@ int TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(int nSpawnTableId
 	float total = 0.0f;
 	for (const auto& r : groupIt->second) total += r.SpawnChance;
 	if (total <= 0.0f) return 0;
-	float roll = (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * total;
+	float roll = SpawnRollFloat(total);
 	const SpawnTableEntry* picked = &groupIt->second.back();
 	for (const auto& r : groupIt->second) {
 		if (roll < r.SpawnChance) { picked = &r; break; }
@@ -387,7 +400,7 @@ std::vector<SpawnGroupPlan> TgBotFactory__LoadObjectConfig::RollSpawnPlan(int nS
 				// each entry re-rolls its bot at spawn (mixed brood).
 				const int lo = row->GroupMin > 0 ? row->GroupMin : row->GroupMax;
 				const int hi = row->GroupMax >= lo ? row->GroupMax : lo;
-				gp.EntryCount = lo + (hi > lo ? rand() % (hi - lo + 1) : 0);
+				gp.EntryCount = (hi > lo) ? SpawnRollInt(lo, hi) : lo;
 				gp.Detail.nMinCount = lo;
 				gp.Detail.nMaxCount = hi;
 			} else {

@@ -21,6 +21,7 @@
 #include "src/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.hpp"
 #include "src/GameServer/Engine/NetConnection/SendPackageMap/NetConnection__SendPackageMap.hpp"
 #include "src/GameServer/Engine/PackageMap/Compute/PackageMap__Compute.hpp"
+#include "src/GameServer/Engine/PackageMap/ObjectToIndex/PackageMap__ObjectToIndex.hpp"
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
 #include "src/GameServer/IpDrv/NetConnection/CleanupActor/NetConnection__CleanupActor.hpp"
 #include "src/GameServer/TgNetDrv/MarshalChannel/MarshalReceived/MarshalChannel__MarshalReceived.hpp"
@@ -410,6 +411,9 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	MarshalChannel__NotifyControlMessage::Install();
 	NetConnection__SendPackageMap::Install();
 	PackageMap__Compute::Install();
+	// TEMP Think-Tank Array.h:560 trap — logs any replicated object ref the
+	// client cannot resolve (see PackageMap__ObjectToIndex.hpp). Remove when solved.
+	PackageMap__ObjectToIndex::Install();
 	ActorChannel__ReceivedBunch__CanExecute::bLogEnabled = true;
 	ActorChannel__ReceivedBunch__CanExecute::Install();
 	Channel__ReceivedSequencedBunch::Install();

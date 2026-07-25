@@ -10638,6 +10638,26 @@ void Database::Init() {
 			"(character-class Agenderp base)\n");
 	}
 
+	if (version < 154) {
+		// v154: drop the two Boss Think-Tank avoidance overrides. They pointed
+		// the CPLab boss objectives' s_n_spawn_table_id at table 41 (no
+		// Think-Tank) while bot 1417 crashed every client at her shield phase
+		// (cooked-NetIndex sound refs past export count — see the
+		// PackageMap__ObjectToIndex guard, which fixed the crash). With the
+		// overrides gone the objectives use their map-baked spawn tables and
+		// the boss spawns as the devs intended.
+		result = sqlite3_exec(db,
+			"DELETE FROM map_object_config "
+			"WHERE column_name = 's_n_spawn_table_id' AND value = '41' "
+			"  AND ((map_object_id = 12424 AND map_name = '1P_CPLab02_P') "
+			"    OR (map_object_id = 12485 AND map_name = '1P_CPLab03'));",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v154 (drop ThinkTank avoidance overrides): %s\n", err); return; }
+
+		Logger::Log("db", "v154: removed CPLab02/CPLab03 boss spawn-table overrides — "
+			"Think-Tank (1417) back in natural rotation\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -10649,7 +10669,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 153", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 154", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

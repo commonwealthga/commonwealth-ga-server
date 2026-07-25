@@ -319,7 +319,10 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 			if (BotFactory->s_nTaskForce == 1 && GTeamsData.Attackers->r_CurrActiveObjective != nullptr) {
 				ATgMissionObjective* Obj = (ATgMissionObjective*)GTeamsData.Attackers->r_CurrActiveObjective;
 				std::string objclass = Obj->Class->GetFullName();
-				if (objclass == "Class TgGame.TgMissionObjective_Bot") {
+				// r_ObjectiveBot is null until StampObjective runs (and after the
+				// objective bot dies) — guard the Location deref.
+				if (objclass == "Class TgGame.TgMissionObjective_Bot"
+						&& ((ATgMissionObjective_Bot*)Obj)->r_ObjectiveBot != nullptr) {
 					ATgMissionObjective_Bot* BotObj = (ATgMissionObjective_Bot*)Obj;
 					AIController->m_pTriggerTarget = BotObj->r_ObjectiveBot;
 					AIController->m_pTriggerDestination = BotObj->r_ObjectiveBot;
@@ -329,7 +332,8 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 			} else if (BotFactory->s_nTaskForce == 2 && GTeamsData.Defenders->r_CurrActiveObjective != nullptr) {
 				ATgMissionObjective* Obj = (ATgMissionObjective*)GTeamsData.Defenders->r_CurrActiveObjective;
 				std::string objclass = Obj->Class->GetFullName();
-				if (objclass == "Class TgGame.TgMissionObjective_Bot") {
+				if (objclass == "Class TgGame.TgMissionObjective_Bot"
+						&& ((ATgMissionObjective_Bot*)Obj)->r_ObjectiveBot != nullptr) {
 					ATgMissionObjective_Bot* BotObj = (ATgMissionObjective_Bot*)Obj;
 					AIController->m_pTriggerTarget = BotObj->r_ObjectiveBot;
 					AIController->m_pTriggerDestination = BotObj->r_ObjectiveBot;

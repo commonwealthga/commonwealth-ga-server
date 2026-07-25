@@ -89,6 +89,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.cpp \
 			  $(SRC_DIR)/GameServer/Engine/NetConnection/SendPackageMap/NetConnection__SendPackageMap.cpp \
 			  $(SRC_DIR)/GameServer/Engine/PackageMap/Compute/PackageMap__Compute.cpp \
+			  $(SRC_DIR)/GameServer/Engine/PackageMap/ObjectToIndex/PackageMap__ObjectToIndex.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/CleanupActor/NetConnection__CleanupActor.cpp \
 			  $(SRC_DIR)/GameServer/TgNetDrv/MarshalChannel/MarshalReceived/MarshalChannel__MarshalReceived.cpp \
