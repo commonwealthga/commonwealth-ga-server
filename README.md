@@ -46,6 +46,7 @@ A built DLL is available for download [in the releases](https://github.com/commo
 
 ## Useful links
 
+- [Global Agenda on Steam](https://store.steampowered.com/app/17020/Global_Agenda_Free_Agent/) (unlisted)
 - [The Commonwealth Discord](https://discord.gg/CqACf4qArk)
 - [Dev streams](https://kick.com/zaxbactor)
 
