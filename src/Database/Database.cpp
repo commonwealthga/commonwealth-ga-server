@@ -10682,10 +10682,13 @@ std::string Database::GetAgencyName(int64_t character_id) {
 	if (character_id <= 0) return "";
 	sqlite3* db = GetConnection();
 	sqlite3_stmt* stmt = nullptr;
+	// Membership is per ACCOUNT; m.character_id is only a join-time snapshot,
+	// so resolve through the character's user_id, not the snapshot.
 	if (sqlite3_prepare_v2(db,
-			"SELECT ag.name FROM ga_agency_members m "
+			"SELECT ag.name FROM ga_characters c "
+			"JOIN ga_agency_members m ON m.user_id = c.user_id "
 			"JOIN ga_agencies ag ON ag.id = m.agency_id "
-			"WHERE m.character_id = ?",
+			"WHERE c.id = ?",
 			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
 		return "";
 	}

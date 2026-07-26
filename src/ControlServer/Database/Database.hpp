@@ -240,8 +240,9 @@ public:
     static bool SetAgencyMemberRank(int64_t agency_id, int64_t character_id,
                                     int rank_id);
 
-    // Drop a member from an agency (kick / leave). Keyed by character_id.
-    static bool RemoveAgencyMember(int64_t agency_id, int64_t character_id);
+    // Drop a member from an agency (kick / leave). Keyed by user_id (the
+    // table's PK) — the stored character_id is only a join-time snapshot.
+    static bool RemoveAgencyMember(int64_t agency_id, int64_t user_id);
 
     // ---- Alliances (groups of agencies) ------------------------------------
     struct AllianceMemberRow {
@@ -304,11 +305,17 @@ public:
     // by the caller; this only updates ga_agencies.leader_user_id.
     static bool SetAgencyLeader(int64_t agency_id, int64_t user_id);
 
-    // character_id -> map name, for the agency's members currently in a running
-    // instance. One query per roster poll; deliberately narrower than
+    // user_id -> {map name, class}, for the agency's members currently in a
+    // running instance. profile_id is the class of the character they are
+    // playing NOW (a character is one class), not the join-time snapshot.
+    // One query per roster poll; deliberately narrower than
     // InstanceRegistry::GetActiveSearchablePlayers (which joins users/players
     // for the name columns the roster already has).
-    static std::map<int64_t, std::string> GetOnlineAgencyMemberMaps(int64_t agency_id);
+    struct OnlineAgencyMemberRow {
+        std::string map_name;
+        uint32_t    profile_id = 0;
+    };
+    static std::map<int64_t, OnlineAgencyMemberRow> GetOnlineAgencyMembers(int64_t agency_id);
 
     // Every account in every agency of an alliance. Used to push alliance-state
     // changes to the players affected, so their panels don't need a relog.
@@ -321,9 +328,10 @@ public:
     // leader). Used to resolve ALLIANCE_INVITE (invite by leader name). 0 if none.
     static int64_t GetAgencyIdByLeaderName(const std::string& leader_name);
 
-    // character_id -> {agency name, alliance name} for every agency member.
-    // Whole table in one query — the Team window and player search need the two
-    // name columns for a list of characters at once.
+    // character_id -> {agency name, alliance name} for every character of
+    // every agency member account (membership is per account). Whole table in
+    // one query — the Team window and player search need the two name columns
+    // for a list of characters at once.
     struct AffiliationRow {
         std::string agency_name;
         std::string alliance_name;   // "" when the agency is in no alliance

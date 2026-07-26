@@ -3291,12 +3291,12 @@ int TcpSession::append_agency_payload(std::vector<uint8_t>& response)
 		WriteString(response, GA_T::NAME,             rk.rank_name);
 	}
 
-	// Online members (character_id -> map name) in ONE query scoped to this
-	// agency. The roster is polled every 2s per client, so this path stays at a
-	// fixed 5 queries regardless of member count: agency id, meta, ranks,
+	// Online members (user_id -> map + current class) in ONE query scoped to
+	// this agency. The roster is polled every 2s per client, so this path stays
+	// at a fixed 5 queries regardless of member count: agency id, meta, ranks,
 	// members (profile_id joined in), online map.
-	const std::map<int64_t, std::string> online =
-		Database::GetOnlineAgencyMemberMaps(agency_id);
+	const std::map<int64_t, Database::OnlineAgencyMemberRow> online =
+		Database::GetOnlineAgencyMembers(agency_id);
 
 	// DATA_SET_MEMBERS — the row parser (client FUN_113ccbe0) reads, in order:
 	// PLAYER_NAME 0x3C5, PLAYER_ID 0x3C3, RANK_ID 0x417, LEVEL 0x303,
@@ -3306,12 +3306,12 @@ int TcpSession::append_agency_payload(std::vector<uint8_t>& response)
 	append(response, GA_T::DATA_SET_MEMBERS & 0xFF, GA_T::DATA_SET_MEMBERS >> 8);
 	append(response, info->members.size() & 0xFF, (info->members.size() >> 8) & 0xFF);
 	for (const auto& m : info->members) {
-		auto it = online.find(m.character_id);
+		auto it = online.find(m.user_id);
 		const bool is_online = (it != online.end());
 
 		uint32_t map_msg_id = 0;
 		if (is_online) {
-			if (auto rec = MapGameInfo::LookupByName(it->second))
+			if (auto rec = MapGameInfo::LookupByName(it->second.map_name))
 				map_msg_id = rec->friendly_name_msg_id;
 		}
 		// A map with no friendly-name msg id would localize to "Unknown" too.
@@ -3328,7 +3328,11 @@ int TcpSession::append_agency_payload(std::vector<uint8_t>& response)
 		// Levels aren't tracked anywhere on this server — 50 everywhere, same
 		// constant GSC_CHARACTER_LIST and QUERY_PLAYERS use.
 		Write4B(response,     GA_T::LEVEL,           50);
-		Write4B(response,     GA_T::PROFILE_ID,      m.profile_id);
+		// Class column: the character being played right now when online;
+		// the join-time snapshot's class is only the offline fallback.
+		Write4B(response,     GA_T::PROFILE_ID,
+			is_online && it->second.profile_id != 0 ? it->second.profile_id
+			                                        : m.profile_id);
 		WriteString(response, GA_T::ACTIVE_FLAG,     is_online ? "y" : "n");
 		if (send_location) Write4B(response, GA_T::MAP_NAME_MSG_ID, map_msg_id);
 		WriteString(response, GA_T::PUBLIC_COMMENT,  m.public_comment);
@@ -3384,7 +3388,7 @@ void TcpSession::handle_agency_disband()
 	if (agency->leader_user_id != user_id_) {
 		Logger::Log("agency", "[TCP] AGENCY leave: user %lld leaving agency %lld\n",
 			(long long)user_id_, (long long)agency_id);
-		Database::RemoveAgencyMember(agency_id, selected_character_id_);
+		Database::RemoveAgencyMember(agency_id, user_id_);
 		// Announced after the delete so the leaver isn't in the audience.
 		ChatSession::AgencyMessage(agency_id, player_name + " has left the agency.");
 		// Alliance tab needs the explicit reset too — it only refreshes while open.
@@ -3638,8 +3642,10 @@ void TcpSession::handle_agency_set_note(const PacketView& pkt)
 	auto information = pkt.ReadString(GA_T::AGENCY_INFORMATION);
 	auto public_note = pkt.ReadString(GA_T::PUBLIC_COMMENT);
 	auto officer_note= pkt.ReadString(GA_T::OFFICER_COMMENT);
+	// Fallback to the caller's OWN member row: comments are keyed by the
+	// join-time snapshot character_id, not whichever character is being played.
 	const int64_t target_char = (int64_t)pkt.Read4B(GA_T::PLAYER_ID)
-		.value_or((uint32_t)selected_character_id_);
+		.value_or((uint32_t)me->character_id);
 
 	Logger::Log("agency", "[TCP] AGENCY_SET_NOTE user=%lld motd=%d info=%d pub=%d off=%d target=%lld\n",
 		(long long)user_id_, (int)motd.has_value(), (int)information.has_value(),
@@ -3765,7 +3771,7 @@ void TcpSession::handle_agency_kick(int64_t target_char)
 
 	const int64_t kicked_user = target->user_id;
 	const std::string kicked_name = target->player_name;
-	if (!Database::RemoveAgencyMember(my_agency, target_char)) return;
+	if (!Database::RemoveAgencyMember(my_agency, kicked_user)) return;
 	ChatSession::AgencyMessage(my_agency, kicked_name + " has left the agency.");
 	send_agency_get_roster_response();
 	// Push the reset to the kicked player too: their agency panel would clear on

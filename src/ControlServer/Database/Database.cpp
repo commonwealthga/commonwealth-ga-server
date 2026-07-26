@@ -3359,22 +3359,24 @@ bool Database::SetAgencyMemberRank(int64_t agency_id, int64_t character_id,
 	return ok;
 }
 
-bool Database::RemoveAgencyMember(int64_t agency_id, int64_t character_id) {
-	if (agency_id <= 0 || character_id <= 0) return false;
+bool Database::RemoveAgencyMember(int64_t agency_id, int64_t user_id) {
+	if (agency_id <= 0 || user_id <= 0) return false;
 	sqlite3* db = GetConnection();
 	sqlite3_stmt* stmt = nullptr;
+	// Keyed by user_id (the table's PK) — the stored character_id is only a
+	// join-time snapshot and may not match the character currently played.
 	if (sqlite3_prepare_v2(db,
-			"DELETE FROM ga_agency_members WHERE agency_id = ? AND character_id = ?",
+			"DELETE FROM ga_agency_members WHERE agency_id = ? AND user_id = ?",
 			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
 		return false;
 	}
 	sqlite3_bind_int64(stmt, 1, agency_id);
-	sqlite3_bind_int64(stmt, 2, character_id);
+	sqlite3_bind_int64(stmt, 2, user_id);
 	sqlite3_step(stmt);
 	sqlite3_finalize(stmt);
 	const bool ok = sqlite3_changes(db) > 0;
-	Logger::Log("agency", "[DB] RemoveAgencyMember agency=%lld char=%lld ok=%d\n",
-		(long long)agency_id, (long long)character_id, (int)ok);
+	Logger::Log("agency", "[DB] RemoveAgencyMember agency=%lld user=%lld ok=%d\n",
+		(long long)agency_id, (long long)user_id, (int)ok);
 	return ok;
 }
 
@@ -3695,15 +3697,20 @@ bool Database::ReplaceAgencyRanks(int64_t agency_id,
 	return ok;
 }
 
-std::map<int64_t, std::string> Database::GetOnlineAgencyMemberMaps(int64_t agency_id) {
-	std::map<int64_t, std::string> out;
+std::map<int64_t, Database::OnlineAgencyMemberRow>
+Database::GetOnlineAgencyMembers(int64_t agency_id) {
+	std::map<int64_t, OnlineAgencyMemberRow> out;
 	if (agency_id <= 0) return out;
 	sqlite3_stmt* stmt = nullptr;
+	// Join through ga_characters: m.character_id is only a join-time snapshot,
+	// so a member online on another character must still match. c.profile_id
+	// is the class of the character being played right now.
 	if (sqlite3_prepare_v2(GetConnection(),
-			"SELECT ip.character_id, i.map_name "
+			"SELECT c.user_id, i.map_name, c.profile_id "
 			"FROM ga_instance_players ip "
 			"JOIN ga_instances i ON i.instance_id = ip.instance_id AND i.state != 'STOPPED' "
-			"JOIN ga_agency_members m ON m.character_id = ip.character_id "
+			"JOIN ga_characters c ON c.id = ip.character_id "
+			"JOIN ga_agency_members m ON m.user_id = c.user_id "
 			"WHERE m.agency_id = ? AND ip.left_at IS NULL",
 			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
 		return out;
@@ -3711,7 +3718,10 @@ std::map<int64_t, std::string> Database::GetOnlineAgencyMemberMaps(int64_t agenc
 	sqlite3_bind_int64(stmt, 1, agency_id);
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		const unsigned char* mp = sqlite3_column_text(stmt, 1);
-		out[sqlite3_column_int64(stmt, 0)] = mp ? reinterpret_cast<const char*>(mp) : "";
+		OnlineAgencyMemberRow row;
+		row.map_name   = mp ? reinterpret_cast<const char*>(mp) : "";
+		row.profile_id = (uint32_t)sqlite3_column_int(stmt, 2);
+		out[sqlite3_column_int64(stmt, 0)] = std::move(row);
 	}
 	sqlite3_finalize(stmt);
 	return out;
@@ -3805,13 +3815,15 @@ std::map<int64_t, Database::AffiliationRow> Database::GetAffiliationsByCharacter
 	std::map<int64_t, AffiliationRow> out;
 	sqlite3* db = GetConnection();
 	sqlite3_stmt* stmt = nullptr;
+	// One row per character of every member account — membership is per
+	// account, so every character a member plays carries the affiliation.
 	if (sqlite3_prepare_v2(db,
-			"SELECT m.character_id, ag.name, COALESCE(al.name,'') "
+			"SELECT c.id, ag.name, COALESCE(al.name,'') "
 			"FROM ga_agency_members m "
+			"JOIN ga_characters c ON c.user_id = m.user_id "
 			"JOIN ga_agencies ag ON ag.id = m.agency_id "
 			"LEFT JOIN ga_alliance_members am ON am.agency_id = m.agency_id "
-			"LEFT JOIN ga_alliances al ON al.id = am.alliance_id "
-			"WHERE m.character_id > 0",
+			"LEFT JOIN ga_alliances al ON al.id = am.alliance_id",
 			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
 		return out;
 	}
