@@ -30,8 +30,8 @@ A built DLL is available for download [in the releases](https://github.com/commo
 - [x] get a public server up and running 24/7 - [join our discord to learn more](https://discord.gg/CqACf4qArk)
 - [x] implement server orchestration (matchmaking, home map etc.)
 - [x] registrations and auth
-- [ ] *(in progress)* implement important parts of TCP server and database (enable changing gear, skills, cosmetics etc.)
-- [ ] *(in progress)* implement chat
+- [x] implement important parts of TCP server and database (enable changing gear, skills, cosmetics etc.)
+- [x] implement chat
 - [ ] *(in progress)* make all devices work properly
 - [ ] *(in progress)* make all skills work properly
 - [x] implement merc
