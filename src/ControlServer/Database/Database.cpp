@@ -1831,6 +1831,7 @@ void Database::Init() {
 		"ALTER TABLE ga_users ADD COLUMN password_verifier BLOB;",
 		"ALTER TABLE ga_users ADD COLUMN registered_at INTEGER;",
 		"ALTER TABLE ga_users ADD COLUMN verified_for_pvp INTEGER NOT NULL DEFAULT 0;",
+		"ALTER TABLE ga_users ADD COLUMN admin_notes TEXT;",
 	};
 	for (const char* sql : kUserAuthColumnAlters) {
 		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
@@ -1966,6 +1967,25 @@ void Database::Init() {
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
 			Logger::Log("db", "Failed to create ga_ip_bans table: %s\n", err);
+			sqlite3_free(err);
+			err = nullptr;
+		}
+
+		// Geo/VPN lookup cache, keyed by IP. Written via the "store-ip-check"
+		// admin action; the dashboard reads it directly (read-only handle).
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_ip_checks ("
+			"  ip           TEXT PRIMARY KEY,"
+			"  country_code TEXT NOT NULL DEFAULT '',"
+			"  country      TEXT NOT NULL DEFAULT '',"
+			"  isp          TEXT NOT NULL DEFAULT '',"
+			"  proxy        INTEGER NOT NULL DEFAULT 0,"
+			"  hosting      INTEGER NOT NULL DEFAULT 0,"
+			"  checked_at   INTEGER NOT NULL"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_ip_checks table: %s\n", err);
 			sqlite3_free(err);
 			err = nullptr;
 		}
@@ -2916,6 +2936,53 @@ bool Database::ClearUserVerifier(int64_t user_id) {
 		return false;
 	}
 	sqlite3_bind_int64(stmt, 1, user_id);
+	const bool ok = sqlite3_step(stmt) == SQLITE_DONE;
+	sqlite3_finalize(stmt);
+	return ok;
+}
+
+bool Database::SetUserAdminNotes(int64_t user_id, const std::string& notes) {
+	if (user_id <= 0) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"UPDATE ga_users SET admin_notes = ? WHERE id = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[User] SetUserAdminNotes prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	if (notes.empty()) sqlite3_bind_null(stmt, 1);
+	else               sqlite3_bind_text(stmt, 1, notes.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int64(stmt, 2, user_id);
+	const bool ok = sqlite3_step(stmt) == SQLITE_DONE;
+	sqlite3_finalize(stmt);
+	return ok;
+}
+
+bool Database::UpsertIpCheck(const std::string& ip,
+                             const std::string& country_code,
+                             const std::string& country,
+                             const std::string& isp,
+                             bool proxy, bool hosting) {
+	if (ip.empty()) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"INSERT OR REPLACE INTO ga_ip_checks "
+		"(ip, country_code, country, isp, proxy, hosting, checked_at) "
+		"VALUES (?, ?, ?, ?, ?, ?, strftime('%s','now'))",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[User] UpsertIpCheck prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	sqlite3_bind_text(stmt, 1, ip.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 2, country_code.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 3, country.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 4, isp.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int(stmt, 5, proxy ? 1 : 0);
+	sqlite3_bind_int(stmt, 6, hosting ? 1 : 0);
 	const bool ok = sqlite3_step(stmt) == SQLITE_DONE;
 	sqlite3_finalize(stmt);
 	return ok;

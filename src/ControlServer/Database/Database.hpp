@@ -93,6 +93,19 @@ public:
     // registered_at is left untouched. Returns false if the update failed.
     static bool ClearUserVerifier(int64_t user_id);
 
+    // Operator free-text note on an account (ga_users.admin_notes). Used by
+    // the dashboard "set-user-note" admin action. Empty string clears.
+    static bool SetUserAdminNotes(int64_t user_id, const std::string& notes);
+
+    // Upsert one geo/VPN lookup result into ga_ip_checks (keyed by IP,
+    // checked_at = now). Used by the dashboard "store-ip-check" admin action;
+    // the dashboard reads the table directly.
+    static bool UpsertIpCheck(const std::string& ip,
+                              const std::string& country_code,
+                              const std::string& country,
+                              const std::string& isp,
+                              bool proxy, bool hosting);
+
     // ---- Friends list (chat server, F3 menu) -------------------------------
     struct FriendRow {
         int64_t     friend_user_id = 0;

@@ -993,6 +993,56 @@ int main(int argc, char* argv[]) {
             return true;
         }
 
+        if (subtype == "set-user-note") {
+            int64_t user_id = payload.value("user_id", (int64_t)0);
+            if (user_id == 0) {
+                const std::string username = payload.value("username", std::string());
+                if (!username.empty()) user_id = Database::FindUserIdByUsername(username);
+            }
+            if (user_id == 0) {
+                message = "set-user-note needs user_id or a known username";
+                return false;
+            }
+            const std::string note = payload.value("note", std::string());
+            if (!Database::SetUserAdminNotes(user_id, note)) {
+                message = "failed to update admin_notes";
+                return false;
+            }
+            Logger::Log("admin", "[admin] set-user-note user_id=%lld len=%zu\n",
+                (long long)user_id, note.size());
+            message = "admin_notes updated for user_id=" + std::to_string(user_id);
+            return true;
+        }
+
+        if (subtype == "store-ip-check") {
+            // Batch upsert of geo/VPN lookup results the dashboard fetched
+            // from the external service. The dashboard's DB handle is
+            // read-only, so persistence goes through here.
+            const auto checks = payload.value("checks", nlohmann::json::array());
+            if (!checks.is_array() || checks.empty()) {
+                message = "store-ip-check needs a non-empty checks array";
+                return false;
+            }
+            int stored = 0;
+            for (const auto& c : checks) {
+                if (!c.is_object()) continue;
+                const std::string ip = c.value("ip", std::string());
+                if (ip.empty()) continue;
+                if (Database::UpsertIpCheck(ip,
+                        c.value("country_code", std::string()),
+                        c.value("country", std::string()),
+                        c.value("isp", std::string()),
+                        c.value("proxy", false),
+                        c.value("hosting", false))) {
+                    ++stored;
+                }
+            }
+            Logger::Log("admin", "[admin] store-ip-check stored=%d of %d\n",
+                stored, (int)checks.size());
+            message = "stored " + std::to_string(stored) + " ip check(s)";
+            return stored > 0;
+        }
+
         if (subtype == "list-online") {
             // Snapshot of live TcpSessions for the dashboard "Online now" panel.
             // The admin-action wire format only carries {ok, message}, so we
