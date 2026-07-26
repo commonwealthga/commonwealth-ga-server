@@ -7,8 +7,10 @@
 
 #include "lib/nlohmann/json.hpp"
 
+#include "src/ControlServer/ChatSession/ChatSession.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/Logger.hpp"
+#include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 
@@ -330,6 +332,21 @@ void DispatchChangeTeam(ChangeTeamTarget target, const std::string& session_guid
     }
     const int64_t instance_id = lookup->first;
     const int     old_tf      = lookup->second;
+
+    // Manual -changeteam is disabled in matchmade Mercenary matches — players
+    // were using it to stack teams. Autobalance moves don't come through here
+    // (IpcServer calls DispatchTeamMove directly), so rebalancing still works.
+    if (auto inst = InstanceRegistry::GetInstanceById(instance_id); inst && inst->queue_id != 0) {
+        auto queue_cfg = MatchmakingService::GetQueueConfig(inst->queue_id);
+        if (queue_cfg && queue_cfg->name == "merc") {
+            Logger::Log("chat-command",
+                "[ChatCmd] guid=%s command=-changeteam outcome=denied details=merc_queue_match instance=%lld\n",
+                session_guid.c_str(), (long long)instance_id);
+            ChatSession::SystemMessageToGuid(session_guid,
+                "*** -changeteam is disabled in Mercenary matches ***");
+            return;
+        }
+    }
 
     int new_tf = old_tf;
     switch (target) {

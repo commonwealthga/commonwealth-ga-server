@@ -651,6 +651,7 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 				|| strcmp(fn, "ServerSetGroundspeed") == 0        // speed hack
 				|| strcmp(fn, "ServerSetGameSpeed") == 0          // global game-speed modifier
 				|| strcmp(fn, "serverdostun") == 0                // self stun/UNstun (escapes enemy stuns)
+				|| strcmp(fn, "ServerChangeTaskForce") == 0       // console team switch — only legit path is the -changeteam chat cmd
 				|| strcmp(fn, "TgSvrExec") == 0                   // arbitrary server console command
 				|| strcmp(fn, "ServerSetValue") == 0              // arbitrary object field write
 				|| strcmp(fn, "ServerGetValue") == 0
