@@ -272,6 +272,14 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
+    if (cmd_name == "-unspectate") {
+        // No args — leave the currently-spectated instance, return home.
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        if (rest.empty()) out.unspectate = true;
+        return out;
+    }
+
     // Other "-" text — pass through to broadcast as ordinary chat.
     return out;
 }

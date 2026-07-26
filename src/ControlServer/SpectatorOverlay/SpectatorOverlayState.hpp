@@ -33,6 +33,17 @@ public:
     // finished match doesn't linger in memory forever).
     static void ClearInstance(int64_t instance_id);
 
+    // Prune stale entries across EVERY instance, regardless of whether
+    // anyone's currently reading or writing. GetForInstance() only prunes
+    // the one instance being polled -- an instance a spectator visited and
+    // then left, with no one ever polling it again, would otherwise hold
+    // onto those entries for the rest of that instance's (possibly long)
+    // remaining lifetime, since ClearInstance() only fires on instance stop.
+    // Call this periodically (see main.cpp's existing 60s maintenance timer).
+    // Also erases any instance whose map is empty after pruning, so this
+    // doesn't leave empty husk entries behind for long-dead instance ids.
+    static void Sweep();
+
 private:
     static constexpr int64_t kStaleSeconds = 15;
 

@@ -78,6 +78,12 @@ private:
     // Replies privately to this session only via deliver().
     void HandleSpectateCommand(int64_t instance_id, ChatCommand::SpectateTeam team);
 
+    // -unspectate handling. No permission check needed here (unlike
+    // -spectate) — TcpSession::DeliverSpectateExit itself rejects any session
+    // that isn't currently spectating, which is the only gate that matters.
+    // Replies privately to this session only via deliver().
+    void HandleUnspectateCommand();
+
     // Single tear-down path. Idempotent via `closed_`. On entry, optionally
     // broadcasts a "<player> has left the chat" system message if the session
     // was handshaken, then clears the write queue, closes the socket, and

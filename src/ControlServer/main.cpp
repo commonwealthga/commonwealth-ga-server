@@ -9,6 +9,7 @@
 #include "src/ControlServer/ChatListener/ChatListener.hpp"
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/ControlServer/SpectatorOverlay/OverlayHttpServer.hpp"
+#include "src/ControlServer/SpectatorOverlay/SpectatorOverlayState.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
@@ -1095,6 +1096,14 @@ int main(int argc, char* argv[]) {
                 IpcServer::SendToInstance(ref.instance_id, close_msg.dump());
                 InstanceRegistry::MarkInstancePlayerLeft(ref.instance_id, ref.session_guid);
             }
+
+            // Same reasoning as the ghost-player reconciliation above, for
+            // the spectator overlay's transient state: an instance a
+            // spectator visited and then left (with nobody ever polling it
+            // again) would otherwise hold those entries until the instance
+            // itself stops, which for a still-running match could be a long
+            // time. Sweep() prunes stale entries everywhere unconditionally.
+            SpectatorOverlayState::Sweep();
 
             schedule_idle_check();
         });

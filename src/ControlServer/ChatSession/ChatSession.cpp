@@ -158,6 +158,7 @@ bool HasParsedCommandAction(const ChatCommand::ParseResult& parsed) {
         || parsed.spectate.has_value()
         || parsed.possess
         || parsed.unpossess
+        || parsed.unspectate
         || parsed.coords
         || parsed.fullheal
         || parsed.reload_queues;
@@ -390,6 +391,9 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         if (parsed.recognized && parsed.spectate) {
             HandleSpectateCommand(parsed.spectate->instance_id, parsed.spectate->team);
         }
+        if (parsed.recognized && parsed.unspectate) {
+            HandleUnspectateCommand();
+        }
         if (parsed.recognized && parsed.reload_queues) {
             Logger::Log("chat-command",
                 "[ChatCmd] -reload-queues player='%s' guid=%s outcome=activated details=MatchmakingService::ReloadQueues\n",
@@ -468,6 +472,16 @@ void ChatSession::HandleSpectateCommand(int64_t instance_id, ChatCommand::Specta
         "[ChatCmd] -spectate player='%s' guid=%s instance=%lld team_tf=%d outcome=%s details=%s\n",
         player_name_.c_str(), session_guid_.c_str(), (long long)instance_id,
         team_task_force, dispatched ? "dispatched" : "rejected", message.c_str());
+}
+
+void ChatSession::HandleUnspectateCommand() {
+    std::string message;
+    const bool dispatched = TcpSession::DeliverSpectateExit(session_guid_, message);
+    deliver(BuildChatFrame(kSystemChannelId, message));
+    Logger::Log("chat-command",
+        "[ChatCmd] -unspectate player='%s' guid=%s outcome=%s details=%s\n",
+        player_name_.c_str(), session_guid_.c_str(),
+        dispatched ? "dispatched" : "rejected", message.c_str());
 }
 
 void ChatSession::broadcast(const uint8_t* data, size_t length) {

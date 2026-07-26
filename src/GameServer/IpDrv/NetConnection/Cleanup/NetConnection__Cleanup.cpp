@@ -8,7 +8,9 @@
 #include "src/Shared/IpcProtocol.hpp"
 #include "lib/nlohmann/json.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
+#include "src/GameServer/Storage/ActiveSpectatorCount/ActiveSpectatorCount.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
+#include "src/GameServer/Stats/SpectatorOverlayFeed/SpectatorOverlayFeed.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 void __fastcall NetConnection__Cleanup::Call(UNetConnection* Connection) {
@@ -22,6 +24,7 @@ void __fastcall NetConnection__Cleanup::Call(UNetConnection* Connection) {
 	uint32_t remote_ip_be   = 0;
 	uint16_t remote_port_be = 0;
 	uint64_t register_generation = 0;
+	bool was_spectator = false;
 	{
 		auto it = GClientConnectionsData.find(ConnectionId);
 		if (it != GClientConnectionsData.end()) {
@@ -30,6 +33,7 @@ void __fastcall NetConnection__Cleanup::Call(UNetConnection* Connection) {
 			remote_ip_be    = it->second.RemoteAddr.sin_addr.s_addr;
 			remote_port_be  = it->second.RemoteAddr.sin_port;
 			register_generation = it->second.PlayerInfo.register_generation;
+			was_spectator   = it->second.PlayerInfo.is_spectator;
 		} else {
 			// Already cleaned up (caller-side erased by hand, or this is a
 			// second reap pass on a connection we've already torn down). Skip
@@ -85,6 +89,19 @@ void __fastcall NetConnection__Cleanup::Call(UNetConnection* Connection) {
 	// on the next inventory change.
 	if (pawn) {
 		GPawnSessions.erase((ATgPawn*)pawn);
+		// Same reasoning: drop this pawn's SpectatorOverlayFeed rate-limit
+		// entry now rather than leaving it to accumulate for the life of the
+		// process (see SpectatorOverlayFeed.cpp's g_lastPushMs comment).
+		SpectatorOverlayFeed::ForgetPawn((int)pawn->r_nPawnId);
+	}
+
+	// Matches the increment in the TgGamePostLogin ProcessEvent case. Clamped
+	// at 0 as defensive insurance -- an errant double-decrement should never
+	// be able to wedge the counter negative and permanently disable the
+	// (already-gated-off) SpectatorOverlayFeed check for the rest of this
+	// instance's lifetime.
+	if (was_spectator && GActiveSpectatorCount > 0) {
+		--GActiveSpectatorCount;
 	}
 
 	GClientConnectionsData.erase(ConnectionId);

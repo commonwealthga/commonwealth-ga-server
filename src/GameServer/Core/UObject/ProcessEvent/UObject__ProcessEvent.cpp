@@ -13,6 +13,7 @@
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+#include "src/GameServer/Storage/ActiveSpectatorCount/ActiveSpectatorCount.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 #include "src/Config/Config.hpp"
@@ -985,10 +986,33 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		//      hack needed.
 		if (Params) {
 			APlayerController* NewPlayer = *(APlayerController**)Params;
-			if (NewPlayer && NewPlayer->PlayerReplicationInfo && NewPlayer->Player) {
+			// Deliberately NOT requiring NewPlayer->Player here anymore (dropped
+			// from this condition) — see below.
+			if (NewPlayer && NewPlayer->PlayerReplicationInfo) {
 				ATgRepInfo_Player* repInfo = (ATgRepInfo_Player*)NewPlayer->PlayerReplicationInfo;
-				int32_t connectionIndex = (int32_t)((UNetConnection*)NewPlayer->Player);
-				bool isSpectator = GClientConnectionsData[connectionIndex].PlayerInfo.is_spectator;
+
+				// isSpectator/tf default to "normal player" (false/0) and only get
+				// resolved to something else when the connection is actually
+				// available. If NewPlayer->Player is ever null here (an edge case
+				// nobody has hit in practice, per review), the OLD code path
+				// skipped this whole block, silently leaving bOnlySpectator/etc
+				// set on what should be a normal player -- reintroducing the
+				// pre-spectator-mode bug (permanently stuck as spectator,
+				// ViewTarget=self). Defaulting to "not a spectator" instead means
+				// an unresolvable connection fails safe into the old, known-good
+				// unconditional-clear behavior rather than a silent regression.
+				bool isSpectator = false;
+				int tf = 0;
+				int32_t connectionIndex = 0;
+				if (NewPlayer->Player) {
+					connectionIndex = (int32_t)((UNetConnection*)NewPlayer->Player);
+					isSpectator = GClientConnectionsData[connectionIndex].PlayerInfo.is_spectator;
+					tf = GClientConnectionsData[connectionIndex].PlayerInfo.task_force;
+				} else {
+					Logger::Log("spawn",
+						"TgGame.PostLogin intercept: NewPlayer->Player is null -- "
+						"can't resolve connection, defaulting to non-spectator (fail-safe)\n");
+				}
 
 				// Whether a pawn is allowed to spawn is entirely decided by these
 				// three flags — leave them set for spectators (real or
@@ -1012,8 +1036,8 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 				// drives the client's own same-team HUD health-bar check) and never
 				// spawns a pawn; that's gated solely by whether bOnlySpectator got
 				// cleared above. Teamless spectators keep task_force=0 -> taskforce
-				// stays null -> r_TaskForce untouched.
-				int tf = GClientConnectionsData[connectionIndex].PlayerInfo.task_force;
+				// stays null -> r_TaskForce untouched. tf was already resolved
+				// above (0 if the connection couldn't be resolved either).
 				ATgRepInfo_TaskForce* taskforce = (tf == 1) ? GTeamsData.Attackers
 				                                  : (tf == 2 ? GTeamsData.Defenders : nullptr);
 				Logger::Log("spawn",
@@ -1026,10 +1050,15 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 				}
 
 				if (isSpectator) {
+					// Gates SpectatorOverlayFeed — see ActiveSpectatorCount.hpp.
+					// One increment per spectator connection; the matching
+					// decrement is in NetConnection__Cleanup.cpp.
+					++GActiveSpectatorCount;
 					Logger::Log("spawn",
 						"TgGame.PostLogin intercept: conn=%d spectator join (team_tf=%d) — leaving "
-						"bOnlySpectator/bIsSpectator/bOutOfLives set, pawn spawn stays skipped\n",
-						connectionIndex, tf);
+						"bOnlySpectator/bIsSpectator/bOutOfLives set, pawn spawn stays skipped, "
+						"activeSpectatorCount=%d\n",
+						connectionIndex, tf, GActiveSpectatorCount);
 				}
 			}
 		}

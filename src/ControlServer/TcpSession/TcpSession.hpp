@@ -83,6 +83,19 @@ public:
                                     int team_task_force,
                                     std::string& message);
 
+    // -unspectate: pull a spectating session out of its current instance and
+    // route it back to the home map. Rejects (returns false, message set) if
+    // the session isn't known or isn't currently spectating (is_spectating_
+    // false) — this is deliberately NOT a general "leave any instance"
+    // command; a real player already has -changeteam/GSC_CHANGE_INSTANCE for
+    // that, and reusing this path for them would skip the queue-continuation
+    // logic in route_from_mission_instance that a real player's mission-exit
+    // depends on. Returns true once the exit has been dispatched (async, same
+    // as DeliverSpectateJoin — the client is force-dropped from the instance
+    // via PLAYER_CLOSE and then routed home).
+    static bool DeliverSpectateExit(const std::string& session_guid,
+                                    std::string& message);
+
     // Admin dashboard move/team-change helper. Same-instance moves use the existing
     // in-instance change_team action; cross-instance moves reuse PLAYER_REGISTER +
     // GO_PLAY routing.
@@ -218,6 +231,13 @@ private:
     // Set when a READY home map instance is found for this player.
     int64_t assigned_instance_id_ = 0;
     int home_task_force_ = 1;
+
+    // True from a successful spectate-join PLAYER_REGISTER ACK (see
+    // initiate_player_register_for_spectate) until -unspectate or disconnect.
+    // Lets DeliverSpectateExit reject "-unspectate" from a session that was
+    // never spectating, and lets exit_spectate() know this is a spectator
+    // leaving (vs. a real player) so it never touches queue-continuation.
+    bool is_spectating_ = false;
 
     // Row id in ga_user_sessions for this connection. 0 until set by the
     // GSC_USER_LOGIN handler; backfilled with logout_at when the socket
@@ -538,6 +558,20 @@ private:
     // player simply stays where they were.
     void initiate_player_register_for_spectate(const struct InstanceInfo& target,
                                                int team_task_force);
+
+    // -unspectate implementation. Force-drops the NetConnection out of
+    // assigned_instance_id_ via PLAYER_CLOSE (same primitive
+    // handle_socket_disconnect uses for a real disconnect — NOT PLAYER_LEAVE,
+    // which crashes on a still-live connection) and then routes the session
+    // home via wait_for_home_map_then_register. Deliberately does not call
+    // route_from_mission_instance: that function's queue-continuation branch
+    // (end_mission_at/queue_id/GetContinueInQueue) is a property of the
+    // INSTANCE, not the connecting session, so a spectator watching a
+    // continue-in-queue-enabled match would otherwise get swept into the
+    // successor match as if they were a real queued player finishing a
+    // rotation. A spectator never queued for anything, so they always go
+    // straight home.
+    void exit_spectate();
 
     void send_get_loot_table_items_by_id_filtered_response();
 

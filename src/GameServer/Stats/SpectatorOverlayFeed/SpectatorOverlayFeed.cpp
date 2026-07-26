@@ -6,6 +6,7 @@
 
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/GameServer/Storage/ActiveSpectatorCount/ActiveSpectatorCount.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
@@ -18,7 +19,16 @@ namespace {
 // not matter next to everything else Actor::Tick already does per frame.
 constexpr DWORD kPushIntervalMs = 300;
 
-std::unordered_map<ATgPawn*, DWORD> g_lastPushMs;
+// Keyed by r_nPawnId, NOT by ATgPawn* — a pawn pointer gets freed and can be
+// reused by an unrelated LATER pawn allocation (dies+respawns, or a totally
+// different player's pawn landing at the same freed address). A pointer-keyed
+// map would let that new pawn inherit the old one's last-push timestamp,
+// wrongly rate-limiting it. r_nPawnId is assigned once per pawn instance via
+// TgGame.GetNextPawnId() and never reused within a map's lifetime, so it's
+// the stable identity every other per-pawn IPC-correlation map in this
+// codebase already keys on. Entries are erased via ForgetPawn() on
+// disconnect (NetConnection__Cleanup) rather than left to accumulate.
+std::unordered_map<int, DWORD> g_lastPushMs;
 
 // Same cast pattern as TgPawn__SetTaskForceNumber.cpp / ChangeTeam.cpp — the
 // engine PlayerReplicationInfo* on a TgPawn is always an ATgRepInfo_Player.
@@ -43,6 +53,15 @@ void CollectEffectIds(TArray<UTgEffectGroup*>& arr, nlohmann::json& out) {
 } // namespace
 
 void MaybePushSnapshot(AActor* actor) {
+	// Nobody is spectating this instance right now — skip everything below
+	// entirely rather than gathering/sending data nobody's reading. This is
+	// the actual gate: an int compare, cheaper than even the class-name
+	// check that used to run unconditionally for every actor every tick.
+	// Also means the always-on home map (which a spectator can never be
+	// routed to — enforced control-server-side) never pushes either, since
+	// its count never leaves 0.
+	if (GActiveSpectatorCount <= 0) return;
+
 	if (!actor) return;
 	// Cheap-bail before any of the more expensive work below. Substring match
 	// on the cached class name — SDK StaticClass()/IsA() is unreliable on
@@ -58,7 +77,7 @@ void MaybePushSnapshot(AActor* actor) {
 	}
 
 	const DWORD now = GetTickCount();
-	DWORD& last = g_lastPushMs[pawn];
+	DWORD& last = g_lastPushMs[(int)pawn->r_nPawnId];
 	if (now - last < kPushIntervalMs) return;
 	last = now;
 
@@ -84,6 +103,10 @@ void MaybePushSnapshot(AActor* actor) {
 	j["health_max"]   = pawn->HealthMax;
 	j["effect_ids"]   = effect_ids;
 	IpcClient::Send(j.dump());
+}
+
+void ForgetPawn(int pawnId) {
+	g_lastPushMs.erase(pawnId);
 }
 
 } // namespace SpectatorOverlayFeed

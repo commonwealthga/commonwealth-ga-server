@@ -10,6 +10,7 @@ SOURCE_FILES= \
 			  \
 			  $(SRC_DIR)/Database/Database.cpp \
 			  $(SRC_DIR)/GameServer/Storage/PawnSessions/PawnSessions.cpp \
+			  $(SRC_DIR)/GameServer/Storage/ActiveSpectatorCount/ActiveSpectatorCount.cpp \
 			  \
 			  $(SRC_DIR)/IpcClient/IpcClient.cpp \
 			  \

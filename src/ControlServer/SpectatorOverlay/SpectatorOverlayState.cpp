@@ -34,3 +34,24 @@ void SpectatorOverlayState::ClearInstance(int64_t instance_id) {
     std::lock_guard<std::mutex> lock(mutex_);
     state_.erase(instance_id);
 }
+
+void SpectatorOverlayState::Sweep() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    const int64_t now = (int64_t)std::time(nullptr);
+
+    for (auto instIt = state_.begin(); instIt != state_.end(); ) {
+        auto& byGuid = instIt->second;
+        for (auto guidIt = byGuid.begin(); guidIt != byGuid.end(); ) {
+            if (now - guidIt->second.updated_at > kStaleSeconds) {
+                guidIt = byGuid.erase(guidIt);
+            } else {
+                ++guidIt;
+            }
+        }
+        if (byGuid.empty()) {
+            instIt = state_.erase(instIt);
+        } else {
+            ++instIt;
+        }
+    }
+}

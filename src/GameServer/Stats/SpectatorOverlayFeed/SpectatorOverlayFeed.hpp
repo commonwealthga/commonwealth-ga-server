@@ -15,4 +15,9 @@ namespace SpectatorOverlayFeed {
 // happens a few times a second even though this is called every frame.
 void MaybePushSnapshot(AActor* actor);
 
+// Drop the per-pawn rate-limit entry for pawnId (ATgPawn::r_nPawnId). Call
+// this when a pawn is torn down (NetConnection__Cleanup) so the rate-limit
+// map doesn't grow by one entry per connection for the life of the process.
+void ForgetPawn(int pawnId);
+
 }  // namespace SpectatorOverlayFeed

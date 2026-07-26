@@ -1254,6 +1254,7 @@ void TcpSession::initiate_player_register_for_spectate(const InstanceInfo& targe
                 Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK (spectate) success for %s instance=%lld\n",
                     session_guid_.c_str(), (long long)target_instance_id);
                 assigned_instance_id_ = target_instance_id;
+                is_spectating_ = true;
                 auto fresh = InstanceRegistry::GetInstanceById(target_instance_id);
                 if (fresh && fresh->state == "READY") {
                     send_go_play_to_instance(*fresh, 0);
@@ -1261,6 +1262,7 @@ void TcpSession::initiate_player_register_for_spectate(const InstanceInfo& targe
                     Logger::Log("tcp", "[TcpSession] Spectate target instance %lld no longer READY (state=%s)\n",
                         (long long)target_instance_id, fresh ? fresh->state.c_str() : "<missing>");
                     assigned_instance_id_ = 0;
+                    is_spectating_ = false;
                 }
             } else {
                 Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK (spectate) failed for %s instance=%lld\n",
@@ -1287,6 +1289,56 @@ void TcpSession::initiate_player_register_for_spectate(const InstanceInfo& targe
     });
 }
 
+bool TcpSession::DeliverSpectateExit(const std::string& session_guid, std::string& message) {
+    std::shared_ptr<TcpSession> session;
+    {
+        std::lock_guard<std::mutex> lock(sessions_mutex_);
+        auto it = g_sessions_.find(session_guid);
+        if (it == g_sessions_.end()) {
+            message = "Your session was not found.";
+            return false;
+        }
+        session = it->second.lock();
+        if (!session) {
+            g_sessions_.erase(it);
+            message = "Your session was not found.";
+            return false;
+        }
+    }
+
+    if (!session->is_spectating_) {
+        message = "You're not currently spectating.";
+        return false;
+    }
+
+    Logger::Log("tcp", "[TcpSession] -unspectate: guid=%s leaving instance=%lld\n",
+        session_guid.c_str(), (long long)session->assigned_instance_id_);
+    session->exit_spectate();
+    message = "Leaving spectator mode, returning you to the home map...";
+    return true;
+}
+
+void TcpSession::exit_spectate() {
+    is_spectating_ = false;
+
+    // Same PLAYER_CLOSE primitive as handle_socket_disconnect -- state flip +
+    // engine reap of the NetConnection. NOT PLAYER_LEAVE: driving
+    // NetConnection__Cleanup on a still-live connection crashes.
+    if (assigned_instance_id_ != 0) {
+        nlohmann::json close_msg;
+        close_msg["type"]           = IpcProtocol::MSG_PLAYER_CLOSE;
+        close_msg["session_guid"]   = session_guid_;
+        close_msg["register_token"] = active_register_token_;
+        const bool ok = IpcServer::SendToInstance(assigned_instance_id_, close_msg.dump());
+        Logger::Log("tcp", "[TcpSession] -unspectate: PLAYER_CLOSE guid=%s instance=%lld send=%d\n",
+            session_guid_.c_str(), (long long)assigned_instance_id_, (int)ok);
+        assigned_instance_id_  = 0;
+        active_register_token_ = 0;
+    }
+
+    // Straight home -- no route_from_mission_instance, no queue-continuation.
+    wait_for_home_map_then_register(120);
+}
 
 void TcpSession::wait_for_home_map_then_register(int remaining_seconds) {
     if (remaining_seconds <= 0) {

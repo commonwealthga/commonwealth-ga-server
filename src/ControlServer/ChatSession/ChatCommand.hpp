@@ -75,8 +75,9 @@ struct SpectateArgs {
 struct ParseResult {
     // True if the message was a /-prefixed slash command attempt that we own
     // (currently: "-changeteam", "-spawnfriend", "-spawnenemy", "-possess",
-    // "-unpossess", "-topdown", "-reload-queues"). False for ordinary chat and
-    // for slash commands we don't recognize.
+    // "-unpossess", "-topdown", "-reload-queues", "-spectate",
+    // "-unspectate"). False for ordinary chat and for slash commands we
+    // don't recognize.
     bool recognized = false;
 
     // True if the message must NOT be re-broadcast as ordinary chat.
@@ -93,6 +94,12 @@ struct ParseResult {
     // No-arg toggles. Flag is set when recognized + parsed cleanly.
     bool possess   = false;
     bool unpossess = false;
+
+    // -unspectate — leave the instance currently being spectated and return
+    // to the home map. No args. Entirely control-server-side, same as
+    // -spectate — see ChatSession::HandleUnspectateCommand /
+    // TcpSession::DeliverSpectateExit.
+    bool unspectate = false;
 
     // -coords — report the player's current XYZ (map-prep tooling). No args.
     bool coords = false;
