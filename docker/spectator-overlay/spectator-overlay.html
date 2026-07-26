@@ -231,7 +231,6 @@
 <div id="layout-controls">
   <button id="edit-toggle">Edit Layout</button>
   <button id="reset-layout">Reset Layout</button>
-  <button id="demo-toggle"></button>
   <button id="resize-both" title="Drag left/right to resize both panels together">⇔ Resize Both</button>
 </div>
 
@@ -257,11 +256,6 @@ const OVERLAY_BASE_URL = "http://127.0.0.1:8090/overlay";
 const OVERLAY_TOKEN    = "retro";
 const INSTANCE_ID      = 20; // set to the live match's instance id (see -spectate list)
 const POLL_MS          = 300;
-
-// Set true to generate a fake 3v3 match locally instead of calling the
-// server — lets you rehearse layout/positioning without a live match.
-// Toggle it live with the "Demo Mode" button too.
-let DEMO_MODE = true;
 
 // ---------------------------------------------------------------------------
 // Where to find effect icon images. Purely local — only the numeric effect
@@ -290,84 +284,6 @@ const EFFECT_CATALOG = {
 };
 
 // ---------------------------------------------------------------------------
-// Demo mode — 3v3 sample match with the requested roster. Not real game
-// data; only exists to let you see the layout with something on screen.
-// Reuses the actual icon files already dropped in overlay/icons/ so demo
-// buffs look like real ones, just with placeholder id numbers (901+).
-// ---------------------------------------------------------------------------
-const DEMO_ROSTER = [
-  { name: "Zipe",            task_force: 1 },
-  { name: "Kelrior",         task_force: 1 },
-  { name: "Neophyte",        task_force: 1 },
-  { name: "Jeronyx",         task_force: 2 },
-  { name: "AngelDelaGuarda", task_force: 2 },
-  { name: "Zaxik",           task_force: 2 },
-];
-
-const DEMO_ICON_FILES = [
-  "ICON_STATUS_01_0_0.png", "ICON_STATUS_01_0_1.png", "ICON_STATUS_01_0_2.png", "ICON_STATUS_01_0_3.png",
-  "ICON_STATUS_01_1_0.png", "ICON_STATUS_01_1_1.png", "ICON_STATUS_01_1_2.png", "ICON_STATUS_01_1_3.png",
-  "ICON_STATUS_01_2_0.png", "ICON_STATUS_01_2_1.png", "ICON_STATUS_01_2_2.png", "ICON_STATUS_01_2_3.png",
-  "ICON_STATUS_01_3_0.png", "ICON_STATUS_01_3_1.png", "ICON_STATUS_01_3_2.png", "ICON_STATUS_01_3_3.png",
-  "ICON_STATUS_BUFF_SYMBOLS_01_0_0.png", "ICON_STATUS_BUFF_SYMBOLS_01_0_1.png",
-  "ICON_STATUS_BUFF_SYMBOLS_01_0_2.png", "ICON_STATUS_BUFF_SYMBOLS_01_0_3.png",
-  "ICON_STATUS_BUFF_SYMBOLS_01_1_0.png", "ICON_STATUS_BUFF_SYMBOLS_01_1_1.png",
-  "ICON_STATUS_BUFF_SYMBOLS_01_1_2.png", "ICON_STATUS_BUFF_SYMBOLS_01_1_3.png",
-  "ICON_STATUS_BUFF_SYMBOLS_01_2_0.png", "ICON_STATUS_BUFF_SYMBOLS_01_2_1.png",
-  "ICON_STATUS_BUFF_SYMBOLS_01_2_2.png", "ICON_STATUS_BUFF_SYMBOLS_01_2_3.png",
-  "ICON_STATUS_BUFF_SYMBOLS_01_3_0.png", "ICON_STATUS_BUFF_SYMBOLS_01_3_1.png",
-  "ICON_STATUS_DEBUFF_SYMBOLS_01_0_0.png", "ICON_STATUS_DEBUFF_SYMBOLS_01_0_1.png",
-  "ICON_STATUS_DEBUFF_SYMBOLS_01_0_2.png", "ICON_STATUS_DEBUFF_SYMBOLS_01_0_3.png",
-  "ICON_STATUS_DEBUFF_SYMBOLS_01_1_0.png", "ICON_STATUS_DEBUFF_SYMBOLS_01_1_1.png",
-  "ICON_STATUS_DEBUFF_SYMBOLS_01_1_2.png",
-];
-
-// Demo-only ids (901..901+N), well clear of any real effect_group_id range,
-// merged into the lookup table ONLY while DEMO_MODE is on (see applyDemoCatalog).
-const DEMO_EFFECT_CATALOG = {};
-DEMO_ICON_FILES.forEach((file, i) => {
-  DEMO_EFFECT_CATALOG[901 + i] = { name: file.replace(".png", ""), icon: file };
-});
-
-function activeCatalog() {
-  return DEMO_MODE ? DEMO_EFFECT_CATALOG : EFFECT_CATALOG;
-}
-
-// Per-player running state so demo health/buffs drift instead of jumping
-// around every poll.
-const demoState = new Map();
-
-function generateDemoSnapshot() {
-  const demoIds = Object.keys(DEMO_EFFECT_CATALOG).map(Number);
-  const players = DEMO_ROSTER.map((p, idx) => {
-    let st = demoState.get(p.name);
-    if (!st) {
-      st = { health: 1300, health_max: 1300, effect_ids: [] };
-      demoState.set(p.name, st);
-    }
-    st.health += (Math.random() - 0.55) * 45;
-    st.health = Math.max(0, Math.min(st.health_max, Math.round(st.health)));
-    if (Math.random() < 0.06) {
-      const count = Math.floor(Math.random() * 4); // 0-3 active buffs
-      const chosen = new Set();
-      while (chosen.size < count && chosen.size < demoIds.length) {
-        chosen.add(demoIds[Math.floor(Math.random() * demoIds.length)]);
-      }
-      st.effect_ids = Array.from(chosen);
-    }
-    return {
-      session_guid: "demo-" + idx,
-      player_name: p.name,
-      task_force: p.task_force,
-      health: st.health,
-      health_max: st.health_max,
-      effect_ids: st.effect_ids,
-    };
-  });
-  return { instance_id: "DEMO", players };
-}
-
-// ---------------------------------------------------------------------------
 // Rendering
 // ---------------------------------------------------------------------------
 
@@ -378,7 +294,7 @@ function healthColor(pct) {
 }
 
 function effectTagElement(id) {
-  const entry = activeCatalog()[id];
+  const entry = EFFECT_CATALOG[id];
   const tag = document.createElement("div");
   tag.className = "effect-tag";
 
@@ -443,14 +359,6 @@ function renderTeam(containerId, players) {
 
 async function poll() {
   const status = document.getElementById("status");
-
-  if (DEMO_MODE) {
-    const data = generateDemoSnapshot();
-    renderTeam("cards-attackers", data.players.filter(p => p.task_force === 1));
-    renderTeam("cards-defenders", data.players.filter(p => p.task_force === 2));
-    status.textContent = "DEMO MODE — " + data.players.length + " sample players";
-    return;
-  }
 
   try {
     const url = OVERLAY_BASE_URL + "?instance_id=" + encodeURIComponent(INSTANCE_ID)
@@ -667,17 +575,6 @@ document.getElementById("edit-toggle").addEventListener("click", (e) => {
   }
 });
 document.getElementById("reset-layout").addEventListener("click", resetLayout);
-
-const demoBtn = document.getElementById("demo-toggle");
-function refreshDemoButton() {
-  demoBtn.textContent = DEMO_MODE ? "Demo Mode: ON" : "Demo Mode: OFF";
-  demoBtn.classList.toggle("active", DEMO_MODE);
-}
-demoBtn.addEventListener("click", () => {
-  DEMO_MODE = !DEMO_MODE;
-  refreshDemoButton();
-});
-refreshDemoButton();
 
 ["panel-attackers", "panel-defenders"].forEach(id => {
   const panel = document.getElementById(id);
