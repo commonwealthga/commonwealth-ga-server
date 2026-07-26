@@ -3276,8 +3276,13 @@ int TcpSession::append_agency_payload(std::vector<uint8_t>& response)
 	WriteString(response, GA_T::RECRUITING_SUB_ONLY_FLAG, info->sub_only ? "y" : "n");
 	Write4B(response,     GA_T::AGENCY_ID,                (uint32_t)info->id);
 	// PLAYER_ID at top level = the local player's member id (→ m_nLocalPlayerId,
-	// drives LocalPlayerIsLeader). Must match this member's PLAYER_ID row below.
-	Write4B(response,     GA_T::PLAYER_ID,                (uint32_t)selected_character_id_);
+	// drives LocalPlayerIsLeader). Must match this member's PLAYER_ID row below,
+	// which carries the join-time snapshot character_id — so send the caller's
+	// member-row id, NOT the character currently played. A mismatch leaves the
+	// client unable to resolve the local member row (selection/permissions dead).
+	const auto* self_row = agency_member_by_user(*info, user_id_);
+	Write4B(response,     GA_T::PLAYER_ID,
+		(uint32_t)(self_row ? self_row->character_id : selected_character_id_));
 	Write4B(response,     GA_T::COUNT,                    (uint32_t)info->members.size());
 
 	// DATA_SET_RANKS — rows: RANK_ID, RANK_LEVEL, PERMISSION_FLAGS, NAME(0x370).
