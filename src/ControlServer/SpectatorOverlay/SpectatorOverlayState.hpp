@@ -17,7 +17,12 @@ public:
         int task_force = 0;   // 0 = unknown/none, 1 = attackers, 2 = defenders
         int health = 0;
         int health_max = 0;
+        // Whitelisted (OverlayIdCatalog::IsEffectId), deduped -- the only ids
+        // the HTML renders as a tile icon.
         std::vector<int> effect_ids;
+        // Whitelisted (OverlayIdCatalog::IsSkillId), deduped -- pushed through
+        // the same feed but intentionally not rendered on the player card.
+        std::vector<int> skill_ids;
         int64_t updated_at = 0;  // unix seconds — used to prune disconnected players
     };
 
@@ -43,6 +48,15 @@ public:
     // Also erases any instance whose map is empty after pruning, so this
     // doesn't leave empty husk entries behind for long-dead instance ids.
     static void Sweep();
+
+    // Instance ids that currently have at least one non-stale snapshot --
+    // i.e. instances an active spectator is actually watching right now, as
+    // opposed to every running match (InstanceRegistry has that list, but it
+    // includes matches nobody is broadcasting). Backs the overlay HTML's
+    // instance picker (see OverlayHttpServer's GET /overlay/instances) so a
+    // hosted page the operator can't edit still only ever offers instances
+    // worth selecting.
+    static std::vector<int64_t> ListActiveInstances();
 
 private:
     static constexpr int64_t kStaleSeconds = 15;

@@ -9,6 +9,7 @@
 #include "src/ControlServer/MatchmakingService/RuntimeStats.hpp"
 #include "src/ControlServer/MatchmakingService/RoleWeightedSplit.hpp"
 #include "src/ControlServer/MmrService/MmrService.hpp"
+#include "src/ControlServer/SpectatorOverlay/SkillTreeCatalog.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include <set>
 #include <map>
@@ -484,6 +485,7 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         if (character_id != 0) {
             PlayerSessionStore::SetSkillsForCharacter(
                 character_id, (int)session->item_profile_id_, skills);
+            SkillTreeCatalog::InvalidateCache(character_id);
         }
         // Echo current DB state so the UI's inbound 0x00A0 handler has
         // authoritative data whether this was a save or a request.
@@ -500,6 +502,7 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         if (character_id != 0) {
             PlayerSessionStore::ClearSkillsForCharacter(
                 character_id, (int)session->item_profile_id_);
+            SkillTreeCatalog::InvalidateCache(character_id);
         }
         // Echo the zeroed allocation to the client so the UI matches.
         session->send_player_skills_response();
@@ -608,6 +611,11 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         if (character_id != 0 && item_profile_id >= 1 && item_profile_id <= 5) {
             PlayerSessionStore::SetCurrentItemProfile(character_id, item_profile_id);
             session->item_profile_id_ = item_profile_id;
+            // The only way a build changes mid-match (no mid-match respec --
+            // see SkillTreeCatalog.hpp) -- drop the cached summary now so the
+            // overlay's next poll picks up the new profile's points instead
+            // of waiting out the cache's stale-backstop window.
+            SkillTreeCatalog::InvalidateCache(character_id);
 
             if (pawn_id != 0) {
                 // Clear-then-re-add so the client's m_InventoryMap entries get
@@ -2038,6 +2046,7 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 
 			PlayerSessionStore::SetSkillsForCharacter(
 				selected_character_id_, (int)item_profile_id_, skills);
+			SkillTreeCatalog::InvalidateCache(selected_character_id_);
 
 			// Echo back so the UI updates; also refreshes LAST_RESPEC_DATETIME client-side.
 			send_player_skills_response();

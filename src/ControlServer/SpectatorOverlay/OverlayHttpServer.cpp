@@ -11,6 +11,8 @@
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/SpectatorOverlay/SpectatorOverlayState.hpp"
+#include "src/ControlServer/SpectatorOverlay/SkillTreeCatalog.hpp"
+#include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 
 namespace {
 
@@ -79,7 +81,8 @@ private:
             query = target.substr(qpos + 1);
         }
 
-        if (path != "/overlay") {
+        if (path != "/overlay" && path != "/overlay/instances" &&
+            path != "/overlay/skilltree" && path != "/overlay/builds") {
             send_response(404, "Not Found", "{}");
             return;
         }
@@ -92,6 +95,21 @@ private:
                 send_response(403, "Forbidden", R"({"error":"invalid token"})");
                 return;
             }
+        }
+
+        if (path == "/overlay/instances") {
+            handle_instances_request();
+            return;
+        }
+
+        if (path == "/overlay/skilltree") {
+            handle_skilltree_request(params);
+            return;
+        }
+
+        if (path == "/overlay/builds") {
+            handle_builds_request(params);
+            return;
         }
 
         int64_t instance_id = 0;
@@ -113,8 +131,26 @@ private:
             p["health"]       = s.health;
             p["health_max"]   = s.health_max;
             p["effect_ids"]   = s.effect_ids;
+            p["skill_ids"]    = s.skill_ids;
             auto info = PlayerSessionStore::GetByGuid(s.session_guid);
-            p["player_name"]  = info ? info->player_name : "";
+            p["player_name"] = info ? info->player_name : "";
+            // The player's class -- distinct from effect_ids/skill_ids
+            // (UTgEffectGroup ids for buffs/skill-tree effects). Already
+            // tracked per session (SessionInfo::selected_profile_id, set
+            // from PLAYER_REGISTER's profile_id field) for unrelated
+            // reasons (loadout/spawn logic) -- reused here as-is for the
+            // class icon lookup, no new plumbing needed.
+            p["profile_id"] = info ? info->selected_profile_id : 0;
+            // "P/T1/T2" build notation is deliberately NOT computed here --
+            // this endpoint is polled every ~300ms (health bars), and a
+            // ga_character_skills read per player on every tick would mean
+            // 2 synchronous SQLite queries x N players every 300ms, all on
+            // the single ASIO thread this control server shares across
+            // every listener (chat, matchmaking, TCP sessions -- not just
+            // this HTTP server). See GET /overlay/builds, which is meant to
+            // be polled far less often and reads through
+            // SkillTreeCatalog::GetCachedBuildSummary instead of hitting
+            // the DB on every call.
             players.push_back(p);
         }
 
@@ -122,6 +158,117 @@ private:
         body["instance_id"] = instance_id;
         body["players"]     = players;
 
+        send_response(200, "OK", body.dump());
+    }
+
+    // GET /overlay/skilltree -- per-player list of invested skill_ids +
+    // points, for the dedicated skill-tree grid page (skill-tree-overlay.html).
+    // Shares the same instance roster as the main overlay (SpectatorOverlayState
+    // is already gated on an active spectator -- see ActiveSpectatorCount),
+    // just adds a live ga_character_skills read per player instead of the
+    // effect/health snapshot fields.
+    void handle_skilltree_request(const std::map<std::string, std::string>& params) {
+        int64_t instance_id = 0;
+        if (auto it = params.find("instance_id"); it != params.end()) {
+            instance_id = std::strtoll(it->second.c_str(), nullptr, 10);
+        }
+        if (instance_id == 0) {
+            send_response(400, "Bad Request", R"({"error":"missing instance_id"})");
+            return;
+        }
+
+        const auto snaps = SpectatorOverlayState::GetForInstance(instance_id);
+        nlohmann::json players = nlohmann::json::array();
+        for (const auto& s : snaps) {
+            auto info = PlayerSessionStore::GetByGuid(s.session_guid);
+            if (!info) continue;
+
+            nlohmann::json p;
+            p["session_guid"] = s.session_guid;
+            p["player_name"]  = info->player_name;
+            p["task_force"]   = s.task_force;
+            p["profile_id"]   = info->selected_profile_id;
+
+            const int item_profile_id =
+                PlayerSessionStore::GetCurrentItemProfile(info->selected_character_id);
+            nlohmann::json points = nlohmann::json::array();
+            for (const auto& row : PlayerSessionStore::GetSkillsForCharacter(
+                     info->selected_character_id, item_profile_id)) {
+                nlohmann::json r;
+                r["skill_id"] = row.skill_id;
+                r["points"]   = row.points;
+                points.push_back(r);
+            }
+            p["points"] = points;
+            players.push_back(p);
+        }
+
+        nlohmann::json body;
+        body["instance_id"] = instance_id;
+        body["players"]     = players;
+        send_response(200, "OK", body.dump());
+    }
+
+    // GET /overlay/builds -- "P/T1/T2" build notation per player, meant to
+    // be polled far less often than the main /overlay endpoint (health
+    // bars poll every ~300ms; builds don't change mid-match outside a
+    // loadout-profile swap -- see SkillTreeCatalog.hpp). Reads through
+    // SkillTreeCatalog::GetCachedBuildSummary rather than hitting
+    // ga_character_skills on every call.
+    void handle_builds_request(const std::map<std::string, std::string>& params) {
+        int64_t instance_id = 0;
+        if (auto it = params.find("instance_id"); it != params.end()) {
+            instance_id = std::strtoll(it->second.c_str(), nullptr, 10);
+        }
+        if (instance_id == 0) {
+            send_response(400, "Bad Request", R"({"error":"missing instance_id"})");
+            return;
+        }
+
+        const auto snaps = SpectatorOverlayState::GetForInstance(instance_id);
+        nlohmann::json players = nlohmann::json::array();
+        for (const auto& s : snaps) {
+            auto info = PlayerSessionStore::GetByGuid(s.session_guid);
+            if (!info) continue;
+
+            const auto summary = SkillTreeCatalog::GetCachedBuildSummary(
+                info->selected_character_id, info->selected_profile_id);
+
+            nlohmann::json p;
+            p["session_guid"] = s.session_guid;
+            p["balanced"]      = summary.balanced;
+            p["tree1"]         = summary.tree1;
+            p["tree2"]         = summary.tree2;
+            p["tree1_name"]    = summary.tree1_name;
+            p["tree2_name"]    = summary.tree2_name;
+            players.push_back(p);
+        }
+
+        nlohmann::json body;
+        body["instance_id"] = instance_id;
+        body["players"]     = players;
+        send_response(200, "OK", body.dump());
+    }
+
+    // GET /overlay/instances -- lists instance ids currently worth offering
+    // in the HTML's instance picker (see SpectatorOverlayState::
+    // ListActiveInstances for why this is "actively spectated", not "every
+    // running match" -- a hosted page the operator can't edit still needs
+    // this filtered server-side, not just documented as a convention).
+    void handle_instances_request() {
+        nlohmann::json instances = nlohmann::json::array();
+        for (int64_t id : SpectatorOverlayState::ListActiveInstances()) {
+            nlohmann::json entry;
+            entry["instance_id"] = id;
+            auto info = InstanceRegistry::GetInstanceById(id);
+            entry["map_name"]     = info ? info->map_name : "";
+            entry["game_mode"]    = info ? info->game_mode : "";
+            entry["player_count"] = (int)SpectatorOverlayState::GetForInstance(id).size();
+            instances.push_back(entry);
+        }
+
+        nlohmann::json body;
+        body["instances"] = instances;
         send_response(200, "OK", body.dump());
     }
 

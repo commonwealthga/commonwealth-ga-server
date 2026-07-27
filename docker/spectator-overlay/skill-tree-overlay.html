@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Skill Tree Overlay</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #05080a;
+    font-family: "Segoe UI", Arial, sans-serif;
+    overflow-x: hidden;
+    color: #dff5ee;
+  }
+
+  #overlay-settings {
+    position: fixed;
+    top: 6px;
+    left: 6px;
+    z-index: 9999;
+    display: flex;
+    gap: 6px;
+    font-family: monospace;
+  }
+  #overlay-settings select,
+  #overlay-settings input {
+    font-size: 11px;
+    padding: 4px 6px;
+    background: rgba(20,20,25,0.82);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 4px;
+  }
+  #overlay-settings input { width: 340px; }
+  #overlay-settings button {
+    font-size: 11px;
+    padding: 4px 10px;
+    background: rgba(20,20,25,0.82);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  #overlay-settings button:hover { border-color: #3fd9a4; }
+  #overlay-settings button.active { background: rgba(76,175,80,0.85); border-color: rgba(255,255,255,0.6); }
+
+  #status {
+    position: fixed;
+    bottom: 4px;
+    left: 8px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+    font-family: monospace;
+  }
+
+  /* Two overarching team widgets, attackers stacked on top of defenders --
+     side-by-side (with defenders mirrored) was still hard to scan even
+     compact, so this stacks them instead and drops the mirror. Each row is
+     independently sorted by CLASS_SORT_ORDER (see renderTeams) rather than
+     sharing a slot grid -- a real roster rarely has the same classes on
+     both teams, so reserving matching columns just produced empty
+     placeholder cards. */
+  #teams-root {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 52px 16px 16px;
+    box-sizing: border-box;
+  }
+
+  /* Team identity is now colour-only (no text label -- saves vertical
+     space and the colour alone is enough once you know the convention):
+     a border/outline round the whole row, same orange/blue pairing used
+     everywhere else in this tool suite (main overlay's team panels). */
+  .team-tree-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 10px;
+    border-radius: 10px;
+    border: 2px solid;
+  }
+  .team-tree-row.attackers { border-color: #ff8a5c; }
+  .team-tree-row.defenders { border-color: #5cc7ff; }
+
+  .player-tree-card {
+    background: rgba(12, 14, 20, 0.72);
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    overflow: hidden;
+    flex: 0 0 auto;
+  }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .class-icon-sm {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    object-fit: contain;
+  }
+  .card-header .name { color: #f0f0f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-header .build {
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: #9fd8c8;
+    white-space: nowrap;
+  }
+
+  /* transform:scale() only affects paint, not layout -- .tree-canvas keeps
+     its full pre-scale width/height for box-sizing purposes even though it
+     LOOKS shrunk, so .tree-canvas-wrap must be explicitly sized to the
+     POST-scale (visual) dimensions itself, or it reserves the full
+     unscaled footprint and every card balloons to a near-empty giant box
+     (exactly what happened before this was added). */
+  .tree-canvas-wrap {
+    overflow: hidden;
+  }
+  .tree-canvas {
+    position: relative;
+    transform-origin: top left;
+  }
+
+  .tree-label {
+    position: absolute;
+    top: 4px;
+    font-size: 22px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    font-weight: 800;
+    opacity: .6;
+  }
+
+  .node {
+    position: absolute;
+    width: 78px;
+    height: 78px;
+    transform: translate(-50%, -50%);
+  }
+  .node .hex {
+    width: 100%;
+    height: 100%;
+    clip-path: polygon(50% 2%,95% 26%,95% 74%,50% 98%,5% 74%,5% 26%);
+    background: #0b1a16;
+    border: 3px solid #1c2e29;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    opacity: 0.35;
+  }
+  .node .hex img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .node.slot-0 .hex { border-color: #e0b04a; }
+  .node.slot-1 .hex { border-color: #3fd9a4; }
+  .node.slot-2 .hex { border-color: #b26bf2; }
+  .node.invested .hex {
+    opacity: 1;
+    box-shadow: 0 0 16px rgba(255,255,255,.25);
+  }
+  .node.slot-0.invested .hex { box-shadow: 0 0 16px rgba(224,176,74,.55); }
+  .node.slot-1.invested .hex { box-shadow: 0 0 16px rgba(63,217,164,.55); }
+  .node.slot-2.invested .hex { box-shadow: 0 0 16px rgba(178,107,242,.55); }
+
+</style>
+</head>
+<body>
+
+<div id="overlay-settings">
+  <select id="instance-select" title="Only instances an active spectator is currently watching are listed">
+    <option value="">Instance…</option>
+  </select>
+  <input id="icons-path-input" type="text" placeholder="ICONS folder (contains CLASSES/EFFECTS/SKILLS subfolders)" />
+  <button id="demo-toggle"></button>
+</div>
+
+<div id="teams-root">
+  <div class="team-tree-row attackers" id="row-attackers"></div>
+  <div class="team-tree-row defenders" id="row-defenders"></div>
+</div>
+<div id="status">connecting…</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Skill/class/layout data, ported directly from the skill-tree icon-assigner
+// tool's exported progress file -- NOT derived at runtime. skill_id is only
+// unique per (skill_group_id, skill_id) in the real game data (confirmed via
+// asm_data_set_skill_group_skills), so this table is scoped per-class before
+// any skill_id lookup happens; never look a skill_id up globally.
+// ---------------------------------------------------------------------------
+const BALANCED_DATA = [
+ {id:527,tree:'Balanced',name:'Damage Increase: AoE',tier:4,prereqId:0,prereqPts:0,icon:552},
+ {id:533,tree:'Balanced',name:'Passive Protection',tier:0,prereqId:0,prereqPts:0,icon:564},
+ {id:676,tree:'Balanced',name:'Advanced Passive Protection',tier:1,prereqId:533,prereqPts:1,icon:565},
+ {id:545,tree:'Balanced',name:'Health',tier:3,prereqId:0,prereqPts:0,icon:566},
+ {id:528,tree:'Balanced',name:'Damage Increase: Ranged',tier:4,prereqId:0,prereqPts:0,icon:567},
+ {id:525,tree:'Balanced',name:'Offhand Recharge',tier:5,prereqId:0,prereqPts:0,icon:568},
+ {id:677,tree:'Balanced',name:'Super Agent',tier:6,prereqId:0,prereqPts:0,icon:569},
+ {id:526,tree:'Balanced',name:'Jetpack Power',tier:0,prereqId:0,prereqPts:0,icon:570},
+ {id:519,tree:'Balanced',name:'Power Pool Increase',tier:1,prereqId:0,prereqPts:0,icon:571},
+ {id:524,tree:'Balanced',name:'Power Pool Return',tier:3,prereqId:0,prereqPts:0,icon:572},
+ {id:680,tree:'Balanced',name:'Damage Increase: Melee',tier:4,prereqId:0,prereqPts:0,icon:573},
+ {id:550,tree:'Balanced',name:'Team Boost Increase',tier:2,prereqId:0,prereqPts:0,icon:574},
+];
+
+const CLASS_DATA = {
+ MEDIC: [
+  {id:891,tree:'Poison',name:'Medic Melee I',tier:0,prereqId:0,prereqPts:0,icon:586},
+  {id:892,tree:'Poison',name:'Medic Melee II',tier:1,prereqId:891,prereqPts:1,icon:587},
+  {id:893,tree:'Poison',name:'Medic Melee III',tier:2,prereqId:892,prereqPts:1,icon:588},
+  {id:806,tree:'Poison',name:'Combat Off-Hand Utility',tier:3,prereqId:0,prereqPts:0,icon:599},
+  {id:807,tree:'Poison',name:'Combat Off-Hand Power',tier:1,prereqId:0,prereqPts:0,icon:600},
+  {id:814,tree:'Poison',name:'Fighting Medic',tier:5,prereqId:0,prereqPts:0,icon:605},
+  {id:815,tree:'Poison',name:'Death Medic',tier:6,prereqId:0,prereqPts:0,icon:606},
+  {id:667,tree:'Poison',name:'Poison Duration',tier:0,prereqId:0,prereqPts:0,icon:607},
+  {id:812,tree:'Poison',name:'Poison Duration II',tier:1,prereqId:667,prereqPts:1,icon:608},
+  {id:674,tree:'Poison',name:'Bio Rifle Range',tier:0,prereqId:0,prereqPts:0,icon:609},
+  {id:760,tree:'Poison',name:'Bio Rifle Power',tier:1,prereqId:674,prereqPts:1,icon:610},
+  {id:675,tree:'Poison',name:'Bio Rifle Damage',tier:2,prereqId:760,prereqPts:1,icon:611},
+  {id:810,tree:'Poison',name:'Battle Medic',tier:4,prereqId:0,prereqPts:0,icon:1707},
+  {id:811,tree:'Poison',name:'Quick Poisons',tier:4,prereqId:0,prereqPts:0,icon:1709},
+  {id:746,tree:'Healer',name:'Group Heal Size',tier:0,prereqId:0,prereqPts:0,icon:589},
+  {id:747,tree:'Healer',name:'Group Heal Effect',tier:1,prereqId:746,prereqPts:1,icon:590},
+  {id:903,tree:'Healer',name:'Buff Enhancement',tier:3,prereqId:0,prereqPts:0,icon:590},
+  {id:852,tree:'Healer',name:'Group Heal Savior',tier:4,prereqId:0,prereqPts:0,icon:591},
+  {id:753,tree:'Healer',name:'Passive Healer',tier:5,prereqId:0,prereqPts:0,icon:592},
+  {id:703,tree:'Healer',name:'Super Healer',tier:6,prereqId:0,prereqPts:0,icon:593},
+  {id:651,tree:'Healer',name:'Beam Heal Cost',tier:0,prereqId:0,prereqPts:0,icon:594},
+  {id:652,tree:'Healer',name:'Beam Heal Boost',tier:1,prereqId:651,prereqPts:1,icon:595},
+  {id:801,tree:'Healer',name:'Beam Heal Boost II',tier:2,prereqId:652,prereqPts:1,icon:596},
+  {id:804,tree:'Healer',name:'Heal Durations',tier:0,prereqId:0,prereqPts:0,icon:597},
+  {id:805,tree:'Healer',name:'Heal Durations II',tier:1,prereqId:804,prereqPts:1,icon:598},
+  {id:904,tree:'Healer',name:'Clutch Healer',tier:4,prereqId:0,prereqPts:0,icon:1708},
+  {id:902,tree:'Healer',name:'Fast Regeneration',tier:3,prereqId:0,prereqPts:0,icon:1710},
+ ],
+ ASSAULT: [
+  {id:806,tree:'Destroyer',name:'Combat Off-Hand Utility',tier:0,prereqId:0,prereqPts:0,icon:599},
+  {id:911,tree:'Destroyer',name:'Overdrive Durations',tier:2,prereqId:0,prereqPts:0,icon:599},
+  {id:807,tree:'Destroyer',name:'Combat Off-Hand Power',tier:1,prereqId:0,prereqPts:0,icon:600},
+  {id:888,tree:'Tank',name:'Assault Melee I',tier:0,prereqId:0,prereqPts:0,icon:612},
+  {id:889,tree:'Tank',name:'Assault Melee II',tier:1,prereqId:888,prereqPts:1,icon:613},
+  {id:890,tree:'Tank',name:'Assault Melee III',tier:2,prereqId:889,prereqPts:1,icon:614},
+  {id:767,tree:'Tank',name:'Heavy Armor',tier:5,prereqId:0,prereqPts:0,icon:617},
+  {id:546,tree:'Tank',name:'Super Tank',tier:6,prereqId:0,prereqPts:0,icon:618},
+  {id:762,tree:'Tank',name:'Shield Strength',tier:1,prereqId:0,prereqPts:0,icon:619},
+  {id:532,tree:'Tank',name:'Shield Readiness',tier:4,prereqId:0,prereqPts:0,icon:620},
+  {id:768,tree:'Tank',name:'Built Tough',tier:0,prereqId:0,prereqPts:0,icon:621},
+  {id:769,tree:'Tank',name:'Built Truck-Tough',tier:1,prereqId:768,prereqPts:1,icon:622},
+  {id:859,tree:'Tank',name:'Built Tough as Nails',tier:2,prereqId:769,prereqPts:1,icon:623},
+  {id:860,tree:'Tank',name:'Built Brick Wall Tough',tier:4,prereqId:859,prereqPts:1,icon:624},
+  {id:711,tree:'Destroyer',name:'Launcher Power',tier:0,prereqId:0,prereqPts:0,icon:625},
+  {id:681,tree:'Destroyer',name:'Launcher AOE Increase',tier:1,prereqId:0,prereqPts:0,icon:626},
+  {id:710,tree:'Destroyer',name:'Launcher Damage Increase',tier:3,prereqId:0,prereqPts:0,icon:627},
+  {id:823,tree:'Destroyer',name:'Spare Power',tier:5,prereqId:0,prereqPts:0,icon:629},
+  {id:682,tree:'Destroyer',name:'Super Destroyer',tier:6,prereqId:0,prereqPts:0,icon:630},
+  {id:820,tree:'Destroyer',name:'Assault Offhand Recharge',tier:4,prereqId:0,prereqPts:0,icon:631},
+  {id:771,tree:'Destroyer',name:'Assault Guns Range',tier:0,prereqId:0,prereqPts:0,icon:635},
+  {id:772,tree:'Destroyer',name:'Assault Guns Power Cost',tier:1,prereqId:771,prereqPts:1,icon:636},
+  {id:773,tree:'Destroyer',name:'Assault Guns Damage',tier:2,prereqId:772,prereqPts:1,icon:637},
+  {id:913,tree:'Tank',name:'Aegis Armament',tier:2,prereqId:0,prereqPts:0,icon:1711},
+  {id:910,tree:'Destroyer',name:'Heavy Impact',tier:3,prereqId:0,prereqPts:0,icon:1712},
+  {id:912,tree:'Tank',name:'Point Tank',tier:3,prereqId:0,prereqPts:0,icon:1713},
+ ],
+ ROBOTICS: [
+  {id:885,tree:'Engineer',name:'Robotic Melee I',tier:0,prereqId:0,prereqPts:0,icon:664},
+  {id:886,tree:'Engineer',name:'Robotic Melee II',tier:1,prereqId:885,prereqPts:1,icon:665},
+  {id:887,tree:'Engineer',name:'Robotic Melee III',tier:2,prereqId:886,prereqPts:1,icon:666},
+  {id:851,tree:'Engineer',name:'Cyber Specialist',tier:5,prereqId:0,prereqPts:0,icon:667},
+  {id:714,tree:'Engineer',name:'Super Engineer',tier:6,prereqId:0,prereqPts:0,icon:668},
+  {id:845,tree:'Engineer',name:'Heavy Artillery',tier:3,prereqId:0,prereqPts:0,icon:669},
+  {id:785,tree:'Engineer',name:'Repair Power Reduction',tier:0,prereqId:0,prereqPts:0,icon:671},
+  {id:786,tree:'Engineer',name:'Repair Increase',tier:1,prereqId:0,prereqPts:0,icon:672},
+  {id:612,tree:'Engineer',name:'Repair Arm Speed',tier:4,prereqId:613,prereqPts:1,icon:673},
+  {id:613,tree:'Engineer',name:'Repair Overcharge',tier:2,prereqId:0,prereqPts:0,icon:674},
+  {id:795,tree:'Engineer',name:'Station Buff',tier:1,prereqId:0,prereqPts:0,icon:676},
+  {id:793,tree:'Engineer',name:'Station Radius',tier:2,prereqId:0,prereqPts:0,icon:675},
+  {id:797,tree:'Drones',name:'Super Drones',tier:5,prereqId:0,prereqPts:0,icon:680},
+  {id:798,tree:'Drones',name:'Super Supporter',tier:6,prereqId:0,prereqPts:0,icon:682},
+  {id:630,tree:'Drones',name:'Drone Health',tier:0,prereqId:0,prereqPts:0,icon:681},
+  {id:864,tree:'Drones',name:'Drone Range',tier:1,prereqId:0,prereqPts:0,icon:683},
+  {id:789,tree:'Drones',name:'Drone Damage',tier:2,prereqId:0,prereqPts:0,icon:684},
+  {id:631,tree:'Drones',name:'Robot Readiness',tier:3,prereqId:789,prereqPts:1,icon:685},
+  {id:790,tree:'Drones',name:'Cyber Health',tier:2,prereqId:0,prereqPts:0,icon:686},
+  {id:791,tree:'Drones',name:'Cyber Armor',tier:1,prereqId:0,prereqPts:0,icon:687},
+  {id:672,tree:'Drones',name:'Robotics Rifle Range',tier:0,prereqId:0,prereqPts:0,icon:688},
+  {id:796,tree:'Drones',name:'Robotics Rifle Power',tier:1,prereqId:672,prereqPts:1,icon:689},
+  {id:673,tree:'Drones',name:'Robotics Rifle Damage',tier:2,prereqId:796,prereqPts:1,icon:690},
+  {id:906,tree:'Drones',name:'Cybernetic Speed',tier:4,prereqId:0,prereqPts:0,icon:1702},
+  {id:907,tree:'Engineer',name:'Rapid Engineering',tier:4,prereqId:0,prereqPts:0,icon:1703},
+  {id:905,tree:'Drones',name:'Deadly Drones',tier:4,prereqId:0,prereqPts:0,icon:1704},
+ ],
+ RECON: [
+  {id:894,tree:'Infiltration',name:'Recon Melee I',tier:0,prereqId:0,prereqPts:0,icon:638},
+  {id:895,tree:'Infiltration',name:'Recon Melee II',tier:1,prereqId:894,prereqPts:1,icon:639},
+  {id:896,tree:'Infiltration',name:'Recon Melee III',tier:2,prereqId:895,prereqPts:1,icon:640},
+  {id:581,tree:'Infiltration',name:'Stealth Restealth',tier:5,prereqId:0,prereqPts:0,icon:641},
+  {id:692,tree:'Infiltration',name:'Super Ninja',tier:6,prereqId:0,prereqPts:0,icon:642},
+  {id:742,tree:'Infiltration',name:'Athletics',tier:0,prereqId:0,prereqPts:0,icon:643},
+  {id:599,tree:'Infiltration',name:'Stealth Protection',tier:2,prereqId:0,prereqPts:0,icon:644},
+  {id:826,tree:'Infiltration',name:'Explosives Area Increase',tier:0,prereqId:0,prereqPts:0,icon:645},
+  {id:827,tree:'Infiltration',name:'Explosives Damage',tier:1,prereqId:0,prereqPts:0,icon:646},
+  {id:828,tree:'Infiltration',name:'Short Fuses',tier:4,prereqId:0,prereqPts:0,icon:647},
+  {id:584,tree:'Infiltration',name:'Heavy Explosives',tier:3,prereqId:0,prereqPts:0,icon:648},
+  {id:832,tree:'Marksman',name:'Hyper Stims',tier:4,prereqId:0,prereqPts:0,icon:649},
+  {id:577,tree:'Marksman',name:'Stim Duration',tier:0,prereqId:0,prereqPts:0,icon:651},
+  {id:831,tree:'Marksman',name:'Stim Boost',tier:2,prereqId:577,prereqPts:1,icon:652},
+  {id:836,tree:'Marksman',name:'Killer Instinct',tier:4,prereqId:0,prereqPts:0,icon:653},
+  {id:693,tree:'Marksman',name:'Super Sharpshooter',tier:6,prereqId:0,prereqPts:0,icon:654},
+  {id:835,tree:'Marksman',name:'Recon Rifle Effective Range',tier:0,prereqId:0,prereqPts:0,icon:655},
+  {id:690,tree:'Marksman',name:'Recon Rifle Accuracy',tier:1,prereqId:835,prereqPts:1,icon:656},
+  {id:597,tree:'Marksman',name:'Recon Rifle Range',tier:0,prereqId:0,prereqPts:0,icon:657},
+  {id:784,tree:'Marksman',name:'Recon Rifle Power Cost',tier:1,prereqId:597,prereqPts:1,icon:658},
+  {id:598,tree:'Marksman',name:'Recon Rifle Damage',tier:2,prereqId:784,prereqPts:1,icon:659},
+  {id:834,tree:'Marksman',name:'Eagle Eye',tier:3,prereqId:0,prereqPts:0,icon:660},
+  {id:837,tree:'Infiltration',name:'Escape Durations',tier:1,prereqId:0,prereqPts:0,icon:661},
+  {id:825,tree:'Infiltration',name:'Athletic Dodge',tier:4,prereqId:0,prereqPts:0,icon:663},
+  {id:914,tree:'Marksman',name:'Sureshot',tier:5,prereqId:0,prereqPts:0,icon:1705},
+  {id:908,tree:'Marksman',name:'Super Flight',tier:2,prereqId:0,prereqPts:0,icon:1706},
+ ],
+};
+
+const CLASS_TREE_ORDERS = {"MEDIC":["Balanced","Healer","Poison"],"ASSAULT":["Balanced","Tank","Destroyer"],"ROBOTICS":["Balanced","Engineer","Drones"],"RECON":["Balanced","Infiltration","Marksman"]};
+const CLASS_COLOR_IDX = {"MEDIC":{"Balanced":0,"Healer":1,"Poison":2},"ASSAULT":{"Balanced":0,"Destroyer":1,"Tank":2},"ROBOTICS":{"Balanced":0,"Engineer":1,"Drones":2},"RECON":{"Balanced":0,"Infiltration":1,"Marksman":2}};
+const LAYOUT = {"519":{"x":110,"y":220},"524":{"x":110,"y":480},"525":{"x":0,"y":740},"526":{"x":110,"y":90},"527":{"x":0,"y":610},"528":{"x":110,"y":610},"532":{"x":0,"y":610},"533":{"x":0,"y":90},"545":{"x":0,"y":480},"546":{"x":0,"y":870},"550":{"x":0,"y":350},"577":{"x":0,"y":90},"581":{"x":0,"y":740},"584":{"x":0,"y":480},"597":{"x":220,"y":90},"598":{"x":220,"y":350},"599":{"x":110,"y":350},"612":{"x":110,"y":610},"613":{"x":110,"y":350},"630":{"x":0,"y":90},"631":{"x":0,"y":480},"651":{"x":110,"y":90},"652":{"x":110,"y":220},"667":{"x":110,"y":90},"672":{"x":110,"y":90},"673":{"x":110,"y":350},"674":{"x":220,"y":90},"675":{"x":220,"y":350},"676":{"x":0,"y":220},"677":{"x":0,"y":870},"680":{"x":220,"y":610},"681":{"x":110,"y":220},"682":{"x":0,"y":870},"690":{"x":110,"y":220},"692":{"x":0,"y":870},"693":{"x":0,"y":870},"703":{"x":0,"y":870},"710":{"x":229,"y":476},"711":{"x":110,"y":90},"714":{"x":0,"y":870},"742":{"x":110,"y":90},"746":{"x":0,"y":90},"747":{"x":0,"y":220},"753":{"x":0,"y":740},"760":{"x":220,"y":220},"762":{"x":220,"y":220},"767":{"x":0,"y":740},"768":{"x":110,"y":90},"769":{"x":110,"y":220},"771":{"x":220,"y":90},"772":{"x":220,"y":220},"773":{"x":220,"y":350},"784":{"x":220,"y":220},"785":{"x":110,"y":90},"786":{"x":110,"y":220},"789":{"x":0,"y":350},"790":{"x":220,"y":350},"791":{"x":220,"y":220},"793":{"x":220,"y":350},"795":{"x":220,"y":220},"796":{"x":110,"y":220},"797":{"x":0,"y":740},"798":{"x":0,"y":870},"801":{"x":110,"y":350},"804":{"x":220,"y":90},"805":{"x":220,"y":220},"806":{"x":0,"y":480},"807":{"x":330,"y":220},"810":{"x":0,"y":610},"811":{"x":110,"y":610},"812":{"x":110,"y":220},"814":{"x":0,"y":740},"815":{"x":0,"y":870},"820":{"x":0,"y":610},"823":{"x":0,"y":740},"825":{"x":110,"y":610},"826":{"x":220,"y":90},"827":{"x":110,"y":220},"828":{"x":0,"y":610},"831":{"x":0,"y":350},"832":{"x":0,"y":610},"834":{"x":0,"y":480},"835":{"x":110,"y":90},"836":{"x":110,"y":610},"837":{"x":220,"y":220},"845":{"x":0,"y":480},"851":{"x":0,"y":740},"852":{"x":0,"y":610},"859":{"x":110,"y":350},"860":{"x":110,"y":610},"864":{"x":0,"y":220},"885":{"x":0,"y":90},"886":{"x":0,"y":220},"887":{"x":0,"y":350},"888":{"x":0,"y":90},"889":{"x":0,"y":220},"890":{"x":0,"y":350},"891":{"x":0,"y":90},"892":{"x":0,"y":220},"893":{"x":0,"y":350},"894":{"x":0,"y":90},"895":{"x":0,"y":220},"896":{"x":0,"y":350},"902":{"x":110,"y":480},"903":{"x":0,"y":480},"904":{"x":110,"y":610},"905":{"x":110,"y":610},"906":{"x":0,"y":610},"907":{"x":0,"y":610},"908":{"x":110,"y":350},"910":{"x":110,"y":480},"911":{"x":0,"y":350},"912":{"x":0,"y":480},"913":{"x":220,"y":350},"914":{"x":0,"y":740}};
+
+// GameTypes.h profile_id constants -- MEDIC=567, ASSAULT=680, RECON=681, ROBOTIC=679.
+const PROFILE_ID_TO_CLASS = {567:'MEDIC', 680:'ASSAULT', 681:'RECON', 679:'ROBOTICS'};
+
+const TREE_WIDTH = 620, COL_SPACING = 110, ROW_SPACING = 130, TOP_PAD = 90, LEFT_PAD = 90;
+// Shrinks the full editing-scale canvas (built at the assigner tool's own
+// coordinate system) down to a compact tile. Now that empty trees are
+// dropped and columns are packed tight (see visibleTreesFor/
+// computeTreeOffsets), each card only needs 2-3 tree-columns' worth of
+// width -- there's room to render much bigger than the original 0.16 and
+// still comfortably fit 3 across per row on a 1920px-wide monitor, so this
+// is picked for legibility rather than to save space. See
+// .tree-canvas-wrap for the matching layout-box fix.
+const RENDER_SCALE = 0.4;
+
+// ---------------------------------------------------------------------------
+// Config -- same pattern as the main spectator overlay: instance selection
+// AND the icons root path share spectator-overlay.html's localStorage keys
+// (same origin, same ICONS/ folder convention -- set it once on either
+// page). Skill icons live at ICONS_ROOT_PATH + "SKILLS/" + icon_id + ".png".
+// ---------------------------------------------------------------------------
+const OVERLAY_BASE_URL      = "http://127.0.0.1:8090/overlay";
+const OVERLAY_INSTANCES_URL = OVERLAY_BASE_URL + "/instances";
+const OVERLAY_SKILLTREE_URL = OVERLAY_BASE_URL + "/skilltree";
+const OVERLAY_TOKEN         = "retro";
+const POLL_MS               = 2000; // skill builds don't change tick-to-tick; no need for 300ms
+const INSTANCE_LIST_POLL_MS = 5000;
+
+const INSTANCE_KEY   = "spectatorOverlayInstanceId_v1";     // shared with spectator-overlay.html
+const ICONS_PATH_KEY = "spectatorOverlayIconsRootPath_v1";  // shared with spectator-overlay.html
+
+let INSTANCE_ID = Number(localStorage.getItem(INSTANCE_KEY)) || 0;
+let ICONS_ROOT_PATH = localStorage.getItem(ICONS_PATH_KEY) || "ICONS/";
+
+// Set true to generate a fake 3v3 match locally instead of calling the
+// server -- lets you rehearse the team-panel layout/cycling without a live
+// match. Toggle it live with the "Demo Mode" button too.
+let DEMO_MODE = true;
+
+// Canonical left-to-right class order, same convention as the main
+// spectator overlay (see spectator-overlay.html's CLASS_SORT_ORDER) --
+// Assault, Medic, Robotics, Recon. Applied independently to each team, NOT
+// as a shared slot grid: an earlier version reserved one column per class
+// present on EITHER team and filled the gap with an empty placeholder card
+// when a team lacked that class, so columns stayed lined up between rows --
+// but a real match's rosters rarely match class-for-class across teams, so
+// that placeholder showed up constantly as an ugly, oddly-sized blank card.
+// Simple independent sort avoids that entirely at the cost of not lining up
+// class columns row-to-row.
+const CLASS_SORT_ORDER = ['ASSAULT', 'MEDIC', 'ROBOTICS', 'RECON'];
+
+function sortByClassOrder(teamPlayers) {
+  return teamPlayers.slice().sort((a, b) => {
+    const ai = CLASS_SORT_ORDER.indexOf(PROFILE_ID_TO_CLASS[a.profile_id]);
+    const bi = CLASS_SORT_ORDER.indexOf(PROFILE_ID_TO_CLASS[b.profile_id]);
+    return (ai < 0 ? CLASS_SORT_ORDER.length : ai) - (bi < 0 ? CLASS_SORT_ORDER.length : bi);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+function rawForClass(className) {
+  return BALANCED_DATA.concat(CLASS_DATA[className] || []);
+}
+
+// Derives slot (0=Balanced/1/2, used for both header-string ordering AND
+// node/connector color) straight from CLASS_TREE_ORDERS -- the SAME table
+// that controls left-to-right column position -- rather than the
+// separately-exported CLASS_COLOR_IDX. The two tables agree for every
+// class except ASSAULT, where CLASS_COLOR_IDX has Tank/Destroyer swapped
+// relative to the actual tree order; deriving from one authoritative table
+// instead of two makes that class of drift impossible rather than papering
+// over this one instance of it. (The real backend, SkillTreeCatalog.cpp,
+// was never affected -- it hardcodes tree1/tree2 straight from the
+// confirmed DB query, independent of this exported table.)
+function slotFor(className, tree) {
+  const order = CLASS_TREE_ORDERS[className] || ['Balanced'];
+  const i = order.indexOf(tree);
+  return i < 0 ? 0 : i;
+}
+
+// TREE_WIDTH (620px) was the assigner tool's own editing-canvas spacing --
+// generous room for a 78px hex plus a text label underneath at full size.
+// Most trees only actually use 2-3 of the columns that width reserves, so
+// blanket-applying it here left large dead gaps between trees once
+// everything got scaled down for a compact side-by-side view (see the
+// screenshot that flagged this). Offsets are computed from each VISIBLE
+// tree's own actual rightmost node instead, packed with a small fixed gap
+// -- and a tree with zero points invested is dropped from that list
+// entirely (not merely dimmed), per request, so it costs no space at all.
+const TREE_GAP = 50;
+
+function visibleTreesFor(className, investedMap) {
+  const order = CLASS_TREE_ORDERS[className] || ['Balanced'];
+  const raw = rawForClass(className);
+  return order.filter(tree => raw.some(n => n.tree === tree && (investedMap[n.id] || 0) > 0));
+}
+
+function computeTreeOffsets(className, visibleTrees) {
+  const raw = rawForClass(className);
+  const offsets = {};
+  let cursor = LEFT_PAD;
+  visibleTrees.forEach(tree => {
+    offsets[tree] = cursor;
+    const nodesInTree = raw.filter(n => n.tree === tree);
+    const maxLocalX = Math.max(0, ...nodesInTree.map(n => (LAYOUT[n.id] || {x:0}).x));
+    cursor += maxLocalX + 120 + TREE_GAP; // 120 ~ node footprint, matches the canvas-size margin below
+  });
+  return offsets;
+}
+
+function buildTreeCanvas(className, investedMap) {
+  const raw = rawForClass(className);
+  const visibleTrees = visibleTreesFor(className, investedMap);
+  const offsets = computeTreeOffsets(className, visibleTrees);
+  const visibleNodes = raw.filter(n => visibleTrees.includes(n.tree));
+  const absX = (n) => {
+    const pos = LAYOUT[n.id];
+    return (pos && offsets[n.tree] !== undefined) ? offsets[n.tree] + pos.x : 0;
+  };
+
+  const canvas = document.createElement('div');
+  canvas.className = 'tree-canvas';
+  canvas.style.transform = 'scale(' + RENDER_SCALE + ')';
+
+  if (!visibleNodes.length) {
+    // No points allocated in any tree -- nothing meaningful to draw.
+    const w = 280, h = 40;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    canvas.dataset.visualWidth = Math.round(w * RENDER_SCALE);
+    canvas.dataset.visualHeight = Math.round(h * RENDER_SCALE);
+    const note = document.createElement('div');
+    note.className = 'tree-label';
+    note.style.left = '0px';
+    note.style.opacity = '0.5';
+    note.textContent = 'No skill points allocated';
+    canvas.appendChild(note);
+    return canvas;
+  }
+
+  const maxX = Math.max(...visibleNodes.map(n => absX(n))) + 120;
+  const maxY = Math.max(...visibleNodes.map(n => (LAYOUT[n.id] || {y:0}).y)) + 120;
+  canvas.style.width = maxX + 'px';
+  canvas.style.height = maxY + 'px';
+  // Post-scale (visual) size, for the wrapper -- see .tree-canvas-wrap.
+  canvas.dataset.visualWidth = Math.round(maxX * RENDER_SCALE);
+  canvas.dataset.visualHeight = Math.round(maxY * RENDER_SCALE);
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', maxX);
+  svg.setAttribute('height', maxY);
+  svg.style.position = 'absolute';
+  svg.style.top = '0';
+  svg.style.left = '0';
+  svg.style.pointerEvents = 'none';
+  const SLOT_COLORS = ['#e0b04a', '#3fd9a4', '#b26bf2'];
+
+  visibleTrees.forEach(tree => {
+    const lbl = document.createElement('div');
+    lbl.className = 'tree-label';
+    lbl.style.left = offsets[tree] + 'px';
+    lbl.style.color = SLOT_COLORS[slotFor(className, tree)];
+    lbl.textContent = tree;
+    canvas.appendChild(lbl);
+  });
+
+  visibleNodes.forEach(n => {
+    const pos = LAYOUT[n.id];
+    if (!pos) return;
+    if (n.prereqId) {
+      const prereqNode = raw.find(x => x.id === n.prereqId);
+      const a = LAYOUT[n.prereqId];
+      // Only draw the connector if the prereq's OWN tree is also visible --
+      // otherwise its origin point doesn't exist anywhere on this canvas.
+      if (a && prereqNode && visibleTrees.includes(prereqNode.tree)) {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', offsets[prereqNode.tree] + a.x);
+        line.setAttribute('y1', a.y);
+        line.setAttribute('x2', offsets[n.tree] + pos.x);
+        line.setAttribute('y2', pos.y);
+        line.setAttribute('stroke', SLOT_COLORS[slotFor(className, n.tree)]);
+        line.setAttribute('stroke-width', '2.5');
+        line.setAttribute('opacity', '0.6');
+        svg.appendChild(line);
+      }
+    }
+
+    // Each node is a single 1-point pick -- selected or not, never a
+    // multi-point value (confirmed against the real asm_data_set_skill_
+    // group_skills prereq data: ranks are separate chained skill_ids, e.g.
+    // "Poison Duration" -> "Poison Duration II", not one node holding
+    // multiple points). No count badge needed; the glow alone means picked.
+    const picked = !!investedMap[n.id];
+    const el = document.createElement('div');
+    el.className = 'node slot-' + slotFor(className, n.tree) + (picked ? ' invested' : '');
+    el.style.left = absX(n) + 'px';
+    el.style.top = pos.y + 'px';
+    el.title = n.name;
+
+    const hex = document.createElement('div');
+    hex.className = 'hex';
+    if (picked) {
+      const img = document.createElement('img');
+      img.src = ICONS_ROOT_PATH + 'SKILLS/' + n.icon + '.png';
+      img.onerror = () => img.remove();
+      hex.appendChild(img);
+    }
+    el.appendChild(hex);
+
+    canvas.appendChild(el);
+  });
+
+  canvas.insertBefore(svg, canvas.firstChild);
+  return canvas;
+}
+
+function buildString(className, investedMap) {
+  const order = CLASS_TREE_ORDERS[className] || ['Balanced'];
+  const sums = [0, 0, 0];
+  rawForClass(className).forEach(n => {
+    const pts = investedMap[n.id];
+    if (!pts) return;
+    sums[slotFor(className, n.tree)] += pts;
+  });
+  return sums.join('/');
+}
+
+function playerCard(p) {
+  const className = PROFILE_ID_TO_CLASS[p.profile_id];
+  const card = document.createElement('div');
+  card.className = 'player-tree-card';
+
+  const header = document.createElement('div');
+  header.className = 'card-header';
+
+  const left = document.createElement('div');
+  left.className = 'card-header-left';
+  // Same CLASSES/ icon folder + <ClassName>.png convention as the main
+  // spectator overlay's class-icon box -- className here is already the
+  // title-case-able key (e.g. "ASSAULT" -> "Assault.png").
+  const classIcon = document.createElement('img');
+  classIcon.className = 'class-icon-sm';
+  classIcon.src = ICONS_ROOT_PATH + 'CLASSES/' + className.charAt(0) + className.slice(1).toLowerCase() + '.png';
+  classIcon.alt = classIcon.title = className;
+  classIcon.onerror = () => classIcon.remove();
+  left.appendChild(classIcon);
+  const name = document.createElement('div');
+  name.className = 'name';
+  name.textContent = p.player_name || '(unknown)';
+  left.appendChild(name);
+  header.appendChild(left);
+
+  const build = document.createElement('div');
+  build.className = 'build';
+  header.appendChild(build);
+  card.appendChild(header);
+
+  const investedMap = {};
+  (p.points || []).forEach(row => { investedMap[row.skill_id] = row.points; });
+  build.textContent = buildString(className, investedMap);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'tree-canvas-wrap';
+  const canvas = buildTreeCanvas(className, investedMap);
+  wrap.appendChild(canvas);
+  wrap.style.width = canvas.dataset.visualWidth + 'px';
+  wrap.style.height = canvas.dataset.visualHeight + 'px';
+  card.appendChild(wrap);
+
+  return card;
+}
+
+function renderTeams(players) {
+  const attackers = sortByClassOrder(players.filter(p => p.task_force === 1));
+  const defenders = sortByClassOrder(players.filter(p => p.task_force === 2));
+
+  const rowAtk = document.getElementById('row-attackers');
+  const rowDef = document.getElementById('row-defenders');
+  rowAtk.innerHTML = '';
+  rowDef.innerHTML = '';
+
+  attackers.forEach(p => rowAtk.appendChild(playerCard(p)));
+  defenders.forEach(p => rowDef.appendChild(playerCard(p)));
+}
+
+async function poll() {
+  const status = document.getElementById('status');
+
+  if (DEMO_MODE) {
+    const players = generateDemoSnapshot();
+    renderTeams(players);
+    status.textContent = 'DEMO MODE — ' + players.length + ' sample players';
+    return;
+  }
+
+  if (!INSTANCE_ID) {
+    status.textContent = 'select an instance above to begin';
+    document.getElementById('row-attackers').innerHTML = '';
+    document.getElementById('row-defenders').innerHTML = '';
+    return;
+  }
+  try {
+    const url = OVERLAY_SKILLTREE_URL + '?instance_id=' + encodeURIComponent(INSTANCE_ID)
+              + '&token=' + encodeURIComponent(OVERLAY_TOKEN);
+    const resp = await fetch(url, { cache: 'no-store' });
+    if (!resp.ok) {
+      status.textContent = 'overlay: HTTP ' + resp.status;
+      return;
+    }
+    const data = await resp.json();
+    const players = data.players || [];
+    renderTeams(players);
+    status.textContent = 'instance ' + data.instance_id + ' — ' + players.length + ' tracked';
+  } catch (e) {
+    status.textContent = 'overlay: ' + e;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Demo mode -- 3v3 sample match, one of each of 3 classes per side (matching
+// the RECON/MEDIC/ASSAULT - ASSAULT/MEDIC/RECON example), not real game
+// data. A handful of real node ids per class get 1-3 points invested so the
+// icon lookup/wrap/cycle behavior can all be reviewed without a live match.
+// ---------------------------------------------------------------------------
+const DEMO_ROSTER = [
+  { name: 'Zipe',     task_force: 1, profile_id: 681 }, // Recon
+  { name: 'Kelrior',  task_force: 1, profile_id: 567 }, // Medic
+  { name: 'Neophyte', task_force: 1, profile_id: 680 }, // Assault
+  { name: 'Jeronyx',        task_force: 2, profile_id: 680 }, // Assault
+  { name: 'AngelDelaGuarda',task_force: 2, profile_id: 567 }, // Medic
+  { name: 'Zaxik',          task_force: 2, profile_id: 681 }, // Recon
+];
+
+const demoBuildState = new Map();
+// Real per-character point budget.
+const DEMO_TOTAL_BUDGET = 13;
+
+// Builds a FEASIBLE selection -- every node is a single 1-point pick (never
+// multi-point; confirmed against the real asm_data_set_skill_group_skills
+// prereq data -- ranks are separate chained skill_ids, e.g. "Poison
+// Duration" -> "Poison Duration II", not one node holding several points),
+// respecting both constraints the real tree enforces:
+//   - n.prereqId: that specific node must ALSO be selected first (e.g. the
+//     2nd "Passive Protection" needs the 1st already picked)
+//   - n.tier: this is prereq_group_points from the source data (the
+//     original assigner tool parsed it straight into this field) -- the
+//     minimum points ALREADY banked anywhere in this node's own tree
+//     before it can unlock, independent of the specific-node prereq above
+// Picks greedily from whichever nodes are currently eligible until hitting
+// the budget or running out -- eligibility is rechecked every step since
+// picking a node can newly unlock others (raises its tree's count, or
+// satisfies another node's prereqId).
+function buildFeasibleSelection(className, totalBudget) {
+  const raw = rawForClass(className);
+  const selected = new Set();
+  const treeCounts = {};
+
+  function isEligible(n) {
+    if (selected.has(n.id)) return false;
+    if (n.prereqId && !selected.has(n.prereqId)) return false;
+    return (treeCounts[n.tree] || 0) >= n.tier;
+  }
+
+  for (let i = 0; i < totalBudget; i++) {
+    const eligible = raw.filter(isEligible);
+    if (!eligible.length) break;
+    const pick = eligible[Math.floor(Math.random() * eligible.length)];
+    selected.add(pick.id);
+    treeCounts[pick.tree] = (treeCounts[pick.tree] || 0) + 1;
+  }
+
+  return [...selected].map(id => ({ skill_id: id, points: 1 }));
+}
+
+function generateDemoSnapshot() {
+  return DEMO_ROSTER.map((p, idx) => {
+    const className = PROFILE_ID_TO_CLASS[p.profile_id];
+    let points = demoBuildState.get(p.name);
+    if (!points) {
+      points = buildFeasibleSelection(className, DEMO_TOTAL_BUDGET);
+      demoBuildState.set(p.name, points);
+    }
+    return {
+      session_guid: 'demo-' + idx,
+      player_name: p.name,
+      task_force: p.task_force,
+      profile_id: p.profile_id,
+      points,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Settings bar -- same pattern as spectator-overlay.html.
+// ---------------------------------------------------------------------------
+async function refreshInstanceList() {
+  const select = document.getElementById('instance-select');
+  try {
+    const url = OVERLAY_INSTANCES_URL + '?token=' + encodeURIComponent(OVERLAY_TOKEN);
+    const resp = await fetch(url, { cache: 'no-store' });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const instances = data.instances || [];
+
+    const currentValue = select.value;
+    select.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = instances.length ? 'Instance…' : 'No active broadcasts';
+    select.appendChild(placeholder);
+
+    instances.forEach(inst => {
+      const opt = document.createElement('option');
+      opt.value = String(inst.instance_id);
+      opt.textContent = '[' + inst.instance_id + '] ' + (inst.map_name || '?')
+        + ' (' + inst.player_count + ' tracked)';
+      select.appendChild(opt);
+    });
+
+    const wanted = currentValue || (INSTANCE_ID ? String(INSTANCE_ID) : '');
+    if (wanted && [...select.options].some(o => o.value === wanted)) {
+      select.value = wanted;
+    }
+  } catch (e) { /* transient network hiccup -- next poll retries */ }
+}
+
+document.getElementById('instance-select').addEventListener('change', (e) => {
+  INSTANCE_ID = Number(e.target.value) || 0;
+  localStorage.setItem(INSTANCE_KEY, String(INSTANCE_ID));
+});
+
+const iconsPathInput = document.getElementById('icons-path-input');
+iconsPathInput.value = ICONS_ROOT_PATH;
+function commitIconsPath() {
+  const val = iconsPathInput.value.trim();
+  if (!val) return;
+  ICONS_ROOT_PATH = val.endsWith('/') ? val : val + '/';
+  localStorage.setItem(ICONS_PATH_KEY, ICONS_ROOT_PATH);
+}
+iconsPathInput.addEventListener('change', commitIconsPath);
+iconsPathInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { commitIconsPath(); iconsPathInput.blur(); }
+});
+
+const demoBtn = document.getElementById('demo-toggle');
+function refreshDemoButton() {
+  demoBtn.textContent = DEMO_MODE ? 'Demo Mode: ON' : 'Demo Mode: OFF';
+  demoBtn.classList.toggle('active', DEMO_MODE);
+}
+demoBtn.addEventListener('click', () => {
+  DEMO_MODE = !DEMO_MODE;
+  refreshDemoButton();
+  poll();
+});
+refreshDemoButton();
+
+poll();
+setInterval(poll, POLL_MS);
+refreshInstanceList();
+setInterval(refreshInstanceList, INSTANCE_LIST_POLL_MS);
+</script>
+
+</body>
+</html>

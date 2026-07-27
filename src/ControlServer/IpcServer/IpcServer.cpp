@@ -18,7 +18,9 @@
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/SpectatorOverlay/SpectatorOverlayState.hpp"
+#include "src/ControlServer/SpectatorOverlay/OverlayIdCatalog.hpp"
 #include <ctime>
+#include <unordered_set>
 
 namespace {
 
@@ -311,9 +313,24 @@ private:
             snap.task_force    = j.value("task_force", 0);
             snap.health        = j.value("health", 0);
             snap.health_max    = j.value("health_max", 0);
+            // Filter the DLL's raw group-id dump down to the two curated
+            // whitelists (OverlayIdCatalog) and split by kind -- effect ids
+            // render as a tile icon, skill ids are pushed through but never
+            // rendered. `seen` collapses ids the DLL reported more than once
+            // (stacked instances of the same group, or duplicates across its
+            // two source TArrays) so each id shows at most once either way.
             if (j.contains("effect_ids") && j["effect_ids"].is_array()) {
-                for (const auto& id : j["effect_ids"]) {
-                    if (id.is_number_integer()) snap.effect_ids.push_back(id.get<int>());
+                std::unordered_set<int> seen;
+                for (const auto& raw : j["effect_ids"]) {
+                    if (!raw.is_number_integer()) continue;
+                    const int id = raw.get<int>();
+                    if (!seen.insert(id).second) continue;
+                    if (OverlayIdCatalog::IsEffectId(id)) {
+                        snap.effect_ids.push_back(id);
+                    } else if (OverlayIdCatalog::IsSkillId(id)) {
+                        snap.skill_ids.push_back(id);
+                    }
+                    // Not in either whitelist -- dropped.
                 }
             }
             snap.updated_at = (int64_t)std::time(nullptr);

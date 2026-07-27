@@ -35,6 +35,21 @@ void SpectatorOverlayState::ClearInstance(int64_t instance_id) {
     state_.erase(instance_id);
 }
 
+std::vector<int64_t> SpectatorOverlayState::ListActiveInstances() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    const int64_t now = (int64_t)std::time(nullptr);
+    std::vector<int64_t> out;
+    for (const auto& [instance_id, byGuid] : state_) {
+        for (const auto& [guid, snap] : byGuid) {
+            if (now - snap.updated_at <= kStaleSeconds) {
+                out.push_back(instance_id);
+                break;
+            }
+        }
+    }
+    return out;
+}
+
 void SpectatorOverlayState::Sweep() {
     std::lock_guard<std::mutex> lock(mutex_);
     const int64_t now = (int64_t)std::time(nullptr);

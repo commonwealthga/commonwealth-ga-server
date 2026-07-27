@@ -472,7 +472,6 @@ SOURCE_FILES_CLIENT= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/NotifyGroupChanged/TgDeployable__NotifyGroupChanged.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgRepInfo_Game/GetTaskForceFor/TgRepInfo_Game__GetTaskForceFor.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployable/IsFriendlyWithLocalPawn/TgDeployable__IsFriendlyWithLocalPawn.cpp \
-			  $(SRC_DIR)/GameServer/TgGame/TgPawn/IsFriendlyWithLocalPawn/TgPawn__IsFriendlyWithLocalPawn.cpp \
 			  $(SRC_DIR)/dllmainclient.cpp
 
 
@@ -543,14 +542,6 @@ VERSION_CPP_OBJS := $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(VERSION_CPP_SRC))
 VERSION_OBJS := $(VERSION_CPP_OBJS) $(OBJ_DIR)/lib/sqlite3/sqlite3.o $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(VERSION_PROXY_SRC))
 VERSION_CLIENT_OBJS := $(patsubst %.cpp,$(OBJ_DIR)/client/%.o,$(VERSION_CPP_CLIENT_SRC)) $(patsubst %.cpp,$(OBJ_DIR)/client/%.o,$(VERSION_PROXY_SRC))
 DINPUT8_OBJS := $(VERSION_OBJS) $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(DINPUT8_PROXY_SRC))
-# dinput8.dll flavor of the client diagnostic build (dllmainclient.cpp),
-# alongside the version.dll flavor above. dinput8.dll proxying is the
-# mechanism already proven to work against this exe (the server hook uses
-# it); version.dll proxying is untested territory and crashed silently on
-# load when tried against a real Steam client install (2026-07-21) — same
-# object files, different proxy shim, so a developer can try whichever one
-# actually loads on their machine.
-DINPUT8_CLIENT_OBJS := $(patsubst %.cpp,$(OBJ_DIR)/client/%.o,$(VERSION_CPP_CLIENT_SRC)) $(patsubst %.cpp,$(OBJ_DIR)/client/%.o,$(DINPUT8_PROXY_SRC))
 
 ifeq ($(PRINT_VERSION_OBJS),1)
 $(info VERSION_CPP_SRC = $(VERSION_CPP_SRC))
@@ -562,7 +553,6 @@ DINPUT8_DEF=$(DATA_DIR)/dinput8.def
 VERSION_OUT=$(OUT_DIR)/version.dll
 DINPUT8_OUT=$(OUT_DIR)/dinput8.dll
 VERSION_CLIENT_OUT=$(OUT_CLIENT_DIR)/version.dll
-DINPUT8_CLIENT_OUT=$(OUT_CLIENT_DIR)/dinput8.dll
 
 obj/pch.hpp.gch: src/pch.hpp
 	i686-w64-mingw32-g++ -std=c++17 -D_WIN32_WINNT=0x0601 -I. -I./lib/detours -I./lib/asio-1.34.2/include -x c++-header src/pch.hpp -o obj/pch.hpp.gch
@@ -591,7 +581,7 @@ $(OBJ_DIR)/lib/sqlite3/sqlite3.o: lib/sqlite3/sqlite3.c
 	i686-w64-mingw32-gcc -O2 -I./lib/sqlite3 -c $< -o $@
 
 # Default target
-all: $(VERSION_OUT) $(DINPUT8_OUT) $(VERSION_CLIENT_OUT) $(DINPUT8_CLIENT_OUT)
+all: $(VERSION_OUT) $(DINPUT8_OUT) $(VERSION_CLIENT_OUT)
 
 # Build version.dll
 $(VERSION_OUT): $(VERSION_OBJS) $(VERSION_DEF)
@@ -606,15 +596,11 @@ $(VERSION_CLIENT_OUT): $(VERSION_CLIENT_OBJS) $(VERSION_DEF)
 	$(file >$@.rsp,$(VERSION_CLIENT_OBJS) $(VERSION_DEF))
 	$(CC) $(CFLAGS) -o $@ @$@.rsp $(LDFLAGS)
 
-$(DINPUT8_CLIENT_OUT): $(DINPUT8_CLIENT_OBJS) $(DINPUT8_DEF)
-	$(file >$@.rsp,$(DINPUT8_CLIENT_OBJS) $(DINPUT8_DEF))
-	$(CC) $(CFLAGS) -o $@ @$@.rsp $(LDFLAGS)
-
 # Pull in header-dependency rules emitted by -MMD.  Each .o has a sibling .d
 # file listing the headers its .cpp included; when a header's mtime is newer
 # than a .o, make knows to rebuild that .o.  `-include` (leading dash) is
 # silent if the .d doesn't exist yet (first build), so this is zero-cost.
-DEPS := $(VERSION_OBJS:.o=.d) $(VERSION_CLIENT_OBJS:.o=.d) $(DINPUT8_CLIENT_OBJS:.o=.d)
+DEPS := $(VERSION_OBJS:.o=.d) $(VERSION_CLIENT_OBJS:.o=.d)
 -include $(DEPS)
 
 # Clean
@@ -645,6 +631,8 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/IpcServer/IpcServer.cpp \
 	$(CS_SRC_DIR)/SpectatorOverlay/SpectatorOverlayState.cpp \
 	$(CS_SRC_DIR)/SpectatorOverlay/OverlayHttpServer.cpp \
+	$(CS_SRC_DIR)/SpectatorOverlay/OverlayIdCatalog.cpp \
+	$(CS_SRC_DIR)/SpectatorOverlay/SkillTreeCatalog.cpp \
 	$(CS_SRC_DIR)/InstanceRegistry/InstanceRegistry.cpp \
 	$(CS_SRC_DIR)/InstanceSpawner/InstanceSpawner.cpp \
 	$(CS_SRC_DIR)/QuestStore/QuestStore.cpp \
