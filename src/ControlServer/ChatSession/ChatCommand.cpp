@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <climits>
+#include <cstdio>
 #include <vector>
 
 #include "lib/nlohmann/json.hpp"
@@ -219,6 +220,14 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
+    if (cmd_name == "-classes") {
+        // No args — per-team class counts of the sender's instance.
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        if (rest.empty()) out.class_counts = true;
+        return out;
+    }
+
     if (cmd_name == "-possess") {
         out.recognized = true;
         out.suppress_broadcast = true;
@@ -430,6 +439,57 @@ static void DispatchSimpleAction(const std::string& action_name, const std::stri
             "[ChatCmd] guid=%s command=-%s outcome=ignored details=dispatch_failed\n",
             session_guid.c_str(), action_name.c_str());
     }
+}
+
+void ExecuteClassCounts(const std::string& session_guid) {
+    if (session_guid.empty()) {
+        Logger::Log("chat-command", "[ChatCmd] ExecuteClassCounts dropped: empty session_guid\n");
+        return;
+    }
+
+    auto lookup = InstanceRegistry::GetInstancePlayerTaskForce(session_guid);
+    if (!lookup) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=-classes outcome=ignored details=no_active_instance_player\n",
+            session_guid.c_str());
+        ChatSession::SystemMessageToGuid(session_guid, "*** You are not in an instance ***");
+        return;
+    }
+    const int64_t instance_id = lookup->first;
+    const int     own_tf      = lookup->second;
+
+    // Index: 0=assault 1=medic 2=recon 3=robotics.
+    int own[4] = {0, 0, 0, 0};
+    int enemy[4] = {0, 0, 0, 0};
+    const auto rows = InstanceRegistry::GetActivePlayersForInstance(instance_id);
+    for (const auto& row : rows) {
+        int idx = -1;
+        switch (row.profile_id) {
+            case 680: idx = 0; break;  // PROFILE_ASSAULT
+            case 567: idx = 1; break;  // PROFILE_MEDIC
+            case 681: idx = 2; break;  // PROFILE_RECON
+            case 679: idx = 3; break;  // PROFILE_ROBOTICS
+            default: break;
+        }
+        if (idx < 0) continue;
+        if (row.task_force == own_tf) own[idx]++;
+        else                          enemy[idx]++;
+    }
+
+    char line[64];
+    std::snprintf(line, sizeof(line), "Your team: %d/%d/%d/%d",
+                  own[0], own[1], own[2], own[3]);
+    ChatSession::SystemMessageToGuid(session_guid, line);
+    std::snprintf(line, sizeof(line), "Enemy team: %d/%d/%d/%d",
+                  enemy[0], enemy[1], enemy[2], enemy[3]);
+    ChatSession::SystemMessageToGuid(session_guid, line);
+
+    Logger::Log("chat-command",
+        "[ChatCmd] guid=%s command=-classes outcome=sent instance=%lld tf=%d "
+        "own=%d/%d/%d/%d enemy=%d/%d/%d/%d roster=%zu\n",
+        session_guid.c_str(), (long long)instance_id, own_tf,
+        own[0], own[1], own[2], own[3],
+        enemy[0], enemy[1], enemy[2], enemy[3], rows.size());
 }
 
 void DispatchPossess(const std::string& session_guid)   { DispatchSimpleAction("possess",   session_guid); }

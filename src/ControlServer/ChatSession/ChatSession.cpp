@@ -318,6 +318,7 @@ bool HasParsedCommandAction(const ChatCommand::ParseResult& parsed) {
         || parsed.unpossess
         || parsed.coords
         || parsed.fullheal
+        || parsed.class_counts
         || parsed.reload_queues
         || parsed.announce.has_value();
 }
@@ -563,6 +564,9 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         }
         if (parsed.recognized && parsed.fullheal) {
             ChatCommand::DispatchFullHeal(session_guid_);
+        }
+        if (parsed.recognized && parsed.class_counts) {
+            ChatCommand::ExecuteClassCounts(session_guid_);
         }
         if (parsed.recognized && parsed.topdown) {
             ChatCommand::DispatchTopDown(*parsed.topdown, session_guid_);

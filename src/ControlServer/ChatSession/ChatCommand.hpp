@@ -89,6 +89,11 @@ struct ParseResult {
     // practice; DLL enforces map gate + per-player cooldown). No args.
     bool fullheal = false;
 
+    // -classes — per-team class counts (assault/medic/recon/robotics) of the
+    // sender's current instance, replied privately on the System channel.
+    // Handled entirely on the control server. No args.
+    bool class_counts = false;
+
     // -reload-queues — re-read ga_queues + ga_map_pool_entries. Handled
     // entirely on the control server; no PLAYER_ACTION IPC dispatched.
     bool reload_queues = false;
@@ -152,6 +157,12 @@ void DispatchCoords(const std::string& session_guid);
 // Send -fullheal to the game DLL. Same delivery path; map gate + cooldown
 // are enforced DLL-side.
 void DispatchFullHeal(const std::string& session_guid);
+
+// -classes: count classes per team in the sender's instance (from
+// ga_instance_players — same data Local chat scoping uses) and reply with two
+// private System-channel lines ("Your team: a/m/r/b" / "Enemy team: ...").
+// Handled entirely on the control server; no PLAYER_ACTION IPC.
+void ExecuteClassCounts(const std::string& session_guid);
 
 // Send -topdown to the game DLL. Toggles top-down view in the DLL — repeated
 // invocations alternate enter/restore. lift_z=0 means "use the DLL default".
