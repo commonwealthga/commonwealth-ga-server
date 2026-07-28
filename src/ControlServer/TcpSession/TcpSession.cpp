@@ -11,6 +11,7 @@
 #include "src/ControlServer/MatchmakingService/RuntimeStats.hpp"
 #include "src/ControlServer/MatchmakingService/RoleWeightedSplit.hpp"
 #include "src/ControlServer/MmrService/MmrService.hpp"
+#include "src/ControlServer/SpectatorOverlay/SkillTreeCatalog.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include <set>
 #include <map>
@@ -490,6 +491,7 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         if (character_id != 0) {
             PlayerSessionStore::SetSkillsForCharacter(
                 character_id, (int)session->item_profile_id_, skills);
+            SkillTreeCatalog::InvalidateCache(character_id);
         }
         // Echo current DB state so the UI's inbound 0x00A0 handler has
         // authoritative data whether this was a save or a request.
@@ -506,6 +508,7 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         if (character_id != 0) {
             PlayerSessionStore::ClearSkillsForCharacter(
                 character_id, (int)session->item_profile_id_);
+            SkillTreeCatalog::InvalidateCache(character_id);
         }
         // Echo the zeroed allocation to the client so the UI matches.
         session->send_player_skills_response();
@@ -614,6 +617,11 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         if (character_id != 0 && item_profile_id >= 1 && item_profile_id <= 5) {
             PlayerSessionStore::SetCurrentItemProfile(character_id, item_profile_id);
             session->item_profile_id_ = item_profile_id;
+            // The only way a build changes mid-match (no mid-match respec --
+            // see SkillTreeCatalog.hpp) -- drop the cached summary now so the
+            // overlay's next poll picks up the new profile's points instead
+            // of waiting out the cache's stale-backstop window.
+            SkillTreeCatalog::InvalidateCache(character_id);
 
             if (pawn_id != 0) {
                 // Clear-then-re-add so the client's m_InventoryMap entries get
@@ -1174,6 +1182,177 @@ void TcpSession::initiate_player_register_for_target(const InstanceInfo& target,
     });
 }
 
+bool TcpSession::DeliverSpectateJoin(const std::string& session_guid,
+                                     int64_t target_instance_id,
+                                     int team_task_force,
+                                     std::string& message) {
+    auto target = InstanceRegistry::GetInstanceById(target_instance_id);
+    if (!target || target->state != "READY" || target->is_home_map) {
+        message = "That instance is not available to spectate.";
+        return false;
+    }
+
+    std::shared_ptr<TcpSession> session;
+    {
+        std::lock_guard<std::mutex> lock(sessions_mutex_);
+        auto it = g_sessions_.find(session_guid);
+        if (it == g_sessions_.end()) {
+            message = "Your session was not found.";
+            return false;
+        }
+        session = it->second.lock();
+        if (!session) {
+            g_sessions_.erase(it);
+            message = "Your session was not found.";
+            return false;
+        }
+    }
+
+    session->initiate_player_register_for_spectate(*target, team_task_force);
+    message = "Connecting you to instance " + std::to_string(target_instance_id) + " as a spectator"
+             + (team_task_force == 1 ? " (attackers)" : team_task_force == 2 ? " (defenders)" : "")
+             + "...";
+    return true;
+}
+
+void TcpSession::initiate_player_register_for_spectate(const InstanceInfo& target,
+                                                       int team_task_force) {
+    auto session = PlayerSessionStore::GetByGuid(session_guid_);
+    if (!session) {
+        Logger::Log("tcp", "[TcpSession] Cannot send PLAYER_REGISTER (spectate): session %s not found\n",
+            session_guid_.c_str());
+        return;
+    }
+
+    nlohmann::json reg;
+    reg["type"]         = IpcProtocol::MSG_PLAYER_REGISTER;
+    reg["session_guid"] = session_guid_;
+    const uint64_t register_token = next_register_token_++;
+    active_register_token_ = register_token;
+    reg["register_token"] = register_token;
+    reg["profile_id"]   = selected_profile_id_;
+    reg["player_name"]  = player_name;
+    reg["user_id"]      = user_id_;
+    reg["character_id"] = selected_character_id_;
+    // 0/1/2 — purely cosmetic for a spectator (see initiate_player_register_for_spectate
+    // doc comment in the header). The DLL never lets this trigger a pawn spawn;
+    // is_spectator is what gates that, independent of this value.
+    reg["task_force"]   = team_task_force;
+    reg["is_spectator"] = true;
+
+    // Head/gender/morph only matter for a spawned pawn's appearance; a
+    // spectator never spawns one, but the DLL parses these fields
+    // unconditionally, so fill them the same as the normal register path.
+    auto charInfo = PlayerSessionStore::GetCharacterById(selected_character_id_);
+    if (charInfo) {
+        reg["head_asm_id"]          = charInfo->head_asm_id;
+        reg["gender_type_value_id"] = charInfo->gender_type_value_id;
+        reg["morph_data"]           = HexUtils::hex_encode(charInfo->morph_data);
+    } else {
+        reg["head_asm_id"]          = 0;
+        reg["gender_type_value_id"] = 0;
+        reg["morph_data"]           = "";
+    }
+
+    int64_t target_instance_id = target.instance_id;
+
+    auto self(shared_from_this());
+    pending_ack_timer_ = std::make_shared<asio::steady_timer>(io_ctx_);
+    pending_ack_timer_->expires_after(std::chrono::seconds(60));
+    auto timer = pending_ack_timer_;
+
+    IpcServer::RegisterPendingAck(session_guid_,
+        [this, self, timer, target_instance_id](bool success, int pawn_id) {
+            timer->cancel();
+            if (success) {
+                Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK (spectate) success for %s instance=%lld\n",
+                    session_guid_.c_str(), (long long)target_instance_id);
+                assigned_instance_id_ = target_instance_id;
+                is_spectating_ = true;
+                auto fresh = InstanceRegistry::GetInstanceById(target_instance_id);
+                if (fresh && fresh->state == "READY") {
+                    send_go_play_to_instance(*fresh, 0);
+                } else {
+                    Logger::Log("tcp", "[TcpSession] Spectate target instance %lld no longer READY (state=%s)\n",
+                        (long long)target_instance_id, fresh ? fresh->state.c_str() : "<missing>");
+                    assigned_instance_id_ = 0;
+                    is_spectating_ = false;
+                }
+            } else {
+                Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK (spectate) failed for %s instance=%lld\n",
+                    session_guid_.c_str(), (long long)target_instance_id);
+            }
+            (void)pawn_id;
+        });
+
+    if (!IpcServer::SendToInstance(target_instance_id, reg.dump())) {
+        Logger::Log("tcp", "[TcpSession] No IPC session for spectate target %lld for %s\n",
+            (long long)target_instance_id, session_guid_.c_str());
+        pending_ack_timer_->cancel();
+        IpcServer::ClearPendingAck(session_guid_);
+        pending_ack_timer_.reset();
+        return;
+    }
+
+    pending_ack_timer_->async_wait([this, self, timer, target_instance_id](std::error_code ec) {
+        if (!ec) {
+            Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK (spectate) timeout for %s instance=%lld\n",
+                session_guid_.c_str(), (long long)target_instance_id);
+            IpcServer::ClearPendingAck(session_guid_);
+        }
+    });
+}
+
+bool TcpSession::DeliverSpectateExit(const std::string& session_guid, std::string& message) {
+    std::shared_ptr<TcpSession> session;
+    {
+        std::lock_guard<std::mutex> lock(sessions_mutex_);
+        auto it = g_sessions_.find(session_guid);
+        if (it == g_sessions_.end()) {
+            message = "Your session was not found.";
+            return false;
+        }
+        session = it->second.lock();
+        if (!session) {
+            g_sessions_.erase(it);
+            message = "Your session was not found.";
+            return false;
+        }
+    }
+
+    if (!session->is_spectating_) {
+        message = "You're not currently spectating.";
+        return false;
+    }
+
+    Logger::Log("tcp", "[TcpSession] -unspectate: guid=%s leaving instance=%lld\n",
+        session_guid.c_str(), (long long)session->assigned_instance_id_);
+    session->exit_spectate();
+    message = "Leaving spectator mode, returning you to the home map...";
+    return true;
+}
+
+void TcpSession::exit_spectate() {
+    is_spectating_ = false;
+
+    // Same PLAYER_CLOSE primitive as handle_socket_disconnect -- state flip +
+    // engine reap of the NetConnection. NOT PLAYER_LEAVE: driving
+    // NetConnection__Cleanup on a still-live connection crashes.
+    if (assigned_instance_id_ != 0) {
+        nlohmann::json close_msg;
+        close_msg["type"]           = IpcProtocol::MSG_PLAYER_CLOSE;
+        close_msg["session_guid"]   = session_guid_;
+        close_msg["register_token"] = active_register_token_;
+        const bool ok = IpcServer::SendToInstance(assigned_instance_id_, close_msg.dump());
+        Logger::Log("tcp", "[TcpSession] -unspectate: PLAYER_CLOSE guid=%s instance=%lld send=%d\n",
+            session_guid_.c_str(), (long long)assigned_instance_id_, (int)ok);
+        assigned_instance_id_  = 0;
+        active_register_token_ = 0;
+    }
+
+    // Straight home -- no route_from_mission_instance, no queue-continuation.
+    wait_for_home_map_then_register(120);
+}
 
 void TcpSession::wait_for_home_map_then_register(int remaining_seconds) {
     if (remaining_seconds <= 0) {
@@ -2034,6 +2213,7 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 
 			PlayerSessionStore::SetSkillsForCharacter(
 				selected_character_id_, (int)item_profile_id_, skills);
+			SkillTreeCatalog::InvalidateCache(selected_character_id_);
 
 			// Echo back so the UI updates; also refreshes LAST_RESPEC_DATETIME client-side.
 			send_player_skills_response();

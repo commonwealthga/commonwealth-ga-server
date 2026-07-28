@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Spectator Overlay</title>
+<style>
+  /* Transparent by design — this is meant to sit as an OBS Browser Source
+     cropped/composited over gameplay footage, not viewed as its own page. */
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    font-family: "Segoe UI", Arial, sans-serif;
+    overflow: hidden;
+  }
+
+  #root {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; /* vertically centers both team panels */
+    width: 100vw;
+    height: 100vh;
+    box-sizing: border-box;
+    padding: 16px;
+    /* Extra top clearance below the layout-controls strip (see
+       #layout-controls) so a broadcast crop can remove just that strip
+       without also cutting off the ATTACKERS/DEFENDERS labels underneath.
+       Dropped back to the normal 16px once the admin bar is hidden (see
+       body.admin-hidden below) -- no strip to clear then, and centering
+       looks better using the full viewport height. */
+    padding-top: 52px;
+  }
+
+  body.admin-hidden #root {
+    padding-top: 16px;
+  }
+
+  .team-panel {
+    --scale: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 320px;
+    transform: scale(var(--scale));
+  }
+
+  .team-panel.attackers { transform-origin: top left; }
+  .team-panel.defenders { align-items: flex-end; transform-origin: top right; }
+
+  .team-label {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #ffffff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+    margin-bottom: 2px;
+    padding: 2px 4px;
+    border-radius: 3px;
+  }
+
+  .cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .attackers .team-label { color: #ff8a5c; }
+  .defenders .team-label { color: #5cc7ff; }
+
+  .player-card {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Icon + health pill sit side by side; the effects bar goes underneath
+     both (see .effects-row), not inside the pill itself. */
+  .player-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .class-icon {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(12, 14, 20, 0.72);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .class-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  /* The pill's own background IS the health bar -- .health-pill-fill is an
+     absolutely-positioned layer inside it that grows/shrinks with current
+     HP%, so the "empty" portion is just the pill's own dark background
+     showing through rather than a separate bar element. */
+  .health-pill {
+    position: relative;
+    flex: 1 1 auto;
+    height: 32px;
+    min-width: 0;
+    border-radius: 4px;
+    background: rgba(12, 14, 20, 0.72);
+    border: 1px solid rgba(255,255,255,0.35);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 2px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+
+  .health-pill-fill {
+    position: absolute;
+    inset: 0;
+    width: 0%;
+    transition: width 150ms linear, background-color 200ms linear;
+    /* Depth: a top-lit gloss fading into a darker lower edge, plus an inner
+       shadow so the fill reads as a raised bar rather than a flat block. */
+    background-image:
+      linear-gradient(to bottom, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.05) 45%, rgba(0,0,0,0.15) 100%);
+    background-blend-mode: overlay;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -3px 5px rgba(0,0,0,0.35);
+  }
+
+  .health-pill-name,
+  .health-pill-hp {
+    position: relative; /* sits above .health-pill-fill in paint order */
+    z-index: 1;
+  }
+
+  .health-pill-name {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+    font-weight: 600;
+    color: #f0f0f0;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100% - 70px);
+  }
+
+  .health-pill-hp {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: rgba(255,255,255,0.75);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* Effects bar -- a distinct strip underneath each player's icon+pill row,
+     not embedded inside the pill. */
+  .effects-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+    margin-left: 38px; /* aligns under the pill, past the class icon + gap */
+    padding: 3px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.35);
+    /* Always reserve icon-row height, even with zero active effects, so a
+       buff appearing/disappearing doesn't shove the pill above it up and
+       down — the empty row just sits there invisibly until something fills it. */
+    min-height: calc(var(--icon-size, 24px) + 6px);
+  }
+
+  /* Defenders mirror -- class icon on the right, name/hp text swapped
+     sides, health fill grows from the right, effects bar anchored/ordered
+     from the right. Same elements/classes as attackers, just re-anchored;
+     no JS branching needed for any of this. */
+  .defenders .player-row {
+    flex-direction: row-reverse;
+  }
+
+  .defenders .health-pill-fill {
+    left: auto;
+    right: 0;
+  }
+
+  .defenders .health-pill-name {
+    left: auto;
+    right: 12px;
+    text-align: right;
+  }
+
+  .defenders .health-pill-hp {
+    right: auto;
+    left: 10px;
+  }
+
+  .defenders .effects-row {
+    margin-left: 0;
+    margin-right: 38px;
+    flex-direction: row-reverse;
+  }
+
+  .effect-tag {
+    font-size: 10px;
+    line-height: 1;
+    padding: 3px 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.14);
+    color: #f5f5f5;
+    white-space: nowrap;
+  }
+
+  /* Icon variant — replaces the text pill once an id is mapped to an image. */
+  .effect-tag.effect-tag-icon {
+    padding: 2px;
+    width: var(--icon-size, 24px);
+    height: var(--icon-size, 24px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.08);
+  }
+
+  .effect-tag.effect-tag-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: -webkit-optimize-contrast;
+  }
+
+  /* Overflow badge — replaces the (MAX_VISIBLE_EFFECTS+1)th icon onward so a
+     heavily-buffed player can never grow tall enough to push the cards below
+     them off-frame. Same box size as an icon tile so it doesn't disturb the
+     row's height math. */
+  .effect-tag.effect-tag-overflow {
+    width: var(--icon-size, 24px);
+    height: var(--icon-size, 24px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    background: rgba(255,255,255,0.22);
+  }
+
+  .status-line {
+    position: fixed;
+    bottom: 4px;
+    left: 8px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+    font-family: monospace;
+  }
+
+  /* ------------------------------------------------------------------- */
+  /* Layout editor (drag / resize) — only interactive in edit mode.       */
+  /* ------------------------------------------------------------------- */
+
+  #layout-controls {
+    position: fixed;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    gap: 6px;
+    font-family: monospace;
+  }
+
+  #layout-controls button {
+    font-size: 11px;
+    padding: 4px 10px;
+    background: rgba(20,20,25,0.82);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  #layout-controls button.active {
+    background: rgba(76,175,80,0.85);
+    border-color: rgba(255,255,255,0.6);
+  }
+
+  body.edit-mode .team-panel {
+    outline: 1px dashed rgba(255,255,255,0.45);
+    outline-offset: 4px;
+  }
+
+  body.edit-mode .team-label {
+    cursor: move;
+    user-select: none;
+    background: rgba(255,255,255,0.08);
+  }
+
+  .resize-handle {
+    display: none;
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    bottom: -6px;
+    background: rgba(255,255,255,0.55);
+    border: 1px solid rgba(0,0,0,0.4);
+    border-radius: 3px;
+    cursor: nwse-resize;
+  }
+
+  /* Inner-facing corner for each panel — attackers is left-anchored so its
+     handle sits bottom-right (toward screen center); defenders is
+     right-anchored so its handle needs to sit bottom-LEFT instead, or it
+     ends up pinned against the outer edge of the screen, barely reachable. */
+  .attackers .resize-handle { right: -6px; }
+  .defenders .resize-handle { left: -6px; cursor: nesw-resize; }
+
+  .team-panel { position: relative; }
+  body.edit-mode .resize-handle { display: block; }
+
+  #resize-both {
+    cursor: ew-resize;
+    display: none;
+  }
+  body.edit-mode #resize-both { display: inline-block; }
+
+  /* ------------------------------------------------------------------- */
+  /* Config strip — instance + icon-folder selection. Lives in the same    */
+  /* reserved top clearance as #layout-controls (see #root's padding-top), */
+  /* just left-anchored instead of centered, so a broadcast crop removing  */
+  /* that whole strip takes this with it too.                             */
+  /* ------------------------------------------------------------------- */
+  #overlay-settings {
+    position: fixed;
+    top: 6px;
+    left: 6px;
+    z-index: 9999;
+    display: flex;
+    gap: 6px;
+    font-family: monospace;
+  }
+
+  #overlay-settings select,
+  #overlay-settings input {
+    font-size: 11px;
+    padding: 4px 6px;
+    background: rgba(20,20,25,0.82);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 4px;
+  }
+
+  #overlay-settings input { width: 340px; }
+
+  /* Admin bar hide toggle (press H) -- for putting this page straight into
+     an OBS Browser Source. Cropping the OBS source to dodge the admin strip
+     is fragile (any layout change shifts the "safe" boundary); this instead
+     removes it from the DOM's rendered layout entirely, so the source can
+     just show the whole page. State persists in localStorage so it survives
+     OBS reloading the source (scene switches, "refresh on activate", etc).
+     There's deliberately no visible button for this -- if there were, it'd
+     have nothing to click once it's already hidden. */
+  body.admin-hidden #overlay-settings,
+  body.admin-hidden #layout-controls {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="overlay-settings">
+  <select id="instance-select" title="Only instances an active spectator is currently watching are listed">
+    <option value="">Instance…</option>
+  </select>
+  <input id="icons-path-input" type="text" placeholder="ICONS folder (contains CLASSES/EFFECTS/SKILLS subfolders)" />
+</div>
+
+<div id="layout-controls">
+  <button id="edit-toggle">Edit Layout</button>
+  <button id="reset-layout">Reset Layout</button>
+  <button id="demo-toggle"></button>
+  <button id="hp-toggle" title="In-game, players only ever see the health bar, never a number -- off by default to match."></button>
+  <button id="resize-both" title="Drag left/right to resize both panels together">⇔ Resize Both</button>
+</div>
+
+<div id="root">
+  <div class="team-panel attackers" id="panel-attackers">
+    <div class="team-label">Attackers</div>
+    <div class="cards-container" id="cards-attackers"></div>
+    <div class="resize-handle" data-side="left"></div>
+  </div>
+  <div class="team-panel defenders" id="panel-defenders">
+    <div class="team-label">Defenders</div>
+    <div class="cards-container" id="cards-defenders"></div>
+    <div class="resize-handle" data-side="right"></div>
+  </div>
+</div>
+<div class="status-line" id="status">connecting…</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Config — edit these as fallback defaults for first load on a machine that
+// has never set its own values yet. INSTANCE_ID and ICONS_ROOT_PATH are both
+// overridable at runtime via the settings bar (top-left) and persisted in
+// localStorage from then on -- this page is meant to be hosted somewhere the
+// broadcast operator can't edit the file itself, so both need a config path
+// that doesn't require touching this HTML.
+// ---------------------------------------------------------------------------
+// Same-origin by default: this page is meant to be served by
+// docker/spectator-overlay/overlay_proxy.py, which forwards /overlay* to the
+// control server and attaches the secret token server-side (OVERLAY_TOKEN
+// env var) so it never appears in this file or in any browser-visible URL.
+// For a direct-to-control-server setup on a private network, point
+// OVERLAY_BASE_URL at "http://<host>:<overlay_http_port>/overlay" and set
+// OVERLAY_TOKEN below to the overlay_token from control-server.json.
+const OVERLAY_BASE_URL      = "/overlay";
+const OVERLAY_INSTANCES_URL = OVERLAY_BASE_URL + "/instances";
+const OVERLAY_BUILDS_URL    = OVERLAY_BASE_URL + "/builds";
+const OVERLAY_TOKEN         = "";  // leave empty when served through the proxy
+const DEFAULT_INSTANCE_ID   = 0;   // 0 = none selected yet -- pick one from the dropdown
+// One shared ICONS folder with 3 fixed subfolders -- CLASSES/EFFECTS/SKILLS
+// -- rather than a separate path per icon kind. Shared with
+// skill-tree-overlay.html via the same localStorage key (same origin), so
+// setting it once here covers both pages.
+const DEFAULT_ICONS_ROOT_PATH = "ICONS/";
+const POLL_MS                = 300;
+const INSTANCE_LIST_POLL_MS  = 5000;
+// Builds don't change mid-match outside a loadout-profile swap, so this
+// polls far slower than the 300ms health/effects loop -- see
+// OverlayHttpServer's GET /overlay/builds and SkillTreeCatalog.hpp for why
+// bundling this into the fast poll would mean 2 DB queries x N players
+// every 300ms on the control server's single shared thread.
+const BUILDS_POLL_MS         = 6000;
+
+// player_key -> {balanced, tree1, tree2, tree1_name, tree2_name}, refreshed
+// by pollBuilds() on its own slower cadence and read (not fetched) by the
+// main render loop -- see poll()/renderTeam().
+let buildCache = {};
+
+// The raw "123 / 1300" HP number isn't something a player ever sees in-game
+// (only the bar itself is) -- hidden by default, toggleable in
+// #layout-controls for admin/testing use. The health-pill-fill bar's width
+// is computed from p.health/p.health_max regardless of this flag; only the
+// text label is affected. The build ("P/T1/T2") notation takes its place in
+// that text slot when this is off.
+const SHOW_HP_KEY = "spectatorOverlayShowHpNumber_v1";
+let showHpNumber = localStorage.getItem(SHOW_HP_KEY) === "1";
+
+// Max icons a single player's card ever shows -- anything beyond this
+// collapses into a "+N" badge instead of growing the card (and therefore the
+// whole column below it) taller. See .effect-tag-overflow.
+const MAX_VISIBLE_EFFECTS = 6;
+
+const INSTANCE_KEY   = "spectatorOverlayInstanceId_v1";
+const ICONS_PATH_KEY = "spectatorOverlayIconsRootPath_v1"; // shared with skill-tree-overlay.html
+
+let INSTANCE_ID = Number(localStorage.getItem(INSTANCE_KEY)) || DEFAULT_INSTANCE_ID;
+let ICONS_ROOT_PATH = localStorage.getItem(ICONS_PATH_KEY) || DEFAULT_ICONS_ROOT_PATH;
+
+// profile_id (GameTypes.h GA_G::PROFILE_ID_*) -> class icon filename.
+// Class icons are keyed by NAME, not id -- profile_id and an effect_group_id
+// or skill icon_id could otherwise collide on the same "<id>.png" file in a
+// shared folder tree.
+const PROFILE_ID_TO_CLASS_ICON = {
+  567: "Medic.png",
+  680: "Assault.png",
+  681: "Recon.png",
+  679: "Robotics.png",
+};
+
+// Set true to generate a fake 3v3 match locally instead of calling the
+// server -- lets you rehearse layout/positioning (and, with a generous
+// effect count, icon-overflow/wrapping) without a live match. Toggle it live
+// with the "Demo Mode" button too.
+let DEMO_MODE = true;
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+
+function healthColor(pct) {
+  if (pct > 0.5) return "#4caf50";
+  if (pct > 0.25) return "#ffb300";
+  return "#e53935";
+}
+
+function effectTagElement(id) {
+  const tag = document.createElement("div");
+  tag.className = "effect-tag effect-tag-icon";
+
+  const img = document.createElement("img");
+  img.src = ICONS_ROOT_PATH + "EFFECTS/" + id + ".png";
+  img.alt = "#" + id;
+  img.title = "#" + id;
+  // Icon file missing locally -- fall back to a plain "#id" tag instead of
+  // showing a broken image.
+  img.onerror = () => {
+    tag.classList.remove("effect-tag-icon");
+    tag.textContent = "#" + id;
+  };
+  tag.appendChild(img);
+  return tag;
+}
+
+function overflowTagElement(count) {
+  const tag = document.createElement("div");
+  tag.className = "effect-tag effect-tag-overflow";
+  tag.textContent = "+" + count;
+  tag.title = count + " more active effect" + (count === 1 ? "" : "s");
+  return tag;
+}
+
+// Class icon -- a SEPARATE id space (profile_id) and folder (CLASS_ICON_BASE_PATH)
+// from effect icons. profile_id 0 (unknown/unset) skips the image entirely
+// rather than requesting "0.png".
+function classIconElement(profileId) {
+  const wrap = document.createElement("div");
+  wrap.className = "class-icon";
+  const filename = PROFILE_ID_TO_CLASS_ICON[profileId];
+  if (!filename) return wrap;
+
+  const img = document.createElement("img");
+  img.src = ICONS_ROOT_PATH + "CLASSES/" + filename;
+  img.alt = img.title = filename.replace(".png", "");
+  img.onerror = () => { img.remove(); };
+  wrap.appendChild(img);
+  return wrap;
+}
+
+// Canonical class ordering shared by BOTH teams (Assault, Medic, Robotics,
+// Recon) so a given class occupies the same row position on the attacker
+// and defender sides -- keyed by profile_id (not name) since that's what
+// player records carry. Unknown/missing profile_id sorts last but keeps
+// its relative order (Array#sort is stable).
+const CLASS_SORT_ORDER = [680, 567, 679, 681]; // Assault, Medic, Robotics, Recon
+
+function sortByClassOrder(players) {
+  return players.slice().sort((a, b) => {
+    const ai = CLASS_SORT_ORDER.indexOf(a.profile_id);
+    const bi = CLASS_SORT_ORDER.indexOf(b.profile_id);
+    return (ai < 0 ? CLASS_SORT_ORDER.length : ai) - (bi < 0 ? CLASS_SORT_ORDER.length : bi);
+  });
+}
+
+function renderTeam(containerId, players) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = "";
+
+  players.forEach(p => {
+    const pct = p.health_max > 0 ? Math.max(0, Math.min(1, p.health / p.health_max)) : 0;
+
+    const card = document.createElement("div");
+    card.className = "player-card";
+
+    // Icon + health pill. The pill's own background IS the health bar --
+    // .health-pill-fill is a width:X% layer inside it, so the "missing HP"
+    // portion is just the pill's dark background showing through rather
+    // than a separate bar element next to the name.
+    const row = document.createElement("div");
+    row.className = "player-row";
+    row.appendChild(classIconElement(p.profile_id));
+
+    const pill = document.createElement("div");
+    pill.className = "health-pill";
+    const fill = document.createElement("div");
+    fill.className = "health-pill-fill";
+    fill.style.width = (pct * 100) + "%";
+    fill.style.backgroundColor = healthColor(pct);
+    const name = document.createElement("div");
+    name.className = "health-pill-name";
+    name.textContent = p.player_name || "(unknown)";
+    const hpText = document.createElement("div");
+    hpText.className = "health-pill-hp";
+    // Raw HP number is off by default (see SHOW_HP_KEY) -- the bar itself
+    // (fill.style.width above) already conveys health the same way it does
+    // in-game. When off, the "P/T1/T2" build notation (see
+    // SkillTreeCatalog.hpp) occupies this slot alone instead of trailing
+    // after the number. Demo mode sets p.build directly (see DEMO_ROSTER);
+    // real data comes from buildCache, refreshed on its own slower cadence
+    // by pollBuilds() rather than every 300ms tick -- see BUILDS_POLL_MS.
+    const build = p.build || buildCache[p.player_key];
+    const parts = [];
+    if (showHpNumber) parts.push(p.health + " / " + p.health_max);
+    if (build) parts.push(build.balanced + "/" + build.tree1 + "/" + build.tree2);
+    hpText.textContent = parts.join("   ");
+    pill.appendChild(fill);
+    pill.appendChild(name);
+    pill.appendChild(hpText);
+    row.appendChild(pill);
+    card.appendChild(row);
+
+    // Always append the effects bar, even with zero active effects — its
+    // min-height (see CSS) reserves the space either way, so a buff
+    // appearing/disappearing never shifts the pill above it up and down.
+    // Capped at MAX_VISIBLE_EFFECTS + an overflow badge so a heavily-buffed
+    // player can't grow their card (and shove every card below them down,
+    // possibly off-frame) without bound.
+    const effectsRow = document.createElement("div");
+    effectsRow.className = "effects-row";
+    const ids = p.effect_ids || [];
+    ids.slice(0, MAX_VISIBLE_EFFECTS).forEach(id => effectsRow.appendChild(effectTagElement(id)));
+    if (ids.length > MAX_VISIBLE_EFFECTS) {
+      effectsRow.appendChild(overflowTagElement(ids.length - MAX_VISIBLE_EFFECTS));
+    }
+    card.appendChild(effectsRow);
+
+    container.appendChild(card);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Demo mode — 3v3 sample match, not real game data. Exists to rehearse
+// layout, the icon-overflow/wrapping behavior (deliberately generous
+// per-player effect count), and class icons, all without needing a live
+// match. profile_id below is a plain 1..6 placeholder, not a real class
+// enum -- point the class-icon-path input at a local folder containing
+// "1.png".."6.png" to see class icons render.
+// ---------------------------------------------------------------------------
+// profile_id values are the real GameTypes.h GA_G::PROFILE_ID_* constants
+// (567=Medic, 680=Assault, 681=Recon, 679=Robotic) -- matches
+// PROFILE_ID_TO_CLASS_ICON so demo mode exercises the real class-icon
+// lookup, not a placeholder id space.
+const DEMO_ROSTER = [
+  { name: "Zipe",            task_force: 1, profile_id: 681, build: {balanced:6, tree1:0, tree2:7} },
+  { name: "Kelrior",         task_force: 1, profile_id: 567, build: {balanced:3, tree1:10, tree2:0} },
+  { name: "Neophyte",        task_force: 1, profile_id: 680, build: {balanced:4, tree1:5, tree2:4} },
+  { name: "Jeronyx",         task_force: 2, profile_id: 680, build: {balanced:6, tree1:7, tree2:0} },
+  { name: "AngelDelaGuarda", task_force: 2, profile_id: 567, build: {balanced:0, tree1:13, tree2:0} },
+  { name: "Zaxik",           task_force: 2, profile_id: 681, build: {balanced:3, tree1:3, tree2:7} },
+];
+
+// The actual whitelisted effect ids (OverlayIdCatalog::kEffectIds on the
+// control server, from FOR_CLAUDE_EFFECT_IDS.txt) -- NOT arbitrary
+// placeholders. Name a local test file "<id>.png" for any id below (e.g.
+// "7777.png") and point the icon-path input at that folder to see it render
+// for real, exactly as it would in production.
+const DEMO_EFFECT_ID_POOL = [
+  2654, 5810, 5818, 5835, 5848, 5861, 5873, 5969, 6014, 6020, 6821, 6951,
+  6980, 7026, 7312, 7342, 7351, 7380, 7777, 8690, 8964, 8976, 9074, 9076,
+  9129, 9133, 9185, 9260, 9315, 9579, 9603, 10277, 10538, 10740, 10746, 10758,
+  10817, 10818, 10832, 10847, 10858, 12655, 12658, 12659, 12884, 13000, 13024, 13026,
+  13029, 13050, 13086, 13087, 13091, 13092, 13108, 16631, 16647, 16668, 16908, 16909,
+  16921, 18771, 18773, 18777, 18947, 18951, 18971, 18975, 21289, 21290, 21291, 21292,
+  22271, 22272, 22273, 22316, 22335, 22341, 22344, 22348, 22351, 22357, 22358, 22368,
+  22379, 22381, 22384, 22387, 22394, 22408, 22409, 22411, 23966, 23967, 23970, 23971,
+  23983, 24240, 24371, 24380, 24383, 24408, 25346, 25348, 25372, 25373, 25397, 25398,
+  25721, 25724, 25735, 25740, 25803, 25809, 25811, 25817, 25861, 25862, 25865, 25869,
+  25876, 25877, 25878, 25880, 25882, 25883, 25884, 25886, 25888, 25889, 25890, 25892,
+  25893, 25896, 25902, 25904, 25987, 25988, 25990, 25993, 25995, 25997, 26009, 26011,
+  26012, 26056, 26095, 26098, 26181, 26182, 26183, 26185, 26193, 26254, 26256, 26269,
+  26271, 26272, 26513, 26514, 26520, 26521, 26523, 26525, 26617, 26638, 26640, 26641,
+  26646, 26651, 26668, 26702, 27432, 27434, 27435, 27437, 27438, 27477, 27479, 27480,
+  27498, 27499, 27501, 27504, 27505, 27507, 27525, 27526, 27528, 27529, 27532, 27534,
+  27536, 27537, 27538, 27540, 27542, 27543, 27544, 27546, 27548, 27549, 27550, 27552,
+  27582, 27584, 27585, 27587, 27588, 27593, 27617, 27646, 27710, 27731, 27732, 27761,
+];
+// Deliberately generous -- exceeds MAX_VISIBLE_EFFECTS so the overflow badge
+// and multi-row wrapping both get exercised on nearly every tick.
+const DEMO_MIN_EFFECTS = 8;
+const DEMO_MAX_EFFECTS = 14;
+
+// Per-player running state so demo health/buffs drift instead of jumping
+// around every poll.
+const demoState = new Map();
+
+function generateDemoSnapshot() {
+  const players = DEMO_ROSTER.map((p, idx) => {
+    let st = demoState.get(p.name);
+    if (!st) {
+      st = { health: 1300, health_max: 1300, effect_ids: [] };
+      demoState.set(p.name, st);
+    }
+    st.health += (Math.random() - 0.55) * 45;
+    st.health = Math.max(0, Math.min(st.health_max, Math.round(st.health)));
+    if (Math.random() < 0.08) {
+      const count = DEMO_MIN_EFFECTS +
+        Math.floor(Math.random() * (DEMO_MAX_EFFECTS - DEMO_MIN_EFFECTS + 1));
+      const pool = DEMO_EFFECT_ID_POOL.slice();
+      const chosen = [];
+      while (chosen.length < count && pool.length) {
+        chosen.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+      }
+      st.effect_ids = chosen;
+    }
+    return {
+      player_key: "demo-" + idx,
+      player_name: p.name,
+      task_force: p.task_force,
+      profile_id: p.profile_id,
+      health: st.health,
+      health_max: st.health_max,
+      effect_ids: st.effect_ids,
+      build: p.build,
+    };
+  });
+  return { instance_id: "DEMO", players };
+}
+
+async function poll() {
+  const status = document.getElementById("status");
+
+  if (DEMO_MODE) {
+    const data = generateDemoSnapshot();
+    renderTeam("cards-attackers", sortByClassOrder(data.players.filter(p => p.task_force === 1)));
+    renderTeam("cards-defenders", sortByClassOrder(data.players.filter(p => p.task_force === 2)));
+    status.textContent = "DEMO MODE — " + data.players.length + " sample players";
+    return;
+  }
+
+  if (!INSTANCE_ID) {
+    status.textContent = "select an instance above to begin";
+    renderTeam("cards-attackers", []);
+    renderTeam("cards-defenders", []);
+    return;
+  }
+
+  try {
+    let url = OVERLAY_BASE_URL + "?instance_id=" + encodeURIComponent(INSTANCE_ID);
+    if (OVERLAY_TOKEN) url += "&token=" + encodeURIComponent(OVERLAY_TOKEN);
+    const resp = await fetch(url, { cache: "no-store" });
+    if (!resp.ok) {
+      status.textContent = "overlay: HTTP " + resp.status;
+      return;
+    }
+    const data = await resp.json();
+    const players = data.players || [];
+
+    renderTeam("cards-attackers", sortByClassOrder(players.filter(p => p.task_force === 1)));
+    renderTeam("cards-defenders", sortByClassOrder(players.filter(p => p.task_force === 2)));
+
+    status.textContent = "instance " + data.instance_id + " — " + players.length + " tracked";
+  } catch (e) {
+    status.textContent = "overlay: " + e;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Build notation ("P/T1/T2") -- polled on its own slower cadence
+// (BUILDS_POLL_MS) rather than piggybacked on the 300ms health/effects
+// poll. Populates buildCache by player_key; renderTeam() reads from it
+// directly rather than fetching per render. See OverlayHttpServer's
+// GET /overlay/builds and SkillTreeCatalog.hpp for why the split exists.
+// ---------------------------------------------------------------------------
+async function pollBuilds() {
+  if (!INSTANCE_ID) return;
+  try {
+    let url = OVERLAY_BUILDS_URL + "?instance_id=" + encodeURIComponent(INSTANCE_ID);
+    if (OVERLAY_TOKEN) url += "&token=" + encodeURIComponent(OVERLAY_TOKEN);
+    const resp = await fetch(url, { cache: "no-store" });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const next = {};
+    (data.players || []).forEach(p => { next[p.player_key] = p; });
+    buildCache = next;
+  } catch (e) { /* transient network hiccup -- next poll retries */ }
+}
+
+// ---------------------------------------------------------------------------
+// Settings bar — instance picker + icon-folder path. Both persist to
+// localStorage so a hosted page (which the broadcast operator can't edit
+// directly) stays configured across reloads without touching this file.
+// ---------------------------------------------------------------------------
+async function refreshInstanceList() {
+  const select = document.getElementById("instance-select");
+  try {
+    let url = OVERLAY_INSTANCES_URL;
+    if (OVERLAY_TOKEN) url += "?token=" + encodeURIComponent(OVERLAY_TOKEN);
+    const resp = await fetch(url, { cache: "no-store" });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const instances = data.instances || [];
+
+    const currentValue = select.value;
+    select.innerHTML = "";
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = instances.length
+      ? "Instance…"
+      : "No active broadcasts";
+    select.appendChild(placeholder);
+
+    instances.forEach(inst => {
+      const opt = document.createElement("option");
+      opt.value = String(inst.instance_id);
+      opt.textContent = "[" + inst.instance_id + "] " + (inst.map_name || "?")
+        + " (" + inst.player_count + " tracked)";
+      select.appendChild(opt);
+    });
+
+    // Preserve the current selection if it's still in the list; otherwise
+    // fall back to whatever INSTANCE_ID was loaded from localStorage on
+    // first refresh, so a page reload doesn't silently drop the operator's
+    // choice just because this poll landed before the instance came up.
+    const wanted = currentValue || (INSTANCE_ID ? String(INSTANCE_ID) : "");
+    if (wanted && [...select.options].some(o => o.value === wanted)) {
+      select.value = wanted;
+    }
+  } catch (e) { /* transient network hiccup -- next poll retries */ }
+}
+
+document.getElementById("instance-select").addEventListener("change", (e) => {
+  INSTANCE_ID = Number(e.target.value) || 0;
+  localStorage.setItem(INSTANCE_KEY, String(INSTANCE_ID));
+});
+
+const iconsPathInput = document.getElementById("icons-path-input");
+iconsPathInput.value = ICONS_ROOT_PATH;
+function commitIconsPath() {
+  const val = iconsPathInput.value.trim();
+  if (!val) return;
+  ICONS_ROOT_PATH = val.endsWith("/") ? val : val + "/";
+  localStorage.setItem(ICONS_PATH_KEY, ICONS_ROOT_PATH);
+}
+iconsPathInput.addEventListener("change", commitIconsPath);
+iconsPathInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { commitIconsPath(); iconsPathInput.blur(); }
+});
+
+// ---------------------------------------------------------------------------
+// Layout editor — drag panels around, resize via the corner handle, and
+// persist the arrangement in localStorage so it survives a page reload
+// (OBS re-navigating the browser source, etc). Only active while
+// "Edit Layout" is toggled on; harmless/inert otherwise.
+// ---------------------------------------------------------------------------
+const LAYOUT_KEY = "spectatorOverlayLayout_v1";
+
+function saveLayout() {
+  const data = {};
+  ["panel-attackers", "panel-defenders"].forEach(id => {
+    const el = document.getElementById(id);
+    data[id] = {
+      position: el.style.position || "",
+      left: el.style.left || "",
+      top: el.style.top || "",
+      scale: el.style.getPropertyValue("--scale") || "1",
+    };
+  });
+  localStorage.setItem(LAYOUT_KEY, JSON.stringify(data));
+}
+
+function loadLayout() {
+  const raw = localStorage.getItem(LAYOUT_KEY);
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    Object.keys(data).forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const d = data[id];
+      if (d.position) el.style.position = d.position;
+      if (d.left) el.style.left = d.left;
+      if (d.top) el.style.top = d.top;
+      if (d.scale) el.style.setProperty("--scale", d.scale);
+    });
+  } catch (e) { /* ignore corrupt/old data */ }
+}
+
+function resetLayout() {
+  localStorage.removeItem(LAYOUT_KEY);
+  ["panel-attackers", "panel-defenders"].forEach(id => {
+    const el = document.getElementById(id);
+    el.style.position = "";
+    el.style.left = "";
+    el.style.top = "";
+    el.style.right = "";
+    el.style.margin = "";
+    el.style.setProperty("--scale", "1");
+  });
+}
+
+// Converts a panel from normal flex-flow into position:fixed at its CURRENT
+// on-screen spot, with no visual jump. Two bugs this fixes at once:
+//
+// 1. getBoundingClientRect() returns the POST-transform (post --scale)
+//    visual box, but CSS `left`/`top` position the PRE-transform box, which
+//    the scale transform is then applied to on top of that. For a panel
+//    whose transform-origin ISN'T "top left" (defenders is "top right"),
+//    those two boxes don't coincide once scale != 1, so naively feeding
+//    getBoundingClientRect() straight into left/top lands it somewhere
+//    else entirely — worse the more it's been resized. Fixed by inverting
+//    the origin math below instead of assuming visual == unscaled position.
+// 2. Converting ONLY the panel being dragged to position:fixed pulls it out
+//    of the #root flex layout — and since the OTHER panel is still a flex
+//    child, removing its sibling reflows IT to a new spot too (this is the
+//    "moving one snaps the other" bug). Fixed by freezing BOTH panels the
+//    moment edit mode turns on (see the edit-toggle handler below), before
+//    either one can be dragged — so neither is ever mid-flex while the
+//    other moves.
+function freezePanelPosition(panel, anchorSide) {
+  if (panel.style.position === "fixed" && panel.style.left && panel.style.top) return;
+
+  const rect = panel.getBoundingClientRect(); // visual, post-transform
+  const scale = parseFloat(getComputedStyle(panel).getPropertyValue("--scale")) || 1;
+  const unscaledWidth = rect.width / scale;
+
+  // Vertical transform-origin is always "top" for both panels, so visual
+  // top == unscaled top regardless of scale — no correction needed there.
+  let unscaledLeft = rect.left;
+  if (anchorSide === "right") {
+    // origin = unscaled_left + width (the right edge); visual_left is that
+    // origin minus the SCALED width. Solve back for unscaled_left.
+    unscaledLeft = rect.left + unscaledWidth * (scale - 1);
+  }
+
+  panel.style.position = "fixed";
+  panel.style.left = unscaledLeft + "px";
+  panel.style.top = rect.top + "px";
+  panel.style.right = "auto";
+  panel.style.margin = "0";
+}
+
+function makeDraggable(panel, handle) {
+  handle.addEventListener("mousedown", (e) => {
+    if (!document.body.classList.contains("edit-mode")) return;
+    e.preventDefault();
+
+    // By the time a drag can start, entering edit mode has already frozen
+    // both panels into position:fixed (see edit-toggle handler) — just read
+    // the already-correct style values rather than re-deriving from
+    // getBoundingClientRect(), which sidesteps the transform-math entirely.
+    const startX = e.clientX, startY = e.clientY;
+    const origLeft = parseFloat(panel.style.left) || 0;
+    const origTop = parseFloat(panel.style.top) || 0;
+
+    function onMove(ev) {
+      panel.style.left = (origLeft + ev.clientX - startX) + "px";
+      panel.style.top  = (origTop + ev.clientY - startY) + "px";
+    }
+    function onUp() {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      saveLayout();
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  });
+}
+
+function makeResizable(panel, handle) {
+  handle.addEventListener("mousedown", (e) => {
+    if (!document.body.classList.contains("edit-mode")) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startScale = parseFloat(getComputedStyle(panel).getPropertyValue("--scale")) || 1;
+    const dir = handle.dataset.side === "left" ? 1 : -1; // drag right grows a left-anchored panel; mirror for right-anchored
+
+    function onMove(ev) {
+      const delta = (ev.clientX - startX) * dir;
+      let scale = startScale + delta / 220;
+      scale = Math.max(0.5, Math.min(2.5, scale));
+      panel.style.setProperty("--scale", scale.toFixed(3));
+    }
+    function onUp() {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      saveLayout();
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  });
+}
+
+// Drag left/right on the "Resize Both" button to scale both panels together
+// in one motion. Applies the same delta to each panel's OWN current scale
+// (rather than forcing them to a shared value first), so if they're already
+// different sizes that difference is preserved while both grow/shrink.
+function makeGlobalResizer(handle) {
+  handle.addEventListener("mousedown", (e) => {
+    if (!document.body.classList.contains("edit-mode")) return;
+    e.preventDefault();
+
+    const atk = document.getElementById("panel-attackers");
+    const def = document.getElementById("panel-defenders");
+    const startX = e.clientX;
+    const startScaleAtk = parseFloat(getComputedStyle(atk).getPropertyValue("--scale")) || 1;
+    const startScaleDef = parseFloat(getComputedStyle(def).getPropertyValue("--scale")) || 1;
+
+    function onMove(ev) {
+      const delta = (ev.clientX - startX) / 220;
+      const sAtk = Math.max(0.5, Math.min(2.5, startScaleAtk + delta));
+      const sDef = Math.max(0.5, Math.min(2.5, startScaleDef + delta));
+      atk.style.setProperty("--scale", sAtk.toFixed(3));
+      def.style.setProperty("--scale", sDef.toFixed(3));
+    }
+    function onUp() {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      saveLayout();
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  });
+}
+makeGlobalResizer(document.getElementById("resize-both"));
+
+document.getElementById("edit-toggle").addEventListener("click", (e) => {
+  const enteringEditMode = !document.body.classList.contains("edit-mode");
+  document.body.classList.toggle("edit-mode");
+  e.target.classList.toggle("active");
+
+  if (enteringEditMode) {
+    // Freeze BOTH panels into position:fixed together, right now — not
+    // lazily on first drag — so neither is ever left as a lone flex child
+    // while the other gets dragged (that's what caused the "moving one
+    // snaps the other" bug).
+    freezePanelPosition(document.getElementById("panel-attackers"), "left");
+    freezePanelPosition(document.getElementById("panel-defenders"), "right");
+    saveLayout();
+  }
+});
+document.getElementById("reset-layout").addEventListener("click", resetLayout);
+
+const demoBtn = document.getElementById("demo-toggle");
+function refreshDemoButton() {
+  demoBtn.textContent = DEMO_MODE ? "Demo Mode: ON" : "Demo Mode: OFF";
+  demoBtn.classList.toggle("active", DEMO_MODE);
+}
+demoBtn.addEventListener("click", () => {
+  DEMO_MODE = !DEMO_MODE;
+  refreshDemoButton();
+});
+refreshDemoButton();
+
+const hpBtn = document.getElementById("hp-toggle");
+function refreshHpButton() {
+  hpBtn.textContent = showHpNumber ? "HP Number: ON" : "HP Number: OFF";
+  hpBtn.classList.toggle("active", showHpNumber);
+}
+hpBtn.addEventListener("click", () => {
+  showHpNumber = !showHpNumber;
+  localStorage.setItem(SHOW_HP_KEY, showHpNumber ? "1" : "0");
+  refreshHpButton();
+});
+refreshHpButton();
+
+["panel-attackers", "panel-defenders"].forEach(id => {
+  const panel = document.getElementById(id);
+  makeDraggable(panel, panel.querySelector(".team-label"));
+  makeResizable(panel, panel.querySelector(".resize-handle"));
+});
+
+loadLayout();
+poll();
+setInterval(poll, POLL_MS);
+refreshInstanceList();
+setInterval(refreshInstanceList, INSTANCE_LIST_POLL_MS);
+pollBuilds();
+setInterval(pollBuilds, BUILDS_POLL_MS);
+
+// ---------------------------------------------------------------------------
+// Admin bar hide toggle -- press H to hide/show the instance/icon-path
+// settings bar and the edit-layout controls. Meant for putting this page
+// directly into an OBS Browser Source: hide the admin strip once configured
+// so the stream never shows it, without relying on cropping (which breaks
+// if the page's layout ever shifts). Persists across reloads.
+// ---------------------------------------------------------------------------
+const ADMIN_HIDDEN_KEY = "spectatorOverlayAdminHidden_v1";
+if (localStorage.getItem(ADMIN_HIDDEN_KEY) === "1") {
+  document.body.classList.add("admin-hidden");
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "h" && e.key !== "H") return;
+  // Don't hijack the H key while the operator is typing into a text input.
+  const tag = document.activeElement && document.activeElement.tagName;
+  if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+
+  const hidden = document.body.classList.toggle("admin-hidden");
+  localStorage.setItem(ADMIN_HIDDEN_KEY, hidden ? "1" : "0");
+});
+</script>
+
+</body>
+</html>

@@ -114,6 +114,18 @@ constexpr const char* MSG_EMIT_MATCH_EVENT = "EMIT_MATCH_EVENT";
 
 constexpr const char* MSG_PLAYER_ACTION = "PLAYER_ACTION";
 
+// Sent by a mission instance on a per-pawn rate-limited timer (not on every
+// engine tick) for whichever real-player pawns are alive. Purely transient
+// live state for the spectator broadcast overlay — control server holds the
+// latest one per (instance_id, session_guid) in memory only, no DB write.
+// effect_ids are the pawn's currently-applied UTgEffectGroup ids
+// (s_AppliedEffectGroups + s_SkillBasedEffectGroups), used to show active
+// buffs (Frenzy, Protection Wave, Sensor Boost, etc.) on the overlay.
+//   { "type": "PAWN_HEALTH_SNAPSHOT", "instance_id": <int64>,
+//     "session_guid": <string>, "task_force": <int 0|1|2>,
+//     "health": <int>, "health_max": <int>, "effect_ids": [<int>, ...] }
+constexpr const char* MSG_PAWN_HEALTH_SNAPSHOT = "PAWN_HEALTH_SNAPSHOT";
+
 // ---------------------------------------------------------------------------
 // IPC transport
 // ---------------------------------------------------------------------------

@@ -14,6 +14,7 @@
 #include "src/ControlServer/TcpSession/PacketView.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
+#include "src/ControlServer/ChatSession/ChatCommand.hpp"
 
 class ChatSession : public std::enable_shared_from_this<ChatSession> {
 public:
@@ -111,6 +112,21 @@ private:
     bool BindPlayerFromRegistry(const char* reason);
     void ScheduleBindRetry();
     void AnnounceJoinIfNeeded();
+
+    // -spectate handling. instance_id==0 -> list running (non-home-map)
+    // instances the caller may join; instance_id!=0 -> request to join that
+    // instance as a spectator, optionally cosmetically assigned to `team`
+    // (None = today's teamless behavior) so that team's health bars render
+    // client-side. Permission-gated on ga_user_roles "spectator" (checked
+    // here, control-server-side — never trusts anything client-supplied).
+    // Replies privately to this session only via deliver().
+    void HandleSpectateCommand(int64_t instance_id, ChatCommand::SpectateTeam team);
+
+    // -unspectate handling. No permission check needed here (unlike
+    // -spectate) — TcpSession::DeliverSpectateExit itself rejects any session
+    // that isn't currently spectating, which is the only gate that matters.
+    // Replies privately to this session only via deliver().
+    void HandleUnspectateCommand();
 
     // Single tear-down path. Idempotent via `closed_`. On entry, optionally
     // broadcasts a "<player> has left the chat" system message if the session

@@ -14,6 +14,7 @@ unsigned long ModuleThread( void* ) {
 	Logger::EnableChannel("replicated_event");
 	Logger::EnableChannel("heal_tick");
 	Logger::EnableChannel("team_colors");
+	Logger::EnableChannel("damage-info");
 
 	UObject__ProcessEvent::Install();
 	TgDeployable__NotifyGroupChanged::Install();

@@ -22,6 +22,11 @@ struct PlayerInfo {
 	int64_t selected_character_id = 0;
 	uint32_t selected_profile_id = 0;
 	int task_force = 1;
+	// Set by the control server (authoritative — never derived from anything
+	// the connecting client supplies) when the account holds the "spectator"
+	// role and requested to join as one. Consumed by the TgGame.Login /
+	// PostLogin ProcessEvent hooks to skip team-seeding and pawn spawn.
+	bool is_spectator = false;
 	// Active loadout slot (1..5). Mirrors
 	// ga_characters.current_item_profile_id. Updated by the switch-profile
 	// hook (TgPlayerController::ServerLoadItemProfile). Drives the SpawnPlayerCharacter

@@ -10,6 +10,7 @@ SOURCE_FILES= \
 			  \
 			  $(SRC_DIR)/Database/Database.cpp \
 			  $(SRC_DIR)/GameServer/Storage/PawnSessions/PawnSessions.cpp \
+			  $(SRC_DIR)/GameServer/Storage/ActiveSpectatorCount/ActiveSpectatorCount.cpp \
 			  \
 			  $(SRC_DIR)/IpcClient/IpcClient.cpp \
 			  \
@@ -84,6 +85,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Storage/UserPreferences/UserPreferences.cpp \
 			  $(SRC_DIR)/GameServer/Stats/StatsCore.cpp \
 			  $(SRC_DIR)/GameServer/Stats/MatchStats.cpp \
+			  $(SRC_DIR)/GameServer/Stats/SpectatorOverlayFeed/SpectatorOverlayFeed.cpp \
 			  $(SRC_DIR)/GameServer/Stats/DeviceStats.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/ClientConnection/SendMarshal/ClientConnection__SendMarshal.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.cpp \
@@ -633,6 +635,10 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/ChatSession/ChatSession.cpp \
 	$(CS_SRC_DIR)/ChatSession/ChatCommand.cpp \
 	$(CS_SRC_DIR)/IpcServer/IpcServer.cpp \
+	$(CS_SRC_DIR)/SpectatorOverlay/SpectatorOverlayState.cpp \
+	$(CS_SRC_DIR)/SpectatorOverlay/OverlayHttpServer.cpp \
+	$(CS_SRC_DIR)/SpectatorOverlay/OverlayIdCatalog.cpp \
+	$(CS_SRC_DIR)/SpectatorOverlay/SkillTreeCatalog.cpp \
 	$(CS_SRC_DIR)/InstanceRegistry/InstanceRegistry.cpp \
 	$(CS_SRC_DIR)/InstanceSpawner/InstanceSpawner.cpp \
 	$(CS_SRC_DIR)/QuestStore/QuestStore.cpp \

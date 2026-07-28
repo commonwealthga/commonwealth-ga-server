@@ -11,3 +11,9 @@ control-server.json
 server.db
 server.db-shm
 server.db-wal
+
+# Spectator overlay: icon assets + secrets stay local
+tools/spectator-overlay/ICONS/
+tools/spectator-overlay/GA_BROADCAST_ICONS.zip
+tools/spectator-overlay/.env
+__pycache__/

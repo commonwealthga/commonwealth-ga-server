@@ -14,9 +14,9 @@ int __fastcall TgPlayerController__GetViewTarget::Call(void* Controller) {
 	// Defensive: if the binary's GetViewTarget fallback ever lands on PC=self
 	// while a healthy possessed pawn exists, prefer the pawn. The actual
 	// VT-flip-to-self bug is fixed at its source via the
-	// `Function TgGame.TgGame.Login` ProcessEvent hook (clears bOnlySpectator
-	// before SpawnPlayActor's first eventPostLogin runs); this remains as
-	// belt-and-suspenders.
+	// `Function TgGame.TgGame.PostLogin` ProcessEvent hook (clears
+	// bOnlySpectator for non-spectator joins before RestartPlayer runs); this
+	// remains as belt-and-suspenders.
 	if (strcmp(obj->Class->GetFullName(), "Class TgGame.TgPlayerController") == 0) {
 		ATgPlayerController* PlayerController = (ATgPlayerController*)obj;
 

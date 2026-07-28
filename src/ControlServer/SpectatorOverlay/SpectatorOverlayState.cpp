@@ -1,0 +1,72 @@
+#include "src/ControlServer/SpectatorOverlay/SpectatorOverlayState.hpp"
+
+#include <ctime>
+
+std::mutex SpectatorOverlayState::mutex_;
+std::map<int64_t, std::map<std::string, SpectatorOverlayState::PawnSnapshot>> SpectatorOverlayState::state_;
+
+void SpectatorOverlayState::Update(int64_t instance_id, const PawnSnapshot& snap) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    state_[instance_id][snap.session_guid] = snap;
+}
+
+std::vector<SpectatorOverlayState::PawnSnapshot> SpectatorOverlayState::GetForInstance(int64_t instance_id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<PawnSnapshot> out;
+
+    auto it = state_.find(instance_id);
+    if (it == state_.end()) return out;
+
+    const int64_t now = (int64_t)std::time(nullptr);
+    auto& byGuid = it->second;
+    for (auto guidIt = byGuid.begin(); guidIt != byGuid.end(); ) {
+        if (now - guidIt->second.updated_at > kStaleSeconds) {
+            guidIt = byGuid.erase(guidIt);
+        } else {
+            out.push_back(guidIt->second);
+            ++guidIt;
+        }
+    }
+    return out;
+}
+
+void SpectatorOverlayState::ClearInstance(int64_t instance_id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    state_.erase(instance_id);
+}
+
+std::vector<int64_t> SpectatorOverlayState::ListActiveInstances() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    const int64_t now = (int64_t)std::time(nullptr);
+    std::vector<int64_t> out;
+    for (const auto& [instance_id, byGuid] : state_) {
+        for (const auto& [guid, snap] : byGuid) {
+            if (now - snap.updated_at <= kStaleSeconds) {
+                out.push_back(instance_id);
+                break;
+            }
+        }
+    }
+    return out;
+}
+
+void SpectatorOverlayState::Sweep() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    const int64_t now = (int64_t)std::time(nullptr);
+
+    for (auto instIt = state_.begin(); instIt != state_.end(); ) {
+        auto& byGuid = instIt->second;
+        for (auto guidIt = byGuid.begin(); guidIt != byGuid.end(); ) {
+            if (now - guidIt->second.updated_at > kStaleSeconds) {
+                guidIt = byGuid.erase(guidIt);
+            } else {
+                ++guidIt;
+            }
+        }
+        if (byGuid.empty()) {
+            instIt = state_.erase(instIt);
+        } else {
+            ++instIt;
+        }
+    }
+}

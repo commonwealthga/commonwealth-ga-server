@@ -14,6 +14,8 @@
 	"ipc_port": 9010,
 	"udp_port_range": { "lo": 9002, "hi": 9020 },
 	"admin_token": "REPLACE-WITH-output-of: openssl rand -hex 32",
+	"overlay_http_port": 0,
+	"overlay_token": "REPLACE-WITH-output-of: openssl rand -hex 32",
 	"startup_timeout_seconds": 120,
 	"fix_package_guids": false,
 	"clear_logs": true,
