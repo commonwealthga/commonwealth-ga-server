@@ -3234,6 +3234,16 @@ int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, 
 			DO_REP(ATgPawn, r_eEmoteLength, IntProperty_TgGame_TgPawn_r_eEmoteLength);
 			DO_REP(ATgPawn, r_eEmoteRepnotify, IntProperty_TgGame_TgPawn_r_eEmoteRepnotify);
 			DO_REP(ATgPawn, r_eEmoteUpdate, IntProperty_TgGame_TgPawn_r_eEmoteUpdate);
+			// Mobile Grinder (body_asm_id 2110) walk-after-stun: the vanilla client's
+			// robot anim tree permanently breaks its posture-0 walk node if it ever
+			// receives TG_POSTURE_CRITICALFAILURE (11). The stun's SetPosture(11) runs
+			// inside the effect-apply chain, which bypasses the ProcessEvent hook, so we
+			// clamp at the replication choke point — the one place the value leaves the
+			// server, read live at flush after effects applied. Present STUNNED (5) so it
+			// still reads as stunned. Server is headless → r_ePosture is rep-only here.
+			if (((ATgPawn*)actor)->r_nBodyMeshAsmId == 2110 && ((ATgPawn*)actor)->r_ePosture == 11) {
+				((ATgPawn*)actor)->r_ePosture = 5;
+			}
 			DO_REP(ATgPawn, r_ePosture, ByteProperty_TgGame_TgPawn_r_ePosture);
 			DO_REP(ATgPawn, r_fDeployRate, FloatProperty_TgGame_TgPawn_r_fDeployRate);
 			DO_REP(ATgPawn, r_fFrictionMultiplier, FloatProperty_TgGame_TgPawn_r_fFrictionMultiplier);

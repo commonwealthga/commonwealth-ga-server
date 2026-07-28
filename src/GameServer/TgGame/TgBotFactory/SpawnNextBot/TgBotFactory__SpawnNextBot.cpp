@@ -3,6 +3,7 @@
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
 #include "src/GameServer/Engine/MapObjectConfig/MapObjectConfig.hpp"
+#include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Globals.hpp"
@@ -57,7 +58,10 @@ int PickNextLocationIndex(ATgBotFactory* f) {
 	}
 	for (int probe = 0; probe < n; probe++) {
 		const int idx = (startIdx + probe) % n;
-		if (f->LocationList.Data[idx] != nullptr) return idx;
+		if (f->LocationList.Data[idx] == nullptr) continue;
+		// SuperAgent escape waves pin the factory to their selected points.
+		if (!SuperAgent::Adds::LocationAllowed(f, idx)) continue;
+		return idx;
 	}
 	return -1;
 }
@@ -171,8 +175,12 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 		const int groupIdx    = entry.nGroupNumber;
 		const int tableId     = entry.nSpawnTableId > 0 ? entry.nSpawnTableId
 		                                                : BotFactory->nSpawnTableId;
-		const int groupNumber =
-			TgBotFactory__LoadObjectConfig::GetGroupNumberByIndex(tableId, groupIdx);
+		int groupNumber =
+			TgBotFactory__LoadObjectConfig::GetFactoryGroupValue(BotFactory, groupIdx);
+		if (groupNumber < 0) {
+			groupNumber =
+				TgBotFactory__LoadObjectConfig::GetGroupNumberByIndex(tableId, groupIdx);
+		}
 
 		// Vanilla: the group's bot type was rolled ONCE at ResetQueue — every
 		// entry (and BotDied replacements) spawns that same bot. 0 = roster
@@ -284,11 +292,19 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 
 		// Alarm responders: bSpawnOnAlarm factories never auto-spawn, so any
 		// spawn here came from ActivateAlarm — mark for the IS_ALARM_BOT
-		// behavior tests (stand-down actions).
+		// behavior tests (stand-down actions). SuperAgent Unleash waves on the
+		// same factory are the assault itself, not responders — no mark (the
+		// mark makes them eligible for behavior despawn, e.g. DespawnAlarmBots).
 		if (BotFactory->bSpawnOnAlarm) {
-			AIController->m_bAlarmBot = 1;
-			Logger::Log("alarm",
-				"  marked spawned bot=%d (factory=%d) as alarm responder\n", botId, mid);
+			if (SuperAgent::Adds::SuppressAlarmMark(BotFactory)) {
+				Logger::Log("tgbotfactory",
+					"  Unleash wave spawn — m_bAlarmBot NOT set (bot=%d factory=%d)\n",
+					botId, mid);
+			} else {
+				AIController->m_bAlarmBot = 1;
+				Logger::Log("alarm",
+					"  marked spawned bot=%d (factory=%d) as alarm responder\n", botId, mid);
+			}
 		}
 
 		if (BotFactory->bAlwaysPatrol) {
@@ -303,7 +319,10 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 			if (BotFactory->s_nTaskForce == 1 && GTeamsData.Attackers->r_CurrActiveObjective != nullptr) {
 				ATgMissionObjective* Obj = (ATgMissionObjective*)GTeamsData.Attackers->r_CurrActiveObjective;
 				std::string objclass = Obj->Class->GetFullName();
-				if (objclass == "Class TgGame.TgMissionObjective_Bot") {
+				// r_ObjectiveBot is null until StampObjective runs (and after the
+				// objective bot dies) — guard the Location deref.
+				if (objclass == "Class TgGame.TgMissionObjective_Bot"
+						&& ((ATgMissionObjective_Bot*)Obj)->r_ObjectiveBot != nullptr) {
 					ATgMissionObjective_Bot* BotObj = (ATgMissionObjective_Bot*)Obj;
 					AIController->m_pTriggerTarget = BotObj->r_ObjectiveBot;
 					AIController->m_pTriggerDestination = BotObj->r_ObjectiveBot;
@@ -313,7 +332,8 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 			} else if (BotFactory->s_nTaskForce == 2 && GTeamsData.Defenders->r_CurrActiveObjective != nullptr) {
 				ATgMissionObjective* Obj = (ATgMissionObjective*)GTeamsData.Defenders->r_CurrActiveObjective;
 				std::string objclass = Obj->Class->GetFullName();
-				if (objclass == "Class TgGame.TgMissionObjective_Bot") {
+				if (objclass == "Class TgGame.TgMissionObjective_Bot"
+						&& ((ATgMissionObjective_Bot*)Obj)->r_ObjectiveBot != nullptr) {
 					ATgMissionObjective_Bot* BotObj = (ATgMissionObjective_Bot*)Obj;
 					AIController->m_pTriggerTarget = BotObj->r_ObjectiveBot;
 					AIController->m_pTriggerDestination = BotObj->r_ObjectiveBot;

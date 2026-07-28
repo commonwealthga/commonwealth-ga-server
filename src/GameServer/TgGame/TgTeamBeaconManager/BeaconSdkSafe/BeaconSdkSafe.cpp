@@ -102,6 +102,26 @@ void SetCollision(AActor* actor, bool bColActors, bool bBlockActors, bool bIgnor
 	CallNative(actor, fn, &parms);
 }
 
+void SetCollisionType(AActor* actor, unsigned char newCollisionType) {
+	if (!actor) return;
+	static UFunction* fn = FindFn("Function Engine.Actor.SetCollisionType");
+	if (!fn) return;
+	// Single byte param; a 4-byte cell covers the frame safely.
+	uint32_t parm = newCollisionType;
+	CallNative(actor, fn, &parm);
+}
+
+void SetLocation(AActor* actor, const FVector& newLocation) {
+	if (!actor) return;
+	static UFunction* fn = FindFn("Function Engine.Actor.SetLocation");
+	if (!fn) return;
+	struct Parms {
+		FVector  NewLocation;
+		uint32_t ReturnValue;
+	} parms = { newLocation, 0 };
+	CallNative(actor, fn, &parms);
+}
+
 void DropCarriedBeacon(ATgPawn* Pawn) {
 	if (!Pawn || !Pawn->PlayerReplicationInfo) return;
 	ATgRepInfo_Player* pri = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;

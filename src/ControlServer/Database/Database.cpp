@@ -4,6 +4,12 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <atomic>
+#include <ctime>
+
+// Bumped on every ga_friends mutation; starts at 1 so a fresh ChatSession
+// cache (epoch 0) always loads on first use.
+static std::atomic<uint64_t> g_friends_epoch{1};
 
 sqlite3* Database::connection = nullptr;
 std::string Database::db_path_ = "server.db";
@@ -24,6 +30,26 @@ sqlite3* Database::GetConnection() {
 		// only ever reset to the start, never shrunk, so its size monotonically
 		// grows to the historical high-water mark (the 301 MB prod symptom).
 		sqlite3_exec(connection, "PRAGMA journal_size_limit=67108864;", nullptr, nullptr, nullptr);
+
+		// Query-rate meter, channel "dbperf" (off unless enabled in
+		// control-server.json). One trace hook counts every statement, and the
+		// count is dumped once per second — cheaper and more honest than
+		// instrumenting call sites, and it covers code we didn't write.
+		sqlite3_trace_v2(connection, SQLITE_TRACE_STMT,
+			[](unsigned, void*, void*, void*) -> int {
+				static std::atomic<long> count{0};
+				static std::atomic<long long> window_start{0};
+				const long long now = (long long)time(nullptr);
+				long long start = window_start.load();
+				if (start == 0) { window_start.store(now); start = now; }
+				count.fetch_add(1);
+				if (now > start) {
+					Logger::Log("dbperf", "[DB] %ld statements in %llds\n",
+						count.exchange(0), (long long)(now - start));
+					window_start.store(now);
+				}
+				return 0;
+			}, nullptr);
 	}
 
 	return Database::connection;
@@ -673,6 +699,23 @@ void Database::Init() {
 		if (result != SQLITE_OK) {
 			Logger::Log("db", "Failed to create ga_character_skills index: %s\n", err);
 			sqlite3_free(err);
+		}
+		// Per-user key/value preferences (e.g. show_broken_suits). Written by
+		// the game DLL (UserPreferences); the DLL also runs the same idempotent
+		// CREATE as a fallback for standalone-instance runs.
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_user_preferences ("
+			"  id           INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  user_id      INTEGER NOT NULL,"
+			"  config_key   TEXT    NOT NULL,"
+			"  config_value TEXT    NOT NULL,"
+			"  UNIQUE(user_id, config_key)"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_user_preferences table: %s\n", err);
+			sqlite3_free(err);
+			return;
 		}
 		// ALTER TABLE ADD COLUMN fails once the column exists — swallow that
 		// error so we stay idempotent across boots.
@@ -1571,20 +1614,19 @@ void Database::Init() {
 		if (result != SQLITE_OK) sqlite3_free(err);
 
 		// Consolidate the specops medium/high/max queues into ONE mission-
-		// board group (playtested 2026-07-15): shared marshal 1029 ("Medium
-		// Security") as the group key, location as the difficulty selector
-		// (medium 1483 Sonoran Desert / high 1478 Mining Province / max
-		// 1477 Commonwealth Prime), desc = the tier name (27673/27674/
-		// 34212) instead of the level-range blurbs. umax (queue 1) stays
-		// its own group. Gated on the old values so operator edits stick.
+		// board group (playtested 2026-07-15): desc = the tier name (27673/
+		// 27674/34212) instead of the level-range blurbs. The location/
+		// marshal part of the consolidation is superseded by the 2026-07-24
+		// queue reorg at the end of Init (rows = real difficulty, location =
+		// map pool) — it must stay retired or it re-shuffles every boot.
 		result = sqlite3_exec(db,
 			"UPDATE ga_queues SET desc_msg_id = 27673 WHERE queue_id = 4 AND desc_msg_id = 41459;"
 			"UPDATE ga_queues SET desc_msg_id = 27674 WHERE queue_id = 5 AND desc_msg_id = 55458;"
-			"UPDATE ga_queues SET desc_msg_id = 34212 WHERE queue_id = 6 AND desc_msg_id = 55460;"
-			"UPDATE ga_queues SET location_value_id = 1483 WHERE queue_id = 4 AND location_value_id = 1477;"
-			"UPDATE ga_queues SET location_value_id = 1478 WHERE queue_id = 5 AND location_value_id = 1477;"
-			"UPDATE ga_queues SET marshal_difficulty_value_id = 1029 "
-			"WHERE queue_id IN (4, 5, 6) AND marshal_difficulty_value_id IS NULL;",
+			"UPDATE ga_queues SET desc_msg_id = 34212 WHERE queue_id = 6 AND desc_msg_id = 55460;",
+			// "UPDATE ga_queues SET location_value_id = 1483 WHERE queue_id = 4 AND location_value_id = 1477;"
+			// "UPDATE ga_queues SET location_value_id = 1478 WHERE queue_id = 5 AND location_value_id = 1477;"
+			// "UPDATE ga_queues SET marshal_difficulty_value_id = 1029 "
+			// "WHERE queue_id IN (4, 5, 6) AND marshal_difficulty_value_id IS NULL;",
 			nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
 			Logger::Log("db", "Failed specops medium/high/max consolidation: %s\n", err);
@@ -1789,6 +1831,7 @@ void Database::Init() {
 		"ALTER TABLE ga_users ADD COLUMN password_verifier BLOB;",
 		"ALTER TABLE ga_users ADD COLUMN registered_at INTEGER;",
 		"ALTER TABLE ga_users ADD COLUMN verified_for_pvp INTEGER NOT NULL DEFAULT 0;",
+		"ALTER TABLE ga_users ADD COLUMN admin_notes TEXT;",
 	};
 	for (const char* sql : kUserAuthColumnAlters) {
 		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
@@ -1950,6 +1993,44 @@ void Database::Init() {
 			sqlite3_free(err);
 			err = nullptr;
 		}
+
+		// Geo/VPN lookup cache, keyed by IP. Written via the "store-ip-check"
+		// admin action; the dashboard reads it directly (read-only handle).
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_ip_checks ("
+			"  ip           TEXT PRIMARY KEY,"
+			"  country_code TEXT NOT NULL DEFAULT '',"
+			"  country      TEXT NOT NULL DEFAULT '',"
+			"  isp          TEXT NOT NULL DEFAULT '',"
+			"  proxy        INTEGER NOT NULL DEFAULT 0,"
+			"  hosting      INTEGER NOT NULL DEFAULT 0,"
+			"  checked_at   INTEGER NOT NULL"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_ip_checks table: %s\n", err);
+			sqlite3_free(err);
+			err = nullptr;
+		}
+	}
+
+	// Friends list (chat server F3 menu). UNCONDITIONAL + idempotent —
+	// shared version counter, same rationale as the moderation block.
+	{
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_friends ("
+			"  user_id        INTEGER NOT NULL,"
+			"  friend_user_id INTEGER NOT NULL,"
+			"  ignore_flag    INTEGER NOT NULL DEFAULT 0,"
+			"  notes          TEXT NOT NULL DEFAULT '',"
+			"  PRIMARY KEY (user_id, friend_user_id)"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_friends table: %s\n", err);
+			sqlite3_free(err);
+			err = nullptr;
+		}
 	}
 
 	// Match stats tables + ga_instances outcome columns (design
@@ -2098,6 +2179,168 @@ void Database::Init() {
 				}
 			}
 			Logger::Log("db", "[Database] Applied one-time victory_bonus_lives queue seed\n");
+		}
+	}
+
+	// Agencies + alliances (design 2026-07-18-enable-agencies). UNCONDITIONAL +
+	// idempotent — shared version counter, same rationale as the moderation
+	// block. One agency per ACCOUNT (ga_agency_members keyed by user_id); one
+	// alliance per AGENCY (ga_alliance_members keyed by agency_id).
+	{
+		const char* kAgencySchema =
+			"CREATE TABLE IF NOT EXISTS ga_agencies ("
+			"  id              INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  name            TEXT NOT NULL UNIQUE,"
+			"  motd            TEXT NOT NULL DEFAULT '',"
+			"  information     TEXT NOT NULL DEFAULT '',"
+			"  color_r         REAL NOT NULL DEFAULT 0,"
+			"  color_g         REAL NOT NULL DEFAULT 0,"
+			"  color_b         REAL NOT NULL DEFAULT 0,"
+			"  recruiting      INTEGER NOT NULL DEFAULT 0,"
+			"  recruiting_text TEXT NOT NULL DEFAULT '',"
+			"  sub_only        INTEGER NOT NULL DEFAULT 0,"
+			"  leader_user_id  INTEGER NOT NULL,"
+			"  created_at      INTEGER NOT NULL"
+			");"
+			"CREATE TABLE IF NOT EXISTS ga_agency_members ("
+			"  user_id         INTEGER PRIMARY KEY,"           // one agency per account
+			"  agency_id       INTEGER NOT NULL,"
+			"  character_id    INTEGER NOT NULL DEFAULT 0,"
+			"  player_name     TEXT NOT NULL,"
+			"  rank_id         INTEGER NOT NULL,"
+			"  public_comment  TEXT NOT NULL DEFAULT '',"
+			"  officer_comment TEXT NOT NULL DEFAULT '',"
+			"  joined_at       INTEGER NOT NULL"
+			");"
+			"CREATE INDEX IF NOT EXISTS idx_ga_agency_members_agency "
+			"  ON ga_agency_members(agency_id);"
+			"CREATE TABLE IF NOT EXISTS ga_agency_ranks ("
+			"  agency_id       INTEGER NOT NULL,"
+			"  rank_id         INTEGER NOT NULL,"
+			"  rank_level      INTEGER NOT NULL,"
+			"  permissions     INTEGER NOT NULL,"
+			"  rank_name       TEXT NOT NULL,"
+			"  PRIMARY KEY (agency_id, rank_id)"
+			");"
+			"CREATE TABLE IF NOT EXISTS ga_alliances ("
+			"  id              INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  name            TEXT NOT NULL UNIQUE,"
+			"  motd            TEXT NOT NULL DEFAULT '',"
+			"  information     TEXT NOT NULL DEFAULT '',"
+			"  owner_agency_id INTEGER NOT NULL,"
+			"  created_at      INTEGER NOT NULL"
+			");"
+			"CREATE TABLE IF NOT EXISTS ga_alliance_members ("
+			"  agency_id       INTEGER PRIMARY KEY,"           // one alliance per agency
+			"  alliance_id     INTEGER NOT NULL,"
+			"  joined_at       INTEGER NOT NULL"
+			");"
+			"CREATE INDEX IF NOT EXISTS idx_ga_alliance_members_alliance "
+			"  ON ga_alliance_members(alliance_id);";
+		result = sqlite3_exec(db, kAgencySchema, nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to ensure agency schema: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+	}
+	// Map recency weighting (2026-07-19): per-queue CSV of weight divisors,
+	// most recent pick first (e.g. '25,5'); NULL/empty = off. Consumed by
+	// MatchmakingService::PickRandomMapPoolEntryForCount. Idempotent —
+	// duplicate-column error swallowed.
+	result = sqlite3_exec(db,
+		"ALTER TABLE ga_queues ADD COLUMN map_recency_divisors TEXT DEFAULT NULL;",
+		nullptr, nullptr, &err);
+	if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
+
+	// Queue-structure reorg (2026-07-24, community-approved): mission-board
+	// rows become the REAL difficulty tiers (wire difficulty = marshal
+	// fallback to difficulty_value_id) and the location pager selects the
+	// map pool — 1477 Commonwealth Prime = specops pool 1, 1483 Sonoran
+	// Desert = desert_pve pool 5. Double Agent (8/9/10) keeps its
+	// location-as-difficulty pages. super_agent (11) moves under the
+	// tab-231 raids category next to sr/ddr/desert_raids. Wire/UI fields
+	// only — difficulty_value_id, map_pool_id and queue_ids are untouched,
+	// so matchmaking, spawning and stats are unaffected. Every UPDATE is
+	// gated on the pre-reorg value so operator edits stick across boots.
+	{
+		static const char* kQueueReorg2026_07_24[] = {
+			// Specops tiers: drop the shared "Medium Security" group key,
+			// page them under Commonwealth Prime.
+			"UPDATE ga_queues SET marshal_difficulty_value_id = NULL "
+			"WHERE queue_id IN (4, 5, 6) AND marshal_difficulty_value_id = 1029;",
+			"UPDATE ga_queues SET location_value_id = 1477 WHERE queue_id = 4 AND location_value_id = 1483;",
+			"UPDATE ga_queues SET location_value_id = 1477 WHERE queue_id = 5 AND location_value_id = 1478;",
+			"UPDATE ga_queues SET location_value_id = 1477 WHERE queue_id = 1 AND location_value_id = 1483;",
+			// Desert tiers: drop the shared "Low Security" group key, page
+			// them under Sonoran Desert.
+			"UPDATE ga_queues SET marshal_difficulty_value_id = NULL "
+			"WHERE queue_id IN (13, 14, 15) AND marshal_difficulty_value_id = 1028;",
+			"UPDATE ga_queues SET location_value_id = 1483 WHERE queue_id = 14 AND location_value_id = 1478;",
+			"UPDATE ga_queues SET location_value_id = 1483 WHERE queue_id = 15 AND location_value_id = 1477;",
+			// sort_order: rows by difficulty ascending, Commonwealth Prime
+			// page before Sonoran within a row. medium (4) keeps 1;
+			// desert_pve_medium (17, seeded below) takes 2. The IN() gates
+			// on 8/9/10 also catch the pre-v114 seed values (5/6/7) on a
+			// DB where the game DLL hasn't run its migrations yet.
+			"UPDATE ga_queues SET sort_order = 3  WHERE queue_id = 5  AND sort_order = 2;",
+			"UPDATE ga_queues SET sort_order = 4  WHERE queue_id = 13 AND sort_order = 9;",
+			"UPDATE ga_queues SET sort_order = 5  WHERE queue_id = 6  AND sort_order = 3;",
+			"UPDATE ga_queues SET sort_order = 6  WHERE queue_id = 14 AND sort_order = 10;",
+			"UPDATE ga_queues SET sort_order = 7  WHERE queue_id = 1  AND sort_order = 4;",
+			"UPDATE ga_queues SET sort_order = 8  WHERE queue_id = 15 AND sort_order = 11;",
+			"UPDATE ga_queues SET sort_order = 9  WHERE queue_id = 8  AND sort_order IN (5, 6);",
+			"UPDATE ga_queues SET sort_order = 10 WHERE queue_id = 9  AND sort_order IN (6, 7);",
+			"UPDATE ga_queues SET sort_order = 11 WHERE queue_id = 10 AND sort_order IN (7, 8);",
+			// super_agent -> raids category. Presentation fields mirror the
+			// sr/ddr/desert_raids rows; rule config, pool, difficulty 10000
+			// and marshal 1471 stay.
+			"UPDATE ga_queues SET queue_type_value_id = 1454 WHERE queue_id = 11 AND queue_type_value_id = 1021;",
+			"UPDATE ga_queues SET tab = 231 WHERE queue_id = 11 AND tab = 443;",
+			"UPDATE ga_queues SET icon_id = 1714 WHERE queue_id = 11 AND icon_id = 537;",
+			"UPDATE ga_queues SET location_value_id = 0 WHERE queue_id = 11 AND location_value_id = 1477;",
+			"UPDATE ga_queues SET map_x = 0.0 WHERE queue_id = 11 AND map_x = 6.0;",
+			"UPDATE ga_queues SET sort_order = 3 WHERE queue_id = 11 AND sort_order = 5;",
+			"UPDATE ga_queues SET bonus_queue_flag = 1 WHERE queue_id = 11 AND bonus_queue_flag = 0;",
+			// The raids list shows the queue name; 55411 is the dev string
+			// "CO-OP PvE - D5 - SUPER AGENT" -> 30009 "Super Agent".
+			"UPDATE ga_queues SET name_msg_id = 30009 WHERE queue_id = 11 AND name_msg_id = 55411;",
+		};
+		for (const char* sql : kQueueReorg2026_07_24) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] queue reorg step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+
+		// desert_pve_medium (queue 17) — completes the Medium row's Sonoran
+		// page. Mirrors the live desert_pve_high (13) row except difficulty
+		// 1029 and desc 27673 "Medium Security"; marshal stays NULL so the
+		// wire difficulty is the real 1029. Spawn tables resolve through
+		// the downward cascade at 1029; tables 147/148 (Colony Wasp/Tick
+		// swarms, Max+ only) stay empty by design — same as on high.
+		result = sqlite3_exec(db,
+			"INSERT OR IGNORE INTO ga_queues "
+			"(queue_id, name, taskforce_policy, continue_in_queue, enabled, "
+			" queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, "
+			" max_players_per_side, min_players_per_team, max_players_per_team, "
+			" level_min, level_max, tab, map_x, map_y, map_active_flag, "
+			" map_icon_texture_res_id, video_res_id, location_value_id, "
+			" double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, "
+			" difficulty_value_id, access_flags, active_flag, locked_flag, "
+			" map_pool_id, min_players_to_pop, max_players_per_instance, "
+			" pop_delay_seconds, pop_delay_policy, instant_pop_when_full, "
+			" requires_pvp_verification, team_policy, team_side_policy, "
+			" max_team_size, victory_bonus_lives, map_recency_divisors) VALUES"
+			" (17, 'desert_pve_medium', 'pinned_1', 0, 1,"
+			"  1021, 0, 26637, 27673, 537,"
+			"  30, 1, 30, 5, 200, 443, 6.0, 0.0, 1,"
+			"  5126, 0, 1483, 1, 0, 2, 0,"
+			"  1029, 0, 1, 0, 5, 1, 0,"
+			"  15.0, 'halve_on_join', 1, 0, 'own_match', 'required', 0, 4, '2.5,2,1.5');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to seed desert_pve_medium queue: %s\n", err);
+			sqlite3_free(err);
 		}
 	}
 
@@ -2515,6 +2758,159 @@ int64_t Database::FindUserIdByUsername(const std::string& username) {
 	return id;
 }
 
+std::vector<Database::FriendRow> Database::GetFriendsForUser(int64_t user_id) {
+	std::vector<FriendRow> rows;
+	if (user_id <= 0) return rows;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT f.friend_user_id, u.username, f.ignore_flag, f.notes "
+		"FROM ga_friends f JOIN ga_users u ON u.id = f.friend_user_id "
+		"WHERE f.user_id = ? ORDER BY u.username",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Friends] GetFriendsForUser prepare failed: %s\n", sqlite3_errmsg(db));
+		return rows;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		FriendRow r;
+		r.friend_user_id = sqlite3_column_int64(stmt, 0);
+		const char* name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+		r.friend_name = name ? name : "";
+		r.ignore_flag = sqlite3_column_int(stmt, 2) != 0;
+		const char* notes = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+		r.notes = notes ? notes : "";
+		rows.push_back(std::move(r));
+	}
+	sqlite3_finalize(stmt);
+	return rows;
+}
+
+bool Database::AddFriend(int64_t user_id, const std::string& name, bool ignore_flag) {
+	if (user_id <= 0 || name.empty()) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT id FROM ga_users WHERE username = ? COLLATE NOCASE LIMIT 1",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Friends] AddFriend lookup prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_TRANSIENT);
+	int64_t friend_id = 0;
+	if (sqlite3_step(stmt) == SQLITE_ROW) friend_id = sqlite3_column_int64(stmt, 0);
+	sqlite3_finalize(stmt);
+	if (friend_id == 0) return false;
+	if (friend_id == user_id) return true;  // self-add: silently ignore
+
+	stmt = nullptr;
+	rc = sqlite3_prepare_v2(db,
+		"INSERT INTO ga_friends (user_id, friend_user_id, ignore_flag) VALUES (?, ?, ?) "
+		"ON CONFLICT(user_id, friend_user_id) DO UPDATE SET ignore_flag = excluded.ignore_flag",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Friends] AddFriend insert prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_int64(stmt, 2, friend_id);
+	sqlite3_bind_int(stmt, 3, ignore_flag ? 1 : 0);
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
+		Logger::Log("db", "[Friends] AddFriend insert failed: %s\n", sqlite3_errmsg(db));
+	}
+	sqlite3_finalize(stmt);
+	g_friends_epoch++;
+	return true;
+}
+
+void Database::RemoveFriend(int64_t user_id, int64_t friend_user_id) {
+	if (user_id <= 0 || friend_user_id <= 0) return;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"DELETE FROM ga_friends WHERE user_id = ? AND friend_user_id = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Friends] RemoveFriend prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_int64(stmt, 2, friend_user_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	g_friends_epoch++;
+}
+
+void Database::SetFriendNotes(int64_t user_id, int64_t friend_user_id, const std::string& notes) {
+	if (user_id <= 0 || friend_user_id <= 0) return;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"UPDATE ga_friends SET notes = ? WHERE user_id = ? AND friend_user_id = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Friends] SetFriendNotes prepare failed: %s\n", sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_text(stmt, 1, notes.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int64(stmt, 2, user_id);
+	sqlite3_bind_int64(stmt, 3, friend_user_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+}
+
+bool Database::IsIgnoring(const std::string& owner_name, const std::string& other_name) {
+	if (owner_name.empty() || other_name.empty()) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT 1 FROM ga_friends f "
+		"JOIN ga_users o ON o.id = f.user_id "
+		"JOIN ga_users t ON t.id = f.friend_user_id "
+		"WHERE o.username = ?1 COLLATE NOCASE AND t.username = ?2 COLLATE NOCASE "
+		"AND f.ignore_flag = 1 LIMIT 1",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Friends] IsIgnoring prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	sqlite3_bind_text(stmt, 1, owner_name.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 2, other_name.c_str(), -1, SQLITE_TRANSIENT);
+	const bool ignoring = sqlite3_step(stmt) == SQLITE_ROW;
+	sqlite3_finalize(stmt);
+	return ignoring;
+}
+
+uint64_t Database::FriendsEpoch() {
+	return g_friends_epoch.load();
+}
+
+std::vector<std::string> Database::GetIgnoredNames(const std::string& owner_name) {
+	std::vector<std::string> out;
+	if (owner_name.empty()) return out;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT lower(t.username) FROM ga_friends f "
+		"JOIN ga_users o ON o.id = f.user_id "
+		"JOIN ga_users t ON t.id = f.friend_user_id "
+		"WHERE o.username = ? COLLATE NOCASE AND f.ignore_flag = 1",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Friends] GetIgnoredNames prepare failed: %s\n", sqlite3_errmsg(db));
+		return out;
+	}
+	sqlite3_bind_text(stmt, 1, owner_name.c_str(), -1, SQLITE_TRANSIENT);
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		const char* name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+		if (name) out.push_back(name);
+	}
+	sqlite3_finalize(stmt);
+	return out;
+}
+
 bool Database::SetUserPvpVerification(int64_t user_id, bool verified) {
 	if (user_id <= 0) return false;
 	sqlite3* db = GetConnection();
@@ -2620,6 +3016,53 @@ void Database::RevokeRole(int64_t user_id, const std::string& role) {
 	sqlite3_bind_text(stmt, 2, role.c_str(), -1, SQLITE_TRANSIENT);
 	sqlite3_step(stmt);
 	sqlite3_finalize(stmt);
+}
+
+bool Database::SetUserAdminNotes(int64_t user_id, const std::string& notes) {
+	if (user_id <= 0) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"UPDATE ga_users SET admin_notes = ? WHERE id = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[User] SetUserAdminNotes prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	if (notes.empty()) sqlite3_bind_null(stmt, 1);
+	else               sqlite3_bind_text(stmt, 1, notes.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int64(stmt, 2, user_id);
+	const bool ok = sqlite3_step(stmt) == SQLITE_DONE;
+	sqlite3_finalize(stmt);
+	return ok;
+}
+
+bool Database::UpsertIpCheck(const std::string& ip,
+                             const std::string& country_code,
+                             const std::string& country,
+                             const std::string& isp,
+                             bool proxy, bool hosting) {
+	if (ip.empty()) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"INSERT OR REPLACE INTO ga_ip_checks "
+		"(ip, country_code, country, isp, proxy, hosting, checked_at) "
+		"VALUES (?, ?, ?, ?, ?, ?, strftime('%s','now'))",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[User] UpsertIpCheck prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	sqlite3_bind_text(stmt, 1, ip.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 2, country_code.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 3, country.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 4, isp.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int(stmt, 5, proxy ? 1 : 0);
+	sqlite3_bind_int(stmt, 6, hosting ? 1 : 0);
+	const bool ok = sqlite3_step(stmt) == SQLITE_DONE;
+	sqlite3_finalize(stmt);
+	return ok;
 }
 
 // ---- Match stats (design 2026-06-12) ---------------------------------------
@@ -2789,4 +3232,765 @@ void Database::SetInstanceDeathCounts(int64_t instance_id,
 		Logger::Log("matchstats", "[DeathCounts] instance=%lld attackers=%d defenders=%d\n",
 			(long long)instance_id, count_deaths_attackers, count_deaths_defenders);
 	}
+}
+
+// ---- Agencies (design 2026-07-18) ------------------------------------------
+
+int64_t Database::GetAgencyIdForUser(int64_t user_id) {
+	if (user_id <= 0) return 0;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT agency_id FROM ga_agency_members WHERE user_id = ? LIMIT 1",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return 0;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	int64_t id = 0;
+	if (sqlite3_step(stmt) == SQLITE_ROW) id = sqlite3_column_int64(stmt, 0);
+	sqlite3_finalize(stmt);
+	return id;
+}
+
+int64_t Database::CreateAgency(const std::string& name,
+                               float r, float g, float b,
+                               int64_t leader_user_id,
+                               int64_t leader_character_id,
+                               const std::string& leader_name) {
+	if (name.empty() || leader_user_id <= 0) return 0;
+	if (GetAgencyIdForUser(leader_user_id) != 0) {
+		Logger::Log("agency", "[DB] CreateAgency: user %lld already in an agency\n",
+			(long long)leader_user_id);
+		return 0;
+	}
+
+	sqlite3* db = GetConnection();
+	char* err = nullptr;
+	if (sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, &err) != SQLITE_OK) {
+		if (err) sqlite3_free(err);
+		return 0;
+	}
+
+	int64_t agency_id = 0;
+	bool ok = true;
+	{
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"INSERT INTO ga_agencies "
+				"(name, color_r, color_g, color_b, leader_user_id, created_at) "
+				"VALUES (?, ?, ?, ?, ?, strftime('%s','now'))",
+				-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+			ok = false;
+		} else {
+			sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_TRANSIENT);
+			sqlite3_bind_double(stmt, 2, r);
+			sqlite3_bind_double(stmt, 3, g);
+			sqlite3_bind_double(stmt, 4, b);
+			sqlite3_bind_int64(stmt, 5, leader_user_id);
+			if (sqlite3_step(stmt) != SQLITE_DONE) ok = false;
+			sqlite3_finalize(stmt);
+		}
+		if (ok) agency_id = sqlite3_last_insert_rowid(db);
+	}
+
+	// The client identifies the leader as the rank whose rank_LEVEL == 0
+	// (LocalPlayerIsLeader checks GetRankData(myRankId).nRankLevel == 0).
+	// Leader MUST be rank_level 0; lower authority = higher level number.
+	if (ok) {
+		// Officer gets the people-management + message bits (see AgencyPerm);
+		// facility/inventory stay leader-only until the leader grants them.
+		static const int kOfficerPerms =
+			AGENCY_PERM_INVITE | AGENCY_PERM_PROMOTE | AGENCY_PERM_DEMOTE |
+			AGENCY_PERM_KICK | AGENCY_PERM_EDIT_MOTD | AGENCY_PERM_EDIT_PUBLIC_MSG |
+			AGENCY_PERM_EDIT_OFFICER_MSG | AGENCY_PERM_VIEW_OFFICER_MSG;
+		static const struct { int id, level, perms; const char* nm; } kRanks[] = {
+			{ 0, 0, (int)0xFFFFFFFF, "Leader"  },
+			{ 1, 1, kOfficerPerms,   "Officer" },
+			{ 2, 2, 0x00000000,      "Member"  },
+		};
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"INSERT INTO ga_agency_ranks "
+				"(agency_id, rank_id, rank_level, permissions, rank_name) "
+				"VALUES (?, ?, ?, ?, ?)",
+				-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+			ok = false;
+		} else {
+			for (const auto& rk : kRanks) {
+				sqlite3_reset(stmt);
+				sqlite3_bind_int64(stmt, 1, agency_id);
+				sqlite3_bind_int(stmt, 2, rk.id);
+				sqlite3_bind_int(stmt, 3, rk.level);
+				sqlite3_bind_int(stmt, 4, rk.perms);
+				sqlite3_bind_text(stmt, 5, rk.nm, -1, SQLITE_STATIC);
+				if (sqlite3_step(stmt) != SQLITE_DONE) { ok = false; break; }
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+
+	// Add the creator as a member at the leader rank (rank_id 0).
+	if (ok) {
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"INSERT INTO ga_agency_members "
+				"(user_id, agency_id, character_id, player_name, rank_id, joined_at) "
+				"VALUES (?, ?, ?, ?, 0, strftime('%s','now'))",
+				-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+			ok = false;
+		} else {
+			sqlite3_bind_int64(stmt, 1, leader_user_id);
+			sqlite3_bind_int64(stmt, 2, agency_id);
+			sqlite3_bind_int64(stmt, 3, leader_character_id);
+			sqlite3_bind_text(stmt, 4, leader_name.c_str(), -1, SQLITE_TRANSIENT);
+			if (sqlite3_step(stmt) != SQLITE_DONE) ok = false;
+			sqlite3_finalize(stmt);
+		}
+	}
+
+	if (ok) {
+		sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr);
+		Logger::Log("agency", "[DB] CreateAgency '%s' id=%lld leader=%lld\n",
+			name.c_str(), (long long)agency_id, (long long)leader_user_id);
+		return agency_id;
+	}
+	sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+	Logger::Log("agency", "[DB] CreateAgency '%s' failed (name taken?)\n", name.c_str());
+	return 0;
+}
+
+std::optional<Database::AgencyInfo> Database::GetAgencyInfo(int64_t agency_id) {
+	if (agency_id <= 0) return std::nullopt;
+	sqlite3* db = GetConnection();
+
+	AgencyInfo info;
+	{
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"SELECT id, name, motd, information, color_r, color_g, color_b, "
+				"       recruiting, recruiting_text, sub_only, leader_user_id "
+				"FROM ga_agencies WHERE id = ? LIMIT 1",
+				-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+			return std::nullopt;
+		}
+		sqlite3_bind_int64(stmt, 1, agency_id);
+		if (sqlite3_step(stmt) != SQLITE_ROW) {
+			sqlite3_finalize(stmt);
+			return std::nullopt;
+		}
+		auto col_text = [&](int c) {
+			const unsigned char* t = sqlite3_column_text(stmt, c);
+			return t ? std::string(reinterpret_cast<const char*>(t)) : std::string();
+		};
+		info.id             = sqlite3_column_int64(stmt, 0);
+		info.name           = col_text(1);
+		info.motd           = col_text(2);
+		info.information    = col_text(3);
+		info.color_r        = (float)sqlite3_column_double(stmt, 4);
+		info.color_g        = (float)sqlite3_column_double(stmt, 5);
+		info.color_b        = (float)sqlite3_column_double(stmt, 6);
+		info.recruiting     = sqlite3_column_int(stmt, 7) != 0;
+		info.recruiting_text= col_text(8);
+		info.sub_only       = sqlite3_column_int(stmt, 9) != 0;
+		info.leader_user_id = sqlite3_column_int64(stmt, 10);
+		sqlite3_finalize(stmt);
+	}
+
+	{
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"SELECT rank_id, rank_level, permissions, rank_name "
+				"FROM ga_agency_ranks WHERE agency_id = ? ORDER BY rank_level ASC",
+				-1, &stmt, nullptr) == SQLITE_OK && stmt) {
+			sqlite3_bind_int64(stmt, 1, agency_id);
+			while (sqlite3_step(stmt) == SQLITE_ROW) {
+				AgencyRankRow rk;
+				rk.rank_id     = sqlite3_column_int(stmt, 0);
+				rk.rank_level  = sqlite3_column_int(stmt, 1);
+				rk.permissions = sqlite3_column_int(stmt, 2);
+				const unsigned char* nm = sqlite3_column_text(stmt, 3);
+				rk.rank_name   = nm ? reinterpret_cast<const char*>(nm) : "";
+				info.ranks.push_back(std::move(rk));
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+
+	{
+		sqlite3_stmt* stmt = nullptr;
+		// profile_id is joined in rather than looked up per member — the roster
+		// is polled every 2s per client, so a per-member query would be O(N)
+		// round trips per poll.
+		if (sqlite3_prepare_v2(db,
+				"SELECT m.user_id, m.character_id, m.player_name, m.rank_id, "
+				"       m.public_comment, m.officer_comment, COALESCE(c.profile_id, 0) "
+				"FROM ga_agency_members m "
+				"LEFT JOIN ga_characters c ON c.id = m.character_id "
+				"WHERE m.agency_id = ?",
+				-1, &stmt, nullptr) == SQLITE_OK && stmt) {
+			sqlite3_bind_int64(stmt, 1, agency_id);
+			while (sqlite3_step(stmt) == SQLITE_ROW) {
+				AgencyMemberRow m;
+				m.user_id      = sqlite3_column_int64(stmt, 0);
+				m.character_id = sqlite3_column_int64(stmt, 1);
+				const unsigned char* nm = sqlite3_column_text(stmt, 2);
+				m.player_name  = nm ? reinterpret_cast<const char*>(nm) : "";
+				m.rank_id      = sqlite3_column_int(stmt, 3);
+				const unsigned char* pc = sqlite3_column_text(stmt, 4);
+				m.public_comment  = pc ? reinterpret_cast<const char*>(pc) : "";
+				const unsigned char* oc = sqlite3_column_text(stmt, 5);
+				m.officer_comment = oc ? reinterpret_cast<const char*>(oc) : "";
+				m.profile_id      = (uint32_t)sqlite3_column_int(stmt, 6);
+				info.members.push_back(std::move(m));
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+
+	return info;
+}
+
+bool Database::AddAgencyMember(int64_t agency_id, int64_t user_id,
+                               int64_t character_id,
+                               const std::string& player_name,
+                               int rank_id) {
+	if (agency_id <= 0 || user_id <= 0) return false;
+	if (GetAgencyIdForUser(user_id) != 0) {
+		Logger::Log("agency", "[DB] AddAgencyMember: user %lld already in an agency\n",
+			(long long)user_id);
+		return false;
+	}
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"INSERT INTO ga_agency_members "
+			"(user_id, agency_id, character_id, player_name, rank_id, joined_at) "
+			"VALUES (?, ?, ?, ?, ?, strftime('%s','now'))",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return false;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_int64(stmt, 2, agency_id);
+	sqlite3_bind_int64(stmt, 3, character_id);
+	sqlite3_bind_text(stmt, 4, player_name.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int(stmt, 5, rank_id);
+	const bool ok = (sqlite3_step(stmt) == SQLITE_DONE);
+	sqlite3_finalize(stmt);
+	Logger::Log("agency", "[DB] AddAgencyMember agency=%lld user=%lld '%s' rank=%d ok=%d\n",
+		(long long)agency_id, (long long)user_id, player_name.c_str(), rank_id, (int)ok);
+	return ok;
+}
+
+bool Database::SetAgencyMemberRank(int64_t agency_id, int64_t character_id,
+                                   int rank_id) {
+	if (agency_id <= 0 || character_id <= 0) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"UPDATE ga_agency_members SET rank_id = ? "
+			"WHERE agency_id = ? AND character_id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return false;
+	}
+	sqlite3_bind_int(stmt, 1, rank_id);
+	sqlite3_bind_int64(stmt, 2, agency_id);
+	sqlite3_bind_int64(stmt, 3, character_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	const bool ok = sqlite3_changes(db) > 0;
+	Logger::Log("agency", "[DB] SetAgencyMemberRank agency=%lld char=%lld rank=%d ok=%d\n",
+		(long long)agency_id, (long long)character_id, rank_id, (int)ok);
+	return ok;
+}
+
+bool Database::RemoveAgencyMember(int64_t agency_id, int64_t user_id) {
+	if (agency_id <= 0 || user_id <= 0) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	// Keyed by user_id (the table's PK) — the stored character_id is only a
+	// join-time snapshot and may not match the character currently played.
+	if (sqlite3_prepare_v2(db,
+			"DELETE FROM ga_agency_members WHERE agency_id = ? AND user_id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return false;
+	}
+	sqlite3_bind_int64(stmt, 1, agency_id);
+	sqlite3_bind_int64(stmt, 2, user_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	const bool ok = sqlite3_changes(db) > 0;
+	Logger::Log("agency", "[DB] RemoveAgencyMember agency=%lld user=%lld ok=%d\n",
+		(long long)agency_id, (long long)user_id, (int)ok);
+	return ok;
+}
+
+void Database::DisbandAgency(int64_t agency_id) {
+	if (agency_id <= 0) return;
+	sqlite3* db = GetConnection();
+	int64_t owned_alliance = 0;
+	{
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db, "SELECT id FROM ga_alliances WHERE owner_agency_id = ? LIMIT 1",
+				-1, &st, nullptr) == SQLITE_OK && st) {
+			sqlite3_bind_int64(st, 1, agency_id);
+			if (sqlite3_step(st) == SQLITE_ROW) owned_alliance = sqlite3_column_int64(st, 0);
+			sqlite3_finalize(st);
+		}
+	}
+	auto exec_bind = [&](const char* sql, int64_t v) {
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db, sql, -1, &st, nullptr) == SQLITE_OK && st) {
+			sqlite3_bind_int64(st, 1, v);
+			sqlite3_step(st);
+			sqlite3_finalize(st);
+		}
+	};
+	exec_bind("DELETE FROM ga_agency_members WHERE agency_id = ?", agency_id);
+	exec_bind("DELETE FROM ga_agency_ranks   WHERE agency_id = ?", agency_id);
+	exec_bind("DELETE FROM ga_alliance_members WHERE agency_id = ?", agency_id);
+	exec_bind("DELETE FROM ga_agencies WHERE id = ?", agency_id);
+	if (owned_alliance != 0) {
+		exec_bind("DELETE FROM ga_alliance_members WHERE alliance_id = ?", owned_alliance);
+		exec_bind("DELETE FROM ga_alliances WHERE id = ?", owned_alliance);
+	}
+	Logger::Log("agency", "[DB] DisbandAgency id=%lld (owned_alliance=%lld)\n",
+		(long long)agency_id, (long long)owned_alliance);
+}
+
+// ---- Alliances (design 2026-07-18) -----------------------------------------
+
+int64_t Database::GetAllianceIdForAgency(int64_t agency_id) {
+	if (agency_id <= 0) return 0;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT alliance_id FROM ga_alliance_members WHERE agency_id = ? LIMIT 1",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return 0;
+	}
+	sqlite3_bind_int64(stmt, 1, agency_id);
+	int64_t id = 0;
+	if (sqlite3_step(stmt) == SQLITE_ROW) id = sqlite3_column_int64(stmt, 0);
+	sqlite3_finalize(stmt);
+	return id;
+}
+
+bool Database::AddAgencyToAlliance(int64_t alliance_id, int64_t agency_id) {
+	if (alliance_id <= 0 || agency_id <= 0) return false;
+	if (GetAllianceIdForAgency(agency_id) != 0) return false;  // one alliance per agency
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"INSERT INTO ga_alliance_members (agency_id, alliance_id, joined_at) "
+			"VALUES (?, ?, strftime('%s','now'))",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return false;
+	}
+	sqlite3_bind_int64(stmt, 1, agency_id);
+	sqlite3_bind_int64(stmt, 2, alliance_id);
+	bool ok = sqlite3_step(stmt) == SQLITE_DONE;
+	sqlite3_finalize(stmt);
+	return ok;
+}
+
+int64_t Database::CreateAlliance(const std::string& name, int64_t owner_agency_id) {
+	if (name.empty() || owner_agency_id <= 0) return 0;
+	if (GetAllianceIdForAgency(owner_agency_id) != 0) {
+		Logger::Log("agency", "[DB] CreateAlliance: agency %lld already in an alliance\n",
+			(long long)owner_agency_id);
+		return 0;
+	}
+
+	sqlite3* db = GetConnection();
+	char* err = nullptr;
+	if (sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, &err) != SQLITE_OK) {
+		if (err) sqlite3_free(err);
+		return 0;
+	}
+
+	int64_t alliance_id = 0;
+	bool ok = true;
+	{
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"INSERT INTO ga_alliances (name, owner_agency_id, created_at) "
+				"VALUES (?, ?, strftime('%s','now'))",
+				-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+			ok = false;
+		} else {
+			sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_TRANSIENT);
+			sqlite3_bind_int64(stmt, 2, owner_agency_id);
+			if (sqlite3_step(stmt) != SQLITE_DONE) ok = false;  // name UNIQUE
+			sqlite3_finalize(stmt);
+		}
+		if (ok) alliance_id = sqlite3_last_insert_rowid(db);
+	}
+	if (ok) {
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"INSERT INTO ga_alliance_members (agency_id, alliance_id, joined_at) "
+				"VALUES (?, ?, strftime('%s','now'))",
+				-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+			ok = false;
+		} else {
+			sqlite3_bind_int64(stmt, 1, owner_agency_id);
+			sqlite3_bind_int64(stmt, 2, alliance_id);
+			if (sqlite3_step(stmt) != SQLITE_DONE) ok = false;
+			sqlite3_finalize(stmt);
+		}
+	}
+
+	if (ok) {
+		sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr);
+		Logger::Log("agency", "[DB] CreateAlliance '%s' id=%lld owner_agency=%lld\n",
+			name.c_str(), (long long)alliance_id, (long long)owner_agency_id);
+		return alliance_id;
+	}
+	sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+	Logger::Log("agency", "[DB] CreateAlliance '%s' failed (name taken?)\n", name.c_str());
+	return 0;
+}
+
+std::optional<Database::AllianceInfo> Database::GetAllianceInfo(int64_t alliance_id) {
+	if (alliance_id <= 0) return std::nullopt;
+	sqlite3* db = GetConnection();
+
+	AllianceInfo info;
+	{
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"SELECT al.id, al.name, al.motd, al.information, al.owner_agency_id, "
+				"       COALESCE(ag.name,''), al.created_at "
+				"FROM ga_alliances al "
+				"LEFT JOIN ga_agencies ag ON ag.id = al.owner_agency_id "
+				"WHERE al.id = ? LIMIT 1",
+				-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+			return std::nullopt;
+		}
+		sqlite3_bind_int64(stmt, 1, alliance_id);
+		if (sqlite3_step(stmt) != SQLITE_ROW) {
+			sqlite3_finalize(stmt);
+			return std::nullopt;
+		}
+		auto txt = [&](int c) {
+			const unsigned char* t = sqlite3_column_text(stmt, c);
+			return t ? std::string(reinterpret_cast<const char*>(t)) : std::string();
+		};
+		info.id                = sqlite3_column_int64(stmt, 0);
+		info.name              = txt(1);
+		info.motd              = txt(2);
+		info.information       = txt(3);
+		info.owner_agency_id   = sqlite3_column_int64(stmt, 4);
+		info.owner_agency_name = txt(5);
+		info.created_at        = sqlite3_column_int64(stmt, 6);
+		sqlite3_finalize(stmt);
+	}
+
+	{
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"SELECT ag.id, ag.name, "
+				"       (SELECT COUNT(*) FROM ga_agency_members m WHERE m.agency_id = ag.id) "
+				"FROM ga_alliance_members am "
+				"JOIN ga_agencies ag ON ag.id = am.agency_id "
+				"WHERE am.alliance_id = ?",
+				-1, &stmt, nullptr) == SQLITE_OK && stmt) {
+			sqlite3_bind_int64(stmt, 1, alliance_id);
+			while (sqlite3_step(stmt) == SQLITE_ROW) {
+				AllianceMemberRow m;
+				m.agency_id    = sqlite3_column_int64(stmt, 0);
+				const unsigned char* nm = sqlite3_column_text(stmt, 1);
+				m.agency_name  = nm ? reinterpret_cast<const char*>(nm) : "";
+				m.member_count = sqlite3_column_int(stmt, 2);
+				info.members.push_back(std::move(m));
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+
+	return info;
+}
+
+void Database::DisbandAlliance(int64_t alliance_id) {
+	if (alliance_id <= 0) return;
+	sqlite3* db = GetConnection();
+	auto exec_bind = [&](const char* sql, int64_t v) {
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db, sql, -1, &st, nullptr) == SQLITE_OK && st) {
+			sqlite3_bind_int64(st, 1, v);
+			sqlite3_step(st);
+			sqlite3_finalize(st);
+		}
+	};
+	exec_bind("DELETE FROM ga_alliance_members WHERE alliance_id = ?", alliance_id);
+	exec_bind("DELETE FROM ga_alliances WHERE id = ?", alliance_id);
+	Logger::Log("agency", "[DB] DisbandAlliance id=%lld\n", (long long)alliance_id);
+}
+
+bool Database::SetAgencyText(int64_t agency_id, bool is_motd,
+                             const std::string& text) {
+	if (agency_id <= 0) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	const char* sql = is_motd ? "UPDATE ga_agencies SET motd = ? WHERE id = ?"
+	                          : "UPDATE ga_agencies SET information = ? WHERE id = ?";
+	if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK || !stmt) return false;
+	sqlite3_bind_text(stmt, 1, text.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int64(stmt, 2, agency_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	const bool ok = sqlite3_changes(db) > 0;
+	Logger::Log("agency", "[DB] SetAgencyText agency=%lld motd=%d len=%d ok=%d\n",
+		(long long)agency_id, (int)is_motd, (int)text.size(), (int)ok);
+	return ok;
+}
+
+bool Database::SetAgencyMemberComment(int64_t agency_id, int64_t character_id,
+                                      bool officer, const std::string& text) {
+	if (agency_id <= 0 || character_id <= 0) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	const char* sql = officer
+		? "UPDATE ga_agency_members SET officer_comment = ? "
+		  "WHERE agency_id = ? AND character_id = ?"
+		: "UPDATE ga_agency_members SET public_comment = ? "
+		  "WHERE agency_id = ? AND character_id = ?";
+	if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK || !stmt) return false;
+	sqlite3_bind_text(stmt, 1, text.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int64(stmt, 2, agency_id);
+	sqlite3_bind_int64(stmt, 3, character_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	const bool ok = sqlite3_changes(db) > 0;
+	Logger::Log("agency", "[DB] SetAgencyMemberComment agency=%lld char=%lld officer=%d ok=%d\n",
+		(long long)agency_id, (long long)character_id, (int)officer, (int)ok);
+	return ok;
+}
+
+bool Database::ReplaceAgencyRanks(int64_t agency_id,
+                                  const std::vector<AgencyRankRow>& ranks) {
+	if (agency_id <= 0 || ranks.empty()) return false;
+	// The client identifies the leader by rank_level 0 — refuse a set that
+	// would leave the agency without one.
+	bool has_leader_rank = false;
+	for (const auto& rk : ranks) if (rk.rank_level == 0) has_leader_rank = true;
+	if (!has_leader_rank) {
+		Logger::Log("agency", "[DB] ReplaceAgencyRanks: rejected, no rank_level 0 row\n");
+		return false;
+	}
+
+	sqlite3* db = GetConnection();
+	if (sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr) != SQLITE_OK) return false;
+
+	bool ok = true;
+	{
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db, "DELETE FROM ga_agency_ranks WHERE agency_id = ?",
+				-1, &st, nullptr) == SQLITE_OK && st) {
+			sqlite3_bind_int64(st, 1, agency_id);
+			if (sqlite3_step(st) != SQLITE_DONE) ok = false;
+			sqlite3_finalize(st);
+		} else {
+			ok = false;
+		}
+	}
+	if (ok) {
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"INSERT INTO ga_agency_ranks "
+				"(agency_id, rank_id, rank_level, permissions, rank_name) "
+				"VALUES (?, ?, ?, ?, ?)",
+				-1, &st, nullptr) == SQLITE_OK && st) {
+			for (const auto& rk : ranks) {
+				sqlite3_reset(st);
+				sqlite3_bind_int64(st, 1, agency_id);
+				sqlite3_bind_int(st, 2, rk.rank_id);
+				sqlite3_bind_int(st, 3, rk.rank_level);
+				sqlite3_bind_int(st, 4, rk.permissions);
+				sqlite3_bind_text(st, 5, rk.rank_name.c_str(), -1, SQLITE_TRANSIENT);
+				if (sqlite3_step(st) != SQLITE_DONE) { ok = false; break; }
+			}
+			sqlite3_finalize(st);
+		} else {
+			ok = false;
+		}
+	}
+	// Anyone on a rank that no longer exists lands on the bottom rank.
+	if (ok) {
+		int bottom_rank = ranks.front().rank_id;
+		int bottom_level = ranks.front().rank_level;
+		for (const auto& rk : ranks) {
+			if (rk.rank_level > bottom_level) { bottom_level = rk.rank_level; bottom_rank = rk.rank_id; }
+		}
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"UPDATE ga_agency_members SET rank_id = ? WHERE agency_id = ? AND rank_id NOT IN "
+				"(SELECT rank_id FROM ga_agency_ranks WHERE agency_id = ?)",
+				-1, &st, nullptr) == SQLITE_OK && st) {
+			sqlite3_bind_int(st, 1, bottom_rank);
+			sqlite3_bind_int64(st, 2, agency_id);
+			sqlite3_bind_int64(st, 3, agency_id);
+			sqlite3_step(st);
+			sqlite3_finalize(st);
+		}
+	}
+
+	sqlite3_exec(db, ok ? "COMMIT" : "ROLLBACK", nullptr, nullptr, nullptr);
+	Logger::Log("agency", "[DB] ReplaceAgencyRanks agency=%lld rows=%d ok=%d\n",
+		(long long)agency_id, (int)ranks.size(), (int)ok);
+	return ok;
+}
+
+std::map<int64_t, Database::OnlineAgencyMemberRow>
+Database::GetOnlineAgencyMembers(int64_t agency_id) {
+	std::map<int64_t, OnlineAgencyMemberRow> out;
+	if (agency_id <= 0) return out;
+	sqlite3_stmt* stmt = nullptr;
+	// Join through ga_characters: m.character_id is only a join-time snapshot,
+	// so a member online on another character must still match. c.profile_id
+	// is the class of the character being played right now.
+	if (sqlite3_prepare_v2(GetConnection(),
+			"SELECT c.user_id, i.map_name, c.profile_id "
+			"FROM ga_instance_players ip "
+			"JOIN ga_instances i ON i.instance_id = ip.instance_id AND i.state != 'STOPPED' "
+			"JOIN ga_characters c ON c.id = ip.character_id "
+			"JOIN ga_agency_members m ON m.user_id = c.user_id "
+			"WHERE m.agency_id = ? AND ip.left_at IS NULL",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return out;
+	}
+	sqlite3_bind_int64(stmt, 1, agency_id);
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		const unsigned char* mp = sqlite3_column_text(stmt, 1);
+		OnlineAgencyMemberRow row;
+		row.map_name   = mp ? reinterpret_cast<const char*>(mp) : "";
+		row.profile_id = (uint32_t)sqlite3_column_int(stmt, 2);
+		out[sqlite3_column_int64(stmt, 0)] = std::move(row);
+	}
+	sqlite3_finalize(stmt);
+	return out;
+}
+
+bool Database::SetAgencyRecruiting(int64_t agency_id, const std::string& text,
+                                   bool recruiting, bool sub_only) {
+	if (agency_id <= 0) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"UPDATE ga_agencies SET recruiting_text = ?, recruiting = ?, sub_only = ? "
+			"WHERE id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return false;
+	}
+	sqlite3_bind_text(stmt, 1, text.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int(stmt, 2, recruiting ? 1 : 0);
+	sqlite3_bind_int(stmt, 3, sub_only ? 1 : 0);
+	sqlite3_bind_int64(stmt, 4, agency_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	const bool ok = sqlite3_changes(db) > 0;
+	Logger::Log("agency", "[DB] SetAgencyRecruiting agency=%lld recruiting=%d sub_only=%d ok=%d\n",
+		(long long)agency_id, (int)recruiting, (int)sub_only, (int)ok);
+	return ok;
+}
+
+bool Database::SetAgencyLeader(int64_t agency_id, int64_t user_id) {
+	if (agency_id <= 0 || user_id <= 0) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db, "UPDATE ga_agencies SET leader_user_id = ? WHERE id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return false;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_int64(stmt, 2, agency_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	const bool ok = sqlite3_changes(db) > 0;
+	Logger::Log("agency", "[DB] SetAgencyLeader agency=%lld user=%lld ok=%d\n",
+		(long long)agency_id, (long long)user_id, (int)ok);
+	return ok;
+}
+
+static std::vector<int64_t> query_user_ids(const char* sql, int64_t bind_value) {
+	std::vector<int64_t> out;
+	if (bind_value <= 0) return out;
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(Database::GetConnection(), sql, -1, &stmt, nullptr) != SQLITE_OK
+	    || !stmt) {
+		return out;
+	}
+	sqlite3_bind_int64(stmt, 1, bind_value);
+	while (sqlite3_step(stmt) == SQLITE_ROW) out.push_back(sqlite3_column_int64(stmt, 0));
+	sqlite3_finalize(stmt);
+	return out;
+}
+
+std::vector<int64_t> Database::GetAllianceMemberUserIds(int64_t alliance_id) {
+	return query_user_ids(
+		"SELECT m.user_id FROM ga_agency_members m "
+		"JOIN ga_alliance_members am ON am.agency_id = m.agency_id "
+		"WHERE am.alliance_id = ?", alliance_id);
+}
+
+std::vector<int64_t> Database::GetAgencyMemberUserIds(int64_t agency_id) {
+	return query_user_ids("SELECT user_id FROM ga_agency_members WHERE agency_id = ?",
+	                      agency_id);
+}
+
+int64_t Database::GetAgencyIdByLeaderName(const std::string& leader_name) {
+	if (leader_name.empty()) return 0;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT agency_id FROM ga_agency_members "
+			"WHERE rank_id = 0 AND player_name = ? LIMIT 1",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return 0;
+	}
+	sqlite3_bind_text(stmt, 1, leader_name.c_str(), -1, SQLITE_TRANSIENT);
+	int64_t id = 0;
+	if (sqlite3_step(stmt) == SQLITE_ROW) id = sqlite3_column_int64(stmt, 0);
+	sqlite3_finalize(stmt);
+	return id;
+}
+
+std::map<int64_t, Database::AffiliationRow> Database::GetAffiliationsByCharacter() {
+	std::map<int64_t, AffiliationRow> out;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	// One row per character of every member account — membership is per
+	// account, so every character a member plays carries the affiliation.
+	if (sqlite3_prepare_v2(db,
+			"SELECT c.id, ag.name, COALESCE(al.name,'') "
+			"FROM ga_agency_members m "
+			"JOIN ga_characters c ON c.user_id = m.user_id "
+			"JOIN ga_agencies ag ON ag.id = m.agency_id "
+			"LEFT JOIN ga_alliance_members am ON am.agency_id = m.agency_id "
+			"LEFT JOIN ga_alliances al ON al.id = am.alliance_id",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return out;
+	}
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		auto txt = [&](int c) {
+			const unsigned char* t = sqlite3_column_text(stmt, c);
+			return t ? std::string(reinterpret_cast<const char*>(t)) : std::string();
+		};
+		out[sqlite3_column_int64(stmt, 0)] = AffiliationRow{ txt(1), txt(2) };
+	}
+	sqlite3_finalize(stmt);
+	return out;
+}
+
+void Database::RemoveAgencyFromAlliance(int64_t agency_id) {
+	if (agency_id <= 0) return;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db, "DELETE FROM ga_alliance_members WHERE agency_id = ?",
+			-1, &st, nullptr) == SQLITE_OK && st) {
+		sqlite3_bind_int64(st, 1, agency_id);
+		sqlite3_step(st);
+		sqlite3_finalize(st);
+	}
+	Logger::Log("agency", "[DB] RemoveAgencyFromAlliance agency=%lld\n", (long long)agency_id);
 }

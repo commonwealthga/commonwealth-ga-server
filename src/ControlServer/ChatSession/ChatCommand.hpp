@@ -72,12 +72,24 @@ struct SpectateArgs {
     SpectateTeam team = SpectateTeam::None;
 };
 
+// -togglebrokensuits [1|0]: per-user preference for seeing stutter-prone
+// ("broken") cosmetic suits on other players. 1 = show originals, 0 = show
+// the replacement cosmetics, omitted = toggle the current value. Persisted in
+// ga_user_preferences and enforced DLL-side at replication time.
+// -toggleallsuits [1|0] rides the same struct with all = true: 0 hides EVERY
+// suit/helmet/flair on OTHER players for this viewer (stutter triage; own
+// character exempt), 1 restores normal.
+struct ToggleBrokenSuitsArgs {
+    int mode = -1;    // -1 = toggle, 0 = off, 1 = on
+    bool all = false; // true = -toggleallsuits variant
+};
+
 struct ParseResult {
     // True if the message was a /-prefixed slash command attempt that we own
     // (currently: "-changeteam", "-spawnfriend", "-spawnenemy", "-possess",
     // "-unpossess", "-topdown", "-reload-queues", "-spectate",
-    // "-unspectate"). False for ordinary chat and for slash commands we
-    // don't recognize.
+    // "-unspectate", "-togglebrokensuits", "-toggleallsuits").
+    // False for ordinary chat and for slash commands we don't recognize.
     bool recognized = false;
 
     // True if the message must NOT be re-broadcast as ordinary chat.
@@ -90,6 +102,7 @@ struct ParseResult {
     std::optional<DeployTargetArgs> deploy_target;
     std::optional<TopDownArgs>      topdown;
     std::optional<SpectateArgs>     spectate;
+    std::optional<ToggleBrokenSuitsArgs> toggle_broken_suits;
 
     // No-arg toggles. Flag is set when recognized + parsed cleanly.
     bool possess   = false;
@@ -108,10 +121,31 @@ struct ParseResult {
     // practice; DLL enforces map gate + per-player cooldown). No args.
     bool fullheal = false;
 
+    // -classes — per-team class counts (assault/medic/recon/robotics) of the
+    // sender's current instance, replied privately on the System channel.
+    // Handled entirely on the control server. No args.
+    bool class_counts = false;
+
     // -reload-queues — re-read ga_queues + ga_map_pool_entries. Handled
     // entirely on the control server; no PLAYER_ACTION IPC dispatched.
     bool reload_queues = false;
+
+    // -announce <text> — server-wide announcement on chat channel 20, the one
+    // channel the client's tab filter cannot exclude. Holds the announcement
+    // text (never empty when set). Handled entirely on the control server;
+    // caller must check the sender is permitted before acting on it.
+    std::optional<std::string> announce;
 };
+
+// Resolve a slash-command token (no leading '/', any case) to the chat channel
+// it targets. Returns nullopt for tokens that aren't channel commands.
+//
+// Covers the commands the client forwards to us as PLAYER_COMMAND (0x019F)
+// because they aren't in its own name->id map — /t, /l, /a, /al, /rg — plus
+// aliases of our own for channels whose combo-box label the client hardcodes
+// (City is shown as "/1", so /c and /city are ours to define). Commands the
+// client handles itself (/w, /gl, /i) never reach us and are absent here.
+std::optional<uint32_t> ChannelForCommandToken(const std::string& token);
 
 // Parse a chat MESSAGE string. Trims leading/trailing whitespace, recognises
 // "-changeteam" (optional arg "attackers" | "defenders"; bare -> Toggle),
@@ -156,8 +190,19 @@ void DispatchCoords(const std::string& session_guid);
 // are enforced DLL-side.
 void DispatchFullHeal(const std::string& session_guid);
 
+// -classes: count classes per team in the sender's instance (from
+// ga_instance_players — same data Local chat scoping uses) and reply with two
+// private System-channel lines ("Your team: a/m/r/b" / "Enemy team: ...").
+// Handled entirely on the control server; no PLAYER_ACTION IPC.
+void ExecuteClassCounts(const std::string& session_guid);
+
 // Send -topdown to the game DLL. Toggles top-down view in the DLL — repeated
 // invocations alternate enter/restore. lift_z=0 means "use the DLL default".
 void DispatchTopDown(const TopDownArgs& args, const std::string& session_guid);
+
+// Send -togglebrokensuits to the game DLL. The DLL owns the preference
+// (ga_user_preferences read/write + in-memory cache used at replication).
+void DispatchToggleBrokenSuits(const ToggleBrokenSuitsArgs& args,
+                               const std::string& session_guid);
 
 } // namespace ChatCommand

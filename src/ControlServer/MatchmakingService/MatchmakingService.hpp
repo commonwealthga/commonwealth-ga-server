@@ -4,6 +4,7 @@
 
 #include <string>
 #include <vector>
+#include <deque>
 #include <optional>
 #include <functional>
 #include <unordered_map>
@@ -134,6 +135,9 @@ private:
         std::unique_ptr<MatchRule> rule;
         std::vector<QueuedParty> parties;          // the unit of queueing
         std::optional<DelayedPop> delayed_pop;
+        // Recently picked map names, most recent first. In-memory only —
+        // survives ReloadQueues (like parties), resets on server restart.
+        std::deque<std::string> recent_maps;
     };
 
     static std::unordered_map<uint32_t, Queue> queues_;

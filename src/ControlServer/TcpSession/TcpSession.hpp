@@ -2,6 +2,7 @@
 
 #include <asio.hpp>
 #include <vector>
+#include <deque>
 #include <string>
 #include <memory>
 #include <random>
@@ -143,6 +144,17 @@ private:
     asio::io_context& io_ctx_;
     std::vector<uint8_t> data_;
     std::vector<uint8_t> rx_buffer_;
+
+    // Outbound frames awaiting async_write. All writes MUST go through
+    // enqueue_write: a blocking asio::write to a client that stops draining
+    // its socket (e.g. wedged during map load) parks the single io_context
+    // thread and takes chat/login/matchmaking down with it (2026-07-24
+    // incident: one 121KB SEND_INVENTORY write blocked for 607s).
+    std::deque<std::vector<uint8_t>> write_queue_;
+    size_t write_queue_bytes_  = 0;
+    bool   close_when_drained_ = false;
+    // A client buffering this much unread data is not coming back — close it.
+    static constexpr size_t kMaxWriteQueueBytes = 2 * 1024 * 1024;
 
     std::string player_name;
     std::string session_guid_;
@@ -478,15 +490,63 @@ private:
                 continuation_chunks, last_chunk_size);
         }
 
-        std::error_code ec;
-        asio::write(socket_, asio::buffer(response), ec);
+        enqueue_write(std::move(response));
+    }
 
-        if (ec) {
-            Logger::Log("tcp", "[TCP] Write failed: %s\n", ec.message().c_str());
+    // Queue a wire-ready frame and start the async write chain if idle.
+    // Single io_context thread — no locking needed.
+    void enqueue_write(std::vector<uint8_t>&& frame) {
+        if (!socket_.is_open() || close_when_drained_) return;
+        if (write_queue_bytes_ + frame.size() > kMaxWriteQueueBytes) {
+            Logger::Log("tcp",
+                "[TCP] write queue overflow (%zu + %zu bytes) player='%s' — closing stalled socket\n",
+                write_queue_bytes_, frame.size(), player_name.c_str());
+            // Close only — no queue clear here: the in-flight async_write still
+            // references the front buffer; its aborted completion clears the
+            // queue, and do_read's error branch runs handle_socket_disconnect.
+            std::error_code ignored;
+            socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ignored);
+            socket_.close(ignored);
+            return;
         }
+        write_queue_bytes_ += frame.size();
+        const bool idle = write_queue_.empty();
+        write_queue_.push_back(std::move(frame));
+        if (idle) do_write();
+    }
+
+    void do_write() {
+        auto self(shared_from_this());
+        asio::async_write(socket_, asio::buffer(write_queue_.front()),
+            [this, self](std::error_code ec, std::size_t /*bytes*/) {
+                if (ec) {
+                    Logger::Log("tcp", "[TCP] Write failed: %s (player='%s')\n",
+                        ec.message().c_str(), player_name.c_str());
+                    write_queue_.clear();
+                    write_queue_bytes_ = 0;
+                    std::error_code ignored;
+                    socket_.close(ignored);  // do_read's error branch cleans up
+                    return;
+                }
+                write_queue_bytes_ -= write_queue_.front().size();
+                write_queue_.pop_front();
+                if (!write_queue_.empty()) {
+                    do_write();
+                } else if (close_when_drained_) {
+                    std::error_code ignored;
+                    socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ignored);
+                    socket_.close(ignored);
+                }
+            });
     }
 
     void close_after_login_rejection() {
+        // Writes are queued now — closing immediately would cancel an
+        // in-flight rejection frame. Drain first if anything is pending.
+        if (!write_queue_.empty()) {
+            close_when_drained_ = true;
+            return;
+        }
         std::error_code ignored;
         socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ignored);
         socket_.close(ignored);
@@ -610,12 +670,76 @@ private:
     void send_player_skills_response();
 
     void send_agency_get_roster_response();
+    void handle_agency_create(const PacketView& pkt);
+    // Leader disbands the agency (delete it + push the "no agency" reset).
+    void handle_agency_disband();
+    // Append the caller's agency (meta + DATA_SET_RANKS + DATA_SET_MEMBERS) to
+    // `response` as top-level fields. Returns the number of fields appended (0
+    // if the caller is not in an agency). Shared by roster + create responses.
+    int append_agency_payload(std::vector<uint8_t>& response);
+
+    void handle_agency_invite(const PacketView& pkt);
+    // AGENCY_PROMOTE / AGENCY_DEMOTE — target member by PLAYER_ID (= character_id).
+    void handle_agency_rank_change(const PacketView& pkt, bool promote);
+    // Kick a member (AGENCY_PLAYER_REMOVE, or AGENCY_REMOVE with someone else's id).
+    void handle_agency_kick(int64_t target_char);
+    // AGENCY_SET_NOTE — MOTD / description / per-member public+officer notes.
+    void handle_agency_set_note(const PacketView& pkt);
+    // AGENCY_UPDATE_RANKS — full rank-table replacement from the rank editor.
+    void handle_agency_update_ranks(const PacketView& pkt);
+    // AGENCY_UPDATE_RECRUITING — Recruiting tab listing text + the two flags.
+    void handle_agency_update_recruiting(const PacketView& pkt);
+    // AGENCY_SET_OWNER — Management tab "Transfer Leader".
+    void handle_agency_set_owner(const PacketView& pkt);
+    // Push "no agency" + "no alliance" to a live session that just lost its
+    // agency without asking (kick / someone else's disband).
+    static void DeliverAgencyRefresh(int64_t target_user_id);
+    void handle_agency_accept();
+    // Push an AGENCY_INVITATION popup to this session.
+    // Status/error line for agency actions (MSG_ID template + @@player_name@@).
+    void send_agency_message(uint32_t msg_id, const std::string& player_name_token);
+    void send_agency_invitation(const std::string& agency_name,
+                                const std::string& inviter_leader_name);
+    // Pending agency invites: invited user_id -> agency_id it was invited to.
+    static std::mutex pending_agency_mutex_;
+    static std::map<int64_t, int64_t> pending_agency_invites_;
+
+    void send_alliance_member_list_response();
+    void handle_alliance_create(const PacketView& pkt);
+    // Append the caller's alliance (meta + DATA_SET_AGENCIES) as top-level
+    // fields. Returns field count (0 if the caller's agency has no alliance).
+    int append_alliance_payload(std::vector<uint8_t>& response);
+    void handle_alliance_disband();
+    void handle_alliance_invite(const PacketView& pkt);
+    void handle_alliance_accept();
+    void handle_alliance_remove(const PacketView& pkt);
+    // Push an ALLIANCE_INVITATION popup to this session.
+    void send_alliance_invitation(const std::string& alliance_name,
+                                  const std::string& inviter_leader_name,
+                                  int64_t alliance_id);
+    // Deliver an alliance invitation to whichever live session owns target_user_id.
+    static bool DeliverAllianceInvitation(int64_t target_user_id,
+                                          const std::string& alliance_name,
+                                          const std::string& inviter_leader_name,
+                                          int64_t alliance_id);
+    // Pending alliance invites: target agency_id -> alliance_id it was invited to.
+    static std::mutex pending_alliance_mutex_;
+    static std::map<int64_t, int64_t> pending_alliance_invites_;
 
     // QUERY_PLAYERS (0x0152) — player search from the Team menu / player
     // search scene. Echoes CALLER_ID (the client TgDataSet's GObjObjects
     // index) + a DATA_SET of matching online players. See
     // player-search-tcp-protocol.md.
     void send_query_players_response(const PacketView& pkt);
+// F3 friends menu (FRIEND_GET_LIST / FRIEND_UPDATE arrive on this socket).
+void handle_friend_update(const PacketView& pkt);
+void send_friends_list();
+
+    // PLAYER_COMMAND (0x019F) — slash commands the client doesn't recognise
+    // itself are forwarded here verbatim in TEXT_VALUE (0x04FF). Channel
+    // commands (/t, /l, /c, ...) route into the player's chat session;
+    // anything else gets an "unknown command" reply.
+    void handle_player_command(const PacketView& pkt);
 
     // Team wire helpers. Opcodes 0x4A/0x4D/0x4E/0x4F all route to the client's
     // message-display handler (vt[0x54]: MSG_ID 0x36E template + @@token@@

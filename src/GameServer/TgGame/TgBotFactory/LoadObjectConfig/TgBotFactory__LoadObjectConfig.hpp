@@ -83,6 +83,15 @@ public:
 	static void SetFactoryGroupRolls(ATgBotFactory* Factory, const std::vector<int>& rolls);
 	static int  GetFactoryGroupRoll(ATgBotFactory* Factory, int nGroupIndex);
 
+	// Optional per-factory override of group INDEX -> group VALUE resolution.
+	// Escape-wave queues (SuperAgent OwnedSetQueue) repeat the rolled plan
+	// several times over, so their group indices exceed the table's group
+	// count and GetGroupNumberByIndex can't resolve them; the queue builder
+	// stores the values here. -1 = no override (fall back to the table).
+	static void SetFactoryGroupValues(ATgBotFactory* Factory, const std::vector<int>& values);
+	static void ClearFactoryGroupValues(ATgBotFactory* Factory);
+	static int  GetFactoryGroupValue(ATgBotFactory* Factory, int nGroupIndex);
+
 	static void __fastcall Call(ATgBotFactory* BotFactory, void* edx);
 	static inline void __fastcall CallOriginal(ATgBotFactory* BotFactory, void* edx) {
 		m_original(BotFactory, edx);

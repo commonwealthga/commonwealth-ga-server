@@ -139,3 +139,35 @@ void TgPawn__KillDeployables::KillAllOwned(ATgPawn* Pawn) {
 
 	Pawn->s_SelfDeployableList.Count = 0;
 }
+
+// Swapping a device off the loadout must take its live output with it — a
+// power station left standing after its device is gone has no owner device to
+// govern it. Same teardown as KillAllOwned, scoped to one device.
+void TgPawn__KillDeployables::KillFromDevice(ATgPawn* Pawn, ATgDevice* Device) {
+	if (!Pawn || !Device) return;
+
+	AWorldInfo* wi = Pawn->WorldInfo;
+	if (!wi || !wi->GRI) return;
+	ATgRepInfo_Game* gri = (ATgRepInfo_Game*)wi->GRI;
+	const int invId = Device->r_nDeviceInstanceId;
+
+	for (int i = gri->m_Deployables.Count - 1; i >= 0; --i) {
+		ATgDeployable* dep = gri->m_Deployables.Data[i];
+		if (!dep || dep->m_bInDestroyedState) continue;
+		if (dep->r_nDeployableId == 36) continue; // beacon: team resource
+		// invId also matches deployables placed by an earlier actor for the same
+		// inventory item (device actors are respawned on death / profile switch).
+		if (dep->r_Owner != Device &&
+		    !(dep->r_Owner && dep->r_Owner->r_nDeviceInstanceId == invId)) continue;
+		DeployableClassify::DispatchDestroyIt(dep, 0);
+	}
+
+	// Pet pawns (turrets, drones) carry their spawning device's instance id.
+	for (APawn* p = wi->PawnList; p != nullptr; p = p->NextPawn) {
+		if (p == (APawn*)Pawn || p->Health <= 0 || p->bDeleteMe) continue;
+		ATgPawn* pet = (ATgPawn*)p;
+		if (pet->r_Owner != Pawn) continue;
+		if (pet->s_nSpawnerDeviceInstId != invId) continue;
+		p->eventKilledBy((APawn*)Pawn);
+	}
+}

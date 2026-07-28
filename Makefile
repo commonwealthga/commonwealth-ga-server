@@ -82,13 +82,16 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.cpp \
 			  $(SRC_DIR)/GameServer/Storage/TeamsData/TeamsData.cpp \
 			  $(SRC_DIR)/GameServer/Storage/PlayerRegistry/PlayerRegistry.cpp \
+			  $(SRC_DIR)/GameServer/Storage/UserPreferences/UserPreferences.cpp \
 			  $(SRC_DIR)/GameServer/Stats/StatsCore.cpp \
 			  $(SRC_DIR)/GameServer/Stats/MatchStats.cpp \
 			  $(SRC_DIR)/GameServer/Stats/SpectatorOverlayFeed/SpectatorOverlayFeed.cpp \
+			  $(SRC_DIR)/GameServer/Stats/DeviceStats.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/ClientConnection/SendMarshal/ClientConnection__SendMarshal.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.cpp \
 			  $(SRC_DIR)/GameServer/Engine/NetConnection/SendPackageMap/NetConnection__SendPackageMap.cpp \
 			  $(SRC_DIR)/GameServer/Engine/PackageMap/Compute/PackageMap__Compute.cpp \
+			  $(SRC_DIR)/GameServer/Engine/PackageMap/ObjectToIndex/PackageMap__ObjectToIndex.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/CleanupActor/NetConnection__CleanupActor.cpp \
 			  $(SRC_DIR)/GameServer/TgNetDrv/MarshalChannel/MarshalReceived/MarshalChannel__MarshalReceived.cpp \
@@ -155,6 +158,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/Coords/Coords.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/FullHeal/FullHeal.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/ToggleBrokenSuits/ToggleBrokenSuits.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.cpp \
@@ -162,6 +166,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.cpp \
 			  $(SRC_DIR)/GameServer/Inventory/Inventory.cpp \
+			  $(SRC_DIR)/GameServer/Cosmetics/BrokenSuitSwap.cpp \
 			  $(SRC_DIR)/GameServer/Cosmetics/CosmeticEquip.cpp \
 			  $(SRC_DIR)/GameServer/Cosmetics/JetpackReload.cpp \
 			  $(SRC_DIR)/GameServer/Cosmetics/SuitRebuildKick.cpp \
@@ -329,6 +334,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Combat/SendCombatMessage/SendCombatMessage.cpp \
 			  $(SRC_DIR)/GameServer/Combat/SendKillAlert/SendKillAlert.cpp \
 			  $(SRC_DIR)/GameServer/Combat/MissionAlerts/SendAlert.cpp \
+			  $(SRC_DIR)/GameServer/Audio/BotVoice/BotVoice.cpp \
 			  $(SRC_DIR)/GameServer/Combat/MissionAlerts/MissionAlerts.cpp \
 			  $(SRC_DIR)/GameServer/Combat/CombatMessageFlusher/CombatMessageFlusher.cpp \
 			  $(SRC_DIR)/GameServer/Matchmaking/SetupRebalanceTrigger/SetupRebalanceTrigger.cpp \

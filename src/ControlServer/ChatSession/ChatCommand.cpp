@@ -3,12 +3,15 @@
 #include <algorithm>
 #include <cctype>
 #include <climits>
+#include <cstdio>
 #include <vector>
 
 #include "lib/nlohmann/json.hpp"
 
+#include "src/ControlServer/ChatSession/ChatSession.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/Logger.hpp"
+#include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 
@@ -90,6 +93,22 @@ std::optional<int> ParseInt(const std::string& s) {
 }
 
 } // namespace
+
+std::optional<uint32_t> ChannelForCommandToken(const std::string& token) {
+    const std::string t = LowerAscii(token);
+    // Channel ids: see handoff.md §1. Raid (6) is deliberately absent — no
+    // raid-group concept exists server-side, so an unknown-command reply beats
+    // silently sending into a channel nobody is scoped to.
+    if (t == "l"    || t == "local")    return 4;
+    if (t == "a"    || t == "agency")   return 2;
+    if (t == "al"   || t == "alliance") return 3;
+    if (t == "t"    || t == "team")     return 5;
+    if (t == "c"    || t == "city")     return 7;
+    if (t == "i"    || t == "instance") return 1;
+    if (t == "tr"   || t == "trade")    return 12;
+    if (t == "lfg")                     return 13;
+    return std::nullopt;
+}
 
 ParseResult TryParseChatCommand(const std::string& message_text) {
     ParseResult out;
@@ -201,6 +220,14 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
+    if (cmd_name == "-classes") {
+        // No args — per-team class counts of the sender's instance.
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        if (rest.empty()) out.class_counts = true;
+        return out;
+    }
+
     if (cmd_name == "-possess") {
         out.recognized = true;
         out.suppress_broadcast = true;
@@ -220,6 +247,33 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         out.suppress_broadcast = true;
         // No args; trailing junk silently ignored (recognized + suppressed).
         if (rest.empty()) out.reload_queues = true;
+        return out;
+    }
+
+    if (cmd_name == "-announce") {
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        // Empty text -> nullopt (silent reject). Permission is the caller's
+        // job — parsing does not know who sent this.
+        if (!rest.empty()) out.announce = rest;
+        return out;
+    }
+
+    if (cmd_name == "-togglebrokensuits" || cmd_name == "-toggleallsuits") {
+        // -togglebrokensuits     -> toggle current preference
+        // -togglebrokensuits 1   -> show broken suits (default)
+        // -togglebrokensuits 0   -> replace broken suits
+        // -toggleallsuits [1|0]  -> same, but 0 hides ALL suits/helmets/flairs
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        ToggleBrokenSuitsArgs args;
+        args.all = (cmd_name == "-toggleallsuits");
+        if (!rest.empty()) {
+            if (rest == "0")      args.mode = 0;
+            else if (rest == "1") args.mode = 1;
+            else return out;  // bad arg — silent reject
+        }
+        out.toggle_broken_suits = args;
         return out;
     }
 
@@ -327,6 +381,21 @@ void DispatchChangeTeam(ChangeTeamTarget target, const std::string& session_guid
     const int64_t instance_id = lookup->first;
     const int     old_tf      = lookup->second;
 
+    // Manual -changeteam is disabled in matchmade Mercenary matches — players
+    // were using it to stack teams. Autobalance moves don't come through here
+    // (IpcServer calls DispatchTeamMove directly), so rebalancing still works.
+    if (auto inst = InstanceRegistry::GetInstanceById(instance_id); inst && inst->queue_id != 0) {
+        auto queue_cfg = MatchmakingService::GetQueueConfig(inst->queue_id);
+        if (queue_cfg && queue_cfg->name == "merc") {
+            Logger::Log("chat-command",
+                "[ChatCmd] guid=%s command=-changeteam outcome=denied details=merc_queue_match instance=%lld\n",
+                session_guid.c_str(), (long long)instance_id);
+            ChatSession::SystemMessageToGuid(session_guid,
+                "*** -changeteam is disabled in Mercenary matches ***");
+            return;
+        }
+    }
+
     int new_tf = old_tf;
     switch (target) {
         case ChangeTeamTarget::Toggle:    new_tf = (old_tf == 1) ? 2 : 1; break;
@@ -411,10 +480,81 @@ static void DispatchSimpleAction(const std::string& action_name, const std::stri
     }
 }
 
+void ExecuteClassCounts(const std::string& session_guid) {
+    if (session_guid.empty()) {
+        Logger::Log("chat-command", "[ChatCmd] ExecuteClassCounts dropped: empty session_guid\n");
+        return;
+    }
+
+    auto lookup = InstanceRegistry::GetInstancePlayerTaskForce(session_guid);
+    if (!lookup) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=-classes outcome=ignored details=no_active_instance_player\n",
+            session_guid.c_str());
+        ChatSession::SystemMessageToGuid(session_guid, "*** You are not in an instance ***");
+        return;
+    }
+    const int64_t instance_id = lookup->first;
+    const int     own_tf      = lookup->second;
+
+    // Index: 0=assault 1=medic 2=recon 3=robotics.
+    int own[4] = {0, 0, 0, 0};
+    int enemy[4] = {0, 0, 0, 0};
+    const auto rows = InstanceRegistry::GetActivePlayersForInstance(instance_id);
+    for (const auto& row : rows) {
+        int idx = -1;
+        switch (row.profile_id) {
+            case 680: idx = 0; break;  // PROFILE_ASSAULT
+            case 567: idx = 1; break;  // PROFILE_MEDIC
+            case 681: idx = 2; break;  // PROFILE_RECON
+            case 679: idx = 3; break;  // PROFILE_ROBOTICS
+            default: break;
+        }
+        if (idx < 0) continue;
+        if (row.task_force == own_tf) own[idx]++;
+        else                          enemy[idx]++;
+    }
+
+    char line[64];
+    std::snprintf(line, sizeof(line), "Your team: %d/%d/%d/%d",
+                  own[0], own[1], own[2], own[3]);
+    ChatSession::SystemMessageToGuid(session_guid, line);
+    std::snprintf(line, sizeof(line), "Enemy team: %d/%d/%d/%d",
+                  enemy[0], enemy[1], enemy[2], enemy[3]);
+    ChatSession::SystemMessageToGuid(session_guid, line);
+
+    Logger::Log("chat-command",
+        "[ChatCmd] guid=%s command=-classes outcome=sent instance=%lld tf=%d "
+        "own=%d/%d/%d/%d enemy=%d/%d/%d/%d roster=%zu\n",
+        session_guid.c_str(), (long long)instance_id, own_tf,
+        own[0], own[1], own[2], own[3],
+        enemy[0], enemy[1], enemy[2], enemy[3], rows.size());
+}
+
 void DispatchPossess(const std::string& session_guid)   { DispatchSimpleAction("possess",   session_guid); }
 void DispatchUnpossess(const std::string& session_guid) { DispatchSimpleAction("unpossess", session_guid); }
 void DispatchCoords(const std::string& session_guid)    { DispatchSimpleAction("coords",    session_guid); }
 void DispatchFullHeal(const std::string& session_guid)  { DispatchSimpleAction("fullheal",  session_guid); }
+
+void DispatchToggleBrokenSuits(const ToggleBrokenSuitsArgs& args,
+                               const std::string& session_guid) {
+    if (session_guid.empty()) {
+        Logger::Log("chat-command", "[ChatCmd] DispatchToggleBrokenSuits dropped: empty session_guid\n");
+        return;
+    }
+    nlohmann::json payload;
+    payload["type"]         = IpcProtocol::MSG_PLAYER_ACTION;
+    payload["session_guid"] = session_guid;
+    payload["action"]       = args.all ? "toggle_all_suits" : "toggle_broken_suits";
+    payload["args"]         = { {"mode", args.mode} };
+    const bool sent = TcpSession::DeliverPlayerAction(session_guid, payload);
+    if (!sent) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=%s mode=%d outcome=ignored details=dispatch_failed\n",
+            session_guid.c_str(),
+            args.all ? "-toggleallsuits" : "-togglebrokensuits", args.mode);
+    }
+}
 
 void DispatchTopDown(const TopDownArgs& args, const std::string& session_guid) {
     if (session_guid.empty()) {

@@ -18,4 +18,9 @@ public:
 	// (catches deployed bot pawns like the Grizzly drone). Use this instead of
 	// Call(bAll=1) on team-change / profile-switch paths.
 	static void KillAllOwned(ATgPawn* Pawn);
+
+	// Destroy only what one equipped device produced — its live deployables
+	// (dep->r_Owner == Device) and its pet pawns (s_nSpawnerDeviceInstId ==
+	// device invId). Call BEFORE Inventory::Unequip destroys the device actor.
+	static void KillFromDevice(ATgPawn* Pawn, ATgDevice* Device);
 };

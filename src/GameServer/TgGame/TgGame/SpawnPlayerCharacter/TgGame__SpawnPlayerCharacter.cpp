@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
+#include "src/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/GameServer/Cosmetics/CosmeticEquip.hpp"
 #include "src/GameServer/Constants/EquipSlot.hpp"
@@ -44,6 +45,26 @@ static void LogAssemblySnapshot(const char* where, void* obj, const FCustomChara
 		a.nGenderTypeId,
 		a.HeadFlairId, a.SuitFlairId, a.JetpackTrailId,
 		a.DyeList[0], a.DyeList[1], a.DyeList[2], a.DyeList[3], a.DyeList[4]);
+}
+
+// Persistently assign a replicated FString field on a UObject. The field is
+// replicated over many frames and later freed by the engine via GAllocator, so
+// Data must come from GAllocator (not C++ new[] — mixing allocators corrupts
+// the heap, see the eventSetPlayerName note below). Frees any prior
+// GAllocator-owned buffer first so respawns don't leak.
+static void SetReplicatedFString(FString& field, const std::string& utf8) {
+	if (field.Data) {
+		GAllocator::Free(field.Data);
+		field.Data = nullptr;
+		field.Count = field.Max = 0;
+	}
+	if (utf8.empty()) return;
+	int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
+	if (wlen <= 0) return;  // includes the null terminator
+	wchar_t* buf = (wchar_t*)GAllocator::Malloc(sizeof(wchar_t) * wlen);
+	MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, buf, wlen);
+	field.Data = buf;
+	field.Count = field.Max = wlen;  // FString Count includes the terminator
 }
 
 static bool AddTouchingIfMissing(AActor* Actor, AActor* Other) {
@@ -252,7 +273,22 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// nPendingBotId = profileId so InitializeDefaultProps loads the correct class stats from DB.
 	// For player classes, bot_id == profile_id in asm_data_set_bots.
 	TgPawn__InitializeDefaultProps::nPendingBotId = profileId;
-	ATgPawn_Character* newpawn = (ATgPawn_Character*)Game->Spawn(ClassPreloader::GetTgPawnCharacterClass(), PlayerController, FName(), SpawnLocation, PlayerController->Rotation, nullptr, 1);
+	// Face the pawn the way the chosen TgTeamPlayerStart points. Retail
+	// RestartPlayer does Pawn.SetRotation(StartSpot.Rotation); we were reusing
+	// the controller's stale rotation (0 on join, last death view on respawn),
+	// which spawned players looking backwards on any start whose yaw isn't ~0.
+	// Yaw only, mirroring TgTeleporter.UsePlayerStart (see ReturnHomeArea.cpp).
+	FRotator SpawnRotation = PlayerController->Rotation;
+	SpawnRotation.Pitch = 0;
+	SpawnRotation.Roll  = 0;
+	{
+		auto it = TgGame__TgFindPlayerStart::s_ChosenYaw.find((AController*)PlayerController);
+		if (it != TgGame__TgFindPlayerStart::s_ChosenYaw.end()) {
+			SpawnRotation.Yaw = it->second;
+		}
+	}
+
+	ATgPawn_Character* newpawn = (ATgPawn_Character*)Game->Spawn(ClassPreloader::GetTgPawnCharacterClass(), PlayerController, FName(), SpawnLocation, SpawnRotation, nullptr, 1);
 	// nPendingBotId cleared inside InitializeDefaultProps::Call
 
 	// r_nPawnId is assigned by UC TgPawn.PostBeginPlay via TgGame.GetNextPawnId()
@@ -459,7 +495,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 
 
 	// newrepplayer->Team = defenders;
-	newrepplayer->bAdmin = 1;
+	newrepplayer->bAdmin = 0;
 	// PRI's r_CustomCharacterAssembly is also written by CosmeticEquip::LoadFromDB
 	// (it mirrors every assembly field from the pawn so the client's
 	// UpdateCharacterAssetRefs preload sees the final cosmetic state).
@@ -469,6 +505,9 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	SyncPawnHealth::Apply(newpawn, hp, hp);
 	newrepplayer->r_nCharacterId = newpawn->s_nCharacterId;
 	newrepplayer->r_nLevel = 50;
+	// Scoreboard Agency column — replicated FString on the PRI.
+	SetReplicatedFString(newrepplayer->r_sAgencyName,
+	                     Database::GetAgencyName(newpawn->s_nCharacterId));
 	// newrepplayer->r_sOrigPlayerName = FString(L"Zaxik");
 	newrepplayer->r_PawnOwner = newpawn;
 	newrepplayer->r_ApproxLocation = newpawn->Location;
@@ -881,7 +920,13 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// Refresh against the pawn's actual spawned transform. The native
 	// vLocation argument can be unavailable on some hook paths after Spawn().
 	newpawn->SetLocation(newpawn->Location);
-	newpawn->SetRotation(PlayerController ? PlayerController->Rotation : newpawn->Rotation);
+	newpawn->SetRotation(SpawnRotation);
+	newpawn->SetViewRotation(SpawnRotation);
+	newpawn->ClientSetRotation(SpawnRotation);
+	if (PlayerController) {
+		PlayerController->Rotation = SpawnRotation;
+		PlayerController->ClientSetRotation(SpawnRotation, 1);
+	}
 	RepairSpawnVolumeState(newpawn);
 
 	// scope-zoom investigation baseline — snapshot the aim-mode fields right

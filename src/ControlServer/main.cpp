@@ -46,7 +46,7 @@ static bool UpdateQueueField(uint32_t queue_id, const std::string& field,
                               const nlohmann::json& value, std::string& message) {
     // Whitelist: each field has its own type + range gate. Anything not
     // listed here is rejected.
-    enum class Kind { Bool, Uint, NonNegUint, NonNegFloat, Enum };
+    enum class Kind { Bool, Uint, NonNegUint, NonNegFloat, Enum, DivisorList };
     struct FieldSpec { const char* name; Kind kind; };
     static const FieldSpec kSpecs[] = {
         { "enabled",                   Kind::Bool        },
@@ -63,6 +63,7 @@ static bool UpdateQueueField(uint32_t queue_id, const std::string& field,
         { "team_policy",              Kind::Enum        },
         { "team_side_policy",         Kind::Enum        },
         { "pop_delay_policy",         Kind::Enum        },
+        { "map_recency_divisors",     Kind::DivisorList },  // CSV, each >= 1; empty = off
     };
 
     const FieldSpec* spec = nullptr;
@@ -113,6 +114,19 @@ static bool UpdateQueueField(uint32_t queue_id, const std::string& field,
             else if (field == "team_side_policy") mm::ParseTeamSidePolicy(bind_text, &ok);
             else if (field == "pop_delay_policy") mm::ParsePopDelayPolicy(bind_text, &ok);
             if (!ok) { message = "invalid value for " + field; return false; }
+            is_text = true;
+            break;
+        }
+        case Kind::DivisorList: {
+            if (!value.is_string()) { message = "value must be string"; return false; }
+            bind_text = value.get<std::string>();
+            // Same parser the config loader uses — accepted syntax can't drift.
+            bool ok = false;
+            mm::ParseRecencyDivisors(bind_text, &ok);
+            if (!ok) {
+                message = "map_recency_divisors must be comma-separated numbers >= 1 (empty = off)";
+                return false;
+            }
             is_text = true;
             break;
         }
@@ -725,6 +739,7 @@ int main(int argc, char* argv[]) {
     }
 
     Logger::Log("main", "Binding chat listener on port %d\n", (int)cfg.chat_port);
+    ChatSession::SetAnnouncers(cfg.announcers);
     // Bind chat listener (GA chat connections — separate port)
     ChatListener chat_listener(io, cfg.chat_port);
     if (!chat_listener.IsListening()) {
@@ -1017,6 +1032,56 @@ int main(int argc, char* argv[]) {
             message = "role '" + role + "' " + (granted ? "granted to" : "revoked from") +
                       " user_id=" + std::to_string(user_id);
             return true;
+        }
+
+        if (subtype == "set-user-note") {
+            int64_t user_id = payload.value("user_id", (int64_t)0);
+            if (user_id == 0) {
+                const std::string username = payload.value("username", std::string());
+                if (!username.empty()) user_id = Database::FindUserIdByUsername(username);
+            }
+            if (user_id == 0) {
+                message = "set-user-note needs user_id or a known username";
+                return false;
+            }
+            const std::string note = payload.value("note", std::string());
+            if (!Database::SetUserAdminNotes(user_id, note)) {
+                message = "failed to update admin_notes";
+                return false;
+            }
+            Logger::Log("admin", "[admin] set-user-note user_id=%lld len=%zu\n",
+                (long long)user_id, note.size());
+            message = "admin_notes updated for user_id=" + std::to_string(user_id);
+            return true;
+        }
+
+        if (subtype == "store-ip-check") {
+            // Batch upsert of geo/VPN lookup results the dashboard fetched
+            // from the external service. The dashboard's DB handle is
+            // read-only, so persistence goes through here.
+            const auto checks = payload.value("checks", nlohmann::json::array());
+            if (!checks.is_array() || checks.empty()) {
+                message = "store-ip-check needs a non-empty checks array";
+                return false;
+            }
+            int stored = 0;
+            for (const auto& c : checks) {
+                if (!c.is_object()) continue;
+                const std::string ip = c.value("ip", std::string());
+                if (ip.empty()) continue;
+                if (Database::UpsertIpCheck(ip,
+                        c.value("country_code", std::string()),
+                        c.value("country", std::string()),
+                        c.value("isp", std::string()),
+                        c.value("proxy", false),
+                        c.value("hosting", false))) {
+                    ++stored;
+                }
+            }
+            Logger::Log("admin", "[admin] store-ip-check stored=%d of %d\n",
+                stored, (int)checks.size());
+            message = "stored " + std::to_string(stored) + " ip check(s)";
+            return stored > 0;
         }
 
         if (subtype == "list-online") {

@@ -16,6 +16,7 @@
 #include "src/GameServer/TgGame/TgPawn/TrackKilledBot/TgPawn__TrackKilledBot.hpp"
 #include "src/GameServer/TgGame/Morale/MoraleCredit.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
+#include "src/GameServer/Stats/DeviceStats.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <string>
 
@@ -305,6 +306,38 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 	ATgPawn* damageCreditPawn = Instigator;
 	if (Instigator->r_Owner != nullptr) damageCreditPawn = Instigator->r_Owner;
 
+	// Device that caused this event — same fire-mode reference the kill
+	// attribution below uses (FImpactInfo @ 0x54), resolved to an asm device
+	// id. Drives the end-of-mission Device Stats tab.
+	int creditDeviceId = ResolveDeviceIdFromFireMode((UObject*)Impact.dw[0x54 / 4]);
+
+	// Deployable-fired (Medical Station heal, mine blast, force wall): the
+	// fire mode's m_Owner is the ATgDeployable itself, not an ATgDevice, so
+	// the helper above returns 0 and the event would go uncredited. Map the
+	// deployable back to the device the player equipped to place it.
+	if (creditDeviceId == 0) {
+		UTgDeviceFire* fireMode = (UTgDeviceFire*)Impact.dw[0x54 / 4];
+		AActor* fmOwner = fireMode ? fireMode->m_Owner : nullptr;
+		if (fmOwner != nullptr &&
+		    ObjectClassCache::ClassNameContains(fmOwner, "TgDeployable")) {
+			creditDeviceId = DeviceStats::DeviceIdFromDeployableId(
+				((ATgDeployable*)fmOwner)->r_nDeployableId);
+		}
+	}
+
+	// Pet → spawning device, mirroring the pet → owner pawn resolution above.
+	// A pet turret shoots with its OWN internal weapon device ("Personal
+	// Turret Laser", "Flame Turret Fire"): a data row that never appears in
+	// any UI and carries icon_id = 0, so the stats tab would show the GA
+	// placeholder icon. Credit the device the player actually equipped
+	// ("Personal Turret", "Flame Turret") instead — s_nSpawnerDeviceModeId
+	// carries the fire mode that spawned the pet.
+	if (Instigator->r_Owner != nullptr && Instigator->s_nSpawnerDeviceModeId > 0) {
+		const int spawnerDeviceId =
+			DeviceStats::DeviceIdFromModeId(Instigator->s_nSpawnerDeviceModeId);
+		if (spawnerDeviceId > 0) creditDeviceId = spawnerDeviceId;
+	}
+
 	// ===== Rolling damager history for assist credit =====
 	// UC's UpdateDamagers native is stripped (no UC caller). Without
 	// rotation, m_SecondToLastDamager stays null forever and TrackKill can
@@ -467,6 +500,14 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 			if (bIsEnemy) {
 				TgPawn__TrackKill::Call(Victim, nullptr, DamagerPawn);
 
+				// creditDeviceId, not killerDeviceId: same fire mode, but
+				// pet→spawning-device resolved (see above).
+				DeviceStats::Credit(CreditPawn, creditDeviceId,
+				                    IsRealPlayer(Victim->Controller)
+				                        ? DeviceStats::kPlayerKills
+				                        : DeviceStats::kBotKills,
+				                    1);
+
 				// Match event: scoreboard-parity KILL (+assists). Team-kills
 				// stay killer-less — the victim's pending DEATH covers them.
 				MatchStats::OnKill(CreditPawn, isPetKill ? DamagerPawn : nullptr,
@@ -564,6 +605,8 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 		if (bIsEnemy && targetIsDeployable && targetDeployable->r_nHealth <= 0 &&
 		    magnitude > 0.0f) {
 			TgPawn__TrackKilledBot::Call(damageCreditPawn, nullptr, 0);
+			DeviceStats::Credit(damageCreditPawn, creditDeviceId,
+			                    DeviceStats::kBotKills, 1);
 
 			// Match event: DEPLOYABLE_DESTROYED / BEACON_DESTROYED with
 			// deployer attribution (design 2026-06-12).
@@ -646,6 +689,16 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 				TgPawn__TrackBotHealing::Call(damageCreditPawn, nullptr,
 					0, magnitude, fMissingHealth, 0);
 			}
+
+			// Same overheal exclusion the Track*Healing bodies apply to
+			// STYPE_HEALING — only actually-restored HP counts.
+			if (targetIsPawn || targetIsDeployable) {
+				const float missing = fMissingHealth < 0.0f ? 0.0f : fMissingHealth;
+				float effectiveHeal = magnitude;
+				if (effectiveHeal > missing) effectiveHeal = missing;
+				DeviceStats::Credit(damageCreditPawn, creditDeviceId,
+				                    DeviceStats::kHealing, (int)effectiveHeal);
+			}
 		}
 	}
 	// ===== end kill attribution =====
@@ -677,9 +730,13 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 				TgPawn__TrackDamagedPlayer::Call(damageCreditPawn, nullptr,
 					targetPawn, 0, (int)magnitude);
 			}
+			DeviceStats::Credit(damageCreditPawn, creditDeviceId,
+			                    DeviceStats::kDamage, (int)magnitude);
 		} else if (targetIsDeployable) {
 			TgPawn__TrackDamagedBot::Call(damageCreditPawn, nullptr,
 				nullptr, 0, (int)magnitude);
+			DeviceStats::Credit(damageCreditPawn, creditDeviceId,
+			                    DeviceStats::kDamage, (int)magnitude);
 		}
 	}
 

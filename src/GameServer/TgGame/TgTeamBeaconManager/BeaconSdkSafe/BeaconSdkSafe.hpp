@@ -40,6 +40,18 @@ ATgTeamBeaconManager* FindBeaconManagerByTaskForce(int taskforceNum);
 // later bools. Manual dword-per-param ProcessEvent.
 void SetCollision(AActor* actor, bool bColActors, bool bBlockActors, bool bIgnoreEncroachers);
 
+// `Actor.SetCollisionType(ECollisionType)` — SDK wrapper trips the
+// FunctionFlags |= ~0x400 bug. This re-derives the actor's collision AND its
+// primitive component's collision from the type (unlike SetCollision, which
+// only touches the actor flags), so it's what actually disables a static-mesh
+// wall (COLLIDE_NoCollision = 1). Single-param, no bitfield hazard.
+void SetCollisionType(AActor* actor, unsigned char newCollisionType);
+
+// `Actor.SetLocation(FVector) : bool` — teleports the actor AND re-inserts it
+// into the collision octree (a raw Location write leaves the octree stale).
+// SDK wrapper trips the FunctionFlags bug. Returns nothing here (fire-and-move).
+void SetLocation(AActor* actor, const struct FVector& newLocation);
+
 // Carrier-loss cleanup. For each team manager whose `r_BeaconHolder` matches
 // this pawn's PRI, strip the pickup device (slot 11) and re-trigger CheckBeacon
 // — the native walks all PRIs, finds no IsCarryingBeacon holder, and respawns

@@ -148,6 +148,21 @@ void PlayerSessionStore::Init() {
 			}
 		}
 
+		// === Character soft-delete migration ===
+		// deleted_at = 0 means active; non-zero = unix epoch of deletion.
+		// Rows are never hard-deleted so stats/history/MMR keep resolving.
+		if (!TableColumnExists(db, "ga_characters", "deleted_at")) {
+			if (sqlite3_exec(db,
+					"ALTER TABLE ga_characters ADD COLUMN deleted_at INTEGER NOT NULL DEFAULT 0",
+					nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Init] deleted_at migration failed: %s\n",
+					err ? err : "(no msg)");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			} else {
+				Logger::Log("db", "[Init] Added ga_characters.deleted_at\n");
+			}
+		}
+
 		const bool devices_need_migration =
 			!TableColumnExists(db, "ga_character_devices", "item_profile_id") ||
 			!TableColumnExists(db, "ga_character_devices", "equipped_slot");
@@ -463,7 +478,7 @@ std::vector<CharacterInfo> PlayerSessionStore::GetCharactersByUserId(int64_t use
 	int rc = sqlite3_prepare_v2(db,
 		"SELECT id, profile_id, head_asm_id, gender_type_value_id, morph_data, "
 		"       hair_asm_id, skin_mat_param_id, eye_mat_param_id, current_item_profile_id "
-		"FROM ga_characters WHERE user_id = ?",
+		"FROM ga_characters WHERE user_id = ? AND deleted_at = 0",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
 		Logger::Log("db", "[PlayerSessionStore] GetCharactersByUserId prepare failed: %s\n", sqlite3_errmsg(db));
@@ -500,7 +515,7 @@ std::optional<CharacterInfo> PlayerSessionStore::GetCharacterById(int64_t id) {
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
 		"SELECT id, user_id, profile_id, head_asm_id, gender_type_value_id, morph_data, "
-		"       hair_asm_id, skin_mat_param_id, eye_mat_param_id "
+		"       hair_asm_id, skin_mat_param_id, eye_mat_param_id, deleted_at "
 		"FROM ga_characters WHERE id = ?",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
@@ -525,10 +540,32 @@ std::optional<CharacterInfo> PlayerSessionStore::GetCharacterById(int64_t id) {
 		c.hair_asm_id          = static_cast<uint32_t>(sqlite3_column_int(stmt, 6));
 		c.skin_mat_param_id    = static_cast<uint32_t>(sqlite3_column_int(stmt, 7));
 		c.eye_mat_param_id     = static_cast<uint32_t>(sqlite3_column_int(stmt, 8));
+		c.deleted_at           = sqlite3_column_int64(stmt, 9);
 		result = std::move(c);
 	}
 	sqlite3_finalize(stmt);
 	return result;
+}
+
+bool PlayerSessionStore::SoftDeleteCharacter(int64_t character_id, int64_t user_id) {
+	std::lock_guard<std::mutex> lock(mutex_);
+	sqlite3* db = Database::GetConnection();
+
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"UPDATE ga_characters SET deleted_at = strftime('%s','now') "
+		"WHERE id = ? AND user_id = ? AND deleted_at = 0",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[PlayerSessionStore] SoftDeleteCharacter prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+	sqlite3_bind_int64(stmt, 2, user_id);
+	if (sqlite3_step(stmt) != SQLITE_DONE)
+		Logger::Log("db", "[PlayerSessionStore] SoftDeleteCharacter update failed: %s\n", sqlite3_errmsg(db));
+	sqlite3_finalize(stmt);
+	return sqlite3_changes(db) > 0;
 }
 
 void PlayerSessionStore::SetSelectedCharacter(const std::string& session_guid, int64_t char_id, uint32_t profile_id) {

@@ -92,6 +92,11 @@ public:
     static void KickMember(const std::string& requester_guid, int64_t target_character_id);
 
     static bool IsTeamed(const std::string& session_guid);
+
+    // Session guids of every member of the caller's team, including the
+    // caller. Empty when they aren't in one. Used by the Team chat channel to
+    // resolve recipients.
+    static std::vector<std::string> GetTeamMemberGuids(const std::string& session_guid);
     static bool IsLeader(const std::string& session_guid);
 
     // --- Team queueing -----------------------------------------------------

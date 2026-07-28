@@ -13,6 +13,10 @@ public:
 	static void CloseConnection();
 	static void Init();
 
+	// Agency name for a character, "" when unaffiliated. Feeds the in-match
+	// scoreboard's Agency column (ATgRepInfo_Player::r_sAgencyName).
+	static std::string GetAgencyName(int64_t character_id);
+
 	// Returns "" (not found), "active", or "complete"
 	static std::string GetQuestStatus(int64_t character_id, int quest_id);
 	static void AcceptQuest(int64_t character_id, int quest_id);

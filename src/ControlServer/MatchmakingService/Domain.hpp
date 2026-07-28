@@ -7,7 +7,9 @@
 // MatchmakingService.hpp includes this and re-exports it, so existing callers
 // that `#include MatchmakingService.hpp` keep compiling unchanged.
 //
+#include <cctype>
 #include <cstdint>
+#include <cstdlib>
 #include <string>
 #include <vector>
 #include <optional>
@@ -237,6 +239,10 @@ struct QueueConfig {
     bool instant_pop_when_full        = true;
     bool requires_pvp_verification    = false;
 
+    // Map-variety knob: per-recency-slot weight divisors, most recent first
+    // (ga_queues.map_recency_divisors, CSV). Empty = feature off.
+    std::vector<double> map_recency_divisors;
+
     std::vector<MapModeEntry> map_pool;
 };
 
@@ -282,6 +288,39 @@ inline PopDelayPolicy ParsePopDelayPolicy(const std::string& s, bool* ok = nullp
     if (s == "reset_on_join") return PopDelayPolicy::ResetOnJoin;
     if (ok) *ok = false;
     return PopDelayPolicy::HalveOnJoin;
+}
+
+// Parse ga_queues.map_recency_divisors: "25, 5, 2" → {25, 5, 2}. Most recent
+// first; list length = history depth. Empty/blank = disabled (ok stays true).
+// Every token must parse fully as a number >= 1, else ok=false and {} returned.
+inline std::vector<double> ParseRecencyDivisors(const std::string& s, bool* ok = nullptr) {
+    if (ok) *ok = true;
+    std::vector<double> out;
+    auto fail = [&]() { if (ok) *ok = false; out.clear(); return out; };
+    size_t pos = 0;
+    bool any_token = false;
+    while (pos <= s.size()) {
+        const size_t comma = s.find(',', pos);
+        const size_t end = (comma == std::string::npos) ? s.size() : comma;
+        size_t a = pos, b = end;
+        while (a < b && std::isspace((unsigned char)s[a])) ++a;
+        while (b > a && std::isspace((unsigned char)s[b - 1])) --b;
+        if (a == b) {
+            // Blank token: fine for an all-blank string (= disabled), an
+            // error inside a list ("5,,2" / trailing comma).
+            if (any_token || comma != std::string::npos) return fail();
+        } else {
+            const std::string tok = s.substr(a, b - a);
+            char* endp = nullptr;
+            const double v = std::strtod(tok.c_str(), &endp);
+            if (!endp || *endp != '\0' || !(v >= 1.0)) return fail();
+            out.push_back(v);
+            any_token = true;
+        }
+        if (comma == std::string::npos) break;
+        pos = comma + 1;
+    }
+    return out;
 }
 
 inline const char* AccessModeToString(AccessMode m) {

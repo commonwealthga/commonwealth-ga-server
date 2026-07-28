@@ -6,6 +6,7 @@
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/Constants/GameTypes.h"
+#include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/Logger.hpp"
 
 #include <algorithm>
@@ -67,6 +68,18 @@ bool TeamService::IsTeamed(const std::string& session_guid) {
     return FindTeamByMemberLocked(session_guid) != nullptr;
 }
 
+std::vector<std::string> TeamService::GetTeamMemberGuids(const std::string& session_guid) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<std::string> guids;
+    Team* team = FindTeamByMemberLocked(session_guid);
+    if (!team) return guids;
+    guids.reserve(team->members.size());
+    for (const auto& m : team->members) {
+        if (!m.session_guid.empty()) guids.push_back(m.session_guid);
+    }
+    return guids;
+}
+
 bool TeamService::IsLeader(const std::string& session_guid) {
     std::lock_guard<std::mutex> lock(mutex_);
     Team* team = FindTeamByMemberLocked(session_guid);
@@ -77,6 +90,7 @@ TeamRoster TeamService::BuildRosterLocked(const Team& team) {
     TeamRoster roster;
     roster.team_id = team.id;
     roster.team_mode = 1;
+    const auto affiliations = Database::GetAffiliationsByCharacter();
     for (const auto& m : team.members) {
         if (m.session_guid == team.leader_guid)
             roster.leader_character_id = m.character_id;
@@ -88,6 +102,10 @@ TeamRoster TeamService::BuildRosterLocked(const Team& team) {
         row.class_msg_id    = ClassMsgIdFor(m.profile_id);
         row.map_name_msg_id = MapMsgIdForSession(m.session_guid);
         row.offline         = m.offline;
+        if (auto a = affiliations.find(m.character_id); a != affiliations.end()) {
+            row.agency_name   = a->second.agency_name;
+            row.alliance_name = a->second.alliance_name;
+        }
         roster.rows.push_back(std::move(row));
     }
     return roster;

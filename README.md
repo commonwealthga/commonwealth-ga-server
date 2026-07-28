@@ -30,8 +30,8 @@ A built DLL is available for download [in the releases](https://github.com/commo
 - [x] get a public server up and running 24/7 - [join our discord to learn more](https://discord.gg/CqACf4qArk)
 - [x] implement server orchestration (matchmaking, home map etc.)
 - [x] registrations and auth
-- [ ] *(in progress)* implement important parts of TCP server and database (enable changing gear, skills, cosmetics etc.)
-- [ ] *(in progress)* implement chat
+- [x] implement important parts of TCP server and database (enable changing gear, skills, cosmetics etc.)
+- [x] implement chat
 - [ ] *(in progress)* make all devices work properly
 - [ ] *(in progress)* make all skills work properly
 - [x] implement merc
@@ -42,10 +42,11 @@ A built DLL is available for download [in the releases](https://github.com/commo
 - [ ] implement mission rewards and item drops
 - [ ] implement vendors
 - [ ] implement crafting
-- [x] website, stats
+- [x] website, stats - [link](https://commonwealth.ydns.eu)
 
 ## Useful links
 
+- [Global Agenda on Steam](https://store.steampowered.com/app/17020/Global_Agenda_Free_Agent/) (unlisted)
 - [The Commonwealth Discord](https://discord.gg/CqACf4qArk)
-- [Dev streams](https://kick.com/zaxbactor)
+- [Stats website](https://commonwealth.ydns.eu)
 

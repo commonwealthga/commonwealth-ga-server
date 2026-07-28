@@ -31,6 +31,9 @@
 
 class ATgGame;
 class ATgMissionObjective_Proximity;
+class ATgBotFactory;
+class ATgPawn;
+class ATgAIController;
 
 namespace SuperAgent {
 
@@ -52,6 +55,22 @@ struct CapturePoint {
 	// The body runs server-side on the gameplay thread. This is the meat of the
 	// mode — spawn things, flip things, taunt the players. See SuperAgentMission.cpp.
 	void at(float pct, std::function<void()> action);
+
+	// One weighted-random event. `weight` is a relative share (they need NOT sum
+	// to anything); a tiny weight next to big ones = a super-rare event. Add an
+	// event = add a `{weight, lambda}` line — that's the whole extension story.
+	struct Event { float weight; std::function<void()> action; };
+
+	// At `pct`, roll ONE of `events` by weight and fire it (once, like at()). Use
+	// for "fun random event, one per mission" beats — the picked event fires, the
+	// rest don't. Zero/negative weights are skipped. Remember to capture any
+	// locals BY VALUE in the lambdas (the roll happens minutes later), e.g.
+	//   A.oneOf(0.75f, {
+	//       { 30.0f, [defaultDelay] { Adds::UnleashOutside(102, defaultDelay); } },
+	//       { 10.0f, []             { /* the Agenderp beat */ } },
+	//       {  1.0f, []             { /* super-rare event   */ } },
+	//   });
+	void oneOf(float pct, std::vector<Event> events);
 
 	// ---- machinery-owned ----
 	ATgMissionObjective_Proximity* obj = nullptr;
@@ -76,19 +95,256 @@ void AuthorMission();
 // the original groups. Sources must be raw DB tables, not other composites.
 const std::map<int, std::vector<int>>& SpawnTableComposites();
 
+// Bot ids whose deaths skip the client-side ragdoll: their pawns die with
+// r_eDeathReason = DR_DESPAWN, which routes the client's PlayDyingEffects to
+// the 'Despawned' FX group + an immediate mesh hide instead of the
+// 'PawnDied' FX + a ragdolled corpse. Perf knob for the huge ambush/alarm
+// waves — many simultaneous ragdolls tank client FPS. Authored in
+// SuperAgentMission.cpp; queried on every bot death when IsActive().
+const std::vector<int>& ExplodeOnDeathBotIds();
+
 // ---------------------------------------------------------------------------
 // Helpers callable from inside hook bodies.
 // ---------------------------------------------------------------------------
+
+// One equipment override, applied AFTER the bot's DB loadout is equipped —
+// it REPLACES whatever the bot spawned holding at `equipPoint`.
+//
+// `equipPoint` is the ENGINE equip point, not the DB slot id. The bot loadout
+// (asm_data_set_bots_data_set_bot_devices.slot_used_value_id) maps through
+// BotGetEquipPointBySlot in TgGame__SpawnBotById.cpp:
+//   221->1  198->2  200->3  199->4  201->5  202->6  203->7  204->8  385->9 ...
+// Point 2 (DB slot 198) is the primary in-hand weapon for humanoid bots;
+// point 1 (DB slot 221) is melee. Check what a bot actually carries with:
+//   SELECT device_id, slot_used_value_id FROM asm_data_set_bots_data_set_bot_devices
+//    WHERE bot_id = ?;
+//
+// NOTE: the replaced device's equip-effect buffs are NOT reverted — the old
+// device is dropped from the slot, not unequipped. Harmless for stat-light
+// weapons; if you swap off something with a big passive, expect it to linger.
+struct DeviceSwap {
+	int equipPoint = 2;      // engine equip point (2 = primary in-hand)
+	int deviceId   = 0;      // asm_data_set_devices.device_id
+	int deviceType = 388;    // GA_G::TGDT_ — 388 RANGED, 389 MELEE, 390 OFF_HAND, 981 SPECIALTY
+	int quality    = 1162;   // same default the bot loadout query COALESCEs to
+};
+
+// Optional per-spawn modifiers for Adds::UnleashOutside. A field left at its
+// default is not applied. Usage:
+//   UnleashOpts o; o.scale = 1.6f; o.healthMult = 3.0f; o.name = L"Warden";
+//   Adds::UnleashOutside(10011, o);
+struct UnleashOpts {
+	float scale      = 0.0f;   // size multiplier, mesh + collision cylinder (replicates via DrawScale)
+	float speedMult  = 0.0f;   // GroundSpeed multiplier
+	// Outgoing damage AND heal scale (TgEffectDamage.uc:120 / TgEffectHeal.uc:71
+	// both use it). Absolute — it REPLACES the difficulty/BBM baseline seeded at
+	// spawn, it does not stack on top. For a pure healer this is your heal
+	// multiplier; there is no separate one.
+	float damageMult = 0.0f;   // s_fDamageAdjustment
+	// Health + max-health multiplier (spawns at full). Applied through props
+	// 304/51, not the engine fields — see the comment at the call site.
+	float healthMult = 0.0f;
+	// Immune to stun AND EMP-stun (EMP bomb, Shatter bomb, ...). Stun lifetime
+	// is mitigated by TgEffectGroup.CalcProtection: protection-prop raw /
+	// attacker device rating = % reduction. Sets props 163 (PROTECTION_STUN)
+	// and 235 (PROTECTION_EMP_STUN) so high no device rating can dent it —
+	// the stun's lifetime calcs to 0 and it never applies.
+	bool  stunImmune = false;
+	const wchar_t* name = nullptr;   // display-name override -> the bot's PRI PlayerName
+
+	// ---- "obvious cheater" knobs — each independent, all optional ----
+	// Yaw turn rate in UE3 rotator units/sec (TgPawn default 20000). Push to
+	// 100000+ for instant snap-flicks onto targets — the single most
+	// aimbot-looking thing a bot can do.
+	int   rotationRateYaw = 0;
+	// TGPID_ACCURACY (prop 10), 0..1. 1.0 = laser.
+	float accuracy = 0.0f;
+	// Accuracy-loss props: spread added while shooting / after jumping, and
+	// the cap on accumulated loss. Set to 0 for no-recoil/no-bloom. These are
+	// "apply exactly this value" (not multipliers), so use the explicit flags
+	// to distinguish "leave alone" from "set to zero".
+	bool  setAccuracyLoss     = false;
+	float accuracyLossOnShoot = 0.0f;
+	float accuracyLossOnJump  = 0.0f;
+	float accuracyLossMax     = 0.0f;
+	// Re-roll a RANDOM living player as the bot's target every N seconds —
+	// the "spinning at people across the room for no reason" tell. 0 = off.
+	// Starts only once the bot has ARRIVED at the capture objective, never
+	// during the march: handing the behavior a combat target early stalls the
+	// patrol drive that walks it in.
+	float targetSwitchSecs = 0.0f;
+	// Movement tells: bunnyhop (JumpZ / AirControl multipliers) and low
+	// friction so direction changes slide (strafe-jank).
+	float jumpMult       = 0.0f;
+	float airControlMult = 0.0f;
+	float frictionMult   = 0.0f;   // sets r_fFrictionMultiplier outright
+	// Retail dev-console cheat flags on TgPawn, both checked server-side.
+	// noCooldowns: TgDevice.StartCooldown early-returns, so devices (including
+	// offhand grenades/bombs) fire with no recharge at all. infinitePower:
+	// TgPawn.ConsumePowerPool skips the drain. Covers the bot's whole loadout,
+	// DB-native and swapped alike.
+	bool  noCooldowns   = false;
+	bool  infinitePower = false;
+
+	// Center-screen heads-up shown to every player when the spawn lands — same
+	// red styling as the escape-phase ambush warning (priority 1 Normal / type 2
+	// Detrimental). nullptr = no alert. Only fires if at least one bot actually
+	// spawned, so a failed unleash never announces itself.
+	const wchar_t* alertText = nullptr;
+	float          alertSecs = 5.0f;
+
+	// Drip rate for Adds::UnleashOutside (seconds between spawns). 0 = the whole
+	// roster spawns at once (default); >0 = trickle it in one bot every
+	// `spawnDelay` seconds, so a huge wave walks into the boss room one-by-one
+	// instead of swarming all at once. Wave-level like alertText: in a per-bot-id
+	// group call, the FIRST group that sets it (>0) wins for the whole unleash.
+	float          spawnDelay = 0.0f;
+
+	// Cosmetics — asm_data_set_items.item_id values (see <repo>/cosmetic-items.md).
+	// Suits (subtype 1008), helmets (1006) and helmet flairs (1007) all go in
+	// this one list; each is dispatched by its own subtype, and the paired mesh
+	// id is resolved for you, so pass the ITEM id, never the mesh asm id.
+	//
+	// ONLY takes effect on bots whose pawn class is TgPawn_Character. Bots with
+	// their own mesh (asm_data_set_bots.body_asm_id) have no character assembly
+	// — the Elite Helot is TgPawn_AndroidMinion — and are skipped with a line on
+	// the "cosmetic-equip" channel.
+	std::vector<int> cosmeticItemIds;
+
+	// ---- escort wiring (multi-group unleashes only) ----
+	// Set isLeader on exactly ONE group. Every group with followLeader=true gets
+	// aic->m_pOwner pointed at the leader pawn and skips the march — they trail
+	// the leader instead, via the engine's own SetFormationLocation (randomized
+	// offset around the leader, path-aware).
+	//
+	// A follower ALSO needs a behavior whose destination code is 310
+	// (SetMovementTarget(m_pOwner)) — most rank-and-file behaviors don't have
+	// one and will simply ignore the owner. Donate one with behaviorFromBotId:
+	// bots 1412-1415 (behavior 674) or 1526/1527/1541 (behavior 692) carry it.
+	// Owner-relative targeting rides along for free in those behaviors: they can
+	// pick the owner's last attacker / current target as their own.
+	bool isLeader     = false;
+	bool followLeader = false;
+
+	// Periodic VO barks: every [voMinSecs, voMaxSecs] the bot shouts one cue
+	// picked at random from voCueIds. voMaxSecs <= 0 = off.
+	//
+	// Ids are asm_data_set_sound_cues.sound_cue_id, which are semantic SLOTS —
+	// each id means the same thing everywhere (60 = Bot_Wilhelm, 63 =
+	// Bot_ScoredKill, 64 = Bot_AggroChange) but is resolved against the PAWN'S
+	// OWN audio group, so the bot always shouts in its own voice. A slot the
+	// bot's group doesn't implement is simply silent (e.g. Elite Helot, group
+	// 99, has no 57/66). Query the group for a body mesh with:
+	//   SELECT c.sound_cue_id, c.sound_cue_name FROM asm_data_set_sound_cues c
+	//    JOIN asm_data_set_asm_mesh_audio_groups g USING (audio_group_id)
+	//   WHERE g.asm_id = <bots.body_asm_id>;
+	std::vector<int> voCueIds;
+	float voMinSecs = 0.0f;
+	float voMaxSecs = 0.0f;
+	// Pitch shift for the barks. 0 (default) = off: barks take the cheap
+	// replicated-int path with the cue played as authored. Set it (1.0 normal,
+	// >1 higher, <1 lower) to route through Kismet_ClientPlaySound instead,
+	// which carries an explicit PitchMultiplier. Still positional — the sound
+	// is attached to the bot and tracks it. If the cue can't be resolved or
+	// loaded, it silently falls back to the plain path rather than going quiet.
+	float voPitch = 0.0f;
+	// Voice transplant: bark in ANOTHER bot's voice. voCueIds slots resolve
+	// against this donor bot's body-mesh audio group (e.g. 1321 = Elite Helot,
+	// body asm 2177, group 99) instead of the pawn's own. Requires voPitch > 0
+	// — only the Kismet_ClientPlaySound path carries an explicit cue; the
+	// plain replicated path resolves CLIENT-side from the pawn's built mesh
+	// and cannot be redirected (its fallback barks stay in the pawn's own
+	// voice, or silence if its mesh has no audio group). 0 = own voice.
+	int voFromBotId = 0;
+
+	// Equipment overrides — swap a bot's gear per slot. Empty = keep its DB
+	// loadout. See DeviceSwap above. e.g. give an Elite Helot (primary = device
+	// 4128, DB slot 198 -> point 2) an Inferno-X Cannon instead:
+	//   o.devices = { { /*equipPoint=*/2, /*deviceId=*/2914 } };
+	std::vector<DeviceSwap> devices;
+
+	// Run a DIFFERENT bot's AI: re-runs TgAIController::InitBehavior with the
+	// donor bot id's config, so the spawned bot keeps its own body/stats but
+	// thinks like the donor (e.g. give an Elite Helot a support Guardian's
+	// brain). 0 = keep its own. The donor must be a bot id the client has
+	// marshalled (any id that appears in a spawn table does).
+	int behaviorFromBotId = 0;
+};
+
+// One enemy type's slice of a multi-group unleash: the bot id it applies to,
+// and the options for it. botId 0 = wildcard (anything not matched by another
+// group). See Adds::UnleashOutside's group overload.
+struct UnleashGroup {
+	int         botId;   // asm_data_set_bots.bot_id
+	UnleashOpts opts;
+};
+
 namespace Adds {
-	// Re-point every cached boss-room factory (the ones whose spawn table id is
-	// kBossAddsTable at map load) at `tableId`, rebuild its queue, and spawn
-	// immediately. 41 = bosses. This GUARANTEES a spawn at every boss-room
-	// factory (unlike the engine alarm, which only pops the single closest one).
-	void Unleash(int tableId);
+	// Pick ONE cached boss-room factory (the ones whose spawn table id is
+	// kBossAddsTable at map load) at random — re-randomized every call — re-point
+	// it at `tableId`, rebuild its queue, and spawn. 41 = bosses. One factory per
+	// call keeps the wave size fixed regardless of how many alarm spawn points
+	// the map bakes in (some have 3+).
+	//
+	// spawnDelay (seconds): 0 = the whole roster lands at once (instant, default);
+	// >0 = DRIP it in, one bot every `spawnDelay` seconds, e.g.
+	//   Adds::Unleash(99, 1.5f);   // colony wave trickles in ~1 bot / 1.5s
+	// Keep it short relative to the gap before the next unleash on the boss-room
+	// factories — a later Unleash re-tables the factory and drops any of this
+	// wave still waiting in the queue. (Marching UnleashOutside spawns stay
+	// instant; their walk-in already paces them.)
+	void Unleash(int tableId, float spawnDelay = 0.0f);
+
+	// Unleash `tableId` from the OUTSIDE factory — the normal (non-alarm,
+	// non-pet) factory whose spawn nav point is nearest a boss-room entrance,
+	// where "entrance" = a one-way ATgModifyPawnPropertiesVolume facing the
+	// boss objective (cached at Init) — and march the spawns into the boss
+	// room (patrol drive to a baked in-room nav + trigger march straight at
+	// the capture objective; doors are passable both ways).
+	// For "a big enemy walks in menacingly" beats. `opts` optionally rescales
+	// / renames the spawns — see UnleashOpts above. Set opts.spawnDelay > 0 to
+	// DRIP the wave in one bot at a time instead of all at once (see UnleashOpts).
+	void UnleashOutside(int tableId, const UnleashOpts& opts = UnleashOpts());
+
+	// Same, but with PER-BOT-ID options — one spawn table, different treatment
+	// per enemy type. A pawn is matched to its group by the bot id SpawnBotById
+	// stamped on it (pawn->r_nProfileId); a group with botId 0 is the wildcard
+	// fallback for anything unmatched.
+	//
+	//   UnleashOpts boss;  boss.scale = 1.6f; boss.isLeader = true;
+	//   UnleashOpts pack;  pack.scale = 0.8f; pack.followLeader = true;
+	//                      pack.behaviorFromBotId = 1412;   // needs dest code 310
+	//   Adds::UnleashOutside(10012, { { 1321, boss }, { 1431, pack } });
+	//
+	// The spawn alert (alertText/alertSecs) is call-level: the FIRST group that
+	// sets alertText wins, and it fires once for the whole unleash. Likewise the
+	// FIRST group whose opts.spawnDelay > 0 sets the whole wave's drip rate.
+	void UnleashOutside(int tableId, const std::vector<UnleashGroup>& groups);
 
 	// Fire the engine alarm (siren + AlarmBots kismet). Cosmetic/atmospheric —
 	// pair it with Unleash() for the actual spawn.
 	void Alarm();
+
+	// Queried by the TgBotFactory::ResetQueue hook. True when SuperAgent has
+	// taken `f` over (any Unleash / escape wave / escape respawn) and the call
+	// is NOT SuperAgent's own — such external rebuilds are dropped. Rationale:
+	// UC TgBotEncounterVolume.CheckTouching fires StartEncounter -> ResetQueue(0)
+	// on every member factory with no live bots whenever the human count in the
+	// volume changes (death/respawn/walk-in), wiping in-flight wave queues; the
+	// native ActivateAlarm retargets factories through the same call.
+	bool BlockExternalReset(ATgBotFactory* f);
+
+	// Queried by the TgBotFactory::SpawnNextBot hook. True when `f`'s CURRENT
+	// queue was authored by Unleash/UnleashOutside — those spawns are the wave
+	// itself, not alarm responders, so the hook skips the m_bAlarmBot stamp
+	// (which would expose them to the behavior stand-down/despawn actions,
+	// ExecuteAction 1318 DespawnAlarmBots / 1272 Despawn). Escape alarm waves
+	// (FireGlobalAlarm) and untouched factories keep retail marking.
+	bool SuppressAlarmMark(ATgBotFactory* f);
+
+	// Escape waves pin a factory to its selected LocationList indices; the
+	// SpawnNextBot location picker consults this. True when no filter is set.
+	bool LocationAllowed(ATgBotFactory* f, int locIdx);
 }
 
 // Escape phase. When point A is captured, EVERY map bot factory is respawned
@@ -101,10 +357,56 @@ namespace Escape {
 	void Remap(int oldTable, int newTable);
 
 	// During the escape phase, set off a GLOBAL alarm at a random interval
-	// between `minSecs` and `maxSecs` — ambushing every player from the
-	// alarm-gated factory nearest to them (its own roster), like the
-	// normal-mission alarm. maxSecs <= 0 disables. Author in AuthorMission().
+	// between `minSecs` and `maxSecs`. Spawn points are picked player-position-
+	// aware from the alarm factories' nav points: never on top of a player,
+	// preferring behind the team / inside a split team's gap (see AlarmWave's
+	// direction flags). Every alarm is telegraphed 5s ahead by a center-screen
+	// warning toast; a human death pushes the next alarm out (death tax).
+	// maxSecs <= 0 disables. Author in AuthorMission().
 	void PeriodicAlarm(float minSecs, float maxSecs);
+
+	// One possible flavour of escape-phase ambush. Give PeriodicAlarm a pool of
+	// these and each alarm picks ONE at weighted random — so the run-back stays
+	// unpredictable, and rare high-weight-denominator waves become "encounters"
+	// players chase. A field left at default keeps the legacy behaviour.
+	struct AlarmWave {
+		int   tableId      = 0;         // spawn table to fire; 0 = each factory's OWN default roster
+		float weight       = 1.0f;      // relative selection weight (share of the total)
+		// Geometric cap: how many physical spawn POINTS the wave may use
+		// (0 = no cap). Replaces the old maxFactories — one factory can own
+		// many points, so capping factories never bounded the actual spread.
+		int   maxSpawnPoints = 0;
+		// Direction filters relative to the alive team's span along the
+		// boss->dropship axis. Points within kAmbushExclusionRadius of any
+		// player are ALWAYS dropped unless allowOnTop.
+		bool  allowBehind = true;    // t below the rear-most player
+		bool  allowGaps   = true;    // inside the span (split team = the gap)
+		bool  allowAhead  = false;   // t above the front-most player (cutoff)
+		bool  allowOnTop  = false;   // skip the occupancy exclusion entirely
+		// Volume: the table's plan is rolled X times, X = rand[rosterMin..
+		// rosterMax] (chance rows re-roll each repetition). A 1-ant base table
+		// with 10..20 here = a 10-20 ant wave. tableId 0 (per-factory default
+		// roster) applies X per involved factory instead.
+		int   rosterMin = 1;
+		int   rosterMax = 1;
+		// Countdown to the NEXT alarm starts only after this many seconds —
+		// give slow-to-clear waves a longer floor before the next clock runs.
+		float durationSecs = 0.0f;
+		// Heads-up toast shown 5s before the wave. nullptr = NO warning — the
+		// wave arrives UNANNOUNCED (good for small surprise waves). Set a string
+		// to telegraph it. alertSecs = how long it stays up (5s lead is fixed).
+		const wchar_t* alertText = nullptr;
+		float          alertSecs = 5.0f;
+		// Optional per-pawn overrides applied to THIS wave's fresh spawns —
+		// scale / stats / name / cosmetics / devices / barks / behavior swap.
+		// The march & leader/follow fields are ignored here (escape spawns fight
+		// in place, they don't march the boss-room route).
+		UnleashOpts opts;
+	};
+
+	// Weighted-pool form. Each alarm rolls one AlarmWave from `waves` by weight.
+	// An empty pool behaves exactly like the plain overload above.
+	void PeriodicAlarm(float minSecs, float maxSecs, const std::vector<AlarmWave>& waves);
 }
 
 // Log to the "superagent" channel.
@@ -116,6 +418,25 @@ void Log(const char* fmt, ...);
 
 // True when this match runs under the custom Super Agent difficulty.
 bool IsActive();
+
+// Human player death observation (called from the TgPawn::TrackDeath hook) —
+// drives the escape-phase ambush death tax. No-op outside the escape phase.
+void NotifyHumanDeath();
+
+// Bot death observation (called from the TgPawn::TrackDeath hook, i.e. from
+// inside TgPawn.Died before PlayDying replicates). Stamps r_eDeathReason on
+// ExplodeOnDeathBotIds() bots — see the comment on that function.
+void NotifyBotDeath(ATgPawn* Pawn);
+
+// Movement override for the outside march (called from the ProcessEvent
+// intercept of TgAIController.SetWhatToDoNext). The behavior engine calls
+// SetWhatToDoNext on EVERY action selection, and SetMovement clears movement
+// for any dest code its switch doesn't list — which is why every one-shot
+// drive (trigger fields, patrol path, seeded aggro) left marchers standing.
+// Rewrites the event's two int params in place: a tracked marcher with no
+// combat target that hasn't reached A runs at A; it fights whatever it
+// aggroes on the way and resumes the run when the target drops.
+void OverrideMarchMovement(ATgAIController* aic, int* nMovementCode, int* nMoveDestination);
 
 // Author the mission, spawn A + B, cache spawn/blocker geometry, force the boss
 // to priority 1 and reorder the GRI list. Called once from TgGame::InitGameRepInfo.

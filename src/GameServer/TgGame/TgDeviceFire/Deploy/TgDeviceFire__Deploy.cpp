@@ -249,7 +249,27 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 		}
 
 		Deployable->ApplyDeployableSetup();
+
+		if (bIsBeacon) {
+			ATgRepInfo_Deployable* dri = Deployable->r_DRI;
+			Logger::Log("beacon",
+				"[deploy] post-ApplyDeployableSetup: beacon=0x%p hp=%d driCur=%d driMax=%d pct=%.4f state=%s\n",
+				Deployable, Deployable->r_nHealth,
+				dri ? dri->r_nHealthCurrent : -1, dri ? dri->r_nHealthMaximum : -1,
+				dri ? dri->r_fDeployMaxHealthPCT : -99.0f,
+				Deployable->GetStateName().GetName() ? Deployable->GetStateName().GetName() : "<null>");
+		}
+
 		Deployable->InitializeDefaultProps();
+
+		if (bIsBeacon) {
+			ATgRepInfo_Deployable* dri = Deployable->r_DRI;
+			Logger::Log("beacon",
+				"[deploy] post-InitializeDefaultProps: beacon=0x%p hp=%d driCur=%d driMax=%d pct=%.4f\n",
+				Deployable, Deployable->r_nHealth,
+				dri ? dri->r_nHealthCurrent : -1, dri ? dri->r_nHealthMaximum : -1,
+				dri ? dri->r_fDeployMaxHealthPCT : -99.0f);
+		}
 
 		if (pThis) Deployable->s_SpawnerDeviceMode = pThis;
 
@@ -334,7 +354,27 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 				}
 				Deployable->r_bInitialIsEnemy = 0;
 
+				// s_fHealthPercent is what RegisterBeacon(bDeployed=false) copies
+				// into DRI.r_fDeployMaxHealthPCT (SetInitialHealthPercent). PCT<=0
+				// zeroes GetMaxDeployHealth and disables ALL TickDeploy health
+				// writes for the whole deploy.
+				Logger::Log("beacon",
+					"[deploy] pre-RegisterBeacon(false): beacon=0x%p mgr=0x%p s_fHealthPercent=%.4f deploySecs=%.2f\n",
+					Deployable, beaconMgr, beaconMgr->s_fHealthPercent, deploySecs);
+
 				BeaconSdk::RegisterBeacon(beaconMgr, (ATgDeploy_Beacon*)Deployable, false);
+
+				{
+					ATgRepInfo_Deployable* dri = Deployable->r_DRI;
+					const int deployTarget = dri
+						? (int)((float)dri->r_nHealthMaximum * dri->r_fDeployMaxHealthPCT) : -1;
+					Logger::Log("beacon",
+						"[deploy] post-RegisterBeacon(false): beacon=0x%p hp=%d driCur=%d driMax=%d pct=%.4f -> deployTarget=%d%s\n",
+						Deployable, Deployable->r_nHealth,
+						dri ? dri->r_nHealthCurrent : -1, dri ? dri->r_nHealthMaximum : -1,
+						dri ? dri->r_fDeployMaxHealthPCT : -99.0f, deployTarget,
+						(deployTarget <= 0) ? "  ** ramp DISABLED (target<=0) **" : "");
+				}
 
 				if (pawn) {
 					ATgDevice* carryDev = pawn->m_EquippedDevices[11];

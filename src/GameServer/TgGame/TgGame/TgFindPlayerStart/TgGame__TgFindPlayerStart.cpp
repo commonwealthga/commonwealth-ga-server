@@ -99,11 +99,15 @@ ANavigationPoint* __fastcall TgGame__TgFindPlayerStart::Call(ATgGame* Game, void
 		}
 	}
 
+	if (Controller != nullptr) {
+		s_ChosenYaw[Controller] = best->Rotation.Yaw;
+	}
+
 	if (logEnabled) {
 		Logger::Log("spawn",
-			"TgFindPlayerStart: chose %s mapObjId=%d tf=%d prio=%d rating=%.1f\n",
+			"TgFindPlayerStart: chose %s mapObjId=%d tf=%d prio=%d rating=%.1f yaw=%d\n",
 			((UObject*)best)->GetName(), best->m_nMapObjectId,
-			(int)best->m_nTaskForce, best->m_nPriority, bestRating);
+			(int)best->m_nTaskForce, best->m_nPriority, bestRating, best->Rotation.Yaw);
 	}
 
 	LogCallEnd();

@@ -167,6 +167,8 @@ static const std::vector<GearSlot> kRobotics = {
     { 2675,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // eye drone
     { 2675,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "vnvnvn", false )}, // eye drone
     { 2675,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // eye drone
+    { 2675,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("lll", "ccc", false )}, // eye drone
+    { 2675,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("lll", "ddd", false )}, // eye drone
     { 5792,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddr", "ddd", false )}, // flame turret
     { 5792,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddr", "vnvnvn", false )}, // flame turret
     { 5792,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddr", "ccc", false )}, // flame turret
@@ -177,18 +179,26 @@ static const std::vector<GearSlot> kRobotics = {
     { 2107,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // grizzly drone
     { 2107,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "vnvnvn", false )}, // grizzly drone
     { 2107,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // grizzly drone
+    { 2107,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("lll", "ccc", false )}, // grizzly drone
+    { 2107,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("lll", "ddd", false )}, // grizzly drone
     { 4782,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // harrier drone
     { 4782,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // harrier drone
     { 4782,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "vnvnvn", false )}, // harrier drone
     { 4782,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // harrier drone
+    { 4782,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("lll", "ccc", false )}, // harrier drone
+    { 4782,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("lll", "ddd", false )}, // harrier drone
     { 2279,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // hornet drone
     { 2279,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // hornet drone
     { 2279,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "vnvnvn", false )}, // hornet drone
     { 2279,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // hornet drone
+    { 2279,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("lll", "ccc", false )}, // hornet drone
+    { 2279,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("lll", "ddd", false )}, // hornet drone
     { 4698,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // lockdown drone
     { 4698,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // lockdown drone
     { 4698,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("vvv", "vnvnvn", false )}, // lockdown drone
     { 4698,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // lockdown drone
+    { 4698,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("lll", "ccc", false )}, // lockdown drone
+    { 4698,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("lll", "ddd", false )}, // lockdown drone
     { 2300,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ddd", "ddd", false )}, // personal turret
     { 2300,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("rrr", "ddd", false )}, // personal turret
     { 2300,  7,  SVID_OFFHAND1, Q_EPIC,   Mods::Letters("ccc", "ccc", false )}, // personal turret
@@ -255,8 +265,10 @@ static const std::vector<GearSlot> kAssault = {
     { 2022,  8,  SVID_OFFHAND2, Q_EPIC,  Mods::Letters("xxx", "ddd", false)  },  // emp
     { 2013,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ttt", "ccc", false) }, // range shield
     { 2013,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ccc", "ccc", false) }, // range shield
+    { 2013,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("sss", "ccc", false) }, // range shield
     { 2004,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ttt", "ccc", false) }, // aoe shield
     { 2004,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ccc", "ccc", false) }, // aoe shield
+    { 2004,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("sss", "ccc", false) }, // aoe shield
     { 5809,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ttc", "ccc", false) }, // berserk
     { 2498,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("ddd", "ddd", true) }, // conc
     { 2498,  9,  SVID_OFFHAND3, Q_EPIC,   Mods::Letters("xxx", "ccc", false) }, // conc
