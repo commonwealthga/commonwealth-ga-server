@@ -412,10 +412,17 @@
 // broadcast operator can't edit the file itself, so both need a config path
 // that doesn't require touching this HTML.
 // ---------------------------------------------------------------------------
-const OVERLAY_BASE_URL      = "http://127.0.0.1:8090/overlay";
+// Same-origin by default: this page is meant to be served by
+// docker/spectator-overlay/overlay_proxy.py, which forwards /overlay* to the
+// control server and attaches the secret token server-side (OVERLAY_TOKEN
+// env var) so it never appears in this file or in any browser-visible URL.
+// For a direct-to-control-server setup on a private network, point
+// OVERLAY_BASE_URL at "http://<host>:<overlay_http_port>/overlay" and set
+// OVERLAY_TOKEN below to the overlay_token from control-server.json.
+const OVERLAY_BASE_URL      = "/overlay";
 const OVERLAY_INSTANCES_URL = OVERLAY_BASE_URL + "/instances";
 const OVERLAY_BUILDS_URL    = OVERLAY_BASE_URL + "/builds";
-const OVERLAY_TOKEN         = "retro";
+const OVERLAY_TOKEN         = "";  // leave empty when served through the proxy
 const DEFAULT_INSTANCE_ID   = 0;   // 0 = none selected yet -- pick one from the dropdown
 // One shared ICONS folder with 3 fixed subfolders -- CLASSES/EFFECTS/SKILLS
 // -- rather than a separate path per icon kind. Shared with
@@ -431,7 +438,7 @@ const INSTANCE_LIST_POLL_MS  = 5000;
 // every 300ms on the control server's single shared thread.
 const BUILDS_POLL_MS         = 6000;
 
-// session_guid -> {balanced, tree1, tree2, tree1_name, tree2_name}, refreshed
+// player_key -> {balanced, tree1, tree2, tree1_name, tree2_name}, refreshed
 // by pollBuilds() on its own slower cadence and read (not fetched) by the
 // main render loop -- see poll()/renderTeam().
 let buildCache = {};
@@ -577,7 +584,7 @@ function renderTeam(containerId, players) {
     // after the number. Demo mode sets p.build directly (see DEMO_ROSTER);
     // real data comes from buildCache, refreshed on its own slower cadence
     // by pollBuilds() rather than every 300ms tick -- see BUILDS_POLL_MS.
-    const build = p.build || buildCache[p.session_guid];
+    const build = p.build || buildCache[p.player_key];
     const parts = [];
     if (showHpNumber) parts.push(p.health + " / " + p.health_max);
     if (build) parts.push(build.balanced + "/" + build.tree1 + "/" + build.tree2);
@@ -682,7 +689,7 @@ function generateDemoSnapshot() {
       st.effect_ids = chosen;
     }
     return {
-      session_guid: "demo-" + idx,
+      player_key: "demo-" + idx,
       player_name: p.name,
       task_force: p.task_force,
       profile_id: p.profile_id,
@@ -714,8 +721,8 @@ async function poll() {
   }
 
   try {
-    const url = OVERLAY_BASE_URL + "?instance_id=" + encodeURIComponent(INSTANCE_ID)
-              + "&token=" + encodeURIComponent(OVERLAY_TOKEN);
+    let url = OVERLAY_BASE_URL + "?instance_id=" + encodeURIComponent(INSTANCE_ID);
+    if (OVERLAY_TOKEN) url += "&token=" + encodeURIComponent(OVERLAY_TOKEN);
     const resp = await fetch(url, { cache: "no-store" });
     if (!resp.ok) {
       status.textContent = "overlay: HTTP " + resp.status;
@@ -736,20 +743,20 @@ async function poll() {
 // ---------------------------------------------------------------------------
 // Build notation ("P/T1/T2") -- polled on its own slower cadence
 // (BUILDS_POLL_MS) rather than piggybacked on the 300ms health/effects
-// poll. Populates buildCache by session_guid; renderTeam() reads from it
+// poll. Populates buildCache by player_key; renderTeam() reads from it
 // directly rather than fetching per render. See OverlayHttpServer's
 // GET /overlay/builds and SkillTreeCatalog.hpp for why the split exists.
 // ---------------------------------------------------------------------------
 async function pollBuilds() {
   if (!INSTANCE_ID) return;
   try {
-    const url = OVERLAY_BUILDS_URL + "?instance_id=" + encodeURIComponent(INSTANCE_ID)
-              + "&token=" + encodeURIComponent(OVERLAY_TOKEN);
+    let url = OVERLAY_BUILDS_URL + "?instance_id=" + encodeURIComponent(INSTANCE_ID);
+    if (OVERLAY_TOKEN) url += "&token=" + encodeURIComponent(OVERLAY_TOKEN);
     const resp = await fetch(url, { cache: "no-store" });
     if (!resp.ok) return;
     const data = await resp.json();
     const next = {};
-    (data.players || []).forEach(p => { next[p.session_guid] = p; });
+    (data.players || []).forEach(p => { next[p.player_key] = p; });
     buildCache = next;
   } catch (e) { /* transient network hiccup -- next poll retries */ }
 }
@@ -762,7 +769,8 @@ async function pollBuilds() {
 async function refreshInstanceList() {
   const select = document.getElementById("instance-select");
   try {
-    const url = OVERLAY_INSTANCES_URL + "?token=" + encodeURIComponent(OVERLAY_TOKEN);
+    let url = OVERLAY_INSTANCES_URL;
+    if (OVERLAY_TOKEN) url += "?token=" + encodeURIComponent(OVERLAY_TOKEN);
     const resp = await fetch(url, { cache: "no-store" });
     if (!resp.ok) return;
     const data = await resp.json();

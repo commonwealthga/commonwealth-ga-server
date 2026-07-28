@@ -16,7 +16,8 @@
 // from the IPC dispatch path on the same io_context.
 class OverlayHttpServer {
 public:
-    OverlayHttpServer(asio::io_context& io, uint16_t port, std::string token);
+    OverlayHttpServer(asio::io_context& io, const std::string& bind_address,
+                      uint16_t port, std::string token);
     bool IsListening() const { return listening_; }
 
 private:
@@ -26,4 +27,9 @@ private:
     asio::ip::tcp::acceptor acceptor_;
     std::string token_;
     bool listening_ = false;
+    // Accept-error backoff: immediate re-arm on a failing accept (fd
+    // exhaustion etc.) would spin hot on the io thread shared with every
+    // other listener in this process. See do_accept().
+    asio::steady_timer retry_timer_;
+    int accept_errors_ = 0;
 };

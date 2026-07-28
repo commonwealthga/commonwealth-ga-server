@@ -758,7 +758,7 @@ int main(int argc, char* argv[]) {
     // Spectator broadcast overlay HTTP endpoint. Non-fatal if it fails to
     // bind or overlay_http_port is left at its 0 default — the feature is
     // opt-in, unlike the listeners above.
-    OverlayHttpServer overlay_http(io, cfg.overlay_http_port, cfg.overlay_token);
+    OverlayHttpServer overlay_http(io, cfg.overlay_bind, cfg.overlay_http_port, cfg.overlay_token);
 
     Logger::Log("main", "All listeners bound\n");
     IpcServer::SetAdminToken(cfg.admin_token);

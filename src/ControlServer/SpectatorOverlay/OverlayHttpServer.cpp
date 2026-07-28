@@ -1,6 +1,8 @@
 #include "src/ControlServer/SpectatorOverlay/OverlayHttpServer.hpp"
 
 #include <array>
+#include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <map>
 #include <memory>
@@ -15,6 +17,22 @@
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 
 namespace {
+
+// Opaque per-player correlation key for the overlay JSON. The pages join
+// /overlay and /overlay/builds rows per player; the session GUID itself is a
+// live credential elsewhere (chat bind, TCP session lookup) and must never
+// leave this process on a public-facing endpoint. FNV-1a is stable for the
+// lifetime of the session, which is all the join needs.
+std::string OpaquePlayerKey(const std::string& session_guid) {
+    uint64_t h = 1469598103934665603ull;
+    for (unsigned char c : session_guid) {
+        h ^= c;
+        h *= 1099511628211ull;
+    }
+    char out[17];
+    snprintf(out, sizeof(out), "%016llx", (unsigned long long)h);
+    return std::string(out);
+}
 
 std::map<std::string, std::string> ParseQuery(const std::string& query) {
     std::map<std::string, std::string> out;
@@ -38,9 +56,22 @@ std::map<std::string, std::string> ParseQuery(const std::string& query) {
 class OverlayHttpSession : public std::enable_shared_from_this<OverlayHttpSession> {
 public:
     OverlayHttpSession(asio::ip::tcp::socket socket, std::string token)
-        : socket_(std::move(socket)), token_(std::move(token)) {}
+        : socket_(std::move(socket)), token_(std::move(token)),
+          deadline_(socket_.get_executor()) {}
 
-    void start() { do_read(); }
+    void start() {
+        // Read/response deadline: without it an idle or byte-dribbling client
+        // holds this session (and its fd) open forever, and nothing bounds
+        // how many such sessions accumulate on the shared io thread.
+        auto self(shared_from_this());
+        deadline_.expires_after(std::chrono::seconds(10));
+        deadline_.async_wait([this, self](std::error_code ec) {
+            if (ec) return;  // cancelled -- request completed in time
+            std::error_code ignored;
+            socket_.close(ignored);
+        });
+        do_read();
+    }
 
 private:
     void do_read() {
@@ -126,7 +157,7 @@ private:
         nlohmann::json players = nlohmann::json::array();
         for (const auto& s : snaps) {
             nlohmann::json p;
-            p["session_guid"] = s.session_guid;
+            p["player_key"] = OpaquePlayerKey(s.session_guid);
             p["task_force"]   = s.task_force;
             p["health"]       = s.health;
             p["health_max"]   = s.health_max;
@@ -184,7 +215,7 @@ private:
             if (!info) continue;
 
             nlohmann::json p;
-            p["session_guid"] = s.session_guid;
+            p["player_key"] = OpaquePlayerKey(s.session_guid);
             p["player_name"]  = info->player_name;
             p["task_force"]   = s.task_force;
             p["profile_id"]   = info->selected_profile_id;
@@ -235,7 +266,7 @@ private:
                 info->selected_character_id, info->selected_profile_id);
 
             nlohmann::json p;
-            p["session_guid"] = s.session_guid;
+            p["player_key"] = OpaquePlayerKey(s.session_guid);
             p["balanced"]      = summary.balanced;
             p["tree1"]         = summary.tree1;
             p["tree2"]         = summary.tree2;
@@ -287,6 +318,7 @@ private:
         auto self(shared_from_this());
         asio::async_write(socket_, asio::buffer(response_),
             [this, self](std::error_code, std::size_t) {
+                deadline_.cancel();
                 std::error_code ignored;
                 socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ignored);
             });
@@ -294,6 +326,7 @@ private:
 
     asio::ip::tcp::socket socket_;
     std::string token_;
+    asio::steady_timer deadline_;
     std::array<char, 4096> buf_{};
     std::string request_;
     std::string response_;
@@ -301,15 +334,22 @@ private:
 
 } // namespace
 
-OverlayHttpServer::OverlayHttpServer(asio::io_context& io, uint16_t port, std::string token)
-    : io_(io), acceptor_(io), token_(std::move(token)) {
+OverlayHttpServer::OverlayHttpServer(asio::io_context& io, const std::string& bind_address,
+                                     uint16_t port, std::string token)
+    : io_(io), acceptor_(io), token_(std::move(token)), retry_timer_(io) {
     if (port == 0) {
         Logger::Log("main", "[OverlayHttpServer] port=0 -- overlay HTTP endpoint disabled\n");
         return;
     }
 
     asio::error_code ec;
-    asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), port);
+    const auto addr = asio::ip::make_address(bind_address, ec);
+    if (ec) {
+        Logger::Log("main", "[OverlayHttpServer] invalid overlay_bind '%s': %s\n",
+            bind_address.c_str(), ec.message().c_str());
+        return;
+    }
+    asio::ip::tcp::endpoint endpoint(addr, port);
     acceptor_.open(endpoint.protocol(), ec);
     if (ec) {
         Logger::Log("main", "[OverlayHttpServer] Open failed on port %d: %s\n", port, ec.message().c_str());
@@ -334,16 +374,39 @@ OverlayHttpServer::OverlayHttpServer(asio::io_context& io, uint16_t port, std::s
         return;
     }
     listening_ = true;
-    Logger::Log("main", "[OverlayHttpServer] Listening on port %d (token %s)\n",
-        port, token_.empty() ? "EMPTY -- open access" : "required");
+    Logger::Log("main", "[OverlayHttpServer] Listening on %s:%d (token %s)\n",
+        bind_address.c_str(), port, token_.empty() ? "EMPTY -- open access" : "required");
     do_accept();
 }
 
 void OverlayHttpServer::do_accept() {
     acceptor_.async_accept([this](std::error_code ec, asio::ip::tcp::socket sock) {
+        if (!listening_) return;
         if (!ec) {
+            accept_errors_ = 0;
             std::make_shared<OverlayHttpSession>(std::move(sock), token_)->start();
+            do_accept();
+            return;
         }
-        if (listening_) do_accept();
+        if (ec == asio::error::operation_aborted) return;
+        // Under fd exhaustion async_accept fails immediately -- re-arming
+        // right away would hot-spin the io thread shared with every other
+        // listener. Back off, and give up entirely if the error persists:
+        // the overlay is a side feature, matchmaking/chat are not.
+        ++accept_errors_;
+        if (accept_errors_ >= 10) {
+            Logger::Log("main", "[OverlayHttpServer] %d consecutive accept failures (%s) -- stopping listener\n",
+                accept_errors_, ec.message().c_str());
+            listening_ = false;
+            asio::error_code ignored;
+            acceptor_.close(ignored);
+            return;
+        }
+        Logger::Log("main", "[OverlayHttpServer] accept failed (%s), retry %d/10\n",
+            ec.message().c_str(), accept_errors_);
+        retry_timer_.expires_after(std::chrono::milliseconds(500 * accept_errors_));
+        retry_timer_.async_wait([this](std::error_code tec) {
+            if (!tec && listening_) do_accept();
+        });
     });
 }

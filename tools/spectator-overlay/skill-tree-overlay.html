@@ -360,10 +360,14 @@ const RENDER_SCALE = 0.4;
 // (same origin, same ICONS/ folder convention -- set it once on either
 // page). Skill icons live at ICONS_ROOT_PATH + "SKILLS/" + icon_id + ".png".
 // ---------------------------------------------------------------------------
-const OVERLAY_BASE_URL      = "http://127.0.0.1:8090/overlay";
+// Same-origin by default -- served through overlay_proxy.py, which holds the
+// real token in the OVERLAY_TOKEN env var and attaches it server-side. See
+// the matching comment in spectator-overlay.html for the direct-connection
+// alternative.
+const OVERLAY_BASE_URL      = "/overlay";
 const OVERLAY_INSTANCES_URL = OVERLAY_BASE_URL + "/instances";
 const OVERLAY_SKILLTREE_URL = OVERLAY_BASE_URL + "/skilltree";
-const OVERLAY_TOKEN         = "retro";
+const OVERLAY_TOKEN         = "";  // leave empty when served through the proxy
 const POLL_MS               = 2000; // skill builds don't change tick-to-tick; no need for 300ms
 const INSTANCE_LIST_POLL_MS = 5000;
 
@@ -643,8 +647,8 @@ async function poll() {
     return;
   }
   try {
-    const url = OVERLAY_SKILLTREE_URL + '?instance_id=' + encodeURIComponent(INSTANCE_ID)
-              + '&token=' + encodeURIComponent(OVERLAY_TOKEN);
+    let url = OVERLAY_SKILLTREE_URL + '?instance_id=' + encodeURIComponent(INSTANCE_ID);
+    if (OVERLAY_TOKEN) url += '&token=' + encodeURIComponent(OVERLAY_TOKEN);
     const resp = await fetch(url, { cache: 'no-store' });
     if (!resp.ok) {
       status.textContent = 'overlay: HTTP ' + resp.status;
@@ -724,7 +728,7 @@ function generateDemoSnapshot() {
       demoBuildState.set(p.name, points);
     }
     return {
-      session_guid: 'demo-' + idx,
+      player_key: 'demo-' + idx,
       player_name: p.name,
       task_force: p.task_force,
       profile_id: p.profile_id,
@@ -739,7 +743,8 @@ function generateDemoSnapshot() {
 async function refreshInstanceList() {
   const select = document.getElementById('instance-select');
   try {
-    const url = OVERLAY_INSTANCES_URL + '?token=' + encodeURIComponent(OVERLAY_TOKEN);
+    let url = OVERLAY_INSTANCES_URL;
+    if (OVERLAY_TOKEN) url += '?token=' + encodeURIComponent(OVERLAY_TOKEN);
     const resp = await fetch(url, { cache: 'no-store' });
     if (!resp.ok) return;
     const data = await resp.json();

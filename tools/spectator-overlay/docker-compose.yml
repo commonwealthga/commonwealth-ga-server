@@ -1,0 +1,27 @@
+services:
+  spectator-overlay:
+    build: .
+    ports:
+      - "8091:8091"
+    environment:
+      # Where the control server's overlay listener is reachable FROM THE
+      # CONTAINER. host.docker.internal resolves to the host's bridge IP —
+      # a control server bound to 127.0.0.1 is not reachable that way; bind
+      # it to the bridge address (typically 172.17.0.1) or 0.0.0.0 +
+      # firewall.
+      OVERLAY_UPSTREAM: "http://host.docker.internal:8090"
+      # The secret. Must match overlay_token in control-server.json. Put it
+      # in a .env file next to this compose file (OVERLAY_TOKEN=...) — never
+      # in the HTML pages.
+      OVERLAY_TOKEN: "${OVERLAY_TOKEN:?set OVERLAY_TOKEN in .env or the environment}"
+      # HTTP Basic auth for everything the proxy serves (pages, API, icons).
+      # Set both in .env; leave both empty to disable (fully public). OBS
+      # browser sources accept http://user:pass@host:8091/ URLs.
+      OVERLAY_AUTH_USER: "${OVERLAY_AUTH_USER:-}"
+      OVERLAY_AUTH_PASS: "${OVERLAY_AUTH_PASS:-}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Icon pack (CLASSES/EFFECTS/SKILLS subfolders) served at /ICONS/.
+      - ./ICONS:/app/ICONS:ro
+    restart: unless-stopped
