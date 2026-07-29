@@ -38,6 +38,14 @@ public:
 	// Mirrors the stock CalcFireSocketIndexMax data query (FUN_109a3490).
 	static int GetShotOriginSocketMax(void* model, int fireMode, int equipPoint);
 
+	// Socket FName from the "MuzzleFlash" FX group (same query as
+	// GetShotOriginSocketName, different display group). The client renders
+	// the muzzle flash on these sockets, keyed by the replicated socket
+	// index — projectile spawns must match them, not the ShotOrigin rows
+	// (per-weapon display_order authoring differs between the two groups,
+	// e.g. Shrike slot 200 ShotOrigin is order-reversed vs. MuzzleFlash).
+	static FName GetMuzzleFlashSocketName(void* model, int fireMode, int socketIndex, int equipPoint);
+
 	// Reimplementation of the original-server m_TgSocketOffsetInfo populator.
 	// No-op when already populated, no body asm, no model, or the model has
 	// no SOI resource bound (model+0x40 FName == None — true for all but 12

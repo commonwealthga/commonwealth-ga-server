@@ -122,6 +122,12 @@ namespace {
 		return s_name;
 	}
 
+	// Same interning argument: parsed from every assembly's MuzzleFlash rows.
+	FName MuzzleFlashName() {
+		static FName s_name(const_cast<char*>("MuzzleFlash"));
+		return s_name;
+	}
+
 	// CAmAssemblyMeshModel resource FNames (row-init FUN_1094b470):
 	FName ModelMeshResName(void* model)             { return *(FName*)((char*)model + 0x18); }  // tag 0x0354
 	FName ModelSocketOffsetInfoName(void* model)    { return *(FName*)((char*)model + 0x40); }  // tag 0x048A
@@ -556,6 +562,14 @@ int FireSockets::GetShotOriginSocketMax(void* model, int fireMode, int equipPoin
 	if (!model) return 1;
 	FName group = ShotOriginName();
 	return kGetSocketMax(model, group.Index, 0, fireMode, equipPoint);
+}
+
+FName FireSockets::GetMuzzleFlashSocketName(void* model, int fireMode, int socketIndex, int equipPoint) {
+	FName out(0);
+	if (!model) return out;
+	FName group = MuzzleFlashName();
+	kGetSocketName(model, &out, group.Index, 0, fireMode, socketIndex, equipPoint);
+	return out;
 }
 
 void FireSockets::EnsurePopulated(ATgPawn* Pawn) {
