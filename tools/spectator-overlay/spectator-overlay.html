@@ -477,8 +477,10 @@ const PROFILE_ID_TO_CLASS_ICON = {
 // Set true to generate a fake 3v3 match locally instead of calling the
 // server -- lets you rehearse layout/positioning (and, with a generous
 // effect count, icon-overflow/wrapping) without a live match. Toggle it live
-// with the "Demo Mode" button too.
-let DEMO_MODE = true;
+// with the "Demo Mode" button too. Off by default -- a real broadcast
+// operator wants refreshInstanceList's auto-pick (see below) to take over
+// as soon as a real instance appears, not a page stuck showing fake players.
+let DEMO_MODE = false;
 
 // ---------------------------------------------------------------------------
 // Rendering
@@ -800,6 +802,17 @@ async function refreshInstanceList() {
     const wanted = currentValue || (INSTANCE_ID ? String(INSTANCE_ID) : "");
     if (wanted && [...select.options].some(o => o.value === wanted)) {
       select.value = wanted;
+    } else if (instances.length) {
+      // No valid current selection (first load, or the previously selected
+      // instance ended) -- auto-pick the first active one. The dropdown
+      // itself isn't interactable inside an OBS browser source (no mouse/
+      // keyboard reaches it there), and in practice there's only ever one
+      // instance worth spectating at a time, so this is the only realistic
+      // way the page ever gets off "select an instance above" on its own.
+      const first = instances[0];
+      INSTANCE_ID = first.instance_id;
+      localStorage.setItem(INSTANCE_KEY, String(INSTANCE_ID));
+      select.value = String(INSTANCE_ID);
     }
   } catch (e) { /* transient network hiccup -- next poll retries */ }
 }
