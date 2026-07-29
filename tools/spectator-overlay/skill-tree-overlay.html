@@ -379,8 +379,9 @@ let ICONS_ROOT_PATH = localStorage.getItem(ICONS_PATH_KEY) || "ICONS/";
 
 // Set true to generate a fake 3v3 match locally instead of calling the
 // server -- lets you rehearse the team-panel layout/cycling without a live
-// match. Toggle it live with the "Demo Mode" button too.
-let DEMO_MODE = true;
+// match. Toggle it live with the "Demo Mode" button too. Off by default --
+// see spectator-overlay.html's matching DEMO_MODE comment.
+let DEMO_MODE = false;
 
 // Canonical left-to-right class order, same convention as the main
 // spectator overlay (see spectator-overlay.html's CLASS_SORT_ORDER) --
@@ -768,6 +769,16 @@ async function refreshInstanceList() {
     const wanted = currentValue || (INSTANCE_ID ? String(INSTANCE_ID) : '');
     if (wanted && [...select.options].some(o => o.value === wanted)) {
       select.value = wanted;
+    } else if (instances.length) {
+      // No valid current selection (first load, or the previously selected
+      // instance ended) -- auto-pick the first active one. Same reasoning
+      // as spectator-overlay.html's refreshInstanceList: the dropdown isn't
+      // interactable inside an OBS browser source, and there's only ever
+      // one instance worth spectating at a time in practice.
+      const first = instances[0];
+      INSTANCE_ID = first.instance_id;
+      localStorage.setItem(INSTANCE_KEY, String(INSTANCE_ID));
+      select.value = String(INSTANCE_ID);
     }
   } catch (e) { /* transient network hiccup -- next poll retries */ }
 }

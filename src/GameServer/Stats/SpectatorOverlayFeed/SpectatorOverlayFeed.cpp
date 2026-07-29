@@ -100,7 +100,16 @@ void MaybePushSnapshot(AActor* actor) {
 	j["session_guid"] = session_guid;
 	j["task_force"]   = ResolveTaskForceNumber(pawn);
 	j["health"]       = pawn->Health;
-	j["health_max"]   = pawn->HealthMax;
+	// NOT pawn->HealthMax -- that's the bare UE3 engine field, only ever set
+	// to the class default and not reliably kept in sync with buffs/skills
+	// (see SuperAgent.cpp's SetPawnPowerScale, which explicitly leaves it
+	// stale on one path). r_nHealthMaximum is the replicated field every
+	// other max-HP-aware system in this codebase treats as authoritative
+	// (ApplyBuff, SyncPawnHealth, FullHeal, ReapplyCharacterSkillTree) --
+	// using anything else here is how the overlay ended up showing every
+	// player capped at the same base value regardless of Health skill points
+	// or buffs actually raising their real max.
+	j["health_max"]   = pawn->r_nHealthMaximum;
 	j["effect_ids"]   = effect_ids;
 	IpcClient::Send(j.dump());
 }
