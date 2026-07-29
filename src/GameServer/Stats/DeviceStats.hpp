@@ -33,8 +33,11 @@ int DeviceIdFromModeId(int deviceModeId);
 
 // Deployable → the player-equippable device that places it (directly or via
 // its projectile). Loaded once, cached. Returns 0 when unknown or when more
-// than one equippable device spawns the same deployable (mines: Standard Mine
-// vs Archer's Folly — no way to tell them apart from the deployable alone).
+// than one equippable device spawns the same deployable.
+//
+// Last-resort fallback only — callers should read the deployable's r_Owner
+// (the spawning ATgDevice) first. This map resolves 16 of 185 deployables and
+// can't disambiguate deployable 81 "Mine" (devices 2225 / 6521).
 int DeviceIdFromDeployableId(int deployableId);
 
 }  // namespace DeviceStats
