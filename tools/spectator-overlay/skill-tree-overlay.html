@@ -573,7 +573,17 @@ function buildString(className, investedMap) {
   return sums.join('/');
 }
 
-function playerCard(p) {
+// Persistent per-row card state, keyed by player_key -- reused across polls
+// instead of being torn down and rebuilt from scratch every tick. A full
+// rebuild recreates every hex node's <img> (and the whole SVG) even though a
+// real build practically never changes tick-to-tick (see POLL_MS's own
+// comment on that), which is both wasted work and the direct cause of
+// flicker in OBS's Browser Source (CEF repaints visibly on DOM/img churn far
+// more than a normal browser tab does). The expensive tree-canvas rebuild
+// now only happens when the actual invested skill_id/points set changes.
+const teamCardState = { 'row-attackers': new Map(), 'row-defenders': new Map() };
+
+function buildPlayerCard(p) {
   const className = PROFILE_ID_TO_CLASS[p.profile_id];
   const card = document.createElement('div');
   card.className = 'player-tree-card';
@@ -594,7 +604,6 @@ function playerCard(p) {
   left.appendChild(classIcon);
   const name = document.createElement('div');
   name.className = 'name';
-  name.textContent = p.player_name || '(unknown)';
   left.appendChild(name);
   header.appendChild(left);
 
@@ -603,32 +612,76 @@ function playerCard(p) {
   header.appendChild(build);
   card.appendChild(header);
 
-  const investedMap = {};
-  (p.points || []).forEach(row => { investedMap[row.skill_id] = row.points; });
-  build.textContent = buildString(className, investedMap);
-
   const wrap = document.createElement('div');
   wrap.className = 'tree-canvas-wrap';
-  const canvas = buildTreeCanvas(className, investedMap);
-  wrap.appendChild(canvas);
-  wrap.style.width = canvas.dataset.visualWidth + 'px';
-  wrap.style.height = canvas.dataset.visualHeight + 'px';
   card.appendChild(wrap);
 
-  return card;
+  return { card, name, build, wrap, className, profileId: p.profile_id, lastPointsKey: null };
+}
+
+function updatePlayerCard(state, p) {
+  state.name.textContent = p.player_name || '(unknown)';
+
+  const investedMap = {};
+  (p.points || []).forEach(row => { investedMap[row.skill_id] = row.points; });
+  state.build.textContent = buildString(state.className, investedMap);
+
+  // Order-independent key over the actual invested (skill_id, points) pairs
+  // -- only rebuild the SVG+hex canvas (the expensive, flicker-prone part)
+  // when this genuinely changed, not on every poll tick.
+  const pointsKey = (p.points || [])
+    .map(r => r.skill_id + ':' + r.points).sort().join(',');
+  if (state.lastPointsKey !== pointsKey) {
+    state.wrap.innerHTML = '';
+    const canvas = buildTreeCanvas(state.className, investedMap);
+    state.wrap.appendChild(canvas);
+    state.wrap.style.width = canvas.dataset.visualWidth + 'px';
+    state.wrap.style.height = canvas.dataset.visualHeight + 'px';
+    state.lastPointsKey = pointsKey;
+  }
+}
+
+function renderRow(containerId, players) {
+  const container = document.getElementById(containerId);
+  const stateMap = teamCardState[containerId];
+  const seen = new Set();
+
+  players.forEach(p => {
+    seen.add(p.player_key);
+    let state = stateMap.get(p.player_key);
+    // Class effectively never changes mid-match (only the loadout slot
+    // does), but a stale className would misread the wrong tree data --
+    // handle it correctly by just rebuilding the card fresh.
+    if (state && state.profileId !== p.profile_id) {
+      state.card.remove();
+      stateMap.delete(p.player_key);
+      state = null;
+    }
+    if (!state) {
+      state = buildPlayerCard(p);
+      stateMap.set(p.player_key, state);
+    }
+    updatePlayerCard(state, p);
+    // appendChild on a node already in the document just MOVES it -- no
+    // destroy/recreate -- so reordering to match sortByClassOrder never
+    // touches the tree canvas and can't reintroduce the flicker.
+    container.appendChild(state.card);
+  });
+
+  for (const [key, state] of stateMap) {
+    if (!seen.has(key)) {
+      state.card.remove();
+      stateMap.delete(key);
+    }
+  }
 }
 
 function renderTeams(players) {
   const attackers = sortByClassOrder(players.filter(p => p.task_force === 1));
   const defenders = sortByClassOrder(players.filter(p => p.task_force === 2));
 
-  const rowAtk = document.getElementById('row-attackers');
-  const rowDef = document.getElementById('row-defenders');
-  rowAtk.innerHTML = '';
-  rowDef.innerHTML = '';
-
-  attackers.forEach(p => rowAtk.appendChild(playerCard(p)));
-  defenders.forEach(p => rowDef.appendChild(playerCard(p)));
+  renderRow('row-attackers', attackers);
+  renderRow('row-defenders', defenders);
 }
 
 async function poll() {
