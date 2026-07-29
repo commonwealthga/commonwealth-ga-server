@@ -4795,7 +4795,9 @@ void TcpSession::send_character_list_response()
 		Write4B(response, GA_T::HEAD_ASM_ID,                c.head_asm_id);
 		Write4B(response, GA_T::HAIR_ASM_ID,                c.hair_asm_id);
 		Write4B(response, GA_T::GENDER_TYPE_VALUE_ID,       c.gender_type_value_id);
-		WriteString(response, GA_T::MAP_NAME,               "Scramble: Tetra Pier");
+		// Per-character "Location" label (CharacterSelectEntry.cseLocation). We
+		// don't track a last-played map, so send empty rather than a placeholder.
+		WriteString(response, GA_T::MAP_NAME,               "");
 		Write4B(response, GA_T::XP_VALUE,                   0xbbddc);
 		Write4B(response, GA_T::SKILL_GROUP_SET_ID,         GetClassConfig(c.profile_id).skillGroupSetId);
 		Write4B(response, GA_T::SKIN_MATERIAL_PARAMETER_ID, c.skin_mat_param_id);
