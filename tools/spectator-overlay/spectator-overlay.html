@@ -550,70 +550,126 @@ function sortByClassOrder(players) {
   });
 }
 
+// Persistent per-container card state, keyed by player_key -- reused across
+// polls instead of being torn down and rebuilt from scratch every tick.
+// Recreating <img> elements (class icons, effect icons) on every 300ms poll
+// is what was causing constant flicker in OBS's Browser Source (CEF
+// repaints on every new <img>, even a cache-hit one, far more visibly than
+// a normal browser tab does) -- keeping the same DOM/img nodes alive and
+// only touching the fields that actually changed eliminates that entirely.
+// See buildCard/updateCard below; renderTeam just reconciles against this.
+const teamCardState = { "cards-attackers": new Map(), "cards-defenders": new Map() };
+
+function buildCard(p) {
+  const card = document.createElement("div");
+  card.className = "player-card";
+
+  const row = document.createElement("div");
+  row.className = "player-row";
+  const classIconWrap = classIconElement(p.profile_id);
+  row.appendChild(classIconWrap);
+
+  const pill = document.createElement("div");
+  pill.className = "health-pill";
+  const fill = document.createElement("div");
+  fill.className = "health-pill-fill";
+  const name = document.createElement("div");
+  name.className = "health-pill-name";
+  const hpText = document.createElement("div");
+  hpText.className = "health-pill-hp";
+  pill.appendChild(fill);
+  pill.appendChild(name);
+  pill.appendChild(hpText);
+  row.appendChild(pill);
+  card.appendChild(row);
+
+  // Always present, even with zero active effects — its min-height (see
+  // CSS) reserves the space either way, so a buff appearing/disappearing
+  // never shifts the pill above it up and down.
+  const effectsRow = document.createElement("div");
+  effectsRow.className = "effects-row";
+  card.appendChild(effectsRow);
+
+  return {
+    card, classIconWrap, fill, name, hpText, effectsRow,
+    lastProfileId: p.profile_id, // classIconWrap above already matches this
+    lastEffectKey: null,
+  };
+}
+
+function updateCard(state, p) {
+  const pct = p.health_max > 0 ? Math.max(0, Math.min(1, p.health / p.health_max)) : 0;
+
+  // Class practically never changes mid-match (only the loadout slot does),
+  // but handle it correctly rather than assuming -- rebuilds just the icon,
+  // not the whole card.
+  if (state.lastProfileId !== p.profile_id) {
+    const fresh = classIconElement(p.profile_id);
+    state.classIconWrap.replaceWith(fresh);
+    state.classIconWrap = fresh;
+    state.lastProfileId = p.profile_id;
+  }
+
+  state.fill.style.width = (pct * 100) + "%";
+  state.fill.style.backgroundColor = healthColor(pct);
+  state.name.textContent = p.player_name || "(unknown)";
+
+  // Raw HP number is off by default (see SHOW_HP_KEY) -- the bar itself
+  // (fill.style.width above) already conveys health the same way it does
+  // in-game. When off, the "P/T1/T2" build notation (see
+  // SkillTreeCatalog.hpp) occupies this slot alone instead of trailing
+  // after the number. Demo mode sets p.build directly (see DEMO_ROSTER);
+  // real data comes from buildCache, refreshed on its own slower cadence
+  // by pollBuilds() rather than every 300ms tick -- see BUILDS_POLL_MS.
+  const build = p.build || buildCache[p.player_key];
+  const parts = [];
+  if (showHpNumber) parts.push(p.health + " / " + p.health_max);
+  if (build) parts.push(build.balanced + "/" + build.tree1 + "/" + build.tree2);
+  state.hpText.textContent = parts.join("   ");
+
+  // Effect icons are the expensive/flicker-prone part -- only touch the DOM
+  // here if the actual set of active ids changed since last render. Capped
+  // at MAX_VISIBLE_EFFECTS + an overflow badge so a heavily-buffed player
+  // can't grow their card (and shove every card below them down, possibly
+  // off-frame) without bound.
+  const ids = p.effect_ids || [];
+  const effectKey = ids.join(",");
+  if (state.lastEffectKey !== effectKey) {
+    state.effectsRow.innerHTML = "";
+    ids.slice(0, MAX_VISIBLE_EFFECTS).forEach(id => state.effectsRow.appendChild(effectTagElement(id)));
+    if (ids.length > MAX_VISIBLE_EFFECTS) {
+      state.effectsRow.appendChild(overflowTagElement(ids.length - MAX_VISIBLE_EFFECTS));
+    }
+    state.lastEffectKey = effectKey;
+  }
+}
+
 function renderTeam(containerId, players) {
   const container = document.getElementById(containerId);
-  container.innerHTML = "";
+  const stateMap = teamCardState[containerId];
+  const seen = new Set();
 
   players.forEach(p => {
-    const pct = p.health_max > 0 ? Math.max(0, Math.min(1, p.health / p.health_max)) : 0;
-
-    const card = document.createElement("div");
-    card.className = "player-card";
-
-    // Icon + health pill. The pill's own background IS the health bar --
-    // .health-pill-fill is a width:X% layer inside it, so the "missing HP"
-    // portion is just the pill's dark background showing through rather
-    // than a separate bar element next to the name.
-    const row = document.createElement("div");
-    row.className = "player-row";
-    row.appendChild(classIconElement(p.profile_id));
-
-    const pill = document.createElement("div");
-    pill.className = "health-pill";
-    const fill = document.createElement("div");
-    fill.className = "health-pill-fill";
-    fill.style.width = (pct * 100) + "%";
-    fill.style.backgroundColor = healthColor(pct);
-    const name = document.createElement("div");
-    name.className = "health-pill-name";
-    name.textContent = p.player_name || "(unknown)";
-    const hpText = document.createElement("div");
-    hpText.className = "health-pill-hp";
-    // Raw HP number is off by default (see SHOW_HP_KEY) -- the bar itself
-    // (fill.style.width above) already conveys health the same way it does
-    // in-game. When off, the "P/T1/T2" build notation (see
-    // SkillTreeCatalog.hpp) occupies this slot alone instead of trailing
-    // after the number. Demo mode sets p.build directly (see DEMO_ROSTER);
-    // real data comes from buildCache, refreshed on its own slower cadence
-    // by pollBuilds() rather than every 300ms tick -- see BUILDS_POLL_MS.
-    const build = p.build || buildCache[p.player_key];
-    const parts = [];
-    if (showHpNumber) parts.push(p.health + " / " + p.health_max);
-    if (build) parts.push(build.balanced + "/" + build.tree1 + "/" + build.tree2);
-    hpText.textContent = parts.join("   ");
-    pill.appendChild(fill);
-    pill.appendChild(name);
-    pill.appendChild(hpText);
-    row.appendChild(pill);
-    card.appendChild(row);
-
-    // Always append the effects bar, even with zero active effects — its
-    // min-height (see CSS) reserves the space either way, so a buff
-    // appearing/disappearing never shifts the pill above it up and down.
-    // Capped at MAX_VISIBLE_EFFECTS + an overflow badge so a heavily-buffed
-    // player can't grow their card (and shove every card below them down,
-    // possibly off-frame) without bound.
-    const effectsRow = document.createElement("div");
-    effectsRow.className = "effects-row";
-    const ids = p.effect_ids || [];
-    ids.slice(0, MAX_VISIBLE_EFFECTS).forEach(id => effectsRow.appendChild(effectTagElement(id)));
-    if (ids.length > MAX_VISIBLE_EFFECTS) {
-      effectsRow.appendChild(overflowTagElement(ids.length - MAX_VISIBLE_EFFECTS));
+    seen.add(p.player_key);
+    let state = stateMap.get(p.player_key);
+    if (!state) {
+      state = buildCard(p);
+      stateMap.set(p.player_key, state);
     }
-    card.appendChild(effectsRow);
-
-    container.appendChild(card);
+    updateCard(state, p);
+    // appendChild on a node already in the document just MOVES it -- no
+    // destroy/recreate -- so reordering to match sortByClassOrder never
+    // touches an <img> and can't reintroduce the flicker.
+    container.appendChild(state.card);
   });
+
+  // Drop cards for players no longer present (left the team/instance).
+  for (const [key, state] of stateMap) {
+    if (!seen.has(key)) {
+      state.card.remove();
+      stateMap.delete(key);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
