@@ -313,15 +313,28 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 
 	// Deployable-fired (Medical Station heal, mine blast, force wall): the
 	// fire mode's m_Owner is the ATgDeployable itself, not an ATgDevice, so
-	// the helper above returns 0 and the event would go uncredited. Map the
-	// deployable back to the device the player equipped to place it.
+	// the helper above returns 0 and the event would go uncredited. Recover
+	// the device the player equipped from the deployable's r_Owner — set on
+	// both spawn paths (SpawnDeployable.cpp:1002, TgDeviceFire__Deploy.cpp:160).
+	// The DB deployable→device map only covers the case where r_Owner is gone
+	// (device destroyed before the blast) and can't disambiguate deployables
+	// spawned by more than one device (deployable 81 "Mine" → devices 2225 and
+	// 6521), which is why mine kills never reached the tab.
+	// Needle is "TgDeploy", not "TgDeployable": subclasses (TgDeploy_ForceField,
+	// TgDeploy_Sensor, TgDeploy_Beacon, TgDeploy_Artillery) miss the long one.
 	if (creditDeviceId == 0) {
 		UTgDeviceFire* fireMode = (UTgDeviceFire*)Impact.dw[0x54 / 4];
 		AActor* fmOwner = fireMode ? fireMode->m_Owner : nullptr;
 		if (fmOwner != nullptr &&
-		    ObjectClassCache::ClassNameContains(fmOwner, "TgDeployable")) {
-			creditDeviceId = DeviceStats::DeviceIdFromDeployableId(
-				((ATgDeployable*)fmOwner)->r_nDeployableId);
+		    ObjectClassCache::ClassNameContains(fmOwner, "TgDeploy")) {
+			ATgDeployable* fmDeployable = (ATgDeployable*)fmOwner;
+			if (fmDeployable->r_Owner != nullptr) {
+				creditDeviceId = fmDeployable->r_Owner->r_nDeviceId;
+			}
+			if (creditDeviceId == 0) {
+				creditDeviceId = DeviceStats::DeviceIdFromDeployableId(
+					fmDeployable->r_nDeployableId);
+			}
 		}
 	}
 
