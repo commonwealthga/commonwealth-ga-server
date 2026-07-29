@@ -84,11 +84,21 @@ struct ToggleBrokenSuitsArgs {
     bool all = false; // true = -toggleallsuits variant
 };
 
+// -togglesolomode [1|0]: per-user matchmaking preference. When enabled, a PvE
+// mission the player queues into spawns as their own PARTY_LOCKED instance —
+// nobody else is routed in (they can still be invited, like team missions).
+// Persisted in ga_user_preferences ("solo_mode") and handled entirely on the
+// control server — no DLL/IPC involvement.
+struct ToggleSoloModeArgs {
+    int mode = -1;    // -1 = toggle, 0 = off, 1 = on
+};
+
 struct ParseResult {
     // True if the message was a /-prefixed slash command attempt that we own
     // (currently: "-changeteam", "-spawnfriend", "-spawnenemy", "-possess",
     // "-unpossess", "-topdown", "-reload-queues", "-spectate",
-    // "-unspectate", "-togglebrokensuits", "-toggleallsuits").
+    // "-unspectate", "-togglebrokensuits", "-toggleallsuits",
+    // "-togglesolomode").
     // False for ordinary chat and for slash commands we don't recognize.
     bool recognized = false;
 
@@ -103,6 +113,7 @@ struct ParseResult {
     std::optional<TopDownArgs>      topdown;
     std::optional<SpectateArgs>     spectate;
     std::optional<ToggleBrokenSuitsArgs> toggle_broken_suits;
+    std::optional<ToggleSoloModeArgs>    toggle_solo_mode;
 
     // No-arg toggles. Flag is set when recognized + parsed cleanly.
     bool possess   = false;
@@ -204,5 +215,11 @@ void DispatchTopDown(const TopDownArgs& args, const std::string& session_guid);
 // (ga_user_preferences read/write + in-memory cache used at replication).
 void DispatchToggleBrokenSuits(const ToggleBrokenSuitsArgs& args,
                                const std::string& session_guid);
+
+// -togglesolomode: persist the preference (ga_user_preferences "solo_mode"),
+// update any live queue entry, and reply privately with the new state.
+// Handled entirely on the control server; no PLAYER_ACTION IPC.
+void ExecuteToggleSoloMode(const ToggleSoloModeArgs& args,
+                           const std::string& session_guid);
 
 } // namespace ChatCommand

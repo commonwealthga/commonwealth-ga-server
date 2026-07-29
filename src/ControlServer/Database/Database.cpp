@@ -3037,6 +3037,50 @@ bool Database::SetUserAdminNotes(int64_t user_id, const std::string& notes) {
 	return ok;
 }
 
+std::string Database::GetUserPreference(int64_t user_id, const std::string& key) {
+	if (user_id <= 0) return "";
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT config_value FROM ga_user_preferences WHERE user_id = ? AND config_key = ?",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[User] GetUserPreference prepare failed: %s\n", sqlite3_errmsg(db));
+		return "";
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_text(stmt, 2, key.c_str(), -1, SQLITE_TRANSIENT);
+	std::string value;
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		const unsigned char* text = sqlite3_column_text(stmt, 0);
+		if (text) value = reinterpret_cast<const char*>(text);
+	}
+	sqlite3_finalize(stmt);
+	return value;
+}
+
+bool Database::SetUserPreference(int64_t user_id, const std::string& key,
+                                 const std::string& value) {
+	if (user_id <= 0) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"INSERT INTO ga_user_preferences (user_id, config_key, config_value) "
+		"VALUES (?, ?, ?) "
+		"ON CONFLICT(user_id, config_key) DO UPDATE SET config_value = excluded.config_value",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[User] SetUserPreference prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_text(stmt, 2, key.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 3, value.c_str(), -1, SQLITE_TRANSIENT);
+	const bool ok = sqlite3_step(stmt) == SQLITE_DONE;
+	sqlite3_finalize(stmt);
+	return ok;
+}
+
 bool Database::UpsertIpCheck(const std::string& ip,
                              const std::string& country_code,
                              const std::string& country,

@@ -72,6 +72,11 @@ public:
     // collides with TeamService team ids, which are small positive integers).
     static uint64_t SoloPartyId(const std::string& session_guid);
 
+    // -togglesolomode while already queued: update the queued solo party's
+    // solo_lock flag in place so the toggle applies without re-queuing.
+    // No-op if the guid isn't queued or is queued as part of a team.
+    static void SetSoloLockForQueuedPlayer(const std::string& session_guid, bool solo_lock);
+
     // --- Callbacks / context ----------------------------------------------
 
     static void SetMatchPopCallback(MatchPopCallback cb);

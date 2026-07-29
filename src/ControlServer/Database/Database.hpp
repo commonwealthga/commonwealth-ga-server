@@ -106,6 +106,14 @@ public:
     // the dashboard "set-user-note" admin action. Empty string clears.
     static bool SetUserAdminNotes(int64_t user_id, const std::string& notes);
 
+    // ---- Per-user key/value preferences (ga_user_preferences) --------------
+    // Same table the game-server DLL uses (e.g. show_broken_suits); control
+    // server owns matchmaking-side keys like "solo_mode". Get returns "" when
+    // the key is unset. Set upserts.
+    static std::string GetUserPreference(int64_t user_id, const std::string& key);
+    static bool SetUserPreference(int64_t user_id, const std::string& key,
+                                  const std::string& value);
+
     // Upsert one geo/VPN lookup result into ga_ip_checks (keyed by IP,
     // checked_at = now). Used by the dashboard "store-ip-check" admin action;
     // the dashboard reads the table directly.

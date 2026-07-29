@@ -494,6 +494,26 @@ void MatchmakingService::AddParty(uint32_t queue_id, const QueuedParty& party) {
     OnQueueChanged(queue_id, "join", party.leader_guid);
 }
 
+void MatchmakingService::SetSoloLockForQueuedPlayer(const std::string& session_guid,
+                                                    bool solo_lock) {
+    for (auto& [queue_id, q] : queues_) {
+        for (auto& party : q.parties) {
+            if (party.is_team) continue;
+            for (auto& m : party.members) {
+                if (m.session_guid != session_guid) continue;
+                if (m.solo_lock == solo_lock) return;
+                m.solo_lock = solo_lock;
+                Logger::Log("matchmaking",
+                    "[Matchmaking] Player %s solo_lock=%d updated in queue %u\n",
+                    session_guid.c_str(), solo_lock ? 1 : 0, queue_id);
+                // Enabling mid-queue may unlock an own-match pop right away.
+                OnQueueChanged(queue_id, "solo_lock", session_guid);
+                return;
+            }
+        }
+    }
+}
+
 void MatchmakingService::AddPlayer(uint32_t queue_id, const QueuedPlayer& player) {
     QueuedParty party;
     party.party_id    = SoloPartyId(player.session_guid);
@@ -886,8 +906,13 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
         return;
     }
 
-    // Pop-delay gate (spawn-new only).
+    // Pop-delay gate (spawn-new only). PARTY_LOCKED spawns skip it: the delay
+    // exists to accumulate players for count-based mission scaling, and a
+    // locked instance is closed to everyone but its owners — waiting can't
+    // grow it (solo-mode and team own-match pops). SEALED (DA) keeps the
+    // delay: its pool does grow until the pop.
     if (!delay_elapsed && !result->existing_instance_id
+            && result->access_mode != AccessMode::PartyLocked
             && queue.config.pop_delay_seconds > 0.0f && io_ctx_) {
         const auto now = std::chrono::steady_clock::now();
         const auto dur_ms = std::chrono::milliseconds((int64_t)(queue.config.pop_delay_seconds * 1000.0f));

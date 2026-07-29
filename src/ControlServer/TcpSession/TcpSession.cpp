@@ -2230,10 +2230,15 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 void TcpSession::send_match_join_response(uint32_t matchQueueId, uint32_t matchFilters) {
     current_match_queue_id_ = matchQueueId;
 
+    // -togglesolomode preference — stamped here so the matchmaking rule can
+    // give the player a private PARTY_LOCKED instance (CoopMatchRule).
+    const bool solo_mode = Database::GetUserPreference(user_id_, "solo_mode") == "1";
+
     QueuedPlayer player;
     player.session_guid = session_guid_;
     player.profile_id = selected_profile_id_;
     player.user_id = user_id_;  // drives the queue's requires_pvp_verification gate
+    player.solo_lock = solo_mode;
     player.joined_at = std::chrono::steady_clock::now();
 
     MatchmakingService::AddPlayer(matchQueueId, player);
@@ -2244,6 +2249,18 @@ void TcpSession::send_match_join_response(uint32_t matchQueueId, uint32_t matchF
 
     // Chat confirmation via the vt[+0x54] display route (opcode-agnostic).
     send_team_system_message(18306, "");  // "You have joined a match queue."
+
+    // Solo-mode reminder. Group queues (min_players_to_pop > 1: merc/ddr/sr)
+    // can't spawn a 1-player instance — the flag is inert there and the
+    // player is matched normally (mirrors the CoopMatchRule gate).
+    if (solo_mode) {
+        const bool solo_capable = cfg && cfg->min_players_to_pop <= 1;
+        ChatSession::SystemMessageToGuid(session_guid_, solo_capable
+            ? "*** Solo mode is ON - your mission will be locked to you. "
+              "Type -togglesolomode to turn it off. ***"
+            : "*** Solo mode does not apply to this group queue — "
+              "you will be matched normally. ***");
+    }
 }
 
 void TcpSession::send_match_leave_response() {

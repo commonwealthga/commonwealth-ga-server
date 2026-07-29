@@ -316,6 +316,7 @@ bool HasParsedCommandAction(const ChatCommand::ParseResult& parsed) {
         || parsed.topdown.has_value()
         || parsed.spectate.has_value()
         || parsed.toggle_broken_suits.has_value()
+        || parsed.toggle_solo_mode.has_value()
         || parsed.possess
         || parsed.unpossess
         || parsed.unspectate
@@ -582,6 +583,9 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         }
         if (parsed.recognized && parsed.toggle_broken_suits) {
             ChatCommand::DispatchToggleBrokenSuits(*parsed.toggle_broken_suits, session_guid_);
+        }
+        if (parsed.recognized && parsed.toggle_solo_mode) {
+            ChatCommand::ExecuteToggleSoloMode(*parsed.toggle_solo_mode, session_guid_);
         }
         if (parsed.recognized && parsed.announce) {
             if (!IsAnnouncer()) {

@@ -22,8 +22,9 @@ void Partition(const std::vector<QueuedParty>& parties,
 }  // namespace
 
 MatchResult CoopMatchRule::BuildOwnMatch(const QueuedParty& team) const {
-    // One team, its own fresh PARTY_LOCKED instance. Cap stays the queue cap
-    // (left to the orchestrator) so in-mission invites can still grow it.
+    // One party (team, or solo-locked player), its own fresh PARTY_LOCKED
+    // instance. Cap stays the queue cap (left to the orchestrator) so
+    // in-mission invites can still grow it.
     std::vector<QueuedParty> one{team};
     auto ordered = PartiesByWaitAsc(one);
     MatchResult r = BuildResult(
@@ -76,6 +77,26 @@ std::optional<MatchResult> CoopMatchRule::Evaluate(
     std::vector<QueuedParty> teams, solos;
     Partition(parties, teams, solos);
 
+    // -togglesolomode: a solo party whose player wants a private match pops
+    // its own fresh PARTY_LOCKED instance (like a team under OwnMatch) and
+    // never enters the drop-in pool. Only where a 1-player spawn is possible
+    // (min_players_to_pop <= 1) — in group queues (merc/ddr/sr) the flag is
+    // inert and the player is matched normally. TryPop recurses after each
+    // pop, so remaining locked solos/teams drain in the same event.
+    if (cfg_.min_players_to_pop <= 1) {
+        std::vector<QueuedParty> locked;
+        solos.erase(std::remove_if(solos.begin(), solos.end(),
+            [&](const QueuedParty& p) {
+                const bool wants = !p.members.empty() && p.members.front().solo_lock;
+                if (wants) locked.push_back(p);
+                return wants;
+            }), solos.end());
+        if (!locked.empty()) {
+            auto ordered = PartiesByWaitAsc(locked);
+            return BuildOwnMatch(*ordered.front());
+        }
+    }
+
     switch (cfg_.team_policy) {
         case TeamPolicy::OwnMatch: {
             // A team always gets its own fresh PARTY_LOCKED match. Pop the
@@ -90,8 +111,14 @@ std::optional<MatchResult> CoopMatchRule::Evaluate(
         case TeamPolicy::Block:
             // Teams rejected upstream; defensively ignore any that slipped in.
             return PlacePool(solos, instances);
-        case TeamPolicy::Mixed:
-            return PlacePool(parties, instances);
+        case TeamPolicy::Mixed: {
+            // teams + solos, NOT `parties` — solo-locked parties were stripped
+            // from `solos` above and must stay out of the shared pool.
+            // PlacePool re-orders by wait time, so concatenation order is fine.
+            std::vector<QueuedParty> pool = teams;
+            pool.insert(pool.end(), solos.begin(), solos.end());
+            return PlacePool(pool, instances);
+        }
         case TeamPolicy::VersusSides:
             // Misconfiguration — VersusSides queues should use VersusSidesRule.
             return std::nullopt;

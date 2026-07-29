@@ -27,6 +27,9 @@ struct QueuedPlayer {
     uint32_t    profile_id = 0;   // ASSAULT/MEDIC/RECON/ROBOTICS engine ids
     int64_t     user_id    = 0;   // ga_users.id — drives requires_pvp_verification
     double      mmr        = 1000.0;  // current rating for the queued class (stamped at enqueue)
+    // -togglesolomode preference (ga_user_preferences "solo_mode"), stamped at
+    // enqueue. A solo party with this set pops its own PARTY_LOCKED match.
+    bool        solo_lock  = false;
     std::chrono::steady_clock::time_point joined_at{};
 };
 

@@ -9,9 +9,11 @@
 #include "lib/nlohmann/json.hpp"
 
 #include "src/ControlServer/ChatSession/ChatSession.hpp"
+#include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
+#include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 
@@ -277,6 +279,22 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
+    if (cmd_name == "-togglesolomode") {
+        // -togglesolomode     -> toggle current preference
+        // -togglesolomode 1   -> enable (missions lock to the player)
+        // -togglesolomode 0   -> disable
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        ToggleSoloModeArgs args;
+        if (!rest.empty()) {
+            if (rest == "0")      args.mode = 0;
+            else if (rest == "1") args.mode = 1;
+            else return out;  // bad arg — silent reject
+        }
+        out.toggle_solo_mode = args;
+        return out;
+    }
+
     if (cmd_name == "-topdown") {
         // -topdown            -> toggle, default lift
         // -topdown <lift_z>   -> toggle, explicit lift in world units (cm)
@@ -529,6 +547,41 @@ void ExecuteClassCounts(const std::string& session_guid) {
         session_guid.c_str(), (long long)instance_id, own_tf,
         own[0], own[1], own[2], own[3],
         enemy[0], enemy[1], enemy[2], enemy[3], rows.size());
+}
+
+void ExecuteToggleSoloMode(const ToggleSoloModeArgs& args,
+                           const std::string& session_guid) {
+    if (session_guid.empty()) {
+        Logger::Log("chat-command", "[ChatCmd] ExecuteToggleSoloMode dropped: empty session_guid\n");
+        return;
+    }
+
+    auto info = PlayerSessionStore::GetByGuid(session_guid);
+    const int64_t user_id = info ? info->user_id : 0;
+    if (user_id <= 0) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=-togglesolomode outcome=ignored details=no_user_id\n",
+            session_guid.c_str());
+        return;
+    }
+
+    bool enable;
+    if (args.mode == -1)
+        enable = Database::GetUserPreference(user_id, "solo_mode") != "1";
+    else
+        enable = args.mode == 1;
+
+    Database::SetUserPreference(user_id, "solo_mode", enable ? "1" : "0");
+    MatchmakingService::SetSoloLockForQueuedPlayer(session_guid, enable);
+
+    ChatSession::SystemMessageToGuid(session_guid, enable
+        ? "*** Solo mode enabled - missions you enter will be locked to you. "
+          "Type -togglesolomode to turn it off. ***"
+        : "*** Solo mode disabled. ***");
+
+    Logger::Log("chat-command",
+        "[ChatCmd] guid=%s command=-togglesolomode outcome=set user=%lld enabled=%d\n",
+        session_guid.c_str(), (long long)user_id, enable ? 1 : 0);
 }
 
 void DispatchPossess(const std::string& session_guid)   { DispatchSimpleAction("possess",   session_guid); }
