@@ -10658,6 +10658,21 @@ void Database::Init() {
 			"Think-Tank (1417) back in natural rotation\n");
 	}
 
+	if (version < 155) {
+		// v155: placed mines survive their deployer's death. destroy_on_owner_death_flag=1
+		// made Recon's mines (77-81) and sticky poison mines (95-98) vanish the moment the
+		// deployer died — an armed mine is a trap that runs its own trigger/lifespan, same
+		// as the timer bombs KillDeployables already skips. Sticky grenades (62/65/66/67)
+		// and HackNSlash (215) keep the flag.
+		result = sqlite3_exec(db,
+			"UPDATE asm_data_set_deployables SET destroy_on_owner_death_flag = 0 "
+			"WHERE deployable_id IN (77, 78, 79, 81, 95, 96, 97, 98);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v155 (mines survive owner death): %s\n", err); return; }
+
+		Logger::Log("db", "v155: mines 77-81 / 95-98 no longer destroyed on owner death\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -10669,7 +10684,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 154", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 155", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

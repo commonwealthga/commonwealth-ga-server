@@ -61,6 +61,27 @@ void __fastcall TgPawn__KillDeployables::Call(ATgPawn* Pawn, void* edx, unsigned
 			continue;
 		}
 
+		// An armed explosive outlives its owner. Two kinds, both of which run
+		// their own trigger-then-expire lifecycle and self-destroy without any
+		// help from the deployer:
+		//   - timer bombs (show_countdown_timer_flag — Elite Assassin's Timed
+		//     Explosive 129, Recon's Fire/EMP/Venom/Graviton bombs, AVA BOMB):
+		//     fuse then explode, LifeSpan bounded by s_fActivationTime.
+		//   - proximity mines (s_fProximityRadius > 0, set from prop 8 — the
+		//     same field UC's Active.BeginState uses as its "this is a mine"
+		//     discriminator): sit armed until touched, LifeSpan-bounded.
+		// This sits ABOVE both blankets on purpose. bAll fires from
+		// KillAllOwnedPets at pawn Destroyed(), which is where a player's mines
+		// were still being swept a few seconds after death — the flag gate
+		// below never gets a say there.
+		if (DeployableClassify::IsTimerBomb(dep->r_nDeployableId) ||
+		    dep->s_fProximityRadius > 0.0f) {
+			Logger::Log("debug",
+				"  [KillDeployables] keep [%d] 0x%p deployableId=%d (armed explosive — expires on its own)\n",
+				i, dep, dep->r_nDeployableId);
+			continue;
+		}
+
 		const bool shouldDestroy = bDestroyAll || dep->m_bDestroyOnOwnerDeathFlag;
 		if (!shouldDestroy) {
 			Logger::Log("debug",
