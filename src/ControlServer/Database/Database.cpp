@@ -2384,6 +2384,71 @@ void Database::Init() {
 		}
 	}
 
+	// DLC gating (2026-07-30): launcher-managed map packs. ga_dlc is the
+	// pack catalog (identifier = cross-project string id shared with the
+	// launcher), ga_user_dlc the per-account installed flag (written by the
+	// set-user-dlc admin action / launcher sync). ga_map_pool_entries.dlc_id
+	// (nullable FK to ga_dlc) marks maps that need the pack; a queue whose
+	// enabled pool is entirely locked for an account is hidden from that
+	// account's GET_TICKET_INFO response.
+	{
+		static const char* kDlcSchema2026_07_30[] = {
+			"CREATE TABLE IF NOT EXISTS ga_dlc ("
+			"  dlc_id     INTEGER PRIMARY KEY,"
+			"  identifier TEXT NOT NULL UNIQUE,"
+			"  name       TEXT NOT NULL"
+			");",
+			"CREATE TABLE IF NOT EXISTS ga_user_dlc ("
+			"  user_id    INTEGER NOT NULL,"
+			"  dlc_id     INTEGER NOT NULL,"
+			"  installed  INTEGER NOT NULL DEFAULT 0,"
+			"  updated_at INTEGER          DEFAULT NULL,"
+			"  PRIMARY KEY (user_id, dlc_id)"
+			");",
+			"INSERT OR IGNORE INTO ga_dlc (dlc_id, identifier, name) VALUES"
+			" (1, 'surfside-atoll-pvp-maps', 'Breach: Surfside & Breach: Atoll');",
+		};
+		for (const char* sql : kDlcSchema2026_07_30) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] DLC schema step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+
+		// Nullable required-DLC column; duplicate-column error swallowed.
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_map_pool_entries ADD COLUMN dlc_id INTEGER DEFAULT NULL;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
+
+		// One-time: lock the beta_pvp Beachhead maps behind surfside_atoll.
+		// Marker-gated so a later operator clearing dlc_id isn't stomped.
+		bool dlc_seed_applied = false;
+		{
+			sqlite3_stmt* mstmt = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT 1 FROM cs_migration_markers WHERE name='dlc_surfside_atoll_seed_2026_07_30'",
+					-1, &mstmt, nullptr) == SQLITE_OK && mstmt) {
+				dlc_seed_applied = (sqlite3_step(mstmt) == SQLITE_ROW);
+			}
+			if (mstmt) sqlite3_finalize(mstmt);
+		}
+		if (!dlc_seed_applied) {
+			static const char* kDlcSeed[] = {
+				"UPDATE ga_map_pool_entries SET dlc_id = 1 "
+				"WHERE map_pool_id = 7 AND map_name IN ('3P_Beachhead_P', '3P_Beachhead2_P');",
+				"INSERT OR IGNORE INTO cs_migration_markers (name) VALUES ('dlc_surfside_atoll_seed_2026_07_30');",
+			};
+			for (const char* sql : kDlcSeed) {
+				if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+					Logger::Log("db", "[Database] DLC seed step failed: %s\n", err ? err : "?");
+					if (err) { sqlite3_free(err); err = nullptr; }
+				}
+			}
+			Logger::Log("db", "[Database] Applied one-time surfside_atoll DLC map seed\n");
+		}
+	}
+
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
 }
@@ -3056,6 +3121,87 @@ void Database::RevokeRole(int64_t user_id, const std::string& role) {
 	sqlite3_bind_text(stmt, 2, role.c_str(), -1, SQLITE_TRANSIENT);
 	sqlite3_step(stmt);
 	sqlite3_finalize(stmt);
+}
+
+bool Database::SetUserDlc(int64_t user_id, const std::string& identifier, bool installed) {
+	if (user_id <= 0 || identifier.empty()) return false;
+	sqlite3* db = GetConnection();
+
+	// Resolve the launcher-facing string identifier to the catalog row.
+	int64_t dlc_id = 0;
+	{
+		sqlite3_stmt* stmt = nullptr;
+		int rc = sqlite3_prepare_v2(db,
+			"SELECT dlc_id FROM ga_dlc WHERE identifier = ?",
+			-1, &stmt, nullptr);
+		if (rc != SQLITE_OK || !stmt) {
+			Logger::Log("db", "[Dlc] SetUserDlc lookup prepare failed: %s\n", sqlite3_errmsg(db));
+			return false;
+		}
+		sqlite3_bind_text(stmt, 1, identifier.c_str(), -1, SQLITE_TRANSIENT);
+		if (sqlite3_step(stmt) == SQLITE_ROW) dlc_id = sqlite3_column_int64(stmt, 0);
+		sqlite3_finalize(stmt);
+	}
+	if (dlc_id == 0) return false;
+
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"INSERT INTO ga_user_dlc (user_id, dlc_id, installed, updated_at) "
+		"VALUES (?, ?, ?, strftime('%s','now')) "
+		"ON CONFLICT(user_id, dlc_id) DO UPDATE SET "
+		"  installed = excluded.installed, updated_at = excluded.updated_at",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Dlc] SetUserDlc upsert prepare failed: %s\n", sqlite3_errmsg(db));
+		return false;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_int64(stmt, 2, dlc_id);
+	sqlite3_bind_int(stmt, 3, installed ? 1 : 0);
+	const bool ok = sqlite3_step(stmt) == SQLITE_DONE;
+	sqlite3_finalize(stmt);
+	return ok;
+}
+
+std::vector<Database::DlcRow> Database::GetAllDlc() {
+	std::vector<DlcRow> out;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT dlc_id, identifier, name FROM ga_dlc ORDER BY dlc_id",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Dlc] GetAllDlc prepare failed: %s\n", sqlite3_errmsg(db));
+		return out;
+	}
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		DlcRow row;
+		row.dlc_id = sqlite3_column_int64(stmt, 0);
+		if (auto* p = sqlite3_column_text(stmt, 1)) row.identifier = (const char*)p;
+		if (auto* p = sqlite3_column_text(stmt, 2)) row.name = (const char*)p;
+		out.push_back(std::move(row));
+	}
+	sqlite3_finalize(stmt);
+	return out;
+}
+
+std::vector<int64_t> Database::GetInstalledDlcIds(int64_t user_id) {
+	std::vector<int64_t> out;
+	if (user_id <= 0) return out;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT dlc_id FROM ga_user_dlc WHERE user_id = ? AND installed = 1",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Dlc] GetInstalledDlcIds prepare failed: %s\n", sqlite3_errmsg(db));
+		return out;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	while (sqlite3_step(stmt) == SQLITE_ROW)
+		out.push_back(sqlite3_column_int64(stmt, 0));
+	sqlite3_finalize(stmt);
+	return out;
 }
 
 bool Database::SetUserAdminNotes(int64_t user_id, const std::string& notes) {

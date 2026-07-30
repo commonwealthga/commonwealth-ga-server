@@ -101,6 +101,7 @@ struct MapModeEntry {
     int weight = 1;
     std::optional<int> min_players;  // NULL in DB → unbounded below
     std::optional<int> max_players;  // NULL in DB → unbounded above
+    std::optional<int64_t> dlc_id;   // NULL in DB → base game; else required ga_dlc pack
 };
 
 // Legacy (map, game_mode) pair without weight. Returned by pool pickers.

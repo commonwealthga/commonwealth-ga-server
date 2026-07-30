@@ -93,12 +93,25 @@ struct ToggleSoloModeArgs {
     int mode = -1;    // -1 = toggle, 0 = off, 1 = on
 };
 
+// -enabledlc <identifier> / -disabledlc <identifier>: mark a DLC map pack
+// installed / not installed for the calling account (ga_user_dlc via
+// Database::SetUserDlc — same flag the dashboard users page toggles). The
+// launcher instructs players to run this after installing a pack; manual
+// patchers can self-enable the same way. Enabling without actually having the
+// files is the player's own problem (they won't be able to load the maps).
+// Bare "-enabledlc"/"-disabledlc" replies with the available identifiers.
+// Handled entirely on the control server — no DLL/IPC involvement.
+struct SetDlcArgs {
+    std::string identifier;  // empty = list available packs
+    bool installed = false;
+};
+
 struct ParseResult {
     // True if the message was a /-prefixed slash command attempt that we own
     // (currently: "-changeteam", "-spawnfriend", "-spawnenemy", "-possess",
     // "-unpossess", "-topdown", "-reload-queues", "-spectate",
     // "-unspectate", "-togglebrokensuits", "-toggleallsuits",
-    // "-togglesolomode").
+    // "-togglesolomode", "-enabledlc", "-disabledlc").
     // False for ordinary chat and for slash commands we don't recognize.
     bool recognized = false;
 
@@ -114,6 +127,7 @@ struct ParseResult {
     std::optional<SpectateArgs>     spectate;
     std::optional<ToggleBrokenSuitsArgs> toggle_broken_suits;
     std::optional<ToggleSoloModeArgs>    toggle_solo_mode;
+    std::optional<SetDlcArgs>            set_dlc;
 
     // No-arg toggles. Flag is set when recognized + parsed cleanly.
     bool possess   = false;
@@ -221,5 +235,11 @@ void DispatchToggleBrokenSuits(const ToggleBrokenSuitsArgs& args,
 // Handled entirely on the control server; no PLAYER_ACTION IPC.
 void ExecuteToggleSoloMode(const ToggleSoloModeArgs& args,
                            const std::string& session_guid);
+
+// -enabledlc / -disabledlc: flip the caller's ga_user_dlc installed flag for
+// one pack and reply privately; empty/unknown identifier replies with the
+// catalog. DLC-gated queues appear/disappear on the next GET_TICKET_INFO
+// poll. Handled entirely on the control server; no PLAYER_ACTION IPC.
+void ExecuteSetDlc(const SetDlcArgs& args, const std::string& session_guid);
 
 } // namespace ChatCommand

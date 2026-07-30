@@ -1034,6 +1034,37 @@ int main(int argc, char* argv[]) {
             return true;
         }
 
+        if (subtype == "set-user-dlc") {
+            // Flips an account's installed flag for one ga_dlc pack (string
+            // identifier, e.g. "surfside-atoll-pvp-maps"). Used by the dashboard users
+            // page and later by the launcher-driven install sync. Takes effect
+            // on the player's next GET_TICKET_INFO poll — no relog needed.
+            int64_t user_id = payload.value("user_id", (int64_t)0);
+            if (user_id == 0) {
+                const std::string username = payload.value("username", std::string());
+                if (!username.empty()) user_id = Database::FindUserIdByUsername(username);
+            }
+            if (user_id == 0) {
+                message = "set-user-dlc needs user_id or a known username";
+                return false;
+            }
+            const std::string dlc = payload.value("dlc", std::string());
+            if (dlc.empty()) {
+                message = "set-user-dlc needs a non-empty dlc identifier";
+                return false;
+            }
+            const bool installed = payload.value("installed", false);
+            if (!Database::SetUserDlc(user_id, dlc, installed)) {
+                message = "unknown dlc identifier '" + dlc + "' or update failed";
+                return false;
+            }
+            Logger::Log("admin", "[admin] set-user-dlc user_id=%lld dlc=%s installed=%d\n",
+                (long long)user_id, dlc.c_str(), installed ? 1 : 0);
+            message = "dlc '" + dlc + "' " + (installed ? "installed for" : "removed from") +
+                      " user_id=" + std::to_string(user_id);
+            return true;
+        }
+
         if (subtype == "set-user-note") {
             int64_t user_id = payload.value("user_id", (int64_t)0);
             if (user_id == 0) {

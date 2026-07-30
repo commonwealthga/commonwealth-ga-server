@@ -114,6 +114,25 @@ public:
     static bool SetUserPreference(int64_t user_id, const std::string& key,
                                   const std::string& value);
 
+    // ---- DLC (launcher-managed map packs, 2026-07-30) ----------------------
+    // ga_dlc catalog + per-account ga_user_dlc installed flags. SetUserDlc
+    // resolves the launcher-facing string identifier and upserts the flag;
+    // returns false for an unknown identifier or failed write. Used by the
+    // "set-user-dlc" admin action (dashboard, later the launcher sync).
+    static bool SetUserDlc(int64_t user_id, const std::string& identifier,
+                           bool installed);
+    // dlc_ids the account has installed. Feeds the GET_TICKET_INFO filter
+    // that hides queues whose whole map pool needs packs the player lacks.
+    static std::vector<int64_t> GetInstalledDlcIds(int64_t user_id);
+    // Full ga_dlc catalog — used by the -enabledlc/-disabledlc chat commands
+    // for listings and name lookups in replies.
+    struct DlcRow {
+        int64_t dlc_id = 0;
+        std::string identifier;
+        std::string name;
+    };
+    static std::vector<DlcRow> GetAllDlc();
+
     // Upsert one geo/VPN lookup result into ga_ip_checks (keyed by IP,
     // checked_at = now). Used by the dashboard "store-ip-check" admin action;
     // the dashboard reads the table directly.

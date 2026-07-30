@@ -295,6 +295,23 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
+    if (cmd_name == "-enabledlc" || cmd_name == "-disabledlc") {
+        // -enabledlc <identifier>  -> mark the pack installed for this account
+        // -disabledlc <identifier> -> mark it not installed
+        // Bare command -> ExecuteSetDlc replies with the available packs.
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        SetDlcArgs args;
+        args.installed = (cmd_name == "-enabledlc");
+        if (!rest.empty()) {
+            std::vector<std::string> tokens = SplitWs(rest);
+            if (tokens.size() != 1) return out;  // identifiers have no spaces — silent reject
+            args.identifier = tokens[0];
+        }
+        out.set_dlc = args;
+        return out;
+    }
+
     if (cmd_name == "-topdown") {
         // -topdown            -> toggle, default lift
         // -topdown <lift_z>   -> toggle, explicit lift in world units (cm)
@@ -582,6 +599,69 @@ void ExecuteToggleSoloMode(const ToggleSoloModeArgs& args,
     Logger::Log("chat-command",
         "[ChatCmd] guid=%s command=-togglesolomode outcome=set user=%lld enabled=%d\n",
         session_guid.c_str(), (long long)user_id, enable ? 1 : 0);
+}
+
+void ExecuteSetDlc(const SetDlcArgs& args, const std::string& session_guid) {
+    if (session_guid.empty()) {
+        Logger::Log("chat-command", "[ChatCmd] ExecuteSetDlc dropped: empty session_guid\n");
+        return;
+    }
+
+    auto info = PlayerSessionStore::GetByGuid(session_guid);
+    const int64_t user_id = info ? info->user_id : 0;
+    if (user_id <= 0) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=-%sdlc outcome=ignored details=no_user_id\n",
+            session_guid.c_str(), args.installed ? "enable" : "disable");
+        return;
+    }
+
+    const auto catalog = Database::GetAllDlc();
+    auto list_catalog = [&](const char* prefix) {
+        std::string line = prefix;
+        if (catalog.empty()) {
+            line += " (no DLC packs configured on this server)";
+        } else {
+            const auto installed = Database::GetInstalledDlcIds(user_id);
+            for (size_t i = 0; i < catalog.size(); ++i) {
+                if (i) line += ", ";
+                line += catalog[i].identifier;
+                for (int64_t id : installed)
+                    if (id == catalog[i].dlc_id) { line += " (enabled)"; break; }
+            }
+        }
+        line += " ***";
+        ChatSession::SystemMessageToGuid(session_guid, line);
+    };
+
+    if (args.identifier.empty()) {
+        list_catalog("*** Usage: -enabledlc <identifier> / -disabledlc <identifier>. Available:");
+        return;
+    }
+
+    const Database::DlcRow* row = nullptr;
+    for (const auto& c : catalog)
+        if (c.identifier == args.identifier) { row = &c; break; }
+    if (!row || !Database::SetUserDlc(user_id, args.identifier, args.installed)) {
+        list_catalog(("*** Unknown DLC '" + args.identifier + "'. Available:").c_str());
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=-%sdlc outcome=rejected user=%lld identifier='%s'\n",
+            session_guid.c_str(), args.installed ? "enable" : "disable",
+            (long long)user_id, args.identifier.c_str());
+        return;
+    }
+
+    // Queue visibility follows on the next GET_TICKET_INFO poll — no relog.
+    ChatSession::SystemMessageToGuid(session_guid, args.installed
+        ? "*** DLC '" + row->name + "' enabled - its queues will appear in your queue list. "
+          "Make sure the map files are actually installed (launcher DLC section), "
+          "or those maps will fail to load. Type -disabledlc " + row->identifier + " to turn it off. ***"
+        : "*** DLC '" + row->name + "' disabled - its queues will be hidden again. ***");
+
+    Logger::Log("chat-command",
+        "[ChatCmd] guid=%s command=-%sdlc outcome=set user=%lld identifier='%s' installed=%d\n",
+        session_guid.c_str(), args.installed ? "enable" : "disable",
+        (long long)user_id, args.identifier.c_str(), args.installed ? 1 : 0);
 }
 
 void DispatchPossess(const std::string& session_guid)   { DispatchSimpleAction("possess",   session_guid); }

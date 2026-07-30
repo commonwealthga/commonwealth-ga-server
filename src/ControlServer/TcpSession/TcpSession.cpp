@@ -26,6 +26,21 @@
 #include <cerrno>
 #endif
 
+// True when the queue has at least one map the account can play — base-game,
+// or locked behind a pack in `installed` (ga_user_dlc, launcher/admin-set).
+// A pool-less queue is always playable. Used by the GET_TICKET_INFO queue
+// filter and the MATCH_JOIN gate.
+static bool QueuePlayableWithDlc(const QueueConfig& cfg,
+                                 const std::vector<int64_t>& installed) {
+	if (cfg.map_pool.empty()) return true;
+	for (const auto& m : cfg.map_pool) {
+		if (!m.dlc_id) return true;
+		for (int64_t id : installed)
+			if (id == *m.dlc_id) return true;
+	}
+	return false;
+}
+
 // ---------------------------------------------------------------------------
 // TcpSession static member definitions
 // ---------------------------------------------------------------------------
@@ -1945,6 +1960,26 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				auto party = TeamService::BuildParty(session_guid_);
 				if (!party) break;
 				auto cfg = MatchmakingService::GetQueueConfig(matchQueueId);
+				// DLC gate: the queue list already hides fully-locked queues,
+				// but a crafted MATCH_JOIN must not bypass it — and every
+				// member needs the maps, not just the leader.
+				if (cfg) {
+					bool locked = false;
+					for (const auto& member : party->members) {
+						if (!QueuePlayableWithDlc(*cfg,
+								Database::GetInstalledDlcIds(member.user_id))) {
+							locked = true;
+							break;
+						}
+					}
+					if (locked) {
+						Logger::Log("tcp", "[TcpSession] MATCH_JOIN: queue %u DLC-locked for team of %s\n",
+							matchQueueId, session_guid_.c_str());
+						ChatSession::SystemMessageToGuid(session_guid_,
+							"*** Cannot queue: this queue needs DLC maps that you or a teammate don't have installed (see the launcher's DLC section). ***");
+						break;
+					}
+				}
 				if (cfg && cfg->team_policy == TeamPolicy::Block) {
 					Logger::Log("tcp", "[TcpSession] MATCH_JOIN: queue %u blocks teams — leader %s\n",
 						matchQueueId, session_guid_.c_str());
@@ -2228,6 +2263,17 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 }
 
 void TcpSession::send_match_join_response(uint32_t matchQueueId, uint32_t matchFilters) {
+    // DLC gate: the queue list already hides fully-locked queues, but a
+    // crafted MATCH_JOIN must not bypass it.
+    auto cfg = MatchmakingService::GetQueueConfig(matchQueueId);
+    if (cfg && !QueuePlayableWithDlc(*cfg, Database::GetInstalledDlcIds(user_id_))) {
+        Logger::Log("tcp", "[TcpSession] MATCH_JOIN: queue %u DLC-locked for user %lld\n",
+            matchQueueId, (long long)user_id_);
+        ChatSession::SystemMessageToGuid(session_guid_,
+            "*** Cannot queue: this queue needs DLC maps you don't have installed (see the launcher's DLC section). ***");
+        return;
+    }
+
     current_match_queue_id_ = matchQueueId;
 
     // -togglesolomode preference — stamped here so the matchmaking rule can
@@ -2244,7 +2290,6 @@ void TcpSession::send_match_join_response(uint32_t matchQueueId, uint32_t matchF
     MatchmakingService::AddPlayer(matchQueueId, player);
 
     // Drive the AgentInfo HUD "IN QUEUE: <name>" panel + leave-queue keybind.
-    auto cfg = MatchmakingService::GetQueueConfig(matchQueueId);
     send_match_queue_status(matchQueueId, cfg ? cfg->name_msg_id : 0);
 
     // Chat confirmation via the vt[+0x54] display route (opcode-agnostic).
@@ -2640,7 +2685,20 @@ void TcpSession::send_match_accept_response() {
 
 void TcpSession::send_get_ticket_info_response() {
 
-	const auto queues = MatchmakingService::GetEnabledQueueConfigs();
+	auto queues = MatchmakingService::GetEnabledQueueConfigs();
+
+	// DLC gating: hide queues whose entire (enabled) map pool requires packs
+	// this account doesn't have installed.
+	{
+		const auto installed = Database::GetInstalledDlcIds(user_id_);
+		std::vector<QueueConfig> visible;
+		visible.reserve(queues.size());
+		for (auto& cfg : queues) {
+			if (QueuePlayableWithDlc(cfg, installed))
+				visible.push_back(std::move(cfg));
+		}
+		queues = std::move(visible);
+	}
 
 	std::vector<uint8_t> response;
 

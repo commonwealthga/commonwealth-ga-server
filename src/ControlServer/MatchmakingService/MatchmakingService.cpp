@@ -185,7 +185,7 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
         if (c.map_pool_id == 0) continue;
         sqlite3_stmt* ps = nullptr;
         const char* psql =
-            "SELECT map_name, game_mode, weight, min_players, max_players "
+            "SELECT map_name, game_mode, weight, min_players, max_players, dlc_id "
             "FROM ga_map_pool_entries WHERE map_pool_id = ? AND enabled = 1";
         if (sqlite3_prepare_v2(db, psql, -1, &ps, nullptr) != SQLITE_OK || !ps) continue;
         sqlite3_bind_int(ps, 1, (int)c.map_pool_id);
@@ -196,6 +196,7 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
             m.weight = std::max(1, sqlite3_column_int(ps, 2));
             if (sqlite3_column_type(ps, 3) != SQLITE_NULL) m.min_players = sqlite3_column_int(ps, 3);
             if (sqlite3_column_type(ps, 4) != SQLITE_NULL) m.max_players = sqlite3_column_int(ps, 4);
+            if (sqlite3_column_type(ps, 5) != SQLITE_NULL) m.dlc_id = sqlite3_column_int64(ps, 5);
             c.map_pool.push_back(std::move(m));
         }
         sqlite3_finalize(ps);
