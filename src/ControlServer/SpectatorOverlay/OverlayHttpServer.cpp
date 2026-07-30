@@ -161,6 +161,8 @@ private:
             p["task_force"]   = s.task_force;
             p["health"]       = s.health;
             p["health_max"]   = s.health_max;
+            p["power"]        = s.power;
+            p["power_max"]    = s.power_max;
             p["effect_ids"]   = s.effect_ids;
             p["skill_ids"]    = s.skill_ids;
             auto info = PlayerSessionStore::GetByGuid(s.session_guid);

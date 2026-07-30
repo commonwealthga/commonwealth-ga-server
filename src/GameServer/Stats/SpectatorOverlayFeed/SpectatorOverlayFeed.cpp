@@ -110,6 +110,10 @@ void MaybePushSnapshot(AActor* actor) {
 	// player capped at the same base value regardless of Health skill points
 	// or buffs actually raising their real max.
 	j["health_max"]   = pawn->r_nHealthMaximum;
+	// Same replicated-field pattern as health/health_max above -- both CPF_Net
+	// on ATgPawn, kept in sync by the same buff/skill/gear systems.
+	j["power"]        = pawn->r_fCurrentPowerPool;
+	j["power_max"]    = pawn->r_fMaxPowerPool;
 	j["effect_ids"]   = effect_ids;
 	IpcClient::Send(j.dump());
 }
