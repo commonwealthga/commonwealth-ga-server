@@ -126,6 +126,34 @@ constexpr const char* MSG_PLAYER_ACTION = "PLAYER_ACTION";
 //     "health": <int>, "health_max": <int>, "effect_ids": [<int>, ...] }
 constexpr const char* MSG_PAWN_HEALTH_SNAPSHOT = "PAWN_HEALTH_SNAPSHOT";
 
+// Sent by a mission instance on the same ~1/sec rate-limited timer basis as
+// PAWN_HEALTH_SNAPSHOT, but once per instance (there's one ATgGame per
+// match, not one per pawn). "mode" is derived server-side from the game's
+// own class (TgGame_Ticket/_Escort/_Defense/_PointRotation/_Mission) and
+// selects which of the fields below are populated; modes with no requested
+// overlay treatment (City, OpenWorldPVE/PVP, CTF, DualCTF) never push at
+// all. Fields are ADDITIVE, not mutually exclusive by mode:
+//   - attacker_points/defender_points/points_to_win: ticket AND koth (both
+//     track a first-to-N team score via ATgRepInfo_TaskForce::r_nCurrentPointCount).
+//   - round_current/round_max/boss_health/boss_health_max: raid only.
+//   - objectives: ticket/koth/payload/breach (every mode except raid) -- a
+//     priority-ordered list of every ATgMissionObjective on the game's
+//     GameReplicationInfo -- id/priority/locked/active/owner_taskforce plus a
+//     0..1 capture_pct (m_fCurrCaptureTime / m_fTimeToCapture, unclamped same
+//     as the server's own SuperAgent capture-bar math). NOTE: id and
+//     priority are NOT guaranteed unique per point -- e.g. every koth
+//     rotation point shares the same nObjectiveId/nPriority by design (see
+//     CtrPointRotation.cpp) -- consumers must key UI elements by array
+//     position, never by id/priority.
+//   ticket: { "mode":"ticket", "attacker_points":<int>, "defender_points":<int>,
+//     "points_to_win":<int>, "objectives":[...] }
+//   raid:   { "mode":"raid", "round_current":<int>, "round_max":<int>,
+//     "boss_health":<int>, "boss_health_max":<int> }
+//   koth:   { "mode":"koth", "attacker_points":<int>, "defender_points":<int>,
+//     "points_to_win":<int>, "objectives":[...] }
+//   payload/breach: { "mode":"payload"|"breach", "objectives":[...] }
+constexpr const char* MSG_MISSION_PROGRESS_SNAPSHOT = "MISSION_PROGRESS_SNAPSHOT";
+
 // ---------------------------------------------------------------------------
 // IPC transport
 // ---------------------------------------------------------------------------

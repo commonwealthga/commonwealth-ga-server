@@ -132,12 +132,22 @@
 
   /* Thin secondary bar under the health pill for power/energy -- same
      pill-is-the-bar convention as .health-pill, just shorter, and aligned
-     past the class icon the same way .effects-row is. */
+     past the class icon the same way .effects-row is. Too thin (6px) to fit
+     a current/max label inside it like .health-pill-hp does, so the bar
+     track and its text label are laid out side by side in a row instead. */
   .power-pill {
-    position: relative;
-    height: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     margin-top: 3px;
     margin-left: 38px;
+  }
+
+  .power-pill-track {
+    position: relative;
+    flex: 1 1 auto;
+    height: 6px;
+    min-width: 0;
     border-radius: 3px;
     background: rgba(12, 14, 20, 0.72);
     border: 1px solid rgba(255,255,255,0.25);
@@ -152,9 +162,19 @@
     transition: width 150ms linear;
   }
 
+  .power-pill-text {
+    flex: 0 0 auto;
+    font-size: 9px;
+    font-variant-numeric: tabular-nums;
+    color: rgba(255,255,255,0.75);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    white-space: nowrap;
+  }
+
   .defenders .power-pill {
     margin-left: 0;
     margin-right: 38px;
+    flex-direction: row-reverse;
   }
 
   .health-pill-name,
@@ -289,6 +309,227 @@
   }
 
   /* ------------------------------------------------------------------- */
+  /* Mission progress panel — ticket (score bar + all 3 points' tug-of-war  */
+  /* bars, always active), raid (round counter + boss health), koth (one   */
+  /* big tug-of-war bar for whichever point is currently active/rotating,  */
+  /* plus a captured-points pip row), payload/breach (one tile per point). */
+  /* Exactly one mode block is shown at a time, picked by mission.mode.    */
+  /* Sits top-center, in the same reserved clearance as #layout-controls.  */
+  /* ------------------------------------------------------------------- */
+  #mission-panel {
+    display: none;
+    position: fixed;
+    top: 52px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: #fff;
+  }
+
+  body.admin-hidden #mission-panel { top: 16px; }
+
+  #mission-panel.visible { display: flex; }
+
+  .mission-ticket-block { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .mission-ticket-row, .mission-raid-row { display: flex; align-items: center; gap: 10px; }
+
+  .mission-ticket-team {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  }
+  .mission-ticket-team.attackers { color: #ff8a5c; }
+  .mission-ticket-team.defenders { color: #5cc7ff; }
+
+  .mission-ticket-bar {
+    position: relative;
+    width: 200px;
+    height: 14px;
+    border-radius: 4px;
+    background: rgba(12, 14, 20, 0.72);
+    border: 1px solid rgba(255,255,255,0.35);
+    overflow: hidden;
+  }
+  .mission-ticket-bar-fill {
+    position: absolute;
+    inset: 0;
+    width: 0%;
+    transition: width 150ms linear;
+  }
+  .mission-ticket-bar-fill.attackers { background: #ff8a5c; }
+  .mission-ticket-bar-fill.defenders { background: #5cc7ff; }
+
+  .mission-ticket-count {
+    font-size: 11px;
+    min-width: 64px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  }
+
+  /* Control's 3 capture points are always active simultaneously (unlike
+     koth's single rotating point), so this is a stack of small tug-of-war
+     bars underneath the existing attacker/defender score row -- one per
+     ATgMissionObjective, reusing .mission-tug-bar below at a smaller size. */
+  .mission-ticket-points-row { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+  #mission-ticket-points .mission-tug-bar { width: 200px; height: 14px; }
+  #mission-ticket-points .mission-tug-label { font-size: 9px; }
+
+  /* Breach's 3 points are sequential, not simultaneous -- same stacked-bar
+     layout as ticket, but only the currently active/unlocked point gets a
+     live tug fill; the rest render via .mission-tug-bar.locked below. */
+  #mission-breach { display: flex; flex-direction: column; gap: 4px; }
+  #mission-breach .mission-tug-bar { width: 220px; height: 16px; }
+  #mission-breach .mission-tug-label { font-size: 10px; }
+
+  /* Shared tug-of-war bar widget -- koth's single active-point bar (big),
+     ticket's per-point bars (small), and breach's per-point bars all use
+     this. The bar is ALWAYS fully filled, never empty in the middle: at the
+     neutral midpoint (capture_pct 0.5 -- confirmed in CtrPointRotation.cpp's
+     SpawnPoint, which seeds new koth points at exactly half of
+     m_fTimeToCapture) it's exactly half red/half blue, matching the retail
+     HUD from mission start. As a team captures, their color's share grows
+     and the split point slides toward the other team's edge; a fully
+     captured point is 100% one color. See tugFractions(). */
+  .mission-tug-bar {
+    position: relative;
+    height: 22px;
+    border-radius: 4px;
+    background: rgba(12, 14, 20, 0.72);
+    border: 1px solid rgba(255,255,255,0.35);
+    overflow: hidden;
+  }
+  /* Not yet contestable (breach point locked behind an earlier one) --
+     flat/dim, no red or blue, distinct from an active 50/50 neutral split. */
+  .mission-tug-bar.locked { opacity: 0.4; }
+  #mission-koth { flex-direction: column; align-items: center; gap: 6px; }
+  #mission-koth .mission-tug-bar { width: 280px; }
+  .mission-tug-fill-atk, .mission-tug-fill-def {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 0%;
+    transition: width 150ms linear;
+  }
+  .mission-tug-fill-atk { left: 0; background: #e53935; }
+  .mission-tug-fill-def { right: 0; background: #2196f3; }
+  .mission-tug-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    white-space: nowrap;
+  }
+
+  /* koth's "first to N points captured" rows -- Attackers/Defenders each get
+     points_to_win pips, filled solid once that many rounds/points are won.
+     Distinct from the per-point tug bars/payload segments elsewhere: those
+     track individual point capture state, this tracks overall match score,
+     same underlying field ticket's score bar already shows. */
+  .mission-points-rows { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+  .mission-points-row { display: flex; align-items: center; gap: 6px; }
+  .mission-points-row-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    width: 74px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  }
+  .mission-points-row-label.attackers { color: #ff8a5c; text-align: right; }
+  .mission-points-row-label.defenders { color: #5cc7ff; text-align: left; }
+  .mission-point-pip {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: rgba(12, 14, 20, 0.72);
+    border: 1px solid rgba(255,255,255,0.35);
+  }
+  .mission-point-pip.filled.attackers { background: #ff8a5c; }
+  .mission-point-pip.filled.defenders { background: #5cc7ff; }
+
+  .mission-raid-round {
+    font-size: 13px;
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  }
+
+  .mission-boss-bar {
+    position: relative;
+    width: 260px;
+    height: 16px;
+    border-radius: 4px;
+    background: rgba(12, 14, 20, 0.72);
+    border: 1px solid rgba(255,255,255,0.35);
+    overflow: hidden;
+  }
+  .mission-boss-bar-fill {
+    position: absolute;
+    inset: 0;
+    width: 0%;
+    background: #e53935;
+    transition: width 150ms linear;
+  }
+  .mission-boss-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  }
+
+  /* payload -- ONE connected pill divided into N equal segments (one per
+     push checkpoint, usually 3), not N separate widgets: a captured segment
+     (attackers already pushed past it) renders solid dark-red and dimmed; a
+     not-yet-reached segment (still defender-occupied) renders solid
+     dark-blue and dimmed; the current active segment renders a live
+     tug-of-war split (bright red/blue, same math as .mission-tug-bar) inside
+     its own slice. AVA_THEFT-style maps that only have 1 checkpoint just
+     render a single segment -- no special-casing needed, the width is
+     always 100/N%. */
+  .mission-payload-bar {
+    position: relative;
+    display: flex;
+    width: 300px;
+    height: 24px;
+    border-radius: 4px;
+    background: rgba(12, 14, 20, 0.72);
+    border: 1px solid rgba(255,255,255,0.35);
+    overflow: hidden;
+  }
+  .mission-payload-segment {
+    position: relative;
+    height: 100%;
+    border-right: 1px solid rgba(0,0,0,0.5);
+  }
+  .mission-payload-segment:last-child { border-right: none; }
+  /* Reuses .mission-tug-fill-atk/-def's absolute left/right positioning --
+     only the color is overridden per state (bright for the live segment,
+     dark/dimmed for captured or not-yet-reached ones). */
+  .mission-payload-segment .mission-tug-fill-atk,
+  .mission-payload-segment .mission-tug-fill-def {
+    transition: width 150ms linear;
+  }
+  .mission-payload-segment.captured .mission-tug-fill-atk,
+  .mission-payload-segment.captured .mission-tug-fill-def {
+    background: #7a1f1f;
+  }
+  .mission-payload-segment.pending .mission-tug-fill-atk,
+  .mission-payload-segment.pending .mission-tug-fill-def {
+    background: #0d3a55;
+  }
+
+  /* ------------------------------------------------------------------- */
   /* Layout editor (drag / resize) — only interactive in edit mode.       */
   /* ------------------------------------------------------------------- */
 
@@ -413,7 +654,48 @@
   <button id="reset-layout">Reset Layout</button>
   <button id="demo-toggle"></button>
   <button id="hp-toggle" title="In-game, players only ever see the health bar, never a number -- off by default to match."></button>
+  <button id="power-toggle" title="In-game, players only ever see the power/energy bar, never a number -- off by default to match."></button>
   <button id="resize-both" title="Drag left/right to resize both panels together">⇔ Resize Both</button>
+</div>
+
+<div id="mission-panel">
+  <div id="mission-ticket" class="mission-ticket-block">
+    <div class="mission-ticket-row">
+      <div class="mission-ticket-team attackers">ATK</div>
+      <div class="mission-ticket-bar"><div class="mission-ticket-bar-fill attackers" id="mission-ticket-fill-atk"></div></div>
+      <div class="mission-ticket-count" id="mission-ticket-count-atk"></div>
+      <div class="mission-ticket-count" id="mission-ticket-count-def"></div>
+      <div class="mission-ticket-bar"><div class="mission-ticket-bar-fill defenders" id="mission-ticket-fill-def"></div></div>
+      <div class="mission-ticket-team defenders">DEF</div>
+    </div>
+    <div id="mission-ticket-points" class="mission-ticket-points-row"></div>
+  </div>
+  <div id="mission-raid" class="mission-raid-row">
+    <div class="mission-raid-round" id="mission-raid-round"></div>
+    <div class="mission-boss-bar">
+      <div class="mission-boss-bar-fill" id="mission-boss-fill"></div>
+      <div class="mission-boss-label" id="mission-boss-label"></div>
+    </div>
+  </div>
+  <div id="mission-koth" class="mission-koth-block">
+    <div class="mission-tug-bar" id="mission-koth-tugbar">
+      <div class="mission-tug-fill-atk" id="mission-koth-fill-atk"></div>
+      <div class="mission-tug-fill-def" id="mission-koth-fill-def"></div>
+      <div class="mission-tug-label" id="mission-koth-label"></div>
+    </div>
+    <div class="mission-points-rows">
+      <div class="mission-points-row">
+        <div class="mission-points-row-label attackers">Attackers</div>
+        <div id="mission-koth-pips-atk" class="mission-points-row"></div>
+      </div>
+      <div class="mission-points-row">
+        <div class="mission-points-row-label defenders">Defenders</div>
+        <div id="mission-koth-pips-def" class="mission-points-row"></div>
+      </div>
+    </div>
+  </div>
+  <div id="mission-breach"></div>
+  <div id="mission-payload" class="mission-payload-bar"></div>
 </div>
 
 <div id="root">
@@ -478,6 +760,11 @@ let buildCache = {};
 // that text slot when this is off.
 const SHOW_HP_KEY = "spectatorOverlayShowHpNumber_v1";
 let showHpNumber = localStorage.getItem(SHOW_HP_KEY) === "1";
+
+// Same reasoning as SHOW_HP_KEY above, for the power/energy bar's own
+// current/max label -- off by default, toggleable in #layout-controls.
+const SHOW_POWER_KEY = "spectatorOverlayShowPowerNumber_v1";
+let showPowerNumber = localStorage.getItem(SHOW_POWER_KEY) === "1";
 
 // Max icons a single player's card ever shows -- anything beyond this
 // collapses into a "+N" badge instead of growing the card (and therefore the
@@ -612,9 +899,15 @@ function buildCard(p) {
 
   const powerPill = document.createElement("div");
   powerPill.className = "power-pill";
+  const powerTrack = document.createElement("div");
+  powerTrack.className = "power-pill-track";
   const powerFill = document.createElement("div");
   powerFill.className = "power-pill-fill";
-  powerPill.appendChild(powerFill);
+  const powerText = document.createElement("div");
+  powerText.className = "power-pill-text";
+  powerTrack.appendChild(powerFill);
+  powerPill.appendChild(powerTrack);
+  powerPill.appendChild(powerText);
   card.appendChild(powerPill);
 
   // Always present, even with zero active effects — its min-height (see
@@ -625,7 +918,7 @@ function buildCard(p) {
   card.appendChild(effectsRow);
 
   return {
-    card, classIconWrap, fill, name, hpText, powerFill, effectsRow,
+    card, classIconWrap, fill, name, hpText, powerFill, powerText, effectsRow,
     lastProfileId: p.profile_id, // classIconWrap above already matches this
     lastEffectKey: null,
   };
@@ -650,6 +943,10 @@ function updateCard(state, p) {
 
   const powerPct = p.power_max > 0 ? Math.max(0, Math.min(1, p.power / p.power_max)) : 0;
   state.powerFill.style.width = (powerPct * 100) + "%";
+  // Same off-by-default reasoning as SHOW_HP_KEY below -- players only ever
+  // see the bar in-game, never a number.
+  state.powerText.textContent = showPowerNumber
+    ? Math.round(p.power) + " / " + Math.round(p.power_max) : "";
 
   // Raw HP number is off by default (see SHOW_HP_KEY) -- the bar itself
   // (fill.style.width above) already conveys health the same way it does
@@ -678,6 +975,253 @@ function updateCard(state, p) {
       state.effectsRow.appendChild(overflowTagElement(ids.length - MAX_VISIBLE_EFFECTS));
     }
     state.lastEffectKey = effectKey;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Mission progress panel — ticket (score bar + all-3-points-active tug bars),
+// raid (round + boss health), koth (one active-point tug bar + captured-
+// points pips), payload/breach (one tile per point, unchanged). Exactly one
+// mode block is visible at a time, picked by mission.mode. Persistent DOM
+// nodes are keyed by ARRAY POSITION, not o.id/o.priority -- KOTH/Scramble's
+// rotation pool (see CtrPointRotation.cpp's SpawnPoint) deliberately gives
+// every point the same nObjectiveId (345, the mesh asset id) and the same
+// nPriority (1, "all equal -> random rotation"), so keying by either field
+// collapsed all of a match's points onto one shared/recycled DOM element.
+// The server-side array order is stable for the life of a match (points are
+// spawned once at Init, never re-sorted), so position is the one identity
+// that's actually unique per point in every mode.
+// ---------------------------------------------------------------------------
+const missionPanel           = document.getElementById("mission-panel");
+const missionTicket          = document.getElementById("mission-ticket");
+const missionTicketFillAtk   = document.getElementById("mission-ticket-fill-atk");
+const missionTicketFillDef   = document.getElementById("mission-ticket-fill-def");
+const missionTicketCountAtk  = document.getElementById("mission-ticket-count-atk");
+const missionTicketCountDef  = document.getElementById("mission-ticket-count-def");
+const missionTicketPoints    = document.getElementById("mission-ticket-points");
+const missionRaid            = document.getElementById("mission-raid");
+const missionRaidRound       = document.getElementById("mission-raid-round");
+const missionBossFill        = document.getElementById("mission-boss-fill");
+const missionBossLabel       = document.getElementById("mission-boss-label");
+const missionKoth            = document.getElementById("mission-koth");
+const missionKothFillAtk     = document.getElementById("mission-koth-fill-atk");
+const missionKothFillDef     = document.getElementById("mission-koth-fill-def");
+const missionKothLabel       = document.getElementById("mission-koth-label");
+const missionKothPipsAtk     = document.getElementById("mission-koth-pips-atk");
+const missionKothPipsDef     = document.getElementById("mission-koth-pips-def");
+const missionBreach          = document.getElementById("mission-breach");
+const missionPayload         = document.getElementById("mission-payload");
+
+// capture_pct is m_fCurrCaptureTime/m_fTimeToCapture, a single 0..1 "tug"
+// value with 0.5 as the neutral midpoint (CtrPointRotation.cpp's SpawnPoint
+// explicitly seeds new koth points at half of m_fTimeToCapture). The bar is
+// ALWAYS fully filled -- attacker(red) occupies the share up to the split
+// point, defender(blue) occupies the rest, so at pct=0.5 it's an even
+// half-red/half-blue split (matching the retail HUD from mission start),
+// and as a team captures, the split slides toward the OTHER team's edge
+// until that team's color fills the whole bar. CONFIRMED live (2026-07-30
+// Scramble + Control tests): pct trending toward 1 = attacker progress,
+// toward 0 = defender progress -- the opposite of this file's original
+// guess, which showed attacker captures filling blue instead of red.
+function tugFractions(pct) {
+  const p = Math.max(0, Math.min(1, pct));
+  return { atk: p, def: 1 - p };
+}
+
+const missionPayloadSegments = new Map(); // array position -> {el, fillAtk, fillDef}
+
+function ensurePayloadSegment(position) {
+  let entry = missionPayloadSegments.get(position);
+  if (!entry) {
+    const el = document.createElement("div");
+    el.className = "mission-payload-segment";
+    const fillAtk = document.createElement("div");
+    fillAtk.className = "mission-tug-fill-atk";
+    const fillDef = document.createElement("div");
+    fillDef.className = "mission-tug-fill-def";
+    el.appendChild(fillAtk);
+    el.appendChild(fillDef);
+    entry = { el, fillAtk, fillDef };
+    missionPayloadSegments.set(position, entry);
+  }
+  // appendChild on a node already in the document just MOVES it -- same
+  // move-not-recreate reasoning as renderTeam's card reordering.
+  missionPayload.appendChild(entry.el);
+  return entry;
+}
+
+// Payload's push checkpoints are sequential like breach, but rendered as ONE
+// connected pill split into N equal-width segments rather than N separate
+// bars: a segment before the active one is fully captured (solid dark-red,
+// dimmed), the active one gets a live tug-of-war split (bright, same math
+// as .mission-tug-bar), and segments after it are still defender-held
+// (solid dark-blue, dimmed). N is whatever mission.objectives.length is --
+// AVA_THEFT-style 1-checkpoint maps just render a single full-width segment.
+function renderPayloadBar(points) {
+  const activeIdx = points.findIndex(o => o.active && !o.locked);
+  const seen = new Set();
+  points.forEach((o, idx) => {
+    seen.add(idx);
+    const entry = ensurePayloadSegment(idx);
+    entry.el.style.width = (100 / points.length) + "%";
+    const isActive = idx === activeIdx;
+    const isCaptured = activeIdx >= 0 && idx < activeIdx;
+    entry.el.classList.toggle("captured", isCaptured);
+    entry.el.classList.toggle("pending", !isActive && !isCaptured);
+    if (isActive) {
+      const frac = tugFractions(o.capture_pct != null ? o.capture_pct : 0.5);
+      entry.fillAtk.style.width = (frac.atk * 100) + "%";
+      entry.fillDef.style.width = (frac.def * 100) + "%";
+    } else if (isCaptured) {
+      entry.fillAtk.style.width = "100%";
+      entry.fillDef.style.width = "0%";
+    } else {
+      entry.fillAtk.style.width = "0%";
+      entry.fillDef.style.width = "100%";
+    }
+  });
+  for (const [pos, entry] of missionPayloadSegments) {
+    if (!seen.has(pos)) { entry.el.remove(); missionPayloadSegments.delete(pos); }
+  }
+}
+
+// Persistent per-position tug-bar elements, one Map per container -- ticket's
+// simultaneously-active points and breach's sequential ones each get their
+// own (a shared Map would collide position 0 of one mode with position 0 of
+// another when switching modes mid-session). Move-not-recreate on every
+// update (appendChild on an already-attached node just moves it) so the
+// CSS width transition never resets mid-animation.
+function ensureTugBar(barMap, container, position) {
+  let entry = barMap.get(position);
+  if (!entry) {
+    const el = document.createElement("div");
+    el.className = "mission-tug-bar";
+    const fillAtk = document.createElement("div");
+    fillAtk.className = "mission-tug-fill-atk";
+    const fillDef = document.createElement("div");
+    fillDef.className = "mission-tug-fill-def";
+    const label = document.createElement("div");
+    label.className = "mission-tug-label";
+    el.appendChild(fillAtk);
+    el.appendChild(fillDef);
+    el.appendChild(label);
+    entry = { el, fillAtk, fillDef, label };
+    barMap.set(position, entry);
+  }
+  container.appendChild(entry.el);
+  return entry;
+}
+
+// Renders a stack of tug bars, one per point in priority order. A point that
+// isn't currently active/unlocked (breach's not-yet-reached points; never
+// true for ticket's always-active 3) renders as a dim, colorless "locked"
+// bar instead of a live 50/50-or-shifted split -- there's nothing to tug
+// over yet since it isn't contestable.
+function renderTugBarStack(container, barMap, points) {
+  const seen = new Set();
+  points.forEach((o, idx) => {
+    seen.add(idx);
+    const entry = ensureTugBar(barMap, container, idx);
+    const isLive = o.active && !o.locked;
+    entry.el.classList.toggle("locked", !isLive);
+    if (isLive) {
+      const frac = tugFractions(o.capture_pct != null ? o.capture_pct : 0.5);
+      entry.fillAtk.style.width = (frac.atk * 100) + "%";
+      entry.fillDef.style.width = (frac.def * 100) + "%";
+      entry.label.textContent = "Point " + (idx + 1);
+    } else {
+      entry.fillAtk.style.width = "0%";
+      entry.fillDef.style.width = "0%";
+      entry.label.textContent = "Point " + (idx + 1) + " (locked)";
+    }
+  });
+  for (const [pos, entry] of barMap) {
+    if (!seen.has(pos)) { entry.el.remove(); barMap.delete(pos); }
+  }
+}
+
+const missionTicketTugBars = new Map(); // array position -> {el, fillAtk, fillDef, label}
+const missionBreachTugBars = new Map();
+
+// koth's "first to points_to_win" pip row -- cheap plain divs with no images
+// and no fill-transition to preserve, so a full rebuild each poll is fine
+// (unlike the tug bars/objective pips above, nothing here benefits from
+// persistent nodes).
+function renderPointsPips(container, wonCount, total, teamClass) {
+  container.innerHTML = "";
+  for (let i = 0; i < total; i++) {
+    const pip = document.createElement("div");
+    pip.className = "mission-point-pip" + (i < wonCount ? " filled " + teamClass : "");
+    container.appendChild(pip);
+  }
+}
+
+function updateMissionPanel(mission) {
+  if (!mission || !mission.mode) {
+    missionPanel.classList.remove("visible");
+    return;
+  }
+  missionPanel.classList.add("visible");
+  missionTicket.style.display = "none";
+  missionRaid.style.display = "none";
+  missionKoth.style.display = "none";
+  missionBreach.style.display = "none";
+  missionPayload.style.display = "none";
+
+  if (mission.mode === "ticket") {
+    missionTicket.style.display = "flex";
+    const toWin = mission.points_to_win > 0 ? mission.points_to_win : 1;
+    const atkPct = Math.max(0, Math.min(1, mission.attacker_points / toWin));
+    const defPct = Math.max(0, Math.min(1, mission.defender_points / toWin));
+    missionTicketFillAtk.style.width = (atkPct * 100) + "%";
+    missionTicketFillDef.style.width = (defPct * 100) + "%";
+    missionTicketCountAtk.textContent = mission.attacker_points + " / " + mission.points_to_win;
+    missionTicketCountDef.textContent = mission.defender_points + " / " + mission.points_to_win;
+
+    // Control's capture points are always active -- one small tug bar per
+    // point, in priority order (position-keyed, see the file-level comment).
+    const points = (mission.objectives || []).slice().sort((a, b) => a.priority - b.priority);
+    renderTugBarStack(missionTicketPoints, missionTicketTugBars, points);
+  } else if (mission.mode === "raid") {
+    missionRaid.style.display = "flex";
+    missionRaidRound.textContent = "Round " + mission.round_current + " / " + mission.round_max;
+    const bossPct = mission.boss_health_max > 0
+      ? Math.max(0, Math.min(1, mission.boss_health / mission.boss_health_max)) : 0;
+    missionBossFill.style.width = (bossPct * 100) + "%";
+    missionBossLabel.textContent = mission.boss_health_max > 0
+      ? (mission.boss_health + " / " + mission.boss_health_max) : "";
+  } else if (mission.mode === "koth") {
+    missionKoth.style.display = "flex";
+    const points = (mission.objectives || []).slice().sort((a, b) => a.priority - b.priority);
+    // active-and-unlocked is the one point currently eligible to be
+    // contested; everything else is locked/pending during a rotation swap.
+    const activeIdx = points.findIndex(o => o.active && !o.locked);
+    if (activeIdx >= 0) {
+      const frac = tugFractions(points[activeIdx].capture_pct != null ? points[activeIdx].capture_pct : 0.5);
+      missionKothFillAtk.style.width = (frac.atk * 100) + "%";
+      missionKothFillDef.style.width = (frac.def * 100) + "%";
+      missionKothLabel.textContent = "Point " + (activeIdx + 1);
+    } else {
+      missionKothFillAtk.style.width = "50%";
+      missionKothFillDef.style.width = "50%";
+      missionKothLabel.textContent = "Point being selected";
+    }
+
+    const toWin = mission.points_to_win > 0 ? mission.points_to_win : 3;
+    renderPointsPips(missionKothPipsAtk, mission.attacker_points || 0, toWin, "attackers");
+    renderPointsPips(missionKothPipsDef, mission.defender_points || 0, toWin, "defenders");
+  } else if (mission.mode === "breach") {
+    missionBreach.style.display = "flex";
+    // Sequential, not simultaneous -- only the currently active/unlocked
+    // point gets a live tug fill; later points render "locked" until the
+    // earlier one is captured (see renderTugBarStack).
+    const points = (mission.objectives || []).slice().sort((a, b) => a.priority - b.priority);
+    renderTugBarStack(missionBreach, missionBreachTugBars, points);
+  } else if (mission.mode === "payload") {
+    missionPayload.style.display = "flex";
+    // One connected pill, N equal segments -- see renderPayloadBar.
+    const points = (mission.objectives || []).slice().sort((a, b) => a.priority - b.priority);
+    renderPayloadBar(points);
   }
 }
 
@@ -764,6 +1308,145 @@ const DEMO_MAX_EFFECTS = 14;
 // around every poll.
 const demoState = new Map();
 
+// Mission-progress demo -- cycles through ticket, raid, koth, breach,
+// payload every 6s so layout/positioning for all of them can be rehearsed
+// without needing five different live matches. Running counters persist
+// across polls the same way demoState does above, so values drift smoothly
+// instead of jumping.
+const demoMissionState = {
+  // ticket -- overall score (unrelated to the per-point tug bars below) plus
+  // 3 simultaneously-active capture points that drift around the neutral
+  // midpoint (0.5), same as a real contested Control map.
+  ticketAttackerPoints: 0, ticketDefenderPoints: 0,
+  ticketPoints: [
+    { id: 1, priority: 1, locked: false, active: true, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 1, priority: 2, locked: false, active: true, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 1, priority: 3, locked: false, active: true, owner_taskforce: 0, capture_pct: 0.5 },
+  ],
+
+  round: 1, bossHealth: 100000, bossHealthMax: 100000,
+
+  // koth -- a small rotation pool sharing the same id/priority (exactly like
+  // CtrPointRotation.cpp's real pool) with one point active at a time.
+  // capture_pct tugs toward 0 (attacker) or 1 (defender); reaching an
+  // extreme awards that team a point and starts a brief "being selected" gap.
+  kothAttackerPoints: 0, kothDefenderPoints: 0,
+  kothPoints: [
+    { id: 345, priority: 1, locked: true, active: false, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 345, priority: 1, locked: true, active: false, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 345, priority: 1, locked: true, active: false, owner_taskforce: 0, capture_pct: 0.5 },
+  ],
+  kothRotatingUntil: 0,
+
+  // breach -- sequential 3-point unlock chain, rendered as stacked tug bars.
+  breachObjectives: [
+    { id: 1, priority: 1, locked: false, active: true,  owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 2, priority: 2, locked: true,  active: false, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 3, priority: 3, locked: true,  active: false, owner_taskforce: 0, capture_pct: 0.5 },
+  ],
+
+  // payload -- same sequential-unlock mechanic as breach, but rendered as
+  // one connected segmented pill (see renderPayloadBar) instead of stacked
+  // separate bars.
+  payloadObjectives: [
+    { id: 1, priority: 1, locked: false, active: true,  owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 2, priority: 2, locked: true,  active: false, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 3, priority: 3, locked: true,  active: false, owner_taskforce: 0, capture_pct: 0.5 },
+  ],
+};
+
+function generateDemoMission() {
+  const mode = ["ticket", "raid", "koth", "breach", "payload"][Math.floor(Date.now() / 6000) % 5];
+
+  if (mode === "ticket") {
+    demoMissionState.ticketAttackerPoints = Math.min(800, demoMissionState.ticketAttackerPoints + Math.random() * 6);
+    demoMissionState.ticketDefenderPoints = Math.min(800, demoMissionState.ticketDefenderPoints + Math.random() * 4);
+    demoMissionState.ticketPoints.forEach(o => {
+      o.capture_pct = Math.max(0, Math.min(1, o.capture_pct + (Math.random() - 0.5) * 0.08));
+    });
+    return {
+      mode,
+      attacker_points: Math.round(demoMissionState.ticketAttackerPoints),
+      defender_points: Math.round(demoMissionState.ticketDefenderPoints),
+      points_to_win: 800,
+      objectives: demoMissionState.ticketPoints.map(o => ({ ...o })),
+    };
+  }
+
+  if (mode === "raid") {
+    demoMissionState.bossHealth -= Math.random() * 900;
+    if (demoMissionState.bossHealth <= 0) {
+      demoMissionState.bossHealth = demoMissionState.bossHealthMax;
+      demoMissionState.round = demoMissionState.round >= 4 ? 1 : demoMissionState.round + 1;
+    }
+    return {
+      mode,
+      round_current: demoMissionState.round,
+      round_max: 4,
+      boss_health: Math.max(0, Math.round(demoMissionState.bossHealth)),
+      boss_health_max: demoMissionState.bossHealthMax,
+    };
+  }
+
+  if (mode === "koth") {
+    const points = demoMissionState.kothPoints;
+    let active = points.find(o => o.active && !o.locked);
+    if (!active && Date.now() > demoMissionState.kothRotatingUntil) {
+      const next = points[Math.floor(Math.random() * points.length)];
+      next.locked = false; next.active = true; next.capture_pct = 0.5;
+      active = next;
+    }
+    if (active) {
+      active.capture_pct = Math.max(0, Math.min(1, active.capture_pct + (Math.random() - 0.5) * 0.06));
+      if (active.capture_pct <= 0.02 || active.capture_pct >= 0.98) {
+        if (active.capture_pct <= 0.02) demoMissionState.kothAttackerPoints++;
+        else demoMissionState.kothDefenderPoints++;
+        active.locked = true;
+        active.active = false;
+        active.capture_pct = 0.5;
+        demoMissionState.kothRotatingUntil = Date.now() + 2000;
+      }
+    }
+    return {
+      mode,
+      attacker_points: demoMissionState.kothAttackerPoints,
+      defender_points: demoMissionState.kothDefenderPoints,
+      points_to_win: 3,
+      objectives: points.map(o => ({ ...o })),
+    };
+  }
+
+  // Shared by breach (stacked bars) and payload (one segmented pill) --
+  // sequential tug-of-war: the active point starts neutral (0.5) same as
+  // koth's, but only capturing it all the way to the ATTACKER'S end unlocks
+  // the next one -- defenders pushing it back near their own end just gets
+  // bounced short of completing, matching "defenders defend, attackers must
+  // break through" rather than koth's either-team-can-win-it.
+  function advanceSequentialCapture(objs) {
+    const active = objs.find(o => o.active && !o.locked);
+    if (!active) return;
+    active.capture_pct = Math.max(0, Math.min(1, active.capture_pct + (Math.random() - 0.42) * 0.05));
+    if (active.capture_pct <= 0.02) {
+      active.locked = true;
+      active.active = false;
+      const next = objs[objs.indexOf(active) + 1];
+      if (next) { next.locked = false; next.active = true; next.capture_pct = 0.5; }
+      else { objs.forEach((o, i) => { o.locked = i !== 0; o.active = i === 0; o.capture_pct = 0.5; }); }
+    } else if (active.capture_pct >= 0.9) {
+      active.capture_pct = 0.75;
+    }
+  }
+
+  if (mode === "breach") {
+    advanceSequentialCapture(demoMissionState.breachObjectives);
+    return { mode, objectives: demoMissionState.breachObjectives.map(o => ({ ...o })) };
+  }
+
+  // payload
+  advanceSequentialCapture(demoMissionState.payloadObjectives);
+  return { mode, objectives: demoMissionState.payloadObjectives.map(o => ({ ...o })) };
+}
+
 function generateDemoSnapshot() {
   const players = DEMO_ROSTER.map((p, idx) => {
     let st = demoState.get(p.name);
@@ -808,6 +1491,7 @@ async function poll() {
     const data = generateDemoSnapshot();
     renderTeam("cards-attackers", sortByClassOrder(data.players.filter(p => p.task_force === 1)));
     renderTeam("cards-defenders", sortByClassOrder(data.players.filter(p => p.task_force === 2)));
+    updateMissionPanel(generateDemoMission());
     status.textContent = "DEMO MODE — " + data.players.length + " sample players";
     return;
   }
@@ -816,6 +1500,7 @@ async function poll() {
     status.textContent = "select an instance above to begin";
     renderTeam("cards-attackers", []);
     renderTeam("cards-defenders", []);
+    updateMissionPanel(null);
     return;
   }
 
@@ -832,6 +1517,7 @@ async function poll() {
 
     renderTeam("cards-attackers", sortByClassOrder(players.filter(p => p.task_force === 1)));
     renderTeam("cards-defenders", sortByClassOrder(players.filter(p => p.task_force === 2)));
+    updateMissionPanel(data.mission || null);
 
     status.textContent = "instance " + data.instance_id + " — " + players.length + " tracked";
   } catch (e) {
@@ -1150,6 +1836,18 @@ hpBtn.addEventListener("click", () => {
   refreshHpButton();
 });
 refreshHpButton();
+
+const powerBtn = document.getElementById("power-toggle");
+function refreshPowerButton() {
+  powerBtn.textContent = showPowerNumber ? "Power Number: ON" : "Power Number: OFF";
+  powerBtn.classList.toggle("active", showPowerNumber);
+}
+powerBtn.addEventListener("click", () => {
+  showPowerNumber = !showPowerNumber;
+  localStorage.setItem(SHOW_POWER_KEY, showPowerNumber ? "1" : "0");
+  refreshPowerButton();
+});
+refreshPowerButton();
 
 ["panel-attackers", "panel-defenders"].forEach(id => {
   const panel = document.getElementById(id);

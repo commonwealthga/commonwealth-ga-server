@@ -10,6 +10,7 @@
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/ControlServer/SpectatorOverlay/OverlayHttpServer.hpp"
 #include "src/ControlServer/SpectatorOverlay/SpectatorOverlayState.hpp"
+#include "src/ControlServer/SpectatorOverlay/MissionProgressState.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
@@ -1169,6 +1170,7 @@ int main(int argc, char* argv[]) {
             // itself stops, which for a still-running match could be a long
             // time. Sweep() prunes stale entries everywhere unconditionally.
             SpectatorOverlayState::Sweep();
+            MissionProgressState::Sweep();
 
             schedule_idle_check();
         });

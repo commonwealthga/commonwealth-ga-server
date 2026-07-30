@@ -13,6 +13,7 @@
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/SpectatorOverlay/SpectatorOverlayState.hpp"
+#include "src/ControlServer/SpectatorOverlay/MissionProgressState.hpp"
 #include "src/ControlServer/SpectatorOverlay/SkillTreeCatalog.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 
@@ -190,6 +191,38 @@ private:
         nlohmann::json body;
         body["instance_id"] = instance_id;
         body["players"]     = players;
+
+        if (const auto mission = MissionProgressState::GetForInstance(instance_id)) {
+            // Additive, not mutually exclusive by mode -- see
+            // IpcProtocol.hpp's MSG_MISSION_PROGRESS_SNAPSHOT doc.
+            nlohmann::json m;
+            m["mode"] = mission->mode;
+            if (mission->mode == "ticket" || mission->mode == "koth") {
+                m["attacker_points"] = mission->attacker_points;
+                m["defender_points"] = mission->defender_points;
+                m["points_to_win"]   = mission->points_to_win;
+            }
+            if (mission->mode == "raid") {
+                m["round_current"]   = mission->round_current;
+                m["round_max"]       = mission->round_max;
+                m["boss_health"]     = mission->boss_health;
+                m["boss_health_max"] = mission->boss_health_max;
+            } else {
+                nlohmann::json objectives = nlohmann::json::array();
+                for (const auto& o : mission->objectives) {
+                    nlohmann::json jo;
+                    jo["id"]              = o.id;
+                    jo["priority"]        = o.priority;
+                    jo["locked"]          = o.locked;
+                    jo["active"]          = o.active;
+                    jo["owner_taskforce"] = o.owner_taskforce;
+                    jo["capture_pct"]     = o.capture_pct;
+                    objectives.push_back(jo);
+                }
+                m["objectives"] = objectives;
+            }
+            body["mission"] = m;
+        }
 
         send_response(200, "OK", body.dump());
     }

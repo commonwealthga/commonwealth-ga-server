@@ -18,6 +18,7 @@
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/SpectatorOverlay/SpectatorOverlayState.hpp"
+#include "src/ControlServer/SpectatorOverlay/MissionProgressState.hpp"
 #include "src/ControlServer/SpectatorOverlay/OverlayIdCatalog.hpp"
 #include <ctime>
 #include <unordered_set>
@@ -65,6 +66,7 @@ bool StopNonHomeInstanceIfEmpty(int64_t instance_id, const char* reason) {
     InstanceSpawner::StopInstanceProcess(*inst, reason ? reason : "empty non-home instance");
     InstanceRegistry::MarkStopped(instance_id);
     SpectatorOverlayState::ClearInstance(instance_id);
+    MissionProgressState::ClearInstance(instance_id);
     return true;
 }
 
@@ -172,6 +174,7 @@ private:
                 instance_id_, "instance disconnected before INSTANCE_READY");
             InstanceRegistry::MarkStopped(instance_id_);
             SpectatorOverlayState::ClearInstance(instance_id_);
+            MissionProgressState::ClearInstance(instance_id_);
             Logger::Log("ipc", "[IpcServer] Instance %lld disconnected, marked STOPPED\n",
                 (long long)instance_id_);
         }
@@ -337,6 +340,44 @@ private:
             }
             snap.updated_at = (int64_t)std::time(nullptr);
             SpectatorOverlayState::Update(inst_id, snap);
+        }
+        else if (type == IpcProtocol::MSG_MISSION_PROGRESS_SNAPSHOT) {
+            int64_t inst_id = j.value("instance_id", (int64_t)0);
+            if (inst_id == 0) return;
+
+            MissionProgressState::MissionSnapshot snap;
+            snap.mode = j.value("mode", "");
+            if (snap.mode.empty()) return;
+
+            // Additive, not mutually exclusive by mode -- ticket AND koth both
+            // carry the team-score fields, and every mode except raid carries
+            // objectives (see IpcProtocol.hpp's MSG_MISSION_PROGRESS_SNAPSHOT doc).
+            if (snap.mode == "ticket" || snap.mode == "koth") {
+                snap.attacker_points = j.value("attacker_points", 0);
+                snap.defender_points = j.value("defender_points", 0);
+                snap.points_to_win   = j.value("points_to_win", 0);
+            }
+            if (snap.mode == "raid") {
+                snap.round_current   = j.value("round_current", 0);
+                snap.round_max       = j.value("round_max", 0);
+                snap.boss_health     = j.value("boss_health", 0);
+                snap.boss_health_max = j.value("boss_health_max", 0);
+            }
+            if (j.contains("objectives") && j["objectives"].is_array()) {
+                for (const auto& raw : j["objectives"]) {
+                    MissionProgressState::Objective obj;
+                    obj.id              = raw.value("id", 0);
+                    obj.priority        = raw.value("priority", 0);
+                    obj.locked          = raw.value("locked", false);
+                    obj.active          = raw.value("active", false);
+                    obj.owner_taskforce = raw.value("owner_taskforce", 0);
+                    obj.capture_pct     = raw.value("capture_pct", 0.0f);
+                    snap.objectives.push_back(obj);
+                }
+            }
+
+            snap.updated_at = (int64_t)std::time(nullptr);
+            MissionProgressState::Update(inst_id, snap);
         }
         else if (type == IpcProtocol::MSG_INSTANCE_EMPTY) {
             int64_t inst_id = j.value("instance_id", (int64_t)0);

@@ -86,6 +86,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Stats/StatsCore.cpp \
 			  $(SRC_DIR)/GameServer/Stats/MatchStats.cpp \
 			  $(SRC_DIR)/GameServer/Stats/SpectatorOverlayFeed/SpectatorOverlayFeed.cpp \
+			  $(SRC_DIR)/GameServer/Stats/MissionProgressFeed/MissionProgressFeed.cpp \
 			  $(SRC_DIR)/GameServer/Stats/DeviceStats.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/ClientConnection/SendMarshal/ClientConnection__SendMarshal.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.cpp \
@@ -636,6 +637,7 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/ChatSession/ChatCommand.cpp \
 	$(CS_SRC_DIR)/IpcServer/IpcServer.cpp \
 	$(CS_SRC_DIR)/SpectatorOverlay/SpectatorOverlayState.cpp \
+	$(CS_SRC_DIR)/SpectatorOverlay/MissionProgressState.cpp \
 	$(CS_SRC_DIR)/SpectatorOverlay/OverlayHttpServer.cpp \
 	$(CS_SRC_DIR)/SpectatorOverlay/OverlayIdCatalog.cpp \
 	$(CS_SRC_DIR)/SpectatorOverlay/SkillTreeCatalog.cpp \
