@@ -17,6 +17,7 @@ class MissionProgressState {
 public:
     struct Objective {
         int id = 0;
+        std::string name;  // "" if no DB row/translation -- see ObjectiveNames.hpp
         int priority = 0;
         bool locked = false;
         bool active = false;
@@ -25,9 +26,9 @@ public:
     };
 
     struct MissionSnapshot {
-        std::string mode;  // "ticket" | "raid" | "koth" | "payload" | "breach"
+        std::string mode;  // "ticket" | "raid" | "koth" | "payload" | "breach" | "pve" | "superagent"
 
-        // mode == "ticket"
+        // mode == "ticket" | "koth"
         int attacker_points = 0;
         int defender_points = 0;
         int points_to_win = 0;
@@ -35,10 +36,19 @@ public:
         // mode == "raid"
         int round_current = 0;
         int round_max = 0;
+
+        // mode == "raid" | "pve" | "superagent"
         int boss_health = 0;
         int boss_health_max = 0;
+        std::string boss_name;
 
-        // mode == "koth" | "payload" | "breach"
+        // mode == "raid" only -- a defender-owned NPC/reactor being protected,
+        // separate from the boss (e.g. "Bancroft" on Raid_DomeCityDefense_P).
+        int friendly_health = 0;
+        int friendly_health_max = 0;
+        std::string friendly_name;
+
+        // mode == "ticket" | "koth" | "payload" | "breach" | "superagent"
         std::vector<Objective> objectives;
 
         int64_t updated_at = 0;  // unix seconds -- used to prune a stale/ended match

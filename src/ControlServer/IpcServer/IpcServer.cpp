@@ -349,24 +349,30 @@ private:
             snap.mode = j.value("mode", "");
             if (snap.mode.empty()) return;
 
-            // Additive, not mutually exclusive by mode -- ticket AND koth both
-            // carry the team-score fields, and every mode except raid carries
-            // objectives (see IpcProtocol.hpp's MSG_MISSION_PROGRESS_SNAPSHOT doc).
+            // Additive, not mutually exclusive by mode -- see
+            // IpcProtocol.hpp's MSG_MISSION_PROGRESS_SNAPSHOT doc.
             if (snap.mode == "ticket" || snap.mode == "koth") {
                 snap.attacker_points = j.value("attacker_points", 0);
                 snap.defender_points = j.value("defender_points", 0);
                 snap.points_to_win   = j.value("points_to_win", 0);
             }
             if (snap.mode == "raid") {
-                snap.round_current   = j.value("round_current", 0);
-                snap.round_max       = j.value("round_max", 0);
+                snap.round_current = j.value("round_current", 0);
+                snap.round_max     = j.value("round_max", 0);
+                snap.friendly_health     = j.value("friendly_health", 0);
+                snap.friendly_health_max = j.value("friendly_health_max", 0);
+                snap.friendly_name       = j.value("friendly_name", "");
+            }
+            if (snap.mode == "raid" || snap.mode == "pve" || snap.mode == "superagent") {
                 snap.boss_health     = j.value("boss_health", 0);
                 snap.boss_health_max = j.value("boss_health_max", 0);
+                snap.boss_name       = j.value("boss_name", "");
             }
             if (j.contains("objectives") && j["objectives"].is_array()) {
                 for (const auto& raw : j["objectives"]) {
                     MissionProgressState::Objective obj;
                     obj.id              = raw.value("id", 0);
+                    obj.name            = raw.value("name", "");
                     obj.priority        = raw.value("priority", 0);
                     obj.locked          = raw.value("locked", false);
                     obj.active          = raw.value("active", false);

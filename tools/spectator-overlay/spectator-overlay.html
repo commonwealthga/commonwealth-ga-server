@@ -456,12 +456,26 @@
   .mission-point-pip.filled.attackers { background: #ff8a5c; }
   .mission-point-pip.filled.defenders { background: #5cc7ff; }
 
+  /* Raid/pve/superagent all stack their bar(s) vertically -- the koth-block
+     flex-direction bug (forgotten once already) is exactly why each of
+     these gets its own explicit rule rather than relying on inheritance. */
+  .mission-raid-block, .mission-pve-block, .mission-superagent-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
   .mission-raid-round {
     font-size: 13px;
     font-weight: 700;
     text-shadow: 0 1px 3px rgba(0,0,0,0.9);
   }
 
+  /* Shared boss/friendly health-bar widget -- raid's hostile boss AND its
+     defended "friendly" NPC (distinct color), plus pve/superagent's solo
+     boss, all use this. Label shows "Name: HP / MaxHP" when a name resolved
+     (see ObjectiveNames.hpp), else just "HP / MaxHP". */
   .mission-boss-bar {
     position: relative;
     width: 260px;
@@ -478,6 +492,7 @@
     background: #e53935;
     transition: width 150ms linear;
   }
+  .mission-boss-bar-fill.friendly { background: #4caf50; }
   .mission-boss-label {
     position: absolute;
     inset: 0;
@@ -487,6 +502,9 @@
     font-size: 10px;
     text-shadow: 0 1px 2px rgba(0,0,0,0.8);
   }
+
+  #mission-superagent-points { display: flex; flex-direction: column; gap: 4px; }
+  #mission-superagent-points .mission-tug-bar { width: 240px; height: 18px; }
 
   /* payload -- ONE connected pill divided into N equal segments (one per
      push checkpoint, usually 3), not N separate widgets: a captured segment
@@ -670,12 +688,29 @@
     </div>
     <div id="mission-ticket-points" class="mission-ticket-points-row"></div>
   </div>
-  <div id="mission-raid" class="mission-raid-row">
+  <div id="mission-raid" class="mission-raid-block">
     <div class="mission-raid-round" id="mission-raid-round"></div>
     <div class="mission-boss-bar">
       <div class="mission-boss-bar-fill" id="mission-boss-fill"></div>
       <div class="mission-boss-label" id="mission-boss-label"></div>
     </div>
+    <div class="mission-boss-bar" id="mission-friendly-bar">
+      <div class="mission-boss-bar-fill friendly" id="mission-friendly-fill"></div>
+      <div class="mission-boss-label" id="mission-friendly-label"></div>
+    </div>
+  </div>
+  <div id="mission-pve" class="mission-pve-block">
+    <div class="mission-boss-bar">
+      <div class="mission-boss-bar-fill" id="mission-pve-boss-fill"></div>
+      <div class="mission-boss-label" id="mission-pve-boss-label"></div>
+    </div>
+  </div>
+  <div id="mission-superagent" class="mission-superagent-block">
+    <div class="mission-boss-bar">
+      <div class="mission-boss-bar-fill" id="mission-superagent-boss-fill"></div>
+      <div class="mission-boss-label" id="mission-superagent-boss-label"></div>
+    </div>
+    <div id="mission-superagent-points"></div>
   </div>
   <div id="mission-koth" class="mission-koth-block">
     <div class="mission-tug-bar" id="mission-koth-tugbar">
@@ -1003,6 +1038,16 @@ const missionRaid            = document.getElementById("mission-raid");
 const missionRaidRound       = document.getElementById("mission-raid-round");
 const missionBossFill        = document.getElementById("mission-boss-fill");
 const missionBossLabel       = document.getElementById("mission-boss-label");
+const missionFriendlyBar     = document.getElementById("mission-friendly-bar");
+const missionFriendlyFill    = document.getElementById("mission-friendly-fill");
+const missionFriendlyLabel   = document.getElementById("mission-friendly-label");
+const missionPve             = document.getElementById("mission-pve");
+const missionPveBossFill     = document.getElementById("mission-pve-boss-fill");
+const missionPveBossLabel    = document.getElementById("mission-pve-boss-label");
+const missionSuperagent           = document.getElementById("mission-superagent");
+const missionSuperagentBossFill   = document.getElementById("mission-superagent-boss-fill");
+const missionSuperagentBossLabel  = document.getElementById("mission-superagent-boss-label");
+const missionSuperagentPoints     = document.getElementById("mission-superagent-points");
 const missionKoth            = document.getElementById("mission-koth");
 const missionKothFillAtk     = document.getElementById("mission-koth-fill-atk");
 const missionKothFillDef     = document.getElementById("mission-koth-fill-def");
@@ -1026,6 +1071,22 @@ const missionPayload         = document.getElementById("mission-payload");
 function tugFractions(pct) {
   const p = Math.max(0, Math.min(1, pct));
   return { atk: p, def: 1 - p };
+}
+
+// Prefer the friendly name the server resolved (ObjectiveNames.hpp, joining
+// nObjectiveId through asm_data_set_objectives/msg_translations) -- but
+// custom-spawned pools (koth's rotation points, and apparently at least some
+// Payload maps) reuse ONE nObjectiveId across every point, so if multiple
+// points in THIS SAME array share a name, showing it would look like a bug
+// (every point labeled identically). Falls back to "Point N" for all of
+// them in that case rather than trusting a duplicate name.
+function pointLabels(points) {
+  const counts = new Map();
+  points.forEach(o => {
+    if (!o.name) return;
+    counts.set(o.name, (counts.get(o.name) || 0) + 1);
+  });
+  return points.map((o, idx) => (o.name && counts.get(o.name) === 1) ? o.name : "Point " + (idx + 1));
 }
 
 const missionPayloadSegments = new Map(); // array position -> {el, fillAtk, fillDef}
@@ -1118,6 +1179,7 @@ function ensureTugBar(barMap, container, position) {
 // bar instead of a live 50/50-or-shifted split -- there's nothing to tug
 // over yet since it isn't contestable.
 function renderTugBarStack(container, barMap, points) {
+  const labels = pointLabels(points);
   const seen = new Set();
   points.forEach((o, idx) => {
     seen.add(idx);
@@ -1128,11 +1190,11 @@ function renderTugBarStack(container, barMap, points) {
       const frac = tugFractions(o.capture_pct != null ? o.capture_pct : 0.5);
       entry.fillAtk.style.width = (frac.atk * 100) + "%";
       entry.fillDef.style.width = (frac.def * 100) + "%";
-      entry.label.textContent = "Point " + (idx + 1);
+      entry.label.textContent = labels[idx];
     } else {
       entry.fillAtk.style.width = "0%";
       entry.fillDef.style.width = "0%";
-      entry.label.textContent = "Point " + (idx + 1) + " (locked)";
+      entry.label.textContent = labels[idx] + " (locked)";
     }
   });
   for (const [pos, entry] of barMap) {
@@ -1140,8 +1202,9 @@ function renderTugBarStack(container, barMap, points) {
   }
 }
 
-const missionTicketTugBars = new Map(); // array position -> {el, fillAtk, fillDef, label}
-const missionBreachTugBars = new Map();
+const missionTicketTugBars     = new Map(); // array position -> {el, fillAtk, fillDef, label}
+const missionBreachTugBars     = new Map();
+const missionSuperagentTugBars = new Map();
 
 // koth's "first to points_to_win" pip row -- cheap plain divs with no images
 // and no fill-transition to preserve, so a full rebuild each poll is fine
@@ -1164,9 +1227,19 @@ function updateMissionPanel(mission) {
   missionPanel.classList.add("visible");
   missionTicket.style.display = "none";
   missionRaid.style.display = "none";
+  missionPve.style.display = "none";
+  missionSuperagent.style.display = "none";
   missionKoth.style.display = "none";
   missionBreach.style.display = "none";
   missionPayload.style.display = "none";
+
+  // "Name: HP / MaxHP" when a friendly name resolved server-side, else just
+  // "HP / MaxHP" -- shared by raid's boss/friendly bars and pve/superagent's
+  // boss bar. "" (bar hidden/empty) when maxHp is 0 (no such bot on this map).
+  function bossLabelText(name, hp, maxHp) {
+    if (maxHp <= 0) return "";
+    return (name ? name + ": " : "") + hp + " / " + maxHp;
+  }
 
   if (mission.mode === "ticket") {
     missionTicket.style.display = "flex";
@@ -1184,12 +1257,51 @@ function updateMissionPanel(mission) {
     renderTugBarStack(missionTicketPoints, missionTicketTugBars, points);
   } else if (mission.mode === "raid") {
     missionRaid.style.display = "flex";
-    missionRaidRound.textContent = "Round " + mission.round_current + " / " + mission.round_max;
+    // Shown as "Wave" on the overlay -- same underlying round counter.
+    missionRaidRound.textContent = "Wave " + mission.round_current + " / " + mission.round_max;
+
     const bossPct = mission.boss_health_max > 0
       ? Math.max(0, Math.min(1, mission.boss_health / mission.boss_health_max)) : 0;
     missionBossFill.style.width = (bossPct * 100) + "%";
-    missionBossLabel.textContent = mission.boss_health_max > 0
-      ? (mission.boss_health + " / " + mission.boss_health_max) : "";
+    missionBossLabel.textContent = bossLabelText(mission.boss_name, mission.boss_health, mission.boss_health_max);
+
+    // The defended "friendly" NPC/reactor -- absent on maps that don't use
+    // that half of the pattern, so the whole bar hides rather than showing
+    // an empty one.
+    const hasFriendly = mission.friendly_health_max > 0;
+    missionFriendlyBar.style.display = hasFriendly ? "block" : "none";
+    if (hasFriendly) {
+      const friendlyPct = Math.max(0, Math.min(1, mission.friendly_health / mission.friendly_health_max));
+      missionFriendlyFill.style.width = (friendlyPct * 100) + "%";
+      missionFriendlyLabel.textContent =
+        bossLabelText(mission.friendly_name, mission.friendly_health, mission.friendly_health_max);
+    }
+  } else if (mission.mode === "pve") {
+    missionPve.style.display = "flex";
+    const bossPct = mission.boss_health_max > 0
+      ? Math.max(0, Math.min(1, mission.boss_health / mission.boss_health_max)) : 0;
+    missionPveBossFill.style.width = (bossPct * 100) + "%";
+    missionPveBossLabel.textContent = bossLabelText(mission.boss_name, mission.boss_health, mission.boss_health_max);
+  } else if (mission.mode === "superagent") {
+    missionSuperagent.style.display = "flex";
+    const bossAlive = mission.boss_health_max > 0 && mission.boss_health > 0;
+    const bossPct = mission.boss_health_max > 0
+      ? Math.max(0, Math.min(1, mission.boss_health / mission.boss_health_max)) : 0;
+    missionSuperagentBossFill.style.width = (bossPct * 100) + "%";
+    missionSuperagentBossLabel.textContent = mission.boss_health_max > 0
+      ? bossLabelText(mission.boss_name, mission.boss_health, mission.boss_health_max)
+      : "Boss defeated";
+
+    // Boss first, then the two sequential captures (the 5-min hold, then
+    // the final dropship point) once it's dead -- matches the mission's
+    // real flow (kill boss -> only the captures matter after that).
+    if (bossAlive) {
+      missionSuperagentPoints.style.display = "none";
+    } else {
+      missionSuperagentPoints.style.display = "flex";
+      const points = (mission.objectives || []).slice().sort((a, b) => a.priority - b.priority);
+      renderTugBarStack(missionSuperagentPoints, missionSuperagentTugBars, points);
+    }
   } else if (mission.mode === "koth") {
     missionKoth.style.display = "flex";
     const points = (mission.objectives || []).slice().sort((a, b) => a.priority - b.priority);
@@ -1200,7 +1312,7 @@ function updateMissionPanel(mission) {
       const frac = tugFractions(points[activeIdx].capture_pct != null ? points[activeIdx].capture_pct : 0.5);
       missionKothFillAtk.style.width = (frac.atk * 100) + "%";
       missionKothFillDef.style.width = (frac.def * 100) + "%";
-      missionKothLabel.textContent = "Point " + (activeIdx + 1);
+      missionKothLabel.textContent = pointLabels(points)[activeIdx];
     } else {
       missionKothFillAtk.style.width = "50%";
       missionKothFillDef.style.width = "50%";
@@ -1308,55 +1420,76 @@ const DEMO_MAX_EFFECTS = 14;
 // around every poll.
 const demoState = new Map();
 
-// Mission-progress demo -- cycles through ticket, raid, koth, breach,
-// payload every 6s so layout/positioning for all of them can be rehearsed
-// without needing five different live matches. Running counters persist
-// across polls the same way demoState does above, so values drift smoothly
-// instead of jumping.
+// Mission-progress demo -- cycles through ticket, raid, pve, superagent,
+// koth, breach, payload every 6s so layout/positioning for all of them can
+// be rehearsed without needing seven different live matches. Running
+// counters persist across polls the same way demoState does above, so
+// values drift smoothly instead of jumping.
 const demoMissionState = {
   // ticket -- overall score (unrelated to the per-point tug bars below) plus
   // 3 simultaneously-active capture points that drift around the neutral
-  // midpoint (0.5), same as a real contested Control map.
+  // midpoint (0.5), same as a real contested Control map. Distinct real-
+  // looking names (map-authored points genuinely have distinct
+  // nObjectiveIds/names, unlike koth's shared-pool ids below) to exercise
+  // the friendly-name label path.
   ticketAttackerPoints: 0, ticketDefenderPoints: 0,
   ticketPoints: [
-    { id: 1, priority: 1, locked: false, active: true, owner_taskforce: 0, capture_pct: 0.5 },
-    { id: 1, priority: 2, locked: false, active: true, owner_taskforce: 0, capture_pct: 0.5 },
-    { id: 1, priority: 3, locked: false, active: true, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 272, name: "Security Gate 1", priority: 1, locked: false, active: true, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 273, name: "Tower Gates",      priority: 2, locked: false, active: true, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 274, name: "Tower Controls",   priority: 3, locked: false, active: true, owner_taskforce: 0, capture_pct: 0.5 },
   ],
 
   round: 1, bossHealth: 100000, bossHealthMax: 100000,
+  friendlyHealth: 30000, friendlyHealthMax: 30000,
 
-  // koth -- a small rotation pool sharing the same id/priority (exactly like
-  // CtrPointRotation.cpp's real pool) with one point active at a time.
-  // capture_pct tugs toward 0 (attacker) or 1 (defender); reaching an
-  // extreme awards that team a point and starts a brief "being selected" gap.
+  // pve -- a single boss bar, no capture points.
+  pveBossHealth: 60000, pveBossHealthMax: 60000,
+
+  // superagent -- boss bar first; once it's dead, the two sequential
+  // captures (the 5-min hold, then the final dropship point) cycle forever
+  // via advanceSequentialCapture's own wraparound (see below) -- fine for a
+  // rehearsal loop even though the real mission only plays that once.
+  superagentBossHealth: 50000, superagentBossHealthMax: 50000,
+  superagentPoints: [
+    { id: 194, name: "", priority: 2, locked: true, active: false, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 287, name: "", priority: 3, locked: true, active: false, owner_taskforce: 0, capture_pct: 0.5 },
+  ],
+
+  // koth -- a small rotation pool sharing the same id/priority/name
+  // (exactly like CtrPointRotation.cpp's real pool) with one point active
+  // at a time. capture_pct tugs toward 0 (attacker) or 1 (defender);
+  // reaching an extreme awards that team a point and starts a brief
+  // "being selected" gap. name left "" to exercise the numbered fallback --
+  // real koth points don't resolve a usable distinct name either.
   kothAttackerPoints: 0, kothDefenderPoints: 0,
   kothPoints: [
-    { id: 345, priority: 1, locked: true, active: false, owner_taskforce: 0, capture_pct: 0.5 },
-    { id: 345, priority: 1, locked: true, active: false, owner_taskforce: 0, capture_pct: 0.5 },
-    { id: 345, priority: 1, locked: true, active: false, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 345, name: "", priority: 1, locked: true, active: false, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 345, name: "", priority: 1, locked: true, active: false, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 345, name: "", priority: 1, locked: true, active: false, owner_taskforce: 0, capture_pct: 0.5 },
   ],
   kothRotatingUntil: 0,
 
   // breach -- sequential 3-point unlock chain, rendered as stacked tug bars.
   breachObjectives: [
-    { id: 1, priority: 1, locked: false, active: true,  owner_taskforce: 0, capture_pct: 0.5 },
-    { id: 2, priority: 2, locked: true,  active: false, owner_taskforce: 0, capture_pct: 0.5 },
-    { id: 3, priority: 3, locked: true,  active: false, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 272, name: "Security Gate 1", priority: 1, locked: false, active: true,  owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 273, name: "Tower Gates",     priority: 2, locked: true,  active: false, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 274, name: "Tower Controls",  priority: 3, locked: true,  active: false, owner_taskforce: 0, capture_pct: 0.5 },
   ],
 
   // payload -- same sequential-unlock mechanic as breach, but rendered as
   // one connected segmented pill (see renderPayloadBar) instead of stacked
-  // separate bars.
+  // separate bars. No name display on this widget, so names are irrelevant
+  // here -- left blank like the real objId=60-shared-across-checkpoints
+  // payload map observed in testing.
   payloadObjectives: [
-    { id: 1, priority: 1, locked: false, active: true,  owner_taskforce: 0, capture_pct: 0.5 },
-    { id: 2, priority: 2, locked: true,  active: false, owner_taskforce: 0, capture_pct: 0.5 },
-    { id: 3, priority: 3, locked: true,  active: false, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 60, name: "", priority: 1, locked: false, active: true,  owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 60, name: "", priority: 2, locked: true,  active: false, owner_taskforce: 0, capture_pct: 0.5 },
+    { id: 60, name: "", priority: 3, locked: true,  active: false, owner_taskforce: 0, capture_pct: 0.5 },
   ],
 };
 
 function generateDemoMission() {
-  const mode = ["ticket", "raid", "koth", "breach", "payload"][Math.floor(Date.now() / 6000) % 5];
+  const mode = ["ticket", "raid", "pve", "superagent", "koth", "breach", "payload"][Math.floor(Date.now() / 6000) % 7];
 
   if (mode === "ticket") {
     demoMissionState.ticketAttackerPoints = Math.min(800, demoMissionState.ticketAttackerPoints + Math.random() * 6);
@@ -1379,12 +1512,33 @@ function generateDemoMission() {
       demoMissionState.bossHealth = demoMissionState.bossHealthMax;
       demoMissionState.round = demoMissionState.round >= 4 ? 1 : demoMissionState.round + 1;
     }
+    // The defended "friendly" NPC drains slowly and independently of the
+    // boss -- on a real map this only moves if the attackers reach it, but
+    // for layout rehearsal a steady trickle is enough to show the bar isn't
+    // static.
+    demoMissionState.friendlyHealth = Math.max(0, demoMissionState.friendlyHealth - Math.random() * 150);
+    if (demoMissionState.friendlyHealth <= 0) demoMissionState.friendlyHealth = demoMissionState.friendlyHealthMax;
     return {
       mode,
       round_current: demoMissionState.round,
       round_max: 4,
       boss_health: Math.max(0, Math.round(demoMissionState.bossHealth)),
       boss_health_max: demoMissionState.bossHealthMax,
+      boss_name: "Colony Dismantler",
+      friendly_health: Math.round(demoMissionState.friendlyHealth),
+      friendly_health_max: demoMissionState.friendlyHealthMax,
+      friendly_name: "Bancroft",
+    };
+  }
+
+  if (mode === "pve") {
+    demoMissionState.pveBossHealth -= Math.random() * 900;
+    if (demoMissionState.pveBossHealth <= 0) demoMissionState.pveBossHealth = demoMissionState.pveBossHealthMax;
+    return {
+      mode,
+      boss_health: Math.max(0, Math.round(demoMissionState.pveBossHealth)),
+      boss_health_max: demoMissionState.pveBossHealthMax,
+      boss_name: "Ancient Guardian",
     };
   }
 
@@ -1435,6 +1589,25 @@ function generateDemoMission() {
     } else if (active.capture_pct >= 0.9) {
       active.capture_pct = 0.75;
     }
+  }
+
+  if (mode === "superagent") {
+    if (demoMissionState.superagentBossHealth > 0) {
+      demoMissionState.superagentBossHealth = Math.max(0, demoMissionState.superagentBossHealth - Math.random() * 1500);
+      if (demoMissionState.superagentBossHealth <= 0) {
+        demoMissionState.superagentPoints[0].locked = false;
+        demoMissionState.superagentPoints[0].active = true;
+      }
+    } else {
+      advanceSequentialCapture(demoMissionState.superagentPoints);
+    }
+    return {
+      mode,
+      boss_health: Math.round(demoMissionState.superagentBossHealth),
+      boss_health_max: demoMissionState.superagentBossHealthMax,
+      boss_name: "Colony Dismantler",
+      objectives: demoMissionState.superagentPoints.map(o => ({ ...o })),
+    };
   }
 
   if (mode === "breach") {

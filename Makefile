@@ -67,6 +67,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Engine/MapDataDumper/Writers/TgTeleporter.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapObjectConfig/MapObjectConfig.cpp \
 			  $(SRC_DIR)/GameServer/Engine/MapGameInfo/MapGameInfo.cpp \
+			  $(SRC_DIR)/GameServer/Engine/ObjectiveNames/ObjectiveNames.cpp \
 			  $(SRC_DIR)/GameServer/Engine/SeqActNullGuard/SeqActNullGuard.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Spawn/Actor__Spawn.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/Tick/Actor__Tick.cpp \
