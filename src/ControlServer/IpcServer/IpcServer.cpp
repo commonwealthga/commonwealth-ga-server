@@ -313,6 +313,8 @@ private:
             snap.task_force    = j.value("task_force", 0);
             snap.health        = j.value("health", 0);
             snap.health_max    = j.value("health_max", 0);
+            snap.power         = j.value("power", 0.0f);
+            snap.power_max     = j.value("power_max", 0.0f);
             // Filter the DLL's raw group-id dump down to the two curated
             // whitelists (OverlayIdCatalog) and split by kind -- effect ids
             // render as a tile icon, skill ids are pushed through but never

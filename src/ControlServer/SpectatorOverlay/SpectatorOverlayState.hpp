@@ -17,6 +17,8 @@ public:
         int task_force = 0;   // 0 = unknown/none, 1 = attackers, 2 = defenders
         int health = 0;
         int health_max = 0;
+        float power = 0.0f;
+        float power_max = 0.0f;
         // Whitelisted (OverlayIdCatalog::IsEffectId), deduped -- the only ids
         // the HTML renders as a tile icon.
         std::vector<int> effect_ids;

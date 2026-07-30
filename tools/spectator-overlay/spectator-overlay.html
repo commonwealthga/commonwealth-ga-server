@@ -130,6 +130,33 @@
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -3px 5px rgba(0,0,0,0.35);
   }
 
+  /* Thin secondary bar under the health pill for power/energy -- same
+     pill-is-the-bar convention as .health-pill, just shorter, and aligned
+     past the class icon the same way .effects-row is. */
+  .power-pill {
+    position: relative;
+    height: 6px;
+    margin-top: 3px;
+    margin-left: 38px;
+    border-radius: 3px;
+    background: rgba(12, 14, 20, 0.72);
+    border: 1px solid rgba(255,255,255,0.25);
+    overflow: hidden;
+  }
+
+  .power-pill-fill {
+    position: absolute;
+    inset: 0;
+    width: 0%;
+    background: #29b6d8;
+    transition: width 150ms linear;
+  }
+
+  .defenders .power-pill {
+    margin-left: 0;
+    margin-right: 38px;
+  }
+
   .health-pill-name,
   .health-pill-hp {
     position: relative; /* sits above .health-pill-fill in paint order */
@@ -583,6 +610,13 @@ function buildCard(p) {
   row.appendChild(pill);
   card.appendChild(row);
 
+  const powerPill = document.createElement("div");
+  powerPill.className = "power-pill";
+  const powerFill = document.createElement("div");
+  powerFill.className = "power-pill-fill";
+  powerPill.appendChild(powerFill);
+  card.appendChild(powerPill);
+
   // Always present, even with zero active effects — its min-height (see
   // CSS) reserves the space either way, so a buff appearing/disappearing
   // never shifts the pill above it up and down.
@@ -591,7 +625,7 @@ function buildCard(p) {
   card.appendChild(effectsRow);
 
   return {
-    card, classIconWrap, fill, name, hpText, effectsRow,
+    card, classIconWrap, fill, name, hpText, powerFill, effectsRow,
     lastProfileId: p.profile_id, // classIconWrap above already matches this
     lastEffectKey: null,
   };
@@ -613,6 +647,9 @@ function updateCard(state, p) {
   state.fill.style.width = (pct * 100) + "%";
   state.fill.style.backgroundColor = healthColor(pct);
   state.name.textContent = p.player_name || "(unknown)";
+
+  const powerPct = p.power_max > 0 ? Math.max(0, Math.min(1, p.power / p.power_max)) : 0;
+  state.powerFill.style.width = (powerPct * 100) + "%";
 
   // Raw HP number is off by default (see SHOW_HP_KEY) -- the bar itself
   // (fill.style.width above) already conveys health the same way it does
@@ -731,11 +768,13 @@ function generateDemoSnapshot() {
   const players = DEMO_ROSTER.map((p, idx) => {
     let st = demoState.get(p.name);
     if (!st) {
-      st = { health: 1300, health_max: 1300, effect_ids: [] };
+      st = { health: 1300, health_max: 1300, power: 100, power_max: 100, effect_ids: [] };
       demoState.set(p.name, st);
     }
     st.health += (Math.random() - 0.55) * 45;
     st.health = Math.max(0, Math.min(st.health_max, Math.round(st.health)));
+    st.power += (Math.random() - 0.45) * 12;
+    st.power = Math.max(0, Math.min(st.power_max, Math.round(st.power)));
     if (Math.random() < 0.08) {
       const count = DEMO_MIN_EFFECTS +
         Math.floor(Math.random() * (DEMO_MAX_EFFECTS - DEMO_MIN_EFFECTS + 1));
@@ -753,6 +792,8 @@ function generateDemoSnapshot() {
       profile_id: p.profile_id,
       health: st.health,
       health_max: st.health_max,
+      power: st.power,
+      power_max: st.power_max,
       effect_ids: st.effect_ids,
       build: p.build,
     };
