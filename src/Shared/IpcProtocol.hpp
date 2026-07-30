@@ -128,29 +128,43 @@ constexpr const char* MSG_PAWN_HEALTH_SNAPSHOT = "PAWN_HEALTH_SNAPSHOT";
 
 // Sent by a mission instance on the same ~1/sec rate-limited timer basis as
 // PAWN_HEALTH_SNAPSHOT, but once per instance (there's one ATgGame per
-// match, not one per pawn). "mode" is derived server-side from the game's
-// own class (TgGame_Ticket/_Escort/_Defense/_PointRotation/_Mission) and
-// selects which of the fields below are populated; modes with no requested
-// overlay treatment (City, OpenWorldPVE/PVP, CTF, DualCTF) never push at
-// all. Fields are ADDITIVE, not mutually exclusive by mode:
+// match, not one per pawn). "mode" is derived server-side primarily from
+// map_game_info.gameplay_type_value_id (the real differentiator between
+// modes sharing one TgGame class -- e.g. TgGame_Mission covers both Breach
+// and solo/PvE missions), falling back to class-name-only detection when a
+// map has no map_game_info row (older/local DB). Modes with no requested
+// overlay treatment (Home, stock CTR/DualCTF, City, OpenWorldPVE/PVP, CTF)
+// never push at all. Fields are ADDITIVE, not mutually exclusive by mode:
 //   - attacker_points/defender_points/points_to_win: ticket AND koth (both
 //     track a first-to-N team score via ATgRepInfo_TaskForce::r_nCurrentPointCount).
-//   - round_current/round_max/boss_health/boss_health_max: raid only.
-//   - objectives: ticket/koth/payload/breach (every mode except raid) -- a
-//     priority-ordered list of every ATgMissionObjective on the game's
-//     GameReplicationInfo -- id/priority/locked/active/owner_taskforce plus a
-//     0..1 capture_pct (m_fCurrCaptureTime / m_fTimeToCapture, unclamped same
-//     as the server's own SuperAgent capture-bar math). NOTE: id and
+//   - round_current/round_max: raid only (shown as "Wave" on the overlay,
+//     not "Round" -- same underlying s_nRoundNumber/s_nMaxRoundNumber).
+//   - boss_health/boss_health_max/boss_name: raid, pve, superagent.
+//   - friendly_health/friendly_health_max/friendly_name: raid only -- a
+//     defender-owned NPC/reactor the defenders are protecting (e.g.
+//     "Bancroft" on Raid_DomeCityDefense_P), separate from the boss.
+//   - objectives: ticket/koth/payload/breach/superagent (every mode except
+//     raid and plain pve) -- a priority-ordered list of every
+//     ATgMissionObjective on the game's GameReplicationInfo --
+//     id/name/priority/locked/active/owner_taskforce plus a 0..1
+//     capture_pct (m_fCurrCaptureTime / m_fTimeToCapture, unclamped same as
+//     the server's own SuperAgent capture-bar math). NOTE: id, name, and
 //     priority are NOT guaranteed unique per point -- e.g. every koth
-//     rotation point shares the same nObjectiveId/nPriority by design (see
-//     CtrPointRotation.cpp) -- consumers must key UI elements by array
-//     position, never by id/priority.
+//     rotation point shares the same nObjectiveId/nPriority/name by design
+//     (see CtrPointRotation.cpp), and at least some Payload maps reuse one
+//     id across all their checkpoints too -- consumers must key UI elements
+//     by array position, never by id/priority, and must fall back to
+//     numbering when multiple concurrently-shown points share a name.
 //   ticket: { "mode":"ticket", "attacker_points":<int>, "defender_points":<int>,
 //     "points_to_win":<int>, "objectives":[...] }
 //   raid:   { "mode":"raid", "round_current":<int>, "round_max":<int>,
-//     "boss_health":<int>, "boss_health_max":<int> }
+//     "boss_health":<int>, "boss_health_max":<int>, "boss_name":<string>,
+//     "friendly_health":<int>, "friendly_health_max":<int>, "friendly_name":<string> }
 //   koth:   { "mode":"koth", "attacker_points":<int>, "defender_points":<int>,
 //     "points_to_win":<int>, "objectives":[...] }
+//   pve:        { "mode":"pve", "boss_health":<int>, "boss_health_max":<int>, "boss_name":<string> }
+//   superagent: { "mode":"superagent", "boss_health":<int>, "boss_health_max":<int>,
+//     "boss_name":<string>, "objectives":[...] }  -- boss then 2 sequential captures
 //   payload/breach: { "mode":"payload"|"breach", "objectives":[...] }
 constexpr const char* MSG_MISSION_PROGRESS_SNAPSHOT = "MISSION_PROGRESS_SNAPSHOT";
 

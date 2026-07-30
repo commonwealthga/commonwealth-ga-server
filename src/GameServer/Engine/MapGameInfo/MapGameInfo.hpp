@@ -20,6 +20,14 @@ struct MapGameInfoRow {
 	bool is_pvp;
 	int  overtime_secs;
 	bool allow_overtime;
+	// The real differentiator between game modes that share a TgGame class --
+	// e.g. TgGame_Mission covers both Breach (1544) and solo/PvE missions
+	// (1553); TgGame_PointRotation covers both standard (1548) and small-map
+	// (1569) Scramble. 0 = column absent on this DB (older schema -- this
+	// repo's own dev copy predates it) or no row; callers must fall back to
+	// class-name-only detection in that case. See MissionProgressFeed.cpp's
+	// ResolveMissionMode for the full value -> mode mapping.
+	int  gameplay_type_value_id = 0;
 };
 
 class MapGameInfo {

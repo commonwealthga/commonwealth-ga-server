@@ -203,15 +203,26 @@ private:
                 m["points_to_win"]   = mission->points_to_win;
             }
             if (mission->mode == "raid") {
-                m["round_current"]   = mission->round_current;
-                m["round_max"]       = mission->round_max;
+                m["round_current"]       = mission->round_current;
+                m["round_max"]           = mission->round_max;
+                m["friendly_health"]     = mission->friendly_health;
+                m["friendly_health_max"] = mission->friendly_health_max;
+                m["friendly_name"]       = mission->friendly_name;
+            }
+            if (mission->mode == "raid" || mission->mode == "pve" || mission->mode == "superagent") {
                 m["boss_health"]     = mission->boss_health;
                 m["boss_health_max"] = mission->boss_health_max;
-            } else {
+                m["boss_name"]       = mission->boss_name;
+            }
+            // Every mode except raid/pve carries the objectives list (koth/
+            // ticket/payload/breach always did; superagent's boss-then-2-
+            // captures flow needs it too, once the boss is down).
+            if (mission->mode != "raid" && mission->mode != "pve") {
                 nlohmann::json objectives = nlohmann::json::array();
                 for (const auto& o : mission->objectives) {
                     nlohmann::json jo;
                     jo["id"]              = o.id;
+                    jo["name"]            = o.name;
                     jo["priority"]        = o.priority;
                     jo["locked"]          = o.locked;
                     jo["active"]          = o.active;
