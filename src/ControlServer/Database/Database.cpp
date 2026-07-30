@@ -2344,6 +2344,46 @@ void Database::Init() {
 		}
 	}
 
+	// beta_pvp queue (2026-07-30): Beachhead beta maps under the Arena
+	// category next to 1v1. Own pool (7) with 3P_Beachhead_P and
+	// 3P_Beachhead2_P (both already in map_game_info as TgGame_Mission).
+	// Name/desc msg 66216 is the retail string "Beta Maps". Open PvP like
+	// merc: no rule_class, balanced_pvp, mixed/preferred; pops at 2, up to
+	// 20 per instance. Idempotent — INSERT OR IGNORE on every PK.
+	{
+		static const char* kBetaPvpSeed2026_07_30[] = {
+			"INSERT OR IGNORE INTO ga_map_pools (map_pool_id, name) VALUES (7, 'beta_pvp');",
+			"INSERT OR IGNORE INTO ga_map_pool_entries "
+			"(map_pool_id, map_name, game_mode, weight, enabled) VALUES"
+			" (7, '3P_Beachhead_P',  'TgGame.TgGame_Mission', 10, 1),"
+			" (7, '3P_Beachhead2_P', 'TgGame.TgGame_Mission', 10, 1);",
+			"INSERT OR IGNORE INTO ga_queues "
+			"(queue_id, name, taskforce_policy, continue_in_queue, enabled, "
+			" queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, "
+			" max_players_per_side, min_players_per_team, max_players_per_team, "
+			" level_min, level_max, tab, map_x, map_y, map_active_flag, "
+			" map_icon_texture_res_id, video_res_id, location_value_id, "
+			" double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, "
+			" difficulty_value_id, access_flags, active_flag, locked_flag, "
+			" map_pool_id, min_players_to_pop, max_players_per_instance, "
+			" pop_delay_seconds, pop_delay_policy, instant_pop_when_full, "
+			" requires_pvp_verification, team_policy, team_side_policy, "
+			" max_team_size, victory_bonus_lives, map_recency_divisors) VALUES"
+			" (18, 'beta_pvp', 'balanced_pvp', 0, 1,"
+			"  1421, 0, 66216, 66216, 532,"
+			"  20, 1, 20, 5, 200, 443, 6.0, 0.0, 1,"
+			"  5126, 0, 1477, 1, 0, 2, 0,"
+			"  0, 0, 1, 0, 7, 2, 20,"
+			"  0.0, 'halve_on_join', 1, 1, 'mixed', 'preferred', 0, 0, '2');",
+		};
+		for (const char* sql : kBetaPvpSeed2026_07_30) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] beta_pvp seed step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
 }
