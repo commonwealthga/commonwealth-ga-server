@@ -2449,6 +2449,35 @@ void Database::Init() {
 		}
 	}
 
+	// Carbon Capture DLC (2026-07-31): launcher pack 'carbon-capture' with the
+	// Rot_10v10_Carbon_Capture1 scramble map in the beta_pvp pool (7), locked
+	// behind dlc_id 2. Game files ship no proper friendly name / loading
+	// screen, so map_game_info borrows msg 28016 ('Ticket_Carbon_Capture') and
+	// the Blackwater Loch entry background (7508); the rest mirrors the other
+	// TgGame_PointRotation rows. All INSERT OR IGNORE — idempotent, and later
+	// operator edits to existing rows are never stomped.
+	{
+		static const char* kCarbonCaptureDlc2026_07_31[] = {
+			"INSERT OR IGNORE INTO ga_dlc (dlc_id, identifier, name) VALUES"
+			" (2, 'carbon-capture', 'Scramble: Carbon Capture');",
+			"INSERT OR IGNORE INTO map_game_info "
+			"(map_game_id, map_name, game_class, gameplay_type_value_id, "
+			" friendly_name_msg_id, entry_background_image_res_id, "
+			" mission_time_secs, is_pvp, overtime_secs, allow_overtime) VALUES"
+			" (100020, 'Rot_10v10_Carbon_Capture1', 'TgGame.TgGame_PointRotation',"
+			"  1548, 28016, 7508, 900, 1, 180, 1);",
+			"INSERT OR IGNORE INTO ga_map_pool_entries "
+			"(map_pool_id, map_name, game_mode, weight, enabled, dlc_id) VALUES"
+			" (7, 'Rot_10v10_Carbon_Capture1', 'TgGame.TgGame_PointRotation', 10, 1, 2);",
+		};
+		for (const char* sql : kCarbonCaptureDlc2026_07_31) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] Carbon Capture DLC step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
 }
