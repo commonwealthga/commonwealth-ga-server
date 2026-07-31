@@ -2478,6 +2478,44 @@ void Database::Init() {
 		}
 	}
 
+	// PvE Factory 03/04 DLC (2026-07-31): launcher pack 'pve-factory-3-4' with
+	// the 1P_CPFactory03_P / 1P_CPFactory04_P mission maps in the specops pool
+	// (1), locked behind dlc_id 3. Friendly names ship in the client (msgs
+	// 38853 'Central Industrial Complex', 39925 'Recycling Plant 37'), as do
+	// the loading screens (res 6513/6514, HUD_MissionLoads.PvE_CP); the rest
+	// mirrors the other 1P_CP* TgGame_Mission rows. All INSERT OR IGNORE —
+	// idempotent, and later operator edits to existing rows are never stomped.
+	{
+		static const char* kPveFactoryDlc2026_07_31[] = {
+			"INSERT OR IGNORE INTO ga_dlc (dlc_id, identifier, name) VALUES"
+			" (3, 'pve-factory-3-4', 'Factory03 and Factory04 PvE maps');",
+			"INSERT OR IGNORE INTO map_game_info "
+			"(map_game_id, map_name, game_class, gameplay_type_value_id, "
+			" friendly_name_msg_id, entry_background_image_res_id, "
+			" mission_time_secs, is_pvp, overtime_secs, allow_overtime) VALUES"
+			" (1309, '1P_CPFactory03_P', 'TgGame.TgGame_Mission',"
+			"  1553, 38853, 6513, 900, 0, 0, 0);",
+			"INSERT OR IGNORE INTO map_game_info "
+			"(map_game_id, map_name, game_class, gameplay_type_value_id, "
+			" friendly_name_msg_id, entry_background_image_res_id, "
+			" mission_time_secs, is_pvp, overtime_secs, allow_overtime) VALUES"
+			" (1317, '1P_CPFactory04_P', 'TgGame.TgGame_Mission',"
+			"  1553, 39925, 6514, 900, 0, 0, 0);",
+			"INSERT OR IGNORE INTO ga_map_pool_entries "
+			"(map_pool_id, map_name, game_mode, weight, enabled, dlc_id) VALUES"
+			" (1, '1P_CPFactory03_P', 'TgGame.TgGame_Mission', 1, 1, 3);",
+			"INSERT OR IGNORE INTO ga_map_pool_entries "
+			"(map_pool_id, map_name, game_mode, weight, enabled, dlc_id) VALUES"
+			" (1, '1P_CPFactory04_P', 'TgGame.TgGame_Mission', 1, 1, 3);",
+		};
+		for (const char* sql : kPveFactoryDlc2026_07_31) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] PvE Factory DLC step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
 }
