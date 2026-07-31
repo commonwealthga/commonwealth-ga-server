@@ -10916,6 +10916,74 @@ void Database::Init() {
 		Logger::Log("db", "v156: seeded 109 map_object_config rows for 1P_CPFactory04_P\n");
 	}
 
+	if (version < 157) {
+		// v157: bot/current/active counts for CPFactory04 + CPFactory03
+		// factory spawners.
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('1P_CPFactory04_P', 12435, 'n_bot_count', '15', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12434, 'n_bot_count', '5', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12411, 'n_bot_count', '13', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12410, 'n_bot_count', '12', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12409, 'n_bot_count', '11', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12408, 'n_bot_count', '10', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12407, 'n_bot_count', '9', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12406, 'n_bot_count', '8', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12405, 'n_bot_count', '7', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12404, 'n_bot_count', '17', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12412, 'n_bot_count', '17', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12403, 'n_bot_count', '17', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12402, 'n_bot_count', '17', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12402, 'n_current_count', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12403, 'n_current_count', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12412, 'n_current_count', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12404, 'n_current_count', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12401, 'n_bot_count', '17', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12401, 'n_current_count', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12400, 'n_bot_count', '9', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12400, 'n_current_count', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12399, 'n_bot_count', '9', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12399, 'n_current_count', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12398, 'n_bot_count', '15', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12398, 'n_current_count', '1', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v157 (CPFactory04 spawner counts): %s\n", err); return; }
+
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('1P_CPFactory03_P', 12435, 'n_bot_count', '15', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12434, 'n_bot_count', '5', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12393, 'n_bot_count', '13', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12394, 'n_bot_count', '12', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12411, 'n_bot_count', '11', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12410, 'n_bot_count', '10', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12409, 'n_bot_count', '9', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12408, 'n_bot_count', '9', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12407, 'n_bot_count', '9', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12406, 'n_bot_count', '9', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12405, 'n_bot_count', '9', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12404, 'n_bot_count', '17', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12404, 'n_current_count', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12412, 'n_current_count', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12412, 'n_bot_count', '17', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12403, 'n_bot_count', '17', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12403, 'n_current_count', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12402, 'n_current_count', '17', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12402, 'n_active_count', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12401, 'n_current_count', '17', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12401, 'n_active_count', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12400, 'n_current_count', '9', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12400, 'n_active_count', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12399, 'n_current_count', '9', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12399, 'n_active_count', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12398, 'n_current_count', '15', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12398, 'n_active_count', '1', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v157 (CPFactory03 spawner counts): %s\n", err); return; }
+
+		Logger::Log("db", "v157: seeded 52 map_object_config spawner-count rows for CPFactory04/CPFactory03\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -10927,7 +10995,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 156", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 157", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
