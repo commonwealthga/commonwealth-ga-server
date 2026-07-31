@@ -197,6 +197,8 @@ private:
             // IpcProtocol.hpp's MSG_MISSION_PROGRESS_SNAPSHOT doc.
             nlohmann::json m;
             m["mode"] = mission->mode;
+            m["mission_remaining_seconds"] = mission->mission_remaining_seconds;
+            m["mission_timer_state"]       = mission->mission_timer_state;
             if (mission->mode == "ticket" || mission->mode == "koth") {
                 m["attacker_points"] = mission->attacker_points;
                 m["defender_points"] = mission->defender_points;

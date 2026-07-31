@@ -349,6 +349,10 @@ private:
             snap.mode = j.value("mode", "");
             if (snap.mode.empty()) return;
 
+            // Universal, every mode.
+            snap.mission_remaining_seconds = j.value("mission_remaining_seconds", 0.0f);
+            snap.mission_timer_state       = j.value("mission_timer_state", 0);
+
             // Additive, not mutually exclusive by mode -- see
             // IpcProtocol.hpp's MSG_MISSION_PROGRESS_SNAPSHOT doc.
             if (snap.mode == "ticket" || snap.mode == "koth") {

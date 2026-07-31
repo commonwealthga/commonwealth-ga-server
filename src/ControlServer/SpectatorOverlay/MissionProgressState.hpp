@@ -28,6 +28,12 @@ public:
     struct MissionSnapshot {
         std::string mode;  // "ticket" | "raid" | "koth" | "payload" | "breach" | "pve" | "superagent"
 
+        // Universal, every mode -- the engine's own live countdown. See
+        // IpcProtocol.hpp's MSG_MISSION_PROGRESS_SNAPSHOT doc for the
+        // mission_timer_state (TGMTS_*) value meanings.
+        float mission_remaining_seconds = 0.0f;
+        int mission_timer_state = 0;
+
         // mode == "ticket" | "koth"
         int attacker_points = 0;
         int defender_points = 0;

@@ -193,6 +193,22 @@ void MaybePushSnapshot(AActor* actor) {
     j["instance_id"] = IpcClient::GetInstanceId();
     j["mode"]        = mode;
 
+    // Universal across every mode -- the engine already computes and
+    // replicates a single authoritative countdown for every phase
+    // (TgGame__MissionTimeRemaining.cpp handles setup/running/overtime/
+    // paused AND Arena/Defense's round-based "custom" timer all in one
+    // place), so there's no need to derive anything from map_game_info's
+    // static mission_time_secs -- that's just the INITIAL configured
+    // length; this is the real live clock, already accounting for
+    // extensions/overtime/pauses a static value could never reflect.
+    // mission_timer_state is TgGame.ETgMissionTimerState (TGMTS_*):
+    // 0 unset, 1 setup, 2 running, 3 overtime, 4 complete, 5 paused,
+    // 6 custom (Arena/Defense's round/wave timer -- for raid this is the
+    // CURRENT WAVE's countdown, not total match time, which is exactly
+    // right since raid has no single continuous match clock).
+    j["mission_remaining_seconds"] = GRI->r_fMissionRemainingTime;
+    j["mission_timer_state"]       = (int)GRI->r_nMissionTimerState;
+
     // ticket AND koth both track a first-to-N team score the same way
     // (ATgRepInfo_TaskForce::r_nCurrentPointCount vs r_nPointsToWin) --
     // ATgGame_PointRotation extends ATgGame_Arena, the same round-scoring
