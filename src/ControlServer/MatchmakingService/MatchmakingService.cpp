@@ -373,7 +373,8 @@ MatchmakingService::GetDelayedPopRemainingSeconds(uint32_t queue_id) {
 }
 
 std::optional<MapModeSpec>
-MatchmakingService::PickRandomMapPoolEntryForCount(uint32_t queue_id, int count) {
+MatchmakingService::PickRandomMapPoolEntryForCount(uint32_t queue_id, int count,
+        const std::vector<std::vector<int64_t>>* installed_sets) {
     auto it = queues_.find(queue_id);
     if (it == queues_.end()) {
         Logger::Log("matchmaking",
@@ -386,13 +387,33 @@ MatchmakingService::PickRandomMapPoolEntryForCount(uint32_t queue_id, int count)
             "[Matchmaking] PickRandomMapPoolEntryForCount: queue %u has empty map_pool\n", queue_id);
         return std::nullopt;
     }
+
+    // DLC narrowing (successor spawns): entries every player owns, else the
+    // entries owned by the most players. All-locked-for-all falls back to the
+    // full pool — no pick can help those players, keep legacy behaviour.
+    std::vector<const MapModeEntry*> base;
+    if (installed_sets && !installed_sets->empty()) {
+        size_t best = 0;
+        std::vector<size_t> owners(pool.size(), 0);
+        for (size_t i = 0; i < pool.size(); ++i) {
+            for (const auto& set : *installed_sets)
+                if (mm::EntryPlayableWith(pool[i], set)) ++owners[i];
+            best = std::max(best, owners[i]);
+        }
+        if (best > 0)
+            for (size_t i = 0; i < pool.size(); ++i)
+                if (owners[i] == best) base.push_back(&pool[i]);
+    }
+    if (base.empty())
+        for (const auto& e : pool) base.push_back(&e);
+
     auto matches = [count](const MapModeEntry& e) {
         if (e.min_players && count < *e.min_players) return false;
         if (e.max_players && count > *e.max_players) return false;
         return true;
     };
     std::vector<const MapModeEntry*> candidates;
-    for (const auto& e : pool) if (matches(e)) candidates.push_back(&e);
+    for (const auto* e : base) if (matches(*e)) candidates.push_back(e);
 
     bool nearest_fit_used = false;
     int  best_distance    = 0;
@@ -404,10 +425,10 @@ MatchmakingService::PickRandomMapPoolEntryForCount(uint32_t queue_id, int count)
             return 0;
         };
         best_distance = std::numeric_limits<int>::max();
-        for (const auto& e : pool) {
-            const int d = window_distance(e);
-            if (d < best_distance) { best_distance = d; candidates.clear(); candidates.push_back(&e); }
-            else if (d == best_distance) candidates.push_back(&e);
+        for (const auto* e : base) {
+            const int d = window_distance(*e);
+            if (d < best_distance) { best_distance = d; candidates.clear(); candidates.push_back(e); }
+            else if (d == best_distance) candidates.push_back(e);
         }
     }
     if (candidates.empty()) return std::nullopt;
@@ -484,8 +505,11 @@ void MatchmakingService::AddParty(uint32_t queue_id, const QueuedParty& party) {
 
     // Stamp current ratings for the queued class (design 2026-07-12 MMR
     // nudge). Folds run at MISSION_ENDED, so re-queuing players are fresh.
-    for (auto& m : parties.back().members)
+    // Installed DLC packs stamped alongside — drive the DLC-aware pop path.
+    for (auto& m : parties.back().members) {
         m.mmr = MmrService::GetCurrentRating(m.user_id, m.profile_id);
+        m.installed_dlcs = Database::GetInstalledDlcIds(m.user_id);
+    }
 
     Logger::Log("matchmaking",
         "[Matchmaking] Party %llu (%s, %zu member(s)) joined queue %u (%zu player(s) queued)\n",
@@ -895,7 +919,115 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
     std::vector<RunningInstance> instances;
     if (instance_provider_) instances = instance_provider_(queue_id);
 
-    auto result = queue.rule->Evaluate(eligible, instances);
+    // DLC-aware pop (pools with dlc_id-locked entries only; every other queue
+    // takes the single-Evaluate fast path below, unchanged). A player must
+    // never be routed to a map they don't own, so the map is fixed BEFORE the
+    // rule runs and the rule only ever sees the parties that own it. Parties
+    // owning no viable map are simply left queued.
+    const bool dlc_pool = mm::PoolHasDlcMaps(queue.config);
+    std::optional<MatchResult> result;
+    const MapModeEntry* dlc_map = nullptr;  // fresh-spawn map chosen by the DLC path
+
+    if (!dlc_pool) {
+        result = queue.rule->Evaluate(eligible, instances);
+    } else {
+        // 1) Drop-in: offer each instance (provider order, as the rules scan
+        //    it) to the parties owning its map; commit only when the rule
+        //    itself chose that drop-in. Fresh-spawn results are re-derived in
+        //    step 2, so discarding them here never loses a pop.
+        for (const auto& inst : instances) {
+            std::vector<QueuedParty> slice;
+            for (const auto& p : eligible)
+                if (mm::PartyCanPlayMap(queue.config, p, inst.map_name)) slice.push_back(p);
+            if (slice.empty()) continue;
+            auto r = queue.rule->Evaluate(slice, {inst});
+            if (r && r->existing_instance_id) { result = std::move(r); break; }
+        }
+
+        // 2) Fresh spawn: rank maps by ownership — everyone-owns first, then
+        //    by how many queued players own them — with weight/recency order
+        //    inside a rank. First map whose pop passes the gates wins; the
+        //    per-map count windows keep their usual nearest-fit fallback,
+        //    restricted to owned maps.
+        if (!result) {
+            auto& recent = queue.recent_maps;
+            const auto& divisors = queue.config.map_recency_divisors;
+            auto recency_divisor = [&](const std::string& map_name) -> double {
+                for (size_t i = 0; i < recent.size() && i < divisors.size(); ++i)
+                    if (recent[i] == map_name) return divisors[i];
+                return 1.0;
+            };
+
+            struct DlcCand {
+                const MapModeEntry* e = nullptr;
+                std::vector<QueuedParty> slice;   // parties owning this map
+                size_t players = 0;               // headcount across slice
+                double eff = 0.0;                 // weight / recency divisor
+            };
+            std::vector<DlcCand> cands;
+            for (const auto& e : queue.config.map_pool) {
+                DlcCand c; c.e = &e;
+                for (const auto& p : eligible) {
+                    if (!mm::EntryPlayableByParty(e, p)) continue;
+                    c.players += p.size();
+                    c.slice.push_back(p);
+                }
+                if (c.slice.empty()) continue;
+                c.eff = (double)e.weight / recency_divisor(e.map_name);
+                cands.push_back(std::move(c));
+            }
+
+            // Ownership rank first (stable), then weighted-random order inside
+            // each equal-ownership group (sampling without replacement, so the
+            // group's first entry follows the same distribution as the old
+            // single weighted roll).
+            std::stable_sort(cands.begin(), cands.end(),
+                [](const DlcCand& a, const DlcCand& b) { return a.players > b.players; });
+            for (size_t lo = 0; lo < cands.size();) {
+                size_t hi = lo + 1;
+                while (hi < cands.size() && cands[hi].players == cands[lo].players) ++hi;
+                for (size_t i = lo; i + 1 < hi; ++i) {
+                    double total = 0.0;
+                    for (size_t k = i; k < hi; ++k) total += cands[k].eff;
+                    std::uniform_real_distribution<double> dist(0.0, total);
+                    double roll = dist(MatchRng());
+                    size_t pick = hi - 1;
+                    for (size_t k = i; k < hi; ++k) {
+                        roll -= cands[k].eff;
+                        if (roll < 0.0) { pick = k; break; }
+                    }
+                    std::swap(cands[i], cands[pick]);
+                }
+                lo = hi;
+            }
+
+            const MapModeEntry* nf_entry = nullptr;   // nearest-fit fallback
+            std::optional<MatchResult> nf_result;
+            int nf_dist = std::numeric_limits<int>::max();
+            for (auto& c : cands) {
+                auto r = queue.rule->Evaluate(c.slice, {});
+                if (!r || r->existing_instance_id) continue;
+                const int n = (int)r->session_guids.size();
+                // Queue-level min is a hard gate per map: players who don't
+                // own the map don't count toward its pop.
+                if (n < (int)queue.config.min_players_to_pop) continue;
+                int dist = 0;
+                if (c.e->min_players && n < *c.e->min_players)      dist = *c.e->min_players - n;
+                else if (c.e->max_players && n > *c.e->max_players) dist = n - *c.e->max_players;
+                if (dist == 0) { dlc_map = c.e; result = std::move(r); break; }
+                if (dist < nf_dist) { nf_dist = dist; nf_entry = c.e; nf_result = std::move(r); }
+            }
+            if (!result && nf_entry) { dlc_map = nf_entry; result = std::move(nf_result); }
+
+            if (result) {
+                Logger::Log("queue-pop",
+                    "[Matchmaking] dlc map_pool queue=%u picked=%s players=%zu/%zu candidates=%zu%s\n",
+                    queue_id, dlc_map->map_name.c_str(),
+                    result->session_guids.size(), QueuedPlayerCount(queue),
+                    cands.size(), dlc_map == nf_entry ? " (nearest)" : "");
+            }
+        }
+    }
     if (!result) return;
 
     // Min-players gate (spawn-new only).
@@ -940,16 +1072,29 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
         return;
     }
 
-    // Fill map from pool for fresh spawns that left it empty.
+    // Fill map from pool for fresh spawns that left it empty. The DLC path
+    // fixed its map before Evaluate; commit it (and its recency slot) here —
+    // after the delay gate, so an armed timer leaves no recency side effect.
     if (!result->existing_instance_id && result->map_name.empty()) {
-        auto picked = PickRandomMapPoolEntryForCount(queue_id, (int)result->session_guids.size());
-        if (!picked) {
-            Logger::Log("matchmaking",
-                "[Matchmaking] Queue %u rule wants spawn but map_pool empty — skipping pop\n", queue_id);
-            return;
+        if (dlc_pool) {
+            if (!dlc_map) return;  // defensive: DLC fresh results always carry one
+            result->map_name  = dlc_map->map_name;
+            result->game_mode = dlc_map->game_mode;
+            if (!queue.config.map_recency_divisors.empty()) {
+                queue.recent_maps.push_front(dlc_map->map_name);
+                while (queue.recent_maps.size() > queue.config.map_recency_divisors.size())
+                    queue.recent_maps.pop_back();
+            }
+        } else {
+            auto picked = PickRandomMapPoolEntryForCount(queue_id, (int)result->session_guids.size());
+            if (!picked) {
+                Logger::Log("matchmaking",
+                    "[Matchmaking] Queue %u rule wants spawn but map_pool empty — skipping pop\n", queue_id);
+                return;
+            }
+            result->map_name  = picked->map_name;
+            result->game_mode = picked->game_mode;
         }
-        result->map_name  = picked->map_name;
-        result->game_mode = picked->game_mode;
     }
 
     // Coalesce a fresh OPEN result into an existing OPEN pending (cold-start
@@ -963,6 +1108,18 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
             if (!IsInstanceActive(iid)) continue;
             const size_t need = result->session_guids.size();
             if (pm.cap > 0 && pm.session_guids.size() + need > pm.cap) continue;  // try next pending
+            // DLC pools: never coalesce a party onto a pending map it doesn't
+            // own (the result may have been built for a different map).
+            if (dlc_pool) {
+                bool all_own = true;
+                for (const auto& p : eligible) {
+                    if (std::find(result->consumed_party_ids.begin(),
+                                  result->consumed_party_ids.end(),
+                                  p.party_id) == result->consumed_party_ids.end()) continue;
+                    if (!mm::PartyCanPlayMap(queue.config, p, pm.map_name)) { all_own = false; break; }
+                }
+                if (!all_own) continue;
+            }
 
             for (const auto& guid : result->session_guids) {
                 if (pm.task_force_assignments.count(guid)) continue;  // defensive

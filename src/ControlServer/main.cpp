@@ -576,6 +576,7 @@ int main(int argc, char* argv[]) {
             PendingMatch pending;
             pending.instance_id = instance_id;
             pending.queue_id = queue_id;
+            pending.map_name = result.map_name;
             pending.game_mode = result.game_mode;
             pending.access_mode = result.access_mode;
             pending.owner_party_ids = result.owner_party_ids;
@@ -648,10 +649,19 @@ int main(int argc, char* argv[]) {
                 parent->queue_id, (long long)parent_instance_id);
             return;
         }
-        const int parent_count =
-            (int)InstanceRegistry::GetActivePlayersForInstance(parent_instance_id).size();
+        const auto active = InstanceRegistry::GetActivePlayersForInstance(parent_instance_id);
+        const int parent_count = (int)active.size();
+        // DLC-locked pools: the successor carries the parent's players, so
+        // narrow the pick to maps every continuing player owns (else most-owned).
+        std::vector<std::vector<int64_t>> installed_sets;
+        if (auto qcfg = MatchmakingService::GetQueueConfig(parent->queue_id)) {
+            if (mm::PoolHasDlcMaps(*qcfg))
+                for (const auto& ap : active)
+                    installed_sets.push_back(Database::GetInstalledDlcIds(ap.user_id));
+        }
         auto picked = MatchmakingService::PickRandomMapPoolEntryForCount(
-            parent->queue_id, parent_count);
+            parent->queue_id, parent_count,
+            installed_sets.empty() ? nullptr : &installed_sets);
         if (!picked) {
             Logger::Log("main", "[SuccessorSpawner] Queue %u has no map_pool configured — refusing successor for parent=%lld\n",
                 parent->queue_id, (long long)parent_instance_id);

@@ -29,7 +29,8 @@
 // True when the queue has at least one map the account can play — base-game,
 // or locked behind a pack in `installed` (ga_user_dlc, launcher/admin-set).
 // A pool-less queue is always playable. Used by the GET_TICKET_INFO queue
-// filter and the MATCH_JOIN gate.
+// filter and the solo MATCH_JOIN gate; the team gate instead requires a map
+// the WHOLE party owns (see the MATCH_JOIN handler).
 static bool QueuePlayableWithDlc(const QueueConfig& cfg,
                                  const std::vector<int64_t>& installed) {
 	if (cfg.map_pool.empty()) return true;
@@ -1961,16 +1962,19 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				if (!party) break;
 				auto cfg = MatchmakingService::GetQueueConfig(matchQueueId);
 				// DLC gate: the queue list already hides fully-locked queues,
-				// but a crafted MATCH_JOIN must not bypass it — and every
-				// member needs the maps, not just the leader.
+				// but a crafted MATCH_JOIN must not bypass it. A team needs a
+				// COMMON map — some pool map every member owns — else no pop
+				// could ever seat the whole party (parties are atomic).
 				if (cfg) {
-					bool locked = false;
-					for (const auto& member : party->members) {
-						if (!QueuePlayableWithDlc(*cfg,
-								Database::GetInstalledDlcIds(member.user_id))) {
-							locked = true;
-							break;
-						}
+					std::vector<std::vector<int64_t>> member_sets;
+					for (const auto& member : party->members)
+						member_sets.push_back(Database::GetInstalledDlcIds(member.user_id));
+					bool locked = !cfg->map_pool.empty();
+					for (const auto& e : cfg->map_pool) {
+						bool all_own = true;
+						for (const auto& set : member_sets)
+							if (!mm::EntryPlayableWith(e, set)) { all_own = false; break; }
+						if (all_own) { locked = false; break; }
 					}
 					if (locked) {
 						Logger::Log("tcp", "[TcpSession] MATCH_JOIN: queue %u DLC-locked for team of %s\n",

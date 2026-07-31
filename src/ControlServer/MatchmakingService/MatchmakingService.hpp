@@ -23,6 +23,7 @@
 struct PendingMatch {
     int64_t instance_id = 0;
     uint32_t queue_id = 0;
+    std::string map_name;   // spawn map — gates DLC-aware coalescing
     std::string game_mode;
     std::vector<std::string> session_guids;
     std::unordered_map<std::string, int> task_force_assignments;  // guid -> task_force
@@ -125,8 +126,13 @@ public:
     static std::optional<uint32_t>
         GetDelayedPopRemainingSeconds(uint32_t queue_id);
 
+    // `installed_sets` (optional): one installed-DLC id list per player who
+    // will play the picked map (successor spawns). When given, DLC-locked
+    // entries narrow to those owned by every player — or, if none, to those
+    // owned by the most players — before the usual count/weight/recency logic.
     static std::optional<MapModeSpec>
-        PickRandomMapPoolEntryForCount(uint32_t queue_id, int count);
+        PickRandomMapPoolEntryForCount(uint32_t queue_id, int count,
+            const std::vector<std::vector<int64_t>>* installed_sets = nullptr);
 
 private:
     struct DelayedPop {

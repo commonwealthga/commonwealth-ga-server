@@ -30,6 +30,9 @@ struct QueuedPlayer {
     // -togglesolomode preference (ga_user_preferences "solo_mode"), stamped at
     // enqueue. A solo party with this set pops its own PARTY_LOCKED match.
     bool        solo_lock  = false;
+    // Installed DLC packs (ga_dlc ids from ga_user_dlc, stamped at enqueue).
+    // Gates which pool maps the player may be routed to on DLC-locked pools.
+    std::vector<int64_t> installed_dlcs;
     std::chrono::steady_clock::time_point joined_at{};
 };
 
@@ -369,6 +372,40 @@ inline std::vector<QueuedPlayer> FlattenParties(const std::vector<QueuedParty>& 
     for (const auto& party : parties)
         for (const auto& m : party.members) out.push_back(m);
     return out;
+}
+
+// --- DLC gating (pool entries locked behind ga_dlc packs) ------------------
+
+// True when the entry needs no pack, or `installed` contains its pack.
+inline bool EntryPlayableWith(const MapModeEntry& e, const std::vector<int64_t>& installed) {
+    if (!e.dlc_id) return true;
+    return std::find(installed.begin(), installed.end(), *e.dlc_id) != installed.end();
+}
+
+// True when EVERY member of the party owns the entry's pack. Parties are
+// atomic — one member missing the map blocks the whole party.
+inline bool EntryPlayableByParty(const MapModeEntry& e, const QueuedParty& p) {
+    if (!e.dlc_id) return true;
+    for (const auto& m : p.members)
+        if (!EntryPlayableWith(e, m.installed_dlcs)) return false;
+    return true;
+}
+
+// True when the party may be routed onto `map_name`. A map absent from the
+// pool carries no lock info -> playable (matches pre-DLC behaviour).
+inline bool PartyCanPlayMap(const QueueConfig& cfg, const QueuedParty& p,
+                            const std::string& map_name) {
+    for (const auto& e : cfg.map_pool)
+        if (e.map_name == map_name) return EntryPlayableByParty(e, p);
+    return true;
+}
+
+// True when at least one pool entry is DLC-locked (enables the DLC-aware
+// pop path in TryPop).
+inline bool PoolHasDlcMaps(const QueueConfig& cfg) {
+    for (const auto& e : cfg.map_pool)
+        if (e.dlc_id) return true;
+    return false;
 }
 
 }  // namespace mm
