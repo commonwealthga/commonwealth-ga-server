@@ -135,6 +135,16 @@ constexpr const char* MSG_PAWN_HEALTH_SNAPSHOT = "PAWN_HEALTH_SNAPSHOT";
 // map has no map_game_info row (older/local DB). Modes with no requested
 // overlay treatment (Home, stock CTR/DualCTF, City, OpenWorldPVE/PVP, CTF)
 // never push at all. Fields are ADDITIVE, not mutually exclusive by mode:
+//   - mission_remaining_seconds/mission_timer_state: EVERY mode, always
+//     present. The engine's own single authoritative countdown
+//     (TgGame__MissionTimeRemaining.cpp), not derived from map_game_info's
+//     static mission_time_secs -- that's just the initial configured
+//     length; this live value already accounts for extensions/overtime/
+//     pauses a static value never could. mission_timer_state is
+//     TgGame.ETgMissionTimerState (TGMTS_*): 0 unset, 1 setup, 2 running,
+//     3 overtime, 4 complete, 5 paused, 6 custom (Arena/Defense's round/
+//     wave timer -- for raid this is the CURRENT WAVE's countdown, not
+//     total match time, since raid has no single continuous match clock).
 //   - attacker_points/defender_points/points_to_win: ticket AND koth (both
 //     track a first-to-N team score via ATgRepInfo_TaskForce::r_nCurrentPointCount).
 //   - round_current/round_max: raid only (shown as "Wave" on the overlay,

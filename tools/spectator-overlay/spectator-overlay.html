@@ -4,6 +4,35 @@
 <meta charset="UTF-8">
 <title>Spectator Overlay</title>
 <style>
+  /* Team colors as swappable variables -- "Swap Colours" in the layout
+     controls flips these on body.colors-swapped rather than touching every
+     rule that uses them, for PVE spectating where attacker/defender framing
+     doesn't map cleanly and the operator just wants a QoL "make my team
+     blue" toggle. Three shade tiers matching what was already in use
+     (labels/ticket/pips, brighter tug-bar fills, dark payload segments) --
+     kept as-is rather than unified into one shade, so this doesn't
+     re-theme anything, just makes the existing palette swappable.
+     Colors NOT tied to these (health-bar low-HP red, the hostile "boss"
+     bar's default red, the overtime-timer's warning orange) are deliberately
+     left as their own hardcoded values -- they aren't team-semantic, so
+     swapping would misrepresent them as attacker/defender-affiliated. */
+  :root {
+    --color-atk: #ff8a5c;
+    --color-def: #5cc7ff;
+    --color-atk-bright: #e53935;
+    --color-def-bright: #2196f3;
+    --color-atk-dark: #7a1f1f;
+    --color-def-dark: #0d3a55;
+  }
+  body.colors-swapped {
+    --color-atk: #5cc7ff;
+    --color-def: #ff8a5c;
+    --color-atk-bright: #2196f3;
+    --color-def-bright: #e53935;
+    --color-atk-dark: #0d3a55;
+    --color-def-dark: #7a1f1f;
+  }
+
   /* Transparent by design — this is meant to sit as an OBS Browser Source
      cropped/composited over gameplay footage, not viewed as its own page. */
   html, body {
@@ -66,8 +95,8 @@
     width: 100%;
   }
 
-  .attackers .team-label { color: #ff8a5c; }
-  .defenders .team-label { color: #5cc7ff; }
+  .attackers .team-label { color: var(--color-atk); }
+  .defenders .team-label { color: var(--color-def); }
 
   .player-card {
     width: 100%;
@@ -317,11 +346,13 @@
   /* Sits top-center, in the same reserved clearance as #layout-controls.  */
   /* ------------------------------------------------------------------- */
   #mission-panel {
+    --scale: 1;
     display: none;
     position: fixed;
     top: 52px;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translateX(-50%) scale(var(--scale));
+    transform-origin: top center;
     z-index: 10;
     flex-direction: column;
     align-items: center;
@@ -333,6 +364,65 @@
 
   #mission-panel.visible { display: flex; }
 
+  /* Shown (even empty, with no live/demo data) while editing so it can be
+     dragged/resized ahead of time -- otherwise an operator setting up the
+     layout before any match exists would have nothing to grab. */
+  body.edit-mode #mission-panel { display: flex; }
+
+  /* Editable/draggable/resizable like the team panels -- see
+     freezePanelPosition's mission-panel handling for why the transform's
+     translateX(-50%) centering term gets dropped once it's frozen to an
+     absolute position. */
+  body.edit-mode #mission-panel {
+    outline: 1px dashed rgba(255,255,255,0.45);
+    outline-offset: 4px;
+  }
+
+  .mission-panel-handle {
+    display: none;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  }
+
+  body.edit-mode .mission-panel-handle {
+    display: block;
+    cursor: move;
+    user-select: none;
+    background: rgba(255,255,255,0.08);
+  }
+
+  /* Reuses the generic .resize-handle look/behavior (see the layout-editor
+     section below) -- just needs its own corner position since it isn't
+     inside a .attackers/.defenders panel. */
+  #mission-panel .resize-handle { right: -6px; }
+
+  body.hide-attackers #panel-attackers,
+  body.hide-defenders #panel-defenders,
+  body.hide-mission #mission-panel {
+    display: none !important;
+  }
+
+  /* Match/round timer -- universal across every mode (the engine's own
+     live countdown, see MissionProgressFeed.cpp), shown above whichever
+     mode-specific section is active. Hidden entirely at timer_state 0
+     (unset -- mission not yet initialized). */
+  #mission-timer {
+    display: none;
+    font-size: 15px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  }
+  #mission-timer.visible { display: block; }
+  #mission-timer.overtime { color: #ff8a5c; }
+  #mission-timer.paused { color: #ffd54f; }
+
   .mission-ticket-block { display: flex; flex-direction: column; align-items: center; gap: 4px; }
   .mission-ticket-row, .mission-raid-row { display: flex; align-items: center; gap: 10px; }
 
@@ -343,8 +433,8 @@
     text-transform: uppercase;
     text-shadow: 0 1px 3px rgba(0,0,0,0.9);
   }
-  .mission-ticket-team.attackers { color: #ff8a5c; }
-  .mission-ticket-team.defenders { color: #5cc7ff; }
+  .mission-ticket-team.attackers { color: var(--color-atk); }
+  .mission-ticket-team.defenders { color: var(--color-def); }
 
   .mission-ticket-bar {
     position: relative;
@@ -361,8 +451,8 @@
     width: 0%;
     transition: width 150ms linear;
   }
-  .mission-ticket-bar-fill.attackers { background: #ff8a5c; }
-  .mission-ticket-bar-fill.defenders { background: #5cc7ff; }
+  .mission-ticket-bar-fill.attackers { background: var(--color-atk); }
+  .mission-ticket-bar-fill.defenders { background: var(--color-def); }
 
   .mission-ticket-count {
     font-size: 11px;
@@ -416,8 +506,8 @@
     width: 0%;
     transition: width 150ms linear;
   }
-  .mission-tug-fill-atk { left: 0; background: #e53935; }
-  .mission-tug-fill-def { right: 0; background: #2196f3; }
+  .mission-tug-fill-atk { left: 0; background: var(--color-atk-bright); }
+  .mission-tug-fill-def { right: 0; background: var(--color-def-bright); }
   .mission-tug-label {
     position: absolute;
     inset: 0;
@@ -444,8 +534,8 @@
     width: 74px;
     text-shadow: 0 1px 3px rgba(0,0,0,0.9);
   }
-  .mission-points-row-label.attackers { color: #ff8a5c; text-align: right; }
-  .mission-points-row-label.defenders { color: #5cc7ff; text-align: left; }
+  .mission-points-row-label.attackers { color: var(--color-atk); text-align: right; }
+  .mission-points-row-label.defenders { color: var(--color-def); text-align: left; }
   .mission-point-pip {
     width: 18px;
     height: 18px;
@@ -453,8 +543,8 @@
     background: rgba(12, 14, 20, 0.72);
     border: 1px solid rgba(255,255,255,0.35);
   }
-  .mission-point-pip.filled.attackers { background: #ff8a5c; }
-  .mission-point-pip.filled.defenders { background: #5cc7ff; }
+  .mission-point-pip.filled.attackers { background: var(--color-atk); }
+  .mission-point-pip.filled.defenders { background: var(--color-def); }
 
   /* Raid/pve/superagent all stack their bar(s) vertically -- the koth-block
      flex-direction bug (forgotten once already) is exactly why each of
@@ -540,11 +630,11 @@
   }
   .mission-payload-segment.captured .mission-tug-fill-atk,
   .mission-payload-segment.captured .mission-tug-fill-def {
-    background: #7a1f1f;
+    background: var(--color-atk-dark);
   }
   .mission-payload-segment.pending .mission-tug-fill-atk,
   .mission-payload-segment.pending .mission-tug-fill-def {
-    background: #0d3a55;
+    background: var(--color-def-dark);
   }
 
   /* ------------------------------------------------------------------- */
@@ -558,11 +648,15 @@
     transform: translateX(-50%);
     z-index: 9999;
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 92vw;
     gap: 6px;
     font-family: monospace;
   }
 
-  #layout-controls button {
+  #layout-controls button,
+  #layout-controls select {
     font-size: 11px;
     padding: 4px 10px;
     background: rgba(20,20,25,0.82);
@@ -670,13 +764,29 @@
 <div id="layout-controls">
   <button id="edit-toggle">Edit Layout</button>
   <button id="reset-layout">Reset Layout</button>
+  <button id="hide-attackers-toggle"></button>
+  <button id="hide-defenders-toggle"></button>
+  <button id="hide-mission-toggle"></button>
+  <button id="swap-colors-toggle" title="QoL toggle for PVE spectating where attacker/defender framing doesn't map cleanly -- swaps every team color (labels, bars, pips) without touching any game logic."></button>
   <button id="demo-toggle"></button>
+  <select id="demo-mission-select" title="Which mission-progress demo to show while Demo Mode is on">
+    <option value="auto">Demo: Auto-cycle</option>
+    <option value="ticket">Demo: Ticket/Control</option>
+    <option value="raid">Demo: Raid</option>
+    <option value="pve">Demo: PvE</option>
+    <option value="superagent">Demo: Super Agent</option>
+    <option value="koth">Demo: KOTH/Scramble</option>
+    <option value="breach">Demo: Breach</option>
+    <option value="payload">Demo: Payload/Push</option>
+  </select>
   <button id="hp-toggle" title="In-game, players only ever see the health bar, never a number -- off by default to match."></button>
   <button id="power-toggle" title="In-game, players only ever see the power/energy bar, never a number -- off by default to match."></button>
   <button id="resize-both" title="Drag left/right to resize both panels together">⇔ Resize Both</button>
 </div>
 
 <div id="mission-panel">
+  <div class="mission-panel-handle">⠿ Mission Info</div>
+  <div id="mission-timer"></div>
   <div id="mission-ticket" class="mission-ticket-block">
     <div class="mission-ticket-row">
       <div class="mission-ticket-team attackers">ATK</div>
@@ -731,6 +841,7 @@
   </div>
   <div id="mission-breach"></div>
   <div id="mission-payload" class="mission-payload-bar"></div>
+  <div class="resize-handle" data-side="left"></div>
 </div>
 
 <div id="root">
@@ -830,6 +941,13 @@ const PROFILE_ID_TO_CLASS_ICON = {
 // operator wants refreshInstanceList's auto-pick (see below) to take over
 // as soon as a real instance appears, not a page stuck showing fake players.
 let DEMO_MODE = false;
+
+// Which mission-progress demo generateDemoMission() shows -- "auto" cycles
+// through all seven every 6s (the default, see the mode-select dropdown
+// next to the Demo Mode button); any other value pins it to that one mode
+// so an operator can rehearse a specific mode's layout without waiting for
+// the cycle to come back around to it.
+let DEMO_MISSION_MODE = "auto";
 
 // ---------------------------------------------------------------------------
 // Rendering
@@ -1028,6 +1146,7 @@ function updateCard(state, p) {
 // that's actually unique per point in every mode.
 // ---------------------------------------------------------------------------
 const missionPanel           = document.getElementById("mission-panel");
+const missionTimer           = document.getElementById("mission-timer");
 const missionTicket          = document.getElementById("mission-ticket");
 const missionTicketFillAtk   = document.getElementById("mission-ticket-fill-atk");
 const missionTicketFillDef   = document.getElementById("mission-ticket-fill-def");
@@ -1087,6 +1206,37 @@ function pointLabels(points) {
     counts.set(o.name, (counts.get(o.name) || 0) + 1);
   });
   return points.map((o, idx) => (o.name && counts.get(o.name) === 1) ? o.name : "Point " + (idx + 1));
+}
+
+// TgGame.ETgMissionTimerState (TGMTS_*) -- see IpcProtocol.hpp's
+// MSG_MISSION_PROGRESS_SNAPSHOT doc. 0/4 (unset/complete) get no label;
+// running (2) and custom/round (6) show plain time, no prefix needed.
+const MISSION_TIMER_STATE_LABEL = { 1: "Setup", 3: "Overtime", 5: "Paused" };
+
+function formatMissionTime(totalSeconds) {
+  const s = Math.max(0, Math.round(totalSeconds || 0));
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return m + ":" + String(sec).padStart(2, "0");
+}
+
+// Universal across every mode -- always updated regardless of which mode-
+// specific section is showing (see updateMissionPanel).
+function updateMissionTimer(mission) {
+  const state = mission.mission_timer_state || 0;
+  if (state === 0) {
+    missionTimer.classList.remove("visible", "overtime", "paused");
+    return;
+  }
+  missionTimer.classList.add("visible");
+  missionTimer.classList.toggle("overtime", state === 3);
+  missionTimer.classList.toggle("paused", state === 5);
+  if (state === 4) {
+    missionTimer.textContent = "Match Complete";
+    return;
+  }
+  const label = MISSION_TIMER_STATE_LABEL[state];
+  missionTimer.textContent = (label ? label + ": " : "") + formatMissionTime(mission.mission_remaining_seconds);
 }
 
 const missionPayloadSegments = new Map(); // array position -> {el, fillAtk, fillDef}
@@ -1225,6 +1375,7 @@ function updateMissionPanel(mission) {
     return;
   }
   missionPanel.classList.add("visible");
+  updateMissionTimer(mission);
   missionTicket.style.display = "none";
   missionRaid.style.display = "none";
   missionPve.style.display = "none";
@@ -1426,6 +1577,11 @@ const demoState = new Map();
 // counters persist across polls the same way demoState does above, so
 // values drift smoothly instead of jumping.
 const demoMissionState = {
+  // Shared match timer -- cycles setup(1) -> running(2) -> overtime(3) ->
+  // back to a fresh setup, independent of which mode is currently showing,
+  // to rehearse #mission-timer's states/colors without a live match.
+  timerRemaining: 20, timerState: 1,
+
   // ticket -- overall score (unrelated to the per-point tug bars below) plus
   // 3 simultaneously-active capture points that drift around the neutral
   // midpoint (0.5), same as a real contested Control map. Distinct real-
@@ -1488,8 +1644,26 @@ const demoMissionState = {
   ],
 };
 
+// Advances the shared demo timer by ~0.3s (one poll tick) and cycles
+// setup -> running -> overtime -> a fresh setup, independent of whichever
+// mode generateDemoMission() returns this tick.
+function advanceDemoTimer() {
+  demoMissionState.timerRemaining -= 0.3;
+  if (demoMissionState.timerRemaining <= 0) {
+    if (demoMissionState.timerState === 1) { demoMissionState.timerState = 2; demoMissionState.timerRemaining = 25; }
+    else if (demoMissionState.timerState === 2) { demoMissionState.timerState = 3; demoMissionState.timerRemaining = 10; }
+    else { demoMissionState.timerState = 1; demoMissionState.timerRemaining = 20; }
+  }
+  return {
+    mission_remaining_seconds: demoMissionState.timerRemaining,
+    mission_timer_state: demoMissionState.timerState,
+  };
+}
+
 function generateDemoMission() {
-  const mode = ["ticket", "raid", "pve", "superagent", "koth", "breach", "payload"][Math.floor(Date.now() / 6000) % 7];
+  const mode = DEMO_MISSION_MODE !== "auto"
+    ? DEMO_MISSION_MODE
+    : ["ticket", "raid", "pve", "superagent", "koth", "breach", "payload"][Math.floor(Date.now() / 6000) % 7];
 
   if (mode === "ticket") {
     demoMissionState.ticketAttackerPoints = Math.min(800, demoMissionState.ticketAttackerPoints + Math.random() * 6);
@@ -1664,7 +1838,7 @@ async function poll() {
     const data = generateDemoSnapshot();
     renderTeam("cards-attackers", sortByClassOrder(data.players.filter(p => p.task_force === 1)));
     renderTeam("cards-defenders", sortByClassOrder(data.players.filter(p => p.task_force === 2)));
-    updateMissionPanel(generateDemoMission());
+    updateMissionPanel({ ...generateDemoMission(), ...advanceDemoTimer() });
     status.textContent = "DEMO MODE — " + data.players.length + " sample players";
     return;
   }
@@ -1799,15 +1973,22 @@ iconsPathInput.addEventListener("keydown", (e) => {
 // ---------------------------------------------------------------------------
 const LAYOUT_KEY = "spectatorOverlayLayout_v1";
 
+const LAYOUT_PANEL_IDS = ["panel-attackers", "panel-defenders", "mission-panel"];
+
 function saveLayout() {
   const data = {};
-  ["panel-attackers", "panel-defenders"].forEach(id => {
+  LAYOUT_PANEL_IDS.forEach(id => {
     const el = document.getElementById(id);
     data[id] = {
       position: el.style.position || "",
       left: el.style.left || "",
       top: el.style.top || "",
       scale: el.style.getPropertyValue("--scale") || "1",
+      // Only #mission-panel ever sets this (see freezePanelPosition) --
+      // dropping its translateX(-50%) centering term once it has an
+      // absolute left/top of its own. "" for the team panels, which never
+      // set an inline transform at all.
+      transform: el.style.transform || "",
     };
   });
   localStorage.setItem(LAYOUT_KEY, JSON.stringify(data));
@@ -1826,25 +2007,27 @@ function loadLayout() {
       if (d.left) el.style.left = d.left;
       if (d.top) el.style.top = d.top;
       if (d.scale) el.style.setProperty("--scale", d.scale);
+      if (d.transform) el.style.transform = d.transform;
     });
   } catch (e) { /* ignore corrupt/old data */ }
 }
 
 function resetLayout() {
   localStorage.removeItem(LAYOUT_KEY);
-  ["panel-attackers", "panel-defenders"].forEach(id => {
+  LAYOUT_PANEL_IDS.forEach(id => {
     const el = document.getElementById(id);
     el.style.position = "";
     el.style.left = "";
     el.style.top = "";
     el.style.right = "";
     el.style.margin = "";
+    el.style.transform = "";
     el.style.setProperty("--scale", "1");
   });
 }
 
 // Converts a panel from normal flex-flow into position:fixed at its CURRENT
-// on-screen spot, with no visual jump. Two bugs this fixes at once:
+// on-screen spot, with no visual jump. Three bugs this fixes at once:
 //
 // 1. getBoundingClientRect() returns the POST-transform (post --scale)
 //    visual box, but CSS `left`/`top` position the PRE-transform box, which
@@ -1857,19 +2040,30 @@ function resetLayout() {
 // 2. Converting ONLY the panel being dragged to position:fixed pulls it out
 //    of the #root flex layout — and since the OTHER panel is still a flex
 //    child, removing its sibling reflows IT to a new spot too (this is the
-//    "moving one snaps the other" bug). Fixed by freezing BOTH panels the
-//    moment edit mode turns on (see the edit-toggle handler below), before
-//    either one can be dragged — so neither is ever mid-flex while the
-//    other moves.
-function freezePanelPosition(panel, anchorSide) {
+//    "moving one snaps the other" bug, and the exact cause of "defenders
+//    snaps to the left the first time Edit Layout is clicked": #root is
+//    `justify-content: space-between`, and a SINGLE remaining flex child in
+//    a space-between container sits at the start/left edge). Fixed by
+//    measuring EVERY panel's rect up front (see the `rect` param + the
+//    edit-toggle handler below) before mutating ANY of their styles, so a
+//    still-in-flow panel is never measured after an earlier one already
+//    left the flow.
+// 3. #mission-panel isn't a flex child at all -- it's centered via
+//    `left: 50%; transform: translateX(-50%) scale(...)`. Passing
+//    anchorSide "left" treats its rect like a left-anchored box (correct,
+//    since translateX(-50%) is a pure horizontal shift with no scale-
+//    dependent origin math of its own); the caller additionally clears the
+//    translateX term from its inline transform afterward, since an
+//    absolute pixel `left` shouldn't also get a further -50%-of-width shift.
+function freezePanelPosition(panel, anchorSide, rect) {
   if (panel.style.position === "fixed" && panel.style.left && panel.style.top) return;
 
-  const rect = panel.getBoundingClientRect(); // visual, post-transform
+  rect = rect || panel.getBoundingClientRect(); // visual, post-transform
   const scale = parseFloat(getComputedStyle(panel).getPropertyValue("--scale")) || 1;
   const unscaledWidth = rect.width / scale;
 
-  // Vertical transform-origin is always "top" for both panels, so visual
-  // top == unscaled top regardless of scale — no correction needed there.
+  // Vertical transform-origin is always "top", so visual top == unscaled
+  // top regardless of scale — no correction needed there.
   let unscaledLeft = rect.left;
   if (anchorSide === "right") {
     // origin = unscaled_left + width (the right edge); visual_left is that
@@ -1976,12 +2170,32 @@ document.getElementById("edit-toggle").addEventListener("click", (e) => {
   e.target.classList.toggle("active");
 
   if (enteringEditMode) {
-    // Freeze BOTH panels into position:fixed together, right now — not
-    // lazily on first drag — so neither is ever left as a lone flex child
-    // while the other gets dragged (that's what caused the "moving one
-    // snaps the other" bug).
-    freezePanelPosition(document.getElementById("panel-attackers"), "left");
-    freezePanelPosition(document.getElementById("panel-defenders"), "right");
+    // Measure every panel's rect BEFORE freezing any of them — freezing
+    // attackers first would pull it out of #root's flex flow, and #root is
+    // `justify-content: space-between`, so a still-in-flow defenders panel
+    // measured AFTER that already reflowed to the left edge (a single
+    // remaining flex child in a space-between container sits at the
+    // start). That reflowed (wrong) position then got baked in as
+    // defenders' "current" spot -- the exact "defenders snaps left on the
+    // first Edit Layout click" bug. Measuring all three up front, then
+    // freezing all three against those pre-measured rects, means none of
+    // them is ever read after an earlier one already left the flow.
+    const atkPanel = document.getElementById("panel-attackers");
+    const defPanel = document.getElementById("panel-defenders");
+    // #mission-panel is forced visible in edit mode (see its CSS) regardless
+    // of live/demo data, specifically so it's always measurable/draggable
+    // here -- the "edit-mode" class was just added above, synchronously, so
+    // this rect already reflects that.
+    const atkRect = atkPanel.getBoundingClientRect();
+    const defRect = defPanel.getBoundingClientRect();
+    const missionRect = missionPanel.getBoundingClientRect();
+
+    freezePanelPosition(atkPanel, "left", atkRect);
+    freezePanelPosition(defPanel, "right", defRect);
+    freezePanelPosition(missionPanel, "left", missionRect);
+    // Drop the centering translateX(-50%) now that left/top are absolute
+    // pixels of their own -- keeping it would double-offset the panel.
+    missionPanel.style.transform = "scale(var(--scale))";
     saveLayout();
   }
 });
@@ -1997,6 +2211,11 @@ demoBtn.addEventListener("click", () => {
   refreshDemoButton();
 });
 refreshDemoButton();
+
+const demoMissionSelect = document.getElementById("demo-mission-select");
+demoMissionSelect.addEventListener("change", (e) => {
+  DEMO_MISSION_MODE = e.target.value;
+});
 
 const hpBtn = document.getElementById("hp-toggle");
 function refreshHpButton() {
@@ -2022,11 +2241,43 @@ powerBtn.addEventListener("click", () => {
 });
 refreshPowerButton();
 
+// ---------------------------------------------------------------------------
+// Hide-section toggles + Swap Colours -- all four are plain body-class
+// switches persisted in localStorage, same mechanism as admin-hidden below.
+// Applied on load (see the body.classList.add calls) before the first
+// render, so there's no flash of the default state on a reload.
+// ---------------------------------------------------------------------------
+function makeBodyClassToggle(buttonId, className, storageKey, onLabel, offLabel) {
+  const btn = document.getElementById(buttonId);
+  if (localStorage.getItem(storageKey) === "1") document.body.classList.add(className);
+  function refresh() {
+    const on = document.body.classList.contains(className);
+    btn.textContent = on ? onLabel : offLabel;
+    btn.classList.toggle("active", on);
+  }
+  btn.addEventListener("click", () => {
+    const on = document.body.classList.toggle(className);
+    localStorage.setItem(storageKey, on ? "1" : "0");
+    refresh();
+  });
+  refresh();
+}
+makeBodyClassToggle("hide-attackers-toggle", "hide-attackers", "spectatorOverlayHideAttackers_v1",
+  "Attackers: HIDDEN", "Hide Attackers");
+makeBodyClassToggle("hide-defenders-toggle", "hide-defenders", "spectatorOverlayHideDefenders_v1",
+  "Defenders: HIDDEN", "Hide Defenders");
+makeBodyClassToggle("hide-mission-toggle", "hide-mission", "spectatorOverlayHideMission_v1",
+  "Mission Info: HIDDEN", "Hide Mission Info");
+makeBodyClassToggle("swap-colors-toggle", "colors-swapped", "spectatorOverlayColorsSwapped_v1",
+  "Colours: SWAPPED", "Swap Colours");
+
 ["panel-attackers", "panel-defenders"].forEach(id => {
   const panel = document.getElementById(id);
   makeDraggable(panel, panel.querySelector(".team-label"));
   makeResizable(panel, panel.querySelector(".resize-handle"));
 });
+makeDraggable(missionPanel, missionPanel.querySelector(".mission-panel-handle"));
+makeResizable(missionPanel, missionPanel.querySelector(".resize-handle"));
 
 loadLayout();
 poll();
