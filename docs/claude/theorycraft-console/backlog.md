@@ -14,12 +14,12 @@ The thing all of this is for. Everything else is either a prerequisite or a conv
 
 | id | item | status | notes |
 |---|---|---|---|
-| **G1** | **Two-sided combat resolve** | open | Attacker build + defender build → actual damage dealt. This is the original ask: *"this medic uses Frenzy on this recon, so when he shoots this assault he does X"*. |
+| **G1** | **Two-sided combat resolve** | **done** | Attacker build + defender build → actual damage dealt. This is the original ask: *"this medic uses Frenzy on this recon, so when he shoots this assault he does X"*. |
 | ~~G1.1~~ | Defender spec through `CalcProtection` | **done** | `GA.statsFor(ctx)` aggregates any build without disturbing the displayed one; `GA.mitigate` implements the three axes exactly as decompiled, including the integer floor, immunity at protection ≥ rating, and the half-up rounding. Validated to the unit against the Ballista A/B and the incendiary-grenade test (explosion 538/696, DoT 136/70). |
 | ~~G1.2~~ | Apply prop 316 "Additional Damage Taken" **before** mitigation | **done** | Applied ahead of the axes in `GA.mitigate`. |
 | ~~G1.3~~ | Per-hit health cap (anti-one-shot) | **done** | In `GA.mitigate` behind `healthCapArmed`; players only, bots exempt, floor `ceil(maxHP × 10%)`. |
-| G1.4 | Third-party effects — a medic buffing/debuffing either side | open | `activeState()` already returns "something is affecting this player + the source of each part", which is deliberately the shape a second actor produces. |
-| G1.5 | UI for two combatants | open | Drag-drop interaction was the original sketch. Needs a design pass once G1.1–G1.4 exist. |
+| ~~G1.4~~ | Third-party effects — a medic buffing/debuffing either side | **done** | Driven by the effect-group type rather than by special cases: groups aimed at someone else (264 HIT · 272 HIT_IN_AIR · 505 HIT_SITUATIONAL · 398 BLOCK_HIT) are extracted as a device's *projected* effects and routed to a recipient. Each projecting device gets a self / other-side control, and an "in flight" strip shows everything crossing between the builds. **Limitation:** single-pass — a buff on the thrower does not re-scale what it throws. |
+| ~~G1.5~~ | UI for two combatants | **done** | Delivered as the **Combat** tab: a build picker per side, swap, per-side gear toggles, and a shot list with the mitigation breakdown per axis. Two full build panes side by side were rejected as unreadable. |
 
 ---
 
@@ -49,7 +49,7 @@ Ordered by how much they distort results.
 | D3 | Robotics Sensor reveal parameters | open | Detection lives on the spawned entity, so its range/FOV are not surfaced on the device. Same likely applies to other deployables. |
 | D4 | `effect_groups.health = 1` on melee weapons | open | Category 304 Slow. The field means "shield pool" elsewhere; here it means something else. Currently excluded, but unexplained. |
 | D6 | Effects linger across a weapon swap | open | Confirmed mechanic: a Nanite gun's effect keeps running after the medic swaps to another weapon. The console models "which weapon is out", not "what is still ticking from the last one". Relevant once F4 (DPS/TTK) exists, since it changes what a rotation actually delivers. |
-| D5 | Conditional buffs not yet modelled as third-party | open | Protection Wave, Frenzy, Boost Beam etc. exist in the data but are only modelled when *you* carry them. Blocks G1.4. |
+| ~~D5~~ | Conditional buffs not yet modelled as third-party | **done** | Resolved with G1.4 — projection is by effect-group type, so anything aimed at another actor is carried automatically rather than device by device. |
 
 ---
 
@@ -88,4 +88,12 @@ Ordered by how much they distort results.
 **The whole C section is now resolved** — C1 through C8. Nothing in the correctness list is
 blocked or unverified.
 
-**G1.1–G1.3 is next**, and it is the piece everything else was for.
+**G1 is done** — G1.1 through G1.5. The console resolves a real fight between two saved builds.
+
+What is left is refinement rather than foundation:
+
+1. **Shot sequences** — shot 1 vs shot 2 with on-hit debuffs and self-buffs live. Every in-game
+   measurement so far has been a two-shot test, so this is what makes the console directly
+   checkable against them. Needs D6.
+2. **F4 DPS / time-to-kill**, now unblocked by C1 and C4.
+3. **F2 / F3** — save a build, then compare two.
