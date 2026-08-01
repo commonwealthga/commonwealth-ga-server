@@ -1088,3 +1088,47 @@ Personal < Auto Cannon < Flame < Rocket would put Auto Cannon ahead of Flame, wh
 it. If Personal and Flame are ever timed and found to differ, the difference is not in the ASM
 data — most likely a client-side build animation on the pawn class
 (`pawn_class_res_id` 4595 / 4240 / 6204).
+
+
+## 23. DoT damage is SNAPSHOT at application (2026-08-01)
+
+Question: if a Flame Turret's damage-over-time is already ticking on a target, does buffing the
+turret afterwards (a repair arm's Proximity Damage Buff) increase the remaining ticks?
+
+**No.** From `TgEffectDamage.uc`:
+
+```
+:405  m_fBuffedDamageInitial = -1.0                      // defaultproperties
+
+:103  if ((m_fBuffedDamageInitial < 0) || !m_bUseOnInterval)
+          ... full attacker-side scaling ...
+:135      CheckOwnerPetBuff(350, fBaseAmount, fProratedAmount);
+:136      CheckEffectBuffModifier(fProratedAmount);
+:137      m_fBuffedDamageInitial = fProratedAmount;       // cached
+      else
+:142      fProratedAmount = m_fBuffedDamageInitial;       // reused, NOT re-scaled
+:144  CheckDamageTakenModifier(Impact, fProratedAmount);  // runs EVERY tick
+```
+
+The cache starts at -1, so the **first** application runs the whole attacker-side chain
+(pet buff + `CheckEffectBuffModifier`) and stores the result. Every later interval tick takes the
+stored number. Non-interval effects re-scale each time, but they only apply once anyway.
+
+### The asymmetry
+
+| side | when evaluated |
+|---|---|
+| **Attacker** buffs — skills, mods, pet buffs, repair-arm damage buff | **once**, at application |
+| **Target** modifiers — `CheckDamageTakenModifier`, prop 316, protection | **every tick** |
+
+So a DoT's outgoing damage is fixed the moment it lands, but the victim's vulnerability is live:
+debuffing the *target* mid-DoT does increase the remaining ticks, buffing the *attacker* does not.
+
+### Consequence for repair arms
+
+The arm's damage buff (category **935 Proximity Damage Buff**, lifetime 1.0s, continuously
+refreshed by the beam) only raises DoTs applied **while it is up**. Welding a turret that has
+already stuck a burn on someone does nothing for that burn — it raises the next application.
+
+The console shows the buffed value, which is the correct figure for a *newly applied* effect.
+It does not model retroactivity, and it should not.

@@ -463,11 +463,20 @@ window.GA = window.GA || {};
       var bits = [];
       // only advertise channels this device can use - a Medical Station gains repair and
       // deploy speed from an arm, it has no damage to buff
-      var dealsDmg = (spec.meta || {}).dmg;
+      // Ask the resolved chips, not devmeta: a turret is a BOT, so its damage lives on the
+      // spawned weapon and devmeta.dmg is false for the device itself.
+      var dealsDmg = modes.some(function (m) {
+        return m.chips.some(function (c) { return c.base !== null && c.neg && (c.prop === 51 || c.prop === 211); });
+      });
       if (sup.dmg && dealsDmg) bits.push('+' + Math.round(sup.dmg) + '% damage');
+      // a DoT's damage is snapshot when it lands (TgEffectDamage m_fBuffedDamageInitial), so the
+      // buff only raises effects applied while the arm is welding - never a burn already ticking
       if (sup.repair) bits.push(Math.round(sup.repair) + ' repair/tick');
       if (sup.rate) bits.push('deploy /' + (1 + sup.rate).toFixed(1));
-      hbits.push('<span class="bnchip sup" title="An active repair arm is supporting this deployable">'
+      hbits.push('<span class="bnchip sup" title="An active repair arm is supporting this deployable.'
+        + (sup.dmg && dealsDmg ? ' The damage buff applies to effects this device applies WHILE the arm is'
+            + ' welding - a damage-over-time already ticking on a target keeps the value it was'
+            + ' given when it landed.' : '') + '">'
         + '<span class="bnlab">' + esc(sup.src.dmg || sup.src.rate || 'repair arm') + '</span>'
         + esc(bits.join(' · ')) + '</span>');
     }
