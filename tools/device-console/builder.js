@@ -224,6 +224,7 @@
   }
 
   function renderGear() {
+    if (window.GA) window.GA.lastDrain = 0;   // recomputed by the chips below
     var host = document.getElementById('tb-gear');
     if (!host) return;
     if (!charGear.length) { host.innerHTML = ''; return; }
@@ -798,19 +799,52 @@
     var actPool = 0, actPoolPct = 0;
     if (act) act.effects.forEach(function (f) { if (f.p === 255) { if (f.pct) actPoolPct += f.v; else actPool += f.v; } });
     eqb.forEach(function (f) { if (f.p === 255) { if (f.pct) actPoolPct += f.v; else actPool += f.v; } });
-    window.__PWPOOL__ = Math.floor((totPW + actPool) * (1 + actPoolPct / 100));
+    // the headline Power figure must be the pool the sustain maths uses, equip layer included
+    totPW = Math.floor((totPW + actPool) * (1 + actPoolPct / 100));
+    window.__PWPOOL__ = totPW;
+    // the POWER tile carries the sustain figure for whatever is currently firing
+    function activeDrain() {
+      var worst = 0;
+      if (!window.GA || !window.GA.resolve) return 0;
+      Object.keys(activeGear).forEach(function (i) {
+        var g = charGear[+i]; if (!g) return;
+        var dev = (window.__DEVMODEL__ || {})[String(g.id)]; if (!dev) return;
+        var r = window.GA.resolve({ dev: dev, meta: (window.__DEVMETA__ || {})[String(g.id)] || {},
+          ix: (window.__DEVFX__ || {})[String(g.id)] || [], alloc: alloc, situational: true,
+          buffs: playerBuffs, variant: { sig: g.sig, base: g.base, groups: g.groups, nums: g.nums } });
+        r.modes.forEach(function (m) {
+          if (m.kind && activeGear[i] && m.kind !== activeGear[i] && m.kind !== 'SPAWN') return;
+          if (!m.power || !m.power.value) return;
+          var rf = null;
+          m.chips.forEach(function (c) { if (c.prop === 53 && c.base !== null) rf = c.value; });
+          if (rf && rf > 0) worst = Math.max(worst, m.power.value / rf);
+        });
+      });
+      return worst;
+    }
+    function drainNote() {
+      var d = activeDrain();
+      if (!d) return '';
+      var secs = Math.round((window.__PWPOOL__ || 0) / d * 10) / 10;
+      return '<span class="totdrain" title="Sustained cost of the active device. Passive '
+        + 'regeneration does not run while power is being spent.">&minus;'
+        + (Math.round(d * 10) / 10) + '/s &middot; ' + secs + 's</span>';
+    }
     function tile(lab, val, base, item, skill) {
       var parts = [];
       if (item) parts.push('armour ' + (item > 0 ? '+' : '') + Math.round(item) + '%');
       if (skill) parts.push('skills ' + (skill > 0 ? '+' : '') + Math.round(skill) + '%');
-      return '<div class="tot"><span class="totlab">' + lab + '</span><span class="totval">' + val + '</span>'
+      if (lab === 'Power' && actPoolPct) parts.push('equip +' + Math.round(actPoolPct) + '%');
+      return '<div class="tot"><span class="totlab">' + lab + (lab === 'Power' ? drainNote() : '') + '</span>'
+        + '<span class="totval">' + val + '</span>'
         + '<span class="totsub">' + base + (parts.length ? ' &times; ' + parts.join(' &times; ') : ' base') + '</span></div>';
     }
     var html = '<div class="shhead"><h3>My Player</h3><span class="shsub">' + curClass + ' · '
       + picked.length + ' skills · ' + total() + ' pts</span></div>'
       + (act ? '<div class="actbar"><span class="actdot"></span><b>' + esc(act.dev) + '</b> active'
               + (act.shields.length ? ' &mdash; shield up' : '') + '</div>' : '')
-      + '<div class="totrow">' + tile('Health', totHP, baseHP, hpItem, hpSkill) + tile('Power', totPW, basePW, pwItem, pwSkill) + '</div>'
+      + '<div class="totrow">' + tile('Health', totHP, baseHP, hpItem, hpSkill)
+      + tile('Power', totPW, basePW, pwItem, pwSkill) + '</div>'
       + (picked.length ? '' : '<p class="empty">Base stats shown. Allocate skills to build on top &mdash; each row expands to show every source.</p>');
     GRP.forEach(function (grp) {
       var mine = keys.filter(function (k) { return grp[1](stats[k].p) && !stats[k].done; });

@@ -498,3 +498,6 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
 .tcroll{font-family:ui-monospace,Consolas,monospace;font-size:10px;letter-spacing:.06em;flex:none;
  background:var(--panel);color:var(--gear);border:1px solid var(--line);border-radius:6px;padding:3px 5px}
 .tcsig{font-family:ui-monospace,Consolas,monospace;font-size:10px;color:var(--gear);flex:none}
+.totdrain{float:right;font-family:ui-monospace,Consolas,monospace;font-size:9px;letter-spacing:.04em;
+ color:var(--debuff);background:color-mix(in srgb,var(--debuff) 12%,transparent);
+ border:1px solid color-mix(in srgb,var(--debuff) 30%,transparent);border-radius:4px;padding:0 4px;cursor:help;text-transform:none}

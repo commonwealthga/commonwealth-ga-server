@@ -1301,3 +1301,33 @@ skill starts counting. On a Recon carrying Super Sharpshooter, Scorpia reads 159
 
 This models sustained fire, where the stack is up. It overstates the opening shot, which lands
 before any stack exists.
+
+
+## 28. Sustained power drain (2026-08-01)
+
+Firing continuously costs `power_cost / refire` per second. Since passive regeneration does not
+run while power is being spent (S C4, confirmed in game), `pool / drain` is how long the trigger
+can be held.
+
+Both figures use the **modified** values, so skills and mods move them: a Recon with Recon Rifle
+Power Cost and Super Sharpshooter's attack-rate bonus fires a Scorpia at `13.5 power / 0.76s
+refire = 17.76/s`, and a 168 pool sustains **9.46s**.
+
+47 device modes have both a power cost and a refire. The extremes are worth knowing:
+
+| device | power | refire | drain |
+|---|---|---|---|
+| Longbow / Tremor Launcher | 30 | 0.3 | **100/s** |
+| the Nanite line, Adrenaline Gun | 30 | 0.5 | 60/s |
+| Crescent jetpacks | 5.9 | 0.25 | 23.6/s |
+| Raven / Rhino SMG | ~2.15 | 0.11 | ~19.5/s |
+
+Shown on the device as `drain 17.76/s · empties in 9.46s`, and on the **Power** tile as
+`−17.8/s · 9.5s` for whatever is currently active.
+
+The pool the sustain divides by is the full one, equip layer included — a Targeting System's
+`Power Pool Max +20%` takes a 140 pool to 168, and the tile now prints that same 168 rather than
+the pre-equip figure.
+
+The separate melee-block drain (prop 322, a flat per-second cost) was already handled and is
+unchanged.

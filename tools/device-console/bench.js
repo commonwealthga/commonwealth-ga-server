@@ -538,6 +538,25 @@ window.GA = window.GA || {};
       if (m.power) {
         pw = '<span class="bnchip power' + (Math.abs(m.power.value - m.power.base) > 0.005 ? ' hot' : '')
           + '"><span class="bnlab">power</span>' + delta(true, m.power.value, m.power.base, '', '') + '</span>';
+        // Firing continuously costs power_cost / refire per second. Passive regeneration does
+        // not run while power is being spent (confirmed in game), so pool / drain is how long
+        // you can hold the trigger down.
+        var rf = null;
+        m.chips.forEach(function (c) { if (c.prop === 53 && c.base !== null) rf = c.value; });
+        if (rf && rf > 0 && m.power.value > 0) {
+          var rate = m.power.value / rf;
+          var pool = window.__PWPOOL__ || 0;
+          var secs = pool ? pool / rate : 0;
+          GA.lastDrain = Math.max(GA.lastDrain || 0, rate);
+          pw += '<span class="bnchip power" title="' + esc(n(m.power.value) + ' power per shot / '
+              + n(rf) + 's refire = ' + n(rate) + ' per second.'
+              + (pool ? '\n\nA ' + pool + ' pool sustains ' + n(secs) + 's of continuous fire. '
+                      + 'Passive regeneration does not run while power is being spent, so an '
+                      + 'active source (Power Wave, a Power Stim injection) is what extends it.' : ''))
+            + '"><span class="bnlab">drain</span><b class="dn">' + n(rate) + '/s</b>'
+            + (pool ? '<span class="bnlife"><i class="bnk">empties in</i><b class="dn">'
+                      + n(secs) + 's</b></span>' : '') + '</span>';
+        }
       }
       if (!cells && !pw) return '';
       return '<div class="bnmode"><span class="mtag ' + tag[0] + '">' + tag[1] + '</span>'
