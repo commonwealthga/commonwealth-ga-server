@@ -155,8 +155,9 @@
   function cycle(g, cur) {
     var ms = modesOf(g);
     if (!cur) return ms[0];
+    if (ms.length < 2) return null;          // single mode: the tile is a plain on/off
     var i = ms.indexOf(cur);
-    return (i < 0 || i === ms.length - 1) ? null : ms[i + 1];
+    return ms[(i + 1) % ms.length];          // multi-mode: wrap pri -> alt -> pri, never off
   }
   var MODELAB = { PRI: 'primary', ALT: 'alt', BLOCK: 'block' };
 
@@ -223,13 +224,17 @@
       var tip = (g.base ? g.base + '\n' : '') + (g.groups || []).join('\n');
       var lab = mode ? (ms.length > 1 ? MODELAB[mode] : 'on') : 'off';
       return '<div class="gitem' + (mode ? ' on' : '') + '" data-i="' + i + '"'
-        + ' title="Click to cycle: ' + (ms.length > 1 ? 'primary, alt, off' : 'on, off') + '">'
+        + ' title="' + (ms.length > 1
+            ? 'Click to switch between primary and alt. Use × to switch it off.'
+            : 'Click to switch on or off.') + '">'
         + ((window.__DEVIMG__ || {})[String(g.id)]
             ? '<img class="gimg" src="' + window.__DEVIMG__[String(g.id)] + '" alt="">' : '')
         + '<span class="gcat">' + esc(g.cat || '') + '</span>'
         + '<span class="gname">' + esc(g.name) + (g.oc ? ' <span class="oc">OC</span>' : '') + '</span>'
         + '<span class="gsig" title="' + esc(tip) + '">' + esc(String(g.sig).toLowerCase()) + '</span>'
         + '<span class="gtog' + (mode === 'ALT' ? ' alt' : '') + '">' + lab + '</span>'
+        + (mode && ms.length > 1 ? '<button class="goff" data-off="' + i
+            + '" title="Switch this device off">&times;</button>' : '')
         + (sk.length
             ? '<span class="gskills">' + sk.map(function (e) {
                 return '<span class="gsk" title="' + esc(e.detail + '  -  ' + e.how) + '">'
@@ -254,6 +259,15 @@
       + charGear.length + ' devices &middot; profile ' + esc(curProfile || '')
       + ' &middot; click to activate</span></div>'
       + '<div class="gitems">' + rows + '</div>' + note;
+    host.querySelectorAll('.goff').forEach(function (b) {
+      b.addEventListener('click', function (ev) {
+        ev.stopPropagation();                 // must not also fire the tile's cycle
+        var i = +b.dataset.off, nm = charGear[i].name;
+        delete activeGear[i];
+        activeOrder = activeOrder.filter(function (x) { return x !== nm; });
+        render();
+      });
+    });
     host.querySelectorAll('.gitem').forEach(function (el) {
       el.addEventListener('click', function () {
         var i = +el.dataset.i, g = charGear[i], nm = g.name;
