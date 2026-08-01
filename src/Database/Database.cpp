@@ -11028,6 +11028,38 @@ void Database::Init() {
 		Logger::Log("db", "v159: set 13722 s_n_team_number/s_n_task_force to 1\n");
 	}
 
+	if (version < 160) {
+		// v160: CPFactory03/04 alarm factories never respond to alarms. The
+		// intact TgGame::ActivateAlarm native only picks bSpawnOnAlarm
+		// factories whose nPriority == s_nCurrentPriority (1) or -1; these
+		// dev maps bake nPriority=0 on every factory (retail CPFactory01
+		// bakes 1), so scanner/boss RadioAlarm found no responder factory.
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('1P_CPFactory03_P', 12393, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12394, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12405, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12406, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12407, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12408, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12409, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12410, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12411, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory03_P', 12435, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12405, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12406, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12407, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12408, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12409, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12410, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12411, 'n_priority', '1', NULL, NULL, 1),"
+			"  ('1P_CPFactory04_P', 12435, 'n_priority', '1', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v160 (CPFactory03/04 alarm factory n_priority): %s\n", err); return; }
+
+		Logger::Log("db", "v160: set n_priority=1 on 18 CPFactory03/04 alarm factories\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -11039,7 +11071,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 159", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 160", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
