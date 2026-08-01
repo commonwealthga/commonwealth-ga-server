@@ -158,10 +158,14 @@ STATP = {354: ('Lifespan', 's'), 4: ('Cooldown', 's'), 279: ('Deploy', 's'),
          230: ('Max out', ''), 53: ('Refire', 's'), 259: ('Scope', 'x'),
          # 150 Persist Time is how long a deployed thing lives; 5 is its placement range
          150: ('Duration', 's'), 5: ('Range', '')}
-def dev_stats(did):
-    """Key numbers that live on the device row rather than in an effect group."""
+def dev_stats(did, mid=None):
+    """Key numbers that live on the device row rather than in an effect group. Scoped to one
+    fire mode when given: refire and power cost differ between primary and alt."""
     out = []
-    for r in q("SELECT prop_id p, base_value bv FROM asm_data_set_device_mode_properties WHERE device_id=? ORDER BY prop_id", (did,)):
+    rows = (q("SELECT prop_id p, base_value bv FROM asm_data_set_device_mode_properties WHERE device_id=? AND device_mode_id=? ORDER BY prop_id", (did, mid))
+            if mid is not None else
+            q("SELECT prop_id p, base_value bv FROM asm_data_set_device_mode_properties WHERE device_id=? ORDER BY prop_id", (did,)))
+    for r in rows:
         if r['p'] in STATP:
             lab, unit = STATP[r['p']]
             # 10000s on Persist Time is a sentinel for "until destroyed", not a duration
@@ -377,7 +381,8 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
     # For ranged/specialty with an aim group (type 266), RMB = aim/zoom.
     if not out: return []
     rows = [{'kind': 'PRI', 'name': out[0]['name'], 'power': out[0]['power'],
-             'chips': equip_stats(did) + out[0]['chips'] + dev_stats(did) + deployable_stats(did)}]
+             'chips': equip_stats(did) + out[0]['chips'] + dev_stats(did, out[0]['mid'])
+                      + deployable_stats(did)}]
     if can_block:
         bchips = [['blk', 'Blocks frontal melee']]
         bc = q("SELECT base_value bv FROM asm_data_set_device_mode_properties WHERE device_id=? AND device_mode_id=? AND prop_id=322", (did, out[0]['mid']))
@@ -388,7 +393,8 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
             bchips.append(['blk', 'Counter: ' + c[1]] + c[2:])
         rows.append({'kind': 'BLOCK', 'name': 'Block', 'power': None, 'chips': bchips})
     elif len(out) > 1:
-        rows.append({'kind': 'ALT', 'name': out[1]['name'], 'power': out[1]['power'], 'chips': out[1]['chips']})
+        rows.append({'kind': 'ALT', 'name': out[1]['name'], 'power': out[1]['power'],
+                     'chips': out[1]['chips'] + dev_stats(did, out[1]['mid'])})
     elif out[0]['zoom']:
         # Scoping is a MODIFIER state, not a separate attack - a scoped Ballista still fires the
         # same shot. Flagged so the console keeps the primary damage visible alongside the

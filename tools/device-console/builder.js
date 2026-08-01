@@ -812,8 +812,11 @@
         var r = window.GA.resolve({ dev: dev, meta: (window.__DEVMETA__ || {})[String(g.id)] || {},
           ix: (window.__DEVFX__ || {})[String(g.id)] || [], alloc: alloc, situational: true,
           buffs: playerBuffs, variant: { sig: g.sig, base: g.base, groups: g.groups, nums: g.nums } });
+        // scoping does not replace the shot, so a scoped weapon still drains at its primary rate
+        var scoped = activeGear[i] === 'ALT' && r.modes.some(function (m) { return m.kind === 'ALT' && m.zoom; });
         r.modes.forEach(function (m) {
-          if (m.kind && activeGear[i] && m.kind !== activeGear[i] && m.kind !== 'SPAWN') return;
+          var want = scoped && m.kind === 'PRI' ? 'PRI' : activeGear[i];
+          if (m.kind && activeGear[i] && m.kind !== want && m.kind !== 'SPAWN') return;
           if (!m.power || !m.power.value) return;
           var rf = null;
           m.chips.forEach(function (c) { if (c.prop === 53 && c.base !== null) rf = c.value; });

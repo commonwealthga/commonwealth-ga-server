@@ -1331,3 +1331,33 @@ the pre-equip figure.
 
 The separate melee-block drain (prop 322, a flat per-second cost) was already handled and is
 unchanged.
+
+
+## 29. Refire and power cost are per FIRE MODE (2026-08-01)
+
+`asm_data_set_device_mode_properties` is keyed by `(device_id, device_mode_id)`, and both
+`prop 53 Refire Time` and `prop 242 Power Pool Cost` genuinely differ between a weapon's modes.
+gen2 was attaching those stats only to the primary row, so an alt fire had no refire and its
+sustained drain could not be worked out at all.
+
+**Inferno-X Cannon** is the clear case - two real fire modes:
+
+| mode | power | refire | drain |
+|---|---|---|---|
+| 3339 primary | 1.5 | 0.1 | 15/s |
+| 3409 alt | 0.5 | 0.1 | **5/s** |
+
+**Legion SMG** looks similar but is not: it has a *single* device mode and a scope for its ALT
+(`right_click_behavior 833`), so its drain is the same either way - 20/s base, 18/s once Assault
+Guns Power Cost is allocated. That is correct behaviour, not a missing recalculation.
+
+Two fixes: `dev_stats` now takes a mode id and each row carries its own numbers, and the
+sustained-drain figure on the **Power** tile applies the same scope rule as the device chips, so
+a scoped weapon keeps showing its primary drain rather than dropping to nothing.
+
+Verified on Assault profile 1:
+
+```
+Legion primary   18/s    6.67s        Inferno primary  13.5/s   8.89s
+Legion scoped    18/s    6.67s        Inferno alt       4.5/s  26.67s
+```
