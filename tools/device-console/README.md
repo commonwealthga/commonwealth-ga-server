@@ -40,8 +40,9 @@ python gen3.py        # renders the final HTML                 -> docs/claude/de
 | `bench.js` | `GA.resolve` — the stat resolver. Standalone and side-effect free. Also `GA.playerEffects`, `GA.applyStacking`, `GA.deviceChipsHTML`. |
 | `builder.js` | Skill-tree builder, character loader, equipped-slot toggles, My Player sheet. |
 | `app.js` | Loadout tab switching. |
-| `gen_icons.py` | Builds the disposable icon-collection page (`docs/claude/device-icons.html`). Only needed if device artwork has to be recollected. |
-| `devicons.js` | Client for that collection page. |
+
+The one-off icon-collection tooling has been moved to `retired/` now the artwork is collected —
+see the README there if it ever needs redoing.
 
 ## Regenerating device artwork
 
