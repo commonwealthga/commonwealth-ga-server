@@ -653,9 +653,10 @@
   }
   function fmt(v) { v = Math.round(v * 100) / 100; return (v > 0 ? '+' : '') + v; }
 
-  function renderSheet() {
-    var host = document.getElementById('tb-sheet');
-    if (!host) return;
+  // The aggregation used to live inside renderSheet, which meant it could only ever describe
+  // whichever build the globals happened to hold - fine for one player, useless for a fight.
+  // Split out so a defender can be aggregated too. See statsFor() below.
+  function collectStats() {
     var picked = Object.keys(alloc).map(function (id) { return nodeIndex[id]; }).filter(Boolean);
     // stat -> {flat, pct, srcs:[{skill,tree,val,pct,kind,life,dev}]}
     var stats = {};
@@ -770,6 +771,56 @@
                        dev: dev, dormant: cond ? 1 : 0 });
       });
     });
+    return { stats: stats, picked: picked, act: act, shieldBy: shieldBy, eqb: eqb };
+  }
+
+  // Aggregate an ARBITRARY build rather than the one on screen. The build state is spread over
+  // several module globals that equipBuffs()/activeContribution() also read, so rather than
+  // rewrite five signatures we swap the globals, collect, and put them back. Contained here,
+  // and restored on the way out even if collection throws.
+  var CTXKEYS = ['curClass', 'alloc', 'charArm', 'armSlots', 'charGear', 'activeGear',
+                 'activeOrder', 'stackNotes', 'playerBuffs', 'blockedNames'];
+  function statsFor(ctx) {
+    var g = { curClass: curClass, alloc: alloc, charArm: charArm, armSlots: armSlots,
+              charGear: charGear, activeGear: activeGear, activeOrder: activeOrder,
+              stackNotes: stackNotes, playerBuffs: playerBuffs, blockedNames: blockedNames };
+    try {
+      if ('curClass' in ctx) curClass = ctx.curClass;
+      if ('alloc' in ctx) alloc = ctx.alloc || {};
+      if ('charArm' in ctx) charArm = ctx.charArm;
+      if ('armSlots' in ctx) armSlots = ctx.armSlots || [];
+      if ('charGear' in ctx) charGear = ctx.charGear || [];
+      if ('activeGear' in ctx) activeGear = ctx.activeGear || {};
+      if ('activeOrder' in ctx) activeOrder = ctx.activeOrder || [];
+      return collectStats();
+    } finally {
+      CTXKEYS.forEach(function (k) {
+        switch (k) {
+          case 'curClass': curClass = g.curClass; break;
+          case 'alloc': alloc = g.alloc; break;
+          case 'charArm': charArm = g.charArm; break;
+          case 'armSlots': armSlots = g.armSlots; break;
+          case 'charGear': charGear = g.charGear; break;
+          case 'activeGear': activeGear = g.activeGear; break;
+          case 'activeOrder': activeOrder = g.activeOrder; break;
+          case 'stackNotes': stackNotes = g.stackNotes; break;
+          case 'playerBuffs': playerBuffs = g.playerBuffs; break;
+          case 'blockedNames': blockedNames = g.blockedNames; break;
+        }
+      });
+    }
+  }
+  // builder.js loads BEFORE bench.js, so the namespace may not exist yet. bench.js does
+  // `window.GA = window.GA || {}` too, so creating it here is safe - it extends, not replaces.
+  window.GA = window.GA || {};
+  window.GA.statsFor = statsFor;
+
+  function renderSheet() {
+    var host = document.getElementById('tb-sheet');
+    if (!host) return;
+    var col = collectStats();
+    var stats = col.stats, picked = col.picked, act = col.act, shieldBy = col.shieldBy;
+    var eqb = col.eqb;
     var keys = Object.keys(stats);
 
     // ---- derived headline totals -------------------------------------------

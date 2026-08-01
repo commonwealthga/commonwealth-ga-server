@@ -91,6 +91,106 @@ window.GA = window.GA || {};
   var ALWAYS_GOOD = { 376: 1 };
   GA.LOWER_BETTER = LOWER;
   GA.ALWAYS_GOOD = ALWAYS_GOOD;
+  // ============================ MITIGATION (damage-pipeline S8) ============================
+  // Straight from the decompiled UC (TgEffectGroup.uc:745, TgEffectDamage.uc:302). Three axes,
+  // each a separate multiply against the firing device's attack rating - they do NOT add.
+  //   final = raw
+  //         x (1 - categoryProt   / rating)
+  //         x (1 - damageTypeProt / rating)
+  //         x (1 - attackTypeProt / rating)   // only for normal weapon categories
+  // Protection is stored FLAT and is integer-floored before the divide. Protection >= rating
+  // is immunity.
+
+  // m_nDamageType -> protection property
+  var DMGTYPE_PROT = { 113: 155, 115: 156, 116: 157, 897: 324 };
+  // m_eAttackType -> protection property
+  // 3 = AOE. Nothing in the device data declares it - a splash radius (prop 6) is what puts a
+  // shot on this axis instead of Ranged, and it REPLACES Ranged rather than stacking. Confirmed
+  // by measurement; see the note in gen2.py hit_of().
+  var ATKTYPE_PROT = { 1: 217, 2: 218, 3: 219 };
+  // m_nCategoryCode -> protection property (CalcCategoryProtection)
+  var CAT_PROT = { 303: 159, 304: 158, 305: 160, 378: 163, 431: 168, 875: 233,
+                   653: 235, 719: 266, 1016: 371, 921: 328 };
+  // the attack-type axis only participates for ordinary weapon damage
+  var NORMAL_CATS = { 302: 1, 963: 1 };
+  GA.DMGTYPE_PROT = DMGTYPE_PROT; GA.ATKTYPE_PROT = ATKTYPE_PROT; GA.CAT_PROT = CAT_PROT;
+
+  function axis(prot, rating) {
+    if (!rating) return 0;                       // no rating -> no reduction path
+    var n = Math.floor(prot || 0);
+    if (n <= 0) return 0;
+    var f = n / rating;
+    return f > 1 ? 1 : f;                        // >= rating is immunity, never negative damage
+  }
+
+  /* GA.mitigate(raw, hit, prot, opts)
+   *   hit  = { cat, damageType, attackType, rating }
+   *   prot = prop -> flat protection value (the defender's aggregated sheet)
+   *   opts = { extraTaken, maxHP, curHP, isBot, healthCapArmed }
+   * Returns the dealt figure plus every axis, so the panel can show WHY. */
+  GA.mitigate = function (raw, hit, prot, opts) {
+    hit = hit || {}; prot = prot || {}; opts = opts || {};
+    // ProtectionModifier bails entirely when the firing device has no usable rating, so a
+    // rating under 1 means NO mitigation on any axis - not "divide by something small".
+    var rating = hit.rating == null ? 100 : hit.rating;
+    if (rating < 1) {
+      return { raw: raw, dealt: raw, shown: Math.floor(raw + 0.5), mitigated: 0,
+               mitigatedShown: 0, axes: [], capped: false, rating: rating, mitPct: 0 };
+    }
+    var cat = hit.cat, axes = [];
+
+    // Prop 316 "Additional Damage Taken" multiplies BEFORE mitigation, not after (S10).
+    var taken = opts.extraTaken || 0;
+    var value = raw * (1 + taken / 100);
+    if (taken) axes.push({ name: 'Additional Damage Taken', prop: 316, pct: taken,
+                           reduction: -taken / 100, running: value });
+
+    function applyAxis(name, pprop) {
+      if (!pprop) return;
+      var pv = prot[pprop] || 0;
+      var r = axis(pv, rating);
+      value = value * (1 - r);
+      axes.push({ name: name, prop: pprop, protection: pv, rating: rating,
+                  reduction: r, immune: r >= 1, running: value });
+    }
+    applyAxis('Category', CAT_PROT[cat]);
+    applyAxis('Damage type', DMGTYPE_PROT[hit.damageType]);
+    if (NORMAL_CATS[cat]) applyAxis('Attack type', ATKTYPE_PROT[hit.attackType]);
+
+    var dealt = value, capped = false;
+    // Per-hit health cap (S8): a PLAYER hit while at/near full HP cannot be taken below 10%
+    // of max. Bots are exempt, and a target already below the arming threshold has no cap.
+    if (opts.healthCapArmed && !opts.isBot && opts.maxHP > 0) {
+      var floor = Math.ceil(opts.maxHP * 0.10);
+      var cur = (opts.curHP == null ? opts.maxHP : opts.curHP);
+      var room = cur - floor;
+      if (room <= 0) { dealt = 0; capped = true; }
+      else if (dealt > room) { dealt = room; capped = true; }
+    }
+    // The game rounds the delivered figure half-up to an integer right after mitigation
+    // (TgEffectDamage.uc:167  fProratedAmount = float(int(fProratedAmount + 0.5))), which is why
+    // the combat log only ever shows whole numbers. Report both so console figures can be
+    // compared against a log directly.
+    var shown = Math.floor(dealt + 0.5);
+    return { raw: raw, dealt: dealt, shown: shown,
+             mitigated: raw - dealt, mitigatedShown: Math.floor(raw - dealt + 0.5),
+             axes: axes, capped: capped, rating: rating,
+             mitPct: raw > 0 ? (raw - dealt) / raw * 100 : 0 };
+  };
+
+  // Pull the defender's flat protection values out of an aggregated sheet (builder statsFor).
+  // Protection never appears as a percentage - see the note on PROTP in builder.js.
+  GA.protectionFrom = function (stats) {
+    var out = {};
+    Object.keys(stats || {}).forEach(function (k) {
+      var st = stats[k];
+      if (st.pct) return;                        // flat only
+      if (st.rsk) return;                        // gated to a weapon class, not general defence
+      out[st.p] = (out[st.p] || 0) + st.total;
+    });
+    return out;
+  };
+
   GA.lowerIsBetter = function (prop, kind, cat, self) {
     if (LOWER[prop]) return true;
     // a penalty the device inflicts on its own user (shield slow, scope slow)

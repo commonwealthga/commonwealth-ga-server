@@ -433,6 +433,47 @@ NOTE: the target's prop-316 "Additional Damage Taken" multiplier is applied BEFO
 **Validated:** Ballista (Phys 155=30, Ranged 218=0, cat 302, rating 100): `1600 × (1−0) × (1−0.30) × (1−0) =
 1120` = clean No-KI shot-1 dealt. ✓ (baseline 1170 = KI self-leak).
 
+### Read from the UC source (2026-08-01) — `TgEffectGroup.uc` / `TgEffectDamage.uc`
+
+Confirms the formula above and settles three things that were inferred:
+
+- **`CalcAttackTypeProtection` is a `switch`, so exactly ONE attack-type axis applies** — case 3 → 219
+  AOE, case 1 → 217 Melee, case 2 → 218 Range, `default: break`. AOE **replaces** Ranged; they never
+  stack. `enum AttackType { TGAT_None, TGAT_Melee, TGAT_Range, TGAT_AOE, TGAT_Falling }` — and note
+  **TGAT_Falling (4) hits the `default` case, so falling damage takes no attack-type axis at all.**
+- **Damage is rounded HALF-UP to an integer** immediately after mitigation
+  (`TgEffectDamage.uc:167` `fProratedAmount = float(int(fProratedAmount + 0.5))`). This is why the
+  combat log only ever shows whole numbers, and it makes log figures directly comparable.
+- **`nAttackRating < 1` returns early** — no mitigation on *any* axis, rather than a small divisor.
+- Order is Hunter → Category → DamageType → AttackType(if cat 302/963). `CalcHunterProtection`
+  (`TgPawn_Hunter`) runs first and is PvE-only; not modelled.
+
+`m_eAttackType` is **never assigned in UnrealScript** — it is populated natively, so what sets it is
+not readable from the UC.
+
+### What selects the AOE axis — settled by measurement (2026-08-01)
+
+Nothing in the device data declares AOE: Desert Frag and Incendiary Grenade both carry
+`attack_type_value_id` **177 "Projectile Ranged Attack"**, exactly like the Ballista. (The exe agrees
+the raw ids are ranged — `UTgDeviceFire::IsRangedAttack` tests `m_nAttackType == 85 || == 177`,
+`IsMeleeAttack` tests `== 170`.)
+
+What selects it is the **splash radius**: a *ranged* attack whose mode carries **prop 6 (AOE Radius)**
+resolves as `TGAT_AOE`. Melee weapons carry prop 6 too — that is the swing arc, not splash — and stay
+on the melee axis.
+
+Confirmed in game, incendiary grenade at own feet, Assault protections Physical 34 / AOE 34 / Ranged 44:
+
+| | raw | axes | predicted | logged |
+|---|---|---|---|---|
+| explosion (cat 302) | 1234 | Phys 34 × AOE 34 → ×0.66×0.66 | 537.5 → **538**, mit **696** | 538 / 696 ✓ |
+| ignite tick (cat 719) | 206 | Phys 34 only → ×0.66 | 136.0 → **136**, mit **70** | 136 / 70 ✓ |
+
+Both to the unit, and the alternatives are excluded: Physical × Ranged → 456, Physical alone → 814,
+all three stacked → 301. The DoT takes **no** attack-type axis because it rides category **719 Ignite**,
+and the attack-type axis only participates for categories 302/963 — the category axis (719 → prop 266)
+applies instead, and the target had none.
+
 **Consequences:**
 - **Multiplicative across axes** — Physical 30 + Ranged 20 @ rating 100 = 0.70×0.80 = 0.56 → 44% mit (NOT 50%).
 - **Rating penetrates** — reduction per axis = protection/rating; rating 200 halves a given protection's effect. Both OC weapons = rating 100.

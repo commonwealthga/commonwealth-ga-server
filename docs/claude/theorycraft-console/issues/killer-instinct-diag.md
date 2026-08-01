@@ -17,7 +17,8 @@ player-facing bug report (test conditions and raw numbers). This file is the eng
 protection drops 10 for 3 seconds. It is an *on-hit* debuff, so it should only affect **subsequent**
 shots — the shot that triggers it must be mitigated against the target's full protection.
 
-It doesn't. About **3.1 of the 10 points land on the triggering shot itself.**
+It doesn't. The triggering shot lands **50 damage harder than it should** — and §6 shows that this
+is the *full* −10 reaching about 31% of the shot, not a fraction of the debuff reaching all of it.
 
 The Ballista's own on-hit debuff does **not** do this; its triggering shot stays clean. The two
 differ only in dispatch type — Killer Instinct is **type 505 (Hit-Situational)**, the Ballista
@@ -34,12 +35,14 @@ offence stayed constant and only the defensive side moved.
 
 Mitigation is 1:1 with Physical protection on this build, and raw shot-1 damage is 1600.
 
-| Build | Shot 1 dealt | Shot 1 mitigated | ⇒ effective protection |
+| Build | Shot 1 dealt | Shot 1 mitigated | ⇒ apparent protection |
 |---|---|---|---|
-| Killer Instinct slotted | **1170** | 430 | **26.875** |
-| Killer Instinct removed | **1120** | 480 | **30.000** (clean) |
+| Killer Instinct slotted | **1170** | 430 | 26.875 — **not achievable, see §6** |
+| Killer Instinct removed | **1120** | 480 | **30** (clean) |
 
-**The leak is exactly 50 damage on shot 1 = 3.125 protection points = 31.25% of the −10 debuff.**
+**The leak is exactly 50 damage on shot 1.** The "26.875" is what you get by treating mitigation as a
+single continuous protection value; §6 shows the engine cannot produce it, which is what identifies
+the real mechanism.
 
 Shot 1 is the control here: every on-hit debuff in the build is supposed to apply *after* it, so
 both rows should read 30. Only the row with Killer Instinct doesn't.
@@ -112,62 +115,61 @@ TgDeviceFire.SubmitHitEffects(instigator, impact, eSource, nType, nSituationalTy
 to the damage calculation that consumes the target's protection? If 505 is submitted before
 `CalcProtection` reads prop 155 for this impact, the triggering shot sees the debuffed value.
 
-That explains a leak but **not a partial one**, which is the part that needs the log capture.
+That explains a leak. It does not by itself explain a **partial** one — for that, see §6: the shot's
+damage appears to be submitted in more than one piece, and the 505 debuff lands between them.
 
 ---
 
-## 6. Why 3.125 and not 10 — competing models
+## 6. Why 3.125 and not 10 — SETTLED
 
-We have one data point, and at least three readings fit it. Do not pick one without evidence.
+**The leak is the full −10 applied to part of the shot, not a fraction of the debuff applied to all
+of it.** Established 2026-08-01 from the decompiled `CalcProtection`, which the earlier analysis
+predates:
 
-1. **Proportional.** The leak is ~31.25% of the debuff's magnitude, whatever that magnitude is.
-2. **Flat.** The leak is 3.125 protection points regardless of magnitude. (3.125 = 25/8, a clean
-   binary fraction, which is either a hint about a quantisation somewhere or a coincidence.)
-3. **Staged damage.** The shot's damage is computed in more than one stage and only some stages
-   see the reduced protection. This would make the fraction an artifact of how the Ballista's
-   damage happens to be split, and it would differ per weapon.
+```
+nProtection = int( FClamp(prop.m_fRaw, m_fMinimum, m_fMaximum) )   // INTEGER-FLOORED
+```
 
-**These are distinguishable by one experiment** — see §7.
+Protection is floored to an integer before the divide, so at rating 100 the reachable shot-1 values
+either side of the measurement are:
 
----
+| protection | dealt |
+|---|---|
+| 26 | **1184** |
+| 27 | **1168** |
+| *measured* | **1170** |
 
-## 7. The experiment that separates them
+There is no protection value that produces 1170, and the figure is exact — the combat log only ever
+emits whole numbers, because damage is rounded half-up right after mitigation
+(`TgEffectDamage.uc:167`). So **"Killer Instinct shaves ~3 points off protection" is impossible.**
+Both the flat and the proportional readings are dead.
 
-There are other type-505 protection debuffs in the data. Four besides Killer Instinct:
+What fits exactly is staged damage. With a fraction *f* of the shot mitigated at protection 20 (the
+full −10 applied) and the rest at 30:
 
-| eg | prop | base | calc | gate | category | source |
-|---|---|---|---|---|---|---|
-| **26474** | 155 | **5.0** | 70 SUB | **1271 / 75%** — same as KI | 302 | skill **806** |
-| 25886 | 155 | **12.0** | 70 SUB | 509 generic on-hit | 986 | device **6808** |
-| 27552 | 155 | **12.0** | 70 SUB | 509 generic on-hit | 986 | device **7486** |
-| 16587 | 155 | 10.0 | **67 ADD** | 1270 / below 25% | 302 | skill 852 (Group Heal Savior) |
+```
+dealt = 1600 × [0.70 + 0.10f] = 1120 + 160f     →  1170 gives f = 0.3125
+```
 
-**eg 26474 is the discriminator.** Identical shape to Killer Instinct — same type, same
-situational gate, same calc, same class, same category — at **half the magnitude**. So:
+Every quantity there is an integer protection, so this reproduces the measurement with no rounding
+slack: 500 damage mitigated at 20, 1100 at 30, total 1170.
 
-- leak of **1.5625** protection points ⇒ **proportional** (model 1)
-- leak of **3.125** protection points ⇒ **flat** (model 2)
+**What this means for the fix.** Do not go looking for a partial protection value or an off-by-one in
+the debuff magnitude — look for **the shot's damage being submitted in more than one piece**, with the
+type-505 debuff landing between the pieces. The 0.3125 split is the thing to explain.
 
-Run it exactly as the original A/B: same weapon, same bare target, compare shot 1 with the skill
-slotted vs not.
+## 7. Confirmed from source, so do not re-derive
 
-**Two caveats on 26474, both needing a check before you rely on it:**
+Read from `github.com/commonwealthga/ga-source` (private; UC under `unrealscript/`, Ghidra C++ under
+`decompiled/`):
 
-- It is attached to skill **806, "Combat Off-Hand Utility"**, whose tooltip only mentions
-  explosion radius. The skill carries four effect groups (16314, 26474, 24044, 16407) and 26474
-  also changes prop 49. Confirm the protection debuff actually fires in game before trusting a
-  null result — an unslottable or non-firing effect looks identical to "no leak".
-- It gates on rifle hits the same way KI does, so the same Ballista test rig should work, but
-  verify the skill is reachable on a Recon build.
-
-**The device-sourced pair (25886 / 27552) is a different and equally useful control.** They are
-type-505 but come from a *device*, not a skill. If they leak too, the cause is the **type-505
-dispatch**. If they don't, the cause is something specific to **skill-sourced** effects — which
-would point somewhere quite different in the fix. I could not confidently resolve device ids
-6808/7486 to player-facing weapons (both collided onto "Rusted Machete" in a lookup that is
-probably crossing two keyspaces) — **resolve those properly before designing a test around them.**
-
----
+- `TgEffectGroup.CalcAttackTypeProtection` is a **switch** — exactly one attack-type axis ever applies
+  (3 → 219 AOE, 1 → 217 Melee, 2 → 218 Range). They never stack.
+- `TgEffectDamage.ProtectionModifier` order: Hunter → Category → DamageType → AttackType, the last only
+  for `m_nCategoryCode` 302 or 963.
+- `m_eAttackType` is **never assigned in UnrealScript** — populated natively, so the UC will not tell
+  you what sets it. Empirically a ranged attack with a splash radius (prop 6) resolves as AOE.
+- Damage is rounded **half-up to an integer** after mitigation, which is why log figures are exact.
 
 ## 8. Instrumentation
 

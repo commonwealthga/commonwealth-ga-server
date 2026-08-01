@@ -168,6 +168,46 @@ STATP = {354: ('Lifespan', 's'), 4: ('Cooldown', 's'), 279: ('Deploy', 's'),
          287: ('Shots', 'x'),        # rounds per trigger pull - Stormer/Tempest 5, Spider 3
          154: ('Max out', ''),       # how many can be deployed at once
          318: ('Morale', '')}        # what a Boost costs to fire
+# ---- mitigation inputs (damage-pipeline S8) --------------------------------------
+# CalcProtection needs three things off the firing mode: which damage-type axis, which
+# attack-type axis, and the attack rating it divides protection by.
+#
+# The DB stores attack type as a value_id from group 25; the runtime enum m_eAttackType is
+# 1 Melee / 2 Ranged / 3 AOE. Melee and ranged map cleanly and are applied.
+#
+# AOE does NOT come from this column: Desert Frag and Incendiary Grenade both declare 177
+# "Projectile Ranged Attack", exactly like the Ballista. What selects it is the SPLASH RADIUS -
+# a mode carrying prop 6 (AOE Radius) delivers its damage on the AOE axis instead of Ranged.
+#
+# Settled by measurement (2026-08-01), incendiary grenade at own feet, Assault protections
+# Physical 34 / AOE 34 / Ranged 44:
+#   explosion  raw 1234 -> 1234 x 0.66 x 0.66 = 537.5  dealt 538, mitigated 696   [Phys x AOE]
+#   DoT tick   raw  206 ->  206 x 0.66        = 136.0  dealt 136, mitigated  70   [Phys only]
+# Both to the unit, and the alternatives are excluded: Phys x Ranged gives 456, Phys alone 814,
+# all three stacked 301. So AOE REPLACES Ranged rather than stacking with it, and the DoT takes
+# no attack-type axis at all - it rides category 719 Ignite, and the attack-type axis only
+# participates for categories 302/963.
+ATK_MAP = {85: 2,     # Instant Ranged Attack
+           177: 2,    # Projectile Ranged Attack
+           170: 1,    # Melee Attack
+           372: 1}    # Fast Melee Attack
+DMG_OK = {113, 115, 116, 897}     # 112 = "N/A" -> no damage-type axis
+
+def hit_of(did, m):
+    m = dict(m)            # q() hands back sqlite3.Row, which has no .get
+    atk = m.get('atk')
+    base = ATK_MAP.get(atk)
+    rad = q("SELECT base_value bv FROM asm_data_set_device_mode_properties "
+            "WHERE device_id=? AND device_mode_id=? AND prop_id=6", (did, m['mid']))
+    # Only a RANGED attack gets promoted by a radius. Melee weapons carry prop 6 too - that is
+    # the swing arc, not splash - and they stay on the melee axis.
+    aoe = bool(rad and rad[0]['bv'] > 0 and base == 2)
+    return {'atk': 3 if aoe else base,
+            'dmg': m.get('dmg') if m.get('dmg') in DMG_OK else None,
+            'rating': m.get('rating') or 100,
+            'aoe': aoe,
+            'atkraw': atk}
+
 def dev_stats(did, mid=None):
     """Key numbers that live on the device row rather than in an effect group. Scoped to one
     fire mode when given: refire and power cost differ between primary and alt."""
@@ -240,7 +280,9 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
     rcq = q("SELECT right_click_behavior_type_value_id rc FROM asm_data_set_devices WHERE device_id=? LIMIT 1", (did,))
     rc = rcq[0]['rc'] if rcq else 0
     can_block = is_melee and rc == 894          # 894 = RMB blocks; 830 = RMB is an alt-fire
-    for m in q("SELECT device_mode_id mid, name_msg_id FROM asm_data_set_devices_data_set_device_modes WHERE device_id=?", (did,)):
+    for m in q("SELECT device_mode_id mid, name_msg_id, attack_type_value_id atk, "
+               "damage_type_value_id dmg, attack_rating rating "
+               "FROM asm_data_set_devices_data_set_device_modes WHERE device_id=?", (did,)):
         pcr = q("SELECT base_value bv FROM asm_data_set_device_mode_properties WHERE device_id=? AND device_mode_id=? AND prop_id=242", (did, m['mid']))
         power = round(pcr[0]['bv'], 2) if pcr else None
         mn = q("SELECT message msg FROM asm_data_set_msg_translations WHERE msg_id=?", (m['name_msg_id'],))
@@ -382,7 +424,8 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
         for c in dedup(bschips)[:4]:
             chips.append([c[0], 'Backstab: ' + c[1]] + c[2:])
         out.append({'name': mname, 'power': power, 'chips': chips,
-                    'zoom': dedup(zoomchips)[:4], 'blk': dedup(blkchips)[:4], 'mid': m['mid']})
+                    'zoom': dedup(zoomchips)[:4], 'blk': dedup(blkchips)[:4], 'mid': m['mid'],
+                    'hit': hit_of(did, m)})
 
     # ---- Collapse to the game's TWO inputs: PRIMARY (LMB) + ALT (RMB) ----
     # Melee RMB is decided by right_click_behavior_type_value_id:
@@ -391,6 +434,7 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
     # For ranged/specialty with an aim group (type 266), RMB = aim/zoom.
     if not out: return []
     rows = [{'kind': 'PRI', 'name': out[0]['name'], 'power': out[0]['power'],
+             'hit': out[0]['hit'],
              'chips': equip_stats(did) + out[0]['chips'] + dev_stats(did, out[0]['mid'])
                       + deployable_stats(did)}]
     if can_block:
@@ -403,16 +447,19 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
                            [322, float(v), 67, 0, 0, 0, 0, 0]])
         for c in out[0]['blk']:
             bchips.append(['blk', 'Counter: ' + c[1]] + c[2:])
-        rows.append({'kind': 'BLOCK', 'name': 'Block', 'power': None, 'chips': bchips})
+        rows.append({'kind': 'BLOCK', 'name': 'Block', 'power': None, 'chips': bchips,
+                     'hit': out[0]['hit']})
     elif len(out) > 1:
         rows.append({'kind': 'ALT', 'name': out[1]['name'], 'power': out[1]['power'],
+                     'hit': out[1]['hit'],
                      'chips': out[1]['chips'] + dev_stats(did, out[1]['mid'])})
     elif out[0]['zoom']:
         # Scoping is a MODIFIER state, not a separate attack - a scoped Ballista still fires the
         # same shot. Flagged so the console keeps the primary damage visible alongside the
         # scope's own effects rather than replacing it.
+        # Scoping does not change the shot, so it keeps the primary's hit descriptor.
         rows.append({'kind': 'ALT', 'name': 'Aim / Zoom', 'power': None,
-                     'chips': out[0]['zoom'], 'zoom': True})
+                     'chips': out[0]['zoom'], 'zoom': True, 'hit': out[0]['hit']})
     # Effects that live on a spawned entity (explosion deployable, turret/drone weapon).
     if recurse:
         for sd, lab in spawned_sources(did):

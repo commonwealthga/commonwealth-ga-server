@@ -1,11 +1,12 @@
 {
   "version": "0.0.1",
+  "autoPort": false,
   "configurations": [
     {
       "name": "device-console",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8712", "--directory", "docs/claude/theorycraft-console"],
-      "port": 8712
+      "runtimeArgs": ["-m", "http.server", "8713", "--directory", "docs/claude/theorycraft-console"],
+      "port": 8713
     }
   ]
 }
