@@ -187,5 +187,5 @@ HTML = HTML.replace('</script>\n',
                     '<script>window.__CHARS__=' + CHARS + ';</script>\n'
                     '<script>' + BUILDJS + '</script>\n'
                     '<script>' + BENCHJS + '</script>\n', 1)
-open(r"E:\GA_LOCAL\Repo\docs\claude\device-console.html", "w", encoding="utf-8").write(HTML)
+open(r"E:\GA_LOCAL\Repo\docs\claude\theorycraft-console\device-console.html", "w", encoding="utf-8").write(HTML)
 print("wrote", len(HTML), "bytes")

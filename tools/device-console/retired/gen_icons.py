@@ -237,6 +237,6 @@ HTML = ('<!doctype html><html><head><meta charset="utf-8">'
         '<div class="wrap">%s</div><script>%s</script></body></html>'
         ) % (CSS, total, "".join(panes), JS.replace('%TOTAL%', str(total)).replace('%ICONOF%', json.dumps(ICONOF)))
 
-out = r"E:\GA_LOCAL\Repo\docs\claude\device-icons.html"
+out = r"E:\GA_LOCAL\Repo\docs\claude\theorycraft-console\device-icons.html"
 open(out, "w", encoding="utf-8").write(HTML)
 print("wrote", out, len(HTML), "bytes;", total, "devices")

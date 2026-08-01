@@ -647,7 +647,7 @@ applies Physical −2 / Self-Heal −15% (7 s) — that debuff IS amplified by D
 ## 14. Complete skill→device interaction matrix (data-driven)
 
 All 117 tree skills (groups 155–163) resolved to inventory devices **mechanically**, not hand-curated —
-rendered in `docs/claude/device-console.html`. Resolution rules (proven from code):
+rendered in `docs/claude/theorycraft-console/device-console.html`. Resolution rules (proven from code):
 
 1. **`required_skill_id` gating** → devices whose item `skill_id` matches (buff-registry match rule §0).
    Covers all weapon-line skills (Recon Rifle */Assault Guns */Bio Rifle */Launcher */Robotics Rifle *…),

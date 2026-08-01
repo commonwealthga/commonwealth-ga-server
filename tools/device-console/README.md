@@ -1,6 +1,6 @@
 # Device console generators
 
-Builds `docs/claude/device-console.html` — the loadout / character / skill-tree console used for
+Builds `docs/claude/theorycraft-console/device-console.html` — the loadout / character / skill-tree console used for
 damage and protection theory-crafting. The published page is a single self-contained HTML file;
 these scripts are what produce it.
 
@@ -9,7 +9,7 @@ these scripts are what produce it.
 - **`E:\GA_LOCAL\gaa.db`** — authoritative named ASM data (the path is hard-coded in each
   generator; change it there if the db moves). Read-only.
 - **`E:\GA_BROADCAST_ICONS\ICONS\SKILLS\*.png`** — skill-tree node icons, keyed by `icon_id`.
-- **`docs/claude/assets/device-icons/<device_id>.png`** — device artwork, collected by hand via
+- **`docs/claude/theorycraft-console/assets/device-icons/<device_id>.png`** — device artwork, collected by hand via
   `gen_icons.py` (see below).
 
 ## Build order
@@ -22,7 +22,7 @@ python gen_ix.py      # skill -> device interaction resolver   -> ix.json, ixraw
 python gen_tree.py    # skill trees, icons, base stats, armour -> tree.json
 python gen2.py        # inventory device model (modes, chips)  -> inv_model.json
 python gen_char.py    # real character builds for user 2381    -> chars.json
-python gen3.py        # renders the final HTML                 -> docs/claude/device-console.html
+python gen3.py        # renders the final HTML                 -> docs/claude/theorycraft-console/device-console.html
 ```
 
 `gen3.py` must run last — it consumes every other output plus `bench.js`, `builder.js`,
@@ -46,13 +46,13 @@ see the README there if it ever needs redoing.
 
 ## Regenerating device artwork
 
-`docs/claude/assets/device-icons/*.png` were collected by hand. To rebuild the inlined copy the
+`docs/claude/theorycraft-console/assets/device-icons/*.png` were collected by hand. To rebuild the inlined copy the
 page uses, decode those PNGs into `deviceimg.json` as `{device_id: dataURL}` — `gen3.py` reads
 that file and injects it as `window.__DEVIMG__`. The images are downscaled to 56px before
 inlining to keep the page near 3MB rather than 10MB.
 
 ## Notes
 
-- The model these scripts encode is documented in `docs/claude/damage-pipeline.md` — read
+- The model these scripts encode is documented in `docs/claude/theorycraft-console/damage-pipeline.md` — read
   §15–§20 before changing any of the resolver logic.
 - Nothing here writes to the game database.

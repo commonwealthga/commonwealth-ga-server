@@ -1,7 +1,7 @@
 # Retired — one-off icon collection
 
 These files did a single job: getting artwork associated with each device. That job is **done**
-— the results are committed at `docs/claude/assets/device-icons/<device_id>.png` (115 images) and
+— the results are committed at `docs/claude/theorycraft-console/assets/device-icons/<device_id>.png` (115 images) and
 inlined into the console.
 
 Kept rather than deleted so the process is repeatable if artwork ever needs recollecting or
@@ -21,7 +21,7 @@ extending (new devices, better source images). Nothing in the live build depends
 2. **Open the page from disk (`file://`), not through the published artifact.** Artifacts run in
    a sandboxed iframe that silently blocks downloads, which is why the first attempt at this
    produced nothing. Opened locally, Export gets a real "where do you want to save" dialog.
-3. Collect, Export, then decode the JSON into `docs/claude/assets/device-icons/` and rebuild
+3. Collect, Export, then decode the JSON into `docs/claude/theorycraft-console/assets/device-icons/` and rebuild
    `deviceimg.json` for `gen3.py`.
 
 ## Why keyed by device_id
