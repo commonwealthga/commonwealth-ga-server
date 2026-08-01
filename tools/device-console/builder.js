@@ -309,6 +309,30 @@
     });
   }
 
+  // "Equip:" passives apply for carrying the device, not for having it switched on - the
+  // tooltip says Equip, and Targeting System's +5% Range Damage is live whether or not you
+  // are currently using it. So these are collected from every slot, active or not.
+  function equipBuffs() {
+    var out = [];
+    charGear.forEach(function (g) {
+      var dev = (window.__DEVMODEL__ || {})[String(g.id)];
+      if (!dev) return;
+      (dev.modes || []).forEach(function (m) {
+        (m.chips || []).forEach(function (c) {
+          if (!/^Equip: /.test(c[1])) return;
+          var num = c[2];
+          if (!num || !num[0]) return;
+          var pct = (num[2] === 68 || num[2] === 69);
+          var v = num[1];
+          if (pct && Math.abs(v) > 0 && Math.abs(v) < 1) v *= 100;
+          if (num[2] === 69 || num[2] === 70) v = -v;
+          out.push({ p: num[0], v: v, pct: pct ? 1 : 0, src: g.name, kind: 'equip' });
+        });
+      });
+    });
+    return out;
+  }
+
   // Everything switched on, run through the game's stacking rules. Anything overridden is
   // switched OFF outright rather than left on and greyed - the game would not have it running.
   function activeContribution() {
@@ -672,12 +696,25 @@
     var contrib = activeContribution();
     if (contrib.notes.length) stackNotes = contrib.notes;   // sticky: see note below
     // percentage buffs feed back into every OTHER device's numbers, not just this summary
-    playerBuffs = contrib.effects.filter(function (f) { return f.pct; })
-      .map(function (f) { return { p: f.p, v: f.v, pct: 1, src: f.src, kind: f.kind }; });
+    var eqb = equipBuffs();
+    playerBuffs = eqb.filter(function (f) { return f.pct; })
+      .concat(contrib.effects.filter(function (f) { return f.pct; })
+        .map(function (f) { return { p: f.p, v: f.v, pct: 1, src: f.src, kind: f.kind }; }));
     var act = contrib.effects.length || contrib.shields.length
       ? { effects: contrib.effects, shields: contrib.shields,
           dev: Object.keys(activeGear).map(function (i) { return charGear[+i].name; }).join(', ') }
       : null;
+    // equip passives are a layer of their own on the sheet
+    eqb.forEach(function (f) {
+      var nm = (window.GA && window.GA.statName) ? window.GA.statName(f.p) : null;
+      if (!nm) return;
+      var key = f.p + '|' + (f.pct ? 1 : 0) + '|0';
+      var st = stats[key] || (stats[key] = { p: f.p, name: nm, pct: f.pct ? 1 : 0,
+                                             rsk: 0, scope: '', total: 0, srcs: [] });
+      st.total += f.v;
+      st.srcs.push({ skill: f.src, tree: 'EQUIP', val: f.v, kind: 'equipped', life: 0,
+                     dev: [], layer: 'equip' });
+    });
     var shieldBy = {}, liveNow = {};
     if (act) {
       act.effects.forEach(function (f) {
@@ -752,9 +789,10 @@
     // Anything active that raises the CEILING counts toward sustain (Fashion Boost's Max Power
     // +40). A flat Power restore (prop 243, Power Stim's +140) does not - it refills the pool,
     // it does not enlarge it.
-    var actPool = 0;
-    if (act) act.effects.forEach(function (f) { if (f.p === 255 && !f.pct) actPool += f.v; });
-    window.__PWPOOL__ = totPW + actPool;   // block drain is a time-to-empty against this
+    var actPool = 0, actPoolPct = 0;
+    if (act) act.effects.forEach(function (f) { if (f.p === 255) { if (f.pct) actPoolPct += f.v; else actPool += f.v; } });
+    eqb.forEach(function (f) { if (f.p === 255) { if (f.pct) actPoolPct += f.v; else actPool += f.v; } });
+    window.__PWPOOL__ = Math.floor((totPW + actPool) * (1 + actPoolPct / 100));
     function tile(lab, val, base, item, skill) {
       var parts = [];
       if (item) parts.push('armour ' + (item > 0 ? '+' : '') + Math.round(item) + '%');

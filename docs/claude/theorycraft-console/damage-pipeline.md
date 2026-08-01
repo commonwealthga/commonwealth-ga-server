@@ -1206,7 +1206,50 @@ Reported as giving ranged damage and extra power passively while equipped. What 
   Common `Output Mod +70%`, then Uncommon / Rare / Epic each `Power Pool Cost -5%`.
 - **Its rolled instance** `[pppppp]`: `Power Pool Cost -15%` and `-6%`.
 
-So the "extra power" is real but it is a **cost reduction** (-15%/-6% Power Pool Cost), not added
-power. There is **no ranged-damage modifier** anywhere on it — not on the device, the blueprint,
-or the roll. Its sibling **Visual Scanner** does give `Damage Modifier - Range +10%` for 20s,
-which is the likely source of the recollection.
+> **This conclusion was WRONG** — see §26. The equip passives live in a table that was not being
+> read at all. Targeting System does give `+5% Range Damage` and `+20% Power` while equipped,
+> exactly as its tooltip says.
+
+
+## 26. Equip passives live in `asm_data_set_device_effect_groups` (2026-08-01)
+
+Prompted by the Targeting System tooltip:
+
+```
+Equip: +5% Range Damage
+Equip: +20% Power
+```
+
+I had checked the device's effect groups, its blueprint mods and its rolled instance and found no
+such thing, and wrongly concluded the tooltip was a misremembering. The effects are real — they
+live in **`asm_data_set_device_effect_groups`**, a *device-level* table, while everything else in
+this console comes from `asm_data_set_device_mode_effect_groups` (device-**mode**-level). The
+device-level table was never being read.
+
+`eg22372` = `Damage Modifier - Range +5%` + `Power Pool Max +20%` (stored as 0.2).
+
+### Who has them
+
+15 of the 128 inventory devices, all type **261 EQUIP**:
+
+| device | equip passive |
+|---|---|
+| Targeting System | Range Damage +5%, Power Pool Max +20% |
+| **every melee weapon** (14 of them) | `Damage Modifier - Mechanical +20%` |
+| HUMAN BASE ATTRIBUTES | EMP-Stun 1000, EMP-Burn 1000, Physical 30 — already modelled as base stats |
+
+The melee one is a real find in its own right: **every melee weapon carries a hidden +20% against
+mechanical targets** — turrets, drones, deployables — that appears nowhere in its mode data.
+
+### They apply for being carried, not for being active
+
+Type 261 means equipped, so the console applies them from every filled slot regardless of the
+on/off toggle. Verified: a Ballista alone resolves to 1238.74 against a 100 power pool; adding a
+Targeting System to the specialty slot *without switching it on* gives **1300.67** (x1.05) and a
+pool of **120** (x1.20).
+
+### Lesson
+
+`asm_data_set_device_effect_groups` (device) and `asm_data_set_device_mode_effect_groups` (mode)
+are different tables with near-identical names. Anything auditing device effects must read both —
+the earlier off-hand audit in §25 only read the mode table and therefore could not have found this.

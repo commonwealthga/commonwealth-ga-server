@@ -177,6 +177,34 @@ def dev_stats(did):
         seen.add(c[1]); ded.append(c)
     return ded
 
+def equip_stats(did):
+    """Passives that apply just for having the thing equipped. These live in
+    asm_data_set_device_effect_groups (device-level), NOT the device_mode table everything else
+    comes from, which is why they were invisible: Targeting System's "Equip: +5% Range Damage /
+    +20% Power", and the +20% vs-Mechanical every melee weapon carries."""
+    out = []
+    for r in q("SELECT DISTINCT effect_group_id eg FROM asm_data_set_device_effect_groups WHERE device_id=?", (did,)):
+        meta = q("SELECT category_value_id cat, effect_group_type_value_id t FROM asm_data_set_effect_groups WHERE effect_group_id=? LIMIT 1", (r['eg'],))
+        egcat = (meta[0]['cat'] if meta else 0) or 0
+        egt = (meta[0]['t'] if meta else 261) or 261
+        for e in q("SELECT prop_id p, base_value bv, calc_method_value_id calc FROM asm_data_set_effects WHERE effect_group_id=?", (r['eg'],)):
+            p, bv, calc = e['p'], e['bv'], e['calc']
+            if not p: continue
+            pos = calc in (67, 68); pct = calc in (68, 69)
+            sgn = '+' if pos else '-'
+            u = '%' if pct else ''
+            val = round(bv * 100, 1) if (pct and abs(bv) <= 1) else round(bv, 1)
+            lab = (DMGMOD.get(p) or PROT.get(p) or HEALMOD.get(p) or MISC.get(p)
+                   or {388: 'vs Mech', 389: 'vs Bio', 255: 'Max Power', 243: 'Power',
+                       244: 'Power Regen', 412: 'Max HP'}.get(p) or pn(p))
+            if p in PROT: lab = PROT[p] + ' Prot'
+            kind = 'dmg' if pos else 'debuff'
+            if p in PROT: kind = 'prot'
+            elif p in (243, 244, 255): kind = 'power'
+            out.append([kind, 'Equip: %s %s%s%s' % (lab, sgn, val, u),
+                        [p, round(bv, 3), calc, 0, egt, egcat, 0, 0]])
+    return out
+
 def deployable_stats(did):
     """Health of whatever this device deploys - Force Wall 2370, Dome Shield Boost 2500,
     the stations 1500. It lives on asm_data_set_deployables, not in any effect group, so
@@ -349,7 +377,7 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
     # For ranged/specialty with an aim group (type 266), RMB = aim/zoom.
     if not out: return []
     rows = [{'kind': 'PRI', 'name': out[0]['name'], 'power': out[0]['power'],
-             'chips': out[0]['chips'] + dev_stats(did) + deployable_stats(did)}]
+             'chips': equip_stats(did) + out[0]['chips'] + dev_stats(did) + deployable_stats(did)}]
     if can_block:
         bchips = [['blk', 'Blocks frontal melee']]
         bc = q("SELECT base_value bv FROM asm_data_set_device_mode_properties WHERE device_id=? AND device_mode_id=? AND prop_id=322", (did, out[0]['mid']))
