@@ -643,6 +643,14 @@
     ['Utility', function () { return true; }]
   ];
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+  // is this value good for the player? not the same question as "is it positive?"
+  function benefit(prop, v) {
+    if (!v) return 'pos';
+    var G = window.GA || {};
+    if ((G.ALWAYS_GOOD || {})[prop]) return 'pos';
+    if ((G.LOWER_BETTER || {})[prop]) return v < 0 ? 'pos' : 'neg';
+    return v < 0 ? 'neg' : 'pos';
+  }
   function fmt(v) { v = Math.round(v * 100) / 100; return (v > 0 ? '+' : '') + v; }
 
   function renderSheet() {
@@ -891,7 +899,9 @@
             + ' Protection axes multiply, they do not add.">'
             + (capped ? 'immune' : (Math.round(raw * 10) / 10) + '%') + '</em>';
         }
-        var cls = st.total < 0 ? 'neg' : 'pos';
+        // Colour by whether the number HELPS you, not by its sign: a cooldown or power-cost
+        // reduction is a gain, and it was reading as a loss.
+        var cls = benefit(st.p, st.total);
         // only list devices the CURRENT class can actually equip
         var devs = {};
         st.srcs.forEach(function (s) {
@@ -919,6 +929,7 @@
             + 'the protection value above is what decides mitigation.</span></div>';
         }
         st.srcs.sort(function (a, b) { return Math.abs(b.val) - Math.abs(a.val); }).forEach(function (s) {
+          var scls = benefit(st.p, s.val);
           html += '<div class="srcline' + (s.base ? ' isbase' : '') + (s.armour ? ' isarm' : '')
             + (s.active ? ' isact' : '') + '"><span class="srctree' + (s.base ? ' basetag' : '')
             + (s.active ? ' acttag' : '') + '">' + esc(s.tree) + '</span>'
@@ -926,7 +937,7 @@
             + (s.kind !== 'passive' ? '<span class="srckind' + (s.dormant ? ' dormant' : '') + '">'
                 + s.kind + (s.dormant ? ' · not active' : '') + '</span>' : '')
             + (s.life ? '<span class="srckind">' + s.life + 's</span>' : '')
-            + '<span class="srcval ' + (s.dormant ? 'off' : (s.val < 0 ? 'neg' : 'pos')) + '">'
+            + '<span class="srcval ' + (s.dormant ? 'off' : scls) + '">'
             + fmt(s.val) + (st.pct ? '%' : '') + '</span></div>';
         });
         if (devlist.length) {

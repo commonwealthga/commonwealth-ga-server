@@ -41,6 +41,37 @@ Data sources are read-only: `E:\GA_LOCAL\gaa.db` (authoritative, named ASM data)
 
 ---
 
+## Presentation conventions
+
+Two rules the whole console follows. Both are applied at the point the data is produced, so
+there is nowhere to get them inconsistent.
+
+**Property names use the game's wording, not the table's.** `asm_data_set_properties` calls
+prop 4 "Recharge Time" and prop 203 "Recharge Time Modifier"; every surface the player ever
+saw called them **Cooldown**. `PROPRENAME` in each generator's `pn()` rewrites them. Note the
+name collision this avoids: prop 244 is *Power Pool Recharge Rate*, an entirely different
+thing (power regen), and it keeps its name. Likewise the skills literally called
+"Offhand Recharge" / "Assault Offhand Recharge" are names, not property labels.
+
+**Colour tracks benefit, not sign.** Green means the number helps you. Most properties are
+higher-is-better, but a set of them are the reverse, and rendering those by sign made every
+cooldown or power-cost reduction read as a loss:
+
+| | properties |
+|---|---|
+| lower is better | 4 / 203 Cooldown · 53 Refire · 279 Deploy · 242, 322 Power Pool Cost · 349 Remote Activation Time · 357 Required Morale · 391 Pet Deploy Time · 137 Falling Damage · 421 Threat Modifier · 66 Effect GroundSpeed Modifier · 316 Additional Damage Taken |
+| good either way | 376 Effect Potency — only ever arrives from your own skills, scoped to something you want moved |
+| everything else | higher is better |
+
+The last four lower-is-better entries are *modifiers on a penalty*: less falling damage, less
+of a shield's movement tax, less threat. Reducing them is the gain. Distinguish 421 Threat
+**Modifier** from 420 raw Threat — a decoy's `Threat +4000` is the device doing its job.
+
+The set lives once, in `GA.LOWER_BETTER` / `GA.ALWAYS_GOOD` (`bench.js`), read by both the
+device chips' before→after arrows and the My Player sheet's `benefit()`.
+
+---
+
 ## Coverage
 
 **All 115 devices are modelled**, and every one has resolved skill interactions.
@@ -51,8 +82,9 @@ Data sources are read-only: `E:\GA_LOCAL\gaa.db` (authoritative, named ASM data)
 | Offhand 49 · Specialty 21 · Ranged 20 · Melee 13 · Boost 8 · Jetpack 4 | |
 | 66 devices have two fire modes, 49 have one | 15 deployables/pets · 19 healers · 28 AoE |
 
-**Known gap:** `Dome Shield Boost` is the only device with **no numeric chips at all** — it renders
-but contributes nothing to any calculation. Unexplained; worth investigating.
+*(The former "Dome Shield Boost has no numeric chips" gap is closed — see backlog C5. It is a
+deployable shield whose substance is the deployable's health plus Persist Time, neither of
+which was being read.)*
 
 ---
 

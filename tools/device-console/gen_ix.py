@@ -10,7 +10,11 @@ import sqlite3, json
 OUT = r'C:/Users/patri/AppData/Local/Temp/claude/E--GA-LOCAL-Repo/4220e829-c0b4-416e-90e1-0bc04ececb41/scratchpad/'
 db = sqlite3.connect(r"E:\GA_LOCAL\gaa.db"); db.row_factory = sqlite3.Row
 def q(s, a=()): return db.execute(s, a).fetchall()
+# The game calls it Cooldown wherever the player sees it; the property table says Recharge
+# Time. Renamed at the point names are produced, so it is consistent across the whole console.
+PROPRENAME = {4: 'Cooldown', 203: 'Cooldown Modifier'}
 def pn(pid):
+    if pid in PROPRENAME: return PROPRENAME[pid]
     r = q("SELECT name FROM asm_data_set_properties WHERE prop_id=?", (pid,))
     return (r[0]['name'] if r and r[0]['name'] else str(pid))
 def sname(sid):

@@ -76,7 +76,21 @@ window.GA = window.GA || {};
   GA.EFFECT_PROPS = EFFECTP;
 
   // properties where a LOWER number is better for the player
-  var LOWER = { 4: 1, 53: 1, 279: 1, 242: 1, 322: 1, 203: 1 };
+  // Properties where a REDUCTION is the benefit. Includes ones that modify a penalty rather
+  // than a benefit: less falling damage, less of a shield's movement penalty, less threat.
+  var LOWER = { 4: 1, 53: 1, 279: 1, 242: 1, 322: 1, 203: 1,
+                349: 1,   // remote activation time - faster detonation
+                357: 1,   // morale required - cheaper boosts
+                391: 1,   // pet deploy time
+                137: 1,   // falling damage
+                421: 1,   // threat
+                66: 1,    // effect groundspeed - only ever used to strip a slow
+                316: 1 }; // additional damage taken
+  // Potency only ever arrives from your own skills, scoped to something you want moved, so a
+  // change in either direction is in your favour.
+  var ALWAYS_GOOD = { 376: 1 };
+  GA.LOWER_BETTER = LOWER;
+  GA.ALWAYS_GOOD = ALWAYS_GOOD;
   GA.lowerIsBetter = function (prop, kind, cat, self) {
     if (LOWER[prop]) return true;
     // a penalty the device inflicts on its own user (shield slow, scope slow)

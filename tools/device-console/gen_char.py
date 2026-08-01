@@ -22,7 +22,11 @@ COSMETIC = {996, 997, 998, 999, 1000, 1001, 202}
 # folded into the base player stats, so it must not appear as a toggleable equipped device.
 HBA = 864
 
+# The game calls it Cooldown wherever the player sees it; the property table says Recharge
+# Time. Renamed at the point names are produced, so it is consistent across the whole console.
+PROPRENAME = {4: 'Cooldown', 203: 'Cooldown Modifier'}
 def pn(pid):
+    if pid in PROPRENAME: return PROPRENAME[pid]
     r = q("SELECT name FROM asm_data_set_properties WHERE prop_id=?", (pid,))
     return (r[0]['name'] if r and r[0]['name'] else str(pid))
 def iname(iid):

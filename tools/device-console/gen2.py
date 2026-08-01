@@ -5,7 +5,11 @@ def q(s, a=()): return db.execute(s, a).fetchall()
 def iname(iid):
     r = q("SELECT m.message FROM asm_data_set_items i JOIN asm_data_set_msg_translations m ON m.msg_id=i.name_msg_id WHERE i.item_id=? LIMIT 1", (iid,))
     return r[0]['message'] if r else ("dev%s" % iid)
+# The game calls it Cooldown wherever the player sees it; the property table says Recharge
+# Time. Renamed at the point names are produced, so it is consistent across the whole console.
+PROPRENAME = {4: 'Cooldown', 203: 'Cooldown Modifier'}
 def pn(pid):
+    if pid in PROPRENAME: return PROPRENAME[pid]
     r = q("SELECT name FROM asm_data_set_properties WHERE prop_id=?", (pid,))
     return (r[0]['name'] if r and r[0]['name'] else str(pid))
 CALC = {67: '+', 68: '+%', 69: '-%', 70: '-'}
