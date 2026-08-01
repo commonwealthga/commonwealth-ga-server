@@ -11016,6 +11016,18 @@ void Database::Init() {
 		Logger::Log("db", "v158: repaired CPFactory03 12398-12402 spawner-count rows\n");
 	}
 
+	if (version < 159) {
+		// v159: map object 13722 belongs on team/taskforce 1, not 2.
+		result = sqlite3_exec(db,
+			"UPDATE map_object_config SET value = '1' "
+			"WHERE map_object_id = 13722 "
+			"  AND column_name IN ('s_n_team_number', 's_n_task_force');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v159 (13722 team/taskforce -> 1): %s\n", err); return; }
+
+		Logger::Log("db", "v159: set 13722 s_n_team_number/s_n_task_force to 1\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -11027,7 +11039,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 158", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 159", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
