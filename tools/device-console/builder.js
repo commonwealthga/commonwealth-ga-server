@@ -803,34 +803,43 @@
     totPW = Math.floor((totPW + actPool) * (1 + actPoolPct / 100));
     window.__PWPOOL__ = totPW;
     // the POWER tile carries the sustain figure for whatever is currently firing
+    // Every active device with a per-shot cost and a refire spends power at once - flying
+    // while firing drains both - so these SUM. Taking the maximum meant a jetpack at 23.6/s
+    // masked the weapon entirely, and switching the weapon's fire mode changed nothing.
     function activeDrain() {
-      var worst = 0;
-      if (!window.GA || !window.GA.resolve) return 0;
+      var parts = [];
+      if (!window.GA || !window.GA.resolve) return parts;
       Object.keys(activeGear).forEach(function (i) {
         var g = charGear[+i]; if (!g) return;
         var dev = (window.__DEVMODEL__ || {})[String(g.id)]; if (!dev) return;
         var r = window.GA.resolve({ dev: dev, meta: (window.__DEVMETA__ || {})[String(g.id)] || {},
           ix: (window.__DEVFX__ || {})[String(g.id)] || [], alloc: alloc, situational: true,
           buffs: playerBuffs, variant: { sig: g.sig, base: g.base, groups: g.groups, nums: g.nums } });
-        // scoping does not replace the shot, so a scoped weapon still drains at its primary rate
         var scoped = activeGear[i] === 'ALT' && r.modes.some(function (m) { return m.kind === 'ALT' && m.zoom; });
+        var best = 0;
         r.modes.forEach(function (m) {
           var want = scoped && m.kind === 'PRI' ? 'PRI' : activeGear[i];
           if (m.kind && activeGear[i] && m.kind !== want && m.kind !== 'SPAWN') return;
           if (!m.power || !m.power.value) return;
           var rf = null;
           m.chips.forEach(function (c) { if (c.prop === 53 && c.base !== null) rf = c.value; });
-          if (rf && rf > 0) worst = Math.max(worst, m.power.value / rf);
+          if (rf && rf > 0) best = Math.max(best, m.power.value / rf);   // one mode per device
         });
+        if (best) parts.push({ name: g.name, rate: best });
       });
-      return worst;
+      return parts;
     }
     function drainNote() {
-      var d = activeDrain();
-      if (!d) return '';
+      var parts = activeDrain();
+      if (!parts.length) return '';
+      var d = 0;
+      parts.forEach(function (p) { d += p.rate; });
       var secs = Math.round((window.__PWPOOL__ || 0) / d * 10) / 10;
-      return '<span class="totdrain" title="Sustained cost of the active device. Passive '
-        + 'regeneration does not run while power is being spent.">&minus;'
+      var tip = 'Everything active spends power at once:\n'
+        + parts.map(function (p) { return '  ' + p.name + '  ' + (Math.round(p.rate * 10) / 10) + '/s'; }).join('\n')
+        + (parts.length > 1 ? '\n  = ' + (Math.round(d * 10) / 10) + '/s' : '')
+        + '\n\nPassive regeneration does not run while power is being spent.';
+      return '<span class="totdrain" title="' + esc(tip) + '">&minus;'
         + (Math.round(d * 10) / 10) + '/s &middot; ' + secs + 's</span>';
     }
     function tile(lab, val, base, item, skill) {

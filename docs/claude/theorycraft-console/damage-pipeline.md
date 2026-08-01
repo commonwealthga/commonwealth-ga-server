@@ -1323,7 +1323,20 @@ refire = 17.76/s`, and a 168 pool sustains **9.46s**.
 | Raven / Rhino SMG | ~2.15 | 0.11 | ~19.5/s |
 
 Shown on the device as `drain 17.76/s · empties in 9.46s`, and on the **Power** tile as
-`−17.8/s · 9.5s` for whatever is currently active.
+`−17.8/s · 9.5s`.
+
+Active drains **sum** — flying while firing spends both. Taking the maximum instead meant a
+jetpack at 15/s masked the weapon completely, so switching the weapon's fire mode changed nothing
+on the summary. With an Assault jetpack up:
+
+```
+jetpack only         -15/s    8.0s
++ Inferno primary    -28.5/s  4.2s     (15 + 13.5)
++ Inferno alt        -19.5/s  6.1s     (15 +  4.5)
+```
+
+Within a single device only one mode counts, since you are either firing primary or alt. The
+tile's tooltip itemises each contributor.
 
 The pool the sustain divides by is the full one, equip layer included — a Targeting System's
 `Power Pool Max +20%` takes a 140 pool to 168, and the tile now prints that same 168 rather than
