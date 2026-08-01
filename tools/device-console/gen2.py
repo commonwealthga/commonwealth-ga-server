@@ -157,7 +157,13 @@ def spawned_sources(did):
 STATP = {354: ('Lifespan', 's'), 4: ('Cooldown', 's'), 279: ('Deploy', 's'),
          230: ('Max out', ''), 53: ('Refire', 's'), 259: ('Scope', 'x'),
          # 150 Persist Time is how long a deployed thing lives; 5 is its placement range
-         150: ('Duration', 's'), 5: ('Range', '')}
+         150: ('Duration', 's'), 5: ('Range', ''),
+         # player-facing device numbers that were never surfaced
+         6: ('Radius', ''),          # AoE blast radius
+         153: ('Eff Range', ''),     # falloff distance
+         287: ('Shots', 'x'),        # rounds per trigger pull - Stormer/Tempest 5, Spider 3
+         154: ('Max out', ''),       # how many can be deployed at once
+         318: ('Morale', '')}        # what a Boost costs to fire
 def dev_stats(did, mid=None):
     """Key numbers that live on the device row rather than in an effect group. Scoped to one
     fire mode when given: refire and power cost differ between primary and alt."""
@@ -388,7 +394,9 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
         bc = q("SELECT base_value bv FROM asm_data_set_device_mode_properties WHERE device_id=? AND device_mode_id=? AND prop_id=322", (did, out[0]['mid']))
         if bc and bc[0]['bv'] > 0:
             v = bc[0]['bv']
-            bchips.append(['power', '%s pwr/sec' % (int(v) if v == int(v) else round(v, 1))])
+            # numeric payload so Assault/Medic/Recon Melee II (prop 322) can reduce it
+            bchips.append(['power', '%s pwr/sec' % (int(v) if v == int(v) else round(v, 1)),
+                           [322, float(v), 67, 0, 0, 0, 0, 0]])
         for c in out[0]['blk']:
             bchips.append(['blk', 'Counter: ' + c[1]] + c[2:])
         rows.append({'kind': 'BLOCK', 'name': 'Block', 'power': None, 'chips': bchips})

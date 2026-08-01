@@ -1374,3 +1374,51 @@ Verified on Assault profile 1:
 Legion primary   18/s    6.67s        Inferno primary  13.5/s   8.89s
 Legion scoped    18/s    6.67s        Inferno alt       4.5/s  26.67s
 ```
+
+
+## 30. Full property audit — every source, all 115 devices (2026-08-01)
+
+The S25 off-hand audit read only `device_mode_effect_groups` and was therefore worthless for
+finding the S26 equip passives. Redone properly across **both** effect-group tables, the
+device-row properties, and everything each device spawns.
+
+### Fixed
+
+| prop | what | devices |
+|---|---|---|
+| 6 | **Radius** — AoE blast radius | 60 |
+| 153 | **Eff Range** — falloff distance | 37 |
+| 287 | **Shots** per trigger pull | Stormer 5, Tempest 5, Spider Grenades 3 |
+| 154 | **Max out** — how many can be deployed at once | 19 |
+| 318 | **Morale** — what a Boost costs to fire | all 8 boosts |
+| 322 | block cost now carries a numeric payload | 13 melee weapons |
+
+Prop 322 was rendering as a bare label, so the melee skills that reduce block cost could not
+touch it. It now scales: an Impact Hammer blocks at 15/s alone and **7.5/s** with Assault Melee
+I + II, taking the hold time from 6.67s to 13.33s.
+
+### Deliberately not shown
+
+Engine plumbing with no bearing on a build: projectile speed (46), setup/hit timing (2, 310, 146),
+persist pulse (151), autolock angle (200), pet domination (236), arc jumps (309), control range
+(283), contagious radius (312), remote proximity/activation (7, 8), friendly-fire flag (302),
+cone angle (64), stealth transition (124).
+
+The **accuracy family** (10, 245-253: walk, crouch, sprint, loss-on-shoot, loss-on-jump,
+correction rate, aim bonus) is left out as a group. It is genuinely player-facing but it is nine
+interacting numbers describing a spread cone, and showing them as nine chips would bury the stats
+that decide a fight. Worth revisiting as its own panel if accuracy ever matters to a comparison.
+
+### Known unknowns
+
+- **Prop 243 = 18.0** sits on Ballista, Scorpia and Dweller Sniper Rifle as a device row. The
+  property is Power Pool and their firing cost is prop 242 = 15, so this is something else -
+  possibly a scope reserve. Unexplained, not rendered.
+- **Decoy** spawns a bot whose protections are not being picked up by the spawned-entity walk;
+  the device shows only its threat drop, cooldown and lifespan.
+
+### False alarms
+
+Grenade refire and persist times looked missing but belong to the **spawned** explosion, which
+already renders as its own ON IMPACT row. Protection props flagged on turrets and drones are the
+S16 collapsing (`Mech: All Prot -40`) rather than omissions.

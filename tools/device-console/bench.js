@@ -532,6 +532,17 @@ window.GA = window.GA || {};
           return '<span class="bnchip flat">' + esc(c.label) + '</span>';
         }
         if (DEVSTAT[c.prop]) return '';
+        if (c.prop === 322 && c.value > 0 && window.__PWPOOL__) {
+          // a per-second block cost, so pool / cost is how long the block holds
+          var bs = window.__PWPOOL__ / c.value;
+          return '<span class="bnchip power' + (Math.abs(c.value - c.base) > 0.005 ? ' hot' : '')
+            + '" title="' + esc('Blocking costs ' + n(c.value) + ' power per second'
+                + (Math.abs(c.value - c.base) > 0.005 ? ' (base ' + n(c.base) + ', reduced by your melee skills)' : '')
+                + '. A ' + window.__PWPOOL__ + ' pool holds it for ' + n(bs) + 's.')
+            + '"><span class="bnlab">block</span>'
+            + delta(true, c.value, c.base, '/s', '') + '<span class="bnlife"><i class="bnk">holds</i><b class="dn">'
+            + n(bs) + 's</b></span></span>';
+        }
         return chipHTML(c, !!oneLife);
       }).join('');
       var pw = '';
