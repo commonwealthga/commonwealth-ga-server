@@ -15,7 +15,7 @@ The thing all of this is for. Everything else is either a prerequisite or a conv
 | id | item | status | notes |
 |---|---|---|---|
 | **G1** | **Two-sided combat resolve** | open | Attacker build + defender build → actual damage dealt. This is the original ask: *"this medic uses Frenzy on this recon, so when he shoots this assault he does X"*. |
-| G1.1 | Defender spec through `CalcProtection` | open | Three axes (category / damage-type / attack-type), multiplied. Formula in damage-pipeline §8. `GA.resolve` already takes a spec per side. |
+| G1.1 | Defender spec through `CalcProtection` | open | Three axes (category / damage-type / attack-type), multiplied. Formula in damage-pipeline §8. `GA.resolve` already takes a spec per side. Must carry the C3 self-shot leak as live behaviour, flagged for removal. |
 | G1.2 | Apply prop 316 "Additional Damage Taken" **before** mitigation | open | §10. Ordering matters. |
 | G1.3 | Per-hit health cap (anti-one-shot) | open | §8. `s_bApplyHealthCap`. |
 | G1.4 | Third-party effects — a medic buffing/debuffing either side | open | `activeState()` already returns "something is affecting this player + the source of each part", which is deliberately the shape a second actor produces. |
@@ -31,7 +31,7 @@ Ordered by how much they distort results.
 |---|---|---|---|
 | ~~C1~~ | Output Mod re-applied at hit time? | **done** | **Settled by test:** applied once, but as its **own multiplicative layer** — it does not sum with the other rolled mods. `base × (1+Output) × (1+other item) × (1+skills)`. Matched to the unit on both shots (867 / 991). The old summed model was ~8% low on every damage figure. §21. |
 | ~~C2~~ | Turret deploy-time units | **done** | `prop 279` is build work in seconds, divided by `(1 + DeployRate)`. Only deploy figure in the data; coherent scale from bombs 0.001 to big turrets 40. Turrets/drones are bots, stations/walls are deployables — both use 279. Folded into the console for every deployable, with the arm acceleration shown. Residual: the data has two turret tiers (25/40), not four. §22. |
-| **C3** | Killer Instinct self-shot leak | blocked | ~3-point discrepancy. Raised as a Discord issue. Needs a log capture or original-server reference. |
+| ~~C3~~ | Killer Instinct self-shot leak | **answered** | **Confirmed a server bug, and a fix is due.** ~3 of KI's 10 protection points land on the shot that triggers it (shot-1 protection 30 → 26.9); the Ballista's type-264 debuff leaves shot 1 clean. Until the fix ships the console models it **as it currently behaves**, so its numbers match what players see. Becomes a requirement on G1.1 — behind one named flag, since it is scheduled for deletion. Open sub-question: a flat −3.1 and ~31% of the debuff's magnitude both fit the single data point. Fix handoff written up in [issues/killer-instinct-diag.md](issues/killer-instinct-diag.md) — self-contained, for a chat on the server repo. §damage-pipeline "SECONDARY QUIRK". |
 | ~~C4~~ | Power regen during drain | **done** | **Confirmed in game:** passive regen does not run while power is being consumed. The time-to-empty figure is the full sustain; wording updated from an assumption to a statement. |
 | ~~C5~~ | Dome Shield Boost has no numeric effects | **done** | It is a *deployable shield*, same mechanic as Force Wall — both spawn a force field whose substance is the deployable's **health** (2500 / 2370) plus Persist Time, neither of which was being read. Now surfaces Structure HP (scaled by the Robotics deployable-health skills) and Duration. Also fixed Medical Station, Power Station and Sensor. |
 | ~~C6~~ | Regeneration vs Healing Grenade | **closed** | No conflict, and none was ever claimed — my note misattributed it. They sit in different categories (1341 Self Heal vs 772 Regeneration) and stack. Only the Nanite line contends with Healing Grenade. |
@@ -85,8 +85,7 @@ Ordered by how much they distort results.
 4. **G1.1–G1.3** — the mitigation stage. The single biggest step toward the point of all this.
 5. **G1.4/D5**, then **G1.5**.
 
-C3 remains `blocked` on a log capture.
+**The whole C section is now resolved** — C1 through C8. Nothing in the correctness list is
+blocked or unverified.
 
-**Resolved:** C1, C2, C4, C5, C6, C7, C8. **Only C3 remains** (blocked on a log capture).
-
-Next up is **F1** (equipment swapping) or **G1.1-G1.3** (the mitigation stage).
+**G1.1–G1.3 is next**, and it is the piece everything else was for.

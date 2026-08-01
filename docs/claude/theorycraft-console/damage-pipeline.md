@@ -42,7 +42,7 @@ timing window on *either* side would corrupt the shot-2 number.
 - [ ] Eagle Eye amplifier applied to attacker's buff registry instead of the target's debuff magnitude.
 - [ ] Debuffs double-applying on shot 2 (re-clone without reversing shot-1 clone).
 - [ ] Timing: 3s SSS window vs Ballista debuff lifetime mismatch → one expires before shot 2.
-- [ ] **Killer Instinct HP-gate timing** — KI only fires when target >75% HP. Shot 1 (target 100%) applies it; shot 2 (target now <75% after a sniper hit) does NOT re-apply, but shot-1's KI debuff is still live (3 s). Whether this is a bug or intended depends on the expected model. ← evaluate first.
+- [x] **Killer Instinct HP-gate timing** — KI only fires when target >75% HP. Shot 1 (target 100%) applies it; shot 2 (target now <75% after a sniper hit) does NOT re-apply, but shot-1's KI debuff is still live (3 s). **Resolved:** that part is the intended model. What *is* wrong is the separate self-shot leak — see "SECONDARY QUIRK" below.
 
 ### Measured test (2026-07-31) — Ballista OC vs bare target (no skills, no armor)
 
@@ -81,9 +81,29 @@ debuff (type-505). Both are class-80 prop-155 −10 — the only difference is t
 (Hit-Situational) application does not route through the potency-scaling (`CheckEffectBuffModifier` /
 `ConvertPropToPropList bUsePotencyModifier=1`) path that type-264 (Hit) uses.
 
-**SECONDARY QUIRK:** Killer Instinct leaks ~3 protection points onto its **own triggering shot** (shot-1
-protection 30→26.9 only when KI slotted; Ballista leaves shot 1 clean). Consistent with type-505 applying
-earlier in impact processing than type-264.
+**SECONDARY QUIRK — self-shot leak (confirmed a bug, 2026-08-01):** Killer Instinct leaks ~3 protection
+points onto its **own triggering shot** (shot-1 protection 30→26.9 only when KI slotted; Ballista leaves
+shot 1 clean). Consistent with type-505 applying earlier in impact processing than type-264.
+
+**User confirmed this is NOT intended and a server-side fix is due.** Until that lands the console models
+the behaviour **as it currently is**, so its numbers match what players actually experience — a build that
+reads correctly against a server nobody is running is the wrong kind of correct. Two consequences for
+whoever implements the mitigation stage (backlog G1.1):
+
+- Apply the leak on the triggering hit, then remove it when the server fix ships. Keep it behind one
+  named flag rather than scattered arithmetic, because it is scheduled to be deleted.
+- **We cannot yet tell a flat −3.125 from ~31.25% of the debuff's magnitude.** One data point (a −10
+  debuff leaking 3.125 — exactly 50 damage on a raw 1600) fits both, and a third reading (damage
+  computed in stages, only some seeing the reduced protection) fits it too.
+
+**Fix handoff:** [issues/killer-instinct-diag.md](issues/killer-instinct-diag.md) — self-contained, for
+a chat working the server repo. It names the discriminating experiment: **eg 26474** is a type-505
+protection debuff with the *same* 1271/75% gate, calc and class as KI at **half the magnitude (−5)**,
+so its leak is 1.5625 if proportional and 3.125 if flat. It also flags the device-sourced type-505 pair
+(eg 25886 / 27552) as the control that separates "type-505 dispatch" from "skill-sourced" as the cause.
+
+Note this is the *only* part of the type-505 story that is wrong. The other half — Eagle Eye's potency
+amplifying the type-264 device debuff but not type-505 — is confirmed intended (see below).
 
 **Corrected earlier mistake:** the baseline-only pass concluded "Eagle Eye is inert" — WRONG. The A/B test
 shows EE works on the Ballista debuff and only fails on the skill debuff. Controlled test > single-point inference.

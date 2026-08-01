@@ -129,14 +129,21 @@ to derive or validate a rule.
 
 | item | state |
 |---|---|
-| **Killer Instinct self-shot leak** | ~3-point discrepancy. Raised as a Discord issue; needs a log capture or original-server reference. |
-| **Output Mod at hit time** | Counted once, in the item layer. Whether the engine re-applies it on top of the displayed tooltip is unverified (§6). Worth ~60 damage on a Ballista. |
-| **Turret deploy units** | `prop 279 ÷ (1 + DeployRate)` gives 25 → 4.55s with an arm, but in game turrets deploy in 1–2s. Mechanic and arm linkage confirmed; the base scale is not. |
-| **Power regen during drain** | Time-to-empty assumes passive regen is suspended while draining. Untested. |
-| **Dome Shield Boost** | No numeric effects at all. |
 | **calc method 119** | Named "N/A" in the enum; behaves as a *set* rather than arithmetic. Exact semantics unconfirmed. |
 | **Sensor Visibility Config** | 34/35/36 map to observed behaviour, but the bit meanings are unknown. |
 | **Robotics Sensor** | Its detection lives on the spawned entity, so the reveal parameters are not surfaced. |
+| **`effect_groups.health = 1` on melee** | The field means "shield pool" everywhere else. Excluded for now, unexplained. |
+| **Prop 243 = 18.0 on the three sniper rifles** | Consistent across all three, purpose unknown. |
+| **Killer Instinct self-shot leak — magnitude** | The leak itself is settled (see below). What is not: a flat −3.1 and ~31% of the debuff's magnitude both fit the single data point. |
+
+**Closed since this table was written:** Output Mod at hit time (C1 — it is its own multiplicative
+layer, matched to the unit); turret deploy units (C2); power regen during drain (C4 — confirmed
+suspended); Dome Shield Boost (C5 — a deployable shield, its substance is the deployable's health).
+
+**Killer Instinct self-shot leak (C3) — answered 2026-08-01.** ~3 of Killer Instinct's 10 protection
+points land on the shot that triggers it. Confirmed **a server bug with a fix due**. Until that ships
+the console models it as it currently behaves, so its numbers match what players actually experience;
+it belongs behind one named flag in the mitigation stage, since it is scheduled for deletion.
 
 ---
 
