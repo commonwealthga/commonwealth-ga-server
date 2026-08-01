@@ -70,7 +70,11 @@ ATgMissionObjective_Proximity* SpawnPoint(
 
 	Obj->nObjectiveId           = kObjectiveDefId;   // CPF_Net → client mesh/name
 	Obj->nPriority              = 1;                 // all equal → random rotation
-	Obj->nDefaultOwnerTaskForce = 0;                 // neutral / contested
+	// Binary IsDefender/IsAttackerTaskForce (instanced matches): defender ⇔
+	// r_nTaskForce == nDefaultOwnerTaskForce, attacker ⇔ everyone else. 0 here
+	// made BOTH teams attackers, so any player pushed the meter toward attacker
+	// capture. 2 = defender team (matches the unreplicated client default).
+	Obj->nDefaultOwnerTaskForce = 2;
 	Obj->r_nOwnerTaskForce      = 0;
 	Obj->m_nCurrOwnerTaskforce  = 0;
 	Obj->m_bCaptureOnlyOnce     = 0;                 // re-capturable across rotations
@@ -202,6 +206,10 @@ void CtrPointRotation::Init(ATgGame* Game) {
 	// Seeding complete — from now on, any objective that registers via
 	// RegisterSelf on this CTR map is a stock straggler to be excluded.
 	s_bSeedingDone = true;
+}
+
+bool CtrPointRotation::IsActive() {
+	return s_bSeedingDone;
 }
 
 void CtrPointRotation::ExcludeLateStockObjective(ATgMissionObjective* Obj) {

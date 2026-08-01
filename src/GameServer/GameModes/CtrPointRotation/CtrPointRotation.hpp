@@ -24,4 +24,10 @@ namespace CtrPointRotation {
 	// (so our own points, which register during Init, are never excluded) and on
 	// any non-CTR map.
 	void ExcludeLateStockObjective(ATgMissionObjective* Obj);
+
+	// True once Init has seeded rotation points on the current map — i.e. the
+	// custom CTR rotation variant is running. Gates the manual announcer alerts
+	// (rotation banner / activation countdown) that retail Rot_* maps already
+	// get from their own kismet.
+	bool IsActive();
 }

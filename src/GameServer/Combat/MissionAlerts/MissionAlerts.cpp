@@ -1,5 +1,6 @@
 #include "src/GameServer/Combat/MissionAlerts/MissionAlerts.hpp"
 #include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
+#include "src/GameServer/GameModes/CtrPointRotation/CtrPointRotation.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Globals.hpp"
@@ -320,6 +321,61 @@ static void PollPointRotationLead(ATgGame* Game, ATgRepInfo_Game* GRI, PerGameSt
 	st.lastLeader = leader;
 }
 
+// PointRotation rotation cycle — drives the banner, the 15/10/5s countdowns,
+// and the activation alert. All keyed off `nextActivationAtTime` (planted by
+// NotifyNextObjectiveScheduled). Activation is poller-driven (not tied to the
+// UnlockObjective hook) to avoid races with our own countdown latch clears.
+// Only called for the custom CTR rotation variant — on retail Rot_* maps these
+// alerts are kismet-driven and firing them here would double them up.
+static void PollPointRotationCycle(ATgGame* Game, PerGameState& st) {
+	if (st.nextActivationAtTime <= 0.0f) return;
+	AWorldInfo* WI = GetWorldInfoSafe();
+	if (WI == nullptr) return;
+
+	const float remaining = st.nextActivationAtTime - WI->TimeSeconds;
+
+	// Rotation banner: ROTATION_BANNER_LEAD_SECS before next activation.
+	if (!st.firedBanner && remaining <= ROTATION_BANNER_LEAD_SECS + 0.5f) {
+		st.firedBanner = true;
+		const int bannerMsgId = st.bFirstRotation ? MSG_POINT_ROTATION_START : MSG_POINT_CHANGING;
+		SendAlert::Broadcast(bannerMsgId, APT_HIGH, ATT_IMPORTANT, 3.0f);
+		Logger::Log("announcer", "PointRotation: %s banner (remaining=%.1f, firstRotation=%d)\n",
+			st.bFirstRotation ? "ROTATION_STARTED" : "POINT_CHANGING", remaining, (int)st.bFirstRotation);
+	}
+
+	// Countdown — all High/Important now.
+	if (!st.firedAct15 && remaining <= 15.5f) {
+		st.firedAct15 = true;
+		SendAlert::Broadcast(MSG_15S_TO_ACTIVATION, APT_HIGH, ATT_IMPORTANT, 3.0f);
+		Logger::Log("announcer", "PointRotation: 15s to activation (remaining=%.1f)\n", remaining);
+	}
+	if (!st.firedAct10 && remaining <= 10.5f) {
+		st.firedAct10 = true;
+		SendAlert::Broadcast(MSG_10S_TO_ACTIVATION, APT_HIGH, ATT_IMPORTANT, 3.0f);
+		Logger::Log("announcer", "PointRotation: 10s to activation (remaining=%.1f)\n", remaining);
+	}
+	if (!st.firedAct5 && remaining <= 5.5f) {
+		st.firedAct5 = true;
+		SendAlert::Broadcast(MSG_5S_TO_ACTIVATION, APT_HIGH, ATT_IMPORTANT, 3.0f);
+		Logger::Log("announcer", "PointRotation: 5s to activation (remaining=%.1f)\n", remaining);
+	}
+
+	// Activation — fire once, then close the cycle. Flip bFirstRotation
+	// immediately on activation (not later) so that even if CalcNextObjective
+	// fires before our cleanup tick, the next banner correctly says
+	// "Point Changing" instead of "Point Rotation Started".
+	if (!st.firedActivated && remaining <= 0.5f) {
+		st.firedActivated = true;
+		st.bFirstRotation = false;
+		SendAlert::Broadcast(MSG_OBJECTIVE_ACTIVATED, APT_HIGH, ATT_IMPORTANT, 4.0f);
+		Logger::Log("announcer", "PointRotation: Objective Location Activated (remaining=%.1f)\n", remaining);
+	}
+
+	// Stop polling once the cycle is done.
+	if (st.firedActivated && remaining < -1.0f) {
+		st.nextActivationAtTime = 0.0f;
+	}
+}
 
 // Successor pre-warm trigger. Per-mission one-shot: when ANY trigger condition
 // matches, fires MSG_REQUEST_SUCCESSOR over IPC so the control server can spin
@@ -441,6 +497,12 @@ void MissionAlerts::Tick() {
 	}
 	if (isPointRotation) {
 		PollPointRotationLead(Game, GRI, st);
+		// Retail Rot_* maps fire the rotation banner / activation countdown from
+		// their own kismet; the repurposed CTR_* maps have none, so the manual
+		// cycle alerts run only when the CTR rotation variant seeded this map.
+		if (CtrPointRotation::IsActive()) {
+			PollPointRotationCycle(Game, st);
+		}
 	}
 
 	// Cross-mode: evaluates universal time-remaining + per-mode capture/score
