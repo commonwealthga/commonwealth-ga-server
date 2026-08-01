@@ -1170,3 +1170,43 @@ Range Stim, Visual Scanner and Vulture Vision are **Strongest Wins** (157) while
 
 A device must not buff itself, or a weapon granting a damage buff would double-count its own
 contribution.
+
+
+## 25. Off-hand coverage audit (2026-08-01)
+
+Checked every property on all **49 off-hand devices** (plus anything they spawn) against what the
+console actually renders. **Nothing is being dropped.** Five devices looked like gaps and all five
+were the protection-collapsing from §16 making per-property comparison misleading:
+
+| looked missing | actually rendered as |
+|---|---|
+| EMP Grenade 155/156/324/219 | `Mech: All Prot -40.0` |
+| Perfect Target 157/159/371 | `Phys/Energy Prot +500` and `Bio/Bleed/Ignite Prot +200` |
+| Sealed Systems 160/163/266 | `Bio/Disease/Ignite/Stun Prot +1000` |
+| Hornet Drone 219 | `Mech: Phys/AOE Prot -40.0` |
+| Overcharge 295 Pushback | `Knockback` |
+
+### Berserk
+
+Assault off-hand, already modelled correctly: Melee Damage +25%, GroundSpeed +30%,
+Melee Protection +15, all 8s. Verified flowing through with §24:
+`Impact Hammer 300 x 1.70 x 1.21 x 1.25 = 771.38`.
+
+Its category is **773 Stim Boost**, *not* 936 Personal Damage Buff, so **Berserk stacks with the
+stims** rather than competing with them. Melee Stim is a Medic/Recon device and never shares a
+loadout with it anyway.
+
+### Targeting System — no ranged-damage passive in the data
+
+Reported as giving ranged damage and extra power passively while equipped. What the data has:
+
+- **Device effect group** (type 263): sensor properties only — Range 3000, FOV 358,
+  Require LOS 0, Visibility Config 35. No damage, no power.
+- **Blueprint mods** (the green tooltip lines, cumulative by quality):
+  Common `Output Mod +70%`, then Uncommon / Rare / Epic each `Power Pool Cost -5%`.
+- **Its rolled instance** `[pppppp]`: `Power Pool Cost -15%` and `-6%`.
+
+So the "extra power" is real but it is a **cost reduction** (-15%/-6% Power Pool Cost), not added
+power. There is **no ranged-damage modifier** anywhere on it — not on the device, the blueprint,
+or the roll. Its sibling **Visual Scanner** does give `Damage Modifier - Range +10%` for 20s,
+which is the likely source of the recollection.
