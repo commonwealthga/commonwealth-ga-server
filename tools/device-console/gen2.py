@@ -155,16 +155,38 @@ def spawned_sources(did):
     return ded
 
 STATP = {354: ('Lifespan', 's'), 4: ('Cooldown', 's'), 279: ('Deploy', 's'),
-         230: ('Max out', ''), 53: ('Refire', 's'), 259: ('Scope', 'x')}
+         230: ('Max out', ''), 53: ('Refire', 's'), 259: ('Scope', 'x'),
+         # 150 Persist Time is how long a deployed thing lives; 5 is its placement range
+         150: ('Duration', 's'), 5: ('Range', '')}
 def dev_stats(did):
     """Key numbers that live on the device row rather than in an effect group."""
     out = []
     for r in q("SELECT prop_id p, base_value bv FROM asm_data_set_device_mode_properties WHERE device_id=? ORDER BY prop_id", (did,)):
         if r['p'] in STATP:
             lab, unit = STATP[r['p']]
+            # 10000s on Persist Time is a sentinel for "until destroyed", not a duration
+            if r['p'] == 150 and r['bv'] >= 10000:
+                out.append(['stat', 'Lasts until destroyed'])
+                continue
             v = round(r['bv'], 2)
             v = int(v) if v == int(v) else v
             out.append(['stat', '%s %s%s' % (lab, v, unit), [r['p'], r['bv'], 67, 0, 0, 0, 0, 0]])
+    seen = set(); ded = []
+    for c in out:
+        if c[1] in seen: continue
+        seen.add(c[1]); ded.append(c)
+    return ded
+
+def deployable_stats(did):
+    """Health of whatever this device deploys - Force Wall 2370, Dome Shield Boost 2500,
+    the stations 1500. It lives on asm_data_set_deployables, not in any effect group, so
+    without it a pure deployable like Dome Shield Boost has nothing to show at all.
+    Carried as prop 339 so the Robotics deployable-health skills scale it."""
+    out = []
+    for m in q("SELECT DISTINCT deployable_id dep FROM asm_data_set_devices_data_set_device_modes WHERE device_id=? AND deployable_id>0", (did,)):
+        for r in q("SELECT health hp FROM asm_data_set_deployables WHERE deployable_id=? LIMIT 1", (m['dep'],)):
+            if not r['hp']: continue
+            out.append(['hp', 'Structure HP %d' % int(r['hp']), [339, float(r['hp']), 67, 0, 0, 0, 0, 0]])
     seen = set(); ded = []
     for c in out:
         if c[1] in seen: continue
@@ -321,7 +343,7 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
     # For ranged/specialty with an aim group (type 266), RMB = aim/zoom.
     if not out: return []
     rows = [{'kind': 'PRI', 'name': out[0]['name'], 'power': out[0]['power'],
-             'chips': out[0]['chips'] + dev_stats(did)}]
+             'chips': out[0]['chips'] + dev_stats(did) + deployable_stats(did)}]
     if can_block:
         bchips = [['blk', 'Blocks frontal melee']]
         bc = q("SELECT base_value bv FROM asm_data_set_device_mode_properties WHERE device_id=? AND device_mode_id=? AND prop_id=322", (did, out[0]['mid']))

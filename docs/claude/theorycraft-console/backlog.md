@@ -32,11 +32,11 @@ Ordered by how much they distort results.
 | **C1** | Output Mod re-applied at hit time? | blocked | Currently counted **once**, in the item layer. If the engine re-applies it, every damage figure is low. Worth ~60 on a Ballista. Needs a controlled in-game test. §6. |
 | **C2** | Turret deploy-time units | blocked | `prop 279 ÷ (1 + DeployRate)` gives 25 → 4.55s with an arm, but turrets deploy in 1–2s in game. Mechanic and arm linkage confirmed; the base scale is not. |
 | **C3** | Killer Instinct self-shot leak | blocked | ~3-point discrepancy. Raised as a Discord issue. Needs a log capture or original-server reference. |
-| **C4** | Power regen during drain | blocked | Time-to-empty assumes passive regen is suspended while draining. Untested — if regen continues, block durations are understated. |
-| **C5** | Dome Shield Boost has no numeric effects | open | The only device of 115 with zero numeric chips. Cause unknown. |
-| **C6** | Regeneration vs Healing Grenade | blocked | You expected these to conflict; the data says different categories (1341 Self Heal vs 772 Regeneration) so they stack. Only the Nanite line contends with Healing Grenade. Worth an in-game check. |
-| **C7** | Dual Daggers alt-fire | blocked | `right_click_behavior = 894` (block) and one mode, so the console offers off/primary/block. You believed it has an alt fire — confirm what RMB actually does. |
-| **C8** | Narrow-viewport layout unverified | open | Clean at 980–1600px, but the browser pane will not go below 980 so phone breakpoints are untested rather than confirmed. |
+| ~~C4~~ | Power regen during drain | **done** | **Confirmed in game:** passive regen does not run while power is being consumed. The time-to-empty figure is the full sustain; wording updated from an assumption to a statement. |
+| ~~C5~~ | Dome Shield Boost has no numeric effects | **done** | It is a *deployable shield*, same mechanic as Force Wall — both spawn a force field whose substance is the deployable's **health** (2500 / 2370) plus Persist Time, neither of which was being read. Now surfaces Structure HP (scaled by the Robotics deployable-health skills) and Duration. Also fixed Medical Station, Power Station and Sensor. |
+| ~~C6~~ | Regeneration vs Healing Grenade | **closed** | No conflict, and none was ever claimed — my note misattributed it. They sit in different categories (1341 Self Heal vs 772 Regeneration) and stack. Only the Nanite line contends with Healing Grenade. |
+| ~~C7~~ | Dual Daggers alt-fire | **closed** | Confirmed: the alt fire **is** the block, and it counts as the weapon's second mode. The console's off / primary / block cycle is correct. |
+| ~~C8~~ | Narrow-viewport layout | **closed** | Desktop-only by decision. Verified clean 980–1600px; phone breakpoints are out of scope. |
 
 ---
 
@@ -79,9 +79,11 @@ Ordered by how much they distort results.
 ## Suggested order
 
 1. **C1** — it silently scales every damage number, so settle it before building anything on top.
-2. **C5**, **C2** — small, self-contained, and C5 is a visible hole.
+2. ~~C5~~ done. **C2** next — small and self-contained.
 3. **F1** — makes the tool genuinely exploratory rather than a viewer.
 4. **G1.1–G1.3** — the mitigation stage. The single biggest step toward the point of all this.
 5. **G1.4/D5**, then **G1.5**.
 
-C3, C4, C6, C7 are all `blocked` on in-game observation — worth batching into one test session.
+C3 remains `blocked` on a log capture. C1 and C2 need a controlled in-game test — worth batching.
+
+**Resolved so far:** C4 (regen confirmed to pause), C5 (deployable shields fixed), C6/C7/C8 closed.

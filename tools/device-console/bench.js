@@ -343,7 +343,7 @@ window.GA = window.GA || {};
 // ---------------------------------------------------------------------------
 (function (GA) {
   var NUMTAIL = new RegExp('\\s[-+]?[\\d.]+(%|x|s)?$');
-  var SECS = { 4: 1, 53: 1, 279: 1, 354: 1, 208: 1 };
+  var SECS = { 4: 1, 53: 1, 279: 1, 354: 1, 208: 1, 150: 1 };
   var MTAG = { PRI: ['pri', 'PRIMARY'], ALT: ['alt', 'ALT'], BLOCK: ['blkt', 'BLOCK'], SPAWN: ['spawn', 'ON IMPACT'] };
   function esc(x) {
     return String(x).replace(/[&<>"]/g, function (c) {
@@ -377,7 +377,8 @@ window.GA = window.GA || {};
   // fire mode, so they are lifted into a header row. A duration shared by every timed effect
   // is lifted too - Regeneration's HoT and its damage penalty both run for the device's 15s,
   // and printing "for 15s" on each of them just repeats the same fact.
-  var DEVSTAT = { 4: 'Cooldown', 279: 'Deploy', 354: 'Lifespan', 259: 'Scope', 53: 'Refire' };
+  var DEVSTAT = { 4: 'Cooldown', 279: 'Deploy', 354: 'Lifespan', 259: 'Scope', 53: 'Refire',
+                  150: 'Duration', 5: 'Range' };
 
   GA.deviceChipsHTML = function (spec) {
     var res = GA.resolve({ dev: spec.dev, meta: spec.meta, ix: spec.ix, alloc: spec.alloc,
@@ -465,8 +466,9 @@ window.GA = window.GA || {};
             var rate = parseFloat(pw2[1]);
             var secs = window.__PWPOOL__ / rate;
             var tip2 = 'Power pool ' + window.__PWPOOL__ + ' / ' + rate + ' per second.' + '\n\n'
-              + 'Assumes passive regeneration is suspended while power is draining. An active '
-              + 'source (Power Wave, a Power Stim injection) still tops you up and would extend this.';
+              + 'Passive regeneration does not run while power is being consumed (confirmed in '
+              + 'game), so this is the full sustain. An active source - Power Wave, a Power Stim '
+              + 'injection - still tops you up and would extend it.';
             return '<span class="bnchip power" title="' + esc(tip2) + '">'
               + '<span class="bnlab">' + esc(c.label) + '</span><b class="dn">'
               + (Math.round(secs * 10) / 10) + 's</b><i class="bnk">to empty</i></span>';
