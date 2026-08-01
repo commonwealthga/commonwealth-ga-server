@@ -7,6 +7,8 @@ AGENTS.md
 
 
 # Runtime / host-specific (never commit — control-server.json holds admin_token secret)
+# .mcp.json wires up local MCP servers (the Ghidra bridge) by absolute path
+.mcp.json
 control-server.json
 server.db
 server.db-shm
