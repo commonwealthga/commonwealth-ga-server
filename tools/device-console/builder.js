@@ -147,6 +147,7 @@
   // ---------------- equipped gear: off / primary / alt --------------------------
   // A weapon fires primary OR alt, never both, so the control is tri-state rather than a
   // checkbox. Devices with only one mode just toggle on and off.
+  function dev0(g) { return (window.__DEVMODEL__ || {})[String(g.id)] || {}; }
   function modesOf(g) {
     var dev = (window.__DEVMODEL__ || {})[String(g.id)];
     var out = [];
@@ -231,10 +232,15 @@
       var ms = modesOf(g);
       var sk = skillsFor(g);
       var tip = (g.base ? g.base + '\n' : '') + (g.groups || []).join('\n');
-      var lab = mode ? (ms.length > 1 ? MODELAB[mode] : 'on') : 'off';
+      // a scope ALT reads better as "scoped" than "alt" - you are still firing the same gun
+      var isZoom = (dev0(g).modes || []).some(function (m) { return m.kind === 'ALT' && m.zoom; });
+      var lab = mode ? (ms.length > 1 ? (mode === 'ALT' && isZoom ? 'scoped' : MODELAB[mode]) : 'on') : 'off';
       return '<div class="gitem' + (mode ? ' on' : '') + '" data-i="' + i + '"'
         + ' title="' + (ms.length > 1
-            ? 'Click to switch between primary and alt. Use × to switch it off.'
+            ? (isZoom ? 'Click to scope in and out. Scoping does not replace the shot - the '
+                      + 'primary damage still applies, with the scope effects on top. '
+                      + 'Use × to switch it off.'
+                      : 'Click to switch between primary and alt. Use × to switch it off.')
             : 'Click to switch on or off.') + '">'
         + ((window.__DEVIMG__ || {})[String(g.id)]
             ? '<img class="gimg" src="' + window.__DEVIMG__[String(g.id)] + '" alt="">' : '')

@@ -197,7 +197,7 @@ window.GA = window.GA || {};
         var pr = apply(m.power, 242, false, 0);
         pw = { base: m.power, value: pr.value, mods: pr.mods, lower: true };
       }
-      return { kind: m.kind, name: m.name, power: pw, chips: chips };
+      return { kind: m.kind, name: m.name, zoom: !!m.zoom, power: pw, chips: chips };
     });
 
     // Effects the allocated skills apply IN ADDITION to the device's own.
@@ -286,8 +286,10 @@ window.GA = window.GA || {};
     // Modes with no kind (and SPAWN/BLOCK follow-ons of the chosen one) are always included.
     var want = spec.mode || null;
     if (want) {
+      var scopedP = want === 'ALT' && res.modes.some(function (m) { return m.kind === 'ALT' && m.zoom; });
       res = { modes: res.modes.filter(function (m) {
-                return !m.kind || m.kind === want || m.kind === 'SPAWN';
+                return !m.kind || m.kind === want || m.kind === 'SPAWN'
+                  || (scopedP && m.kind === 'PRI');
               }), live: res.live, extra: res.extra };
     }
     var src = spec.name || spec.dev.name;
@@ -374,7 +376,8 @@ window.GA = window.GA || {};
 (function (GA) {
   var NUMTAIL = new RegExp('\\s[-+]?[\\d.]+(%|x|s)?$');
   var SECS = { 4: 1, 53: 1, 279: 1, 354: 1, 208: 1, 150: 1 };
-  var MTAG = { PRI: ['pri', 'PRIMARY'], ALT: ['alt', 'ALT'], BLOCK: ['blkt', 'BLOCK'], SPAWN: ['spawn', 'ON IMPACT'] };
+  var MTAG = { PRI: ['pri', 'PRIMARY'], ALT: ['alt', 'ALT'], BLOCK: ['blkt', 'BLOCK'],
+               SPAWN: ['spawn', 'ON IMPACT'], ZOOM: ['alt', 'SCOPED'] };
   function esc(x) {
     return String(x).replace(/[&<>"]/g, function (c) {
       return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c];
@@ -415,8 +418,12 @@ window.GA = window.GA || {};
                            situational: !!spec.situational, variant: spec.variant,
                            buffs: spec.buffs });
     var want = spec.mode || null;
+    // A scope ALT is a modifier state, not a second attack: a scoped Ballista still fires the
+    // same shot, so the primary stays visible with the scope's effects added to it.
+    var scoped = want === 'ALT' && res.modes.some(function (m) { return m.kind === 'ALT' && m.zoom; });
     var modes = res.modes.filter(function (m) {
-      return !want || !m.kind || m.kind === want || m.kind === 'SPAWN';
+      return !want || !m.kind || m.kind === want || m.kind === 'SPAWN'
+        || (scoped && m.kind === 'PRI');
     });
 
     // pull the device-level stats out of the mode rows
@@ -505,7 +512,7 @@ window.GA = window.GA || {};
     if (hbits.length) headHTML = '<div class="bnhead2">' + hbits.join('') + '</div>';
 
     var body = modes.map(function (m) {
-      var tag = MTAG[m.kind] || MTAG.PRI;
+      var tag = (m.zoom ? MTAG.ZOOM : MTAG[m.kind]) || MTAG.PRI;
       var cells = m.chips.map(function (c) {
         if (c.base === null) {
           // gen2 emits the block drain as a plain label with no numeric payload. It is a

@@ -1270,3 +1270,34 @@ Correct behaviour, verified:
 `asm_data_set_device_effect_groups` (device) and `asm_data_set_device_mode_effect_groups` (mode)
 are different tables with near-identical names. Anything auditing device effects must read both —
 the earlier off-hand audit in §25 only read the mode table and therefore could not have found this.
+
+
+## 27. Scoping is a modifier state, not a second attack (2026-08-01)
+
+23 weapons - the rifles and SMGs - have an ALT that is a scope rather than a real alternate fire.
+gen2 builds that row from the type-266 AIM effect group, and the console was treating it like any
+other ALT: selecting it hid the primary damage and showed only the scope's own effects. That is
+wrong. A scoped Ballista still fires the same shot.
+
+Those rows are now flagged `zoom` at generation time, and selecting them keeps the primary
+alongside the scope:
+
+```
+Scorpia, primary   PRIMARY[Dmg 585 -> 1659.91 | Heal Received -40% | power 15 -> 13.5]
+Scorpia, scoped    PRIMARY[Dmg 585 -> 1659.91 | Heal Received -40% | power 15 -> 13.5]
+                   SCOPED [Self: Slow -75%]
+```
+
+The toggle reads `scoped` rather than `alt` on these, and the same rule applies to what the device
+contributes to the player, not just to its own display. A melee weapon's BLOCK is unaffected -
+blocking genuinely replaces the swing.
+
+### Why activating a weapon can raise its own damage
+
+Separately, and not a bug: switching a device on enables **situational** effects, so an on-hit
+skill starts counting. On a Recon carrying Super Sharpshooter, Scorpia reads 1597.97 idle and
+1659.91 active - the difference is that skill's on-hit +5%, which the tooltip credits as
+`[skill] Super Sharpshooter +5% (on hit)`.
+
+This models sustained fire, where the stack is up. It overstates the opening shot, which lands
+before any stack exists.

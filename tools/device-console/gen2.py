@@ -390,7 +390,11 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
     elif len(out) > 1:
         rows.append({'kind': 'ALT', 'name': out[1]['name'], 'power': out[1]['power'], 'chips': out[1]['chips']})
     elif out[0]['zoom']:
-        rows.append({'kind': 'ALT', 'name': 'Aim / Zoom', 'power': None, 'chips': out[0]['zoom']})
+        # Scoping is a MODIFIER state, not a separate attack - a scoped Ballista still fires the
+        # same shot. Flagged so the console keeps the primary damage visible alongside the
+        # scope's own effects rather than replacing it.
+        rows.append({'kind': 'ALT', 'name': 'Aim / Zoom', 'power': None,
+                     'chips': out[0]['zoom'], 'zoom': True})
     # Effects that live on a spawned entity (explosion deployable, turret/drone weapon).
     if recurse:
         for sd, lab in spawned_sources(did):
