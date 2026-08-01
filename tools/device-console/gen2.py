@@ -280,7 +280,13 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
                 elif p in RANGEP: add('util', '%s %s%s%s' % (RANGEP[p], s, round(bv, 1), u))
                 elif p in ACCP: add('util', 'Accuracy %s%s%s' % (s, round(bv, 1), u))
                 elif p in (388, 389): add('dmg', 'vs %s %s%s%s' % ('Mech' if p == 388 else 'Bio', s, round(bv, 1), u))
-                elif p in (243, 244, 255): add('power', 'Power %s%s%s%s' % (s, round(bv, 1), u, dur))
+                elif p in (243, 244, 255):
+                    # three different things, all previously labelled "Power": 243 is a flat
+                    # restore (Power Stim's +140 injection), 244 is the regeneration RATE
+                    # (its +50% for 11s), 255 raises the pool ceiling.
+                    plab = {243: 'Power', 244: 'Power Regen', 255: 'Max Power'}[p]
+                    val = round(bv * 100, 0) if (pct and abs(bv) <= 1) else round(bv, 1)
+                    add('power', '%s %s%s%s%s' % (plab, s, val, u, dur))
                 elif p in (412, 390): add('hp', 'Max HP %s%s%s%s' % (s, round(bv, 1), u, dur))
                 elif p in (49, 66, 70):
                     # prop 49 = GroundSpeed (NOT spread). Fractional %-values are 0-1 (0.5 = 50%).

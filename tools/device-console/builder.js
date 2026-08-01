@@ -160,6 +160,10 @@
     return ms[(i + 1) % ms.length];          // multi-mode: wrap pri -> alt -> pri, never off
   }
   var MODELAB = { PRI: 'primary', ALT: 'alt', BLOCK: 'block' };
+  // You carry a melee, a ranged and a specialty weapon but only ONE is in your hands at a
+  // time - switching to another puts the previous one away. Not a heuristic; the game does
+  // not let you have two of the three out at once.
+  var WEAPON_SLOTS = { Melee: 1, Ranged: 1, Specialty: 1 };
 
   // skills the build allocates that actually touch this device
   function skillsFor(g) {
@@ -229,7 +233,9 @@
             : 'Click to switch on or off.') + '">'
         + ((window.__DEVIMG__ || {})[String(g.id)]
             ? '<img class="gimg" src="' + window.__DEVIMG__[String(g.id)] + '" alt="">' : '')
-        + '<span class="gcat">' + esc(g.cat || '') + '</span>'
+        + '<span class="gcat' + (WEAPON_SLOTS[g.cat] ? ' wep' : '') + '"'
+        + (WEAPON_SLOTS[g.cat] ? ' title="Melee, Ranged and Specialty share your hands - only one can be out at a time"' : '')
+        + '>' + esc(g.cat || '') + '</span>'
         + '<span class="gname">' + esc(g.name) + (g.oc ? ' <span class="oc">OC</span>' : '') + '</span>'
         + '<span class="gsig" title="' + esc(tip) + '">' + esc(String(g.sig).toLowerCase()) + '</span>'
         + '<span class="gtog' + (mode === 'ALT' ? ' alt' : '') + '">' + lab + '</span>'
@@ -275,6 +281,17 @@
         if (next) {
           if (!activeGear[i]) activeOrder.push(nm);
           activeGear[i] = next;
+          // holstering the other two weapons
+          if (WEAPON_SLOTS[g.cat]) {
+            Object.keys(activeGear).forEach(function (k) {
+              if (+k === i) return;
+              var o = charGear[+k];
+              if (o && WEAPON_SLOTS[o.cat]) {
+                delete activeGear[k];
+                activeOrder = activeOrder.filter(function (x) { return x !== o.name; });
+              }
+            });
+          }
         } else {
           delete activeGear[i];
           activeOrder = activeOrder.filter(function (x) { return x !== nm; });
@@ -626,7 +643,12 @@
     // game truncates rather than rounds: 1300 x1.70 x1.25 = 2762.5 shows in-game as 2762
     var totHP = Math.floor(baseHP * (1 + hpItem / 100) * (1 + hpSkill / 100));
     var totPW = Math.floor(basePW * (1 + pwItem / 100) * (1 + pwSkill / 100));
-    window.__PWPOOL__ = totPW;   // block drain is shown as a time-to-empty against this
+    // Anything active that raises the CEILING counts toward sustain (Fashion Boost's Max Power
+    // +40). A flat Power restore (prop 243, Power Stim's +140) does not - it refills the pool,
+    // it does not enlarge it.
+    var actPool = 0;
+    if (act) act.effects.forEach(function (f) { if (f.p === 255 && !f.pct) actPool += f.v; });
+    window.__PWPOOL__ = totPW + actPool;   // block drain is a time-to-empty against this
     function tile(lab, val, base, item, skill) {
       var parts = [];
       if (item) parts.push('armour ' + (item > 0 ? '+' : '') + Math.round(item) + '%');

@@ -48,6 +48,7 @@ Ordered by how much they distort results.
 | D2 | Sensor Visibility Config bit meanings | open | 34 stealth / 35 through-walls / 36 low-health map to observed behaviour, but the encoding is unknown. |
 | D3 | Robotics Sensor reveal parameters | open | Detection lives on the spawned entity, so its range/FOV are not surfaced on the device. Same likely applies to other deployables. |
 | D4 | `effect_groups.health = 1` on melee weapons | open | Category 304 Slow. The field means "shield pool" elsewhere; here it means something else. Currently excluded, but unexplained. |
+| D6 | Effects linger across a weapon swap | open | Confirmed mechanic: a Nanite gun's effect keeps running after the medic swaps to another weapon. The console models "which weapon is out", not "what is still ticking from the last one". Relevant once F4 (DPS/TTK) exists, since it changes what a rotation actually delivers. |
 | D5 | Conditional buffs not yet modelled as third-party | open | Protection Wave, Frenzy, Boost Beam etc. exist in the data but are only modelled when *you* carry them. Blocks G1.4. |
 
 ---
@@ -59,7 +60,7 @@ Ordered by how much they distort results.
 | F1 | Equipment / armour **swapping** | open | Gear is currently imported and displayed as equipped. The resolver already accepts an arbitrary roll, so this is mostly UI: pick a different device per slot from the class pool. |
 | F2 | Save / share a build | open | Export a build (skills + gear + armour + active toggles) as JSON or a URL fragment, so builds can be compared or posted. |
 | F3 | Compare two builds side by side | open | Natural precursor to G1 and useful on its own. |
-| F4 | DPS / time-to-kill | open | Damage ÷ refire, bounded by power pool and cooldowns. Depends on C1 and C4 being settled to be trustworthy. |
+| F4 | DPS / time-to-kill | open | Damage ÷ refire, bounded by power pool and cooldowns. C1 and C4 are now settled, so this is unblocked. Needs D6 (swap-lingering) to be honest about rotations. |
 | F5 | Search / filter on the loadout page | open | 115 devices is a lot to scroll. Filter by class, category, or effect type. |
 | F6 | Mini skill trees on loadout cards | open | Built, then disabled for performance (~4,400 positioned nodes with inline images). Could return via sprite sheet or render-on-expand. |
 | F7 | Show *available* vs allocated skills per device | open | Tiles list allocated skills that affect them; showing the unallocated ones too would help planning. |

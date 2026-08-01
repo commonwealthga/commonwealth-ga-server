@@ -480,3 +480,4 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
 .goff{font-family:ui-monospace,Consolas,monospace;font-size:11px;line-height:1;color:var(--dim);
  background:transparent;border:1px solid var(--line);border-radius:4px;padding:1px 5px;cursor:pointer;flex:none;transition:.15s}
 .goff:hover{color:var(--debuff);border-color:var(--debuff);background:color-mix(in srgb,var(--debuff) 12%,transparent)}
+.gcat.wep{color:var(--acc);cursor:help}
