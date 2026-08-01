@@ -993,3 +993,55 @@ Shield Movement Penalty** (which Super Tank's category-scoped prop-66 entry remo
 
 Device **864** is on every character and is already folded into the base player stats, so it is
 excluded from the equipped list rather than shown as a toggleable item.
+
+
+## 21. Output Mod is its OWN layer — the offensive chain, settled (2026-08-01)
+
+Resolves the §6 open question. A Ballista OC `[dddddd]` fired with **no skills allocated** at a
+target carrying only Human Base Attributes:
+
+```
+You hit YeXiuu for 867 damage (372 mitigated).
+You hit YeXiuu for 991 damage (248 mitigated).
+```
+
+Both shots have the **same raw damage** — `867+372 = 1239` and `991+248 = 1239`. The difference is
+mitigation only: 372/1239 = **0.300** (Physical 30 from HBA) and 248/1239 = **0.200** (30 − 10,
+the Ballista's own protection debuff landing for the second shot). That independently re-confirms
+`CalcProtection` at rating 100.
+
+### The model
+
+Item mods do **not** all sum. Output Mod (385) forms its own multiplicative layer:
+
+```
+damage = base
+       × (1 + OutputMod)              // 385, on its own
+       × (1 + Σ other item mods)      // 214 Range Dmg, 65 Damage, ...
+       × (1 + Σ skill mods)
+```
+
+| candidate | raw | shot 1 | shot 2 |
+|---|---|---|---|
+| all item mods summed — `585 × 1.96` | 1146.60 | 802.6 | 917.3 |
+| Output applied twice — `585 × 1.75 × 1.96` | 2006.55 | 1404.6 | 1605.2 |
+| every mod multiplies — `585 × 1.75 × 1.12 × 1.09` | 1249.79 | 874.9 | 999.8 |
+| **Output its own layer — `585 × 1.75 × 1.21`** | **1238.74** | **867.1** | **991.0** |
+| **measured** | **1239** | **867** | **991** |
+
+Matches to the unit on both shots.
+
+**Consequences:**
+- Output Mod is applied **once**, and the displayed tooltip (`585 × 1.75 = 1023`) is that layer
+  alone — the remaining item mods are applied on top of it at hit time, not folded into it.
+- The other rolled mods **sum with each other** (12 + 9 = 21%), they do not each multiply. The
+  all-multiplying variant overshoots by 11.
+- The console previously summed Output with the rest, understating every damage figure by ~8%.
+  Fixed in `GA.resolve`'s `apply()`.
+
+### Residual
+
+The earlier skilled test (measured 1120 dealt) now models as 1536.03 raw → **1075**. Adding
+Super Sharpshooter's on-hit +5% stack gives 1598 → **1118.6**, effectively the measured 1120 —
+consistent, but it means that shot already carried the on-hit stack. Worth a clean re-test with
+the skill build if an exact figure is wanted; the no-skill case above is unambiguous.

@@ -137,14 +137,23 @@ window.GA = window.GA || {};
       return out;
     }
     // the two layers multiply; flats add on the end
+    // THREE multiplicative layers, not two. Output Mod (385) is its OWN layer - it does not
+    // sum with the other rolled mods. Measured on a Ballista OC [dddddd] with no skills, against
+    // a Human-Base-Attributes-only target:
+    //     585 x 1.75 (Output) x 1.21 (Range 12 + Damage 9) = 1238.74 raw
+    //     x 0.70 (Physical 30) = 867 dealt  |  x 0.80 (after its own -10 debuff) = 991 dealt
+    // Both shots matched to the unit. Summing Output with the rest gives 1146.6 - about 8% low.
     function apply(base, prop, isNeg, cat) {
       var sm = skillMods(prop, isNeg, cat), im = itemMods(prop, isNeg, cat);
-      var sp = 0, ip = 0, flat = 0;
+      var sp = 0, ip = 0, op = 0, flat = 0;
       sm.forEach(function (x) { if (x.pct) sp += x.v; else flat += x.v; });
-      im.forEach(function (x) { if (x.pct) ip += x.v; else flat += x.v; });
-      var value = Math.abs(base) * (1 + ip / 100) * (1 + sp / 100) + flat;
+      im.forEach(function (x) {
+        if (!x.pct) { flat += x.v; return; }
+        if (x.prop === 385) op += x.v; else ip += x.v;
+      });
+      var value = Math.abs(base) * (1 + op / 100) * (1 + ip / 100) * (1 + sp / 100) + flat;
       if (value < 0) value = 0;
-      return { value: value, mods: im.concat(sm), skillPct: sp, itemPct: ip, flat: flat };
+      return { value: value, mods: im.concat(sm), skillPct: sp, itemPct: ip, outPct: op, flat: flat };
     }
 
     var modes = (spec.dev.modes || []).map(function (m) {
