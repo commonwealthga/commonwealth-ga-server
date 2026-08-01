@@ -1743,6 +1743,12 @@ window.GA = window.GA || {};
         return { src: x.src, v: x.v, pct: x.pct, layer: x.layer, kind: 'duration' };
       }));
       var tip = label(c) + ' - base ' + sg + n(c.base) + unitFor(c)
+        + (c.prop === 279
+            ? '\nBuild time, divided by (1 + DeployRate) while a repair arm welds it.'
+              + '\nbombs 0.001 | drones 1 | mines 4 | stations 15'
+              + '\nPersonal & Flame turret 25 | Auto Cannon & Rocket turret 40'
+              + '\nArms carry DeployRate +4.5 (Nanite Repair +3.5), so 25 becomes 4.5s.'
+            : '')
         + (all.length ? '\n\n' + all.map(function (x) {
             return '  [' + x.layer + '] ' + x.src + '  ' + sgn(x.v) + (x.pct ? '%' : '') + '  (' + x.kind + ')';
           }).join('\n') : '\n\nnothing equipped or allocated modifies this');
@@ -1759,7 +1765,10 @@ window.GA = window.GA || {};
     }
     if (sup) {
       var bits = [];
-      if (sup.dmg) bits.push('+' + Math.round(sup.dmg) + '% damage');
+      // only advertise channels this device can use - a Medical Station gains repair and
+      // deploy speed from an arm, it has no damage to buff
+      var dealsDmg = (spec.meta || {}).dmg;
+      if (sup.dmg && dealsDmg) bits.push('+' + Math.round(sup.dmg) + '% damage');
       if (sup.repair) bits.push(Math.round(sup.repair) + ' repair/tick');
       if (sup.rate) bits.push('deploy /' + (1 + sup.rate).toFixed(1));
       hbits.push('<span class="bnchip sup" title="An active repair arm is supporting this deployable">'

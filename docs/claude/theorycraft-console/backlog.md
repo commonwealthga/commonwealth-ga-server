@@ -30,7 +30,7 @@ Ordered by how much they distort results.
 | id | item | status | notes |
 |---|---|---|---|
 | ~~C1~~ | Output Mod re-applied at hit time? | **done** | **Settled by test:** applied once, but as its **own multiplicative layer** — it does not sum with the other rolled mods. `base × (1+Output) × (1+other item) × (1+skills)`. Matched to the unit on both shots (867 / 991). The old summed model was ~8% low on every damage figure. §21. |
-| **C2** | Turret deploy-time units | blocked | Turrets confirmed to build at *different* speeds (observed: Personal < Auto Cannon < Flame < Rocket). But prop 279 says Personal **=** Flame (25) with Auto Cannon slower (40), and Rocket Turret has no 279 at all — so 279 is not the whole story. Needs a stopwatch on an unsupported turret, and a look at what Rocket Turret actually spawns. |
+| ~~C2~~ | Turret deploy-time units | **done** | `prop 279` is build work in seconds, divided by `(1 + DeployRate)`. Only deploy figure in the data; coherent scale from bombs 0.001 to big turrets 40. Turrets/drones are bots, stations/walls are deployables — both use 279. Folded into the console for every deployable, with the arm acceleration shown. Residual: the data has two turret tiers (25/40), not four. §22. |
 | **C3** | Killer Instinct self-shot leak | blocked | ~3-point discrepancy. Raised as a Discord issue. Needs a log capture or original-server reference. |
 | ~~C4~~ | Power regen during drain | **done** | **Confirmed in game:** passive regen does not run while power is being consumed. The time-to-empty figure is the full sustain; wording updated from an assumption to a statement. |
 | ~~C5~~ | Dome Shield Boost has no numeric effects | **done** | It is a *deployable shield*, same mechanic as Force Wall — both spawn a force field whose substance is the deployable's **health** (2500 / 2370) plus Persist Time, neither of which was being read. Now surfaces Structure HP (scaled by the Robotics deployable-health skills) and Duration. Also fixed Medical Station, Power Station and Sensor. |
@@ -79,11 +79,13 @@ Ordered by how much they distort results.
 ## Suggested order
 
 1. ~~C1~~ **done** — the offensive chain is now settled and matches measurement to the unit.
-2. **C2** — small and self-contained; needs one stopwatch reading.
+2. ~~C2~~ **done** — folded into the console.
 3. **F1** — makes the tool genuinely exploratory rather than a viewer.
 4. **G1.1–G1.3** — the mitigation stage. The single biggest step toward the point of all this.
 5. **G1.4/D5**, then **G1.5**.
 
-C3 remains `blocked` on a log capture. C1 and C2 need a controlled in-game test — worth batching.
+C3 remains `blocked` on a log capture.
 
-**Resolved so far:** C1 (Output Mod is its own layer), C4 (regen confirmed to pause), C5 (deployable shields fixed), C6/C7/C8 closed. Only C2 and C3 remain.
+**Resolved:** C1, C2, C4, C5, C6, C7, C8. **Only C3 remains** (blocked on a log capture).
+
+Next up is **F1** (equipment swapping) or **G1.1-G1.3** (the mitigation stage).

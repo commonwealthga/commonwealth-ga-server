@@ -1045,3 +1045,46 @@ The earlier skilled test (measured 1120 dealt) now models as 1536.03 raw → **1
 Super Sharpshooter's on-hit +5% stack gives 1598 → **1118.6**, effectively the measured 1120 —
 consistent, but it means that shot already carried the on-hit stack. Worth a clean re-test with
 the skill build if an exact figure is wanted; the no-skill case above is unambiguous.
+
+
+## 22. Deploy time — settled (2026-08-01)
+
+`prop 279 "Time To Deploy (secs)"` is **build work in seconds**, and `prop 278 DeployRate Modifier`
+divides it: `effective = 279 / (1 + DeployRate)`.
+
+It is the only deploy figure in the ASM data — prop 279 appears **zero** times as an effect, only
+on the device row. Across the inventory it forms a coherent scale:
+
+| 279 | devices | spawns |
+|---|---|---|
+| 0.001 | EMP / Fire / Graviton / Venom / Shatter bombs | — |
+| 1.0 | Eye, Grizzly, Harrier, Hornet, Lockdown drones | bot |
+| 1.5 | Deconstructor | — |
+| 4.0 | Standard Mine, Sticky Poison Mine | — |
+| 15.0 | Medical Station, Power Station, Sensor | deployable |
+| 25.0 | Personal Turret, Flame Turret | bot |
+| 40.0 | Auto Cannon, Rocket Turret | bot |
+
+**Turrets and drones are bots; stations and walls are deployables.** That is the structural
+difference between them, but it does not affect deploy time — both kinds use 279. The turret *bot*
+records (1316 / 1183 / 1493) carry no timing field at all; they differ only in hit points, sensor
+range, aggro range and FOV.
+
+Accelerators, all in category **1025 Deploy Time Modifier**:
+
+| device | DeployRate |
+|---|---|
+| A.R.C. Repair Arm | +4.5 |
+| Focused Repair Arm | +4.5 |
+| Nanite Repair | +3.5 |
+
+So a Personal Turret goes 25s → **4.55s** under an arm, and a station 15s → **2.73s**. Confirmed
+in the console for both kinds.
+
+### Caveat
+
+The data gives **two tiers** of turret (25 and 40), not four. A recalled in-game ordering of
+Personal < Auto Cannon < Flame < Rocket would put Auto Cannon ahead of Flame, which contradicts
+it. If Personal and Flame are ever timed and found to differ, the difference is not in the ASM
+data — most likely a client-side build animation on the pawn class
+(`pawn_class_res_id` 4595 / 4240 / 6204).
