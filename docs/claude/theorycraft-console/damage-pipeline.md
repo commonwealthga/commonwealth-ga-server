@@ -1132,3 +1132,41 @@ already stuck a burn on someone does nothing for that burn — it raises the nex
 
 The console shows the buffed value, which is the correct figure for a *newly applied* effect.
 It does not model retroactivity, and it should not.
+
+
+## 24. Active device buffs feed the SKILL layer (2026-08-01)
+
+A Range Stim's +25% Range Damage was showing on the character sheet but never reaching the
+weapon. The resolver only summed the skill and item layers; anything currently buffing the
+player was ignored.
+
+These are class-157 buffs applied at hit time through the same `GetBuffedProperty` registry as
+skills, so they **sum with the skill layer** — they do not form another multiplicative one:
+
+```
+damage = base x (1 + OutputMod) x (1 + other item mods) x (1 + skills + active buffs)
+```
+
+Verified: Ballista OC `[dddddd]`, no skills, `585 x 1.75 x 1.21 = 1238.74`; with a Range Stim up,
+`x 1.25 = 1548.42`. A Melee Stim leaves it untouched, and vice versa on a melee weapon
+(`219 x 1.70 x 1.21 x 1.25 = 563.1`).
+
+Devices carrying one of these:
+
+| device | buff | duration |
+|---|---|---|
+| Range Stim | Damage Modifier - Range +25% | 5s |
+| Melee Stim | Damage Modifier - Melee +25% | 8s |
+| Visual Scanner | Damage Modifier - Range +10% | 20s |
+| Vulture Vision | Effect Damage Modifier +10% | 20s |
+| Sensor Boost | Melee / Range / AoE +40% | 10s |
+
+### They are mutually exclusive
+
+All of them sit in category **936 Personal Damage Buff**, so only one can run at a time — a Range
+Stim and a Melee Stim cannot both be up. Note the rule is not uniform within the category:
+Range Stim, Visual Scanner and Vulture Vision are **Strongest Wins** (157) while Melee Stim is
+**Newest Wins** (156).
+
+A device must not buff itself, or a weapon granting a damage buff would double-count its own
+contribution.

@@ -31,6 +31,7 @@
   var activeGear = {};      // gear index -> chosen mode
   var activeOrder = [];     // device names, oldest first (decides Newest/Oldest Wins)
   var stackNotes = [], blockedNames = {};
+  var playerBuffs = [];     // what active gear is currently buffing the player with
   var armSlots = [];
   for (var i = 0; i < (ARM.slots || 7); i++) armSlots.push(ARM.default);
   function armConfigs() { return Object.keys(ARM.configs).sort(); }
@@ -216,7 +217,7 @@
       support: sup,
       dev: dev, meta: (window.__DEVMETA__ || {})[String(g.id)] || {},
       ix: (window.__DEVFX__ || {})[String(g.id)] || [], alloc: alloc,
-      mode: mode, situational: !!mode,
+      mode: mode, situational: !!mode, buffs: playerBuffs,
       variant: { sig: g.sig, base: g.base, groups: g.groups, nums: g.nums }
     });
   }
@@ -261,8 +262,9 @@
     });
     var note = uniq.length
       ? '<div class="stacknote">' + uniq.map(function (n) {
-          return '<em>' + esc(n.win) + '</em> replaced <b>' + esc(n.lost.join(', '))
-            + '</b> &mdash; same effect category, <em>' + esc(n.rule) + '</em>, so it was switched off.';
+          return '<b>' + esc(n.lost.join(', ')) + '</b> switched off &mdash; <em>' + esc(n.win)
+            + '</em> occupies the same effect category and only one can run '
+            + '(<em>' + esc(n.rule) + '</em>).';
         }).join('<br>') + '</div>'
       : '';
     host.innerHTML = '<div class="ghead"><h3>Equipped</h3><span class="gsub">'
@@ -273,6 +275,7 @@
       b.addEventListener('click', function (ev) {
         ev.stopPropagation();                 // must not also fire the tile's cycle
         var i = +b.dataset.off, nm = charGear[i].name;
+        stackNotes = [];
         delete activeGear[i];
         activeOrder = activeOrder.filter(function (x) { return x !== nm; });
         render();
@@ -283,7 +286,7 @@
         var i = +el.dataset.i, g = charGear[i], nm = g.name;
         var next = cycle(g, activeGear[i] || null);
         if (next) {
-          if (!activeGear[i]) activeOrder.push(nm);
+          if (!activeGear[i]) { activeOrder.push(nm); stackNotes = []; }   // fresh action, fresh slate
           activeGear[i] = next;
           // holstering the other two weapons
           if (WEAPON_SLOTS[g.cat]) {
@@ -299,6 +302,7 @@
         } else {
           delete activeGear[i];
           activeOrder = activeOrder.filter(function (x) { return x !== nm; });
+          stackNotes = [];
         }
         render();
       });
@@ -666,7 +670,10 @@
     // Shield effect is active). Shield pools are tracked separately so a covered damage
     // type can be shown as absorbed rather than as a plain number.
     var contrib = activeContribution();
-    stackNotes = contrib.notes;
+    if (contrib.notes.length) stackNotes = contrib.notes;   // sticky: see note below
+    // percentage buffs feed back into every OTHER device's numbers, not just this summary
+    playerBuffs = contrib.effects.filter(function (f) { return f.pct; })
+      .map(function (f) { return { p: f.p, v: f.v, pct: 1, src: f.src, kind: f.kind }; });
     var act = contrib.effects.length || contrib.shields.length
       ? { effects: contrib.effects, shields: contrib.shields,
           dev: Object.keys(activeGear).map(function (i) { return charGear[+i].name; }).join(', ') }

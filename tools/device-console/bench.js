@@ -120,6 +120,21 @@ window.GA = window.GA || {};
       });
       return out;
     }
+    // ---- ACTIVE BUFF layer ----
+    // Anything currently buffing the player - a Range Stim's +25% Range Damage, Visual
+    // Scanner's +10%, a repair arm's proximity buff. These are class-157 buffs applied at hit
+    // time through the same GetBuffedProperty registry as skills, so they SUM with the skill
+    // layer rather than forming another multiplicative one.
+    function buffMods(prop, isNeg, cat) {
+      var want = propList(prop, isNeg, meta, cat);
+      var out = [];
+      (spec.buffs || []).forEach(function (b) {
+        if (want.indexOf(b.p) < 0) return;
+        if (b.src === (spec.name || spec.dev.name)) return;   // never buff yourself
+        out.push({ src: b.src, prop: b.p, v: b.v, pct: b.pct, layer: 'active', kind: b.kind || 'buff' });
+      });
+      return out;
+    }
     // ---- ITEM layer (rolled mods) ----
     function itemMods(prop, isNeg, cat) {
       if (!variant || !variant.nums) return [];
@@ -145,15 +160,17 @@ window.GA = window.GA || {};
     // Both shots matched to the unit. Summing Output with the rest gives 1146.6 - about 8% low.
     function apply(base, prop, isNeg, cat) {
       var sm = skillMods(prop, isNeg, cat), im = itemMods(prop, isNeg, cat);
+      var bm = buffMods(prop, isNeg, cat);
       var sp = 0, ip = 0, op = 0, flat = 0;
       sm.forEach(function (x) { if (x.pct) sp += x.v; else flat += x.v; });
+      bm.forEach(function (x) { if (x.pct) sp += x.v; else flat += x.v; });
       im.forEach(function (x) {
         if (!x.pct) { flat += x.v; return; }
         if (x.prop === 385) op += x.v; else ip += x.v;
       });
       var value = Math.abs(base) * (1 + op / 100) * (1 + ip / 100) * (1 + sp / 100) + flat;
       if (value < 0) value = 0;
-      return { value: value, mods: im.concat(sm), skillPct: sp, itemPct: ip, outPct: op, flat: flat };
+      return { value: value, mods: im.concat(bm).concat(sm), skillPct: sp, itemPct: ip, outPct: op, flat: flat };
     }
 
     var modes = (spec.dev.modes || []).map(function (m) {
@@ -264,7 +281,7 @@ window.GA = window.GA || {};
 
   GA.playerEffects = function (spec) {
     var res = GA.resolve({ dev: spec.dev, meta: spec.meta, ix: spec.ix, alloc: spec.alloc,
-                           situational: true, variant: spec.variant });
+                           situational: true, variant: spec.variant, buffs: spec.buffs });
     // A weapon fires primary OR alt, never both, so only the chosen mode contributes.
     // Modes with no kind (and SPAWN/BLOCK follow-ons of the chosen one) are always included.
     var want = spec.mode || null;
@@ -391,7 +408,8 @@ window.GA = window.GA || {};
 
   GA.deviceChipsHTML = function (spec) {
     var res = GA.resolve({ dev: spec.dev, meta: spec.meta, ix: spec.ix, alloc: spec.alloc,
-                           situational: !!spec.situational, variant: spec.variant });
+                           situational: !!spec.situational, variant: spec.variant,
+                           buffs: spec.buffs });
     var want = spec.mode || null;
     var modes = res.modes.filter(function (m) {
       return !want || !m.kind || m.kind === want || m.kind === 'SPAWN';
