@@ -102,6 +102,14 @@ window.GA = window.GA || {};
   // is immunity.
 
   // m_nDamageType -> protection property
+  // Who an effect-group lands on, by group type. A skill that fires "because a rifle is out"
+  // still applies to whatever you HIT - Killer Instinct's -10 protection is a debuff on the
+  // enemy, not a self-inflicted one - so these must never be folded into the carrier's stats.
+  //   264 HIT · 272 HIT_IN_AIR · 505 HIT_SITUATIONAL -> the target
+  //   398 BLOCK_HIT                                  -> whoever attacked you
+  var LANDS_ON_OTHER = { 264: 1, 272: 1, 505: 1, 398: 1 };
+  GA.LANDS_ON_OTHER = LANDS_ON_OTHER;
+
   var DMGTYPE_PROT = { 113: 155, 115: 156, 116: 157, 897: 324 };
   // m_eAttackType -> protection property
   // 3 = AOE. Nothing in the device data declares it - a splash radius (prop 6) is what puts a
@@ -322,6 +330,7 @@ window.GA = window.GA || {};
       (e.fx || []).forEach(function (f) {
         if (!EFFECTP[f[0]]) return;
         extra.push({ skill: e.skill, tree: e.tree, prop: f[0], v: f[1], calc: f[2],
+                     egt: e.egt,
                      kind: KINDLAB[e.egt] || e.kind.toLowerCase(), detail: e.detail });
       });
     });
@@ -393,6 +402,48 @@ window.GA = window.GA || {};
     return out;
   };
 
+  /* What a device throws AT whoever it is used on, rather than at its carrier.
+   * The mirror image of playerEffects: same resolve, same mode filter, but it keeps exactly
+   * the groups that land on someone else and drops the ones that stay home.
+   *
+   * Damage itself (51/211) is deliberately excluded - that is the shot, resolved separately
+   * through the mitigation stage. What comes out here is the debuffs and buffs that ride
+   * alongside it: a rifle's -10 protection, a wave's heal, a stim's damage boost. */
+  GA.projectedEffects = function (spec) {
+    var res = GA.resolve({ dev: spec.dev, meta: spec.meta, ix: spec.ix, alloc: spec.alloc,
+                           situational: true, variant: spec.variant, buffs: spec.buffs });
+    var want = spec.mode || null;
+    if (want) {
+      res = { modes: res.modes.filter(function (m) {
+                return !m.kind || m.kind === want || m.kind === 'SPAWN';
+              }), live: res.live, extra: res.extra };
+    }
+    var src = spec.name || spec.dev.name, out = [];
+    res.modes.forEach(function (m) {
+      m.chips.forEach(function (c) {
+        if (c.base === null || c.prop === 386) return;
+        if (c.prop === 51 || c.prop === 211) return;      // that is the shot, not a rider
+        if (/^Equip: /.test(c.label)) return;
+        if (c.self || SELF_PENALTY[c.cat]) return;        // stays on the carrier
+        if (!(GA.LANDS_ON_OTHER || {})[c.egt]) return;    // only groups aimed at someone else
+        var nm = GA.statName(c.prop);
+        if (!nm) return;
+        out.push({ p: c.prop, name: nm, v: c.neg ? -c.value : c.value, pct: c.isPct,
+                   src: src, kind: c.neg ? 'debuff' : 'buff', life: c.lifeVal || c.life,
+                   cat: c.cat });
+      });
+    });
+    res.extra.forEach(function (x) {
+      if (!(GA.LANDS_ON_OTHER || {})[x.egt]) return;
+      var nm = GA.statName(x.prop);
+      if (!nm) return;
+      var pos = (x.calc === 67 || x.calc === 68);
+      out.push({ p: x.prop, name: nm, v: pos ? x.v : -x.v, pct: (x.calc === 68 || x.calc === 69),
+                 src: x.skill, via: src, kind: pos ? 'buff' : 'debuff', life: 0, cat: 0 });
+    });
+    return out;
+  };
+
   GA.playerEffects = function (spec) {
     var res = GA.resolve({ dev: spec.dev, meta: spec.meta, ix: spec.ix, alloc: spec.alloc,
                            situational: true, variant: spec.variant, buffs: spec.buffs });
@@ -410,6 +461,8 @@ window.GA = window.GA || {};
     var effects = [], shields = [];
     // skills that fire because this device is up (Aegis Armament while a shield is active)
     res.extra.forEach(function (x) {
+      // declared in the resolver IIFE above, reached here through the namespace
+      if ((GA.LANDS_ON_OTHER || {})[x.egt]) return;   // this one hits the enemy, not its carrier
       var nm = GA.statName(x.prop);
       if (!nm) return;
       var pos = (x.calc === 67 || x.calc === 68);

@@ -144,6 +144,17 @@ CRAFTBAR = (
  'Click a node to spend, <strong>shift-click or right-click to refund</strong> &mdash; refunding cascades. '
  'Nothing here is written back to the database.</p>'
  '<div id="tc-build"></div>')
+# ---- Combat tab: two saved builds, one shot resolved through CalcProtection ----------
+COMBATBAR = (
+ '<div class="cbtwrap">'
+ '<div class="chhead"><h3>Combat</h3><span class="chname">attacker vs defender</span></div>'
+ '<p class="chnote">Pick a build for each side. The attacker&rsquo;s weapons are resolved with that '
+ 'build&rsquo;s own skills and switched-on gear, then run through the defender&rsquo;s protections '
+ 'the way the game does it &mdash; three axes, each divided by the weapon&rsquo;s attack rating, '
+ 'multiplied together. Figures are rounded the way the combat log rounds them, so they can be '
+ 'compared against a real fight directly.</p>'
+ '<div id="cb-body"></div></div>')
+
 HTML = (
 '<title>Global Agenda &mdash; Loadout & Device Console</title>\n<style>%s</style>\n'
 '<header class="top"><div class="topinner">'
@@ -151,7 +162,8 @@ HTML = (
 '<span class="sub">every valid device &amp; armor piece, per class &mdash; live level-50 inventory</span></div>'
 '<div class="viewtabs"><button class="viewtab active" data-view="loadout">Loadout</button>'
 '<button class="viewtab" data-view="tree">My Character</button>'
-'<button class="viewtab" data-view="craft">TheoryCrafter</button></div>'
+'<button class="viewtab" data-view="craft">TheoryCrafter</button>'
+'<button class="viewtab" data-view="combat">Combat</button></div>'
 '<div id="loadout-nav"><div class="tabs"><button class="tab all active" data-tab="All">All</button>%s</div>'
 '<div class="legend">%s<span style="opacity:.35">&#9474;</span>%s<span style="opacity:.35">&#9474;</span>'
 '<b><span class="ocdot">OC</span>overcharged</b> <b><span class="sigdot">AaN</span>mod &mdash; hover</b> <b><span class="mtag pri" style="font-size:9px">PRI</span>/<span class="mtag alt" style="font-size:9px">ALT</span> fire mode</b></div>'
@@ -170,6 +182,7 @@ HTML = (
 '</div>'                                  # /#view-loadout
 '<div id="view-tree" style="display:none">@@BUILDER@@</div>'
 '<div id="view-craft" style="display:none">@@CRAFT@@</div>'
+'<div id="view-combat" style="display:none">@@COMBAT@@</div>'
 '<footer>Source: ga_players_inventory (user 2381) + asm effects (calc-applied) + decompiled UC. Jetpacks: only Crescent used. '
 '<b>Device mod letters:</b> P power · D damage · H heal · R range · C cooldown · X AOE radius · T duration · S shield · VN deployable/pet HP · M morale. '
 '<b>Armor:</b> N health · R ranged prot · M melee prot · B AOE prot. Each mod group shows the <em>game-displayed total</em> (hover for the per-mod maths). '
@@ -185,6 +198,7 @@ HTML = (
 # inject builder markup + data + logic without %-formatting (JSON/JS contain % chars)
 HTML = HTML.replace('@@BUILDER@@', BUILDER)
 HTML = HTML.replace('@@CRAFT@@', CRAFTBAR)
+HTML = HTML.replace('@@COMBAT@@', COMBATBAR)
 HTML = HTML.replace('</script>\n',
                     '</script>\n<script>window.__TREE__=' + TREEJSON + ';</script>\n'
                     '<script>window.__DEVMODEL__=' + json.dumps(DEVMODEL) + ';</script>\n'
