@@ -129,24 +129,29 @@ for _cls, _cats in model.items():
                                        'modes': _d['modes'], 'variants': _d['variants']}
 CLSBTN = "".join('<button class="tb-class%s" data-cls="%s">%s</button>' % (' active' if c == 'Assault' else '', c, c) for c in ORDER)
 BUILDER = (
+ '<div id="tb-char"></div>'
+ '<div class="tbwrap" id="tbwrap"><div id="tb-gear"></div><div id="tb-armour"></div><div id="tb-trees"></div>'
+ '<aside id="tb-sheet"></aside></div>')
+# The class selector + point counter belong to the scratch build: on My Character the loaded
+# profile decides the class, so a manual picker there is misleading.
+CRAFTBAR = (
  '<div class="tbbar">' + CLSBTN +
  '<span id="tb-msg"></span>'
  '<div class="ptbox"><span id="tb-count">0 / 13</span><button id="tb-reset">Reset</button></div></div>'
- '<p class="intro">Click a node to spend a point &mdash; <strong>shift-click or right-click to refund</strong>. '
+ '<p class="intro">Pick a class, fill the equipment slots, then spend skill points. '
  'The same rules as the game apply: <strong>13 points</strong> total, each skill costs 1, a node needs its '
  '<strong>tier requirement</strong> (points already spent in that tree) and its <strong>prerequisite skill</strong>. '
- 'Refunding cascades: anything that becomes illegal is refunded too. Locked nodes are dimmed &mdash; hover for the reason, '
- 'the description and the exact effects.</p>'
- '<div id="tb-char"></div>'
- '<div class="tbwrap"><div id="tb-gear"></div><div id="tb-armour"></div><div id="tb-trees"></div>'
- '<aside id="tb-sheet"></aside></div>')
+ 'Click a node to spend, <strong>shift-click or right-click to refund</strong> &mdash; refunding cascades. '
+ 'Nothing here is written back to the database.</p>'
+ '<div id="tc-build"></div>')
 HTML = (
 '<title>Global Agenda &mdash; Loadout & Device Console</title>\n<style>%s</style>\n'
 '<header class="top"><div class="topinner">'
 '<div class="brand"><h1>Loadout Console</h1><span class="tag">Global Agenda</span>'
 '<span class="sub">every valid device &amp; armor piece, per class &mdash; live level-50 inventory</span></div>'
 '<div class="viewtabs"><button class="viewtab active" data-view="loadout">Loadout</button>'
-'<button class="viewtab" data-view="tree">My Character</button></div>'
+'<button class="viewtab" data-view="tree">My Character</button>'
+'<button class="viewtab" data-view="craft">TheoryCrafter</button></div>'
 '<div id="loadout-nav"><div class="tabs"><button class="tab all active" data-tab="All">All</button>%s</div>'
 '<div class="legend">%s<span style="opacity:.35">&#9474;</span>%s<span style="opacity:.35">&#9474;</span>'
 '<b><span class="ocdot">OC</span>overcharged</b> <b><span class="sigdot">AaN</span>mod &mdash; hover</b> <b><span class="mtag pri" style="font-size:9px">PRI</span>/<span class="mtag alt" style="font-size:9px">ALT</span> fire mode</b></div>'
@@ -164,6 +169,7 @@ HTML = (
 '%s'
 '</div>'                                  # /#view-loadout
 '<div id="view-tree" style="display:none">@@BUILDER@@</div>'
+'<div id="view-craft" style="display:none">@@CRAFT@@</div>'
 '<footer>Source: ga_players_inventory (user 2381) + asm effects (calc-applied) + decompiled UC. Jetpacks: only Crescent used. '
 '<b>Device mod letters:</b> P power · D damage · H heal · R range · C cooldown · X AOE radius · T duration · S shield · VN deployable/pet HP · M morale. '
 '<b>Armor:</b> N health · R ranged prot · M melee prot · B AOE prot. Each mod group shows the <em>game-displayed total</em> (hover for the per-mod maths). '
@@ -178,6 +184,7 @@ HTML = (
 '</div>\n<script>%s</script>\n') % (STYLE, tabs, legend, klegend, panes, SCRIPT)
 # inject builder markup + data + logic without %-formatting (JSON/JS contain % chars)
 HTML = HTML.replace('@@BUILDER@@', BUILDER)
+HTML = HTML.replace('@@CRAFT@@', CRAFTBAR)
 HTML = HTML.replace('</script>\n',
                     '</script>\n<script>window.__TREE__=' + TREEJSON + ';</script>\n'
                     '<script>window.__DEVMODEL__=' + json.dumps(DEVMODEL) + ';</script>\n'

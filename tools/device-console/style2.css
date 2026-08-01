@@ -481,3 +481,20 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
  background:transparent;border:1px solid var(--line);border-radius:4px;padding:1px 5px;cursor:pointer;flex:none;transition:.15s}
 .goff:hover{color:var(--debuff);border-color:var(--debuff);background:color-mix(in srgb,var(--debuff) 12%,transparent)}
 .gcat.wep{color:var(--acc);cursor:help}
+
+/* ---------- TheoryCrafter slot picker ---------- */
+#tc-build{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+ border-radius:12px;padding:12px 14px;margin-top:14px}
+#tc-build:empty{display:none}
+.tccount{font-family:ui-monospace,Consolas,monospace;font-size:10.5px;color:var(--dim);margin-left:6px}
+.tcslots{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:7px;margin-top:10px}
+.tcslot{display:flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid var(--line);
+ border-radius:8px;padding:6px 9px;min-width:0}
+.tccat{font-family:ui-monospace,Consolas,monospace;font-size:8px;letter-spacing:.1em;text-transform:uppercase;
+ color:var(--dim);flex:none;width:56px}
+.tcdev{flex:1;min-width:0;font-size:12px;background:var(--panel);color:var(--ink);
+ border:1px solid var(--line);border-radius:6px;padding:3px 6px}
+.tcdev:focus-visible,.tcroll:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.tcroll{font-family:ui-monospace,Consolas,monospace;font-size:10px;letter-spacing:.06em;flex:none;
+ background:var(--panel);color:var(--gear);border:1px solid var(--line);border-radius:6px;padding:3px 5px}
+.tcsig{font-family:ui-monospace,Consolas,monospace;font-size:10px;color:var(--gear);flex:none}

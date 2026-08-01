@@ -25,7 +25,10 @@
   // carries its OWN rolled mods from ga_players_inventory, not a representative config.
   var CH = window.__CHARS__ || null;
   var curChar = null, curProfile = null, charArm = null, charGear = [];
-  var activeGear = {};      // gear index -> true
+  var craftMode = false;    // TheoryCrafter: gear is hand-picked, not loaded from a profile
+  var craftSlots = [];      // [{cat, id, vix}] - one entry per equipment slot
+  var craftClass = null;    // the class those slots were picked for
+  var activeGear = {};      // gear index -> chosen mode
   var activeOrder = [];     // device names, oldest first (decides Newest/Oldest Wins)
   var stackNotes = [], blockedNames = {};
   var armSlots = [];
@@ -119,6 +122,7 @@
   }
   function loadChar(id, pid) {
     var c = charById(id); if (!c) return;
+    craftMode = false;
     var keys = Object.keys(c.profiles).sort();
     pid = (pid && c.profiles[pid]) ? pid : (c.profiles[String(c.current)] ? String(c.current) : keys[0]);
     var p = c.profiles[pid];
@@ -337,6 +341,101 @@
     return { effects: effects, shields: shields, notes: st.notes };
   }
 
+  // ---------------- TheoryCrafter: build a loadout from nothing -----------------
+  // Same slot layout the game gives you: one weapon of each kind, three off-hands, a boost
+  // and a jetpack. Nothing is written back to the database - this is a scratch build.
+  var SLOTPLAN = [['Melee', 1], ['Ranged', 1], ['Specialty', 1], ['Offhand', 3], ['Boost', 1], ['Jetpack', 1]];
+
+  function blankSlots() {
+    var out = [];
+    SLOTPLAN.forEach(function (p) {
+      for (var i = 0; i < p[1]; i++) out.push({ cat: p[0], id: null, vix: 0 });
+    });
+    return out;
+  }
+  // every device of this class that fits the slot
+  function devicesFor(cls, cat) {
+    var M = window.__DEVMODEL__ || {}, T = window.__DEVMETA__ || {}, out = [];
+    Object.keys(M).forEach(function (id) {
+      var m = T[id] || {};
+      if (m.cls && m.cls !== 'Shared' && m.cls !== cls) return;
+      if (M[id].cat !== cat) return;
+      out.push({ id: id, name: M[id].name, oc: M[id].oc });
+    });
+    return out.sort(function (a, b) { return a.name < b.name ? -1 : 1; });
+  }
+  // turn the slot picks into the same shape a loaded character produces
+  function craftToGear() {
+    charGear = [];
+    craftSlots.forEach(function (sl) {
+      if (!sl.id) return;
+      var dev = (window.__DEVMODEL__ || {})[sl.id];
+      if (!dev) return;
+      var v = (dev.variants || [])[sl.vix] || (dev.variants || [])[0] || { sig: '\u2014', base: null, groups: [], nums: [] };
+      charGear.push({ slot: 0, id: +sl.id, name: dev.name, oc: dev.oc, cat: dev.cat,
+                      sig: v.sig, base: v.base, groups: v.groups, nums: v.nums });
+    });
+  }
+  function renderCraft() {
+    var host = document.getElementById('tc-build');
+    if (!host) return;
+    if (!craftSlots.length) craftSlots = blankSlots();
+    var rows = craftSlots.map(function (sl, i) {
+      var pool = devicesFor(curClass, sl.cat).filter(function (d) {
+        // you cannot carry the same off-hand three times
+        return String(sl.id) === String(d.id)
+          || !craftSlots.some(function (o, k) { return k !== i && String(o.id) === String(d.id); });
+      });
+      var opts = '<option value="">&mdash; empty &mdash;</option>' + pool.map(function (d) {
+        return '<option value="' + d.id + '"' + (String(sl.id) === String(d.id) ? ' selected' : '') + '>'
+          + esc(d.name) + (d.oc ? ' (OC)' : '') + '</option>';
+      }).join('');
+      var rolls = '';
+      if (sl.id) {
+        var dev = (window.__DEVMODEL__ || {})[sl.id] || {};
+        var vs = dev.variants || [];
+        if (vs.length > 1) {
+          rolls = '<select class="tcroll" data-i="' + i + '">' + vs.map(function (v, k) {
+            return '<option value="' + k + '"' + (k === sl.vix ? ' selected' : '') + '>'
+              + esc(String(v.sig).toLowerCase()) + '</option>';
+          }).join('') + '</select>';
+        } else if (vs.length === 1) {
+          rolls = '<span class="tcsig">' + esc(String(vs[0].sig).toLowerCase()) + '</span>';
+        }
+      }
+      return '<div class="tcslot"><span class="tccat">' + esc(sl.cat) + '</span>'
+        + '<select class="tcdev" data-i="' + i + '">' + opts + '</select>' + rolls + '</div>';
+    }).join('');
+    var filled = craftSlots.filter(function (s2) { return s2.id; }).length;
+    host.innerHTML = '<div class="chhead"><h3>TheoryCrafter</h3>'
+      + '<span class="chname">' + esc(curClass) + '</span>'
+      + '<span class="tccount">' + filled + ' / ' + craftSlots.length + ' slots</span>'
+      + '<button class="chclear" id="tc-clear">clear</button></div>'
+      + '<p class="chnote">Devices are filtered to what this class can equip, and each keeps its '
+      + 'own mod roll. Melee, Ranged and Specialty share your hands &mdash; only one is out at a time.</p>'
+      + '<div class="tcslots">' + rows + '</div>';
+    host.querySelectorAll('.tcdev').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        var sl = craftSlots[+sel.dataset.i];
+        sl.id = sel.value || null; sl.vix = 0;
+        activeGear = {}; activeOrder = [];
+        craftToGear(); render();
+      });
+    });
+    host.querySelectorAll('.tcroll').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        craftSlots[+sel.dataset.i].vix = +sel.value;
+        craftToGear(); render();
+      });
+    });
+    var cl = document.getElementById('tc-clear');
+    if (cl) cl.addEventListener('click', function () {
+      craftSlots = blankSlots(); craftClass = curClass;
+      alloc = {}; activeGear = {}; activeOrder = [];
+      craftToGear(); render();
+    });
+  }
+
   function treesFor(cls) { return D.classes[cls]; }  function treesFor(cls) { return D.classes[cls]; }  function treesFor(cls) { return D.classes[cls]; }
   function spentIn(g) {
     var s = 0;
@@ -465,7 +564,7 @@
     });
     var c = document.getElementById('tb-count');
     if (c) { c.textContent = total() + ' / ' + MAXP; c.className = total() >= MAXP ? 'full' : ''; }
-    renderChar();
+    if (craftMode) renderCraft(); else renderChar();
     renderArmour();
     renderSheet();   // computes the stacking result
     renderGear();    // ...which renderGear needs, so it runs after
@@ -761,6 +860,8 @@
       curClass = b.dataset.cls; alloc = {};
       curChar = null; curProfile = null; charArm = null; charGear = []; resetArm();
       activeGear = {}; activeOrder = []; stackNotes = []; blockedNames = {};
+      // a different class is a different build, so the scratch slots start over too
+      if (craftMode) { craftSlots = blankSlots(); craftClass = curClass; craftToGear(); }
       render();
     });
   });
@@ -775,8 +876,33 @@
       var v = b.dataset.view;
       document.getElementById('view-loadout').style.display = (v === 'loadout' ? '' : 'none');
       document.getElementById('view-tree').style.display = (v === 'tree' ? '' : 'none');
+      document.getElementById('view-craft').style.display = (v === 'craft' ? '' : 'none');
       document.getElementById('loadout-nav').style.display = (v === 'loadout' ? '' : 'none');
-      if (v === 'tree') render();
+      // gear / armour / trees / sheet are one shared panel - move it to the visible view
+      // rather than maintaining two copies of the builder
+      var wrap = document.getElementById('tbwrap');
+      if (wrap && (v === 'tree' || v === 'craft')) {
+        document.getElementById(v === 'craft' ? 'view-craft' : 'view-tree').appendChild(wrap);
+      }
+      if (v === 'craft') {
+        if (!craftMode) {                 // entering the scratch build
+          craftMode = true;
+          curChar = null; curProfile = null; charArm = null;
+          // slots picked for another class are not valid here
+          if (!craftSlots.length || craftClass !== curClass) {
+            craftSlots = blankSlots(); craftClass = curClass;
+            alloc = {}; activeGear = {}; activeOrder = [];
+          }
+          resetArm();
+          craftToGear();
+        }
+        render();
+      } else if (v === 'tree') {
+        if (craftMode) {                  // back to the real characters
+          craftMode = false; charGear = []; activeGear = {}; activeOrder = [];
+        }
+        render();
+      }
     });
   });
   render();

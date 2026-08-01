@@ -57,7 +57,7 @@ Ordered by how much they distort results.
 
 | id | item | status | notes |
 |---|---|---|---|
-| F1 | Equipment / armour **swapping** | open | Gear is currently imported and displayed as equipped. The resolver already accepts an arbitrary roll, so this is mostly UI: pick a different device per slot from the class pool. |
+| ~~F1~~ | Equipment / armour swapping | **done** | Delivered as the **TheoryCrafter** tab: a blank build where you pick a class, fill the eight slots from that class's pool, choose each item's mod roll, and spend skill points. Shares the resolver, armour panel, trees and My Player with the character view. Armour swapping still uses the preset configs rather than per-piece rolls. |
 | F2 | Save / share a build | open | Export a build (skills + gear + armour + active toggles) as JSON or a URL fragment, so builds can be compared or posted. |
 | F3 | Compare two builds side by side | open | Natural precursor to G1 and useful on its own. |
 | F4 | DPS / time-to-kill | open | Damage ÷ refire, bounded by power pool and cooldowns. C1 and C4 are now settled, so this is unblocked. Needs D6 (swap-lingering) to be honest about rotations. |
@@ -81,7 +81,7 @@ Ordered by how much they distort results.
 
 1. ~~C1~~ **done** — the offensive chain is now settled and matches measurement to the unit.
 2. ~~C2~~ **done** — folded into the console.
-3. **F1** — makes the tool genuinely exploratory rather than a viewer.
+3. ~~F1~~ **done** — the TheoryCrafter tab.
 4. **G1.1–G1.3** — the mitigation stage. The single biggest step toward the point of all this.
 5. **G1.4/D5**, then **G1.5**.
 
