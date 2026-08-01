@@ -50,34 +50,41 @@ void __fastcall TgEffectManager__RemoveAllEffectGroups::Call(ATgEffectManager* p
 			: (applied->m_nCategoryCode == nCategoryCode);
 		if (!matches) continue;
 
-		// 0. Reverse property modifiers — UNLESS this is a regen-ticker that
-		//    re-emits each tick (reversing would undo a one-shot resource gift,
-		//    then the next tick re-applies it: net 0, or "set to base" when the
-		//    pool is low — the power-station +10/sec "set to 10" bug). Two
-		//    regen-ticker patterns:
-		//      (a) HoT: any effect with apply_on_interval (bit 0x01 @ +0x48) —
-		//          the manager owns a per-interval timer; each tick persists.
-		//      (b) Station aura: type=264 + lifetime=0 + interval=0 — no manager
-		//          timer; the source deployable's fire rate re-emits.
-		//    NOT a regen-ticker (so DO reverse): jetpack-pulse (type=263,
-		//    lifetime=0, interval=1, aoi=0) — Newest-Wins displaces each pulse;
-		//    without reversal +AirSpeed compounds.
-		bool isRegenTicker = false;
-		for (int e = 0; e < applied->m_Effects.Count; ++e) {
-			UTgEffect* eff = applied->m_Effects.Data[e];
-			if (!eff || reinterpret_cast<uintptr_t>(eff) < 0x10000u) continue;
-			if (*(unsigned int*)((char*)eff + 0x48) & 0x01) { isRegenTicker = true; break; }
-		}
-		if (!isRegenTicker
-			&& applied->m_nType == 264
+		// 0. Reverse property modifiers — PER-EFFECT, mirroring RemoveAllEffects.
+		//    A mixed-aoi group (Corrupted Tribesman backstab EG 27742: aoi=1
+		//    poison tick + aoi=0 -25% Effect Heal Modifier; REST EG 2654; any
+		//    cat-303 poison) must reverse its aoi=0 modifiers on displacement.
+		//    The old coarse "skip whole group if any aoi=1" gate leaked the
+		//    aoi=0 sibling into m_EffectBuffInfo forever on every Strongest-Wins
+		//    re-application — stacking heal reduction that survived death.
+		//    aoi=1 tick-gifts stay committed (reversing one would undo the
+		//    power-station resource gift — the "+10/sec set to 10" bug).
+		//    Station aura (type=264 + lifetime=0 + interval=0, pure aoi=0):
+		//    group-level skip stays — the source deployable's re-fire owns it.
+		const bool isStationAuraPattern =
+			(applied->m_nType == 264
 			&& applied->m_fLifeTime == 0.0f
-			&& applied->m_fApplyInterval == 0.0f) {
-			isRegenTicker = true;
-		}
+			&& applied->m_fApplyInterval == 0.0f);
 
 		AActor* target = applied->m_Target ? applied->m_Target : pThis->r_Owner;
-		if (target && !isRegenTicker) {
-			TgEffectGroup__RemoveEffects::Call(applied, nullptr, target, 0);
+		if (target && !isStationAuraPattern) {
+			for (int e = 0; e < applied->m_Effects.Count; ++e) {
+				UTgEffect* eff = applied->m_Effects.Data[e];
+				// Null OR small-int corruption (see TgEffectGroup__RemoveEffects.cpp).
+				if (!eff || reinterpret_cast<uintptr_t>(eff) < 0x10000u) {
+					if (eff) {
+						Logger::Log("effects",
+							"[REMOVE-ALL-GROUPS] mgr=%p applied egId=%d effect[%d]=%p — "
+							"small-int value, skipping\n",
+							(void*)pThis, applied->m_nEffectGroupId, e, (void*)eff);
+					}
+					continue;
+				}
+				const unsigned int eflags = *(unsigned int*)((char*)eff + 0x48);
+				if (eflags & 0x01) continue;        // aoi=1: tick-gift, skip reversal
+				if (!EffectPhantomGuardExempt(eff) && eff->m_fCurrent == 0.0f) continue;  // phantom clone: Apply never ran
+				DispatchEffectRemove(eff, target, 0);  // own-class Remove (buffs need the override)
+			}
 		}
 
 		// 1. Cancel timers armed on this group (else DoT ticks keep firing).
