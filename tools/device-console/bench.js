@@ -303,6 +303,10 @@ window.GA = window.GA || {};
     res.modes.forEach(function (m) {
       m.chips.forEach(function (c) {
         if (c.base === null || c.prop === 386) return;
+        // "Equip:" passives are collected separately, from every carried device rather than
+        // only the active ones. Counting them here too would double them the moment the
+        // device is switched on.
+        if (/^Equip: /.test(c.label)) return;
         var selfScoped = c.self || SELF_PENALTY[c.cat];
         if (c.neg && !selfScoped) return;            // offensive - never lands on the owner
         var nm = GA.statName(c.prop);

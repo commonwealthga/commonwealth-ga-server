@@ -1248,6 +1248,23 @@ on/off toggle. Verified: a Ballista alone resolves to 1238.74 against a 100 powe
 Targeting System to the specialty slot *without switching it on* gives **1300.67** (x1.05) and a
 pool of **120** (x1.20).
 
+### Do not count them twice
+
+An equip passive is collected once, from every *carried* device. The active-device buff pass
+(S24) walks a device's chips and must therefore **skip** anything labelled `Equip:`, or switching
+that device on counts its passive a second time. Observed on a Recon: Scorpia read 1597.97 with
+nothing active, and 1659.91 once Targeting System was switched on - a phantom +5% that had
+nothing to do with switching it on, since the passive was already live.
+
+Correct behaviour, verified:
+
+| state | Scorpia | why |
+|---|---|---|
+| nothing active | 1597.97 | x1.29 - skills 24% + Targeting's equip 5% |
+| Scorpia active | 1659.91 | x1.34 - plus Super Sharpshooter's on-hit 5% |
+| Targeting active only | 1597.97 | x1.29 - unchanged, the passive was already counted |
+| Scorpia active again | 1659.91 | Targeting is holstered; both are hand slots |
+
 ### Lesson
 
 `asm_data_set_device_effect_groups` (device) and `asm_data_set_device_mode_effect_groups` (mode)
