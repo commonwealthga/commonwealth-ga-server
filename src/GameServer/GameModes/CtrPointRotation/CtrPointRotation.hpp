@@ -30,4 +30,13 @@ namespace CtrPointRotation {
 	// (rotation banner / activation countdown) that retail Rot_* maps already
 	// get from their own kismet.
 	bool IsActive();
+
+	// Retail Rot_* maps bake a TgBeaconFactory pair (teleport entrance pad +
+	// pickupable exit beacon) inside each team's spawn room; the CTR maps have
+	// none. Spawns the four factories relative to each team's TgTeamPlayerStart
+	// and kicks the retail init sequence (PopulateBeaconFactoryList, entrance
+	// SpawnObject, CheckBeacon → exit beacon). Must run AFTER the taskforces'
+	// eventPostInit (beacon managers exist) — called from InitGameRepInfo.
+	// No-op unless Init seeded this map.
+	void InitBeacons(ATgGame* Game);
 }

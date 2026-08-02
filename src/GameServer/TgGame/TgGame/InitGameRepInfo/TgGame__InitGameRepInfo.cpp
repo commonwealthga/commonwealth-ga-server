@@ -568,6 +568,12 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		defenders->eventPostInit();
 		attackers->eventPostInit();
 
+		// CTR rotation variant: seed the per-team beacon entrance/exit factories
+		// (retail Rot_* maps bake them; CTR maps have none) and kick the spawn
+		// sequence. Needs the beacon managers created by eventPostInit above.
+		// No-op unless CtrPointRotation::Init (earlier) seeded this map.
+		CtrPointRotation::InitBeacons(Game);
+
 		// defenders->NetPriority = 1;
 		// defenders->NetUpdateFrequency = 0.5;
 		// defenders->bNetInitial = 1;

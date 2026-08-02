@@ -2,7 +2,10 @@
 
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Maps/CtrObjectives/CtrObjectives.hpp"
+#include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective/RegisterSelf/TgMissionObjective__RegisterSelf.hpp"
+#include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
@@ -10,6 +13,7 @@
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/pch.hpp"
 
+#include <cmath>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -115,7 +119,159 @@ ATgMissionObjective_Proximity* SpawnPoint(
 	return Obj;
 }
 
+// ---- Beacon factory seeding ------------------------------------------------
+// Placement offsets surveyed from the Rot_Redistribution03 map dump
+// (map_tg_beacon_factory vs map_tg_team_player_start): the entrance pad sits
+// ~252-264uu in front of the team start, the exit beacon ~374-415uu, both on
+// the spawn-room floor (~43uu below the start point), facing the start's yaw.
+constexpr float kEntranceFwd = 256.0f;
+constexpr float kExitFwd     = 384.0f;
+
+// Floor Z under `at` (down-trace, bTraceActors=1 so static meshes count).
+float GroundZ(AActor* tracer, const FVector& at, float fallbackZ) {
+	FVector start = at; start.Z += 64.0f;
+	FVector end   = at; end.Z   -= 8192.0f;
+	FVector hitLoc, hitNorm;
+	FTraceHitInfo hitInfo;
+	std::memset(&hitInfo, 0, sizeof(hitInfo));
+	if (tracer->Trace(end, start, 1, FVector(0, 0, 0), 0, &hitLoc, &hitNorm, &hitInfo))
+		return hitLoc.Z;
+	return fallbackZ;
+}
+
+ATgBeaconFactory* SpawnBeaconFactory(ATgGame* Game, UClass* cls,
+		const FVector& loc, int yaw, int tfNum, bool bExit) {
+	FRotator rot; rot.Pitch = 0; rot.Yaw = yaw; rot.Roll = 0;
+
+	ATgBeaconFactory* f =
+		(ATgBeaconFactory*)Game->Spawn(cls, (AActor*)Game, FName(), loc, rot, nullptr, 1);
+	if (!f) {
+		Logger::Log(CH, "SpawnBeaconFactory FAILED tf=%d exit=%d at (%.0f,%.0f,%.0f)\n",
+			tfNum, (int)bExit, loc.X, loc.Y, loc.Z);
+		return nullptr;
+	}
+
+	f->bNoDelete = 0;
+	f->bStatic   = 0;
+	// The binary PopulateBeaconFactoryList filter is a plain byte compare:
+	// factory->s_nTaskForce == manager->r_TaskForce->r_nTaskForce.
+	f->s_nTaskForce  = (unsigned char)tfNum;
+	f->m_bBeaconExit = bExit ? 1 : 0;
+	f->m_bIsFallback = 0;
+	f->m_nPriority     = -1;  // untiered — always eligible
+	f->m_nPrevPriority = -1;
+	// Re-enable after the CDO suppression (InitBeacons). Also what makes the
+	// binary CheckBeacon classify the factory-anchored beacon as AT_SPAWN.
+	f->s_bAutoSpawn = 1;
+	return f;
+}
+
 }  // namespace
+
+void CtrPointRotation::InitBeacons(ATgGame* Game) {
+	if (!s_bSeedingDone || !Game) return;  // only the seeded CTR rotation variant
+
+	UClass* cls = ClassPreloader::GetClass("Class TgGame.TgBeaconFactory");
+	if (!cls) { Logger::Log(CH, "InitBeacons: no TgBeaconFactory class\n"); return; }
+
+	// CDO trick (same as the KOTH spawn in Init): clear bNoDelete/bStatic so
+	// dynamic Spawn succeeds, and clear s_bAutoSpawn so the factory's
+	// PostBeginPlay auto-SpawnObject — which fires DURING Spawn, before the
+	// team/exit fields are set — early-outs in our hook instead of spawning an
+	// unowned entrance pad.
+	ATgActorFactory* cdo = (ATgActorFactory*)ClassPreloader::GetObject(
+		"TgBeaconFactory TgGame.Default__TgBeaconFactory");
+	unsigned long savedStatic = 0, savedNoDelete = 0, savedAutoSpawn = 0;
+	if (cdo) {
+		savedStatic    = cdo->bStatic;
+		savedNoDelete  = cdo->bNoDelete;
+		savedAutoSpawn = cdo->s_bAutoSpawn;
+		cdo->bStatic     = 0;
+		cdo->bNoDelete   = 0;
+		cdo->s_bAutoSpawn = 0;
+	} else {
+		Logger::Log(CH, "InitBeacons: TgBeaconFactory CDO not found — Spawn will likely fail\n");
+	}
+
+	for (int tfNum = 1; tfNum <= 2; ++tfNum) {
+		// Team spawn anchor: centroid of the team's TgTeamPlayerStarts, facing
+		// the first start's yaw (spawn-room starts all face the room exit).
+		FVector anchor(0, 0, 0);
+		int yaw = 0, n = 0;
+		for (ATgTeamPlayerStart* ps : ActorCache::PlayerStarts) {
+			if (!ps || (int)ps->m_nTaskForce != tfNum) continue;
+			if (n == 0) yaw = ps->Rotation.Yaw;
+			anchor.X += ps->Location.X;
+			anchor.Y += ps->Location.Y;
+			anchor.Z += ps->Location.Z;
+			n++;
+		}
+		if (n == 0) {
+			Logger::Log(CH, "InitBeacons: no TgTeamPlayerStart for tf %d — no beacons for this team\n", tfNum);
+			continue;
+		}
+		anchor.X /= n; anchor.Y /= n; anchor.Z /= n;
+
+		const float yawRad = yaw * (3.14159265f / 32768.0f);
+		const FVector fwd(std::cos(yawRad), std::sin(yawRad), 0.0f);
+
+		// Wall clamp — CTR spawn rooms weren't built for these offsets, so pull
+		// the spots back if a wall sits closer than the reference distances.
+		float exitDist = kExitFwd, entrDist = kEntranceFwd;
+		{
+			FVector ts = anchor;
+			FVector te(anchor.X + fwd.X * (kExitFwd + 160.0f),
+			           anchor.Y + fwd.Y * (kExitFwd + 160.0f), anchor.Z);
+			FVector hitLoc, hitNorm;
+			FTraceHitInfo hitInfo;
+			std::memset(&hitInfo, 0, sizeof(hitInfo));
+			if (Game->Trace(te, ts, 1, FVector(0, 0, 0), 0, &hitLoc, &hitNorm, &hitInfo)) {
+				const float dx = hitLoc.X - anchor.X, dy = hitLoc.Y - anchor.Y;
+				const float wall = std::sqrt(dx * dx + dy * dy);
+				if (exitDist > wall - 96.0f)      exitDist = wall - 96.0f;
+				if (entrDist > exitDist - 128.0f) entrDist = exitDist - 128.0f;
+			}
+		}
+		if (entrDist < 48.0f)               entrDist = 48.0f;
+		if (exitDist < entrDist + 96.0f)    exitDist = entrDist + 96.0f;
+
+		FVector entrLoc(anchor.X + fwd.X * entrDist, anchor.Y + fwd.Y * entrDist, 0.0f);
+		entrLoc.Z = GroundZ((AActor*)Game, FVector(entrLoc.X, entrLoc.Y, anchor.Z), anchor.Z - 43.0f);
+		FVector exitLoc(anchor.X + fwd.X * exitDist, anchor.Y + fwd.Y * exitDist, 0.0f);
+		exitLoc.Z = GroundZ((AActor*)Game, FVector(exitLoc.X, exitLoc.Y, anchor.Z), anchor.Z - 43.0f);
+
+		ATgBeaconFactory* entrF = SpawnBeaconFactory(Game, cls, entrLoc, yaw, tfNum, false);
+		ATgBeaconFactory* exitF = SpawnBeaconFactory(Game, cls, exitLoc, yaw, tfNum, true);
+
+		// Kick — mirrors the retail init order. The taskforces' eventPostInit
+		// already ran InitFor → PopulateBeaconFactoryList + CheckBeacon against
+		// an EMPTY factory list (our factories didn't exist yet), so redo it:
+		// refresh the list, auto-spawn the entrance pad, then CheckBeacon → no
+		// beacon + no holder → vtable SpawnNewBeaconForTeam → our exit factory.
+		ATgRepInfo_TaskForce* tf = (tfNum == 1) ? GTeamsData.Attackers : GTeamsData.Defenders;
+		ATgTeamBeaconManager* mgr = tf ? tf->r_BeaconManager : nullptr;
+		if (mgr) BeaconSdk::PopulateBeaconFactoryList(mgr);
+		if (entrF) TgBeaconFactory__SpawnObject::Call(entrF, nullptr);
+		if (mgr) BeaconSdk::CheckBeacon(mgr, true);
+		else Logger::Log(CH, "InitBeacons: tf %d has no beacon manager — exit beacon not spawned\n", tfNum);
+
+		Logger::Log(CH,
+			"InitBeacons: tf=%d starts=%d anchor=(%.0f,%.0f,%.0f) yaw=%d "
+			"entrF=0x%p %.0fuu@(%.0f,%.0f,%.0f) exitF=0x%p %.0fuu@(%.0f,%.0f,%.0f) "
+			"mgr=0x%p factories=%d beacon=0x%p\n",
+			tfNum, n, anchor.X, anchor.Y, anchor.Z, yaw,
+			entrF, entrDist, entrLoc.X, entrLoc.Y, entrLoc.Z,
+			exitF, exitDist, exitLoc.X, exitLoc.Y, exitLoc.Z,
+			mgr, mgr ? mgr->s_BeaconFactoryList.Num() : -1,
+			mgr ? mgr->r_Beacon : nullptr);
+	}
+
+	if (cdo) {
+		cdo->bStatic     = savedStatic;
+		cdo->bNoDelete   = savedNoDelete;
+		cdo->s_bAutoSpawn = savedAutoSpawn;
+	}
+}
 
 void CtrPointRotation::Init(ATgGame* Game) {
 	// Clear before any early-return so a prior CTR match can't leave this set
