@@ -1148,6 +1148,16 @@
   // Stepped rather than solved: buff expiry changes mitigation, mitigation changes damage, and
   // damage decides when someone dies. There is no closed form for that.
   var STEP = 0.1;
+  // What a boost costs is fully in the data even though how fast morale accrues is not. Every
+  // boost wants 15840 points except Healing Boost at 18480, and that cost is REDUCED by
+  // prop 357 "Required Morale Points Modifier" - 25% from the skill Team Boost Increase, 10%
+  // from Super Healer, 1% per 'm' mod letter on the device itself.
+  //
+  // So the timeline asks for one calibration instead of a flat time: how long a STANDARD boost
+  // (15840, no reduction) takes to bank. Everything else follows from it, and a build that
+  // invested in Team Boost Increase gets its boost a quarter sooner - which is the whole point
+  // of the skill and was previously invisible.
+  var MORALE_BASE = 15840;
   // The shared off-hand cooldown, from TgDevice.uc rather than estimated. Firing an off-hand
   // sets r_bInGlobalOffhandCooldown on the pawn and starts a timer:
   //   server 1.0s (authoritative), client 0.75s (prediction)   TgDevice.uc:1390/1400
@@ -1182,6 +1192,7 @@
       if (c.prop === 53) d.refire = c.value;
       if (c.prop === 4) d.cooldown = c.value;
       if (c.prop === 150) d.persist = c.value;        // Persist Time - how long a boost lasts
+      if (c.prop === 318) d.morale = c.value;         // Required Points To Fire
     });
     d.selfTimed = [];
     var onSelf = (mm.hit && mm.hit.tgt === 'self');
@@ -1284,7 +1295,13 @@
             : 'every ' + Math.round(d.interval) + 's (on expiry)';
         }
       });
-      return { id: a.id, team: a.team, cls: a.cls, pid: a.pid,
+      // total morale-cost reduction this build carries (prop 357, a percentage decrease)
+      var moraleCut = 0;
+      Object.keys(col.stats).forEach(function (k) {
+        var x = col.stats[k];
+        if (x.p === 357) moraleCut += x.total;
+      });
+      return { id: a.id, team: a.team, cls: a.cls, pid: a.pid, moraleCut: moraleCut,
                maxHP: dv.totHP, hp: dv.totHP,
                maxPW: dv.totPW, pw: dv.totPW,
                regen: baseRegen(col.stats),
@@ -1411,7 +1428,15 @@
             // replication but not the accrual. So the moment is an INPUT rather than a guess.
             if (!manual) {
               if (d.firedOnce) return;
-              if (t + 1e-9 < (sim.moraleAt == null ? 1e9 : sim.moraleAt)) { d.ready = Math.max(d.ready, t); return; }
+              if (sim.moraleAt == null) { d.ready = Math.max(d.ready, t); return; }
+              // scale the calibration by what THIS boost costs this build
+              // prop 357 is a percentage DECREASE and the sheet already stores it signed
+              // (-25 means a quarter cheaper), so it adds rather than subtracts here
+              var cost = (d.morale || MORALE_BASE) * (1 + (a.moraleCut || 0) / 100);
+              if (cost < 0) cost = 0;
+              var when = sim.moraleAt * (cost / MORALE_BASE);
+              d.moraleWhen = Math.round(when * 10) / 10;
+              if (t + 1e-9 < when) { d.ready = Math.max(d.ready, t); return; }
             }
           }
           // Off-hands share a global cooldown - you cannot let three waves off at once, you press
@@ -1674,8 +1699,17 @@
           } else {
             var dev0 = g0 && (window.__DEVMODEL__ || {})[String(g0.id)];
             var strips0 = dev0 && ((dev0.modes || [])[0] || {}).strip;
+            var moraleTxt = '';
+            if (g0 && g0.cat === 'Boost' && sim.moraleAt != null) {
+              var st0 = r.S.byId[a.id];
+              var dv0 = st0 && (st0.devs || []).filter(function (x) {
+                return String(x.slot) === String(slot); })[0];
+              if (dv0 && dv0.moraleWhen != null) {
+                moraleTxt = ' - banked at ' + dv0.moraleWhen + 's, after this window';
+              }
+            }
             var reason = g0 && g0.cat === 'Boost'
-              ? 'held - waiting on morale (set "boosts at", or drag this to force it)'
+              ? (moraleTxt || 'held - waiting on morale (set "boosts at", or drag this to force it)')
               : (strips0 && strips0.length
                   ? 'held - nothing on the other side worth stripping yet (drag to force it)'
                   : 'never fired in this window');
@@ -1761,10 +1795,11 @@
               return '<button class="tlt k-' + k[0] + (show[k[0]] ? ' on' : '') + '" data-k="'
                 + k[0] + '">' + k[1] + '</button>';
             }).join('') + '</span>'
-      + '<label class="tllen">boosts at <input id="tl-morale" type="number" min="0" max="180" '
+      + '<label class="tllen">boost banked <input id="tl-morale" type="number" min="0" max="180" '
       + 'placeholder="never" value="' + (sim.moraleAt == null ? '' : sim.moraleAt) + '"'
-      + ' title="when enough morale is banked to fire a boost - the earn rate is not in the data, '
-      + 'so this is yours to set">s</label>'
+      + ' title="how long a STANDARD boost (15840 points, no reduction) takes to bank. The earn '
+      + 'rate is not in any readable data, so this one number calibrates it - each boost is then '
+      + 'scaled by its own cost and by this build\'s Required Morale Points reduction.">s</label>'
       + '<label class="tllen">seconds <input id="tl-secs" type="number" min="5" max="180" value="'
       + seconds + '"></label>'
       + '<button id="tl-run">run</button></div>'
