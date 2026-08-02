@@ -257,6 +257,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice_Morale/SendMoraleBoostMessage/TgDevice_Morale__SendMoraleBoostMessage.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/Morale/MoraleCredit.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/_effect_core/DeviceCategorySkill.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/_effect_core/HitSituationalMitigation.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/_effect_core/ScaleTargetProperties.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/_deployable_classify/DeployableClassify.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/_surface_rotation/SurfaceRotation.cpp \
