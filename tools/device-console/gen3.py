@@ -136,8 +136,12 @@ DEVMETA = json.load(open(BASE + SEP + 'devmeta.json'))
 CHARS = open(BASE + SEP + 'chars.json', encoding='utf-8').read()
 # gate-resolved interactions with their NUMERIC effects - what GA.resolve consumes
 IXRAW = json.load(open(BASE + SEP + 'ixraw.json'))
+# sit/sv carry the situational gate (1270 Health-Below / 1271 Health-Above + its percentage)
+# and life is the effect's duration - without them a conditional skill applied unconditionally
+# and a timed one was treated as instantaneous.
 DEVFX = {k: [{'sid': e['sid'], 'skill': e['skill'], 'tree': e['tree'], 'kind': e['kind'],
-              'detail': e['detail'], 'how': e['how'], 'egt': e['egt'], 'fx': e['fx']}
+              'detail': e['detail'], 'how': e['how'], 'egt': e['egt'], 'fx': e['fx'],
+              'sit': e.get('sit') or 0, 'sv': e.get('sv') or 0, 'life': e.get('life') or 0}
              for e in v if e.get('sid')] for k, v in IXRAW.items()}
 DEVMODEL = {}
 for _cls, _cats in model.items():

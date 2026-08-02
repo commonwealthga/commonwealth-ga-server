@@ -114,7 +114,11 @@ def merge_prots(chips):
 def dedup(lst):
     seen = set(); out = []
     for c in lst:
-        t = (c[0], c[1])
+        num = c[2] if len(c) > 2 else None
+        egt = num[4] if num and len(num) > 4 else 0
+        # egt is part of the identity: an unconditional heal and a conditional one of the same
+        # size are different effects, not a duplicate.
+        t = (c[0], c[1], egt)
         if t in seen: continue
         seen.add(t); out.append(list(c))
     return out
@@ -322,9 +326,14 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
         sensordet = {}
         for eg in q("SELECT DISTINCT effect_group_id eg, effect_group_type_value_id t FROM asm_data_set_device_mode_effect_groups WHERE device_id=? AND device_mode_id=?", (did, m['mid'])):
             egt = eg['t']
-            meta = q("SELECT lifetime_sec l, apply_interval_sec iv, situational_type_value_id sit, category_value_id cat, health hp, application_value_id app, application_value appv FROM asm_data_set_effect_groups WHERE effect_group_id=? LIMIT 1", (eg['eg'],))
+            meta = q("SELECT lifetime_sec l, apply_interval_sec iv, situational_type_value_id sit, situational_value sv, category_value_id cat, health hp, application_value_id app, application_value appv FROM asm_data_set_effect_groups WHERE effect_group_id=? LIMIT 1", (eg['eg'],))
             life = meta[0]['l'] if meta else 0; iv = (meta[0]['iv'] if meta else 0) or 0
             sitv = meta[0]['sit'] if meta else 0
+            # 1270 Health-Below / 1271 Health-Above: the group only lands when the TARGET's
+            # health is under/over this percentage. Triage Wave's second heal and Group Heal
+            # Savior both hang off 1270 at 25%.
+            sitsv = (meta[0]['sv'] if meta else 0) or 0
+            hpgate = sitsv if sitv in (1270, 1271) else 0
             egcat = meta[0]['cat'] if meta else 0
             eghp = (meta[0]['hp'] if meta else 0) or 0
             # Stacking rule for this effect's CATEGORY: 155 Stackable, 156 Newest Wins,
@@ -353,12 +362,18 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
             blockhit = (egt == 398)
             sink = zoomchips if zoom else (bschips if backstab else (blkchips if blockhit else chips))
             cur = [0, 0.0, 0, 0, 0]     # numeric backing of the effect currently being formatted
+            hplab = ''
+            if hpgate:
+                hplab = ' (HP<%d%%)' % int(hpgate) if sitv == 1270 else ' (HP>%d%%)' % int(hpgate)
+
             def add(kind, text, _s=None):
-                (_s if _s is not None else sink).append((kind, (selfpfx or mechpfx) + text, list(cur)))
+                (_s if _s is not None else sink).append(
+                    (kind, (selfpfx or mechpfx) + text + hplab, list(cur)))
             for e in q("SELECT prop_id p, base_value bv, calc_method_value_id calc, apply_on_interval_flag tick, property_value_id pv FROM asm_data_set_effects WHERE effect_group_id=?", (eg['eg'],)):
                 p, bv, calc, tick, pv = e['p'], e['bv'], e['calc'], e['tick'], e['pv']
                 pos = calc in (67, 68); pct = calc in (68, 69)
-                cur[:] = [p, round(bv, 3), calc, round(life or 0, 2), egt, egcat or 0, egapp, round(egappv, 2)]
+                cur[:] = [p, round(bv, 3), calc, round(life or 0, 2), egt, egcat or 0, egapp,
+                          round(egappv, 2), sitv if hpgate else 0, hpgate]
                 s = '+' if pos else '-'; u = '%' if pct else ''
                 dur = " %ss" % round(life, 1) if life and life > 0 else ""
                 over = tick or iv > 0

@@ -29,6 +29,21 @@ window.GA = window.GA || {};
                   1104: 'reactive', 263: 'on fire', 262: 'while charging',
                   265: 'on cooldown', 266: 'while aiming' };
 
+  // Situational gates. A type-505 group can be conditioned on the TARGET's health:
+  // 1270 = only when the target is BELOW sv%, 1271 = only when ABOVE. Triage Wave's second
+  // heal and the Medic's Group Heal Savior both sit on 1270 at 25%.
+  var SIT_BELOW = 1270, SIT_ABOVE = 1271;
+  GA.SIT_BELOW = SIT_BELOW; GA.SIT_ABOVE = SIT_ABOVE;
+  // hpPct is the target's health as a percentage. Null means "no target in view" - the loadout
+  // sheet has nobody to test, so it shows the effect and lets the label carry the condition.
+  GA.situationalOk = function (sit, sv, hpPct) {
+    if (!sit || !sv) return true;
+    if (hpPct === null || hpPct === undefined) return true;
+    if (sit === SIT_BELOW) return hpPct < sv;
+    if (sit === SIT_ABOVE) return hpPct > sv;
+    return true;
+  };
+
   var SHIELD_CAT = 770;                     // "Personal Shield" - the value is DURABILITY
   GA.SHIELD_CAT = SHIELD_CAT;
   var PROT = [155,156,157,158,159,160,163,168,217,218,219,233,235,266,324,328,371];
@@ -307,6 +322,7 @@ window.GA = window.GA || {};
         var prop = num[0], base = num[1], calc = num[2], life = num[3], egt = num[4], cat = num[5] || 0;
         // stacking rule for this effect's category (application_value_id / application_value)
         var app = num[6] || 0, appv = num[7] || 0;
+        var sit = num[8] || 0, sv = num[9] || 0;
         var isNeg = (calc === CALC_PCT_DN || calc === CALC_SUB);
         var isPct = (calc === CALC_PCT_UP || calc === CALC_PCT_DN);
         if (isPct) base = pctOf(base);
@@ -314,7 +330,7 @@ window.GA = window.GA || {};
         var lr = life > 0 ? apply(life, prop === 354 ? 355 : 208, false, cat) : null;
         var self = /^Self: /.test(c[1]);
         return { label: c[1], kind: c[0], prop: prop, cat: cat, egt: egt, self: self, neg: isNeg,
-                 app: app, appv: appv, sign: isNeg ? -1 : 1,
+                 app: app, appv: appv, sit: sit, sv: sv, sign: isNeg ? -1 : 1,
                  base: Math.abs(base), value: r.value, mods: r.mods, isPct: isPct,
                  lower: GA.lowerIsBetter(prop, c[0], cat, self),
                  life: life, lifeVal: lr ? lr.value : life, lifeMods: lr ? lr.mods : [] };
@@ -335,7 +351,7 @@ window.GA = window.GA || {};
       (e.fx || []).forEach(function (f) {
         if (!EFFECTP[f[0]]) return;
         extra.push({ skill: e.skill, tree: e.tree, prop: f[0], v: f[1], calc: f[2],
-                     egt: e.egt,
+                     egt: e.egt, sit: e.sit || 0, sv: e.sv || 0, life: e.life || 0,
                      kind: KINDLAB[e.egt] || e.kind.toLowerCase(), detail: e.detail });
       });
     });
@@ -450,7 +466,7 @@ window.GA = window.GA || {};
         if (!nm) return;
         out.push({ p: c.prop, name: nm, v: c.neg ? -c.value : c.value, pct: c.isPct,
                    src: src, kind: c.neg ? 'debuff' : 'buff', life: c.lifeVal || c.life,
-                   cat: c.cat, tgt: tgt });
+                   cat: c.cat, tgt: tgt, sit: c.sit || 0, sv: c.sv || 0 });
       });
     });
     res.extra.forEach(function (x) {
@@ -458,9 +474,11 @@ window.GA = window.GA || {};
       var nm = GA.statName(x.prop);
       if (!nm) return;
       var pos = (x.calc === 67 || x.calc === 68);
+      // life was hardcoded to 0, so a timed skill rider (Group Heal Savior's 5s buff) looked
+      // instantaneous and the timeline discarded it.
       out.push({ p: x.prop, name: nm, v: pos ? x.v : -x.v, pct: (x.calc === 68 || x.calc === 69),
-                 src: x.skill, via: src, kind: pos ? 'buff' : 'debuff', life: 0, cat: 0,
-                 tgt: tgt });
+                 src: x.skill, via: src, kind: pos ? 'buff' : 'debuff', life: x.life || 0, cat: 0,
+                 tgt: tgt, sit: x.sit || 0, sv: x.sv || 0 });
     });
     return out;
   };

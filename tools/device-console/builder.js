@@ -1631,7 +1631,8 @@
       if (c.prop === 51 || c.prop === 211) {
         if (c.sign < 0) d.shots.push({ raw: c.value, cat: c.cat, life: lifeOf(c) });
         else if (onSelf) d.selfHeals = (d.selfHeals || []).concat([{ v: c.value, life: lifeOf(c) }]);
-        else if (!c.self) d.heals.push({ v: c.value, life: lifeOf(c) });
+        else if (!c.self) d.heals.push({ v: c.value, life: lifeOf(c),
+                                        sit: c.sit || 0, sv: c.sv || 0 });
         else if (c.life > 0) d.selfTimed.push({ p: c.prop, name: GA.statName(c.prop) || 'self',
                                                 v: c.value, pct: c.isPct, cat: c.cat,
                                                 src: g.name, life: lifeOf(c) });
@@ -2053,10 +2054,19 @@
               a.hp = Math.min(a.maxHP, a.hp + h.v * volley);
             }
           });
+          // One hit, one evaluation: the health test is taken BEFORE any of this device's
+          // heals land, so Triage Wave's unconditional 600 cannot lift the target past 25% and
+          // disqualify its own conditional 600.
+          var hpAtHit = {};
+          tgts.forEach(function (tid) {
+            var v0 = S.byId[tid];
+            if (v0) hpAtHit[tid] = v0.maxHP ? (v0.hp / v0.maxHP) * 100 : 100;
+          });
           d.heals.forEach(function (h) {
             tgts.forEach(function (tid) {
               var v = S.byId[tid];
               if (!v || v.dead || v.team !== a.team) return;
+              if (!GA.situationalOk(h.sit, h.sv, hpAtHit[tid])) return;
               if (h.life > 0) {
                 // spread across its duration rather than landing whole on the first tick
                 v.hots = (v.hots || []).filter(function (x) { return x.src !== d.name; });
@@ -2123,6 +2133,9 @@
             recips.forEach(function (tid) {
               var v = S.byId[tid];
               if (!v || v.dead) return;
+              var hp0 = hpAtHit[tid];
+              if (hp0 === undefined) hp0 = v.maxHP ? (v.hp / v.maxHP) * 100 : 100;
+              if (!GA.situationalOk(f.sit, f.sv, hp0)) return;
               v.live = v.live.filter(function (x) { return !(x.src === f.src && x.p === f.p); });
               v.live.push({ p: f.p, name: f.name, v: f.v, pct: f.pct, cat: f.cat,
                             src: f.src, until: t + f.life, devId: d.id });
