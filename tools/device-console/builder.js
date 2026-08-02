@@ -1658,6 +1658,9 @@
     d.backstab = !!(a.backstab && a.backstab[slot]);
     (m.chips || []).forEach(function (c) {
       if (c.base === null) return;
+      // Mechanical-only payloads have no target in a fight between people. Left in the model
+      // so the loadout page can still show them, dropped here so they never land.
+      if ((GA.PLAYER_IMMUNE || {})[c.cat]) return;
       if (c.prop === 51 || c.prop === 211) {
         if (c.sign < 0) {
           // A damage chip with an apply interval is damage OVER TIME: it lands once per

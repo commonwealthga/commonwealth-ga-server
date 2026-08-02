@@ -397,6 +397,13 @@ window.GA = window.GA || {};
     328: 'Protection - EMP-Burn', 371: 'Protection - Bleed' };
   // categories whose effects the device inflicts on its OWN user
   var SELF_PENALTY = { 1452: 1 };
+  // 653 EMP Critical Failure and 921 EMP Burn only land on MECHANICAL targets - drones,
+  // turrets, deployables. Every effect in either category is a penalty; there is no support
+  // effect hiding in them, so a player is simply immune. gen2 knew this and used it to label
+  // the chips "Mech:", but the knowledge stopped at the label and the runtime applied them to
+  // people anyway - an EMP Grenade was burning players for 6 ticks they should never take.
+  var PLAYER_IMMUNE = { 653: 1, 921: 1 };
+  GA.PLAYER_IMMUNE = PLAYER_IMMUNE;
   GA.STACK_RULES = { 155: 'Stackable', 156: 'Newest Wins', 157: 'Strongest Wins',
                      836: 'Refresh', 874: 'Oldest Wins' };
   GA.statName = function (p) { return PROTNAME[p] || PSTAT[p] || null; };
@@ -464,6 +471,7 @@ window.GA = window.GA || {};
         if (c.prop === 51 || c.prop === 211) return;      // that is the shot, not a rider
         if (/^Equip: /.test(c.label)) return;
         if (c.self || SELF_PENALTY[c.cat]) return;        // stays on the carrier
+        if (PLAYER_IMMUNE[c.cat]) return;                // mechanical targets only
         if (!(GA.LANDS_ON_OTHER || {})[c.egt]) return;    // only groups aimed at someone else
         if (c.bs && !spec.backstab) return;               // only when struck from behind
         var nm = GA.statName(c.prop);
