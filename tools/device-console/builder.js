@@ -1582,7 +1582,7 @@
     var d = { slot: slot, name: g.name, cat: g.cat, id: g.id,
               hit: mm.hit || {}, strip: mm.strip || [],
               power: (m.power && m.power.value != null) ? m.power.value : 0,
-              refire: 0, cooldown: 0, shots: [], heals: [], buffs: [], maxLife: 0,
+              refire: 0, cooldown: 0, shots: [], heals: [], powers: [], buffs: [], maxLife: 0,
               scope: deviceScope(a, g, dev, mode), ready: 0 };
     (m.chips || []).forEach(function (c) {
       if (c.prop === 53) d.refire = c.value;
@@ -1636,6 +1636,16 @@
         else if (c.life > 0) d.selfTimed.push({ p: c.prop, name: GA.statName(c.prop) || 'self',
                                                 v: c.value, pct: c.isPct, cat: c.cat,
                                                 src: g.name, life: lifeOf(c) });
+      } else if (c.prop === 243) {
+        // Power Pool. Seven devices move it - Power Stim, Power Station, Power Wave, Triage
+        // Wave and the two backstab maces - and the run applied none of them. Backstab drains
+        // are skipped: the timeline has no positional model, so it cannot know you are behind.
+        if (!/^Backstab: /.test(c.label)) {
+          var pw = { v: c.sign < 0 ? -c.value : c.value, life: lifeOf(c),
+                     sit: c.sit || 0, sv: c.sv || 0 };
+          if (c.self || onSelf) d.selfPower = (d.selfPower || []).concat([pw]);
+          else d.powers.push(pw);
+        }
       } else if ((c.self || onSelf) && c.life > 0) {
         var nm2 = GA.statName(c.prop);
         if (nm2) d.selfTimed.push({ p: c.prop, name: nm2, v: c.sign < 0 ? -c.value : c.value,
@@ -2046,6 +2056,14 @@
             });
           }
           // healing
+          (d.selfPower || []).forEach(function (q) {
+            if (q.life > 0) {
+              a.pregen = (a.pregen || []).filter(function (x) { return x.src !== d.name; });
+              a.pregen.push({ src: d.name, devId: d.id, rate: q.v / q.life, until: t + q.life });
+            } else {
+              a.pw = Math.max(0, Math.min(a.maxPW, a.pw + q.v * volley));
+            }
+          });
           (d.selfHeals || []).forEach(function (h) {
             if (h.life > 0) {
               a.hots = (a.hots || []).filter(function (x) { return x.src !== d.name; });
@@ -2073,6 +2091,19 @@
                 v.hots.push({ src: d.name, devId: d.id, rate: h.v / h.life, until: t + h.life });
               } else {
                 v.hp = Math.min(v.maxHP, v.hp + h.v * volley);
+              }
+            });
+          });
+          d.powers.forEach(function (q) {
+            tgts.forEach(function (tid) {
+              var v = S.byId[tid];
+              if (!v || v.dead || v.team !== a.team) return;
+              if (!GA.situationalOk(q.sit, q.sv, hpAtHit[tid])) return;
+              if (q.life > 0) {
+                v.pregen = (v.pregen || []).filter(function (x) { return x.src !== d.name; });
+                v.pregen.push({ src: d.name, devId: d.id, rate: q.v / q.life, until: t + q.life });
+              } else {
+                v.pw = Math.max(0, Math.min(v.maxPW, v.pw + q.v * volley));
               }
             });
           });
@@ -2158,6 +2189,12 @@
       });
       // heal-over-time ticks
       S.actors.forEach(function (a) {
+        if (a.pregen && !a.dead) {
+          a.pregen = a.pregen.filter(function (q) { return q.until > t; });
+          a.pregen.forEach(function (q) {
+            a.pw = Math.max(0, Math.min(a.maxPW, a.pw + q.rate * STEP));
+          });
+        }
         if (!a.hots || a.dead) return;
         a.hots = a.hots.filter(function (h) {
           if (h.until > t) return true;
