@@ -1667,7 +1667,8 @@
           // Life Stealer's "DoT 55 5.0s" is five ticks of 55, not a single 55 - and, because
           // it was never recorded on the target, nothing could cleanse it either.
           if (c.iv > 0 && lifeOf(c) > 0) {
-            d.dots.push({ raw: c.value, cat: c.cat, life: lifeOf(c), iv: c.iv, bs: !!c.bs });
+            d.dots.push({ raw: c.value, cat: c.cat, life: lifeOf(c), iv: c.iv, bs: !!c.bs,
+                          app: c.app || 0, appv: c.appv || 0 });
           } else {
             d.shots.push({ raw: c.value, cat: c.cat, life: lifeOf(c), bs: !!c.bs });
           }
@@ -1816,6 +1817,9 @@
   // holds most of the protection shred in the game - Ballista -10, Assassin Blade -15, Rusted
   // Machete -12, GammaBurst -5 and Killer Instinct's -10 - so two of them landing together were
   // adding up when only the largest should count.
+  // Category 302 is scoped by effect-group id rather than category, so two different
+  // <Local> burns never contend - same exemption the protection path uses.
+  var NOT_A_BUCKET_DOT = { 302: 1 };
   function liveNow(act) {
     var live = act.live || [];
     if (!GA.applyStacking || live.length < 2) return live;
@@ -2130,23 +2134,63 @@
             tgts.forEach(function (tid) {
               var v = S.byId[tid];
               if (!v || v.dead || v.team === a.team) return;
-              // Re-applying extends the burn; it does NOT restart the tick clock. A Life
-              // Stealer swings every 0.63s and its burn ticks every 1.0s, so resetting the
-              // next tick on each hit pushed it past the horizon forever and the poison never
-              // did a thing.
-              var cur = (v.dots || []).filter(function (x) {
-                return x.src === d.name && x.cat === dt.cat;
-              })[0];
-              if (cur) {
+              // What re-application does depends on the group's application rule, because
+              // each rule takes a different path through TgEffectManager:
+              //
+              //   157 Strongest Wins -> IsStrongest, then RemoveAllEffectGroups + a fresh
+              //       clone. RemoveAllEffectGroups cancels the timers armed on the group, so
+              //       the tick clock RESTARTS. A Life Stealer swings every 0.63s and its
+              //       poison ticks every 1.0s, so a spammed backstab burn never ticks at all
+              //       until you stop swinging. I previously assumed that could not be right
+              //       and made re-application preserve the clock; the server says otherwise.
+              //   156 Newest Wins -> GetStackingEffectGroup, also a displacement, so also a
+              //       restart.
+              //   836 Refresh     -> GetRefreshedEffectGroup extends the existing group in
+              //       place, so the tick schedule survives.
+              //   155 Stackable   -> a genuinely separate instance, ticking alongside.
+              //   874 Oldest Wins -> the incoming one is dropped while another holds.
+              v.dots = (v.dots || []);
+              var bucket = NOT_A_BUCKET_DOT[dt.cat] || !dt.app || dt.app === 155
+                ? null
+                : (v.dots || []).filter(function (x) { return x.cat === dt.cat; });
+              var fresh = { src: d.name, devId: d.id, cat: dt.cat, raw: dt.raw,
+                            app: dt.app, appv: dt.appv,
+                            iv: dt.iv, next: t + dt.iv, until: t + dt.life,
+                            hit: { cat: dt.cat, damageType: d.hit.dmg,
+                                   attackType: d.hit.atk, rating: d.hit.rating } };
+
+              if (!bucket || !bucket.length) {
+                // Stackable, uncategorised, or nothing holding this bucket. Stackable from the
+                // SAME weapon still replaces rather than piling up once per swing - the
+                // timeline has no cap and a 0.63s refire would otherwise grow without bound.
+                var same = v.dots.filter(function (x) {
+                  return x.src === d.name && x.cat === dt.cat;
+                })[0];
+                if (same) { same.until = t + dt.life; same.raw = dt.raw; return; }
+                v.dots.push(fresh);
+                return;
+              }
+
+              if (dt.app === 836) {                       // Refresh: extend, keep the schedule
+                var cur = bucket.filter(function (x) { return x.src === d.name; })[0] || bucket[0];
                 cur.until = t + dt.life;
                 cur.raw = dt.raw;
                 return;
               }
-              v.dots = (v.dots || []);
-              v.dots.push({ src: d.name, devId: d.id, cat: dt.cat, raw: dt.raw,
-                            iv: dt.iv, next: t + dt.iv, until: t + dt.life,
-                            hit: { cat: dt.cat, damageType: d.hit.dmg,
-                                   attackType: d.hit.atk, rating: d.hit.rating } });
+              if (dt.app === 874) return;                 // Oldest Wins: incoming is dropped
+
+              if (dt.app === 157) {                       // Strongest Wins, IsStrongest order
+                var beaten = bucket.some(function (x) {
+                  if ((x.appv || 0) > (dt.appv || 0)) return true;
+                  return (x.appv || 0) === (dt.appv || 0)
+                    && (x.until - (x.at || 0)) > dt.life;
+                });
+                if (beaten) return;
+              }
+              // 156, or a 157 that won: displace the bucket and restart the clock
+              v.dots = v.dots.filter(function (x) { return x.cat !== dt.cat; });
+              fresh.at = t;
+              v.dots.push(fresh);
             });
           });
           // Strip / cleanse. Runs for every target in scope whether or not it paid damage:
