@@ -879,7 +879,31 @@
   // Who a device may be aimed at comes from the device mode's target type, not from guesswork:
   // 'enemy' devices only reach the other team, 'friend' devices only their own, 'self' devices
   // project nothing at all.
-  var sim = { actors: [], focus: { from: null, to: null }, nextId: 1, drag: null };
+  // sched[actorId][slot] = { from: seconds|null, uses: [seconds] }
+  //   uses non-empty -> that device fires ONLY at those moments (still gated by its cooldown)
+  //   otherwise      -> it behaves as before, but not before `from`
+  // Leaving a device alone keeps the old behaviour, so an untouched board still runs itself.
+  var sim = { actors: [], focus: { from: null, to: null }, nextId: 1, drag: null, sched: {} };
+  // A device that has a refire fires continuously once it starts, so placing a marker on it
+  // means "open fire at this moment", not "loose a single round". Everything else - off-hands,
+  // boosts, waves - is a discrete press, and each marker is one activation.
+  function isContinuous(devId, mode) {
+    var dev = (window.__DEVMODEL__ || {})[String(devId)];
+    if (!dev) return false;
+    var ms = (dev.modes || []);
+    for (var i = 0; i < ms.length; i++) {
+      if (mode && ms[i].kind && ms[i].kind !== mode) continue;
+      var ch = ms[i].chips || [];
+      for (var k = 0; k < ch.length; k++) {
+        if (Array.isArray(ch[k][2]) && ch[k][2][0] === 53) return true;
+      }
+    }
+    return false;
+  }
+  function schedOf(actorId, slot) {
+    var a = sim.sched[actorId] || (sim.sched[actorId] = {});
+    return a[slot] || (a[slot] = { from: null, uses: [] });
+  }
 
   function charList() { var C = window.__CHARS__ || {}; return C.chars || (C.length ? C : []); }
   function charOf(cls) { return charList().filter(function (c) { return c.cls === cls; })[0]; }
@@ -934,14 +958,16 @@
       if (tgt === 'friend') return { kind: 'all', targets: mates.map(idOf), label: 'all allies' };
       if (tgt === 'enemy') return { kind: 'all', targets: enemies.map(idOf), label: 'all enemies' };
       if (tgt === 'enemyself') {
-        return { kind: 'all', targets: enemies.map(idOf).concat([a.id]),
-                 label: 'all enemies + self' };
+        // "Enemy and Self" means a grenade CAN catch its thrower, and in game it does. For a
+        // build comparison that is noise - nobody plans to stand in their own poison - so the
+        // console aims it at the other side only.
+        return { kind: 'all', targets: enemies.map(idOf), label: 'all enemies' };
       }
       return { kind: 'all', targets: sim.actors.map(idOf), label: 'everyone' };
     }
     var picks = tgt === 'friend' ? mates
       : tgt === 'enemy' ? enemies
-        : tgt === 'enemyself' ? enemies.concat([a])
+        : tgt === 'enemyself' ? enemies
           : sim.actors;
     return { kind: 'single', picks: picks, targets: [], label: '' };
   }
@@ -1060,26 +1086,44 @@
       var ctx = actorCtx(h); if (!ctx) return;
       var col = statsFor(ctx);
       Object.keys(h.active).forEach(function (slot) {
-        if (String(h.aim[slot]) !== String(actorId)) return;
         var g = (ctx.charGear || [])[+slot]; if (!g) return;
         var dev = (window.__DEVMODEL__ || {})[String(g.id)]; if (!dev) return;
         if (GA.deviceTarget(dev, h.active[slot]) === 'enemy') return;
+        // An AOE heal has no single aim - it reaches everyone in its scope. Matching only on
+        // aim[slot] meant every wave, grenade and boost was invisible here, so a team being
+        // kept alive by area healing reported "healing / s 0".
+        var sc = deviceScope(h, g, dev, h.active[slot]);
+        var reaches = sc.kind === 'all'
+          ? sc.targets.some(function (x) { return String(x) === String(actorId); })
+          : String(h.aim[slot]) === String(actorId);
+        if (!reaches) return;
         var res = GA.resolve({ dev: dev, meta: (window.__DEVMETA__ || {})[String(g.id)] || {},
           ix: (window.__DEVFX__ || {})[String(g.id)] || [], alloc: col.alloc, situational: true,
           buffs: col.buffs, variant: { sig: g.sig, base: g.base, groups: g.groups, nums: g.nums } });
         (res.modes || []).forEach(function (m) {
           if (m.kind && h.active[slot] && m.kind !== h.active[slot]) return;
-          var refire = null;
-          (m.chips || []).forEach(function (c) { if (c.prop === 53) refire = c.value; });
+          // How often this thing can actually be used. A Healing Grenade has no refire and a
+          // 60s cooldown, so treating its 320-point heal as "per second" reported 571/s for a
+          // device that goes off once a minute.
+          var refire = null, cooldown = null, persist = null;
+          (m.chips || []).forEach(function (c) {
+            if (c.prop === 53) refire = c.value;
+            if (c.prop === 4) cooldown = c.value;
+            if (c.prop === 150) persist = c.value;
+          });
+          var every = refire || cooldown || persist || null;
           (m.chips || []).forEach(function (c) {
             if (c.prop !== 51 || c.sign < 0 || !c.value) return;
             // "Self: Heal" is the medic topping THEMSELVES up while they beam. It only counts
             // toward the person being healed when that person is the medic.
             if (c.self && String(h.id) !== String(actorId)) return;
             // a heal-over-time delivers its value across its lifetime; a direct heal per refire
-            var per = c.life > 0 ? (c.value / c.life) : (refire ? c.value / refire : c.value);
+            // a heal-over-time delivers its value across its own lifetime; a direct heal
+            // delivers it once per use, so it averages out over the interval between uses
+            var per = c.life > 0 ? (c.value / c.life) : (every ? c.value / every : c.value);
             hps += per;
-            srcs.push({ who: h.cls + ' #' + h.id, dev: g.name, hps: per, hot: c.life > 0 });
+            srcs.push({ who: h.cls + ' #' + h.id, dev: g.name, hps: per, hot: c.life > 0,
+                        every: every });
           });
         });
       });
@@ -1104,9 +1148,14 @@
   // Stepped rather than solved: buff expiry changes mitigation, mitigation changes damage, and
   // damage decides when someone dies. There is no closed form for that.
   var STEP = 0.1;
-  // The shared off-hand cooldown. Roughly half a second in game - you press protection, frenzy
-  // and power wave one after another, never together.
-  var OFFHAND_GCD = 0.5;
+  // The shared off-hand cooldown, from TgDevice.uc rather than estimated. Firing an off-hand
+  // sets r_bInGlobalOffhandCooldown on the pawn and starts a timer:
+  //   server 1.0s (authoritative), client 0.75s (prediction)   TgDevice.uc:1390/1400
+  // and ApplyGlobalOffhandCooldown() is `IsOffhand() && !IsOffhandJetpack()`, so every off-hand
+  // is gated except the jetpack. Boosts sit in their own slot (476 Morale Device, not 390
+  // Off-Hand) and are not subject to it. We take the server figure - that is what actually
+  // governs what happened.
+  var OFFHAND_GCD = 1.0;
 
   // Everything about one device that matters over time.
   function simDevice(a, ctx, slot, col) {
@@ -1135,15 +1184,17 @@
       if (c.prop === 150) d.persist = c.value;        // Persist Time - how long a boost lasts
     });
     d.selfTimed = [];
+    var onSelf = (mm.hit && mm.hit.tgt === 'self');
     (m.chips || []).forEach(function (c) {
       if (c.base === null) return;
       if (c.prop === 51 || c.prop === 211) {
         if (c.sign < 0) d.shots.push({ raw: c.value, cat: c.cat, life: c.life });
+        else if (onSelf) d.selfHeals = (d.selfHeals || []).concat([{ v: c.value, life: c.life }]);
         else if (!c.self) d.heals.push({ v: c.value, life: c.life });
         else if (c.life > 0) d.selfTimed.push({ p: c.prop, name: GA.statName(c.prop) || 'self',
                                                 v: c.value, pct: c.isPct, cat: c.cat,
                                                 src: g.name, life: c.life });
-      } else if (c.self && c.life > 0) {
+      } else if ((c.self || onSelf) && c.life > 0) {
         var nm2 = GA.statName(c.prop);
         if (nm2) d.selfTimed.push({ p: c.prop, name: nm2, v: c.sign < 0 ? -c.value : c.value,
                                     pct: c.isPct, cat: c.cat, src: g.name, life: c.life });
@@ -1164,7 +1215,9 @@
     var supportish = (d.hit.tgt === 'friend' || d.hit.tgt === 'self');
     if (supportish && d.maxLife > 0) {
       d.interval = Math.max(d.cooldown || 0, d.maxLife);
-      d.cadence = 'on expiry';
+      d.cadence = (d.cooldown || 0) > d.maxLife
+        ? 'every ' + Math.round(d.interval) + 's (cooldown)'
+        : 'every ' + Math.round(d.interval) + 's (on expiry)';
     } else {
       d.interval = d.refire > 0 ? d.refire : (d.cooldown > 0 ? d.cooldown : 0);
       d.cadence = d.refire > 0 ? 'refire' : 'cooldown';
@@ -1182,6 +1235,7 @@
   }
 
   function buildSim() {
+    var sched = sim.sched || {};
     var actors = sim.actors.map(function (a) {
       var ctx = actorCtx(a);
       if (!ctx) return null;
@@ -1225,7 +1279,9 @@
         var supportish = (d.hit.tgt === 'friend' || d.hit.tgt === 'self');
         if (supportish && L > 0) {
           d.interval = Math.max(d.cooldown || 0, L);
-          d.cadence = 'on expiry';
+          d.cadence = (d.cooldown || 0) > L
+            ? 'every ' + Math.round(d.interval) + 's (cooldown)'
+            : 'every ' + Math.round(d.interval) + 's (on expiry)';
         }
       });
       return { id: a.id, team: a.team, cls: a.cls, pid: a.pid,
@@ -1234,7 +1290,7 @@
                regen: baseRegen(col.stats),
                baseProt: GA.protectionFrom(col.stats),
                devs: devs, proj: proj, aim: a.aim, live: [], dead: false, spentThisStep: false,
-               offhandReady: 0 };
+               offhandReady: 0, sched: sched[a.id] || {} };
     }).filter(Boolean);
     var byId = {};
     actors.forEach(function (x) { byId[x.id] = x; });
@@ -1292,8 +1348,9 @@
       var t = a.aim[d.slot];
       return t ? [t] : [];
     }
-    function ev(t, who, text, kind) {
-      events.push({ t: Math.round(t * 10) / 10, who: who, text: text, kind: kind || '' });
+    function ev(t, who, text, kind, devId, slot) {
+      events.push({ t: Math.round(t * 10) / 10, who: who, text: text, kind: kind || '',
+                    dev: devId || null, slot: slot == null ? null : slot });
     }
 
     for (var t = 0; t <= seconds + 1e-9; t += STEP) {
@@ -1310,7 +1367,7 @@
         var before = a.live.length;
         a.live = a.live.filter(function (f) {
           if (f.until > t) return true;
-          ev(t, a.id, f.src + ' ' + f.name + ' expires', 'expire');
+          ev(t, a.id, f.src + ' ' + f.name + ' expires', 'expire', f.devId);
           return false;
         });
         if (before !== a.live.length) { /* mitigation recomputed below */ }
@@ -1324,22 +1381,45 @@
         a.devs.forEach(function (d) {
           var interval = d.interval || 0;
           if (!interval) return;                       // nothing that repeats
-          if (t + 1e-9 < d.ready) return;
+          var sc = a.sched[d.slot];
+          // a start time for a continuous weapon, discrete presses for anything else
+          var manual = sc && sc.uses && sc.uses.length && d.refire <= 0;
+          if (sc && sc.uses && sc.uses.length && d.refire > 0
+              && t + 1e-9 < sc.uses[0]) { d.ready = Math.max(d.ready, t); return; }
+          if (manual) {
+            // Where it was placed is when you PRESS it, not the only instant it may go off.
+            // Matching a single 0.1s window meant a press that collided with the global off-hand
+            // cooldown was silently dropped - put Vulture Vision just after Bionics and it never
+            // fired at all. A press now waits its turn and goes as soon as it is allowed.
+            d.used = d.used || {};
+            var dueIdx = -1;
+            for (var ui = 0; ui < sc.uses.length; ui++) {
+              if (!d.used[ui] && t + 1e-9 >= sc.uses[ui]) { dueIdx = ui; break; }
+            }
+            if (dueIdx < 0) { d.ready = Math.max(d.ready, t); return; }
+            if (t + 1e-9 < d.ready) { d.ready = Math.max(d.ready, t); return; }
+            d.pendingIdx = dueIdx;
+          } else {
+            if (sc && sc.from != null && t + 1e-9 < sc.from) { d.ready = Math.max(d.ready, t); return; }
+            if (t + 1e-9 < d.ready) return;
+          }
           if (d.once) {
             // Boosts cost morale (prop 318 "Required Points To Fire"), not a cooldown. Nobody
             // opens a fight with one - you press it when you have banked enough. How fast morale
             // accrues is NOT in any data we can read: props 326/398 are unused in the asset DB,
             // AddMoralePoints is native so the UC only calls it, and the server reimplements the
             // replication but not the accrual. So the moment is an INPUT rather than a guess.
-            if (d.firedOnce) return;
-            if (t + 1e-9 < (sim.moraleAt == null ? 1e9 : sim.moraleAt)) return;
+            if (!manual) {
+              if (d.firedOnce) return;
+              if (t + 1e-9 < (sim.moraleAt == null ? 1e9 : sim.moraleAt)) { d.ready = Math.max(d.ready, t); return; }
+            }
           }
           // Off-hands share a global cooldown - you cannot let three waves off at once, you press
           // them one after another. Without this the whole team's buffs land on the same tick.
-          if (d.cat === 'Offhand' && t + 1e-9 < a.offhandReady) return;
+          if (d.cat === 'Offhand' && t + 1e-9 < a.offhandReady) { d.ready = Math.max(d.ready, t); return; }
           // A buff-stripper is held until there is something worth stripping. Nobody opens with
           // a Neutralize Wave; you wait until the other side has committed its buffs.
-          if ((d.strip || []).length) {
+          if ((d.strip || []).length && !manual && d.hit.tgt === 'enemy') {
             var worth = targetsOf(a, d).some(function (tid) {
               var v = S.byId[tid];
               if (!v || v.dead || v.team === a.team) return false;
@@ -1348,18 +1428,24 @@
                 return (sg.cats || []).some(function (cc) { return tc[cc]; });
               });
             });
-            if (!worth) return;                        // hold fire
+            if (!worth) { d.ready = Math.max(d.ready, t); return; }    // hold fire
           }
           // A 0.1s step cannot represent a weapon that fires 20 times a second, so count how
           // many shots actually fall inside this step rather than allowing one.
           var volley = 0;
-          while (d.ready <= t + 1e-9 && volley < 200) { d.ready += interval; volley++; }
-          if (d.ready < t) d.ready = t + interval;
+          if (manual) { volley = 1; d.ready = t + interval; }
+          else {
+            while (d.ready <= t + 1e-9 && volley < 200) { d.ready += interval; volley++; }
+            if (d.ready < t) d.ready = t + interval;
+          }
           var cost = d.power || 0;
           if (cost > 0) {
             var afford = Math.floor(a.pw / cost);
             if (afford <= 0) {
-              if (!d.starved) { ev(t, a.id, d.name + ' out of power', 'power'); d.starved = true; }
+              if (!d.starved) {
+                ev(t, a.id, d.name + ' out of power', 'power', d.id); d.starved = true;
+              }
+              d.ready = Math.max(d.ready, t);                        // no banking shots while the pool is empty
               return;
             }
             if (afford < volley) volley = afford;
@@ -1367,10 +1453,11 @@
           }
 
           if (d.cat === 'Offhand') a.offhandReady = t + OFFHAND_GCD;
+          if (manual && d.pendingIdx != null) { d.used[d.pendingIdx] = 1; d.pendingIdx = null; }
           var tgts = targetsOf(a, d);
           if (!d.firedOnce) {
-            ev(t, a.id, d.name + ' fires' + (d.cadence === 'on expiry' ? ' (re-applies on expiry)' : ''),
-               (d.strip || []).length ? 'strip' : 'fire');
+            ev(t, a.id, d.name + ' fires'
+               + (/every/.test(d.cadence || '') ? ', ' + d.cadence : ''), 'fire', d.id, d.slot);
             d.firedOnce = true;
           }
           // damage
@@ -1390,7 +1477,7 @@
                     return (sg.cats || []).indexOf(f.cat) >= 0;
                   });
                 });
-                ev(t, v.id, d.name + ' strips buffs (+' + Math.round(extra) + ')', 'strip');
+                ev(t, v.id, d.name + ' strips buffs (+' + Math.round(extra) + ')', 'strip', d.id);
               }
               var m = GA.mitigate(sh.raw * liveDamageMult(a, d.hit) + extra,
                 { cat: sh.cat, damageType: d.hit.dmg, attackType: d.hit.atk, rating: d.hit.rating },
@@ -1398,11 +1485,39 @@
               v.hp -= m.shown * volley;
               if (v.hp <= 0 && !v.dead) {
                 v.dead = true; v.hp = 0; deaths[v.id] = t;
-                ev(t, v.id, v.cls + ' #' + v.id + ' dies', 'death');
+                ev(t, v.id, v.cls + ' #' + v.id + ' dies', 'death', null);
               }
             });
           });
+          // Strip / cleanse. Runs for every target in scope whether or not it paid damage:
+          // Neutralize Wave tears buffs off an enemy, a Healing Grenade takes Poison, Disease and
+          // Ignite off a team-mate. Same prop-140 mechanic, opposite intent.
+          if ((d.strip || []).length) {
+            tgts.forEach(function (tid) {
+              var v2 = S.byId[tid];
+              if (!v2 || v2.dead) return;
+              var before = v2.live.length;
+              v2.live = v2.live.filter(function (f) {
+                return !(d.strip || []).some(function (sg) {
+                  return (sg.cats || []).indexOf(f.cat) >= 0;
+                });
+              });
+              var gone = before - v2.live.length;
+              if (gone > 0 && v2.team === a.team) {
+                ev(t, v2.id, d.name + ' cleanses ' + gone + ' effect' + (gone > 1 ? 's' : ''),
+                   'strip', d.id);
+              }
+            });
+          }
           // healing
+          (d.selfHeals || []).forEach(function (h) {
+            if (h.life > 0) {
+              a.hots = (a.hots || []).filter(function (x) { return x.src !== d.name; });
+              a.hots.push({ src: d.name, devId: d.id, rate: h.v / h.life, until: t + h.life });
+            } else {
+              a.hp = Math.min(a.maxHP, a.hp + h.v * volley);
+            }
+          });
           d.heals.forEach(function (h) {
             tgts.forEach(function (tid) {
               var v = S.byId[tid];
@@ -1410,7 +1525,7 @@
               if (h.life > 0) {
                 // spread across its duration rather than landing whole on the first tick
                 v.hots = (v.hots || []).filter(function (x) { return x.src !== d.name; });
-                v.hots.push({ src: d.name, rate: h.v / h.life, until: t + h.life });
+                v.hots.push({ src: d.name, devId: d.id, rate: h.v / h.life, until: t + h.life });
               } else {
                 v.hp = Math.min(v.maxHP, v.hp + h.v * volley);
               }
@@ -1420,7 +1535,7 @@
           (d.selfTimed || []).forEach(function (f) {
             a.live = a.live.filter(function (x) { return !(x.src === f.src && x.p === f.p); });
             a.live.push({ p: f.p, name: f.name, v: f.v, pct: f.pct, cat: f.cat,
-                          src: f.src, until: t + f.life });
+                          src: f.src, until: t + f.life, devId: d.id });
           });
           // buffs / debuffs with a lifetime
           (a.proj[d.slot] || []).forEach(function (f) {
@@ -1432,7 +1547,7 @@
               if (!v || v.dead) return;
               v.live = v.live.filter(function (x) { return !(x.src === f.src && x.p === f.p); });
               v.live.push({ p: f.p, name: f.name, v: f.v, pct: f.pct, cat: f.cat,
-                            src: f.src, until: t + f.life });
+                            src: f.src, until: t + f.life, devId: d.id });
             });
           });
         });
@@ -1441,7 +1556,11 @@
       // heal-over-time ticks
       S.actors.forEach(function (a) {
         if (!a.hots || a.dead) return;
-        a.hots = a.hots.filter(function (h) { return h.until > t; });
+        a.hots = a.hots.filter(function (h) {
+          if (h.until > t) return true;
+          ev(t, a.id, h.src + ' heal over time expires', 'expire', h.devId);
+          return false;
+        });
         a.hots.forEach(function (h) { a.hp = Math.min(a.maxHP, a.hp + h.rate * STEP); });
       });
 
@@ -1489,34 +1608,113 @@
         return '<line class="tlmark ' + esc(e.kind) + '" x1="' + x.toFixed(1) + '" y1="0" x2="'
           + x.toFixed(1) + '" y2="' + H + '"><title>' + esc(e.t + 's ' + e.text) + '</title></line>';
       }).join('');
-      // the handful worth naming in place: what was used, what was stripped, what ran dry
       // activations, strips, power-outs and deaths first; expiries fill whatever room is left
       var mine = r.events.filter(function (e) { return String(e.who) === String(a.id); });
       var seenLab = {};
       function pick(kinds, cap) {
         return mine.filter(function (e) {
           if (kinds.indexOf(e.kind) < 0) return false;
-          if (seenLab[e.text]) return false;
-          seenLab[e.text] = 1; return true;
+          // One icon per device per moment. A Sensor Boost lapsing is a single event, not three
+          // because it happened to carry three damage modifiers.
+          var key = e.kind === 'expire'
+            ? 'x|' + (e.dev || e.text.split(' ')[0]) + '|' + e.t
+            : e.text;
+          if (seenLab[key]) return false;
+          seenLab[key] = 1; return true;
         }).slice(0, cap);
       }
       var labels = pick(['fire', 'strip', 'power', 'death'], 5)
         .concat(pick(['expire'], 3))
         .sort(function (x, y) { return x.t - y.t; });
-      var labSvg = labels.map(function (e, k) {
+      // Vertical pins stay in the SVG; the labels themselves become device icons in an HTML
+      // overlay. The SVG is stretched with preserveAspectRatio="none", so anything drawn inside
+      // it is squashed - an overlay keeps the icons square and legible where text was not.
+      var labSvg = labels.map(function (e) {
         var x = (e.t / r.seconds) * W;
-        var y = 14 + (k % 3) * 15;
-        var anchor = x > W * 0.75 ? 'end' : 'start';
-        var dx = anchor === 'end' ? -4 : 4;
         return '<line class="tlpin ' + esc(e.kind) + '" x1="' + x.toFixed(1) + '" y1="0" x2="'
-          + x.toFixed(1) + '" y2="' + H + '"/>'
-          + '<text class="tllab ' + esc(e.kind) + '" x="' + (x + dx).toFixed(1) + '" y="' + y
-          + '" text-anchor="' + anchor + '">' + esc(e.text.replace(/ \(re-applies on expiry\)/, '')) + '</text>';
+          + x.toFixed(1) + '" y2="' + H + '"/>';
       }).join('');
+      // Every scheduled use gets its own icon so it can be dragged; a device left alone shows
+      // the moment it first went off, and dragging THAT is what pins it to a schedule.
+      var act0 = sim.actors.filter(function (x) { return String(x.id) === String(a.id); })[0];
+      var fireIcons = [];
+      if (act0) {
+        Object.keys(act0.active).forEach(function (slot) {
+          var sc = (sim.sched[act0.id] || {})[slot];
+          var first = mine.filter(function (e) {
+            return e.kind === 'fire' && String(e.slot) === String(slot);
+          })[0];
+          // fall back to the gear itself, so a device that has not gone off yet still shows its
+          // own icon rather than a bare "!"
+          var ctx0 = actorCtx(act0);
+          var g0 = ctx0 && (ctx0.charGear || [])[+slot];
+          var devId = first ? first.dev : (g0 ? g0.id : null);
+          var nm = first ? first.text.replace(/ \(re-applies on expiry\)/, '') : 'fires';
+          if (sc && sc.uses && sc.uses.length) {
+            // A press can land later than it was placed - the global off-hand cooldown will hold
+            // it. Draw the icon where it ACTUALLY went and say so, rather than leaving a marker
+            // sitting at a moment nothing happened.
+            var fires = mine.filter(function (e) {
+              return e.kind === 'fire' && String(e.slot) === String(slot);
+            }).sort(function (x, y) { return x.t - y.t; });
+            sc.uses.forEach(function (u, ui) {
+              var actual = fires[ui] ? fires[ui].t : null;
+              var late = actual != null && Math.abs(actual - u) > 0.05;
+              fireIcons.push({ t: actual == null ? u : actual, dev: devId, slot: slot, idx: ui,
+                               sched: 1, pending: actual == null,
+                               text: nm + (late ? ' - pressed ' + u.toFixed(1) + 's, fired '
+                                                 + actual.toFixed(1) + 's (held)'
+                                          : actual == null ? ' - pressed ' + u.toFixed(1)
+                                                             + 's, never fired'
+                                          : ' (scheduled)') });
+            });
+          } else if (first) {
+            fireIcons.push({ t: first.t, dev: first.dev, slot: slot, idx: -1, sched: 0,
+                             text: nm });
+          } else {
+            var dev0 = g0 && (window.__DEVMODEL__ || {})[String(g0.id)];
+            var strips0 = dev0 && ((dev0.modes || [])[0] || {}).strip;
+            var reason = g0 && g0.cat === 'Boost'
+              ? 'held - waiting on morale (set "boosts at", or drag this to force it)'
+              : (strips0 && strips0.length
+                  ? 'held - nothing on the other side worth stripping yet (drag to force it)'
+                  : 'never fired in this window');
+            fireIcons.push({ t: 0, dev: g0 ? g0.id : null, slot: slot, idx: -1, sched: 0,
+                             held: 1, text: (g0 ? g0.name : 'device') + ' ' + reason });
+          }
+        });
+      }
+      var otherIcons = labels.filter(function (e) { return e.kind !== 'fire'; });
+
+      var iconRow = fireIcons.map(function (e, k) {
+        var pc = Math.max(0, Math.min(100, (e.t / r.seconds) * 100));
+        var ic2 = e.dev && IMGT[String(e.dev)];
+        return '<span class="tlic fire drag' + (e.sched ? ' sched' : '')
+          + (e.pending ? ' pending' : '') + (e.held ? ' held' : '')
+          + '" data-a="' + a.id + '" data-slot="' + e.slot + '" data-idx="' + e.idx + '"'
+          + ' style="left:' + pc.toFixed(2) + '%;top:' + (2 + (k % 3) * 20) + 'px"'
+          + ' title="' + esc(e.t.toFixed(1) + 's - ' + e.text)
+          + ' (drag to move, click to reset)">'
+          + (ic2 ? '<img src="' + ic2 + '" alt="">' : '<b>!</b>') + '</span>';
+      }).concat(otherIcons.map(function (e, k) {
+        var pc = Math.max(0, Math.min(100, (e.t / r.seconds) * 100));
+        var ic2 = e.dev && IMGT[String(e.dev)];
+        var same = e.kind === 'expire'
+          ? mine.filter(function (o) { return o.kind === 'expire' && o.dev === e.dev && o.t === e.t; })
+          : [];
+        var tip = e.t.toFixed(1) + 's - ' + (same.length > 1
+          ? same[0].text.replace(/ [^ ]+ expires$/, '') + ' expires (' + same.length + ' effects)'
+          : e.text);
+        return '<span class="tlic ' + esc(e.kind) + '" style="left:' + pc.toFixed(2)
+          + '%;top:' + (2 + ((k + fireIcons.length) % 3) * 20) + 'px" title="' + esc(tip) + '">'
+          + (ic2 ? '<img src="' + ic2 + '" alt="">' : '<b>'
+            + (e.kind === 'death' ? '&times;' : '!') + '</b>') + '</span>';
+      })).join('');
       var died = r.deaths[a.id];
       return '<div class="tlrow"><div class="tlwho"><b>' + esc(a.cls) + ' #' + a.id + '</b>'
         + '<i>' + (died != null ? 'dies ' + (Math.round(died * 10) / 10) + 's'
                                 : Math.round(pts[pts.length - 1].hp) + ' HP left') + '</i></div>'
+        + '<div class="tlplot">'
         + '<svg class="tlsvg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">'
         + grid
         + (show.marks ? marks : '')
@@ -1526,9 +1724,12 @@
         + (show.marks ? labSvg : '')
         + (died != null ? '<line class="tldead" x1="' + ((died / r.seconds) * W).toFixed(1)
             + '" y1="0" x2="' + ((died / r.seconds) * W).toFixed(1) + '" y2="' + H + '"/>' : '')
-        + '</svg></div>';
+        + '</svg>'
+        + (show.marks ? '<div class="tlicons">' + iconRow + '</div>' : '')
+        + '</div></div>';
     }
 
+    var IMG2 = window.__DEVIMG__ || {}, IMGT = IMG2;
     // one line per distinct event, deduped - a 10s buff re-applied 30 times is not 30 events
     var seen = {}, evs = [];
     r.events.forEach(function (e) {
@@ -1584,6 +1785,36 @@
             }).join('')
           : '<span class="tlev">nothing expires or runs out in this window</span>') + '</div>';
 
+    // Drag a device's icon along its own row to change when it goes off; a plain click puts
+    // it back to firing by itself. This replaced a stack of one-track-per-device sliders.
+    host.querySelectorAll('.tlic.drag').forEach(function (ic3) {
+      var moved = false, startX = 0, plot = ic3.closest('.tlplot');
+      ic3.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        moved = false; startX = e.clientX;
+        var box = plot.getBoundingClientRect();
+        function mv(e2) {
+          if (Math.abs(e2.clientX - startX) > 2) moved = true;
+          var f = (e2.clientX - box.left) / box.width;
+          ic3.style.left = (Math.max(0, Math.min(1, f)) * 100).toFixed(2) + '%';
+        }
+        function up(e2) {
+          document.removeEventListener('mousemove', mv);
+          document.removeEventListener('mouseup', up);
+          var sc = schedOf(ic3.dataset.a, ic3.dataset.slot);
+          if (!moved) { sc.uses = []; sc.from = null; renderTimeline(seconds); return; }
+          var f = (e2.clientX - box.left) / box.width;
+          var when = Math.round(Math.max(0, Math.min(1, f)) * seconds * 10) / 10;
+          var idx = +ic3.dataset.idx;
+          if (idx >= 0 && sc.uses[idx] != null) sc.uses[idx] = when;
+          else sc.uses = [when];
+          sc.uses.sort(function (x, y) { return x - y; });
+          renderTimeline(seconds);
+        }
+        document.addEventListener('mousemove', mv);
+        document.addEventListener('mouseup', up);
+      });
+    });
     host.querySelectorAll('.tlt').forEach(function (t2) {
       t2.addEventListener('click', function () {
         show[t2.dataset.k] = show[t2.dataset.k] ? 0 : 1;

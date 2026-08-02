@@ -662,7 +662,7 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
 .tlrow{display:flex;align-items:center;gap:10px}
 .tlwho{width:150px;flex:none;font-size:11px;display:flex;flex-direction:column;line-height:1.3}
 .tlwho i{font-style:normal;font-size:9px;opacity:.45}
-.tlsvg{flex:1;height:110px;background:var(--bg);border:1px solid var(--line);border-radius:5px}
+.tlsvg{flex:1;height:110px;width:100%;background:var(--bg);border:1px solid var(--line);border-radius:5px}
 .tlhp{fill:none;stroke:var(--hp);stroke-width:2;vector-effect:non-scaling-stroke}
 .tlpw{fill:none;stroke:var(--power);stroke-width:1.5;opacity:.5;vector-effect:non-scaling-stroke}
 .tldead{stroke:var(--debuff);stroke-width:1.5;vector-effect:non-scaling-stroke;opacity:.8}
@@ -715,3 +715,43 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
   font-variant-numeric:tabular-nums}
 
 .tlpin.expire{stroke:var(--k-cond);opacity:.5}
+
+.tllanes{margin:0 0 8px 0;display:flex;flex-direction:column;gap:2px}
+.tllane{display:flex;align-items:center;gap:10px}
+.tllname{width:150px;flex:none;font-size:10px;display:flex;align-items:center;gap:4px;opacity:.75}
+.tllname img{width:12px;height:12px;border-radius:2px}
+.tllname em{font-style:normal;margin-left:auto;font-size:8px;opacity:.45;letter-spacing:.04em}
+.tltrack{flex:1;position:relative;height:15px;background:var(--bg);border:1px solid var(--line);
+  border-radius:4px;cursor:crosshair}
+.tltrack:hover{border-color:var(--acc)}
+.tluse{position:absolute;top:1px;bottom:1px;width:4px;margin-left:-2px;border-radius:2px;
+  background:var(--acc);cursor:pointer}
+.tluse:hover{background:var(--debuff)}
+.tlclear{background:none;border:none;color:inherit;opacity:.3;cursor:pointer;font-size:13px;
+  line-height:1;padding:0 3px;flex:none}
+.tlclear:hover{opacity:1;color:var(--debuff)}
+.tlfrom{position:absolute;top:6px;height:3px;background:var(--acc);opacity:.3;pointer-events:none}
+.tluse.start{width:3px;background:var(--acc)}
+
+.tlplot{flex:1;position:relative;display:flex}
+.tlicons{position:absolute;inset:0;pointer-events:none}
+.tlic{position:absolute;transform:translateX(-50%);width:18px;height:18px;border-radius:4px;
+  border:1px solid var(--line);background:var(--panel);display:flex;align-items:center;
+  justify-content:center;pointer-events:auto;cursor:help}
+.tlic img{width:14px;height:14px;border-radius:2px;display:block}
+.tlic b{font-size:11px;line-height:1;opacity:.8}
+.tlic.strip{border-color:var(--debuff)}
+.tlic.power{border-color:var(--power)}
+.tlic.death{border-color:var(--debuff);color:var(--debuff)}
+.tlic.expire{opacity:.55}
+.tlic:hover{border-color:var(--acc);z-index:2}
+
+.tlic.drag{cursor:ew-resize}
+.tlic.drag:active{cursor:grabbing}
+.tlic.fire{border-color:color-mix(in srgb,var(--acc) 60%,var(--line))}
+.tlic.fire.sched{border-color:var(--acc);box-shadow:0 0 0 1px color-mix(in srgb,var(--acc) 40%,transparent)}
+.tlheld{font-size:10px;padding:2px 9px;border-radius:20px;border:1px solid color-mix(in srgb,var(--power) 50%,var(--line));color:var(--power);cursor:help}
+.tlic.fire.pending{border-style:dashed;opacity:.5}
+
+.tlic.fire.held{border-style:dashed;border-color:color-mix(in srgb,var(--power) 55%,var(--line));opacity:.45}
+.tlic.fire.held:hover{opacity:.9}
