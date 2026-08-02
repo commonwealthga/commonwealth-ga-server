@@ -314,6 +314,8 @@ bool HasParsedCommandAction(const ChatCommand::ParseResult& parsed) {
         || parsed.spawn_target.has_value()
         || parsed.deploy_target.has_value()
         || parsed.topdown.has_value()
+        || parsed.markers.has_value()
+        || parsed.fx_browse.has_value()
         || parsed.spectate.has_value()
         || parsed.toggle_broken_suits.has_value()
         || parsed.toggle_solo_mode.has_value()
@@ -575,6 +577,12 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         }
         if (parsed.recognized && parsed.topdown) {
             ChatCommand::DispatchTopDown(*parsed.topdown, session_guid_);
+        }
+        if (parsed.recognized && parsed.markers) {
+            ChatCommand::DispatchMarkers(*parsed.markers, session_guid_);
+        }
+        if (parsed.recognized && parsed.fx_browse) {
+            ChatCommand::DispatchFxBrowse(*parsed.fx_browse, session_guid_);
         }
         if (parsed.recognized && parsed.spectate) {
             HandleSpectateCommand(parsed.spectate->instance_id, parsed.spectate->team);

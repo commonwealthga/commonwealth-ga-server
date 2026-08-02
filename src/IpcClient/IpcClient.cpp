@@ -14,6 +14,8 @@
 #include "src/GameServer/TgGame/TgPlayerActions/Coords/Coords.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/FullHeal/FullHeal.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/ToggleBrokenSuits/ToggleBrokenSuits.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/Markers/Markers.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/FxBrowse/FxBrowse.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/UserPreferences/UserPreferences.hpp"
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
@@ -670,6 +672,43 @@ void IpcClient::DrainInbound() {
                 }
                 TgPlayerActions::ToggleBrokenSuitsCmd::Execute(
                     guid, mode, action == "toggle_all_suits");
+            } else if (action == "fx_browse") {
+                std::string fx_action = "show";
+                int fx_index = 0;
+                if (j.contains("args") && j["args"].is_object()) {
+                    fx_action = j["args"].value("fx_action", std::string("show"));
+                    fx_index  = j["args"].value("index", 0);
+                }
+                using A = TgPlayerActions::FxBrowseCmd::Action;
+                A a = A::Show;
+                if (fx_action == "next")      a = A::Next;
+                else if (fx_action == "prev") a = A::Prev;
+                else if (fx_action == "jump") a = A::Jump;
+                else if (fx_action == "off")  a = A::Off;
+                else if (fx_action == "pawn") a = A::ModePawn;
+                else if (fx_action == "own")  a = A::ModeOwn;
+                TgPlayerActions::FxBrowseCmd::Execute(guid, a, fx_index);
+            } else if (action == "markers") {
+                // Visual-only; safe in PvP (no gameplay state touched), so
+                // unlike -topdown this is NOT behind CurrentMatchIsPVP().
+                std::string mode_s = "toggle";
+                float min_distance_uu = 0.0f;
+                if (j.contains("args") && j["args"].is_object()) {
+                    mode_s = j["args"].value("mode", std::string("toggle"));
+                    min_distance_uu = j["args"].value("min_distance_uu", 0.0f);
+                }
+                using M = TgPlayerActions::MarkersCmd::Mode;
+                M mode = M::Toggle;
+                if (mode_s == "off")            mode = M::Off;
+                else if (mode_s == "all")       mode = M::All;
+                else if (mode_s == "attackers") mode = M::Attackers;
+                else if (mode_s == "defenders") mode = M::Defenders;
+                else if (mode_s == "friendly")  mode = M::Friendly;
+                else if (mode_s == "enemy")     mode = M::Enemy;
+                else if (mode_s == "glow")      mode = M::RouteGlow;
+                else if (mode_s == "foreman")   mode = M::RouteForeman;
+                else if (mode_s == "distance")  mode = M::SetDistance;
+                TgPlayerActions::MarkersCmd::Execute(guid, mode, min_distance_uu);
             } else if (action == "topdown") {
                 if (CurrentMatchIsPVP()) {
                     Logger::Log("chat-command",

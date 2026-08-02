@@ -11,6 +11,8 @@
 #include "src/GameServer/Storage/ActiveSpectatorCount/ActiveSpectatorCount.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Stats/SpectatorOverlayFeed/SpectatorOverlayFeed.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/Markers/Markers.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/FxBrowse/FxBrowse.hpp"
 #include "src/GameServer/TgGame/TgPawn/KillDeployables/TgPawn__KillDeployables.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -101,6 +103,13 @@ void __fastcall NetConnection__Cleanup::Call(UNetConnection* Connection) {
 		// entry now rather than leaving it to accumulate for the life of the
 		// process (see SpectatorOverlayFeed.cpp's g_lastPushMs comment).
 		SpectatorOverlayFeed::ForgetPawn((int)pawn->r_nPawnId);
+	}
+
+	// Same reasoning again: a session that leaves with -markers still on would
+	// otherwise keep the per-frame sweep armed for the life of the instance.
+	if (!session_guid.empty()) {
+		TgPlayerActions::MarkersCmd::ForgetSession(session_guid);
+		TgPlayerActions::FxBrowseCmd::ForgetSession(session_guid);
 	}
 
 	// Matches the increment in the TgGamePostLogin ProcessEvent case. Clamped

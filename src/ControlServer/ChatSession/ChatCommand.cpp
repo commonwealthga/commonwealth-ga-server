@@ -312,6 +312,75 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
+    if (cmd_name == "-fx") {
+        // -fx            -> re-show / re-apply current entry
+        // -fx next|prev  -> step
+        // -fx <n>        -> jump to entry n (1-based)
+        // -fx pawn|own   -> switch delivery route
+        // -fx off        -> stop
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        FxBrowseArgs args;
+        if (!rest.empty()) {
+            const std::string tok = LowerAscii(rest);
+            if (tok == "next" || tok == "n")      args.action = "next";
+            else if (tok == "prev" || tok == "p") args.action = "prev";
+            else if (tok == "off")                args.action = "off";
+            else if (tok == "pawn")               args.action = "pawn";
+            else if (tok == "own")                args.action = "own";
+            else {
+                std::optional<int> n = ParseInt(tok);
+                if (!n || *n < 1) return out;  // bad arg — silent reject
+                args.action = "jump";
+                args.index  = *n;
+            }
+        }
+        out.fx_browse = args;
+        return out;
+    }
+
+    if (cmd_name == "-markers") {
+        // -markers        -> toggle
+        // -markers on|1   -> enable
+        // -markers off|0  -> disable
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        // -markers                       -> toggle (defaults: glow route, all)
+        // -markers off                   -> off
+        // -markers all|attackers|defenders -> pick who gets highlighted
+        // -markers glow|foreman          -> pick delivery route
+        // -markers <uu>                  -> foreman-route near-cull radius
+        MarkersArgs args;
+        if (!rest.empty()) {
+            const std::string tok = LowerAscii(rest);
+            if (tok == "off" || tok == "0")            args.mode = "off";
+            else if (tok == "on" || tok == "1" || tok == "all") args.mode = "all";
+            else if (tok == "attack" || tok == "attackers")     args.mode = "attackers";
+            else if (tok == "defense" || tok == "defence"
+                     || tok == "defenders")                     args.mode = "defenders";
+            // Relative to the spectator's own -spectate team assignment.
+            else if (tok == "friendly" || tok == "friends"
+                     || tok == "mine" || tok == "own")          args.mode = "friendly";
+            else if (tok == "enemy" || tok == "enemies"
+                     || tok == "them" || tok == "theirs")       args.mode = "enemy";
+            else if (tok == "glow")                    args.mode = "glow";
+            else if (tok == "foreman")                 args.mode = "foreman";
+            else {
+                try {
+                    const float uu = std::stof(tok);
+                    // Reject nonsense rather than let a typo cull the map.
+                    if (uu <= 0.0f || uu > 100000.0f) return out;
+                    args.mode = "distance";
+                    args.min_distance_uu = uu;
+                } catch (...) {
+                    return out;  // bad arg — silent reject
+                }
+            }
+        }
+        out.markers = args;
+        return out;
+    }
+
     if (cmd_name == "-topdown") {
         // -topdown            -> toggle, default lift
         // -topdown <lift_z>   -> toggle, explicit lift in world units (cm)
@@ -686,6 +755,43 @@ void DispatchToggleBrokenSuits(const ToggleBrokenSuitsArgs& args,
             "[ChatCmd] guid=%s command=%s mode=%d outcome=ignored details=dispatch_failed\n",
             session_guid.c_str(),
             args.all ? "-toggleallsuits" : "-togglebrokensuits", args.mode);
+    }
+}
+
+void DispatchFxBrowse(const FxBrowseArgs& args, const std::string& session_guid) {
+    if (session_guid.empty()) {
+        Logger::Log("chat-command", "[ChatCmd] DispatchFxBrowse dropped: empty session_guid\n");
+        return;
+    }
+    nlohmann::json payload;
+    payload["type"]         = IpcProtocol::MSG_PLAYER_ACTION;
+    payload["session_guid"] = session_guid;
+    payload["action"]       = "fx_browse";
+    payload["args"]         = { {"fx_action", args.action}, {"index", args.index} };
+    const bool sent = TcpSession::DeliverPlayerAction(session_guid, payload);
+    if (!sent) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=-fx action=%s outcome=ignored details=dispatch_failed\n",
+            session_guid.c_str(), args.action.c_str());
+    }
+}
+
+void DispatchMarkers(const MarkersArgs& args, const std::string& session_guid) {
+    if (session_guid.empty()) {
+        Logger::Log("chat-command", "[ChatCmd] DispatchMarkers dropped: empty session_guid\n");
+        return;
+    }
+    nlohmann::json payload;
+    payload["type"]         = IpcProtocol::MSG_PLAYER_ACTION;
+    payload["session_guid"] = session_guid;
+    payload["action"]       = "markers";
+    payload["args"]         = { {"mode", args.mode},
+                                {"min_distance_uu", args.min_distance_uu} };
+    const bool sent = TcpSession::DeliverPlayerAction(session_guid, payload);
+    if (!sent) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=-markers mode=%s nearcull=%.0f outcome=ignored details=dispatch_failed\n",
+            session_guid.c_str(), args.mode.c_str(), args.min_distance_uu);
     }
 }
 

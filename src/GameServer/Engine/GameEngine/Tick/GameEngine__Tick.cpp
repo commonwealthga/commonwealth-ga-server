@@ -8,6 +8,8 @@
 #include "src/GameServer/TgGame/MissionVODirector/MissionVODirector.hpp"
 #include "src/GameServer/Cosmetics/SuitRebuildKick.hpp"
 #include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/Markers/Markers.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/FxBrowse/FxBrowse.hpp"
 
 void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSeconds) {
 	IpcClient::DrainInbound();
@@ -36,5 +38,10 @@ void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSecon
 	// One-shot: verify (and if needed redo) the VR heal pad's PostBeginPlay
 	// arming ~5s after setupDevice registered it. No-op on other maps.
 	DomeVrHealPad::TickArmCheck();
+	// -markers highlight refresh. Returns immediately unless some session has
+	// markers enabled; otherwise self-throttles to ~0.45Hz.
+	TgPlayerActions::MarkersCmd::Tick();
+	// -fx browser refresh; no-op unless someone is stepping through candidates.
+	TgPlayerActions::FxBrowseCmd::Tick();
 	CallOriginal(Engine, edx, DeltaSeconds);
 }
