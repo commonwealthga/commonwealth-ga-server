@@ -11060,6 +11060,92 @@ void Database::Init() {
 		Logger::Log("db", "v160: set n_priority=1 on 18 CPFactory03/04 alarm factories\n");
 	}
 
+	if (version < 161) {
+		// v161: AVA map object config — task force / team / device assignments
+		// for HEX_AVA_Ticket_Neutral and HEX_AVA_Defense1/2_P.
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('HEX_AVA_Ticket_Neutral', 12828, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Ticket_Neutral', 12828, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Ticket_Neutral', 8598, 'm_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Ticket_Neutral', 8598, 'm_n_priority', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Ticket_Neutral', 12829, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Ticket_Neutral', 12829, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Ticket_Neutral', 12827, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Ticket_Neutral', 12827, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Ticket_Neutral', 12826, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Ticket_Neutral', 12826, 's_n_team_number', '2', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v161 (HEX_AVA_Ticket_Neutral): %s\n", err); return; }
+
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('HEX_AVA_Defense2_P', 8589, 'm_n_task_force', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12893, 'm_n_priority', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12893, 'm_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 8590, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 8590, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12877, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12877, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12878, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12878, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12922, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12922, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12922, 's_n_device_id', '5450', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12923, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12923, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12923, 's_n_device_id', '5450', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12967, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12967, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12967, 's_n_device_id', '5450', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 8799, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 8799, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 8799, 's_n_device_id', '2801', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12656, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12656, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12656, 's_n_device_id', '2801', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12924, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12924, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense2_P', 12924, 's_n_device_id', '2801', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v161 (HEX_AVA_Defense2_P): %s\n", err); return; }
+
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('HEX_AVA_Defense1_P', 8590, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 8590, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12877, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12877, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12878, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12878, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 8799, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 8799, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 8799, 's_n_device_id', '2801', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12924, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12924, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12924, 's_n_device_id', '2801', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12656, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12656, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12656, 's_n_device_id', '2801', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12893, 'm_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12893, 'm_n_priority', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 8589, 'm_n_task_force', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 8589, 'm_n_priority', '1', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12923, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12923, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12923, 's_n_device_id', '5450', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12922, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12922, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12922, 's_n_device_id', '5450', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12967, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12967, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('HEX_AVA_Defense1_P', 12967, 's_n_device_id', '5450', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v161 (HEX_AVA_Defense1_P): %s\n", err); return; }
+
+		Logger::Log("db", "v161: AVA Ticket_Neutral/Defense1/Defense2 map object config\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -11071,7 +11157,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 160", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 161", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
