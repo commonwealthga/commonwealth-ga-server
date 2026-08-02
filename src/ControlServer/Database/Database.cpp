@@ -2516,6 +2516,105 @@ void Database::Init() {
 		}
 	}
 
+	// HEX AVA merc maps (2026-08-02): the 17 Alliance-vs-Alliance facility
+	// maps join the merc pool (2, 'pvp'), seeded DISABLED for the operator to
+	// enable per-map from the dashboard. Map names verified against the
+	// shipped files in CookedPC/Maps/_Hex_Maps (only 2pt_Theft_Lab1 and
+	// Ticket_Neutral lack the _P suffix). All 17 map_game_ids verified against
+	// asm_data_set_production_map_game_list; friendly_name_msg_ids verified
+	// against asm_data_set_msg_translations. gameplay_type_value_id uses the
+	// merc-mode values (1544 Breach / 1545 Control / 1547 Payload), not 1555
+	// AVA, so MissionProgressFeed::ModeForGameplayType resolves an overlay
+	// mode; mission times mirror the other merc rows of the same game_class.
+	//
+	// entry_background_image_res_id hand-matched by name against
+	// asm_data_set_resources (res_type 664), same method as v51:
+	//   exact-name: TGA_Factory1/2/3 (5878-5880), TGA_Lab1/2 (5889/5890),
+	//     TGA_HEX_AVA_Lab3 (5565), TGA_Mine1/2/3 (5891/5893/5892),
+	//     TGA_HEX_Push_Factory1/Lab1 (6051/6052), TGA_HEX_AVA_2pt_Lab/Fac
+	//     (6165/6182), hex_ava_defense_loading (6008, shared by Defense1/2).
+	//   judgment calls: Ticket_Neutral -> 6025 TGA_HEX_neutral_loading
+	//     (alternate: 5966 TGA_NoFac_loading); Missile1 -> 7373
+	//     2P_4v4MissileComplex (same facility; only missile-themed screen).
+	{
+		// One-shot min_players backfill on the 4 rows earlier seeds created
+		// without it. Marker-gated so later operator edits (enable, weight,
+		// min_players) are never stomped on reboot.
+		bool hex_ava_applied = false;
+		{
+			sqlite3_stmt* mstmt = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT 1 FROM cs_migration_markers WHERE name='hex_ava_merc_maps_2026_08_02'",
+					-1, &mstmt, nullptr) == SQLITE_OK && mstmt) {
+				hex_ava_applied = (sqlite3_step(mstmt) == SQLITE_ROW);
+			}
+			if (mstmt) sqlite3_finalize(mstmt);
+		}
+		if (!hex_ava_applied) {
+			static const char* kHexAvaFixup[] = {
+				"UPDATE ga_map_pool_entries SET min_players=18 "
+				"WHERE map_pool_id=2 AND map_name IN ('HEX_AVA_Push_Lab1_P','HEX_AVA_Push_Factory1_P');",
+				"UPDATE ga_map_pool_entries SET min_players=14 "
+				"WHERE map_pool_id=2 AND map_name IN ('HEX_AVA_2pt_Theft_Lab1','HEX_AVA_2pt_Theft_Factory1_P');",
+				"INSERT OR IGNORE INTO cs_migration_markers (name) VALUES ('hex_ava_merc_maps_2026_08_02');",
+			};
+			for (const char* sql : kHexAvaFixup) {
+				if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+					Logger::Log("db", "[Database] HEX AVA fixup step failed: %s\n", err ? err : "?");
+					if (err) { sqlite3_free(err); err = nullptr; }
+				}
+			}
+			Logger::Log("db", "[Database] Applied one-time HEX AVA merc pool fixup\n");
+		}
+
+		// Idempotent from here down — INSERT OR IGNORE never stomps rows the
+		// operator has since edited.
+		static const char* kHexAvaMercMaps2026_08_02[] = {
+			"INSERT OR IGNORE INTO map_game_info "
+			"(map_game_id, map_name, game_class, gameplay_type_value_id, "
+			" friendly_name_msg_id, entry_background_image_res_id, "
+			" mission_time_secs, is_pvp, overtime_secs, allow_overtime) VALUES"
+			" (1282, 'HEX_AVA_Plant_P',    'TgGame.TgGame_Mission', 1544, 39910, 5891, 420, 1, 180, 1),"
+			" (1314, 'HEX_AVA_Lab1_P',     'TgGame.TgGame_Mission', 1544, 61093, 5889, 420, 1, 180, 1),"
+			" (1318, 'HEX_AVA_Lab2_P',     'TgGame.TgGame_Mission', 1544, 61093, 5890, 420, 1, 180, 1),"
+			" (1320, 'HEX_AVA_Lab3_P',     'TgGame.TgGame_Mission', 1544, 61093, 5565, 420, 1, 180, 1),"
+			" (1324, 'HEX_AVA_Factory1_P', 'TgGame.TgGame_Mission', 1544, 38248, 5878, 420, 1, 180, 1),"
+			" (1326, 'HEX_AVA_Factory2_P', 'TgGame.TgGame_Mission', 1544, 38248, 5879, 420, 1, 180, 1),"
+			" (1331, 'HEX_AVA_Factory3_P', 'TgGame.TgGame_Mission', 1544, 38248, 5880, 420, 1, 180, 1),"
+			" (1337, 'HEX_AVA_Plant2_P',   'TgGame.TgGame_Mission', 1544, 39910, 5893, 420, 1, 180, 1),"
+			" (1338, 'HEX_AVA_Plant3_P',   'TgGame.TgGame_Mission', 1544, 39910, 5892, 420, 1, 180, 1),"
+			" (1340, 'HEX_AVA_Missile1_P', 'TgGame.TgGame_Mission', 1544, 22258, 7373, 420, 1, 180, 1),"
+			" (1348, 'HEX_AVA_Ticket_Neutral', 'TgGame.TgGame_Ticket', 1545, 36171, 6025, 900, 1, 0, 0),"
+			" (1350, 'HEX_AVA_Defense1_P', 'TgGame.TgGame_Ticket',  1545, 42236, 6008, 900, 1, 0, 0),"
+			" (1354, 'HEX_AVA_Defense2_P', 'TgGame.TgGame_Ticket',  1545, 42236, 6008, 900, 1, 0, 0),"
+			" (1352, 'HEX_AVA_Push_Lab1_P', 'TgGame.TgGame_Escort', 1547, 61093, 6052, 420, 1, 180, 1),"
+			" (1356, 'HEX_AVA_Push_Factory1_P', 'TgGame.TgGame_Escort', 1547, 38248, 6051, 420, 1, 180, 1),"
+			" (1364, 'HEX_AVA_2pt_Theft_Lab1', 'TgGame.TgGame_Escort', 1547, 52786, 6165, 420, 1, 180, 1),"
+			" (1371, 'HEX_AVA_2pt_Theft_Factory1_P', 'TgGame.TgGame_Escort', 1547, 52786, 6182, 420, 1, 180, 1);",
+			"INSERT OR IGNORE INTO ga_map_pool_entries "
+			"(map_pool_id, map_name, game_mode, weight, enabled, min_players) VALUES"
+			" (2, 'HEX_AVA_Plant_P',        'TgGame.TgGame_Mission', 1, 0, 18),"
+			" (2, 'HEX_AVA_Plant2_P',       'TgGame.TgGame_Mission', 1, 0, 18),"
+			" (2, 'HEX_AVA_Plant3_P',       'TgGame.TgGame_Mission', 1, 0, 18),"
+			" (2, 'HEX_AVA_Lab1_P',         'TgGame.TgGame_Mission', 1, 0, 18),"
+			" (2, 'HEX_AVA_Lab2_P',         'TgGame.TgGame_Mission', 1, 0, 18),"
+			" (2, 'HEX_AVA_Lab3_P',         'TgGame.TgGame_Mission', 1, 0, 18),"
+			" (2, 'HEX_AVA_Factory1_P',     'TgGame.TgGame_Mission', 1, 0, 18),"
+			" (2, 'HEX_AVA_Factory2_P',     'TgGame.TgGame_Mission', 1, 0, 18),"
+			" (2, 'HEX_AVA_Factory3_P',     'TgGame.TgGame_Mission', 1, 0, 18),"
+			" (2, 'HEX_AVA_Missile1_P',     'TgGame.TgGame_Mission', 1, 0, 18),"
+			" (2, 'HEX_AVA_Ticket_Neutral', 'TgGame.TgGame_Ticket',  1, 0, 16),"
+			" (2, 'HEX_AVA_Defense1_P',     'TgGame.TgGame_Ticket',  1, 0, 20),"
+			" (2, 'HEX_AVA_Defense2_P',     'TgGame.TgGame_Ticket',  1, 0, 20);",
+		};
+		for (const char* sql : kHexAvaMercMaps2026_08_02) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] HEX AVA merc maps step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
 }
