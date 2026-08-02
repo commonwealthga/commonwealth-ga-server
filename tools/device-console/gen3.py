@@ -180,6 +180,10 @@ COMBATBAR = (
 
 
 HTML = (
+# Without this the page is served with no charset at all - python -m http.server sends none
+# for .html - so the browser falls back to the locale encoding and every non-ASCII byte
+# reaching the DOM through a JS string renders as mojibake.
+'<meta charset="utf-8">\n'
 '<title>Global Agenda &mdash; Loadout & Device Console</title>\n<style>%s</style>\n'
 '<header class="top"><div class="topinner">'
 '<div class="brand"><h1>Loadout Console</h1><span class="tag">Global Agenda</span>'

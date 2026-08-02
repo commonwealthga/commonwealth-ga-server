@@ -188,6 +188,16 @@
   // A weapon fires primary OR alt, never both, so the control is tri-state rather than a
   // checkbox. Devices with only one mode just toggle on and off.
   var MODELAB = { PRI: 'primary', ALT: 'alt', BLOCK: 'block' };
+  // Thirteen melee weapons carry a from-behind rider. Asked of the model so the card can show
+  // the switch without having to build a sim device first.
+  function hasBackstab(g, mode) {
+    var dev = (window.__DEVMODEL__ || {})[String(g && g.id)];
+    if (!dev) return false;
+    return (dev.modes || []).some(function (m) {
+      if (mode && m.kind && m.kind !== mode && m.kind !== 'SPAWN') return false;
+      return (m.chips || []).some(function (c) { return /^Backstab: /.test(c[1]); });
+    });
+  }
   function dev0(g) { return (window.__DEVMODEL__ || {})[String(g.id)] || {}; }
   function modesOf(g) {
     var dev = (window.__DEVMODEL__ || {})[String(g.id)];
@@ -1640,6 +1650,12 @@
       }
     });
     var onSelf = (mm.hit && mm.hit.tgt === 'self');
+    // Backstab is far more than the power sap on the two maces: thirteen melee weapons carry
+    // one, and between them they add flat damage, burns, slows, a healing-taken cut and a
+    // protection shred. None of it was gated - some was being applied unconditionally, the
+    // rest thrown away - so the card now carries a switch and the run honours it.
+    d.hasBackstab = (m.chips || []).some(function (c) { return c.bs && c.base !== null; });
+    d.backstab = !!(a.backstab && a.backstab[slot]);
     (m.chips || []).forEach(function (c) {
       if (c.base === null) return;
       if (c.prop === 51 || c.prop === 211) {
@@ -1649,9 +1665,9 @@
           // Life Stealer's "DoT 55 5.0s" is five ticks of 55, not a single 55 - and, because
           // it was never recorded on the target, nothing could cleanse it either.
           if (c.iv > 0 && lifeOf(c) > 0) {
-            d.dots.push({ raw: c.value, cat: c.cat, life: lifeOf(c), iv: c.iv });
+            d.dots.push({ raw: c.value, cat: c.cat, life: lifeOf(c), iv: c.iv, bs: !!c.bs });
           } else {
-            d.shots.push({ raw: c.value, cat: c.cat, life: lifeOf(c) });
+            d.shots.push({ raw: c.value, cat: c.cat, life: lifeOf(c), bs: !!c.bs });
           }
         }
         else if (onSelf) d.selfHeals = (d.selfHeals || []).concat([{ v: c.value, life: lifeOf(c) }]);
@@ -1664,12 +1680,10 @@
         // Power Pool. Seven devices move it - Power Stim, Power Station, Power Wave, Triage
         // Wave and the two backstab maces - and the run applied none of them. Backstab drains
         // are skipped: the timeline has no positional model, so it cannot know you are behind.
-        if (!/^Backstab: /.test(c.label)) {
-          var pw = { v: c.sign < 0 ? -c.value : c.value, life: lifeOf(c),
-                     sit: c.sit || 0, sv: c.sv || 0 };
-          if (c.self || onSelf) d.selfPower = (d.selfPower || []).concat([pw]);
-          else d.powers.push(pw);
-        }
+        var pw = { v: c.sign < 0 ? -c.value : c.value, life: lifeOf(c),
+                   sit: c.sit || 0, sv: c.sv || 0, bs: !!c.bs };
+        if (c.self || onSelf) d.selfPower = (d.selfPower || []).concat([pw]);
+        else d.powers.push(pw);
       } else if ((c.self || onSelf) && c.life > 0) {
         var nm2 = GA.statName(c.prop);
         if (nm2) d.selfTimed.push({ p: c.prop, name: nm2, v: c.sign < 0 ? -c.value : c.value,
@@ -1744,10 +1758,11 @@
         .filter(Boolean);
       // projected effects, resolved once - what this actor hands out when a device fires
       var proj = {};
+      a.backstab = a.backstab || {};
       Object.keys(a.active).forEach(function (slot) {
         var g = (ctx.charGear || [])[+slot]; if (!g) return;
         var dev = (window.__DEVMODEL__ || {})[String(g.id)]; if (!dev) return;
-        proj[slot] = GA.projectedEffects({ dev: dev,
+        proj[slot] = GA.projectedEffects({ backstab: !!(a.backstab || {})[slot], dev: dev,
           meta: (window.__DEVMETA__ || {})[String(g.id)] || {},
           ix: (window.__DEVFX__ || {})[String(g.id)] || [], alloc: col.alloc, name: g.name,
           mode: a.active[slot], buffs: col.buffs,
@@ -2044,6 +2059,7 @@
           }
           // damage
           d.shots.forEach(function (sh) {
+            if (sh.bs && !d.backstab) return;
             tgts.forEach(function (tid) {
               var v = S.byId[tid];
               if (!v || v.dead || v.team === a.team) return;
@@ -2090,12 +2106,23 @@
           // ticks are mitigated as they land, not once up front, so protection that changes
           // mid-burn changes what the remaining ticks cost - which is how the game does it.
           d.dots.forEach(function (dt) {
+            if (dt.bs && !d.backstab) return;
             tgts.forEach(function (tid) {
               var v = S.byId[tid];
               if (!v || v.dead || v.team === a.team) return;
-              v.dots = (v.dots || []).filter(function (x) {
-                return !(x.src === d.name && x.cat === dt.cat);   // re-applying refreshes
-              });
+              // Re-applying extends the burn; it does NOT restart the tick clock. A Life
+              // Stealer swings every 0.63s and its burn ticks every 1.0s, so resetting the
+              // next tick on each hit pushed it past the horizon forever and the poison never
+              // did a thing.
+              var cur = (v.dots || []).filter(function (x) {
+                return x.src === d.name && x.cat === dt.cat;
+              })[0];
+              if (cur) {
+                cur.until = t + dt.life;
+                cur.raw = dt.raw;
+                return;
+              }
+              v.dots = (v.dots || []);
               v.dots.push({ src: d.name, devId: d.id, cat: dt.cat, raw: dt.raw,
                             iv: dt.iv, next: t + dt.iv, until: t + dt.life,
                             hit: { cat: dt.cat, damageType: d.hit.dmg,
@@ -2134,6 +2161,7 @@
           }
           // healing
           (d.selfPower || []).forEach(function (q) {
+            if (q.bs && !d.backstab) return;
             if (q.life > 0) {
               a.pregen = (a.pregen || []).filter(function (x) { return x.src !== d.name; });
               a.pregen.push({ src: d.name, devId: d.id, rate: q.v / q.life, until: t + q.life });
@@ -2172,9 +2200,14 @@
             });
           });
           d.powers.forEach(function (q) {
+            if (q.bs && !d.backstab) return;
             tgts.forEach(function (tid) {
               var v = S.byId[tid];
-              if (!v || v.dead || v.team !== a.team) return;
+              if (!v || v.dead) return;
+              // The side depends on the sign, not on a fixed assumption. This was written for
+              // Triage Wave restoring an ally and hard-coded to team-mates, which threw away
+              // every drain: the two backstab maces sap 30 power off an ENEMY.
+              if (q.v < 0 ? v.team === a.team : v.team !== a.team) return;
               if (!GA.situationalOk(q.sit, q.sv, hpAtHit[tid])) return;
               if (q.life > 0) {
                 v.pregen = (v.pregen || []).filter(function (x) { return x.src !== d.name; });
@@ -2696,10 +2729,17 @@
                   + esc(lab) + '</option>';
               }).join('') + '</select></span>';
         }
+        var bsBox = '';
+        if (on && hasBackstab(g, a.active[i])) {
+          bsBox = '<label class="acbs' + ((a.backstab || {})[i] ? ' on' : '') + '"'
+            + ' title="strike from behind - applies this weapon’s backstab rider">'
+            + '<input type="checkbox" class="acbsx" data-a="' + a.id + '" data-i="' + i + '"'
+            + ((a.backstab || {})[i] ? ' checked' : '') + '>back</label>';
+        }
         return '<span class="acgcell"><span class="acg' + (on ? ' on' : '') + ' t-' + tgt + '"'
           + ' data-a="' + a.id + '" data-i="' + i + '" data-tgt="' + tgt + '"'
           + ' title="' + esc(g.name) + ' — ' + esc(g.cat || '') + ', targets ' + esc(tgt) + '">'
-          + ic + esc(g.name) + '</span>' + msel + sel + '</span>';
+          + ic + esc(g.name) + '</span>' + msel + bsBox + sel + '</span>';
       }).join('');
       var inb = st.inbound.map(function (f) {
         var from = actorById(f.from);
@@ -2905,7 +2945,8 @@
       g.addEventListener('click', function () {
         var a = actorById(g.dataset.a); if (!a) return;
         var i = g.dataset.i;
-        if (a.active[i]) { delete a.active[i]; delete a.aim[i]; }
+        if (a.active[i]) { delete a.active[i]; delete a.aim[i];
+                           if (a.backstab) delete a.backstab[i]; }
         else {
           var ctx = actorCtx(a);
           a.active[i] = 'PRI';
@@ -2914,6 +2955,14 @@
           var sc0 = deviceScope(a, (ctx.charGear || [])[+i], dev0, 'PRI');
           if (sc0.kind === 'single' && sc0.picks.length) a.aim[i] = sc0.picks[0].id;
         }
+        renderCombat();
+      });
+    });
+    host.querySelectorAll('.acbsx').forEach(function (b3) {
+      b3.addEventListener('change', function () {
+        var a = actorById(b3.dataset.a); if (!a) return;
+        a.backstab = a.backstab || {};
+        if (b3.checked) a.backstab[b3.dataset.i] = 1; else delete a.backstab[b3.dataset.i];
         renderCombat();
       });
     });
