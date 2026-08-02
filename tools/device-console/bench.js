@@ -322,7 +322,7 @@ window.GA = window.GA || {};
         var prop = num[0], base = num[1], calc = num[2], life = num[3], egt = num[4], cat = num[5] || 0;
         // stacking rule for this effect's category (application_value_id / application_value)
         var app = num[6] || 0, appv = num[7] || 0;
-        var sit = num[8] || 0, sv = num[9] || 0;
+        var sit = num[8] || 0, sv = num[9] || 0, iv = num[10] || 0;
         var isNeg = (calc === CALC_PCT_DN || calc === CALC_SUB);
         var isPct = (calc === CALC_PCT_UP || calc === CALC_PCT_DN);
         if (isPct) base = pctOf(base);
@@ -330,7 +330,7 @@ window.GA = window.GA || {};
         var lr = life > 0 ? apply(life, prop === 354 ? 355 : 208, false, cat) : null;
         var self = /^Self: /.test(c[1]);
         return { label: c[1], kind: c[0], prop: prop, cat: cat, egt: egt, self: self, neg: isNeg,
-                 app: app, appv: appv, sit: sit, sv: sv, sign: isNeg ? -1 : 1,
+                 app: app, appv: appv, sit: sit, sv: sv, iv: iv, sign: isNeg ? -1 : 1,
                  base: Math.abs(base), value: r.value, mods: r.mods, isPct: isPct,
                  lower: GA.lowerIsBetter(prop, c[0], cat, self),
                  life: life, lifeVal: lr ? lr.value : life, lifeMods: lr ? lr.mods : [] };

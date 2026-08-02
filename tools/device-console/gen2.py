@@ -372,8 +372,12 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
             for e in q("SELECT prop_id p, base_value bv, calc_method_value_id calc, apply_on_interval_flag tick, property_value_id pv FROM asm_data_set_effects WHERE effect_group_id=?", (eg['eg'],)):
                 p, bv, calc, tick, pv = e['p'], e['bv'], e['calc'], e['tick'], e['pv']
                 pos = calc in (67, 68); pct = calc in (68, 69)
+                # iv is the apply interval: every damage-over-time group in the data ticks at
+                # 1.0s with apply_on_interval_flag set, so it is what turns a lifetime into a
+                # number of ticks rather than one lump.
                 cur[:] = [p, round(bv, 3), calc, round(life or 0, 2), egt, egcat or 0, egapp,
-                          round(egappv, 2), sitv if hpgate else 0, hpgate]
+                          round(egappv, 2), sitv if hpgate else 0, hpgate,
+                          round(iv, 2) if (tick or iv > 0) else 0]
                 s = '+' if pos else '-'; u = '%' if pct else ''
                 dur = " %ss" % round(life, 1) if life and life > 0 else ""
                 over = tick or iv > 0

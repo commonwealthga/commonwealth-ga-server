@@ -1595,7 +1595,8 @@
     var d = { slot: slot, name: g.name, cat: g.cat, id: g.id,
               hit: mm.hit || {}, strip: mm.strip || [],
               power: (m.power && m.power.value != null) ? m.power.value : 0,
-              refire: 0, cooldown: 0, shots: [], heals: [], powers: [], buffs: [], maxLife: 0,
+              refire: 0, cooldown: 0, shots: [], dots: [], heals: [], powers: [], buffs: [],
+              maxLife: 0,
               scope: deviceScope(a, g, dev, mode), ready: 0 };
     (m.chips || []).forEach(function (c) {
       if (c.prop === 53) d.refire = c.value;
@@ -1642,7 +1643,17 @@
     (m.chips || []).forEach(function (c) {
       if (c.base === null) return;
       if (c.prop === 51 || c.prop === 211) {
-        if (c.sign < 0) d.shots.push({ raw: c.value, cat: c.cat, life: lifeOf(c) });
+        if (c.sign < 0) {
+          // A damage chip with an apply interval is damage OVER TIME: it lands once per
+          // interval for its lifetime. Treating it as one lump undercounted it badly - a
+          // Life Stealer's "DoT 55 5.0s" is five ticks of 55, not a single 55 - and, because
+          // it was never recorded on the target, nothing could cleanse it either.
+          if (c.iv > 0 && lifeOf(c) > 0) {
+            d.dots.push({ raw: c.value, cat: c.cat, life: lifeOf(c), iv: c.iv });
+          } else {
+            d.shots.push({ raw: c.value, cat: c.cat, life: lifeOf(c) });
+          }
+        }
         else if (onSelf) d.selfHeals = (d.selfHeals || []).concat([{ v: c.value, life: lifeOf(c) }]);
         else if (!c.self) d.heals.push({ v: c.value, life: lifeOf(c),
                                         sit: c.sit || 0, sv: c.sv || 0 });
@@ -2075,6 +2086,22 @@
               }
             });
           });
+          // Damage over time. Registered on the target with the raw per-tick figure: the
+          // ticks are mitigated as they land, not once up front, so protection that changes
+          // mid-burn changes what the remaining ticks cost - which is how the game does it.
+          d.dots.forEach(function (dt) {
+            tgts.forEach(function (tid) {
+              var v = S.byId[tid];
+              if (!v || v.dead || v.team === a.team) return;
+              v.dots = (v.dots || []).filter(function (x) {
+                return !(x.src === d.name && x.cat === dt.cat);   // re-applying refreshes
+              });
+              v.dots.push({ src: d.name, devId: d.id, cat: dt.cat, raw: dt.raw,
+                            iv: dt.iv, next: t + dt.iv, until: t + dt.life,
+                            hit: { cat: dt.cat, damageType: d.hit.dmg,
+                                   attackType: d.hit.atk, rating: d.hit.rating } });
+            });
+          });
           // Strip / cleanse. Runs for every target in scope whether or not it paid damage:
           // Neutralize Wave tears buffs off an enemy, a Healing Grenade takes Poison, Disease and
           // Ignite off a team-mate. Same prop-140 mechanic, opposite intent.
@@ -2082,11 +2109,21 @@
             tgts.forEach(function (tid) {
               var v2 = S.byId[tid];
               if (!v2 || v2.dead) return;
-              var before = v2.live.length;
+              var before = v2.live.length + (v2.dots || []).length;
               v2.live = v2.live.filter(function (f) {
                 return !(d.strip || []).some(function (sg) {
                   return (sg.cats || []).indexOf(f.cat) >= 0;
                 });
+              });
+              // A Healing Grenade takes Poison, Disease and Ignite off a team-mate, and those
+              // ARE the damage-over-time categories - the cleanse is worth nothing if it only
+              // reaches buffs.
+              v2.dots = (v2.dots || []).filter(function (f) {
+                var gone = (d.strip || []).some(function (sg) {
+                  return (sg.cats || []).indexOf(f.cat) >= 0;
+                });
+                if (gone) ev(t, v2.id, f.src + ' burn cleansed by ' + d.name, 'strip', d.id);
+                return !gone;
               });
               var gone = before - v2.live.length;
               if (gone > 0 && v2.team === a.team) {
@@ -2229,6 +2266,28 @@
       });
       // heal-over-time ticks
       S.actors.forEach(function (a) {
+        if (a.dots && a.dots.length && !a.dead) {
+          a.dots = a.dots.filter(function (dt) {
+            if (dt.until <= t) {
+              ev(t, a.id, dt.src + ' burn ends', 'expire', dt.devId);
+              return false;
+            }
+            return true;
+          });
+          a.dots.forEach(function (dt) {
+            if (dt.next > t) return;
+            dt.next += dt.iv;
+            var atFull = a.hp >= a.maxHP;
+            var m = GA.mitigate(dt.raw, dt.hit, protNow(a),
+              atFull ? { healthCapArmed: 1, maxHP: a.maxHP, curHP: a.hp } : {});
+            a.hp -= m.shown;
+            noteBreaks(drainShields(a, m, 1, t));
+            if (a.hp <= 0 && !a.dead) {
+              a.dead = true; a.hp = 0; deaths[a.id] = t;
+              ev(t, a.id, a.cls + ' #' + a.id + ' dies', 'death', null);
+            }
+          });
+        }
         if (a.pregen && !a.dead) {
           a.pregen = a.pregen.filter(function (q) { return q.until > t; });
           a.pregen.forEach(function (q) {
