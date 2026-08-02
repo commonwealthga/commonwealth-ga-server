@@ -2607,7 +2607,7 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
       });
       return { id: a.id, team: a.team, cls: a.cls, pid: a.pid, moraleCut: moraleCut,
                maxHP: dv.totHP, hp: dv.totHP,
-               maxPW: dv.totPW, pw: dv.totPW,
+               maxPW: dv.totPW, pw: dv.totPW, spentUntil: 0,
                regen: baseRegen(col.stats),
                baseProt: GA.protectionFrom(col.stats),
                devs: devs, proj: proj, aim: a.aim, live: [], dead: false, spentThisStep: false,
@@ -2859,6 +2859,13 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
             }
             if (afford < volley) volley = afford;
             a.pw -= cost * volley; a.spentThisStep = true; d.starved = false;
+            // Regen pausing for exactly the STEP the spend landed in made it an accident of
+            // quantisation: a jetpack costs 5.9 every 0.25s, which is one step in every two and
+            // a half, so regen ran on the other one and a half and refunded most of the cost.
+            // Holding a jetpack is continuous consumption, so the pause covers the interval the
+            // spend actually buys. Capped at a second: past that you are not holding a trigger,
+            // you have thrown a grenade and moved on.
+            a.spentUntil = Math.max(a.spentUntil || 0, t + Math.min(interval || STEP, 1));
           }
 
           if (d.cat === 'Offhand') a.offhandReady = t + OFFHAND_GCD;
@@ -3084,7 +3091,7 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
 
       // power regen only when nothing was spent this step (confirmed in game, backlog C4)
       S.actors.forEach(function (a) {
-        if (!a.spentThisStep && a.pw < a.maxPW) a.pw = Math.min(a.maxPW, a.pw + a.regen * STEP);
+        if (t >= (a.spentUntil || 0) && a.pw < a.maxPW) a.pw = Math.min(a.maxPW, a.pw + a.regen * STEP);
         // A starvation episode ends when the pool is genuinely healthy again, so a later drain
         // is reported afresh. Checked here rather than at the fire gate: a device waiting on a
         // cooldown while the pool refills never reaches that gate, and would stay silent.
