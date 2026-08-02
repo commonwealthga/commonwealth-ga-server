@@ -96,6 +96,8 @@ and the console cannot tell the difference. Confidence is graded:
 | Protection integer-floored; ≥ rating is immunity | UC | `TgEffectGroup.uc:745` |
 | Exactly one attack-type axis (AOE replaces Ranged) | UC | `CalcAttackTypeProtection` |
 | Damage rounded half-up after mitigation | UC | `TgEffectDamage.uc:167` |
+| DoT: attacker-side scaling cached at application, reused every tick | UC | `TgEffectDamage.uc:103/136/137/142` (`m_fBuffedDamageInitial`), §23 |
+| DoT: target-side modifiers re-evaluated on every tick | UC | `TgEffectDamage.uc:144` `CheckDamageTakenModifier`, §23 |
 | Additional-damage-taken applied before mitigation | UC | `TgEffectDamage.CheckDamageTakenModifier` |
 | Anti-one-shot cap: floor `ceil(maxHP × 10%)`, arms only at full HP | UC | `TgDeviceFire.ApplyHit:1287` |
 | Which effect-group type lands on whom | UC | `TgDevice.uc` constants + `SubmitHitEffects` call sites |
@@ -118,6 +120,7 @@ the game.
 |---|---|---|
 | **Players are immune to categories 653 / 921** | every effect in both is a penalty, and `gen2` names them EMP Critical Failure / EMP Burn | if either category is ever used for something that touches players, they would be wrongly immune |
 | **A damage chip with an apply interval ticks once per interval for its lifetime** | every such group in the data is `interval 1.0` with the tick flag set | the number of ticks, and whether the first lands immediately or after one interval, is assumed |
+| **DoTs ignore their own stacking rule** | not a belief - a known gap. Burns are keyed on source + category, so two sources both tick | the data gives a rule per group and DoT categories use all five (Poison is mostly Strongest Wins, Ignite is a mix), so simultaneous burns are almost certainly overcounted |
 | **Re-applying a DoT extends its duration without restarting the tick clock** | needed to make a 0.63s-refire weapon's 1.0s burn tick at all | the engine may restart, or stack a second instance |
 | **A splash radius on a ranged attack selects the AOE axis** | grenades declare "Projectile Ranged Attack" like the Ballista, so radius is the only discriminator | a different flag may drive it |
 | **A starved device waits for a usable pool before firing again** | pure modelling choice; no data behind the threshold | affects sustained DPS directly; flagged for an on-screen control |
