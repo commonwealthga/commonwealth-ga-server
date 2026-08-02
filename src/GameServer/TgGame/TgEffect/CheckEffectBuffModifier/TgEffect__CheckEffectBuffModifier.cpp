@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgEffect/CheckEffectBuffModifier/TgEffect__CheckEffectBuffModifier.hpp"
 #include "src/GameServer/TgGame/_effect_core/OriginResolver.hpp"
 #include "src/GameServer/TgGame/_effect_core/DeviceLookup.hpp"
+#include "src/GameServer/TgGame/_effect_core/HitSituationalMitigation.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -60,6 +61,20 @@ void __fastcall TgEffect__CheckEffectBuffModifier::Call(UTgEffect* effect, void*
 	if (!effect || !NewValue) return;
 	UTgEffectGroup* g = effect->m_EffectGroup;
 	if (!g) return;
+
+	// Self-shot mitigation bracket. This native is the last thing that runs on
+	// an effect before its value reaches the target, which makes it the one
+	// place that sees both halves of the type-505 ordering defect at the right
+	// moment: the debuff at TgEffect.uc:115 (before ApplyToProperty writes it)
+	// and the damage at TgEffectDamage.uc:131 (before ProtectionModifier reads
+	// it). Both calls come first so the early-outs below can't skip them.
+	// See HitSituationalMitigation.hpp.
+	const bool isDamage = ObjectClassCache::ClassNameContains(effect, "TgEffectDamage");
+	if (isDamage) {
+		HitSituationalMitigation::BeginImpactMitigation(effect);
+	} else {
+		HitSituationalMitigation::NoteDebuffApplied(effect);
+	}
 
 	const float origValue = *NewValue;
 	if (origValue == 0.0f) return;  // nothing to scale

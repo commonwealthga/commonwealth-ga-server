@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
+#include "src/GameServer/TgGame/_effect_core/HitSituationalMitigation.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // TgEffectManager::RemoveEffectGroupsByCategory — reimplements the stripped stub
@@ -15,6 +16,16 @@ typedef void(__fastcall* ClearEffectRepFn)(ATgEffectManager*, void*, int, int);
 static const ClearEffectRepFn ClearEffectRepNative = (ClearEffectRepFn)0x10a6f030;
 
 bool __fastcall TgEffectManager__RemoveEffectGroupsByCategory::Call(ATgEffectManager* Manager, void* /*edx*/, int nCategoryCode, int nQuantity) {
+	// Closing bracket for the type-505 self-shot guard. TgEffectDamage.uc:206
+	// calls this with exactly (431, 99) on the victim's manager, after
+	// ProtectionModifier and the health cap and before TakeDamage — the one
+	// unconditional beat in the damage path where mitigation is finished but
+	// the hit has not landed yet. Runs before the arg checks so a window
+	// always closes. See HitSituationalMitigation.hpp.
+	if (nCategoryCode == 431 && nQuantity == 99) {
+		HitSituationalMitigation::EndImpactMitigation(Manager);
+	}
+
 	if (!Manager || nQuantity <= 0) return false;
 
 	int removed = 0;
