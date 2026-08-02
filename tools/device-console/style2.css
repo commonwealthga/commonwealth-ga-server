@@ -832,3 +832,10 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
 .acmd{background:var(--bg);color:inherit;border:1px solid var(--line);border-radius:5px;
   padding:1px 4px;font:inherit;font-size:10px;max-width:120px}
 .acmd:hover{border-color:var(--acc)}
+
+.acbs{display:inline-flex;align-items:center;gap:3px;margin-left:4px;font-size:10px;
+  background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:1px 5px;
+  cursor:pointer;opacity:.65;user-select:none}
+.acbs:hover{border-color:var(--acc);opacity:1}
+.acbs.on{border-color:var(--debuff);color:var(--debuff);opacity:1}
+.acbs input{margin:0;width:10px;height:10px;accent-color:var(--debuff)}
