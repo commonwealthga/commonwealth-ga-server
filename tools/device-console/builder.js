@@ -187,7 +187,6 @@
   // ---------------- equipped gear: off / primary / alt --------------------------
   // A weapon fires primary OR alt, never both, so the control is tri-state rather than a
   // checkbox. Devices with only one mode just toggle on and off.
-  var MODELAB = { PRI: 'primary', ALT: 'alt', BLOCK: 'block' };
   // Thirteen melee weapons carry a from-behind rider. Asked of the model so the card can show
   // the switch without having to build a sim device first.
   function hasBackstab(g, mode) {

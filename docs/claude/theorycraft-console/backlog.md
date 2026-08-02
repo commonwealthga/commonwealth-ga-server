@@ -58,8 +58,8 @@ Ordered by how much they distort results.
 | id | item | status | notes |
 |---|---|---|---|
 | ~~F1~~ | Equipment / armour swapping | **done** | Delivered as the **TheoryCrafter** tab: a blank build where you pick a class, fill the eight slots from that class's pool, choose each item's mod roll, and spend skill points. Shares the resolver, armour panel, trees and My Player with the character view. Armour swapping still uses the preset configs rather than per-piece rolls. |
-| F2 | Save / share a build | open | Export a build (skills + gear + armour + active toggles) as JSON or a URL fragment, so builds can be compared or posted. |
-| F3 | Compare two builds side by side | open | Natural precursor to G1 and useful on its own. |
+| ~~F2~~ | Save / share a build | **done** | Builds are saved to localStorage in the same shape a live profile arrives in, so import is a copy rather than a translation. Export emits the profile-shaped JSON a sync would POST, gated on the account owning a character of that class. Sharing by URL is still open. |
+| ~~F3~~ | Compare two builds side by side | **done** | Delivered by the Combat tab rather than as a static comparison: any two saved builds can be put on opposite sides and resolved against each other. |
 | F4 | DPS / time-to-kill | open | Damage ÷ refire, bounded by power pool and cooldowns. C1 and C4 are now settled, so this is unblocked. Needs D6 (swap-lingering) to be honest about rotations. |
 | F5 | Search / filter on the loadout page | open | 115 devices is a lot to scroll. Filter by class, category, or effect type. |
 | F6 | Mini skill trees on loadout cards | open | Built, then disabled for performance (~4,400 positioned nodes with inline images). Could return via sprite sheet or render-on-expand. |
