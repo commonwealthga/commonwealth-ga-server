@@ -355,6 +355,7 @@ window.GA = window.GA || {};
         if (!EFFECTP[f[0]]) return;
         extra.push({ skill: e.skill, tree: e.tree, prop: f[0], v: f[1], calc: f[2],
                      egt: e.egt, sit: e.sit || 0, sv: e.sv || 0, life: e.life || 0,
+                     cat: e.cat || 0, app: e.app || 0, appv: e.appv || 0,
                      kind: KINDLAB[e.egt] || e.kind.toLowerCase(), detail: e.detail });
       });
     });
@@ -478,7 +479,8 @@ window.GA = window.GA || {};
         if (!nm) return;
         out.push({ p: c.prop, name: nm, v: c.neg ? -c.value : c.value, pct: c.isPct,
                    src: src, kind: c.neg ? 'debuff' : 'buff', life: c.lifeVal || c.life,
-                   cat: c.cat, tgt: tgt, sit: c.sit || 0, sv: c.sv || 0 });
+                   cat: c.cat, app: c.app || 0, appv: c.appv || 0,
+                   tgt: tgt, sit: c.sit || 0, sv: c.sv || 0 });
       });
     });
     res.extra.forEach(function (x) {
@@ -488,8 +490,12 @@ window.GA = window.GA || {};
       var pos = (x.calc === 67 || x.calc === 68);
       // life was hardcoded to 0, so a timed skill rider (Group Heal Savior's 5s buff) looked
       // instantaneous and the timeline discarded it.
+      // cat was hardcoded to 0, so a skill rider never contended for a stacking bucket:
+      // Killer Instinct's -10 was summing with the Ballista's own shred instead of losing
+      // to it, and the target came out 10 protection lighter than the game would leave it.
       out.push({ p: x.prop, name: nm, v: pos ? x.v : -x.v, pct: (x.calc === 68 || x.calc === 69),
-                 src: x.skill, via: src, kind: pos ? 'buff' : 'debuff', life: x.life || 0, cat: 0,
+                 src: x.skill, via: src, kind: pos ? 'buff' : 'debuff', life: x.life || 0,
+                 cat: x.cat || 0, app: x.app || 0, appv: x.appv || 0,
                  tgt: tgt, sit: x.sit || 0, sv: x.sv || 0 });
     });
     return out;
@@ -580,11 +586,26 @@ window.GA = window.GA || {};
       if (names.length < 2) return;                       // one source, nothing to resolve
       var rule = group[0].app, win;
       if (rule === 157) {                                  // Strongest Wins
-        win = names[0]; var best = -Infinity;
+        // Matches TgEffectManager::IsStrongest on the server: the comparison is on
+        // m_fApplicationValue, NOT on the size of the effect, and a tie is broken by
+        // LIFETIME - an incoming group is dropped when one already applied has the same
+        // application value and outlasts it. Ties on both go to the newcomer, because
+        // IsStrongest returns true when eg merely matches everything present.
+        // Every category-986 group shares an application value of 10, so for most of the
+        // protection shred in the game it is the lifetime that decides.
+        win = names[0]; var best = -Infinity, bestLife = -Infinity, bestOrder = -Infinity;
         names.forEach(function (n) {
-          var v = 0;
-          group.forEach(function (it) { if (it.src === n) v = Math.max(v, Math.abs(it.appv || it.v || 0)); });
-          if (v > best) { best = v; win = n; }
+          var v = 0, lf = 0;
+          group.forEach(function (it) {
+            if (it.src !== n) return;
+            v = Math.max(v, Math.abs(it.appv || it.v || 0));
+            lf = Math.max(lf, it.life || 0);
+          });
+          var o = order.indexOf(n);
+          if (v > best || (v === best && lf > bestLife)
+              || (v === best && lf === bestLife && o > bestOrder)) {
+            best = v; bestLife = lf; bestOrder = o; win = n;
+          }
         });
       } else if (rule === 874) {                           // Oldest Wins
         win = names.slice().sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); })[0];

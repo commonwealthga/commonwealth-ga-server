@@ -1812,10 +1812,28 @@
   }
 
   // protections right now = base plus whatever timed buffs are still live
+  // Everything landing on an actor was simply summed, which ignored the category rules the
+  // rest of the console already honours. Category 986 "Additional Damage" is Strongest Wins and
+  // holds most of the protection shred in the game - Ballista -10, Assassin Blade -15, Rusted
+  // Machete -12, GammaBurst -5 and Killer Instinct's -10 - so two of them landing together were
+  // adding up when only the largest should count.
+  function liveNow(act) {
+    var live = act.live || [];
+    if (!GA.applyStacking || live.length < 2) return live;
+    var order = live.slice().sort(function (a, b) { return (a.at || 0) - (b.at || 0); })
+      .map(function (f) { return f.src; });
+    var res = GA.applyStacking(live.map(function (f) {
+      return { cat: f.cat, app: f.app, appv: f.appv, src: f.src, v: f.v,
+               life: (f.until || 0) - (f.at || 0) };
+    }), order);
+    if (!res.blocked.length) return live;
+    var out = live.filter(function (f) { return res.blocked.indexOf(f.cat + '|' + f.src) < 0; });
+    return out;
+  }
   function protNow(act) {
     var p = {};
     Object.keys(act.baseProt).forEach(function (k) { p[k] = act.baseProt[k]; });
-    act.live.forEach(function (f) {
+    liveNow(act).forEach(function (f) {
       if (f.pct) return;
       if ((GA.PROT_PROPS || []).indexOf(f.p) >= 0) p[f.p] = (p[f.p] || 0) + f.v;
     });
@@ -1829,7 +1847,7 @@
   function liveDamageMult(act, hit) {
     var want = DMG_MOD_BY_ATK[hit && hit.atk] || 0;
     var pct = 0;
-    act.live.forEach(function (f) {
+    liveNow(act).forEach(function (f) {
       if (!f.pct) return;
       if (f.p === 65 || (want && f.p === want)) pct += f.v;
     });
@@ -2282,6 +2300,7 @@
               if (!GA.situationalOk(f.sit, f.sv, hp0)) return;
               v.live = v.live.filter(function (x) { return !(x.src === f.src && x.p === f.p); });
               v.live.push({ p: f.p, name: f.name, v: f.v, pct: f.pct, cat: f.cat,
+                            app: f.app || 0, appv: f.appv || 0, at: t,
                             src: f.src, until: t + f.life, devId: d.id });
             });
           });

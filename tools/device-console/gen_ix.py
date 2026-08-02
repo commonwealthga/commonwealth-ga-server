@@ -91,11 +91,15 @@ for r in q("""SELECT DISTINCT sgs.skill_group_id grp, sgs.skill_id sid, sgs.name
               WHERE sgs.skill_group_id BETWEEN 155 AND 163 AND sgs.name_msg_translated<>''"""):
     egs = {}
     for s in q("SELECT DISTINCT effect_group_id eg, effect_group_type_value_id t FROM asm_data_set_skill_effect_groups WHERE skill_group_id=? AND skill_id=?", (r['grp'], r['sid'])):
-        meta = q("SELECT required_skill_id rsk, required_category_value_id rcat, situational_type_value_id sit, situational_value sv, lifetime_sec l FROM asm_data_set_effect_groups WHERE effect_group_id=? LIMIT 1", (s['eg'],))
+        meta = q("SELECT required_skill_id rsk, required_category_value_id rcat, situational_type_value_id sit, situational_value sv, lifetime_sec l, category_value_id cat, application_value_id app, application_value appv FROM asm_data_set_effect_groups WHERE effect_group_id=? LIMIT 1", (s['eg'],))
         m = meta[0] if meta else None
         effs = [(e['p'], round(e['bv'], 2), e['c'], e['pv'] or 0) for e in q("SELECT prop_id p, base_value bv, calc_method_value_id c, property_value_id pv FROM asm_data_set_effects WHERE effect_group_id=?", (s['eg'],))]
         egs[s['eg']] = {'type': s['t'], 'rsk': m['rsk'] if m else 0, 'rcat': m['rcat'] if m else 0,
-                        'sit': m['sit'] if m else 0, 'sv': m['sv'] if m else 0, 'life': m['l'] if m else 0, 'fx': effs}
+                        'sit': m['sit'] if m else 0, 'sv': m['sv'] if m else 0, 'life': m['l'] if m else 0,
+                        # a skill rider contends for a stacking bucket exactly like a device's
+                        # own effect - Killer Instinct's shred sits in 986 with the Ballista's
+                        'cat': m['cat'] if m else 0, 'app': m['app'] if m else 0,
+                        'appv': m['appv'] if m else 0, 'fx': effs}
     if egs:
         skills[(r['grp'], r['sid'])] = {'name': r['nm'], 'tree': TREE[r['grp']], 'cls': TREECLS[r['grp']], 'egs': egs}
 
@@ -159,7 +163,9 @@ for (grp, sid), S in sorted(skills.items()):
                                            # numeric backing so the bench can recompute, not just describe
                                            'fx': [list(f) for f in G['fx']],
                                            'egt': G['type'], 'life': G['life'] or 0,
-                                           'sit': G['sit'] or 0, 'sv': G['sv'] or 0})
+                                           'sit': G['sit'] or 0, 'sv': G['sv'] or 0,
+                                           'cat': G.get('cat') or 0, 'app': G.get('app') or 0,
+                                           'appv': G.get('appv') or 0})
         skill_report.append((S['cls'], S['tree'], S['name'], kind, how, len(targets), detail + gate))
 
 # Unmerged dump for the resolver: ONE entry per effect GROUP, so a skill that has both an

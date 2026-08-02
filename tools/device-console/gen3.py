@@ -141,7 +141,8 @@ IXRAW = json.load(open(BASE + SEP + 'ixraw.json'))
 # and a timed one was treated as instantaneous.
 DEVFX = {k: [{'sid': e['sid'], 'skill': e['skill'], 'tree': e['tree'], 'kind': e['kind'],
               'detail': e['detail'], 'how': e['how'], 'egt': e['egt'], 'fx': e['fx'],
-              'sit': e.get('sit') or 0, 'sv': e.get('sv') or 0, 'life': e.get('life') or 0}
+              'sit': e.get('sit') or 0, 'sv': e.get('sv') or 0, 'life': e.get('life') or 0,
+              'cat': e.get('cat') or 0, 'app': e.get('app') or 0, 'appv': e.get('appv') or 0}
              for e in v if e.get('sid')] for k, v in IXRAW.items()}
 DEVMODEL = {}
 for _cls, _cats in model.items():
