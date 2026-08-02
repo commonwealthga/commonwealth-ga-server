@@ -42,7 +42,7 @@ timing window on *either* side would corrupt the shot-2 number.
 - [ ] Eagle Eye amplifier applied to attacker's buff registry instead of the target's debuff magnitude.
 - [ ] Debuffs double-applying on shot 2 (re-clone without reversing shot-1 clone).
 - [ ] Timing: 3s SSS window vs Ballista debuff lifetime mismatch → one expires before shot 2.
-- [x] **Killer Instinct HP-gate timing** — KI only fires when target >75% HP. Shot 1 (target 100%) applies it; shot 2 (target now <75% after a sniper hit) does NOT re-apply, but shot-1's KI debuff is still live (3 s). **Resolved:** that part is the intended model. What *is* wrong is the separate self-shot leak — see "SECONDARY QUIRK" below.
+- [x] **Killer Instinct HP-gate timing** — KI only fires when target >75% HP. Shot 1 (target 100%) applies it; shot 2 (target now <75% after a sniper hit) does NOT re-apply, but shot-1's KI debuff is still live (3 s). **Resolved:** that part is the intended model. The separate self-shot leak was a real bug and is **fixed** (2026-08-02) — see "SECONDARY QUIRK" below.
 
 ### Measured test (2026-07-31) — Ballista OC vs bare target (no skills, no armor)
 
@@ -56,6 +56,12 @@ unremovable: +30 Phys, +1000 EMP-Stun, +1000 EMP-Burn).
 | 1 | 1170 | 430 | 1600 | 26.9% | **30** (base) |
 | 2 | 1548 | 116 | 1664 | 6.97% | **≈10** |
 
+> ⚠️ **Shot 1 here is not a mitigation reading.** 1170 is the anti-one-shot health cap
+> (`Health − ceil(0.1 × maxHealth)` = 1300 − 130) clamping a true 1280, and the "mitigated"
+> column is computed after that clamp. See "SECONDARY QUIRK" below — the shot-1 rows in this
+> section and the next are left as originally recorded, but the derived protection figures on
+> them are wrong.
+
 ### A/B controlled test (2026-07-31) — EXACT model (all 6 shots reconcile to the unit)
 
 Two extra runs (drop one skill each) pinned everything. **mit% = Physical protection (clean 1:1)**,
@@ -63,12 +69,16 @@ base = 30, raw shot-1 = 1600, raw shot-2 = 1664:
 
 | Build | Shot | protection | mit (pred=meas) | dealt (pred=meas) |
 |---|---|---|---|---|
-| Baseline | 1 | 30 − 3.1 (KI self-leak) = 26.9 | 430 | 1170 |
+| Baseline | 1 | ~~30 − 3.1 (KI self-leak) = 26.9~~ → **20** (full KI leak), capped | 430 | 1170 |
 | Baseline | 2 | 30 − 13 (Ball+EE) − 10 (KI) = 7 | 116 | 1548 |
-| No Eagle Eye | 1 | 30 − 3.1 = 26.9 | 430 | 1170 |
+| No Eagle Eye | 1 | ~~30 − 3.1 = 26.9~~ → **20**, capped | 430 | 1170 |
 | No Eagle Eye | 2 | 30 − 10 (Ball) − 10 (KI) = 10 | 166 | 1498 |
 | No Killer Instinct | 1 | 30 (clean) | 480 | 1120 |
 | No Killer Instinct | 2 | 30 − 13 (Ball+EE) = 17 | 283 | 1381 |
+
+The four **shot-2** rows are correct and unchanged — they are pure mitigation, because the health
+cap only arms at exactly full HP. The two struck shot-1 protections were the leak reading; the true
+figure is 20 (`1600 × 0.80 = 1280`), clamped to 1170 by the cap.
 
 **Confirmed mechanics:**
 - **Mitigation formula: mit% = Physical-protection value, 1:1.** (Earlier "mit% ≈ P−3" was an artifact of KI's self-leak contaminating the baseline shot 1. Corrected.)
@@ -81,29 +91,47 @@ debuff (type-505). Both are class-80 prop-155 −10 — the only difference is t
 (Hit-Situational) application does not route through the potency-scaling (`CheckEffectBuffModifier` /
 `ConvertPropToPropList bUsePotencyModifier=1`) path that type-264 (Hit) uses.
 
-**SECONDARY QUIRK — self-shot leak (confirmed a bug, 2026-08-01):** Killer Instinct leaks ~3 protection
-points onto its **own triggering shot** (shot-1 protection 30→26.9 only when KI slotted; Ballista leaves
-shot 1 clean). Consistent with type-505 applying earlier in impact processing than type-264.
+**SECONDARY QUIRK — self-shot leak: FIXED server-side 2026-08-02** (branch
+`killer-instinct-self-shot`). Killer Instinct applied its protection debuff to its **own triggering
+shot**, because `TgDeviceFire.ApplyHit` submits the HP-gated type-505 pass (lines 1409–1412) before
+the type-264 pass that carries the base damage (1445). Every other 505 dispatch in that function
+sits *after* the damage submit, which is why the Ballista's type-264 debuff always left shot 1 clean.
 
-**User confirmed this is NOT intended and a server-side fix is due.** Until that lands the console models
-the behaviour **as it currently is**, so its numbers match what players actually experience — a build that
-reads correctly against a server nobody is running is the wrong kind of correct. Two consequences for
-whoever implements the mitigation stage (backlog G1.1):
+**The leak was the full −10, not ~3 points.** This section previously recorded it as partial, from
+shot-1 reading 1170 against a clean 1120. That was wrong, and the way it was wrong is worth keeping:
+**1170 is not a mitigation figure.** It is the anti-one-shot health cap
+(`TgEffectDamage.uc:174-200`, `Health − ceil(0.1 × maxHealth)` = 1300 − 130) clamping a true 1280,
+and the reported "mitigated" column is computed *after* the clamp. The cap arms only at exactly full
+HP — `ApplyHit:1287` divides two ints, so `Health / r_nHealthMaximum > 90/100` reduces to "is the
+target at max" — which is precisely what a controlled shot-1 test guarantees.
 
-- Apply the leak on the triggering hit, then remove it when the server fix ships. Keep it behind one
-  named flag rather than scattered arithmetic, because it is scheduled to be deleted.
-- **We cannot yet tell a flat −3.125 from ~31.25% of the debuff's magnitude.** One data point (a −10
-  debuff leaking 3.125 — exactly 50 damage on a raw 1600) fits both, and a third reading (damage
-  computed in stages, only some seeing the reduced protection) fits it too.
+The unreachable 26.875 was a real signal, correctly spotted; the error was assuming the logged
+number had passed through mitigation and nothing else. It also killed the discriminating experiment
+this file proposed: **eg 26474** (a −5 type-505 debuff on the same gate) would have given
+`1600 × 0.85 = 1360`, also above the cap, and read 1170 too.
 
-**Fix handoff:** [issues/killer-instinct-diag.md](issues/killer-instinct-diag.md) — self-contained, for
-a chat working the server repo. It names the discriminating experiment: **eg 26474** is a type-505
-protection debuff with the *same* 1271/75% gate, calc and class as KI at **half the magnitude (−5)**,
-so its leak is 1.5625 if proportional and 3.125 if flat. It also flags the device-sourced type-505 pair
-(eg 25886 / 27552) as the control that separates "type-505 dispatch" from "skill-sourced" as the cause.
+**No console change was needed.** `GA.mitigate` already implements the cap (`healthCapArmed`,
+players only, floor `ceil(maxHP × 10%)` — backlog G1.3) and reports mitigation as `raw − dealt`,
+matching the game. The named leak flag G1.1 anticipated was never written, so there is nothing to
+remove; the console models post-fix behaviour as-is.
 
-Note this is the *only* part of the type-505 story that is wrong. The other half — Eagle Eye's potency
-amplifying the type-264 device debuff but not type-505 — is confirmed intended (see below).
+**Post-fix verification** — Scorpia OC (same base damage, damage type, attack type, rating and skill
+gate as the Ballista, but its on-hit debuff is prop 210 rather than 155, so Eagle Eye is inert and
+Killer Instinct is the only variable). Raw 1536 shot 1, 1598 shots 2–3:
+
+| Build | Shot 1 | Shots 2–3 |
+|---|---|---|
+| Killer Instinct | 1075 / 461 — **protection 30** | 1278 / 320 — protection 20 |
+| No Killer Instinct | 1075 / 461 — **protection 30** | 1119 / 479 — protection 30 |
+
+All six rows to the unit. Shot 1 identical across builds; the −10 still lands in full on later
+shots; Killer Instinct still reads −10 rather than −13 with Eagle Eye slotted in both runs.
+
+Full record: [issues/killer-instinct-diag.md](issues/killer-instinct-diag.md).
+
+Note this was the *only* part of the type-505 story that was wrong. The other half — Eagle Eye's
+potency amplifying the type-264 device debuff but not type-505 — is confirmed intended (see below)
+and was re-verified after the fix.
 
 **Corrected earlier mistake:** the baseline-only pass concluded "Eagle Eye is inert" — WRONG. The A/B test
 shows EE works on the Ballista debuff and only fails on the skill debuff. Controlled test > single-point inference.
@@ -132,11 +160,13 @@ Emergent from **skill-scoped buff × origin resolution** — no special-casing:
 rule anyone wrote — it's that Eagle Eye's potency is skill-scoped (327) and only device-sourced effects
 carry that skill as origin.
 
-### Remaining open item — KI self-shot leak
-KI bleeds ~3 protection points onto its own triggering shot (type-505 applies earlier in `SubmitHitEffects`
-than type-264). The ordering is **UC bytecode** — not in the binary or our natives — so it can't be pinned
-by static reading. Needs a log capture of the on-hit apply sequence, or the original-server behaviour, to
-classify as bug-vs-faithful. Low impact (~4% of shot 1). **Not blocking.**
+### Closed — KI self-shot leak (fixed 2026-08-02)
+KI applied its **whole** −10 to its own triggering shot, because the HP-gated type-505 pass is
+submitted ahead of the type-264 damage pass in `TgDeviceFire.ApplyHit`. It read as a ~3-point leak
+only because the anti-one-shot health cap was clamping shot 1; see "SECONDARY QUIRK" above. Fixed
+server-side on branch `killer-instinct-self-shot` and verified in game — shot 1 now mitigates at
+full protection in both A/B builds. Full record:
+[issues/killer-instinct-diag.md](issues/killer-instinct-diag.md).
 
 ### Confirmed DB identities
 
@@ -431,7 +461,8 @@ NOTE: the target's prop-316 "Additional Damage Taken" multiplier is applied BEFO
 ```
 
 **Validated:** Ballista (Phys 155=30, Ranged 218=0, cat 302, rating 100): `1600 × (1−0) × (1−0.30) × (1−0) =
-1120` = clean No-KI shot-1 dealt. ✓ (baseline 1170 = KI self-leak).
+1120` = clean No-KI shot-1 dealt. ✓ (baseline 1170 = the KI leak at protection 20 → 1280, then clamped by
+the health cap; see "SECONDARY QUIRK" — fixed 2026-08-02, so both rows now read 1120).
 
 ### Read from the UC source (2026-08-01) — `TgEffectGroup.uc` / `TgEffectDamage.uc`
 
