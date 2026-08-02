@@ -1470,7 +1470,12 @@
     if (!c) return null;
     var p = c.profiles[profileId];
     if (!p) return null;
-    return { id: nextBuildId(), name: name || (c.cls + ' p' + profileId), cls: c.cls,
+    // YeXiuu has two Assaults, so "Assault p1" alone names two different builds. The import
+    // list already tags the character id when a class is duplicated; the saved build has to
+    // carry it too or the cards on the board are indistinguishable.
+    var dupe = (charList() || []).filter(function (x) { return x.cls === c.cls; }).length > 1;
+    var auto = c.cls + (dupe ? ' #' + c.id : '') + ' p' + profileId;
+    return { id: nextBuildId(), name: name || auto, cls: c.cls,
              acct: (CH && CH.user) || null,
              origin: { charId: c.id, profileId: String(profileId) },
              devices: JSON.parse(JSON.stringify(p.devices || [])),

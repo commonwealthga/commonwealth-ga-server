@@ -13,7 +13,8 @@ def q(s, a=()): return db.execute(s, a).fetchall()
 # Accounts to bake in. Inventory is seeded identically for everyone, so these differ in their
 # CHARACTERS and in their inventory row IDS - and the ids are what an export writes back with,
 # which is why each account carries its own map rather than sharing one.
-USERS = ['Jeronix', 'Zipe', 'Kelrior', 'Neophyte', 'Deadly', 'Zaxik', 'Phoron', 'RoundTwo']
+USERS = ['Jeronix', 'Zipe', 'Kelrior', 'Neophyte', 'Deadly', 'Zaxik', 'Phoron', 'RoundTwo',
+         'YeXiuu']
 PROF = {680: 'Assault', 567: 'Medic', 681: 'Recon', 679: 'Robotics'}
 SLOT = {'221': 'Melee', '198': 'Ranged', '200': 'Specialty', '201': 'Jetpack',
         '203,204,385': 'Offhand', '386': 'Boost', '502': 'Class', '500': 'Consumable'}
