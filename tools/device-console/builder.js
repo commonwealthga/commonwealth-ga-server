@@ -795,6 +795,7 @@
       var res = collectStats();
       res.buffs = playerBuffs;        // captured before the globals are put back
       res.alloc = alloc;
+      res.notes = stackNotes;         // why a device refused to stay switched on
       return res;
     } finally {
       CTXKEYS.forEach(function (k) {
@@ -818,273 +819,526 @@
   window.GA = window.GA || {};
   window.GA.statsFor = statsFor;
 
-  // ======================= COMBAT: attacker build vs defender build =======================
-  // Both sides are ordinary saved builds. Each aggregates through statsFor(), the defender's flat
-  // protections go into GA.mitigate, and the attacker's weapons resolve through exactly the same
-  // path the gear tiles use - so a number here and a number there cannot disagree.
-  var cbt = { atk: { cls: null, pid: null, active: {}, tgt: {} },
-              def: { cls: null, pid: null, active: {}, tgt: {} } };
-
-  function charList() { var C = window.__CHARS__ || {}; return C.chars || (C.length ? C : []); }
-  function cbtChar(cls) {
-    return charList().filter(function (c) { return c.cls === cls; })[0];
+  // Headline health and power, derived once so every surface agrees. The combat sandbox got
+  // this wrong by reimplementing it: the armour's +70% health is prop 390, not 51 or 412, so a
+  // Recon read 1319 HP instead of 2229. Layers MULTIPLY (TgPawn::ApplyBuff: v1 = base*(1+item),
+  // v2 = v1*(1+skill)) and the game TRUNCATES the result rather than rounding.
+  var HP_PCT = [412, 390, 304];
+  var PW_PCT = [255, 243];
+  function deriveTotals(stats) {
+    var keys = Object.keys(stats);
+    function baseOf(p) {
+      var st = stats[p + '|0|0'];
+      if (!st) return 0;
+      var v = 0;
+      st.srcs.forEach(function (x) { if (x.layer === 'base') v += x.val; });
+      return v;
+    }
+    function pctFor(list, layer) {
+      var sum = 0;
+      keys.forEach(function (k) {
+        var st = stats[k];
+        if (!st.pct || list.indexOf(st.p) < 0) return;
+        st.srcs.forEach(function (x) {
+          if ((x.layer || 'skill') === layer) sum += x.val;
+        });
+      });
+      return sum;
+    }
+    var baseHP = baseOf(51), basePW = baseOf(243);
+    var hpItem = pctFor(HP_PCT, 'item'), hpSkill = pctFor(HP_PCT, 'skill');
+    var pwItem = pctFor(PW_PCT, 'item'), pwSkill = pctFor(PW_PCT, 'skill');
+    return {
+      baseOf: baseOf, pctFor: pctFor,
+      baseHP: baseHP, basePW: basePW,
+      hpItem: hpItem, hpSkill: hpSkill, pwItem: pwItem, pwSkill: pwSkill,
+      totHP: Math.floor(baseHP * (1 + hpItem / 100) * (1 + hpSkill / 100)),
+      totPW: Math.floor(basePW * (1 + pwItem / 100) * (1 + pwSkill / 100))
+    };
   }
 
-  // a side's full build context, ready for statsFor()
-  function cbtCtx(side) {
-    var st = cbt[side], c = cbtChar(st.cls);
+  // ============================ COMBAT SANDBOX ============================
+  // Not a 1v1. A roster of combatants on two teams, each an ordinary saved build, with every
+  // device aimable at a specific actor. Two medics healing an assault while two recons shoot it
+  // is the shape this has to support, so nothing here assumes one attacker and one defender.
+  //
+  // Who a device may be aimed at comes from the device mode's target type, not from guesswork:
+  // 'enemy' devices only reach the other team, 'friend' devices only their own, 'self' devices
+  // project nothing at all.
+  var sim = { actors: [], focus: { from: null, to: null }, nextId: 1, drag: null };
+
+  function charList() { var C = window.__CHARS__ || {}; return C.chars || (C.length ? C : []); }
+  function charOf(cls) { return charList().filter(function (c) { return c.cls === cls; })[0]; }
+
+  function addActor(team, cls) {
+    var c = charOf(cls) || charList()[0];
     if (!c) return null;
-    var p = c.profiles[st.pid] || c.profiles[Object.keys(c.profiles)[0]];
+    var a = { id: sim.nextId++, team: team, cls: c.cls,
+              pid: Object.keys(c.profiles).sort()[0], active: {}, aim: {} };
+    sim.actors.push(a);
+    return a;
+  }
+  function actorById(id) {
+    return sim.actors.filter(function (a) { return String(a.id) === String(id); })[0];
+  }
+  function teamOf(id) { var a = actorById(id); return a ? a.team : null; }
+  function foes(a) { return sim.actors.filter(function (x) { return x.team !== a.team; }); }
+  function allies(a) { return sim.actors.filter(function (x) { return x.team === a.team; }); }
+
+  // Melee, Ranged and Specialty share your hands - only one is ever out. Off-hands, boosts and
+  // the jetpack are independent and can all run at once.
+  var HANDS = { Melee: 1, Ranged: 1, Specialty: 1 };
+  function stowOtherWeapons(a, ctx, keepSlot) {
+    var g = (ctx.charGear || [])[+keepSlot];
+    if (!g || !HANDS[g.cat]) return;
+    Object.keys(a.active).forEach(function (slot) {
+      if (String(slot) === String(keepSlot)) return;
+      var o = (ctx.charGear || [])[+slot];
+      if (o && HANDS[o.cat]) { delete a.active[slot]; delete a.aim[slot]; }
+    });
+  }
+
+  // Who a device actually reaches. Three things decide it, and none of them is a guess:
+  //   - a jetpack reaches nobody. It is movement; it only costs power. (Its data says "enemy",
+  //     which is meaningless for a thruster, so the category overrides.)
+  //   - a splash radius means it hits EVERYONE it is allowed to hit, not one chosen body. That
+  //     is what makes Frenzy/Power/Protection Wave team-wide and Poison Aura hit every enemy.
+  //   - a melee weapon's radius is its swing arc, not splash, so it stays single-target.
+  // "Enemy and Self" (grenades) means it can hurt the thrower, never a team-mate.
+  function deviceScope(a, g, dev, mode) {
+    var cat = g.cat || '';
+    if (cat === 'Jetpack') return { kind: 'none', targets: [], label: 'self only' };
+    var tgt = dev ? GA.deviceTarget(dev, mode) : 'enemy';
+    if (tgt === 'self') return { kind: 'none', targets: [a.id], label: 'self' };
+    var rad = 0;
+    (dev && dev.modes || []).forEach(function (m) {
+      if ((!mode || !m.kind || m.kind === mode) && m.hit && m.hit.rad > rad) rad = m.hit.rad;
+    });
+    var splash = rad > 0 && cat !== 'Melee';
+    var enemies = foes(a), mates = allies(a);
+    if (splash) {
+      if (tgt === 'friend') return { kind: 'all', targets: mates.map(idOf), label: 'all allies' };
+      if (tgt === 'enemy') return { kind: 'all', targets: enemies.map(idOf), label: 'all enemies' };
+      if (tgt === 'enemyself') {
+        return { kind: 'all', targets: enemies.map(idOf).concat([a.id]),
+                 label: 'all enemies + self' };
+      }
+      return { kind: 'all', targets: sim.actors.map(idOf), label: 'everyone' };
+    }
+    var picks = tgt === 'friend' ? mates
+      : tgt === 'enemy' ? enemies
+        : tgt === 'enemyself' ? enemies.concat([a])
+          : sim.actors;
+    return { kind: 'single', picks: picks, targets: [], label: '' };
+  }
+  function idOf(x) { return x.id; }
+
+  function actorCtx(a) {
+    var c = charOf(a.cls); if (!c) return null;
+    var p = c.profiles[a.pid] || c.profiles[Object.keys(c.profiles)[0]];
     if (!p) return null;
     var al = {};
     p.skills.forEach(function (sid) { if (nodeIndex[sid]) al[sid] = 1; });
     return { curClass: c.cls, alloc: al,
              charArm: (p.armour && p.armour.length) ? p.armour : null,
-             charGear: p.devices || [], activeGear: st.active,
-             activeOrder: Object.keys(st.active) };
+             charGear: p.devices || [], activeGear: a.active,
+             activeOrder: Object.keys(a.active) };
   }
 
-  // Everything a side's switched-on gear throws at whoever it is aimed at. Computed from the
-  // side's OWN stats only - a buff landing on the thrower does not then re-scale what it throws.
-  // One pass, no feedback loop; good enough and honest about it.
-  function cbtOutgoing(side) {
-    var ctx = cbtCtx(side);
+  // everything an actor's switched-on gear throws at somebody else, tagged with its aim
+  function actorOutgoing(a) {
+    var ctx = actorCtx(a);
     if (!ctx || !GA.projectedEffects) return [];
     var col = statsFor(ctx), out = [];
-    Object.keys(cbt[side].active).forEach(function (i) {
-      var g = (ctx.charGear || [])[+i];
+    if ((col.notes || []).length) a.lastNotes = col.notes;
+    Object.keys(a.active).forEach(function (slot) {
+      var g = (ctx.charGear || [])[+slot];
       if (!g) return;
       var dev = (window.__DEVMODEL__ || {})[String(g.id)];
       if (!dev) return;
-      GA.projectedEffects({ dev: dev, meta: (window.__DEVMETA__ || {})[String(g.id)] || {},
+      var sc = deviceScope(a, g, dev, a.active[slot]);
+      if (sc.kind === 'none') return;
+      var recipients = sc.kind === 'all' ? sc.targets
+        : (a.aim[slot] && actorById(a.aim[slot]) ? [a.aim[slot]] : []);
+      if (!recipients.length) return;
+      var fx = GA.projectedEffects({ dev: dev, meta: (window.__DEVMETA__ || {})[String(g.id)] || {},
         ix: (window.__DEVFX__ || {})[String(g.id)] || [], alloc: col.alloc, name: g.name,
-        mode: cbt[side].active[i], buffs: col.buffs,
-        variant: { sig: g.sig, base: g.base, groups: g.groups, nums: g.nums }
-      }).forEach(function (f) {
-        f.at = cbt[side].tgt && cbt[side].tgt[i] ? cbt[side].tgt[i] : 'them';
-        f.from = side;
-        f.slot = i;
-        out.push(f);
-      });
-    });
-    return out;
-  }
-
-  function cbtSide(side, incoming) {
-    var ctx = cbtCtx(side);
-    if (!ctx) return null;
-    var col = statsFor(ctx);
-    var hp = 0, hpPct = 0;
-    Object.keys(col.stats).forEach(function (k) {
-      var x = col.stats[k];
-      if (x.p === 51 && !x.pct) hp += x.total;
-      if ((x.p === 51 || x.p === 412) && x.pct) hpPct += x.total;
-    });
-    var prot = GA.protectionFrom(col.stats);
-    var buffs = (col.buffs || []).slice();
-    // third-party: what the other side (or this side's own gear, aimed here) is doing to us
-    (incoming || []).forEach(function (f) {
-      if (f.pct) { buffs.push({ p: f.p, v: f.v, pct: 1, src: f.src, kind: f.kind }); return; }
-      if ((GA.PROT_PROPS || []).indexOf(f.p) >= 0) prot[f.p] = (prot[f.p] || 0) + f.v;
-    });
-    return { ctx: ctx, col: col, prot: prot, incoming: incoming || [],
-             buffs: buffs, maxHP: Math.round(hp * (1 + hpPct / 100)) };
-  }
-
-  // every damaging mode this side can throw, resolved with its own skills and active buffs
-  function cbtWeapons(side, incoming) {
-    var A = cbtSide(side, incoming);
-    if (!A) return [];
-    var out = [];
-    (A.ctx.charGear || []).forEach(function (g, gi) {
-      var dev = (window.__DEVMODEL__ || {})[String(g.id)];
-      if (!dev) return;
-      var res = GA.resolve({ dev: dev, meta: (window.__DEVMETA__ || {})[String(g.id)] || {},
-        ix: (window.__DEVFX__ || {})[String(g.id)] || [], alloc: A.ctx.alloc, situational: true,
-        buffs: A.buffs, variant: { sig: g.sig, base: g.base, groups: g.groups, nums: g.nums } });
-      (res.modes || []).forEach(function (m, mi) {
-        var hit = ((dev.modes || [])[mi] || {}).hit || {};
-        (m.chips || []).forEach(function (c) {
-          // negative health is damage; heals and buffs are not shots
-          if ((c.prop !== 51 && c.prop !== 211) || c.sign >= 0 || !c.value) return;
-          out.push({ gi: gi, name: g.name, mode: m.kind || 'PRI',
-                     label: c.label, raw: c.value, cat: c.cat, hit: hit, dot: c.life > 0 });
+        mode: a.active[slot], buffs: col.buffs,
+        variant: { sig: g.sig, base: g.base, groups: g.groups, nums: g.nums } });
+      recipients.forEach(function (at) {
+        if (String(at) === String(a.id)) return;      // already on its carrier
+        fx.forEach(function (f) {
+          out.push({ p: f.p, name: f.name, v: f.v, pct: f.pct, src: f.src, kind: f.kind,
+                     life: f.life, cat: f.cat, from: a.id, to: at, slot: slot });
         });
       });
     });
     return out;
   }
 
-  function axisLabel(a) {
-    if (a.prop === 316) return 'Additional damage taken +' + a.pct + '%';
-    var nm = (window.GA && GA.statName) ? (GA.statName(a.prop) || ('prop ' + a.prop))
-                                        : ('prop ' + a.prop);
-    if (a.immune) return nm + ' ' + a.protection + ' vs rating ' + a.rating + ' &rarr; immune';
-    return nm + ' ' + a.protection + ' / rating ' + a.rating
-      + ' &rarr; &minus;' + (a.reduction * 100).toFixed(1) + '%';
+  function allOutgoing() {
+    var out = [];
+    sim.actors.forEach(function (a) { out = out.concat(actorOutgoing(a)); });
+    return out;
   }
 
-  function cbtPicker(side, lab) {
-    var st = cbt[side];
-    var c = cbtChar(st.cls);
-    var profs = c ? Object.keys(c.profiles).sort() : [];
-    return '<div class="cbtpick"><span class="cbtlab">' + lab + '</span>'
-      + '<select class="cbtcls" data-side="' + side + '">'
-      + ['Assault', 'Medic', 'Recon', 'Robotics'].map(function (x) {
-          return '<option value="' + x + '"' + (x === st.cls ? ' selected' : '') + '>' + x + '</option>';
-        }).join('') + '</select>'
-      + '<select class="cbtprof" data-side="' + side + '">'
-      + profs.map(function (x) {
-          return '<option value="' + x + '"' + (String(x) === String(st.pid) ? ' selected' : '')
-            + '>profile ' + x + '</option>';
-        }).join('') + '</select></div>';
+  // an actor's resolved state, with whatever is currently landing on them folded in
+  function actorState(a, inbound) {
+    var ctx = actorCtx(a); if (!ctx) return null;
+    var col = statsFor(ctx);
+    if ((col.notes || []).length) a.lastNotes = col.notes;
+    var dv = deriveTotals(col.stats);
+    var prot = GA.protectionFrom(col.stats);
+    var buffs = (col.buffs || []).slice();
+    (inbound || []).forEach(function (f) {
+      if (f.pct) { buffs.push({ p: f.p, v: f.v, pct: 1, src: f.src, kind: f.kind }); return; }
+      if ((GA.PROT_PROPS || []).indexOf(f.p) >= 0) prot[f.p] = (prot[f.p] || 0) + f.v;
+    });
+    // skill spend per tree, so a card says what kind of build it is at a glance
+    var trees = {};
+    (col.picked || []).forEach(function (e) {
+      var t = D.names[e.g] || '?';
+      trees[t] = (trees[t] || 0) + 1;
+    });
+    // every buff category live on this actor - what a Neutralize Wave would find to strip
+    var cats = {};
+    (inbound || []).forEach(function (f) { if (f.cat && f.v > 0) cats[f.cat] = 1; });
+    (col.buffs || []).forEach(function (f) { if (f.cat && f.v > 0) cats[f.cat] = 1; });
+    ((col.act && col.act.effects) || []).forEach(function (f) { if (f.cat && f.v > 0) cats[f.cat] = 1; });
+    return { a: a, ctx: ctx, col: col, prot: prot, buffs: buffs, inbound: inbound || [],
+             maxHP: dv.totHP, pool: dv.totPW, cats: cats, notes: a.lastNotes || [],
+             skills: (col.picked || []).length, trees: trees };
   }
 
-  // Gear a side can switch on. These buff their OWN carrier - a shield raises the defender's
-  // protection, a stim raises the attacker's damage. Effects thrown AT the other side are a
-  // separate mechanism (third-party) and are deliberately not wired up here yet.
-  function cbtGearRow(side, throwing) {
-    var ctx = cbtCtx(side);
-    if (!ctx) return '';
-    throwing = throwing || {};
-    var IMG = window.__DEVIMG__ || {};
-    var rows = (ctx.charGear || []).map(function (g, i) {
-      var on = !!cbt[side].active[i];
-      var ic = IMG[String(g.id)] ? '<img src="' + IMG[String(g.id)] + '" alt="">' : '';
-      var cell = '<span class="cbtdevcell">'
-        + '<button class="cbtdev' + (on ? ' on' : '') + '" data-side="' + side
-        + '" data-i="' + i + '">' + ic + esc(g.name) + '</button>';
-      // only offer a recipient when the device actually throws something at someone
-      if (on && throwing[i]) {
-        var at = (cbt[side].tgt && cbt[side].tgt[i]) || 'them';
-        cell += '<button class="cbtat" data-side="' + side + '" data-i="' + i + '" '
-          + 'title="who is it used on">' + (at === 'me' ? '&#8594; self' : '&#8594; other side')
-          + '</button>';
-      }
-      return cell + '</span>';
-    }).join('');
-    return rows ? '<div class="cbtdevs">' + rows + '</div>'
-                : '<div class="cbtdevs empty">nothing in this profile</div>';
+  // every damaging shot an actor can throw, with its refire so DPS is available
+  function actorShots(st) {
+    var out = [];
+    (st.ctx.charGear || []).forEach(function (g, gi) {
+      var dev = (window.__DEVMODEL__ || {})[String(g.id)];
+      if (!dev) return;
+      var res = GA.resolve({ dev: dev, meta: (window.__DEVMETA__ || {})[String(g.id)] || {},
+        ix: (window.__DEVFX__ || {})[String(g.id)] || [], alloc: st.ctx.alloc, situational: true,
+        buffs: st.buffs, variant: { sig: g.sig, base: g.base, groups: g.groups, nums: g.nums } });
+      (res.modes || []).forEach(function (m, mi) {
+        var mm = (dev.modes || [])[mi] || {};
+        var hit = mm.hit || {};
+        // resolve() rebuilds mode objects, so the strip table has to come off the model
+        var strip = mm.strip || [];
+        if (hit.tgt === 'friend' || hit.tgt === 'self') return;   // not a weapon
+        var refire = null, power = m.power && m.power.value != null ? m.power.value : null;
+        (m.chips || []).forEach(function (c) { if (c.prop === 53) refire = c.value; });
+        (m.chips || []).forEach(function (c) {
+          if ((c.prop !== 51 && c.prop !== 211) || c.sign >= 0 || !c.value) return;
+          out.push({ id: g.id, name: g.name, mode: m.kind || 'PRI', label: c.label,
+                     raw: c.value, cat: c.cat, hit: hit, dot: c.life > 0,
+                     refire: refire, power: power, strip: strip });
+        });
+      });
+    });
+    return out;
+  }
+
+  // healing an actor is receiving per second, from allies aiming heals at them
+  function healingOn(actorId, thrown) {
+    var hps = 0, srcs = [];
+    sim.actors.forEach(function (h) {
+      var ctx = actorCtx(h); if (!ctx) return;
+      var col = statsFor(ctx);
+      Object.keys(h.active).forEach(function (slot) {
+        if (String(h.aim[slot]) !== String(actorId)) return;
+        var g = (ctx.charGear || [])[+slot]; if (!g) return;
+        var dev = (window.__DEVMODEL__ || {})[String(g.id)]; if (!dev) return;
+        if (GA.deviceTarget(dev, h.active[slot]) === 'enemy') return;
+        var res = GA.resolve({ dev: dev, meta: (window.__DEVMETA__ || {})[String(g.id)] || {},
+          ix: (window.__DEVFX__ || {})[String(g.id)] || [], alloc: col.alloc, situational: true,
+          buffs: col.buffs, variant: { sig: g.sig, base: g.base, groups: g.groups, nums: g.nums } });
+        (res.modes || []).forEach(function (m) {
+          if (m.kind && h.active[slot] && m.kind !== h.active[slot]) return;
+          var refire = null;
+          (m.chips || []).forEach(function (c) { if (c.prop === 53) refire = c.value; });
+          (m.chips || []).forEach(function (c) {
+            if (c.prop !== 51 || c.sign < 0 || !c.value) return;
+            // "Self: Heal" is the medic topping THEMSELVES up while they beam. It only counts
+            // toward the person being healed when that person is the medic.
+            if (c.self && String(h.id) !== String(actorId)) return;
+            // a heal-over-time delivers its value across its lifetime; a direct heal per refire
+            var per = c.life > 0 ? (c.value / c.life) : (refire ? c.value / refire : c.value);
+            hps += per;
+            srcs.push({ who: h.cls + ' #' + h.id, dev: g.name, hps: per, hot: c.life > 0 });
+          });
+        });
+      });
+    });
+    return { hps: hps, srcs: srcs };
+  }
+
+  function fmt1(v) { return Math.round(v * 10) / 10; }
+
+  function trees2str(t) {
+    return Object.keys(t).sort(function (a, b) { return t[b] - t[a]; })
+      .map(function (k) { return esc(k) + ' ' + t[k]; }).join(' · ') || 'no skills';
   }
 
   function renderCombat() {
-    var host = document.getElementById('cb-body');
-    if (!host) return;
-    var list = charList();
-    if (!list.length) { host.innerHTML = '<p class="empty">No saved characters loaded.</p>'; return; }
-    if (!cbt.atk.cls) {
-      cbt.atk.cls = list[0].cls; cbt.atk.pid = Object.keys(list[0].profiles).sort()[0];
+    var host = document.getElementById('cb-body'); if (!host) return;
+    if (!charList().length) { host.innerHTML = '<p class="empty">No saved characters loaded.</p>'; return; }
+    if (!sim.actors.length) {          // a sensible opening board
+      addActor('A', 'Recon'); addActor('B', 'Assault');
     }
-    if (!cbt.def.cls) {
-      var d0 = list[1] || list[0];
-      cbt.def.cls = d0.cls; cbt.def.pid = Object.keys(d0.profiles).sort()[0];
+    sim.actors.forEach(function (a) { a.lastNotes = null; });   // recomputed every pass
+    var thrown = allOutgoing();
+    function inbound(id) {
+      return thrown.filter(function (f) { return String(f.to) === String(id); });
+    }
+    var states = {};
+    sim.actors.forEach(function (a) { states[a.id] = actorState(a, inbound(a.id)); });
+
+    if (!actorById(sim.focus.from)) {
+      var f = sim.actors.filter(function (a) { return a.team === 'A'; })[0];
+      sim.focus.from = f ? f.id : null;
+    }
+    if (!actorById(sim.focus.to) || teamOf(sim.focus.to) === teamOf(sim.focus.from)) {
+      var t = sim.actors.filter(function (a) { return a.team !== teamOf(sim.focus.from); })[0];
+      sim.focus.to = t ? t.id : null;
     }
 
-    // route every projected effect to whoever it was aimed at
-    var thrown = cbtOutgoing('atk').concat(cbtOutgoing('def'));
-    function inbox(side) {
-      return thrown.filter(function (f) {
-        return f.at === 'me' ? f.from === side : f.from !== side;
-      });
+    var IMG = window.__DEVIMG__ || {};
+    function actorCard(a) {
+      var st = states[a.id]; if (!st) return '';
+      var c = charOf(a.cls);
+      var profs = c ? Object.keys(c.profiles).sort() : [];
+      var protBits = [155, 156, 157, 324, 217, 218, 219].filter(function (p) { return st.prot[p]; })
+        .map(function (p) {
+          var short = (GA.statName(p) || '').replace('Protection - ', '');
+          return '<span class="acp">' + esc(short) + ' <b>' + Math.floor(st.prot[p]) + '</b></span>';
+        }).join('');
+      var gear = (st.ctx.charGear || []).map(function (g, i) {
+        var on = !!a.active[i];
+        var dev = (window.__DEVMODEL__ || {})[String(g.id)];
+        var tgt = dev ? GA.deviceTarget(dev, a.active[i]) : 'enemy';
+        var aimed = a.aim[i] && actorById(a.aim[i]);
+        var ic = IMG[String(g.id)] ? '<img src="' + IMG[String(g.id)] + '" alt="">' : '';
+        var sc = deviceScope(a, g, dev, a.active[i]);
+        var sel = '';
+        if (on && sc.kind === 'all') {
+          sel = '<span class="acall">&rarr; ' + esc(sc.label) + '</span>';
+        } else if (on && sc.kind === 'single' && sc.picks.length) {
+          sel = '<span class="actgt"><i>target</i>'
+            + '<select class="acsel" data-a="' + a.id + '" data-i="' + i + '">'
+            + sc.picks.map(function (t) {
+                var me = String(t.id) === String(a.id);
+                return '<option value="' + t.id + '"'
+                  + (String(a.aim[i]) === String(t.id) ? ' selected' : '') + '>'
+                  + esc(t.cls) + ' #' + t.id + (me ? ' (self)' : '') + '</option>';
+              }).join('') + '</select></span>';
+        }
+        return '<span class="acgcell"><span class="acg' + (on ? ' on' : '') + ' t-' + tgt + '"'
+          + ' data-a="' + a.id + '" data-i="' + i + '" data-tgt="' + tgt + '"'
+          + ' title="' + esc(g.name) + ' — ' + esc(g.cat || '') + ', targets ' + esc(tgt) + '">'
+          + ic + esc(g.name) + '</span>' + sel + '</span>';
+      }).join('');
+      var inb = st.inbound.map(function (f) {
+        var from = actorById(f.from);
+        return '<span class="acfx ' + f.kind + '">' + esc(f.name) + ' '
+          + (f.v > 0 ? '+' : '') + fmt1(f.v) + (f.pct ? '%' : '')
+          + '<i>' + esc(from ? from.cls + ' #' + from.id : '?') + '</i></span>';
+      }).join('');
+      var isFrom = String(sim.focus.from) === String(a.id);
+      var isTo = String(sim.focus.to) === String(a.id);
+      return '<div class="actor' + (isFrom ? ' isfrom' : '') + (isTo ? ' isto' : '') + '"'
+        + ' data-drop="' + a.id + '">'
+        + '<div class="achead"><span class="acdot ' + esc(a.cls.toLowerCase()) + '"></span>'
+        + '<select class="accls" data-a="' + a.id + '">'
+        + ['Assault', 'Medic', 'Recon', 'Robotics'].map(function (x) {
+            return '<option' + (x === a.cls ? ' selected' : '') + '>' + x + '</option>';
+          }).join('') + '</select>'
+        + '<select class="acprof" data-a="' + a.id + '">'
+        + profs.map(function (x) {
+            return '<option value="' + x + '"' + (String(x) === String(a.pid) ? ' selected' : '')
+              + '>p' + x + '</option>';
+          }).join('') + '</select>'
+        + '<span class="acid">#' + a.id + '</span>'
+        + '<button class="acx" data-a="' + a.id + '" title="remove">&times;</button></div>'
+        + '<div class="acstats"><span class="achp">' + st.maxHP + ' HP</span>' + protBits + '</div>'
+        + '<div class="acskills">' + st.skills + ' pts &mdash; ' + trees2str(st.trees) + '</div>'
+        + '<div class="acgear">' + gear + '</div>'
+        + (inb ? '<div class="acinb"><span class="aclab">incoming</span>' + inb + '</div>' : '')
+        + ((st.notes || []).length ? '<div class="acnote">'
+            + st.notes.map(function (n) {
+                // why a device refused to stay on: two effects in the same real category
+                return esc((n.lost || []).join(', ')) + ' switched off &mdash; '
+                  + esc(n.win) + ' wins ' + esc(GA.CAT_NAMES && GA.CAT_NAMES[n.cat] || ('category ' + n.cat))
+                  + ' (' + esc(n.rule) + ')';
+              }).join(' · ')
+            + '</div>' : '')
+        + '<div class="acfocus">'
+        + '<button class="acf' + (isFrom ? ' on' : '') + '" data-f="from" data-a="' + a.id + '">attacking</button>'
+        + '<button class="acf' + (isTo ? ' on' : '') + '" data-f="to" data-a="' + a.id + '">target</button>'
+        + '</div></div>';
     }
-    var toAtk = inbox('atk'), toDef = inbox('def');
-    // which slots actually project something - that is where a recipient choice is meaningful
-    var throwBy = { atk: {}, def: {} };
-    thrown.forEach(function (f) { throwBy[f.from][f.slot] = 1; });
 
-    var D = cbtSide('def', toDef), A = cbtSide('atk', toAtk);
-    if (!D || !A) { host.innerHTML = '<p class="empty">Could not load one of the builds.</p>'; return; }
+    function teamCol(team, label) {
+      var mine = sim.actors.filter(function (a) { return a.team === team; });
+      return '<div class="team t' + team + '"><div class="teamhead"><h4>' + label + '</h4>'
+        + '<button class="teamadd" data-team="' + team + '">+ add</button></div>'
+        + (mine.map(actorCard).join('') || '<p class="empty">empty side</p>') + '</div>';
+    }
 
-    var shots = cbtWeapons('atk', toAtk).map(function (w) {
-      return { w: w, m: GA.mitigate(w.raw,
-        { cat: w.cat, damageType: w.hit.dmg, attackType: w.hit.atk, rating: w.hit.rating },
-        D.prot, {}) };
-    }).sort(function (a, b) { return b.m.dealt - a.m.dealt; });
+    // ---- the solve: focus attacker shooting focus target ----
+    var solve = '<p class="empty">Pick an attacker and a target.</p>';
+    var A = actorById(sim.focus.from), T = actorById(sim.focus.to);
+    if (A && T && states[A.id] && states[T.id]) {
+      var sa = states[A.id], stt = states[T.id];
+      var heal = healingOn(T.id, thrown);
+      var shots = actorShots(sa).map(function (w) {
+        // A buff-stripper's damage is its base hit plus its per-category payout for every buff
+        // category actually on the target. Against a heavily-buffed target this dwarfs the base.
+        var extra = 0, stripped = [];
+        (w.strip || []).forEach(function (sg) {
+          var hit = (sg.cats || []).filter(function (cc) { return stt.cats[cc]; });
+          if (hit.length) { extra += sg.dmg; stripped = stripped.concat(hit); }
+        });
+        var m = GA.mitigate(w.raw + extra, { cat: w.cat, damageType: w.hit.dmg,
+                                             attackType: w.hit.atk, rating: w.hit.rating },
+                            stt.prot, {});
+        var dps = (w.refire && w.refire > 0) ? m.dealt / w.refire : null;
+        return { w: w, m: m, dps: dps, extra: extra, stripped: stripped };
+      }).sort(function (x, y) { return (y.dps || 0) - (x.dps || 0); });
 
-    var protRows = [155, 156, 157, 324, 217, 218, 219].filter(function (x) { return D.prot[x]; })
-      .map(function (x) {
-        return '<span class="cbtprot"><i>' + esc(GA.statName(x) || x) + '</i>'
-          + Math.floor(D.prot[x]) + '</span>';
-      }).join('') || '<span class="cbtprot none">no protection</span>';
+      var best = shots.filter(function (s) { return s.dps; })[0] || shots[0];
+      var rows = shots.map(function (r) {
+        var w = r.w, m = r.m;
+        var ic = IMG[String(w.id)];
+        return '<tr' + (r === best ? ' class="bestrow"' : '') + '>'
+          + '<td>' + (ic ? '<img src="' + ic + '" alt="">' : '') + esc(w.name)
+          + ' <i>' + esc(w.mode) + '</i>'
+          + (r.extra ? '<span class="strip">+' + Math.round(r.extra) + ' stripping '
+              + r.stripped.length + ' buff' + (r.stripped.length === 1 ? '' : 's') + '</span>' : '')
+          + '</td>'
+          + '<td class="num">' + Math.round(w.raw + (r.extra || 0)) + '</td>'
+          + '<td class="num"><b>' + m.shown + '</b></td>'
+          + '<td class="num">' + m.mitPct.toFixed(1) + '%</td>'
+          + '<td class="num">' + (w.refire ? (Math.round(w.refire * 100) / 100) + 's' : '&mdash;') + '</td>'
+          + '<td class="num">' + (r.dps ? fmt1(r.dps) : '&mdash;') + '</td>'
+          + '<td class="axes">' + m.axes.map(function (x) {
+              return esc((GA.statName(x.prop) || '').replace('Protection - ', ''))
+                + ' ' + x.protection + ' &rarr; &minus;' + (x.reduction * 100).toFixed(0) + '%';
+            }).join(' &times; ') + '</td></tr>';
+      }).join('');
 
-    var rows = shots.map(function (r) {
-      var w = r.w, m = r.m;
-      var axes = m.axes.length
-        ? m.axes.map(function (a) { return '<li>' + axisLabel(a) + '</li>'; }).join('')
-        : '<li>nothing on this build reduces it</li>';
-      var ic = (window.__DEVIMG__ || {})[String(w.id)];
-      return '<div class="cbtshot"><div class="cbthead">'
-        + (ic ? '<img src="' + ic + '" alt="">' : '')
-        + '<b>' + esc(w.name) + '</b><span class="cbtmode">' + esc(w.mode) + '</span>'
-        + '<span class="cbtwhat">' + esc(w.label) + (w.dot ? ' <i>per tick</i>' : '') + '</span>'
-        + '<span class="cbtnum"><i>' + Math.round(w.raw) + '</i>&rarr;<b>' + m.shown + '</b></span>'
-        + '<span class="cbtmit">' + m.mitPct.toFixed(1) + '% mitigated</span></div>'
-        + '<ul class="cbtaxes">' + axes + '</ul></div>';
-    }).join('') || '<p class="empty">This build has no damaging weapon.</p>';
+      // power sustain: the pool divided by what firing costs per second
+      var pool = sa.pool;
+      var drain = (best && best.w.power && best.w.refire) ? best.w.power / best.w.refire : 0;
+      var sustain = drain > 0 ? pool / drain : null;
 
-    var best = shots.length ? shots[0].m.shown : 0;
-    var ttk = best > 0 ? Math.ceil(D.maxHP / best) : 0;
+      var dps = best && best.dps ? best.dps : 0;
+      var net = dps - heal.hps;
+      var ttk = net > 0 ? stt.maxHP / net : null;
+
+      solve = '<div class="solvehead">'
+        + '<b>' + esc(A.cls) + ' #' + A.id + '</b> &rarr; <b>' + esc(T.cls) + ' #' + T.id + '</b>'
+        + '<span class="solvenote">best sustained weapon, target at full health</span></div>'
+        + '<div class="solvekpi">'
+        + '<div class="kpi"><i>damage / s</i><b>' + fmt1(dps) + '</b></div>'
+        + '<div class="kpi' + (heal.hps ? ' heal' : '') + '"><i>healing / s</i><b>'
+          + fmt1(heal.hps) + '</b></div>'
+        + '<div class="kpi"><i>net / s</i><b>' + fmt1(net) + '</b></div>'
+        + '<div class="kpi big"><i>time to kill</i><b>'
+          + (ttk === null ? 'never' : fmt1(ttk) + 's') + '</b></div>'
+        + '<div class="kpi"><i>power lasts</i><b>'
+          + (sustain === null ? '&mdash;' : fmt1(sustain) + 's') + '</b></div>'
+        + '<div class="kpi"><i>target</i><b>' + stt.maxHP + ' HP</b></div>'
+        + '</div>'
+        + (heal.srcs.length ? '<div class="healsrc">healed by '
+            + heal.srcs.map(function (h) {
+                return '<span>' + esc(h.who) + ' ' + esc(h.dev) + ' ' + fmt1(h.hps) + '/s'
+                  + (h.hot ? ' <i>hot</i>' : '') + '</span>';
+              }).join('') + '</div>' : '')
+        + (ttk === null && heal.hps > 0
+            ? '<p class="solvewarn">Healing meets or beats the incoming damage &mdash; this target '
+              + 'does not go down to this weapon alone.</p>' : '')
+        + '<table class="shottab"><thead><tr><th>weapon</th><th>raw</th><th>dealt</th>'
+        + '<th>mit</th><th>refire</th><th>dps</th><th>axes</th></tr></thead><tbody>'
+        + (rows || '<tr><td colspan="7">no damaging weapon</td></tr>') + '</tbody></table>';
+    }
 
     host.innerHTML =
-      '<div class="cbtbar">' + cbtPicker('atk', 'Attacker')
-        + '<button class="cbtswap" id="cb-swap" title="swap sides">&#8646;</button>'
-        + cbtPicker('def', 'Defender') + '</div>'
-      + '<div class="cbtdef"><b>' + esc(cbt.def.cls) + '</b> takes the hit &mdash; '
-        + '<span class="cbthp">' + D.maxHP + ' HP</span>' + protRows
-        + (ttk ? '<span class="cbtttk">' + ttk + ' hits from the best shot</span>' : '') + '</div>'
-      + '<div class="cbtsides">'
-        + '<div class="cbtside"><h4>Attacker gear</h4>' + cbtGearRow('atk', throwBy.atk) + '</div>'
-        + '<div class="cbtside"><h4>Defender gear</h4>' + cbtGearRow('def', throwBy.def) + '</div>'
-      + '</div>'
-      + (thrown.length ? '<div class="cbtthrown"><h4>In flight</h4>'
-          + thrown.map(function (f) {
-              var who = (f.at === 'me' ? f.from : (f.from === 'atk' ? 'def' : 'atk'));
-              return '<span class="cbtfx ' + f.kind + '">' + esc(f.src) + ' '
-                + esc(f.name) + ' ' + (f.v > 0 ? '+' : '') + Math.round(f.v * 10) / 10
-                + (f.pct ? '%' : '') + '<i>on ' + (who === 'atk' ? 'attacker' : 'defender') + '</i></span>';
-            }).join('') + '</div>' : '')
-      + '<div class="cbtshots">' + rows + '</div>'
-      + '<p class="cbtnote">Protection is a flat value divided by the weapon&rsquo;s attack rating, and '
-      + 'the axes <b>multiply</b> &mdash; 30 physical with 40 ranged is 58% off, not 70%. Exactly one '
-      + 'attack-type axis applies per shot: a splash radius puts a shot on AOE <em>instead of</em> '
-      + 'ranged. Damage-over-time is shown per tick and takes no attack-type axis. Gear buffs its own '
-      + 'carrier; effects thrown at the other side are not modelled yet.</p>';
+      '<div class="simboard">' + teamCol('A', 'Team A') + teamCol('B', 'Team B') + '</div>'
+      + '<div class="solve">' + solve + '</div>'
+      + '<p class="cbtnote">Drag a switched-on device onto a combatant to aim it there &mdash; a '
+      + 'weapon only drops on the other team, a heal or buff only on its own. Protection is flat, '
+      + 'divided by the weapon&rsquo;s attack rating, and the axes <b>multiply</b>. One attack-type '
+      + 'axis applies per shot: a splash radius puts it on AOE <em>instead of</em> ranged. '
+      + '<b>Not yet modelled:</b> buffs expiring mid-fight, cooldowns, and reloads &mdash; DPS here '
+      + 'is sustained fire with everything up.</p>';
 
-    host.querySelectorAll('.cbtcls').forEach(function (sel) {
-      sel.addEventListener('change', function () {
-        var side = sel.dataset.side;
-        cbt[side].cls = sel.value; cbt[side].active = {};
-        var c = cbtChar(sel.value);
-        cbt[side].pid = c ? Object.keys(c.profiles).sort()[0] : null;
+    wireCombat(host);
+  }
+
+  function wireCombat(host) {
+    host.querySelectorAll('.accls').forEach(function (s) {
+      s.addEventListener('change', function () {
+        var a = actorById(s.dataset.a); if (!a) return;
+        a.cls = s.value; a.active = {}; a.aim = {};
+        var c = charOf(a.cls);
+        a.pid = c ? Object.keys(c.profiles).sort()[0] : null;
         renderCombat();
       });
     });
-    host.querySelectorAll('.cbtprof').forEach(function (sel) {
-      sel.addEventListener('change', function () {
-        cbt[sel.dataset.side].pid = sel.value;
-        cbt[sel.dataset.side].active = {};
+    host.querySelectorAll('.acprof').forEach(function (s) {
+      s.addEventListener('change', function () {
+        var a = actorById(s.dataset.a); if (!a) return;
+        a.pid = s.value; a.active = {}; a.aim = {};
         renderCombat();
       });
     });
-    host.querySelectorAll('.cbtdev').forEach(function (b) {
+    host.querySelectorAll('.acx').forEach(function (b) {
       b.addEventListener('click', function () {
-        var side = b.dataset.side, i = b.dataset.i;
-        if (cbt[side].active[i]) delete cbt[side].active[i];
-        else cbt[side].active[i] = 'PRI';
+        sim.actors = sim.actors.filter(function (x) { return String(x.id) !== String(b.dataset.a); });
+        // anything aimed at the departed loses its aim
+        sim.actors.forEach(function (x) {
+          Object.keys(x.aim).forEach(function (k) {
+            if (String(x.aim[k]) === String(b.dataset.a)) delete x.aim[k];
+          });
+        });
         renderCombat();
       });
     });
-    host.querySelectorAll('.cbtat').forEach(function (b) {
+    host.querySelectorAll('.teamadd').forEach(function (b) {
       b.addEventListener('click', function () {
-        var side = b.dataset.side, i = b.dataset.i;
-        cbt[side].tgt = cbt[side].tgt || {};
-        cbt[side].tgt[i] = (cbt[side].tgt[i] === 'me') ? 'them' : 'me';
+        addActor(b.dataset.team, b.dataset.team === 'A' ? 'Recon' : 'Assault');
         renderCombat();
       });
     });
-    var sw = document.getElementById('cb-swap');
-    if (sw) sw.addEventListener('click', function () {
-      var t = cbt.atk; cbt.atk = cbt.def; cbt.def = t; renderCombat();
+    host.querySelectorAll('.acf').forEach(function (b) {
+      b.addEventListener('click', function () {
+        sim.focus[b.dataset.f] = +b.dataset.a;
+        renderCombat();
+      });
+    });
+    // click a device to switch it on/off; default aim is the obvious one
+    host.querySelectorAll('.acg').forEach(function (g) {
+      g.addEventListener('click', function () {
+        var a = actorById(g.dataset.a); if (!a) return;
+        var i = g.dataset.i;
+        if (a.active[i]) { delete a.active[i]; delete a.aim[i]; }
+        else {
+          var ctx = actorCtx(a);
+          a.active[i] = 'PRI';
+          stowOtherWeapons(a, ctx, i);
+          var dev0 = (window.__DEVMODEL__ || {})[String((ctx.charGear || [])[+i].id)];
+          var sc0 = deviceScope(a, (ctx.charGear || [])[+i], dev0, 'PRI');
+          if (sc0.kind === 'single' && sc0.picks.length) a.aim[i] = sc0.picks[0].id;
+        }
+        renderCombat();
+      });
+    });
+    host.querySelectorAll('.acsel').forEach(function (s2) {
+      s2.addEventListener('change', function () {
+        var a = actorById(s2.dataset.a); if (!a) return;
+        a.aim[s2.dataset.i] = +s2.value;
+        renderCombat();
+      });
     });
   }
 
@@ -1099,32 +1353,11 @@
     // ---- derived headline totals -------------------------------------------
     // Layers multiply (TgPawn::ApplyBuff: v1 = base*(1+itemPct), v2 = v1*(1+skillPct)).
     // Skills are one layer today; armour/devices will slot in as their own layer later.
-    function baseOf(p) {
-      var s = stats[p + '|0|0'];
-      if (!s) return 0;
-      var v = 0;
-      s.srcs.forEach(function (x) { if (x.layer === 'base') v += x.val; });
-      return v;
-    }
-    // percent contributions split by layer, because layers multiply
-    function pctFor(list, layer) {
-      var sum = 0;
-      keys.forEach(function (k) {
-        var st = stats[k];
-        if (!st.pct || list.indexOf(st.p) < 0) return;
-        st.srcs.forEach(function (x) {
-          var l = x.layer || 'skill';
-          if (l === layer) sum += x.val;
-        });
-      });
-      return sum;
-    }
-    var baseHP = baseOf(51), basePW = baseOf(243);
-    var hpItem = pctFor([412, 390, 304], 'item'), hpSkill = pctFor([412, 390, 304], 'skill');
-    var pwItem = pctFor([255, 243], 'item'), pwSkill = pctFor([255, 243], 'skill');
-    // game truncates rather than rounds: 1300 x1.70 x1.25 = 2762.5 shows in-game as 2762
-    var totHP = Math.floor(baseHP * (1 + hpItem / 100) * (1 + hpSkill / 100));
-    var totPW = Math.floor(basePW * (1 + pwItem / 100) * (1 + pwSkill / 100));
+    var dv = deriveTotals(stats);
+    var baseOf = dv.baseOf, pctFor = dv.pctFor;
+    var baseHP = dv.baseHP, basePW = dv.basePW;
+    var hpItem = dv.hpItem, hpSkill = dv.hpSkill, pwItem = dv.pwItem, pwSkill = dv.pwSkill;
+    var totHP = dv.totHP, totPW = dv.totPW;
     // Anything active that raises the CEILING counts toward sustain (Fashion Boost's Max Power
     // +40). A flat Power restore (prop 243, Power Stim's +140) does not - it refills the pool,
     // it does not enlarge it.

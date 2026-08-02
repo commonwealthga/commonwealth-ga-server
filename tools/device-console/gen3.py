@@ -182,7 +182,7 @@ HTML = (
 '</div>'                                  # /#view-loadout
 '<div id="view-tree" style="display:none">@@BUILDER@@</div>'
 '<div id="view-craft" style="display:none">@@CRAFT@@</div>'
-'<div id="view-combat" style="display:none">@@COMBAT@@</div>'
+'<div id="view-combat" class="widewrap" style="display:none">@@COMBAT@@</div>'
 '<footer>Source: ga_players_inventory (user 2381) + asm effects (calc-applied) + decompiled UC. Jetpacks: only Crescent used. '
 '<b>Device mod letters:</b> P power · D damage · H heal · R range · C cooldown · X AOE radius · T duration · S shield · VN deployable/pet HP · M morale. '
 '<b>Armor:</b> N health · R ranged prot · M melee prot · B AOE prot. Each mod group shows the <em>game-displayed total</em> (hover for the per-mod maths). '

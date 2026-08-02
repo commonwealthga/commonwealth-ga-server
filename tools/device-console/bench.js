@@ -409,6 +409,19 @@ window.GA = window.GA || {};
    * Damage itself (51/211) is deliberately excluded - that is the shot, resolved separately
    * through the mitigation stage. What comes out here is the debuffs and buffs that ride
    * alongside it: a rifle's -10 protection, a wave's heal, a stim's damage boost. */
+  // Who a device may be pointed at, straight off the device mode. 'self' devices project
+  // nothing at anyone else; 'friend' devices can buff a team-mate; 'enemy' devices debuff the
+  // other side. See the TGT_MAP note in gen2.py for why the effect-group type is not enough.
+  GA.deviceTarget = function (dev, mode) {
+    var ms = (dev && dev.modes) || [];
+    for (var i = 0; i < ms.length; i++) {
+      if (!mode || !ms[i].kind || ms[i].kind === mode) {
+        if (ms[i].hit && ms[i].hit.tgt) return ms[i].hit.tgt;
+      }
+    }
+    return (ms[0] && ms[0].hit && ms[0].hit.tgt) || 'enemy';
+  };
+
   GA.projectedEffects = function (spec) {
     var res = GA.resolve({ dev: spec.dev, meta: spec.meta, ix: spec.ix, alloc: spec.alloc,
                            situational: true, variant: spec.variant, buffs: spec.buffs });
@@ -419,6 +432,8 @@ window.GA = window.GA || {};
               }), live: res.live, extra: res.extra };
     }
     var src = spec.name || spec.dev.name, out = [];
+    var tgt = GA.deviceTarget(spec.dev, want);
+    if (tgt === 'self') return out;                       // nothing leaves the carrier
     res.modes.forEach(function (m) {
       m.chips.forEach(function (c) {
         if (c.base === null || c.prop === 386) return;
@@ -430,7 +445,7 @@ window.GA = window.GA || {};
         if (!nm) return;
         out.push({ p: c.prop, name: nm, v: c.neg ? -c.value : c.value, pct: c.isPct,
                    src: src, kind: c.neg ? 'debuff' : 'buff', life: c.lifeVal || c.life,
-                   cat: c.cat });
+                   cat: c.cat, tgt: tgt });
       });
     });
     res.extra.forEach(function (x) {
@@ -439,7 +454,8 @@ window.GA = window.GA || {};
       if (!nm) return;
       var pos = (x.calc === 67 || x.calc === 68);
       out.push({ p: x.prop, name: nm, v: pos ? x.v : -x.v, pct: (x.calc === 68 || x.calc === 69),
-                 src: x.skill, via: src, kind: pos ? 'buff' : 'debuff', life: 0, cat: 0 });
+                 src: x.skill, via: src, kind: pos ? 'buff' : 'debuff', life: 0, cat: 0,
+                 tgt: tgt });
     });
     return out;
   };
@@ -463,6 +479,10 @@ window.GA = window.GA || {};
     res.extra.forEach(function (x) {
       // declared in the resolver IIFE above, reached here through the namespace
       if ((GA.LANDS_ON_OTHER || {})[x.egt]) return;   // this one hits the enemy, not its carrier
+      // An always-on skill passive (Super Agent's +4 protection, egt 261 EQUIP) is already in the
+      // skill-tree total. Adding it again here because a device happens to be switched on counted
+      // it twice - every Medic device appeared to grant +4 Physical.
+      if (x.kind === 'passive') return;
       var nm = GA.statName(x.prop);
       if (!nm) return;
       var pos = (x.calc === 67 || x.calc === 68);
@@ -501,10 +521,19 @@ window.GA = window.GA || {};
    * Stackable means only one source in that category survives - this is why AOE Shield and
    * Range Shield (both category 770, Newest Wins) cannot both be up.
    */
+  // Category 302 is named "<Local>" in the data - it is the generic marker a device puts on its
+  // own direct heal/damage component, not a mutual-exclusion group. Nearly every device carries
+  // one, so treating it as a real bucket made unrelated devices fight: Healing Boost's 302 group
+  // is "Strongest Wins", which was evicting Protection Wave and Power Wave outright even though
+  // their real effects live in different categories (771 Proximity Shield, 1283 Power Pool Buff).
+  // human names for effect categories, so a stacking note can say WHICH bucket clashed
+  GA.CAT_NAMES = {"1016": "Bleed", "1025": "Deploy Time Modifier", "1095": "Rest", "1283": "Power Pool Buff", "1324": "Station Healing", "1325": "Station Power", "1326": "Station Damage", "1327": "Station Protection", "1341": "Self Heal", "1360": "Movement Penalty", "1452": "Shield Movement Penalty", "1573": "Consumable Buff", "1589": "Regen Damage Penalty", "1601": "Threat Modifier", "302": "<Local>", "303": "Poison", "304": "Slow", "305": "Disease", "378": "Stun", "431": "Sleep", "607": "Ability", "621": "Stealth", "653": "EMP Critical Failure", "719": "Ignite", "768": "EMP Short Circuit", "769": "General Debuff", "770": "Personal Shield", "771": "Proximity Shield", "772": "Regeneration", "773": "Stim Boost", "774": "Stim Resistance", "775": "General Buff", "845": "Sensor", "862": "Invulnerable", "875": "Knockback", "877": "Remove Effect", "879": "Power Pool Debuff", "886": "Morale Buff", "921": "EMP Burn", "935": "Proximity Damage Buff ", "936": "Personal Damage Buff", "985": "Damage Reflect", "986": "Additional Damage"};
+  var NOT_A_BUCKET = { 302: 1 };
   GA.applyStacking = function (items, order) {
     var byCat = {};
     items.forEach(function (it) {
       if (!it.cat || it.app === 155 || !it.app) return;   // stackable or uncategorised
+      if (NOT_A_BUCKET[it.cat]) return;                   // generic marker, never contends
       (byCat[it.cat] = byCat[it.cat] || []).push(it);
     });
     var suppressed = [], notes = [];

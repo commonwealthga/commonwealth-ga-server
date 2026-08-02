@@ -193,6 +193,13 @@ ATK_MAP = {85: 2,     # Instant Ranged Attack
            372: 1}    # Fast Melee Attack
 DMG_OK = {113, 115, 116, 897}     # 112 = "N/A" -> no damage-type axis
 
+# WHO a device may be used on (valid_value group 49). This - not the effect-group type - is what
+# decides whether an effect lands on an enemy or on a friend. Sensor Boost and the Ballista both
+# carry type-264 HIT groups, but Sensor Boost is "Friend and Self" and buffs your team while the
+# Ballista is "Enemy". Reading only the group type projected Sensor Boost's damage buff onto the
+# person being shot, which was plainly wrong.
+TGT_MAP = {212: 'enemy', 213: 'friend', 214: 'self', 703: 'all', 846: 'enemyself', 884: 'friend'}
+
 def hit_of(did, m):
     m = dict(m)            # q() hands back sqlite3.Row, which has no .get
     atk = m.get('atk')
@@ -206,7 +213,31 @@ def hit_of(did, m):
             'dmg': m.get('dmg') if m.get('dmg') in DMG_OK else None,
             'rating': m.get('rating') or 100,
             'aoe': aoe,
+            'rad': (rad[0]['bv'] if rad else 0),   # splash radius: >0 means it hits everyone in it
+            'tgt': TGT_MAP.get(m.get('tgt'), 'enemy'),
             'atkraw': atk}
+
+# ---- buff-stripping (Neutralize Wave and friends) ---------------------------------
+# prop 140 "Remove Effect" carries the CATEGORY it strips in property_value_id, and the same
+# effect group carries the damage that stripping it deals. Neutralize Wave is 13 such groups,
+# one per category, each worth 110 - so its damage is a base hit plus 110 for every buff
+# category actually present on the target. That is the whole mechanic, straight from the data.
+def strip_groups(did):
+    out = []
+    for r in q("""SELECT DISTINCT eg.effect_group_id g FROM asm_data_set_device_mode_effect_groups dme
+                  JOIN asm_data_set_effect_groups eg ON eg.effect_group_id=dme.effect_group_id
+                  WHERE dme.device_id=? AND EXISTS(
+                      SELECT 1 FROM asm_data_set_effects e
+                      WHERE e.effect_group_id=eg.effect_group_id AND e.prop_id=140)""", (did,)):
+        cats, dmg = [], 0.0
+        for e in q("SELECT prop_id, base_value bv, property_value_id pv FROM asm_data_set_effects WHERE effect_group_id=?", (r['g'],)):
+            if e['prop_id'] == 140 and e['pv']:
+                cats.append(int(e['pv']))
+            elif e['prop_id'] in (51, 211):
+                dmg = abs(float(e['bv']))
+        if cats:
+            out.append({'cats': cats, 'dmg': dmg})
+    return out
 
 def dev_stats(did, mid=None):
     """Key numbers that live on the device row rather than in an effect group. Scoped to one
@@ -281,7 +312,7 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
     rc = rcq[0]['rc'] if rcq else 0
     can_block = is_melee and rc == 894          # 894 = RMB blocks; 830 = RMB is an alt-fire
     for m in q("SELECT device_mode_id mid, name_msg_id, attack_type_value_id atk, "
-               "damage_type_value_id dmg, attack_rating rating "
+               "damage_type_value_id dmg, attack_rating rating, target_type_value_id tgt "
                "FROM asm_data_set_devices_data_set_device_modes WHERE device_id=?", (did,)):
         pcr = q("SELECT base_value bv FROM asm_data_set_device_mode_properties WHERE device_id=? AND device_mode_id=? AND prop_id=242", (did, m['mid']))
         power = round(pcr[0]['bv'], 2) if pcr else None
@@ -433,8 +464,10 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
     #   830 = a second fire mode instead (Brawler's Heavy Smash, Assassin Blade Heavy Slash)
     # For ranged/specialty with an aim group (type 266), RMB = aim/zoom.
     if not out: return []
+    strips = strip_groups(did)
     rows = [{'kind': 'PRI', 'name': out[0]['name'], 'power': out[0]['power'],
              'hit': out[0]['hit'],
+             'strip': strips,
              'chips': equip_stats(did) + out[0]['chips'] + dev_stats(did, out[0]['mid'])
                       + deployable_stats(did)}]
     if can_block:

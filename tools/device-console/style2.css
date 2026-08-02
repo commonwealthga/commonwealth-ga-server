@@ -558,3 +558,92 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
 .cbtfx.debuff{border-color:color-mix(in srgb,var(--debuff) 45%,var(--line))}
 .cbtfx.buff{border-color:color-mix(in srgb,var(--heal) 45%,var(--line))}
 .cbtshot .cbthead img{width:16px;height:16px;border-radius:3px;vertical-align:-3px;margin-right:2px}
+
+/* the combat sandbox wants the whole viewport, not the 1500px reading column */
+.widewrap{width:100vw;margin-left:calc(50% - 50vw);padding:0 20px}
+.simboard{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:12px 0 16px}
+.team{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg2)}
+.teamhead{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.teamhead h4{margin:0;font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.6}
+.teamadd{margin-left:auto;background:var(--panel);border:1px solid var(--line);color:inherit;
+  border-radius:6px;padding:3px 9px;font:inherit;font-size:11px;cursor:pointer}
+.teamadd:hover{border-color:var(--acc)}
+.team .empty{opacity:.35;font-size:12px;margin:6px 2px}
+.actor{border:1px solid var(--line);border-radius:9px;padding:9px 10px;margin-bottom:9px;
+  background:var(--panel);transition:border-color .12s,box-shadow .12s}
+.actor.dropok{border-color:var(--acc);box-shadow:0 0 0 2px color-mix(in srgb,var(--acc) 30%,transparent)}
+.actor.isfrom{border-left:3px solid var(--dmg)}
+.actor.isto{border-right:3px solid var(--debuff)}
+.achead{display:flex;align-items:center;gap:6px;margin-bottom:7px}
+.achead select{background:var(--bg);color:inherit;border:1px solid var(--line);border-radius:5px;
+  padding:2px 5px;font:inherit;font-size:11px}
+.acdot{width:8px;height:8px;border-radius:50%;background:var(--mut);flex:none}
+.acdot.assault{background:var(--assault)}.acdot.medic{background:var(--medic)}
+.acdot.recon{background:var(--recon)}.acdot.robotics{background:var(--robotics)}
+.acid{font-size:10px;opacity:.45}
+.acx{margin-left:auto;background:none;border:none;color:inherit;opacity:.4;cursor:pointer;
+  font-size:15px;line-height:1;padding:0 3px}
+.acx:hover{opacity:1;color:var(--debuff)}
+.acstats{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;margin-bottom:5px}
+.achp{font-weight:700;font-size:13px}
+.acp{font-size:10px;opacity:.65;border:1px solid var(--line);border-radius:20px;padding:1px 7px}
+.acskills{font-size:10px;opacity:.5;margin-bottom:7px}
+.acgear{display:flex;flex-wrap:wrap;gap:4px}
+.acg{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:20px;
+  padding:2px 8px;font-size:10px;cursor:pointer;opacity:.5;background:var(--bg);user-select:none}
+.acg img{width:13px;height:13px;border-radius:2px}
+.acg:hover{opacity:.85}
+.acg.on{opacity:1;border-color:var(--acc)}
+.acg.on[draggable=true]{cursor:grab}
+.acg.on.t-enemy{border-color:color-mix(in srgb,var(--debuff) 55%,var(--line))}
+.acg.on.t-friend{border-color:color-mix(in srgb,var(--heal) 55%,var(--line))}
+.acaim{font-style:normal;opacity:.55;font-size:9px}
+.acinb{margin-top:7px;display:flex;flex-wrap:wrap;gap:4px;align-items:baseline}
+.aclab{font-size:9px;letter-spacing:.08em;text-transform:uppercase;opacity:.4}
+.acfx{font-size:10px;border:1px solid var(--line);border-radius:20px;padding:1px 7px;
+  display:inline-flex;gap:5px;align-items:baseline}
+.acfx i{font-style:normal;opacity:.45;font-size:9px}
+.acfx.debuff{border-color:color-mix(in srgb,var(--debuff) 45%,var(--line))}
+.acfx.buff{border-color:color-mix(in srgb,var(--heal) 45%,var(--line))}
+.acfocus{display:flex;gap:5px;margin-top:8px}
+.acf{flex:1;background:var(--bg);border:1px solid var(--line);color:inherit;border-radius:5px;
+  padding:2px 0;font:inherit;font-size:9px;letter-spacing:.05em;text-transform:uppercase;
+  cursor:pointer;opacity:.45}
+.acf:hover{opacity:.8}
+.acf.on{opacity:1;border-color:var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent)}
+
+.solve{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--bg2)}
+.solvehead{display:flex;align-items:baseline;gap:10px;font-size:13px;margin-bottom:11px}
+.solvenote{font-size:10px;opacity:.45}
+.solvekpi{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:11px}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:7px 13px;background:var(--panel);min-width:104px}
+.kpi i{display:block;font-style:normal;font-size:9px;letter-spacing:.08em;text-transform:uppercase;opacity:.45}
+.kpi b{font-size:17px}
+.kpi.big b{font-size:22px;color:var(--dmg)}
+.kpi.heal b{color:var(--heal)}
+.healsrc{font-size:10px;opacity:.6;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px}
+.healsrc i{font-style:normal;opacity:.6}
+.solvewarn{font-size:11px;color:var(--heal);margin:0 0 10px}
+.shottab{width:100%;border-collapse:collapse;font-size:11px}
+.shottab th{text-align:left;font-weight:600;font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+  opacity:.4;padding:4px 7px;border-bottom:1px solid var(--line)}
+.shottab td{padding:5px 7px;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+.shottab td.num{text-align:right;white-space:nowrap}
+.shottab td.axes{opacity:.5;font-size:10px}
+.shottab img{width:14px;height:14px;border-radius:2px;vertical-align:-3px;margin-right:4px}
+.shottab tr.bestrow td{background:color-mix(in srgb,var(--acc) 9%,transparent)}
+.shottab td i{font-style:normal;opacity:.45;font-size:9px}
+@media (max-width:1100px){.simboard{grid-template-columns:1fr}}
+
+.acgcell{display:inline-flex;align-items:center;gap:4px;margin:0 3px 3px 0}
+.actgt{display:inline-flex;align-items:center;gap:3px;font-size:9px;opacity:.7}
+.actgt i{font-style:normal;letter-spacing:.06em;text-transform:uppercase;opacity:.55}
+.actgt select{background:var(--bg);color:inherit;border:1px solid var(--line);border-radius:4px;
+  padding:1px 3px;font:inherit;font-size:9px}
+.acgear{display:flex;flex-wrap:wrap;gap:2px;align-items:center}
+
+.acall{font-size:9px;opacity:.6;letter-spacing:.03em;white-space:nowrap}
+
+.strip{display:inline-block;margin-left:7px;font-size:9px;padding:1px 6px;border-radius:20px;
+  border:1px solid color-mix(in srgb,var(--debuff) 55%,var(--line));color:var(--debuff)}
+.acnote{margin-top:6px;font-size:9px;opacity:.55;line-height:1.5;color:var(--k-cond)}
