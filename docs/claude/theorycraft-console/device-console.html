@@ -2283,10 +2283,22 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
                 });
                 ev(t, v.id, d.name + ' strips buffs (+' + Math.round(extra) + ')', 'strip', d.id);
               }
-              var m = GA.mitigate(sh.raw * liveDamageMult(a, d.hit) + extra,
-                { cat: sh.cat, damageType: d.hit.dmg, attackType: d.hit.atk, rating: d.hit.rating },
-                protNow(v), {});
-              v.hp -= m.shown * volley;
+              // The anti-one-shot cap arms only at EXACTLY full health - ApplyHit:1287 divides
+              // two ints, so the ">90%" condition collapses to "is the target at max" - and it
+              // clamps that one hit to Health - ceil(maxHP/10). It is per-hit, so in a volley
+              // only the opening shot can be capped; by the second the target is no longer full.
+              var hitInfo = { cat: sh.cat, damageType: d.hit.dmg, attackType: d.hit.atk,
+                              rating: d.hit.rating };
+              var rawOne = sh.raw * liveDamageMult(a, d.hit) + extra;
+              var atFull = v.hp >= v.maxHP;
+              var m = GA.mitigate(rawOne, hitInfo, protNow(v),
+                atFull ? { healthCapArmed: 1, maxHP: v.maxHP, curHP: v.hp } : {});
+              if (atFull && volley > 1) {
+                var rest = GA.mitigate(rawOne, hitInfo, protNow(v), {});
+                v.hp -= m.shown + rest.shown * (volley - 1);
+              } else {
+                v.hp -= m.shown * volley;
+              }
               if (v.hp <= 0 && !v.dead) {
                 v.dead = true; v.hp = 0; deaths[v.id] = t;
                 ev(t, v.id, v.cls + ' #' + v.id + ' dies', 'death', null);

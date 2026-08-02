@@ -224,9 +224,30 @@ off.
 
 ## 10. Downstream — the theorycrafting console
 
-No console change was needed. `GA.mitigate` already implements the health cap correctly
-(`healthCapArmed`, players only, floor `ceil(maxHP × 10%)` — backlog G1.3) and reports mitigation
-as `raw − dealt`, matching the game. The leak flag that backlog C3 anticipated was never actually
-written, so there is nothing to remove — the console models post-fix behaviour as-is.
+The leak flag that backlog C3 anticipated was never actually written, so there was nothing to
+remove — the console models post-fix behaviour as-is. `GA.mitigate` reports mitigation as
+`raw − dealt`, matching the game's own post-clamp figure.
+
+**One change was needed after all (2026-08-02).** `GA.mitigate` implements the health cap
+correctly — `healthCapArmed`, players only, floor `ceil(maxHP × 10%)`, backlog G1.3 — but **both
+call sites passed an empty options object**, so `healthCapArmed` was never set and the cap never
+fired. The function was right; nothing armed it. Now armed in the timeline whenever the target is
+at exactly full health, matching `ApplyHit:1287`.
+
+Two details the wiring has to respect:
+
+- **The cap is per-hit.** In a volley the opening shot can be capped and the rest cannot, because
+  by the second shot the target is no longer at full health. The timeline resolves the first shot
+  capped and the remainder uncapped rather than clamping the volley as a lump.
+- **The static KPI panel is deliberately left uncapped.** It reports a sustained rate, and an
+  opening-shot clamp does not belong in a damage-per-second figure.
+
+It is narrow but not academic: across the saved builds two can exceed a full-health target's cap
+room in a single hit — Shatter Bomb Boost at 5559 against roughly 2000 — and those were being
+reported at full damage.
+
+Confirmation that it is now right: `GA.mitigate(1600, …, {155:20}, {healthCapArmed:1, maxHP:1300})`
+returns **1170 dealt / 430 mitigated** — exactly the pair from the 2026-07-31 test that this file
+spent so long misreading.
 
 `damage-pipeline.md` and `backlog.md` C3 have been corrected to match this file.
