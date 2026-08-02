@@ -1980,6 +1980,11 @@
             // a second of sustained fire, never more than half the pool so it always recovers.
             var perSec = interval > 0 ? cost / interval : cost;
             var resumeAt = Math.min(a.maxPW * 0.5, Math.max(cost, perSec));
+            // Running dry is one episode, not one event per duty cycle. A weapon that cannot
+            // keep up sits near empty and re-starves every cycle - the Inferno-X reported it 16
+            // times in 25s, and every report drew its own full-height marker even though the
+            // icon row deduped down to a single icon. The episode only ends once the pool has
+            // genuinely recovered, so a later, separate drain still gets reported.
             if (d.starved && a.pw < resumeAt) {
               d.ready = Math.max(d.ready, t);
               return;
@@ -1987,7 +1992,10 @@
             var afford = Math.floor(a.pw / cost);
             if (afford <= 0) {
               if (!d.starved) {
-                ev(t, a.id, d.name + ' out of power', 'power', d.id); d.starved = true;
+                if (!d.reported) {
+                  ev(t, a.id, d.name + ' out of power', 'power', d.id); d.reported = true;
+                }
+                d.starved = true;
               }
               d.ready = Math.max(d.ready, t);                        // no banking shots while the pool is empty
               return;
@@ -2220,6 +2228,12 @@
       // power regen only when nothing was spent this step (confirmed in game, backlog C4)
       S.actors.forEach(function (a) {
         if (!a.spentThisStep && a.pw < a.maxPW) a.pw = Math.min(a.maxPW, a.pw + a.regen * STEP);
+        // A starvation episode ends when the pool is genuinely healthy again, so a later drain
+        // is reported afresh. Checked here rather than at the fire gate: a device waiting on a
+        // cooldown while the pool refills never reaches that gate, and would stay silent.
+        if (a.pw >= a.maxPW * 0.5) {
+          (a.devs || []).forEach(function (d2) { d2.reported = false; });
+        }
       });
     }
     shieldBreaks.forEach(function (b) {
