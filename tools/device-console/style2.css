@@ -813,3 +813,8 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
 .tcwarn{font-size:10px;color:var(--power)}
 #tc-exp-json{width:100%;min-height:170px;background:var(--bg);color:var(--ink);border:1px solid var(--line);
   border-radius:6px;padding:8px;font:11px/1.5 ui-monospace,Consolas,monospace;resize:vertical}
+
+#tc-acct{background:var(--bg);color:inherit;border:1px solid var(--acc);border-radius:6px;
+  padding:5px 8px;font:inherit;font-size:11px}
+#tc-exp-char{background:var(--bg);color:inherit;border:1px solid var(--line);border-radius:5px;
+  padding:2px 5px;font:inherit;font-size:11px}

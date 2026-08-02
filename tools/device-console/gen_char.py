@@ -10,7 +10,10 @@ OUT = r'C:/Users/patri/AppData/Local/Temp/claude/E--GA-LOCAL-Repo/4220e829-c0b4-
 db = sqlite3.connect(r"E:\GA_LOCAL\gaa.db"); db.row_factory = sqlite3.Row
 def q(s, a=()): return db.execute(s, a).fetchall()
 
-USER = 2381
+# Accounts to bake in. Inventory is seeded identically for everyone, so these differ in their
+# CHARACTERS and in their inventory row IDS - and the ids are what an export writes back with,
+# which is why each account carries its own map rather than sharing one.
+USERS = ['Jeronix', 'Zipe', 'Kelrior', 'Neophyte', 'Deadly', 'Zaxik', 'Phoron', 'RoundTwo']
 PROF = {680: 'Assault', 567: 'Medic', 681: 'Recon', 679: 'Robotics'}
 SLOT = {'221': 'Melee', '198': 'Ranged', '200': 'Specialty', '201': 'Jetpack',
         '203,204,385': 'Offhand', '386': 'Boost', '502': 'Class', '500': 'Consumable'}
@@ -66,62 +69,66 @@ def decode(csv, armor=False):
             sig += LET.get(p, '?') * cnt
     return (base, groups, sig or '\u2014', nums)
 
-chars = []
-for c in q("SELECT * FROM ga_characters WHERE user_id=? AND (deleted_at IS NULL OR deleted_at=0) ORDER BY id", (USER,)):
-    cls = PROF.get(c['profile_id'])
-    if not cls: continue
-    profiles = {}
-    for pid in range(1, 6):
-        devs, arm = [], []
-        for r in q("""SELECT cd.equipped_slot slot, pi.id inv, pi.device_id d, pi.oc,
-                             pi.allowed_slots asl,
-                             pi.mod_effect_group_ids mods, pi.item_id it, pi.quality qual
-                      FROM ga_character_devices cd
-                      JOIN ga_players_inventory pi ON pi.id=cd.inventory_id
-                      WHERE cd.character_id=? AND cd.item_profile_id=? ORDER BY cd.equipped_slot""",
-                   (c['id'], pid)):
-            slot = r['slot']
-            slots = set(int(x) for x in (r['asl'] or '').split(',') if x.strip().isdigit())
-            if slot in ARMSLOT:
-                base, groups, sig, nums = decode(r['mods'], armor=True)
-                # slot is the display name the console keys armour by; eslot is the raw
-                # ga_character_devices.equipped_slot a sync has to write back with.
-                arm.append({'slot': ARMSLOT[slot], 'eslot': slot,
-                            'inv': r['inv'], 'mods': r['mods'] or '',
-                            'name': iname(r['it']) or ARMSLOT[slot],
-                            'sig': sig, 'base': base, 'groups': groups, 'nums': nums})
-                continue
-            if slots & COSMETIC: continue                   # dyes / trails / suits
-            did = r['d'] or 0
-            if not did or did == HBA: continue              # cosmetic, or the baked-in HBA
-            base, groups, sig, nums = decode(r['mods'])
-            # inv + mods are what a sync writes back with: ga_character_devices stores the
-            # inventory row id, not a device id, and mods is the authoritative roll on it.
-            devs.append({'slot': slot, 'id': did, 'inv': r['inv'], 'mods': r['mods'] or '',
-                         'name': iname(did) or ('dev%s' % did),
-                         'oc': bool(r['oc']), 'cat': SLOT.get(r['asl'], r['asl']),
-                         'sig': sig, 'base': base, 'groups': groups, 'nums': nums})
-        skills = [x['skill_id'] for x in
-                  q("SELECT skill_id FROM ga_character_skills WHERE character_id=? AND item_profile_id=?",
-                    (c['id'], pid))]
-        if not devs and not skills and not arm: continue
-        profiles[str(pid)] = {'devices': devs, 'armour': arm, 'skills': skills}
-    # keep only characters that are actually built out - the empty alts carry nothing but
-    # the un-unequippable HUMAN BASE ATTRIBUTES row
-    if profiles and any(p['skills'] for p in profiles.values()):
-        profiles = {k: v for k, v in profiles.items() if v['skills']}
-        chars.append({'id': c['id'], 'cls': cls, 'current': c['current_item_profile_id'], 'profiles': profiles})
+def build_chars(USER):
+  chars = []
+  for c in q("SELECT * FROM ga_characters WHERE user_id=? AND (deleted_at IS NULL OR deleted_at=0) ORDER BY id", (USER,)):
+      cls = PROF.get(c['profile_id'])
+      if not cls: continue
+      profiles = {}
+      for pid in range(1, 6):
+          devs, arm = [], []
+          for r in q("""SELECT cd.equipped_slot slot, pi.id inv, pi.device_id d, pi.oc,
+                               pi.allowed_slots asl,
+                               pi.mod_effect_group_ids mods, pi.item_id it, pi.quality qual
+                        FROM ga_character_devices cd
+                        JOIN ga_players_inventory pi ON pi.id=cd.inventory_id
+                        WHERE cd.character_id=? AND cd.item_profile_id=? ORDER BY cd.equipped_slot""",
+                     (c['id'], pid)):
+              slot = r['slot']
+              slots = set(int(x) for x in (r['asl'] or '').split(',') if x.strip().isdigit())
+              if slot in ARMSLOT:
+                  base, groups, sig, nums = decode(r['mods'], armor=True)
+                  # slot is the display name the console keys armour by; eslot is the raw
+                  # ga_character_devices.equipped_slot a sync has to write back with.
+                  arm.append({'slot': ARMSLOT[slot], 'eslot': slot,
+                              'inv': r['inv'], 'mods': r['mods'] or '',
+                              'name': iname(r['it']) or ARMSLOT[slot],
+                              'sig': sig, 'base': base, 'groups': groups, 'nums': nums})
+                  continue
+              if slots & COSMETIC: continue                   # dyes / trails / suits
+              did = r['d'] or 0
+              if not did or did == HBA: continue              # cosmetic, or the baked-in HBA
+              base, groups, sig, nums = decode(r['mods'])
+              # inv + mods are what a sync writes back with: ga_character_devices stores the
+              # inventory row id, not a device id, and mods is the authoritative roll on it.
+              devs.append({'slot': slot, 'id': did, 'inv': r['inv'], 'mods': r['mods'] or '',
+                           'name': iname(did) or ('dev%s' % did),
+                           'oc': bool(r['oc']), 'cat': SLOT.get(r['asl'], r['asl']),
+                           'sig': sig, 'base': base, 'groups': groups, 'nums': nums})
+          skills = [x['skill_id'] for x in
+                    q("SELECT skill_id FROM ga_character_skills WHERE character_id=? AND item_profile_id=?",
+                      (c['id'], pid))]
+          if not devs and not skills and not arm: continue
+          profiles[str(pid)] = {'devices': devs, 'armour': arm, 'skills': skills}
+      # keep only characters that are actually built out - the empty alts carry nothing but
+      # the un-unequippable HUMAN BASE ATTRIBUTES row
+      if profiles and any(p['skills'] for p in profiles.values()):
+          profiles = {k: v for k, v in profiles.items() if v['skills']}
+          chars.append({'id': c['id'], 'cls': cls, 'current': c['current_item_profile_id'], 'profiles': profiles})
 
-# The whole owned inventory, keyed device -> roll signature -> inventory row.
+  return chars
+
+
+def build_inv(USER):
+  # The whole owned inventory, keyed device -> roll signature -> inventory row.
 #
 # A profile only shows what is EQUIPPED, which is a small slice of what the account owns (82 of
 # 270 rows here). Since inventory is append-only - you cannot re-mod, acquire or destroy - these
 # rows are the complete and permanent set of items this account can ever express, so an export
 # can resolve any build made from them, not just one that happens to be equipped already.
-inv = {}
-inv_rows = 0
-for r in q("""SELECT id, device_id, mod_effect_group_ids mods, allowed_slots asl
-              FROM ga_players_inventory WHERE user_id=? AND device_id>0""", (USER,)):
+  inv = {}
+  for r in q("""SELECT id, device_id, mod_effect_group_ids mods, allowed_slots asl
+                FROM ga_players_inventory WHERE user_id=? AND device_id>0""", (USER,)):
     did = r['device_id']
     if did == HBA:
         continue
@@ -130,13 +137,26 @@ for r in q("""SELECT id, device_id, mod_effect_group_ids mods, allowed_slots asl
         continue
     sig = decode(r['mods'])[2]
     inv.setdefault(str(did), {}).setdefault(sig, [r['id'], r['mods'] or ''])
-    inv_rows += 1
+  return inv
 
-json.dump({'user': USER, 'name': 'Jeronix', 'chars': chars, 'inv': inv},
+
+accounts = []
+for uname in USERS:
+    row = q("SELECT id, username FROM ga_users WHERE username=? COLLATE NOCASE", (uname,))
+    if not row:
+        print("  !! no such user:", uname)
+        continue
+    uid, real = row[0]['id'], row[0]['username']
+    chars = build_chars(uid)
+    if not chars:
+        print("  -- %s (%s) has no built-out characters, skipped" % (real, uid))
+        continue
+    inv = build_inv(uid)
+    accounts.append({'user': uid, 'name': real, 'chars': chars, 'inv': inv})
+    print("  %-10s id=%-6s chars=%s  inv=%d devices" % (real, uid, len(chars), len(inv)))
+    for c in chars:
+        print("      %-5s %-9s profiles=%s" % (c['id'], c['cls'], sorted(c['profiles'].keys())))
+
+json.dump({'accounts': accounts, 'active': accounts[0]['user'] if accounts else None},
           open(OUT + 'chars.json', 'w'))
-print("inventory: %d rows over %d devices" % (inv_rows, len(inv)))
-print("characters:", len(chars))
-for c in chars:
-    print("  char %-5s %-9s profiles=%s" % (c['id'], c['cls'], sorted(c['profiles'].keys())))
-    for pid, p in sorted(c['profiles'].items()):
-        print("     p%s  %2d devices  %d armour  %2d skills" % (pid, len(p['devices']), len(p['armour']), len(p['skills'])))
+print("accounts:", len(accounts))

@@ -226,7 +226,9 @@ HTML = HTML.replace('</script>\n',
                     '<script>window.__DEVFX__=' + json.dumps(DEVFX) + ';</script>\n'
                     '<script>window.__DEVIMG__=' + DEVIMG + ';</script>\n'
                     '<script>window.__CLASSIMG__=' + CLASSIMGJSON + ';</script>\n'
-                    '<script>window.__CHARS__=' + CHARS + ';</script>\n'
+                    # __CHARS__ stays the ACTIVE account, so every existing reader is unchanged
+                    '<script>window.__ACCTS__=' + CHARS + ';'
+                    'window.__CHARS__=(window.__ACCTS__.accounts||[])[0]||null;</script>\n'
                     '<script>' + BUILDJS + '</script>\n'
                     '<script>' + BENCHJS + '</script>\n', 1)
 open(r"E:\GA_LOCAL\Repo\docs\claude\theorycraft-console\device-console.html", "w", encoding="utf-8").write(HTML)

@@ -44,7 +44,24 @@
   var ARM = D.armour || { configs: {}, slots: 7, default: 'RRRRRR' };
   // When a real character is loaded its armour replaces the preset dropdowns: each piece
   // carries its OWN rolled mods from ga_players_inventory, not a representative config.
+  // __ACCTS__ holds every baked-in account; __CHARS__ is whichever one is selected, so all
+  // the existing readers of __CHARS__ carry on unchanged. Inventory is seeded identically for
+  // everyone, but the row IDS differ per account - and those ids are what an export writes back
+  // with - so switching account genuinely changes what a build resolves to.
   var CH = window.__CHARS__ || null;
+  function acctList() { return (window.__ACCTS__ || {}).accounts || []; }
+  function acctById(uid) {
+    return acctList().filter(function (a) { return String(a.user) === String(uid); })[0] || null;
+  }
+  function activeAcct() { return CH; }
+  function setAcct(uid) {
+    var a = acctById(uid);
+    if (!a) return false;
+    CH = window.__CHARS__ = a;
+    curChar = null; curProfile = null;   // the old character ids belong to the old account
+    charArm = null; charGear = [];
+    return true;
+  }
   var curChar = null, curProfile = null, charArm = null, charGear = [];
   var craftName = '';       // what the build on the bench is called
   var craftEditing = null;  // id of the saved build being edited, if any
@@ -432,6 +449,9 @@
   function loadCraftFromBuild(b) {
     if (!b) return;
     craftMode = true;
+    // Re-saving under a different account would stamp that account's inventory ids onto a build
+    // belonging to another - switch back to the one it was made under.
+    if (b.acct && CH && String(b.acct) !== String(CH.user)) setAcct(b.acct);
     craftEditing = b.id;
     craftName = b.name || '';
     curClass = b.cls;
@@ -474,7 +494,16 @@
     var payload = exportPayload(b, target.id, pid);
     host.innerHTML = '<div class="tcexpbox">'
       + '<div class="tcexphead"><b>' + esc(b.name) + '</b> &rarr; '
-        + classIcon(b.cls, 'sm') + esc(b.cls) + ' character #' + target.id
+        + classIcon(b.cls, 'sm')
+        + (rd.targets.length > 1
+            ? '<select id="tc-exp-char">'
+              + rd.targets.map(function (t) {
+                  return '<option value="' + t.id + '"'
+                    + (String(t.id) === String(target.id) ? ' selected' : '') + '>'
+                    + esc(b.cls) + ' #' + t.id + '</option>';
+                }).join('') + '</select>'
+            : esc(b.cls) + ' character #' + target.id)
+        + ' on ' + esc((acctOf(b) || {}).name || '?')
         + ', item profile <select id="tc-exp-prof">'
         + ['1', '2', '3', '4', '5'].map(function (x) {
             return '<option' + (x === String(pid) ? ' selected' : '') + '>' + x + '</option>';
@@ -488,10 +517,13 @@
       + '<textarea id="tc-exp-json" readonly>' + esc(JSON.stringify(payload, null, 2))
       + '</textarea></div>';
     var ps = document.getElementById('tc-exp-prof');
-    if (ps) ps.addEventListener('change', function () {
-      document.getElementById('tc-exp-json').value =
-        JSON.stringify(exportPayload(b, target.id, ps.value), null, 2);
-    });
+    var cs = document.getElementById('tc-exp-char');
+    function repaint() {
+      document.getElementById('tc-exp-json').value = JSON.stringify(
+        exportPayload(b, cs ? cs.value : target.id, ps ? ps.value : 1), null, 2);
+    }
+    if (ps) ps.addEventListener('change', repaint);
+    if (cs) cs.addEventListener('change', repaint);
     var cp = document.getElementById('tc-exp-copy');
     if (cp) cp.addEventListener('click', function () {
       var ta = document.getElementById('tc-exp-json');
@@ -543,11 +575,20 @@
       + '<button id="tc-add-a" class="tcbtn">save &amp; send to Team A</button>'
       + '<button id="tc-add-b" class="tcbtn">save &amp; send to Team B</button>'
       + '<span class="tcsep"></span>'
+      + (acctList().length > 1
+          ? '<select id="tc-acct" title="which account\u2019s characters and inventory to use">'
+            + acctList().map(function (a) {
+                return '<option value="' + a.user + '"'
+                  + (CH && String(a.user) === String(CH.user) ? ' selected' : '') + '>'
+                  + esc(a.name) + '</option>';
+              }).join('') + '</select>'
+          : '')
       + '<select id="tc-import"><option value="">import a live profile&hellip;</option>'
         + (charList() || []).map(function (c) {
+            var dupe = (charList() || []).filter(function (x) { return x.cls === c.cls; }).length > 1;
             return Object.keys(c.profiles).sort().map(function (pid) {
-              return '<option value="' + c.id + '|' + pid + '">' + esc(c.cls) + ' profile ' + pid
-                + '</option>';
+              return '<option value="' + c.id + '|' + pid + '">' + esc(c.cls)
+                + (dupe ? ' #' + c.id : '') + ' profile ' + pid + '</option>';
             }).join('');
           }).join('') + '</select>'
       + '</div>'
@@ -561,6 +602,7 @@
                     + ' title="' + esc(rd.ok
                         ? ('export for ' + rd.targets.length + ' ' + b.cls + ' character'
                            + (rd.targets.length > 1 ? 's' : '')
+                           + ' on ' + ((acctOf(b) || {}).name || '?')
                            + (rd.missing.length ? ' \u2014 ' + rd.missing.length
                               + ' device(s) have no inventory row and will be skipped' : ''))
                         : rd.why) + '">export</button>'
@@ -611,6 +653,10 @@
           .filter(function (x) { return x.dataset.view === 'combat'; })[0];
         if (tab) tab.click();
       });
+    });
+    var ac = document.getElementById('tc-acct');
+    if (ac) ac.addEventListener('change', function () {
+      if (setAcct(ac.value)) { renderChar(); render(); }
     });
     var imp = document.getElementById('tc-import');
     if (imp) imp.addEventListener('change', function () {
@@ -1314,15 +1360,21 @@
   // A device also needs its inventory row: ga_character_devices stores inventory_id, not a
   // device id, so a hand-built device that was never owned cannot be written back. Those are
   // listed rather than silently dropped.
-  function targetsFor(cls) {
-    return (charList() || []).filter(function (c) { return c.cls === cls; });
+  function acctOf(b) {
+    return (b && b.acct && acctById(b.acct)) || activeAcct();
+  }
+  function targetsFor(cls, b) {
+    var a = acctOf(b);
+    return ((a && a.chars) || []).filter(function (c) { return c.cls === cls; });
   }
   function exportReadiness(b) {
     if (!b) return { ok: false, why: 'no build' };
-    var targets = targetsFor(b.cls);
+    var a = acctOf(b);
+    var targets = targetsFor(b.cls, b);
     if (!targets.length) {
       return { ok: false, targets: [],
-               why: 'no ' + b.cls + ' character on this account to sync to' };
+               why: 'no ' + b.cls + ' character on ' + ((a && a.name) || 'this account')
+                    + ' to sync to' };
     }
     var missing = (b.devices || []).filter(function (d) { return !d.inv; });
     return { ok: true, targets: targets, missing: missing };
@@ -1411,6 +1463,7 @@
     var p = c.profiles[profileId];
     if (!p) return null;
     return { id: nextBuildId(), name: name || (c.cls + ' p' + profileId), cls: c.cls,
+             acct: (CH && CH.user) || null,
              origin: { charId: c.id, profileId: String(profileId) },
              devices: JSON.parse(JSON.stringify(p.devices || [])),
              armour: p.armour && p.armour.length ? JSON.parse(JSON.stringify(p.armour)) : null,
@@ -1460,6 +1513,7 @@
     // what a future "sync to game" needs to write back to.
     var prev = craftEditing ? buildById(craftEditing) : null;
     return { id: nextBuildId(), name: name || (curClass + ' build'), cls: curClass,
+             acct: (prev && prev.acct) || (CH && CH.user) || null,
              origin: prev ? (prev.origin || null) : null,
              devices: devices,
              armour: (charArm && charArm.length) ? JSON.parse(JSON.stringify(charArm))
