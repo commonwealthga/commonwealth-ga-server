@@ -187,6 +187,7 @@
   // ---------------- equipped gear: off / primary / alt --------------------------
   // A weapon fires primary OR alt, never both, so the control is tri-state rather than a
   // checkbox. Devices with only one mode just toggle on and off.
+  var MODELAB = { PRI: 'primary', ALT: 'alt', BLOCK: 'block' };
   function dev0(g) { return (window.__DEVMODEL__ || {})[String(g.id)] || {}; }
   function modesOf(g) {
     var dev = (window.__DEVMODEL__ || {})[String(g.id)];
@@ -1971,6 +1972,18 @@
           }
           var cost = d.power || 0;
           if (cost > 0) {
+            // Running dry is not a per-step stutter. Firing the instant a single shot becomes
+            // affordable spends again immediately, and because regen is suppressed on any step
+            // that spent, the pool locks at zero and dribbles one shot per step forever - the
+            // spiky flatline an Inferno-X used to leave behind. A player stops shooting and
+            // lets it come back, so a starved device holds until the pool is usable again:
+            // a second of sustained fire, never more than half the pool so it always recovers.
+            var perSec = interval > 0 ? cost / interval : cost;
+            var resumeAt = Math.min(a.maxPW * 0.5, Math.max(cost, perSec));
+            if (d.starved && a.pw < resumeAt) {
+              d.ready = Math.max(d.ready, t);
+              return;
+            }
             var afford = Math.floor(a.pw / cost);
             if (afford <= 0) {
               if (!d.starved) {
@@ -2572,10 +2585,29 @@
                   + esc(t.cls) + ' #' + t.id + (me ? ' (self)' : '') + '</option>';
               }).join('') + '</select></span>';
         }
+        // Weapons with a second fire mode - Inferno-X, iMinigun, Helot, BioFeedback Beam,
+        // Boost Beam - were always run on PRI because activating hardcoded it. The sim already
+        // keyed everything off a.active[slot]; it just had no way to say ALT.
+        var mset = modesOf(g), msel = '';
+        if (on && mset.length > 1) {
+          var dm = (dev0(g).modes || []);
+          msel = '<span class="acmode"><select class="acmd" data-a="' + a.id + '" data-i="' + i + '">'
+            + mset.map(function (k) {
+                var mn = dm.filter(function (x) { return x.kind === k; })[0];
+                var nm3 = (mn && mn.name) || '';
+                // both Inferno-X modes are called "Autofire", so the name alone cannot tell
+                // them apart - fall back to primary/alt whenever it is not distinctive
+                var dupe = nm3 && dm.filter(function (x) { return x.name === nm3; }).length > 1;
+                var lab = (!nm3 || dupe) ? (MODELAB[k] || k) : nm3;
+                return '<option value="' + k + '"'
+                  + ((a.active[i] || 'PRI') === k ? ' selected' : '') + '>'
+                  + esc(lab) + '</option>';
+              }).join('') + '</select></span>';
+        }
         return '<span class="acgcell"><span class="acg' + (on ? ' on' : '') + ' t-' + tgt + '"'
           + ' data-a="' + a.id + '" data-i="' + i + '" data-tgt="' + tgt + '"'
           + ' title="' + esc(g.name) + ' — ' + esc(g.cat || '') + ', targets ' + esc(tgt) + '">'
-          + ic + esc(g.name) + '</span>' + sel + '</span>';
+          + ic + esc(g.name) + '</span>' + msel + sel + '</span>';
       }).join('');
       var inb = st.inbound.map(function (f) {
         var from = actorById(f.from);
@@ -2790,6 +2822,21 @@
           var sc0 = deviceScope(a, (ctx.charGear || [])[+i], dev0, 'PRI');
           if (sc0.kind === 'single' && sc0.picks.length) a.aim[i] = sc0.picks[0].id;
         }
+        renderCombat();
+      });
+    });
+    host.querySelectorAll('.acmd').forEach(function (s3) {
+      s3.addEventListener('change', function () {
+        var a = actorById(s3.dataset.a); if (!a) return;
+        var i = s3.dataset.i;
+        if (!a.active[i]) return;
+        a.active[i] = s3.value;
+        // the mode decides who it reaches, so the aim has to be re-derived with it
+        var ctx = actorCtx(a);
+        var g2 = (ctx.charGear || [])[+i];
+        var sc = deviceScope(a, g2, dev0(g2), s3.value);
+        delete a.aim[i];
+        if (sc.kind === 'single' && sc.picks.length) a.aim[i] = sc.picks[0].id;
         renderCombat();
       });
     });
