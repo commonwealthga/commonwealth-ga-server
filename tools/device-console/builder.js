@@ -15,9 +15,30 @@
   var curClass = 'Assault';
   var alloc = {};                       // skillId -> points
   var nodeIndex = {};                   // skillId -> {node, grp}
+  var nodeByGroup = {};                 // grp -> {skillId -> node}
   Object.keys(D.trees).forEach(function (g) {
-    D.trees[g].forEach(function (n) { nodeIndex[n.id] = { n: n, g: g }; });
+    nodeByGroup[g] = {};
+    D.trees[g].forEach(function (n) {
+      nodeIndex[n.id] = { n: n, g: g };
+      nodeByGroup[g][n.id] = n;
+    });
   });
+
+  // Some skills appear in TWO class trees under the same id - "Combat Off-Hand Utility" (806) and
+  // "Combat Off-Hand Power" (807) are in both Medic Poison (157) and Assault Destroyer (159).
+  // nodeIndex is keyed by id alone, so whichever tree is walked last wins, and a Medic's build
+  // summary read "Destroyer 2". Resolve within the class the build actually belongs to.
+  function groupOf(skillId, cls) {
+    var gs = (D.classes && D.classes[cls]) || [];
+    for (var i = 0; i < gs.length; i++) {
+      if (nodeByGroup[gs[i]] && nodeByGroup[gs[i]][skillId]) return gs[i];
+    }
+    var e = nodeIndex[skillId];
+    return e ? e.g : null;
+  }
+  function treeNameOf(skillId, cls) {
+    return (D.names && D.names[groupOf(skillId, cls)]) || '?';
+  }
 
   // ---- armour: 7 identical slots, default all-RRRRRR (what most players run) ----
   var ARM = D.armour || { configs: {}, slots: 7, default: 'RRRRRR' };
@@ -357,22 +378,15 @@
       shields = shields.concat(r.shields);
     });
     var st = window.GA.applyStacking(effects.concat(shields), activeOrder);
-    // switch the losers off for real
-    var lost = {};
-    st.notes.forEach(function (n) { n.lost.forEach(function (l) { lost[l] = 1; }); });
-    var changed = false;
-    Object.keys(activeGear).forEach(function (i) {
-      var g = charGear[+i];
-      if (g && lost[g.name]) {
-        delete activeGear[i];
-        activeOrder = activeOrder.filter(function (x) { return x !== g.name; });
-        changed = true;
-      }
-    });
-    if (changed) {
-      function keep(x) { return !lost[x.src]; }
-      effects = effects.filter(keep); shields = shields.filter(keep);
-    }
+    // Suppress the losing EFFECTS, not the whole device. A Boost Beam that loses the proximity
+    // damage buff to a Frenzy Wave is still a working heal - switching the device off threw the
+    // heal away with it. applyStacking already reports losers as "category|source", which is
+    // exactly the granularity needed.
+    var blocked = {};
+    (st.blocked || []).forEach(function (k) { blocked[k] = 1; });
+    function keep(x) { return !blocked[x.cat + '|' + x.src]; }
+    effects = effects.filter(keep);
+    shields = shields.filter(keep);
     return { effects: effects, shields: shields, notes: st.notes };
   }
 
@@ -767,7 +781,7 @@
         // the parent skill's semantic device list.
         var dev = (f.rsk && D.devbyskill[String(f.rsk)]) ? D.devbyskill[String(f.rsk)] : (e.n.dev || []);
         if (cond && liveNow[e.n.name + '|' + f.p]) return;   // already shown as ACTIVE
-        st.srcs.push({ skill: e.n.name, tree: D.names[e.g], val: v, kind: f.kind, life: f.life,
+        st.srcs.push({ skill: e.n.name, tree: treeNameOf(e.n.id, curClass), val: v, kind: f.kind, life: f.life,
                        dev: dev, dormant: cond ? 1 : 0 });
       });
     });
@@ -966,7 +980,8 @@
         mode: a.active[slot], buffs: col.buffs,
         variant: { sig: g.sig, base: g.base, groups: g.groups, nums: g.nums } });
       recipients.forEach(function (at) {
-        if (String(at) === String(a.id)) return;      // already on its carrier
+        // a boost is not in the carrier's baseline, so it must land on them as well
+        if (String(at) === String(a.id) && g.cat !== 'Boost') return;
         fx.forEach(function (f) {
           out.push({ p: f.p, name: f.name, v: f.v, pct: f.pct, src: f.src, kind: f.kind,
                      life: f.life, cat: f.cat, from: a.id, to: at, slot: slot });
@@ -996,8 +1011,8 @@
     });
     // skill spend per tree, so a card says what kind of build it is at a glance
     var trees = {};
-    (col.picked || []).forEach(function (e) {
-      var t = D.names[e.g] || '?';
+    Object.keys(col.alloc || {}).forEach(function (sid) {
+      var t = treeNameOf(sid, a.cls);
       trees[t] = (trees[t] || 0) + 1;
     });
     // every buff category live on this actor - what a Neutralize Wave would find to strip
@@ -1077,6 +1092,516 @@
   function trees2str(t) {
     return Object.keys(t).sort(function (a, b) { return t[b] - t[a]; })
       .map(function (k) { return esc(k) + ' ' + t[k]; }).join(' · ') || 'no skills';
+  }
+
+  // ============================== TIMELINE ==============================
+  // A "what if" run, not a battle simulator. Everyone fires from t=0 at whatever they have
+  // switched on and aimed; nobody moves, dodges or misses. What it DOES model is the thing a
+  // single damage-per-second figure cannot: support runs out. Buffs expire, power empties,
+  // cooldowns come back, and mitigation changes underneath the damage as they do. That is why
+  // an unkillable target can still have a real time to kill.
+  //
+  // Stepped rather than solved: buff expiry changes mitigation, mitigation changes damage, and
+  // damage decides when someone dies. There is no closed form for that.
+  var STEP = 0.1;
+  // The shared off-hand cooldown. Roughly half a second in game - you press protection, frenzy
+  // and power wave one after another, never together.
+  var OFFHAND_GCD = 0.5;
+
+  // Everything about one device that matters over time.
+  function simDevice(a, ctx, slot, col) {
+    var g = (ctx.charGear || [])[+slot];
+    if (!g) return null;
+    var dev = (window.__DEVMODEL__ || {})[String(g.id)];
+    if (!dev) return null;
+    var mode = a.active[slot];
+    var res = GA.resolve({ dev: dev, meta: (window.__DEVMETA__ || {})[String(g.id)] || {},
+      ix: (window.__DEVFX__ || {})[String(g.id)] || [], alloc: col.alloc, situational: true,
+      buffs: col.buffs, variant: { sig: g.sig, base: g.base, groups: g.groups, nums: g.nums } });
+    var mi = -1;
+    (res.modes || []).forEach(function (m, k) { if (mi < 0 && (!m.kind || m.kind === mode)) mi = k; });
+    if (mi < 0) mi = 0;
+    var m = (res.modes || [])[mi];
+    if (!m) return null;
+    var mm = (dev.modes || [])[mi] || {};
+    var d = { slot: slot, name: g.name, cat: g.cat, id: g.id,
+              hit: mm.hit || {}, strip: mm.strip || [],
+              power: (m.power && m.power.value != null) ? m.power.value : 0,
+              refire: 0, cooldown: 0, shots: [], heals: [], buffs: [], maxLife: 0,
+              scope: deviceScope(a, g, dev, mode), ready: 0 };
+    (m.chips || []).forEach(function (c) {
+      if (c.prop === 53) d.refire = c.value;
+      if (c.prop === 4) d.cooldown = c.value;
+      if (c.prop === 150) d.persist = c.value;        // Persist Time - how long a boost lasts
+    });
+    d.selfTimed = [];
+    (m.chips || []).forEach(function (c) {
+      if (c.base === null) return;
+      if (c.prop === 51 || c.prop === 211) {
+        if (c.sign < 0) d.shots.push({ raw: c.value, cat: c.cat, life: c.life });
+        else if (!c.self) d.heals.push({ v: c.value, life: c.life });
+        else if (c.life > 0) d.selfTimed.push({ p: c.prop, name: GA.statName(c.prop) || 'self',
+                                                v: c.value, pct: c.isPct, cat: c.cat,
+                                                src: g.name, life: c.life });
+      } else if (c.self && c.life > 0) {
+        var nm2 = GA.statName(c.prop);
+        if (nm2) d.selfTimed.push({ p: c.prop, name: nm2, v: c.sign < 0 ? -c.value : c.value,
+                                    pct: c.isPct, cat: c.cat, src: g.name, life: c.life });
+      }
+    });
+    // How often it is sensible to use this thing.
+    //
+    // A support device that applies timed effects should be re-fired when they EXPIRE, not as
+    // fast as it will physically fire. An Adrenaline Gun refires every 0.5s but its Regeneration
+    // and Health-Max buffs last 10s; spamming it just restarts the same timers and empties the
+    // power pool for nothing. Waiting for the buff to lapse is what a player actually does, and
+    // it is what lets power regenerate in between.
+    //
+    // Weapons are the other way round: their damage is the point, so they fire at their refire
+    // rate whatever incidental timed effects they carry (the Agonizer's 4s debuffs do not slow
+    // the gun down). A BioFeedback Beam has no timed effects at all - it is a per-tick heal - so
+    // it also stays on refire.
+    var supportish = (d.hit.tgt === 'friend' || d.hit.tgt === 'self');
+    if (supportish && d.maxLife > 0) {
+      d.interval = Math.max(d.cooldown || 0, d.maxLife);
+      d.cadence = 'on expiry';
+    } else {
+      d.interval = d.refire > 0 ? d.refire : (d.cooldown > 0 ? d.cooldown : 0);
+      d.cadence = d.refire > 0 ? 'refire' : 'cooldown';
+    }
+    // Every Boost carries a Persist Time and NOTHING else - no refire, no cooldown. They are
+    // bought with morale during a match rather than being cooldown-gated, so there is no repeat
+    // interval to read. Without this they fell through "no interval, never fires" and did nothing
+    // at all: Healing Boost never healed, Oathbreaker never landed its damage or heal debuff.
+    if (!d.interval && d.persist > 0) {
+      d.once = true;
+      d.interval = d.persist;
+      d.cadence = 'once (' + d.persist + 's)';
+    }
+    return d;
+  }
+
+  function buildSim() {
+    var actors = sim.actors.map(function (a) {
+      var ctx = actorCtx(a);
+      if (!ctx) return null;
+      // Switching a boost on in the board makes statsFor fold its buffs straight into the
+      // actor - which is right for the static panel, but wrong here: the timeline decides WHEN
+      // a boost goes off. Leaving them in meant a Sensor Boost gated to 14s was still buffing
+      // the Scorpia from t=0, and the target died at 6.1s instead of 12.2s. So the baseline is
+      // built WITHOUT boosts, and the timeline applies them at the moment they fire.
+      var baseActive = {}, hasBoost = false;
+      Object.keys(a.active).forEach(function (slot) {
+        var g = (ctx.charGear || [])[+slot];
+        if (g && g.cat === 'Boost') { hasBoost = true; return; }
+        baseActive[slot] = a.active[slot];
+      });
+      var baseCtx = ctx;
+      if (hasBoost) {
+        baseCtx = {};
+        Object.keys(ctx).forEach(function (k) { baseCtx[k] = ctx[k]; });
+        baseCtx.activeGear = baseActive;
+        baseCtx.activeOrder = Object.keys(baseActive);
+      }
+      var col = statsFor(baseCtx);
+      var dv = deriveTotals(col.stats);
+      var devs = Object.keys(a.active).map(function (slot) { return simDevice(a, ctx, slot, col); })
+        .filter(Boolean);
+      // projected effects, resolved once - what this actor hands out when a device fires
+      var proj = {};
+      Object.keys(a.active).forEach(function (slot) {
+        var g = (ctx.charGear || [])[+slot]; if (!g) return;
+        var dev = (window.__DEVMODEL__ || {})[String(g.id)]; if (!dev) return;
+        proj[slot] = GA.projectedEffects({ dev: dev,
+          meta: (window.__DEVMETA__ || {})[String(g.id)] || {},
+          ix: (window.__DEVFX__ || {})[String(g.id)] || [], alloc: col.alloc, name: g.name,
+          mode: a.active[slot], buffs: col.buffs,
+          variant: { sig: g.sig, base: g.base, groups: g.groups, nums: g.nums } });
+      });
+      devs.forEach(function (d) {
+        var L = 0;
+        (proj[d.slot] || []).forEach(function (f) { if (f.life > L) L = f.life; });
+        d.maxLife = L;
+        var supportish = (d.hit.tgt === 'friend' || d.hit.tgt === 'self');
+        if (supportish && L > 0) {
+          d.interval = Math.max(d.cooldown || 0, L);
+          d.cadence = 'on expiry';
+        }
+      });
+      return { id: a.id, team: a.team, cls: a.cls, pid: a.pid,
+               maxHP: dv.totHP, hp: dv.totHP,
+               maxPW: dv.totPW, pw: dv.totPW,
+               regen: baseRegen(col.stats),
+               baseProt: GA.protectionFrom(col.stats),
+               devs: devs, proj: proj, aim: a.aim, live: [], dead: false, spentThisStep: false,
+               offhandReady: 0 };
+    }).filter(Boolean);
+    var byId = {};
+    actors.forEach(function (x) { byId[x.id] = x; });
+    return { actors: actors, byId: byId };
+  }
+
+  function baseRegen(stats) {
+    var r = 0;
+    Object.keys(stats).forEach(function (k) {
+      var x = stats[k];
+      if (x.p === 244 && !x.pct) r += x.total;
+    });
+    return r;
+  }
+
+  // protections right now = base plus whatever timed buffs are still live
+  function protNow(act) {
+    var p = {};
+    Object.keys(act.baseProt).forEach(function (k) { p[k] = act.baseProt[k]; });
+    act.live.forEach(function (f) {
+      if (f.pct) return;
+      if ((GA.PROT_PROPS || []).indexOf(f.p) >= 0) p[f.p] = (p[f.p] || 0) + f.v;
+    });
+    return p;
+  }
+  // A weapon's damage is resolved once, before the run starts, so a buff that lands mid-fight
+  // (a Sensor Boost bought at 3s) would otherwise never reach it. Apply the live percentage
+  // damage modifiers at the moment of firing instead.
+  //   attack type 1 melee -> 212, 2 ranged -> 214, 3 AOE -> 321; 65 is the general one
+  var DMG_MOD_BY_ATK = { 1: 212, 2: 214, 3: 321 };
+  function liveDamageMult(act, hit) {
+    var want = DMG_MOD_BY_ATK[hit && hit.atk] || 0;
+    var pct = 0;
+    act.live.forEach(function (f) {
+      if (!f.pct) return;
+      if (f.p === 65 || (want && f.p === want)) pct += f.v;
+    });
+    return 1 + pct / 100;
+  }
+
+  function catsNow(act) {
+    var c = {};
+    act.live.forEach(function (f) { if (f.cat && f.v > 0) c[f.cat] = 1; });
+    return c;
+  }
+
+  function runTimeline(seconds) {
+    var S = buildSim();
+    if (!S.actors.length) return null;
+    var events = [], series = {}, deaths = {};
+    S.actors.forEach(function (a) { series[a.id] = []; });
+
+    function targetsOf(a, d) {
+      if (d.scope.kind === 'all') return d.scope.targets.slice();
+      var t = a.aim[d.slot];
+      return t ? [t] : [];
+    }
+    function ev(t, who, text, kind) {
+      events.push({ t: Math.round(t * 10) / 10, who: who, text: text, kind: kind || '' });
+    }
+
+    for (var t = 0; t <= seconds + 1e-9; t += STEP) {
+      // sample first so t=0 is the opening state
+      S.actors.forEach(function (a) {
+        var pr = protNow(a);
+        var protSum = 0;
+        (GA.PROT_PROPS || []).forEach(function (k) { protSum += (pr[k] || 0); });
+        series[a.id].push({ t: t, hp: Math.max(0, a.hp), pw: Math.max(0, a.pw), prot: protSum });
+      });
+
+      // expire timed effects
+      S.actors.forEach(function (a) {
+        var before = a.live.length;
+        a.live = a.live.filter(function (f) {
+          if (f.until > t) return true;
+          ev(t, a.id, f.src + ' ' + f.name + ' expires', 'expire');
+          return false;
+        });
+        if (before !== a.live.length) { /* mitigation recomputed below */ }
+      });
+
+      S.actors.forEach(function (a) { a.spentThisStep = false; });
+
+      // fire everything that is ready and affordable
+      S.actors.forEach(function (a) {
+        if (a.dead) return;
+        a.devs.forEach(function (d) {
+          var interval = d.interval || 0;
+          if (!interval) return;                       // nothing that repeats
+          if (t + 1e-9 < d.ready) return;
+          if (d.once) {
+            // Boosts cost morale (prop 318 "Required Points To Fire"), not a cooldown. Nobody
+            // opens a fight with one - you press it when you have banked enough. How fast morale
+            // accrues is NOT in any data we can read: props 326/398 are unused in the asset DB,
+            // AddMoralePoints is native so the UC only calls it, and the server reimplements the
+            // replication but not the accrual. So the moment is an INPUT rather than a guess.
+            if (d.firedOnce) return;
+            if (t + 1e-9 < (sim.moraleAt == null ? 1e9 : sim.moraleAt)) return;
+          }
+          // Off-hands share a global cooldown - you cannot let three waves off at once, you press
+          // them one after another. Without this the whole team's buffs land on the same tick.
+          if (d.cat === 'Offhand' && t + 1e-9 < a.offhandReady) return;
+          // A buff-stripper is held until there is something worth stripping. Nobody opens with
+          // a Neutralize Wave; you wait until the other side has committed its buffs.
+          if ((d.strip || []).length) {
+            var worth = targetsOf(a, d).some(function (tid) {
+              var v = S.byId[tid];
+              if (!v || v.dead || v.team === a.team) return false;
+              var tc = catsNow(v);
+              return (d.strip || []).some(function (sg) {
+                return (sg.cats || []).some(function (cc) { return tc[cc]; });
+              });
+            });
+            if (!worth) return;                        // hold fire
+          }
+          // A 0.1s step cannot represent a weapon that fires 20 times a second, so count how
+          // many shots actually fall inside this step rather than allowing one.
+          var volley = 0;
+          while (d.ready <= t + 1e-9 && volley < 200) { d.ready += interval; volley++; }
+          if (d.ready < t) d.ready = t + interval;
+          var cost = d.power || 0;
+          if (cost > 0) {
+            var afford = Math.floor(a.pw / cost);
+            if (afford <= 0) {
+              if (!d.starved) { ev(t, a.id, d.name + ' out of power', 'power'); d.starved = true; }
+              return;
+            }
+            if (afford < volley) volley = afford;
+            a.pw -= cost * volley; a.spentThisStep = true; d.starved = false;
+          }
+
+          if (d.cat === 'Offhand') a.offhandReady = t + OFFHAND_GCD;
+          var tgts = targetsOf(a, d);
+          if (!d.firedOnce) {
+            ev(t, a.id, d.name + ' fires' + (d.cadence === 'on expiry' ? ' (re-applies on expiry)' : ''),
+               (d.strip || []).length ? 'strip' : 'fire');
+            d.firedOnce = true;
+          }
+          // damage
+          d.shots.forEach(function (sh) {
+            tgts.forEach(function (tid) {
+              var v = S.byId[tid];
+              if (!v || v.dead || v.team === a.team) return;
+              var extra = 0;
+              var tc = catsNow(v);
+              (d.strip || []).forEach(function (sg) {
+                if ((sg.cats || []).some(function (cc) { return tc[cc]; })) extra += sg.dmg;
+              });
+              if (extra) {
+                // the strip lands: those buffs are gone
+                v.live = v.live.filter(function (f) {
+                  return !(d.strip || []).some(function (sg) {
+                    return (sg.cats || []).indexOf(f.cat) >= 0;
+                  });
+                });
+                ev(t, v.id, d.name + ' strips buffs (+' + Math.round(extra) + ')', 'strip');
+              }
+              var m = GA.mitigate(sh.raw * liveDamageMult(a, d.hit) + extra,
+                { cat: sh.cat, damageType: d.hit.dmg, attackType: d.hit.atk, rating: d.hit.rating },
+                protNow(v), {});
+              v.hp -= m.shown * volley;
+              if (v.hp <= 0 && !v.dead) {
+                v.dead = true; v.hp = 0; deaths[v.id] = t;
+                ev(t, v.id, v.cls + ' #' + v.id + ' dies', 'death');
+              }
+            });
+          });
+          // healing
+          d.heals.forEach(function (h) {
+            tgts.forEach(function (tid) {
+              var v = S.byId[tid];
+              if (!v || v.dead || v.team !== a.team) return;
+              if (h.life > 0) {
+                // spread across its duration rather than landing whole on the first tick
+                v.hots = (v.hots || []).filter(function (x) { return x.src !== d.name; });
+                v.hots.push({ src: d.name, rate: h.v / h.life, until: t + h.life });
+              } else {
+                v.hp = Math.min(v.maxHP, v.hp + h.v * volley);
+              }
+            });
+          });
+          // the device's own timed self-effects (Oathbreaker's +20 protection for 10s)
+          (d.selfTimed || []).forEach(function (f) {
+            a.live = a.live.filter(function (x) { return !(x.src === f.src && x.p === f.p); });
+            a.live.push({ p: f.p, name: f.name, v: f.v, pct: f.pct, cat: f.cat,
+                          src: f.src, until: t + f.life });
+          });
+          // buffs / debuffs with a lifetime
+          (a.proj[d.slot] || []).forEach(function (f) {
+            if (!f.life) return;                      // instantaneous riders are not tracked
+            var recips = d.once && d.scope.kind === 'all'
+              ? d.scope.targets.concat([a.id]) : tgts;
+            recips.forEach(function (tid) {
+              var v = S.byId[tid];
+              if (!v || v.dead) return;
+              v.live = v.live.filter(function (x) { return !(x.src === f.src && x.p === f.p); });
+              v.live.push({ p: f.p, name: f.name, v: f.v, pct: f.pct, cat: f.cat,
+                            src: f.src, until: t + f.life });
+            });
+          });
+        });
+      });
+
+      // heal-over-time ticks
+      S.actors.forEach(function (a) {
+        if (!a.hots || a.dead) return;
+        a.hots = a.hots.filter(function (h) { return h.until > t; });
+        a.hots.forEach(function (h) { a.hp = Math.min(a.maxHP, a.hp + h.rate * STEP); });
+      });
+
+      // power regen only when nothing was spent this step (confirmed in game, backlog C4)
+      S.actors.forEach(function (a) {
+        if (!a.spentThisStep && a.pw < a.maxPW) a.pw = Math.min(a.maxPW, a.pw + a.regen * STEP);
+      });
+    }
+    return { S: S, events: events, series: series, deaths: deaths, seconds: seconds };
+  }
+
+  function renderTimeline(seconds) {
+    var host = document.getElementById('cb-timeline');
+    if (!host) return;
+    var r = runTimeline(seconds);
+    if (!r) { host.innerHTML = ''; return; }
+
+    var W = 900, H = 170;
+    var show = sim.tlShow || (sim.tlShow = { hp: 1, pw: 1, prot: 1, marks: 1 });
+    // a readable tick spacing for whatever window is being shown
+    var tick = seconds <= 15 ? 1 : seconds <= 40 ? 5 : seconds <= 90 ? 10 : 20;
+    var grid = '';
+    for (var gt = 0; gt <= seconds + 1e-9; gt += tick) {
+      var gx = (gt / seconds) * W;
+      grid += '<line class="tlgrid" x1="' + gx.toFixed(1) + '" y1="0" x2="' + gx.toFixed(1)
+        + '" y2="' + H + '"/>';
+    }
+    function spark(a) {
+      var pts = r.series[a.id];
+      var step = Math.max(1, Math.floor(pts.length / W));
+      var d = [], dp = [], dr = [];
+      var maxProt = 1;
+      pts.forEach(function (q) { if (q.prot > maxProt) maxProt = q.prot; });
+      for (var i = 0; i < pts.length; i += step) {
+        var x = (i / (pts.length - 1)) * W;
+        d.push((i ? 'L' : 'M') + x.toFixed(1) + ' ' + (H - (pts[i].hp / a.maxHP) * H).toFixed(1));
+        dp.push((i ? 'L' : 'M') + x.toFixed(1) + ' ' + (H - (a.maxPW ? pts[i].pw / a.maxPW : 0) * H).toFixed(1));
+        dr.push((i ? 'L' : 'M') + x.toFixed(1) + ' ' + (H - (pts[i].prot / maxProt) * H).toFixed(1));
+      }
+      // a tick wherever something lapsed on this actor
+      var marks = r.events.filter(function (e) {
+        return String(e.who) === String(a.id) && (e.kind === 'expire' || e.kind === 'power' || e.kind === 'strip');
+      }).map(function (e) {
+        var x = (e.t / r.seconds) * W;
+        return '<line class="tlmark ' + esc(e.kind) + '" x1="' + x.toFixed(1) + '" y1="0" x2="'
+          + x.toFixed(1) + '" y2="' + H + '"><title>' + esc(e.t + 's ' + e.text) + '</title></line>';
+      }).join('');
+      // the handful worth naming in place: what was used, what was stripped, what ran dry
+      // activations, strips, power-outs and deaths first; expiries fill whatever room is left
+      var mine = r.events.filter(function (e) { return String(e.who) === String(a.id); });
+      var seenLab = {};
+      function pick(kinds, cap) {
+        return mine.filter(function (e) {
+          if (kinds.indexOf(e.kind) < 0) return false;
+          if (seenLab[e.text]) return false;
+          seenLab[e.text] = 1; return true;
+        }).slice(0, cap);
+      }
+      var labels = pick(['fire', 'strip', 'power', 'death'], 5)
+        .concat(pick(['expire'], 3))
+        .sort(function (x, y) { return x.t - y.t; });
+      var labSvg = labels.map(function (e, k) {
+        var x = (e.t / r.seconds) * W;
+        var y = 14 + (k % 3) * 15;
+        var anchor = x > W * 0.75 ? 'end' : 'start';
+        var dx = anchor === 'end' ? -4 : 4;
+        return '<line class="tlpin ' + esc(e.kind) + '" x1="' + x.toFixed(1) + '" y1="0" x2="'
+          + x.toFixed(1) + '" y2="' + H + '"/>'
+          + '<text class="tllab ' + esc(e.kind) + '" x="' + (x + dx).toFixed(1) + '" y="' + y
+          + '" text-anchor="' + anchor + '">' + esc(e.text.replace(/ \(re-applies on expiry\)/, '')) + '</text>';
+      }).join('');
+      var died = r.deaths[a.id];
+      return '<div class="tlrow"><div class="tlwho"><b>' + esc(a.cls) + ' #' + a.id + '</b>'
+        + '<i>' + (died != null ? 'dies ' + (Math.round(died * 10) / 10) + 's'
+                                : Math.round(pts[pts.length - 1].hp) + ' HP left') + '</i></div>'
+        + '<svg class="tlsvg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">'
+        + grid
+        + (show.marks ? marks : '')
+        + (show.prot ? '<path class="tlprot" d="' + dr.join(' ') + '"/>' : '')
+        + (show.pw ? '<path class="tlpw" d="' + dp.join(' ') + '"/>' : '')
+        + (show.hp ? '<path class="tlhp" d="' + d.join(' ') + '"/>' : '')
+        + (show.marks ? labSvg : '')
+        + (died != null ? '<line class="tldead" x1="' + ((died / r.seconds) * W).toFixed(1)
+            + '" y1="0" x2="' + ((died / r.seconds) * W).toFixed(1) + '" y2="' + H + '"/>' : '')
+        + '</svg></div>';
+    }
+
+    // one line per distinct event, deduped - a 10s buff re-applied 30 times is not 30 events
+    var seen = {}, evs = [];
+    r.events.forEach(function (e) {
+      var k = e.who + '|' + e.text;
+      if (seen[k]) return;
+      seen[k] = 1; evs.push(e);
+    });
+    evs.sort(function (a, b) { return a.t - b.t; });
+
+    // the honest time to kill: what the run actually produced for the focused target, which
+    // accounts for support drying up. The KPI panel's figure assumes everything stays up forever.
+    var focusDied = r.deaths[sim.focus.to];
+    var survived = r.S.byId[sim.focus.to];
+    var verdict = focusDied != null
+      ? '<b>' + (Math.round(focusDied * 10) / 10) + 's</b> to kill '
+        + esc(survived ? survived.cls + ' #' + survived.id : 'the target')
+      : (survived
+          ? esc(survived.cls + ' #' + survived.id) + ' survives ' + r.seconds + 's on <b>'
+            + Math.round(survived.hp) + ' HP</b>'
+          : 'no target selected');
+
+    host.innerHTML = '<div class="tlhead"><h4>Timeline</h4>'
+      + '<span class="tlverdict">' + verdict + '</span>'
+      + '<span class="tlnote">everyone fires from t=0 at what they have switched on; no movement, '
+      + 'no misses. Buffs expire, power drains and cooldowns come back as the clock runs.</span>'
+      + '<span class="tltog">'
+        + [['hp', 'health'], ['pw', 'power'], ['prot', 'protection'], ['marks', 'events']]
+            .map(function (k) {
+              return '<button class="tlt k-' + k[0] + (show[k[0]] ? ' on' : '') + '" data-k="'
+                + k[0] + '">' + k[1] + '</button>';
+            }).join('') + '</span>'
+      + '<label class="tllen">boosts at <input id="tl-morale" type="number" min="0" max="180" '
+      + 'placeholder="never" value="' + (sim.moraleAt == null ? '' : sim.moraleAt) + '"'
+      + ' title="when enough morale is banked to fire a boost - the earn rate is not in the data, '
+      + 'so this is yours to set">s</label>'
+      + '<label class="tllen">seconds <input id="tl-secs" type="number" min="5" max="180" value="'
+      + seconds + '"></label>'
+      + '<button id="tl-run">run</button></div>'
+      + '<div class="tlrows">' + r.S.actors.map(spark).join('') + '</div>'
+      + '<div class="tlaxis"><span class="tlwho"></span><div class="tlticks">'
+        + (function () {
+            var out = '';
+            for (var q = 0; q <= seconds + 1e-9; q += tick) {
+              out += '<i style="left:' + ((q / seconds) * 100).toFixed(2) + '%">' + q + 's</i>';
+            }
+            return out;
+          })() + '</div></div>'
+      + '<div class="tlevents">' + (evs.length
+          ? evs.slice(0, 40).map(function (e) {
+              var a = r.S.byId[e.who];
+              return '<span class="tlev ' + esc(e.kind) + '"><i>' + e.t.toFixed(1) + 's</i>'
+                + esc(a ? a.cls + ' #' + a.id : '') + ' &mdash; ' + esc(e.text) + '</span>';
+            }).join('')
+          : '<span class="tlev">nothing expires or runs out in this window</span>') + '</div>';
+
+    host.querySelectorAll('.tlt').forEach(function (t2) {
+      t2.addEventListener('click', function () {
+        show[t2.dataset.k] = show[t2.dataset.k] ? 0 : 1;
+        renderTimeline(seconds);
+      });
+    });
+    var mi = document.getElementById('tl-morale');
+    if (mi) mi.addEventListener('change', function () {
+      sim.moraleAt = mi.value === '' ? null : Math.max(0, +mi.value);
+      renderTimeline(seconds);
+    });
+    var b = document.getElementById('tl-run');
+    if (b) b.addEventListener('click', function () {
+      sim.moraleAt = mi && mi.value !== '' ? Math.max(0, +mi.value) : null;
+      var v = +document.getElementById('tl-secs').value || 30;
+      sim.tlSecs = Math.max(5, Math.min(180, v));
+      renderTimeline(sim.tlSecs);
+    });
   }
 
   function renderCombat() {
@@ -1166,9 +1691,9 @@
         + ((st.notes || []).length ? '<div class="acnote">'
             + st.notes.map(function (n) {
                 // why a device refused to stay on: two effects in the same real category
-                return esc((n.lost || []).join(', ')) + ' switched off &mdash; '
-                  + esc(n.win) + ' wins ' + esc(GA.CAT_NAMES && GA.CAT_NAMES[n.cat] || ('category ' + n.cat))
-                  + ' (' + esc(n.rule) + ')';
+                var what = (GA.CAT_NAMES && GA.CAT_NAMES[n.cat]) || ('category ' + n.cat);
+                return esc(what.replace(/\s+$/, '')) + ': ' + esc(n.win) + ' wins, '
+                  + esc((n.lost || []).join(', ')) + ' suppressed (' + esc(n.rule) + ')';
               }).join(' · ')
             + '</div>' : '')
         + '<div class="acfocus">'
@@ -1243,8 +1768,6 @@
         + '<div class="kpi' + (heal.hps ? ' heal' : '') + '"><i>healing / s</i><b>'
           + fmt1(heal.hps) + '</b></div>'
         + '<div class="kpi"><i>net / s</i><b>' + fmt1(net) + '</b></div>'
-        + '<div class="kpi big"><i>time to kill</i><b>'
-          + (ttk === null ? 'never' : fmt1(ttk) + 's') + '</b></div>'
         + '<div class="kpi"><i>power lasts</i><b>'
           + (sustain === null ? '&mdash;' : fmt1(sustain) + 's') + '</b></div>'
         + '<div class="kpi"><i>target</i><b>' + stt.maxHP + ' HP</b></div>'
@@ -1264,6 +1787,7 @@
 
     host.innerHTML =
       '<div class="simboard">' + teamCol('A', 'Team A') + teamCol('B', 'Team B') + '</div>'
+      + '<div id="cb-timeline" class="timeline"></div>'
       + '<div class="solve">' + solve + '</div>'
       + '<p class="cbtnote">Drag a switched-on device onto a combatant to aim it there &mdash; a '
       + 'weapon only drops on the other team, a heal or buff only on its own. Protection is flat, '
@@ -1273,6 +1797,7 @@
       + 'is sustained fire with everything up.</p>';
 
     wireCombat(host);
+    renderTimeline(sim.tlSecs || 30);
   }
 
   function wireCombat(host) {
