@@ -366,6 +366,13 @@
       var dev = (window.__DEVMODEL__ || {})[String(g.id)];
       if (!dev) return;
       (dev.modes || []).forEach(function (m) {
+        // A SPAWN mode describes the thing the device PUTS DOWN, not the person carrying it.
+        // Force Wall and Dome Shield Boost each spawn a ForceField Device whose own equip
+        // effects are +75 Physical and +1000 Bio/Ignite/Bleed/Disease - a structure shrugging
+        // off damage-over-time. Folding those into the carrier gave a Robotics 189 Physical
+        // against a rating of 100, which CalcProtection reads as flat immunity: it could be
+        // shot all day and never lose a point of health.
+        if (m.kind === 'SPAWN') return;
         (m.chips || []).forEach(function (c) {
           if (!/^Equip: /.test(c[1])) return;
           var num = c[2];
