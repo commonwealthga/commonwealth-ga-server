@@ -2234,6 +2234,15 @@
       grid += '<line class="tlgrid" x1="' + gx.toFixed(1) + '" y1="0" x2="' + gx.toFixed(1)
         + '" y2="' + H + '"/>';
     }
+    // Health thresholds, drawn over the plot rather than inside the SVG: the chart is
+    // stretched with preserveAspectRatio="none", which would squash any label written into it.
+    // A percentage of health sits at (1 - fraction) from the top.
+    var THRESH = '<div class="tlthr">'
+      + [[75, 'gate'], [50, ''], [25, 'gate']].map(function (k) {
+          return '<span class="thr' + (k[1] ? ' ' + k[1] : '') + '" style="top:'
+            + (100 - k[0]) + '%"><i>' + k[0] + '%</i></span>';
+        }).join('') + '</div>';
+
     function spark(a) {
       var pts = r.series[a.id];
       var step = Math.max(1, Math.floor(pts.length / W));
@@ -2382,6 +2391,7 @@
         + (died != null ? '<line class="tldead" x1="' + ((died / r.seconds) * W).toFixed(1)
             + '" y1="0" x2="' + ((died / r.seconds) * W).toFixed(1) + '" y2="' + H + '"/>' : '')
         + '</svg>'
+        + (show.hp ? THRESH : '')
         + (show.marks ? '<div class="tlicons">' + iconRow + '</div>' : '')
         + '</div></div>';
     }
