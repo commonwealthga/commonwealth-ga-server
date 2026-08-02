@@ -157,9 +157,14 @@ window.GA = window.GA || {};
       if (!pprop) return;
       var pv = prot[pprop] || 0;
       var r = axis(pv, rating);
+      var before = value;
       value = value * (1 - r);
+      // What this axis took off the running figure. CalcProtection hands exactly this to
+      // SubmitMitigationDamage, which is what drains a shield's pool - see the server's
+      // TgEffectManager__SubmitMitigationDamage. Note it is the WHOLE axis reduction, base
+      // protection included, not just the shield's own contribution.
       axes.push({ name: name, prop: pprop, protection: pv, rating: rating,
-                  reduction: r, immune: r >= 1, running: value });
+                  reduction: r, immune: r >= 1, running: value, absorbed: before - value });
     }
     applyAxis('Category', CAT_PROT[cat]);
     applyAxis('Damage type', DMGTYPE_PROT[hit.damageType]);

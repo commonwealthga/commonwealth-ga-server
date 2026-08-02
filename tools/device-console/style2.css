@@ -755,3 +755,61 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
 
 .tlic.fire.held{border-style:dashed;border-color:color-mix(in srgb,var(--power) 55%,var(--line));opacity:.45}
 .tlic.fire.held:hover{opacity:.9}
+
+/* class artwork */
+.clsic{width:22px;height:22px;border-radius:5px;flex:none;object-fit:contain}
+.clsic.sm{width:14px;height:14px;border-radius:3px;margin-right:5px;vertical-align:-3px}
+.tlic .clsic{width:14px;height:14px;border-radius:2px}
+
+/* actor card: identity on the left, gear filling what used to be dead space on the right */
+.acmain{display:grid;grid-template-columns:minmax(200px,260px) 1fr;gap:14px;align-items:start}
+.acleft{min-width:0}
+.acright{min-width:0}
+.acright .acgear{gap:3px}
+.acright .acinb{margin-top:7px}
+@media (max-width:1180px){.acmain{grid-template-columns:1fr}}
+
+/* verdict reports the whole run */
+.tlverdict{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+.vdead{display:inline-flex;align-items:center;gap:5px}
+.vdead .clsic{width:16px;height:16px}
+.vlive{font-size:10px;opacity:.5;padding-left:4px}
+
+.tcbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}
+.tcname{background:var(--bg);color:inherit;border:1px solid var(--line);border-radius:6px;
+  padding:5px 9px;font:inherit;font-size:12px;min-width:180px}
+.tcbtn{background:var(--panel);border:1px solid var(--line);color:inherit;border-radius:6px;
+  padding:5px 12px;font:inherit;font-size:11px;cursor:pointer}
+.tcbtn:hover{border-color:var(--acc)}
+.tcbtn.primary{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent)}
+.tcsep{flex:1}
+#tc-import{background:var(--bg);color:inherit;border:1px solid var(--line);border-radius:6px;
+  padding:5px 8px;font:inherit;font-size:11px}
+.tcsaved{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px}
+.tcsav{display:inline-flex}
+.tcload{display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--line);
+  color:inherit;border-radius:20px 0 0 20px;padding:3px 10px;font:inherit;font-size:11px;cursor:pointer}
+.tcload:hover{border-color:var(--acc)}
+.tcdel{background:var(--bg);border:1px solid var(--line);border-left:none;color:inherit;
+  border-radius:0 20px 20px 0;padding:3px 8px;font:inherit;font-size:12px;cursor:pointer;opacity:.4}
+.tcdel:hover{opacity:1;color:var(--debuff);border-color:var(--debuff)}
+.acswap{background:none;border:none;color:inherit;opacity:.4;cursor:pointer;font-size:13px;
+  line-height:1;padding:0 3px}
+.acswap:hover{opacity:1;color:var(--acc)}
+.acbuild{background:var(--bg);color:inherit;border:1px solid var(--line);border-radius:5px;
+  padding:2px 5px;font:inherit;font-size:11px;max-width:150px}
+
+.tcexp{background:var(--bg);border:1px solid var(--line);border-left:none;border-right:none;
+  color:inherit;padding:3px 10px;font:inherit;font-size:11px;cursor:pointer}
+.tcexp:hover{border-color:var(--acc);color:var(--acc)}
+.tcexp.off{opacity:.35;cursor:not-allowed}
+.tcexpbox{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:12px;
+  background:var(--bg2)}
+.tcexpbox.bad{border-color:color-mix(in srgb,var(--debuff) 45%,var(--line))}
+.tcexpbox.bad i{opacity:.6;font-size:11px}
+.tcexphead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;margin-bottom:8px}
+.tcexphead select{background:var(--bg);color:inherit;border:1px solid var(--line);border-radius:5px;
+  padding:2px 5px;font:inherit;font-size:11px}
+.tcwarn{font-size:10px;color:var(--power)}
+#tc-exp-json{width:100%;min-height:170px;background:var(--bg);color:var(--ink);border:1px solid var(--line);
+  border-radius:6px;padding:8px;font:11px/1.5 ui-monospace,Consolas,monospace;resize:vertical}

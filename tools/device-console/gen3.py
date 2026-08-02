@@ -1,3 +1,4 @@
+import os
 # Render inventory console v2 from inv_model.json
 import json, html, os
 SEP = os.sep
@@ -9,6 +10,23 @@ IXD = json.load(open(BASE + r"\ix.json"))
 model = D['model']; armor = D['armor']; base = D['base']
 ORDER = ['Assault', 'Medic', 'Recon', 'Robotics']
 ACC = {'Assault': 'assault', 'Medic': 'medic', 'Recon': 'recon', 'Robotics': 'robotics'}
+# ---- class icons (Assault/Medic/Recon/Robotics + death) ---------------------------
+# Same trick as the device art: base64 once into a lookup, referenced by name at runtime, so the
+# page stays a single self-contained file with no external requests.
+import base64 as _b64
+OUTDIR = os.path.join('E:' + os.sep, 'GA_LOCAL', 'Repo', 'docs', 'claude',
+                      'theorycraft-console')
+CLASSIMG = {}
+_cdir = OUTDIR + SEP + 'assets' + SEP + 'class-icons'
+if os.path.isdir(_cdir):
+    for _f in sorted(os.listdir(_cdir)):
+        if not _f.lower().endswith('.png'):
+            continue
+        with open(os.path.join(_cdir, _f), 'rb') as _fh:
+            CLASSIMG[os.path.splitext(_f)[0]] = ('data:image/png;base64,'
+                                                 + _b64.b64encode(_fh.read()).decode('ascii'))
+CLASSIMGJSON = json.dumps(CLASSIMG)
+
 CATORD = ['Melee', 'Ranged', 'Specialty', 'Offhand', 'Boost', 'Jetpack']
 def esc(s): return html.escape(str(s))
 CHIP = {'heal': 'heal', 'prot': 'prot', 'dmg': 'dmg', 'debuff': 'debuff', 'power': 'power', 'hp': 'hp', 'util': 'util', 'blk': 'blk', 'mech': 'mech', 'stat': 'stat'}
@@ -127,7 +145,8 @@ for _cls, _cats in model.items():
         for _d in _ds:
             DEVMODEL[str(_d['id'])] = {'name': _d['name'], 'cat': _d['cat'], 'oc': _d['oc'],
                                        'modes': _d['modes'], 'variants': _d['variants']}
-CLSBTN = "".join('<button class="tb-class%s" data-cls="%s">%s</button>' % (' active' if c == 'Assault' else '', c, c) for c in ORDER)
+CLSBTN = "".join('<button class="tb-class%s" data-cls="%s"><img class="clsic sm" src="%s" alt="">%s</button>'
+                 % (' active' if c == 'Assault' else '', c, CLASSIMG.get(c, ''), c) for c in ORDER)
 BUILDER = (
  '<div id="tb-char"></div>'
  '<div class="tbwrap" id="tbwrap"><div id="tb-gear"></div><div id="tb-armour"></div><div id="tb-trees"></div>'
@@ -154,6 +173,7 @@ COMBATBAR = (
  'multiplied together. Figures are rounded the way the combat log rounds them, so they can be '
  'compared against a real fight directly.</p>'
  '<div id="cb-body"></div></div>')
+
 
 HTML = (
 '<title>Global Agenda &mdash; Loadout & Device Console</title>\n<style>%s</style>\n'
@@ -205,6 +225,7 @@ HTML = HTML.replace('</script>\n',
                     '<script>window.__DEVMETA__=' + json.dumps(DEVMETA) + ';</script>\n'
                     '<script>window.__DEVFX__=' + json.dumps(DEVFX) + ';</script>\n'
                     '<script>window.__DEVIMG__=' + DEVIMG + ';</script>\n'
+                    '<script>window.__CLASSIMG__=' + CLASSIMGJSON + ';</script>\n'
                     '<script>window.__CHARS__=' + CHARS + ';</script>\n'
                     '<script>' + BUILDJS + '</script>\n'
                     '<script>' + BENCHJS + '</script>\n', 1)

@@ -46,6 +46,8 @@
   // carries its OWN rolled mods from ga_players_inventory, not a representative config.
   var CH = window.__CHARS__ || null;
   var curChar = null, curProfile = null, charArm = null, charGear = [];
+  var craftName = '';       // what the build on the bench is called
+  var craftEditing = null;  // id of the saved build being edited, if any
   var craftMode = false;    // TheoryCrafter: gear is hand-picked, not loaded from a profile
   var craftSlots = [];      // [{cat, id, vix}] - one entry per equipment slot
   var craftClass = null;    // the class those slots were picked for
@@ -109,7 +111,7 @@
     if (!host || !CH || !CH.chars.length) return;
     var tabs = CH.chars.map(function (c) {
       return '<button class="chbtn' + (curChar === String(c.id) ? ' active' : '') + '" data-ch="' + c.id
-        + '">' + esc(c.cls) + '</button>';
+        + '">' + classIcon(c.cls, 'sm') + esc(c.cls) + '</button>';
     }).join('');
     var profs = '';
     if (curChar) {
@@ -425,6 +427,79 @@
                       sig: v.sig, base: v.base, groups: v.groups, nums: v.nums });
     });
   }
+  // put a saved build back on the bench. Devices are matched to slots by category so a build
+  // that came from the database drops into the same layout a hand-made one uses.
+  function loadCraftFromBuild(b) {
+    if (!b) return;
+    craftMode = true;
+    craftEditing = b.id;
+    craftName = b.name || '';
+    curClass = b.cls;
+    document.querySelectorAll('.tb-class').forEach(function (x) {
+      x.classList.toggle('active', x.dataset.cls === curClass);
+    });
+    alloc = {};
+    (b.skills || []).forEach(function (sid) { if (nodeIndex[sid]) alloc[sid] = 1; });
+    if (b.armSlots) armSlots = b.armSlots.slice();
+    charArm = (b.armour && b.armour.length) ? b.armour : null;
+    craftSlots = blankSlots();
+    (b.devices || []).forEach(function (d) {
+      var slot = null;
+      for (var i = 0; i < craftSlots.length; i++) {
+        if (craftSlots[i].cat === d.cat && !craftSlots[i].id) { slot = craftSlots[i]; break; }
+      }
+      if (!slot) return;
+      slot.id = String(d.id);
+      var dev = (window.__DEVMODEL__ || {})[String(d.id)];
+      var vs = (dev && dev.variants) || [];
+      var vix = 0;
+      vs.forEach(function (v, k) { if (v.sig === d.sig) vix = k; });
+      slot.vix = vix;
+    });
+    craftToGear();
+  }
+
+  // Show the payload rather than pushing it anywhere - there is no backend yet, and this is
+  // the shape a sync would POST. Refusals are explained instead of the button just not working.
+  function showExport(b, target, rd) {
+    var host = document.getElementById('tc-export');
+    if (!host) return;
+    if (!rd.ok) {
+      host.innerHTML = '<div class="tcexpbox bad"><b>Cannot export</b> &mdash; ' + esc(rd.why)
+        + '. <i>Builds can be made for any class, but only sent to a character that exists.</i>'
+        + '</div>';
+      return;
+    }
+    var pid = (b.origin && b.origin.profileId) || '1';
+    var payload = exportPayload(b, target.id, pid);
+    host.innerHTML = '<div class="tcexpbox">'
+      + '<div class="tcexphead"><b>' + esc(b.name) + '</b> &rarr; '
+        + classIcon(b.cls, 'sm') + esc(b.cls) + ' character #' + target.id
+        + ', item profile <select id="tc-exp-prof">'
+        + ['1', '2', '3', '4', '5'].map(function (x) {
+            return '<option' + (x === String(pid) ? ' selected' : '') + '>' + x + '</option>';
+          }).join('') + '</select>'
+        + (rd.missing.length
+            ? '<span class="tcwarn">' + rd.missing.length + ' device(s) have no inventory row '
+              + 'and are omitted: ' + esc(rd.missing.map(function (d) { return d.name; }).join(', '))
+              + '</span>'
+            : '')
+        + '<button id="tc-exp-copy" class="tcbtn">copy</button></div>'
+      + '<textarea id="tc-exp-json" readonly>' + esc(JSON.stringify(payload, null, 2))
+      + '</textarea></div>';
+    var ps = document.getElementById('tc-exp-prof');
+    if (ps) ps.addEventListener('change', function () {
+      document.getElementById('tc-exp-json').value =
+        JSON.stringify(exportPayload(b, target.id, ps.value), null, 2);
+    });
+    var cp = document.getElementById('tc-exp-copy');
+    if (cp) cp.addEventListener('click', function () {
+      var ta = document.getElementById('tc-exp-json');
+      ta.select();
+      try { document.execCommand('copy'); cp.textContent = 'copied'; } catch (e) {}
+    });
+  }
+
   function renderCraft() {
     var host = document.getElementById('tc-build');
     if (!host) return;
@@ -456,10 +531,46 @@
         + '<select class="tcdev" data-i="' + i + '">' + opts + '</select>' + rolls + '</div>';
     }).join('');
     var filled = craftSlots.filter(function (s2) { return s2.id; }).length;
+    var saved = builds();
     host.innerHTML = '<div class="chhead"><h3>TheoryCrafter</h3>'
       + '<span class="chname">' + esc(curClass) + '</span>'
       + '<span class="tccount">' + filled + ' / ' + craftSlots.length + ' slots</span>'
       + '<button class="chclear" id="tc-clear">clear</button></div>'
+      + '<div class="tcbar">'
+      + '<input id="tc-name" class="tcname" placeholder="build name" value="'
+        + esc(craftName || '') + '">'
+      + '<button id="tc-save" class="tcbtn primary">save build</button>'
+      + '<button id="tc-add-a" class="tcbtn">save &amp; send to Team A</button>'
+      + '<button id="tc-add-b" class="tcbtn">save &amp; send to Team B</button>'
+      + '<span class="tcsep"></span>'
+      + '<select id="tc-import"><option value="">import a live profile&hellip;</option>'
+        + (charList() || []).map(function (c) {
+            return Object.keys(c.profiles).sort().map(function (pid) {
+              return '<option value="' + c.id + '|' + pid + '">' + esc(c.cls) + ' profile ' + pid
+                + '</option>';
+            }).join('');
+          }).join('') + '</select>'
+      + '</div>'
+      + (saved.length
+          ? '<div class="tcsaved"><span class="aclab">saved builds</span>'
+            + saved.map(function (b) {
+                var rd = exportReadiness(b);
+                return '<span class="tcsav"><button class="tcload" data-b="' + b.id + '">'
+                  + classIcon(b.cls, 'sm') + esc(b.name) + '</button>'
+                  + '<button class="tcexp' + (rd.ok ? '' : ' off') + '" data-b="' + b.id + '"'
+                    + ' title="' + esc(rd.ok
+                        ? ('export for ' + rd.targets.length + ' ' + b.cls + ' character'
+                           + (rd.targets.length > 1 ? 's' : '')
+                           + (rd.missing.length ? ' \u2014 ' + rd.missing.length
+                              + ' device(s) have no inventory row and will be skipped' : ''))
+                        : rd.why) + '">export</button>'
+                  + '<button class="tcdel" data-b="' + b.id + '" title="delete">&times;</button>'
+                  + '</span>';
+              }).join('')
+            + '</div>'
+          : '<p class="chnote">No saved builds yet. Fill the slots, name it and save &mdash; or '
+            + 'import a live profile to start from something real.</p>')
+      + '<div id="tc-export"></div>'
       + '<p class="chnote">Devices are filtered to what this class can equip, and each keeps its '
       + 'own mod roll. Melee, Ranged and Specialty share your hands &mdash; only one is out at a time.</p>'
       + '<div class="tcslots">' + rows + '</div>';
@@ -475,6 +586,59 @@
       sel.addEventListener('change', function () {
         craftSlots[+sel.dataset.i].vix = +sel.value;
         craftToGear(); render();
+      });
+    });
+    var nameBox = document.getElementById('tc-name');
+    if (nameBox) nameBox.addEventListener('input', function () { craftName = nameBox.value; });
+
+    function saveCurrent() {
+      var b = buildFromCraft(nameBox && nameBox.value);
+      if (craftEditing) b.id = craftEditing;          // keep editing the same build
+      putBuild(b);
+      craftEditing = b.id;
+      return b;
+    }
+    var sv = document.getElementById('tc-save');
+    if (sv) sv.addEventListener('click', function () { saveCurrent(); render(); });
+    ['a', 'b'].forEach(function (side) {
+      var btn = document.getElementById('tc-add-' + side);
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        var b = saveCurrent();
+        addActor(side.toUpperCase(), b.id);
+        render();
+        var tab = [].slice.call(document.querySelectorAll('.viewtab'))
+          .filter(function (x) { return x.dataset.view === 'combat'; })[0];
+        if (tab) tab.click();
+      });
+    });
+    var imp = document.getElementById('tc-import');
+    if (imp) imp.addEventListener('change', function () {
+      if (!imp.value) return;
+      var parts = imp.value.split('|');
+      var b = buildFromProfile(parts[0], parts[1]);
+      if (b) { putBuild(b); loadCraftFromBuild(b); }
+      render();
+    });
+    host.querySelectorAll('.tcload').forEach(function (b2) {
+      b2.addEventListener('click', function () {
+        var bb = buildById(b2.dataset.b);
+        if (bb) { loadCraftFromBuild(bb); render(); }
+      });
+    });
+    host.querySelectorAll('.tcexp').forEach(function (b2) {
+      b2.addEventListener('click', function () {
+        var b = buildById(b2.dataset.b);
+        var rd = exportReadiness(b);
+        if (!rd.ok) { showExport(b, null, rd); return; }
+        showExport(b, rd.targets[0], rd);
+      });
+    });
+    host.querySelectorAll('.tcdel').forEach(function (b2) {
+      b2.addEventListener('click', function () {
+        delBuild(b2.dataset.b);
+        if (String(craftEditing) === String(b2.dataset.b)) craftEditing = null;
+        render();
       });
     });
     var cl = document.getElementById('tc-clear');
@@ -908,11 +1072,10 @@
   function charList() { var C = window.__CHARS__ || {}; return C.chars || (C.length ? C : []); }
   function charOf(cls) { return charList().filter(function (c) { return c.cls === cls; })[0]; }
 
-  function addActor(team, cls) {
-    var c = charOf(cls) || charList()[0];
-    if (!c) return null;
-    var a = { id: sim.nextId++, team: team, cls: c.cls,
-              pid: Object.keys(c.profiles).sort()[0], active: {}, aim: {} };
+  function addActor(team, buildId) {
+    var b = buildById(buildId) || builds()[0];
+    if (!b) return null;
+    var a = { id: sim.nextId++, team: team, buildId: b.id, cls: b.cls, active: {}, aim: {} };
     sim.actors.push(a);
     return a;
   }
@@ -973,16 +1136,21 @@
   }
   function idOf(x) { return x.id; }
 
+  // Class artwork, inlined by gen3 from assets/class-icons. classIcon('Recon') for a combatant,
+  // classIcon('death') for the marker on a kill.
+  function classIcon(name, extra) {
+    var src = (window.__CLASSIMG__ || {})[name];
+    if (!src) return '';
+    return '<img class="clsic' + (extra ? ' ' + extra : '') + '" src="' + src + '" alt="'
+      + esc(name) + '">';
+  }
+
+  // Actors are saved builds now, not live database profiles. The database is still the way
+  // builds get INTO the console - "import" on the TheoryCrafter pulls a profile verbatim - but
+  // the simulator only ever reads from the build store, so a build can be edited freely without
+  // touching anything the game owns.
   function actorCtx(a) {
-    var c = charOf(a.cls); if (!c) return null;
-    var p = c.profiles[a.pid] || c.profiles[Object.keys(c.profiles)[0]];
-    if (!p) return null;
-    var al = {};
-    p.skills.forEach(function (sid) { if (nodeIndex[sid]) al[sid] = 1; });
-    return { curClass: c.cls, alloc: al,
-             charArm: (p.armour && p.armour.length) ? p.armour : null,
-             charGear: p.devices || [], activeGear: a.active,
-             activeOrder: Object.keys(a.active) };
+    return ctxFromBuild(buildById(a.buildId), a.active);
   }
 
   // everything an actor's switched-on gear throws at somebody else, tagged with its aim
@@ -1138,6 +1306,180 @@
       .map(function (k) { return esc(k) + ' ' + t[k]; }).join(' · ') || 'no skills';
   }
 
+  // ---- export: can this build actually be pushed anywhere? ---------------------
+  // A build is only exportable if the account has a character of that class to receive it. You
+  // can theorycraft a Recon with no Recon character - that is useful - but there is nowhere to
+  // send it, so the export is refused rather than producing a payload with no target.
+  //
+  // A device also needs its inventory row: ga_character_devices stores inventory_id, not a
+  // device id, so a hand-built device that was never owned cannot be written back. Those are
+  // listed rather than silently dropped.
+  function targetsFor(cls) {
+    return (charList() || []).filter(function (c) { return c.cls === cls; });
+  }
+  function exportReadiness(b) {
+    if (!b) return { ok: false, why: 'no build' };
+    var targets = targetsFor(b.cls);
+    if (!targets.length) {
+      return { ok: false, targets: [],
+               why: 'no ' + b.cls + ' character on this account to sync to' };
+    }
+    var missing = (b.devices || []).filter(function (d) { return !d.inv; });
+    return { ok: true, targets: targets, missing: missing };
+  }
+
+  // The payload is a profile plus enough identity to write it: ga_character_devices wants
+  // (character_id, item_profile_id, inventory_id, equipped_slot) and ga_character_skills wants
+  // (character_id, item_profile_id, skill_group_id, skill_id, points). points is always 1.
+  function exportPayload(b, charId, profileId) {
+    var devices = (b.devices || []).filter(function (d) { return d.inv; })
+      .map(function (d) {
+        return { equipped_slot: d.slot, inventory_id: d.inv,
+                 device_id: d.id, mod_effect_group_ids: d.mods || '', name: d.name };
+      });
+    (b.armour || []).forEach(function (a2) {
+      if (!a2.inv) return;
+      devices.push({ equipped_slot: a2.eslot || a2.slot, inventory_id: a2.inv,
+                     mod_effect_group_ids: a2.mods || '', name: a2.name });
+    });
+    return {
+      format: 'ga-console-build/1',
+      character_id: charId == null ? null : +charId,
+      item_profile_id: profileId == null ? null : +profileId,
+      cls: b.cls, name: b.name,
+      origin: b.origin || null,
+      devices: devices,
+      skills: (b.skills || []).map(function (sid) {
+        return { skill_group_id: groupOf(sid, b.cls), skill_id: sid, points: 1 };
+      })
+    };
+  }
+
+  // ======================= SAVED BUILDS =======================
+  // A saved build IS a character profile, field for field: devices / armour / skills in exactly
+  // the shape __CHARS__ delivers them, plus a name and where it came from. That is deliberate -
+  // the intended end state is logging in with game credentials, pulling your live profiles,
+  // editing them here and syncing back. Keeping one shape means import is a copy and export is a
+  // copy, with no translation layer to drift.
+  //
+  //   { id, name, cls, origin: {charId, profileId} | null,
+  //     devices: [{slot, id, name, oc, cat, sig, base, groups, nums}],
+  //     armour:  [{slot, name, sig, base, groups, nums}] | null,
+  //     skills:  [skillId, ...] }
+  //
+  // Strip id/name/origin and what remains is a profile ready to write back.
+  var BKEY = 'ga.console.builds.v1';
+
+  function builds() {
+    try { return JSON.parse(localStorage.getItem(BKEY)) || []; } catch (e) { return []; }
+  }
+  function writeBuilds(list) {
+    try { localStorage.setItem(BKEY, JSON.stringify(list)); } catch (e) {}
+  }
+  function buildById(id) {
+    return builds().filter(function (b) { return String(b.id) === String(id); })[0] || null;
+  }
+  function putBuild(b) {
+    var list = builds();
+    var i = -1;
+    list.forEach(function (x, k) { if (String(x.id) === String(b.id)) i = k; });
+    if (i >= 0) list[i] = b; else list.push(b);
+    writeBuilds(list);
+    return b;
+  }
+  function delBuild(id) {
+    writeBuilds(builds().filter(function (b) { return String(b.id) !== String(id); }));
+  }
+  function nextBuildId() {
+    var n = 1;
+    builds().forEach(function (b) {
+      var m = /^b(\d+)$/.exec(String(b.id));
+      if (m && +m[1] >= n) n = +m[1] + 1;
+    });
+    return 'b' + n;
+  }
+
+  // the profile half on its own - what would be written back to the game
+  function buildToProfile(b) {
+    return { devices: b.devices || [], armour: b.armour || null, skills: b.skills || [] };
+  }
+
+  // pull a live character profile in. This is the shape a credentialed login would hand us.
+  function buildFromProfile(charId, profileId, name) {
+    var c = (charList() || []).filter(function (x) { return String(x.id) === String(charId); })[0];
+    if (!c) return null;
+    var p = c.profiles[profileId];
+    if (!p) return null;
+    return { id: nextBuildId(), name: name || (c.cls + ' p' + profileId), cls: c.cls,
+             origin: { charId: c.id, profileId: String(profileId) },
+             devices: JSON.parse(JSON.stringify(p.devices || [])),
+             armour: p.armour && p.armour.length ? JSON.parse(JSON.stringify(p.armour)) : null,
+             skills: (p.skills || []).slice() };
+  }
+
+  // and the TheoryCrafter half - the same shape, assembled from what is on screen
+  function buildFromCraft(name) {
+    // An inventory row is a specific rolled instance, so it only carries over when the device
+    // and its mod signature are both unchanged. Pick a different variant and you have described
+    // a roll you do not own - the export drops it rather than writing the wrong item.
+    // __CHARS__.inv is every inventory row the account owns, keyed device -> roll signature,
+    // so any owned item resolves - not just one that happens to be equipped on a profile. Pick a
+    // roll the account does not own and there is deliberately no match: the export drops that
+    // slot rather than writing an item that does not exist.
+    var OWNED = (window.__CHARS__ || {}).inv || {};
+    var prevDevs = (craftEditing ? ((buildById(craftEditing) || {}).devices || []) : []).slice();
+    function claimInv(id, sig) {
+      var owned = OWNED[String(id)] && OWNED[String(id)][sig || ''];
+      if (owned) return { inv: owned[0], mods: owned[1] };
+      // an imported build may carry a row that predates this snapshot
+      for (var k = 0; k < prevDevs.length; k++) {
+        var pd = prevDevs[k];
+        if (pd && +pd.id === +id && (pd.sig || '') === (sig || '') && pd.inv) {
+          prevDevs[k] = null;
+          return pd;
+        }
+      }
+      return null;
+    }
+    var devices = [];
+    craftSlots.forEach(function (sl, i) {
+      if (!sl.id) return;
+      var dev = (window.__DEVMODEL__ || {})[String(sl.id)];
+      if (!dev) return;
+      var v = (dev.variants || [])[sl.vix] || (dev.variants || [])[0] || {};
+      var own = claimInv(sl.id, v.sig);
+      var rec = { slot: i + 1, id: +sl.id, name: dev.name, oc: !!dev.oc, cat: dev.cat,
+                  sig: v.sig || '', base: v.base || null,
+                  groups: v.groups || [], nums: v.nums || [] };
+      if (own) { rec.inv = own.inv; rec.mods = own.mods || ''; }
+      devices.push(rec);
+    });
+    // Keep the real rolled armour and the origin when the bench came from an imported profile.
+    // Dropping them made a round-trip lossy - a re-saved import fell back to preset armour (3637
+    // HP became 3425) and forgot which character and profile it belonged to, which is exactly
+    // what a future "sync to game" needs to write back to.
+    var prev = craftEditing ? buildById(craftEditing) : null;
+    return { id: nextBuildId(), name: name || (curClass + ' build'), cls: curClass,
+             origin: prev ? (prev.origin || null) : null,
+             devices: devices,
+             armour: (charArm && charArm.length) ? JSON.parse(JSON.stringify(charArm))
+                     : (prev && prev.armour ? prev.armour : null),
+             armSlots: armSlots.slice(),
+             skills: Object.keys(alloc).map(Number) };
+  }
+
+  // a saved build, in the form statsFor wants
+  function ctxFromBuild(b, active) {
+    if (!b) return null;
+    var al = {};
+    (b.skills || []).forEach(function (sid) { if (nodeIndex[sid]) al[sid] = 1; });
+    return { curClass: b.cls, alloc: al,
+             charArm: (b.armour && b.armour.length) ? b.armour : null,
+             armSlots: b.armSlots || armSlots,
+             charGear: b.devices || [], activeGear: active || {},
+             activeOrder: Object.keys(active || {}) };
+  }
+
   // ============================== TIMELINE ==============================
   // A "what if" run, not a battle simulator. Everyone fires from t=0 at whatever they have
   // switched on and aimed; nobody moves, dodges or misses. What it DOES model is the thing a
@@ -1194,21 +1536,55 @@
       if (c.prop === 150) d.persist = c.value;        // Persist Time - how long a boost lasts
       if (c.prop === 318) d.morale = c.value;         // Required Points To Fire
     });
+    // c.life is the printed duration; c.lifeVal is what it becomes after the build's Effect
+    // Lifetime skills. projectedEffects already used lifeVal, so effects on OTHER people ran
+    // for the buffed time while your own ran for the raw one - a Range Shield's protection
+    // lapsing at 10.1s while its pool sat there until 14.1s was this.
+    function lifeOf(c) { return c.lifeVal || c.life || 0; }
+    // Skills that fire BECAUSE this device is up - Aegis Armament's +25 Physical while a
+    // shield holds (prop 155, calc 67, egt 1104 REACTIVE). simDevice only ever read chips, so
+    // none of these reached the run: no reactive or conditional skill was being applied at all.
+    // Always-on passives are excluded because the skill tree already counts them.
+    d.extra = (res.extra || []).filter(function (x) {
+      return x.kind !== 'passive' && !(GA.LANDS_ON_OTHER || {})[x.egt] && GA.statName(x.prop);
+    }).map(function (x) {
+      var pos = (x.calc === 67 || x.calc === 68);
+      return { p: x.prop, name: GA.statName(x.prop), v: pos ? x.v : -x.v,
+               pct: (x.calc === 68 || x.calc === 69), cat: 0, src: g.name, skill: x.skill };
+    });
     d.selfTimed = [];
+    // A shield is a POOL plus the protection props it covers - prop 386 carries the pool, and
+    // any protection chip sharing its category is what the pool stands behind.
+    d.shields = [];
+    (m.chips || []).forEach(function (c) {
+      if (c.prop !== 386 || c.base === null) return;
+      var covers = (m.chips || []).filter(function (x) {
+        return x.prop !== 386 && x.cat === c.cat && !x.neg
+          && (GA.PROT_PROPS || []).indexOf(x.prop) >= 0;
+      });
+      if (covers.length) {
+        // Take the lifetime from the PROTECTION, not from the pool chip. They belong to one
+        // effect group and must lapse together; reading the pool's own lifeVal had the
+        // protection ending at 10.1s while the pool sat there until 14.1s.
+        d.shields.push({ pool: c.value, props: covers.map(function (x) { return x.prop; }),
+                         life: covers[0].lifeVal || covers[0].life || c.lifeVal || c.life || 0,
+                         cat: c.cat });
+      }
+    });
     var onSelf = (mm.hit && mm.hit.tgt === 'self');
     (m.chips || []).forEach(function (c) {
       if (c.base === null) return;
       if (c.prop === 51 || c.prop === 211) {
-        if (c.sign < 0) d.shots.push({ raw: c.value, cat: c.cat, life: c.life });
-        else if (onSelf) d.selfHeals = (d.selfHeals || []).concat([{ v: c.value, life: c.life }]);
-        else if (!c.self) d.heals.push({ v: c.value, life: c.life });
+        if (c.sign < 0) d.shots.push({ raw: c.value, cat: c.cat, life: lifeOf(c) });
+        else if (onSelf) d.selfHeals = (d.selfHeals || []).concat([{ v: c.value, life: lifeOf(c) }]);
+        else if (!c.self) d.heals.push({ v: c.value, life: lifeOf(c) });
         else if (c.life > 0) d.selfTimed.push({ p: c.prop, name: GA.statName(c.prop) || 'self',
                                                 v: c.value, pct: c.isPct, cat: c.cat,
-                                                src: g.name, life: c.life });
+                                                src: g.name, life: lifeOf(c) });
       } else if ((c.self || onSelf) && c.life > 0) {
         var nm2 = GA.statName(c.prop);
         if (nm2) d.selfTimed.push({ p: c.prop, name: nm2, v: c.sign < 0 ? -c.value : c.value,
-                                    pct: c.isPct, cat: c.cat, src: g.name, life: c.life });
+                                    pct: c.isPct, cat: c.cat, src: g.name, life: lifeOf(c) });
       }
     });
     // How often it is sensible to use this thing.
@@ -1255,10 +1631,15 @@
       // a boost goes off. Leaving them in meant a Sensor Boost gated to 14s was still buffing
       // the Scorpia from t=0, and the target died at 6.1s instead of 12.2s. So the baseline is
       // built WITHOUT boosts, and the timeline applies them at the moment they fire.
+      // Boosts AND shields are owned by the run, not by the baseline. A shield's protection is
+      // only real while its pool holds - a Range Shield puts Ranged at 144 against attack rating
+      // 100, which is flat immunity, so leaving it in the baseline made the target invulnerable
+      // to ranged damage for ever and breaking the shield could not take it away.
       var baseActive = {}, hasBoost = false;
       Object.keys(a.active).forEach(function (slot) {
         var g = (ctx.charGear || [])[+slot];
         if (g && g.cat === 'Boost') { hasBoost = true; return; }
+        if (g && carriesShield(g.id, a.active[slot])) { hasBoost = true; return; }
         baseActive[slot] = a.active[slot];
       });
       var baseCtx = ctx;
@@ -1348,6 +1729,52 @@
     return 1 + pct / 100;
   }
 
+  // Every point a protection axis takes off is submitted to whatever shield stands behind that
+  // axis, exactly as CalcProtection does. When the pool empties the shield breaks immediately and
+  // its protection stops applying - so the next hit lands unmitigated rather than waiting for the
+  // 10s timer. A shield only covers the axes it names: a Range Shield does nothing about melee.
+  function drainShields(v, m, times, t) {
+    if (!v.shields || !v.shields.length || !m || !m.axes) return;
+    (m.axes || []).forEach(function (ax) {
+      if (!ax.prop || !(ax.absorbed > 0)) return;
+      var hit = null;
+      for (var i = 0; i < v.shields.length; i++) {
+        if (v.shields[i].props.indexOf(ax.prop) >= 0) { hit = v.shields[i]; break; }
+      }
+      if (!hit) return;
+      hit.pool -= ax.absorbed * (times || 1);
+      if (hit.pool <= 0) {
+        hit.pool = 0;
+        hit.broke = t;
+      }
+    });
+    var broken = v.shields.filter(function (x) { return x.broke != null; });
+    if (!broken.length) return null;
+    v.shields = v.shields.filter(function (x) { return x.broke == null; });
+    broken.forEach(function (b) {
+      // drop the protection the shield was providing
+      v.live = v.live.filter(function (f) { return f.src !== b.src; });
+    });
+    return broken.map(function (b) {
+      return { t: t, who: v.id, src: b.src, dev: b.devId };
+    });
+  }
+
+  // does this device put up a finite-pool shield? prop 386 is the pool
+  function carriesShield(devId, mode) {
+    var dev = (window.__DEVMODEL__ || {})[String(devId)];
+    if (!dev) return false;
+    var ms = dev.modes || [];
+    for (var i = 0; i < ms.length; i++) {
+      if (mode && ms[i].kind && ms[i].kind !== mode) continue;
+      var ch = ms[i].chips || [];
+      for (var k = 0; k < ch.length; k++) {
+        if (Array.isArray(ch[k][2]) && ch[k][2][0] === 386) return true;
+      }
+    }
+    return false;
+  }
+
   function catsNow(act) {
     var c = {};
     act.live.forEach(function (f) { if (f.cat && f.v > 0) c[f.cat] = 1; });
@@ -1357,13 +1784,16 @@
   function runTimeline(seconds) {
     var S = buildSim();
     if (!S.actors.length) return null;
-    var events = [], series = {}, deaths = {};
+    var events = [], series = {}, deaths = {}, shieldBreaks = [];
     S.actors.forEach(function (a) { series[a.id] = []; });
 
     function targetsOf(a, d) {
       if (d.scope.kind === 'all') return d.scope.targets.slice();
       var t = a.aim[d.slot];
       return t ? [t] : [];
+    }
+    function noteBreaks(list) {
+      (list || []).forEach(function (b) { shieldBreaks.push(b); });
     }
     function ev(t, who, text, kind, devId, slot) {
       events.push({ t: Math.round(t * 10) / 10, who: who, text: text, kind: kind || '',
@@ -1442,6 +1872,17 @@
           // Off-hands share a global cooldown - you cannot let three waves off at once, you press
           // them one after another. Without this the whole team's buffs land on the same tick.
           if (d.cat === 'Offhand' && t + 1e-9 < a.offhandReady) { d.ready = Math.max(d.ready, t); return; }
+          // Shields share category 770 on "Newest Wins", so a second one displaces the first
+          // rather than stacking. Firing it while the first is still holding would throw away
+          // both the remaining pool and the cooldown, which nobody does - so a shield waits its
+          // turn and goes up when the one before it breaks or lapses. An explicit placement
+          // overrides this, same as every other automatic rule here.
+          if ((d.shields || []).length && !manual) {
+            var occupied = (a.shields || []).some(function (sh2) {
+              return (d.shields || []).some(function (mine2) { return mine2.cat === sh2.cat; });
+            });
+            if (occupied) { d.ready = Math.max(d.ready, t); return; }
+          }
           // A buff-stripper is held until there is something worth stripping. Nobody opens with
           // a Neutralize Wave; you wait until the other side has committed its buffs.
           if ((d.strip || []).length && !manual && d.hit.tgt === 'enemy') {
@@ -1517,8 +1958,11 @@
               if (atFull && volley > 1) {
                 var rest = GA.mitigate(rawOne, hitInfo, protNow(v), {});
                 v.hp -= m.shown + rest.shown * (volley - 1);
+                noteBreaks(drainShields(v, m, 1, t));
+                noteBreaks(drainShields(v, rest, volley - 1, t));
               } else {
                 v.hp -= m.shown * volley;
+                noteBreaks(drainShields(v, m, volley, t));
               }
               if (v.hp <= 0 && !v.dead) {
                 v.dead = true; v.hp = 0; deaths[v.id] = t;
@@ -1568,6 +2012,49 @@
               }
             });
           });
+          // raise any shield this device carries, on everyone it reaches
+          if ((d.shields || []).length) {
+            var shieldTo = (d.scope.kind === 'all' && d.scope.targets.length)
+              ? d.scope.targets.concat([a.id]) : [a.id];
+            d.shields.forEach(function (sh) {
+              shieldTo.forEach(function (tid) {
+                var v3 = S.byId[tid];
+                if (!v3 || v3.dead) return;
+                // Newest Wins: whatever was standing in this category comes down, and its
+                // protection goes with it. No two shields overlap.
+                var displaced = (v3.shields || []).filter(function (x) {
+                  return x.cat === sh.cat && x.src !== d.name;
+                });
+                v3.shields = (v3.shields || []).filter(function (x) {
+                  return x.cat !== sh.cat && x.src !== d.name;
+                });
+                displaced.forEach(function (old) {
+                  v3.live = v3.live.filter(function (f) { return f.src !== old.src; });
+                  ev(t, v3.id, old.src + ' gives way to ' + d.name, 'strip', d.id);
+                });
+                v3.shields.push({ src: d.name, devId: d.id, props: sh.props.slice(),
+                                  cat: sh.cat, pool: sh.pool, max: sh.pool,
+                                  until: t + (sh.life || d.maxLife || 10) });
+              });
+            });
+          }
+          // Conditional skills ride the thing that gates them: while the shield holds if this
+          // device raises one, otherwise for the device's own effect duration. They carry the
+          // device as their source, so a shield breaking takes them down with it.
+          if ((d.extra || []).length) {
+            var gate = 0;
+            if ((d.shields || []).length) gate = d.shields[0].life || d.maxLife || 0;
+            else gate = d.maxLife || 0;
+            if (gate > 0) {
+              d.extra.forEach(function (f) {
+                a.live = a.live.filter(function (x) {
+                  return !(x.src === f.src && x.p === f.p);
+                });
+                a.live.push({ p: f.p, name: f.name + ' (' + f.skill + ')', v: f.v, pct: f.pct,
+                              cat: f.cat, src: f.src, until: t + gate, devId: d.id });
+              });
+            }
+          }
           // the device's own timed self-effects (Oathbreaker's +20 protection for 10s)
           (d.selfTimed || []).forEach(function (f) {
             a.live = a.live.filter(function (x) { return !(x.src === f.src && x.p === f.p); });
@@ -1590,6 +2077,18 @@
         });
       });
 
+      // shields lapse on their own timer too, taking their protection with them
+      S.actors.forEach(function (a) {
+        if (!a.shields || !a.shields.length) return;
+        var gone = a.shields.filter(function (sh) { return sh.until <= t; });
+        if (!gone.length) return;
+        a.shields = a.shields.filter(function (sh) { return sh.until > t; });
+        gone.forEach(function (sh) {
+          a.live = a.live.filter(function (f) { return f.src !== sh.src; });
+          ev(t, a.id, sh.src + ' shield lapses (' + Math.round(sh.pool) + ' of '
+             + Math.round(sh.max) + ' left)', 'expire', sh.devId);
+        });
+      });
       // heal-over-time ticks
       S.actors.forEach(function (a) {
         if (!a.hots || a.dead) return;
@@ -1606,6 +2105,12 @@
         if (!a.spentThisStep && a.pw < a.maxPW) a.pw = Math.min(a.maxPW, a.pw + a.regen * STEP);
       });
     }
+    shieldBreaks.forEach(function (b) {
+      var who = S.byId[b.who];
+      events.push({ t: Math.round(b.t * 10) / 10, who: b.who,
+                    text: b.src + ' shield breaks', kind: 'strip', dev: b.dev, slot: null });
+    });
+    events.sort(function (x, y) { return x.t - y.t; });
     return { S: S, events: events, series: series, deaths: deaths, seconds: seconds };
   }
 
@@ -1753,11 +2258,13 @@
           : e.text);
         return '<span class="tlic ' + esc(e.kind) + '" style="left:' + pc.toFixed(2)
           + '%;top:' + (2 + ((k + fireIcons.length) % 3) * 20) + 'px" title="' + esc(tip) + '">'
-          + (ic2 ? '<img src="' + ic2 + '" alt="">' : '<b>'
-            + (e.kind === 'death' ? '&times;' : '!') + '</b>') + '</span>';
+          + (ic2 ? '<img src="' + ic2 + '" alt="">'
+              : (e.kind === 'death' ? (classIcon('death') || '<b>&times;</b>') : '<b>!</b>'))
+          + '</span>';
       })).join('');
       var died = r.deaths[a.id];
-      return '<div class="tlrow"><div class="tlwho"><b>' + esc(a.cls) + ' #' + a.id + '</b>'
+      return '<div class="tlrow"><div class="tlwho"><b>' + classIcon(a.cls, 'sm')
+        + esc(a.cls) + ' #' + a.id + '</b>'
         + '<i>' + (died != null ? 'dies ' + (Math.round(died * 10) / 10) + 's'
                                 : Math.round(pts[pts.length - 1].hp) + ' HP left') + '</i></div>'
         + '<div class="tlplot">'
@@ -1785,17 +2292,26 @@
     });
     evs.sort(function (a, b) { return a.t - b.t; });
 
-    // the honest time to kill: what the run actually produced for the focused target, which
-    // accounts for support drying up. The KPI panel's figure assumes everything stays up forever.
-    var focusDied = r.deaths[sim.focus.to];
-    var survived = r.S.byId[sim.focus.to];
-    var verdict = focusDied != null
-      ? '<b>' + (Math.round(focusDied * 10) / 10) + 's</b> to kill '
-        + esc(survived ? survived.cls + ' #' + survived.id : 'the target')
-      : (survived
-          ? esc(survived.cls + ' #' + survived.id) + ' survives ' + r.seconds + 's on <b>'
-            + Math.round(survived.hp) + ' HP</b>'
-          : 'no target selected');
+    // What the run produced, for EVERYONE - not for whichever actor happened to be the focus.
+    // The old pill described sim.focus.to, which defaults to the first combatant on team A, so it
+    // reported an arbitrary body and said nothing about anyone else dying.
+    var fallen = Object.keys(r.deaths).map(function (id) {
+      return { a: r.S.byId[id], t: r.deaths[id] };
+    }).filter(function (x) { return x.a; }).sort(function (x, y) { return x.t - y.t; });
+
+    var verdict;
+    if (!fallen.length) {
+      verdict = '<i>nobody dies in ' + r.seconds + 's</i>';
+    } else {
+      verdict = fallen.map(function (f) {
+        return '<span class="vdead">' + classIcon('death') + classIcon(f.a.cls, 'sm')
+          + esc(f.a.cls) + ' #' + f.a.id + ' <b>' + (Math.round(f.t * 10) / 10) + 's</b></span>';
+      }).join('');
+      var standing = r.S.actors.filter(function (x) { return !x.dead; });
+      if (standing.length) {
+        verdict += '<span class="vlive">' + standing.length + ' still standing</span>';
+      }
+    }
 
     host.innerHTML = '<div class="tlhead"><h4>Timeline</h4>'
       + '<span class="tlverdict">' + verdict + '</span>'
@@ -1884,10 +2400,19 @@
 
   function renderCombat() {
     var host = document.getElementById('cb-body'); if (!host) return;
-    if (!charList().length) { host.innerHTML = '<p class="empty">No saved characters loaded.</p>'; return; }
-    if (!sim.actors.length) {          // a sensible opening board
-      addActor('A', 'Recon'); addActor('B', 'Assault');
+    // The simulator reads saved builds only - the database is an import source on the
+    // TheoryCrafter, not a live dependency here.
+    var avail = builds();
+    if (!avail.length) {
+      host.innerHTML = '<p class="empty">No saved builds yet. Make one on the '
+        + '<b>TheoryCrafter</b> tab and send it here, or import a live profile there to start '
+        + 'from something real.</p>';
+      var tl0 = document.getElementById('cb-timeline');
+      if (tl0) tl0.innerHTML = '';
+      return;
     }
+    // drop actors whose build has been deleted
+    sim.actors = sim.actors.filter(function (a) { return buildById(a.buildId); });
     sim.actors.forEach(function (a) { a.lastNotes = null; });   // recomputed every pass
     var thrown = allOutgoing();
     function inbound(id) {
@@ -1908,8 +2433,6 @@
     var IMG = window.__DEVIMG__ || {};
     function actorCard(a) {
       var st = states[a.id]; if (!st) return '';
-      var c = charOf(a.cls);
-      var profs = c ? Object.keys(c.profiles).sort() : [];
       var protBits = [155, 156, 157, 324, 217, 218, 219].filter(function (p) { return st.prot[p]; })
         .map(function (p) {
           var short = (GA.statName(p) || '').replace('Protection - ', '');
@@ -1950,22 +2473,26 @@
       var isTo = String(sim.focus.to) === String(a.id);
       return '<div class="actor' + (isFrom ? ' isfrom' : '') + (isTo ? ' isto' : '') + '"'
         + ' data-drop="' + a.id + '">'
-        + '<div class="achead"><span class="acdot ' + esc(a.cls.toLowerCase()) + '"></span>'
-        + '<select class="accls" data-a="' + a.id + '">'
-        + ['Assault', 'Medic', 'Recon', 'Robotics'].map(function (x) {
-            return '<option' + (x === a.cls ? ' selected' : '') + '>' + x + '</option>';
-          }).join('') + '</select>'
-        + '<select class="acprof" data-a="' + a.id + '">'
-        + profs.map(function (x) {
-            return '<option value="' + x + '"' + (String(x) === String(a.pid) ? ' selected' : '')
-              + '>p' + x + '</option>';
+        + '<div class="acmain">'
+        + '<div class="acleft">'
+        + '<div class="achead">' + (classIcon(a.cls) || '<span class="acdot '
+            + esc(a.cls.toLowerCase()) + '"></span>')
+        + '<select class="acbuild" data-a="' + a.id + '">'
+        + builds().map(function (b) {
+            return '<option value="' + b.id + '"'
+              + (String(b.id) === String(a.buildId) ? ' selected' : '') + '>'
+              + esc(b.name) + '</option>';
           }).join('') + '</select>'
         + '<span class="acid">#' + a.id + '</span>'
+        + '<button class="acswap" data-a="' + a.id + '" title="move to the other team">'
+          + (a.team === 'A' ? '&rarr;' : '&larr;') + '</button>'
         + '<button class="acx" data-a="' + a.id + '" title="remove">&times;</button></div>'
         + '<div class="acstats"><span class="achp">' + st.maxHP + ' HP</span>' + protBits + '</div>'
         + '<div class="acskills">' + st.skills + ' pts &mdash; ' + trees2str(st.trees) + '</div>'
-        + '<div class="acgear">' + gear + '</div>'
+        + '</div>'
+        + '<div class="acright"><div class="acgear">' + gear + '</div>'
         + (inb ? '<div class="acinb"><span class="aclab">incoming</span>' + inb + '</div>' : '')
+        + '</div></div>'
         + ((st.notes || []).length ? '<div class="acnote">'
             + st.notes.map(function (n) {
                 // why a device refused to stay on: two effects in the same real category
@@ -1982,8 +2509,15 @@
 
     function teamCol(team, label) {
       var mine = sim.actors.filter(function (a) { return a.team === team; });
+      var opts = builds().map(function (b) {
+        return '<option value="' + b.id + '">' + esc(b.name) + '</option>';
+      }).join('');
       return '<div class="team t' + team + '"><div class="teamhead"><h4>' + label + '</h4>'
-        + '<button class="teamadd" data-team="' + team + '">+ add</button></div>'
+        + (opts
+            ? '<select class="teamadd" data-team="' + team + '">'
+              + '<option value="">+ add&hellip;</option>' + opts + '</select>'
+            : '<span class="teamnone">no saved builds</span>')
+        + '</div>'
         + (mine.map(actorCard).join('') || '<p class="empty">empty side</p>') + '</div>';
     }
 
@@ -2079,19 +2613,26 @@
   }
 
   function wireCombat(host) {
-    host.querySelectorAll('.accls').forEach(function (s) {
-      s.addEventListener('change', function () {
-        var a = actorById(s.dataset.a); if (!a) return;
-        a.cls = s.value; a.active = {}; a.aim = {};
-        var c = charOf(a.cls);
-        a.pid = c ? Object.keys(c.profiles).sort()[0] : null;
+    host.querySelectorAll('.acbuild').forEach(function (s2) {
+      s2.addEventListener('change', function () {
+        var a = actorById(s2.dataset.a); if (!a) return;
+        var b = buildById(s2.value);
+        if (!b) return;
+        a.buildId = b.id; a.cls = b.cls; a.active = {}; a.aim = {};
         renderCombat();
       });
     });
-    host.querySelectorAll('.acprof').forEach(function (s) {
-      s.addEventListener('change', function () {
-        var a = actorById(s.dataset.a); if (!a) return;
-        a.pid = s.value; a.active = {}; a.aim = {};
+    host.querySelectorAll('.acswap').forEach(function (b2) {
+      b2.addEventListener('click', function () {
+        var a = actorById(b2.dataset.a); if (!a) return;
+        a.team = (a.team === 'A') ? 'B' : 'A';
+        // aims that now point at a team-mate, or at an enemy that is now an ally, are stale
+        a.aim = {};
+        sim.actors.forEach(function (x) {
+          Object.keys(x.aim).forEach(function (k) {
+            if (String(x.aim[k]) === String(a.id)) delete x.aim[k];
+          });
+        });
         renderCombat();
       });
     });
@@ -2108,8 +2649,10 @@
       });
     });
     host.querySelectorAll('.teamadd').forEach(function (b) {
-      b.addEventListener('click', function () {
-        addActor(b.dataset.team, b.dataset.team === 'A' ? 'Recon' : 'Assault');
+      b.addEventListener('change', function () {
+        if (!b.value) return;
+        addActor(b.dataset.team, b.value);
+        b.value = '';
         renderCombat();
       });
     });
