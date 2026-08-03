@@ -1864,6 +1864,25 @@
   // damage modifiers at the moment of firing instead.
   //   attack type 1 melee -> 212, 2 ranged -> 214, 3 AOE -> 321; 65 is the general one
   var DMG_MOD_BY_ATK = { 1: 212, 2: 214, 3: 321 };
+  // Healing RECEIVED, scaled by whatever anti-heal is on the target. Seven devices carry one
+  // - Scorpia -40%, Life Stealer and Poison Injector -20% on backstab, Poison Aura and Poison
+  // Grenade -15%, Agonizer and Pain Gun -5% - and none of them did anything: the debuff landed
+  // and was tracked, but no heal ever consulted it.
+  function liveHealMult(act) {
+    var pct = 0;
+    liveNow(act).forEach(function (f) {
+      if (f.p === 210) pct += f.v;
+    });
+    return Math.max(0, 1 + pct / 100);
+  }
+  // Additional Damage Taken is applied BEFORE mitigation - GA.mitigate has taken an
+  // extraTaken option all along, but nothing ever filled it in, so the Pain Gun's +15% did
+  // nothing once it reached a target.
+  function liveExtraTaken(act) {
+    var pct = 0;
+    liveNow(act).forEach(function (f) { if (f.p === 316) pct += f.v; });
+    return pct;
+  }
   function liveDamageMult(act, hit) {
     var want = DMG_MOD_BY_ATK[hit && hit.atk] || 0;
     var pct = 0;
@@ -2126,10 +2145,12 @@
                               rating: d.hit.rating };
               var rawOne = sh.raw * liveDamageMult(a, d.hit) + extra;
               var atFull = v.hp >= v.maxHP;
+              var xt = liveExtraTaken(v);
               var m = GA.mitigate(rawOne, hitInfo, protNow(v),
-                atFull ? { healthCapArmed: 1, maxHP: v.maxHP, curHP: v.hp } : {});
+                atFull ? { healthCapArmed: 1, maxHP: v.maxHP, curHP: v.hp, extraTaken: xt }
+                       : { extraTaken: xt });
               if (atFull && volley > 1) {
-                var rest = GA.mitigate(rawOne, hitInfo, protNow(v), {});
+                var rest = GA.mitigate(rawOne, hitInfo, protNow(v), { extraTaken: xt });
                 v.hp -= m.shown + rest.shown * (volley - 1);
                 noteBreaks(drainShields(v, m, 1, t));
                 noteBreaks(drainShields(v, rest, volley - 1, t));
@@ -2266,7 +2287,7 @@
               a.hots = (a.hots || []).filter(function (x) { return x.src !== d.name; });
               a.hots.push({ src: d.name, devId: d.id, rate: h.v / h.life, until: t + h.life });
             } else {
-              a.hp = Math.min(a.maxHP, a.hp + h.v * volley);
+              a.hp = Math.min(a.maxHP, a.hp + h.v * volley * liveHealMult(a));
             }
           });
           // One hit, one evaluation: the health test is taken BEFORE any of this device's
@@ -2287,7 +2308,7 @@
                 v.hots = (v.hots || []).filter(function (x) { return x.src !== d.name; });
                 v.hots.push({ src: d.name, devId: d.id, rate: h.v / h.life, until: t + h.life });
               } else {
-                v.hp = Math.min(v.maxHP, v.hp + h.v * volley);
+                v.hp = Math.min(v.maxHP, v.hp + h.v * volley * liveHealMult(v));
               }
             });
           });
@@ -2405,7 +2426,8 @@
             dt.next += dt.iv;
             var atFull = a.hp >= a.maxHP;
             var m = GA.mitigate(dt.raw, dt.hit, protNow(a),
-              atFull ? { healthCapArmed: 1, maxHP: a.maxHP, curHP: a.hp } : {});
+              atFull ? { healthCapArmed: 1, maxHP: a.maxHP, curHP: a.hp, extraTaken: liveExtraTaken(a) }
+                     : { extraTaken: liveExtraTaken(a) });
             a.hp -= m.shown;
             noteBreaks(drainShields(a, m, 1, t));
             if (a.hp <= 0 && !a.dead) {
@@ -2426,7 +2448,8 @@
           ev(t, a.id, h.src + ' heal over time expires', 'expire', h.devId);
           return false;
         });
-        a.hots.forEach(function (h) { a.hp = Math.min(a.maxHP, a.hp + h.rate * STEP); });
+        var hm = liveHealMult(a);
+        a.hots.forEach(function (h) { a.hp = Math.min(a.maxHP, a.hp + h.rate * STEP * hm); });
       });
 
       // power regen only when nothing was spent this step (confirmed in game, backlog C4)

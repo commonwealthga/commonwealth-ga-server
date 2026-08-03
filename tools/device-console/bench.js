@@ -372,7 +372,11 @@ window.GA = window.GA || {};
 // self-penalty category such as 1452 "Shield Movement Penalty" (which Super Tank removes).
 // ---------------------------------------------------------------------------
 (function (GA) {
-  var PSTAT = { 412: 'Health Max Modifier', 390: 'Health Mod', 243: 'Power Pool',
+  // 210 and 316 are the two that land on a TARGET and change what happens to them next -
+  // anti-heal and extra damage taken. statName not knowing them meant projectedEffects dropped
+  // both, so Scorpia's -40% healing and the Pain Gun's +15% damage taken never left the card.
+  var PSTAT = { 210: 'Heal Received', 316: 'Additional Damage Taken',
+                412: 'Health Max Modifier', 390: 'Health Mod', 243: 'Power Pool',
                 244: 'Power Pool Recharge Rate', 255: 'Power Pool Max',
                 49: 'GroundSpeed', 70: 'AirSpeed', 66: 'GroundSpeed',
                 // Offensive/utility modifiers a device grants to YOU. These are real player
