@@ -1858,14 +1858,17 @@
     if (!held.length) return { how: 'take', displace: false };
     if (app === 836) return { how: 'refresh', on: held[0] };
     if (app === 874) return { how: 'drop' };
-    if (app === 157) {
-      var beaten = held.some(function (x) {
-        if ((x.appv || 0) > (appv || 0)) return true;
-        return (x.appv || 0) === (appv || 0) && (x.life || 0) > life;
-      });
-      if (beaten) return { how: 'drop' };
-    }
-    return { how: 'take', displace: true };     // 156, or a 157 that won
+    // 157 Strongest Wins behaves as NEWEST WINS in practice, priority ignored. MEASURED in
+    // game 2026-08-03: a Healing Grenade landing on someone carrying a nanite heal-over-time
+    // removes it and replaces it with its own, and niting them again replaces the grenade's.
+    // Both directions displace, so the priority cannot be gating it - the Healing Grenade's 64
+    // should have lost to a nanite's 86 and does not.
+    //
+    // This contradicts TgEffectManager::IsStrongest as written, which drops an incoming group
+    // when one already applied has a higher application value. Why it does not bite is
+    // unexplained; the same gap sits behind the burn-refresh result. Until something shows a
+    // priority actually blocking an application, newest wins.
+    return { how: 'take', displace: true };
   }
   function liveNow(act) {
     var live = act.live || [];
