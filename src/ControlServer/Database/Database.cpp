@@ -1893,6 +1893,60 @@ void Database::Init() {
 		err = nullptr;
 	}
 
+	// Perf-engine rebuild. The old ga_mmr_history recorded only before/after,
+	// so a rating movement could not be explained without re-running the fold.
+	// The new shape stores every term of the update — perf index, expected,
+	// actual, the archetype the player was scored as, and how much of the match
+	// they played — so any rating is auditable from the row alone.
+	// Destructive by design: the engine's constants changed, which invalidates
+	// the old sequential chain. Watermarks are cleared with it so the next
+	// FoldUnprocessed() replays every match from scratch. The wl engine's
+	// tables are deliberately untouched — it stays as a working fallback
+	// behind cs_settings.active_mmr_engine.
+	bool perf_rebuilt = false;
+	{
+		sqlite3_stmt* mstmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"SELECT 1 FROM cs_migration_markers WHERE name='perf_mmr_rebuild_2026_08_03'",
+				-1, &mstmt, nullptr) == SQLITE_OK && mstmt) {
+			perf_rebuilt = (sqlite3_step(mstmt) == SQLITE_ROW);
+		}
+		if (mstmt) sqlite3_finalize(mstmt);
+	}
+	if (!perf_rebuilt) {
+		static const char* kPerfRebuild =
+			"DROP TABLE IF EXISTS ga_mmr_history;"
+			"CREATE TABLE ga_mmr_history ("
+			"  user_id     INTEGER NOT NULL,"
+			"  class_name  TEXT    NOT NULL,"
+			"  archetype   TEXT    NOT NULL DEFAULT '',"
+			"  instance_id INTEGER NOT NULL,"
+			"  played_at   INTEGER NOT NULL,"
+			"  minutes     REAL    NOT NULL DEFAULT 0,"   // time on this class
+			"  match_share REAL    NOT NULL DEFAULT 0,"   // minutes / match length
+			"  perf        REAL    NOT NULL DEFAULT 0,"   // performance index
+			"  expected    REAL    NOT NULL DEFAULT 0,"   // pre-match win expectation
+			"  actual      REAL    NOT NULL DEFAULT 0,"   // 1 win / 0.5 draw / 0 loss
+			"  mmr_before  REAL    NOT NULL,"
+			"  mmr_after   REAL    NOT NULL,"
+			"  games_after INTEGER NOT NULL,"
+			"  PRIMARY KEY (user_id, class_name, instance_id));"
+			// Reverse lookup: every rating change produced by one match.
+			"CREATE INDEX IF NOT EXISTS idx_mmr_history_instance"
+			"  ON ga_mmr_history(instance_id);"
+			"DELETE FROM ga_mmr_processed;"
+			"INSERT OR IGNORE INTO cs_migration_markers (name)"
+			"  VALUES ('perf_mmr_rebuild_2026_08_03');";
+		if (sqlite3_exec(db, kPerfRebuild, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] perf MMR rebuild failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		} else {
+			Logger::Log("db",
+				"[Database] Rebuilt ga_mmr_history for the perf engine; "
+				"watermarks cleared, next fold replays every match\n");
+		}
+	}
+
 	// Floor-only version write. The game-server DLL bumps `version_info.version`
 	// past 19 (currently to 24) — an unconditional UPDATE here would silently
 	// downgrade the counter, causing the DLL's `version < 21` block to re-fire

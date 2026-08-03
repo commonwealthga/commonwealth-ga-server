@@ -1,9 +1,11 @@
 #include "src/ControlServer/MmrService/MmrService.hpp"
+#include "src/ControlServer/MmrService/ClassProfiles.hpp"
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "sqlite3.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <iterator>
@@ -17,66 +19,141 @@ std::mutex MmrService::mutex_;
 
 namespace {
 
-// Constants mirror the analyst's compute_mmr.py / mmr_tracker.py. Changing
-// any of them invalidates the sequential rating chain — change + reseed
-// together (both engines).
-constexpr double kDefaultMmr       = 1000.0;
-constexpr int    kMinPlaySeconds   = 180;
-// W/L engine
-constexpr double kWlK              = 32.0;
-// Perf engine
-constexpr double kPerfKBase        = 24.0;
-constexpr double kPerfKProvisional = 48.0;
-constexpr int    kPerfMinGames     = 5;
-constexpr double kPerfBeta         = 0.35;
-constexpr double kPerfZClamp       = 3.0;
-// Team-size imbalance correction, calibrated on this server's data
-// (>=1.0 avg player gap -> larger side wins ~79%).
-constexpr double kEloPerPlayerGap  = 220.0;
-constexpr double kGapDeadzone      = 0.25;
-constexpr double kMaxGapCap        = 3.0;
+namespace CP = ClassProfiles;
+constexpr int kNumStats = CP::kStatCount;
 
-constexpr int kNumStats = 7;
-// stat order: kills, assists, deaths, damage_dealt, healing, obj_points, bot_kills
-constexpr double kStatSign[kNumStats] = {1, 1, -1, 1, 1, 1, 1};
+// W/L engine. Left on its original constants and kept working as a fallback
+// behind cs_settings.active_mmr_engine — it is not the engine we want, but it
+// is a known quantity to fall back to if the perf engine misbehaves live.
+constexpr double kWlK = 32.0;
 
 using RatingKey = std::pair<int64_t, std::string>;  // (user_id, class_name)
 
-const char* ClassNameForProfile(int profile_id) {
-    switch (profile_id) {
-        case 680: return "Assault";
-        case 567: return "Medic";
-        case 681: return "Recon";
-        case 679: return "Robotic";
-        default:  return nullptr;
-    }
-}
-
 struct Stint {
     std::string cls;
+    uint32_t    profile_id = 0;
     int         task_force = 0;
-    double      time = 0.0;
-    double      stats[kNumStats] = {};
+    double      time = 0.0;              // seconds
+    double      raw[kNumStats] = {};     // DB-backed slots only
 };
 
 struct Participant {
     int64_t     user_id = 0;
     int         task_force = 0;
     std::string cls;
-    double      class_time = 0.0;
-    double      stats[kNumStats] = {};
-    double      perf = 0.0;  // z-score performance index, filled after baselines
+    uint32_t    profile_id = 0;
+    double      class_time = 0.0;        // seconds on the finishing class
+    double      match_share = 1.0;       // class_time / match length
+    double      rate[kNumStats] = {};    // per-minute, incl. derived rel_deaths
+    double      perf = 0.0;              // filled during the chronological walk
+    double      expected = 0.0;
+    double      actual = 0.0;
+    std::string archetype;
 };
 
 struct Match {
     int64_t id = 0;
     int64_t started_at = 0;
     int     winning_tf = 0;
+    double  length = 0.0;                // seconds, MAX(game_time)
     std::vector<Participant> players;
+};
+
+// Running mean/variance for one stat within one class.
+struct Accum {
+    double  sum = 0.0;
+    double  sumsq = 0.0;
+    int64_t n = 0;
+
+    void Add(double v) { sum += v; sumsq += v * v; n++; }
+};
+using ClassBaseline = std::array<Accum, kNumStats>;
+
+// Running archetype signal for one (player, class).
+struct ArchSignal {
+    double  sum = 0.0;
+    int64_t n = 0;
 };
 
 double ExpectedScore(double rating, double opp_avg) {
     return 1.0 / (1.0 + std::pow(10.0, (opp_avg - rating) / 400.0));
+}
+
+// z of `value` against the class population, or false when the stat has too
+// little history or no spread to say anything. A stat that does not vary
+// within a class (healing for Assault) drops out rather than contributing a
+// meaningless zero.
+bool ZScore(const ClassBaseline& base, int stat, double value,
+            double clamp, int64_t min_games, double* out) {
+    const Accum& a = base[stat];
+    if (a.n < min_games) return false;
+    const double mean = a.sum / static_cast<double>(a.n);
+    double var = a.sumsq / static_cast<double>(a.n) - mean * mean;
+    if (var < 0.0) var = 0.0;
+    const double sd = std::sqrt(var);
+    if (sd == 0.0) return false;
+    double z = (value - mean) / sd;
+    if (z >  clamp) z =  clamp;
+    if (z < -clamp) z = -clamp;
+    *out = z;
+    return true;
+}
+
+// Mean z across a list of stats; false when none of them are scorable yet.
+bool MeanZ(const ClassBaseline& base, const std::vector<int>& stats,
+           const double* rate, const CP::Tunables& tun, double* out) {
+    double total = 0.0;
+    int count = 0;
+    for (int s : stats) {
+        double z = 0.0;
+        if (ZScore(base, s, rate[s], tun.z_clamp, tun.min_baseline_games, &z)) {
+            total += z;
+            count++;
+        }
+    }
+    if (count == 0) return false;
+    *out = total / count;
+    return true;
+}
+
+// Score one participant against the class population as it stood BEFORE this
+// match, and label them with the archetype they play.
+void ScoreParticipant(Participant& p, const ClassBaseline& base,
+                      const CP::ClassDef& def, ArchSignal& signal,
+                      const CP::Tunables& tun) {
+    // Which profile is this player? Compare what the discriminant says they do
+    // a lot of against what they do little of, averaged over their whole
+    // history on the class — not just this match. Scoring someone on whichever
+    // profile flattered them in a given game inflates the population.
+    const CP::Profile* profile = &def.profiles.front();
+    if (def.profiles.size() > 1 && def.discriminant.active()) {
+        double pos = 0.0, neg = 0.0;
+        if (MeanZ(base, def.discriminant.pos, p.rate, tun, &pos) &&
+            MeanZ(base, def.discriminant.neg, p.rate, tun, &neg)) {
+            signal.sum += pos - neg;
+            signal.n++;
+        }
+        if (signal.n > 0) {
+            const double mean = signal.sum / static_cast<double>(signal.n);
+            if (mean > def.discriminant.threshold) profile = &def.profiles[1];
+        }
+    }
+    p.archetype = profile->name;
+
+    double num = 0.0, den = 0.0;
+    for (int s = 0; s < kNumStats; ++s) {
+        const double w = profile->weight[s];
+        if (w == 0.0) continue;
+        double z = 0.0;
+        if (!ZScore(base, s, p.rate[s], tun.z_clamp, tun.min_baseline_games, &z)) continue;
+        num += w * z;
+        den += std::fabs(w);
+    }
+    p.perf = (den > 0.0) ? profile->premium * (num / den) : 0.0;
+}
+
+void AccumulateBaseline(ClassBaseline& base, const Participant& p) {
+    for (int s = 0; s < kNumStats; ++s) base[s].Add(p.rate[s]);
 }
 
 struct GapEvent {
@@ -93,9 +170,14 @@ struct GapEvent {
 std::pair<int, double> GetTeamSizeGap(sqlite3* db, int64_t instance_id) {
     std::vector<GapEvent> evs;
     sqlite3_stmt* stmt = nullptr;
+    // TEAM_CHANGE carries its destination team in `detail`, not in
+    // target_task_force (that column is NULL on every row). Reading the wrong
+    // one coalesced to 0, dropping the mover from BOTH headcounts for the rest
+    // of the match.
     if (sqlite3_prepare_v2(db,
             "SELECT event_type, game_time, COALESCE(actor_user_id, 0), "
-            "       COALESCE(actor_task_force, 0), COALESCE(target_task_force, 0) "
+            "       COALESCE(actor_task_force, 0), "
+            "       COALESCE(target_task_force, detail, 0) "
             "FROM ga_match_events "
             "WHERE instance_id = ? AND event_type IN ('JOIN', 'LEAVE', 'TEAM_CHANGE') "
             "  AND game_time IS NOT NULL "
@@ -170,7 +252,9 @@ std::vector<Match> LoadMatches(sqlite3* db) {
     if (sqlite3_prepare_v2(db,
             "SELECT i.id, i.started_at, COALESCE(i.winning_task_force, 0), "
             "       COALESCE(NULLIF(i.end_mission_at, 0), NULLIF(i.sealed_at, 0), "
-            "                i.started_at) AS concluded_at "
+            "                i.started_at) AS concluded_at, "
+            "       COALESCE((SELECT MAX(e.game_time) FROM ga_match_events e "
+            "                 WHERE e.instance_id = i.id), 0.0) AS match_len "
             "FROM ga_instances i "
             "WHERE i.outcome IN ('ATTACKERS_WIN', 'DEFENDERS_WIN', 'STALEMATE') "
             "  AND EXISTS (SELECT 1 FROM map_game_info m "
@@ -186,39 +270,81 @@ std::vector<Match> LoadMatches(sqlite3* db) {
         m.id         = sqlite3_column_int64(stmt, 0);
         m.started_at = sqlite3_column_int64(stmt, 1);
         m.winning_tf = sqlite3_column_int(stmt, 2);
+        m.length     = sqlite3_column_double(stmt, 4);
         matches.push_back(std::move(m));
     }
     sqlite3_finalize(stmt);
     return matches;
 }
 
-// Shared participation rule (identical to both scripts): roster de-duped to
-// one class per character, non-zero activity, finishing-class credit (longest
-// stint), >= kMinPlaySeconds summed in that class.
+// Per-(instance, task force) totals, used to derive rel_deaths: a player's
+// death rate measured against their TEAMMATES' death rate, so someone who dies
+// often on a team that dies often is not punished for the team's problem.
+struct TeamTotals {
+    double deaths = 0.0;
+    double time = 0.0;
+};
+
+std::map<std::pair<int64_t, int>, TeamTotals> LoadTeamTotals(sqlite3* db) {
+    std::map<std::pair<int64_t, int>, TeamTotals> out;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db,
+            "SELECT instance_id, task_force, SUM(deaths), SUM(time_played_seconds) "
+            "FROM ga_match_player_stats GROUP BY instance_id, task_force",
+            -1, &stmt, nullptr) == SQLITE_OK && stmt) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            TeamTotals t;
+            t.deaths = sqlite3_column_double(stmt, 2);
+            t.time   = sqlite3_column_double(stmt, 3);
+            out[{sqlite3_column_int64(stmt, 0), sqlite3_column_int(stmt, 1)}] = t;
+        }
+    }
+    sqlite3_finalize(stmt);
+    return out;
+}
+
+// Participation rule: roster de-duped to one class per character, non-zero
+// activity, finishing-class credit (longest stint), then BOTH a minimum time
+// on that class AND a minimum share of the match. The share test is what keeps
+// a 3-minute cameo in a 25-minute match from moving anybody's rating — such a
+// stint says almost nothing about who was going to win.
 void BuildParticipants(sqlite3* db, std::vector<Match>& matches) {
     std::map<int64_t, Match*> by_id;
     for (auto& m : matches) by_id[m.id] = &m;
 
+    const CP::Tunables& tun = CP::Get();
+    const auto team_totals = LoadTeamTotals(db);
+
+    // Column list is driven by the profile stat table so adding a stat means
+    // touching ClassProfiles only.
+    std::string cols;
+    std::vector<int> col_slot;
+    for (int s = 0; s < kNumStats; ++s) {
+        const char* c = CP::StatColumn(s);
+        if (!c) continue;                       // derived, not selected
+        cols += ", s.";
+        cols += c;
+        col_slot.push_back(s);
+    }
+    const std::string sql =
+        "SELECT s.instance_id, s.user_id, s.task_force, r.profile_id, "
+        "       s.time_played_seconds" + cols + " "
+        "FROM ga_match_player_stats s "
+        "JOIN ga_instances i ON i.id = s.instance_id "
+        "JOIN (SELECT instance_id, character_id, MIN(profile_id) AS profile_id "
+        "      FROM ga_instance_players "
+        "      WHERE profile_id IN (680, 567, 681, 679) "
+        "      GROUP BY instance_id, character_id) r "
+        "  ON r.instance_id = s.instance_id AND r.character_id = s.character_id "
+        "WHERE i.outcome IN ('ATTACKERS_WIN', 'DEFENDERS_WIN', 'STALEMATE') "
+        "  AND (s.kills + s.assists + s.deaths + s.damage_dealt "
+        "       + s.healing + s.obj_points + s.bot_kills) > 0 "
+        "  AND EXISTS (SELECT 1 FROM map_game_info m "
+        "              WHERE m.map_name = i.map_name AND m.is_pvp = 1)";
+
     std::map<std::pair<int64_t, int64_t>, std::vector<Stint>> stints;
     sqlite3_stmt* stmt = nullptr;
-    if (sqlite3_prepare_v2(db,
-            "SELECT s.instance_id, s.user_id, s.task_force, r.profile_id, "
-            "       s.time_played_seconds, "
-            "       s.kills, s.assists, s.deaths, s.damage_dealt, s.healing, "
-            "       s.obj_points, s.bot_kills "
-            "FROM ga_match_player_stats s "
-            "JOIN ga_instances i ON i.id = s.instance_id "
-            "JOIN (SELECT instance_id, character_id, MIN(profile_id) AS profile_id "
-            "      FROM ga_instance_players "
-            "      WHERE profile_id IN (680, 567, 681, 679) "
-            "      GROUP BY instance_id, character_id) r "
-            "  ON r.instance_id = s.instance_id AND r.character_id = s.character_id "
-            "WHERE i.outcome IN ('ATTACKERS_WIN', 'DEFENDERS_WIN', 'STALEMATE') "
-            "  AND (s.kills + s.assists + s.deaths + s.damage_dealt "
-            "       + s.healing + s.obj_points + s.bot_kills) > 0 "
-            "  AND EXISTS (SELECT 1 FROM map_game_info m "
-            "              WHERE m.map_name = i.map_name AND m.is_pvp = 1)",
-            -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
         Logger::Log("mmr", "[MmrService] participant query prepare failed: %s\n",
             sqlite3_errmsg(db));
         return;
@@ -226,14 +352,17 @@ void BuildParticipants(sqlite3* db, std::vector<Match>& matches) {
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         const int64_t inst = sqlite3_column_int64(stmt, 0);
         if (!by_id.count(inst)) continue;
-        const char* cls = ClassNameForProfile(sqlite3_column_int(stmt, 3));
-        if (!cls) continue;
+        const uint32_t pid = static_cast<uint32_t>(sqlite3_column_int(stmt, 3));
+        const CP::ClassDef* def = CP::ByProfileId(pid);
+        if (!def) continue;
         Stint st;
-        st.cls        = cls;
+        st.cls        = def->name;
+        st.profile_id = pid;
         st.task_force = sqlite3_column_int(stmt, 2);
         st.time       = sqlite3_column_double(stmt, 4);
-        for (int k = 0; k < kNumStats; k++)
-            st.stats[k] = sqlite3_column_double(stmt, 5 + k);
+        for (size_t k = 0; k < col_slot.size(); ++k) {
+            st.raw[col_slot[k]] = sqlite3_column_double(stmt, 5 + static_cast<int>(k));
+        }
         stints[{inst, sqlite3_column_int64(stmt, 1)}].push_back(std::move(st));
     }
     sqlite3_finalize(stmt);
@@ -243,60 +372,43 @@ void BuildParticipants(sqlite3* db, std::vector<Match>& matches) {
         std::stable_sort(grp.begin(), grp.end(),
             [](const Stint& a, const Stint& b) { return a.time > b.time; });
         const Stint& fin = grp.front();
+
         Participant p;
         p.user_id    = entry.first.second;
         p.cls        = fin.cls;
+        p.profile_id = fin.profile_id;
         p.task_force = fin.task_force;
+        double summed[kNumStats] = {};
         for (const auto& s : grp) {
             if (s.cls != p.cls) continue;
             p.class_time += s.time;
-            for (int k = 0; k < kNumStats; k++) p.stats[k] += s.stats[k];
+            for (int k = 0; k < kNumStats; ++k) summed[k] += s.raw[k];
         }
-        if (p.class_time < kMinPlaySeconds) continue;
-        by_id[entry.first.first]->players.push_back(std::move(p));
+        if (p.class_time < tun.min_seconds) continue;
+
+        Match* m = by_id[entry.first.first];
+        p.match_share = (m->length > 0.0)
+            ? std::min(1.0, p.class_time / m->length) : 1.0;
+        if (p.match_share < tun.min_match_share) continue;
+
+        const double minutes = p.class_time / 60.0;
+        for (int k = 0; k < kNumStats; ++k) p.rate[k] = summed[k] / minutes;
+
+        // rel_deaths: own death rate over the rest of the team's death rate.
+        // 1.0 when the team's rate is unknown — neutral, neither credit nor
+        // penalty.
+        p.rate[CP::kRelDeaths] = 1.0;
+        auto tt = team_totals.find({m->id, p.task_force});
+        if (tt != team_totals.end()) {
+            const double others_min = (tt->second.time - p.class_time) / 60.0;
+            const double others_deaths = tt->second.deaths - summed[CP::kDeaths];
+            if (others_min > 1.0 && others_deaths > 0.0) {
+                const double others_rate = others_deaths / others_min;
+                p.rate[CP::kRelDeaths] = p.rate[CP::kDeaths] / others_rate;
+            }
+        }
+        m->players.push_back(std::move(p));
     }
-}
-
-// Perf engine: class-population baselines of per-minute stat rates over ALL
-// qualifying records (recomputed each fold, same as mmr_tracker.py — baselines
-// drift as data accumulates; only the wl engine is exactly replayable).
-void ComputePerfIndices(std::vector<Match>& matches) {
-    struct Acc { double sum = 0.0, sumsq = 0.0; int64_t n = 0; };
-    std::map<std::string, Acc> acc[kNumStats];
-
-    auto rate = [](const Participant& p, int k) {
-        return p.stats[k] / (p.class_time / 60.0);
-    };
-
-    for (const auto& m : matches)
-        for (const auto& p : m.players)
-            for (int k = 0; k < kNumStats; k++) {
-                Acc& a = acc[k][p.cls];
-                const double r = rate(p, k);
-                a.sum += r;
-                a.sumsq += r * r;
-                a.n++;
-            }
-
-    for (auto& m : matches)
-        for (auto& p : m.players) {
-            double zsum = 0.0;
-            int zn = 0;
-            for (int k = 0; k < kNumStats; k++) {
-                const Acc& a = acc[k][p.cls];
-                if (a.n < 2) continue;
-                const double mean = a.sum / a.n;
-                double var = a.sumsq / a.n - mean * mean;
-                if (var < 0) var = 0;
-                const double sd = std::sqrt(var);
-                if (sd == 0) continue;
-                double z = (rate(p, k) - mean) / sd;
-                z = std::max(-kPerfZClamp, std::min(kPerfZClamp, z));
-                zsum += kStatSign[k] * z;
-                zn++;
-            }
-            p.perf = zn ? zsum / zn : 0.0;
-        }
 }
 
 std::set<int64_t> LoadProcessed(sqlite3* db, const char* table) {
@@ -332,7 +444,7 @@ void LoadPerfState(sqlite3* db, std::map<RatingKey, double>& rating,
     sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(db,
             "SELECT user_id, class_name, mmr_after, games_after FROM ga_mmr_history "
-            "ORDER BY rowid", -1, &stmt, nullptr) == SQLITE_OK && stmt) {
+            "ORDER BY instance_id", -1, &stmt, nullptr) == SQLITE_OK && stmt) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             const char* cls = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
             const RatingKey key{sqlite3_column_int64(stmt, 0), cls ? cls : ""};
@@ -341,6 +453,27 @@ void LoadPerfState(sqlite3* db, std::map<RatingKey, double>& rating,
         }
     }
     sqlite3_finalize(stmt);
+}
+
+// A rating for a class the player has not played before. Starting everyone at
+// the default throws away what we already know: general skill carries across
+// classes more than it doesn't, so a strong Assault is a better-than-average
+// bet on Medic. seed_weight controls how much of that carries — below 1.0 so
+// there is still room to be genuinely bad at a class.
+double SeedRating(const std::map<RatingKey, double>& rating,
+                  const std::map<RatingKey, int64_t>& games,
+                  int64_t user_id, const CP::Tunables& tun) {
+    double sum = 0.0;
+    int n = 0;
+    for (const auto& e : rating) {
+        if (e.first.first != user_id) continue;
+        auto g = games.find(e.first);
+        if (g == games.end() || g->second < tun.provisional_games) continue;
+        sum += e.second;
+        n++;
+    }
+    if (n == 0) return tun.default_mmr;
+    return tun.default_mmr + tun.seed_weight * (sum / n - tun.default_mmr);
 }
 
 std::string FoldLocked() {
@@ -366,9 +499,10 @@ std::string FoldLocked() {
         if (pending == 0) return "up to date";
     }
 
+    const CP::Tunables& tun = CP::Get();
+
     std::vector<Match> matches = LoadMatches(db);
     BuildParticipants(db, matches);
-    ComputePerfIndices(matches);
 
     std::map<RatingKey, double> wl_rating, perf_rating;
     std::map<RatingKey, int64_t> perf_games;
@@ -388,7 +522,10 @@ std::string FoldLocked() {
         "INSERT OR IGNORE INTO ga_wl_mmr_processed VALUES (?, ?)",
         -1, &ins_wl_proc, nullptr);
     sqlite3_prepare_v2(db,
-        "INSERT OR IGNORE INTO ga_mmr_history VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT OR IGNORE INTO ga_mmr_history "
+        "(user_id, class_name, archetype, instance_id, played_at, minutes, "
+        " match_share, perf, expected, actual, mmr_before, mmr_after, games_after) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         -1, &ins_pf_hist, nullptr);
     sqlite3_prepare_v2(db,
         "INSERT OR IGNORE INTO ga_mmr_processed VALUES (?, ?)",
@@ -411,43 +548,75 @@ std::string FoldLocked() {
 
     sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr);
 
-    int rated = 0, skipped_one_sided = 0, gap_adjusted = 0;
+    // Class populations and per-player archetype signals are rebuilt from the
+    // whole match history on every fold, always in conclusion order. They are
+    // never read ahead of the match being scored, so a match scored live and
+    // the same match scored during a full replay get identical numbers — that
+    // is what makes a reseed reproduce the live chain.
+    std::map<std::string, ClassBaseline> baselines;
+    std::map<RatingKey, ArchSignal> arch;
+
+    int rated = 0, skipped_one_sided = 0, skipped_small = 0, gap_adjusted = 0;
     int64_t wl_rows = 0, pf_rows = 0;
 
     for (auto& m : matches) {
         const bool wl_new = !wl_done.count(m.id);
         const bool pf_new = !perf_done.count(m.id);
-        if (!wl_new && !pf_new) continue;
+
+        // Near-empty lobbies are watermarked so they are never revisited, but
+        // otherwise ignored completely — they neither move ratings nor feed
+        // the class baselines, because a 4-player match says nothing about how
+        // a class is normally played.
+        if (static_cast<int>(m.players.size()) < tun.min_rated_players) {
+            if (wl_new) insert_proc(ins_wl_proc, m.id, m.started_at);
+            if (pf_new) insert_proc(ins_pf_proc, m.id, m.started_at);
+            if (wl_new || pf_new) skipped_small++;
+            continue;
+        }
+
+        // Score against the population as it stood before this match, whether
+        // or not we are writing it — the baselines have to advance in lockstep
+        // with the walk even across already-folded matches.
+        for (auto& p : m.players) {
+            const CP::ClassDef* def = CP::ByProfileId(p.profile_id);
+            if (!def) continue;
+            ScoreParticipant(p, baselines[p.cls], *def, arch[{p.user_id, p.cls}], tun);
+        }
+
+        auto advance_baselines = [&]() {
+            for (const auto& p : m.players) AccumulateBaseline(baselines[p.cls], p);
+        };
+
+        if (!wl_new && !pf_new) { advance_baselines(); continue; }
 
         // Watermark first, even when skipped below (mirrors the scripts).
         if (wl_new) insert_proc(ins_wl_proc, m.id, m.started_at);
         if (pf_new) insert_proc(ins_pf_proc, m.id, m.started_at);
 
-        if (m.players.empty()) continue;
+        if (m.players.empty()) { advance_baselines(); continue; }
 
         std::set<int> tfs;
         for (const auto& p : m.players) tfs.insert(p.task_force);
         if (tfs.size() != 2) {
             skipped_one_sided++;
+            advance_baselines();
             continue;
         }
         const int tf_a = *tfs.begin();
         const int tf_b = *std::next(tfs.begin());
 
-        // Plain locals (not structured bindings): the lambdas below capture
-        // them, which C++17 forbids for structured bindings.
         const std::pair<int, double> gap_res = GetTeamSizeGap(db, m.id);
         const int bigger_tf = gap_res.first;
-        const double gap = std::min(gap_res.second, kMaxGapCap);
+        const double gap = std::min(gap_res.second, tun.gap_cap);
         const bool adjust = bigger_tf != 0
             && (bigger_tf == tf_a || bigger_tf == tf_b)
-            && gap > kGapDeadzone;
+            && gap > 0.0;
         if (adjust) gap_adjusted++;
 
         auto team_avg = [&](const std::map<RatingKey, double>& ratings) {
             std::map<int, std::pair<double, int>> agg;
             for (const auto& p : m.players) {
-                double r = kDefaultMmr;
+                double r = tun.default_mmr;
                 auto it = ratings.find({p.user_id, p.cls});
                 if (it != ratings.end()) r = it->second;
                 agg[p.task_force].first += r;
@@ -460,7 +629,7 @@ std::string FoldLocked() {
         auto adjusted = [&](std::map<int, double> avg) {
             if (adjust) {
                 const int smaller = (bigger_tf == tf_a) ? tf_b : tf_a;
-                const double half = gap * kEloPerPlayerGap / 2.0;
+                const double half = gap * tun.elo_per_player_gap / 2.0;
                 avg[bigger_tf] += half;
                 avg[smaller]  -= half;
             }
@@ -473,7 +642,7 @@ std::string FoldLocked() {
                 const int opp = (p.task_force == tf_a) ? tf_b : tf_a;
                 const RatingKey key{p.user_id, p.cls};
                 auto it = wl_rating.find(key);
-                const double before = (it != wl_rating.end()) ? it->second : kDefaultMmr;
+                const double before = (it != wl_rating.end()) ? it->second : tun.default_mmr;
                 const double expected = ExpectedScore(before, adj.at(opp));
                 // winning_tf 0 = stalemate (NULL winner) -> both sides draw.
                 const double actual = (m.winning_tf == 0) ? 0.5
@@ -495,39 +664,53 @@ std::string FoldLocked() {
         }
 
         if (pf_new) {
-            const auto avg = team_avg(perf_rating);
-            const auto adj = adjusted(avg);
-            for (const auto& p : m.players) {
+            const auto adj = adjusted(team_avg(perf_rating));
+            for (auto& p : m.players) {
                 const int opp = (p.task_force == tf_a) ? tf_b : tf_a;
                 const RatingKey key{p.user_id, p.cls};
                 auto it = perf_rating.find(key);
-                const double before = (it != perf_rating.end()) ? it->second : kDefaultMmr;
-                // Team-average expected score (mmr_tracker.py semantics).
-                const double expected = ExpectedScore(avg.at(p.task_force), adj.at(opp));
-                // winning_tf 0 = stalemate (NULL winner) -> both sides draw.
+                const double before = (it != perf_rating.end())
+                    ? it->second
+                    : SeedRating(perf_rating, perf_games, p.user_id, tun);
+                // Individual expected, not the team average: a rating only
+                // converges if its own level feeds back into what is expected
+                // of it. With the team average there, a strong player is never
+                // pulled back and the rating drifts instead of settling.
+                const double expected = ExpectedScore(before, adj.at(opp));
                 const double actual = (m.winning_tf == 0) ? 0.5
                     : (p.task_force == m.winning_tf) ? 1.0 : 0.0;
                 const int64_t games = perf_games[key];
-                const double k = (games < kPerfMinGames) ? kPerfKProvisional : kPerfKBase;
-                const double after = before + k * ((actual - expected) + kPerfBeta * p.perf);
+                const double k = (games < tun.provisional_games)
+                    ? tun.k_provisional : tun.k_base;
+                const double after =
+                    before + k * ((actual - expected) + tun.beta * p.perf);
                 perf_rating[key] = after;
                 perf_games[key] = games + 1;
+                p.expected = expected;
+                p.actual = actual;
 
                 sqlite3_reset(ins_pf_hist);
                 sqlite3_clear_bindings(ins_pf_hist);
-                sqlite3_bind_int64(ins_pf_hist, 1, p.user_id);
-                sqlite3_bind_text(ins_pf_hist, 2, p.cls.c_str(), -1, SQLITE_TRANSIENT);
-                sqlite3_bind_int64(ins_pf_hist, 3, m.id);
-                sqlite3_bind_int64(ins_pf_hist, 4, m.started_at);
-                sqlite3_bind_double(ins_pf_hist, 5, before);
-                sqlite3_bind_double(ins_pf_hist, 6, after);
-                sqlite3_bind_int64(ins_pf_hist, 7, games + 1);
+                sqlite3_bind_int64 (ins_pf_hist, 1,  p.user_id);
+                sqlite3_bind_text  (ins_pf_hist, 2,  p.cls.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_bind_text  (ins_pf_hist, 3,  p.archetype.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_bind_int64 (ins_pf_hist, 4,  m.id);
+                sqlite3_bind_int64 (ins_pf_hist, 5,  m.started_at);
+                sqlite3_bind_double(ins_pf_hist, 6,  p.class_time / 60.0);
+                sqlite3_bind_double(ins_pf_hist, 7,  p.match_share);
+                sqlite3_bind_double(ins_pf_hist, 8,  p.perf);
+                sqlite3_bind_double(ins_pf_hist, 9,  expected);
+                sqlite3_bind_double(ins_pf_hist, 10, actual);
+                sqlite3_bind_double(ins_pf_hist, 11, before);
+                sqlite3_bind_double(ins_pf_hist, 12, after);
+                sqlite3_bind_int64 (ins_pf_hist, 13, games + 1);
                 sqlite3_step(ins_pf_hist);
                 pf_rows++;
             }
         }
 
         rated++;
+        advance_baselines();
     }
 
     sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr);
@@ -538,9 +721,9 @@ std::string FoldLocked() {
 
     char buf[256];
     snprintf(buf, sizeof(buf),
-        "folded %d match(es) (%d one-sided skipped, %d gap-adjusted); "
+        "folded %d match(es) (%d too small, %d one-sided, %d gap-adjusted); "
         "rows appended wl=%lld perf=%lld",
-        rated, skipped_one_sided, gap_adjusted,
+        rated, skipped_small, skipped_one_sided, gap_adjusted,
         (long long)wl_rows, (long long)pf_rows);
     Logger::Log("mmr", "[MmrService] %s\n", buf);
     return buf;
@@ -588,21 +771,24 @@ std::string MmrService::GetActiveEngine() {
 }
 
 double MmrService::GetCurrentRating(int64_t user_id, uint32_t profile_id) {
-    const char* cls = ClassNameForProfile(static_cast<int>(profile_id));
-    if (!cls) return kDefaultMmr;
+    const ClassProfiles::ClassDef* def = ClassProfiles::ByProfileId(profile_id);
+    const double default_mmr = ClassProfiles::Get().default_mmr;
+    if (!def) return default_mmr;
     sqlite3* db = Database::GetConnection();
-    if (!db) return kDefaultMmr;
-    const std::string table =
-        (GetActiveEngine() == "perf") ? "ga_mmr_history" : "ga_wl_mmr_history";
-    // rowid order == fold order; the last row per (user, class) is current.
-    const std::string sql =
-        "SELECT mmr_after FROM " + table +
-        " WHERE user_id = ? AND class_name = ? ORDER BY rowid DESC LIMIT 1";
+    if (!db) return default_mmr;
+    const bool perf = (GetActiveEngine() == "perf");
+    // Both histories are keyed (user_id, class_name, instance_id), so ordering
+    // by instance_id walks the primary key backwards instead of scanning.
+    const std::string sql = perf
+        ? "SELECT mmr_after FROM ga_mmr_history "
+          "WHERE user_id = ? AND class_name = ? ORDER BY instance_id DESC LIMIT 1"
+        : "SELECT mmr_after FROM ga_wl_mmr_history "
+          "WHERE user_id = ? AND class_name = ? ORDER BY rowid DESC LIMIT 1";
     sqlite3_stmt* stmt = nullptr;
-    double rating = kDefaultMmr;
+    double rating = default_mmr;
     if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK && stmt) {
         sqlite3_bind_int64(stmt, 1, user_id);
-        sqlite3_bind_text(stmt, 2, cls, -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 2, def->name.c_str(), -1, SQLITE_STATIC);
         if (sqlite3_step(stmt) == SQLITE_ROW)
             rating = sqlite3_column_double(stmt, 0);
     }

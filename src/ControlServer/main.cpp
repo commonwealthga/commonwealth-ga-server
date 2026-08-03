@@ -16,6 +16,7 @@
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 #include "src/ControlServer/MatchmakingService/SidePlacement.hpp"
 #include "src/ControlServer/MmrService/MmrService.hpp"
+#include "src/ControlServer/MmrService/ClassProfiles.hpp"
 #include <asio.hpp>
 #include <thread>
 #include <cstdlib>
@@ -428,6 +429,12 @@ int main(int argc, char* argv[]) {
     // (e.g. 3P_Beachhead2_P, 3P_Beachhead_P) belong in ga_map_pool_entries with
     // enabled=0 until the client downloads them.
     MatchmakingService::Init();
+
+    // Per-class scoring weights for the perf engine. Compiled defaults are the
+    // tuned values; control-server.json's "mmr" section overrides them, so the
+    // weights can be adjusted between play sessions without a rebuild. Must
+    // run before the first fold — the weights decide how every match scores.
+    ClassProfiles::Load(config_path);
 
     // Seed / catch up the MMR engines (design 2026-07-12). First boot on an
     // empty history replays the entire match backlog; later boots fold
