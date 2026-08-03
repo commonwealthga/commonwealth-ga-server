@@ -92,7 +92,10 @@ for r in inv:
                     'cats': sorted(cats), 'heals': heals, 'dmg': dmg, 'debuff': debuff, 'timedfx': timedfx,
                     # prop 4 Recharge Time: what "off-hand recharge" actually keys on. Weapons
                     # use refire (53) instead, so having a cooldown is what separates the two.
-                    'cooldown': bool(q("SELECT 1 FROM asm_data_set_device_mode_properties WHERE device_id=? AND prop_id=4 AND base_value>0 LIMIT 1", (did,)))}
+                    'cooldown': bool(q("SELECT 1 FROM asm_data_set_device_mode_properties WHERE device_id=? AND prop_id=4 AND base_value>0 LIMIT 1", (did,))),
+                    # prop 242 Power Pool Cost / 322 the block variant - what a power-cost
+                    # skill keys on. 382 devices carry one.
+                    'power': bool(q("SELECT 1 FROM asm_data_set_device_mode_properties WHERE device_id=? AND prop_id IN (242,322) AND base_value<>0 LIMIT 1", (did,)))}
 
 # skill -> devices index
 by_skill = {}
@@ -179,6 +182,9 @@ for (grp, sid), S in sorted(skills.items()):
             if props & {203, 4}: sem += [d for d, v in devices.items() if v['cooldown']]
             if props & {391}: sem += [d for d, v in devices.items() if v['pet']]
             if props & {208}: sem += [d for d, v in devices.items() if v['timedfx']]
+            # Spare Power's power-cost cut is the last of these: the resolver already applies
+            # prop 242 to a device's power, so the skill affects devices and should say so.
+            if props & {242, 322}: sem += [d for d, v in devices.items() if v['power']]
             if not sem:
                 continue  # self/defensive stat, no device link
             targets = sorted(set(sem))
