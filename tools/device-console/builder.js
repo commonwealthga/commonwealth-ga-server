@@ -2167,6 +2167,21 @@
               //   155 Stackable   -> a genuinely separate instance, ticking alongside.
               //   874 Oldest Wins -> the incoming one is dropped while another holds.
               v.dots = (v.dots || []);
+              // MEASURED in game 2026-08-03: a Life Stealer backstab refreshes its own burn on
+              // every swing and the burn keeps ticking. So re-application by the SAME source
+              // extends the duration and leaves the tick schedule alone, whatever the group's
+              // application rule says. I had inferred the opposite from RemoveAllEffectGroups
+              // cancelling the group's timers on a Strongest-Wins displacement; the observation
+              // wins, and why the server reads that way is still unexplained.
+              var mine = v.dots.filter(function (x) {
+                return x.src === d.name && x.cat === dt.cat;
+              })[0];
+              if (mine) {
+                mine.until = t + dt.life;
+                mine.raw = dt.raw;
+                return;
+              }
+              // Contention is still between DIFFERENT sources, exactly as it is for protection.
               var bucket = NOT_A_BUCKET_DOT[dt.cat] || !dt.app || dt.app === 155
                 ? null
                 : (v.dots || []).filter(function (x) { return x.cat === dt.cat; });
@@ -2180,10 +2195,6 @@
                 // Stackable, uncategorised, or nothing holding this bucket. Stackable from the
                 // SAME weapon still replaces rather than piling up once per swing - the
                 // timeline has no cap and a 0.63s refire would otherwise grow without bound.
-                var same = v.dots.filter(function (x) {
-                  return x.src === d.name && x.cat === dt.cat;
-                })[0];
-                if (same) { same.until = t + dt.life; same.raw = dt.raw; return; }
                 v.dots.push(fresh);
                 return;
               }

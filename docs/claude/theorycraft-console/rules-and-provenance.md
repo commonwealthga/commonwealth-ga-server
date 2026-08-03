@@ -98,8 +98,8 @@ and the console cannot tell the difference. Confidence is graded:
 | Damage rounded half-up after mitigation | UC | `TgEffectDamage.uc:167` |
 | DoT: attacker-side scaling cached at application, reused every tick | UC | `TgEffectDamage.uc:103/136/137/142` (`m_fBuffedDamageInitial`), §23 |
 | DoT: target-side modifiers re-evaluated on every tick | UC | `TgEffectDamage.uc:144` `CheckDamageTakenModifier`, §23 |
-| **Strongest Wins re-application RESTARTS a burn's tick clock** | Server | `RemoveAllEffectGroups` step 1 cancels every timer armed on the group, then the caller clones a fresh one. A weapon swinging faster than the tick interval therefore never lands a tick while it keeps swinging. |
-| A burn's application rule decides what re-applying does | Server + UC | 157 displace+restart · 156 displace · 836 refresh in place · 155 separate instance · 874 incoming dropped |
+| **Re-applying your OWN burn refreshes it and the ticks continue** | Measured | In game 2026-08-03: a Life Stealer backstab refreshes its poison on every swing and it keeps ticking, even though it swings faster than the burn ticks. This overturned a reading of the server code — `RemoveAllEffectGroups` cancels the group's timers on a Strongest-Wins displacement, which implied the clock restarts. Why the code reads that way is still unexplained; the observation stands. |
+| A burn's application rule decides contention between DIFFERENT sources | Server + UC | 157 strongest · 156 newest · 836 refresh · 155 separate instances · 874 oldest. Same-source re-application is a refresh regardless, per the measurement above. |
 | Additional-damage-taken applied before mitigation | UC | `TgEffectDamage.CheckDamageTakenModifier` |
 | Anti-one-shot cap: floor `ceil(maxHP × 10%)`, arms only at full HP | UC | `TgDeviceFire.ApplyHit:1287` |
 | Which effect-group type lands on whom | UC | `TgDevice.uc` constants + `SubmitHitEffects` call sites |
