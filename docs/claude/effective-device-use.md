@@ -10,9 +10,10 @@ parentheses after names only where you will need them to query.
 **Verification status.** Effect-group anatomy, property ids and device/skill names are read
 directly from `gaa.db` (not the repo's `server.db` — that one does not have the populated
 `asm_data_set_*` tables). Code paths are read from `src/`. The `ApplyHit` dispatch order in §2 is
-quoted from [`issues/killer-instinct-diag.md`](theorycraft-console/issues/killer-instinct-diag.md),
-which read it from the UnrealScript source and verified the behaviour in game on 2026-08-02 — I did
-not re-derive it. Three things I could **not** verify are flagged inline as ⚠ and collected in §8.
+quoted from `docs/claude/theorycraft-console/issues/killer-instinct-diag.md`, **which lives on the
+`theorycraft-console` branch, not on `master`** — check that branch out to read it. It took the
+order from the UnrealScript source and verified the resulting behaviour in game on 2026-08-02; I
+did not re-derive it. Three things I could **not** verify are flagged inline as ⚠ and collected in §8.
 
 ---
 
@@ -145,10 +146,17 @@ as a player action:
 
 - **Category 862 (Invulnerable)** — the function decrements `r_nInvulnerableCount` as a special
   case. That is refcount bookkeeping.
-- **`RemoveEffectGroupsByCategory(431, 99)`** is used by `HitSituationalMitigation` as the
-  *closing bracket of damage mitigation* (see the Killer Instinct fix, §6 of that doc). It fires on
-  **every single damaging impact in the game**. If you instrument the function's entry point
-  naively you will log a "cleanse" for every bullet that lands anywhere on the server.
+- **`RemoveEffectGroupsByCategory(431, 99)`** is used by
+  `src/GameServer/TgGame/_effect_core/HitSituationalMitigation.cpp` as the *closing bracket of
+  damage mitigation*. It fires on **every single damaging impact in the game**. If you instrument
+  the function's entry point naively you will log a "cleanse" for every bullet that lands anywhere
+  on the server.
+
+  ⚠ **Check your branch base for this one.** `HitSituationalMitigation` arrived with the Killer
+  Instinct fix (upstream PR #65) and is present on `upstream/master`, but **not** on the fork's
+  `master` at the time of writing — the fork was 9 commits behind. So the 431 caller may or may not
+  exist in your tree. It is a trap the moment you rebase onto upstream, so write the instrumentation
+  as though it is there regardless.
 
 Gate your instrumentation on the call arriving from the property-140 path, not on the function
 being entered. If that is awkward to detect from inside, pass a flag from `ApplyEffect`, or
