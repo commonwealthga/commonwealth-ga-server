@@ -600,18 +600,29 @@
                   + esc(a.name) + '</option>';
               }).join('') + '</select>'
           : '')
-      + '<select id="tc-import"><option value="">import a live profile&hellip;</option>'
-        + (charList() || []).map(function (c) {
-            var dupe = (charList() || []).filter(function (x) { return x.cls === c.cls; }).length > 1;
-            return Object.keys(c.profiles).sort().map(function (pid) {
-              return '<option value="' + c.id + '|' + pid + '">' + esc(c.cls)
-                + (dupe ? ' #' + c.id : '') + ' profile ' + pid + '</option>';
-            }).join('');
-          }).join('') + '</select>'
+      // No accounts baked in means nothing to import from and nowhere to export to, so the
+      // whole live-profile apparatus disappears rather than sitting there refusing. This is
+      // what the shareable build looks like: you make builds yourself.
+      + (charList().length
+          ? '<select id="tc-import"><option value="">import a live profile&hellip;</option>'
+            + (charList() || []).map(function (c) {
+                var dupe = (charList() || []).filter(function (x) { return x.cls === c.cls; }).length > 1;
+                return Object.keys(c.profiles).sort().map(function (pid) {
+                  return '<option value="' + c.id + '|' + pid + '">' + esc(c.cls)
+                    + (dupe ? ' #' + c.id : '') + ' profile ' + pid + '</option>';
+                }).join('');
+              }).join('') + '</select>'
+          : '')
       + '</div>'
       + (saved.length
           ? '<div class="tcsaved"><span class="aclab">saved builds</span>'
             + saved.map(function (b) {
+                if (!acctList().length) {
+                  return '<span class="tcsav"><button class="tcload" data-b="' + b.id + '">'
+                    + classIcon(b.cls, 'sm') + esc(b.name) + '</button>'
+                    + '<button class="tcdel" data-b="' + b.id + '" title="delete">&times;</button>'
+                    + '</span>';
+                }
                 var rd = exportReadiness(b);
                 return '<span class="tcsav"><button class="tcload" data-b="' + b.id + '">'
                   + classIcon(b.cls, 'sm') + esc(b.name) + '</button>'
@@ -627,8 +638,10 @@
                   + '</span>';
               }).join('')
             + '</div>'
-          : '<p class="chnote">No saved builds yet. Fill the slots, name it and save &mdash; or '
-            + 'import a live profile to start from something real.</p>')
+          : '<p class="chnote">No saved builds yet. Fill the slots, name it and save'
+            + (charList().length
+                ? ' &mdash; or import a live profile to start from something real.'
+                : ', then send it to a side on the Combat tab.') + '</p>')
       + '<div id="tc-export"></div>'
       + '<p class="chnote">Devices are filtered to what this class can equip, and each keeps its '
       + 'own mod roll. Melee, Ranged and Specialty share your hands &mdash; only one is out at a time.</p>'
@@ -708,11 +721,15 @@
     if (cl) cl.addEventListener('click', function () {
       craftSlots = blankSlots(); craftClass = curClass;
       alloc = {}; activeGear = {}; activeOrder = [];
+      // Clearing means "start a new build". Without this the next save kept the id of the one
+      // just saved and quietly overwrote it - build an Assault, send it, build a Recon, and the
+      // Assault was gone. Only noticeable once building by hand is the whole workflow.
+      craftEditing = null; craftName = '';
       craftToGear(); render();
     });
   }
 
-  function treesFor(cls) { return D.classes[cls]; }  function treesFor(cls) { return D.classes[cls]; }  function treesFor(cls) { return D.classes[cls]; }
+  function treesFor(cls) { return D.classes[cls]; }
   function spentIn(g) {
     var s = 0;
     (D.trees[g] || []).forEach(function (n) { s += alloc[n.id] || 0; });
@@ -2722,8 +2739,9 @@
     var avail = builds();
     if (!avail.length) {
       host.innerHTML = '<p class="empty">No saved builds yet. Make one on the '
-        + '<b>TheoryCrafter</b> tab and send it here, or import a live profile there to start '
-        + 'from something real.</p>';
+        + '<b>TheoryCrafter</b> tab and send it here'
+        + (charList().length ? ', or import a live profile there to start from something real.'
+                            : '.') + '</p>';
       var tl0 = document.getElementById('cb-timeline');
       if (tl0) tl0.innerHTML = '';
       return;
@@ -3239,7 +3257,11 @@
       curChar = null; curProfile = null; charArm = null; charGear = []; resetArm();
       activeGear = {}; activeOrder = []; stackNotes = []; blockedNames = {};
       // a different class is a different build, so the scratch slots start over too
-      if (craftMode) { craftSlots = blankSlots(); craftClass = curClass; craftToGear(); }
+      if (craftMode) {
+        craftSlots = blankSlots(); craftClass = curClass;
+        craftEditing = null; craftName = '';
+        craftToGear();
+      }
       render();
     });
   });

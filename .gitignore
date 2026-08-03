@@ -19,3 +19,7 @@ tools/spectator-overlay/ICONS/
 tools/spectator-overlay/GA_BROADCAST_ICONS.zip
 tools/spectator-overlay/.env
 __pycache__/
+
+# The shareable console build, produced by `python gen3.py --public`. Regenerable from the
+# same inputs as device-console.html, so it is not worth a second 3 MB blob per rebuild.
+docs/claude/theorycraft-console/device-console-public.html
