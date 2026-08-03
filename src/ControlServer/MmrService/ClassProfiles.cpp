@@ -66,9 +66,8 @@ void InstallDefaults() {
         c.profiles.push_back(MakeProfile("tank", 1.10, {
             {kDamageTaken, 1.0}, {kObjPoints, 1.0}, {kDefense, 0.7},
             {kDamageDealt, 0.4}, {kKills, 0.3}, {kDeaths, -0.2}}));
-        c.discriminant.pos = {kDamageTaken, kObjPoints, kDefense};
-        c.discriminant.neg = {kKills, kDamageDealt};
-        c.discriminant.threshold = 0.0;
+        c.rules.push_back({"tank", {kDamageTaken, kObjPoints, kDefense},
+                           {kKills, kDamageDealt}, 0.0, {}});
         g_classes.push_back(std::move(c));
     }
     {
@@ -96,11 +95,23 @@ void InstallDefaults() {
             {kKills, 0.8}, {kDamageDealt, 0.8}, {kAssists, 0.5},
             {kHealing, 0.4}, {kBuffValue, 0.2}, {kObjPoints, 0.2},
             {kDeaths, -0.3}}));
-        // A poison medic is identified by dealing damage INSTEAD of healing,
-        // never by scoring badly as a healer.
-        c.discriminant.pos = {kKills, kDamageDealt};
-        c.discriminant.neg = {kHealing};
-        c.discriminant.threshold = 0.5;
+        // Buff medics heal heavily AND buff heavily -- not a trade of one for
+        // the other. Scored like a healer with the buff weight doubled, at the
+        // same premium, because the operator rates them alongside healers
+        // rather than above or below them.
+        c.profiles.push_back(MakeProfile("buff", 1.00, {
+            {kHealing, 1.0}, {kBuffValue, 0.8}, {kAssists, 0.6},
+            {kObjPoints, 0.2}, {kDeaths, -0.2}, {kDamageTaken, -0.4},
+            {kRelDeaths, -0.3}}));
+        // Order matters: poison first, because a damage medic should never be
+        // caught by the buff floors.
+        // A poison medic deals damage INSTEAD of healing -- never merely scores
+        // badly as a healer.
+        c.rules.push_back({"poison", {kKills, kDamageDealt}, {kHealing}, 0.5, {}});
+        // Both floors, not an average: averaging lets a very high healer with
+        // ordinary buffs (Deadly, buff z +0.09) qualify on healing alone.
+        c.rules.push_back({"buff", {}, {}, -1e9,
+                           {{kHealing, 0.35}, {kBuffValue, 0.30}}});
         g_classes.push_back(std::move(c));
     }
     {   // Robotics heal too, but cannot reach medic volume -- per-class
@@ -142,6 +153,8 @@ void ApplyOverrides(const nlohmann::json& mmr) {
             if (t.contains(k) && t[k].is_number_integer()) dst = t[k].get<int>();
         };
         num("beta",                g_tunables.beta);
+        num("perf_scale",          g_tunables.perf_scale);
+        num("elo_divisor",         g_tunables.elo_divisor);
         num("k_base",              g_tunables.k_base);
         num("k_provisional",       g_tunables.k_provisional);
         num("elo_per_player_gap",  g_tunables.elo_per_player_gap);
@@ -185,14 +198,33 @@ void ApplyOverrides(const nlohmann::json& mmr) {
                 }
             }
         }
-        if (jc.contains("discriminant") && jc["discriminant"].is_object()) {
-            const auto& jd = jc["discriminant"];
-            if (jd.contains("pos") && jd["pos"].is_array())
-                ReadStatList(jd["pos"], cls.discriminant.pos);
-            if (jd.contains("neg") && jd["neg"].is_array())
-                ReadStatList(jd["neg"], cls.discriminant.neg);
-            if (jd.contains("threshold") && jd["threshold"].is_number())
-                cls.discriminant.threshold = jd["threshold"].get<double>();
+        if (jc.contains("rules") && jc["rules"].is_array()) {
+            std::vector<Rule> parsed;
+            for (const auto& jr : jc["rules"]) {
+                if (!jr.is_object() || !jr.contains("profile")) continue;
+                Rule r;
+                r.profile = jr["profile"].get<std::string>();
+                if (!cls.ByName(r.profile)) {
+                    Logger::Log("mmr", "[ClassProfiles] %s: rule names unknown "
+                                "profile '%s' -- ignored
+",
+                                cls.name.c_str(), r.profile.c_str());
+                    continue;
+                }
+                if (jr.contains("pos") && jr["pos"].is_array()) ReadStatList(jr["pos"], r.pos);
+                if (jr.contains("neg") && jr["neg"].is_array()) ReadStatList(jr["neg"], r.neg);
+                if (jr.contains("threshold") && jr["threshold"].is_number())
+                    r.threshold = jr["threshold"].get<double>();
+                if (jr.contains("require") && jr["require"].is_object()) {
+                    for (auto it = jr["require"].begin(); it != jr["require"].end(); ++it) {
+                        const int st = StatByName(it.key());
+                        if (st < 0 || !it.value().is_number()) continue;
+                        r.require.push_back({st, it.value().get<double>()});
+                    }
+                }
+                parsed.push_back(std::move(r));
+            }
+            if (!parsed.empty()) cls.rules = std::move(parsed);
         }
     }
 }

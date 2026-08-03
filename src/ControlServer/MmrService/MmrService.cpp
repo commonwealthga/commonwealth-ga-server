@@ -69,14 +69,21 @@ struct Accum {
 };
 using ClassBaseline = std::array<Accum, kNumStats>;
 
-// Running archetype signal for one (player, class).
+// A player's running per-stat z-scores on one class. Archetype rules are
+// evaluated against these means rather than a single match, so one unusual
+// game cannot relabel someone.
 struct ArchSignal {
-    double  sum = 0.0;
-    int64_t n = 0;
+    double  zsum[kNumStats] = {};
+    int64_t zn[kNumStats] = {};
 };
 
-double ExpectedScore(double rating, double opp_avg) {
-    return 1.0 / (1.0 + std::pow(10.0, (opp_avg - rating) / 400.0));
+// Divisor is a claim about how decisive a rating gap is in THIS game, not a
+// universal constant — see Tunables::elo_divisor. The wl engine keeps chess's
+// 400 so its (retired) history stays on its original scale.
+constexpr double kWlDivisor = 400.0;
+
+double ExpectedScore(double rating, double opp_avg, double divisor) {
+    return 1.0 / (1.0 + std::pow(10.0, (opp_avg - rating) / divisor));
 }
 
 // z of `value` against the class population, or false when the stat has too
@@ -99,54 +106,66 @@ bool ZScore(const ClassBaseline& base, int stat, double value,
     return true;
 }
 
-// Mean z across a list of stats; false when none of them are scorable yet.
-bool MeanZ(const ClassBaseline& base, const std::vector<int>& stats,
-           const double* rate, const CP::Tunables& tun, double* out) {
-    double total = 0.0;
-    int count = 0;
-    for (int s : stats) {
-        double z = 0.0;
-        if (ZScore(base, s, rate[s], tun.z_clamp, tun.min_baseline_games, &z)) {
-            total += z;
-            count++;
-        }
-    }
-    if (count == 0) return false;
-    *out = total / count;
-    return true;
-}
-
 // Score one participant against the class population as it stood BEFORE this
 // match, and label them with the archetype they play.
 void ScoreParticipant(Participant& p, const ClassBaseline& base,
                       const CP::ClassDef& def, ArchSignal& signal,
                       const CP::Tunables& tun) {
-    // Which profile is this player? Compare what the discriminant says they do
-    // a lot of against what they do little of, averaged over their whole
-    // history on the class — not just this match. Scoring someone on whichever
-    // profile flattered them in a given game inflates the population.
+    double z[kNumStats] = {};
+    bool   have[kNumStats] = {};
+    for (int s = 0; s < kNumStats; ++s) {
+        have[s] = ZScore(base, s, p.rate[s], tun.z_clamp, tun.min_baseline_games, &z[s]);
+        if (have[s]) {
+            signal.zsum[s] += z[s];
+            signal.zn[s]++;
+        }
+    }
+
+    // Rule conditions read the player's whole history on the class, this match
+    // included — a healer having one aggressive game stays a healer.
+    auto mean_of = [&signal](int s, double* out) -> bool {
+        if (signal.zn[s] == 0) return false;
+        *out = signal.zsum[s] / static_cast<double>(signal.zn[s]);
+        return true;
+    };
+    auto group_of = [&mean_of](const std::vector<int>& stats, double* out) -> bool {
+        double total = 0.0;
+        int count = 0;
+        for (int s : stats) {
+            double m = 0.0;
+            if (mean_of(s, &m)) { total += m; count++; }
+        }
+        if (count == 0) return false;
+        *out = total / count;
+        return true;
+    };
+
     const CP::Profile* profile = &def.profiles.front();
-    if (def.profiles.size() > 1 && def.discriminant.active()) {
+    for (const auto& rule : def.rules) {
+        const CP::Profile* cand = def.ByName(rule.profile);
+        if (!cand) continue;
+        // An empty side contributes 0 — the class average — so a rule may use
+        // either comparison, floors, or both.
         double pos = 0.0, neg = 0.0;
-        if (MeanZ(base, def.discriminant.pos, p.rate, tun, &pos) &&
-            MeanZ(base, def.discriminant.neg, p.rate, tun, &neg)) {
-            signal.sum += pos - neg;
-            signal.n++;
+        if (!rule.pos.empty() && !group_of(rule.pos, &pos)) continue;
+        if (!rule.neg.empty() && !group_of(rule.neg, &neg)) continue;
+        if (pos - neg <= rule.threshold) continue;
+        bool floors_met = true;
+        for (const auto& req : rule.require) {
+            double m = 0.0;
+            if (!mean_of(req.first, &m) || m < req.second) { floors_met = false; break; }
         }
-        if (signal.n > 0) {
-            const double mean = signal.sum / static_cast<double>(signal.n);
-            if (mean > def.discriminant.threshold) profile = &def.profiles[1];
-        }
+        if (!floors_met) continue;
+        profile = cand;
+        break;
     }
     p.archetype = profile->name;
 
     double num = 0.0, den = 0.0;
     for (int s = 0; s < kNumStats; ++s) {
         const double w = profile->weight[s];
-        if (w == 0.0) continue;
-        double z = 0.0;
-        if (!ZScore(base, s, p.rate[s], tun.z_clamp, tun.min_baseline_games, &z)) continue;
-        num += w * z;
+        if (w == 0.0 || !have[s]) continue;
+        num += w * z[s];
         den += std::fabs(w);
     }
     p.perf = (den > 0.0) ? profile->premium * (num / den) : 0.0;
@@ -643,7 +662,7 @@ std::string FoldLocked() {
                 const RatingKey key{p.user_id, p.cls};
                 auto it = wl_rating.find(key);
                 const double before = (it != wl_rating.end()) ? it->second : tun.default_mmr;
-                const double expected = ExpectedScore(before, adj.at(opp));
+                const double expected = ExpectedScore(before, adj.at(opp), kWlDivisor);
                 // winning_tf 0 = stalemate (NULL winner) -> both sides draw.
                 const double actual = (m.winning_tf == 0) ? 0.5
                     : (p.task_force == m.winning_tf) ? 1.0 : 0.0;
@@ -672,18 +691,32 @@ std::string FoldLocked() {
                 const double before = (it != perf_rating.end())
                     ? it->second
                     : SeedRating(perf_rating, perf_games, p.user_id, tun);
-                // Individual expected, not the team average: a rating only
-                // converges if its own level feeds back into what is expected
-                // of it. With the team average there, a strong player is never
-                // pulled back and the rating drifts instead of settling.
-                const double expected = ExpectedScore(before, adj.at(opp));
+                // Whether the match was won is a TEAM fact, so it is scored
+                // team against team and every player shares the result. Scoring
+                // an individual's rating against the opposing team instead
+                // treats one player as if they decided a 9-a-side match: at
+                // this divisor it expected the top Assault to win 98% of his
+                // games, then punished him for winning 60%.
+                //
+                // What stops the rating drifting is not this term but the
+                // anchored performance term below, which is per-player.
+                const double expected =
+                    ExpectedScore(adj.at(p.task_force), adj.at(opp), tun.elo_divisor);
                 const double actual = (m.winning_tf == 0) ? 0.5
                     : (p.task_force == m.winning_tf) ? 1.0 : 0.0;
                 const int64_t games = perf_games[key];
                 const double k = (games < tun.provisional_games)
                     ? tun.k_provisional : tun.k_base;
-                const double after =
-                    before + k * ((actual - expected) + tun.beta * p.perf);
+                // Both halves of the update are now self-correcting. The
+                // win/loss half asks "did you do better than your rating
+                // predicted?"; the performance half asks the same question of
+                // your stats. Scoring raw perf instead would be a constant
+                // push with nothing pulling back, and the rating would climb
+                // for as long as you kept playing.
+                const double expected_perf =
+                    (before - tun.default_mmr) / tun.perf_scale;
+                const double after = before + k * ((actual - expected)
+                    + tun.beta * (p.perf - expected_perf));
                 perf_rating[key] = after;
                 perf_games[key] = games + 1;
                 p.expected = expected;

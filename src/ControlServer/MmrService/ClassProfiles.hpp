@@ -53,31 +53,67 @@ struct Profile {
     double      weight[kStatCount] = {};  // 0 = stat unused by this profile
 };
 
-// Picks which profile a player is scored against. Compares the mean z of the
-// `pos` stats against the mean z of the `neg` stats, accumulated over that
-// player's history on the class; above `threshold` selects profiles[1],
-// otherwise profiles[0].
+// Picks which profile a player is scored against, from their accumulated
+// per-stat z-scores on that class.
+//
+// A rule fires when BOTH hold:
+//   - mean z of `pos` minus mean z of `neg` exceeds `threshold`
+//     (either list may be empty; an empty side contributes 0, which is the
+//      class average, so `pos` alone means "well above average at these")
+//   - every (stat, min_z) in `require` is met
+//
+// Rules are tried in order and the first to fire wins; no match leaves the
+// player on profiles[0]. Two conditions are needed because the archetypes are
+// not all separable the same way: "poison" is a medic who deals damage INSTEAD
+// of healing (a comparison), while "buff" is one who heals a lot AND buffs a
+// lot (two floors) -- expressing the latter as a comparison would catch medics
+// who simply buff more than they heal, which is a different player.
 //
 // Assignment is per PLAYER, not per match. Scoring someone on whichever
 // profile happened to flatter them in a given game inflates the whole
-// population, and it also mislabels players -- a medic with weak survivability
-// would get pushed onto "poison" despite dealing no damage.
-struct Discriminant {
+// population, and it mislabels people -- a medic with weak survivability would
+// get pushed onto "poison" despite dealing no damage.
+struct Rule {
+    std::string      profile;                        // profile name it selects
     std::vector<int> pos;
     std::vector<int> neg;
     double           threshold = 0.0;
-    bool active() const { return !pos.empty() && !neg.empty(); }
+    std::vector<std::pair<int, double>> require;     // stat -> minimum z
 };
 
 struct ClassDef {
     std::string          name;            // "Assault"
     uint32_t             profile_id = 0;  // engine PROFILE_* id
     std::vector<Profile> profiles;        // [0] is the default
-    Discriminant         discriminant;
+    std::vector<Rule>    rules;           // tried in order
+    const Profile* ByName(const std::string& n) const {
+        for (const auto& p : profiles) if (p.name == n) return &p;
+        return nullptr;
+    }
 };
 
 struct Tunables {
     double beta               = 1.0;      // weight on the performance term
+    // Rating points one unit of performance is worth at rest. A player is
+    // scored on (perf - perf_expected_for_their_rating), where the expectation
+    // is (rating - default) / perf_scale -- so you only gain by beating your
+    // own rating, not by being good in absolute terms.
+    //
+    // Without this the performance term is a constant upward push with nothing
+    // pulling back: the win/loss half can only ever pull as hard as
+    // (win_rate - 1), so any player with beta*perf above that climbs forever.
+    // At beta 1.0 that meant everyone winning more than ~44% drifted without
+    // limit -- a +0.56 perf player passed 5000 by their thousandth game.
+    //
+    // This term is also the ONLY per-player feedback in the update: the
+    // win/loss half is scored team against team and shared by everyone on a
+    // side, because who won is a team fact. Convergence rests entirely here.
+    double perf_scale         = 600.0;
+    // Rating difference that corresponds to a given win probability. 400 is the
+    // chess convention and is far too flat for this game: teams it called 62%
+    // favourites won 86% of the time. Calibrated against 128 out-of-sample
+    // matches. Re-fit this when the population or the balancer changes.
+    double elo_divisor        = 120.0;
     double k_base             = 24.0;
     double k_provisional      = 48.0;
     int    provisional_games  = 5;
