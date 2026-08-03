@@ -57,7 +57,9 @@ def chiprow(chips):
     for c in chips:
         k, t = c[0], c[1]
         cls = CHIP.get(k, 'util')
-        if t.startswith('Mech: '):
+        if t.startswith('Deployed: '):
+            out.append('<span class="chip %s selfx"><i class="who dep">deployed</i>%s</span>' % (cls, esc(t[10:])))
+        elif t.startswith('Mech: '):
             out.append('<span class="chip %s selfx"><i class="who mech">vs mech</i>%s</span>' % (cls, esc(t[6:])))
         elif t.startswith('Self: '):
             out.append('<span class="chip %s selfx"><i class="who">self</i>%s</span>' % (cls, esc(t[6:])))

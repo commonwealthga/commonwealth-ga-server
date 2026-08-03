@@ -352,7 +352,14 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
             #   TARGET (SubmitHitEffects -> Impact.HitActor): 264 HIT, 272 HIT_IN_AIR, 505 HIT_SITUATIONAL
             #   ATTACKER: 398 BLOCK_HIT, 594 IS_BLOCKED
             # 266 AIM is ApplyEffectType(Instigator, 266) -> lands on YOU while scoped
-            selfpfx = 'Self: ' if egt in (261, 262, 263, 265, 266, 283, 759, 1104) else ''
+            # On a SPAWN mode these belong to the thing that gets PUT DOWN, not to the player
+            # holding it: a Venom Bomb's "+100 AOE/Ranged/Melee protection" is how tough the
+            # deployed mine is to shoot. Labelled "Self:" it read as though carrying the bomb
+            # armoured you. They already stopped counting toward the carrier's stats; this is
+            # the display catching up.
+            selfpfx = ''
+            if egt in (261, 262, 263, 265, 266, 283, 759, 1104):
+                selfpfx = 'Deployed: ' if is_spawn else 'Self: '
             zoom = (egt == 266)
             # Backstab: type-505 groups matched via SubmitHitEffects(...,505,SituationalMeleeGroupToApply)
             # where GetSituationalMeleeEffectToApply returns 509 (backstab) / 718 (block-breaker).
@@ -517,6 +524,13 @@ def dev_modes(did, is_melee=False, recurse=True, is_spawn=False):
         for sd, lab in spawned_sources(did):
             for sub in dev_modes(sd, False, recurse=False, is_spawn=True):
                 ch = dedup(sub['chips'])[:9]
+                # An "Equip:" chip here is the SPAWNED thing's own passive, not the carrier's.
+                # A Venom Bomb's +100 AOE/Ranged/Melee protection is how tough the deployed
+                # mine is to shoot; labelled "Equip:" it read as though holding the bomb
+                # armoured you. They already stopped counting toward the carrier's stats - this
+                # is the label catching up with that.
+                ch = [[c[0], 'Deployed: ' + c[1][7:]] + c[2:] if c[1].startswith('Equip: ')
+                      else c for c in ch]
                 # skip placeholder spawns (e.g. "* Ammo Crate") that carry only stat chips
                 if not any(c[0] != 'stat' for c in ch):
                     continue

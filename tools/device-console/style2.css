@@ -839,3 +839,6 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
 .acbs:hover{border-color:var(--acc);opacity:1}
 .acbs.on{border-color:var(--debuff);color:var(--debuff);opacity:1}
 .acbs input{margin:0;width:10px;height:10px;accent-color:var(--debuff)}
+
+/* a spawned mine/turret's own passives, not the carrier's */
+.who.dep{background:color-mix(in srgb,var(--gear) 22%,transparent);color:var(--gear)}

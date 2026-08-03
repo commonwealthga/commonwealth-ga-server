@@ -44,10 +44,25 @@ for r in inv:
         if m['atk']: atk.add(m['atk'])
         if (m['dep'] or 0) > 0 or (m['bot'] or 0) > 0: pet = True
         if (m['proj'] or 0) > 0: proj = True
+    # A bomb carries no radius of its own - the thing it THROWS does. Venom Bomb has no
+    # radius prop at all; its payload device (via device_projectile_id -> projectiles ->
+    # spawn_deployable_id) has Effect Radius 20. Classifying on the carrier alone made every
+    # Recon explosive read as non-AOE, so the AOE damage passive skipped all eight of them.
+    # Only the projectile chain is followed: a turret reached by bot_id is a separate
+    # combatant, not this device's payload.
+    payload = []
+    for _m in q("SELECT device_projectile_id proj FROM asm_data_set_devices_data_set_device_modes WHERE device_id=? AND device_projectile_id>0", (did,)):
+        for _p in q("SELECT spawn_item_id si, spawn_deployable_id sd FROM asm_data_set_projectiles WHERE device_projectile_id=? LIMIT 1", (_m['proj'],)):
+            if _p['sd']:
+                for _r in q("SELECT device_id dv FROM asm_data_set_deployables WHERE deployable_id=? LIMIT 1", (_p['sd'],)):
+                    if _r['dv']: payload.append(_r['dv'])
+            if _p['si']: payload.append(_p['si'])
     hasradius = False
     if radius_props:
         ph = ",".join(str(p) for p in radius_props)
-        hasradius = bool(q("SELECT 1 FROM asm_data_set_device_mode_properties WHERE device_id=? AND prop_id IN (%s) AND base_value>0 LIMIT 1" % ph, (did,)))
+        for _d in [did] + payload:
+            if q("SELECT 1 FROM asm_data_set_device_mode_properties WHERE device_id=? AND prop_id IN (%s) AND base_value>0 LIMIT 1" % ph, (_d,)):
+                hasradius = True; break
     # Classify MELEE FIRST: melee has a cone Effect Radius, which must NOT re-tag it as AOE.
     # Mirrors the server rule in TgDeviceFire__GetEffectGroup.cpp (attack 170/372 = melee, else
     # radius => AOE, else 85/177 = ranged).
@@ -55,7 +70,13 @@ for r in inv:
     if is_melee_dev:
         hasradius = False
     cats = set(); heals = False; dmg = False; debuff = False; timedfx = False
-    for eg in q("SELECT DISTINCT dme.effect_group_id eg FROM asm_data_set_device_mode_effect_groups dme WHERE dme.device_id=?", (did,)):
+    # The payload's effect groups are this device's effects: a Venom Bomb deals no damage
+    # itself, the mine it throws does. Scanning only the carrier left every Recon explosive
+    # flagged as dealing no damage, applying no debuff and having no timed effect - so the AOE
+    # damage passive (which needs aoe AND dmg) skipped them even once they read as AOE.
+    _egq = ("SELECT DISTINCT dme.effect_group_id eg FROM asm_data_set_device_mode_effect_groups dme "
+            "WHERE dme.device_id IN (%s)" % ",".join("?" * (1 + len(payload))))
+    for eg in q(_egq, tuple([did] + payload)):
         meta = q("SELECT category_value_id cat, lifetime_sec l, required_skill_id rsk FROM asm_data_set_effect_groups WHERE effect_group_id=? LIMIT 1", (eg['eg'],))
         if meta:
             if meta[0]['cat']: cats.add(meta[0]['cat'])
@@ -68,7 +89,10 @@ for r in inv:
             if e['p'] in (155, 156, 157, 217, 218, 219, 324, 316) and not pos: debuff = True
     devices[did] = {'name': name, 'skill': dskill, 'class': PROF.get(r['profile_id'], 'Shared'),
                     'atk': sorted(atk), 'pet': pet, 'aoe': hasradius or (proj and 3 in atk), 'proj': proj,
-                    'cats': sorted(cats), 'heals': heals, 'dmg': dmg, 'debuff': debuff, 'timedfx': timedfx}
+                    'cats': sorted(cats), 'heals': heals, 'dmg': dmg, 'debuff': debuff, 'timedfx': timedfx,
+                    # prop 4 Recharge Time: what "off-hand recharge" actually keys on. Weapons
+                    # use refire (53) instead, so having a cooldown is what separates the two.
+                    'cooldown': bool(q("SELECT 1 FROM asm_data_set_device_mode_properties WHERE device_id=? AND prop_id=4 AND base_value>0 LIMIT 1", (did,)))}
 
 # skill -> devices index
 by_skill = {}
@@ -148,6 +172,13 @@ for (grp, sid), S in sorted(skills.items()):
             if props & {350, 381, 382, 383, 366}: sem += [d for d, v in devices.items() if v['pet']]
             if props & {330}: sem += [d for d, v in devices.items() if v['heals']]
             if props & {357, 337}: sem += [d for d, v in devices.items() if devices[d]['skill'] in (365, 351, 363, 364)]
+            # These three modify a DEVICE, not the player, but had no rule - so the skills that
+            # carry them resolved to nothing at all. Offhand Recharge is the clearest case: a
+            # Balanced-tree skill reading "decreases the time it takes for off-hand devices to
+            # recharge" that reached zero devices.
+            if props & {203, 4}: sem += [d for d, v in devices.items() if v['cooldown']]
+            if props & {391}: sem += [d for d, v in devices.items() if v['pet']]
+            if props & {208}: sem += [d for d, v in devices.items() if v['timedfx']]
             if not sem:
                 continue  # self/defensive stat, no device link
             targets = sorted(set(sem))
