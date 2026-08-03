@@ -1809,8 +1809,8 @@
         if (x.p === 357) moraleCut += x.total;
       });
       return { id: a.id, team: a.team, cls: a.cls, pid: a.pid, moraleCut: moraleCut,
-               maxHP: dv.totHP, hp: dv.totHP,
-               maxPW: dv.totPW, pw: dv.totPW, spentUntil: 0,
+               maxHP: dv.totHP, hp: dv.totHP, baseMaxHP: dv.totHP,
+               maxPW: dv.totPW, pw: dv.totPW, baseMaxPW: dv.totPW, spentUntil: 0,
                regen: baseRegen(col.stats),
                baseProt: GA.protectionFrom(col.stats),
                devs: devs, proj: proj, aim: a.aim, live: [], dead: false, spentThisStep: false,
@@ -2018,6 +2018,27 @@
       });
 
       S.actors.forEach(function (a) { a.spentThisStep = false; });
+      // Health Max and Power Pool Max can be raised for a while by something someone else
+      // hands you - an Adrenaline Gun's flat +400 health for 10s, Bancroft's Rally and Fashion
+      // Boost at +20%, Fashion Boost's +40 power. Every one of those landed on the target and
+      // then did nothing, because the ceilings were fixed when the run started.
+      //
+      // The buff raises the CEILING; it does not hand you the health to fill it. That is the
+      // conservative reading - it never creates hit points out of nothing - but it is a guess,
+      // and the way to settle it is to hit a full-health team-mate with an Adrenaline Gun and
+      // watch whether their current health jumps with the maximum or stays put.
+      S.actors.forEach(function (a) {
+        var hpPct = 0, hpFlat = 0, pwPct = 0, pwFlat = 0;
+        liveNow(a).forEach(function (f) {
+          if (f.p === 412) { if (f.pct) hpPct += f.v; else hpFlat += f.v; }
+          else if (f.p === 255) { if (f.pct) pwPct += f.v; else pwFlat += f.v; }
+        });
+        a.maxHP = Math.max(1, Math.round(a.baseMaxHP * (1 + hpPct / 100) + hpFlat));
+        a.maxPW = Math.max(1, Math.round(a.baseMaxPW * (1 + pwPct / 100) + pwFlat));
+        // when the buff lapses the ceiling drops, and anything above it goes with it
+        if (a.hp > a.maxHP) a.hp = a.maxHP;
+        if (a.pw > a.maxPW) a.pw = a.maxPW;
+      });
 
       // fire everything that is ready and affordable
       S.actors.forEach(function (a) {
