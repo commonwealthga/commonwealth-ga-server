@@ -1690,8 +1690,9 @@
             d.shots.push({ raw: c.value, cat: c.cat, life: lifeOf(c), bs: !!c.bs });
           }
         }
-        else if (onSelf) d.selfHeals = (d.selfHeals || []).concat([{ v: c.value, life: lifeOf(c) }]);
-        else if (!c.self) d.heals.push({ v: c.value, life: lifeOf(c),
+        else if (onSelf) d.selfHeals = (d.selfHeals || []).concat([{ v: c.value, life: lifeOf(c),
+                                                                     iv: c.iv || 0 }]);
+        else if (!c.self) d.heals.push({ v: c.value, life: lifeOf(c), iv: c.iv || 0,
                                         sit: c.sit || 0, sv: c.sv || 0,
                                         cat: c.cat, app: c.app || 0, appv: c.appv || 0 });
         else if (c.life > 0) d.selfTimed.push({ p: c.prop, name: GA.statName(c.prop) || 'self',
@@ -2279,7 +2280,8 @@
           (d.selfHeals || []).forEach(function (h) {
             if (h.life > 0) {
               a.hots = (a.hots || []).filter(function (x) { return x.src !== d.name; });
-              a.hots.push({ src: d.name, devId: d.id, rate: h.v / h.life, until: t + h.life });
+              a.hots.push({ src: d.name, devId: d.id, raw: h.v, iv: h.iv || h.life,
+                            next: t + (h.iv || h.life), until: t + h.life });
             } else {
               a.hp = Math.min(a.maxHP, a.hp + h.v * volley * liveHealMult(a));
             }
@@ -2305,13 +2307,17 @@
                 if (hv.how === 'drop') return;
                 if (hv.how === 'refresh') {
                   hv.on.until = t + h.life;
-                  hv.on.rate = h.v / h.life;
+                  hv.on.raw = h.v;
                   return;
                 }
                 if (hv.displace) {
                   v.hots = v.hots.filter(function (x) { return x.cat !== h.cat; });
                 }
-                v.hots.push({ src: d.name, devId: d.id, rate: h.v / h.life, until: t + h.life,
+                // Like a burn, the value is PER TICK - not a total to spread over the
+                // duration. "HoT +86 10.0s" at a 1s interval is 86 ten times over. Dividing by
+                // the lifetime ran every heal-over-time in the game at a tenth of its strength.
+                v.hots.push({ src: d.name, devId: d.id, raw: h.v, iv: h.iv || h.life,
+                              next: t + (h.iv || h.life), until: t + h.life,
                               cat: h.cat, app: h.app, appv: h.appv, life: h.life, at: t });
               } else {
                 v.hp = Math.min(v.maxHP, v.hp + h.v * volley * liveHealMult(v));
@@ -2455,7 +2461,11 @@
           return false;
         });
         var hm = liveHealMult(a);
-        a.hots.forEach(function (h) { a.hp = Math.min(a.maxHP, a.hp + h.rate * STEP * hm); });
+        a.hots.forEach(function (h) {
+          if (h.next > t) return;
+          h.next += h.iv;
+          a.hp = Math.min(a.maxHP, a.hp + h.raw * hm);
+        });
       });
 
       // power regen only when nothing was spent this step (confirmed in game, backlog C4)
