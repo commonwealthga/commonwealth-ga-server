@@ -1692,7 +1692,8 @@
         }
         else if (onSelf) d.selfHeals = (d.selfHeals || []).concat([{ v: c.value, life: lifeOf(c) }]);
         else if (!c.self) d.heals.push({ v: c.value, life: lifeOf(c),
-                                        sit: c.sit || 0, sv: c.sv || 0 });
+                                        sit: c.sit || 0, sv: c.sv || 0,
+                                        cat: c.cat, app: c.app || 0, appv: c.appv || 0 });
         else if (c.life > 0) d.selfTimed.push({ p: c.prop, name: GA.statName(c.prop) || 'self',
                                                 v: c.value, pct: c.isPct, cat: c.cat,
                                                 src: g.name, life: lifeOf(c) });
@@ -1837,6 +1838,34 @@
   // Category 302 is scoped by effect-group id rather than category, so two different
   // <Local> burns never contend - same exemption the protection path uses.
   var NOT_A_BUCKET_DOT = { 302: 1 };
+
+  // Burns and regens contend the same way, so they share this. Returns 'refresh' when the
+  // incoming effect should just extend one already there, 'drop' when it loses, or 'take'
+  // when it should displace the bucket.
+  //
+  // Same source re-applying is always a refresh - MEASURED for burns in game (a Life Stealer
+  // backstab refreshes its own poison every swing and it keeps ticking), and assumed to hold
+  // for heals by symmetry. Between DIFFERENT sources the group's rule decides, and for these
+  // categories the priority is meaningful: a Poison group's application_value IS its per-tick
+  // damage (15 -> 15, 55 -> 55, 158 -> 158) and a Regeneration group's is its per-tick heal
+  // (66, 96, 115, 134, 154). So "Strongest Wins" really does mean the harder-hitting one.
+  function bucketVerdict(list, src, cat, app, appv, life) {
+    var mine = list.filter(function (x) { return x.src === src && x.cat === cat; })[0];
+    if (mine) return { how: 'refresh', on: mine };
+    if (NOT_A_BUCKET_DOT[cat] || !app || app === 155) return { how: 'take', displace: false };
+    var held = list.filter(function (x) { return x.cat === cat; });
+    if (!held.length) return { how: 'take', displace: false };
+    if (app === 836) return { how: 'refresh', on: held[0] };
+    if (app === 874) return { how: 'drop' };
+    if (app === 157) {
+      var beaten = held.some(function (x) {
+        if ((x.appv || 0) > (appv || 0)) return true;
+        return (x.appv || 0) === (appv || 0) && (x.life || 0) > life;
+      });
+      if (beaten) return { how: 'drop' };
+    }
+    return { how: 'take', displace: true };     // 156, or a 157 that won
+  }
   function liveNow(act) {
     var live = act.live || [];
     if (!GA.applyStacking || live.length < 2) return live;
@@ -2188,58 +2217,23 @@
               //   155 Stackable   -> a genuinely separate instance, ticking alongside.
               //   874 Oldest Wins -> the incoming one is dropped while another holds.
               v.dots = (v.dots || []);
-              // MEASURED in game 2026-08-03: a Life Stealer backstab refreshes its own burn on
-              // every swing and the burn keeps ticking. So re-application by the SAME source
-              // extends the duration and leaves the tick schedule alone, whatever the group's
-              // application rule says. I had inferred the opposite from RemoveAllEffectGroups
-              // cancelling the group's timers on a Strongest-Wins displacement; the observation
-              // wins, and why the server reads that way is still unexplained.
-              var mine = v.dots.filter(function (x) {
-                return x.src === d.name && x.cat === dt.cat;
-              })[0];
-              if (mine) {
-                mine.until = t + dt.life;
-                mine.raw = dt.raw;
+              // Burns resolve through the same bucket rules as regens - see bucketVerdict.
+              v.dots = (v.dots || []);
+              var dv = bucketVerdict(v.dots, d.name, dt.cat, dt.app, dt.appv, dt.life);
+              if (dv.how === 'drop') return;
+              if (dv.how === 'refresh') {
+                dv.on.until = t + dt.life;
+                dv.on.raw = dt.raw;
                 return;
               }
-              // Contention is still between DIFFERENT sources, exactly as it is for protection.
-              var bucket = NOT_A_BUCKET_DOT[dt.cat] || !dt.app || dt.app === 155
-                ? null
-                : (v.dots || []).filter(function (x) { return x.cat === dt.cat; });
-              var fresh = { src: d.name, devId: d.id, cat: dt.cat, raw: dt.raw,
-                            app: dt.app, appv: dt.appv,
+              if (dv.displace) {
+                v.dots = v.dots.filter(function (x) { return x.cat !== dt.cat; });
+              }
+              v.dots.push({ src: d.name, devId: d.id, cat: dt.cat, raw: dt.raw,
+                            app: dt.app, appv: dt.appv, life: dt.life, at: t,
                             iv: dt.iv, next: t + dt.iv, until: t + dt.life,
                             hit: { cat: dt.cat, damageType: d.hit.dmg,
-                                   attackType: d.hit.atk, rating: d.hit.rating } };
-
-              if (!bucket || !bucket.length) {
-                // Stackable, uncategorised, or nothing holding this bucket. Stackable from the
-                // SAME weapon still replaces rather than piling up once per swing - the
-                // timeline has no cap and a 0.63s refire would otherwise grow without bound.
-                v.dots.push(fresh);
-                return;
-              }
-
-              if (dt.app === 836) {                       // Refresh: extend, keep the schedule
-                var cur = bucket.filter(function (x) { return x.src === d.name; })[0] || bucket[0];
-                cur.until = t + dt.life;
-                cur.raw = dt.raw;
-                return;
-              }
-              if (dt.app === 874) return;                 // Oldest Wins: incoming is dropped
-
-              if (dt.app === 157) {                       // Strongest Wins, IsStrongest order
-                var beaten = bucket.some(function (x) {
-                  if ((x.appv || 0) > (dt.appv || 0)) return true;
-                  return (x.appv || 0) === (dt.appv || 0)
-                    && (x.until - (x.at || 0)) > dt.life;
-                });
-                if (beaten) return;
-              }
-              // 156, or a 157 that won: displace the bucket and restart the clock
-              v.dots = v.dots.filter(function (x) { return x.cat !== dt.cat; });
-              fresh.at = t;
-              v.dots.push(fresh);
+                                   attackType: d.hit.atk, rating: d.hit.rating } });
             });
           });
           // Strip / cleanse. Runs for every target in scope whether or not it paid damage:
@@ -2304,9 +2298,21 @@
               if (!v || v.dead || v.team !== a.team) return;
               if (!GA.situationalOk(h.sit, h.sv, hpAtHit[tid])) return;
               if (h.life > 0) {
-                // spread across its duration rather than landing whole on the first tick
-                v.hots = (v.hots || []).filter(function (x) { return x.src !== d.name; });
-                v.hots.push({ src: d.name, devId: d.id, rate: h.v / h.life, until: t + h.life });
+                // A heal-over-time contends for its category exactly as a burn does: two medics
+                // regenerating one target do not simply add up when the category says otherwise.
+                v.hots = (v.hots || []);
+                var hv = bucketVerdict(v.hots, d.name, h.cat, h.app, h.appv, h.life);
+                if (hv.how === 'drop') return;
+                if (hv.how === 'refresh') {
+                  hv.on.until = t + h.life;
+                  hv.on.rate = h.v / h.life;
+                  return;
+                }
+                if (hv.displace) {
+                  v.hots = v.hots.filter(function (x) { return x.cat !== h.cat; });
+                }
+                v.hots.push({ src: d.name, devId: d.id, rate: h.v / h.life, until: t + h.life,
+                              cat: h.cat, app: h.app, appv: h.appv, life: h.life, at: t });
               } else {
                 v.hp = Math.min(v.maxHP, v.hp + h.v * volley * liveHealMult(v));
               }
