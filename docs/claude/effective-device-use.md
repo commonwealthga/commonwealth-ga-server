@@ -273,10 +273,14 @@ That is the mechanism — the skill effect group rides along on any hit, and `re
 filters it to hits delivered by a device in that family. Same mechanism scopes Killer Instinct to
 Recon Rifles (327).
 
-Note the overlap: **Triage Wave is itself a Group Heal**, so a Triage Wave landing on a team-mate
-under 25% triggers *both* its own conditional group *and* Group Heal Savior, from the same impact,
-at dispatch sites 1409 and 1411 respectively. If you count "effective conditional triggers" as one
-number, that single impact contributes two.
+> **CORRECTED 2026-08-04 (measured, instances 204/205/207/208).** The overlap this section
+> originally asserted — Triage Wave triggering *both* its own conditional *and* Group Heal Savior
+> from one impact — is **wrong**. Single-cast tests show **Triage Wave never procs Group Heal
+> Savior**: a solo Triage rescue applies eg 22375 and no 16587; a solo Healing Wave rescue applies
+> 16587 and nothing else. Healing Wave and Healing Grenade both proc it. Mechanism unestablished
+> (the three devices carry identical family-252 linkage in the data); the behaviour is measured,
+> not explained. Also measured: a skill-sourced instance's `m_nSourceDeviceInstId` reliably carries
+> the **delivering** device's inventory id, so GHS triggers are device-attributable after all.
 
 ### Recording it
 
