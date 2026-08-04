@@ -18,6 +18,20 @@ public:
     static void SetEnabled(bool enabled);
     static bool Enabled();
 
+    // Recording toggles (INSTANCE_HELLO_ACK ← control-server.json, both
+    // default true). Independent of the master enable above, which still
+    // zeroes everything on home maps.
+    //   device stats  — the server-side mirror of the client Device Stats
+    //                   tab counters (damage/healing/kills via OnDeviceCredit)
+    //   effectiveness — everything layered on top: cleanse/boost/power/
+    //                   savior tracking, buff windows, uses, DEVICE_USED
+    // The client's own tab is unaffected by either. EffectivenessEnabled()
+    // is public so upstream recorders (BuffWindowTracking's per-bullet
+    // scans) can skip their work entirely, not just discard results.
+    static void SetDeviceStatsEnabled(bool enabled);
+    static void SetEffectivenessEnabled(bool enabled);
+    static bool EffectivenessEnabled();
+
     // JOIN site (NotifyControlMessage, after GPawnSessions is populated).
     // Emits JOIN (+CLASS_CHANGE on character switch), restores banked
     // score sums into the fresh PRI on rejoin.

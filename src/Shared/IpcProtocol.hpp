@@ -38,6 +38,10 @@ constexpr const char* MSG_PLAYER_LEAVE = "PLAYER_LEAVE";
 constexpr const char* MSG_PLAYER_CLOSE = "PLAYER_CLOSE";
 
 constexpr const char* MSG_INSTANCE_HELLO     = "INSTANCE_HELLO";
+// ACK fields: accepted, stats_enabled (master — false on home maps), plus
+// the recording toggles device_stats_enabled / effectiveness_enabled
+// (control-server.json, both default true; the DLL also defaults absent
+// fields to true so an older control server keeps full recording).
 constexpr const char* MSG_INSTANCE_HELLO_ACK = "INSTANCE_HELLO_ACK";
 constexpr const char* MSG_INSTANCE_READY     = "INSTANCE_READY";
 

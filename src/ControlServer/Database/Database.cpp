@@ -2170,6 +2170,33 @@ void Database::Init() {
 			if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
 		}
 
+		// Per-queue stats recording toggles. Device-stats recording should
+		// follow COMPETITIVE queues — PvE farming would poison every
+		// MMR-facing signal — so both default 0 and only PvP queues are
+		// seeded on. The seed runs ONLY when the column is newly created
+		// (ALTER succeeded): later manual toggles survive restarts.
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_queues ADD COLUMN record_device_stats INTEGER NOT NULL DEFAULT 0;",
+			nullptr, nullptr, &err);
+		const bool queue_stats_cols_fresh = (result == SQLITE_OK);
+		if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_queues ADD COLUMN record_effectiveness INTEGER NOT NULL DEFAULT 0;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
+		if (queue_stats_cols_fresh) {
+			result = sqlite3_exec(db,
+				"UPDATE ga_queues SET record_device_stats = 1, record_effectiveness = 1 "
+				"WHERE name IN ('merc', '1v1');",
+				nullptr, nullptr, &err);
+			if (result != SQLITE_OK) {
+				Logger::Log("db", "Failed to seed queue stats toggles: %s\n", err);
+				sqlite3_free(err); err = nullptr;
+			} else {
+				Logger::Log("db", "Seeded stats recording ON for queues: merc, 1v1\n");
+			}
+		}
+
 		result = sqlite3_exec(db,
 			"CREATE INDEX IF NOT EXISTS idx_ga_match_device_stats_user "
 			"ON ga_match_device_stats(user_id);"
@@ -3688,6 +3715,27 @@ void Database::UpsertMatchDeviceStats(const MatchDeviceStatsRow& row) {
 		Logger::Log("matchstats", "[DB] UpsertMatchDeviceStats step failed: %s\n",
 			sqlite3_errmsg(db));
 	}
+}
+
+void Database::GetQueueStatsToggles(uint32_t queue_id,
+                                    bool& device_stats, bool& effectiveness) {
+	device_stats = false;
+	effectiveness = false;
+	sqlite3* db = GetConnection();
+	if (!db) return;
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT record_device_stats, record_effectiveness "
+			"FROM ga_queues WHERE queue_id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return;
+	}
+	sqlite3_bind_int(stmt, 1, (int)queue_id);
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		device_stats  = sqlite3_column_int(stmt, 0) != 0;
+		effectiveness = sqlite3_column_int(stmt, 1) != 0;
+	}
+	sqlite3_finalize(stmt);
 }
 
 void Database::SetInstanceOutcomeIfNull(int64_t instance_id,

@@ -460,9 +460,16 @@ void IpcClient::DrainInbound() {
         } else if (type == IpcProtocol::MSG_INSTANCE_HELLO_ACK) {
             bool accepted = j.value("accepted", false);
             bool stats_enabled = j.value("stats_enabled", false);
+            // Recording toggles default TRUE when absent, so an older
+            // control server without the fields keeps today's behaviour.
+            bool device_stats  = j.value("device_stats_enabled", true);
+            bool effectiveness = j.value("effectiveness_enabled", true);
             MatchStats::SetEnabled(stats_enabled);
-            Logger::Log("ipc", "[IPC] INSTANCE_HELLO_ACK: accepted=%d stats=%d\n",
-                (int)accepted, (int)stats_enabled);
+            MatchStats::SetDeviceStatsEnabled(device_stats);
+            MatchStats::SetEffectivenessEnabled(effectiveness);
+            Logger::Log("ipc",
+                "[IPC] INSTANCE_HELLO_ACK: accepted=%d stats=%d device_stats=%d effectiveness=%d\n",
+                (int)accepted, (int)stats_enabled, (int)device_stats, (int)effectiveness);
         } else if (type == IpcProtocol::MSG_PLAYER_REGISTER) {
             std::string guid        = j.value("session_guid", "");
             std::string pname       = j.value("player_name", "");

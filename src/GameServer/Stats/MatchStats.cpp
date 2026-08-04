@@ -19,6 +19,10 @@ namespace {
 
 bool g_enabled = false;
 
+// Recording toggles (see MatchStats.hpp). Default true = record everything.
+bool g_deviceStatsEnabled   = true;
+bool g_effectivenessEnabled = true;
+
 // user_id → per-match stint banking.
 std::map<int64_t, Stats::UserMatchStats> g_users;
 
@@ -338,6 +342,20 @@ void MatchStats::SetEnabled(bool enabled) {
 
 bool MatchStats::Enabled() { return g_enabled; }
 
+void MatchStats::SetDeviceStatsEnabled(bool enabled) {
+    g_deviceStatsEnabled = enabled;
+    Logger::Log("matchstats", "[MatchStats] device_stats_enabled=%d\n", (int)enabled);
+}
+
+void MatchStats::SetEffectivenessEnabled(bool enabled) {
+    g_effectivenessEnabled = enabled;
+    Logger::Log("matchstats", "[MatchStats] effectiveness_enabled=%d\n", (int)enabled);
+}
+
+bool MatchStats::EffectivenessEnabled() {
+    return g_enabled && g_effectivenessEnabled;
+}
+
 void MatchStats::OnPlayerJoined(ATgPawn* Pawn, int64_t user_id,
                                 int64_t character_id, int task_force) {
     if (!g_enabled || !Pawn || user_id == 0 || character_id == 0) return;
@@ -584,7 +602,8 @@ void MatchStats::OnDeployableDestroyed(ATgPawn* Destroyer,
 
 void MatchStats::OnDeviceCredit(ATgPawn* CreditPawn, int device_id,
                                 int field, int amount) {
-    if (!g_enabled || !CreditPawn || device_id <= 0 || amount <= 0) return;
+    if (!g_enabled || !g_deviceStatsEnabled) return;  // toggle A
+    if (!CreditPawn || device_id <= 0 || amount <= 0) return;
     if (DeviceExcluded(device_id)) return;
     LivePlayer lp;
     if (!ResolveLive(CreditPawn, lp)) return;  // bots have no persisted row
@@ -602,7 +621,8 @@ void MatchStats::OnDeviceCredit(ATgPawn* CreditPawn, int device_id,
 
 void MatchStats::OnDeviceCleanse(ATgPawn* CreditPawn, ATgPawn* TargetPawn,
                                  int device_id, int category, int removed) {
-    if (!g_enabled || !CreditPawn || removed <= 0) return;
+    if (!g_enabled || !g_effectivenessEnabled) return;  // toggle B
+    if (!CreditPawn || removed <= 0) return;
     if (DeviceExcluded(device_id)) return;  // no row AND no event
     LivePlayer lp;
     if (!ResolveLive(CreditPawn, lp)) return;  // bot cleanses: no record
@@ -628,7 +648,8 @@ void MatchStats::OnDeviceCleanse(ATgPawn* CreditPawn, ATgPawn* TargetPawn,
 
 void MatchStats::OnDeviceOverheal(ATgPawn* CreditPawn, int device_id,
                                   int amount) {
-    if (!g_enabled || !CreditPawn || device_id <= 0 || amount <= 0) return;
+    if (!g_enabled || !g_effectivenessEnabled) return;  // toggle B
+    if (!CreditPawn || device_id <= 0 || amount <= 0) return;
     if (DeviceExcluded(device_id)) return;
     LivePlayer lp;
     if (!ResolveLive(CreditPawn, lp)) return;
@@ -639,7 +660,8 @@ void MatchStats::OnDeviceOverheal(ATgPawn* CreditPawn, int device_id,
 }
 
 void MatchStats::OnDeviceUsed(ATgPawn* UserPawn, int device_id) {
-    if (!g_enabled || !UserPawn || device_id <= 0) return;
+    if (!g_enabled || !g_effectivenessEnabled) return;  // toggle B
+    if (!UserPawn || device_id <= 0) return;
     if (DeviceExcluded(device_id)) return;  // jetpacks land here constantly
     LivePlayer lp;
     if (!ResolveLive(UserPawn, lp)) return;
@@ -662,7 +684,8 @@ void MatchStats::OnDeviceUsed(ATgPawn* UserPawn, int device_id) {
 
 void MatchStats::OnDevicePowerRestore(ATgPawn* CreditPawn, int device_id,
                                       int restored, int wasted) {
-    if (!g_enabled || !CreditPawn || device_id <= 0) return;
+    if (!g_enabled || !g_effectivenessEnabled) return;  // toggle B
+    if (!CreditPawn || device_id <= 0) return;
     if (restored <= 0 && wasted <= 0) return;
     if (DeviceExcluded(device_id)) return;
     LivePlayer lp;
@@ -689,7 +712,8 @@ void MatchStats::OnDevicePowerRestore(ATgPawn* CreditPawn, int device_id,
 
 void MatchStats::OnSaviorTrigger(ATgPawn* CreditPawn, ATgPawn* TargetPawn,
                                  int device_id) {
-    if (!g_enabled || !CreditPawn) return;
+    if (!g_enabled || !g_effectivenessEnabled) return;  // toggle B
+    if (!CreditPawn) return;
     LivePlayer lp;
     if (!ResolveLive(CreditPawn, lp)) return;  // bot-cast heals: no record
     // Savior firing = an under-25% rescue delivered by this device.
@@ -713,7 +737,8 @@ void MatchStats::OnSaviorTrigger(ATgPawn* CreditPawn, ATgPawn* TargetPawn,
 }
 
 void MatchStats::OnBoostApply(UTgEffectGroup* g) {
-    if (!g_enabled || !g || !g->m_Target) return;
+    if (!g_enabled || !g_effectivenessEnabled) return;  // toggle B
+    if (!g || !g->m_Target) return;
     const float lifetime = BoostLifetime(g->m_nEffectGroupId);
     if (lifetime <= 0.0f) return;
     if (!ObjectClassCache::ClassNameContains(g->m_Target, "TgPawn")) return;
@@ -799,7 +824,8 @@ void MatchStats::OnBoostApply(UTgEffectGroup* g) {
 
 void MatchStats::OnBuffWindowDamage(ATgPawn* CreditPawn, int device_id,
                                     bool offensive, int amount) {
-    if (!g_enabled || !CreditPawn || device_id <= 0 || amount <= 0) return;
+    if (!g_enabled || !g_effectivenessEnabled) return;  // toggle B
+    if (!CreditPawn || device_id <= 0 || amount <= 0) return;
     if (DeviceExcluded(device_id)) return;
     LivePlayer lp;
     if (!ResolveLive(CreditPawn, lp)) return;

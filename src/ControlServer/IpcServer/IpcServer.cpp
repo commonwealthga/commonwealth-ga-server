@@ -220,6 +220,23 @@ private:
             ack["type"]          = IpcProtocol::MSG_INSTANCE_HELLO_ACK;
             ack["accepted"]      = true;
             ack["stats_enabled"] = !is_home_map_;
+            // Finer-grained recording toggles: global (control-server.json)
+            // AND per-queue (ga_queues.record_*). Queue rows default OFF —
+            // recording follows competitive queues so PvE farming can't
+            // reach MMR-facing data. queue_id 0 (ad-hoc / admin-spawned
+            // instance) has no queue row and falls back to the globals,
+            // which keeps test instances recordable.
+            bool q_dev = true, q_eff = true;
+            if (info && info->queue_id != 0) {
+                Database::GetQueueStatsToggles(info->queue_id, q_dev, q_eff);
+            }
+            ack["device_stats_enabled"]  = IpcServer::stats_device_enabled_ && q_dev;
+            ack["effectiveness_enabled"] = IpcServer::stats_effectiveness_enabled_ && q_eff;
+            Logger::Log("ipc",
+                "[IpcServer] stats toggles for instance %lld: queue=%u device_stats=%d effectiveness=%d\n",
+                (long long)inst_id, info ? info->queue_id : 0,
+                (int)(IpcServer::stats_device_enabled_ && q_dev),
+                (int)(IpcServer::stats_effectiveness_enabled_ && q_eff));
             send(ack.dump());
             Logger::Log("ipc", "[IpcServer] INSTANCE_HELLO_ACK sent to instance_id=%lld\n",
                 (long long)inst_id);
@@ -816,6 +833,13 @@ std::map<std::string, std::function<void(bool, int)>> IpcServer::pending_acks_;
 IpcServer::SuccessorSpawner IpcServer::successor_spawner_;
 std::string IpcServer::admin_token_;
 IpcServer::AdminActionHandler IpcServer::admin_action_handler_;
+bool IpcServer::stats_device_enabled_        = true;
+bool IpcServer::stats_effectiveness_enabled_ = true;
+
+void IpcServer::SetStatsToggles(bool device_stats, bool effectiveness) {
+    stats_device_enabled_        = device_stats;
+    stats_effectiveness_enabled_ = effectiveness;
+}
 
 void IpcServer::SetSuccessorSpawner(SuccessorSpawner cb) {
     successor_spawner_ = std::move(cb);

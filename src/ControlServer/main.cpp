@@ -403,6 +403,8 @@ int main(int argc, char* argv[]) {
     TcpSession::SetNetworkConfig(cfg.host, cfg.chat_port);
     TcpSession::SetLoginPolicy(cfg.allow_duplicate_account_logins,
                                cfg.require_password_verification);
+    IpcServer::SetStatsToggles(cfg.device_stats_enabled,
+                               cfg.effectiveness_enabled);
     TcpSession::SetModerationConfig(cfg.ban_spoof.mode,
                                     cfg.ban_spoof.fallback_close_sec,
                                     cfg.kick.fallback_close_sec);

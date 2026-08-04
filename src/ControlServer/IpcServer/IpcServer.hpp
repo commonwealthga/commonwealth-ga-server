@@ -50,6 +50,10 @@ public:
     static void SetAdminToken(std::string token);
     static void SetAdminActionHandler(AdminActionHandler cb);
 
+    // Per-instance stats toggles forwarded in INSTANCE_HELLO_ACK. Set once
+    // at startup from control-server.json (both default true).
+    static void SetStatsToggles(bool device_stats, bool effectiveness);
+
 private:
     friend class IpcSession;
 
@@ -60,6 +64,8 @@ private:
     static SuccessorSpawner successor_spawner_;
     static std::string admin_token_;
     static AdminActionHandler admin_action_handler_;
+    static bool stats_device_enabled_;
+    static bool stats_effectiveness_enabled_;
 
     asio::io_context& io_;
     std::unique_ptr<asio::ip::tcp::acceptor> acceptor_;

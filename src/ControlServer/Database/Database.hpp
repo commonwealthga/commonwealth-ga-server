@@ -213,6 +213,12 @@ public:
     // device_id). device_id keys asm_data_set_devices.device_id.
     static void UpsertMatchDeviceStats(const MatchDeviceStatsRow& row);
 
+    // Per-queue stats recording toggles (ga_queues.record_device_stats /
+    // record_effectiveness). Returns false/false when the queue row is
+    // missing — an unknown queue records nothing.
+    static void GetQueueStatsToggles(uint32_t queue_id,
+                                     bool& device_stats, bool& effectiveness);
+
     // Write-once outcome stamp (WHERE outcome IS NULL AND is_home_map=0).
     // winning_task_force 0 = NULL.
     static void SetInstanceOutcomeIfNull(int64_t instance_id,

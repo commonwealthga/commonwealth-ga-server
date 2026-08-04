@@ -57,6 +57,10 @@ void ScanAndCredit(ATgPawn* pawn, bool offensive, int amount) {
 namespace BuffWindowTracking {
 
 void OnEnemyPawnDamage(ATgPawn* shooter, ATgPawn* victim, int amount) {
+	// Effectiveness toggle checked HERE, not just inside MatchStats — with
+	// recording off the applied-group scans shouldn't run at all, this
+	// being the only per-bullet cost the effectiveness pass added.
+	if (!MatchStats::EffectivenessEnabled()) return;
 	if (amount <= 0) return;
 	ScanAndCredit(shooter, /*offensive=*/true,  amount);
 	ScanAndCredit(victim,  /*offensive=*/false, amount);
