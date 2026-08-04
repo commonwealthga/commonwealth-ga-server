@@ -2,6 +2,7 @@
 #include "src/Utils/Macros.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/Markers/Markers.hpp"
 #include <cstdint>
 #include <unordered_map>
 
@@ -2521,7 +2522,27 @@ static void ResolveRepListProperties() {
 
 
 int* __fastcall Actor__GetOptimizedRepList::Call(void* thisxx, void* edx_dummy, int param_1, void* param_2, int* param_3, int* param_4, int param_5) {
+	// -markers glow route: send AActor::Owner as NULL for the effect managers
+	// we spawn, and ONLY those. The client's effect-form updater resolves its
+	// target as `Owner ?: r_Owner` (FUN_10a70a70 reads +0x98 then +0x480), so a
+	// replicated Owner makes it paint the PlayerController — which has no mesh —
+	// instead of falling through to r_Owner. We still need the real Owner on the
+	// server for bOnlyRelevantToOwner / bNetOwner, hence null-around-the-call
+	// rather than clearing the field outright. Relevancy is decided before
+	// ReplicateActor, so it is unaffected. See Markers.hpp.
+	AActor* markerMgr = nullptr;
+	AActor* savedOwner = nullptr;
+	if (TgPlayerActions::MarkersCmd::IsMarkerEffectManager(thisxx)) {
+		markerMgr = (AActor*)thisxx;
+		savedOwner = markerMgr->Owner;
+		markerMgr->Owner = nullptr;
+	}
+
 	param_3 = CallOriginal(thisxx, edx_dummy, param_1, param_2, param_3, param_4, param_5);
+
+	if (markerMgr) {
+		markerMgr->Owner = savedOwner;
+	}
 	if (!bRepListCached) {
 		bRepListCached = true;
 		ResolveRepListProperties();

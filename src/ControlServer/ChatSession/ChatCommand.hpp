@@ -106,6 +106,38 @@ struct SetDlcArgs {
     bool installed = false;
 };
 
+// -markers [off|all|attackers|defenders|friendly|enemy|glow|foreman|<uu>]:
+// SPECTATOR-ONLY team highlight, visible only to the spectator who has it on.
+// Auto-enabled on spectator join, so live use needs no command at all. Purely
+// visual — the DLL pushes effect group 1469 (FX 131, a silent material swap)
+// through SetEffectRep on its own owner-only effect managers. See Markers.hpp.
+struct MarkersArgs {
+    // "toggle" (default), "off", "all", "attackers", "defenders",
+    // "friendly", "enemy", "glow", "foreman", or "distance". String rather
+    // than an enum because it rides the JSON args blob straight through to
+    // the DLL.
+    //
+    // "friendly"/"enemy" are resolved DLL-side against the spectator's own
+    // PRI.r_TaskForce — the cosmetic team seeded by `-spectate <id> <team>` —
+    // so they follow how the caller joined. A teamless spectator has no
+    // r_TaskForce and both degrade to "all".
+    std::string mode = "toggle";
+    // `-markers <uu>`: near-cull radius in UE3 world units. Pawns closer than
+    // this to the spectator's view point are not marked, because at close
+    // range the world-scaled FX fills the screen. 0 = leave unchanged / use
+    // the DLL default. Applied live on an already-enabled session.
+    float min_distance_uu = 0.0f;
+};
+
+// -fx [next|prev|<n>|off|pawn|own]: step through candidate special-FX on the
+// pawn the caller is currently viewing, so a marker look can be picked by eye.
+// Dev/preview tooling — see FxBrowse.hpp.
+struct FxBrowseArgs {
+    // "show" (default), "next", "prev", "jump", "off", "pawn", "own".
+    std::string action = "show";
+    int index = 0;  // only meaningful for action == "jump"
+};
+
 struct ParseResult {
     // True if the message was a /-prefixed slash command attempt that we own
     // (currently: "-changeteam", "-spawnfriend", "-spawnenemy", "-possess",
@@ -128,6 +160,8 @@ struct ParseResult {
     std::optional<ToggleBrokenSuitsArgs> toggle_broken_suits;
     std::optional<ToggleSoloModeArgs>    toggle_solo_mode;
     std::optional<SetDlcArgs>            set_dlc;
+    std::optional<MarkersArgs>      markers;
+    std::optional<FxBrowseArgs>     fx_browse;
 
     // No-arg toggles. Flag is set when recognized + parsed cleanly.
     bool possess   = false;
@@ -224,6 +258,13 @@ void ExecuteClassCounts(const std::string& session_guid);
 // Send -topdown to the game DLL. Toggles top-down view in the DLL — repeated
 // invocations alternate enter/restore. lift_z=0 means "use the DLL default".
 void DispatchTopDown(const TopDownArgs& args, const std::string& session_guid);
+
+// Send -markers to the game DLL. The DLL owns the enable set and the refresh
+// timer; repeated bare invocations alternate on/off.
+void DispatchMarkers(const MarkersArgs& args, const std::string& session_guid);
+
+// Send -fx to the game DLL. The DLL owns the candidate table and the cursor.
+void DispatchFxBrowse(const FxBrowseArgs& args, const std::string& session_guid);
 
 // Send -togglebrokensuits to the game DLL. The DLL owns the preference
 // (ga_user_preferences read/write + in-memory cache used at replication).
