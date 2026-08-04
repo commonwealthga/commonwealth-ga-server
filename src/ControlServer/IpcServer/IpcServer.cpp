@@ -492,6 +492,7 @@ private:
             row.power_wasted    = j.value("power_wasted", 0);
             row.buffed_damage_dealt    = j.value("buffed_damage_dealt", 0);
             row.protected_damage_taken = j.value("protected_damage_taken", 0);
+            row.rescues                = j.value("rescues", 0);
             Database::UpsertMatchDeviceStats(row);
         }
         else if (type == IpcProtocol::MSG_MISSION_ENDED) {

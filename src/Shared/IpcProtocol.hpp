@@ -98,13 +98,17 @@ constexpr const char* MSG_MATCH_STATS = "MATCH_STATS";
 //     "player_kills": <int>, "bot_kills": <int>,
 //     "debuffs_removed": <int>, "overheal": <int>, "uses": <int>,
 //     "power_restored": <int>, "power_wasted": <int>,
-//     "buffed_damage_dealt": <int>, "protected_damage_taken": <int> }
+//     "buffed_damage_dealt": <int>, "protected_damage_taken": <int>,
+//     "rescues": <int> }
 // debuffs_removed = effect groups stripped by this device's property-140
 // cleanses; overheal = heal magnitude clamped away on full-health targets;
 // uses = DeviceFiring activations; power_restored/power_wasted = prop-243
 // Power Pool split at the pool cap; buffed_damage_dealt / protected_damage_
 // taken = damage dealt/taken by pawns inside this device's tracked buff
-// window (BuffWindowTracking's table).
+// window (BuffWindowTracking's table); rescues = under-25% conditional
+// deliveries (Triage's own group, or a Savior trigger this device carried).
+// Allowlisted activatables (group heals + boosts) additionally emit
+// timestamped DEVICE_USED MATCH_EVENT rows for per-cast joins.
 constexpr const char* MSG_MATCH_DEVICE_STATS = "MATCH_DEVICE_STATS";
 
 // Sent by a mission instance at the game-mode-specific pre-warm trigger

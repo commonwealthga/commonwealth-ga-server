@@ -62,6 +62,8 @@ struct DeviceTotals {
     int     power_wasted    = 0;  // prop-243 power clamped away
     int     buffed_damage_dealt    = 0;  // dealt under this device's buff
     int     protected_damage_taken = 0;  // taken under this device's buff
+    int     rescues         = 0;  // under-25% conditional deliveries:
+                                  // Triage's own group + Savior triggers
 };
 std::map<DeviceKey, DeviceTotals> g_deviceStats;
 
@@ -96,6 +98,39 @@ bool DeviceExcluded(int device_id) {
         }
     }
     return g_excludedDevices.count(device_id) != 0;
+}
+
+// Devices whose activations additionally emit a timestamped DEVICE_USED
+// event (the uses counter has no time axis; these events make per-cast
+// effectiveness and match timelines reconstructable). Deliberately narrow —
+// weapons would flood ga_match_events. Loaded once: the Group Heals family
+// (asm skill 252: Healing/Protection/Frenzy/Power/Triage Wave, Healing
+// Grenade, Purity) plus the three boosts. Extend by adding ids here.
+std::set<int> g_castEventDevices;
+bool g_castEventLoaded = false;
+
+bool CastEventDevice(int device_id) {
+    if (!g_castEventLoaded) {
+        g_castEventLoaded = true;
+        for (int id : {2838, 2773, 7559}) {  // Protection/Healing/Fashion Boost
+            g_castEventDevices.insert(id);
+        }
+        sqlite3* db = Database::GetConnection();
+        if (db != nullptr) {
+            sqlite3_stmt* stmt = nullptr;
+            if (sqlite3_prepare_v2(db,
+                    "SELECT i.item_id FROM asm_data_set_items i "
+                    "JOIN asm_data_set_devices d ON d.device_id = i.item_id "
+                    "WHERE i.skill_id = 252",
+                    -1, &stmt, nullptr) == SQLITE_OK) {
+                while (sqlite3_step(stmt) == SQLITE_ROW) {
+                    g_castEventDevices.insert(sqlite3_column_int(stmt, 0));
+                }
+            }
+            sqlite3_finalize(stmt);
+        }
+    }
+    return g_castEventDevices.count(device_id) != 0;
 }
 
 // Devices whose prop-243 power rider must not feed the power columns.
@@ -228,6 +263,7 @@ void UpsertDeviceStats(int64_t character_id) {
         m["power_wasted"]    = kv.second.power_wasted;
         m["buffed_damage_dealt"]    = kv.second.buffed_damage_dealt;
         m["protected_damage_taken"] = kv.second.protected_damage_taken;
+        m["rescues"]                = kv.second.rescues;
         IpcClient::Send(m.dump());
     }
 }
@@ -564,6 +600,18 @@ void MatchStats::OnDeviceUsed(ATgPawn* UserPawn, int device_id) {
     DeviceTotals& t = g_deviceStats[{lp.character_id, lp.task_force, device_id}];
     t.user_id = lp.user_id;
     t.uses++;
+
+    // Allowlisted activatables also emit a timestamped cast event, so
+    // per-cast effectiveness ("3 casts, which cured?") joins against the
+    // CLEANSE / SAVIOR stream on game_time instead of being inferred.
+    if (CastEventDevice(device_id)) {
+        nlohmann::json ev;
+        ev["actor_user_id"]      = lp.user_id;
+        ev["actor_character_id"] = lp.character_id;
+        ev["actor_task_force"]   = lp.task_force;
+        ev["device_id"]          = device_id;
+        EmitEvent(ev, "DEVICE_USED");
+    }
 }
 
 void MatchStats::OnDevicePowerRestore(ATgPawn* CreditPawn, int device_id,
@@ -571,18 +619,22 @@ void MatchStats::OnDevicePowerRestore(ATgPawn* CreditPawn, int device_id,
     if (!g_enabled || !CreditPawn || device_id <= 0) return;
     if (restored <= 0 && wasted <= 0) return;
     if (DeviceExcluded(device_id)) return;
+    LivePlayer lp;
+    if (!ResolveLive(CreditPawn, lp)) return;
     if (PowerStatExempt(device_id)) {
-        // Keep the conditional-fired signal visible in diagnostics even
-        // though it stays out of the stats (see PowerStatExempt).
+        // Triage: the power rider stays out of the power columns (see
+        // PowerStatExempt), but its firing IS the under-25% conditional —
+        // one power effect per rescue — so it drives the rescues counter.
+        DeviceTotals& t = g_deviceStats[{lp.character_id, lp.task_force, device_id}];
+        t.user_id = lp.user_id;
+        t.rescues++;
         if (Logger::IsChannelEnabled("devusage")) {
             Logger::Log("devusage",
-                "[TRIAGE-CONDITIONAL] credit=%p restored=%d wasted=%d (power stats exempt)\n",
+                "[TRIAGE-CONDITIONAL] credit=%p restored=%d wasted=%d (power stats exempt, rescue counted)\n",
                 (void*)CreditPawn, restored, wasted);
         }
         return;
     }
-    LivePlayer lp;
-    if (!ResolveLive(CreditPawn, lp)) return;
     DeviceTotals& t = g_deviceStats[{lp.character_id, lp.task_force, device_id}];
     t.user_id = lp.user_id;
     if (restored > 0) t.power_restored += restored;
@@ -594,6 +646,12 @@ void MatchStats::OnSaviorTrigger(ATgPawn* CreditPawn, ATgPawn* TargetPawn,
     if (!g_enabled || !CreditPawn) return;
     LivePlayer lp;
     if (!ResolveLive(CreditPawn, lp)) return;  // bot-cast heals: no record
+    // Savior firing = an under-25% rescue delivered by this device.
+    if (device_id > 0 && !DeviceExcluded(device_id)) {
+        DeviceTotals& t = g_deviceStats[{lp.character_id, lp.task_force, device_id}];
+        t.user_id = lp.user_id;
+        t.rescues++;
+    }
     nlohmann::json ev;
     ev["actor_user_id"]      = lp.user_id;
     ev["actor_character_id"] = lp.character_id;
