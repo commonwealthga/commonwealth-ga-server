@@ -248,8 +248,13 @@ There are only five, which makes this a small and testable surface:
 
 > The Combat Off-Hand Utility row is odd: that skill's description is *"Increases the explosion
 > radius of Combat Offhands"*, which has nothing to do with a protection-and-speed buff gated on
-> target health. It is scoped to Area Poisons (skill 336). Treat it as a suspected authoring
-> leftover, not as a feature to instrument, until someone confirms it does anything in game.
+> target health. It is scoped to Area Poisons (skill 336).
+>
+> **CONFIRMED LIVE 2026-08-04 (instance 212):** not a leftover — eg 26474 fires constantly on a
+> poison build, applying +5 Phys/+10% speed per Area Poison hit against targets above 75% HP,
+> `srcSkillId=336` exactly as authored. The buff lands on the TARGET of the poison (observed on
+> enemy bots), which is even stranger than the description mismatch — buffing the enemy you
+> poison. Mechanically real; design intent still unexplained.
 
 ---
 
