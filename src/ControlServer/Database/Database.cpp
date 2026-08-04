@@ -2140,6 +2140,9 @@ void Database::Init() {
 			"  buffed_damage_dealt    INTEGER NOT NULL DEFAULT 0,"
 			"  protected_damage_taken INTEGER NOT NULL DEFAULT 0,"
 			"  rescues         INTEGER NOT NULL DEFAULT 0,"
+			"  boost_targets     INTEGER NOT NULL DEFAULT 0,"
+			"  boost_overwrites  INTEGER NOT NULL DEFAULT 0,"
+			"  boost_wasted_secs INTEGER NOT NULL DEFAULT 0,"
 			"  PRIMARY KEY (instance_id, character_id, task_force, device_id)"
 			");",
 			nullptr, nullptr, &err);
@@ -2159,6 +2162,9 @@ void Database::Init() {
 			"ALTER TABLE ga_match_device_stats ADD COLUMN buffed_damage_dealt INTEGER NOT NULL DEFAULT 0;",
 			"ALTER TABLE ga_match_device_stats ADD COLUMN protected_damage_taken INTEGER NOT NULL DEFAULT 0;",
 			"ALTER TABLE ga_match_device_stats ADD COLUMN rescues INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_match_device_stats ADD COLUMN boost_targets INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_match_device_stats ADD COLUMN boost_overwrites INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_match_device_stats ADD COLUMN boost_wasted_secs INTEGER NOT NULL DEFAULT 0;",
 		}) {
 			result = sqlite3_exec(db, alter, nullptr, nullptr, &err);
 			if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
@@ -3635,8 +3641,9 @@ void Database::UpsertMatchDeviceStats(const MatchDeviceStatsRow& row) {
 		"INSERT INTO ga_match_device_stats (instance_id, user_id, character_id,"
 		" task_force, device_id, damage, healing, player_kills, bot_kills,"
 		" debuffs_removed, overheal, uses, power_restored, power_wasted,"
-		" buffed_damage_dealt, protected_damage_taken, rescues)"
-		" VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+		" buffed_damage_dealt, protected_damage_taken, rescues,"
+		" boost_targets, boost_overwrites, boost_wasted_secs)"
+		" VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 		" ON CONFLICT(instance_id, character_id, task_force, device_id) DO UPDATE SET"
 		"  user_id=excluded.user_id, damage=excluded.damage,"
 		"  healing=excluded.healing, player_kills=excluded.player_kills,"
@@ -3646,7 +3653,9 @@ void Database::UpsertMatchDeviceStats(const MatchDeviceStatsRow& row) {
 		"  power_wasted=excluded.power_wasted,"
 		"  buffed_damage_dealt=excluded.buffed_damage_dealt,"
 		"  protected_damage_taken=excluded.protected_damage_taken,"
-		"  rescues=excluded.rescues",
+		"  rescues=excluded.rescues, boost_targets=excluded.boost_targets,"
+		"  boost_overwrites=excluded.boost_overwrites,"
+		"  boost_wasted_secs=excluded.boost_wasted_secs",
 		-1, &stmt, nullptr);
 	if (rc != SQLITE_OK || !stmt) {
 		Logger::Log("matchstats", "[DB] UpsertMatchDeviceStats prepare failed: %s\n",
@@ -3670,6 +3679,9 @@ void Database::UpsertMatchDeviceStats(const MatchDeviceStatsRow& row) {
 	sqlite3_bind_int(stmt, 15, row.buffed_damage_dealt);
 	sqlite3_bind_int(stmt, 16, row.protected_damage_taken);
 	sqlite3_bind_int(stmt, 17, row.rescues);
+	sqlite3_bind_int(stmt, 18, row.boost_targets);
+	sqlite3_bind_int(stmt, 19, row.boost_overwrites);
+	sqlite3_bind_int(stmt, 20, row.boost_wasted_secs);
 	rc = sqlite3_step(stmt);
 	sqlite3_finalize(stmt);
 	if (rc != SQLITE_DONE) {

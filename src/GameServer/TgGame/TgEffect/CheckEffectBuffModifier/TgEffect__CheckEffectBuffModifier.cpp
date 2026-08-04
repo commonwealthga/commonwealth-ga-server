@@ -110,6 +110,9 @@ void __fastcall TgEffect__CheckEffectBuffModifier::Call(UTgEffect* effect, void*
 		HitSituationalMitigation::BeginImpactMitigation(effect);
 	} else {
 		HitSituationalMitigation::NoteDebuffApplied(effect);
+		// Tracked-boost registry (reach + overwrite waste). Gated inside on
+		// the group id; HoT ticks and multi-effect groups dedupe there too.
+		MatchStats::OnBoostApply(g);
 		// Property-140 "Remove Effect": capture cleanse provenance before
 		// ApplyEffect routes to RemoveEffectGroupsByCategory (which never
 		// sees the instigator). No-op for every other property.

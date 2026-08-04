@@ -95,6 +95,27 @@ public:
     static void OnSaviorTrigger(ATgPawn* CreditPawn, ATgPawn* TargetPawn,
                                 int device_id);
 
+    // A tracked boost effect group landed on a pawn (called from
+    // CheckEffectBuffModifier for every effect of every application AND
+    // every HoT tick — dedupe happens inside). Maintains the per-target
+    // boost registry that drives three counters on the caster's device row:
+    //   boost_targets    — distinct applications (reach; ticks and the
+    //                      group's 2nd/3rd effects fold into their record)
+    //   boost_overwrites — times THIS device's live boost was replaced by a
+    //                      different caster before expiry (newest-wins)
+    //   boost_wasted_secs— lifetime remaining at those overwrites, summed
+    // Every fresh application emits a BOOST_APPLY event, and each overwrite
+    // additionally a BOOST_OVERWRITE event (actor = the overwriter, owner =
+    // the medic whose ticks were lost, target = the pawn, device_id = the
+    // wasted device, detail = seconds remaining). A cast's APPLY rows minus
+    // its OVERWRITE rows = targets that had nothing running, so "was the
+    // second medic's cast justified" is per-incident data, not a judgment
+    // baked into a counter.
+    // Registry is (target pawnId, effect group) keyed with copied caster
+    // identity — no pawn pointers survive in it — and entries clear on the
+    // target's death so a post-respawn boost can't read as an overwrite.
+    static void OnBoostApply(UTgEffectGroup* g);
+
     // Damage that happened inside a tracked buff window (BuffWindowTracking):
     // offensive → buffed_damage_dealt on the buff device's row, defensive →
     // protected_damage_taken. Credit is the buff's caster, not the shooter.

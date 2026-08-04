@@ -207,6 +207,7 @@ public:
         int     uses = 0, power_restored = 0, power_wasted = 0;
         int     buffed_damage_dealt = 0, protected_damage_taken = 0;
         int     rescues = 0;
+        int     boost_targets = 0, boost_overwrites = 0, boost_wasted_secs = 0;
     };
     // Absolute totals; upsert on (instance_id, character_id, task_force,
     // device_id). device_id keys asm_data_set_devices.device_id.

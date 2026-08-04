@@ -107,8 +107,14 @@ constexpr const char* MSG_MATCH_STATS = "MATCH_STATS";
 // taken = damage dealt/taken by pawns inside this device's tracked buff
 // window (BuffWindowTracking's table); rescues = under-25% conditional
 // deliveries (Triage's own group, or a Savior trigger this device carried).
-// Allowlisted activatables (group heals + boosts) additionally emit
-// timestamped DEVICE_USED MATCH_EVENT rows for per-cast joins.
+// boost_targets / boost_overwrites / boost_wasted_secs = tracked-boost
+// reach and newest-wins overwrite waste. Every fresh boost application
+// emits a BOOST_APPLY MATCH_EVENT and each overwrite a BOOST_OVERWRITE
+// (actor = the overwriter, owner = the medic whose ticks were lost,
+// detail = seconds remaining) — a cast's APPLY minus OVERWRITE rows =
+// its fresh coverage. Allowlisted activatables (group heals + boosts)
+// additionally emit timestamped DEVICE_USED MATCH_EVENT rows for
+// per-cast joins.
 constexpr const char* MSG_MATCH_DEVICE_STATS = "MATCH_DEVICE_STATS";
 
 // Sent by a mission instance at the game-mode-specific pre-warm trigger

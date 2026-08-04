@@ -493,6 +493,9 @@ private:
             row.buffed_damage_dealt    = j.value("buffed_damage_dealt", 0);
             row.protected_damage_taken = j.value("protected_damage_taken", 0);
             row.rescues                = j.value("rescues", 0);
+            row.boost_targets          = j.value("boost_targets", 0);
+            row.boost_overwrites       = j.value("boost_overwrites", 0);
+            row.boost_wasted_secs      = j.value("boost_wasted_secs", 0);
             Database::UpsertMatchDeviceStats(row);
         }
         else if (type == IpcProtocol::MSG_MISSION_ENDED) {
