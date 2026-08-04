@@ -17,6 +17,7 @@
 #include "src/GameServer/TgGame/Morale/MoraleCredit.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Stats/DeviceStats.hpp"
+#include "src/GameServer/TgGame/_effect_core/BuffWindowTracking.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <string>
 
@@ -711,6 +712,16 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 				if (effectiveHeal > missing) effectiveHeal = missing;
 				DeviceStats::Credit(damageCreditPawn, creditDeviceId,
 				                    DeviceStats::kHealing, (int)effectiveHeal);
+
+				// The clamped-away remainder is the wasted-heal metric:
+				// healing thrown at a target that had no room for it. Same
+				// gating as the credit above (self-heal and own-gear repair
+				// already filtered), so healing + overheal = total output.
+				const int overheal = (int)(magnitude - effectiveHeal);
+				if (overheal > 0) {
+					MatchStats::OnDeviceOverheal(damageCreditPawn,
+					                             creditDeviceId, overheal);
+				}
 			}
 		}
 	}
@@ -745,6 +756,12 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 			}
 			DeviceStats::Credit(damageCreditPawn, creditDeviceId,
 			                    DeviceStats::kDamage, (int)magnitude);
+			// Buff-window benefit: same magnitude, credited to whoever's
+			// Frenzy is on the shooter / Protection is on the victim.
+			// Separate columns on the buff device's row — no collision with
+			// the weapon credit above.
+			BuffWindowTracking::OnEnemyPawnDamage(Instigator, targetPawn,
+			                                      (int)magnitude);
 		} else if (targetIsDeployable) {
 			TgPawn__TrackDamagedBot::Call(damageCreditPawn, nullptr,
 				nullptr, 0, (int)magnitude);

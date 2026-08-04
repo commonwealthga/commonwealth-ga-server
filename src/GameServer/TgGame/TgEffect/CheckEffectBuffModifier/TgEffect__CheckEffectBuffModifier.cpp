@@ -2,6 +2,9 @@
 #include "src/GameServer/TgGame/_effect_core/OriginResolver.hpp"
 #include "src/GameServer/TgGame/_effect_core/DeviceLookup.hpp"
 #include "src/GameServer/TgGame/_effect_core/HitSituationalMitigation.hpp"
+#include "src/GameServer/TgGame/_effect_core/CleanseTracking.hpp"
+#include "src/GameServer/TgGame/_effect_core/EffectCredit.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -62,6 +65,39 @@ void __fastcall TgEffect__CheckEffectBuffModifier::Call(UTgEffect* effect, void*
 	UTgEffectGroup* g = effect->m_EffectGroup;
 	if (!g) return;
 
+	// Type-505 application capture (devusage) — settles what a skill-sourced
+	// situational instance actually carries at apply time. The KI/Eagle-Eye
+	// finding (theorycraft-console: killer-instinct-diag.md §3) shows skill
+	// groups resolve origin differently from device groups (KI's potency
+	// query "finds nothing"), so Group Heal Savior (eg 16587) attribution —
+	// which delivering wave, if any — must be read from a live capture, not
+	// assumed. Rare events (situational skill triggers only); one line each.
+	if (g->m_nType == 505 && Logger::IsChannelEnabled("devusage")) {
+		Logger::Log("devusage",
+			"[505-APPLY] egId=%d sit=%d prop=%d val=%.1f inst=%p srcInstId=%d srcSkillId=%d target=%p\n",
+			g->m_nEffectGroupId, g->m_nSituationalType, effect->m_nPropertyId,
+			*NewValue, (void*)g->m_Instigator, g->m_nSourceDeviceInstId,
+			g->m_nSourceDeviceSkillId, (void*)g->m_Target);
+	}
+
+	// Group Heal Savior (eg 16587) trigger → SAVIOR match event, with the
+	// delivering device. Single-cast tests (instances 207/208, 2026-08-04)
+	// settled the instance's m_nSourceDeviceInstId: it IS the delivering
+	// group-heal's inventory id, reliably — the earlier "wrong device"
+	// reading came from mis-grouping a multi-cast log. Those same tests
+	// showed Triage Wave does NOT proc this skill (its own 505 fires
+	// instead), so Triage rescues are covered by eg 22375, not here.
+	// Keyed on the prop-155 effect so the group's second effect
+	// (GroundSpeed) doesn't double-fire the event.
+	if (g->m_nEffectGroupId == 16587 && effect->m_nPropertyId == 155) {
+		ATgPawn* saveTarget =
+			(g->m_Target && ObjectClassCache::ClassNameContains(g->m_Target, "TgPawn"))
+				? static_cast<ATgPawn*>(g->m_Target) : nullptr;
+		ATgPawn* saveCredit = EffectCredit::ResolveCreditPawn(g->m_Instigator);
+		MatchStats::OnSaviorTrigger(saveCredit, saveTarget,
+			EffectCredit::ResolveDeviceId(g, saveCredit));
+	}
+
 	// Self-shot mitigation bracket. This native is the last thing that runs on
 	// an effect before its value reaches the target, which makes it the one
 	// place that sees both halves of the type-505 ordering defect at the right
@@ -74,6 +110,28 @@ void __fastcall TgEffect__CheckEffectBuffModifier::Call(UTgEffect* effect, void*
 		HitSituationalMitigation::BeginImpactMitigation(effect);
 	} else {
 		HitSituationalMitigation::NoteDebuffApplied(effect);
+		// Property-140 "Remove Effect": capture cleanse provenance before
+		// ApplyEffect routes to RemoveEffectGroupsByCategory (which never
+		// sees the instigator). No-op for every other property.
+		CleanseTracking::NotePendingCleanse(effect);
+
+		// Property-243 Power Pool restore (Power Wave 26097/16921, Triage
+		// Wave's conditional half 22375, …). Runs before ApplyToProperty, so
+		// the target's pool is still pre-restore — split the pre-buff-scale
+		// value into restored vs. wasted the same way the heal clamp does.
+		// Triage Wave carries power ONLY in its HP-gated group, so a nonzero
+		// power_restored on it doubles as "the conditional half fired".
+		if (effect->m_nPropertyId == 243 && *NewValue > 0.0f &&
+		    g->m_Target && ObjectClassCache::ClassNameContains(g->m_Target, "TgPawn")) {
+			ATgPawn* tp = static_cast<ATgPawn*>(g->m_Target);
+			float missing = tp->r_fMaxPowerPool - tp->r_fCurrentPowerPool;
+			if (missing < 0.0f) missing = 0.0f;
+			const float restored = *NewValue < missing ? *NewValue : missing;
+			ATgPawn* credit = EffectCredit::ResolveCreditPawn(g->m_Instigator);
+			MatchStats::OnDevicePowerRestore(credit,
+				EffectCredit::ResolveDeviceId(g, credit),
+				(int)restored, (int)(*NewValue - restored));
+		}
 	}
 
 	const float origValue = *NewValue;

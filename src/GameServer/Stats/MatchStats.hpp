@@ -45,6 +45,62 @@ public:
                                       ATgDeployable* Deployable,
                                       bool is_beacon);
 
+    // Server-side mirror of every DeviceStats::Credit. `field` is the
+    // FDeviceStatInfo::Stats index the PRI row is about to take (kDamage /
+    // kHealing / kPlayerKills / kBotKills); the derived DPM/HPM slots are
+    // display-only and ignored here.
+    //
+    // Accumulates per (character, task force, device) for the whole match and
+    // upserts to ga_match_device_stats at leave + FlushAll. Deliberately NOT
+    // read back out of r_DeviceStats: that array is per-connection (wiped on
+    // reconnect) and caps at 9 rows, neither of which is acceptable for a
+    // persisted record. Credits arrive as increments, so summing them needs
+    // none of the r_Scores baseline/stint machinery.
+    static void OnDeviceCredit(ATgPawn* CreditPawn, int device_id,
+                               int field, int amount);
+
+    // Effectiveness pass. Both land on the same per-device row as
+    // OnDeviceCredit; cleanses additionally emit a CLEANSE event (actor =
+    // cleanser, target = cleansed pawn, device_id, detail = category code
+    // purged, flags = strip count) because "which category came off whom" is
+    // context a bare counter cannot hold.
+    //
+    // OnDeviceCleanse ← CleanseTracking::OnRemoved, removed > 0 only.
+    // OnDeviceOverheal ← TrackStats heal path: the magnitude the
+    // missing-health clamp threw away (heal cast on a topped-up target).
+    static void OnDeviceCleanse(ATgPawn* CreditPawn, ATgPawn* TargetPawn,
+                                int device_id, int category, int removed);
+    static void OnDeviceOverheal(ATgPawn* CreditPawn, int device_id,
+                                 int amount);
+
+    // One DeviceFiring activation (ProcessEvent DeviceFiringBeginState) —
+    // the "used" denominator. Per hold for continuous fire.
+    static void OnDeviceUsed(ATgPawn* UserPawn, int device_id);
+
+    // Property-243 Power Pool restore, split at apply time like the heal
+    // clamp: restored = what fit in the target's pool, wasted = the rest.
+    // Triage Wave (5808) is exempt from the power columns: its +250 rider
+    // always overflows the 160-max pool and is a designed rescue mechanic,
+    // not wasteful play. Its conditional firing logs on `devusage` only.
+    static void OnDevicePowerRestore(ATgPawn* CreditPawn, int device_id,
+                                     int restored, int wasted);
+
+    // Group Heal Savior (skill 852, eg 16587) fired: a group heal landed on
+    // a teammate under 25% with the skill slotted. Emits a SAVIOR event
+    // (actor = medic, target = rescued pawn, device_id = the delivering
+    // group heal, detail = 852). The source-device field on skill instances
+    // was verified reliable by single-cast tests (instances 207/208).
+    // Triage Wave never procs this skill — its rescues are visible via its
+    // own conditional group instead.
+    static void OnSaviorTrigger(ATgPawn* CreditPawn, ATgPawn* TargetPawn,
+                                int device_id);
+
+    // Damage that happened inside a tracked buff window (BuffWindowTracking):
+    // offensive → buffed_damage_dealt on the buff device's row, defensive →
+    // protected_damage_taken. Credit is the buff's caster, not the shooter.
+    static void OnBuffWindowDamage(ATgPawn* CreditPawn, int device_id,
+                                   bool offensive, int amount);
+
     // ProcessEvent intercept on TgPawn.TriggerBeaconEntrance.
     static void OnBeaconSpawnUsed(ATgPawn* User, ATgPawn* Deployer);
 

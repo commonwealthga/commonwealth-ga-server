@@ -86,6 +86,27 @@ constexpr const char* MSG_MATCH_EVENT = "MATCH_EVENT";
 //     "time_played_seconds": <float> }
 constexpr const char* MSG_MATCH_STATS = "MATCH_STATS";
 
+// Absolute per-device totals for ga_match_device_stats — the server-side
+// record of the same counters DeviceStats replicates to the end-of-mission
+// Device Stats tab. One message per (character, task force, device) at leave
+// and at FlushAll. Upsert keyed (instance_id, character_id, task_force,
+// device_id) — idempotent, resend-safe. No DPM/HPM: those are rates derived
+// from ga_match_player_stats.time_played_seconds, not stored.
+//   { "type": "MATCH_DEVICE_STATS", "instance_id": <int64>,
+//     "user_id": <int64>, "character_id": <int64>, "task_force": <int>,
+//     "device_id": <int>, "damage": <int>, "healing": <int>,
+//     "player_kills": <int>, "bot_kills": <int>,
+//     "debuffs_removed": <int>, "overheal": <int>, "uses": <int>,
+//     "power_restored": <int>, "power_wasted": <int>,
+//     "buffed_damage_dealt": <int>, "protected_damage_taken": <int> }
+// debuffs_removed = effect groups stripped by this device's property-140
+// cleanses; overheal = heal magnitude clamped away on full-health targets;
+// uses = DeviceFiring activations; power_restored/power_wasted = prop-243
+// Power Pool split at the pool cap; buffed_damage_dealt / protected_damage_
+// taken = damage dealt/taken by pawns inside this device's tracked buff
+// window (BuffWindowTracking's table).
+constexpr const char* MSG_MATCH_DEVICE_STATS = "MATCH_DEVICE_STATS";
+
 // Sent by a mission instance at the game-mode-specific pre-warm trigger
 // (e.g. when one team passes the 50% threshold, or a 60s-remaining alert
 // fires — exact trigger TBD per game mode). Asks the control server to

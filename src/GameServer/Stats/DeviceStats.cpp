@@ -1,4 +1,5 @@
 #include "src/GameServer/Stats/DeviceStats.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Database/Database.hpp"
@@ -104,6 +105,10 @@ int DeviceStats::DeviceIdFromDeployableId(int deployableId) {
 
 void DeviceStats::Credit(ATgPawn* CreditPawn, int deviceId, int field, int amount) {
 	if (CreditPawn == nullptr || deviceId <= 0 || amount <= 0) return;
+
+	// Server-side record first: it must see credits the PRI row below drops
+	// (the 9-row cap, and any credit landing while the PRI is missing).
+	MatchStats::OnDeviceCredit(CreditPawn, deviceId, field, amount);
 
 	ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)CreditPawn->PlayerReplicationInfo;
 	if (PRI == nullptr) return;

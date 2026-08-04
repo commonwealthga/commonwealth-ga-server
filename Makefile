@@ -256,6 +256,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice/PopulateInstigatorEquippedDevices/TgDevice__PopulateInstigatorEquippedDevices.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDevice_Morale/SendMoraleBoostMessage/TgDevice_Morale__SendMoraleBoostMessage.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/Morale/MoraleCredit.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/_effect_core/BuffWindowTracking.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/_effect_core/CleanseTracking.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/_effect_core/DeviceCategorySkill.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/_effect_core/HitSituationalMitigation.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/_effect_core/ScaleTargetProperties.cpp \

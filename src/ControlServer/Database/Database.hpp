@@ -198,6 +198,19 @@ public:
     // Absolute totals; upsert on (instance_id, character_id, task_force).
     static void UpsertMatchPlayerStats(const MatchPlayerStatsRow& row);
 
+    struct MatchDeviceStatsRow {
+        int64_t instance_id = 0, user_id = 0, character_id = 0;
+        int     task_force = 0, device_id = 0;
+        int     damage = 0, healing = 0;
+        int     player_kills = 0, bot_kills = 0;
+        int     debuffs_removed = 0, overheal = 0;
+        int     uses = 0, power_restored = 0, power_wasted = 0;
+        int     buffed_damage_dealt = 0, protected_damage_taken = 0;
+    };
+    // Absolute totals; upsert on (instance_id, character_id, task_force,
+    // device_id). device_id keys asm_data_set_devices.device_id.
+    static void UpsertMatchDeviceStats(const MatchDeviceStatsRow& row);
+
     // Write-once outcome stamp (WHERE outcome IS NULL AND is_home_map=0).
     // winning_task_force 0 = NULL.
     static void SetInstanceOutcomeIfNull(int64_t instance_id,

@@ -472,6 +472,28 @@ private:
             row.time_played_seconds    = j.value("time_played_seconds", 0.0);
             Database::UpsertMatchPlayerStats(row);
         }
+        else if (type == IpcProtocol::MSG_MATCH_DEVICE_STATS) {
+            if (is_home_map_) return;
+            Database::MatchDeviceStatsRow row;
+            row.instance_id  = j.value("instance_id", instance_id_);
+            row.user_id      = j.value("user_id", (int64_t)0);
+            row.character_id = j.value("character_id", (int64_t)0);
+            row.task_force   = j.value("task_force", 0);
+            row.device_id    = j.value("device_id", 0);
+            if (row.character_id == 0 || row.device_id == 0) return;
+            row.damage          = j.value("damage", 0);
+            row.healing         = j.value("healing", 0);
+            row.player_kills    = j.value("player_kills", 0);
+            row.bot_kills       = j.value("bot_kills", 0);
+            row.debuffs_removed = j.value("debuffs_removed", 0);
+            row.overheal        = j.value("overheal", 0);
+            row.uses            = j.value("uses", 0);
+            row.power_restored  = j.value("power_restored", 0);
+            row.power_wasted    = j.value("power_wasted", 0);
+            row.buffed_damage_dealt    = j.value("buffed_damage_dealt", 0);
+            row.protected_damage_taken = j.value("protected_damage_taken", 0);
+            Database::UpsertMatchDeviceStats(row);
+        }
         else if (type == IpcProtocol::MSG_MISSION_ENDED) {
             // BeginEndMission fired on the mission instance. Stamp end_mission_at
             // on the parent row AND promote any DRAFTING successor to READY in
