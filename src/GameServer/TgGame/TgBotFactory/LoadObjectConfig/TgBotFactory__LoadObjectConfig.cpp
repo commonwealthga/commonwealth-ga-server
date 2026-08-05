@@ -105,18 +105,19 @@ int LoadSpawnTableRows(sqlite3* db, int difficulty, bool skipExisting,
 	// "never spawn this bot" sentinel (player pets, decoys, turrets, intentional
 	// boss skips like Vulcan); orphan rows where the LEFT JOIN misses keep the
 	// row by defaulting to 1.0.
+	// skal: add asm_data_set_bot_spawn_tables.bot_balance_multiplier to the result
 	int rc = sqlite3_prepare_v2(db,
 		"SELECT u.bot_spawn_table_id, u.spawn_group, u.enemy_bot_id, u.bot_count, "
-		"       u.spawn_chance, COALESCE(b.reference_name, ''), "
+		"       u.spawn_chance, u.bot_balance_multiplier, COALESCE(b.reference_name, ''), "
 		"       u.spawn_group_min, u.spawn_group_max, u.spawn_group_respawn_sec "
 		"FROM ( "
 		"  SELECT bot_spawn_table_id, difficulty_value_id, spawn_group, "
-		"         enemy_bot_id, bot_count, spawn_chance, "
+		"         enemy_bot_id, bot_count, spawn_chance, COALESCE (bot_balance_multiplier, 1.0) as bot_balance_multiplier, "
 		"         spawn_group_min, spawn_group_max, spawn_group_respawn_sec "
 		"  FROM asm_data_set_bot_spawn_tables "
 		"  UNION ALL "
 		"  SELECT bot_spawn_table_id, difficulty_value_id, spawn_group, "
-		"         enemy_bot_id, bot_count, spawn_chance, "
+		"         enemy_bot_id, bot_count, spawn_chance, COALESCE (bot_balance_multiplier, 1.0) as bot_balance_multiplier, "
 		"         spawn_group_min, spawn_group_max, spawn_group_respawn_sec "
 		"  FROM mod_data_set_bot_spawn_tables "
 		") AS u "
@@ -150,16 +151,17 @@ int LoadSpawnTableRows(sqlite3* db, int difficulty, bool skipExisting,
 		const int botId   = sqlite3_column_int(stmt, 2);
 		const int count   = sqlite3_column_int(stmt, 3);
 		const float chance = static_cast<float>(sqlite3_column_double(stmt, 4));
-		const unsigned char* refNameRaw = sqlite3_column_text(stmt, 5);
+		const float bbm = static_cast<float>(sqlite3_column_double(stmt, 5));
+		const unsigned char* refNameRaw = sqlite3_column_text(stmt, 6);
 		const std::string refName(refNameRaw ? reinterpret_cast<const char*>(refNameRaw) : "");
-		const int groupMin   = sqlite3_column_int(stmt, 6);
-		const int groupMax   = sqlite3_column_int(stmt, 7);
-		const int respawnSec = sqlite3_column_int(stmt, 8);
+		const int groupMin   = sqlite3_column_int(stmt, 7);
+		const int groupMax   = sqlite3_column_int(stmt, 8);
+		const int respawnSec = sqlite3_column_int(stmt, 9);
 
 		auto& groupMap = g_spawnTables[tableId];
 		const bool isNewTable = groupMap.empty();
 		groupMap[group].push_back(SpawnTableEntry{
-			tableId, group, botId, count, chance, refName, groupMin, groupMax, respawnSec
+			tableId, group, botId, count, chance, bbm, refName, groupMin, groupMax, respawnSec
 		});
 		rowsInserted++;
 		if (isNewTable && outTablesAdded) (*outTablesAdded)++;
@@ -332,23 +334,25 @@ const SpawnTableEntry* RollGroupRow(const std::vector<SpawnTableEntry>& rows) {
 
 }  // namespace
 
-int TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(int nSpawnTableId, int nSpawnGroup, int* outBotCount) {
+// skal: replace simple int return (botid) by {botid,bbm}
+// previous empty (zero) return moved to {0,0.0f}
+BotIdEntry TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(int nSpawnTableId, int nSpawnGroup, int* outBotCount) {
 	EnsureSpawnTablesLoaded();
 	EnsureRandSeeded();
 
 	if (outBotCount) *outBotCount = 1;
 
 	auto tableIt = g_spawnTables.find(nSpawnTableId);
-	if (tableIt == g_spawnTables.end()) return 0;
+	if (tableIt == g_spawnTables.end()) return BotIdEntry();
 	auto groupIt = tableIt->second.find(nSpawnGroup);
-	if (groupIt == tableIt->second.end() || groupIt->second.empty()) return 0;
+	if (groupIt == tableIt->second.end() || groupIt->second.empty()) return BotIdEntry();
 
 	// Spawn-time pick: the group's existence was already decided at queue
 	// build (RollSpawnPlan), so re-roll among the rows WITHOUT the empty
 	// outcome — normalise by the chance total.
 	float total = 0.0f;
 	for (const auto& r : groupIt->second) total += r.SpawnChance;
-	if (total <= 0.0f) return 0;
+	if (total <= 0.0f) return BotIdEntry();
 	float roll = SpawnRollFloat(total);
 	const SpawnTableEntry* picked = &groupIt->second.back();
 	for (const auto& r : groupIt->second) {
@@ -356,7 +360,7 @@ int TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(int nSpawnTableId
 		roll -= r.SpawnChance;
 	}
 	if (outBotCount) *outBotCount = picked->BotCount > 0 ? picked->BotCount : 1;
-	return picked->EnemyBotId;
+	return BotIdEntry (picked->EnemyBotId,picked->BBM);
 }
 
 int TgBotFactory__LoadObjectConfig::GetGroupNumberByIndex(int nSpawnTableId, int nGroupIndex) {
@@ -388,6 +392,7 @@ std::vector<SpawnGroupPlan> TgBotFactory__LoadObjectConfig::RollSpawnPlan(int nS
 		gp.GroupNumber  = groupKV.first;
 		gp.EntryCount   = 0;
 		gp.RolledBotId  = 0;
+		gp.BBM = 0.0f;
 		gp.Detail.nMinCount       = 0;
 		gp.Detail.nMaxCount       = 0;
 		gp.Detail.nCurrentCount   = 0;
@@ -408,6 +413,7 @@ std::vector<SpawnGroupPlan> TgBotFactory__LoadObjectConfig::RollSpawnPlan(int nS
 				// entry spawns the rolled bot (vanilla per-group semantics).
 				gp.EntryCount  = row->BotCount > 0 ? row->BotCount : 1;
 				gp.RolledBotId = row->EnemyBotId;
+				gp.BBM         = row->BBM;
 				gp.Detail.nMinCount = gp.EntryCount;
 				gp.Detail.nMaxCount = gp.EntryCount;
 			}
@@ -421,7 +427,8 @@ std::vector<SpawnGroupPlan> TgBotFactory__LoadObjectConfig::RollSpawnPlan(int nS
 // Last ResetQueue's per-group rolled bots, keyed by factory FName
 // (Index<<32|Number — immune to actor address reuse). Bounded by the number
 // of factory instances in the map process.
-static std::map<uint64_t, std::vector<int>> g_factoryGroupRolls;
+// skal: replace botid with {botid,bbm}
+static std::map<uint64_t, std::vector<BotIdEntry>> g_factoryGroupRolls;
 
 static uint64_t FactoryKey(ATgBotFactory* f) {
 	uint32_t number = 0;
@@ -430,17 +437,17 @@ static uint64_t FactoryKey(ATgBotFactory* f) {
 }
 
 void TgBotFactory__LoadObjectConfig::SetFactoryGroupRolls(
-		ATgBotFactory* Factory, const std::vector<int>& rolls) {
+		ATgBotFactory* Factory, const std::vector<BotIdEntry>& rolls) {
 	if (Factory == nullptr) return;
 	g_factoryGroupRolls[FactoryKey(Factory)] = rolls;
 }
 
-int TgBotFactory__LoadObjectConfig::GetFactoryGroupRoll(
+BotIdEntry TgBotFactory__LoadObjectConfig::GetFactoryGroupRoll(
 		ATgBotFactory* Factory, int nGroupIndex) {
-	if (Factory == nullptr || nGroupIndex < 0) return 0;
+	if (Factory == nullptr || nGroupIndex < 0) return BotIdEntry();
 	auto it = g_factoryGroupRolls.find(FactoryKey(Factory));
-	if (it == g_factoryGroupRolls.end()) return 0;
-	if (nGroupIndex >= static_cast<int>(it->second.size())) return 0;
+	if (it == g_factoryGroupRolls.end()) return BotIdEntry();
+	if (nGroupIndex >= static_cast<int>(it->second.size())) return BotIdEntry();
 	return it->second[nGroupIndex];
 }
 

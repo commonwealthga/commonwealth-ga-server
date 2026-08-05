@@ -8,17 +8,18 @@
 
 namespace {
 
-ATgPawn* SpawnBotAtLocation(ATgGame* Game, int botId, FVector loc, FRotator rot) {
+ATgPawn* SpawnBotAtLocation(ATgGame* Game, const BotIdEntry& Entry, FVector loc, FRotator rot) {
 	float radius = 0.0f, halfHeight = 0.0f;
-	TgGame__SpawnBotById::GetBotCollisionCylinder(botId, &radius, &halfHeight);
+	TgGame__SpawnBotById::GetBotCollisionCylinder(Entry.BotId, &radius, &halfHeight);
 	if (halfHeight > 0.0f) loc.Z += halfHeight + 5.0f;
 	// Bosses / escort targets spawn without a TgBotFactory but still want
 	// the same per-bot BBM × per-difficulty HP+damage scaling as the rest of
 	// the enemy roster. Raise the flag explicitly here; SpawnBotById would
 	// not raise it for a null factory pointer.
 	TgPawn__InitializeDefaultProps::bPendingEnemyScaling = true;
+	TgPawn__InitializeDefaultProps::fPendingSpawnTableBalance = Entry.BBM;
 	return (ATgPawn*)Game->SpawnBotById(
-		botId, loc, rot,
+		Entry.BotId, loc, rot,
 		/*bKillController=*/   false,
 		/*pFactory=*/          nullptr,
 		/*bIgnoreCollision=*/  true,
@@ -78,7 +79,7 @@ void __fastcall TgMissionObjective_Bot__SpawnObjectiveBot::Call(ATgMissionObject
 		Logger::GetTime(), Obj->GetName(), mid,
 		Obj->s_nBotId, Obj->s_nSpawnTableId, Obj->nDefaultOwnerTaskForce);
 
-	int botId = 0;
+	BotIdEntry Entry;	// skal - replace botid by {botid,bbm}
 
 	// Resolution priority (all fields already populated on the actor by
 	// TgMissionObjective_Bot__LoadObjectConfig):
@@ -90,16 +91,16 @@ void __fastcall TgMissionObjective_Bot__SpawnObjectiveBot::Call(ATgMissionObject
 	//      back to whatever the std::map iteration order yields, which is
 	//      lowest group number.
 	if (Obj->s_nBotId > 0) {
-		botId = Obj->s_nBotId;
+		Entry.BotId = Obj->s_nBotId;
 	} else if (Obj->s_nSpawnTableId > 0) {
 		// Boss tables conventionally have one group — pick from the first.
 		const int firstGroup = TgBotFactory__LoadObjectConfig::GetGroupNumberByIndex(
 			Obj->s_nSpawnTableId, 0);
 		if (firstGroup >= 0) {
-			botId = TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(
+			Entry = TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(
 				Obj->s_nSpawnTableId, firstGroup);
 		}
-		if (botId == 0) {
+		if (Entry.BotId == 0) {
 			Logger::Log("tgmissionobjective_bot",
 				"  s_nSpawnTableId=%d yielded no bot at current difficulty\n",
 				Obj->s_nSpawnTableId);
@@ -109,13 +110,13 @@ void __fastcall TgMissionObjective_Bot__SpawnObjectiveBot::Call(ATgMissionObject
 			"  no resolution: s_nBotId=0 AND s_nSpawnTableId=0\n");
 	}
 
-	if (botId <= 0) return;
+	if (Entry.BotId <= 0) return;
 
 	ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
-	ATgPawn* Bot = SpawnBotAtLocation(Game, botId, Obj->Location, Obj->Rotation);
+	ATgPawn* Bot = SpawnBotAtLocation(Game, Entry, Obj->Location, Obj->Rotation);
 	if (Bot == nullptr) {
 		Logger::Log("tgmissionobjective_bot",
-			"  SpawnBotById returned null for bot=%d\n", botId);
+			"  SpawnBotById returned null for bot=%d\n", Entry.BotId);
 		return;
 	}
 
@@ -133,7 +134,7 @@ void __fastcall TgMissionObjective_Bot__SpawnObjectiveBot::Call(ATgMissionObject
 			AIC->m_pSafetyLocation = Obj->SafetyLocation;
 			Logger::Log("panic",
 				"SpawnObjectiveBot: bot=%d safety location set from objective %d\n",
-				botId, mid);
+				Entry.BotId, mid);
 		}
 		// Alarm group id for RadioAlarm (action 620) — bosses summoning adds.
 		AIC->m_nGlobalAlarmId = Obj->nGlobalAlarmId;
@@ -153,7 +154,7 @@ void __fastcall TgMissionObjective_Bot__SpawnObjectiveBot::Call(ATgMissionObject
 
 	Logger::Log("tgmissionobjective_bot",
 		"  spawned objective bot %d successfully (team from nDefaultOwnerTaskForce=%d)\n",
-		botId, Obj->nDefaultOwnerTaskForce);
+		Entry.BotId, Obj->nDefaultOwnerTaskForce);
 
 	// TEMP DIAGNOSTIC (channel "bosshud", see TickWaveNodes::DumpBossHudState):
 	// objective state + GRI r_Objectives registration at the spawn instant.

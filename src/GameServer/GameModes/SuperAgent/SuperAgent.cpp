@@ -104,7 +104,7 @@ void OwnedResetQueue(ATgBotFactory* f, int tableId) {
 // (chance rows re-roll each repetition — variety, not X copies of one roll).
 struct CombinedPlan {
 	std::vector<FSpawnGroupDetail> groups;
-	std::vector<int> rolls;       // RolledBotId per combined group index
+	std::vector<BotIdEntry> rolls;       // RolledBotId per combined group index - skal: replace botid with {botid,bbm}
 	std::vector<int> values;      // table group VALUE per combined group index
 	std::vector<int> entryIdxs;   // one combined group index per queue entry
 };
@@ -116,7 +116,7 @@ CombinedPlan RollCombinedPlan(int tableId, int reps) {
 		for (size_t i = 0; i < plan.size(); i++) {
 			const int gIdx = (int)c.groups.size();
 			c.groups.push_back(plan[i].Detail);
-			c.rolls.push_back(plan[i].RolledBotId);
+			c.rolls.push_back(BotIdEntry (plan[i].RolledBotId,plan[i].BBM));
 			c.values.push_back(plan[i].GroupNumber);
 			for (int k = 0; k < plan[i].EntryCount; k++) c.entryIdxs.push_back(gIdx);
 		}

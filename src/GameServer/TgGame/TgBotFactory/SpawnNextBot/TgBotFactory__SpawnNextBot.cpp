@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgBotFactory/SpawnNextBot/TgBotFactory__SpawnNextBot.hpp"
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
+#include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
 #include "src/GameServer/Engine/MapObjectConfig/MapObjectConfig.hpp"
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
@@ -185,13 +186,12 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 		// Vanilla: the group's bot type was rolled ONCE at ResetQueue — every
 		// entry (and BotDied replacements) spawns that same bot. 0 = roster
 		// group (gmin/gmax, incubators) → fresh per-entry roll.
-		int botId = TgBotFactory__LoadObjectConfig::GetFactoryGroupRoll(BotFactory, groupIdx);
-		if (botId <= 0) {
-			botId = groupNumber >= 0
-				? TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(tableId, groupNumber)
-				: 0;
+		// skal: replace botid by {botid,bbm}
+		BotIdEntry Entry = TgBotFactory__LoadObjectConfig::GetFactoryGroupRoll(BotFactory, groupIdx);
+		if ((Entry.BotId <= 0)&&(groupNumber >= 0)) {
+			Entry = TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(tableId, groupNumber);
 		}
-		if (botId <= 0) {
+		if (Entry.BotId <= 0) {
 			Logger::Log("tgbotfactory",
 				"  entry (table=%d groupIdx=%d group=%d) yields no bot at current "
 				"difficulty — dropping entry\n", tableId, groupIdx, groupNumber);
@@ -218,7 +218,7 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 		FVector loc = BotStart->Location;
 		{
 			float radius = 0.0f, halfHeight = 0.0f;
-			TgGame__SpawnBotById::GetBotCollisionCylinder(botId, &radius, &halfHeight);
+			TgGame__SpawnBotById::GetBotCollisionCylinder(Entry.BotId, &radius, &halfHeight);
 			if (halfHeight > 0.0f) loc.Z += halfHeight + 5.0f;
 		}
 		const bool jittered = !isPetFactory && gd != nullptr && gd->nCurrentCount > 0;
@@ -230,9 +230,16 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 			spawnRot.Yaw = MapObjectConfig::GetInt(mid, "spawn_rotation_yaw", spawnRot.Yaw);
 		}
 
+		// skal: per spawn-table bot balance modifier
+		if (Entry.BBM>0.0f) {
+			TgPawn__InitializeDefaultProps::fPendingSpawnTableBalance = Entry.BBM;
+			TgPawn__InitializeDefaultProps::bPendingEnemyScaling = true;
+		}
+		//Logger::Log("skal", "[SpawnNextBot]: bbm='%f'\n",Entry.BBM);
+
 		ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
 		ATgPawn* Bot = (ATgPawn*)Game->SpawnBotById(
-			botId, loc, spawnRot,
+			Entry.BotId, loc, spawnRot,
 			/*bKillController=*/   false,
 			/*pFactory=*/          BotFactory,
 			/*bIgnoreCollision=*/  true,
@@ -249,7 +256,7 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 		if (Bot == nullptr || Bot->Controller == nullptr) {
 			Logger::Log("tgbotfactory",
 				"  SpawnBotById returned null pawn/controller for bot=%d (factory %d)\n",
-				botId, mid);
+				Entry.BotId, mid);
 			continue;
 		}
 
@@ -299,11 +306,11 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 			if (SuperAgent::Adds::SuppressAlarmMark(BotFactory)) {
 				Logger::Log("tgbotfactory",
 					"  Unleash wave spawn — m_bAlarmBot NOT set (bot=%d factory=%d)\n",
-					botId, mid);
+					Entry.BotId, mid);
 			} else {
 				AIController->m_bAlarmBot = 1;
 				Logger::Log("alarm",
-					"  marked spawned bot=%d (factory=%d) as alarm responder\n", botId, mid);
+					"  marked spawned bot=%d (factory=%d) as alarm responder\n", Entry.BotId, mid);
 			}
 		}
 
@@ -363,7 +370,7 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 		Logger::Log("tgbotfactory",
 			"  spawned bot=%d at loc[%d] (%s) factory=%d group=%d(idx %d) "
 			"alive=%d/%d  remaining=%d  totalSpawns=%d\n",
-			botId, lIdx, jittered ? "jittered" : "anchored", mid,
+			Entry.BotId, lIdx, jittered ? "jittered" : "anchored", mid,
 			groupNumber, groupIdx,
 			BotFactory->nCurrentCount, BotFactory->nActiveCount,
 			BotFactory->m_SpawnQueue.Num(), BotFactory->nTotalSpawns);
