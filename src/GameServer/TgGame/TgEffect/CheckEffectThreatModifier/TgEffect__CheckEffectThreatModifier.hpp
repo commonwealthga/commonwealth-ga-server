@@ -7,16 +7,14 @@
 // Stripped stub at 0x10a6f280.
 //
 // Called only from TgEffectDamage.uc:242 — scales fThreat (= fHealthChange the
-// damage inflicted on an AI) before AddThreat builds AI hostility. The stub
-// returns nothing, so fThreat passes through unchanged.
+// damage inflicted on an AI) before AddThreat builds AI hostility.
 //
-// The "correct" implementation would scale by an instigator-side "Threat
-// Output Modifier" prop, but there's no documented prop id for it in the DB
-// or UC bytecode, and no observed game effect tied to such scaling. We
-// install the hook for completeness — so any future "Threat skill" can land
-// here without re-plumbing — but the body is intentionally a pass-through.
-// If/when the canonical prop is identified, this is the single place to add
-// the GetBuffedProperty call.
+// The canonical scaling prop IS documented after all: 421 Threat Modifier
+// (TGPID_THREAT_MODIFIER in TgProperty.uc:43), carried in data by Decoy (-20%),
+// Assault Melee III (+50%), Super Tank (+15%) and Recon Rifle Damage (-10%) —
+// an earlier note here claimed no such prop existed, which the 2026-08-06
+// threat investigation disproved. The body now scales by the attacker's
+// buffed 421, mirroring CheckEffectBuffModifier's GetBuffedProperty query.
 class TgEffect__CheckEffectThreatModifier : public HookBase<
 	void(__fastcall*)(UTgEffect*, void*, float*),
 	0x10a6f280,
