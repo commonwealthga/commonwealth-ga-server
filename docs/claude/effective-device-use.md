@@ -229,10 +229,19 @@ returns bool and is the single chokepoint for **every** 505 group in the game. I
 you need in its arguments: the target, and the group (which carries `m_nSituationalType` and
 `m_fSituationalValue`).
 
-⚠ **I have not verified whether this function is intact in our binary or stripped.** We do not
-currently hook it and there is no reimplementation in `src/`. Confirm this before designing around
-it — see §8. If it is intact, hooking it is the cleanest possible instrumentation point for both
-Triage Wave and Group Heal Savior at once.
+> **RESOLVED — and the original advice here was wrong.** This section used to say that if the
+> function were intact, hooking it would be the cleanest instrumentation point for both features.
+> It is **not hookable at all**. The SDK dump gives its flags as `[0x00020002]`; bit `0x400`
+> (`FUNC_Native`) is clear, so it is **pure UnrealScript bytecode**, neither an intact native nor a
+> stripped stub. And in this build intra-UC calls do not route through `UObject::ProcessEvent` —
+> ProcessEvent sees client RPCs, engine-timer dispatches, events, `super.` calls and native→script
+> transitions, not a script function called from another script function. So the predicate is
+> invisible to every hook we own.
+>
+> The correct approach, and the one the shipped implementation takes, is to **instrument a native
+> downstream of the decision** — `TgEffect::CheckEffectBuffModifier` runs on every effect before its
+> value is consumed and still knows the group, instigator, target and source device. Read the
+> outcome, not the decision.
 
 ### Every HP-gated effect group in the game
 
@@ -240,21 +249,35 @@ There are only five, which makes this a small and testable surface:
 
 | Effect group | Gate | Owner | Effect | Life |
 |---|---|---|---|---|
-| 22375 | Below 25% | **Triage Wave** | Health 600 + Power Pool 250 | instant |
-| 16587 | Below 25% | skill **Group Heal Savior** (852) | Protection-Physical +10, GroundSpeed +10% | 5s |
-| 16596 | Above 75% | skill **Killer Instinct** (836) | Protection-Physical −10 | 3s |
-| 26474 | Above 75% | skill **Combat Off-Hand Utility** (806) | Protection-Physical +5, GroundSpeed +10% | 5s |
-| 27595 | Below 25% | zzHeavy Ion Sword (dev) | Health 800 | instant |
+**Read the calc method, never the bare `base_value`** — every row below stores a positive number and
+the sign lives in `calc_method_value_id` (67 Add / 68 Increase +% / 69 Decrease −% / 70 Subtract):
 
-> The Combat Off-Hand Utility row is odd: that skill's description is *"Increases the explosion
-> radius of Combat Offhands"*, which has nothing to do with a protection-and-speed buff gated on
-> target health. It is scoped to Area Poisons (skill 336).
+| Effect group | Gate | Owner | Effect | Life |
+|---|---|---|---|---|
+| 22375 | Below 25% | **Triage Wave** | Health **+600** (67) + Power Pool **+250** (67) | instant |
+| 16587 | Below 25% | skill **Group Heal Savior** (852) | Protection-Physical **+10** (67), GroundSpeed **+10%** (68) — buff on the team-mate | 5s |
+| 16596 | Above 75% | skill **Killer Instinct** (836) | Protection-Physical **−10** (70) — debuff on the enemy | 3s |
+| 26474 | Above 75% | skill **Combat Off-Hand Utility** (806) | Protection-Physical **−5** (70), GroundSpeed **−10%** (69) — debuff on the enemy | 5s |
+| 27595 | Below 25% | zzHeavy Ion Sword (dev) | Health **−800** (70) — execute damage, not a heal | instant |
+
+> **Combat Off-Hand Utility is not an anomaly — two earlier readings of it here were wrong, both
+> from the same mistake.** This file first called it a suspected authoring leftover, then
+> "CONFIRMED LIVE … buffing the enemy you poison … design intent still unexplained". Both read
+> `base_value` without `calc_method_value_id`. It is calc **70 Subtract** and **69 Decrease −%** —
+> a *debuff*, and the in-game tooltip states it plainly:
 >
-> **CONFIRMED LIVE 2026-08-04 (instance 212):** not a leftover — eg 26474 fires constantly on a
-> poison build, applying +5 Phys/+10% speed per Area Poison hit against targets above 75% HP,
-> `srcSkillId=336` exactly as authored. The buff lands on the TARGET of the poison (observed on
-> enemy bots), which is even stranger than the description mismatch — buffing the enemy you
-> poison. Mechanically real; design intent still unexplained.
+> > "Increases the effect radius of Combat Off-Hands. When you hit someone with a Combat Offhand and
+> > they are over 75% health, the target's Protection is reduced by 5% and GroundSpeed by 10% for 5
+> > seconds."
+>
+> So the live observation was right — it fires constantly on a poison build, lands on the target,
+> `srcSkillId=336` — and only the interpretation was wrong. It is Killer Instinct's shape at lower
+> numbers on a different weapon family, and there is nothing left to explain.
+>
+> Two data caveats behind the confusion. `asm_data_set_skill_group_skills.desc_msg_translated`
+> carries only the first clause ("Increases the explosion radius of Combat Offhands"); the client
+> tooltip carries both, so the DB description is **not** the full skill text and a mismatch against
+> it means nothing. And a positive `base_value` on a protection effect says nothing about direction.
 
 ---
 
@@ -290,8 +313,9 @@ Recon Rifles (327).
 ### Recording it
 
 Dispatch site is `SubmitHitEffects(.., 1, 505, 1270)` — eSource **1** (skill), not 0. The predicate
-is the same `ShouldSituationalApplyEffect`. If you instrument at that predicate you get Triage Wave
-and Group Heal Savior from one hook, distinguished by the effect group id in the argument.
+is the same `ShouldSituationalApplyEffect`, which is **not instrumentable** (see the resolved note
+in §4) — observe the applied effect group downstream instead, and distinguish the two features by
+effect group id: 22375 Triage Wave, 16587 Group Heal Savior.
 
 Attribution needs care: the *credited player* is the instigator (the medic), but the *target* is
 the team-mate. Follow the existing convention in `TgEffect__TrackStats` — pet → owner resolution
@@ -357,26 +381,58 @@ Two house rules that will save you a round trip:
   `GetLogChannel()` (that one drives the call-tree visualiser). Consolidate everything for this
   work onto **one** channel before asking anyone to capture logs.
 
+### ⚠ Two poison protections, and the names lie
+
+There are **two** poison-shaped protection properties on two different axes, and `TgProperties.h`
+and `gaa.db` label them in opposite ways:
+
+| Prop | Axis | Consulted by | `TgProperties.h` | `gaa.db` |
+|---|---|---|---|---|
+| **159** | status **category** (Poison, cat 303) | `CalcCategoryProtection` | `TGPID_PROTECTION_POISON` | "Protection - Biological" |
+| **324** | damage **type** (Poison, type 897) | `CalcDamageTypeProtection` | `TGPID_PROTECTION_BIO` | "Protection - Poison" |
+
+Whichever source you trust, the other looks like the error. The engine only ever sees the id, so
+neither label is authoritative — the split is established from how the data groups them:
+
+- `HUMAN BASE ATTRIBUTES` (device 864) moves **155/156/157/324** as a quartet, matching the four
+  damage types exactly: Physical, Fire, Energy, Poison.
+- Every device that grants 159 pairs it with *category* protections — Sealed Systems (159 with
+  Disease/Stun/Ignite), Scorpion Shell, Perfect Target, Super Shell (159 with Ignite/Bleed).
+- The Invulnerable Volume (eg 8698) raises **both in one group at different tiers**: 155/156/157/324
+  and the attack types at 100, 159 and Ignite at 200.
+
+Reach for **159** when you mean a poison DoT, **324** when you mean poison-typed damage. Same
+comment now sits on both constants in `src/GameServer/Constants/TgProperties.h`.
+
+Harmless today — `TgPawn__InitializeDefaultProps` seeds both identically (raw 0, min 0, max 1000)
+and every consumer reads by id — but it is live the first time someone writes category code and
+picks the constant by its name.
+
+There is **no protection property of any kind for category 986 (Additional Damage)**. Ten status
+categories have one; that one does not. So an Additional-Damage debuff can be cleansed but never
+refused — which is why Sealed Systems strips the Pain Gun's +30% amplifier and cannot block it.
+
 ---
 
 ## 8. What I could not verify — check these first
 
-1. **Is `UTgDeviceFire::ShouldSituationalApplyEffect` intact or stripped in our binary?** The whole
-   of §4 and §5 assumes it is the chokepoint. We neither hook nor reimplement it today, and the
-   HP-gated features do demonstrably work in game (the Killer Instinct testing on 2026-08-02
-   exercised the same predicate and the gate behaved correctly), so *something* is evaluating it —
-   but "intact native" and "UC implementation" lead to different hooking approaches. Confirm before
-   building.
-2. **How the health percentage is computed inside that predicate.** There is a known
-   integer-division trap immediately adjacent: `ApplyHit:1287` computes
-   `(TargetPawn.Health / TargetPawn.r_nHealthMaximum) > (90 / 100)` where both sides are integer
-   division, so `90/100` folds to **0** and the left side is 0 unless the target is at *exactly*
-   full health. That bug arms the anti-one-shot health cap only at exactly 100%. If the 25%/75%
-   gates are computed the same way they would be similarly broken — and "Triage Wave never triggers
-   its conditional half" would be a much more interesting finding than a metrics gap. Worth ten
-   minutes with a test target at 24%.
+1. ~~**Is `UTgDeviceFire::ShouldSituationalApplyEffect` intact or stripped?**~~ **RESOLVED: neither
+   — it is pure UnrealScript** (`[0x00020002]`, no `FUNC_Native`), and intra-UC calls are invisible
+   to `UObject::ProcessEvent` in this build, so it cannot be hooked. Instrument a native downstream
+   of it. See the resolved note in §4.
+2. ~~**How the health percentage is computed inside that predicate.**~~ **RESOLVED by measurement.**
+   The worry was that the gates might use the integer-division pattern at `ApplyHit:1287` —
+   `(TargetPawn.Health / TargetPawn.r_nHealthMaximum) > (90 / 100)`, where `90/100` folds to **0**
+   and the left side is 0 unless the target is at *exactly* full health, which is why the
+   anti-one-shot health cap only arms at 100%. The situational gates do **not** behave that way:
+   Triage Wave's eg 22375 fires on real sub-25% rescues, and Combat Off-Hand Utility's above-75%
+   gate fires constantly (instances 204/205/207/208/212). Both directions work. The `ApplyHit:1287`
+   integer-division bug is still real and still only affects the health cap.
 3. **The property-140 argument mapping** (category ← `property_value_id`, quantity ←
-   `base_value`). Inferred from data shape and our own header comment, not read from source.
+   `base_value`). Inferred from data shape and our own header comment, not read from source. Still
+   open — `CleanseTracking` notes the same gap for the ordering of the 140 branch relative to
+   `TgEffect.uc:115`, and degrades to "unattributed" rather than miscounting if the assumption is
+   wrong.
 
 I could not read the UnrealScript for any of these: `github.com/commonwealthga/ga-source` returned
 404 unauthenticated from this machine and there is no `gh` CLI here. Anyone with repo access can
@@ -392,8 +448,8 @@ If the goal is "mark effective vs ineffective use", the smallest thing that deli
 |---|---|---|
 | Debuffs removed, per device, per player | `removed` in `RemoveEffectGroupsByCategory` | trivial — the number already exists |
 | Heal wasted on full-health targets | `effectiveHeal` clamp already in `TgEffect__TrackStats` | trivial — already computed |
-| Triage Wave conditional triggers | power landing, or `ShouldSituationalApplyEffect` returning true for eg 22375 | needs §8.1 answered |
-| Group Heal Savior triggers | same predicate, eg 16587 | same hook as above |
+| Triage Wave conditional triggers | eg 22375 applying (or its Power Pool restore landing) | native downstream of the gate |
+| Group Heal Savior triggers | eg 16587 applying | same hook as above |
 | Boost targets reached per activation | count distinct targets per effect-group application | moderate |
 
 The first two need no new hooks and no answered questions. I would ship those first and treat the

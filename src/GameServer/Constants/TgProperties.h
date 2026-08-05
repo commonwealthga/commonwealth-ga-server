@@ -120,6 +120,17 @@ namespace GA_PROPERTY {
 		TGPID_PROTECTION_DISEASE = 160,
 		TGPID_PROTECTION_ENERGY = 157,
 		TGPID_PROTECTION_PHYSICAL = 155,
+		// Two poison protections on two different axes, and the names here
+		// disagree with gaa.db. 159 is the STATUS-CATEGORY one (Poison, cat 303,
+		// via CalcCategoryProtection); 324 is the DAMAGE-TYPE one (Poison, type
+		// 897, via CalcDamageTypeProtection). The DB calls 159 "Protection -
+		// Biological" and 324 "Protection - Poison", so whichever source you
+		// trust, the other looks wrong. Evidence for the split: 155/156/157/324
+		// move as a quartet matching the four damage types, while 159 rides with
+		// Ignite/Disease/Stun on every device that grants it (Sealed Systems,
+		// Scorpion Shell, Perfect Target). The Invulnerable Volume raises both in
+		// one group at different tiers. Reach for 159 when you mean a poison DoT,
+		// 324 when you mean poison-typed damage.
 		TGPID_PROTECTION_POISON = 159,
 		TGPID_PROTECTION_SLOW = 158,
 		TGPID_PROTECTION_THERMAL = 156,
@@ -132,6 +143,7 @@ namespace GA_PROPERTY {
 		TGPID_PROTECTION_KNOCKBACK = 233,
 		TGPID_PROTECTION_EMP_STUN = 235,
 		TGPID_PROTECTION_IGNITE = 266,
+		// Misnamed: 324 is damage-type Poison, not "Bio". See TGPID_PROTECTION_POISON.
 		TGPID_PROTECTION_BIO = 324,
 		TGPID_PROTECTION_EMP_BURN = 328,
 		TGPID_PROTECTION_BLEED = 371,
