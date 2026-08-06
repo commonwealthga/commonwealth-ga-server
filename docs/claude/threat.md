@@ -60,17 +60,109 @@ a standing threat level. Decay is untouched by any modifier.
 ## The fix on this branch
 
 `TgEffect__CheckEffectThreatModifier` (previously a deliberate pass-through)
-now scales `fThreat` by the attacker's buffed prop 421 via the intact
+now scales `fThreat` by the attacker's buffed Threat Modifier via the intact
 `GetBuffedProperty` (`0x109d7ff0`), with origin-resolved device instance +
 class skill so the gated entries (Assault Melee III, Recon Rifle Damage) only
 scale their own weapon family — the exact query shape of the proven
 `CheckEffectBuffModifier` reimplementation. `bUsePotencyModifier=0` (the
 damage feeding fThreat was already potency-scaled upstream).
 
-Verification: enable the `threat` log channel and damage a bot with a 421
-carrier active — expect `[THREAT-MOD] threat X -> Y` lines with Y/X matching
-the modifier (e.g. Super Tank melee hit → ×1.65 from +15% ungated +50% melee-
-gated; Decoy firing → ×0.80).
+The query must ask for **prop 420 THREAT, not 421 directly**:
+`ConvertPropToPropList` (`0x109e5220`, vtable +0x570) has no srcType-1 row
+for 421 — a direct 421 request expands to an EMPTY prop list and the buff
+walk no-ops — while `case 420: emit(421)` is the canonical expansion that
+reaches the pawn's 421 buff entries. Found live 2026-08-06: the pawn's
+`m_EffectBuffInfo` held both carriers ({421, skill=0} +15 Super Tank,
+{421, skill=366} +50 Assault Melee III) yet 421-direct queries, gated and
+ungated alike, returned the value unchanged.
+
+**Verified live 2026-08-06**, all four carriers:
+
+- Assault with Super Tank (+15% ungated) and Assault Melee III (+50% gated
+  skill 366): guns/Overcharge ×1.15, melee ×1.65 — additive within the
+  skill layer, and the {skill=366} entry only joined when the query's
+  device skill was 366.
+- Recon with Recon Rifle Damage (−10% gated skill 327) and a Decoy out:
+  rifle hits ×0.90, rising to ×0.72 while the Decoy's 10s firing buff was
+  up — 0.90 × 0.80, NOT −30% additive: the Decoy buff is effect-applied,
+  lands in the SELF layer, and multiplies against the skill-layer result
+  (`CheckBuffInfoList` @0x109cd4a0 three-layer formula).
+
+To re-verify, enable the `threat` log channel and damage any AI bot with a
+421 carrier active — expect `[THREAT-MOD] threat X -> Y` lines with Y/X
+matching the modifier.
+
+## Where threat is NOT the mechanism (2026-08-06 mapping)
+
+The aggro pipeline: engine perception events → controller memory flags +
+`m_bInterrupt` → data-driven behavior tree (`asm_data_set_bot_behaviors` /
+`_bot_actions` / `_bot_tests` in gaa.db, evaluated by the native
+`ChooseNextAction`) → the installed action row names its target source
+(`target_type_value_id`) → the `SetTarget` switch (`TgAIController.uc:2710`).
+**Threat is consulted only when the installed row explicitly asks for it** —
+target code 818 "Highest Recent Threat" or tests 979 / 1264 / 1265 / 826 / 827.
+
+Numbers (gaa.db): **346 bot definitions, only 100 ever reference threat**
+anywhere in their tree (all seven `Boss *` defs, colony/legion elites,
+champions). Of ~2536 action rows, 80 target 818 — versus 243 "Nearest Enemy"
+(3), 96 "Last Attacker" (228), 56 "Friend's Target" (689), 31 "Nearest
+Taunter" (835). Turrets (beh 103), Decoys (352), Eyes (369), Alarm Responders
+(632), pets (600), and most mission trash never touch threat at all.
+
+Systems that supersede or precede threat:
+
+- **Activation / proximity aggro**: threat cannot activate anyone (list is
+  empty out of combat; confirmed by the 2026-07-20 SuperAgent seed playtest).
+  First contact is engine sight/hearing → `SeePlayer` stamps
+  `m_fLastSawEnemy` + interrupt (`TgAIController.uc:1079`), `HearNoise`
+  stamps `m_pLastSoundActor`. Trees gate on "Enemy Recently Sighted" /
+  "Distance From Nearest Enemy" / "Number Of Enemies Sighted" and typically
+  pick **Nearest Enemy** — distance, not threat. Per-bot perception config in
+  `asm_data_set_bots`: `default_sensor_range`, `default_aggro_range`,
+  `hearing_range`, `stealth_sensor_range`/`stealth_aggro_range`,
+  `fixed_fov_degrees`, `chase_range`, `chase_time_sec`.
+- **Damage response**: `NotifyTakeHit` (`TgAIController.uc:1151`) stamps
+  `m_pLastAttacker` + interrupt; trees keyed on "Recent Damage" / "Has Last
+  Attacker" pick code 228 **Last Attacker** directly. `AddThreat` accrues in
+  parallel but only matters when a later row asks for 818.
+- **Pack aggro (help calls)**: behavior action 249 → `CallForHelp` →
+  `TgPawn.CallBotsForHelp` (`TgPawn.uc:4149`) sets `m_pFriendToHelp` on
+  every friendly AI within its `m_fHelpRange` (|ΔZ| < 200, same
+  sound-insulation volume) + interrupt. Helpers then target 254 Friend To
+  Help / 255 Friend's Attacker / 689 Friend's Target. No threat transfer.
+- **Squads**: roles 1404 leader / 1405 follower wired by `LookForSquad`
+  (spawn-location proximity within the leader's help range, same task
+  force); followers target via 313/314/344/1408 (owner's attacker/target).
+- **Taunt — a separate channel from threat**: pawn-side `s_fTauntAmount > 0`
+  makes `SeePlayer` stamp `m_fLastSawTaunter`; trees use code 835 Nearest
+  Taunter (**distance-ranked**, `FindClosestTaunter` 0x10a81fc0) and tests
+  834/1257/1600. This is how Decoys and taunt pets pull bots that never read
+  a threat list. (Threat prop 420 injection is a different thing — it feeds
+  the ledger.)
+- **Alarms**: behavior action 620 → `RadioAlarm` — a stripped stub at
+  0x10a7e890 (same six-stub block as SpawnPets/SetBotTeam/SetTaskForceNumber),
+  reimplemented server-side (`TgAIController__RadioAlarm.cpp`) delegating to
+  the intact `TgGame::ActivateAlarm` (0x10a75740): fires the AlarmBots kismet
+  events and drives the closest `bSpawnOnAlarm` factory. Responders spawn
+  with `m_bAlarmBot=1` and originator/trigger targeting; test 1159 "Is Alarm
+  Bot" (85 rows) drives their stand-down/despawn actions. The Alarm
+  Responder def (beh 632) never uses threat.
+- **Kismet / mission**: `TgSeqAct_TriggerBots` → `m_pTriggerTarget` (code
+  288); objective codes 1402/1491/1492; command target 710 (crew control).
+  Factory-spawned attackers/defenders get `m_pTriggerTarget` pre-seeded to
+  the objective bot (`TgBotFactory__SpawnNextBot.cpp`).
+- **Encounter volumes / boss rooms**: `TgBotEncounterVolume.CheckTouching`
+  starts/ends factory encounters purely on human-player presence in the
+  volume — population control, orthogonal to targeting. Hibernation
+  (`hibernate_on_idle_sec`) is an idle gate on top.
+
+Lifecycle boundaries — even for the 100 threat users, the ledger never
+outlives an engagement: `OnExitCombat` clears `m_ThreatList` outright
+(`TgAIController.uc:987`), the list is cleared when the bot's pawn dies,
+entries are pruned on victim death, and 10%/s decay erodes the rest. Every
+fresh engagement therefore begins on perception/help/alarm mechanics; threat
+only reorders targets *within* an ongoing fight, on bots whose tree rows ask
+for it, in the slots where they ask for it.
 
 ## Open items
 

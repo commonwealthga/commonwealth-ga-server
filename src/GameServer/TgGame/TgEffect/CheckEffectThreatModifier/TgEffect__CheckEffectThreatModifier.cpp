@@ -13,8 +13,7 @@
 // the same query shape as CheckEffectBuffModifier, on a fixed property.
 //
 // Prop 421 carriers in the data, all percentages, all inert against the stub
-// until now (docs/claude/theorycraft-console/skill-device-resolution.md and
-// the 2026-08-06 threat investigation):
+// until now (docs/claude/threat.md, 2026-08-06 investigation):
 //   Decoy               -20% for 10s while firing (effect category 1601)
 //   Assault Melee III   +50%  (gated to Assault Melee)
 //   Super Tank          +15%  (ungated)
@@ -32,8 +31,8 @@ typedef void(__fastcall* GetBuffedPropertyFn)(
 	void* /*Effect*/);
 static const GetBuffedPropertyFn GetBuffedPropertyNative = (GetBuffedPropertyFn)0x109d7ff0;
 
-// ConvertPropToPropList context 1 = BUFF_PAWN. Prop 421 has no expansion
-// family, so the query stays exactly {421}. bUsePotencyModifier stays 0:
+// ConvertPropToPropList context 1 = BUFF_PAWN; its `case 420: emit(421)` row
+// is the only route to the 421 buff entries. bUsePotencyModifier stays 0:
 // potency (376) scales effect magnitudes, and the damage feeding fThreat was
 // already potency-scaled upstream — adding it here would double-apply.
 static constexpr unsigned char BUFF_PAWN = 1;
@@ -73,11 +72,17 @@ void __fastcall TgEffect__CheckEffectThreatModifier::Call(UTgEffect* effect, voi
 		queryCatSkill = DeviceLookup::SkillIdForDevice(srcPawn, queryDevInst);
 	}
 
+	// Query prop 420 THREAT, not 421 directly: ConvertPropToPropList's
+	// srcType-1 table has no 421 row (direct 421 → EMPTY prop list → no-op),
+	// while `case 420: emit(421)` is the canonical expansion that reaches the
+	// pawn's 421 Threat Modifier buff entries. Verified against the live
+	// buff table 2026-08-06: entries {421,cat=0,skill=0} +15 and
+	// {421,cat=0,skill=366} +50 present, 421-direct query returned unchanged.
 	float buffedValue = origValue;
 	GetBuffedPropertyNative(
 		srcPawn, /*edx=*/nullptr,
 		BUFF_PAWN,
-		GA_PROPERTY::TGPID_THREAT_MODIFIER,
+		GA_PROPERTY::TGPID_THREAT,
 		/*nReqCategoryCode=*/g->m_nCategoryCode,
 		/*nReqSkillId=*/queryCatSkill,
 		/*nReqDeviceInstId=*/queryDevInst,
