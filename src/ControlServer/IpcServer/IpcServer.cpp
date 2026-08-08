@@ -613,7 +613,18 @@ private:
                             : 1000.0;
                         roster.push_back({r.guid, r.profile_id, r.task_force, mmr});
                     }
-                    auto delta = RoleWeightedSplit::ComputeRebalanceDelta(roster);
+                    auto class_delta = RoleWeightedSplit::ComputeRebalanceDelta(roster);
+                    std::vector<RoleWeightedSplit::RosterEntry> adjusted = roster;
+                    for (const auto& m : class_delta) {
+                        for (auto& r : adjusted) {
+                            if (r.guid == m.first) r.current_tf = m.second;
+                        }
+                    }
+                    auto mmr_delta = RoleWeightedSplit::ComputeMmrOptimalDelta(adjusted);
+
+                    std::unordered_map<std::string, int> delta = class_delta;
+                    for (const auto& m : mmr_delta) delta[m.first] = m.second;
+
                     if (!RoleWeightedSplit::ShouldRebalance(roster, delta)) {
                         Logger::Log("team-balance",
                             "[IpcServer] REQUEST_REBALANCE inst=%lld balanced (players=%zu) — no moves\n",

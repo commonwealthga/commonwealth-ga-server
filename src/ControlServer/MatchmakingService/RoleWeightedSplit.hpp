@@ -12,6 +12,10 @@
 
 namespace RoleWeightedSplit {
 
+// Minimum mean-MMR gap improvement required before autobalance proposes
+// same-class moves on an already class-balanced roster.
+inline constexpr double kMmrRebalanceMinImprovement = 5.0;
+
 // Tunables. Single source of truth for playtest re-tuning. Priority:
 // size > class > heal; MMR only breaks exact cost ties, picks rebalance
 // movers, and drives the same-class swap pass. (2026-07-12: was class-first
@@ -86,6 +90,11 @@ struct RosterEntry {
 // roster is already balanced. This is the WIRED rebalance compute method.
 std::unordered_map<std::string, int>
 ComputeRebalanceDelta(const std::vector<RosterEntry>& roster);
+
+// Same-class MMR-optimal delta. Preserves per-class team counts; moves only
+// when mean-MMR gap improves by at least kMmrRebalanceMinImprovement.
+std::unordered_map<std::string, int>
+ComputeMmrOptimalDelta(const std::vector<RosterEntry>& roster);
 
 // Full recompute. Reassigns everyone from scratch (per-class cost), then diffs
 // against current teams. Built for testing / future use — NOT wired.
