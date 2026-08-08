@@ -7,7 +7,7 @@
 //   wl   — pure win/loss Elo              -> ga_wl_mmr_history/_processed
 //   perf — performance-adjusted Elo       -> ga_mmr_history/_processed
 // cs_settings.active_mmr_engine ('wl'|'perf') selects which one downstream
-// consumers (matchmaking, stats site) use.
+// consumers (matchmaking, stats site) use. Default: perf (hybrid engine).
 class MmrService {
 public:
     // Fold every concluded, unprocessed PvP match into both engines, in

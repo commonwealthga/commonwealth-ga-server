@@ -572,8 +572,8 @@ std::string MmrService::Reseed() {
 
 std::string MmrService::GetActiveEngine() {
     sqlite3* db = Database::GetConnection();
-    if (!db) return "wl";
-    std::string engine = "wl";
+    if (!db) return "perf";
+    std::string engine = "perf";
     sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(db,
             "SELECT value FROM cs_settings WHERE key = 'active_mmr_engine'",

@@ -1885,12 +1885,47 @@ void Database::Init() {
 		"CREATE TABLE IF NOT EXISTS cs_settings ("
 		"  key TEXT PRIMARY KEY, value TEXT);"
 		"INSERT OR IGNORE INTO cs_settings (key, value)"
-		"  VALUES ('active_mmr_engine', 'wl');";
+		"  VALUES ('active_mmr_engine', 'perf');";
 	result = sqlite3_exec(db, kMmrSchema, nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to ensure MMR schema: %s\n", err);
 		sqlite3_free(err);
 		err = nullptr;
+	}
+
+	// One-time switch of the live matchmaking engine from pure W/L to the
+	// performance-adjusted (hybrid) engine. Analysis on 195 decisive rated
+	// PvP matches showed perf MMR at 59% pick-favorite accuracy vs 50.8% for
+	// W/L, with a monotonic band curve. Marker-guarded so operator overrides
+	// via set-mmr-engine after this runs are respected.
+	{
+		bool mmr_engine_switched = false;
+		sqlite3_stmt* mstmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"SELECT 1 FROM cs_migration_markers "
+				"WHERE name='active_mmr_engine_perf_default_2026_08_08'",
+				-1, &mstmt, nullptr) == SQLITE_OK && mstmt) {
+			mmr_engine_switched = (sqlite3_step(mstmt) == SQLITE_ROW);
+		}
+		if (mstmt) sqlite3_finalize(mstmt);
+
+		if (!mmr_engine_switched) {
+			static const char* kMmrEngineSwitch[] = {
+				"UPDATE cs_settings SET value = 'perf' "
+				"WHERE key = 'active_mmr_engine' AND value = 'wl';",
+				"INSERT OR IGNORE INTO cs_migration_markers (name) "
+				"VALUES ('active_mmr_engine_perf_default_2026_08_08');",
+			};
+			for (const char* sql : kMmrEngineSwitch) {
+				if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+					Logger::Log("db", "[Database] MMR engine switch step failed: %s\n",
+						err ? err : "?");
+					if (err) { sqlite3_free(err); err = nullptr; }
+				}
+			}
+			Logger::Log("db",
+				"[Database] Switched active_mmr_engine default from wl to perf\n");
+		}
 	}
 
 	// Floor-only version write. The game-server DLL bumps `version_info.version`
