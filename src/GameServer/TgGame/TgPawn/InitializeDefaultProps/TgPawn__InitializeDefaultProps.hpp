@@ -42,6 +42,9 @@ public:
 	// caller-passed factory; consumed + reset to 1.0 every invocation.
 	static float fPendingFactoryBalance;
 
+	//skal per spawn-table bot balance multiplier
+	static float fPendingSpawnTableBalance;
+
 	static void __fastcall Call(ATgPawn* Pawn, void* edx);
 	static inline void __fastcall CallOriginal(ATgPawn* Pawn, void* edx) {
 		m_original(Pawn, edx);

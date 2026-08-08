@@ -10,6 +10,7 @@
 int TgPawn__InitializeDefaultProps::nPendingBotId = 0;
 bool TgPawn__InitializeDefaultProps::bPendingEnemyScaling = false;
 float TgPawn__InitializeDefaultProps::fPendingFactoryBalance = 1.0f;
+float TgPawn__InitializeDefaultProps::fPendingSpawnTableBalance = 0.0f;
 float TgPawn__InitializeDefaultProps::nPendingDifficultyScalarOverride = 0.0f;
 
 namespace {
@@ -133,7 +134,12 @@ void __fastcall TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	const float factoryBalance = fPendingFactoryBalance > 0.0f ? fPendingFactoryBalance : 1.0f;
 	fPendingFactoryBalance = 1.0f;
 
-	// Combined stat scale = per-bot BBM × per-difficulty scalar × per-factory
+	// Per spawn-table balance
+	//const float spawnBalance = 3.0f;
+	const float spawnBalance = fPendingSpawnTableBalance > 0.0f ? fPendingSpawnTableBalance : 1.0f;
+	fPendingSpawnTableBalance = 0.0f;
+
+	// Combined stat scale = per-bot BBM × spawn-table BBM × per-difficulty scalar × per-factory
 	// fBalance. BBM=0 is the "never spawn" sentinel — already filtered
 	// upstream from the enemy bot-factory pipeline, so we only reach this
 	// branch with BBM=0 for non-factory spawns. BBM>0: multiply HP and seed
@@ -141,7 +147,7 @@ void __fastcall TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	// scaled. At Ultra-Max (scalar 3.0), a plain BBM=1.0 enemy ends up at 3×
 	// HP and +200% damage; an elite BBM=1.7 Colony Soldier at 5.1× / +410%.
 	const float combinedMultiplier = (scaleAsEnemy && balanceMultiplier > 0.0f)
-		? balanceMultiplier * difficultyScalar * factoryBalance
+		? balanceMultiplier * difficultyScalar * factoryBalance * spawnBalance
 		: 1.0f;
 	if (combinedMultiplier != 1.0f) {
 		hitPoints *= combinedMultiplier;

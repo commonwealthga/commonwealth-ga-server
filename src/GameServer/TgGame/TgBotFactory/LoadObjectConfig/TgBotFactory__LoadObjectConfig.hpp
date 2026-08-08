@@ -13,6 +13,7 @@ struct SpawnTableEntry {
 	int EnemyBotId;
 	int BotCount;
 	float SpawnChance;
+	float BBM;
 	std::string ReferenceName;
 	// spawn_group_min/max — when max>0, the group's roster is rand[min..max]
 	// entries (Tick/Wasp Incubator tables use this with bot_count=1); when 0,
@@ -40,8 +41,17 @@ struct SpawnGroupPlan {
 	                      // this bot (vanilla: per-group roll, not per-entry).
 	                      // 0 for roster-style groups (gmax>0, incubators) —
 	                      // those keep a fresh per-entry roll (mixed brood).
+	float BBM;				  	// skal: add spawn-table bbm
 	FSpawnGroupDetail Detail; // nMin/nMaxCount + nRespawnSeconds seeded;
 	                          // nCurrentCount = 0 (caller preserves alive)
+};
+
+// skal: struct to carry around a {botid,bbm} pair
+struct BotIdEntry {
+	int BotId;
+	float BBM;
+	BotIdEntry ():BotId (0),BBM (0.0f) {}
+	BotIdEntry (int nBotId,float fBBM):BotId (nBotId),BBM (fBBM) {}
 };
 
 // Hook for `Function TgGame.TgBotFactory.LoadObjectConfig` (stripped native).
@@ -73,15 +83,18 @@ public:
 	// VALUE) at the current difficulty. Weight = spawn_chance. Returns 0 if
 	// no rows exist at the current difficulty. Used per consumed queue entry
 	// of roster-style groups (fresh roll each spawn) and by SpawnObjectiveBot.
-	static int PickBotFromSpawnTableGroup(int nSpawnTableId, int nSpawnGroup, int* outBotCount = nullptr);
+	// skal: return value was botid, replace with {botid,bbm} the previous 'zero' return is simply moved to the entry.botid
+	static BotIdEntry PickBotFromSpawnTableGroup(int nSpawnTableId, int nSpawnGroup, int* outBotCount = nullptr);
 
 	// Per-factory storage of the group rolls from the last ResetQueue, keyed
 	// by the factory's FName (collision-safe across actor address reuse).
 	// rolls[i] = RolledBotId for group index i (0 = roster group, roll per
 	// entry). SpawnNextBot consults this so a group's whole roster — including
 	// BotDied replacement entries — spawns the SAME rolled bot.
-	static void SetFactoryGroupRolls(ATgBotFactory* Factory, const std::vector<int>& rolls);
-	static int  GetFactoryGroupRoll(ATgBotFactory* Factory, int nGroupIndex);
+	// skal: used to be a vector<int> for botid, replaced with vector<BotIdEntry>
+	// and the Get() return BotIdEntry instead of direct botid
+	static void SetFactoryGroupRolls(ATgBotFactory* Factory, const std::vector<BotIdEntry>& rolls);
+	static BotIdEntry  GetFactoryGroupRoll(ATgBotFactory* Factory, int nGroupIndex);
 
 	// Optional per-factory override of group INDEX -> group VALUE resolution.
 	// Escape-wave queues (SuperAgent OwnedSetQueue) repeat the rolled plan

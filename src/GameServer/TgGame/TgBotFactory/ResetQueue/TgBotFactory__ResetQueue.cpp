@@ -84,13 +84,13 @@ void __fastcall TgBotFactory__ResetQueue::Call(ATgBotFactory* BotFactory, void* 
 	const auto plan = TgBotFactory__LoadObjectConfig::RollSpawnPlan(tableId);
 
 	BotFactory->m_SpawnGroups.Clear();
-	std::vector<int> groupRolls;
+	std::vector<BotIdEntry> groupRolls;	// skal: replace botid with {botid,bbm}
 	int totalEntries = 0;
 	for (size_t i = 0; i < plan.size(); ++i) {
 		FSpawnGroupDetail gd = plan[i].Detail;
 		if (i < aliveByIndex.size()) gd.nCurrentCount = aliveByIndex[i];
 		BotFactory->m_SpawnGroups.Add(gd);
-		groupRolls.push_back(plan[i].RolledBotId);
+		groupRolls.push_back(BotIdEntry (plan[i].RolledBotId,plan[i].BBM));
 
 		for (int k = 0; k < plan[i].EntryCount; ++k) {
 			FSpawnQueueEntry entry;
@@ -103,11 +103,11 @@ void __fastcall TgBotFactory__ResetQueue::Call(ATgBotFactory* BotFactory, void* 
 		}
 
 		Logger::Log("tgbotfactory",
-			"  ResetQueue: groupIdx=%zu (group=%d) -> %s bot=%d x%d\n",
+			"  ResetQueue: groupIdx=%zu (group=%d) -> %s bot=%d x%d bbm=%f\n",
 			i, plan[i].GroupNumber,
 			plan[i].EntryCount == 0 ? "EMPTY roll" :
 				(plan[i].RolledBotId > 0 ? "rolled" : "roster (per-entry roll)"),
-			plan[i].RolledBotId, plan[i].EntryCount);
+			plan[i].RolledBotId, plan[i].EntryCount, plan[i].BBM);
 	}
 
 	// Vanilla group semantics: the whole group — including BotDied replacement
