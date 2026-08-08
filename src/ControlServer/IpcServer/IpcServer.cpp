@@ -20,6 +20,7 @@
 #include "src/ControlServer/SpectatorOverlay/SpectatorOverlayState.hpp"
 #include "src/ControlServer/SpectatorOverlay/MissionProgressState.hpp"
 #include "src/ControlServer/SpectatorOverlay/OverlayIdCatalog.hpp"
+#include "src/ControlServer/OpenWorldTravel/OpenWorldTravel.hpp"
 #include <ctime>
 #include <unordered_set>
 
@@ -567,6 +568,16 @@ private:
             } else {
                 IpcServer::TriggerSuccessor(parent_id);
             }
+        }
+        else if (type == IpcProtocol::MSG_REQUEST_TRAVEL) {
+            // Map Transition omega volume. OpenWorldTravel validates the
+            // destination and owns the one-instance-per-map guarantee.
+            const std::string guid = j.value("session_guid", "");
+            const uint32_t map_game_id =
+                static_cast<uint32_t>(j.value("map_game_id", 0));
+            Logger::Log("travel", "[IpcServer] REQUEST_TRAVEL guid=%s map_game_id=%u\n",
+                guid.c_str(), map_game_id);
+            OpenWorldTravel::Request(guid, map_game_id);
         }
         else if (type == IpcProtocol::MSG_REQUEST_REBALANCE) {
             // ~5s before setup ends. Rebalance the live roster using the

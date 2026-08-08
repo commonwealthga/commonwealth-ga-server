@@ -8,6 +8,7 @@
 #include "src/ControlServer/InstanceSpawner/InstanceSpawner.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
+#include "src/ControlServer/MapGameInfo/MapGameInfo.hpp"
 #ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -79,6 +80,15 @@ std::string DirnameWindows(const std::string& path) {
 #endif
 
 namespace {
+
+bool EqualsIgnoreCase(const std::string& a, const std::string& b) {
+    if (a.size() != b.size()) return false;
+    for (size_t i = 0; i < a.size(); ++i) {
+        if (std::tolower(static_cast<unsigned char>(a[i])) !=
+            std::tolower(static_cast<unsigned char>(b[i]))) return false;
+    }
+    return true;
+}
 
 bool IsAbsolutePath(const std::string& path) {
     if (path.empty()) return false;
@@ -251,8 +261,24 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         int cpi = cfg.cores_per_instance;
         if (cpi <= 0 || cpi > span) cpi = span;
         const int slots = std::max(1, span / cpi);   // integer floor — leftover cores at the top stay unused
-        const uint64_t idx = spawn_counter.fetch_add(1, std::memory_order_relaxed);
-        slot_idx = static_cast<int>(idx % static_cast<uint64_t>(slots));
+
+        // Slot 0 is the shared/home slot: the home map plus every map flagged
+        // map_game_info.share_home_core = 1 (persistent open-world zones that
+        // never enter a queue). It's a fixed slot, not round-robin, so the
+        // co-location survives a control-server restart, which resets
+        // spawn_counter while those instances keep running. Missions
+        // round-robin across the remaining slots and never land on 0 (unless
+        // there is only one slot to begin with).
+        const bool shared_slot =
+            EqualsIgnoreCase(map_name, cfg.home_map_name) ||
+            MapGameInfo::SharesHomeCore(map_name);
+
+        if (shared_slot || slots == 1) {
+            slot_idx = 0;
+        } else {
+            const uint64_t idx = spawn_counter.fetch_add(1, std::memory_order_relaxed);
+            slot_idx = 1 + static_cast<int>(idx % static_cast<uint64_t>(slots - 1));
+        }
         affinity_core_start = cfg.game_cpu_range.lo + slot_idx * cpi;
         affinity_core_end   = affinity_core_start + cpi - 1;
     }

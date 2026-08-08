@@ -58,3 +58,8 @@ std::optional<MapGameInfoRow> MapGameInfo::LookupByNameAndGameMode(
 std::optional<MapGameInfoRow> MapGameInfo::LookupByName(const std::string& mapName) {
 	return LookupByNameAndGameMode(mapName, "");
 }
+
+bool MapGameInfo::IsOpenZone(const std::string& mapName, const std::string& gameMode) {
+	auto row = LookupByNameAndGameMode(mapName, gameMode);
+	return row && row->gameplay_type_value_id == kGameplayTypeOpenZone;
+}

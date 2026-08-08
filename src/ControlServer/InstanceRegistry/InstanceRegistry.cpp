@@ -70,6 +70,62 @@ std::optional<InstanceInfo> InstanceRegistry::GetReadyInstance(const std::string
     return result;
 }
 
+std::optional<InstanceInfo> InstanceRegistry::GetLiveInstanceByMapName(const std::string& map_name) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    if (!db) return std::nullopt;
+
+    // STARTING counts as live — that's what makes the open-world travel path
+    // single-instance while a spawn is still in flight. Oldest row first so
+    // concurrent callers converge on the same instance.
+    sqlite3_stmt* stmt = nullptr;
+    int rc = sqlite3_prepare_v2(db,
+        "SELECT id, map_name, state, pid, udp_port, ip_address, player_count, "
+        "       started_at, COALESCE(sealed_at, 0), "
+        "       COALESCE(instance_id, 0), COALESCE(is_home_map, 0), COALESCE(max_players, 0), "
+        "       COALESCE(game_mode, ''), "
+        "       COALESCE(queue_id, 0), COALESCE(predecessor_instance_id, 0), COALESCE(end_mission_at, 0) "
+        "FROM ga_instances "
+        "WHERE map_name = ? AND state IN ('STARTING','READY') "
+        "ORDER BY id ASC LIMIT 1",
+        -1, &stmt, nullptr);
+    if (rc != SQLITE_OK || !stmt) {
+        Logger::Log("db", "[InstanceRegistry] GetLiveInstanceByMapName prepare failed: %s\n",
+            sqlite3_errmsg(db));
+        return std::nullopt;
+    }
+
+    sqlite3_bind_text(stmt, 1, map_name.c_str(), -1, SQLITE_TRANSIENT);
+
+    std::optional<InstanceInfo> result;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        InstanceInfo info;
+        info.id           = sqlite3_column_int64(stmt, 0);
+        const char* mn    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        info.map_name     = mn ? mn : "";
+        const char* st    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+        info.state        = st ? st : "";
+        info.pid          = sqlite3_column_int(stmt, 3);
+        info.udp_port     = static_cast<uint16_t>(sqlite3_column_int(stmt, 4));
+        const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+        info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
+        info.player_count = sqlite3_column_int(stmt, 6);
+        info.started_at   = sqlite3_column_int64(stmt, 7);
+        info.sealed_at    = sqlite3_column_int64(stmt, 8);
+        info.instance_id  = sqlite3_column_int64(stmt, 9);
+        info.is_home_map  = sqlite3_column_int(stmt, 10) != 0;
+        info.max_players  = sqlite3_column_int(stmt, 11);
+        const char* gm    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 12));
+        info.game_mode    = gm ? gm : "";
+        info.queue_id                = static_cast<uint32_t>(sqlite3_column_int64(stmt, 13));
+        info.predecessor_instance_id = sqlite3_column_int64(stmt, 14);
+        info.end_mission_at          = sqlite3_column_int64(stmt, 15);
+        result = std::move(info);
+    }
+    sqlite3_finalize(stmt);
+    return result;
+}
+
 void InstanceRegistry::SeedHomeMapInstance(const std::string& map_name, uint16_t udp_port) {
     std::lock_guard<std::mutex> lock(mutex_);
     sqlite3* db = Database::GetConnection();

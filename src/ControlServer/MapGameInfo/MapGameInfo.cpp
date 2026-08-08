@@ -46,7 +46,8 @@ void MapGameInfo::Init() {
     const char* kSql =
         "SELECT map_game_id, COALESCE(map_name, ''), COALESCE(game_class, ''), "
         "       COALESCE(gameplay_type_value_id, 0), friendly_name_msg_id, "
-        "       COALESCE(entry_background_image_res_id, 0) "
+        "       COALESCE(entry_background_image_res_id, 0), "
+        "       COALESCE(share_home_core, 0) "
         "FROM map_game_info";
     if (sqlite3_prepare_v2(db, kSql, -1, &stmt, nullptr) != SQLITE_OK) {
         // Table may not exist yet (game-server v51 hasn't run). Treat as
@@ -66,6 +67,7 @@ void MapGameInfo::Init() {
         r.gameplay_type_value_id        = static_cast<uint32_t>(sqlite3_column_int(stmt, 3));
         r.friendly_name_msg_id          = static_cast<uint32_t>(sqlite3_column_int(stmt, 4));
         r.entry_background_image_res_id = static_cast<uint32_t>(sqlite3_column_int(stmt, 5));
+        r.share_home_core               = sqlite3_column_int(stmt, 6) != 0;
 
         if (r.map_name.empty()) {
             // Rows whose map_name is still NULL can't be reverse-resolved by
@@ -90,4 +92,19 @@ std::optional<MapGameRecord> MapGameInfo::LookupByName(const std::string& map_na
     auto it = g_byMapName.find(LowerCopy(map_name));
     if (it == g_byMapName.end()) return std::nullopt;
     return it->second;
+}
+
+std::optional<MapGameRecord> MapGameInfo::LookupByMapGameId(uint32_t map_game_id) {
+    if (map_game_id == 0) return std::nullopt;
+    // g_byMapName holds each record twice (raw + _reserved-stripped key), so
+    // the first match wins — both alias the same record.
+    for (const auto& kv : g_byMapName) {
+        if (kv.second.map_game_id == map_game_id) return kv.second;
+    }
+    return std::nullopt;
+}
+
+bool MapGameInfo::SharesHomeCore(const std::string& map_name) {
+    auto it = g_byMapName.find(LowerCopy(map_name));
+    return it != g_byMapName.end() && it->second.share_home_core;
 }

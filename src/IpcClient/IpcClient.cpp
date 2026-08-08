@@ -18,6 +18,8 @@
 #include "src/GameServer/TgGame/TgPlayerActions/FxBrowse/FxBrowse.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/UserPreferences/UserPreferences.hpp"
+#include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
+#include "src/Utils/CommandLineParser/CommandLineParser.hpp"
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Globals.hpp"
@@ -361,6 +363,17 @@ void IpcClient::SendRequestSuccessor() {
     Send(msg.dump());
     Logger::Log("ipc", "[IPC] Sent REQUEST_SUCCESSOR: instance_id=%lld\n",
         (long long)instance_id_);
+}
+
+void IpcClient::SendRequestTravel(const std::string& session_guid, uint32_t map_game_id) {
+    nlohmann::json msg;
+    msg["type"]         = IpcProtocol::MSG_REQUEST_TRAVEL;
+    msg["instance_id"]  = instance_id_;
+    msg["session_guid"] = session_guid;
+    msg["map_game_id"]  = map_game_id;
+    Send(msg.dump());
+    Logger::Log("travel", "[IPC] Sent REQUEST_TRAVEL: guid=%s map_game_id=%u instance_id=%lld\n",
+        session_guid.c_str(), map_game_id, (long long)instance_id_);
 }
 
 void IpcClient::SendRequestRebalance() {
@@ -723,6 +736,37 @@ void IpcClient::DrainInbound() {
                 TgPlayerActions::TopDownCmd::Execute(guid, lift_z);
             } else if (action == "return_home_area") {
                 TgPlayerActions::ReturnHomeAreaCmd::Execute(guid);
+            } else if (action == "alert_text") {
+                // Center-screen toast to ONE player. Generic — any control-server
+                // path that needs to tell a specific player something can use it.
+                // First user: open-world travel telling the player their zone
+                // instance is still starting.
+                std::string text;
+                int   priority = 2;    // APT_HIGH
+                int   type     = 3;    // ATT_IMPORTANT
+                float duration = 3.0f;
+                if (j.contains("args") && j["args"].is_object()) {
+                    text     = j["args"].value("text", "");
+                    priority = j["args"].value("priority", priority);
+                    type     = j["args"].value("type", type);
+                    duration = j["args"].value("duration", duration);
+                }
+                if (text.empty()) {
+                    Logger::Log("travel", "[IPC] alert_text guid=%s: empty text; dropping\n",
+                        guid.c_str());
+                    continue;
+                }
+                const std::wstring wtext = CommandLineParser::Utf8ToWide(text);
+                int sent = 0;
+                for (auto& kv : GClientConnectionsData) {
+                    const ClientConnectionData& data = kv.second;
+                    if (data.SessionGuid != guid || data.bClosed) continue;
+                    SendAlert::SendTextAlert((UNetConnection*)(intptr_t)kv.first,
+                        wtext.c_str(), (unsigned char)priority, (unsigned char)type, duration);
+                    sent++;
+                }
+                Logger::Log("travel", "[IPC] alert_text guid=%s sent=%d text='%s'\n",
+                    guid.c_str(), sent, text.c_str());
             } else if (action == "refresh_profile_ui") {
                 const std::string phase = j.value("phase", "");
                 const int item_profile_id = j.value("item_profile_id", 0);

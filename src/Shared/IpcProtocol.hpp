@@ -102,6 +102,17 @@ constexpr const char* MSG_REQUEST_SUCCESSOR = "REQUEST_SUCCESSOR";
 //   { "type": "REQUEST_REBALANCE", "instance_id": <int64> }
 constexpr const char* MSG_REQUEST_REBALANCE = "REQUEST_REBALANCE";
 
+// Sent when a player Uses a Map Transition omega volume (volume type 1255).
+// map_game_id is the destination carried by the volume's asm_data_set_ui_volumes
+// row (+0x40 on the unmarshalled struct). The control server validates it
+// (map_game_info.gameplay_type_value_id must be 1554, "PVE- Open Zone"),
+// finds or spawns the single shared instance for that map, and routes the
+// player there with PLAYER_REGISTER + GSC_GO_PLAY. Idempotent — spamming Use
+// is deduped both per-map (one spawn) and per-session (one poll in flight).
+//   { "type": "REQUEST_TRAVEL", "instance_id": <int64>,
+//     "session_guid": <string>, "map_game_id": <int> }
+constexpr const char* MSG_REQUEST_TRAVEL = "REQUEST_TRAVEL";
+
 // Control server → game DLL. Ask the DLL to emit a bare ga_match_events row
 // (no actor/target identity) back over MATCH_EVENT, stamped with the DLL's
 // game_time. Routed through the DLL — instead of inserted directly — so the

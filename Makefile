@@ -190,6 +190,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/ResetQueue/TgBotFactory__ResetQueue.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgOmegaVolume/Used/TgOmegaVolume__Used.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/ApplyFireModeSetup/TgDeviceFire__ApplyFireModeSetup.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceFire/InitializeProjectile/TgDeviceFire__InitializeProjectile.cpp \
@@ -647,6 +648,7 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/SpectatorOverlay/SkillTreeCatalog.cpp \
 	$(CS_SRC_DIR)/InstanceRegistry/InstanceRegistry.cpp \
 	$(CS_SRC_DIR)/InstanceSpawner/InstanceSpawner.cpp \
+	$(CS_SRC_DIR)/OpenWorldTravel/OpenWorldTravel.cpp \
 	$(CS_SRC_DIR)/QuestStore/QuestStore.cpp \
 	$(CS_SRC_DIR)/TeamService/TeamService.cpp \
 	$(CS_SRC_DIR)/MmrService/MmrService.cpp \

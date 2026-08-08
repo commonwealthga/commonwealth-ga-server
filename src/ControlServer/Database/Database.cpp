@@ -2615,6 +2615,85 @@ void Database::Init() {
 		}
 	}
 
+	// map_game_info.share_home_core (2026-08-08): maps flagged 1 are pinned to
+	// the same CPU slot as the home map instead of taking a round-robin slot of
+	// their own. For persistent, low-load, never-queued worlds (open-world
+	// desert zones) so mission instances keep the remaining cores to themselves.
+	// Duplicate-column error swallowed — unconditional + idempotent.
+	result = sqlite3_exec(db,
+		"ALTER TABLE map_game_info ADD COLUMN share_home_core INTEGER NOT NULL DEFAULT 0;",
+		nullptr, nullptr, &err);
+	if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
+
+	// Open-world zones (2026-08-08). Persistent shared maps reachable only via
+	// a Map Transition omega volume (asm_data_set_ui_volumes.volume_type_value_id
+	// = 1255) — never through a queue. gameplay_type_value_id 1554 ("PVE- Open
+	// Zone") is the discriminator the travel path keys on: one shared instance
+	// per map, spawned on demand. share_home_core = 1 pins them to the home
+	// map's CPU slot so mission instances keep the rest.
+	//
+	// mission_time_secs 900 + overtime disabled matches Dome3_VR_Arena_P: the
+	// DLL's 60s-remaining handler re-arms the UC MissionTimer for another 15
+	// minutes, which is what makes the timer effectively unlimited.
+	{
+		// One-time: the VR arena row shipped as `_reserved` under a synthetic
+		// map_game_id. Give it its real id (1168) and drop the suffix. Marker-
+		// gated + NOT EXISTS so a later operator edit isn't stomped and a
+		// pre-existing 1168 row can't collide on the primary key.
+		bool arena_id_fixed = false;
+		{
+			sqlite3_stmt* mstmt = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT 1 FROM cs_migration_markers WHERE name='vr_arena_map_game_id_1168_2026_08_08'",
+					-1, &mstmt, nullptr) == SQLITE_OK && mstmt) {
+				arena_id_fixed = (sqlite3_step(mstmt) == SQLITE_ROW);
+			}
+			if (mstmt) sqlite3_finalize(mstmt);
+		}
+		if (!arena_id_fixed) {
+			static const char* kArenaFix[] = {
+				"UPDATE map_game_info "
+				"SET map_game_id = 1168, map_name = 'Dome3_VR_Arena_P' "
+				"WHERE map_game_id = 100005 "
+				"  AND NOT EXISTS (SELECT 1 FROM map_game_info m2 WHERE m2.map_game_id = 1168);",
+				"INSERT OR IGNORE INTO cs_migration_markers (name) VALUES ('vr_arena_map_game_id_1168_2026_08_08');",
+			};
+			for (const char* sql : kArenaFix) {
+				if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+					Logger::Log("db", "[Database] VR arena map_game_id fix failed: %s\n", err ? err : "?");
+					if (err) { sqlite3_free(err); err = nullptr; }
+				}
+			}
+			Logger::Log("db", "[Database] Applied one-time VR arena map_game_id 100005 -> 1168\n");
+		}
+
+		// Idempotent — INSERT OR IGNORE never stomps rows the operator edited.
+		// entry_background_image_res_id picks (asm_data_set_resources):
+		//   4941 GA_Menu_Assets.MapTran_DomeCity_A     — no HUD_MissionLoads
+		//        entry exists for Dome City; this is the shipped Dome City
+		//        map-transition art.
+		//   6848 HUD_MissionLoads.PVE_SD.OPEN_SD_Zone_P — exact match for
+		//        SD_Zone_P (6601 loading_SDZone is the older duplicate).
+		//   7959 HUD_MissionLoads_1_5.OZ_DesertNorth   — the 1_5 revision,
+		//        matching the other DN_* rows (7926 / 7958); 7854 is the
+		//        pre-1.5 version.
+		static const char* kOpenZoneMaps2026_08_08[] = {
+			"INSERT OR IGNORE INTO map_game_info "
+			"(map_game_id, map_name, game_class, gameplay_type_value_id, "
+			" friendly_name_msg_id, entry_background_image_res_id, "
+			" mission_time_secs, is_pvp, overtime_secs, allow_overtime, share_home_core) VALUES"
+			" (1175, 'DomeCity_P_VER_3',     'TgGame.TgGame_City',         1554, 33496, 4941, 900, 0, 0, 0, 1),"
+			" (1390, 'SD_Zone_P',            'TgGame.TgGame_OpenWorldPVE', 1554, 55311, 6848, 900, 0, 0, 0, 1),"
+			" (1465, 'DomeNorth_Zone_V2_P',  'TgGame.TgGame_OpenWorldPVE', 1554, 66635, 7959, 900, 0, 0, 0, 1);",
+		};
+		for (const char* sql : kOpenZoneMaps2026_08_08) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] Open-zone map_game_info seed failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
 }

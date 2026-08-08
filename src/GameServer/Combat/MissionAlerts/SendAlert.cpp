@@ -146,6 +146,14 @@ static void SendTextToast(UNetConnection* Connection,
 	DispatchMarshal(Connection, Marshal);
 }
 
+void SendAlert::SendTextAlert(UNetConnection* Connection,
+                              const wchar_t* message,
+                              unsigned char priority,
+                              unsigned char type,
+                              float duration) {
+	SendTextToast(Connection, message, priority, type, duration);
+}
+
 void SendAlert::BroadcastText(const wchar_t* message,
                               unsigned char priority,
                               unsigned char type,

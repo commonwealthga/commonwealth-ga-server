@@ -99,6 +99,7 @@
 #include "src/GameServer/TgGame/TgBotFactory/ResetQueue/TgBotFactory__ResetQueue.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
+#include "src/GameServer/TgGame/TgOmegaVolume/Used/TgOmegaVolume__Used.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/ApplyFireModeSetup/TgDeviceFire__ApplyFireModeSetup.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/InitializeProjectile/TgDeviceFire__InitializeProjectile.hpp"
@@ -480,6 +481,7 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgGame__SpawnBot::Install();
 	TgGame__SpawnBotById::Install();
 	TgDeviceVolume_setupDevice::Install();
+	TgOmegaVolume_Used::Install();
 	TgGame__RegisterForWaveRevive::Install();
 	TgGame__UnregisterForWaveRevive::Install();
 	TgGame__GetReviveTimeRemaining::Install();

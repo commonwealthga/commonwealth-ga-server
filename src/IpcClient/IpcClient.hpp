@@ -36,6 +36,13 @@ public:
     // server no-ops for pinned queues).
     static void SendRequestRebalance();
 
+    // Send-side helper for MSG_REQUEST_TRAVEL. Fired when a player Uses a Map
+    // Transition omega volume; map_game_id is the destination from the
+    // volume's data row. Control server validates the destination, keeps the
+    // zone to one shared instance, and routes the player. Idempotent — safe
+    // to fire on every Use.
+    static void SendRequestTravel(const std::string& session_guid, uint32_t map_game_id);
+
     // Report debug/chat command execution back to the control-server console.
     static void SendChatCommandAudit(const std::string& session_guid,
                                      const std::string& command,

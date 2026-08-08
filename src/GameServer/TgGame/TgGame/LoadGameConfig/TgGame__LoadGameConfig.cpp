@@ -99,12 +99,15 @@ void __fastcall TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	// AI hearing actually responds to the Ultra-Max tier.
 	Game->GameDifficulty = Config::GetDifficultyScalar();
 
-	if (map_name == "Dome3_VR_Arena_P") {
-		// Auto-resetting "infinite" mission timer. PollMissionTimer re-arms
-		// 'MissionTimer' via eventMissionTimerStart() right after the 60s
-		// alert fires. Disable overtime so the state machine never tries the
-		// 2->3 transition if our reset is a tick late. Cycle length comes from
-		// map_game_info.mission_time_secs above.
+	// Auto-resetting "infinite" mission timer. PollMissionTimer re-arms
+	// 'MissionTimer' via eventMissionTimerStart() right after the 60s
+	// alert fires. Disable overtime so the state machine never tries the
+	// 2->3 transition if our reset is a tick late. Cycle length comes from
+	// map_game_info.mission_time_secs above.
+	//
+	// Applies to the VR arena and to every open zone (gameplay_type_value_id
+	// 1554) — persistent worlds that must never hit a match end.
+	if (map_name == "Dome3_VR_Arena_P" || MapGameInfo::IsOpenZone(map_name, game_class)) {
 		Game->m_bAllowOvertime    = 0;
 		Game->m_fGameOvertimeTime = 0.0f;
 	}

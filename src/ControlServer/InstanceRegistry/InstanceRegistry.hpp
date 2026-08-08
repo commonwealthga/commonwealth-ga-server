@@ -49,6 +49,11 @@ public:
     // Return the first READY instance for the given map name, or nullopt if none.
     static std::optional<InstanceInfo> GetReadyInstance(const std::string& map_name);
 
+    // Oldest STARTING-or-READY instance for the map. STARTING counts as live,
+    // which is what keeps open-world travel to a single shared instance while
+    // a spawn is still in flight.
+    static std::optional<InstanceInfo> GetLiveInstanceByMapName(const std::string& map_name);
+
     // Mark all non-STOPPED instances from a previous run as STOPPED, then insert
     // a fresh READY row for the home map at the given UDP port.
     static void SeedHomeMapInstance(const std::string& map_name, uint16_t udp_port);

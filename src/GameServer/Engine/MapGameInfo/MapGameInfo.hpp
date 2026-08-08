@@ -42,4 +42,13 @@ public:
 	// Name-only convenience for callers without a game-class context. Equivalent
 	// to LookupByNameAndGameMode(mapName, "") — first name match wins.
 	static std::optional<MapGameInfoRow> LookupByName(const std::string& mapName);
+
+	// gameplay_type_value_id 1554 = "PVE- Open Zone" (asm_data_set_valid_values
+	// group 171): a persistent shared world reached only through a Map
+	// Transition omega volume, never a queue. These must never hit a match end,
+	// so they get the same auto-resetting mission timer as the VR arena.
+	// False when the column/row is missing (0) — callers keep their old
+	// behavior, same rule as every other MapGameInfo consumer.
+	static constexpr int kGameplayTypeOpenZone = 1554;
+	static bool IsOpenZone(const std::string& mapName, const std::string& gameMode = "");
 };

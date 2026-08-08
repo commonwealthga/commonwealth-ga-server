@@ -15,6 +15,7 @@
 //   gameplay_type_value_id INTEGER
 //   friendly_name_msg_id INTEGER NOT NULL
 //   entry_background_image_res_id INTEGER
+//   share_home_core INTEGER NOT NULL DEFAULT 0
 struct MapGameRecord {
     uint32_t    map_game_id;
     std::string map_name;
@@ -22,6 +23,9 @@ struct MapGameRecord {
     uint32_t    gameplay_type_value_id;
     uint32_t    friendly_name_msg_id;
     uint32_t    entry_background_image_res_id;
+    // Pin this map's instances to the home map's CPU slot instead of giving
+    // them a round-robin slot of their own (persistent open-world zones).
+    bool        share_home_core;
 };
 
 class MapGameInfo {
@@ -33,4 +37,17 @@ public:
     // Returns the record for the given .upk filename if one exists.
     // Case-insensitive match against map_name.
     static std::optional<MapGameRecord> LookupByName(const std::string& map_name);
+
+    // True when map_game_info.share_home_core = 1 for this map. Unknown maps
+    // (no row) are false — normal round-robin pinning.
+    static bool SharesHomeCore(const std::string& map_name);
+
+    // Reverse lookup by the wire-protocol map_game_id (what a Map Transition
+    // omega volume carries as its destination).
+    static std::optional<MapGameRecord> LookupByMapGameId(uint32_t map_game_id);
+
+    // gameplay_type_value_id 1554 = "PVE- Open Zone" (asm_data_set_valid_values
+    // group 171). Persistent shared world: exactly one instance per map,
+    // reachable only via a Map Transition volume, never through a queue.
+    static constexpr uint32_t kGameplayTypeOpenZone = 1554;
 };

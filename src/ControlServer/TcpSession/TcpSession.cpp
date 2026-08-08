@@ -1408,6 +1408,81 @@ void TcpSession::wait_for_home_map_then_register(int remaining_seconds) {
 }
 
 
+void TcpSession::DeliverOpenWorldTravel(const std::string& session_guid,
+                                        const std::string& map_name,
+                                        int task_force) {
+    std::shared_ptr<TcpSession> session;
+    {
+        std::lock_guard<std::mutex> lock(sessions_mutex_);
+        auto it = g_sessions_.find(session_guid);
+        if (it == g_sessions_.end()) {
+            Logger::Log("travel", "[TcpSession] DeliverOpenWorldTravel: no session for guid=%s\n",
+                session_guid.c_str());
+            return;
+        }
+        session = it->second.lock();
+        if (!session) {
+            g_sessions_.erase(it);
+            Logger::Log("travel", "[TcpSession] DeliverOpenWorldTravel: expired session guid=%s\n",
+                session_guid.c_str());
+            return;
+        }
+    }
+
+    if (session->travel_in_flight_) {
+        Logger::Log("travel",
+            "[TcpSession] DeliverOpenWorldTravel: guid=%s already travelling — ignoring repeat\n",
+            session_guid.c_str());
+        return;
+    }
+    session->travel_in_flight_ = true;
+    Logger::Log("travel", "[TcpSession] Travel requested: guid=%s → '%s' tf=%d\n",
+        session_guid.c_str(), map_name.c_str(), task_force);
+    session->travel_to_map_when_ready(map_name, task_force, 120);
+}
+
+void TcpSession::travel_to_map_when_ready(const std::string& map_name, int task_force,
+                                          int remaining_seconds) {
+    if (remaining_seconds <= 0) {
+        Logger::Log("travel",
+            "[TcpSession] Travel to '%s' timed out for %s — staying put\n",
+            map_name.c_str(), session_guid_.c_str());
+        travel_in_flight_ = false;
+        return;
+    }
+
+    auto ready = InstanceRegistry::GetReadyInstance(map_name);
+    if (ready) {
+        if (assigned_instance_id_ == ready->instance_id) {
+            Logger::Log("travel", "[TcpSession] %s is already on '%s' (instance=%lld)\n",
+                session_guid_.c_str(), map_name.c_str(), (long long)ready->instance_id);
+            travel_in_flight_ = false;
+            return;
+        }
+        if (assigned_instance_id_ != 0) {
+            InstanceRegistry::MarkInstancePlayerLeft(assigned_instance_id_, session_guid_);
+        }
+        Logger::Log("travel", "[TcpSession] Travelling %s from instance=%lld to '%s' instance=%lld tf=%d\n",
+            session_guid_.c_str(), (long long)assigned_instance_id_, map_name.c_str(),
+            (long long)ready->instance_id, task_force);
+        travel_in_flight_ = false;
+        initiate_player_register_for_target(*ready, task_force);
+        return;
+    }
+
+    // Still STARTING (or the spawn hasn't inserted its row yet) — poll.
+    auto self(shared_from_this());
+    auto timer = std::make_shared<asio::steady_timer>(io_ctx_);
+    timer->expires_after(std::chrono::seconds(2));
+    timer->async_wait([this, self, timer, map_name, task_force, remaining_seconds](std::error_code ec) {
+        if (!ec) {
+            travel_to_map_when_ready(map_name, task_force, remaining_seconds - 2);
+        } else {
+            travel_in_flight_ = false;
+        }
+    });
+}
+
 void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 	if (length < 6) {
 		Logger::Log("tcp", "[%s] Packet too short\n", Logger::GetTime());

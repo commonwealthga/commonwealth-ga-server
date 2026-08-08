@@ -3,6 +3,7 @@
 #include "src/GameServer/GameModes/CtrPointRotation/CtrPointRotation.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
+#include "src/GameServer/Engine/MapGameInfo/MapGameInfo.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Config/Config.hpp"
 #include "src/IpcClient/IpcClient.hpp"
@@ -216,7 +217,13 @@ static void PollMissionTimer(ATgGame* Game, ATgRepInfo_Game* GRI, PerGameState& 
 		// fires at its original time. Re-arm it via the same UC path
 		// MissionTimerStart() uses. Effective behaviour: a "60 seconds remaining"
 		// announcement every ~14 minutes, followed by 15 fresh minutes.
-		if (Config::GetMapNameChar() == "Dome3_VR_Arena_P") {
+		// VR arena + every open zone (map_game_info.gameplay_type_value_id
+		// 1554) — persistent worlds that must never reach a match end.
+		// Cached: this runs on the alert poll, and the lookup is a DB hit.
+		static const bool kInfiniteTimerMap =
+			Config::GetMapNameChar() == "Dome3_VR_Arena_P" ||
+			MapGameInfo::IsOpenZone(Config::GetMapNameChar());
+		if (kInfiniteTimerMap) {
 			Game->s_fMissionTimerStartedAt = now;
 			Game->m_fGameMissionTime       = 15.0f * 60.0f;
 			Game->m_fPausedAtTime          = 0.0f;
@@ -225,7 +232,8 @@ static void PollMissionTimer(ATgGame* Game, ATgRepInfo_Game* GRI, PerGameState& 
 			st.firedT60 = false;  // re-arm for the next cycle
 			st.firedT30 = false;
 			st.firedT10 = false;
-			Logger::Log("announcer", "MissionTimer: Dome3_VR_Arena_P — timer reset to 15min after 60s alert\n");
+			Logger::Log("announcer", "MissionTimer: %s — timer reset to 15min after 60s alert\n",
+				Config::GetMapNameChar().c_str());
 		}
 	}
 	if (!st.firedT30 && remaining <= 30.5f) {

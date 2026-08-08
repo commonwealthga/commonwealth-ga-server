@@ -5,6 +5,7 @@
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/InstanceSpawner/InstanceSpawner.hpp"
+#include "src/ControlServer/OpenWorldTravel/OpenWorldTravel.hpp"
 #include "src/ControlServer/TcpListener/TcpListener.hpp"
 #include "src/ControlServer/ChatListener/ChatListener.hpp"
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
@@ -696,6 +697,38 @@ int main(int argc, char* argv[]) {
             (long long)instance_id, (int)pid, (int)*port,
             picked->map_name.c_str(), picked->game_mode.c_str(),
             (long long)parent_instance_id, parent->queue_id);
+    });
+
+    // Open-world zone spawner. Called by OpenWorldTravel when a Map Transition
+    // omega volume targets a zone with no live instance. The one-instance-per-
+    // map guarantee lives in OpenWorldTravel — this just does the spawn.
+    // queue_id stays 0: these maps are never matchmade.
+    OpenWorldTravel::SetSpawner([&cfg](const std::string& map_name,
+                                       const std::string& game_mode,
+                                       uint32_t difficulty_value_id) -> int64_t {
+        auto port = InstanceRegistry::AllocatePort(cfg.udp_port_range.lo, cfg.udp_port_range.hi);
+        if (!port) {
+            Logger::Log("travel", "[OpenWorldSpawner] No UDP ports available for '%s'\n",
+                map_name.c_str());
+            return 0;
+        }
+
+        int64_t instance_id = InstanceRegistry::InsertStarting(
+            map_name, game_mode, *port, 0, /*is_home_map=*/false);
+
+        pid_t pid = InstanceSpawner::Spawn(cfg, map_name, game_mode, *port, instance_id,
+                                           difficulty_value_id);
+        if (pid < 0) {
+            Logger::Log("travel", "[OpenWorldSpawner] Spawn failed for '%s'\n", map_name.c_str());
+            InstanceRegistry::MarkStopped(instance_id);
+            return 0;
+        }
+
+        InstanceRegistry::UpdatePid(instance_id, pid);
+        Logger::Log("travel",
+            "[OpenWorldSpawner] Spawned '%s' instance_id=%lld pid=%d port=%d difficulty=%u\n",
+            map_name.c_str(), (long long)instance_id, (int)pid, (int)*port, difficulty_value_id);
+        return instance_id;
     });
 
     // Home map spawns on demand when the first player selects a character.

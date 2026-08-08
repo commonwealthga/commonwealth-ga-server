@@ -39,6 +39,15 @@ public:
 	                     unsigned char type,
 	                     float duration = 3.0f);
 
+	// Free-text CENTER-SCREEN toast to ONE connection. Same @@text_value@@
+	// (23083) template BroadcastText uses — MSG_ID presence is what makes the
+	// client take the alert path instead of rendering a chat line.
+	static void SendTextAlert(UNetConnection* Connection,
+	                          const wchar_t* message,
+	                          unsigned char priority,
+	                          unsigned char type,
+	                          float duration = 3.0f);
+
 	// Free-text CENTER-SCREEN toast to every connected player. Rides the bare
 	// "@@text_value@@" msg template (23083) with the text in GA_T::TEXT_VALUE,
 	// so the dispatcher takes the real alert path (unlike SendText's chat line).

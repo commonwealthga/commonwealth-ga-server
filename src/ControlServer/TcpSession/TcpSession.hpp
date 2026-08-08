@@ -113,6 +113,15 @@ public:
                                  int64_t parent_instance_id,
                                  const char* reason);
 
+    // Open-world travel (Map Transition omega volume). Polls for a READY
+    // instance of map_name, then PLAYER_REGISTER + GSC_GO_PLAY onto it. The
+    // caller (OpenWorldTravel) has already guaranteed the instance exists or
+    // is spawning. Dropped silently if this session already has a travel poll
+    // in flight, so Use-spam can't stack timers or double-register.
+    static void DeliverOpenWorldTravel(const std::string& session_guid,
+                                       const std::string& map_name,
+                                       int task_force);
+
     // Clear the per-session queue + pending-match state on the named session.
     // Called when a matchmade instance dies before delivering MATCH_INVITATION
     // (spawn failure or pre-READY crash) — without this the session stays
@@ -597,6 +606,13 @@ private:
     // Polls for a READY home map instance every 2 seconds up to remaining_seconds,
     // then calls initiate_player_register_and_go_play().
     void wait_for_home_map_then_register(int remaining_seconds);
+
+    // Open-world travel poll. Waits for a READY instance of map_name (the
+    // spawn may still be in flight), then drops the player's current instance
+    // row and registers onto the zone. Guarded by travel_in_flight_.
+    void travel_to_map_when_ready(const std::string& map_name, int task_force,
+                                  int remaining_seconds);
+    bool travel_in_flight_ = false;
 
     void route_from_mission_instance(int64_t parent_instance_id, const char* reason);
 
