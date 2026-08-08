@@ -100,22 +100,22 @@ void AssignIndividual(const std::vector<Group>& groups,
     for (const Slot* s : slots) out[s->guid] = PlaceSlotGreedy(*s, seed1, seed2);
 }
 
-// BalancedPvp only: MMR post-pass over solo players. Same-class swaps keep
-// the class/heal/size result of the placement above fully intact; party
-// members are never moved. seed_diff = live-roster MMR imbalance, so the
-// newcomers compensate for the match they are joining.
+// BalancedPvp only: globally optimal MMR post-pass over solo players.
+// Same-class swaps keep the class/heal/size result of the placement above
+// fully intact; party members are never moved. seed_ctx carries the live
+// roster totals so join-in-progress batches balance against the match.
 std::unordered_map<std::string, int> Finish(
     TaskforcePolicy tf_policy,
     const std::vector<Group>& groups,
     std::unordered_map<std::string, int> out,
-    double seed_diff) {
+    const MmrSwap::SeedContext& seed_ctx) {
     if (tf_policy == TaskforcePolicy::BalancedPvp) {
         std::vector<MmrSwap::Player> mp;
         for (const auto& g : groups)
             for (const auto& m : g.members)
                 mp.push_back({m.guid, m.profile_id, m.mmr,
                               m.solo && g.members.size() == 1});
-        MmrSwap::BalanceByMmr(mp, out, seed_diff);
+        MmrSwap::BalanceByMmrOptimal(mp, out, seed_ctx);
     }
     for (const auto& g : groups)
         for (const auto& m : g.members)
@@ -136,8 +136,12 @@ std::unordered_map<std::string, int> Assign(
 
     std::unordered_map<std::string, int> out;
 
-    // Live-roster MMR imbalance, captured before placement mutates the seeds.
-    const double seed_diff = seed1.mmr_sum - seed2.mmr_sum;
+    // Live-roster context captured before placement mutates the seeds.
+    MmrSwap::SeedContext seed_ctx;
+    seed_ctx.mmr_tf1 = seed1.mmr_sum;
+    seed_ctx.mmr_tf2 = seed2.mmr_sum;
+    seed_ctx.n_tf1   = seed1.size;
+    seed_ctx.n_tf2   = seed2.size;
 
     Logger::Log("team-balance",
         "[SidePlacement] Assign groups=%zu seed1=(%.2f,%d,%.0f) seed2=(%.2f,%d,%.0f)\n",
@@ -154,12 +158,12 @@ std::unordered_map<std::string, int> Assign(
 
     if (side_policy == TeamSidePolicy::Ignore) {
         AssignIndividual(groups, seed1, seed2, out);
-        return Finish(tf_policy, groups, std::move(out), seed_diff);
+        return Finish(tf_policy, groups, std::move(out), seed_ctx);
     }
 
     if (side_policy == TeamSidePolicy::Required) {
         AssignWhole(groups, seed1, seed2, out);
-        return Finish(tf_policy, groups, std::move(out), seed_diff);
+        return Finish(tf_policy, groups, std::move(out), seed_ctx);
     }
 
     // Preferred: keep parties whole unless doing so leaves a class imbalance
@@ -175,8 +179,8 @@ std::unordered_map<std::string, int> Assign(
     AssignIndividual(groups, is1, is2, indiv);
 
     if (ClassImbalance(is1, is2) < ClassImbalance(ws1, ws2))
-        return Finish(tf_policy, groups, std::move(indiv), seed_diff);
-    return Finish(tf_policy, groups, std::move(whole), seed_diff);
+        return Finish(tf_policy, groups, std::move(indiv), seed_ctx);
+    return Finish(tf_policy, groups, std::move(whole), seed_ctx);
 }
 
 }  // namespace SidePlacement
