@@ -561,6 +561,10 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 	TgInventoryManager__PrepopulateInventoryId::CallOriginal(
 		(void*)((char*)Pawn->InvManager + 0x1f0), nullptr, invId, InvObj);
 	((ATgInventoryManager*)Pawn->InvManager)->r_ItemCount++;
+	// Post-initial write — needs the dirty flags or it never replicates and the
+	// client keeps its spawn-time count (see SetItemCount.cpp).
+	((ATgInventoryManager*)Pawn->InvManager)->bNetDirty       = 1;
+	((ATgInventoryManager*)Pawn->InvManager)->bForceNetUpdate = 1;
 
 	// --- Create device via native function ---
 	ATgDevice* Device = Pawn->CreateEquipDevice(invId, deviceId, slot);

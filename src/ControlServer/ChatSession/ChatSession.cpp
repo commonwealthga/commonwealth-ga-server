@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <cstdio>
 #include <optional>
 #ifndef _WIN32
 #include <netinet/tcp.h>
@@ -316,6 +317,7 @@ bool HasParsedCommandAction(const ChatCommand::ParseResult& parsed) {
         || parsed.topdown.has_value()
         || parsed.markers.has_value()
         || parsed.fx_browse.has_value()
+        || parsed.set_spawn_table.has_value()
         || parsed.spectate.has_value()
         || parsed.toggle_broken_suits.has_value()
         || parsed.toggle_solo_mode.has_value()
@@ -327,6 +329,7 @@ bool HasParsedCommandAction(const ChatCommand::ParseResult& parsed) {
         || parsed.fullheal
         || parsed.class_counts
         || parsed.reload_queues
+        || parsed.components.has_value()
         || parsed.announce.has_value();
 }
 
@@ -584,6 +587,9 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         if (parsed.recognized && parsed.fx_browse) {
             ChatCommand::DispatchFxBrowse(*parsed.fx_browse, session_guid_);
         }
+        if (parsed.recognized && parsed.set_spawn_table) {
+            ChatCommand::DispatchSetSpawnTable(*parsed.set_spawn_table, session_guid_);
+        }
         if (parsed.recognized && parsed.spectate) {
             HandleSpectateCommand(parsed.spectate->instance_id, parsed.spectate->team);
         }
@@ -621,6 +627,9 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
                     parsed.announce->c_str());
             }
         }
+        if (parsed.recognized && parsed.components.has_value()) {
+            HandleComponentsCommand(*parsed.components);
+        }
         if (parsed.recognized && parsed.reload_queues) {
             Logger::Log("chat-command",
                 "[ChatCmd] -reload-queues player='%s' guid=%s outcome=activated details=MatchmakingService::ReloadQueues\n",
@@ -637,6 +646,64 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
         player_name_.c_str(),
         g_chat_sessions.size() > 0 ? g_chat_sessions.size() - 1 : 0);
     broadcast(data, length);
+}
+
+// -components — the inventory-desync test harness.
+//
+// Bare form prints the three numbers that must agree, so a desync can be read
+// off one chat line instead of correlated across two log files:
+//   pool   = ga_players_inventory rows send_inventory_response ships
+//   comps  = live ga_user_components stacks it also ships
+//   total  = what ATgInventoryManager::r_ItemCount must equal, and therefore
+//            what the client's m_InventoryMap must contain.
+//
+// grant/take push a stack through the production wire paths — a take that
+// empties a stack fires the STATE=2 removal, which is the map-shrink case the
+// desync tracks.
+void ChatSession::HandleComponentsCommand(
+        const ChatCommand::ParseResult::ComponentsArgs& args) {
+    auto info = PlayerSessionStore::GetByGuid(session_guid_);
+    const int64_t user_id      = info ? info->user_id : 0;
+    const int64_t character_id = info ? info->selected_character_id : 0;
+
+    if (user_id <= 0 || character_id == 0) {
+        deliver(BuildChatFrame(kSystemChannelId, "components: no character selected."));
+        return;
+    }
+
+    if (args.op == ChatCommand::ParseResult::ComponentsArgs::Op::Report) {
+        const auto charInfo = PlayerSessionStore::GetCharacterById(character_id);
+        const int  profile  = charInfo ? (int)charInfo->profile_id : 0;
+        const int  total    = Database::GetExpectedItemCount(user_id, profile);
+        const auto comps    = Database::GetAllComponents(user_id);
+
+        char line[256];
+        snprintf(line, sizeof(line),
+            "components: char=%lld profile=%d  pool+comps = r_ItemCount must be %d "
+            "(%zu live component stack(s))",
+            (long long)character_id, profile, total, comps.size());
+        deliver(BuildChatFrame(kSystemChannelId, line));
+
+        for (const auto& c : comps) {
+            snprintf(line, sizeof(line), "   item %d x%d", c.item_id, c.quantity);
+            deliver(BuildChatFrame(kSystemChannelId, line));
+        }
+
+        Logger::Log("chat-command",
+            "[ChatCmd] -components report player='%s' guid=%s outcome=sent details=total_%d\n",
+            player_name_.c_str(), session_guid_.c_str(), total);
+        return;
+    }
+
+    const bool take = (args.op == ChatCommand::ParseResult::ComponentsArgs::Op::Take);
+    const std::string result = TcpSession::DeliverComponentDebug(
+        session_guid_, take ? 1 : 0, args.item_id, args.count);
+
+    deliver(BuildChatFrame(kSystemChannelId, result));
+    Logger::Log("chat-command",
+        "[ChatCmd] -components %s player='%s' guid=%s item=%d n=%d outcome=%s\n",
+        take ? "take" : "grant", player_name_.c_str(), session_guid_.c_str(),
+        args.item_id, args.count, result.c_str());
 }
 
 void ChatSession::HandleSpectateCommand(int64_t instance_id, ChatCommand::SpectateTeam team) {

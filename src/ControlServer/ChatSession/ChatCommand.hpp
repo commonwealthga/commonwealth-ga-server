@@ -138,6 +138,27 @@ struct FxBrowseArgs {
     int index = 0;  // only meaningful for action == "jump"
 };
 
+// -setspawntable <map_object_id> <spawn_table_id>: DEV TOOL. Retarget one
+// map-baked bot factory's spawn table at runtime (no persistence) so a table
+// can be verified in-game before it goes into a migration. Unconditional here;
+// the master on/off switch is TgPlayerActions::SetSpawnTableCmd::kEnabled in
+// the DLL.
+struct SetSpawnTableArgs {
+    int map_object_id = 0;
+    int spawn_table_id = 0;
+};
+
+// Master switch for -components (the inventory-desync test harness).
+//
+// FALSE in normal operation, and it must stay that way: `grant` mints component
+// stock out of nothing and `take` destroys it, with no permission check of any
+// kind. Flip to true only for a local debugging session, rebuild the control
+// server, and flip it back afterwards.
+//
+// While false the command is still *recognised* — so typing it is swallowed
+// rather than broadcast to everyone as ordinary chat — but never acted on.
+inline constexpr bool kComponentsDebugEnabled = false;
+
 struct ParseResult {
     // True if the message was a /-prefixed slash command attempt that we own
     // (currently: "-changeteam", "-spawnfriend", "-spawnenemy", "-possess",
@@ -162,6 +183,7 @@ struct ParseResult {
     std::optional<SetDlcArgs>            set_dlc;
     std::optional<MarkersArgs>      markers;
     std::optional<FxBrowseArgs>     fx_browse;
+    std::optional<SetSpawnTableArgs> set_spawn_table;
 
     // No-arg toggles. Flag is set when recognized + parsed cleanly.
     bool possess   = false;
@@ -194,6 +216,26 @@ struct ParseResult {
     // text (never empty when set). Handled entirely on the control server;
     // caller must check the sender is permitted before acting on it.
     std::optional<std::string> announce;
+
+    // -components [grant <item_id> [n] | take <item_id> [n]]
+    //
+    // Inventory-desync test harness. Bare form reports, privately on the System
+    // channel, the three numbers that must agree: the ga_players_inventory pool
+    // for the character's class profile, the live component stacks, and the
+    // total r_ItemCount therefore has to hold. grant/take drive a component
+    // stack through exactly the same code paths a loot drop and a quest turn-in
+    // use — including the STATE=2 removal when a stack hits zero — so the
+    // desync can be reproduced without burning a one-shot quest.
+    //
+    // Handled entirely on the control server (it owns component stock and the
+    // SEND_INVENTORY records); the r_ItemCount push rides the existing
+    // set_item_count player action.
+    struct ComponentsArgs {
+        enum class Op { Report, Grant, Take } op = Op::Report;
+        int item_id = 0;
+        int count = 1;
+    };
+    std::optional<ComponentsArgs> components;
 };
 
 // Resolve a slash-command token (no leading '/', any case) to the chat channel
@@ -265,6 +307,11 @@ void DispatchMarkers(const MarkersArgs& args, const std::string& session_guid);
 
 // Send -fx to the game DLL. The DLL owns the candidate table and the cursor.
 void DispatchFxBrowse(const FxBrowseArgs& args, const std::string& session_guid);
+
+// Send -setspawntable to the game DLL. The DLL finds the factory by
+// m_nMapObjectId, kills its live bots and rebuilds the queue from the new
+// table. Runtime-only — nothing is written to the DB.
+void DispatchSetSpawnTable(const SetSpawnTableArgs& args, const std::string& session_guid);
 
 // Send -togglebrokensuits to the game DLL. The DLL owns the preference
 // (ga_user_preferences read/write + in-memory cache used at replication).

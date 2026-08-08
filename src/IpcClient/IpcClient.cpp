@@ -16,6 +16,8 @@
 #include "src/GameServer/TgGame/TgPlayerActions/ToggleBrokenSuits/ToggleBrokenSuits.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/Markers/Markers.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/FxBrowse/FxBrowse.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/SetSpawnTable/SetSpawnTable.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/SetItemCount/SetItemCount.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/UserPreferences/UserPreferences.hpp"
 #include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
@@ -678,6 +680,33 @@ void IpcClient::DrainInbound() {
                 TgPlayerActions::CoordsCmd::Execute(guid);
             } else if (action == "fullheal") {
                 TgPlayerActions::FullHealCmd::Execute(guid);
+            } else if (action == "set_item_count") {
+                // Keeps ATgInventoryManager::r_ItemCount level with the client's
+                // inventory map after the control server adds component rows.
+                // Absolute total, not a delta — see SetItemCountCmd.
+                int total = 0;
+                if (j.contains("args") && j["args"].is_object()) {
+                    total = j["args"].value("total", 0);
+                }
+                TgPlayerActions::SetItemCountCmd::Execute(guid, total);
+            } else if (action == "set_spawn_table") {
+                int map_object_id = 0;
+                int spawn_table_id = 0;
+                if (j.contains("args") && j["args"].is_object()) {
+                    map_object_id  = j["args"].value("map_object_id", 0);
+                    spawn_table_id = j["args"].value("spawn_table_id", 0);
+                }
+                if (map_object_id <= 0 || spawn_table_id <= 0) {
+                    Logger::Log("chat-command",
+                        "[ChatCmd][DLL] set_spawn_table guid=%s: invalid args "
+                        "map_object_id=%d spawn_table_id=%d; dropping\n",
+                        guid.c_str(), map_object_id, spawn_table_id);
+                    SendChatCommandAudit(guid, "set_spawn_table", "ignored",
+                        "invalid args map_object_id=" + std::to_string(map_object_id)
+                        + " spawn_table_id=" + std::to_string(spawn_table_id));
+                    continue;
+                }
+                TgPlayerActions::SetSpawnTableCmd::Execute(guid, map_object_id, spawn_table_id);
             } else if (action == "toggle_broken_suits" || action == "toggle_all_suits") {
                 int mode = -1;
                 if (j.contains("args") && j["args"].is_object()) {

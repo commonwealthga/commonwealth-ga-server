@@ -346,8 +346,14 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 				int      profile_id = sqlite3_column_int  (who, 1);
 				sqlite3_stmt* cnt = nullptr;
 				rc = sqlite3_prepare_v2(db,
-					"SELECT COUNT(*) FROM ga_players_inventory "
-					"WHERE user_id = ? AND (profile_id = 0 OR profile_id = ?)",
+					// Component rows (ga_user_components) ship in the same
+					// SEND_INVENTORY as devices, so they occupy client map
+					// entries and MUST be counted here too — otherwise
+					// IsValid() fails and the equip screen blanks.
+					"SELECT (SELECT COUNT(*) FROM ga_players_inventory "
+					"        WHERE user_id = ?1 AND (profile_id = 0 OR profile_id = ?2)) "
+					"     + (SELECT COUNT(*) FROM ga_user_components "
+					"        WHERE user_id = ?1 AND quantity > 0)",
 					-1, &cnt, nullptr);
 				if (rc == SQLITE_OK && cnt) {
 					sqlite3_bind_int64(cnt, 1, user_id);
@@ -355,8 +361,15 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 					if (sqlite3_step(cnt) == SQLITE_ROW) {
 						const int total = sqlite3_column_int(cnt, 0);
 						((ATgInventoryManager*)Pawn->InvManager)->r_ItemCount = total;
+						// Post-initial writes need the dirty flags or the value
+						// never replicates — see SetItemCount.cpp.
+						((ATgInventoryManager*)Pawn->InvManager)->bNetDirty       = 1;
+						((ATgInventoryManager*)Pawn->InvManager)->bForceNetUpdate = 1;
 						Logger::Log(GetLogChannel(),
 							"equip-save: InvManager->r_ItemCount=%d (pool total, IsValid gate)\n", total);
+						Logger::Log("loot",
+							"[Loot] stamp equip-save: char=%lld r_ItemCount=%d\n",
+							(long long)character_id, total);
 					}
 					sqlite3_finalize(cnt);
 				}

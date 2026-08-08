@@ -4,6 +4,7 @@
 #include <cctype>
 #include <climits>
 #include <cstdio>
+#include <sstream>
 #include <vector>
 
 #include "lib/nlohmann/json.hpp"
@@ -214,6 +215,26 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
+    if (cmd_name == "-setspawntable") {
+        // -setspawntable <map_object_id> <spawn_table_id>
+        out.recognized = true;
+        out.suppress_broadcast = true;
+
+        std::vector<std::string> tokens = SplitWs(rest);
+        if (tokens.size() != 2) return out;
+
+        std::optional<int> mid   = ParseInt(tokens[0]);
+        std::optional<int> table = ParseInt(tokens[1]);
+        if (!mid || *mid <= 0) return out;
+        if (!table || *table <= 0) return out;
+
+        SetSpawnTableArgs args;
+        args.map_object_id  = *mid;
+        args.spawn_table_id = *table;
+        out.set_spawn_table = args;
+        return out;
+    }
+
     if (cmd_name == "-fullheal") {
         // No args — heal the player's pawn to full (DLL gates map + cooldown).
         out.recognized = true;
@@ -249,6 +270,37 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         out.suppress_broadcast = true;
         // No args; trailing junk silently ignored (recognized + suppressed).
         if (rest.empty()) out.reload_queues = true;
+        return out;
+    }
+
+    if (cmd_name == "-components") {
+        out.recognized = true;
+        out.suppress_broadcast = true;
+
+        // Off by default — see kComponentsDebugEnabled. Recognised but not
+        // acted on, so the command is inert without leaking into chat.
+        if (!kComponentsDebugEnabled) return out;
+
+        ParseResult::ComponentsArgs args;
+        if (rest.empty()) {
+            args.op = ParseResult::ComponentsArgs::Op::Report;
+            out.components = args;
+            return out;
+        }
+
+        std::istringstream iss(rest);
+        std::string verb;
+        iss >> verb;
+        for (auto& c : verb) c = (char)tolower((unsigned char)c);
+
+        if (verb == "grant")      args.op = ParseResult::ComponentsArgs::Op::Grant;
+        else if (verb == "take")  args.op = ParseResult::ComponentsArgs::Op::Take;
+        else return out;   // unknown verb -> silent reject
+
+        if (!(iss >> args.item_id) || args.item_id <= 0) return out;
+        if (!(iss >> args.count) || args.count <= 0) args.count = 1;
+
+        out.components = args;
         return out;
     }
 
@@ -515,6 +567,30 @@ void DispatchChangeTeam(ChangeTeamTarget target, const std::string& session_guid
 
     // Shared apply path: DB update + explicit change_team PLAYER_ACTION.
     DispatchTeamMove(instance_id, session_guid, new_tf);
+}
+
+void DispatchSetSpawnTable(const SetSpawnTableArgs& args, const std::string& session_guid) {
+    if (session_guid.empty()) {
+        Logger::Log("chat-command", "[ChatCmd] DispatchSetSpawnTable dropped: empty session_guid\n");
+        return;
+    }
+
+    nlohmann::json payload;
+    payload["type"]         = IpcProtocol::MSG_PLAYER_ACTION;
+    payload["session_guid"] = session_guid;
+    payload["action"]       = "set_spawn_table";
+    payload["args"]         = {
+        {"map_object_id",  args.map_object_id},
+        {"spawn_table_id", args.spawn_table_id},
+    };
+
+    const bool sent = TcpSession::DeliverPlayerAction(session_guid, payload);
+    if (!sent) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=-setspawntable map_object_id=%d spawn_table_id=%d "
+            "outcome=ignored details=dispatch_failed\n",
+            session_guid.c_str(), args.map_object_id, args.spawn_table_id);
+    }
 }
 
 void DispatchDeployTarget(const DeployTargetArgs& args, const std::string& session_guid) {

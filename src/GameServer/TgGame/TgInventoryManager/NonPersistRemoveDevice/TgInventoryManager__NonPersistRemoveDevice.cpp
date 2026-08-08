@@ -73,8 +73,13 @@ void __fastcall TgInventoryManager__NonPersistRemoveDevice::Call(
 	// would race. That trailing handler doesn't run on the consume path, so
 	// decrement explicitly to stay in sync with the m_InventoryMap entry
 	// count.
-	if (InventoryManager->r_ItemCount > 0)
+	if (InventoryManager->r_ItemCount > 0) {
 		InventoryManager->r_ItemCount--;
+		// Post-initial write — needs the dirty flags or it never replicates
+		// and the client keeps its spawn-time count (see SetItemCount.cpp).
+		InventoryManager->bNetDirty       = 1;
+		InventoryManager->bForceNetUpdate = 1;
+	}
 
 	// Tell the control server to push SEND_INVENTORY (state=2) so the
 	// client clears the device-bar slot. Gate on IsABeaconPlacingDevice so

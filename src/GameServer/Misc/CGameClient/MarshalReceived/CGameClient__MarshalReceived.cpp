@@ -273,6 +273,9 @@ uint8_t __fastcall CGameClient__MarshalReceived::Call(void* GameClient, void* ed
 				ev["quest_id"]     = (int)nQuestId;
 				ev["abandon"]      = (action == QuestAction::Abandon);
 				ev["character_id"] = nCharacterId;
+				// Lets the control server refresh the inventory after a turn-in
+				// consumes components / grants reward loot.
+				ev["pawn_id"]      = InstigatorPawn ? (int)InstigatorPawn->r_nPawnId : 0;
 				IpcClient::Send(ev.dump());
 			}
 		}
