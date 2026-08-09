@@ -127,9 +127,7 @@ int main() {
         assert(split[A] == std::make_pair(2, 2));
         double diff = 0.0;
         for (const auto& s : slots) diff += (asn.at(s.guid) == 1) ? s.mmr : -s.mmr;
-        // Greedy pairwise swaps stop at a local minimum; for this fixture the
-        // stable endpoints are 0 or +/-200 (raw placement can reach +/-1000).
-        assert(std::fabs(diff) <= 200.0 + 1e-6);
+        assert(std::fabs(diff) < 1e-6);
         printf("[ok] batch mmr post-pass\n");
     }
 

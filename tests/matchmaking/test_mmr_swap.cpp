@@ -82,4 +82,42 @@ TEST(mmr_swap_seed_diff_steers_join) {
     CHECK(asn.at("weak") == 1);
 }
 
+TEST(mmr_swap_optimal_reaches_global_minimum) {
+    // Greedy stalls at +/-200 on this fixture; optimal reaches ~0.
+    std::vector<Player> ps = {
+        {"m0", 567, 1200.0, true}, {"m1", 567, 1100.0, true},
+        {"m2", 567, 1000.0, true}, {"m3", 567, 900.0, true},
+        {"a0", 680, 1300.0, true}, {"a1", 680, 700.0, true},
+        {"a2", 680, 1000.0, true}, {"a3", 680, 1000.0, true},
+    };
+    std::unordered_map<std::string, int> asn;
+    for (const auto& p : ps) asn[p.guid] = (p.guid[1] < '2') ? 1 : 2;
+
+    MmrSwap::BalanceByMmrOptimal(ps, asn);
+    double s1 = 0.0, s2 = 0.0;
+    int n1 = 0, n2 = 0;
+    for (const auto& p : ps) {
+        if (asn.at(p.guid) == 1) { s1 += p.mmr; ++n1; }
+        else                     { s2 += p.mmr; ++n2; }
+    }
+    const double mean_diff = std::fabs(s1 / n1 - s2 / n2);
+    CHECK(mean_diff < 1e-6);
+}
+
+TEST(mmr_swap_optimal_respects_party_lock) {
+    std::vector<Player> ps = {
+        {"p1", 680, 1500.0, false},
+        {"p2", 680,  500.0, false},
+        {"s1", 680, 1400.0, true},
+        {"s2", 680,  600.0, true},
+    };
+    std::unordered_map<std::string, int> asn =
+        {{"p1", 1}, {"s1", 1}, {"p2", 2}, {"s2", 2}};
+    MmrSwap::BalanceByMmrOptimal(ps, asn);
+    CHECK(asn.at("p1") == 1);
+    CHECK(asn.at("p2") == 2);
+    CHECK(asn.at("s1") == 2);
+    CHECK(asn.at("s2") == 1);
+}
+
 }  // namespace
