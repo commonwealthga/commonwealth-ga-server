@@ -2,6 +2,8 @@
 #include "src/Config/Config.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/IpcClient/IpcClient.hpp"
+#include "src/Shared/IpcProtocol.hpp"
+#include "lib/nlohmann/json.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 #include <cstddef>
@@ -97,6 +99,72 @@ namespace {
 		IpcClient::SendRequestTravel(guid, (uint32_t)row->map_game_id);
 	}
 
+	// Use-spam guard for quest credit, keyed by guid+volume so using two
+	// different volumes back to back still credits both.
+	constexpr uint64_t kQuestUseCooldownMs = 2000;
+	std::map<std::string, uint64_t> g_lastQuestUseMs;
+
+	const ClientConnectionData* ConnectionForController(ATgPlayerController* PC) {
+		if (!PC || !PC->Pawn) return nullptr;
+		for (const auto& kv : GClientConnectionsData) {
+			const ClientConnectionData& cd = kv.second;
+			if (cd.Pawn == (ATgPawn_Character*)PC->Pawn && !cd.bClosed) return &cd;
+		}
+		return nullptr;
+	}
+
+	// Report the Use press so the control server can credit any "Interact with
+	// Volume" (1431) requirement naming this volume — asm_data_set_quest_
+	// requirements.target_ui_volume_id joins on ui_volume_id. Retail routed
+	// Used through the HUD, so on a dedicated server the press reached nothing.
+	//
+	// Reported unconditionally: quest state lives on the control server, so the
+	// DLL cannot know whether a quest wants this volume. Same split as
+	// CheckKillQuestCredit.
+	//
+	// Credited to the USING player alone, not their task force. A kill is
+	// team-wide because TgPawn.uc hands CheckKillQuestCredit the killer's
+	// TaskForce; pressing Use is an individual act at the volume.
+	void ReportVolumeUse(const AmUiVolumeRow* row, ATgOmegaVolume* Volume,
+	                     ATgPlayerController* UsingPlayer) {
+		// m_nOmegaAlertId is the actor-side copy of the same join key; it is the
+		// fallback for a volume whose AM row failed to resolve.
+		const int uiVolumeId = row ? row->ui_volume_id
+		                           : (Volume ? Volume->m_nOmegaAlertId : 0);
+		if (uiVolumeId <= 0) return;
+
+		const ClientConnectionData* cd = ConnectionForController(UsingPlayer);
+		if (cd == nullptr || cd->SessionGuid.empty()) return;
+
+		// pPlayerInfo is the live PlayerRegistry entry; the inline copy can be
+		// stale for a character selected after the connection was recorded.
+		const int64_t characterId = cd->pPlayerInfo
+			? cd->pPlayerInfo->selected_character_id
+			: cd->PlayerInfo.selected_character_id;
+		if (characterId == 0) return;
+
+		const std::string key = cd->SessionGuid + ":" + std::to_string(uiVolumeId);
+		const uint64_t now = GetTickCount64();
+		auto it = g_lastQuestUseMs.find(key);
+		if (it != g_lastQuestUseMs.end() && now - it->second < kQuestUseCooldownMs) {
+			return;  // silent — held Use key
+		}
+		g_lastQuestUseMs[key] = now;
+
+		nlohmann::json ev;
+		ev["type"]         = IpcProtocol::MSG_GAME_EVENT;
+		ev["subtype"]      = "quest_volume_use";
+		ev["instance_id"]  = IpcClient::GetInstanceId();
+		ev["session_guid"] = cd->SessionGuid;
+		ev["character_id"] = characterId;
+		ev["ui_volume_id"] = uiVolumeId;
+		IpcClient::Send(ev.dump());
+
+		Logger::Log("quest",
+			"[OmegaVolume] Use reported: guid=%s ui_volume_id=%d char=%lld\n",
+			cd->SessionGuid.c_str(), uiVolumeId, (long long)characterId);
+	}
+
 	const char* VolumeTypeName(int typeValueId) {
 		switch (typeValueId) {
 			case 1252: return "Help";
@@ -188,6 +256,10 @@ void __fastcall TgOmegaVolume_Used::Call(ATgOmegaVolume* Volume, void* edx,
 	// through the HUD (client-only, and the base ATgHUD slot is a stub), so the
 	// dedicated server has always dropped it on the floor.
 	RequestTravel(row, UsingPlayer);
+
+	// "Interact with Volume" quest requirements (e.g. quest 29 "Hitch a Ride",
+	// requirement 30 → ui_volume_id 211 "Hitch's Truck").
+	ReportVolumeUse(row, Volume, UsingPlayer);
 
 	// Retail body is intact (not a stub) — chain it. Server-side it bails at
 	// its own Cast_TgHUD(myHUD) null check.

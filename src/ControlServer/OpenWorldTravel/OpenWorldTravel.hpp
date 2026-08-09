@@ -24,8 +24,14 @@ public:
 
     // Entry point for MSG_REQUEST_TRAVEL. Safe to call repeatedly for the same
     // player and from several players at once — at most one instance per map
-    // is ever spawned. Silent (logged) on every rejection path; the player
-    // simply stays where they are.
+    // is ever spawned.
+    //
+    // The player stays put on every rejection path. When the rejection is
+    // "we haven't built that destination" — no map_game_info row, not an open
+    // zone, or an incomplete row — they get an "Under construction" alert, so
+    // an unimplemented volume reads as unfinished content rather than a dead
+    // Use key. Infrastructure failures (no spawner, spawn failed) stay silent
+    // and logged: those are server faults, not content gaps.
     static void Request(const std::string& session_guid, uint32_t map_game_id);
 
     // Task force open-world arrivals are placed on. Defenders — these maps have

@@ -17,6 +17,30 @@ namespace {
     // whole point of this path is that it must never spawn twice.
     std::mutex           g_mutex;
     std::set<std::string> g_spawning;   // map names with a spawn in flight
+
+    // Player-scoped alert on the player's CURRENT instance — they haven't gone
+    // anywhere yet, so this lands where they're standing.
+    void SendTravelAlert(const std::string& session_guid, const char* text, float duration) {
+        nlohmann::json action;
+        action["type"]         = IpcProtocol::MSG_PLAYER_ACTION;
+        action["session_guid"] = session_guid;
+        action["action"]       = "alert_text";
+        action["args"] = {
+            {"text",     text},
+            {"priority", 2},     // APT_HIGH
+            {"type",     3},     // ATT_IMPORTANT
+            {"duration", duration},
+        };
+        TcpSession::DeliverPlayerAction(session_guid, action);
+    }
+
+    // Shown when the volume names a destination we can't take the player to.
+    // The open-world zones' own Map Transition volumes point at the quest
+    // instances, which aren't built yet — those have no map_game_info row (or
+    // one that isn't an open zone). Returning silently reads as a dead Use key,
+    // so say what's actually going on.
+    constexpr const char* kUnderConstruction = "Under construction, please come back later.";
+    constexpr float       kUnderConstructionDuration = 6.0f;
 }
 
 void OpenWorldTravel::SetSpawner(SpawnFn fn) {
@@ -35,6 +59,7 @@ void OpenWorldTravel::Request(const std::string& session_guid, uint32_t map_game
         Logger::Log("travel",
             "[OpenWorldTravel] map_game_id=%u has no map_game_info row — no destination (guid=%s)\n",
             map_game_id, session_guid.c_str());
+        SendTravelAlert(session_guid, kUnderConstruction, kUnderConstructionDuration);
         return;
     }
     if (row->gameplay_type_value_id != MapGameInfo::kGameplayTypeOpenZone) {
@@ -42,12 +67,14 @@ void OpenWorldTravel::Request(const std::string& session_guid, uint32_t map_game
             "[OpenWorldTravel] map_game_id=%u ('%s') gameplay_type=%u is not an open zone (%u) — refusing (guid=%s)\n",
             map_game_id, row->map_name.c_str(), row->gameplay_type_value_id,
             MapGameInfo::kGameplayTypeOpenZone, session_guid.c_str());
+        SendTravelAlert(session_guid, kUnderConstruction, kUnderConstructionDuration);
         return;
     }
     if (row->map_name.empty() || row->game_class.empty()) {
         Logger::Log("travel",
             "[OpenWorldTravel] map_game_id=%u has an incomplete row (map_name='%s' game_class='%s')\n",
             map_game_id, row->map_name.c_str(), row->game_class.c_str());
+        SendTravelAlert(session_guid, kUnderConstruction, kUnderConstructionDuration);
         return;
     }
 
@@ -102,17 +129,7 @@ void OpenWorldTravel::Request(const std::string& session_guid, uint32_t map_game
     // takes to load. Tell them so, on their current instance (they're still in
     // it). Player-scoped: DeliverPlayerAction targets one session_guid.
     if (!warmed_up) {
-        nlohmann::json action;
-        action["type"]         = IpcProtocol::MSG_PLAYER_ACTION;
-        action["session_guid"] = session_guid;
-        action["action"]       = "alert_text";
-        action["args"] = {
-            {"text",     "Instance is starting, please wait..."},
-            {"priority", 2},     // APT_HIGH
-            {"type",     3},     // ATT_IMPORTANT
-            {"duration", 10.0f},
-        };
-        TcpSession::DeliverPlayerAction(session_guid, action);
+        SendTravelAlert(session_guid, "Instance is starting, please wait...", 10.0f);
     }
 
     // Poll for READY, then PLAYER_REGISTER + GSC_GO_PLAY. Re-entrant per

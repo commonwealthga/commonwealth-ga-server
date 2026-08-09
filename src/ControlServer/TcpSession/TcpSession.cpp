@@ -14,6 +14,7 @@
 #include "src/ControlServer/SpectatorOverlay/SkillTreeCatalog.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include <set>
+#include <cstdio>
 #include <map>
 #include <array>
 #include <cctype>
@@ -418,6 +419,9 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
 
     if (subtype == "spawn") {
         int pawn_id = j.value("pawn_id", 0);
+        // Remembered so control-server-side tooling (-components) can push
+        // inventory records without waiting for a game event to carry a pawn.
+        if (pawn_id != 0) session->last_pawn_id_ = pawn_id;
         session->item_profile_id_ = j.value("item_profile_id", 0);
         const int64_t character_id = session->selected_character_id_;
         Logger::Log("ipc", "[TcpSession] DeliverGameEvent: spawn pawn_id=%d item_profile_id=%d char=%lld guid=%s\n",
@@ -432,6 +436,16 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         // SendCharacterSkillMarshal RPC (when supported) can trigger another
         // push if the data becomes stale.
         session->send_player_skills_response();
+
+        // Replay persisted quest state once per character. The client's tracker
+        // starts empty on every connect, so without this a finished quest is
+        // re-offered by its giver (and re-accepting it fails). Spawn is the
+        // point we know the client is fully in-world — same reason inventory and
+        // skills go out here.
+        if (character_id != 0 && session->quests_synced_for_character_ != character_id) {
+            session->quests_synced_for_character_ = character_id;
+            session->send_quest_state_sync();
+        }
     }
     else if (subtype == "beacon_pickup") {
         int pawn_id            = j.value("pawn_id", 0);
@@ -675,11 +689,111 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
                 PlayerSessionStore::Quests().Accept(character_id, quest_id);
                 session->send_quest_accept_response(quest_id);
             } else if (status == "active") {
-                PlayerSessionStore::Quests().Complete(character_id, quest_id);
-                session->send_quest_complete_response(quest_id);
+                // Turn-in gate: every requirement must be satisfied. Collect
+                // requirements read component stock — the same source the
+                // client checks — so a player who already farmed the parts
+                // hands in on the first interaction.
+                std::vector<std::string> unmet;
+                if (!Database::AreQuestRequirementsMet(session->user_id_, character_id,
+                                                       quest_id, &unmet)) {
+                    std::string why;
+                    for (const auto& u : unmet) { if (!why.empty()) why += "; "; why += u; }
+                    Logger::Log("quest",
+                        "[TcpSession] quest %d turn-in REFUSED for char=%lld — %s\n",
+                        quest_id, (long long)character_id, why.c_str());
+                } else {
+                    const int pawn_id = j.value("pawn_id", 0);
+
+                    // Spend the Collect components BEFORE completing, so a
+                    // failure to complete can't hand out a free reward. Stacks
+                    // that hit zero are deleted and reported back here.
+                    const auto depleted =
+                        Database::ConsumeQuestRequirementItems(session->user_id_, quest_id);
+
+                    PlayerSessionStore::Quests().Complete(character_id, quest_id);
+                    session->send_quest_complete_response(quest_id);
+
+                    if (pawn_id != 0) {
+                        // Depleted stacks leave the client's map entirely (no
+                        // "0 Units" ghost in the bag list); survivors just get a
+                        // lower INSTANCE_COUNT.
+                        session->send_component_removals(pawn_id, depleted);
+                        session->send_component_refresh(pawn_id);
+                    }
+
+                    // Reward table. Several quests are the ONLY source of a
+                    // component another quest needs (quest 30's table 285 ->
+                    // item 6295, required by quest 28), so the reward roll is
+                    // load-bearing — it feeds the next quest's Collect stock.
+                    session->credit_loot_table(Database::GetQuestRewardLootTableId(quest_id),
+                                               character_id, pawn_id, "quest reward");
+
+                    // Restate r_ItemCount unconditionally. A turn-in can shrink
+                    // the map (removals), grow it (a first-time reward
+                    // component), or both in one go, and credit_loot_table only
+                    // syncs when something actually dropped. Absolute value, so
+                    // a redundant call costs nothing.
+                    if (pawn_id != 0) {
+                        session->sync_item_count(character_id);
+                    }
+                }
             } else {
                 // Already complete -- ignore
                 Logger::Log("ipc", "[TcpSession] DeliverGameEvent: quest already complete, ignored\n");
+            }
+        }
+    }
+    else if (subtype == "quest_kill_credit") {
+        // One bot of `bot_id` died to this player's task force. The DLL sends
+        // one event per player on that task force (retail credits kills
+        // team-wide — TgPawn.uc passes the TaskForce, not the killer).
+        const int64_t character_id = j.value("character_id", (int64_t)0);
+        const int     bot_id       = j.value("bot_id", 0);
+
+        if (character_id == 0 || bot_id <= 0) {
+            Logger::Log("quest",
+                "[TcpSession] quest_kill_credit: bad payload char=%lld bot=%d — ignored\n",
+                (long long)character_id, bot_id);
+        } else {
+            const auto moved = Database::CreditKillQuestRequirements(character_id, bot_id);
+            for (const auto& pr : moved) {
+                session->send_quest_requirement_progress_response(
+                    pr.quest_id, pr.quest_requirement_id, pr.count);
+            }
+            if (!moved.empty()) {
+                Logger::Log("quest",
+                    "[TcpSession] quest_kill_credit char=%lld bot=%d -> %zu requirement(s) updated\n",
+                    (long long)character_id, bot_id, moved.size());
+            }
+
+            // Component drop: roll the dead bot's loot table and grant what
+            // falls out (inventory record + r_ItemCount bump + quest toast).
+            const int pawn_id = j.value("pawn_id", 0);
+            session->credit_loot_table(Database::GetBotLootTableId(bot_id),
+                                       character_id, pawn_id, "bot kill");
+        }
+    }
+    else if (subtype == "quest_volume_use") {
+        // The player pressed Use on an omega volume. The DLL reports every
+        // press without knowing whether a quest wants it — quest state lives
+        // here, same division of labour as quest_kill_credit.
+        const int64_t character_id = j.value("character_id", (int64_t)0);
+        const int     ui_volume_id = j.value("ui_volume_id", 0);
+
+        if (character_id == 0 || ui_volume_id <= 0) {
+            Logger::Log("quest",
+                "[TcpSession] quest_volume_use: bad payload char=%lld volume=%d — ignored\n",
+                (long long)character_id, ui_volume_id);
+        } else {
+            const auto moved = Database::CreditVolumeQuestRequirements(character_id, ui_volume_id);
+            for (const auto& pr : moved) {
+                session->send_quest_requirement_progress_response(
+                    pr.quest_id, pr.quest_requirement_id, pr.count);
+            }
+            if (!moved.empty()) {
+                Logger::Log("quest",
+                    "[TcpSession] quest_volume_use char=%lld volume=%d -> %zu requirement(s) updated\n",
+                    (long long)character_id, ui_volume_id, moved.size());
             }
         }
     }
@@ -3108,13 +3222,32 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 		bag.push_back(row);
 	}
 
-	const size_t equipped_count = devices.size();
-	const size_t bag_count      = bag.size();
-	const size_t total_records  = equipped_count + bag_count;
+	// Crafting components ride the same packet. They MUST be here: the client
+	// computes Collect (1429) quest progress by summing nInstanceCount over its
+	// own inventory map (FUN_10a16310), so a component that isn't a real
+	// inventory record leaves the quest log stuck at 0 forever.
+	//
+	// The matching half is r_ItemCount — the DLL's stamp sites count
+	// ga_user_components too, and live drops restate it via the set_item_count
+	// action. Ship records here without that and IsValid() fails, blanking
+	// every equip slot (reference_equip_screen_is_valid_gate.md).
+	const auto components = Database::GetAllComponents(user_id);
+
+	const size_t equipped_count  = devices.size();
+	const size_t bag_count       = bag.size();
+	const size_t component_count = components.size();
+	const size_t total_records   = equipped_count + bag_count + component_count;
 
 	Logger::Log("tcp",
-		"[TCP] send_inventory_response: charId=%lld pawnId=%d equipped=%zu bag=%zu (bundled into one SEND_INVENTORY)\n",
-		character_id, nPawnId, equipped_count, bag_count);
+		"[TCP] send_inventory_response: charId=%lld pawnId=%d equipped=%zu bag=%zu components=%zu (bundled into one SEND_INVENTORY)\n",
+		character_id, nPawnId, equipped_count, bag_count, component_count);
+
+	// Ledger line on the same channel as every r_ItemCount stamp: this total is
+	// exactly how many entries the client's map should end up with, so a stamp
+	// that disagrees with the nearest preceding line here is the desync.
+	Logger::Log("loot",
+		"[Loot] shipped inventory: char=%lld equipped=%zu bag=%zu components=%zu total=%zu\n",
+		(long long)character_id, equipped_count, bag_count, component_count, total_records);
 
 	if (total_records == 0) return;
 
@@ -3254,7 +3387,46 @@ void TcpSession::send_inventory_response(int nPawnId, int64_t character_id) {
 		}
 	}
 
+	// --- Component block. Same 13-field bag shape; INSTANCE_COUNT carries the
+	// stack size (what the client sums for Collect progress) and the inventory
+	// id is synthesised — components live in ga_user_components, not
+	// ga_players_inventory, so they have no row id to borrow.
+	for (const auto& comp : components) {
+		AppendComponentRecord(response, comp);
+	}
+
 	send_response(response);
+}
+
+// One SEND_INVENTORY record for a component stack. Shared by the full push and
+// the incremental drop update so the two can never drift apart.
+void TcpSession::AppendComponentRecord(std::vector<uint8_t>& response,
+                                       const Database::ComponentRow& comp) {
+	const uint32_t synthetic_inv_id = kComponentInventoryIdBase + (uint32_t)comp.item_id;
+
+	append(response, 0x0D, 0x00);   // 13 fields
+
+	Write4B(response, GA_T::INV_REPLICATION_STATE, 0x1);
+	Write4B(response, GA_T::ITEM_ID, comp.item_id);
+	Write4B(response, GA_T::INVENTORY_ID, synthetic_inv_id);
+	Write4B(response, GA_T::BLUEPRINT_ID, 0);
+	Write4B(response, GA_T::CRAFTED_QUALITY_VALUE_ID, comp.quality_value_id);
+	Write4B(response, GA_T::DURABILITY, 100);
+	WriteDouble(response, GA_T::ACQUIRE_DATETIME, 1700000000.0);
+	WriteString(response, GA_T::BOUND_FLAG, "T");
+	Write4B(response, GA_T::LOCATION_VALUE_ID, 370);   // ON_HAND
+	Write4B(response, GA_T::INSTANCE_COUNT, (uint32_t)comp.quantity);
+	WriteString(response, GA_T::ACTIVE_FLAG, "F");
+	// DEVICE_ID 0 — components have no ATgDevice, so the client's recovery scan
+	// must not try to bind one (same reason cosmetics send 0). It also keeps
+	// them out of the resubmit path that re-resolves the in-hand weapon.
+	Write4B(response, GA_T::DEVICE_ID, 0);
+
+	append(response, GA_T::DATA_SET_INVENTORY_STATE & 0xFF, GA_T::DATA_SET_INVENTORY_STATE >> 8);
+	append(response, 0x01, 0x00);
+		append(response, 0x02, 0x00);
+		Write4B(response, GA_T::INVENTORY_ID, synthetic_inv_id);
+		Write4B(response, GA_T::EFFECT_GROUP_ID, 0);
 }
 
 void TcpSession::send_inventory_clear(int nPawnId, int64_t character_id) {
@@ -3467,6 +3639,381 @@ void TcpSession::send_quest_abandon_response(int nQuestId) {
 		append(response, 0x02, 0x00);  // 2 fields: QUEST_ID + ABANDON_FLAG
 		Write4B(response, GA_T::QUEST_ID, nQuestId);
 		Write1B(response, GA_T::ABANDON_FLAG, 0x01);
+
+	send_response(response);
+}
+
+// Push the authoritative r_ItemCount to the DLL. Absolute, never a delta —
+// see the call site in credit_loot_table.
+//
+// user + class profile come from the CHARACTER ROW, never from session state.
+// send_inventory_response builds its record set from exactly this pair
+// (charInfo->user_id / charInfo->profile_id) and the DLL's three stamp sites
+// read the same pair out of ga_characters — so the count and the records it has
+// to match are the same expression over the same inputs, by construction.
+//
+// This used to read selected_profile_id_, which is set during character
+// create/select and is zero or stale on any session that reached gameplay
+// another way. A wrong profile here does not drift the count by one: the
+// `(profile_id = 0 OR profile_id = ?)` pool term recomputes the WHOLE total,
+// so the first component drop of the session — the first time this function
+// ever runs — replaces a correct r_ItemCount with a badly wrong one and blanks
+// the inventory instantly.
+void TcpSession::sync_item_count(int64_t character_id) {
+	if (session_guid_.empty() || character_id == 0) return;
+
+	const auto charInfo = PlayerSessionStore::GetCharacterById(character_id);
+	if (!charInfo) {
+		Logger::Log("loot",
+			"[Loot] sync_item_count char=%lld: no character row — count NOT pushed\n",
+			(long long)character_id);
+		return;
+	}
+
+	const int total = Database::GetExpectedItemCount(charInfo->user_id,
+	                                                 (int)charInfo->profile_id);
+	if (total <= 0) return;
+
+	nlohmann::json msg;
+	msg["type"]         = IpcProtocol::MSG_PLAYER_ACTION;
+	msg["session_guid"] = session_guid_;
+	msg["action"]       = "set_item_count";
+	msg["args"]         = {{"total", total}};
+	TcpSession::DeliverPlayerAction(session_guid_, msg);
+
+	Logger::Log("loot",
+		"[Loot] sync_item_count guid=%s char=%lld user=%lld profile=%d -> %d\n",
+		session_guid_.c_str(), (long long)character_id,
+		(long long)charInfo->user_id, (int)charInfo->profile_id, total);
+}
+
+// Re-send every component stack at its current quantity. Used after turn-in
+// spends components. Updates existing entries only — a stack that hit zero is
+// gone from the DB and goes out through send_component_removals instead.
+void TcpSession::send_component_refresh(int nPawnId) {
+	if (nPawnId == 0 || user_id_ == 0) return;
+
+	const auto components = Database::GetAllComponents(user_id_);
+	if (components.empty()) return;
+
+	std::vector<uint8_t> response;
+	append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
+	append(response, 0x02, 0x00);   // PAWN_ID + DATA_SET
+	Write4B(response, GA_T::PAWN_ID, nPawnId);
+	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+	append(response, (uint8_t)(components.size() & 0xFF), (uint8_t)(components.size() >> 8));
+	for (const auto& c : components) AppendComponentRecord(response, c);
+	send_response(response);
+}
+
+// Drop depleted component stacks from the client's inventory map.
+//
+// INV_REPLICATION_STATE=2 is the client's real removal path: CGameClient::
+// SendInventory routes it to FUN_10a16190 → FUN_10a160e0, which erases the
+// m_InventoryMap entry. Same record shape send_inventory_clear uses.
+//
+// The map shrinks by one per record, so the caller MUST restate r_ItemCount
+// afterwards or IsValid() starts failing (blank equip screen).
+void TcpSession::send_component_removals(int nPawnId, const std::vector<int>& item_ids) {
+	if (nPawnId == 0 || item_ids.empty()) return;
+
+	std::vector<uint8_t> response;
+	append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
+	append(response, 0x02, 0x00);   // PAWN_ID + DATA_SET
+	Write4B(response, GA_T::PAWN_ID, nPawnId);
+	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+	append(response, (uint8_t)(item_ids.size() & 0xFF), (uint8_t)(item_ids.size() >> 8));
+	for (int item_id : item_ids) {
+		append(response, 0x02, 0x00);  // 2 fields per record
+		Write4B(response, GA_T::INV_REPLICATION_STATE, 0x2);  // delete
+		Write4B(response, GA_T::INVENTORY_ID,
+			kComponentInventoryIdBase + (uint32_t)item_id);
+	}
+	send_response(response);
+
+	Logger::Log("loot", "[Loot] component removals: pawnId=%d dropped %zu depleted stack(s)\n",
+		nPawnId, item_ids.size());
+}
+
+// Roll a loot table and hand the player whatever components drop.
+//
+// Three things have to happen together, and all three were needed before a
+// Collect quest would actually track:
+//
+//   1. persist the stock  (ga_user_components — per USER, shared by the
+//      account's characters),
+//   2. push a SEND_INVENTORY record so the component exists in the CLIENT's
+//      inventory map. The client computes Collect (1429) progress itself, by
+//      summing nInstanceCount over that map (FUN_10a16310 via FUN_109ac070) —
+//      it ignores the COUNT in a quest progress packet for this type. No
+//      record, no progress, ever.
+//   3. grow r_ItemCount when the drop creates a NEW map entry, or
+//      ATgInventoryManager::IsValid() fails and the equip screen goes blank.
+//      A drop that only grows an existing stack must NOT bump — the entry is
+//      already there and only nInstanceCount changes.
+//
+// No quest progress packet is sent for a component: the client notices the
+// inventory record on its own and raises the "N of M" notice itself. Pushing one
+// too gave two toasts per drop.
+//
+// Components no quest wants are still granted — they are real stock, and a later
+// quest may ask for them. Non-component drops are rolled and discarded inside
+// RollLootTableComponents so the odds stay faithful to the table.
+void TcpSession::credit_loot_table(int loot_table_id, int64_t character_id, int pawn_id,
+                                   const char* reason) {
+	if (loot_table_id <= 0 || character_id == 0) return;
+
+	// Stock is credited to the character's OWNING account, resolved from the
+	// character row — the same source sync_item_count and send_inventory_response
+	// use. Session state is not consulted anywhere on this path.
+	const auto charInfo = PlayerSessionStore::GetCharacterById(character_id);
+	if (!charInfo) return;
+	const int64_t owner_user_id = charInfo->user_id;
+	if (owner_user_id == 0) return;
+
+	const auto dropped = Database::RollLootTableComponents(loot_table_id);
+	if (dropped.empty()) return;
+
+	// Roll first, but do NOT persist until we know the client can be told. A
+	// grant the client never hears about leaves the DB ahead of its map, and the
+	// next r_ItemCount stamp then counts a row that has no map entry — blank
+	// equip screen with no event to trace it back to.
+	if (pawn_id == 0) {
+		Logger::Log("loot",
+			"[Loot] %s table=%d char=%lld: %zu component(s) rolled but no pawn — "
+			"drop DISCARDED (not persisted) so the DB can't lead the client\n",
+			reason, loot_table_id, (long long)character_id, dropped.size());
+		return;
+	}
+
+	const auto granted = Database::GrantComponents(owner_user_id, dropped);
+	if (granted.empty()) return;
+
+	// 2 — one incremental SEND_INVENTORY for the changed stacks. Never a
+	// clear+rebuild: that re-resolves the in-hand device and drops the player
+	// to melee mid-combat.
+	{
+		std::vector<uint8_t> response;
+		append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
+		append(response, 0x02, 0x00);   // PAWN_ID + DATA_SET
+		Write4B(response, GA_T::PAWN_ID, pawn_id);
+		append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+		append(response, (uint8_t)(granted.size() & 0xFF), (uint8_t)(granted.size() >> 8));
+		for (const auto& g : granted) {
+			AppendComponentRecord(response,
+				Database::ComponentRow{ g.item_id, g.new_total, g.quality_value_id });
+		}
+		send_response(response);
+	}
+
+	// 3 — restate r_ItemCount as an ABSOLUTE total rather than nudging it by a
+	// delta. A delta only has to be missed or double-applied once (a drop with
+	// no pawn, a dropped IPC, two grants in one frame) for the count to drift
+	// permanently and blank the equip screen. The total is recomputed from the
+	// same expression the DLL's spawn / re-equip stamps use, so every send is
+	// self-correcting.
+	sync_item_count(character_id);
+
+	// No quest progress packet here. The client raises its own "N of M" notice
+	// off the inventory record above — pushing one as well produced two toasts
+	// per drop. Kill (1428) credit still pushes its own, because nothing on the
+	// client observes a kill.
+	Logger::Log("loot",
+		"[Loot] %s table=%d char=%lld -> %zu component stack(s) updated\n",
+		reason, loot_table_id, (long long)character_id, granted.size());
+}
+
+// -components grant/take. Deliberately reuses the production helpers rather
+// than reimplementing the wire format, so what this exercises is exactly what a
+// drop / turn-in does.
+std::string TcpSession::DeliverComponentDebug(const std::string& session_guid,
+                                              int op_take, int item_id, int count) {
+    std::shared_ptr<TcpSession> session;
+    {
+        std::lock_guard<std::mutex> lock(sessions_mutex_);
+        auto it = g_sessions_.find(session_guid);
+        if (it != g_sessions_.end()) {
+            session = it->second.lock();
+            if (!session) g_sessions_.erase(it);
+        }
+    }
+    if (!session) return "components: no active game session";
+
+    const int64_t character_id = session->selected_character_id_;
+    const int     pawn_id      = session->last_pawn_id_;
+    if (character_id == 0) return "components: no character selected";
+    if (pawn_id == 0)      return "components: no spawned pawn yet";
+
+    const auto charInfo = PlayerSessionStore::GetCharacterById(character_id);
+    if (!charInfo) return "components: no character row";
+    const int64_t user_id = charInfo->user_id;
+
+    const int before = Database::GetComponentCount(user_id, item_id);
+
+    if (!op_take) {
+        const auto granted = Database::GrantComponents(user_id, {{item_id, count}});
+        if (granted.empty()) return "components: grant failed";
+
+        std::vector<uint8_t> response;
+        session->append(response, GA_U::SEND_INVENTORY & 0xFF, GA_U::SEND_INVENTORY >> 8);
+        session->append(response, 0x02, 0x00);
+        session->Write4B(response, GA_T::PAWN_ID, pawn_id);
+        session->append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+        session->append(response, 0x01, 0x00);
+        session->AppendComponentRecord(response,
+            Database::ComponentRow{ granted[0].item_id, granted[0].new_total,
+                                    granted[0].quality_value_id });
+        session->send_response(response);
+        session->sync_item_count(character_id);
+
+        char msg[192];
+        snprintf(msg, sizeof(msg),
+            "components: item %d %d -> %d (%s map entry)",
+            item_id, before, granted[0].new_total,
+            granted[0].new_row ? "NEW" : "existing");
+        return msg;
+    }
+
+    // take
+    if (before <= 0) return "components: you hold none of that item";
+    const int removed = Database::TakeComponents(user_id, item_id, count);
+    const int after   = Database::GetComponentCount(user_id, item_id);
+
+    if (after <= 0) {
+        // Stack emptied -> the entry must leave the client's map. This is the
+        // exact path a turn-in takes, and the one the desync tracks.
+        session->send_component_removals(pawn_id, { item_id });
+    } else {
+        session->send_component_refresh(pawn_id);
+    }
+    session->sync_item_count(character_id);
+
+    char msg[192];
+    snprintf(msg, sizeof(msg),
+        "components: item %d %d -> %d (took %d, %s)",
+        item_id, before, after, removed,
+        after <= 0 ? "STATE=2 removal sent" : "count updated");
+    return msg;
+}
+
+// Replay the character's persisted quest state to a freshly-connected client.
+//
+// Nothing else does this: the control server never answers GET_ALL_QUESTS and
+// friends (the client reads the quest CATALOG from its own asm.dat), so without
+// this push the client's tracker starts empty every login and quest givers
+// re-offer quests the character already finished.
+//
+// Read off LoadQuests @ 0x109ad570:
+//   - A quest with a NON-ZERO COMPLETED_DATETIME goes into the completed map;
+//     that map is what stops a giver re-offering it.
+//   - A quest with COMPLETED_DATETIME absent/zero gets an entry in the accepted
+//     map — mere presence marks it accepted, ACCEPT_FLAG only drives the toast.
+//   - ACCEPT_FLAG / COMPLETE_FLAG / ABANDON_FLAG are what trigger the
+//     accept/complete popups and the outbound echo marshal at the end of the
+//     handler, so a silent state replay must send NONE of them.
+//   - Requirement counters replay through the nested DATA_SET_QUEST_REQUIREMENTS
+//     array; PROGRESS is omitted so the counts are stored without firing the
+//     "N of M" toast for every requirement at login.
+//
+// ONE PACKET PER QUEST, deliberately: LoadQuests initialises its
+// COMPLETED_DATETIME / timeframe locals ONCE before the entry loop, not per
+// entry. If a completed quest and an active quest shared a packet and the
+// active entry simply omitted COMPLETED_DATETIME, the stale value from the
+// previous entry could still be live and the active quest would be read as
+// completed. Separate packets make that impossible regardless of how the
+// marshal getters behave on a missing tag.
+void TcpSession::send_quest_state_sync() {
+	if (selected_character_id_ == 0) return;
+
+	const auto states = Database::GetCharacterQuestStates(selected_character_id_);
+	if (states.empty()) {
+		Logger::Log("quest", "[TCP] quest state sync: char=%lld has no quests\n",
+			(long long)selected_character_id_);
+		return;
+	}
+
+	int completed = 0, active = 0;
+
+	for (const auto& s : states) {
+		std::vector<uint8_t> response;
+		append(response, GA_U::QUEST_UPDATE & 0xFF, GA_U::QUEST_UPDATE >> 8);
+		append(response, 0x01, 0x00);  // 1 top-level item: DATA_SET_QUESTS
+
+		append(response, GA_T::DATA_SET_QUESTS & 0xFF, GA_T::DATA_SET_QUESTS >> 8);
+		append(response, 0x01, 0x00);  // 1 quest entry
+
+		if (s.status == "complete") {
+			// COMPLETED_DATETIME must be non-zero — it is the discriminator.
+			// Fall back to "now" for legacy rows with a null completed_at,
+			// otherwise the client reads the quest as still active.
+			uint64_t ts = (uint64_t)s.completed_at;
+			if (ts == 0) {
+				ts = static_cast<uint64_t>(
+					std::chrono::duration_cast<std::chrono::seconds>(
+						std::chrono::system_clock::now().time_since_epoch()).count());
+			}
+
+			append(response, 0x02, 0x00);  // 2 fields: QUEST_ID + COMPLETED_DATETIME
+			Write4B(response, GA_T::QUEST_ID, s.quest_id);
+			append(response, GA_T::COMPLETED_DATETIME & 0xFF, GA_T::COMPLETED_DATETIME >> 8);
+			for (int i = 0; i < 8; i++) append(response, static_cast<uint8_t>((ts >> (i * 8)) & 0xFF));
+			completed++;
+		} else {
+			const auto counts = Database::GetQuestRequirementCounts(
+				user_id_, selected_character_id_, s.quest_id);
+
+			if (counts.empty()) {
+				append(response, 0x01, 0x00);  // QUEST_ID only
+				Write4B(response, GA_T::QUEST_ID, s.quest_id);
+			} else {
+				append(response, 0x02, 0x00);  // QUEST_ID + requirement array
+				Write4B(response, GA_T::QUEST_ID, s.quest_id);
+
+				append(response, GA_T::DATA_SET_QUEST_REQUIREMENTS & 0xFF,
+				                 GA_T::DATA_SET_QUEST_REQUIREMENTS >> 8);
+				append(response, (uint8_t)(counts.size() & 0xFF), (uint8_t)(counts.size() >> 8));
+				for (const auto& c : counts) {
+					append(response, 0x02, 0x00);  // 2 fields
+					Write4B(response, GA_T::QUEST_REQUIREMENT_ID, c.first);
+					Write4B(response, GA_T::COUNT, c.second);
+				}
+			}
+			active++;
+		}
+
+		send_response(response);
+	}
+
+	Logger::Log("quest",
+		"[TCP] quest state sync: char=%lld replayed %d completed + %d active quest(s)\n",
+		(long long)selected_character_id_, completed, active);
+}
+
+// Per-requirement progress update. Shape taken from the client's QUEST_UPDATE
+// handler (LoadQuests @ 0x109ad570):
+//   - QUEST_ID identifies the tracked quest (created on demand if missing).
+//   - QUEST_REQUIREMENT_ID + COUNT store the ABSOLUTE new count (the handler
+//     assigns, it does not accumulate).
+//   - PROGRESS is presence-gated: without it the count is stored silently and
+//     neither the on-screen "N of M" nor the quest-log entry refreshes.
+//   - COMPLETED_DATETIME must be ABSENT — any non-zero value routes the entry
+//     into the quest-finished branch instead of the progress branch.
+// The required total ("of 10") already lives on the client from the static
+// GET_QUEST_REQUIREMENTS catalog, so only the current count travels here.
+void TcpSession::send_quest_requirement_progress_response(int nQuestId, int nRequirementId,
+                                                          int nCount) {
+	std::vector<uint8_t> response;
+
+	append(response, GA_U::QUEST_UPDATE & 0xFF, GA_U::QUEST_UPDATE >> 8);
+	append(response, 0x01, 0x00);  // 1 top-level item: DATA_SET_QUESTS
+
+	append(response, GA_T::DATA_SET_QUESTS & 0xFF, GA_T::DATA_SET_QUESTS >> 8);
+	append(response, 0x01, 0x00);  // 1 quest entry
+		append(response, 0x04, 0x00);  // 4 fields
+		Write4B(response, GA_T::QUEST_ID, nQuestId);
+		Write4B(response, GA_T::QUEST_REQUIREMENT_ID, nRequirementId);
+		Write4B(response, GA_T::COUNT, nCount);
+		Write4B(response, GA_T::PROGRESS, nCount);
 
 	send_response(response);
 }

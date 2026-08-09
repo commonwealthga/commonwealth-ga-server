@@ -171,6 +171,10 @@ private:
     int64_t  user_id_               = 0;
     int64_t  selected_character_id_ = 0;
     uint32_t selected_profile_id_   = 0;
+    // Last pawn this session spawned. Only for control-server-side tooling that
+    // needs somewhere to send inventory records (-components); gameplay paths
+    // take pawn_id from the event that triggered them.
+    int      last_pawn_id_          = 0;
     // ATgPawn_Character::r_nItemProfileId — required per-row key in the
     // skills response packet (FUN_1141f750 matches rows by this). Surfaced
     // from game server via spawn/skill_save IPC; default 0 until known.
@@ -680,6 +684,52 @@ private:
     void send_quest_accept_response(int nQuestId);
     void send_quest_complete_response(int nQuestId);
     void send_quest_abandon_response(int nQuestId);
+    // Per-requirement progress ("3 of 10"). nCount is the ABSOLUTE new count.
+    void send_quest_requirement_progress_response(int nQuestId, int nRequirementId, int nCount);
+    // Roll a loot table, grant the components that drop, push the inventory
+    // record + r_ItemCount bump + quest progress. See the definition for why
+    // all three are required.
+    void credit_loot_table(int loot_table_id, int64_t character_id, int pawn_id,
+                           const char* reason);
+    // Re-send every surviving component stack at its current quantity (after a
+    // turn-in spends some). Updates existing entries only — depleted stacks go
+    // out through send_component_removals instead.
+    void send_component_refresh(int nPawnId);
+    // STATE=2 delete records for stacks that hit zero. Shrinks the client's
+    // inventory map, so r_ItemCount must be restated after.
+    void send_component_removals(int nPawnId, const std::vector<int>& item_ids);
+    // Restate ATgInventoryManager::r_ItemCount as an absolute total. Deltas
+    // drift; this is self-correcting. Takes character_id because user + class
+    // profile MUST come from the character row — the same pair
+    // send_inventory_response and the DLL's stamp sites use.
+    void sync_item_count(int64_t character_id);
+
+public:
+    // -components grant/take test hook. Drives one component stack through the
+    // SAME wire paths a loot drop and a quest turn-in use — STATE=1 record for
+    // a grant, STATE=2 removal when a take empties the stack — then restates
+    // r_ItemCount. Exists so the map-shrink path can be exercised repeatedly
+    // without spending a one-shot quest. Returns a one-line result for chat.
+    static std::string DeliverComponentDebug(const std::string& session_guid,
+                                             int op_take, int item_id, int count);
+private:
+    // One SEND_INVENTORY record for a component stack (shared by the full push
+    // and the incremental drop update). Non-static: the append/Write* marshal
+    // helpers it uses are instance members.
+    void AppendComponentRecord(std::vector<uint8_t>& response,
+                               const Database::ComponentRow& comp);
+
+    // Components are per-user and stackable, so they have no ga_players_inventory
+    // row to borrow an inventory id from. Synthetic ids start here — far above
+    // any autoincrement row id that table will ever reach.
+    static constexpr uint32_t kComponentInventoryIdBase = 0x40000000u;
+    // Replay persisted quest state (completed + active + counters) to a client
+    // that just entered the world. Silent — no accept/complete popups.
+    void send_quest_state_sync();
+    // Character whose quest state has already been replayed this session; 0 =
+    // none yet. Guards the once-per-character push in the spawn event.
+    int64_t quests_synced_for_character_ = 0;
+
 
     void send_character_inventory_response(int nPawnId);
 

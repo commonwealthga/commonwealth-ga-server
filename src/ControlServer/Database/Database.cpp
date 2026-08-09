@@ -6,6 +6,11 @@
 #include <map>
 #include <atomic>
 #include <ctime>
+#include <algorithm>
+#include <chrono>
+#include <random>
+#include <utility>
+#include <set>
 
 // Bumped on every ga_friends mutation; starts at 1 so a fresh ChatSession
 // cache (epoch 0) always loads on first use.
@@ -2770,6 +2775,565 @@ void Database::AbandonQuest(int64_t character_id, int quest_id) {
 	sqlite3_step(stmt);
 	sqlite3_finalize(stmt);
 	Logger::Log("db", "[Quest] Abandoned quest %d for character %lld\n", quest_id, character_id);
+}
+
+// Kill (1428) and Interact with Volume (1431) both keep their progress in
+// ga_character_quest_progress and differ only in which target column of
+// asm_data_set_quest_requirements the event matches on. One body, two entry
+// points — so a fix to the counter logic can't reach only half of them.
+//
+// `target_column` is a fixed literal chosen by the two callers below, never
+// anything that came off the wire.
+static std::vector<Database::QuestProgress> CreditStoredRequirements(
+		int64_t character_id, int requirement_type, const char* target_column,
+		int target_id, const char* label) {
+	std::vector<Database::QuestProgress> moved;
+	if (character_id <= 0 || target_id <= 0) return moved;
+
+	sqlite3* db = Database::GetConnection();
+	if (!db) return moved;
+
+	// Candidate requirements: matching type + target, on a quest this character
+	// has ACTIVE, and not already satisfied. The LEFT JOIN supplies 0 for
+	// requirements with no counter row yet.
+	const std::string sql =
+		"SELECT r.quest_id, r.quest_requirement_id, r.count, "
+		"       COALESCE(p.count, 0) "
+		"FROM asm_data_set_quest_requirements r "
+		"JOIN ga_character_quests q "
+		"  ON q.quest_id = r.quest_id AND q.character_id = ? AND q.status = 'active' "
+		"LEFT JOIN ga_character_quest_progress p "
+		"  ON p.character_id = q.character_id "
+		" AND p.quest_requirement_id = r.quest_requirement_id "
+		"WHERE r.requirement_type_value_id = " + std::to_string(requirement_type) +
+		"  AND r." + target_column + " = ? "
+		"  AND COALESCE(p.count, 0) < r.count";
+
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[Quest] Credit%s prepare failed: %s\n", label, sqlite3_errmsg(db));
+		return moved;
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+	sqlite3_bind_int(stmt, 2, target_id);
+
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		Database::QuestProgress pr;
+		pr.quest_id             = sqlite3_column_int(stmt, 0);
+		pr.quest_requirement_id = sqlite3_column_int(stmt, 1);
+		pr.required             = sqlite3_column_int(stmt, 2);
+		const int current       = sqlite3_column_int(stmt, 3);
+
+		pr.count = current + 1;
+		if (pr.required > 0 && pr.count > pr.required) pr.count = pr.required;
+		pr.completed = (pr.required > 0 && pr.count >= pr.required);
+		moved.push_back(pr);
+	}
+	sqlite3_finalize(stmt);
+
+	for (const auto& pr : moved) {
+		sqlite3_stmt* up = nullptr;
+		rc = sqlite3_prepare_v2(db,
+			"INSERT INTO ga_character_quest_progress "
+			"  (character_id, quest_id, quest_requirement_id, count, updated_at) "
+			"VALUES (?, ?, ?, ?, strftime('%s','now')) "
+			"ON CONFLICT(character_id, quest_requirement_id) DO UPDATE SET "
+			"  count = excluded.count, updated_at = excluded.updated_at",
+			-1, &up, nullptr);
+		if (rc != SQLITE_OK || !up) {
+			Logger::Log("db", "[Quest] Credit%s upsert prepare failed: %s\n",
+				label, sqlite3_errmsg(db));
+			continue;
+		}
+		sqlite3_bind_int64(up, 1, character_id);
+		sqlite3_bind_int(up, 2, pr.quest_id);
+		sqlite3_bind_int(up, 3, pr.quest_requirement_id);
+		sqlite3_bind_int(up, 4, pr.count);
+		sqlite3_step(up);
+		sqlite3_finalize(up);
+
+		Logger::Log("quest",
+			"[Quest] %s credit char=%lld target=%d quest=%d req=%d -> %d/%d%s\n",
+			label, (long long)character_id, target_id, pr.quest_id,
+			pr.quest_requirement_id, pr.count, pr.required,
+			pr.completed ? " (requirement complete)" : "");
+	}
+
+	return moved;
+}
+
+std::vector<Database::QuestProgress> Database::CreditKillQuestRequirements(int64_t character_id,
+                                                                          int bot_id) {
+	return CreditStoredRequirements(character_id, 1428, "target_bot_id", bot_id, "Kill");
+}
+
+std::vector<Database::QuestProgress> Database::CreditVolumeQuestRequirements(int64_t character_id,
+                                                                            int ui_volume_id) {
+	return CreditStoredRequirements(character_id, 1431, "target_ui_volume_id", ui_volume_id,
+	                                "Volume");
+}
+
+// ===========================================================================
+// Loot rolls + quest requirement evaluation.
+// Components are never real items — a drop is credited straight onto the
+// Collect requirement that wanted it. See Database.hpp for the rationale.
+// ===========================================================================
+
+static int LookupIntColumn(const char* sql, int key) {
+	sqlite3* db = Database::GetConnection();
+	if (!db) return 0;
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK || !stmt) return 0;
+	sqlite3_bind_int(stmt, 1, key);
+	int value = 0;
+	if (sqlite3_step(stmt) == SQLITE_ROW) value = sqlite3_column_int(stmt, 0);
+	sqlite3_finalize(stmt);
+	return value;
+}
+
+int Database::GetQuestRewardLootTableId(int quest_id) {
+	if (quest_id <= 0) return 0;
+	return LookupIntColumn(
+		"SELECT COALESCE(loot_table_id, 0) FROM asm_data_set_quests WHERE quest_id = ?", quest_id);
+}
+
+int Database::GetBotLootTableId(int bot_id) {
+	if (bot_id <= 0) return 0;
+	return LookupIntColumn(
+		"SELECT COALESCE(loot_table_id, 0) FROM asm_data_set_bots WHERE bot_id = ?", bot_id);
+}
+
+namespace {
+
+// Private RNG for drop rolls. Not CRT rand().
+std::mt19937& LootRng() {
+	static std::mt19937 gen(
+		static_cast<unsigned>(std::chrono::high_resolution_clock::now().time_since_epoch().count()));
+	return gen;
+}
+float Roll100() { return std::uniform_real_distribution<float>(0.0f, 100.0f)(LootRng()); }
+
+constexpr int kMaxLootDepth = 4;
+
+void RollLootInto(sqlite3* db, int loot_table_id, int depth,
+                  std::map<int, int>& out, std::set<int>& visited) {
+	if (loot_table_id <= 0 || depth > kMaxLootDepth) return;
+	if (!visited.insert(loot_table_id).second) return;
+
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT li.item_id, li.sub_loot_table_id, li.quantity, li.drop_chance, "
+		"       COALESCE(i.item_type_value_id, 0) "
+		"FROM asm_data_set_loot_table_items li "
+		"LEFT JOIN asm_data_set_items i ON i.item_id = li.item_id "
+		"WHERE li.loot_table_id = ? ORDER BY li.sort_order",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("loot", "[Loot] roll prepare failed (table=%d): %s\n",
+			loot_table_id, sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int(stmt, 1, loot_table_id);
+
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		const int   itemId   = sqlite3_column_int(stmt, 0);
+		const int   subTable = sqlite3_column_int(stmt, 1);
+		const int   quantity = sqlite3_column_int(stmt, 2);
+		const float chance   = static_cast<float>(sqlite3_column_double(stmt, 3));
+		const int   itemType = sqlite3_column_int(stmt, 4);
+
+		if (chance < 100.0f && Roll100() >= chance) continue;
+		if (subTable > 0) { RollLootInto(db, subTable, depth + 1, out, visited); continue; }
+
+		// Only components matter — nothing else has anywhere to go. Blueprints,
+		// appearance items and consumables are rolled (so the odds stay
+		// faithful) and then discarded.
+		if (itemId <= 0 || itemType != 1171) continue;
+		out[itemId] += (quantity > 0 ? quantity : 1);
+	}
+	sqlite3_finalize(stmt);
+}
+
+}  // namespace
+
+std::map<int, int> Database::RollLootTableComponents(int loot_table_id) {
+	std::map<int, int> out;
+	sqlite3* db = GetConnection();
+	if (!db || loot_table_id <= 0) return out;
+	std::set<int> visited;
+	RollLootInto(db, loot_table_id, 0, out, visited);
+	return out;
+}
+
+std::vector<Database::ComponentGrant> Database::GrantComponents(
+		int64_t user_id, const std::map<int, int>& items) {
+	std::vector<ComponentGrant> granted;
+	if (user_id <= 0 || items.empty()) return granted;
+	sqlite3* db = GetConnection();
+	if (!db) return granted;
+
+	for (const auto& kv : items) {
+		const int item_id = kv.first;
+		const int qty     = kv.second > 0 ? kv.second : 1;
+		if (item_id <= 0) continue;
+
+		ComponentGrant g;
+		g.item_id  = item_id;
+		g.quantity = qty;
+
+		// A live row means the client already has a map entry for this stack, so
+		// the grant only changes INSTANCE_COUNT. No live row means a NEW entry,
+		// and r_ItemCount has to grow by one. Mirrors GetAllComponents' filter —
+		// the two must agree or the count drifts.
+		bool exists = false;
+		{
+			sqlite3_stmt* q = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT 1 FROM ga_user_components "
+					"WHERE user_id = ? AND item_id = ? AND quantity > 0",
+					-1, &q, nullptr) == SQLITE_OK && q) {
+				sqlite3_bind_int64(q, 1, user_id);
+				sqlite3_bind_int(q, 2, item_id);
+				exists = (sqlite3_step(q) == SQLITE_ROW);
+				sqlite3_finalize(q);
+			}
+		}
+		g.new_row = !exists;
+
+		sqlite3_stmt* up = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"INSERT INTO ga_user_components (user_id, item_id, quantity, updated_at) "
+				"VALUES (?, ?, ?, strftime('%s','now')) "
+				"ON CONFLICT(user_id, item_id) DO UPDATE SET "
+				"  quantity = quantity + excluded.quantity, updated_at = excluded.updated_at",
+				-1, &up, nullptr) != SQLITE_OK || !up) {
+			continue;
+		}
+		sqlite3_bind_int64(up, 1, user_id);
+		sqlite3_bind_int(up, 2, item_id);
+		sqlite3_bind_int(up, 3, qty);
+		sqlite3_step(up);
+		sqlite3_finalize(up);
+
+		g.new_total = GetComponentCount(user_id, item_id);
+		g.quality_value_id = LookupIntColumn(
+			"SELECT COALESCE(quality_value_id, 0) FROM asm_data_set_items WHERE item_id = ?",
+			item_id);
+		granted.push_back(g);
+
+		Logger::Log("loot", "[Loot] user=%lld component %d +%d -> %d%s\n",
+			(long long)user_id, item_id, qty, g.new_total,
+			g.new_row ? " (new inventory row)" : "");
+	}
+	return granted;
+}
+
+int Database::GetExpectedItemCount(int64_t user_id, int profile_id) {
+	if (user_id <= 0) return 0;
+	sqlite3* db = GetConnection();
+	if (!db) return 0;
+
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT (SELECT COUNT(*) FROM ga_players_inventory "
+			"        WHERE user_id = ?1 AND (profile_id = 0 OR profile_id = ?2)) "
+			"     + (SELECT COUNT(*) FROM ga_user_components "
+			"        WHERE user_id = ?1 AND quantity > 0)",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return 0;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_int(stmt, 2, profile_id);
+	int total = 0;
+	if (sqlite3_step(stmt) == SQLITE_ROW) total = sqlite3_column_int(stmt, 0);
+	sqlite3_finalize(stmt);
+	return total;
+}
+
+int Database::GetComponentCount(int64_t user_id, int item_id) {
+	if (user_id <= 0 || item_id <= 0) return 0;
+	sqlite3* db = GetConnection();
+	if (!db) return 0;
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT quantity FROM ga_user_components WHERE user_id = ? AND item_id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return 0;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	sqlite3_bind_int(stmt, 2, item_id);
+	int qty = 0;
+	if (sqlite3_step(stmt) == SQLITE_ROW) qty = sqlite3_column_int(stmt, 0);
+	sqlite3_finalize(stmt);
+	return qty;
+}
+
+std::vector<Database::ComponentRow> Database::GetAllComponents(int64_t user_id) {
+	std::vector<ComponentRow> rows;
+	if (user_id <= 0) return rows;
+	sqlite3* db = GetConnection();
+	if (!db) return rows;
+
+	// Depleted stacks are deleted, not kept at zero — a `0 Units` row in the
+	// player's bag list is not a thing retail ever showed. The filter also
+	// covers legacy rows predating migration v165.
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT c.item_id, c.quantity, COALESCE(i.quality_value_id, 0) "
+			"FROM ga_user_components c "
+			"LEFT JOIN asm_data_set_items i ON i.item_id = c.item_id "
+			"WHERE c.user_id = ? AND c.quantity > 0 ORDER BY c.item_id",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return rows;
+	}
+	sqlite3_bind_int64(stmt, 1, user_id);
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		ComponentRow r;
+		r.item_id          = sqlite3_column_int(stmt, 0);
+		r.quantity         = sqlite3_column_int(stmt, 1);
+		r.quality_value_id = sqlite3_column_int(stmt, 2);
+		rows.push_back(r);
+	}
+	sqlite3_finalize(stmt);
+	return rows;
+}
+
+std::vector<int> Database::ConsumeQuestRequirementItems(int64_t user_id, int quest_id) {
+	std::vector<int> removed;
+	if (user_id <= 0) return removed;
+	sqlite3* db = GetConnection();
+	if (!db) return removed;
+
+	for (const auto& r : GetQuestRequirements(quest_id)) {
+		if (r.requirement_type_value_id != 1429 || r.target_item_id <= 0) continue;
+		const int need = r.count > 0 ? r.count : 1;
+		if (GetComponentCount(user_id, r.target_item_id) <= 0) continue;  // not a component we hold
+
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"UPDATE ga_user_components SET quantity = MAX(0, quantity - ?), "
+				"       updated_at = strftime('%s','now') "
+				"WHERE user_id = ? AND item_id = ?",
+				-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+			continue;
+		}
+		sqlite3_bind_int(stmt, 1, need);
+		sqlite3_bind_int64(stmt, 2, user_id);
+		sqlite3_bind_int(stmt, 3, r.target_item_id);
+		sqlite3_step(stmt);
+		sqlite3_finalize(stmt);
+
+		const int left = GetComponentCount(user_id, r.target_item_id);
+		Logger::Log("loot", "[Loot] turn-in quest=%d spent item=%d x%d -> %d left\n",
+			quest_id, r.target_item_id, need, left);
+
+		// Depleted -> the stack stops existing. The caller pushes a STATE=2
+		// record for it and restates r_ItemCount.
+		if (left <= 0) {
+			sqlite3_stmt* del = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"DELETE FROM ga_user_components WHERE user_id = ? AND item_id = ?",
+					-1, &del, nullptr) == SQLITE_OK && del) {
+				sqlite3_bind_int64(del, 1, user_id);
+				sqlite3_bind_int(del, 2, r.target_item_id);
+				sqlite3_step(del);
+				sqlite3_finalize(del);
+				removed.push_back(r.target_item_id);
+				Logger::Log("loot", "[Loot] turn-in quest=%d component %d depleted — row removed\n",
+					quest_id, r.target_item_id);
+			}
+		}
+	}
+	return removed;
+}
+
+int Database::TakeComponents(int64_t user_id, int item_id, int count) {
+	if (user_id <= 0 || item_id <= 0 || count <= 0) return 0;
+	sqlite3* db = GetConnection();
+	if (!db) return 0;
+
+	const int have = GetComponentCount(user_id, item_id);
+	if (have <= 0) return 0;
+	const int take = have < count ? have : count;
+
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"UPDATE ga_user_components SET quantity = MAX(0, quantity - ?), "
+			"       updated_at = strftime('%s','now') "
+			"WHERE user_id = ? AND item_id = ?",
+			-1, &stmt, nullptr) == SQLITE_OK && stmt) {
+		sqlite3_bind_int(stmt, 1, take);
+		sqlite3_bind_int64(stmt, 2, user_id);
+		sqlite3_bind_int(stmt, 3, item_id);
+		sqlite3_step(stmt);
+		sqlite3_finalize(stmt);
+	}
+
+	if (GetComponentCount(user_id, item_id) <= 0) {
+		sqlite3_stmt* del = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"DELETE FROM ga_user_components WHERE user_id = ? AND item_id = ?",
+				-1, &del, nullptr) == SQLITE_OK && del) {
+			sqlite3_bind_int64(del, 1, user_id);
+			sqlite3_bind_int(del, 2, item_id);
+			sqlite3_step(del);
+			sqlite3_finalize(del);
+		}
+	}
+
+	Logger::Log("loot", "[Loot] -components take user=%lld item=%d x%d -> %d left\n",
+		(long long)user_id, item_id, take, GetComponentCount(user_id, item_id));
+	return take;
+}
+
+std::vector<Database::QuestRequirementRow> Database::GetQuestRequirements(int quest_id) {
+	std::vector<QuestRequirementRow> rows;
+	if (quest_id <= 0) return rows;
+	sqlite3* db = GetConnection();
+	if (!db) return rows;
+
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT quest_requirement_id, requirement_type_value_id, count, "
+			"       COALESCE(target_item_id, 0), COALESCE(target_bot_id, 0), "
+			"       COALESCE(target_ui_volume_id, 0) "
+			"FROM asm_data_set_quest_requirements WHERE quest_id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return rows;
+	}
+	sqlite3_bind_int(stmt, 1, quest_id);
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		QuestRequirementRow r;
+		r.quest_requirement_id      = sqlite3_column_int(stmt, 0);
+		r.requirement_type_value_id = sqlite3_column_int(stmt, 1);
+		r.count                     = sqlite3_column_int(stmt, 2);
+		r.target_item_id            = sqlite3_column_int(stmt, 3);
+		r.target_bot_id             = sqlite3_column_int(stmt, 4);
+		r.target_ui_volume_id       = sqlite3_column_int(stmt, 5);
+		rows.push_back(r);
+	}
+	sqlite3_finalize(stmt);
+	return rows;
+}
+
+bool Database::AreQuestRequirementsMet(int64_t user_id, int64_t character_id, int quest_id,
+                                       std::vector<std::string>* unmet) {
+	const auto reqs = GetQuestRequirements(quest_id);
+	bool ok = true;
+
+	for (const auto& r : reqs) {
+		const int need = r.count > 0 ? r.count : 1;
+
+		if (r.requirement_type_value_id == 1429) {          // Collect — stock
+			// Same source the CLIENT uses (it sums nInstanceCount over its own
+			// inventory map), so server and client always agree.
+			const int have = GetComponentCount(user_id, r.target_item_id);
+			if (have < need) {
+				ok = false;
+				if (unmet) unmet->push_back("collect item " + std::to_string(r.target_item_id)
+					+ ": " + std::to_string(have) + "/" + std::to_string(need));
+			}
+			continue;
+		}
+
+		// Kill (1428) and Interact with Volume (1431) share the counter table.
+		if (r.requirement_type_value_id == 1428 ||
+		    r.requirement_type_value_id == 1431) {
+			sqlite3* db = GetConnection();
+			int have = 0;
+			if (db) {
+				sqlite3_stmt* stmt = nullptr;
+				if (sqlite3_prepare_v2(db,
+						"SELECT count FROM ga_character_quest_progress "
+						"WHERE character_id = ? AND quest_requirement_id = ?",
+						-1, &stmt, nullptr) == SQLITE_OK && stmt) {
+					sqlite3_bind_int64(stmt, 1, character_id);
+					sqlite3_bind_int(stmt, 2, r.quest_requirement_id);
+					if (sqlite3_step(stmt) == SQLITE_ROW) have = sqlite3_column_int(stmt, 0);
+					sqlite3_finalize(stmt);
+				}
+			}
+			if (have < need) {
+				ok = false;
+				if (unmet) unmet->push_back("req " + std::to_string(r.quest_requirement_id)
+					+ ": " + std::to_string(have) + "/" + std::to_string(need));
+			}
+		}
+		// Every other type (Complete Mission, Finish PVP Mission, Script
+		// Triggered) is unimplemented — treat as satisfied so those quests stay
+		// completable instead of becoming dead ends.
+	}
+
+	return ok;
+}
+
+std::vector<Database::CharacterQuestState> Database::GetCharacterQuestStates(int64_t character_id) {
+	std::vector<CharacterQuestState> rows;
+	if (character_id <= 0) return rows;
+	sqlite3* db = GetConnection();
+	if (!db) return rows;
+
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT quest_id, status, COALESCE(completed_at, 0) "
+			"FROM ga_character_quests WHERE character_id = ? ORDER BY quest_id",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		Logger::Log("quest", "[Quest] GetCharacterQuestStates prepare failed: %s\n",
+			sqlite3_errmsg(db));
+		return rows;
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		CharacterQuestState s;
+		s.quest_id = sqlite3_column_int(stmt, 0);
+		const char* st = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+		s.status = st ? st : "";
+		s.completed_at = sqlite3_column_int64(stmt, 2);
+		rows.push_back(std::move(s));
+	}
+	sqlite3_finalize(stmt);
+	return rows;
+}
+
+std::vector<std::pair<int, int>> Database::GetQuestRequirementCounts(int64_t user_id,
+                                                                    int64_t character_id,
+                                                                    int quest_id) {
+	std::vector<std::pair<int, int>> out;
+
+	for (const auto& r : GetQuestRequirements(quest_id)) {
+		int have = 0;
+
+		if (r.requirement_type_value_id == 1429) {          // Collect — stock
+			have = GetComponentCount(user_id, r.target_item_id);
+			if (r.count > 0 && have > r.count) have = r.count;
+			out.push_back({ r.quest_requirement_id, have });
+			continue;
+		}
+
+		// Kill (1428) and Interact with Volume (1431) share the counter table.
+		if (r.requirement_type_value_id == 1428 ||
+		    r.requirement_type_value_id == 1431) {
+			sqlite3* db = GetConnection();
+			if (db) {
+				sqlite3_stmt* stmt = nullptr;
+				if (sqlite3_prepare_v2(db,
+						"SELECT count FROM ga_character_quest_progress "
+						"WHERE character_id = ? AND quest_requirement_id = ?",
+						-1, &stmt, nullptr) == SQLITE_OK && stmt) {
+					sqlite3_bind_int64(stmt, 1, character_id);
+					sqlite3_bind_int(stmt, 2, r.quest_requirement_id);
+					if (sqlite3_step(stmt) == SQLITE_ROW) have = sqlite3_column_int(stmt, 0);
+					sqlite3_finalize(stmt);
+				}
+			}
+		} else {
+			continue;   // nothing meaningful to replay for unimplemented types
+		}
+
+		out.push_back({ r.quest_requirement_id, have });
+	}
+	return out;
 }
 
 // ===========================================================================
