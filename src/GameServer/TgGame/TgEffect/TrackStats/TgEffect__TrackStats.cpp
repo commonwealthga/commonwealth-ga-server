@@ -309,7 +309,9 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 	// Device that caused this event — same fire-mode reference the kill
 	// attribution below uses (FImpactInfo @ 0x54), resolved to an asm device
 	// id. Drives the end-of-mission Device Stats tab.
-	int creditDeviceId = ResolveDeviceIdFromFireMode((UObject*)Impact.dw[0x54 / 4]);
+	// skal small optim & clean-up: call ResolveDeviceIdFromFireMode() only once here
+	const int killerDeviceId = ResolveDeviceIdFromFireMode((UObject*)Impact.dw[0x54 / 4]);
+	int creditDeviceId = killerDeviceId;
 
 	// Deployable-fired (Medical Station heal, mine blast, force wall): the
 	// fire mode's m_Owner is the ATgDeployable itself, not an ATgDevice, so
@@ -458,8 +460,9 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 			// NOT from iTargetDeviceModeId — that one is the *target's*
 			// active fire mode at the time of death (passed to TrackStats
 			// for morale-credit gating, not kill attribution).
-			const int killerDeviceId = ResolveDeviceIdFromFireMode(
-				(UObject*)Impact.dw[0x54 / 4]);
+			// skal moved the call to ResolveDeviceIdFromFireMode() out of the 'if' scope since it was already done earlier, no need to call it twice
+			//const int killerDeviceId = ResolveDeviceIdFromFireMode(
+			//	(UObject*)Impact.dw[0x54 / 4]);
 
 			// Populate Victim->m_DeathZoomInfo. UC handler no-ops for
 			// non-player victims (bots), so call unconditionally.
@@ -854,6 +857,10 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 	// id): MoraleCredit's set includes morale devices' own modes AND the
 	// explosion modes of the deployables they spawn (Shatter Bomb et al.), so
 	// the bomb-chain feedback loop is closed there without any actor-graph walk.
+
+	// skal: handle shatter specifically here when the engine didn't do it properly
+	if ((iTargetDeviceModeId==0)&&(creditDeviceId==2113)) iTargetDeviceModeId=2134;
+
 	MoraleCredit::Award(damageCreditPawn, magnitude, isHeal,
 	                    fMissingHealth, iTargetDeviceModeId);
 }
