@@ -1481,6 +1481,13 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			if (Dev && Dev->m_bIsRestDevice && Dev->Instigator) {
 				((ATgPawn*)Dev->Instigator)->r_nRestDeviceSlot = (int)Dev->r_eEquippedAt;
 			}
+			// Device-usage stats: one "use" per DeviceFiring activation
+			// (per hold for continuous fire, per activation for one-shots
+			// like waves/boosts — the denominator for effectiveness rates).
+			if (Dev && Dev->Instigator &&
+			    ObjectClassCache::ClassNameContains(Dev->Instigator, "TgPawn")) {
+				MatchStats::OnDeviceUsed((ATgPawn*)Dev->Instigator, Dev->r_nDeviceId);
+			}
 		}
 		DoCatchAll();
 		break;

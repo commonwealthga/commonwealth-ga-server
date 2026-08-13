@@ -221,6 +221,23 @@ private:
             ack["type"]          = IpcProtocol::MSG_INSTANCE_HELLO_ACK;
             ack["accepted"]      = true;
             ack["stats_enabled"] = !is_home_map_;
+            // Finer-grained recording toggles: global (control-server.json)
+            // AND per-queue (ga_queues.record_*). Queue rows default OFF —
+            // recording follows competitive queues so PvE farming can't
+            // reach MMR-facing data. queue_id 0 (ad-hoc / admin-spawned
+            // instance) has no queue row and falls back to the globals,
+            // which keeps test instances recordable.
+            bool q_dev = true, q_eff = true;
+            if (info && info->queue_id != 0) {
+                Database::GetQueueStatsToggles(info->queue_id, q_dev, q_eff);
+            }
+            ack["device_stats_enabled"]  = IpcServer::stats_device_enabled_ && q_dev;
+            ack["effectiveness_enabled"] = IpcServer::stats_effectiveness_enabled_ && q_eff;
+            Logger::Log("ipc",
+                "[IpcServer] stats toggles for instance %lld: queue=%u device_stats=%d effectiveness=%d\n",
+                (long long)inst_id, info ? info->queue_id : 0,
+                (int)(IpcServer::stats_device_enabled_ && q_dev),
+                (int)(IpcServer::stats_effectiveness_enabled_ && q_eff));
             send(ack.dump());
             Logger::Log("ipc", "[IpcServer] INSTANCE_HELLO_ACK sent to instance_id=%lld\n",
                 (long long)inst_id);
@@ -472,6 +489,32 @@ private:
             row.beacons_destroyed      = j.value("beacons_destroyed", 0);
             row.time_played_seconds    = j.value("time_played_seconds", 0.0);
             Database::UpsertMatchPlayerStats(row);
+        }
+        else if (type == IpcProtocol::MSG_MATCH_DEVICE_STATS) {
+            if (is_home_map_) return;
+            Database::MatchDeviceStatsRow row;
+            row.instance_id  = j.value("instance_id", instance_id_);
+            row.user_id      = j.value("user_id", (int64_t)0);
+            row.character_id = j.value("character_id", (int64_t)0);
+            row.task_force   = j.value("task_force", 0);
+            row.device_id    = j.value("device_id", 0);
+            if (row.character_id == 0 || row.device_id == 0) return;
+            row.damage          = j.value("damage", 0);
+            row.healing         = j.value("healing", 0);
+            row.player_kills    = j.value("player_kills", 0);
+            row.bot_kills       = j.value("bot_kills", 0);
+            row.debuffs_removed = j.value("debuffs_removed", 0);
+            row.overheal        = j.value("overheal", 0);
+            row.uses            = j.value("uses", 0);
+            row.power_restored  = j.value("power_restored", 0);
+            row.power_wasted    = j.value("power_wasted", 0);
+            row.buffed_damage_dealt    = j.value("buffed_damage_dealt", 0);
+            row.protected_damage_taken = j.value("protected_damage_taken", 0);
+            row.rescues                = j.value("rescues", 0);
+            row.boost_targets          = j.value("boost_targets", 0);
+            row.boost_overwrites       = j.value("boost_overwrites", 0);
+            row.boost_wasted_secs      = j.value("boost_wasted_secs", 0);
+            Database::UpsertMatchDeviceStats(row);
         }
         else if (type == IpcProtocol::MSG_MISSION_ENDED) {
             // BeginEndMission fired on the mission instance. Stamp end_mission_at
@@ -812,6 +855,13 @@ std::map<std::string, std::function<void(bool, int)>> IpcServer::pending_acks_;
 IpcServer::SuccessorSpawner IpcServer::successor_spawner_;
 std::string IpcServer::admin_token_;
 IpcServer::AdminActionHandler IpcServer::admin_action_handler_;
+bool IpcServer::stats_device_enabled_        = true;
+bool IpcServer::stats_effectiveness_enabled_ = true;
+
+void IpcServer::SetStatsToggles(bool device_stats, bool effectiveness) {
+    stats_device_enabled_        = device_stats;
+    stats_effectiveness_enabled_ = effectiveness;
+}
 
 void IpcServer::SetSuccessorSpawner(SuccessorSpawner cb) {
     successor_spawner_ = std::move(cb);

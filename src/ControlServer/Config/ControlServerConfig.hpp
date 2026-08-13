@@ -85,6 +85,14 @@ struct ControlServerConfig {
     bool        clear_logs         = false;  // truncate per-channel files at boot for repeated tests
     bool        show_game_console  = false;  // Windows native debug: show spawned game commandlet consoles
     bool        allow_duplicate_account_logins = false;
+    // Per-instance stats recording toggles, forwarded to game instances in
+    // INSTANCE_HELLO_ACK. device_stats = the server-side mirror of the
+    // client Device Stats tab counters (ga_match_device_stats baseline);
+    // effectiveness = everything layered on top (cleanse/boost/power/savior
+    // tracking, buff windows, uses, DEVICE_USED events). The client's own
+    // tab is unaffected by either. Flip + restart control server; no rebuild.
+    bool        device_stats_enabled  = true;
+    bool        effectiveness_enabled = true;
     // When true (default), the login handler verifies the RC4 credential blob
     // against the account's stored verifier (first login registers it). Set
     // false to fall back to the old username-only behavior — an emergency

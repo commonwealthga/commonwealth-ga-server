@@ -1,6 +1,7 @@
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.hpp"
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
 #include "src/GameServer/TgGame/_effect_core/HitSituationalMitigation.hpp"
+#include "src/GameServer/TgGame/_effect_core/CleanseTracking.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // TgEffectManager::RemoveEffectGroupsByCategory — reimplements the stripped stub
@@ -79,5 +80,11 @@ bool __fastcall TgEffectManager__RemoveEffectGroupsByCategory::Call(ATgEffectMan
 	}
 
 	if (removed > 0) Manager->bNetDirty = 1;
+
+	// Cleanse stats: attribute the strip count to the player + device whose
+	// property-140 effect triggered this call. Internal callers (the 431/99
+	// mitigation bracket, invuln refcounting) are filtered inside.
+	CleanseTracking::OnRemoved(Manager, nCategoryCode, nQuantity, removed);
+
 	return removed > 0;
 }

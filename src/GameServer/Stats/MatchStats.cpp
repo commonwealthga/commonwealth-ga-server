@@ -1,4 +1,8 @@
 #include "src/GameServer/Stats/MatchStats.hpp"
+#include "src/GameServer/Stats/DeviceStats.hpp"
+#include "src/GameServer/TgGame/_effect_core/EffectCredit.hpp"
+#include "src/Database/Database.hpp"
+#include "sqlite3.h"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
@@ -14,6 +18,10 @@
 namespace {
 
 bool g_enabled = false;
+
+// Recording toggles (see MatchStats.hpp). Default true = record everything.
+bool g_deviceStatsEnabled   = true;
+bool g_effectivenessEnabled = true;
 
 // user_id → per-match stint banking.
 std::map<int64_t, Stats::UserMatchStats> g_users;
@@ -32,6 +40,145 @@ std::map<int, LivePlayer> g_live;
 // (NetConnection__Cleanup's has_other_connection case) — closing the
 // fresh stint with a dead pawn's zeroed scores would bank negative deltas.
 std::map<int64_t, int> g_userCurrentPawn;
+
+// Per-device totals for the whole match, keyed by (character, task force,
+// device). Not keyed by pawn or connection: a reconnect must keep adding to
+// the same row, and the PRI's r_DeviceStats cannot express that.
+struct DeviceKey {
+    int64_t character_id = 0;
+    int     task_force   = 0;
+    int     device_id    = 0;
+    bool operator<(const DeviceKey& o) const {
+        if (character_id != o.character_id) return character_id < o.character_id;
+        if (task_force   != o.task_force)   return task_force   < o.task_force;
+        return device_id < o.device_id;
+    }
+};
+struct DeviceTotals {
+    int64_t user_id         = 0;
+    int     damage          = 0;
+    int     healing         = 0;
+    int     player_kills    = 0;
+    int     bot_kills       = 0;
+    int     debuffs_removed = 0;  // cleanse strips (CleanseTracking)
+    int     overheal        = 0;  // heal clamped away on full-health targets
+    int     uses            = 0;  // DeviceFiring activations
+    int     power_restored  = 0;  // prop-243 power that fit in the pool
+    int     power_wasted    = 0;  // prop-243 power clamped away
+    int     buffed_damage_dealt    = 0;  // dealt under this device's buff
+    int     protected_damage_taken = 0;  // taken under this device's buff
+    int     rescues         = 0;  // under-25% conditional deliveries:
+                                  // Triage's own group + Savior triggers
+    int     boost_targets     = 0;  // distinct boost applications (reach)
+    int     boost_overwrites  = 0;  // live boosts replaced by another caster
+    int     boost_wasted_secs = 0;  // lifetime lost to those overwrites
+};
+std::map<DeviceKey, DeviceTotals> g_deviceStats;
+
+// Devices the server-side table must not carry. Two sources:
+//   * every jetpack (asm slot 806) — with up to 20 players boosting
+//     constantly, per-use rows would bloat the table with zero signal;
+//   * an explicit list of self-maintenance devices the user ruled out of
+//     performance tracking (with their tier variants): Bionics 2368,
+//     Regeneration 2246/1950/2067/2068, Power Stim 3699/3696/3697/3698.
+// Full exclusion — no row, no CLEANSE event. Extend the list here.
+std::set<int> g_excludedDevices;
+bool g_excludedLoaded = false;
+
+bool DeviceExcluded(int device_id) {
+    if (!g_excludedLoaded) {
+        g_excludedLoaded = true;
+        for (int id : {2368, 2246, 1950, 2067, 2068, 3699, 3696, 3697, 3698}) {
+            g_excludedDevices.insert(id);
+        }
+        sqlite3* db = Database::GetConnection();
+        if (db != nullptr) {
+            sqlite3_stmt* stmt = nullptr;
+            if (sqlite3_prepare_v2(db,
+                    "SELECT device_id FROM asm_data_set_devices "
+                    "WHERE slot_used_value_id = 806",
+                    -1, &stmt, nullptr) == SQLITE_OK) {
+                while (sqlite3_step(stmt) == SQLITE_ROW) {
+                    g_excludedDevices.insert(sqlite3_column_int(stmt, 0));
+                }
+            }
+            sqlite3_finalize(stmt);
+        }
+    }
+    return g_excludedDevices.count(device_id) != 0;
+}
+
+// Devices whose activations additionally emit a timestamped DEVICE_USED
+// event (the uses counter has no time axis; these events make per-cast
+// effectiveness and match timelines reconstructable). Deliberately narrow —
+// weapons would flood ga_match_events. Loaded once: the Group Heals family
+// (asm skill 252: Healing/Protection/Frenzy/Power/Triage Wave, Healing
+// Grenade, Purity) plus the three boosts. Extend by adding ids here.
+std::set<int> g_castEventDevices;
+bool g_castEventLoaded = false;
+
+bool CastEventDevice(int device_id) {
+    if (!g_castEventLoaded) {
+        g_castEventLoaded = true;
+        for (int id : {2838, 2773, 7559}) {  // Protection/Healing/Fashion Boost
+            g_castEventDevices.insert(id);
+        }
+        sqlite3* db = Database::GetConnection();
+        if (db != nullptr) {
+            sqlite3_stmt* stmt = nullptr;
+            if (sqlite3_prepare_v2(db,
+                    "SELECT i.item_id FROM asm_data_set_items i "
+                    "JOIN asm_data_set_devices d ON d.device_id = i.item_id "
+                    "WHERE i.skill_id = 252",
+                    -1, &stmt, nullptr) == SQLITE_OK) {
+                while (sqlite3_step(stmt) == SQLITE_ROW) {
+                    g_castEventDevices.insert(sqlite3_column_int(stmt, 0));
+                }
+            }
+            sqlite3_finalize(stmt);
+        }
+    }
+    return g_castEventDevices.count(device_id) != 0;
+}
+
+// Boost effect groups under overwrite tracking. Lifetime is carried here
+// (verified against gaa.db) so the registry can tell "replaced early" from
+// "expired then re-applied". Currently just the medic Healing Boost
+// (200 HP/tick, 1s interval, 10s — an overwrite at t=3 costs 7 ticks);
+// add Protection Boost {8964, 10.0f} / Fashion Boost {27646, 30.0f} here
+// if they come into scope.
+float BoostLifetime(int effect_group_id) {
+    switch (effect_group_id) {
+        case 8690: return 10.0f;  // Healing Boost (device 2773)
+        default:   return 0.0f;   // not tracked
+    }
+}
+
+// (caster character, device) → time of their last detected boost cast.
+// Morale boosts never enter the DeviceFiring state (instance-210: two casts,
+// uses=0, no DEVICE_USED), so cast detection lives here instead: a burst of
+// applications shares one game_time, and a same-caster gap > 2s is a new
+// cast (a real re-cast inside the window is morale-impossible anyway).
+std::map<std::pair<int64_t, int>, float> g_lastBoostCast;
+
+// (target r_nPawnId, effect group) → the live boost on that pawn. Caster
+// identity is copied at apply time; no pawn pointers are retained.
+struct BoostRec {
+    int64_t user_id      = 0;
+    int64_t character_id = 0;
+    int     task_force   = 0;
+    int     device_id    = 0;
+    float   applied_at   = 0.0f;
+    float   lifetime     = 0.0f;
+};
+std::map<std::pair<int, int>, BoostRec> g_boosts;
+
+// Devices whose prop-243 power rider must not feed the power columns.
+// Triage Wave's +250-on-rescue always overflows any pool (max reachable is
+// 160), so it would read as pure waste when it is in fact the designed
+// get-out-of-jail mechanic. Conditional-trigger tracking moves to the
+// HP-gate / Group Heal Savior pass instead.
+bool PowerStatExempt(int device_id) { return device_id == 5808; }
 
 // Deaths waiting for a KILL to claim them; flushed as DEATH by Tick().
 struct PendingDeath {
@@ -132,6 +279,38 @@ void UpsertUserStints(int64_t user_id) {
     }
 }
 
+// Send absolute per-device totals (MSG_MATCH_DEVICE_STATS). character_id 0
+// sends every row; otherwise only that character's. Upsert is keyed
+// (instance_id, character_id, task_force, device_id), so resending is safe.
+void UpsertDeviceStats(int64_t character_id) {
+    for (const auto& kv : g_deviceStats) {
+        if (character_id != 0 && kv.first.character_id != character_id) continue;
+        nlohmann::json m;
+        m["type"]         = IpcProtocol::MSG_MATCH_DEVICE_STATS;
+        m["instance_id"]  = IpcClient::GetInstanceId();
+        m["user_id"]      = kv.second.user_id;
+        m["character_id"] = kv.first.character_id;
+        m["task_force"]   = kv.first.task_force;
+        m["device_id"]    = kv.first.device_id;
+        m["damage"]          = kv.second.damage;
+        m["healing"]         = kv.second.healing;
+        m["player_kills"]    = kv.second.player_kills;
+        m["bot_kills"]       = kv.second.bot_kills;
+        m["debuffs_removed"] = kv.second.debuffs_removed;
+        m["overheal"]        = kv.second.overheal;
+        m["uses"]            = kv.second.uses;
+        m["power_restored"]  = kv.second.power_restored;
+        m["power_wasted"]    = kv.second.power_wasted;
+        m["buffed_damage_dealt"]    = kv.second.buffed_damage_dealt;
+        m["protected_damage_taken"] = kv.second.protected_damage_taken;
+        m["rescues"]                = kv.second.rescues;
+        m["boost_targets"]          = kv.second.boost_targets;
+        m["boost_overwrites"]       = kv.second.boost_overwrites;
+        m["boost_wasted_secs"]      = kv.second.boost_wasted_secs;
+        IpcClient::Send(m.dump());
+    }
+}
+
 // Read the PRI's r_Scores into a plain array (zeros when PRI missing).
 void ReadScores(ATgPawn* P, int out[Stats::kNumScores]) {
     for (int i = 0; i < Stats::kNumScores; i++) out[i] = 0;
@@ -162,6 +341,20 @@ void MatchStats::SetEnabled(bool enabled) {
 }
 
 bool MatchStats::Enabled() { return g_enabled; }
+
+void MatchStats::SetDeviceStatsEnabled(bool enabled) {
+    g_deviceStatsEnabled = enabled;
+    Logger::Log("matchstats", "[MatchStats] device_stats_enabled=%d\n", (int)enabled);
+}
+
+void MatchStats::SetEffectivenessEnabled(bool enabled) {
+    g_effectivenessEnabled = enabled;
+    Logger::Log("matchstats", "[MatchStats] effectiveness_enabled=%d\n", (int)enabled);
+}
+
+bool MatchStats::EffectivenessEnabled() {
+    return g_enabled && g_effectivenessEnabled;
+}
 
 void MatchStats::OnPlayerJoined(ATgPawn* Pawn, int64_t user_id,
                                 int64_t character_id, int task_force) {
@@ -234,6 +427,9 @@ void MatchStats::OnPlayerLeft(ATgPawn* Pawn, int64_t user_id) {
     ReadScores(Pawn, scores);
     uit->second.CloseStint(scores, GameTime());
     UpsertUserStints(user_id);
+    // Device rows survive the disconnect in g_deviceStats (keyed by character,
+    // not connection) — this upsert just banks them early, like the stints.
+    if (live) UpsertDeviceStats(lp.character_id);
     g_live.erase(Pawn->r_nPawnId);
     g_userCurrentPawn.erase(user_id);
 
@@ -290,6 +486,13 @@ void MatchStats::OnChatCommand(ATgPawn* Actor, const char* event_type,
 
 void MatchStats::OnDeath(ATgPawn* Victim) {
     if (!g_enabled || !Victim) return;
+    // Death strips effects, so any boost the victim carried ended here —
+    // clear its registry entries (bots included) so a boost applied after
+    // respawn can't read as an overwrite of the pre-death one.
+    for (auto it = g_boosts.begin(); it != g_boosts.end(); ) {
+        if (it->first.first == Victim->r_nPawnId) it = g_boosts.erase(it);
+        else ++it;
+    }
     LivePlayer lp;
     if (!ResolveLive(Victim, lp)) return;  // bot deaths: no DEATH events
     PendingDeath pd;
@@ -397,6 +600,241 @@ void MatchStats::OnDeployableDestroyed(ATgPawn* Destroyer,
     }
 }
 
+void MatchStats::OnDeviceCredit(ATgPawn* CreditPawn, int device_id,
+                                int field, int amount) {
+    if (!g_enabled || !g_deviceStatsEnabled) return;  // toggle A
+    if (!CreditPawn || device_id <= 0 || amount <= 0) return;
+    if (DeviceExcluded(device_id)) return;
+    LivePlayer lp;
+    if (!ResolveLive(CreditPawn, lp)) return;  // bots have no persisted row
+
+    DeviceTotals& t = g_deviceStats[{lp.character_id, lp.task_force, device_id}];
+    t.user_id = lp.user_id;
+    switch (field) {
+        case DeviceStats::kDamage:      t.damage       += amount; break;
+        case DeviceStats::kHealing:     t.healing      += amount; break;
+        case DeviceStats::kPlayerKills: t.player_kills += amount; break;
+        case DeviceStats::kBotKills:    t.bot_kills    += amount; break;
+        default: break;  // kId + the derived DPM/HPM slots aren't counters
+    }
+}
+
+void MatchStats::OnDeviceCleanse(ATgPawn* CreditPawn, ATgPawn* TargetPawn,
+                                 int device_id, int category, int removed) {
+    if (!g_enabled || !g_effectivenessEnabled) return;  // toggle B
+    if (!CreditPawn || removed <= 0) return;
+    if (DeviceExcluded(device_id)) return;  // no row AND no event
+    LivePlayer lp;
+    if (!ResolveLive(CreditPawn, lp)) return;  // bot cleanses: no record
+
+    // device_id 0 (unresolved origin) still counts on the player via the
+    // event below, but can't take a per-device row.
+    if (device_id > 0) {
+        DeviceTotals& t = g_deviceStats[{lp.character_id, lp.task_force, device_id}];
+        t.user_id = lp.user_id;
+        t.debuffs_removed += removed;
+    }
+
+    nlohmann::json ev;
+    ev["actor_user_id"]      = lp.user_id;
+    ev["actor_character_id"] = lp.character_id;
+    ev["actor_task_force"]   = lp.task_force;
+    FillIdentity(ev, "target", TargetPawn);
+    ev["device_id"] = device_id;
+    ev["detail"]    = (int64_t)category;  // which category came off
+    ev["flags"]     = removed;            // how many groups of it
+    EmitEvent(ev, "CLEANSE");
+}
+
+void MatchStats::OnDeviceOverheal(ATgPawn* CreditPawn, int device_id,
+                                  int amount) {
+    if (!g_enabled || !g_effectivenessEnabled) return;  // toggle B
+    if (!CreditPawn || device_id <= 0 || amount <= 0) return;
+    if (DeviceExcluded(device_id)) return;
+    LivePlayer lp;
+    if (!ResolveLive(CreditPawn, lp)) return;
+
+    DeviceTotals& t = g_deviceStats[{lp.character_id, lp.task_force, device_id}];
+    t.user_id = lp.user_id;
+    t.overheal += amount;
+}
+
+void MatchStats::OnDeviceUsed(ATgPawn* UserPawn, int device_id) {
+    if (!g_enabled || !g_effectivenessEnabled) return;  // toggle B
+    if (!UserPawn || device_id <= 0) return;
+    if (DeviceExcluded(device_id)) return;  // jetpacks land here constantly
+    LivePlayer lp;
+    if (!ResolveLive(UserPawn, lp)) return;
+    DeviceTotals& t = g_deviceStats[{lp.character_id, lp.task_force, device_id}];
+    t.user_id = lp.user_id;
+    t.uses++;
+
+    // Allowlisted activatables also emit a timestamped cast event, so
+    // per-cast effectiveness ("3 casts, which cured?") joins against the
+    // CLEANSE / SAVIOR stream on game_time instead of being inferred.
+    if (CastEventDevice(device_id)) {
+        nlohmann::json ev;
+        ev["actor_user_id"]      = lp.user_id;
+        ev["actor_character_id"] = lp.character_id;
+        ev["actor_task_force"]   = lp.task_force;
+        ev["device_id"]          = device_id;
+        EmitEvent(ev, "DEVICE_USED");
+    }
+}
+
+void MatchStats::OnDevicePowerRestore(ATgPawn* CreditPawn, int device_id,
+                                      int restored, int wasted) {
+    if (!g_enabled || !g_effectivenessEnabled) return;  // toggle B
+    if (!CreditPawn || device_id <= 0) return;
+    if (restored <= 0 && wasted <= 0) return;
+    if (DeviceExcluded(device_id)) return;
+    LivePlayer lp;
+    if (!ResolveLive(CreditPawn, lp)) return;
+    if (PowerStatExempt(device_id)) {
+        // Triage: the power rider stays out of the power columns (see
+        // PowerStatExempt), but its firing IS the under-25% conditional —
+        // one power effect per rescue — so it drives the rescues counter.
+        DeviceTotals& t = g_deviceStats[{lp.character_id, lp.task_force, device_id}];
+        t.user_id = lp.user_id;
+        t.rescues++;
+        if (Logger::IsChannelEnabled("devusage")) {
+            Logger::Log("devusage",
+                "[TRIAGE-CONDITIONAL] credit=%p restored=%d wasted=%d (power stats exempt, rescue counted)\n",
+                (void*)CreditPawn, restored, wasted);
+        }
+        return;
+    }
+    DeviceTotals& t = g_deviceStats[{lp.character_id, lp.task_force, device_id}];
+    t.user_id = lp.user_id;
+    if (restored > 0) t.power_restored += restored;
+    if (wasted > 0)   t.power_wasted   += wasted;
+}
+
+void MatchStats::OnSaviorTrigger(ATgPawn* CreditPawn, ATgPawn* TargetPawn,
+                                 int device_id) {
+    if (!g_enabled || !g_effectivenessEnabled) return;  // toggle B
+    if (!CreditPawn) return;
+    LivePlayer lp;
+    if (!ResolveLive(CreditPawn, lp)) return;  // bot-cast heals: no record
+    // Savior firing = an under-25% rescue delivered by this device.
+    // Self-rescue (a grenade at your own feet while low — observed live in
+    // instance 210) emits the event but stays out of the counter, per the
+    // skill's authored "hit a teammate" intent and the same self-exclusion
+    // the heal credit applies. Filter events on actor==target to study them.
+    if (device_id > 0 && !DeviceExcluded(device_id) && CreditPawn != TargetPawn) {
+        DeviceTotals& t = g_deviceStats[{lp.character_id, lp.task_force, device_id}];
+        t.user_id = lp.user_id;
+        t.rescues++;
+    }
+    nlohmann::json ev;
+    ev["actor_user_id"]      = lp.user_id;
+    ev["actor_character_id"] = lp.character_id;
+    ev["actor_task_force"]   = lp.task_force;
+    FillIdentity(ev, "target", TargetPawn);
+    if (device_id > 0) ev["device_id"] = device_id;
+    ev["detail"] = (int64_t)852;  // the skill, for symmetry with CLEANSE's category
+    EmitEvent(ev, "SAVIOR");
+}
+
+void MatchStats::OnBoostApply(UTgEffectGroup* g) {
+    if (!g_enabled || !g_effectivenessEnabled) return;  // toggle B
+    if (!g || !g->m_Target) return;
+    const float lifetime = BoostLifetime(g->m_nEffectGroupId);
+    if (lifetime <= 0.0f) return;
+    if (!ObjectClassCache::ClassNameContains(g->m_Target, "TgPawn")) return;
+    ATgPawn* target = static_cast<ATgPawn*>(g->m_Target);
+
+    ATgPawn* credit = EffectCredit::ResolveCreditPawn(g->m_Instigator);
+    if (!credit) return;
+    LivePlayer lp;
+    if (!ResolveLive(credit, lp)) return;  // bot-cast boosts: no record
+    const int device_id = EffectCredit::ResolveDeviceId(g, credit);
+    if (device_id <= 0 || DeviceExcluded(device_id)) return;
+
+    const float now = GameTime();
+    const std::pair<int, int> key{target->r_nPawnId, g->m_nEffectGroupId};
+    auto it = g_boosts.find(key);
+    if (it != g_boosts.end() && (now - it->second.applied_at) < it->second.lifetime) {
+        // Same caster + device inside the window: a HoT tick or another
+        // effect of the same application — same record, nothing to count.
+        // A same-caster RE-cast inside the window is mechanically
+        // impossible: boosts are morale-priced with no cooldown, and
+        // morale cannot regenerate while the caster's own boost is live.
+        if (it->second.character_id == lp.character_id &&
+            it->second.device_id == device_id) {
+            return;
+        }
+        // Different caster: newest-wins overwrite. The remaining lifetime
+        // of the old instance is the wasted investment.
+        const int remaining = (int)(it->second.lifetime - (now - it->second.applied_at));
+        DeviceTotals& old_row = g_deviceStats[{it->second.character_id,
+                                               it->second.task_force,
+                                               it->second.device_id}];
+        old_row.user_id = it->second.user_id;
+        old_row.boost_overwrites++;
+        old_row.boost_wasted_secs += remaining > 0 ? remaining : 0;
+
+        nlohmann::json ev;
+        ev["actor_user_id"]      = lp.user_id;             // the overwriter
+        ev["actor_character_id"] = lp.character_id;
+        ev["actor_task_force"]   = lp.task_force;
+        FillIdentity(ev, "target", target);
+        ev["owner_user_id"]      = it->second.user_id;     // the wronged medic
+        ev["owner_character_id"] = it->second.character_id;
+        ev["device_id"]          = it->second.device_id;   // the wasted boost
+        ev["detail"]             = (int64_t)(remaining > 0 ? remaining : 0);
+        EmitEvent(ev, "BOOST_OVERWRITE");
+    }
+
+    // Fresh application (first, post-expiry, or the overwriting one): the
+    // new caster's reach grows and the registry now tracks their instance.
+    DeviceTotals& t = g_deviceStats[{lp.character_id, lp.task_force, device_id}];
+    t.user_id = lp.user_id;
+    t.boost_targets++;
+    g_boosts[key] = BoostRec{lp.user_id, lp.character_id, lp.task_force,
+                             device_id, now, lifetime};
+
+    // Cast detection (see g_lastBoostCast): first application of a burst
+    // counts the use and emits the DEVICE_USED row the DeviceFiring hook
+    // can't provide for morale abilities.
+    float& lastCast = g_lastBoostCast[{lp.character_id, device_id}];
+    if (now - lastCast > 2.0f || lastCast == 0.0f) {
+        lastCast = now;
+        t.uses++;
+        nlohmann::json used;
+        used["actor_user_id"]      = lp.user_id;
+        used["actor_character_id"] = lp.character_id;
+        used["actor_task_force"]   = lp.task_force;
+        used["device_id"]          = device_id;
+        EmitEvent(used, "DEVICE_USED");
+    }
+
+    // Per-application event so a cast's fresh-vs-stomped split is exact:
+    // a cast's BOOST_APPLY rows minus its BOOST_OVERWRITE rows = targets
+    // that had nothing running — the "was this cast justified" numerator.
+    // Morale-priced casts are rare, so the event volume is trivial.
+    nlohmann::json ap;
+    ap["actor_user_id"]      = lp.user_id;
+    ap["actor_character_id"] = lp.character_id;
+    ap["actor_task_force"]   = lp.task_force;
+    FillIdentity(ap, "target", target);
+    ap["device_id"] = device_id;
+    EmitEvent(ap, "BOOST_APPLY");
+}
+
+void MatchStats::OnBuffWindowDamage(ATgPawn* CreditPawn, int device_id,
+                                    bool offensive, int amount) {
+    if (!g_enabled || !g_effectivenessEnabled) return;  // toggle B
+    if (!CreditPawn || device_id <= 0 || amount <= 0) return;
+    if (DeviceExcluded(device_id)) return;
+    LivePlayer lp;
+    if (!ResolveLive(CreditPawn, lp)) return;
+    DeviceTotals& t = g_deviceStats[{lp.character_id, lp.task_force, device_id}];
+    t.user_id = lp.user_id;
+    if (offensive) t.buffed_damage_dealt    += amount;
+    else           t.protected_damage_taken += amount;
+}
+
 void MatchStats::OnBeaconSpawnUsed(ATgPawn* User, ATgPawn* Deployer) {
     if (!g_enabled || !User || !Deployer) return;
     LivePlayer ulp;
@@ -437,6 +875,18 @@ void MatchStats::Tick() {
     if (now - g_lastTick < kTickInterval) return;
     const float dt = (g_lastTick > 0.0f) ? (now - g_lastTick) : 0.0f;
     g_lastTick = now;
+
+    // 0. Periodic device-stats safety flush. Rows otherwise persist only at
+    //    clean leave / mission end, and instances torn down without either
+    //    (test sessions, crashes) lost every still-connected player's rows
+    //    (observed instances 204 and 210). Upserts are idempotent, so a
+    //    minute-cadence resend costs a handful of IPC messages and caps the
+    //    loss window at 60s.
+    static float s_lastDeviceFlush = 0.0f;
+    if (now - s_lastDeviceFlush > 60.0f) {
+        s_lastDeviceFlush = now;
+        UpsertDeviceStats(0);
+    }
 
     // 1. Flush pending deaths nothing claimed (environment / fall / team
     //    damage kills) as killer-less DEATH events.
@@ -534,4 +984,7 @@ void MatchStats::FlushAll() {
     for (const auto& kv : g_users) {
         UpsertUserStints(kv.first);
     }
+    Logger::Log("matchstats", "[FlushAll] %zu device row(s)\n",
+        g_deviceStats.size());
+    UpsertDeviceStats(0);
 }

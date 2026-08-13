@@ -105,6 +105,10 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
     if (j.contains("show_game_console"))  cfg.show_game_console  = j["show_game_console"].get<bool>();
     if (j.contains("allow_duplicate_account_logins"))
         cfg.allow_duplicate_account_logins = j["allow_duplicate_account_logins"].get<bool>();
+    if (j.contains("device_stats_enabled"))
+        cfg.device_stats_enabled = j["device_stats_enabled"].get<bool>();
+    if (j.contains("effectiveness_enabled"))
+        cfg.effectiveness_enabled = j["effectiveness_enabled"].get<bool>();
     if (j.contains("require_password_verification"))
         cfg.require_password_verification = j["require_password_verification"].get<bool>();
 

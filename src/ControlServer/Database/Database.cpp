@@ -2123,6 +2123,96 @@ void Database::Init() {
 			sqlite3_free(err); err = nullptr;
 		}
 
+		// Per-device breakdown of the same counters ga_match_player_stats
+		// totals. No DPM/HPM columns — rates derive from
+		// ga_match_player_stats.time_played_seconds.
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_match_device_stats ("
+			"  instance_id  INTEGER NOT NULL,"
+			"  user_id      INTEGER NOT NULL,"
+			"  character_id INTEGER NOT NULL,"
+			"  task_force   INTEGER NOT NULL,"
+			"  device_id    INTEGER NOT NULL,"
+			"  damage       INTEGER NOT NULL DEFAULT 0,"
+			"  healing      INTEGER NOT NULL DEFAULT 0,"
+			"  player_kills INTEGER NOT NULL DEFAULT 0,"
+			"  bot_kills    INTEGER NOT NULL DEFAULT 0,"
+			"  debuffs_removed INTEGER NOT NULL DEFAULT 0,"
+			"  overheal        INTEGER NOT NULL DEFAULT 0,"
+			"  uses            INTEGER NOT NULL DEFAULT 0,"
+			"  power_restored  INTEGER NOT NULL DEFAULT 0,"
+			"  power_wasted    INTEGER NOT NULL DEFAULT 0,"
+			"  buffed_damage_dealt    INTEGER NOT NULL DEFAULT 0,"
+			"  protected_damage_taken INTEGER NOT NULL DEFAULT 0,"
+			"  rescues         INTEGER NOT NULL DEFAULT 0,"
+			"  boost_targets     INTEGER NOT NULL DEFAULT 0,"
+			"  boost_overwrites  INTEGER NOT NULL DEFAULT 0,"
+			"  boost_wasted_secs INTEGER NOT NULL DEFAULT 0,"
+			"  PRIMARY KEY (instance_id, character_id, task_force, device_id)"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_match_device_stats table: %s\n", err);
+			sqlite3_free(err); err = nullptr;
+		}
+
+		// Effectiveness columns for DBs whose table predates them.
+		// ALTER failure tolerated (column already exists).
+		for (const char* alter : {
+			"ALTER TABLE ga_match_device_stats ADD COLUMN debuffs_removed INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_match_device_stats ADD COLUMN overheal INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_match_device_stats ADD COLUMN uses INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_match_device_stats ADD COLUMN power_restored INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_match_device_stats ADD COLUMN power_wasted INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_match_device_stats ADD COLUMN buffed_damage_dealt INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_match_device_stats ADD COLUMN protected_damage_taken INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_match_device_stats ADD COLUMN rescues INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_match_device_stats ADD COLUMN boost_targets INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_match_device_stats ADD COLUMN boost_overwrites INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_match_device_stats ADD COLUMN boost_wasted_secs INTEGER NOT NULL DEFAULT 0;",
+		}) {
+			result = sqlite3_exec(db, alter, nullptr, nullptr, &err);
+			if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
+		}
+
+		// Per-queue stats recording toggles. Device-stats recording should
+		// follow COMPETITIVE queues — PvE farming would poison every
+		// MMR-facing signal — so both default 0 and only PvP queues are
+		// seeded on. The seed runs ONLY when the column is newly created
+		// (ALTER succeeded): later manual toggles survive restarts.
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_queues ADD COLUMN record_device_stats INTEGER NOT NULL DEFAULT 0;",
+			nullptr, nullptr, &err);
+		const bool queue_stats_cols_fresh = (result == SQLITE_OK);
+		if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_queues ADD COLUMN record_effectiveness INTEGER NOT NULL DEFAULT 0;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
+		if (queue_stats_cols_fresh) {
+			result = sqlite3_exec(db,
+				"UPDATE ga_queues SET record_device_stats = 1, record_effectiveness = 1 "
+				"WHERE name IN ('merc', '1v1');",
+				nullptr, nullptr, &err);
+			if (result != SQLITE_OK) {
+				Logger::Log("db", "Failed to seed queue stats toggles: %s\n", err);
+				sqlite3_free(err); err = nullptr;
+			} else {
+				Logger::Log("db", "Seeded stats recording ON for queues: merc, 1v1\n");
+			}
+		}
+
+		result = sqlite3_exec(db,
+			"CREATE INDEX IF NOT EXISTS idx_ga_match_device_stats_user "
+			"ON ga_match_device_stats(user_id);"
+			"CREATE INDEX IF NOT EXISTS idx_ga_match_device_stats_device "
+			"ON ga_match_device_stats(device_id);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) {
+			Logger::Log("db", "Failed to create ga_match_device_stats indexes: %s\n", err);
+			sqlite3_free(err); err = nullptr;
+		}
+
 		// Outcome columns. ALTER failure tolerated (column already exists).
 		result = sqlite3_exec(db,
 			"ALTER TABLE ga_instances ADD COLUMN outcome TEXT;",
@@ -4211,6 +4301,84 @@ void Database::UpsertMatchPlayerStats(const MatchPlayerStatsRow& row) {
 		Logger::Log("matchstats", "[DB] UpsertMatchPlayerStats step failed: %s\n",
 			sqlite3_errmsg(db));
 	}
+}
+
+void Database::UpsertMatchDeviceStats(const MatchDeviceStatsRow& row) {
+	sqlite3* db = GetConnection();
+	if (!db) return;
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"INSERT INTO ga_match_device_stats (instance_id, user_id, character_id,"
+		" task_force, device_id, damage, healing, player_kills, bot_kills,"
+		" debuffs_removed, overheal, uses, power_restored, power_wasted,"
+		" buffed_damage_dealt, protected_damage_taken, rescues,"
+		" boost_targets, boost_overwrites, boost_wasted_secs)"
+		" VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+		" ON CONFLICT(instance_id, character_id, task_force, device_id) DO UPDATE SET"
+		"  user_id=excluded.user_id, damage=excluded.damage,"
+		"  healing=excluded.healing, player_kills=excluded.player_kills,"
+		"  bot_kills=excluded.bot_kills,"
+		"  debuffs_removed=excluded.debuffs_removed, overheal=excluded.overheal,"
+		"  uses=excluded.uses, power_restored=excluded.power_restored,"
+		"  power_wasted=excluded.power_wasted,"
+		"  buffed_damage_dealt=excluded.buffed_damage_dealt,"
+		"  protected_damage_taken=excluded.protected_damage_taken,"
+		"  rescues=excluded.rescues, boost_targets=excluded.boost_targets,"
+		"  boost_overwrites=excluded.boost_overwrites,"
+		"  boost_wasted_secs=excluded.boost_wasted_secs",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("matchstats", "[DB] UpsertMatchDeviceStats prepare failed: %s\n",
+			sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int64(stmt, 1, row.instance_id);
+	sqlite3_bind_int64(stmt, 2, row.user_id);
+	sqlite3_bind_int64(stmt, 3, row.character_id);
+	sqlite3_bind_int(stmt, 4, row.task_force);
+	sqlite3_bind_int(stmt, 5, row.device_id);
+	sqlite3_bind_int(stmt, 6, row.damage);
+	sqlite3_bind_int(stmt, 7, row.healing);
+	sqlite3_bind_int(stmt, 8, row.player_kills);
+	sqlite3_bind_int(stmt, 9, row.bot_kills);
+	sqlite3_bind_int(stmt, 10, row.debuffs_removed);
+	sqlite3_bind_int(stmt, 11, row.overheal);
+	sqlite3_bind_int(stmt, 12, row.uses);
+	sqlite3_bind_int(stmt, 13, row.power_restored);
+	sqlite3_bind_int(stmt, 14, row.power_wasted);
+	sqlite3_bind_int(stmt, 15, row.buffed_damage_dealt);
+	sqlite3_bind_int(stmt, 16, row.protected_damage_taken);
+	sqlite3_bind_int(stmt, 17, row.rescues);
+	sqlite3_bind_int(stmt, 18, row.boost_targets);
+	sqlite3_bind_int(stmt, 19, row.boost_overwrites);
+	sqlite3_bind_int(stmt, 20, row.boost_wasted_secs);
+	rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	if (rc != SQLITE_DONE) {
+		Logger::Log("matchstats", "[DB] UpsertMatchDeviceStats step failed: %s\n",
+			sqlite3_errmsg(db));
+	}
+}
+
+void Database::GetQueueStatsToggles(uint32_t queue_id,
+                                    bool& device_stats, bool& effectiveness) {
+	device_stats = false;
+	effectiveness = false;
+	sqlite3* db = GetConnection();
+	if (!db) return;
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT record_device_stats, record_effectiveness "
+			"FROM ga_queues WHERE queue_id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return;
+	}
+	sqlite3_bind_int(stmt, 1, (int)queue_id);
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		device_stats  = sqlite3_column_int(stmt, 0) != 0;
+		effectiveness = sqlite3_column_int(stmt, 1) != 0;
+	}
+	sqlite3_finalize(stmt);
 }
 
 void Database::SetInstanceOutcomeIfNull(int64_t instance_id,
