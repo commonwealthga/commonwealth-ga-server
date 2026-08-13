@@ -553,9 +553,17 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 
 		attackers->TeamIndex = 1;
 		attackers->r_nTaskForce = 1;
+		// TG_Coalition: Coalition_A=1 (attackers), Coalition_B=2 (defenders).
+		// Open-world maps run TgRepInfo_GameOpenWorld, whose GetCoalitionFor /
+		// CheckIsEnemy resolve friend-vs-foe by COALITION, not task force —
+		// leaving both sides Coalition_None made every bot read as friendly.
+		// TgGame__BeginEndMission's win-state mapping and the client's
+		// TgPlayerController "is attacker" test read the same field.
+		attackers->r_eCoalition = 1;
 
 		defenders->TeamIndex = 2;
 		defenders->r_nTaskForce = 2;
+		defenders->r_eCoalition = 2;
 
 		gamerep->SetTeam(1, attackers);
 		gamerep->SetTeam(2, defenders);

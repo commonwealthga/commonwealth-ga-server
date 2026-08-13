@@ -3,10 +3,54 @@
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
-// ‼️ RETIRED — NOT in the Makefile, Install() commented out in dllmain.
+// ACTIVE — thin POST-hook only. The intact native (0x10a8cbf0) does all the
+// real work (counters, kismet pins, appending timed respawn entries); we call
+// it through CallOriginal and then re-arm the SpawnNextBot drain timer.
+//
+// Why the re-arm is needed: SpawnNextBot self-schedules only while
+// m_SpawnQueue.Num() > 0. Once a roster is fully spawned the queue is empty
+// and no timer is armed, so nothing is left to drain the replacement entries
+// BotDied appends when the bots later die — a bRespawn factory whose bots are
+// all killed while the player stays in the encounter volume never comes back.
+// Every b_respawn=1 factory in map_tg_bot_factory ships f_respawn_delay=0.0,
+// and UE3's AActor::SetTimer treats Rate==0 as "clear this timer"
+// (UnLevTic.cpp UpdateTimers removes any entry with Rate==0), so a
+// fRespawnDelay-driven kick inside the native cancels itself.
+//
+// Deliberately conservative: only re-arms when the factory is actually a
+// respawner AND the native left pending entries behind, so it can never
+// invent spawns of its own.
+void __fastcall TgBotFactory__BotDied::Call(ATgBotFactory* BotFactory, void* edx, ATgPawn* Pawn, ATgAIController* AIC) {
+	if (BotFactory == nullptr) return;
+
+	CallOriginal(BotFactory, edx, Pawn, AIC);
+
+	const int pending = BotFactory->m_SpawnQueue.Num();
+	Logger::Log("tgbotfactory",
+		"BotDied(post): factory %d current=%d/%d totalSpawns=%d pending=%d "
+		"respawn=%d autoSpawn=%d respawnDelay=%.2f\n",
+		BotFactory->m_nMapObjectId, BotFactory->nCurrentCount,
+		BotFactory->nActiveCount, BotFactory->nTotalSpawns, pending,
+		(int)BotFactory->bRespawn, (int)BotFactory->bAutoSpawn,
+		BotFactory->fRespawnDelay);
+
+	if (!BotFactory->bRespawn || !BotFactory->bAutoSpawn) return;
+	if (pending <= 0) return;
+
+	// SpawnNextBot honours each entry's own fSpawnTime — if nothing is due yet
+	// it re-arms itself for the earliest one. So the kick delay only has to be
+	// nonzero (see the Rate==0 note above); the same 0.2s floor UC
+	// PostBeginPlay clamps fSpawnDelay to.
+	float delay = BotFactory->fRespawnDelay;
+	if (delay < 0.2f) delay = 0.2f;
+	Actor__SetTimer::SetTimer(
+		(AActor*)BotFactory, delay, /*bLoop=*/ false,
+		FName("SpawnNextBot"), nullptr);
+}
+
+/* ‼️ RETIRED full reimplementation — superseded by the post-hook above.
 // The 2026-06-10 scheduler rewrite made our queue model match retail's, so
-// the INTACT native (0x10a8cbf0) runs unhooked now. Kept on disk for
-// reference only.
+// the INTACT native (0x10a8cbf0) does the counter/kismet work itself.
 //
 // Historical: reimplementation of TgBotFactory::BotDied (0x10a8cbf0). The
 // binary's copy is INTACT but operates retail's m_SpawnQueue model, where the
@@ -73,7 +117,8 @@ void __fastcall TgBotFactory__BotDied::Call(ATgBotFactory* BotFactory, void* edx
 		float delay = BotFactory->fRespawnDelay;
 		if (delay < 0.2f) delay = 0.2f;
 		Actor__SetTimer::SetTimer(
-			(AActor*)BotFactory, delay, /*bLoop=*/ false,
+			(AActor*)BotFactory, delay, false,   // bLoop
 			FName("SpawnNextBot"), nullptr);
 	}
 }
+*/

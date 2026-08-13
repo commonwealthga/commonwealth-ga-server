@@ -160,6 +160,8 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/Coords/Coords.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/FullHeal/FullHeal.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/SetSpawnTable/SetSpawnTable.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/SetItemCount/SetItemCount.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/ToggleBrokenSuits/ToggleBrokenSuits.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/Markers/Markers.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/FxBrowse/FxBrowse.cpp \
@@ -188,6 +190,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/SpawnNextBot/TgBotFactory__SpawnNextBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/SpawnWave/TgBotFactory__SpawnWave.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/ResetQueue/TgBotFactory__ResetQueue.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/BotDied/TgBotFactory__BotDied.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame/SpawnBot/TgGame__SpawnBot.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgOmegaVolume/Used/TgOmegaVolume__Used.cpp \

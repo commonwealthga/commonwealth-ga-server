@@ -263,7 +263,7 @@
 #include "src/GameServer/TgGame/TgAIController/CanBeRepaired/TgAIController__CanBeRepaired.hpp"
 #include "src/GameServer/TgGame/TgAIController/SpawnPets/TgAIController__SpawnPets.hpp"
 #include "src/GameServer/TgGame/TgAIController/RadioAlarm/TgAIController__RadioAlarm.hpp"
-// #include "src/GameServer/TgGame/TgBotFactory/BotDied/TgBotFactory__BotDied.hpp"
+#include "src/GameServer/TgGame/TgBotFactory/BotDied/TgBotFactory__BotDied.hpp"
 #include "src/GameServer/TgGame/TgPawn/ApplyDye/TgPawn__ApplyDye.hpp"
 #include "src/GameServer/TgGame/TgPawn/ApplyJetpackTrail/TgPawn__ApplyJetpackTrail.hpp"
 #include "src/GameServer/TgGame/TgPawn/BeginStats/TgPawn__BeginStats.hpp"
@@ -636,8 +636,9 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	// TgAIController__CanBeRepaired::Install();
 	TgAIController__SpawnPets::Install();
 	TgAIController__RadioAlarm::Install();
-	// TgBotFactory__BotDied::Install(); // intact native composes with the
-	// scheduler queue model — no override needed (2026-06-10 rewrite)
+	// Thin POST-hook: intact native does the work, we re-arm SpawnNextBot so
+	// the respawn entries it appends actually get drained.
+	TgBotFactory__BotDied::Install();
 	TgPawn__CheckKillQuestCredit::Install();
 	TgPawn__CheckUseQuestCredit::Install();
 	TgPawn__EndStats::Install();

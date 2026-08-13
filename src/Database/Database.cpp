@@ -11146,6 +11146,243 @@ void Database::Init() {
 		Logger::Log("db", "v161: AVA Ticket_Neutral/Defense1/Defense2 map object config\n");
 	}
 
+	if (version < 162) {
+		// v162: SD_Zone_P open-world zone — task force / team assignment for the
+		// zone's bot factories (13496-13546 block + the 13410-13414 group), plus
+		// m_n_task_force on 13538.
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('SD_Zone_P', 13538, 'm_n_task_force', '2', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13546, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13546, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13545, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13545, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13544, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13544, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13539, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13539, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13530, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13530, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13524, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13524, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13523, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13523, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13520, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13520, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13519, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13519, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13518, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13518, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13517, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13517, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13516, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13516, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13515, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13515, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13514, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13514, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13513, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13513, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13512, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13512, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13511, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13511, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13510, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13510, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13509, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13509, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13508, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13508, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13507, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13507, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13506, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13506, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13505, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13505, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13504, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13504, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13503, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13503, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13502, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13502, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13501, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13501, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13500, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13500, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13499, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13499, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13498, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13498, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13497, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13497, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13496, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13496, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13412, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13412, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13411, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13411, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13410, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13410, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13414, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13414, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13413, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13413, 's_n_team_number', '1', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v162 (SD_Zone_P task force/team): %s\n", err); return; }
+
+		Logger::Log("db", "v162: SD_Zone_P open-world zone task force/team map object config\n");
+	}
+
+	if (version < 163) {
+		// v163: per-character quest requirement counters. asm_data_set_quests /
+		// _quest_requirements are the read-only catalog (how many are needed);
+		// this holds how many the character actually has. Keyed by
+		// quest_requirement_id because it is globally unique across quests —
+		// same key the client's LoadQuests tracker uses.
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_character_quest_progress ("
+			"  character_id INTEGER NOT NULL,"
+			"  quest_id INTEGER NOT NULL,"
+			"  quest_requirement_id INTEGER NOT NULL,"
+			"  count INTEGER NOT NULL DEFAULT 0,"
+			"  updated_at INTEGER,"
+			"  PRIMARY KEY (character_id, quest_requirement_id)"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v163 (ga_character_quest_progress): %s\n", err); return; }
+
+		result = sqlite3_exec(db,
+			"CREATE INDEX IF NOT EXISTS idx_cqp_char_quest "
+			"ON ga_character_quest_progress (character_id, quest_id);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v163 (idx_cqp_char_quest): %s\n", err); return; }
+
+		Logger::Log("db", "v163: ga_character_quest_progress created\n");
+	}
+
+	if (version < 164) {
+		// v164: crafting components, stored PER USER (ga_users.id), not per
+		// character — characters share one pool, so a quest whose parts were
+		// already farmed turns in on the first interaction.
+		//
+		// Rows map 1:1 onto entries in the client's inventory map. A depleted
+		// stack is DELETED and the client told via INV_REPLICATION_STATE=2
+		// (see v165); r_ItemCount is restated after any such change.
+		//
+		// Deliberately NOT folded into ga_players_inventory: that table's
+		// item_id>0 rows are the cosmetics pool and are read as such elsewhere
+		// (the cosmetics push filters on item_id>0), so components living there
+		// would leak into cosmetics.
+		result = sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS ga_user_components ("
+			"  user_id INTEGER NOT NULL,"
+			"  item_id INTEGER NOT NULL,"
+			"  quantity INTEGER NOT NULL DEFAULT 0,"
+			"  updated_at INTEGER,"
+			"  PRIMARY KEY (user_id, item_id)"
+			");",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v164 (ga_user_components): %s\n", err); return; }
+
+		Logger::Log("db", "v164: ga_user_components created\n");
+	}
+
+	if (version < 165) {
+		// v165: drop depleted component stacks. v164 kept spent rows at
+		// quantity 0 to hold the client's inventory-map size steady; that put
+		// permanent "0 Units" rows in every player's bag list and let the DB row
+		// set drift from the client's map. Depleted stacks are now deleted and
+		// the client is told with an INV_REPLICATION_STATE=2 record, so the
+		// zero rows left behind by v164 have to go.
+		result = sqlite3_exec(db,
+			"DELETE FROM ga_user_components WHERE quantity <= 0;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v165 (purge empty components): %s\n", err); return; }
+
+		Logger::Log("db", "v165: purged depleted ga_user_components rows\n");
+	}
+
+	if (version < 166) {
+		// v166: SD_Zone_P bot-factory spawn tables. Same 13410-13414 /
+		// 13496-13546 factory set v162 gave task force + team to; this assigns
+		// what each one actually spawns. n_spawn_table_id is the live table,
+		// n_default_spawn_table_id the one it reverts to.
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('SD_Zone_P', 13410, 'n_spawn_table_id', '91', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13410, 'n_default_spawn_table_id', '91', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13411, 'n_spawn_table_id', '91', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13411, 'n_default_spawn_table_id', '91', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13412, 'n_spawn_table_id', '93', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13412, 'n_default_spawn_table_id', '93', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13506, 'n_spawn_table_id', '114', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13506, 'n_default_spawn_table_id', '114', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13498, 'n_spawn_table_id', '93', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13498, 'n_default_spawn_table_id', '93', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13530, 'n_spawn_table_id', '93', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13530, 'n_default_spawn_table_id', '93', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13546, 'n_spawn_table_id', '144', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13546, 'n_default_spawn_table_id', '144', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13497, 'n_spawn_table_id', '92', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13497, 'n_default_spawn_table_id', '92', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13502, 'n_spawn_table_id', '110', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13502, 'n_default_spawn_table_id', '110', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13499, 'n_spawn_table_id', '107', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13499, 'n_default_spawn_table_id', '107', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13500, 'n_spawn_table_id', '108', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13500, 'n_default_spawn_table_id', '108', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13501, 'n_spawn_table_id', '141', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13501, 'n_default_spawn_table_id', '141', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13545, 'n_spawn_table_id', '141', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13545, 'n_default_spawn_table_id', '141', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13524, 'n_spawn_table_id', '128', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13524, 'n_default_spawn_table_id', '128', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13503, 'n_spawn_table_id', '111', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13503, 'n_default_spawn_table_id', '111', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13504, 'n_spawn_table_id', '112', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13504, 'n_default_spawn_table_id', '112', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13539, 'n_spawn_table_id', '139', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13539, 'n_default_spawn_table_id', '139', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13518, 'n_spawn_table_id', '127', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13518, 'n_default_spawn_table_id', '127', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13507, 'n_spawn_table_id', '115', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13507, 'n_default_spawn_table_id', '115', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13508, 'n_spawn_table_id', '117', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13508, 'n_default_spawn_table_id', '117', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13509, 'n_spawn_table_id', '118', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13509, 'n_default_spawn_table_id', '118', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13510, 'n_spawn_table_id', '119', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13510, 'n_default_spawn_table_id', '119', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13511, 'n_spawn_table_id', '120', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13511, 'n_default_spawn_table_id', '120', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13515, 'n_spawn_table_id', '124', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13515, 'n_default_spawn_table_id', '124', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13516, 'n_spawn_table_id', '125', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13516, 'n_default_spawn_table_id', '125', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13517, 'n_spawn_table_id', '126', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13517, 'n_default_spawn_table_id', '126', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13413, 'n_spawn_table_id', '95', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13413, 'n_default_spawn_table_id', '95', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13496, 'n_spawn_table_id', '106', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13496, 'n_default_spawn_table_id', '106', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13512, 'n_spawn_table_id', '121', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13512, 'n_default_spawn_table_id', '121', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13513, 'n_spawn_table_id', '122', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13513, 'n_default_spawn_table_id', '122', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13514, 'n_spawn_table_id', '123', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13514, 'n_default_spawn_table_id', '123', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13523, 'n_spawn_table_id', '113', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13523, 'n_default_spawn_table_id', '113', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13544, 'n_spawn_table_id', '141', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13544, 'n_default_spawn_table_id', '141', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13505, 'n_spawn_table_id', '113', NULL, NULL, 1),"
+			"  ('SD_Zone_P', 13505, 'n_default_spawn_table_id', '113', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v166 (SD_Zone_P spawn tables): %s\n", err); return; }
+
+		Logger::Log("db", "v166: SD_Zone_P bot factory spawn tables\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -11157,7 +11394,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 161", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 166", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

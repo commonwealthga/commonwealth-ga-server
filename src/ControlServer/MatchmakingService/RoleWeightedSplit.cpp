@@ -139,8 +139,12 @@ ComputeBatchAssignment(const std::vector<PlayerSlot>& players,
     std::vector<MmrSwap::Player> mp;
     mp.reserve(players.size());
     for (const auto& p : players) mp.push_back({p.guid, p.profile_id, p.mmr, true});
-    const int swaps = MmrSwap::BalanceByMmr(mp, out,
-                                            seed1.mmr_sum - seed2.mmr_sum);
+    MmrSwap::SeedContext ctx;
+    ctx.mmr_tf1 = seed1.mmr_sum;
+    ctx.mmr_tf2 = seed2.mmr_sum;
+    ctx.n_tf1   = seed1.size;
+    ctx.n_tf2   = seed2.size;
+    const int swaps = MmrSwap::BalanceByMmrOptimal(mp, out, ctx);
     double sum1 = 0.0, sum2 = 0.0;
     for (const auto& p : players) {
         if (out[p.guid] == 1) sum1 += p.mmr;
@@ -222,6 +226,62 @@ ComputeRebalanceDelta(const std::vector<RosterEntry>& roster) {
     Logger::Log("team-balance",
         "[RoleWeightedSplit] ComputeRebalanceDelta roster=%zu moves=%zu\n",
         roster.size(), moves.size());
+    return moves;
+}
+
+namespace {
+
+double MeanTeamMmrDiff(const std::vector<RosterEntry>& roster) {
+    double s1 = 0.0, s2 = 0.0;
+    int n1 = 0, n2 = 0;
+    for (const auto& r : roster) {
+        if (r.current_tf == 1) { s1 += r.mmr; ++n1; }
+        else                   { s2 += r.mmr; ++n2; }
+    }
+    if (n1 == 0 || n2 == 0) return 0.0;
+    return std::fabs(s1 / static_cast<double>(n1) - s2 / static_cast<double>(n2));
+}
+
+}  // namespace
+
+std::unordered_map<std::string, int>
+ComputeMmrOptimalDelta(const std::vector<RosterEntry>& roster) {
+    std::unordered_map<std::string, int> moves;
+    if (roster.empty()) return moves;
+
+    const double before = MeanTeamMmrDiff(roster);
+
+    std::vector<MmrSwap::Player> players;
+    players.reserve(roster.size());
+    std::unordered_map<std::string, int> assignment;
+    for (const auto& r : roster) {
+        players.push_back({r.guid, r.profile_id, r.mmr, true});
+        assignment[r.guid] = r.current_tf;
+    }
+
+    MmrSwap::BalanceByMmrOptimal(players, assignment);
+
+    double s1 = 0.0, s2 = 0.0;
+    int n1 = 0, n2 = 0;
+    for (const auto& r : roster) {
+        const int tf = assignment.at(r.guid);
+        if (tf == 1) { s1 += r.mmr; ++n1; }
+        else         { s2 += r.mmr; ++n2; }
+    }
+    const double after = (n1 == 0 || n2 == 0) ? 0.0
+        : std::fabs(s1 / static_cast<double>(n1) - s2 / static_cast<double>(n2));
+
+    if (before - after < kMmrRebalanceMinImprovement) return moves;
+
+    for (const auto& r : roster) {
+        const int tf = assignment.at(r.guid);
+        if (tf != r.current_tf) moves[r.guid] = tf;
+    }
+
+    Logger::Log("team-balance",
+        "[RoleWeightedSplit] ComputeMmrOptimalDelta roster=%zu moves=%zu"
+        " mmr_diff %.1f -> %.1f\n",
+        roster.size(), moves.size(), before, after);
     return moves;
 }
 

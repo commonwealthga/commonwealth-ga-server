@@ -24,6 +24,138 @@ public:
     static void CompleteQuest(int64_t character_id, int quest_id);
     static void AbandonQuest(int64_t character_id, int quest_id);
 
+    // One requirement counter that moved as a result of a credit event.
+    struct QuestProgress {
+        int quest_id = 0;
+        int quest_requirement_id = 0;
+        int count = 0;        // new absolute count (clamped to required)
+        int required = 0;     // asm_data_set_quest_requirements.count
+        bool completed = false;  // count reached required on THIS credit
+    };
+
+    // Credit one kill of `bot_id` to `character_id`. Bumps every "Kill"
+    // (requirement_type_value_id 1428) requirement with a matching
+    // target_bot_id that belongs to one of the character's ACTIVE quests and
+    // isn't already at its required count. Returns only the rows that actually
+    // changed, so the caller can push exactly those to the client.
+    static std::vector<QuestProgress> CreditKillQuestRequirements(int64_t character_id,
+                                                                 int bot_id);
+
+    // One "Interact with Volume" (1431) Use press on `ui_volume_id`, reported by
+    // the DLL's TgOmegaVolume::Used hook. Stores into the same counter table as
+    // Kill and returns the requirements that moved, for the progress push.
+    //
+    // Credited to the USING player only, not the task force: unlike a kill
+    // (TgPawn.uc passes the killer's TaskForce), the Use press is an individual
+    // act and each member walks up to the volume themselves.
+    static std::vector<QuestProgress> CreditVolumeQuestRequirements(int64_t character_id,
+                                                                    int ui_volume_id);
+
+    // ---- Crafting components -------------------------------------------
+    //
+    // Components ARE real inventory rows on the client. The client computes
+    // Collect (1429) quest progress itself, by summing m_InventoryData
+    // .nInstanceCount over its m_InventoryMap entries whose nItemId matches
+    // (FUN_10a16310, reached from FUN_109ac070) — the COUNT we push in a quest
+    // progress packet is ignored for type 1429. So a component must exist as a
+    // SEND_INVENTORY record or the quest log stays at 0 and never completes.
+    //
+    // Stock is per USER, so all of an account's characters share one pool and a
+    // quest whose parts were already farmed turns in on the first interaction.
+    //
+    // ‼️ Every component row shipped to the client also has to be counted in
+    // ATgInventoryManager::r_ItemCount, or IsValid() fails and the equip screen
+    // blanks. See TcpSession::credit_loot_table + the set_item_count action.
+
+    struct ComponentRow {
+        int item_id = 0;
+        int quantity = 0;
+        int quality_value_id = 0;
+    };
+
+    // asm_data_set_bots.loot_table_id / asm_data_set_quests.loot_table_id.
+    static int GetBotLootTableId(int bot_id);
+    static int GetQuestRewardLootTableId(int quest_id);
+
+    // Roll a loot table -> {item_id: quantity} for the COMPONENT rows that
+    // dropped. Honours drop_chance, quantity and sub_loot_table_id recursion;
+    // non-component rows are rolled and discarded so odds stay faithful.
+    static std::map<int, int> RollLootTableComponents(int loot_table_id);
+
+    struct ComponentGrant {
+        int item_id = 0;
+        int quantity = 0;    // amount added by this grant
+        int new_total = 0;   // stack size afterwards
+        int quality_value_id = 0;
+        bool new_row = false;  // no live stack existed before this grant —
+                               // means a NEW client map entry, so r_ItemCount
+                               // has to grow by one
+    };
+    static std::vector<ComponentGrant> GrantComponents(int64_t user_id,
+                                                       const std::map<int, int>& items);
+
+    // Number of records send_inventory_response will ship for this user:
+    // device/cosmetic rows for the profile + every component row. This is the
+    // value ATgInventoryManager::r_ItemCount must hold, and it is the same
+    // expression the DLL's spawn / re-equip stamp sites use.
+    static int GetExpectedItemCount(int64_t user_id, int profile_id);
+
+    // Component stock for one user (0 when absent).
+    static int GetComponentCount(int64_t user_id, int item_id);
+    // The user's live component stacks. A depleted stack has no row — see
+    // ConsumeQuestRequirementItems.
+    static std::vector<ComponentRow> GetAllComponents(int64_t user_id);
+
+    // Spend the components a quest's Collect requirements asked for, and DELETE
+    // any stack that hits zero. Returns the item_ids removed, so the caller can
+    // push the matching STATE=2 records.
+    //
+    // A depleted stack must disappear from both sides. Keeping zero-quantity
+    // rows alive (the original design, to hold the client's map size steady)
+    // left "0 Units" ghosts littering the player's bag list, and made the DB row
+    // set and the client's map drift in ways nothing could observe. The client
+    // has a real removal path — INV_REPLICATION_STATE=2 → FUN_10a16190 →
+    // FUN_10a160e0 drops the map entry — so delete on both sides and restate
+    // r_ItemCount afterwards.
+    //
+    // Non-component targets (quest 5 wants a dye) are left alone.
+    static std::vector<int> ConsumeQuestRequirementItems(int64_t user_id, int quest_id);
+
+    // Remove up to `count` from one stack, deleting the row if it empties.
+    // Returns how many were actually taken. Used by the -components test hook;
+    // same delete-on-empty rule as ConsumeQuestRequirementItems.
+    static int TakeComponents(int64_t user_id, int item_id, int count);
+
+    struct QuestRequirementRow {
+        int quest_requirement_id = 0;
+        int requirement_type_value_id = 0;
+        int count = 0;
+        int target_item_id = 0;
+        int target_bot_id = 0;
+        int target_ui_volume_id = 0;
+    };
+    static std::vector<QuestRequirementRow> GetQuestRequirements(int quest_id);
+
+    // True when every requirement of `quest_id` is satisfied. Kill (1428) reads
+    // ga_character_quest_progress; Collect (1429) reads component stock — the
+    // same source the client uses, so server and client agree.
+    static bool AreQuestRequirementsMet(int64_t user_id, int64_t character_id, int quest_id,
+                                        std::vector<std::string>* unmet = nullptr);
+
+    // ---- Quest state sync (login / spawn) -----------------------------------
+    struct CharacterQuestState {
+        int quest_id = 0;
+        std::string status;      // "active" | "complete"
+        int64_t completed_at = 0;
+    };
+    static std::vector<CharacterQuestState> GetCharacterQuestStates(int64_t character_id);
+
+    // Requirement counters to replay for ONE active quest (Kill + Collect).
+    // pair = (quest_requirement_id, count).
+    static std::vector<std::pair<int, int>> GetQuestRequirementCounts(int64_t user_id,
+                                                                     int64_t character_id,
+                                                                     int quest_id);
+
     // ---- User moderation: session history ----------------------------------
     // outcome: "ok" (live or completed), "rejected" (validation failure),
     // "banned" (ban triggered). Returns the row id, or 0 on failure.

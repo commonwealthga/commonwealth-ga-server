@@ -128,6 +128,10 @@ private:
     // Replies privately to this session only via deliver().
     void HandleUnspectateCommand();
 
+    // -components — inventory-desync test harness. Report prints the three
+    // numbers that must agree; grant/take drive the real SEND_INVENTORY paths.
+    void HandleComponentsCommand(const ChatCommand::ParseResult::ComponentsArgs& args);
+
     // Single tear-down path. Idempotent via `closed_`. On entry, optionally
     // broadcasts a "<player> has left the chat" system message if the session
     // was handshaken, then clears the write queue, closes the socket, and
