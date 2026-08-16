@@ -323,6 +323,16 @@ private:
                 (long long)inst_id, guid.c_str());
             InstanceRegistry::MarkInstancePlayerLeft(inst_id, guid);
             StopNonHomeInstanceIfEmpty(inst_id, "last player left");
+
+            // Backfill: a vacancy on a backfill_only-queue instance may be
+            // fillable by a queued same-class player — evaluate now.
+            if (auto inst = InstanceRegistry::GetInstanceById(inst_id)) {
+                if (inst->queue_id != 0) {
+                    auto qcfg = MatchmakingService::GetQueueConfig(inst->queue_id);
+                    if (qcfg && qcfg->late_join_policy == LateJoinPolicy::BackfillOnly)
+                        MatchmakingService::EvaluateQueue(inst->queue_id);
+                }
+            }
         }
         else if (type == IpcProtocol::MSG_PAWN_HEALTH_SNAPSHOT) {
             int64_t inst_id   = j.value("instance_id", (int64_t)0);
@@ -641,6 +651,10 @@ private:
                 if (!is_balanced) {
                     Logger::Log("team-balance",
                         "[IpcServer] REQUEST_REBALANCE inst=%lld policy not balanced — skipping\n",
+                        (long long)inst_id);
+                } else if (!queue_cfg->setup_rebalance) {
+                    Logger::Log("team-balance",
+                        "[IpcServer] REQUEST_REBALANCE inst=%lld declined by config (setup_rebalance=0)\n",
                         (long long)inst_id);
                 } else {
                     auto rows = InstanceRegistry::GetActivePlayersForInstance(inst_id);

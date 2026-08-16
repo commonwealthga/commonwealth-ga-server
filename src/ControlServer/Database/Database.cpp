@@ -876,6 +876,21 @@ void Database::Init() {
 			}
 		}
 
+		// Merc strict matchmaking knobs (2026-08-16 design). Defaults
+		// preserve current behaviour on every queue. Idempotent —
+		// duplicate-column errors swallowed.
+		const char* kStrictMatchmakingAlters[] = {
+			"ALTER TABLE ga_queues ADD COLUMN strict_class_balance INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_queues ADD COLUMN late_join_policy     TEXT    NOT NULL DEFAULT 'open';",
+			"ALTER TABLE ga_queues ADD COLUMN pair_backfill        INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_queues ADD COLUMN setup_rebalance      INTEGER NOT NULL DEFAULT 1;",
+		};
+		for (const char* sql : kStrictMatchmakingAlters) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				sqlite3_free(err); err = nullptr;
+			}
+		}
+
 		// One-time per-archetype team config. Guarded by a marker row so it
 		// runs EXACTLY ONCE on first deploy and never stomps later operator
 		// edits to team_policy / team_side_policy. (We can't gate on

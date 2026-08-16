@@ -49,6 +49,12 @@ public:
     static void Init();
     static void ReloadQueues();
 
+    // External poke: re-evaluate a queue outside the usual queue-change
+    // triggers (e.g. a PLAYER_LEFT vacancy on a backfill_only instance).
+    // Backfill routing results flow immediately; fresh-spawn results keep
+    // normal delay semantics.
+    static void EvaluateQueue(uint32_t queue_id);
+
     // --- Party / player queue management -----------------------------------
 
     // Queue a whole party (solo of 1 or a team of N). The party is atomic from
@@ -149,6 +155,10 @@ private:
         // Recently picked map names, most recent first. In-memory only —
         // survives ReloadQueues (like parties), resets on server restart.
         std::deque<std::string> recent_maps;
+        // Strict-queue exclusion priority: guid -> times left behind by a
+        // strict pop. In-memory only — survives ReloadQueues, resets on
+        // restart. Cleared per guid on any match entry from this queue.
+        std::unordered_map<std::string, uint32_t> exclusion_counts;
     };
 
     static std::unordered_map<uint32_t, Queue> queues_;

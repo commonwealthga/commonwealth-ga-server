@@ -1,5 +1,6 @@
 #include "src/ControlServer/MatchmakingService/Rules/CoopMatchRule.hpp"
 #include "src/ControlServer/MatchmakingService/RuleSupport.hpp"
+#include "src/ControlServer/MatchmakingService/StrictBalance.hpp"
 
 #include <algorithm>
 
@@ -42,6 +43,38 @@ std::optional<MatchResult> CoopMatchRule::PlacePool(
     if (parties.empty()) return std::nullopt;
     auto ordered = PartiesByWaitAsc(parties);
 
+    // Strict knobs are inert unless the queue is BalancedPvp.
+    const bool pvp      = cfg_.taskforce_policy == TaskforcePolicy::BalancedPvp;
+    const bool strict   = pvp && cfg_.strict_class_balance;
+    const bool backfill = pvp && cfg_.late_join_policy == LateJoinPolicy::BackfillOnly;
+
+    // 0. Backfill into BACKFILL_ONLY instances (sealed to drop-in; this is
+    //    the only entry path). Class repair first, then the optional
+    //    MMR-gated pair admission.
+    if (backfill) {
+        for (const auto& inst : instances) {
+            if (inst.access_mode != AccessMode::BackfillOnly) continue;
+            auto invites = StrictBalance::PlanDeficitBackfill(parties, inst);
+            if (invites.empty() && cfg_.pair_backfill)
+                invites = StrictBalance::PlanPairJoin(parties, inst);
+            if (invites.empty()) continue;
+
+            MatchResult r;
+            for (const auto& iv : invites) {
+                const auto& m = iv.party->members.front();
+                r.consumed_party_ids.push_back(iv.party->party_id);
+                r.session_guids.push_back(m.session_guid);
+                r.task_force_assignments[m.session_guid] = iv.tf;
+                r.profile_ids[m.session_guid] = m.profile_id;
+                r.mmrs[m.session_guid] = m.mmr;
+            }
+            r.existing_instance_id = inst.instance_id;
+            r.map_name  = inst.map_name;
+            r.game_mode = inst.game_mode;
+            return r;
+        }
+    }
+
     // 1. Drop-in: first OPEN instance with room for at least one whole party.
     for (const auto& inst : instances) {
         if (inst.access_mode != AccessMode::Open) continue;  // never enter locked/sealed
@@ -58,14 +91,25 @@ std::optional<MatchResult> CoopMatchRule::PlacePool(
         return r;
     }
 
-    // 2. Fresh OPEN spawn. Cap by the queue's per-instance ceiling.
+    // 2. Fresh spawn. Cap by the queue's per-instance ceiling; strict mode
+    //    picks the largest all-even-class subset instead of greedy packing.
     const uint32_t cap = mm::QueueInstanceCap(cfg_);
-    auto chosen = PackParties(ordered, cap > 0 ? (int)cap : -1);
+    std::vector<const QueuedParty*> chosen;
+    if (strict) {
+        chosen = StrictBalance::SelectClassEqualSubset(parties, cap > 0 ? (int)cap : -1);
+    } else {
+        chosen = PackParties(ordered, cap > 0 ? (int)cap : -1);
+    }
     if (chosen.empty()) return std::nullopt;
 
-    return BuildResult(
+    MatchResult r = BuildResult(
         chosen, cfg_.taskforce_policy, cfg_.team_side_policy,
         /*seed1=*/{}, /*seed2=*/{}, AccessMode::Open, /*owners=*/{});
+    if (backfill) {
+        r.access_mode  = AccessMode::BackfillOnly;
+        r.cap_override = (uint32_t)r.session_guids.size();
+    }
+    return r;
 }
 
 std::optional<MatchResult> CoopMatchRule::Evaluate(

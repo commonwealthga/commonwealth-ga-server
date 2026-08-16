@@ -73,6 +73,14 @@ static PopDelayPolicy ParsePopDelayPolicyLogged(const char* raw, uint32_t qid) {
         qid, raw ? raw : "");
     return v;
 }
+static LateJoinPolicy ParseLateJoinPolicyLogged(const char* s, uint32_t queue_id) {
+    bool ok = false;
+    const LateJoinPolicy v = mm::ParseLateJoinPolicy(s ? s : "", &ok);
+    if (!ok) Logger::Log("matchmaking",
+        "[Matchmaking] Queue %u unknown late_join_policy '%s' — using 'open'\n",
+        queue_id, s ? s : "");
+    return v;
+}
 
 static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
     std::vector<QueueConfig> out;
@@ -91,7 +99,8 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
         "       min_players_to_pop, max_players_per_instance, pop_delay_seconds,"
         "       pop_delay_policy, instant_pop_when_full,"
         "       marshal_difficulty_value_id, requires_pvp_verification,"
-        "       team_policy, team_side_policy, max_team_size, map_recency_divisors "
+        "       team_policy, team_side_policy, max_team_size, map_recency_divisors,"
+        "       strict_class_balance, late_join_policy, pair_backfill, setup_rebalance "
         "FROM ga_queues ORDER BY sort_order, queue_id";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
         Logger::Log("matchmaking", "[Matchmaking] LoadQueueConfigs prepare failed: %s\n",
@@ -177,6 +186,18 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
                 c.queue_id, raw ? raw : "");
         }
         col++;
+        c.strict_class_balance = sqlite3_column_int(stmt, col++) != 0;
+        c.late_join_policy = ParseLateJoinPolicyLogged(
+            (const char*)sqlite3_column_text(stmt, col), c.queue_id);
+        col++;
+        c.pair_backfill   = sqlite3_column_int(stmt, col++) != 0;
+        c.setup_rebalance = sqlite3_column_int(stmt, col++) != 0;
+        if ((c.strict_class_balance || c.late_join_policy == LateJoinPolicy::BackfillOnly)
+                && c.taskforce_policy != TaskforcePolicy::BalancedPvp) {
+            Logger::Log("matchmaking",
+                "[Matchmaking] Queue %u strict/backfill knobs set but policy is not balanced_pvp — inert\n",
+                c.queue_id);
+        }
         out.push_back(std::move(c));
     }
     sqlite3_finalize(stmt);
@@ -232,10 +253,12 @@ void MatchmakingService::ReloadQueues() {
     std::unordered_map<uint32_t, std::vector<QueuedParty>> kept_parties;
     std::unordered_map<uint32_t, std::optional<DelayedPop>> kept_delays;
     std::unordered_map<uint32_t, std::deque<std::string>>   kept_recent;
+    std::unordered_map<uint32_t, std::unordered_map<std::string, uint32_t>> kept_excl;
     for (auto& [qid, q] : queues_) {
         kept_parties[qid] = std::move(q.parties);
         kept_delays[qid]  = std::move(q.delayed_pop);
         kept_recent[qid]  = std::move(q.recent_maps);
+        kept_excl[qid]    = std::move(q.exclusion_counts);
     }
 
     std::unordered_map<uint32_t, Queue> rebuilt;
@@ -249,6 +272,8 @@ void MatchmakingService::ReloadQueues() {
         if (dit != kept_delays.end()) { q.delayed_pop = std::move(dit->second); kept_delays.erase(dit); }
         auto rit = kept_recent.find(qid);
         if (rit != kept_recent.end()) q.recent_maps = std::move(rit->second);
+        auto eit = kept_excl.find(qid);
+        if (eit != kept_excl.end()) q.exclusion_counts = std::move(eit->second);
         rebuilt[qid] = std::move(q);
     }
 
@@ -895,6 +920,10 @@ static void RemoveConsumedParties(std::vector<QueuedParty>& parties,
         }), parties.end());
 }
 
+void MatchmakingService::EvaluateQueue(uint32_t queue_id) {
+    TryPop(queue_id, /*delay_elapsed=*/false);
+}
+
 void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
     auto it = queues_.find(queue_id);
     if (it == queues_.end()) return;
@@ -913,6 +942,10 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
             if (!all_verified) continue;
         }
         eligible.push_back(party);
+        for (auto& m : eligible.back().members) {
+            auto xit = queue.exclusion_counts.find(m.session_guid);
+            m.exclusion_count = (xit != queue.exclusion_counts.end()) ? xit->second : 0;
+        }
     }
     if (eligible.empty()) return;
 
@@ -1047,6 +1080,7 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
     if (!delay_elapsed && !result->existing_instance_id
             && result->access_mode != AccessMode::PartyLocked
             && queue.config.pop_delay_seconds > 0.0f && io_ctx_) {
+        if (queue.delayed_pop) return;  // timer already armed — let it fire
         const auto now = std::chrono::steady_clock::now();
         const auto dur_ms = std::chrono::milliseconds((int64_t)(queue.config.pop_delay_seconds * 1000.0f));
         DelayedPop dp;
@@ -1133,6 +1167,15 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
                 pm.mmrs[guid] = (mit != result->mmrs.end()) ? mit->second : 1000.0;
             }
             RemoveConsumedParties(queue.parties, result->consumed_party_ids);
+            // Exclusion-priority bookkeeping: entering a match clears a player's
+            // count; a fresh strict pop bumps everyone left behind.
+            for (const auto& guid : result->session_guids)
+                queue.exclusion_counts.erase(guid);
+            if (queue.config.strict_class_balance && !result->existing_instance_id) {
+                for (const auto& party : queue.parties)
+                    for (const auto& m : party.members)
+                        queue.exclusion_counts[m.session_guid] += 1;
+            }
             Logger::Log("matchmaking",
                 "[Matchmaking] Queue %u: coalesced %zu player(s) into pending instance %lld (total %zu)\n",
                 queue_id, need, (long long)iid, pm.session_guids.size());
@@ -1143,6 +1186,15 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
 
     // Commit: remove consumed parties, hand the result to the spawn/route callback.
     RemoveConsumedParties(queue.parties, result->consumed_party_ids);
+    // Exclusion-priority bookkeeping: entering a match clears a player's
+    // count; a fresh strict pop bumps everyone left behind.
+    for (const auto& guid : result->session_guids)
+        queue.exclusion_counts.erase(guid);
+    if (queue.config.strict_class_balance && !result->existing_instance_id) {
+        for (const auto& party : queue.parties)
+            for (const auto& m : party.members)
+                queue.exclusion_counts[m.session_guid] += 1;
+    }
 
     Logger::Log("matchmaking",
         "[Matchmaking] Queue %u popped: %zu players map=%s mode=%s access=%s\n",

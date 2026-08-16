@@ -30,6 +30,9 @@ struct QueuedPlayer {
     // -togglesolomode preference (ga_user_preferences "solo_mode"), stamped at
     // enqueue. A solo party with this set pops its own PARTY_LOCKED match.
     bool        solo_lock  = false;
+    // Strict-queue exclusion priority (times left behind by a strict pop).
+    // Stamped by MatchmakingService from its per-queue map before Evaluate.
+    uint32_t    exclusion_count = 0;
     // Installed DLC packs (ga_dlc ids from ga_user_dlc, stamped at enqueue).
     // Gates which pool maps the player may be routed to on DLC-locked pools.
     std::vector<int64_t> installed_dlcs;
@@ -84,6 +87,8 @@ enum class AccessMode : uint8_t {
     Open,         // any party from this queue may be routed in (drop-in)
     PartyLocked,  // only owner_party_ids + explicit invite-accepts may enter
     Sealed,       // nobody enters after match start — not even invites (DA)
+    BackfillOnly, // closed like Sealed; only the matchmaker's backfill logic
+                  //   may reserve seats + invite (strict merc)
 };
 
 // Pop-delay re-arm shape (governs MaybeResetDelayedPop while a timer runs).
@@ -91,6 +96,13 @@ enum class PopDelayPolicy : uint8_t {
     HalveOnJoin,   // next_duration halves on each join, floor 0.5s
     Fixed,         // timer set once; ignores joins (cancels only on leave below min)
     ResetOnJoin,   // every join re-arms timer to cfg.pop_delay_seconds
+};
+
+// Who may enter an already-running match from this queue.
+enum class LateJoinPolicy : uint8_t {
+    Open,          // drop-in as always (default)
+    BackfillOnly,  // pops seal (BACKFILL_ONLY); only class-repair backfill
+                   //   and the optional MMR-gated pair admission enter
 };
 
 // ---------------------------------------------------------------------------
@@ -155,7 +167,8 @@ struct RunningInstance {
     // A party of `party_id` may enter iff Open, or PartyLocked-and-owner.
     bool admits_party(uint64_t party_id) const {
         if (access_mode == AccessMode::Open) return true;
-        if (access_mode == AccessMode::Sealed) return false;
+        if (access_mode == AccessMode::Sealed
+                || access_mode == AccessMode::BackfillOnly) return false;
         return std::find(owner_party_ids.begin(), owner_party_ids.end(), party_id)
                != owner_party_ids.end();
     }
@@ -246,6 +259,13 @@ struct QueueConfig {
     bool instant_pop_when_full        = true;
     bool requires_pvp_verification    = false;
 
+    // Strict matchmaking knobs (2026-08-16). Inert unless taskforce_policy
+    // is BalancedPvp. Defaults = pre-strict behaviour.
+    bool           strict_class_balance = false;
+    LateJoinPolicy late_join_policy     = LateJoinPolicy::Open;
+    bool           pair_backfill        = false;
+    bool           setup_rebalance      = true;
+
     // Map-variety knob: per-recency-slot weight divisors, most recent first
     // (ga_queues.map_recency_divisors, CSV). Empty = feature off.
     std::vector<double> map_recency_divisors;
@@ -297,6 +317,14 @@ inline PopDelayPolicy ParsePopDelayPolicy(const std::string& s, bool* ok = nullp
     return PopDelayPolicy::HalveOnJoin;
 }
 
+inline LateJoinPolicy ParseLateJoinPolicy(const std::string& s, bool* ok = nullptr) {
+    if (ok) *ok = true;
+    if (s == "open")          return LateJoinPolicy::Open;
+    if (s == "backfill_only") return LateJoinPolicy::BackfillOnly;
+    if (ok) *ok = false;
+    return LateJoinPolicy::Open;
+}
+
 // Parse ga_queues.map_recency_divisors: "25, 5, 2" → {25, 5, 2}. Most recent
 // first; list length = history depth. Empty/blank = disabled (ok stays true).
 // Every token must parse fully as a number >= 1, else ok=false and {} returned.
@@ -335,6 +363,7 @@ inline const char* AccessModeToString(AccessMode m) {
         case AccessMode::Open:        return "OPEN";
         case AccessMode::PartyLocked: return "PARTY_LOCKED";
         case AccessMode::Sealed:      return "SEALED";
+        case AccessMode::BackfillOnly: return "BACKFILL_ONLY";
     }
     return "OPEN";
 }
@@ -342,6 +371,7 @@ inline const char* AccessModeToString(AccessMode m) {
 inline AccessMode ParseAccessMode(const std::string& s) {
     if (s == "PARTY_LOCKED") return AccessMode::PartyLocked;
     if (s == "SEALED")       return AccessMode::Sealed;
+    if (s == "BACKFILL_ONLY") return AccessMode::BackfillOnly;
     return AccessMode::Open;
 }
 

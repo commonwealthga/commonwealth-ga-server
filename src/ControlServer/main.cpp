@@ -66,6 +66,10 @@ static bool UpdateQueueField(uint32_t queue_id, const std::string& field,
         { "team_side_policy",         Kind::Enum        },
         { "pop_delay_policy",         Kind::Enum        },
         { "map_recency_divisors",     Kind::DivisorList },  // CSV, each >= 1; empty = off
+        { "strict_class_balance",     Kind::Bool        },
+        { "pair_backfill",            Kind::Bool        },
+        { "setup_rebalance",          Kind::Bool        },
+        { "late_join_policy",         Kind::Enum        },
     };
 
     const FieldSpec* spec = nullptr;
@@ -115,6 +119,7 @@ static bool UpdateQueueField(uint32_t queue_id, const std::string& field,
             else if (field == "team_policy")      mm::ParseTeamPolicy(bind_text, &ok);
             else if (field == "team_side_policy") mm::ParseTeamSidePolicy(bind_text, &ok);
             else if (field == "pop_delay_policy") mm::ParsePopDelayPolicy(bind_text, &ok);
+            else if (field == "late_join_policy") mm::ParseLateJoinPolicy(bind_text, &ok);
             if (!ok) { message = "invalid value for " + field; return false; }
             is_text = true;
             break;
@@ -504,6 +509,7 @@ int main(int argc, char* argv[]) {
             auto merge = [](TeamSeed& dst, const TeamSeed& src) {
                 dst.size += src.size;
                 dst.heal_score += src.heal_score;
+                dst.mmr_sum += src.mmr_sum;
                 for (const auto& [cls, n] : src.class_counts) dst.class_counts[cls] += n;
             };
             merge(it->team1, reserved.team1);
