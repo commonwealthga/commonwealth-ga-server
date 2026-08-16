@@ -1018,10 +1018,7 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	LogAssemblySnapshot("[EXIT Orig]", newpawn, newpawn->s_OrigCustomCharacterAssembly);
 	{
 		ATgRepInfo_Player* pri = (ATgRepInfo_Player*)newpawn->PlayerReplicationInfo;
-		if (pri) {
-			pri->bAdmin=1;
-		 LogAssemblySnapshot("[EXIT PRI ]", pri, pri->r_CustomCharacterAssembly);
-		}
+		if (pri) LogAssemblySnapshot("[EXIT PRI ]", pri, pri->r_CustomCharacterAssembly);
 	}
 	LogCallEnd();
 
