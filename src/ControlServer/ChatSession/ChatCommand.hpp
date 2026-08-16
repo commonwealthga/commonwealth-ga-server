@@ -148,6 +148,26 @@ struct SetSpawnTableArgs {
     int spawn_table_id = 0;
 };
 
+// -cheat <mode> DEV TOOL
+// toggle the matching HiRez cheat mode
+// Zeus = god
+// Icarus = fly/noclip
+// Hades = no CD
+// Apollo = no energy cost (no morale cost also ?)
+// Athena = invisible to mobs
+enum class CheatMode {
+    None,
+    Zeus,
+    Icarus,
+    Hades,
+    Apollo,
+    Athena
+};
+
+struct CheatArgs {
+    CheatMode cheat_mode;
+};
+
 // Master switch for -components (the inventory-desync test harness).
 //
 // FALSE in normal operation, and it must stay that way: `grant` mints component
@@ -184,6 +204,7 @@ struct ParseResult {
     std::optional<MarkersArgs>      markers;
     std::optional<FxBrowseArgs>     fx_browse;
     std::optional<SetSpawnTableArgs> set_spawn_table;
+    std::optional<CheatArgs>         cheat;
 
     // No-arg toggles. Flag is set when recognized + parsed cleanly.
     bool possess   = false;
@@ -329,5 +350,9 @@ void ExecuteToggleSoloMode(const ToggleSoloModeArgs& args,
 // catalog. DLC-gated queues appear/disappear on the next GET_TICKET_INFO
 // poll. Handled entirely on the control server; no PLAYER_ACTION IPC.
 void ExecuteSetDlc(const SetDlcArgs& args, const std::string& session_guid);
+
+// -cheat: toggle hirez cheat modes (zeus,icarus,hades,apollo,athena)
+void DispatchToggleCheatMode(const CheatArgs& args,
+                               const std::string& session_guid);
 
 } // namespace ChatCommand

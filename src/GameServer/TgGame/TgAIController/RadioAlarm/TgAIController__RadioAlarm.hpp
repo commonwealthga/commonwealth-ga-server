@@ -9,4 +9,7 @@ class TgAIController__RadioAlarm : public HookBase<
 	TgAIController__RadioAlarm> {
 public:
 	static void __fastcall Call(ATgAIController* AIC, void* edx);
+
+	//skal global alarm CD
+	static float fGlobalAlarmCD;
 };

@@ -14,6 +14,7 @@
 #include "src/GameServer/TgGame/TgPlayerActions/Coords/Coords.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/FullHeal/FullHeal.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/ToggleBrokenSuits/ToggleBrokenSuits.hpp"
+#include "src/GameServer/TgGame/TgPlayerActions/ToggleCheatMode/ToggleCheatMode.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/Markers/Markers.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/FxBrowse/FxBrowse.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/SetSpawnTable/SetSpawnTable.hpp"
@@ -823,6 +824,12 @@ void IpcClient::DrainInbound() {
                     "[IPC] refresh_profile_ui guid=%s phase=%s itemProf=%d token=%llu refreshed=%d\n",
                     guid.c_str(), phase.c_str(), item_profile_id,
                     (unsigned long long)refresh_token, refreshed);
+            } else if (action == "cheat") {
+                int cheat_mode=0;
+                if (j.contains("args") && j["args"].is_object()) {
+                    cheat_mode = j["args"].value("mode", 0);
+                }
+                TgPlayerActions::ToggleCheatCmd::Execute(guid,cheat_mode);
             } else {
                 Logger::Log("chat-command",
                     "[ChatCmd][DLL] PLAYER_ACTION guid=%s: unknown action '%s'; dropping\n",

@@ -32,7 +32,9 @@
 
 // Server-side per-alarm-id cooldown: the data-driven test-629 gate is per
 // CONTROLLER, so multiple bots sharing an alarm id each fire it → add spam.
-static const float kAlarmCooldownSecs = 40.0f;
+// skal remove the previous 'constant' and make it a global variable accessible to the world
+//static const float kAlarmCooldownSecs = 40.0f;
+static float TgAIController__RadioAlarm::fGlobalAlarmCD=0.0f;
 static std::map<int, float> s_lastAlarmFireTime;  // alarmId -> WorldInfo.TimeSeconds
 
 // Known alarm_bot_spawn_table_id values on type-620 actions (validation set).
@@ -72,22 +74,35 @@ void __fastcall TgAIController__RadioAlarm::Call(ATgAIController* AIC, void* edx
 		}
 	}
 
-	const float now = AIC->WorldInfo ? AIC->WorldInfo->TimeSeconds : 0.0f;
-	auto it = s_lastAlarmFireTime.find(alarmId);
-	// `now >= it->second` defends against map travel resetting TimeSeconds.
-	if (it != s_lastAlarmFireTime.end() && now >= it->second
-			&& now - it->second < kAlarmCooldownSecs) {
-		Logger::Log("alarm",
-			"[%s] RadioAlarm SUPPRESSED (cooldown %.1fs/%.0fs): caller=%s alarmId=%d\n",
-			Logger::GetTime(), now - it->second, kAlarmCooldownSecs,
-			AIC->Pawn->GetName(), alarmId);
-		return;
+	const auto Origin=AIC->Pawn->GetName();
+	auto isScanner=[&]() -> bool {
+		return (std::strcmp (Origin,"TgPawn_Scanner")==0)
+				|| (std::strcmp (Origin,"TgPawn_ScannerRecursive")==0);
+	};
+
+	if ((fGlobalAlarmCD > 0.0f) && isScanner ()) {
+		if (!AIC->WorldInfo) {
+			Logger::Log("alarm","got an alarm but AIC->WorldInfo is null, investigate");
+		}
+		else {
+			const float now = AIC->WorldInfo->TimeSeconds;
+			const auto it = s_lastAlarmFireTime.find(alarmId);
+			// `now >= it->second` defends against map travel resetting TimeSeconds.
+			if ((it != s_lastAlarmFireTime.end()) && (now >= it->second)
+					&& ((now - it->second) < fGlobalAlarmCD)) {
+				Logger::Log("alarm",
+					"[%s] RadioAlarm SUPPRESSED (cooldown %.1fs/%.0fs): caller=%s alarmId=%d (globalAlarmId=%d)\n",
+					Logger::GetTime(), now - it->second, fGlobalAlarmCD,
+					Origin, alarmId, AIC->m_nGlobalAlarmId);
+				return;
+			}
+			s_lastAlarmFireTime[alarmId] = now;
+		}
 	}
-	s_lastAlarmFireTime[alarmId] = now;
 
 	Logger::Log("alarm",
 		"[%s] RadioAlarm: caller=%s alarmId=%d (globalAlarmId=%d)\n",
-		Logger::GetTime(), AIC->Pawn->GetName(), alarmId, AIC->m_nGlobalAlarmId);
+		Logger::GetTime(), Origin, alarmId, AIC->m_nGlobalAlarmId);
 
 	TgGame__ActivateAlarm::Call(Game, nullptr,
 		(AActor*)AIC->Pawn, alarmId,

@@ -636,6 +636,12 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
                 player_name_.c_str(), session_guid_.c_str());
             MatchmakingService::ReloadQueues();
         }
+        if (parsed.recognized && parsed.cheat) {
+            Logger::Log("chat-command",
+                "[ChatCmd] -cheat player='%s' mode='%d'\n",
+                player_name_.c_str(), *parsed.cheat);
+            ChatCommand::DispatchToggleCheatMode (*parsed.cheat, session_guid_);
+        }
         if (parsed.suppress_broadcast) {
             // Recognized command (valid or invalid arg) — do not broadcast.
             return;
