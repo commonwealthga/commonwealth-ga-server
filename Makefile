@@ -163,6 +163,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/SetSpawnTable/SetSpawnTable.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/SetItemCount/SetItemCount.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/ToggleBrokenSuits/ToggleBrokenSuits.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/ToggleCheatMode/ToggleCheatMode.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/Markers/Markers.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/FxBrowse/FxBrowse.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SwapAttachedDeviceMaterials/TgPawn__SwapAttachedDeviceMaterials.cpp \

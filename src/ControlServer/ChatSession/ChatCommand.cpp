@@ -347,6 +347,30 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
+#if 0
+    // skal add support for -cheat
+    if (cmd_name == "-cheat") {
+        // -cheat zeus
+        // -cheat icarus
+        // -cheat hades
+        // -cheat apollo
+        // -cheat athena
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        CheatArgs args;
+        if (!rest.empty()) {
+            if (rest == "zeus")         args.cheat_mode = CheatMode::Zeus;
+            else if (rest == "icarus")  args.cheat_mode = CheatMode::Icarus;
+            else if (rest == "hades")   args.cheat_mode = CheatMode::Hades;
+            else if (rest == "apollo")  args.cheat_mode = CheatMode::Apollo;
+            else if (rest == "athena")  args.cheat_mode = CheatMode::Athena;
+            else return out;  // bad arg — silent reject
+        }
+        out.cheat = args;
+        return out;
+    }
+#endif
+
     if (cmd_name == "-enabledlc" || cmd_name == "-disabledlc") {
         // -enabledlc <identifier>  -> mark the pack installed for this account
         // -disabledlc <identifier> -> mark it not installed
@@ -886,6 +910,24 @@ void DispatchTopDown(const TopDownArgs& args, const std::string& session_guid) {
         Logger::Log("chat-command",
             "[ChatCmd] guid=%s command=-topdown lift_z=%.0f outcome=ignored details=dispatch_failed\n",
             session_guid.c_str(), args.lift_z);
+    }
+}
+
+void DispatchToggleCheatMode(const CheatArgs& args, const std::string& session_guid) {
+    if (session_guid.empty()) {
+        Logger::Log("chat-command", "[ChatCmd] DispatchToggleCheatMode dropped: empty session_guid\n");
+        return;
+    }
+    nlohmann::json payload;
+    payload["type"]         = IpcProtocol::MSG_PLAYER_ACTION;
+    payload["session_guid"] = session_guid;
+    payload["action"]       = "cheat";
+    payload["args"]         = { {"mode", args.cheat_mode} };
+    const bool sent = TcpSession::DeliverPlayerAction(session_guid, payload);
+    if (!sent) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=-cheat mode=%d outcome=ignored details=dispatch_failed\n",
+            session_guid.c_str(), args.cheat_mode);
     }
 }
 

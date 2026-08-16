@@ -1004,7 +1004,14 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// before the engine's RestartPlayer fallback so we control the ordering.
 	PlayerController->eventPossess(PlayerController->Pawn, 0, 0);
 
-	// PlayerController->bGodMode = 1;
+	 // PlayerController->bGodMode = 1;
+
+	 // skal HiRez cheat modes
+	 //PlayerController->Zeus ();		//godmode
+	 //PlayerController->Icarus ();	//fly+noclip
+	 //PlayerController->Apollo (); //unlimited energy
+	 //PlayerController->Hades ();  //no cooldown
+	 //PlayerController->Athena (); //invisible to AI
 
 	Logger::Log("spawn-asm", "=== SpawnPlayerCharacter EXIT final snapshots ===\n");
 	LogAssemblySnapshot("[EXIT pawn]", newpawn, newpawn->r_CustomCharacterAssembly);

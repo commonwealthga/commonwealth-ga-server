@@ -24,6 +24,8 @@
 
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
 
+#include "src/GameServer/TgGame/TgAIController/RadioAlarm/TgAIController__RadioAlarm.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdarg>
@@ -1869,6 +1871,9 @@ void Init(ATgGame* Game) {
 
 	UClass* cls = ClassPreloader::GetClass("Class TgGame.TgMissionObjective_Proximity");
 	if (!cls) { Log("Init: could not resolve TgMissionObjective_Proximity class\n"); return; }
+
+	//skal enable/set global alarm CD
+	TgAIController__RadioAlarm::fGlobalAlarmCD=40.0f;	// 40s
 
 	// Reset runtime state and (re-)author the mission for this match.
 	s_Game = Game;
