@@ -453,8 +453,24 @@ bool TeamService::LeaveCurrentTeam(const std::string& session_guid) {
             disbanded = true;
         } else {
             if (was_leader) {
-                team->leader_guid = team->members.front().session_guid;
-                new_leader_name   = team->members.front().player_name;
+#if 1
+                    team->leader_guid = team->members.front().session_guid;
+                    new_leader_name   = team->members.front().player_name;
+
+#else
+                // skal: can't pick the next one unconditionnaly, must not be offline
+                for (auto& m : team->members) {
+                    if (!m.offline) {
+                        team->leader_guid = m.session_guid;
+                        new_leader_name   = m.player_name;
+                    }
+                }
+                // none of the member is online, what do we do ? disband the group ? or wait for one to reconnect and set him leader
+                /*if (new_leader_name.empty ()) {
+                    team->leader_guid = team->members.front().session_guid;
+                    new_leader_name   = team->members.front().player_name;
+                }*/
+#endif
             }
             for (const auto& m : team->members) remaining_guids.push_back(m.session_guid);
         }
@@ -527,6 +543,10 @@ void TeamService::CancelInvitesFor(const std::string& session_guid) {
 }
 
 void TeamService::HandleDisconnect(const std::string& session_guid) {
+#if 1
+    // skal: handle same as quitting for now to avoid troubles with LD & recovery
+    HandleVoluntaryExit(session_guid);
+#else
     CancelInvitesFor(session_guid);
 
     // A disconnect is a composition change — dequeue the whole team first.
@@ -540,11 +560,18 @@ void TeamService::HandleDisconnect(const std::string& session_guid) {
         std::lock_guard<std::mutex> lock(mutex_);
         Team* team = FindTeamByMemberLocked(session_guid);
         if (!team) return;
-        for (auto& m : team->members)
+        // skal: if the character was leader, need to set a new one
+        const bool findNewLeader=(team->leader_guid == session_guid);
+        std::string new_leader_guid;
+        for (auto& m : team->members) {
             if (m.session_guid == session_guid) m.offline = true;
+            else if (findNewLeader && new_leader_guid.empty() && !m.offline) new_leader_guid=m.session_guid;
+        }
+        if (findNewLeader && !new_leader_guid.empty()) team->leader_guid=new_leader_guid;
         team_id = team->id;
     }
     BroadcastRoster(team_id);
+#endif
 }
 
 void TeamService::HandleVoluntaryExit(const std::string& session_guid) {
