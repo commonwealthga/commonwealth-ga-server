@@ -15,10 +15,12 @@
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/ActiveSpectatorCount/ActiveSpectatorCount.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/GameServer/Diagnostics/BlackScreenDiagnostics.hpp"
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 #include "src/Config/Config.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <cstdlib>  // wcstombs (kismet LinkDesc → char buffer)
@@ -706,6 +708,35 @@ static DispatchTag GetDispatchTag(UFunction* fn) {
 	return tag;
 }
 
+// A separate cached classifier keeps lifecycle observation independent from
+// the existing dispatch tag and therefore preserves the original call path.
+static std::unordered_map<UFunction*, bool> s_BlackScreenLifecycleCache;
+
+static bool IsBlackScreenLifecycleFunction(UFunction* fn) {
+	auto it = s_BlackScreenLifecycleCache.find(fn);
+	if (it != s_BlackScreenLifecycleCache.end()) return it->second;
+
+	const char* raw = fn->GetFullName();
+	const std::string name = raw ? raw : "";
+	const bool match =
+		name == "Function TgGame.TgGame.RestartPlayer" ||
+		name == "Function Engine.PlayerController.ClientRestart" ||
+		name == "Function TgGame.TgPlayerController.IsReadyForStart" ||
+		name == "Function TgGame.TgPlayerController.ServerSetReadyToPlay" ||
+		name == "Function TgGame.TgPlayerController.SetReadyToPlay" ||
+		name == "Function TgGame.TgPlayerController.ClientSetReadyState" ||
+		name == "Function TgGame.TgPlayerController.ClientEnterStartState" ||
+		name == "Function TgGame.TgPlayerController.EnterStartState";
+	s_BlackScreenLifecycleCache.emplace(fn, match);
+	return match;
+}
+
+struct BlackScreenLifecycleContext {
+	std::string functionName;
+	ATgPlayerController* player = nullptr;
+	BlackScreenDiagnostics::EventDetails details;
+};
+
 // "scope" channel investigation — smooth scope-zoom transition broke into an
 // instant snap somewhere around 2026-05-29/30. The smooth-zoom path is
 // entirely client-side (Pawn.Tick → ManageZoomingClientSide → ClientZoomIn →
@@ -806,6 +837,35 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 	// branch. See the IsScopeRelated comment block for context.
 	const bool scopeLog = Logger::IsChannelEnabled("scope") && IsScopeRelated(Function);
 	if (scopeLog) LogScopeCall("BEFORE", Object, Function);
+
+	std::optional<BlackScreenLifecycleContext> blackScreenLifecycle;
+	if (BlackScreenDiagnostics::IsEnabled() && IsBlackScreenLifecycleFunction(Function)) {
+		blackScreenLifecycle.emplace();
+		BlackScreenLifecycleContext& context = *blackScreenLifecycle;
+		const char* functionName = Function->GetFullName();
+		context.functionName = functionName ? functionName : "";
+		if (context.functionName == "Function TgGame.TgGame.RestartPlayer") {
+			AController* controller = Params ? *(AController**)Params : nullptr;
+			if (controller && ObjectClassCache::ClassNameContains(controller, "TgPlayerController")) {
+				context.player = (ATgPlayerController*)controller;
+			}
+		} else if (ObjectClassCache::ClassNameContains(Object, "TgPlayerController")) {
+			context.player = (ATgPlayerController*)Object;
+		}
+
+		if (context.player) {
+			if (Params && context.functionName == "Function Engine.PlayerController.ClientRestart") {
+				context.details.relatedActor = *(APawn**)Params;
+			}
+			if (Params && context.functionName == "Function TgGame.TgPlayerController.ClientSetReadyState") {
+				context.details.eventValue = (int)(*(uint32_t*)Params & 1);
+			}
+			BlackScreenDiagnostics::Log("before", context.functionName.c_str(),
+				nullptr, context.player, context.details);
+		} else {
+			blackScreenLifecycle.reset();
+		}
+	}
 
 	// Per-fire-tick refresh for hold-to-sustain stealth. Independent of the
 	// main dispatch — fires alongside whatever the catch-all does for this
@@ -1062,6 +1122,19 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		//      what makes a spectator invisible, uncollidable, and
 		//      unshootable, with no separate hide/no-collide/invulnerability
 		//      hack needed.
+		const bool blackScreenEnabled = BlackScreenDiagnostics::IsEnabled();
+		ATgPlayerController* diagnosticPlayer = nullptr;
+		if (blackScreenEnabled && Params) {
+			APlayerController* newPlayer = *(APlayerController**)Params;
+			if (newPlayer && ObjectClassCache::ClassNameContains(newPlayer, "TgPlayerController")) {
+				diagnosticPlayer = (ATgPlayerController*)newPlayer;
+			}
+		}
+		if (blackScreenEnabled) {
+			BlackScreenDiagnostics::Log("before", "Function TgGame.TgGame.PostLogin",
+				nullptr, diagnosticPlayer);
+		}
+
 		if (Params) {
 			APlayerController* NewPlayer = *(APlayerController**)Params;
 			// Deliberately NOT requiring NewPlayer->Player here anymore (dropped
@@ -1141,53 +1214,63 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			}
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		if (blackScreenEnabled) {
+			BlackScreenDiagnostics::Log("after", "Function TgGame.TgGame.PostLogin",
+				nullptr, diagnosticPlayer);
+		}
 		break;
 	}
 
 	case DispatchTag::SpectateVisualState: {
-		if (Logger::IsChannelEnabled("spawn")) {
-			std::string fnName = Function->GetFullName();
-			std::string objName = Object->GetFullName();
-			ATgPlayerController* pc = (ATgPlayerController*)Object;
-			APlayerReplicationInfo* pri = pc ? pc->PlayerReplicationInfo : nullptr;
-			AActor* paramActor = nullptr;
-			if (Params &&
-			    (fnName == "Function TgGame.TgPlayerController.ServerSetViewTarget" ||
-			     fnName == "Function Engine.PlayerController.ClientSetViewTarget")) {
-				paramActor = *(AActor**)Params;
-			}
+		const bool blackScreenEnabled = BlackScreenDiagnostics::IsEnabled();
+		const bool spawnEnabled = Logger::IsChannelEnabled("spawn");
+		if ((!blackScreenEnabled && !spawnEnabled) ||
+		    !ObjectClassCache::ClassNameContains(Object, "TgPlayerController")) {
+			CallOriginal(Object, edx, Function, Params, Result);
+			break;
+		}
 
-			int fadeEnable = -1;
-			float fadeAlphaX = 0.0f;
-			float fadeAlphaY = 0.0f;
-			float fadeTime = 0.0f;
-			if (Params && fnName == "Function TgGame.TgPlayerController.ClientSetCameraFade") {
-				fadeEnable = (int)(*(uint32_t*)((char*)Params + 0x00) & 1);
-				fadeAlphaX = *(float*)((char*)Params + 0x08);
-				fadeAlphaY = *(float*)((char*)Params + 0x0C);
-				fadeTime = *(float*)((char*)Params + 0x10);
-			}
+		const std::string fnName = Function->GetFullName();
+		ATgPlayerController* pc = (ATgPlayerController*)Object;
+		BlackScreenDiagnostics::EventDetails details;
+		if (Params &&
+		    (fnName == "Function TgGame.TgPlayerController.ServerSetViewTarget" ||
+		     fnName == "Function Engine.PlayerController.ClientSetViewTarget")) {
+			details.relatedActor = *(AActor**)Params;
+		}
+		if (Params && fnName == "Function TgGame.TgPlayerController.ClientSetCameraFade") {
+			details.fadeEnabled = (int)(*(uint32_t*)((char*)Params + 0x00) & 1);
+			details.fadeAlphaFrom = *(float*)((char*)Params + 0x08);
+			details.fadeAlphaTo = *(float*)((char*)Params + 0x0C);
+			details.fadeTime = *(float*)((char*)Params + 0x10);
+		}
+		if (Params && fnName == "Function TgGame.TgPlayerController.ClientSetCinematicMode") {
+			details.cinematic = (int)(*(uint32_t*)((char*)Params + 0x00) & 1);
+			details.affectsHud = (int)(*(uint32_t*)((char*)Params + 0x0C) & 1);
+		}
 
-			int cinematic = -1;
-			int affectsHud = -1;
-			if (Params && fnName == "Function TgGame.TgPlayerController.ClientSetCinematicMode") {
-				cinematic = (int)(*(uint32_t*)((char*)Params + 0x00) & 1);
-				affectsHud = (int)(*(uint32_t*)((char*)Params + 0x0C) & 1);
-			}
-
+		if (spawnEnabled) {
+			const std::string objName = Object->GetFullName();
+			APlayerReplicationInfo* pri = pc->PlayerReplicationInfo;
 			Logger::Log("spawn",
 				"SpectateVisualState: fn=%s obj=%s pawn=%p viewTarget=%p paramActor=%p "
 				"onlySpec=%d isSpec=%d outOfLives=%d fade=%d alpha=(%.2f,%.2f) fadeTime=%.2f "
 				"cinematic=%d affectsHud=%d\n",
-				fnName.c_str(), objName.c_str(),
-				pc ? pc->Pawn : nullptr, pc ? pc->ViewTarget : nullptr, paramActor,
+				fnName.c_str(), objName.c_str(), pc->Pawn, pc->ViewTarget, details.relatedActor,
 				pri ? (int)pri->bOnlySpectator : -1,
 				pri ? (int)pri->bIsSpectator : -1,
 				pri ? (int)pri->bOutOfLives : -1,
-				fadeEnable, fadeAlphaX, fadeAlphaY, fadeTime,
-				cinematic, affectsHud);
+				details.fadeEnabled, details.fadeAlphaFrom, details.fadeAlphaTo, details.fadeTime,
+				details.cinematic, details.affectsHud);
+		}
+
+		if (blackScreenEnabled) {
+			BlackScreenDiagnostics::Log("before", fnName.c_str(), nullptr, pc, details);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		if (blackScreenEnabled) {
+			BlackScreenDiagnostics::Log("after", fnName.c_str(), nullptr, pc, details);
+		}
 		break;
 	}
 
@@ -2453,6 +2536,15 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 	default:
 		DoCatchAll();
 		break;
+	}
+
+	if (blackScreenLifecycle) {
+		BlackScreenLifecycleContext& context = *blackScreenLifecycle;
+		if (Params && context.functionName == "Function TgGame.TgPlayerController.IsReadyForStart") {
+			context.details.eventValue = (int)(*(uint32_t*)Params & 1);
+		}
+		BlackScreenDiagnostics::Log("after", context.functionName.c_str(),
+			nullptr, context.player, context.details);
 	}
 
 	if (scopeLog) LogScopeCall("AFTER ", Object, Function);
