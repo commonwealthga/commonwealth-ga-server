@@ -692,7 +692,17 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 		// the top) and own pets/deployables (per user spec: repairing your
 		// own gear doesn't count). TrackHealing for player heal targets,
 		// TrackBotHealing for everything else.
-		if (!targetIsOwnedByInstigator) {
+		//
+		// Enemy targets skipped entirely — scoreboard AND device columns.
+		// Backstab heal riders (flat 50–80 HP skill effects, situational
+		// 509) apply WITH THE ENEMY AS TARGET, so without this gate every
+		// backstab against a full-HP victim booked the rider as healing/
+		// overheal (live: 24k "overheal" on a recon's Dual Daggers, plus
+		// STYPE_HEALING credit via TrackBotHealing on enemy bots). Healing
+		// an enemy is never healing performance. m_LastHealer above is
+		// deliberately left as shipped — changing who earns heal assists
+		// is a gameplay decision, not a stats fix.
+		if (!targetIsOwnedByInstigator && !bIsEnemy) {
 			if (targetIsPawn) {
 				const bool victimIsBot = !IsRealPlayer(targetPawn->Controller);
 				if (victimIsBot) {
