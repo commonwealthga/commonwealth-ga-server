@@ -19,6 +19,7 @@
 #include "src/Config/Config.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Misc/MoveSpeedWatch/MoveSpeedWatch.hpp"
 #include <string>
 #include <unordered_map>
 #include <cstdlib>  // wcstombs (kismet LinkDesc → char buffer)
@@ -867,6 +868,9 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			LogMovePingSample("ServerMove", (APlayerController*)Object, ts, flags, loc);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		if (Params) {
+			MoveSpeedWatch::Observe((APlayerController*)Object, *(float*)((char*)Params + 0x00));
+		}
 		break;
 	}
 
@@ -877,6 +881,9 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			LogMovePingSample("OldServerMove", (APlayerController*)Object, ts, flags);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		if (Params) {
+			MoveSpeedWatch::Observe((APlayerController*)Object, *(float*)((char*)Params + 0x00));
+		}
 		break;
 	}
 
@@ -888,6 +895,9 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			LogMovePingSample("DualServerMove", (APlayerController*)Object, ts, flags, loc);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		if (Params) {
+			MoveSpeedWatch::Observe((APlayerController*)Object, *(float*)((char*)Params + 0x18));
+		}
 		break;
 	}
 
@@ -899,6 +909,9 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			LogMovePingSample("TgShortServerMove", (APlayerController*)Object, ts, flags, loc);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		if (Params) {
+			MoveSpeedWatch::Observe((APlayerController*)Object, *(float*)((char*)Params + 0x00));
+		}
 		break;
 	}
 
@@ -910,6 +923,9 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			LogMovePingSample("TgRMServerMove", (APlayerController*)Object, ts, flags, loc);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		if (Params) {
+			MoveSpeedWatch::Observe((APlayerController*)Object, *(float*)((char*)Params + 0x00));
+		}
 		break;
 	}
 
@@ -1982,6 +1998,7 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		if (PC && PC->Pawn) {
 			BeaconSdk::DropCarriedBeacon((ATgPawn*)PC->Pawn);
 		}
+		MoveSpeedWatch::OnControllerDestroyed(PC);
 		CallOriginal(Object, edx, Function, Params, Result);
 		break;
 	}
