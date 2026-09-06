@@ -20,6 +20,15 @@ namespace DomeVrHealPad {
 	void TickArmCheck();
 }
 
+namespace HazardVolumes {
+	// Volumes whose wired device deals damage (the 14 damaging rows in
+	// device_volumes.md — acid/toxic/lava/fire/shock/crusher; the 2801/2805
+	// protection pads are excluded). Registered by setupDevice at map load.
+	bool IsDamagingDevice(int deviceId);
+	// True when loc falls inside a registered hazard volume's brush bounds.
+	bool ContainsLocation(const FVector& loc);
+}
+
 class TgDeviceVolume_setupDevice : public HookBase<
 	bool(__fastcall*)(ATgDeviceVolume*, void*),
 	0x109aeec0,

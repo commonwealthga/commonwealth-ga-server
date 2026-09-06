@@ -51,6 +51,21 @@ bool __fastcall TgDeviceFire__IsValidTarget::Call(
 			result ? "VALID" : "reject");
 	}
 
+	// Device-volume verdict trace — same channel as setupDevice so ONE channel
+	// shows arming + per-target accept/reject for spawn-invulnerability pads
+	// (device 2801) and the hazard volumes.
+	if (TargetActor && FireMode && Logger::IsChannelEnabled("device-volume")) {
+		std::string ownerCls = SafeGetFullName(FireMode->m_Owner);
+		if (Contains(ownerCls, "TgDeviceVolume")) {
+			std::string tgtCls = SafeGetFullName(TargetActor);
+			Logger::Log("device-volume",
+				"[IsValidTarget] volume=%p target=%p (%s) targeter=%d override=%d -> %s\n",
+				(void*)FireMode->m_Owner, (void*)TargetActor, tgtCls.c_str(),
+				(int)FireMode->m_eTargeterType, (int)(uint8_t)OverrideTargeterType,
+				result ? "VALID" : "reject");
+		}
+	}
+
 	// EMP / deployable-bomb diagnostic (channel "deployablefactory"). A
 	// deployable bomb's victims are PAWNS, which the combat-trace block below
 	// skips (it only logs deployable targets). Log every target a

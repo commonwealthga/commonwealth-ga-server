@@ -11383,6 +11383,104 @@ void Database::Init() {
 		Logger::Log("db", "v166: SD_Zone_P bot factory spawn tables\n");
 	}
 
+	if (version < 167) {
+		// v167: Push_Toxicity map objects. Device 7037 on the 13583/13604/13611/
+		// 13750/13751 set; 13602 and 13603 additionally get team + task force
+		// (2 = defenders, 1 = attackers) and device 2801. Both device ids exist
+		// in asm_data_set_devices (slot_used_value_id 1354, not in-hand).
+		// Push_Toxicity had no map_object_config rows before this.
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('Push_Toxicity', 13604, 's_n_device_id', '7037', NULL, NULL, 1),"
+			"  ('Push_Toxicity', 13611, 's_n_device_id', '7037', NULL, NULL, 1),"
+			"  ('Push_Toxicity', 13750, 's_n_device_id', '7037', NULL, NULL, 1),"
+			"  ('Push_Toxicity', 13751, 's_n_device_id', '7037', NULL, NULL, 1),"
+			"  ('Push_Toxicity', 13583, 's_n_device_id', '7037', NULL, NULL, 1),"
+			"  ('Push_Toxicity', 13602, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('Push_Toxicity', 13602, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('Push_Toxicity', 13603, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('Push_Toxicity', 13603, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('Push_Toxicity', 13603, 's_n_device_id', '2801', NULL, NULL, 1),"
+			"  ('Push_Toxicity', 13602, 's_n_device_id', '2801', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v167 (Push_Toxicity map objects): %s\n", err); return; }
+
+		Logger::Log("db", "v167: Push_Toxicity map object config\n");
+	}
+
+	if (version < 168) {
+		// v168: Push_Dust_P map objects — same shape as v167's Push_Toxicity
+		// pass. Device 7037 on ten objects (13775-13782, 13787/13788, 13877);
+		// 13789 and 13790 additionally get team + task force (2 = defenders,
+		// 1 = attackers) and device 2801.
+		// The map already carried 26 rows for objects 13758-13774 (team /
+		// task force only) — no overlap with the ids below.
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('Push_Dust_P', 13877, 's_n_device_id', '7037', NULL, NULL, 1),"
+			"  ('Push_Dust_P', 13782, 's_n_device_id', '7037', NULL, NULL, 1),"
+			"  ('Push_Dust_P', 13780, 's_n_device_id', '7037', NULL, NULL, 1),"
+			"  ('Push_Dust_P', 13779, 's_n_device_id', '7037', NULL, NULL, 1),"
+			"  ('Push_Dust_P', 13777, 's_n_device_id', '7037', NULL, NULL, 1),"
+			"  ('Push_Dust_P', 13778, 's_n_device_id', '7037', NULL, NULL, 1),"
+			"  ('Push_Dust_P', 13776, 's_n_device_id', '7037', NULL, NULL, 1),"
+			"  ('Push_Dust_P', 13788, 's_n_device_id', '7037', NULL, NULL, 1),"
+			"  ('Push_Dust_P', 13787, 's_n_device_id', '7037', NULL, NULL, 1),"
+			"  ('Push_Dust_P', 13775, 's_n_device_id', '7037', NULL, NULL, 1),"
+			"  ('Push_Dust_P', 13789, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('Push_Dust_P', 13789, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('Push_Dust_P', 13790, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('Push_Dust_P', 13790, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('Push_Dust_P', 13789, 's_n_device_id', '2801', NULL, NULL, 1),"
+			"  ('Push_Dust_P', 13790, 's_n_device_id', '2801', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v168 (Push_Dust_P map objects): %s\n", err); return; }
+
+		Logger::Log("db", "v168: Push_Dust_P map object config\n");
+	}
+
+	if (version < 169) {
+		// v169: 3P_VolcanoAssault_P map objects — same shape as v167/v168.
+		// Device 7029 (Lava) on 13563; 13605 and 13606 get team + task force
+		// (1 = attackers, 2 = defenders) and device 2801 (spawn pads).
+		// The map already carried 30 rows, none for these three ids.
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('3P_VolcanoAssault_P', 13563, 's_n_device_id', '7029', NULL, NULL, 1),"
+			"  ('3P_VolcanoAssault_P', 13605, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('3P_VolcanoAssault_P', 13605, 's_n_team_number', '1', NULL, NULL, 1),"
+			"  ('3P_VolcanoAssault_P', 13605, 's_n_device_id', '2801', NULL, NULL, 1),"
+			"  ('3P_VolcanoAssault_P', 13606, 's_n_device_id', '2801', NULL, NULL, 1),"
+			"  ('3P_VolcanoAssault_P', 13606, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('3P_VolcanoAssault_P', 13606, 's_n_task_force', '2', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v169 (3P_VolcanoAssault_P map objects): %s\n", err); return; }
+
+		Logger::Log("db", "v169: 3P_VolcanoAssault_P map object config\n");
+	}
+
+	if (version < 170) {
+		// v170: Ticket_Volcano_P map objects — same shape as v169. Device 7029
+		// (Lava) on 13563; 13606 and 13889 get team + task force (1 =
+		// attackers, 2 = defenders) and device 2801 (spawn pads). Note the
+		// pad ids differ from 3P_VolcanoAssault_P: here 13606 is task force 1,
+		// paired with 13889 rather than 13605.
+		// The map already carried 10 rows, none for these three ids.
+		result = sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES "
+			"  ('Ticket_Volcano_P', 13563, 's_n_device_id', '7029', NULL, NULL, 1),"
+			"  ('Ticket_Volcano_P', 13889, 's_n_device_id', '2801', NULL, NULL, 1),"
+			"  ('Ticket_Volcano_P', 13606, 's_n_device_id', '2801', NULL, NULL, 1),"
+			"  ('Ticket_Volcano_P', 13889, 's_n_task_force', '2', NULL, NULL, 1),"
+			"  ('Ticket_Volcano_P', 13889, 's_n_team_number', '2', NULL, NULL, 1),"
+			"  ('Ticket_Volcano_P', 13606, 's_n_task_force', '1', NULL, NULL, 1),"
+			"  ('Ticket_Volcano_P', 13606, 's_n_team_number', '1', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v170 (Ticket_Volcano_P map objects): %s\n", err); return; }
+
+		Logger::Log("db", "v170: Ticket_Volcano_P map object config\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -11394,7 +11492,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 166", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 170", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;

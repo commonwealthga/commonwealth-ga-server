@@ -138,9 +138,15 @@ void __fastcall TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, vo
 	// End-mission respawn gate. UC `AllPlayersEndGame` calls
 	// `foreach DynamicActors(TgDeployable) Deploy.Destroy()` on every deployable
 	// at game-over. Each destroyed beacon's `TgDeploy_Beacon.Destroyed` calls
-	// the intact native `UnRegisterBeacon`, which internally fires
-	// `PopulateBeaconFactoryList → Spawn(TgBeaconFactory) → factory.PostBeginPlay
-	// → factory.SpawnObject` to materialize a replacement. UE3's
+	// the intact native `UnRegisterBeacon` (0x109ee6f0), which ALWAYS tail-calls
+	// `CheckBeacon(true)` — match or no match — and that reaches
+	// `SpawnNewBeaconForTeam → factory.SpawnObject` to materialize a
+	// replacement. (An earlier version of this comment routed the chain through
+	// `PopulateBeaconFactoryList → Spawn(TgBeaconFactory) → PostBeginPlay`; that
+	// is wrong — PopulateBeaconFactoryList only rebuilds the factory array and
+	// spawns nothing. See
+	// `decompiled/TgGame/ATgTeamBeaconManager/`. The loop and the fix below are
+	// unaffected.) UE3's
 	// `foreach DynamicActors` iterates by index and picks up actors spawned
 	// during iteration, so the new beacon is found and destroyed too — infinite
 	// loop. The respawn pipeline is in a native we don't own, so we break the
@@ -207,10 +213,18 @@ void __fastcall TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, vo
 			"  exit: no manager yet for tf %d — deferring\n", (int)factory->s_nTaskForce);
 		return nullptr;
 	}
-	if (mgr->r_Beacon) {
+	// Retail's own gate (0x109ee6c0). This used to be `if (mgr->r_Beacon)`,
+	// which is only "does the team have a registered beacon" — and r_Beacon is
+	// NULL for the entire time a player is carrying one (PickUpDeployable ->
+	// DestroyIt -> UnRegisterBeacon clears it). So any SpawnObject that landed
+	// mid-carry minted a SECOND beacon: the carrier still had a deployable
+	// device, and RegisterBeacon (0x109f1ed0) overwrites r_Beacon without
+	// destroying the incumbent. ShouldSpawnBeacon folds in the carrier scan.
+	if (!BeaconSdk::ShouldSpawnBeacon(mgr)) {
 		Logger::Log("beacon",
-			"  exit: manager 0x%p already has beacon 0x%p — skipping factory 0x%p\n",
-			mgr, mgr->r_Beacon, factory);
+			"  exit: ShouldSpawnBeacon()==false for manager 0x%p "
+			"(r_Beacon=0x%p status=%d holder=0x%p) — skipping factory 0x%p\n",
+			mgr, mgr->r_Beacon, (int)mgr->r_BeaconStatus, mgr->r_BeaconHolder, factory);
 		return nullptr;
 	}
 
@@ -313,6 +327,12 @@ void __fastcall TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, vo
 		mgr->r_BeaconInfo->bNetDirty       = 1;
 		mgr->r_BeaconInfo->bForceNetUpdate = 1;
 	}
+
+	// One exit beacon per team. RegisterBeacon just overwrote r_Beacon without
+	// touching whatever was registered before, so sweep any leftover id-36
+	// deployable for this taskforce. Must run AFTER the register above: the
+	// destroy re-enters CheckBeacon, which only respawns when r_Beacon is null.
+	BeaconSdk::ReapOrphanBeacons(mgr);
 
 	Logger::Log("beacon",
 		"  exit spawned 0x%p tf=%d at (%.0f,%.0f,%.0f) registered with manager 0x%p r_BeaconInfo=0x%p "

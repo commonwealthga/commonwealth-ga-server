@@ -22,6 +22,60 @@ bool RegisterBeacon(ATgTeamBeaconManager* mgr, ATgDeploy_Beacon* pBeacon, bool b
 // `bool CheckBeacon(optional bool bAttemptRespawn = true)`
 bool CheckBeacon(ATgTeamBeaconManager* mgr, bool bAttemptRespawn);
 
+// Spawn gate: may we create an exit beacon for this team right now?
+//
+//     r_Beacon == null  AND  nobody on the team holds the slot-11 device
+//
+// Strictly stronger than the `mgr->r_Beacon == nullptr` test the spawn paths
+// used to run: r_Beacon is null for the WHOLE time a beacon is carried
+// (PickUpDeployable -> DestroyIt -> UnRegisterBeacon clears it), so that test
+// happily minted a duplicate mid-carry.
+//
+// This is the same predicate as the binary's `ShouldSpawnBeacon` native
+// (0x109ee6c0), but computed directly rather than by calling it. Two reasons,
+// both deliberate:
+//   * that native is `CheckBeacon(false) == false`, and our callers run from
+//     INSIDE CheckBeacon's frame (it dispatches SpawnNewBeaconForTeam through
+//     vtable[0x374]) — calling it re-enters the state machine mid-update via
+//     ProcessEvent;
+//   * it also short-circuits to false on
+//     `s_bUsingBeaconInventory && !s_HexItem`, the hex/Territory beacon
+//     mechanic we don't implement.
+// Decompile of the native is kept at
+// `decompiled/TgGame/ATgTeamBeaconManager/ATgTeamBeaconManager__ShouldSpawnBeacon/`.
+bool ShouldSpawnBeacon(ATgTeamBeaconManager* mgr);
+
+// Does any player on this team hold the beacon pickup device? Mirrors the
+// carrier scan inside CheckBeacon exactly (r_TaskForce->m_TeamPlayers ->
+// PRI->Owner -> Controller->Pawn -> slot 11 + m_bIsBeaconPlacing), so our gate
+// and the binary's respawn decision can never disagree.
+bool TeamHasBeaconCarrier(ATgTeamBeaconManager* mgr);
+
+// True when this pawn is holding the beacon pickup device — slot 11 occupied
+// by a device with `m_bIsBeaconPlacing`. This is *exactly* what the binary's
+// `TgPawn::IsCarryingBeacon` (0x109be2d0) tests, and therefore exactly what
+// `CheckBeacon`'s carrier scan keys on. Read it directly rather than through
+// the SDK bool-returning wrapper (bitfield ReturnValue is unreliable).
+bool PawnHoldsBeaconDevice(class ATgPawn* Pawn);
+
+// Enforce "one exit beacon per team". `RegisterBeacon` (0x109f1ed0) assigns
+// `r_Beacon = pBeacon` UNCONDITIONALLY — no compare, no teardown of the
+// outgoing beacon — so a second registration silently orphans the first. The
+// orphan stays a live actor with collision and a pickup cylinder that nothing
+// tracks: `mgr->r_Beacon` no longer points at it, `TgPawn::KillDeployables`
+// skips deployable id 36 as a team resource, and `AdjustBeaconForwardSpawn`
+// only ever inspects `mgr->r_Beacon`. Nothing reaps it. This does.
+//
+// Walks `GRI->m_Deployables` (NOT GObjObjects) for deployable id 36 belonging
+// to this manager's taskforce and destroys everything that isn't
+// `mgr->r_Beacon`. Returns the number destroyed.
+//
+// ⚠️ Call only AFTER the keeper is registered. `eventDestroyIt` →
+// UC Destroyed → `UnRegisterBeacon` → `CheckBeacon(true)`, which will respawn
+// at a factory if it finds no beacon; with `r_Beacon` already installed that
+// branch is unreachable. Re-entrancy-guarded regardless.
+int ReapOrphanBeacons(ATgTeamBeaconManager* mgr);
+
 // `void PopulateBeaconFactoryList()` — no params, safe to call via SDK,
 // included here for one-stop shopping.
 void PopulateBeaconFactoryList(ATgTeamBeaconManager* mgr);
@@ -52,11 +106,20 @@ void SetCollisionType(AActor* actor, unsigned char newCollisionType);
 // SDK wrapper trips the FunctionFlags bug. Returns nothing here (fire-and-move).
 void SetLocation(AActor* actor, const struct FVector& newLocation);
 
-// Carrier-loss cleanup. For each team manager whose `r_BeaconHolder` matches
-// this pawn's PRI, strip the pickup device (slot 11) and re-trigger CheckBeacon
-// — the native walks all PRIs, finds no IsCarryingBeacon holder, and respawns
-// at the team's original-priority factory. Safe for any pawn (bails when no
-// manager matches). Used by the death path and by the team-change teleport.
+// Carrier-loss cleanup: strip the pickup device (slot 11) and re-trigger
+// CheckBeacon so the team's beacon respawns at its factory. Used by the death
+// path and by the team-change teleport.
+//
+// Gated on `PawnHoldsBeaconDevice(Pawn)` — NOT on `mgr->r_BeaconHolder == pri`,
+// which is what it used to test and which was wrong. `r_BeaconHolder` is
+// overloaded by the binary's CheckBeacon: it is the CARRIER in the PICKED_UP
+// branch, but the DEPLOYER (`r_Beacon->r_DRI->r_InstigatorInfo`) in the tail
+// that runs for every live beacon. So the moment anybody else deployed or
+// picked up, the old gate stopped matching the player who was actually holding
+// a device — and his slot 11 was never cleaned. That leak is what kept the
+// carrier FX on, blocked his stealth, let him deploy a duplicate beacon, and
+// (because CheckBeacon's carrier scan then believed he was still carrying)
+// suppressed the team's beacon respawn entirely.
 void DropCarriedBeacon(class ATgPawn* Pawn);
 
 // Beacon handoff for a pawn LEAVING its team without dying (-changeteam /

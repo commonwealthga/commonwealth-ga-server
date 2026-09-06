@@ -6,6 +6,7 @@
 #include "src/GameServer/TgGame/TgGame/UpdateMissionTimerEventWinVar/TgGame__UpdateMissionTimerEventWinVar.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
+#include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconCarryReaper/BeaconCarryReaper.hpp"
 #include "src/GameServer/Armor/Armor.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
@@ -1538,6 +1539,17 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			// 	devFlags, (int)bIsBeaconPlacing, Device->Instigator);
 			if (bIsBeaconPlacing && Device->Instigator) {
 				ATgPawn* Pawn = (ATgPawn*)Device->Instigator;
+				// TgDeviceFire::Deploy refused this placement (hazard volume) —
+				// no beacon entered the world, so consuming the carry device
+				// here would destroy a beacon the player still holds.
+				if (BeaconCarryReaper::ConsumeDeployRefused(
+						(int)Pawn->r_nPawnId, Device->r_nInventoryId)) {
+					Logger::Log("beacon",
+						"DeviceFiring.EndState: deploy was refused (pawn=%d invId=%d) — "
+						"keeping carry device in slot %d\n",
+						(int)Pawn->r_nPawnId, Device->r_nInventoryId, nEquipPoint);
+					break;
+				}
 				ATgInventoryManager* InvMgr = (ATgInventoryManager*)Pawn->InvManager;
 				if (InvMgr && nEquipPoint >= 1 && nEquipPoint <= 24) {
 					// Two cases:
@@ -1557,14 +1569,28 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 						Logger::Log("beacon",
 							"DeviceFiring.EndState: post-deploy cleanup pawn=0x%p device=0x%p slot=%d (current occupant)\n",
 							Pawn, Device, nEquipPoint);
+						// Cancel the deferred verification sweep first — this
+						// IS the cleanup it was insuring against.
+						BeaconCarryReaper::Disarm((int)Pawn->r_nPawnId, Device->r_nInventoryId);
 						TgInventoryManager__NonPersistRemoveDevice::Call(InvMgr, nullptr, nEquipPoint);
 					} else {
 						uint32_t slotFlags = slotDev ? *(uint32_t*)((char*)slotDev + 0x22C) : 0u;
-						bool slotIsBeacon = slotDev && (slotFlags & 0x10000u) != 0;
+						// Identity, not category. The slot occupant is only
+						// "the beacon this EndState belongs to" when the
+						// inventory ids match. Testing merely "is it a beacon"
+						// meant a late EndState from a PREVIOUS pickup would
+						// delete the beacon the player had just picked up and
+						// not yet deployed. invIds are per-pickup monotonic
+						// (Inventory::NextId, 1000001+), so this is exact.
+						bool slotIsSameBeacon =
+							slotDev && (slotFlags & 0x10000u) != 0 &&
+							slotDev->r_nInventoryId == Device->r_nInventoryId;
 						Logger::Log("beacon",
-							"DeviceFiring.EndState: orphan EndState fired — slot=%d holds 0x%p (beacon=%d). "
-							"Detaching orphan + cleaning slot occupant.\n",
-							nEquipPoint, slotDev, (int)slotIsBeacon);
+							"DeviceFiring.EndState: orphan EndState fired — slot=%d holds 0x%p "
+							"(invId=%d, orphan invId=%d, sameBeacon=%d). Detaching orphan.\n",
+							nEquipPoint, slotDev,
+							slotDev ? slotDev->r_nInventoryId : -1,
+							Device->r_nInventoryId, (int)slotIsSameBeacon);
 						// Detach orphan so its state machine can't side-effect
 						// further: clear m_bIsBeaconPlacing (so this gate stops
 						// firing for it), null its Instigator (so any future
@@ -1572,11 +1598,16 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 						// and reset r_eEquippedAt so any future lookups don't
 						// route back to slot 11.
 						*(uint32_t*)((char*)Device + 0x22C) &= ~0x10000u;
+						BeaconCarryReaper::Disarm((int)Pawn->r_nPawnId, Device->r_nInventoryId);
 						Device->Instigator   = nullptr;
 						Device->r_eEquippedAt = 0;
-						// Clean the NEW beacon currently in the slot — that's
-						// the one the player actually just deployed.
-						if (slotIsBeacon) {
+						// Only clean the slot when it holds THIS device's
+						// inventory id (i.e. the same beacon re-equipped into
+						// a new actor). A different invId is a beacon the
+						// player picked up after this one was consumed —
+						// removing it would silently eat his pickup, and the
+						// team would then have no beacon and no carrier.
+						if (slotIsSameBeacon) {
 							TgInventoryManager__NonPersistRemoveDevice::Call(InvMgr, nullptr, nEquipPoint);
 						}
 					}
@@ -2371,14 +2402,57 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 	// DestroyIt no-ops on m_bInDestroyedState or bTearOff — if either is
 	// already set when a kill arrives, the husk stays in the world forever.
 	case DispatchTag::BeaconDestroyIt: {
-		if (IsExitBeacon(Object)) {
+		// Whether UC's `TgDeploy_Beacon.DestroyIt` actually reaches
+		// UnRegisterBeacon — and whether that call MATCHES — is the single
+		// decision that determines if a destroyed beacon respawns. It had no
+		// logging at all, which is why the "destroyed but never came back,
+		// HUD still shows it deployed" report couldn't be pinned statically.
+		//
+		// UC does: super.DestroyIt() -> GetTaskForce() -> GetBeaconManager()
+		//          -> UnRegisterBeacon(self)
+		// and UnRegisterBeacon (0x109ee6f0) only clears r_Beacon/r_BeaconInfo
+		// when `mgr->r_Beacon == self`. Three distinct failure modes to tell
+		// apart, all visible in the before/after pair below:
+		//   * GetTaskForce() returned null  -> mgrBefore=0x0, nothing happens
+		//   * manager mismatch              -> selfIsRegistered=0, r_Beacon unchanged
+		//   * clean unregister              -> r_Beacon 0x… -> 0x0
+		ATgTeamBeaconManager* mgr = nullptr;
+		ATgDeploy_Beacon*     regBefore = nullptr;
+		const bool wantBeaconLog = IsExitBeacon(Object);
+		if (wantBeaconLog) {
 			ATgDeployable* d = (ATgDeployable*)Object;
+			ATgRepInfo_TaskForce* tfri =
+				(d->r_DRI ? (d->r_DRI->r_InstigatorInfo && d->r_DRI->r_InstigatorInfo->r_TaskForce
+								? d->r_DRI->r_InstigatorInfo->r_TaskForce
+								: (d->r_DRI->r_bOwnedByTaskforce ? d->r_DRI->r_TaskforceInfo : nullptr))
+						  : nullptr);
+			mgr = tfri ? tfri->r_BeaconManager : nullptr;
+			regBefore = mgr ? mgr->r_Beacon : nullptr;
 			Logger::Log("beacon",
-				"DestroyIt ENTER beacon=0x%p hp=%d destroyed=%d tearOff=%d lifeSpan=%.2f\n",
-				d, d->r_nHealth, (int)d->m_bInDestroyedState, (int)d->bTearOff,
-				d->LifeSpan);
+				"DestroyIt ENTER beacon=0x%p hp=%d destroyed=%d tearOff=%d lifeSpan=%.2f\n"
+				"  resolve: r_DRI=0x%p instigatorInfo=0x%p ownedByTf=%d tfInfo=0x%p -> tfri=0x%p(tf=%d) mgr=0x%p\n"
+				"  mgr->r_Beacon=0x%p selfIsRegistered=%d r_BeaconInfo=0x%p status=%d holder=0x%p\n",
+				d, d->r_nHealth, (int)d->m_bInDestroyedState, (int)d->bTearOff, d->LifeSpan,
+				d->r_DRI,
+				d->r_DRI ? d->r_DRI->r_InstigatorInfo : nullptr,
+				d->r_DRI ? (int)d->r_DRI->r_bOwnedByTaskforce : -1,
+				d->r_DRI ? d->r_DRI->r_TaskforceInfo : nullptr,
+				tfri, tfri ? (int)tfri->r_nTaskForce : -1, mgr,
+				regBefore, (int)(regBefore == (ATgDeploy_Beacon*)d),
+				mgr ? mgr->r_BeaconInfo : nullptr,
+				mgr ? (int)mgr->r_BeaconStatus : -1,
+				mgr ? mgr->r_BeaconHolder : nullptr);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		if (wantBeaconLog && mgr) {
+			Logger::Log("beacon",
+				"DestroyIt EXIT  beacon=0x%p mgr=0x%p r_Beacon=0x%p (was 0x%p) r_BeaconInfo=0x%p "
+				"status=%d holder=0x%p%s\n",
+				Object, mgr, mgr->r_Beacon, regBefore, mgr->r_BeaconInfo,
+				(int)mgr->r_BeaconStatus, mgr->r_BeaconHolder,
+				(mgr->r_Beacon == regBefore && regBefore == (ATgDeploy_Beacon*)Object)
+					? "   ** UnRegisterBeacon did NOT clear — respawn will not fire **" : "");
+		}
 		break;
 	}
 

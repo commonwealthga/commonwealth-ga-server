@@ -1,10 +1,14 @@
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 
+#include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+
+#include <vector>
 
 namespace BeaconSdk {
 
@@ -59,6 +63,102 @@ bool CheckBeacon(ATgTeamBeaconManager* mgr, bool bAttemptRespawn) {
 
 	CallNative(mgr, fn, &parms);
 	return (parms.ReturnValue & 1u) != 0;
+}
+
+bool TeamHasBeaconCarrier(ATgTeamBeaconManager* mgr) {
+	if (!mgr || !mgr->r_TaskForce) return false;
+
+	// Mirrors the carrier scan inside the binary's CheckBeacon (0x109f0340)
+	// EXACTLY — same list, same hops, same predicate — so our spawn gate can
+	// never disagree with the state machine that owns the decision:
+	//
+	//   for i in 0..r_TaskForce->GetPlayerCount():
+	//       pri  = r_TaskForce->GetPlayer(i)        // m_TeamPlayers[i].pPrep
+	//       ctl  = Cast_AController(pri->Owner)     // AActor::Owner @ +0x98
+	//       pawn = Cast_ATgPawn(ctl->Pawn)          // AController::Pawn @ +0x1CC
+	//       if (pawn->IsCarryingBeacon()) -> carrier
+	//
+	// m_TeamBots is deliberately NOT scanned — CheckBeacon doesn't either.
+	const int count = mgr->r_TaskForce->m_TeamPlayers.Count;
+	for (int i = 0; i < count; ++i) {
+		ATgRepInfo_Player* pri = mgr->r_TaskForce->m_TeamPlayers.Data[i].pPrep;
+		if (!pri || !pri->Owner) continue;
+		if (!ObjectClassCache::ClassNameContains(pri->Owner, "Controller")) continue;
+		AController* ctl = (AController*)pri->Owner;
+		if (!ctl->Pawn) continue;
+		if (!ObjectClassCache::ClassNameContains(ctl->Pawn, "TgPawn")) continue;
+		if (PawnHoldsBeaconDevice((ATgPawn*)ctl->Pawn)) return true;
+	}
+	return false;
+}
+
+bool ShouldSpawnBeacon(ATgTeamBeaconManager* mgr) {
+	if (!mgr) return false;
+
+	// Deliberately NOT a call to the binary's ShouldSpawnBeacon native
+	// (0x109ee6c0). That native is `CheckBeacon(false) == false`, and our only
+	// callers run from INSIDE CheckBeacon's own frame (it dispatches
+	// SpawnNewBeaconForTeam via vtable[0x374]) — so using it would re-enter the
+	// state machine mid-update through ProcessEvent. It also carries a
+	// `s_bUsingBeaconInventory && !s_HexItem -> false` clause for the
+	// hex/Territory beacon mechanic we don't implement.
+	//
+	// We evaluate the same predicate side-effect-free instead: no live beacon
+	// AND nobody on the team holding the slot-11 pickup device. Identical to
+	// what CheckBeacon's respawn branch tests, with no re-entrancy and no
+	// dependency on a UFunction lookup.
+	if (mgr->r_Beacon != nullptr) return false;
+	return !TeamHasBeaconCarrier(mgr);
+}
+
+bool PawnHoldsBeaconDevice(ATgPawn* Pawn) {
+	if (!Pawn) return false;
+	ATgDevice* dev = Pawn->m_EquippedDevices[11];
+	if (!dev) return false;
+	// m_bIsBeaconPlacing = bit 0x10000 of the dword at TgDevice+0x22C
+	// (IsABeaconPlacingDevice @ 0x10a19a40 tests *(byte*)(dev+0x22E) & 1).
+	return (*(uint32_t*)((char*)dev + 0x22C) & 0x10000u) != 0;
+}
+
+int ReapOrphanBeacons(ATgTeamBeaconManager* mgr) {
+	if (!mgr || !mgr->r_TaskForce) return 0;
+
+	// eventDestroyIt re-enters UC (Destroyed -> UnRegisterBeacon ->
+	// CheckBeacon). Never let that path re-enter the reaper.
+	static bool s_reaping = false;
+	if (s_reaping) return 0;
+
+	ATgGame* game = (ATgGame*)Globals::Get().GGameInfo;
+	ATgRepInfo_Game* gri = game ? (ATgRepInfo_Game*)game->GameReplicationInfo : nullptr;
+	if (!gri) return 0;
+
+	// Snapshot first: eventDestroyIt mutates gri->m_Deployables (the
+	// RegisterDeployableInGRI compaction pass drops dead entries), so we must
+	// not be iterating it while destroying.
+	std::vector<ATgDeploy_Beacon*> orphans;
+	for (int i = 0; i < gri->m_Deployables.Count; ++i) {
+		ATgDeployable* dep = gri->m_Deployables.Data[i];
+		if (!dep) continue;
+		if (dep->r_nDeployableId != 36) continue;          // exit beacon only (entrance = 48)
+		if (dep == (ATgDeployable*)mgr->r_Beacon) continue; // the keeper
+		if (dep->m_bInDestroyedState) continue;
+		// Team match via the DRI — both spawn paths wire r_TaskforceInfo.
+		if (!dep->r_DRI || dep->r_DRI->r_TaskforceInfo != mgr->r_TaskForce) continue;
+		orphans.push_back((ATgDeploy_Beacon*)dep);
+	}
+	if (orphans.empty()) return 0;
+
+	s_reaping = true;
+	for (ATgDeploy_Beacon* orphan : orphans) {
+		Logger::Log("beacon",
+			"ReapOrphanBeacons: destroying untracked beacon 0x%p (tf=%d) — mgr=0x%p keeps 0x%p\n",
+			orphan, (int)mgr->r_TaskForce->r_nTaskForce, mgr, mgr->r_Beacon);
+		// s_bWasPickedUp=0 so this reads as a destruction, not a pickup.
+		orphan->s_bWasPickedUp = 0;
+		orphan->eventDestroyIt(0);
+	}
+	s_reaping = false;
+	return (int)orphans.size();
 }
 
 void PopulateBeaconFactoryList(ATgTeamBeaconManager* mgr) {
@@ -126,29 +226,45 @@ void DropCarriedBeacon(ATgPawn* Pawn) {
 	if (!Pawn || !Pawn->PlayerReplicationInfo) return;
 	ATgRepInfo_Player* pri = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
 
+	// Gate on the ACTUAL carry state, not on mgr->r_BeaconHolder. See the
+	// header comment: r_BeaconHolder means "carrier" only in CheckBeacon's
+	// PICKED_UP branch; for any live beacon it is overwritten with the
+	// DEPLOYER's PRI, so the old `r_BeaconHolder == pri` gate silently stopped
+	// firing as soon as anyone else deployed or picked up — leaving slot 11
+	// populated for the rest of the match.
+	if (!PawnHoldsBeaconDevice(Pawn)) return;
+
+	Logger::Log("beacon",
+		"DropCarriedBeacon: pawn=0x%p pri=0x%p holds slot-11 beacon device — clearing + CheckBeacon\n",
+		Pawn, pri);
+
+	// Inventory device removal first — UC TgDevice.uc:677 invokes
+	// CheckBeacon on inventory change, but we follow up with an explicit
+	// call to guarantee the respawn fires even if the inventory hook
+	// path doesn't trigger during the Dying / Destroyed teardown.
+	ATgInventoryManager* invMgr = (ATgInventoryManager*)Pawn->InvManager;
+	if (invMgr) {
+		TgInventoryManager__NonPersistRemoveDevice::Call(invMgr, nullptr, 11);
+	}
+
+	// Re-evaluate every manager this pawn could have been the carrier for:
+	// its own team's, plus any that still names this PRI as holder (stale
+	// after a team change). bAttemptRespawn=true so the beacon comes back at
+	// the original-priority factory now that nobody is carrying it.
+	//
+	// Deliberately NOT a blanket CheckBeacon on both managers — that could
+	// change respawn timing for the opposing team as a side effect of this
+	// pawn dying.
+	ATgTeamBeaconManager* own = (pri->r_TaskForce ? pri->r_TaskForce->r_BeaconManager : nullptr);
+	if (own) CheckBeacon(own, true);
+
 	ATgTeamBeaconManager* managers[2] = {
 		(GTeamsData.Attackers ? GTeamsData.Attackers->r_BeaconManager : nullptr),
 		(GTeamsData.Defenders ? GTeamsData.Defenders->r_BeaconManager : nullptr),
 	};
 	for (ATgTeamBeaconManager* mgr : managers) {
-		if (!mgr || mgr->r_BeaconHolder != pri) continue;
-
-		Logger::Log("beacon",
-			"DropCarriedBeacon: pawn=0x%p pri=0x%p was carrier for mgr=0x%p — clearing slot 11 + CheckBeacon\n",
-			Pawn, pri, mgr);
-
-		// Inventory device removal first — UC TgDevice.uc:677 invokes
-		// CheckBeacon on inventory change, but we follow up with an explicit
-		// call to guarantee the respawn fires even if the inventory hook
-		// path doesn't trigger during the Dying / Destroyed teardown.
-		ATgInventoryManager* invMgr = (ATgInventoryManager*)Pawn->InvManager;
-		if (invMgr) {
-			TgInventoryManager__NonPersistRemoveDevice::Call(invMgr, nullptr, 11);
-		}
-
-		// Whether or not the inventory remove succeeded, we still need
-		// CheckBeacon to re-evaluate. bAttemptRespawn=true so it spawns
-		// at the original-priority factory if nobody else is carrying.
+		if (!mgr || mgr == own) continue;
+		if (mgr->r_BeaconHolder != pri) continue;
 		CheckBeacon(mgr, true);
 	}
 }

@@ -10,6 +10,7 @@
 #include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/Markers/Markers.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/FxBrowse/FxBrowse.hpp"
+#include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconCarryReaper/BeaconCarryReaper.hpp"
 
 void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSeconds) {
 	IpcClient::DrainInbound();
@@ -43,5 +44,10 @@ void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSecon
 	TgPlayerActions::MarkersCmd::Tick();
 	// -fx browser refresh; no-op unless someone is stepping through candidates.
 	TgPlayerActions::FxBrowseCmd::Tick();
+	// Verifies that a deployed beacon's carry device actually left slot 11.
+	// Returns immediately unless a deploy armed a record in the last few
+	// seconds; the normal DeviceFiring.EndState cleanup disarms it first, so
+	// this only ever acts when that path was missed.
+	BeaconCarryReaper::Tick(DeltaSeconds);
 	CallOriginal(Engine, edx, DeltaSeconds);
 }

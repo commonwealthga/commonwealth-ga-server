@@ -3,9 +3,11 @@
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
+#include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/ApplyPlayerModsToDeployable.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
+#include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconCarryReaper/BeaconCarryReaper.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -125,6 +127,28 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 			}
 		}
 
+		// Anti-exploit: a beacon deployed inside a damaging device volume (the
+		// toxic sludge pools on Push_Toxicity / Push_Dust_P) is effectively
+		// indestructible — the volume's own hit can't touch it (device 7037
+		// gates on target_affect Biological, which rejects a deployable) and
+		// the brush interferes with shooting it. Refuse the placement.
+		//
+		// Nothing here consumes the carry device — that happens in UC
+		// DeviceFiring.EndState, which keys only off m_bIsBeaconPlacing and
+		// would eat a beacon that never entered the world. Mark the refused
+		// fire cycle so that cleanup skips itself exactly once and the player
+		// keeps his beacon.
+		if (bIsBeacon && HazardVolumes::ContainsLocation(spawnLocation)) {
+			const int refusedInvId = device->r_nInventoryId;
+			BeaconCarryReaper::MarkDeployRefused((int)pawn->r_nPawnId, refusedInvId);
+			Logger::Log("beacon",
+				"[deploy] refused: spawnLoc=(%.1f,%.1f,%.1f) inside a hazard volume "
+				"(pawn=%d invId=%d) — carry device kept\n",
+				spawnLocation.X, spawnLocation.Y, spawnLocation.Z,
+				(int)pawn->r_nPawnId, refusedInvId);
+			return;
+		}
+
 		ATgDeployable* Deployable = (ATgDeployable*)pawn->Spawn(
 			cls,
 			WorldInfo,
@@ -160,6 +184,31 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 		if (device)   Deployable->r_Owner             = device;
 
 		ATgRepInfo_Player* pawnrep = pawn->GetPRI();
+
+		// Snapshot the team's currently-registered beacon BEFORE the setup
+		// chain runs. `ApplyDeployableSetup()` below fires the deployable's
+		// full lifecycle synchronously — StartDeploy() -> GotoState('Deploy')
+		// -> UC `TgDeploy_Beacon.Deploy.BeginState` -> `RegisterBeacon(self,
+		// false)` — and RegisterBeacon (0x109f1ed0) assigns `r_Beacon =
+		// pBeacon` UNCONDITIONALLY, with no compare and no teardown of the
+		// incumbent. So by the time the beacon block further down runs,
+		// `mgr->r_Beacon` is already the NEW beacon and the old
+		// `if (r_Beacon && r_Beacon != Deployable) DestroyIt()` guard there
+		// could never fire — it was dead code, and any beacon already in the
+		// world simply became an untracked orphan.
+		ATgTeamBeaconManager* preDeployMgr =
+			(bIsBeacon && pawnrep && pawnrep->r_TaskForce)
+				? pawnrep->r_TaskForce->r_BeaconManager : nullptr;
+		ATgDeploy_Beacon* prevTeamBeacon =
+			preDeployMgr ? preDeployMgr->r_Beacon : nullptr;
+
+		// Carry device identity, captured before the deploy can consume it —
+		// used to arm the slot-11 verification sweep further down.
+		int carryInvId = 0;
+		if (bIsBeacon) {
+			ATgDevice* carryDev = pawn->m_EquippedDevices[11];
+			if (carryDev) carryInvId = carryDev->r_nInventoryId;
+		}
 
 		Deployable->eventInitReplicationInfo();
 		if (pawnrep && pawnrep->r_TaskForce) {
@@ -338,15 +387,12 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 		}
 
 		if (bIsBeacon) {
-			ATgTeamBeaconManager* beaconMgr = pawnrep ? pawnrep->r_TaskForce->r_BeaconManager : nullptr;
+			// r_TaskForce can be null (unassigned / mid-team-change pawn) —
+			// the old `pawnrep ? pawnrep->r_TaskForce->r_BeaconManager : nullptr`
+			// dereferenced it unguarded.
+			ATgTeamBeaconManager* beaconMgr =
+				(pawnrep && pawnrep->r_TaskForce) ? pawnrep->r_TaskForce->r_BeaconManager : nullptr;
 			if (beaconMgr) {
-				// Kill the previously-active world beacon for this team (if any).
-				// UC's Destroyed → UnRegisterBeacon will clear mgr->r_Beacon, so
-				// our RegisterBeacon below installs cleanly.
-				if (beaconMgr->r_Beacon && beaconMgr->r_Beacon != (ATgDeploy_Beacon*)Deployable) {
-					beaconMgr->r_Beacon->eventDestroyIt(0);
-				}
-
 				if (Deployable->r_DRI && beaconMgr->r_TaskForce) {
 					Deployable->r_DRI->r_bOwnedByTaskforce = 1;
 					Deployable->r_DRI->r_TaskforceInfo     = beaconMgr->r_TaskForce;
@@ -376,6 +422,25 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 						(deployTarget <= 0) ? "  ** ramp DISABLED (target<=0) **" : "");
 				}
 
+				// One exit beacon per team. Destroy the beacon that was
+				// registered BEFORE this deploy (snapshot taken above, before
+				// ApplyDeployableSetup's RegisterBeacon overwrote r_Beacon).
+				// Runs after our own RegisterBeacon so the destroy's
+				// UnRegisterBeacon -> CheckBeacon(true) sees a live r_Beacon
+				// and cannot trigger a factory respawn.
+				if (prevTeamBeacon && prevTeamBeacon != (ATgDeploy_Beacon*)Deployable &&
+					!prevTeamBeacon->m_bInDestroyedState) {
+					Logger::Log("beacon",
+						"[deploy] destroying superseded team beacon 0x%p (new=0x%p mgr=0x%p)\n",
+						prevTeamBeacon, Deployable, beaconMgr);
+					prevTeamBeacon->s_bWasPickedUp = 0;   // destruction, not a pickup
+					prevTeamBeacon->eventDestroyIt(0);
+				}
+				// Belt and braces: sweep any other untracked id-36 beacon for
+				// this taskforce (e.g. one orphaned by an earlier duplicate
+				// registration before this fix shipped).
+				BeaconSdk::ReapOrphanBeacons(beaconMgr);
+
 				if (pawn) {
 					ATgDevice* carryDev = pawn->m_EquippedDevices[11];
 					if (carryDev && carryDev->r_nDeviceId == 1918) {
@@ -386,6 +451,16 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 							pawn, carryDev, bEquipEffectsApplied);
 						carryDev->RemoveEquipEffects();
 					}
+				}
+
+				// Arm the slot-11 verification sweep. The primary removal is
+				// still DeviceFiring.EndState (which disarms this); the sweep
+				// only acts if that path was missed. Deadline comfortably past
+				// the device's own refire time so we never win the race
+				// against the normal cleanup.
+				if (carryInvId > 0) {
+					const float refire = pThis ? pThis->GetRefireTime() : 0.0f;
+					BeaconCarryReaper::ArmConsume(pawn, carryInvId, refire + 1.0f);
 				}
 			}
 		}

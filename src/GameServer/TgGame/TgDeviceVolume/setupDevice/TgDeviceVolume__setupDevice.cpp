@@ -8,6 +8,7 @@
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 
 #include <string>
+#include <vector>
 
 namespace {
 	ATgDeviceVolume* g_domeVrHealPadVolume = nullptr;
@@ -20,11 +21,51 @@ namespace {
 	int              g_padHealEgIds[4]     = {};
 	int              g_padHealEgCount      = 0;
 
+	std::vector<ATgDeviceVolume*> g_hazardVolumes;
+
 	bool IsDomeVrHealPadVolume(ATgDeviceVolume* Volume) {
 		if (!Volume) return false;
 		if (Config::GetMapNameChar() != "Dome3_VR_Arena_P") return false;
 		return Volume->m_nMapObjectId == 11041;
 	}
+}
+
+bool HazardVolumes::IsDamagingDevice(int deviceId) {
+	switch (deviceId) {
+		case 2238:  // Crusher
+		case 4662:  // Molten Fire
+		case 4976:  // Toxic Waste
+		case 5079:  // Electricity
+		case 5133:  // Fire
+		case 5299:  // Poison Gas
+		case 5447:  // Blast Furnace
+		case 5448:  // Grinder
+		case 5449:  // Ventilation Fan
+		case 5450:  // High Voltage
+		case 6265:  // Fire, Small
+		case 7029:  // Lava
+		case 7037:  // Toxic Sludge
+		case 7178:  // Acid Pool
+			return true;
+		default:
+			return false;
+	}
+}
+
+// Brush-bounds test, not a BSP point test: `Actor.ContainsPoint` is a native
+// we can't confirm is intact in this binary, and a stripped native would fail
+// OPEN (never block). The bounds box is a superset of the brush, so this errs
+// toward refusing a placement near a hazard rather than allowing one inside it.
+bool HazardVolumes::ContainsLocation(const FVector& loc) {
+	for (ATgDeviceVolume* V : g_hazardVolumes) {
+		if (!V || !V->CollisionComponent) continue;
+		const FBoxSphereBounds& b = V->CollisionComponent->Bounds;
+		if (loc.X < b.Origin.X - b.BoxExtent.X || loc.X > b.Origin.X + b.BoxExtent.X) continue;
+		if (loc.Y < b.Origin.Y - b.BoxExtent.Y || loc.Y > b.Origin.Y + b.BoxExtent.Y) continue;
+		if (loc.Z < b.Origin.Z - b.BoxExtent.Z || loc.Z > b.Origin.Z + b.BoxExtent.Z) continue;
+		return true;
+	}
+	return false;
 }
 
 ATgDeviceVolume* DomeVrHealPad::GetRegisteredVolume() {
@@ -321,6 +362,27 @@ bool __fastcall TgDeviceVolume_setupDevice::Call(ATgDeviceVolume* Volume, void* 
 	}
 
 	Volume->s_DeviceFireMode = Device->m_FireMode.Data[0];
+
+	// The fire mode's team identity must come from the VOLUME, not the device.
+	// TgDeviceFire::IsEnemy -> Actor::IsEnemy -> TgRepInfo_Game::CheckIsEnemy
+	// resolves both sides through GetTaskForceFor (0x109f1fa0), which reads a
+	// TgDevice's task force off `Instigator` (+0xD4) — always null on a
+	// volume-spawned device — but has a dedicated ATgDeviceVolume branch that
+	// reads `s_nTaskForce` (+0x224). With m_Owner left as the device, the
+	// device resolves to no task force, CheckIsEnemy's "one side has a TF"
+	// branch returns TRUE, and every Friend / Friend-Only targeter volume
+	// (2801 spawn invulnerability, 2805) rejected every pawn.
+	Volume->s_DeviceFireMode->m_Owner = (AActor*)Volume;
+
+	// Hazard registry — consumed by the beacon deploy gate in
+	// TgDeviceFire__Deploy (no respawn beacons inside acid/lava/etc.).
+	if (HazardVolumes::IsDamagingDevice(Volume->s_nDeviceId)) {
+		g_hazardVolumes.push_back(Volume);
+		Logger::Log("device-volume",
+			"[setupDevice] hazard volume registered=0x%p deviceId=%d (total=%d)\n",
+			Volume, Volume->s_nDeviceId, (int)g_hazardVolumes.size());
+	}
+
 	if (isPad) {
 		g_domeVrHealPadVolume = Volume;
 		g_padFireMode         = Volume->s_DeviceFireMode;
@@ -360,9 +422,13 @@ bool __fastcall TgDeviceVolume_setupDevice::Call(ATgDeviceVolume* Volume, void* 
 	}
 
 	Logger::Log("device-volume",
-		"[setupDevice] OK volume=0x%p deviceId=%d -> fireMode=0x%p (refire=%.2fs)\n",
+		"[setupDevice] OK volume=0x%p deviceId=%d -> fireMode=0x%p (refire=%.2fs) "
+		"targeter=%d owner=0x%p tf=%d team=%d\n",
 		Volume, Volume->s_nDeviceId, Volume->s_DeviceFireMode,
-		Volume->s_DeviceFireMode->GetRefireTime());
+		Volume->s_DeviceFireMode->GetRefireTime(),
+		(int)Volume->s_DeviceFireMode->m_eTargeterType,
+		Volume->s_DeviceFireMode->m_Owner,
+		(int)Volume->s_nTaskForce, Volume->s_nTeamNumber);
 
 	return true;
 }

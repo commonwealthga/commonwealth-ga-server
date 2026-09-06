@@ -7,6 +7,7 @@
 #include "src/GameServer/TgGame/_surface_rotation/SurfaceRotation.hpp"
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/ApplyPlayerModsToDeployable.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
+#include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconCarryReaper/BeaconCarryReaper.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/Database/Database.hpp"
@@ -1306,6 +1307,20 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	// reproducing once the spawn order was fixed (DB-based class resolution
 	// + deferred InitializeDefaultProps + effect-manager owner wiring); the
 	// hooks stay registered in case it re-surfaces.
+
+	// Snapshot the team's currently-registered beacon BEFORE the setup chain.
+	// ApplyDeployableSetup drives StartDeploy() -> GotoState('Deploy') -> UC
+	// `TgDeploy_Beacon.Deploy.BeginState` -> `RegisterBeacon(self, false)`,
+	// and RegisterBeacon (0x109f1ed0) overwrites `r_Beacon` unconditionally.
+	// The `if (r_Beacon && r_Beacon != Deployable) DestroyIt()` guard in the
+	// beacon block below therefore always compared the new beacon against
+	// itself and never fired — dead code that let the incumbent beacon survive
+	// as an untracked orphan.
+	ATgDeploy_Beacon* prevTeamBeacon = nullptr;
+	if (bIsBeacon && pawnrep && pawnrep->r_TaskForce && pawnrep->r_TaskForce->r_BeaconManager) {
+		prevTeamBeacon = pawnrep->r_TaskForce->r_BeaconManager->r_Beacon;
+	}
+
 	Deployable->ApplyDeployableSetup();
 
 	// Re-size BOTH cylinders with the SCALED dims, in this order:
@@ -1552,14 +1567,16 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 		// DEPLOYING state holds the entrance gate closed until UC's deploy
 		// timer completes; UC's Deploy.EndState then re-registers with
 		// bDeployed=true.
-		ATgTeamBeaconManager* beaconMgr = pawnrep ? pawnrep->r_TaskForce->r_BeaconManager : nullptr;
+		// r_TaskForce can be null (unassigned / mid-team-change pawn) — the old
+		// `pawnrep ? pawnrep->r_TaskForce->r_BeaconManager : nullptr`
+		// dereferenced it unguarded.
+		ATgTeamBeaconManager* beaconMgr =
+			(pawnrep && pawnrep->r_TaskForce) ? pawnrep->r_TaskForce->r_BeaconManager : nullptr;
 		if (beaconMgr) {
-			// Kill the previously-active world beacon for this team (if any).
-			// UC's Destroyed → UnRegisterBeacon will clear mgr->r_Beacon, so
-			// our RegisterBeacon below installs cleanly.
-			if (beaconMgr->r_Beacon && beaconMgr->r_Beacon != (ATgDeploy_Beacon*)Deployable) {
-				beaconMgr->r_Beacon->eventDestroyIt(0);
-			}
+			// (The old "kill the previously-active world beacon" check lived
+			// here and was unreachable — see the prevTeamBeacon snapshot taken
+			// before ApplyDeployableSetup. The destroy now happens after
+			// RegisterBeacon, further down.)
 
 			// Intentionally leave s_DeployFactory == null for player-deployed
 			// beacons. CheckBeacon's good-beacon branch picks r_BeaconStatus
@@ -1634,8 +1651,28 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 						"SpawnDeployableActor[beacon]: tearing down carrier visual on pawn=0x%p slot=11 device=0x%p m_bEquipEffectsApplied=%d\n",
 						pawn, carryDev, bEquipEffectsApplied);
 					carryDev->RemoveEquipEffects();
+
+					// Arm the slot-11 verification sweep (see
+					// BeaconCarryReaper.hpp). Primary removal is still the
+					// DeviceFiring.EndState cleanup, which disarms this.
+					BeaconCarryReaper::ArmConsume(pawn, carryDev->r_nInventoryId, 2.0f);
 				}
 			}
+
+			// One exit beacon per team. Destroy the beacon that was registered
+			// BEFORE this deploy (snapshot taken above ApplyDeployableSetup).
+			// After our RegisterBeacon, so the destroy's UnRegisterBeacon ->
+			// CheckBeacon(true) sees a live r_Beacon and can't trigger a
+			// factory respawn.
+			if (prevTeamBeacon && prevTeamBeacon != (ATgDeploy_Beacon*)Deployable &&
+				!prevTeamBeacon->m_bInDestroyedState) {
+				Logger::Log("beacon",
+					"SpawnDeployableActor[beacon]: destroying superseded team beacon 0x%p (new=0x%p mgr=0x%p)\n",
+					prevTeamBeacon, Deployable, beaconMgr);
+				prevTeamBeacon->s_bWasPickedUp = 0;   // destruction, not a pickup
+				prevTeamBeacon->eventDestroyIt(0);
+			}
+			BeaconSdk::ReapOrphanBeacons(beaconMgr);
 
 		} else {
 			Logger::Log("beacon",

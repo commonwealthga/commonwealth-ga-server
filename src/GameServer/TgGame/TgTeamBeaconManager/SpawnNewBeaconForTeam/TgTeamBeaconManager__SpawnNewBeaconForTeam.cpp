@@ -1,12 +1,19 @@
 #include "src/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.hpp"
 #include "src/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.hpp"
+#include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Stripped native (TgTeamBeaconManager__SpawnNewBeaconForTeam_notimplemented
 // @ 0x109ee6b0). Called from CheckBeacon (vtable slot 0x374) when:
 //   - r_Beacon is null/invalid
-//   - No PRI carries the beacon (LoadInventoryBeacon found no holder)
+//   - No PRI carries the beacon — CheckBeacon walks
+//     `r_TaskForce->m_TeamPlayers` and asks each pawn `IsCarryingBeacon()`
+//     (= slot 11 holds a device with m_bIsBeaconPlacing). NOTE: this is NOT
+//     `LoadInventoryBeacon`, as an earlier version of this comment claimed —
+//     that native inspects the taskforce's shared hex/Territory inventory
+//     manager and returns 0 immediately in a normal PvP match. See
+//     `decompiled/TgGame/ATgTeamBeaconManager/`.
 //   - bAttemptRespawn arg is true
 //
 // Factory selection by *priority*: TgGame.s_nCurrentPriority starts at 1 and
@@ -40,12 +47,19 @@ void __fastcall TgTeamBeaconManager__SpawnNewBeaconForTeam::Call(
 		game ? game->s_FallbackBeaconExit : nullptr);
 
 	// Defensive: CheckBeacon only routes to vtable[0x374] (us) when r_Beacon
-	// is null AND no carrier was found. If r_Beacon is already set, somebody
-	// invoked us out-of-band (or via a stale dispatch) — spawning a second
-	// beacon would duplicate. Log and skip.
-	if (mgr->r_Beacon) {
+	// is null AND no carrier was found. Anything else means we were invoked
+	// out-of-band (or via a stale dispatch) and a spawn here would duplicate.
+	//
+	// Use the binary's own predicate rather than a bare `r_Beacon != null`
+	// test — r_Beacon is null for the whole time a player is carrying the
+	// beacon, so the old check waved those calls straight through.
+	// ShouldSpawnBeacon (0x109ee6c0) = CheckBeacon(false) == false, i.e.
+	// "no live beacon AND nobody holding the slot-11 device".
+	if (!BeaconSdk::ShouldSpawnBeacon(mgr)) {
 		Logger::Log("beacon",
-			"  mgr already has r_Beacon=0x%p — skipping respawn\n", mgr->r_Beacon);
+			"  ShouldSpawnBeacon()==false (r_Beacon=0x%p status=%d holder=0x%p) "
+			"— skipping respawn\n",
+			mgr->r_Beacon, (int)mgr->r_BeaconStatus, mgr->r_BeaconHolder);
 		return nullptr;
 	}
 

@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
+#include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/IpcClient/IpcClient.hpp"
@@ -102,6 +103,32 @@ void __fastcall TgInventoryManager__NonPersistRemoveDevice::Call(
 		} else {
 			Logger::Log(GetLogChannel(),
 				"NonPersistRemoveDevice: WARNING no session for pawn 0x%p\n", pawn);
+		}
+	}
+
+	// Re-evaluate the beacon state machine now that slot 11 is ACTUALLY empty.
+	//
+	// Nothing else does this at the right moment. UC `TgDevice.ConsumeDevice`
+	// (TgDevice.uc:677) does call `beaconManager.CheckBeacon()`, but it runs
+	// BEFORE the device is gone — the carrier scan inside CheckBeacon
+	// (r_TaskForce->m_TeamPlayers -> TgPawn::IsCarryingBeacon -> slot 11 +
+	// m_bIsBeaconPlacing) therefore still sees the device and reports the
+	// player as carrying. And the binary's own removal path,
+	// `RemoveConsumableFromOwnerInventory` (0x10a1dd00), never runs for the
+	// beacon at all: device 1918 has `in_hand_device_flag = 0` in
+	// asm_data_set_devices, so `Pawn->Weapon` is never the beacon and that
+	// native's `owner->Weapon == this` gate can never pass.
+	//
+	// Result without this call: the manager holds a stale PICKED_UP status /
+	// holder until some unrelated event re-runs the machine.
+	if (bIsBeacon && nEquipPoint == 11 && pawn->PlayerReplicationInfo) {
+		ATgRepInfo_Player* pri = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
+		ATgTeamBeaconManager* mgr =
+			(pri->r_TaskForce ? pri->r_TaskForce->r_BeaconManager : nullptr);
+		if (mgr) {
+			Logger::Log(GetLogChannel(),
+				"NonPersistRemoveDevice: slot 11 cleared — CheckBeacon(mgr=0x%p)\n", mgr);
+			BeaconSdk::CheckBeacon(mgr, true);
 		}
 	}
 }
