@@ -44,6 +44,15 @@ struct ChannelState {
 	bool fileEnabled = false;
 	bool crashEnabled = false;
 	int indent = 0;
+	// Kept open across writes. Re-opening per line cost an fopen + fclose
+	// pair (under Wine: NT path resolution + open + close) on the game
+	// thread for every single log line, which made any channel that fires
+	// on a per-hit path expensive enough to be visible as a stutter. Opened
+	// lazily on first write so Logger::LogDir is already set, and left open
+	// for the life of the process — the state node's address is stable and
+	// channels are never erased. fflush after each line preserves both live
+	// tailing and survival of an application crash.
+	FILE* fp = nullptr;
 };
 
 // Canonical-by-name. unordered_map node addresses are stable across rehashes,
@@ -283,14 +292,16 @@ void Logger::Log(const char* channel, const char* format, ...) {
 
 	EnterCriticalSection(&g_log_cs);
 
-	char filename[512];
-	snprintf(filename, sizeof(filename), "%s\\%s.txt", LogDir.c_str(), channel);
-
-	FILE* fp = fopen(filename, "a");
-	if (fp == NULL) {
-		LeaveCriticalSection(&g_log_cs);
-		return;
+	if (s->fp == NULL) {
+		char filename[512];
+		snprintf(filename, sizeof(filename), "%s\\%s.txt", LogDir.c_str(), channel);
+		s->fp = fopen(filename, "a");
+		if (s->fp == NULL) {
+			LeaveCriticalSection(&g_log_cs);
+			return;
+		}
 	}
+	FILE* fp = s->fp;
 
 	for (int i = 0; i < indent; i++) {
 		fprintf(fp, "│  ");
@@ -301,7 +312,9 @@ void Logger::Log(const char* channel, const char* format, ...) {
 	vfprintf(fp, format, args);
 	va_end(args);
 
-	fclose(fp);
+	// Not fclose: the handle stays open. Flush so a tail -f sees the line and
+	// an application crash doesn't lose buffered output.
+	fflush(fp);
 
 	LeaveCriticalSection(&g_log_cs);
 }
@@ -313,8 +326,14 @@ void Logger::EnsureLogDirExists() {
 void Logger::ClearEnabledChannelFiles() {
 	EnsureCsInit();
 	EnterCriticalSection(&g_log_cs);
-	for (const auto& kv : g_states) {
+	for (auto& kv : g_states) {
 		if (!kv.second.fileEnabled) continue;
+		// Drop any handle held from a previous LogDir / earlier run before
+		// truncating, so the next write re-opens against the new file.
+		if (kv.second.fp) {
+			fclose(kv.second.fp);
+			kv.second.fp = nullptr;
+		}
 		char filename[512];
 		snprintf(filename, sizeof(filename), "%s\\%s.txt", LogDir.c_str(), kv.first.c_str());
 		// "w" truncates; if the file doesn't exist yet (first run), this just

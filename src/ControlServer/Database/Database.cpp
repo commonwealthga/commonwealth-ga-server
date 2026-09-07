@@ -4318,6 +4318,22 @@ void Database::UpsertMatchPlayerStats(const MatchPlayerStatsRow& row) {
 	}
 }
 
+void Database::UpsertMatchDeviceStatsBatch(const std::vector<MatchDeviceStatsRow>& rows) {
+	if (rows.empty()) return;
+	sqlite3* db = GetConnection();
+	if (!db) return;
+
+	// One transaction for the whole burst. Without this each row committed on
+	// its own, and a full PvP instance's 60s flush is a couple of hundred
+	// rows — a couple of hundred WAL commits, back to back, on the thread
+	// that also runs every TcpSession, ChatSession and matchmaking timer.
+	sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr);
+	for (const MatchDeviceStatsRow& row : rows) {
+		UpsertMatchDeviceStats(row);
+	}
+	sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr);
+}
+
 void Database::UpsertMatchDeviceStats(const MatchDeviceStatsRow& row) {
 	sqlite3* db = GetConnection();
 	if (!db) return;

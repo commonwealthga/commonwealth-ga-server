@@ -12,6 +12,7 @@
 #include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
+#include "src/GameServer/Utils/PerfProbe/PerfProbe.hpp"
 #include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/ActiveSpectatorCount/ActiveSpectatorCount.hpp"
@@ -798,6 +799,8 @@ static void LogScopeCall(const char* phase, UObject* Object, UFunction* Function
 
 void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunction* Function, void* Params, void* Result) {
 	if (!Object || !Function) return;
+
+	PerfProbe::Count(PerfProbe::CTR_PROCESS_EVENT);
 
 	const DispatchTag tag = GetDispatchTag(Function);
 

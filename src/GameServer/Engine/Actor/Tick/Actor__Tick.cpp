@@ -2,6 +2,7 @@
 #include "src/GameServer/Stats/SpectatorOverlayFeed/SpectatorOverlayFeed.hpp"
 #include "src/GameServer/Stats/MissionProgressFeed/MissionProgressFeed.hpp"
 #include "src/IpcClient/IpcClient.hpp"
+#include "src/GameServer/Utils/PerfProbe/PerfProbe.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Original debug body -- commented out for IPC drain
@@ -43,7 +44,20 @@ void* __fastcall Actor__Tick::Call(void* a1, void* edx, float a2, int a3) {
 
 void* __fastcall Actor__Tick::Call(void* a1, void* edx, float a2, int a3) {
     // IpcClient::DrainInbound();  // moved to World__Tick — was firing per-actor per-frame
+    // Counter only, no Scope — a timing scope here would be two
+    // QueryPerformanceCounter calls per actor per frame, which is more
+    // expensive than the thing it would measure: both feeds early-out on
+    // `GActiveSpectatorCount <= 0`, a single int compare.
+    PerfProbe::Count(PerfProbe::CTR_ACTOR_TICK);
     SpectatorOverlayFeed::MaybePushSnapshot((AActor*)a1);
     MissionProgressFeed::MaybePushSnapshot((AActor*)a1);
+
+    // Second-tier actor timing — only when the "perfactors" channel is on.
+    if (PerfProbe::DeepEnabled()) {
+        const int64_t start = PerfProbe::Now();
+        void* r = CallOriginal(a1, edx, a2, a3);
+        PerfProbe::NoteActorTick((AActor*)a1, PerfProbe::Now() - start);
+        return r;
+    }
     return CallOriginal(a1, edx, a2, a3);
 }

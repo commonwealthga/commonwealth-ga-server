@@ -5,6 +5,7 @@
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/Shared/HexUtils.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
+#include "src/GameServer/Utils/PerfProbe/PerfProbe.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/ChangeTeam/ChangeTeam.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/SpawnBot/SpawnBot.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/Deploy/Deploy.hpp"
@@ -346,6 +347,7 @@ void IpcClient::do_read_body(uint32_t len) {
 // ---------------------------------------------------------------------------
 
 void IpcClient::Send(const std::string& json_msg) {
+    PerfProbe::Count(PerfProbe::CTR_IPC_SEND);
     IpcCsGuard lock(outbound_cs_);
     outbound_queue_.push_back(json_msg);
 

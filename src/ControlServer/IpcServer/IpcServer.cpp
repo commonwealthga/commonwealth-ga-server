@@ -71,6 +71,45 @@ bool StopNonHomeInstanceIfEmpty(int64_t instance_id, const char* reason) {
     return true;
 }
 
+// ── Device-stats write coalescing ──────────────────────────────────────────
+// A game instance's periodic device-stats flush arrives as one IPC message
+// per row — a couple of hundred of them, back to back, for a full PvP
+// instance. Writing each on arrival meant a couple of hundred separate
+// autocommit transactions on the control server's single io_context thread,
+// which is the same thread serving every TcpSession, ChatSession, IPC
+// connection and matchmaking timer. Nothing else got serviced until the
+// burst drained.
+//
+// Instead: accumulate rows and post one flush. asio runs posted handlers
+// after the currently-ready ones, so the whole burst lands in a single
+// transaction and the io thread stays responsive between messages.
+std::vector<Database::MatchDeviceStatsRow> g_pendingDeviceStats;
+bool g_deviceStatsFlushScheduled = false;
+asio::io_context* g_ipcIo = nullptr;
+
+void QueueDeviceStatsRow(const Database::MatchDeviceStatsRow& row) {
+    g_pendingDeviceStats.push_back(row);
+
+    // No io_context (shouldn't happen once the server is constructed) —
+    // fall back to writing straight through rather than dropping the row.
+    if (g_ipcIo == nullptr) {
+        Database::UpsertMatchDeviceStatsBatch(g_pendingDeviceStats);
+        g_pendingDeviceStats.clear();
+        return;
+    }
+    if (g_deviceStatsFlushScheduled) return;
+    g_deviceStatsFlushScheduled = true;
+    asio::post(*g_ipcIo, [] {
+        g_deviceStatsFlushScheduled = false;
+        if (g_pendingDeviceStats.empty()) return;
+        std::vector<Database::MatchDeviceStatsRow> batch;
+        batch.swap(g_pendingDeviceStats);
+        Database::UpsertMatchDeviceStatsBatch(batch);
+        Logger::Log("matchstats", "[IpcServer] device-stats batch: %zu row(s)\n",
+            batch.size());
+    });
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -524,7 +563,7 @@ private:
             row.boost_targets          = j.value("boost_targets", 0);
             row.boost_overwrites       = j.value("boost_overwrites", 0);
             row.boost_wasted_secs      = j.value("boost_wasted_secs", 0);
-            Database::UpsertMatchDeviceStats(row);
+            QueueDeviceStatsRow(row);
         }
         else if (type == IpcProtocol::MSG_MISSION_ENDED) {
             // BeginEndMission fired on the mission instance. Stamp end_mission_at
@@ -906,6 +945,8 @@ void IpcServer::SetAdminActionHandler(AdminActionHandler cb) {
 
 IpcServer::IpcServer(asio::io_context& io, uint16_t port)
     : io_(io) {
+    // Used by QueueDeviceStatsRow to post its coalesced flush.
+    g_ipcIo = &io;
     asio::error_code ec;
     acceptor_ = std::make_unique<asio::ip::tcp::acceptor>(io.get_executor());
     asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), port);

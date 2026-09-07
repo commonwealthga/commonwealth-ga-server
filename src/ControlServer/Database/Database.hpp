@@ -344,6 +344,11 @@ public:
     // Absolute totals; upsert on (instance_id, character_id, task_force,
     // device_id). device_id keys asm_data_set_devices.device_id.
     static void UpsertMatchDeviceStats(const MatchDeviceStatsRow& row);
+    // Batch form: one explicit transaction and one prepared statement for the
+    // whole vector. The per-row form autocommits, which for a flush burst
+    // meant one transaction (and one WAL commit) per row, all of it blocking
+    // the single io_context thread that also serves every client TCP session.
+    static void UpsertMatchDeviceStatsBatch(const std::vector<MatchDeviceStatsRow>& rows);
 
     // Per-queue stats recording toggles (ga_queues.record_device_stats /
     // record_effectiveness). Returns false/false when the queue row is
