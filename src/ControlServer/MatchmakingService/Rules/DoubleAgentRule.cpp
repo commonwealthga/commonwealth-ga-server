@@ -1,5 +1,6 @@
 #include "src/ControlServer/MatchmakingService/Rules/DoubleAgentRule.hpp"
 #include "src/ControlServer/MatchmakingService/RuleSupport.hpp"
+#include "src/ControlServer/MatchmakingService/DefenderRotation.hpp"
 
 #include <algorithm>
 #include <array>
@@ -25,41 +26,6 @@ constexpr std::array<std::pair<uint8_t, uint8_t>, 9> kShapeTable = {{
 constexpr uint32_t kMinTotal = 2;
 constexpr uint32_t kMaxTotal = 10;
 
-// Fill TF1 (cap tf1_n) and TF2 (cap tf2_n) from `chosen` parties, keeping each
-// party on a single side when its members fit, spilling overflow otherwise.
-// Returns guid -> tf. Capacities are exactly consumed (sum == total).
-std::unordered_map<std::string, int> AssignShape(
-    const std::vector<const QueuedParty*>& chosen, int tf1_n, int tf2_n) {
-
-    // Largest parties first so they claim a whole side before fragments fill in.
-    std::vector<const QueuedParty*> order = chosen;
-    std::stable_sort(order.begin(), order.end(),
-        [](const QueuedParty* a, const QueuedParty* b) { return a->size() > b->size(); });
-
-    int rem1 = tf1_n, rem2 = tf2_n;
-    std::unordered_map<std::string, int> out;
-    for (const QueuedParty* p : order) {
-        const int n = (int)p->size();
-        const bool fit1 = rem1 >= n, fit2 = rem2 >= n;
-        int primary;
-        if (fit1 && fit2)      primary = (rem1 >= rem2) ? 1 : 2;
-        else if (fit1)         primary = 1;
-        else if (fit2)         primary = 2;
-        else                   primary = (rem1 >= rem2) ? 1 : 2;  // must spill
-        const int secondary = (primary == 1) ? 2 : 1;
-
-        for (const auto& m : p->members) {
-            int side;
-            if (primary == 1 ? rem1 > 0 : rem2 > 0)        side = primary;
-            else if (secondary == 1 ? rem1 > 0 : rem2 > 0) side = secondary;
-            else                                           side = primary;  // unreachable
-            out[m.session_guid] = side;
-            if (side == 1) rem1--; else rem2--;
-        }
-    }
-    return out;
-}
-
 }  // namespace
 
 std::optional<MatchResult> DoubleAgentRule::Evaluate(
@@ -84,11 +50,15 @@ std::optional<MatchResult> DoubleAgentRule::Evaluate(
     if ((uint32_t)total < kMinTotal) return std::nullopt;  // wait for more bodies
 
     const auto [tf1_n, tf2_n] = kShapeTable[total - kMinTotal];
-    auto assignment = AssignShape(chosen, tf1_n, tf2_n);
+    // TF2 (defenders) is the wanted side — hand it to the strongest rotation
+    // claim, never splitting a party unless no subset fills the seats.
+    bool spilled = false;
+    auto assignment = DefenderRotation::Assign(chosen, tf1_n, tf2_n, &spilled);
 
     MatchResult r;
     r.access_mode  = AccessMode::Sealed;
     r.cap_override = (uint32_t)total;  // seal at popped size
+    r.cohesion_spilled = spilled;
     for (const QueuedParty* p : chosen) {
         r.consumed_party_ids.push_back(p->party_id);
         for (const auto& m : p->members) {

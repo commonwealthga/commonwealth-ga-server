@@ -38,7 +38,7 @@ TEST(strict_priority_order_exclusions_then_wait) {
     std::vector<QueuedParty> q;
     q.push_back(tu::Solo(A, 0, "old"));
     q.push_back(tu::Solo(A, 5, "excluded"));
-    q.back().members[0].exclusion_count = 2;
+    q.back().members[0].fairness.exclusion_count = 2;
     auto ordered = StrictBalance::PartiesByPriority(q);
     CHECK_EQ(ordered[0]->members[0].session_guid, std::string("excluded"));
     CHECK_EQ(ordered[1]->members[0].session_guid, std::string("old"));
@@ -73,7 +73,7 @@ TEST(strict_select_excluded_player_beats_newer_same_class) {
     q.push_back(tu::Solo(A, 0, "first"));
     q.push_back(tu::Solo(A, 1, "second"));
     q.push_back(tu::Solo(A, 2, "priority"));
-    q.back().members[0].exclusion_count = 1;
+    q.back().members[0].fairness.exclusion_count = 1;
     auto sel = StrictBalance::SelectClassEqualSubset(q, -1);
     CHECK_EQ(Members(sel), 2);
     CHECK(Contains(sel, "priority"));
@@ -181,7 +181,7 @@ TEST(backfill_prefers_priority_candidate) {
     std::vector<QueuedParty> q;
     q.push_back(tu::Solo(A, 0, "older"));
     q.push_back(tu::Solo(A, 1, "priority"));
-    q.back().members[0].exclusion_count = 3;
+    q.back().members[0].fairness.exclusion_count = 3;
     auto inv = StrictBalance::PlanDeficitBackfill(q, inst);
     CHECK_EQ((int)inv.size(), 1);
     CHECK_EQ(inv[0].party->members[0].session_guid, std::string("priority"));
@@ -363,4 +363,84 @@ TEST(rule_open_policy_unchanged_defaults) {
     CHECK_EQ((int)r->session_guids.size(), 2);
     CHECK(r->access_mode == AccessMode::Open);
     CHECK(!r->cap_override.has_value());
+}
+
+// --- Fairness rotation (design 2026-09-07) ---------------------------------
+
+TEST(strict_tiebreak_exclusion_rate_spares_the_worse_off) {
+    // Three recons, all excluded once since their last match. The tie-break
+    // spares whoever has borne the largest SHARE of exclusions historically.
+    std::vector<QueuedParty> q;
+    q.push_back(tu::Solo(R, 0, "veteran"));
+    q.back().members[0].fairness.exclusion_count     = 1;
+    q.back().members[0].fairness.lifetime_exclusions = 8;
+    q.back().members[0].fairness.played_count        = 2;   // rate 0.80
+    q.push_back(tu::Solo(R, 1, "middle"));
+    q.back().members[0].fairness.exclusion_count     = 1;
+    q.back().members[0].fairness.lifetime_exclusions = 2;
+    q.back().members[0].fairness.played_count        = 8;   // rate 0.20
+    q.push_back(tu::Solo(R, 2, "lucky"));
+    q.back().members[0].fairness.exclusion_count     = 1;
+    q.back().members[0].fairness.lifetime_exclusions = 0;
+    q.back().members[0].fairness.played_count        = 9;   // rate 0.00
+
+    auto chosen = StrictBalance::SelectClassEqualSubset(q, -1);
+    CHECK_EQ(Members(chosen), 2);          // 3 recons -> parity drops exactly one
+    CHECK(Contains(chosen, "veteran"));
+    CHECK(Contains(chosen, "middle"));
+    CHECK(!Contains(chosen, "lucky"));     // lowest rate pays this time
+}
+
+TEST(strict_recent_exclusion_outranks_rate) {
+    // exclusion_count is still the primary key: a player excluded last pop is
+    // spared even though his lifetime rate is the lowest in the pool.
+    std::vector<QueuedParty> q;
+    q.push_back(tu::Solo(R, 0, "heavy_history"));
+    q.back().members[0].fairness.exclusion_count     = 0;
+    q.back().members[0].fairness.lifetime_exclusions = 9;
+    q.back().members[0].fairness.played_count        = 1;   // rate 0.90
+    q.push_back(tu::Solo(R, 1, "just_excluded"));
+    q.back().members[0].fairness.exclusion_count     = 1;
+    q.back().members[0].fairness.lifetime_exclusions = 1;
+    q.back().members[0].fairness.played_count        = 20;  // rate 0.05
+    q.push_back(tu::Solo(R, 2, "fresh"));
+
+    auto chosen = StrictBalance::SelectClassEqualSubset(q, -1);
+    CHECK_EQ(Members(chosen), 2);
+    CHECK(Contains(chosen, "just_excluded"));
+    CHECK(Contains(chosen, "heavy_history"));
+    CHECK(!Contains(chosen, "fresh"));
+}
+
+TEST(pair_admitted_within_absolute_slack) {
+    // Dead-level sides (diff 0). A 1240+1000 pair widens the gap to 80, which
+    // the old non-widening gate refused and the 100 slack now admits — this is
+    // the case that left excluded players sitting out a whole match.
+    auto inst = Inst({{A,2}}, {{A,2}}, 2000, 2000);
+    std::vector<QueuedParty> q;
+    q.push_back(tu::Solo(A, 0, "hi")); q.back().members[0].mmr = 1240.0;
+    q.push_back(tu::Solo(A, 1, "lo")); q.back().members[0].mmr = 1000.0;
+    auto inv = StrictBalance::PlanPairJoin(q, inst);
+    CHECK_EQ((int)inv.size(), 2);
+    CHECK(inv[0].tf != inv[1].tf);        // one per side — parity preserved
+}
+
+TEST(pair_refused_beyond_absolute_slack) {
+    // Same shape, but 1600+1000 leaves a 200 gap — past the slack.
+    auto inst = Inst({{A,2}}, {{A,2}}, 2000, 2000);
+    std::vector<QueuedParty> q;
+    q.push_back(tu::Solo(A, 0, "hi")); q.back().members[0].mmr = 1600.0;
+    q.push_back(tu::Solo(A, 1, "lo")); q.back().members[0].mmr = 1000.0;
+    CHECK(StrictBalance::PlanPairJoin(q, inst).empty());
+}
+
+TEST(pair_admitted_when_it_narrows_a_wide_gap) {
+    // Already lopsided (means 1300 vs 1000). A pair that closes the gap is
+    // admitted regardless of the slack, because it does not widen.
+    auto inst = Inst({{A,2}}, {{A,2}}, 2600, 2000);
+    std::vector<QueuedParty> q;
+    q.push_back(tu::Solo(A, 0, "lo")); q.back().members[0].mmr = 1000.0;
+    q.push_back(tu::Solo(A, 1, "hi")); q.back().members[0].mmr = 1600.0;
+    auto inv = StrictBalance::PlanPairJoin(q, inst);
+    CHECK_EQ((int)inv.size(), 2);
 }

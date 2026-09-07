@@ -668,6 +668,8 @@ CS_CPP_SOURCES= \
     $(CS_SRC_DIR)/MatchmakingService/RoleWeightedSplit.cpp \
     $(CS_SRC_DIR)/MatchmakingService/SidePlacement.cpp \
     $(CS_SRC_DIR)/MatchmakingService/StrictBalance.cpp \
+    $(CS_SRC_DIR)/MatchmakingService/DefenderRotation.cpp \
+    $(CS_SRC_DIR)/MatchmakingService/FairnessLog.cpp \
     $(CS_SRC_DIR)/MatchmakingService/Rules/CoopMatchRule.cpp \
     $(CS_SRC_DIR)/MatchmakingService/Rules/DoubleAgentRule.cpp \
     $(CS_SRC_DIR)/MatchmakingService/Rules/VersusSidesRule.cpp \

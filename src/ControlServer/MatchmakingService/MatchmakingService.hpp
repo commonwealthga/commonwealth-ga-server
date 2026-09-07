@@ -8,12 +8,14 @@
 #include <optional>
 #include <functional>
 #include <unordered_map>
+#include <unordered_set>
 #include <chrono>
 #include <memory>
 #include <cstdint>
 
 #include "src/ControlServer/MatchmakingService/Domain.hpp"
 #include "src/ControlServer/MatchmakingService/MatchRule.hpp"
+#include "src/ControlServer/MatchmakingService/FairnessLog.hpp"
 
 // ---------------------------------------------------------------------------
 // PendingMatch — a spawned instance whose players haven't yet reported in.
@@ -155,10 +157,6 @@ private:
         // Recently picked map names, most recent first. In-memory only —
         // survives ReloadQueues (like parties), resets on server restart.
         std::deque<std::string> recent_maps;
-        // Strict-queue exclusion priority: guid -> times left behind by a
-        // strict pop. In-memory only — survives ReloadQueues, resets on
-        // restart. Cleared per guid on any match entry from this queue.
-        std::unordered_map<std::string, uint32_t> exclusion_counts;
     };
 
     static std::unordered_map<uint32_t, Queue> queues_;
@@ -170,6 +168,30 @@ private:
                               std::unordered_map<std::string, int>>
         pre_assigned_teams_;
     static asio::io_context* io_ctx_;
+
+    // Fairness rotation index: scope -> user_id -> stats. Mirrors
+    // ga_matchmaking_fairness_events so the pop path never touches SQLite;
+    // filled lazily from the log on enqueue, so a restart rebuilds it.
+    static std::unordered_map<std::string,
+                              std::unordered_map<int64_t, FairnessStats>> fairness_;
+
+    // Guids already credited with a 'played' row, per instance. A fresh spawn
+    // passes through ConsumePendingMatch AND TrackReadyMatchReservations, so
+    // the set is what keeps the row from being written twice. Erased on
+    // instance teardown (DropReadyMatchReservations).
+    static std::unordered_map<int64_t, std::unordered_set<std::string>> fairness_credited_;
+
+    static FairnessStats& FairnessEntry(const std::string& scope, int64_t user_id);
+    // Write 'played' (+ 'defender' for the DA short side) for every guid not
+    // yet credited for this instance.
+    static void RecordMatchEntry(
+        int64_t instance_id, uint32_t queue_id,
+        const std::vector<std::string>& session_guids,
+        const std::unordered_map<std::string, int>& task_force_assignments,
+        const std::unordered_map<std::string, uint32_t>& profile_ids);
+    static void RecordFairness(const std::string& scope, uint32_t queue_id,
+                               int64_t user_id, FairnessLog::Event e,
+                               uint32_t profile_id, int64_t instance_id);
 
     static void TryPop(uint32_t queue_id, bool delay_elapsed = false);
     static void OnQueueChanged(uint32_t queue_id, const char* trigger,

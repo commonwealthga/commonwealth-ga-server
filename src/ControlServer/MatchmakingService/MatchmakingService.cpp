@@ -5,10 +5,12 @@
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/MmrService/MmrService.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
+#include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "sqlite3.h"
 #include <algorithm>
 #include <cstdio>
+#include <ctime>
 #include <cstdlib>
 #include <functional>
 #include <limits>
@@ -26,6 +28,10 @@ std::unordered_map<int64_t, PendingMatch> MatchmakingService::ready_match_reserv
 std::unordered_map<int64_t, std::unordered_map<std::string, int>>
     MatchmakingService::pre_assigned_teams_;
 asio::io_context* MatchmakingService::io_ctx_ = nullptr;
+std::unordered_map<std::string, std::unordered_map<int64_t, FairnessStats>>
+    MatchmakingService::fairness_;
+std::unordered_map<int64_t, std::unordered_set<std::string>>
+    MatchmakingService::fairness_credited_;
 
 // ---------------------------------------------------------------------------
 // Init / reload
@@ -100,7 +106,8 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
         "       pop_delay_policy, instant_pop_when_full,"
         "       marshal_difficulty_value_id, requires_pvp_verification,"
         "       team_policy, team_side_policy, max_team_size, map_recency_divisors,"
-        "       strict_class_balance, late_join_policy, pair_backfill, setup_rebalance "
+        "       strict_class_balance, late_join_policy, pair_backfill, setup_rebalance,"
+        "       fairness_scope "
         "FROM ga_queues ORDER BY sort_order, queue_id";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
         Logger::Log("matchmaking", "[Matchmaking] LoadQueueConfigs prepare failed: %s\n",
@@ -192,6 +199,9 @@ static std::vector<QueueConfig> LoadAllQueueConfigsFromDb() {
         col++;
         c.pair_backfill   = sqlite3_column_int(stmt, col++) != 0;
         c.setup_rebalance = sqlite3_column_int(stmt, col++) != 0;
+        if (sqlite3_column_type(stmt, col) != SQLITE_NULL)
+            c.fairness_scope = (const char*)sqlite3_column_text(stmt, col);
+        col++;
         if ((c.strict_class_balance || c.late_join_policy == LateJoinPolicy::BackfillOnly)
                 && c.taskforce_policy != TaskforcePolicy::BalancedPvp) {
             Logger::Log("matchmaking",
@@ -230,6 +240,8 @@ void MatchmakingService::Init() {
     pending_matches_.clear();
     ready_match_reservations_.clear();
     pre_assigned_teams_.clear();
+    fairness_.clear();            // rebuilt lazily from the log on enqueue
+    fairness_credited_.clear();
     on_match_pop_ = nullptr;
     instance_provider_ = nullptr;
     io_ctx_ = nullptr;
@@ -253,12 +265,10 @@ void MatchmakingService::ReloadQueues() {
     std::unordered_map<uint32_t, std::vector<QueuedParty>> kept_parties;
     std::unordered_map<uint32_t, std::optional<DelayedPop>> kept_delays;
     std::unordered_map<uint32_t, std::deque<std::string>>   kept_recent;
-    std::unordered_map<uint32_t, std::unordered_map<std::string, uint32_t>> kept_excl;
     for (auto& [qid, q] : queues_) {
         kept_parties[qid] = std::move(q.parties);
         kept_delays[qid]  = std::move(q.delayed_pop);
         kept_recent[qid]  = std::move(q.recent_maps);
-        kept_excl[qid]    = std::move(q.exclusion_counts);
     }
 
     std::unordered_map<uint32_t, Queue> rebuilt;
@@ -272,8 +282,6 @@ void MatchmakingService::ReloadQueues() {
         if (dit != kept_delays.end()) { q.delayed_pop = std::move(dit->second); kept_delays.erase(dit); }
         auto rit = kept_recent.find(qid);
         if (rit != kept_recent.end()) q.recent_maps = std::move(rit->second);
-        auto eit = kept_excl.find(qid);
-        if (eit != kept_excl.end()) q.exclusion_counts = std::move(eit->second);
         rebuilt[qid] = std::move(q);
     }
 
@@ -509,6 +517,73 @@ void MatchmakingService::SetIoContext(asio::io_context* io) { io_ctx_ = io; }
 // Party / player management
 // ---------------------------------------------------------------------------
 
+// Lazily load a user's rotation state for a scope; cached until restart.
+FairnessStats& MatchmakingService::FairnessEntry(const std::string& scope,
+                                                 int64_t user_id) {
+    auto& per_scope = fairness_[scope];
+    auto it = per_scope.find(user_id);
+    if (it == per_scope.end())
+        it = per_scope.emplace(user_id, FairnessLog::Load(scope, user_id)).first;
+    return it->second;
+}
+
+// Append one event and keep the in-memory index in step with it.
+void MatchmakingService::RecordFairness(const std::string& scope, uint32_t queue_id,
+                                        int64_t user_id, FairnessLog::Event e,
+                                        uint32_t profile_id, int64_t instance_id) {
+    if (scope.empty() || user_id <= 0) return;
+    FairnessLog::Record(scope, queue_id, user_id, e, profile_id, instance_id);
+    FairnessStats& s = FairnessEntry(scope, user_id);
+    switch (e) {
+        case FairnessLog::Event::Excluded:
+            s.exclusion_count++; s.lifetime_exclusions++; break;
+        case FairnessLog::Event::Played:
+            s.exclusion_count = 0; s.played_count++; break;
+        case FairnessLog::Event::Defender:
+            // Reading the row id back costs a round-trip. Unix time is always
+            // far above any row id this table will reach, so a just-credited
+            // player still sorts as more recent than every player whose id
+            // came from the log — which is the only ordering that matters.
+            s.last_defender_id = (int64_t)std::time(nullptr);
+            s.defender_count++; break;
+    }
+}
+
+// Fairness log: one 'played' per committed player, plus 'defender' for the DA
+// short side. Called from the two points a player can actually enter a match
+// — ConsumePendingMatch (fresh spawn, once per instance, all rule classes) and
+// TrackReadyMatchReservations (backfill / drop-in routing). A fresh spawn hits
+// both, so the per-instance credited set is what keeps it to one row.
+void MatchmakingService::RecordMatchEntry(
+    int64_t instance_id, uint32_t queue_id,
+    const std::vector<std::string>& session_guids,
+    const std::unordered_map<std::string, int>& task_force_assignments,
+    const std::unordered_map<std::string, uint32_t>& profile_ids) {
+    if (instance_id == 0 || session_guids.empty()) return;
+    auto qit = queues_.find(queue_id);
+    if (qit == queues_.end()) return;
+    const std::string scope = qit->second.config.fairness_scope;
+    if (scope.empty()) return;
+
+    auto& credited = fairness_credited_[instance_id];
+    for (const auto& guid : session_guids) {
+        if (!credited.insert(guid).second) continue;   // already logged
+        auto sess = PlayerSessionStore::GetByGuid(guid);
+        if (!sess || sess->user_id <= 0) continue;
+        uint32_t pid = 0;
+        auto pfit = profile_ids.find(guid);
+        if (pfit != profile_ids.end()) pid = pfit->second;
+        RecordFairness(scope, queue_id, sess->user_id,
+                       FairnessLog::Event::Played, pid, instance_id);
+        auto tfit = task_force_assignments.find(guid);
+        if (scope == "double_agent" && tfit != task_force_assignments.end()
+                && tfit->second == 2) {
+            RecordFairness(scope, queue_id, sess->user_id,
+                           FairnessLog::Event::Defender, pid, instance_id);
+        }
+    }
+}
+
 uint64_t MatchmakingService::SoloPartyId(const std::string& session_guid) {
     // Top bit set so it never collides with TeamService team ids (small ints).
     return 0x8000000000000000ull | (uint64_t)(std::hash<std::string>{}(session_guid) & 0x7FFFFFFFu);
@@ -534,6 +609,9 @@ void MatchmakingService::AddParty(uint32_t queue_id, const QueuedParty& party) {
     for (auto& m : parties.back().members) {
         m.mmr = MmrService::GetCurrentRating(m.user_id, m.profile_id);
         m.installed_dlcs = Database::GetInstalledDlcIds(m.user_id);
+        // Warm the rotation index off the pop path (enqueue is human-rate).
+        if (!it->second.config.fairness_scope.empty())
+            FairnessEntry(it->second.config.fairness_scope, m.user_id);
     }
 
     Logger::Log("matchmaking",
@@ -671,6 +749,10 @@ std::optional<PendingMatch> MatchmakingService::ConsumePendingMatch(int64_t inst
     if (it == pending_matches_.end()) return std::nullopt;
     PendingMatch match = std::move(it->second);
     pending_matches_.erase(it);
+    // The instance is live and its roster is final (coalesced additions
+    // included) — this is where a fresh-spawn player has actually played.
+    RecordMatchEntry(instance_id, match.queue_id, match.session_guids,
+                     match.task_force_assignments, match.profile_ids);
     return match;
 }
 
@@ -681,6 +763,10 @@ void MatchmakingService::TrackReadyMatchReservations(
     const std::unordered_map<std::string, uint32_t>& profile_ids,
     const std::unordered_map<std::string, double>& mmrs, uint32_t cap) {
     if (instance_id == 0 || session_guids.empty()) return;
+    // Before the reservation gate: DoubleAgent / VersusSides queues never
+    // reserve, but their players still played.
+    RecordMatchEntry(instance_id, queue_id, session_guids,
+                     task_force_assignments, profile_ids);
     auto qit = queues_.find(queue_id);
     if (qit == queues_.end() || !TracksReadyReservations(qit->second.config)) return;
 
@@ -801,6 +887,9 @@ void MatchmakingService::RemoveReadyMatchReservation(
 }
 
 void MatchmakingService::DropReadyMatchReservations(int64_t instance_id) {
+    // Before the early return: DA instances hold no reservations but still
+    // carry a credited set that has to go with the instance.
+    fairness_credited_.erase(instance_id);
     auto it = ready_match_reservations_.find(instance_id);
     if (it == ready_match_reservations_.end()) return;
     size_t n = it->second.session_guids.size();
@@ -942,10 +1031,9 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
             if (!all_verified) continue;
         }
         eligible.push_back(party);
-        for (auto& m : eligible.back().members) {
-            auto xit = queue.exclusion_counts.find(m.session_guid);
-            m.exclusion_count = (xit != queue.exclusion_counts.end()) ? xit->second : 0;
-        }
+        if (!queue.config.fairness_scope.empty())
+            for (auto& m : eligible.back().members)
+                m.fairness = FairnessEntry(queue.config.fairness_scope, m.user_id);
     }
     if (eligible.empty()) return;
 
@@ -1131,6 +1219,23 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
         }
     }
 
+    // Exclusion bookkeeping for a fresh pop: every eligible player who was NOT
+    // taken gets an 'excluded' row. Parties withheld by the pvp-verification
+    // gate never reach `eligible`, so they can't bank priority they didn't
+    // earn. 'played' is written later, by RecordMatchEntry, once the instance
+    // id exists and the player has actually entered.
+    const std::string fscope = queue.config.fairness_scope;
+    auto record_exclusions = [&]() {
+        if (fscope.empty() || result->existing_instance_id) return;
+        for (const auto& p : eligible)
+            for (const auto& m : p.members)
+                if (std::find(result->session_guids.begin(),
+                              result->session_guids.end(),
+                              m.session_guid) == result->session_guids.end())
+                    RecordFairness(fscope, queue_id, m.user_id,
+                                   FairnessLog::Event::Excluded, m.profile_id, 0);
+    };
+
     // Coalesce a fresh OPEN result into an existing OPEN pending (cold-start
     // race avoidance). PARTY_LOCKED / SEALED results never coalesce — they
     // each own a private instance. Parties stay atomic: coalesce only when the
@@ -1167,15 +1272,7 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
                 pm.mmrs[guid] = (mit != result->mmrs.end()) ? mit->second : 1000.0;
             }
             RemoveConsumedParties(queue.parties, result->consumed_party_ids);
-            // Exclusion-priority bookkeeping: entering a match clears a player's
-            // count; a fresh strict pop bumps everyone left behind.
-            for (const auto& guid : result->session_guids)
-                queue.exclusion_counts.erase(guid);
-            if (queue.config.strict_class_balance && !result->existing_instance_id) {
-                for (const auto& party : queue.parties)
-                    for (const auto& m : party.members)
-                        queue.exclusion_counts[m.session_guid] += 1;
-            }
+            record_exclusions();
             Logger::Log("matchmaking",
                 "[Matchmaking] Queue %u: coalesced %zu player(s) into pending instance %lld (total %zu)\n",
                 queue_id, need, (long long)iid, pm.session_guids.size());
@@ -1186,20 +1283,16 @@ void MatchmakingService::TryPop(uint32_t queue_id, bool delay_elapsed) {
 
     // Commit: remove consumed parties, hand the result to the spawn/route callback.
     RemoveConsumedParties(queue.parties, result->consumed_party_ids);
-    // Exclusion-priority bookkeeping: entering a match clears a player's
-    // count; a fresh strict pop bumps everyone left behind.
-    for (const auto& guid : result->session_guids)
-        queue.exclusion_counts.erase(guid);
-    if (queue.config.strict_class_balance && !result->existing_instance_id) {
-        for (const auto& party : queue.parties)
-            for (const auto& m : party.members)
-                queue.exclusion_counts[m.session_guid] += 1;
-    }
+    record_exclusions();
 
     Logger::Log("matchmaking",
         "[Matchmaking] Queue %u popped: %zu players map=%s mode=%s access=%s\n",
         queue_id, result->session_guids.size(), result->map_name.c_str(),
         result->game_mode.c_str(), mm::AccessModeToString(result->access_mode));
+    if (result->cohesion_spilled)
+        Logger::Log("queue-pop",
+            "[Matchmaking] Queue %u: no party subset filled the defender seats — "
+            "one party split across sides\n", queue_id);
 
     if (on_match_pop_) on_match_pop_(queue_id, std::move(*result));
     if (!queue.parties.empty()) TryPop(queue_id, delay_elapsed);

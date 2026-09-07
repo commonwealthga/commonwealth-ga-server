@@ -21,6 +21,28 @@
 // Players & parties
 // ---------------------------------------------------------------------------
 
+// Per-(scope, user) rotation state, read from ga_matchmaking_fairness_events
+// once per enqueue. All-zero = a player with no history.
+struct FairnessStats {
+    // 'excluded' rows since this user's most recent 'played' row in scope.
+    uint32_t exclusion_count     = 0;
+    uint32_t lifetime_exclusions = 0;
+    uint32_t played_count        = 0;
+    // Row id of the most recent 'defender' row; 0 = never defended.
+    int64_t  last_defender_id    = 0;
+    uint32_t defender_count      = 0;
+
+    // Share of this user's queue attempts that ended in exclusion.
+    double exclusion_rate() const {
+        const uint32_t total = lifetime_exclusions + played_count;
+        return total ? (double)lifetime_exclusions / (double)total : 0.0;
+    }
+    // Share of this user's matches in scope that were played as defender.
+    double defender_ratio() const {
+        return played_count ? (double)defender_count / (double)played_count : 0.0;
+    }
+};
+
 // One queued player. `profile_id` is the engine PROFILE_* class id.
 struct QueuedPlayer {
     std::string session_guid;
@@ -30,9 +52,9 @@ struct QueuedPlayer {
     // -togglesolomode preference (ga_user_preferences "solo_mode"), stamped at
     // enqueue. A solo party with this set pops its own PARTY_LOCKED match.
     bool        solo_lock  = false;
-    // Strict-queue exclusion priority (times left behind by a strict pop).
-    // Stamped by MatchmakingService from its per-queue map before Evaluate.
-    uint32_t    exclusion_count = 0;
+    // Rotation state for the queue's fairness scope. Stamped by
+    // MatchmakingService from its in-memory index before Evaluate.
+    FairnessStats fairness;
     // Installed DLC packs (ga_dlc ids from ga_user_dlc, stamped at enqueue).
     // Gates which pool maps the player may be routed to on DLC-locked pools.
     std::vector<int64_t> installed_dlcs;
@@ -198,6 +220,10 @@ struct MatchResult {
     AccessMode access_mode = AccessMode::Open;
     std::vector<uint64_t> owner_party_ids;  // PARTY_LOCKED owners
 
+    // Set when a party had to be split across sides because no party subset
+    // filled the defender seats exactly. Logged by TryPop.
+    bool cohesion_spilled = false;
+
     // Parties fully consumed by this result — the orchestrator removes these
     // from the queue. Derived from session_guids' owning parties, but tracked
     // explicitly so partial-party pops never happen (parties are atomic).
@@ -265,6 +291,10 @@ struct QueueConfig {
     LateJoinPolicy late_join_policy     = LateJoinPolicy::Open;
     bool           pair_backfill        = false;
     bool           setup_rebalance      = true;
+
+    // Fairness rotation group (ga_queues.fairness_scope). Empty = this queue
+    // records no fairness events and reads none. 'merc' / 'double_agent'.
+    std::string fairness_scope;
 
     // Map-variety knob: per-recency-slot weight divisors, most recent first
     // (ga_queues.map_recency_divisors, CSV). Empty = feature off.

@@ -11,6 +11,7 @@ CXXFLAGS  := -std=c++17 -I$(REPO_ROOT) -I. -O0 -g -Wall -Wextra
 CORE_SRC := \
     $(REPO_ROOT)/src/ControlServer/MatchmakingService/SidePlacement.cpp \
     $(REPO_ROOT)/src/ControlServer/MatchmakingService/StrictBalance.cpp \
+    $(REPO_ROOT)/src/ControlServer/MatchmakingService/DefenderRotation.cpp \
     $(REPO_ROOT)/src/ControlServer/MatchmakingService/MmrSwap.cpp \
     $(REPO_ROOT)/src/ControlServer/MatchmakingService/Rules/CoopMatchRule.cpp \
     $(REPO_ROOT)/src/ControlServer/MatchmakingService/Rules/DoubleAgentRule.cpp \
@@ -23,6 +24,7 @@ TEST_SRC := \
     test_strict_balance.cpp \
     test_coop_rule.cpp \
     test_double_agent_rule.cpp \
+    test_defender_rotation.cpp \
     test_versus_sides_rule.cpp
 
 BIN := mm_tests

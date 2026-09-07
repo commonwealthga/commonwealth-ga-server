@@ -16,8 +16,9 @@ struct Invite {
     int tf = 0;                          // side to join (1/2)
 };
 
-// Priority order used by every strict-mode decision: exclusion_count desc
-// (party = max member count), then joined_at asc. Stable.
+// Priority order used by every strict-mode decision: exclusion_count desc,
+// then exclusion_rate desc (spread the cost proportionally), then joined_at
+// asc. Party value = max over members on both counters. Stable.
 std::vector<const QueuedParty*> PartiesByPriority(
     const std::vector<QueuedParty>& parties);
 
@@ -35,9 +36,10 @@ std::vector<Invite> PlanDeficitBackfill(
     const std::vector<QueuedParty>& parties, const RunningInstance& inst);
 
 // Pair admission: only when sides are class- AND size-equal. First (by
-// priority order) same-class solo pair whose better orientation does not
-// widen the sides' mean-MMR difference; both invited, one per side. Empty
-// when no pair qualifies or fewer than 2 seats are free.
+// priority order) same-class solo pair whose better orientation either does
+// not widen the sides' mean-MMR difference, or leaves it under the 100-point
+// absolute slack; both invited, one per side. Empty when no pair qualifies or
+// fewer than 2 seats are free.
 std::vector<Invite> PlanPairJoin(
     const std::vector<QueuedParty>& parties, const RunningInstance& inst);
 

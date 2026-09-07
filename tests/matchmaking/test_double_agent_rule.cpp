@@ -94,3 +94,43 @@ TEST(da_caps_total_at_ten) {
     CHECK_EQ(c.tf1, 6);
     CHECK_EQ(c.tf2, 4);
 }
+
+// --- Defender rotation (design 2026-09-07) ---------------------------------
+
+TEST(da_defender_seats_follow_rotation) {
+    // Total 5 -> 3v2. The two players who have never defended take TF2,
+    // regardless of the order the parties were selected in.
+    auto cfg = DaCfg();
+    DoubleAgentRule rule(&cfg);
+    std::vector<QueuedParty> q;
+    for (int i = 0; i < 5; ++i) {
+        q.push_back(Solo(A, i));
+        if (i < 3) {                     // s0..s2 defended recently
+            q.back().members[0].fairness.last_defender_id = 500 + i;
+            q.back().members[0].fairness.played_count     = 4;
+            q.back().members[0].fairness.defender_count   = 2;
+        }
+    }
+    auto r = rule.Evaluate(q, {});
+    CHECK(r.has_value());
+    auto c = CountTf(*r);
+    CHECK_EQ(c.tf1, 3);
+    CHECK_EQ(c.tf2, 2);
+    CHECK_EQ(r->task_force_assignments["s3"], 2);
+    CHECK_EQ(r->task_force_assignments["s4"], 2);
+    CHECK(!r->cohesion_spilled);
+}
+
+TEST(da_party_never_split_when_a_subset_fits) {
+    // A 3-party and a 4-party at total 7 (4v3) each land whole on one side.
+    auto cfg = DaCfg();
+    DoubleAgentRule rule(&cfg);
+    std::vector<QueuedParty> q;
+    q.push_back(Team(11, {A, A, A}, 0));
+    q.push_back(Team(22, {A, A, A, A}, 1));
+    auto r = rule.Evaluate(q, {});
+    CHECK(r.has_value());
+    CHECK(PartyTogether(*r, q[0]));
+    CHECK(PartyTogether(*r, q[1]));
+    CHECK(!r->cohesion_spilled);
+}

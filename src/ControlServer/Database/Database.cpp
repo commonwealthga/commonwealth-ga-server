@@ -891,6 +891,55 @@ void Database::Init() {
 			}
 		}
 
+		// Matchmaking fairness log (2026-09-07 design). Append-only; one row
+		// per allocation decision about one player. Keyed by user_id so a
+		// relog or class change never drops accrued rotation credit.
+		const char* kFairnessDdl[] = {
+			"CREATE TABLE IF NOT EXISTS ga_matchmaking_fairness_events ("
+			"  id          INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"  user_id     INTEGER NOT NULL,"
+			"  scope       TEXT    NOT NULL,"
+			"  queue_id    INTEGER NOT NULL,"
+			"  event_type  TEXT    NOT NULL,"
+			"  profile_id  INTEGER NOT NULL DEFAULT 0,"
+			"  instance_id INTEGER,"
+			"  created_at  INTEGER NOT NULL);",
+			// Covers every priority query: scope+user+type is an index range
+			// with id ordered inside it, so MAX(id) is a seek, not a scan.
+			"CREATE INDEX IF NOT EXISTS idx_mm_fair_lookup"
+			"  ON ga_matchmaking_fairness_events (scope, user_id, event_type, id);",
+			// Operator review of a session's events in time order.
+			"CREATE INDEX IF NOT EXISTS idx_mm_fair_review"
+			"  ON ga_matchmaking_fairness_events (scope, created_at);",
+		};
+		for (const char* sql : kFairnessDdl) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "Fairness DDL failed: %s\n", err ? err : "?");
+				sqlite3_free(err); err = nullptr;
+			}
+		}
+
+		// NULL scope = queue records nothing and reads nothing. Seeded only
+		// when the column is newly created, so later operator edits survive.
+		const bool fairness_col_fresh =
+			(sqlite3_exec(db,
+				"ALTER TABLE ga_queues ADD COLUMN fairness_scope TEXT DEFAULT NULL;",
+				nullptr, nullptr, &err) == SQLITE_OK);
+		if (err) { sqlite3_free(err); err = nullptr; }
+		if (fairness_col_fresh) {
+			const char* kFairnessSeed[] = {
+				"UPDATE ga_queues SET fairness_scope = 'merc' WHERE name = 'merc';",
+				"UPDATE ga_queues SET fairness_scope = 'double_agent' "
+				"  WHERE name IN ('double_agent_high','double_agent_max','double_agent_umax');",
+			};
+			for (const char* sql : kFairnessSeed) {
+				if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+					Logger::Log("db", "Fairness seed failed: %s\n", err ? err : "?");
+					sqlite3_free(err); err = nullptr;
+				}
+			}
+		}
+
 		// One-time per-archetype team config. Guarded by a marker row so it
 		// runs EXACTLY ONCE on first deploy and never stomps later operator
 		// edits to team_policy / team_side_policy. (We can't gate on

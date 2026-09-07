@@ -9,11 +9,22 @@ namespace StrictBalance {
 
 namespace {
 
-uint32_t PartyPriority(const QueuedParty* p) {
+// A party's claim to be spared is its strongest member's, on both keys.
+uint32_t PartyExclusions(const QueuedParty* p) {
     uint32_t x = 0;
-    for (const auto& m : p->members) x = std::max(x, m.exclusion_count);
+    for (const auto& m : p->members) x = std::max(x, m.fairness.exclusion_count);
     return x;
 }
+
+double PartyExclusionRate(const QueuedParty* p) {
+    double x = 0.0;
+    for (const auto& m : p->members) x = std::max(x, m.fairness.exclusion_rate());
+    return x;
+}
+
+// Absolute mean-MMR ceiling for admitting a late-join pair. PlanPairJoin only
+// runs under pair_backfill, which is merc-only, so a constant is already scoped.
+constexpr double kLateJoinMmrSlack = 100.0;
 
 double MeanDiff(double s1, int n1, double s2, int n2) {
     if (n1 <= 0 || n2 <= 0) return 0.0;
@@ -29,8 +40,12 @@ std::vector<const QueuedParty*> PartiesByPriority(
     for (const auto& p : parties) out.push_back(&p);
     std::stable_sort(out.begin(), out.end(),
         [](const QueuedParty* a, const QueuedParty* b) {
-            const uint32_t pa = PartyPriority(a), pb = PartyPriority(b);
-            if (pa != pb) return pa > pb;
+            const uint32_t ea = PartyExclusions(a), eb = PartyExclusions(b);
+            if (ea != eb) return ea > eb;
+            // Spread the cost proportionally: whoever has been excluded the
+            // smallest share of the time is the one who can afford to pay.
+            const double ra = PartyExclusionRate(a), rb = PartyExclusionRate(b);
+            if (std::fabs(ra - rb) > 1e-9) return ra > rb;
             return a->joined_at < b->joined_at;
         });
     return out;
@@ -148,7 +163,8 @@ std::vector<Invite> PlanPairJoin(
                                        inst.team2.mmr_sum + b.mmr, inst.team2.size + 1);
             const double d2 = MeanDiff(inst.team1.mmr_sum + b.mmr, inst.team1.size + 1,
                                        inst.team2.mmr_sum + a.mmr, inst.team2.size + 1);
-            if (std::min(d1, d2) > cur + 1e-9) continue;  // would widen
+            // Admit if it doesn't widen the gap, or leaves it under the slack.
+            if (std::min(d1, d2) > std::max(cur, kLateJoinMmrSlack) + 1e-9) continue;
             const int a_tf = (d1 <= d2) ? 1 : 2;
             return {{solos[i], a_tf}, {solos[j], a_tf == 1 ? 2 : 1}};
         }
