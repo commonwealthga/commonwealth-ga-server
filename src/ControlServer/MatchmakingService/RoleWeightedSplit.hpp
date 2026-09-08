@@ -12,8 +12,8 @@
 
 namespace RoleWeightedSplit {
 
-// Minimum mean-MMR gap improvement required before autobalance proposes
-// same-class moves on an already class-balanced roster.
+// Minimum MmrSwap::BalanceCost improvement required before autobalance
+// proposes same-class moves on an already class-balanced roster.
 inline constexpr double kMmrRebalanceMinImprovement = 5.0;
 
 // Tunables. Single source of truth for playtest re-tuning. Priority:
@@ -61,6 +61,8 @@ struct TeamState {
     // Per-class headcount currently on this team. Drives the per-class balance
     // term. Empty seed = no prior players (fresh match / rebalance).
     std::unordered_map<uint32_t, int> class_counts;
+    // MMR sum per class on this team. Feeds the per-class balance term.
+    std::unordered_map<uint32_t, double> class_mmr_sum;
 };
 
 // Sort desc by max(HealValue on TF1, HealValue on TF2); same-tier order
@@ -92,7 +94,8 @@ std::unordered_map<std::string, int>
 ComputeRebalanceDelta(const std::vector<RosterEntry>& roster);
 
 // Same-class MMR-optimal delta. Preserves per-class team counts; moves only
-// when mean-MMR gap improves by at least kMmrRebalanceMinImprovement.
+// when MmrSwap::BalanceCost (per-class gap first, overall second) improves by
+// at least kMmrRebalanceMinImprovement.
 std::unordered_map<std::string, int>
 ComputeMmrOptimalDelta(const std::vector<RosterEntry>& roster);
 

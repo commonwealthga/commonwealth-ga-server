@@ -490,8 +490,12 @@ int main(int argc, char* argv[]) {
                 seed.size += 1;
                 seed.heal_score += SidePlacement::HealValue(r.profile_id, r.task_force == 2 ? 2 : 1);
                 seed.class_counts[r.profile_id] += 1;
-                if (seed_mmr_aware)
-                    seed.mmr_sum += MmrService::GetCurrentRating(r.user_id, r.profile_id);
+                if (seed_mmr_aware) {
+                    const double mmr =
+                        MmrService::GetCurrentRating(r.user_id, r.profile_id);
+                    seed.mmr_sum += mmr;
+                    seed.class_mmr_sum[r.profile_id] += mmr;
+                }
             }
             ri.player_count = ri.team1.size + ri.team2.size;
             filtered.push_back(std::move(ri));
@@ -511,6 +515,7 @@ int main(int argc, char* argv[]) {
                 dst.heal_score += src.heal_score;
                 dst.mmr_sum += src.mmr_sum;
                 for (const auto& [cls, n] : src.class_counts) dst.class_counts[cls] += n;
+                for (const auto& [cls, v] : src.class_mmr_sum) dst.class_mmr_sum[cls] += v;
             };
             merge(it->team1, reserved.team1);
             merge(it->team2, reserved.team2);

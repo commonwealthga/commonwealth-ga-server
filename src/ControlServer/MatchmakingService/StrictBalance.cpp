@@ -1,5 +1,7 @@
 #include "src/ControlServer/MatchmakingService/StrictBalance.hpp"
 
+#include "src/ControlServer/MatchmakingService/MmrSwap.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <unordered_map>
@@ -22,13 +24,58 @@ double PartyExclusionRate(const QueuedParty* p) {
     return x;
 }
 
-// Absolute mean-MMR ceiling for admitting a late-join pair. PlanPairJoin only
-// runs under pair_backfill, which is merc-only, so a constant is already scoped.
-constexpr double kLateJoinMmrSlack = 100.0;
+// Absolute balance-cost ceiling for admitting a late-join pair. PlanPairJoin
+// only runs under pair_backfill, which is merc-only, so a constant is already
+// scoped. A same-class pair moves its own class gap and the overall gap
+// together, so cost ~= 3x the mean-MMR gap (2x class + 1x overall): 300 here
+// is the tuned 100-point mean-gap allowance expressed in cost.
+constexpr double kLateJoinCostSlack = 300.0;
 
 double MeanDiff(double s1, int n1, double s2, int n2) {
     if (n1 <= 0 || n2 <= 0) return 0.0;
     return std::fabs(s1 / n1 - s2 / n2);
+}
+
+int ClassHeads(const TeamSeed& t, uint32_t cls) {
+    auto it = t.class_counts.find(cls);
+    return it == t.class_counts.end() ? 0 : it->second;
+}
+
+double ClassMmr(const TeamSeed& t, uint32_t cls) {
+    auto it = t.class_mmr_sum.find(cls);
+    return it == t.class_mmr_sum.end() ? 0.0 : it->second;
+}
+
+// Mirrors MmrSwap::BalanceCost for two side aggregates: headcount-weighted
+// per-class mean-MMR gap (weighted up) plus the overall mean-MMR gap. Equal
+// totals with one side holding every good medic score badly here.
+double BalanceCost(const TeamSeed& a, const TeamSeed& b) {
+    const int heads_total = a.size + b.size;
+    double class_gap = 0.0;
+    if (heads_total > 0) {
+        std::vector<uint32_t> classes;
+        for (const auto& [cls, n] : a.class_counts) classes.push_back(cls);
+        for (const auto& [cls, n] : b.class_counts)
+            if (!a.class_counts.count(cls)) classes.push_back(cls);
+        for (uint32_t cls : classes) {
+            const int n1 = ClassHeads(a, cls), n2 = ClassHeads(b, cls);
+            class_gap += (double)(n1 + n2)
+                       * MeanDiff(ClassMmr(a, cls), n1, ClassMmr(b, cls), n2);
+        }
+        class_gap /= (double)heads_total;
+    }
+    return MmrSwap::kClassBalanceWeight * class_gap
+         + MeanDiff(a.mmr_sum, a.size, b.mmr_sum, b.size);
+}
+
+// Copy of `t` with one member of `cls` at `mmr` added.
+TeamSeed WithMember(const TeamSeed& t, uint32_t cls, double mmr) {
+    TeamSeed out = t;
+    out.size += 1;
+    out.mmr_sum += mmr;
+    out.class_counts[cls] += 1;
+    out.class_mmr_sum[cls] += mmr;
+    return out;
 }
 
 }  // namespace
@@ -144,27 +191,27 @@ std::vector<Invite> PlanPairJoin(
     const int seats = inst.seats_free();
     if (seats >= 0 && seats < 2) return {};
 
-    const double cur = MeanDiff(inst.team1.mmr_sum, inst.team1.size,
-                                inst.team2.mmr_sum, inst.team2.size);
+    const double cur = BalanceCost(inst.team1, inst.team2);
 
     auto ordered = PartiesByPriority(parties);
     std::vector<const QueuedParty*> solos;
     for (const QueuedParty* p : ordered)
         if (p->size() == 1) solos.push_back(p);
 
-    // First same-class pair (in priority order) whose better orientation
-    // does not widen the mean-MMR difference wins.
+    // First same-class pair (in priority order) whose better orientation does
+    // not widen the balance cost wins. Because the pair shares a class, the
+    // orientation is decided by that class's own strength gap, not just totals.
     for (size_t i = 0; i < solos.size(); ++i) {
         for (size_t j = i + 1; j < solos.size(); ++j) {
             const auto& a = solos[i]->members.front();
             const auto& b = solos[j]->members.front();
             if (a.profile_id != b.profile_id) continue;
-            const double d1 = MeanDiff(inst.team1.mmr_sum + a.mmr, inst.team1.size + 1,
-                                       inst.team2.mmr_sum + b.mmr, inst.team2.size + 1);
-            const double d2 = MeanDiff(inst.team1.mmr_sum + b.mmr, inst.team1.size + 1,
-                                       inst.team2.mmr_sum + a.mmr, inst.team2.size + 1);
+            const double d1 = BalanceCost(WithMember(inst.team1, a.profile_id, a.mmr),
+                                          WithMember(inst.team2, b.profile_id, b.mmr));
+            const double d2 = BalanceCost(WithMember(inst.team1, b.profile_id, b.mmr),
+                                          WithMember(inst.team2, a.profile_id, a.mmr));
             // Admit if it doesn't widen the gap, or leaves it under the slack.
-            if (std::min(d1, d2) > std::max(cur, kLateJoinMmrSlack) + 1e-9) continue;
+            if (std::min(d1, d2) > std::max(cur, kLateJoinCostSlack) + 1e-9) continue;
             const int a_tf = (d1 <= d2) ? 1 : 2;
             return {{solos[i], a_tf}, {solos[j], a_tf == 1 ? 2 : 1}};
         }

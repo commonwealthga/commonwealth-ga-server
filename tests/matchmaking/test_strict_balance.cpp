@@ -134,6 +134,15 @@ RunningInstance Inst(std::vector<std::pair<uint32_t,int>> t1,
     for (auto& [cls, n] : t2) { ri.team2.class_counts[cls] += n; ri.team2.size += n; }
     ri.team1.mmr_sum = mmr1;
     ri.team2.mmr_sum = mmr2;
+    // Spread the side total evenly over its classes so the per-class MMR
+    // breakdown agrees with mmr_sum (what the live providers now build).
+    auto spread = [](TeamSeed& t, double total) {
+        if (t.size <= 0) return;
+        for (auto& [cls, n] : t.class_counts)
+            t.class_mmr_sum[cls] = total * (double)n / (double)t.size;
+    };
+    spread(ri.team1, mmr1);
+    spread(ri.team2, mmr2);
     ri.player_count = ri.team1.size + ri.team2.size;
     return ri;
 }
@@ -443,4 +452,34 @@ TEST(pair_admitted_when_it_narrows_a_wide_gap) {
     q.push_back(tu::Solo(A, 1, "hi")); q.back().members[0].mmr = 1600.0;
     auto inv = StrictBalance::PlanPairJoin(q, inst);
     CHECK_EQ((int)inv.size(), 2);
+}
+
+TEST(pair_join_orients_by_the_pairs_own_class_gap) {
+    // Sides are size- and class-equal and their TOTALS are what differ only
+    // because of the medics: TF1 has the strong medic. A joining medic pair
+    // must send its stronger half to TF2 to close that class's gap.
+    RunningInstance inst;
+    inst.instance_id = 78;
+    inst.access_mode = AccessMode::BackfillOnly;
+    auto seed_side = [](TeamSeed& t, double assault_sum, double medic_mmr) {
+        t.class_counts[A] = 2;  t.class_mmr_sum[A] = assault_sum;
+        t.class_counts[M] = 1;  t.class_mmr_sum[M] = medic_mmr;
+        t.size = 3;             t.mmr_sum = assault_sum + medic_mmr;
+    };
+    seed_side(inst.team1, 2000.0, 1500.0);
+    seed_side(inst.team2, 2000.0,  500.0);
+    inst.player_count = 6;
+
+    std::vector<QueuedParty> q;
+    q.push_back(tu::Solo(M, 0, "med_hi")); q.back().members[0].mmr = 1400.0;
+    q.push_back(tu::Solo(M, 1, "med_lo")); q.back().members[0].mmr =  600.0;
+
+    auto inv = StrictBalance::PlanPairJoin(q, inst);
+    CHECK_EQ((int)inv.size(), 2);
+    if (inv.size() == 2) {
+        for (const auto& i : inv) {
+            const bool hi = i.party->members.front().mmr > 1000.0;
+            CHECK_EQ(i.tf, hi ? 2 : 1);
+        }
+    }
 }

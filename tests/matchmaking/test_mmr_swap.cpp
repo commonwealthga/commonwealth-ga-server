@@ -121,3 +121,74 @@ TEST(mmr_swap_optimal_respects_party_lock) {
 }
 
 }  // namespace
+
+TEST(mmr_swap_optimal_fixes_per_class_skew_at_equal_totals) {
+    // The reported failure mode: both sides sum to 4000, but TF1 owns both
+    // good medics and TF2 both good assaults. Totals say "balanced"; the
+    // match is not. The optimizer must break this up.
+    std::vector<Player> ps = {
+        {"m_hi1", 567, 1500.0, true}, {"m_hi2", 567, 1500.0, true},
+        {"m_lo1", 567,  500.0, true}, {"m_lo2", 567,  500.0, true},
+        {"a_hi1", 680, 1500.0, true}, {"a_hi2", 680, 1500.0, true},
+        {"a_lo1", 680,  500.0, true}, {"a_lo2", 680,  500.0, true},
+    };
+    std::unordered_map<std::string, int> asn = {
+        {"m_hi1", 1}, {"m_hi2", 1}, {"m_lo1", 2}, {"m_lo2", 2},
+        {"a_lo1", 1}, {"a_lo2", 1}, {"a_hi1", 2}, {"a_hi2", 2},
+    };
+    CHECK(std::fabs(Diff(ps, asn)) < 1e-6);                 // totals already level
+    CHECK(MmrSwap::ClassMmrGap(ps, asn) > 900.0);           // classes are not
+
+    MmrSwap::BalanceByMmrOptimal(ps, asn);
+
+    CHECK(MmrSwap::ClassMmrGap(ps, asn) < 1e-6);            // every class level
+    CHECK(std::fabs(Diff(ps, asn)) < 1e-6);                 // totals still level
+    CHECK(asn.at("m_hi1") != asn.at("m_hi2"));              // good medics split
+    CHECK(asn.at("a_hi1") != asn.at("a_hi2"));              // good assaults split
+}
+
+TEST(mmr_swap_optimal_prefers_class_balance_over_total_balance) {
+    // The only arrangement with dead-equal totals (3000/3000) stacks the good
+    // medics on one side and the good assault on the other. Class balance
+    // leads, so the optimizer takes an even medic split and eats a 266-point
+    // mean-MMR gap instead.
+    std::vector<Player> ps = {
+        {"m1", 567, 1400.0, true}, {"m2", 567, 1000.0, true},
+        {"m3", 567, 1000.0, true}, {"m4", 567,  600.0, true},
+        {"a1", 680, 1400.0, true}, {"a2", 680,  600.0, true},
+    };
+    std::unordered_map<std::string, int> asn = {
+        {"m1", 1}, {"m2", 1}, {"m3", 2}, {"m4", 2},
+        {"a2", 1}, {"a1", 2},
+    };
+    CHECK(std::fabs(Diff(ps, asn)) < 1e-6);          // 3000 vs 3000 to start
+
+    MmrSwap::BalanceByMmrOptimal(ps, asn);
+
+    double med1 = 0.0, med2 = 0.0;
+    for (const auto& p : ps) {
+        if (p.profile_id != 567) continue;
+        if (asn.at(p.guid) == 1) med1 += p.mmr; else med2 += p.mmr;
+    }
+    CHECK(std::fabs(med1 - med2) < 1e-6);            // medics now even...
+    CHECK(MmrSwap::OverallMmrGap(ps, asn) > 1.0);    // ...at the totals' cost
+    CHECK(MmrSwap::ClassMmrGap(ps, asn) < 300.0);    // was 800 in the old plan
+}
+
+TEST(mmr_swap_optimal_corrects_a_live_matchs_class_skew) {
+    // Join-in-progress: the live match already has the strong medic on TF1.
+    // The arriving medic pair must send its stronger half to TF2.
+    MmrSwap::SeedContext seed;
+    seed.n_tf1 = 1;  seed.mmr_tf1 = 1600.0;
+    seed.n_tf2 = 1;  seed.mmr_tf2 =  400.0;
+    seed.class_n_tf1[567] = 1;  seed.class_mmr_tf1[567] = 1600.0;
+    seed.class_n_tf2[567] = 1;  seed.class_mmr_tf2[567] =  400.0;
+
+    std::vector<Player> ps = {
+        {"new_hi", 567, 1200.0, true}, {"new_lo", 567, 800.0, true},
+    };
+    std::unordered_map<std::string, int> asn = {{"new_hi", 1}, {"new_lo", 2}};
+    MmrSwap::BalanceByMmrOptimal(ps, asn, seed);
+    CHECK_EQ(asn.at("new_hi"), 2);
+    CHECK_EQ(asn.at("new_lo"), 1);
+}

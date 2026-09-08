@@ -848,7 +848,9 @@ std::vector<RunningInstance> MatchmakingService::GetReservedReadyInstances(uint3
             seed.class_counts[profile_id] += 1;
             if (mmr_aware) {
                 auto mit = ready.mmrs.find(guid);
-                seed.mmr_sum += (mit != ready.mmrs.end()) ? mit->second : 1000.0;
+                const double mmr = (mit != ready.mmrs.end()) ? mit->second : 1000.0;
+                seed.mmr_sum += mmr;
+                seed.class_mmr_sum[profile_id] += mmr;
             }
         }
         ri.player_count = (int)ready.session_guids.size();

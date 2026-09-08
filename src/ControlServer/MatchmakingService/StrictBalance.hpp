@@ -37,9 +37,9 @@ std::vector<Invite> PlanDeficitBackfill(
 
 // Pair admission: only when sides are class- AND size-equal. First (by
 // priority order) same-class solo pair whose better orientation either does
-// not widen the sides' mean-MMR difference, or leaves it under the 100-point
-// absolute slack; both invited, one per side. Empty when no pair qualifies or
-// fewer than 2 seats are free.
+// not widen the sides' balance cost (per-class mean-MMR gap first, overall
+// second), or leaves it under the 100-point absolute slack; both invited, one
+// per side. Empty when no pair qualifies or fewer than 2 seats are free.
 std::vector<Invite> PlanPairJoin(
     const std::vector<QueuedParty>& parties, const RunningInstance& inst);
 

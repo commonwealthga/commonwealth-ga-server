@@ -161,6 +161,9 @@ struct TeamSeed {
     // newcomer swap pass — never outranks class/heal/size.
     double mmr_sum   = 0.0;
     std::unordered_map<uint32_t, int> class_counts;  // profile_id -> headcount
+    // MMR sum per class. Feeds the per-class balance term so a side that
+    // already owns the strong medics is not handed more of them.
+    std::unordered_map<uint32_t, double> class_mmr_sum;
 };
 
 // ---------------------------------------------------------------------------

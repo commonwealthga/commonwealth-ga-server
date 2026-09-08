@@ -1053,9 +1053,11 @@ void TcpSession::route_from_mission_instance(int64_t parent_instance_id,
                             if (r.task_force == 1) {
                                 t1.heal_score += v; t1.size += 1;
                                 t1.class_counts[r.profile_id] += 1; t1.mmr_sum += mmr;
+                                t1.class_mmr_sum[r.profile_id] += mmr;
                             } else {
                                 t2.heal_score += v; t2.size += 1;
                                 t2.class_counts[r.profile_id] += 1; t2.mmr_sum += mmr;
+                                t2.class_mmr_sum[r.profile_id] += mmr;
                             }
                         }
                         tf = RoleWeightedSplit::PlaceSingle(selected_profile_id_, t1, t2);

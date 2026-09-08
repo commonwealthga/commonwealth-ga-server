@@ -38,6 +38,7 @@ void AddSlot(TeamSeed& seed, const Slot& s, int tf) {
     seed.size += 1;
     seed.heal_score += HealValue(s.profile_id, tf);
     seed.class_counts[s.profile_id] += 1;
+    seed.class_mmr_sum[s.profile_id] += s.mmr;
     seed.mmr_sum += s.mmr;
 }
 
@@ -142,6 +143,10 @@ std::unordered_map<std::string, int> Assign(
     seed_ctx.mmr_tf2 = seed2.mmr_sum;
     seed_ctx.n_tf1   = seed1.size;
     seed_ctx.n_tf2   = seed2.size;
+    seed_ctx.class_n_tf1   = seed1.class_counts;
+    seed_ctx.class_n_tf2   = seed2.class_counts;
+    seed_ctx.class_mmr_tf1 = seed1.class_mmr_sum;
+    seed_ctx.class_mmr_tf2 = seed2.class_mmr_sum;
 
     Logger::Log("team-balance",
         "[SidePlacement] Assign groups=%zu seed1=(%.2f,%d,%.0f) seed2=(%.2f,%d,%.0f)\n",

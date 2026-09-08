@@ -119,11 +119,13 @@ ComputeBatchAssignment(const std::vector<PlayerSlot>& players,
             s1.heal_score += HealValue(p.profile_id, 1);
             s1.size += 1;
             s1.class_counts[p.profile_id] += 1;
+            s1.class_mmr_sum[p.profile_id] += p.mmr;
             s1.mmr_sum += p.mmr;
         } else {
             s2.heal_score += HealValue(p.profile_id, 2);
             s2.size += 1;
             s2.class_counts[p.profile_id] += 1;
+            s2.class_mmr_sum[p.profile_id] += p.mmr;
             s2.mmr_sum += p.mmr;
         }
         out[p.guid] = tf;
@@ -144,6 +146,10 @@ ComputeBatchAssignment(const std::vector<PlayerSlot>& players,
     ctx.mmr_tf2 = seed2.mmr_sum;
     ctx.n_tf1   = seed1.size;
     ctx.n_tf2   = seed2.size;
+    ctx.class_n_tf1   = seed1.class_counts;
+    ctx.class_n_tf2   = seed2.class_counts;
+    ctx.class_mmr_tf1 = seed1.class_mmr_sum;
+    ctx.class_mmr_tf2 = seed2.class_mmr_sum;
     const int swaps = MmrSwap::BalanceByMmrOptimal(mp, out, ctx);
     double sum1 = 0.0, sum2 = 0.0;
     for (const auto& p : players) {
@@ -229,27 +235,10 @@ ComputeRebalanceDelta(const std::vector<RosterEntry>& roster) {
     return moves;
 }
 
-namespace {
-
-double MeanTeamMmrDiff(const std::vector<RosterEntry>& roster) {
-    double s1 = 0.0, s2 = 0.0;
-    int n1 = 0, n2 = 0;
-    for (const auto& r : roster) {
-        if (r.current_tf == 1) { s1 += r.mmr; ++n1; }
-        else                   { s2 += r.mmr; ++n2; }
-    }
-    if (n1 == 0 || n2 == 0) return 0.0;
-    return std::fabs(s1 / static_cast<double>(n1) - s2 / static_cast<double>(n2));
-}
-
-}  // namespace
-
 std::unordered_map<std::string, int>
 ComputeMmrOptimalDelta(const std::vector<RosterEntry>& roster) {
     std::unordered_map<std::string, int> moves;
     if (roster.empty()) return moves;
-
-    const double before = MeanTeamMmrDiff(roster);
 
     std::vector<MmrSwap::Player> players;
     players.reserve(roster.size());
@@ -259,17 +248,16 @@ ComputeMmrOptimalDelta(const std::vector<RosterEntry>& roster) {
         assignment[r.guid] = r.current_tf;
     }
 
+    // Gate on the SAME objective the optimizer minimises (per-class gap first,
+    // overall gap second) — a per-class fix that leaves the totals untouched
+    // would otherwise never clear a totals-only threshold.
+    const double before = MmrSwap::BalanceCost(players, assignment);
+    const double class_before = MmrSwap::ClassMmrGap(players, assignment);
+
     MmrSwap::BalanceByMmrOptimal(players, assignment);
 
-    double s1 = 0.0, s2 = 0.0;
-    int n1 = 0, n2 = 0;
-    for (const auto& r : roster) {
-        const int tf = assignment.at(r.guid);
-        if (tf == 1) { s1 += r.mmr; ++n1; }
-        else         { s2 += r.mmr; ++n2; }
-    }
-    const double after = (n1 == 0 || n2 == 0) ? 0.0
-        : std::fabs(s1 / static_cast<double>(n1) - s2 / static_cast<double>(n2));
+    const double after = MmrSwap::BalanceCost(players, assignment);
+    const double class_after = MmrSwap::ClassMmrGap(players, assignment);
 
     if (before - after < kMmrRebalanceMinImprovement) return moves;
 
@@ -280,8 +268,8 @@ ComputeMmrOptimalDelta(const std::vector<RosterEntry>& roster) {
 
     Logger::Log("team-balance",
         "[RoleWeightedSplit] ComputeMmrOptimalDelta roster=%zu moves=%zu"
-        " mmr_diff %.1f -> %.1f\n",
-        roster.size(), moves.size(), before, after);
+        " cost %.1f -> %.1f (class gap %.1f -> %.1f)\n",
+        roster.size(), moves.size(), before, after, class_before, class_after);
     return moves;
 }
 
