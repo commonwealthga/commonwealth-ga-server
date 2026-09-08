@@ -253,7 +253,17 @@ void __fastcall TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	// +300%, plus skill/device modifiers) isn't clamped at the base value
 	// during ApplyProperty fanout — the engine field needs room to receive
 	// the buffed value.
+	// Exception: a bCanFly pawn is permanently PHYS_Flying (TgPawn_Hover.uc:134
+	// SetPhysics(4)), and APawn::GetMaxSpeed / physFlying's CalcVelocity use
+	// AirSpeed — not GroundSpeed — as its movement cap. asm_data_set_bots has a
+	// single speed column, so `default_speed * 16` is that bot's design speed
+	// whichever axis the engine reads. Without this, every hover-family bot
+	// flies at its class default (800, NewWasp 3200) regardless of design —
+	// e.g. bot rows with default_speed 15 (= 240 uu/s) fly at 800.
 	float airSpeed = Pawn->AirSpeed > 0.0f ? Pawn->AirSpeed : 480.0f;
+	if (nBotId != 0 && Pawn->bCanFly && speed > 0.0f) {
+		airSpeed = speed;
+	}
 	Pawn->AddProperty( GA_PROPERTY::TGPID_AIR_SPEED, airSpeed, airSpeed, 0, airSpeed * 10.0f);
 
 	// JumpZ (prop 50): must be in s_Properties so SetProperty(50) can resolve
