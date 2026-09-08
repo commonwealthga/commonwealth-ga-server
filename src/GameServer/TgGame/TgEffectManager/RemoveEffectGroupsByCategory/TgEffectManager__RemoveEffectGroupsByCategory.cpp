@@ -2,6 +2,8 @@
 #include "src/GameServer/TgGame/TgEffectGroup/RemoveEffects/TgEffectGroup__RemoveEffects.hpp"
 #include "src/GameServer/TgGame/_effect_core/HitSituationalMitigation.hpp"
 #include "src/GameServer/TgGame/_effect_core/CleanseTracking.hpp"
+#include "src/GameServer/TgGame/TgEffectManager/ProcessReactiveSkillBasedEffectGroup/TgEffectManager__ProcessReactiveSkillBasedEffectGroup.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // TgEffectManager::RemoveEffectGroupsByCategory — reimplements the stripped stub
@@ -30,6 +32,9 @@ bool __fastcall TgEffectManager__RemoveEffectGroupsByCategory::Call(ATgEffectMan
 	if (!Manager || nQuantity <= 0) return false;
 
 	int removed = 0;
+	// Any health>0 (shield) group torn down here publishes a stale yellow
+	// r_nShieldHealthMax/Remaining bar unless we zero it (see end of function).
+	bool removedShield = false;
 
 	// Reverse iteration so swap-deletes don't disturb earlier indices.
 	for (int i = Manager->s_AppliedEffectGroups.Count - 1; i >= 0 && removed < nQuantity; i--) {
@@ -71,6 +76,10 @@ bool __fastcall TgEffectManager__RemoveEffectGroupsByCategory::Call(ATgEffectMan
 		// 3. Release the rep slot via the intact refcount-aware native.
 		ClearEffectRepNative(Manager, nullptr, group->m_nEffectGroupId, group->s_ManagedEffectListIndex);
 
+		// Record shield-ness BEFORE the swap-remove (post-swap the pointer at
+		// this slot belongs to a different group).
+		if (group->m_nHealth > 0) removedShield = true;
+
 		// 4. Swap-remove from s_AppliedEffectGroups.
 		const int last = Manager->s_AppliedEffectGroups.Count - 1;
 		Manager->s_AppliedEffectGroups.Data[i] = Manager->s_AppliedEffectGroups.Data[last];
@@ -80,6 +89,47 @@ bool __fastcall TgEffectManager__RemoveEffectGroupsByCategory::Call(ATgEffectMan
 	}
 
 	if (removed > 0) Manager->bNetDirty = 1;
+
+	// 5. Reactive-skill OFF dispatch. This is the dispel/cleanse teardown path
+	//    (prop 140), and 16 shipped effect groups cleanse category 770
+	//    (Personal Shield): Neutralize Wave I-III (devices 3642/4655/4656/4657),
+	//    Neutralize Blast I-IV, Neutralize Grenade I-IV, AOE_HEX_EMPField.
+	//    Without the dispatch, Aegis Armament (skill 913 / EG 26696,
+	//    m_nReqCategory=770, +25 Protection-Physical) stays committed to
+	//    s_Properties[155].m_fRaw after its host shield is stripped — and it
+	//    can never self-correct, because RemoveEffectGroup only fires OFF for
+	//    the LAST group of a category (none left) and RemoveAllEffects on death
+	//    only fires OFF for categories it actually tore down (770 already gone).
+	//    Symptom: permanent +25% physical resistance with no shield up.
+	//    Mirrors RemoveEffectGroup step 5 / RemoveAllEffects' batched pass.
+	if (removed > 0 && nCategoryCode > 0) {
+		bool stillHasCategory = false;
+		for (int i = 0; i < Manager->s_AppliedEffectGroups.Count; i++) {
+			UTgEffectGroup* g = Manager->s_AppliedEffectGroups.Data[i];
+			if (g && reinterpret_cast<uintptr_t>(g) >= 0x10000u &&
+			    g->m_nCategoryCode == nCategoryCode) { stillHasCategory = true; break; }
+		}
+		if (!stillHasCategory) {
+			TgEffectManager__ProcessReactiveSkillBasedEffectGroup::Call(
+				Manager, nullptr, nCategoryCode, 1u);
+		}
+	}
+
+	// 6. Shield-bar clear — same cleanup RemoveEffectGroup and RemoveAllEffects
+	//    already do. A neutralized shield otherwise leaves the yellow
+	//    r_nShieldHealthMax/Remaining bar on the pawn until the next shield
+	//    overwrites it (TgEffectManager.uc:241-245).
+	if (removedShield && Manager->r_Owner != nullptr &&
+	    reinterpret_cast<uintptr_t>(Manager->r_Owner) >= 0x10000u) {
+		const std::string& cn = ObjectClassCache::GetClassName(Manager->r_Owner->Class);
+		if (cn.compare(0, 19, "Class TgGame.TgPawn") == 0) {
+			ATgPawn* pawn = (ATgPawn*)Manager->r_Owner;
+			pawn->r_nShieldHealthMax = 0;
+			pawn->r_nShieldHealthRemaining = 0;
+			pawn->bNetDirty = 1;
+			pawn->bForceNetUpdate = 1;
+		}
+	}
 
 	// Cleanse stats: attribute the strip count to the player + device whose
 	// property-140 effect triggered this call. Internal callers (the 431/99

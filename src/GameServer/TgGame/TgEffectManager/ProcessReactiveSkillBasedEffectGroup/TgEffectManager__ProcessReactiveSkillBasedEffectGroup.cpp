@@ -98,6 +98,15 @@ void __fastcall TgEffectManager__ProcessReactiveSkillBasedEffectGroup::Call(
 {
 	if (!Manager) return;
 
+	// No shipped effect group has category_value_id 0, so a 0/negative category
+	// is either a malformed group or an uninitialized read. Matching it would
+	// hit every s_SkillBasedEffectGroups entry whose m_nReqCategoryCode is the
+	// 0 default (i.e. every non-reactive skill the player has equipped) and
+	// re-commit their stat mods a second time. RemoveEffectGroup /
+	// RemoveEffectGroupsByCategory already guard their OFF dispatch this way;
+	// the UC apply path (TgEffectManager.uc:274) does not, so guard centrally.
+	if (nCategory <= 0) return;
+
 	AActor* owner = Manager->r_Owner;
 	// Two-tier validity: null OR small-int corruption. owner->Class reads at
 	// offset 0x34; if owner=0x35d (the observed crash value, =861
