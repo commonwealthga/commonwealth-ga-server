@@ -1597,7 +1597,8 @@ void Database::Init() {
 			" (5, '1P_SDColony03_P', 'TgGame.TgGame_Mission', 1, 1),"
 			" (5, '1P_SDColony05_P', 'TgGame.TgGame_Mission', 1, 1),"
 			" (5, '1P_SDColony06_P', 'TgGame.TgGame_Mission', 1, 1),"
-			" (5, '1P_SDColony02_P', 'TgGame.TgGame_Mission', 1, 1),"
+			// SDColony02 moved to its own raid pool 8 (2026-09-10 block below).
+			// " (5, '1P_SDColony02_P', 'TgGame.TgGame_Mission', 1, 1),"
 			" (5, '1P_SDColony01_P', 'TgGame.TgGame_Mission', 1, 1),"
 			" (5, '1P_SDDweller01_P', 'TgGame.TgGame_Mission', 1, 1),"
 			" (5, '1P_SDDweller02_P', 'TgGame.TgGame_Mission', 1, 1),"
@@ -2848,6 +2849,54 @@ void Database::Init() {
 		for (const char* sql : kOpenZoneMaps2026_08_08) {
 			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
 				Logger::Log("db", "[Database] Open-zone map_game_info seed failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
+	// Desert PvE rename + Bolonov's Entourage raid (2026-09-10).
+	// - desert_pve 13/14/15/17 take their tier name like the specops queues
+	//   (name = desc: 27673 Medium / 27674 High / 34212 Maximum / 55465 Ultra
+	//   Max Security) instead of the shared 26637 "PvE Attack Missions".
+	// - 1P_SDColony02_P (map_game_id 1437, msg 67001 "Bolonov's Entourage")
+	//   leaves desert_pve pool 5 for its own pool 8 + queue 19 under the
+	//   tab-231 raids category (sort 4, after super_agent). Mission mechanics
+	//   mirror desert_pve_umax (difficulty 1471, own_match/required, 4 bonus
+	//   lives); desc 67722 is the retail Bolonov-expedition blurb. 60s fixed
+	//   pop delay lets players gather — the map scales with player count.
+	// Updates gated on the old values; inserts OR IGNORE — operator edits stick.
+	{
+		static const char* kBolonovRaid2026_09_10[] = {
+			"UPDATE ga_queues SET name_msg_id = 27673 WHERE queue_id = 17 AND name_msg_id = 26637;",
+			"UPDATE ga_queues SET name_msg_id = 27674 WHERE queue_id = 13 AND name_msg_id = 26637;",
+			"UPDATE ga_queues SET name_msg_id = 34212 WHERE queue_id = 14 AND name_msg_id = 26637;",
+			"UPDATE ga_queues SET name_msg_id = 55465 WHERE queue_id = 15 AND name_msg_id = 26637;",
+			"DELETE FROM ga_map_pool_entries WHERE map_pool_id = 5 AND map_name = '1P_SDColony02_P';",
+			"INSERT OR IGNORE INTO ga_map_pools (map_pool_id, name) VALUES (8, 'bolonov_entourage');",
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode, weight, enabled) VALUES"
+			" (8, '1P_SDColony02_P', 'TgGame.TgGame_Mission', 1, 1);",
+			"INSERT OR IGNORE INTO ga_queues "
+			"(queue_id, name, taskforce_policy, continue_in_queue, enabled, "
+			" queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, "
+			" max_players_per_side, min_players_per_team, max_players_per_team, "
+			" level_min, level_max, tab, map_x, map_y, map_active_flag, "
+			" map_icon_texture_res_id, video_res_id, location_value_id, "
+			" double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, "
+			" difficulty_value_id, access_flags, active_flag, locked_flag, "
+			" map_pool_id, min_players_to_pop, max_players_per_instance, "
+			" pop_delay_seconds, pop_delay_policy, instant_pop_when_full, "
+			" requires_pvp_verification, team_policy, team_side_policy, "
+			" max_team_size, victory_bonus_lives, map_recency_divisors) VALUES"
+			" (19, 'bolonov_entourage', 'pinned_1', 0, 1,"
+			"  1454, 0, 67001, 67722, 1714,"
+			"  30, 1, 30, 5, 200, 231, 0.0, 0.0, 1,"
+			"  5126, 0, 0, 1, 0, 4, 1,"
+			"  1471, 0, 1, 0, 8, 1, 0,"
+			"  60.0, 'fixed', 1, 0, 'own_match', 'required', 0, 4, NULL);",
+		};
+		for (const char* sql : kBolonovRaid2026_09_10) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] Bolonov raid / desert_pve rename step failed: %s\n", err ? err : "?");
 				if (err) { sqlite3_free(err); err = nullptr; }
 			}
 		}
