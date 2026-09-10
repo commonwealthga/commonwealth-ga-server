@@ -12,6 +12,7 @@
 #include "src/GameServer/TgGame/TgPlayerActions/FxBrowse/FxBrowse.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconCarryReaper/BeaconCarryReaper.hpp"
 #include "src/GameServer/Utils/PerfProbe/PerfProbe.hpp"
+#include "src/GameServer/Maps/MapAdditions/MapAdditions.hpp"
 
 void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSeconds) {
 	// Frame-time probe. No-op unless the "perf" channel is enabled.
@@ -52,6 +53,8 @@ void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSecon
 	// seconds; the normal DeviceFiring.EndState cleanup disarms it first, so
 	// this only ever acts when that path was missed.
 	{ PerfProbe::Scope _p(PerfProbe::SLOT_BEACON_REAPER); BeaconCarryReaper::Tick(DeltaSeconds); }
+	// Hand-authored boss alarms; returns immediately unless the map registered one.
+	MapAdditions::Tick();
 	{ PerfProbe::Scope _p(PerfProbe::SLOT_ENGINE_TICK); CallOriginal(Engine, edx, DeltaSeconds); }
 	PerfProbe::EndFrame();
 }

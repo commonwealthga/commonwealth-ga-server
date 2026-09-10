@@ -3,6 +3,7 @@
 #include "src/GameServer/Engine/MapObjectConfig/MapObjectConfig.hpp"
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 #include "src/GameServer/GameModes/Hardcore/Hardcore.hpp"
+#include "src/GameServer/Maps/MapAdditions/MapAdditions.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -496,6 +497,9 @@ void __fastcall TgBotFactory__LoadObjectConfig::Call(ATgBotFactory* BotFactory, 
 	Logger::Log("tgbotfactory",
 		"[%s] %s LoadObjectConfig mapObjectId=%d\n",
 		Logger::GetTime(), BotFactory->GetName(), mid);
+
+	// Hand-authored factory (MapAdditions) — spec first, DB overrides on top.
+	MapAdditions::ApplyPendingBotFactory(BotFactory);
 
 	ApplyFactoryFieldOverrides(BotFactory);
 

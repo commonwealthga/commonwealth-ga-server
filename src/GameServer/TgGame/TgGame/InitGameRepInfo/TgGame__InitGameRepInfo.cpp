@@ -4,6 +4,7 @@
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 #include "src/GameServer/Maps/CtrRecursiveDoors/CtrRecursiveDoors.hpp"
+#include "src/GameServer/Maps/MapAdditions/MapAdditions.hpp"
 #include "src/GameServer/GameModes/CtrPointRotation/CtrPointRotation.hpp"
 #include "src/GameServer/TgGame/TgDeployableFactory/SpawnObject/TgDeployableFactory__SpawnObject.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
@@ -632,6 +633,8 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 				f->m_nMapObjectId, f->s_nSelectedObjectId);
 			TgDeployableFactory__SpawnObject::Call(f, nullptr);
 		}
+
+		MapAdditions::Apply(Game);
 	}
 
 	LogCallEnd();

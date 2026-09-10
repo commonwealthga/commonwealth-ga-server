@@ -229,6 +229,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/GameModes/Hardcore/Hardcore.cpp \
 			  $(SRC_DIR)/GameServer/GameModes/CtrPointRotation/CtrPointRotation.cpp \
 			  $(SRC_DIR)/GameServer/Maps/CtrRecursiveDoors/CtrRecursiveDoors.cpp \
+			  $(SRC_DIR)/GameServer/Maps/MapAdditions/MapAdditions.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/SendMapRandomSMSettingsMarshal/CGameClient__SendMapRandomSMSettingsMarshal.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.cpp \

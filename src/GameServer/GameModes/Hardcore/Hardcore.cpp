@@ -61,6 +61,8 @@ const std::map<int, std::vector<int>>& SpawnTableComposites() {
 		{182, {182, 182} },
 		{183, {183, 183} },
 		{184, {184, 184} },
+		{153, {153, 153, 102, 102} },
+		{85, {85, 85, 102, 102, 102, 102} },
 	};
 	return composites;
 }
