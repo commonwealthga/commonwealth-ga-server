@@ -99,32 +99,23 @@ void __fastcall TgDeviceFire__Deploy::Call(UTgDeviceFire* pThis, void* edx) {
 		float cylRadius = 0.f, cylHalfHeight = 0.f;
 		float liftHalfHeight = 0.f;
 		if (!bIsForceField && !bSelfSpawn) {
-			// `spawnNormal` is passed to the trace as an out param, but field
-			// testing (2026-05-27) showed it gets garbage written into it
-			// (Y/Z components become NaN even when the trace itself reports a
-			// hit). The trace only reliably populates `spawnLocation` — DO NOT
-			// read `spawnNormal` after this call. The thrown-projectile path
-			// uses the engine-supplied impact normal via SpawnDeployableActor;
-			// this instant-trace path stays upright on world Z (pre-existing
-			// behavior — stations / turrets / dome shields).
-			FVector spawnNormal   = { 0.f, 0.f, 1.f };
-
+			// spawnLocation is the ghost's own placement: UpdateDeployModeStatus
+			// above ran the same native trace (raw asm extents) the client ghost
+			// uses. Re-tracing with our scaled extents put stations off the ghost.
 			TgProj_Deployable__SpawnDeployable::GetDeployableCollisionCylinder(deployableId, &cylRadius, &cylHalfHeight);
 			TgProj_Deployable__SpawnDeployable::GetDeployableSpawnZLift(deployableId, &liftHalfHeight);
-			if (cylRadius > 0.0f && cylHalfHeight > 0.0f) {
+			// Trace output is ground contact (bAdjustZ=1); lift to cylinder center.
+			spawnLocation.Z += liftHalfHeight + 5.0f;
 
-				FVector ext = { cylRadius, cylRadius, cylHalfHeight };
-
-				void* hit = ((PlaceFn)FN_PLACEMENT_TRACE)(
-					&ext.X, (int*)pawn, &spawnLocation.X, &spawnNormal.X, 1, 0);
-				if (hit) {
-					// Lift uses the legacy raw*0.5 value (see
-					// GetDeployableSpawnZLift). The cylinder install below uses
-					// the scaled half-height — they're intentionally different.
-					spawnLocation.Z += liftHalfHeight + 5.0f;
-				}
-
-			}
+			// FVector spawnNormal   = { 0.f, 0.f, 1.f };
+			// if (cylRadius > 0.0f && cylHalfHeight > 0.0f) {
+			// 	FVector ext = { cylRadius, cylRadius, cylHalfHeight };
+			// 	void* hit = ((PlaceFn)FN_PLACEMENT_TRACE)(
+			// 		&ext.X, (int*)pawn, &spawnLocation.X, &spawnNormal.X, 1, 0);
+			// 	if (hit) {
+			// 		spawnLocation.Z += liftHalfHeight + 5.0f;
+			// 	}
+			// }
 		}
 
 		// Anti-exploit: a beacon deployed inside a damaging device volume (the
