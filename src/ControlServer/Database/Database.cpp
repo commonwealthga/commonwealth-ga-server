@@ -2902,6 +2902,80 @@ void Database::Init() {
 		}
 	}
 
+	// PvE Attack Missions raid (2026-09-10): Hardcore Security difficulty
+	// (5000, GA_G::DIFFICULTY_VALUE_ID_CUSTOM_HARDCORE_SECURITY) over pool 9
+	// 'pve_attack' = specops (1) + desert_pve (5) maps. Queue 20 under the
+	// tab-231 raids category (sort 5). marshal 1471 like super_agent — the
+	// client has no label for a custom difficulty id. Pool copy is one-time
+	// (marker) so operator edits to pool 9 stick; queue is INSERT OR IGNORE.
+	{
+		bool pool_seeded = false;
+		{
+			sqlite3_stmt* mstmt = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT 1 FROM cs_migration_markers WHERE name='pve_attack_pool_seed_2026_09_10'",
+					-1, &mstmt, nullptr) == SQLITE_OK && mstmt) {
+				pool_seeded = (sqlite3_step(mstmt) == SQLITE_ROW);
+			}
+			if (mstmt) sqlite3_finalize(mstmt);
+		}
+		std::vector<const char*> steps = {
+			"INSERT OR IGNORE INTO ga_map_pools (map_pool_id, name) VALUES (9, 'pve_attack');",
+		};
+		if (!pool_seeded) {
+			steps.push_back(
+				"INSERT OR IGNORE INTO ga_map_pool_entries "
+				"(map_pool_id, map_name, game_mode, weight, enabled, min_players, max_players, dlc_id) "
+				"SELECT 9, map_name, game_mode, weight, enabled, min_players, max_players, dlc_id "
+				"FROM ga_map_pool_entries WHERE map_pool_id IN (1, 5);");
+			steps.push_back(
+				"INSERT OR IGNORE INTO cs_migration_markers (name) VALUES ('pve_attack_pool_seed_2026_09_10');");
+		}
+		steps.push_back(
+			"INSERT OR IGNORE INTO ga_queues "
+			"(queue_id, name, taskforce_policy, continue_in_queue, enabled, "
+			" queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, "
+			" max_players_per_side, min_players_per_team, max_players_per_team, "
+			" level_min, level_max, tab, map_x, map_y, map_active_flag, "
+			" map_icon_texture_res_id, video_res_id, location_value_id, "
+			" double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, "
+			" difficulty_value_id, access_flags, active_flag, locked_flag, "
+			" map_pool_id, min_players_to_pop, max_players_per_instance, "
+			" pop_delay_seconds, pop_delay_policy, instant_pop_when_full, "
+			" marshal_difficulty_value_id, requires_pvp_verification, team_policy, team_side_policy, "
+			" max_team_size, victory_bonus_lives, map_recency_divisors) VALUES"
+			" (20, 'pve_attack', 'pinned_1', 0, 1,"
+			"  1454, 0, 26637, 26637, 1714,"
+			"  30, 1, 30, 5, 200, 231, 0.0, 0.0, 1,"
+			"  5126, 0, 0, 1, 0, 5, 1,"
+			"  5000, 0, 1, 0, 9, 1, 0,"
+			"  15.0, 'halve_on_join', 1,"
+			"  1471, 0, 'own_match', 'required',"
+			"  0, 4, '2.5,2,1.5');");
+		for (const char* sql : steps) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] pve_attack raid seed step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
+	// Raids (tab 231) order (2026-09-10): sr 0, ddr 1, desert_raids 2,
+	// pve_attack 3, bolonov_entourage 4, super_agent 5. Only 11 and 20 move;
+	// gated on the previous values so operator edits stick.
+	{
+		static const char* kRaidsSort2026_09_10[] = {
+			"UPDATE ga_queues SET sort_order = 3 WHERE queue_id = 20 AND sort_order = 5;",
+			"UPDATE ga_queues SET sort_order = 5 WHERE queue_id = 11 AND sort_order = 3;",
+		};
+		for (const char* sql : kRaidsSort2026_09_10) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] raids sort step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
 }

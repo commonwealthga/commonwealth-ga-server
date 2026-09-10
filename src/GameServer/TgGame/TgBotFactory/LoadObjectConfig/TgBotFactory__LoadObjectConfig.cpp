@@ -2,6 +2,7 @@
 #include "src/GameServer/TgGame/TgActorFactory/LoadObjectConfig/TgActorFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/Engine/MapObjectConfig/MapObjectConfig.hpp"
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
+#include "src/GameServer/GameModes/Hardcore/Hardcore.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -44,8 +45,10 @@ std::vector<int> GetDifficultyCascade(sqlite3* db, int primaryDifficulty) {
 	// at the FRONT as the primary tier so any 10000 rows win and 1471-and-below
 	// fill the gaps. (Gap tiers correctly load full multi-row tables — see the
 	// pre-existing-table snapshot in LoadSpawnTableRows.)
+	// Hardcore Security (5000) is custom the same way.
 	const int requestedDifficulty = primaryDifficulty;
-	if (primaryDifficulty == 10000) {
+	const bool isCustomTier = (requestedDifficulty == 10000 || requestedDifficulty == 5000);
+	if (isCustomTier) {
 		primaryDifficulty = 1471;
 	}
 
@@ -80,7 +83,7 @@ std::vector<int> GetDifficultyCascade(sqlite3* db, int primaryDifficulty) {
 
 	// Custom difficulty leads the cascade as the primary tier, so its own rows
 	// (if any) win over the inherited Ultra-Max roster.
-	if (requestedDifficulty == 10000) {
+	if (isCustomTier) {
 		cascade.insert(cascade.begin(), requestedDifficulty);
 	}
 
@@ -184,10 +187,15 @@ int LoadSpawnTableRows(sqlite3* db, int difficulty, bool skipExisting,
 // baked spawns (a target listing ITSELF keeps its original groups) and ADD to
 // them. A source that is a target expands to the ORIGINAL, never the other
 // composite, so `{33,…102…}` gets base-102, not 102's Super-Agent wave.
+// Hardcore Security uses the same mechanism with its own list.
 void ApplyCompositeTables() {
-	if (!SuperAgent::IsActive()) return;
+	const std::map<int, std::vector<int>>* composites =
+		SuperAgent::IsActive() ? &SuperAgent::SpawnTableComposites()
+		: Hardcore::IsActive() ? &Hardcore::SpawnTableComposites()
+		: nullptr;
+	if (!composites) return;
 	const auto base = g_spawnTables;   // snapshot of the un-composited tables
-	for (const auto& comp : SuperAgent::SpawnTableComposites()) {
+	for (const auto& comp : *composites) {
 		const int target = comp.first;
 		std::map<int, std::vector<SpawnTableEntry>> combined;
 		int nextGroup = 0;

@@ -85,6 +85,9 @@ void __fastcall TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_SUPER_AGENT) {
 		missionTimeSecs = 45 * 60;
 	}
+	if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_SUPER_AGENT) {
+		missionTimeSecs = 25 * 60;
+	}
 	Game->m_fGameMissionTime  = static_cast<float>(missionTimeSecs);
 	Game->m_fGameOvertimeTime = static_cast<float>(overtimeSecs);
 	Game->m_bAllowOvertime    = allowOvertime ? 1 : 0;

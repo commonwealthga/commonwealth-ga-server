@@ -226,6 +226,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerCountVolume/Update/TgPlayerCountVolume__Update.cpp \
 			  $(SRC_DIR)/GameServer/GameModes/SuperAgent/SuperAgent.cpp \
 			  $(SRC_DIR)/GameServer/GameModes/SuperAgent/SuperAgentMission.cpp \
+			  $(SRC_DIR)/GameServer/GameModes/Hardcore/Hardcore.cpp \
 			  $(SRC_DIR)/GameServer/GameModes/CtrPointRotation/CtrPointRotation.cpp \
 			  $(SRC_DIR)/GameServer/Maps/CtrRecursiveDoors/CtrRecursiveDoors.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.cpp \
