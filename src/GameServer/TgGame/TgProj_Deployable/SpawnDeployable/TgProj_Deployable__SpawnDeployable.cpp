@@ -848,7 +848,12 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	//      level, bottom hanging in mid-air). Matches the pre-refactor
 	//      dome behavior the user established 2026-05-14.
 	const bool selfSpawn = DeployableClassify::DeploysOnSelf(deployableId);
-	if (!selfSpawn) {
+	// Force-field walls sit at the ground-contact point, same as the player
+	// instant-deploy path (TgDeviceFire::Deploy skips the lift for them).
+	const bool bForceFieldWall = !selfSpawn && IsForceFieldDeployableId(deployableId);
+	if (bForceFieldWall) {
+		// no lift
+	} else if (!selfSpawn) {
 		// Lift uses the LEGACY raw*0.5 value (NOT the scaled cylinder halfHeight).
 		// The two diverged when scale handling was added — the old formula was
 		// what every pre-scale-fix lift assumed, and the visible ground-snap was
@@ -904,11 +909,20 @@ ATgDeployable* TgProj_Deployable__SpawnDeployable::SpawnDeployableActor(
 	const float pYaw   = pawnRot.Yaw   * (kPi / 32768.0f);
 	const float pPitch = pawnRot.Pitch * (kPi / 32768.0f);
 	const float cp = std::cos(pPitch);
-	const FVector facing = {
+	FVector facing = {
 		cp * std::cos(pYaw),
 		cp * std::sin(pYaw),
 		std::sin(pPitch)
 	};
+
+	// Force-field walls span across the thrower's view: turn facing 90° about
+	// the surface normal (normal × facing), as the player placement path does.
+	if (bForceFieldWall) {
+		const FVector f = facing;
+		facing.X = vNormal.Y * f.Z - vNormal.Z * f.Y;
+		facing.Y = vNormal.Z * f.X - vNormal.X * f.Z;
+		facing.Z = vNormal.X * f.Y - vNormal.Y * f.X;
+	}
 
 	FRotator spawnRot = SurfaceRotation::FromSurfaceNormal(vNormal, facing);
 
