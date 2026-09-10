@@ -4,6 +4,7 @@
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.hpp"
+#include "src/GameServer/TgGame/TgAIController/RadioAlarm/TgAIController__RadioAlarm.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/Config/Config.hpp"
@@ -85,8 +86,10 @@ void __fastcall TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_SUPER_AGENT) {
 		missionTimeSecs = 45 * 60;
 	}
-	if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_SUPER_AGENT) {
+	if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_HARDCORE_SECURITY) {
 		missionTimeSecs = 25 * 60;
+		// Same global scanner alarm cooldown as Super Agent (SuperAgent::Init).
+		TgAIController__RadioAlarm::fGlobalAlarmCD = 40.0f;
 	}
 	Game->m_fGameMissionTime  = static_cast<float>(missionTimeSecs);
 	Game->m_fGameOvertimeTime = static_cast<float>(overtimeSecs);
