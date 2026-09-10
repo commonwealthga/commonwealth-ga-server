@@ -6,9 +6,11 @@
 #include "src/GameServer/Maps/CtrRecursiveDoors/CtrRecursiveDoors.hpp"
 #include "src/GameServer/Maps/MapAdditions/MapAdditions.hpp"
 #include "src/GameServer/GameModes/CtrPointRotation/CtrPointRotation.hpp"
+#include "src/GameServer/TgGame/TgAIController/RadioAlarm/TgAIController__RadioAlarm.hpp"
 #include "src/GameServer/TgGame/TgDeployableFactory/SpawnObject/TgDeployableFactory__SpawnObject.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/GameServer/Constants/GameTypes.h"
 #include "src/Config/Config.hpp"
 #include "src/Database/Database.hpp"
 #include "src/Utils/DebugWindow/DebugWindow.hpp"
@@ -98,6 +100,11 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		// mission length from map_game_info, so the override has to be reapplied
 		// here too or it clobbers LoadGameConfig's 45-min back to the map default.
 		if (SuperAgent::IsActive()) missionTimeSecs = 45 * 60;
+		if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_HARDCORE_SECURITY) {
+			missionTimeSecs = 25 * 60;
+			// Same global scanner alarm cooldown as Super Agent (SuperAgent::Init).
+			TgAIController__RadioAlarm::fGlobalAlarmCD = 40.0f;
+		}
 
 		gamerep->GameClass = Game->Class;
 		gamerep->r_GameType = Game->m_GameType;

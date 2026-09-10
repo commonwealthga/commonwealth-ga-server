@@ -34,7 +34,7 @@
 // CONTROLLER, so multiple bots sharing an alarm id each fire it → add spam.
 // skal remove the previous 'constant' and make it a global variable accessible to the world
 //static const float kAlarmCooldownSecs = 40.0f;
-static float TgAIController__RadioAlarm::fGlobalAlarmCD=0.0f;
+float TgAIController__RadioAlarm::fGlobalAlarmCD=0.0f;
 static std::map<int, float> s_lastAlarmFireTime;  // alarmId -> WorldInfo.TimeSeconds
 
 // Known alarm_bot_spawn_table_id values on type-620 actions (validation set).

@@ -88,8 +88,6 @@ void __fastcall TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	}
 	if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_HARDCORE_SECURITY) {
 		missionTimeSecs = 25 * 60;
-		// Same global scanner alarm cooldown as Super Agent (SuperAgent::Init).
-		TgAIController__RadioAlarm::fGlobalAlarmCD = 40.0f;
 	}
 	Game->m_fGameMissionTime  = static_cast<float>(missionTimeSecs);
 	Game->m_fGameOvertimeTime = static_cast<float>(overtimeSecs);
