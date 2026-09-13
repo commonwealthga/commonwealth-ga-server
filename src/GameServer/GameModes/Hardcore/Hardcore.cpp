@@ -15,7 +15,7 @@ bool IsActive() {
 	return Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_HARDCORE_SECURITY;
 }
 
-void Init_(MissionTimings& timings, ATgGame* /*Game*/) {
+void Init(MissionTimings& timings, ATgGame* /*Game*/) {
 
 	// skal: mission time = 25 mins, 4 mins overtime
 	timings.timeSecs = 25 * 60;

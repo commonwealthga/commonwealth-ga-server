@@ -277,7 +277,7 @@ bool CtrPointRotation::IsActive() {
 	return s_bSeedingDone;
 }
 
-void CtrPointRotation::Init_(MissionTimings& /*timings*/, ATgGame* Game) {
+void CtrPointRotation::Init(MissionTimings& /*timings*/, ATgGame* Game) {
 
 	const std::string mapName = Config::GetMapNameChar();
 	const std::vector<CtrObjectives::Vec3> points = CtrObjectives::ForMap(mapName);

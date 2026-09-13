@@ -1844,7 +1844,7 @@ bool IsActive() {
 	return Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_SUPER_AGENT;
 }
 
-void Init_(MissionTimings& timings, ATgGame* Game) {
+void Init(MissionTimings& timings, ATgGame* Game) {
 
 	ATgRepInfo_Game* GRI = (ATgRepInfo_Game*)Game->GameReplicationInfo;
 	if (!GRI) { Log("Init: no GameReplicationInfo — skipping\n"); return; }
