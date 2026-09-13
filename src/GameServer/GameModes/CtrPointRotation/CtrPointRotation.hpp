@@ -23,11 +23,11 @@ namespace CtrPointRotation {
 
 	// skal unification & organisation
 	// initialize necessary internals for this game mode
-	void Init_(MissionTimings& timings, ATgGame* Game);
+	void Init(MissionTimings& timings, ATgGame* Game);
 	// check if the game is this custom mode and initialize it if so
 	void CheckInit(MissionTimings& timings, ATgGame* Game) {
 		if (!IsActive() || !Game) return;
-		Init_(timings, Game);
+		Init(timings, Game);
 	}
 
 	// Called from TgMissionObjective::RegisterSelf for EVERY objective. On a CTR

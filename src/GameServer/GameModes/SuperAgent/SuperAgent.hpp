@@ -424,11 +424,11 @@ bool IsActive();
 // initialize necessary internals for this game mode
 // Author the mission, spawn A + B, cache spawn/blocker geometry, force the boss
 // to priority 1 and reorder the GRI list. Called once from TgGame::InitGameRepInfo.
-void Init_(MissionTimings& timings, ATgGame* Game);
+void Init(MissionTimings& timings, ATgGame* Game);
 // check if the game is this custom mode and initialize it if so
 void CheckInit(MissionTimings& timings, ATgGame* Game) {
 	if (!IsActive() || !Game) return;
-	Init_(timings, Game);
+	Init(timings, Game);
 }
 
 // Human player death observation (called from the TgPawn::TrackDeath hook) —
