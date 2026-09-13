@@ -1,8 +1,11 @@
+#include "src/GameServer/GameModes/MissionTimings.hpp"
 #include "src/GameServer/GameModes/Hardcore/Hardcore.hpp"
 
 #include "src/Config/Config.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/Utils/Logger/Logger.hpp"
+
+#include "src/GameServer/TgGame/TgAIController/RadioAlarm/TgAIController__RadioAlarm.hpp"
 
 #include <algorithm>
 
@@ -10,6 +13,18 @@ namespace Hardcore {
 
 bool IsActive() {
 	return Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_HARDCORE_SECURITY;
+}
+
+void Init_(MissionTimings& timings, ATgGame* /*Game*/) {
+
+	// skal: mission time = 25 mins, 4 mins overtime
+	timings.timeSecs = 25 * 60;
+	//timings.overtime = 4 * 60;
+	//timings.allowOvertime = true;
+
+	// skal: enable/set global alarm CD
+	TgAIController__RadioAlarm::fGlobalAlarmCD=40.0f;	// 40s
+
 }
 
 // ============================================================================

@@ -34,6 +34,7 @@ class ATgMissionObjective_Proximity;
 class ATgBotFactory;
 class ATgPawn;
 class ATgAIController;
+struct MissionTimings;
 
 namespace SuperAgent {
 
@@ -419,6 +420,17 @@ void Log(const char* fmt, ...);
 // True when this match runs under the custom Super Agent difficulty.
 bool IsActive();
 
+// skal unification & organisation
+// initialize necessary internals for this game mode
+// Author the mission, spawn A + B, cache spawn/blocker geometry, force the boss
+// to priority 1 and reorder the GRI list. Called once from TgGame::InitGameRepInfo.
+void Init_(MissionTimings& timings, ATgGame* Game);
+// check if the game is this custom mode and initialize it if so
+void CheckInit(MissionTimings& timings, ATgGame* Game) {
+	if (!IsActive() || !Game) return;
+	Init_(timings, Game);
+}
+
 // Human player death observation (called from the TgPawn::TrackDeath hook) —
 // drives the escape-phase ambush death tax. No-op outside the escape phase.
 void NotifyHumanDeath();
@@ -437,10 +449,6 @@ void NotifyBotDeath(ATgPawn* Pawn);
 // combat target that hasn't reached A runs at A; it fights whatever it
 // aggroes on the way and resumes the run when the target drops.
 void OverrideMarchMovement(ATgAIController* aic, int* nMovementCode, int* nMoveDestination);
-
-// Author the mission, spawn A + B, cache spawn/blocker geometry, force the boss
-// to priority 1 and reorder the GRI list. Called once from TgGame::InitGameRepInfo.
-void Init(ATgGame* Game);
 
 // Capture gate for the ProcessEvent intercept of TgMissionObjective_Proximity.Tick.
 // Returns false to FREEZE this tick's capture math (skip CallOriginal).
