@@ -3010,7 +3010,7 @@ void Database::Init() {
 				" marshal_difficulty_value_id, requires_pvp_verification, team_policy, team_side_policy, "
 				" max_team_size, victory_bonus_lives, map_recency_divisors) VALUES"
 				" (21, 'gigamax', 'pinned_1', 0, 1,"
-				"  1021, 0, 55465, 55466, 537,"
+				"  1021, 0, 55465, 55464, 537,"
 				"  10, 1, 10, 5, 200, 443, 6.0, 0.0, 1,"
 				"  5126, 0, 1470, 1, 0, 9, 0,"
 				"  4000, 0, 1, 0, 1, 1, 0,"
