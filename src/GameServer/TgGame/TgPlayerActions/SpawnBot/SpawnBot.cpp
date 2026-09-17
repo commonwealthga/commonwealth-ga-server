@@ -63,7 +63,7 @@ constexpr float kSpawnFloorBufferUU = 5.0f;
 } // namespace
 
 void Execute(const std::string& session_guid, int bot_id, Team team,
-             float difficulty_scalar_override, bool henchman) {
+             DifficultyScalar difficulty_scalar_override, bool henchman) {
     ATgPawn_Character* Pawn = FindPawnBySessionGuid(session_guid);
     if (!Pawn) {
         Logger::Log("chat-command",

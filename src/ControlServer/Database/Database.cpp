@@ -2976,6 +2976,60 @@ void Database::Init() {
 		}
 	}
 
+	// skal - GigaMax PvE pool (2026-09-16)
+	// (4000, GA_G::DIFFICULTY_VALUE_ID_CUSTOM_GIGAMAX_SECURITY)
+	// over pool 1 for now = specops (1)
+	// possibly pool9 later (specops+desert_pve)
+	// Queue 21 under the 'umax' category with name = 'expert'. marshal 1471 (aka umax)
+	// the client has no label for a custom difficulty id.
+	// Pool copy is one-time (marker) so operator edits to pool 1 or 9 stick; queue is INSERT OR IGNORE.
+	{
+		bool pool_seeded = false;
+		{
+			sqlite3_stmt* mstmt = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT 1 FROM cs_migration_markers WHERE name='gigamax_pool_seed_2026_09_16'",
+					-1, &mstmt, nullptr) == SQLITE_OK && mstmt) {
+				pool_seeded = (sqlite3_step(mstmt) == SQLITE_ROW);
+			}
+			if (mstmt) sqlite3_finalize(mstmt);
+		}
+		if (!pool_seeded) {
+			std::vector<const char*> steps = {
+
+				"INSERT OR IGNORE INTO ga_queues "
+				"(queue_id, name, taskforce_policy, continue_in_queue, enabled, "
+				" queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, "
+				" max_players_per_side, min_players_per_team, max_players_per_team, "
+				" level_min, level_max, tab, map_x, map_y, map_active_flag, "
+				" map_icon_texture_res_id, video_res_id, location_value_id, "
+				" double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, "
+				" difficulty_value_id, access_flags, active_flag, locked_flag, "
+				" map_pool_id, min_players_to_pop, max_players_per_instance, "
+				" pop_delay_seconds, pop_delay_policy, instant_pop_when_full, "
+				" marshal_difficulty_value_id, requires_pvp_verification, team_policy, team_side_policy, "
+				" max_team_size, victory_bonus_lives, map_recency_divisors) VALUES"
+				" (21, 'gigamax', 'pinned_1', 0, 1,"
+				"  1021, 0, 55465, 55466, 537,"
+				"  10, 1, 10, 5, 200, 443, 6.0, 0.0, 1,"
+				"  5126, 0, 1470, 1, 0, 9, 0,"
+				"  4000, 0, 1, 0, 1, 1, 0,"
+				"  15.0, 'halve_on_join', 1,"
+				"  1471, 0, 'own_match', 'required',"
+				"  0, 6, '2.5,2,1.5');",
+
+				"INSERT OR IGNORE INTO cs_migration_markers (name) VALUES ('gigamax_pool_seed_2026_09_16');",
+			};
+
+			for (const char* sql : steps) {
+				if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+					Logger::Log("db", "[Database] gigamax seed step failed: %s\n", err ? err : "?");
+					if (err) { sqlite3_free(err); err = nullptr; }
+				}
+			}
+		}
+	}
+
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
 }

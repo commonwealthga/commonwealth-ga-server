@@ -2,6 +2,7 @@
 
 #include "src/pch.hpp"
 #include "src/Utils/HookBase.hpp"
+#include "src/Config/DifficultyScalar.hpp"
 
 class TgPawn__InitializeDefaultProps : public HookBase<
 	void(__fastcall*)(ATgPawn*, void*),
@@ -35,7 +36,7 @@ public:
 	// explicit difficulty token (low/medium/high/max/umax). Cleared on
 	// every InitializeDefaultProps invocation, even if scaling was gated
 	// off, so a leftover value can't leak into a later factory spawn.
-	static float nPendingDifficultyScalarOverride;
+	static DifficultyScalar nPendingDifficultyScalarOverride;
 
 	// Per-factory designer stat knob (ATgBotFactory.fBalance, default 1.0) —
 	// multiplies into the enemy-scaling product. Set by SpawnBotById from the

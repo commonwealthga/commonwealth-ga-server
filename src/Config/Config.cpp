@@ -137,21 +137,21 @@ int Config::GetDifficultyValueId() {
 	return 1471;
 }
 
-float Config::GetDifficultyScalar() {
-	switch (GetDifficultyValueId()) {
+DifficultyScalar Config::GetDifficultyScalar(int DifficultyId) {
+	switch (DifficultyId) {
 		case GA_G::DIFFICULTY_VALUE_ID_LOW_SECURITY:
-		case GA_G::DIFFICULTY_VALUE_ID_NOVICE:               return 1.0f;
+		case GA_G::DIFFICULTY_VALUE_ID_NOVICE:               		return DifficultyScalar (1.00f, 1.00f);
 		case GA_G::DIFFICULTY_VALUE_ID_MEDIUM_SECURITY:
-		case GA_G::DIFFICULTY_VALUE_ID_ADEPT:                return 1.25f;
+		case GA_G::DIFFICULTY_VALUE_ID_ADEPT:                		return DifficultyScalar (1.25f, 1.09f);
 		case GA_G::DIFFICULTY_VALUE_ID_HIGH_SECURITY:
 		case GA_G::DIFFICULTY_VALUE_ID_DOUBLE_AGENT:
-		case GA_G::DIFFICULTY_VALUE_ID_ADVANCED:             return 1.50f;
+		case GA_G::DIFFICULTY_VALUE_ID_ADVANCED:             		return DifficultyScalar (1.50f, 1.30f);
 		case GA_G::DIFFICULTY_VALUE_ID_MAXIMUM_SECURITY:
-		case GA_G::DIFFICULTY_VALUE_ID_EXPERT:               return 1.75f;
-		case GA_G::DIFFICULTY_VALUE_ID_ULTRA_MAX_SECURITY:   return 2.0f;
-		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_HARDCORE_SECURITY:   return 2.25f;
-		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_SUPER_AGENT:   return 2.25f;
-		default:                                             return 1.0f;
+		case GA_G::DIFFICULTY_VALUE_ID_EXPERT:               		return DifficultyScalar (1.75f, 1.52f);
+		case GA_G::DIFFICULTY_VALUE_ID_ULTRA_MAX_SECURITY:   		return DifficultyScalar (2.00f, 1.74f);
+		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_HARDCORE_SECURITY:return DifficultyScalar (3.00f, 2.40f);
+		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_SUPER_AGENT:   		return DifficultyScalar (2.25f, 1.96f);
+		default:                                             		return DifficultyScalar (1.00f, 1.00f);
 	}
 }
 

@@ -47,8 +47,9 @@ std::vector<int> GetDifficultyCascade(sqlite3* db, int primaryDifficulty) {
 	// fill the gaps. (Gap tiers correctly load full multi-row tables — see the
 	// pre-existing-table snapshot in LoadSpawnTableRows.)
 	// Hardcore Security (5000) is custom the same way.
+	// skal: generalized for any game mode
 	const int requestedDifficulty = primaryDifficulty;
-	const bool isCustomTier = (requestedDifficulty == 10000 || requestedDifficulty == 5000);
+	const bool isCustomTier = (requestedDifficulty > 1471);
 	if (isCustomTier) {
 		primaryDifficulty = 1471;
 	}
@@ -89,89 +90,6 @@ std::vector<int> GetDifficultyCascade(sqlite3* db, int primaryDifficulty) {
 	}
 
 	return cascade;
-}
-
-// Load one difficulty pass into g_spawnTables. If skipExisting is true, rows
-// whose bot_spawn_table_id is already present in the cache are dropped (so
-// each cascade tier only fills the gaps left by the tiers above it). Returns
-// the number of rows actually inserted and, via outTablesAdded, the number of
-// new bot_spawn_table_ids introduced.
-//
-// Sources both asm_data_set_bot_spawn_tables (verbatim game data, read-only)
-// and mod_data_set_bot_spawn_tables (our custom additions) via UNION ALL.
-// Rows from either table participate equally in the cascade.
-int LoadSpawnTableRows(sqlite3* db, int difficulty, bool skipExisting,
-                       int* outTablesAdded) {
-	if (outTablesAdded) *outTablesAdded = 0;
-
-	sqlite3_stmt* stmt = nullptr;
-	// COALESCE(bbm,1.0) > 0 — asm_data_set_bots.bot_balance_multiplier=0 is the
-	// "never spawn this bot" sentinel (player pets, decoys, turrets, intentional
-	// boss skips like Vulcan); orphan rows where the LEFT JOIN misses keep the
-	// row by defaulting to 1.0.
-	// skal: add asm_data_set_bot_spawn_tables.bot_balance_multiplier to the result
-	int rc = sqlite3_prepare_v2(db,
-		"SELECT u.bot_spawn_table_id, u.spawn_group, u.enemy_bot_id, u.bot_count, "
-		"       u.spawn_chance, u.bot_balance_multiplier, COALESCE(b.reference_name, ''), "
-		"       u.spawn_group_min, u.spawn_group_max, u.spawn_group_respawn_sec "
-		"FROM ( "
-		"  SELECT bot_spawn_table_id, difficulty_value_id, spawn_group, "
-		"         enemy_bot_id, bot_count, spawn_chance, COALESCE (bot_balance_multiplier, 1.0) as bot_balance_multiplier, "
-		"         spawn_group_min, spawn_group_max, spawn_group_respawn_sec "
-		"  FROM asm_data_set_bot_spawn_tables "
-		"  UNION ALL "
-		"  SELECT bot_spawn_table_id, difficulty_value_id, spawn_group, "
-		"         enemy_bot_id, bot_count, spawn_chance, COALESCE (bot_balance_multiplier, 1.0) as bot_balance_multiplier, "
-		"         spawn_group_min, spawn_group_max, spawn_group_respawn_sec "
-		"  FROM mod_data_set_bot_spawn_tables "
-		") AS u "
-		"LEFT JOIN asm_data_set_bots b ON u.enemy_bot_id = b.bot_id "
-		"WHERE u.difficulty_value_id = ? "
-		"  AND COALESCE(b.bot_balance_multiplier, 1.0) > 0",
-		-1, &stmt, nullptr);
-	if (rc != SQLITE_OK || !stmt) {
-		Logger::Log("tgbotfactory",
-			"  LoadSpawnTableRows prepare failed (difficulty=%d): %s\n",
-			difficulty, sqlite3_errmsg(db));
-		return 0;
-	}
-	sqlite3_bind_int(stmt, 1, difficulty);
-
-	// Snapshot the tables shipped by HIGHER-priority tiers. skipExisting must
-	// drop only tables a PREVIOUS tier already shipped — never a table THIS tier
-	// is introducing. Testing the live g_spawnTables instead would skip every row
-	// after the first of each new table (the cache gains the table on row 1),
-	// truncating every gap-filled table to a single row.
-	std::set<int> preexistingTables;
-	if (skipExisting) {
-		for (const auto& kv : g_spawnTables) preexistingTables.insert(kv.first);
-	}
-
-	int rowsInserted = 0;
-	while (sqlite3_step(stmt) == SQLITE_ROW) {
-		const int tableId = sqlite3_column_int(stmt, 0);
-		if (skipExisting && preexistingTables.count(tableId)) continue;
-		const int group   = sqlite3_column_int(stmt, 1);
-		const int botId   = sqlite3_column_int(stmt, 2);
-		const int count   = sqlite3_column_int(stmt, 3);
-		const float chance = static_cast<float>(sqlite3_column_double(stmt, 4));
-		const float bbm = static_cast<float>(sqlite3_column_double(stmt, 5));
-		const unsigned char* refNameRaw = sqlite3_column_text(stmt, 6);
-		const std::string refName(refNameRaw ? reinterpret_cast<const char*>(refNameRaw) : "");
-		const int groupMin   = sqlite3_column_int(stmt, 7);
-		const int groupMax   = sqlite3_column_int(stmt, 8);
-		const int respawnSec = sqlite3_column_int(stmt, 9);
-
-		auto& groupMap = g_spawnTables[tableId];
-		const bool isNewTable = groupMap.empty();
-		groupMap[group].push_back(SpawnTableEntry{
-			tableId, group, botId, count, chance, bbm, refName, groupMin, groupMax, respawnSec
-		});
-		rowsInserted++;
-		if (isNewTable && outTablesAdded) (*outTablesAdded)++;
-	}
-	sqlite3_finalize(stmt);
-	return rowsInserted;
 }
 
 // Super Agent composite tables: REBUILD each target table by concatenating the
@@ -236,17 +154,171 @@ void EnsureSpawnTablesLoaded() {
 		return;
 	}
 
+	// Load one difficulty pass into g_spawnTables
+	// loadedTables is used to track what's already loaded at a higher difficulty
+	// returns the number of entries actually loadeded and the number of new tables
+	//
+	// Sources both asm_data_set_bot_spawn_tables (verbatim game data, read-only)
+	// and mod_data_set_bot_spawn_tables (our custom replacements/additions)
+	// mod_data_set_bot_spawn_tables has precendence in that if a table is defined in it,
+	// related asm_data_set_bot_spawn_tables entries are NOT loadded
+
+	struct LoadStats {
+		int NbEntry;
+		int NbStockTable;
+		int NbOverridenTable;
+		LoadStats ():NbEntry (0),NbStockTable (0),NbOverridenTable (0) {}
+	};
+
+	std::set<int> loadedTables;
+
+	const auto LoadSpawnTableRows=[&](int Diff) -> LoadStats {
+
+		// COALESCE(bbm,1.0) > 0 — asm_data_set_bots.bot_balance_multiplier=0 is the
+		// "never spawn this bot" sentinel (player pets, decoys, turrets, intentional
+		// boss skips like Vulcan); orphan rows where the LEFT JOIN misses keep the
+		// row by defaulting to 1.0.
+
+		// Step 1: find out which spawn_table_id are defined for this difficulty
+		// tldr; we do select all spawn_table_id that are involved with the given difficulty and whose bots are not disabled
+		// and build a set with those
+
+		std::set<int> DiffTables;
+
+		{
+			static const char* const QueryString=
+				"SELECT DISTINCT(u.bot_spawn_table_id) "
+				"FROM ( "
+				"  SELECT bot_spawn_table_id, difficulty_value_id, enemy_bot_id "
+				"  FROM asm_data_set_bot_spawn_tables "
+				"  UNION ALL "
+				"  SELECT bot_spawn_table_id, difficulty_value_id, enemy_bot_id "
+				"  FROM mod_data_set_bot_spawn_tables "
+				") AS u "
+				"LEFT JOIN asm_data_set_bots b ON u.enemy_bot_id = b.bot_id "
+				"WHERE u.difficulty_value_id = ? "
+				"  AND COALESCE(b.bot_balance_multiplier, 1.0) > 0";
+
+			sqlite3_stmt* stmt = nullptr;
+			const int rc = sqlite3_prepare_v2(db, QueryString, -1, &stmt, nullptr);
+			if (rc != SQLITE_OK || !stmt) {
+				Logger::Log("tgbotfactory",
+					"  LoadSpawnTableRows(step1) prepare failed (difficulty=%d): %s\n",
+					Diff, sqlite3_errmsg(db));
+				return LoadStats ();
+			}
+			sqlite3_bind_int(stmt, 1, Diff);
+			while (sqlite3_step(stmt) == SQLITE_ROW) {
+				const int tableId = sqlite3_column_int(stmt, 0);
+				if (loadedTables.count(tableId)) continue;
+				DiffTables.insert(tableId);
+			}
+			sqlite3_finalize(stmt);
+		}
+
+		// Step 2: load the actual spawn tables
+		// walk the set to load each spawn table by id
+		// this is itself a 2-steps process:
+		// 	load from mod_data_set_bot_spawn_tables (our custom overrides)
+		// 	if that didn't load anything, load from asm_data_set_bot_spawn_tables (the stock client-extracted data)
+
+		static const char* const QueryString1=
+			"SELECT u.spawn_group, u.enemy_bot_id, u.bot_count, "
+			"       u.spawn_chance, u.bot_balance_multiplier, COALESCE(b.reference_name, ''), "
+			"       u.spawn_group_min, u.spawn_group_max, u.spawn_group_respawn_sec "
+			"FROM ( "
+			"  SELECT bot_spawn_table_id, difficulty_value_id, spawn_group, "
+			"         enemy_bot_id, bot_count, spawn_chance, COALESCE (bot_balance_multiplier, 1.0) as bot_balance_multiplier, "
+			"         spawn_group_min, spawn_group_max, spawn_group_respawn_sec "
+			"  FROM mod_data_set_bot_spawn_tables "
+			") AS u "
+			"LEFT JOIN asm_data_set_bots b ON u.enemy_bot_id = b.bot_id "
+			"WHERE u.bot_spawn_table_id = ? "
+			"  AND u.difficulty_value_id = ? "
+			"  AND COALESCE(b.bot_balance_multiplier, 1.0) > 0";
+
+		static const char* const QueryString2=
+			"SELECT u.spawn_group, u.enemy_bot_id, u.bot_count, "
+			"       u.spawn_chance, u.bot_balance_multiplier, COALESCE(b.reference_name, ''), "
+			"       u.spawn_group_min, u.spawn_group_max, u.spawn_group_respawn_sec "
+			"FROM ( "
+			"  SELECT bot_spawn_table_id, difficulty_value_id, spawn_group, "
+			"         enemy_bot_id, bot_count, spawn_chance, COALESCE (bot_balance_multiplier, 1.0) as bot_balance_multiplier, "
+			"         spawn_group_min, spawn_group_max, spawn_group_respawn_sec "
+			"  FROM asm_data_set_bot_spawn_tables "
+			") AS u "
+			"LEFT JOIN asm_data_set_bots b ON u.enemy_bot_id = b.bot_id "
+			"WHERE u.bot_spawn_table_id = ? "
+			"  AND u.difficulty_value_id = ? "
+			"  AND COALESCE(b.bot_balance_multiplier, 1.0) > 0";
+
+		LoadStats Stats;
+
+		for (const int& tableId : DiffTables) {
+
+			auto& groupMap = g_spawnTables[tableId];
+			const bool isNewTable = groupMap.empty();
+			enum class eRC { Error, Empty, NotEmpty };
+			const auto query=[&](const char* QueryString,int& NbNewTable) -> eRC {
+				sqlite3_stmt* stmt = nullptr;
+				const int rc = sqlite3_prepare_v2(db, QueryString, -1, &stmt, nullptr);
+				if (rc != SQLITE_OK || !stmt) {
+					Logger::Log("tgbotfactory",
+						"  LoadSpawnTableRows(step2) prepare failed (difficulty=%d): %s\n",
+						Diff, sqlite3_errmsg(db));
+					return eRC::Error;
+				}
+				sqlite3_bind_int(stmt, 1, tableId);
+				sqlite3_bind_int(stmt, 2, Diff);
+				int NbEntry = 0;
+				while (sqlite3_step(stmt) == SQLITE_ROW) {
+					const int group   = sqlite3_column_int(stmt, 0);
+					const int botId   = sqlite3_column_int(stmt, 1);
+					const int count   = sqlite3_column_int(stmt, 2);
+					const float chance = static_cast<float>(sqlite3_column_double(stmt, 3));
+					const float bbm = static_cast<float>(sqlite3_column_double(stmt, 4));
+					const unsigned char* refNameRaw = sqlite3_column_text(stmt, 5);
+					const std::string refName(refNameRaw ? reinterpret_cast<const char*>(refNameRaw) : "");
+					const int groupMin   = sqlite3_column_int(stmt, 6);
+					const int groupMax   = sqlite3_column_int(stmt, 7);
+					const int respawnSec = sqlite3_column_int(stmt, 8);
+					groupMap[group].push_back(SpawnTableEntry{
+						tableId, group, botId, count, chance, bbm, refName, groupMin, groupMax, respawnSec
+					});
+					++NbEntry;
+				}
+				sqlite3_finalize(stmt);
+				if (NbEntry) {
+					Stats.NbEntry+=NbEntry;
+					if (isNewTable) ++NbNewTable;
+					return eRC::NotEmpty;
+				}
+				else {
+					return eRC::Empty;
+				}
+			};
+			if (query (QueryString1,Stats.NbOverridenTable) == eRC::Empty) {
+				query (QueryString2,Stats.NbStockTable);
+			}
+		}
+		return Stats;
+	};
+
 	const std::vector<int> cascade = GetDifficultyCascade(db, difficulty);
-	for (size_t i = 0; i < cascade.size(); ++i) {
-		const int tier = cascade[i];
-		const bool isPrimary = (i == 0);
-		int tablesAdded = 0;
-		const int rows = LoadSpawnTableRows(db, tier,
-		                                    /*skipExisting=*/!isPrimary,
-		                                    &tablesAdded);
+
+	const auto LoadCascade=[&](int Index,const char* const Tail) {
+		const int tier = cascade[Index];
+		const LoadStats Stats=LoadSpawnTableRows(tier);
 		Logger::Log("tgbotfactory",
-			"  cascade tier %zu difficulty=%d -> %d rows / %d new tables%s\n",
-			i, tier, rows, tablesAdded, isPrimary ? " (primary)" : "");
+			"  cascade tier %zu difficulty=%d -> %d entries / %d stock tables / %d overriden tables%s\n",
+			Index, tier, Stats.NbEntry, Stats.NbStockTable, Stats.NbOverridenTable, Tail);
+	};
+
+	LoadCascade (0, " (primary)");
+
+	for (size_t i = 1; i < cascade.size(); ++i) {
+		for (const auto& kv : g_spawnTables) loadedTables.insert(kv.first);
+		LoadCascade (i, "");
 	}
 
 	// Rebuild composite tables from the now-loaded raw tables (Super Agent only).

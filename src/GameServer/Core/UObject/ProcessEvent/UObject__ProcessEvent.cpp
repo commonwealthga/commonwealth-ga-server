@@ -186,6 +186,7 @@ enum class DispatchTag : uint8_t {
 	DeployableTakeDamage,         // Diagnostic (indestructible beacons): log entry gates + result of UC TakeDamage on exit beacons
 	BeaconDestroyIt,              // Diagnostic (indestructible beacons): log DestroyIt entry gates on exit beacons
 	BeaconHealthWatch,            // Diagnostic (indestructible beacons): per-tick change watcher over beacon health/PCT fields
+	MissionTimerBossIncrement,		// Override to customize boss time extension
 	// GameTimerDiagnostic,          // Diagnostic-only: before/after snapshots around original timer/match flow
 };
 
@@ -685,6 +686,12 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 		}
 	}
 
+	// pve/da missions, check remaining time upon entering the boss room to possibly extend it
+	// hard-coded to 4 mins in OG, overriding this allows to customize it
+	if (strcmp(name, "Function TgGame.TgGame.MissionTimerBossIncrement") == 0 ||
+			strcmp(name, "Function TgGame.TgGame_Arena.MissionTimerBossIncrement") == 0)
+		return DispatchTag::MissionTimerBossIncrement;
+
 	return DispatchTag::Unknown;
 }
 
@@ -799,6 +806,23 @@ static void LogScopeCall(const char* phase, UObject* Object, UFunction* Function
 
 void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunction* Function, void* Params, void* Result) {
 	if (!Object || !Function) return;
+
+
+	{
+		const char* rawName = Function->GetFullName();
+		const std::string fnName(rawName); // never hold the raw char* past this line — GetFullName() shares a static buffer
+		if (fnName == "Function TgGame.TgGame.MissionTimerBossIncrement" ||
+				fnName == "Function TgGame.TgGame_Arena.MissionTimerBossIncrement") {
+
+				ATgGame* Game = (ATgGame*)Object;
+				Logger::Log("skal", "MissionTimerBossIncrement fired on %s (s_bBossTimeIncremented=%d, remaining=%.1f)\n",
+								ObjectClassCache::GetClassName(Object).c_str(),
+								Game->s_bBossTimeIncremented,
+								Game->MissionTimeRemaining());
+		}
+	}
+
+
 
 	PerfProbe::Count(PerfProbe::CTR_PROCESS_EVENT);
 
@@ -2519,6 +2543,28 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			std::string obj = Object->GetFullName();
 			Logger::Log("cheatgate", "blocked %s [%s]\n", fn.c_str(), obj.c_str());
 		}
+		break;
+	}
+
+	//
+	case DispatchTag::MissionTimerBossIncrement: {
+		// log then call DoCatchAll() for now to test it
+		// intented purpose: override to customize boss time extension in pve games
+		ATgGame* Game = (ATgGame*)Object;
+		Logger::Log("skal", "MissionTimerBossIncrement fired on %s (s_bBossTimeIncremented=%d, remaining=%.1f)\n",
+            ObjectClassCache::GetClassName(Object).c_str(),
+            Game->s_bBossTimeIncremented,
+            Game->MissionTimeRemaining());
+		DoCatchAll();
+			#if 0
+				current logic:
+					float fTimeRemaining;
+					if (s_bBossTimeIncremented) return;	// only fires once
+					fTimeRemaining = MissionTimeRemaining();
+					if (TgRepInfo_Game(GameReplicationInfo).IsPvEMission() && fTimeRemaining < 240.0)
+						MissionTimeIncrement(240.0 - fTimeRemaining);	// top up to 240s (4 mins)
+					s_bBossTimeIncremented = true;
+			#endif
 		break;
 	}
 

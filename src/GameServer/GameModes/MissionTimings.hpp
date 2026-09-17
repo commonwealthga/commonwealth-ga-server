@@ -3,6 +3,7 @@
 
 struct MissionTimings {
 	int timeSecs;
+	int minBossTimeSecs;
 	int overtimeSecs;
 	bool allowOvertime;
 };

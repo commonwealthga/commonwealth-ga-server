@@ -112,6 +112,7 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			timings.overtimeSecs 	= 4 * 60;
 			timings.allowOvertime	= true;
 		}
+		timings.minBossTimeSecs = 0;
 
 		// skal unification & organisation
 		//			moved & unified into a call to {CustomGameMode}::checkInit()
@@ -224,6 +225,12 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		// running as TgGame_PointRotation on a surveyed CTR map.
 		CtrPointRotation::CheckInit(timings, Game);
 
+		// skal giga-max
+		if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_GIGA_MAX_SECURITY) {
+			//timings.timeSecs = 15 * 60;
+			timings.timeSecs = 6 * 60;	//tmp 6 mins for extension testing
+		}
+
 		// skal unification & organisation
 		//		timings moved here
 		Game->m_fGameMissionTime  = static_cast<float>(timings.timeSecs);
@@ -311,29 +318,29 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			// Game->TimeLimit = 210;
 
 
-// function float GetSetupTime()
-// {
-//     // End:0x3B
-//     if(TgRepInfo_Game(GameReplicationInfo).IsPvEMission())
-//     {
-//         // End:0x32
-//         if(int(m_GameType) == int(11))
-//         {
-//             return 30.0000000;
-//         }
-//         return 15.0000000;        
-//     }
-//     else
-//     {
-//         // End:0x4E
-//         if(IsTerritory())
-//         {
-//             return 120.0000000;
-//         }
-//     }
-//     return 60.0000000;
-//     //return ReturnValue;    
-// }
+			// function float GetSetupTime()
+			// {
+			//     // End:0x3B
+			//     if(TgRepInfo_Game(GameReplicationInfo).IsPvEMission())
+			//     {
+			//         // End:0x32
+			//         if(int(m_GameType) == int(11))
+			//         {
+			//             return 30.0000000;
+			//         }
+			//         return 15.0000000;        
+			//     }
+			//     else
+			//     {
+			//         // End:0x4E
+			//         if(IsTerritory())
+			//         {
+			//             return 120.0000000;
+			//         }
+			//     }
+			//     return 60.0000000;
+			//     //return ReturnValue;    
+			// }
 
 
 			GameDef->s_nMaxRoundNumber = bDomeDefense ? 5 : 4;

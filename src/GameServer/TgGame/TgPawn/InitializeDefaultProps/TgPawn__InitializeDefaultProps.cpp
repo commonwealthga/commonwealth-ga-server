@@ -11,7 +11,7 @@ int TgPawn__InitializeDefaultProps::nPendingBotId = 0;
 bool TgPawn__InitializeDefaultProps::bPendingEnemyScaling = false;
 float TgPawn__InitializeDefaultProps::fPendingFactoryBalance = 1.0f;
 float TgPawn__InitializeDefaultProps::fPendingSpawnTableBalance = 0.0f;
-float TgPawn__InitializeDefaultProps::nPendingDifficultyScalarOverride = 0.0f;
+DifficultyScalar TgPawn__InitializeDefaultProps::nPendingDifficultyScalarOverride;
 
 namespace {
 struct BotDefaults {
@@ -124,9 +124,9 @@ void __fastcall TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	// "use map default" (Config::GetDifficultyScalar). Consume + clear here
 	// even if scaling is gated off, so a leftover from a chat spawn that
 	// somehow skipped the gate can't leak into a later factory spawn.
-	const float scalarOverride = nPendingDifficultyScalarOverride;
-	nPendingDifficultyScalarOverride = 0.0f;
-	const float difficultyScalar = scalarOverride > 0.0f
+	const DifficultyScalar scalarOverride = nPendingDifficultyScalarOverride;
+	nPendingDifficultyScalarOverride.reset ();
+	DifficultyScalar difficultyScalar = scalarOverride
 		? scalarOverride
 		: Config::GetDifficultyScalar();
 
@@ -146,11 +146,39 @@ void __fastcall TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	// outgoing damage modifier (prop 65). Power pool is intentionally not
 	// scaled. At Ultra-Max (scalar 3.0), a plain BBM=1.0 enemy ends up at 3×
 	// HP and +200% damage; an elite BBM=1.7 Colony Soldier at 5.1× / +410%.
-	const float combinedMultiplier = (scaleAsEnemy && balanceMultiplier > 0.0f)
-		? balanceMultiplier * difficultyScalar * factoryBalance * spawnBalance
-		: 1.0f;
-	if (combinedMultiplier != 1.0f) {
-		hitPoints *= combinedMultiplier;
+	// skal: this example value above is not accurate
+	// skal: changed this with the split scalar modifier for HP/dmg
+	const bool doScale = scaleAsEnemy && (balanceMultiplier > 0.0f);
+	if (doScale) {
+		difficultyScalar *= (balanceMultiplier * factoryBalance * spawnBalance);
+
+		// HP
+		hitPoints *= difficultyScalar.HP;
+
+		// Outgoing-damage scale from combined BBM × difficulty.
+		//
+		// Going via AddProperty(TGPID_DAMAGE_MODIFIER / prop 65) does nothing —
+		// ATgPawn::ApplyProperty has no case for 65 (default branch: no field
+		// write), and no UC code reads s_Properties[65] during damage calc. The
+		// real damage-multiplier consumer is TgEffectDamage.uc:120:
+		//     fProratedAmount *= InstigatorPawn.s_fDamageAdjustment;
+		// (also TgEffectHeal.uc:71 — heals scale too, which is what we want for
+		// elite healer/medic bots). The float defaults to 1.0 in TgPawn.uc and is
+		// never written by anything else, so a direct write here is the canonical
+		// init-time knob. Skip when combined == 1.0 (no-op — players and
+		// non-factory spawns land here so their output stays vanilla).
+		//
+		// Trim of 1/1.15: playtest at Ultra-Max showed enemy damage running ~15%
+		// higher than the design target while HP scaling felt correct. Apply the
+		// trim only on the damage path; HP keeps `combinedMultiplier` raw above.
+		// skal: changed this with the split scalar modifier for HP/dmg
+		Pawn->s_fDamageAdjustment = difficultyScalar.Dmg;
+
+		Logger::Log ("skal","[InitDefaults] scaling for %s: %.2f / %.2f\n", Pawn->GetName(), difficultyScalar.HP, difficultyScalar.Dmg);
+
+	}
+	else {
+		Logger::Log ("skal","[InitDefaults] no scaling for %s\n", Pawn->GetName());
 	}
 
 	// DIAG: per-respawn buff investigation. Log the values feeding
@@ -199,26 +227,6 @@ void __fastcall TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	Pawn->AddProperty( GA_PROPERTY::TGPID_POWERPOOL_MIN_COST,      0, 0, 0, 0);
 	Pawn->AddProperty( GA_PROPERTY::TGPID_FLIGHT_ACCELERATION,     0, 0, 0, 1000);
 	Pawn->AddProperty( GA_PROPERTY::TGPID_ACCURACY,                accuracy,     accuracy,     0, 1);
-
-	// Outgoing-damage scale from combined BBM × difficulty.
-	//
-	// Going via AddProperty(TGPID_DAMAGE_MODIFIER / prop 65) does nothing —
-	// ATgPawn::ApplyProperty has no case for 65 (default branch: no field
-	// write), and no UC code reads s_Properties[65] during damage calc. The
-	// real damage-multiplier consumer is TgEffectDamage.uc:120:
-	//     fProratedAmount *= InstigatorPawn.s_fDamageAdjustment;
-	// (also TgEffectHeal.uc:71 — heals scale too, which is what we want for
-	// elite healer/medic bots). The float defaults to 1.0 in TgPawn.uc and is
-	// never written by anything else, so a direct write here is the canonical
-	// init-time knob. Skip when combined == 1.0 (no-op — players and
-	// non-factory spawns land here so their output stays vanilla).
-	//
-	// Trim of 1/1.15: playtest at Ultra-Max showed enemy damage running ~15%
-	// higher than the design target while HP scaling felt correct. Apply the
-	// trim only on the damage path; HP keeps `combinedMultiplier` raw above.
-	if (combinedMultiplier != 1.0f) {
-		Pawn->s_fDamageAdjustment = combinedMultiplier / 1.15f;
-	}
 
 	// Vision range — TgPawn.uc sets SightRadius from this on dedicated server (GetProperty(152))
 	// if (nBotId != 680 && nBotId != 681 && nBotId != 679 && nBotId != 567) {

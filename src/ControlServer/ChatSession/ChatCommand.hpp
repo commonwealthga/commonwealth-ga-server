@@ -28,7 +28,9 @@ struct SpawnTargetArgs {
     //   low=1.0  medium=1.25  high=1.5  max=1.75  umax=2.0
     // Whether scalar is overridden or default, both HP and outgoing-damage
     // scaling are applied (mirrors enemy bot-factory spawn behavior).
-    float difficulty_scalar = 0.0f;
+    //float difficulty_scalar = 0.0f;
+    // skal: replaced with direct DifficultyId
+    int difficulty_id = 0;
     // -spawnhenchman: friend-team spawn additionally marked as a henchman
     // (pawn r_bIsHenchman) with the requesting player as leader (m_pOwner).
     bool henchman = false;
