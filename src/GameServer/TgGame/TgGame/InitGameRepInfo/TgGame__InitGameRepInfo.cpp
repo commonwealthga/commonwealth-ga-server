@@ -226,10 +226,10 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		CtrPointRotation::CheckInit(timings, Game);
 
 		// skal giga-max
-		if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_GIGA_MAX_SECURITY) {
-			//timings.timeSecs = 15 * 60;
-			timings.timeSecs = 6 * 60;	//tmp 6 mins for extension testing
-		}
+		//if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_GIGA_MAX_SECURITY) {
+		//	//timings.timeSecs = 15 * 60;
+		//	timings.timeSecs = 6 * 60;	//tmp 6 mins for extension testing
+		//}
 
 		// skal unification & organisation
 		//		timings moved here
