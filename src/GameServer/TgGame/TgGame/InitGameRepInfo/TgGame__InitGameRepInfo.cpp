@@ -4,7 +4,7 @@
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/GameModes/MissionTimings.hpp"
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
-#include "src/GameServer/GameModes/HardCore/HardCore.hpp"
+#include "src/GameServer/GameModes/Hardcore/Hardcore.hpp"
 #include "src/GameServer/Maps/CtrRecursiveDoors/CtrRecursiveDoors.hpp"
 #include "src/GameServer/Maps/MapAdditions/MapAdditions.hpp"
 #include "src/GameServer/GameModes/CtrPointRotation/CtrPointRotation.hpp"
