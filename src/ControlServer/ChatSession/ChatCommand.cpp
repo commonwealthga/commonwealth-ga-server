@@ -53,23 +53,6 @@ const char* SpawnTargetTeamName(SpawnTargetTeam t) {
     return "?";
 }
 
-// Difficulty token → scalar. Mirrors Config::GetDifficultyScalar() values:
-//   low     = 1.00  (DIFFICULTY_VALUE_ID_LOW_SECURITY / NOVICE)
-//   medium  = 1.25  (MEDIUM_SECURITY / ADEPT)
-//   high    = 1.50  (HIGH_SECURITY / DOUBLE_AGENT / ADVANCED)
-//   max     = 1.75  (MAXIMUM_SECURITY / EXPERT)
-//   umax    = 2.00  (ULTRA_MAX_SECURITY)
-// Returns 0.0 for unknown tokens (caller treats this as "not a difficulty
-// token at all" — could be the bot_id then).
-/*float DifficultyScalarFromToken(const std::string& tok_lower) {
-    if (tok_lower == "low")    return 1.00f;
-    if (tok_lower == "medium") return 1.25f;
-    if (tok_lower == "high")   return 1.50f;
-    if (tok_lower == "max")    return 1.75f;
-    if (tok_lower == "umax")   return 2.00f;
-    return 0.0f;
-}*/
-
 // Split a trimmed string on ASCII whitespace runs.
 std::vector<std::string> SplitWs(const std::string& s) {
     std::vector<std::string> out;
@@ -369,7 +352,7 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
-#if 1
+#if 0
     // skal add support for -cheat
     if (cmd_name == "-cheat") {
         // -cheat zeus

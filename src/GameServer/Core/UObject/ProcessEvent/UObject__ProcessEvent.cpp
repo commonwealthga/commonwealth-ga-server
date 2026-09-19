@@ -685,12 +685,6 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 		}
 	}
 
-	// pve/da missions, check remaining time upon entering the boss room to possibly extend it
-	// hard-coded to 4 mins in OG, overriding this allows to customize it
-	if (strcmp(name, "Function TgGame.TgGame.MissionTimerBossIncrement") == 0 ||
-			strcmp(name, "Function TgGame.TgGame_Arena.MissionTimerBossIncrement") == 0)
-		return DispatchTag::MissionTimerBossIncrement;
-
 	return DispatchTag::Unknown;
 }
 
@@ -805,23 +799,6 @@ static void LogScopeCall(const char* phase, UObject* Object, UFunction* Function
 
 void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunction* Function, void* Params, void* Result) {
 	if (!Object || !Function) return;
-
-
-	{
-		const char* rawName = Function->GetFullName();
-		const std::string fnName(rawName); // never hold the raw char* past this line — GetFullName() shares a static buffer
-		if (fnName == "Function TgGame.TgGame.MissionTimerBossIncrement" ||
-				fnName == "Function TgGame.TgGame_Arena.MissionTimerBossIncrement") {
-
-				ATgGame* Game = (ATgGame*)Object;
-				Logger::Log("skal", "MissionTimerBossIncrement fired on %s (s_bBossTimeIncremented=%d, remaining=%.1f)\n",
-								ObjectClassCache::GetClassName(Object).c_str(),
-								Game->s_bBossTimeIncremented,
-								Game->MissionTimeRemaining());
-		}
-	}
-
-
 
 	PerfProbe::Count(PerfProbe::CTR_PROCESS_EVENT);
 
