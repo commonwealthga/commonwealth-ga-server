@@ -273,12 +273,11 @@ void CtrPointRotation::InitBeacons(ATgGame* Game) {
 	}
 }
 
-void CtrPointRotation::Init(ATgGame* Game) {
-	// Clear before any early-return so a prior CTR match can't leave this set
-	// when we load a non-CTR map next.
-	s_bSeedingDone = false;
+bool CtrPointRotation::IsActive() {
+	return s_bSeedingDone;
+}
 
-	if (!Game) return;
+void CtrPointRotation::Init(MissionTimings& /*timings*/, ATgGame* Game) {
 
 	const std::string mapName = Config::GetMapNameChar();
 	const std::vector<CtrObjectives::Vec3> points = CtrObjectives::ForMap(mapName);
@@ -362,10 +361,6 @@ void CtrPointRotation::Init(ATgGame* Game) {
 	// Seeding complete — from now on, any objective that registers via
 	// RegisterSelf on this CTR map is a stock straggler to be excluded.
 	s_bSeedingDone = true;
-}
-
-bool CtrPointRotation::IsActive() {
-	return s_bSeedingDone;
 }
 
 void CtrPointRotation::ExcludeLateStockObjective(ATgMissionObjective* Obj) {

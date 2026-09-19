@@ -16,11 +16,21 @@
 //     Super Agent lists of the same name. Authored in Hardcore.cpp.
 
 class ATgPawn;
+struct MissionTimings;
 
 namespace Hardcore {
 
 // True when this match runs under the Hardcore Security difficulty.
 bool IsActive();
+
+// skal unification & organisation
+// initialize necessary internals for this game mode
+void Init(MissionTimings& timings, ATgGame* Game);
+// check if the game is this custom mode and initialize it if so
+void CheckInit(MissionTimings& timings, ATgGame* Game) {
+  if (!IsActive() || !Game) return;
+  Init(timings, Game);
+}
 
 // Target spawn table id -> ordered source table ids, concatenated to rebuild
 // the target. Same semantics as SuperAgent::SpawnTableComposites().

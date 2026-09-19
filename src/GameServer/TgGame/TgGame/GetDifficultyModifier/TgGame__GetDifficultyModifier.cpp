@@ -10,7 +10,7 @@
 // so the original per-priority contract is unknown).
 float __fastcall TgGame__GetDifficultyModifier::Call(ATgGame* Game, void* edx, int nPriority) {
 	LogCallBegin();
-	const float result = Config::GetDifficultyScalar();
+	const float result = Config::GetDifficultyScalar().HP;
 	Logger::Log("difficulty",
 		"GetDifficultyModifier(nPriority=%d) -> %.2f (diffId=%d)\n",
 		nPriority, result, Config::GetDifficultyValueId());

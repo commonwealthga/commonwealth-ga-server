@@ -1,3 +1,4 @@
+#include "src/GameServer/GameModes/MissionTimings.hpp"
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 
 #include "src/Config/Config.hpp"
@@ -1769,10 +1770,6 @@ void PeriodicAlarm(float minSecs, float maxSecs, const std::vector<AlarmWave>& w
 
 }  // namespace Escape
 
-bool IsActive() {
-	return Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_SUPER_AGENT;
-}
-
 // Death tax: a human death during the escape phase pushes the next ambush out
 // (+kDeathTaxSecs, capped at kDeathTaxCap per inter-wave window) — the team
 // gets room to regroup instead of a wave landing on the wipe.
@@ -1843,8 +1840,11 @@ void OverrideMarchMovement(ATgAIController* aic, int* nMovementCode, int* nMoveD
 	}
 }
 
-void Init(ATgGame* Game) {
-	if (!IsActive() || !Game) return;
+bool IsActive() {
+	return Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_SUPER_AGENT;
+}
+
+void Init(MissionTimings& timings, ATgGame* Game) {
 
 	ATgRepInfo_Game* GRI = (ATgRepInfo_Game*)Game->GameReplicationInfo;
 	if (!GRI) { Log("Init: no GameReplicationInfo — skipping\n"); return; }
@@ -1872,7 +1872,12 @@ void Init(ATgGame* Game) {
 	UClass* cls = ClassPreloader::GetClass("Class TgGame.TgMissionObjective_Proximity");
 	if (!cls) { Log("Init: could not resolve TgMissionObjective_Proximity class\n"); return; }
 
-	//skal enable/set global alarm CD
+	// skal: mission time = 45 mins, no overtime
+	timings.timeSecs = 45 * 60;
+	timings.overtimeSecs = 0;
+	timings.allowOvertime = false;
+
+	// skal: enable/set global alarm CD
 	TgAIController__RadioAlarm::fGlobalAlarmCD=40.0f;	// 40s
 
 	// Reset runtime state and (re-)author the mission for this match.

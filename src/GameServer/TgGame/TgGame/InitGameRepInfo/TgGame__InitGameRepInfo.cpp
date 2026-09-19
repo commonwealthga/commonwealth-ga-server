@@ -2,11 +2,13 @@
 #include "src/GameServer/Engine/MapGameInfo/MapGameInfo.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
+#include "src/GameServer/GameModes/MissionTimings.hpp"
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
+#include "src/GameServer/GameModes/HardCore/HardCore.hpp"
 #include "src/GameServer/Maps/CtrRecursiveDoors/CtrRecursiveDoors.hpp"
 #include "src/GameServer/Maps/MapAdditions/MapAdditions.hpp"
 #include "src/GameServer/GameModes/CtrPointRotation/CtrPointRotation.hpp"
-#include "src/GameServer/TgGame/TgAIController/RadioAlarm/TgAIController__RadioAlarm.hpp"
+//#include "src/GameServer/TgGame/TgAIController/RadioAlarm/TgAIController__RadioAlarm.hpp"
 #include "src/GameServer/TgGame/TgDeployableFactory/SpawnObject/TgDeployableFactory__SpawnObject.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Globals.hpp"
@@ -91,20 +93,40 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gameClass = (full.rfind("Class ", 0) == 0) ? full.substr(6) : full;
 		}
 		const auto mapRow = MapGameInfo::LookupByNameAndGameMode(mapName, gameClass);
-		int        missionTimeSecs = mapRow ? mapRow->mission_time_secs : 15 * 60;
-		const int  overtimeSecs    = mapRow ? mapRow->overtime_secs     : 4 * 60;
-		const bool allowOvertime   = mapRow ? mapRow->allow_overtime    : true;
+		// skal unification & organisation:
+		//			regroup these into a struct passed as parameter to the custom game modes inits
+		// 			so they can be altered if necessary
+		//int        missionTimeSecs = mapRow ? mapRow->mission_time_secs : 15 * 60;
+		//const int  overtimeSecs    = mapRow ? mapRow->overtime_secs     : 4 * 60;
+		//const bool allowOvertime   = mapRow ? mapRow->allow_overtime    : true;
 
+		MissionTimings timings;
+
+		if (mapRow) {
+			timings.timeSecs 			= mapRow->mission_time_secs;
+			timings.overtimeSecs 	= mapRow->overtime_secs;
+			timings.allowOvertime = mapRow->allow_overtime;
+		}
+		else {
+			timings.timeSecs 			= 15 * 60;
+			timings.overtimeSecs 	= 4 * 60;
+			timings.allowOvertime	= true;
+		}
+		timings.minBossTimeSecs = 0;
+
+		// skal unification & organisation
+		//			moved & unified into a call to {CustomGameMode}::checkInit()
+		//			slightly below
 		// Super Agent is one long mission (5-min hold + travel + final capture).
 		// InitGameRepInfo runs AFTER TgGame__LoadGameConfig and re-derives the
 		// mission length from map_game_info, so the override has to be reapplied
 		// here too or it clobbers LoadGameConfig's 45-min back to the map default.
-		if (SuperAgent::IsActive()) missionTimeSecs = 45 * 60;
+		/*if (SuperAgent::IsActive()) missionTimeSecs = 45 * 60;
 		if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_HARDCORE_SECURITY) {
 			missionTimeSecs = 25 * 60;
 			// Same global scanner alarm cooldown as Super Agent (SuperAgent::Init).
 			TgAIController__RadioAlarm::fGlobalAlarmCD = 40.0f;
-		}
+		}*/
 
 		gamerep->GameClass = Game->Class;
 		gamerep->r_GameType = Game->m_GameType;
@@ -150,15 +172,17 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		gamerep->r_nVictoryBonusLives = FetchVictoryBonusLives();
 
 
-		Game->m_fGameMissionTime  = static_cast<float>(missionTimeSecs);
-		Game->m_fGameOvertimeTime = static_cast<float>(overtimeSecs);
-		Game->m_bAllowOvertime    = allowOvertime ? 1 : 0;
-		Game->m_eTimerState = 0;
-		Game->TimeLimit = missionTimeSecs;
-		gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+		// skal unification & organisation
+		//		moved a bit lower, after the {CustomGameMode}::checkInit() so that timings may be altered
+		//Game->m_fGameMissionTime  = static_cast<float>(timings.timeSecs);
+		//Game->m_fGameOvertimeTime = static_cast<float>(timings.overtimeSecs);
+		//Game->m_bAllowOvertime    = timings.allowOvertime ? 1 : 0;
+		//Game->m_eTimerState = 0;
+		//Game->TimeLimit = missionTimeSecs;
+		//gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
 
-		gamerep->TimeLimit = Game->TimeLimit;
-		gamerep->RemainingTime = Game->TimeLimit;
+		//gamerep->TimeLimit = Game->TimeLimit;
+		//gamerep->RemainingTime = Game->TimeLimit;
 
 		// If objectives weren't self-registered via AddToList/AddObjectivePointToList,
 		// use cached actors to add them manually.
@@ -180,17 +204,37 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			}
 		}
 
+		// skal unification & organisation
+		//			unified into a call to {CustomGameMode}::checkInit()
 		// Super Agent custom mode: seed + register the two extra proximity
 		// objectives (no-op unless the match runs under the custom difficulty).
 		// Unconditional: the manual-registration block above only runs when the
 		// objective list was empty, but our seeding must happen either way.
-		SuperAgent::Init(Game);
+		// skal: moved altering the timings there
+		SuperAgent::CheckInit(timings, Game);
 
+		// skal unification & organisation
+		//			unified into a call to {CustomGameMode}::checkInit()
+		// Hardcore custom mode: alter timings and other necessary initializations
+		Hardcore::CheckInit(timings, Game);
+
+		// skal unification & organisation
+		//			unified into a call to {CustomGameMode}::checkInit()
 		// Custom Point-Rotation mode on the CTR_* maps — seeds KOTH-345 rotation
 		// points + neutralizes the stock objectives. No-op unless the instance is
 		// running as TgGame_PointRotation on a surveyed CTR map.
-		CtrPointRotation::Init(Game);
+		CtrPointRotation::CheckInit(timings, Game);
 
+		// skal unification & organisation
+		//		timings moved here
+		Game->m_fGameMissionTime  = static_cast<float>(timings.timeSecs);
+		Game->m_fGameOvertimeTime = static_cast<float>(timings.overtimeSecs);
+		Game->m_bAllowOvertime    = timings.allowOvertime ? 1 : 0;
+		Game->m_eTimerState = 0;
+		gamerep->RemainingTime = gamerep->TimeLimit = Game->TimeLimit = timings.timeSecs;
+		gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+
+		// special cases for special people...
 		if (mapName == "CTR_Recursive_P") {
 			// Unfinished map: the attacker spawn door never opens. Resolve + cache
 			// its leaf actors here at init; they get hidden at mission start (from
@@ -268,29 +312,29 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			// Game->TimeLimit = 210;
 
 
-// function float GetSetupTime()
-// {
-//     // End:0x3B
-//     if(TgRepInfo_Game(GameReplicationInfo).IsPvEMission())
-//     {
-//         // End:0x32
-//         if(int(m_GameType) == int(11))
-//         {
-//             return 30.0000000;
-//         }
-//         return 15.0000000;        
-//     }
-//     else
-//     {
-//         // End:0x4E
-//         if(IsTerritory())
-//         {
-//             return 120.0000000;
-//         }
-//     }
-//     return 60.0000000;
-//     //return ReturnValue;    
-// }
+			// function float GetSetupTime()
+			// {
+			//     // End:0x3B
+			//     if(TgRepInfo_Game(GameReplicationInfo).IsPvEMission())
+			//     {
+			//         // End:0x32
+			//         if(int(m_GameType) == int(11))
+			//         {
+			//             return 30.0000000;
+			//         }
+			//         return 15.0000000;        
+			//     }
+			//     else
+			//     {
+			//         // End:0x4E
+			//         if(IsTerritory())
+			//         {
+			//             return 120.0000000;
+			//         }
+			//     }
+			//     return 60.0000000;
+			//     //return ReturnValue;    
+			// }
 
 
 			GameDef->s_nMaxRoundNumber = bDomeDefense ? 5 : 4;
@@ -362,10 +406,11 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nPointsToWin = 3;
 			gamerep->r_nRoundNumber = 1;
 			gamerep->r_nMaxRoundNumber = 5;
-			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
-			gamerep->TimeLimit = Game->m_fMissionTime;
-			gamerep->RemainingTime = Game->m_fMissionTime;
-			Game->TimeLimit = missionTimeSecs;
+			// skal already done above
+			//gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+			//gamerep->TimeLimit = Game->m_fMissionTime;
+			//gamerep->RemainingTime = Game->m_fMissionTime;
+			//Game->TimeLimit = missionTimeSecs;
 
 			// PointRotation UC default is 30s between rounds; we shorten to 20s
 			// to match the original feel. Pairs with ROTATION_BANNER_LEAD_SECS=17
@@ -395,10 +440,11 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nPointsToWin = 3;
 			gamerep->r_nRoundNumber = 1;
 			// gamerep->r_nMaxRoundNumber = 5;
-			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
-			gamerep->TimeLimit = Game->m_fMissionTime;
-			gamerep->RemainingTime = Game->m_fMissionTime;
-			Game->TimeLimit = missionTimeSecs;
+			// skal: already done above
+			//gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+			//gamerep->TimeLimit = Game->m_fMissionTime;
+			//gamerep->RemainingTime = Game->m_fMissionTime;
+			//Game->TimeLimit = missionTimeSecs;
 
 			if (mapName == "Inception_ALL" || mapName == "Inception_3_TEMP" || mapName == "Adrenaline_P" || mapName == "Skylark_P" || mapName == "AgencyZero_P") {
 				gamerep->r_bIsTutorialMap = 1;
@@ -442,7 +488,8 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nPointsToWin = 0;
 			gamerep->r_nRoundNumber = 0;
 			gamerep->r_nMaxRoundNumber = 0;
-			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+			// skal: already done above
+			//gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
 		}
 
 		if (GameClassName == "Class TgGame.TgGame_OpenWorldPVE") {
@@ -463,7 +510,8 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nPointsToWin = 0;
 			gamerep->r_nRoundNumber = 0;
 			gamerep->r_nMaxRoundNumber = 0;
-			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+			// skal: already done above
+			//gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
 		}
 
 		if (GameClassName == "Class TgGame.TgGame_Escort") {
@@ -484,10 +532,11 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nPointsToWin = 3;
 			gamerep->r_nRoundNumber = 1;
 			gamerep->r_nMaxRoundNumber = 3;
-			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
-			gamerep->TimeLimit = Game->m_fMissionTime;
-			gamerep->RemainingTime = Game->m_fMissionTime;
-			Game->TimeLimit = missionTimeSecs;
+			// skal: already done above
+			//gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+			//gamerep->TimeLimit = Game->m_fMissionTime;
+			//gamerep->RemainingTime = Game->m_fMissionTime;
+			//Game->TimeLimit = missionTimeSecs;
 		}
 
 		if (GameClassName == "Class TgGame.TgGame_Ticket") {
@@ -508,10 +557,11 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nPointsToWin = 800;  // also set by TgGame_Ticket::LoadGameConfig
 			gamerep->r_nRoundNumber = 1;
 			gamerep->r_nMaxRoundNumber = 3;
-			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
-			gamerep->TimeLimit = Game->m_fMissionTime;
-			gamerep->RemainingTime = Game->m_fMissionTime;
-			Game->TimeLimit = missionTimeSecs;
+			// skal: already done above
+			//gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+			//gamerep->TimeLimit = Game->m_fMissionTime;
+			//gamerep->RemainingTime = Game->m_fMissionTime;
+			//Game->TimeLimit = missionTimeSecs;
 		}
 
 		if (GameClassName == "Class TgGame.TgGame_DualCTF") {
@@ -532,10 +582,11 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_nPointsToWin = 3;
 			gamerep->r_nRoundNumber = 1;
 			gamerep->r_nMaxRoundNumber = 3;
-			gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
-			gamerep->TimeLimit = Game->m_fMissionTime;
-			gamerep->RemainingTime = Game->m_fMissionTime;
-			Game->TimeLimit = missionTimeSecs;
+			// skal: already done above
+			//gamerep->r_fMissionRemainingTime = Game->m_fMissionTime;
+			//gamerep->TimeLimit = Game->m_fMissionTime;
+			//gamerep->RemainingTime = Game->m_fMissionTime;
+			//Game->TimeLimit = missionTimeSecs;
 		}
 
 		// Per-map PvP override (v95). map_game_info.is_pvp wins over the

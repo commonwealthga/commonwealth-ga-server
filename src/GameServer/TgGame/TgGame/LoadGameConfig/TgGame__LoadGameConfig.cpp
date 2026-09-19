@@ -101,7 +101,7 @@ void __fastcall TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	// > 2.0) and TgInventoryManager.uc:125 (weapon-switch noise volume scales
 	// linearly). Map the active difficulty_value_id to the 1.0–3.0 range so
 	// AI hearing actually responds to the Ultra-Max tier.
-	Game->GameDifficulty = Config::GetDifficultyScalar();
+	Game->GameDifficulty = Config::GetDifficultyScalar().HP;
 
 	// Auto-resetting "infinite" mission timer. PollMissionTimer re-arms
 	// 'MissionTimer' via eventMissionTimerStart() right after the 60s

@@ -27,6 +27,7 @@
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/Config/Config.hpp"
 
 namespace {
 
@@ -596,13 +597,13 @@ void IpcClient::DrainInbound() {
                 }
                 int bot_id = 0;
                 std::string team_str;
-                float difficulty_scalar = 0.0f;
+                int difficulty_id;
                 bool henchman = false;
                 if (j.contains("args") && j["args"].is_object()) {
-                    bot_id            = j["args"].value("bot_id", 0);
-                    team_str          = j["args"].value("team", "");
-                    difficulty_scalar = j["args"].value("difficulty_scalar", 0.0f);
-                    henchman          = j["args"].value("henchman", false);
+                    bot_id          = j["args"].value("bot_id", 0);
+                    team_str        = j["args"].value("team", "");
+                    difficulty_id   = j["args"].value("difficulty_id", 0);
+                    henchman        = j["args"].value("henchman", false);
                 }
 
                 if (bot_id <= 0) {
@@ -629,8 +630,7 @@ void IpcClient::DrainInbound() {
                     continue;
                 }
 
-                TgPlayerActions::SpawnBotCmd::Execute(guid, bot_id, team, difficulty_scalar,
-                                                      henchman);
+                TgPlayerActions::SpawnBotCmd::Execute(guid, bot_id, team, Config::GetDifficultyScalar(difficulty_id),henchman);
             } else if (action == "deploy_target") {
                 if (CurrentMatchIsPVP()) {
                     Logger::Log("chat-command",

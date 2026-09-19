@@ -2,6 +2,7 @@
 
 class ATgGame;
 class ATgMissionObjective;
+struct MissionTimings;
 
 // Custom Point-Rotation mode on the repurposed CTR_* maps. At match init, seeds
 // one KOTH objective (asm objective id 345 "01_ROTATION_Large") at each surveyed
@@ -13,7 +14,21 @@ class ATgMissionObjective;
 // has surveyed points — so the original CTR mode (DualCTF/Mission) is untouched.
 // Channel: "ctrrot".
 namespace CtrPointRotation {
-	void Init(ATgGame* Game);
+
+	// True once Init has seeded rotation points on the current map — i.e. the
+	// custom CTR rotation variant is running. Gates the manual announcer alerts
+	// (rotation banner / activation countdown) that retail Rot_* maps already
+	// get from their own kismet.
+	bool IsActive();
+
+	// skal unification & organisation
+	// initialize necessary internals for this game mode
+	void Init(MissionTimings& timings, ATgGame* Game);
+	// check if the game is this custom mode and initialize it if so
+	void CheckInit(MissionTimings& timings, ATgGame* Game) {
+		if (!IsActive() || !Game) return;
+		Init(timings, Game);
+	}
 
 	// Called from TgMissionObjective::RegisterSelf for EVERY objective. On a CTR
 	// rotation map, the stock CTR objectives (CTFBot, etc.) run their PostBeginPlay
@@ -24,12 +39,6 @@ namespace CtrPointRotation {
 	// (so our own points, which register during Init, are never excluded) and on
 	// any non-CTR map.
 	void ExcludeLateStockObjective(ATgMissionObjective* Obj);
-
-	// True once Init has seeded rotation points on the current map — i.e. the
-	// custom CTR rotation variant is running. Gates the manual announcer alerts
-	// (rotation banner / activation countdown) that retail Rot_* maps already
-	// get from their own kismet.
-	bool IsActive();
 
 	// Retail Rot_* maps bake a TgBeaconFactory pair (teleport entrance pad +
 	// pickupable exit beacon) inside each team's spawn room; the CTR maps have

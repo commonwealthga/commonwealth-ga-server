@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include "src/Config/DifficultyScalar.hpp"
 
 namespace TgPlayerActions::SpawnBotCmd {
 
@@ -31,6 +32,6 @@ enum class Team {
 // MUST be called on the game thread (IpcClient::DrainInbound is invoked from
 // Actor::Tick, which satisfies this precondition).
 void Execute(const std::string& session_guid, int bot_id, Team team,
-             float difficulty_scalar_override, bool henchman = false);
+             DifficultyScalar difficulty_scalar_override, bool henchman = false);
 
 } // namespace TgPlayerActions::SpawnBotCmd
