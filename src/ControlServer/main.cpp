@@ -31,6 +31,10 @@
 #endif
 #include <windows.h>
 #endif
+#if defined(__linux__)
+#include <sched.h>
+#include <unistd.h>
+#endif
 
 // ---------------------------------------------------------------------------
 // Signal handling for clean shutdown
@@ -378,6 +382,31 @@ int main(int argc, char* argv[]) {
     // Load config from JSON file (falls back to defaults if file is absent).
     ControlServerConfig cfg = ControlServerConfig::Load(config_path);
     cfg.wine_debug = wine_debug;
+
+#if defined(__linux__)
+    // Exclude the control server's own PID from game_cpu_range. Spawned
+    // instances are pinned into that range via sched_setaffinity, but
+    // nothing previously stopped the kernel from also scheduling the
+    // control server (matchmaking loop, DB writes, IPC, HTTP overlay)
+    // onto those same cores, causing contention with live matches.
+    if (cfg.game_cpu_range.lo >= 0 && cfg.game_cpu_range.hi >= cfg.game_cpu_range.lo) {
+        const long nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+        if (nprocs > 0) {
+            cpu_set_t mask;
+            CPU_ZERO(&mask);
+            for (long c = 0; c < nprocs; ++c) {
+                if (c < cfg.game_cpu_range.lo || c > cfg.game_cpu_range.hi) {
+                    CPU_SET(static_cast<int>(c), &mask);
+                }
+            }
+            if (CPU_COUNT(&mask) > 0) {
+                sched_setaffinity(0, sizeof(mask), &mask);
+            } else {
+                Logger::Log("main", "game_cpu_range covers all cores; control server left unpinned\n");
+            }
+        }
+    }
+#endif
 
     // Signal handlers for clean shutdown
     std::signal(SIGINT,  on_signal);
