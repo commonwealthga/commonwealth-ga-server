@@ -15,9 +15,10 @@ void __fastcall TgPawn__TrackDamageTaken::Call(ATgPawn* Pawn, void* edx, int nDa
 		}
 
 		// Reveal-on-damage: hold the stealth reveal for ~1s, then full stealth returns.
-		if (Pawn->r_bIsStealthed) {
-			TgPawn__TickMakeVisibleCalculation::QueueRevealPulse(Pawn->r_nPawnId, 1.0f);
-		}
+		// Queued regardless of current cloak state so a quick unstealth/restealth
+		// (or a stealth activation right after an unstealthed hit) can't bypass it —
+		// TickMakeVisibleCalculation is what decides whether to visually apply it.
+		TgPawn__TickMakeVisibleCalculation::QueueRevealPulse(Pawn->r_nPawnId, 1.0f);
 	}
 
 	LogCallEnd();

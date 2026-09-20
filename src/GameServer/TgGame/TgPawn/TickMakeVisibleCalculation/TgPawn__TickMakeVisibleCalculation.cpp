@@ -27,11 +27,22 @@ void __fastcall TgPawn__TickMakeVisibleCalculation::Call(ATgPawn* Pawn, void* /*
 	const bool sensorRevealed =
 		Pawn->r_bIsStealthed && (Pawn->r_nSensorAlertLevel & 2) != 0;
 
+	// The reveal debt is a fact about elapsed time since the last hit, independent
+	// of whether the pawn happens to be cloaked on any given tick. Burn it down
+	// every tick it exists, and only drop it once it actually expires — an
+	// unstealth/restealth toggle must NOT reset or discard a still-pending debt,
+	// or it becomes a way to bypass the reveal (queue damage, unstealth, restealth
+	// into instant full cloak).
 	auto it = g_revealRemaining.find(Pawn->r_nPawnId);
-	const bool windowActive =
-		it != g_revealRemaining.end() && it->second > 0.0f && Pawn->r_bIsStealthed;
+	bool debtPending = it != g_revealRemaining.end() && it->second > 0.0f;
+	if (debtPending) {
+		it->second -= DeltaTime;
+		debtPending = it->second > 0.0f;
+		if (!debtPending) g_revealRemaining.erase(it);
+	}
+
+	const bool windowActive = debtPending && Pawn->r_bIsStealthed;
 	if (windowActive || sensorRevealed) {
-		if (windowActive) it->second -= DeltaTime;
 		Pawn->m_fMakeVisibleCurrent = 100.0f;  // server copy: drops the IsStealthed gate (targetable while revealed)
 
 		// Clamp-pinned stream: the client fold (m += incr) is sampled at the
@@ -53,24 +64,30 @@ void __fastcall TgPawn__TickMakeVisibleCalculation::Call(ATgPawn* Pawn, void* /*
 		}
 		Pawn->bNetDirty = 1;
 		Pawn->bForceNetUpdate = 1;
-		if (windowActive && it->second <= 0.0f) g_revealRemaining.erase(it);
 		return;
 	}
 
-	// Reveal ended: undo our one-time stealth-disable bump (symmetric decrement).
-	auto b = g_stealthDisabledBumped.find(Pawn->r_nPawnId);
-	if (b != g_stealthDisabledBumped.end()) {
-		if (Pawn->r_nStealthDisabled > 0) Pawn->r_nStealthDisabled--;
-		Pawn->bNetDirty = 1;
-		g_stealthDisabledBumped.erase(b);
+	// Reveal not visually active this tick (unstealthed, or debt fully expired).
+	// Only undo the stealth-disable bump once the debt itself is gone — a pawn
+	// that's merely unstealthed mid-debt keeps the gate closed so a same-window
+	// restealth doesn't briefly read as IsStealthed() before the next tick reapplies it.
+	if (!debtPending) {
+		auto b = g_stealthDisabledBumped.find(Pawn->r_nPawnId);
+		if (b != g_stealthDisabledBumped.end()) {
+			if (Pawn->r_nStealthDisabled > 0) Pawn->r_nStealthDisabled--;
+			Pawn->bNetDirty = 1;
+			g_stealthDisabledBumped.erase(b);
+		}
 	}
 
-	// No active reveal: restore the cloaked sentinel server-side and stop streaming
-	// (the client self-decays its own copy from 100 to exactly 0 at fadeRate/s).
+	// No active visual reveal: restore the cloaked sentinel server-side and stop
+	// streaming (the client self-decays its own copy from 100 to exactly 0 at
+	// fadeRate/s). Safe to do even mid-debt while unstealthed: the pawn isn't
+	// cloaked so there's nothing to reveal, and windowActive will re-drive these
+	// fields the moment r_bIsStealthed flips back true while debtPending.
 	if (Pawn->m_fMakeVisibleCurrent != 0.0f || Pawn->r_fMakeVisibleIncreased != 0.0f) {
 		Pawn->m_fMakeVisibleCurrent   = 0.0f;
 		Pawn->r_fMakeVisibleIncreased = 0.0f;
 		Pawn->bNetDirty = 1;
 	}
-	if (it != g_revealRemaining.end()) g_revealRemaining.erase(it);
 }

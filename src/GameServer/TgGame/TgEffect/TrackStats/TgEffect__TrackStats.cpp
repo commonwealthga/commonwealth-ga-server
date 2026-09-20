@@ -10,6 +10,7 @@
 #include "src/GameServer/TgGame/TgPawn/TrackDamagedBot/TgPawn__TrackDamagedBot.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackDamagedPlayer/TgPawn__TrackDamagedPlayer.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackDamageTaken/TgPawn__TrackDamageTaken.hpp"
+#include "src/GameServer/TgGame/TgPawn/TickMakeVisibleCalculation/TgPawn__TickMakeVisibleCalculation.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackDefense/TgPawn__TrackDefense.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackHealing/TgPawn__TrackHealing.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackKill/TgPawn__TrackKill.hpp"
@@ -251,12 +252,21 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 	const bool selfIndirect = (Instigator->r_Owner != nullptr &&
 	    Target == reinterpret_cast<AActor*>(Instigator->r_Owner));
 	if (selfDirect || selfIndirect) {
-		// Self-kill: without this, m_DeathZoomInfo never gets populated for
-		// a self-inflicted death and the release dialog shows "[unknown]".
-		// Credit the victim as their own killer (own name + device label).
 		if (fDamage > 0.0f &&
 		    ObjectClassCache::ClassNameContains(Target, "TgPawn")) {
 			ATgPawn* victim = (ATgPawn*)Target;
+
+			// Stealth reveal-on-damage still applies to self-inflicted damage
+			// (own grenade splash, own mine/turret, fall damage — TakeFallingDamage
+			// routes through ApplyDamage(nFallingDamage, self, ...), landing here
+			// as selfDirect). Getting hurt should break stealth no matter who or
+			// what dealt it; only the STYPE_DAMAGETAKEN/stats credit is excluded
+			// for self-damage, not the reveal timer.
+			TgPawn__TickMakeVisibleCalculation::QueueRevealPulse(victim->r_nPawnId, 1.0f);
+
+			// Self-kill: without this, m_DeathZoomInfo never gets populated for
+			// a self-inflicted death and the release dialog shows "[unknown]".
+			// Credit the victim as their own killer (own name + device label).
 			if (victim->Health <= 0) {
 				const int selfDeviceId = ResolveDeviceIdFromFireMode(
 					(UObject*)Impact.dw[0x54 / 4]);
