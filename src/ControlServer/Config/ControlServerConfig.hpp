@@ -25,7 +25,7 @@ struct ControlServerConfig {
     std::string xvfb_run_path      = "xvfb-run";
     std::string game_binary        = "/home/zax/games/ga/Binaries/GlobalAgenda.exe";
     std::string host               = "77.237.240.162";
-    std::string hostdns            = "77.237.240.162";
+    //std::string hostdns            = "77.237.240.162";    // skal deprecated
     std::string nat_networks       = "";
     std::string nat_ip             = "";
     std::string dll_overrides      = "version=n,b";

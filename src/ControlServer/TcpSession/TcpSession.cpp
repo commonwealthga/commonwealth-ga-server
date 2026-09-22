@@ -119,7 +119,7 @@ std::forward_list<asio::ip::address_v4> getLocalIPs() {
 }
 
 std::string detectExternalIP() {
-	std::string Output = "";
+	std::string Output = "127.0.0.1";	// default if anything goes wrong
 	const auto failed=[&](std::string msg) {
 		Logger::Log("skal", "%s\n", msg.c_str());	// skal move to logger tcp once debug is done
 		return Output;

@@ -84,7 +84,7 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
     if (j.contains("xvfb_run_path"))      cfg.xvfb_run_path      = j["xvfb_run_path"].get<std::string>();
     if (j.contains("game_binary"))        cfg.game_binary        = j["game_binary"].get<std::string>();
     if (j.contains("host"))               cfg.host               = j["host"].get<std::string>();
-    if (j.contains("hostdns"))            cfg.hostdns            = j["hostdns"].get<std::string>();
+    //if (j.contains("hostdns"))            cfg.hostdns            = j["hostdns"].get<std::string>(); // skal deprecated
     if (j.contains("nat_networks"))       cfg.nat_networks       = j["nat_networks"].get<std::string>();
     if (j.contains("nat_ip"))             cfg.nat_ip             = j["nat_ip"].get<std::string>();
     //if (j.contains("dll_overrides"))      cfg.dll_overrides      = j["dll_overrides"].get<std::string>();
