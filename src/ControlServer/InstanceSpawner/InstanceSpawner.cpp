@@ -299,8 +299,9 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
 
     const std::string game_binary_path = AbsolutePathFromCwd(cfg.game_binary);
     const std::string map_arg     = map_name + "?Game=" + game_mode;
-    const std::string host_arg    = "-host=" + cfg.host;
-    const std::string hostdns_arg = "-hostdns=" + cfg.hostdns;
+    // skal - those 2 are not needed
+    //const std::string host_arg    = "-host=" + cfg.host;
+    //const std::string hostdns_arg = "-hostdns=" + cfg.hostdns;
     const std::string port_arg    = "-port=" + std::to_string(udp_port);
     const std::string ipc_port_arg  = "-ipcport=" + std::to_string(cfg.ipc_port);
     const std::string inst_id_arg   = "-instanceid=" + std::to_string(instance_id);
@@ -331,7 +332,7 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         "server",
         map_arg,
         "-nolog", "-noconsole", "-unattended",
-        host_arg, hostdns_arg, port_arg,
+        /*host_arg, hostdns_arg,*/ port_arg,    // skal those 2 are unused
         "-seekfreeloading", "-tcp=300", "-nullrhi",
         ipc_port_arg, inst_id_arg, dbpath_arg, gamepath_arg,
         fixguids_arg, clearlogs_arg, crashdir_arg, logdir_arg,
@@ -466,8 +467,9 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         // game_argv_storage to keep c_str() pointers valid through execvp.
 
         std::string map_arg     = map_name + "?Game=" + game_mode;
-        std::string host_arg    = "-host=" + cfg.host;
-        std::string hostdns_arg = "-hostdns=" + cfg.hostdns;
+        // skal those 2 are unused
+        //std::string host_arg    = "-host=" + cfg.host;
+        //std::string hostdns_arg = "-hostdns=" + cfg.hostdns;
         std::string port_arg    = "-port=" + std::to_string(udp_port);
         std::string ipc_port_arg  = "-ipcport=" + std::to_string(cfg.ipc_port);
         std::string inst_id_arg   = "-instanceid=" + std::to_string(instance_id);
@@ -520,7 +522,7 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
             "server",
             map_arg.c_str(),
             "-nolog", "-noconsole", "-unattended",
-            host_arg.c_str(), hostdns_arg.c_str(), port_arg.c_str(),
+            /*host_arg.c_str(), hostdns_arg.c_str(),*/ port_arg.c_str(), // skal those 2 are unused
             "-seekfreeloading", "-tcp=300", "-nullrhi",
             ipc_port_arg.c_str(), inst_id_arg.c_str(), dbpath_arg.c_str(), gamepath_arg.c_str(),
             fixguids_arg.c_str(), clearlogs_arg.c_str(),
