@@ -26,6 +26,8 @@ struct ControlServerConfig {
     std::string game_binary        = "/home/zax/games/ga/Binaries/GlobalAgenda.exe";
     std::string host               = "77.237.240.162";
     std::string hostdns            = "77.237.240.162";
+    std::string nat_networks       = "";
+    std::string nat_ip             = "";
     std::string dll_overrides      = "version=n,b";
     std::string home_map_name      = "Dome3_VR_Arena_P";
     std::string home_map_game_mode = "TgGame.TgGame_Mission";
@@ -154,4 +156,6 @@ struct ControlServerConfig {
 
     // Load config from JSON file at path. Returns defaults if file is absent or invalid.
     static ControlServerConfig Load(const std::string& path);
+
+    bool checkNAT = false;
 };

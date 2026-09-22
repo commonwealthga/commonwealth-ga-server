@@ -85,7 +85,9 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
     if (j.contains("game_binary"))        cfg.game_binary        = j["game_binary"].get<std::string>();
     if (j.contains("host"))               cfg.host               = j["host"].get<std::string>();
     if (j.contains("hostdns"))            cfg.hostdns            = j["hostdns"].get<std::string>();
-    if (j.contains("dll_overrides"))      cfg.dll_overrides      = j["dll_overrides"].get<std::string>();
+    if (j.contains("nat_networks"))       cfg.nat_networks       = j["nat_networks"].get<std::string>();
+    if (j.contains("nat_ip"))             cfg.nat_ip             = j["nat_ip"].get<std::string>();
+    //if (j.contains("dll_overrides"))      cfg.dll_overrides      = j["dll_overrides"].get<std::string>();
     if (j.contains("home_map_name"))      cfg.home_map_name      = j["home_map_name"].get<std::string>();
     if (j.contains("home_map_game_mode")) cfg.home_map_game_mode = j["home_map_game_mode"].get<std::string>();
     if (j.contains("tcp_port"))           cfg.tcp_port           = j["tcp_port"].get<uint16_t>();

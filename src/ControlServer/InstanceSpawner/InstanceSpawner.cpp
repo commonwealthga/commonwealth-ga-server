@@ -299,8 +299,9 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
 
     const std::string game_binary_path = AbsolutePathFromCwd(cfg.game_binary);
     const std::string map_arg     = map_name + "?Game=" + game_mode;
-    const std::string host_arg    = "-host=" + cfg.host;
-    const std::string hostdns_arg = "-hostdns=" + cfg.hostdns;
+    // skal test
+    const std::string host_arg    = "";//"-host=" + cfg.host;
+    const std::string hostdns_arg = "";//"-hostdns=" + cfg.hostdns;
     const std::string port_arg    = "-port=" + std::to_string(udp_port);
     const std::string ipc_port_arg  = "-ipcport=" + std::to_string(cfg.ipc_port);
     const std::string inst_id_arg   = "-instanceid=" + std::to_string(instance_id);

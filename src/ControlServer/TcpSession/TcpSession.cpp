@@ -21,11 +21,165 @@
 #include <cstdlib>
 #include <ctime>
 #include <mutex>
-#ifndef _WIN32
+#if defined(_WIN32)
+#include <winsock2.h>
+#include <iphlpapi.h>
+//#include <ws2ipdef.h>
+#elif defined(__APPLE__) || defined(__linux__)
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <cerrno>
+//#include <arpa/inet.h>
+#include <ifaddrs.h>
+//#include <net/if.h>
+//#include <sys/types.h>
 #endif
+
+// skal - helper function to collect local IP addresses
+// please note this is currently untested on apple and unsure on linux
+
+namespace {
+
+std::forward_list<asio::ip::address_v4> getLocalIPs() {
+
+	std::forward_list<asio::ip::address_v4> Output;
+
+	const auto addAddress=[&](int FourBytes) {
+		const asio::ip::address_v4 address = asio::ip::make_address_v4(ntohl(FourBytes));
+		if (address.is_unspecified()) {
+			// shouldn't happen, safety
+			Logger::Log("skal", "Some error when making address !?\n");
+		} else if (address.is_loopback()) {
+			// skip localhost
+		} else {
+			Logger::Log("skal", "Found local address: %s\n", address.to_string().c_str());	// skal: move to logger tcp once debug is done
+			Output.push_front(address);
+		}
+	};
+
+#if defined(_WIN32)
+
+    ULONG bufLen = 15 * 1024;
+		char* buffer = new char[bufLen];
+
+		for (int nb_try = 0;;++nb_try) {
+
+	    PIP_ADAPTER_ADDRESSES Addresses = (PIP_ADAPTER_ADDRESSES) buffer;
+
+			switch (/*const ULONG err =*/ GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_MULTICAST|GAA_FLAG_SKIP_DNS_SERVER|GAA_FLAG_SKIP_FRIENDLY_NAME|GAA_FLAG_INCLUDE_ALL_INTERFACES, nullptr, Addresses, &bufLen)) {
+				case ERROR_BUFFER_OVERFLOW:
+					// re-allocate with given new size and re-try but only 3 times max
+					delete[] buffer;
+					if (nb_try>=3) return Output;	// abort - empty output
+					buffer = new char[bufLen];
+					break;
+
+				case NO_ERROR:
+					// walk the results and create our output
+					for (PIP_ADAPTER_ADDRESSES AddressBlock=&*Addresses;AddressBlock;AddressBlock=AddressBlock->Next) {
+						if (AddressBlock->OperStatus!=IfOperStatusUp) continue;	// skip interfaces that are not UP
+						for (PIP_ADAPTER_UNICAST_ADDRESS AddressInfo=AddressBlock->FirstUnicastAddress;AddressInfo;AddressInfo=AddressInfo->Next) {
+							const SOCKET_ADDRESS& Address=AddressInfo->Address;
+							// we requested only ipv4 but better safe than sorry
+							if (Address.lpSockaddr->sa_family != AF_INET) continue;
+							// add to the output (this skips loopback)
+							addAddress(reinterpret_cast<sockaddr_in*>(Address.lpSockaddr)->sin_addr.s_addr);
+						}
+					}
+					delete[] buffer;
+					return Output;
+
+				default:
+					// unknown error, abort - empty output
+					delete[] buffer;
+					return Output;
+			}
+		}
+
+#elif defined(__APPLE__) || defined(__linux__)
+
+    ifaddrs* Addresses = nullptr;
+    if (getifaddrs(&Addresses) == -1) return Output;
+    for (ifaddrs* AddressIT = Addresses;AddressIT;AddressIT=AddressIT->ifa_next) {
+			// per 'man getifaddrs' ifa_addr MAY be nullptr
+			// also skip interfaces that are not UP
+			if ((AddressIT->ifa_addr == nullptr)||((AddressIT->ifa_flags & IFF_UP) == 0)) continue;
+			// skip anything that is not IPv4
+			if (AddressIT->ifa_addr->sa_family != AF_INET) continue;
+			// add to the output (this skips loopback)
+			addAddress(reinterpret_cast<sockaddr_in*>(AddressIT->ifa_addr)->sin_addr.s_addr);
+    }
+    freeifaddrs(Addresses);
+    return Output;
+
+#else
+	#error "unsupported system as of now"
+#endif
+
+}
+
+std::string detectExternalIP() {
+	std::string Output = "";
+	const auto failed=[&](std::string msg) {
+		Logger::Log("skal", "%s\n", msg.c_str());	// skal move to logger tcp once debug is done
+		return Output;
+	};
+	try {
+		asio::io_context io_context;
+		asio::ip::tcp::resolver resolver(io_context);
+		auto endpoints = resolver.resolve("namaste.ovh", "80");
+		asio::ip::tcp::socket socket(io_context);
+		asio::connect(socket, endpoints);
+		std::string query = "GET /ip.php HTTP/1.1\r\nHost: namaste.ovh\r\nConnection: close\r\n\r\n";
+		asio::write(socket, asio::buffer(query));
+		char Char;
+		std::string Line; Line.reserve(512);
+		unsigned ContentLength = 0;
+		for(;;) {
+			Line.clear();
+			for(;;) {
+				try { if(1 != asio::read(socket, asio::buffer (&Char,1u))) return failed("read error 1"); } catch(std::exception&) { return failed("read error 2"); }
+				if (Char == '\r') continue;
+				if (Char == '\n') break;
+				Line += Char;
+			}
+			if (Line.empty()) {
+				// empty line means what follow would be the body, which in turns mean we MUST have got content-length
+				if (ContentLength == 0) return failed("invalid HTTP reply: could not find content-length");
+				// read the body - must be 'content-length' bytes (which we checked before is <= 15)
+				char ReplyArray[16u];
+				try { if (ContentLength != asio::read(socket, asio::buffer (ReplyArray, ContentLength))) return failed("read error 3"); } catch(std::exception&) { return failed("read error 4"); }
+				const std::string IPStr(ReplyArray, ContentLength);
+				//Logger::Log("skal", "IPStr = '%s'\n", IPStr.c_str());	// skal remove once debug is done
+				const asio::ip::address_v4 address = asio::ip::make_address_v4(IPStr);
+				if (address.is_unspecified()) {
+					return failed("error decoding HTTP reply");
+				} else {
+					Output = IPStr;
+					Logger::Log("skal", "public IP detected: %s\n", Output.c_str());
+					return Output;
+				}
+			}
+			static const std::string ContentLengthHdr = "Content-Length: ";
+			if (Line.compare (0, 16, ContentLengthHdr) == 0) {
+				//Logger::Log("skal", "Content-Length line found: '%s'\n", Line.c_str());	// skal remove once debug is done
+				const std::string ContentLengthStr = Line.substr(16);
+				try { ContentLength = std::stoi(ContentLengthStr); }
+				catch(std::exception&) { return failed("invalid HTTP reply: could not decode content-length value"); }
+				// we only expect a small text blob containg our IP, so content-length shouldnt be over 15 chars
+				//  xxx.xxx.xxx.xxx
+				if (ContentLength > 15) return failed("unexpected reply content, length > 15");
+			} else {
+				//Logger::Log("skal", "header line: '%s'\n", Line.c_str());	// skal remove once debug is done
+			}
+		}
+	}
+	catch (std::exception&) {
+		return failed("error fetching public IP");
+	}
+}
+
+}	// namespace
 
 // True when the queue has at least one map the account can play — base-game,
 // or locked behind a pack in `installed` (ga_user_dlc, launcher/admin-set).
@@ -54,7 +208,8 @@ std::map<int64_t, int64_t> TcpSession::pending_alliance_invites_;
 std::mutex TcpSession::pending_agency_mutex_;
 std::map<int64_t, int64_t> TcpSession::pending_agency_invites_;
 std::function<void()> TcpSession::on_need_home_map_;
-std::string TcpSession::s_host_ = "127.0.0.1";
+std::string TcpSession::s_host_Z = "127.0.0.1";
+std::forward_list<TcpSession::net_info_t> TcpSession::s_nat_info_list;
 uint16_t    TcpSession::s_chat_port_ = 9001;
 bool        TcpSession::s_allow_duplicate_account_logins_ = false;
 bool        TcpSession::s_require_password_verification_   = true;
@@ -279,9 +434,106 @@ void TcpSession::EnsureHomeMapWarm(const char* reason) {
     on_need_home_map_();
 }
 
-void TcpSession::SetNetworkConfig(const std::string& host, uint16_t chat_port) {
-    s_host_ = host;
-    s_chat_port_ = chat_port;
+void TcpSession::Init (const ControlServerConfig& cfg) {
+	SetNetworkConfig(cfg.host, cfg.chat_port, cfg.nat_networks, cfg.nat_ip);
+	SetLoginPolicy(cfg.allow_duplicate_account_logins,
+															cfg.require_password_verification);
+	SetModerationConfig(cfg.ban_spoof.mode,
+																	cfg.ban_spoof.fallback_close_sec,
+																	cfg.kick.fallback_close_sec);
+}
+
+void TcpSession::SetNetworkConfig(const std::string& host, uint16_t chat_port, const std::string& local_nets_str, const std::string& default_nat_ip_str) {
+	// skal add support to external IP auto-detection
+	if(host.empty() || (host == "auto")) {
+		s_host_Z = detectExternalIP();
+	} else {
+		s_host_Z = host;
+	}
+	s_chat_port_ = chat_port;
+	// skal - NAT support
+	if (!local_nets_str.empty()) {
+		// obtain local IPs list
+		const std::forward_list<asio::ip::address_v4> local_ip_list = getLocalIPs();
+		const auto countLocalIPs=[&]() -> int {
+			int Count = 0;
+			#pragma GCC diagnostic push
+			#pragma GCC diagnostic ignored "-Wunused-variable"
+			for (const auto& ip: local_ip_list) ++Count;
+			#pragma GCC diagnostic pop
+			return Count;
+		};
+		// default NAT ip
+		asio::ip::address_v4 default_nat_ip;
+		if (!default_nat_ip_str.empty()) {
+			// the global NAT ip if aplicable
+			asio::error_code Error;
+			default_nat_ip = asio::ip::make_address_v4(default_nat_ip_str, Error);
+			if (Error) {
+				Logger::Log("skal", "invalid default nat address: %s\n", default_nat_ip_str.c_str());	// skal move to logger tcp once debug is done
+			} else {
+				Logger::Log("skal", "default nat address: %s\n", default_nat_ip_str.c_str());	// skal move to logger tcp once debug is done
+			}
+		} else if (countLocalIPs () == 1) {
+			default_nat_ip = local_ip_list.front();
+			Logger::Log("skal", "default nat address: %s\n", default_nat_ip.to_string().c_str());	// skal move to logger tcp once debug is done
+		} else {
+			Logger::Log("skal", "no default nat address\n");	// skal move to logger tcp once debug is done
+		}
+		// lambda to match a network to one of the local IPs or fallback to the default one
+		const auto getLocalIP = [&](const asio::ip::network_v4& net) -> const asio::ip::address_v4& {
+				for (const asio::ip::address_v4& local_ip : local_ip_list) {
+					const asio::ip::address_v4_range range = net.hosts();
+					if (range.find (local_ip) != range.end()) return local_ip;
+				}
+				return default_nat_ip;
+		};
+		// parse local_nets_str
+		//	string is supposed to be a coma-separated list of ip4 networks such as 172.20.0.0/16 or 192.168.0.0/255.255.255.0
+		//	(any notation that asio understands)
+		//
+		// we then match those with our local IPs and build the working NAT list
+		// any network that doesn't match any of the local IPs is associated the default NAT IP if we have one or a warning is issued
+		// because it most likely means a mistake in the configuration
+		//
+		const auto isSpace=[](char Char) -> bool {
+			return (Char == ' ') || (Char == '\t');
+		};
+		const auto tryParseNet = [&](std::size_t from, std::size_t to) {
+			while((from <= to) && isSpace (local_nets_str[from])) ++from;
+			if (from == to) return;
+			while((to > 0) && isSpace (local_nets_str[to-1])) --to;
+			const std::string net_str = local_nets_str.substr(from, to - from);
+			asio::error_code Error;
+			asio::ip::network_v4 net = asio::ip::make_network_v4(net_str, Error);
+			if (Error) {
+				Logger::Log("skal", "Invalid network: '%s'\n", net_str.c_str());	// skal move to logger tcp once debug is done
+			}
+			else {
+				Logger::Log("skal", "NAT network: %s\n", net_str.c_str());	// remove once debug is done
+				const asio::ip::address_v4& local_ip = getLocalIP(net);
+				if (local_ip.is_unspecified()) {
+					Logger::Log("skal", "local net %s doesn't match any local IP and no default NAT IP was given in the config\n", net_str.c_str());	// skal move to logger tcp once debug is done
+				} else {
+					if (&local_ip==&default_nat_ip) {
+						Logger::Log("skal", "local net %s <-> local IP %s\n", net_str.c_str(), local_ip.to_string().c_str());	// remove once debug is done
+					} else {
+						Logger::Log("skal", "local net %s <-> default IP %s\n", net_str.c_str(), local_ip.to_string().c_str());	// remove once debug is done
+					}
+					s_nat_info_list.push_front({net.hosts(),local_ip});
+				}
+			}
+		};
+		std::size_t from = 0;
+		for (std::size_t i = 0; i < local_nets_str.size(); ++i) {
+			if (local_nets_str[i] == ',') {
+				tryParseNet(from, i);
+				from = i + 1;
+			}
+		}
+		if (from <= local_nets_str.size())
+			tryParseNet(from, local_nets_str.size());
+	}
 }
 
 void TcpSession::SetLoginPolicy(bool allow_duplicate_account_logins,
@@ -1613,27 +1865,47 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 		case GA_U::GSC_USER_LOGIN: {
 			std::error_code endpoint_ec;
 			auto remote_endpoint = socket_.remote_endpoint(endpoint_ec);
-			std::string remote_ip;
+			std::string remote_ip_str;
 			if (!endpoint_ec) {
-				remote_ip = remote_endpoint.address().to_string();
-				ip_address_ = remote_ip + ":" + std::to_string(remote_endpoint.port());
+				auto remote_ipZ = remote_endpoint.address();
+				remote_ip_str = remote_ipZ.to_string();
+				ip_address_ = remote_ip_str + ":" + std::to_string(remote_endpoint.port());
+				// skal - NAT support:
+				//		detect if the remote ip is part of one of our local networks
+				//		obv. done only if we do have some local networks defined and the address is IPv4 (it should be though since IPv6 is not supported)
+				if (!s_nat_info_list.empty() && remote_ipZ.is_v4()) {
+					const asio::ip::address_v4 remote_ip4 = remote_ipZ.to_v4();
+					for (const net_info_t& net : s_nat_info_list) {
+						if (net.ip_range.find(remote_ip4) != net.ip_range.end()) {
+							host_ = net.srv_ip.to_string();
+							Logger::Log("skal", "client %s is in one of our local networks, will serve the NAT ip: %s\n", remote_ip_str.c_str(), host_.c_str());	// skal - change to logger tcp when done debugging
+							break;
+						}
+					}
+				}
 			} else {
 				ip_address_ = "<unknown>";
 			}
 
-			if (IsLoginIpCoolingDown(remote_ip)) {
+			// skal - NAT support: fallback to public server address in any other situation (not local net match or no local nets at all)
+			if (host_.empty()) {
+				host_ = s_host_Z;
+				Logger::Log("skal", "client is NOT in one of our local networks, will server the public ip: %s\n", s_host_Z.c_str());
+			}
+
+			if (IsLoginIpCoolingDown(remote_ip_str)) {
 				Logger::Log("tcp",
 					"[%s] GSC_USER_LOGIN ignored during failed-login cooldown ip=%s\n",
-					Logger::GetTime(), remote_ip.c_str());
+					Logger::GetTime(), remote_ip_str.c_str());
 				break;
 			}
 
 			// IP ban check — runs BEFORE username parsing so banned-by-IP
 			// sources don't even get the transient pre-login response.
-			if (auto ip_ban = Database::FindActiveBanForIp(remote_ip)) {
-				Database::InsertSession(0, /*username yet unknown*/"", remote_ip, "banned");
+			if (auto ip_ban = Database::FindActiveBanForIp(remote_ip_str)) {
+				Database::InsertSession(0, /*username yet unknown*/"", remote_ip_str, "banned");
 				Logger::Log("ban", "[ban] ip-match ip=%s reason=\"%s\" mode=%s\n",
-					remote_ip.c_str(), ip_ban->reason.c_str(), s_ban_spoof_mode_.c_str());
+					remote_ip_str.c_str(), ip_ban->reason.c_str(), s_ban_spoof_mode_.c_str());
 				ApplyBanSpoof();
 				break;
 			}
@@ -1678,8 +1950,8 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				Logger::Log("tcp",
 					"[%s] GSC_USER_LOGIN reserved username rejected ip=%s\n",
 					Logger::GetTime(), ip_address_.c_str());
-				Database::InsertSession(0, requested_user_name, remote_ip, "rejected");
-				MarkFailedLoginIp(remote_ip);
+				Database::InsertSession(0, requested_user_name, remote_ip_str, "rejected");
+				MarkFailedLoginIp(remote_ip_str);
 				close_after_login_rejection();
 				break;
 			}
@@ -1694,8 +1966,8 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 				Logger::Log("tcp",
 					"[%s] GSC_USER_LOGIN invalid characters in account name rejected ip=%s hex=%s\n",
 					Logger::GetTime(), ip_address_.c_str(), hex_dump.c_str());
-				Database::InsertSession(0, requested_user_name, remote_ip, "rejected");
-				MarkFailedLoginIp(remote_ip);
+				Database::InsertSession(0, requested_user_name, remote_ip_str, "rejected");
+				MarkFailedLoginIp(remote_ip_str);
 				send_login_rejected_response("Invalid characters in account name.");
 				close_after_login_rejection();
 				break;
@@ -1771,7 +2043,7 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 							"[%s] GSC_USER_LOGIN incorrect password name=%s ip=%s blob=%s challenge=%s\n",
 							Logger::GetTime(), requested_user_name.c_str(), ip_address_.c_str(),
 							blob.empty() ? "missing" : "present", challenge.empty() ? "missing" : "present");
-						Database::InsertSession(auth.user_id, requested_user_name, remote_ip, "rejected");
+						Database::InsertSession(auth.user_id, requested_user_name, remote_ip_str, "rejected");
 						// Unlike bans (which stay silent so the player just sees a
 						// hang), a wrong password gets a real error the client can
 						// display. 18760 = the client's "incorrect password" msg id.
@@ -1809,9 +2081,9 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			// Account ban check — runs after username validation/dedup so a
 			// banned user typing a different name doesn't accidentally match.
 			if (auto user_ban = Database::FindActiveBanForUser(resolved_user_id)) {
-				Database::InsertSession(resolved_user_id, player_name, remote_ip, "banned");
+				Database::InsertSession(resolved_user_id, player_name, remote_ip_str, "banned");
 				Logger::Log("ban", "[ban] user-match user_id=%lld name=%s ip=%s reason=\"%s\" mode=%s\n",
-					(long long)resolved_user_id, player_name.c_str(), remote_ip.c_str(),
+					(long long)resolved_user_id, player_name.c_str(), remote_ip_str.c_str(),
 					user_ban->reason.c_str(), s_ban_spoof_mode_.c_str());
 				ApplyBanSpoof();
 				break;
@@ -1836,7 +2108,7 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			session_guid_ = GenerateSessionGuid();
 			RegisterSession(session_guid_, shared_from_this());
 			user_id_ = resolved_user_id;
-			session_row_id_   = Database::InsertSession(user_id_, player_name, remote_ip, "ok");
+			session_row_id_   = Database::InsertSession(user_id_, player_name, remote_ip_str, "ok");
 			session_login_at_ = (int64_t)std::time(nullptr);
 
 			// Strip any inventory rows / equip references for items the
@@ -5317,7 +5589,7 @@ void TcpSession::send_start_listen_response()
 
 	Write4B(response, GA_T::CLASS_MSG_ID, 0x022976);
 	Write4B(response, GA_T::HOME_MAP_GAME_ID, 0x050B);
-	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
+	WriteIP(response, GA_T::CHAT_NET_ADDR, host_, s_chat_port_);	// skal - NAT support: per-connection srv address instead of global
 	WriteNBytes(response, GA_T::SESSION_GUID, std::vector<uint8_t>(16));
 
 	WriteIP(response, GA_T::HOST_NET_ADDR, "127.0.0.1", 9002);
@@ -5412,7 +5684,7 @@ void TcpSession::send_select_character_response()
 		Logger::GetTime(), selected_character_id_, selected_profile_id_, session_guid_.c_str());
 
 	// TODO Phase 8: get instance address from instance registry
-	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
+	WriteIP(response, GA_T::CHAT_NET_ADDR, host_, s_chat_port_);	// skal - NAT support: per-connection srv address instead of global
 
 	send_response(response);
 }
@@ -5433,10 +5705,10 @@ void TcpSession::send_change_map_prep_response()
 
 	Write4B(response, GA_T::CLASS_MSG_ID, 0x022976);
 	Write4B(response, GA_T::HOME_MAP_GAME_ID, 0x050B);
-	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
+	WriteIP(response, GA_T::CHAT_NET_ADDR, host_, s_chat_port_);	// skal - NAT support: per-connection srv address instead of global
 	WriteNBytes(response, GA_T::SESSION_GUID, std::vector<uint8_t>(16));
 
-	WriteIP(response, GA_T::HOST_NET_ADDR, "127.0.0.1", 9002);
+	WriteIP(response, GA_T::HOST_NET_ADDR, "127.0.0.1", 9002); // skal - is this bogus !?
 	WriteString(response, GA_T::MAP_FILENAME, "Rot_Redistribution05");
 	Write2B(response, GA_T::PARAMETERS, 0x0);
 	Write4B(response, GA_T::MAP_GAME_ID, 0x050B);
@@ -5464,10 +5736,10 @@ void TcpSession::send_change_map_response()
 
 	Write4B(response, GA_T::CLASS_MSG_ID, 0x022976);
 	Write4B(response, GA_T::HOME_MAP_GAME_ID, 0x050B);
-	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
+	WriteIP(response, GA_T::CHAT_NET_ADDR, host_, s_chat_port_);	// skal - NAT support: per-connection srv address instead of global
 	WriteNBytes(response, GA_T::SESSION_GUID, std::vector<uint8_t>(16));
 
-	WriteIP(response, GA_T::HOST_NET_ADDR, "127.0.0.1", 9002);
+	WriteIP(response, GA_T::HOST_NET_ADDR, "127.0.0.1", 9002);	// skal - is this bogus !?
 	WriteString(response, GA_T::MAP_FILENAME, "Rot_Redistribution05");
 	Write2B(response, GA_T::PARAMETERS, 0x0);
 	Write4B(response, GA_T::MAP_GAME_ID, 0x050B);
@@ -5495,10 +5767,10 @@ void TcpSession::send_match_launch_response()
 
 	Write4B(response, GA_T::CLASS_MSG_ID, 0x022976);
 	Write4B(response, GA_T::HOME_MAP_GAME_ID, 0x050B);
-	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
+	WriteIP(response, GA_T::CHAT_NET_ADDR, host_, s_chat_port_);	// skal - NAT support: per-connection srv address instead of global
 	WriteNBytes(response, GA_T::SESSION_GUID, std::vector<uint8_t>(16));
 
-	WriteIP(response, GA_T::HOST_NET_ADDR, "127.0.0.1", 9002);
+	WriteIP(response, GA_T::HOST_NET_ADDR, "127.0.0.1", 9002);	// skal - is this bogus ?
 	WriteString(response, GA_T::MAP_FILENAME, "Rot_Redistribution05");
 	Write2B(response, GA_T::PARAMETERS, 0x0);
 	Write4B(response, GA_T::MAP_GAME_ID, 0x050B);
@@ -5527,7 +5799,7 @@ void TcpSession::send_go_play_tutorial_response()
 	append(response, item_count & 0xFF, item_count >> 8);
 
 	WriteString(response, GA_T::PLAYER_NAME, player_name);
-	WriteIP(response, GA_T::HOST_NET_ADDR, instance->ip_address, instance->udp_port);
+	WriteIP(response, GA_T::HOST_NET_ADDR, /*instance->ip_address*/host_, instance->udp_port);
 	WriteNBytes(response, GA_T::SESSION_GUID, GuidHexToBytes(session_guid_));
 	WriteString(response, GA_T::MAP_FILENAME, "Inception_ALL");
 	WriteString(response, GA_T::PARAMETERS, "?Game=TgGame.TgGame_Mission");
@@ -5536,7 +5808,7 @@ void TcpSession::send_go_play_tutorial_response()
 	Write4B(response, GA_T::MAP_INSTANCE_ID, 0x1);
 	Write4B(response, GA_T::ENTRY_BACKGROUND_IMAGE_RES_ID, 5289);
 	Write4B(response, GA_T::TASK_FORCE, 0x1);
-	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
+	WriteIP(response, GA_T::CHAT_NET_ADDR, host_, s_chat_port_);	// skal - NAT support: per-connection srv address instead of global
 
 	send_response(response);
 }
@@ -5595,7 +5867,7 @@ void TcpSession::send_go_play_to_instance(const InstanceInfo& target, int task_f
 	}
 
 	WriteString(response, GA_T::PLAYER_NAME, player_name);
-	WriteIP(response, GA_T::HOST_NET_ADDR, target.ip_address, target.udp_port);
+	WriteIP(response, GA_T::HOST_NET_ADDR, /*target.ip_address*/host_, target.udp_port);
 	WriteNBytes(response, GA_T::SESSION_GUID, GuidHexToBytes(session_guid_));
 	WriteString(response, GA_T::MAP_FILENAME, target.map_name);
 	WriteString(response, GA_T::PARAMETERS, "?Game=" + target.game_mode);
@@ -5604,7 +5876,7 @@ void TcpSession::send_go_play_to_instance(const InstanceInfo& target, int task_f
 	Write4B(response, GA_T::MAP_INSTANCE_ID, static_cast<uint32_t>(target.instance_id));
 	Write4B(response, GA_T::ENTRY_BACKGROUND_IMAGE_RES_ID, entry_background_image_res_id);
 	Write4B(response, GA_T::TASK_FORCE, static_cast<uint32_t>(task_force));
-	WriteIP(response, GA_T::CHAT_NET_ADDR, s_host_, s_chat_port_);
+	WriteIP(response, GA_T::CHAT_NET_ADDR, host_, s_chat_port_);	// skal - NAT support: per-connection srv address instead of global
 
 	const uint32_t profile_id = selected_profile_id_ != 0 ? selected_profile_id_ : GA_G::PROFILE_ID_ASSAULT;
 	const auto& class_config = GetClassConfig(profile_id);
