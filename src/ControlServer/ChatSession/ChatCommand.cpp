@@ -657,7 +657,7 @@ void DispatchSpawnTarget(const SpawnTargetArgs& args, const std::string& session
     payload["action"]       = "spawn_target";
     payload["args"]         = {
         {"bot_id",          args.bot_id},
-        {"team",            (args.team)},
+        {"team",            SpawnTargetTeamName(args.team)},
         {"difficulty_id",   args.difficulty_id},
         {"henchman",        args.henchman},
     };
