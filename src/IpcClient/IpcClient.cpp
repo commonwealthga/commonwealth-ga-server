@@ -614,7 +614,7 @@ void IpcClient::DrainInbound() {
                         "invalid bot_id=" + std::to_string(bot_id));
                     continue;
                 }
-            Logger::Log("skal","step 0 cmd received\n");
+
                 using TgPlayerActions::SpawnBotCmd::Team;
                 Team team;
                 if (team_str == "friend") {

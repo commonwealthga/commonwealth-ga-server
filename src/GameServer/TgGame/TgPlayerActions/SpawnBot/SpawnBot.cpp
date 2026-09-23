@@ -64,10 +64,6 @@ constexpr float kSpawnFloorBufferUU = 5.0f;
 
 void Execute(const std::string& session_guid, int bot_id, Team team,
              DifficultyScalar difficulty_scalar_override, bool henchman) {
-
-Logger::Log("skal","step 1\n");
-
-
     ATgPawn_Character* Pawn = FindPawnBySessionGuid(session_guid);
     if (!Pawn) {
         Logger::Log("chat-command",
@@ -76,9 +72,6 @@ Logger::Log("skal","step 1\n");
         Audit(session_guid, team, "ignored", "no player pawn");
         return;
     }
-
-
-Logger::Log("skal","step 2\n");
 
     // Resolve Friend/Enemy against the requesting player's current task force.
     // Without a PRI we can't tell who's on what side; bail rather than guess.
@@ -101,16 +94,10 @@ Logger::Log("skal","step 2\n");
                        : GTeamsData.Attackers;
     }
 
-Logger::Log("skal","step 3\n");
-
-
     // Use the controller's yaw when present (this is what the player is
     // actually aiming) and fall back to the pawn's body yaw otherwise.
     int yaw = Pawn->Controller ? Pawn->Controller->Rotation.Yaw : Pawn->Rotation.Yaw;
     float yaw_rad = static_cast<float>(yaw) * (kPi / 32768.0f);
-
-Logger::Log("skal","step 4\n");
-
 
     // Compute spawn Z from ground + bot.halfHeight + buffer. Pawn->Location.Z
     // is at the PLAYER's cylinder center; subtract the player's halfHeight to
@@ -124,25 +111,16 @@ Logger::Log("skal","step 4\n");
     // CDO default player halfHeight; close enough for the eyeball-altitude lift.
     constexpr float kPlayerCDOHalfHeight = 46.0f;
 
-Logger::Log("skal","step 5\n");
-
-
     FVector loc;
     loc.X = Pawn->Location.X + std::cos(yaw_rad) * kSpawnDistanceUU;
     loc.Y = Pawn->Location.Y + std::sin(yaw_rad) * kSpawnDistanceUU;
     loc.Z = (Pawn->Location.Z - kPlayerCDOHalfHeight) + botHalfHeight + kSpawnFloorBufferUU;
-
-
-Logger::Log("skal","step 6\n");
 
     FRotator rot;
     rot.Pitch = 0;
     // Make the bot face the player (its yaw = player yaw + 180°).
     rot.Yaw   = yaw + 32768;
     rot.Roll  = 0;
-
-
-Logger::Log("skal","step 7\n");
 
     ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
     if (!Game) {
@@ -152,9 +130,6 @@ Logger::Log("skal","step 7\n");
         Audit(session_guid, team, "ignored", "GGameInfo null");
         return;
     }
-
-Logger::Log("skal","step 8\n");
-
 
     Logger::Log("chat-command",
         "[ChatCmd][DLL] /spawn%s guid=%s bot_id=%d scalar_override=%.2f henchman=%d loc=(%.1f,%.1f,%.1f) yaw=%d\n",

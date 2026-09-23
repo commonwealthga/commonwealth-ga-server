@@ -352,7 +352,7 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
-#if 1
+#if 0
     // skal add support for -cheat
     if (cmd_name == "-cheat") {
         // -cheat zeus
@@ -668,8 +668,6 @@ void DispatchSpawnTarget(const SpawnTargetArgs& args, const std::string& session
             session_guid.c_str(), SpawnTargetTeamName(args.team),
             args.bot_id, args.difficulty_id);
     }
-    else Logger::Log("skal", "sent spawn cmd command=-spawn%s bot_id=%d difficulty=%d\n",
-            SpawnTargetTeamName(args.team), args.bot_id, args.difficulty_id);
 }
 
 static void DispatchSimpleAction(const std::string& action_name, const std::string& session_guid) {
