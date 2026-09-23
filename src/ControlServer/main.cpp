@@ -435,7 +435,7 @@ int main(int argc, char* argv[]) {
     //InstanceRegistry::SetHost(cfg.host); //skal: unused
 
     // Set network config for TcpSession responses
-    TcpSession::Init(cfg);
+    if (!TcpSession::Init(cfg)) return 1;
 
     // Set IPC server stats flags
     IpcServer::SetStatsToggles(cfg.device_stats_enabled,cfg.effectiveness_enabled);

@@ -119,12 +119,13 @@ std::forward_list<asio::ip::address_v4> getLocalIPs() {
 }
 
 std::string detectExternalIP() {
-	std::string Output = "127.0.0.1";	// default if anything goes wrong
-	const auto failed=[&](std::string msg) {
+	std::string Output;// = "127.0.0.1";	// default if anything goes wrong
+	const auto failed=[&](const std::string& msg) {
 		Logger::Log("skal", "%s\n", msg.c_str());	// skal move to logger tcp once debug is done
 		return Output;
 	};
 	try {
+		static constexpr int MaxIPChars = 15;	//  xxx.xxx.xxx.xxx
 		asio::io_context io_context;
 		asio::ip::tcp::resolver resolver(io_context);
 		auto endpoints = resolver.resolve("namaste.ovh", "80");
@@ -138,17 +139,18 @@ std::string detectExternalIP() {
 		for(;;) {
 			Line.clear();
 			for(;;) {
-				try { if(1 != asio::read(socket, asio::buffer (&Char,1u))) return failed("read error 1"); } catch(std::exception&) { return failed("read error 2"); }
+				try { if(1 != asio::read(socket, asio::buffer(&Char,1u))) return failed("read error 1"); } catch(std::exception&) { return failed("read error 2"); }
 				if (Char == '\r') continue;
 				if (Char == '\n') break;
 				Line += Char;
 			}
 			if (Line.empty()) {
-				// empty line means what follow would be the body, which in turns mean we MUST have got content-length
+				// empty line means what follows would be the body, which in turns mean we MUST have got content-length
 				if (ContentLength == 0) return failed("invalid HTTP reply: could not find content-length");
 				// read the body - must be 'content-length' bytes (which we checked before is <= 15)
-				char ReplyArray[16u];
-				try { if (ContentLength != asio::read(socket, asio::buffer (ReplyArray, ContentLength))) return failed("read error 3"); } catch(std::exception&) { return failed("read error 4"); }
+				char ReplyArray[MaxIPChars+1]={0};
+				try { if (ContentLength != asio::read(socket, asio::buffer(ReplyArray, ContentLength))) return failed("read error 3"); } catch(std::exception&) { return failed("read error 4"); }
+				ReplyArray[ContentLength] = 0;
 				const std::string IPStr(ReplyArray, ContentLength);
 				//Logger::Log("skal", "IPStr = '%s'\n", IPStr.c_str());	// skal remove once debug is done
 				const asio::ip::address_v4 address = asio::ip::make_address_v4(IPStr);
@@ -161,14 +163,14 @@ std::string detectExternalIP() {
 				}
 			}
 			static const std::string ContentLengthHdr = "Content-Length: ";
-			if (Line.compare (0, 16, ContentLengthHdr) == 0) {
+			static constexpr int ContentLengthHdrSz = 16;
+			if (Line.compare (0, ContentLengthHdrSz, ContentLengthHdr) == 0) {
 				//Logger::Log("skal", "Content-Length line found: '%s'\n", Line.c_str());	// skal remove once debug is done
-				const std::string ContentLengthStr = Line.substr(16);
+				const std::string ContentLengthStr = Line.substr(ContentLengthHdrSz);
 				try { ContentLength = std::stoi(ContentLengthStr); }
 				catch(std::exception&) { return failed("invalid HTTP reply: could not decode content-length value"); }
-				// we only expect a small text blob containg our IP, so content-length shouldnt be over 15 chars
-				//  xxx.xxx.xxx.xxx
-				if (ContentLength > 15) return failed("unexpected reply content, length > 15");
+				// we only expect a small text blob containg our IP, so content-length shouldnt be over 'MaxIPChars' chars
+				if (ContentLength > MaxIPChars) return failed("unexpected reply content, length > 15");
 			} else {
 				//Logger::Log("skal", "header line: '%s'\n", Line.c_str());	// skal remove once debug is done
 			}
@@ -434,22 +436,51 @@ void TcpSession::EnsureHomeMapWarm(const char* reason) {
     on_need_home_map_();
 }
 
-void TcpSession::Init (const ControlServerConfig& cfg) {
-	SetNetworkConfig(cfg.host, cfg.chat_port, cfg.nat_networks, cfg.nat_ip);
+bool TcpSession::Init (const ControlServerConfig& cfg) {
+	if (!SetNetworkConfig(cfg.hostZ, cfg.chat_port, cfg.nat_networks, cfg.nat_ip)) return false;
 	SetLoginPolicy(cfg.allow_duplicate_account_logins,
 															cfg.require_password_verification);
 	SetModerationConfig(cfg.ban_spoof.mode,
 																	cfg.ban_spoof.fallback_close_sec,
 																	cfg.kick.fallback_close_sec);
+	return true;
 }
 
-void TcpSession::SetNetworkConfig(const std::string& host, uint16_t chat_port, const std::string& local_nets_str, const std::string& default_nat_ip_str) {
+bool TcpSession::SetNetworkConfig(const std::string& host, uint16_t chat_port, const std::string& local_nets_str, const std::string& default_nat_ip_str) {
+#if 1
 	// skal add support to external IP auto-detection
 	if(host.empty() || (host == "auto")) {
 		s_host_Z = detectExternalIP();
+		if (s_host_Z.empty()) return false;
 	} else {
-		s_host_Z = host;
+		// must be an ip for the UE messages -> needs resolving
+		asio::error_code Error;
+		asio::ip::address_v4 host_adr = asio::ip::make_address_v4(host, Error);
+		if (Error || host_adr.is_unspecified()) {
+			Logger::Log("skal", "'host' is not an IP, trying to resolve\n");
+			asio::io_context io_context;
+			asio::ip::tcp::resolver resolver(io_context);
+			auto endpoints = resolver.resolve(asio::ip::tcp::v4(), host, "");
+			switch (endpoints.size()) {
+				case 0:
+					Logger::Log("skal", "Could not resolve host into an address: '%s'\n", host.c_str());
+					return false;
+				case 1:
+					s_host_Z = endpoints.begin()->endpoint().address().to_string();
+					break;
+				default:
+					Logger::Log("skal", "Could not resolve host into an address (multiple results found): '%s'\n", host.c_str());
+					return false;
+			}
+		} else {
+			s_host_Z = host;
+		}
+		Logger::Log("skal", "Public address: %s\n", s_host_Z.c_str());
 	}
+
+#else
+	s_host_Z = host;
+#endif
 	s_chat_port_ = chat_port;
 	// skal - NAT support
 	if (!local_nets_str.empty()) {
@@ -534,6 +565,7 @@ void TcpSession::SetNetworkConfig(const std::string& host, uint16_t chat_port, c
 		if (from <= local_nets_str.size())
 			tryParseNet(from, local_nets_str.size());
 	}
+	return true;
 }
 
 void TcpSession::SetLoginPolicy(bool allow_duplicate_account_logins,
@@ -1867,18 +1899,18 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			auto remote_endpoint = socket_.remote_endpoint(endpoint_ec);
 			std::string remote_ip_str;
 			if (!endpoint_ec) {
-				auto remote_ipZ = remote_endpoint.address();
-				remote_ip_str = remote_ipZ.to_string();
+				auto remote_ip = remote_endpoint.address();
+				remote_ip_str = remote_ip.to_string();
 				ip_address_ = remote_ip_str + ":" + std::to_string(remote_endpoint.port());
 				// skal - NAT support:
 				//		detect if the remote ip is part of one of our local networks
 				//		obv. done only if we do have some local networks defined and the address is IPv4 (it should be though since IPv6 is not supported)
-				if (!s_nat_info_list.empty() && remote_ipZ.is_v4()) {
-					const asio::ip::address_v4 remote_ip4 = remote_ipZ.to_v4();
+				if (host_.empty() && !s_nat_info_list.empty() && remote_ip.is_v4()) {
+					const asio::ip::address_v4 remote_ip4 = remote_ip.to_v4();
 					for (const net_info_t& net : s_nat_info_list) {
 						if (net.ip_range.find(remote_ip4) != net.ip_range.end()) {
 							host_ = net.srv_ip.to_string();
-							Logger::Log("skal", "client %s is in one of our local networks, will serve the NAT ip: %s\n", remote_ip_str.c_str(), host_.c_str());	// skal - change to logger tcp when done debugging
+							Logger::Log("skal", "client %s is in one of our local networks, will serve the NAT address: %s\n", remote_ip_str.c_str(), host_.c_str());	// skal - change to logger tcp when done debugging
 							break;
 						}
 					}
@@ -1890,7 +1922,7 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			// skal - NAT support: fallback to public server address in any other situation (not local net match or no local nets at all)
 			if (host_.empty()) {
 				host_ = s_host_Z;
-				Logger::Log("skal", "client is NOT in one of our local networks, will server the public ip: %s\n", s_host_Z.c_str());
+				Logger::Log("skal", "client %s is NOT in one of our local networks, will server the public address: %s\n", remote_ip_str.c_str(), host_.c_str());
 			}
 
 			if (IsLoginIpCoolingDown(remote_ip_str)) {

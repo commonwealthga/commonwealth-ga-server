@@ -218,7 +218,7 @@ private:
     static int         s_ban_spoof_fallback_close_sec_;    // 0 = never
     static int         s_kick_fallback_close_sec_;         // 0 = never
 
-    static void SetNetworkConfig(const std::string& host, uint16_t chat_port, const std::string& local_nets_str, const std::string& default_nat_ip_str);
+    static bool SetNetworkConfig(const std::string& host, uint16_t chat_port, const std::string& local_nets_str, const std::string& default_nat_ip_str);
     static void SetLoginPolicy(bool allow_duplicate_account_logins,
                                bool require_password_verification = true);
     static void SetModerationConfig(const std::string& ban_spoof_mode,
@@ -226,7 +226,7 @@ private:
                                     int kick_fallback_close_sec);
 
 public:
-    static void Init(const ControlServerConfig& cfg);
+    static bool Init(const ControlServerConfig& cfg);
 
     static void SetHomeMapSpawner(std::function<void()> cb);
 

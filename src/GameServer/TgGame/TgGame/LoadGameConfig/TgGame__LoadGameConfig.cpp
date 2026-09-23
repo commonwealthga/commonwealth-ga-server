@@ -89,6 +89,12 @@ void __fastcall TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_HARDCORE_SECURITY) {
 		missionTimeSecs = 25 * 60;
 	}
+	/*if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_MEGA_MAX_SECURITY) {
+		missionTimeSecs = 20 * 60;
+	}*/
+	if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_GIGA_MAX_SECURITY) {
+		missionTimeSecs = 20 * 60;
+	}
 	Game->m_fGameMissionTime  = static_cast<float>(missionTimeSecs);
 	Game->m_fGameOvertimeTime = static_cast<float>(overtimeSecs);
 	Game->m_bAllowOvertime    = allowOvertime ? 1 : 0;

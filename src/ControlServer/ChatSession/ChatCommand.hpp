@@ -167,7 +167,7 @@ enum class CheatMode {
 };
 
 struct CheatArgs {
-    CheatMode cheat_mode;
+    CheatMode cheat_mode = CheatMode::None;
 };
 
 // Master switch for -components (the inventory-desync test harness).

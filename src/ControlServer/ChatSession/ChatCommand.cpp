@@ -141,9 +141,9 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
 
     if (cmd_name == "-spawnfriend" || cmd_name == "-spawnenemy" ||
         cmd_name == "-spawnhenchman") {
-        // -spawnfriend    [low|medium|high|max|umax|gmax|hc] <bot_id>
-        // -spawnenemy     [low|medium|high|max|umax|gmax|hc] <bot_id>
-        // -spawnhenchman  [low|medium|high|max|umax|gmax|hc] <bot_id>
+        // -spawnfriend    [low|medium|high|max|umax|mmax|gmax|hc] <bot_id>
+        // -spawnenemy     [low|medium|high|max|umax|mmax|gmax|hc] <bot_id>
+        // -spawnhenchman  [low|medium|high|max|umax|mmax|gmax|hc] <bot_id>
         //   (= -spawnfriend + henchman flag, player becomes its leader)
         // Difficulty token is optional; bare form falls back to the map's
         // current difficulty in the DLL (scalar=0 sentinel).
@@ -172,6 +172,7 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
             //  high    = HIGH_SECURITY / DOUBLE_AGENT / ADVANCED
             //  max     = MAXIMUM_SECURITY / EXPERT
             //  umax    = ULTRA_MAX_SECURITY (SR? DDR?)
+            //  mmax    = custom megamax
             //  gmax    = custom gigamax
             //  hc      = custom hardcore
             //  sa      = custom super-agent
@@ -182,6 +183,7 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
                 if (tok_lower == "high")    return 1030;
                 if (tok_lower == "max")     return 1259;
                 if (tok_lower == "umax")    return 1471;
+                if (tok_lower == "mmax")    return 3000;
                 if (tok_lower == "gmax")    return 4000;
                 if (tok_lower == "hc")      return 5000;
                 if (tok_lower == "sa")      return 10000;
@@ -362,15 +364,14 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         // -cheat athena
         out.recognized = true;
         out.suppress_broadcast = true;
+        if (rest.empty()) return out;  // bad arg — silent reject
         CheatArgs args;
-        if (!rest.empty()) {
-            if (rest == "zeus")         args.cheat_mode = CheatMode::Zeus;
-            else if (rest == "icarus")  args.cheat_mode = CheatMode::Icarus;
-            else if (rest == "hades")   args.cheat_mode = CheatMode::Hades;
-            else if (rest == "apollo")  args.cheat_mode = CheatMode::Apollo;
-            else if (rest == "athena")  args.cheat_mode = CheatMode::Athena;
-            else return out;  // bad arg — silent reject
-        }
+        if (rest == "zeus")         args.cheat_mode = CheatMode::Zeus;
+        else if (rest == "icarus")  args.cheat_mode = CheatMode::Icarus;
+        else if (rest == "hades")   args.cheat_mode = CheatMode::Hades;
+        else if (rest == "apollo")  args.cheat_mode = CheatMode::Apollo;
+        else if (rest == "athena")  args.cheat_mode = CheatMode::Athena;
+        else return out;  // bad arg — silent reject
         out.cheat = args;
         return out;
     }
@@ -657,7 +658,7 @@ void DispatchSpawnTarget(const SpawnTargetArgs& args, const std::string& session
     payload["action"]       = "spawn_target";
     payload["args"]         = {
         {"bot_id",          args.bot_id},
-        {"team",            (args.team)},
+        {"team",            SpawnTargetTeamName(args.team)},
         {"difficulty_id",   args.difficulty_id},
         {"henchman",        args.henchman},
     };
