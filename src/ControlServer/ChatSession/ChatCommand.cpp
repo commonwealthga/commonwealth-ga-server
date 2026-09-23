@@ -352,7 +352,7 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
-#if 0
+#if 1
     // skal add support for -cheat
     if (cmd_name == "-cheat") {
         // -cheat zeus
@@ -362,15 +362,14 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         // -cheat athena
         out.recognized = true;
         out.suppress_broadcast = true;
+        if (rest.empty()) return out;  // bad arg — silent reject
         CheatArgs args;
-        if (!rest.empty()) {
-            if (rest == "zeus")         args.cheat_mode = CheatMode::Zeus;
-            else if (rest == "icarus")  args.cheat_mode = CheatMode::Icarus;
-            else if (rest == "hades")   args.cheat_mode = CheatMode::Hades;
-            else if (rest == "apollo")  args.cheat_mode = CheatMode::Apollo;
-            else if (rest == "athena")  args.cheat_mode = CheatMode::Athena;
-            else return out;  // bad arg — silent reject
-        }
+        if (rest == "zeus")         args.cheat_mode = CheatMode::Zeus;
+        else if (rest == "icarus")  args.cheat_mode = CheatMode::Icarus;
+        else if (rest == "hades")   args.cheat_mode = CheatMode::Hades;
+        else if (rest == "apollo")  args.cheat_mode = CheatMode::Apollo;
+        else if (rest == "athena")  args.cheat_mode = CheatMode::Athena;
+        else return out;  // bad arg — silent reject
         out.cheat = args;
         return out;
     }
@@ -669,6 +668,8 @@ void DispatchSpawnTarget(const SpawnTargetArgs& args, const std::string& session
             session_guid.c_str(), SpawnTargetTeamName(args.team),
             args.bot_id, args.difficulty_id);
     }
+    else Logger::Log("skal", "sent spawn cmd command=-spawn%s bot_id=%d difficulty=%d\n",
+            SpawnTargetTeamName(args.team), args.bot_id, args.difficulty_id);
 }
 
 static void DispatchSimpleAction(const std::string& action_name, const std::string& session_guid) {

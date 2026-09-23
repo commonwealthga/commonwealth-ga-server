@@ -597,7 +597,7 @@ void IpcClient::DrainInbound() {
                 }
                 int bot_id = 0;
                 std::string team_str;
-                int difficulty_id;
+                int difficulty_id = 0;
                 bool henchman = false;
                 if (j.contains("args") && j["args"].is_object()) {
                     bot_id          = j["args"].value("bot_id", 0);
@@ -614,7 +614,7 @@ void IpcClient::DrainInbound() {
                         "invalid bot_id=" + std::to_string(bot_id));
                     continue;
                 }
-
+            Logger::Log("skal","step 0 cmd received\n");
                 using TgPlayerActions::SpawnBotCmd::Team;
                 Team team;
                 if (team_str == "friend") {
@@ -630,7 +630,7 @@ void IpcClient::DrainInbound() {
                     continue;
                 }
 
-                TgPlayerActions::SpawnBotCmd::Execute(guid, bot_id, team, Config::GetDifficultyScalar(difficulty_id),henchman);
+                TgPlayerActions::SpawnBotCmd::Execute(guid, bot_id, team,(difficulty_id?Config::GetDifficultyScalar(difficulty_id):Config::GetDifficultyScalar()),henchman);
             } else if (action == "deploy_target") {
                 if (CurrentMatchIsPVP()) {
                     Logger::Log("chat-command",
