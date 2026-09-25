@@ -141,10 +141,13 @@ DifficultyScalar Config::GetDifficultyScalar(int DifficultyId) {
 	switch (DifficultyId) {
 		case GA_G::DIFFICULTY_VALUE_ID_LOW_SECURITY:
 		case GA_G::DIFFICULTY_VALUE_ID_NOVICE:               		return DifficultyScalar(1.00f, 1.00f);
+		case GA_G::DIFFICULTY_VALUE_ID_NOVICE:               		return DifficultyScalar(1.00f, 1.00f);
 		case GA_G::DIFFICULTY_VALUE_ID_MEDIUM_SECURITY:
+		case GA_G::DIFFICULTY_VALUE_ID_ADEPT:                		return DifficultyScalar(1.25f, 1.09f);
 		case GA_G::DIFFICULTY_VALUE_ID_ADEPT:                		return DifficultyScalar(1.25f, 1.09f);
 		case GA_G::DIFFICULTY_VALUE_ID_HIGH_SECURITY:
 		case GA_G::DIFFICULTY_VALUE_ID_DOUBLE_AGENT:
+		case GA_G::DIFFICULTY_VALUE_ID_ADVANCED:             		return DifficultyScalar(1.50f, 1.30f);
 		case GA_G::DIFFICULTY_VALUE_ID_ADVANCED:             		return DifficultyScalar(1.50f, 1.30f);
 		case GA_G::DIFFICULTY_VALUE_ID_MAXIMUM_SECURITY:
 		case GA_G::DIFFICULTY_VALUE_ID_EXPERT:               		return DifficultyScalar(1.75f, 1.52f);

@@ -26,9 +26,18 @@
 #include <iphlpapi.h>
 //#include <ws2ipdef.h>
 #elif defined(__APPLE__) || defined(__linux__)
+#if defined(_WIN32)
+#include <winsock2.h>
+#include <iphlpapi.h>
+//#include <ws2ipdef.h>
+#elif defined(__APPLE__) || defined(__linux__)
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <cerrno>
+//#include <arpa/inet.h>
+#include <ifaddrs.h>
+//#include <net/if.h>
+//#include <sys/types.h>
 //#include <arpa/inet.h>
 #include <ifaddrs.h>
 //#include <net/if.h>
@@ -1897,6 +1906,7 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 		case GA_U::GSC_USER_LOGIN: {
 			std::error_code endpoint_ec;
 			auto remote_endpoint = socket_.remote_endpoint(endpoint_ec);
+			std::string remote_ip_str;
 			std::string remote_ip_str;
 			if (!endpoint_ec) {
 				auto remote_ip = remote_endpoint.address();

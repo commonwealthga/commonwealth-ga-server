@@ -433,6 +433,7 @@ int main(int argc, char* argv[]) {
     // Initialize instance registry
     InstanceRegistry::Init();
     //InstanceRegistry::SetHost(cfg.host); //skal: unused
+    //InstanceRegistry::SetHost(cfg.host); //skal: unused
 
     // Set network config for TcpSession responses
     if (!TcpSession::Init(cfg)) return 1;
