@@ -354,7 +354,7 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
-#if 0
+#if 1
     // skal add support for -cheat
     if (cmd_name == "-cheat") {
         // -cheat zeus
