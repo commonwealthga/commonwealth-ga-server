@@ -80,7 +80,7 @@ std::vector<int> GetDifficultyCascade(int primaryDifficulty) {
 				std::vector<int> Cascade; Cascade.reserve(10);
 				Cascade.push_back(primaryDifficulty);
 				for(int i=2;i<11;++i) Cascade.push_back(Data[i]);
-				return /*std::move*/(Cascade);
+				return (Cascade);
 			}
 
 		case GA_G::DIFFICULTY_VALUE_ID_DOUBLE_AGENT:
@@ -89,7 +89,7 @@ std::vector<int> GetDifficultyCascade(int primaryDifficulty) {
 				Logger::Log("tgbotfactory", "Invalid primary difficulty requested: %d\n", primaryDifficulty);
 				std::vector<int> Cascade; Cascade.reserve(1);
 				Cascade.push_back(primaryDifficulty);
-				return /*std::move*/(Cascade);
+				return Cascade;
 			}
 	}
 }
