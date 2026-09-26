@@ -86,6 +86,7 @@
 #include "src/GameServer/Engine/Actor/Spawn/Actor__Spawn.hpp"
 #include "src/GameServer/Engine/Actor/Tick/Actor__Tick.hpp"
 #include "src/GameServer/Engine/Pawn/PhysicsRotation/Pawn__PhysicsRotation.hpp"
+#include "src/GameServer/Engine/Pawn/IsNetRelevantFor/Pawn__IsNetRelevantFor.hpp"
 #include "src/GameServer/Engine/GameEngine/Tick/GameEngine__Tick.hpp"
 #include "src/GameServer/Engine/AutoReporter/GetLocalPlayerId/AutoReporter__GetLocalPlayerId.hpp"
 #include "src/GameServer/TgGame/TgActorFactory/LoadObjectConfig/TgActorFactory__LoadObjectConfig.hpp"
@@ -423,6 +424,7 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	Actor__Spawn::Install();
 	Actor__Tick::Install();
 	Pawn__PhysicsRotation::Install();
+	Pawn__IsNetRelevantFor::Install();
 	GameEngine__Tick::Install();
 	AutoReporter__GetLocalPlayerId::Install();
 
