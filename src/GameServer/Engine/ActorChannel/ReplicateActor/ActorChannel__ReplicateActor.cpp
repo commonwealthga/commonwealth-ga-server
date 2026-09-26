@@ -1,6 +1,9 @@
 #include "src/GameServer/Engine/ActorChannel/ReplicateActor/ActorChannel__ReplicateActor.hpp"
 #include "src/GameServer/Cosmetics/BrokenSuitSwap.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
+#include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+
+#include <unordered_map>
 
 // Jetpack-trail cosmetics that pollute other players' screens. We hide these
 // from every NON-owner connection; the owner keeps seeing their own trail.
@@ -20,6 +23,47 @@ static inline bool IsSuppressedTrail(int trailId) {
 // so these can't be expressed as named fields.
 static constexpr unsigned kOff_Channel_Connection = 0x3C;  // UChannel::Connection (UNetConnection*)
 static constexpr unsigned kOff_Channel_Actor      = 0x74;  // UActorChannel::Actor (AActor*)
+
+namespace {
+
+// ── Stealth position freeze ─────────────────────────────────────────────────
+//
+// A stealthed player's pawn is STILL replicated (the engine keeps it relevant,
+// and an always-relevant actor can't be dropped by IsNetRelevantFor anyway), so
+// every enemy client has a live, moving pawn to hang the jetpack trail FX on
+// even though the body mesh is hidden. We can't cheaply remove the actor here,
+// but we can stop it from TRACKING the wearer: to a connection whose viewer must
+// not see the wearer, present the last position the pawn held while visible. The
+// trail FX may still render, but it no longer reveals the player's position.
+//
+// Last visible position is keyed by r_nPawnId (survives UE3 pointer reuse).
+std::unordered_map<int, FVector> g_lastVisiblePos;
+
+bool IsPlayerControlled(ATgPawn* p) {
+	AController* c = p->Controller;
+	return c != nullptr && ObjectClassCache::ClassNameContains((UObject*)c, "PlayerController");
+}
+
+// Mirrors ATgPawn::ShouldUpdateStealthedFor (the client's own body-hide
+// predicate) plus our server-side sensor/scanner clauses: true == this viewer
+// must not see the stealthed wearer.
+bool HiddenFromViewer(ATgPawn* wearer, ATgPawn* viewer) {
+	if (viewer == nullptr) return false;
+	if (!wearer->IsEnemy((AActor*)viewer)) return false;
+	if (wearer->m_fMakeVisibleCurrent != 0.0f) return false;    // damage/scanner reveal
+	if (wearer->r_nSensorAlertLevel != 0) return false;         // deployable-sensor reveal
+	if (viewer->ScannerSeeStealthedPlayer(wearer)) return false; // personal scanner
+	return true;
+}
+
+ATgPawn* ViewerPawnForConnection(void* conn) {
+	if (conn == nullptr) return nullptr;
+	auto it = GClientConnectionsData.find((int32_t)(intptr_t)conn);
+	if (it == GClientConnectionsData.end()) return nullptr;
+	return it->second.Pawn;
+}
+
+}  // namespace
 
 void __fastcall ActorChannel__ReplicateActor::Call(void* Channel, void* edx) {
 	AActor* actor = *(AActor**)((char*)Channel + kOff_Channel_Actor);
@@ -49,12 +93,13 @@ void __fastcall ActorChannel__ReplicateActor::Call(void* Channel, void* edx) {
 			wearerIsBot = pri->bBot != 0;  // SpawnBotById stamps bBot on bot PRIs
 		}
 	}
+
+	void* conn = *(void**)((char*)Channel + kOff_Channel_Connection);
+
 	if (!assembly) {
 		CallOriginal(Channel, edx);
 		return;
 	}
-
-	void* conn = *(void**)((char*)Channel + kOff_Channel_Connection);
 
 	// Ownership test mirrors the engine's own bNetOwner logic inside
 	// ReplicateActor: this connection owns the actor iff the controlling
@@ -109,8 +154,32 @@ void __fastcall ActorChannel__ReplicateActor::Call(void* Channel, void* edx) {
 		}
 	}
 
+	// ── Stealth position freeze (pawn actor only) ──────────────────────────
+	// While visible, remember where the pawn is. While stealthed, present that
+	// remembered position to a connection whose viewer must not see the wearer,
+	// so the replicated pawn (and the trail FX hung on it) no longer tracks them.
+	bool locFrozen = false;
+	FVector realLoc;
+	if (pawn != nullptr && IsPlayerControlled((ATgPawn*)pawn)) {
+		ATgPawn* wearer = (ATgPawn*)pawn;
+		if (!wearer->r_bIsStealthed) {
+			g_lastVisiblePos[wearer->r_nPawnId] = pawn->Location;
+		} else {
+			ATgPawn* viewer = ViewerPawnForConnection(conn);
+			if (viewer != nullptr && HiddenFromViewer(wearer, viewer)) {
+				auto it = g_lastVisiblePos.find(wearer->r_nPawnId);
+				if (it != g_lastVisiblePos.end()) {
+					realLoc = pawn->Location;
+					pawn->Location = it->second;
+					locFrozen = true;
+				}
+			}
+		}
+	}
+
 	CallOriginal(Channel, edx);
 
+	if (locFrozen) pawn->Location = realLoc;
 	if (trailSuppressed) assembly->JetpackTrailId = savedTrail;
 	if (suitSwapped) BrokenSuitSwap::RestoreAssembly(*assembly, savedSuit);
 }
