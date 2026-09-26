@@ -305,41 +305,52 @@ void __fastcall TgPawn__ApplyBuff::Call(ATgPawn* Pawn, void* /*edx*/, FBuffHeade
 	// some unrelated 412 change happened to recompute — silently under-applying
 	// mod maxHP.
 	//
-	// Source-type gating: ApplyProperty(304) unconditionally calls
-	// SetProperty(51, new_max) when Health > 0 (verified at 0x109cc7d0, case
-	// 0x130). For armor/skill paths (src 0 SKILL, 1 ITEM) that auto-heal-to-
-	// new-max is intentional engine behavior — equipping armor while damaged
-	// heals to the new ceiling, and respeccing into a +%maxHP skill node does
-	// the same. For device-fire paths (src 3 SELF, 4 OTHER) the buff came via
-	// TgEffectBuff.ApplyEffect on a Hit/Aim/Fire effect (canonical case:
-	// Adrenaline Gun's +400 temp max HP on hit). Those should follow engine
-	// HEALTH_MAX_TEMP (prop 306) semantics: raise capacity, NEVER auto-bump
-	// current HP. Without this gate, Adrenaline Gun's +400 max HP buff fully
-	// heals the target before the +200 instant heal even matters — observed
-	// as "the initial heal fully heals."
+	// Percentage-preserving current-HP adjust on any max-HP change (raise OR
+	// drop). The engine's own ApplyProperty(304) cascade (decompiled at
+	// 0x109cc7d0, case 304) recurses SetProperty(51, newMax) whenever Health > 0,
+	// which sets a LIVE pawn's current HP straight to the new max: a full heal on
+	// every max-HP increase and a cap-to-max (also a heal if the target was below
+	// the new max) on a decrease. Neither preserves the HP fraction.
 	//
-	// Snapshot-and-restore is cleaner than reimplementing the PRI fan-out:
-	// reuse the existing recompute, then explicitly undo only the heal-up
-	// half. Clamp-down (new_max < old current HP) is preserved because in
-	// that case hpAfter < hpBefore, so the > check skips. Dead pawns are
-	// already skipped by ApplyProperty's `Health > 0` gate — hpAfter == 0
-	// == hpBefore, no undo.
+	// Full-healing on a +maxHP buff is the healing-farm bug. A full-HP teammate
+	// gets +400 max HP → now "missing" 400, and the same hit's Adrenaline Gun
+	// heal (a separate TgEffectHeal applied immediately after — the maxHP group
+	// is sorted first among same-nType groups in TgDeviceFire__GetEffectGroup)
+	// books that phantom gap as STYPE_HEALING + morale with no real healing done.
+	// Dropping the buff then repeats it. Doing nothing (the old deviceFire
+	// snapshot-restore) was also wrong: the target stayed at its absolute HP and
+	// the fraction silently dropped (100% → ~71% after a +40% buff).
+	//
+	// Fix: scale current HP by the same ratio as max HP, so the fraction of
+	// health is invariant across apply/remove. A 100%-HP target stays 100% (the
+	// following heal then has zero missing HP → credits nothing); a 90%-HP target
+	// stays 90% (only its genuine missing HP — now measured against the new max —
+	// is healable). Applies to every source type: armor/skill/item +%maxHP
+	// changes now preserve the fraction too, instead of auto-healing to ceiling.
+	//
+	// This write goes through the raw SetProperty native (0x109bf420), NOT the
+	// heal pipeline: no TgEffectHeal::ApplyEffect / TrackStats runs, so the scaled
+	// delta scores no STYPE_HEALING and charges no morale. Only a discrete heal
+	// effect applied afterwards credits, which is correct.
 	if (BuffFilter.nPropId == 412 /* HEALTH_MAX_MODIFIER */ ||
 	    BuffFilter.nPropId == 390 /* HEALTH_MOD (blueprint maxHP rolls) */) {
-		const bool deviceFire = (buffSourceType >= 3);  // SELF (3) or OTHER (4)
-		const int hpBefore = deviceFire ? *(int*)((char*)Pawn + 0x2c4) : 0;
+		const int hpBefore = *(int*)((char*)Pawn + 0x2c4);  // Pawn.Health
+		const int oldMax   = *(int*)((char*)Pawn + 0x43c);  // r_nHealthMaximum
 
 		RecomputeEagerBaseProp(Pawn, 304 /* HEALTH_MAX */);
 
-		if (deviceFire) {
-			const int hpAfter = *(int*)((char*)Pawn + 0x2c4);
-			if (hpAfter > hpBefore) {
-				SetPropertyNative(Pawn, /*edx=*/nullptr, 51 /* HEALTH */, (float)hpBefore);
-				if (Logger::IsChannelEnabled("effects")) {
-					Logger::Log("effects",
-						"[MAXHP/no-heal] pawn=%p src=%u undid auto-bump: %d -> %d (restored to %d)\n",
-						(void*)Pawn, (unsigned)buffSourceType, hpBefore, hpAfter, hpBefore);
-				}
+		const int newMax = *(int*)((char*)Pawn + 0x43c);
+		if (hpBefore > 0 && oldMax > 0 && newMax > 0 && newMax != oldMax) {
+			// round(hpBefore * newMax / oldMax), clamped to [1, newMax].
+			long long scaled = ((long long)hpBefore * (long long)newMax + oldMax / 2) / oldMax;
+			if (scaled > newMax) scaled = newMax;
+			if (scaled < 1)      scaled = 1;
+			SetPropertyNative(Pawn, /*edx=*/nullptr, 51 /* HEALTH */, (float)scaled);
+			if (Logger::IsChannelEnabled("effects")) {
+				Logger::Log("effects",
+					"[MAXHP/scale] pawn=%p src=%u max %d -> %d  hp %d -> %d (%.1f%% preserved)\n",
+					(void*)Pawn, (unsigned)buffSourceType, oldMax, newMax,
+					hpBefore, (int)scaled, 100.0f * (float)scaled / (float)newMax);
 			}
 		}
 	}
