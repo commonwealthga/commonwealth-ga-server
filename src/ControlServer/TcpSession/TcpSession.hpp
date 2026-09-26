@@ -13,6 +13,7 @@
 #include <thread>
 #include <mutex>
 #include <map>
+#include <asio.hpp>
 
 #include "src/ControlServer/Constants/GameTypes.h"
 #include "src/ControlServer/Constants/TcpFunctions.h"
@@ -20,6 +21,7 @@
 #include "src/ControlServer/Constants/EquipSlot.hpp"
 #include "src/ControlServer/TcpSession/PacketView.hpp"
 #include "src/ControlServer/Logger.hpp"
+#include "src/ControlServer/Config/ControlServerConfig.hpp"
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/ControlServer/TeamService/TeamService.hpp"
@@ -168,6 +170,8 @@ private:
     std::string player_name;
     std::string session_guid_;
     std::string ip_address_;
+    // skal - NAT support
+    std::string host_;
     int64_t  user_id_               = 0;
     int64_t  selected_character_id_ = 0;
     uint32_t selected_profile_id_   = 0;
@@ -197,8 +201,14 @@ private:
     static std::function<void()> on_need_home_map_;
 
     // Network config: external IP and chat port, set once from main.
-    static std::string s_host_;
+    // skal - NAT support
+    static std::string s_host_Z;
     static uint16_t    s_chat_port_;
+    struct net_info_t {
+        asio::ip::address_v4_range  ip_range;
+        asio::ip::address_v4        srv_ip;
+    };
+    static std::forward_list<net_info_t> s_nat_info_list;
     static bool        s_allow_duplicate_account_logins_;
     static bool        s_require_password_verification_;
 
@@ -207,14 +217,18 @@ private:
     static std::string s_ban_spoof_mode_;                  // "silent" | "garbage"
     static int         s_ban_spoof_fallback_close_sec_;    // 0 = never
     static int         s_kick_fallback_close_sec_;         // 0 = never
-public:
-    static void SetHomeMapSpawner(std::function<void()> cb);
-    static void SetNetworkConfig(const std::string& host, uint16_t chat_port);
+
+    static bool SetNetworkConfig(const std::string& host, uint16_t chat_port, const std::string& local_nets_str, const std::string& default_nat_ip_str);
     static void SetLoginPolicy(bool allow_duplicate_account_logins,
                                bool require_password_verification = true);
     static void SetModerationConfig(const std::string& ban_spoof_mode,
                                     int ban_spoof_fallback_close_sec,
                                     int kick_fallback_close_sec);
+
+public:
+    static bool Init(const ControlServerConfig& cfg);
+
+    static void SetHomeMapSpawner(std::function<void()> cb);
 
     // Live-kick every TcpSession whose user_id / IP matches the predicate.
     // Sends a bogus GSC_GO_PLAY pointing at a non-existent map; client tears
@@ -251,6 +265,7 @@ public:
     // spawn. Used by login, end-of-mission warm-up (MSG_NEED_HOME_MAP IPC),
     // and the GSC_CHANGE_INSTANCE return-to-home handler.
     static void EnsureHomeMapWarm(const char* reason);
+
 private:
 
     // Set when a READY home map instance is found for this player.

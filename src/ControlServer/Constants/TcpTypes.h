@@ -1,5 +1,16 @@
 #pragma once
 
+// for some reason, when compiling on my linux there is a 'SPEED_MAX' macro
+// that interferes with the definition of this enum (not sure where it comes from)
+// 	=> temporarily undef the macro
+//			note that if this enum value was actualy used anywhere in the project,
+//			the existing macro would interfere there too probably
+#ifdef SPEED_MAX
+	#pragma push_macro ("SPEED_MAX")
+	#undef SPEED_MAX
+	#define RECOVER_SPEED_MAX
+#endif
+
 namespace GA_T {
 	enum GA_T {
 		UNKNOWN = 0x0000, // Type: 0   Name:                                       flags: 0x0002 TYPE_TCP_WCHAR_STR
@@ -1560,3 +1571,7 @@ namespace GA_T {
 	};
 };
 
+#ifdef RECOVER_SPEED_MAX
+	#undef RECOVER_SPEED_MAX
+	#pragma pop_macro ("SPEED_MAX")
+#endif

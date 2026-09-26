@@ -432,17 +432,14 @@ int main(int argc, char* argv[]) {
 
     // Initialize instance registry
     InstanceRegistry::Init();
-    InstanceRegistry::SetHost(cfg.host);
+    //InstanceRegistry::SetHost(cfg.host); //skal: unused
+    //InstanceRegistry::SetHost(cfg.host); //skal: unused
 
-    // Set network config for TcpSession responses (external IP + chat port)
-    TcpSession::SetNetworkConfig(cfg.host, cfg.chat_port);
-    TcpSession::SetLoginPolicy(cfg.allow_duplicate_account_logins,
-                               cfg.require_password_verification);
-    IpcServer::SetStatsToggles(cfg.device_stats_enabled,
-                               cfg.effectiveness_enabled);
-    TcpSession::SetModerationConfig(cfg.ban_spoof.mode,
-                                    cfg.ban_spoof.fallback_close_sec,
-                                    cfg.kick.fallback_close_sec);
+    // Set network config for TcpSession responses
+    if (!TcpSession::Init(cfg)) return 1;
+
+    // Set IPC server stats flags
+    IpcServer::SetStatsToggles(cfg.device_stats_enabled,cfg.effectiveness_enabled);
 
     // Clear stale instances from any previous (crashed) run
     InstanceRegistry::ClearStaleInstances();

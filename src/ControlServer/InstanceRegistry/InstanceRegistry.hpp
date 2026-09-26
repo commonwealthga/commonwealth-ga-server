@@ -17,7 +17,7 @@ struct InstanceInfo {
     std::string state;          // "STARTING" | "DRAFTING" | "READY" | "DRAINING" | "STOPPED"
     int         pid           = 0;
     uint16_t    udp_port      = 0;
-    std::string ip_address    = "127.0.0.1";
+    //std::string ip_address    = "127.0.0.1";
     int         player_count  = 0;
     int64_t     started_at    = 0;
     int64_t     sealed_at     = 0;  // 0 if not sealed
@@ -43,7 +43,7 @@ public:
     static void Init();
 
     // Set the external IP that instances are reachable at (from config).
-    static void SetHost(const std::string& host);
+    //static void SetHost(const std::string& host);//skal: unused
 
 
     // Return the first READY instance for the given map name, or nullopt if none.
@@ -186,5 +186,5 @@ public:
 
 private:
     static std::mutex mutex_;
-    static std::string s_host_;
+    //static std::string s_host_;//skal: unused
 };
