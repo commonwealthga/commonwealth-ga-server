@@ -41,10 +41,10 @@ int g_loadedDifficultyValueId = -1;
 
 #if 1
 
-// skal: no offense but I don't see the point of this overly complicated way to do that
-// this is static data, there's no point doing sql queries every time a table is loaded for that
-// it even lists DA/1260 that shoupdn't even be considered since it's not a difficulty
-// even though as the comment it never participates unless it's the primary and it never should be
+// skal: no offense but I don't see the point of this overly complicated way to do this
+// this is static data, there's no point doing sql queries for this
+// it even lists DA/1260 that shouldn't even be considered since it's not a actualy a difficulty
+// even though as the comment says it never participates unless it's the primary and it never should be
 //  1260 DA
 //	1471 umax-sec
 //  1259 max-sec
