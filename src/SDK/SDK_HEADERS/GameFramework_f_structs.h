@@ -26,7 +26,7 @@
 struct AGameAIController_execSetDesiredRotation_Parms
 {
 	struct FRotator                                    TargetDesiredRotation;                            		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bZeroPitch : 1;                                   		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bZeroPitch    ;                                   		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function GameFramework.GameAIController.AILog_Internal
@@ -35,7 +35,7 @@ struct AGameAIController_eventAILog_Internal_Parms
 {
 	struct FString                                     LogText;                                          		// 0x0000 (0x000C) [0x0000000000400880]              ( CPF_Parm | CPF_CoerceParm | CPF_NeedCtorLink )
 	struct FName                                       LogCategory;                                      		// 0x000C (0x0008) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bForce : 1;                                       		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForce    ;                                       		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function GameFramework.GameAIController.RecordDemoAILog
@@ -84,7 +84,7 @@ struct AGameAIController_execAbortCommand_Parms
 {
 	class UGameAICommand*                              AbortCmd;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class UClass*                                      AbortClass;                                       		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function GameFramework.GameAIController.PopCommand
@@ -152,7 +152,7 @@ struct UGameAICommand_execPrePushed_Parms
 struct UGameAICommand_execAllowTransitionTo_Parms
 {
 	class UClass*                                      AttemptCommand;                                   		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function GameFramework.GameAICommand.Tick
@@ -166,7 +166,7 @@ struct UGameAICommand_execTick_Parms
 // [0x00020401] ( FUNC_Final | FUNC_Native )
 struct UGameAICommand_execShouldIgnoreNotifies_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function GameFramework.GameAICommand.InternalTick
@@ -214,7 +214,7 @@ struct UGameAICommand_eventInternalPrePushed_Parms
 struct UGameAICommand_execInitCommand_Parms
 {
 	class AGameAIController*                           AI;                                               		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class UGameAICommand*                           Cmd;                                              		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -224,7 +224,7 @@ struct UGameAICommand_execInitCommandUserActor_Parms
 {
 	class AGameAIController*                           AI;                                               		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class AActor*                                      UserActor;                                        		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function GameFramework.GameExplosionActor.Tick
@@ -307,7 +307,7 @@ struct AGameExplosionActor_execDoCringesAndKnockdowns_Parms
 struct AGameExplosionActor_execShouldDoCringeFor_Parms
 {
 	class AGamePawn*                                   Victim;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function GameFramework.GameExplosionActor.DoBreakFracturedMeshes
@@ -335,13 +335,13 @@ struct AGameExplosionActor_execHurtExplosion_Parms
 	class AActor*                                      IgnoredActor;                                     		// 0x0020 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class UClass*                                      ActorClassToIgnoreForDamage;                      		// 0x0024 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class AController*                                 InstigatedByController;                           		// 0x0028 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bDoFullDamage : 1;                                		// 0x002C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDoFullDamage    ;                                		// 0x002C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class AActor*                                   Victim;                                           		// 0x0030 (0x0004) [0x0000000000000000]              
 	// class AActor*                                   HitActor;                                         		// 0x0034 (0x0004) [0x0000000000000000]              
 	// struct FVector                                  HitL;                                             		// 0x0038 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  HitN;                                             		// 0x0044 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  Dir;                                              		// 0x0050 (0x000C) [0x0000000000000000]              
-	// unsigned long                                   bDamageBlocked : 1;                               		// 0x005C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bDamageBlocked    ;                               		// 0x005C (0x0004) [0x0000000000000000] [0x00000001] 
 	// float                                           ColRadius;                                        		// 0x0060 (0x0004) [0x0000000000000000]              
 	// float                                           ColHeight;                                        		// 0x0064 (0x0004) [0x0000000000000000]              
 	// float                                           DamageScale;                                      		// 0x0068 (0x0004) [0x0000000000000000]              
@@ -359,7 +359,7 @@ struct AGameExplosionActor_execHurtExplosion_Parms
 struct AGameExplosionActor_execDoFullDamageToActor_Parms
 {
 	class AActor*                                      Victim;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function GameFramework.GameExplosionActor.GetPhysicalMaterial

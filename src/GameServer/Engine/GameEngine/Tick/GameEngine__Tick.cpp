@@ -11,6 +11,7 @@
 #include "src/GameServer/TgGame/TgPlayerActions/Markers/Markers.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/FxBrowse/FxBrowse.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconCarryReaper/BeaconCarryReaper.hpp"
+#include "src/GameServer/Inventory/ConsumableReaper/ConsumableReaper.hpp"
 #include "src/GameServer/Utils/PerfProbe/PerfProbe.hpp"
 #include "src/GameServer/Maps/MapAdditions/MapAdditions.hpp"
 
@@ -53,6 +54,8 @@ void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSecon
 	// seconds; the normal DeviceFiring.EndState cleanup disarms it first, so
 	// this only ever acts when that path was missed.
 	{ PerfProbe::Scope _p(PerfProbe::SLOT_BEACON_REAPER); BeaconCarryReaper::Tick(DeltaSeconds); }
+	// Takes used consumables out of their slot; returns immediately when idle.
+	ConsumableReaper::Tick(DeltaSeconds);
 	// Hand-authored boss alarms; returns immediately unless the map registered one.
 	MapAdditions::Tick();
 	{ PerfProbe::Scope _p(PerfProbe::SLOT_ENGINE_TICK); CallOriginal(Engine, edx, DeltaSeconds); }

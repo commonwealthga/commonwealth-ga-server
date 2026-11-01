@@ -3,13 +3,14 @@
 #include "src/Utils/HookBase.hpp"
 
 class CMarshal__GetString : public HookBase<
-	int(__fastcall*)(void*, void*, int, wchar_t*),
+	int(__fastcall*)(void*, void*, int, wchar_t*, int),
 	0x10937ED0,
 	CMarshal__GetString> {
 public:
-	static int __fastcall Call(void* CMarshal, void* edx, int a2, wchar_t* a3);
-	static inline int __fastcall CallOriginal(void* CMarshal, void* edx, int a2, wchar_t* a3) {
-		return m_original(CMarshal, edx, a2, a3);
+	static int __fastcall Call(void* CMarshal, void* edx, int a2, wchar_t* a3, int a3Len);
+	// a3Len is the buffer size in wchar_t (original does ret 0xc).
+	static inline int __fastcall CallOriginal(void* CMarshal, void* edx, int a2, wchar_t* a3, int a3Len) {
+		return m_original(CMarshal, edx, a2, a3, a3Len);
 	};
 };
 

@@ -24,7 +24,7 @@
 // from map_object_config. If a map has no override rows, fields stay at
 // their UC defaults and selection degrades gracefully.
 
-ANavigationPoint* __fastcall TgGame__TgFindPlayerStart::Call(ATgGame* Game, void* edx, AController* Controller, FName IncomingName) {
+ANavigationPoint* __fastcall TgGame__TgFindPlayerStart::Call(ATgGame* Game, void* edx, AController* Controller, FString* IncomingName) {
 	LogCallBegin();
 
 	ActorCache::CacheMapActors();

@@ -10,7 +10,7 @@
 int TgPawn__InitializeDefaultProps::nPendingBotId = 0;
 bool TgPawn__InitializeDefaultProps::bPendingEnemyScaling = false;
 float TgPawn__InitializeDefaultProps::fPendingFactoryBalance = 1.0f;
-float TgPawn__InitializeDefaultProps::fPendingSpawnTableBalance = 0.0f;
+DifficultyScalar TgPawn__InitializeDefaultProps::nPendingSpawnTableBalance;
 DifficultyScalar TgPawn__InitializeDefaultProps::nPendingDifficultyScalarOverride;
 
 namespace {
@@ -125,19 +125,17 @@ void __fastcall TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	// even if scaling is gated off, so a leftover from a chat spawn that
 	// somehow skipped the gate can't leak into a later factory spawn.
 	const DifficultyScalar scalarOverride = nPendingDifficultyScalarOverride;
-	nPendingDifficultyScalarOverride.reset ();
-	DifficultyScalar difficultyScalar = scalarOverride
-		? scalarOverride
-		: Config::GetDifficultyScalar();
+	nPendingDifficultyScalarOverride.zero ();
 
 	// Per-factory designer knob (ATgBotFactory.fBalance). Consume + reset.
 	const float factoryBalance = fPendingFactoryBalance > 0.0f ? fPendingFactoryBalance : 1.0f;
 	fPendingFactoryBalance = 1.0f;
 
-	// Per spawn-table balance
-	//const float spawnBalance = 3.0f;
-	const float spawnBalance = fPendingSpawnTableBalance > 0.0f ? fPendingSpawnTableBalance : 1.0f;
-	fPendingSpawnTableBalance = 0.0f;
+	// Per spawn-table balance - consume + clear
+	const DifficultyScalar spawnBalance = nPendingSpawnTableBalance
+		? nPendingSpawnTableBalance
+		: DifficultyScalar::Unity();
+	nPendingSpawnTableBalance.zero ();
 
 	// Combined stat scale = per-bot BBM × spawn-table BBM × per-difficulty scalar × per-factory
 	// fBalance. BBM=0 is the "never spawn" sentinel — already filtered
@@ -150,7 +148,13 @@ void __fastcall TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	// skal: changed this with the split scalar modifier for HP/dmg
 	const bool doScale = scaleAsEnemy && (balanceMultiplier > 0.0f);
 	if (doScale) {
-		difficultyScalar *= (balanceMultiplier * factoryBalance * spawnBalance);
+
+		DifficultyScalar difficultyScalar = scalarOverride
+			? scalarOverride
+			: Config::GetDifficultyScalar();
+
+		difficultyScalar *= spawnBalance;
+		difficultyScalar *= (balanceMultiplier * factoryBalance);
 
 		// HP
 		hitPoints *= difficultyScalar.HP;

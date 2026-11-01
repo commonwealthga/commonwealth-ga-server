@@ -172,6 +172,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/SpawnNewBeaconForTeam/TgTeamBeaconManager__SpawnNewBeaconForTeam.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamBeaconManager/BeaconCarryReaper/BeaconCarryReaper.cpp \
+			  $(SRC_DIR)/GameServer/Inventory/ConsumableReaper/ConsumableReaper.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBeaconFactory/SpawnObject/TgBeaconFactory__SpawnObject.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.cpp \
@@ -685,7 +686,7 @@ CS_CXXFLAGS=-std=c++17 -pthread -I. -I./lib/asio-1.34.2/include -I./lib/sqlite3 
 CS_CXXFLAGS_WIN=$(filter-out -O2,$(CS_CXXFLAGS)) -O0 -D_WIN32_WINNT=0x0601
 CS_CFLAGS_SQLITE=-O2 -I./lib/sqlite3
 CS_LDFLAGS_LINUX=-lpthread -ldl
-CS_LDFLAGS_WIN=-lws2_32 -lmswsock -static
+CS_LDFLAGS_WIN=-lIphlpapi -lws2_32 -lmswsock -static
 
 CS_OUT_LINUX=out/control-server
 CS_OUT_WIN=out/control-server.exe

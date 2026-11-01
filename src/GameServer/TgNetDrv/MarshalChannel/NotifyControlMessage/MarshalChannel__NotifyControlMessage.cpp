@@ -64,7 +64,7 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 	LogCallBegin();
 
 	wchar_t local_410[512] = {0};
-	CMarshal__GetString::CallOriginal(InBunch, edx, GA_T::TEXT_VALUE, local_410);
+	CMarshal__GetString::CallOriginal(InBunch, edx, GA_T::TEXT_VALUE, local_410, 512);
 
 	char tmp[1024];
 	wcstombs(tmp, local_410, sizeof(tmp));

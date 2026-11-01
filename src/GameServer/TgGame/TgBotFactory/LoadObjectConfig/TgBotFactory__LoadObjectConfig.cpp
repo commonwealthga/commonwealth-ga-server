@@ -7,6 +7,7 @@
 #include "src/Database/Database.hpp"
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Constants/GameTypes.h"
 
 #include <chrono>
 #include <cstdlib>
@@ -37,6 +38,63 @@ int g_loadedDifficultyValueId = -1;
 //   8=Maximum Security 1259, 9=Ultra-Max Security 1471, 10=Double Agent 1260.
 // Double Agent (1260) sits above 1471; the cascade is strictly "<= current",
 // so 1260 never participates unless it's the primary.
+
+#if 1
+
+// skal - this is static data, there's no point doing sql queries for this
+// it even lists DA/1260 that shouldn't even be considered since it's not an actual difficulty
+// even though, as the comment says, it never participates unless it's the primary and it never should be
+//  1260 DA
+//	1471 umax-sec
+//  1259 max-sec
+//  1470 expert
+//  1030 high-sec
+//  1469 advanced
+//  1029 med-sec
+//  1468 adept
+//  1028 low-sec
+//  1467 novice
+
+//	=> replace with static data, which also makes it easier and more straightforward to deal with custom difficulties
+
+std::vector<int> GetDifficultyCascade(int primaryDifficulty) {
+	//                          0     1     2     3     4     5     6     7     8     9    10 11
+	static const int Data[]={4000, 3000, 1471, 1259, 1470, 1030, 1469, 1029, 1468, 1028, 1467, 0};
+	switch(primaryDifficulty) {
+		case GA_G::DIFFICULTY_VALUE_ID_NOVICE:							      return std::vector<int>(&Data[10], &Data[11]);
+		case GA_G::DIFFICULTY_VALUE_ID_LOW_SECURITY:				      return std::vector<int>(&Data[ 9], &Data[11]);
+		case GA_G::DIFFICULTY_VALUE_ID_ADEPT:								      return std::vector<int>(&Data[ 8], &Data[11]);
+		case GA_G::DIFFICULTY_VALUE_ID_MEDIUM_SECURITY:			      return std::vector<int>(&Data[ 7], &Data[11]);
+		case GA_G::DIFFICULTY_VALUE_ID_ADVANCED:						      return std::vector<int>(&Data[ 6], &Data[11]);
+		case GA_G::DIFFICULTY_VALUE_ID_HIGH_SECURITY:				      return std::vector<int>(&Data[ 5], &Data[11]);
+		case GA_G::DIFFICULTY_VALUE_ID_EXPERT:							      return std::vector<int>(&Data[ 4], &Data[11]);
+		case GA_G::DIFFICULTY_VALUE_ID_MAXIMUM_SECURITY:		      return std::vector<int>(&Data[ 3], &Data[11]);
+		case GA_G::DIFFICULTY_VALUE_ID_ULTRA_MAX_SECURITY:	      return std::vector<int>(&Data[ 2], &Data[11]);
+		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_MEGA_MAX_SECURITY:	return std::vector<int>(&Data[ 1], &Data[11]);
+		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_GIGA_MAX_SECURITY:	return std::vector<int>(&Data[ 0], &Data[11]);
+
+		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_HARDCORE_SECURITY:
+		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_SUPER_AGENT: {
+				// those are their own primary + umax
+				std::vector<int> Cascade; Cascade.reserve(10);
+				Cascade.push_back(primaryDifficulty);
+				for(int i=2;i<11;++i) Cascade.push_back(Data[i]);
+				return (Cascade);
+			}
+
+		case GA_G::DIFFICULTY_VALUE_ID_DOUBLE_AGENT:
+		default: {
+				// shouldn't happen, return a vector with the primary itself but issue an error in the logs
+				Logger::Log("tgbotfactory", "Invalid primary difficulty requested: %d\n", primaryDifficulty);
+				std::vector<int> Cascade; Cascade.reserve(1);
+				Cascade.push_back(primaryDifficulty);
+				return Cascade;
+			}
+	}
+}
+
+#else
+
 std::vector<int> GetDifficultyCascade(sqlite3* db, int primaryDifficulty) {
 	std::vector<int> cascade;
 
@@ -91,6 +149,8 @@ std::vector<int> GetDifficultyCascade(sqlite3* db, int primaryDifficulty) {
 
 	return cascade;
 }
+
+#endif
 
 // Super Agent composite tables: REBUILD each target table by concatenating the
 // groups of its source tables (renumbered into a fresh 0..N sequence). Runs
@@ -222,13 +282,17 @@ void EnsureSpawnTablesLoaded() {
 		// 	load from mod_data_set_bot_spawn_tables (our custom overrides)
 		// 	if that didn't load anything, load from asm_data_set_bot_spawn_tables (the stock client-extracted data)
 
+		// skal - WARNING: to avoid duplicating code, the 2 queries below MUST result in the exact same fields
+
 		static const char* const QueryString1=
 			"SELECT u.spawn_group, u.enemy_bot_id, u.bot_count, "
-			"       u.spawn_chance, u.bot_balance_multiplier, COALESCE(b.reference_name, ''), "
+			"       u.spawn_chance, u.bbm_hp, u.bbm_dmg, COALESCE(b.reference_name, ''), "
 			"       u.spawn_group_min, u.spawn_group_max, u.spawn_group_respawn_sec "
 			"FROM ( "
 			"  SELECT bot_spawn_table_id, difficulty_value_id, spawn_group, "
-			"         enemy_bot_id, bot_count, spawn_chance, COALESCE (bot_balance_multiplier, 1.0) as bot_balance_multiplier, "
+			"         enemy_bot_id, bot_count, spawn_chance, "
+			"					COALESCE (bbm_hp, 1.0) as bbm_hp, "
+			"					COALESCE (bbm_dmg, 1.0) as bbm_dmg, "
 			"         spawn_group_min, spawn_group_max, spawn_group_respawn_sec "
 			"  FROM mod_data_set_bot_spawn_tables "
 			") AS u "
@@ -239,11 +303,13 @@ void EnsureSpawnTablesLoaded() {
 
 		static const char* const QueryString2=
 			"SELECT u.spawn_group, u.enemy_bot_id, u.bot_count, "
-			"       u.spawn_chance, u.bot_balance_multiplier, COALESCE(b.reference_name, ''), "
+			"       u.spawn_chance, u.bbm_hp, u.bbm_dmg, COALESCE(b.reference_name, ''), "
 			"       u.spawn_group_min, u.spawn_group_max, u.spawn_group_respawn_sec "
 			"FROM ( "
 			"  SELECT bot_spawn_table_id, difficulty_value_id, spawn_group, "
-			"         enemy_bot_id, bot_count, spawn_chance, COALESCE (bot_balance_multiplier, 1.0) as bot_balance_multiplier, "
+			"         enemy_bot_id, bot_count, spawn_chance, "
+			"					COALESCE (bot_balance_multiplier, 1.0) as bbm_hp, "
+			"					0.0 as bbm_dmg, "
 			"         spawn_group_min, spawn_group_max, spawn_group_respawn_sec "
 			"  FROM asm_data_set_bot_spawn_tables "
 			") AS u "
@@ -276,15 +342,14 @@ void EnsureSpawnTablesLoaded() {
 					const int botId   = sqlite3_column_int(stmt, 1);
 					const int count   = sqlite3_column_int(stmt, 2);
 					const float chance = static_cast<float>(sqlite3_column_double(stmt, 3));
-					const float bbm = static_cast<float>(sqlite3_column_double(stmt, 4));
-					const unsigned char* refNameRaw = sqlite3_column_text(stmt, 5);
+					const float bbm_hp = static_cast<float>(sqlite3_column_double(stmt, 4));
+					const float bbm_dmg = static_cast<float>(sqlite3_column_double(stmt, 5));
+					const unsigned char* refNameRaw = sqlite3_column_text(stmt, 6);
 					const std::string refName(refNameRaw ? reinterpret_cast<const char*>(refNameRaw) : "");
-					const int groupMin   = sqlite3_column_int(stmt, 6);
-					const int groupMax   = sqlite3_column_int(stmt, 7);
-					const int respawnSec = sqlite3_column_int(stmt, 8);
-					groupMap[group].push_back(SpawnTableEntry{
-						tableId, group, botId, count, chance, bbm, refName, groupMin, groupMax, respawnSec
-					});
+					const int groupMin   = sqlite3_column_int(stmt, 7);
+					const int groupMax   = sqlite3_column_int(stmt, 8);
+					const int respawnSec = sqlite3_column_int(stmt, 9);
+					groupMap[group].push_back(SpawnTableEntry (tableId,group,botId,count,chance,DifficultyScalar (bbm_hp,bbm_dmg),refName,groupMin,groupMax,respawnSec));
 					++NbEntry;
 				}
 				sqlite3_finalize(stmt);
@@ -304,7 +369,11 @@ void EnsureSpawnTablesLoaded() {
 		return Stats;
 	};
 
-	const std::vector<int> cascade = GetDifficultyCascade(db, difficulty);
+//Logger::Log("tgbotfactory", "before getdiffcasc\n");
+
+	const std::vector<int> cascade = GetDifficultyCascade(difficulty);
+
+//Logger::Log("tgbotfactory", "after getdiffcasc\n");
 
 	const auto LoadCascade=[&](int Index,const char* const Tail) {
 		const int tier = cascade[Index];
@@ -473,7 +542,7 @@ std::vector<SpawnGroupPlan> TgBotFactory__LoadObjectConfig::RollSpawnPlan(int nS
 		gp.GroupNumber  = groupKV.first;
 		gp.EntryCount   = 0;
 		gp.RolledBotId  = 0;
-		gp.BBM = 0.0f;
+		gp.BBM.zero ();
 		gp.Detail.nMinCount       = 0;
 		gp.Detail.nMaxCount       = 0;
 		gp.Detail.nCurrentCount   = 0;

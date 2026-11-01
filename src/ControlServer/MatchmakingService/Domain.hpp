@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <chrono>
 #include <algorithm>
+#include "src/Config/DifficultyScalar.hpp"
 
 // ---------------------------------------------------------------------------
 // Players & parties
@@ -59,6 +60,7 @@ struct QueuedPlayer {
     // Gates which pool maps the player may be routed to on DLC-locked pools.
     std::vector<int64_t> installed_dlcs;
     std::chrono::steady_clock::time_point joined_at{};
+    DifficultyScalar difficulty_override;
 };
 
 // A party is the UNIT OF QUEUEING. A solo player is a party of one
@@ -71,6 +73,7 @@ struct QueuedParty {
     std::string leader_guid;             // == members[0].session_guid for solos
     std::vector<QueuedPlayer> members;   // never empty
     std::chrono::steady_clock::time_point joined_at{};  // earliest member join
+    DifficultyScalar difficulty_override;
 
     size_t size() const { return members.size(); }
 };
@@ -231,6 +234,9 @@ struct MatchResult {
     // from the queue. Derived from session_guids' owning parties, but tracked
     // explicitly so partial-party pops never happen (parties are atomic).
     std::vector<uint64_t> consumed_party_ids;
+
+    // optional difficulty override
+    DifficultyScalar difficulty_override;
 };
 
 // ---------------------------------------------------------------------------

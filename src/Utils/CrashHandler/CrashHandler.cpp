@@ -112,16 +112,28 @@ static LONG WINAPI CrashFilter(EXCEPTION_POINTERS* info)
 
     CreateDirectoryA(g_crashDir.c_str(), nullptr); // no-op if exists
 
+    // CREATE_NEW + suffix: a follow-up crash in the same second (typically the
+    // engine's auto-reporter) must not overwrite the primary report.
     char path[MAX_PATH];
-    snprintf(path, sizeof(path),
-             "%s\\crash-%04d%02d%02d-%02d%02d%02d-pid%lu.log",
-             g_crashDir.c_str(), st.wYear, st.wMonth, st.wDay,
-             st.wHour, st.wMinute, st.wSecond,
-             (unsigned long)GetCurrentProcessId());
-
-    HANDLE f = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ,
-                           nullptr, CREATE_ALWAYS,
-                           FILE_ATTRIBUTE_NORMAL, nullptr);
+    HANDLE f = INVALID_HANDLE_VALUE;
+    for (int n = 0; n < 10 && f == INVALID_HANDLE_VALUE; ++n) {
+        if (n == 0) {
+            snprintf(path, sizeof(path),
+                     "%s\\crash-%04d%02d%02d-%02d%02d%02d-pid%lu.log",
+                     g_crashDir.c_str(), st.wYear, st.wMonth, st.wDay,
+                     st.wHour, st.wMinute, st.wSecond,
+                     (unsigned long)GetCurrentProcessId());
+        } else {
+            snprintf(path, sizeof(path),
+                     "%s\\crash-%04d%02d%02d-%02d%02d%02d-pid%lu-%d.log",
+                     g_crashDir.c_str(), st.wYear, st.wMonth, st.wDay,
+                     st.wHour, st.wMinute, st.wSecond,
+                     (unsigned long)GetCurrentProcessId(), n);
+        }
+        f = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ,
+                        nullptr, CREATE_NEW,
+                        FILE_ATTRIBUTE_NORMAL, nullptr);
+    }
     if (f == INVALID_HANDLE_VALUE) {
         s_inFilter = 0;
         return EXCEPTION_CONTINUE_SEARCH;

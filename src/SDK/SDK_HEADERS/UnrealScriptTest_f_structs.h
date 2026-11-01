@@ -38,7 +38,7 @@ struct UTest0002_InterfaceNative_eventTestInterfaceEvent_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTest0002_InterfaceNative_execTestNativeFunction_Parms
 {
-	unsigned long                                      bBoolParm : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bBoolParm    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function UnrealScriptTest.Test0010_NativeObject.TestOptionalEventStringParm
@@ -111,7 +111,7 @@ struct UTest0010_NativeObject_eventTestInterfaceEvent_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTest0010_NativeObject_execTestNativeFunction_Parms
 {
-	unsigned long                                      bBoolParm : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bBoolParm    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function UnrealScriptTest.Test0010_NativeObject.Test03_CallEventWithNativeInterface
@@ -136,7 +136,7 @@ struct UTest0010_NativeObject_eventTest01_CallEventWithStruct_Parms
 	struct FConstructorStructString                    StringParm;                                       		// 0x000C (0x0018) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
 	struct FConstructorStructArray                     ArrayParm;                                        		// 0x0024 (0x0010) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
 	struct FConstructorStructCombo                     ComboParm;                                        		// 0x0034 (0x0020) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      PaddingBool : 1;                                  		// 0x0054 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      PaddingBool    ;                                  		// 0x0054 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function UnrealScriptTest.Test0010_NativeObject.PerformNativeTest
@@ -150,15 +150,15 @@ struct UTest0010_NativeObject_execPerformNativeTest_Parms
 // [0x00020800] ( FUNC_Event )
 struct UTest0011_NativeObjectBoolOrder_eventNativeTestBoolOrderEvent_Parms
 {
-	unsigned long                                      EventBoolParm : 1;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      EventBoolParm    ;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function UnrealScriptTest.Test0011_NativeObjectBoolOrder.NativeTestBoolOrderFunction
 // [0x00020400] ( FUNC_Native )
 struct UTest0011_NativeObjectBoolOrder_execNativeTestBoolOrderFunction_Parms
 {
-	unsigned long                                      BoolParm : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      BoolParm    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function UnrealScriptTest.Test0011_NativeObjectBoolOrder.PerformBoolOrderTest
@@ -230,7 +230,7 @@ struct UTest0003_Interface_execTest0003_FunctionC_Parms
 // [0x00020000] 
 struct UTest0003_Interface_execTest0003_FunctionB_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function UnrealScriptTest.Test0003_Interface.Test0003_FunctionA
@@ -271,7 +271,7 @@ struct UTest0003_DerivedClass_execTest0003_FunctionC_Parms
 // [0x00020002] 
 struct UTest0003_DerivedClass_execTest0003_FunctionB_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function UnrealScriptTest.Test0003_DerivedClass.Test0003_FunctionA
@@ -312,7 +312,7 @@ struct UTest0004_BaseClass_execTest0004_FunctionC_Parms
 // [0x00020002] 
 struct UTest0004_BaseClass_execTest0004_FunctionB_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function UnrealScriptTest.Test0004_BaseClass.Test0004_FunctionA
@@ -353,7 +353,7 @@ struct UTest0004_Interface_execTest0004_FunctionC_Parms
 // [0x00020000] 
 struct UTest0004_Interface_execTest0004_FunctionB_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function UnrealScriptTest.Test0004_Interface.Test0004_FunctionA
@@ -733,7 +733,7 @@ struct UTest0024_Commandlet_execCommandletDelegate_Parms
 // [0x00120000] 
 struct UTest0024_DelegateComparison_execSomeOtherDelegate_Parms
 {
-	unsigned long                                      bFoo : 1;                                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bFoo    ;                                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function UnrealScriptTest.Test0024_DelegateComparison.DelegateExample
@@ -768,8 +768,8 @@ struct UTest0024_DelegateComparison_execComparisonDelegate_Parms
 // [0x00020002] 
 struct UTest0025_Commandlet_execRunBoolTest_Parms
 {
-	unsigned long                                      bValueToApply : 1;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      BoolVar : 1;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bValueToApply    ;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      BoolVar    ;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function UnrealScriptTest.Test0025_Commandlet.Main
@@ -778,9 +778,9 @@ struct UTest0025_Commandlet_eventMain_Parms
 {
 	struct FString                                     Params;                                           		// 0x0000 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
 	int                                                ReturnValue;                                      		// 0x000C (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bFirstLocalBool : 1;                              		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bSecondLocalBool : 1;                             		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bThirdLocalBool : 1;                              		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bFirstLocalBool    ;                              		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bSecondLocalBool    ;                             		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bThirdLocalBool    ;                              		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function UnrealScriptTest.TestCommandlet.Main

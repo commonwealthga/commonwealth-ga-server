@@ -231,8 +231,8 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 		}
 
 		// skal: per spawn-table bot balance modifier
-		if (Entry.BBM>0.0f) {
-			TgPawn__InitializeDefaultProps::fPendingSpawnTableBalance = Entry.BBM;
+		if (Entry.BBM) {
+			TgPawn__InitializeDefaultProps::nPendingSpawnTableBalance = Entry.BBM;
 			TgPawn__InitializeDefaultProps::bPendingEnemyScaling = true;
 		}
 		//Logger::Log("skal", "[SpawnNextBot]: bbm='%f'\n",Entry.BBM);

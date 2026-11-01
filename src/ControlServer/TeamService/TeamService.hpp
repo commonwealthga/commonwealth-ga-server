@@ -99,6 +99,9 @@ public:
     static std::vector<std::string> GetTeamMemberGuids(const std::string& session_guid);
     static bool IsLeader(const std::string& session_guid);
 
+    // set team difficulty_override
+    static std::vector<std::string> SetDifficultyOverride(const std::string& session_guid, DifficultyScalar difficulty_override);
+
     // --- Team queueing -----------------------------------------------------
 
     // Build a matchmaking party from the team led by `leader_guid` (live
@@ -152,6 +155,7 @@ private:
         uint64_t id = 0;
         std::string leader_guid;
         std::vector<TeamMember> members;
+        DifficultyScalar difficulty_override;
     };
 
     static void ExpireInvite(uint64_t invite_id);

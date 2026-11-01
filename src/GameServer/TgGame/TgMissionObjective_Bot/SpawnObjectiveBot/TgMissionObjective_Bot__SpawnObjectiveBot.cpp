@@ -17,7 +17,7 @@ ATgPawn* SpawnBotAtLocation(ATgGame* Game, const BotIdEntry& Entry, FVector loc,
 	// the enemy roster. Raise the flag explicitly here; SpawnBotById would
 	// not raise it for a null factory pointer.
 	TgPawn__InitializeDefaultProps::bPendingEnemyScaling = true;
-	TgPawn__InitializeDefaultProps::fPendingSpawnTableBalance = Entry.BBM;
+	TgPawn__InitializeDefaultProps::nPendingSpawnTableBalance = Entry.BBM;
 	return (ATgPawn*)Game->SpawnBotById(
 		Entry.BotId, loc, rot,
 		/*bKillController=*/   false,

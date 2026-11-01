@@ -1,6 +1,7 @@
 #pragma once
 
 #include "src/ControlServer/Config/ControlServerConfig.hpp"
+#include "src/Config/DifficultyScalar.hpp"
 #include <string>
 #include <cstdint>
 #include <sys/types.h>
@@ -8,6 +9,8 @@
 struct InstanceInfo;
 
 // InstanceSpawner.hpp -- Spawns UE3 game server processes via fork/exec with Wine.
+
+enum class eDifficulty { Default, Id, Scalar };
 
 class InstanceSpawner {
 public:
@@ -21,7 +24,9 @@ public:
                        const std::string& game_mode,
                        uint16_t udp_port,
                        int64_t instance_id,
-                       uint32_t difficulty_value_id = 0);
+                       eDifficulty difficulty_type = eDifficulty::Default,
+                       uint32_t difficulty_value_id = 0,
+                       DifficultyScalar difficulty_scalar = DifficultyScalar());
 
     // Terminate the process group for an already-spawned game instance.
     // Sends SIGTERM immediately, then SIGKILL after grace_seconds if the

@@ -642,14 +642,18 @@ void MatchmakingService::SetSoloLockForQueuedPlayer(const std::string& session_g
     }
 }
 
-void MatchmakingService::AddPlayer(uint32_t queue_id, const QueuedPlayer& player) {
+void MatchmakingService::AddPlayer(uint32_t queue_id, QueuedPlayer& player) {
     QueuedParty party;
     party.party_id    = SoloPartyId(player.session_guid);
     party.is_team     = false;
     party.leader_guid = player.session_guid;
     party.joined_at   = player.joined_at;
     party.members.push_back(player);
+    party.difficulty_override = player.difficulty_override; //- ]
+    player.difficulty_override.zero();                      //- ] consume+reset
+                                                            //- ] reset possibly not needed since QueuedPlayer is trensient, investigate
     AddParty(queue_id, party);
+    //Logger::Log ("skal","[MatchmakingService::AddPlayer] - solo player - difficulty override = %.2f/%.2f\n",party.difficulty_override.HP,party.difficulty_override.Dmg);
 }
 
 // Shared post-mutation handling: instant-pop-when-full, delay re-arm, TryPop.

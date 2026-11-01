@@ -647,6 +647,41 @@ int PlayerSessionStore::GetBlueprintIdForDevice(int deviceId, bool oc) {
 	return blueprintId;
 }
 
+int PlayerSessionStore::GetConsumableItemIdForDevice(int deviceId) {
+	static std::map<int, int> cache;
+	static std::mutex cacheMutex;
+	{
+		std::lock_guard<std::mutex> lock(cacheMutex);
+		auto it = cache.find(deviceId);
+		if (it != cache.end()) return it->second;
+	}
+
+	int itemId = 0;
+	sqlite3* db = Database::GetConnection();
+	if (db) {
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+		    // Slot 1482 gate: item 6293 is a consumable wrapper of the regular
+		    // Regeneration offhand (2246, slot 390), which must stay a device item.
+		    "SELECT MIN(i.item_id) FROM asm_data_set_items i "
+		    "JOIN asm_data_set_devices d ON d.device_id = i.ref_device_id "
+		    "WHERE i.item_type_value_id = 1412 AND i.ref_device_id = ? "
+		    "  AND d.slot_used_value_id = 1482",
+		    -1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int(stmt, 1, deviceId);
+			if (sqlite3_step(stmt) == SQLITE_ROW)
+				itemId = sqlite3_column_int(stmt, 0);
+			sqlite3_finalize(stmt);
+		}
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(cacheMutex);
+		cache[deviceId] = itemId;
+	}
+	return itemId;
+}
+
 std::vector<int> PlayerSessionStore::GetEffectGroupIds(int deviceId) {
 	// Union of every effect group associated with this device in asm.dat:
 	//   - asm_data_set_device_effect_groups  (equip effect — what the device
@@ -1436,6 +1471,27 @@ void PlayerSessionStore::SeedCharacterArmorDefaults(int64_t character_id) {
 	Logger::Log("armor-seed",
 		"SeedCharacterArmorDefaults: char=%lld newly equipped=%d (of %d slots — rest already had a piece)\n",
 		(long long)character_id, equipped, ArmorLoadouts::kSlotCount);
+}
+
+int PlayerSessionStore::UnequipConsumable(int64_t character_id, int inventory_id) {
+	std::lock_guard<std::mutex> lock(mutex_);
+	sqlite3* db = Database::GetConnection();
+	if (!db || character_id == 0 || inventory_id == 0) return 0;
+
+	int removed = 0;
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db,
+	        "DELETE FROM ga_character_devices "
+	        "WHERE character_id = ? AND inventory_id = ? AND equipped_slot = 13",
+	        -1, &st, nullptr) == SQLITE_OK) {
+		sqlite3_bind_int64(st, 1, character_id);
+		sqlite3_bind_int  (st, 2, inventory_id);
+		if (sqlite3_step(st) == SQLITE_DONE) removed = sqlite3_changes(db);
+		sqlite3_finalize(st);
+	}
+	Logger::Log("db", "[PlayerSessionStore] UnequipConsumable: char=%lld inv=%d removed=%d\n",
+		(long long)character_id, inventory_id, removed);
+	return removed;
 }
 
 void PlayerSessionStore::PinClassDeviceSlot14(int64_t character_id) {

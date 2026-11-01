@@ -86,6 +86,30 @@ bool TeamService::IsLeader(const std::string& session_guid) {
     return team && team->leader_guid == session_guid;
 }
 
+std::vector<std::string> TeamService::SetDifficultyOverride(const std::string& session_guid, DifficultyScalar difficulty_override) {
+    // see ChatCommand::ExecuteOverrideDiff() for details
+    // this kinda regroups IsLeader() + GetTeamMemberGuids() + setting the team.difficulty_override value
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<std::string> guids;
+    Team* team = FindTeamByMemberLocked(session_guid);
+    if (!team) {
+        // return vector is the player himself, he is not teamed
+        guids.push_back(session_guid);
+    } else if (team->leader_guid != session_guid) {
+        // no-op, empty return vector
+    } else {
+        // the player is teamed and leader of his group
+        // set the overidden difficulty for the team and fill the return vector with all members
+        //Logger::Log ("skal","[TeamService::SetDifficultyOverride] difficulty=%.2f/%.2f\n",difficulty_override.HP,difficulty_override.Dmg);
+        team->difficulty_override = difficulty_override;
+        guids.reserve(team->members.size());
+        for (const auto& m : team->members) {
+            if (!m.session_guid.empty()) guids.push_back(m.session_guid);
+        }
+    }
+    return guids;
+}
+
 TeamRoster TeamService::BuildRosterLocked(const Team& team) {
     TeamRoster roster;
     roster.team_id = team.id;
@@ -586,12 +610,15 @@ void TeamService::HandleVoluntaryExit(const std::string& session_guid) {
 std::optional<QueuedParty> TeamService::BuildParty(const std::string& leader_guid) {
     std::vector<std::string> guids;
     uint64_t team_id = 0;
+    DifficultyScalar difficulty_override;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         Team* t = FindTeamByMemberLocked(leader_guid);
         if (!t || t->leader_guid != leader_guid) return std::nullopt;
         team_id = t->id;
         for (const auto& m : t->members) guids.push_back(m.session_guid);
+        difficulty_override = t->difficulty_override;   //- ]
+        t->difficulty_override.zero();                  //- ] consume + reset
     }
     if (guids.empty()) return std::nullopt;
 
@@ -600,6 +627,8 @@ std::optional<QueuedParty> TeamService::BuildParty(const std::string& leader_gui
     party.is_team     = true;
     party.leader_guid = leader_guid;
     party.joined_at   = std::chrono::steady_clock::now();
+    Logger::Log ("skal","[TeamService::BuildParty] difficulty=%.2f/%.2f\n",difficulty_override.HP,difficulty_override.Dmg);
+    party.difficulty_override = difficulty_override;
     for (const auto& g : guids) {
         QueuedPlayer qp;
         qp.session_guid = g;

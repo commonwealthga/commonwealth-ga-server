@@ -225,6 +225,20 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		// running as TgGame_PointRotation on a surveyed CTR map.
 		CtrPointRotation::CheckInit(timings, Game);
 
+		// skal mega & gigamax and other custom modes that don't have a full Init() function
+		//		-> time adjust
+		// this should probably go in some DB table along with the difficulty scalars
+		//
+		// commented out but left here for reference, this is where any similar time adjustement should be done
+		//	(we decided 15 mins was just fine)
+		//
+		/*if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_MEGA_MAX_SECURITY) {
+			timings.timeSecs = 20 * 60;
+		}*/
+		/*if (Config::GetDifficultyValueId() == GA_G::DIFFICULTY_VALUE_ID_CUSTOM_GIGA_MAX_SECURITY) {
+			timings.timeSecs = 20 * 60;
+		}*/
+
 		// skal unification & organisation
 		//		timings moved here
 		Game->m_fGameMissionTime  = static_cast<float>(timings.timeSecs);

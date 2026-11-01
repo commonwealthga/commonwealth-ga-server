@@ -8,6 +8,7 @@
 #include <vector>
 #include <cstdint>
 #include <mutex>
+#include "src/Config/DifficultyScalar.hpp"
 #include "src/ControlServer/QuestStore/QuestStore.hpp"
 
 struct SessionInfo {
@@ -17,6 +18,7 @@ struct SessionInfo {
     int64_t user_id = 0;
     int64_t selected_character_id = 0;
     uint32_t selected_profile_id = 0;
+    DifficultyScalar difficulty_override;
 };
 
 struct CharacterInfo {
@@ -184,6 +186,11 @@ public:
     // touched. Safe to call per login.
     static void PinClassDeviceSlot14(int64_t character_id);
 
+    // A used consumable leaves the ES13 slot (equipped_slot 13) in every
+    // loadout profile of the character; the inventory row itself stays, so the
+    // client's record count never changes. Returns the number of rows removed.
+    static int UnequipConsumable(int64_t character_id, int inventory_id);
+
     // Remove every ga_players_inventory row owned by this user whose item_id
     // is in ga_item_blacklist, along with any ga_character_devices rows that
     // reference those inventory rows. Runs once per GSC_USER_LOGIN after
@@ -276,6 +283,11 @@ public:
     // device 2918). Falls back to the standard MIN(blueprint_id) if no OC
     // variant exists for the device. Result is cached per (device_id, oc).
     static int GetBlueprintIdForDevice(int device_id, bool oc = false);
+
+    // Consumable item (item_type 1412) whose ref_device_id is this device, or 0.
+    // Consumable devices have their own item id (e.g. item 6299 -> device 6284);
+    // the equip screen only offers type-1412 items for the consumable slot.
+    static int GetConsumableItemIdForDevice(int device_id);
 
     // Skill tree allocations — ga_character_skills. Profile-scoped.
     static std::vector<SkillRow> GetSkillsForCharacter(int64_t character_id,

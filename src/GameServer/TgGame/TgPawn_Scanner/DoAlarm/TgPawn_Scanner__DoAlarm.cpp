@@ -18,7 +18,7 @@ void __fastcall TgPawn_Scanner__DoAlarm::Call(ATgPawn_Scanner* Scanner, void* ed
 	// ActivateAlarm twice (ResetQueue+SpawnNextBot twice on the same factory).
 	// ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
 	// if (Game == nullptr) return;
+	// FString sTypeCode;
 	// TgGame__ActivateAlarm::Call(Game, nullptr,
-	// 	(AActor*)Scanner, /*nGlobalAlarmId=*/ 0,
-	// 	/*sTypeCode_Data=*/ 0, /*sTypeCode_Count=*/ 0, /*sTypeCode_Max=*/ 0);
+	// 	(AActor*)Scanner, /*nGlobalAlarmId=*/ 0, &sTypeCode);
 }

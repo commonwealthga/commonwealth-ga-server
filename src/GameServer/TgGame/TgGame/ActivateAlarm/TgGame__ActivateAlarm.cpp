@@ -5,8 +5,7 @@
 #include <string>
 
 void __fastcall TgGame__ActivateAlarm::Call(ATgGame* Game, void* edx,
-	AActor* Originator, int nGlobalAlarmId,
-	int sTypeCode_Data, int sTypeCode_Count, int sTypeCode_Max) {
+	AActor* Originator, int nGlobalAlarmId, FString* sTypeCode) {
 
 	// Diagnostic snapshot BEFORE the native runs — Originator details +
 	// counts of factories that COULD activate (matching bSpawnOnAlarm). Then
@@ -66,8 +65,7 @@ void __fastcall TgGame__ActivateAlarm::Call(ATgGame* Game, void* edx,
 		}
 	}
 
-	CallOriginal(Game, edx, Originator, nGlobalAlarmId,
-		sTypeCode_Data, sTypeCode_Count, sTypeCode_Max);
+	CallOriginal(Game, edx, Originator, nGlobalAlarmId, sTypeCode);
 
 	if (Game != nullptr) {
 		for (int i = 0; i < Game->s_SeqEventAlarmBots.Count; i++) {

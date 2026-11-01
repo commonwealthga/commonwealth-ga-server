@@ -1,6 +1,7 @@
 #include "src/ControlServer/MatchmakingService/Rules/CoopMatchRule.hpp"
 #include "src/ControlServer/MatchmakingService/RuleSupport.hpp"
 #include "src/ControlServer/MatchmakingService/StrictBalance.hpp"
+#include "src/ControlServer/Logger.hpp"
 
 #include <algorithm>
 
@@ -33,6 +34,16 @@ MatchResult CoopMatchRule::BuildOwnMatch(const QueuedParty& team) const {
         /*seed1=*/{}, /*seed2=*/{},
         AccessMode::PartyLocked, /*owners=*/{team.party_id});
     // map/mode left empty -> filled from pool by the orchestrator.
+
+    // skal override difficulty support
+    // only if the queue is adept/expert missions aka difficultyid==3000 or 4000
+    // otherwise the override is ignored
+    if (team.difficulty_override
+        && ((cfg_.difficulty_value_id==3000)
+         || (cfg_.difficulty_value_id==4000))) {
+        r.difficulty_override = team.difficulty_override;
+        //Logger::Log ("skal","[CoopMatchRule::BuildOwnMatch] - difficulty override = %.2f/%.2f\n",r.difficulty_override.HP,r.difficulty_override.Dmg);
+    }
     return r;
 }
 

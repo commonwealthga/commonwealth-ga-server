@@ -78,7 +78,7 @@ void CGameClient__SendMapRandomSMSettingsMarshal::Call(UNetConnection* Connectio
 		"SendMapRandomSMSettingsMarshal: Connection=%p MarshalPtr=%p dataSet=0x%08X companionsAdded=%d cachedActors=%d\n",
 		Connection, MarshalPtr, dataSet, companionsAdded, (int)ActorCache::RandomSMActors.size());
 
-	ClientConnection__SendMarshal::Call(Connection, nullptr, MarshalPtr);
+	ClientConnection__SendMarshal::Call(Connection, nullptr, MarshalPtr, 0);
 	NetConnection__FlushNet::CallOriginal(Connection);
 }
 

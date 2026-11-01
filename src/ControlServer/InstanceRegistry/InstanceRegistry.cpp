@@ -6,16 +6,16 @@
 #include <set>
 
 std::mutex InstanceRegistry::mutex_;
-std::string InstanceRegistry::s_host_ = "127.0.0.1";
+//std::string InstanceRegistry::s_host_ = "127.0.0.1";
 
 void InstanceRegistry::Init() {
     // No-op: mutex_ is default-constructed.
     // Kept for startup symmetry with PlayerSessionStore::Init().
 }
 
-void InstanceRegistry::SetHost(const std::string& host) {
+/*void InstanceRegistry::SetHost(const std::string& host) {
     s_host_ = host;
-}
+}*/
 
 std::optional<InstanceInfo> InstanceRegistry::GetReadyInstance(const std::string& map_name) {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -51,8 +51,8 @@ std::optional<InstanceInfo> InstanceRegistry::GetReadyInstance(const std::string
         info.state        = st ? st : "";
         info.pid          = sqlite3_column_int(stmt, 3);
         info.udp_port     = static_cast<uint16_t>(sqlite3_column_int(stmt, 4));
-        const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
-        info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
+        //const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+        //info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
         info.player_count = sqlite3_column_int(stmt, 6);
         info.started_at   = sqlite3_column_int64(stmt, 7);
         info.sealed_at    = sqlite3_column_int64(stmt, 8);
@@ -107,8 +107,8 @@ std::optional<InstanceInfo> InstanceRegistry::GetLiveInstanceByMapName(const std
         info.state        = st ? st : "";
         info.pid          = sqlite3_column_int(stmt, 3);
         info.udp_port     = static_cast<uint16_t>(sqlite3_column_int(stmt, 4));
-        const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
-        info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
+        //const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+        //info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
         info.player_count = sqlite3_column_int(stmt, 6);
         info.started_at   = sqlite3_column_int64(stmt, 7);
         info.sealed_at    = sqlite3_column_int64(stmt, 8);
@@ -125,6 +125,8 @@ std::optional<InstanceInfo> InstanceRegistry::GetLiveInstanceByMapName(const std
     sqlite3_finalize(stmt);
     return result;
 }
+
+    static const std::string localhost="127.0.0.1";
 
 void InstanceRegistry::SeedHomeMapInstance(const std::string& map_name, uint16_t udp_port) {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -158,7 +160,7 @@ void InstanceRegistry::SeedHomeMapInstance(const std::string& map_name, uint16_t
 
     sqlite3_bind_text(stmt, 1, map_name.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt,  2, static_cast<int>(udp_port));
-    sqlite3_bind_text(stmt, 3, s_host_.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, /*s_host_*/localhost.c_str(), -1, SQLITE_TRANSIENT);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -203,7 +205,7 @@ int64_t InstanceRegistry::InsertStarting(const std::string& map_name, const std:
     sqlite3_bind_text(stmt, 2, game_mode.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt,  3, pid);
     sqlite3_bind_int(stmt,  4, static_cast<int>(udp_port));
-    sqlite3_bind_text(stmt, 5, s_host_.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 5, /*s_host_*/localhost.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt,  6, is_home_map ? 1 : 0);
     if (queue_id != 0) sqlite3_bind_int64(stmt, 7, static_cast<int64_t>(queue_id));
     else               sqlite3_bind_null(stmt,  7);
@@ -443,8 +445,8 @@ std::optional<InstanceInfo> InstanceRegistry::GetSuccessor(int64_t parent_instan
         info.state        = st ? st : "";
         info.pid          = sqlite3_column_int(stmt, 3);
         info.udp_port     = static_cast<uint16_t>(sqlite3_column_int(stmt, 4));
-        const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
-        info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
+        //const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+        //info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
         info.player_count = sqlite3_column_int(stmt, 6);
         info.started_at   = sqlite3_column_int64(stmt, 7);
         info.sealed_at    = sqlite3_column_int64(stmt, 8);
@@ -523,8 +525,8 @@ std::optional<InstanceInfo> InstanceRegistry::GetReadyHomeInstance() {
         info.state        = st ? st : "";
         info.pid          = sqlite3_column_int(stmt, 3);
         info.udp_port     = static_cast<uint16_t>(sqlite3_column_int(stmt, 4));
-        const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
-        info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
+        //const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+        //info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
         info.player_count = sqlite3_column_int(stmt, 6);
         info.started_at   = sqlite3_column_int64(stmt, 7);
         info.sealed_at    = sqlite3_column_int64(stmt, 8);
@@ -577,8 +579,8 @@ std::optional<InstanceInfo> InstanceRegistry::GetInstanceById(int64_t instance_i
         info.state        = st ? st : "";
         info.pid          = sqlite3_column_int(stmt, 3);
         info.udp_port     = static_cast<uint16_t>(sqlite3_column_int(stmt, 4));
-        const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
-        info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
+        //const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+        //info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
         info.player_count = sqlite3_column_int(stmt, 6);
         info.started_at   = sqlite3_column_int64(stmt, 7);
         info.sealed_at    = sqlite3_column_int64(stmt, 8);
@@ -1111,8 +1113,8 @@ std::vector<InstanceInfo> InstanceRegistry::GetReadyMissionInstances() {
         info.state        = st ? st : "";
         info.pid          = sqlite3_column_int(stmt, 3);
         info.udp_port     = static_cast<uint16_t>(sqlite3_column_int(stmt, 4));
-        const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
-        info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
+        //const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+        //info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
         info.player_count = sqlite3_column_int(stmt, 6);
         info.started_at   = sqlite3_column_int64(stmt, 7);
         info.sealed_at    = sqlite3_column_int64(stmt, 8);
@@ -1161,8 +1163,8 @@ std::vector<InstanceInfo> InstanceRegistry::GetAllRunningInstances() {
         info.state        = st ? st : "";
         info.pid          = sqlite3_column_int(stmt, 3);
         info.udp_port     = static_cast<uint16_t>(sqlite3_column_int(stmt, 4));
-        const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
-        info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
+        //const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+        //info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
         info.player_count = sqlite3_column_int(stmt, 6);
         info.started_at   = sqlite3_column_int64(stmt, 7);
         info.sealed_at    = sqlite3_column_int64(stmt, 8);
@@ -1208,8 +1210,8 @@ std::optional<InstanceInfo> InstanceRegistry::GetHomeInstance() {
         info.state        = st ? st : "";
         info.pid          = sqlite3_column_int(stmt, 3);
         info.udp_port     = static_cast<uint16_t>(sqlite3_column_int(stmt, 4));
-        const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
-        info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
+        //const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+        //info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
         info.player_count = sqlite3_column_int(stmt, 6);
         info.started_at   = sqlite3_column_int64(stmt, 7);
         info.sealed_at    = sqlite3_column_int64(stmt, 8);
@@ -1268,8 +1270,8 @@ std::vector<InstanceInfo> InstanceRegistry::GetIdleInstances(int timeout_seconds
         info.state        = st ? st : "";
         info.pid          = sqlite3_column_int(stmt, 3);
         info.udp_port     = static_cast<uint16_t>(sqlite3_column_int(stmt, 4));
-        const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
-        info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
+        //const char* ip    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+        //info.ip_address   = (ip && *ip) ? ip : "127.0.0.1";
         info.player_count = sqlite3_column_int(stmt, 6);
         info.started_at   = sqlite3_column_int64(stmt, 7);
         info.sealed_at    = sqlite3_column_int64(stmt, 8);

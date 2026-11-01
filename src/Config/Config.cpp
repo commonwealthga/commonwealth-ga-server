@@ -138,21 +138,50 @@ int Config::GetDifficultyValueId() {
 }
 
 DifficultyScalar Config::GetDifficultyScalar(int DifficultyId) {
+	// -difficulty_override=<hp_mod>+<dmg_mod> from the control-server spawn
+	// Empty/missing -> default to DifficultyId defaults
+	ParsedOptions options = CommandLineParser::ParseCommandLine();
+	const std::wstring val = options.switches[L"difficulty_override"];
+	if (!val.empty()) {
+		try {
+			// the string is supposed to be:
+			//		HP*100 truncated as int
+			//		'+'
+			//		Dmg*100 truncated as int
+			const auto plus = val.find('+');
+			if (plus!=std::string::npos) {
+				const auto plus1=plus+1;
+				const auto Sz=val.size();
+				if (plus1<Sz) {
+					const std::wstring hp_str=val.substr(0,plus);
+					const std::wstring dmg_str=val.substr(plus1,Sz-plus1);
+					const int hp_i = std::stoi (hp_str);
+					const int dmg_i = std::stoi (dmg_str);
+					return DifficultyScalar (hp_i/100.0f,dmg_i/100.0f);
+				}
+			}
+    } catch (...) {
+			// Bad value — fall through to the heuristic. Don't crash the
+			// instance over a malformed CLI flag.
+		}
+	}
+
 	switch (DifficultyId) {
 		case GA_G::DIFFICULTY_VALUE_ID_LOW_SECURITY:
-		case GA_G::DIFFICULTY_VALUE_ID_NOVICE:               		return DifficultyScalar (1.00f, 1.00f);
+		case GA_G::DIFFICULTY_VALUE_ID_NOVICE:               		return DifficultyScalar(1.00f, 1.00f);
 		case GA_G::DIFFICULTY_VALUE_ID_MEDIUM_SECURITY:
-		case GA_G::DIFFICULTY_VALUE_ID_ADEPT:                		return DifficultyScalar (1.25f, 1.09f);
+		case GA_G::DIFFICULTY_VALUE_ID_ADEPT:                		return DifficultyScalar(1.25f, 1.09f);
 		case GA_G::DIFFICULTY_VALUE_ID_HIGH_SECURITY:
 		case GA_G::DIFFICULTY_VALUE_ID_DOUBLE_AGENT:
-		case GA_G::DIFFICULTY_VALUE_ID_ADVANCED:             		return DifficultyScalar (1.50f, 1.30f);
+		case GA_G::DIFFICULTY_VALUE_ID_ADVANCED:             		return DifficultyScalar(1.50f, 1.30f);
 		case GA_G::DIFFICULTY_VALUE_ID_MAXIMUM_SECURITY:
-		case GA_G::DIFFICULTY_VALUE_ID_EXPERT:               		return DifficultyScalar (1.75f, 1.52f);
-		case GA_G::DIFFICULTY_VALUE_ID_ULTRA_MAX_SECURITY:   		return DifficultyScalar (2.00f, 1.74f);
-		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_GIGA_MAX_SECURITY:return DifficultyScalar (3.00f, 2.40f);
-		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_HARDCORE_SECURITY:return DifficultyScalar (2.25f, 1.96f);
-		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_SUPER_AGENT:   		return DifficultyScalar (2.25f, 1.96f);
-		default:                                             		return DifficultyScalar (1.00f, 1.00f);
+		case GA_G::DIFFICULTY_VALUE_ID_EXPERT:               		return DifficultyScalar(1.75f, 1.52f);
+		case GA_G::DIFFICULTY_VALUE_ID_ULTRA_MAX_SECURITY:   		return DifficultyScalar(2.00f, 1.74f);
+		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_MEGA_MAX_SECURITY:return DifficultyScalar(2.90f, 2.30f);
+		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_GIGA_MAX_SECURITY:return DifficultyScalar(3.20f, 2.40f);
+		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_HARDCORE_SECURITY:return DifficultyScalar(2.25f, 1.96f);
+		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_SUPER_AGENT:   		return DifficultyScalar(2.25f, 1.96f);
+		default:                                             		return DifficultyScalar(1.00f, 1.00f);
 	}
 }
 

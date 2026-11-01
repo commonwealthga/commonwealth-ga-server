@@ -141,9 +141,11 @@ void Execute(const std::string& session_guid, int bot_id, Team team,
     // that InitializeDefaultProps checks — both fields are consumed and
     // cleared by the very next InitializeDefaultProps call, so this can't
     // leak into an adjacent non-chat spawn.
-    TgPawn__InitializeDefaultProps::nPendingDifficultyScalarOverride =
-        difficulty_scalar_override;
-    TgPawn__InitializeDefaultProps::bPendingEnemyScaling = true;
+    if(difficulty_scalar_override) {
+        TgPawn__InitializeDefaultProps::nPendingDifficultyScalarOverride =
+            difficulty_scalar_override;
+        TgPawn__InitializeDefaultProps::bPendingEnemyScaling = true;
+    }
 
     // bIgnoreCollision=true so a tight spot in front of the player doesn't
     // veto the spawn. pFactory=nullptr -> SpawnBotById falls back to

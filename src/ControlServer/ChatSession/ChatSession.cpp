@@ -321,6 +321,8 @@ bool HasParsedCommandAction(const ChatCommand::ParseResult& parsed) {
         || parsed.spectate.has_value()
         || parsed.toggle_broken_suits.has_value()
         || parsed.toggle_solo_mode.has_value()
+        || parsed.cheat.has_value()
+        || parsed.override_diff.has_value()
         || parsed.set_dlc.has_value()
         || parsed.possess
         || parsed.unpossess
@@ -641,6 +643,9 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
                 "[ChatCmd] -cheat player='%s' mode='%d'\n",
                 player_name_.c_str(), *parsed.cheat);
             ChatCommand::DispatchToggleCheatMode (*parsed.cheat, session_guid_);
+        }
+        if (parsed.recognized && parsed.override_diff) {
+            ChatCommand::ExecuteOverrideDiff(*parsed.override_diff, session_guid_);
         }
         if (parsed.suppress_broadcast) {
             // Recognized command (valid or invalid arg) — do not broadcast.
