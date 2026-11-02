@@ -30,6 +30,7 @@
 #include "src/GameServer/Engine/World/GetGameInfo/World__GetGameInfo.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+#include "src/GameServer/Diagnostics/BlackScreenDiagnostics.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/GameServer/Constants/TcpTypes.h"
 #include "src/GameServer/Constants/TcpFunctions.h"
@@ -266,8 +267,10 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 		FURL requesturl;
 		FURL__Constructor::CallOriginal(&requesturl, nullptr, nullptr, params2.data(), 0);
 
+		BlackScreenDiagnostics::Log("before", "SpawnPlayActor", Connection, nullptr);
 		ATgPlayerController* newcontrollerptr = World__SpawnPlayActor::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, connplayer, 2, &requesturl, &error, 0);
 		connplayer->Actor = newcontrollerptr;
+		BlackScreenDiagnostics::Log("after", "SpawnPlayActor", Connection, newcontrollerptr);
 
 		// Zero out FURL and error FStrings so their destructors don't delete[]
 		// memory that UE3 allocated with appMalloc.
@@ -392,7 +395,9 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 	// game->eventPostLogin(newcontroller);  // removed: now runs inside SpawnPlayActor naturally
 
 	Logger::Log("aim-trace", "RESETFORCEVIEWTARGET pawn = 0x%p\n", newcontroller->Pawn);
+	BlackScreenDiagnostics::Log("before", "ResetForceViewTarget", Connection, newcontroller);
 	newcontroller->ResetForceViewTarget();
+	BlackScreenDiagnostics::Log("after", "ResetForceViewTarget", Connection, newcontroller);
 	Logger::Log("aim-trace", "NEW VIEWTARGET = 0x%p\n", newcontroller->ViewTarget);
 
 	// Clear stale SpectatingMatch/cinematic visual state after real TgHUD_Game
