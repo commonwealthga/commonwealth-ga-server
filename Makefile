@@ -15,6 +15,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/IpcClient/IpcClient.cpp \
 			  \
 			  $(SRC_DIR)/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.cpp \
+			  $(SRC_DIR)/GameServer/Misc/MoveSpeedWatch/MoveSpeedWatch.cpp \
 			  $(SRC_DIR)/GameServer/Core/FMallocWindows/Free/FMallocWindows__Free.cpp \
 			  $(SRC_DIR)/GameServer/Core/FMallocWindows/Malloc/FMallocWindows__Malloc.cpp \
 			  $(SRC_DIR)/GameServer/Core/FMallocWindows/Realloc/FMallocWindows__Realloc.cpp \
