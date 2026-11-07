@@ -44,7 +44,7 @@ public:
 	static float fPendingFactoryBalance;
 
 	//skal per spawn-table bot balance multiplier
-	static float fPendingSpawnTableBalance;
+	static DifficultyScalar nPendingSpawnTableBalance;
 
 	static void __fastcall Call(ATgPawn* Pawn, void* edx);
 	static inline void __fastcall CallOriginal(ATgPawn* Pawn, void* edx) {

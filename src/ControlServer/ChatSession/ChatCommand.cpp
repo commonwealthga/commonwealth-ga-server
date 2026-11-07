@@ -79,6 +79,36 @@ std::optional<int> ParseInt(const std::string& s) {
     return v;
 }
 
+// Parse a float; returns nullopt on error
+// does NOT allow leading + or -
+// does NOT allow exponant expression
+// aka we only parse a positive xxx.yyy value
+std::optional<float> ParseFloat(const std::string& s) {
+    if (s.empty()) return std::nullopt;
+    int n = 0;
+    int d = 0;
+    int nbd = 0;
+    bool in_d = false;
+    for (char c : s) {
+        if (c == '.') {
+            if (in_d) return std::nullopt;  //- more than one '.' in the string
+            in_d = true;
+            continue;
+        }
+        if (c < '0' || c > '9') return std::nullopt;
+        int& tgt=in_d ? d : n;
+        if (tgt > (INT_MAX - (c - '0')) / 10) return std::nullopt;
+        tgt = tgt * 10 + (c - '0');
+        if (in_d) ++nbd;
+    }
+    if (nbd == 0) {
+        return (float)n;
+    } else {
+        int div = 1; while (nbd > 0) { div*=10; --nbd; }
+        return (float)n+(float)d/(float)div;
+    }
+}
+
 } // namespace
 
 std::optional<uint32_t> ChannelForCommandToken(const std::string& token) {
@@ -169,11 +199,12 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         return out;
     }
 
-    if (cmd_name == "-spawnfriend" || cmd_name == "-spawnenemy" ||
-        cmd_name == "-spawnhenchman") {
-        // -spawnfriend    [low|medium|high|max|umax|gmax|hc] <bot_id>
-        // -spawnenemy     [low|medium|high|max|umax|gmax|hc] <bot_id>
-        // -spawnhenchman  [low|medium|high|max|umax|gmax|hc] <bot_id>
+    if (cmd_name == "-spawnfriend"
+     || cmd_name == "-spawnenemy"
+     || cmd_name == "-spawnhenchman") {
+        // -spawnfriend    [low|medium|high|max|umax|mmax|gmax|hc] <bot_id>
+        // -spawnenemy     [low|medium|high|max|umax|mmax|gmax|hc] <bot_id>
+        // -spawnhenchman  [low|medium|high|max|umax|mmax|gmax|hc] <bot_id>
         //   (= -spawnfriend + henchman flag, player becomes its leader)
         // Difficulty token is optional; bare form falls back to the map's
         // current difficulty in the DLL (scalar=0 sentinel).
@@ -202,6 +233,7 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
             //  high    = HIGH_SECURITY / DOUBLE_AGENT / ADVANCED
             //  max     = MAXIMUM_SECURITY / EXPERT
             //  umax    = ULTRA_MAX_SECURITY (SR? DDR?)
+            //  mmax    = custom megamax
             //  gmax    = custom gigamax
             //  hc      = custom hardcore
             //  sa      = custom super-agent
@@ -212,6 +244,7 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
                 if (tok_lower == "high")    return 1030;
                 if (tok_lower == "max")     return 1259;
                 if (tok_lower == "umax")    return 1471;
+                if (tok_lower == "mmax")    return 3000;
                 if (tok_lower == "gmax")    return 4000;
                 if (tok_lower == "hc")      return 5000;
                 if (tok_lower == "sa")      return 10000;
@@ -417,16 +450,48 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         // -cheat athena
         out.recognized = true;
         out.suppress_broadcast = true;
+        if (rest.empty()) return out;  // bad arg — silent reject
         CheatArgs args;
-        if (!rest.empty()) {
-            if (rest == "zeus")         args.cheat_mode = CheatMode::Zeus;
-            else if (rest == "icarus")  args.cheat_mode = CheatMode::Icarus;
-            else if (rest == "hades")   args.cheat_mode = CheatMode::Hades;
-            else if (rest == "apollo")  args.cheat_mode = CheatMode::Apollo;
-            else if (rest == "athena")  args.cheat_mode = CheatMode::Athena;
-            else return out;  // bad arg — silent reject
-        }
+        if (rest == "zeus")         args.cheat_mode = CheatMode::Zeus;
+        else if (rest == "icarus")  args.cheat_mode = CheatMode::Icarus;
+        else if (rest == "hades")   args.cheat_mode = CheatMode::Hades;
+        else if (rest == "apollo")  args.cheat_mode = CheatMode::Apollo;
+        else if (rest == "athena")  args.cheat_mode = CheatMode::Athena;
+        else return out;  // bad arg — silent reject
         out.cheat = args;
+        return out;
+    }
+#endif
+
+#if 0
+    // skal add support for -overridediff
+    //  override the difficulty scalar for the next mission
+    //  applies only for somone in solo or in a group
+    //  args: 1 or 2 floats respectively for HP and Dmg
+    //        2nd is optional and if not given infered using the 'old' ratio Dmg=HP*0.87
+    if (cmd_name == "-overridediff") {
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        if (rest.empty()) return out;  // bad arg — silent reject
+
+        std::vector<std::string> tokens = SplitWs(rest);
+        if (tokens.empty() || tokens.size() > 2) return out;
+
+        OverrideDiffArgs args;
+
+        std::optional<float> f;
+        f = ParseFloat(tokens[0]);
+        if (!f) return out;
+        args.difficulty_scalar.HP=*f;
+        if (tokens.size() == 2) {
+            f = ParseFloat(tokens[1]);
+            if (!f) return out;
+            args.difficulty_scalar.Dmg=*f;
+        } else {
+            args.difficulty_scalar.Dmg=args.difficulty_scalar.HP*0.87f;
+        }
+
+        out.override_diff = args;
         return out;
     }
 #endif
@@ -991,6 +1056,59 @@ void DispatchToggleCheatMode(const CheatArgs& args, const std::string& session_g
             "[ChatCmd] guid=%s command=-cheat mode=%d outcome=ignored details=dispatch_failed\n",
             session_guid.c_str(), args.cheat_mode);
     }
+}
+
+void ExecuteOverrideDiff(const OverrideDiffArgs& args, const std::string& session_guid) {
+    if (session_guid.empty()) {
+        Logger::Log("chat-command", "[ChatCmd] ExecuteOverrideDiff dropped: empty session_guid\n");
+        return;
+    }
+
+    auto info = PlayerSessionStore::GetByGuidPtr(session_guid);
+    if (info==nullptr) {
+        Logger::Log("chat-command",
+            "[ChatCmd] guid=%s command=-overridediff outcome=ignored details=no_session\n",
+            session_guid.c_str());
+        return;
+    }
+
+    // player must be in solo mode or leader of a party
+    // to avoid locking the TeamService twice, TeamService::SetDifficultyOverride() does all the work and its return vector
+    // serves both as result code (depending on the number of elements) and list of recipients for the system message:
+    //      empty means the player is not leader of its group, so the command should be ignored
+    //      one single element means the player is solo, we must then test the solomode
+    //      any other number means the players is the leader of his party
+
+    const auto ignore=[&]() {
+            ChatSession::SystemMessageToGuid(session_guid, "*** You must be in solo mode or a group leader to use -overridediff ***");
+            Logger::Log("chat-command",
+                "[ChatCmd] guid=%s command=-overridediff outcome=ignored details=not_solo_or_group_leader\n",
+                session_guid.c_str());
+    };
+
+    std::vector<std::string> Recipients = TeamService::SetDifficultyOverride(session_guid, args.difficulty_scalar);
+    switch(Recipients.size()) {
+        case 0:
+            return ignore();
+
+        case 1:
+            if (Database::GetUserPreference(info->user_id, "solo_mode") != "1")
+                return ignore();
+            info->difficulty_override = args.difficulty_scalar;
+            Logger::Log ("skal","[ExecuteOverrideDiff/SOLO] - difficulty override = %.2f/%.2f\n",info->difficulty_override.HP,info->difficulty_override.Dmg);
+            break;
+
+        default:
+            // no-op, everything was done in TeamService::SetDifficultyOverride()
+            break;
+    }
+
+    Logger::Log("chat-command",
+        "[ChatCmd] guid=%s command=-overridediff outcome=set user=%lld hp=%f dmg=%f\n",
+        session_guid.c_str(), (long long)info->user_id, args.difficulty_scalar.HP, args.difficulty_scalar.Dmg);
+
+    const std::string Msg = std::string("*** Next advanced/expert mission difficulty overriden: HP=") + std::to_string(args.difficulty_scalar.HP) + " Dmg=" + std::to_string(args.difficulty_scalar.Dmg) + " ***";
+    for(const std::string& guid : Recipients) ChatSession::SystemMessageToGuid(guid, Msg);
 }
 
 } // namespace ChatCommand

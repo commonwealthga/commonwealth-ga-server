@@ -75,6 +75,11 @@ void __fastcall TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 		const std::string full(raw ? raw : "");
 		game_class = (full.rfind("Class ", 0) == 0) ? full.substr(6) : full;
 	}
+
+	#if 0
+
+	// skal: this is actualy unused because overriden in TgGame__InitGameRepInfo::Call()
+
 	int  missionTimeSecs = 15 * 60;
 	int  overtimeSecs    = 4 * 60;
 	bool allowOvertime   = true;
@@ -95,6 +100,8 @@ void __fastcall TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	Game->m_eTimerState = 0;
 
 	Game->TimeLimit = missionTimeSecs;
+
+	#endif
 
 	// -maxplayers: raise/lower the join cap (GameInfo.AtCapacity) and grow the
 	// shared net bandwidth pool so each client keeps MaxDynamicBandwidth.
@@ -121,6 +128,7 @@ void __fastcall TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 	//
 	// Applies to the VR arena and to every open zone (gameplay_type_value_id
 	// 1554) — persistent worlds that must never hit a match end.
+	// skal this should be moved to TgGame__InitGameRepInfo::Call() for unification
 	if (map_name == "Dome3_VR_Arena_P" || MapGameInfo::IsOpenZone(map_name, game_class)) {
 		Game->m_bAllowOvertime    = 0;
 		Game->m_fGameOvertimeTime = 0.0f;

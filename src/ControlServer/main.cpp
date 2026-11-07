@@ -383,7 +383,7 @@ static bool SpawnAdminInstance(const ControlServerConfig& cfg, const std::string
         }
     }
 
-    pid_t pid = InstanceSpawner::Spawn(cfg, map_name, game_mode, *port, instance_id, difficulty);
+    pid_t pid = InstanceSpawner::Spawn(cfg, map_name, game_mode, *port, instance_id, eDifficulty::Id, difficulty);
     if (pid < 0) {
         InstanceRegistry::MarkStopped(instance_id);
         message = "InstanceSpawner::Spawn failed";
@@ -530,12 +530,18 @@ int main(int argc, char* argv[]) {
 
     // Initialize instance registry
     InstanceRegistry::Init();
-    InstanceRegistry::SetHost(cfg.host);
+    //InstanceRegistry::SetHost(cfg.host); //skal: unused
+
+    // Create ASIO io_context and register signal handler reference
+    // skal - moved here cause it's required during TcpSession::Init() if there is asio stuff done there
+    //        such as dns resolution and the like - this was the source of my crashes
+    asio::io_context io;
+    g_io = &io;
 
     // Set network config for TcpSession responses (external IP + chat port)
     TcpSession::SetHomeMapName(cfg.home_map_name);
     TcpSession::SetHomeArrivalMinLevel(cfg.home_arrival_min_level);
-    TcpSession::SetNetworkConfig(cfg.host, cfg.chat_port, cfg.public_host);
+    if (!TcpSession::Init(io, cfg)) return 1;
     InstanceRegistry::SetMaxInstances(cfg.max_instances);
     TcpSession::SetMaxOnlinePlayers(cfg.max_online_players);
     TcpSession::SetZoneCap(cfg.zone_cap);
@@ -547,14 +553,8 @@ int main(int argc, char* argv[]) {
     }
     Logger::Log("main", "Limited launch caps: max_online_players=%d max_instances=%d dome_cap=%d zone_cap=%d\n",
         cfg.max_online_players, cfg.max_instances, cfg.dome_cap, cfg.zone_cap);
-    TcpSession::SetLoginPolicy(cfg.allow_duplicate_account_logins,
-                               cfg.require_password_verification,
-                               cfg.require_provisioned_accounts);
-    IpcServer::SetStatsToggles(cfg.device_stats_enabled,
-                               cfg.effectiveness_enabled);
-    TcpSession::SetModerationConfig(cfg.ban_spoof.mode,
-                                    cfg.ban_spoof.fallback_close_sec,
-                                    cfg.kick.fallback_close_sec);
+    // Set IPC server stats flags
+    IpcServer::SetStatsToggles(cfg.device_stats_enabled, cfg.effectiveness_enabled);
 
     // Clear stale instances from any previous (crashed) run
     InstanceRegistry::ClearStaleInstances();
@@ -758,7 +758,8 @@ int main(int argc, char* argv[]) {
             // Honour rule-supplied cap_override (e.g. DoubleAgentRule seals
             // each match at its roster size). Falls back to the queue-wide
             // cap when the rule didn't override.
-            if (auto qcfg = MatchmakingService::GetQueueConfig(queue_id)) {
+            auto qcfg = MatchmakingService::GetQueueConfig(queue_id);
+            if (qcfg) {
                 pending.cap = result.cap_override.value_or(
                     MatchmakingService::GetQueueInstanceCap(*qcfg));
             }
@@ -769,9 +770,25 @@ int main(int argc, char* argv[]) {
 
             // Look up queue's configured difficulty so the instance runs
             // at the queue's tier instead of the DLL's map-name heuristic.
-            uint32_t queue_difficulty = 0;
-            if (auto qcfg = MatchmakingService::GetQueueConfig(queue_id)) {
-                queue_difficulty = qcfg->difficulty_value_id;
+
+            // skal: intercept that and look for overriden difficulty (wich comes through the MatchResult)
+            eDifficulty difficulty_type = eDifficulty::Default;
+            uint32_t difficulty_id = 0;
+            DifficultyScalar difficulty_scalar;
+            if (result.difficulty_override) {
+                difficulty_scalar = result.difficulty_override;
+                difficulty_type = eDifficulty::Scalar;
+                Logger::Log("main","[main] spawn instance, will use overriden difficulty: %.2f/%.2f\n",difficulty_scalar.HP,difficulty_scalar.Dmg);
+            } else if (qcfg) {
+                difficulty_id = qcfg->difficulty_value_id;
+                if (difficulty_id != 0) {
+                    difficulty_type = eDifficulty::Id;
+                    Logger::Log("main","[main] spawn instance, will use difficulty %d\n",difficulty_id);
+                } else {
+                    Logger::Log("main","[main] spawn instance, will use default difficulty (from queue config)\n");
+                }
+            } else {
+                Logger::Log("main","[main] spawn instance, will use default difficulty\n");
             }
 
             // One-player match: offer it to the external instance service
@@ -830,8 +847,7 @@ int main(int argc, char* argv[]) {
             }
 
             pid_t pid = InstanceSpawner::Spawn(
-                cfg, result.map_name, result.game_mode, *port, instance_id,
-                queue_difficulty);
+                cfg, result.map_name, result.game_mode, *port, instance_id, difficulty_type, difficulty_id, difficulty_scalar);
 
             if (pid < 0) {
                 Logger::Log("matchmaking",
@@ -885,7 +901,7 @@ int main(int argc, char* argv[]) {
         inst->udp_port = *real_port;
         InstanceRegistry::SetAddress(instance_id, "");
         pid_t pid = InstanceSpawner::Spawn(cfg, inst->map_name, inst->game_mode,
-                                           inst->udp_port, instance_id, difficulty);
+                                           inst->udp_port, instance_id, eDifficulty::Id, difficulty);
         if (pid < 0) return false;
         InstanceRegistry::UpdatePid(instance_id, pid);
         Logger::Log("main", "[ExternalFallback] instance %lld started here pid=%d port=%d map=%s\n",
@@ -952,9 +968,10 @@ int main(int argc, char* argv[]) {
         if (auto qcfg = MatchmakingService::GetQueueConfig(parent->queue_id)) {
             queue_difficulty = qcfg->difficulty_value_id;
         }
+        // skal: afaik this is never used for pve mission, therefore the difficulty is always stock one
+        //Logger::Log("skal","[main] spawn instance, default difficulty from being 'successor' map)\n");
         pid_t pid = InstanceSpawner::Spawn(
-            cfg, picked->map_name, picked->game_mode, *port, instance_id,
-            queue_difficulty);
+            cfg, picked->map_name, picked->game_mode, *port, instance_id, eDifficulty::Id, queue_difficulty);
         if (pid < 0) {
             Logger::Log("main", "[SuccessorSpawner] Failed to spawn successor for parent=%lld\n",
                 (long long)parent_instance_id);
@@ -989,9 +1006,9 @@ int main(int argc, char* argv[]) {
 
         int64_t instance_id = InstanceRegistry::InsertStarting(
             map_name, game_mode, *port, 0, /*is_home_map=*/false);
-
+        Logger::Log("main","[main] spawn instance, will use default difficulty (from being open world map)\n");
         pid_t pid = InstanceSpawner::Spawn(cfg, map_name, game_mode, *port, instance_id,
-                                           difficulty_value_id, cfg.zone_cap);
+                                           eDifficulty::Id, difficulty_value_id, DifficultyScalar(), cfg.zone_cap);
         if (pid < 0) {
             Logger::Log("travel", "[OpenWorldSpawner] Spawn failed for '%s'\n", map_name.c_str());
             InstanceRegistry::MarkStopped(instance_id);
@@ -1160,7 +1177,7 @@ int main(int argc, char* argv[]) {
             cfg.home_map_name, cfg.home_map_game_mode, *port, 0, /*is_home_map=*/true);
 
         pid_t pid = InstanceSpawner::Spawn(cfg, cfg.home_map_name, cfg.home_map_game_mode, *port, instance_id,
-                                           0, cfg.dome_cap);
+                                           eDifficulty::Default, 0, DifficultyScalar(), cfg.dome_cap);
         if (pid < 0) {
             Logger::Log("main", "Failed to spawn home map instance\n");
             InstanceRegistry::MarkStopped(instance_id);
@@ -1172,10 +1189,6 @@ int main(int argc, char* argv[]) {
         Logger::Log("main", "Home map instance spawned on demand: instance_id=%lld pid=%d port=%d\n",
             (long long)instance_id, (int)pid, (int)*port);
     });
-
-    // Create ASIO io_context and register signal handler reference
-    asio::io_context io;
-    g_io = &io;
 
     // Hand the io_context to MatchmakingService so it can schedule
     // pop-delay timers. Must happen BEFORE any TCP/chat listener starts

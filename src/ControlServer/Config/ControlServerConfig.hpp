@@ -30,11 +30,9 @@ struct ControlServerConfig {
     std::string xvfb_run_path      = "xvfb-run";
     std::string game_binary        = "/home/zax/games/ga/Binaries/GlobalAgenda.exe";
     std::string host               = "77.237.240.162";
-    std::string hostdns            = "77.237.240.162";
-    // Address advertised (instance + chat) to clients that do
-    // NOT connect from a private/LAN/Tailscale range. Empty = always "host".
-    // The home router has no hairpin NAT, so LAN clients must keep "host".
-    std::string public_host        = "";  // IPv4 or DNS name (re-resolved every 5 min)
+    //std::string hostdns            = "77.237.240.162";    // skal deprecated
+    std::string nat_networks       = "";
+    std::string nat_ip             = "";
     std::string dll_overrides      = "version=n,b";
     std::string home_map_name      = "Dome3_VR_Arena_P";
     std::string home_map_game_mode = "TgGame.TgGame_Mission";

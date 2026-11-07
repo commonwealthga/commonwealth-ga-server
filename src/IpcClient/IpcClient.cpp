@@ -654,7 +654,7 @@ void IpcClient::DrainInbound() {
                 }
                 int bot_id = 0;
                 std::string team_str;
-                int difficulty_id;
+                int difficulty_id = 0;
                 bool henchman = false;
                 if (j.contains("args") && j["args"].is_object()) {
                     bot_id          = j["args"].value("bot_id", 0);
@@ -688,7 +688,7 @@ void IpcClient::DrainInbound() {
                 }
 
                 const std::string pvp_class = j["args"].value("pvp_class", std::string());
-                TgPlayerActions::SpawnBotCmd::Execute(guid, bot_id, team, Config::GetDifficultyScalar(difficulty_id),henchman, pvp_class);
+                TgPlayerActions::SpawnBotCmd::Execute(guid, bot_id, team,(difficulty_id?Config::GetDifficultyScalar(difficulty_id):Config::GetDifficultyScalar()),henchman, pvp_class);
             } else if (action == "deploy_target") {
                 if (CurrentMatchIsPVP()) {
                     Logger::Log("chat-command",

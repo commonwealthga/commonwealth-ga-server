@@ -43,7 +43,7 @@ public:
     static void Init();
 
     // Set the external IP that instances are reachable at (from config).
-    static void SetHost(const std::string& host);
+    //static void SetHost(const std::string& host);//skal: unused
 
 
     // Return the first READY instance for the given map name, or nullopt if none.
@@ -198,5 +198,5 @@ public:
 
 private:
     static std::mutex mutex_;
-    static std::string s_host_;
+    //static std::string s_host_;//skal: unused
 };

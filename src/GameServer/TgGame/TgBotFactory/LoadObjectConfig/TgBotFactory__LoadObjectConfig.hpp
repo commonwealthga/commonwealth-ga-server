@@ -2,6 +2,7 @@
 
 #include "src/pch.hpp"
 #include "src/Utils/HookBase.hpp"
+#include "src/Config/DifficultyScalar.hpp"
 
 #include <vector>
 
@@ -13,7 +14,7 @@ struct SpawnTableEntry {
 	int EnemyBotId;
 	int BotCount;
 	float SpawnChance;
-	float BBM;
+	DifficultyScalar BBM;
 	std::string ReferenceName;
 	// spawn_group_min/max — when max>0, the group's roster is rand[min..max]
 	// entries (Tick/Wasp Incubator tables use this with bot_count=1); when 0,
@@ -24,6 +25,21 @@ struct SpawnTableEntry {
 	// FSpawnGroupDetail::nRespawnSeconds (the intact BotDied reads it when
 	// scheduling the replacement entry's fSpawnTime).
 	int RespawnSec;
+
+	SpawnTableEntry (int nSpawnTableId,int nSpawnGroup,int nEnemyBotId,int nBotCount,float nSpawnChance,
+					DifficultyScalar nBBM,const std::string& nReferenceName,int nGroupMin,int nGroupMax,int nRespawnSec)
+		:SpawnTableId (nSpawnTableId)
+		,SpawnGroup (nSpawnGroup)
+		,EnemyBotId (nEnemyBotId)
+		,BotCount (nBotCount)
+		,SpawnChance (nSpawnChance)
+		,BBM (nBBM)
+		,ReferenceName (nReferenceName)
+		,GroupMin (nGroupMin)
+		,GroupMax (nGroupMax)
+		,RespawnSec (nRespawnSec)
+	{
+	}
 };
 
 // ResetQueue/SpawnWave build product: one plan per group INDEX (the position
@@ -41,17 +57,18 @@ struct SpawnGroupPlan {
 	                      // this bot (vanilla: per-group roll, not per-entry).
 	                      // 0 for roster-style groups (gmax>0, incubators) —
 	                      // those keep a fresh per-entry roll (mixed brood).
-	float BBM;				  	// skal: add spawn-table bbm
+	DifficultyScalar BBM;	// skal: add spawn-table bbm
 	FSpawnGroupDetail Detail; // nMin/nMaxCount + nRespawnSeconds seeded;
 	                          // nCurrentCount = 0 (caller preserves alive)
 };
 
-// skal: struct to carry around a {botid,bbm} pair
+// skal: struct to carry around a {botid,bbm}
 struct BotIdEntry {
 	int BotId;
-	float BBM;
-	BotIdEntry ():BotId (0),BBM (0.0f) {}
-	BotIdEntry (int nBotId,float fBBM):BotId (nBotId),BBM (fBBM) {}
+	DifficultyScalar BBM;
+	BotIdEntry ():BotId (0),BBM () {}
+	//BotIdEntry (int nBotId,float fBBM_HP,float fBBM_Dmg):BotId (nBotId),BBM (fBBM_HP,fBBM_Dmg) {}
+	BotIdEntry (int nBotId,DifficultyScalar nBBM):BotId (nBotId),BBM (nBBM) {}
 };
 
 // Hook for `Function TgGame.TgBotFactory.LoadObjectConfig` (stripped native).

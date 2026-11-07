@@ -4,6 +4,8 @@
 #include <optional>
 #include <string>
 
+#include "src/Config/DifficultyScalar.hpp"
+
 namespace ChatCommand {
 
 enum class ChangeTeamTarget {
@@ -170,7 +172,11 @@ enum class CheatMode {
 };
 
 struct CheatArgs {
-    CheatMode cheat_mode;
+    CheatMode cheat_mode = CheatMode::None;
+};
+
+struct OverrideDiffArgs {
+    DifficultyScalar difficulty_scalar;
 };
 
 // Master switch for -components (the inventory-desync test harness).
@@ -225,6 +231,7 @@ struct ParseResult {
     // "not available" names) — see PlayerCommands. name has no leading '-'.
     struct PlayerCmdArgs { std::string name; std::string rest; };
     std::optional<PlayerCmdArgs>     player_cmd;
+    std::optional<OverrideDiffArgs>  override_diff;
 
     // No-arg toggles. Flag is set when recognized + parsed cleanly.
     bool possess   = false;
@@ -377,5 +384,12 @@ void DispatchStuck(const std::string& session_guid);
 // -cheat: toggle hirez cheat modes (zeus,icarus,hades,apollo,athena)
 void DispatchToggleCheatMode(const CheatArgs& args,
                                const std::string& session_guid);
+
+// -overridediff: override next mission difficulty sscalar
+// player must be solo or group leader
+// update any live queue entry, and reply privately with the new state.
+// Handled entirely on the control server; no PLAYER_ACTION IPC.
+void ExecuteOverrideDiff(const OverrideDiffArgs& args,
+                           const std::string& session_guid);
 
 } // namespace ChatCommand

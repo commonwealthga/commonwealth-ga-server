@@ -21,6 +21,7 @@
 #include "src/ControlServer/Constants/EquipSlot.hpp"
 #include "src/ControlServer/TcpSession/PacketView.hpp"
 #include "src/ControlServer/Logger.hpp"
+#include "src/ControlServer/Config/ControlServerConfig.hpp"
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/ControlServer/TeamService/TeamService.hpp"
@@ -239,6 +240,8 @@ private:
     std::string player_name;
     std::string session_guid_;
     std::string ip_address_;
+    // skal - NAT support
+    std::string host_;
     int64_t  user_id_               = 0;
     int64_t  selected_character_id_ = 0;
     uint32_t selected_profile_id_   = 0;
@@ -272,9 +275,14 @@ private:
     static std::function<int64_t(const std::string&, const std::string&, IntroHost&)> on_need_intro_mission_;
 
     // Network config: external IP and chat port, set once from main.
+    // skal - NAT support
     static std::string s_host_;
-    static std::string s_public_host_;   // advertised to non-private clients ("" = off)
     static uint16_t    s_chat_port_;
+    struct net_info_t {
+        asio::ip::address_v4_range  ip_range;
+        asio::ip::address_v4        srv_ip;
+    };
+    static std::forward_list<net_info_t> s_nat_info_list;
     static bool        s_allow_duplicate_account_logins_;
     static bool        s_require_password_verification_;
     static bool        s_require_provisioned_accounts_;
@@ -292,8 +300,9 @@ public:
                               const std::vector<int64_t>& user_ids);
     static void SetHomeMapName(const std::string& name);
     static void SetHomeArrivalMinLevel(uint32_t level);
-    static void SetNetworkConfig(const std::string& host, uint16_t chat_port,
-                                 const std::string& public_host = "");
+    // skal - NAT support: resolves 'host' (IP / DNS name / "auto") and builds the
+    // local-network -> server-IP table from nat_networks / nat_ip.
+    static bool SetNetworkConfig(asio::io_context& io, const std::string& host, uint16_t chat_port, const std::string& local_nets_str, const std::string& default_nat_ip_str);
     static void SetLoginPolicy(bool allow_duplicate_account_logins,
                                bool require_password_verification = true,
                                bool require_provisioned_accounts = false);
@@ -304,6 +313,11 @@ public:
     static void SetMaxOnlinePlayers(int max_online_players);
     // Fallback zone cap for the full-zone wait line (instances report their own).
     static void SetZoneCap(int zone_cap) { s_zone_cap_ = zone_cap; }
+
+public:
+    static bool Init(asio::io_context& io, const ControlServerConfig& cfg);
+
+    static void SetHomeMapSpawner(std::function<void()> cb);
 
     // Live-kick every TcpSession whose user_id / IP matches the predicate.
     // Sends a bogus GSC_GO_PLAY pointing at a non-existent map; client tears
@@ -342,6 +356,7 @@ public:
     // spawn. Used by login, end-of-mission warm-up (MSG_NEED_HOME_MAP IPC),
     // and the GSC_CHANGE_INSTANCE return-to-home handler.
     static void EnsureHomeMapWarm(const char* reason);
+
 private:
 
     // Set when a READY home map instance is found for this player.
@@ -503,12 +518,9 @@ private:
          );
     }
 
-    // Per-client advertised address. Clients from outside the
-    // LAN/Tailscale get public_host in place of the LAN host.
-    std::string AdvertisedIp(const std::string& ip);
-
-    void WriteIP(std::vector<uint8_t>& response, uint16_t type, const std::string& ip_in, uint16_t port) {
-        const std::string ip = AdvertisedIp(ip_in);
+    // skal - NAT support: the address handed to the client is the per-connection
+    // host_ (picked at login from nat_networks), so WriteIP needs no rewriting.
+    void WriteIP(std::vector<uint8_t>& response, uint16_t type, const std::string& ip, uint16_t port) {
         response.push_back(type & 0xFF);       // low byte
         response.push_back(type >> 8);         // high byte
 
@@ -809,6 +821,11 @@ private:
     // fresh rebuild — same shape as the disconnect/reconnect flow that the
     // user already confirmed fixes the symptom.
     void send_inventory_clear(int nPawnId, int64_t character_id);
+
+    // Single-record version of clear + resend: STATE=2 then the bag-form record
+    // for one inventory row, in one SEND_INVENTORY. Moves an equipped item to the
+    // bag without touching any other record (no count change, no full rebuild).
+    void send_inventory_record_to_bag(int nPawnId, int64_t character_id, int inventory_id);
 
     // Identical wire format to send_inventory_response but pulls the records
     // from an in-memory list (no DB lookup). Used by the -possess chat command

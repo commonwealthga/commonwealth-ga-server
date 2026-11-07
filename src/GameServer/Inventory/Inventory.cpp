@@ -123,7 +123,7 @@ int Inventory::GetDeviceType(int slot) {
 		case GA::EquipSlot::Morale:     return GA_G::TGDT_MORALE;           // 476
 		case GA::EquipSlot::Rest:       return GA_G::TGDT_BASE_HUMAN_ATTRIB; // 392
 		case GA::EquipSlot::Beacon:     return GA_G::TGDT_PLAYER_SENSOR;    // 393
-		case GA::EquipSlot::Consumable: return GA_G::TGDT_OFF_HAND;        // 390
+		case GA::EquipSlot::Consumable: return GA_G::TGDT_CONSUMABLE;      // 1482
 		default:                        return 0;
 	}
 }
@@ -587,6 +587,9 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 	Device->m_bIsOffHand = IsOffHand(slot) ? 1 : 0;
 	Device->m_bHandDevice = IsHandDevice(slot) ? 1 : 0;
 	Device->m_nDeviceType = GetDeviceType(slot);
+	// ES13 consumable slot. CreateEquipDevice doesn't set this from asm.dat; UC
+	// TgDevice fires ConsumeDevice on it and ConsumableReaper removes the device.
+	Device->r_bConsumedOnUse = (slot == 13) ? 1 : 0;
 	Device->r_nDeviceId = deviceId;
 	Device->r_nQualityValueId = qualityValueId;
 

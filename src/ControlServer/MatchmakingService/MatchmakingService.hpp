@@ -65,7 +65,7 @@ public:
 
     // Convenience: queue a single player as a solo party. Synthesises a stable
     // solo party_id from the session guid.
-    static void AddPlayer(uint32_t queue_id, const QueuedPlayer& player);
+    static void AddPlayer(uint32_t queue_id, QueuedPlayer& player);
 
     // Remove a party (by id) from whatever queue holds it. Returns true if it
     // was queued. Used by TeamService on any composition change. Does NOT touch

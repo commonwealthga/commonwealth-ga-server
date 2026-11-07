@@ -3033,8 +3033,8 @@ void Database::Init() {
 			"                  AND m.map_object_id = c.mid AND m.column_name = c.col);"
 			"INSERT INTO mod_data_set_bot_spawn_tables "
 			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, "
-			"   spawn_chance, team_size, multiple_class_flag, bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
-			"SELECT t.id, 1028, 0, 1, t.bot, 1, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"   spawn_chance, team_size, multiple_class_flag, bbm_hp, bbm_dmg, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT t.id, 1028, 0, 1, t.bot, 1, 1.0, 0, 0, 1.0, 0.0, 0, 0, 0 "
 			"FROM (SELECT 10100 AS id, 1337 AS bot UNION ALL SELECT 10101, 1322) t "
 			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables m WHERE m.bot_spawn_table_id = t.id);";
 		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
@@ -3055,8 +3055,8 @@ void Database::Init() {
 		const char* sql =
 			"INSERT INTO mod_data_set_bot_spawn_tables "
 			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, "
-			"   spawn_chance, team_size, multiple_class_flag, bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
-			"SELECT 10102, 1028, 0, 1, 1324, 1, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"   spawn_chance, team_size, multiple_class_flag, bbm_hp, bbm_dmg, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10102, 1028, 0, 1, 1324, 1, 1.0, 0, 0, 1.0, 0.0, 0, 0, 0 "
 			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables m WHERE m.bot_spawn_table_id = 10102);"
 			"UPDATE map_object_config SET value = '10102' "
 			"WHERE map_name = 'Inception_ALL' AND map_object_id IN (9832, 9833, 12627, 12628) "
@@ -3167,8 +3167,8 @@ void Database::Init() {
 		if (sqlite3_exec(db,
 			"INSERT INTO mod_data_set_bot_spawn_tables "
 			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, "
-			"   spawn_chance, team_size, multiple_class_flag, bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
-			"SELECT 10103, 1028, 0, 1, 1620, 1, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"   spawn_chance, team_size, multiple_class_flag, bbm_hp, bbm_dmg, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10103, 1028, 0, 1, 1620, 1, 1.0, 0, 0, 1.0, 0.0, 0, 0, 0 "
 			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables m WHERE m.bot_spawn_table_id = 10103);"
 			"UPDATE map_object_config SET value = '10103' WHERE map_name = 'AgencyZero_P' AND map_object_id = 13896 "
 			"  AND column_name IN ('n_spawn_table_id','n_default_spawn_table_id') AND value = '57';"
@@ -3186,8 +3186,8 @@ void Database::Init() {
 			// mod table 10104 = Minion Sentinel 1392 (TreadRobot, AgencyZero's own) x1.
 			"INSERT INTO mod_data_set_bot_spawn_tables "
 			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, "
-			"   spawn_chance, team_size, multiple_class_flag, bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
-			"SELECT 10104, 1028, 0, 1, 1392, 1, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"   spawn_chance, team_size, multiple_class_flag, bbm_hp, bbm_dmg, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10104, 1028, 0, 1, 1392, 1, 1.0, 0, 0, 1.0, 0.0, 0, 0, 0 "
 			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables m WHERE m.bot_spawn_table_id = 10104);"
 			"UPDATE map_object_config SET value = '10104' WHERE map_name = 'AgencyZero_P' AND map_object_id IN (13891,13892) "
 			"  AND column_name IN ('n_spawn_table_id','n_default_spawn_table_id') AND value = '57';"
@@ -3212,8 +3212,8 @@ void Database::Init() {
 		if (sqlite3_exec(db,
 			"INSERT INTO mod_data_set_bot_spawn_tables "
 			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, "
-			"   spawn_chance, team_size, multiple_class_flag, bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
-			"SELECT 10105, 1028, 0, 1, 1619, 1, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"   spawn_chance, team_size, multiple_class_flag, bbm_hp, bbm_dmg, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10105, 1028, 0, 1, 1619, 1, 1.0, 0, 0, 1.0, 0.0, 0, 0, 0 "
 			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables m WHERE m.bot_spawn_table_id = 10105);"
 			"UPDATE map_object_config SET value = '10105' WHERE map_name = 'AgencyZero_P' AND map_object_id IN (13899,13900) "
 			"  AND column_name IN ('n_spawn_table_id','n_default_spawn_table_id') AND value = '57';",
@@ -3329,8 +3329,8 @@ void Database::Init() {
 	// Insert-only.
 	{
 		const char* sql =
-			"INSERT INTO mod_data_set_bot_spawn_tables (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
-			"SELECT v.t, 1029, 0, v.g, v.b, v.n, v.c, 0, 0, 1.0, 0, 0, 45 FROM ("
+			"INSERT INTO mod_data_set_bot_spawn_tables (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, bbm_hp, bbm_dmg, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT v.t, 1029, 0, v.g, v.b, v.n, v.c, 0, 0, 1.0, 0.0, 0, 0, 45 FROM ("
 			"  SELECT 179 AS t, 1 AS g, 1468 AS b, 2 AS n, 1.0 AS c UNION ALL SELECT 179, 2, 1468, 1, 0.5 "
 			"  UNION ALL SELECT 204, 1, 1468, 3, 1.0 "
 			"  UNION ALL SELECT 180, 1, 1584, 2, 1.0 UNION ALL SELECT 180, 2, 1584, 1, 0.5 "
@@ -3793,7 +3793,8 @@ void Database::Init() {
 	// filter, GlobalAgenda.exe 0x10929010) lists a PvE queue under Solo only
 	// if MAX_PLAYERS_PER_TEAM <= 1 and under Team only if it is != 1, so the
 	// live game had separate solo queues. Clone the 8 Special Ops queues
-	// (1,4,5,6 Commonwealth Prime; 13-15,17 Sonoran Desert) as queue_id + 20:
+	// (1,4,5,6 Commonwealth Prime; 13-15,17 Sonoran Desert) onto queue ids
+	// 23-30 (the first free block after the stock + master queues 1-22):
 	// one player per party (max_team_size 1 = the existing join-time party
 	// cap), solos grouped into one mission (mixed/ignore),
 	// short pop delay so a second solo can make the same pop. Same rewards
@@ -3803,7 +3804,10 @@ void Database::Init() {
 			"DROP TABLE IF EXISTS temp.solo_q;",
 			"CREATE TEMP TABLE solo_q AS SELECT * FROM ga_queues "
 			"WHERE queue_id IN (1, 4, 5, 6, 13, 14, 15, 17) AND max_players_per_team > 1;",
-			"UPDATE temp.solo_q SET queue_id = queue_id + 20, name = 'solo_' || name, "
+			"UPDATE temp.solo_q SET queue_id = CASE queue_id"
+			"    WHEN 1 THEN 23 WHEN 4 THEN 24 WHEN 5 THEN 25 WHEN 6 THEN 26"
+			"    WHEN 13 THEN 27 WHEN 14 THEN 28 WHEN 15 THEN 29 ELSE 30 END,"
+			"  name = 'solo_' || name, "
 			"  max_players_per_team = 1, team_policy = 'mixed', team_side_policy = 'ignore', "
 			"  max_team_size = 1, pop_delay_seconds = MAX(pop_delay_seconds, 15.0);",
 			"INSERT OR IGNORE INTO ga_queues SELECT * FROM temp.solo_q;",
@@ -3813,42 +3817,98 @@ void Database::Init() {
 			// = Medium/High/Max). Card text only (name/desc msg 55322-55324);
 			// gameplay difficulty + UI grouping key stay. Gated on the cloned text.
 			"UPDATE ga_queues SET name_msg_id = 55322, desc_msg_id = 55322 "
-			"WHERE queue_id IN (24, 37) AND name_msg_id = 27673;",
+			"WHERE queue_id IN (24, 30) AND name_msg_id = 27673;",
 			"UPDATE ga_queues SET name_msg_id = 55323, desc_msg_id = 55323 "
-			"WHERE queue_id IN (25, 33) AND name_msg_id = 27674;",
+			"WHERE queue_id IN (25, 27) AND name_msg_id = 27674;",
 			"UPDATE ga_queues SET name_msg_id = 55324, desc_msg_id = 55324 "
-			"WHERE queue_id IN (26, 34) AND name_msg_id = 34212;",
+			"WHERE queue_id IN (26, 28) AND name_msg_id = 34212;",
 			// The Solo list rows are grouped + labelled by the wire difficulty
 			// (valid_values group 116 text), so advertise the solo values there:
 			// rows read Adept / Advanced / Expert instead of "* Security".
 			// Wire-only (marshal); spawn/rewards keep difficulty_value_id.
 			"UPDATE ga_queues SET marshal_difficulty_value_id = 1468 "
-			"WHERE queue_id IN (24, 37) AND marshal_difficulty_value_id IS NULL;",
+			"WHERE queue_id IN (24, 30) AND marshal_difficulty_value_id IS NULL;",
 			"UPDATE ga_queues SET marshal_difficulty_value_id = 1469 "
-			"WHERE queue_id IN (25, 33) AND marshal_difficulty_value_id IS NULL;",
+			"WHERE queue_id IN (25, 27) AND marshal_difficulty_value_id IS NULL;",
 			"UPDATE ga_queues SET marshal_difficulty_value_id = 1470 "
-			"WHERE queue_id IN (26, 34) AND marshal_difficulty_value_id IS NULL;",
+			"WHERE queue_id IN (26, 28) AND marshal_difficulty_value_id IS NULL;",
 			// Novice (1467, msg 55321): the original's newcomer solo tier, no level
-			// requirement. Cloned from Adept (24 -> 22, 37 -> 36) with the
+			// requirement. Cloned from Adept (24 -> 31, 30 -> 32) with the
 			// Medium gameplay difficulty, mission-end rewards up to level 19.
 			"DROP TABLE IF EXISTS temp.solo_n;",
-			"CREATE TEMP TABLE solo_n AS SELECT * FROM ga_queues WHERE queue_id IN (24, 37);",
-			"UPDATE temp.solo_n SET queue_id = CASE queue_id WHEN 24 THEN 22 ELSE 36 END, "
+			"CREATE TEMP TABLE solo_n AS SELECT * FROM ga_queues WHERE queue_id IN (24, 30);",
+			"UPDATE temp.solo_n SET queue_id = CASE queue_id WHEN 24 THEN 31 ELSE 32 END, "
 			"  name = CASE queue_id WHEN 24 THEN 'solo_novice' ELSE 'solo_desert_pve_novice' END, "
 			"  name_msg_id = 55321, desc_msg_id = 55321, marshal_difficulty_value_id = 1467, "
 			"  difficulty_value_id = 1029, level_min = 1, reward_level_max = 19, sort_order = 0;",
 			"INSERT OR IGNORE INTO ga_queues SELECT * FROM temp.solo_n;",
 			"DROP TABLE IF EXISTS temp.solo_n;",
 			// The original had four solo tiers; hide our solo Ultra-Max bonus rows.
-			"UPDATE ga_queues SET enabled = 0 WHERE queue_id IN (21, 35) AND name LIKE 'solo_%umax';",
+			"UPDATE ga_queues SET enabled = 0 WHERE queue_id IN (23, 29) AND name LIKE 'solo_%umax';",
 			// p0993: the game data has no Novice (1467) rows for any 1P_SD* map
-			// (Novice predates Sandstorm), so Desert Novice is off; Novice = queue 22.
-			"UPDATE ga_queues SET enabled = 0 WHERE queue_id = 36 AND name = 'solo_desert_pve_novice' AND enabled = 1;",
+			// (Novice predates Sandstorm), so Desert Novice is off; Novice = queue 31.
+			"UPDATE ga_queues SET enabled = 0 WHERE queue_id = 32 AND name = 'solo_desert_pve_novice' AND enabled = 1;",
 		};
 		for (const char* sql : kSoloQueues) {
 			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
 				Logger::Log("db", "[Database] solo queue seed step failed: %s\n", err ? err : "?");
 				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
+	// skal - MegaMax PvE pool (2026-09-24)
+	// (3000, GA_G::DIFFICULTY_VALUE_ID_CUSTOM_MEGAMAX_SECURITY)
+	// over pool 1 for now = specops (1)
+	// possibly pool9 later (specops+desert_pve)
+	// Queue 22 under the 'umax' category with name = 'adept'. marshal 1471 (aka umax)
+	// the client has no label for a custom difficulty id.
+	// Pool copy is one-time (marker) so operator edits to pool 1 or 9 stick; queue is INSERT OR IGNORE.
+	{
+		bool pool_seeded = false;
+		{
+			sqlite3_stmt* mstmt = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT 1 FROM cs_migration_markers WHERE name='megamax_pool_seed_2026_09_24'",
+					-1, &mstmt, nullptr) == SQLITE_OK && mstmt) {
+				pool_seeded = (sqlite3_step(mstmt) == SQLITE_ROW);
+			}
+			if (mstmt) sqlite3_finalize(mstmt);
+		}
+		if (!pool_seeded) {
+			std::vector<const char*> steps = {
+
+				"INSERT OR IGNORE INTO ga_queues "
+				"(queue_id, name, taskforce_policy, continue_in_queue, enabled, "
+				" queue_type_value_id, status_msg_id, name_msg_id, desc_msg_id, icon_id, "
+				" max_players_per_side, min_players_per_team, max_players_per_team, "
+				" level_min, level_max, tab, map_x, map_y, map_active_flag, "
+				" map_icon_texture_res_id, video_res_id, location_value_id, "
+				" double_agent_flag, sys_site_id, sort_order, bonus_queue_flag, "
+				" difficulty_value_id, access_flags, active_flag, locked_flag, "
+				" map_pool_id, min_players_to_pop, max_players_per_instance, "
+				" pop_delay_seconds, pop_delay_policy, instant_pop_when_full, "
+				" marshal_difficulty_value_id, requires_pvp_verification, team_policy, team_side_policy, "
+				" max_team_size, victory_bonus_lives, map_recency_divisors) VALUES"
+				" (22, 'megamax', 'pinned_1', 0, 1,"
+				"  1021, 0, 55465, 55464, 537,"
+				"  10, 1, 10, 5, 200, 443, 6.0, 0.0, 1,"
+				"  5126, 0, 1469, 1, 0, 9, 0,"
+				"  3000, 0, 1, 0, 1, 1, 0,"
+				"  15.0, 'halve_on_join', 1,"
+				"  1471, 0, 'own_match', 'required',"
+				"  0, 6, '2.5,2,1.5');",
+
+				"UPDATE ga_queues SET sort_order=10 WHERE queue_id=21;",
+
+				"INSERT OR IGNORE INTO cs_migration_markers (name) VALUES ('megamax_pool_seed_2026_09_24');",
+			};
+
+			for (const char* sql : steps) {
+				if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+					Logger::Log("db", "[Database] megamax seed step failed: %s\n", err ? err : "?");
+					if (err) { sqlite3_free(err); err = nullptr; }
+				}
 			}
 		}
 	}
@@ -4035,8 +4095,8 @@ void Database::Init() {
 			" SELECT 1470, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id FROM map_game_info WHERE map_game_id = 100015"
 			" UNION ALL"
 			" SELECT 1471, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id FROM map_game_info WHERE map_game_id = 100014;",
-			"INSERT INTO mod_data_set_bot_spawn_tables (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec)"
-			" SELECT v.t, 1467, 0, 1, v.b, 1, 1.0, 0, 0, 1.0, 0, 0, 0 FROM (SELECT 10110 AS t, 1533 AS b UNION ALL SELECT 10111, 1534) v"
+			"INSERT INTO mod_data_set_bot_spawn_tables (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, bbm_hp, bbm_dmg, spawn_group_min, spawn_group_max, spawn_group_respawn_sec)"
+			" SELECT v.t, 1467, 0, 1, v.b, 1, 1.0, 0, 0, 1.0, 0.0, 0, 0, 0 FROM (SELECT 10110 AS t, 1533 AS b UNION ALL SELECT 10111, 1534) v"
 			" WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables m WHERE m.bot_spawn_table_id = v.t);",
 			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight)"
 			" SELECT '1P_SDDweller03_Portalled_P', CASE map_object_id WHEN 0 THEN 13532 ELSE map_object_id END, column_name, value, variant_group, variant_id, weight"

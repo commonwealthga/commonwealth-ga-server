@@ -36,8 +36,28 @@ namespace Loadouts {
 // asm_data_set_items.name_msg_translated for the matching ref_device_id.
 // =============================================================================
 
+// ES13 consumables, shared by every class. Quality from asm_data_set_items.
+static const std::vector<GearSlot> kConsumables = {
+    { 6268, 13,  SVID_CONSUMABLE, Q_UNCOMMON, {} },  // Insta-Heal
+    { 6284, 13,  SVID_CONSUMABLE, Q_UNCOMMON, {} },  // Excessive Damage
+    { 6285, 13,  SVID_CONSUMABLE, Q_UNCOMMON, {} },  // Super Shell
+    { 6287, 13,  SVID_CONSUMABLE, Q_UNCOMMON, {} },  // Mini Force-Wall
+    { 6445, 13,  SVID_CONSUMABLE, Q_EPIC,     {} },  // Repo Android
+    { 6453, 13,  SVID_CONSUMABLE, Q_RARE,     {} },  // Lasting Damage
+    { 6454, 13,  SVID_CONSUMABLE, Q_RARE,     {} },  // Lasting Regeneration
+    { 6501, 13,  SVID_CONSUMABLE, Q_RARE,     {} },  // Lasting Energy
+    { 7434, 13,  SVID_CONSUMABLE, Q_EPIC,     {} },  // zzPet Shrike Test
+    { 7633, 13,  SVID_CONSUMABLE, Q_UNCOMMON, {} },  // Detoxicant
+    { 7664, 13,  SVID_CONSUMABLE, Q_UNCOMMON, {} },  // Afterburner Fuel
+};
+
+static std::vector<GearSlot> WithConsumables(std::vector<GearSlot> gear) {
+    gear.insert(gear.end(), kConsumables.begin(), kConsumables.end());
+    return gear;
+}
+
 // 567 — Medic — Life Stealer + Medic Crescent Jetpack
-static const std::vector<GearSlot> kMedic = {
+static const std::vector<GearSlot> kMedic = WithConsumables({
     { 5800,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // Life Stealer
     { 5800,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "hhh", false) },  // Life Stealer
     { 3967,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // Poison injector
@@ -114,14 +134,14 @@ static const std::vector<GearSlot> kMedic = {
     { 5776, 10,  SVID_MORALE,       Q_EPIC, Mods::Letters("mmm", "ddd", false) },  // Oathbreaker
     { 5776, 10,  SVID_MORALE,       Q_EPIC, Mods::Letters("mmm", "hhh", false) },  // Oathbreaker
     {  864, 14,  SVID_CLASS_DEVICE,      Q_COMMON, {} },  // HUMAN BASE ATTRIBUTES
-};
+});
 
 // 679 — Robotics — Mace and Shield + Robotics Crescent Jetpack
 //
 // Example showing the [hhhhhh] requested in the spec: an Epic Focused Repair
 // Arm in the specialty slot with three Healing kit tiers stacked twice. Edit
 // the mods vector to whatever you want to test.
-static const std::vector<GearSlot> kRobotics = {
+static const std::vector<GearSlot> kRobotics = WithConsumables({
     { 5802,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd" , false)}, // mace and shield
     { 3951,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd" , false)}, // energyburn mace
     { 7484,  1,  SVID_MELEE,      Q_RARE,   Mods::Letters("dd", "ddd" , false)}, // heavy wrench
@@ -219,10 +239,10 @@ static const std::vector<GearSlot> kRobotics = {
 
     { 2886, 10,  SVID_MORALE,       Q_EPIC, Mods::Letters("mmm", "vnvnvn", false)},
     {  864, 14,  SVID_CLASS_DEVICE,      Q_COMMON, {}},
-};
+});
 
 // 680 — Assault — Impact Hammer + Assault Crescent Jetpack
-static const std::vector<GearSlot> kAssault = {
+static const std::vector<GearSlot> kAssault = WithConsumables({
     { 5801,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // Impact Hammer
     { 6806,  1,  SVID_MELEE,      Q_RARE,   Mods::Letters("dd", "ppp", false) },  // beatstick
     { 6806,  1,  SVID_MELEE,      Q_RARE,   Mods::Letters("dd", "ddd", false) },  // beatstick
@@ -290,9 +310,9 @@ static const std::vector<GearSlot> kAssault = {
     { 5775, 10,  SVID_MORALE,       Q_EPIC, Mods::Letters("mmm", "ddd", false) },  // Super Smash Boost
 
     {  864, 14,  SVID_CLASS_DEVICE,      Q_COMMON, {} },
-};
+});
 
-static const std::vector<GearSlot> kRecon = {
+static const std::vector<GearSlot> kRecon = WithConsumables({
     { 5799,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // Dual Daggers
     { 6895,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ddd", false) },  // assassin blade
     { 6895,  1,  SVID_MELEE,      Q_EPIC,   Mods::Letters("ddd", "ppp", false) },  // assassin blade
@@ -352,7 +372,7 @@ static const std::vector<GearSlot> kRecon = {
     { 7559, 10,  SVID_MORALE,       Q_EPIC, Mods::Letters("mmm", "", false) },  // fashion boost
 
     {  864, 14,  SVID_CLASS_DEVICE,      Q_COMMON, {} }, // rest device
-};
+});
 
 static const std::vector<GearSlot> kEmpty = {};
 
