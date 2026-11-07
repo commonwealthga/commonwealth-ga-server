@@ -1,15 +1,26 @@
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
+#include "src/ControlServer/TcpSession/TcpSession.hpp"
+#include "src/ControlServer/Social/AgencyBank.hpp"
+#include "src/ControlServer/ApRewards/ApRewards.hpp"
+#include "src/ControlServer/ServiceHooks/ServiceHooks.hpp"
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/Loadouts/ArmorLoadouts.hpp"
 #include "src/ControlServer/Loadouts/ClassLoadouts.hpp"
 #include "src/ControlServer/Loadouts/CosmeticLoadouts.hpp"
 #include "src/ControlServer/Loadouts/ModResolver.hpp"
 #include "src/ControlServer/Logger.hpp"
+#include "src/ControlServer/Loadouts/StarterOffhands.hpp"
+#include "src/ControlServer/AvaParity/AvaParity.hpp"
 #include "src/Shared/CosmeticSlots.hpp"
+#include "src/Shared/SkillRules.hpp"
+#include "src/Shared/SlotUnlock.hpp"
 #include "sqlite3.h"
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
+#include <algorithm>
 #include <map>
+#include <mutex>
 #include <set>
 #include <sstream>
 #include <string>
@@ -160,6 +171,105 @@ void PlayerSessionStore::Init() {
 				if (err) { sqlite3_free(err); err = nullptr; }
 			} else {
 				Logger::Log("db", "[Init] Added ga_characters.deleted_at\n");
+			}
+		}
+
+		// === Agent XP migration ===
+		// Level is derived from xp via asm_data_set_xp_levels; 0 = level 1.
+		if (!TableColumnExists(db, "ga_characters", "xp")) {
+			if (sqlite3_exec(db,
+					"ALTER TABLE ga_characters ADD COLUMN xp INTEGER NOT NULL DEFAULT 0",
+					nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Init] xp migration failed: %s\n",
+					err ? err : "(no msg)");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			} else {
+				Logger::Log("db", "[Init] Added ga_characters.xp\n");
+			}
+		}
+
+		// === Agent currency migration ===
+		for (const char* col : {"credits", "tokens"}) {
+			if (TableColumnExists(db, "ga_characters", col)) continue;
+			const std::string sql = std::string("ALTER TABLE ga_characters ADD COLUMN ")
+				+ col + " INTEGER NOT NULL DEFAULT 0";
+			if (sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Init] %s migration failed: %s\n", col,
+					err ? err : "(no msg)");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			} else {
+				Logger::Log("db", "[Init] Added ga_characters.%s\n", col);
+			}
+		}
+
+		// Credits + tokens are per AGENT (AP stays per account in
+		// ga_users.agenda_points). Undoes an earlier shared-wallet scheme:
+		// drop its triggers and, once (marker), split each merged account back -
+		// every live agent gets its pre-merge balance (ga_wallet_premerge); the
+		// rest of the shared balance (deleted agents' pre-merge balances + the
+		// net change since the merge) goes to the account's active agent, never
+		// below 0, so the account total is kept. Every row is logged in
+		// ga_wallet_split_log.
+		{
+			sqlite3_exec(db,
+				"DROP TRIGGER IF EXISTS ga_wallet_share;"
+				"DROP TRIGGER IF EXISTS ga_wallet_new_agent;",
+				nullptr, nullptr, nullptr);
+			bool merged = false, split = false;
+			{
+				sqlite3_stmt* mstmt = nullptr;
+				if (sqlite3_prepare_v2(db,
+						"SELECT name FROM cs_migration_markers WHERE name IN"
+						" ('account_wallet_merge_2026_10_29', 'account_wallet_split_2026_10_29')",
+						-1, &mstmt, nullptr) == SQLITE_OK && mstmt) {
+					while (sqlite3_step(mstmt) == SQLITE_ROW) {
+						const char* n = (const char*)sqlite3_column_text(mstmt, 0);
+						if (n && std::string(n) == "account_wallet_split_2026_10_29") split = true;
+						else if (n) merged = true;
+					}
+				}
+				if (mstmt) sqlite3_finalize(mstmt);
+			}
+			if (merged && !split) {
+				const char* kSplit =
+					"BEGIN IMMEDIATE;"
+					"CREATE TABLE IF NOT EXISTS ga_wallet_split_log (user_id INTEGER, character_id INTEGER,"
+					"  old_credits INTEGER, old_tokens INTEGER, new_credits INTEGER, new_tokens INTEGER, at INTEGER);"
+					"CREATE TEMP TABLE ws_user AS SELECT u.user_id,"
+					"  (SELECT c.id FROM ga_characters c WHERE c.user_id = u.user_id ORDER BY"
+					"     c.id = (SELECT a.character_id FROM ga_user_active_agent a WHERE a.user_id = c.user_id) DESC,"
+					"     c.deleted_at = 0 DESC, c.id DESC LIMIT 1) AS recipient,"
+					"  (SELECT SUM(p.credits) FROM ga_wallet_premerge p WHERE p.user_id = u.user_id) AS pre_c,"
+					"  (SELECT SUM(p.tokens)  FROM ga_wallet_premerge p WHERE p.user_id = u.user_id) AS pre_t"
+					"  FROM (SELECT DISTINCT user_id FROM ga_wallet_premerge) u;"
+					"CREATE TEMP TABLE ws_new AS SELECT c.id, c.user_id, c.credits AS old_c, c.tokens AS old_t,"
+					"  CASE WHEN c.id = w.recipient THEN MAX(0, c.credits - w.pre_c"
+					"         + COALESCE((SELECT p.credits FROM ga_wallet_premerge p WHERE p.id = c.id), 0)"
+					"         + COALESCE((SELECT SUM(p.credits) FROM ga_wallet_premerge p JOIN ga_characters d ON d.id = p.id"
+					"                     WHERE p.user_id = c.user_id AND d.deleted_at != 0 AND d.id != c.id), 0))"
+					"       WHEN c.deleted_at != 0 THEN 0"
+					"       ELSE COALESCE((SELECT p.credits FROM ga_wallet_premerge p WHERE p.id = c.id), 0) END AS new_c,"
+					"  CASE WHEN c.id = w.recipient THEN MAX(0, c.tokens - w.pre_t"
+					"         + COALESCE((SELECT p.tokens FROM ga_wallet_premerge p WHERE p.id = c.id), 0)"
+					"         + COALESCE((SELECT SUM(p.tokens) FROM ga_wallet_premerge p JOIN ga_characters d ON d.id = p.id"
+					"                     WHERE p.user_id = c.user_id AND d.deleted_at != 0 AND d.id != c.id), 0))"
+					"       WHEN c.deleted_at != 0 THEN 0"
+					"       ELSE COALESCE((SELECT p.tokens FROM ga_wallet_premerge p WHERE p.id = c.id), 0) END AS new_t"
+					"  FROM ga_characters c JOIN ws_user w ON w.user_id = c.user_id;"
+					"INSERT INTO ga_wallet_split_log SELECT user_id, id, old_c, old_t, new_c, new_t, strftime('%s','now') FROM ws_new;"
+					"UPDATE ga_characters SET credits = (SELECT new_c FROM ws_new WHERE ws_new.id = ga_characters.id),"
+					"  tokens = (SELECT new_t FROM ws_new WHERE ws_new.id = ga_characters.id)"
+					"  WHERE id IN (SELECT id FROM ws_new);"
+					"DROP TABLE ws_new; DROP TABLE ws_user;"
+					"INSERT OR IGNORE INTO cs_migration_markers (name) VALUES ('account_wallet_split_2026_10_29');"
+					"COMMIT;";
+				if (sqlite3_exec(db, kSplit, nullptr, nullptr, &err) != SQLITE_OK) {
+					Logger::Log("db", "[Database] wallet split failed: %s\n", err ? err : "?");
+					if (err) { sqlite3_free(err); err = nullptr; }
+					sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+				} else {
+					Logger::Log("db", "[Database] wallet split done (per-agent credits/tokens, log in ga_wallet_split_log)\n");
+				}
 			}
 		}
 
@@ -364,6 +474,29 @@ int64_t PlayerSessionStore::UpsertUser(const std::string& username) {
 	return id;
 }
 
+std::string PlayerSessionStore::FindProvisionedUsername(const std::string& username) {
+	std::lock_guard<std::mutex> lock(mutex_);
+	std::string out;
+	sqlite3* db = Database::GetConnection();
+	if (!db) return out;
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT username FROM ga_users WHERE username = ? COLLATE NOCASE "
+		"AND password_verifier IS NOT NULL AND length(password_verifier) > 0 LIMIT 1",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("db", "[PlayerSessionStore] FindProvisionedUsername prepare failed: %s\n", sqlite3_errmsg(db));
+		return out;
+	}
+	sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_TRANSIENT);
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		const unsigned char* t = sqlite3_column_text(stmt, 0);
+		if (t) out = reinterpret_cast<const char*>(t);
+	}
+	sqlite3_finalize(stmt);
+	return out;
+}
+
 PlayerSessionStore::UserAuth PlayerSessionStore::GetUserAuth(const std::string& username) {
 	std::lock_guard<std::mutex> lock(mutex_);
 	UserAuth out;
@@ -455,6 +588,8 @@ int64_t PlayerSessionStore::InsertCharacter(int64_t user_id, uint32_t profile_id
 	sqlite3_finalize(stmt);
 
 	int64_t newId = sqlite3_last_insert_rowid(db);
+	// A new agent starts with an empty bag of its own (per-agent pool).
+	ActivateAgentPool(user_id, newId);
 	// Seed (or top up) this user's account-scoped inventory pool — both for
 	// this profile and any already-existing siblings. ga_character_devices is
 	// otherwise left empty; the player equips from the bag via the equip
@@ -466,6 +601,7 @@ int64_t PlayerSessionStore::InsertCharacter(int64_t user_id, uint32_t profile_id
 	// REST device until disconnect+reconnect.
 	PinClassDeviceSlot14(newId);
 	SeedCharacterArmorDefaults(newId);
+	SeedStarterWeapons(newId);
 	return newId;
 }
 
@@ -565,7 +701,124 @@ bool PlayerSessionStore::SoftDeleteCharacter(int64_t character_id, int64_t user_
 	if (sqlite3_step(stmt) != SQLITE_DONE)
 		Logger::Log("db", "[PlayerSessionStore] SoftDeleteCharacter update failed: %s\n", sqlite3_errmsg(db));
 	sqlite3_finalize(stmt);
-	return sqlite3_changes(db) > 0;
+	const bool deleted = sqlite3_changes(db) > 0;
+	// Deleting an agent removes its bag + components (per-agent pool).
+	if (deleted) DeleteAgentPool(user_id, character_id);
+	return deleted;
+}
+
+// Per-agent bags. See the header + ControlServer Database.cpp
+// (ga_user_active_agent). Parked rows: user_id = -character_id.
+static void ExecAgentPoolSql(sqlite3* db, const char* sql, int64_t user_id, int64_t character_id,
+                             const char* what) {
+	sqlite3_stmt* s = nullptr;
+	if (sqlite3_prepare_v2(db, sql, -1, &s, nullptr) != SQLITE_OK) {
+		Logger::Log("db", "[agent-pool] %s prepare failed: %s\n", what, sqlite3_errmsg(db));
+		return;
+	}
+	sqlite3_bind_int64(s, 1, user_id);
+	sqlite3_bind_int64(s, 2, character_id);
+	if (sqlite3_step(s) != SQLITE_DONE)
+		Logger::Log("db", "[agent-pool] %s failed: %s\n", what, sqlite3_errmsg(db));
+	sqlite3_finalize(s);
+}
+
+void PlayerSessionStore::ActivateAgentPool(int64_t user_id, int64_t character_id) {
+	sqlite3* db = Database::GetConnection();
+	if (!db || user_id <= 0 || character_id <= 0) return;
+
+	// Owner of the untagged rows in the active pool: the agent that was active
+	// when they were written (loot/vendor/craft/mail paths insert with
+	// character_id 0), or this agent if none / it was deleted.
+	int64_t prev = character_id;
+	{
+		sqlite3_stmt* s = nullptr;
+		if (sqlite3_prepare_v2(db,
+		        "SELECT a.character_id FROM ga_user_active_agent a JOIN ga_characters c "
+		        "ON c.id = a.character_id AND c.user_id = a.user_id AND c.deleted_at = 0 WHERE a.user_id = ?",
+		        -1, &s, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(s, 1, user_id);
+			if (sqlite3_step(s) == SQLITE_ROW) prev = sqlite3_column_int64(s, 0);
+			sqlite3_finalize(s);
+		}
+	}
+	sqlite3_exec(db, "SAVEPOINT agent_pool", nullptr, nullptr, nullptr);
+	// ?1 = user, ?2 = owner agent for untagged rows / the agent being activated.
+	// Rows tagged with an agent that is not this account's (mail from another
+	// player keeps the sender's tag) count as untagged.
+	ExecAgentPoolSql(db,
+		"UPDATE ga_players_inventory SET character_id = ?2 WHERE user_id = ?1 AND (character_id = 0 OR "
+		" character_id NOT IN (SELECT id FROM ga_characters WHERE user_id = ?1 AND deleted_at = 0))",
+		user_id, prev, "tag inventory");
+	ExecAgentPoolSql(db,
+		"UPDATE ga_user_components SET character_id = ?2 WHERE user_id = ?1 AND (character_id = 0 OR "
+		" character_id NOT IN (SELECT id FROM ga_characters WHERE user_id = ?1 AND deleted_at = 0))",
+		user_id, prev, "tag components");
+	{
+		// Park the other agents' rows, then bring this agent's back.
+		ExecAgentPoolSql(db,
+			"UPDATE OR IGNORE ga_players_inventory SET user_id = -character_id "
+			"WHERE user_id = ?1 AND character_id <> ?2",
+			user_id, character_id, "park inventory");
+		ExecAgentPoolSql(db,
+			"INSERT INTO ga_user_components (user_id, item_id, quantity, updated_at, character_id) "
+			"SELECT -character_id, item_id, quantity, updated_at, character_id FROM ga_user_components "
+			"WHERE user_id = ?1 AND character_id <> ?2 "
+			"ON CONFLICT(user_id, item_id) DO UPDATE SET quantity = quantity + excluded.quantity",
+			user_id, character_id, "park components");
+		ExecAgentPoolSql(db,
+			"DELETE FROM ga_user_components WHERE user_id = ?1 AND character_id <> ?2",
+			user_id, character_id, "park components (clear)");
+	}
+	ExecAgentPoolSql(db,
+		"UPDATE OR IGNORE ga_players_inventory SET user_id = ?1 WHERE user_id = -?2 AND character_id = ?2",
+		user_id, character_id, "unpark inventory");
+	ExecAgentPoolSql(db,
+		"INSERT INTO ga_user_components (user_id, item_id, quantity, updated_at, character_id) "
+		"SELECT ?1, item_id, quantity, updated_at, character_id FROM ga_user_components "
+		"WHERE user_id = -?2 AND character_id = ?2 "
+		"ON CONFLICT(user_id, item_id) DO UPDATE SET quantity = quantity + excluded.quantity",
+		user_id, character_id, "unpark components");
+	ExecAgentPoolSql(db,
+		"DELETE FROM ga_user_components WHERE user_id = -?2 AND character_id = ?2 AND ?1 > 0",
+		user_id, character_id, "unpark components (clear)");
+	ExecAgentPoolSql(db,
+		"INSERT OR REPLACE INTO ga_user_active_agent (user_id, character_id) VALUES (?1, ?2)",
+		user_id, character_id, "set active");
+	sqlite3_exec(db, "RELEASE agent_pool", nullptr, nullptr, nullptr);
+	if (prev != character_id)
+		Logger::Log("db", "[agent-pool] user %lld: agent %lld active (agent %lld parked)\n",
+			(long long)user_id, (long long)character_id, (long long)prev);
+}
+
+void PlayerSessionStore::DeleteAgentPool(int64_t user_id, int64_t character_id) {
+	sqlite3* db = Database::GetConnection();
+	if (!db || user_id <= 0 || character_id <= 0) return;
+	sqlite3_exec(db, "SAVEPOINT agent_pool_del", nullptr, nullptr, nullptr);
+	// Active agent: untagged rows of the active pool are its too.
+	ExecAgentPoolSql(db,
+		"UPDATE ga_players_inventory SET character_id = ?2 WHERE user_id = ?1 AND character_id = 0 "
+		"AND EXISTS (SELECT 1 FROM ga_user_active_agent WHERE user_id = ?1 AND character_id = ?2)",
+		user_id, character_id, "tag inventory (delete)");
+	ExecAgentPoolSql(db,
+		"UPDATE ga_user_components SET character_id = ?2 WHERE user_id = ?1 AND character_id = 0 "
+		"AND EXISTS (SELECT 1 FROM ga_user_active_agent WHERE user_id = ?1 AND character_id = ?2)",
+		user_id, character_id, "tag components (delete)");
+	ExecAgentPoolSql(db,
+		"DELETE FROM ga_character_devices WHERE character_id = ?2 AND ?1 > 0",
+		user_id, character_id, "delete devices");
+	ExecAgentPoolSql(db,
+		"DELETE FROM ga_players_inventory WHERE character_id = ?2 AND user_id IN (?1, -?2)",
+		user_id, character_id, "delete inventory");
+	ExecAgentPoolSql(db,
+		"DELETE FROM ga_user_components WHERE character_id = ?2 AND user_id IN (?1, -?2)",
+		user_id, character_id, "delete components");
+	ExecAgentPoolSql(db,
+		"DELETE FROM ga_user_active_agent WHERE user_id = ?1 AND character_id = ?2",
+		user_id, character_id, "clear active");
+	sqlite3_exec(db, "RELEASE agent_pool_del", nullptr, nullptr, nullptr);
+	Logger::Log("db", "[agent-pool] user %lld: agent %lld deleted, its bag + components removed\n",
+		(long long)user_id, (long long)character_id);
 }
 
 void PlayerSessionStore::SetSelectedCharacter(const std::string& session_guid, int64_t char_id, uint32_t profile_id) {
@@ -596,6 +849,41 @@ int PlayerSessionStore::GetEffectGroupId(int deviceId) {
 	}
 }
 
+int PlayerSessionStore::GetBlueprintIdForStatItem(int itemId) {
+	static std::map<int, int> cache;
+	static std::mutex cacheMutex;
+	{
+		std::lock_guard<std::mutex> lock(cacheMutex);
+		auto it = cache.find(itemId);
+		if (it != cache.end()) return it->second;
+	}
+
+	int blueprintId = 0;
+	if (sqlite3* db = Database::GetConnection()) {
+		// Plain-named first (the name must stay the item's own), then the one with the
+		// most quality icons (some blueprints of an item have none, or none at the top
+		// rarity), then one the bag can salvage, carrying wear, as the universal one did.
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+		    "SELECT b.blueprint_id FROM asm_data_set_blueprints b WHERE b.created_item_id = ? "
+		    "ORDER BY (b.override_name_msg_id = 0) DESC, "
+		    "(SELECT COUNT(*) FROM asm_data_set_blueprint_item_mods m WHERE m.blueprint_id = b.blueprint_id AND m.icon_id > 0) DESC, "
+		    "(b.loot_table_group_id = 16) DESC, (b.durability > 0) DESC, "
+		    "EXISTS (SELECT 1 FROM asm_data_set_blueprint_item_mods m WHERE m.blueprint_id = b.blueprint_id) DESC, "
+		    "b.blueprint_id LIMIT 1", -1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int(stmt, 1, itemId);
+			if (sqlite3_step(stmt) == SQLITE_ROW)
+				blueprintId = sqlite3_column_int(stmt, 0);
+		}
+		sqlite3_finalize(stmt);
+	}
+	if (blueprintId == 0) blueprintId = ArmorLoadouts::kUniversalArmorBlueprintId;
+
+	std::lock_guard<std::mutex> lock(cacheMutex);
+	cache[itemId] = blueprintId;
+	return blueprintId;
+}
+
 int PlayerSessionStore::GetBlueprintIdForDevice(int deviceId, bool oc) {
 	// Cache: (device_id, oc) → blueprint_id. Looked up once per process per pair.
 	static std::map<std::pair<int, bool>, int> cache;
@@ -619,8 +907,10 @@ int PlayerSessionStore::GetBlueprintIdForDevice(int deviceId, bool oc) {
 			? "SELECT blueprint_id FROM asm_data_set_blueprints "
 			  "WHERE created_item_id = ? AND override_name_msg_id != 0 "
 			  "ORDER BY blueprint_id LIMIT 1"
-			: "SELECT MIN(blueprint_id) FROM asm_data_set_blueprints "
-			  "WHERE created_item_id = ?";
+			// A blueprint in salvage group 16 first - the client enables
+			// bag Salvage only when the sent blueprint has that group (bp def +0xE4).
+			: "SELECT blueprint_id FROM asm_data_set_blueprints "
+			  "WHERE created_item_id = ? ORDER BY (loot_table_group_id = 16) DESC, blueprint_id LIMIT 1";
 		sqlite3_stmt* stmt = nullptr;
 		if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
 			sqlite3_bind_int(stmt, 1, deviceId);
@@ -826,6 +1116,159 @@ static std::vector<int> CsvToInts(const char* csv) {
 	return out;
 }
 
+// Starter-kit mode (config starter_kit_only, default on).
+// New agents get only a level-1 class kit; everything else is earned/bought.
+static bool g_starterKitOnly = true;
+static int  g_starterKitMaxLevel = 5;
+
+void PlayerSessionStore::SetStarterKit(bool only, int max_level) {
+	g_starterKitOnly = only;
+	g_starterKitMaxLevel = max_level;
+	Logger::Log("db", "[PlayerSessionStore] starter_kit_only=%d starter_kit_max_level=%d\n",
+		only ? 1 : 0, max_level);
+}
+
+// Token limits per agent (config token_limits, 0 = off).
+static int64_t g_tokenWeeklyEarn = 0;
+static int64_t g_tokenBank = 0;
+
+void PlayerSessionStore::SetTokenLimits(int64_t weekly_earn, int64_t bank) {
+	g_tokenWeeklyEarn = std::max<int64_t>(0, weekly_earn);
+	g_tokenBank = std::max<int64_t>(0, bank);
+	Logger::Log("db", "[PlayerSessionStore] token_limits weekly_earn=%lld bank=%lld\n",
+		(long long)g_tokenWeeklyEarn, (long long)g_tokenBank);
+}
+
+int64_t PlayerSessionStore::LimitTokenGain(int64_t character_id, int64_t add) {
+	if (add <= 0 || (g_tokenWeeklyEarn <= 0 && g_tokenBank <= 0)) return add;
+	sqlite3* db = Database::GetConnection();
+	if (!db) return add;
+	// Weeks start Monday 00:00 UTC (1970-01-01 was a Thursday).
+	const int64_t week = ((int64_t)std::time(nullptr) + 3 * 86400) / (7 * 86400);
+	sqlite3_exec(db,
+		"CREATE TABLE IF NOT EXISTS ga_token_week (character_id INTEGER NOT NULL, "
+		"week INTEGER NOT NULL, earned INTEGER NOT NULL DEFAULT 0, "
+		"PRIMARY KEY (character_id, week))", nullptr, nullptr, nullptr);
+	int64_t allowed = add;
+	sqlite3_stmt* s = nullptr;
+	if (g_tokenBank > 0 && sqlite3_prepare_v2(db,
+	        "SELECT tokens FROM ga_characters WHERE id = ?", -1, &s, nullptr) == SQLITE_OK) {
+		sqlite3_bind_int64(s, 1, character_id);
+		if (sqlite3_step(s) == SQLITE_ROW)
+			allowed = std::min(allowed, std::max<int64_t>(0, g_tokenBank - sqlite3_column_int64(s, 0)));
+		sqlite3_finalize(s);
+	}
+	if (g_tokenWeeklyEarn > 0 && sqlite3_prepare_v2(db,
+	        "SELECT earned FROM ga_token_week WHERE character_id = ? AND week = ?",
+	        -1, &s, nullptr) == SQLITE_OK) {
+		sqlite3_bind_int64(s, 1, character_id);
+		sqlite3_bind_int64(s, 2, week);
+		const int64_t earned = sqlite3_step(s) == SQLITE_ROW ? sqlite3_column_int64(s, 0) : 0;
+		sqlite3_finalize(s);
+		allowed = std::min(allowed, std::max<int64_t>(0, g_tokenWeeklyEarn - earned));
+	}
+	if (allowed > 0 && sqlite3_prepare_v2(db,
+	        "INSERT INTO ga_token_week (character_id, week, earned) VALUES (?1, ?2, ?3) "
+	        "ON CONFLICT(character_id, week) DO UPDATE SET earned = earned + ?3",
+	        -1, &s, nullptr) == SQLITE_OK) {
+		sqlite3_bind_int64(s, 1, character_id);
+		sqlite3_bind_int64(s, 2, week);
+		sqlite3_bind_int64(s, 3, allowed);
+		sqlite3_step(s);
+		sqlite3_finalize(s);
+	}
+	if (allowed < add)
+		Logger::Log("rewards", "[Rewards] char=%lld token limit: +%lld -> +%lld\n",
+			(long long)character_id, (long long)add, (long long)allowed);
+	return allowed;
+}
+
+// The class's starter kit, built from its upstream loadout list: per equip
+// slot the entry with the lowest required_level in the game data
+// (asm_data_set_items), kept only if that level <= g_starterKitMaxLevel,
+// as COMMON quality with no rolled mods (rolled mods raise the level the
+// client asks for). Cached per profile.
+static const std::set<int> kTutorialKitDevices = {
+	5837, 5838, 5839, 5840,  // class Hands Free jetpacks
+	3973, 3970, 3967, 3951,  // Radiant Axe, Ghost Sword, Poison Injector, EnergyBurn Mace
+};
+
+static const std::vector<Loadouts::GearSlot>& StarterLoadout(uint32_t profile_id) {
+	static std::map<uint32_t, std::vector<Loadouts::GearSlot>> cache;
+	auto it = cache.find(profile_id);
+	if (it != cache.end()) return it->second;
+	std::vector<Loadouts::GearSlot>& out = cache[profile_id];
+	sqlite3* db = Database::GetConnection();
+	sqlite3_stmt* st = nullptr;
+	if (!db || sqlite3_prepare_v2(db,
+	        "SELECT MIN(required_level) FROM asm_data_set_items WHERE item_id = ?",
+	        -1, &st, nullptr) != SQLITE_OK) {
+		if (st) sqlite3_finalize(st);
+		cache.erase(profile_id);
+		static const std::vector<Loadouts::GearSlot> empty;
+		return empty;
+	}
+	std::map<int, std::pair<int, Loadouts::GearSlot>> best;  // slot svid -> (level, gear)
+	for (const Loadouts::GearSlot& g : Loadouts::GetLoadout(profile_id)) {
+		sqlite3_reset(st);
+		sqlite3_bind_int(st, 1, g.device_id);
+		int lvl = 99;
+		if (sqlite3_step(st) == SQLITE_ROW && sqlite3_column_type(st, 0) != SQLITE_NULL)
+			lvl = sqlite3_column_int(st, 0);
+		// The Inception tutorial's own per-class jetpack + melee (its Kismet
+		// EquipCharDevices lists in Inception_2/3_TEMP) are the original
+		// level-1 kit: they win over other items of the same slot.
+		if (kTutorialKitDevices.count(g.device_id) && lvl <= g_starterKitMaxLevel) lvl = -1;
+		auto b = best.find(g.slot_value_id);
+		if (b == best.end() || lvl < b->second.first) best[g.slot_value_id] = { lvl, g };
+	}
+	sqlite3_finalize(st);
+	for (auto& kv : best) {
+		if (kv.second.first > g_starterKitMaxLevel) continue;
+		Loadouts::GearSlot g = kv.second.second;
+		g.quality = Loadouts::Q_COMMON;
+		g.mods = Mods::Result{};
+		out.push_back(g);
+		Logger::Log("db", "[PlayerSessionStore] starter kit profile=%u slot=%d device=%d level=%d\n",
+			profile_id, g.slot_value_id, g.device_id, kv.second.first);
+	}
+	StarterOffhands::Apply(profile_id, g_starterKitMaxLevel, out);
+	return out;
+}
+
+// Starter cosmetics: only the class default helmet + suit (no dye/trail
+// collection - those come from the dye vendors / drops).
+static void SeedStarterCosmetics(int64_t user_id) {
+	sqlite3* db = Database::GetConnection();
+	if (!db) return;
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db,
+	        "INSERT OR IGNORE INTO ga_players_inventory"
+	        "  (user_id, profile_id, device_id, quality, mod_effect_group_ids, oc, allowed_slots, item_id, stock_n) "
+	        "VALUES (?, ?, 0, 0, '', 0, ?, ?, 0)",
+	        -1, &st, nullptr) != SQLITE_OK) {
+		if (st) sqlite3_finalize(st);
+		return;
+	}
+	const uint32_t profiles[] = { Loadouts::PROFILE_MEDIC, Loadouts::PROFILE_ROBOTICS,
+	                              Loadouts::PROFILE_ASSAULT, Loadouts::PROFILE_RECON };
+	for (uint32_t pid : profiles) {
+		const auto& d = CosmeticLoadouts::GetDefaultsForProfile(pid);
+		const struct { int item; const char* allowed; } rows[] = {
+			{ d.helmet_item_id, "500" }, { d.suit_item_id, "202" } };
+		for (const auto& r : rows) {
+			if (r.item <= 0) continue;
+			sqlite3_reset(st);
+			sqlite3_bind_int64(st, 1, user_id);
+			sqlite3_bind_int  (st, 2, (int)pid);
+			sqlite3_bind_text (st, 3, r.allowed, -1, SQLITE_STATIC);
+			sqlite3_bind_int  (st, 4, r.item);
+			sqlite3_step(st);
+		}
+	}
+	sqlite3_finalize(st);
+}
+
 void PlayerSessionStore::SeedInventoryFromLoadouts(int64_t user_id) {
 	sqlite3* db = Database::GetConnection();
 	if (!db) return;
@@ -833,7 +1276,8 @@ void PlayerSessionStore::SeedInventoryFromLoadouts(int64_t user_id) {
 	// v76: seed cosmetic ownership (idempotent) before the device pass.
 	// Cosmetic rows have item_id > 0 and are scoped out of the device
 	// delete pass below via the `AND item_id = 0` clause.
-	SeedCosmetics(user_id);
+	if (g_starterKitOnly) SeedStarterCosmetics(user_id);
+	else                  SeedCosmetics(user_id);
 
 	// Armor seed — same shape as SeedCosmetics. Armor rows also have
 	// item_id > 0 so they're scoped out of the device delete pass below by
@@ -845,12 +1289,18 @@ void PlayerSessionStore::SeedInventoryFromLoadouts(int64_t user_id) {
 	// pass uses for its dedupe check. Used twice below: insert pass skips
 	// tuples already in inventory, delete pass removes inventory rows whose
 	// tuple isn't here anymore (= ClassLoadouts entry was deleted).
+	auto LoadoutFor = [](uint32_t pid) {
+		return g_starterKitOnly ? &StarterLoadout(pid) : &Loadouts::GetLoadout(pid);
+	};
 	struct ProfileLoadout { uint32_t profile_id; const std::vector<Loadouts::GearSlot>* loadout; };
 	const ProfileLoadout profiles[] = {
-		{ Loadouts::PROFILE_MEDIC,    &Loadouts::GetLoadout(Loadouts::PROFILE_MEDIC) },
-		{ Loadouts::PROFILE_ROBOTICS, &Loadouts::GetLoadout(Loadouts::PROFILE_ROBOTICS) },
-		{ Loadouts::PROFILE_ASSAULT,  &Loadouts::GetLoadout(Loadouts::PROFILE_ASSAULT) },
-		{ Loadouts::PROFILE_RECON,    &Loadouts::GetLoadout(Loadouts::PROFILE_RECON) },
+		// starter_kit_only: the level-1 class kit instead of the full upstream
+		// loadout. Rows outside the desired set are deleted below, which also
+		// trims existing agents' free gear on their next login.
+		{ Loadouts::PROFILE_MEDIC,    LoadoutFor(Loadouts::PROFILE_MEDIC) },
+		{ Loadouts::PROFILE_ROBOTICS, LoadoutFor(Loadouts::PROFILE_ROBOTICS) },
+		{ Loadouts::PROFILE_ASSAULT,  LoadoutFor(Loadouts::PROFILE_ASSAULT) },
+		{ Loadouts::PROFILE_RECON,    LoadoutFor(Loadouts::PROFILE_RECON) },
 	};
 
 	using DesiredKey = std::tuple<int, int, std::string, int, int>;  // profile, device, mods, quality, oc
@@ -1318,7 +1768,8 @@ void PlayerSessionStore::SeedArmor(int64_t user_id) {
 	for (int si = 0; si < ArmorLoadouts::kSlotCount; ++si) {
 		const auto& slot = ArmorLoadouts::kSlots[si];
 		const std::string allowed = std::to_string(slot.slot_value_id);
-		for (int vi = 0; vi < ArmorLoadouts::kVariantCount; ++vi) {
+		// starter_kit_only: no free epic variants - only the "No Armor" rows below.
+		for (int vi = 0; vi < (g_starterKitOnly ? 0 : ArmorLoadouts::kVariantCount); ++vi) {
 			const auto& variant = ArmorLoadouts::kVariants[vi];
 			// Prepend the slot's baseline +10% Health Mod egid to the variant's
 			// rolled-mod CSV. Two effects in one step:
@@ -1584,6 +2035,972 @@ void PlayerSessionStore::PinClassDeviceSlot14(int64_t character_id) {
 		(long long)character_id, class_inv_id, pinned);
 }
 
+PlayerSessionStore::LevelXp PlayerSessionStore::GetCharacterLevelXp(int64_t character_id) {
+	LevelXp out;
+	sqlite3* db = Database::GetConnection();
+	if (!db) return out;
+	sqlite3_stmt* s = nullptr;
+	if (sqlite3_prepare_v2(db,
+	        "SELECT COALESCE((SELECT MAX(l.level) FROM asm_data_set_xp_levels l "
+	        "                 WHERE l.xp_value <= c.xp), 1), c.xp "
+	        "FROM ga_characters c WHERE c.id = ?",
+	        -1, &s, nullptr) != SQLITE_OK) {
+		return out;
+	}
+	sqlite3_bind_int64(s, 1, character_id);
+	if (sqlite3_step(s) == SQLITE_ROW) {
+		out.level = static_cast<uint32_t>(sqlite3_column_int(s, 0));
+		out.xp    = sqlite3_column_int64(s, 1);
+	}
+	sqlite3_finalize(s);
+	if (out.level < 1) out.level = 1;
+	return out;
+}
+
+std::map<int64_t, uint32_t> PlayerSessionStore::GetCharacterLevels(const std::vector<int64_t>& character_ids) {
+	std::map<int64_t, uint32_t> out;
+	if (character_ids.empty()) return out;
+	sqlite3* db = Database::GetConnection();
+	if (!db) return out;
+	std::string in;
+	for (int64_t id : character_ids) {
+		if (id <= 0) continue;
+		if (!in.empty()) in += ",";
+		in += std::to_string(id);
+	}
+	if (in.empty()) return out;
+	const std::string sql =
+		"SELECT c.id, COALESCE((SELECT MAX(l.level) FROM asm_data_set_xp_levels l "
+		"                       WHERE l.xp_value <= c.xp), 1) "
+		"FROM ga_characters c WHERE c.id IN (" + in + ")";
+	sqlite3_stmt* s = nullptr;
+	if (sqlite3_prepare_v2(db, sql.c_str(), -1, &s, nullptr) != SQLITE_OK) return out;
+	while (sqlite3_step(s) == SQLITE_ROW) {
+		const int lv = sqlite3_column_int(s, 1);
+		out[sqlite3_column_int64(s, 0)] = lv < 1 ? 1u : (uint32_t)lv;
+	}
+	sqlite3_finalize(s);
+	return out;
+}
+
+bool PlayerSessionStore::RaiseCharacterToLevel(int64_t character_id, uint32_t level) {
+	sqlite3* db = Database::GetConnection();
+	if (!db || character_id <= 0 || level <= 1) return false;
+	sqlite3_stmt* s = nullptr;
+	if (sqlite3_prepare_v2(db,
+	        "UPDATE ga_characters SET xp = (SELECT MIN(l.xp_value) FROM asm_data_set_xp_levels l "
+	        "                               WHERE l.level = ?2) "
+	        "WHERE id = ?1 AND COALESCE(xp,0) < (SELECT MIN(l.xp_value) FROM asm_data_set_xp_levels l "
+	        "                                    WHERE l.level = ?2)",
+	        -1, &s, nullptr) != SQLITE_OK) {
+		return false;
+	}
+	sqlite3_bind_int64(s, 1, character_id);
+	sqlite3_bind_int(s, 2, (int)level);
+	const bool ok = sqlite3_step(s) == SQLITE_DONE && sqlite3_changes(db) > 0;
+	sqlite3_finalize(s);
+	return ok;
+}
+
+PlayerSessionStore::AgentInfo PlayerSessionStore::GetAgentInfo(int64_t character_id) {
+	AgentInfo out;
+	sqlite3* db = Database::GetConnection();
+	if (!db || character_id <= 0) return out;
+	sqlite3_stmt* s = nullptr;
+	if (sqlite3_prepare_v2(db,
+	        "SELECT COALESCE((SELECT MAX(l.level) FROM asm_data_set_xp_levels l "
+	        "                 WHERE l.xp_value <= COALESCE(c.xp,0)), 1), "
+	        "       COALESCE(c.xp,0), COALESCE(c.credits,0), COALESCE(c.tokens,0), "
+	        "       COALESCE((SELECT u.agenda_points FROM ga_users u WHERE u.id = c.user_id), 0) "
+	        "FROM ga_characters c WHERE c.id = ?",
+	        -1, &s, nullptr) != SQLITE_OK) {
+		return out;
+	}
+	sqlite3_bind_int64(s, 1, character_id);
+	if (sqlite3_step(s) == SQLITE_ROW) {
+		out.found   = true;
+		out.level   = static_cast<uint32_t>(sqlite3_column_int(s, 0));
+		out.xp      = sqlite3_column_int64(s, 1);
+		out.credits = sqlite3_column_int64(s, 2);
+		out.tokens  = sqlite3_column_int64(s, 3);
+		out.agenda_points = sqlite3_column_int64(s, 4);
+	}
+	sqlite3_finalize(s);
+	if (out.level < 1) out.level = 1;
+	return out;
+}
+
+namespace {
+// AP rules: no AP of any kind below agent level 10
+// except the daily login bonus; reaching level 10 pays 100, then 100 per level.
+// Daily login streak (UTC calendar day, per account): day 1 = 25, +5 per
+// consecutive day, cap 100; a missed day resets to 25.
+constexpr int64_t kApPerLevel = 100, kApMinLevel = 10;
+constexpr int64_t kApDailyBase = 25, kApDailyStep = 5, kApDailyCap = 100;
+}  // namespace
+
+int64_t PlayerSessionStore::ApForLevel(int64_t level, int64_t ap) {
+	return level >= kApMinLevel ? ap : 0;
+}
+
+static std::mutex g_levelup_mu;
+static std::map<int64_t, uint32_t> g_levelup_pending;
+
+void PlayerSessionStore::NoteLevelUp(int64_t character_id, uint32_t level) {
+	std::lock_guard<std::mutex> lk(g_levelup_mu);
+	uint32_t& v = g_levelup_pending[character_id];
+	if (level > v) v = level;
+	ServiceHooks::Notify("level_up", {{"char_id", character_id}, {"new_level", level}});
+}
+
+uint32_t PlayerSessionStore::TakeLevelUp(int64_t character_id) {
+	std::lock_guard<std::mutex> lk(g_levelup_mu);
+	auto it = g_levelup_pending.find(character_id);
+	if (it == g_levelup_pending.end()) return 0;
+	const uint32_t v = it->second;
+	g_levelup_pending.erase(it);
+	return v;
+}
+
+int64_t PlayerSessionStore::SyncAgendaPoints(int64_t character_id, int64_t* daily_paid,
+                                             int64_t* streak_out) {
+	if (daily_paid) *daily_paid = 0;
+	sqlite3* db = Database::GetConnection();
+	if (!db || character_id <= 0) return 0;
+	int64_t user_id = 0, awarded = 0, daily_day = 0, ap = 0, streak = 0;
+	{
+		sqlite3_stmt* s = nullptr;
+		if (sqlite3_prepare_v2(db,
+		        "SELECT c.user_id, c.ap_level_awarded, u.ap_daily_day, u.agenda_points, u.ap_daily_streak "
+		        "FROM ga_characters c JOIN ga_users u ON u.id = c.user_id "
+		        "WHERE c.id = ? AND c.deleted_at = 0",
+		        -1, &s, nullptr) != SQLITE_OK) return 0;
+		sqlite3_bind_int64(s, 1, character_id);
+		if (sqlite3_step(s) == SQLITE_ROW) {
+			user_id   = sqlite3_column_int64(s, 0);
+			awarded   = sqlite3_column_int64(s, 1);
+			daily_day = sqlite3_column_int64(s, 2);
+			ap        = sqlite3_column_int64(s, 3);
+			streak    = sqlite3_column_int64(s, 4);
+		}
+		sqlite3_finalize(s);
+	}
+	if (user_id == 0) return 0;
+
+	const int64_t level = GetAgentInfo(character_id).level;
+	const int64_t today = (int64_t)std::time(nullptr) / 86400;
+	// Levels 1-9 pay nothing; level 10 is the first payout. Already-paid levels
+	// (ap_level_awarded) are never paid again and nothing is clawed back.
+	const int64_t paid_from = std::max<int64_t>(awarded, kApMinLevel - 1);
+	const int64_t level_ap = level > paid_from ? (level - paid_from) * kApPerLevel : 0;
+	const int64_t new_streak = daily_day == today - 1 ? std::max<int64_t>(streak, 1) + 1 : 1;  // pre-streak rows count as day 1
+	const int64_t daily_ap = daily_day < today
+		? std::min<int64_t>(kApDailyCap, kApDailyBase + (new_streak - 1) * kApDailyStep) : 0;
+	if (level_ap == 0 && daily_ap == 0) return ap;
+
+	// Guarded UPDATEs (old value in the WHERE) so a concurrent sync never pays twice.
+	int64_t granted = 0;
+	sqlite3_stmt* u = nullptr;
+	if (level_ap > 0 && sqlite3_prepare_v2(db,
+	        "UPDATE ga_characters SET ap_level_awarded = ?1 WHERE id = ?2 AND ap_level_awarded = ?3",
+	        -1, &u, nullptr) == SQLITE_OK) {
+		sqlite3_bind_int64(u, 1, level);
+		sqlite3_bind_int64(u, 2, character_id);
+		sqlite3_bind_int64(u, 3, awarded);
+		if (sqlite3_step(u) == SQLITE_DONE && sqlite3_changes(db) == 1) granted += level_ap;
+		sqlite3_finalize(u);
+	}
+	if (daily_ap > 0 && sqlite3_prepare_v2(db,
+	        "UPDATE ga_users SET ap_daily_day = ?1, ap_daily_streak = ?4 WHERE id = ?2 AND ap_daily_day = ?3",
+	        -1, &u, nullptr) == SQLITE_OK) {
+		sqlite3_bind_int64(u, 1, today);
+		sqlite3_bind_int64(u, 2, user_id);
+		sqlite3_bind_int64(u, 3, daily_day);
+		sqlite3_bind_int64(u, 4, new_streak);
+		if (sqlite3_step(u) == SQLITE_DONE && sqlite3_changes(db) == 1) {
+			granted += daily_ap;
+			if (daily_paid) *daily_paid = daily_ap;
+			if (streak_out) *streak_out = new_streak;
+		}
+		sqlite3_finalize(u);
+	}
+	if (granted > 0 && sqlite3_prepare_v2(db,
+	        "UPDATE ga_users SET agenda_points = agenda_points + ?1 WHERE id = ?2",
+	        -1, &u, nullptr) == SQLITE_OK) {
+		sqlite3_bind_int64(u, 1, granted);
+		sqlite3_bind_int64(u, 2, user_id);
+		sqlite3_step(u);
+		sqlite3_finalize(u);
+		ap += granted;
+		Logger::Log("rewards", "[AP] char=%lld user=%lld level %lld (paid to %lld) daily=%lld streak=%lld -> +%lld AP, wallet %lld\n",
+			(long long)character_id, (long long)user_id, (long long)level, (long long)awarded,
+			(long long)daily_ap, (long long)(daily_ap > 0 ? new_streak : streak), (long long)granted, (long long)ap);
+	}
+	return ap;
+}
+
+bool PlayerSessionStore::ValidateSkillAllocation(int64_t character_id,
+                                                 const std::vector<SkillRow>& skills,
+                                                 std::string& why) {
+	std::vector<SkillRules::SkillPick> picks;
+	for (const auto& r : skills) picks.push_back({r.skill_group_id, r.skill_id, r.points});
+	return SkillRules::ValidateSkillAllocation(Database::GetConnection(), character_id, picks, why);
+}
+
+namespace {
+// One asm_data_set_event_rewards row: {xp, tokens, credits} for a reward
+// event (+ difficulty). Missing row = neutral (1.0 multipliers / 0 base).
+struct RewardTriple { double xp, tokens, credits; bool found; };
+RewardTriple LookupEventReward(sqlite3* db, int reward_event, int difficulty, double dflt) {
+	RewardTriple r{dflt, dflt, dflt, false};
+	sqlite3_stmt* s = nullptr;
+	if (sqlite3_prepare_v2(db,
+	        "SELECT xp_reward_value, token_reward_value, currency_reward_value "
+	        "FROM asm_data_set_event_rewards WHERE reward_event_value_id = ? "
+	        "AND difficulty_value_id = ? ORDER BY process_order LIMIT 1",
+	        -1, &s, nullptr) != SQLITE_OK) return r;
+	sqlite3_bind_int(s, 1, reward_event);
+	sqlite3_bind_int(s, 2, difficulty);
+	if (sqlite3_step(s) == SQLITE_ROW) {
+		r = {sqlite3_column_double(s, 0), sqlite3_column_double(s, 1),
+		     sqlite3_column_double(s, 2), true};
+	}
+	sqlite3_finalize(s);
+	return r;
+}
+}  // namespace
+
+// Map + start time of an instance, for reward hook payloads.
+static std::pair<std::string, int64_t> InstanceStartInfo(sqlite3* db, int64_t instance_id) {
+	std::pair<std::string, int64_t> r{std::string(), 0};
+	sqlite3_stmt* s = nullptr;
+	if (sqlite3_prepare_v2(db, "SELECT map_name, started_at FROM ga_instances WHERE instance_id = ?",
+	        -1, &s, nullptr) != SQLITE_OK) return r;
+	sqlite3_bind_int64(s, 1, instance_id);
+	if (sqlite3_step(s) == SQLITE_ROW) {
+		const unsigned char* m = sqlite3_column_text(s, 0);
+		r.first = m ? (const char*)m : "";
+		r.second = sqlite3_column_int64(s, 1);
+	}
+	sqlite3_finalize(s);
+	return r;
+}
+
+// Optional "notes" in a mission_reward / pvp_reward hook reply =
+// the bonus sources behind its numbers, listed on the results screen:
+// [{"label": "...", "xp": N, "credits": N, "tokens": N}] (amounts, already in
+// the reply) or [{"label": "...", "xp_percent": P, ...}] (percent of the given
+// base). No notes = the reply is plain tuning, nothing listed.
+static std::vector<PlayerSessionStore::PveRewardResult::Note> HookNotes(
+		const std::optional<nlohmann::json>& d, int64_t bxp = 0, int64_t bcr = 0, int64_t btk = 0) {
+	std::vector<PlayerSessionStore::PveRewardResult::Note> out;
+	if (!d || !d->is_object() || !d->contains("notes") || !(*d)["notes"].is_array()) return out;
+	for (const auto& n : (*d)["notes"]) {
+		if (!n.is_object() || !n.contains("label") || !n["label"].is_string()) continue;
+		PlayerSessionStore::PveRewardResult::Note note;
+		note.label = n["label"].get<std::string>().substr(0, 48);
+		const auto pct = [&](const char* k, int64_t base) {
+			const int64_t p = ServiceHooks::ClampInt(n, k, 100, 0, 300);
+			return base * (p - 100) / 100;
+		};
+		note.xp      = ServiceHooks::ClampInt(n, "xp", 0, -100000, 100000) + pct("xp_percent", bxp);
+		note.credits = ServiceHooks::ClampInt(n, "credits", 0, -100000, 100000) + pct("credits_percent", bcr);
+		note.tokens  = ServiceHooks::ClampInt(n, "tokens", 0, -100000, 100000) + pct("tokens_percent", btk);
+		out.push_back(std::move(note));
+		if (out.size() >= 6) break;
+	}
+	return out;
+}
+
+PlayerSessionStore::PveRewardResult PlayerSessionStore::AwardPveMissionRewards(
+		int64_t instance_id, uint32_t difficulty_value_id, bool won,
+		uint32_t reward_level_max, const std::string& queue_name, int players_tf) {
+	PveRewardResult result;
+	sqlite3* db = Database::GetConnection();
+	if (!db || instance_id == 0 || difficulty_value_id == 0) return result;
+
+	// Reward event value ids (asm valid_values group 107).
+	constexpr int kPveMatchComplete = 1296, kPveDifficulty = 1195, kPveWin = 1303;
+	constexpr int kPve1Player = 1459, kPve2Player = 1460, kPve3Player = 1461;
+	constexpr int kPveChallengeBonus = 1261;
+
+	std::vector<int64_t> chars;
+	{
+		sqlite3_stmt* s = nullptr;
+		if (sqlite3_prepare_v2(db,
+		        "SELECT DISTINCT character_id FROM ga_instance_players "
+		        "WHERE instance_id = ? AND left_at IS NULL AND character_id > 0",
+		        -1, &s, nullptr) != SQLITE_OK) return result;
+		sqlite3_bind_int64(s, 1, instance_id);
+		while (sqlite3_step(s) == SQLITE_ROW) chars.push_back(sqlite3_column_int64(s, 0));
+		sqlite3_finalize(s);
+	}
+	// Queue reward cap (GA 1.35: e.g. Medium "rewards stop past 19").
+	// Party size still counts them; they just get no mission-end rewards.
+	const int n = (int)chars.size();
+	if (reward_level_max < 200) {
+		std::vector<int64_t> keep;
+		for (int64_t cid : chars) {
+			const uint32_t lvl = GetCharacterLevelXp(cid).level;
+			if (lvl > reward_level_max) {
+				result.over_level.push_back(cid);
+				Logger::Log("rewards", "[Rewards] instance=%lld char=%lld level %u > cap %u -> no mission rewards\n",
+					(long long)instance_id, (long long)cid, lvl, reward_level_max);
+			} else keep.push_back(cid);
+		}
+		chars.swap(keep);
+	}
+	if (chars.empty()) return result;
+
+	const RewardTriple base = LookupEventReward(db, kPveMatchComplete, 0, 0.0);
+	const RewardTriple diff = LookupEventReward(db, kPveDifficulty, (int)difficulty_value_id, 1.0);
+	const RewardTriple party = LookupEventReward(db,
+		n <= 1 ? kPve1Player : (n == 2 ? kPve2Player : kPve3Player), 0, 1.0);
+	const RewardTriple win = won
+		? LookupEventReward(db, kPveWin, (int)difficulty_value_id, 1.0)
+		: RewardTriple{1.0, 1.0, 1.0, false};
+
+	int64_t xp      = (int64_t)(base.xp      * diff.xp      * party.xp      * win.xp      + 0.5);
+	int64_t tokens  = (int64_t)(base.tokens  * diff.tokens  * party.tokens  * win.tokens  + 0.5);
+	int64_t credits = (int64_t)(base.credits * diff.credits * party.credits * win.credits + 0.5);
+
+	// Optional external adjustment of the mission-end amounts (same
+	// for every agent in the instance). Without a subscriber: the data values.
+	std::vector<PveRewardResult::Note> hook_notes;
+	if (ServiceHooks::Enabled("mission_reward")) {
+		const auto start = InstanceStartInfo(db, instance_id);
+		auto d = ServiceHooks::Call("mission_reward", {
+			{"instance_id", instance_id}, {"queue", queue_name},
+			{"map_name", start.first}, {"started_at", start.second},
+			{"difficulty_value_id", difficulty_value_id}, {"won", won},
+			{"party_size", n}, {"xp", xp}, {"credits", credits}, {"tokens", tokens}});
+		if (d) {
+			xp      = ServiceHooks::ClampInt(*d, "xp",      xp,      0, 100000);
+			credits = ServiceHooks::ClampInt(*d, "credits", credits, 0, 100000);
+			tokens  = ServiceHooks::ClampInt(*d, "tokens",  tokens,  0, 100000);
+			hook_notes = HookNotes(d);
+		}
+	}
+
+	// PvE Challenge Bonus (1261, flat xp/credits) on a win with the
+	// players' team deaths below the instance's victory_bonus_lives - the HUD
+	// "PvE Challenge Bonus deaths / limit" counter (msg 34351/34352). Same rule
+	// as the "Win with Victory Bonus" achievement metric.
+	if (won) {
+		sqlite3_stmt* s = nullptr;
+		if (sqlite3_prepare_v2(db, "SELECT victory_bonus_lives, count_deaths_attackers, "
+		        "count_deaths_defenders FROM ga_instances WHERE instance_id = ?",
+		        -1, &s, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(s, 1, instance_id);
+			if (sqlite3_step(s) == SQLITE_ROW) {
+				const int lives = sqlite3_column_int(s, 0);
+				const int deaths = sqlite3_column_int(s, players_tf == 2 ? 2 : 1);
+				result.challenge_bonus = lives > 0 && deaths < lives;
+			}
+			sqlite3_finalize(s);
+		}
+		if (result.challenge_bonus) {
+			const RewardTriple cb = LookupEventReward(db, kPveChallengeBonus, 0, 0.0);
+			xp      += (int64_t)(cb.xp + 0.5);
+			credits += (int64_t)(cb.credits + 0.5);
+			tokens  += (int64_t)(cb.tokens + 0.5);
+		}
+	}
+
+	sqlite3_stmt* u = nullptr;
+	if (sqlite3_prepare_v2(db,
+	        "UPDATE ga_characters SET "
+	        "  xp = xp + ?1, "  /* cap + lv50 credits = trigger trg_lv50_xp_credits */
+	        "  tokens = tokens + ?2, credits = credits + ?3 "
+	        "WHERE id = ?4 AND deleted_at = 0",
+	        -1, &u, nullptr) != SQLITE_OK) {
+		Logger::Log("db", "[Rewards] prepare failed: %s\n", sqlite3_errmsg(db));
+		return result;
+	}
+	// Agenda Points for a won mission, 25 (normal) .. 50 (hardest
+	// difficulty multiplier 3.0), into the account wallet (level-up AP follows
+	// via SyncAgendaPoints on the next Stats push).
+	const int64_t ap = won ? std::min<int64_t>(50, std::max<int64_t>(25,
+		(int64_t)(25.0 + (diff.xp - 1.0) * 12.5 + 0.5))) : 0;
+	// An active account booster (ga_users.booster_until, bought
+	// with AP - item type 1609 "Doubles all end-mission rewards") doubles this
+	// agent's xp / credits / tokens. AP itself is not doubled.
+	sqlite3_stmt* bq = nullptr;
+	sqlite3_prepare_v2(db,
+		"SELECT 1 FROM ga_users WHERE booster_until > strftime('%s','now') "
+		"AND id = (SELECT user_id FROM ga_characters WHERE id = ?1)",
+		-1, &bq, nullptr);
+	for (int64_t cid : chars) {
+		int boost = 1;
+		if (bq) {
+			sqlite3_bind_int64(bq, 1, cid);
+			if (sqlite3_step(bq) == SQLITE_ROW) boost = 2;
+			sqlite3_reset(bq);
+		}
+		const uint32_t before = GetCharacterLevelXp(cid).level;
+		// AP: ApRewards ("ap_rewards" config, optional ap_grant service).
+		const int64_t ap_c = ApRewards::Grant(cid, before, "pve_mission",
+			ApForLevel(before, ap), true, true);
+		PveRewardResult::Paid& paid = result.paid[cid];
+		paid.xp = xp * boost;
+		paid.tokens = LimitTokenGain(cid, tokens * boost);
+		paid.credits = credits * boost;
+		paid.agenda_points = ap_c;
+		paid.notes = hook_notes;
+		if (boost > 1)
+			paid.notes.push_back({"Booster x2", xp * (boost - 1), credits * (boost - 1),
+			                      std::max<int64_t>(0, paid.tokens - tokens)});
+		sqlite3_bind_int64(u, 1, paid.xp);
+		sqlite3_bind_int64(u, 2, paid.tokens);
+		sqlite3_bind_int64(u, 3, paid.credits);
+		sqlite3_bind_int64(u, 4, cid);
+		sqlite3_step(u);
+		sqlite3_reset(u);
+		AgencyBank::TaxEarnings(cid, paid.credits);   // agency tax
+		const LevelXp after = GetCharacterLevelXp(cid);
+		if (after.level > before) NoteLevelUp(cid, after.level);
+		Logger::Log("rewards",
+			"[Rewards] instance=%lld char=%lld difficulty=%u won=%d players=%d "
+			"-> +%lld xp +%lld credits +%lld tokens +%lld AP%s%s (level %u -> %u, xp now %lld)\n",
+			(long long)instance_id, (long long)cid, difficulty_value_id, won ? 1 : 0, n,
+			(long long)paid.xp, (long long)paid.credits, (long long)paid.tokens, (long long)ap_c,
+			result.challenge_bonus ? " [challenge bonus]" : "",
+			boost > 1 ? " [booster x2]" : "",
+			before, after.level, (long long)after.xp);
+	}
+	sqlite3_finalize(u);
+	if (bq) sqlite3_finalize(bq);
+	result.agenda_points = ap;
+	result.xp = xp;
+	result.credits = credits;
+	result.tokens = tokens;
+	result.characters = chars;
+	return result;
+}
+
+std::vector<PlayerSessionStore::PveRewardResult> PlayerSessionStore::AwardPvpMatchRewards(
+		int64_t instance_id, int winning_task_force, int team_size) {
+	std::vector<PveRewardResult> result;
+	sqlite3* db = Database::GetConnection();
+	if (!db || instance_id == 0) return result;
+	const ApRewards::Settings& cfg = ApRewards::Get();
+
+	// Agents still in the match at the end (leaving early = 0) and their final side.
+	// window = seconds since the agent first joined this match (backfills join late).
+	struct Agent { int tf = 0; int64_t rep = 0; int64_t activity = 0; double seconds = 0; double window = 0; };
+	std::map<int64_t, Agent> agents;
+	sqlite3_stmt* s = nullptr;
+	if (sqlite3_prepare_v2(db,
+	        "SELECT p.character_id, MAX(p.task_force_number), strftime('%s','now') - "
+	        " (SELECT MIN(f.joined_at) FROM ga_instance_players f "
+	        "  WHERE f.instance_id = p.instance_id AND f.character_id = p.character_id) "
+	        "FROM ga_instance_players p "
+	        "WHERE p.instance_id = ? AND p.left_at IS NULL AND p.character_id > 0 "
+	        "GROUP BY p.character_id", -1, &s, nullptr) != SQLITE_OK) return result;
+	sqlite3_bind_int64(s, 1, instance_id);
+	while (sqlite3_step(s) == SQLITE_ROW) {
+		Agent& a = agents[sqlite3_column_int64(s, 0)];
+		a.tf = sqlite3_column_int(s, 1);
+		a.window = sqlite3_column_double(s, 2);
+	}
+	sqlite3_finalize(s);
+	if (agents.empty()) return result;
+
+	// The game's own end-of-match scoreboard (MatchStats stints, all sides summed;
+	// rank uses the rep points earned on the final side).
+	double longest = 0;
+	if (sqlite3_prepare_v2(db,
+	        "SELECT character_id, task_force, rep_points, rep_points + kills + damage_dealt + healing"
+	        " + obj_points + objective_captures, time_played_seconds "
+	        "FROM ga_match_player_stats WHERE instance_id = ?", -1, &s, nullptr) != SQLITE_OK)
+		return result;
+	sqlite3_bind_int64(s, 1, instance_id);
+	while (sqlite3_step(s) == SQLITE_ROW) {
+		const double secs = sqlite3_column_double(s, 4);
+		longest = std::max(longest, secs);
+		auto it = agents.find(sqlite3_column_int64(s, 0));
+		if (it == agents.end()) continue;
+		if (sqlite3_column_int(s, 1) == it->second.tf) it->second.rep += sqlite3_column_int64(s, 2);
+		it->second.activity += sqlite3_column_int64(s, 3);
+		it->second.seconds  += secs;
+	}
+	sqlite3_finalize(s);
+
+	// p0997c: real players are paid in bot matches, solo + bots included. The per-agent presence and
+	// activity checks below are the rule; pvp_min_real_per_side > 0 turns the old side minimum back on.
+	const int min_real = cfg.pvp_min_real_per_side <= 0 ? 0
+		: std::max(1, std::min(cfg.pvp_min_real_per_side, std::max(1, team_size)));
+	int side_count[3] = {0, 0, 0};
+	for (const auto& [cid, a] : agents) if (a.tf == 1 || a.tf == 2) side_count[a.tf]++;
+	if (side_count[1] < min_real || side_count[2] < min_real) {
+		Logger::Log("ap", "[AP] pvp instance=%lld no AP: sides %d v %d < %d real\n",
+			(long long)instance_id, side_count[1], side_count[2], min_real);
+		return result;
+	}
+
+	// Rank on own team by rep points (ties: lower character id first, stable).
+	std::vector<std::pair<int64_t, int64_t>> order;  // (cid, rep)
+	for (const auto& [cid, a] : agents) order.emplace_back(cid, a.rep);
+	std::stable_sort(order.begin(), order.end(),
+		[](const auto& x, const auto& y) { return x.second > y.second; });
+	std::map<int64_t, int> rank;
+	int next[3] = {1, 1, 1};
+	for (const auto& [cid, rep] : order) {
+		const int tf = agents[cid].tf;
+		if ((tf == 1 || tf == 2) && rep > 0) rank[cid] = next[tf]++;
+	}
+
+	// Reward event value ids (asm valid_values group 107).
+	constexpr int kPvpMatchComplete = 1180, kPvpWin = 902, kPvpRanking = 880;
+	const RewardTriple done = LookupEventReward(db, kPvpMatchComplete, 0, 0.0);
+	const RewardTriple win  = LookupEventReward(db, kPvpWin, 0, 1.0);
+	const RewardTriple rank_bonus = LookupEventReward(db, kPvpRanking, 0, 0.0);
+	// Seats without an agent (character_id <= 0) outnumbering agents = half rewards.
+	int64_t other_seats = 0;
+	if (sqlite3_prepare_v2(db,
+	        "SELECT COUNT(DISTINCT session_guid) FROM ga_instance_players "
+	        "WHERE instance_id = ? AND left_at IS NULL AND character_id <= 0",
+	        -1, &s, nullptr) == SQLITE_OK) {
+		sqlite3_bind_int64(s, 1, instance_id);
+		if (sqlite3_step(s) == SQLITE_ROW) other_seats = sqlite3_column_int64(s, 0);
+		sqlite3_finalize(s);
+	}
+	const double scale = other_seats > (int64_t)agents.size() ? 0.5 : 1.0;
+	// Optional external token percent for the whole match.
+	// + optional xp/credits percent. Without a subscriber: 100.
+	int64_t tokens_percent = 100, xp_percent = 100, credits_percent = 100;
+	int64_t tokens_flat[2] = {0, 0};  // optional flat PvP tokens {lost, won} from the hook (data has 0)
+	std::optional<nlohmann::json> hook_reply;
+	if (ServiceHooks::Enabled("pvp_reward")) {
+		const auto start = InstanceStartInfo(db, instance_id);
+		auto d = ServiceHooks::Call("pvp_reward", {
+			{"instance_id", instance_id}, {"map_name", start.first}, {"started_at", start.second},
+			{"winning_task_force", winning_task_force}, {"team_size", team_size}, {"mode", "match"}});
+		hook_reply = d;
+		if (d) {
+			tokens_percent  = ServiceHooks::ClampInt(*d, "tokens_percent", 100, 0, 300);
+			xp_percent      = ServiceHooks::ClampInt(*d, "xp_percent", 100, 0, 300);
+			credits_percent = ServiceHooks::ClampInt(*d, "credits_percent", 100, 0, 300);
+			tokens_flat[0] = ServiceHooks::ClampInt(*d, "tokens_flat_loss", 0, 0, 1000); tokens_flat[1] = ServiceHooks::ClampInt(*d, "tokens_flat_win", 0, 0, 1000);
+		}
+	}
+	sqlite3_stmt* u = nullptr;
+	sqlite3_prepare_v2(db,
+		"UPDATE ga_characters SET "
+		"  xp = xp + ?1, "  /* cap + lv50 credits = trigger trg_lv50_xp_credits */
+		"  tokens = tokens + ?2, credits = credits + ?3 WHERE id = ?4 AND deleted_at = 0",
+		-1, &u, nullptr);
+	sqlite3_stmt* bq = nullptr;
+	sqlite3_prepare_v2(db,
+		"SELECT 1 FROM ga_users WHERE booster_until > strftime('%s','now') "
+		"AND id = (SELECT user_id FROM ga_characters WHERE id = ?1)",
+		-1, &bq, nullptr);
+
+	// GA 1.37: backfilled players get the full match reward, so presence is
+	// measured against the time since the agent first joined, not the whole match.
+	for (const auto& [cid, a] : agents) {
+		const double span = a.window > 0 ? std::min(longest, a.window) : longest;
+		const double need = span * cfg.pvp_min_presence_percent / 100.0;
+		if (a.activity <= 0 || a.seconds < need) {
+			Logger::Log("ap", "[AP] pvp char=%lld no rewards: activity=%lld present=%.0fs/%.0fs\n",
+				(long long)cid, (long long)a.activity, a.seconds, span);
+			continue;
+		}
+		const bool won = winning_task_force != 0 && a.tf == winning_task_force;
+		const bool top = rank.count(cid) && rank[cid] == 1;
+		int boost = 1;
+		if (bq) {
+			sqlite3_bind_int64(bq, 1, cid);
+			if (sqlite3_step(bq) == SQLITE_ROW) boost = 2;
+			sqlite3_reset(bq);
+		}
+		const auto pay = [&](double b, double w, double r) {
+			return (int64_t)((b * (won ? w : 1.0) + (top ? r : 0.0)) * scale + 0.5) * boost;
+		};
+		PveRewardResult rw;
+		const int64_t bxp = pay(done.xp, win.xp, rank_bonus.xp);
+		const int64_t btk = pay(done.tokens, win.tokens, rank_bonus.tokens) + (int64_t)(tokens_flat[won ? 1 : 0] * scale + 0.5) * boost;
+		const int64_t bcr = pay(done.credits, win.credits, rank_bonus.credits);
+		rw.xp      = bxp * xp_percent / 100;
+		rw.tokens  = LimitTokenGain(cid, btk * tokens_percent / 100);
+		rw.credits = bcr * credits_percent / 100;
+		{
+			auto& paid = rw.paid[cid];
+			paid.xp = rw.xp; paid.credits = rw.credits; paid.tokens = rw.tokens;
+			// bonus lines: booster on the data amounts, hook percents on the boosted ones
+			if (boost > 1)
+				paid.notes.push_back({"Booster x2", bxp / boost * (boost - 1), bcr / boost * (boost - 1),
+				                      btk / boost * (boost - 1)});
+			for (auto& n : HookNotes(hook_reply, bxp, bcr, btk)) paid.notes.push_back(std::move(n));
+		}
+		const uint32_t before = GetCharacterLevelXp(cid).level;
+		if (u) {
+			sqlite3_bind_int64(u, 1, rw.xp);
+			sqlite3_bind_int64(u, 2, rw.tokens);
+			sqlite3_bind_int64(u, 3, rw.credits);
+			sqlite3_bind_int64(u, 4, cid);
+			sqlite3_step(u);
+			sqlite3_reset(u);
+		}
+		AgencyBank::TaxEarnings(cid, rw.credits);   // agency tax
+		const LevelXp after = GetCharacterLevelXp(cid);
+		if (after.level > before) NoteLevelUp(cid, after.level);
+		int64_t base = cfg.pvp_finish;
+		if (winning_task_force != 0 && a.tf == winning_task_force) base += cfg.pvp_win;
+		auto r = rank.find(cid);
+		if (r != rank.end())
+			base += r->second == 1 ? cfg.pvp_rank1 : r->second == 2 ? cfg.pvp_rank2
+			      : r->second == 3 ? cfg.pvp_rank3 : 0;
+		const int64_t level = before;
+		rw.agenda_points = ApRewards::Grant(cid, level, "pvp_match", ApForLevel(level, base), true, true);
+		rw.paid[cid].agenda_points = rw.agenda_points;
+		Logger::Log("rewards",
+			"[PvP] instance=%lld char=%lld tf=%d winner_tf=%d rank1=%d scale=%.1f -> +%lld xp +%lld credits "
+			"+%lld tokens +%lld AP%s (level %u -> %u)\n",
+			(long long)instance_id, (long long)cid, a.tf, winning_task_force, top ? 1 : 0, scale,
+			(long long)rw.xp, (long long)rw.credits, (long long)rw.tokens, (long long)rw.agenda_points,
+			boost > 1 ? " [booster x2]" : "", before, after.level);
+		rw.characters.push_back(cid);
+		result.push_back(std::move(rw));
+	}
+	if (u) sqlite3_finalize(u);
+	if (bq) sqlite3_finalize(bq);
+	return result;
+}
+
+// F2P rework (d): raid / endgame clear AP on top of the mission AP.
+// raid_min (Medium) .. raid_max (Ultra-Max) by difficulty; unknown special
+// difficulties (super agent, pve attack) pay the High step. Once per agent per instance.
+std::vector<std::pair<int64_t, int64_t>> PlayerSessionStore::GrantRaidClearAp(
+		int64_t instance_id, int players_tf, uint32_t difficulty_value_id,
+		bool raid_queue, const std::string& map_name) {
+	std::vector<std::pair<int64_t, int64_t>> out;
+	sqlite3* db = Database::GetConnection();
+	if (!db || instance_id == 0) return out;
+	const ApRewards::Settings& cfg = ApRewards::Get();
+	constexpr uint32_t kMedium = 1029, kHigh = 1030, kMax = 1259, kUltraMax = 1471;
+	// Solo tiers Adept / Advanced / Expert pay like Medium / High / Max.
+	if (difficulty_value_id == 1468) difficulty_value_id = kMedium;
+	else if (difficulty_value_id == 1469) difficulty_value_id = kHigh; else if (difficulty_value_id == 1470) difficulty_value_id = kMax;
+	const int64_t step = (cfg.raid_max - cfg.raid_min) / 3;
+	int64_t base = cfg.raid_min + step;  // High / special
+	if (difficulty_value_id == kMedium) base = cfg.raid_min;
+	else if (difficulty_value_id == kMax) base = cfg.raid_min + 2 * step;
+	else if (difficulty_value_id == kUltraMax) base = cfg.raid_max;
+	std::string lower = map_name;
+	for (char& c : lower) c = (char)std::tolower((unsigned char)c);
+	// Level-50 Dweller missions on High+ count as endgame clears too.
+	const bool dweller = lower.find("dweller") != std::string::npos &&
+		(difficulty_value_id == kHigh || difficulty_value_id == kMax || difficulty_value_id == kUltraMax);
+	if (!raid_queue && !dweller) return out;
+
+	std::vector<int64_t> chars;
+	sqlite3_stmt* s = nullptr;
+	if (sqlite3_prepare_v2(db,
+	        "SELECT DISTINCT character_id FROM ga_instance_players WHERE instance_id = ? "
+	        "AND left_at IS NULL AND character_id > 0 AND task_force_number = ?",
+	        -1, &s, nullptr) != SQLITE_OK) return out;
+	sqlite3_bind_int64(s, 1, instance_id);
+	sqlite3_bind_int(s, 2, players_tf);
+	while (sqlite3_step(s) == SQLITE_ROW) chars.push_back(sqlite3_column_int64(s, 0));
+	sqlite3_finalize(s);
+	for (int64_t cid : chars) {
+		const int64_t level = GetCharacterLevelXp(cid).level;
+		if (!raid_queue && level < 50) continue;
+		if (sqlite3_prepare_v2(db,
+		        "INSERT OR IGNORE INTO ga_ap_raid_clears (instance_id, character_id) VALUES (?, ?)",
+		        -1, &s, nullptr) != SQLITE_OK) continue;
+		sqlite3_bind_int64(s, 1, instance_id);
+		sqlite3_bind_int64(s, 2, cid);
+		sqlite3_step(s);
+		sqlite3_finalize(s);
+		if (sqlite3_changes(db) == 0) continue;  // already paid for this instance
+		const int64_t ap = ApRewards::Grant(cid, level, "raid_clear", ApForLevel(level, base), true, true);
+		if (ap > 0) out.emplace_back(cid, ap);
+	}
+	return out;
+}
+
+std::vector<PlayerSessionStore::PveRewardResult> PlayerSessionStore::ResolveAvaMatch(
+		int64_t instance_id, int winning_task_force) {
+	std::vector<PveRewardResult> result;
+	sqlite3* db = Database::GetConnection();
+	if (!db || instance_id == 0) return result;
+
+	constexpr int kPvpMatchComplete = 1180, kPvpWin = 902;
+	constexpr int64_t kSoloOwnerBase = 0x40000000;
+
+	struct Seat { int64_t cid; int tf; };
+	std::vector<Seat> seats;
+	{
+		sqlite3_stmt* s = nullptr;
+		if (sqlite3_prepare_v2(db,
+		        "SELECT character_id, MAX(task_force_number) FROM ga_instance_players "
+		        "WHERE instance_id = ? AND left_at IS NULL AND character_id > 0 "
+		        "GROUP BY character_id",
+		        -1, &s, nullptr) != SQLITE_OK) return result;
+		sqlite3_bind_int64(s, 1, instance_id);
+		while (sqlite3_step(s) == SQLITE_ROW)
+			seats.push_back({sqlite3_column_int64(s, 0), sqlite3_column_int(s, 1)});
+		sqlite3_finalize(s);
+	}
+	if (seats.empty()) return result;
+
+	AvaParity::OnAvaResult(instance_id, winning_task_force);  // lockdown + HQ cargo
+	struct PushOnExit { ~PushOnExit() { TcpSession::AvaPushZoneToViewers(0); } } push_on_exit;  // open maps show the new owner
+	int64_t ava_flat[2] = {0, 0};  // flat AvA tokens {lost, won} from the pvp_reward hook (by facility tier)
+	const RewardTriple base = LookupEventReward(db, kPvpMatchComplete, 0, 0.0);
+	const RewardTriple win  = LookupEventReward(db, kPvpWin, 0, 1.0);
+	const int64_t now = (int64_t)std::time(nullptr);
+	// Same optional pvp_reward percents as arena matches
+	// (mode "ava"). Without a subscriber: 100.
+	int64_t tokens_percent = 100, xp_percent = 100, credits_percent = 100;
+	std::optional<nlohmann::json> hook_reply;
+	if (ServiceHooks::Enabled("pvp_reward")) {
+		const auto start = InstanceStartInfo(db, instance_id);
+		auto d = ServiceHooks::Call("pvp_reward", {
+			{"instance_id", instance_id}, {"map_name", start.first}, {"started_at", start.second},
+			{"winning_task_force", winning_task_force}, {"team_size", (int64_t)seats.size()}, {"mode", "ava"},
+			{"ava_tech", AvaParity::TechTier(instance_id)}});
+		hook_reply = d;
+		if (d) {
+			tokens_percent  = ServiceHooks::ClampInt(*d, "tokens_percent", 100, 0, 300);
+			xp_percent      = ServiceHooks::ClampInt(*d, "xp_percent", 100, 0, 300);
+			credits_percent = ServiceHooks::ClampInt(*d, "credits_percent", 100, 0, 300);
+			ava_flat[0] = ServiceHooks::ClampInt(*d, "tokens_flat_loss", 0, 0, 2000); ava_flat[1] = ServiceHooks::ClampInt(*d, "tokens_flat_win", 0, 0, 2000);
+		}
+	}
+	// Attackers who joined at all (a lone defender's solo pop pays no defend AP).
+	int64_t real_attackers = 0;
+	{
+		sqlite3_stmt* s = nullptr;
+		if (sqlite3_prepare_v2(db,
+		        "SELECT COUNT(DISTINCT character_id) FROM ga_instance_players "
+		        "WHERE instance_id = ? AND character_id > 0 AND task_force_number = 1",
+		        -1, &s, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(s, 1, instance_id);
+			if (sqlite3_step(s) == SQLITE_ROW) real_attackers = sqlite3_column_int64(s, 0);
+			sqlite3_finalize(s);
+		}
+	}
+
+	for (const Seat& seat : seats) {
+		const bool won = winning_task_force != 0 && seat.tf == winning_task_force;
+		int boost = 1;
+		sqlite3_stmt* s = nullptr;
+		if (sqlite3_prepare_v2(db,
+		        "SELECT 1 FROM ga_users WHERE booster_until > strftime('%s','now') "
+		        "AND id = (SELECT user_id FROM ga_characters WHERE id = ?1)",
+		        -1, &s, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(s, 1, seat.cid);
+			if (sqlite3_step(s) == SQLITE_ROW) boost = 2;
+			sqlite3_finalize(s);
+		}
+		const int64_t nxp = (int64_t)(base.xp      * (won ? win.xp      : 1.0) + 0.5);
+		const int64_t ntk = (int64_t)(base.tokens  * (won ? win.tokens  : 1.0) + 0.5);
+		const int64_t ncr = (int64_t)(base.credits * (won ? win.credits : 1.0) + 0.5);
+		const int64_t xp      = nxp * boost * xp_percent / 100;
+		const int64_t tokens  = ntk * boost * tokens_percent / 100 + ava_flat[won ? 1 : 0] * boost;
+		const int64_t credits = ncr * boost * credits_percent / 100;
+		PveRewardResult::Paid paid;
+		paid.xp = xp; paid.credits = credits;
+		if (boost > 1) paid.notes.push_back({"Booster x2", nxp * (boost - 1), ncr * (boost - 1), ntk * (boost - 1)});
+		for (auto& n : HookNotes(hook_reply, nxp * boost, ncr * boost, ntk * boost)) paid.notes.push_back(std::move(n));
+		const int64_t level = GetCharacterLevelXp(seat.cid).level;
+		int64_t ap = won ? ApRewards::Grant(seat.cid, level, "ava_win",
+			ApForLevel(level, ApRewards::Get().ava_win), true, true) : 0;
+		if (sqlite3_prepare_v2(db,
+		        "UPDATE ga_characters SET "
+		        "  xp = xp + ?1, "  /* cap + lv50 credits = trigger trg_lv50_xp_credits */
+		        "  tokens = tokens + ?2, credits = credits + ?3 WHERE id = ?4 AND deleted_at = 0",
+		        -1, &s, nullptr) == SQLITE_OK) {
+			paid.tokens = LimitTokenGain(seat.cid, tokens);
+			sqlite3_bind_int64(s, 1, xp);
+			sqlite3_bind_int64(s, 2, paid.tokens);
+			sqlite3_bind_int64(s, 3, credits);
+			sqlite3_bind_int64(s, 4, seat.cid);
+			sqlite3_step(s);
+			sqlite3_finalize(s);
+		}
+		AgencyBank::TaxEarnings(seat.cid, credits);   // agency tax
+
+		// Territory this agent attacked (consumed either way).
+		int64_t zone = -1, pos = -1, behalf = 0;  // behalf: owner of the opened won bid it ran under
+		if (sqlite3_prepare_v2(db,
+		        "DELETE FROM ga_ava_attacks WHERE character_id = ? RETURNING zone_id, position, on_behalf_of",
+		        -1, &s, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(s, 1, seat.cid);
+			if (sqlite3_step(s) == SQLITE_ROW) {
+				zone = sqlite3_column_int64(s, 0);
+				pos  = sqlite3_column_int64(s, 1);
+				behalf = sqlite3_column_int64(s, 2);
+			}
+			while (sqlite3_step(s) == SQLITE_ROW) {}
+			sqlite3_finalize(s);
+		}
+		const bool capture = won && pos >= 0 && seat.tf == 1 && !AvaParity::IsTheft(instance_id, seat.cid);  // theft
+		if (capture) SettleAvaProduction();  // old owner keeps what it produced so far
+		if (capture) ap += ApRewards::Grant(seat.cid, level, "ava_capture",
+			ApForLevel(level, ApRewards::Get().ava_capture), true, true);
+		// Defend: a forced tf-2 defender (no attack row) wins against at least one real attacker.
+		// p0997c: or it fought bot attackers (no real attacker, but own match activity); an empty solo pop still pays none.
+		bool fought = real_attackers > 0;
+		if (!fought && won && seat.tf == 2 && pos < 0 && sqlite3_prepare_v2(db,
+		        "SELECT 1 FROM ga_match_player_stats WHERE instance_id = ?1 AND character_id = ?2 AND "
+		        "rep_points + kills + damage_dealt + healing + obj_points + objective_captures > 0 LIMIT 1",
+		        -1, &s, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(s, 1, instance_id);
+			sqlite3_bind_int64(s, 2, seat.cid);
+			fought = sqlite3_step(s) == SQLITE_ROW;
+			sqlite3_finalize(s);
+		}
+		const bool defend = won && seat.tf == 2 && pos < 0 && fought;
+		if (defend) ap += ApRewards::Grant(seat.cid, level, "ava_defend",
+			ApForLevel(level, ApRewards::Get().ava_defend), true, true);
+		const int64_t bid_owner = behalf > 0 ? behalf : AvaParity::OwnerOf(seat.cid);
+		if (bid_owner > 0 && pos >= 0 && sqlite3_prepare_v2(db,  // the won bid is spent by its attack's result
+		        "DELETE FROM ga_ava_bids WHERE zone_id = ?1 AND position = ?2 AND owner_agency_id = ?3",
+		        -1, &s, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(s, 1, zone);
+			sqlite3_bind_int64(s, 2, pos);
+			sqlite3_bind_int64(s, 3, bid_owner);
+			sqlite3_step(s);
+			sqlite3_finalize(s);
+		}
+		if (capture && behalf > 0) {
+			if (sqlite3_prepare_v2(db,
+			        "INSERT OR REPLACE INTO ga_ava_territories (zone_id, position, owner_agency_id,"
+			        " owner_name, color_r, color_g, color_b, captured_at) "
+			        "SELECT ?1, ?2, a.id, a.name, a.color_r, a.color_g, a.color_b, ?3 FROM ga_agencies a WHERE a.id = ?4",
+			        -1, &s, nullptr) == SQLITE_OK) {
+				sqlite3_bind_int64(s, 1, zone);
+				sqlite3_bind_int64(s, 2, pos);
+				sqlite3_bind_int64(s, 3, now);
+				sqlite3_bind_int64(s, 4, behalf);
+				sqlite3_step(s);
+				sqlite3_finalize(s);
+			}
+		} else if (capture && sqlite3_prepare_v2(db,
+		        "INSERT OR REPLACE INTO ga_ava_territories (zone_id, position, owner_agency_id,"
+		        " owner_name, color_r, color_g, color_b, captured_at) "
+		        "SELECT ?1, ?2, COALESCE(a.id, ?4 + c.id), COALESCE(a.name, u.username),"
+		        " COALESCE(a.color_r, 0.9), COALESCE(a.color_g, 0.6), COALESCE(a.color_b, 0.1), ?5 "
+		        "FROM ga_characters c JOIN ga_users u ON u.id = c.user_id "
+		        "LEFT JOIN ga_agency_members m ON m.user_id = c.user_id "
+		        "LEFT JOIN ga_agencies a ON a.id = m.agency_id WHERE c.id = ?3",
+		        -1, &s, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(s, 1, zone);
+			sqlite3_bind_int64(s, 2, pos);
+			sqlite3_bind_int64(s, 3, seat.cid);
+			sqlite3_bind_int64(s, 4, kSoloOwnerBase);
+			sqlite3_bind_int64(s, 5, now);
+			sqlite3_step(s);
+			sqlite3_finalize(s);
+		}
+		if (sqlite3_prepare_v2(db,
+		        "INSERT INTO ga_ava_records (character_id, wins, losses, captures) VALUES (?1, ?2, ?3, ?4) "
+		        "ON CONFLICT(character_id) DO UPDATE SET wins = wins + ?2, losses = losses + ?3, "
+		        "captures = captures + ?4",
+		        -1, &s, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(s, 1, seat.cid);
+			sqlite3_bind_int(s, 2, won ? 1 : 0);
+			sqlite3_bind_int(s, 3, won ? 0 : 1);
+			sqlite3_bind_int(s, 4, capture ? 1 : 0);
+			sqlite3_step(s);
+			sqlite3_finalize(s);
+		}
+		Logger::Log("rewards",
+			"[AvA] instance=%lld char=%lld tf=%d winner_tf=%d -> +%lld xp +%lld credits +%lld tokens +%lld AP%s%s\n",
+			(long long)instance_id, (long long)seat.cid, seat.tf, winning_task_force,
+			(long long)xp, (long long)credits, (long long)tokens, (long long)ap,
+			boost > 1 ? " [booster x2]" : "",
+			capture ? (" captured pos " + std::to_string(pos)).c_str() : "");
+		PveRewardResult r;
+		r.xp = xp; r.credits = credits; r.tokens = paid.tokens; r.agenda_points = ap;
+		paid.agenda_points = ap;
+		r.paid[seat.cid] = std::move(paid);
+		r.characters.push_back(seat.cid);
+		result.push_back(std::move(r));
+	}
+	return result;
+}
+
+void PlayerSessionStore::SeedStarterWeapons(int64_t character_id) {
+	// No lock: called next to PinClassDeviceSlot14 (callers may hold mutex_).
+	sqlite3* db = Database::GetConnection();
+	if (!db) return;
+
+	int64_t user_id = 0;
+	uint32_t profile_id = 0;
+	{
+		sqlite3_stmt* s = nullptr;
+		if (sqlite3_prepare_v2(db,
+		        "SELECT user_id, profile_id FROM ga_characters WHERE id = ?",
+		        -1, &s, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int64(s, 1, character_id);
+			if (sqlite3_step(s) == SQLITE_ROW) {
+				user_id    = sqlite3_column_int64(s, 0);
+				profile_id = static_cast<uint32_t>(sqlite3_column_int(s, 1));
+			}
+			sqlite3_finalize(s);
+		}
+	}
+	if (user_id == 0) return;
+
+	// Engine equip point <- allowed_slots value (see equip-slots.md).
+	// Pick the class item with the lowest required_level (the game's own
+	// asm_data_set_items data), common quality first, oldest row last.
+	static const struct { int equip_point; const char* svid; } kSlots[] = {
+		{ 1, "221" },  // melee
+		{ 2, "198" },  // ranged
+		{ 3, "200" },  // specialty
+		{ 5, "201" },  // jetpack
+	};
+	const char* kPick =
+		"SELECT inv.id FROM ga_players_inventory inv "
+		"WHERE inv.user_id = ? AND inv.profile_id = ? AND inv.allowed_slots = ? "
+		"ORDER BY COALESCE((SELECT MIN(a.required_level) FROM asm_data_set_items a "
+		"                   WHERE a.item_id = inv.device_id), 99), "
+		"         inv.quality DESC, inv.id "
+		"LIMIT 1";
+	const char* kInsert =
+		"INSERT OR IGNORE INTO ga_character_devices "
+		"(character_id, item_profile_id, inventory_id, equipped_slot) "
+		"VALUES (?, ?, ?, ?)";
+	sqlite3_stmt* pick = nullptr;
+	sqlite3_stmt* ins  = nullptr;
+	if (sqlite3_prepare_v2(db, kPick,   -1, &pick, nullptr) != SQLITE_OK ||
+	    sqlite3_prepare_v2(db, kInsert, -1, &ins,  nullptr) != SQLITE_OK) {
+		Logger::Log("db", "[PlayerSessionStore] SeedStarterWeapons: prepare failed: %s\n",
+			sqlite3_errmsg(db));
+		if (pick) sqlite3_finalize(pick);
+		if (ins)  sqlite3_finalize(ins);
+		return;
+	}
+	int added = 0;
+	for (const auto& slot : kSlots) {
+		sqlite3_reset(pick);
+		sqlite3_bind_int64(pick, 1, user_id);
+		sqlite3_bind_int  (pick, 2, (int)profile_id);
+		sqlite3_bind_text (pick, 3, slot.svid, -1, SQLITE_STATIC);
+		if (sqlite3_step(pick) != SQLITE_ROW) continue;
+		const int inv_id = sqlite3_column_int(pick, 0);
+		for (int item_profile_id = 1; item_profile_id <= 5; ++item_profile_id) {
+			sqlite3_reset(ins);
+			sqlite3_bind_int64(ins, 1, character_id);
+			sqlite3_bind_int  (ins, 2, item_profile_id);
+			sqlite3_bind_int  (ins, 3, inv_id);
+			sqlite3_bind_int  (ins, 4, slot.equip_point);
+			if (sqlite3_step(ins) == SQLITE_DONE && sqlite3_changes(db) > 0) ++added;
+		}
+	}
+	sqlite3_finalize(pick);
+	sqlite3_finalize(ins);
+	Logger::Log("db",
+		"[PlayerSessionStore] SeedStarterWeapons: char=%lld profile=%u newly-equipped=%d\n",
+		(long long)character_id, profile_id, added);
+}
+
 std::vector<InventoryRow> PlayerSessionStore::GetInventoryForUser(int64_t user_id, uint32_t profile_id) {
 	std::lock_guard<std::mutex> lock(mutex_);
 	std::vector<InventoryRow> result;
@@ -1647,16 +3064,27 @@ std::vector<DeviceRow> PlayerSessionStore::GetDevicesForCharacter(int64_t charac
 	}
 	sqlite3_bind_int64(stmt, 1, character_id);
 	sqlite3_bind_int  (stmt, 2, item_profile_id);
+	const int agentLevel = SlotUnlock::CharacterLevel(db, character_id);
 
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		DeviceRow row;
 		row.equip_slot      = sqlite3_column_int(stmt, 0);
+		// A device in a slot the agent has not unlocked yet is
+		// not equipped (the client shows it in the bag until the level).
+		if (!IsArmorSvid(row.equip_slot) && row.equip_slot <= 24
+		    && !SlotUnlock::IsEquipPointUnlocked(db, agentLevel,
+		           CosmeticSlots::EngineSlotFor(row.equip_slot))) {
+			continue;
+		}
 		row.inventory_id    = sqlite3_column_int(stmt, 1);
 		row.device_id       = sqlite3_column_int(stmt, 2);
 		row.quality         = sqlite3_column_int(stmt, 3);
 		row.mods            = CsvToMods((const char*)sqlite3_column_text(stmt, 4));
 		row.oc              = sqlite3_column_int(stmt, 5) != 0;
 		row.item_id         = sqlite3_column_int(stmt, 6);
+		// Under-level gear (e.g. written by an old/forged save)
+		// is not equipped.
+		if (!SlotUnlock::IsItemUsable(db, agentLevel, row.device_id, row.item_id)) continue;
 		// SVID is computed from the LOGICAL engine slot. Cosmetic suit/helmet
 		// rows are stored at DB slot 22/23 internally (see CosmeticSlots.hpp),
 		// but on the wire the client expects them at their engine slot's SVID
@@ -1734,9 +3162,51 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 		}
 	}
 
-	// Validate every (equip_point, inventory_id) BEFORE we mutate. The whole
-	// save either lands or doesn't — partial writes would desync the client
-	// from server in confusing ways.
+	// Level-gated device slots (src/Shared/SlotUnlock.hpp). A
+	// still-locked slot is dropped from the save (its DB row, if any, is left
+	// alone and lights up at the unlock level); the rest of the save lands.
+	{
+		const int level = SlotUnlock::CharacterLevel(db, character_id);
+		for (auto it = save_map.begin(); it != save_map.end(); ) {
+			if (!SlotUnlock::IsEquipPointUnlocked(db, level, it->first)) {
+				Logger::Log("armor",
+					"[Save] char=%lld level=%d: slot %d (svid %d) locked until level %d - inventory_id=%d not equipped\n",
+					character_id, level, it->first, SlotUnlock::EquipPointToSvid(it->first),
+					SlotUnlock::RequiredLevelForSvid(db, SlotUnlock::EquipPointToSvid(it->first)), it->second);
+				it = save_map.erase(it);
+				continue;
+			}
+			// The item's own required level (game data). The client refuses
+			// under-level gear itself; this stops a forged equip_save.
+			int dev = 0, item = 0;
+			sqlite3_stmt* q = nullptr;
+			if (sqlite3_prepare_v2(db,
+			        "SELECT device_id, item_id FROM ga_players_inventory WHERE id = ?",
+			        -1, &q, nullptr) == SQLITE_OK && q) {
+				sqlite3_bind_int(q, 1, it->second);
+				if (sqlite3_step(q) == SQLITE_ROW) {
+					dev  = sqlite3_column_int(q, 0);
+					item = sqlite3_column_int(q, 1);
+				}
+				sqlite3_finalize(q);
+			}
+			const int need = SlotUnlock::RequiredLevelForItem(db, dev, item);
+			if (level < need) {
+				Logger::Log("armor",
+					"[Save] REFUSED char=%lld level=%d: slot %d inventory_id=%d (device %d item %d) requires level %d - not equipped\n",
+					character_id, level, it->first, it->second, dev, item, need);
+				it = save_map.erase(it);
+			} else {
+				++it;
+			}
+		}
+	}
+
+	// Validate every (equip_point, inventory_id) BEFORE we mutate.
+	// A bad slot is dropped on its own (its DB row is left as it
+	// was) and the rest of the save lands - one refused item used to throw
+	// away every other change (e.g. a Consume-pocket drag
+	// lost the whole hotbar). The caller resyncs the client from the DB.
 	//
 	// Also resolve each inventory row's cosmetic subtype so the insert pass
 	// below can remap engine slot → DB slot for cosmetic suit/helmet (see
@@ -1757,18 +3227,18 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 	std::map<int, int> inv_subtype;  // inventory_id → item_subtype_value_id (0 for non-cosmetic)
 	std::set<int> clear_slots;
 
-	for (const auto& kv : save_map) {
-		const int equip_point = kv.first;
-		const int inventory_id = kv.second;
+	for (auto kv_it = save_map.begin(); kv_it != save_map.end(); ) {
+		const int equip_point = kv_it->first;
+		const int inventory_id = kv_it->second;
 		sqlite3_reset(vstmt);
 		sqlite3_clear_bindings(vstmt);
 		sqlite3_bind_int(vstmt, 1, inventory_id);
 		if (sqlite3_step(vstmt) != SQLITE_ROW) {
 			Logger::Log("armor",
-				"[Save] REJECT char=%lld: inventory_id=%d not found\n",
+				"[Save] DROP slot char=%lld: inventory_id=%d not found\n",
 				character_id, inventory_id);
-			sqlite3_finalize(vstmt);
-			return false;
+			kv_it = save_map.erase(kv_it);
+			continue;
 		}
 		const int64_t inv_user    = sqlite3_column_int64(vstmt, 0);
 		const int     inv_profile = sqlite3_column_int(vstmt, 1);
@@ -1778,27 +3248,27 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 		const int     inv_subt    = sqlite3_column_int(vstmt, 5);
 		if (inv_user != user_id) {
 			Logger::Log("armor",
-				"[Save] REJECT char=%lld: inventory_id=%d owned by user %lld, not %lld\n",
+				"[Save] DROP slot char=%lld: inventory_id=%d owned by user %lld, not %lld\n",
 				character_id, inventory_id, inv_user, user_id);
-			sqlite3_finalize(vstmt);
-			return false;
+			kv_it = save_map.erase(kv_it);
+			continue;
 		}
 		if (inv_profile != 0 && inv_profile != (int)profile_id) {
 			Logger::Log("armor",
-				"[Save] REJECT char=%lld: inventory_id=%d profile=%d, char profile=%u\n",
+				"[Save] DROP slot char=%lld: inventory_id=%d profile=%d, char profile=%u\n",
 				character_id, inventory_id, inv_profile, profile_id);
-			sqlite3_finalize(vstmt);
-			return false;
+			kv_it = save_map.erase(kv_it);
+			continue;
 		}
 		const int target_svid = EquipPointToSvid(equip_point);
 		bool slotAllowed = false;
 		for (int s : allowed) { if (s == target_svid) { slotAllowed = true; break; } }
 		if (!slotAllowed) {
 			Logger::Log("armor",
-				"[Save] REJECT char=%lld: inventory_id=%d svid=%d not in allowed_slots\n",
+				"[Save] DROP slot char=%lld: inventory_id=%d svid=%d not in allowed_slots\n",
 				character_id, inventory_id, target_svid);
-			sqlite3_finalize(vstmt);
-			return false;
+			kv_it = save_map.erase(kv_it);
+			continue;
 		}
 		// Stash subtype for cosmetic rows (deviceId=0, itemId>0). Non-cosmetic
 		// rows get subtype 0 so DbSlotFor passes through.
@@ -1806,8 +3276,45 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 		if (inv_device == 0 && IsDyeNoneSlot(inv_itemId, equip_point)) {
 			clear_slots.insert(equip_point);
 		}
+		++kv_it;
 	}
 	sqlite3_finalize(vstmt);
+
+	// A save that leaves out a weapon/jetpack slot (1/2/3/5)
+	// this agent still has equipped comes from a client whose equip screen only
+	// knows part of the loadout (observed: four
+	// saves of 1-4 slots each wiped the rest, 12 -> 6 equipped). The UI never
+	// blanks those slots, so such a save only writes what it carries: no
+	// cosmetic clears and armor is replaced piece by piece. A full save may
+	// still unequip one armor piece per Apply.
+	bool partialSave = false;
+	std::set<int> equippedArmorSvids;
+	{
+		sqlite3_stmt* cur = nullptr;
+		if (sqlite3_prepare_v2(db,
+		        "SELECT equipped_slot FROM ga_character_devices "
+		        "WHERE character_id = ? AND item_profile_id = ?",
+		        -1, &cur, nullptr) == SQLITE_OK && cur) {
+			sqlite3_bind_int64(cur, 1, character_id);
+			sqlite3_bind_int  (cur, 2, item_profile_id);
+			while (sqlite3_step(cur) == SQLITE_ROW) {
+				const int s = sqlite3_column_int(cur, 0);
+				if ((s == 1 || s == 2 || s == 3 || s == 5) && slot_to_inventory.count(s) == 0)
+					partialSave = true;
+				if (IsArmorSvid(s)) equippedArmorSvids.insert(s);
+			}
+			sqlite3_finalize(cur);
+		}
+	}
+	int armorOmitted = 0;
+	for (int s : equippedArmorSvids)
+		if (misc_items.count(s - 1128) == 0) ++armorOmitted;
+	const bool armorFullWipe = !partialSave && armorOmitted <= 1;
+	if (partialSave || (!misc_items.empty() && !armorFullWipe)) {
+		Logger::Log("armor",
+			"[Save] partial save char=%lld (weapon/jetpack slot missing=%d, armor omitted=%d) - only sent slots written\n",
+			character_id, partialSave ? 1 : 0, armorOmitted);
+	}
 
 	// All validation passed. Update only the slots in this payload. The equip
 	// UI can send gameplay slots plus the one cosmetic the player changed, so
@@ -1892,7 +3399,7 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 	int armorEquipped = 0;
 	if (!misc_items.empty()) {
 		sqlite3_stmt* delArmor = nullptr;
-		if (sqlite3_prepare_v2(db,
+		if (armorFullWipe && sqlite3_prepare_v2(db,
 		    "DELETE FROM ga_character_devices "
 		    "WHERE character_id = ? AND item_profile_id = ? "
 		    "  AND equipped_slot IN (1130, 1132, 1133, 1136, 1139, 1142, 1143)",
@@ -1900,6 +3407,20 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 			sqlite3_bind_int64(delArmor, 1, character_id);
 			sqlite3_bind_int  (delArmor, 2, item_profile_id);
 			sqlite3_step(delArmor);
+			sqlite3_finalize(delArmor);
+		} else if (!armorFullWipe && sqlite3_prepare_v2(db,
+		    "DELETE FROM ga_character_devices "
+		    "WHERE character_id = ? AND item_profile_id = ? AND equipped_slot = ?",
+		    -1, &delArmor, nullptr) == SQLITE_OK) {
+			// Partial save - replace only the pieces it carries.
+			for (const auto& kv : misc_items) {
+				sqlite3_reset(delArmor);
+				sqlite3_clear_bindings(delArmor);
+				sqlite3_bind_int64(delArmor, 1, character_id);
+				sqlite3_bind_int  (delArmor, 2, item_profile_id);
+				sqlite3_bind_int  (delArmor, 3, kv.first + 1128);
+				sqlite3_step(delArmor);
+			}
 			sqlite3_finalize(delArmor);
 		}
 
@@ -1925,6 +3446,38 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 						misc_index, inv_id);
 					continue;
 				}
+				// The armor row must belong to this user (+ profile)
+				// and its required level must be reached (forged equip_save).
+				{
+					int64_t owner = -1; int prof = -1, dev = 0, item = 0;
+					sqlite3_stmt* q = nullptr;
+					if (sqlite3_prepare_v2(db,
+					        "SELECT user_id, profile_id, device_id, item_id FROM ga_players_inventory WHERE id = ?",
+					        -1, &q, nullptr) == SQLITE_OK && q) {
+						sqlite3_bind_int(q, 1, inv_id);
+						if (sqlite3_step(q) == SQLITE_ROW) {
+							owner = sqlite3_column_int64(q, 0);
+							prof  = sqlite3_column_int(q, 1);
+							dev   = sqlite3_column_int(q, 2);
+							item  = sqlite3_column_int(q, 3);
+						}
+						sqlite3_finalize(q);
+					}
+					if (owner != user_id || (prof != 0 && prof != (int)profile_id)) {
+						Logger::Log("armor",
+							"[Save] REFUSED char=%lld: armor inv_id %d not owned by user %lld / profile %u\n",
+							character_id, inv_id, user_id, profile_id);
+						continue;
+					}
+					const int level = SlotUnlock::CharacterLevel(db, character_id);
+					const int need  = SlotUnlock::RequiredLevelForItem(db, dev, item);
+					if (level < need) {
+						Logger::Log("armor",
+							"[Save] REFUSED char=%lld level=%d: armor inv_id %d (device %d item %d) requires level %d - not equipped\n",
+							character_id, level, inv_id, dev, item, need);
+						continue;
+					}
+				}
 				sqlite3_reset(insArmor);
 				sqlite3_clear_bindings(insArmor);
 				sqlite3_bind_int64(insArmor, 1, character_id);
@@ -1947,7 +3500,8 @@ bool PlayerSessionStore::SaveEquippedDevices(int64_t character_id, int64_t user_
 	// see CosmeticSlots.hpp for the engine→DB remap rationale. Independent
 	// of slot_to_inventory since there's no inventory row to validate when
 	// clearing.
-	if (!cleared_cosmetic_slots.empty()) {
+	// A partial save's "blank" cosmetic slots are just unknown to the client.
+	if (!cleared_cosmetic_slots.empty() && !partialSave) {
 		sqlite3_stmt* delCosmetic = nullptr;
 		if (sqlite3_prepare_v2(db,
 		    "DELETE FROM ga_character_devices "

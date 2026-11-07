@@ -12,6 +12,8 @@ public:
 	static std::wstring GetMapParams();
 	static std::string GetMapParamsChar();
 	static int GetDifficultyValueId();
+	// -maxplayers=<n> from the control-server spawn; 0 = keep the ini value.
+	static int GetMaxPlayers();
 	// Maps the current difficulty_value_id (group 116) to the engine-side
 	// GameInfo.GameDifficulty float (UE3 convention: 1.0 = normal, 3.0 = hardest).
 	// Both naming families (Low/Med/High/Max-Sec and Novice/Adept/Advanced/Expert/Ultra-Max)
@@ -22,6 +24,9 @@ public:
 	static std::string GetIpcHost();
 	static int64_t GetInstanceId();
 	static std::string GetDbPath();
+	// -node=1: standalone instance with its own local DB (default node.db); economy
+	// events are also forwarded to the control server as NODE_CLAIM messages.
+	static bool GetNodeMode();
 	static std::string GetGamePath();
 	static bool GetFixPackageGuids();
 	static std::string GetCrashDir();

@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgPawn/TickMakeVisibleCalculation/TgPawn__TickMakeVisibleCalculation.hpp"
+#include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroup/TgEffectManager__RemoveEffectGroup.hpp"
 #include <unordered_map>
 #include <unordered_set>
 
@@ -21,6 +22,8 @@ void TgPawn__TickMakeVisibleCalculation::QueueRevealPulse(int pawnId, float dura
 
 void __fastcall TgPawn__TickMakeVisibleCalculation::Call(ATgPawn* Pawn, void* /*edx*/, float DeltaTime) {
 	if (!Pawn) return;
+	// Restore the effect manager priority dropped at stealth-off.
+	if (Pawn->r_EffectManager) TgEffectManager__RemoveEffectGroup::RestoreStealthClearPriority(Pawn->r_EffectManager);
 
 	// Deploy-sensor reveal: alert bit1 = "display stealthed in game"
 	// (IsStealthedPlayerDisplayInGameBySensor); UC clears it on radius exit.

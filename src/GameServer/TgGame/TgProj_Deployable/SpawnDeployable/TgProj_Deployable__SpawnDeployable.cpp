@@ -223,6 +223,16 @@ int TgProj_Deployable__SpawnDeployable::ForceFieldCount() {
 	return (int)g_forceFields.size();
 }
 
+void TgProj_Deployable__SpawnDeployable::LiveForceFields(std::vector<ATgDeployable*>& out) {
+	TArray<UObject*>* objs = UObject::GObjObjects();
+	for (const ForceFieldEntry& e : g_forceFields) {
+		ATgDeployable* d = e.Dep;
+		const bool alive = d && objs && e.ObjIndex >= 0 && e.ObjIndex < objs->Count
+			&& objs->Data[e.ObjIndex] == (UObject*)d;
+		if (alive && !(*(uint32_t*)((char*)d + 0xAC) & kFFDeleteMe)) out.push_back(d);
+	}
+}
+
 void TgProj_Deployable__SpawnDeployable::DisableForceFieldCollision(std::vector<ATgDeployable*>& disabled) {
 	TArray<UObject*>* objs = UObject::GObjObjects();
 	for (size_t i = 0; i < g_forceFields.size(); ) {

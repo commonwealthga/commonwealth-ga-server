@@ -1,10 +1,14 @@
 #include "src/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.hpp"
+#include "src/GameServer/AvaCargo/AvaCargoDll.hpp"
+#include "src/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.hpp"
 #include "src/GameServer/TgGame/TgDeviceFire/GetEffectGroup/TgDeviceFire__GetEffectGroup.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroupsByCategory/TgEffectManager__RemoveEffectGroupsByCategory.hpp"
 #include "src/GameServer/TgGame/TgGame/BeginEndMission/TgGame__BeginEndMission.hpp"
 #include "src/GameServer/TgGame/TgGame/ActivateAlarm/TgGame__ActivateAlarm.hpp"
 #include "src/GameServer/TgGame/TgGame/UpdateMissionTimerEventWinVar/TgGame__UpdateMissionTimerEventWinVar.hpp"
 #include "src/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.hpp"
+#include "src/GameServer/Inventory/ConsumableUse.hpp"
+#include "src/GameServer/Combat/FireRules/FireRules.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconSdkSafe/BeaconSdkSafe.hpp"
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconCarryReaper/BeaconCarryReaper.hpp"
 #include "src/GameServer/Armor/Armor.hpp"
@@ -14,16 +18,28 @@
 #include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Utils/PerfProbe/PerfProbe.hpp"
+#include "src/GameServer/Utils/PerfKnobs/PerfKnobs.hpp"
 #include "src/GameServer/TgGame/_deployable_classify/DeployableClassify.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/ActiveSpectatorCount/ActiveSpectatorCount.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
+#include "src/GameServer/PvpBots/PvpBots.hpp"
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 #include "src/Config/Config.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/IpcClient/IpcClient.hpp"
+#include "src/Shared/IpcProtocol.hpp"
+#include "lib/nlohmann/json.hpp"
+#include "src/GameServer/Misc/MoveSpeedWatch/MoveSpeedWatch.hpp"
 #include <string>
 #include <unordered_map>
+#include <cstring>  // memcpy (NavDefer)
+#include "src/GameServer/TgGame/ObjectiveGuide/ObjectiveGuide.hpp"
+#include "src/GameServer/Tutorial/TutorialChapterEnd.hpp"
+#include "src/GameServer/WorldGroups/WorldGroups.hpp"
+#include "src/GameServer/Social/AfkRelay.hpp"
+#include "src/GameServer/Audio/BotVoice/BotVoice.hpp"
 #include <cstdlib>  // wcstombs (kismet LinkDesc → char buffer)
 
 // TgPawn__SetProperty @ 0x109bf420 — __thiscall(pawn, nPropertyId, fNewValue)
@@ -178,15 +194,21 @@ enum class DispatchTag : uint8_t {
 	PawnDestroyed,                // Post-call: drop this pawn's pawnId-keyed Armor + Inventory tracking entries
 	ServerPickupPutdownDeployableTag, // Diagnostic: log RPC entry to confirm key press reaches server
 	SeqOpActivated,               // kismet op eventActivated — TgSeqAct_AlarmBots raises the global alarm
+	NavIndicator,                 // TgPlayerController.OnNavIndicator — held while the pawn rides a moving lift
+	QuestIncrementReqCount,       // TgPawn/TgPlayerController.OnQuestIncrementReqCount — Kismet quest step -> control server
+	ServerCallForHelp,            // TgPlayerController.ServerCallForHelp - after CallOriginal, play the agent's 'Help!' bark (res 3308) on a fresh call
+	ServerToggleAFK,              // TgPlayerController.ServerToggleAFK — forward AFK on/off to the control server, then CallOriginal
 	TgTriggerBeaconEntrance,      // Pre-call: record teammate beacon-teleport usage for match stats
 	SuperAgentCaptureGate,        // Super Agent mode: freeze proximity capture per the all-players / drain gate, then detect A's capture
 	SuperAgentMarchDrive,         // Super Agent mode: rewrite AI movement params so tracked outside marchers run at A
 	PayloadDeployableCrush,       // Payload (TgObjectiveAttachActor) Touch/RanInto/EncroachingOn — skip for morale Dome Shields
 	SensorProximitySweep,         // Post-call: remove TouchedPlayers beyond config radius (UC loop can't see pawns outside m_fProximityDistance)
+	ReleaseTrace,                 // "revive" log of the PC death/release/revive path (state before/after)
 	DevCheatRpc,                  // Client-invocable dev/cheat server RPCs (Icarus/Zeus/TgSvrExec/...) — dropped unless PRI bAdmin
 	DeployableTakeDamage,         // Diagnostic (indestructible beacons): log entry gates + result of UC TakeDamage on exit beacons
 	BeaconDestroyIt,              // Diagnostic (indestructible beacons): log DestroyIt entry gates on exit beacons
 	BeaconHealthWatch,            // Diagnostic (indestructible beacons): per-tick change watcher over beacon health/PCT fields
+	CityOmegaEquip,               // Post-call: Dome City (TgGame_City) keeps r_bEnableEquip=1 for players after omega Touch/UnTouch
 	// GameTimerDiagnostic,          // Diagnostic-only: before/after snapshots around original timer/match flow
 };
 
@@ -501,15 +523,158 @@ static bool IsExitBeacon(UObject* Obj) {
 		&& !ObjectClassCache::ClassNameContains(Obj, "BeaconEntrance");
 }
 
+// Nav indicator vs. lifts: the objective guide (Kismet
+// TgSeqAct_NavIndicator -> OnNavIndicator -> ClientShowPathTo) is routed by
+// the CLIENT over the map's path network. A pawn riding a moving InterpActor
+// (intro service elevator) has no anchor between the shaft's top/bottom nodes,
+// so the client shows "Nav Error: Could not find a route to destination."
+// (msg 31313) on every tutorial refresh during the ride. Hold the call while
+// the pawn's base is a moving InterpActor and replay it on the first move
+// update after the lift stops (or the pawn steps off).
+namespace NavDefer {
+	struct Pending { UFunction* Fn; unsigned char Parms[32]; };
+	static std::unordered_map<UObject*, Pending> s_pending;
+
+	static bool OnMovingLift(UObject* Controller) {
+		APawn* Pawn = ((AController*)Controller)->Pawn;
+		if (!Pawn || !Pawn->Base) return false;
+		if (!ObjectClassCache::ClassNameContains((UObject*)Pawn->Base, "InterpActor")) return false;
+		const FVector& v = Pawn->Base->Velocity;
+		return v.X * v.X + v.Y * v.Y + v.Z * v.Z > 1.0f;
+	}
+
+	static bool Hold(UObject* Controller, UFunction* Fn, void* Params) {
+		if (!Fn || Fn->ParmsSize > sizeof(Pending::Parms) || !OnMovingLift(Controller)) {
+			Logger::Log("kismet", "[%s] [NavDefer] OnNavIndicator passed (not on a moving lift)\n", Logger::GetTime());
+			return false;
+		}
+		Pending p{ Fn, {} };
+		if (Params) memcpy(p.Parms, Params, Fn->ParmsSize);
+		s_pending[Controller] = p;
+		Logger::Log("kismet", "[%s] [NavDefer] OnNavIndicator held: pawn on a moving lift\n", Logger::GetTime());
+		return true;
+	}
+
+	// Sends OnNavIndicator with a destination the client can route to
+	// (ObjectiveGuide::KismetNavTarget); the action's own target is restored.
+	static void Send(UObject* Controller, void* edx, UFunction* Fn, void* Params, void* Result) {
+		UTgSeqAct_NavIndicator* Action = Params ? *(UTgSeqAct_NavIndicator**)Params : nullptr;
+		if (Action == nullptr) { UObject__ProcessEvent::CallOriginal(Controller, edx, Fn, Params, Result); return; }
+		AActor* real = Action->m_NavTarget;
+		AActor* dest = ObjectiveGuide::KismetNavTarget((AController*)Controller, real);
+		if (real && !dest) return;
+		Action->m_NavTarget = dest;
+		UObject__ProcessEvent::CallOriginal(Controller, edx, Fn, Params, Result);
+		Action->m_NavTarget = real;
+	}
+
+	static void OnMove(UObject* Controller, void* edx) {
+		if (s_pending.empty()) return;
+		auto it = s_pending.find(Controller);
+		if (it == s_pending.end() || OnMovingLift(Controller)) return;
+		Pending p = it->second;
+		s_pending.erase(it);
+		Logger::Log("kismet", "[%s] [NavDefer] OnNavIndicator replayed after the lift stopped\n", Logger::GetTime());
+		Send(Controller, edx, p.Fn, p.Parms, nullptr);
+	}
+}
+
+// Script Triggered quest steps: map Kismet fires
+// TgSeqAct_QuestIncrementReqCount (quest + requirement id, e.g. North Sonora
+// "Repairing Communications" 139/121) -> OnQuestIncrementReqCount on the
+// target pawn/controller -> TgPlayerController.NativeQuestIncrementRequirementCount
+// (0x1098eb30), which on Hi-Rez's side reached their quest backend. Quest state
+// lives on the control server, so report it like a kill credit: the target's
+// player, or everyone on its task force when bTeamwideCredit.
+namespace ScriptQuestCredit {
+	static void Report(UObject* Target, void* Params) {
+		if (!Target || !Params) return;
+		UTgSeqAct_QuestIncrementReqCount* Action = *(UTgSeqAct_QuestIncrementReqCount**)Params;
+		if (!Action || Action->QuestId <= 0 || Action->QuestRequirementId <= 0) return;
+
+		APawn* TargetPawn = ObjectClassCache::ClassNameContains(Target, "Controller")
+			? ((AController*)Target)->Pawn : (APawn*)Target;
+		if (!TargetPawn || !TargetPawn->PlayerReplicationInfo) return;
+		ATgRepInfo_TaskForce* tf = ((ATgRepInfo_Player*)TargetPawn->PlayerReplicationInfo)->r_TaskForce;
+		const bool teamwide = Action->bTeamwideCredit != 0;
+
+		int credited = 0;
+		for (auto& kv : GClientConnectionsData) {
+			if (kv.second.bClosed || kv.second.Pawn == nullptr) continue;
+			ATgPawn_Character* PlayerPawn = kv.second.Pawn;
+			if (teamwide) {
+				ATgRepInfo_Player* Pri = (ATgRepInfo_Player*)PlayerPawn->PlayerReplicationInfo;
+				if (Pri == nullptr || tf == nullptr || Pri->r_TaskForce != tf) continue;
+			} else if ((APawn*)PlayerPawn != TargetPawn) continue;
+
+			const int64_t characterId = kv.second.pPlayerInfo
+				? kv.second.pPlayerInfo->selected_character_id
+				: kv.second.PlayerInfo.selected_character_id;
+			if (characterId == 0 || kv.second.SessionGuid.empty()) continue;
+
+			nlohmann::json ev;
+			ev["type"]           = IpcProtocol::MSG_GAME_EVENT;
+			ev["subtype"]        = "quest_script_credit";
+			ev["instance_id"]    = IpcClient::GetInstanceId();
+			ev["session_guid"]   = kv.second.SessionGuid;
+			ev["character_id"]   = characterId;
+			ev["quest_id"]       = Action->QuestId;
+			ev["requirement_id"] = Action->QuestRequirementId;
+			IpcClient::Send(ev.dump());
+			credited++;
+		}
+		Logger::Log("quest", "[%s] [ScriptQuest] quest=%d req=%d teamwide=%d -> credited %d player(s)\n",
+			Logger::GetTime(), Action->QuestId, Action->QuestRequirementId, (int)teamwide, credited);
+	}
+}
+
 // First-sight classification: walks the strcmp ladder once per unique
 // UFunction. Returns the matching DispatchTag (or Unknown for the catch-all
 // path). Order kept matching the historical hand-written branches so the
 // behavior of any function name not listed here is unchanged.
+// p1101: TgPawn.IsCrewed (FUNC_Event, script only, no override in any subclass) is the hottest
+// event in open zones: the AI target scan asks it of every pawn, ~6,000 calls per frame with one
+// player in North Sonora and ~15,000 with ten. Its whole script body is
+//     return r_ControlPawn != None && r_ControlPawn.r_bIsCrewing;
+// so answer it here with the same expression instead of entering the script VM. The engine's
+// ProcessEvent (0x11347c20) only rejects this function when the object's IsPendingKill virtual
+// (vtable +0x38) says so, leaving the caller's zero-initialised return value: that case goes
+// through the original so it stays exactly as before. cs_settings perf_iscrewed_native.
+static UFunction* g_isCrewedFn = nullptr;  // set by ClassifyFunction on first sight
+static int64_t g_isCrewedChecks = 0, g_isCrewedMismatch = 0;
+static bool IsCrewedNative(UObject* obj, bool* out) {
+	void** vt = *(void***)obj;
+	if (((int(__fastcall*)(UObject*, void*))vt[0x38 / 4])(obj, nullptr) != 0) return false;  // IsPendingKill
+	ATgPawn* ctrl = ((ATgPawn*)obj)->r_ControlPawn;
+	*out = ctrl != nullptr && ctrl->r_bIsCrewing;
+	return true;
+}
+static bool IsCrewedFastPath(UObject* obj, UFunction* fn, void* edx, void* Params, void* Result) {
+	const int mode = PerfKnobs::IsCrewedNative();
+	if (mode == 0 || Params == nullptr) return false;
+	bool v;
+	if (!IsCrewedNative(obj, &v)) return false;
+	if (mode == 2) {  // verify: the script result is what the caller gets
+		uint32_t probe = 0;
+		UObject__ProcessEvent::CallOriginal(obj, edx, fn, &probe, Result);
+		g_isCrewedChecks++;
+		if (((probe & 1) != 0) != v) {
+			if (g_isCrewedMismatch++ < 20) Logger::Log("perf", "[PerfKnobs] IsCrewed MISMATCH script=%u native=%d\n", probe, (int)v);
+		}
+		if ((g_isCrewedChecks & 0x3FFFF) == 0) Logger::Log("perf", "[PerfKnobs] IsCrewed verify checks=%lld mismatches=%lld\n", (long long)g_isCrewedChecks, (long long)g_isCrewedMismatch);
+		v = (probe & 1) != 0;
+	}
+	uint32_t* r = (uint32_t*)Params;  // ATgPawn_eventIsCrewed_Parms: ReturnValue bool, bit 0
+	*r = v ? (*r | 1u) : (*r & ~1u);
+	return true;
+}
+
 static DispatchTag ClassifyFunction(UFunction* fn) {
 	const char* rawName = fn->GetFullName();
 	if (!rawName) return DispatchTag::Unknown;
 	const std::string nameString = rawName;
 	const char* name = nameString.c_str();
+	if (strcmp(name, "Function TgGame.TgPawn.IsCrewed") == 0) g_isCrewedFn = fn;  // p1101
 
 	// Hottest set first: per-tick / per-move noise that we want to pass straight through.
 	if (strcmp(name, "Function Engine.PlayerController.ServerMove") == 0)      return DispatchTag::ServerMove;
@@ -528,6 +693,11 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	// Kismet action activations. eventActivated is shared by every sequence
 	// op; the handler below filters by the activated object's class.
 	if (strcmp(name, "Function Engine.SequenceOp.Activated") == 0) return DispatchTag::SeqOpActivated;
+	if (strcmp(name, "Function TgGame.TgPlayerController.OnNavIndicator") == 0) return DispatchTag::NavIndicator;
+	if (strcmp(name, "Function TgGame.TgPawn.OnQuestIncrementReqCount") == 0 ||
+	    strcmp(name, "Function TgGame.TgPlayerController.OnQuestIncrementReqCount") == 0) return DispatchTag::QuestIncrementReqCount;
+	if (strcmp(name, "Function TgGame.TgPlayerController.ServerToggleAFK") == 0) return DispatchTag::ServerToggleAFK;
+	if (strcmp(name, "Function TgGame.TgPlayerController.ServerCallForHelp") == 0) return DispatchTag::ServerCallForHelp;
 
 	if (   strcmp(name, "Function Engine.Actor.Tick") == 0
 		|| strcmp(name, "Function Engine.GameInfoDataProvider.ProviderInstanceBound") == 0
@@ -605,6 +775,8 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	// this build, same as the PlayerController.Destroyed match above). One match
 	// covers every teardown path: death/respawn, disconnect, map travel.
 	if (strcmp(name, "Function Engine.Pawn.Destroyed") == 0)                         return DispatchTag::PawnDestroyed;
+	if (strcmp(name, "Function TgGame.TgOmegaVolume.Touch") == 0 ||
+	    strcmp(name, "Function TgGame.TgOmegaVolume.UnTouch") == 0)                  return DispatchTag::CityOmegaEquip;
 	if (strcmp(name, "Function TgGame.TgPlayerController.ServerPickupPutdownDeployable") == 0) return DispatchTag::ServerPickupPutdownDeployableTag;
 	// Engine-timer dispatch of the beacon-entrance teleport (TgPawn.uc:9234).
 	if (strcmp(name, "Function TgGame.TgPawn.TriggerBeaconEntrance") == 0)           return DispatchTag::TgTriggerBeaconEntrance;
@@ -633,6 +805,18 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 	if (strcmp(name, "Function TgGame.TgDeploy_Sensor.CheckPlayersWithInProximity") == 0)
 		return DispatchTag::SensorProximitySweep;
 	// if (IsGameTimerDiagnosticFunction(name)) return DispatchTag::GameTimerDiagnostic;
+
+	// Trace the player death -> release -> revive chain
+	// (Release Now button = exec RequestRelease -> server RPC Release).
+	{
+		static const char kPC[] = "Function TgGame.TgPlayerController.";
+		if (strncmp(name, kPC, sizeof(kPC) - 1) == 0) {
+			const char* fn = name + (sizeof(kPC) - 1);
+			if (strstr(fn, "Release") || strstr(fn, "Revive") || strncmp(fn, "Dying.", 6) == 0
+				|| strncmp(fn, "Dead.", 5) == 0)
+				return DispatchTag::ReleaseTrace;
+		}
+	}
 
 	// Retail-shipped dev/cheat console commands whose `reliable server`
 	// halves execute here ungated (the UC bodies check nothing — the
@@ -700,6 +884,7 @@ static DispatchTag ClassifyFunction(UFunction* fn) {
 // concurrent ProcessEvent invocations). UE3 ProcessEvent fires from the game
 // thread.
 static std::unordered_map<UFunction*, DispatchTag> s_DispatchCache;
+static UFunction* s_fnRelease = nullptr;  // TgPlayerController.Release (manual release RPC)
 
 static DispatchTag GetDispatchTag(UFunction* fn) {
 	auto it = s_DispatchCache.find(fn);
@@ -800,8 +985,19 @@ static void LogScopeCall(const char* phase, UObject* Object, UFunction* Function
 
 void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunction* Function, void* Params, void* Result) {
 	if (!Object || !Function) return;
+	if (Function == g_isCrewedFn && IsCrewedFastPath(Object, Function, edx, Params, Result)) {  // p1101
+		PerfProbe::Count(PerfProbe::CTR_PROCESS_EVENT);
+		return;
+	}
 
 	PerfProbe::Count(PerfProbe::CTR_PROCESS_EVENT);
+	// p1100f: per-function table (perfactors only): nested calls counted, top-level calls timed.
+	struct EvTimer {
+		static int& Depth() { static int d = 0; return d; }
+		void* f; int64_t t0;
+		EvTimer(void* fn) : f(fn), t0(0) { if (PerfProbe::DeepEnabled()) { if (Depth() == 0) t0 = PerfProbe::Now(); else PerfProbe::NoteEvent(f, -1); } Depth()++; }
+		~EvTimer() { Depth()--; if (t0) PerfProbe::NoteEvent(f, PerfProbe::Now() - t0); }
+	} _evTimer(Function);
 
 	const DispatchTag tag = GetDispatchTag(Function);
 
@@ -872,6 +1068,10 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			LogMovePingSample("ServerMove", (APlayerController*)Object, ts, flags, loc);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		NavDefer::OnMove(Object, edx);
+		if (Params) {
+			MoveSpeedWatch::Observe((APlayerController*)Object, *(float*)((char*)Params + 0x00));
+		}
 		break;
 	}
 
@@ -882,6 +1082,10 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			LogMovePingSample("OldServerMove", (APlayerController*)Object, ts, flags);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		NavDefer::OnMove(Object, edx);
+		if (Params) {
+			MoveSpeedWatch::Observe((APlayerController*)Object, *(float*)((char*)Params + 0x00));
+		}
 		break;
 	}
 
@@ -893,6 +1097,10 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			LogMovePingSample("DualServerMove", (APlayerController*)Object, ts, flags, loc);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		NavDefer::OnMove(Object, edx);
+		if (Params) {
+			MoveSpeedWatch::Observe((APlayerController*)Object, *(float*)((char*)Params + 0x18));
+		}
 		break;
 	}
 
@@ -904,6 +1112,10 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			LogMovePingSample("TgShortServerMove", (APlayerController*)Object, ts, flags, loc);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		NavDefer::OnMove(Object, edx);
+		if (Params) {
+			MoveSpeedWatch::Observe((APlayerController*)Object, *(float*)((char*)Params + 0x00));
+		}
 		break;
 	}
 
@@ -915,6 +1127,10 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			LogMovePingSample("TgRMServerMove", (APlayerController*)Object, ts, flags, loc);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
+		NavDefer::OnMove(Object, edx);
+		if (Params) {
+			MoveSpeedWatch::Observe((APlayerController*)Object, *(float*)((char*)Params + 0x00));
+		}
 		break;
 	}
 
@@ -1627,10 +1843,13 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 				}
 			}
 		}
+		// A fired consumable (equip point 12) is spent.
+		ConsumableUse::OnDeviceFired(Device);
 		break;
 	}
 
 	case DispatchTag::ServerStartFire: {
+		if (FireRules::RefuseStartFire((ATgDevice*)Object)) break;  // no CallOriginal = no fire
 		// Diagnostic: capture every gate `TgDevice.CanDeviceFireNow` reads,
 		// then run CallOriginal and check whether the device's state actually
 		// transitioned to DeviceBuildup (=gate passed) or stayed in Active
@@ -1965,7 +2184,11 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// `PickupNearestDeployable` handles factory beacons (which were in
 		// the world long enough for the player to walk into their cylinder)
 		// and any other deployable the player has physically entered.
+		const bool avaDriving = AvaCargoDll::VehicleKeyBefore((APlayerController*)Object);  // AvA vehicles: B leaves one
+		const int avaUntouched = AvaCargoDll::UntouchedCount();  // AvA cargo packs
 		CallOriginal(Object, edx, Function, Params, Result);
+		if (AvaCargoDll::VehicleKeyAfter((APlayerController*)Object, avaDriving)) break;  // crewed/left a vehicle
+		if (AvaCargoDll::PickupFallback((APlayerController*)Object, avaUntouched)) break;  // B on a pack (Bump, no Touch)
 
 		// Spawn-while-overlapping fallback. UE3 fires `Touch` on collision
 		// ENTRY — a beacon spawned around a stationary pawn never registers
@@ -2026,6 +2249,7 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		if (PC && PC->Pawn) {
 			BeaconSdk::DropCarriedBeacon((ATgPawn*)PC->Pawn);
 		}
+		MoveSpeedWatch::OnControllerDestroyed(PC);
 		CallOriginal(Object, edx, Function, Params, Result);
 		break;
 	}
@@ -2048,6 +2272,31 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 			ATgPawn* Pawn = (ATgPawn*)Object;
 			Inventory::ClearTracking(Pawn);
 			Armor::ClearRecords(Pawn);
+		}
+		break;
+	}
+
+	case DispatchTag::CityOmegaEquip: {
+		// Every Dome City omega volume ships m_bEnableEquip=0, so
+		// the script's OmegaVolumePropertiesChanged leaves r_bEnableEquip=0 and
+		// the Agent Profile equip/Appearance screen is locked in the hub (no gear
+		// swaps, dyes can't be applied - the dye vendor tells players to do it
+		// right there). The city is the non-combat hub: keep equip on for player
+		// pawns there. Missions keep the per-volume rule untouched.
+		CallOriginal(Object, edx, Function, Params, Result);
+		AActor* Other = Params ? *(AActor**)Params : nullptr;
+		if (Other && ObjectClassCache::ClassNameContains((UObject*)Other, "TgPawn")) {
+			ATgPawn* Pawn = (ATgPawn*)Other;
+			if (Pawn->Controller && Pawn->WorldInfo && Pawn->WorldInfo->Game &&
+			    Pawn->WorldInfo->Game->Class &&
+			    ObjectClassCache::ClassNameContains((UObject*)Pawn->Controller, "PlayerController") &&
+			    strcmp(((UObject*)Pawn->WorldInfo->Game->Class)->GetFullName(), "Class TgGame.TgGame_City") == 0 &&
+			    !Pawn->r_bEnableEquip) {
+				Pawn->r_bEnableEquip = 1;
+				Pawn->bNetDirty = 1;
+				Pawn->bForceNetUpdate = 1;
+				Logger::Log("spawn", "CityOmegaEquip: r_bEnableEquip=1 pawn=%p\n", Pawn);
+			}
 		}
 		break;
 	}
@@ -2106,8 +2355,39 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		break;
 	}
 
-	case DispatchTag::SeqOpActivated: {
+	case DispatchTag::QuestIncrementReqCount:
+		ScriptQuestCredit::Report(Object, Params);
 		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+	case DispatchTag::ServerCallForHelp: {
+		// Call for Help (key H): TgPawn.CallForHelp only sets r_bCallingForHelp (MEDIC! icon +
+		// CallMedic anim on other clients). The agent's voice bark - asm audio groups 60/61 slot 49
+		// 'Call for Help' = res 3308 SND_B_Vox_Agent.A_CUE_Agent_Vox_Help_Big - is attached to no
+		// player mesh, so no client resolves it on its own. Play it once per fresh call (flag 0 -> 1;
+		// the script keeps it up 10 s), positional on the caller, to players within 4000 uu.
+		ATgPawn* hp = Object ? (ATgPawn*)((AController*)Object)->Pawn : nullptr;
+		const bool was = hp && hp->r_bCallingForHelp;
+		CallOriginal(Object, edx, Function, Params, Result);
+		if (hp && !was && hp->r_bCallingForHelp && hp->Health > 0) {
+			const bool ok = BotVoice::PlayResNear(hp, 3308, 4000.0f);
+			Logger::Log("botvoice", "[%s] p0810 call-for-help bark pawn=%p sent=%d\n", Logger::GetTime(), (void*)hp, (int)ok);
+		}
+		break;
+	}
+	case DispatchTag::ServerToggleAFK:
+		AfkRelay::Report(Object, Params);
+		CallOriginal(Object, edx, Function, Params, Result);
+		break;
+
+	case DispatchTag::NavIndicator:
+		if (!NavDefer::Hold(Object, Function, Params)) NavDefer::Send(Object, edx, Function, Params, Result);
+		break;
+
+	case DispatchTag::SeqOpActivated: {
+		const int rmBefore = TutorialChapterEnd::RequestCount();
+		CallOriginal(Object, edx, Function, Params, Result);
+		if (ObjectClassCache::ClassNameContains(Object, "TgSeqAct_RequestMission"))
+			TutorialChapterEnd::AfterKismetRequestMission(Object, rmBefore);
 		// Trace every game-specific kismet op activation — actions whose
 		// original-server native body is missing activate without effect;
 		// this trace is how we spot them on real maps.
@@ -2380,6 +2660,10 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		if (Params) {
 			SuperAgent::OverrideMarchMovement((ATgAIController*)Object,
 				(int*)Params, (int*)((char*)Params + 4));
+			PvpBots::OverrideMovement((ATgAIController*)Object,
+				(int*)Params, (int*)((char*)Params + 4));
+			WorldGroups::OverrideMovement((ATgAIController*)Object,
+				(int*)Params, (int*)((char*)Params + 4));
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
 		break;
@@ -2520,6 +2804,41 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 	// every arrival is a client console command. PRI bAdmin is the GM flag
 	// (SpawnPlayerCharacter writes 0 for everyone); flagged accounts keep
 	// the full retail cheat/GM console.
+	case DispatchTag::ReleaseTrace: {
+		AController* C = (AController*)Object;
+		const bool trace = Logger::IsChannelEnabled("revive");
+		std::string fn = trace ? Function->GetFullName() : std::string();
+		std::string before = trace ? C->GetStateName().GetName() : std::string();
+		CallOriginal(Object, edx, Function, Params, Result);
+		// "Release Now" on the death screen (exec RequestRelease ->
+		// server RPC Release). Our death path already puts the controller in
+		// Dead + the wave-revive list, so the UC Release body has nothing left
+		// to do and the player waited out the whole wave. Outside PvP the button
+		// now revives at once; PvP keeps its respawn waves. Revive is the same call RunWave makes
+		// (Dead.Revive unregisters from the wave list itself).
+		if (Function == s_fnRelease || (s_fnRelease == nullptr
+				&& strcmp(Function->GetFullName(), "Function TgGame.TgPlayerController.Release") == 0)) {
+			s_fnRelease = Function;
+			ATgRepInfo_Game* GRI = (C->WorldInfo) ? (ATgRepInfo_Game*)C->WorldInfo->GRI : nullptr;
+			const bool dead = strcmp(C->GetStateName().GetName(), "Dead") == 0;
+			if (dead && !C->bDeleteMe && C->Pawn && GRI && !GRI->r_bIsPVP && GRI->r_bAllowPlayerRelease) {
+				((ATgPlayerController*)C)->eventRevive();
+				TgGame__TgFindPlayerStart::CheckpointRespawn((ATgGame*)C->WorldInfo->Game, C, "release");
+				Logger::Log("revive", "[Release] manual release -> revived now (state %s hp=%d)\n",
+					C->GetStateName().GetName(), C->Pawn ? C->Pawn->Health : -1);
+			} else if (trace) {
+				Logger::Log("revive", "[Release] manual release ignored (dead=%d pvp=%d)\n",
+					(int)dead, GRI ? (int)GRI->r_bIsPVP : -1);
+			}
+		}
+		if (trace) {
+			std::string after = C->GetStateName().GetName();
+			Logger::Log("revive", "[ReleaseTrace] %s state %s -> %s pawn=%p hp=%d\n", fn.c_str(), before.c_str(),
+				after.c_str(), (void*)C->Pawn, C->Pawn ? C->Pawn->Health : -1);
+		}
+		break;
+	}
+
 	case DispatchTag::DevCheatRpc: {
 		APlayerReplicationInfo* pri =
 			((APlayerController*)Object)->PlayerReplicationInfo;

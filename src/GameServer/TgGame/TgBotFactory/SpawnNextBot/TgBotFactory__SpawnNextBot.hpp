@@ -20,6 +20,11 @@ public:
 	static std::map<int, std::vector<EscortDroneRef>> m_escortDrones;
 	static void ClearEscort(int mid);
 
+	// 0985/0986 open-zone respawn rules (see .cpp). Called by the BotDied
+	// post-hook with the queue length from before the native appended its
+	// replacement entries.
+	static void TagReplacements(ATgBotFactory* BotFactory, int firstNew);
+
 	static void __fastcall Call(ATgBotFactory* BotFactory, void* edx);
 	static inline void __fastcall CallOriginal(ATgBotFactory* BotFactory, void* edx) {
 		m_original(BotFactory, edx);

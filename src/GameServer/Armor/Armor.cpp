@@ -2,6 +2,8 @@
 #include "src/GameServer/Armor/Armor.hpp"
 #include "src/GameServer/TgGame/TgPawn/ApplyBuff/TgPawn__ApplyBuff.hpp"
 #include "src/Database/Database.hpp"
+#include "src/GameServer/Durability/DurabilityGate.hpp"
+#include "src/Shared/SlotUnlock.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include <algorithm>
 #include <cstdlib>
@@ -243,7 +245,8 @@ std::vector<EquippedPiece> FetchEquippedArmor(int64_t character_id, int item_pro
     // MiscItems[] indexing.
     // Profile-scoped: only returns armor rows for the active loadout slot.
     const char* sql =
-        "SELECT cd.inventory_id, cd.equipped_slot, pi.mod_effect_group_ids "
+        "SELECT cd.inventory_id, cd.equipped_slot, pi.mod_effect_group_ids, "
+        "       pi.device_id, pi.item_id "
         "FROM ga_character_devices cd "
         "JOIN ga_players_inventory pi ON pi.id = cd.inventory_id "
         "WHERE cd.character_id = ? AND cd.item_profile_id = ? "
@@ -257,12 +260,20 @@ std::vector<EquippedPiece> FetchEquippedArmor(int64_t character_id, int item_pro
     sqlite3_bind_int64(stmt, 1, character_id);
     sqlite3_bind_int  (stmt, 2, item_profile_id);
 
+    const int agentLevel = SlotUnlock::CharacterLevel(db, character_id);
     while (sqlite3_step(stmt) == SQLITE_ROW) {
+        // Under-level armor is not applied.
+        if (!SlotUnlock::IsItemUsable(db, agentLevel,
+                sqlite3_column_int(stmt, 3), sqlite3_column_int(stmt, 4))) {
+            Logger::Log("armor", "FetchEquippedArmor: char=%lld inv=%d under item level - skipped\n",
+                (long long)character_id, sqlite3_column_int(stmt, 0));
+            continue;
+        }
         EquippedPiece p;
         p.inventoryId   = sqlite3_column_int(stmt, 0);
         p.equippedSlot  = sqlite3_column_int(stmt, 1);
         const char* csv = (const char*)sqlite3_column_text(stmt, 2);
-        if (csv) p.modEgidsCsv = csv;
+        if (csv && !DurabilityGate::Broken(p.inventoryId)) p.modEgidsCsv = csv;  // worn out = base stats only
         out.push_back(std::move(p));
     }
     sqlite3_finalize(stmt);

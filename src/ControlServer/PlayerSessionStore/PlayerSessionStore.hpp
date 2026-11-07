@@ -111,6 +111,8 @@ public:
         std::vector<uint8_t> verifier;       // SHA256(keystream), 32 bytes, or empty
         int64_t              registered_at = 0;
     };
+    // Stored spelling of a ga_users row with a verifier, matched case-insensitively ("" = none).
+    static std::string FindProvisionedUsername(const std::string& username);
     static UserAuth GetUserAuth(const std::string& username);
 
     // Persist the password verifier captured on (first) login. Sets
@@ -126,11 +128,60 @@ public:
                                    uint32_t skin_mat_param_id = 0,
                                    uint32_t eye_mat_param_id = 0);
     static std::vector<CharacterInfo> GetCharactersByUserId(int64_t user_id);
+    // Agent progression: ga_characters.xp (new agents 0 = level 1); level is
+    // derived from the game's own asm_data_set_xp_levels curve (lv50 = 769500).
+    struct LevelXp { uint32_t level = 1; int64_t xp = 0; };
+    static LevelXp GetCharacterLevelXp(int64_t character_id);
+    // Levels of many agents in one query (social lists:
+    // WHO/player search, friends, agency + team rosters). Unknown ids -> absent.
+    static std::map<int64_t, uint32_t> GetCharacterLevels(const std::vector<int64_t>& character_ids);
+    // Combat Rating stars (SKILL_RATING, 0..5, half steps). No original formula
+    // survives; one star per 10 levels (lv50 = 5), same as the Stats panel.
+    static float CombatRatingStars(uint32_t level) {
+        const float r = (float)(level / 5) * 0.5f;
+        return r > 5.0f ? 5.0f : r;
+    }
+    // Raise ga_characters.xp to the curve value of `level` when below it.
+    // Returns true when the row changed.
+    static bool RaiseCharacterToLevel(int64_t character_id, uint32_t level);
+    // Agent Profile > Stats > Information panel (SEND_CHARACTER_CRAFTING_SKILLS reply).
+    struct AgentInfo { bool found = false; uint32_t level = 1; int64_t xp = 0; int64_t credits = 0; int64_t tokens = 0; int64_t agenda_points = 0; };
+    // Agenda Points earned in play (never sold): 100 per level the
+    // agent reached that was not paid yet (ga_characters.ap_level_awarded) and a
+    // daily first-login bonus (ga_users.ap_daily_day, UTC day). Idempotent, cheap;
+    // called with the Stats push. Returns the account's AP after the grants.
+    // daily_paid/streak_out (optional): the daily bonus paid by THIS call (0 if
+    // none) and the streak day it was paid for - the caller shows the popup.
+    // Mission-end level-ups (USER PLAYTEST 7): remembered here, taken (once) by the
+    // next send_agent_info after spawn, which asks the instance to play the fx.
+    static void NoteLevelUp(int64_t character_id, uint32_t level);
+    static uint32_t TakeLevelUp(int64_t character_id);
+    static int64_t SyncAgendaPoints(int64_t character_id, int64_t* daily_paid = nullptr,
+                                    int64_t* streak_out = nullptr);
+    // AP rules v2: `ap` if the agent is level 10+, else 0 (daily bonus excepted).
+    static int64_t ApForLevel(int64_t level, int64_t ap);
+    static AgentInfo GetAgentInfo(int64_t character_id);
+    // Server-side check of a client skill-tree save against the game's own
+    // rules (asm skill tables): only the class's primary trees, ranks within
+    // the skill's rank count + level requirement, prerequisite skill and
+    // points-in-tree tiers, and the point budget = SUM(xp_levels.skill_points)
+    // up to the agent's level (what the client shows as "0/N pts"). On false,
+    // `why` says which rule failed and nothing must be saved.
+    static bool ValidateSkillAllocation(int64_t character_id,
+                                        const std::vector<SkillRow>& skills,
+                                        std::string& why);
     static std::optional<CharacterInfo> GetCharacterById(int64_t id);
     // Soft-delete: stamps deleted_at, never removes the row (stats/history/
     // MMR stay intact). user_id must match — returns false for a character
     // that isn't yours or is already deleted.
     static bool SoftDeleteCharacter(int64_t character_id, int64_t user_id);
+    // Bags + components are per AGENT. Rows of the selected agent
+    // sit at user_id = owner; other agents' rows are parked at user_id =
+    // -character_id. Call before any seeding/SEND_INVENTORY for that agent.
+    // No lock (callers may hold mutex_).
+    static void ActivateAgentPool(int64_t user_id, int64_t character_id);
+    // Removes every bag row + component stack of a (deleted) agent.
+    static void DeleteAgentPool(int64_t user_id, int64_t character_id);
     static void SetSelectedCharacter(const std::string& guid, int64_t char_id, uint32_t profile_id);
 
     // Walk every profile's ClassLoadouts entry and INSERT any (user_id,
@@ -146,6 +197,13 @@ public:
     //
     // Does not equip normal gameplay devices. Those stay in the bag until the
     // player equips them; hidden class state is pinned separately.
+    // Config starter_kit_only / starter_kit_max_level.
+    static void SetStarterKit(bool only, int max_level);
+    // Token limits per agent (0 = off): weekly earn limit + most an agent can hold.
+    // LimitTokenGain returns how much of `add` the agent may receive now and
+    // books it against this week's total.
+    static void SetTokenLimits(int64_t weekly_earn, int64_t bank);
+    static int64_t LimitTokenGain(int64_t character_id, int64_t add);
     static void SeedInventoryFromLoadouts(int64_t user_id);
 
     // v76 cosmetic seed. Idempotent — runs every login. Inserts one row per
@@ -185,6 +243,64 @@ public:
     // INSERT OR IGNORE per profile (1..5) so player-modified rows are never
     // touched. Safe to call per login.
     static void PinClassDeviceSlot14(int64_t character_id);
+    // Fill EMPTY melee/ranged/specialty/jetpack slots (all 5
+    // loadout profiles) with the lowest-required-level class item from the
+    // user's bag, so new agents do not enter missions unarmed.
+    static void SeedStarterWeapons(int64_t character_id);
+    // PvE mission-end rewards from asm_data_set_event_rewards
+    // (PvE Match Complete x difficulty x player-count x win multipliers) for
+    // every agent still in the instance -> ga_characters.xp/credits/tokens.
+    // Returns what was granted so the caller can fill the end-screen panel.
+    struct PveRewardResult {
+        int64_t xp = 0, credits = 0, tokens = 0, agenda_points = 0;
+        bool challenge_bonus = false;      // xp/credits include PvE Challenge Bonus (1261)
+        std::vector<int64_t> characters;
+        std::vector<int64_t> over_level;   // above reward_level_max: nothing granted
+        // What each agent was really paid (booster and service
+        // adjustments included) and the bonus lines behind it, for the results
+        // screen. Agents missing here get xp/credits/tokens above.
+        struct Note { std::string label; int64_t xp = 0, credits = 0, tokens = 0; };
+        struct Paid {
+            int64_t xp = 0, credits = 0, tokens = 0, agenda_points = 0;
+            std::vector<Note> notes;       // empty = no bonus applied
+            std::string line;              // set = shown instead of the bonus line
+        };
+        std::map<int64_t, Paid> paid;      // by character id
+    };
+    static PveRewardResult AwardPveMissionRewards(int64_t instance_id,
+                                                  uint32_t difficulty_value_id, bool won,
+                                                  uint32_t reward_level_max = 200,
+                                                  const std::string& queue_name = "",
+                                                  int players_tf = 1);
+
+    // AvA match result. Every agent still in the AvA
+    // instance gets the PvP Match Complete reward (x PvP Win Multiplier on a win,
+    // x2 with a booster, +25 AP on a win) and a ga_ava_records win/loss; a winner
+    // with a pending ga_ava_attacks row captures that territory for their agency.
+    // One result per agent (winners and losers differ).
+    static std::vector<PveRewardResult> ResolveAvaMatch(int64_t instance_id, int winning_task_force);
+    // PvP performance AP (F2P rework c, merc/arena/PvP queues). Agents still
+    // in the match at the end who took part (score/damage/healing/objective > 0) and were
+    // present >= pvp_min_presence_percent of the longest stint earn pvp_finish, + pvp_win
+    // on the winning side, + rank 1/2/3 bonus by the end scoreboard's rep points on their
+    // own team; via ApRewards. The same agents get the game's PvP rewards: PvP Match
+    // Complete (1180) x PvP Match Win Multiplier (902) on the winning side, + PvP
+    // Ranking Bonus (880) for rank 1 on each side, x2 with a booster, halved when
+    // non-agent seats outnumber agents. Nothing when a side has
+    // fewer than min(pvp_min_real_per_side, team size) agents. One result per agent.
+    static std::vector<PveRewardResult> AwardPvpMatchRewards(
+        int64_t instance_id, int winning_task_force, int team_size);
+    // Raid / endgame clear AP (F2P rework d): agents of players_tf still in a
+    // won raid-queue instance (or a level-50 agent in a High+ Dweller mission) earn
+    // raid_min..raid_max by difficulty, x level mult, daily cap; once per agent per instance.
+    static std::vector<std::pair<int64_t, int64_t>> GrantRaidClearAp(
+        int64_t instance_id, int players_tf, uint32_t difficulty_value_id,
+        bool raid_queue, const std::string& map_name);
+    // AvA facility production: owned Mines/Factories/Labs accrue their
+    // asm_data_set_hex_buildings output_value per hour into ga_ava_stock of the owner.
+    // Lazy: settles every territory up to now (call before ownership changes / readouts).
+    // Defined in TcpSession.cpp next to the War Zone layout.
+    static void SettleAvaProduction();
 
     // A used consumable leaves the ES13 slot (equipped_slot 13) in every
     // loadout profile of the character; the inventory row itself stays, so the
@@ -283,6 +399,10 @@ public:
     // device 2918). Falls back to the standard MIN(blueprint_id) if no OC
     // variant exists for the device. Result is cached per (device_id, oc).
     static int GetBlueprintIdForDevice(int device_id, bool oc = false);
+    // Blueprint sent for an item row with rolled stats: one that creates this item,
+    // because the client takes the quality icon from that blueprint's mods.
+    // Falls back to ArmorLoadouts::kUniversalArmorBlueprintId when the item has none.
+    static int GetBlueprintIdForStatItem(int item_id);
 
     // Consumable item (item_type 1412) whose ref_device_id is this device, or 0.
     // Consumable devices have their own item id (e.g. item 6299 -> device 6284);

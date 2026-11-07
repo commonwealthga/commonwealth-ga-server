@@ -69,6 +69,117 @@ constexpr const char* MSG_NEED_HOME_MAP = "NEED_HOME_MAP";
 //   { "type": "MISSION_ENDED", "instance_id": <int64> }
 constexpr const char* MSG_MISSION_ENDED = "MISSION_ENDED";
 
+// DEV shortcut (control server -> instance), only sent for the
+// token-gated admin action "dev-end-mission" when config dev_controls=true.
+// Ends the running mission through the normal BeginEndMission flow.
+//   { "type": "DEV_END_MISSION", "result": "win"|"lose" }
+constexpr const char* MSG_DEV_END_MISSION = "DEV_END_MISSION";
+
+// DEV shortcut (control server -> instance), admin action
+// "dev-teleport", dev_controls only. Moves every player pawn in the instance.
+//   { "type": "DEV_TELEPORT", "x": f, "y": f, "z": f, "yaw": i }
+constexpr const char* MSG_DEV_TELEPORT = "DEV_TELEPORT";
+// DEV shortcut (control server -> instance), admin action
+// "dev-kill", dev_controls only. Kills every player pawn in the instance
+// through the normal suicide/death path (death screen, release, revive tests).
+//   { "type": "DEV_KILL" }
+constexpr const char* MSG_DEV_KILL = "DEV_KILL";
+// Control server -> instance, admin actions "spawn-group" / "despawn-group" /
+// "group-status": a named group of server-spawned bots at a world position.
+//   { "type": "SPAWN_GROUP", "tag": s, "x": f, "y": f, "z": f, "yaw": i,
+//     "radius": f, "task_force": 1|2, "hp_scale": f, "dmg_scale": f,
+//     "bots": [ { "bot_id": i, "count": i }, ... ] }
+//   { "type": "DESPAWN_GROUP", "tag": s }   { "type": "GROUP_STATUS_REQUEST", "tag": s }
+constexpr const char* MSG_SPAWN_GROUP          = "SPAWN_GROUP";
+constexpr const char* MSG_DESPAWN_GROUP        = "DESPAWN_GROUP";
+constexpr const char* MSG_GROUP_STATUS_REQUEST = "GROUP_STATUS_REQUEST";
+// Control server -> instance, admin action "group-control" on a spawned group:
+//   { "type": "GROUP_CONTROL", "tag": s, "passive": b, "regen_frac_s": f,
+//     "home_radius": f, "settle_s": f, "max_return_s": f, "speed_scale": f, "heal_full": b }
+// passive=true: members drop their targets and stay passive (regen_frac_s of max HP
+// per second) until a member takes damage from a player (the group targets that
+// player again, HP kept) or every member stood within home_radius of its spawn spot
+// for settle_s (then full HP). Members not home after max_return_s are moved there.
+// "hp_scale": f = max HP = spawn base x f, current HP keeps its fraction; "dmg_scale": f =
+// outgoing damage = spawn base x f; "protect": b = members take no damage (shipped
+// Invulnerable effect group 8698, clients show *Immune*) + optional display-only
+// "aura_group": effect group id while protected; "regen_cap_frac": f with regen_frac_s
+// = regen while NOT passive up to f x max HP (0 = off); "area_radius": f = radius for
+// status "near" (spawn-group takes area_radius too, default 6000).
+// Dev only (dev_controls): "dev_damage_frac": f, "dev_credit_char": n = take f of max HP
+// off each member as damage by character n (0 HP -> member dies; none while protected).
+constexpr const char* MSG_GROUP_CONTROL        = "GROUP_CONTROL";
+// Control server -> instance, admin action "play-fx": one-shot effect at a
+// world position for players within radius (sounds = SoundCue paths, played
+// at the first live member of source_tag if given; emitter = ParticleSystem
+// path; effect_groups = up to 3 effect group ids queued one-shot on that member,
+// whose FX each client plays from its own data; fire_fx = one device fire
+// entry in that member's replicated flash queue, so each client plays the
+// equipped device's own fire/impact FX at x,y,z - nothing fires on the server).
+//   { "type": "PLAY_FX", "x": f, "y": f, "z": f, "radius": f, "source_tag": s,
+//     "sounds": [s, ...], "emitter": s, "emitter_life": f, "effect_groups": [i, ...],
+//     "fire_fx": { "device_id": i, "mode": i (fire mode index, 0..7) } }
+constexpr const char* MSG_PLAY_FX = "PLAY_FX";
+// Control server -> instance, admin action "set-world-flag": set one replicated
+// world-state flag on the instance's game replication info.
+//   { "type": "SET_WORLD_FLAG", "flag": "defense_alarm", "value": 0|1 }
+constexpr const char* MSG_SET_WORLD_FLAG = "SET_WORLD_FLAG";
+// Control server -> instance, admin action "place-chest": move one of the
+// level's placed chests (assembly name preferred) to x,y,z for life_s
+// seconds (default 300, max 3600). Each Use sends GAME_EVENT chest_use
+// {tag, character_id}; GAME_EVENT chest_status {tag, placed, reason} on
+// place / release / expiry / no chest in the level.
+//   { "type": "PLACE_CHEST", "tag": s, "x": f, "y": f, "z": f, "yaw": f,
+//     "assembly": s, "life_s": f }
+constexpr const char* MSG_PLACE_CHEST = "PLACE_CHEST";
+// Control server -> instance, admin action "release-chest": { "tag": s }.
+constexpr const char* MSG_RELEASE_CHEST = "RELEASE_CHEST";
+// Instance -> control server: state of a group after spawn / despawn / request.
+//   { "type": "GROUP_STATUS", "tag": s, "alive": i, "spawned": i,
+//     "members": [ { "bot_id": i, "hp": i, "hp_max": i, "x": f, "y": f, "z": f, "target": b }, ... ],
+//     "passive": b, "interrupts": i, "settled": i (passive returns that ended at home),
+//     "contrib": [ {char_id, dmg, heal} ], "protected": b, "near": i, "near_ids": [char_id],
+//     "fighters": [ {char_id, ago (s since last fight action, <= 60)} ] }
+constexpr const char* MSG_GROUP_STATUS = "GROUP_STATUS";
+// Control server -> instance, admin action "team-bot": add/remove a
+// dressed class bot on a task force, or ask for the roster.
+//   { "type": "TEAM_BOT", "op": "add", "task_force": 1|2, "class": s, "tag": s }
+//   { "type": "TEAM_BOT", "op": "remove", "tag": s, "slot": i (0 = all with tag), "now": b }
+//   { "type": "TEAM_BOT", "op": "roster" }
+// remove without "now" = the bot leaves at its next death (no respawn).
+// The instance answers every op with TEAM_ROSTER:
+//   { "type": "TEAM_ROSTER", "map": s, "pvp": b, "result": s,
+//     "teams": [ { "task_force": i, "players": i, "bots": i } ],
+//     "bots": [ { "slot": i, "tag": s, "class": s, "task_force": i, "alive": b, "leaving": b } ] }
+constexpr const char* MSG_TEAM_BOT    = "TEAM_BOT";
+constexpr const char* MSG_TEAM_ROSTER = "TEAM_ROSTER";
+// Standalone (-node) instance -> control server: economy event forwarded from an
+// instance that runs with its own local DB.
+//   { "type": "NODE_CLAIM", "instance_id": i, "kind": "kill"|"consume",
+//     "user_id": i, "character_id": i, "bot_id": i (kill), "inventory_id": i (consume),
+//     "seq": i (per-instance, increasing), "t": <seconds since instance start> }
+constexpr const char* MSG_NODE_CLAIM = "NODE_CLAIM";
+// Control server -> instance after a craft_item GAME_EVENT
+//   { "type": "CRAFT_RESULT", "pawn_id": i, "ok": b }
+constexpr const char* MSG_CRAFT_RESULT = "CRAFT_RESULT";
+// Control server -> instance after a quest turn-in paid xp/credits
+//   { "type": "QUEST_REWARD", "pawn_id": i, "character_id": i }
+// The instance re-reads the wallet from the DB and restates the pawn.
+constexpr const char* MSG_QUEST_REWARD = "QUEST_REWARD";
+// Control server -> instance after it decided a quest request
+//   { "type": "QUEST_KISMET", "quest_id": i, "link": i, "requirement_id": i }
+// requirement_id 0 -> TgSeqEvent_QuestUpdated output link (0 accepted,
+// 1 requirements complete, 2 turned in, 3 abandoned); > 0 ->
+// TgSeqEvent_QuestRequirementUpdated for that requirement.
+constexpr const char* MSG_QUEST_KISMET = "QUEST_KISMET";
+// Control server -> instance after a mail action
+//   { "type": "MAIL_NOTIFY", "session_guid": s, "character_id": i, "msg_id": u, "wallet": b }
+// msg_id != 0 -> alert popup on that player's connection; wallet -> restate credits.
+constexpr const char* MSG_MAIL_NOTIFY = "MAIL_NOTIFY";
+// Control server -> instance, client /emote (PLAYER_EMOTE 0x1C4)
+//   { "type": "PLAYER_EMOTE", "session_guid": s, "emote": u }  -> TgPawn.SetEmote(emote, 0)
+constexpr const char* MSG_PLAYER_EMOTE = "PLAYER_EMOTE";
+
 // One row for ga_match_events, sent by the DLL the moment the event
 // happens. Control server stamps wall-clock ts at insert. KILL messages
 // carry an optional "assists" array; the server inserts the KILL row
@@ -193,6 +304,9 @@ constexpr const char* MSG_PAWN_HEALTH_SNAPSHOT = "PAWN_HEALTH_SNAPSHOT";
 //     total match time, since raid has no single continuous match clock).
 //   - attacker_points/defender_points/points_to_win: ticket AND koth (both
 //     track a first-to-N team score via ATgRepInfo_TaskForce::r_nCurrentPointCount).
+//   - active_index: koth (PointRotation) only -- array position of the
+//     current rotation point in "objectives", -1 before the first pick
+//     (INSTANCE_RESTORE continues on that point).
 //   - round_current/round_max: raid only (shown as "Wave" on the overlay,
 //     not "Round" -- same underlying s_nRoundNumber/s_nMaxRoundNumber).
 //   - boss_health/boss_health_max/boss_name: raid, pve, superagent.
@@ -222,7 +336,22 @@ constexpr const char* MSG_PAWN_HEALTH_SNAPSHOT = "PAWN_HEALTH_SNAPSHOT";
 //   superagent: { "mode":"superagent", "boss_health":<int>, "boss_health_max":<int>,
 //     "boss_name":<string>, "objectives":[...] }  -- boss then 2 sequential captures
 //   payload/breach: { "mode":"payload"|"breach", "objectives":[...] }
+//   every mode, optional: "players":[{"user_id","character_id","task_force",
+//     "scores":[11 ints]}] = live PRI r_Scores (host migration carries these).
 constexpr const char* MSG_MISSION_PROGRESS_SNAPSHOT = "MISSION_PROGRESS_SNAPSHOT";
+
+// Control server -> instance: carry a match over from another instance of the
+// same map + mode. "progress" is a MISSION_PROGRESS_SNAPSHOT body (above);
+// the instance applies it once its mission timer runs (InstanceRestore).
+// progress.players seeds each arriving player's scoreboard (MatchStats carry).
+//   { "type": "INSTANCE_RESTORE", "progress": { ... } }
+constexpr const char* MSG_INSTANCE_RESTORE = "INSTANCE_RESTORE";
+
+// Link owner -> instance: push one MISSION_PROGRESS_SNAPSHOT on the next game
+// tick (outside the normal interval), marked "final": true. Sent right before
+// an instance is stopped on purpose so the last state is exact.
+//   { "type": "INSTANCE_SNAPSHOT_REQUEST" }
+constexpr const char* MSG_INSTANCE_SNAPSHOT_REQUEST = "INSTANCE_SNAPSHOT_REQUEST";
 
 // ---------------------------------------------------------------------------
 // IPC transport

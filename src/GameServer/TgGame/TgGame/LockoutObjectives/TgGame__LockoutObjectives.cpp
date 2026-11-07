@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame/LockoutObjectives/TgGame__LockoutObjectives.hpp"
+#include "src/GameServer/GameModes/Acquisition/Acquisition.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Two callers in UC:
@@ -23,6 +24,7 @@
 // bypass the check explicitly to make the reset semantics unambiguous.
 void __fastcall TgGame__LockoutObjectives::Call(ATgGame* Game, void* edx, int nPriority) {
 	LogCallBegin();
+	if (Acquisition::SkipLockout(Game)) { LogCallEnd(); return; }  // DualCTF robots are independent
 
 	ATgRepInfo_Game* GRI = reinterpret_cast<ATgRepInfo_Game*>(Game->GameReplicationInfo);
 	if (GRI == nullptr) {

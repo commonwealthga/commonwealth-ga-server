@@ -32,6 +32,10 @@ constexpr float kBaseHealPerMoralePoint   = 540.0f;
 //       Award catches every case without any per-effect actor-graph walking.
 std::set<int> g_moraleDeviceModeIds;
 bool g_inited = false;
+// Matches the original game (wiki "Morale": "melee attacks generate twice
+// the amount of Morale than normal"): modes of melee devices (slot_used_value_id 389).
+std::set<int> g_meleeDeviceModeIds;
+constexpr float kMeleeMoraleFactor = 2.0f;
 
 void DoInit() {
 	sqlite3* db = Database::GetConnection();
@@ -74,6 +78,16 @@ void DoInit() {
 		g_moraleDeviceModeIds.insert(sqlite3_column_int(stmt, 0));
 	}
 	sqlite3_finalize(stmt);
+
+	if (sqlite3_prepare_v2(db,
+	        "SELECT m.device_mode_id FROM asm_data_set_devices_data_set_device_modes m "
+	        "JOIN asm_data_set_devices d ON d.device_id = m.device_id WHERE d.slot_used_value_id = 389",
+	        -1, &stmt, nullptr) == SQLITE_OK) {
+		while (sqlite3_step(stmt) == SQLITE_ROW) g_meleeDeviceModeIds.insert(sqlite3_column_int(stmt, 0));
+		sqlite3_finalize(stmt);
+	}
+	Logger::Log("morale", "[MoraleCredit] indexed %d melee device_mode_ids (x%.0f morale)\n",
+		(int)g_meleeDeviceModeIds.size(), kMeleeMoraleFactor);
 
 	Logger::Log("morale",
 		"[MoraleCredit] indexed %d no-credit device_mode_ids (morale devices + their deployables' explosion modes)\n",
@@ -297,7 +311,8 @@ void Award(ATgPawn* recipient, float magnitude, bool isHeal,
 	const float gainFactor = GetMoraleGainFactor(recipient);
 	const float basePerPoint = isHeal ? kBaseHealPerMoralePoint
 	                                  : kBaseDamagePerMoralePoint;
-	const float points = (creditMagnitude / basePerPoint) * gainFactor;
+	float points = (creditMagnitude / basePerPoint) * gainFactor;
+	if (!isHeal && g_meleeDeviceModeIds.count(deviceModeId)) points *= kMeleeMoraleFactor;
 	if (points <= 0.0f) return;
 
 	// Accumulator math (mirrors the AddMoralePoints native body, minus the

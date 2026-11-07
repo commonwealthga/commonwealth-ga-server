@@ -43,6 +43,16 @@ int TgSeqVar_MapGameId__PublishValue::ResolveCurrentMapGameId() {
 	if (auto row = MapGameInfo::LookupByNameAndGameMode(mapName, gameClass)) {
 		cached = row->map_game_id;
 	}
+	// p0774: 1P_SDColony02_P has two map_game_ids. 1437 is the Bolonov's
+	// Entourage raid (queue 19, Ultra-Max); 1471 is the quest version, the
+	// destination of the "Ruined City Node" door (ui volume 315, quest 136
+	// "Following the Path"), reached through hidden queue 54 at difficulty
+	// 1029. The map's Kismet streams 1P_SDColony02_Quest (Dr. Bolonov, his
+	// escort, the quest turn-in) only when MapGameId == 1471, and the name
+	// lookup above always answers 1437.
+	if (cached == 1437 && Config::GetDifficultyValueId() == 1029) {
+		cached = 1471;
+	}
 	resolved = true;
 	Logger::Log("mapgameid", "TgSeqVar_MapGameId: resolved %d (map=%s class=%s)\n",
 		cached, mapName.c_str(), gameClass.c_str());

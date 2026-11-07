@@ -199,6 +199,27 @@ static void PollMissionTimer(ATgGame* Game, ATgRepInfo_Game* GRI, PerGameState& 
 	if (remaining > 31.0f) st.firedT30 = false;
 	if (remaining > 11.0f) st.firedT10 = false;
 
+	// VR arena + every open zone (Dome City hub included, map_game_info.gameplay_type_value_id
+	// 1554) are persistent worlds that must never reach a match end. Re-arm the engine MissionTimer
+	// silently while it is still above the first warning: the old re-arm ran AFTER the 60 s alert, so
+	// everyone in the Dome got "60 seconds remaining!" every ~14 minutes for a match that never ends.
+	// Cached: this runs on the alert poll, and the lookup is a DB hit.
+	static const bool kInfiniteTimerMap =
+		Config::GetMapNameChar() == "Dome3_VR_Arena_P" ||
+		MapGameInfo::IsOpenZone(Config::GetMapNameChar());
+	if (kInfiniteTimerMap) {
+		if (remaining <= 90.0f) {
+			Game->s_fMissionTimerStartedAt = now;
+			Game->m_fGameMissionTime       = 15.0f * 60.0f;
+			Game->m_fPausedAtTime          = 0.0f;
+			Game->eventSetMissionTime(15.0f * 60.0f);  // sets m_fMissionTime
+			Game->eventMissionTimerStart();            // ClearTimer + SetTimer + HUD notify
+			Logger::Log("announcer", "MissionTimer: %s - timer silently reset to 15min (remaining=%.1f)\n",
+				Config::GetMapNameChar().c_str(), remaining);
+		}
+		return;   // no 60/30/10 s alerts on a world that never ends
+	}
+
 	if (remaining > 90.0f) return;
 
 	auto fire = [&](int msgId, unsigned char type) {
@@ -210,31 +231,7 @@ static void PollMissionTimer(ATgGame* Game, ATgRepInfo_Game* GRI, PerGameState& 
 		fire(MSG_60S_REMAINING, ATT_IMPORTANT);
 		Logger::Log("announcer", "MissionTimer: 60s alert (remaining=%.1f)\n", remaining);
 
-		// Infinite-loop maps: the engine's match-end is gated by a UC
-		// SetTimer('MissionTimer', m_fGameMissionTime, false) armed at match start
-		// in MissionTimerStart(). Just rewriting m_fGameMissionTime /
-		// s_fMissionTimerStartedAt is cosmetic — the pending one-shot timer still
-		// fires at its original time. Re-arm it via the same UC path
-		// MissionTimerStart() uses. Effective behaviour: a "60 seconds remaining"
-		// announcement every ~14 minutes, followed by 15 fresh minutes.
-		// VR arena + every open zone (map_game_info.gameplay_type_value_id
-		// 1554) — persistent worlds that must never reach a match end.
-		// Cached: this runs on the alert poll, and the lookup is a DB hit.
-		static const bool kInfiniteTimerMap =
-			Config::GetMapNameChar() == "Dome3_VR_Arena_P" ||
-			MapGameInfo::IsOpenZone(Config::GetMapNameChar());
-		if (kInfiniteTimerMap) {
-			Game->s_fMissionTimerStartedAt = now;
-			Game->m_fGameMissionTime       = 15.0f * 60.0f;
-			Game->m_fPausedAtTime          = 0.0f;
-			Game->eventSetMissionTime(15.0f * 60.0f);  // sets m_fMissionTime
-			Game->eventMissionTimerStart();            // ClearTimer + SetTimer + HUD notify
-			st.firedT60 = false;  // re-arm for the next cycle
-			st.firedT30 = false;
-			st.firedT10 = false;
-			Logger::Log("announcer", "MissionTimer: %s — timer reset to 15min after 60s alert\n",
-				Config::GetMapNameChar().c_str());
-		}
+		// (infinite-timer maps re-arm silently above, they never get here)
 	}
 	if (!st.firedT30 && remaining <= 30.5f) {
 		st.firedT30 = true;

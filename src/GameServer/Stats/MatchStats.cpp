@@ -11,6 +11,9 @@
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "lib/nlohmann/json.hpp"
+#include <array>
+#include "src/GameServer/Stats/PlayerState/PlayerState.hpp"
+
 #include <map>
 #include <set>
 #include <string>
@@ -40,6 +43,12 @@ std::map<int, LivePlayer> g_live;
 // (NetConnection__Cleanup's has_other_connection case) — closing the
 // fresh stint with a dead pawn's zeroed scores would bank negative deltas.
 std::map<int64_t, int> g_userCurrentPawn;
+
+// Scoreboard totals a player brought from another instance of the same
+// match (INSTANCE_RESTORE "players"). Shown on the PRI on top of what is
+// earned here; never banked into this instance's stints, so the DB rows
+// only hold what happened on this instance.
+std::map<int64_t, std::array<int, Stats::kNumScores>> g_carried;
 
 // Per-device totals for the whole match, keyed by (character, task force,
 // device). Not keyed by pawn or connection: a reconnect must keep adding to
@@ -380,9 +389,13 @@ void MatchStats::OnPlayerJoined(ATgPawn* Pawn, int64_t user_id,
     // Reconnect restore: write banked sums into the fresh PRI so the
     // scoreboard keeps the running total; re-anchor the baseline so the
     // restored values don't double-bank.
-    if (returning && Pawn->PlayerReplicationInfo) {
+    auto cit = g_carried.find(user_id);
+    const bool carried = cit != g_carried.end();
+    if ((returning || carried) && Pawn->PlayerReplicationInfo) {
         int restored[Stats::kNumScores];
         u.SumScores(restored);
+        if (carried)
+            for (int i = 0; i < Stats::kNumScores; i++) restored[i] += cit->second[i];
         ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
         for (int i = 0; i < Stats::kNumScores; i++) PRI->r_Scores[i] = restored[i];
         PRI->bNetDirty = 1;
@@ -963,6 +976,73 @@ void MatchStats::Tick() {
             }
         }
     }
+}
+
+void MatchStats::AppendLiveScores(nlohmann::json& out) {
+    if (!g_enabled) return;
+    for (const auto& kv : g_live) {
+        for (const auto& ps : GPawnSessions) {
+            ATgPawn* P = ps.first;
+            if (!P || P->r_nPawnId != kv.first) continue;
+            int scores[Stats::kNumScores];
+            ReadScores(P, scores);
+            nlohmann::json arr = nlohmann::json::array();
+            for (int i = 0; i < Stats::kNumScores; i++) arr.push_back(scores[i]);
+            out.push_back({{"user_id", kv.second.user_id},
+                           {"character_id", kv.second.character_id},
+                           {"task_force", kv.second.task_force},
+                           {"scores", arr}});
+            nlohmann::json pawn = PlayerState::Describe(P);
+            if (!pawn.is_null()) out.back()["pawn"] = pawn;
+            break;
+        }
+    }
+}
+
+ATgPawn* MatchStats::LivePawnForUser(int64_t user_id) {
+    auto it = g_userCurrentPawn.find(user_id);
+    if (it == g_userCurrentPawn.end()) return nullptr;
+    for (const auto& ps : GPawnSessions)
+        if (ps.first && ps.first->r_nPawnId == it->second) return ps.first;
+    return nullptr;
+}
+
+int64_t MatchStats::UserForPawn(ATgPawn* Pawn) {
+    if (!Pawn) return 0;
+    for (const auto& u : g_userCurrentPawn)
+        if (u.second == Pawn->r_nPawnId) return u.first;
+    return 0;
+}
+
+void MatchStats::SetCarriedScores(const nlohmann::json& players) {
+    if (!g_enabled || !players.is_array()) return;
+    for (const auto& p : players) {
+        const int64_t user_id = p.value("user_id", (int64_t)0);
+        const auto sc = p.value("scores", nlohmann::json::array());
+        if (user_id == 0 || !sc.is_array() || g_carried.count(user_id)) continue;
+        std::array<int, Stats::kNumScores> add{};
+        for (int i = 0; i < Stats::kNumScores && i < (int)sc.size(); i++)
+            add[i] = sc[i].is_number_integer() ? sc[i].get<int>() : 0;
+        g_carried[user_id] = add;
+
+        // Already here (joined before the restore arrived): bank what was
+        // earned so far, then add the carried totals on top of the PRI.
+        auto pit = g_userCurrentPawn.find(user_id);
+        if (pit == g_userCurrentPawn.end() || !g_live.count(pit->second)) continue;
+        for (const auto& ps : GPawnSessions) {
+            ATgPawn* P = ps.first;
+            if (!P || P->r_nPawnId != pit->second || !P->PlayerReplicationInfo) continue;
+            BankPawn(P, user_id);
+            ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)P->PlayerReplicationInfo;
+            int now[Stats::kNumScores];
+            for (int i = 0; i < Stats::kNumScores; i++) now[i] = PRI->r_Scores[i] += add[i];
+            PRI->bNetDirty = 1;
+            PRI->bForceNetUpdate = 1;
+            g_users[user_id].RebaselineAfterRestore(now);
+            break;
+        }
+    }
+    Logger::Log("matchstats", "[Carry] %zu player score set(s) carried in\n", g_carried.size());
 }
 
 void MatchStats::FlushAll() {

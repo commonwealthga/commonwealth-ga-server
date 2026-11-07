@@ -1,7 +1,14 @@
+#include "src/Shared/VendorRotation.hpp"
+#include "src/Shared/VendorCurrency.hpp"
 #include "src/Database/Database.hpp"
+#include "src/Shared/SlotUnlock.hpp"
 #include "src/Config/Config.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/Database/EconGate.hpp"
+#include "src/Shared/EconRules2.hpp"
+#include <cstring>
+#include <algorithm>
 
 sqlite3* Database::connection = nullptr;
 
@@ -5500,6 +5507,21 @@ void Database::Init() {
 			"  ON ga_players_inventory(user_id, item_id, stock_n) WHERE item_id > 0;"
 			"CREATE INDEX IF NOT EXISTS idx_ga_players_inventory_item "
 			"  ON ga_players_inventory(user_id, item_id);";
+		// On a fresh DB the control server already creates these
+		// columns, so add them one at a time and tolerate "duplicate column".
+		for (const char* alter : {
+				"ALTER TABLE ga_players_inventory ADD COLUMN item_id INTEGER NOT NULL DEFAULT 0;",
+				"ALTER TABLE ga_players_inventory ADD COLUMN stock_n INTEGER NOT NULL DEFAULT 0;" }) {
+			if (sqlite3_exec(db, alter, nullptr, nullptr, &err) != SQLITE_OK) {
+				if (!err || !strstr(err, "duplicate column")) {
+					Logger::Log("db", "Failed v76 (cosmetics columns): %s\n", err ? err : "?");
+					sqlite3_free(err);
+					return;
+				}
+				sqlite3_free(err); err = nullptr;
+			}
+		}
+		kV76 = strstr(kV76, "CREATE UNIQUE INDEX");
 		result = sqlite3_exec(db, kV76, nullptr, nullptr, &err);
 		if (result != SQLITE_OK) {
 			Logger::Log("db", "Failed v76 (cosmetics columns): %s\n", err);
@@ -11779,7 +11801,35 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 171", nullptr, nullptr, &err);
+	// Inferno-X Cannon (device 2914) charge-up particle-clamp fix — enforce
+	// unconditionally (idempotent); branch-divergent DBs are past the version
+	// gates. The beam is continuous_fire, so interrupt_fire_anim_on_refire=1
+	// restarts the fire anim every ~0.1s refire, re-spawning the
+	// PS_EFX_BeamChargeUpA charge burst each time; overlapping bursts push
+	// ActiveParticles past GEngine->MaxParticleSpriteCount -> yellow
+	// "Emitter spawn vertices ... clamp" warning on the firer and bystanders.
+	// Clearing the flag plays the anim once per fire sequence (modes 3339
+	// primary / 3409 alt). Tested on VR: no warning under L/R-click spam.
+	result = sqlite3_exec(db,
+		"UPDATE asm_data_set_devices_data_set_device_modes "
+		"SET interrupt_fire_anim_on_refire_flag = 0 "
+		"WHERE device_mode_id IN (3339, 3409) "
+		"  AND interrupt_fire_anim_on_refire_flag <> 0;",
+		nullptr, nullptr, &err);
+	if (result != SQLITE_OK) { Logger::Log("db", "Failed Inferno charge-clamp enforce: %s\n", err); return; }
+
+	// Mines follow the final game's data again (the original rule, not upstream PR #56):
+	// destroy_on_owner_death_flag=1 on Recon's
+	// mines (77-81) and sticky poison mines (95-98), so they vanish when the deployer
+	// dies, as in the original. Restores the value PR #56 zeroed (idempotent).
+	result = sqlite3_exec(db,
+		"UPDATE asm_data_set_deployables SET destroy_on_owner_death_flag = 1 "
+		"WHERE deployable_id IN (77, 78, 79, 81, 95, 96, 97, 98) "
+		"  AND destroy_on_owner_death_flag = 0;",
+		nullptr, nullptr, &err);
+	if (result != SQLITE_OK) { Logger::Log("db", "Failed mines-survive-owner-death enforce: %s\n", err); return; }
+
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 172", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
@@ -11810,6 +11860,631 @@ std::string Database::GetAgencyName(int64_t character_id) {
 	}
 	sqlite3_finalize(stmt);
 	return name;
+}
+
+int Database::GetCharacterLevel(int64_t character_id) {
+	if (character_id <= 0) return 1;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT COALESCE((SELECT MAX(l.level) FROM asm_data_set_xp_levels l "
+			"                 WHERE l.xp_value <= c.xp), 1) "
+			"FROM ga_characters c WHERE c.id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return 1;
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+	int level = 1;
+	if (sqlite3_step(stmt) == SQLITE_ROW) level = sqlite3_column_int(stmt, 0);
+	sqlite3_finalize(stmt);
+	// Tutorial chapter level floor: PRI r_nLevel is the
+	// client's equip-screen gate (Ranged lv2 in Adrenaline).
+	if (SlotUnlock::g_LevelFloor && SlotUnlock::g_LevelFloor() > level) level = SlotUnlock::g_LevelFloor();
+	return level < 1 ? 1 : level;
+}
+
+bool Database::SameSquad(int64_t character_a, int64_t character_b) {
+	if (character_a <= 0 || character_b <= 0) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT 1 FROM ga_squad_members a JOIN ga_squad_members b ON a.squad_id = b.squad_id "
+			"WHERE a.character_id = ? AND b.character_id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return false;  // table missing (old control server) -> killer only
+	}
+	sqlite3_bind_int64(stmt, 1, character_a);
+	sqlite3_bind_int64(stmt, 2, character_b);
+	const bool same = sqlite3_step(stmt) == SQLITE_ROW;
+	sqlite3_finalize(stmt);
+	return same;
+}
+
+bool Database::QuestGroupSatisfied(int64_t character_id, int quest_group_id, bool any_row) {
+	if (quest_group_id <= 0) return true;
+	if (character_id <= 0) return false;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	// Counts the group's status rows and the ones the character FAILS. Rows with no
+	// status (0 = plain list membership, e.g. an NPC's offer list) are not conditions.
+	if (sqlite3_prepare_v2(db,
+			"SELECT COUNT(*), COALESCE(SUM(CASE "
+			"  WHEN l.quest_status_type_value_id = 1618 THEN q.status IS NOT 'complete' "
+			"  WHEN l.quest_status_type_value_id = 1619 THEN q.status IS NOT 'active' "
+			"  WHEN l.quest_status_type_value_id = 1620 THEN q.status IS NULL "
+			"  WHEN l.quest_status_type_value_id = 1621 THEN q.status IS 'complete' "
+			"  ELSE 1 END), 0) "
+			"FROM asm_data_set_quest_group_lists l "
+			"LEFT JOIN ga_character_quests q ON q.quest_id = l.quest_id AND q.character_id = ? "
+			"WHERE l.quest_group_id = ? AND l.quest_status_type_value_id BETWEEN 1618 AND 1621",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return false;
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+	sqlite3_bind_int(stmt, 2, quest_group_id);
+	bool met = false;
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		const int rows = sqlite3_column_int(stmt, 0);
+		const int fails = sqlite3_column_int(stmt, 1);
+		// all rows met, or (any_row) at least one; a group with no status rows is open
+		met = rows == 0 || (any_row ? fails < rows : fails == 0);
+	}
+	sqlite3_finalize(stmt);
+	return met;
+}
+
+bool Database::DomeExitCleared(int64_t character_id) {
+	return QuestGroupSatisfied(character_id, 47, true);
+}
+
+bool Database::MapDoorOpen(int64_t character_id, int ui_volume_id, int quest_group_id) {
+	return QuestGroupSatisfied(character_id, quest_group_id, true)
+		|| (ui_volume_id == 262 && DomeExitCleared(character_id));
+}
+
+// Agent wallet + xp for the pawn's replicated r_nCurrency / r_nToken / r_nXp
+// (the HUD Agent Info panel reads these). Columns are added by the control server migration.
+Database::CharacterWallet Database::GetCharacterWallet(int64_t character_id) {
+	CharacterWallet w;
+	if (character_id <= 0) return w;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT COALESCE(c.credits,0), COALESCE(c.tokens,0), COALESCE(c.xp,0), COALESCE(u.agenda_points,0) "
+			"FROM ga_characters c LEFT JOIN ga_users u ON u.id = c.user_id WHERE c.id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return w;
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		w.credits = sqlite3_column_int(stmt, 0);
+		w.tokens  = sqlite3_column_int(stmt, 1);
+		w.xp      = sqlite3_column_int(stmt, 2);
+		w.ap      = sqlite3_column_int(stmt, 3);
+	}
+	sqlite3_finalize(stmt);
+	return w;
+}
+
+// Seconds left on the account booster (ga_users.booster_until) -> the
+// pawn's replicated r_nBoostTimeRemaining; the client turns it into an expiry time
+// for the Booster panel / Stats "time left" (exe 0x109c8930). 0 = none.
+int Database::GetBoosterSecondsLeft(int64_t character_id) {
+	if (character_id <= 0) return 0;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT MAX(0, u.booster_until - CAST(strftime('%s','now') AS INTEGER)) "
+			"FROM ga_characters c JOIN ga_users u ON u.id = c.user_id WHERE c.id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return 0;
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+	int64_t secs = 0;
+	if (sqlite3_step(stmt) == SQLITE_ROW) secs = sqlite3_column_int64(stmt, 0);
+	sqlite3_finalize(stmt);
+	return (int)std::min<int64_t>(secs, 0x7fffffff);
+}
+
+int Database::GetVanityPetBotId(int64_t character_id, int64_t inv_id, int* out_item_id) {
+	if (out_item_id) *out_item_id = 0;
+	if (character_id <= 0 || inv_id <= 0) return 0;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT i.item_id, i.ref_bot_id FROM ga_players_inventory p "
+			"JOIN ga_characters c ON c.user_id = p.user_id "
+			"JOIN asm_data_set_items i ON i.item_id = p.item_id "
+			"JOIN asm_data_set_bots b ON b.bot_id = i.ref_bot_id AND b.pawn_class_res_id = 6909 "  // TgPawn_VanityPet only
+			"WHERE p.id = ? AND c.id = ? AND p.item_id > 0 AND i.item_type_value_id = 1535 LIMIT 1",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return 0;
+	}
+	sqlite3_bind_int64(stmt, 1, inv_id);
+	sqlite3_bind_int64(stmt, 2, character_id);
+	int bot_id = 0;
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		if (out_item_id) *out_item_id = sqlite3_column_int(stmt, 0);
+		bot_id = sqlite3_column_int(stmt, 1);
+	}
+	sqlite3_finalize(stmt);
+	return bot_id;
+}
+
+// The summoned vanity pet survives map changes / respawns -
+// ga_characters.active_pet_inv_id (0 = none), resummoned at SpawnPlayerCharacter.
+// Column added here (idempotent) so only the DLL needs to change.
+static void EnsureActivePetColumn(sqlite3* db) {
+	static bool done = false;
+	if (done) return;
+	char* err = nullptr;
+	if (sqlite3_exec(db, "ALTER TABLE ga_characters ADD COLUMN active_pet_inv_id INTEGER NOT NULL DEFAULT 0;",
+			nullptr, nullptr, &err) != SQLITE_OK) {
+		sqlite3_free(err);  // duplicate column = already there
+	}
+	done = true;
+}
+
+void Database::SetActivePetInvId(int64_t character_id, int64_t inv_id) {
+	if (character_id <= 0) return;
+	sqlite3* db = GetConnection();
+	EnsureActivePetColumn(db);
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db, "UPDATE ga_characters SET active_pet_inv_id = ? WHERE id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return;
+	}
+	sqlite3_bind_int64(stmt, 1, inv_id > 0 ? inv_id : 0);
+	sqlite3_bind_int64(stmt, 2, character_id);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+}
+
+int64_t Database::GetActivePetInvId(int64_t character_id) {
+	if (character_id <= 0) return 0;
+	sqlite3* db = GetConnection();
+	EnsureActivePetColumn(db);
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db, "SELECT active_pet_inv_id FROM ga_characters WHERE id = ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+		return 0;
+	}
+	sqlite3_bind_int64(stmt, 1, character_id);
+	int64_t inv = 0;
+	if (sqlite3_step(stmt) == SQLITE_ROW) inv = sqlite3_column_int64(stmt, 0);
+	sqlite3_finalize(stmt);
+	return inv;
+}
+
+// Vendors buy back at half of what the item cost (same currency) -
+// the client's own sell dialog quotes 50% of the vendor price (700 cr dye -> 350).
+static const int kSellBackPercent = 50;
+
+Database::VendorPurchaseResult Database::VendorPurchase(int64_t user_id, int64_t character_id, int loot_table_id,
+		int loot_table_item_id, int count, int currency_type) {
+	VendorPurchaseResult r;
+	r.count = count;
+	if (user_id <= 0 || character_id <= 0) { r.reason = "no character"; return r; }
+	if (count < 1 || count > 99) { r.reason = "bad count"; return r; }
+	// 1605 = Agenda Points, earned in play only, debited
+	// from the ACCOUNT wallet ga_users.agenda_points (HZPOINT_VALUE).
+	if (currency_type != 1603 && currency_type != 1604 && currency_type != 1605) { r.reason = "currency not sold here"; return r; }
+	sqlite3* db = GetConnection();
+	if (!db) { r.reason = "no db"; return r; }
+
+	// Rotating vendors (Shared/VendorRotation.hpp) - the client
+	// names the LIVE table; only this week's set is for sale. A set table
+	// quoted directly (another week's stock) is refused.
+	if (VendorRotation::IsSetTable(loot_table_id)) { r.reason = "not on this vendor"; r.wallet = GetCharacterWallet(character_id); return r; }
+	loot_table_id = VendorRotation::Resolve(loot_table_id);
+
+	// The row must really be on this vendor's loot table, priced in this currency.
+	// auto_create_flag = 1 rows (every Basic/Superior/Advanced/
+	// Conquest Gear, armor and jetpack vendor) list a blueprint but the original
+	// handed over the item it creates (the client shows CREATED_ITEM_ID) - the
+	// price is the blueprint's, the bag gets the created weapon/armor/component.
+	int item_type = 0, device_id = 0, created_item = 0, row_quality = 0;
+	{
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"SELECT li.item_id, p.price, COALESCE(i.item_type_value_id,0), COALESCE(i.ref_device_id,0), "
+				"       CASE WHEN COALESCE(li.auto_create_flag,0) = 1 THEN COALESCE((SELECT b.created_item_id "
+				"            FROM asm_data_set_blueprints b WHERE b.blueprint_id = li.item_id LIMIT 1), 0) ELSE 0 END, "
+				"       COALESCE(li.quality_value_id,0) "
+				"FROM asm_data_set_loot_table_items li "
+				"JOIN asm_data_set_prices p ON p.item_id = li.item_id AND p.currency_type_value_id = ?3 "
+				"  AND p.id = (SELECT MIN(p2.id) FROM asm_data_set_prices p2 "
+				"              WHERE p2.item_id = li.item_id AND p2.currency_type_value_id = ?3) "
+				"LEFT JOIN asm_data_set_items i ON i.item_id = li.item_id "
+				"WHERE li.loot_table_id = ?1 AND li.loot_table_item_id = ?2 AND li.item_id > 0 LIMIT 1",
+				-1, &st, nullptr) != SQLITE_OK || !st) { r.reason = "prepare failed"; return r; }
+		sqlite3_bind_int(st, 1, loot_table_id);
+		sqlite3_bind_int(st, 2, loot_table_item_id);
+		sqlite3_bind_int(st, 3, currency_type);
+		if (sqlite3_step(st) == SQLITE_ROW) {
+			r.item_id = sqlite3_column_int(st, 0);
+			r.price   = sqlite3_column_int(st, 1);
+			item_type = sqlite3_column_int(st, 2);
+			device_id = sqlite3_column_int(st, 3);
+			created_item = sqlite3_column_int(st, 4);
+			row_quality = sqlite3_column_int(st, 5);
+		}
+		sqlite3_finalize(st);
+	}
+	// AP only for items without a credit/token price (same
+	// rule as the CS vendor list) - a stale list or a crafted RPC can't pay AP.
+	if (currency_type == 1605 && r.price > 0) {
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"SELECT 1 FROM asm_data_set_prices p3 "
+				"WHERE p3.item_id = ?1 AND p3.currency_type_value_id IN (1603, 1604) AND p3.price > 0 "
+				"  AND p3.id = (SELECT MIN(p4.id) FROM asm_data_set_prices p4 "
+				"               WHERE p4.item_id = p3.item_id AND p4.currency_type_value_id = p3.currency_type_value_id) LIMIT 1",
+				-1, &st, nullptr) != SQLITE_OK || !st) { r.reason = "prepare failed"; return r; }
+		sqlite3_bind_int(st, 1, r.item_id);
+		const bool has_ingame_price = sqlite3_step(st) == SQLITE_ROW;
+		sqlite3_finalize(st);
+		// Shared/VendorCurrency.hpp: a row with no price in this
+		// vendor's column currency (loot table type) is sold for its original AP
+		// price - same rule as the CS vendor list.
+		bool in_column = true;
+		if (has_ingame_price) {
+			int column = 1603;
+			st = nullptr;
+			if (sqlite3_prepare_v2(db, VendorCurrency::kColumnSql, -1, &st, nullptr) == SQLITE_OK && st) {
+				sqlite3_bind_int(st, 1, loot_table_id);
+				if (sqlite3_step(st) == SQLITE_ROW) column = sqlite3_column_int(st, 0);
+			}
+			if (st) { sqlite3_finalize(st); st = nullptr; }
+			if (sqlite3_prepare_v2(db, VendorCurrency::kHasPriceSql, -1, &st, nullptr) == SQLITE_OK && st) {
+				sqlite3_bind_int(st, 1, r.item_id);
+				sqlite3_bind_int(st, 2, column);
+				in_column = sqlite3_step(st) == SQLITE_ROW;
+			}
+			if (st) { sqlite3_finalize(st); st = nullptr; }
+		}
+		if (has_ingame_price && in_column) { r.reason = "sold for credits/tokens, not AP"; r.price = 0; r.wallet = GetCharacterWallet(character_id); return r; }
+	}
+	// What the bag really gets. Weapons/devices (item id = device id,
+	// asm_data_set_devices.slot_used_value_id) become a device row with the
+	// equip slot(s) of their category, like the starter kit rows.
+	int grant_item = r.item_id, grant_quality = 0;
+	std::string grant_slots;
+	if (created_item > 0) {
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"SELECT COALESCE(i.item_type_value_id,0), COALESCE(i.quality_value_id,0), "
+				"       COALESCE((SELECT d.slot_used_value_id FROM asm_data_set_devices d WHERE d.device_id = i.item_id LIMIT 1), -1) "
+				"FROM asm_data_set_items i WHERE i.item_id = ?1 LIMIT 1",
+				-1, &st, nullptr) == SQLITE_OK && st) {
+			sqlite3_bind_int(st, 1, created_item);
+			if (sqlite3_step(st) == SQLITE_ROW) {
+				grant_item = created_item;
+				item_type = sqlite3_column_int(st, 0);
+				grant_quality = row_quality > 0 ? row_quality : sqlite3_column_int(st, 1);
+				const int slot_used = sqlite3_column_int(st, 2);
+				device_id = 0;
+				if (slot_used >= 0) {
+					// Engine point -> SVID (EquipPointToSvid): melee 1/221, ranged 2/198,
+					// specialty 3/200, jetpack 5/201, offhands 7-9, morale 10/386.
+					grant_slots = slot_used == 389 ? "221" : slot_used == 388 ? "198" : slot_used == 981 ? "200" :
+					              slot_used == 806 ? "201" : slot_used == 476 ? "386" :
+					              slot_used == 390 ? "203,204,385" : "";
+					if (!grant_slots.empty()) device_id = created_item;
+				}
+			}
+			sqlite3_finalize(st);
+		}
+	}
+	// A 0 price row = "not sold for this currency" (e.g. Crafting
+	// Crystal 0 cr / 2,000 tokens); no vendor item is free in every currency.
+	if (r.item_id <= 0 || r.price <= 0) { r.reason = "not on this vendor"; r.wallet = GetCharacterWallet(character_id); return r; }
+	// Elite Agent Status is not sold - every account is Elite.
+	if (item_type == 1602) { r.reason = "everyone is Elite already"; r.wallet = GetCharacterWallet(character_id); return r; }
+	// Agenda Point packs (type 1597) were real-money items - never sold; AP is earned in play.
+	if (item_type == 1597) { r.reason = "AP is earned in play, not bought"; r.wallet = GetCharacterWallet(character_id); return r; }
+	// Account boosters (type 1609) are not bag items: buying one extends
+	// ga_users.booster_until (CS doubles end-mission xp/credits/tokens while it runs).
+	int booster_days = 0;
+	if (item_type == 1609) {
+		booster_days = r.item_id == 7641 ? 1 : r.item_id == 7417 ? 10 : r.item_id == 7418 ? 30 : r.item_id == 7419 ? 90 : 0;
+		if (booster_days == 0 || count != 1) { r.reason = "booster not sold"; r.wallet = GetCharacterWallet(character_id); return r; }
+	}
+	// The item's required level (game data) must be reached - the client
+	// does not check this on purchase. Level comes from xp via the game's curve.
+	{
+		sqlite3_stmt* st = nullptr;
+		int need = 0, have = 1;
+		if (sqlite3_prepare_v2(db,
+				"SELECT COALESCE((SELECT MAX(required_level) FROM asm_data_set_items WHERE item_id IN (?1, ?3)), 0), "
+				"       COALESCE((SELECT MAX(l.level) FROM asm_data_set_xp_levels l WHERE l.xp_value <= c.xp), 1) "
+				"FROM ga_characters c WHERE c.id = ?2",
+				-1, &st, nullptr) == SQLITE_OK && st) {
+			sqlite3_bind_int(st, 1, r.item_id);
+			sqlite3_bind_int64(st, 2, character_id);
+			sqlite3_bind_int(st, 3, grant_item);
+			if (sqlite3_step(st) == SQLITE_ROW) {
+				need = sqlite3_column_int(st, 0);
+				have = sqlite3_column_int(st, 1);
+			}
+			sqlite3_finalize(st);
+		}
+		if (need > have) {
+			r.reason = "requires level " + std::to_string(need) + " (agent is " + std::to_string(have) + ")";
+			r.wallet = GetCharacterWallet(character_id);
+			return r;
+		}
+		// Items that need an achievement (AvA HoloSuits, Holo dyes) - same rule as the client.
+		if (const int ach = EconGate::MissingVendorAchievement(db, r.item_id, grant_item, character_id))
+			{ r.reason = "requires achievement " + std::to_string(ach); r.wallet = GetCharacterWallet(character_id); return r; }
+	}
+
+	r.discount = EconRules2::StoreDiscount(db, character_id, currency_type);  // Combat rating discount (credits)
+	const int64_t total = (int64_t)r.price * count * (100 - r.discount) / 100;
+	const bool ap = currency_type == 1605;
+	const char* col = currency_type == 1603 ? "credits" : ap ? "agenda_points" : "tokens";
+	sqlite3_exec(db, "BEGIN IMMEDIATE;", nullptr, nullptr, nullptr);
+	bool ok = false;
+	{
+		std::string sql = std::string("UPDATE ") + (ap ? "ga_users" : "ga_characters") + " SET " + col + " = COALESCE(" + col + ",0) - ?1 "
+			"WHERE id = ?2 AND COALESCE(" + col + ",0) >= ?1";
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db, sql.c_str(), -1, &st, nullptr) == SQLITE_OK && st) {
+			sqlite3_bind_int64(st, 1, total);
+			sqlite3_bind_int64(st, 2, ap ? user_id : character_id);
+			ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(db) == 1;
+			sqlite3_finalize(st);
+		}
+		if (!ok) r.reason = "not enough currency";
+	}
+	if (ok && booster_days > 0) {
+		sqlite3_stmt* st = nullptr;
+		ok = sqlite3_prepare_v2(db,
+				"UPDATE ga_users SET booster_until = MAX(booster_until, CAST(strftime('%s','now') AS INTEGER)) + ?1 "
+				"WHERE id = ?2",
+				-1, &st, nullptr) == SQLITE_OK && st;
+		if (ok) {
+			sqlite3_bind_int64(st, 1, (int64_t)booster_days * 86400);
+			sqlite3_bind_int64(st, 2, user_id);
+			ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(db) == 1;
+		}
+		if (st) sqlite3_finalize(st);
+		if (!ok) r.reason = std::string("booster update failed: ") + sqlite3_errmsg(db);
+	} else if (ok && item_type == 1171) {
+		// Crafting components (e.g. Element 212 at the Consumable Resources vendor)
+		// are a stack in ga_user_components, like dropped ones - not bag rows.
+		r.component = true;
+		sqlite3_stmt* st = nullptr;
+		ok = sqlite3_prepare_v2(db,
+				"INSERT INTO ga_user_components (user_id, item_id, quantity, updated_at) "
+				"VALUES (?1, ?2, ?3, strftime('%s','now')) "
+				"ON CONFLICT(user_id, item_id) DO UPDATE SET quantity = quantity + excluded.quantity, "
+				"  updated_at = excluded.updated_at",
+				-1, &st, nullptr) == SQLITE_OK && st;
+		if (ok) {
+			sqlite3_bind_int64(st, 1, user_id);
+			sqlite3_bind_int(st, 2, grant_item);
+			sqlite3_bind_int(st, 3, count);
+			ok = sqlite3_step(st) == SQLITE_DONE;
+		}
+		if (st) sqlite3_finalize(st);
+		if (!ok) r.reason = std::string("component insert failed: ") + sqlite3_errmsg(db);
+	} else if (ok) {
+		// One row per copy; stock_n = next free copy index (unique per user+item).
+		// Dyes may go into any of the five dye slots, like the seeded ones.
+		// Appearance items get their slot like SeedCosmetics
+		// (an empty allowed_slots made a bought helmet flair unequippable).
+		int item_subtype = 0;
+		{
+			sqlite3_stmt* q = nullptr;
+			if (sqlite3_prepare_v2(db, "SELECT item_subtype_value_id FROM asm_data_set_items WHERE item_id = ? LIMIT 1",
+					-1, &q, nullptr) == SQLITE_OK && q) {
+				sqlite3_bind_int(q, 1, grant_item);
+				if (sqlite3_step(q) == SQLITE_ROW) item_subtype = sqlite3_column_int(q, 0);
+				sqlite3_finalize(q);
+			}
+		}
+		const char* allowed =
+			item_type == 1020 ? "996,997,998,999,1000" :
+			item_type == 1612 ? "1001" :
+			(item_type == 950 && (item_subtype == 1006 || item_subtype == 1007)) ? "500" :
+			(item_type == 950 && item_subtype == 1008) ? "202" :
+			!grant_slots.empty() ? grant_slots.c_str() : "";
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"INSERT INTO ga_players_inventory "
+				"(user_id, profile_id, device_id, quality, mod_effect_group_ids, oc, allowed_slots, item_id, stock_n, "
+				" sell_value, sell_currency) "
+				"VALUES (?1, 0, ?2, ?7, '', 0, ?3, ?4, "
+				" (SELECT COALESCE(MAX(stock_n), -1) + 1 FROM ga_players_inventory WHERE user_id = ?1 AND item_id = ?4), "
+				" ?5, ?6)",
+				-1, &st, nullptr) == SQLITE_OK && st) {
+			for (int n = 0; n < count && ok; ++n) {
+				sqlite3_reset(st);
+				sqlite3_bind_int64(st, 1, user_id);
+				sqlite3_bind_int(st, 2, device_id);
+				sqlite3_bind_text(st, 3, allowed, -1, SQLITE_STATIC);
+				sqlite3_bind_int(st, 4, grant_item);
+				sqlite3_bind_int(st, 7, grant_quality);
+				// AP items are not bought back (no sell_value -> destroy only):
+				// AP is earned in play, never refunded through a vendor.
+				sqlite3_bind_int(st, 5, ap ? 0 : r.price * kSellBackPercent / 100);
+				sqlite3_bind_int(st, 6, currency_type);
+				ok = sqlite3_step(st) == SQLITE_DONE;
+				if (ok) r.inventory_ids.push_back(sqlite3_last_insert_rowid(db));
+			}
+			sqlite3_finalize(st);
+		} else ok = false;
+		if (!ok) r.reason = std::string("inventory insert failed: ") + sqlite3_errmsg(db);
+		if (!ok) r.inventory_ids.clear();
+	}
+	sqlite3_exec(db, ok ? "COMMIT;" : "ROLLBACK;", nullptr, nullptr, nullptr);
+	r.ok = ok;
+	if (ok) r.item_id = grant_item;
+	r.wallet = GetCharacterWallet(character_id);
+	return r;
+}
+
+// Vendor 'Sell' / bag 'Destroy' (TgPlayerController.ServerDestroyInvItem).
+// One ga_players_inventory row = one copy. The row must belong to the account and
+// not be equipped by any of its agents; selling needs a sell_value (vendor-bought
+// rows only - the seeded starter kit comes back on the next login, so it is
+// neither sold nor destroyed).
+bool Database::ConsumeInvItem(int64_t user_id, int64_t inventory_id) {
+	sqlite3* db = GetConnection();
+	if (!db || user_id <= 0 || inventory_id <= 0) return false;
+	sqlite3_exec(db, "BEGIN IMMEDIATE;", nullptr, nullptr, nullptr);
+	bool ok = false;
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db, "DELETE FROM ga_players_inventory WHERE id = ?1 AND user_id = ?2 AND item_id > 0",
+			-1, &st, nullptr) == SQLITE_OK && st) {
+		sqlite3_bind_int64(st, 1, inventory_id);
+		sqlite3_bind_int64(st, 2, user_id);
+		ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(db) == 1;
+	}
+	if (st) sqlite3_finalize(st);
+	st = nullptr;
+	if (ok && sqlite3_prepare_v2(db,
+			"DELETE FROM ga_character_devices WHERE inventory_id = ?1 "
+			"AND character_id IN (SELECT id FROM ga_characters WHERE user_id = ?2)",
+			-1, &st, nullptr) == SQLITE_OK && st) {
+		sqlite3_bind_int64(st, 1, inventory_id);
+		sqlite3_bind_int64(st, 2, user_id);
+		sqlite3_step(st);
+	}
+	if (st) sqlite3_finalize(st);
+	sqlite3_exec(db, ok ? "COMMIT;" : "ROLLBACK;", nullptr, nullptr, nullptr);
+	return ok;
+}
+
+Database::InvRemoveResult Database::DestroyInvItem(int64_t user_id, int64_t character_id,
+		int64_t inventory_id, bool sell) {
+	InvRemoveResult r;
+	if (user_id <= 0 || character_id <= 0 || inventory_id <= 0) { r.reason = "no character"; return r; }
+	sqlite3* db = GetConnection();
+	if (!db) { r.reason = "no db"; return r; }
+
+	sqlite3_exec(db, "BEGIN IMMEDIATE;", nullptr, nullptr, nullptr);
+	bool ok = false;
+	{
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"SELECT i.item_id, i.sell_value, i.sell_currency, "
+				"  (SELECT COUNT(*) FROM ga_character_devices d JOIN ga_characters c ON c.id = d.character_id "
+				"   WHERE d.inventory_id = i.id AND c.user_id = i.user_id) "
+				"FROM ga_players_inventory i WHERE i.id = ?1 AND i.user_id = ?2",
+				-1, &st, nullptr) == SQLITE_OK && st) {
+			sqlite3_bind_int64(st, 1, inventory_id);
+			sqlite3_bind_int64(st, 2, user_id);
+			if (sqlite3_step(st) == SQLITE_ROW) {
+				r.item_id    = sqlite3_column_int(st, 0);
+				r.value      = sqlite3_column_int(st, 1);
+				r.currency   = sqlite3_column_int(st, 2);
+				const int eq = sqlite3_column_int(st, 3);
+				if (eq > 0)                 r.reason = "equipped";
+				else if (r.value <= 0 && r.currency == 0) r.reason = "starter kit item";
+				else                        ok = true;
+			} else r.reason = "not in this account's inventory";
+			sqlite3_finalize(st);
+		} else r.reason = "prepare failed";
+	}
+	if (ok) {
+		sqlite3_stmt* st = nullptr;
+		ok = sqlite3_prepare_v2(db, "DELETE FROM ga_players_inventory WHERE id = ?1 AND user_id = ?2",
+				-1, &st, nullptr) == SQLITE_OK && st;
+		if (ok) {
+			sqlite3_bind_int64(st, 1, inventory_id);
+			sqlite3_bind_int64(st, 2, user_id);
+			ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(db) == 1;
+			sqlite3_finalize(st);
+		}
+		if (!ok) r.reason = "delete failed";
+	}
+	if (ok && sell && r.value > 0 && (r.currency == 1603 || r.currency == 1604)) {
+		const char* col = r.currency == 1603 ? "credits" : "tokens";
+		std::string sql = std::string("UPDATE ga_characters SET ") + col + " = COALESCE(" + col + ",0) + ?1 WHERE id = ?2";
+		sqlite3_stmt* st = nullptr;
+		ok = sqlite3_prepare_v2(db, sql.c_str(), -1, &st, nullptr) == SQLITE_OK && st;
+		if (ok) {
+			sqlite3_bind_int(st, 1, r.value);
+			sqlite3_bind_int64(st, 2, character_id);
+			ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(db) == 1;
+			sqlite3_finalize(st);
+		}
+		if (!ok) r.reason = "wallet update failed";
+	}
+	if (!sell) r.value = 0;
+	sqlite3_exec(db, ok ? "COMMIT;" : "ROLLBACK;", nullptr, nullptr, nullptr);
+	r.ok = ok;
+	if (ok) r.inventory_ids.push_back(inventory_id);
+	r.wallet = GetCharacterWallet(character_id);
+	return r;
+}
+
+Database::BotKillReward Database::AwardKillXp(int64_t user_id, int64_t character_id, int bot_id) {
+	BotKillReward r;
+	if (user_id <= 0 || character_id <= 0 || bot_id <= 0) return r;
+	sqlite3* db = GetConnection();
+	if (!db) return r;
+
+	// Per-enemy values straight from the game data (asm_data_set_bots).
+	{
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"SELECT COALESCE(xp_value,0), COALESCE(currency_value,0) "
+				"FROM asm_data_set_bots WHERE bot_id = ?1 LIMIT 1", -1, &st, nullptr) != SQLITE_OK || !st) return r;
+		sqlite3_bind_int(st, 1, bot_id);
+		if (sqlite3_step(st) == SQLITE_ROW) {
+			r.xp       = sqlite3_column_int(st, 0);
+			r.credits  = sqlite3_column_int(st, 1);
+		}
+		sqlite3_finalize(st);
+	}
+	if (r.xp < 0) r.xp = 0;
+	if (r.credits < 0) r.credits = 0;
+
+	if (r.xp == 0 && r.credits == 0) return r;
+	// Same sums as trg_lv50_xp_credits, so the kill float shows what is paid at the cap.
+	r.paid_xp = r.xp;
+	r.paid_credits = r.credits;
+	{
+		int cap = 0, pct = 33;
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db, "SELECT MAX(xp_value) FROM asm_data_set_xp_levels", -1, &st, nullptr) == SQLITE_OK && st) {
+			if (sqlite3_step(st) == SQLITE_ROW) cap = sqlite3_column_int(st, 0);
+		}
+		sqlite3_finalize(st);
+		st = nullptr;
+		if (sqlite3_prepare_v2(db, "SELECT CAST(value AS REAL) FROM cs_settings WHERE key = 'lv50_xp_credit_pct'", -1, &st, nullptr) == SQLITE_OK && st) {
+			if (sqlite3_step(st) == SQLITE_ROW) pct = sqlite3_column_int(st, 0);
+		}
+		sqlite3_finalize(st);
+		const int have = GetCharacterWallet(character_id).xp;
+		if (cap > 0 && have + r.xp > cap) {
+			const int room = have >= cap ? 0 : cap - have;
+			r.paid_credits += (r.xp - room) * pct / 100;
+			r.paid_xp = room;
+		}
+	}
+	sqlite3_exec(db, "BEGIN IMMEDIATE;", nullptr, nullptr, nullptr);
+	bool ok = false;
+	{
+		sqlite3_stmt* st = nullptr;
+		ok = sqlite3_prepare_v2(db, "UPDATE ga_characters SET xp = COALESCE(xp,0) + ?1 /* 0527b: lv50 cap + overflow credits = CS trigger trg_lv50_xp_credits */, credits = COALESCE(credits,0) + ?2 "
+				"WHERE id = ?3", -1, &st, nullptr) == SQLITE_OK && st;
+		if (ok) {
+			sqlite3_bind_int(st, 1, r.xp);
+			sqlite3_bind_int(st, 2, r.credits);
+			sqlite3_bind_int64(st, 3, character_id);
+			ok = sqlite3_step(st) == SQLITE_DONE;
+			sqlite3_finalize(st);
+		}
+	}
+	sqlite3_exec(db, ok ? "COMMIT;" : "ROLLBACK;", nullptr, nullptr, nullptr);
+	r.ok = ok;
+	if (!ok) { r.xp = r.credits = r.paid_xp = r.paid_credits = 0; }
+	r.wallet = GetCharacterWallet(character_id);
+	return r;
 }
 
 std::string Database::GetQuestStatus(int64_t character_id, int quest_id) {

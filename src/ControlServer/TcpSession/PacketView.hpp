@@ -148,7 +148,9 @@ private:
                    pos += len; }
                 return true;
             case 1:  return advance(pos, 4);   // FLOAT
-            case 2:  return advance(pos, 8);   // DOUBLE
+            // DOUBLE_OR_INT_SIGNED: 4-byte int on the wire both ways (advancing
+            // 8 made every field after CURRENCY_VALUE / INVENTORY_ID unreadable)
+            case 2:  return advance(pos, 4);
             case 3:  return advance(pos, 4);   // UINT32
             case 4:  return advance(pos, 2);   // UINT16
             case 5:  return advance(pos, 1);   // UINT8

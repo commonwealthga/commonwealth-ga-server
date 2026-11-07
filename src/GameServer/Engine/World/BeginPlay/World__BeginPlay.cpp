@@ -27,7 +27,9 @@ void __fastcall World__BeginPlay::Call(void *World, void *edx, void *Url, int bR
 		MapDataDumper::DumpAll();
 	}
 
-	if (Config::GetDumpKismet()) {
+	if (Config::GetDumpKismet() || Config::GetDumpMapData()) {
+		// -dumpmapdata=1 re-runs after the same settle window too: city vendors
+		// and NPCs live in streamed sublevels the BeginPlay dump cannot see.
 		// Arm a delayed dump instead of dumping now: BeginPlay runs before the
 		// async streaming of sublevels (e.g. *_Sound holds the announcer-VO
 		// kismet) finishes, so an immediate dump misses them. GameEngine::Tick
@@ -41,7 +43,7 @@ void __fastcall World__BeginPlay::Call(void *World, void *edx, void *Url, int bR
 		nlohmann::json ready;
 		ready["type"]        = IpcProtocol::MSG_INSTANCE_READY;
 		ready["instance_id"] = inst_id;
-		ready["max_players"] = 100;  // Hardcoded for Phase 9; read from GameInfo in future
+		ready["max_players"] = Config::GetMaxPlayers() > 0 ? Config::GetMaxPlayers() : 100;
 		IpcClient::Send(ready.dump());
 		Logger::Log("ipc", "[World__BeginPlay] Sent INSTANCE_READY: instance_id=%lld\n", inst_id);
 	}

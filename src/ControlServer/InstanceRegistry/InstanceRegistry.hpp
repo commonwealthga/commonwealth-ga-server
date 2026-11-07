@@ -17,7 +17,7 @@ struct InstanceInfo {
     std::string state;          // "STARTING" | "DRAFTING" | "READY" | "DRAINING" | "STOPPED"
     int         pid           = 0;
     uint16_t    udp_port      = 0;
-    //std::string ip_address    = "127.0.0.1";
+    std::string ip_address    = "127.0.0.1";
     int         player_count  = 0;
     int64_t     started_at    = 0;
     int64_t     sealed_at     = 0;  // 0 if not sealed
@@ -72,6 +72,8 @@ public:
 
     // Store the real PID after the process has been spawned.
     static void UpdatePid(int64_t instance_id, int pid);
+    // Address clients are sent to (default: this server's host).
+    static void SetAddress(int64_t instance_id, const std::string& ip);
 
     // Transition STARTING -> READY when INSTANCE_READY IPC arrives.
     static void MarkReady(int64_t instance_id, int max_players);
@@ -160,6 +162,16 @@ public:
     static ActiveProfileCounts GetActiveProfileCountsForQueue(uint32_t queue_id);
     static std::vector<InstanceInfo> GetReadyMissionInstances();
     static std::optional<InstanceInfo> GetHomeInstance();
+    // Limited launch: live (non-STOPPED) instances that are not
+    // the home hub. Compared against max_instances - 1 (the hub keeps a slot).
+    static int CountActiveNonHomeInstances();
+    // Config max_instances (0 = no cap). Set once from main.cpp.
+    static void SetMaxInstances(int max_instances);
+    static int MaxInstances();  // 0 = no cap
+    static void SetPort(int64_t instance_id, uint16_t udp_port);
+    // True if a new non-hub instance (mission, open-world zone, intro) may be
+    // spawned now: active non-hub copies < max_instances - 1.
+    static bool HasFreeMissionSlot();
     static std::vector<InstanceInfo> GetIdleInstances(int timeout_seconds);
     // All instances not in STOPPED state with a valid pid. Used by the
     // control-server shutdown path to SIGTERM-then-SIGKILL each game

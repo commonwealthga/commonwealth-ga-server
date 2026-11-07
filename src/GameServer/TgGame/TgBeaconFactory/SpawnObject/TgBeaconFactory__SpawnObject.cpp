@@ -7,6 +7,9 @@
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
+#include "src/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 
 #include <cmath>
 #include <cstring>
@@ -333,6 +336,31 @@ void __fastcall TgBeaconFactory__SpawnObject::Call(ATgBeaconFactory* factory, vo
 	// deployable for this taskforce. Must run AFTER the register above: the
 	// destroy re-enters CheckBeacon, which only respawns when r_Beacon is null.
 	BeaconSdk::ReapOrphanBeacons(mgr);
+
+	// Msg 37340 "CHECKPOINT REACHED!" (yellow centre text, table sound 5686).
+	// The sender is not in the client or the maps, so it was on the original
+	// backend. A new exit factory coming up is the checkpoint moving forward.
+	// Colony04 proves the first exit spawn is already a checkpoint (the mission
+	// opens with the entrance only), so this needs a player in the game, not a
+	// previous exit. A respawn of the same factory stays silent.
+	{
+		static ATgBeaconFactory* s_lastCheckpointFactory = nullptr;
+		if (TgGame__TgFindPlayerStart::IsPvECheckpointMap(game) && !ObjectClassCache::ClassNameContains((UObject*)game, "TgGame_Defense")) {
+			bool playerInGame = false;
+			UWorld* World = (UWorld*)Globals::Get().GWorld;
+			if (World && World->NetDriver) {
+				for (int i = 0; i < World->NetDriver->ClientConnections.Num(); ++i) {
+					UNetConnection* Conn = World->NetDriver->ClientConnections.Data[i];
+					if (Conn && (uintptr_t)Conn >= 0x10000 && Conn->Actor && Conn->Actor->Pawn) { playerInGame = true; break; }
+				}
+			}
+			if (playerInGame && s_lastCheckpointFactory != factory) {
+				SendAlert::Broadcast(37340, 2, 3, 3.0f);
+				Logger::Log("beacon", "  exit: CHECKPOINT REACHED alert (factory mapObjId=%d)\n", factory->m_nMapObjectId);
+			}
+			s_lastCheckpointFactory = factory;
+		}
+	}
 
 	Logger::Log("beacon",
 		"  exit spawned 0x%p tf=%d at (%.0f,%.0f,%.0f) registered with manager 0x%p r_BeaconInfo=0x%p "

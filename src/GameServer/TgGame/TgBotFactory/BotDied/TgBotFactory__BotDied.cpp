@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgBotFactory/BotDied/TgBotFactory__BotDied.hpp"
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
+#include "src/GameServer/TgGame/TgBotFactory/SpawnNextBot/TgBotFactory__SpawnNextBot.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -23,7 +24,12 @@
 void __fastcall TgBotFactory__BotDied::Call(ATgBotFactory* BotFactory, void* edx, ATgPawn* Pawn, ATgAIController* AIC) {
 	if (BotFactory == nullptr) return;
 
+	const int before = BotFactory->m_SpawnQueue.Num();
 	CallOriginal(BotFactory, edx, Pawn, AIC);
+
+	// 0985/0986: open-zone replacements get their data respawn time and are
+	// held while a player is near (SpawnNextBot).
+	TgBotFactory__SpawnNextBot::TagReplacements(BotFactory, before);
 
 	const int pending = BotFactory->m_SpawnQueue.Num();
 	Logger::Log("tgbotfactory",

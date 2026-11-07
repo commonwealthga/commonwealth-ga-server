@@ -1,6 +1,8 @@
 #include "src/GameServer/Engine/GameEngine/Tick/GameEngine__Tick.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/GameServer/Combat/MissionAlerts/MissionAlerts.hpp"
+#include "src/GameServer/GameModes/Acquisition/Acquisition.hpp"
+#include "src/GameServer/AvaCargo/AvaCargoDll.hpp"
 #include "src/GameServer/Combat/CombatMessageFlusher/CombatMessageFlusher.hpp"
 #include "src/GameServer/Matchmaking/SetupRebalanceTrigger/SetupRebalanceTrigger.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
@@ -13,14 +15,41 @@
 #include "src/GameServer/TgGame/TgTeamBeaconManager/BeaconCarryReaper/BeaconCarryReaper.hpp"
 #include "src/GameServer/Inventory/ConsumableReaper/ConsumableReaper.hpp"
 #include "src/GameServer/Utils/PerfProbe/PerfProbe.hpp"
+#include "src/GameServer/Utils/FramePacing/FramePacing.hpp"
+#include "src/GameServer/Utils/ActorTickLod/ActorTickLod.hpp"
+#include "src/GameServer/Utils/BotSight/BotSight.hpp"
+#include "src/GameServer/Tutorial/TutorialBotRoster.hpp"
+#include "src/GameServer/Tutorial/TutorialChapterEnd.hpp"
+#include "src/GameServer/Tutorial/TutorialBoss.hpp"
+#include "src/GameServer/WorldGroups/WorldGroups.hpp"
 #include "src/GameServer/Maps/MapAdditions/MapAdditions.hpp"
+#include "src/GameServer/TgGame/ObjectiveGuide/ObjectiveGuide.hpp"
+#include "src/GameServer/TgGame/NewsStand/NewsStand.hpp"
+#include "src/GameServer/PvpBots/PvpBots.hpp"
+#include "src/GameServer/TgGame/TgPawn/ServerOnRequestMission/TgPawn__ServerOnRequestMission.hpp"
 
 void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSeconds) {
 	// Frame-time probe. No-op unless the "perf" channel is enabled.
 	PerfProbe::BeginFrame();
+	FramePacing::NoteGameThread();
+	ActorTickLod::BeginFrame(DeltaSeconds);
+	// Opted-in bot factories: hostile bots notice each other (2 Hz).
+	BotSight::Tick(DeltaSeconds);
+	// Bot roster log (no-op unless the "tutbots" channel is on).
+	TutorialBotRoster::Tick(DeltaSeconds);
+	// Chapter maps - fallback mission end if RequestMission never came.
+	TutorialChapterEnd::Tick();
+	// Skylark boss identify + post-cine safety net.
+	TutorialBoss::Tick(DeltaSeconds);
+	// Dev-spawned PvP bots: deferred sight kick on their foe.
+	PvpBots::Tick(DeltaSeconds);
+	// Spawned world groups in a passive return (group-control), ~4 Hz.
+	WorldGroups::Tick();
 	{ PerfProbe::Scope _p(PerfProbe::SLOT_IPC_DRAIN); IpcClient::DrainInbound(); }
 	// MissionAlerts self-throttles to ~1Hz off WorldInfo.TimeSeconds.
 	{ PerfProbe::Scope _p(PerfProbe::SLOT_MISSION_ALERTS); MissionAlerts::Tick(); }
+	Acquisition::Tick();  // DualCTF robots (1 Hz, no-op elsewhere)
+	AvaCargoDll::Tick();  // AvA vehicles (1 Hz, no-op without vehicles)
 	// CombatMessageFlusher self-throttles to ~10Hz; drains per-pawn accumulators
 	// that the engine's 21-record / 101-index threshold (FUN_109f9bc0) would
 	// otherwise hold indefinitely for sparse damage events.
@@ -39,6 +68,11 @@ void __fastcall GameEngine__Tick::Call(void* Engine, void* edx, float DeltaSecon
 	// (Bancroft_HalfwayPoint/_30sRemaining/_10sRemaining) off the round timer.
 	// Self-gates on map name + Defense round state; no-op elsewhere.
 	{ PerfProbe::Scope _p(PerfProbe::SLOT_MISSION_VO); MissionVODirector::Tick(DeltaSeconds); }
+	// 1P_ missions: server-pushed objective arrow trail (~1Hz poll, 30 s per player).
+	ObjectiveGuide::Tick(DeltaSeconds);
+	// Dome City Global News stand: news feed in chat when a player walks up (~1Hz poll).
+	NewsStand::Tick(DeltaSeconds);
+	TgPawn__ServerOnRequestMission::Tick(DeltaSeconds);
 	// Deferred post-profile-switch rebuild kick (suit-mesh load-race recovery).
 	{ PerfProbe::Scope _p(PerfProbe::SLOT_SUIT_REBUILD); SuitRebuildKick::Tick(DeltaSeconds); }
 	// One-shot: verify (and if needed redo) the VR heal pad's PostBeginPlay

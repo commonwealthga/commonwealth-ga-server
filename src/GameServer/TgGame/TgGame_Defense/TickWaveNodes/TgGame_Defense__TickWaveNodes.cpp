@@ -1,4 +1,6 @@
 #include "src/GameServer/TgGame/TgGame_Defense/TickWaveNodes/TgGame_Defense__TickWaveNodes.hpp"
+#include "src/Config/Config.hpp"
+#include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
@@ -136,6 +138,17 @@ void __fastcall TgGame_Defense__TickWaveNodes::Call(ATgGame_Defense* Game, void*
 		if (Spawner == nullptr) continue;
 		if (Spawner->m_nRoundNumber != Game->s_nRoundNumber) continue;
 		if (Spawner->m_fNextSpawnTime > Now) continue;
+
+		// Msg 56828 "Incoming enemy combatants!" once per wave, as its first
+		// spawn pulses. Sender is not in the client or the maps (original backend).
+		// Dome Defense has its own announcer lines.
+		static int s_incomingRound = 0;
+		if (s_incomingRound != Game->s_nRoundNumber) {
+			s_incomingRound = Game->s_nRoundNumber;
+			if (Config::GetMapNameChar() != std::string("Raid_DomeCityDefense_P")) {
+				SendAlert::Broadcast(56828, 2, 3, 3.0f);
+			}
+		}
 
 		const float Frequency = RollFrequency(Spawner);
 		Spawner->m_fNextSpawnTime = Now + Frequency;

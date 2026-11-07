@@ -112,12 +112,17 @@ public:
         const std::string& session_guid, const char* reason);
     static void DropReadyMatchReservations(int64_t instance_id);
 
+    // AvA (queues 40-45): pin a session to a task force at pop (Defend = 2); 0 clears.
+    static void SetForcedSide(const std::string& guid, int tf);
     static void SetPreAssignedTeam(int64_t instance_id, const std::string& guid, int tf);
     static std::optional<int>
         ConsumePreAssignedTeam(int64_t instance_id, const std::string& guid);
     static void DropPreAssignedTeams(int64_t instance_id);
 
     static void DiscardPendingMatchForDeadInstance(int64_t instance_id, const char* reason);
+    // True once if this guid's match popped only because the external
+    // probe accepted it (no local slot) - the pop callback must not start it locally.
+    static bool TakeExternalOnly(const std::string& session_guid);
 
     static bool GetContinueInQueue(uint32_t queue_id);
     static std::vector<QueueConfig> GetEnabledQueueConfigs();
@@ -140,7 +145,8 @@ public:
     // owned by the most players — before the usual count/weight/recency logic.
     static std::optional<MapModeSpec>
         PickRandomMapPoolEntryForCount(uint32_t queue_id, int count,
-            const std::vector<std::vector<int64_t>>* installed_sets = nullptr);
+            const std::vector<std::vector<int64_t>>* installed_sets = nullptr,
+            const std::vector<std::string>* filter_guids = nullptr);   // game-type filter
 
 private:
     struct DelayedPop {

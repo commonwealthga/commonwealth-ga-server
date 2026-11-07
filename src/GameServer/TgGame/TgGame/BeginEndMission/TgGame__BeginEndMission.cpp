@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame/BeginEndMission/TgGame__BeginEndMission.hpp"
+#include "src/GameServer/AvaCargo/AvaCargoDll.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective/SetObjectiveActive/TgMissionObjective__SetObjectiveActive.hpp"
@@ -8,6 +9,7 @@
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Tutorial/TutorialChapterEnd.hpp"
 #include "lib/nlohmann/json.hpp"
 
 // Stripped native — both `TgGame::BeginEndMission` and the `TgGame_Ticket`
@@ -136,6 +138,13 @@ void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera,
 			"BeginEndMission — already processed, skipping double-fire\n");
 		return;
 	}
+	// Tutorial chapter maps hand off through their own Kismet
+	// RequestMission after the objective win - no end screen / trip home.
+	{
+		unsigned char ws = Game->m_GameWinState;
+		if (ws == 0) ws = DeriveWinStateFromGRI((ATgRepInfo_Game*)Game->GameReplicationInfo);
+		if (TutorialChapterEnd::DeferEnd(Game, ws)) return;
+	}
 	Game->s_bGameEndMissionProcessed = 1;
 	s_PendingEndScreen = false;
 	s_PendingCamera    = nullptr;
@@ -216,6 +225,7 @@ void BeginEndMissionImpl(ATgGame* Game, ACameraActor* endMissionCamera,
 		if (winState == 2)      { outcome = "ATTACKERS_WIN"; winningTf = 1; }
 		else if (winState == 1) { outcome = "DEFENDERS_WIN"; winningTf = 2; }
 
+		AvaCargoDll::ReportResult();  // Untouched AvA cargo goes home (before MISSION_ENDED closes the escrow)
 		nlohmann::json msg;
 		msg["type"]               = IpcProtocol::MSG_MISSION_ENDED;
 		msg["instance_id"]        = IpcClient::GetInstanceId();

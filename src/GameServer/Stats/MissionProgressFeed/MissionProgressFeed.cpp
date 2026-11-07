@@ -2,16 +2,26 @@
 
 #include "lib/nlohmann/json.hpp"
 
+#include <atomic>
+
 #include "src/Config/Config.hpp"
 #include "src/GameServer/Engine/MapGameInfo/MapGameInfo.hpp"
 #include "src/GameServer/Engine/ObjectiveNames/ObjectiveNames.hpp"
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/GameServer/Stats/DeployableState/DeployableState.hpp"
+#include "src/GameServer/Stats/PetState/PetState.hpp"
+#include "src/GameServer/Stats/EnemyState/EnemyState.hpp"
+#include "src/GameServer/Stats/EscortState/EscortState.hpp"
+#include "src/GameServer/Stats/InstanceRestore/InstanceRestore.hpp"
+#include "src/GameServer/Stats/MatchStats.hpp"
+#include "src/GameServer/Stats/PlayerState/PlayerState.hpp"
 #include "src/GameServer/Storage/ActiveSpectatorCount/ActiveSpectatorCount.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
+#include "src/Utils/Logger/Logger.hpp"
 
 namespace MissionProgressFeed {
 
@@ -21,8 +31,13 @@ namespace {
 // number) changes far slower than pawn health, and there's only one push
 // per match (not per-pawn) either way.
 constexpr DWORD kPushIntervalMs = 1000;
+// Without spectators the control server still keeps the last state of every
+// instance (InstanceState, for instance-snapshot / INSTANCE_RESTORE); player
+// positions ride along, so a host crash loses at most ~1 s of them.
+constexpr DWORD kIdlePushIntervalMs = 1000;
 
 DWORD g_lastPushMs = 0;
+std::atomic<bool> g_finalRequested{false};
 
 // gameplay_type_value_id -> mode. Confirmed against a live map_game_info
 // export (2026-07-30) -- this is the REAL differentiator between modes that
@@ -102,6 +117,8 @@ void CollectObjectives(TArray<ATgMissionObjective*>& arr, nlohmann::json& out) {
         o["locked"]           = (bool)obj->r_bIsLocked;
         o["active"]           = (bool)obj->r_bIsActive;
         o["owner_taskforce"]  = obj->r_nOwnerTaskForce;
+        o["captured_once"]    = (bool)obj->r_bHasBeenCapturedOnce;
+        o["status"]           = (int)obj->r_eStatus;
         // Same percent-progress formula TgGame's own SuperAgent capture-bar
         // logic uses (SuperAgent.cpp) -- not clamped there either; the
         // overlay HTML already clamps on the render side (see power/health
@@ -172,14 +189,21 @@ void CollectRaidBots(TArray<ATgMissionObjective*>& arr,
 } // namespace
 
 void MaybePushSnapshot(AActor* actor) {
-    if (GActiveSpectatorCount <= 0) return;
     if (!actor) return;
 
     ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
     if (!Game || actor != (AActor*)Game) return;
 
+    InstanceRestore::MaybeApply(Game);
+    PlayerState::Tick(Game);
+    EnemyState::Tick(Game);
+    DeployableState::Tick(Game);
+    PetState::Tick(Game);
+
     const DWORD now = GetTickCount();
-    if (now - g_lastPushMs < kPushIntervalMs) return;
+    const DWORD interval = GActiveSpectatorCount > 0 ? kPushIntervalMs : kIdlePushIntervalMs;
+    const bool isFinal = g_finalRequested.exchange(false);
+    if (!isFinal && now - g_lastPushMs < interval) return;
     g_lastPushMs = now;
 
     const std::string mode = ResolveMissionMode(Game);
@@ -192,6 +216,7 @@ void MaybePushSnapshot(AActor* actor) {
     j["type"]        = IpcProtocol::MSG_MISSION_PROGRESS_SNAPSHOT;
     j["instance_id"] = IpcClient::GetInstanceId();
     j["mode"]        = mode;
+    if (isFinal) j["final"] = true;
 
     // Universal across every mode -- the engine already computes and
     // replicates a single authoritative countdown for every phase
@@ -219,6 +244,15 @@ void MaybePushSnapshot(AActor* actor) {
         j["attacker_points"] = GTeamsData.Attackers ? GTeamsData.Attackers->r_nCurrentPointCount : 0;
         j["defender_points"] = GTeamsData.Defenders ? GTeamsData.Defenders->r_nCurrentPointCount : 0;
         j["points_to_win"]   = GRI->r_nPointsToWin;
+    }
+    if (mode == "koth" && ObjectClassCache::ClassNameContains((UObject*)Game, "TgGame_PointRotation")) {
+        // Position of the current (pending or active) rotation point, for
+        // INSTANCE_RESTORE; -1 before the first pick.
+        ATgGame_PointRotation* Rot = (ATgGame_PointRotation*)Game;
+        int idx = -1;
+        for (int i = 0; GRI->m_MissionObjectives.Data && i < GRI->m_MissionObjectives.Num(); i++)
+            if (Rot->m_NextObjective && GRI->m_MissionObjectives.Data[i] == Rot->m_NextObjective) { idx = i; break; }
+        j["active_index"] = idx;
     }
 
     if (mode == "raid") {
@@ -269,9 +303,31 @@ void MaybePushSnapshot(AActor* actor) {
         nlohmann::json objectives = nlohmann::json::array();
         CollectObjectives(GRI->m_MissionObjectives, objectives);
         j["objectives"] = objectives;
+        if (mode == "payload") {
+            // Robot track position (per-objective matinee seconds) for
+            // INSTANCE_RESTORE; robot location only to compare before/after.
+            j["matinee"] = EscortState::CollectMatinee(GRI->m_MissionObjectives);
+            j["robot"]   = EscortState::CollectRobot(GRI->m_MissionObjectives);
+        }
     }
 
-    IpcClient::Send(j.dump());
+    // Live factory bots + spawn counters (enemy hand-off on INSTANCE_RESTORE).
+    EnemyState::Collect(j);
+    // Player-placed deployables (stations, force fields, mines, ...).
+    DeployableState::Collect(j);
+    PetState::Collect(j);
+
+    nlohmann::json players = nlohmann::json::array();
+    MatchStats::AppendLiveScores(players);
+    if (!players.empty()) j["players"] = players;
+
+    const std::string body = j.dump();
+    IpcClient::Send(body);
+    if (isFinal) Logger::Log("restore", "[Restore] final snapshot sent (%zu bytes)\n", body.size());
+}
+
+void RequestFinal() {
+    g_finalRequested = true;
 }
 
 } // namespace MissionProgressFeed

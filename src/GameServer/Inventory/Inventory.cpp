@@ -12,6 +12,7 @@
 #include "src/GameServer/Constants/DeviceIds.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/Database/Database.hpp"
+#include "src/GameServer/Durability/DurabilityGate.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/GameServer/Globals.hpp"
 #include <algorithm>
@@ -479,7 +480,8 @@ void Inventory::ApplyRolledModEffects(ATgPawn* Pawn, int deviceId, int deviceIns
 // Inventory::Equip — create and equip a device on a pawn
 // ---------------------------------------------------------------------------
 ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, int inventoryId,
-                            const std::vector<int>& mods) {
+                            const std::vector<int>& modsIn) {
+	const std::vector<int> mods = DurabilityGate::Gate(inventoryId, modsIn);  // Worn out = base stats only
 	// --- Null checks ---
 	if (Pawn == nullptr) {
 		Logger::Log("inventory", "Equip: ERROR — Pawn is null\n");

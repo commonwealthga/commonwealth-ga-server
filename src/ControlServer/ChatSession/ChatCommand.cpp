@@ -1,4 +1,5 @@
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
+#include "src/ControlServer/ChatSession/PlayerCommands.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -120,6 +121,7 @@ std::optional<uint32_t> ChannelForCommandToken(const std::string& token) {
     if (t == "al"   || t == "alliance") return 3;
     if (t == "t"    || t == "team")     return 5;
     if (t == "c"    || t == "city")     return 7;
+    if (t == "1"    || t == "z" || t == "zone") return 7;   // 1.5 zone chat = City channel
     if (t == "i"    || t == "instance") return 1;
     if (t == "tr"   || t == "trade")    return 12;
     if (t == "lfg")                     return 13;
@@ -166,6 +168,34 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         out.recognized = true;
         out.suppress_broadcast = true;
         out.coords = true;
+        return out;
+    }
+
+    if (cmd_name == "-spawnpvpbot") {
+        // -spawnpvpbot <assault|medic|recon|robotics> [friend|enemy]
+        // Dev-only (same gate as -spawnenemy). Spawns the class profile bot
+        // dressed as a player agent; default side = enemy.
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        std::vector<std::string> tokens = SplitWs(rest);
+        if (tokens.empty() || tokens.size() > 2) return out;
+        const std::string cls = LowerAscii(tokens[0]);
+        int class_bot = 0;
+        if (cls == "assault")       class_bot = 680;
+        else if (cls == "medic")    class_bot = 567;
+        else if (cls == "recon")    class_bot = 681;
+        else if (cls == "robotics") class_bot = 679;
+        if (class_bot == 0) return out;
+        SpawnTargetArgs args;
+        args.team = SpawnTargetTeam::Enemy;
+        if (tokens.size() == 2) {
+            const std::string side = LowerAscii(tokens[1]);
+            if (side == "friend") args.team = SpawnTargetTeam::Friend;
+            else if (side != "enemy") return out;
+        }
+        args.bot_id = class_bot;
+        args.pvp_class = cls;
+        out.spawn_target = args;
         return out;
     }
 
@@ -339,6 +369,31 @@ ParseResult TryParseChatCommand(const std::string& message_text) {
         if (!(iss >> args.count) || args.count <= 0) args.count = 1;
 
         out.components = args;
+        return out;
+    }
+
+    if (cmd_name.size() > 1 && PlayerCommands::Known(cmd_name.substr(1))) {
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        out.player_cmd = ParseResult::PlayerCmdArgs{cmd_name.substr(1), rest};
+        return out;
+    }
+
+    if (cmd_name == "-bug" || cmd_name == "-report") {
+        out.recognized = true;
+        out.suppress_broadcast = true;
+        ReportArgs args;
+        args.kind = (cmd_name == "-bug") ? "bug" : "player";
+        if (args.kind == "player") {
+            auto sp = std::find_if(rest.begin(), rest.end(),
+                [](unsigned char c) { return std::isspace(c) != 0; });
+            args.target = std::string(rest.begin(), sp);
+            if (sp != rest.end()) args.text = TrimAscii(std::string(sp, rest.end()));
+            if (args.target.empty()) args.text.clear();
+        } else {
+            args.text = rest;
+        }
+        out.report = args;
         return out;
     }
 
@@ -725,6 +780,7 @@ void DispatchSpawnTarget(const SpawnTargetArgs& args, const std::string& session
         {"team",            SpawnTargetTeamName(args.team)},
         {"difficulty_id",   args.difficulty_id},
         {"henchman",        args.henchman},
+        {"pvp_class",       args.pvp_class},
     };
 
     const bool sent = TcpSession::DeliverPlayerAction(session_guid, payload);
@@ -906,6 +962,7 @@ void ExecuteSetDlc(const SetDlcArgs& args, const std::string& session_guid) {
 void DispatchPossess(const std::string& session_guid)   { DispatchSimpleAction("possess",   session_guid); }
 void DispatchUnpossess(const std::string& session_guid) { DispatchSimpleAction("unpossess", session_guid); }
 void DispatchCoords(const std::string& session_guid)    { DispatchSimpleAction("coords",    session_guid); }
+void DispatchStuck(const std::string& session_guid)     { DispatchSimpleAction("stuck",     session_guid); }
 void DispatchFullHeal(const std::string& session_guid)  { DispatchSimpleAction("fullheal",  session_guid); }
 
 void DispatchToggleBrokenSuits(const ToggleBrokenSuitsArgs& args,

@@ -26,7 +26,8 @@ public:
                        int64_t instance_id,
                        eDifficulty difficulty_type = eDifficulty::Default,
                        uint32_t difficulty_value_id = 0,
-                       DifficultyScalar difficulty_scalar = DifficultyScalar());
+                       DifficultyScalar difficulty_scalar = DifficultyScalar(),
+                       int max_players = 0);
 
     // Terminate the process group for an already-spawned game instance.
     // Sends SIGTERM immediately, then SIGKILL after grace_seconds if the

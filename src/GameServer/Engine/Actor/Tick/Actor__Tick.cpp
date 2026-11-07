@@ -47,7 +47,7 @@ void* __fastcall Actor__Tick::Call(void* a1, void* edx, float a2, int a3) {
     // Counter only, no Scope — a timing scope here would be two
     // QueryPerformanceCounter calls per actor per frame, which is more
     // expensive than the thing it would measure: both feeds early-out on
-    // `GActiveSpectatorCount <= 0`, a single int compare.
+    // `GActiveSpectatorCount <= 0` / a GGameInfo pointer compare.
     PerfProbe::Count(PerfProbe::CTR_ACTOR_TICK);
     SpectatorOverlayFeed::MaybePushSnapshot((AActor*)a1);
     MissionProgressFeed::MaybePushSnapshot((AActor*)a1);

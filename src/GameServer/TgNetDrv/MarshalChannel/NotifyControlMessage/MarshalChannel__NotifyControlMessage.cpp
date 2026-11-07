@@ -419,6 +419,8 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 		if (cinematicFn) {
 			newcontroller->ProcessEvent(cinematicFn, &cinematic, nullptr);
 		}
+		// (seasonal sublevel streaming moved to first SpawnPlayerCharacter: streaming while
+		// the client is still loading the map dropped it back to the login screen)
 		Logger::Log("spawn",
 			"HandlePlayerConnected: cleared client fade/cinematic hud fadeFn=%p cinematicFn=%p pawn=%p viewTarget=%p\n",
 			fadeFn, cinematicFn, newcontroller->Pawn, newcontroller->ViewTarget);

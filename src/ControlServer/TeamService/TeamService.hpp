@@ -34,6 +34,15 @@ struct TeamRosterRow {
     std::string alliance_name;
 };
 
+// Read-only team snapshot for Social::Teams (strike force / raid group layer).
+struct TeamSnapshot {
+    struct Member { std::string session_guid; int64_t character_id = 0; std::string player_name; bool offline = false; };
+    uint64_t id = 0;
+    std::string leader_guid;
+    int64_t leader_character_id = 0;
+    std::vector<Member> members;
+};
+
 struct TeamRoster {
     uint64_t team_id = 0;
     uint32_t team_mode = 1;           // TODO verify enum; mode 3 = different UI event set
@@ -92,12 +101,19 @@ public:
     static void KickMember(const std::string& requester_guid, int64_t target_character_id);
 
     static bool IsTeamed(const std::string& session_guid);
+    // Id of the caller's team, 0 when not in one (voice channel key).
+    static uint64_t GetTeamId(const std::string& session_guid);
 
     // Session guids of every member of the caller's team, including the
     // caller. Empty when they aren't in one. Used by the Team chat channel to
     // resolve recipients.
     static std::vector<std::string> GetTeamMemberGuids(const std::string& session_guid);
     static bool IsLeader(const std::string& session_guid);
+    // Social::Teams helpers
+    static bool Snapshot(const std::string& session_guid, TeamSnapshot& out);
+    static bool SnapshotById(uint64_t team_id, TeamSnapshot& out);
+    static uint64_t EnsureTeamFor(const std::string& session_guid);            // solo -> 1-member team (strike force)
+    static void Rebroadcast(uint64_t team_id) { BroadcastRoster(team_id); }
 
     // set team difficulty_override
     static std::vector<std::string> SetDifficultyOverride(const std::string& session_guid, DifficultyScalar difficulty_override);
@@ -178,6 +194,8 @@ private:
 
     // Sends the roster to every (online) member. Takes its own snapshot.
     static void BroadcastRoster(uint64_t team_id);
+    // Mirror teams_ into ga_squad_members for the game instances.
+    static void SyncSquadTable();
 
     static std::mutex mutex_;
     static asio::io_context* io_ctx_;

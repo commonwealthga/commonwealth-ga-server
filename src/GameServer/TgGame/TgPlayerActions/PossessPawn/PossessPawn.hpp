@@ -24,4 +24,9 @@ void ExecuteUnpossess(const std::string& session_guid);
 // if a send was dispatched. Bots not under active possession are skipped.
 bool TrySendBotLoadoutRefresh(ATgPawn* bot);
 
+// AvA vehicles: crewed=true -> replicate the vehicle's devices and push them as the driver's
+// hotbar (what UC HackedBy -> SetInventoryDirty does in the original); false -> devices server-only
+// again (the agent's own hotbar comes back through the SetInventoryDirty player path). Returns #devices.
+int ShowVehicleLoadout(ATgPawn* vehicle, ATgPawn* driver, bool crewed);
+
 } // namespace TgPlayerActions::PossessCmd

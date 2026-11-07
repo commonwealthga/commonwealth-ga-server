@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgMissionObjective/RegisterSelf/TgMissionObjective__RegisterSelf.hpp"
 #include "src/GameServer/GameModes/CtrPointRotation/CtrPointRotation.hpp"
+#include "src/GameServer/GameModes/Acquisition/Acquisition.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
@@ -16,6 +17,7 @@ void __fastcall TgMissionObjective__RegisterSelf::Call(ATgMissionObjective* Obje
 	// so they re-pollute the rotation list. Drop + disable any such straggler.
 	// No-op on every non-CTR map and before seeding completes.
 	CtrPointRotation::ExcludeLateStockObjective(Objective);
+	Acquisition::OnRegisterObjective(Objective);  // DualCTF robot natives
 
 	// "Register self" with the GRI's replicated r_Objectives[0x4B] mirror —
 	// the array the client HUD reads. On our server the only other writer is

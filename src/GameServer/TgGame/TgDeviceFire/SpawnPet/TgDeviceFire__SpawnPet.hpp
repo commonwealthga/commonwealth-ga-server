@@ -14,4 +14,7 @@ class TgDeviceFire__SpawnPet : public HookBase<
 	TgDeviceFire__SpawnPet> {
 public:
 	static void __fastcall Call(UTgDeviceFire* pThis, void* edx, BOOL bPet);
+	// Spawn + set up the fire mode's pet/turret for its owner at a given spot
+	// (Call resolves the spot from the owner's aim first).
+	static ATgPawn* SpawnAt(UTgDeviceFire* pThis, ATgPawn* pawn, FVector spawnLocation, FRotator spawnRot);
 };

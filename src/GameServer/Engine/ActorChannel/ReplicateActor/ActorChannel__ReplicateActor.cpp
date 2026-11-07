@@ -1,7 +1,11 @@
+#include "src/GameServer/Utils/PerfProbe/PerfProbe.hpp"
 #include "src/GameServer/Engine/ActorChannel/ReplicateActor/ActorChannel__ReplicateActor.hpp"
+#include "src/GameServer/GameModes/Acquisition/AssertTrace.hpp"
 #include "src/GameServer/Cosmetics/BrokenSuitSwap.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
+#include "src/GameServer/TgGame/ObjectiveGuide/ObjectiveGuide.hpp"
+#include "src/GameServer/WorldGroups/WorldGroups.hpp"
 
 #include <unordered_map>
 
@@ -66,7 +70,13 @@ ATgPawn* ViewerPawnForConnection(void* conn) {
 }  // namespace
 
 void __fastcall ActorChannel__ReplicateActor::Call(void* Channel, void* edx) {
+	PerfProbe::Scope _perf(PerfProbe::SLOT_REPLICATE);  // p1100e
+	PerfProbe::Count(PerfProbe::CTR_REPLICATE);
 	AActor* actor = *(AActor**)((char*)Channel + kOff_Channel_Actor);
+	AssertTrace::s_lastRepActor = actor;  // named in assert traces
+	// p1100g: per-class table (perfactors only)
+	struct RepTimer { AActor* a; int64_t t0; RepTimer(AActor* x) : a(x), t0(PerfProbe::DeepEnabled() ? PerfProbe::Now() : 0) {}
+		~RepTimer() { if (t0) PerfProbe::NoteRepActor(a, PerfProbe::Now() - t0); } } _repTimer(actor);
 
 	// r_CustomCharacterAssembly lives on player character pawns AND their PRIs
 	// (the PRI mirror drives the client's UpdateCharacterAssetRefs preloading —
@@ -97,6 +107,8 @@ void __fastcall ActorChannel__ReplicateActor::Call(void* Channel, void* edx) {
 	void* conn = *(void**)((char*)Channel + kOff_Channel_Connection);
 
 	if (!assembly) {
+		// Comma-key route target per viewer on 1P_ missions (ObjectiveGuide).
+		if (actor && ObjectiveGuide::ReplicateObjective(actor, ViewerPawnForConnection(conn), Channel, edx)) return;
 		CallOriginal(Channel, edx);
 		return;
 	}
@@ -177,8 +189,19 @@ void __fastcall ActorChannel__ReplicateActor::Call(void* Channel, void* edx) {
 		}
 	}
 
+	// World boss fight bar: the boss PRI's r_eBonusType carries the bar
+	// marker to the players fighting it only (everyone else gets the real 0).
+	ATgRepInfo_Player* barPri = nullptr;
+	int barSaved = 0, barValue = 0;
+	if (wearerIsBot && !pawn && WorldGroups::BarValue((ATgRepInfo_Player*)actor, ViewerPawnForConnection(conn), &barValue)) {
+		barPri = (ATgRepInfo_Player*)actor;
+		barSaved = barPri->r_eBonusType;
+		barPri->r_eBonusType = barValue;
+	}
+
 	CallOriginal(Channel, edx);
 
+	if (barPri) barPri->r_eBonusType = barSaved;
 	if (locFrozen) pawn->Location = realLoc;
 	if (trailSuppressed) assembly->JetpackTrailId = savedTrail;
 	if (suitSwapped) BrokenSuitSwap::RestoreAssembly(*assembly, savedSuit);

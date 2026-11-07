@@ -2,6 +2,7 @@
 #include "src/GameServer/Combat/MissionAlerts/MissionAlerts.hpp"
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/GameServer/Stats/InstanceRestore/InstanceRestore.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective/SetObjectivePending/TgMissionObjective__SetObjectivePending.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -40,6 +41,11 @@ void __fastcall TgGame_PointRotation__CalcNextObjective::Call(ATgGame_PointRotat
 	// Pick a random candidate
 	int index = rand() % numCandidates;
 	Game->m_NextObjective = candidates[index];
+	// INSTANCE_RESTORE: continue on the point the old instance was on.
+	const int restoreIndex = InstanceRestore::TakeRotationIndex();
+	if (restoreIndex >= 0 && restoreIndex < GRI->m_MissionObjectives.Count && GRI->m_MissionObjectives.Data[restoreIndex] != nullptr) {
+		Game->m_NextObjective = GRI->m_MissionObjectives.Data[restoreIndex];
+	}
 	Game->m_PreviousObjective = Game->m_NextObjective;
 
 	// Clear r_bIsPending on every other objective first. Without this, on

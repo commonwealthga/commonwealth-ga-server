@@ -1473,7 +1473,8 @@ static const BlockClassEntry g_blockClassTable[] = {
     { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Boss },
     { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Boss_Destroyer },
     { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Brawler },
-    { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_CTR },
+    // TgPawn_CTR is TgPawn_Robot -> TgPawn (NOT TgPawn_Character): its Character-bucket entry read
+    // Character fields at the wrong offsets (owner-only r_CurrentVanityPet -> GPF once a player crews it).
     { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_ColonyEye },
     { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_Dismantler },
     { BIDX_TgGame_TgPawn_Character, &Class_TgGame_TgPawn_DuneCommander },

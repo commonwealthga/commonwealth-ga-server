@@ -11,6 +11,9 @@ class TgGame__SpawnBotById : public HookBase<
 	TgGame__SpawnBotById> {
 public:
 	static std::map<int, int> m_spawnedBotIds;
+	// Set around a vanity pet spawn (bag Activate) so the pet does
+	// not take the owner's combat pet slot (r_Pet) and suicide a live drone.
+	static inline bool s_bSpawningVanityPet = false;
 	// bot_id → fully-qualified UClass name; filled from DB on first miss.
 	static inline std::unordered_map<int, std::string> m_dbClassCache;
 

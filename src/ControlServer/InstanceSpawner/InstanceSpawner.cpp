@@ -8,6 +8,7 @@
 #include "src/ControlServer/InstanceSpawner/InstanceSpawner.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
+#include "src/ControlServer/ExternalInstances/ExternalInstances.hpp"
 #include "src/ControlServer/MapGameInfo/MapGameInfo.hpp"
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -128,6 +129,7 @@ void InstanceSpawner::StopInstanceProcess(const InstanceInfo& inst,
         Logger::Log("spawner",
             "[InstanceSpawner] StopInstanceProcess: instance=%lld has no pid (reason=%s)\n",
             (long long)inst.instance_id, reason ? reason : "unspecified");
+        ExternalInstances::RequestStop(inst.instance_id, reason);
         return;
     }
 
@@ -243,7 +245,8 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
                               int64_t instance_id,
                               eDifficulty difficulty_type,
                               uint32_t difficulty_value_id,
-                              DifficultyScalar difficulty_scalar) {
+                              DifficultyScalar difficulty_scalar,
+                              int max_players) {
 
     // skal: difficulty args lambda
     const auto build_difficulty_args=[&]() -> std::string {
@@ -370,6 +373,7 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         enabled_channels_arg, enabled_crash_channels_arg, nativewindows_arg,
     };
     if (!difficulty_arg.empty()) args.push_back(difficulty_arg);
+    if (max_players > 0) args.push_back("-maxplayers=" + std::to_string(max_players));
 
     std::string command_line = JoinWindowsCommandLine(args);
     std::string work_dir = DirnameWindows(game_binary_path);
@@ -461,7 +465,7 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
             cpu_set_t mask;
             CPU_ZERO(&mask);
             for (int c = affinity_core_start; c <= affinity_core_end; ++c) {
-                CPU_SET(c, &mask);
+                CPU_SET(cfg.CpuAt(c), &mask);
             }
             sched_setaffinity(0, sizeof(mask), &mask);
         }
@@ -480,6 +484,16 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         if (redirect_stdio) {
             [[maybe_unused]] FILE* devnull_out = freopen("/dev/null", "w", stdout);
             [[maybe_unused]] FILE* devnull_err = freopen("/dev/null", "w", stderr);
+        }
+
+        // Drop every inherited descriptor (the 9000/9001/9010
+        // listen sockets, client connections, the DB) before exec. asio opens
+        // them without FD_CLOEXEC, so wineserver/winedevice.exe kept 9000/9001
+        // open after the control server exited and a restart hung ~90 s.
+        {
+            long maxfd = sysconf(_SC_OPEN_MAX);
+            if (maxfd < 0 || maxfd > 65536) maxfd = 65536;
+            for (int fd = 3; fd < maxfd; ++fd) close(fd);
         }
 
         // Bare-metal mode sets the Wine env vars on the child directly.
@@ -562,6 +576,11 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         }
         if (!difficulty_arg.empty()) {
             inner_argv.push_back(difficulty_arg.c_str());
+        }
+        // -maxplayers=<n>: player cap the DLL applies to GameInfo (0 = map ini).
+        std::string maxplayers_arg = "-maxplayers=" + std::to_string(max_players);
+        if (max_players > 0) {
+            inner_argv.push_back(maxplayers_arg.c_str());
         }
 
         // ---- Bare-metal exec path: same as before.

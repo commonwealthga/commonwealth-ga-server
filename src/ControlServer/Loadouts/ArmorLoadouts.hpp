@@ -118,6 +118,8 @@ inline constexpr ArmorSlotEntry kSlots[kSlotCount] = {
 // 5913 → item 5915); the rest don't. Rather than mix-and-match per slot,
 // using a single id keeps the wire code simple and avoids a per-slot
 // blueprint lookup that would have to fall back anyway.
+// 0999: fallback only (item with no blueprint of its own). It creates Range Shield,
+// so its quality icons are the shield ring: real rows use GetBlueprintIdForStatItem.
 constexpr int kUniversalArmorBlueprintId = 5973;
 
 }  // namespace ArmorLoadouts

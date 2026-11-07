@@ -389,6 +389,28 @@ bool ApplyItemToBot(ATgPawn* Pawn, int itemId) {
 	return ApplyOnly(Pawn, /*slot=*/-1, itemId);
 }
 
+bool ApplyItemToBotSlot(ATgPawn* Pawn, int itemId, int slot) {
+	if (!Pawn || itemId == 0) return false;
+	if (!ObjectClassCache::ClassNameContains(Pawn, "TgPawn_Character")) return false;
+	if (!((ATgPawn_Character*)Pawn)->r_CustomCharacterAssembly.bValidCustomAssembly) return false;
+	return ApplyOnly(Pawn, slot, itemId);
+}
+
+bool SetBotBody(ATgPawn* Pawn, int genderTypeId, int headAsmId, int hairAsmId) {
+	if (!Pawn || !ObjectClassCache::ClassNameContains(Pawn, "TgPawn_Character")) return false;
+	auto& a = ((ATgPawn_Character*)Pawn)->r_CustomCharacterAssembly;
+	if (genderTypeId > 0) a.nGenderTypeId = genderTypeId;
+	if (headAsmId > 0) a.HeadMeshId = headAsmId;
+	if (hairAsmId > 0) a.HairMeshId = hairAsmId;
+	a.HeadFlairId  = -1;
+	a.HelmetMeshId = -1;
+	auto* PRI = (ATgRepInfo_Player*)Pawn->PlayerReplicationInfo;
+	if (PRI && a.bValidCustomAssembly) PRI->r_CustomCharacterAssembly = a;
+	Pawn->bNetDirty = 1;
+	Pawn->bForceNetUpdate = 1;
+	return true;
+}
+
 bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int item_profile_id,
                  int slot, int invId, int itemId) {
 	item_profile_id = NormalizeItemProfileId(Pawn, item_profile_id);

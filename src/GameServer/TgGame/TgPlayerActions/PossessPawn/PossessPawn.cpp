@@ -432,4 +432,18 @@ bool TrySendBotLoadoutRefresh(ATgPawn* bot) {
     return true;
 }
 
+int ShowVehicleLoadout(ATgPawn* vehicle, ATgPawn* driver, bool crewed) {  // AvA vehicles
+    if (!vehicle) return 0;
+    SetBotDevicesReplication(vehicle, crewed);
+    if (!crewed || !driver) return 0;
+    std::string guid;
+    for (const auto& kv : GClientConnectionsData)
+        if ((ATgPawn*)kv.second.Pawn == driver) { guid = kv.second.SessionGuid; break; }
+    if (guid.empty()) return 0;
+    nlohmann::json loadout = BuildBotLoadoutJson(vehicle);
+    if (loadout.empty()) return 0;
+    SendShowLoadoutEvent(guid, (int)vehicle->r_nPawnId, loadout);
+    return (int)loadout.size();
+}
+
 } // namespace TgPlayerActions::PossessCmd

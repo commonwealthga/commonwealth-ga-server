@@ -2,6 +2,7 @@
 #include "src/GameServer/IpDrv/SocketWin/CreateDGramSocket/SocketWin__CreateDGramSocket.hpp"
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Utils/ActorTickLod/ActorTickLod.hpp"
 
 #include <cstdlib>
 
@@ -33,6 +34,7 @@ int UdpNetDriver__InitListen::Call(UUdpNetDriver* NetDriver, void* edx, void* No
 	// 30 Hz tick, queue grows, ping balloons (fine on LAN where RTT is ~0,
 	// catastrophic across a 30-50 ms internet link). 50000 is well within
 	// modern home upload and what UDK Internet defaults landed on.
+	ActorTickLod::SetNetDriver((UNetDriver*)NetDriver);
 	NetDriver->MaxClientRate         = 50000;
 	NetDriver->MaxInternetClientRate = 50000;
 

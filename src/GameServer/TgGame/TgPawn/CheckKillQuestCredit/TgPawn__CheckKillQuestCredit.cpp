@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgPawn/CheckKillQuestCredit/TgPawn__CheckKillQuestCredit.hpp"
+#include "src/GameServer/TgGame/TgPawn/KillCredit/KillCredit.hpp"
 
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/IpcClient/IpcClient.hpp"
@@ -37,6 +38,7 @@ void __fastcall TgPawn__CheckKillQuestCredit::Call(ATgPawn* Pawn, void* edx, ATg
 	const int botId = Pawn->r_nProfileId;
 	if (botId <= 0) return;
 
+	const bool noLoot = KillCredit::NoKillReward(Pawn);
 	int credited = 0;
 	for (auto& kv : GClientConnectionsData) {
 		if (kv.second.bClosed) continue;
@@ -45,6 +47,7 @@ void __fastcall TgPawn__CheckKillQuestCredit::Call(ATgPawn* Pawn, void* edx, ATg
 
 		ATgRepInfo_Player* Pri = (ATgRepInfo_Player*)PlayerPawn->PlayerReplicationInfo;
 		if (Pri == nullptr || Pri->r_TaskForce != tf) continue;
+		if (!KillCredit::Eligible(Pawn, PlayerPawn)) continue;  // open zone: killer only
 
 		// pPlayerInfo is the live PlayerRegistry entry; the inline copy can be
 		// stale for a character selected after the connection was recorded.
@@ -62,6 +65,7 @@ void __fastcall TgPawn__CheckKillQuestCredit::Call(ATgPawn* Pawn, void* edx, ATg
 		ev["bot_id"]       = botId;
 		// Lets the control server push an inventory refresh after a loot grant.
 		ev["pawn_id"]      = (int)PlayerPawn->r_nPawnId;
+		if (noLoot) ev["no_loot"] = true;
 		IpcClient::Send(ev.dump());
 		credited++;
 	}

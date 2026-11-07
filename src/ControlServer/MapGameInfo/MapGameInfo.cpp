@@ -33,8 +33,13 @@ const char* SafeText(sqlite3_stmt* stmt, int col) {
 
 }  // namespace
 
+// By-id index. g_byMapName keeps only the FIRST row per map name, so a
+// second map_game_id on the same map (door 1471 vs 1437 on 1P_SDColony02_P) was lost.
+static std::unordered_map<uint32_t, MapGameRecord> g_byId;
+
 void MapGameInfo::Init() {
     g_byMapName.clear();
+    g_byId.clear();
 
     sqlite3* db = Database::GetConnection();
     if (!db) {
@@ -77,6 +82,7 @@ void MapGameInfo::Init() {
             continue;
         }
         const std::string key = LowerCopy(r.map_name);
+        g_byId[r.map_game_id] = r;
         g_byMapName.emplace(key, r);
         g_byMapName.emplace(StripReservedSuffix(key), r);
         loadedRows++;
@@ -96,6 +102,7 @@ std::optional<MapGameRecord> MapGameInfo::LookupByName(const std::string& map_na
 
 std::optional<MapGameRecord> MapGameInfo::LookupByMapGameId(uint32_t map_game_id) {
     if (map_game_id == 0) return std::nullopt;
+    if (auto id = g_byId.find(map_game_id); id != g_byId.end()) return id->second;
     // g_byMapName holds each record twice (raw + _reserved-stripped key), so
     // the first match wins — both alias the same record.
     for (const auto& kv : g_byMapName) {

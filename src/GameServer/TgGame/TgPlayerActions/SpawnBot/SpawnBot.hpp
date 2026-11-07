@@ -3,6 +3,11 @@
 #include <string>
 #include "src/Config/DifficultyScalar.hpp"
 
+class ATgPawn;
+class ATgRepInfo_TaskForce;
+struct FVector;
+struct FRotator;
+
 namespace TgPlayerActions::SpawnBotCmd {
 
 enum class Team {
@@ -32,6 +37,15 @@ enum class Team {
 // MUST be called on the game thread (IpcClient::DrainInbound is invoked from
 // Actor::Tick, which satisfies this precondition).
 void Execute(const std::string& session_guid, int bot_id, Team team,
-             DifficultyScalar difficulty_scalar_override, bool henchman = false);
+             DifficultyScalar difficulty_scalar_override, bool henchman = false,
+             const std::string& pvp_class = std::string());
+
+// PvP bot respawn: spawn bot_id at loc/rot on task force tf (same
+// difficulty scalar as the first spawn), wire the team like Execute and dress it as pvp_class
+// with `foe` as quarry. Game thread only. Returns the pawn or nullptr.
+ATgPawn* SpawnDressedAt(int bot_id, const FVector& loc, const FRotator& rot,
+                        ATgRepInfo_TaskForce* tf, bool enemySide,
+                        const std::string& pvp_class, ATgPawn* foe,
+                        DifficultyScalar scalar);
 
 } // namespace TgPlayerActions::SpawnBotCmd

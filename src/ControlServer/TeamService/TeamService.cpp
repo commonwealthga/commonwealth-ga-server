@@ -1,4 +1,5 @@
 #include "src/ControlServer/TeamService/TeamService.hpp"
+#include "src/ControlServer/Social/Teams.hpp"
 
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
@@ -7,9 +8,11 @@
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/Constants/GameTypes.h"
 #include "src/ControlServer/Database/Database.hpp"
+#include "src/ControlServer/CombatRating/CombatRating.hpp"
 #include "src/ControlServer/Logger.hpp"
 
 #include <algorithm>
+#include <tuple>
 #include <cctype>
 #include <chrono>
 
@@ -80,6 +83,12 @@ std::vector<std::string> TeamService::GetTeamMemberGuids(const std::string& sess
     return guids;
 }
 
+uint64_t TeamService::GetTeamId(const std::string& session_guid) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    Team* team = FindTeamByMemberLocked(session_guid);
+    return team ? team->id : 0;
+}
+
 bool TeamService::IsLeader(const std::string& session_guid) {
     std::lock_guard<std::mutex> lock(mutex_);
     Team* team = FindTeamByMemberLocked(session_guid);
@@ -113,8 +122,11 @@ std::vector<std::string> TeamService::SetDifficultyOverride(const std::string& s
 TeamRoster TeamService::BuildRosterLocked(const Team& team) {
     TeamRoster roster;
     roster.team_id = team.id;
-    roster.team_mode = 1;
+    roster.team_mode = Social::Teams::ModeFor(team.id);   // 2 strike force / 3 raid group
     const auto affiliations = Database::GetAffiliationsByCharacter();
+    std::vector<int64_t> ids;
+    for (const auto& m : team.members) ids.push_back(m.character_id);
+    const auto levels = PlayerSessionStore::GetCharacterLevels(ids);
     for (const auto& m : team.members) {
         if (m.session_guid == team.leader_guid)
             roster.leader_character_id = m.character_id;
@@ -126,6 +138,8 @@ TeamRoster TeamService::BuildRosterLocked(const Team& team) {
         row.class_msg_id    = ClassMsgIdFor(m.profile_id);
         row.map_name_msg_id = MapMsgIdForSession(m.session_guid);
         row.offline         = m.offline;
+        if (auto l = levels.find(m.character_id); l != levels.end()) row.level = l->second;
+        row.skill_rating    = CombatRating::Stars(row.character_id, row.level);
         if (auto a = affiliations.find(m.character_id); a != affiliations.end()) {
             row.agency_name   = a->second.agency_name;
             row.alliance_name = a->second.alliance_name;
@@ -135,7 +149,18 @@ TeamRoster TeamService::BuildRosterLocked(const Team& team) {
     return roster;
 }
 
+void TeamService::SyncSquadTable() {
+    std::vector<std::pair<int64_t, uint64_t>> rows;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        for (const auto& t : teams_)
+            for (const auto& m : t.members) rows.emplace_back(m.character_id, t.id);
+    }
+    Database::SyncSquadMembers(rows);
+}
+
 void TeamService::BroadcastRoster(uint64_t team_id) {
+    SyncSquadTable();
     TeamRoster roster;
     std::vector<std::string> recipients;
     {
@@ -148,6 +173,7 @@ void TeamService::BroadcastRoster(uint64_t team_id) {
     }
     for (const auto& guid : recipients)
         TcpSession::DeliverTeamUpdate(guid, roster);
+    Social::Teams::AfterRoster(team_id);   // raid teams (settings branch)
 }
 
 void TeamService::RequestInvite(const std::string& inviter_guid,
@@ -189,6 +215,7 @@ void TeamService::RequestInvite(const std::string& inviter_guid,
             reject_msg = MSG_IN_ANOTHER_TEAM;
             reject_with_name = true;
         }
+        if (!reject_msg && inviter_team && inviter_team->members.size() >= Social::Teams::MaxMembers(inviter_team->id)) reject_msg = 20422;   // "The team is full."
 
         int outgoing = 0;
         for (const auto& inv : invites_) {
@@ -293,7 +320,7 @@ void TeamService::AcceptInvite(const std::string& invitee_guid) {
                 inv.invitee_name.c_str());
             return;
         }
-        if (team && team->leader_guid != inv.inviter_guid) {
+        if (team && (team->leader_guid != inv.inviter_guid || team->members.size() >= Social::Teams::MaxMembers(team->id))) {   // full
             // Inviter became a non-leader member elsewhere meanwhile.
             stale = true;
         } else {
@@ -469,7 +496,7 @@ bool TeamService::LeaveCurrentTeam(const std::string& session_guid) {
         const bool was_leader = team->leader_guid == session_guid;
         team->members.erase(mit);
 
-        if (team->members.size() <= 1) {
+        if (team->members.size() <= Social::Teams::DisbandBelow(team_id)) {   // strike force / raid survive with 1
             // Last pairing gone — the remaining player becomes unteamed too.
             for (const auto& m : team->members) remaining_guids.push_back(m.session_guid);
             teams_.erase(std::remove_if(teams_.begin(), teams_.end(),
@@ -500,6 +527,8 @@ bool TeamService::LeaveCurrentTeam(const std::string& session_guid) {
         }
     }
 
+    SyncSquadTable();
+
     Logger::Log("team", "[team] %s left team #%llu%s\n", leaver_name.c_str(),
         (unsigned long long)team_id, disbanded ? " (disbanded)" : "");
 
@@ -512,6 +541,7 @@ bool TeamService::LeaveCurrentTeam(const std::string& session_guid) {
         TcpSession::DeliverTeamSystemMessage(guid, MSG_LEFT_TEAM, leaver_name);
 
     if (disbanded) {
+        Social::Teams::Forget(team_id);
         for (const auto& guid : remaining_guids)
             TcpSession::DeliverTeamUpdate(guid, empty);
     } else {
@@ -685,5 +715,60 @@ void TeamService::DequeueForCompositionChange(const std::string& session_guid) {
     for (const auto& g : notify) {
         TcpSession::DeliverMatchQueueStatus(g, 0, 0);
         TcpSession::DeliverTeamSystemMessage(g, MSG_LEFT_QUEUE, "");
+    }
+}
+
+// ---- Social::Teams helpers ----
+namespace {
+void FillSnapshot0470(uint64_t id, const std::string& leader_guid, const std::vector<std::tuple<std::string, int64_t, std::string, bool>>& ms, TeamSnapshot& out) {
+    out = TeamSnapshot{};
+    out.id = id; out.leader_guid = leader_guid;
+    for (const auto& [g, c, n, off] : ms) {
+        out.members.push_back({g, c, n, off});
+        if (g == leader_guid) out.leader_character_id = c;
+    }
+}
+}
+
+bool TeamService::Snapshot(const std::string& session_guid, TeamSnapshot& out) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    Team* t = FindTeamByMemberLocked(session_guid);
+    if (!t) return false;
+    std::vector<std::tuple<std::string, int64_t, std::string, bool>> ms;
+    for (const auto& m : t->members) ms.emplace_back(m.session_guid, m.character_id, m.player_name, m.offline);
+    FillSnapshot0470(t->id, t->leader_guid, ms, out);
+    return true;
+}
+
+bool TeamService::SnapshotById(uint64_t team_id, TeamSnapshot& out) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (const auto& t : teams_) {
+        if (t.id != team_id) continue;
+        std::vector<std::tuple<std::string, int64_t, std::string, bool>> ms;
+        for (const auto& m : t.members) ms.emplace_back(m.session_guid, m.character_id, m.player_name, m.offline);
+        FillSnapshot0470(t.id, t.leader_guid, ms, out);
+        return true;
+    }
+    return false;
+}
+
+uint64_t TeamService::EnsureTeamFor(const std::string& session_guid) {
+    auto me = PlayerSessionStore::GetByGuid(session_guid);
+    if (!me) return 0;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (Team* t = FindTeamByMemberLocked(session_guid)) return t->id;
+        Team fresh;
+        fresh.id = next_team_id_++;
+        fresh.leader_guid = session_guid;
+        TeamMember leader;
+        leader.session_guid = session_guid;
+        leader.character_id = me->selected_character_id;
+        leader.player_name  = me->player_name;
+        leader.profile_id   = me->selected_profile_id;
+        fresh.members.push_back(std::move(leader));
+        teams_.push_back(std::move(fresh));
+        Logger::Log("team", "[team] %s formed solo team #%llu (strike force)\n", me->player_name.c_str(), (unsigned long long)teams_.back().id);
+        return teams_.back().id;
     }
 }

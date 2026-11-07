@@ -173,6 +173,7 @@ std::vector<Match> LoadMatches(sqlite3* db) {
             "                i.started_at) AS concluded_at "
             "FROM ga_instances i "
             "WHERE i.outcome IN ('ATTACKERS_WIN', 'DEFENDERS_WIN', 'STALEMATE') "
+            "  AND i.id NOT IN (SELECT instance_id FROM ga_instance_result_hold) "
             "  AND EXISTS (SELECT 1 FROM map_game_info m "
             "              WHERE m.map_name = i.map_name AND m.is_pvp = 1) "
             "ORDER BY concluded_at ASC, i.id ASC",
@@ -214,6 +215,7 @@ void BuildParticipants(sqlite3* db, std::vector<Match>& matches) {
             "      GROUP BY instance_id, character_id) r "
             "  ON r.instance_id = s.instance_id AND r.character_id = s.character_id "
             "WHERE i.outcome IN ('ATTACKERS_WIN', 'DEFENDERS_WIN', 'STALEMATE') "
+            "  AND i.id NOT IN (SELECT instance_id FROM ga_instance_result_hold) "
             "  AND (s.kills + s.assists + s.deaths + s.damage_dealt "
             "       + s.healing + s.obj_points + s.bot_kills) > 0 "
             "  AND EXISTS (SELECT 1 FROM map_game_info m "
@@ -354,6 +356,7 @@ std::string FoldLocked() {
         if (sqlite3_prepare_v2(db,
                 "SELECT COUNT(*) FROM ga_instances i "
                 "WHERE i.outcome IN ('ATTACKERS_WIN', 'DEFENDERS_WIN', 'STALEMATE') "
+            "  AND i.id NOT IN (SELECT instance_id FROM ga_instance_result_hold) "
                 "  AND EXISTS (SELECT 1 FROM map_game_info m "
                 "              WHERE m.map_name = i.map_name AND m.is_pvp = 1) "
                 "  AND (i.id NOT IN (SELECT instance_id FROM ga_wl_mmr_processed) "
